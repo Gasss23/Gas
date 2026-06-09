@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+logs/
+*.bak
+.gas_history.json
+gas_history.json
+gas_debug.log
+test_sandbox/

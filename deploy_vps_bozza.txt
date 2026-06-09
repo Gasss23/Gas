@@ -1,0 +1,82 @@
+DEPLOY GAS SU VPS — BOZZA OPERATIVA (v2)
+=========================================
+
+Obiettivo: portare Gas da strumento locale ad agente autonomo attivo h24, a costo zero.
+
+
+FASE 1 — INFRASTRUTTURA (Oracle Cloud Free Tier)
+-------------------------------------------------
+- Creazione account Oracle Cloud (Always Free)
+- Provisioning VM: Ubuntu 22.04, 1 vCPU, 1GB RAM
+- Configurazione firewall: solo porte necessarie aperte
+- Accesso sicuro via SSH con chiave RSA
+
+
+FASE 2 — HARDENING PRE-DEPLOY
+------------------------------
+Modifiche a gas.py prima di esporre Gas su un server always-on:
+
+1. Snapshot automatico (anti-autodistruzione)
+   In execute_tool_call(), prima di ogni write_file, Gas copierà il file originale
+   in una directory snapshots/ con timestamp. Protegge gas.py, CLAUDE.md e
+   .gas_history.json da sovrascritture accidentali durante il loop agentico.
+
+   Esempio:
+       snapshot_dir = self.root / "snapshots"
+       snapshot_dir.mkdir(exist_ok=True)
+       shutil.copy2(target_path, snapshot_dir / f"{filename}.{timestamp}.bak")
+
+2. Rotazione log
+   Sostituzione del basicConfig attuale con RotatingFileHandler dalla stdlib Python:
+   massimo 5MB per file, 3 backup. Evita che gas_debug.log riempia il disco in
+   settimane di attività h24.
+
+   Esempio:
+       handler = RotatingFileHandler("gas_debug.log", maxBytes=5*1024*1024, backupCount=3)
+
+3. Validazione API keys all'avvio
+   In GasKernel.__init__(), check immediato: se nessuna tra GEMINI_API_KEY e
+   GROQ_API_KEY è presente nell'ambiente, Gas solleva un'eccezione descrittiva
+   invece di avviarsi silenziosamente e fallire al primo turno.
+
+4. Caricamento .env automatico
+   Aggiunta di python-dotenv come unica nuova dipendenza: Gas leggerà le API key
+   da un file .env protetto (chmod 600) nella root del progetto, senza doverle
+   esportare manualmente ad ogni sessione.
+
+
+FASE 3 — DEPLOY E CONFIGURAZIONE
+----------------------------------
+- Trasferimento codebase sulla VM via Git (git clone)
+- File .env creato direttamente sulla VM, mai versionato
+- Installazione dipendenze: pip install -r requirements.txt in virtualenv Python 3.11
+
+
+FASE 4 — AUTOMAZIONE H24
+--------------------------
+Servizio systemd (/etc/systemd/system/gas.service):
+- Auto-avvio al boot della VM
+- Restart automatico in caso di crash (Restart=on-failure)
+- Output di stdout/stderr catturato da journald per audit
+
+Configurazione:
+    [Service]
+    ExecStart=/home/ubuntu/Gas/venv/bin/python gas.py
+    Restart=on-failure
+    RestartSec=10
+    WorkingDirectory=/home/ubuntu/Gas
+    EnvironmentFile=/home/ubuntu/Gas/.env
+
+
+FASE 5 — VERIFICA FINALE
+--------------------------
+- Test end-to-end: round-trip agentico completo dalla VM
+- Conferma fallback cascade (Gemini -> Groq) funzionante da remoto
+- Monitoraggio consumi API nelle prime 24h
+
+
+RIEPILOGO
+---------
+Stima tempi:          1-2 giorni di lavoro
+Costo infrastruttura: 0 EUR/mese (Oracle Always Free)
+Costo API:            invariato rispetto all'uso attuale

@@ -1,0 +1,15 @@
+Tutti e 4 i test sono verdi. Ecco il riepilogo di cosa è stato fatto:
+
+Modifica 1 — Costante GAS_SYSTEM_PROMPT aggiunta in cima a gas.py (riga 12), prima della classe. Contiene le 3 regole tassative: tool reali, robustezza, italiano.
+
+Modifica 2 — In run_turn (riga ~115), la chiamata API ora usa:
+
+    payload = [{"role": "system", "content": GAS_SYSTEM_PROMPT}] + self._get_window()
+
+Il system message NON tocca mai self.history né _save_history(), quindi non finirà mai in .gas_history.json.
+
+TEST SUPERATI:
+[OK] GAS_SYSTEM_PROMPT definita (480 chars)
+[OK] (a) Primo elemento payload: role=system
+[OK] (b) _get_window non include messaggi system (finestra: 2 msg)
+[OK] (b) self.history non contiene messaggi system

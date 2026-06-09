@@ -1,0 +1,1 @@
+# Persistenza dello stato certificata il <data_e_ora>

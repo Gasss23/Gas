@@ -1,0 +1,11 @@
+cat > router
+cat >gemini brain
+cat > claude brain
+cat > loop
+cat > reasercher
+# Vai su aistudio.google.com → Get API Key → gratis
+export GEMINI_API_KEY=tuachiave
+echo 'export GEMINI_API_KEY=tuachiave' >> ~/.bashrc
+echo 'alias gas="python /workspaces/Gas/gas.py"' >> ~/.bashrc
+source ~/.bashrc
+
