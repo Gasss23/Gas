@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /workspaces/Gas && git add -A && { git diff --cached --quiet || { git commit -m \"auto-commit fine sessione $(date -u +%Y-%m-%d_%H:%M)\" && git push origin main; }; } || true",
+            "timeout": 60,
+            "statusMessage": "Auto-commit e push del lavoro della sessione..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -7,3 +7,4 @@ logs/
 gas_history.json
 gas_debug.log
 test_sandbox/
+.claude/settings.local.json
