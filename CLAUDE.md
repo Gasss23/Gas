@@ -10,6 +10,7 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 
 ## 3. CORE COMMANDS & WORKFLOWS
 - Esecuzione Kernel / Test: python -c "from gas import GasKernel; ..."
+- Auto-diagnosi: python gas.py doctor — check API keys, connettività provider (OK/QUOTA/KO), integrità file e storia, dimensione log. Exit code 0 se OK/WARN, 1 se FAIL. Non consuma token LLM (solo ping minimi max_tokens=1).
 - Ispezione Errori: Lettura e analisi chirurgica del file gas_debug.log.
 
 ## 4. CODE STYLE & CONVENTIONS
@@ -23,6 +24,7 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 ## 6. STATE & MEMORY MANAGEMENT
 - Lo stato viene preservato tra le sessioni salvando la cronologia nel file .gas_history.json.
 - Prima di inviare la storia ai provider, viene applicata self._get_window() per garantire che la sequenza parta sempre da un messaggio role: user coerente.
+- Separazione delle memorie: gas_identity.md = identità runtime di Gas (~200 token, iniettata nel system prompt a ogni chiamata); CLAUDE.md = memoria di sviluppo per Claude Code (Gas la legge on-demand via read_file, non viene iniettata). Se gas_identity.md manca, fallback su _GAS_SYSTEM_PROMPT_BASE.
 
 ## 7. TESTING & VERIFICATION REQUIREMENTS
 - Ogni modifica al motore richiede un test di round-trip agentico per verificare che il ciclo non si interrompa dopo la prima tool call.
