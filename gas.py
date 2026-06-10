@@ -88,10 +88,12 @@ class GasKernel:
                 start = i
                 break
 
-        # Nessun user message in avanti: cerca all'indietro, cappato a n*2
+        # Nessun user message in avanti: cerca all'indietro fino in fondo.
+        # Niente cap qui: con una catena tool lunga (fino a 10 coppie per il
+        # loop cap = 21 messaggi) l'unico user può stare oltre n*2 e una
+        # finestra senza user è un payload malformato (peggio di una lunga).
         if start is None:
-            cap = max(0, len(self.history) - n * 2)
-            for i in range(cutoff - 1, cap - 1, -1):
+            for i in range(cutoff - 1, -1, -1):
                 if self.history[i]["role"] == "user":
                     start = i
                     break
