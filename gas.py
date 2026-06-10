@@ -27,7 +27,9 @@ _GAS_SYSTEM_PROMPT_BASE = (
     "- Rispondi sempre in italiano, in modo conciso e diretto.\n"
     "- Per conteggi, misure e calcoli esatti usa SEMPRE run_command (es. wc -l), "
     "non stimare mai a mente. Se non puoi verificare un dato, dichiara l'incertezza "
-    "invece di inventare."
+    "invece di inventare.\n"
+    "- Non scrivere MAI file di memoria o cronologia (gas_history e simili): "
+    "la memoria è gestita automaticamente dal kernel."
 )
 
 def _build_system_prompt(root: Path) -> str:
@@ -119,6 +121,12 @@ class GasKernel:
                 res = subprocess.run(args["command"], shell=True, cwd=cwd, capture_output=True, text=True, timeout=60)
                 return res.stdout + res.stderr
             elif name == "write_file":
+                # Guardrail: la memoria è gestita solo dal kernel, mai dai modelli
+                # (llama su Groq allucina scritture su varianti di gas_history)
+                normalized = args["relative_path"].lower().replace("-", "_").replace(" ", "_")
+                if "gas_history" in normalized:
+                    return ("Operazione negata: la memoria di Gas è gestita "
+                            "automaticamente dal kernel, non scriverla mai.")
                 path = (cwd / args["relative_path"]).resolve()
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(args["content"], encoding="utf-8")
@@ -152,6 +160,7 @@ class GasKernel:
 
         for name, env, url, model in providers:
             if not os.environ.get(env): continue
+            payload: List[Dict[str, Any]] = []
             try:
                 client = OpenAI(base_url=url, api_key=os.environ.get(env))
                 for _ in range(10):  # max 10 iterazioni agentic loop
@@ -178,6 +187,16 @@ class GasKernel:
                     else:
                         break  # risposta vuota inattesa
             except Exception as e:
+                if name.startswith("gemini") and "400" in str(e)[:120]:
+                    # Diagnosi 400: sequenza dei role della finestra inviata,
+                    # con dettaglio tool_calls/content per gli assistant
+                    seq = [
+                        f"assistant(tool_calls={len(m.get('tool_calls') or [])},"
+                        f"content={'sì' if m.get('content') else 'no'})"
+                        if m["role"] == "assistant" else m["role"]
+                        for m in payload
+                    ]
+                    logging.warning(f"Diagnosi 400 {name}: payload = {' | '.join(seq)}")
                 logging.warning(f"Provider {name} ({model}) fallito: {e}")
                 continue
         yield {"type": "error", "content": "Pipeline esausta."}
