@@ -12,6 +12,8 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 - Esecuzione Kernel / Test: python -c "from gas import GasKernel; ..."
 - Auto-diagnosi: python gas.py doctor — check API keys, connettività provider (OK/QUOTA/KO), integrità file e storia, dimensione log. Exit code 0 se OK/WARN, 1 se FAIL. Non consuma token LLM (solo ping minimi max_tokens=1).
 - Ispezione Errori: Lettura e analisi chirurgica del file gas_debug.log.
+- Convenzione reports/: il report di fine task va scritto in reports/ultimo_report.md ed è l'UNICA fonte di verità sull'esito del task.
+- Regola di reporting (OBBLIGATORIA): alla fine di ogni task, dopo aver scritto e pushato reports/ultimo_report.md, stampare a terminale ESATTAMENTE, senza riassumere né parafrasare: (1) il path del report, (2) l'hash del commit che lo contiene, (3) il contenuto integrale del file appena scritto (un cat del file). Mai dare a voce un riassunto diverso dal contenuto del file; ogni discrepanza tra schermo e file è un errore da segnalare.
 
 ## 4. CODE STYLE & CONVENTIONS
 - Funzioni pulite, focalizzate e uso rigoroso dei Type Hints di Python.
