@@ -1,84 +1,55 @@
-# Report sessione 2026-06-10 (pomeriggio) — Protezione del budget API
+# Report sessione 2026-06-10 (sera) — Verifica puntuale Intervento C: il cap agisce a monte della history
 
-Tre interventi su gas.py: pensionamento flash-lite, retry singolo sul 400
-Gemini, cap sull'output dei tool. Tutti verificati end-to-end.
+Domanda della sessione: il troncamento di `_cap_tool_output` avviene PRIMA che
+l'output del tool venga salvato nella history (`_add_to_history`), o solo su
+ciò che viene mostrato, mentre `.gas_history.json` salva l'originale intero?
 
-## Intervento A — Pensionamento gemini-2.0-flash-lite → gemini-2.5-flash-lite
+**Risposta: il cap agisce a monte. La history salva l'output già troncato.
+Nessuna correzione necessaria.**
 
-Applicata la sostituzione già diagnosticata nel report precedente
-(2.0-flash-lite a `limit: 0`, free tier rimosso; 2.5-flash-lite con quota
-attiva e tool calling verificato) in entrambi i punti:
-- catena "semplice" di `run_turn`;
-- lista provider di `doctor`.
+## Evidenza statica (gas.py)
 
-**Verifica**: `python gas.py doctor` →
-```
-[OK   ] Provider   gemini-flash-lite    769 ms
-[OK   ] Provider   gemini-flash         444 ms
-[OK   ] Provider   groq                 103 ms
-VERDETTO: TUTTO OK
-```
-Primo "TUTTO OK" del progetto: la cascata semplice non paga più un 429 a
-vuoto a ogni turno.
+Il flusso è lineare e non esiste un percorso che salvi l'output non troncato:
 
-## Intervento B — Retry singolo sul 400 transitorio di Gemini
+1. `execute_tool_call` (riga ~160) termina con
+   `return self._cap_tool_output(name, args, out)` — il valore non troncato
+   `out` non esce mai dalla funzione;
+2. in `run_turn` (righe ~217-218) lo stesso valore di ritorno viene usato sia
+   per la history sia per lo yield all'utente:
+   ```python
+   out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+   self._add_to_history("tool", content=out, tool_call_id=tc.id, name=tc.function.name)
+   yield {"type": "tool_res", "output": out}
+   ```
 
-In `run_turn`, la chiamata API è ora avvolta da un try interno: se un
-provider Gemini risponde 400 (diagnosi del mattino: stesso payload accettato
-5/5 al replay → errore transitorio del layer di compatibilità), viene fatto
-**esattamente un** retry con payload identico:
-- retry OK → `logging.warning("retry Gemini 400 (<nome>): OK")` e il turno
-  prosegue normalmente;
-- ancora errore → `logging.warning("...: ancora 400, fallback")` e
-  l'eccezione risale al gestore esistente (diagnostica payload + fallback).
-Gli errori non-400 e i provider non-Gemini non vengono ritentati.
+## Evidenza empirica (round-trip reale)
 
-**Verifica** (simulata con client finto iniettato in `gas.OpenAI`, root
-temporanea, zero API reali):
-- Scenario "transitorio" (1° tentativo 400, 2° OK): 2 chiamate totali,
-  log `retry Gemini 400 (gemini-flash-lite): OK`, risposta finale ottenuta
-  senza fallback.
-- Scenario "persistente" (Gemini sempre 400): 5 chiamate totali
-  (2 lite + 2 flash + 1 groq), un solo retry per provider, log
-  `ancora 400, fallback`, diagnostica payload emessa, risposta da Groq.
+Test eseguito: file `test_cap_50k.txt` da **50.000 caratteri esatti**, prompt
+a Gas che forza un `read_file` su quel file, poi ispezione diretta di
+`.gas_history.json` con uno script Python esterno al kernel.
 
-## Intervento C — Cap a 8.000 caratteri sull'output dei tool (CRITICO)
+Risultati:
+- Warning in `gas_debug.log`:
+  `Output tool troncato: read_file su 'test_cap_50k.txt', 50000 caratteri originali` ✅
+- Evento `tool_res` emesso dal generatore: **8.200 caratteri** (8.000 + marker) ✅
+- **Campo `content` dell'ultimo messaggio `role:tool` in `.gas_history.json`:
+  8.200 caratteri, NON 50.000** ✅
+- Coda del content salvato: termina con il marker
+  `[OUTPUT TRONCATO: ... usa run_command con grep/wc per estrarre solo ciò che serve.]` ✅
+- Risposta finale di Gas coerente e onesta sul contenuto parziale. ✅
 
-Nuovo `TOOL_OUTPUT_CAP = 8000` e helper `_cap_tool_output` applicato
-all'output di tutti i tool (read_file, run_command, write_file):
-1. tronca a 8.000 caratteri;
-2. accoda il marker: `[OUTPUT TRONCATO: erano N caratteri totali, mostrati i
-   primi 8000. Se serve il resto, leggi il file a pezzi (es. head/tail/sed -n)
-   o usa run_command con grep/wc per estrarre solo ciò che serve.]`;
-3. logga warning con tool, path/comando e lunghezza originale.
-
-Motivazione (nel codice come commento): senza il cap, un singolo read_file
-su un file grosso inietta decine di KB nella storia, che `_get_window` si
-trascina a ogni chiamata successiva saturando i limiti TPM (incidente del
-mattino: 84 KB letti → richiesta da 23.879 token → Groq 413). Protegge anche
-la futura pipeline di apprendimento (trascrizioni Whisper ~80-100 KB/30 min).
-
-**Verifiche**:
-1. **Unit**: file da 50.000 caratteri → output ricevuto 8.200 caratteri
-   (8.000 + marker), warning loggato con lunghezza originale. ✅
-2. **Round-trip sotto il cap**: "leggi CLAUDE.md e dimmi quante sezioni ha"
-   → risposta corretta ("10 sezioni"), zero warning di troncamento nel log
-   (nessun falso positivo). ✅
-3. **Round-trip stressato**: lettura del file da 50 KB → tool result di
-   8.200 caratteri con marker, warning nel log, e risposta finale onesta:
-   *"contiene una stringa molto lunga composta dalla lettera 'A' ripetuta
-   numerose volte. A causa della lunghezza del file, è stato mostrato solo
-   un estratto."* — nessuna invenzione del contenuto mancante. ✅
+Nota di contorno: durante il test gemini-2.5-flash era a quota esaurita
+(429 free tier, 20 req/giorno); il paracadute ha portato il turno su Groq
+senza crash né interruzione del ciclo agentico — il round-trip ha anche
+ri-validato il fallback a cascata.
 
 ## Stato finale
 
-- `gas doctor`: **VERDETTO: TUTTO OK**, exit 0 — tutti e tre i provider OK.
-- Storia integra: zero orfani, finestra valida da `role:user`.
-- File di test (`test_grosso.txt`) rimosso.
-- Budget API protetto su tre fronti: niente 429 a vuoto (A), niente fallback
-  inutili su 400 transitori (B), niente esplosioni TPM da tool result (C).
+- Intervento C confermato corretto end-to-end: il cap protegge la history su
+  disco, non solo la visualizzazione. Nessuna modifica al codice.
+- File di test `test_cap_50k.txt` rimosso.
 
-## Prossimi candidati
+## Prossimi candidati (invariati)
 
 - Snapshot preventivo dei file (anti-autodistruzione) — priorità alta da roadmap.
 - Modalità dry-run.
