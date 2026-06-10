@@ -113,13 +113,35 @@ class GasKernel:
         self.history = []
         if self.db_path.exists(): self.db_path.unlink()
 
+    # Cap sull'output dei tool, in caratteri. Senza questo limite un singolo
+    # read_file su un file grosso inietta decine di KB nella storia, che
+    # _get_window si trascina dietro a ogni chiamata API successiva saturando
+    # i limiti TPM (incidente 2026-06-10: 84 KB letti → richiesta successiva
+    # da 23.879 token → Groq 413). Protegge anche la futura pipeline di
+    # apprendimento: le trascrizioni Whisper sono tipicamente 80-100 KB per
+    # 30 minuti di audio.
+    TOOL_OUTPUT_CAP = 8000
+
+    def _cap_tool_output(self, name: str, args: Dict[str, Any], out: str) -> str:
+        if len(out) <= self.TOOL_OUTPUT_CAP:
+            return out
+        target = args.get("relative_path") or args.get("command", "?")
+        logging.warning(f"Output tool troncato: {name} su {target!r}, {len(out)} caratteri originali")
+        return (
+            out[:self.TOOL_OUTPUT_CAP]
+            + f"\n\n[OUTPUT TRONCATO: erano {len(out)} caratteri totali, mostrati "
+            f"i primi {self.TOOL_OUTPUT_CAP}. Se serve il resto, leggi il file "
+            "a pezzi (es. head/tail/sed -n) o usa run_command con grep/wc per "
+            "estrarre solo ciò che serve.]"
+        )
+
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
             if name == "run_command":
                 res = subprocess.run(args["command"], shell=True, cwd=cwd, capture_output=True, text=True, timeout=60)
-                return res.stdout + res.stderr
+                out = res.stdout + res.stderr
             elif name == "write_file":
                 # Guardrail: la memoria è gestita solo dal kernel, mai dai modelli
                 # (llama su Groq allucina scritture su varianti di gas_history)
@@ -130,12 +152,14 @@ class GasKernel:
                 path = (cwd / args["relative_path"]).resolve()
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(args["content"], encoding="utf-8")
-                return f"Successo: File {args['relative_path']} aggiornato."
+                out = f"Successo: File {args['relative_path']} aggiornato."
             elif name == "read_file":
-                return (cwd / args["relative_path"]).read_text(encoding="utf-8")
+                out = (cwd / args["relative_path"]).read_text(encoding="utf-8")
+            else:
+                return "Tool non trovato."
+            return self._cap_tool_output(name, args, out)
         except Exception as e:
             return f"Errore eseguendo {name}: {str(e)}"
-        return "Tool non trovato."
 
     def run_turn(self, user_prompt: str) -> Generator[Dict[str, Any], None, None]:
         self._add_to_history("user", content=user_prompt)
@@ -148,7 +172,7 @@ class GasKernel:
 
         if compito == "semplice":
             providers = [
-                ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.0-flash-lite"),
+                ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite"),
                 ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
                 ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
             ]
@@ -165,10 +189,26 @@ class GasKernel:
                 client = OpenAI(base_url=url, api_key=os.environ.get(env))
                 for _ in range(10):  # max 10 iterazioni agentic loop
                     payload = [{"role": "system", "content": self.system_prompt}] + self._get_window()
-                    response = client.chat.completions.create(
-                        model=model, messages=payload,
-                        tools=self.tools_schema, tool_choice="auto"
-                    )
+                    try:
+                        response = client.chat.completions.create(
+                            model=model, messages=payload,
+                            tools=self.tools_schema, tool_choice="auto"
+                        )
+                    except Exception as e:
+                        # Il 400 di Gemini può essere transitorio (diagnosi
+                        # 2026-06-10: stesso payload accettato 5/5 al replay):
+                        # UN solo retry con payload identico, poi fallback
+                        if not (name.startswith("gemini") and "400" in str(e)[:120]):
+                            raise
+                        try:
+                            response = client.chat.completions.create(
+                                model=model, messages=payload,
+                                tools=self.tools_schema, tool_choice="auto"
+                            )
+                            logging.warning(f"retry Gemini 400 ({name}): OK")
+                        except Exception:
+                            logging.warning(f"retry Gemini 400 ({name}): ancora 400, fallback")
+                            raise
                     msg = response.choices[0].message
 
                     if msg.tool_calls:
@@ -223,7 +263,7 @@ def doctor(root_dir: Optional[str] = None) -> int:
     GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
     GROQ_URL   = "https://api.groq.com/openai/v1"
     providers = [
-        ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.0-flash-lite"),
+        ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite"),
         ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
         ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
     ]

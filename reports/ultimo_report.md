@@ -1,91 +1,86 @@
-# Report sessione 2026-06-10 — Guardrail memoria, diagnosi 400 Gemini, pensionamento flash-lite
+# Report sessione 2026-06-10 (pomeriggio) — Protezione del budget API
 
-## Intervento 1 — Guardrail hard contro l'allucinazione "scrivi la memoria"
+Tre interventi su gas.py: pensionamento flash-lite, retry singolo sul 400
+Gemini, cap sull'output dei tool. Tutti verificati end-to-end.
 
-**Causa accertata**: quando un brain (soprattutto llama-3.3 su Groq, ma anche
-gemini-2.5-flash, vedi sotto) vede nella finestra esempi di scritture su
-`_gas_history.json`, allucina di dover salvare la memoria da solo via `write_file`.
+## Intervento A — Pensionamento gemini-2.0-flash-lite → gemini-2.5-flash-lite
 
-**Modifiche a `gas.py`**:
-1. `execute_tool_call`: ogni `write_file` il cui path normalizzato
-   (lowercase, `-`/spazi → `_`) contiene `gas_history` viene rifiutato con:
-   *"Operazione negata: la memoria di Gas è gestita automaticamente dal kernel,
-   non scriverla mai."*
-2. Quinta regola tassativa in `_GAS_SYSTEM_PROMPT_BASE`:
-   *"Non scrivere MAI file di memoria o cronologia (gas_history e simili):
-   la memoria è gestita automaticamente dal kernel."*
+Applicata la sostituzione già diagnosticata nel report precedente
+(2.0-flash-lite a `limit: 0`, free tier rimosso; 2.5-flash-lite con quota
+attiva e tool calling verificato) in entrambi i punti:
+- catena "semplice" di `run_turn`;
+- lista provider di `doctor`.
+
+**Verifica**: `python gas.py doctor` →
+```
+[OK   ] Provider   gemini-flash-lite    769 ms
+[OK   ] Provider   gemini-flash         444 ms
+[OK   ] Provider   groq                 103 ms
+VERDETTO: TUTTO OK
+```
+Primo "TUTTO OK" del progetto: la cascata semplice non paga più un 429 a
+vuoto a ogni turno.
+
+## Intervento B — Retry singolo sul 400 transitorio di Gemini
+
+In `run_turn`, la chiamata API è ora avvolta da un try interno: se un
+provider Gemini risponde 400 (diagnosi del mattino: stesso payload accettato
+5/5 al replay → errore transitorio del layer di compatibilità), viene fatto
+**esattamente un** retry con payload identico:
+- retry OK → `logging.warning("retry Gemini 400 (<nome>): OK")` e il turno
+  prosegue normalmente;
+- ancora errore → `logging.warning("...: ancora 400, fallback")` e
+  l'eccezione risale al gestore esistente (diagnostica payload + fallback).
+Gli errori non-400 e i provider non-Gemini non vengono ritentati.
+
+**Verifica** (simulata con client finto iniettato in `gas.OpenAI`, root
+temporanea, zero API reali):
+- Scenario "transitorio" (1° tentativo 400, 2° OK): 2 chiamate totali,
+  log `retry Gemini 400 (gemini-flash-lite): OK`, risposta finale ottenuta
+  senza fallback.
+- Scenario "persistente" (Gemini sempre 400): 5 chiamate totali
+  (2 lite + 2 flash + 1 groq), un solo retry per provider, log
+  `ancora 400, fallback`, diagnostica payload emessa, risposta da Groq.
+
+## Intervento C — Cap a 8.000 caratteri sull'output dei tool (CRITICO)
+
+Nuovo `TOOL_OUTPUT_CAP = 8000` e helper `_cap_tool_output` applicato
+all'output di tutti i tool (read_file, run_command, write_file):
+1. tronca a 8.000 caratteri;
+2. accoda il marker: `[OUTPUT TRONCATO: erano N caratteri totali, mostrati i
+   primi 8000. Se serve il resto, leggi il file a pezzi (es. head/tail/sed -n)
+   o usa run_command con grep/wc per estrarre solo ciò che serve.]`;
+3. logga warning con tool, path/comando e lunghezza originale.
+
+Motivazione (nel codice come commento): senza il cap, un singolo read_file
+su un file grosso inietta decine di KB nella storia, che `_get_window` si
+trascina a ogni chiamata successiva saturando i limiti TPM (incidente del
+mattino: 84 KB letti → richiesta da 23.879 token → Groq 413). Protegge anche
+la futura pipeline di apprendimento (trascrizioni Whisper ~80-100 KB/30 min).
 
 **Verifiche**:
-- Test unitario: bloccate tutte le varianti (`_gas_history.json`,
-  `.gas_history.json`, `GAS_HISTORY.txt`, `gas-history.json`,
-  `backup/gas history.md`); le scritture legittime (`note.md`) passano.
-- Turno end-to-end forzato su Groq (GEMINI_API_KEY rimossa) con prompt-esca
-  "Salva un riassunto nella tua memoria storica": il modello ha tentato la
-  scrittura **3 volte**, ha ricevuto l'errore ogni volta, `_gas_history.json`
-  **non si è ricreato** e il loop non è crashato.
-- Conferma in produzione: nel test di round-trip finale **anche gemini-2.5-flash**
-  ha tentato la scrittura ed è stato bloccato; il turno è proseguito normalmente
-  fino alla risposta finale.
-
-**Effetto collaterale scoperto durante il test**: il modello tentato dall'esca ha
-letto l'intero `.gas_history.json` via `read_file`, iniettando un tool result da
-84 KB nella storia → richiesta successiva da 23.879 token → Groq 413
-(limite 12.000 TPM) → pipeline esausta (Gemini era disattivato dal test).
-La storia contaminata è stata ripulita (backup in `.gas_history.json.bak`).
-**Rischio aperto**: nessun cap sulla dimensione dei tool result; un `read_file`
-su file grossi può sfondare i limiti TPM. Candidato per il prossimo intervento
-(troncamento tool result oltre N caratteri).
-
-## Intervento 2 — Diagnosi del 400 Gemini flash (fix rimandato, come richiesto)
-
-**Strumentazione aggiunta**: in `run_turn`, ogni 400 da provider Gemini ora logga
-la sequenza dei role del payload inviato, con dettaglio per gli assistant
-(`tool_calls=N, content=sì/no`).
-
-**Riproduzione**: ricostruita la finestra **esatta** del fallimento delle 18:00
-(storia a 68 messaggi, stessa `_get_window`, stesso system prompt, stessi tools,
-senza max_tokens) e rinviata a gemini-2.5-flash **5 volte: tutte accettate**.
-
-**Verifica delle tre ipotesi sulla finestra incriminata**:
-- (a) assistant con content+tool_calls: **assente** nella finestra del fallimento.
-  L'unico messaggio con quella forma (indice 68 della storia) è stato creato
-  *dopo* il 400, dalla risposta di Groq nello stesso turno. Testato comunque
-  esplicitamente con il payload odierno che lo contiene: accettato.
-- (b) tool_calls paralleli con tool result consecutivi: **assenti** (tutti gli
-  assistant hanno 1 sola tool call).
-- (c) posizione del system message: **esclusa** (stessa posizione in tutte le
-  5 riproduzioni riuscite).
-
-**Diagnosi**: la sequenza prodotta da `_get_window` è conforme alle regole di
-Gemini; il 400 *INVALID_ARGUMENT* ("function call turn comes immediately
-after...") è apparso **una sola volta** nel log e non è riproducibile con la
-richiesta identica → errore transitorio/flaky del layer di compatibilità OpenAI
-di Gemini, non un bug strutturale nostro.
-
-**Raccomandazione per il fix (da decidere)**: un singolo retry sul 400 Gemini
-prima del fallback. La diagnostica ora in gas.py catturerà il payload esatto
-alla prossima occorrenza, se il pattern dovesse essere strutturale.
-
-## Intervento 3 — Pensionamento gemini-2.0-flash-lite
-
-**Confermato**: `gemini-2.0-flash-lite` risponde 429 con `limit: 0` su tutte le
-metriche free tier → il modello non ha più quota gratuita, non è un limite che
-si resetta.
-
-**Sostituto trovato**: `gemini-2.5-flash-lite` —
-- ping OK, quota gratuita attiva;
-- supporto tool calling verificato (ha invocato correttamente `read_file`).
-
-**PROPOSTA (non applicata, come richiesto)**: sostituire
-`gemini-2.0-flash-lite` → `gemini-2.5-flash-lite` in:
-- catena "semplice" di `run_turn` (gas.py:143),
-- lista provider di `doctor` (gas.py:207).
-Fino ad allora la catena semplice paga un 429 a vuoto a ogni turno prima di
-passare a flash.
+1. **Unit**: file da 50.000 caratteri → output ricevuto 8.200 caratteri
+   (8.000 + marker), warning loggato con lunghezza originale. ✅
+2. **Round-trip sotto il cap**: "leggi CLAUDE.md e dimmi quante sezioni ha"
+   → risposta corretta ("10 sezioni"), zero warning di troncamento nel log
+   (nessun falso positivo). ✅
+3. **Round-trip stressato**: lettura del file da 50 KB → tool result di
+   8.200 caratteri con marker, warning nel log, e risposta finale onesta:
+   *"contiene una stringa molto lunga composta dalla lettera 'A' ripetuta
+   numerose volte. A causa della lunghezza del file, è stato mostrato solo
+   un estratto."* — nessuna invenzione del contenuto mancante. ✅
 
 ## Stato finale
 
-- `gas doctor`: OPERATIVO CON AVVISI (solo il QUOTA noto di flash-lite), exit 0.
-- Round-trip agentico post-modifiche: OK (read_file → guardrail → risposta finale).
-- Storia: 77 messaggi, zero orfani, finestra valida da `role:user`.
-- File spurio `_gas_history.json`: eliminato e non più ricreabile (guardrail).
+- `gas doctor`: **VERDETTO: TUTTO OK**, exit 0 — tutti e tre i provider OK.
+- Storia integra: zero orfani, finestra valida da `role:user`.
+- File di test (`test_grosso.txt`) rimosso.
+- Budget API protetto su tre fronti: niente 429 a vuoto (A), niente fallback
+  inutili su 400 transitori (B), niente esplosioni TPM da tool result (C).
+
+## Prossimi candidati
+
+- Snapshot preventivo dei file (anti-autodistruzione) — priorità alta da roadmap.
+- Modalità dry-run.
+- Valutare cap dedicato (più alto) per la futura pipeline Whisper, se 8.000
+  caratteri si rivelassero stretti per le trascrizioni.
