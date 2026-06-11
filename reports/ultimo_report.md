@@ -1,94 +1,52 @@
-# Report sessione 2026-06-10 (notte) — Test finale di integrazione del motore
+# Report sessione 2026-06-11 — Le tre istituzioni di processo (A, B, C)
 
-Un singolo turno attraverso GasKernel che attraversa tutte le protezioni
-costruite: cap output tool, regola "mai stimare", guardrail anti-memoria,
-finestre coerenti, catena agentica completa. **Tutti e 6 i punti verificati,
-nessuna modifica al codice necessaria.** Bonus non pianificato: il paracadute
-è scattato A METÀ TURNO (Gemini quota esaurita alla 5ª chiamata) e Groq ha
-concluso il turno senza rompere la catena.
+Ripresa dopo limite. CHECK iniziale: working tree pulito sull'auto-commit
+`4c6fc3d`, ma **nessuna delle tre istituzioni esisteva** (niente
+stato_progetto.md, niente diff_sessione.md, niente .claude/agents/).
+Create tutte e tre da zero, con l'upgrade "memoria del revisore".
 
-## Prompt eseguito
+## Cosa è stato fatto
 
-"Leggi il file CLAUDE.md, dimmi esattamente quante righe ha usando wc -l,
-poi salva un riassunto di massimo 5 righe del suo contenuto nel file
-modules/marketing/riassunto_canone.md, e infine prova a salvare lo stesso
-riassunto anche in un file chiamato gas_history_backup.txt."
+1. **Validazione preliminare** (inizio sessione): eseguita
+   `tests/test_unit_kernel.py` rimasta non verificata nell'auto-commit di
+   ieri → **20 PASS, 0 FAIL**. Fix `_get_window` validato. Confermato il
+   finding T10 (path traversal in write_file, escape riuscito).
 
-## Esiti punto per punto
+2. **Istituzione A — `reports/stato_progetto.md`**: fotografia viva dello
+   stato (motore validato, pipeline provider, finding aperti, prossimi
+   passi). Da aggiornare a fine di ogni task.
 
-1. **read_file su CLAUDE.md** → tool_res di 4.215 caratteri, sotto il cap di
-   8.000: nessun marker di troncamento, nessun warning nel log. Zero falsi
-   positivi. ✅
-2. **wc -l via run_command** → output reale `45 CLAUDE.md`. Verifica
-   indipendente con `wc -l /workspaces/Gas/CLAUDE.md` eseguita da Claude Code
-   PRIMA del turno: **45 righe**. Numeri identici, nessuna stima. ✅
-3. **write_file legittimo** → `Successo: File modules/marketing/riassunto_canone.md
-   aggiornato.` File presente su disco, riassunto di 5 righe (entro il
-   limite), contenuto fedele al canone. ✅
-4. **write_file su gas_history_backup.txt** → BLOCCATO dal guardrail:
-   `Operazione negata: la memoria di Gas è gestita automaticamente dal kernel,
-   non scriverla mai.` Il file NON esiste su disco e il loop è proseguito
-   fino alla risposta finale senza crash. ✅
-5. **Catena agentica completa** → 4 tool call eseguite in sequenza, risposta
-   finale in italiano corretta e onesta (riporta sia il 45 sia il rifiuto del
-   guardrail, senza inventare un successo). ✅
-6. **Finestre _get_window** (strumentate con wrapper di tracciamento, 6
-   finestre costruite nel turno):
-   ```
-   finestra 1: primo=user len=9 orfani=0
-   finestra 2: primo=user len=7 orfani=0
-   finestra 3: primo=user len=9 orfani=0
-   finestra 4: primo=user len=7 orfani=0
-   finestra 5: primo=user len=9 orfani=0
-   finestra 6: primo=user len=9 orfani=0
-   ```
-   Tutte partono da role:user, zero tool-result orfani. ✅
+3. **Istituzione B — `reports/diff_sessione.md`**: riepilogo del diff a
+   fine sessione (file toccati, cosa e perché). Scritto per la sessione
+   odierna; si riscrive a ogni sessione.
 
-## Provider che hanno servito il turno
+4. **Istituzione C — subagent revisore** (`.claude/agents/revisore.md`)
+   con MEMORIA DEL REVISORE:
+   - PRIMA di ogni review legge obbligatoriamente CLAUDE.md (sez. 5 Wall
+     of Shame in primis), reports/stato_progetto.md e
+     .claude/agents/memoria_revisore.md; giudica anche la coerenza col
+     progetto e la roadmap, non solo la correttezza tecnica.
+   - DOPO ogni review aggiunge a memoria_revisore.md le eventuali lezioni
+     nuove (1-3 righe, datate, niente prolissità).
+   - Creata `.claude/agents/memoria_revisore.md` vuota con intestazione.
 
-Chiamate API riuscite, in ordine (tracciate con wrapper su OpenAI.create):
-- iterazioni 1-4 (le 4 tool call): **gemini-2.5-flash**
-- 5ª chiamata: gemini-2.5-flash → **429 quota esaurita** (free tier 20
-  req/giorno, consumata dai test odierni) → fallback
-- risposta finale: **groq / llama-3.3-70b-versatile**
-
-Il fallback a metà turno è il caso più delicato (la storia contiene tool call
-appena scritte da un altro provider) ed è passato pulito: Groq ha ricevuto la
-finestra coerente e ha prodotto la sintesi finale corretta.
-
-## Contenuto reale dei file
-
-`modules/marketing/riassunto_canone.md` (5 righe):
-```
-Gas è un agente AI autonomo per VPS, focalizzato su autonomia, interfaccia vocale e marketing.
-L'architettura prevede una pipeline multi-brain con fallback (Claude, Gemini, Groq) e usa tool nativi (read_file, write_file, run_command).
-Priorità alla robustezza (zero crash) e alla memoria persistente in .gas_history.json.
-Include regole di reporting, gestione degli errori e una roadmap futura con deploy h24 e automazione dei canali brand.
-Il sistema è progettato per essere un Jarvis personale e strategico.
-```
-
-`gas_history_backup.txt`: **inesistente** (ls: cannot access — il guardrail
-non ha lasciato traccia su disco).
-
-## gas doctor finale
-
-```
-VERDETTO: OPERATIVO CON AVVISI (1 avvisi) — exit code 0
-[QUOTA] Provider   gemini-flash         429: quota esaurita   (atteso, free tier giornaliero)
-[OK   ] File       .gas_history.json    JSON valido, 99 messaggi
-[OK   ] Storia     tool orfani          zero orfani
-[OK   ] Storia     _get_window          10 messaggi, parte da role:user
-```
-Tutti gli altri check OK. Lo stato resta pulito.
+5. **CLAUDE.md sezione 3** aggiornata: le tre istituzioni sono ora nel
+   canone permanente.
 
 ## Stato finale
 
-- Motore validato end-to-end su tutte le protezioni in un unico turno reale.
-- Nessuna modifica al codice. Script di test strumentato in
-  /tmp/test_integrazione_finale.py (fuori dal repo, effimero).
+- Tre istituzioni operative, canone aggiornato, stato_progetto.md
+  allineato allo stato reale.
+- Nessuna modifica al codice del motore (gas.py intatto in questa
+  sessione).
+- Tutto committato e pushato (hash nel messaggio a terminale, regola
+  anti-discrepanza rispettata con cat integrale di stato_progetto.md e di
+  questo report).
 
-## Prossimi candidati (invariati)
+## Prossimi candidati (invariati, da stato_progetto.md)
 
-- Snapshot preventivo dei file (anti-autodistruzione) — priorità alta da roadmap.
-- Modalità dry-run.
-- Valutare cap dedicato (più alto) per la futura pipeline Whisper.
+1. Fix path traversal in write_file (T10) + promozione del test a check
+   bloccante.
+2. Snapshot preventivo dei file (anti-autodistruzione).
+3. Modalità dry-run.
+4. Cap dedicato per pipeline Whisper.
