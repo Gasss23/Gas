@@ -8,14 +8,22 @@ from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional
 from openai import OpenAI
 
+# Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
+# i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
+# (httpx ecc.) non inquinano il log: solo i logger alzati esplicitamente a INFO
+# (es. gas.snapshot) scrivono righe informative nella scatola nera.
+_console_handler = logging.StreamHandler()
+_console_handler.setLevel(logging.WARNING)
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         RotatingFileHandler("gas_debug.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"),
-        logging.StreamHandler(),
+        _console_handler,
     ],
 )
+_snapshot_log = logging.getLogger("gas.snapshot")
+_snapshot_log.setLevel(logging.INFO)
 
 _GAS_SYSTEM_PROMPT_BASE = (
     "Sei Gas, un agente AI autonomo e personale che gira su VPS. "
@@ -148,11 +156,98 @@ class GasKernel:
             return None
         return path
 
+    # Snapshot preventivo (anti-autodistruzione): fotografa il repo PRIMA di
+    # ogni operazione che può alterare i file. Meccanismo: indice git
+    # temporaneo (GIT_INDEX_FILE) + write-tree + commit-tree + ref dedicata
+    # in refs/gas/snapshots/ — include anche i file non tracciati (che
+    # "git stash create" ignorerebbe) e non tocca né il branch né la staging
+    # area dell'utente. Il ripristino è SOLO umano (vedi README): nessun tool
+    # di restore è esposto ai modelli.
+    SNAPSHOT_KEEP = 100  # retention: oltre questo numero i ref più vecchi vengono potati
+
+    def _snapshot(self, trigger: str, target: str) -> Optional[str]:
+        """Fotografa lo stato corrente del repo (file tracciati E non tracciati)
+        in un commit fuori-branch referenziato da refs/gas/snapshots/<ts>-<sha8>.
+        Ritorna lo SHA dello snapshot; None se fallisce — chi chiama DEVE
+        trattare None come blocco dell'operazione (fail-closed)."""
+        import shutil
+        import tempfile
+        import time
+        tmpdir = tempfile.mkdtemp(prefix="gas_snap_idx_")
+        try:
+            env = os.environ.copy()
+            # Indice temporaneo: non sporca la staging area dell'utente
+            env["GIT_INDEX_FILE"] = os.path.join(tmpdir, "index")
+            # Identità esplicita: commit-tree fallirebbe senza user.name/email
+            env["GIT_AUTHOR_NAME"] = env["GIT_COMMITTER_NAME"] = "gas-snapshot"
+            env["GIT_AUTHOR_EMAIL"] = env["GIT_COMMITTER_EMAIL"] = "gas@kernel"
+
+            def git(*args: str) -> str:
+                res = subprocess.run(["git", "-C", str(self.root), *args],
+                                     env=env, capture_output=True, text=True, timeout=30)
+                if res.returncode != 0:
+                    raise RuntimeError(f"git {args[0]}: {res.stderr.strip()[:200]}")
+                return res.stdout.strip()
+
+            # Riserva R1 (review #3): git -C risale ai repo genitori. Se la
+            # root non ha un proprio .git, lo snapshot fotograferebbe il repo
+            # SBAGLIATO e l'operazione passerebbe: fail-closed esplicito.
+            toplevel = git("rev-parse", "--show-toplevel")
+            if Path(toplevel).resolve() != self.root:
+                raise RuntimeError(f"la root {self.root} non è la radice di un repo git (toplevel: {toplevel})")
+            git("add", "-A")  # a differenza di stash create, prende anche i non tracciati
+            # La memoria di Gas è gitignorata ma va protetta quanto il codice
+            if (self.root / ".gas_history.json").exists():
+                git("add", "-f", "--", ".gas_history.json")
+            tree = git("write-tree")
+            head = subprocess.run(["git", "-C", str(self.root), "rev-parse", "--verify", "-q", "HEAD"],
+                                  env=env, capture_output=True, text=True, timeout=30)
+            parent = ["-p", head.stdout.strip()] if head.returncode == 0 else []
+            sha = git("commit-tree", tree, *parent, "-m", f"gas snapshot [{trigger}] {target}")
+            # Timestamp a nanosecondi: i ref ordinano lessicograficamente =
+            # cronologicamente, anche con più snapshot nello stesso secondo
+            ns = time.time_ns()
+            ts = time.strftime("%Y%m%d-%H%M%S", time.localtime(ns // 1_000_000_000)) + f".{ns % 1_000_000_000:09d}"
+            ref = f"refs/gas/snapshots/{ts}-{sha[:8]}"
+            git("update-ref", ref, sha)
+        except Exception as e:
+            logging.warning(f"Snapshot FALLITO [{trigger}] su {target!r}: {e} — operazione bloccata (fail-closed)")
+            return None
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+        # Da qui in poi lo snapshot ESISTE: errori di contorno (indice
+        # leggibile, retention) non bloccano l'operazione, solo warning.
+        _snapshot_log.info(f"Snapshot creato [{trigger}] su {target!r}: {sha} ({ref})")
+        try:
+            index_file = self.root / "reports" / "snapshots.log"
+            index_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(index_file, "a", encoding="utf-8") as f:
+                f.write(f"{ts}  {sha}  {trigger}  {target}\n")
+        except Exception as e:
+            logging.warning(f"Indice reports/snapshots.log non aggiornato: {e}")
+        try:
+            res = subprocess.run(["git", "-C", str(self.root), "for-each-ref",
+                                  "--format=%(refname)", "refs/gas/snapshots/"],
+                                 capture_output=True, text=True, timeout=30)
+            refs = res.stdout.split()
+            for old in refs[:-self.SNAPSHOT_KEEP]:
+                subprocess.run(["git", "-C", str(self.root), "update-ref", "-d", old],
+                               capture_output=True, text=True, timeout=30)
+        except Exception as e:
+            logging.warning(f"Retention snapshot non applicata: {e}")
+        return sha
+
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
             if name == "run_command":
+                # Snapshot preventivo: la shell può riscrivere qualunque file
+                if self._snapshot("run_command", args["command"][:120]) is None:
+                    return ("Operazione negata: snapshot preventivo fallito, "
+                            "comando non eseguito (fail-closed). Dettagli in "
+                            "gas_debug.log.")
                 res = subprocess.run(args["command"], shell=True, cwd=cwd, capture_output=True, text=True, timeout=60)
                 out = res.stdout + res.stderr
             elif name == "write_file":
@@ -167,6 +262,12 @@ class GasKernel:
                     return (f"Operazione negata: il percorso '{args['relative_path']}' "
                             "esce dalla root di Gas. Usa solo percorsi relativi "
                             "interni al progetto.")
+                # Snapshot preventivo DOPO la validazione del path: fotografa
+                # lo stato prima di sovrascrivere
+                if self._snapshot("write_file", args["relative_path"]) is None:
+                    return ("Operazione negata: snapshot preventivo fallito, "
+                            "file non scritto (fail-closed). Dettagli in "
+                            "gas_debug.log.")
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(args["content"], encoding="utf-8")
                 out = f"Successo: File {args['relative_path']} aggiornato."

@@ -1,37 +1,68 @@
-# 🔀 Diff sessione 2026-06-11
+# 🔀 Diff sessione 2026-06-11 (sera)
 
 > Riepilogo del diff dell'ultima sessione. Si riscrive a ogni sessione;
 > la storia completa sta in git.
+> Sessione: **Snapshot preventivo dei file** (roadmap ALTA, punto 1).
 
-## Contesto
+## File toccati e perché
 
-Sessione in due fasi: (1) creazione delle tre istituzioni di processo
-(commit `903ec45`); (2) battesimo del revisore + fix T10 path traversal,
-prima modifica al motore passata da review PRE-commit.
+### `gas.py` (motore)
+- **Nuovo metodo `GasKernel._snapshot(trigger, target)`**: fotografa il repo
+  in un commit fuori-branch (`refs/gas/snapshots/<ts-ns>-<sha8>`) usando un
+  indice git temporaneo (`GIT_INDEX_FILE` in tmpdir): `git add -A` prende
+  anche i file non tracciati (la trappola di `git stash create` è evitata),
+  `add -f .gas_history.json` protegge la memoria di Gas benché gitignorata,
+  `write-tree` + `commit-tree` (parent = HEAD se esiste) + `update-ref`.
+  Branch e staging dell'utente non vengono toccati. Identità git esplicita
+  via env. Check `rev-parse --show-toplevel == root` (fix riserva R1): una
+  root annidata in un repo esterno NON fotografa il repo sbagliato, fallisce.
+  Ritorna lo SHA; `None` = fallimento.
+- **Aggancio fail-closed in `execute_tool_call`**: snapshot PRIMA di
+  `write_file` (dopo guardrail anti-memoria e `_safe_path`) e PRIMA di
+  `run_command`. Snapshot fallito → "Operazione negata: snapshot preventivo
+  fallito… (fail-closed)", `logging.warning` in scatola nera, loop intatto.
+- **Retention**: `SNAPSHOT_KEEP = 100`, ref più vecchi potati a ogni
+  snapshot (ordinamento lessicografico = cronologico grazie al timestamp a
+  nanosecondi). Errori di retention/indice non bloccano: lo snapshot esiste già.
+- **Logging**: console handler esplicito a WARNING + logger dedicato
+  `gas.snapshot` a INFO → i successi finiscono SOLO in `gas_debug.log`, la
+  console resta pulita, le librerie (httpx) restano filtrate a WARNING.
+  Indice leggibile append-only in `reports/snapshots.log`
+  (`ts  sha  trigger  target`).
 
-## File toccati — fase 2 (battesimo revisore + fix T10)
+### `tests/test_unit_kernel.py`
+- **8 nuovi check T11a–T11g**: snapshot creato prima della write (T11a),
+  contenuto pre-modifica + `git restore` esatto (T11b/b2), fail-closed su
+  write_file e run_command in root non-git (T11c/c2), file non tracciato
+  incluso (T11d), run_command scatena lo snapshot (T11e), retention pota
+  oltre il limite (T11f), root annidata in repo esterno bloccata (T11g).
+- `kernel_tmp()` e la root di T10 ora fanno `git init` (necessario: senza
+  repo git il fail-closed blocca le scritture, ed è giusto così).
+- **Suite: 34 PASS, 0 FAIL** (i 25 storici tutti verdi).
 
-| File | Azione | Perché |
-|---|---|---|
-| `gas.py` | modificato | Nuovo helper `_safe_path` (resolve + is_relative_to root, warning in scatola nera) applicato a write_file e read_file: chiude il finding T10 (traversal/esfiltrazione). |
-| `tests/test_unit_kernel.py` | modificato | T10 promosso da NOTA a 5 check bloccanti (write `../`, read `../`, path assoluto, 2 controlli positivi). Suite: 25 PASS, 0 FAIL. |
-| `.claude/agents/memoria_revisore.md` | aggiornato dal revisore | 6 lezioni accumulate nelle 2 review ufficiali (4 dal battesimo su _get_window, 2 dal fix T10). |
-| `reports/stato_progetto.md` | aggiornato | T10 chiuso; 2 finding nuovi dalle review (bypass run_command 🟠, niente cap finestra 🟡); priorità riordinate. |
-| `reports/ultimo_report.md` | riscritto | Report del task corrente (verdetti delle 2 review, esiti test). |
-| `reports/diff_sessione.md` | aggiornato | Questo file. |
+### `README.md`
+- Nuova sezione **"Macchina del tempo — ripristino snapshot (SOLO umano)"**:
+  comandi git esatti per elencare gli snapshot, ripristinare un singolo file
+  o lo stato intero, con i caveat onesti (i file creati dopo non vengono
+  cancellati; i gitignorati non sono negli snapshot). Il ripristino non è un
+  tool esposto a Gas.
 
-## File toccati — fase 1 (tre istituzioni, già in `903ec45`)
+### `.claude/agents/memoria_revisore.md`
+- +3 lezioni datate 2026-06-11 (da review #3): insidia `git -C` che risale ai
+  repo genitori; pattern logger dedicato/handler-level per la scatola nera;
+  worst case di rotazione delle retention count-based.
 
-`reports/stato_progetto.md`, `reports/diff_sessione.md`,
-`.claude/agents/revisore.md`, `.claude/agents/memoria_revisore.md` creati;
-`CLAUDE.md` sez. 3 aggiornata col canone delle istituzioni.
+### `reports/`
+- `stato_progetto.md` aggiornato (snapshot chiuso, riserve R2/R3 come nuovi
+  finding 🟡, prossimi passi riordinati); questo `diff_sessione.md`
+  riscritto; `ultimo_report.md` rigenerato.
 
-## Review agli atti
+## Review
 
-- **Review #1** (retroattiva, fix `_get_window` di `4c6fc3d`):
-  APPROVATO CON RISERVE — rimozione cap n*2 giustificata e necessaria
-  (cedeva al worst case 21 messaggi); manca però un cap rigido sulla
-  finestra → proposto WINDOW_CHAR_CAP a granularità di messaggio.
-- **Review #2** (pre-commit, fix T10): APPROVATO CON RISERVE — blocco
-  solido anche su symlink e assoluti; finding residuo: run_command
-  bypassa il guardrail (→ dry-run/sandbox in roadmap).
+- **Review #3** (revisore, prima invocazione diretta come tipo registrato):
+  **APPROVATO CON RISERVE** — R1 (root annidata, verificata empiricamente),
+  R2 (retention consumata dai read-only), R3 (gc oggetti orfani + rotazione
+  snapshots.log).
+- **Review #3-bis** (incrementale sul fix R1): fix **APPROVATO**, R1 chiusa;
+  il verdetto complessivo resta APPROVATO CON RISERVE per R2/R3, tracciate
+  in stato_progetto.md.

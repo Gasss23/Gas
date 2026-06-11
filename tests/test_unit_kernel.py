@@ -5,6 +5,7 @@ nessuna chiamata reale, nessuna scrittura su .gas_history.json del repo.
 """
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -21,9 +22,18 @@ def check(nome: str, cond: bool, dettaglio: str = ""):
     print(f"[{'PASS' if cond else 'FAIL'}] {nome}" + (f" — {dettaglio}" if dettaglio else ""))
 
 def kernel_tmp() -> GasKernel:
+    # git init: lo snapshot preventivo è fail-closed, senza repo git
+    # write_file e run_command sono bloccati (testato a parte in T11c)
     tmp = tempfile.mkdtemp(prefix="gas_test_")
+    subprocess.run(["git", "init", "-q", tmp], check=True, capture_output=True)
     os.environ["GAS_CWD"] = tmp
     return GasKernel(root_dir=tmp)
+
+def git_out(root: str, *args: str) -> str:
+    return subprocess.run(["git", "-C", root, *args], capture_output=True, text=True).stdout.strip()
+
+def snap_refs(root: str) -> list:
+    return git_out(root, "for-each-ref", "--format=%(refname)", "refs/gas/snapshots/").split()
 
 # ---------- T1-T4: _get_window ----------
 k = kernel_tmp()
@@ -132,6 +142,7 @@ check("T9c storia salvata su disco nella root temporanea", k.db_path.exists() an
 
 # ---------- T10: sicurezza — path traversal BLOCCATO (write_file e read_file) ----------
 tmp_inner = tempfile.mkdtemp(prefix="gas_test_inner_")
+subprocess.run(["git", "init", "-q", tmp_inner], check=True, capture_output=True)
 os.environ["GAS_CWD"] = tmp_inner
 k = GasKernel(root_dir=tmp_inner)
 
@@ -162,6 +173,75 @@ out = k.execute_tool_call("write_file", {"relative_path": "sub/dir/ok.txt", "con
 check("T10d write_file legittimo in sottocartella passa", out.startswith("Successo"), out[:60])
 out = k.execute_tool_call("read_file", {"relative_path": "sub/dir/ok.txt"})
 check("T10e read_file legittimo passa", out == "dentro", out[:40])
+
+# ---------- T11: snapshot preventivo anti-autodistruzione ----------
+# T11a: write_file crea uno snapshot PRIMA di scrivere
+k = kernel_tmp()
+root = os.environ["GAS_CWD"]
+k.execute_tool_call("write_file", {"relative_path": "doc.txt", "content": "versione 1"})
+refs_prima = snap_refs(root)
+out = k.execute_tool_call("write_file", {"relative_path": "doc.txt", "content": "versione 2 distruttiva"})
+nuovi = [r for r in snap_refs(root) if r not in refs_prima]
+check("T11a write_file crea uno snapshot prima di scrivere",
+      out.startswith("Successo") and len(nuovi) == 1, f"nuovi ref={len(nuovi)}")
+
+# T11b: lo snapshot contiene lo stato PRE-modifica e il ripristino umano
+# (git restore --source) riporta il contenuto esatto
+snap_ref = nuovi[0] if nuovi else "REF_MANCANTE"
+check("T11b snapshot = stato pre-modifica", git_out(root, "show", f"{snap_ref}:doc.txt") == "versione 1")
+subprocess.run(["git", "-C", root, "restore", "--worktree", "--source", snap_ref, "--", "doc.txt"],
+               capture_output=True)
+check("T11b2 git restore riporta il file alla versione pre-modifica",
+      (Path(root) / "doc.txt").read_text(encoding="utf-8") == "versione 1")
+
+# T11c: fail-closed — root senza repo git = snapshot impossibile = scrittura
+# e comandi shell BLOCCATI, nessun file creato
+tmp_nogit = tempfile.mkdtemp(prefix="gas_test_nogit_")
+os.environ["GAS_CWD"] = tmp_nogit
+k_nogit = GasKernel(root_dir=tmp_nogit)
+out = k_nogit.execute_tool_call("write_file", {"relative_path": "vittima.txt", "content": "x"})
+check("T11c snapshot fallito -> write_file bloccata (fail-closed)",
+      "Operazione negata" in out and "snapshot" in out and not (Path(tmp_nogit) / "vittima.txt").exists(),
+      out[:70])
+out = k_nogit.execute_tool_call("run_command", {"command": "touch vittima2.txt"})
+check("T11c2 snapshot fallito -> run_command bloccato (fail-closed)",
+      "Operazione negata" in out and not (Path(tmp_nogit) / "vittima2.txt").exists(), out[:70])
+
+# T11d: i file NON tracciati finiscono nello snapshot (trappola stash create)
+k = kernel_tmp()
+root = os.environ["GAS_CWD"]
+(Path(root) / "non_tracciato.txt").write_text("mai committato", encoding="utf-8")
+k.execute_tool_call("write_file", {"relative_path": "altro.txt", "content": "y"})
+ultimo = snap_refs(root)[-1]
+check("T11d file non tracciato incluso nello snapshot",
+      git_out(root, "show", f"{ultimo}:non_tracciato.txt") == "mai committato")
+
+# T11e: anche run_command fa scattare lo snapshot
+prima = len(snap_refs(root))
+out = k.execute_tool_call("run_command", {"command": "true"})
+check("T11e run_command fa scattare lo snapshot",
+      len(snap_refs(root)) == prima + 1 and not out.startswith("Operazione negata"),
+      f"refs {prima} -> {len(snap_refs(root))}")
+
+# T11f: retention — mai più di SNAPSHOT_KEEP ref, i più vecchi potati
+k.SNAPSHOT_KEEP = 3
+for i in range(5):
+    k.execute_tool_call("write_file", {"relative_path": "giro.txt", "content": f"giro {i}"})
+check("T11f retention pota i ref oltre il limite", len(snap_refs(root)) == 3,
+      f"refs={len(snap_refs(root))} (limite 3)")
+
+# T11g: root annidata in un repo esterno senza proprio .git -> fail-closed,
+# lo snapshot NON deve "riuscire" fotografando il repo genitore (riserva R1)
+tmp_outer = tempfile.mkdtemp(prefix="gas_test_outer_")
+subprocess.run(["git", "init", "-q", tmp_outer], check=True, capture_output=True)
+nested = Path(tmp_outer) / "annidata"
+nested.mkdir()
+os.environ["GAS_CWD"] = str(nested)
+k_nested = GasKernel(root_dir=str(nested))
+out = k_nested.execute_tool_call("write_file", {"relative_path": "vittima3.txt", "content": "x"})
+check("T11g root annidata in repo esterno -> bloccata, nessun ref nel repo genitore",
+      "Operazione negata" in out and not (nested / "vittima3.txt").exists()
+      and snap_refs(tmp_outer) == [], out[:70])
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
