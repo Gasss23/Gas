@@ -130,17 +130,38 @@ check("T9b loop infinito assorbito senza crash, pipeline esausta dichiarata",
       f"tool_res={len(tool_res)} errori={len(errori)}")
 check("T9c storia salvata su disco nella root temporanea", k.db_path.exists() and k.db_path.stat().st_size > 0)
 
-# ---------- T10: osservazione sicurezza — path traversal in write_file ----------
+# ---------- T10: sicurezza — path traversal BLOCCATO (write_file e read_file) ----------
 tmp_inner = tempfile.mkdtemp(prefix="gas_test_inner_")
 os.environ["GAS_CWD"] = tmp_inner
 k = GasKernel(root_dir=tmp_inner)
+
+# T10a: write_file con ../ non deve scrivere fuori dalla root
 out = k.execute_tool_call("write_file", {"relative_path": "../gas_traversal_proof.txt", "content": "fuori"})
 fuori = Path(tmp_inner).parent / "gas_traversal_proof.txt"
 scappato = fuori.exists()
 if scappato:
     fuori.unlink()
-print(f"[NOTA] T10 path traversal write_file: escape riuscito={scappato} "
-      f"-> {out[:60]} (finding aperto, vedi roadmap anti-autodistruzione)")
+check("T10a write_file con ../ -> negato, niente file fuori root",
+      "Operazione negata" in out and not scappato, out[:70])
+
+# T10b: read_file con ../ non deve esfiltrare file esterni (es. API key in ~/.bashrc)
+segreto = Path(tmp_inner).parent / "gas_segreto_esterno.txt"
+segreto.write_text("API_KEY=supersegreta", encoding="utf-8")
+out = k.execute_tool_call("read_file", {"relative_path": "../gas_segreto_esterno.txt"})
+segreto.unlink()
+check("T10b read_file con ../ -> negato, nessuna esfiltrazione",
+      "Operazione negata" in out and "supersegreta" not in out, out[:70])
+
+# T10c: anche i path assoluti fuori root sono negati
+out = k.execute_tool_call("write_file", {"relative_path": "/tmp/gas_abs_proof.txt", "content": "abs"})
+check("T10c write_file con path assoluto fuori root -> negato",
+      "Operazione negata" in out and not Path("/tmp/gas_abs_proof.txt").exists(), out[:70])
+
+# T10d: controllo — i path legittimi (anche in sottocartelle) continuano a passare
+out = k.execute_tool_call("write_file", {"relative_path": "sub/dir/ok.txt", "content": "dentro"})
+check("T10d write_file legittimo in sottocartella passa", out.startswith("Successo"), out[:60])
+out = k.execute_tool_call("read_file", {"relative_path": "sub/dir/ok.txt"})
+check("T10e read_file legittimo passa", out == "dentro", out[:40])
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

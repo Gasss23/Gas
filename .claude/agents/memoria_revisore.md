@@ -5,3 +5,9 @@
 > revisore al termine di ogni review che produce lezioni nuove.
 
 <!-- Le lezioni si aggiungono sotto questa riga -->
+- 2026-06-11 — Ogni costante di cap va verificata contro il worst case dei guardrail ufficiali: il cap n*2=20 di _get_window cedeva proprio a 10 iterazioni × 1 tool call = 21 messaggi, producendo finestra vuota a metà turno. Fare sempre il conto esplicito.
+- 2026-06-11 — Un payload vuoto o senza ancora user è peggio di uno lungo: i limiti di dimensione sulla finestra vanno applicati a granularità di messaggio (compattare i content dei tool più vecchi, struttura e tool_call_id intatti), mai escludendo l'user o orfanizzando tool call.
+- 2026-06-11 — _get_window oggi non ha alcun cap rigido in byte/token: il limite è solo strutturale (ancora = ultimo user) + cap 8k per tool + 10 iterazioni; tool call parallele lo aggirano. Finché manca un WINDOW_CHAR_CAP, sorvegliare ogni modifica che aumenta i messaggi per iterazione.
+- 2026-06-11 — Fix entrati via auto-commit senza review (es. 4c6fc3d) vanno revisionati retroattivamente appena scoperti: l'auto-commit non è un canale di approvazione.
+- 2026-06-11 — Un guardrail sul filesystem (es. _safe_path su read/write_file) vale solo quanto run_command: la shell lo bypassa interamente (`cat ~/.bashrc` esfiltra comunque). Ogni claim di sandbox va verificato contro TUTTI i tool, non solo quelli citati nel finding.
+- 2026-06-11 — Pattern corretto anti-traversal: `.resolve()` PRIMA di `is_relative_to(root)` con root anch'essa risolta a init — neutralizza `../`, path assoluti e symlink interni che puntano fuori (verificato empiricamente). Confronto component-wise, niente bug da prefisso di stringa.

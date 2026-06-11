@@ -5,25 +5,33 @@
 
 ## Contesto
 
-Ripresa dopo limite raggiunto il 2026-06-10. CHECK iniziale: working tree
-pulito, ma delle tre istituzioni di processo non esisteva nulla. Questa
-sessione le ha create tutte e tre. Nessuna modifica al codice del motore.
+Sessione in due fasi: (1) creazione delle tre istituzioni di processo
+(commit `903ec45`); (2) battesimo del revisore + fix T10 path traversal,
+prima modifica al motore passata da review PRE-commit.
 
-## File toccati
+## File toccati — fase 2 (battesimo revisore + fix T10)
 
 | File | Azione | Perché |
 |---|---|---|
-| `reports/stato_progetto.md` | creato | Istituzione A: fotografia viva dello stato del progetto, aggiornata a fine task. |
-| `reports/diff_sessione.md` | creato | Istituzione B: questo file, riepilogo del diff a fine sessione. |
-| `.claude/agents/revisore.md` | creato | Istituzione C: subagent revisore con letture obbligatorie pre-review (CLAUDE.md sez. 5, stato_progetto.md, propria memoria) e verdetto APPROVATO/RISERVE/BOCCIATO. |
-| `.claude/agents/memoria_revisore.md` | creato | Memoria persistente del revisore (vuota con intestazione): lezioni datate 1-3 righe, cresce review dopo review. |
-| `CLAUDE.md` | modificato (sez. 3) | Registrate le tre istituzioni nel canone, con la regola della memoria del revisore. |
-| `reports/ultimo_report.md` | riscritto | Report del task corrente (regola di reporting obbligatoria). |
+| `gas.py` | modificato | Nuovo helper `_safe_path` (resolve + is_relative_to root, warning in scatola nera) applicato a write_file e read_file: chiude il finding T10 (traversal/esfiltrazione). |
+| `tests/test_unit_kernel.py` | modificato | T10 promosso da NOTA a 5 check bloccanti (write `../`, read `../`, path assoluto, 2 controlli positivi). Suite: 25 PASS, 0 FAIL. |
+| `.claude/agents/memoria_revisore.md` | aggiornato dal revisore | 6 lezioni accumulate nelle 2 review ufficiali (4 dal battesimo su _get_window, 2 dal fix T10). |
+| `reports/stato_progetto.md` | aggiornato | T10 chiuso; 2 finding nuovi dalle review (bypass run_command 🟠, niente cap finestra 🟡); priorità riordinate. |
+| `reports/ultimo_report.md` | riscritto | Report del task corrente (verdetti delle 2 review, esiti test). |
+| `reports/diff_sessione.md` | aggiornato | Questo file. |
 
-## Verifiche eseguite (nessun codice modificato)
+## File toccati — fase 1 (tre istituzioni, già in `903ec45`)
 
-- `tests/test_unit_kernel.py` eseguita a inizio sessione: **20 PASS, 0 FAIL**
-  — validati a posteriori il fix `_get_window` e la suite finiti
-  nell'auto-commit `4c6fc3d` di fine sessione precedente.
-- Confermato il finding aperto T10 (path traversal in `write_file`):
-  escape riuscito, resta il prossimo intervento prioritario.
+`reports/stato_progetto.md`, `reports/diff_sessione.md`,
+`.claude/agents/revisore.md`, `.claude/agents/memoria_revisore.md` creati;
+`CLAUDE.md` sez. 3 aggiornata col canone delle istituzioni.
+
+## Review agli atti
+
+- **Review #1** (retroattiva, fix `_get_window` di `4c6fc3d`):
+  APPROVATO CON RISERVE — rimozione cap n*2 giustificata e necessaria
+  (cedeva al worst case 21 messaggi); manca però un cap rigido sulla
+  finestra → proposto WINDOW_CHAR_CAP a granularità di messaggio.
+- **Review #2** (pre-commit, fix T10): APPROVATO CON RISERVE — blocco
+  solido anche su symlink e assoluti; finding residuo: run_command
+  bypassa il guardrail (→ dry-run/sandbox in roadmap).

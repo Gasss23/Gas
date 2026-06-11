@@ -137,6 +137,17 @@ class GasKernel:
             "estrarre solo ciò che serve.]"
         )
 
+    def _safe_path(self, cwd: Path, relative_path: str) -> Optional[Path]:
+        # Guardrail anti-traversal: il path risolto deve restare dentro la
+        # root. Con write_file un "../" può autodistruggere file esterni,
+        # con read_file può esfiltrare segreti (es. API key in ~/.bashrc)
+        # dentro la history. None = negato.
+        path = (cwd / relative_path).resolve()
+        if not path.is_relative_to(self.root):
+            logging.warning(f"Path traversal bloccato: {relative_path!r} risolve fuori root ({path})")
+            return None
+        return path
+
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
@@ -151,12 +162,21 @@ class GasKernel:
                 if "gas_history" in normalized:
                     return ("Operazione negata: la memoria di Gas è gestita "
                             "automaticamente dal kernel, non scriverla mai.")
-                path = (cwd / args["relative_path"]).resolve()
+                path = self._safe_path(cwd, args["relative_path"])
+                if path is None:
+                    return (f"Operazione negata: il percorso '{args['relative_path']}' "
+                            "esce dalla root di Gas. Usa solo percorsi relativi "
+                            "interni al progetto.")
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(args["content"], encoding="utf-8")
                 out = f"Successo: File {args['relative_path']} aggiornato."
             elif name == "read_file":
-                out = (cwd / args["relative_path"]).read_text(encoding="utf-8")
+                path = self._safe_path(cwd, args["relative_path"])
+                if path is None:
+                    return (f"Operazione negata: il percorso '{args['relative_path']}' "
+                            "esce dalla root di Gas. Usa solo percorsi relativi "
+                            "interni al progetto.")
+                out = path.read_text(encoding="utf-8")
             else:
                 return "Tool non trovato."
             return self._cap_tool_output(name, args, out)
