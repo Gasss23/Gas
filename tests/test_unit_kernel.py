@@ -203,9 +203,14 @@ out = k_nogit.execute_tool_call("write_file", {"relative_path": "vittima.txt", "
 check("T11c snapshot fallito -> write_file bloccata (fail-closed)",
       "Operazione negata" in out and "snapshot" in out and not (Path(tmp_nogit) / "vittima.txt").exists(),
       out[:70])
-out = k_nogit.execute_tool_call("run_command", {"command": "touch vittima2.txt"})
-check("T11c2 snapshot fallito -> run_command bloccato (fail-closed)",
-      "Operazione negata" in out and not (Path(tmp_nogit) / "vittima2.txt").exists(), out[:70])
+out = k_nogit.execute_tool_call("run_command", {"command": "ls -la"})
+# 'ls' È in allowlist: supera il vetting e arriva fino allo snapshot, che
+# qui fallisce (niente repo git). Senza un comando consentito il test
+# morirebbe prima, al vetting, e NON eserciterebbe più il fail-closed dello
+# snapshot (falso verde): l'asserzione su "snapshot" lo garantisce.
+check("T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed)",
+      "Operazione negata" in out and "snapshot" in out
+      and not (Path(tmp_nogit) / "vittima2.txt").exists(), out[:70])
 
 # T11d: i file NON tracciati finiscono nello snapshot (trappola stash create)
 k = kernel_tmp()
@@ -242,6 +247,89 @@ out = k_nested.execute_tool_call("write_file", {"relative_path": "vittima3.txt",
 check("T11g root annidata in repo esterno -> bloccata, nessun ref nel repo genitore",
       "Operazione negata" in out and not (nested / "vittima3.txt").exists()
       and snap_refs(tmp_outer) == [], out[:70])
+
+# ---------- T12: sandbox run_command (allowlist + no-shell + dry-run) ----------
+# Ogni asserzione è costruita per FALLIRE se la barriera corrispondente viene
+# tolta: sono test che "mordono", non decorativi.
+k = kernel_tmp()
+root = os.environ["GAS_CWD"]
+
+# T12a: comando in allowlist eseguito davvero (output reale, non simulato)
+(Path(root) / "dati.txt").write_text("riga1\nriga2\nriga3\n", encoding="utf-8")
+out = k.execute_tool_call("run_command", {"command": "wc -l dati.txt"})
+check("T12a comando in allowlist (wc) eseguito, output reale",
+      "3" in out and "Operazione negata" not in out, out[:60])
+
+# T12b: comando fuori allowlist negato (qui 'touch' = scrittura mascherata)
+out = k.execute_tool_call("run_command", {"command": "touch intruso.txt"})
+check("T12b comando fuori allowlist negato, nessun effetto",
+      "Operazione negata" in out and "non consentito" in out
+      and not (Path(root) / "intruso.txt").exists(), out[:60])
+
+# T12c: la PIPE non viene interpretata come shell. shlex la spezza e 'grep'
+# riceve '|' e 'wc' come ARGOMENTI (nomi di file inesistenti): nessun
+# secondo processo, nessun '3' come se il conteggio fosse passato a wc.
+out = k.execute_tool_call("run_command", {"command": "grep riga dati.txt | wc -l"})
+check("T12c pipe non interpretata (niente shell)",
+      "Operazione negata" not in out and out.strip() != "3", out[:70])
+
+# T12d: la REDIRESIONE non crea file. '>' e il target finiscono come
+# argomenti di cat, non come redirezione: 'bersaglio.txt' non deve nascere.
+out = k.execute_tool_call("run_command", {"command": "cat dati.txt > bersaglio.txt"})
+check("T12d redirezione non crea file (niente shell)",
+      not (Path(root) / "bersaglio.txt").exists(), out[:70])
+
+# T12e: la COMMAND SUBSTITUTION non viene eseguita. '$(...)' resta testo
+# letterale passato a echo, non l'output di un sottocomando.
+out = k.execute_tool_call("run_command", {"command": "echo $(cat dati.txt)"})
+check("T12e command substitution non eseguita (resta letterale)",
+      "$(cat" in out and "riga1" not in out, out[:70])
+
+# T12f: argomento-path con ../ negato anche dentro run_command (stesso
+# guardrail di T10, applicato ai token del comando)
+out = k.execute_tool_call("run_command", {"command": "cat ../etc_passwd_finto"})
+check("T12f argomento traversal in run_command negato",
+      "Operazione negata" in out and "fuori" in out, out[:70])
+
+# T12g: comando non interpretabile (virgolette sbilanciate) negato dal parser,
+# non passato a subprocess
+out = k.execute_tool_call("run_command", {"command": 'cat "non chiusa'})
+check("T12g comando non interpretabile negato (fail-closed)",
+      "Operazione negata" in out and "non interpretabile" in out, out[:70])
+
+# T12h: l'ambiente del processo figlio è ripulito dai segreti. Inietto una
+# finta API key, poi provo a stamparla con env: 'cat' su /proc non serve,
+# uso il fatto che _sanitized_subprocess_env la rimuove a monte.
+os.environ["FAKE_SECRET_KEY"] = "supersegreta-da-non-vedere"
+try:
+    env_figlio = k._sanitized_subprocess_env()
+finally:
+    os.environ.pop("FAKE_SECRET_KEY", None)
+check("T12h env figlio privo di variabili sensibili (KEY/TOKEN/SECRET...)",
+      "FAKE_SECRET_KEY" not in env_figlio and "PATH" in env_figlio,
+      f"chiavi sensibili residue: {[v for v in env_figlio if 'SECRET' in v.upper()]}")
+
+# T12i: dry-run — comando consentito ma NON eseguito, e NESSUNO snapshot creato
+os.environ["GAS_SHELL_MODE"] = "dry_run"
+try:
+    k_dry = GasKernel(root_dir=root)
+    refs_prima = len(snap_refs(root))
+    out = k_dry.execute_tool_call("run_command", {"command": "wc -l dati.txt"})
+    refs_dopo = len(snap_refs(root))
+finally:
+    os.environ.pop("GAS_SHELL_MODE", None)
+check("T12i dry-run: comando non eseguito e nessuno snapshot",
+      "DRY-RUN" in out and "NON eseguito" in out and refs_dopo == refs_prima,
+      f"refs {refs_prima}->{refs_dopo}, out={out[:40]}")
+
+# T12j: modalità sconosciuta ricade su 'guarded' (fail-safe), non spegne il sandbox
+os.environ["GAS_SHELL_MODE"] = "modalita-inventata"
+try:
+    k_fb = GasKernel(root_dir=root)
+finally:
+    os.environ.pop("GAS_SHELL_MODE", None)
+check("T12j GAS_SHELL_MODE non valido -> fallback su 'guarded'",
+      k_fb.shell_mode == "guarded", f"shell_mode={k_fb.shell_mode}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

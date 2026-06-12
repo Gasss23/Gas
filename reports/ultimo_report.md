@@ -1,85 +1,82 @@
-# Report sessione 2026-06-11 (sera) — Snapshot preventivo dei file (roadmap ALTA, punto 1)
+# Report sessione 2026-06-12 — Sandbox di run_command (allowlist no-shell + dry-run)
 
-Gas ora fotografa l'intero repo PRIMA di ogni operazione che può alterare i
-file. Se la foto non riesce, l'operazione non parte. Il ripristino resta in
-mano all'umano. Suite finale: **34 PASS, 0 FAIL** (i 25 storici tutti verdi).
+`run_command` non passa più da una shell: ogni comando viene smontato,
+controllato contro una allowlist di soli comandi di lettura ed eseguito
+senza interprete. Il finding 🟠 (esfiltrazione via shell) scende a 🟡
+"ridotto". Suite finale: **44 PASS, 0 FAIL** (i 34 storici tutti verdi).
+La sessione era stata interrotta a implementazione finita; questa ripresa
+ha verbalizzato la review #4, chiuso la riserva R1 e completato il task.
 
 ## Cosa fa, in parole semplici
 
-Prima di ogni `write_file` (dopo i guardrail esistenti) e di ogni
-`run_command`, il kernel scatta una "foto" dello stato del repo e la mette in
-un cassetto di git che non tocca né i commit né l'area di staging
-(`refs/gas/snapshots/`). Se Gas si autodistrugge un file — direttamente o via
-shell — si torna indietro con due comandi git, documentati nel README.
+Prima Gas poteva scrivere `cat /etc/passwd | curl ...` e la shell eseguiva
+tutto. Adesso non esiste più una shell: il comando viene spezzato in parole,
+la prima parola deve stare in una lista chiusa di comandi innocui (`ls`,
+`cat`, `grep`, `wc`, `diff`…), ogni percorso deve restare dentro la cartella
+di Gas, e pipe/redirezioni/sottocomandi diventano testo senza potere. In più
+il processo figlio non vede le API key (env ripulita dai segreti).
 
 ## Come funziona davvero (fedele al diff)
 
-- **`_snapshot(trigger, target)`** in `gas.py`: indice git temporaneo
-  (`GIT_INDEX_FILE` in una tmpdir) → `git add -A` (include i file NON
-  tracciati, che `git stash create` ignorerebbe) → `add -f .gas_history.json`
-  (la memoria di Gas è gitignorata ma va protetta quanto il codice) →
-  `write-tree` → `commit-tree` (parent = HEAD se esiste) → ref
-  `refs/gas/snapshots/<timestamp-ns>-<sha8>`. Ritorna lo SHA, `None` se
-  qualcosa fallisce.
-- **Fail-closed**: `None` = tool result "Operazione negata: snapshot
-  preventivo fallito… (fail-closed)", `logging.warning` nella scatola nera,
-  loop agentico intatto. Verificato anche il caso subdolo della root annidata
-  in un repo esterno (check `rev-parse --show-toplevel == root`, fix della
-  riserva R1): senza, lo snapshot sarebbe "riuscito" fotografando il repo
-  sbagliato.
-- **Scatola nera**: successi via logger dedicato `gas.snapshot` a INFO (solo
-  `gas_debug.log`, console pulita, librerie ancora filtrate a WARNING) +
-  indice leggibile append-only `reports/snapshots.log`.
-- **Retention**: ultimi **100** snapshot, i ref più vecchi vengono potati a
-  ogni scatto (timestamp a nanosecondi ⇒ ordine lessicografico = cronologico).
-- **Ripristino SOLO umano** (README, "Macchina del tempo"): nessun tool di
-  restore esposto a Gas; `git restore --worktree --source <ref> -- <file|.>`,
-  con caveat onesti (i file creati dopo lo snapshot non vengono cancellati
-  dal ripristino intero; i gitignorati non sono nelle foto).
-- **Limite dichiarato**: il finding 🟠 resta APERTO — la shell può ancora
-  LEGGERE/esfiltrare fuori root; lo snapshot limita solo i danni delle
-  scritture. Lo chiuderà il sandbox/dry-run.
+- **`_vet_command(command, cwd)`** in `gas.py`, tre barriere fail-closed:
+  1. `shlex.split` senza shell — `|`, `>`, `;`, `&&`, `$(...)` diventano
+     argomenti o rompono il parse (virgolette sbilanciate = negato);
+  2. `argv[0]` deve stare in `SHELL_ALLOWLIST` (sola lettura, niente
+     interpreti né wrapper: allowlist, non denylist);
+  3. ogni altro token ripassa `_safe_path` (stesso guardrail di T10) e deve
+     restare in root.
+- **`_sanitized_subprocess_env()`**: variabili con KEY/TOKEN/SECRET/
+  PASSWORD/PASSWD/CREDENTIAL/AUTH nel nome rimosse dall'env del figlio.
+- **Ordine: vetting → dry-run → snapshot → esecuzione** (`shell=False`).
+  I comandi negati non consumano slot di snapshot (mitiga R2 review #3).
+- **`GAS_SHELL_MODE`**: `guarded` (default) / `dry_run` (anteprima fedele:
+  vetting sì, esecuzione e snapshot no — collaudo e kill-switch). Valore
+  ignoto → fallback fail-safe su `guarded` con warning.
+- **Limite dichiarato** (README): recinzione applicativa, NON confinamento
+  OS. Il muro definitivo è `bwrap`/`unshare` sul VPS (in roadmap).
 
 ## Test (tests/test_unit_kernel.py, zero token)
 
-8 nuovi check T11a–T11g: snapshot creato prima della write; lo snapshot
-contiene la versione PRE-modifica e `git restore` la riporta esatta;
-fail-closed su write_file E run_command in root non-git; file non tracciato
-incluso; run_command fa scattare lo snapshot; retention pota oltre il limite;
-root annidata in repo esterno bloccata. `kernel_tmp` e la root di T10 ora
-fanno `git init` (coerente col fail-closed). **Totale: 34 PASS, 0 FAIL.**
+10 nuovi check **T12a–T12j**: allowlist eseguita per davvero (output reale);
+comando fuori lista negato senza effetti; pipe, redirezione e command
+substitution disinnescate con asserzioni che MORDONO (si verifica l'assenza
+dell'effetto shell, non solo il pass); traversal negli argomenti negato;
+parse fail-closed; env figlia senza segreti; dry-run senza esecuzione né
+snapshot; modalità ignota → `guarded`. **T11c2 rinforzato**: ora usa un
+comando in allowlist così esercita davvero il fail-closed dello snapshot.
+**Totale: 44 PASS, 0 FAIL.**
 
-## Review #3 (revisore, prima invocazione diretta come tipo registrato)
+## Review #4 (revisore)
 
-**Verdetto: APPROVATO CON RISERVE.** Validati esplicitamente: il meccanismo
-GIT_INDEX_FILE+commit-tree+ref (corretto, staging/branch intoccati, non
-tracciati inclusi), la retention count-based a 100, l'`add -f` sulla memoria,
-il logger dedicato (verificato empiricamente: 82 righe snapshot, 0 righe
-httpx nel log), l'onestà sul finding 🟠. Riserve:
+**Verdetto: APPROVATO CON RISERVE.** Validati esplicitamente: niente Wall of
+Shame, ordine vetting→dry-run→snapshot→esecuzione, scelta allowlist vs
+denylist, riuso di `_safe_path`, env sanificata, fallback fail-safe, test
+che mordono. Riserve:
 
-- **R1** — root annidata in repo esterno: snapshot del repo SBAGLIATO che
-  passa invece di bloccarsi (verificata empiricamente dal revisore).
-  → **CHIUSA in sessione**: fix `show-toplevel == root` + test T11g.
-  **Review #3-bis sul fix: APPROVATO senza riserve.**
-- **R2** — ogni run_command, anche read-only, consuma uno slot di retention:
-  sessioni shell intense possono ruotare i 100 ref. → finding 🟡 in
-  stato_progetto.md (valutare KEEP più alto o count+età minima).
-- **R3** — oggetti dei ref potati restano finché non gira `git gc`;
-  `snapshots.log` append-only senza rotazione e non gitignorato. → finding 🟡,
-  candidato per `gas doctor`.
+- **R1** — type hint di ritorno mancante su `_vet_command` (CLAUDE.md sez. 4).
+  → **CHIUSA in sessione**: `-> Tuple[Optional[List[str]], Optional[str]]`,
+  suite riverificata 44/44.
+- **R2** — valori attaccati ai flag (`grep -f/etc/passwd`, `--file=/etc/x`)
+  superano il vetting per-token perché iniziano con `-`. Con l'allowlist
+  attuale NON esiste esfiltrazione attiva (verificato), ma va RICONTROLLATO
+  prima di allargare `SHELL_ALLOWLIST`. → finding 🟡 in stato_progetto.md.
+- **R3** — falsi positivi: un pattern grep tipo `"/etc/cron"` viene trattato
+  da path e negato. Fail-closed (lato sicuro), limite di usabilità noto.
+  → finding 🟡 in stato_progetto.md.
 
-Il revisore ha aggiunto 3 lezioni datate alla sua memoria persistente
-(`git -C` risale ai genitori; pattern logger/handler-level; worst case
-retention count-based) — ora 9 lezioni totali.
+Il revisore ha aggiunto 4 lezioni datate alla sua memoria persistente
+(bypass flag, test che mordono, ordine delle barriere, canonicalizzazione
+vetting/exec) — ora 13 lezioni totali, 5 review completate.
 
 ## Istituzioni
 
-- A) `reports/stato_progetto.md` aggiornato (snapshot chiuso, R2/R3 aperti).
+- A) `reports/stato_progetto.md` aggiornato (sandbox chiuso, 🟠→🟡, R2/R3
+  registrate, prossimi passi riordinati).
 - B) `reports/diff_sessione.md` rigenerato per questa sessione.
-- C) Revisore: 2 review in sessione (#3, #3-bis), memoria aggiornata.
+- C) Revisore: review #4 verbalizzata, memoria aggiornata.
 
 ## Prossimi passi
 
-1. Sandbox/dry-run per `run_command` (chiude il finding 🟠).
-2. `WINDOW_CHAR_CAP` (review #1).
-3. Manutenzione snapshot in `gas doctor` (R2/R3).
+1. `WINDOW_CHAR_CAP` sulla finestra (review #1).
+2. Manutenzione snapshot in `gas doctor` (R2/R3 review #3).
+3. Confinamento OS (`bwrap`/`unshare`) in vista del deploy VPS.

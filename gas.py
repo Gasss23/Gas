@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import os
 import json
+import shlex
 import logging
 import subprocess
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import List, Dict, Any, Generator, Optional
+from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
 
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
@@ -36,6 +37,12 @@ _GAS_SYSTEM_PROMPT_BASE = (
     "- Per conteggi, misure e calcoli esatti usa SEMPRE run_command (es. wc -l), "
     "non stimare mai a mente. Se non puoi verificare un dato, dichiara l'incertezza "
     "invece di inventare.\n"
+    "- run_command è confinato: esegue SOLO comandi di sola lettura da una "
+    "allowlist (ls, cat, head, tail, grep, wc, cut, diff...), SENZA shell. "
+    "Pipe (|), redirezioni (>), concatenazioni (;, &&), command substitution "
+    "($(...)) e interpreti NON funzionano: vengono trattati come testo o negati. "
+    "Per i conteggi usa le opzioni native (es. 'grep -c X file', 'wc -l file'); "
+    "per creare o modificare file usa SEMPRE write_file, mai redirezioni shell.\n"
     "- Non scrivere MAI file di memoria o cronologia (gas_history e simili): "
     "la memoria è gestita automaticamente dal kernel."
 )
@@ -54,8 +61,18 @@ class GasKernel:
         self.db_path: Path = self.root / ".gas_history.json"
         self.system_prompt: str = _build_system_prompt(self.root)
         self.history: List[Dict[str, Any]] = self._load_history()
+        # Modalità del sandbox run_command: 'guarded' (default, vetting +
+        # esecuzione senza shell) oppure 'dry_run' (anteprima fedele: fa il
+        # vetting ma non esegue nulla — collaudo e kill-switch). Un valore non
+        # riconosciuto ricade su 'guarded' (fail-safe). NON esiste una modalità
+        # con shell grezza: le pipeline sono volutamente indisponibili.
+        raw_mode = os.environ.get("GAS_SHELL_MODE", "guarded").strip().lower().replace("-", "_")
+        if raw_mode not in ("guarded", "dry_run"):
+            logging.warning(f"GAS_SHELL_MODE={raw_mode!r} non riconosciuto, uso 'guarded'")
+            raw_mode = "guarded"
+        self.shell_mode: str = raw_mode
         self.tools_schema = [
-            {"type": "function", "function": {"name": "run_command", "description": "Esegue comandi shell.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
+            {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti).", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}}
         ]
@@ -238,17 +255,92 @@ class GasKernel:
             logging.warning(f"Retention snapshot non applicata: {e}")
         return sha
 
+    # --- Sandbox run_command (chiude l'esfiltrazione naïve via shell) ---
+    # Allowlist di binari di SOLA LETTURA: nessuno di questi può aprire socket,
+    # avviare sottoprocessi (niente awk/sed -e/find -exec/xargs: bypasserebbero
+    # il controllo) né scrivere su un path passato come FLAG. Tutto il resto è
+    # negato con un messaggio esplicito. Estendere questa lista con interpreti
+    # (python, bash...) RIAPRE l'esecuzione di codice arbitrario: è una scelta
+    # consapevole dell'operatore, non il default.
+    SHELL_ALLOWLIST = frozenset({
+        "ls", "cat", "head", "tail", "wc", "grep", "echo", "pwd", "date",
+        "stat", "file", "uniq", "cut", "tr", "nl", "diff", "comm", "true",
+        "false", "basename", "dirname", "printf", "seq", "rev",
+    })
+    # Variabili d'ambiente da rimuovere dai processi figli: qualsiasi cosa che
+    # somigli a un segreto. Toglie il bersaglio principale dell'esfiltrazione
+    # anche se restasse un buco a monte. PATH/HOME/LANG restano (servono ai
+    # binari e nessuno contiene questi marcatori).
+    SHELL_ENV_SENSITIVE_MARKERS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH")
+
+    def _sanitized_subprocess_env(self) -> Dict[str, str]:
+        """Copia dell'ambiente con le variabili sensibili (API key, token...)
+        rimosse, da passare ai processi figli di run_command."""
+        env = os.environ.copy()
+        for var in list(env):
+            up = var.upper()
+            if any(marker in up for marker in self.SHELL_ENV_SENSITIVE_MARKERS):
+                env.pop(var, None)
+        return env
+
+    def _vet_command(self, command: str, cwd: Path) -> Tuple[Optional[List[str]], Optional[str]]:
+        """Vetting fail-closed di un comando PRIMA di eseguirlo o fotografarlo.
+        Ritorna (argv, None) se consentito, (None, motivo) se negato.
+        Tre barriere: (1) parsing senza shell — pipe/redirezioni/$(...) restano
+        testo o rompono il parse; (2) argv[0] nell'allowlist; (3) ogni altro
+        token risolto con _safe_path (lo stesso di T10: .resolve() segue anche
+        i symlink) deve restare dentro la root."""
+        try:
+            argv = shlex.split(command)
+        except ValueError as e:
+            return None, (f"Operazione negata: comando non interpretabile ({e}). "
+                          "run_command non usa una shell: virgolette ed escape "
+                          "devono essere bilanciati. (fail-closed)")
+        if not argv:
+            return None, "Operazione negata: comando vuoto. (fail-closed)"
+        binario = argv[0]
+        if binario not in self.SHELL_ALLOWLIST:
+            return None, (
+                f"Operazione negata: comando '{binario}' non consentito. "
+                "run_command esegue SOLO comandi di sola lettura da una "
+                "allowlist, senza shell: niente pipe, redirezioni, "
+                "concatenazioni, command substitution, interpreti o rete. Per "
+                "scrivere file usa write_file, per leggerli usa read_file. "
+                "(fail-closed)")
+        for token in argv[1:]:
+            if self._safe_path(cwd, os.path.expanduser(token)) is None:
+                return None, (
+                    f"Operazione negata: l'argomento '{token}' risolve fuori "
+                    "dalla root di Gas. run_command può toccare solo percorsi "
+                    "interni al progetto. (fail-closed)")
+        return argv, None
+
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
             if name == "run_command":
-                # Snapshot preventivo: la shell può riscrivere qualunque file
-                if self._snapshot("run_command", args["command"][:120]) is None:
+                command = args["command"]
+                # 1) Vetting PRIMA di tutto: i comandi negati non sprecano
+                #    nemmeno uno snapshot (mitiga in parte R2).
+                argv, motivo = self._vet_command(command, cwd)
+                if argv is None:
+                    logging.warning(f"run_command negato: {command!r}")
+                    return motivo
+                # 2) Dry-run: anteprima fedele, non esegue e non fotografa.
+                if self.shell_mode == "dry_run":
+                    _snapshot_log.info(f"[DRY-RUN] comando consentito, non eseguito: {command!r}")
+                    return f"[DRY-RUN] comando consentito ma NON eseguito (modalità dry-run): {command}"
+                # 3) Snapshot preventivo solo ora che eseguiremo davvero.
+                if self._snapshot("run_command", command[:120]) is None:
                     return ("Operazione negata: snapshot preventivo fallito, "
                             "comando non eseguito (fail-closed). Dettagli in "
                             "gas_debug.log.")
-                res = subprocess.run(args["command"], shell=True, cwd=cwd, capture_output=True, text=True, timeout=60)
+                # 4) Esecuzione SENZA shell (argv già parsato) e con env
+                #    ripulita dalle variabili sensibili.
+                res = subprocess.run(argv, shell=False, cwd=cwd,
+                                     capture_output=True, text=True, timeout=60,
+                                     env=self._sanitized_subprocess_env())
                 out = res.stdout + res.stderr
             elif name == "write_file":
                 # Guardrail: la memoria è gestita solo dal kernel, mai dai modelli
