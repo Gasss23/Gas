@@ -44,6 +44,10 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 - Ogni eccezione nei provider deve essere intercettata, loggata come logging.warning nella "scatola nera" (gas_debug.log), attivando immediatamente il fallback sul brain successivo senza far crashare il programma.
 
 ## 10. FUTURE ROADMAP & PRIORITIES
-- Alta: Snapshot preventivo dei file (anti-autodistruzione), comando gas doctor, modalità dry-run.
-- Media: Integrazione ElevenLabs (Voce), Modulo Meta Ads, Ragionamento avanzato (o1/DeepSeek), Wrapper vocale per Claude Code (Whisper STT → input terminale + TTS per output) per dare comandi a mani libere durante lo sviluppo.
+- Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto).
+- Alta:
+  - Sandbox a livello OS per run_command (bwrap/unshare: namespace di rete chiuso + filesystem read-only) — chiude DEL TUTTO il finding esfiltrazione, oggi solo ridotto. Da decidere all'avvio: fail-closed duro vs fallback sul sandbox applicativo se l'ambiente non supporta i namespace. Aggiungere check di disponibilita in gas doctor. NB: verificare PRIMA cosa offre l'ambiente (Codespace e un container, bwrap potrebbe non avere i privilegi) e solo dopo progettare.
+  - WINDOW_CHAR_CAP sulla finestra, a granularita di messaggio (mai slicing) — rimedio proposto in review #1.
+  - Manutenzione snapshot in gas doctor: conteggio ref, gc degli oggetti orfani, rotazione di reports/snapshots.log (riserve R2/R3 review #3).
+- Media: Integrazione ElevenLabs (Voce), Modulo Meta Ads, Ragionamento avanzato (o1/DeepSeek), Wrapper vocale per Claude Code (Whisper STT -> input terminale + TTS per output) per dare comandi a mani libere durante lo sviluppo. Valutare insieme "Claude Council" (da chiarire cosa si intende all'avvio della valutazione: il nome non corrisponde a un prodotto Anthropic noto al 2026-06-13).
 - Lunga: Deploy VPS h24, automazione canali brand.
