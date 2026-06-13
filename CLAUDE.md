@@ -44,10 +44,28 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 - Ogni eccezione nei provider deve essere intercettata, loggata come logging.warning nella "scatola nera" (gas_debug.log), attivando immediatamente il fallback sul brain successivo senza far crashare il programma.
 
 ## 10. FUTURE ROADMAP & PRIORITIES
-- Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto).
-- Alta:
-  - Sandbox a livello OS per run_command (bwrap/unshare: namespace di rete chiuso + filesystem read-only) — chiude DEL TUTTO il finding esfiltrazione, oggi solo ridotto. Da decidere all'avvio: fail-closed duro vs fallback sul sandbox applicativo se l'ambiente non supporta i namespace. Aggiungere check di disponibilita in gas doctor. NB: verificare PRIMA cosa offre l'ambiente (Codespace e un container, bwrap potrebbe non avere i privilegi) e solo dopo progettare.
-  - WINDOW_CHAR_CAP sulla finestra, a granularita di messaggio (mai slicing) — rimedio proposto in review #1.
-  - Manutenzione snapshot in gas doctor: conteggio ref, gc degli oggetti orfani, rotazione di reports/snapshots.log (riserve R2/R3 review #3).
-- Media: Integrazione ElevenLabs (Voce), Modulo Meta Ads, Ragionamento avanzato (o1/DeepSeek), Wrapper vocale per Claude Code (Whisper STT -> input terminale + TTS per output) per dare comandi a mani libere durante lo sviluppo. Valutare insieme "Claude Council" (da chiarire cosa si intende all'avvio della valutazione: il nome non corrisponde a un prodotto Anthropic noto al 2026-06-13).
-- Lunga: Deploy VPS h24, automazione canali brand.
+
+Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto).
+
+### 🔴 FASE 1 — Blindatura del Terminale & Sicurezza (Priorità Alta)
+- Snapshot preventivo anti-autodistruzione — ✅ FATTO (2026-06-11), base della blindatura.
+- Sandbox OS per run_command (bwrap/unshare: namespace di rete chiuso + filesystem read-only) — chiude DEL TUTTO il finding esfiltrazione, oggi solo ridotto. Da decidere all'avvio: fail-closed duro vs fallback sul sandbox applicativo se l'ambiente non supporta i namespace. Aggiungere check di disponibilita in gas doctor. NB: verificare PRIMA cosa offre l'ambiente (Codespace e un container, bwrap potrebbe non avere i privilegi) e solo dopo progettare.
+- WINDOW_CHAR_CAP sulla finestra, a granularita di messaggio (mai slicing) — blocca lo spreco di token nei messaggi; rimedio proposto in review #1.
+- (collegato) Manutenzione snapshot in gas doctor: conteggio ref, gc degli oggetti orfani, rotazione di reports/snapshots.log (riserve R2/R3 review #3).
+
+### 🧠 FASE 2 — Il Cervello di Jarvis & Memoria Low-Cost (Priorità Alta)
+- Database locale SQLite per la memorizzazione dei fatti rigidi (gratis, zero token).
+- Vector DB locale per i ricordi a lungo termine senza consumo di token di contesto.
+- Script revisor.py (API low-cost) per sbloccare il "Claude Council" senza spendere ~10€/giorno. NB: chiarire all'avvio cosa si intende per "Claude Council" — il nome non corrisponde a un prodotto Anthropic noto al 2026-06-13.
+
+### 🎙️ FASE 3 — Interfaccia Vocale (Priorità Media — Core Feature)
+- Whisper (STT) per ricevere comandi vocali diretti (input terminale a mani libere durante lo sviluppo).
+- ElevenLabs (TTS) per far rispondere GAS a voce alta come un vero assistente personale.
+
+### 📈 FASE 4 — Moduli di Business (Priorità Media)
+- Modulo Meta Ads e automazione della lead generation.
+- Algoritmi di persuasione locali per il copy e i DM di marketing.
+
+### 🚀 FASE 5 — Autonomia Totale & VPS (Priorità Lunga)
+- Deploy su VPS h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
+- Automazione canali brand.
