@@ -20,7 +20,8 @@
   (default; valore ignoto → qui, fail-safe) e `dry_run` (vetting sì,
   esecuzione no, nessuno snapshot — collaudo/kill-switch). Ordine
   **vetting → snapshot → esecuzione**: un comando negato non spreca uno
-  snapshot. Review #4 → **(verdetto da integrare)**.
+  snapshot. Review #4 → **APPROVATO CON RISERVE** (R1 chiusa in sessione;
+  R2/R3 tracciate sotto come finding 🟡).
 - **Snapshot preventivo ATTIVO** (2026-06-11, roadmap ALTA — CHIUSO):
   `_snapshot(trigger, target)` fotografa il repo (tracciati + non tracciati +
   `.gas_history.json` forzata) PRIMA di ogni `write_file` (dopo `_safe_path`)
@@ -55,6 +56,17 @@
   dall'allowlist proprio per non riaprire l'esecuzione di codice arbitrario.
   La chiusura definitiva è il sandbox OS (bwrap/unshare, rete chiusa,
   filesystem read-only sul VPS) — vedi prossimi passi.
+- 🟡 **Valori attaccati ai flag superano il vetting per-token** (R2, review
+  #4): `grep -f/etc/passwd` o `--file=/etc/passwd` iniziano con `-`, quindi
+  `_safe_path` non li vede come path, mentre il binario interpreta il file
+  esterno. Con l'allowlist attuale NON esiste esfiltrazione attiva
+  (verificato), ma è una divergenza vetting/binario: RIVERIFICARE prima di
+  allargare `SHELL_ALLOWLIST`. Difesa candidata: rifiutare token che iniziano
+  con `-` e contengono `/` o `=`.
+- 🟡 **Falsi positivi del path-check su argomenti non-path** (R3, review #4):
+  un pattern grep tipo `/etc/cron` viene risolto come path assoluto e il
+  comando negato. Fail-closed (lato sicuro), ma limite di usabilità da
+  conoscere.
 - 🟡 **Retention snapshot count-based** (R2): una sessione shell intensa può
   ruotare i 100 ref. Mitigato in parte (i comandi negati al vetting non
   scattano più lo snapshot), ma resta: valutare KEEP più alto o count + età
@@ -73,9 +85,9 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): operativo;
-  review completate #1, #2, #3, #3-bis; review #4 (sandbox run_command) in
-  corso. Memoria persistente in `.claude/agents/memoria_revisore.md`.
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 5 review
+  completate (#1, #2, #3, #3-bis, #4), 13 lezioni datate in
+  `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 

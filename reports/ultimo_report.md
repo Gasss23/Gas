@@ -62,20 +62,37 @@ assente dall'env del figlio, comandi leciti ancora operativi.
 
 ## Review #4 (revisore)
 
-**Verdetto: DA INTEGRARE.** La review del sandbox di `run_command` è in corso
-nel harness. Punti che il revisore validerà: meccanismo a tre barriere
-(`shlex.split` + allowlist + ricontrollo path), scelta allowlist vs denylist,
-esclusione deliberata degli interpreti, sanificazione env, ordine
-vetting→snapshot→esecuzione, modalità `dry_run`/`guarded` e fallback, onestà
-sul limite residuo (finding ridotto, non chiuso). Eventuali riserve e lezioni
-nuove verranno riportate qui e in `stato_progetto.md` a review conclusa.
+**Verdetto: APPROVATO CON RISERVE** (commit `44a2128`). Validati: meccanismo a
+tre barriere (`shlex.split` + allowlist + ricontrollo path), scelta allowlist
+vs denylist, esclusione deliberata degli interpreti, env sanificata, ordine
+vetting→(dry-run)→snapshot→esecuzione, modalità `guarded`/`dry_run` con
+fallback fail-safe, test che "mordono". Riserve:
+
+- **R1 — CHIUSA**: type hint di ritorno mancante su `_vet_command`. Aggiunto
+  `-> Tuple[Optional[List[str]], Optional[str]]` (con `Tuple` nell'import);
+  suite riverificata **44/44**, avvio del kernel confermato.
+- **R2 — TRACCIATA** (finding 🟡): i valori attaccati ai flag
+  (`grep -f/etc/passwd`, `--file=/etc/passwd`) superano il vetting per-token
+  perché iniziano con `-`, mentre il binario interpreta il path esterno. Con
+  l'allowlist attuale NON c'è esfiltrazione attiva (verificato), ma è una
+  divergenza vetting/binario: RIVERIFICARE prima di allargare
+  `SHELL_ALLOWLIST`. Difesa candidata: rifiutare token che iniziano con `-` e
+  contengono `/` o `=`.
+- **R3 — TRACCIATA** (finding 🟡): falsi positivi del path-check su argomenti
+  non-path (un pattern grep tipo `/etc/cron` viene risolto come path assoluto
+  e il comando negato). Fail-closed (lato sicuro), limite di usabilità noto.
+
+Il revisore ha aggiunto 4 lezioni datate 2026-06-12 alla sua memoria
+persistente (bypass via flag, test che mordono, ordine delle barriere,
+canonicalizzazione vetting/exec) — ora 13 lezioni totali, 5 review completate.
 
 ## Istituzioni
 
 - A) `reports/stato_progetto.md` aggiornato (sandbox chiuso, 🟠→🟡, test 44,
   prossimi passi rinumerati con il sandbox OS in cima).
 - B) `reports/diff_sessione.md` rigenerato per questa sessione.
-- C) Revisore: review #4 in corso, verdetto e memoria da integrare.
+- C) Revisore: review #4 conclusa (APPROVATO CON RISERVE), 4 lezioni nuove
+  datate in memoria (13 totali, 5 review).
 
 ## Prossimi passi
 
