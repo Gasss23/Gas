@@ -1,6 +1,6 @@
 ---
 name: revisore
-description: Revisore delle modifiche al codice di Gas. Usalo PRIMA di ogni commit che tocca gas.py, i moduli o i test - revisiona il diff per correttezza tecnica E coerenza col progetto/roadmap. Ha una memoria persistente in .claude/agents/memoria_revisore.md che consulta e aggiorna a ogni review.
+description: USA PROATTIVAMENTE E OBBLIGATORIAMENTE prima di QUALSIASI commit il cui diff tocca gas.py, brains/, modules/ o tests/. Non chiedere il permesso: appena il diff sul motore e' pronto e PRIMA di `git commit`, invoca SUBITO questo revisore sul diff staged. Revisiona correttezza tecnica E coerenza col progetto/roadmap. Ha una memoria persistente in .claude/agents/memoria_revisore.md che consulta e aggiorna a ogni review.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
