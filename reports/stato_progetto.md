@@ -5,6 +5,19 @@
 
 ## Stato del motore
 
+- **Scudo gratuito del paracadute ATTIVO** (2026-06-13, FASE 2 cervello low-cost):
+  due rung gratuiti SEMPRE in coda alla cascata (`run_turn` + `doctor`):
+  `openrouter` (free tool-capable `meta-llama/llama-3.3-70b-instruct:free`) e
+  `ollama` (pavimento offline `qwen2.5:7b-instruct`, gate su `GAS_OLLAMA_URL`).
+  Fail-safe: chiave/endpoint assenti → skip pulito (sez. 9, mai crash). Brain
+  legacy `brains/*.py` NON cablati (restano codice morto). `doctor`: i due rung
+  opzionali danno WARN (non FAIL) se non configurati. Review **APPROVATO CON
+  RISERVE** (R1/R2/R3 sotto, nessuna indebolisce i guardrail). Suite 46/46.
+- **Sicurezza commit indurita** (2026-06-13): hook `SessionEnd` disarmato (add
+  selettivo di `reports/`, `*.md`, `.gas_history.json`; mai `-A`, mai il motore)
+  + gate di review deterministico `PreToolUse` su `git commit` del motore
+  (`.claude/hooks/review_gate.sh`, marcatore `.claude/.review_ok`) + regola di
+  workflow in CLAUDE.md sez. 3 + `description` revisore imperativa.
 - **Sandbox di `run_command` ATTIVO** (2026-06-12, roadmap ALTA punto 1 —
   CHIUSO): `run_command` non usa più `shell=True`. Ogni comando passa per un
   vetting **fail-closed** ed è eseguito con `shell=False`. Tre barriere:
@@ -44,7 +57,13 @@
 ## Pipeline provider (paracadute)
 
 1. `gemini-2.5-flash-lite` → 2. `gemini-2.5-flash` → 3. `groq/llama-3.3-70b-versatile`
-- Gemini free tier: 20 req/giorno. Fallback mid-turn verificato funzionante.
+   → 4. `openrouter` (free, tool-capable: `meta-llama/llama-3.3-70b-instruct:free`)
+   → 5. `ollama` (pavimento offline, `qwen2.5:7b-instruct`, solo se `GAS_OLLAMA_URL` settata)
+- Fallback mid-turn verificato funzionante. I due rung gratuiti (4–5) sono la rete
+  di salvataggio a budget zero: skip pulito se manca chiave/endpoint (sez. 9, mai
+  crash). `ollama` NON gira nel Codespace, solo su PC/VPS di deploy.
+- NB free tier Gemini: la vecchia nota "20 req/giorno" era **obsoleta** (corretta il
+  2026-06-13); oggi il limite giornaliero è molto più alto e varia per modello.
 
 ## Finding aperti
 
@@ -76,6 +95,17 @@
   `reports/snapshots.log` append-only senza rotazione e non gitignorato.
 - 🟡 **Nessun cap rigido sulla finestra** (review #1): rimedio proposto
   `WINDOW_CHAR_CAP` a granularità di messaggio (mai slicing).
+- 🟡 **Modello free hardcoded e volatile** (R1, review #5):
+  `meta-llama/llama-3.3-70b-instruct:free` può sparire/cambiare lato OpenRouter;
+  il fail-safe regge (skip su errore) ma il paracadute diventerebbe
+  silenziosamente inerte. `gas doctor` dovrebbe verificare l'ESISTENZA del
+  modello, non solo la presenza della chiave.
+- 🟡 **Degrado a solo-testo non verificato a runtime** (R2, review #5): se il
+  modello free non supporta i tool, il loop agentico perde read_file/write_file;
+  oggi è solo dichiarato in commento, non rilevato/loggato a runtime.
+- 🟡 **Duplicazione costanti provider** (R3, review #5): URL/modelli ripetuti tra
+  `run_turn` e `doctor`, ora estesa ai rung free; candidata a estrazione in
+  costanti di modulo (manutenibilità, non sicurezza).
 - ✅ ~~Sandbox/dry-run per run_command~~ — **RIDOTTO** il 2026-06-12 (finding
   declassato da 🟠 a 🟡, chiusura piena rinviata al sandbox OS).
 - ✅ ~~Snapshot preventivo dei file~~ — CHIUSO il 2026-06-11.

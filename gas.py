@@ -384,18 +384,38 @@ class GasKernel:
 
         GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
         GROQ_URL   = "https://api.groq.com/openai/v1"
+        OPENROUTER_URL = "https://openrouter.ai/api/v1"
+        # Pavimento offline: NON gira nel Codespace. Sul PC/VPS si esporta
+        # GAS_OLLAMA_URL=http://localhost:11434/v1 (endpoint OpenAI-compatibile di
+        # Ollama). Se la variabile e' assente, il rung viene saltato dal gate del
+        # loop (`if not os.environ.get(env): continue`) -> skip pulito, mai crash.
+        OLLAMA_URL = os.environ.get("GAS_OLLAMA_URL")
+
+        # Rung GRATUITI, sempre ULTIMI: rete di salvataggio a budget zero.
+        # - OpenRouter free: scegliere un modello TOOL-CAPABLE (function calling).
+        #   La lista e' facile da aggiornare qui sotto; se il modello scelto NON
+        #   supporta i tool, il loop agentico degrada a sola risposta testuale
+        #   (niente read_file/write_file) -> accettabile come ultima spiaggia.
+        # - Ollama: stesso schema; la "chiave" del gate e' GAS_OLLAMA_URL (presenza),
+        #   percio' api_key=base_url=URL: Ollama ignora la chiave, e' deliberato.
+        OPENROUTER_FREE = "meta-llama/llama-3.3-70b-instruct:free"  # tool-capable
+        OLLAMA_MODEL    = "qwen2.5:7b-instruct"                     # tool-capable
+        FREE_RUNGS = [
+            ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE),
+            ("ollama",     "GAS_OLLAMA_URL",     OLLAMA_URL,     OLLAMA_MODEL),
+        ]
 
         if compito == "semplice":
             providers = [
                 ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite"),
                 ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
                 ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
-            ]
+            ] + FREE_RUNGS
         else:
             providers = [
                 ("gemini-flash", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
                 ("groq",         "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
-            ]
+            ] + FREE_RUNGS
 
         for name, env, url, model in providers:
             if not os.environ.get(env): continue
@@ -474,17 +494,26 @@ def doctor(root_dir: Optional[str] = None) -> int:
             check("API keys", key, "FAIL" if obbligatoria else "WARN",
                   "assente" if obbligatoria else "assente (opzionale, non in cascata)")
 
-    # 2. Connettività provider: ping minimo (max_tokens=1) per ogni brain
+    # 2. Connettività provider: ping minimo (max_tokens=1) per ogni brain.
+    # I rung gratuiti (openrouter/ollama) sono OPZIONALI: se manca chiave/endpoint
+    # -> WARN, non FAIL (non sono in cascata obbligatoria; coerente con sez.9).
     GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
     GROQ_URL   = "https://api.groq.com/openai/v1"
+    OPENROUTER_URL = "https://openrouter.ai/api/v1"
+    OLLAMA_URL = os.environ.get("GAS_OLLAMA_URL")
     providers = [
-        ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite"),
-        ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
-        ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
+        # (name, env, url, model, obbligatoria)
+        ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite", True),
+        ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash", True),
+        ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile", True),
+        ("openrouter",        "OPENROUTER_API_KEY", OPENROUTER_URL, "meta-llama/llama-3.3-70b-instruct:free", False),
+        ("ollama",            "GAS_OLLAMA_URL",     OLLAMA_URL,     "qwen2.5:7b-instruct", False),
     ]
-    for name, env, url, model in providers:
+    for name, env, url, model, obbligatoria in providers:
         if not os.environ.get(env):
-            check("Provider", name, "FAIL", "non testabile: API key assente")
+            check("Provider", name, "FAIL" if obbligatoria else "WARN",
+                  "non testabile: API key assente" if obbligatoria
+                  else "assente (opzionale: rung free non configurato)")
             continue
         try:
             client = OpenAI(base_url=url, api_key=os.environ[env], timeout=15)

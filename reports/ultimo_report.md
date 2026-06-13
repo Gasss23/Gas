@@ -1,196 +1,104 @@
-# Report sessione 2026-06-13 — Analisi PARTE 1 (revisore + scudo gratuito) e FASE 0 sonda bwrap
+# Report sessione 2026-06-13 — Sicurezza commit + Scudo gratuito del paracadute
 
-> Documento di **analisi e proposte**. NESSUNA modifica al codice è stata applicata
-> o committata in questa fase. In attesa di OK esplicito per implementare.
+Tre interventi in ordine: (P0) disarmo dell'auto-commit SessionEnd; (1A) review del
+motore resa quasi-automatica su tre livelli; (1B) due rung gratuiti come pavimento della
+cascata provider. Diff del motore **APPROVATO CON RISERVE** dal revisore (#5). Suite:
+**46 PASS, 0 FAIL**.
 
----
+## PRIORITÀ 0 — Auto-commit SessionEnd disarmato
 
-## PARTE 1A — Il subagent `revisore` parte da solo?
+**Scelta: add selettivo** (non rimozione totale). L'hook `SessionEnd` ora fa
+`git add reports/ '*.md' .gas_history.json` (niente più `git add -A`) e committa/pusha
+solo quei path. **Perché questa forma e non la rimozione totale:** preserva la comodità di
+salvare automaticamente report, doc e cronologia a fine sessione (utile per vederli su web
+e non perdere lavoro), ma rende **impossibile** che il motore (`gas.py`, `brains/`,
+`modules/`, `tests/`) finisca committato senza review — quei file non vengono mai messi in
+stage dall'hook. Il commit del motore resta quindi sempre esplicito e revisionato.
 
-**Risposta netta: NO.** Nel flusso reale di Claude Code un subagent non si avvia da
-solo "a fine task" né "prima del commit". Si attiva solo in due modi: (a) l'agente
-principale **auto-delega** perché la `description` combacia semanticamente col contesto,
-oppure (b) **lo invoco io esplicitamente**. Entrambi sono **LLM-driven, probabilistici**:
-non esiste trigger deterministico incorporato.
+## 1A — Review del motore (a + b + c, tutti applicati)
 
-**Da cosa dipende:** dalla forza della `description` (quanto è imperativa/trigger) e dal
-fatto che l'agente principale *scelga* di chiamarlo. In contesto lungo o sotto pressione
-di token la chiamata può saltare. Oggi la review dipende dalla disciplina dell'agente,
-non da una garanzia.
+- **a) `description` imperativa** (`.claude/agents/revisore.md`): da "Usalo PRIMA di ogni
+  commit..." a "USA PROATTIVAMENTE E OBBLIGATORIAMENTE prima di QUALSIASI commit che tocca
+  gas.py/brains/modules/tests... invoca SUBITO il revisore". Migliora l'auto-delega
+  (probabilistica), costo 0 token.
+- **b) Regola di workflow** (CLAUDE.md sez. 3): gate di review OBBLIGATORIO prima di ogni
+  `git commit` che tocca il motore; commit consentito solo se APPROVATO / APPROVATO CON
+  RISERVE. È la **barriera primaria** (istruzione diretta nel project prompt).
+- **c) Hook `PreToolUse` deterministico** (`.claude/hooks/review_gate.sh`): legge il comando
+  da `tool_input.command` (JSON su stdin, **non** `cat` grezzo); se è un `git commit` e il
+  diff staged tocca il motore senza il marcatore `.claude/.review_ok`, **blocca** (exit 2).
+  È la **rete di sicurezza best-effort** (il match testuale non copre tutte le forme di
+  commit), non un sostituto di (b). Marcatore gitignorato; va creato dopo verdetto e
+  rimosso dopo il commit. **Testato:** blocca con motore staged senza marcatore (exit 2),
+  consente con marcatore (exit 0), consente i commit di soli doc (exit 0).
 
-⚠️ **Nota collegata:** l'hook `SessionEnd` esistente fa `git add -A && git commit && git
-push` automatico a fine sessione. Quel commit non passa da nessuna review — è esattamente
-la lezione `2026-06-11 — l'auto-commit non è un canale di approvazione`. Nessuno dei tre
-livelli sotto lo intercetta (vedi rischio in c).
+## 1B — Scudo gratuito del paracadute (budget ZERO)
 
-### Tre livelli per renderlo automatico
+Due rung gratuiti **sempre in coda** alla lista `providers`, sia in `run_turn` sia in
+`doctor` (via `+ FREE_RUNGS`), riusando il client `OpenAI` esistente:
 
-**a) `description` imperativa** — file `.claude/agents/revisore.md` (frontmatter)
-```diff
--description: Revisore delle modifiche al codice di Gas. Usalo PRIMA di ogni commit che tocca gas.py, i moduli o i test - revisiona il diff [...]
-+description: USA PROATTIVAMENTE E OBBLIGATORIAMENTE prima di QUALSIASI commit che tocchi gas.py, brains/, modules/ o tests/. Non chiedere il permesso: appena il diff sul motore è pronto e prima di `git commit`, invoca SUBITO questo revisore sul diff staged. Revisiona correttezza tecnica E coerenza con progetto/roadmap. [...]
-```
-- **Dove:** già esiste, solo testo. **Costo:** 0 token aggiuntivi.
-- **Rischi:** resta probabilistico — falsi negativi (può comunque non chiamarlo) e falsi
-  positivi (lo chiama su commit di soli doc → spreco di una review a pagamento). Migliora
-  l'auto-delega ma **non garantisce** nulla.
-
-**b) Regola di workflow in CLAUDE.md sez. 3** (verso l'agente principale)
-```diff
- ## 3. CORE COMMANDS & WORKFLOWS
-+- Gate di review OBBLIGATORIO (process institution D): PRIMA di ogni `git commit` il
-+  cui diff staged tocca gas.py, brains/, modules/ o tests/, l'agente principale DEVE
-+  invocare il subagent `revisore` sul diff e attendere il verdetto. Commit consentito
-+  solo se APPROVATO o APPROVATO CON RISERVE (riserve tracciate). Commit di soli
-+  reports/ o doc (CLAUDE.md, *.md) NON richiedono review. Mai bypassare via auto-commit.
-```
-- **Dove:** `CLAUDE.md` sez. 3. **Costo:** ~5 righe di contesto sempre caricato (trascurabile).
-- **Affidabilità:** più alta di (a) perché è istruzione diretta nel project prompt, ma
-  **ancora LLM-driven**: in contesto lungo può "dimenticarsi". Forte, non deterministico.
-
-**c) Hook deterministico** — `.claude/settings.json` → `PreToolUse` su Bash
-Unico **veramente deterministico** (lo esegue l'harness, non l'LLM). Un hook **non può
-lanciare un subagent**; il pattern corretto è intercettare `git commit` e, se il diff
-staged tocca il motore senza un marcatore di review, **bloccare** (exit 2) costringendo
-l'agente a invocare il revisore.
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd /workspaces/Gas && CMD=$(cat); echo \"$CMD\" | grep -q 'git commit' || exit 0; git diff --cached --name-only | grep -Eq '^(gas\\.py|brains/|modules/|tests/)' || exit 0; test -f .claude/.review_ok && exit 0; echo 'BLOCCATO: il diff tocca il motore. Invoca il subagent revisore e crea .claude/.review_ok dopo APPROVATO prima di committare.' >&2; exit 2"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-- **Dove:** `.claude/settings.json`. **Costo token:** l'hook in sé 0 token LLM; paghi solo
-  la review che forza.
-- **Rischi:**
-  - **Loop di Stop hook:** con uno `Stop` hook a `decision: block` l'agente viene riavviato
-    e può riprovare a fermarsi → **loop infinito**. Va protetto controllando
-    `stop_hook_active`. Per questo si propone `PreToolUse`, non `Stop`.
-  - **Falsi positivi sul matcher:** `git commit` arriva in forme diverse (heredoc, `&&`,
-    `git -C`); il grep può non matchare → review saltata. Matcher fragile per natura.
-  - **Buco dell'auto-commit:** il commit dell'hook `SessionEnd` gira come comando shell
-    diretto, non come tool call Bash dell'agente → il `PreToolUse` non lo intercetta.
-    Resta un canale non revisionato da chiudere a parte.
-  - Stato extra da mantenere: marcatore `.claude/.review_ok` (crearlo dopo APPROVATO,
-    invalidarlo a ogni nuovo diff).
-
-**Raccomandazione:** **(b) + (c)** insieme. (b) istruzione primaria, (c) rete di sicurezza
-deterministica. (a) da fare comunque (costo zero). Da soli: (a) debole, (c) deterministico
-ma cieco sulla semantica.
-
----
-
-## PARTE 1B — Scudo gratuito del paracadute (budget ZERO)
-
-**Audit.** La pipeline reale è **inline** in `gas.py`: `run_turn` (righe 389–398) e
-`doctor` (480–484), via client `OpenAI(base_url=...)` in loop. ⚠️ I moduli
-`brains/*_brain.py` (incluso `openrouter_brain.py`) sono **codice morto/legacy**: non sono
-cablati in `run_turn`, e violano il Wall of Shame (`messages[-8:]`,
-`messages[:2]+messages[-6:]` in groq_brain/claude_brain) e non supportano il loop a tool.
-**Non vanno cablati** — si riusa solo la lista di model-id `:free` di `openrouter_brain.py`
-come riferimento. La strada pulita è aggiungere **rung alla lista inline**, già
-OpenAI-compatibile e già fail-safe (`if not os.environ.get(env): continue`).
-
-### Modifica proposta (NON applicata) — `gas.py`, dentro `run_turn`
-```diff
-         GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-         GROQ_URL   = "https://api.groq.com/openai/v1"
-+        OPENROUTER_URL = "https://openrouter.ai/api/v1"
-+        OLLAMA_URL = os.environ.get("GAS_OLLAMA_URL")  # es. http://localhost:11434/v1; assente nel Codespace
- 
-         if compito == "semplice":
-             providers = [
-                 ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite"),
-                 ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
-                 ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
-+                # Rung gratuiti, ultimi: skip pulito se manca chiave/endpoint (sez. 9, mai crash)
-+                ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, "qwen/qwen-2.5-72b-instruct:free"),
-+                ("ollama",     "GAS_OLLAMA_URL",     OLLAMA_URL,     "qwen2.5:7b"),
-             ]
-         else:
-             providers = [
-                 ("gemini-flash", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
-                 ("groq",         "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
-+                ("openrouter",   "OPENROUTER_API_KEY", OPENROUTER_URL, "qwen/qwen-2.5-72b-instruct:free"),
-+                ("ollama",       "GAS_OLLAMA_URL",     OLLAMA_URL,     "qwen2.5:7b"),
-             ]
-```
-Il gate del loop usa già `env` come nome-variabile da controllare: per Ollama si usa
-**`GAS_OLLAMA_URL`** sia come "chiave" (presenza) sia come base_url → se non settata,
-**skip pulito**; se l'endpoint è giù, l'`except Exception → continue` esistente lo salta
-senza crash. **Coerente con sez. 9.** Stessa coppia di rung va aggiunta a `doctor`
-(lista 480–484) per il ping.
-
-⚠️ **Due cautele oneste:**
-1. **Tool-calling sui free:** la pipeline manda `tools=self.tools_schema,
-   tool_choice="auto"`. Molti modelli OpenRouter `:free` **non supportano i tool** → su
-   quel rung il loop agentico degraderebbe a sola risposta testuale (niente
-   `read_file`/`write_file`). Vanno scelti free **tool-capable** e tenuti come **ultimo
-   gradino** (rete di salvataggio testuale), non come brain operativo.
-2. **Header OpenRouter:** opzionale ma consigliato passare
-   `default_headers={"HTTP-Referer":..., "X-Title":"Gas"}`; non obbligatorio.
+- **openrouter** — `OPENROUTER_API_KEY`, `https://openrouter.ai/api/v1`, modello free
+  **tool-capable** `meta-llama/llama-3.3-70b-instruct:free`. Lista facile da aggiornare in
+  testa a `run_turn`; commento esplicito: se il modello scelto non supporta i tool, il loop
+  degrada a sola risposta testuale (accettabile come ultima spiaggia).
+- **ollama** — pavimento **offline**, `qwen2.5:7b-instruct`, gate su `GAS_OLLAMA_URL`. NON
+  gira nel Codespace; sul PC/VPS si esporta `GAS_OLLAMA_URL=http://localhost:11434/v1`. Se
+  assente → **skip pulito** dal gate esistente `if not os.environ.get(env): continue`
+  (sez. 9, mai crash). `api_key=base_url=URL` deliberato (Ollama ignora la chiave; la SDK
+  rifiuta api_key vuota).
+- **Brain legacy `brains/*.py` NON cablati**: restano codice morto (usano slicing `[-8:]`,
+  vietato da sez. 5, e non supportano il loop a tool).
+- **`doctor`**: i due rung opzionali danno **WARN** (non FAIL) se non configurati; tupla
+  provider estesa con flag `obbligatoria`. Cablata anche `OPENROUTER_API_KEY` nel ping
+  (chiudeva l'incoerenza: era elencata ma mai pingata).
+- **Nota obsoleta corretta**: "Gemini free tier: 20 req/giorno" in
+  `reports/stato_progetto.md:47` era obsoleta → aggiornata (oggi RPD molto più alto, varia
+  per modello).
 
 ### Cosa devi configurare tu
-- **OpenRouter:** crea account gratuito → genera `OPENROUTER_API_KEY` → mettila nei
-  secrets/env del Codespace e del VPS. Una sola chiave; il failover tra free si gestisce
-  con la lista o con `extra_body={"models":[...]}`.
-- **Ollama:** **non gira nel Codespace**. Sul **PC/VPS** di deploy: installa Ollama
-  (`curl -fsSL https://ollama.com/install.sh | sh`), `ollama pull qwen2.5:7b`
-  (tool-capable), poi `export GAS_OLLAMA_URL=http://localhost:11434/v1`. È il "pavimento"
-  offline.
-- Nessuna nuova dipendenza Python: il client `OpenAI` esistente parla con entrambi.
+- **OpenRouter**: account gratuito → `OPENROUTER_API_KEY` nei secrets/env (Codespace + VPS).
+- **Ollama** (solo PC/VPS): `curl -fsSL https://ollama.com/install.sh | sh`,
+  `ollama pull qwen2.5:7b-instruct`, `export GAS_OLLAMA_URL=http://localhost:11434/v1`.
 
-### Correzione nota obsoleta
-La nota **"Gemini free tier: 20 req/giorno"** **non è in CLAUDE.md** — è in
-**`reports/stato_progetto.md:47`**. È **obsoleta**: oggi il free tier Gemini ha RPD molto
-più alti (e variabili per modello). Da correggere (segnalato, non modificato ora). Inoltre
-`doctor` già elenca `OPENROUTER_API_KEY` come opzionale "non in cascata" (riga 470):
-cablarla chiude quella incoerenza.
+## Test (tests/test_unit_kernel.py, zero token) — 46 PASS, 0 FAIL
 
----
+- **T9a** reso deterministico: disattiva i rung free opzionali (pop+ripristino di
+  `OPENROUTER_API_KEY`/`GAS_OLLAMA_URL`) per contare i 3 provider obbligatori della cascata
+  'semplice'. Necessario perché nell'ambiente `OPENROUTER_API_KEY` è già presente.
+- **T9d** (nuovo): con OpenRouter presente, il modello free compare **in coda** alla
+  cascata.
+- **T9e** (nuovo): senza `GAS_OLLAMA_URL`, il modello ollama **non** viene interpellato
+  (skip pulito, niente crash).
+- I 44 storici restano verdi; i due nuovi "mordono" (asserzione positiva + negativa reali).
 
-## PARTE 2 — FASE 0: esito sonda ambiente (read-only)
+## Review #5 (revisore) — APPROVATO CON RISERVE
 
-| Check | Esito |
-|---|---|
-| `bwrap --version` | ❌ **ASSENTE** (`command not found`, exit 127) — binario non installato |
-| `/proc/sys/user/max_user_namespaces` | ✅ **31745** (>0 → user namespaces abilitati) |
-| `kernel/unprivileged_userns_clone` | ✅ **1** (userns non privilegiati permessi) |
-| Privilegi | utente **`codespace` (uid 1000), NON root**, nessun setuid |
-| Test bwrap reale | ❌ fallito, **ma solo perché bwrap manca** (non per i namespace) |
-| `unshare --user --map-root-user --net /bin/true` | ✅ **OK** — user+net namespace funzionano **senza root** |
-| `unshare --net` (senza user-ns) | ❌ negato (serve user-ns, atteso) |
-| `apt-cache policy bubblewrap` | vuoto (liste apt non disponibili senza `apt-get update`) |
+Validati: rung in coda a entrambi i rami, skip pulito di ollama, eccezioni intercettate con
+`logging.warning` + fallback (sez. 9), `_get_window()` e cap 10 iterazioni intatti (sez. 5
+e 8), brain legacy non attivati, trucco `api_key=base_url=URL` accettabile e documentato,
+T9d/T9e che mordono, suite 46/46 eseguita dal revisore. Tre riserve tracciate come finding
+🟡 in `stato_progetto.md` (nessuna indebolisce i guardrail):
 
-**Lettura:** la **tecnologia** di sandbox OS **è disponibile qui** — i namespace utente+rete
-funzionano anche da non-root. Manca **solo il binario `bwrap`**. Due strade, da decidere
-alla FASE 1:
-1. **Installare bubblewrap** (`sudo apt-get install -y bubblewrap`, da verificare se
-   sudo+rete pacchetti disponibili nel Codespace) — API pulita, standard del progetto.
-2. **Usare `unshare`** (già presente, `util-linux 2.39.3`) come motore namespace
-   **zero-dipendenze** — più grezzo ma funziona subito senza installazioni.
+- **R1** — modello `:free` hardcoded e volatile: `gas doctor` dovrebbe verificarne
+  l'esistenza, non solo la chiave.
+- **R2** — degrado a solo-testo (modello senza tool) solo dichiarato in commento, non
+  rilevato a runtime.
+- **R3** — duplicazione costanti provider tra `run_turn` e `doctor` (manutenibilità).
 
-**Buona notizia:** contrariamente all'ipotesi "Codespace = namespace bloccati", il sandbox
-OS è **testabile già qui** (non solo sul VPS), quindi i test che mordono della FASE 3 (rete
-bloccata, FS read-only) si possono eseguire davvero in questo ambiente.
+Il revisore ha aggiunto 3 lezioni datate alla sua memoria persistente.
 
----
+## Istituzioni di processo
 
-## STATO E PROSSIMI PASSI
+- A) `reports/stato_progetto.md` aggiornato (scudo gratuito + sicurezza commit nel motore;
+  R1/R2/R3 tra i finding; suite 46).
+- B) `reports/diff_sessione.md` rigenerato per questa sessione.
+- C) Revisore: review #5 conclusa (APPROVATO CON RISERVE), 3 lezioni nuove.
 
-🛑 **Fermo come da istruzioni.** Nessuna modifica applicata o committata (oltre a questo
-report). In attesa di **OK esplicito** per procedere. Quando lo dai, indica:
-- **1A:** quale combinazione (consiglio **b+c**, con a gratis).
-- **1B:** se cablare i due rung gratuiti + correggere la nota in `stato_progetto.md`.
-- **FASE 1 bwrap:** motore preferito (**installare bubblewrap** o usare **`unshare`**) e
-  default di `GAS_SANDBOX_MODE` (argomentato in FASE 1).
+## Prossimi passi
+
+1. **Sandbox OS per `run_command`** — FASE 1 (proposta bubblewrap) presentata a parte in
+   questa sessione, in attesa di OK per FASE 2 (implementazione).
+2. R1/R2 dello scudo: check esistenza modello free + rilevazione runtime del degrado tool.
+3. `WINDOW_CHAR_CAP` (review #1).
+4. Manutenzione snapshot in `gas doctor` (R2/R3 review #3) + R3 di questa review
+   (estrazione costanti provider).

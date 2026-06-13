@@ -124,11 +124,18 @@ class FakeOpenAI:
 
 _vero_openai = gas.OpenAI
 gas.OpenAI = FakeOpenAI
+# I rung gratuiti (openrouter/ollama) sono OPZIONALI e la loro presenza dipende
+# dall'ambiente: per un conteggio deterministico della cascata 'semplice' (3
+# provider obbligatori) li disattiviamo qui, ripristinando l'ambiente dopo.
+_or_key = os.environ.pop("OPENROUTER_API_KEY", None)
+_ol_url = os.environ.pop("GAS_OLLAMA_URL", None)
 try:
     k = kernel_tmp()
     eventi = list(k.run_turn("ciao test loop"))  # corto, no keyword -> 'semplice' -> 3 provider
 finally:
     gas.OpenAI = _vero_openai
+    if _or_key is not None: os.environ["OPENROUTER_API_KEY"] = _or_key
+    if _ol_url is not None: os.environ["GAS_OLLAMA_URL"] = _ol_url
 
 tool_res = [e for e in eventi if e["type"] == "tool_res"]
 errori = [e for e in eventi if e["type"] == "error"]
@@ -139,6 +146,36 @@ check("T9b loop infinito assorbito senza crash, pipeline esausta dichiarata",
       len(errori) == 1 and errori[0]["content"] == "Pipeline esausta.",
       f"tool_res={len(tool_res)} errori={len(errori)}")
 check("T9c storia salvata su disco nella root temporanea", k.db_path.exists() and k.db_path.stat().st_size > 0)
+
+# ---------- T9d: rung gratuiti — append in coda + skip pulito senza endpoint ----------
+# OpenRouter presente (chiave fittizia) -> deve comparire IN CODA; Ollama senza
+# GAS_OLLAMA_URL -> skip pulito (mai crash), il suo modello NON deve apparire.
+chiamate2 = {}
+class FakeCompletions2(FakeCompletions):
+    def create(self, model=None, messages=None, tools=None, tool_choice=None):
+        chiamate2[model] = chiamate2.get(model, 0) + 1
+        return fake_response(1)
+class FakeOpenAI2:
+    def __init__(self, base_url=None, api_key=None):
+        self.chat = SimpleNamespace(completions=FakeCompletions2(chiamate2))
+gas.OpenAI = FakeOpenAI2
+_or_key = os.environ.get("OPENROUTER_API_KEY")
+_ol_url = os.environ.pop("GAS_OLLAMA_URL", None)
+os.environ["OPENROUTER_API_KEY"] = "dummy-for-test"
+try:
+    k = kernel_tmp()
+    list(k.run_turn("ciao test loop free"))  # 'semplice' -> 3 obbligatori + openrouter
+finally:
+    gas.OpenAI = _vero_openai
+    if _or_key is not None: os.environ["OPENROUTER_API_KEY"] = _or_key
+    else: os.environ.pop("OPENROUTER_API_KEY", None)
+    if _ol_url is not None: os.environ["GAS_OLLAMA_URL"] = _ol_url
+check("T9d openrouter free in coda alla cascata 'semplice'",
+      "meta-llama/llama-3.3-70b-instruct:free" in chiamate2,
+      f"modelli interpellati: {sorted(chiamate2)}")
+check("T9e ollama skippato senza GAS_OLLAMA_URL (skip pulito, niente crash)",
+      "qwen2.5:7b-instruct" not in chiamate2,
+      f"modelli interpellati: {sorted(chiamate2)}")
 
 # ---------- T10: sicurezza — path traversal BLOCCATO (write_file e read_file) ----------
 tmp_inner = tempfile.mkdtemp(prefix="gas_test_inner_")

@@ -1,48 +1,60 @@
-# Diff sessione 2026-06-12 — Sandbox di `run_command`
+# Diff sessione 2026-06-13 — Sicurezza commit + Scudo gratuito del paracadute
 
 Riepilogo dei file toccati in questa sessione (la storia completa sta in git).
-3 file, +241 / -8 righe.
+Due commit: `5cc609b` (PRIORITÀ 0 + 1A, config/doc) e il commit di 1B (motore,
+revisionato). Più l'hook on-demand "scrivi rep" (`607c00b`, già in storia).
 
-## `gas.py` (+102 / -... )
+## PRIORITÀ 0 + 1A — già in `5cc609b` (config/doc, nessun file motore)
 
-- **`import shlex`** in testa.
-- **System prompt base** (`_GAS_SYSTEM_PROMPT_BASE`): aggiunta la regola sul
-  sandbox — `run_command` è di sola lettura, senza shell; pipe/redirezioni/
-  concatenazioni/`$(...)`/interpreti non funzionano; usare le opzioni native
-  (`grep -c`, `wc -l`) e `write_file` per creare/modificare file.
-- **`__init__`**: nuovo `self.shell_mode` letto da `GAS_SHELL_MODE`
-  (`guarded`/`dry_run`, normalizzato; valore ignoto → `guarded` con warning).
-  Corretta la descrizione del tool `run_command` nello schema (da "Esegue
-  comandi shell" a "comando di sola lettura da una allowlist, senza shell").
-- **Nuove costanti/helper** prima di `execute_tool_call`:
-  - `SHELL_ALLOWLIST` (frozenset di comandi di sola lettura);
-  - `SHELL_ENV_SENSITIVE_MARKERS` + `_sanitized_subprocess_env()` (toglie le
-    variabili che somigliano a segreti dall'env dei processi figli);
-  - `_vet_command(command, cwd)` (vetting fail-closed a 3 barriere).
-- **Ramo `run_command`** riscritto: ordine vetting → (dry-run?) → snapshot →
-  esecuzione `shell=False` con env sanificata e `timeout=60`. Eliminato
-  l'unico `shell=True`. I comandi negati al vetting non scattano lo snapshot.
+- **`.claude/settings.json`** (+15 / -2): hook `SessionEnd` disarmato (add
+  selettivo di `reports/`, `*.md`, `.gas_history.json`; niente `git add -A`, mai
+  il motore) + registrato hook `PreToolUse` che invoca `review_gate.sh`.
+- **`.claude/hooks/review_gate.sh`** (+31): gate di review deterministico. Legge
+  il comando da `tool_input.command` (JSON su stdin), blocca (exit 2) un
+  `git commit` il cui diff staged tocca `gas.py/brains/modules/tests` se manca
+  `.claude/.review_ok`. Best-effort, rete sopra la regola di CLAUDE.md sez. 3.
+- **`.gitignore`** (+1): ignora il marcatore `.claude/.review_ok`.
+- **`.claude/agents/revisore.md`** (±1): `description` resa imperativa
+  ("USA PROATTIVAMENTE E OBBLIGATORIAMENTE… invoca SUBITO").
+- **`CLAUDE.md`** (+1): regola di workflow in sez. 3 (gate di review obbligatorio
+  prima del commit del motore; barriera primaria = istruzione).
 
-## `tests/test_unit_kernel.py` (+94 / -...)
+## 1B — motore (commit dedicato, revisionato APPROVATO CON RISERVE)
 
-- **Blocco T12** (10 nuovi check): allowlist sì/no, pipe/redirezione/command
-  substitution rese innocue, traversal negli argomenti, comando non
-  interpretabile, env sanificata, `dry_run`, fallback `guarded`.
-- **T11c2 rinforzato**: da `touch` (negato al vetting) a `ls -la` (in
-  allowlist), così il test esercita davvero il fail-closed dello *snapshot* in
-  una dir senza git, con asserzione esplicita su "snapshot" nel motivo.
-- Da 34 a **44 PASS, 0 FAIL**.
+### `gas.py` (+37 / -8)
 
-## `README.md` (+53)
+- **`run_turn`**: due rung gratuiti `FREE_RUNGS` aggiunti **in coda** (`+ FREE_RUNGS`)
+  a entrambi i rami della cascata (`semplice` e default): `openrouter`
+  (`meta-llama/llama-3.3-70b-instruct:free`, tool-capable) e `ollama`
+  (`qwen2.5:7b-instruct`, gate su `GAS_OLLAMA_URL`). Riusano il client `OpenAI`.
+  Commento: se il modello free non supporta i tool, il loop degrada a sola
+  risposta testuale. `ollama` con `api_key=base_url=URL` (deliberato).
+- **`doctor`**: tupla provider estesa con flag `obbligatoria`; i due rung
+  opzionali danno **WARN** (non FAIL) se chiave/endpoint assenti. Cablata
+  `OPENROUTER_API_KEY` nel ping (prima elencata ma mai testata).
 
-- Nuova sezione **🔒 Sandbox di `run_command`** dopo "Macchina del tempo":
-  le tre barriere, la sanificazione env, le due modalità `GAS_SHELL_MODE`, la
-  tabella delle alternative native alle pipeline, e il limite residuo onesto
-  (recinzione applicativa, non confinamento OS; chiusura piena = sandbox OS in
-  roadmap). La sezione snapshot preesistente è rimasta identica.
+### `tests/test_unit_kernel.py` (+37)
+
+- **T9a** reso deterministico: `pop`+ripristino di `OPENROUTER_API_KEY`/
+  `GAS_OLLAMA_URL` per contare i 3 provider obbligatori (l'ambiente ha già
+  `OPENROUTER_API_KEY`).
+- **T9d** (nuovo): con OpenRouter presente, il modello free compare **in coda**.
+- **T9e** (nuovo): senza `GAS_OLLAMA_URL`, ollama non è interpellato (skip pulito).
+- Da 44 a **46 PASS, 0 FAIL**.
+
+## Doc/processo
+
+- **`reports/ultimo_report.md`** (+102 / -194): report di fine task riscritto
+  (P0 + 1A + 1B + review #5 + test).
+- **`reports/stato_progetto.md`** (+31 / -1): scudo gratuito + sicurezza commit
+  nel motore; pipeline a 5 rung; nota "20 req/giorno" corretta; R1/R2/R3 tra i
+  finding 🟡.
+- **`.claude/agents/memoria_revisore.md`** (+2): due lezioni datate 2026-06-13
+  (come testare l'append in coda; volatilità dei modelli `:free`).
 
 ## Perché
 
-Chiudere i vettori naïve della falla 🟠 (la shell poteva esfiltrare leggendo
-file e usando la rete). Il finding scende da 🟠 a 🟡: la chiusura piena è il
-sandbox OS, ora in cima ai prossimi passi.
+P0 + 1A: rendere strutturalmente impossibile committare il motore senza review
+(hook disarmato + gate + istruzione). 1B: dare al paracadute una rete a budget
+zero (FASE 2 cervello low-cost) sotto la cascata a pagamento, senza toccare i
+guardrail esistenti (`_get_window`, cap 10 iterazioni, fail-safe sez. 9).
