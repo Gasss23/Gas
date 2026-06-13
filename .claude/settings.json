@@ -11,6 +11,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /workspaces/Gas/.claude/hooks/scrivi_rep.sh",
+            "timeout": 30,
+            "statusMessage": "scrivi rep: controllo trigger e salvataggio risposta..."
+          }
+        ]
+      }
     ]
   }
 }
