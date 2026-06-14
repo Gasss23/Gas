@@ -187,7 +187,65 @@ class GasKernel:
                     start = i
                     break
 
-        return self.history[start:]
+        # Il cap di caratteri SI COMPONE con la finestra strutturale: prima
+        # _get_window garantisce l'ancora (inizio = user, niente tool orfani),
+        # poi _cap_window_chars taglia i messaggi più vecchi che sforano il
+        # budget e RIALLINEA di nuovo a un user. Mai slicing dentro un messaggio.
+        return self._cap_window_chars(self.history[start:])
+
+    # Tetto RIGIDO di caratteri sulla finestra inviata ai provider, a
+    # granularità di MESSAGGIO (mai slicing grezzo: Wall of Shame sez.5). È un
+    # secondo limite che si compone con il cap a 10 messaggi di _get_window e
+    # con TOOL_OUTPUT_CAP (8k/tool): nel worst case 10 messaggi × ~8k = ~80k
+    # caratteri saturerebbero comunque i limiti TPM (incidente 2026-06-10:
+    # 84 KB → ~24k token → Groq 413). 24000 caratteri ≈ 6-7k token, soglia di
+    # sicurezza con margine ampio sotto i limiti dei provider.
+    WINDOW_CHAR_CAP = 24000
+
+    @staticmethod
+    def _msg_chars(msg: Dict[str, Any]) -> int:
+        """Caratteri 'di payload' di un messaggio: content + (per le tool call)
+        argomenti e nome funzione. Misura per il budget a granularità messaggio."""
+        total = len(msg.get("content") or "")
+        for tc in msg.get("tool_calls") or []:
+            fn = tc.get("function") or {}
+            total += len(fn.get("arguments") or "") + len(fn.get("name") or "")
+        return total
+
+    def _cap_window_chars(self, window: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Applica WINDOW_CHAR_CAP a una finestra GIÀ strutturalmente valida.
+        Due passi, in quest'ordine (l'ordine è l'invariante critica):
+        1) BUDGET: somma i caratteri dal messaggio più recente all'indietro; i
+           messaggi più vecchi che sforano il budget vengono SCARTATI INTERI
+           (mai un taglio dentro un messaggio). Il messaggio più recente è
+           sempre tenuto intero, anche se da solo supera il budget.
+        2) RIALLINEAMENTO: dopo lo scarto l'inizio può non essere più un user
+           (un tool/assistant-con-tool orfano in testa rompe Gemini → 400). Si
+           riallinea in avanti al primo user. Se il budget avesse scartato OGNI
+           user, si ricade sull'ultimo user dell'intera finestra: un payload
+           lungo è preferibile a uno vuoto/malformato (lezione 2026-06-11)."""
+        if not window:
+            return window
+        # passo 1 — budget per scarto di messaggi interi (dal più recente)
+        total = 0
+        kept_start = 0
+        for i in range(len(window) - 1, -1, -1):
+            c = self._msg_chars(window[i])
+            if i < len(window) - 1 and total + c > self.WINDOW_CHAR_CAP:
+                kept_start = i + 1
+                break
+            total += c
+        capped = window[kept_start:]
+        # passo 2 — riallineamento dell'inizio a un role:user coerente
+        for i, m in enumerate(capped):
+            if m["role"] == "user":
+                return capped[i:]
+        # nessun user sopravvissuto al budget: fallback all'ultimo user di tutta
+        # la finestra (mai partire da non-user, mai vuoto se un user esiste)
+        for i in range(len(window) - 1, -1, -1):
+            if window[i]["role"] == "user":
+                return window[i:]
+        return capped
 
     def clear_history(self):
         self.history = []
@@ -416,15 +474,13 @@ class GasKernel:
                 if self.shell_mode == "dry_run":
                     _snapshot_log.info(f"[DRY-RUN] comando consentito, non eseguito: {command!r}")
                     return f"[DRY-RUN] comando consentito ma NON eseguito (modalità dry-run): {command}"
-                # 3) Snapshot preventivo solo ora che eseguiremo davvero.
-                if self._snapshot("run_command", command[:120]) is None:
-                    return ("Operazione negata: snapshot preventivo fallito, "
-                            "comando non eseguito (fail-closed). Dettagli in "
-                            "gas_debug.log.")
-                # 4) Check sandbox OS per mode (§6.3, dopo lo snapshot). In
-                #    os_strict il confinamento OS è obbligatorio: se manca, il
-                #    comando NON viene eseguito (fail-closed). In os_with_fallback
-                #    si degrada alla sola sandbox applicativa.
+                # 3) Check sandbox OS per mode (§6.3) — PRIMA dello snapshot
+                #    (riordino R1 #6). In os_strict il confinamento OS è
+                #    obbligatorio: se manca, il comando NON viene eseguito
+                #    (fail-closed) e il rifiuto NON deve sprecare uno snapshot.
+                #    In os_with_fallback NON si nega qui: si degrada alla sola
+                #    sandbox applicativa e il comando gira davvero (lo snapshot
+                #    al passo 4 serve, perché c'è un'esecuzione da fotografare).
                 if not self.os_sandbox_available and self.sandbox_mode == "os_strict":
                     logging.warning(
                         f"run_command negato: sandbox OS assente "
@@ -435,6 +491,12 @@ class GasKernel:
                             "GAS_SANDBOX_MODE=os_with_fallback per accettare la "
                             "sola sandbox applicativa, oppure avvia 'gas doctor' "
                             "per la diagnosi. Dettagli in gas_debug.log.")
+                # 4) Snapshot preventivo solo ora che eseguiremo davvero (in
+                #    bwrap se disponibile, altrimenti app-layer in os_with_fallback).
+                if self._snapshot("run_command", command[:120]) is None:
+                    return ("Operazione negata: snapshot preventivo fallito, "
+                            "comando non eseguito (fail-closed). Dettagli in "
+                            "gas_debug.log.")
                 # 5) Esecuzione SENZA shell (argv già parsato) e con env
                 #    ripulita dalle variabili sensibili. Dove disponibile, dentro
                 #    il sandbox OS (rete chiusa, fs read-only); altrimenti

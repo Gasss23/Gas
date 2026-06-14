@@ -1,10 +1,24 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-14** (sandbox a livello OS — bwrap)
+> Ultimo aggiornamento: **2026-06-14** (WINDOW_CHAR_CAP + riordino R1 #6 — review #7)
 
 ## Stato del motore
 
+- **WINDOW_CHAR_CAP + riordino R1 #6 ATTIVI** (2026-06-14, FASE 1 — review #7):
+  (1) tetto RIGIDO di caratteri sulla finestra inviata ai provider
+  (`WINDOW_CHAR_CAP = 24000`, ~6-7k token) a granularità di MESSAGGIO: nuovo
+  `_cap_window_chars` (+ helper `_msg_chars`) in coda a `_get_window`. Scarto di
+  messaggi INTERI dal più recente all'indietro quando si sfora il budget (MAI
+  slicing dentro un messaggio, Wall of Shame §5), poi riallineamento dell'inizio
+  a un `role:user` coerente (no tool orfani → niente Gemini 400). Casi limite
+  collaudati: ultimo msg > cap tenuto intero, scarto-di-tutti-gli-user → fallback
+  all'ultimo user, finestra vuota. Si compone col cap a 10 messaggi e
+  TOOL_OUTPUT_CAP (rimedio incidente 2026-06-10 Groq 413). (2) Riordino R1 #6:
+  check sandbox OS spostato PRIMA dello snapshot nel ramo `run_command`
+  (os_strict); ortogonalità §6.3 e fail-closed os_strict INTATTI, non si spreca
+  più uno slot di snapshot quando il sandbox manca. Review #7 → **APPROVATO CON
+  RISERVE** (R1/R2/R3 sotto, nessuna indebolisce i guardrail). Suite 52/52.
 - **Sandbox a livello OS (bwrap) ATTIVO** (2026-06-14, FASE 1 punto 1 — CHIUSO):
   `run_command`, dove l'host concede i namespace, gira dentro un sandbox bwrap.
   Profilo (§6.1): `--unshare-net` (rete isolata, solo loopback) `--unshare-pid
@@ -108,13 +122,21 @@
   sandbox disponibile; in fallback applicativo la divergenza resta come prima.
   Difesa candidata invariata (rifiutare token con `-`+`/`/`=`) se si allarga
   `SHELL_ALLOWLIST` o si gira stabilmente in fallback.
-- 🟡 **Snapshot sprecato in os_strict quando il sandbox manca** (R1, review #6):
-  per decisione §6.3 il check sandbox è DOPO lo snapshot; su host dove il
-  sandbox è stabilmente assente e mode=os_strict, ogni `run_command` lecito al
-  vetting ma negato per sandbox assente consuma uno slot di snapshot
-  (retention count-based). Mitigazione possibile (riordino interno, l'ortogo-
-  nalità §6.3 resta): anticipare il check sandbox prima dello snapshot in
-  os_strict. Non blocca.
+- ✅ ~~**Snapshot sprecato in os_strict quando il sandbox manca** (R1, review #6)~~
+  — **RISOLTO** il 2026-06-14 (review #7): il check sandbox OS è stato anticipato
+  PRIMA dello snapshot nel ramo `run_command` (os_strict). Un comando lecito al
+  vetting ma negato per sandbox assente non consuma più uno slot di snapshot.
+  Ortogonalità §6.3 e fail-closed os_strict invariati.
+- 🟡 **Manca test permanente per `_cap_window_chars`** (R1, review #7): la suite
+  (52/52) passa ma non esercita il nuovo codice del cap (T1-T4 coprono solo
+  `_get_window` pre-cap). La logica è stata verificata a runtime dal revisore, ma
+  va resa permanente con test dedicati (ultimo-msg>cap, scarto-di-tutti-gli-user,
+  riallineamento orfano-in-testa post-cap) prima di dire il punto roadmap "chiuso"
+  (CLAUDE.md §7). Non indebolisce i guardrail.
+- 🟡 **`WINDOW_CHAR_CAP` non configurabile via env** (R2, review #7): attributo di
+  classe hardcoded a 24000 (coerente con TOOL_OUTPUT_CAP). Per il deploy VPS /
+  pipeline Whisper (prossimi passi: cap output dedicato più alto) valutare un
+  override `GAS_WINDOW_CHAR_CAP` con fallback fail-safe. Non urgente.
 - 🟡 **Trappola `--chdir` con cwd fuori dalla project root** (R2, review #6):
   se `GAS_CWD` punta a una dir sotto /home (o /root, /run) ma FUORI dalla root
   ri-bindata, la tmpfs la maschera e `--chdir` fallisce → `run_command` negato
@@ -135,8 +157,9 @@
 - 🟡 **Manutenzione snapshot residua** (R3): (a) oggetti dei ref potati
   restano finché non gira `git gc` (candidato `gas doctor`); (b)
   `reports/snapshots.log` append-only senza rotazione e non gitignorato.
-- 🟡 **Nessun cap rigido sulla finestra** (review #1): rimedio proposto
-  `WINDOW_CHAR_CAP` a granularità di messaggio (mai slicing).
+- ✅ ~~**Nessun cap rigido sulla finestra** (review #1)~~ — **CHIUSO** il
+  2026-06-14 (review #7): `WINDOW_CHAR_CAP = 24000` a granularità di messaggio
+  (`_cap_window_chars`), mai slicing. Resta aperta la sola R1 #7 (test permanente).
 - 🟡 **Modello free hardcoded e volatile** (R1, review #5):
   `meta-llama/llama-3.3-70b-instruct:free` può sparire/cambiare lato OpenRouter;
   il fail-safe regge (skip su errore) ma il paracadute diventerebbe
@@ -157,19 +180,18 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 6 review completate
-  (#1, #2, #3, #3-bis, #4, #5, #6), lezioni datate in
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 7 review completate
+  (#1, #2, #3, #3-bis, #4, #5, #6, #7), lezioni datate in
   `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 
-1. **WINDOW_CHAR_CAP** sulla finestra a granularità di messaggio (rimedio
-   proposto in review #1; mai slicing).
-2. **R1 review #6** — valutare l'anticipo del check sandbox prima dello
-   snapshot in os_strict (riordino interno, l'ortogonalità §6.3 resta), per non
-   sprecare snapshot su host stabilmente senza namespace.
-3. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref, gc
+1. **Test permanenti per `_cap_window_chars`** (R1 review #7) — coprire
+   ultimo-msg>cap, scarto-di-tutti-gli-user, riallineamento orfano-in-testa
+   post-cap (CLAUDE.md §7), per chiudere del tutto il punto WINDOW_CHAR_CAP.
+2. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref, gc
    oggetti orfani, dimensione snapshots.log; valutare retention ibrida).
-4. **R3 review #5/#6** — estrarre costanti provider e il parse di
+3. **R3 review #5/#6** — estrarre costanti provider e il parse di
    `GAS_SANDBOX_MODE` in punti unici (manutenibilità).
-5. Valutare cap output dedicato (più alto) per la futura pipeline Whisper.
+4. Valutare cap output dedicato (più alto) per la futura pipeline Whisper
+   (collegato a R2 review #7: `GAS_WINDOW_CHAR_CAP` configurabile via env).
