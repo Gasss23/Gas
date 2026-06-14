@@ -458,6 +458,77 @@ if OS_SB:
 else:
     skip("T13e comando lecito dentro bwrap", "sandbox OS non disponibile in questo ambiente")
 
+# ---------- T14: WINDOW_CHAR_CAP / _cap_window_chars (review #7, R1) ----------
+# Test deterministici a cap abbassato sull'istanza: mordono ognuno una barriera
+# diversa del cap. Se la logica si rompe (slicing dentro un messaggio, ultimo
+# scartato, mancato riallineamento, mancato fallback) il check corrispondente FALLISCE.
+
+def _u(s): return {"role": "user", "content": s}
+def _a(content, name="run_command", args="{}", cid="c0"):
+    return {"role": "assistant", "content": content,
+            "tool_calls": [{"id": cid, "type": "function",
+                            "function": {"name": name, "arguments": args}}]}
+def _t(s, cid="c0"): return {"role": "tool", "content": s, "tool_call_id": cid, "name": "run_command"}
+
+# T14a — _msg_chars conta content + (per le tool call) arguments + name
+k = kernel_tmp()
+check("T14a _msg_chars = content + tool args + tool name",
+      k._msg_chars(_a("abc", name="run", args="{}")) == 3 + 2 + 3,
+      f"atteso 8, ottenuto {k._msg_chars(_a('abc', name='run', args='{}'))}")
+check("T14a2 _msg_chars su content assente/None -> 0",
+      k._msg_chars({"role": "user"}) == 0 and k._msg_chars({"role": "user", "content": None}) == 0)
+
+# T14b — finestra vuota -> []
+check("T14b finestra vuota -> []", k._cap_window_chars([]) == [])
+
+# T14c — finestra sotto il cap -> restituita INVARIATA (nessuno scarto)
+k.WINDOW_CHAR_CAP = 1000
+win_small = [_u("aa"), _a("bb"), _t("cc")]
+check("T14c finestra sotto il cap -> invariata", k._cap_window_chars(win_small) == win_small)
+
+# T14d — ultimo messaggio da solo > cap -> tenuto INTERO; i precedenti scartati
+k.WINDOW_CHAR_CAP = 10
+win_big_last = [_u("a" * 5), _u("b" * 100)]
+out_d = k._cap_window_chars(win_big_last)
+check("T14d ultimo msg > cap tenuto intero (non troncato, non scartato)",
+      len(out_d) == 1 and out_d[0]["content"] == "b" * 100,
+      f"len={len(out_d)} content_len={len(out_d[0]['content']) if out_d else 'NA'}")
+
+# T14e — scarto di messaggi INTERI, mai slicing dentro un messaggio
+k.WINDOW_CHAR_CAP = 10
+win_e = [_u("vecchio" * 10), _u("ccc"), _u("dddd")]   # 70, 3, 4
+out_e = k._cap_window_chars(win_e)
+intatti = all(m in win_e for m in out_e)               # ogni msg tenuto è identico all'originale
+check("T14e scarto di messaggi interi (mai taglio dentro un messaggio)",
+      out_e == [_u("ccc"), _u("dddd")] and intatti,
+      f"out={[m['content'] for m in out_e]}")
+
+# T14f — riallineamento: dopo lo scarto un orfano in testa -> si riparte da user
+k.WINDOW_CHAR_CAP = 10
+win_f = [_u("u1"), _a("A" * 5), _t("out"), _u("u2"), {"role": "assistant", "content": "fine"}]
+out_f = k._cap_window_chars(win_f)
+check("T14f riallineamento dell'inizio a role:user (no tool/assistant orfano in testa)",
+      bool(out_f) and out_f[0]["role"] == "user" and out_f[0]["content"] == "u2",
+      f"primo={out_f[0]['role'] if out_f else 'VUOTA'}:{out_f[0].get('content') if out_f else ''}")
+
+# T14g — budget scarta TUTTI gli user -> fallback all'ultimo user dell'intera finestra
+#         (mai partire da non-user, mai vuoto se un user esiste)
+k.WINDOW_CHAR_CAP = 10
+win_g = [_u("U"), _a("a" * 5), _t("o")]                # cap lascerebbe solo il tool (orfano, no user)
+out_g = k._cap_window_chars(win_g)
+check("T14g nessun user sopravvissuto -> fallback all'ultimo user (finestra valida, non vuota)",
+      out_g == win_g and out_g[0]["role"] == "user",
+      f"primo={out_g[0]['role'] if out_g else 'VUOTA'} len={len(out_g)}")
+
+# T14h — componibilità: _get_window APPLICA il cap (scarta l'user più vecchio)
+k = kernel_tmp()
+k.WINDOW_CHAR_CAP = 10
+k.history = [_u("aaaa"), _u("bbbb"), _u("cccc")]        # 3 user piccoli, budget 10
+w_h = k._get_window()
+check("T14h _get_window applica WINDOW_CHAR_CAP (componibilità col cap a 10 msg)",
+      w_h == [_u("bbbb"), _u("cccc")] and w_h[0]["role"] == "user",
+      f"len={len(w_h)} primo={w_h[0]['content'] if w_h else 'VUOTA'}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

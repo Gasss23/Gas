@@ -1,7 +1,7 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-14** (WINDOW_CHAR_CAP + riordino R1 #6 — review #7)
+> Ultimo aggiornamento: **2026-06-14** (test T14 per WINDOW_CHAR_CAP — review #8, suite 61/61)
 
 ## Stato del motore
 
@@ -18,7 +18,8 @@
   check sandbox OS spostato PRIMA dello snapshot nel ramo `run_command`
   (os_strict); ortogonalità §6.3 e fail-closed os_strict INTATTI, non si spreca
   più uno slot di snapshot quando il sandbox manca. Review #7 → **APPROVATO CON
-  RISERVE** (R1/R2/R3 sotto, nessuna indebolisce i guardrail). Suite 52/52.
+  RISERVE**; copertura test R1 #7 chiusa in review #8 (**APPROVATO**, blocco
+  T14). Suite **61/61**.
 - **Sandbox a livello OS (bwrap) ATTIVO** (2026-06-14, FASE 1 punto 1 — CHIUSO):
   `run_command`, dove l'host concede i namespace, gira dentro un sandbox bwrap.
   Profilo (§6.1): `--unshare-net` (rete isolata, solo loopback) `--unshare-pid
@@ -83,7 +84,10 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **52 PASS, 0 FAIL** (2026-06-14). Dai 46 storici si aggiungono i 6 check T13
+  **61 PASS, 0 FAIL** (2026-06-14). Dai 52 si aggiungono i 9 check T14
+  (WINDOW_CHAR_CAP: `_msg_chars`, finestra vuota, sotto-cap invariata,
+  ultimo-msg>cap intero, scarto interi mai-slicing, riallineamento a user,
+  fallback scarto-tutti-user, componibilità con `_get_window`). Prima, i 6 T13
   (sandbox OS: T13a rete chiusa, T13b fs read-only, T13c segreto mascherato,
   T13d/d2 fallback per mode, T13e lecito dentro bwrap + snapshot). T13a/b/c
   esercitano `_bwrap_prefix` direttamente (l'allowlist read-only non ha binari
@@ -127,12 +131,18 @@
   PRIMA dello snapshot nel ramo `run_command` (os_strict). Un comando lecito al
   vetting ma negato per sandbox assente non consuma più uno slot di snapshot.
   Ortogonalità §6.3 e fail-closed os_strict invariati.
-- 🟡 **Manca test permanente per `_cap_window_chars`** (R1, review #7): la suite
-  (52/52) passa ma non esercita il nuovo codice del cap (T1-T4 coprono solo
-  `_get_window` pre-cap). La logica è stata verificata a runtime dal revisore, ma
-  va resa permanente con test dedicati (ultimo-msg>cap, scarto-di-tutti-gli-user,
-  riallineamento orfano-in-testa post-cap) prima di dire il punto roadmap "chiuso"
-  (CLAUDE.md §7). Non indebolisce i guardrail.
+- ✅ ~~**Manca test permanente per `_cap_window_chars`** (R1, review #7)~~ —
+  **RISOLTO** il 2026-06-14 (review #8 APPROVATO): blocco **T14** (9 check) in
+  `tests/test_unit_kernel.py` con cap abbassato sull'istanza. Copre `_msg_chars`,
+  finestra vuota, sotto-cap invariata, ultimo-msg>cap tenuto intero, scarto di
+  messaggi INTERI (mai slicing), riallineamento a user, fallback scarto-di-tutti-
+  gli-user, componibilità con `_get_window`. Mordacità verificata per MUTAZIONE
+  dal revisore. Suite **61/61**.
+- 🟡 **Copertura non al 100% di `_cap_window_chars`** (R-test-1, review #8):
+  restano scoperti due rami secondari: (a) `return window` su finestra falsy
+  non-`[]`; (b) `return capped` finale "nessun user da nessuna parte", morto in
+  pratica perché `_get_window` garantisce a monte un user. Non è una lacuna di
+  sicurezza, solo copertura righe; non blocca.
 - 🟡 **`WINDOW_CHAR_CAP` non configurabile via env** (R2, review #7): attributo di
   classe hardcoded a 24000 (coerente con TOOL_OUTPUT_CAP). Per il deploy VPS /
   pipeline Whisper (prossimi passi: cap output dedicato più alto) valutare un
@@ -180,18 +190,15 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 7 review completate
-  (#1, #2, #3, #3-bis, #4, #5, #6, #7), lezioni datate in
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 8 review completate
+  (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8), lezioni datate in
   `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 
-1. **Test permanenti per `_cap_window_chars`** (R1 review #7) — coprire
-   ultimo-msg>cap, scarto-di-tutti-gli-user, riallineamento orfano-in-testa
-   post-cap (CLAUDE.md §7), per chiudere del tutto il punto WINDOW_CHAR_CAP.
-2. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref, gc
+1. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref, gc
    oggetti orfani, dimensione snapshots.log; valutare retention ibrida).
-3. **R3 review #5/#6** — estrarre costanti provider e il parse di
+2. **R3 review #5/#6** — estrarre costanti provider e il parse di
    `GAS_SANDBOX_MODE` in punti unici (manutenibilità).
-4. Valutare cap output dedicato (più alto) per la futura pipeline Whisper
+3. Valutare cap output dedicato (più alto) per la futura pipeline Whisper
    (collegato a R2 review #7: `GAS_WINDOW_CHAR_CAP` configurabile via env).
