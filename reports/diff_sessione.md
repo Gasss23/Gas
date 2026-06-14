@@ -1,53 +1,51 @@
-# 🔧 DIFF DI SESSIONE — 2026-06-14
+# 🔧 DIFF DI SESSIONE — 2026-06-14 (consolidamento motore: TASK B + TASK C)
 
-> Fotografia dell'ultima sessione (la storia completa è in git).
-> Tema: **FASE 2 / FASE 1 punto 1 — Sandbox a livello OS (bwrap) per `run_command`**.
+> Fotografia dell'ULTIMA sessione (la storia completa sta in git).
+> Riscritto a ogni sessione.
 
-## File toccati
+## Audit STEP 0 (pre-blocco / riconciliazione)
+- `git status` pulito, `origin/main..HEAD` VUOTO: nessun lavoro non pushato perso.
+- La sessione precedente, prima del blocco di billing, aveva **già completato e
+  pushato TASK A** (commit `1cae65a`): costanti provider de-duplicate, helper
+  `_parse_mode` condiviso init/doctor, test T16a/b/c presenti.
+- Baseline reale: suite **64/64** (61 review #8 + 3 T16 di TASK A) — coerente,
+  nessun codice mancante. Non era 61 perché TASK A è andato oltre la previsione
+  della consegna: NON un errore, lavoro genuino e committato. Proceduto con B e C.
 
-### `gas.py` (motore — revisionato, review #6 APPROVATO CON RISERVE)
-- **`_GAS_SYSTEM_PROMPT_BASE`**: aggiunta una riga — dove disponibile,
-  `run_command` gira in sandbox OS con rete isolata e filesystem read-only.
-- **`_probe_os_sandbox(force=False) -> Tuple[bool, str]`** (nuova funzione di
-  modulo, cache di processo `_OS_SANDBOX_CACHE`): sonda REALE (non simulata) —
-  `shutil.which("bwrap")` + creazione di un namespace minimale ed esecuzione di
-  `true`. Riusata da `__init__` e da `doctor`.
-- **`GasKernel.__init__`**: parse di `GAS_SANDBOX_MODE` ∈ {`os_strict` (default),
-  `os_with_fallback`} con normalizzazione e fail-safe su `os_strict`; cache di
-  `self.os_sandbox_available` / `self._os_sandbox_detail`. Aggiornata la
-  `description` del tool `run_command`.
-- **`GasKernel._bwrap_prefix(cwd) -> List[str]`** (nuovo helper): costruisce il
-  prefisso bwrap del profilo §6.1 (rete chiusa, pid ns, fs RO, tmpfs di
-  mascheramento su /home·/root·/run, re-bind RO della project root PER ULTIMO,
-  `--clearenv` + `--setenv` dell'env sanificata). Esposto come metodo così i
-  test esercitano il profilo direttamente.
-- **`execute_tool_call` (ramo `run_command`)**: inserito il check sandbox per
-  mode DOPO lo snapshot (§6.3). os_strict + assente → "Operazione negata"
-  (fail-closed, niente exec). Disponibile → exec con `_bwrap_prefix(cwd) + argv`.
-  os_with_fallback + assente → warning + exec applicativo. Unica `subprocess.run`.
-- **`doctor`**: nuova sezione 6 "Sandbox OS" — sonda SEMPRE; OK se disponibile,
-  FAIL se os_strict+assente, WARN se os_with_fallback+assente.
+## File toccati in questa sessione
+- **gas.py** (motore, 2 commit revisionati):
+  - TASK B: costanti `TOOL_CAPABLE_MODELS`; helper `_model_tool_capable`,
+    `_free_model_endpoint_url`, `_http_get_json`, `_classify_free_model`,
+    `_probe_free_model`; warning di osservabilità in `run_turn`; voce
+    "Paracadute / modello free" in `doctor`.
+  - TASK C: helper `_ref_age_epoch`, `_snapshot_retention`; costanti
+    `SNAPSHOT_KEEP_DAYS`, `SNAPSHOT_LOG_MAX_BYTES`; retention ibrida + log delle
+    rimozioni e rotazione `.1` in `_snapshot`; sezione 7 "Snapshot" in `doctor`.
+- **tests/test_unit_kernel.py** (revisionato): blocchi T17 (5 check, TASK B) e
+  T18 (6 check, TASK C); T11f riadattato al ramo count-based. 64 → **75**.
+- **.gitignore**: `reports/snapshots.log` e `reports/snapshots.log.1`.
+- **reports/** (doc, no review): `stato_progetto.md`, `diff_sessione.md`,
+  `ultimo_report.md` rigenerato.
+- **.claude/agents/memoria_revisore.md**: lezioni nuove dei review #9 e #10.
 
-### `tests/test_unit_kernel.py` (revisionato insieme al motore)
-- Nuovo blocco **T13** (6 check): T13a rete bloccata (`getent` rc≠0), T13b
-  filesystem read-only (touch su project root negato), T13c segreto on-disk
-  sotto /home mascherato (tmpfs), T13d/T13d2 fallback per `GAS_SANDBOX_MODE`
-  (deterministico, forza `os_sandbox_available=False`), T13e comando lecito
-  read-only dentro bwrap + snapshot scatta. Helper `skip()` per host senza
-  namespace. Risultato reale: **52 PASS, 0 FAIL**.
+## Perché (sintesi)
+- **TASK B** chiude R1 #5 (modello free volatile: `doctor` ora ne verifica
+  esistenza e capacità tool, solo metadati, zero token) e la metà deterministica
+  di R2 #5 (degrado a solo-testo osservato a freddo + warning statico in
+  `run_turn`; rilevamento per-turno rimandato per falsi positivi). Forma dell'API
+  OpenRouter SONDATA dal vivo prima di progettare.
+- **TASK C** chiude le riserve snapshot R2/R3: retention IBRIDA (count ∪ età) che
+  protegge i recenti, log gitignorato + rotazione, `doctor` report-only.
+  Vincolo di PRUDENZA rispettato: nessun `git gc` automatico, rimozione ref
+  loggata e reversibile fino al gc (la macchina del tempo non è indebolita).
 
-### Documentazione / processo
-- `reports/stato_progetto.md`: sandbox OS ATTIVO; finding esfiltrazione e R2
-  declassati (chiusura **condizionata** a os_strict + sandbox disponibile);
-  riserve review #6 (R1 snapshot-prima-del-check, R2 caveat `--chdir`/cwd, R3
-  duplicazione mode in doctor); suite 52; prossimi passi riordinati.
-- `.claude/agents/memoria_revisore.md`: lezioni nuove datate 2026-06-14
-  (aggiunte dal subagent revisore).
-- `reports/ultimo_report.md`: report di fine task (fonte di verità sull'esito).
+## Verifica
+- Suite **75 PASS, 0 FAIL** (output reale, zero token LLM).
+- `gas doctor` provato dal vivo: nuove righe Paracadute/Snapshot OK, nessun crash.
+- Gate di review rispettato: review #9 (TASK B) e #10 (TASK C), entrambe
+  APPROVATO CON RISERVE (riserve tracciate in `stato_progetto.md`).
 
-## Verifiche eseguite (reali, in questo Codespace)
-- Sonda ambiente PRIMA di progettare (roadmap): bwrap 0.9.0, namespace concessi.
-- 4 barriere validate empiricamente: rete rc=2, project root RO leggibile,
-  scrittura su root negata, esca segreta sotto /home NON leggibile.
-- Suite completa: **52 PASS, 0 FAIL**.
-- `gas doctor`: riga "Sandbox OS" = `[OK] bwrap + namespace net/pid OK (mode=os_strict)`.
+## Commit della sessione
+- `a9f1053` TASK B — integrità paracadute free
+- `35a9b7e` TASK C — manutenzione snapshot
+(TASK A `1cae65a` era già stato pushato dalla sessione precedente.)

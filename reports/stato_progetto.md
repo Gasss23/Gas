@@ -1,9 +1,40 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-14** (test T14 per WINDOW_CHAR_CAP — review #8, suite 61/61)
+> Ultimo aggiornamento: **2026-06-14** (TASK B integrità paracadute free — review #9;
+> TASK C manutenzione snapshot — review #10; suite **75/75**)
 
 ## Stato del motore
+
+- **Manutenzione snapshot ATTIVA** (2026-06-14, FASE 1 — TASK C, review #10
+  APPROVATO CON RISERVE): retention dei ref `refs/gas/snapshots/*` passata da
+  count-based pura a **IBRIDA** = UNIONE di (ultimi `SNAPSHOT_KEEP=100`) e (più
+  giovani di `SNAPSHOT_KEEP_DAYS=7`): i recenti sopravvivono anche a una sessione
+  che ruota >100 ref. Helper PURI testabili `_ref_age_epoch` (epoch dal NOME del
+  ref; non parsabile → si TIENE, conservativo) e `_snapshot_retention` →
+  `(keep, drop)`. **Prudenza (§10):** nessun prune distruttivo né `git gc`
+  automatico — i ref oltre policy si rimuovono con `update-ref -d` (oggetto
+  RECUPERABILE fino a `git gc`) e la rimozione è LOGGATA riga per riga.
+  `reports/snapshots.log` gitignorato + rotazione semplice `.1` al cap
+  `SNAPSHOT_LOG_MAX_BYTES`. `doctor` sezione 7 "Snapshot": SOLO REPORT (conteggio
+  ref + hint oggetti loose via `count-objects` + dimensione log); gc OPT-IN
+  manuale. Test T18a-f (retention pura, zero git) + T11f riadattato al ramo
+  count. Suite **75/75**.
+- **Integrità paracadute free ATTIVA** (2026-06-14, FASE 2 — TASK B, review #9
+  APPROVATO CON RISERVE): `doctor` ora verifica l'ESISTENZA e la CAPACITÀ TOOL
+  del modello free OpenRouter, non solo la presenza della chiave. Forma API
+  sondata dal vivo prima di progettare: GET `<base>/models/<slug>/endpoints` →
+  `{data:{...endpoints:[{supported_parameters:[...]}]}}` (`supported_parameters`
+  è PER-ENDPOINT; `tools` nella lista = function calling). Nuova voce
+  "Paracadute / modello free" SOLO se `OPENROUTER_API_KEY` presente: 404 → WARN
+  (assente/rinominato, VISIBILE); `tools` assente → WARN (degrado a solo-testo);
+  presente+tool-capable → OK. Sono GET di METADATI, NESSUNA generazione →
+  "doctor non consuma token" intatto. `run_turn`: SOLO osservabilità (sez.9) —
+  brain con modello fuori da `TOOL_CAPABLE_MODELS` → `logging.warning` nella
+  scatola nera, NESSUN skip, ordine del fallback INVARIATO; rilevamento del
+  degrado a runtime RIMANDATO (falsi positivi). Helper `_classify_free_model`
+  (3 rami), `_probe_free_model` (`_fetch` mockabile), `_model_tool_capable`.
+  Test T17a-e (zero token, mock dei tre rami). Suite 64→69.
 
 - **WINDOW_CHAR_CAP + riordino R1 #6 ATTIVI** (2026-06-14, FASE 1 — review #7):
   (1) tetto RIGIDO di caratteri sulla finestra inviata ai provider
@@ -84,7 +115,10 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **61 PASS, 0 FAIL** (2026-06-14). Dai 52 si aggiungono i 9 check T14
+  **75 PASS, 0 FAIL** (2026-06-14). Dai 61 si aggiungono: 3 T16 (TASK A,
+  `_parse_mode` condiviso init/doctor), 5 T17 (TASK B, paracadute free:
+  404/no-tools/tools + classify + registro tool-capability), 6 T18 (TASK C,
+  retention ibrida pura) con T11f riadattato. Storico: dai 52 i 9 check T14
   (WINDOW_CHAR_CAP: `_msg_chars`, finestra vuota, sotto-cap invariata,
   ultimo-msg>cap intero, scarto interi mai-slicing, riallineamento a user,
   fallback scarto-tutti-user, componibilità con `_get_window`). Prima, i 6 T13
@@ -163,24 +197,43 @@
   un pattern grep tipo `/etc/cron` viene risolto come path assoluto e il
   comando negato. Fail-closed (lato sicuro), ma limite di usabilità da
   conoscere.
-- 🟡 **Retention snapshot count-based** (R2): una sessione shell intensa può
-  ruotare i 100 ref. Mitigato in parte (i comandi negati al vetting non
-  scattano più lo snapshot), ma resta: valutare KEEP più alto o count + età
-  minima protetta.
-- 🟡 **Manutenzione snapshot residua** (R3): (a) oggetti dei ref potati
-  restano finché non gira `git gc` (candidato `gas doctor`); (b)
-  `reports/snapshots.log` append-only senza rotazione e non gitignorato.
+- ✅ ~~**Retention snapshot count-based** (R2)~~ — **CHIUSO** il 2026-06-14
+  (TASK C, review #10): retention IBRIDA = UNIONE di (ultimi `SNAPSHOT_KEEP=100`)
+  e (più giovani di `SNAPSHOT_KEEP_DAYS=7`). I recenti sopravvivono anche a una
+  sessione che ruota >100 ref. T18 lo certifica per mutazione.
+- ✅ ~~**Manutenzione snapshot residua** (R3)~~ — **CHIUSO/MITIGATO** il
+  2026-06-14 (TASK C): (a) `doctor` sezione 7 REPORTA conteggio ref + hint
+  oggetti loose (`count-objects`) + dimensione log; un `git gc` resta OPT-IN
+  manuale, MAI automatico (§10, prudenza macchina del tempo); (b)
+  `reports/snapshots.log` ora gitignorato + rotazione `.1` al cap. La rimozione
+  ref oltre policy è loggata e reversibile fino a `git gc`.
+- 🟡 **Riserve TASK C** (R-snap, review #10, minori non bloccanti):
+  (1) `SNAPSHOT_KEEP_DAYS`/`SNAPSHOT_LOG_MAX_BYTES` non configurabili via env
+  (come `WINDOW_CHAR_CAP`); (2) soglie magiche inline in doctor
+  (`loose>10000`, `n_refs>SNAPSHOT_KEEP`), cosmetico; (3) rotazione log a 1 sola
+  generazione (`.1` sovrascrive; la storia vera sta nei ref git); (4) manca test
+  dedicato per la rotazione `.1` e per i 3 check di doctor sezione 7 (provati
+  dal vivo: sezione Snapshot OK, nessun crash). La logica PURA di retention è
+  invece coperta dai T18.
 - ✅ ~~**Nessun cap rigido sulla finestra** (review #1)~~ — **CHIUSO** il
   2026-06-14 (review #7): `WINDOW_CHAR_CAP = 24000` a granularità di messaggio
   (`_cap_window_chars`), mai slicing. Resta aperta la sola R1 #7 (test permanente).
-- 🟡 **Modello free hardcoded e volatile** (R1, review #5):
-  `meta-llama/llama-3.3-70b-instruct:free` può sparire/cambiare lato OpenRouter;
-  il fail-safe regge (skip su errore) ma il paracadute diventerebbe
-  silenziosamente inerte. `gas doctor` dovrebbe verificare l'ESISTENZA del
-  modello, non solo la presenza della chiave.
-- 🟡 **Degrado a solo-testo non verificato a runtime** (R2, review #5): se il
-  modello free non supporta i tool, il loop agentico perde read_file/write_file;
-  oggi è solo dichiarato in commento, non rilevato/loggato a runtime.
+- ✅ ~~**Modello free hardcoded e volatile** (R1, review #5)~~ — **CHIUSO** il
+  2026-06-14 (TASK B, review #9): `gas doctor` verifica ESISTENZA (404 → WARN
+  visibile) e CAPACITÀ TOOL (`tools` in `supported_parameters` per-endpoint) del
+  modello free via GET di METADATI, SOLO se la chiave OpenRouter è presente.
+  Il paracadute non diventa più silenziosamente inerte.
+- 🟡 **Degrado a solo-testo non verificato a runtime** (R2, review #5) —
+  **METÀ DETERMINISTICA CHIUSA** il 2026-06-14 (TASK B): `doctor` rileva a freddo
+  la mancanza di `tools` (WARN) e `run_turn` logga un warning se un brain monta un
+  modello fuori da `TOOL_CAPABLE_MODELS` (osservabilità sez.9, nessun cambio di
+  cascata). RESTA APERTO il rilevamento del degrado PER-TURNO a runtime
+  (rimandato di proposito: rischio falsi positivi).
+- 🟡 **Riserve TASK B** (R-free, review #9, minori non bloccanti): (1) due rami
+  di sicurezza degli helper free senza test dedicato (solo copertura, non
+  sicurezza); (2) il warning osservabilità in `run_turn`, se un modello senza
+  tool entrasse in cascata, si ripeterebbe fino a 10× per turno nel log
+  (de-dup possibile, non urgente — oggi tutti i modelli sono tool-capable).
 - ✅ ~~**Duplicazione costanti provider** (R3, review #5)~~ — **CHIUSO** il
   2026-06-14 (TASK A): URL ed slug dei provider (inclusi i due rung free) estratti
   in costanti di modulo (`GEMINI_URL`, `GROQ_URL`, `OPENROUTER_URL`,
@@ -196,13 +249,18 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 8 review completate
-  (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8), lezioni datate in
-  `.claude/agents/memoria_revisore.md`.
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 10 review completate
+  (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C), lezioni datate
+  in `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 
-1. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref, gc
-   oggetti orfani, dimensione snapshots.log; valutare retention ibrida).
+1. **Rilevamento PER-TURNO del degrado a solo-testo** (metà aperta di R2 #5):
+   oggi solo osservabilità a freddo (doctor) + warning statico (run_turn).
+   Rimandato per i falsi positivi: progettare con cura prima di attivare.
 2. Valutare cap output dedicato (più alto) per la futura pipeline Whisper
-   (collegato a R2 review #7: `GAS_WINDOW_CHAR_CAP` configurabile via env).
+   (collegato a R2 review #7: `GAS_WINDOW_CHAR_CAP` configurabile via env);
+   nello stesso giro valutare `GAS_SNAPSHOT_KEEP_DAYS` configurabile (riserva
+   TASK C #1).
+3. `git gc` OPT-IN dietro flag esplicito in `gas doctor` (oggi solo reportato):
+   azione irreversibile, va progettato il consenso umano esplicito.
