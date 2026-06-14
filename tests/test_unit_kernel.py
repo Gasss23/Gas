@@ -567,6 +567,44 @@ finally:
     if _sb_bak is not None: os.environ["GAS_SANDBOX_MODE"] = _sb_bak
     if _sh_bak is not None: os.environ["GAS_SHELL_MODE"] = _sh_bak
 
+# ---------- T17: integrità paracadute free (TASK B, R1/R2 #5) — ZERO token ----------
+# Mock della risposta /models/<slug>/endpoints: nessuna rete, nessuna generazione.
+# La forma replica quella REALE sondata il 2026-06-14 (supported_parameters è
+# PER-ENDPOINT, "tools" dentro la lista = function calling dichiarato).
+def _fake_fetch(status, data):
+    return lambda url, api_key: (status, data)
+
+_ep_with_tools = {"data": {"id": gas.OPENROUTER_FREE_MODEL, "endpoints": [
+    {"provider_name": "x", "supported_parameters": ["max_tokens", "temperature", "tools", "tool_choice"]}]}}
+_ep_no_tools = {"data": {"id": gas.OPENROUTER_FREE_MODEL, "endpoints": [
+    {"provider_name": "x", "supported_parameters": ["max_tokens", "temperature", "top_p"]}]}}
+
+# T17a — 404 -> WARN (modello assente/rinominato, VISIBILE)
+e, d = gas._probe_free_model(gas.OPENROUTER_URL, gas.OPENROUTER_FREE_MODEL, "k", _fetch=_fake_fetch(404, None))
+check("T17a 404 -> WARN (modello free assente/rinominato)", e == "WARN", f"esito={e} · {d}")
+
+# T17b — esiste ma nessun endpoint dichiara 'tools' -> WARN (degrado solo-testo)
+e, d = gas._probe_free_model(gas.OPENROUTER_URL, gas.OPENROUTER_FREE_MODEL, "k", _fetch=_fake_fetch(200, _ep_no_tools))
+check("T17b modello senza 'tools' -> WARN (degrado a solo-testo)", e == "WARN", f"esito={e} · {d}")
+
+# T17c — esiste e almeno un endpoint dichiara 'tools' -> OK
+e, d = gas._probe_free_model(gas.OPENROUTER_URL, gas.OPENROUTER_FREE_MODEL, "k", _fetch=_fake_fetch(200, _ep_with_tools))
+check("T17c modello presente + 'tools' dichiarato -> OK", e == "OK", f"esito={e} · {d}")
+
+# T17d — _classify_free_model è la barriera (morde per MUTAZIONE dei tre rami)
+check("T17d classify: i tre rami sono distinti e corretti",
+      gas._classify_free_model(404, None)[0] == "WARN"
+      and gas._classify_free_model(200, _ep_no_tools)[0] == "WARN"
+      and gas._classify_free_model(200, _ep_with_tools)[0] == "OK")
+
+# T17e — registro statico tool-capability (osservabilità run_turn): morde se si
+# rimuove un modello dal registro o vi si aggiunge un modello text-only.
+check("T17e _model_tool_capable: cascata tool-capable, ignoto -> False",
+      all(gas._model_tool_capable(m) for m in (
+          gas.GEMINI_FLASH_LITE_MODEL, gas.GEMINI_FLASH_MODEL, gas.GROQ_MODEL,
+          gas.OPENROUTER_FREE_MODEL, gas.OLLAMA_MODEL))
+      and not gas._model_tool_capable("provider/modello-solo-testo"))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

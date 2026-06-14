@@ -108,6 +108,80 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 OPENROUTER_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct:free"  # tool-capable
 OLLAMA_MODEL = "qwen2.5:7b-instruct"                             # tool-capable
 
+# Registro STATICO dei modelli che DICHIARANO function calling. Serve SOLO per
+# l'osservabilità nella scatola nera (sez.9): il rilevamento a runtime del degrado
+# a solo-testo è rimandato (falsi positivi, TASK B / R2 #5). Tutti i modelli della
+# cascata sono oggi tool-capable; il warning è una rete dormiente che si accende se
+# in futuro entra in cascata un modello senza tool.
+TOOL_CAPABLE_MODELS = frozenset({
+    GEMINI_FLASH_LITE_MODEL, GEMINI_FLASH_MODEL, GROQ_MODEL,
+    OPENROUTER_FREE_MODEL, OLLAMA_MODEL,
+})
+
+def _model_tool_capable(model: str) -> bool:
+    """True se `model` dichiara function calling nel registro statico
+    `TOOL_CAPABLE_MODELS`. Deterministico, nessuna chiamata di rete."""
+    return model in TOOL_CAPABLE_MODELS
+
+# --- Integrità del paracadute free (R1/R2 #5): metadati OpenRouter, NIENTE token ---
+# La forma reale dell'API (sondata il 2026-06-14): il singolo modello vive su
+# GET <base>/models/<slug>/endpoints -> {"data": {... "endpoints": [{...,
+# "supported_parameters": [...]}, ...]}}. `supported_parameters` è PER-ENDPOINT
+# (al livello "data" è None); "tools" dentro la lista = function calling dichiarato.
+def _free_model_endpoint_url(base_url: str, model: str) -> str:
+    """URL dei METADATI del singolo modello (non una generazione)."""
+    return base_url.rstrip("/") + "/models/" + model + "/endpoints"
+
+def _http_get_json(url: str, api_key: Optional[str] = None, timeout: int = 20):
+    """GET minimale -> (status_code, json|None). 404 (e ogni HTTPError) torna il
+    codice con body None, senza sollevare. Solo metadati: nessun token LLM."""
+    import urllib.request, urllib.error
+    headers = {"User-Agent": "gas-doctor"}
+    if api_key:
+        headers["Authorization"] = "Bearer " + api_key
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.getcode(), json.load(r)
+    except urllib.error.HTTPError as e:
+        return e.code, None
+
+def _classify_free_model(status_code: int, data: Optional[Dict[str, Any]]) -> Tuple[str, str]:
+    """Classifica la salute del modello free dai SOLI metadati (mai una
+    generazione). Tre esiti (R1/R2 #5):
+      - 404                                  -> WARN (assente/rinominato)
+      - esiste ma nessun endpoint ha 'tools' -> WARN (no function calling)
+      - esiste e almeno un endpoint ha 'tools'-> OK
+    Risposte non conclusive (altro status / JSON inatteso) -> WARN onesto."""
+    if status_code == 404:
+        return ("WARN", "modello free assente/rinominato lato OpenRouter")
+    if status_code != 200 or not isinstance(data, dict):
+        return ("WARN", f"check esistenza non conclusivo (HTTP {status_code})")
+    node = data.get("data", data)
+    endpoints = node.get("endpoints") if isinstance(node, dict) else None
+    has_tools = False
+    if isinstance(endpoints, list):
+        for ep in endpoints:
+            sp = ep.get("supported_parameters") if isinstance(ep, dict) else None
+            if isinstance(sp, list) and "tools" in sp:
+                has_tools = True
+                break
+    if has_tools:
+        return ("OK", "modello free presente, function calling dichiarato")
+    return ("WARN", "il modello free non dichiara function calling: "
+                    "il loop agentico degraderebbe a solo-testo")
+
+def _probe_free_model(base_url: str, model: str, api_key: Optional[str], _fetch=None) -> Tuple[str, str]:
+    """Fetch (mockabile via `_fetch`) + classificazione. `_fetch(url, api_key)`
+    deve tornare (status_code, json|None). Errori di rete -> WARN onesto."""
+    fetcher = _fetch or _http_get_json
+    url = _free_model_endpoint_url(base_url, model)
+    try:
+        status, data = fetcher(url, api_key)
+    except Exception as e:
+        return ("WARN", f"check esistenza fallito: {str(e)[:50]}")
+    return _classify_free_model(status, data)
+
 def _parse_mode(env_var: str, allowed: Tuple[str, ...], default: str) -> str:
     """Parse fail-safe di una env di modalità: normalizza (trim/lower/`-`→`_`),
     valida contro `allowed`, ricade su `default` (loggando un warning) se il valore
@@ -598,6 +672,13 @@ class GasKernel:
 
         for name, env, url, model in providers:
             if not os.environ.get(env): continue
+            # Osservabilità (sez.9): se il brain selezionato monta un modello che
+            # NON dichiara function calling, il turno sarebbe tool-blind (read_file/
+            # write_file persi). Solo log nella scatola nera: NON si forza lo skip,
+            # NON si tocca l'ordine del fallback. Rilevamento a runtime rimandato.
+            if not _model_tool_capable(model):
+                logging.warning(f"brain {name}: modello {model} senza function calling "
+                                f"dichiarato, turno potenzialmente tool-blind")
             payload: List[Dict[str, Any]] = []
             try:
                 client = OpenAI(base_url=url, api_key=os.environ.get(env))
@@ -701,6 +782,17 @@ def doctor(root_dir: Optional[str] = None) -> int:
                 check("Provider", name, "QUOTA", "429: quota esaurita")
             else:
                 check("Provider", name, "KO", str(e)[:60])
+
+    # 2b. Integrità del modello free (R1/R2 #5): METADATI OpenRouter, NESSUNA
+    # generazione (coerente con "doctor non consuma token LLM"). SOLO se la chiave
+    # OpenRouter è presente; assente -> già coperto sopra come WARN, qui si salta
+    # (comportamento attuale invariato). Esiti: 404 -> WARN (modello assente/
+    # rinominato, VISIBILE: il fail-safe regge ma non in silenzio); 'tools' assente
+    # -> WARN (degraderebbe a solo-testo); presente e tool-capable -> OK.
+    if os.environ.get("OPENROUTER_API_KEY"):
+        esito, dettaglio = _probe_free_model(
+            OPENROUTER_URL, OPENROUTER_FREE_MODEL, os.environ["OPENROUTER_API_KEY"])
+        check("Paracadute", "modello free", esito, dettaglio)
 
     # 3. Integrità file
     for fname in ("gas.py", "CLAUDE.md"):
