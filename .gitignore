@@ -12,4 +12,6 @@ test_sandbox/
 .env.*
 *.env
 snapshots/
+reports/snapshots.log
+reports/snapshots.log.1
 .claude/.review_ok

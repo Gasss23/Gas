@@ -193,6 +193,42 @@ def _parse_mode(env_var: str, allowed: Tuple[str, ...], default: str) -> str:
         raw = default
     return raw
 
+# --- Manutenzione snapshot (TASK C): retention IBRIDA, PURA e testabile ---
+# Il nome ref è refs/gas/snapshots/<YYYYmmdd-HHMMSS.ns>-<sha8>: la parte data sta
+# PRIMA dell'ultimo '-' (il ts contiene già un '-' tra data e ora).
+def _ref_age_epoch(refname: str) -> Optional[float]:
+    """Epoch (secondi) ricavato dal NOME del ref snapshot. None se non parsabile:
+    il chiamante, conservativo, in tal caso TIENE il ref (non lo rimuove mai per
+    un nome inatteso). Nessuna chiamata git: si legge solo la stringa."""
+    import time
+    base = refname.rsplit("/", 1)[-1]          # <ts>-<sha8>
+    ts_part = base.rsplit("-", 1)[0]           # YYYYmmdd-HHMMSS.ns
+    date_part = ts_part.split(".", 1)[0]       # YYYYmmdd-HHMMSS
+    try:
+        return time.mktime(time.strptime(date_part, "%Y%m%d-%H%M%S"))
+    except Exception:
+        return None
+
+def _snapshot_retention(refs: List[str], now: float, keep_n: int,
+                        keep_days: int) -> Tuple[List[str], List[str]]:
+    """Retention IBRIDA. `refs` = refname ORDINATI lessicograficamente (=
+    cronologicamente). Si TIENE l'UNIONE di (ultimi keep_n) e (più giovani di
+    keep_days): quale delle due preserva di più, in una sessione intensa protegge
+    comunque i recenti. Ritorna (keep, drop) preservando l'ordine. `drop` = ref
+    oltre ENTRAMBE le soglie, candidati alla rimozione (un ref cancellato lascia
+    l'oggetto git RECUPERABILE finché non gira `git gc`)."""
+    if not refs:
+        return [], []
+    cutoff = now - keep_days * 86400
+    keep_set = set(refs[-keep_n:]) if keep_n > 0 else set()
+    for r in refs:
+        age = _ref_age_epoch(r)
+        if age is None or age >= cutoff:   # non parsabile o giovane -> tieni
+            keep_set.add(r)
+    keep = [r for r in refs if r in keep_set]
+    drop = [r for r in refs if r not in keep_set]
+    return keep, drop
+
 class GasKernel:
     def __init__(self, root_dir: Optional[str] = None):
         self.root: Path = Path(root_dir or os.getcwd()).resolve()
@@ -382,7 +418,13 @@ class GasKernel:
     # "git stash create" ignorerebbe) e non tocca né il branch né la staging
     # area dell'utente. Il ripristino è SOLO umano (vedi README): nessun tool
     # di restore è esposto ai modelli.
-    SNAPSHOT_KEEP = 100  # retention: oltre questo numero i ref più vecchi vengono potati
+    # Retention IBRIDA (TASK C): si tiene l'UNIONE di (ultimi SNAPSHOT_KEEP) e
+    # (più giovani di SNAPSHOT_KEEP_DAYS). I recenti sopravvivono anche a una
+    # sessione che ruota >100 ref. La rimozione dei ref oltre policy è LOGGATA;
+    # l'oggetto resta recuperabile finché non gira `git gc` (mai automatico, §10).
+    SNAPSHOT_KEEP = 100
+    SNAPSHOT_KEEP_DAYS = 7
+    SNAPSHOT_LOG_MAX_BYTES = 1_000_000  # rotazione semplice di snapshots.log (.1)
 
     def _snapshot(self, trigger: str, target: str) -> Optional[str]:
         """Fotografa lo stato corrente del repo (file tracciati E non tracciati)
@@ -443,16 +485,26 @@ class GasKernel:
             index_file.parent.mkdir(parents=True, exist_ok=True)
             with open(index_file, "a", encoding="utf-8") as f:
                 f.write(f"{ts}  {sha}  {trigger}  {target}\n")
+            # Rotazione semplice (.1): quando si supera il cap, l'attuale diventa
+            # snapshots.log.1 (sovrascrive il precedente) e si riparte da vuoto.
+            if index_file.stat().st_size > self.SNAPSHOT_LOG_MAX_BYTES:
+                index_file.replace(index_file.parent / "snapshots.log.1")
         except Exception as e:
             logging.warning(f"Indice reports/snapshots.log non aggiornato: {e}")
         try:
             res = subprocess.run(["git", "-C", str(self.root), "for-each-ref",
                                   "--format=%(refname)", "refs/gas/snapshots/"],
                                  capture_output=True, text=True, timeout=30)
-            refs = res.stdout.split()
-            for old in refs[:-self.SNAPSHOT_KEEP]:
+            refs = res.stdout.split()  # for-each-ref ordina lessicograficamente
+            import time as _t
+            _, drop = _snapshot_retention(refs, _t.time(),
+                                          self.SNAPSHOT_KEEP, self.SNAPSHOT_KEEP_DAYS)
+            for old in drop:
                 subprocess.run(["git", "-C", str(self.root), "update-ref", "-d", old],
                                capture_output=True, text=True, timeout=30)
+                # Rimozione LOGGATA: l'oggetto resta recuperabile fino a `git gc`.
+                _snapshot_log.info(f"Retention: ref oltre policy rimosso {old} "
+                                   f"(oggetto recuperabile fino a git gc)")
         except Exception as e:
             logging.warning(f"Retention snapshot non applicata: {e}")
         return sha
@@ -854,6 +906,45 @@ def doctor(root_dir: Optional[str] = None) -> int:
               f"{detail} — mode={sb_mode}"
               + (" (run_command bloccato)" if sb_mode == "os_strict"
                  else " (fallback sandbox applicativa)"))
+
+    # 7. Manutenzione snapshot (TASK C) — SOLO REPORT, nessuna azione distruttiva.
+    # Un `git gc` è IRREVERSIBILE (potrebbe spazzare gli oggetti degli snapshot
+    # rimossi da policy): resta OPT-IN manuale, MAI automatico (§10). Qui si
+    # mostrano solo i numeri per decidere a ragion veduta.
+    try:
+        res = subprocess.run(["git", "-C", str(root), "for-each-ref",
+                              "--format=%(refname)", "refs/gas/snapshots/"],
+                             capture_output=True, text=True, timeout=30)
+        n_refs = len(res.stdout.split())
+        soglia = GasKernel.SNAPSHOT_KEEP
+        check("Snapshot", "ref totali",
+              "WARN" if n_refs > soglia else "OK",
+              f"{n_refs} ref" + (f" (> soglia {soglia}: valuta gc OPT-IN manuale)"
+                                 if n_refs > soglia else ""))
+    except Exception as e:
+        check("Snapshot", "ref totali", "WARN", f"conteggio non riuscito: {str(e)[:40]}")
+    try:
+        res = subprocess.run(["git", "-C", str(root), "count-objects", "-v"],
+                             capture_output=True, text=True, timeout=30)
+        info = dict(l.split(": ", 1) for l in res.stdout.splitlines() if ": " in l)
+        loose = int(info.get("count", "0"))
+        size_kb = int(info.get("size", "0"))
+        check("Snapshot", "oggetti loose",
+              "WARN" if loose > 10000 else "OK",
+              f"{loose} loose, {size_kb} KB"
+              + (" (molti: valuta `git gc` OPT-IN manuale)" if loose > 10000 else ""))
+    except Exception as e:
+        check("Snapshot", "oggetti loose", "WARN", f"hint non riuscito: {str(e)[:40]}")
+    log_snap = root / "reports" / "snapshots.log"
+    if log_snap.exists():
+        kb = log_snap.stat().st_size / 1024
+        cap_kb = GasKernel.SNAPSHOT_LOG_MAX_BYTES / 1024
+        check("Snapshot", "snapshots.log",
+              "WARN" if log_snap.stat().st_size > GasKernel.SNAPSHOT_LOG_MAX_BYTES else "OK",
+              f"{kb:.1f} KB" + (f" (> {cap_kb:.0f} KB: rotazione .1 al prossimo snapshot)"
+                                if log_snap.stat().st_size > GasKernel.SNAPSHOT_LOG_MAX_BYTES else ""))
+    else:
+        check("Snapshot", "snapshots.log", "OK", "assente (nessuno snapshot ancora)")
 
     # Report tabellare
     print("\n=== GAS DOCTOR ===\n")

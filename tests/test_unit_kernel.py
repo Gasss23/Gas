@@ -265,11 +265,15 @@ check("T11e run_command fa scattare lo snapshot",
       len(snap_refs(root)) == prima + 1 and not out.startswith("Operazione negata"),
       f"refs {prima} -> {len(snap_refs(root))}")
 
-# T11f: retention — mai più di SNAPSHOT_KEEP ref, i più vecchi potati
+# T11f: retention IBRIDA (TASK C) — ramo count-based. Con la policy ibrida i ref
+# GIOVANI sono protetti dall'età: per esercitare il limite per-conteggio si azzera
+# SNAPSHOT_KEEP_DAYS (nessuna protezione d'età) e resta solo "ultimi N".
 k.SNAPSHOT_KEEP = 3
+k.SNAPSHOT_KEEP_DAYS = 0
 for i in range(5):
     k.execute_tool_call("write_file", {"relative_path": "giro.txt", "content": f"giro {i}"})
-check("T11f retention pota i ref oltre il limite", len(snap_refs(root)) == 3,
+check("T11f retention (ramo count, età disattivata) tiene solo gli ultimi N",
+      len(snap_refs(root)) == 3,
       f"refs={len(snap_refs(root))} (limite 3)")
 
 # T11g: root annidata in un repo esterno senza proprio .git -> fail-closed,
@@ -604,6 +608,49 @@ check("T17e _model_tool_capable: cascata tool-capable, ignoto -> False",
           gas.GEMINI_FLASH_LITE_MODEL, gas.GEMINI_FLASH_MODEL, gas.GROQ_MODEL,
           gas.OPENROUTER_FREE_MODEL, gas.OLLAMA_MODEL))
       and not gas._model_tool_capable("provider/modello-solo-testo"))
+
+# ---------- T18: retention IBRIDA snapshot (TASK C) — logica pura, ZERO git ----------
+import time as _time
+def _mkref(epoch, sha="ab12cd34"):
+    ts = _time.strftime("%Y%m%d-%H%M%S", _time.localtime(epoch)) + ".000000000"
+    return f"refs/gas/snapshots/{ts}-{sha}"
+
+_now = _time.time()
+_DAY = 86400
+# Lista ORDINATA cronologicamente (come la dà for-each-ref): vecchi -> recenti.
+_ages_days = [30, 29, 28, 27, 26, 2, 1]
+_refs = [_mkref(_now - d * _DAY, sha=f"{d:08d}") for d in _ages_days]  # già ascendente
+keep, drop = gas._snapshot_retention(_refs, _now, keep_n=3, keep_days=7)
+
+# T18a — i ref GIOVANI (< keep_days) sopravvivono sempre
+check("T18a recenti (<7gg) sopravvivono",
+      _mkref(_now - 1 * _DAY, "00000001") in keep and _mkref(_now - 2 * _DAY, "00000002") in keep,
+      f"keep={len(keep)} drop={len(drop)}")
+
+# T18b — i vecchi oltre ENTRAMBE le soglie (fuori dagli ultimi 3 E > 7gg) sono droppati
+check("T18b vecchi oltre N E oltre T -> drop",
+      all(_mkref(_now - d * _DAY, f"{d:08d}") in drop for d in (30, 29, 28, 27))
+      and len(drop) == 4,
+      f"drop={drop}")
+
+# T18c — keep_n protegge un ref VECCHIO (26gg) solo perché tra gli ultimi 3
+check("T18c keep_n protegge il vecchio dentro gli ultimi N",
+      _mkref(_now - 26 * _DAY, "00000026") in keep)
+
+# T18d — MORDACE: abbassare keep_n smaschera il 26gg (cambia il set protetto)
+keep2, drop2 = gas._snapshot_retention(_refs, _now, keep_n=2, keep_days=7)
+check("T18d soglia più stretta -> set protetto diverso (mordace)",
+      _mkref(_now - 26 * _DAY, "00000026") in drop2 and _mkref(_now - 26 * _DAY, "00000026") in keep)
+
+# T18e — nome ref non parsabile -> conservativo: TENUTO (mai rimosso per nome inatteso)
+keep3, drop3 = gas._snapshot_retention(["refs/gas/snapshots/spazzatura"], _now, keep_n=0, keep_days=0)
+check("T18e ref non parsabile -> tenuto (conservativo)",
+      drop3 == [] and gas._ref_age_epoch("refs/gas/snapshots/spazzatura") is None)
+
+# T18f — _ref_age_epoch estrae la data dal nome ref valido
+check("T18f _ref_age_epoch parsa il ts dal nome ref",
+      abs(gas._ref_age_epoch(_mkref(_now - 5 * _DAY, "00000005")) - (_now - 5 * _DAY)) < 2,
+      f"delta≈{gas._ref_age_epoch(_mkref(_now - 5 * _DAY, '00000005')) - (_now - 5 * _DAY):.0f}s")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
