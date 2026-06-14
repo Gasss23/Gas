@@ -94,6 +94,31 @@ def _probe_os_sandbox(force: bool = False) -> Tuple[bool, str]:
     _OS_SANDBOX_CACHE = (True, "bwrap + namespace net/pid OK")
     return _OS_SANDBOX_CACHE
 
+# --- Provider della cascata: PUNTO UNICO di verità (usato da run_turn E doctor) ---
+# Endpoint OpenAI-compatibili e slug dei modelli, prima duplicati nei due punti.
+# I due rung gratuiti (OpenRouter free, Ollama) sono la rete di salvataggio a budget
+# zero, sempre ULTIMI nella cascata. Se il modello free OpenRouter NON supporta i
+# tool, il loop agentico degrada a sola risposta testuale (accettabile, ultima spiaggia).
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+GROQ_URL = "https://api.groq.com/openai/v1"
+OPENROUTER_URL = "https://openrouter.ai/api/v1"
+GEMINI_FLASH_LITE_MODEL = "gemini-2.5-flash-lite"
+GEMINI_FLASH_MODEL = "gemini-2.5-flash"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+OPENROUTER_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct:free"  # tool-capable
+OLLAMA_MODEL = "qwen2.5:7b-instruct"                             # tool-capable
+
+def _parse_mode(env_var: str, allowed: Tuple[str, ...], default: str) -> str:
+    """Parse fail-safe di una env di modalità: normalizza (trim/lower/`-`→`_`),
+    valida contro `allowed`, ricade su `default` (loggando un warning) se il valore
+    è ignoto. PUNTO UNICO: GasKernel.__init__ e doctor() lo usano entrambi così che,
+    dato lo stesso env, risolvano lo STESSO mode (incluso ignoto → default)."""
+    raw = os.environ.get(env_var, default).strip().lower().replace("-", "_")
+    if raw not in allowed:
+        logging.warning(f"{env_var}={raw!r} non riconosciuto, uso {default!r}")
+        raw = default
+    return raw
+
 class GasKernel:
     def __init__(self, root_dir: Optional[str] = None):
         self.root: Path = Path(root_dir or os.getcwd()).resolve()
@@ -105,21 +130,13 @@ class GasKernel:
         # vetting ma non esegue nulla — collaudo e kill-switch). Un valore non
         # riconosciuto ricade su 'guarded' (fail-safe). NON esiste una modalità
         # con shell grezza: le pipeline sono volutamente indisponibili.
-        raw_mode = os.environ.get("GAS_SHELL_MODE", "guarded").strip().lower().replace("-", "_")
-        if raw_mode not in ("guarded", "dry_run"):
-            logging.warning(f"GAS_SHELL_MODE={raw_mode!r} non riconosciuto, uso 'guarded'")
-            raw_mode = "guarded"
-        self.shell_mode: str = raw_mode
+        self.shell_mode: str = _parse_mode("GAS_SHELL_MODE", ("guarded", "dry_run"), "guarded")
         # Modalità del sandbox OS (ortogonale a GAS_SHELL_MODE: 'dove' si esegue,
         # non 'se'): 'os_strict' (default) pretende il confinamento OS e nega il
         # comando se manca; 'os_with_fallback' degrada alla sola sandbox
         # applicativa quando bwrap/namespace non ci sono. Valore ignoto →
         # fail-safe sul mode PIÙ severo (os_strict): la prod è protetta di default.
-        raw_sb = os.environ.get("GAS_SANDBOX_MODE", "os_strict").strip().lower().replace("-", "_")
-        if raw_sb not in ("os_strict", "os_with_fallback"):
-            logging.warning(f"GAS_SANDBOX_MODE={raw_sb!r} non riconosciuto, uso 'os_strict'")
-            raw_sb = "os_strict"
-        self.sandbox_mode: str = raw_sb
+        self.sandbox_mode: str = _parse_mode("GAS_SANDBOX_MODE", ("os_strict", "os_with_fallback"), "os_strict")
         # Capacità del sandbox OS sondata una volta (cache di processo).
         self.os_sandbox_available: bool
         self._os_sandbox_detail: str
@@ -552,39 +569,31 @@ class GasKernel:
         from brains.router import classifica_compito
         compito = classifica_compito(user_prompt)
 
-        GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        GROQ_URL   = "https://api.groq.com/openai/v1"
-        OPENROUTER_URL = "https://openrouter.ai/api/v1"
-        # Pavimento offline: NON gira nel Codespace. Sul PC/VPS si esporta
+        # Endpoint/modelli dalle costanti di modulo (punto unico, condiviso con doctor).
+        # Pavimento offline Ollama: NON gira nel Codespace. Sul PC/VPS si esporta
         # GAS_OLLAMA_URL=http://localhost:11434/v1 (endpoint OpenAI-compatibile di
         # Ollama). Se la variabile e' assente, il rung viene saltato dal gate del
         # loop (`if not os.environ.get(env): continue`) -> skip pulito, mai crash.
         OLLAMA_URL = os.environ.get("GAS_OLLAMA_URL")
 
         # Rung GRATUITI, sempre ULTIMI: rete di salvataggio a budget zero.
-        # - OpenRouter free: scegliere un modello TOOL-CAPABLE (function calling).
-        #   La lista e' facile da aggiornare qui sotto; se il modello scelto NON
-        #   supporta i tool, il loop agentico degrada a sola risposta testuale
-        #   (niente read_file/write_file) -> accettabile come ultima spiaggia.
-        # - Ollama: stesso schema; la "chiave" del gate e' GAS_OLLAMA_URL (presenza),
-        #   percio' api_key=base_url=URL: Ollama ignora la chiave, e' deliberato.
-        OPENROUTER_FREE = "meta-llama/llama-3.3-70b-instruct:free"  # tool-capable
-        OLLAMA_MODEL    = "qwen2.5:7b-instruct"                     # tool-capable
+        # Ollama: la "chiave" del gate e' GAS_OLLAMA_URL (presenza), percio'
+        # api_key=base_url=URL: Ollama ignora la chiave, e' deliberato.
         FREE_RUNGS = [
-            ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE),
+            ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE_MODEL),
             ("ollama",     "GAS_OLLAMA_URL",     OLLAMA_URL,     OLLAMA_MODEL),
         ]
 
         if compito == "semplice":
             providers = [
-                ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite"),
-                ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
-                ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
+                ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_LITE_MODEL),
+                ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_MODEL),
+                ("groq",              "GROQ_API_KEY",   GROQ_URL,   GROQ_MODEL),
             ] + FREE_RUNGS
         else:
             providers = [
-                ("gemini-flash", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash"),
-                ("groq",         "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile"),
+                ("gemini-flash", "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_MODEL),
+                ("groq",         "GROQ_API_KEY",   GROQ_URL,   GROQ_MODEL),
             ] + FREE_RUNGS
 
         for name, env, url, model in providers:
@@ -667,17 +676,14 @@ def doctor(root_dir: Optional[str] = None) -> int:
     # 2. Connettività provider: ping minimo (max_tokens=1) per ogni brain.
     # I rung gratuiti (openrouter/ollama) sono OPZIONALI: se manca chiave/endpoint
     # -> WARN, non FAIL (non sono in cascata obbligatoria; coerente con sez.9).
-    GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    GROQ_URL   = "https://api.groq.com/openai/v1"
-    OPENROUTER_URL = "https://openrouter.ai/api/v1"
     OLLAMA_URL = os.environ.get("GAS_OLLAMA_URL")
     providers = [
-        # (name, env, url, model, obbligatoria)
-        ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash-lite", True),
-        ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, "gemini-2.5-flash", True),
-        ("groq",              "GROQ_API_KEY",   GROQ_URL,   "llama-3.3-70b-versatile", True),
-        ("openrouter",        "OPENROUTER_API_KEY", OPENROUTER_URL, "meta-llama/llama-3.3-70b-instruct:free", False),
-        ("ollama",            "GAS_OLLAMA_URL",     OLLAMA_URL,     "qwen2.5:7b-instruct", False),
+        # (name, env, url, model, obbligatoria) — modelli/URL dalle costanti di modulo
+        ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_LITE_MODEL, True),
+        ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_MODEL, True),
+        ("groq",              "GROQ_API_KEY",   GROQ_URL,   GROQ_MODEL, True),
+        ("openrouter",        "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE_MODEL, False),
+        ("ollama",            "GAS_OLLAMA_URL",     OLLAMA_URL,     OLLAMA_MODEL, False),
     ]
     for name, env, url, model, obbligatoria in providers:
         if not os.environ.get(env):
@@ -747,8 +753,7 @@ def doctor(root_dir: Optional[str] = None) -> int:
     # è protetta di default); os_with_fallback = WARN (degrado consapevole alla
     # sola sandbox applicativa).
     avail, detail = _probe_os_sandbox()
-    raw_sb = os.environ.get("GAS_SANDBOX_MODE", "os_strict").strip().lower().replace("-", "_")
-    sb_mode = raw_sb if raw_sb in ("os_strict", "os_with_fallback") else "os_strict"
+    sb_mode = _parse_mode("GAS_SANDBOX_MODE", ("os_strict", "os_with_fallback"), "os_strict")
     if avail:
         check("Sandbox OS", "bwrap+namespace", "OK", f"{detail} (mode={sb_mode})")
     else:

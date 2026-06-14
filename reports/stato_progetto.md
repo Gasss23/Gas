@@ -152,10 +152,13 @@
   ri-bindata, la tmpfs la maschera e `--chdir` fallisce → `run_command` negato
   (rc≠0). È fail-closed e non crasha, ma è un limite di usabilità sul VPS:
   documentare che `GAS_CWD` deve stare dentro la project root.
-- 🟡 **Duplicazione del parse di `GAS_SANDBOX_MODE` in doctor** (R3, review #6):
-  `doctor()` ridetermina il mode con la stessa logica di `__init__` invece di
-  riusare l'attributo del kernel. Manutenibilità (come R3 review #5), non
-  sicurezza.
+- ✅ ~~**Duplicazione del parse di `GAS_SANDBOX_MODE` in doctor** (R3, review #6)~~
+  — **CHIUSO** il 2026-06-14 (TASK A, refactor puro APPROVATO): estratto l'helper
+  di modulo `_parse_mode(env_var, allowed, default)`, usato sia da `__init__`
+  (GAS_SHELL_MODE, GAS_SANDBOX_MODE) sia da `doctor` (GAS_SANDBOX_MODE). T16c
+  certifica che le due strade risolvono lo STESSO mode (incl. ignoto→os_strict).
+  Effetto collaterale minore non bloccante: ora anche `doctor` logga il warning
+  su mode ignoto (prima no); voci/esiti/exit di doctor invariati.
 - 🟡 **Falsi positivi del path-check su argomenti non-path** (R3, review #4):
   un pattern grep tipo `/etc/cron` viene risolto come path assoluto e il
   comando negato. Fail-closed (lato sicuro), ma limite di usabilità da
@@ -178,9 +181,12 @@
 - 🟡 **Degrado a solo-testo non verificato a runtime** (R2, review #5): se il
   modello free non supporta i tool, il loop agentico perde read_file/write_file;
   oggi è solo dichiarato in commento, non rilevato/loggato a runtime.
-- 🟡 **Duplicazione costanti provider** (R3, review #5): URL/modelli ripetuti tra
-  `run_turn` e `doctor`, ora estesa ai rung free; candidata a estrazione in
-  costanti di modulo (manutenibilità, non sicurezza).
+- ✅ ~~**Duplicazione costanti provider** (R3, review #5)~~ — **CHIUSO** il
+  2026-06-14 (TASK A): URL ed slug dei provider (inclusi i due rung free) estratti
+  in costanti di modulo (`GEMINI_URL`, `GROQ_URL`, `OPENROUTER_URL`,
+  `GEMINI_FLASH_LITE_MODEL`, `GEMINI_FLASH_MODEL`, `GROQ_MODEL`,
+  `OPENROUTER_FREE_MODEL`, `OLLAMA_MODEL`), punto unico per `run_turn` e `doctor`.
+  Cascata bit-identica verificata dal revisore.
 - ✅ ~~Sandbox/dry-run per run_command~~ — **RIDOTTO** il 2026-06-12 (finding
   declassato da 🟠 a 🟡, chiusura piena rinviata al sandbox OS).
 - ✅ ~~Snapshot preventivo dei file~~ — CHIUSO il 2026-06-11.
@@ -198,7 +204,5 @@
 
 1. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref, gc
    oggetti orfani, dimensione snapshots.log; valutare retention ibrida).
-2. **R3 review #5/#6** — estrarre costanti provider e il parse di
-   `GAS_SANDBOX_MODE` in punti unici (manutenibilità).
-3. Valutare cap output dedicato (più alto) per la futura pipeline Whisper
+2. Valutare cap output dedicato (più alto) per la futura pipeline Whisper
    (collegato a R2 review #7: `GAS_WINDOW_CHAR_CAP` configurabile via env).

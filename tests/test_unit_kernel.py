@@ -529,6 +529,44 @@ check("T14h _get_window applica WINDOW_CHAR_CAP (componibilità col cap a 10 msg
       w_h == [_u("bbbb"), _u("cccc")] and w_h[0]["role"] == "user",
       f"len={len(w_h)} primo={w_h[0]['content'] if w_h else 'VUOTA'}")
 
+# ---------- T16: de-dup parse mode condiviso __init__ ⇄ doctor (TASK A) ----------
+# Refactor PURO: __init__ e doctor devono risolvere lo STESSO mode dato lo stesso
+# env, perché ora usano l'unico helper gas._parse_mode (niente logica duplicata).
+SB_ALLOWED = ("os_strict", "os_with_fallback")
+_sb_bak = os.environ.get("GAS_SANDBOX_MODE")
+_sh_bak = os.environ.get("GAS_SHELL_MODE")
+try:
+    # T16a — normalizzazione (trim / lower / '-'→'_')
+    os.environ["GAS_SANDBOX_MODE"] = "  OS-With-Fallback "
+    os.environ["GAS_SHELL_MODE"] = "DRY-RUN"
+    k = kernel_tmp()
+    check("T16a _parse_mode normalizza i valori di mode",
+          k.sandbox_mode == "os_with_fallback" and k.shell_mode == "dry_run",
+          f"sb={k.sandbox_mode} sh={k.shell_mode}")
+    # T16b — valore ignoto -> default fail-safe (identico al comportamento storico)
+    os.environ["GAS_SANDBOX_MODE"] = "falopso"
+    os.environ["GAS_SHELL_MODE"] = "rawshell"
+    k = kernel_tmp()
+    check("T16b mode ignoto -> default (os_strict / guarded)",
+          k.sandbox_mode == "os_strict" and k.shell_mode == "guarded",
+          f"sb={k.sandbox_mode} sh={k.shell_mode}")
+    # T16c — __init__ e doctor risolvono lo STESSO mode per lo stesso env (incl. ignoto)
+    coerente = True
+    dettagli = []
+    for val in ("os_strict", "os_with_fallback", "ignoto-xyz", "OS_STRICT"):
+        os.environ["GAS_SANDBOX_MODE"] = val
+        init_mode = kernel_tmp().sandbox_mode                                   # via __init__
+        doctor_mode = gas._parse_mode("GAS_SANDBOX_MODE", SB_ALLOWED, "os_strict")  # via doctor
+        coerente = coerente and (init_mode == doctor_mode)
+        dettagli.append(f"{val!r}->{init_mode}")
+    check("T16c __init__ e doctor risolvono lo STESSO mode (incl. ignoto -> os_strict)",
+          coerente, "; ".join(dettagli))
+finally:
+    os.environ.pop("GAS_SANDBOX_MODE", None)
+    os.environ.pop("GAS_SHELL_MODE", None)
+    if _sb_bak is not None: os.environ["GAS_SANDBOX_MODE"] = _sb_bak
+    if _sh_bak is not None: os.environ["GAS_SHELL_MODE"] = _sh_bak
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
