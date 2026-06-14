@@ -1,10 +1,28 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-12** (sera — sandbox di run_command)
+> Ultimo aggiornamento: **2026-06-14** (sandbox a livello OS — bwrap)
 
 ## Stato del motore
 
+- **Sandbox a livello OS (bwrap) ATTIVO** (2026-06-14, FASE 1 punto 1 — CHIUSO):
+  `run_command`, dove l'host concede i namespace, gira dentro un sandbox bwrap.
+  Profilo (§6.1): `--unshare-net` (rete isolata, solo loopback) `--unshare-pid
+  --proc /proc` `--new-session --die-with-parent` `--ro-bind / /` (fs read-only)
+  `--tmpfs /home --tmpfs /root --tmpfs /run` (MASCHERANO le home: chiavi, token,
+  ~/.ssh, ~/.config) + `--ro-bind <project_root> <project_root>` PER ULTIMO
+  (ri-espone in RO la sola root, anche se sta sotto /home: caso VPS) + `--clearenv`
+  e `--setenv` di ogni variabile GIÀ sanificata. Due modalità ORTOGONALI a
+  `GAS_SHELL_MODE` (§6.3) via `GAS_SANDBOX_MODE`: `os_strict` (default; sandbox
+  assente → `run_command` NEGATO, fail-closed, la prod è protetta di default) e
+  `os_with_fallback` (sandbox assente → degrado alla sola sandbox applicativa).
+  Valore ignoto → fail-safe su `os_strict`. Ordine: vetting → dry_run? → snapshot
+  → check sandbox (per mode) → exec in bwrap. `gas doctor`: nuova riga "Sandbox
+  OS" che sonda SEMPRE (presenza bwrap + sonda namespace REALE), FAIL se
+  os_strict+assente, WARN se os_with_fallback+assente. Sonda preliminare
+  dell'ambiente eseguita PRIMA di progettare (roadmap): Codespace = bwrap 0.9.0,
+  namespace concessi. Review #6 → **APPROVATO CON RISERVE** (R1/R2/R3 sotto,
+  nessuna indebolisce i guardrail). Suite **52/52**.
 - **Scudo gratuito del paracadute ATTIVO** (2026-06-13, FASE 2 cervello low-cost):
   due rung gratuiti SEMPRE in coda alla cascata (`run_turn` + `doctor`):
   `openrouter` (free tool-capable `meta-llama/llama-3.3-70b-instruct:free`) e
@@ -51,8 +69,12 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **44 PASS, 0 FAIL** (2026-06-12, stabile su 3 run consecutivi). Dai 34
-  storici si aggiungono i 10 check T12 (sandbox) + il rinforzo di T11c2.
+  **52 PASS, 0 FAIL** (2026-06-14). Dai 46 storici si aggiungono i 6 check T13
+  (sandbox OS: T13a rete chiusa, T13b fs read-only, T13c segreto mascherato,
+  T13d/d2 fallback per mode, T13e lecito dentro bwrap + snapshot). T13a/b/c
+  esercitano `_bwrap_prefix` direttamente (l'allowlist read-only non ha binari
+  di rete/scrittura) e si auto-skippano con `[SKIP]` se l'host non concede i
+  namespace (in Codespace NON si skippano).
 
 ## Pipeline provider (paracadute)
 
@@ -67,21 +89,41 @@
 
 ## Finding aperti
 
-- 🟠→🟡 **Esfiltrazione via shell — RIDOTTA, non chiusa** (era finding 🟠):
-  il sandbox di `run_command` neutralizza i vettori naïve/diretti (pipe,
-  redirezioni, command substitution rese innocue; binari di rete negati;
-  chiavi rimosse dall'env del figlio — verificato end-to-end su 4 vettori).
-  **Non** è un confinamento a livello OS: gli interpreti restano fuori
-  dall'allowlist proprio per non riaprire l'esecuzione di codice arbitrario.
-  La chiusura definitiva è il sandbox OS (bwrap/unshare, rete chiusa,
-  filesystem read-only sul VPS) — vedi prossimi passi.
-- 🟡 **Valori attaccati ai flag superano il vetting per-token** (R2, review
-  #4): `grep -f/etc/passwd` o `--file=/etc/passwd` iniziano con `-`, quindi
-  `_safe_path` non li vede come path, mentre il binario interpreta il file
-  esterno. Con l'allowlist attuale NON esiste esfiltrazione attiva
-  (verificato), ma è una divergenza vetting/binario: RIVERIFICARE prima di
-  allargare `SHELL_ALLOWLIST`. Difesa candidata: rifiutare token che iniziano
-  con `-` e contengono `/` o `=`.
+- 🟡 **Esfiltrazione via shell — CHIUSA a livello OS in os_strict** (era 🟠→🟡):
+  con il sandbox bwrap attivo e `GAS_SANDBOX_MODE=os_strict` (default) è
+  confinamento reale, non più mitigazione applicativa: rete isolata
+  (verificato `getent` rc=2), filesystem read-only, segreti on-disk sotto
+  /home mascherati (tmpfs), env del figlio sanificata. **Caveat (review #6):**
+  la chiusura vale SOLO in os_strict con sandbox disponibile; in
+  `os_with_fallback` su host senza namespace si ricade nella sola sandbox
+  applicativa e il finding resta 🟡 come prima. Resta 🟡 perché il deploy può
+  girare in fallback; sull'host di prod (namespace concessi, os_strict) è di
+  fatto chiuso.
+- 🟡 **Valori attaccati ai flag superano il vetting per-token** (R2, review #4)
+  — **DECLASSATO/neutralizzato in os_strict** (review #6): anche se un token
+  tipo `-f/home/...secret` superasse il vetting per-token, il file sotto /home
+  è mascherato dalla tmpfs e non leggibile dentro il sandbox (T13c lo
+  dimostra), e la rete chiusa impedisce comunque l'esfiltrazione. La divergenza
+  vetting/binario perde efficacia esfiltrante. **Caveat:** vale in os_strict +
+  sandbox disponibile; in fallback applicativo la divergenza resta come prima.
+  Difesa candidata invariata (rifiutare token con `-`+`/`/`=`) se si allarga
+  `SHELL_ALLOWLIST` o si gira stabilmente in fallback.
+- 🟡 **Snapshot sprecato in os_strict quando il sandbox manca** (R1, review #6):
+  per decisione §6.3 il check sandbox è DOPO lo snapshot; su host dove il
+  sandbox è stabilmente assente e mode=os_strict, ogni `run_command` lecito al
+  vetting ma negato per sandbox assente consuma uno slot di snapshot
+  (retention count-based). Mitigazione possibile (riordino interno, l'ortogo-
+  nalità §6.3 resta): anticipare il check sandbox prima dello snapshot in
+  os_strict. Non blocca.
+- 🟡 **Trappola `--chdir` con cwd fuori dalla project root** (R2, review #6):
+  se `GAS_CWD` punta a una dir sotto /home (o /root, /run) ma FUORI dalla root
+  ri-bindata, la tmpfs la maschera e `--chdir` fallisce → `run_command` negato
+  (rc≠0). È fail-closed e non crasha, ma è un limite di usabilità sul VPS:
+  documentare che `GAS_CWD` deve stare dentro la project root.
+- 🟡 **Duplicazione del parse di `GAS_SANDBOX_MODE` in doctor** (R3, review #6):
+  `doctor()` ridetermina il mode con la stessa logica di `__init__` invece di
+  riusare l'attributo del kernel. Manutenibilità (come R3 review #5), non
+  sicurezza.
 - 🟡 **Falsi positivi del path-check su argomenti non-path** (R3, review #4):
   un pattern grep tipo `/etc/cron` viene risolto come path assoluto e il
   comando negato. Fail-closed (lato sicuro), ma limite di usabilità da
@@ -115,16 +157,19 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 5 review
-  completate (#1, #2, #3, #3-bis, #4), 13 lezioni datate in
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 6 review completate
+  (#1, #2, #3, #3-bis, #4, #5, #6), lezioni datate in
   `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 
-1. **Sandbox a livello OS per `run_command`** (bwrap/unshare: namespace di
-   rete chiuso + filesystem read-only) — chiusura PIENA del finding ora
-   ridotto. Aggiungere un check di disponibilità in `gas doctor`.
-2. **WINDOW_CHAR_CAP** sulla finestra (rimedio proposto in review #1).
-3. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref,
-   gc oggetti orfani, dimensione snapshots.log; valutare retention ibrida).
-4. Valutare cap output dedicato (più alto) per la futura pipeline Whisper.
+1. **WINDOW_CHAR_CAP** sulla finestra a granularità di messaggio (rimedio
+   proposto in review #1; mai slicing).
+2. **R1 review #6** — valutare l'anticipo del check sandbox prima dello
+   snapshot in os_strict (riordino interno, l'ortogonalità §6.3 resta), per non
+   sprecare snapshot su host stabilmente senza namespace.
+3. **Manutenzione snapshot in `gas doctor`** (riserve R2/R3: conteggio ref, gc
+   oggetti orfani, dimensione snapshots.log; valutare retention ibrida).
+4. **R3 review #5/#6** — estrarre costanti provider e il parse di
+   `GAS_SANDBOX_MODE` in punti unici (manutenibilità).
+5. Valutare cap output dedicato (più alto) per la futura pipeline Whisper.

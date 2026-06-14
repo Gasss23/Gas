@@ -1,104 +1,124 @@
-# Report sessione 2026-06-13 — Sicurezza commit + Scudo gratuito del paracadute
+# 📄 REPORT FINE TASK — Sandbox a livello OS (bwrap) per `run_command`
 
-Tre interventi in ordine: (P0) disarmo dell'auto-commit SessionEnd; (1A) review del
-motore resa quasi-automatica su tre livelli; (1B) due rung gratuiti come pavimento della
-cascata provider. Diff del motore **APPROVATO CON RISERVE** dal revisore (#5). Suite:
-**46 PASS, 0 FAIL**.
+**Data:** 2026-06-14 · **Esito:** ✅ COMPLETATO · **Review:** #6 APPROVATO CON RISERVE · **Suite:** 52 PASS, 0 FAIL
 
-## PRIORITÀ 0 — Auto-commit SessionEnd disarmato
+---
 
-**Scelta: add selettivo** (non rimozione totale). L'hook `SessionEnd` ora fa
-`git add reports/ '*.md' .gas_history.json` (niente più `git add -A`) e committa/pusha
-solo quei path. **Perché questa forma e non la rimozione totale:** preserva la comodità di
-salvare automaticamente report, doc e cronologia a fine sessione (utile per vederli su web
-e non perdere lavoro), ma rende **impossibile** che il motore (`gas.py`, `brains/`,
-`modules/`, `tests/`) finisca committato senza review — quei file non vengono mai messi in
-stage dall'hook. Il commit del motore resta quindi sempre esplicito e revisionato.
+## Chiarimenti richiesti (in testa, come da consegna)
 
-## 1A — Review del motore (a + b + c, tutti applicati)
+### P0 — Forma dell'auto-commit SessionEnd in `5cc609b`
+È **add SELETTIVO non-motore**, NON rimozione totale. L'hook `SessionEnd`
+(`.claude/settings.json`) esegue:
+`git add reports/ '*.md' .gas_history.json` (mai `git add -A`), poi commit+push
+solo del cached.
+`gas.py`, `brains/`, `modules/`, `tests/` **non** sono nella add-list →
+**non possono essere auto-committati** dal SessionEnd. Verificato: `git show
+5cc609b` tocca solo `.claude/*`, `.gitignore`, `CLAUDE.md` (nessun file motore).
 
-- **a) `description` imperativa** (`.claude/agents/revisore.md`): da "Usalo PRIMA di ogni
-  commit..." a "USA PROATTIVAMENTE E OBBLIGATORIAMENTE prima di QUALSIASI commit che tocca
-  gas.py/brains/modules/tests... invoca SUBITO il revisore". Migliora l'auto-delega
-  (probabilistica), costo 0 token.
-- **b) Regola di workflow** (CLAUDE.md sez. 3): gate di review OBBLIGATORIO prima di ogni
-  `git commit` che tocca il motore; commit consentito solo se APPROVATO / APPROVATO CON
-  RISERVE. È la **barriera primaria** (istruzione diretta nel project prompt).
-- **c) Hook `PreToolUse` deterministico** (`.claude/hooks/review_gate.sh`): legge il comando
-  da `tool_input.command` (JSON su stdin, **non** `cat` grezzo); se è un `git commit` e il
-  diff staged tocca il motore senza il marcatore `.claude/.review_ok`, **blocca** (exit 2).
-  È la **rete di sicurezza best-effort** (il match testuale non copre tutte le forme di
-  commit), non un sostituto di (b). Marcatore gitignorato; va creato dopo verdetto e
-  rimosso dopo il commit. **Testato:** blocca con motore staged senza marcatore (exit 2),
-  consente con marcatore (exit 0), consente i commit di soli doc (exit 0).
+### Riserve del revisore #5 (ribadite e tracciate come gli altri finding)
+Già in `stato_progetto.md` (sezione Finding aperti), confermate:
+- **R1 #5** — modello free hardcoded/volatile (`meta-llama/llama-3.3-70b-instruct:free`
+  può sparire lato OpenRouter; `gas doctor` dovrebbe verificare l'ESISTENZA del
+  modello, non solo la presenza della chiave). 🟡
+- **R2 #5** — degrado a solo-testo del modello free non rilevato a runtime (se il
+  modello non supporta i tool, il loop perde read_file/write_file; oggi solo
+  dichiarato in commento). 🟡
+- **R3 #5** — duplicazione costanti provider (URL/modelli) tra `run_turn` e
+  `doctor`. Manutenibilità, non sicurezza. 🟡
 
-## 1B — Scudo gratuito del paracadute (budget ZERO)
+Nessuna riserva #5 indebolisce i guardrail.
 
-Due rung gratuiti **sempre in coda** alla lista `providers`, sia in `run_turn` sia in
-`doctor` (via `+ FREE_RUNGS`), riusando il client `OpenAI` esistente:
+---
 
-- **openrouter** — `OPENROUTER_API_KEY`, `https://openrouter.ai/api/v1`, modello free
-  **tool-capable** `meta-llama/llama-3.3-70b-instruct:free`. Lista facile da aggiornare in
-  testa a `run_turn`; commento esplicito: se il modello scelto non supporta i tool, il loop
-  degrada a sola risposta testuale (accettabile come ultima spiaggia).
-- **ollama** — pavimento **offline**, `qwen2.5:7b-instruct`, gate su `GAS_OLLAMA_URL`. NON
-  gira nel Codespace; sul PC/VPS si esporta `GAS_OLLAMA_URL=http://localhost:11434/v1`. Se
-  assente → **skip pulito** dal gate esistente `if not os.environ.get(env): continue`
-  (sez. 9, mai crash). `api_key=base_url=URL` deliberato (Ollama ignora la chiave; la SDK
-  rifiuta api_key vuota).
-- **Brain legacy `brains/*.py` NON cablati**: restano codice morto (usano slicing `[-8:]`,
-  vietato da sez. 5, e non supportano il loop a tool).
-- **`doctor`**: i due rung opzionali danno **WARN** (non FAIL) se non configurati; tupla
-  provider estesa con flag `obbligatoria`. Cablata anche `OPENROUTER_API_KEY` nel ping
-  (chiudeva l'incoerenza: era elencata ma mai pingata).
-- **Nota obsoleta corretta**: "Gemini free tier: 20 req/giorno" in
-  `reports/stato_progetto.md:47` era obsoleta → aggiornata (oggi RPD molto più alto, varia
-  per modello).
+## Cosa è stato fatto
 
-### Cosa devi configurare tu
-- **OpenRouter**: account gratuito → `OPENROUTER_API_KEY` nei secrets/env (Codespace + VPS).
-- **Ollama** (solo PC/VPS): `curl -fsSL https://ollama.com/install.sh | sh`,
-  `ollama pull qwen2.5:7b-instruct`, `export GAS_OLLAMA_URL=http://localhost:11434/v1`.
+Implementata la **FASE 1 punto 1** della roadmap (chiusura piena del finding
+esfiltrazione): `run_command` gira, dove l'host concede i namespace, dentro un
+sandbox **bwrap**.
 
-## Test (tests/test_unit_kernel.py, zero token) — 46 PASS, 0 FAIL
+### Sonda preliminare dell'ambiente (OBBLIGATORIA da roadmap, eseguita PRIMA di progettare)
+Codespace = **bwrap 0.9.0** presente, namespace concessi. Quattro barriere
+validate empiricamente prima di scrivere codice: rete isolata (`getent` rc=2),
+project root re-bind RO leggibile, scrittura su project root negata (RO), **esca
+segreta sotto /home NON leggibile** (tmpfs). Confermati i due casi limite:
+project root sotto `/tmp` (test) e sotto `/home` (deploy VPS).
 
-- **T9a** reso deterministico: disattiva i rung free opzionali (pop+ripristino di
-  `OPENROUTER_API_KEY`/`GAS_OLLAMA_URL`) per contare i 3 provider obbligatori della cascata
-  'semplice'. Necessario perché nell'ambiente `OPENROUTER_API_KEY` è già presente.
-- **T9d** (nuovo): con OpenRouter presente, il modello free compare **in coda** alla
-  cascata.
-- **T9e** (nuovo): senza `GAS_OLLAMA_URL`, il modello ollama **non** viene interpellato
-  (skip pulito, niente crash).
-- I 44 storici restano verdi; i due nuovi "mordono" (asserzione positiva + negativa reali).
+### Decisioni §6 implementate
+- **§6.1 PROFILO bwrap** (`_bwrap_prefix`): `--unshare-net --unshare-pid --proc
+  /proc --new-session --die-with-parent --ro-bind / / --tmpfs /home --tmpfs
+  /root --tmpfs /run --ro-bind <root> <root> --chdir <cwd> --clearenv` +
+  `--setenv` di ogni var GIÀ sanificata. Le tmpfs MASCHERANO le home (chiavi,
+  token, ~/.ssh, ~/.config); il re-bind RO della project root è PER ULTIMO (così
+  funziona anche con root sotto /home). Chiude R2 (review #4) **anche in lettura**.
+  *Deviazione consapevole:* `/tmp` non riceve tmpfs (§6.1 elenca solo
+  /home,/root,/run) → resta RO come tutto `/`, più severo della parentesi del test.
+- **§6.2 NIENTE GAS_ENV**: `GAS_SANDBOX_MODE` ∈ {`os_strict` (default),
+  `os_with_fallback`}; valore ignoto → fail-safe su `os_strict` (la prod è
+  protetta di default). `doctor`: sandbox assente + os_strict = FAIL; +
+  os_with_fallback = WARN.
+- **§6.3 ORTOGONALITÀ**: `GAS_SANDBOX_MODE` (dove) e `GAS_SHELL_MODE` (se)
+  separati. Ordine `run_command`: vetting → dry_run? → snapshot → check sandbox
+  (per mode) → exec in bwrap. `doctor` sonda la sandbox SEMPRE.
 
-## Review #5 (revisore) — APPROVATO CON RISERVE
+### Modifiche `gas.py`
+`_probe_os_sandbox` (sonda reale + cache di processo), parse `GAS_SANDBOX_MODE` e
+cache disponibilità in `__init__`, `_bwrap_prefix`, check sandbox per mode nel
+ramo `run_command`, sezione 6 "Sandbox OS" in `doctor`, descrizione tool +
+system prompt aggiornati.
 
-Validati: rung in coda a entrambi i rami, skip pulito di ollama, eccezioni intercettate con
-`logging.warning` + fallback (sez. 9), `_get_window()` e cap 10 iterazioni intatti (sez. 5
-e 8), brain legacy non attivati, trucco `api_key=base_url=URL` accettabile e documentato,
-T9d/T9e che mordono, suite 46/46 eseguita dal revisore. Tre riserve tracciate come finding
-🟡 in `stato_progetto.md` (nessuna indebolisce i guardrail):
+---
 
-- **R1** — modello `:free` hardcoded e volatile: `gas doctor` dovrebbe verificarne
-  l'esistenza, non solo la chiave.
-- **R2** — degrado a solo-testo (modello senza tool) solo dichiarato in commento, non
-  rilevato a runtime.
-- **R3** — duplicazione costanti provider tra `run_turn` e `doctor` (manutenibilità).
+## Test che MORDONO (zero token LLM) — risultato REALE
 
-Il revisore ha aggiunto 3 lezioni datate alla sua memoria persistente.
+```
+[PASS] T13a rete bloccata nel sandbox (DNS fallisce) — rc=2 out=''
+[PASS] T13b filesystem read-only (scrittura su project root negata) — rc=1 nato=False
+[PASS] T13c segreto on-disk sotto /home mascherato (tmpfs lo copre) — rc=1
+[PASS] T13d os_strict + sandbox assente -> run_command negato (fail-closed)
+[PASS] T13d2 os_with_fallback + sandbox assente -> esegue (sandbox applicativa)
+[PASS] T13e comando lecito read-only funziona dentro bwrap + snapshot scatta
 
-## Istituzioni di processo
+=== RIEPILOGO: 52 PASS, 0 FAIL ===
+```
 
-- A) `reports/stato_progetto.md` aggiornato (scudo gratuito + sicurezza commit nel motore;
-  R1/R2/R3 tra i finding; suite 46).
-- B) `reports/diff_sessione.md` rigenerato per questa sessione.
-- C) Revisore: review #5 conclusa (APPROVATO CON RISERVE), 3 lezioni nuove.
+Ognuno fallisce se la barriera corrispondente viene tolta. La suite storica (46)
+resta verde: T12a/c/d/e e T11e ora passano attraverso bwrap. `gas doctor`:
+`[OK] Sandbox OS bwrap+namespace — bwrap + namespace net/pid OK (mode=os_strict)`.
+
+---
+
+## Verdetto revisore (review #6): APPROVATO CON RISERVE
+
+Sul finding: con T13a (rete chiusa) + T13c (esca /home mascherata) + T13b (fs RO)
++ env sanificata, il revisore conferma **esplicitamente** che:
+- il finding 🟠→🟡 **esfiltrazione si chiude a livello OS** in os_strict + sandbox
+  disponibile;
+- **R2 (valori attaccati ai flag, review #4) si declassa/neutralizza** in os_strict
+  (anche con buco nel vetting, il file sotto /home è mascherato e la rete chiusa).
+
+**Caveat onesto:** entrambe le chiusure valgono SOLO in os_strict con sandbox
+disponibile; in `os_with_fallback` su host senza namespace si ricade nella sola
+sandbox applicativa → tracciato come declassamento **condizionato**, non assoluto.
+
+### Riserve #6 tracciate in `stato_progetto.md` (nessuna bloccante, nessuna indebolisce i guardrail)
+- **R1 #6** — snapshot sprecato in os_strict quando il sandbox manca (check dopo
+  snapshot per decisione §6.3; mitigazione possibile: anticipare il check in
+  os_strict). 🟡
+- **R2 #6** — trappola `--chdir` con `GAS_CWD` fuori dalla project root (fail-closed,
+  ma limite di usabilità sul VPS: documentare che cwd deve stare dentro la root). 🟡
+- **R3 #6** — `doctor` ridetermina `GAS_SANDBOX_MODE` invece di riusare
+  l'attributo del kernel (manutenibilità). 🟡
+
+---
+
+## File toccati
+- `gas.py` (motore, revisionato) — +134 righe
+- `tests/test_unit_kernel.py` (revisionato) — +90 righe (blocco T13)
+- `reports/stato_progetto.md`, `reports/diff_sessione.md`, `reports/ultimo_report.md`
+- `.claude/agents/memoria_revisore.md` (lezioni nuove dal revisore)
 
 ## Prossimi passi
-
-1. **Sandbox OS per `run_command`** — FASE 1 (proposta bubblewrap) presentata a parte in
-   questa sessione, in attesa di OK per FASE 2 (implementazione).
-2. R1/R2 dello scudo: check esistenza modello free + rilevazione runtime del degrado tool.
-3. `WINDOW_CHAR_CAP` (review #1).
-4. Manutenzione snapshot in `gas doctor` (R2/R3 review #3) + R3 di questa review
-   (estrazione costanti provider).
+1. WINDOW_CHAR_CAP sulla finestra (review #1).
+2. R1 #6 — anticipare il check sandbox prima dello snapshot in os_strict.
+3. Manutenzione snapshot in `gas doctor` (conteggio ref, gc, rotazione snapshots.log).
+4. R3 #5/#6 — estrarre costanti provider e parse `GAS_SANDBOX_MODE` in punti unici.

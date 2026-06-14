@@ -1,60 +1,53 @@
-# Diff sessione 2026-06-13 — Sicurezza commit + Scudo gratuito del paracadute
+# 🔧 DIFF DI SESSIONE — 2026-06-14
 
-Riepilogo dei file toccati in questa sessione (la storia completa sta in git).
-Due commit: `5cc609b` (PRIORITÀ 0 + 1A, config/doc) e il commit di 1B (motore,
-revisionato). Più l'hook on-demand "scrivi rep" (`607c00b`, già in storia).
+> Fotografia dell'ultima sessione (la storia completa è in git).
+> Tema: **FASE 2 / FASE 1 punto 1 — Sandbox a livello OS (bwrap) per `run_command`**.
 
-## PRIORITÀ 0 + 1A — già in `5cc609b` (config/doc, nessun file motore)
+## File toccati
 
-- **`.claude/settings.json`** (+15 / -2): hook `SessionEnd` disarmato (add
-  selettivo di `reports/`, `*.md`, `.gas_history.json`; niente `git add -A`, mai
-  il motore) + registrato hook `PreToolUse` che invoca `review_gate.sh`.
-- **`.claude/hooks/review_gate.sh`** (+31): gate di review deterministico. Legge
-  il comando da `tool_input.command` (JSON su stdin), blocca (exit 2) un
-  `git commit` il cui diff staged tocca `gas.py/brains/modules/tests` se manca
-  `.claude/.review_ok`. Best-effort, rete sopra la regola di CLAUDE.md sez. 3.
-- **`.gitignore`** (+1): ignora il marcatore `.claude/.review_ok`.
-- **`.claude/agents/revisore.md`** (±1): `description` resa imperativa
-  ("USA PROATTIVAMENTE E OBBLIGATORIAMENTE… invoca SUBITO").
-- **`CLAUDE.md`** (+1): regola di workflow in sez. 3 (gate di review obbligatorio
-  prima del commit del motore; barriera primaria = istruzione).
+### `gas.py` (motore — revisionato, review #6 APPROVATO CON RISERVE)
+- **`_GAS_SYSTEM_PROMPT_BASE`**: aggiunta una riga — dove disponibile,
+  `run_command` gira in sandbox OS con rete isolata e filesystem read-only.
+- **`_probe_os_sandbox(force=False) -> Tuple[bool, str]`** (nuova funzione di
+  modulo, cache di processo `_OS_SANDBOX_CACHE`): sonda REALE (non simulata) —
+  `shutil.which("bwrap")` + creazione di un namespace minimale ed esecuzione di
+  `true`. Riusata da `__init__` e da `doctor`.
+- **`GasKernel.__init__`**: parse di `GAS_SANDBOX_MODE` ∈ {`os_strict` (default),
+  `os_with_fallback`} con normalizzazione e fail-safe su `os_strict`; cache di
+  `self.os_sandbox_available` / `self._os_sandbox_detail`. Aggiornata la
+  `description` del tool `run_command`.
+- **`GasKernel._bwrap_prefix(cwd) -> List[str]`** (nuovo helper): costruisce il
+  prefisso bwrap del profilo §6.1 (rete chiusa, pid ns, fs RO, tmpfs di
+  mascheramento su /home·/root·/run, re-bind RO della project root PER ULTIMO,
+  `--clearenv` + `--setenv` dell'env sanificata). Esposto come metodo così i
+  test esercitano il profilo direttamente.
+- **`execute_tool_call` (ramo `run_command`)**: inserito il check sandbox per
+  mode DOPO lo snapshot (§6.3). os_strict + assente → "Operazione negata"
+  (fail-closed, niente exec). Disponibile → exec con `_bwrap_prefix(cwd) + argv`.
+  os_with_fallback + assente → warning + exec applicativo. Unica `subprocess.run`.
+- **`doctor`**: nuova sezione 6 "Sandbox OS" — sonda SEMPRE; OK se disponibile,
+  FAIL se os_strict+assente, WARN se os_with_fallback+assente.
 
-## 1B — motore (commit dedicato, revisionato APPROVATO CON RISERVE)
+### `tests/test_unit_kernel.py` (revisionato insieme al motore)
+- Nuovo blocco **T13** (6 check): T13a rete bloccata (`getent` rc≠0), T13b
+  filesystem read-only (touch su project root negato), T13c segreto on-disk
+  sotto /home mascherato (tmpfs), T13d/T13d2 fallback per `GAS_SANDBOX_MODE`
+  (deterministico, forza `os_sandbox_available=False`), T13e comando lecito
+  read-only dentro bwrap + snapshot scatta. Helper `skip()` per host senza
+  namespace. Risultato reale: **52 PASS, 0 FAIL**.
 
-### `gas.py` (+37 / -8)
+### Documentazione / processo
+- `reports/stato_progetto.md`: sandbox OS ATTIVO; finding esfiltrazione e R2
+  declassati (chiusura **condizionata** a os_strict + sandbox disponibile);
+  riserve review #6 (R1 snapshot-prima-del-check, R2 caveat `--chdir`/cwd, R3
+  duplicazione mode in doctor); suite 52; prossimi passi riordinati.
+- `.claude/agents/memoria_revisore.md`: lezioni nuove datate 2026-06-14
+  (aggiunte dal subagent revisore).
+- `reports/ultimo_report.md`: report di fine task (fonte di verità sull'esito).
 
-- **`run_turn`**: due rung gratuiti `FREE_RUNGS` aggiunti **in coda** (`+ FREE_RUNGS`)
-  a entrambi i rami della cascata (`semplice` e default): `openrouter`
-  (`meta-llama/llama-3.3-70b-instruct:free`, tool-capable) e `ollama`
-  (`qwen2.5:7b-instruct`, gate su `GAS_OLLAMA_URL`). Riusano il client `OpenAI`.
-  Commento: se il modello free non supporta i tool, il loop degrada a sola
-  risposta testuale. `ollama` con `api_key=base_url=URL` (deliberato).
-- **`doctor`**: tupla provider estesa con flag `obbligatoria`; i due rung
-  opzionali danno **WARN** (non FAIL) se chiave/endpoint assenti. Cablata
-  `OPENROUTER_API_KEY` nel ping (prima elencata ma mai testata).
-
-### `tests/test_unit_kernel.py` (+37)
-
-- **T9a** reso deterministico: `pop`+ripristino di `OPENROUTER_API_KEY`/
-  `GAS_OLLAMA_URL` per contare i 3 provider obbligatori (l'ambiente ha già
-  `OPENROUTER_API_KEY`).
-- **T9d** (nuovo): con OpenRouter presente, il modello free compare **in coda**.
-- **T9e** (nuovo): senza `GAS_OLLAMA_URL`, ollama non è interpellato (skip pulito).
-- Da 44 a **46 PASS, 0 FAIL**.
-
-## Doc/processo
-
-- **`reports/ultimo_report.md`** (+102 / -194): report di fine task riscritto
-  (P0 + 1A + 1B + review #5 + test).
-- **`reports/stato_progetto.md`** (+31 / -1): scudo gratuito + sicurezza commit
-  nel motore; pipeline a 5 rung; nota "20 req/giorno" corretta; R1/R2/R3 tra i
-  finding 🟡.
-- **`.claude/agents/memoria_revisore.md`** (+2): due lezioni datate 2026-06-13
-  (come testare l'append in coda; volatilità dei modelli `:free`).
-
-## Perché
-
-P0 + 1A: rendere strutturalmente impossibile committare il motore senza review
-(hook disarmato + gate + istruzione). 1B: dare al paracadute una rete a budget
-zero (FASE 2 cervello low-cost) sotto la cascata a pagamento, senza toccare i
-guardrail esistenti (`_get_window`, cap 10 iterazioni, fail-safe sez. 9).
+## Verifiche eseguite (reali, in questo Codespace)
+- Sonda ambiente PRIMA di progettare (roadmap): bwrap 0.9.0, namespace concessi.
+- 4 barriere validate empiricamente: rete rc=2, project root RO leggibile,
+  scrittura su root negata, esca segreta sotto /home NON leggibile.
+- Suite completa: **52 PASS, 0 FAIL**.
+- `gas doctor`: riga "Sandbox OS" = `[OK] bwrap + namespace net/pid OK (mode=os_strict)`.

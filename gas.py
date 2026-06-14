@@ -42,7 +42,10 @@ _GAS_SYSTEM_PROMPT_BASE = (
     "Pipe (|), redirezioni (>), concatenazioni (;, &&), command substitution "
     "($(...)) e interpreti NON funzionano: vengono trattati come testo o negati. "
     "Per i conteggi usa le opzioni native (es. 'grep -c X file', 'wc -l file'); "
-    "per creare o modificare file usa SEMPRE write_file, mai redirezioni shell.\n"
+    "per creare o modificare file usa SEMPRE write_file, mai redirezioni shell. "
+    "Inoltre, dove disponibile, run_command gira in un sandbox a livello OS "
+    "(rete ISOLATA e filesystem READ-ONLY): da lì non hai accesso di rete e non "
+    "puoi scrivere file.\n"
     "- Non scrivere MAI file di memoria o cronologia (gas_history e simili): "
     "la memoria è gestita automaticamente dal kernel."
 )
@@ -54,6 +57,42 @@ def _build_system_prompt(root: Path) -> str:
         identity = identity_md.read_text(encoding="utf-8")
         return f"# LA TUA IDENTITÀ\n\n{identity}\n\n{_GAS_SYSTEM_PROMPT_BASE}"
     return _GAS_SYSTEM_PROMPT_BASE
+
+# Cache di processo della capacità del sandbox OS: la disponibilità di
+# bwrap + namespace è statica per host, quindi sondiamo UNA volta sola (la
+# sonda avvia un processo bwrap reale: non vogliamo pagarla a ogni init di
+# GasKernel né a ogni run di doctor). None = non ancora sondato.
+_OS_SANDBOX_CACHE: Optional[Tuple[bool, str]] = None
+
+def _probe_os_sandbox(force: bool = False) -> Tuple[bool, str]:
+    """Sonda REALE (non simulata) della disponibilità del sandbox OS.
+    Ritorna (disponibile, dettaglio). Due condizioni: (1) bwrap installato;
+    (2) i namespace richiesti sono concessi davvero dall'ambiente — verificato
+    creandone uno minimale (rete+pid+proc, root read-only) ed eseguendovi
+    'true'. In un container senza privilegi i namespace possono mancare anche
+    con bwrap presente: per questo si SONDA, non si assume. Risultato cachato
+    a livello di processo (force=True per ri-sondare)."""
+    global _OS_SANDBOX_CACHE
+    if _OS_SANDBOX_CACHE is not None and not force:
+        return _OS_SANDBOX_CACHE
+    import shutil
+    bwrap = shutil.which("bwrap")
+    if not bwrap:
+        _OS_SANDBOX_CACHE = (False, "bwrap non installato")
+        return _OS_SANDBOX_CACHE
+    try:
+        res = subprocess.run(
+            [bwrap, "--unshare-net", "--unshare-pid", "--proc", "/proc",
+             "--ro-bind", "/", "/", "--die-with-parent", "true"],
+            capture_output=True, text=True, timeout=10)
+    except Exception as e:
+        _OS_SANDBOX_CACHE = (False, f"sonda namespace fallita: {str(e)[:60]}")
+        return _OS_SANDBOX_CACHE
+    if res.returncode != 0:
+        _OS_SANDBOX_CACHE = (False, f"namespace non concessi: {res.stderr.strip()[:80]}")
+        return _OS_SANDBOX_CACHE
+    _OS_SANDBOX_CACHE = (True, "bwrap + namespace net/pid OK")
+    return _OS_SANDBOX_CACHE
 
 class GasKernel:
     def __init__(self, root_dir: Optional[str] = None):
@@ -71,8 +110,22 @@ class GasKernel:
             logging.warning(f"GAS_SHELL_MODE={raw_mode!r} non riconosciuto, uso 'guarded'")
             raw_mode = "guarded"
         self.shell_mode: str = raw_mode
+        # Modalità del sandbox OS (ortogonale a GAS_SHELL_MODE: 'dove' si esegue,
+        # non 'se'): 'os_strict' (default) pretende il confinamento OS e nega il
+        # comando se manca; 'os_with_fallback' degrada alla sola sandbox
+        # applicativa quando bwrap/namespace non ci sono. Valore ignoto →
+        # fail-safe sul mode PIÙ severo (os_strict): la prod è protetta di default.
+        raw_sb = os.environ.get("GAS_SANDBOX_MODE", "os_strict").strip().lower().replace("-", "_")
+        if raw_sb not in ("os_strict", "os_with_fallback"):
+            logging.warning(f"GAS_SANDBOX_MODE={raw_sb!r} non riconosciuto, uso 'os_strict'")
+            raw_sb = "os_strict"
+        self.sandbox_mode: str = raw_sb
+        # Capacità del sandbox OS sondata una volta (cache di processo).
+        self.os_sandbox_available: bool
+        self._os_sandbox_detail: str
+        self.os_sandbox_available, self._os_sandbox_detail = _probe_os_sandbox()
         self.tools_schema = [
-            {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti).", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
+            {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}}
         ]
@@ -283,6 +336,38 @@ class GasKernel:
                 env.pop(var, None)
         return env
 
+    def _bwrap_prefix(self, cwd: Path) -> List[str]:
+        """Prefisso bwrap (fino a '--') per confinare run_command a livello OS.
+        Profilo (decisione §6.1):
+        - --unshare-net: nessuna rete (solo loopback) → niente esfiltrazione;
+        - --unshare-pid --proc /proc: PID namespace isolato + procfs pulita;
+        - --new-session --die-with-parent: niente TTY ereditato, il figlio muore
+          col kernel di Gas;
+        - --ro-bind / /: tutto il filesystem in SOLA LETTURA;
+        - --tmpfs /home --tmpfs /root --tmpfs /run: MASCHERANO le home (chiavi,
+          token, ~/.ssh, ~/.config): non leggibili nemmeno se un buco nel vetting
+          passasse un path lì sotto (chiude R2 anche in lettura);
+        - --ro-bind <root> <root> PER ULTIMO: ri-espone in RO la sola project
+          root, così i comandi leciti leggono i file del progetto anche se la
+          root sta sotto /home (caso VPS), DOPO che il tmpfs l'ha mascherata;
+        - --clearenv + --setenv di ogni var GIÀ sanificata: env del figlio
+          controllata esattamente (PATH incluso, segreti esclusi a monte)."""
+        env = self._sanitized_subprocess_env()
+        prefix: List[str] = [
+            "bwrap",
+            "--unshare-net", "--unshare-pid", "--proc", "/proc",
+            "--new-session", "--die-with-parent",
+            "--ro-bind", "/", "/",
+            "--tmpfs", "/home", "--tmpfs", "/root", "--tmpfs", "/run",
+            "--ro-bind", str(self.root), str(self.root),
+            "--chdir", str(cwd),
+            "--clearenv",
+        ]
+        for var, val in env.items():
+            prefix += ["--setenv", var, val]
+        prefix.append("--")
+        return prefix
+
     def _vet_command(self, command: str, cwd: Path) -> Tuple[Optional[List[str]], Optional[str]]:
         """Vetting fail-closed di un comando PRIMA di eseguirlo o fotografarlo.
         Ritorna (argv, None) se consentito, (None, motivo) se negato.
@@ -336,9 +421,32 @@ class GasKernel:
                     return ("Operazione negata: snapshot preventivo fallito, "
                             "comando non eseguito (fail-closed). Dettagli in "
                             "gas_debug.log.")
-                # 4) Esecuzione SENZA shell (argv già parsato) e con env
-                #    ripulita dalle variabili sensibili.
-                res = subprocess.run(argv, shell=False, cwd=cwd,
+                # 4) Check sandbox OS per mode (§6.3, dopo lo snapshot). In
+                #    os_strict il confinamento OS è obbligatorio: se manca, il
+                #    comando NON viene eseguito (fail-closed). In os_with_fallback
+                #    si degrada alla sola sandbox applicativa.
+                if not self.os_sandbox_available and self.sandbox_mode == "os_strict":
+                    logging.warning(
+                        f"run_command negato: sandbox OS assente "
+                        f"({self._os_sandbox_detail}) e GAS_SANDBOX_MODE=os_strict")
+                    return ("Operazione negata: sandbox OS (bwrap + namespace) "
+                            "non disponibile e GAS_SANDBOX_MODE=os_strict, "
+                            "comando non eseguito (fail-closed). Usa "
+                            "GAS_SANDBOX_MODE=os_with_fallback per accettare la "
+                            "sola sandbox applicativa, oppure avvia 'gas doctor' "
+                            "per la diagnosi. Dettagli in gas_debug.log.")
+                # 5) Esecuzione SENZA shell (argv già parsato) e con env
+                #    ripulita dalle variabili sensibili. Dove disponibile, dentro
+                #    il sandbox OS (rete chiusa, fs read-only); altrimenti
+                #    (os_with_fallback) sola sandbox applicativa.
+                if self.os_sandbox_available:
+                    exec_argv = self._bwrap_prefix(cwd) + argv
+                else:
+                    logging.warning(
+                        "run_command in fallback applicativo: sandbox OS assente "
+                        "(GAS_SANDBOX_MODE=os_with_fallback)")
+                    exec_argv = argv
+                res = subprocess.run(exec_argv, shell=False, cwd=cwd,
                                      capture_output=True, text=True, timeout=60,
                                      env=self._sanitized_subprocess_env())
                 out = res.stdout + res.stderr
@@ -571,6 +679,22 @@ def doctor(root_dir: Optional[str] = None) -> int:
         size_mb = log_path.stat().st_size / (1024 * 1024)
         check("Log", "gas_debug.log", "WARN" if size_mb > 5 else "OK",
               f"{size_mb:.2f} MB" + (" — supera 5MB, rotazione al deploy VPS" if size_mb > 5 else ""))
+
+    # 6. Sandbox OS: si sonda SEMPRE (indipendente dal mode, §6.3). La gravità
+    # quando manca dipende dal mode: os_strict (default) = FAIL ovunque (la prod
+    # è protetta di default); os_with_fallback = WARN (degrado consapevole alla
+    # sola sandbox applicativa).
+    avail, detail = _probe_os_sandbox()
+    raw_sb = os.environ.get("GAS_SANDBOX_MODE", "os_strict").strip().lower().replace("-", "_")
+    sb_mode = raw_sb if raw_sb in ("os_strict", "os_with_fallback") else "os_strict"
+    if avail:
+        check("Sandbox OS", "bwrap+namespace", "OK", f"{detail} (mode={sb_mode})")
+    else:
+        check("Sandbox OS", "bwrap+namespace",
+              "FAIL" if sb_mode == "os_strict" else "WARN",
+              f"{detail} — mode={sb_mode}"
+              + (" (run_command bloccato)" if sb_mode == "os_strict"
+                 else " (fallback sandbox applicativa)"))
 
     # Report tabellare
     print("\n=== GAS DOCTOR ===\n")

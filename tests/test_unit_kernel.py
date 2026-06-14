@@ -368,6 +368,96 @@ finally:
 check("T12j GAS_SHELL_MODE non valido -> fallback su 'guarded'",
       k_fb.shell_mode == "guarded", f"shell_mode={k_fb.shell_mode}")
 
+# ---------- T13: sandbox OS (bwrap) — barriere che MORDONO ----------
+# I test di barriera (a/b/c) esercitano il profilo bwrap DIRETTAMENTE via
+# _bwrap_prefix: l'allowlist read-only non contiene binari di rete/scrittura,
+# quindi non si potrebbe provare net/fs/mascheramento passando per run_command.
+# Ognuno fallisce se la barriera corrispondente viene tolta dal profilo.
+OS_SB = gas._probe_os_sandbox()[0]
+
+def skip(nome: str, motivo: str):
+    print(f"[SKIP] {nome} — {motivo}")
+
+k = kernel_tmp()
+root = os.environ["GAS_CWD"]
+(Path(root) / "dati.txt").write_text("riga1\nriga2\nriga3\n", encoding="utf-8")
+
+# T13a: rete BLOCCATA dentro il sandbox (--unshare-net). Un comando di rete
+# (risoluzione DNS) deve fallire: solo loopback disponibile.
+if OS_SB:
+    res = subprocess.run(k._bwrap_prefix(Path(root)) + ["getent", "hosts", "github.com"],
+                         capture_output=True, text=True, timeout=30)
+    check("T13a rete bloccata nel sandbox (DNS fallisce)",
+          res.returncode != 0, f"rc={res.returncode} out={res.stdout.strip()[:40]!r}")
+else:
+    skip("T13a rete bloccata", "sandbox OS non disponibile in questo ambiente")
+
+# T13b: filesystem READ-ONLY. Una scrittura sulla project root (RO-bind) deve
+# essere negata dal kernel e nessun file deve nascere.
+if OS_SB:
+    bersaglio = Path(root) / "scrittura_vietata.txt"
+    res = subprocess.run(k._bwrap_prefix(Path(root)) + ["touch", str(bersaglio)],
+                         capture_output=True, text=True, timeout=30)
+    nato = bersaglio.exists()
+    if nato:
+        bersaglio.unlink()
+    check("T13b filesystem read-only (scrittura su project root negata)",
+          res.returncode != 0 and not nato, f"rc={res.returncode} nato={nato}")
+else:
+    skip("T13b filesystem read-only", "sandbox OS non disponibile in questo ambiente")
+
+# T13c: SECRET ON-DISK MASCHERATI (§6.1). Un'esca segreta creata sotto /home
+# (~) NON deve essere leggibile dentro il sandbox: il --tmpfs /home la copre.
+# È il test dell'irrobustimento §6.1 — chiude R2 anche in LETTURA.
+if OS_SB:
+    esca = Path.home() / f"gas_esca_segreta_{os.getpid()}.txt"
+    try:
+        esca.write_text("API_KEY=TOPSECRET-non-deve-uscire", encoding="utf-8")
+        res = subprocess.run(k._bwrap_prefix(Path(root)) + ["cat", str(esca)],
+                             capture_output=True, text=True, timeout=30)
+        ok = res.returncode != 0 and "TOPSECRET" not in (res.stdout + res.stderr)
+        check("T13c segreto on-disk sotto /home mascherato (tmpfs lo copre)",
+              ok, f"rc={res.returncode} out={(res.stdout + res.stderr).strip()[:50]!r}")
+    finally:
+        esca.unlink(missing_ok=True)
+else:
+    skip("T13c segreto on-disk mascherato", "sandbox OS non disponibile in questo ambiente")
+
+# T13d: fallback corretto secondo GAS_SANDBOX_MODE (deterministico, NON richiede
+# bwrap: si forza os_sandbox_available=False). os_strict assente -> negato;
+# os_with_fallback assente -> esegue comunque (sola sandbox applicativa).
+k_strict = kernel_tmp()
+k_strict.os_sandbox_available = False
+k_strict.sandbox_mode = "os_strict"
+out = k_strict.execute_tool_call("run_command", {"command": "true"})
+check("T13d os_strict + sandbox assente -> run_command negato (fail-closed)",
+      "Operazione negata" in out and "sandbox OS" in out, out[:70])
+
+k_fb = kernel_tmp()
+rootfb = os.environ["GAS_CWD"]
+(Path(rootfb) / "dati.txt").write_text("a\nb\nc\n", encoding="utf-8")
+k_fb.os_sandbox_available = False
+k_fb.sandbox_mode = "os_with_fallback"
+out = k_fb.execute_tool_call("run_command", {"command": "wc -l dati.txt"})
+check("T13d2 os_with_fallback + sandbox assente -> esegue (sandbox applicativa)",
+      "Operazione negata" not in out and "3" in out, out[:60])
+
+# T13e: comando lecito read-only ANCORA funzionante nella project root CON il
+# sandbox OS attivo (os_strict + disponibile) e lo snapshot scatta. Conferma
+# che il wrapping bwrap non rompe l'uso normale.
+if OS_SB:
+    k_ok = kernel_tmp()
+    rootok = os.environ["GAS_CWD"]
+    (Path(rootok) / "dati.txt").write_text("u\nd\nt\n", encoding="utf-8")
+    refs_prima = len(snap_refs(rootok))
+    out = k_ok.execute_tool_call("run_command", {"command": "wc -l dati.txt"})
+    check("T13e comando lecito read-only funziona dentro bwrap + snapshot scatta",
+          "3" in out and "Operazione negata" not in out
+          and len(snap_refs(rootok)) == refs_prima + 1,
+          f"out={out[:30]!r} refs {refs_prima}->{len(snap_refs(rootok))}")
+else:
+    skip("T13e comando lecito dentro bwrap", "sandbox OS non disponibile in questo ambiente")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
