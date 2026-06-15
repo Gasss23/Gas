@@ -1,92 +1,45 @@
-# 📄 REPORT FINE TASK — Rinomina messaggio di commit di `scrivi_rep.sh` (etichetta filtrabile)
+# Report diagnosi — snapshot refs vs oggetti loose (Codespace)
 
-**Data:** 2026-06-15 · **Esito:** ✅ COMPLETATO · **Tipo:** task minimo, NESSUN cambio
-di comportamento · **Motore (gas.py/brains/modules/tests):** INVARIATO ·
-**Feature `scrivi rep`:** logica/trigger/path/file INVARIATI, cambiata SOLO
-l'etichetta del commit · **Nessuna proprietà di sicurezza indebolita.**
+**Data:** 2026-06-15 · **Tipo:** SOLA DIAGNOSI (nessuna modifica a gas.py/brains/modules/tests, nessun gc/prune/comando distruttivo).
 
----
+## (a) VERDETTO: **(A)** — il path snapshot NON è esercitato in questo Codespace, lo 0 ref è atteso. NESSUN BUG.
 
-## DECISIONI UMANE RICHIESTE
-Nessuna.
+Prove:
+- `git for-each-ref refs/gas/snapshots/` → **0 ref**; `.git/refs/gas/` esisteva ma **vuota** (mancava persino `snapshots/`); niente in `.git/packed-refs`.
+- `git count-objects -v` → **4495 loose**, solo 3 in-pack (size 27556 KB loose).
+- `git fsck --unreachable --no-reflogs` → 4133 blob, **4 commit**, 4 tree unreachable.
+- Dei 4 commit unreachable, **3 sono di `git stash`** (autore Gasss23: "index on main…", "untracked files on main…", "WIP A+B … da ripristinare") e **solo 1 è un vero snapshot GAS** (autore `gas-snapshot`: "gas snapshot [write_file] prova.txt", 2026-06-11 16:29). Quindi il path snapshot è girato qui **una sola volta, in un test** (file `prova.txt`).
+- In sviluppo si pilota Claude Code, NON il runtime agentico di GAS: `_snapshot()` è chiamato solo da `run_command`/`write_file` del kernel agentico (gas.py:639, 672), che qui non viene esercitato → 0 ref è il valore atteso.
+- Nessun hook rimuove i ref: grep su `.claude/hooks/` (`review_gate.sh`, `scrivi_rep.sh`, `session_end.sh`) per `refs/gas`, `update-ref -d`, `gc`, `prune`, `for-each-ref` → **nessun riscontro**. Esclude cleanup/retention fuori posto.
 
----
+Escluse (B) e (C):
+- **(B) ref non persiste / rimosso** → ESCLUSA dal test dal vivo (§b).
+- **(C) retention svuota tutto** → ESCLUSA: `_snapshot_retention` (gas.py:212-230) tiene l'UNIONE di (ultimi `SNAPSHOT_KEEP=100`) e (più giovani di `SNAPSHOT_KEEP_DAYS=7`). Con 0/1 ref non droppa nulla; `drop` è non-vuoto solo con >100 ref E più vecchi di 7 giorni — non può svuotare i recenti. Inoltre l'unico snapshot reale (4 giorni fa) sarebbe stato TENUTO, non rimosso.
 
-## Obiettivo
-Distinguere visivamente nel log i commit ricorrenti della feature `scrivi rep`
-(rumore "scrivi rep" → etichetta riconoscibile/filtrabile), **senza** toccare il
-comportamento: `reports/ultima_risposta.md` resta versionato, committato e pushato
-esattamente come prima (serve per la sync multi-PC).
+## (b) Il path scrive ref PERSISTENTI? **SÌ — provato dal vivo.**
 
-## 1 — `.claude/hooks/scrivi_rep.sh`: cambiata SOLO la stringa del commit
-Diff reale (una sola riga modificata):
+`_snapshot` (gas.py:463-473): `write-tree` → `commit-tree` → **`update-ref refs/gas/snapshots/<ts>-<sha8>`**. Il ref è su disco; l'indice temporaneo (`GIT_INDEX_FILE`) serve solo a non sporcare la staging area dell'utente, NON è dove finisce lo snapshot.
 
-```diff
--    git commit -q -m "scrivi rep: ultima risposta salvata" 2>/dev/null
-+    git commit -q -m "chore(scrivi-rep): ultima risposta salvata" 2>/dev/null
-```
-Nessun'altra riga toccata: lettura transcript, jq di estrazione, trigger,
-`DEST=reports/ultima_risposta.md`, `git add`/`git push` → INVARIATI. Lo script non è
-in `gas.py/brains/modules/tests/` → il gate di review non si applica (§3).
+Test eseguito: istanziato `GasKernel()` e chiamato `k._snapshot('diagnosi','diagnosi')`.
+- PRIMA: `for-each-ref refs/gas/snapshots/` = 0.
+- Ritorno: sha `ad85632cfc813c7311921cd09d96b514cdc5ab21`.
+- DOPO: ref **comparso e persistito** → `.git/refs/gas/snapshots/20260615-175559.305167693-ad85632c` (creata anche la dir `snapshots/`).
+- Ref di test poi rimosso con `git update-ref -d` (non distruttivo; l'oggetto resta recuperabile). Baseline ripristinata a 0 ref.
 
-## 2 — `CLAUDE.md` §3: documentata la feature (prima NON era menzionata)
-`grep 'scrivi_rep|scrivi rep' CLAUDE.md` → **vuoto**: la feature non era documentata.
-Aggiunta UNA riga (nuovo bullet) in §3, subito dopo "Commit ESPLICITO dei report":
-spiega che i commit della feature usano il prefisso `chore(scrivi-rep):` per essere
-filtrabili (`git log | grep -v chore`) e che `reports/ultima_risposta.md` resta
-volutamente versionato/pushato per la sync multi-device. Doc (`*.md`) → nessun review.
+→ Il meccanismo è CORRETTO: quando il path parte, il ref nasce e resta su filesystem.
 
-## 3 — VERIFICA REALE (repo git USA-E-GETTA con remote bare; push provato davvero)
-Non innescato sul repo reale (avrebbe scritto contenuto di test in
-`ultima_risposta.md` + push reale). Invece: repo temp in /tmp con **remote bare** +
-transcript finto (assistant "RISPOSTA PRECEDENTE DI TEST" seguito da user
-"scrivi rep"). Copia FEDELE dello script con cambiati SOLO i 2 path hardcoded (DEST,
-cd) verso il repo temp; tutto il resto identico, incluso il nuovo messaggio. Output reale:
+## (c) I ~4427/4495 loose: snapshot recuperabili o spazzatura? **Quasi tutta spazzatura git normale.**
 
-```
-=== righe path/commit/push nella COPIA (resto identico all'originale) ===
-34:DEST="/tmp/scrivirep_XXXX/repo/reports/ultima_risposta.md"
-40:  cd /tmp/scrivirep_XXXX/repo 2>/dev/null || exit 0
-43:    git commit -q -m "chore(scrivi-rep): ultima risposta salvata" 2>/dev/null
-44:    git push -q origin main 2>/dev/null
+- Tra TUTTI gli oggetti unreachable, i veri snapshot GAS sono **2 commit usa-e-getta**: `prova.txt` (2026-06-11) e il `diagnosi` appena creato dal test — entrambi senza valore.
+- Il resto è detrito git ordinario: 3 commit di `git stash` (+1 stash attivo: "snapshot-autonomo … da riprendere in TASK C"), 4133 blob e i tree associati, frutto di churn di sviluppo (add superati, stash, `git add -A` dello snapshot orfano).
+- NON è una riserva di snapshot utente recuperabili: è materiale recuperabile solo finché non gira `git gc`, ma di valore trascurabile.
 
-=== INNESCO: feed del transcript su stdin ===
-rc=0
+## (d) Raccomandazione su `git gc`: **a basso rischio QUI, ma è decisione umana (irreversibile).**
 
-=== VERIFICHE ===
---- [contenuto] reports/ultima_risposta.md ---
-RISPOSTA PRECEDENTE DI TEST — questa deve finire nel file.
---- [messaggio commit] ---
-chore(scrivi-rep): ultima risposta salvata
---- [file nel commit: deve essere SOLO reports/ultima_risposta.md] ---
-reports/ultima_risposta.md
---- [push reale? messaggio sul remote bare] ---
-chore(scrivi-rep): ultima risposta salvata
-```
+- `git gc` è IRREVERSIBILE (CLAUDE.md §10; gas.py:910-916 lo tiene fuori dal doctor apposta).
+- In questo Codespace è sicuro nella pratica perché: (1) ci sono **0 ref snapshot live** da proteggere — `gc` non tocca mai oggetti raggiungibili da un ref; (2) gli unici snapshot orfani sono test (`prova.txt`, `diagnosi`); (3) il grosso è detrito di stash/churn. Recupererebbe spazio senza perdere nulla di valore.
+- Cautela: eseguirlo SOLO dopo aver verificato che nessuno snapshot GAS orfano serva (qui nessuno). Se in futuro esistono ref snapshot live, `gc` li preserva comunque. Non eseguito in questo task (sola diagnosi): la chiamata resta all'utente.
 
-**Conferme:** (a) nuovo messaggio `chore(scrivi-rep): ultima risposta salvata`;
-(b) stesso file `reports/ultima_risposta.md`, UNICO file nel commit; (c) contenuto =
-risposta assistant PRECEDENTE (estrazione invariata); (d) **push reale** arrivato al
-remote bare con lo stesso messaggio; (e) nessun altro file toccato. Comportamento
-identico a prima, salvo l'etichetta.
+## (e) Nota pre-deploy VPS
 
-## 4 — Tracciamento
-- `reports/stato_progetto.md`: aggiunta UNA riga nell'header (rinomina prefisso,
-  comportamento invariato, verifica OK).
-- `reports/diff_sessione.md`: riscritto per questa sessione.
-
-## 5 — Protocollo §3
-Report qui; commit esplicito con messaggio descrittivo (scrivi_rep.sh + CLAUDE.md +
-i tre report in un commit); poi stampa di path + hash + cat integrale.
-
-## File toccati
-- `.claude/hooks/scrivi_rep.sh` (1 riga: messaggio commit)
-- `CLAUDE.md` (§3, +1 riga di doc)
-- `reports/ultimo_report.md` (questo), `reports/stato_progetto.md` (1 riga),
-  `reports/diff_sessione.md` (riscritto)
-- Test usa-e-getta in /tmp (NON versionato). Nessun file motore.
-
-## Conteggio finale
-Motore **INVARIATO** · Feature `scrivi rep` **comportamento invariato** (solo
-etichetta) · Verifica reale **OK** (push incluso) · Nessuna proprietà di sicurezza
-indebolita.
+Essendo (A), questo NON è un bug ma un **check di pre-deploy VPS**: in dev il runtime agentico non gira, quindi 0 ref è normale. Sul VPS h24 il kernel eseguirà `run_command`/`write_file` e gli snapshot nasceranno davvero; lì la sez.7 del doctor (0 ref + molti loose) diventa un segnale significativo da rivalutare. Da tenere come voce di checklist pre-deploy, non come difetto attuale.
