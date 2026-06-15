@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# SessionEnd hook — RETE DI SICUREZZA puramente ADDITIVA e CONDIZIONALE.
+# Indurimento commit 2026-06-13 + chiusura bug sovrascrittura 2026-06-15.
+#
+# Contratto:
+#  - Lavoro ricorrente LEGITTIMO: persistere .gas_history.json (memoria di Gas).
+#  - Stage SOLO dell'allowlist esplicita: reports/, *.md, .gas_history.json.
+#    MAI `git add -A` / `git add .`. MAI il motore (gas.py/brains/modules/tests).
+#  - Se dopo lo stage NULLA e' in staging -> ESCE senza commit (niente commit
+#    vuoti = niente rumore nel log).
+#  - SOLO additivo: nessun git distruttivo sul working tree (no reset --hard,
+#    no checkout --, no stash drop, no clean). L'unica rimozione ammessa e'
+#    `git restore --staged` (toglie dallo staging, NON tocca il contenuto).
+#  - Steady-state: l'agente committa ESPLICITAMENTE i propri report a fine task,
+#    quindi qui reports/ non ha nulla da committare (no-op su reports/). La
+#    sovrascrittura silenziosa del report canonico non e' piu' possibile perche'
+#    l'agente, non l'hook, decide cosa committare in reports/.
+#
+# GAS_REPO_DIR sovrascrivibile SOLO per i test usa-e-getta; default = prod.
+
+set -uo pipefail
+
+REPO="${GAS_REPO_DIR:-/workspaces/Gas}"
+cd "$REPO" 2>/dev/null || exit 0
+
+# 1) Stage del solo allowlist esplicita.
+git add reports/ '*.md' .gas_history.json 2>/dev/null || true
+
+# 2) INVARIANTE DI SICUREZZA: se un file del motore fosse finito in staging
+#    (per qualunque via), NON committarlo. Lo si toglie dallo staging in modo
+#    additivo (restore --staged non tocca il working tree) e si prosegue.
+ENGINE_RE='^(gas\.py|brains/|modules/|tests/)'
+mapfile -t staged_engine < <(git diff --cached --name-only 2>/dev/null | grep -E "$ENGINE_RE")
+if [ "${#staged_engine[@]}" -gt 0 ]; then
+  git restore --staged "${staged_engine[@]}" 2>/dev/null || true
+fi
+
+# 3) Niente in staging -> ESCI senza commit (condizionale: niente commit vuoti).
+if git diff --cached --quiet 2>/dev/null; then
+  exit 0
+fi
+
+# 4) Commit + push, tutto fail-safe (mai bloccare la chiusura della sessione).
+git commit -q -m "auto-commit fine sessione $(date -u +%Y-%m-%d_%H:%M) [solo reports/doc/history, motore escluso]" 2>/dev/null || true
+git push -q origin main 2>/dev/null || true
+exit 0

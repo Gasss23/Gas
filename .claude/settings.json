@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /workspaces/Gas && git add reports/ '*.md' .gas_history.json 2>/dev/null; { git diff --cached --quiet || { git commit -m \"auto-commit fine sessione $(date -u +%Y-%m-%d_%H:%M) [solo reports/doc/history, motore escluso]\" && git push origin main; }; } || true",
+            "command": "bash /workspaces/Gas/.claude/hooks/session_end.sh",
             "timeout": 60,
             "statusMessage": "Auto-commit selettivo (reports/doc/history, motore MAI)..."
           }
