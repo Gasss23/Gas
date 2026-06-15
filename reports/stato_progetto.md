@@ -227,3 +227,23 @@
    TASK C #1).
 3. `git gc` OPT-IN dietro flag esplicito in `gas doctor` (oggi solo reportato):
    azione irreversibile, va progettato il consenso umano esplicito.
+
+## Note operative VPS — non per oggi
+
+> Dati operativi osservati il 2026-06-15 (TASK 3). NON agire ora: registrati per
+> la pianificazione del deploy su VPS (FASE 5).
+
+1. **Snapshot: 0 ref permanenti + ~4427 oggetti loose** (da `gas doctor` sez.7).
+   Due implicazioni da chiarire PRIMA della VPS: (a) pianificare un `git gc`
+   OPT-IN (vedi Prossimo passo #3) per riassorbire gli oggetti loose accumulati;
+   (b) **VERIFICARE se gli snapshot vengono davvero creati/persistiti**: 0 ref
+   permanenti potrebbe significare che la "macchina del tempo" non resta armata
+   tra le sessioni (i ref `refs/gas/snapshots/*` sono vivi durante la sessione ma
+   poi spariscono?). Da indagare: la rete anti-autodistruzione è effettivamente
+   attiva in steady-state o solo intra-sessione?
+2. **OpenRouter free risponde in ~28 s** (4° rung, modalità degradata, osservato
+   in `gas doctor`). Conferma che il rung free remoto è un paracadute lento, non
+   un piano operativo. Rafforza il piano **ollama-su-VPS** (5° rung, pavimento
+   offline): il VPS va **dimensionato per `qwen2.5:7b-instruct`** (RAM/CPU
+   sufficienti a tenere il modello in locale) così da avere un fallback rapido e
+   a costo zero senza dipendere dalla latenza di OpenRouter.
