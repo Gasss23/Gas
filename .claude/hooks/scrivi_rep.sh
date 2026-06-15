@@ -40,7 +40,7 @@ printf '%s\n' "$OUT" > "$DEST"
   cd /workspaces/Gas 2>/dev/null || exit 0
   git add reports/ultima_risposta.md 2>/dev/null
   if ! git diff --cached --quiet reports/ultima_risposta.md 2>/dev/null; then
-    git commit -q -m "scrivi rep: ultima risposta salvata" 2>/dev/null
+    git commit -q -m "chore(scrivi-rep): ultima risposta salvata" 2>/dev/null
     git push -q origin main 2>/dev/null
   fi
 ) || true

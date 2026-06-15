@@ -1,6 +1,12 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-15 (task minimo):** i commit della feature `scrivi rep` ora usano il
+> prefisso `chore(scrivi-rep):` (era `scrivi rep:`) per filtrarli nel log
+> (`git log | grep -v chore`); solo la stringa del messaggio in `scrivi_rep.sh` +
+> riga doc in CLAUDE.md §3. Comportamento, path e file (`reports/ultima_risposta.md`,
+> versionato per sync multi-device) INVARIATI. Verifica reale in repo usa-e-getta
+> (push incluso) OK.
 > Ultimo aggiornamento: **2026-06-15** (sessione di CHIUSURA/VERIFICA: A1–A6 superate
 > — i tre commit TASK 1/2/3 sono REALI e combaciano, suite **75/75** zero token,
 > hook usa-e-getta **9/9** incl. prefix-match dell'invariante; `scrivi_rep.sh`
