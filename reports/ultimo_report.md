@@ -1,134 +1,157 @@
-# 📄 REPORT FINE TASK — Consolidamento motore: TASK B (paracadute free) + TASK C (snapshot)
+# 📄 REPORT FINE TASK — Reporting/hook SessionEnd + sfoltimento doc + note VPS
 
-**Data:** 2026-06-14 · **Esito:** ✅ COMPLETATO · **Review:** #9 (TASK B) e #10 (TASK C),
-entrambe APPROVATO CON RISERVE · **Suite:** **75 PASS, 0 FAIL** (zero token LLM)
+**Data:** 2026-06-15 · **Esito:** ✅ COMPLETATO · **Revisore:** APPROVATO (TASK 1) ·
+**Suite motore:** 75 PASS, 0 FAIL (invariata, zero token LLM) · **Test hook:** 8 PASS, 0 FAIL
+(repo usa-e-getta) · **Motore (gas.py/brains/modules/tests):** INVARIATO
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
-Nessuna in questa sessione. Nessuno STOP è scattato: tutte le azioni sono
-verificabili dai test o report-only. In particolare il `git gc` (azione
-irreversibile) NON è stato eseguito né automatizzato — resta OPT-IN umano, oggi
-solo REPORTATO da `gas doctor` (vedi TASK C).
+Nessuna. Nessuno STOP è scattato: nessuna proprietà di sicurezza è stata indebolita
+(gate di review intatto, hook solo additivo, motore mai committato, niente git
+distruttivi). Resta UNA verifica da fare ma NON oggi (registrata in TASK 3): se gli
+snapshot della "macchina del tempo" siano davvero persistiti tra sessioni (doctor
+mostra 0 ref permanenti).
 
 ---
 
-## (1) ESITO AUDIT STEP 0 — riconciliazione pre-blocco
-La sessione precedente poteva essere stata troncata da un blocco di billing.
-Verificato:
-- `git status` **pulito**, `git log origin/main..HEAD` **vuoto**: nessuna modifica
-  non committata, nessun commit locale non pushato. **Niente lavoro perso.**
-- La sessione precedente aveva **già completato e pushato TASK A** (commit
-  `1cae65a`): costanti provider de-duplicate (`GEMINI_URL`, `GROQ_URL`,
-  `OPENROUTER_URL`, slug dei modelli inclusi i due rung free) e helper di modulo
-  `_parse_mode` condiviso da `__init__` e `doctor`. Presenti i test T16a/b/c.
-- Confermato in codice ciò che `stato_progetto.md` dichiarava FATTO: `_cap_window_chars`
-  + `_msg_chars` (WINDOW_CHAR_CAP, review #7) e blocco T14 nei test (review #8).
-- **Baseline reale: 64/64** (non 61). Il delta +3 sono i T16 di TASK A: la sessione
-  precedente è andata OLTRE la previsione della consegna (che assumeva il taglio
-  PRIMA di TASK A). NON è codice mancante né incoerenza: è lavoro genuino, già
-  revisionato e pushato. Decisione: proseguire con TASK B e TASK C.
-- Discrepanza nota e risolta: `ultimo_report.md` era fermo a review #6 / 52 test
-  (bwrap), non rigenerato dalla sessione interrotta. Questo file lo RIGENERA con lo
-  stato reale.
+## TASK 1 — Hook SessionEnd: rumore nel log + sovrascrittura
 
-## (2) LE TRE TASK
+### Diagnosi dei DUE meccanismi (verificata, non assunta)
 
-### TASK A — già chiuso dalla sessione precedente (verificato, non rifatto)
-De-dup costanti provider (R3 #5) + parse `GAS_SANDBOX_MODE` unico init/doctor
-(R3 #6). Refactor puro. Commit `1cae65a` già pushato. T16c certifica che `__init__`
-e `doctor` risolvono lo STESSO mode (incl. ignoto → `os_strict`).
+**(i) Rumore nel log.** L'hook `SessionEnd` (inline in `.claude/settings.json`)
+faceva `git add reports/ '*.md' .gas_history.json` e committava
+`"auto-commit fine sessione …"` ogni volta che c'era staged: i deliverable
+dell'agente (report) finivano dentro commit anonimi a messaggio generico, mescolati
+a `.gas_history.json`. (NB onesto: il grosso del rumore VISIBILE nel log sono in
+realtà i commit `scrivi rep` del *Stop hook* `scrivi_rep.sh`, che è una feature
+separata e autorizzata, FUORI scope da TASK 1.)
 
-### TASK B — Integrità del paracadute free (chiude R1 #5, metà determ. R2 #5)
-- **Sonda PRIMA di progettare** (come richiesto): GET dal vivo a OpenRouter. Il
-  singolo modello NON vive su `/models/<slug>` (404); vive su
-  `<base>/models/<slug>/endpoints` → `{data:{...,endpoints:[{...,
-  supported_parameters:[...]}]}}`. `supported_parameters` è **PER-ENDPOINT** (al
-  livello `data` è `None`); la lista contiene `tools` = function calling
-  dichiarato. 404 confermato anche su slug fasullo. Nessun path hardcodato a
-  scatola chiusa: schema visto sullo schermo prima di scrivere codice.
-- **`doctor`**: nuova voce "Paracadute / modello free", SOLO se `OPENROUTER_API_KEY`
-  presente (chiave assente → comportamento invariato). 404 → **WARN** visibile
-  ("assente/rinominato"); `tools` assente → **WARN** ("degraderebbe a solo-testo");
-  presente+tool-capable → **OK**. Sono GET di **METADATI**, nessuna generazione →
-  vincolo "doctor non consuma token LLM" intatto.
-- **`run_turn`**: SOLO osservabilità (sez.9). Brain con modello fuori da
-  `TOOL_CAPABLE_MODELS` → `logging.warning` nella scatola nera. **NESSUN** skip
-  forzato, ordine del fallback **INVARIATO**. Rilevamento del degrado PER-TURNO
-  RIMANDATO (falsi positivi).
-- Helper: `_classify_free_model` (3 rami), `_probe_free_model` (`_fetch`
-  mockabile), `_http_get_json` (404 senza raise), `_model_tool_capable`.
+**(ii) Sovrascrittura.** Il commit `7005517` ("report: test sicurezza isolamento
+sandbox") ha sovrascritto `reports/ultimo_report.md` (−113/+56), sostituendo il
+report dell'engine-change **bwrap** (`8b42f97`) con il report di un collaudo
+read-only; ripristino manuale in `412714f`. **Causa primaria onesta:** `7005517` è
+un commit **ESPLICITO dell'agente** sotto la convenzione "ultimo_report.md = unica
+fonte di verità" → l'agente ha riusato il file canonico per un altro task. **L'hook
+NON fa git distruttivi** (verificato: solo `git add`/`commit`/`push`, non può
+sovrascrivere il working tree), quindi non è la causa materiale; è
+l'**amplificatore**: auto-committava+pushava `reports/` senza checkpoint d'intento,
+per cui una sovrascrittura presente nel working tree sarebbe stata persistita e
+pushata in automatico e silenziosa.
 
-### TASK C — Manutenzione snapshot (chiude Prossimo passo #1, R2/R3 snapshot)
-- **Retention IBRIDA** dei ref `refs/gas/snapshots/*`: da count-based pura a
-  **UNIONE** di (ultimi `SNAPSHOT_KEEP=100`) e (più giovani di
-  `SNAPSHOT_KEEP_DAYS=7`). I recenti sopravvivono anche a una sessione che ruota
-  >100 ref. Helper PURI testabili `_ref_age_epoch` (epoch dal NOME del ref; non
-  parsabile → si TIENE, conservativo) e `_snapshot_retention` → `(keep, drop)`.
-- **PRUDENZA (§10, macchina del tempo)**: nessun prune distruttivo né `git gc`
-  automatico. I ref oltre policy si rimuovono con `update-ref -d` (oggetto
-  **RECUPERABILE** fino a `git gc`) e la rimozione è **LOGGATA** riga per riga.
-- **`snapshots.log`**: gitignorato (`reports/snapshots.log[.1]`; prima entrava nei
-  commit via `git add reports/` del SessionEnd) + rotazione semplice `.1` al cap
-  `SNAPSHOT_LOG_MAX_BYTES`.
-- **`doctor` sezione 7 "Snapshot"**: SOLO REPORT — conteggio ref + hint oggetti
-  loose (`count-objects -v`) + dimensione log. Il `git gc` resta OPT-IN manuale,
-  MAI automatico.
+### Fix applicato (giustificato dalla diagnosi)
+1. **Procedurale (la vera cura):** CLAUDE.md §3 — l'agente committa+pusha DA SÉ i
+   propri report/doc in UN commit a fine task, con messaggio descrittivo. Non
+   delega all'hook. Ripristina il checkpoint d'intento perso.
+2. **Hook additivo+condizionale:** `.claude/hooks/session_end.sh` (NUOVO, estratto
+   da inline a script testabile, coerente con `scrivi_rep.sh`/`review_gate.sh`):
+   - stage del SOLO allowlist (`reports/`, `*.md`, `.gas_history.json`); MAI
+     `git add -A`/`.`;
+   - **invariante di sicurezza**: se un file del motore fosse in staging, lo toglie
+     con `git restore --staged` (additivo: NON tocca il working tree);
+   - se nulla è in staging → **exit senza commit** (niente commit vuoti = fine del
+     rumore);
+   - commit+push fail-safe; nessun git distruttivo;
+   - `GAS_REPO_DIR` override SOLO per i test (default `/workspaces/Gas`).
+   - `.claude/settings.json`: `SessionEnd` ora chiama lo script.
+   - Steady-state: l'agente committa i report → a fine sessione l'hook non trova
+     `reports/` da committare (no-op), persiste solo `.gas_history.json`.
 
-## (3) TEST CHE MORDONO (zero token LLM) — output REALE
+### Verifica REALE rosso→verde (output integrale, repo usa-e-getta, mai sul repo vero)
 
 ```
-[PASS] T11f retention (ramo count, età disattivata) tiene solo gli ultimi N — refs=3 (limite 3)
-[PASS] T16a _parse_mode normalizza i valori di mode — sb=os_with_fallback sh=dry_run
-[PASS] T16b mode ignoto -> default (os_strict / guarded) — sb=os_strict sh=guarded
-[PASS] T16c __init__ e doctor risolvono lo STESSO mode (incl. ignoto -> os_strict)
-[PASS] T17a 404 -> WARN (modello free assente/rinominato)
-[PASS] T17b modello senza 'tools' -> WARN (degrado a solo-testo)
-[PASS] T17c modello presente + 'tools' dichiarato -> OK
-[PASS] T17d classify: i tre rami sono distinti e corretti
-[PASS] T17e _model_tool_capable: cascata tool-capable, ignoto -> False
-[PASS] T18a recenti (<7gg) sopravvivono — keep=3 drop=4
-[PASS] T18b vecchi oltre N E oltre T -> drop
-[PASS] T18c keep_n protegge il vecchio dentro gli ultimi N
-[PASS] T18d soglia più stretta -> set protetto diverso (mordace)
-[PASS] T18e ref non parsabile -> tenuto (conservativo)
-[PASS] T18f _ref_age_epoch parsa il ts dal nome ref
+================ RED — bug sovrascrittura col VECCHIO comportamento ================
+fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+--- HEAD:reports/ultimo_report.md dopo il VECCHIO hook ---
+# REPORT B — collaudo read-only (sovrascrittura accidentale)
+--- log ---
+0f79bb2 auto-commit fine sessione 09:53:04 [vecchio]
+d407ee6 report bwrap (canonico)
+4ab5451 init
+[PASS] RED riprodotto: vecchio hook ha persistito la sovrascrittura (A->B) in automatico, senza intento
 
-=== RIEPILOGO: 75 PASS, 0 FAIL ===
+================ GREEN — nuovo workflow (agente committa) + nuovo hook ================
+--- HEAD:reports/ultimo_report.md dopo il NUOVO hook ---
+# REPORT A — engine change bwrap (canonico)
+--- commit prima=2 dopo=2 ---
+[PASS] GREEN: nuovo hook NON crea un commit (report gia' committato dall'agente -> no-op su reports/)
+[PASS] GREEN: report canonico A INTATTO, nessuna sovrascrittura silenziosa
+
+================ SCENARIO 2 — nulla da committare -> nessun commit ================
+--- log (invariato) ---
+4ab5451 init
+[PASS] Nulla in staging -> nessun commit creato (log invariato: 1==1)
+
+================ SCENARIO 3 — modifica solo in reports/ -> 1 commit pulito ================
+--- file nel commit di fine sessione ---
+reports/stato_progetto.md
+[PASS] Esattamente 1 commit creato
+[PASS] Commit contiene SOLO path allowlist (fuori-allowlist: 'nessuno')
+
+================ SCENARIO 4 — motore nel working tree -> MAI committato ================
+--- file nel commit ---
+reports/ultimo_report.md
+[PASS] 4a: motore NON committato (gas.py/brains/ assenti dal commit)
+--- file nel commit (con gas.py pre-staggiato) ---
+reports/ultimo_report.md
+[PASS] 4b: gas.py pre-staggiato -> invariante lo rimuove dallo staging, NON committato
+
+=== RIEPILOGO HOOK: 8 PASS, 0 FAIL ===
 ```
+(Le righe `fatal: 'origin'…` sono il *vecchio* hook che tenta il push nel repo
+usa-e-getta privo di remote: atteso, innocuo, swallowed; il commit RED avviene
+comunque.) Suite del motore ri-eseguita: **75 PASS, 0 FAIL** (invariata).
 
-`gas doctor` provato dal vivo: `[OK] Paracadute modello free — function calling
-dichiarato`, `[OK] Snapshot ref totali / oggetti loose / snapshots.log`. Nessun crash.
+### Verdetto revisore (1e) — APPROVATO
+APPROVATO senza riserve bloccanti. Verificato a mano: `git add '*.md'` è ricorsivo
+(prende anche .md sotto le cartelle motore) MA l'invariante li ributta fuori prima
+del commit → nessun file motore può sfuggire; niente commit vuoti; gate PreToolUse
+INTATTO. **Riserve minori (non bloccanti, tracciate in stato_progetto.md):**
+(1) path `/workspaces/Gas` hardcoded nello script — da rendere configurabile sul
+VPS; (2) l'invariante motore è una RETE, non la difesa primaria (che resta
+l'allowlist esplicita). Lezioni aggiunte a `memoria_revisore.md`.
 
-## Riserve tracciate (nessuna bloccante, nessuna indebolisce i guardrail)
-- **Review #9 (TASK B)**: (1) due rami di sicurezza degli helper free senza test
-  dedicato (solo copertura); (2) il warning `run_turn`, se un modello senza tool
-  entrasse in cascata, si ripeterebbe fino a 10× per turno (de-dup possibile).
-- **Review #10 (TASK C)**: (1) `SNAPSHOT_KEEP_DAYS`/`SNAPSHOT_LOG_MAX_BYTES` non
-  configurabili via env; (2) soglie magiche inline in doctor (cosmetico); (3)
-  rotazione log a 1 generazione; (4) manca test dedicato per la rotazione `.1` e
-  per i 3 check di doctor sez.7 (provati dal vivo). Logica PURA di retention
-  coperta dai T18.
+### CLAUDE.md §3 (1f)
+Aggiornata: regola "commit esplicito dei report" + descrizione hook
+additivo/condizionale + nota di chiusura del bug di sovrascrittura.
+
+**Commit TASK 1:** `8a6066b` (hook + settings + CLAUDE.md), dopo verde test e
+verdetto revisore.
+
+## TASK 2 — Sfoltimento `stato_progetto.md` (solo doc)
+Creato `reports/finding_archiviati.md`: **12 finding chiusi** (✅) compressi a UNA
+riga datata ciascuno (T10, snapshot preventivo, sandbox/dry-run, snapshot sprecato
+os_strict, test `_cap_window_chars`, cap finestra, modello free, costanti provider,
+parse `GAS_SANDBOX_MODE`, retention snapshot, manutenzione snapshot, + bug hook
+TASK 1). Nessuna info distrutta (dettaglio in git). In `stato_progetto.md` la
+sezione "Finding aperti" tiene INTEGRI i soli finding ATTIVI (🟡): esfiltrazione,
+valori-attaccati-ai-flag, copertura `_cap_window_chars`, `WINDOW_CHAR_CAP` env,
+trappola `--chdir`, falsi-positivi path-check, riserve TASK C, degrado solo-testo
+runtime, riserve TASK B, + nuova riserva TASK 1. **Commit TASK 2:** `e1c8ed4`.
+
+## TASK 3 — Note operative VPS (NON agire oggi)
+Aggiunta sezione "Note operative VPS — non per oggi" in `stato_progetto.md`:
+1. `gas doctor`: **0 ref snapshot permanenti + ~4427 oggetti loose** → pianificare
+   `git gc` OPT-IN prima della VPS **e VERIFICARE se gli snapshot sono davvero
+   persistiti** (macchina del tempo armata in steady-state o solo intra-sessione?).
+2. **OpenRouter free ~28 s** (4° rung, degradato) → rafforza il piano
+   **ollama-su-VPS**; dimensionare il VPS per **`qwen2.5:7b-instruct`** (RAM/CPU).
+**Commit TASK 3:** `405fa30`.
 
 ## File toccati
-- `gas.py` (motore, 2 commit revisionati: TASK B + TASK C)
-- `tests/test_unit_kernel.py` (revisionato: T17, T18, T11f riadattato; 64 → 75)
-- `.gitignore` (`reports/snapshots.log[.1]`)
-- `reports/stato_progetto.md`, `reports/diff_sessione.md`, `reports/ultimo_report.md`
-- `.claude/agents/memoria_revisore.md` (lezioni dei review #9 e #10)
+- `.claude/hooks/session_end.sh` (NUOVO), `.claude/settings.json`, `CLAUDE.md` §3
+- `reports/finding_archiviati.md` (NUOVO), `reports/stato_progetto.md`,
+  `reports/diff_sessione.md`, `reports/ultimo_report.md`
+- `.claude/agents/memoria_revisore.md` (lezioni review hook)
+- Test: `/tmp/test_session_end_hook.sh` (usa-e-getta, non versionato)
 
-## Conteggio finale suite
-**75 PASS, 0 FAIL** (61 baseline review #8 + 3 T16 TASK A + 5 T17 TASK B + 6 T18
-TASK C, con T11f riadattato).
-
-## Commit della sessione
-- `a9f1053` TASK B — integrità paracadute free (chiude R1 #5, metà determ. R2 #5)
-- `35a9b7e` TASK C — manutenzione snapshot (retention ibrida + rotazione + report)
-(TASK A `1cae65a` già pushato dalla sessione precedente.)
+## Conteggio finale
+Suite motore **75 PASS, 0 FAIL** · Test hook **8 PASS, 0 FAIL** · Motore INVARIATO.
 
 ## Prossimi passi
-1. Rilevamento PER-TURNO del degrado a solo-testo (metà aperta di R2 #5; rimandato
-   per falsi positivi).
-2. Cap output dedicato per la pipeline Whisper + `GAS_WINDOW_CHAR_CAP` e
-   `GAS_SNAPSHOT_KEEP_DAYS` configurabili via env.
-3. `git gc` OPT-IN dietro flag esplicito in `gas doctor` (azione irreversibile).
+1. (VPS) Verificare la persistenza degli snapshot + pianificare `git gc` OPT-IN.
+2. (VPS) Dimensionare il VPS per `qwen2.5:7b` (ollama 5° rung offline).
+3. Rilevamento PER-TURNO del degrado a solo-testo (metà aperta R2 #5).
+4. Rendere configurabili via env i path/soglie hardcoded (`GAS_REPO_DIR`,
+   `GAS_WINDOW_CHAR_CAP`, `GAS_SNAPSHOT_KEEP_DAYS`) al passaggio su VPS.

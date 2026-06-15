@@ -1,8 +1,10 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-14** (TASK B integrità paracadute free — review #9;
-> TASK C manutenzione snapshot — review #10; suite **75/75**)
+> Ultimo aggiornamento: **2026-06-15** (TASK 1 hook SessionEnd additivo/condizionale
+> + commit esplicito dei report, chiude bug sovrascrittura — revisore APPROVATO;
+> TASK 2 sfoltimento finding chiusi → `finding_archiviati.md`; TASK 3 note VPS.
+> Motore INVARIATO; suite **75/75**; test hook **8/8**)
 
 ## Stato del motore
 
@@ -212,9 +214,10 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 10 review completate
-  (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C), lezioni datate
-  in `.claude/agents/memoria_revisore.md`.
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 11 review completate
+  (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, + review hook
+  SessionEnd TASK 1 del 2026-06-15 — APPROVATO), lezioni datate in
+  `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 
