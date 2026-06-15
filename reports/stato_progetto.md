@@ -141,6 +141,10 @@
 
 ## Finding aperti
 
+> I finding CHIUSI/RISOLTI/RIDOTTI sono stati archiviati in
+> `reports/finding_archiviati.md` (una riga datata ciascuno; dettaglio integrale
+> nella history git). Qui restano SOLO i finding ATTIVI.
+
 - 🟡 **Esfiltrazione via shell — CHIUSA a livello OS in os_strict** (era 🟠→🟡):
   con il sandbox bwrap attivo e `GAS_SANDBOX_MODE=os_strict` (default) è
   confinamento reale, non più mitigazione applicativa: rete isolata
@@ -160,18 +164,6 @@
   sandbox disponibile; in fallback applicativo la divergenza resta come prima.
   Difesa candidata invariata (rifiutare token con `-`+`/`/`=`) se si allarga
   `SHELL_ALLOWLIST` o si gira stabilmente in fallback.
-- ✅ ~~**Snapshot sprecato in os_strict quando il sandbox manca** (R1, review #6)~~
-  — **RISOLTO** il 2026-06-14 (review #7): il check sandbox OS è stato anticipato
-  PRIMA dello snapshot nel ramo `run_command` (os_strict). Un comando lecito al
-  vetting ma negato per sandbox assente non consuma più uno slot di snapshot.
-  Ortogonalità §6.3 e fail-closed os_strict invariati.
-- ✅ ~~**Manca test permanente per `_cap_window_chars`** (R1, review #7)~~ —
-  **RISOLTO** il 2026-06-14 (review #8 APPROVATO): blocco **T14** (9 check) in
-  `tests/test_unit_kernel.py` con cap abbassato sull'istanza. Copre `_msg_chars`,
-  finestra vuota, sotto-cap invariata, ultimo-msg>cap tenuto intero, scarto di
-  messaggi INTERI (mai slicing), riallineamento a user, fallback scarto-di-tutti-
-  gli-user, componibilità con `_get_window`. Mordacità verificata per MUTAZIONE
-  dal revisore. Suite **61/61**.
 - 🟡 **Copertura non al 100% di `_cap_window_chars`** (R-test-1, review #8):
   restano scoperti due rami secondari: (a) `return window` su finestra falsy
   non-`[]`; (b) `return capped` finale "nessun user da nessuna parte", morto in
@@ -186,27 +178,10 @@
   ri-bindata, la tmpfs la maschera e `--chdir` fallisce → `run_command` negato
   (rc≠0). È fail-closed e non crasha, ma è un limite di usabilità sul VPS:
   documentare che `GAS_CWD` deve stare dentro la project root.
-- ✅ ~~**Duplicazione del parse di `GAS_SANDBOX_MODE` in doctor** (R3, review #6)~~
-  — **CHIUSO** il 2026-06-14 (TASK A, refactor puro APPROVATO): estratto l'helper
-  di modulo `_parse_mode(env_var, allowed, default)`, usato sia da `__init__`
-  (GAS_SHELL_MODE, GAS_SANDBOX_MODE) sia da `doctor` (GAS_SANDBOX_MODE). T16c
-  certifica che le due strade risolvono lo STESSO mode (incl. ignoto→os_strict).
-  Effetto collaterale minore non bloccante: ora anche `doctor` logga il warning
-  su mode ignoto (prima no); voci/esiti/exit di doctor invariati.
 - 🟡 **Falsi positivi del path-check su argomenti non-path** (R3, review #4):
   un pattern grep tipo `/etc/cron` viene risolto come path assoluto e il
   comando negato. Fail-closed (lato sicuro), ma limite di usabilità da
   conoscere.
-- ✅ ~~**Retention snapshot count-based** (R2)~~ — **CHIUSO** il 2026-06-14
-  (TASK C, review #10): retention IBRIDA = UNIONE di (ultimi `SNAPSHOT_KEEP=100`)
-  e (più giovani di `SNAPSHOT_KEEP_DAYS=7`). I recenti sopravvivono anche a una
-  sessione che ruota >100 ref. T18 lo certifica per mutazione.
-- ✅ ~~**Manutenzione snapshot residua** (R3)~~ — **CHIUSO/MITIGATO** il
-  2026-06-14 (TASK C): (a) `doctor` sezione 7 REPORTA conteggio ref + hint
-  oggetti loose (`count-objects`) + dimensione log; un `git gc` resta OPT-IN
-  manuale, MAI automatico (§10, prudenza macchina del tempo); (b)
-  `reports/snapshots.log` ora gitignorato + rotazione `.1` al cap. La rimozione
-  ref oltre policy è loggata e reversibile fino a `git gc`.
 - 🟡 **Riserve TASK C** (R-snap, review #10, minori non bloccanti):
   (1) `SNAPSHOT_KEEP_DAYS`/`SNAPSHOT_LOG_MAX_BYTES` non configurabili via env
   (come `WINDOW_CHAR_CAP`); (2) soglie magiche inline in doctor
@@ -215,14 +190,6 @@
   dedicato per la rotazione `.1` e per i 3 check di doctor sezione 7 (provati
   dal vivo: sezione Snapshot OK, nessun crash). La logica PURA di retention è
   invece coperta dai T18.
-- ✅ ~~**Nessun cap rigido sulla finestra** (review #1)~~ — **CHIUSO** il
-  2026-06-14 (review #7): `WINDOW_CHAR_CAP = 24000` a granularità di messaggio
-  (`_cap_window_chars`), mai slicing. Resta aperta la sola R1 #7 (test permanente).
-- ✅ ~~**Modello free hardcoded e volatile** (R1, review #5)~~ — **CHIUSO** il
-  2026-06-14 (TASK B, review #9): `gas doctor` verifica ESISTENZA (404 → WARN
-  visibile) e CAPACITÀ TOOL (`tools` in `supported_parameters` per-endpoint) del
-  modello free via GET di METADATI, SOLO se la chiave OpenRouter è presente.
-  Il paracadute non diventa più silenziosamente inerte.
 - 🟡 **Degrado a solo-testo non verificato a runtime** (R2, review #5) —
   **METÀ DETERMINISTICA CHIUSA** il 2026-06-14 (TASK B): `doctor` rileva a freddo
   la mancanza di `tools` (WARN) e `run_turn` logga un warning se un brain monta un
@@ -234,16 +201,12 @@
   sicurezza); (2) il warning osservabilità in `run_turn`, se un modello senza
   tool entrasse in cascata, si ripeterebbe fino a 10× per turno nel log
   (de-dup possibile, non urgente — oggi tutti i modelli sono tool-capable).
-- ✅ ~~**Duplicazione costanti provider** (R3, review #5)~~ — **CHIUSO** il
-  2026-06-14 (TASK A): URL ed slug dei provider (inclusi i due rung free) estratti
-  in costanti di modulo (`GEMINI_URL`, `GROQ_URL`, `OPENROUTER_URL`,
-  `GEMINI_FLASH_LITE_MODEL`, `GEMINI_FLASH_MODEL`, `GROQ_MODEL`,
-  `OPENROUTER_FREE_MODEL`, `OLLAMA_MODEL`), punto unico per `run_turn` e `doctor`.
-  Cascata bit-identica verificata dal revisore.
-- ✅ ~~Sandbox/dry-run per run_command~~ — **RIDOTTO** il 2026-06-12 (finding
-  declassato da 🟠 a 🟡, chiusura piena rinviata al sandbox OS).
-- ✅ ~~Snapshot preventivo dei file~~ — CHIUSO il 2026-06-11.
-- ✅ ~~T10 path traversal~~ — CHIUSO il 2026-06-11.
+- 🟡 **Riserve TASK 1** (hook SessionEnd, review revisore 2026-06-15, minori non
+  bloccanti): (1) il percorso `/workspaces/Gas` è hardcoded nello script (override
+  `GAS_REPO_DIR` solo per i test) — da rendere configurabile al passaggio su VPS;
+  (2) l'invariante che toglie il motore dallo staging è una RETE di sicurezza, non
+  la difesa primaria (che resta l'allowlist esplicita: l'hook fa `git add` solo di
+  reports/, *.md, .gas_history.json, mai del motore).
 
 ## Istituzioni di processo (attive dal 2026-06-11)
 
