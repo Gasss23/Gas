@@ -1,6 +1,14 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-15 (diagnosi snapshot — CHIUSA, non-bug):** verificato DAL VIVO che
+> `_snapshot()` scrive ref PERSISTENTI (`commit-tree`+`update-ref`): chiamandolo a
+> mano è nato `refs/gas/snapshots/...` su `.git/refs/gas/snapshots/`, poi rimosso
+> con `update-ref -d` per ripristinare la baseline. Lo 0 ref in dev è ATTESO (qui
+> si pilota Claude Code, non il runtime agentico che chiama `_snapshot`); i ~4427
+> loose sono detrito git (stash + churn), NON snapshot recuperabili. La "macchina
+> del tempo" è sana: era un check di pre-deploy VPS, non un difetto. Dettaglio in
+> `reports/ultimo_report.md` (commit 57c050d).
 > **2026-06-15 (task minimo):** i commit della feature `scrivi rep` ora usano il
 > prefisso `chore(scrivi-rep):` (era `scrivi rep:`) per filtrarli nel log
 > (`git log | grep -v chore`); solo la stringa del messaggio in `scrivi_rep.sh` +
@@ -253,14 +261,18 @@
 > Dati operativi osservati il 2026-06-15 (TASK 3). NON agire ora: registrati per
 > la pianificazione del deploy su VPS (FASE 5).
 
-1. **Snapshot: 0 ref permanenti + ~4427 oggetti loose** (da `gas doctor` sez.7).
-   Due implicazioni da chiarire PRIMA della VPS: (a) pianificare un `git gc`
-   OPT-IN (vedi Prossimo passo #3) per riassorbire gli oggetti loose accumulati;
-   (b) **VERIFICARE se gli snapshot vengono davvero creati/persistiti**: 0 ref
-   permanenti potrebbe significare che la "macchina del tempo" non resta armata
-   tra le sessioni (i ref `refs/gas/snapshots/*` sono vivi durante la sessione ma
-   poi spariscono?). Da indagare: la rete anti-autodistruzione è effettivamente
-   attiva in steady-state o solo intra-sessione?
+1. **Snapshot: 0 ref permanenti + ~4427 oggetti loose** (da `gas doctor` sez.7) —
+   **check di pre-deploy VPS, NON un bug** (diagnosi 2026-06-15, commit 57c050d).
+   (a) `git gc` OPT-IN (vedi Prossimo passo #3) per riassorbire i loose accumulati;
+   resta utile, ma i loose sono detrito git (stash + churn dev), non snapshot da
+   salvare. (b) La domanda "gli snapshot vengono davvero creati/persistiti?" è
+   **RISOLTA**: il meccanismo scrive ref PERSISTENTI su `.git/refs/gas/snapshots/`
+   (provato dal vivo: ref nato e poi rimosso con `update-ref -d`). Lo 0 ref in dev
+   è ATTESO perché qui si pilota Claude Code, non il runtime agentico che invoca
+   `_snapshot` (solo `run_command`/`write_file` lo fanno). **Sul VPS** il kernel
+   eseguirà davvero quei tool → gli snapshot nasceranno e resteranno: lì `gas
+   doctor` sez.7 con 0 ref + molti loose diventa un segnale ANOMALO da rivalutare
+   (in dev no). Da tenere come voce di checklist pre-deploy, non come difetto.
 2. **OpenRouter free risponde in ~28 s** (4° rung, modalità degradata, osservato
    in `gas doctor`). Conferma che il rung free remoto è un paracadute lento, non
    un piano operativo. Rafforza il piano **ollama-su-VPS** (5° rung, pavimento
