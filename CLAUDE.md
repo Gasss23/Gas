@@ -70,3 +70,6 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 ### 🚀 FASE 5 — Autonomia Totale & VPS (Priorità Lunga)
 - Deploy su VPS h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
 - Automazione canali brand.
+
+### 💡 Idee da valutare (NON prioritarie)
+- Valutare utilizzo o integrazione openclaw (agente IA esterno). NB: prima verificare licenza, dipendenze, qualità e superficie di sicurezza; mai copia-incolla nel motore. Idea parcheggiata, nessun impegno.
