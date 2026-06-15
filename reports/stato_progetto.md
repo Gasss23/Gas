@@ -1,10 +1,14 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-15** (TASK 1 hook SessionEnd additivo/condizionale
-> + commit esplicito dei report, chiude bug sovrascrittura — revisore APPROVATO;
-> TASK 2 sfoltimento finding chiusi → `finding_archiviati.md`; TASK 3 note VPS.
-> Motore INVARIATO; suite **75/75**; test hook **8/8**)
+> Ultimo aggiornamento: **2026-06-15** (sessione di CHIUSURA/VERIFICA: A1–A6 superate
+> — i tre commit TASK 1/2/3 sono REALI e combaciano, suite **75/75** zero token,
+> hook usa-e-getta **9/9** incl. prefix-match dell'invariante; `scrivi_rep.sh`
+> verificato load-bearing → **STOP, NON ritirato**, decisione all'umano. Motore e
+> hook INVARIATI in questa sessione).
+> Storico: TASK 1 hook SessionEnd additivo/condizionale + commit esplicito dei report
+> (chiude bug sovrascrittura — revisore APPROVATO); TASK 2 sfoltimento finding chiusi
+> → `finding_archiviati.md`; TASK 3 note VPS.
 
 ## Stato del motore
 
@@ -209,6 +213,13 @@
   (2) l'invariante che toglie il motore dallo staging è una RETE di sicurezza, non
   la difesa primaria (che resta l'allowlist esplicita: l'hook fa `git add` solo di
   reports/, *.md, .gas_history.json, mai del motore).
+- 🟡 **Allowlist `git add` dell'hook SessionEnd è all-or-nothing** (verifica
+  2026-06-15, minore, fail-safe): `git add reports/ '*.md' .gas_history.json`
+  fallisce in blocco (`fatal: pathspec did not match`, rc=128) e non stagia NULLA se
+  `.gas_history.json` mancasse. È fail-SAFE (mancato auto-commit, MAI commit
+  indesiderato) e il workflow §3 copre i deliverable; in steady-state
+  `.gas_history.json` c'è sempre → benigno. Sul VPS, se mai mancasse all'avvio,
+  l'auto-commit della history salterebbe silenziosamente: tenerlo a mente.
 
 ## Istituzioni di processo (attive dal 2026-06-11)
 

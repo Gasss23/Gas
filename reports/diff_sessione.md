@@ -1,46 +1,45 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-15
+# 🔀 DIFF DI SESSIONE — 2026-06-15 (sessione di CHIUSURA/VERIFICA)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni
-> sessione. Motore (gas.py/brains/modules/tests) INVARIATO in questa sessione.
+> sessione. **Motore (gas.py/brains/modules/tests) e HOOK INVARIATI** in questa
+> sessione: solo verifica (sola lettura) + report/doc.
 
-## Cosa è cambiato e perché
+## Cosa è stato fatto e perché
 
-### TASK 1 — hook SessionEnd + commit esplicito dei report (chiude bug sovrascrittura)
-- **`.claude/hooks/session_end.sh`** (NUOVO): l'auto-commit di fine sessione, prima
-  inline in `settings.json`, è ora uno script testabile, **additivo e
-  condizionale**: stage solo allowlist (`reports/`, `*.md`, `.gas_history.json`);
-  invariante che toglie dallo staging eventuali file motore; se nulla è staged
-  esce senza commit (niente commit vuoti); nessun git distruttivo; `GAS_REPO_DIR`
-  override solo per i test.
-- **`.claude/settings.json`**: `SessionEnd` chiama lo script (come `Stop`/`PreToolUse`).
-- **`CLAUDE.md` §3**: nuova regola "commit esplicito dei report" (l'agente committa
-  i propri report, non l'hook) + descrizione hook additivo/condizionale + chiusura
-  del bug di sovrascrittura.
-- **Perché**: rumore nel log (auto-commit generici) + sovrascrittura del report
-  canonico (`7005517`→`412714f`) che l'hook poteva persistere senza intento.
-- **Verifica**: 8/8 PASS in repo usa-e-getta (RED→GREEN sovrascrittura, no-commit
-  vuoti, solo-reports=1 commit allowlist, motore mai committato). Revisore: APPROVATO.
-- Commit `8a6066b`.
+### PARTE A — Verifica che il lavoro TASK 1/2/3 fosse REALE (sola lettura)
+- **A1**: `git show --stat` di `8a6066b`/`e1c8ed4`/`405fa30` → esistono e il
+  contenuto combacia col report (hook+settings+CLAUDE.md / sfoltimento finding /
+  note VPS). Nessuna discrepanza.
+- **A2**: `reports/finding_archiviati.md` presente, **12** finding chiusi, una riga
+  datata ciascuno.
+- **A3**: `git log --oneline -40` → i tre task presenti con messaggi descrittivi;
+  **13** commit `"scrivi rep"` in tutta la storia = grosso del rumore visibile (dallo
+  Stop hook `scrivi_rep.sh`, non dal SessionEnd).
+- **A4**: suite motore ri-eseguita → **75 PASS, 0 FAIL**, zero token; working tree
+  pulito, diff motore vuoto → motore INVARIATO.
+- **A5**: ricostruito da zero `/tmp/test_session_end_hook.sh` (usa-e-getta) che riusa
+  il VERO `session_end.sh` via `GAS_REPO_DIR` → **9 PASS, 0 FAIL**: RED→GREEN
+  (vecchio hook persiste la sovrascrittura / nuovo workflow no-op), 4a/4b (motore
+  incl. gas.py pre-staggiato mai committato, working tree intatto), scenario 5
+  (prefix-match: `.md` sotto `brains/` escluso). Nota: 2 FAIL iniziali erano
+  dell'harness (`.gas_history.json` mancante → `git add` fallisce in blocco), non
+  dell'hook; harness corretto.
+- **A6**: invariante `ENGINE_RE='^(gas\.py|brains/|modules/|tests/)'` → match per
+  PREFISSO di path (provato dallo scenario 5). Nessun buco → **nessun indurimento**.
 
-### TASK 2 — sfoltimento `stato_progetto.md` (solo doc)
-- **`reports/finding_archiviati.md`** (NUOVO): 12 finding chiusi compressi a una
-  riga datata ciascuno.
-- **`reports/stato_progetto.md`**: "Finding aperti" ora solo finding attivi 🟡 +
-  puntatore all'archivio + riserva minore TASK 1.
-- Commit `e1c8ed4`.
+### PARTE B — `scrivi_rep.sh`: STOP documentato (non ritirato)
+- Verificato: Stop hook condizionale (scrive solo al trigger `scrivi rep`), UNICO
+  produttore di `reports/ultima_risposta.md`, feature autorizzata e referenziata in
+  `settings.json`. NON è ridondante col §3 (che copre altri file). → ramo ALTRIMENTI
+  della regola di decisione → **UNICO STOP**: non toccato `scrivi_rep.sh`,
+  `settings.json`, `CLAUDE.md`. La riduzione del rumore è decisione umana.
 
-### TASK 3 — note operative VPS (non per oggi)
-- **`reports/stato_progetto.md`**: sezione "Note operative VPS — non per oggi"
-  (snapshot 0 ref/~4427 loose → gc + verifica persistenza; OpenRouter ~28s →
-  ollama-su-VPS, sizing qwen2.5:7b).
-- Commit `405fa30`.
-
-### Chiusura
-- `reports/ultimo_report.md`, `reports/stato_progetto.md` (header + conteggio
-  review→11), `reports/diff_sessione.md`, `.claude/agents/memoria_revisore.md`.
+### Chiusura (PARTE C)
+- `reports/ultimo_report.md` (riscritto: esiti A1–A6 con output reali + STOP PARTE B),
+  `reports/stato_progetto.md` (header + nuova riserva minore "allowlist all-or-nothing"),
+  `reports/diff_sessione.md` (questo). Commit esplicito dell'agente (solo doc).
 
 ## File toccati (sintesi)
-`.claude/hooks/session_end.sh` (NUOVO) · `.claude/settings.json` · `CLAUDE.md` ·
-`reports/finding_archiviati.md` (NUOVO) · `reports/stato_progetto.md` ·
-`reports/diff_sessione.md` · `reports/ultimo_report.md` ·
-`.claude/agents/memoria_revisore.md`
+`reports/ultimo_report.md` · `reports/stato_progetto.md` · `reports/diff_sessione.md`.
+Test usa-e-getta `/tmp/test_session_end_hook.sh` (NON versionato). Nessun file motore,
+nessun hook, nessun `settings.json`, nessun `CLAUDE.md`.
