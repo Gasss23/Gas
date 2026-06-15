@@ -652,6 +652,116 @@ check("T18f _ref_age_epoch parsa il ts dal nome ref",
       abs(gas._ref_age_epoch(_mkref(_now - 5 * _DAY, "00000005")) - (_now - 5 * _DAY)) < 2,
       f"delta≈{gas._ref_age_epoch(_mkref(_now - 5 * _DAY, '00000005')) - (_now - 5 * _DAY):.0f}s")
 
+# ---------- T19: memoria FASE 2 fetta 1 (modules/memory, storage SQLite) ----------
+# Tutto locale, ZERO token: DB su file temporaneo, niente LLM.
+import sqlite3 as _sqlite3
+from modules.memory import (
+    MemoryStore, STATI_CONTATTO, STATI_CHIUSI, STATO_DEFAULT, default_db_path,
+)
+
+def mem_tmp() -> MemoryStore:
+    d = tempfile.mkdtemp(prefix="gas_mem_")
+    return MemoryStore(default_db_path(d))
+
+# T19a — diario: append + lettura recente (ordine: più recente prima)
+m = mem_tmp()
+id1 = m.append_diario("sistema", "avvio GAS")
+id2 = m.append_diario("tool_call", "run_command: ls")
+rec = m.diario_recente(10)
+check("T19a diario append+lettura", isinstance(id1, int) and isinstance(id2, int)
+      and len(rec) == 2 and rec[0]["descrizione"] == "run_command: ls"
+      and rec[0]["tipo"] == "tool_call", f"rec={[r['descrizione'] for r in rec]}")
+
+# T19b — contatti: upsert crea (stato default), poi aggiorna l'anagrafica senza duplicare
+cid = m.upsert_contatto("lead@ex.com", nome="Mario", contatto="lead@ex.com")
+c0 = m.get_contatto(cid)
+cid2 = m.upsert_contatto("lead@ex.com", nome="Mario Rossi")  # stessa chiave -> update
+c1 = m.get_contatto(cid)
+check("T19b upsert crea+aggiorna senza duplicare",
+      cid == cid2 and c0["stato"] == STATO_DEFAULT and c0["nome"] == "Mario"
+      and c1["nome"] == "Mario Rossi" and len(m.lista_contatti()) == 1,
+      f"cid={cid} cid2={cid2} nome={c1['nome'] if c1 else None}")
+
+# T19c — upsert NON tocca lo stato in conflitto (la transizione passa altrove)
+m.update_stato_contatto(cid, "interessato")
+m.upsert_contatto("lead@ex.com", note="ricontattare")  # upsert non deve resettare lo stato
+check("T19c upsert non resetta lo stato", m.get_contatto(cid)["stato"] == "interessato",
+      f"stato={m.get_contatto(cid)['stato']}")
+
+# T19d — transizione di stato (aggiorna/invalida) + filtro per stato
+m.update_stato_contatto(cid, "rifiutato", prossima_azione="nessuna")
+crf = m.get_contatto(cid)
+attivi = m.lista_contatti("interessato")
+rifiutati = m.lista_contatti("rifiutato")
+check("T19d transizione stato + filtro + invalidazione",
+      crf["stato"] == "rifiutato" and crf["stato"] in STATI_CHIUSI
+      and crf["ultimo_contatto"] is not None and len(attivi) == 0
+      and len(rifiutati) == 1, f"stato={crf['stato']}")
+
+# T19e — stato non valido respinto (CHECK + guardia applicativa)
+try:
+    m.update_stato_contatto(cid, "stato_inventato")
+    _bad = True
+except ValueError:
+    _bad = False
+check("T19e stato non valido respinto", _bad is False)
+
+# T19f — IMMUTABILITÀ del diario: UPDATE e DELETE devono FALLIRE (trigger DB)
+con = _sqlite3.connect(str(m.db_path))
+up_bloccato = del_bloccato = False
+try:
+    con.execute("UPDATE diario SET descrizione='manomesso' WHERE id=?", (id1,)); con.commit()
+except _sqlite3.Error:
+    up_bloccato = True
+try:
+    con.execute("DELETE FROM diario WHERE id=?", (id1,)); con.commit()
+except _sqlite3.Error:
+    del_bloccato = True
+con.close()
+righe_intatte = len(m.diario_recente(10)) == 2 and m.diario_recente(10)[-1]["descrizione"] == "avvio GAS"
+check("T19f diario immutabile (UPDATE e DELETE bloccati)",
+      up_bloccato and del_bloccato and righe_intatte,
+      f"up={up_bloccato} del={del_bloccato} intatte={righe_intatte}")
+
+# T19g — diario_di_contatto lega gli eventi al lead
+m.append_diario("messaggio", "inviato DM", contatto_id=cid)
+m.append_diario("messaggio", "nessuna risposta", contatto_id=cid)
+eventi = m.diario_di_contatto(cid)
+check("T19g diario_di_contatto filtra per lead",
+      len(eventi) == 2 and all(e["contatto_id"] == cid for e in eventi),
+      f"n={len(eventi)}")
+
+# T19h — backup: produce una copia LEGGIBILE con gli stessi dati
+bdir = tempfile.mkdtemp(prefix="gas_mem_bak_")
+bpath = m.backup(bdir)
+ok_bak = False
+if bpath and bpath.exists():
+    cb = _sqlite3.connect(str(bpath))
+    n_diario = cb.execute("SELECT COUNT(*) FROM diario").fetchone()[0]
+    n_contatti = cb.execute("SELECT COUNT(*) FROM contatti").fetchone()[0]
+    cb.close()
+    ok_bak = n_diario == 4 and n_contatti == 1
+check("T19h backup -> copia leggibile con gli stessi dati", ok_bak,
+      f"path={bpath}")
+
+# T19i — fail-safe: DB ASSENTE viene creato, le operazioni funzionano (no crash)
+d_new = tempfile.mkdtemp(prefix="gas_mem_new_")
+p_new = default_db_path(d_new)
+m_new = MemoryStore(p_new)
+check("T19i DB assente -> creato e operativo",
+      m_new.available and isinstance(m_new.append_diario("x", "y"), int)
+      and p_new.exists())
+
+# T19j — fail-safe: DB CORROTTO non crasha, degrada a valori sicuri
+d_bad = tempfile.mkdtemp(prefix="gas_mem_bad_")
+p_bad = Path(d_bad) / "corrotto.db"
+p_bad.write_bytes(b"questo non e' un database sqlite, e' spazzatura binaria")
+m_bad = MemoryStore(p_bad)  # init non deve sollevare
+check("T19j DB corrotto -> degrada senza crash",
+      m_bad.available is False and m_bad.append_diario("x", "y") is None
+      and m_bad.diario_recente(5) == [] and m_bad.get_contatto(1) is None
+      and m_bad.lista_contatti() == [])
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

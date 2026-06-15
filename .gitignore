@@ -15,3 +15,6 @@ snapshots/
 reports/snapshots.log
 reports/snapshots.log.1
 .claude/.review_ok
+.gas_memory.db
+.gas_memory.db-wal
+.gas_memory.db-shm
