@@ -48,11 +48,11 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 
 ## 10. FUTURE ROADMAP & PRIORITIES
 
-Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto).
+Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione.
 
 ### 🔴 FASE 1 — Blindatura del Terminale & Sicurezza (Priorità Alta)
 - Snapshot preventivo anti-autodistruzione — ✅ FATTO (2026-06-11), base della blindatura.
-- Sandbox OS per run_command (bwrap/unshare: namespace di rete chiuso + filesystem read-only) — chiude DEL TUTTO il finding esfiltrazione, oggi solo ridotto. Da decidere all'avvio: fail-closed duro vs fallback sul sandbox applicativo se l'ambiente non supporta i namespace. Aggiungere check di disponibilita in gas doctor. NB: verificare PRIMA cosa offre l'ambiente (Codespace e un container, bwrap potrebbe non avere i privilegi) e solo dopo progettare.
+- Sandbox OS per run_command (bwrap/unshare: namespace di rete chiuso + filesystem read-only) — ✅ FATTO: chiude DEL TUTTO il finding esfiltrazione. Implementati la sonda reale _probe_os_sandbox (cache di processo), il prefisso _bwrap_prefix (--unshare-net/--unshare-pid + fs read-only) e le due modalita GAS_SANDBOX_MODE: os_strict (fail-closed se bwrap/namespace assenti) e os_with_fallback (degrada alla sola sandbox applicativa). Check di disponibilita presente in gas doctor.
 - WINDOW_CHAR_CAP sulla finestra, a granularita di messaggio (mai slicing) — blocca lo spreco di token nei messaggi; rimedio proposto in review #1.
 - (collegato) Manutenzione snapshot in gas doctor: conteggio ref, gc degli oggetti orfani, rotazione di reports/snapshots.log (riserve R2/R3 review #3).
 
