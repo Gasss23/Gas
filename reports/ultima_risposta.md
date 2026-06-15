@@ -1,23 +1,22 @@
-Sì, riesco a ricostruirlo con buona affidabilità dagli orari dei commit (non ho una trascrizione letterale del prompt, ma i timestamp git sono inequivocabili).
+## Protocollo di reporting §3 — completato
 
-**Conversione orario:** 11:49 italiane = **09:49 UTC**.
+1. **Path del report:** `reports/ultimo_report.md`
+2. **Hash del commit che lo contiene:** `3d2c9632e8ffb4731deb8ef12a6b12063edb1040` (`3d2c963`) — committato e pushato su `origin/main`
+3. **Contenuto integrale:** stampato qui sopra con `cat`
 
-Cosa risulta intorno a quell'orario (orari in italiano):
-- `7099c79` — **11:46:32** → nota openclaw in roadmap (poco PRIMA delle 11:49)
-- `8a6066b` — **11:57:12** → TASK 1 (hook SessionEnd)
-- `e1c8ed4` — **12:00:06** → TASK 2 (sfoltimento doc)
-- `405fa30` — **12:00:41** → TASK 3 (note VPS)
-- `61fc21f` — **12:03:06** → report di chiusura sessione
-- `52d23ed` — **12:04:04** → scrivi rep
+**Nessuna discrepanza schermo/file** (il punto 3 è un `cat` diretto del file committato).
 
-Il prompt delle **11:49** cade nella finestra tra la nota openclaw (11:46) e il primo commit di lavoro (11:57). Tutto indica che quel prompt è ciò che ha avviato la sessione **TASK 1 + TASK 2 + TASK 3**, e cioè:
+Il git log di questa sessione è **pulito**: l'unico commit aggiunto è quello descrittivo del report, nessun `scrivi rep`.
 
-1. **TASK 1** — fix dell'hook `SessionEnd` (bug sovrascrittura report + rumore nel log), reso additivo/condizionale, con test 8/8 PASS e verdetto revisore APPROVATO.
-2. **TASK 2** — sfoltimento di `stato_progetto.md` (12 finding chiusi archiviati).
-3. **TASK 3** — note operative VPS (gc/snapshot + sizing ollama).
+---
 
-**L'ho eseguito?** Sì. Il lavoro è stato completato e committato/pushato (commit 11:57→12:00), con report finale in `reports/ultimo_report.md` (commit `61fc21f`, 12:03). Esito dichiarato: ✅ COMPLETATO, suite motore 75/75, motore invariato.
+### Recap semplice
+Mi avevi chiesto di **controllare che il lavoro di stamattina fosse vero** e di **decidere cosa fare con lo script `scrivi_rep.sh`**. Ho fatto entrambe le cose:
 
-⚠️ **Unica cautela onesta:** non posso vedere il testo originale del tuo prompt delle 11:49, quindi sto deducendo l'abbinamento dagli orari. Se ricordi anche solo una parola chiave di quel prompt, te lo confermo al 100% e verifico che corrisponda davvero ai TASK 1/2/3 e non a qualcos'altro.
+- ✅ **Il lavoro è reale.** I tre commit di stamattina ci sono davvero e dicono quello che il report dichiarava. I test del motore girano tutti (75 su 75) senza spendere soldi, e ho ri-dimostrato in un repo "usa e getta" che l'hook di fine sessione fa esattamente il suo dovere (9 prove su 9): non tocca mai il codice del motore, nemmeno se qualcuno prova a forzarlo.
+- ⛔ **`scrivi_rep.sh`: mi sono fermato, come dovevo.** Quello script **non è inutile**: è l'unica cosa che crea il file `ultima_risposta.md` quando dici "scrivi rep". I tanti commit "scrivi rep" che vedi nel log sono il "prezzo" di una funzione che usi e che tu hai autorizzato — non un doppione da buttare. Quindi **non ho toccato niente**: spegnerlo significherebbe cancellare la funzione, e quella è una scelta tua, non mia.
+- 🔎 **Una piccola scoperta onesta:** durante i test 2 prove erano fallite, ma per un mio errore nel test (non nell'hook). L'ho sistemato e annotato. Ne è uscita una notarella tecnica minore (innocua) registrata nello stato.
 
-**Recap semplice:** alle 11:49 mi hai dato il via alla sessione che ha sistemato l'hook di fine sessione, alleggerito i documenti di stato e scritto le note per la VPS. Tutto fatto e salvato su GitHub entro le 12:04. L'unica cosa che non posso vedere è il testo esatto del tuo messaggio: se mi dici una parola chiave, chiudo il cerchio con certezza.
+**In una frase:** stamattina avevi lavorato bene e davvero; ho verificato tutto, e sullo script "scrivi rep" mi sono fermato perché toglierlo spetta a te decidere.
+
+Se vuoi, il prossimo passo naturale è proprio quello: dimmi se preferisci **tenere** la funzione "scrivi rep" così com'è, oppure renderla **meno rumorosa** nel log — e in quel caso te la sistemo io.
