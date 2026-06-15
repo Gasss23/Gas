@@ -26,6 +26,19 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 fetta 1 (fondamenta storage) ATTIVA** (2026-06-15, review #12
+  APPROVATO CON RISERVE): nuovo modulo `modules/memory/` (`__init__.py` + `store.py`),
+  SOLO livello di persistenza, **NON agganciato a run_turn** (cablaggio solo PROPOSTO
+  nel report §FINALE). DB SQLite **FILE SINGOLO** (`<root>/.gas_memory.db`, fuori da git,
+  gitignorato con `-wal`/`-shm`), **niente WAL** per tenere il backup = copia del file.
+  Due tabelle: `diario` append-only **IMMUTABILE** (trigger DB `BEFORE UPDATE`/`BEFORE
+  DELETE` → `RAISE(ABORT)`, T19f) e `contatti` upsert-abile con `stato` mutabile
+  (`nuovo..rifiutato/chiuso`, `STATI_CHIUSI` = invalidati). Invariante separazione ruoli:
+  `upsert_contatto` non tocca lo stato (solo anagrafica), la transizione passa SOLO da
+  `update_stato_contatto`. Scritture IN-PROCESS via `sqlite3` (bypassano correttamente il
+  sandbox bwrap: memoria = codice fidato del kernel). Fail-safe §9: DB mancante creato,
+  DB corrotto → warning + degrado, mai crash. `backup()` nativo timestampato. Estensibile
+  (schema = tupla di DDL idempotenti). Test T19a-j zero token. Suite **75→85**.
 - **Manutenzione snapshot ATTIVA** (2026-06-14, FASE 1 — TASK C, review #10
   APPROVATO CON RISERVE): retention dei ref `refs/gas/snapshots/*` passata da
   count-based pura a **IBRIDA** = UNIONE di (ultimi `SNAPSHOT_KEEP=100`) e (più
@@ -235,13 +248,33 @@
   `.gas_history.json` c'è sempre → benigno. Sul VPS, se mai mancasse all'avvio,
   l'auto-commit della history salterebbe silenziosamente: tenerlo a mente.
 
+- 🟡 **Riserve Memoria FASE 2 fetta 1** (R-mem, review #12, minori non bloccanti):
+  (R1) i trigger di immutabilità del `diario` coprono UPDATE/DELETE ma NON
+  `INSERT OR REPLACE` sulla PK con i default SQLite (`recursive_triggers` OFF): il
+  DELETE implicito di REPLACE non li attiva. Portata reale limitata — `append_diario`
+  fa solo INSERT puro; il buco si apre solo a chi ha già accesso diretto al file `.db`.
+  Docstring precisata col caveat. Da chiudere alla passata di hardening (terzo trigger
+  `BEFORE INSERT` che vieta id già esistente, oppure `recursive_triggers ON`). (R2)
+  costanti hardcoded (`DEFAULT_DB_FILENAME`, `timeout=10`, `n=20` di `diario_recente`),
+  come `WINDOW_CHAR_CAP`/`SNAPSHOT_KEEP`; valutare override `GAS_MEMORY_DB` (path del DB
+  su volume persistente) al cablaggio su VPS.
+
+### PARK — Memoria FASE 2 (registrati, NON urgenti, nessun impegno)
+1. **Retention del diario**: cresce per sempre (stessa classe della retention snapshot).
+   Quando il volume lo richiederà: archiviazione/export + rotazione del file storico —
+   MAI `DELETE` (violerebbe l'immutabilità).
+2. **GDPR / dati personali dei lead** (UE): terreno legale da guardare a **FASE 4** (lead
+   generation). Consenso, diritto all'oblio (in tensione con l'immutabilità del diario),
+   minimizzazione. Non risolto ora, solo registrato.
+
 ## Istituzioni di processo (attive dal 2026-06-11)
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 11 review completate
-  (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, + review hook
-  SessionEnd TASK 1 del 2026-06-15 — APPROVATO), lezioni datate in
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 12 review completate
+  (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, review hook
+  SessionEnd TASK 1 del 2026-06-15 — APPROVATO, #12 Memoria FASE 2 fetta 1 del
+  2026-06-15 — APPROVATO CON RISERVE), lezioni datate in
   `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)

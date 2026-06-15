@@ -1,34 +1,40 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-15 (task minimo: rinomina messaggio commit scrivi_rep)
+# 🔀 DIFF DI SESSIONE — 2026-06-15 (Memoria FASE 2 fetta 1 + housekeeping)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni
-> sessione. **Motore (gas.py/brains/modules/tests) INVARIATO.** Nessun cambio di
-> comportamento della feature `scrivi rep`: solo l'etichetta del commit + doc.
+> sessione.
 
 ## Cosa è cambiato e perché
 
-### Rinomina del messaggio di commit di `scrivi_rep.sh`
-- **`.claude/hooks/scrivi_rep.sh`** (1 riga): messaggio di commit da
-  `"scrivi rep: ultima risposta salvata"` a `"chore(scrivi-rep): ultima risposta
-  salvata"`. Nessun'altra riga toccata: logica di trigger, estrazione, path
-  (`reports/ultima_risposta.md`), `git add`/`commit`/`push` INVARIATI.
-- **`CLAUDE.md` §3** (+1 bullet): documenta la feature `scrivi rep`, il prefisso
-  `chore(scrivi-rep):` per filtrare il rumore nel log (`git log | grep -v chore`) e
-  che `reports/ultima_risposta.md` resta volutamente versionato/pushato per la sync
-  multi-device. (La feature prima NON era menzionata in CLAUDE.md → nuova riga.)
-- **Perché**: rendere distinguibili/filtrabili nel log i commit ricorrenti della
-  feature, senza toccarne il comportamento (il file serve per lavorare da PC diversi).
+### 1. Housekeeping (pre-task)
+- **Stash droppato**: `stash@{0}` ("snapshot-autonomo snapshot_health + T15") era la
+  vecchia bozza di una funzione già reincorporata in main (TASK C). Classificato cruft
+  nella sessione precedente → `git stash drop` (commit `7d0fb70` riguarda solo la doc).
+- **`CLAUDE.md` (roadmap FASE 1 + storico)**: la **sandbox OS bwrap** era già implementata
+  e cablata in `run_command` ma la roadmap la dava ancora come "da fare". Allineata la doc
+  al codice (✅ FATTO) e aggiunta ai "Completati (storico)". Commit `7d0fb70`.
 
-### Verifica reale (step 3)
-- Repo git usa-e-getta in /tmp **con remote bare** (per provare il push davvero) +
-  transcript finto. Copia FEDELE dello script (cambiati SOLO i 2 path hardcoded verso
-  il repo temp). Innesco con `{"transcript_path":...}` su stdin → risultati:
-  messaggio commit = `chore(scrivi-rep): ultima risposta salvata`; unico file nel
-  commit = `reports/ultima_risposta.md`; contenuto = la risposta assistant PRECEDENTE;
-  **push arrivato al remote bare** con lo stesso messaggio. Comportamento identico a
-  prima salvo l'etichetta.
+### 2. Memoria FASE 2, fetta 1 — fondamenta storage (commit `8de2b0c`)
+- **`modules/memory/__init__.py`** (nuovo): facciata del package.
+- **`modules/memory/store.py`** (nuovo, ~300 righe): classe `MemoryStore`, schema SQLite
+  (file singolo, no WAL), tabelle `diario` (append-only, immutabile via trigger DB) e
+  `contatti` (upsert-abile, stato mutabile), API scrittura/lettura/backup, fail-safe §9.
+- **`tests/test_unit_kernel.py`** (+110 righe): nuovi test T19a-j (append/lettura diario,
+  upsert, transizione stato, immutabilità, backup, fail-safe DB assente/corrotto).
+  Suite **75 → 85**, 0 FAIL, zero token.
+- **`.gitignore`** (+3 righe): `.gas_memory.db` (+ `-wal`/`-shm`) — il DB vive fuori da git.
+- **Perché**: posare le fondamenta del "cervello" di GAS (diario = ricorda tutto; rubrica =
+  relazioni coi lead) come livello di persistenza isolato, robusto e con invarianti incise
+  (diario immutabile, contatti aggiorna/invalida). **NON agganciato a run_turn**: il cablaggio
+  è solo PROPOSTO nel report (§FINALE), da rivedere prima di toccare il loop blindato.
+
+### Processo rispettato
+- Gate di review: invocato il subagent **revisore** sul diff staged PRIMA del commit →
+  **review #12 APPROVATO CON RISERVE** (R1 REPLACE/recursive_triggers, R2 costanti non
+  configurabili). Riserve tracciate in `stato_progetto.md`. Hook deterministico onorato
+  (marcatore `.claude/.review_ok` creato per il commit e rimosso subito dopo).
 
 ## File toccati (sintesi)
-`.claude/hooks/scrivi_rep.sh` (1 riga) · `CLAUDE.md` (§3, +1 riga) ·
-`reports/ultimo_report.md` · `reports/stato_progetto.md` (1 riga) ·
-`reports/diff_sessione.md` (questo). Test usa-e-getta in /tmp (NON versionato).
-Nessun file motore.
+`modules/memory/__init__.py` (nuovo) · `modules/memory/store.py` (nuovo) ·
+`tests/test_unit_kernel.py` (+T19a-j) · `.gitignore` (+3) · `CLAUDE.md` (roadmap) ·
+`reports/ultimo_report.md` · `reports/stato_progetto.md` · `reports/diff_sessione.md` (questo).
+Commit motore: `8de2b0c` · commit doc roadmap: `7d0fb70`.
