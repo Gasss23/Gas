@@ -26,6 +26,27 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 — Scrittura CONTATTI dal loop (CRM autopilot) ATTIVA + riserve
+  2b R1/R2/R3 CHIUSE** (2026-06-16, review #15 APPROVATO CON RISERVE): completa il
+  ciclo della memoria — i lead ora si popolano DAL loop agentico, per via
+  controllata (il modello NON scrive SQL grezzo). (A) `store.py`: aggiunto il solo
+  lookup `get_contatto_per_chiave` (esatto su indice UNIQUE); schema/trigger/diario/
+  upsert/update della fetta 1 INVARIATI. (B) `gas.py`: due tool in `tools_schema` +
+  rami in `execute_tool_call`: `salva_contatto` (→ `upsert_contatto`, anagrafica,
+  NON tocca lo stato) e `imposta_stato_contatto` (match ESATTO sulla chiave + valida
+  lo stato contro `STATI_CONTATTO` prima del DB; lead inesistente/stato invalido →
+  diniego, mai crash). Scrittura IN-PROCESS (codice fidato → niente sandbox/snapshot);
+  ogni tool call resta tracciata nel diario (fetta 2a); `_riassumi_args` con casi
+  dedicati. Fail-safe §9 ovunque. (C) Riserve 2b chiuse: **R1** → `_trova_contatto`
+  (match esatto prioritario, nota di ambiguità sui match multipli invece di scegliere
+  in silenzio; `imposta_stato_contatto` usa solo match esatto); **R2** → helper
+  `_env_int` fail-safe + override env `GAS_MEMORY_PIN_CHARS/CONTACTS/EVENTS` (attributi
+  d'istanza che shadowano i default di classe); **R3** → `MEMORY_PIN_SCAN=200`
+  (finestra ampia e bounded) al posto dell'euristica `*5`. Test T22a-h (salva/aggiorna,
+  dinieghi, lookup, R1/R2/R3, **round-trip CRM completo T22h**: rubrica popolata dal
+  loop + diario + pin coerente). Invarianti motore (`_get_window`/`_cap_window_chars`/
+  `_snapshot`/`_vet_command`/`providers`/payload/`for _ in range(10)`) INVARIATE.
+  Suite **98→106**.
 - **Memoria FASE 2 fetta 2b (lettura/iniezione) ATTIVA** (2026-06-16, review #14
   APPROVATO CON RISERVE): realizzata la proposta §FINALE della 2a. (1) **Iniezione
   always-on**: nuovo `_memoria_pin()` costruisce un blocco compatto (lead ATTIVI
@@ -203,10 +224,13 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **98 PASS, 0 FAIL** (2026-06-16). Dai 90 si aggiungono gli 8 T21 (lato lettura
+  **106 PASS, 0 FAIL** (2026-06-16). Dai 98 si aggiungono gli 8 T22 (scrittura
+  contatti dal loop + chiusura R1/R2/R3: salva/aggiorna, dinieghi, lookup store,
+  match esatto+ambiguità, override env+fail-safe, scan robusto del rumore,
+  round-trip CRM completo con diario+pin). Storico dai 90 → 98: gli 8 T21 (lato lettura
   fetta 2b: pin filtra attivi/rumore, pin vuoto, `ricorda` per contatto/query/
   default, iniezione nel payload reale con finestra che parte da user, fail-safe,
-  cap del pin). Storico dai 85 → 90: i 5 T20 (aggancio diario a `run_turn`,
+  cap del pin). Dai 85 → 90: i 5 T20 (aggancio diario a `run_turn`,
   round-trip REALE: T20a multi-tool in ordine, T20b esiti `[OK]`, T20c tool
   fallito → `[KO]` + turno non interrotto, T20d memoria corrotta → round-trip OK,
   T20e memoria None → nessun crash). Dai 75 → 85: i 10 T19 (memoria fetta 1). Dai
@@ -310,17 +334,20 @@
   `.gas_history.json` c'è sempre → benigno. Sul VPS, se mai mancasse all'avvio,
   l'auto-commit della history salterebbe silenziosamente: tenerlo a mente.
 
-- 🟡 **Riserve Memoria FASE 2 fetta 2b** (R-mem2b, review #14, minori non
-  bloccanti): (R1) il match del contatto in `_ricorda` è substring
-  case-insensitive su `chiave`+`nome` e prende il PRIMO con `next()` → una query
-  corta può colpire il lead sbagliato senza avvisare di match multipli. Difesa
-  candidata: segnalare i match multipli o richiedere match esatto sulla chiave.
-  (R2) costanti `MEMORY_PIN_CHAR_CAP`/`MEMORY_PIN_CONTACTS`/`MEMORY_PIN_EVENTS`/
-  `DIARIO_NOISE_TIPI` hardcoded (stessa classe di `WINDOW_CHAR_CAP`/`SNAPSHOT_KEEP`);
-  valutare override via env al deploy VPS. (R3) euristica `MEMORY_PIN_EVENTS*5` per
-  filtrare il rumore: se gli ultimi ~30 eventi fossero TUTTI rumore di lettura,
-  "Ultime azioni" risulterebbe vuota pur con azioni vere più indietro (comunque
-  recuperabili via `ricorda`). Non bloccante.
+- ✅ **Riserve Memoria FASE 2 fetta 2b — R1/R2/R3 CHIUSE** (review #15, 2026-06-16):
+  R1 (match contatto ambiguo) → `_trova_contatto` con priorità al match esatto e nota
+  di ambiguità; R2 (costanti hardcoded) → override env `GAS_MEMORY_PIN_*` via `_env_int`
+  fail-safe; R3 (euristica `*5`) → `MEMORY_PIN_SCAN=200` bounded. `DIARIO_NOISE_TIPI`
+  resta hardcoded di proposito (non un tetto numerico). Dettaglio nella voce CRM sopra.
+- 🟡 **Riserve CRM contatti dal loop** (R-mem-crm, review #15, minori non bloccanti):
+  (R-crm-1) **qualità del dato della rubrica**: il modello può registrare lo stesso lead
+  con chiavi incoerenti (`anna@ex.com` vs `Anna`) come contatti distinti — l'UNIQUE
+  deduplica solo a parità di chiave esatta. Nessuna normalizzazione/canonicalizzazione
+  della chiave lato kernel. È rischio di QUALITÀ, non di sicurezza (recuperabile, mai
+  crash). Difesa candidata: normalizzare la chiave (lower/trim) prima dell'upsert o un
+  tool di merge lead. (R-crm-2) `int(c["id"])` in `_imposta_stato_contatto` assume id
+  convertibile (sempre vero con PK INTEGER SQLite, e protetto dal try/except globale) —
+  cosmetico.
 - 🟡 **Riserve Memoria FASE 2 fetta 2a** (R-mem2a, review #13, minori non
   bloccanti): (R1) `_esito_sintetico` inferisce `[OK]`/`[KO]` dal PREFISSO
   testuale dell'output (`Errore eseguendo`/`Operazione negata`): un tool a esito
@@ -355,12 +382,13 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 14 review completate
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 15 review completate
   (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, review hook
   SessionEnd TASK 1 del 2026-06-15 — APPROVATO, #12 Memoria FASE 2 fetta 1 del
   2026-06-15 — APPROVATO CON RISERVE, #13 Memoria FASE 2 fetta 2a del 2026-06-16
   — APPROVATO CON RISERVE, #14 Memoria FASE 2 fetta 2b del 2026-06-16 — APPROVATO
-  CON RISERVE), lezioni datate in `.claude/agents/memoria_revisore.md`.
+  CON RISERVE, #15 CRM contatti dal loop + chiusura R1/R2/R3 del 2026-06-16 —
+  APPROVATO CON RISERVE), lezioni datate in `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 

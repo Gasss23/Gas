@@ -33,20 +33,34 @@
   azioni (pin), e può approfondire on-demand col tool `ricorda`. Senza toccare la finestra
   blindata: il pin sta nel system message, non nella conversazione.
 
-### 3. DOC
+### 3. CRM autopilot — scrittura contatti dal loop + chiusura riserve 2b (commit `a70cbb1`)
+- **`modules/memory/store.py`** (+14): aggiunto il SOLO lookup `get_contatto_per_chiave`
+  (esatto su indice UNIQUE); schema/trigger/diario/upsert/update della fetta 1 invariati.
+- **`gas.py`** (+133, −13): tool `salva_contatto` (upsert anagrafica, non tocca lo stato) e
+  `imposta_stato_contatto` (transizione, match esatto + validazione stato) + handler
+  `_salva_contatto`/`_imposta_stato_contatto`; `_trova_contatto` (R1: match esatto + nota
+  ambiguità); helper `_env_int` + override env `GAS_MEMORY_PIN_*` (R2); `MEMORY_PIN_SCAN=200`
+  (R3); `_riassumi_args` con casi dedicati.
+- **`tests/`** (+T22a-h): salva/aggiorna, dinieghi, lookup, R1/R2/R3, round-trip CRM completo.
+- **Perché**: completare il ciclo della memoria — GAS popola la rubrica lead DA SOLO durante
+  il lavoro, per via controllata (no SQL grezzo dal modello). Suite 98 → 106.
+
+### 4. DOC
 - **`CLAUDE.md`**: §10 FASE 2 voce "Backup della memoria"; §6 nota su pin always-on + tool
-  `ricorda` + fail-safe.
-- **`reports/stato_progetto.md`**: voci "fetta 2a ATTIVA" e "fetta 2b ATTIVA", decisioni di
-  design A/B, riserve R1/R2 (2a) e R1/R2/R3 (2b), conteggi review (#13, #14) e suite (98).
+  `ricorda` + tool di scrittura contatti + override env + fail-safe.
+- **`reports/stato_progetto.md`**: voci "fetta 2a ATTIVA", "fetta 2b ATTIVA", "CRM autopilot
+  ATTIVA + R1/R2/R3 chiuse"; decisioni di design A/B; riserve R1/R2 (2a), R-crm (CRM);
+  conteggi review (#13, #14, #15) e suite (106).
 
 ### Processo rispettato
 - Gate di review: subagent **revisore** invocato sul diff staged PRIMA di OGNI commit
-  motore → **#13 (fetta 2a)** e **#14 (fetta 2b)** entrambi **APPROVATO CON RISERVE**.
-  Riserve tracciate in `stato_progetto.md`. Hook deterministico onorato (marcatore
-  `.claude/.review_ok` creato per ogni commit motore, rimosso subito dopo).
+  motore → **#13 (fetta 2a)**, **#14 (fetta 2b)** e **#15 (CRM + riserve)** tutti
+  **APPROVATO CON RISERVE**. Riserve tracciate in `stato_progetto.md`. Hook deterministico
+  onorato (marcatore `.claude/.review_ok` creato per ogni commit motore, rimosso subito dopo).
 
 ## File toccati (sintesi)
-`gas.py` (+197 nelle due fette) · `tests/test_unit_kernel.py` (+T20a-e, +T21a-h) ·
-`CLAUDE.md` (§10 backup, §6 memoria) · `.claude/agents/memoria_revisore.md` (lezioni #13/#14) ·
-`reports/ultimo_report.md` · `reports/stato_progetto.md` · `reports/diff_sessione.md` (questo).
-Commit motore: `7a75368` (2a) · `f3c5f30` (2b).
+`gas.py` (+~330 nella sessione) · `modules/memory/store.py` (+lookup) ·
+`tests/test_unit_kernel.py` (+T20a-e, +T21a-h, +T22a-h) · `CLAUDE.md` (§10 backup, §6 memoria) ·
+`.claude/agents/memoria_revisore.md` (lezioni #13/#14/#15) · `reports/ultimo_report.md` ·
+`reports/stato_progetto.md` · `reports/diff_sessione.md` (questo).
+Commit motore: `7a75368` (2a) · `f3c5f30` (2b) · `a70cbb1` (CRM + riserve).
