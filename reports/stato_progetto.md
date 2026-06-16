@@ -26,6 +26,25 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 fetta 2b (lettura/iniezione) ATTIVA** (2026-06-16, review #14
+  APPROVATO CON RISERVE): realizzata la proposta §FINALE della 2a. (1) **Iniezione
+  always-on**: nuovo `_memoria_pin()` costruisce un blocco compatto (lead ATTIVI
+  non in `STATI_CHIUSI` + poche azioni "significative", escluso il rumore di
+  lettura `read_file`/`run_command`/`ricorda`) e lo appende AL MESSAGGIO SYSTEM in
+  `run_turn` (`self.system_prompt + mem_pin`). Calcolato **UNA volta per turno**
+  (no eco delle azioni in corso, no query ripetute nel loop a 10 iter). Il pin
+  vive NEL system message, **FUORI dalla finestra** → `_get_window`/
+  `_cap_window_chars` INVARIATI (unica modifica: `system_prompt` →
+  `system_prompt + mem_pin`). Cap dedicato `MEMORY_PIN_CHAR_CAP=3000` che tronca
+  il **TESTO** con marker (come `_cap_tool_output`), NON sequenze di messaggi
+  (niente slicing, §5). (2) **Tool `ricorda()` di SOLA LETTURA** in `tools_schema`
+  + ramo in `execute_tool_call`: pesca diario/contatti on-demand in-process
+  (codice fidato, niente FS/rete → niente sandbox, niente snapshot), output capato
+  da `_cap_tool_output`. (3) **Fail-safe §9**: memoria None/degradata → pin "" e
+  turno prosegue, `_ricorda` → messaggio gentile, mai crash. Test T21a-h (filtro
+  attivi/rumore, pin vuoto, ricorda per contatto/query/default, **iniezione nel
+  payload REALE con finestra che parte da user — T21f**, fail-safe, cap del pin).
+  Diff motore: l'unica riga della finestra cambiata è il payload. Suite **90→98**.
 - **Memoria FASE 2 fetta 2a (aggancio scrittura) ATTIVA** (2026-06-16, review #13
   APPROVATO CON RISERVE): il diario della memoria è ora AGGANCIATO al loop di
   `run_turn`, **SOLO LATO SCRITTURA**. (1) `GasKernel.__init__`:
@@ -184,11 +203,14 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **90 PASS, 0 FAIL** (2026-06-16). Dai 85 si aggiungono i 5 T20 (aggancio diario
-  a `run_turn`, round-trip REALE zero token: T20a multi-tool in ordine, T20b esiti
-  `[OK]`, T20c tool fallito → `[KO]` + turno non interrotto, T20d memoria corrotta
-  → round-trip OK, T20e memoria None → nessun crash). Storico dai 75 → 85: i 10
-  T19 (memoria fetta 1). Dai 61 si aggiungono: 3 T16 (TASK A,
+  **98 PASS, 0 FAIL** (2026-06-16). Dai 90 si aggiungono gli 8 T21 (lato lettura
+  fetta 2b: pin filtra attivi/rumore, pin vuoto, `ricorda` per contatto/query/
+  default, iniezione nel payload reale con finestra che parte da user, fail-safe,
+  cap del pin). Storico dai 85 → 90: i 5 T20 (aggancio diario a `run_turn`,
+  round-trip REALE: T20a multi-tool in ordine, T20b esiti `[OK]`, T20c tool
+  fallito → `[KO]` + turno non interrotto, T20d memoria corrotta → round-trip OK,
+  T20e memoria None → nessun crash). Dai 75 → 85: i 10 T19 (memoria fetta 1). Dai
+  61 si aggiungono: 3 T16 (TASK A,
   `_parse_mode` condiviso init/doctor), 5 T17 (TASK B, paracadute free:
   404/no-tools/tools + classify + registro tool-capability), 6 T18 (TASK C,
   retention ibrida pura) con T11f riadattato. Storico: dai 52 i 9 check T14
@@ -288,6 +310,17 @@
   `.gas_history.json` c'è sempre → benigno. Sul VPS, se mai mancasse all'avvio,
   l'auto-commit della history salterebbe silenziosamente: tenerlo a mente.
 
+- 🟡 **Riserve Memoria FASE 2 fetta 2b** (R-mem2b, review #14, minori non
+  bloccanti): (R1) il match del contatto in `_ricorda` è substring
+  case-insensitive su `chiave`+`nome` e prende il PRIMO con `next()` → una query
+  corta può colpire il lead sbagliato senza avvisare di match multipli. Difesa
+  candidata: segnalare i match multipli o richiedere match esatto sulla chiave.
+  (R2) costanti `MEMORY_PIN_CHAR_CAP`/`MEMORY_PIN_CONTACTS`/`MEMORY_PIN_EVENTS`/
+  `DIARIO_NOISE_TIPI` hardcoded (stessa classe di `WINDOW_CHAR_CAP`/`SNAPSHOT_KEEP`);
+  valutare override via env al deploy VPS. (R3) euristica `MEMORY_PIN_EVENTS*5` per
+  filtrare il rumore: se gli ultimi ~30 eventi fossero TUTTI rumore di lettura,
+  "Ultime azioni" risulterebbe vuota pur con azioni vere più indietro (comunque
+  recuperabili via `ricorda`). Non bloccante.
 - 🟡 **Riserve Memoria FASE 2 fetta 2a** (R-mem2a, review #13, minori non
   bloccanti): (R1) `_esito_sintetico` inferisce `[OK]`/`[KO]` dal PREFISSO
   testuale dell'output (`Errore eseguendo`/`Operazione negata`): un tool a esito
@@ -322,12 +355,12 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 13 review completate
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 14 review completate
   (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, review hook
   SessionEnd TASK 1 del 2026-06-15 — APPROVATO, #12 Memoria FASE 2 fetta 1 del
   2026-06-15 — APPROVATO CON RISERVE, #13 Memoria FASE 2 fetta 2a del 2026-06-16
-  — APPROVATO CON RISERVE), lezioni datate in
-  `.claude/agents/memoria_revisore.md`.
+  — APPROVATO CON RISERVE, #14 Memoria FASE 2 fetta 2b del 2026-06-16 — APPROVATO
+  CON RISERVE), lezioni datate in `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 

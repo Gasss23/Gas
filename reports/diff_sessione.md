@@ -1,56 +1,52 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-16 (Memoria FASE 2 fetta 2a — aggancio scrittura)
+# 🔀 DIFF DI SESSIONE — 2026-06-16 (Memoria FASE 2 fette 2a + 2b)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni
 > sessione.
 
 ## Cosa è cambiato e perché
 
-### 1. DOC (no motore)
-- **`CLAUDE.md` §10 FASE 2**: nuova voce **"Backup della memoria"**. Il DB di memoria
-  (file SQLite singolo, fuori da git) è il dato più prezioso e meno rimpiazzabile; la
-  macchina del tempo snapshot NON lo copre (solo repo git). `MemoryStore.backup()` =
-  copia `.bak` LOCALE (protegge da auto-corruzione, NON dalla morte del disco); il
-  backup OFF-MACHINE è da FASE 5/deploy VPS, banale perché DB = file singolo.
-- **`reports/stato_progetto.md`**: voce **"fetta 2a ATTIVA"** + decisioni di design
-  **A** (diario logga OGNI tool call, esito incluso; filtro del rumore è scelta del
-  lato LETTURA; contatti NON scritti dal loop) e **B** (iniezione always-on PROPOSTA =
-  contatti attivi + pochi eventi recenti filtrati, budget ~3000 char dentro
-  `WINDOW_CHAR_CAP`, diario profondo via tool `ricorda()`). Riserve R1/R2 della
-  review #13 tracciate. Conteggi review (#13) e suite (90) aggiornati.
+### 1. Fetta 2a — aggancio diario a run_turn, SOLO scrittura (commit `7a75368`)
+- **`gas.py`** (+65): import memoria; `self.memory = MemoryStore(...)` in `__init__` con
+  doppia cintura fail-safe; helper `_riassumi_args`/`_esito_sintetico`/`_diario_log`; nel
+  loop di `run_turn`, per OGNI tool call DOPO l'esecuzione, una riga di diario in-process
+  (esito negativo incluso).
+- **`tests/`** (+T20a-e): round-trip REALE zero token.
+- **Perché**: dare a GAS un diario che ricorda DA SOLO ogni azione, senza toccare la
+  blindatura del loop. La memoria che non scrive non ferma mai il turno.
 
-### 2. BUILD fetta 2a — motore, SOLO lato scrittura (commit `7a75368`)
-- **`gas.py`** (+65, 0 cancellazioni):
-  - import `from modules.memory import MemoryStore, default_db_path`.
-  - `GasKernel.__init__`: `self.memory = MemoryStore(default_db_path(self.root))` con
-    **doppia cintura fail-safe** (`MemoryStore` degrada da sé con `available=False`; un
-    errore remoto all'avvio mette `self.memory=None`) → il kernel non crasha MAI.
-  - Helper `_riassumi_args` (sintesi argomenti per tool), `_esito_sintetico`
-    (`[OK]`/`[KO]` dal prefisso dell'output) e `_diario_log` (fail-safe §9: memoria
-    None/degradata → warning nella scatola nera, il turno CONTINUA).
-  - Nel loop di `run_turn`, per OGNI tool call, DOPO l'esecuzione (esito negativo
-    incluso): una riga di diario in-process via `append_diario`. Scrittura
-    **IN-PROCESS** (codice fidato → bypassa correttamente il sandbox bwrap).
-- **`tests/test_unit_kernel.py`** (+102): T20a-e (round-trip REALE zero token: multi-tool
-  in ordine, esiti `[OK]`, tool fallito → `[KO]` + turno non interrotto, memoria corrotta
-  → round-trip OK, memoria None → nessun crash). Suite **85 → 90**, 0 FAIL.
-- **Perché**: dare a GAS un diario che ricorda DA SOLO tutto ciò che fa, agganciandolo al
-  loop senza toccarne la blindatura. Robustezza > potenza: la memoria che non scrive non
-  ferma mai il turno.
+### 2. Fetta 2b — lettura/iniezione memoria (commit `f3c5f30`)
+- **`gas.py`** (+132, −3):
+  - `_memoria_pin()`: blocco compatto ALWAYS-ON (lead ATTIVI non chiusi + poche azioni
+    "significative", escluso il rumore di lettura `read_file`/`run_command`/`ricorda`),
+    appeso AL MESSAGGIO SYSTEM in `run_turn` (`self.system_prompt + mem_pin`), calcolato
+    UNA volta per turno. Vive nel system message, FUORI dalla finestra → `_get_window`/
+    `_cap_window_chars` INVARIATI (unica modifica alla finestra: la riga del payload). Cap
+    dedicato `MEMORY_PIN_CHAR_CAP=3000` che tronca il TESTO con marker (no slicing, §5).
+  - Tool **`ricorda()`** di SOLA LETTURA in `tools_schema` + ramo in `execute_tool_call`:
+    pesca diario/contatti on-demand in-process (codice fidato → niente FS/rete, niente
+    sandbox, niente snapshot); output capato da `_cap_tool_output`.
+  - Fail-safe §9: memoria None/degradata → pin "" e turno prosegue; `_ricorda` gentile.
+- **`tests/`** (+T21a-h): pin filtra attivi/rumore, pin vuoto, `ricorda` per
+  contatto/query/default, **T21f cattura il payload reale** (1 solo system, finestra che
+  parte da user → no Gemini 400), fail-safe, cap del pin.
+- **Perché**: far sì che GAS *usi* la memoria — vede sempre i lead attivi e le ultime
+  azioni (pin), e può approfondire on-demand col tool `ricorda`. Senza toccare la finestra
+  blindata: il pin sta nel system message, non nella conversazione.
 
-### Vincoli rispettati (prova-di-scope)
-- `for _ in range(10)` (§8) INVARIATO, ordine delle fasi pure.
-- CONTATTI non toccati dal loop (solo diario). Nessuna iniezione nel contesto:
-  `_get_window`/`_cap_window_chars`/finestra INVARIATI. Schema memoria fetta 1
-  (`store.py`) INVARIATO. **Lato lettura/iniezione (fetta 2b) NON implementato: solo
-  PROPOSTO** nel report §FINALE.
+### 3. DOC
+- **`CLAUDE.md`**: §10 FASE 2 voce "Backup della memoria"; §6 nota su pin always-on + tool
+  `ricorda` + fail-safe.
+- **`reports/stato_progetto.md`**: voci "fetta 2a ATTIVA" e "fetta 2b ATTIVA", decisioni di
+  design A/B, riserve R1/R2 (2a) e R1/R2/R3 (2b), conteggi review (#13, #14) e suite (98).
 
 ### Processo rispettato
-- Gate di review: subagent **revisore** invocato sul diff staged PRIMA del commit →
-  **review #13 APPROVATO CON RISERVE** (R1 etichetta esito da prefisso testuale, R2
-  verbosità diario). Riserve tracciate in `stato_progetto.md`. Hook deterministico
-  onorato (marcatore `.claude/.review_ok` creato per il commit, rimosso subito dopo).
+- Gate di review: subagent **revisore** invocato sul diff staged PRIMA di OGNI commit
+  motore → **#13 (fetta 2a)** e **#14 (fetta 2b)** entrambi **APPROVATO CON RISERVE**.
+  Riserve tracciate in `stato_progetto.md`. Hook deterministico onorato (marcatore
+  `.claude/.review_ok` creato per ogni commit motore, rimosso subito dopo).
 
 ## File toccati (sintesi)
-`gas.py` (+65) · `tests/test_unit_kernel.py` (+T20a-e) · `CLAUDE.md` (§10 backup memoria) ·
+`gas.py` (+197 nelle due fette) · `tests/test_unit_kernel.py` (+T20a-e, +T21a-h) ·
+`CLAUDE.md` (§10 backup, §6 memoria) · `.claude/agents/memoria_revisore.md` (lezioni #13/#14) ·
 `reports/ultimo_report.md` · `reports/stato_progetto.md` · `reports/diff_sessione.md` (questo).
-Commit motore: `7a75368`.
+Commit motore: `7a75368` (2a) · `f3c5f30` (2b).
