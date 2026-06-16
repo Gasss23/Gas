@@ -996,6 +996,100 @@ check("T21h pin capato a MEMORY_PIN_CHAR_CAP (no slicing della storia)",
       and "memoria troncata" in pin_big,
       f"len_pin={len(pin_big)} cap={k.MEMORY_PIN_CHAR_CAP}")
 
+# ---------- T22: scrittura contatti dal loop + chiusura riserve R1/R2/R3 ----------
+from modules.memory import STATI_CONTATTO
+
+# T22a — salva_contatto crea e poi aggiorna (via execute_tool_call), no duplicati
+k = kernel_tmp()
+o1 = k.execute_tool_call("salva_contatto", {"chiave": "anna@ex.com", "nome": "Anna",
+                                            "prossima_azione": "chiamare"})
+o2 = k.execute_tool_call("salva_contatto", {"chiave": "anna@ex.com", "note": "VIP"})
+c = k.memory.get_contatto_per_chiave("anna@ex.com")
+check("T22a salva_contatto crea+aggiorna senza duplicare",
+      o1.startswith("Successo") and o2.startswith("Successo")
+      and c is not None and c["nome"] == "Anna" and c["note"] == "VIP"
+      and c["stato"] == "nuovo" and len(k.memory.lista_contatti()) == 1,
+      f"o1={o1[:40]} c={c['nome'] if c else None}")
+
+# T22b — salva_contatto senza chiave -> negato; memoria None -> messaggio, no crash
+o_noch = k.execute_tool_call("salva_contatto", {"nome": "SenzaChiave"})
+k_none = kernel_tmp(); k_none.memory = None
+o_none = k_none.execute_tool_call("salva_contatto", {"chiave": "x@y.z"})
+check("T22b salva_contatto: chiave mancante negata, memoria None gestita",
+      "Operazione negata" in o_noch and "Memoria non disponibile" in o_none,
+      f"noch={o_noch[:40]} none={o_none[:40]}")
+
+# T22c — imposta_stato_contatto: cambia stato; inesistente/stato invalido -> negato
+o_st = k.execute_tool_call("imposta_stato_contatto", {"chiave": "anna@ex.com", "stato": "interessato"})
+o_inex = k.execute_tool_call("imposta_stato_contatto", {"chiave": "ghost@ex.com", "stato": "interessato"})
+o_bad = k.execute_tool_call("imposta_stato_contatto", {"chiave": "anna@ex.com", "stato": "fantasia"})
+check("T22c imposta_stato: ok + inesistente/stato-invalido negati",
+      o_st.startswith("Successo")
+      and k.memory.get_contatto_per_chiave("anna@ex.com")["stato"] == "interessato"
+      and "nessun lead" in o_inex and "non valido" in o_bad,
+      f"st={o_st[:40]} inex={o_inex[:30]} bad={o_bad[:30]}")
+
+# T22d — store.get_contatto_per_chiave: lookup esatto + None se assente
+check("T22d get_contatto_per_chiave: esatto + None",
+      k.memory.get_contatto_per_chiave("anna@ex.com") is not None
+      and k.memory.get_contatto_per_chiave("non@esiste.x") is None)
+
+# T22e (R1) — _trova_contatto: chiave esatta ha priorità + nota su match multipli
+k = kernel_tmp()
+k.memory.upsert_contatto("mario.rossi@ex.com", nome="Mario Rossi")
+k.memory.upsert_contatto("mario.bianchi@ex.com", nome="Mario Bianchi")
+m_exact, nota_exact = k._trova_contatto("mario.rossi@ex.com")   # chiave esatta
+m_amb, nota_amb = k._trova_contatto("mario")                    # substring -> 2 match
+check("T22e (R1) match esatto prioritario + ambiguità segnalata",
+      m_exact is not None and m_exact["chiave"] == "mario.rossi@ex.com" and nota_exact is None
+      and m_amb is not None and nota_amb is not None and "2 lead corrispondono" in nota_amb,
+      f"nota_amb={nota_amb}")
+
+# T22f (R2) — override via env dei tetti del pin + fail-safe su valore sporco
+import gas as _gasmod
+_saved_env = {kk: os.environ.get(kk) for kk in
+              ("GAS_MEMORY_PIN_CHARS", "GAS_MEMORY_PIN_CONTACTS", "GAS_MEMORY_PIN_EVENTS")}
+os.environ["GAS_MEMORY_PIN_CHARS"] = "5000"
+os.environ["GAS_MEMORY_PIN_EVENTS"] = "abc"   # sporco -> default
+try:
+    k_env = kernel_tmp()
+    ok_env = (k_env.MEMORY_PIN_CHAR_CAP == 5000
+              and k_env.MEMORY_PIN_EVENTS == GasKernel.MEMORY_PIN_EVENTS  # default per valore sporco
+              and _gasmod._env_int("NON_ESISTE_XYZ", 7) == 7
+              and _gasmod._env_int("GAS_MEMORY_PIN_CHARS", 9999, min_val=200) == 5000)
+finally:
+    for kk, v in _saved_env.items():
+        if v is None: os.environ.pop(kk, None)
+        else: os.environ[kk] = v
+check("T22f (R2) override env dei tetti memoria + fail-safe valore sporco", ok_env,
+      f"chars={k_env.MEMORY_PIN_CHAR_CAP} events={k_env.MEMORY_PIN_EVENTS}")
+
+# T22g (R3) — scansione robusta: un'azione vera resta visibile sotto rumore denso
+k = kernel_tmp()
+k.memory.append_diario("messaggio", "AZIONE VERA molto indietro")  # la più vecchia
+for i in range(40):                                                # 40 eventi di rumore più recenti
+    k.memory.append_diario("read_file", f"path='f{i}.txt' | [OK]")
+pin_r3 = k._memoria_pin()
+check("T22g (R3) azione vera emerge sotto 40 eventi di rumore (scan ampio)",
+      "AZIONE VERA molto indietro" in pin_r3 and "f39.txt" not in pin_r3,
+      f"scan={k.MEMORY_PIN_SCAN}")
+
+# T22h — ROUND-TRIP: l'agente popola la rubrica e il pin la riflette
+k = kernel_tmp()
+script_h = [[("salva_contatto", '{"chiave":"lucia@ex.com","nome":"Lucia","prossima_azione":"inviare offerta"}'),
+            ("imposta_stato_contatto", '{"chiave":"lucia@ex.com","stato":"interessato"}')],
+           "rubrica aggiornata"]
+ev_h = run_turn_scriptato(k, "registra Lucia come lead interessato", script_h)
+c_h = k.memory.get_contatto_per_chiave("lucia@ex.com")
+diario_h = [r["tipo"] for r in k.memory.diario_recente(5)]
+pin_h = k._memoria_pin()
+check("T22h round-trip: rubrica popolata dal loop + diario + pin riflette",
+      c_h is not None and c_h["stato"] == "interessato"
+      and "salva_contatto" in diario_h and "imposta_stato_contatto" in diario_h
+      and "Lucia" in pin_h and "interessato" in pin_h
+      and len([e for e in ev_h if e["type"] == "final"]) == 1,
+      f"stato={c_h['stato'] if c_h else None} diario={diario_h}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

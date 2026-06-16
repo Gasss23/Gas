@@ -8,7 +8,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
-from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI
+from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO
 
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
 # i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
@@ -230,6 +230,21 @@ def _snapshot_retention(refs: List[str], now: float, keep_n: int,
     drop = [r for r in refs if r not in keep_set]
     return keep, drop
 
+def _env_int(name: str, default: int, min_val: int = 1) -> int:
+    """Legge un intero da una variabile d'ambiente, FAIL-SAFE: assente o non
+    parsabile -> default; sotto min_val -> clampato a min_val. Permette di
+    configurare i tetti della memoria al deploy senza ricompilare (riserva R2
+    della fetta 2b), senza mai rompersi su un valore sporco."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return max(min_val, int(raw))
+    except (TypeError, ValueError):
+        logging.warning(f"{name}={raw!r} non è un intero valido — uso default {default}")
+        return default
+
+
 class GasKernel:
     def __init__(self, root_dir: Optional[str] = None):
         self.root: Path = Path(root_dir or os.getcwd()).resolve()
@@ -265,11 +280,18 @@ class GasKernel:
         except Exception as e:
             logging.warning(f"MemoryStore non inizializzato ({e}) — memoria disattivata")
             self.memory = None
+        # Override via env dei tetti dell'iniezione memoria (riserva R2 fetta 2b):
+        # fail-safe (valore sporco → default). Shadowano i default di classe.
+        self.MEMORY_PIN_CHAR_CAP = _env_int("GAS_MEMORY_PIN_CHARS", GasKernel.MEMORY_PIN_CHAR_CAP, min_val=200)
+        self.MEMORY_PIN_CONTACTS = _env_int("GAS_MEMORY_PIN_CONTACTS", GasKernel.MEMORY_PIN_CONTACTS, min_val=0)
+        self.MEMORY_PIN_EVENTS = _env_int("GAS_MEMORY_PIN_EVENTS", GasKernel.MEMORY_PIN_EVENTS, min_val=0)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
-            {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "testo da cercare negli eventi del diario (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}}
+            {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "testo da cercare negli eventi del diario (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
+            {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
+            {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}}
         ]
 
     def _load_history(self) -> List[Dict[str, Any]]:
@@ -349,9 +371,15 @@ class GasKernel:
     # NON passa da _get_window/_cap_window_chars: la finestra conversazionale
     # resta intatta. Il pin ha un suo tetto dedicato, ampiamente sotto
     # WINDOW_CHAR_CAP, così il payload totale (system+pin+finestra) resta sano.
+    # Default (override via env, risolti in __init__ — riserva R2 fetta 2b):
     MEMORY_PIN_CHAR_CAP = 3000     # tetto rigido del solo blocco-memoria
     MEMORY_PIN_CONTACTS = 8        # max lead attivi nel pin
     MEMORY_PIN_EVENTS = 6          # max eventi diario "significativi" nel pin
+    # Quanti eventi grezzi scandire all'indietro per trovare MEMORY_PIN_EVENTS
+    # eventi "buoni" (riserva R3 fetta 2b): finestra AMPIA e BOUNDED, così se il
+    # rumore di lettura è denso le azioni vere poco più indietro emergono comunque
+    # (LIMIT su SQLite locale: costo trascurabile).
+    MEMORY_PIN_SCAN = 200
     # Rumore di sola lettura: eventi che NON meritano l'iniezione always-on (il
     # diario li conserva comunque a monte — decisione A; il filtro è di LETTURA).
     DIARIO_NOISE_TIPI = frozenset({"read_file", "run_command", "ricorda"})
@@ -642,6 +670,14 @@ class GasKernel:
             return f"command={str(args.get('command', ''))[:160]!r}"
         if name in ("write_file", "read_file"):
             return f"path={str(args.get('relative_path', ''))[:160]!r}"
+        if name == "salva_contatto":
+            return f"contatto chiave={str(args.get('chiave', ''))[:80]!r}"
+        if name == "imposta_stato_contatto":
+            return (f"chiave={str(args.get('chiave', ''))[:80]!r} "
+                    f"stato={str(args.get('stato', ''))[:40]!r}")
+        if name == "ricorda":
+            return (f"query={str(args.get('query', '') or '')[:60]!r} "
+                    f"contatto={str(args.get('contatto', '') or '')[:60]!r}")
         # tool sconosciuto: dump compatto delle chiavi (difensivo)
         return ", ".join(f"{k}={str(v)[:60]!r}" for k, v in args.items())[:200]
 
@@ -695,9 +731,10 @@ class GasKernel:
                     pa = f" → prossima: {c['prossima_azione']}" if c.get("prossima_azione") else ""
                     ult = f" (ultimo: {str(c['ultimo_contatto'])[:10]})" if c.get("ultimo_contatto") else ""
                     righe.append(f"- {nome} [{c.get('stato')}]{pa}{ult}")
-            # eventi recenti, escluso il rumore di lettura. Si pesca un po' largo
-            # e poi si filtra/tronca, per arrivare a MEMORY_PIN_EVENTS "buoni".
-            eventi = [e for e in self.memory.diario_recente(self.MEMORY_PIN_EVENTS * 5)
+            # eventi recenti, escluso il rumore di lettura. Si scandisce una
+            # finestra AMPIA e bounded (MEMORY_PIN_SCAN) e si filtra, così anche
+            # con rumore denso le azioni vere poco più indietro emergono (R3).
+            eventi = [e for e in self.memory.diario_recente(self.MEMORY_PIN_SCAN)
                       if e.get("tipo") not in self.DIARIO_NOISE_TIPI][:self.MEMORY_PIN_EVENTS]
             if eventi:
                 righe.append("## Ultime azioni")
@@ -718,6 +755,32 @@ class GasKernel:
             logging.warning(f"_memoria_pin fallito: {e}")
             return ""
 
+    def _trova_contatto(self, termine: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+        """Risolve un termine a UN contatto. Priorità: (1) match ESATTO sulla
+        chiave (via indice UNIQUE); (2) altrimenti substring case-insensitive su
+        chiave+nome. Ritorna (contatto|None, nota_ambiguità|None): se il substring
+        trova PIÙ lead si prende il più recente ma si SEGNALA l'ambiguità invece di
+        sceglierne uno in silenzio (riserva R1 fetta 2b). Fail-safe: memoria
+        None/degradata → (None, None)."""
+        if self.memory is None:
+            return None, None
+        esatto = self.memory.get_contatto_per_chiave(termine)
+        if esatto:
+            return esatto, None
+        ago = termine.lower()
+        cand = [c for c in self.memory.lista_contatti()
+                if ago in (str(c.get("chiave", "")).lower() + " "
+                           + str(c.get("nome", "")).lower())]
+        if not cand:
+            return None, None
+        if len(cand) == 1:
+            return cand[0], None
+        # lista_contatti è ordinata per aggiornato_il DESC → cand[0] è il più recente
+        nomi = ", ".join((c.get("nome") or c.get("chiave") or "?") for c in cand[:5])
+        nota = (f"⚠ {len(cand)} lead corrispondono a '{termine}' ({nomi}…); mostro il "
+                f"più recente. Usa la chiave esatta per disambiguare.")
+        return cand[0], nota
+
     def _ricorda(self, query: Optional[str] = None, contatto: Optional[str] = None,
                  n: int = 10) -> str:
         """Lettura on-demand della memoria (tool 'ricorda'). SOLA LETTURA: nessuna
@@ -731,16 +794,12 @@ class GasKernel:
         except (TypeError, ValueError):
             n = 10
         parti: List[str] = []
-        # 1) scheda + storia di un lead specifico (match su chiave o nome)
+        # 1) scheda + storia di un lead specifico (chiave esatta o nome)
         if contatto:
-            ago = str(contatto).lower()
-            match = next(
-                (c for c in self.memory.lista_contatti()
-                 if ago in (str(c.get("chiave", "")).lower() + " "
-                            + str(c.get("nome", "")).lower())),
-                None,
-            )
+            match, nota = self._trova_contatto(str(contatto))
             if match:
+                if nota:
+                    parti.append(nota)
                 parti.append(
                     f"CONTATTO {match.get('nome') or match.get('chiave')} "
                     f"[{match.get('stato')}] — prossima: "
@@ -768,6 +827,47 @@ class GasKernel:
             parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in eventi]
                       or ["- (diario vuoto)"])
         return "\n".join(parti) if parti else "Nessun ricordo."
+
+    def _salva_contatto(self, args: Dict[str, Any]) -> str:
+        """Crea/aggiorna un lead nella rubrica (tool salva_contatto). Scrittura
+        in-process fidata (parametrizzata, niente SQL grezzo dal modello). NON
+        tocca lo stato del funnel (separazione identità/ciclo di vita, come
+        upsert_contatto). Fail-safe: memoria assente/degradata → messaggio, mai
+        crash."""
+        if self.memory is None:
+            return "Memoria non disponibile: contatto non salvato."
+        chiave = str(args.get("chiave") or "").strip()
+        if not chiave:
+            return "Operazione negata: 'chiave' obbligatoria per salvare un contatto."
+        cid = self.memory.upsert_contatto(
+            chiave=chiave, nome=args.get("nome"), contatto=args.get("contatto"),
+            prossima_azione=args.get("prossima_azione"), note=args.get("note"))
+        if cid is None:
+            return f"Memoria in degrado: contatto '{chiave}' non salvato."
+        return f"Successo: contatto '{chiave}' salvato (id={cid})."
+
+    def _imposta_stato_contatto(self, args: Dict[str, Any]) -> str:
+        """Transizione di stato di un lead esistente (tool imposta_stato_contatto).
+        Il lead deve esistere (match ESATTO sulla chiave: una transizione di stato
+        non può essere ambigua). Valida lo stato prima di toccare il DB. Fail-safe:
+        memoria/lead assenti → messaggio chiaro, mai crash."""
+        if self.memory is None:
+            return "Memoria non disponibile: stato non aggiornato."
+        chiave = str(args.get("chiave") or "").strip()
+        stato = str(args.get("stato") or "").strip()
+        if not chiave or not stato:
+            return "Operazione negata: servono sia 'chiave' sia 'stato'."
+        if stato not in STATI_CONTATTO:
+            return (f"Operazione negata: stato '{stato}' non valido. "
+                    f"Ammessi: {', '.join(STATI_CONTATTO)}.")
+        c = self.memory.get_contatto_per_chiave(chiave)
+        if c is None:
+            return (f"Operazione negata: nessun lead con chiave '{chiave}'. "
+                    f"Crealo prima con salva_contatto.")
+        ok = self.memory.update_stato_contatto(
+            int(c["id"]), stato, prossima_azione=args.get("prossima_azione"))
+        return (f"Successo: lead '{chiave}' ora in stato '{stato}'." if ok
+                else f"Memoria in degrado: stato di '{chiave}' non aggiornato.")
 
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
@@ -858,6 +958,13 @@ class GasKernel:
                 out = self._ricorda(args.get("query") if isinstance(args, dict) else None,
                                     args.get("contatto") if isinstance(args, dict) else None,
                                     args.get("n", 10) if isinstance(args, dict) else 10)
+            elif name == "salva_contatto":
+                # Scrittura nella rubrica, in-process (codice fidato): niente FS/
+                # rete, niente sandbox/snapshot. La riga viene comunque tracciata
+                # nel diario dal loop (fetta 2a). SQL parametrizzato in MemoryStore.
+                out = self._salva_contatto(args if isinstance(args, dict) else {})
+            elif name == "imposta_stato_contatto":
+                out = self._imposta_stato_contatto(args if isinstance(args, dict) else {})
             else:
                 return "Tool non trovato."
             return self._cap_tool_output(name, args, out)

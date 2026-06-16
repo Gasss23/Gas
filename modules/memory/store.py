@@ -269,6 +269,20 @@ class MemoryStore:
             log.warning("get_contatto fallita (%s): %s", self.db_path, e)
             return None
 
+    def get_contatto_per_chiave(self, chiave: str) -> Optional[Dict[str, Any]]:
+        """Un contatto per la sua chiave univoca (es. email/handle normalizzato),
+        o None se assente/in degrado. Lookup esatto, sfrutta l'indice UNIQUE su
+        `chiave`: è la via canonica per risolvere chiave -> contatto."""
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT * FROM contatti WHERE chiave = ?", (chiave,)
+                ).fetchone()
+                return dict(row) if row else None
+        except (sqlite3.Error, OSError) as e:
+            log.warning("get_contatto_per_chiave fallita (%s): %s", self.db_path, e)
+            return None
+
     def lista_contatti(self, filtro_stato: Optional[str] = None
                       ) -> List[Dict[str, Any]]:
         """Elenco contatti, opzionalmente filtrato per stato (es. solo gli
