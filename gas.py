@@ -8,6 +8,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
+from modules.memory import MemoryStore, default_db_path
 
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
 # i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
@@ -251,6 +252,19 @@ class GasKernel:
         self.os_sandbox_available: bool
         self._os_sandbox_detail: str
         self.os_sandbox_available, self._os_sandbox_detail = _probe_os_sandbox()
+        # Memoria persistente (FASE 2): diario append-only + rubrica contatti,
+        # DB SQLite a file singolo fuori da git. FAIL-SAFE (§9): se la memoria
+        # degrada (available=False) o l'istanza non si crea affatto, il resto
+        # del kernel funziona comunque — la memoria che non scrive NON deve MAI
+        # far crashare GAS né fermare il loop. MemoryStore è già blindato al suo
+        # interno; questa cintura copre l'eventualità remota di un errore
+        # all'avvio (es. import/ambiente) per non far cadere l'intero kernel.
+        self.memory: Optional[MemoryStore]
+        try:
+            self.memory = MemoryStore(default_db_path(self.root))
+        except Exception as e:
+            logging.warning(f"MemoryStore non inizializzato ({e}) — memoria disattivata")
+            self.memory = None
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
@@ -601,6 +615,48 @@ class GasKernel:
                     "interni al progetto. (fail-closed)")
         return argv, None
 
+    @staticmethod
+    def _riassumi_args(name: str, args_str: Any) -> str:
+        """Sintesi compatta degli argomenti di una tool call, per il diario.
+        Non deve mai sollevare: argomenti illeggibili -> placeholder."""
+        try:
+            args = json.loads(args_str) if isinstance(args_str, str) else (args_str or {})
+        except Exception:
+            return "<argomenti non parsabili>"
+        if not isinstance(args, dict):
+            return str(args)[:120]
+        if name == "run_command":
+            return f"command={str(args.get('command', ''))[:160]!r}"
+        if name in ("write_file", "read_file"):
+            return f"path={str(args.get('relative_path', ''))[:160]!r}"
+        # tool sconosciuto: dump compatto delle chiavi (difensivo)
+        return ", ".join(f"{k}={str(v)[:60]!r}" for k, v in args.items())[:200]
+
+    @staticmethod
+    def _esito_sintetico(out: str) -> str:
+        """Esito sintetico di una tool call a partire dal suo output testuale.
+        L'esito NEGATIVO è incluso: i rami di errore/diniego del kernel
+        iniziano con 'Errore eseguendo' o 'Operazione negata'."""
+        s = (out or "").strip()
+        negativo = s.startswith("Errore eseguendo") or s.startswith("Operazione negata")
+        snippet = s.replace("\n", " ")[:160]
+        return f"[{'KO' if negativo else 'OK'}] {snippet}"
+
+    def _diario_log(self, tipo: str, descrizione: str) -> None:
+        """Registra UN evento nel diario della memoria, in modo FAIL-SAFE (§9):
+        la memoria che non scrive NON deve MAI interrompere il turno. La memoria
+        assente/degradata o qualunque errore vengono solo loggati nella scatola
+        nera; il loop agentico prosegue. Scrittura IN-PROCESS (codice fidato del
+        kernel, bypassa correttamente il sandbox bwrap di run_command)."""
+        if self.memory is None:
+            return
+        try:
+            self.memory.append_diario(tipo, descrizione)
+        except Exception as e:
+            # append_diario è già blindato (ritorna None in degrado); questa è
+            # solo una cintura ulteriore perché il loop non cada MAI per il diario.
+            logging.warning(f"diario non scritto ({tipo}): {e}")
+
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
@@ -762,6 +818,15 @@ class GasKernel:
                         self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
                         for tc in msg.tool_calls:
                             out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                            # Diario memoria (FASE 2 fetta 2a, SOLO scrittura):
+                            # una riga per OGNI tool call, DOPO l'esecuzione per
+                            # catturarne l'esito (negativo incluso). Fail-safe
+                            # (§9): la memoria che non scrive NON ferma il turno.
+                            self._diario_log(
+                                tc.function.name,
+                                f"{self._riassumi_args(tc.function.name, tc.function.arguments)}"
+                                f" | {self._esito_sintetico(out)}",
+                            )
                             self._add_to_history("tool", content=out, tool_call_id=tc.id, name=tc.function.name)
                             yield {"type": "tool_res", "output": out}
                         self._save_history()

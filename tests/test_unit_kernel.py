@@ -762,6 +762,108 @@ check("T19j DB corrotto -> degrada senza crash",
       and m_bad.diario_recente(5) == [] and m_bad.get_contatto(1) is None
       and m_bad.lista_contatti() == [])
 
+# ---------- T20: aggancio diario a run_turn (FASE 2 fetta 2a, SOLO scrittura) ----------
+# Round-trip agentico REALE a ZERO token: client finto SCRIPTATO. Verifica che
+# il loop scriva UNA riga di diario per OGNI tool call, nell'ordine giusto,
+# con l'esito (anche negativo), e che la memoria degradata NON fermi il turno.
+
+class ScriptedCompletions:
+    """Risponde seguendo uno 'script': ogni elemento è o una stringa (risposta
+    finale) o una lista di (name, arguments) -> assistant con quei tool_calls."""
+    def __init__(self, script):
+        self._script = list(script)
+        self._i = 0
+    def create(self, model=None, messages=None, tools=None, tool_choice=None):
+        step = self._script[self._i] if self._i < len(self._script) else "fine"
+        self._i += 1
+        if isinstance(step, str):
+            msg = SimpleNamespace(content=step, tool_calls=None)
+        else:
+            tcs = [SimpleNamespace(id=f"d{self._i}_{j}",
+                   function=SimpleNamespace(name=n, arguments=a))
+                   for j, (n, a) in enumerate(step)]
+            msg = SimpleNamespace(content=None, tool_calls=tcs)
+        return SimpleNamespace(choices=[SimpleNamespace(message=msg)])
+
+def run_turn_scriptato(k, prompt, script):
+    """Esegue un round-trip di run_turn col client scriptato, isolando l'ambiente
+    (un solo provider deterministico: gemini-flash-lite, gli altri rung spenti)."""
+    saved = {kk: os.environ.get(kk) for kk in
+             ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+    for kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+        os.environ.pop(kk, None)
+    os.environ["GEMINI_API_KEY"] = "dummy-for-test"
+    class _FakeOpenAI:
+        def __init__(self, base_url=None, api_key=None):
+            self.chat = SimpleNamespace(completions=ScriptedCompletions(script))
+    _orig = gas.OpenAI
+    gas.OpenAI = _FakeOpenAI
+    try:
+        return list(k.run_turn(prompt))
+    finally:
+        gas.OpenAI = _orig
+        for kk, v in saved.items():
+            if v is None: os.environ.pop(kk, None)
+            else: os.environ[kk] = v
+
+# T20a — round-trip MULTI-TOOL: una riga di diario per ogni tool, ordine giusto
+k = kernel_tmp()
+script_a = [[("write_file", '{"relative_path": "uno.txt", "content": "1"}'),
+            ("write_file", '{"relative_path": "due.txt", "content": "2"}'),
+            ("read_file",  '{"relative_path": "uno.txt"}')],
+           "fatto tutto"]
+ev_a = run_turn_scriptato(k, "scrivi e leggi", script_a)
+diario_a = k.memory.diario_recente(10)  # DESC: più recente prima
+# atteso (in ordine cronologico): write uno, write due, read uno
+crono = list(reversed(diario_a))
+ordine_ok = (len(diario_a) == 3
+             and "path='uno.txt'" in crono[0]["descrizione"] and crono[0]["tipo"] == "write_file"
+             and "path='due.txt'" in crono[1]["descrizione"] and crono[1]["tipo"] == "write_file"
+             and "path='uno.txt'" in crono[2]["descrizione"] and crono[2]["tipo"] == "read_file")
+final_a = [e for e in ev_a if e["type"] == "final"]
+check("T20a round-trip multi-tool: 1 riga/diario per tool, ordine giusto",
+      ordine_ok and len(final_a) == 1,
+      f"n={len(diario_a)} tipi={[r['tipo'] for r in crono]} final={len(final_a)}")
+
+# T20b — tutti gli esiti delle write sono OK e la read di file esistente è OK
+esiti_a = [r["descrizione"].split("|")[-1].strip() for r in crono]
+check("T20b esiti positivi marcati [OK]", all(e.startswith("[OK]") for e in esiti_a),
+      f"esiti={esiti_a}")
+
+# T20c — tool che FALLISCE: il diario registra [KO] E il loop prosegue/termina
+k = kernel_tmp()
+script_c = [[("read_file", '{"relative_path": "non_esiste.txt"}')], "gestito l'errore"]
+ev_c = run_turn_scriptato(k, "leggi inesistente", script_c)
+diario_c = k.memory.diario_recente(5)
+final_c = [e for e in ev_c if e["type"] == "final"]
+err_c = [e for e in ev_c if e["type"] == "error"]
+check("T20c tool fallito -> diario [KO] e turno NON interrotto",
+      len(diario_c) == 1 and "[KO]" in diario_c[0]["descrizione"]
+      and diario_c[0]["tipo"] == "read_file"
+      and len(final_c) == 1 and len(err_c) == 0,
+      f"diario={diario_c[0]['descrizione'][:80] if diario_c else 'VUOTO'} final={len(final_c)}")
+
+# T20d — memoria DEGRADATA (DB corrotto): il round-trip funziona comunque
+k = kernel_tmp()
+p_corr = Path(os.environ["GAS_CWD"]) / "mem_corrotta.db"
+p_corr.write_bytes(b"spazzatura non-sqlite")
+k.memory = MemoryStore(p_corr)  # available=False
+script_d = [[("write_file", '{"relative_path": "vivo.txt", "content": "ok"}')], "concluso"]
+ev_d = run_turn_scriptato(k, "scrivi con memoria rotta", script_d)
+final_d = [e for e in ev_d if e["type"] == "final"]
+check("T20d memoria degradata -> round-trip OK, turno non interrotto",
+      k.memory.available is False and len(final_d) == 1
+      and (Path(os.environ["GAS_CWD"]) / "vivo.txt").exists()
+      and k.memory.diario_recente(5) == [],
+      f"available={k.memory.available} final={len(final_d)}")
+
+# T20e — memoria ASSENTE (self.memory = None): il loop non deve mai cadere
+k = kernel_tmp()
+k.memory = None
+ev_e = run_turn_scriptato(k, "memoria None", [[("read_file", '{"relative_path": "x.txt"}')], "ok"])
+check("T20e memoria None -> nessun crash, turno completato",
+      len([e for e in ev_e if e["type"] == "final"]) == 1)
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
