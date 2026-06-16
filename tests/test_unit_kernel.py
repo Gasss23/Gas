@@ -864,6 +864,138 @@ ev_e = run_turn_scriptato(k, "memoria None", [[("read_file", '{"relative_path": 
 check("T20e memoria None -> nessun crash, turno completato",
       len([e for e in ev_e if e["type"] == "final"]) == 1)
 
+# ---------- T21: lato LETTURA della memoria (FASE 2 fetta 2b) ----------
+# Pin always-on nel system message + tool ricorda(). Tutto locale, ZERO token.
+
+# Helper: popola la memoria di un kernel con lead (attivi/chiusi) ed eventi.
+def _popola(k):
+    cid = k.memory.upsert_contatto("mario@ex.com", nome="Mario", contatto="mario@ex.com",
+                                   prossima_azione="inviare preventivo")
+    k.memory.update_stato_contatto(cid, "interessato")
+    k.memory.upsert_contatto("luca@ex.com", nome="Luca")  # resta 'nuovo' (attivo)
+    cchiuso = k.memory.upsert_contatto("spam@ex.com", nome="Spammer")
+    k.memory.update_stato_contatto(cchiuso, "rifiutato")  # chiuso -> fuori dal pin
+    # eventi: alcuni "veri" (write_file/messaggio), altri rumore (read_file/run_command/ricorda)
+    k.memory.append_diario("write_file", "path='piano.txt' | [OK] scritto")
+    k.memory.append_diario("messaggio", "DM inviato a Mario", contatto_id=cid)
+    k.memory.append_diario("read_file", "path='x.txt' | [OK] letto")     # rumore
+    k.memory.append_diario("run_command", "command='ls' | [OK]")          # rumore
+    k.memory.append_diario("ricorda", "query=storia | [OK]")              # rumore
+    return cid
+
+# T21a — il pin contiene i lead ATTIVI e gli eventi VERI, esclude chiusi e rumore
+k = kernel_tmp(); _popola(k)
+pin = k._memoria_pin()
+# NB: la parola "ricorda" compare nell'intestazione del pin (rimando al tool):
+# si verifica l'assenza delle DESCRIZIONI degli eventi-rumore, non della parola.
+check("T21a pin: lead attivi + azioni vere, no chiusi/rumore",
+      "# MEMORIA" in pin and "Mario" in pin and "Luca" in pin
+      and "Spammer" not in pin                       # lead chiuso escluso
+      and "DM inviato a Mario" in pin and "piano.txt" in pin
+      and "x.txt" not in pin                          # evento read_file escluso
+      and "command='ls'" not in pin                   # evento run_command escluso
+      and "query=storia" not in pin,                  # evento ricorda escluso
+      f"len={len(pin)} pin={pin!r}")
+
+# T21b — pin VUOTO con memoria vuota e con memoria None (fail-safe)
+k_vuoto = kernel_tmp()
+pin_vuoto = k_vuoto._memoria_pin()
+k_none = kernel_tmp(); k_none.memory = None
+check("T21b pin vuoto se memoria vuota o None",
+      pin_vuoto == "" and k_none._memoria_pin() == "",
+      f"vuoto={pin_vuoto!r}")
+
+# T21c — ricorda(contatto=...) restituisce scheda + storia del lead
+k = kernel_tmp(); cid = _popola(k)
+r_c = k._ricorda(contatto="mario")
+check("T21c ricorda per contatto -> scheda + storia",
+      "CONTATTO Mario" in r_c and "interessato" in r_c
+      and "inviare preventivo" in r_c and "DM inviato a Mario" in r_c,
+      r_c[:80])
+
+# T21d — ricorda(query=...) filtra il diario per testo
+r_q = k._ricorda(query="preventivo")  # nessun evento contiene 'preventivo' nel testo
+r_q2 = k._ricorda(query="DM")
+check("T21d ricorda per query filtra il diario",
+      "Diario per 'preventivo' (0)" in r_q and "DM inviato a Mario" in r_q2,
+      r_q2[:80])
+
+# T21e — ricorda() default: ultimi eventi del diario (rumore incluso: è lettura esplicita)
+r_def = k._ricorda()
+check("T21e ricorda default -> ultimi eventi",
+      "Ultimi" in r_def and "eventi del diario" in r_def and "DM inviato a Mario" in r_def,
+      r_def[:60])
+
+# T21f — INIEZIONE nel payload: pin nel system message, finestra INTATTA
+captured = {}
+class RecordingCompletions:
+    def __init__(self, *a, **kw): pass
+    def create(self, model=None, messages=None, tools=None, tool_choice=None):
+        captured.setdefault("msgs", messages)
+        captured.setdefault("tools", tools)
+        return SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content="ho finito", tool_calls=None))])
+def run_turn_recording(k, prompt):
+    saved = {kk: os.environ.get(kk) for kk in
+             ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+    for kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+        os.environ.pop(kk, None)
+    os.environ["GEMINI_API_KEY"] = "dummy-for-test"
+    class _FO:
+        def __init__(self, base_url=None, api_key=None):
+            self.chat = SimpleNamespace(completions=RecordingCompletions())
+    _orig = gas.OpenAI; gas.OpenAI = _FO
+    try:
+        return list(k.run_turn(prompt))
+    finally:
+        gas.OpenAI = _orig
+        for kk, v in saved.items():
+            if v is None: os.environ.pop(kk, None)
+            else: os.environ[kk] = v
+
+k = kernel_tmp(); _popola(k)
+ev_f = run_turn_recording(k, "che situazione abbiamo?")
+msgs = captured.get("msgs", [])
+tool_names = {t["function"]["name"] for t in (captured.get("tools") or [])}
+sys0 = msgs[0] if msgs else {}
+finestra_pulita = len(msgs) >= 2 and all(m["role"] != "system" for m in msgs[1:]) and msgs[1]["role"] == "user"
+check("T21f iniezione: pin nel system, 1 solo system, finestra parte da user",
+      sys0.get("role") == "system" and "# MEMORIA" in sys0.get("content", "")
+      and "Mario" in sys0["content"] and finestra_pulita
+      and "ricorda" in tool_names
+      and len([e for e in ev_f if e["type"] == "final"]) == 1,
+      f"n_msgs={len(msgs)} ruoli={[m['role'] for m in msgs]}")
+
+# T21g — fail-safe lettura: memoria degradata -> pin vuoto, round-trip OK, ricorda gentile
+k = kernel_tmp()
+p_corr = Path(os.environ["GAS_CWD"]) / "mem_lett_corrotta.db"
+p_corr.write_bytes(b"non-sqlite")
+k.memory = MemoryStore(p_corr)  # available=False
+captured.clear()
+ev_g = run_turn_recording(k, "ciao")
+msgs_g = captured.get("msgs", [])
+ric_g = k._ricorda()  # degradato: nessun crash, stringa gentile
+k.memory = None
+ric_none = k._ricorda(contatto="x")
+check("T21g memoria degradata/None -> pin vuoto, turno OK, ricorda non crasha",
+      k._memoria_pin() == "" and "# MEMORIA" not in (msgs_g[0]["content"] if msgs_g else "")
+      and len([e for e in ev_g if e["type"] == "final"]) == 1
+      and isinstance(ric_g, str)
+      and ric_none == "Memoria non disponibile: nessun ricordo accessibile.",
+      f"ric_g={ric_g[:40]!r}")
+
+# T21h — il pin rispetta il tetto MEMORY_PIN_CHAR_CAP (troncamento del testo).
+# I cap per-conteggio (6 eventi) da soli non bastano a sforare: servono eventi
+# LUNGHI (6 × ~600 char > 3000) per esercitare davvero il troncamento testuale.
+k = kernel_tmp()
+for i in range(10):
+    k.memory.append_diario("messaggio", f"evento {i}: " + "x" * 600)
+pin_big = k._memoria_pin()
+check("T21h pin capato a MEMORY_PIN_CHAR_CAP (no slicing della storia)",
+      len(pin_big) <= k.MEMORY_PIN_CHAR_CAP + len("\n\n") + len("\n…[memoria troncata]")
+      and "memoria troncata" in pin_big,
+      f"len_pin={len(pin_big)} cap={k.MEMORY_PIN_CHAR_CAP}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

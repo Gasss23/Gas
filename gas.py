@@ -8,7 +8,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
-from modules.memory import MemoryStore, default_db_path
+from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI
 
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
 # i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
@@ -268,7 +268,8 @@ class GasKernel:
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
-            {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}}
+            {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
+            {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "testo da cercare negli eventi del diario (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}}
         ]
 
     def _load_history(self) -> List[Dict[str, Any]]:
@@ -342,6 +343,18 @@ class GasKernel:
     # 84 KB → ~24k token → Groq 413). 24000 caratteri ≈ 6-7k token, soglia di
     # sicurezza con margine ampio sotto i limiti dei provider.
     WINDOW_CHAR_CAP = 24000
+
+    # --- Iniezione memoria always-on (lato lettura, fetta 2b) ---
+    # Il blocco-memoria vive NEL messaggio system (fuori dalla finestra), quindi
+    # NON passa da _get_window/_cap_window_chars: la finestra conversazionale
+    # resta intatta. Il pin ha un suo tetto dedicato, ampiamente sotto
+    # WINDOW_CHAR_CAP, così il payload totale (system+pin+finestra) resta sano.
+    MEMORY_PIN_CHAR_CAP = 3000     # tetto rigido del solo blocco-memoria
+    MEMORY_PIN_CONTACTS = 8        # max lead attivi nel pin
+    MEMORY_PIN_EVENTS = 6          # max eventi diario "significativi" nel pin
+    # Rumore di sola lettura: eventi che NON meritano l'iniezione always-on (il
+    # diario li conserva comunque a monte — decisione A; il filtro è di LETTURA).
+    DIARIO_NOISE_TIPI = frozenset({"read_file", "run_command", "ricorda"})
 
     @staticmethod
     def _msg_chars(msg: Dict[str, Any]) -> int:
@@ -657,6 +670,105 @@ class GasKernel:
             # solo una cintura ulteriore perché il loop non cada MAI per il diario.
             logging.warning(f"diario non scritto ({tipo}): {e}")
 
+    def _memoria_pin(self) -> str:
+        """Blocco di memoria ALWAYS-ON (lato lettura, fetta 2b) da appendere al
+        system prompt: riassunto COMPATTO e CAPATO di lead attivi + poche azioni
+        recenti significative (escluso il rumore di lettura). Sta NEL messaggio
+        system (FUORI dalla finestra) → NON passa da _get_window/_cap_window_chars,
+        la finestra conversazionale resta intatta; il pin è limitato dal suo cap
+        dedicato MEMORY_PIN_CHAR_CAP. Si calcola UNA volta per turno (no eco delle
+        azioni in corso, no query ripetute nel loop a 10 iterazioni).
+
+        Fail-safe (§9): memoria None/degradata o qualunque errore → stringa
+        vuota, il turno prosegue. Ritorna "" (niente da iniettare) oppure il
+        blocco già preceduto da due newline, pronto per `system_prompt + pin`."""
+        if self.memory is None:
+            return ""
+        try:
+            righe: List[str] = []
+            attivi = [c for c in self.memory.lista_contatti()
+                      if c.get("stato") not in STATI_CHIUSI][:self.MEMORY_PIN_CONTACTS]
+            if attivi:
+                righe.append("## Lead attivi")
+                for c in attivi:
+                    nome = c.get("nome") or c.get("chiave") or "?"
+                    pa = f" → prossima: {c['prossima_azione']}" if c.get("prossima_azione") else ""
+                    ult = f" (ultimo: {str(c['ultimo_contatto'])[:10]})" if c.get("ultimo_contatto") else ""
+                    righe.append(f"- {nome} [{c.get('stato')}]{pa}{ult}")
+            # eventi recenti, escluso il rumore di lettura. Si pesca un po' largo
+            # e poi si filtra/tronca, per arrivare a MEMORY_PIN_EVENTS "buoni".
+            eventi = [e for e in self.memory.diario_recente(self.MEMORY_PIN_EVENTS * 5)
+                      if e.get("tipo") not in self.DIARIO_NOISE_TIPI][:self.MEMORY_PIN_EVENTS]
+            if eventi:
+                righe.append("## Ultime azioni")
+                for e in eventi:
+                    righe.append(f"- [{e.get('tipo')}] {e.get('descrizione')}")
+            if not righe:
+                return ""
+            blocco = ("# MEMORIA (sola lettura — usa il tool 'ricorda' per "
+                      "approfondire il diario o un lead)\n" + "\n".join(righe))
+            # Tetto rigido del pin (stesso principio di _cap_tool_output: tronco
+            # il TESTO, non sequenze di messaggi → niente slicing della storia).
+            # Taglio all'ultima riga intera per non lasciare una riga monca.
+            if len(blocco) > self.MEMORY_PIN_CHAR_CAP:
+                tagliato = blocco[:self.MEMORY_PIN_CHAR_CAP].rsplit("\n", 1)[0]
+                blocco = tagliato + "\n…[memoria troncata]"
+            return "\n\n" + blocco
+        except Exception as e:
+            logging.warning(f"_memoria_pin fallito: {e}")
+            return ""
+
+    def _ricorda(self, query: Optional[str] = None, contatto: Optional[str] = None,
+                 n: int = 10) -> str:
+        """Lettura on-demand della memoria (tool 'ricorda'). SOLA LETTURA: nessuna
+        scrittura/mutazione. Output compatto (poi capato da _cap_tool_output come
+        ogni tool). Fail-safe: memoria None/degradata → messaggio gentile, mai
+        crash (le letture di MemoryStore degradano già a [])."""
+        if self.memory is None:
+            return "Memoria non disponibile: nessun ricordo accessibile."
+        try:
+            n = max(1, min(int(n or 10), 50))
+        except (TypeError, ValueError):
+            n = 10
+        parti: List[str] = []
+        # 1) scheda + storia di un lead specifico (match su chiave o nome)
+        if contatto:
+            ago = str(contatto).lower()
+            match = next(
+                (c for c in self.memory.lista_contatti()
+                 if ago in (str(c.get("chiave", "")).lower() + " "
+                            + str(c.get("nome", "")).lower())),
+                None,
+            )
+            if match:
+                parti.append(
+                    f"CONTATTO {match.get('nome') or match.get('chiave')} "
+                    f"[{match.get('stato')}] — prossima: "
+                    f"{match.get('prossima_azione') or '—'} — note: "
+                    f"{match.get('note') or '—'}")
+                eventi = self.memory.diario_di_contatto(int(match["id"]))[:n]
+                parti.append("Storia:")
+                parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in eventi]
+                          or ["- (nessun evento)"])
+            else:
+                parti.append(f"Nessun lead trovato per '{contatto}'.")
+        # 2) ricerca testuale nel diario
+        if query:
+            q = str(query).lower()
+            hit = [e for e in self.memory.diario_recente(200)
+                   if q in str(e.get("descrizione", "")).lower()
+                   or q in str(e.get("tipo", "")).lower()][:n]
+            parti.append(f"Diario per '{query}' ({len(hit)}):")
+            parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in hit]
+                      or ["- (nessun risultato)"])
+        # 3) default: ultimi eventi del diario
+        if not contatto and not query:
+            eventi = self.memory.diario_recente(n)
+            parti.append(f"Ultimi {len(eventi)} eventi del diario:")
+            parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in eventi]
+                      or ["- (diario vuoto)"])
+        return "\n".join(parti) if parti else "Nessun ricordo."
+
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
@@ -739,6 +851,13 @@ class GasKernel:
                             "esce dalla root di Gas. Usa solo percorsi relativi "
                             "interni al progetto.")
                 out = path.read_text(encoding="utf-8")
+            elif name == "ricorda":
+                # Lettura della memoria di lungo periodo. SOLA LETTURA, in-process
+                # (codice fidato): non tocca il filesystem né la rete, non passa
+                # dal sandbox di run_command. Nessuno snapshot (non muta nulla).
+                out = self._ricorda(args.get("query") if isinstance(args, dict) else None,
+                                    args.get("contatto") if isinstance(args, dict) else None,
+                                    args.get("n", 10) if isinstance(args, dict) else 10)
             else:
                 return "Tool non trovato."
             return self._cap_tool_output(name, args, out)
@@ -750,6 +869,13 @@ class GasKernel:
 
         from brains.router import classifica_compito
         compito = classifica_compito(user_prompt)
+
+        # Iniezione memoria ALWAYS-ON (fetta 2b): calcolata UNA volta per turno
+        # (no eco delle azioni in corso, no query ripetute nel loop a 10 iter).
+        # Vive nel messaggio system (system_prompt + mem_pin), FUORI dalla
+        # finestra: _get_window/_cap_window_chars restano intatti. Fail-safe:
+        # "" se la memoria è assente/degradata.
+        mem_pin = self._memoria_pin()
 
         # Endpoint/modelli dalle costanti di modulo (punto unico, condiviso con doctor).
         # Pavimento offline Ollama: NON gira nel Codespace. Sul PC/VPS si esporta
@@ -791,7 +917,7 @@ class GasKernel:
             try:
                 client = OpenAI(base_url=url, api_key=os.environ.get(env))
                 for _ in range(10):  # max 10 iterazioni agentic loop
-                    payload = [{"role": "system", "content": self.system_prompt}] + self._get_window()
+                    payload = [{"role": "system", "content": self.system_prompt + mem_pin}] + self._get_window()
                     try:
                         response = client.chat.completions.create(
                             model=model, messages=payload,
