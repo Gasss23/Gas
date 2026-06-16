@@ -26,6 +26,42 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 fetta 2a (aggancio scrittura) ATTIVA** (2026-06-16, review #13
+  APPROVATO CON RISERVE): il diario della memoria è ora AGGANCIATO al loop di
+  `run_turn`, **SOLO LATO SCRITTURA**. (1) `GasKernel.__init__`:
+  `self.memory = MemoryStore(default_db_path(self.root))` con DOPPIA cintura
+  fail-safe — `MemoryStore` degrada da sé (`available=False`) e un errore remoto
+  all'avvio mette `self.memory=None`; il kernel non crasha mai. (2) Nel loop, per
+  OGNI tool call, DOPO l'esecuzione (per catturare l'esito, **negativo incluso**),
+  una riga di diario in-process via `MemoryStore.append_diario` — scrittura
+  **IN-PROCESS** (codice fidato del kernel, **bypassa correttamente il sandbox
+  bwrap** che vale solo per `run_command`). (3) Helper puri `_riassumi_args`
+  (sintesi argomenti per tool), `_esito_sintetico` (`[OK]`/`[KO]` dal prefisso
+  dell'output) e `_diario_log` (fail-safe §9: memoria None/degradata → warning
+  nella scatola nera, il turno **CONTINUA**). Il `for _ in range(10)` (§8) è
+  INVARIATO, l'ordine delle fasi pure. **VINCOLI rispettati:** CONTATTI NON
+  toccati dal loop (solo diario); NESSUNA iniezione nel contesto
+  (`_get_window`/`_cap_window_chars`/finestra INVARIATI); schema memoria fetta 1
+  (`store.py`) INVARIATO. **Lato lettura/iniezione (fetta 2b) NON implementato:
+  solo PROPOSTO** nel report §FINALE (cosa entra nell'iniezione, comporre il
+  messaggio pinnato con `WINDOW_CHAR_CAP`, tool `ricorda()`, rischi sul
+  round-trip). Test T20a-e (round-trip REALE zero token: multi-tool in ordine,
+  esito KO + turno non interrotto, memoria corrotta e memoria None → round-trip
+  OK). Diff motore: **167 inserzioni, 0 cancellazioni** (solo aggiunte). Suite
+  **85→90**.
+  - **Decisioni di design dell'aggancio** (registrate per la fetta 2b):
+    - **A) Diario = log di OGNI tool call, esito incluso.** Il loop scrive
+      indiscriminatamente (anche `read_file`/`ls`): il filtro del rumore di
+      lettura è una scelta del LATO LETTURA (2b), non della scrittura — non si
+      perde informazione a monte. I CONTATTI NON vengono scritti dal loop: la
+      rubrica si popola altrove (tool dedicati / fetta successiva), il loop tocca
+      solo il diario.
+    - **B) Iniezione always-on (PROPOSTA 2b)** = contatti ATTIVI + pochi eventi
+      diario RECENTI filtrati (escluso il rumore di lettura). Budget ~3000 char
+      DENTRO `WINDOW_CHAR_CAP=24000`, via messaggio PINNATO; il diario profondo
+      si pesca on-demand col tool di sola lettura `ricorda()` per non gonfiare la
+      finestra. Da progettare con cura il punto d'inserimento rispetto a
+      `_get_window`/`_cap_window_chars` (vedi report §FINALE).
 - **Memoria FASE 2 fetta 1 (fondamenta storage) ATTIVA** (2026-06-15, review #12
   APPROVATO CON RISERVE): nuovo modulo `modules/memory/` (`__init__.py` + `store.py`),
   SOLO livello di persistenza, **NON agganciato a run_turn** (cablaggio solo PROPOSTO
@@ -148,7 +184,11 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **75 PASS, 0 FAIL** (2026-06-14). Dai 61 si aggiungono: 3 T16 (TASK A,
+  **90 PASS, 0 FAIL** (2026-06-16). Dai 85 si aggiungono i 5 T20 (aggancio diario
+  a `run_turn`, round-trip REALE zero token: T20a multi-tool in ordine, T20b esiti
+  `[OK]`, T20c tool fallito → `[KO]` + turno non interrotto, T20d memoria corrotta
+  → round-trip OK, T20e memoria None → nessun crash). Storico dai 75 → 85: i 10
+  T19 (memoria fetta 1). Dai 61 si aggiungono: 3 T16 (TASK A,
   `_parse_mode` condiviso init/doctor), 5 T17 (TASK B, paracadute free:
   404/no-tools/tools + classify + registro tool-capability), 6 T18 (TASK C,
   retention ibrida pura) con T11f riadattato. Storico: dai 52 i 9 check T14
@@ -248,6 +288,17 @@
   `.gas_history.json` c'è sempre → benigno. Sul VPS, se mai mancasse all'avvio,
   l'auto-commit della history salterebbe silenziosamente: tenerlo a mente.
 
+- 🟡 **Riserve Memoria FASE 2 fetta 2a** (R-mem2a, review #13, minori non
+  bloccanti): (R1) `_esito_sintetico` inferisce `[OK]`/`[KO]` dal PREFISSO
+  testuale dell'output (`Errore eseguendo`/`Operazione negata`): un tool a esito
+  POSITIVO che stampasse contenuto iniziante con quelle stringhe verrebbe
+  mis-etichettato `[KO]`. Imprecisione SOLO sull'etichetta del diario, NON sulla
+  logica del kernel (la storia inviata ai provider è intatta). Difesa candidata:
+  marcatore d'esito strutturato restituito da `execute_tool_call`, non parsing del
+  testo. (R2) una riga di diario per OGNI tool call dentro il loop → verbosità che
+  cresce coi turni a molte tool call; coerente con la nota PARK "Retention del
+  diario" già registrata (quando il volume lo richiederà: archiviazione/export,
+  MAI DELETE).
 - 🟡 **Riserve Memoria FASE 2 fetta 1** (R-mem, review #12, minori non bloccanti):
   (R1) i trigger di immutabilità del `diario` coprono UPDATE/DELETE ma NON
   `INSERT OR REPLACE` sulla PK con i default SQLite (`recursive_triggers` OFF): il
@@ -271,10 +322,11 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 12 review completate
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 13 review completate
   (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, review hook
   SessionEnd TASK 1 del 2026-06-15 — APPROVATO, #12 Memoria FASE 2 fetta 1 del
-  2026-06-15 — APPROVATO CON RISERVE), lezioni datate in
+  2026-06-15 — APPROVATO CON RISERVE, #13 Memoria FASE 2 fetta 2a del 2026-06-16
+  — APPROVATO CON RISERVE), lezioni datate in
   `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)

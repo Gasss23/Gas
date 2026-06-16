@@ -1,158 +1,170 @@
-# 🧠 REPORT — FASE 2, fetta 1: fondamenta dello storage della memoria di GAS
+# 📄 REPORT — Memoria FASE 2: chiusura DOC + FETTA 2a (aggancio scrittura)
 
-**Data:** 2026-06-15
-**Esito:** ✅ COMPLETATO — modulo di persistenza nuovo, suite **75 → 85** (0 FAIL, zero token), revisore **APPROVATO CON RISERVE** (review #12).
-**Commit del motore:** `8de2b0c`
-
----
-
-## 1. Cosa è stato costruito
-
-Un modulo di memoria nuovo, **`modules/memory/`** (stile `modules/marketing/`), che contiene
-SOLO il livello di persistenza. **Nessun aggancio a `run_turn`** in questa fetta: il
-cablaggio al loop agentico è solo PROPOSTO (vedi §FINALE), non implementato.
-
-- `modules/memory/__init__.py` — facciata del package (espone `MemoryStore`, gli stati, `default_db_path`).
-- `modules/memory/store.py` — la classe `MemoryStore` e lo schema.
-
-### Collocazione e motivazione
-`modules/memory/` accanto a `modules/marketing/`: la memoria (diario + rubrica lead) è
-funzionale ai moduli di business (FASE 4), quindi vive nella stessa famiglia di moduli.
-Resta disaccoppiata dal kernel: `MemoryStore(db_path)` non importa nulla da `gas.py`, così
-è testabile in isolamento e cablabile dopo senza dipendenze circolari.
-
-### Il database — SQLite, FILE SINGOLO (vincolo non negoziabile)
-- Un solo file `.db`. **Niente WAL** di proposito: WAL creerebbe file collaterali
-  `-wal`/`-shm` e romperebbe il vincolo "backup = copia di un file". Si resta sul journal
-  di rollback di default, transitorio → il `.db` è autoconsistente per la copia.
-- **Vive FUORI da git**: `.gas_memory.db` (+ eventuali `-wal`/`-shm`) aggiunti a `.gitignore`,
-  insieme a `*.bak` (le copie di backup, già coperte). Motivo: è dato mutabile e personale
-  (mesi di relazioni coi lead), non codice — non va versionato.
-- Path di default: `<project_root>/.gas_memory.db` via l'helper `default_db_path(root)`.
-
-### Le due tabelle
-1. **`diario`** — log append-only di tutto ciò che GAS fa. Colonne: `id`, `ts` (ISO8601 UTC),
-   `tipo`, `descrizione` (testo libero), `contatto_id` (riferimento opzionale a un lead).
-   **MAI UPDATE, MAI DELETE.**
-2. **`contatti`** — una riga per lead, upsert-abile. Colonne: `id`, `chiave` (UNIQUE, identità
-   del lead per l'upsert), `nome`, `contatto`, `stato`, `ultimo_contatto`, `prossima_azione`,
-   `note`, `creato_il`, `aggiornato_il`. Stati ammessi:
-   `nuovo · contattato · risposto · interessato · rifiutato · chiuso`.
-
-## 2. Invariante di design (incisa nel codice e qui)
-
-- **Il diario è IMMUTABILE** — la storia non si riscrive. L'immutabilità è imposta **a livello
-  di DB** da due trigger `BEFORE UPDATE` e `BEFORE DELETE` che fanno `RAISE(ABORT)`: vale anche
-  contro SQL grezzo, non è solo una convenzione applicativa (T19f lo dimostra).
-- **I contatti sono MUTABILI per natura** — lo stato cambia nel tempo e **invalida i fatti
-  vecchi**: quando un lead passa a `rifiutato`/`chiuso` (insieme `STATI_CHIUSI`), GAS non deve
-  più inseguirlo. È la regola **aggiorna/invalida** che impedisce alla memoria di mentire.
-- **Separazione dei ruoli** (per non confondere identità e ciclo di vita):
-  `upsert_contatto` aggiorna SOLO l'anagrafica e in conflitto **non tocca lo stato**; la
-  **transizione di stato passa SOLO da `update_stato_contatto`** (T19c lo verifica).
-
-## 3. API minima
-
-- **Scrittura:** `append_diario(tipo, descrizione, contatto_id=None)`,
-  `upsert_contatto(chiave, nome=, contatto=, stato=, prossima_azione=, note=)`,
-  `update_stato_contatto(contatto_id, nuovo_stato, prossima_azione=)`.
-- **Lettura:** `diario_recente(n)`, `get_contatto(id)`, `lista_contatti(filtro_stato=None)`,
-  `diario_di_contatto(id)`.
-- **Backup:** `backup(dest_dir=None)` — copia timestampata `.bak` usando l'API nativa
-  `sqlite3 .backup()` (copia COERENTE anche con scritture in volo). Banale perché file singolo.
-
-### Scelta intenzionale: scritture IN-PROCESS, non via `run_command`
-Le scritture passano per `sqlite3` direttamente nel processo del kernel. Questo **bypassa
-correttamente il sandbox bwrap**: la memoria è codice FIDATO del kernel, non un comando
-esterno non fidato. Far passare la memoria da `run_command` sarebbe sbagliato due volte —
-girerebbe in un sandbox con filesystem read-only (non potrebbe scrivere il `.db`) e
-tratterebbe come ostile un'operazione di fiducia. Decisione documentata e voluta.
-
-## 4. Robustezza (fail-safe §9)
-
-- **DB mancante** → creato automaticamente (le directory mancanti con `mkdir parents`).
-- **DB corrotto** → `MemoryStore` NON crasha all'init: l'errore è loggato come `warning` nella
-  scatola nera, `available=False`, e ogni metodo degrada ai valori sicuri (scritture→`None`/`False`,
-  letture→`[]`/`None`). Verificato da T19j su un file di spazzatura binaria.
-- Ogni metodo è blindato in `try/except (sqlite3.Error, OSError)`. Type hints rigorosi ovunque (§4).
-- **Estensibilità**: lo schema è una tupla di DDL idempotenti (`CREATE ... IF NOT EXISTS`).
-  Aggiungere registri futuri (lista lavori, regole fisse, metriche) = aggiungere DDL a `_SCHEMA`,
-  senza rifare le fondamenta.
-
-## 5. Test (zero token, tutto locale) — suite 75 → 85
-
-Aggiunti `T19a–T19j` in `tests/test_unit_kernel.py` (DB su dir temporanee, nessuna chiamata LLM):
-- T19a append + lettura diario · T19b upsert crea+aggiorna senza duplicare · T19c upsert non
-  resetta lo stato · T19d transizione di stato + filtro + invalidazione · T19e stato non valido
-  respinto · **T19f IMMUTABILITÀ diario (UPDATE e DELETE bloccati dai trigger)** · T19g
-  `diario_di_contatto` lega gli eventi al lead · T19h backup → copia leggibile con gli stessi dati ·
-  T19i fail-safe DB assente (creato e operativo) · T19j fail-safe DB corrotto (degrada, no crash).
-- **Risultato: 85 PASS, 0 FAIL.**
-
-## 6. Cosa NON è stato toccato
-`run_turn`, pipeline provider, sandbox, snapshot, `_get_window`: tutti INVARIATI. `gas.py` non
-toccato. Wall of Shame §5 rispettata (nessuna simulazione di tool, nessuno slicing grezzo).
-
-## 7. Verdetto del revisore (review #12) — APPROVATO CON RISERVE
-- **R1 (🟡 minore)**: i trigger di immutabilità coprono UPDATE/DELETE ma NON `INSERT OR REPLACE`
-  sulla PK con i default SQLite (`recursive_triggers` OFF). Portata reale limitata: `append_diario`
-  fa solo INSERT puro; il buco si apre solo a chi ha già accesso diretto al file `.db`. Docstring
-  precisata col caveat. Da blindare alla passata di hardening (terzo trigger `BEFORE INSERT` o
-  `recursive_triggers ON`).
-- **R2 (🟡 minore)**: costanti hardcoded (`DEFAULT_DB_FILENAME`, `timeout=10`, `n=20`), coerente con
-  la prassi del progetto; valutare override `GAS_MEMORY_DB` al cablaggio su VPS.
-Entrambe tracciate in `reports/stato_progetto.md`. Nessuna indebolisce un guardrail.
+**Data:** 2026-06-16 · **Commit motore:** `7a75368` · **Suite:** 90/90, 0 FAIL (era 85)
+**Review:** #13 — **APPROVATO CON RISERVE** (R1, R2 tracciate in `stato_progetto.md`)
 
 ---
 
-## §FINALE — Proposta (NON implementata) di aggancio a `run_turn`
+## Esito in breve
 
-Da rivedere insieme PRIMA di cablare, perché tocca il loop agentico blindato.
-
-**1) QUANDO GAS scrive su diario/contatti?**
-- **Diario**: una riga **per ogni tool call eseguita**, scritta in-process subito dopo l'esecuzione
-  del tool nel loop di `run_turn` (lo stesso punto dove oggi scatta lo snapshot). `tipo` = nome del
-  tool, `descrizione` = sintesi argomenti + esito sintetico. Granularità per-evento = il "ricorda
-  tutto". Si scrive ANCHE l'esito negativo di un tool fallito (serve la storia).
-- **Contatti**: NON scritti automaticamente dal loop in questa fase. Le `upsert/update_stato`
-  avvengono per **intento esplicito** (un futuro tool dedicato tipo `salva_contatto`/`aggiorna_lead`,
-  o il modulo marketing), non a ogni turno. Così evitiamo che il loop inventi/sporchi la rubrica.
-
-**2) QUANDO/COSA innesca la LETTURA dalla memoria?**
-- **Sempre, ma in piccolo**: all'INIZIO di `run_turn`, prima di costruire la finestra, si inietta
-  un **blocco-memoria compatto** = ultimi `k` eventi del diario + sintesi dei contatti ATTIVI
-  (`lista_contatti` escludendo `STATI_CHIUSI`).
-- **A richiesta, in profondità**: un tool di sola lettura `ricorda(query)` per pescare eventi/lead
-  specifici quando serve, senza appesantire ogni turno.
-
-**3) COME iniettare il ricordato SENZA sforare `WINDOW_CHAR_CAP = 24000`?**
-- **Budget dedicato e rigido**: `MEMORY_CHAR_BUDGET ≈ 3000` caratteri (~750–1000 token) per il
-  blocco-memoria sempre-iniettato. Un `_build_memory_context()` costruisce il blocco e lo
-  **tronca a livello di voce** (mai a metà parola/record) per stare nel budget.
-- **Composizione col cap**: il blocco va contato DENTRO i 24000, non in aggiunta. Due opzioni da
-  decidere: (a) iniettarlo nel system prompt (già passato a ogni chiamata) riservandogli il budget;
-  (b) come singolo messaggio "memoria" pinnato, escluso dallo scarto di `_cap_window_chars` ma
-  **sottratto dal cap** (cap effettivo finestra = 24000 − dimensione blocco-memoria). Preferenza:
-  (b), così la memoria non viene mai potata per prima ma non può comunque sfondare il tetto.
-
-**4) DOVE va l'aggancio nel codice?**
-- **Istanza**: `self.memory = MemoryStore(default_db_path(self.root))` in `GasKernel.__init__`
-  (fail-safe: se degrada, il resto del kernel funziona comunque).
-- **Scrittura diario**: nel punto del loop di `run_turn` dove il tool viene eseguito (vicino allo
-  snapshot), un `self.memory.append_diario(...)` in-process.
-- **Lettura/iniezione**: una nuova fase `_inject_memory()` chiamata all'inizio di `run_turn`,
-  PRIMA di `_get_window()`/`_cap_window_chars`, che rispetti il budget del punto 3.
-- **Tool `ricorda`**: nuovo entry nello schema dei tool + ramo nel dispatcher, sola lettura.
-
-> Nota di prudenza: i punti 1 e 4 toccano il ciclo `for _ in range(10)` blindato (§8). Il cablaggio
-> sarà una fetta a sé, con i suoi test di round-trip agentico, dopo l'OK su questa proposta.
+Il diario della memoria è ora **agganciato al loop di `run_turn`, SOLO LATO SCRITTURA**.
+Per ogni tool call eseguita, il kernel scrive UNA riga di diario in-process, esito
+negativo incluso, in modo **fail-safe** (la memoria che non scrive non ferma mai il
+turno). Il lato lettura/iniezione (fetta 2b) **NON è implementato**: è solo PROPOSTO nel
+§FINALE. La blindatura del loop (`for _ in range(10)`, ordine fasi, finestra) è intatta.
 
 ---
 
-## PARK (note registrate, non urgenti)
-1. **Retention del diario** — cresce per sempre (stessa classe della retention snapshot). Non urgente;
-   da affrontare quando il volume lo richiederà (strategia: archiviazione/export+rotazione del file
-   storico, mai DELETE — violerebbe l'immutabilità).
-2. **GDPR / dati personali dei lead** (UE) — terreno legale da guardare a FASE 4 (lead generation),
-   non risolto ora: consenso, diritto all'oblio (in tensione con l'immutabilità del diario),
-   minimizzazione dei dati. Solo registrato.
+## PARTE 1 — DOC (no motore)
+
+1. **`CLAUDE.md` §10 FASE 2 → voce "Backup della memoria"**: il DB di memoria (file
+   SQLite singolo, fuori da git) è il dato più prezioso e meno rimpiazzabile; la macchina
+   del tempo snapshot NON lo copre (solo repo git, e il DB è gitignorato). `backup()`
+   produce copia `.bak` LOCALE (protegge dall'auto-corruzione, NON dalla morte del disco);
+   il backup OFF-MACHINE è da FASE 5/deploy VPS, banale perché DB = file singolo.
+2. **`reports/stato_progetto.md`**: voce "fetta 2a ATTIVA" + decisioni di design
+   **A** (diario logga OGNI tool call, esito incluso; filtro in LETTURA non in scrittura;
+   contatti non scritti dal loop) e **B** (iniezione always-on = contatti attivi + pochi
+   eventi recenti filtrati, budget ~3000 char DENTRO `WINDOW_CHAR_CAP`, diario profondo
+   via tool `ricorda()`). Riserve R1/R2 review #13 registrate.
+
+---
+
+## PARTE 2 — BUILD fetta 2a (motore, lato scrittura)
+
+- **`gas.py` `__init__`**: `self.memory = MemoryStore(default_db_path(self.root))`, doppia
+  cintura fail-safe (degrado `available=False` o init fallita → `self.memory=None`); il
+  resto del kernel funziona comunque, mai crash.
+- **Loop `run_turn`**: per OGNI tool call, DOPO l'esecuzione (cattura l'esito), una riga di
+  diario in-process via `_diario_log` → `MemoryStore.append_diario`. `tipo` = nome tool;
+  `descrizione` = sintesi argomenti + esito sintetico (`[OK]`/`[KO]`).
+- **Vincoli**: contatti non toccati dal loop; scrittura IN-PROCESS (bypassa correttamente
+  il sandbox bwrap); fail-safe §9 (append fallita → warning, turno CONTINUA); `for _ in
+  range(10)` invariato; nessuna simulazione di tool, nessuno slicing grezzo.
+
+---
+
+## VERIFICHE (eseguite dal vivo, output integrale)
+
+### A. Suite completa — 90 PASS, 0 FAIL (era 85 → +5 T20)
+
+```
+[PASS] T19i DB assente -> creato e operativo
+[PASS] T19j DB corrotto -> degrada senza crash
+[PASS] T20a round-trip multi-tool: 1 riga/diario per tool, ordine giusto — n=3 tipi=['write_file', 'write_file', 'read_file'] final=1
+[PASS] T20b esiti positivi marcati [OK] — esiti=['[OK] Successo: File uno.txt aggiornato.', '[OK] Successo: File due.txt aggiornato.', '[OK] 1']
+[PASS] T20c tool fallito -> diario [KO] e turno NON interrotto — diario=path='non_esiste.txt' | [KO] Errore eseguendo read_file: [Errno 2] No such file  final=1
+[PASS] T20d memoria degradata -> round-trip OK, turno non interrotto — available=False final=1
+[PASS] T20e memoria None -> nessun crash, turno completato
+
+=== RIEPILOGO: 90 PASS, 0 FAIL ===
+```
+
+### B. Round-trip agentico (§7 — punto critico, test REALI zero token)
+
+1. **Multi-tool → una riga per ogni tool nell'ordine giusto** (T20a): script con 3 tool in
+   un solo messaggio assistant (write `uno.txt`, write `due.txt`, read `uno.txt`) → diario
+   con 3 righe, tipi `['write_file','write_file','read_file']` in ordine cronologico, +1
+   evento `final`. **PASS.**
+2. **Tool che FALLISCE → diario registra l'esito negativo E il loop prosegue** (T20c):
+   `read_file` su file inesistente → riga diario `[KO] Errore eseguendo read_file...`,
+   1 evento `final`, 0 errori di pipeline. **PASS.**
+3. **Memoria degradata → il round-trip funziona comunque** (T20d, DB corrotto →
+   `available=False`; T20e, `self.memory=None`): in entrambi il turno arriva a `final`, il
+   file viene scritto, il diario resta `[]` ma **nessun crash**. **PASS.**
+
+### C. Prova-di-scope (commit motore `7a75368`)
+
+```
+ gas.py                    |  65 +++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py | 102 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 167 insertions(+)
+```
+
+- `git show 7a75368 -- gas.py | grep` sulle funzioni sensibili →
+  **NESSUNA riga +/- tocca** `_get_window`, `_cap_window_chars`, `_bwrap_prefix`,
+  `_snapshot`, `_vet_command`, `providers`.
+- `store.py` **NON toccato** → schema memoria fetta 1 INVARIATO.
+- **167 inserzioni, 0 cancellazioni**: il diff è puramente additivo → pipeline provider,
+  sandbox, snapshot e la finestra sono INVARIATI. **Scope rispettato.**
+
+### D. Prova-che-il-diario-si-popola (dump reale dopo un round-trip)
+
+Round-trip con 4 tool (write, read OK, read KO, run_command in bwrap) → dump di
+`diario_recente` (più recente prima):
+
+```
+EVENTI: ['tool_res', 'tool_res', 'tool_res', 'tool_res', 'final']
+
+  id=4  tipo=run_command   command='wc -l piano.txt' | [OK] 0 piano.txt
+  id=3  tipo=read_file     path='manca.txt' | [KO] Errore eseguendo read_file: [Errno 2] No such file or directory: '.../manca.txt'
+  id=2  tipo=read_file     path='piano.txt' | [OK] lead Mario
+  id=1  tipo=write_file    path='piano.txt' | [OK] Successo: File piano.txt aggiornato.
+```
+
+Una riga per tool, esiti OK/KO reali, incluso `run_command` eseguito davvero in sandbox
+bwrap (rete chiusa, fs read-only) — la scrittura del diario è in-process e lo bypassa.
+
+---
+
+## §FINALE — PROPOSTA fetta 2b (lato lettura/iniezione) — NON implementata
+
+> Solo design per la prossima fetta. Nessun codice scritto, nessun cablaggio.
+
+### (1) Cosa entra nell'iniezione always-on
+- **Contatti ATTIVI** (stato NON in `STATI_CHIUSI`, da `lista_contatti` filtrata):
+  per ciascuno pochi campi essenziali e ad alto valore → `nome`/`chiave`, `stato`,
+  `prossima_azione`, `ultimo_contatto` (data). NON le `note` lunghe né l'anagrafica
+  completa (vanno pescate on-demand). Cap al numero di contatti (es. i ~10 più recenti per
+  `aggiornato_il`) per non sfondare il budget.
+- **Pochi eventi diario RECENTI** (es. ultimi 5–8 da `diario_recente`), **filtrati per
+  escludere il rumore di lettura**: scartare `tipo` ∈ {`read_file`, `run_command` di sola
+  consultazione} e gli esiti `[KO]` ripetitivi; tenere gli eventi "che cambiano il mondo"
+  (write, transizioni di stato, messaggi inviati). NB: il filtro vive QUI (lettura), non in
+  scrittura — il diario resta completo a monte (decisione A), così niente informazione persa.
+
+### (2) Come comporre il messaggio-memoria pinnato con `WINDOW_CHAR_CAP=24000`
+- Il blocco memoria è un **messaggio di sistema/contesto PINNATO**, budget ~3000 char,
+  costruito a parte (non passa dal diario grezzo).
+- Vincolo "la finestra parte sempre da un `role:user` coerente": il pin **NON deve entrare
+  nello scarto** di `_cap_window_chars` né rompere l'allineamento iniziale. Proposta:
+  iniettarlo come blocco separato (es. appeso al `system_prompt`, già fuori dalla finestra
+  conversazionale, oppure come messaggio dedicato a monte) **e sottrarre i suoi char dal
+  cap** prima di chiamare `_cap_window_chars`, così il tetto reale della finestra
+  conversazionale diventa `WINDOW_CHAR_CAP - len(pin)`. Punto d'inserimento: **a valle di
+  `_get_window`/`_cap_window_chars`** (che restano INVARIATI), in fase di assemblaggio del
+  `payload`, prima di `client.chat.completions.create`. Mai dentro `_get_window`: si evita
+  di toccare la logica blindata e si tiene il pin fuori dallo scarto/riallineamento.
+- **Rischio da gestire**: se il pin gonfia troppo, va capato lui stesso PRIMA (troncamento a
+  granularità di campo/evento, mai slicing grezzo §5), non rosicchiando la conversazione.
+
+### (3) Tool `ricorda()` di sola lettura
+- **Firma proposta**: `ricorda(query: Optional[str]=None, contatto: Optional[str]=None,
+  n: int=10) -> str` (tool esposto nello `tools_schema`, accanto a read_file/run_command).
+- **Cosa pesca**: il diario PROFONDO on-demand (`diario_recente`/`diario_di_contatto`) e/o
+  i dettagli completi di un contatto (`get_contatto`/`lista_contatti`) — ciò che NON sta
+  nell'iniezione always-on. È SOLA LETTURA: nessuna scrittura, nessuna mutazione.
+- **Come evita di gonfiare la finestra**: l'output passa per `_cap_tool_output` come ogni
+  altro tool (già capato a 8000 char); inoltre `ricorda` ritorna un riassunto compatto
+  (campi essenziali, `n` limitato) invece del dump integrale. È pull esplicito del modello,
+  non push permanente → la profondità non resta pinnata.
+
+### (4) Rischi sul round-trip da cablare con cura nella lettura (2b)
+- **Coerenza della finestra / Gemini 400**: il pin va inserito senza creare tool result
+  orfani né spostare il `role:user` iniziale; va testato che `_get_window` + pin non
+  produca sequenze che fanno 400 (replicare i test T3/T4 col pin attivo).
+- **Budget**: doppio conteggio char (pin + finestra) → garantire `pin + window ≤ cap`
+  sempre, anche quando il pin è grande (capare il pin per primo).
+- **Loop a 10 iterazioni**: il pin viene ricostruito a ogni iterazione (la memoria può
+  cambiare mid-turn se un tool scrive) → costo di query ripetute; valutare di costruire il
+  pin UNA volta per turno o con cache breve, senza rompere l'aggiornamento.
+- **Auto-riferimento del diario**: gli eventi scritti DURANTE il turno corrente potrebbero
+  rientrare subito nell'iniezione → eco/rumore; il filtro per `tipo`/recency deve evitarlo.
+- **Fail-safe**: lettura degradata (DB assente/corrotto) → il pin deve diventare vuoto e il
+  turno proseguire (stesso principio §9 della scrittura). Da testare come T20d/e ma in lettura.
+
+---
+
+## Stato finale
+- **Fetta 2a (aggancio scrittura): ATTIVA.** Fetta 2b (lettura/iniezione): **PROPOSTA, non
+  implementata.** Suite 90/90. Review #13 APPROVATO CON RISERVE (R1/R2 in stato_progetto).

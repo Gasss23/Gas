@@ -60,6 +60,7 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 - Database locale SQLite per la memorizzazione dei fatti rigidi (gratis, zero token).
 - Vector DB locale per i ricordi a lungo termine senza consumo di token di contesto.
 - Script revisor.py (API low-cost) per sbloccare il "Claude Council" senza spendere ~10€/giorno. NB: chiarire all'avvio cosa si intende per "Claude Council" — il nome non corrisponde a un prodotto Anthropic noto al 2026-06-13.
+- **Backup della memoria.** Il DB di memoria (file SQLite singolo `<root>/.gas_memory.db`, FUORI da git) è il dato più prezioso e MENO rimpiazzabile del sistema: mesi di relazioni coi lead, NON ricostruibili come il codice. ATTENZIONE: la "macchina del tempo" snapshot NON lo copre — fotografa solo il repo git, e il DB è gitignorato di proposito (file singolo per backup banale). L'helper `MemoryStore.backup()` produce una copia `.bak` LOCALE timestampata: protegge dall'AUTO-CORRUZIONE (copia coerente via API SQLite nativa), NON dalla morte del disco. Il backup OFF-MACHINE (vera protezione anti-disastro: copia su volume/host esterno) è da FASE 5 / deploy VPS ed è banale proprio perché il DB è un file singolo.
 
 ### 🎙️ FASE 3 — Interfaccia Vocale (Priorità Media — Core Feature)
 - Whisper (STT) per ricevere comandi vocali diretti (input terminale a mani libere durante lo sviluppo).
