@@ -1,79 +1,114 @@
-# Doctor — 402 "crediti esauriti" su rung free opzionale → WARN (non KO)
+# CHIUSURA FASE 2 memoria — declassamento `unisci_contatti` a manutenzione umana + igiene
 
 **Data:** 2026-06-17
-**Commit motore:** `7220c28` (revisore #20 — APPROVATO senza riserve)
+**Commit motore:** `0240161` (revisore #21 — APPROVATO, 1 nota cosmetica chiusa in sessione)
 **Commit doc:** vedi sotto (stampato a fine task)
-**Suite:** **132/132, 0 FAIL** (era 128)
-**Scope:** onestà della diagnosi `gas doctor` quando un paracadute gratuito è esaurito.
-NESSUNA modifica al comportamento a runtime (già corretto).
+**Suite:** **135/135, 0 FAIL** (era 132)
+**Scope (gate STRETTO rispettato):** nessuna feature nuova, nessun un-merge, nessuno
+Strato B, **NESSUNA modifica a store.py** (meccanismo di merge intatto).
 
 ---
 
-## CONTESTO — perché
+## PUNTO 1 — MOTORE: `unisci_contatti` fuori dall'autopilot (modifica principale)
 
-Il `doctor` mostrava `[KO]` allarmante per OpenRouter quando l'account aveva i crediti
-esauriti (HTTP `402`). Ma OpenRouter è un rung **OPZIONALE** della cascata (paracadute
-free, 4° rung): un suo 402 è uno stato **benigno e atteso**, non un guasto.
+**Decisione architetturale:** il merge di lead è mutante e IRREVERSIBILE (lossy,
+COALESCE senza inverso pulito). Un modello in autopilot h24 su VPS non deve poterlo
+invocare da sé — stessa classe del restore di snapshot e del `git gc`, già "solo
+umano". Il dedup mancato è recuperabile; un merge errato no.
 
-**Punto chiave verificato dal vivo:** a runtime `run_turn` GIÀ gestiva il 402
-correttamente — l'eccezione del provider viene catturata, loggata nella scatola nera
-(§9) e la cascata **scala da sé al rung successivo** (Ollama o termina). Nessun crash,
-nessuna modifica necessaria lì. Il difetto era **solo** nell'etichetta del `doctor`.
+In `gas.py`:
+- **rimossa** l'entry `unisci_contatti` da `tools_schema` (il modello non lo vede più);
+- **rimosso** il ramo `elif name == "unisci_contatti"` da `execute_tool_call`: ora cade
+  nel `else` → `"Tool non trovato."`;
+- l'handler **`_unisci_contatti` RESTA** come metodo richiamabile (uso manuale/futuro),
+  con docstring aggiornata: è MANUTENZIONE UMANA, non tool autopilot, e perché
+  (irreversibile/lossy, classe restore/gc);
+- `_riassumi_args` **lasciato invariato** (il caso `unisci_contatti`): scelta esplicita,
+  l'handler resta richiamabile (il mandato: "se l'handler resta richiamabile, lascialo").
 
----
+Il **MECCANISMO** di merge in `MemoryStore` (`unisci_contatti`, `merged_into`,
+`_ensure_columns`, risolutore canonico) **NON è toccato** (store.py non nel diff).
 
-## COSA È STATO FATTO
+## PUNTO 2 — MOTORE: coerenza whitespace in `_trova_contatto`
 
-### `gas.py`
-- **Nuovo helper PURO `_classify_provider_error(status_code, err_text, obbligatoria)
-  -> (esito, dettaglio)`**, accanto a `_classify_free_model`. Regole:
-  - `429` → `QUOTA` (per qualsiasi rung; comportamento storico)
-  - `402` su rung **OPZIONALE** → `WARN` ("402: crediti esauriti (rung free opzionale)")
-  - `402` su rung **OBBLIGATORIO** → `KO` (un provider a pagamento senza credito è un
-    problema reale)
-  - tutto il resto → `KO` con dettaglio troncato a 60 char (comportamento storico)
-- **`doctor`**: il blocco `except` del ping provider ora **delega all'helper** (prima:
-  `429→QUOTA` inline, `else→KO`).
+Il confronto substring usava `termine.lower()` senza collassare il whitespace, mentre le
+chiavi storate sono normalizzate. Ora il collasso si applica a **ENTRAMBI i lati**
+riusando `normalizza_chiave` SOLO ai fini del confronto (needle e haystack chiave+nome):
+un needle `"anna   rossi"` trova lo storato `"anna rossi"`. Il ramo **match-esatto**
+(`get_contatto_per_chiave`) **NON toccato**.
 
-### `tests/test_unit_kernel.py` — T27a-d (zero token)
-- **T27a** `429` → `QUOTA` (sia via `status_code` sia via testo).
-- **T27b** `402` su rung opzionale → `WARN` (non KO), dettaglio corretto.
-- **T27c** `402` su rung obbligatorio → `KO` (il ramo WARN NON intercetta).
-- **T27d** errore generico → `KO` con dettaglio troncato a 60 char.
+## PUNTO 3 — MOTORE (cosmetico): chiude R-crm-norm-1
+
+I messaggi di **successo** di `_salva_contatto`/`_imposta_stato_contatto` mostrano ora la
+chiave nella forma CANONICA persistita (`normalizza_chiave(chiave)`): schermo e DB
+coincidono. Solo il testo del messaggio.
+
+## PUNTO 4 — DOC (no review)
+
+In `reports/stato_progetto.md`: (a) **R-crm-1b** spostato da ✅CHIUSA a **🟡 MITIGATA**
+(dedup cross-formato non prevenuto; meccanismo di merge come manutenzione umana; difesa
+preventiva "chiave canonica" candidata, non presa); (b) voce motore "Fusione lead
+cross-formato" riscritta (merge non più tool autopilot, e perché); (c) **R-crm-norm-1**
+marcata CHIUSA; (d) paragrafo "Istituzioni di processo C" riscritto pulito (era #18
+duplicato + narrazione doppia) — ultima review ora **#21** (lo stato reale è oltre il
+"#19" indicato nel mandato, scritto prima delle review #20/#21). Registrato che lo
+**Strato B del Vector DB è CONGELATO** (FTS5 basta; si rivaluta solo se il funnel reale
+lo richiede) e che un **un-merge è NON necessario** col merge manuale.
 
 ---
 
 ## VERIFICHE (eseguite e dimostrate)
 
 ### A. Suite completa
-`python tests/test_unit_kernel.py` → **`=== RIEPILOGO: 132 PASS, 0 FAIL ===`** (era 128).
+`python tests/test_unit_kernel.py` → **`=== RIEPILOGO: 135 PASS, 0 FAIL ===`** (era 132).
 
-### B. Dal vivo
-`python gas.py doctor` → riga OpenRouter ora `[QUOTA] 429: quota esaurita`
-(in questo run il live era 429/rate-limit; il ramo 402 è coperto da T27b). VERDETTO
-`OPERATIVO CON AVVISI`, **exit 0**. Niente più `[KO]` allarmante per il paracadute free.
+### B. `git diff --cached --stat` (commit motore `0240161`)
+```
+ gas.py                    | 49 +++++++++++++++++++++-------------
+ tests/test_unit_kernel.py | 65 +++++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 89 insertions(+), 25 deletions(-)
+```
+SOLO `gas.py` + `tests/`. **`modules/memory/store.py` NON nel diff** (verificato:
+`git diff --stat modules/memory/store.py` vuoto). Le invarianti motore
+(`_get_window`/`_cap_window_chars`/`for _ in range(10)`/bwrap/`_snapshot`) e i simboli
+del meccanismo (`merged_into`/`_ensure_columns`/`diario_fts`/`cerca_diario`) NON
+compaiono nel diff di `gas.py`.
 
-### C. Exit code e invarianti
-- **Exit code INVARIATO**: `WARN`/`QUOTA`/`KO` contano tutti come "avvisi"; solo `FAIL`
-  alza l'exit a 1. Spostare il 402 opzionale da KO a WARN NON cambia l'exit (entrambi
-  erano già nel secchio "avvisi") → nessun rischio di mascherare un FAIL.
-- **Invarianti motore INVARIATE**: `_get_window` / `_cap_window_chars` /
-  `for _ in range(10)` / sandbox bwrap / snapshot / cascata `run_turn` non toccati.
-- **`doctor` resta a ZERO token** (helper puro; ping invariato a `max_tokens=1`).
+### C. `unisci_contatti` non più esposto, meccanismo intatto (grep)
+- `grep -c '"name": "unisci_contatti"' gas.py` → **0** (fuori da `tools_schema`)
+- `grep -c 'elif name == "unisci_contatti"' gas.py` → **0** (fuori dal dispatcher)
+- `def unisci_contatti` / `merged_into` / `def _ensure_columns` → **presenti in
+  `modules/memory/store.py`** (meccanismo INTATTO)
+- handler `_unisci_contatti` ancora presente in `gas.py` (richiamabile a mano)
+
+### D. Esito dei nuovi test
+```
+[PASS] T28a unisci_contatti fuori da schema+dispatcher, meccanismo manuale intatto
+[PASS] T28b _trova_contatto: whitespace multiplo nel needle trova lo storato normalizzato
+[PASS] T28c messaggi di successo mostrano la chiave normalizzata (R-crm-norm-1)
+```
+I T24a-f (merge nello store) restano **verdi**: T24a/c/d migrati da
+`execute_tool_call("unisci_contatti", ...)` (path tool rimosso) all'handler
+`_unisci_contatti(...)` — stesso output, asserzioni invariate; T24b/e/f usano già lo
+store direttamente.
 
 ---
 
 ## PROCESSO
-- **Gate di review §3**: diff su `gas.py`/`tests/` → subagent **revisore** invocato sul
-  diff staged PRIMA del commit → **APPROVATO** (review #20, nessuna riserva), validato
-  dal vivo, mutation testing dei 4 rami.
+- **Gate di review §3**: PUNTI 1-3 toccano `gas.py`/`tests/` → subagent **revisore**
+  invocato sul diff staged PRIMA del commit → **APPROVATO** (review #21). Unica nota
+  cosmetica (commento su `_trova_contatto` impreciso sul `nome` non normalizzato in
+  storage) **chiusa in sessione** affinando il commento. PUNTO 4 doc-only → no review.
 - Hook deterministico onorato (`.claude/.review_ok` creato per il commit, rimosso subito dopo).
 - `stato_progetto.md` e `diff_sessione.md` aggiornati.
 
 ---
 
-## §FINALE — Fuori da questo task (azione UMANA)
-- **Ricarica crediti OpenRouter**: per riattivare il 4° rung gratuito serve un saldo
-  minimo su `openrouter.ai/credits` (i modelli `:free` su molti account richiedono un
-  credito una-tantum per sbloccare i limiti). NON è codice: è una scelta operativa.
-  Gas funziona comunque senza (la cascata scala a Gemini/Groq, e a Ollama sul VPS).
+## §FINALE — Fuori da questo mandato (NON eseguito, scope umano)
+- **Difesa PREVENTIVA di R-crm-1b**: policy di chiave canonica (preferire SEMPRE l'email
+  quando disponibile) per evitare a monte il dedup cross-formato. Scelta di semantica
+  della rubrica, NON presa.
+- **Un-merge / reverse-merge**: NON necessario finché il merge è manuale. Se un domani il
+  merge tornasse automatico servirebbe; oggi no. Registrato, nessun impegno.
+- **`GAS_MEMORY_PIN_SCAN`** env override e **R-crm-2** (`int(c["id"])`): già tracciati tra
+  i finding 🟡, fuori scope qui.

@@ -1,32 +1,36 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-17 (doctor 402 onesto + backup automatico del DB)
+# 🔀 DIFF DI SESSIONE — 2026-06-17 (CHIUSURA FASE 2 memoria: declassamento unisci_contatti)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni
 > sessione.
 
-## Due interventi in sessione
+## Cosa è cambiato e perché
+Chiusura di FASE 2 memoria: il merge di lead è mutante e IRREVERSIBILE, quindi non deve
+essere un tool che il modello invoca in autopilot. Declassato a **manutenzione umana**
+(meccanismo intatto) + igiene di lettura e cosmetica.
 
-### 1) doctor: 402 "crediti esauriti" su rung free opzionale → WARN (commit `7220c28`)
-Il `doctor` mostrava `[KO]` allarmante per OpenRouter coi crediti esauriti (HTTP `402`),
-ma è un rung OPZIONALE gratuito (paracadute). A runtime `run_turn` GIÀ scalava da sé al
-rung successivo (§9, verificato dal vivo) → nessuna modifica lì.
-- **`gas.py`**: nuovo helper PURO `_classify_provider_error` (429→QUOTA; 402 opzionale→
-  WARN; 402 obbligatorio→KO; resto→KO troncato 60 char); il `doctor` ci delega.
-- **`tests/test_unit_kernel.py`**: T27a-d. Exit code del doctor INVARIATO, zero token.
-- Revisore **#20 APPROVATO**. Suite **128→132**.
+## File toccati (commit motore `0240161`, +89 / -25; SOLO gas.py + tests)
+- **`gas.py`**:
+  - PUNTO 1: rimossa l'entry `unisci_contatti` da `tools_schema` e il ramo dal dispatcher
+    `execute_tool_call` (→ "Tool non trovato."); handler `_unisci_contatti` resta
+    richiamabile a mano (docstring: manutenzione umana, perché). `_riassumi_args`
+    invariato. **store.py NON toccato** (meccanismo di merge intatto).
+  - PUNTO 2: `_trova_contatto` collassa il whitespace su ENTRAMBI i lati del substring
+    (riuso `normalizza_chiave` solo per il confronto); ramo match-esatto invariato.
+  - PUNTO 3: messaggi di successo di `_salva_contatto`/`_imposta_stato_contatto` con
+    chiave canonica (chiude R-crm-norm-1).
+  - import `normalizza_chiave` da `modules.memory`.
+- **`tests/test_unit_kernel.py`**: T28a-c nuovi; T24a/c/d migrati da `execute_tool_call`
+  all'handler `_unisci_contatti`. Suite **132→135, 0 FAIL**.
 
-### 2) Backup automatico del DB di memoria (commit `cb99d1c`)
-Rete di sicurezza anti auto-corruzione del dato più prezioso (`.gas_memory.db`).
-- **`modules/memory/store.py`**: `integrity_check()`, `backup()` con rotazione pura
-  (`keep=10`) + timestamp con microsecondi, `backup_auto(min_interval_sec)` THROTTLED
-  (salta se non è ora o se l'integrità è KO).
-- **`gas.py`**: `_memoria_backup_auto()` fail-safe §9 (1×/turno, fuori dal loop) +
-  override env `GAS_MEMORY_BACKUP_EVERY_SEC`/`_KEEP` + `doctor` sezione 8 "Memoria".
-- **`tests/test_unit_kernel.py`**: T26a-e. Revisore **#19 APPROVATO**. Suite **123→128**.
+## Doc (commit separato, no review)
+`stato_progetto.md`: R-crm-1b ✅→🟡 MITIGATA; voce motore "Fusione lead" riscritta;
+R-crm-norm-1 CHIUSA; paragrafo Istituzioni C ripulito (ultima review #21); Strato B
+Vector DB CONGELATO; un-merge non necessario col merge manuale.
+
+## Processo
+Gate §3: revisore **#21 APPROVATO** (1 nota cosmetica chiusa in sessione). Report
+`ultimo_report.md` riscritto.
 
 ## Invarianti
 `_get_window` / `_cap_window_chars` / `for _ in range(10)` / sandbox bwrap / snapshot /
-cascata `run_turn` INVARIATI in entrambi gli interventi.
-
-## Azione UMANA in sospeso (non codice)
-Ricarica crediti OpenRouter (`openrouter.ai/credits`) per riattivare il 4° rung free —
-Gas funziona comunque senza (cascata su Gemini/Groq, Ollama sul VPS).
+FTS5 / meccanismo merge nello store INVARIATI.
