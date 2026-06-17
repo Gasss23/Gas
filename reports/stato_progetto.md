@@ -249,9 +249,13 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **110 PASS, 0 FAIL** (2026-06-17). Dai 106 si aggiungono i 4 T23 (normalizzazione
-  chiavi lead R-crm-1: equivalenza chiavi/no-doppione, update con chiave non
-  normalizzata, fail-safe None/vuota/non-str, idempotenza). Storico: dai 98 gli 8 T22 (scrittura
+  **112 PASS, 0 FAIL** (2026-06-17). Dai 110 si aggiungono i 2 T23e/f
+  (coerenza scrittura-normalizzata ↔ lettura-substring: il lead salvato con chiave
+  non normalizzata resta trovabile via `ricorda` con varianti case/spazi — T23e; e
+  onestà sul limite APERTO R-crm-1b: la normalizzazione NON fonde identità
+  cross-formato, due record restano due — T23f). Prima, dai 106 i 4 T23a-d
+  (normalizzazione chiavi lead R-crm-1: equivalenza chiavi/no-doppione, update con
+  chiave non normalizzata, fail-safe None/vuota/non-str, idempotenza). Storico: dai 98 gli 8 T22 (scrittura
   contatti dal loop + chiusura R1/R2/R3: salva/aggiorna, dinieghi, lookup store,
   match esatto+ambiguità, override env+fail-safe, scan robusto del rumore,
   round-trip CRM completo con diario+pin). Storico dai 90 → 98: gli 8 T21 (lato lettura
@@ -366,11 +370,24 @@
   di ambiguità; R2 (costanti hardcoded) → override env `GAS_MEMORY_PIN_*` via `_env_int`
   fail-safe; R3 (euristica `*5`) → `MEMORY_PIN_SCAN=200` bounded. `DIARIO_NOISE_TIPI`
   resta hardcoded di proposito (non un tetto numerico). Dettaglio nella voce CRM sopra.
-- ✅ **R-crm-1 CHIUSA** (review #16, 2026-06-17): la normalizzazione deterministica
-  della chiave (`normalizza_chiave`: trim/collasso-whitespace/lower, pura+idempotente,
-  fail-safe) ora è applicata sia in `upsert_contatto` sia in `get_contatto_per_chiave`
-  → chiavi equivalenti collassano alla stessa forma canonica e l'UNIQUE deduplica.
-  Niente fuzzy/merge (fuori scope di proposito). Dettaglio nella voce motore in cima.
+- ✅ **R-crm-1 (parte case/whitespace) — CHIUSA** (2026-06-17, `cdf764a`, review #16):
+  chiavi che differiscono solo per maiuscole/whitespace della STESSA stringa
+  (`"Anna"` / `" ANNA "` → un record) risolvono allo stesso contatto via
+  `normalizza_chiave` (trim/collasso-whitespace/lower, pura+idempotente, fail-safe),
+  applicata sia in `upsert_contatto` sia in `get_contatto_per_chiave` (T23a/b). La
+  lettura substring resta coerente con la scrittura normalizzata (T23e). Niente
+  fuzzy/merge (fuori scope di proposito). Dettaglio nella voce motore in cima.
+- 🟡 **R-crm-1b (identità cross-formato) — APERTA**: lo stesso lead rappresentato con
+  chiavi semanticamente DIVERSE (es. email a un turno, nome a un altro: `anna@ex.com`
+  vs `Anna`) NON viene unito — `normalizza_chiave("anna@ex.com")="anna@ex.com"` e
+  `normalizza_chiave("Anna")="anna"` sono stringhe diverse → due record. Ed è
+  intenzionale: la normalizzazione lessicale non deve fonderle (T23f incarna il
+  limite). È rischio di **QUALITÀ** del dato, non di sicurezza (recuperabile, mai
+  crash). **NON è un problema di migrazione**: esiste a runtime indipendentemente
+  dallo stato del DB (il modello avrà a volte solo il nome, a volte solo l'email per
+  la stessa persona). Difesa candidata da **PROGETTARE** (fuori da questa fetta):
+  policy di chiave canonica (es. preferire SEMPRE l'email come chiave quando
+  disponibile) oppure un tool `unisci_contatti`/merge-lead. Nessun impegno preso.
 - 🟡 **Riserve CRM contatti dal loop** (R-mem-crm, review #15, minori non bloccanti):
   (R-crm-2) `int(c["id"])` in `_imposta_stato_contatto` assume id convertibile (sempre
   vero con PK INTEGER SQLite, e protetto dal try/except globale) — cosmetico.
