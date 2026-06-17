@@ -8,7 +8,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
-from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO
+from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO, normalizza_chiave
 
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
 # i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
@@ -312,8 +312,7 @@ class GasKernel:
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare negli eventi del diario; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
-            {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
-            {"type": "function", "function": {"name": "unisci_contatti", "description": "Fonde due schede della rubrica che sono in realtà lo STESSO lead salvato con chiavi diverse (es. una volta col nome 'Anna' e una volta con l'email 'anna@ex.com'). I dati confluiscono nel lead 'verso' e la scheda 'da' inizia a puntare ad esso, SENZA perdere la storia passata. Usalo SOLO quando sei certo che i due lead sono la stessa persona.", "parameters": {"type": "object", "properties": {"chiave_da": {"type": "string", "description": "chiave del doppione da assorbire"}, "chiave_verso": {"type": "string", "description": "chiave del lead da mantenere come principale"}}, "required": ["chiave_da", "chiave_verso"]}}}
+            {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}}
         ]
 
     def _load_history(self) -> List[Dict[str, Any]]:
@@ -817,10 +816,16 @@ class GasKernel:
         esatto = self.memory.get_contatto_per_chiave(termine)
         if esatto:
             return esatto, None
-        ago = termine.lower()
+        # Substring case-insensitive con collasso del whitespace su ENTRAMBI i lati
+        # (riuso normalizza_chiave SOLO ai fini del confronto, non muta nulla):
+        # needle e haystack (chiave+nome) sono normalizzati al volo, così un needle
+        # con spazi multipli ("anna   rossi") combacia con la chiave storata (già
+        # normalizzata) "anna rossi". Il nome non è normalizzato in storage ma qui
+        # viene canonicalizzato solo per il match, simmetrico al needle.
+        ago = normalizza_chiave(termine)
         cand = [c for c in self.memory.lista_contatti()
-                if ago in (str(c.get("chiave", "")).lower() + " "
-                           + str(c.get("nome", "")).lower())]
+                if ago in (normalizza_chiave(c.get("chiave", "")) + " "
+                           + normalizza_chiave(c.get("nome", "")))]
         if not cand:
             return None, None
         if len(cand) == 1:
@@ -900,7 +905,9 @@ class GasKernel:
             prossima_azione=args.get("prossima_azione"), note=args.get("note"))
         if cid is None:
             return f"Memoria in degrado: contatto '{chiave}' non salvato."
-        return f"Successo: contatto '{chiave}' salvato (id={cid})."
+        # Mostra la chiave nella forma CANONICA persistita (normalizzata), così
+        # schermo e DB coincidono (chiude R-crm-norm-1).
+        return f"Successo: contatto '{normalizza_chiave(chiave)}' salvato (id={cid})."
 
     def _imposta_stato_contatto(self, args: Dict[str, Any]) -> str:
         """Transizione di stato di un lead esistente (tool imposta_stato_contatto).
@@ -922,15 +929,24 @@ class GasKernel:
                     f"Crealo prima con salva_contatto.")
         ok = self.memory.update_stato_contatto(
             int(c["id"]), stato, prossima_azione=args.get("prossima_azione"))
-        return (f"Successo: lead '{chiave}' ora in stato '{stato}'." if ok
+        # Chiave nella forma CANONICA persistita (chiude R-crm-norm-1).
+        return (f"Successo: lead '{normalizza_chiave(chiave)}' ora in stato '{stato}'." if ok
                 else f"Memoria in degrado: stato di '{chiave}' non aggiornato.")
 
     def _unisci_contatti(self, args: Dict[str, Any]) -> str:
-        """Fonde due schede dello stesso lead (tool unisci_contatti): es. quando
-        Gas scopre che 'Anna' e 'anna@ex.com' sono la stessa persona (R-crm-1b).
-        Merge a lapide, NON distruttivo (vedi MemoryStore.unisci_contatti): non
-        cancella nulla, la storia resta. Entrambe le chiavi devono esistere.
-        Fail-safe: memoria/lead assenti → messaggio chiaro, mai crash."""
+        """Fonde due schede dello stesso lead: es. quando si scopre che 'Anna' e
+        'anna@ex.com' sono la stessa persona (R-crm-1b). Merge a lapide, NON
+        distruttivo (vedi MemoryStore.unisci_contatti): non cancella nulla, la
+        storia resta. Entrambe le chiavi devono esistere. Fail-safe: memoria/lead
+        assenti → messaggio chiaro, mai crash.
+
+        ⚠ OPERAZIONE DI MANUTENZIONE UMANA, NON un tool autopilot. NON è cablata al
+        dispatcher dei tool (execute_tool_call) e il modello non può invocarla da
+        sé: il merge è mutante e IRREVERSIBILE (lossy, COALESCE senza inverso
+        pulito), stessa classe del restore di snapshot e del git gc — solo umano.
+        Il dedup mancato è recuperabile, un merge errato no. Il metodo resta come
+        helper richiamabile per l'uso manuale/futuro; il MECCANISMO di merge in
+        MemoryStore resta intatto."""
         if self.memory is None:
             return "Memoria non disponibile: contatti non uniti."
         da = str(args.get("chiave_da") or "").strip()
@@ -1045,12 +1061,11 @@ class GasKernel:
                 out = self._salva_contatto(args if isinstance(args, dict) else {})
             elif name == "imposta_stato_contatto":
                 out = self._imposta_stato_contatto(args if isinstance(args, dict) else {})
-            elif name == "unisci_contatti":
-                # Fusione di due schede dello stesso lead (R-crm-1b), in-process
-                # (codice fidato): niente FS/rete, niente sandbox/snapshot. Merge a
-                # lapide, non distruttivo. Tracciato nel diario dal loop (fetta 2a).
-                out = self._unisci_contatti(args if isinstance(args, dict) else {})
             else:
+                # unisci_contatti NON è più un tool autopilot: il merge di lead è
+                # mutante e irreversibile (lossy), quindi è MANUTENZIONE UMANA e non
+                # passa più di qui (vedi _unisci_contatti). Il meccanismo di merge
+                # in MemoryStore resta intatto. Tool ignoto → diniego pulito.
                 return "Tool non trovato."
             return self._cap_tool_output(name, args, out)
         except Exception as e:

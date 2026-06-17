@@ -1171,13 +1171,17 @@ check("T23f (R-crm-1b APERTA) normalizzazione NON fonde identità cross-formato"
 # ---------- T24: fusione lead cross-formato (R-crm-1b) — merge a lapide ----------
 # Chiude R-crm-1b: lo STESSO lead salvato con chiavi diverse (es. nome + email) si
 # fonde in modo NON distruttivo e compatibile con l'immutabilità del diario.
+# NB: dal declassamento di unisci_contatti a MANUTENZIONE UMANA (non più tool
+# autopilot), il merge si invoca via handler _unisci_contatti / store, NON via
+# execute_tool_call (il dispatcher non lo espone più: vedi T28). Il MECCANISMO di
+# merge nello store è INTATTO, quindi questi test restano verdi.
 
 # T24a — unisci_contatti: 'da' diventa lapide del 'verso', UN solo lead vivo,
 # le vecchie chiavi risolvono ENTRAMBE al canonico, anagrafica completata.
 k24 = kernel_tmp()
 k24.execute_tool_call("salva_contatto", {"chiave": "Anna", "nome": "Anna"})
 k24.execute_tool_call("salva_contatto", {"chiave": "anna@ex.com", "contatto": "anna@ex.com"})
-o24 = k24.execute_tool_call("unisci_contatti", {"chiave_da": "Anna", "chiave_verso": "anna@ex.com"})
+o24 = k24._unisci_contatti({"chiave_da": "Anna", "chiave_verso": "anna@ex.com"})
 vivi24 = k24.memory.lista_contatti()                       # esclude le lapidi
 canon = k24.memory.get_contatto_per_chiave("anna@ex.com")
 via_vecchia = k24.memory.get_contatto_per_chiave("Anna")   # vecchia chiave -> canonico
@@ -1210,10 +1214,10 @@ check("T24b la storia del doppione confluisce nel canonico (diario immutabile)",
 # fuso (o un lead in se stesso) è un no-op; chiavi mancanti negate.
 k24c = kernel_tmp()
 k24c.execute_tool_call("salva_contatto", {"chiave": "carla@ex.com", "nome": "Carla"})
-o_ghost = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "ghost", "chiave_verso": "carla@ex.com"})
-o_noargs = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "carla@ex.com"})
-o_self = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "carla@ex.com", "chiave_verso": "carla@ex.com"})
-o_again = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "carla@ex.com", "chiave_verso": "carla@ex.com"})
+o_ghost = k24c._unisci_contatti({"chiave_da": "ghost", "chiave_verso": "carla@ex.com"})
+o_noargs = k24c._unisci_contatti({"chiave_da": "carla@ex.com"})
+o_self = k24c._unisci_contatti({"chiave_da": "carla@ex.com", "chiave_verso": "carla@ex.com"})
+o_again = k24c._unisci_contatti({"chiave_da": "carla@ex.com", "chiave_verso": "carla@ex.com"})
 check("T24c fail-safe: inesistente/args mancanti negati; self-merge e ri-merge = no-op",
       "Operazione negata" in o_ghost and "Operazione negata" in o_noargs
       and o_self.startswith("Successo") and o_again.startswith("Successo")
@@ -1225,12 +1229,12 @@ check("T24c fail-safe: inesistente/args mancanti negati; self-merge e ri-merge =
 k24d = kernel_tmp()
 k24d.execute_tool_call("salva_contatto", {"chiave": "Dora", "nome": "Dora"})
 k24d.execute_tool_call("salva_contatto", {"chiave": "dora@ex.com", "contatto": "dora@ex.com"})
-k24d.execute_tool_call("unisci_contatti", {"chiave_da": "Dora", "chiave_verso": "dora@ex.com"})
+k24d._unisci_contatti({"chiave_da": "Dora", "chiave_verso": "dora@ex.com"})
 pin24 = k24d._memoria_pin()
 no_crash_none = True
 try:
     k24d_none = kernel_tmp(); k24d_none.memory = None
-    o_none24 = k24d_none.execute_tool_call("unisci_contatti", {"chiave_da": "a", "chiave_verso": "b"})
+    o_none24 = k24d_none._unisci_contatti({"chiave_da": "a", "chiave_verso": "b"})
 except Exception as e:
     no_crash_none = False; o_none24 = repr(e)
 check("T24d pin mostra 1 sola scheda (no lapidi) + memoria None gestita",
@@ -1464,6 +1468,53 @@ g1 = gas._classify_provider_error(500, lungo, False)
 check("T27d errore generico -> KO, dettaglio <=60 char",
       g1[0] == "KO" and len(g1[1]) == 60,
       f"g1={g1[0]} len={len(g1[1])}")
+
+# ---------- T28: declassamento unisci_contatti (manutenzione umana, non tool) ----------
+# Il merge di lead è mutante e IRREVERSIBILE: il modello non deve poterlo invocare
+# in autopilot. Il tool sparisce dallo schema e dal dispatcher; il MECCANISMO di
+# merge nello store resta intatto (coperto da T24). Tutto locale, ZERO token.
+
+# T28a — unisci_contatti NON è più esposto al modello: assente da tools_schema E
+# dal dispatcher (execute_tool_call -> "Tool non trovato"). Ma l'handler resta
+# richiamabile a mano e il meccanismo nello store funziona ancora.
+k28 = kernel_tmp()
+nomi_tool = {t["function"]["name"] for t in k28.tools_schema}
+o_disp = k28.execute_tool_call("unisci_contatti", {"chiave_da": "a", "chiave_verso": "b"})
+# il meccanismo manuale (store + handler) è ancora vivo
+k28.execute_tool_call("salva_contatto", {"chiave": "Eva", "nome": "Eva"})
+k28.execute_tool_call("salva_contatto", {"chiave": "eva@ex.com", "contatto": "eva@ex.com"})
+o_manuale = k28._unisci_contatti({"chiave_da": "Eva", "chiave_verso": "eva@ex.com"})
+check("T28a unisci_contatti fuori da schema+dispatcher, meccanismo manuale intatto",
+      "unisci_contatti" not in nomi_tool
+      and o_disp == "Tool non trovato."
+      and o_manuale.startswith("Successo")
+      and len(k28.memory.lista_contatti()) == 1
+      and hasattr(k28, "_unisci_contatti")
+      and hasattr(k28.memory, "unisci_contatti"),
+      f"in_schema={'unisci_contatti' in nomi_tool} disp={o_disp!r} man={o_manuale[:30]!r}")
+
+# T28b (PUNTO 2) — coerenza whitespace in _trova_contatto: un needle con spazi
+# multipli ("anna   rossi") trova lo storato normalizzato ("anna rossi"), via
+# substring case-insensitive collassato su entrambi i lati. Pattern dei T23.
+k28b = kernel_tmp()
+k28b.execute_tool_call("salva_contatto", {"chiave": "  Anna   Rossi ", "nome": "Anna Rossi"})
+m_ws, _ = k28b._trova_contatto("anna   rossi")     # spazi multipli + lower
+m_up, _ = k28b._trova_contatto("ANNA ROSSI")       # case-insensitive
+check("T28b _trova_contatto: whitespace multiplo nel needle trova lo storato normalizzato",
+      m_ws is not None and m_up is not None
+      and m_ws["chiave"] == "anna rossi" and m_up["chiave"] == "anna rossi",
+      f"ws={m_ws['chiave'] if m_ws else None} up={m_up['chiave'] if m_up else None}")
+
+# T28c (PUNTO 3) — i messaggi di successo mostrano la chiave CANONICA persistita
+# (normalizzata), così schermo e DB coincidono (chiude R-crm-norm-1).
+k28c = kernel_tmp()
+o_salva = k28c.execute_tool_call("salva_contatto", {"chiave": "  Frank  ", "nome": "Frank"})
+o_stato = k28c.execute_tool_call("imposta_stato_contatto", {"chiave": " FRANK ", "stato": "contattato"})
+check("T28c messaggi di successo mostrano la chiave normalizzata (R-crm-norm-1)",
+      o_salva.startswith("Successo") and o_stato.startswith("Successo")
+      and "'frank'" in o_salva and "'frank'" in o_stato
+      and "Frank" not in o_salva and "FRANK" not in o_stato,
+      f"salva={o_salva!r} stato={o_stato!r}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
