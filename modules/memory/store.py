@@ -97,10 +97,20 @@ _SCHEMA: Tuple[str, ...] = (
         prossima_azione TEXT,
         note            TEXT,
         creato_il       TEXT    NOT NULL,
-        aggiornato_il   TEXT    NOT NULL
+        aggiornato_il   TEXT    NOT NULL,
+        -- merged_into: se valorizzato, questa scheda è una LAPIDE che punta al
+        -- lead canonico (stesso lead salvato con un'altra chiave; vedi R-crm-1b).
+        -- NULL = lead vivo. Le letture seguono il puntatore; il diario resta
+        -- IMMUTABILE (nessun UPDATE/DELETE: gli eventi della lapide confluiscono
+        -- nella storia del canonico via diario_di_contatto).
+        merged_into     INTEGER REFERENCES contatti(id)
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_contatti_stato ON contatti(stato)",
+    # NB: l'indice su merged_into NON sta qui ma in _ensure_columns, DOPO che la
+    # migrazione ha garantito la colonna: su un DB legacy (tabella contatti senza
+    # merged_into) crearlo qui solleverebbe "no such column" e manderebbe l'init in
+    # degrado proprio sui DB che la migrazione deve salvare.
 )
 
 
@@ -172,7 +182,26 @@ class MemoryStore:
     def _init_schema(self, con: sqlite3.Connection) -> None:
         for ddl in _SCHEMA:
             con.execute(ddl)
+        self._ensure_columns(con)
         con.commit()
+
+    @staticmethod
+    def _ensure_columns(con: sqlite3.Connection) -> None:
+        """Migrazione idempotente per DB già esistenti (i DB freschi hanno già le
+        colonne dal CREATE TABLE). ALTER ADD COLUMN con default NULL: NON
+        distruttivo e compatibile con i foreign key (la colonna nasce NULL).
+        Sul DB di sviluppo (vuoto) è un no-op; serve per il futuro su VPS."""
+        cols = {r["name"] for r in con.execute("PRAGMA table_info(contatti)")}
+        if "merged_into" not in cols:
+            con.execute(
+                "ALTER TABLE contatti ADD COLUMN merged_into "
+                "INTEGER REFERENCES contatti(id)"
+            )
+        # L'indice si crea QUI, dopo che la colonna esiste di sicuro (sia su DB
+        # fresco sia migrato): non può precedere l'ALTER. IF NOT EXISTS → idempotente.
+        con.execute(
+            "CREATE INDEX IF NOT EXISTS idx_contatti_merged ON contatti(merged_into)"
+        )
 
     @staticmethod
     def _rows(cur: sqlite3.Cursor) -> List[Dict[str, Any]]:
@@ -261,7 +290,87 @@ class MemoryStore:
             log.warning("update_stato_contatto fallita (%s): %s", self.db_path, e)
             return False
 
+    def unisci_contatti(self, chiave_da: str, chiave_verso: str) -> Optional[int]:
+        """Fonde due schede dello STESSO lead salvato con chiavi DIVERSE (R-crm-1b:
+        es. 'anna@ex.com' e 'Anna', che normalizza_chiave non unisce e non deve).
+        MERGE A LAPIDE, non distruttivo e COMPATIBILE con l'immutabilità del diario:
+
+          1. l'anagrafica MANCANTE del canonico ('verso') viene completata con i
+             dati del doppione ('da') — solo i campi NULL, via COALESCE;
+          2. eventuali lapidi che puntavano a 'da' vengono ri-puntate al canonico
+             (invariante: ogni lapide punta SEMPRE a un canonico vivo, catena
+             profonda al più 1);
+          3. 'da' viene marcato come lapide (merged_into = id del canonico).
+
+        NESSUN UPDATE/DELETE sul diario: gli eventi di 'da' restano e confluiscono
+        nella storia del canonico via diario_di_contatto. Lo STATO del funnel NON
+        si tocca (resta quello del canonico): la transizione passa SOLO da
+        update_stato_contatto. Idempotente: fondere ciò che è già fuso, o un lead
+        in se stesso, è un no-op. Ritorna l'id del lead canonico, o None se una
+        delle due chiavi non esiste / in degrado (§9)."""
+        try:
+            with self._connect() as con:
+                verso = self._risolvi_canonico(con, normalizza_chiave(chiave_verso))
+                da = self._risolvi_canonico(con, normalizza_chiave(chiave_da))
+                if verso is None or da is None:
+                    return None
+                canonico_id, da_id = int(verso["id"]), int(da["id"])
+                if da_id == canonico_id:
+                    return canonico_id  # già lo stesso lead: no-op idempotente
+                now = _now_iso()
+                # 1) completa l'anagrafica del canonico dai campi del doppione
+                con.execute(
+                    "UPDATE contatti SET "
+                    "  nome = COALESCE(nome, ?), "
+                    "  contatto = COALESCE(contatto, ?), "
+                    "  prossima_azione = COALESCE(prossima_azione, ?), "
+                    "  note = COALESCE(note, ?), "
+                    "  aggiornato_il = ? "
+                    "WHERE id = ?",
+                    (da.get("nome"), da.get("contatto"), da.get("prossima_azione"),
+                     da.get("note"), now, canonico_id),
+                )
+                # 2) ri-punta al canonico le lapidi che puntavano al doppione
+                con.execute(
+                    "UPDATE contatti SET merged_into = ? WHERE merged_into = ?",
+                    (canonico_id, da_id),
+                )
+                # 3) marca il doppione come lapide del canonico
+                con.execute(
+                    "UPDATE contatti SET merged_into = ?, aggiornato_il = ? "
+                    "WHERE id = ?",
+                    (canonico_id, now, da_id),
+                )
+                con.commit()
+                return canonico_id
+        except (sqlite3.Error, OSError) as e:
+            log.warning("unisci_contatti fallita (%s): %s", self.db_path, e)
+            return None
+
     # ---------------------------------------------------------------- letture
+    @staticmethod
+    def _risolvi_canonico(con: sqlite3.Connection, chiave: str
+                          ) -> Optional[Dict[str, Any]]:
+        """Risolve una chiave GIÀ normalizzata al record CANONICO, seguendo la
+        catena merged_into fino al lead vivo. Bounded da un set di id visti
+        (anti-ciclo difensivo, anche se l'invariante tiene la catena a 1). Ritorna
+        None se la chiave non esiste."""
+        row = con.execute(
+            "SELECT * FROM contatti WHERE chiave = ?", (chiave,)
+        ).fetchone()
+        if row is None:
+            return None
+        visti = set()
+        while row["merged_into"] is not None and int(row["id"]) not in visti:
+            visti.add(int(row["id"]))
+            nxt = con.execute(
+                "SELECT * FROM contatti WHERE id = ?", (row["merged_into"],)
+            ).fetchone()
+            if nxt is None:
+                break
+            row = nxt
+        return dict(row)
+
     def diario_recente(self, n: int = 20) -> List[Dict[str, Any]]:
         """Ultimi n eventi del diario, dal più recente. [] in degrado."""
         try:
@@ -278,9 +387,14 @@ class MemoryStore:
         """Tutti gli eventi del diario legati a un contatto, dal più recente."""
         try:
             with self._connect() as con:
+                # Include anche gli eventi delle LAPIDI fuse in questo contatto
+                # (merge a lapide R-crm-1b): la storia del canonico abbraccia il
+                # passato dei doppioni assorbiti, senza toccare il diario immutabile.
                 cur = con.execute(
-                    "SELECT * FROM diario WHERE contatto_id = ? ORDER BY id DESC",
-                    (contatto_id,),
+                    "SELECT * FROM diario WHERE contatto_id = ? "
+                    "OR contatto_id IN (SELECT id FROM contatti WHERE merged_into = ?) "
+                    "ORDER BY id DESC",
+                    (contatto_id, contatto_id),
                 )
                 return self._rows(cur)
         except (sqlite3.Error, OSError) as e:
@@ -304,32 +418,37 @@ class MemoryStore:
         o None se assente/in degrado. Lookup esatto, sfrutta l'indice UNIQUE su
         `chiave`: è la via canonica per risolvere chiave -> contatto. La chiave
         viene canonicalizzata (stesso normalizza_chiave dell'upsert) così che il
-        lookup risolva alla stessa identità logica con cui è stata scritta."""
+        lookup risolva alla stessa identità logica con cui è stata scritta. Se la
+        chiave appartiene a una LAPIDE (lead fuso, R-crm-1b), segue il puntatore e
+        ritorna il lead CANONICO: una vecchia chiave continua a risolvere al lead
+        vivo dopo un merge."""
         try:
             chiave = normalizza_chiave(chiave)
             with self._connect() as con:
-                row = con.execute(
-                    "SELECT * FROM contatti WHERE chiave = ?", (chiave,)
-                ).fetchone()
-                return dict(row) if row else None
+                return self._risolvi_canonico(con, chiave)
         except (sqlite3.Error, OSError) as e:
             log.warning("get_contatto_per_chiave fallita (%s): %s", self.db_path, e)
             return None
 
     def lista_contatti(self, filtro_stato: Optional[str] = None
                       ) -> List[Dict[str, Any]]:
-        """Elenco contatti, opzionalmente filtrato per stato (es. solo gli
-        attivi). [] in degrado. Ordinati per ultimo aggiornamento decrescente."""
+        """Elenco contatti VIVI, opzionalmente filtrato per stato (es. solo gli
+        attivi). [] in degrado. Ordinati per ultimo aggiornamento decrescente. Le
+        LAPIDI (lead fusi, merged_into valorizzato) sono ESCLUSE: l'elenco, il pin
+        always-on e la ricerca substring vedono solo i lead canonici, mai i
+        doppioni assorbiti."""
         try:
             with self._connect() as con:
                 if filtro_stato is not None:
                     cur = con.execute(
                         "SELECT * FROM contatti WHERE stato = ? "
+                        "AND merged_into IS NULL "
                         "ORDER BY aggiornato_il DESC", (filtro_stato,),
                     )
                 else:
                     cur = con.execute(
-                        "SELECT * FROM contatti ORDER BY aggiornato_il DESC"
+                        "SELECT * FROM contatti WHERE merged_into IS NULL "
+                        "ORDER BY aggiornato_il DESC"
                     )
                 return self._rows(cur)
         except (sqlite3.Error, OSError) as e:

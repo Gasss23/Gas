@@ -1152,10 +1152,11 @@ check("T23e lettura substring trova il lead salvato con chiave normalizzata",
       and "Anna Rossi" in o_e2 and "Nessun lead" not in o_e2,
       f"e1={o_e1[:60]!r} e2={o_e2[:60]!r}")
 
-# T23f — onestà sul limite APERTO R-crm-1b: la normalizzazione NON fonde identità
-# cross-formato. 'anna@ex.com' (norm-> 'anna@ex.com') e 'Anna' (norm-> 'anna') sono
-# stringhe diverse -> restano DUE record. Test che incarna il limite, così nessun
-# futuro intervento lo "aggiusta" per sbaglio scambiandolo per un bug.
+# T23f — la normalizzazione NON fonde identità cross-formato (e NON deve: niente
+# fuzzy). 'anna@ex.com' (norm-> 'anna@ex.com') e 'Anna' (norm-> 'anna') sono stringhe
+# diverse -> restano DUE record finché non si chiede ESPLICITAMENTE la fusione
+# (R-crm-1b, ora chiusa dal tool unisci_contatti — vedi T24). Questo test blinda il
+# confine: la canonicalizzazione lessicale resta deterministica e non indovina mai.
 k23f = kernel_tmp()
 k23f.execute_tool_call("salva_contatto", {"chiave": "anna@ex.com", "nome": "Anna"})
 k23f.execute_tool_call("salva_contatto", {"chiave": "Anna", "nome": "Anna"})
@@ -1166,6 +1167,122 @@ check("T23f (R-crm-1b APERTA) normalizzazione NON fonde identità cross-formato"
       and k23f.memory.get_contatto_per_chiave("Anna") is not None
       and k23f.memory.get_contatto_per_chiave("Anna")["chiave"] == "anna",
       f"n_record={n_rec}")
+
+# ---------- T24: fusione lead cross-formato (R-crm-1b) — merge a lapide ----------
+# Chiude R-crm-1b: lo STESSO lead salvato con chiavi diverse (es. nome + email) si
+# fonde in modo NON distruttivo e compatibile con l'immutabilità del diario.
+
+# T24a — unisci_contatti: 'da' diventa lapide del 'verso', UN solo lead vivo,
+# le vecchie chiavi risolvono ENTRAMBE al canonico, anagrafica completata.
+k24 = kernel_tmp()
+k24.execute_tool_call("salva_contatto", {"chiave": "Anna", "nome": "Anna"})
+k24.execute_tool_call("salva_contatto", {"chiave": "anna@ex.com", "contatto": "anna@ex.com"})
+o24 = k24.execute_tool_call("unisci_contatti", {"chiave_da": "Anna", "chiave_verso": "anna@ex.com"})
+vivi24 = k24.memory.lista_contatti()                       # esclude le lapidi
+canon = k24.memory.get_contatto_per_chiave("anna@ex.com")
+via_vecchia = k24.memory.get_contatto_per_chiave("Anna")   # vecchia chiave -> canonico
+check("T24a unisci_contatti: lapide + 1 lead vivo + vecchia chiave risolve al canonico",
+      o24.startswith("Successo") and len(vivi24) == 1
+      and canon is not None and via_vecchia is not None
+      and canon["id"] == via_vecchia["id"]
+      and canon["chiave"] == "anna@ex.com"
+      and canon["nome"] == "Anna" and canon["contatto"] == "anna@ex.com",
+      f"o={o24[:50]} vivi={len(vivi24)}")
+
+# T24b — la STORIA è preservata: gli eventi del doppione confluiscono nel canonico
+# (diario IMMUTABILE: nessun UPDATE/DELETE, espansione in diario_di_contatto).
+k24b = kernel_tmp()
+k24b.execute_tool_call("salva_contatto", {"chiave": "Bob", "nome": "Bob"})
+id_bob = k24b.memory.get_contatto_per_chiave("Bob")["id"]
+k24b.memory.append_diario("nota", "primo contatto con Bob", contatto_id=id_bob)
+k24b.execute_tool_call("salva_contatto", {"chiave": "bob@ex.com", "contatto": "bob@ex.com"})
+id_email = k24b.memory.get_contatto_per_chiave("bob@ex.com")["id"]
+k24b.memory.append_diario("nota", "offerta inviata via email", contatto_id=id_email)
+k24b.memory.unisci_contatti("Bob", "bob@ex.com")           # canonico = bob@ex.com
+canon_id = k24b.memory.get_contatto_per_chiave("bob@ex.com")["id"]
+storia = [e["descrizione"] for e in k24b.memory.diario_di_contatto(canon_id)]
+check("T24b la storia del doppione confluisce nel canonico (diario immutabile)",
+      any("primo contatto" in d for d in storia)
+      and any("offerta inviata" in d for d in storia),
+      f"storia={storia}")
+
+# T24c — fail-safe/idempotenza: chiave inesistente negata; fondere ciò che è già
+# fuso (o un lead in se stesso) è un no-op; chiavi mancanti negate.
+k24c = kernel_tmp()
+k24c.execute_tool_call("salva_contatto", {"chiave": "carla@ex.com", "nome": "Carla"})
+o_ghost = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "ghost", "chiave_verso": "carla@ex.com"})
+o_noargs = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "carla@ex.com"})
+o_self = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "carla@ex.com", "chiave_verso": "carla@ex.com"})
+o_again = k24c.execute_tool_call("unisci_contatti", {"chiave_da": "carla@ex.com", "chiave_verso": "carla@ex.com"})
+check("T24c fail-safe: inesistente/args mancanti negati; self-merge e ri-merge = no-op",
+      "Operazione negata" in o_ghost and "Operazione negata" in o_noargs
+      and o_self.startswith("Successo") and o_again.startswith("Successo")
+      and len(k24c.memory.lista_contatti()) == 1,
+      f"ghost={o_ghost[:40]} self={o_self[:40]}")
+
+# T24d — il pin always-on NON mostra le lapidi (solo lead canonici), memoria None
+# gestita senza crash.
+k24d = kernel_tmp()
+k24d.execute_tool_call("salva_contatto", {"chiave": "Dora", "nome": "Dora"})
+k24d.execute_tool_call("salva_contatto", {"chiave": "dora@ex.com", "contatto": "dora@ex.com"})
+k24d.execute_tool_call("unisci_contatti", {"chiave_da": "Dora", "chiave_verso": "dora@ex.com"})
+pin24 = k24d._memoria_pin()
+no_crash_none = True
+try:
+    k24d_none = kernel_tmp(); k24d_none.memory = None
+    o_none24 = k24d_none.execute_tool_call("unisci_contatti", {"chiave_da": "a", "chiave_verso": "b"})
+except Exception as e:
+    no_crash_none = False; o_none24 = repr(e)
+check("T24d pin mostra 1 sola scheda (no lapidi) + memoria None gestita",
+      pin24.count("Dora") == 1 and no_crash_none and "non disponibile" in o_none24,
+      f"pin_dora={pin24.count('Dora')} none={o_none24[:40]}")
+
+# T24e — catena profonda al più 1: A->B poi B->C ri-punta A direttamente a C
+# (invariante: ogni lapide punta a un canonico VIVO).
+k24e = kernel_tmp()
+for ch in ("a@ex.com", "b@ex.com", "c@ex.com"):
+    k24e.execute_tool_call("salva_contatto", {"chiave": ch, "nome": ch})
+k24e.memory.unisci_contatti("a@ex.com", "b@ex.com")   # A -> B
+k24e.memory.unisci_contatti("b@ex.com", "c@ex.com")   # B -> C (deve ri-puntare A a C)
+canon_c = k24e.memory.get_contatto_per_chiave("c@ex.com")
+risolve_a = k24e.memory.get_contatto_per_chiave("a@ex.com")   # deve dare C
+risolve_b = k24e.memory.get_contatto_per_chiave("b@ex.com")   # deve dare C
+check("T24e catena profonda <=1: A->B->C, sia A sia B risolvono al canonico C",
+      len(k24e.memory.lista_contatti()) == 1
+      and risolve_a is not None and risolve_b is not None
+      and risolve_a["id"] == canon_c["id"] and risolve_b["id"] == canon_c["id"],
+      f"vivi={len(k24e.memory.lista_contatti())}")
+
+# T24f — MIGRAZIONE su DB LEGACY: una tabella `contatti` senza la colonna
+# merged_into (com'era prima di R-crm-1b) deve aprirsi SENZA degrado, col dato
+# preesistente intatto, e supportare subito unisci_contatti. Blinda il bug
+# d'ordine ALTER/CREATE INDEX trovato in review (l'indice non deve precedere la
+# colonna). Costruisce a mano lo schema VECCHIO, poi apre MemoryStore sopra.
+d24f = tempfile.mkdtemp(prefix="gas_mem_legacy_")
+legacy_db = Path(d24f) / "old.db"
+_con = _sqlite3.connect(str(legacy_db))
+_con.executescript("""
+    CREATE TABLE contatti (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chiave TEXT NOT NULL UNIQUE, nome TEXT, contatto TEXT,
+        stato TEXT NOT NULL DEFAULT 'nuovo', ultimo_contatto TEXT,
+        prossima_azione TEXT, note TEXT,
+        creato_il TEXT NOT NULL, aggiornato_il TEXT NOT NULL
+    );
+    INSERT INTO contatti (chiave, nome, stato, creato_il, aggiornato_il)
+    VALUES ('vecchio@ex.com', 'Vecchio Lead', 'interessato', '2026-01-01', '2026-01-01');
+""")
+_con.commit(); _con.close()
+m24f = MemoryStore(legacy_db)                 # apertura -> deve migrare, non degradare
+pre = m24f.get_contatto_per_chiave("vecchio@ex.com")
+# e un merge sul DB migrato deve funzionare
+m24f.upsert_contatto("nuovo@ex.com", nome="Stesso Lead")
+cid_mig = m24f.unisci_contatti("nuovo@ex.com", "vecchio@ex.com")
+check("T24f migrazione DB legacy: available, dato intatto, merge funziona",
+      m24f.available is True and pre is not None
+      and pre["nome"] == "Vecchio Lead" and pre["stato"] == "interessato"
+      and cid_mig is not None and len(m24f.lista_contatti()) == 1,
+      f"available={m24f.available} pre={pre is not None} cid={cid_mig}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

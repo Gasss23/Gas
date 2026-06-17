@@ -291,7 +291,8 @@ class GasKernel:
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "testo da cercare negli eventi del diario (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
-            {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}}
+            {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
+            {"type": "function", "function": {"name": "unisci_contatti", "description": "Fonde due schede della rubrica che sono in realtà lo STESSO lead salvato con chiavi diverse (es. una volta col nome 'Anna' e una volta con l'email 'anna@ex.com'). I dati confluiscono nel lead 'verso' e la scheda 'da' inizia a puntare ad esso, SENZA perdere la storia passata. Usalo SOLO quando sei certo che i due lead sono la stessa persona.", "parameters": {"type": "object", "properties": {"chiave_da": {"type": "string", "description": "chiave del doppione da assorbire"}, "chiave_verso": {"type": "string", "description": "chiave del lead da mantenere come principale"}}, "required": ["chiave_da", "chiave_verso"]}}}
         ]
 
     def _load_history(self) -> List[Dict[str, Any]]:
@@ -675,6 +676,9 @@ class GasKernel:
         if name == "imposta_stato_contatto":
             return (f"chiave={str(args.get('chiave', ''))[:80]!r} "
                     f"stato={str(args.get('stato', ''))[:40]!r}")
+        if name == "unisci_contatti":
+            return (f"da={str(args.get('chiave_da', ''))[:80]!r} "
+                    f"verso={str(args.get('chiave_verso', ''))[:80]!r}")
         if name == "ricorda":
             return (f"query={str(args.get('query', '') or '')[:60]!r} "
                     f"contatto={str(args.get('contatto', '') or '')[:60]!r}")
@@ -869,6 +873,30 @@ class GasKernel:
         return (f"Successo: lead '{chiave}' ora in stato '{stato}'." if ok
                 else f"Memoria in degrado: stato di '{chiave}' non aggiornato.")
 
+    def _unisci_contatti(self, args: Dict[str, Any]) -> str:
+        """Fonde due schede dello stesso lead (tool unisci_contatti): es. quando
+        Gas scopre che 'Anna' e 'anna@ex.com' sono la stessa persona (R-crm-1b).
+        Merge a lapide, NON distruttivo (vedi MemoryStore.unisci_contatti): non
+        cancella nulla, la storia resta. Entrambe le chiavi devono esistere.
+        Fail-safe: memoria/lead assenti → messaggio chiaro, mai crash."""
+        if self.memory is None:
+            return "Memoria non disponibile: contatti non uniti."
+        da = str(args.get("chiave_da") or "").strip()
+        verso = str(args.get("chiave_verso") or "").strip()
+        if not da or not verso:
+            return "Operazione negata: servono sia 'chiave_da' sia 'chiave_verso'."
+        if self.memory.get_contatto_per_chiave(da) is None:
+            return (f"Operazione negata: nessun lead con chiave '{da}'. "
+                    f"Nulla da unire.")
+        if self.memory.get_contatto_per_chiave(verso) is None:
+            return (f"Operazione negata: nessun lead con chiave '{verso}'. "
+                    f"Nulla da unire.")
+        cid = self.memory.unisci_contatti(da, verso)
+        if cid is None:
+            return f"Memoria in degrado: '{da}' e '{verso}' non uniti."
+        return (f"Successo: lead '{da}' unito in '{verso}' "
+                f"(lead canonico id={cid}). La storia è stata preservata.")
+
     def execute_tool_call(self, name: str, args_str: Any) -> str:
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
@@ -965,6 +993,11 @@ class GasKernel:
                 out = self._salva_contatto(args if isinstance(args, dict) else {})
             elif name == "imposta_stato_contatto":
                 out = self._imposta_stato_contatto(args if isinstance(args, dict) else {})
+            elif name == "unisci_contatti":
+                # Fusione di due schede dello stesso lead (R-crm-1b), in-process
+                # (codice fidato): niente FS/rete, niente sandbox/snapshot. Merge a
+                # lapide, non distruttivo. Tracciato nel diario dal loop (fetta 2a).
+                out = self._unisci_contatti(args if isinstance(args, dict) else {})
             else:
                 return "Tool non trovato."
             return self._cap_tool_output(name, args, out)
