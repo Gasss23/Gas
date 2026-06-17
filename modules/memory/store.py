@@ -37,6 +37,7 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -53,6 +54,10 @@ STATO_DEFAULT: str = "nuovo"
 STATI_CHIUSI: frozenset = frozenset({"rifiutato", "chiuso"})
 
 DEFAULT_DB_FILENAME: str = ".gas_memory.db"
+# Quante copie .bak tenere di default (rotazione anti-accumulo, come la retention
+# degli snapshot). Il backup locale protegge dall'AUTO-CORRUZIONE; quello
+# off-machine è da FASE 5 (deploy VPS). Override via env nel kernel.
+DEFAULT_BACKUP_KEEP: int = 10
 
 # Schema idempotente. NB: niente WAL (vedi docstring di modulo) per restare a
 # file singolo. I due trigger sul diario sono la barriera di immutabilità.
@@ -531,20 +536,102 @@ class MemoryStore:
             log.warning("lista_contatti fallita (%s): %s", self.db_path, e)
             return []
 
+    # ------------------------------------------------------------- integrità
+    def integrity_check(self) -> Tuple[bool, str]:
+        """Verifica l'integrità del DB via `PRAGMA quick_check` (più rapido di
+        integrity_check, individua le corruzioni strutturali). Ritorna
+        (True, 'ok') se sano, (False, dettaglio) se corrotto o in degrado.
+        Mai solleva (§9): è una diagnosi, non deve poter abbattere chi la chiama
+        (gas doctor, backup_auto)."""
+        try:
+            with self._connect() as con:
+                row = con.execute("PRAGMA quick_check").fetchone()
+            esito = (row[0] if row else "nessun risultato")
+            return (esito == "ok", esito)
+        except (sqlite3.Error, OSError) as e:
+            log.warning("integrity_check fallita (%s): %s", self.db_path, e)
+            return (False, f"errore: {e}")
+
     # ----------------------------------------------------------------- backup
-    def backup(self, dest_dir: Optional[Union[str, Path]] = None) -> Optional[Path]:
+    def _backup_files(self, base: Path) -> List[Path]:
+        """Backup esistenti per questo DB, ORDINATI cronologicamente (il timestamp
+        nel nome è lessicograficamente ordinabile)."""
+        return sorted(base.glob(f"{self.db_path.stem}.*.bak"))
+
+    @staticmethod
+    def _backup_retention(files: List[Path], keep: int
+                          ) -> Tuple[List[Path], List[Path]]:
+        """Politica di rotazione PURA e testabile: dato l'elenco ordinato
+        (cronologico) dei backup, ritorna (tieni, scarta) tenendo gli ultimi
+        `keep`. keep<=0 → non scarta nulla (rotazione disattivata)."""
+        if keep <= 0 or len(files) <= keep:
+            return files, []
+        return files[-keep:], files[:-keep]
+
+    def ultimo_backup(self, dest_dir: Optional[Union[str, Path]] = None
+                      ) -> Optional[Path]:
+        """Il backup .bak più recente (per età/diagnosi), o None se non ce ne
+        sono / in degrado."""
+        try:
+            base = Path(dest_dir) if dest_dir is not None else self.db_path.parent
+            files = self._backup_files(base)
+            return files[-1] if files else None
+        except OSError as e:
+            log.warning("ultimo_backup fallita (%s): %s", self.db_path, e)
+            return None
+
+    def backup(self, dest_dir: Optional[Union[str, Path]] = None,
+               keep: Optional[int] = None) -> Optional[Path]:
         """Copia il DB in un file timestampato (banale perché è un file singolo).
         Usa l'API di backup nativa di SQLite per una copia COERENTE anche con
-        scritture in volo. Ritorna il path della copia, o None in degrado.
-        La copia ha estensione .bak (già gitignorata)."""
+        scritture in volo. Dopo la copia applica la ROTAZIONE (tiene gli ultimi
+        `keep`, default DEFAULT_BACKUP_KEEP) per non accumulare .bak all'infinito.
+        Ritorna il path della copia, o None in degrado. La copia ha estensione
+        .bak (già gitignorata)."""
         try:
             base = Path(dest_dir) if dest_dir is not None else self.db_path.parent
             base.mkdir(parents=True, exist_ok=True)
-            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            # microsecondi nel nome: copie multiple nello stesso secondo non si
+            # sovrascrivono (serve per la rotazione e per i backup ravvicinati).
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
             dest = base / f"{self.db_path.stem}.{ts}.bak"
             with self._connect() as src, sqlite3.connect(str(dest)) as dst:
                 src.backup(dst)
-            return dest
         except (sqlite3.Error, OSError) as e:
             log.warning("backup fallita (%s): %s", self.db_path, e)
+            return None
+        # Rotazione best-effort: un suo fallimento NON deve invalidare il backup
+        # appena creato (che è il dato che ci interessa salvare).
+        try:
+            k = DEFAULT_BACKUP_KEEP if keep is None else keep
+            _, drop = self._backup_retention(self._backup_files(base), k)
+            for f in drop:
+                f.unlink(missing_ok=True)
+        except OSError as e:
+            log.warning("rotazione backup fallita (%s): %s", base, e)
+        return dest
+
+    def backup_auto(self, min_interval_sec: int,
+                    dest_dir: Optional[Union[str, Path]] = None,
+                    keep: Optional[int] = None) -> Optional[Path]:
+        """Backup THROTTLED (anti auto-corruzione, §10 FASE 2): crea un backup solo
+        se l'ultimo è più vecchio di `min_interval_sec` (o non esiste). PRIMA di
+        copiare verifica l'integrità: un DB corrotto NON viene mai copiato sopra i
+        backup buoni (così la rotazione non evince le copie sane). Ritorna il path
+        del nuovo backup, oppure None se non era ora / DB corrotto / degrado.
+        Fail-safe §9: non solleva mai."""
+        try:
+            last = self.ultimo_backup(dest_dir)
+            if last is not None:
+                eta = time.time() - last.stat().st_mtime
+                if eta < max(0, min_interval_sec):
+                    return None  # non ancora ora
+            ok, det = self.integrity_check()
+            if not ok:
+                log.warning("backup_auto saltato: integrità KO su %s (%s)",
+                            self.db_path, det)
+                return None
+            return self.backup(dest_dir, keep=keep)
+        except (sqlite3.Error, OSError) as e:
+            log.warning("backup_auto fallita (%s): %s", self.db_path, e)
             return None

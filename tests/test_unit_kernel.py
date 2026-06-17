@@ -1362,6 +1362,77 @@ check("T25e FTS assente -> cerca_diario [] e ricorda ricade su substring",
       deg == [] and "promemoria fattura cliente" in r_fb,
       f"deg={deg} fb={'fattura' in r_fb}")
 
+# ---------- T26: rete di sicurezza della memoria (integrità + backup) ----------
+# Il DB di memoria è il dato più prezioso: integrity_check + backup automatico
+# rotante + skip su corruzione. Tutto locale, ZERO token.
+
+# T26a — integrity_check: DB sano -> (True,'ok'); file corrotto -> (False, det), no crash
+m26 = mem_tmp()
+m26.append_diario("nota", "evento")
+ok_sano, det_sano = m26.integrity_check()
+with open(m26.db_path, "wb") as _f:               # corrompo il file su disco
+    _f.write(b"non sono un database sqlite" * 10)
+ok_rotto, det_rotto = m26.integrity_check()
+check("T26a integrity_check: sano->ok, corrotto->False senza crash",
+      ok_sano is True and det_sano == "ok"
+      and ok_rotto is False and isinstance(det_rotto, str),
+      f"sano={ok_sano}/{det_sano!r} rotto={ok_rotto}")
+
+# T26b — backup crea una copia LEGGIBILE + rotazione tiene le ultime N + retention pura
+m26b = mem_tmp()
+m26b.upsert_contatto("z@ex.com", nome="Zed")
+bdir = Path(tempfile.mkdtemp(prefix="gas_bak_"))
+paths = [m26b.backup(bdir, keep=3) for _ in range(5)]   # 5 backup, keep=3
+files_rim = sorted(bdir.glob("*.bak"))
+last_ok = False
+try:
+    cc = _sqlite3.connect(str(paths[-1])); cc.row_factory = _sqlite3.Row
+    r = cc.execute("SELECT nome FROM contatti WHERE chiave='z@ex.com'").fetchone()
+    last_ok = (r is not None and r["nome"] == "Zed"); cc.close()
+except Exception:
+    last_ok = False
+keep_t, drop_t = MemoryStore._backup_retention([Path(f"{i}.bak") for i in range(5)], 2)
+check("T26b backup: copia leggibile + rotazione ultime N + retention pura",
+      last_ok and len(files_rim) == 3 and len(keep_t) == 2 and len(drop_t) == 3,
+      f"rimasti={len(files_rim)} keep={len(keep_t)} drop={len(drop_t)}")
+
+# T26c — backup_auto throttled: prima volta crea, subito dopo NO (non è ora),
+# intervallo 0 ricrea sempre
+m26c = mem_tmp()
+bdir_c = Path(tempfile.mkdtemp(prefix="gas_bak_c_"))
+first = m26c.backup_auto(3600, dest_dir=bdir_c)         # nessun backup prima -> crea
+second = m26c.backup_auto(3600, dest_dir=bdir_c)        # appena fatto -> non è ora
+third = m26c.backup_auto(0, dest_dir=bdir_c)            # intervallo 0 -> sempre ora
+check("T26c backup_auto throttled: crea, poi salta, intervallo 0 ricrea",
+      first is not None and second is None and third is not None
+      and m26c.ultimo_backup(bdir_c) is not None,
+      f"first={first is not None} second={second} third={third is not None}")
+
+# T26d — backup_auto NON copia un DB corrotto (non propaga la corruzione nei backup)
+m26d = mem_tmp()
+bdir_d = Path(tempfile.mkdtemp(prefix="gas_bak_d_"))
+with open(m26d.db_path, "wb") as _f:
+    _f.write(b"corrotto")
+res_d = m26d.backup_auto(0, dest_dir=bdir_d)            # intervallo 0 ma DB rotto
+check("T26d backup_auto salta se l'integrità è KO (non propaga corruzione)",
+      res_d is None and list(bdir_d.glob("*.bak")) == [],
+      f"res={res_d}")
+
+# T26e — kernel _memoria_backup_auto fail-safe: crea il backup + memoria None gestita
+k26 = kernel_tmp()
+k26.memory.append_diario("nota", "x")
+k26._memoria_backup_auto()                             # primo backup (nessuno prima)
+bak_kernel = k26.memory.ultimo_backup()
+no_crash26 = True
+try:
+    k26n = kernel_tmp(); k26n.memory = None
+    k26n._memoria_backup_auto()                        # memoria None -> deve solo uscire
+except Exception:
+    no_crash26 = False
+check("T26e kernel backup auto: crea backup + memoria None senza crash",
+      bak_kernel is not None and no_crash26,
+      f"bak={bak_kernel is not None} no_crash={no_crash26}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

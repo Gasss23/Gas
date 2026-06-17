@@ -285,6 +285,8 @@ class GasKernel:
         self.MEMORY_PIN_CHAR_CAP = _env_int("GAS_MEMORY_PIN_CHARS", GasKernel.MEMORY_PIN_CHAR_CAP, min_val=200)
         self.MEMORY_PIN_CONTACTS = _env_int("GAS_MEMORY_PIN_CONTACTS", GasKernel.MEMORY_PIN_CONTACTS, min_val=0)
         self.MEMORY_PIN_EVENTS = _env_int("GAS_MEMORY_PIN_EVENTS", GasKernel.MEMORY_PIN_EVENTS, min_val=0)
+        self.MEMORY_BACKUP_EVERY_SEC = _env_int("GAS_MEMORY_BACKUP_EVERY_SEC", GasKernel.MEMORY_BACKUP_EVERY_SEC, min_val=0)
+        self.MEMORY_BACKUP_KEEP = _env_int("GAS_MEMORY_BACKUP_KEEP", GasKernel.MEMORY_BACKUP_KEEP, min_val=0)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
@@ -384,6 +386,15 @@ class GasKernel:
     # Rumore di sola lettura: eventi che NON meritano l'iniezione always-on (il
     # diario li conserva comunque a monte — decisione A; il filtro è di LETTURA).
     DIARIO_NOISE_TIPI = frozenset({"read_file", "run_command", "ricorda"})
+
+    # --- Backup automatico della memoria (anti auto-corruzione, §10 FASE 2) ---
+    # Il DB di memoria è il dato più prezioso e meno rimpiazzabile: un backup
+    # THROTTLED (copia coerente via API SQLite) parte a inizio turno, al più una
+    # volta ogni MEMORY_BACKUP_EVERY_SEC, con rotazione a MEMORY_BACKUP_KEEP copie.
+    # Protegge dall'auto-corruzione; il backup OFF-MACHINE è da FASE 5 (VPS).
+    # Override via env (risolti in __init__): GAS_MEMORY_BACKUP_EVERY_SEC / _KEEP.
+    MEMORY_BACKUP_EVERY_SEC = 6 * 3600   # un backup ogni ~6 ore di attività
+    MEMORY_BACKUP_KEEP = 10              # copie .bak conservate (rotazione)
 
     @staticmethod
     def _msg_chars(msg: Dict[str, Any]) -> int:
@@ -710,6 +721,22 @@ class GasKernel:
             # solo una cintura ulteriore perché il loop non cada MAI per il diario.
             logging.warning(f"diario non scritto ({tipo}): {e}")
 
+    def _memoria_backup_auto(self) -> None:
+        """Backup automatico THROTTLED del DB di memoria (anti auto-corruzione,
+        §10 FASE 2): delega a MemoryStore.backup_auto, che copia solo se l'ultimo
+        backup è più vecchio di MEMORY_BACKUP_EVERY_SEC e il DB è integro, con
+        rotazione a MEMORY_BACKUP_KEEP copie. FAIL-SAFE §9: memoria assente/
+        degradata o qualunque errore → nessun backup, il turno PROSEGUE, mai crash.
+        È codice fidato del kernel (copia in-process di un file locale): nessun
+        sandbox/snapshot, come le altre scritture di memoria."""
+        if self.memory is None:
+            return
+        try:
+            self.memory.backup_auto(self.MEMORY_BACKUP_EVERY_SEC,
+                                    keep=self.MEMORY_BACKUP_KEEP)
+        except Exception as e:
+            logging.warning(f"backup memoria saltato: {e}")
+
     def _memoria_pin(self) -> str:
         """Blocco di memoria ALWAYS-ON (lato lettura, fetta 2b) da appendere al
         system prompt: riassunto COMPATTO e CAPATO di lead attivi + poche azioni
@@ -1023,6 +1050,12 @@ class GasKernel:
         # "" se la memoria è assente/degradata.
         mem_pin = self._memoria_pin()
 
+        # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
+        # una volta per turno valuta se è ora di una copia coerente; il throttling
+        # e l'integrità sono gestiti da MemoryStore.backup_auto. Fail-safe: non
+        # interrompe mai il turno.
+        self._memoria_backup_auto()
+
         # Endpoint/modelli dalle costanti di modulo (punto unico, condiviso con doctor).
         # Pavimento offline Ollama: NON gira nel Codespace. Sul PC/VPS si esporta
         # GAS_OLLAMA_URL=http://localhost:11434/v1 (endpoint OpenAI-compatibile di
@@ -1282,6 +1315,35 @@ def doctor(root_dir: Optional[str] = None) -> int:
                                 if log_snap.stat().st_size > GasKernel.SNAPSHOT_LOG_MAX_BYTES else ""))
     else:
         check("Snapshot", "snapshots.log", "OK", "assente (nessuno snapshot ancora)")
+
+    # 8. Memoria di lungo periodo (.gas_memory.db): il dato più prezioso e meno
+    # rimpiazzabile. Tutto LOCALE (SQLite/file) → NESSUN token. Apre il DB SOLO se
+    # esiste, per non crearlo come effetto collaterale della diagnosi.
+    from modules.memory import MemoryStore, default_db_path
+    mem_path = default_db_path(root)
+    if not mem_path.exists():
+        check("Memoria", ".gas_memory.db", "WARN",
+              "assente (verrà creato al primo run agentico)")
+    else:
+        mem = MemoryStore(mem_path)
+        if not mem.available:
+            check("Memoria", "apertura", "FAIL",
+                  "DB non apribile o schema non inizializzabile")
+        else:
+            ok_int, det_int = mem.integrity_check()
+            check("Memoria", "integrità", "OK" if ok_int else "FAIL",
+                  "quick_check ok" if ok_int else f"quick_check: {det_int[:50]}")
+            check("Memoria", "ricerca FTS5", "OK" if mem.fts_available else "WARN",
+                  "attiva" if mem.fts_available else "assente (fallback su substring)")
+            last_bak = mem.ultimo_backup()
+            if last_bak is None:
+                check("Memoria", "backup", "WARN",
+                      "nessun backup ancora (verrà creato a runtime)")
+            else:
+                age_h = (time.time() - last_bak.stat().st_mtime) / 3600
+                n_bak = len(mem._backup_files(mem_path.parent))
+                check("Memoria", "backup", "OK",
+                      f"ultimo {age_h:.1f}h fa, {n_bak} copie ({last_bak.name})")
 
     # Report tabellare
     print("\n=== GAS DOCTOR ===\n")
