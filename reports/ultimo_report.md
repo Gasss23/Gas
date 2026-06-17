@@ -1,166 +1,154 @@
-# 📄 REPORT — Memoria FASE 2: scrittura CONTATTI dal loop (CRM autopilot) + chiusura riserve 2b
+# Memoria FASE 2 — Normalizzazione chiavi lead (R-crm-1) + chiusura doc di due riserve
 
-**Data:** 2026-06-16 · **Commit motore:** `a70cbb1` · **Suite:** 106/106, 0 FAIL (era 98)
-**Review:** #15 — **APPROVATO CON RISERVE** (R-crm-1, R-crm-2 tracciate in `stato_progetto.md`)
-
-> Sessione autonoma su mandato esplicito dell'utente ("prossimi passi: fai pure tutto in
-> autonomia, senza checkpoint"). Tutto committato e pushato. Recap per il revisore in fondo.
-
----
-
-## Esito in breve
-
-**Il ciclo della memoria di GAS è ora COMPLETO.** Prima GAS sapeva: scrivere il diario
-(2a), leggere/iniettare la memoria (2b), e *leggere* i contatti. Ma la **rubrica lead** si
-poteva popolare solo a mano. Ora GAS la **costruisce da solo durante il lavoro**, per via
-controllata: due nuovi tool (`salva_contatto`, `imposta_stato_contatto`) che scrivono nel
-DB via SQL parametrizzato (il modello non scrive mai SQL grezzo).
-
-In più ho **chiuso le tre riserve** lasciate aperte dalla review #14 (R1 match contatto
-ambiguo, R2 costanti hardcoded, R3 euristica filtro rumore).
+**Data:** 2026-06-17
+**Commit motore:** `cdf764a` (review #16 APPROVATO)
+**Suite:** **110/110, 0 FAIL** (era 106)
+**Scope:** UNA fetta di motore (PUNTO 1) + due aggiornamenti doc (PUNTI 2-3). Gate di
+scope rispettato: nessun lavoro fuori mandato (Vector DB / retention / merge-lead solo
+registrati, NON implementati).
 
 ---
 
-## Cosa è stato costruito
+## PUNTO 1 — MOTORE: normalizzazione chiavi lead (chiude R-crm-1)
 
-### A. Scrittura contatti dal loop (CRM autopilot)
-- **`modules/memory/store.py`**: aggiunto il SOLO metodo di lettura
-  `get_contatto_per_chiave(chiave)` (lookup esatto sull'indice UNIQUE). Schema, trigger,
-  diario, `upsert_contatto`, `update_stato_contatto`, `lista_contatti` della fetta 1
-  **INVARIATI** (il revisore ha verificato che il lato `-` del diff è vuoto).
-- **`gas.py`** — due tool in `tools_schema` + rami in `execute_tool_call`:
-  - **`salva_contatto(chiave, nome?, contatto?, prossima_azione?, note?)`** →
-    `_salva_contatto` → `MemoryStore.upsert_contatto`. Aggiorna l'anagrafica; **NON** tocca
-    lo stato del funnel (separazione identità ↔ ciclo di vita, come upsert).
-  - **`imposta_stato_contatto(chiave, stato, prossima_azione?)`** → `_imposta_stato_contatto`
-    → match **ESATTO** sulla chiave (una transizione non può essere ambigua) + valida lo
-    stato contro `STATI_CONTATTO` **prima** di toccare il DB. Lead inesistente / stato
-    invalido → messaggio di diniego, mai crash.
-  - Scrittura **IN-PROCESS** (codice fidato → niente filesystem/rete, quindi niente sandbox
-    e niente snapshot). Ogni tool call è comunque **tracciata nel diario** dal loop (fetta
-    2a); `_riassumi_args` ha ora casi dedicati per salva/imposta/ricorda.
-  - **Fail-safe §9** ovunque: memoria None/degradata → messaggi, mai crash.
+**Problema.** La rubrica deduplica solo a chiave ESATTA (vincolo UNIQUE), quindi
+`'anna@ex.com'` e `'Anna '` diventavano due lead distinti. Con il CRM autopilot (GAS
+popola la rubrica da solo) col volume questo genera doppioni silenziosi: la memoria che
+dovrebbe impedire di reinseguire i lead inizia a mentire.
 
-### B. Chiusura riserve 2b (review #14)
-- **R1** (match contatto ambiguo): nuovo `_trova_contatto(termine)` → **priorità al match
-  esatto** sulla chiave; se il fallback substring trova PIÙ lead, prende il più recente ma
-  **restituisce una nota di ambiguità** invece di scegliere in silenzio. Usato da `ricorda`.
-- **R2** (costanti hardcoded): helper `_env_int(name, default, min_val)` fail-safe + override
-  via env **`GAS_MEMORY_PIN_CHARS/CONTACTS/EVENTS`** (attributi d'istanza che shadowano i
-  default di classe). Valore sporco → default; sotto il minimo → clamp.
-- **R3** (euristica `*5`): sostituita con **`MEMORY_PIN_SCAN=200`** (finestra ampia e
-  bounded): anche con rumore di lettura denso, le azioni vere poco più indietro emergono.
+**Soluzione.** Funzione PURA e testabile in `modules/memory/store.py`:
+
+```python
+def normalizza_chiave(chiave: Optional[str]) -> str:
+    if chiave is None:
+        return ""
+    try:
+        testo = str(chiave)
+    except Exception:
+        return ""
+    return " ".join(testo.split()).lower()
+```
+
+- **Deterministica, NIENTE aggressività**: solo coercizione a `str`, collasso di ogni
+  whitespace (anche tab/newline) via `str.split()` + `lower()`. Nessun fuzzy match,
+  nessun merge euristico — solo canonicalizzazione prevedibile.
+- **Applicata in UN unico punto logico** (la funzione) nei DUE punti di confronto-esatto:
+  - **scrittura** → `upsert_contatto` (prima di INSERT e SELECT);
+  - **lettura/match esatto** → `get_contatto_per_chiave`.
+  Così la stessa chiave logica risolve SEMPRE allo stesso record.
+- `update_stato_contatto` lavora per **id** (già risolto a monte via
+  `get_contatto_per_chiave` dentro `_imposta_stato_contatto`) → coperto, non serve
+  normalizzare lì.
+- **Asimmetria preservata**: il substring di lettura (`_trova_contatto`) NON è toccato;
+  la normalizzazione si applica al CONFRONTO esatto, non trasforma il substring in altro.
+- **Type hints** (§4): `Optional[str] -> str`.
+- **Fail-safe** (§9): chiave None/non-stringa → `""` (mai crash); la chiave vuota è poi
+  rifiutata a monte da `_salva_contatto`.
+- Esportata da `modules/memory/__init__.py`.
+
+**CASO MIGRAZIONE.** DB di sviluppo VUOTO (`.gas_memory.db` ASSENTE, verificato dal vivo
+prima di toccare il codice) → **nessuna migrazione necessaria, nessun rischio di record
+irraggiungibili**. Se in futuro esistessero chiavi non normalizzate da test/demo:
+strategia PROPOSTA (NON eseguita) = script idempotente una-tantum che, per ogni contatto,
+calcola `normalizza_chiave(chiave)` e fonde i record collidenti tenendo il più recente —
+decisione umana, MAI distruttiva in autonomia.
 
 ---
 
-## VERIFICHE (eseguite dal vivo, output integrale)
+## PUNTO 2 — DOC: riserve di 2b nei finding aperti
 
-### A. Suite completa — 106 PASS, 0 FAIL (era 98 → +8 T22)
+**Nota di onestà (riconciliazione con review #15).** Il mandato chiedeva di aggiungere
+come finding 🟡 le riserve R2/R3 di 2b "che oggi compaiono solo nel verdetto review #14".
+Verificato nel codice: la review **#15 (già in repo)** le aveva GIÀ chiuse —
+`MEMORY_PIN_CHARS/CONTACTS/EVENTS` resi overridabili via env (`GAS_MEMORY_PIN_*`), e
+l'euristica `MEMORY_PIN_EVENTS*5` SOSTITUITA da `MEMORY_PIN_SCAN=200`. Per non scrivere un
+finding falso (riaprire qualcosa di già risolto), ho tracciato il **residuo REALE** che
+incarna lo stesso intento — non perdere queste classi di rischio:
 
-```
-[PASS] T22a salva_contatto crea+aggiorna senza duplicare — o1=Successo: contatto 'anna@ex.com' salvato c=Anna
-[PASS] T22b salva_contatto: chiave mancante negata, memoria None gestita
-[PASS] T22c imposta_stato: ok + inesistente/stato-invalido negati
-[PASS] T22d get_contatto_per_chiave: esatto + None
-[PASS] T22e (R1) match esatto prioritario + ambiguità segnalata — nota_amb=⚠ 2 lead corrispondono a 'mario' (Mario Bianchi, Mario Rossi…); mostro il più recente. Usa la chiave esatta per disambiguare.
-[PASS] T22f (R2) override env dei tetti memoria + fail-safe valore sporco — chars=5000 events=6
-[PASS] T22g (R3) azione vera emerge sotto 40 eventi di rumore (scan ampio) — scan=200
-[PASS] T22h round-trip: rubrica popolata dal loop + diario + pin riflette — stato=interessato diario=['imposta_stato_contatto', 'salva_contatto']
+- 🟡 **R2-residuo**: `MEMORY_PIN_SCAN=200` resta HARDCODED senza override env (le tre
+  costanti principali del pin sono già overridabili). Stessa classe di
+  `WINDOW_CHAR_CAP`/`SNAPSHOT_KEEP`; valutare `GAS_MEMORY_PIN_SCAN` (via `_env_int`,
+  fail-safe) al deploy VPS. (`DIARIO_NOISE_TIPI` resta hardcoded di proposito.)
+- 🟡 **R3-residuo**: `MEMORY_PIN_SCAN=200` è un **numero magico** scelto a priori, da
+  tarare con dati reali quando il diario avrà volume.
 
-=== RIEPILOGO: 106 PASS, 0 FAIL ===
-```
-
-### B. Compile check
-`python -m py_compile gas.py modules/memory/store.py` → **OK**.
-
-### C. Prova-di-scope (commit motore `a70cbb1`)
-
-```
- gas.py                    | 133 +++++++++++++++++++++++++++++++++++++++++-----
- modules/memory/store.py   |  14 +++++
- tests/test_unit_kernel.py |  94 ++++++++++++++++++++++++++++++++
- 3 files changed, 228 insertions(+), 13 deletions(-)
-```
-
-- **NESSUNA** ridefinizione di `_get_window`, `_cap_window_chars`, `_msg_chars`,
-  `_bwrap_prefix`, `_snapshot`, `_vet_command`, `providers`, `payload = [...]`,
-  `for _ in range(10)`.
-- `store.py`: **solo aggiunta** di `get_contatto_per_chiave` — NESSUNA modifica a
-  schema/trigger/diario/upsert/update (verificato anche dal revisore: lato `-` vuoto).
-
-### D. Prova dal vivo (round-trip reale: l'agente popola la rubrica DA SOLO)
-
-`run_turn` in cui il modello finto chiama `salva_contatto` + `imposta_stato_contatto`:
-
-```
-ESITI TOOL: ["Successo: contatto 'giulia@studio.it' salvato (id=1).",
-             "Successo: lead 'giulia@studio.it' ora in stato 'interessato'."]
-RUBRICA: {'nome': 'Giulia', 'stato': 'interessato', 'prossima_azione': 'mandare preventivo'}
-DIARIO: [('imposta_stato_contatto', "chiave='giulia@studio.it' stato='interessato' | [OK] Su"),
-         ('salva_contatto',        "contatto chiave='giulia@studio.it' | [OK] Successo: con")]
-
-PIN che GAS vedrà al PROSSIMO turno:
-# MEMORIA (sola lettura — usa il tool 'ricorda' per approfondire il diario o un lead)
-## Lead attivi
-- Giulia [interessato] → prossima: mandare preventivo (ultimo: 2026-06-16)
-## Ultime azioni
-- [imposta_stato_contatto] chiave='giulia@studio.it' stato='interessato' | [OK] Successo...
-- [salva_contatto] contatto chiave='giulia@studio.it' | [OK] Successo: contatto...
-```
-
-Il lead è salvato e portato a "interessato", l'azione è nel diario, e il pin lo mostra al
-turno successivo. Ciclo completo: scrivi → ricorda → agisci.
+Entrambi non bloccanti, ora in "Finding aperti" di `stato_progetto.md`.
 
 ---
 
-## Riserve (review #15, minori, non bloccanti — in `stato_progetto.md`)
-- **R-crm-1**: qualità del dato della rubrica — il modello può registrare lo stesso lead con
-  chiavi incoerenti (`anna@ex.com` vs `Anna`) come contatti distinti; l'UNIQUE deduplica
-  solo a parità di chiave esatta. È rischio di QUALITÀ, non di sicurezza (recuperabile, mai
-  crash). Difesa candidata: normalizzare la chiave (lower/trim) prima dell'upsert o un tool
-  di merge lead. Non urgente.
-- **R-crm-2**: `int(c["id"])` in `_imposta_stato_contatto` assume id convertibile (sempre
-  vero con PK INTEGER SQLite, comunque protetto dal try/except globale). Cosmetico.
+## PUNTO 3 — DOC: stato del Vector DB
+
+Registrato in `reports/stato_progetto.md` → "Prossimi passi" voce **0**: il **Vector DB
+per i ricordi semantici** è il prossimo passo GROSSO di FASE 2, **NON ancora avviato per
+scelta** (dipendenze nuove, possibili costi di embedding, filosofia "robustezza prima
+della potenza"), **da PROGETTARE prima di implementare** (libreria locale vs. servizio,
+modello di embedding, dove vive il file, fail-safe §9, composizione col pin always-on e
+col tool `ricorda`). Nessun impegno preso: stato esplicito così non evapora.
 
 ---
 
-## Stato complessivo della Memoria (FASE 2)
-| Pezzo | Stato | Commit |
-|---|---|---|
-| Fetta 1 — fondamenta storage (DB, diario immutabile, rubrica) | ATTIVA | `8de2b0c` |
-| Fetta 2a — aggancio diario a run_turn (scrittura) | ATTIVA | `7a75368` |
-| Fetta 2b — lettura/iniezione (pin always-on + tool `ricorda`) | ATTIVA | `f3c5f30` |
-| CRM autopilot — scrittura contatti dal loop + chiusura R1/R2/R3 | ATTIVA | `a70cbb1` |
+## VERIFICHE (eseguite e dimostrate)
 
-**Suite 106/106, 0 FAIL.** Tutte le review APPROVATE CON RISERVE (riserve tracciate, nessuna
-bloccante).
+### A. Suite completa
+`python tests/test_unit_kernel.py` → **`=== RIEPILOGO: 110 PASS, 0 FAIL ===`**
+(era 106; +4 con i T23). Zero token, tutto locale.
 
-## Prossimi passi possibili (NON fatti — da decidere)
-1. **Normalizzazione chiave lead** (chiude R-crm-1): lower/trim della chiave prima
-   dell'upsert, o un tool `unisci_contatti` per deduplicare lead doppi.
-2. **Retention del diario** (nota PARK): il diario cresce per sempre; quando il volume lo
-   richiederà, archiviazione/export + rotazione del file storico, MAI `DELETE` (immutabilità).
-3. **Vector DB** (FASE 2 roadmap): ricordi a lungo termine semantici (richiede design su
-   dipendenze/costi prima di toccare il motore — è il passo grosso, da pianificare).
-4. **Backup OFF-MACHINE** del DB memoria (FASE 5/VPS): oggi `backup()` è solo locale.
+### B. I 4 test del PUNTO 1 (tutti PASS)
+- **T23a** (R-crm-1) chiavi equivalenti = stesso record, nessun doppione —
+  `id_a==id_b`, `lista_contatti()==1`, chiave salvata `"anna"`. **PASS**
+- **T23b** `imposta_stato_contatto` trova il lead con chiave non normalizzata in input
+  (`"  bob   white "` → record `"bob white"`), stato aggiornato, 1 solo record. **PASS**
+- **T23c** fail-safe: `normalizza_chiave(None)==""`, `("   ")==""`, `(12345)=="12345"`,
+  `get_contatto_per_chiave(None)` → `None`, nessun crash. **PASS**
+- **T23d** idempotenza: `normalizza(normalizza(x))==normalizza(x)` su 6 campioni
+  (spazi/tab/newline/unicode/vuoto) + esiti attesi. **PASS**
+
+### C. Diff del commit motore + invarianti
+`git diff --cached --stat` del commit `cdf764a`:
+```
+ modules/memory/__init__.py |  2 ++
+ modules/memory/store.py    | 35 ++++++++++++++++++++++++++++++++-
+ tests/test_unit_kernel.py  | 49 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 85 insertions(+), 1 deletion(-)
+```
+**`gas.py` NON è tra i file modificati (INVARIATO).** Confermato esplicitamente, sui diff
+reali: `_get_window`, `_cap_window_chars`, `for _ in range(10)`, sandbox/bwrap, snapshot,
+i trigger di immutabilità del diario e lo schema della fetta 1 sono **INVARIATI** (grep
+sul diff di `store.py` → nessuna di queste invarianti compare). L'unico tocco è la
+funzione `normalizza_chiave` + le due righe che la applicano in `upsert_contatto` e
+`get_contatto_per_chiave` + una riga di docstring.
+
+### D. Migrazione
+DB di sviluppo **VUOTO** (`.gas_memory.db` assente) → nessuna chiave non normalizzata,
+**nessuna migrazione eseguita né necessaria**. Strategia proposta documentata sopra
+(PUNTO 1) per il caso futuro, lasciata alla decisione umana.
 
 ---
 
-## 📌 RECAP per il revisore (Claude web) — leggi qui se hai poco tempo
-- **Cosa ho fatto in questa sessione**: (1) chiuso DOC + costruito la **fetta 2a** (il
-  kernel scrive nel diario una riga per ogni tool call, fail-safe); (2) costruito la **fetta
-  2b** (pin di memoria always-on nel system message + tool `ricorda` di sola lettura, SENZA
-  toccare la finestra blindata); (3) su mandato autonomo, aggiunto il **CRM autopilot** (tool
-  `salva_contatto`/`imposta_stato_contatto`) e **chiuso le 3 riserve** della 2b.
-- **Dove guardare**: motore in `gas.py` (cerca `_memoria_pin`, `_ricorda`, `_trova_contatto`,
-  `_salva_contatto`, `_imposta_stato_contatto`, `_diario_log`); storage in
-  `modules/memory/store.py`; test `T19`–`T22` in `tests/test_unit_kernel.py`.
-- **Garanzie chiave**: la finestra conversazionale (`_get_window`/`_cap_window_chars`) e il
-  loop a 10 iterazioni sono **INVARIATI**; l'unica modifica alla finestra è
-  `system_prompt → system_prompt + mem_pin`. Tutta la memoria è **fail-safe**: se il DB
-  manca/è corrotto, GAS lavora lo stesso. Scrittura memoria = **in-process**, codice fidato,
-  bypassa correttamente il sandbox bwrap (che protegge solo `run_command`).
-- **Commit di questa sessione**: `7a75368` (2a), `f3c5f30` (2b), `a70cbb1` (CRM+riserve), più
-  i commit doc. Suite **106/106**. 4 review revisore, tutte APPROVATE CON RISERVE.
-- **Non c'è nulla in sospeso che blocchi**: le riserve aperte (R-crm-1 qualità chiavi,
-  retention diario, ecc.) sono migliorie future, non bug. Vedi "Prossimi passi possibili".
+## PROCESSO
+
+- **Gate di review §3**: subagent **revisore** invocato sul diff staged PRIMA del commit
+  motore → **review #16 APPROVATO**. Unica riserva minore (cosmetica) **R-crm-norm-1**:
+  l'eco testuale della chiave nei messaggi di successo dei tool (`gas.py`) mostra l'input
+  RAW e non la forma canonica salvata (il dato nel DB è corretto) → tracciata in
+  `stato_progetto.md`, chiudibile al prossimo intervento su `gas.py`, fuori scope qui.
+- Hook deterministico onorato (`.claude/.review_ok` creato per il commit motore, rimosso
+  subito dopo).
+- `stato_progetto.md` e `diff_sessione.md` aggiornati.
+
+---
+
+## §FINALE — Proposte FUORI da questo mandato (NON committate, scope deciso dall'umano)
+
+Il GATE imponeva SOLO i tre punti. Emerse durante il lavoro, NON eseguite:
+
+1. **Tool di merge-lead / migrazione idempotente delle chiavi**: utile se mai si
+   accumulassero chiavi non normalizzate (oggi DB vuoto → non serve). Strategia bozzata
+   in PUNTO 1, da approvare separatamente.
+2. **`GAS_MEMORY_PIN_SCAN` env override** (chiude il R2-residuo qui tracciato): coerente
+   con `_env_int` già esistente, un'aggiunta minima — ma tocca `gas.py`, fetta a sé.
+3. **R-crm-norm-1**: normalizzare anche l'eco della chiave nei messaggi di successo dei
+   tool (`gas.py`), così schermo e DB coincidono. Cosmetico, fuori scope.
+4. **Vector DB** (PUNTO 3): solo registrato come stato, da progettare prima di implementare.
+
+Nessuna di queste è stata toccata: lo scope lo decide l'umano, non il revisore.

@@ -1,6 +1,13 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-17 (normalizzazione chiavi lead — R-crm-1 CHIUSA, review #16 APPROVATO):**
+> `normalizza_chiave` (trim/collasso-whitespace/lower, pura+idempotente, fail-safe) in
+> `modules/memory/store.py`, applicata in `upsert_contatto` e `get_contatto_per_chiave`
+> → niente più doppioni silenziosi del CRM. gas.py INVARIATO; invarianti motore intatte;
+> DB dev vuoto (nessuna migrazione). Suite **106→110** 0 FAIL. Tracciati: residui R2/R3
+> di 2b (`MEMORY_PIN_SCAN=200` hardcoded/numero magico) tra i finding 🟡; stato Vector DB
+> (prossimo passo grosso FASE 2, NON avviato) nei Prossimi passi.
 > **2026-06-15 (diagnosi snapshot — CHIUSA, non-bug):** verificato DAL VIVO che
 > `_snapshot()` scrive ref PERSISTENTI (`commit-tree`+`update-ref`): chiamandolo a
 > mano è nato `refs/gas/snapshots/...` su `.git/refs/gas/snapshots/`, poi rimosso
@@ -26,6 +33,24 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 — Normalizzazione chiavi lead ATTIVA (chiude R-crm-1)**
+  (2026-06-17, review #16 APPROVATO): la rubrica deduplicava solo a chiave ESATTA
+  (UNIQUE), quindi col CRM autopilot `'anna@ex.com'` vs `'Anna '` diventavano due
+  lead distinti (doppioni silenziosi → memoria che mente). Nuova funzione PURA
+  `normalizza_chiave(Optional[str]) -> str` in `modules/memory/store.py` (coercizione
+  a str + collasso whitespace via `str.split()` + `lower()`; idempotente; fail-safe
+  §9: None/non-stringa → `""`). Applicata in UN unico punto logico ma nei DUE punti di
+  confronto-esatto: `upsert_contatto` (scrittura, prima di INSERT/SELECT) e
+  `get_contatto_per_chiave` (lookup per chiave). NIENTE fuzzy/euristica/merge: solo
+  canonicalizzazione deterministica. L'asimmetria scrittura-esatto/lettura-substring
+  resta INTATTA (`_trova_contatto` substring non toccato). `update_stato_contatto`
+  lavora per id (già risolto via `get_contatto_per_chiave`) → coperto a monte.
+  **gas.py INVARIATO**; `_get_window`/`_cap_window_chars`/`for _ in range(10)`/sandbox/
+  snapshot/trigger-immutabilità del diario/schema fetta 1 INVARIATI. DB di sviluppo
+  VUOTO → nessuna migrazione necessaria (se in futuro esistessero chiavi non
+  normalizzate: script idempotente una-tantum, decisione umana — NON distruttivo).
+  Test T23a-d (equivalenza chiavi/no-doppione, update con chiave non normalizzata,
+  fail-safe None/vuota/non-str, idempotenza). Suite **106→110**.
 - **Memoria FASE 2 — Scrittura CONTATTI dal loop (CRM autopilot) ATTIVA + riserve
   2b R1/R2/R3 CHIUSE** (2026-06-16, review #15 APPROVATO CON RISERVE): completa il
   ciclo della memoria — i lead ora si popolano DAL loop agentico, per via
@@ -224,7 +249,9 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **106 PASS, 0 FAIL** (2026-06-16). Dai 98 si aggiungono gli 8 T22 (scrittura
+  **110 PASS, 0 FAIL** (2026-06-17). Dai 106 si aggiungono i 4 T23 (normalizzazione
+  chiavi lead R-crm-1: equivalenza chiavi/no-doppione, update con chiave non
+  normalizzata, fail-safe None/vuota/non-str, idempotenza). Storico: dai 98 gli 8 T22 (scrittura
   contatti dal loop + chiusura R1/R2/R3: salva/aggiorna, dinieghi, lookup store,
   match esatto+ambiguità, override env+fail-safe, scan robusto del rumore,
   round-trip CRM completo con diario+pin). Storico dai 90 → 98: gli 8 T21 (lato lettura
@@ -339,15 +366,30 @@
   di ambiguità; R2 (costanti hardcoded) → override env `GAS_MEMORY_PIN_*` via `_env_int`
   fail-safe; R3 (euristica `*5`) → `MEMORY_PIN_SCAN=200` bounded. `DIARIO_NOISE_TIPI`
   resta hardcoded di proposito (non un tetto numerico). Dettaglio nella voce CRM sopra.
+- ✅ **R-crm-1 CHIUSA** (review #16, 2026-06-17): la normalizzazione deterministica
+  della chiave (`normalizza_chiave`: trim/collasso-whitespace/lower, pura+idempotente,
+  fail-safe) ora è applicata sia in `upsert_contatto` sia in `get_contatto_per_chiave`
+  → chiavi equivalenti collassano alla stessa forma canonica e l'UNIQUE deduplica.
+  Niente fuzzy/merge (fuori scope di proposito). Dettaglio nella voce motore in cima.
 - 🟡 **Riserve CRM contatti dal loop** (R-mem-crm, review #15, minori non bloccanti):
-  (R-crm-1) **qualità del dato della rubrica**: il modello può registrare lo stesso lead
-  con chiavi incoerenti (`anna@ex.com` vs `Anna`) come contatti distinti — l'UNIQUE
-  deduplica solo a parità di chiave esatta. Nessuna normalizzazione/canonicalizzazione
-  della chiave lato kernel. È rischio di QUALITÀ, non di sicurezza (recuperabile, mai
-  crash). Difesa candidata: normalizzare la chiave (lower/trim) prima dell'upsert o un
-  tool di merge lead. (R-crm-2) `int(c["id"])` in `_imposta_stato_contatto` assume id
-  convertibile (sempre vero con PK INTEGER SQLite, e protetto dal try/except globale) —
-  cosmetico.
+  (R-crm-2) `int(c["id"])` in `_imposta_stato_contatto` assume id convertibile (sempre
+  vero con PK INTEGER SQLite, e protetto dal try/except globale) — cosmetico.
+  (R-crm-norm-1, review #16) l'**eco testuale** della chiave nei messaggi di successo
+  dei tool in `gas.py` (`_salva_contatto`/`_imposta_stato_contatto`) riflette l'input
+  RAW, non la forma canonica salvata: puramente cosmetico (il dato nel DB è corretto),
+  chiudibile con una riga al prossimo intervento su `gas.py`.
+- 🟡 **Costanti del pin memoria: residuo `MEMORY_PIN_SCAN`** (R2 di 2b, residuo dopo
+  review #15): le tre costanti principali del pin (`MEMORY_PIN_CHAR_CAP/CONTACTS/
+  EVENTS`) sono GIÀ overridabili via env (`GAS_MEMORY_PIN_*`, chiuse in #15), ma
+  `MEMORY_PIN_SCAN=200` resta HARDCODED senza override env — stessa classe di
+  `WINDOW_CHAR_CAP`/`SNAPSHOT_KEEP`. Valutare un `GAS_MEMORY_PIN_SCAN` (fail-safe via
+  `_env_int`) al deploy VPS. Non bloccante. NB: `DIARIO_NOISE_TIPI` resta hardcoded di
+  proposito (non è un tetto numerico).
+- 🟡 **Euristica della finestra di scansione del pin** (R3 di 2b, residuo dopo review
+  #15): l'euristica originale `MEMORY_PIN_EVENTS*5` è stata SOSTITUITA in #15 da
+  `MEMORY_PIN_SCAN=200` (finestra ampia e bounded), ma 200 resta un **numero magico**
+  scelto a priori, da tarare con dati reali quando il diario avrà volume (oggi il
+  diario è piccolo, la scelta è conservativa). Non bloccante.
 - 🟡 **Riserve Memoria FASE 2 fetta 2a** (R-mem2a, review #13, minori non
   bloccanti): (R1) `_esito_sintetico` inferisce `[OK]`/`[KO]` dal PREFISSO
   testuale dell'output (`Errore eseguendo`/`Operazione negata`): un tool a esito
@@ -382,16 +424,26 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 15 review completate
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 16 review completate
   (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, review hook
   SessionEnd TASK 1 del 2026-06-15 — APPROVATO, #12 Memoria FASE 2 fetta 1 del
   2026-06-15 — APPROVATO CON RISERVE, #13 Memoria FASE 2 fetta 2a del 2026-06-16
   — APPROVATO CON RISERVE, #14 Memoria FASE 2 fetta 2b del 2026-06-16 — APPROVATO
   CON RISERVE, #15 CRM contatti dal loop + chiusura R1/R2/R3 del 2026-06-16 —
-  APPROVATO CON RISERVE), lezioni datate in `.claude/agents/memoria_revisore.md`.
+  APPROVATO CON RISERVE, #16 normalizzazione chiavi lead / chiusura R-crm-1 del
+  2026-06-17 — APPROVATO), lezioni datate in `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 
+0. **Vector DB per i ricordi semantici — PROSSIMO PASSO GROSSO di FASE 2, NON ancora
+   avviato (per scelta).** È il salto da "memoria a fatti rigidi" (SQLite diario+rubrica,
+   già attiva) a "ricordi semantici a lungo termine senza consumo di token di contesto"
+   (roadmap CLAUDE.md §10 FASE 2). Deliberatamente NON iniziato: porta dipendenze nuove,
+   possibili costi (embedding) e superficie da valutare — la filosofia del progetto è
+   "robustezza prima della potenza". Va **PROGETTATO prima di implementare** (scelta
+   libreria/locale vs. servizio, modello di embedding, dove vive il file, fail-safe §9,
+   come si compone col pin always-on e col tool `ricorda`). Nessun impegno preso ora:
+   stato registrato esplicitamente così non evapora.
 1. **Rilevamento PER-TURNO del degrado a solo-testo** (metà aperta di R2 #5):
    oggi solo osservabilità a freddo (doctor) + warning statico (run_turn).
    Rimandato per i falsi positivi: progettare con cura prima di attivare.
