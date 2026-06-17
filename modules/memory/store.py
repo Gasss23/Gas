@@ -114,6 +114,33 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def normalizza_chiave(chiave: Optional[str]) -> str:
+    """Canonicalizzazione DETERMINISTICA e PURA della chiave di un contatto, così
+    che la STESSA chiave logica risolva SEMPRE allo stesso record ('Anna ' e
+    'anna' = lo stesso lead). È la difesa contro i doppioni silenziosi del CRM
+    autopilot (la rubrica deduplica solo a parità di chiave ESATTA via UNIQUE).
+
+    SOLO trasformazioni prevedibili, NIENTE fuzzy / euristica / merge:
+      * coercizione a str (robustezza ai tipi non-stringa);
+      * collasso di ogni sequenza di whitespace — anche tab/newline — in un
+        singolo spazio + trim esterno (tramite ``str.split()``);
+      * lower-case, coerente col confronto substring case-insensitive di lettura.
+
+    Funzione PURA e IDEMPOTENTE: ``normalizza(normalizza(x)) == normalizza(x)``.
+    Fail-safe (§9 CLAUDE.md): ``None`` o valore non convertibile → ``""`` (mai
+    un'eccezione). La chiave vuota viene poi rifiutata a monte (salva_contatto),
+    quindi un input malformato degrada in modo sicuro senza creare un record
+    spurio. NB: si applica al CONFRONTO esatto (scrittura + lookup per chiave),
+    NON trasforma il substring di lettura in altro (l'asimmetria resta intatta)."""
+    if chiave is None:
+        return ""
+    try:
+        testo = str(chiave)
+    except Exception:  # pragma: no cover — coercizione difensiva, mai un crash
+        return ""
+    return " ".join(testo.split()).lower()
+
+
 class MemoryStore:
     """Accesso al DB di memoria. Connessioni a vita breve (una per operazione):
     semplice, niente stato condiviso fra thread, e ogni metodo è blindato in
@@ -182,6 +209,9 @@ class MemoryStore:
         vita). Ritorna l'id del contatto, o None in degrado."""
         if stato is not None and stato not in STATI_CONTATTO:
             raise ValueError(f"stato non valido: {stato!r} (ammessi: {STATI_CONTATTO})")
+        # Canonicalizza la chiave PRIMA di INSERT e SELECT: 'Anna ' e 'anna'
+        # devono finire (e ritrovarsi) nello stesso record (anti-doppioni CRM).
+        chiave = normalizza_chiave(chiave)
         now = _now_iso()
         try:
             with self._connect() as con:
@@ -272,8 +302,11 @@ class MemoryStore:
     def get_contatto_per_chiave(self, chiave: str) -> Optional[Dict[str, Any]]:
         """Un contatto per la sua chiave univoca (es. email/handle normalizzato),
         o None se assente/in degrado. Lookup esatto, sfrutta l'indice UNIQUE su
-        `chiave`: è la via canonica per risolvere chiave -> contatto."""
+        `chiave`: è la via canonica per risolvere chiave -> contatto. La chiave
+        viene canonicalizzata (stesso normalizza_chiave dell'upsert) così che il
+        lookup risolva alla stessa identità logica con cui è stata scritta."""
         try:
+            chiave = normalizza_chiave(chiave)
             with self._connect() as con:
                 row = con.execute(
                     "SELECT * FROM contatti WHERE chiave = ?", (chiave,)

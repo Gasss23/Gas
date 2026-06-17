@@ -1090,6 +1090,55 @@ check("T22h round-trip: rubrica popolata dal loop + diario + pin riflette",
       and len([e for e in ev_h if e["type"] == "final"]) == 1,
       f"stato={c_h['stato'] if c_h else None} diario={diario_h}")
 
+# ---------- T23: normalizzazione chiavi lead (R-crm-1) ----------
+from modules.memory import normalizza_chiave
+
+# T23a — due chiavi che differiscono solo per maiuscole/spazi -> STESSO record, no doppione
+m23 = mem_tmp()
+id_a = m23.upsert_contatto("Anna ", nome="Anna")
+id_b = m23.upsert_contatto(" anna", note="seconda")          # equivalente -> update, non insert
+got23 = m23.get_contatto_per_chiave("ANNA")                  # lookup con altra forma ancora
+check("T23a (R-crm-1) chiavi equivalenti = stesso record, nessun doppione",
+      id_a == id_b and len(m23.lista_contatti()) == 1 and got23 is not None
+      and got23["chiave"] == "anna" and got23["nome"] == "Anna"
+      and got23["note"] == "seconda",
+      f"id_a={id_a} id_b={id_b} n={len(m23.lista_contatti())}")
+
+# T23b — imposta_stato_contatto trova il lead con chiave NON normalizzata in input
+k23 = kernel_tmp()
+k23.execute_tool_call("salva_contatto", {"chiave": "Bob White", "nome": "Bob"})
+o23 = k23.execute_tool_call("imposta_stato_contatto",
+                            {"chiave": "  bob   white ", "stato": "interessato"})
+c23 = k23.memory.get_contatto_per_chiave("BOB WHITE")
+check("T23b update_stato trova il lead con chiave non normalizzata in input",
+      o23.startswith("Successo") and c23 is not None and c23["stato"] == "interessato"
+      and len(k23.memory.lista_contatti()) == 1,
+      f"o={o23[:50]} n={len(k23.memory.lista_contatti())}")
+
+# T23c — fail-safe: chiave None / vuota / non-stringa -> nessun crash, degrado sicuro
+no_crash23 = True
+try:
+    r1 = normalizza_chiave(None)
+    r2 = normalizza_chiave("   ")
+    r3 = normalizza_chiave(12345)
+    m23c = mem_tmp()
+    look_none = m23c.get_contatto_per_chiave(None)   # non deve sollevare
+except Exception as e:
+    no_crash23 = False
+    r1 = r2 = r3 = repr(e); look_none = "CRASH"
+check("T23c fail-safe: chiave None/vuota/non-stringa -> nessun crash",
+      no_crash23 and r1 == "" and r2 == "" and r3 == "12345" and look_none is None,
+      f"r1={r1!r} r2={r2!r} r3={r3!r} look_none={look_none!r}")
+
+# T23d — la normalizzazione è IDEMPOTENTE: normalizza(normalizza(x)) == normalizza(x)
+campioni23 = ["Anna ", "  BOB   white ", "x@Y.Z", "", "Multi\tTab\nNewline", "ÀÉÎ"]
+idem23 = all(normalizza_chiave(normalizza_chiave(s)) == normalizza_chiave(s)
+             for s in campioni23)
+check("T23d normalizzazione idempotente + esiti attesi",
+      idem23 and normalizza_chiave("Anna ") == "anna"
+      and normalizza_chiave("  BOB   white ") == "bob white",
+      f"idem={idem23}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

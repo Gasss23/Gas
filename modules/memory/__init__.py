@@ -12,6 +12,7 @@ from .store import (
     STATO_DEFAULT,
     DEFAULT_DB_FILENAME,
     default_db_path,
+    normalizza_chiave,
 )
 
 __all__ = [
@@ -21,4 +22,5 @@ __all__ = [
     "STATO_DEFAULT",
     "DEFAULT_DB_FILENAME",
     "default_db_path",
+    "normalizza_chiave",
 ]
