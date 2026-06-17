@@ -1,46 +1,29 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-17 (Memoria FASE 2: onestà R-crm-1 + blindatura test)
+# 🔀 DIFF DI SESSIONE — 2026-06-17 (Backup automatico del DB di memoria)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni
 > sessione.
 
 ## Cosa è cambiato e perché
+Implementata la **rete di sicurezza anti auto-corruzione** del DB di memoria
+(`.gas_memory.db`), il dato più prezioso e meno rimpiazzabile del sistema, NON coperto
+dagli snapshot git (item roadmap CLAUDE.md §10 FASE 2 "Backup della memoria").
 
-### 1. TEST — blindatura interazione substring↔normalizzazione (commit `f4b2321`)
-- **`tests/test_unit_kernel.py`** (+28): due nuovi test, `gas.py` INVARIATO.
-  - **T23e**: lead salvato con chiave NON normalizzata (`"  Anna   Rossi "`, storata
-    `"anna rossi"`) → cercato via tool `ricorda` con varianti `"anna rossi"` (risolve
-    via match esatto normalizzato) e `"ANNA"` (risolve via substring case-insensitive)
-    → TROVATO. Prova che la scrittura-normalizzata e la lettura-substring (non toccata)
-    restano coerenti.
-  - **T23f**: `"anna@ex.com"` e `"Anna"` salvati come due `salva_contatto` distinti →
-    restano DUE record (la normalizzazione lessicale NON fonde identità cross-formato).
-    Test che incarna ONESTAMENTE il limite APERTO R-crm-1b, così nessun futuro
-    intervento lo "aggiusta" per sbaglio (no verde fittizio, §5).
-- **Perché**: dopo la normalizzazione in scrittura (cdf764a) mancava la prova che la
-  lettura substring trovasse ancora i lead. T23e la fornisce (e NON fallisce → nessun
-  gap di read-path). T23f fissa il confine tra ciò che la normalizzazione fa e ciò che
-  NON deve fare. Suite **110 → 112**, 0 FAIL.
+## File toccati (commit motore `cb99d1c`, +225 / -5)
+- **`modules/memory/store.py`**: `integrity_check()` (PRAGMA quick_check, fail-safe §9);
+  `backup()` esteso con rotazione pura (`_backup_retention`, `keep=10`) + timestamp con
+  microsecondi; `backup_auto(min_interval_sec)` THROTTLED (salta se non è ora o se
+  l'integrità è KO → non propaga corruzione); `_backup_files`/`ultimo_backup`.
+- **`gas.py`**: `_memoria_backup_auto()` fail-safe §9, chiamato UNA volta per turno in
+  `run_turn` dopo `_memoria_pin()` (fuori dal loop); override env
+  `GAS_MEMORY_BACKUP_EVERY_SEC`/`_KEEP`; `doctor` sezione 8 "Memoria" (integrità/FTS5/
+  backup, apre il DB solo se esiste, zero token).
+- **`tests/test_unit_kernel.py`**: T26a-e. Suite **123→128, 0 FAIL**.
 
-### 2. DOC (commit doc separato)
-- **`reports/stato_progetto.md`**: la voce "R-crm-1 CHIUSA" SPACCATA in due — **R-crm-1
-  (case/whitespace) ✅ CHIUSA** e **R-crm-1b (identità cross-formato) 🟡 APERTA** (stesso
-  lead con chiavi semanticamente diverse, es. email vs nome; non è migrazione, esiste a
-  runtime; difesa da progettare: chiave canonica o tool merge-lead, nessun impegno).
-  Aggiornati conteggio suite (112) e voce dei nuovi test.
-- **`reports/ultimo_report.md`**: report canonico del task.
+## Processo
+- Gate di review §3: subagent **revisore** invocato sul diff staged → **APPROVATO**
+  (review #19, 2 note cosmetiche non bloccanti), validato dal vivo.
+- Report `reports/ultimo_report.md` riscritto; `stato_progetto.md` aggiornato.
 
-### Processo rispettato
-- Gate di review §3: il commit dei test tocca `tests/` → subagent **revisore** invocato
-  sul diff staged PRIMA del commit → **APPROVATO** (verificato dal vivo + mutation
-  testing: mutando il `.lower()` del needle T23e cade → il test morde davvero; gas.py e
-  store.py ripristinati bit-identici). Hook deterministico onorato (`.claude/.review_ok`
-  creato per il commit test, rimosso subito dopo). Il PUNTO 1 è doc-only → nessuna review.
-- Scope BLOCCANTE rispettato: SOLO i due punti del mandato. `_trova_contatto`/read-path
-  NON toccati; nessun env override, fix echo, Vector DB, merge tool — solo registrati/
-  proposti nel §FINALE del report.
-
-## File toccati (sintesi)
-`tests/test_unit_kernel.py` (+T23e/f) · `reports/stato_progetto.md` (split R-crm-1/1b) ·
-`reports/ultimo_report.md` · `reports/diff_sessione.md` (questo) ·
-`.claude/agents/memoria_revisore.md` (lezione 2026-06-17).
-Commit test: `f4b2321` (T23e/f — review APPROVATO). gas.py INVARIATO.
+## Invarianti
+`_get_window` / `_cap_window_chars` / `for _ in range(10)` / sandbox bwrap / snapshot
+INVARIATI. Backup = copia in-process di file locale (codice fidato) → fuori dal sandbox.

@@ -1,6 +1,16 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-17 (Backup automatico del DB — review #19 APPROVATO, commit `cb99d1c`):**
+> Rete di sicurezza per il dato più prezioso e meno rimpiazzabile del sistema
+> (`.gas_memory.db`, che la "macchina del tempo" snapshot NON copre): difesa
+> automatica dall'**auto-corruzione**. `backup_auto(min_interval_sec)` THROTTLED in
+> `store.py` (copia SOLO se è passato l'intervallo E l'integrità `quick_check` è OK →
+> un DB corrotto non viene mai copiato sopra i backup buoni) + rotazione pura
+> (`keep=10`) + `integrity_check`. In `gas.py` `_memoria_backup_auto()` fail-safe §9
+> chiamato UNA volta per turno (fuori dal loop) + override env
+> `GAS_MEMORY_BACKUP_EVERY_SEC/_KEEP` + `doctor` sezione 8 "Memoria" (integrità/FTS5/
+> backup, zero token). Backup OFF-MACHINE resta a FASE 5. Suite **123→128**.
 > **2026-06-17 (fusione lead R-crm-1b CHIUSA + Vector DB Strato A — review #17/#18):**
 > Due fette di FASE 2 in una sessione. (1) **R-crm-1b CHIUSA** via tool
 > `unisci_contatti` + colonna `merged_into` (merge a lapide deterministico, niente
@@ -44,6 +54,23 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 — Backup automatico del DB ATTIVO (anti auto-corruzione)**
+  (2026-06-17, review #19 APPROVATO, commit `cb99d1c`): difesa automatica del dato
+  MENO rimpiazzabile del sistema (`.gas_memory.db`, NON coperto dagli snapshot git).
+  `store.py`: `backup_auto(min_interval_sec)` THROTTLED (copia SOLO se passato
+  l'intervallo E `integrity_check`/`quick_check` OK → un DB corrotto NON viene mai
+  copiato sopra i backup buoni) + `backup()` esteso con rotazione pura
+  (`_backup_retention`, `keep=DEFAULT_BACKUP_KEEP=10`, guardia `keep<=0` kill-switch)
+  + timestamp con microsecondi (niente collisioni) + `_backup_files`/`ultimo_backup`.
+  Copia nativa coerente (`src.backup(dst)`), file singolo / niente WAL INVARIATI.
+  `gas.py`: `_memoria_backup_auto()` fail-safe §9 (memoria None/errore → turno
+  prosegue) chiamato UNA volta per turno in `run_turn` dopo `_memoria_pin()`, FUORI
+  dal `for _ in range(10)`; override env `GAS_MEMORY_BACKUP_EVERY_SEC` (default 6h) /
+  `_KEEP` (default 10); `doctor` sezione 8 "Memoria" (integrità + FTS5 + età/numero
+  backup, apre il DB solo se esiste, ZERO token). Backup = codice fidato in-process →
+  niente sandbox/snapshot. Invarianti motore (`_get_window`/`_cap_window_chars`/
+  `for _ in range(10)`/sandbox/snapshot) INVARIATE. Backup OFF-MACHINE (anti-disastro
+  disco) resta a FASE 5. Test T26a-e. Suite **123→128**.
 - **Memoria FASE 2 — Vector DB Strato A (ricerca FTS5 sul diario) ATTIVA**
   (2026-06-17, review #18 APPROVATO, commit `977148d`): primo strato del Vector DB
   di FASE 2. Tabella virtuale **FTS5 external-content** `diario_fts` + trigger
@@ -291,7 +318,9 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **123 PASS, 0 FAIL** (2026-06-17). Dai 118 si aggiungono i 5 T25 (Vector DB
+  **128 PASS, 0 FAIL** (2026-06-17). Dai 123 si aggiungono i 5 T26 (backup memoria:
+  integrità sano/corrotto, backup+rotazione+retention pura, throttling, skip su
+  corruzione, kernel fail-safe + memoria None). Dai 118 si aggiungono i 5 T25 (Vector DB
   Strato A / FTS5: match per radice + query ostile senza crash, ranking BM25,
   backfill su diario legacy, integrazione `ricorda(query)` coi vincoli T21d
   preservati + diario immutabile con indice attivo, fallback substring se FTS
@@ -487,8 +516,10 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 18 review completate
-  (#17 fusione lead R-crm-1b del 2026-06-17 — RESPINTO per il bug d'ordine
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 19 review completate
+  (#19 backup automatico del DB del 2026-06-17 — APPROVATO senza riserve bloccanti,
+  2 note cosmetiche; #18 Vector DB Strato A — APPROVATO;
+  #17 fusione lead R-crm-1b del 2026-06-17 — RESPINTO per il bug d'ordine
   ALTER/CREATE INDEX su DB legacy, poi APPROVATO dopo fix + T24f; #18 Vector DB
   Strato A / FTS5 del 2026-06-17 — APPROVATO senza riserve), prima 16 review completate
   (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, review hook
