@@ -1139,6 +1139,34 @@ check("T23d normalizzazione idempotente + esiti attesi",
       and normalizza_chiave("  BOB   white ") == "bob white",
       f"idem={idem23}")
 
+# T23e — coerenza scrittura-normalizzata <-> lettura-substring: il lead salvato con
+# chiave NON normalizzata resta TROVABILE via ricorda con varianti di case/spazi.
+# (chiave "  Anna   Rossi " -> storata "anna rossi"; "anna rossi" risolve via match
+# esatto normalizzato, "ANNA" via substring case-insensitive).
+k23e = kernel_tmp()
+k23e.execute_tool_call("salva_contatto", {"chiave": "  Anna   Rossi ", "nome": "Anna Rossi"})
+o_e1 = k23e.execute_tool_call("ricorda", {"contatto": "anna rossi"})  # variante normalizzata
+o_e2 = k23e.execute_tool_call("ricorda", {"contatto": "ANNA"})         # variante case, substring
+check("T23e lettura substring trova il lead salvato con chiave normalizzata",
+      "Anna Rossi" in o_e1 and "Nessun lead" not in o_e1
+      and "Anna Rossi" in o_e2 and "Nessun lead" not in o_e2,
+      f"e1={o_e1[:60]!r} e2={o_e2[:60]!r}")
+
+# T23f — onestà sul limite APERTO R-crm-1b: la normalizzazione NON fonde identità
+# cross-formato. 'anna@ex.com' (norm-> 'anna@ex.com') e 'Anna' (norm-> 'anna') sono
+# stringhe diverse -> restano DUE record. Test che incarna il limite, così nessun
+# futuro intervento lo "aggiusta" per sbaglio scambiandolo per un bug.
+k23f = kernel_tmp()
+k23f.execute_tool_call("salva_contatto", {"chiave": "anna@ex.com", "nome": "Anna"})
+k23f.execute_tool_call("salva_contatto", {"chiave": "Anna", "nome": "Anna"})
+n_rec = len(k23f.memory.lista_contatti())
+check("T23f (R-crm-1b APERTA) normalizzazione NON fonde identità cross-formato",
+      n_rec == 2
+      and k23f.memory.get_contatto_per_chiave("anna@ex.com") is not None
+      and k23f.memory.get_contatto_per_chiave("Anna") is not None
+      and k23f.memory.get_contatto_per_chiave("Anna")["chiave"] == "anna",
+      f"n_record={n_rec}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
