@@ -1433,6 +1433,38 @@ check("T26e kernel backup auto: crea backup + memoria None senza crash",
       bak_kernel is not None and no_crash26,
       f"bak={bak_kernel is not None} no_crash={no_crash26}")
 
+# ---------- T27: classificazione errori provider nel doctor (402/429) ----------
+# Helper PURO _classify_provider_error: un 402 (crediti esauriti) su un rung
+# OPZIONALE è uno stato benigno (la cascata scala da sé a runtime) -> WARN, non KO.
+# Tutto locale, ZERO token.
+
+# T27a — 429 -> QUOTA (per qualunque rung); via status_code e via testo
+q1 = gas._classify_provider_error(429, "boh", False)
+q2 = gas._classify_provider_error(None, "Error code: 429 - rate", True)
+check("T27a 429 -> QUOTA (status_code o testo)",
+      q1[0] == "QUOTA" and q2[0] == "QUOTA",
+      f"q1={q1[0]} q2={q2[0]}")
+
+# T27b — 402 su rung OPZIONALE -> WARN (non KO); via status_code e via testo
+w1 = gas._classify_provider_error(402, "Payment Required", False)
+w2 = gas._classify_provider_error(None, "Error code: 402 - crediti", False)
+check("T27b 402 su rung opzionale -> WARN (non KO)",
+      w1[0] == "WARN" and w2[0] == "WARN" and "402" in w1[1],
+      f"w1={w1[0]} w2={w2[0]} det={w1[1]!r}")
+
+# T27c — 402 su rung OBBLIGATORIO -> KO (provider a pagamento senza credito = problema)
+k1 = gas._classify_provider_error(402, "Payment Required", True)
+check("T27c 402 su rung obbligatorio -> KO",
+      k1[0] == "KO",
+      f"k1={k1[0]}")
+
+# T27d — errore generico -> KO con dettaglio troncato a 60 char (comportamento storico)
+lungo = "X" * 200
+g1 = gas._classify_provider_error(500, lungo, False)
+check("T27d errore generico -> KO, dettaglio <=60 char",
+      g1[0] == "KO" and len(g1[1]) == 60,
+      f"g1={g1[0]} len={len(g1[1])}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

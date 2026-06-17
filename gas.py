@@ -172,6 +172,25 @@ def _classify_free_model(status_code: int, data: Optional[Dict[str, Any]]) -> Tu
     return ("WARN", "il modello free non dichiara function calling: "
                     "il loop agentico degraderebbe a solo-testo")
 
+def _classify_provider_error(status_code: Optional[int], err_text: str,
+                             obbligatoria: bool) -> Tuple[str, str]:
+    """Classifica l'errore di un ping provider nel doctor (PURA, testabile a zero
+    token). Esiti:
+      - 429 (quota)                          -> QUOTA (avviso, non fallimento)
+      - 402 (crediti esauriti) su rung OPZIONALE -> WARN: stato benigno atteso,
+        a runtime la cascata scala da sé al rung successivo (§9), il paracadute
+        free non è in cascata obbligatoria
+      - 402 su rung OBBLIGATORIO              -> KO (un provider a pagamento senza
+        credito è un problema reale)
+      - tutto il resto                        -> KO
+    Mantiene il dettaglio troncato a 60 char per il KO generico (come prima)."""
+    txt = err_text[:200]
+    if status_code == 429 or "429" in txt:
+        return ("QUOTA", "429: quota esaurita")
+    if (status_code == 402 or "402" in txt) and not obbligatoria:
+        return ("WARN", "402: crediti esauriti (rung free opzionale)")
+    return ("KO", err_text[:60])
+
 def _probe_free_model(base_url: str, model: str, api_key: Optional[str], _fetch=None) -> Tuple[str, str]:
     """Fetch (mockabile via `_fetch`) + classificazione. `_fetch(url, api_key)`
     deve tornare (status_code, json|None). Errori di rete -> WARN onesto."""
@@ -1200,10 +1219,9 @@ def doctor(root_dir: Optional[str] = None) -> int:
             client.chat.completions.create(model=model, messages=[{"role": "user", "content": "ping"}], max_tokens=1)
             check("Provider", name, "OK", f"{(time.monotonic() - t0) * 1000:.0f} ms")
         except Exception as e:
-            if getattr(e, "status_code", None) == 429 or "429" in str(e)[:200]:
-                check("Provider", name, "QUOTA", "429: quota esaurita")
-            else:
-                check("Provider", name, "KO", str(e)[:60])
+            esito, dettaglio = _classify_provider_error(
+                getattr(e, "status_code", None), str(e), obbligatoria)
+            check("Provider", name, esito, dettaglio)
 
     # 2b. Integrità del modello free (R1/R2 #5): METADATI OpenRouter, NESSUNA
     # generazione (coerente con "doctor non consuma token LLM"). SOLO se la chiave
