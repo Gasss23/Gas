@@ -1,6 +1,17 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-17 (fusione lead R-crm-1b CHIUSA + Vector DB Strato A — review #17/#18):**
+> Due fette di FASE 2 in una sessione. (1) **R-crm-1b CHIUSA** via tool
+> `unisci_contatti` + colonna `merged_into` (merge a lapide deterministico, niente
+> fuzzy): lo stesso lead salvato con chiavi diverse (`'Anna'` vs `'anna@ex.com'`) si
+> fonde senza perdere la storia (diario IMMUTABILE preservato: nessun UPDATE/DELETE).
+> Review #17 RESPINTO (bug ordine ALTER/CREATE INDEX su DB legacy) → fix → APPROVATO
+> (commit `956f367`). (2) **Vector DB Strato A FATTO** (commit `977148d`, review #18
+> APPROVATO): ricerca testuale FTS5 sul diario, dentro lo STESSO `.gas_memory.db`
+> (file singolo intatto), ZERO dipendenze, opzionale e fail-safe (build senza FTS5 →
+> fallback substring). **Strato B (embedding semantici locali + sqlite-vec)
+> deliberatamente RIMANDATO** al gate umano sulle dipendenze. Suite **112→123**.
 > **2026-06-17 (normalizzazione chiavi lead — R-crm-1 CHIUSA, review #16 APPROVATO):**
 > `normalizza_chiave` (trim/collasso-whitespace/lower, pura+idempotente, fail-safe) in
 > `modules/memory/store.py`, applicata in `upsert_contatto` e `get_contatto_per_chiave`
@@ -33,6 +44,37 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 — Vector DB Strato A (ricerca FTS5 sul diario) ATTIVA**
+  (2026-06-17, review #18 APPROVATO, commit `977148d`): primo strato del Vector DB
+  di FASE 2. Tabella virtuale **FTS5 external-content** `diario_fts` + trigger
+  `AFTER INSERT` (il diario è append-only → basta l'insert, immutabilità intatta) +
+  backfill idempotente (`'rebuild'`) per il diario preesistente, tutto DENTRO lo
+  stesso `.gas_memory.db` (invariante file singolo / backup banale preservato).
+  ZERO dipendenze nuove. `cerca_diario` (ranking BM25) con `_fts_match` che sanifica
+  l'input (token `\w+` quotati con prefix `*`) → niente crash di sintassi su query
+  arbitraria. **OPZIONALE/fail-safe §9**: `_init_fts` in try/except SEPARATO dopo il
+  commit dello schema → un build senza FTS5 lascia `fts_available=False` senza
+  degradare `self.available`; `_ricorda(query)` prova FTS e RICADE sul substring
+  storico (cascata). **Strato B (embedding semantici locali + sqlite-vec)
+  RIMANDATO** al gate umano sulle dipendenze. Invarianti motore
+  (`_get_window`/`_cap_window_chars`/`for _ in range(10)`/sandbox/snapshot) INVARIATE.
+  Test T25a-e. Suite **118→123**.
+- **Memoria FASE 2 — Fusione lead cross-formato ATTIVA (chiude R-crm-1b)**
+  (2026-06-17, review #17 APPROVATO, commit `956f367`): chiude il residuo di R-crm-1
+  (stesso lead con chiavi semanticamente diverse, es. `'Anna'` vs `'anna@ex.com'`,
+  che `normalizza_chiave` non unisce e non deve). **MERGE A LAPIDE** deterministico
+  (niente fuzzy): nuova colonna `merged_into` (NULL=vivo, valorizzato=lapide→canonico)
+  con migrazione idempotente `_ensure_columns` (ALTER ADD COLUMN + indice DOPO la
+  colonna). Tool `unisci_contatti` (in-process): completa l'anagrafica del canonico
+  (COALESCE), ri-punta eventuali lapidi (catena profonda ≤1), marca il doppione come
+  lapide. **NESSUN UPDATE/DELETE sul diario**: gli eventi del doppione confluiscono
+  nella storia del canonico via `diario_di_contatto` (immutabilità preservata).
+  `get_contatto_per_chiave` segue il puntatore al canonico; `lista_contatti` (→ pin,
+  substring) esclude le lapidi; lo STATO del funnel NON si tocca (separazione
+  identità/ciclo di vita). Fail-safe §9 ovunque (idempotente: self/ri-merge = no-op).
+  Review #17 RESPINTO (bug: l'indice `merged_into` in `_SCHEMA` precedeva l'ALTER →
+  init in degrado su DB legacy) → fix (indice creato in `_ensure_columns`) +
+  T24f (migrazione legacy) → APPROVATO. Test T24a-f. Suite **112→118**.
 - **Memoria FASE 2 — Normalizzazione chiavi lead ATTIVA (chiude R-crm-1)**
   (2026-06-17, review #16 APPROVATO): la rubrica deduplicava solo a chiave ESATTA
   (UNIQUE), quindi col CRM autopilot `'anna@ex.com'` vs `'Anna '` diventavano due
@@ -249,7 +291,13 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **112 PASS, 0 FAIL** (2026-06-17). Dai 110 si aggiungono i 2 T23e/f
+  **123 PASS, 0 FAIL** (2026-06-17). Dai 118 si aggiungono i 5 T25 (Vector DB
+  Strato A / FTS5: match per radice + query ostile senza crash, ranking BM25,
+  backfill su diario legacy, integrazione `ricorda(query)` coi vincoli T21d
+  preservati + diario immutabile con indice attivo, fallback substring se FTS
+  assente). Dai 112 i 6 T24 (fusione lead R-crm-1b: lapide+vecchia chiave→canonico,
+  storia preservata, fail-safe/idempotenza, pin senza lapidi, catena ≤1, migrazione
+  DB legacy). Storico: dai 110 si aggiungono i 2 T23e/f
   (coerenza scrittura-normalizzata ↔ lettura-substring: il lead salvato con chiave
   non normalizzata resta trovabile via `ricorda` con varianti case/spazi — T23e; e
   onestà sul limite APERTO R-crm-1b: la normalizzazione NON fonde identità
@@ -377,17 +425,15 @@
   applicata sia in `upsert_contatto` sia in `get_contatto_per_chiave` (T23a/b). La
   lettura substring resta coerente con la scrittura normalizzata (T23e). Niente
   fuzzy/merge (fuori scope di proposito). Dettaglio nella voce motore in cima.
-- 🟡 **R-crm-1b (identità cross-formato) — APERTA**: lo stesso lead rappresentato con
-  chiavi semanticamente DIVERSE (es. email a un turno, nome a un altro: `anna@ex.com`
-  vs `Anna`) NON viene unito — `normalizza_chiave("anna@ex.com")="anna@ex.com"` e
-  `normalizza_chiave("Anna")="anna"` sono stringhe diverse → due record. Ed è
-  intenzionale: la normalizzazione lessicale non deve fonderle (T23f incarna il
-  limite). È rischio di **QUALITÀ** del dato, non di sicurezza (recuperabile, mai
-  crash). **NON è un problema di migrazione**: esiste a runtime indipendentemente
-  dallo stato del DB (il modello avrà a volte solo il nome, a volte solo l'email per
-  la stessa persona). Difesa candidata da **PROGETTARE** (fuori da questa fetta):
-  policy di chiave canonica (es. preferire SEMPRE l'email come chiave quando
-  disponibile) oppure un tool `unisci_contatti`/merge-lead. Nessun impegno preso.
+- ✅ **R-crm-1b (identità cross-formato) — CHIUSA** (2026-06-17, `956f367`, review
+  #17): lo stesso lead con chiavi semanticamente DIVERSE (es. `anna@ex.com` vs
+  `Anna`) — che `normalizza_chiave` non unisce e non deve (T23f resta a presidio del
+  confine: la normalizzazione lessicale non indovina mai) — ora si fonde su richiesta
+  ESPLICITA col tool `unisci_contatti` (**merge a lapide** via `merged_into`, niente
+  fuzzy). Non distruttivo e compatibile con l'immutabilità del diario (nessun
+  UPDATE/DELETE: la storia del doppione confluisce nel canonico). Dettaglio nella voce
+  motore in cima. NB: la difesa preventiva "policy di chiave canonica / preferire
+  l'email" resta una possibile aggiunta futura (non necessaria, non presa).
 - 🟡 **Riserve CRM contatti dal loop** (R-mem-crm, review #15, minori non bloccanti):
   (R-crm-2) `int(c["id"])` in `_imposta_stato_contatto` assume id convertibile (sempre
   vero con PK INTEGER SQLite, e protetto dal try/except globale) — cosmetico.
@@ -441,7 +487,10 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 16 review completate
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 18 review completate
+  (#17 fusione lead R-crm-1b del 2026-06-17 — RESPINTO per il bug d'ordine
+  ALTER/CREATE INDEX su DB legacy, poi APPROVATO dopo fix + T24f; #18 Vector DB
+  Strato A / FTS5 del 2026-06-17 — APPROVATO senza riserve), prima 16 review completate
   (#1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 TASK B, #10 TASK C, review hook
   SessionEnd TASK 1 del 2026-06-15 — APPROVATO, #12 Memoria FASE 2 fetta 1 del
   2026-06-15 — APPROVATO CON RISERVE, #13 Memoria FASE 2 fetta 2a del 2026-06-16
@@ -452,15 +501,17 @@
 
 ## Prossimi passi (in ordine di priorità)
 
-0. **Vector DB per i ricordi semantici — PROSSIMO PASSO GROSSO di FASE 2, NON ancora
-   avviato (per scelta).** È il salto da "memoria a fatti rigidi" (SQLite diario+rubrica,
-   già attiva) a "ricordi semantici a lungo termine senza consumo di token di contesto"
-   (roadmap CLAUDE.md §10 FASE 2). Deliberatamente NON iniziato: porta dipendenze nuove,
-   possibili costi (embedding) e superficie da valutare — la filosofia del progetto è
-   "robustezza prima della potenza". Va **PROGETTATO prima di implementare** (scelta
-   libreria/locale vs. servizio, modello di embedding, dove vive il file, fail-safe §9,
-   come si compone col pin always-on e col tool `ricorda`). Nessun impegno preso ora:
-   stato registrato esplicitamente così non evapora.
+0. **Vector DB — STRATO A FATTO, STRATO B da fare (gate dipendenze).** Approccio
+   FASATO deciso il 2026-06-17. **Strato A (FATTO, `977148d`)**: ricerca lessicale FTS5
+   sul diario, zero dipendenze, dentro lo stesso `.db` (vedi voce motore). **Strato B
+   (DA FARE)**: embedding semantici LOCALI (`fastembed`/ONNX su CPU, zero token/offline,
+   coerente col pavimento ollama del VPS) + `sqlite-vec` (vettori nello STESSO `.db`,
+   per non rompere il file singolo), con FTS5 come fallback. È l'UNICA parte che aggiunge
+   DIPENDENZE → richiede **OK umano esplicito** prima di implementare (filosofia
+   "robustezza prima della potenza"; CLAUDE.md §10). Da progettare in dettaglio: scelta
+   modello di embedding, RAM/disco sul VPS, come la ricerca semantica si compone con
+   `ricorda` (on-demand, NON nel pin always-on). Scartati: embedding via API (contro
+   zero-token/offline) e store separati Chroma/FAISS (romperebbero il file singolo).
 1. **Rilevamento PER-TURNO del degrado a solo-testo** (metà aperta di R2 #5):
    oggi solo osservabilità a freddo (doctor) + warning statico (run_turn).
    Rimandato per i falsi positivi: progettare con cura prima di attivare.
