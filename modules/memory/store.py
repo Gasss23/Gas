@@ -35,6 +35,7 @@ le fondamenta.
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -161,6 +162,10 @@ class MemoryStore:
         # available = il DB è apribile e lo schema è a posto. Diagnostico: i
         # metodi degradano comunque da soli, ma `gas doctor` potrà leggerlo.
         self.available: bool = False
+        # fts_available = l'indice di ricerca testuale FTS5 (Strato A del Vector
+        # DB) è attivo. OPZIONALE: alcuni build di SQLite non hanno FTS5; in tal
+        # caso resta False e cerca_diario degrada a [] (ricorda ricade su substring).
+        self.fts_available: bool = False
         try:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             with self._connect() as con:
@@ -184,6 +189,41 @@ class MemoryStore:
             con.execute(ddl)
         self._ensure_columns(con)
         con.commit()
+        # FTS è OPZIONALE e separato: un suo fallimento NON deve mandare in
+        # degrado l'intera memoria (la ricerca substring resta come pavimento).
+        self._init_fts(con)
+
+    def _init_fts(self, con: sqlite3.Connection) -> None:
+        """Indice di ricerca testuale FTS5 sul diario — STRATO A del Vector DB di
+        FASE 2: ricerca per parole/radici con ranking BM25, DENTRO lo stesso file
+        .db (invariante file singolo: il backup resta una copia del file). È un
+        indice DERIVATO external-content (referenzia il diario per rowid, non
+        duplica il testo) tenuto in sync da un trigger AFTER INSERT — e basta:
+        il diario è append-only, niente UPDATE/DELETE, quindi l'immutabilità resta
+        intatta. OPZIONALE e fail-safe: se il build SQLite non espone FTS5,
+        fts_available resta False e cerca_diario ritorna [] (ricorda ricade su
+        substring). NON solleva: l'errore è confinato qui, l'init principale è già
+        committato e self.available NON viene toccato."""
+        try:
+            con.execute(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS diario_fts USING fts5("
+                "descrizione, tipo, content='diario', content_rowid='id')"
+            )
+            con.execute(
+                "CREATE TRIGGER IF NOT EXISTS diario_fts_ai AFTER INSERT ON diario "
+                "BEGIN INSERT INTO diario_fts(rowid, descrizione, tipo) "
+                "VALUES (new.id, new.descrizione, new.tipo); END"
+            )
+            # Backfill idempotente: indicizza il diario PREESISTENTE (DB legacy o
+            # righe scritte prima che l'indice esistesse). 'rebuild' ricostruisce
+            # l'indice external-content dalla tabella sorgente.
+            con.execute("INSERT INTO diario_fts(diario_fts) VALUES('rebuild')")
+            con.commit()
+            self.fts_available = True
+        except sqlite3.Error as e:
+            log.warning("FTS5 non disponibile su %s (%s) — ricerca substring "
+                        "come fallback", self.db_path, e)
+            self.fts_available = False
 
     @staticmethod
     def _ensure_columns(con: sqlite3.Connection) -> None:
@@ -381,6 +421,42 @@ class MemoryStore:
                 return self._rows(cur)
         except (sqlite3.Error, OSError) as e:
             log.warning("diario_recente fallita (%s): %s", self.db_path, e)
+            return []
+
+    @staticmethod
+    def _fts_match(testo: str) -> str:
+        """Costruisce una query MATCH FTS5 SICURA da testo libero: estrae i soli
+        token alfanumerici (Unicode-aware) e li mette ciascuno tra virgolette con
+        suffisso '*' (prefix match: 'ann' trova 'Anna'), in AND implicito. Le
+        virgolette neutralizzano i caratteri speciali della sintassi FTS5
+        (operatori AND/OR/NOT, parentesi, ecc.) → nessun errore di sintassi su
+        input arbitrario dell'utente. '' se non c'è alcun token (→ nessuna ricerca)."""
+        token = re.findall(r"\w+", str(testo or "").lower(), flags=re.UNICODE)
+        if not token:
+            return ""
+        return " ".join(f'"{t}"*' for t in token)
+
+    def cerca_diario(self, testo: str, n: int = 10) -> List[Dict[str, Any]]:
+        """Ricerca testuale sul diario via FTS5 (Strato A del Vector DB): per
+        parole/radici, ordinata per pertinenza (BM25, più pertinente prima).
+        Ritorna le righe complete del diario. [] se FTS è assente, la query è
+        vuota di token, o in degrado (§9): in tutti questi casi chi chiama
+        (ricorda) ricade sulla ricerca substring storica."""
+        if not self.fts_available:
+            return []
+        match = self._fts_match(testo)
+        if not match:
+            return []
+        try:
+            with self._connect() as con:
+                cur = con.execute(
+                    "SELECT d.* FROM diario_fts f JOIN diario d ON d.id = f.rowid "
+                    "WHERE diario_fts MATCH ? ORDER BY bm25(diario_fts) LIMIT ?",
+                    (match, n),
+                )
+                return self._rows(cur)
+        except (sqlite3.Error, OSError) as e:
+            log.warning("cerca_diario fallita (%s): %s", self.db_path, e)
             return []
 
     def diario_di_contatto(self, contatto_id: int) -> List[Dict[str, Any]]:

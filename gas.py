@@ -289,7 +289,7 @@ class GasKernel:
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
-            {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "testo da cercare negli eventi del diario (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
+            {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare negli eventi del diario; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
             {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
             {"type": "function", "function": {"name": "unisci_contatti", "description": "Fonde due schede della rubrica che sono in realtà lo STESSO lead salvato con chiavi diverse (es. una volta col nome 'Anna' e una volta con l'email 'anna@ex.com'). I dati confluiscono nel lead 'verso' e la scheda 'da' inizia a puntare ad esso, SENZA perdere la storia passata. Usalo SOLO quando sei certo che i due lead sono la stessa persona.", "parameters": {"type": "object", "properties": {"chiave_da": {"type": "string", "description": "chiave del doppione da assorbire"}, "chiave_verso": {"type": "string", "description": "chiave del lead da mantenere come principale"}}, "required": ["chiave_da", "chiave_verso"]}}}
@@ -815,12 +815,18 @@ class GasKernel:
                           or ["- (nessun evento)"])
             else:
                 parti.append(f"Nessun lead trovato per '{contatto}'.")
-        # 2) ricerca testuale nel diario
+        # 2) ricerca testuale nel diario. Prima la ricerca FTS5 (Strato A del
+        #    Vector DB): per parole/radici, ordinata per pertinenza. Se FTS è
+        #    assente o non trova nulla, si ricade sulla ricerca substring storica
+        #    (pavimento sempre disponibile, comportamento invariato) — cascata
+        #    fail-safe §9, mai un buco di funzionalità.
         if query:
-            q = str(query).lower()
-            hit = [e for e in self.memory.diario_recente(200)
-                   if q in str(e.get("descrizione", "")).lower()
-                   or q in str(e.get("tipo", "")).lower()][:n]
+            hit = self.memory.cerca_diario(str(query), n)
+            if not hit:
+                q = str(query).lower()
+                hit = [e for e in self.memory.diario_recente(200)
+                       if q in str(e.get("descrizione", "")).lower()
+                       or q in str(e.get("tipo", "")).lower()][:n]
             parti.append(f"Diario per '{query}' ({len(hit)}):")
             parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in hit]
                       or ["- (nessun risultato)"])

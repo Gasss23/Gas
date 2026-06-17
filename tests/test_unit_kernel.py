@@ -1284,6 +1284,84 @@ check("T24f migrazione DB legacy: available, dato intatto, merge funziona",
       and cid_mig is not None and len(m24f.lista_contatti()) == 1,
       f"available={m24f.available} pre={pre is not None} cid={cid_mig}")
 
+# ---------- T25: ricerca testuale FTS5 sul diario (Vector DB Strato A) ----------
+# Ricerca per parole/radici dentro lo stesso .db, ranking BM25, fail-safe con
+# fallback substring. Tutto locale, ZERO token.
+
+# T25a — cerca_diario trova per RADICE (prefix) e ignora i caratteri speciali
+m25 = mem_tmp()
+m25.append_diario("nota", "offerta fitness inviata ad Anna")
+m25.append_diario("nota", "chiamata con Marco per il preventivo")
+m25.append_diario("messaggio", "DM inviato a Lucia")
+hit_radice = [e["descrizione"] for e in m25.cerca_diario("fitnes", 10)]   # radice -> 'fitness'
+hit_safe = m25.cerca_diario('AND OR "(((', 10)                            # niente crash sintassi
+hit_none = m25.cerca_diario("inesistente", 10)
+check("T25a FTS5: match per radice, query con caratteri speciali non crasha",
+      m25.fts_available is True
+      and any("fitness" in d for d in hit_radice)
+      and isinstance(hit_safe, list) and hit_none == [],
+      f"fts={m25.fts_available} radice={hit_radice} safe={type(hit_safe).__name__}")
+
+# T25b — ranking per pertinenza: l'evento con più occorrenze del termine viene prima
+m25b = mem_tmp()
+m25b.append_diario("nota", "breve cenno al budget")
+m25b.append_diario("nota", "budget budget budget: discusso a lungo il budget col cliente")
+top = m25b.cerca_diario("budget", 10)
+check("T25b FTS5 ranking BM25: il più pertinente viene prima",
+      len(top) == 2 and "a lungo" in top[0]["descrizione"],
+      f"top0={top[0]['descrizione'][:40] if top else None!r}")
+
+# T25c — backfill su DB con eventi PREESISTENTI: l'indice si popola al rebuild di init.
+# Costruisco un DB con diario già pieno SENZA la tabella FTS, poi apro MemoryStore.
+d25 = tempfile.mkdtemp(prefix="gas_mem_fts_")
+pre_db = Path(d25) / "pre.db"
+_c = _sqlite3.connect(str(pre_db))
+_c.executescript("""
+    CREATE TABLE diario (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL,
+        tipo TEXT NOT NULL, descrizione TEXT NOT NULL, contatto_id INTEGER);
+    INSERT INTO diario (ts, tipo, descrizione) VALUES ('2026-01-01','nota','vecchia nota su campagna Instagram');
+""")
+_c.commit(); _c.close()
+m25c = MemoryStore(pre_db)
+back = [e["descrizione"] for e in m25c.cerca_diario("instagram", 10)]
+check("T25c FTS5 backfill indicizza il diario preesistente al rebuild di init",
+      m25c.available is True and any("Instagram" in d for d in back),
+      f"available={m25c.available} back={back}")
+
+# T25d — integrazione in ricorda(query): usa FTS, immutabilità del diario INTATTA,
+# e i vincoli storici di T21d restano veri (preventivo -> 0, DM -> trovato).
+k25 = kernel_tmp()
+k25.memory.append_diario("nota", "DM inviato a Mario")
+k25.memory.append_diario("nota", "spedito catalogo prodotti")
+r_dm = k25._ricorda(query="DM")
+r_prev = k25._ricorda(query="preventivo")        # nessun evento -> 0 (come T21d)
+r_catalogo = k25._ricorda(query="catalog")       # radice -> trova 'catalogo'
+# immutabilità: UPDATE sul diario deve restare vietato anche con l'indice FTS attivo
+imm_ok = False
+try:
+    with _sqlite3.connect(str(k25.memory.db_path)) as _cc:
+        _cc.execute("UPDATE diario SET descrizione='X' WHERE id=1")
+except _sqlite3.Error:
+    imm_ok = True
+check("T25d ricorda(query) via FTS + vincoli T21d + diario immutabile",
+      "DM inviato a Mario" in r_dm and "Diario per 'preventivo' (0)" in r_prev
+      and "spedito catalogo" in r_catalogo and imm_ok,
+      f"dm={'DM' in r_dm} prev0={'(0)' in r_prev} cat={'catalogo' in r_catalogo} imm={imm_ok}")
+
+# T25e — fail-safe: FTS forzato non-disponibile -> cerca_diario [] e ricorda
+# ricade sul substring storico (nessun buco di funzionalità).
+m25e = mem_tmp()
+m25e.append_diario("nota", "promemoria fattura cliente")
+m25e.fts_available = False                        # simula build senza FTS5
+deg = m25e.cerca_diario("fattura", 10)
+k25e = kernel_tmp()
+k25e.memory.append_diario("nota", "promemoria fattura cliente")
+k25e.memory.fts_available = False
+r_fb = k25e._ricorda(query="fattura")             # deve trovarlo via substring
+check("T25e FTS assente -> cerca_diario [] e ricorda ricade su substring",
+      deg == [] and "promemoria fattura cliente" in r_fb,
+      f"deg={deg} fb={'fattura' in r_fb}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
