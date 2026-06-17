@@ -1,6 +1,14 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-17 (doctor 402 onesto — review #20 APPROVATO, commit `7220c28`):**
+> Il `doctor` mostrava `[KO]` allarmante per OpenRouter coi crediti esauriti (HTTP
+> `402`), ma è un rung OPZIONALE gratuito (paracadute): stato benigno atteso. Nuovo
+> helper PURO `_classify_provider_error` (429→QUOTA; 402 su rung opzionale→WARN; 402
+> su rung obbligatorio→KO; resto→KO troncato 60 char) e il `doctor` ci delega.
+> **A runtime nessuna modifica**: `run_turn` GIÀ scala da sé al rung successivo sul 402
+> (§9, verificato dal vivo). Exit code del doctor INVARIATO (WARN/KO erano già
+> "avvisi", non FAIL); zero token. Test T27a-d. Suite **128→132**.
 > **2026-06-17 (Backup automatico del DB — review #19 APPROVATO, commit `cb99d1c`):**
 > Rete di sicurezza per il dato più prezioso e meno rimpiazzabile del sistema
 > (`.gas_memory.db`, che la "macchina del tempo" snapshot NON copre): difesa
@@ -318,7 +326,9 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **128 PASS, 0 FAIL** (2026-06-17). Dai 123 si aggiungono i 5 T26 (backup memoria:
+  **132 PASS, 0 FAIL** (2026-06-17). Dai 128 si aggiungono i 4 T27 (classificazione
+  errori provider nel doctor: 429→QUOTA via status/testo, 402 opzionale→WARN, 402
+  obbligatorio→KO, generico→KO troncato a 60). Dai 123 si aggiungono i 5 T26 (backup memoria:
   integrità sano/corrotto, backup+rotazione+retention pura, throttling, skip su
   corruzione, kernel fail-safe + memoria None). Dai 118 si aggiungono i 5 T25 (Vector DB
   Strato A / FTS5: match per radice + query ostile senza crash, ranking BM25,
@@ -516,8 +526,9 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): 19 review completate
-  (#19 backup automatico del DB del 2026-06-17 — APPROVATO senza riserve bloccanti,
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): 20 review completate
+  (#20 doctor 402→WARN sui rung free del 2026-06-17 — APPROVATO senza riserve;
+  #19 backup automatico del DB del 2026-06-17 — APPROVATO senza riserve bloccanti,
   2 note cosmetiche; #18 Vector DB Strato A — APPROVATO;
   #17 fusione lead R-crm-1b del 2026-06-17 — RESPINTO per il bug d'ordine
   ALTER/CREATE INDEX su DB legacy, poi APPROVATO dopo fix + T24f; #18 Vector DB
