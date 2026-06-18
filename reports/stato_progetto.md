@@ -1,6 +1,27 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-18 (R-crm-1 RIFATTO — identità su `chiave_norm` separata + NFKC, review
+> #22 APPROVATO CON RISERVE, commit `ca08df7`):** su scelta ESPLICITA dell'utente (dopo
+> avergli fatto presente che R-crm-1 era GIÀ chiuso in forma "normalizza-in-place" da
+> review #16) la normalizzazione chiavi è stata RIFATTA secondo il design originale della
+> task: `chiave` ora conserva il valore **AS-ENTERED** (grafia digitata, leggibile) e
+> l'IDENTITÀ passa su una colonna derivata **`chiave_norm` UNIQUE**. `normalizza_chiave`
+> guadagna **NFKC** (forme di compatibilità Unicode: 'Ａ'→'a', 'ﬁ'→'fi') prima di
+> collapse-whitespace/lower; idempotenza preservata. `upsert_contatto` usa
+> `ON CONFLICT(chiave_norm)` e in update NON tocca `chiave` (prima grafia stabile); i
+> lookup risolvono su `chiave_norm`. **Migrazione ADDITIVA e SICURA** in `_ensure_columns`:
+> ALTER ADD `chiave_norm` (nullable) + backfill (scrive SOLO la nuova colonna, anagrafica
+> intatta) + **rilevamento collisioni** (`GROUP BY chiave_norm HAVING COUNT>1`): se due
+> righe storiche collassano sulla stessa forma canonica → `ChiaveNormCollisione`, **NIENTE
+> fusione**, indice UNIQUE NON creato, `available=False` + `collisione_chiave_norm` (il
+> merge dei duplicati ESISTENTI è MANUTENZIONE UMANA — STOP GATE rispettato). Il dato
+> storico resta INTATTO anche ad abort (verificato dal revisore riaprendo il file). **gas.py
+> INVARIATO** (`_trova_contatto` già normalizzava l'haystack al volo). Suite **135→139**
+> (T23a/T23f/T28b → `chiave_norm`; +T29a-d NFKC/as-entered/migrazione pulita+collisione).
+> NB: la prevenzione dei duplicati FUTURI è fatta; il merge dei duplicati ESISTENTI resta
+> migrazione umana (parcheggiato). Riserva nuova **R-crm-norm-2** (sotto). Vector DB Strato
+> B resta ❄️ CONGELATO (design in discussione nella chat di strategia, NON in coda).
 > **2026-06-17 (CHIUSURA FASE 2 memoria — declassamento `unisci_contatti`, review #21
 > APPROVATO, commit `0240161`):** il merge di lead è mutante e IRREVERSIBILE, quindi
 > NON è più un tool autopilot ma **MANUTENZIONE UMANA** (rimosso da `tools_schema` e
@@ -341,7 +362,11 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **135 PASS, 0 FAIL** (2026-06-17). Dai 132 si aggiungono i 3 T28 (declassamento
+  **139 PASS, 0 FAIL** (2026-06-18). Dai 135 si aggiungono i 4 T29 (R-crm-1 refactor
+  chiave_norm: T29a NFKC, T29b chiave as-entered conservata + identità su chiave_norm,
+  T29c migrazione legacy pulita → backfill + indice UNIQUE, T29d migrazione con collisione
+  → rilevata/ABORT/niente fusione/indice non creato); T23a/T23f/T28b aggiornati al nuovo
+  contratto (asserivano `chiave`==normalizzata → ora `chiave_norm`). Storico: dai 132 i 3 T28 (declassamento
   `unisci_contatti`: T28a fuori da schema+dispatcher con meccanismo manuale intatto,
   T28b coerenza whitespace in `_trova_contatto`, T28c chiave canonica nei messaggi);
   i T24a/c/d migrati da `execute_tool_call` all'handler `_unisci_contatti` (stesso
@@ -476,7 +501,10 @@
   di ambiguità; R2 (costanti hardcoded) → override env `GAS_MEMORY_PIN_*` via `_env_int`
   fail-safe; R3 (euristica `*5`) → `MEMORY_PIN_SCAN=200` bounded. `DIARIO_NOISE_TIPI`
   resta hardcoded di proposito (non un tetto numerico). Dettaglio nella voce CRM sopra.
-- ✅ **R-crm-1 (parte case/whitespace) — CHIUSA** (2026-06-17, `cdf764a`, review #16):
+- ✅ **R-crm-1 (parte case/whitespace) — CHIUSA, poi RIFATTA con `chiave_norm` separata**
+  (chiusa il 2026-06-17 `cdf764a` review #16; RIDISEGNATA il 2026-06-18 `ca08df7` review
+  #22 su scelta utente — vedi blocco datato in cima e voce motore). Forma attuale: `chiave`
+  conserva l'as-entered, l'identità è la colonna derivata `chiave_norm` UNIQUE, con NFKC.
   chiavi che differiscono solo per maiuscole/whitespace della STESSA stringa
   (`"Anna"` / `" ANNA "` → un record) risolvono allo stesso contatto via
   `normalizza_chiave` (trim/collasso-whitespace/lower, pura+idempotente, fail-safe),
@@ -497,6 +525,14 @@
   PREVENTIVA candidata — **policy di chiave canonica** (preferire SEMPRE l'email
   quando disponibile) — resta NON presa (scelta umana). Finché il merge è manuale,
   un **un-merge non è necessario** (registrato, nessun impegno).
+- 🟡 **R-crm-norm-2 (osservabilità collisione chiave_norm)** (review #22, 2026-06-18,
+  minore non bloccante): se la migrazione R-crm-1 trova duplicati storici sulla stessa
+  `chiave_norm`, lo store si blocca fail-closed (`available=False`) e registra il dettaglio
+  dei gruppi in conflitto in `self.collisione_chiave_norm`, MA questo NON è ancora esposto
+  in `gas doctor` sez. 8 "Memoria". Su VPS un DB bloccato per collisione apparirebbe come
+  "memoria non operativa" senza i gruppi a portata dell'operatore. Coerente con lo scope
+  della fetta (gas.py invariato); follow-up: in doctor mostrare `collisione_chiave_norm`
+  quando valorizzato. NB oggi il DB di sviluppo è vuoto → caso non attivo.
 - 🟡 **Riserve CRM contatti dal loop** (R-mem-crm, review #15, minori non bloccanti):
   (R-crm-2) `int(c["id"])` in `_imposta_stato_contatto` assume id convertibile (sempre
   vero con PK INTEGER SQLite, e protetto dal try/except globale) — cosmetico.
@@ -550,9 +586,9 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): **21 review completate**,
-  ultima la **#21** (declassamento `unisci_contatti` a manutenzione umana, 2026-06-17,
-  APPROVATO). Elenco in ordine: #1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 (TASK B),
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): **22 review completate**,
+  ultima la **#22** (R-crm-1 refactor a `chiave_norm` separata + NFKC, 2026-06-18,
+  APPROVATO CON RISERVE → R-crm-norm-2). Elenco in ordine: #1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 (TASK B),
   #10 (TASK C), review hook SessionEnd TASK 1 (2026-06-15, APPROVATO), #12 Memoria
   FASE 2 fetta 1 (APPROVATO CON RISERVE), #13 fetta 2a (APPROVATO CON RISERVE),
   #14 fetta 2b (APPROVATO CON RISERVE), #15 CRM contatti dal loop + chiusura R1/R2/R3
@@ -561,7 +597,8 @@
   su DB legacy → APPROVATO dopo fix + T24f), #18 Vector DB Strato A / FTS5 (APPROVATO),
   #19 backup automatico del DB (APPROVATO, 2 note cosmetiche), #20 doctor 402→WARN sui
   rung free (APPROVATO), #21 declassamento `unisci_contatti` (APPROVATO, 1 nota
-  cosmetica). Lezioni datate in `.claude/agents/memoria_revisore.md`.
+  cosmetica), #22 R-crm-1 refactor a `chiave_norm` separata + NFKC (APPROVATO CON
+  RISERVE → R-crm-norm-2). Lezioni datate in `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 

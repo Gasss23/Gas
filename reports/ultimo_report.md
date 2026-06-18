@@ -1,114 +1,111 @@
-# CHIUSURA FASE 2 memoria — declassamento `unisci_contatti` a manutenzione umana + igiene
+# R-crm-1 RIFATTO — identità contatti su `chiave_norm` separata + NFKC
 
-**Data:** 2026-06-17
-**Commit motore:** `0240161` (revisore #21 — APPROVATO, 1 nota cosmetica chiusa in sessione)
+**Data:** 2026-06-18
+**Commit motore:** `ca08df7` (revisore #22 — APPROVATO CON RISERVE)
 **Commit doc:** vedi sotto (stampato a fine task)
-**Suite:** **135/135, 0 FAIL** (era 132)
-**Scope (gate STRETTO rispettato):** nessuna feature nuova, nessun un-merge, nessuno
-Strato B, **NESSUNA modifica a store.py** (meccanismo di merge intatto).
+**Suite:** **139/139, 0 FAIL** (era 135)
+**Scope:** SOLO R-crm-1. `gas.py` INVARIATO. Nessun merge/dedup distruttivo.
 
 ---
 
-## PUNTO 1 — MOTORE: `unisci_contatti` fuori dall'autopilot (modifica principale)
+## PREMESSA — verifica dello stato reale (STOP GATE onorato)
 
-**Decisione architetturale:** il merge di lead è mutante e IRREVERSIBILE (lossy,
-COALESCE senza inverso pulito). Un modello in autopilot h24 su VPS non deve poterlo
-invocare da sé — stessa classe del restore di snapshot e del `git gc`, già "solo
-umano". Il dedup mancato è recuperabile; un merge errato no.
+La task chiedeva di IMPLEMENTARE R-crm-1, ma a fonti canoniche (`stato_progetto.md`,
+`store.py`) **R-crm-1 risultava GIÀ CHIUSO** dal 2026-06-17 (review #16) in forma
+"**normalizza-in-place**": `normalizza_chiave` applicata direttamente alla colonna
+`chiave` in `upsert_contatto`/`get_contatto_per_chiave`. Mi sono **FERMATO** e l'ho
+segnalato all'utente PRIMA di scrivere codice (come imposto dal mandato). L'utente, messo
+di fronte alla scelta, ha **deciso ESPLICITAMENTE** di rifare il design secondo la spec
+originale della task: colonna `chiave_norm` separata + `chiave` as-entered. Procedo quindi
+con quel refactor.
 
-In `gas.py`:
-- **rimossa** l'entry `unisci_contatti` da `tools_schema` (il modello non lo vede più);
-- **rimosso** il ramo `elif name == "unisci_contatti"` da `execute_tool_call`: ora cade
-  nel `else` → `"Tool non trovato."`;
-- l'handler **`_unisci_contatti` RESTA** come metodo richiamabile (uso manuale/futuro),
-  con docstring aggiornata: è MANUTENZIONE UMANA, non tool autopilot, e perché
-  (irreversibile/lossy, classe restore/gc);
-- `_riassumi_args` **lasciato invariato** (il caso `unisci_contatti`): scelta esplicita,
-  l'handler resta richiamabile (il mandato: "se l'handler resta richiamabile, lascialo").
+Differenze del refactor rispetto allo stato pre-esistente:
+1. **NFKC** non c'era (solo `split()+lower()`) → aggiunto.
+2. La grafia originale NON era conservata (la `chiave` veniva sovrascritta con la forma
+   normalizzata) → ora `chiave` = **as-entered**, identità su `chiave_norm`.
 
-Il **MECCANISMO** di merge in `MemoryStore` (`unisci_contatti`, `merged_into`,
-`_ensure_columns`, risolutore canonico) **NON è toccato** (store.py non nel diff).
+---
 
-## PUNTO 2 — MOTORE: coerenza whitespace in `_trova_contatto`
+## COSA È STATO FATTO (solo `modules/memory/` + `tests/`)
 
-Il confronto substring usava `termine.lower()` senza collassare il whitespace, mentre le
-chiavi storate sono normalizzate. Ora il collasso si applica a **ENTRAMBI i lati**
-riusando `normalizza_chiave` SOLO ai fini del confronto (needle e haystack chiave+nome):
-un needle `"anna   rossi"` trova lo storato `"anna rossi"`. Il ramo **match-esatto**
-(`get_contatto_per_chiave`) **NON toccato**.
+### PUNTO 1 — `normalizza_chiave`: + NFKC (pura, idempotente)
+`unicodedata.normalize("NFKC", …)` PRIMA del collasso whitespace + lower: unifica le forme
+di compatibilità Unicode (fullwidth `Ａ`→`a`, legatura `ﬁ`→`fi`, spazi esotici).
+Idempotenza preservata (`norm(norm(x))==norm(x)`), fail-safe §9 (`None`/non-str → `""`).
+**Nessuna logica telefono/email in v1** (dichiarata come fetta futura nella docstring).
 
-## PUNTO 3 — MOTORE (cosmetico): chiude R-crm-norm-1
+### PUNTO 2 — Identità su `chiave_norm` UNIQUE, `chiave` = as-entered
+- Schema `contatti`: `chiave` perde `UNIQUE` (diventa grafia originale leggibile); nuova
+  colonna `chiave_norm TEXT NOT NULL`; l'indice **UNIQUE** su `chiave_norm` si crea in
+  `_ensure_columns` (dopo il backfill).
+- `upsert_contatto`: INSERT con `chiave` (as-entered) + `chiave_norm`, `ON CONFLICT
+  (chiave_norm)`; in **update NON tocca `chiave`** → si conserva la PRIMA grafia vista.
+- Lookup: `_risolvi_canonico` e `get_contatto_per_chiave` risolvono su `chiave_norm`.
+- `update_stato_contatto` (per id) **INVARIATO**.
 
-I messaggi di **successo** di `_salva_contatto`/`_imposta_stato_contatto` mostrano ora la
-chiave nella forma CANONICA persistita (`normalizza_chiave(chiave)`): schermo e DB
-coincidono. Solo il testo del messaggio.
+### PUNTO 3 — Migrazione ADDITIVA + SICURA (con rilevamento collisioni)
+In `_ensure_columns`: `ALTER ADD COLUMN chiave_norm` (nullable) → **backfill** (deriva da
+`chiave`, scrive SOLO la nuova colonna, anagrafica intatta) → **rilevamento collisioni**
+(`GROUP BY chiave_norm HAVING COUNT>1`):
+- **collisioni presenti** → solleva `ChiaveNormCollisione` coi gruppi in conflitto: **NON
+  fonde nulla**, **NON crea l'indice**, `__init__` cattura → `available=False` +
+  `self.collisione_chiave_norm` (fail-safe §9, mai crash). Il merge dei duplicati
+  ESISTENTI è **MANUTENZIONE UMANA** (STOP GATE rispettato: collisione = ferma e riporta).
+- **zero collisioni** → crea l'indice UNIQUE. Su DB vuoto è un no-op.
 
-## PUNTO 4 — DOC (no review)
-
-In `reports/stato_progetto.md`: (a) **R-crm-1b** spostato da ✅CHIUSA a **🟡 MITIGATA**
-(dedup cross-formato non prevenuto; meccanismo di merge come manutenzione umana; difesa
-preventiva "chiave canonica" candidata, non presa); (b) voce motore "Fusione lead
-cross-formato" riscritta (merge non più tool autopilot, e perché); (c) **R-crm-norm-1**
-marcata CHIUSA; (d) paragrafo "Istituzioni di processo C" riscritto pulito (era #18
-duplicato + narrazione doppia) — ultima review ora **#21** (lo stato reale è oltre il
-"#19" indicato nel mandato, scritto prima delle review #20/#21). Registrato che lo
-**Strato B del Vector DB è CONGELATO** (FTS5 basta; si rivaluta solo se il funnel reale
-lo richiede) e che un **un-merge è NON necessario** col merge manuale.
+`gas.py` **INVARIATO**: `_trova_contatto` già normalizzava l'haystack al volo, quindi
+funziona identico con `chiave` as-entered.
 
 ---
 
 ## VERIFICHE (eseguite e dimostrate)
 
 ### A. Suite completa
-`python tests/test_unit_kernel.py` → **`=== RIEPILOGO: 135 PASS, 0 FAIL ===`** (era 132).
+`python tests/test_unit_kernel.py` → **`=== RIEPILOGO: 139 PASS, 0 FAIL ===`** (era 135).
 
-### B. `git diff --cached --stat` (commit motore `0240161`)
+### B. `git diff --cached --stat` (commit motore `ca08df7`)
 ```
- gas.py                    | 49 +++++++++++++++++++++-------------
- tests/test_unit_kernel.py | 65 +++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 89 insertions(+), 25 deletions(-)
+ modules/memory/__init__.py |   2 +
+ modules/memory/store.py    | 140 +++++++++++++++++++++++++++++++++++++--------
+ tests/test_unit_kernel.py  |  95 ++++++++++++++++++++++++++++--
+ 3 files changed, 207 insertions(+), 30 deletions(-)
 ```
-SOLO `gas.py` + `tests/`. **`modules/memory/store.py` NON nel diff** (verificato:
-`git diff --stat modules/memory/store.py` vuoto). Le invarianti motore
-(`_get_window`/`_cap_window_chars`/`for _ in range(10)`/bwrap/`_snapshot`) e i simboli
-del meccanismo (`merged_into`/`_ensure_columns`/`diario_fts`/`cerca_diario`) NON
-compaiono nel diff di `gas.py`.
+`gas.py` NON nel diff. Invarianti motore (`_get_window`/`_cap_window_chars`/
+`for _ in range(10)`/sandbox/snapshot/immutabilità diario) intatte.
 
-### C. `unisci_contatti` non più esposto, meccanismo intatto (grep)
-- `grep -c '"name": "unisci_contatti"' gas.py` → **0** (fuori da `tools_schema`)
-- `grep -c 'elif name == "unisci_contatti"' gas.py` → **0** (fuori dal dispatcher)
-- `def unisci_contatti` / `merged_into` / `def _ensure_columns` → **presenti in
-  `modules/memory/store.py`** (meccanismo INTATTO)
-- handler `_unisci_contatti` ancora presente in `gas.py` (richiamabile a mano)
-
-### D. Esito dei nuovi test
+### C. Esito dei nuovi/aggiornati test
 ```
-[PASS] T28a unisci_contatti fuori da schema+dispatcher, meccanismo manuale intatto
-[PASS] T28b _trova_contatto: whitespace multiplo nel needle trova lo storato normalizzato
-[PASS] T28c messaggi di successo mostrano la chiave normalizzata (R-crm-norm-1)
+[PASS] T29a normalizza_chiave applica NFKC (compatibilità Unicode)
+[PASS] T29b chiave as-entered conservata + identità su chiave_norm (no doppione)
+[PASS] T29c migrazione pulita: backfill + indice UNIQUE, dedup sulla forma canonica
+[PASS] T29d migrazione con collisione: rilevata, niente fusione/perdita, indice non creato
+[PASS] T23a / T23f / T28b  (aggiornati: chiave==normalizzata → chiave_norm)
 ```
-I T24a-f (merge nello store) restano **verdi**: T24a/c/d migrati da
-`execute_tool_call("unisci_contatti", ...)` (path tool rimosso) all'handler
-`_unisci_contatti(...)` — stesso output, asserzioni invariate; T24b/e/f usano già lo
-store direttamente.
+T29d dimostra dal vivo: `available=False`, `collisione_chiave_norm` valorizzato coi gruppi
+(`'mario rossi' → righe 1,2`), DB storico **intatto** (2 righe, `chiave` originali), indice
+UNIQUE non creato.
 
 ---
 
 ## PROCESSO
-- **Gate di review §3**: PUNTI 1-3 toccano `gas.py`/`tests/` → subagent **revisore**
-  invocato sul diff staged PRIMA del commit → **APPROVATO** (review #21). Unica nota
-  cosmetica (commento su `_trova_contatto` impreciso sul `nome` non normalizzato in
-  storage) **chiusa in sessione** affinando il commento. PUNTO 4 doc-only → no review.
-- Hook deterministico onorato (`.claude/.review_ok` creato per il commit, rimosso subito dopo).
-- `stato_progetto.md` e `diff_sessione.md` aggiornati.
+- **Gate di review §3**: diff su `modules/`+`tests/` → subagent **revisore** invocato sul
+  diff staged PRIMA del commit → **APPROVATO CON RISERVE** (review #22). Verifiche del
+  revisore: suite 139/139, ispezione a freddo del DB post-abort, idempotenza NFKC su input
+  tipografici reali, innocuità provata del vincolo UNIQUE(chiave) legacy.
+- Hook deterministico onorato (`.claude/.review_ok` creato per il commit, rimosso subito).
+- `stato_progetto.md` e `diff_sessione.md` aggiornati; `memoria_revisore.md` aggiornata dal
+  revisore (3 lezioni datate 2026-06-18).
+
+## RISERVE (review #22, non bloccanti — tracciate in `stato_progetto.md`)
+- **R-crm-norm-2**: `collisione_chiave_norm` non ancora esposto in `gas doctor` sez. 8
+  "Memoria". Follow-up (gas.py invariato in questa fetta).
+- **Normalizzazione per-tipo (telefono/email)** non in v1: R-crm-1b (identità cross-formato)
+  resta MITIGATA, non chiusa (corretto e onesto; T23f presidia il confine).
 
 ---
 
 ## §FINALE — Fuori da questo mandato (NON eseguito, scope umano)
-- **Difesa PREVENTIVA di R-crm-1b**: policy di chiave canonica (preferire SEMPRE l'email
-  quando disponibile) per evitare a monte il dedup cross-formato. Scelta di semantica
-  della rubrica, NON presa.
-- **Un-merge / reverse-merge**: NON necessario finché il merge è manuale. Se un domani il
-  merge tornasse automatico servirebbe; oggi no. Registrato, nessun impegno.
-- **`GAS_MEMORY_PIN_SCAN`** env override e **R-crm-2** (`int(c["id"])`): già tracciati tra
-  i finding 🟡, fuori scope qui.
+- **Merge dei duplicati ESISTENTI**: in caso di collisione la migrazione si ferma; la
+  fusione delle schede storiche è operazione UMANA (mai automatica). La prevenzione dei
+  duplicati FUTURI è invece attiva.
+- **R-crm-norm-2 in doctor** e **normalizzazione per-tipo**: prossime fette, non ora.

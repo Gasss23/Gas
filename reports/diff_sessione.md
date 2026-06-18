@@ -1,36 +1,43 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-17 (CHIUSURA FASE 2 memoria: declassamento unisci_contatti)
+# 🔀 DIFF DI SESSIONE — 2026-06-18 (R-crm-1 refactor: identità su chiave_norm separata)
 
-> Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni
-> sessione.
+> Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni sessione.
 
-## Cosa è cambiato e perché
-Chiusura di FASE 2 memoria: il merge di lead è mutante e IRREVERSIBILE, quindi non deve
-essere un tool che il modello invoca in autopilot. Declassato a **manutenzione umana**
-(meccanismo intatto) + igiene di lettura e cosmetica.
+## Tema
+R-crm-1 RIFATTO: normalizzazione chiavi contatti spostata a colonna `chiave_norm` separata
+(identità) con `chiave` = valore as-entered, più NFKC. Scelta esplicita dell'utente dopo che
+ho segnalato che R-crm-1 era già chiuso in forma "normalizza-in-place". Review #22 APPROVATO
+CON RISERVE.
 
-## File toccati (commit motore `0240161`, +89 / -25; SOLO gas.py + tests)
-- **`gas.py`**:
-  - PUNTO 1: rimossa l'entry `unisci_contatti` da `tools_schema` e il ramo dal dispatcher
-    `execute_tool_call` (→ "Tool non trovato."); handler `_unisci_contatti` resta
-    richiamabile a mano (docstring: manutenzione umana, perché). `_riassumi_args`
-    invariato. **store.py NON toccato** (meccanismo di merge intatto).
-  - PUNTO 2: `_trova_contatto` collassa il whitespace su ENTRAMBI i lati del substring
-    (riuso `normalizza_chiave` solo per il confronto); ramo match-esatto invariato.
-  - PUNTO 3: messaggi di successo di `_salva_contatto`/`_imposta_stato_contatto` con
-    chiave canonica (chiude R-crm-norm-1).
-  - import `normalizza_chiave` da `modules.memory`.
-- **`tests/test_unit_kernel.py`**: T28a-c nuovi; T24a/c/d migrati da `execute_tool_call`
-  all'handler `_unisci_contatti`. Suite **132→135, 0 FAIL**.
+## File toccati
 
-## Doc (commit separato, no review)
-`stato_progetto.md`: R-crm-1b ✅→🟡 MITIGATA; voce motore "Fusione lead" riscritta;
-R-crm-norm-1 CHIUSA; paragrafo Istituzioni C ripulito (ultima review #21); Strato B
-Vector DB CONGELATO; un-merge non necessario col merge manuale.
+- **`modules/memory/store.py`** (motore):
+  - `import unicodedata`; nuova eccezione `ChiaveNormCollisione`.
+  - `normalizza_chiave`: + NFKC prima di collapse-whitespace/lower (idempotente, fail-safe).
+  - Schema `contatti`: `chiave` non più UNIQUE (as-entered) + nuova colonna `chiave_norm`.
+  - `_ensure_columns`: migrazione additiva `chiave_norm` (ALTER + backfill + rilevamento
+    collisioni → `ChiaveNormCollisione` se duplicati storici, altrimenti indice UNIQUE).
+  - `__init__`: `self.collisione_chiave_norm`; cattura `ChiaveNormCollisione` → `available=False`.
+  - `upsert_contatto`: INSERT chiave (as-entered) + chiave_norm, `ON CONFLICT(chiave_norm)`,
+    update non tocca `chiave`.
+  - `_risolvi_canonico` / `get_contatto_per_chiave`: lookup su `chiave_norm`.
 
-## Processo
-Gate §3: revisore **#21 APPROVATO** (1 nota cosmetica chiusa in sessione). Report
-`ultimo_report.md` riscritto.
+- **`modules/memory/__init__.py`** (motore): esporta `ChiaveNormCollisione`.
 
-## Invarianti
-`_get_window` / `_cap_window_chars` / `for _ in range(10)` / sandbox bwrap / snapshot /
-FTS5 / meccanismo merge nello store INVARIATI.
+- **`tests/test_unit_kernel.py`** (test): T23a/T23f/T28b aggiornati al nuovo contratto
+  (`chiave`→`chiave_norm`); aggiunti T29a-d (NFKC, as-entered, migrazione pulita, migrazione
+  con collisione). Suite **135→139, 0 FAIL**.
+
+- **`.claude/agents/memoria_revisore.md`** (doc): 3 lezioni datate 2026-06-18 (revisore).
+
+- **`reports/stato_progetto.md` / `reports/ultimo_report.md` / `reports/diff_sessione.md`**
+  (doc): aggiornati a fine task; nuovo finding **R-crm-norm-2**.
+
+## Cosa NON è cambiato
+`gas.py` INVARIATO (`_trova_contatto` già normalizzava l'haystack). Invarianti motore
+(`_get_window`/`_cap_window_chars`/`for _ in range(10)`/sandbox/snapshot/immutabilità diario)
+intatte. Nessun merge/dedup distruttivo: i duplicati storici in collisione fermano la
+migrazione (decisione umana).
+
+## Commit della sessione
+- `ca08df7` — feat(memory): R-crm-1 identità su chiave_norm separata + NFKC (review #22)
+- (doc) — commit dedicato di report + memoria revisore (hash stampato a fine task)
