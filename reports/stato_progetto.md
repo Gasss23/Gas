@@ -1,6 +1,35 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-18 (Vector store FETTA 1 — storage + embedding STANDALONE, review #23
+> APPROVATO CON RISERVE, commit motore vedi `reports/ultimo_report.md`):** primo
+> tassello del retrieval semantico (Strato B, prima CONGELATO). NUOVO modulo
+> `modules/memory/vectors.py` (`VectorStore`) SOLO storage+embedding, **NON agganciato**
+> a `ricorda`/`run_turn`/loop (il wiring è una fetta successiva, solo PROPOSTA nel
+> report §FINALE). Sidecar `.gas_vectors.db` **SEPARATO** dal `.gas_memory.db` sacro:
+> CACHE DERIVATA e RICOSTRUIBILE dal diario (NON fonte di verità, NON nel backup,
+> gitignorata). Schema multi-source `(id, source, source_ref, testo, ts, vettore BLOB,
+> dim, model)`; v1 popola solo `source='diario'`. Embedding LOCALE via **fastembed**
+> (nuova dipendenza), brute-force COSINE in numpy (vettori float32 normalizzati a norma 1
+> in scrittura → dot product); **NIENTE sqlite-vec** (alpha pre-v1, formato instabile,
+> fuori dal percorso critico h24) e **NIENTE ANN** (a questi numeri il brute-force è <10ms).
+> `ricostruisci_da_diario(memory_store)` = motore del futuro `gas reindex` (qui NON
+> cablato a CLI); usa il nuovo lettore SOLA-LETTURA `MemoryStore.diario_tutto()`
+> (immutabilità del diario intatta). **DECISIONE UMANA ESPLICITA:** il modello della
+> spec `intfloat/multilingual-e5-small` NON è nel catalogo fastembed 0.8.0; l'utente ha
+> scelto `paraphrase-multilingual-MiniLM-L12-v2` (384-dim, 0.22GB nominali / ~504MB su
+> disco reali, regge l'italiano, entra nei vincoli RAM del VPS). I prefissi e5
+> `query:`/`passage:` NON si applicano (mappa per-modello: MiniLM → `("","")`), ma il
+> meccanismo resta nel codice pronto per un modello e5. **FAIL-SAFE §9 esteso:** importare
+> `modules.memory` NON fallisce se numpy/fastembed mancano (import protetti, GAS gira
+> identico); `available=False` → `index`/`ricostruisci`=None, `search`=[]; sidecar
+> mancante→creato, corrotto→degrado. **R-vec-1 CHIUSA in sessione** (su prescrizione del
+> revisore): il `try/except` di `_search_vec` ora avvolge anche `vstack`/`from_blob`/matmul
+> e cattura `ValueError` → una cella BLOB fisicamente corrotta degrada a [] invece di
+> crashare (precondizione di sicurezza per il wiring; T30f morde). Suite **139→145**
+> (T30a-f). `gas.py` INVARIATO. Riserve nuove **R-vec-2** (env-config) e **R-vec-3**
+> (ARM/RAM VPS) sotto. Verifiche dal vivo: embed reale 384-dim norma 1, frasi italiane
+> simili cos 0.876 vs diverse 0.113; cold embed ~0.11s dopo init ~7s.
 > **2026-06-18 (R-crm-1 RIFATTO — identità su `chiave_norm` separata + NFKC, review
 > #22 APPROVATO CON RISERVE, commit `ca08df7`):** su scelta ESPLICITA dell'utente (dopo
 > avergli fatto presente che R-crm-1 era GIÀ chiuso in forma "normalizza-in-place" da
@@ -94,6 +123,31 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 — Vector store FETTA 1 (storage + embedding semantico) ATTIVA,
+  ma STANDALONE (NON agganciata)** (2026-06-18, review #23 APPROVATO CON RISERVE):
+  primo strato del retrieval semantico, prima congelato. NUOVO modulo
+  `modules/memory/vectors.py` (`VectorStore`): SOLO livello di persistenza+embedding,
+  NESSUN aggancio a `ricorda`/`run_turn`/loop (wiring = fetta successiva, solo PROPOSTA
+  nel report §FINALE). `gas.py` INVARIATO. Sidecar `.gas_vectors.db` SEPARATO dal
+  `.gas_memory.db` sacro (CACHE derivata/ricostruibile dal diario, NON fonte di verità,
+  NON nel backup, gitignorata con `-wal`/`-shm`). Schema multi-source
+  `(id, source, source_ref, testo, ts, vettore BLOB, dim, model)` con
+  `UNIQUE(source, source_ref, model)` → `index` idempotente; v1 solo `source='diario'`,
+  campi pronti per source futuri (trascritti vocali/RAG) senza migrazione. Embedding
+  LOCALE via **fastembed** (`paraphrase-multilingual-MiniLM-L12-v2`, 384-dim — scelta
+  umana esplicita perché `multilingual-e5-small` assente dal catalogo 0.8.0); prefissi e5
+  gestiti per-modello nel codice (MiniLM → `("","")`). Ricerca brute-force COSINE in numpy
+  (vettori float32 NORMALIZZATI a norma 1 in scrittura → dot product), top-k + soglia
+  minima; **NIENTE sqlite-vec / NIENTE ANN** (deciso: alpha instabile / non serve a questi
+  numeri). `ricostruisci_da_diario` calcola TUTTI gli embedding PRIMA di svuotare l'indice
+  (embedding fallito → None, indice buono NON distrutto), poi DELETE+INSERT in una
+  transazione; legge via il nuovo `MemoryStore.diario_tutto()` (SOLA LETTURA, immutabilità
+  diario intatta). FAIL-SAFE §9: import protetti (numpy/fastembed assenti → `modules.memory`
+  importa lo stesso, GAS identico), `available=False`→degrado, sidecar corrotto→degrado,
+  cella BLOB corrotta→`search` [] (R-vec-1, T30f). "La memoria non mente": il `ts`
+  dell'evento sorgente viaggia col record. Test T30a-f (ranking con vettori finti, soglia,
+  ricostruzione+idempotenza, fail-safe fastembed-assente/DB-corrotto, embed reale 384-dim
+  SKIPPABILE, cella BLOB corrotta). Suite **139→145**.
 - **Memoria FASE 2 — Backup automatico del DB ATTIVO (anti auto-corruzione)**
   (2026-06-17, review #19 APPROVATO, commit `cb99d1c`): difesa automatica del dato
   MENO rimpiazzabile del sistema (`.gas_memory.db`, NON coperto dagli snapshot git).
@@ -362,7 +416,12 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **139 PASS, 0 FAIL** (2026-06-18). Dai 135 si aggiungono i 4 T29 (R-crm-1 refactor
+  **145 PASS, 0 FAIL** (2026-06-18). Dai 139 si aggiungono i 6 T30 (vector store fetta 1:
+  T30a index+search ranking con vettori finti deterministici, T30b soglia minima → nessun
+  risultato, T30c `ricostruisci_da_diario` coerente + ts sorgente + idempotenza, T30d
+  fail-safe fastembed-assente + DB-sidecar-corrotto, T30e embedding REALE 384-dim
+  normalizzato + similarità italiana — NON skippato in Codespace, SKIPPABILE in CI senza
+  rete, T30f R-vec-1 cella BLOB corrotta → `search` []). Storico: dai 135 i 4 T29 (R-crm-1 refactor
   chiave_norm: T29a NFKC, T29b chiave as-entered conservata + identità su chiave_norm,
   T29c migrazione legacy pulita → backfill + indice UNIQUE, T29d migrazione con collisione
   → rilevata/ABORT/niente fusione/indice non creato); T23a/T23f/T28b aggiornati al nuovo
@@ -426,6 +485,26 @@
 > `reports/finding_archiviati.md` (una riga datata ciascuno; dettaglio integrale
 > nella history git). Qui restano SOLO i finding ATTIVI.
 
+- ✅ **R-vec-1 (fail-safe di `_search_vec` su cella BLOB corrotta) — CHIUSA in sessione**
+  (review #23, 2026-06-18): il `try/except` di `_search_vec` ora avvolge anche
+  `vstack`/`_from_blob`/matmul e cattura `ValueError` oltre a `(sqlite3.Error, OSError)`.
+  Una cella `vettore` fisicamente troncata (header SQLite intatto, BLOB non multiplo di 4)
+  faceva propagare `ValueError` FUORI da `search`, contro la promessa "degrado, zero crash"
+  del modulo. Era latente (modulo non cablato) ma è precondizione di sicurezza per esporre
+  `search` al loop. Chiusa su prescrizione del revisore; T30f morde (riga corrotta dello
+  stesso model+dim della query → `search` degrada a []).
+- 🟡 **R-vec-2 (costanti/path del vector store non configurabili via env)** (review #23,
+  minore): `DEFAULT_VECTORS_FILENAME`, `EMBED_MODEL_NAME`, `EMBED_DIM`, `timeout=10`
+  hardcoded — stessa classe di `GAS_MEMORY_DB`/`WINDOW_CHAR_CAP`/`SNAPSHOT_KEEP`. Per il
+  deploy VPS (sidecar su volume persistente, eventuale modello e5 alternativo) valutare
+  `GAS_VECTORS_DB`/`GAS_EMBED_MODEL`. Non urgente, coerente con lo scope storage-only.
+- 🟡 **R-vec-3 (portabilità ARM + RAM del VPS non verificabile da qui)** (review #23,
+  informativa): la wheel `onnxruntime` per ARM (Oracle Ampere) e il footprint RAM
+  (~504MB modello su disco, init ~7s, **VPS a 1GB RAM** da `deploy_vps_bozza.txt`) restano
+  un'incognita da validare al deploy. L'arch di sviluppo è x86_64 → NON dato per scontato.
+  Dichiarata in `requirements.txt` e nel docstring; voce di CHECKLIST pre-deploy, non
+  difetto del codice. Mitigazione candidata se 1GB è stretto: swap, o modello ancora più
+  piccolo, o embedding solo on-demand (non per ogni evento).
 - 🟡 **Esfiltrazione via shell — CHIUSA a livello OS in os_strict** (era 🟠→🟡):
   con il sandbox bwrap attivo e `GAS_SANDBOX_MODE=os_strict` (default) è
   confinamento reale, non più mitigazione applicativa: rete isolata
@@ -586,8 +665,10 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): **22 review completate**,
-  ultima la **#22** (R-crm-1 refactor a `chiave_norm` separata + NFKC, 2026-06-18,
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): **23 review completate**,
+  ultima la **#23** (vector store fetta 1, 2026-06-18, APPROVATO CON RISERVE → R-vec-1
+  chiusa in sessione su sua prescrizione, R-vec-2/R-vec-3 tracciate). Prima la **#22**
+  (R-crm-1 refactor a `chiave_norm` separata + NFKC, 2026-06-18,
   APPROVATO CON RISERVE → R-crm-norm-2). Elenco in ordine: #1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 (TASK B),
   #10 (TASK C), review hook SessionEnd TASK 1 (2026-06-15, APPROVATO), #12 Memoria
   FASE 2 fetta 1 (APPROVATO CON RISERVE), #13 fetta 2a (APPROVATO CON RISERVE),
@@ -602,16 +683,20 @@
 
 ## Prossimi passi (in ordine di priorità)
 
-0. **Vector DB — STRATO A FATTO, STRATO B ❄️ CONGELATO (non "prossimo passo").**
-   Deciso il 2026-06-17 (chiusura FASE 2 memoria): la keyword search FTS5 (Strato A,
-   `977148d`, dentro lo stesso `.db`, zero dipendenze) **copre i bisogni attuali**.
-   Lo **Strato B** (embedding semantici LOCALI `fastembed`/ONNX + `sqlite-vec`, con
-   FTS5 come fallback) **NON è in coda di lavoro**: si rivaluta SOLO se il funnel reale
-   dimostra che la ricerca lessicale non basta. È anche l'unica parte che aggiunge
-   DIPENDENZE → comunque dietro **OK umano esplicito** (CLAUDE.md §10, "robustezza
-   prima della potenza"). Scartati: embedding via API (contro zero-token/offline) e
-   store separati Chroma/FAISS (romperebbero il file singolo). NB: un **un-merge** dei
-   lead è **NON necessario** finché il merge è MANUALE (registrato, nessun impegno).
+0. **Vector store semantico (Strato B) — FETTA 1 FATTA (storage+embedding standalone),
+   PROSSIMA = il WIRING.** Aggiornato 2026-06-18: su OK umano esplicito si è scongelato
+   lo Strato B e fatta la fetta 1 (`modules/memory/vectors.py`, review #23) — embedding
+   LOCALE `fastembed` (nuova dipendenza, autorizzata) + brute-force cosine in numpy,
+   **senza `sqlite-vec`** (alpha instabile, scartato) e **senza ANN**. La keyword search
+   FTS5 (Strato A, `977148d`) resta attiva e complementare. **Prossimo passo = la fetta di
+   WIRING** (vedi `reports/ultimo_report.md` §FINALE): far usare il vector store a
+   `ricorda(query)` con catch-up indexing pigro e bounded, e mostrare nello snippet
+   `ts` + stato CORRENTE del lead. **Precondizione di sicurezza GIÀ chiusa**: R-vec-1
+   (fail-safe di `search` su BLOB corrotto). Scartati a monte: embedding via API (contro
+   zero-token/offline) e store separati Chroma/FAISS (romperebbero il file singolo; il
+   sidecar `.gas_vectors.db` è invece una cache derivata, non un secondo file di verità).
+   Da validare al deploy: R-vec-3 (wheel onnxruntime ARM + RAM VPS 1GB). NB: un **un-merge**
+   dei lead resta **NON necessario** finché il merge è MANUALE (registrato).
 1. **Rilevamento PER-TURNO del degrado a solo-testo** (metà aperta di R2 #5):
    oggi solo osservabilità a freddo (doctor) + warning statico (run_turn).
    Rimandato per i falsi positivi: progettare con cura prima di attivare.
