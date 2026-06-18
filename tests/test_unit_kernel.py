@@ -1100,8 +1100,8 @@ id_b = m23.upsert_contatto(" anna", note="seconda")          # equivalente -> up
 got23 = m23.get_contatto_per_chiave("ANNA")                  # lookup con altra forma ancora
 check("T23a (R-crm-1) chiavi equivalenti = stesso record, nessun doppione",
       id_a == id_b and len(m23.lista_contatti()) == 1 and got23 is not None
-      and got23["chiave"] == "anna" and got23["nome"] == "Anna"
-      and got23["note"] == "seconda",
+      and got23["chiave"] == "Anna " and got23["chiave_norm"] == "anna"  # as-entered + canonica
+      and got23["nome"] == "Anna" and got23["note"] == "seconda",
       f"id_a={id_a} id_b={id_b} n={len(m23.lista_contatti())}")
 
 # T23b — imposta_stato_contatto trova il lead con chiave NON normalizzata in input
@@ -1165,7 +1165,7 @@ check("T23f (R-crm-1b APERTA) normalizzazione NON fonde identità cross-formato"
       n_rec == 2
       and k23f.memory.get_contatto_per_chiave("anna@ex.com") is not None
       and k23f.memory.get_contatto_per_chiave("Anna") is not None
-      and k23f.memory.get_contatto_per_chiave("Anna")["chiave"] == "anna",
+      and k23f.memory.get_contatto_per_chiave("Anna")["chiave_norm"] == "anna",
       f"n_record={n_rec}")
 
 # ---------- T24: fusione lead cross-formato (R-crm-1b) — merge a lapide ----------
@@ -1502,8 +1502,8 @@ m_ws, _ = k28b._trova_contatto("anna   rossi")     # spazi multipli + lower
 m_up, _ = k28b._trova_contatto("ANNA ROSSI")       # case-insensitive
 check("T28b _trova_contatto: whitespace multiplo nel needle trova lo storato normalizzato",
       m_ws is not None and m_up is not None
-      and m_ws["chiave"] == "anna rossi" and m_up["chiave"] == "anna rossi",
-      f"ws={m_ws['chiave'] if m_ws else None} up={m_up['chiave'] if m_up else None}")
+      and m_ws["chiave_norm"] == "anna rossi" and m_up["chiave_norm"] == "anna rossi",
+      f"ws={m_ws['chiave_norm'] if m_ws else None} up={m_up['chiave_norm'] if m_up else None}")
 
 # T28c (PUNTO 3) — i messaggi di successo mostrano la chiave CANONICA persistita
 # (normalizzata), così schermo e DB coincidono (chiude R-crm-norm-1).
@@ -1515,6 +1515,91 @@ check("T28c messaggi di successo mostrano la chiave normalizzata (R-crm-norm-1)"
       and "'frank'" in o_salva and "'frank'" in o_stato
       and "Frank" not in o_salva and "FRANK" not in o_stato,
       f"salva={o_salva!r} stato={o_stato!r}")
+
+# ---------- T29: R-crm-1 refactor — chiave_norm separata, NFKC, migrazione ----------
+# Verifica il NUOVO contratto: chiave = grafia AS-ENTERED, identità su chiave_norm
+# (derivata, UNIQUE), normalizzazione NFKC, e la migrazione ADDITIVA con rilevamento
+# collisioni che NON fonde nulla. Tutto su DB in dir temporanea, ZERO token.
+
+# T29a — NFKC: forme di compatibilità Unicode convergono sulla stessa chiave_norm
+check("T29a normalizza_chiave applica NFKC (compatibilità Unicode)",
+      normalizza_chiave("ﬁle") == "file"               # legatura 'ﬁ' -> 'fi'
+      and normalizza_chiave("ＡＢＣ") == "abc"          # fullwidth -> ascii
+      and normalizza_chiave("ﬁ") == normalizza_chiave("fi"),
+      f"file={normalizza_chiave('ﬁle')!r} abc={normalizza_chiave('ＡＢＣ')!r}")
+
+# T29b — upsert conserva la grafia AS-ENTERED in `chiave`, identità su chiave_norm:
+# due varianti -> UNA riga; chiave = PRIMA grafia vista; chiave_norm = forma canonica
+m29 = mem_tmp()
+id1 = m29.upsert_contatto("Mario Rossi", nome="Mario")
+id2 = m29.upsert_contatto("  mario   rossi ", note="vip")    # stessa identità -> update
+got29 = m29.get_contatto_per_chiave("MARIO ROSSI")
+check("T29b chiave as-entered conservata + identità su chiave_norm (no doppione)",
+      id1 == id2 and len(m29.lista_contatti()) == 1 and got29 is not None
+      and got29["chiave"] == "Mario Rossi"             # PRIMA grafia, NON sovrascritta
+      and got29["chiave_norm"] == "mario rossi"
+      and got29["note"] == "vip",
+      f"id1={id1} id2={id2} chiave={got29['chiave'] if got29 else None!r}")
+
+# T29c — MIGRAZIONE pulita: DB legacy senza chiave_norm (righe distinte) -> backfill
+# + indice UNIQUE creato, available, dati intatti, dedup sulla forma canonica attivo
+d29c = tempfile.mkdtemp(prefix="gas_mem_norm_ok_")
+legacy_ok = Path(d29c) / "ok.db"
+_c29 = _sqlite3.connect(str(legacy_ok))
+_c29.executescript("""
+    CREATE TABLE contatti (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chiave TEXT NOT NULL UNIQUE, nome TEXT, contatto TEXT,
+        stato TEXT NOT NULL DEFAULT 'nuovo', ultimo_contatto TEXT,
+        prossima_azione TEXT, note TEXT,
+        creato_il TEXT NOT NULL, aggiornato_il TEXT NOT NULL
+    );
+    INSERT INTO contatti (chiave, nome, stato, creato_il, aggiornato_il) VALUES
+        ('anna@ex.com','Anna','nuovo','2026-01-01','2026-01-01'),
+        ('bob@ex.com','Bob','nuovo','2026-01-01','2026-01-01');
+""")
+_c29.commit(); _c29.close()
+m29c = MemoryStore(legacy_ok)
+m29c.upsert_contatto("ANNA@EX.COM", note="ricontattare")    # stessa identità di anna
+_v = _sqlite3.connect(str(legacy_ok))
+norm_idx = any(r[1] == "idx_contatti_chiave_norm"
+               for r in _v.execute("PRAGMA index_list(contatti)"))
+_v.close()
+check("T29c migrazione pulita: backfill + indice UNIQUE, dedup sulla forma canonica",
+      m29c.available is True and m29c.collisione_chiave_norm is None
+      and norm_idx is True and len(m29c.lista_contatti()) == 2,
+      f"avail={m29c.available} idx={norm_idx} n={len(m29c.lista_contatti())}")
+
+# T29d — MIGRAZIONE con COLLISIONE: due righe storiche che collassano sulla stessa
+# chiave_norm -> rilevata, init NON operativo, NESSUNA fusione/perdita, indice NON creato
+d29d = tempfile.mkdtemp(prefix="gas_mem_norm_clash_")
+legacy_clash = Path(d29d) / "clash.db"
+_c30 = _sqlite3.connect(str(legacy_clash))
+_c30.executescript("""
+    CREATE TABLE contatti (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chiave TEXT NOT NULL UNIQUE, nome TEXT, contatto TEXT,
+        stato TEXT NOT NULL DEFAULT 'nuovo', ultimo_contatto TEXT,
+        prossima_azione TEXT, note TEXT,
+        creato_il TEXT NOT NULL, aggiornato_il TEXT NOT NULL
+    );
+    INSERT INTO contatti (chiave, nome, stato, creato_il, aggiornato_il) VALUES
+        ('Mario Rossi','Mario','nuovo','2026-01-01','2026-01-01'),
+        ('mario  rossi','Mario2','nuovo','2026-01-02','2026-01-02');
+""")
+_c30.commit(); _c30.close()
+m29d = MemoryStore(legacy_clash)            # init NON deve sollevare (fail-safe §9)
+_w = _sqlite3.connect(str(legacy_clash)); _w.row_factory = _sqlite3.Row
+righe29 = _w.execute("SELECT chiave, nome FROM contatti ORDER BY id").fetchall()
+idx_clash = [r["name"] for r in _w.execute("PRAGMA index_list(contatti)")]
+_w.close()
+check("T29d migrazione con collisione: rilevata, niente fusione/perdita, indice non creato",
+      m29d.available is False and m29d.collisione_chiave_norm is not None
+      and "mario rossi" in m29d.collisione_chiave_norm
+      and len(righe29) == 2 and righe29[0]["chiave"] == "Mario Rossi"
+      and righe29[1]["chiave"] == "mario  rossi"          # dato storico INTATTO
+      and "idx_contatti_chiave_norm" not in idx_clash,
+      f"avail={m29d.available} coll={m29d.collisione_chiave_norm!r} n={len(righe29)}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

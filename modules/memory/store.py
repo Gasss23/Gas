@@ -38,6 +38,7 @@ import logging
 import re
 import sqlite3
 import time
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -94,7 +95,14 @@ _SCHEMA: Tuple[str, ...] = (
     f"""
     CREATE TABLE IF NOT EXISTS contatti (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        chiave          TEXT    NOT NULL UNIQUE,
+        -- chiave = valore AS-ENTERED (grafia originale, leggibile). NON è più
+        -- l'identità: l'unicità sta su chiave_norm (indice UNIQUE in _ensure_columns).
+        chiave          TEXT    NOT NULL,
+        -- chiave_norm = forma canonica derivata da `chiave` (normalizza_chiave).
+        -- È l'IDENTITÀ del lead: due grafie della stessa chiave logica condividono
+        -- chiave_norm → un solo record (anti-doppioni R-crm-1). L'indice UNIQUE si
+        -- crea in _ensure_columns DOPO il backfill (e solo se zero collisioni).
+        chiave_norm     TEXT    NOT NULL,
         nome            TEXT,
         contatto        TEXT,
         stato           TEXT    NOT NULL DEFAULT '{STATO_DEFAULT}'
@@ -130,17 +138,31 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+class ChiaveNormCollisione(Exception):
+    """Sollevata dalla migrazione R-crm-1 quando due (o più) contatti storici
+    collassano sulla STESSA ``chiave_norm``: sono duplicati da fondere a mano.
+    La migrazione NON fonde nulla in automatico (il merge dei lead è decisione
+    UMANA) — blocca l'init e riporta i gruppi in conflitto. Vedi MemoryStore."""
+
+
 def normalizza_chiave(chiave: Optional[str]) -> str:
     """Canonicalizzazione DETERMINISTICA e PURA della chiave di un contatto, così
     che la STESSA chiave logica risolva SEMPRE allo stesso record ('Anna ' e
     'anna' = lo stesso lead). È la difesa contro i doppioni silenziosi del CRM
-    autopilot (la rubrica deduplica solo a parità di chiave ESATTA via UNIQUE).
+    autopilot (la rubrica deduplica sulla colonna derivata ``chiave_norm`` UNIQUE).
 
     SOLO trasformazioni prevedibili, NIENTE fuzzy / euristica / merge:
       * coercizione a str (robustezza ai tipi non-stringa);
+      * normalizzazione Unicode NFKC: unifica le forme di compatibilità (larghezza
+        piena 'Ａ'→'A', legature 'ﬁ'→'fi', spazi esotici) così che varianti
+        tipograficamente diverse della stessa stringa convergano;
       * collasso di ogni sequenza di whitespace — anche tab/newline — in un
         singolo spazio + trim esterno (tramite ``str.split()``);
       * lower-case, coerente col confronto substring case-insensitive di lettura.
+
+    v1: NESSUNA logica speciale per telefono/email (es. strip del '+' iniziale o
+    del dominio): è solo canonicalizzazione LESSICALE. La normalizzazione per-tipo
+    è una fetta dedicata futura (lasciata come nota, non implementata).
 
     Funzione PURA e IDEMPOTENTE: ``normalizza(normalizza(x)) == normalizza(x)``.
     Fail-safe (§9 CLAUDE.md): ``None`` o valore non convertibile → ``""`` (mai
@@ -154,6 +176,13 @@ def normalizza_chiave(chiave: Optional[str]) -> str:
         testo = str(chiave)
     except Exception:  # pragma: no cover — coercizione difensiva, mai un crash
         return ""
+    # NFKC PRIMA del collasso/lower: espande i caratteri di compatibilità (alcuni
+    # dei quali sono spazi), così che il successivo split()/lower() produca un
+    # punto fisso (idempotenza preservata su input tipografici).
+    try:
+        testo = unicodedata.normalize("NFKC", testo)
+    except (TypeError, ValueError):  # pragma: no cover — input esotico, mai crash
+        pass
     return " ".join(testo.split()).lower()
 
 
@@ -171,11 +200,22 @@ class MemoryStore:
         # DB) è attivo. OPZIONALE: alcuni build di SQLite non hanno FTS5; in tal
         # caso resta False e cerca_diario degrada a [] (ricorda ricade su substring).
         self.fts_available: bool = False
+        # Se la migrazione R-crm-1 trova duplicati storici sulla stessa chiave_norm
+        # NON fonde nulla: blocca l'init e registra qui il dettaglio dei gruppi in
+        # conflitto, perché il merge dei lead è una decisione UMANA (diagnostico
+        # leggibile da gas doctor / dall'operatore). None = nessuna collisione.
+        self.collisione_chiave_norm: Optional[str] = None
         try:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             with self._connect() as con:
                 self._init_schema(con)
             self.available = True
+        except ChiaveNormCollisione as e:
+            # available resta False: la memoria NON opera su dati ambigui finché un
+            # umano non fonde i duplicati (fail-closed sul merge — §9, mai crash).
+            self.collisione_chiave_norm = str(e)
+            log.error("MemoryStore: %s — memoria NON operativa finché un umano non "
+                      "fonde i duplicati storici", e)
         except (sqlite3.Error, OSError) as e:
             log.warning("MemoryStore: init fallita su %s (%s) — degrado",
                         self.db_path, e)
@@ -235,7 +275,16 @@ class MemoryStore:
         """Migrazione idempotente per DB già esistenti (i DB freschi hanno già le
         colonne dal CREATE TABLE). ALTER ADD COLUMN con default NULL: NON
         distruttivo e compatibile con i foreign key (la colonna nasce NULL).
-        Sul DB di sviluppo (vuoto) è un no-op; serve per il futuro su VPS."""
+        Sul DB di sviluppo (vuoto) è un no-op; serve per il futuro su VPS.
+
+        R-crm-1 (identità su chiave_norm): garantisce la colonna ``chiave_norm``,
+        la BACKFILLA per le righe storiche (deriva da ``chiave``, non tocca altro)
+        e crea l'indice UNIQUE — ma SOLO se non ci sono COLLISIONI. Se due righe
+        diverse collassano sulla stessa chiave_norm sono duplicati storici: NON si
+        fonde nulla e NON si crea l'indice → ChiaveNormCollisione coi gruppi in
+        conflitto, perché il merge dei lead è una decisione UMANA (mai automatica).
+        ADDITIVA e SICURA: il backfill scrive SOLO la nuova colonna; `chiave` e i
+        dati anagrafici restano intatti anche se la migrazione si ferma."""
         cols = {r["name"] for r in con.execute("PRAGMA table_info(contatti)")}
         if "merged_into" not in cols:
             con.execute(
@@ -246,6 +295,43 @@ class MemoryStore:
         # fresco sia migrato): non può precedere l'ALTER. IF NOT EXISTS → idempotente.
         con.execute(
             "CREATE INDEX IF NOT EXISTS idx_contatti_merged ON contatti(merged_into)"
+        )
+        # --- R-crm-1: colonna chiave_norm (identità canonica) ---
+        if "chiave_norm" not in cols:
+            # nullable nell'ALTER (un DB con righe non ammette NOT NULL senza
+            # default); il backfill qui sotto la popola subito. I DB freschi ce
+            # l'hanno già NOT NULL dal CREATE TABLE: per loro questo ramo non scatta.
+            con.execute("ALTER TABLE contatti ADD COLUMN chiave_norm TEXT")
+        # Backfill: deriva chiave_norm da `chiave` SOLO per le righe che ne sono
+        # prive (NULL). NON tocca nessun altro campo → niente fusione, niente perdita.
+        for r in con.execute(
+            "SELECT id, chiave FROM contatti WHERE chiave_norm IS NULL"
+        ).fetchall():
+            con.execute(
+                "UPDATE contatti SET chiave_norm = ? WHERE id = ?",
+                (normalizza_chiave(r["chiave"]), r["id"]),
+            )
+        # Rilevamento COLLISIONI prima dell'indice UNIQUE: più righe sulla stessa
+        # chiave_norm = duplicati storici da fondere a mano. STOP GATE R-crm-1:
+        # non fondere, non creare l'indice, riportare i gruppi e fermarsi.
+        collisioni = con.execute(
+            "SELECT chiave_norm AS k, COUNT(*) AS c, GROUP_CONCAT(id) AS ids "
+            "FROM contatti WHERE chiave_norm IS NOT NULL "
+            "GROUP BY chiave_norm HAVING c > 1 ORDER BY k"
+        ).fetchall()
+        if collisioni:
+            dettaglio = "; ".join(
+                f"{row['k']!r} → righe {row['ids']}" for row in collisioni
+            )
+            raise ChiaveNormCollisione(
+                "migrazione chiave_norm bloccata: duplicati storici sulla stessa "
+                f"chiave normalizzata, da fondere MANUALMENTE ({dettaglio})"
+            )
+        # Zero collisioni → l'unicità dell'identità è imponibile. IF NOT EXISTS →
+        # idempotente (DB fresco e DB migrato pulito passano entrambi di qui).
+        con.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_contatti_chiave_norm "
+            "ON contatti(chiave_norm)"
         )
 
     @staticmethod
@@ -283,29 +369,33 @@ class MemoryStore:
         vita). Ritorna l'id del contatto, o None in degrado."""
         if stato is not None and stato not in STATI_CONTATTO:
             raise ValueError(f"stato non valido: {stato!r} (ammessi: {STATI_CONTATTO})")
-        # Canonicalizza la chiave PRIMA di INSERT e SELECT: 'Anna ' e 'anna'
-        # devono finire (e ritrovarsi) nello stesso record (anti-doppioni CRM).
-        chiave = normalizza_chiave(chiave)
+        # `chiave` resta AS-ENTERED (grafia originale conservata); l'identità è la
+        # forma canonica chiave_norm: 'Anna ' e 'anna' condividono chiave_norm →
+        # un solo record (anti-doppioni CRM), ma la grafia digitata resta leggibile.
+        chiave_in = "" if chiave is None else str(chiave)
+        chiave_norm = normalizza_chiave(chiave)
         now = _now_iso()
         try:
             with self._connect() as con:
+                # ON CONFLICT(chiave_norm): il conflitto è sull'IDENTITÀ canonica.
+                # In update NON si tocca `chiave` → si preserva la PRIMA grafia vista.
                 con.execute(
                     "INSERT INTO contatti "
-                    "(chiave, nome, contatto, stato, prossima_azione, note, "
-                    " creato_il, aggiornato_il) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                    "ON CONFLICT(chiave) DO UPDATE SET "
+                    "(chiave, chiave_norm, nome, contatto, stato, prossima_azione, "
+                    " note, creato_il, aggiornato_il) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                    "ON CONFLICT(chiave_norm) DO UPDATE SET "
                     "  nome = COALESCE(excluded.nome, contatti.nome), "
                     "  contatto = COALESCE(excluded.contatto, contatti.contatto), "
                     "  prossima_azione = COALESCE(excluded.prossima_azione, contatti.prossima_azione), "
                     "  note = COALESCE(excluded.note, contatti.note), "
                     "  aggiornato_il = excluded.aggiornato_il",
-                    (chiave, nome, contatto, stato or STATO_DEFAULT,
+                    (chiave_in, chiave_norm, nome, contatto, stato or STATO_DEFAULT,
                      prossima_azione, note, now, now),
                 )
                 con.commit()
                 row = con.execute(
-                    "SELECT id FROM contatti WHERE chiave = ?", (chiave,)
+                    "SELECT id FROM contatti WHERE chiave_norm = ?", (chiave_norm,)
                 ).fetchone()
                 return int(row["id"]) if row else None
         except (sqlite3.Error, OSError) as e:
@@ -396,12 +486,12 @@ class MemoryStore:
     @staticmethod
     def _risolvi_canonico(con: sqlite3.Connection, chiave: str
                           ) -> Optional[Dict[str, Any]]:
-        """Risolve una chiave GIÀ normalizzata al record CANONICO, seguendo la
-        catena merged_into fino al lead vivo. Bounded da un set di id visti
-        (anti-ciclo difensivo, anche se l'invariante tiene la catena a 1). Ritorna
-        None se la chiave non esiste."""
+        """Risolve una chiave GIÀ normalizzata (confronto su chiave_norm) al record
+        CANONICO, seguendo la catena merged_into fino al lead vivo. Bounded da un
+        set di id visti (anti-ciclo difensivo, anche se l'invariante tiene la catena
+        a 1). Ritorna None se la chiave non esiste."""
         row = con.execute(
-            "SELECT * FROM contatti WHERE chiave = ?", (chiave,)
+            "SELECT * FROM contatti WHERE chiave_norm = ?", (chiave,)
         ).fetchone()
         if row is None:
             return None
@@ -495,14 +585,14 @@ class MemoryStore:
             return None
 
     def get_contatto_per_chiave(self, chiave: str) -> Optional[Dict[str, Any]]:
-        """Un contatto per la sua chiave univoca (es. email/handle normalizzato),
-        o None se assente/in degrado. Lookup esatto, sfrutta l'indice UNIQUE su
-        `chiave`: è la via canonica per risolvere chiave -> contatto. La chiave
-        viene canonicalizzata (stesso normalizza_chiave dell'upsert) così che il
-        lookup risolva alla stessa identità logica con cui è stata scritta. Se la
-        chiave appartiene a una LAPIDE (lead fuso, R-crm-1b), segue il puntatore e
-        ritorna il lead CANONICO: una vecchia chiave continua a risolvere al lead
-        vivo dopo un merge."""
+        """Un contatto per la sua chiave logica (es. email/handle), o None se
+        assente/in degrado. Lookup esatto sull'indice UNIQUE `chiave_norm`: è la
+        via canonica per risolvere chiave -> contatto. La chiave in input viene
+        canonicalizzata (stesso normalizza_chiave dell'upsert) così che il lookup
+        risolva alla stessa identità logica con cui è stata scritta, a prescindere
+        da maiuscole/spazi/forma Unicode. Se la chiave appartiene a una LAPIDE
+        (lead fuso, R-crm-1b), segue il puntatore e ritorna il lead CANONICO: una
+        vecchia chiave continua a risolvere al lead vivo dopo un merge."""
         try:
             chiave = normalizza_chiave(chiave)
             with self._connect() as con:

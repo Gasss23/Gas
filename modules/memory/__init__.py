@@ -7,6 +7,7 @@ loop agentico è progettato a parte (vedi reports/ultimo_report.md §FINALE).
 """
 from .store import (
     MemoryStore,
+    ChiaveNormCollisione,
     STATI_CONTATTO,
     STATI_CHIUSI,
     STATO_DEFAULT,
@@ -17,6 +18,7 @@ from .store import (
 
 __all__ = [
     "MemoryStore",
+    "ChiaveNormCollisione",
     "STATI_CONTATTO",
     "STATI_CHIUSI",
     "STATO_DEFAULT",
