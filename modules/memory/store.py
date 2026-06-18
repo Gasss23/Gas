@@ -533,6 +533,36 @@ class MemoryStore:
             log.warning("diario_tutto fallita (%s): %s", self.db_path, e)
             return []
 
+    def diario_dopo(self, after_id: int, limit: int = 64) -> List[Dict[str, Any]]:
+        """Voci del diario con id > after_id, in ordine crescente, fino a `limit`,
+        in SOLA LETTURA. È il lettore INCREMENTALE del catch-up indexing vettoriale:
+        indicizza solo le righe NUOVE oltre un watermark, senza rileggere tutto il
+        diario ad ogni turno. Immutabilità intatta (nessuna scrittura). [] in degrado."""
+        try:
+            with self._connect() as con:
+                cur = con.execute(
+                    "SELECT * FROM diario WHERE id > ? ORDER BY id ASC LIMIT ?",
+                    (int(after_id), int(limit)),
+                )
+                return self._rows(cur)
+        except (sqlite3.Error, OSError, TypeError, ValueError) as e:
+            log.warning("diario_dopo fallita (%s): %s", self.db_path, e)
+            return []
+
+    def get_diario(self, diario_id: int) -> Optional[Dict[str, Any]]:
+        """Una riga del diario per id (con contatto_id), o None se assente/in degrado.
+        SOLA LETTURA. Serve ad arricchire uno snippet di retrieval con lo stato
+        CORRENTE del lead collegato (la riga di diario porta il contatto_id)."""
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT * FROM diario WHERE id = ?", (int(diario_id),)
+                ).fetchone()
+                return dict(row) if row else None
+        except (sqlite3.Error, OSError, TypeError, ValueError) as e:
+            log.warning("get_diario fallita (%s): %s", self.db_path, e)
+            return None
+
     @staticmethod
     def _fts_match(testo: str) -> str:
         """Costruisce una query MATCH FTS5 SICURA da testo libero: estrae i soli

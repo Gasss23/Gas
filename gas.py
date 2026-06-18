@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
 from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO, normalizza_chiave
+from modules.memory import VectorStore, default_vectors_path
 
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
 # i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
@@ -264,6 +265,13 @@ def _env_int(name: str, default: int, min_val: int = 1) -> int:
         return default
 
 
+def _env_flag(name: str) -> bool:
+    """Legge un flag booleano da env, FAIL-SAFE: vero solo per 1/true/on/yes/si
+    (case-insensitive); assente o qualsiasi altro valore → False. Usato per i
+    feature-gate OPT-IN (es. il retrieval semantico, spento di default)."""
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "on", "yes", "si")
+
+
 class GasKernel:
     def __init__(self, root_dir: Optional[str] = None):
         self.root: Path = Path(root_dir or os.getcwd()).resolve()
@@ -305,7 +313,27 @@ class GasKernel:
         self.MEMORY_PIN_CONTACTS = _env_int("GAS_MEMORY_PIN_CONTACTS", GasKernel.MEMORY_PIN_CONTACTS, min_val=0)
         self.MEMORY_PIN_EVENTS = _env_int("GAS_MEMORY_PIN_EVENTS", GasKernel.MEMORY_PIN_EVENTS, min_val=0)
         self.MEMORY_BACKUP_EVERY_SEC = _env_int("GAS_MEMORY_BACKUP_EVERY_SEC", GasKernel.MEMORY_BACKUP_EVERY_SEC, min_val=0)
-        self.MEMORY_BACKUP_KEEP = _env_int("GAS_MEMORY_BACKUP_KEEP", GasKernel.MEMORY_BACKUP_KEEP, min_val=0)
+        # Retrieval semantico (FASE 2 — wiring): vector store su sidecar SEPARATO
+        # (.gas_vectors.db), cache DERIVATA dal diario. OPT-IN via env GAS_VECTORS
+        # perché carica un modello di embedding locale (~500MB su disco + RAM): di
+        # default SPENTO, così il deploy base e la suite non lo pagano e il VPS a
+        # 1GB RAM (R-vec-3) non viene caricato senza una scelta esplicita. Quando
+        # attivo è comunque ADDITIVO e FAIL-SAFE (§9): self.vectors None/degradato →
+        # ricorda ricade su FTS/substring, il catch-up è un no-op, GAS gira identico.
+        # Stessa doppia cintura di self.memory.
+        self.vectors: Optional[VectorStore] = None
+        if _env_flag("GAS_VECTORS"):
+            try:
+                self.vectors = VectorStore(default_vectors_path(self.root))
+            except Exception as e:
+                logging.warning(f"VectorStore non inizializzato ({e}) — retrieval semantico disattivato")
+                self.vectors = None
+        # Watermark del catch-up indexing: id diario massimo già indicizzato. None =
+        # da risolvere al primo turno (letto dal sidecar). Tetto di righe indicizzate
+        # per turno (override env): il catch-up resta BOUNDED, niente picchi dopo lunghe
+        # pause; recupera l'arretrato in più turni.
+        self._vec_watermark: Optional[int] = None
+        self.VEC_CATCHUP_MAX = _env_int("GAS_VECTORS_CATCHUP_MAX", GasKernel.VEC_CATCHUP_MAX, min_val=1)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
@@ -413,6 +441,17 @@ class GasKernel:
     # Override via env (risolti in __init__): GAS_MEMORY_BACKUP_EVERY_SEC / _KEEP.
     MEMORY_BACKUP_EVERY_SEC = 6 * 3600   # un backup ogni ~6 ore di attività
     MEMORY_BACKUP_KEEP = 10              # copie .bak conservate (rotazione)
+
+    # --- Retrieval semantico (FASE 2 — wiring del vector store) ---
+    # Quante righe di diario nuove indicizzare AL MASSIMO per turno (catch-up
+    # bounded; override env GAS_VECTORS_CATCHUP_MAX, risolto in __init__).
+    VEC_CATCHUP_MAX = 64
+    # Soglia minima di similarità coseno per accettare un hit semantico. MISURATA
+    # dal vivo: il MiniLM mean-pooled separa DEBOLMENTE le query corte in italiano
+    # (coseni reali ~0.2-0.6 anche per coppie pertinenti, niente soglia netta), quindi
+    # il semantico è un SUPPLEMENTO di recall che RIEMPIE i posti liberi dopo FTS, non
+    # un sostituto della precisione lessicale (R-wire-1). Soglia conservativa e tarabile.
+    VEC_MIN_SIM = 0.30
 
     @staticmethod
     def _msg_chars(msg: Dict[str, Any]) -> int:
@@ -755,6 +794,51 @@ class GasKernel:
         except Exception as e:
             logging.warning(f"backup memoria saltato: {e}")
 
+    def _vettori_catchup(self) -> None:
+        """Catch-up indexing del vector store: indicizza nel sidecar le righe di
+        diario NUOVE oltre il watermark, una volta per turno e BOUNDED (al più
+        VEC_CATCHUP_MAX righe). Pigro (solo l'arretrato, non un rebuild) e
+        incrementale: l'arretrato grande si recupera in più turni senza picchi.
+        FAIL-SAFE §9: vector store assente/degradato, memoria assente o qualunque
+        errore → no-op, il turno PROSEGUE, mai crash. L'indice è una cache derivata:
+        un buco si auto-recupera al turno dopo (o con un rebuild manuale)."""
+        if self.vectors is None or not self.vectors.available or self.memory is None:
+            return
+        try:
+            if self._vec_watermark is None:
+                # primo turno: riparte dall'ultimo id già indicizzato nel sidecar
+                self._vec_watermark = self.vectors.max_source_ref("diario") or 0
+            righe = self.memory.diario_dopo(self._vec_watermark, limit=self.VEC_CATCHUP_MAX)
+            if not righe:
+                return
+            items = [("diario", r["id"], r["descrizione"], r["ts"]) for r in righe]
+            n = self.vectors.index_batch(items)
+            if n:  # avanza il watermark SOLO se l'indicizzazione è riuscita
+                self._vec_watermark = max(int(r["id"]) for r in righe)
+        except Exception as e:
+            logging.warning(f"catch-up vettoriale saltato: {e}")
+
+    def _fmt_evento_datato(self, e: Dict[str, Any]) -> str:
+        """Formatta UN evento di diario per il retrieval: datato col `ts` SORGENTE e,
+        se l'evento è legato a un lead (contatto_id), affiancato dallo stato CORRENTE
+        del lead letto live dalla rubrica. Così il ricordo resta un EVENTO episodico
+        passato, ma chi legge vede subito se quel fatto è ancora valido ("la memoria
+        non mente" anche in lettura). Lo stato si legge a runtime, NON si denormalizza
+        nel sidecar (cache derivata)."""
+        ts = str(e.get("ts") or "")[:10]
+        testo = e.get("descrizione")
+        riga = f"- [{ts}] {testo}" if ts else f"- {testo}"
+        cid = e.get("contatto_id")
+        if cid and self.memory is not None:
+            try:
+                c = self.memory.get_contatto(int(cid))
+            except (TypeError, ValueError):
+                c = None
+            if c:
+                nome = c.get("nome") or c.get("chiave") or "?"
+                riga += f" — lead {nome}: oggi '{c.get('stato')}'"
+        return riga
+
     def _memoria_pin(self) -> str:
         """Blocco di memoria ALWAYS-ON (lato lettura, fetta 2b) da appendere al
         system prompt: riassunto COMPATTO e CAPATO di lead attivi + poche azioni
@@ -872,14 +956,41 @@ class GasKernel:
         #    (pavimento sempre disponibile, comportamento invariato) — cascata
         #    fail-safe §9, mai un buco di funzionalità.
         if query:
-            hit = self.memory.cerca_diario(str(query), n)
+            # Cascata NON regressiva (rivista rispetto a §FINALE dopo misura dal vivo
+            # della qualità semantica del MiniLM, R-wire-1):
+            #   (1) FTS5 (cerca_diario) = BASE, precisione lessicale, comportamento
+            #       ODIERNO preservato (mai soppresso dal semantico);
+            #   (2) SEMANTICO = RIEMPIE i posti liberi fino a n (recall per SIGNIFICATO:
+            #       'preventivo' può ripescare 'offerta'), saltando i duplicati di FTS.
+            #       Opt-in/fail-safe: salta se spento/degradato. Gli hit (source_ref =
+            #       id diario) si risolvono alle righe complete (ts + contatto_id);
+            #   (3) substring storico = ultimo pavimento se tutto il resto è vuoto.
+            hit: List[Dict[str, Any]] = self.memory.cerca_diario(str(query), n)
+            if len(hit) < n and self.vectors is not None and self.vectors.available:
+                visti = {e.get("id") for e in hit}
+                try:
+                    sem = self.vectors.search(str(query), k=n,
+                                              min_sim=self.VEC_MIN_SIM, source="diario")
+                except Exception as ex:
+                    logging.warning(f"ricerca semantica saltata: {ex}")
+                    sem = []
+                for h in sem:
+                    try:
+                        row = self.memory.get_diario(int(h["source_ref"]))
+                    except (TypeError, ValueError):
+                        row = None
+                    if row and row.get("id") not in visti:
+                        hit.append(row)
+                        visti.add(row.get("id"))
+                        if len(hit) >= n:
+                            break
             if not hit:
                 q = str(query).lower()
                 hit = [e for e in self.memory.diario_recente(200)
                        if q in str(e.get("descrizione", "")).lower()
                        or q in str(e.get("tipo", "")).lower()][:n]
             parti.append(f"Diario per '{query}' ({len(hit)}):")
-            parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in hit]
+            parti += ([self._fmt_evento_datato(e) for e in hit]
                       or ["- (nessun risultato)"])
         # 3) default: ultimi eventi del diario
         if not contatto and not query:
@@ -1089,6 +1200,11 @@ class GasKernel:
         # e l'integrità sono gestiti da MemoryStore.backup_auto. Fail-safe: non
         # interrompe mai il turno.
         self._memoria_backup_auto()
+
+        # Catch-up indexing del vector store (retrieval semantico): indicizza le
+        # nuove righe di diario nel sidecar, una volta per turno e BOUNDED, FUORI dal
+        # loop dei provider. No-op se GAS_VECTORS è spento o il layer è degradato.
+        self._vettori_catchup()
 
         # Endpoint/modelli dalle costanti di modulo (punto unico, condiviso con doctor).
         # Pavimento offline Ollama: NON gira nel Codespace. Sul PC/VPS si esporta

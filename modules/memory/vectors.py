@@ -241,6 +241,52 @@ class VectorStore:
             log.warning("VectorStore.index fallita (%s): %s", self.db_path, e)
             return None
 
+    def index_batch(self, items: List[Tuple[str, Union[str, int], str, Optional[str]]]
+                    ) -> Optional[int]:
+        """Indicizza in BLOCCO una lista di `(source, source_ref, testo, ts)`: UNA sola
+        chiamata di embedding per tutti i testi (efficiente per il catch-up), poi
+        INSERT OR REPLACE in una transazione. È il motore dell'indicizzazione
+        incrementale (solo le righe NUOVE oltre il watermark). Ritorna il numero di
+        record indicizzati, o None in degrado (embedding/DB non disponibili: il
+        chiamante NON deve avanzare il watermark)."""
+        if not self.available or not items:
+            return 0 if self.available else None
+        mat = self._embed_raw([self._p_prefix + str(it[2]) for it in items])
+        if mat is None or mat.shape[0] != len(items):
+            return None
+        vec = self._normalizza(mat)
+        try:
+            with self._connect() as con:
+                for i, (source, source_ref, testo, ts) in enumerate(items):
+                    con.execute(
+                        "INSERT OR REPLACE INTO vettori "
+                        "(source, source_ref, testo, ts, vettore, dim, model) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (str(source), str(source_ref), str(testo), ts,
+                         self._to_blob(vec[i]), int(vec[i].shape[0]), self.model_name),
+                    )
+                con.commit()
+            return len(items)
+        except (sqlite3.Error, OSError) as e:
+            log.warning("VectorStore.index_batch fallita (%s): %s", self.db_path, e)
+            return None
+
+    def max_source_ref(self, source: str) -> Optional[int]:
+        """Massimo `source_ref` NUMERICO già indicizzato per una sorgente (watermark
+        del catch-up). I `source_ref` del diario sono id interi salvati come testo →
+        si confronta via CAST INTEGER. None se non c'è nulla / in degrado (→ il
+        chiamante parte da 0)."""
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT MAX(CAST(source_ref AS INTEGER)) FROM vettori WHERE source = ?",
+                    (str(source),),
+                ).fetchone()
+                return int(row[0]) if row and row[0] is not None else None
+        except (sqlite3.Error, OSError, TypeError, ValueError) as e:
+            log.warning("VectorStore.max_source_ref fallita (%s): %s", self.db_path, e)
+            return None
+
     def ricostruisci_da_diario(self, memory_store: Any) -> Optional[int]:
         """Svuota i vettori `source='diario'` e li RI-INDICIZZA dal diario di
         `memory_store` (sarà il motore del futuro `gas reindex`; qui NON cablato a

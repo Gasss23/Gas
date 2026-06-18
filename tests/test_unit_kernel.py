@@ -1731,6 +1731,119 @@ check("T30f (R-vec-1) cella BLOB corrotta -> search degrada a [], nessun crash",
       _no_crash_corr and r_corr == [],
       f"r={r_corr}")
 
+# ---------- T31: WIRING del vector store al kernel (ricorda/run_turn) ----------
+# Catch-up indexing pigro+bounded + cascata semantico->FTS->substring in ricorda +
+# snippet datato con stato corrente del lead. Tutto con la embed_fn FINTA (niente
+# modello reale) tranne il gate env. ZERO token.
+
+def _attach_vectors(k):
+    """Aggancia al kernel un VectorStore con embed_fn deterministica (bypassa il
+    gate env GAS_VECTORS e il modello reale)."""
+    d = tempfile.mkdtemp(prefix="gas_kvec_")
+    k.vectors = VectorStore(default_vectors_path(d), embed_fn=_fake_embed)
+    k._vec_watermark = None
+    return k
+
+# T31a — catch-up: indicizza il diario nuovo, avanza il watermark, idempotente
+k31 = kernel_tmp(); _attach_vectors(k31)
+k31.memory.append_diario("nota", "incontro con anna per il preventivo")
+k31.memory.append_diario("nota", "telefonata a marco")
+k31._vettori_catchup()
+conta1, wm1 = k31.vectors.conta("diario"), k31._vec_watermark
+k31._vettori_catchup()                         # nessuna riga nuova -> no-op
+check("T31a catch-up: indicizza il diario nuovo + watermark + idempotente",
+      conta1 == 2 and wm1 == 2 and k31.vectors.conta("diario") == 2,
+      f"conta={conta1} wm={wm1}")
+
+# T31b — catch-up BOUNDED: indicizza a scaglioni di VEC_CATCHUP_MAX, recupera in più turni
+k31b = kernel_tmp(); _attach_vectors(k31b)
+k31b.VEC_CATCHUP_MAX = 3
+for i in range(7):
+    k31b.memory.append_diario("nota", f"evento numero {i} con gatto")
+c1 = (k31b._vettori_catchup(), k31b.vectors.conta("diario"))[1]
+c2 = (k31b._vettori_catchup(), k31b.vectors.conta("diario"))[1]
+c3 = (k31b._vettori_catchup(), k31b.vectors.conta("diario"))[1]
+check("T31b catch-up bounded: indicizza a scaglioni di VEC_CATCHUP_MAX",
+      c1 == 3 and c2 == 6 and c3 == 7,
+      f"scaglioni={c1},{c2},{c3}")
+
+# T31c — ricorda(query) con vectors attivo: snippet DATATO (ts) + stato CORRENTE
+# del lead collegato all'evento; il distrattore non pertinente non entra
+k31c = kernel_tmp(); _attach_vectors(k31c)
+cid31 = k31c.memory.upsert_contatto("anna@ex.com", nome="Anna")
+k31c.memory.update_stato_contatto(cid31, "interessato")
+k31c.memory.append_diario("nota", "preventivo inviato ad anna", contatto_id=cid31)
+k31c.memory.append_diario("nota", "il gatto di marco")       # distrattore (cos 0)
+k31c._vettori_catchup()
+r31c = k31c._ricorda(query="anna preventivo")
+check("T31c ricorda con vectors: snippet datato (ts) + stato corrente del lead",
+      "preventivo inviato ad anna" in r31c
+      and "lead Anna: oggi 'interessato'" in r31c
+      and "il gatto di marco" not in r31c,                   # distrattore sotto soglia
+      f"r={r31c!r}")
+
+# T31d — il semantico RIEMPIE quando FTS è assente/vuoto (recall, nessun buco): con
+# FTS disattivato la base è vuota, e l'evento resta comunque recuperabile via semantico
+k31d = kernel_tmp(); _attach_vectors(k31d)
+k31d.memory.append_diario("nota", "preventivo per anna")
+k31d.memory.fts_available = False                            # simula build senza FTS5
+k31d._vettori_catchup()
+r31d = k31d._ricorda(query="anna")                           # FTS [] -> semantico riempie
+check("T31d semantico RIEMPIE quando FTS è assente (recall, nessun buco)",
+      "preventivo per anna" in r31d,
+      f"r={r31d[:80]!r}")
+
+# T31e — fail-safe: vector store DEGRADATO (DB sidecar corrotto) -> catch-up no-op,
+# watermark non avanza, ricorda non crasha (ricade su FTS/substring)
+k31e = kernel_tmp()
+p31e = Path(tempfile.mkdtemp(prefix="gas_kvec_bad_")) / "corrotto.gas_vectors.db"
+p31e.write_bytes(b"non e' un database sqlite")
+k31e.vectors = VectorStore(p31e, embed_fn=_fake_embed)       # db_available=False -> available=False
+k31e._vec_watermark = None
+k31e.memory.append_diario("nota", "anna preventivo urgente")
+_nc31 = True
+try:
+    k31e._vettori_catchup()                                  # no-op (available False)
+    r31e = k31e._ricorda(query="anna")
+except Exception:
+    _nc31 = False; r31e = "CRASH"
+check("T31e vector store degradato -> catch-up no-op + ricorda non crasha",
+      _nc31 and k31e.vectors.available is False
+      and k31e._vec_watermark is None
+      and "anna preventivo urgente" in r31e,
+      f"nc={_nc31} wm={k31e._vec_watermark}")
+
+# T31f — GAS_VECTORS spento di DEFAULT: il kernel ha vectors=None, catch-up e ricorda
+# funzionano comunque (comportamento odierno preservato)
+_sv31 = os.environ.pop("GAS_VECTORS", None)
+try:
+    k31f = kernel_tmp()
+finally:
+    if _sv31 is not None: os.environ["GAS_VECTORS"] = _sv31
+k31f.memory.append_diario("nota", "evento x")
+_nc31f = True
+try:
+    k31f._vettori_catchup()                                  # vectors None -> no-op
+    r31f = k31f._ricorda(query="evento")
+except Exception:
+    _nc31f = False
+check("T31f GAS_VECTORS spento di default: vectors None, catch-up e ricorda OK",
+      k31f.vectors is None and _nc31f and "evento x" in r31f,
+      f"vectors={k31f.vectors}")
+
+# T31g — gate env: GAS_VECTORS=1 COSTRUISCE il vector store nel kernel (LAZY: il
+# modello non si carica qui, nessun download — si verifica solo il cablaggio del gate)
+_sv31g = os.environ.get("GAS_VECTORS")
+os.environ["GAS_VECTORS"] = "1"
+try:
+    k31g = kernel_tmp()
+finally:
+    if _sv31g is None: os.environ.pop("GAS_VECTORS", None)
+    else: os.environ["GAS_VECTORS"] = _sv31g
+check("T31g gate env GAS_VECTORS=1 costruisce il vector store (lazy, no download)",
+      isinstance(k31g.vectors, VectorStore) and k31g.vectors.available is True,
+      f"vectors={type(k31g.vectors).__name__ if k31g.vectors else None}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
