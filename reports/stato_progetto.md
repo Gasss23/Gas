@@ -1,6 +1,29 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-18 (Vector store WIRING — retrieval semantico AGGANCIATO al kernel, review
+> #24 APPROVATO CON RISERVE, commit motore vedi `reports/ultimo_report.md`):** la fetta 1
+> (storage+embedding) ora è CABLATA a `run_turn`/`ricorda`. `gas.py`: `self.vectors`
+> costruito SOLO se env `GAS_VECTORS` truthy (helper `_env_flag`), doppia cintura fail-safe
+> come `self.memory`; **default OFF** di proposito (il modello pesa ~500MB+RAM, R-vec-3 VPS
+> 1GB irrisolta; tiene la suite veloce e non impone il layer al deploy base). `_vettori_catchup()`
+> indicizza una volta per turno (DOPO `_memoria_backup_auto`, FUORI dal `for _ in range(10)`)
+> le righe di diario NUOVE oltre un watermark, BOUNDED a `VEC_CATCHUP_MAX` (env override),
+> avanzando il watermark solo se l'index riesce. `_ricorda(query)` diventa una cascata
+> **NON regressiva**: FTS5 BASE (precisione lessicale, comportamento odierno preservato) →
+> il semantico RIEMPIE i posti liberi fino a n (recall per significato, dedup su id) →
+> substring ultimo pavimento. Snippet via `_fmt_evento_datato`: `ts` dell'evento + stato
+> CORRENTE del lead (letto live, non denormalizzato). store.py: `diario_dopo`/`get_diario`
+> SOLA LETTURA. vectors.py: `index_batch` + `max_source_ref`. **DEVIAZIONE ONESTA dal
+> §FINALE** (che diceva "semantico PRIMA"): MISURATO dal vivo che il MiniLM separa
+> DEBOLMENTE le query corte italiane (distrattore 'caffè' cos 0.288 batte il pertinente
+> 'offerta' 0.237; 'animale domestico'↔'gatto' 0.148) → semantico-prima REGREDIREBBE la
+> precisione, quindi invertito a "FTS autorità + semantico riempie", soglia `VEC_MIN_SIM=0.30`.
+> Invarianti motore (`_get_window`/`_cap_window_chars`/`for _ in range(10)`/sandbox/snapshot/
+> pin) INTATTE; con GAS_VECTORS spento il comportamento è bit-identico a ieri. E2E REALE
+> (GAS_VECTORS=1): query 'vendita' (non lessicale) recupera "offerta commerciale ad Anna —
+> lead Anna: oggi 'interessato'". Suite **145→152** (T31a-g). Riserve R-wire-1..4 (sotto,
+> minori): la principale è la soglia da rendere env-config e ri-tarare sul diario reale.
 > **2026-06-18 (Vector store FETTA 1 — storage + embedding STANDALONE, review #23
 > APPROVATO CON RISERVE, commit motore vedi `reports/ultimo_report.md`):** primo
 > tassello del retrieval semantico (Strato B, prima CONGELATO). NUOVO modulo
@@ -123,6 +146,21 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 — Vector store WIRING (retrieval semantico AGGANCIATO) ATTIVO,
+  OPT-IN via `GAS_VECTORS`** (2026-06-18, review #24 APPROVATO CON RISERVE): la fetta 1 è
+  ora cablata al motore. `gas.py`: `self.vectors` (gated da env `GAS_VECTORS` via `_env_flag`,
+  default OFF — il modello pesa ~500MB+RAM, R-vec-3) con doppia cintura fail-safe come
+  `self.memory`; `_vettori_catchup()` indicizza nel sidecar le righe di diario NUOVE oltre
+  un watermark, UNA volta per turno e BOUNDED a `VEC_CATCHUP_MAX` (env `GAS_VECTORS_CATCHUP_MAX`),
+  chiamato in `run_turn` dopo `_memoria_backup_auto` e FUORI dal `for _ in range(10)`,
+  avanzando il watermark solo su index riuscito; `_ricorda(query)` cascata NON regressiva
+  FTS5(base)→semantico(riempie fino a n, dedup)→substring; snippet `_fmt_evento_datato`
+  con `ts` + stato CORRENTE del lead (live). store.py: `diario_dopo`/`get_diario` SOLA
+  LETTURA (immutabilità intatta). vectors.py: `index_batch` (embedding in blocco) +
+  `max_source_ref` (watermark). DEVIAZIONE ONESTA dal §FINALE motivata da misura reale
+  (MiniLM separa debolmente le query corte IT → FTS resta l'autorità, semantico = recall
+  additivo, `VEC_MIN_SIM=0.30`). Invarianti motore INTATTE; GAS_VECTORS OFF → comportamento
+  bit-identico a ieri. Test T31a-g + E2E reale. Suite **145→152**.
 - **Memoria FASE 2 — Vector store FETTA 1 (storage + embedding semantico) ATTIVA,
   ma STANDALONE (NON agganciata)** (2026-06-18, review #23 APPROVATO CON RISERVE):
   primo strato del retrieval semantico, prima congelato. NUOVO modulo
@@ -416,7 +454,12 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **145 PASS, 0 FAIL** (2026-06-18). Dai 139 si aggiungono i 6 T30 (vector store fetta 1:
+  **152 PASS, 0 FAIL** (2026-06-18). Dai 145 si aggiungono i 7 T31 (wiring vector store:
+  T31a catch-up indicizza il diario nuovo + watermark + idempotente, T31b catch-up bounded
+  a scaglioni di VEC_CATCHUP_MAX, T31c snippet datato (ts) + stato corrente del lead, T31d
+  semantico RIEMPIE quando FTS è assente (recall/nessun buco), T31e vector store degradato
+  → catch-up no-op + ricorda non crasha, T31f GAS_VECTORS spento di default → vectors None,
+  T31g gate env GAS_VECTORS=1 costruisce il layer lazy senza download). Storico: dai 139 i 6 T30 (vector store fetta 1:
   T30a index+search ranking con vettori finti deterministici, T30b soglia minima → nessun
   risultato, T30c `ricostruisci_da_diario` coerente + ts sorgente + idempotenza, T30d
   fail-safe fastembed-assente + DB-sidecar-corrotto, T30e embedding REALE 384-dim
@@ -505,6 +548,28 @@
   Dichiarata in `requirements.txt` e nel docstring; voce di CHECKLIST pre-deploy, non
   difetto del codice. Mitigazione candidata se 1GB è stretto: swap, o modello ancora più
   piccolo, o embedding solo on-demand (non per ogni evento).
+- 🟡 **R-wire-1 (soglia semantica `VEC_MIN_SIM` tarata su esempi sintetici)** (review #24,
+  la principale): 0.30 scelta da misure su pochi esempi x86, NON sul corpus reale. Il MiniLM
+  separa DEBOLMENTE le query corte italiane (coseni reali ~0.2-0.6 anche per coppie
+  pertinenti, distrattori vicini ai pertinenti) → la soglia va RI-TARATA sul primo diario
+  vero del VPS, e meglio se resa configurabile via env `GAS_VECTORS_MIN_SIM` (come
+  `CATCHUP_MAX`) per non richiedere redeploy. Mitigato dal design non-regressivo: anche se
+  la soglia è imperfetta, il semantico solo RIEMPIE dopo FTS, non sopprime nulla.
+- 🟡 **R-wire-2 (qualità semantica del MiniLM limitata sulle query corte IT)** (review #24):
+  conseguenza diretta del modello scelto (forzato dall'assenza di e5-small + vincolo RAM
+  VPS). Il retrieval per SIGNIFICATO funziona su query-frase ('vendita'→'offerta commerciale')
+  ma è inaffidabile su singole parole astratte. È un limite di POTENZA, non di correttezza:
+  il valore pieno arriverebbe con un modello e5 (legato alla rivalutazione R-vec-3/RAM VPS).
+  Onesto: il semantico è un SUPPLEMENTO di recall opt-in, non una promessa di precisione.
+- 🟡 **R-wire-3 (cold-start del primo catch-up)** (review #24, minore): col layer appena
+  abilitato, il primo turno con diario arretrato carica il modello (~500MB download se i
+  pesi non sono pre-provisionati) e indicizza fino a `VEC_CATCHUP_MAX` righe → picco di
+  latenza una-tantum su quel turno. Bounded e fail-safe (non blocca il turno), ma da
+  conoscere; mitigato dal pre-provisioning dei pesi (R-vec-3) e dal tetto per-turno.
+- 🟡 **R-wire-4 (`_fmt_evento_datato` fa una query per hit)** (review #24, minore/perf):
+  per arricchire lo snippet con lo stato corrente del lead, ogni evento con `contatto_id`
+  fa un `get_contatto` separato (N piccole query a volumi di `n`≤50). Trascurabile su SQLite
+  locale; se mai diventasse caldo, batch per id. Cosmetico.
 - 🟡 **Esfiltrazione via shell — CHIUSA a livello OS in os_strict** (era 🟠→🟡):
   con il sandbox bwrap attivo e `GAS_SANDBOX_MODE=os_strict` (default) è
   confinamento reale, non più mitigazione applicativa: rete isolata
@@ -665,9 +730,11 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): **23 review completate**,
-  ultima la **#23** (vector store fetta 1, 2026-06-18, APPROVATO CON RISERVE → R-vec-1
-  chiusa in sessione su sua prescrizione, R-vec-2/R-vec-3 tracciate). Prima la **#22**
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): **24 review completate**,
+  ultima la **#24** (vector store WIRING al kernel, 2026-06-18, APPROVATO CON RISERVE →
+  R-wire-1..4 minori tracciate). Prima la **#23** (vector store fetta 1, 2026-06-18,
+  APPROVATO CON RISERVE → R-vec-1 chiusa in sessione su sua prescrizione, R-vec-2/R-vec-3
+  tracciate). Prima la **#22**
   (R-crm-1 refactor a `chiave_norm` separata + NFKC, 2026-06-18,
   APPROVATO CON RISERVE → R-crm-norm-2). Elenco in ordine: #1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 (TASK B),
   #10 (TASK C), review hook SessionEnd TASK 1 (2026-06-15, APPROVATO), #12 Memoria
@@ -683,20 +750,19 @@
 
 ## Prossimi passi (in ordine di priorità)
 
-0. **Vector store semantico (Strato B) — FETTA 1 FATTA (storage+embedding standalone),
-   PROSSIMA = il WIRING.** Aggiornato 2026-06-18: su OK umano esplicito si è scongelato
-   lo Strato B e fatta la fetta 1 (`modules/memory/vectors.py`, review #23) — embedding
-   LOCALE `fastembed` (nuova dipendenza, autorizzata) + brute-force cosine in numpy,
-   **senza `sqlite-vec`** (alpha instabile, scartato) e **senza ANN**. La keyword search
-   FTS5 (Strato A, `977148d`) resta attiva e complementare. **Prossimo passo = la fetta di
-   WIRING** (vedi `reports/ultimo_report.md` §FINALE): far usare il vector store a
-   `ricorda(query)` con catch-up indexing pigro e bounded, e mostrare nello snippet
-   `ts` + stato CORRENTE del lead. **Precondizione di sicurezza GIÀ chiusa**: R-vec-1
-   (fail-safe di `search` su BLOB corrotto). Scartati a monte: embedding via API (contro
-   zero-token/offline) e store separati Chroma/FAISS (romperebbero il file singolo; il
-   sidecar `.gas_vectors.db` è invece una cache derivata, non un secondo file di verità).
-   Da validare al deploy: R-vec-3 (wheel onnxruntime ARM + RAM VPS 1GB). NB: un **un-merge**
-   dei lead resta **NON necessario** finché il merge è MANUALE (registrato).
+0. **Vector store semantico (Strato B) — FETTA 1 + WIRING FATTI (opt-in, default OFF).**
+   Aggiornato 2026-06-18: fatta la fetta 1 (`vectors.py`, review #23) E il WIRING al kernel
+   (review #24) — `ricorda(query)` ora usa il vector store (cascata FTS→semantico-riempie→
+   substring), con catch-up indexing pigro/bounded a inizio turno e snippet datato+stato
+   lead. Acceso via env `GAS_VECTORS` (default OFF per R-vec-3: modello ~500MB/RAM). FTS5
+   (Strato A) resta l'autorità lessicale. **Prossimi affinamenti (NON urgenti):** (a) R-wire-1
+   — rendere `VEC_MIN_SIM` configurabile via env e RI-TARARLA sul diario reale del VPS;
+   (b) R-wire-2/R-vec-3 — rivalutare un modello e5 (qualità semantica) quando si scioglie
+   il nodo RAM del VPS; (c) un comando `gas reindex` umano che chiami
+   `ricostruisci_da_diario` (oggi esposto ma non cablato a CLI). Scartati a monte: `sqlite-vec`
+   (alpha instabile), ANN (non serve a questi numeri), embedding via API (contro
+   zero-token/offline), store separati Chroma/FAISS (romperebbero il file singolo). NB: un
+   **un-merge** dei lead resta **NON necessario** finché il merge è MANUALE (registrato).
 1. **Rilevamento PER-TURNO del degrado a solo-testo** (metà aperta di R2 #5):
    oggi solo osservabilità a freddo (doctor) + warning statico (run_turn).
    Rimandato per i falsi positivi: progettare con cura prima di attivare.
