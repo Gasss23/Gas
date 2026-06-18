@@ -1,0 +1,15 @@
+# Dipendenze runtime di GAS. Installazione: pip install -r requirements.txt
+# (in venv Python 3.11+). Vedi deploy_vps_bozza.txt FASE 3.
+
+# Client unico OpenAI-compatibile: parla con TUTTI i provider della cascata
+# (Gemini, Groq, OpenRouter, Ollama) via API OpenAI-style.
+openai>=1.40
+
+# --- FASE 2: retrieval semantico (modulo modules/memory/vectors.py) ---
+# Embedding LOCALE (zero token, offline dopo il primo download dei pesi) +
+# brute-force cosine in numpy. Layer ADDITIVO e fail-safe: se queste due mancano,
+# GAS gira IDENTICO (il vector store resta available=False e degrada).
+# NB VPS ARM (Oracle Ampere): verificare le wheel onnxruntime per l'arch al deploy
+# e pre-scaricare i pesi del modello (rete non garantita a runtime). Vedi report.
+numpy>=1.26
+fastembed>=0.8

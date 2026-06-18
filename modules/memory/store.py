@@ -518,6 +518,21 @@ class MemoryStore:
             log.warning("diario_recente fallita (%s): %s", self.db_path, e)
             return []
 
+    def diario_tutto(self) -> List[Dict[str, Any]]:
+        """TUTTE le voci del diario in ordine cronologico (id crescente), in SOLA
+        LETTURA. Serve alla RICOSTRUZIONE dell'indice vettoriale (cache derivata,
+        modulo vectors.py): legge l'intero diario senza modificarlo, quindi
+        l'immutabilità append-only resta INTATTA (nessun UPDATE/DELETE, nessun nuovo
+        path di scrittura). [] in degrado. NB: a differenza di diario_recente è
+        SENZA LIMIT — pensato per il rebuild batch, non per l'iniezione nel contesto."""
+        try:
+            with self._connect() as con:
+                cur = con.execute("SELECT * FROM diario ORDER BY id ASC")
+                return self._rows(cur)
+        except (sqlite3.Error, OSError) as e:
+            log.warning("diario_tutto fallita (%s): %s", self.db_path, e)
+            return []
+
     @staticmethod
     def _fts_match(testo: str) -> str:
         """Costruisce una query MATCH FTS5 SICURA da testo libero: estrae i soli

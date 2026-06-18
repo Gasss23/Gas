@@ -1601,6 +1601,136 @@ check("T29d migrazione con collisione: rilevata, niente fusione/perdita, indice 
       and "idx_contatti_chiave_norm" not in idx_clash,
       f"avail={m29d.available} coll={m29d.collisione_chiave_norm!r} n={len(righe29)}")
 
+# ---------- T30: vector store (storage + embedding semantico, FASE 2 fetta 1) ----------
+# STANDALONE, NON agganciato a run_turn/ricorda. Storage su sidecar .gas_vectors.db
+# (separato dal .db sacro), embedding LOCALE, brute-force cosine in numpy. I test di
+# ranking/soglia/ricostruzione usano una embed_fn FINTA deterministica (bag-of-words
+# su vocabolario fisso) → si verifica la logica SENZA scaricare il modello. Il solo
+# T30e usa il modello reale ed è SKIPPABILE (come i T13 col sandbox). ZERO token.
+from modules.memory import VectorStore, default_vectors_path, EMBED_DIM
+import modules.memory.vectors as _vecmod
+import numpy as _np_vec
+
+def vec_tmp(embed_fn=None):
+    d = tempfile.mkdtemp(prefix="gas_vec_")
+    return VectorStore(default_vectors_path(d), embed_fn=embed_fn)
+
+# embed_fn deterministica: conteggio di parole-chiave su un vocabolario fisso. Il
+# ranking cosine diventa prevedibile dall'overlap lessicale, senza il modello reale.
+_VOC = ["gatto", "felino", "cane", "fattura", "soldi", "anna", "preventivo", "marco"]
+def _fake_embed(testi):
+    return _np_vec.asarray(
+        [[float(str(t).lower().count(w)) for w in _VOC] for t in testi],
+        dtype=_np_vec.float32)
+
+# T30a — store: index + search, ranking per similarità con vettori FINTI deterministici
+vs = vec_tmp(embed_fn=_fake_embed)
+i1 = vs.index("diario", 1, "il gatto e il felino dormono")
+i2 = vs.index("diario", 2, "fattura e soldi del cliente")
+i3 = vs.index("diario", 3, "un cane nel giardino")
+res_a = vs.search("felino gatto", k=3, min_sim=0.01)
+check("T30a vector store: index + search ranking per similarità (vettori finti)",
+      vs.available is True and isinstance(i1, int) and vs.conta() == 3
+      and len(res_a) == 1 and res_a[0]["source_ref"] == "1"
+      and res_a[0]["score"] > 0.99,
+      f"avail={vs.available} n={vs.conta()} res={[(r['source_ref'], round(r['score'],2)) for r in res_a]}")
+
+# T30b — soglia: una query senza overlap lessicale (sim 0) sotto soglia -> nessun risultato
+res_b = vs.search("anna preventivo marco", k=5, min_sim=0.5)
+check("T30b soglia: query sotto soglia minima -> nessun risultato",
+      res_b == [], f"res={res_b}")
+
+# T30c — ricostruzione: ricostruisci_da_diario su un diario seed -> indice ripopolato
+# coerente; il ts dell'evento SORGENTE viaggia col record; ri-eseguire NON duplica.
+mem30 = mem_tmp()
+mem30.append_diario("nota", "incontro con anna per il preventivo")
+mem30.append_diario("nota", "il gatto di marco in giardino")
+vs3 = vec_tmp(embed_fn=_fake_embed)
+n_rec = vs3.ricostruisci_da_diario(mem30)
+res_c = vs3.search("anna preventivo", k=3, min_sim=0.1)
+n_rec2 = vs3.ricostruisci_da_diario(mem30)   # idempotente: svuota e ripopola, niente doppioni
+check("T30c ricostruisci_da_diario: indice ripopolato coerente + ts sorgente + no doppioni",
+      n_rec == 2 and vs3.conta("diario") == 2
+      and len(res_c) >= 1 and "anna" in res_c[0]["testo"].lower()
+      and res_c[0]["ts"] is not None
+      and n_rec2 == 2 and vs3.conta("diario") == 2,
+      f"n={n_rec} conta={vs3.conta('diario')} ts={res_c[0]['ts'] if res_c else None}")
+
+# T30d — fail-safe: (1) fastembed assente -> available=False, index None, search [];
+# (2) DB sidecar corrotto -> degrado. In entrambi NESSUN crash (§9).
+_orig_te = _vecmod._TextEmbedding
+_vecmod._TextEmbedding = None
+try:
+    d_no = tempfile.mkdtemp(prefix="gas_vec_noembed_")
+    vs_no = VectorStore(default_vectors_path(d_no))   # niente embed_fn, niente fastembed
+    no_embed_ok = (vs_no.available is False
+                   and vs_no.index("diario", 1, "x") is None
+                   and vs_no.search("x") == [])
+finally:
+    _vecmod._TextEmbedding = _orig_te
+d_bad = tempfile.mkdtemp(prefix="gas_vec_bad_")
+p_bad = Path(d_bad) / "corrotto.gas_vectors.db"
+p_bad.write_bytes(b"questo non e' un database sqlite, e' spazzatura")
+vs_bad = VectorStore(p_bad, embed_fn=_fake_embed)     # embedder ok, ma DB corrotto
+bad_ok = (vs_bad.available is False
+          and vs_bad.index("diario", 1, "x") is None
+          and vs_bad.search("x") == [])
+check("T30d fail-safe: fastembed assente + DB sidecar corrotto -> degrado senza crash",
+      no_embed_ok and bad_ok,
+      f"no_embed={no_embed_ok} db_bad={bad_ok}")
+
+# T30e — EMBEDDING REALE (modello vero), SKIPPABILE come i T13: vettore 384-dim
+# normalizzato a norma 1, e due frasi italiane SIMILI più vicine di due DIVERSE.
+# Modello non disponibile (no rete/pesi) -> [SKIP], non FAIL.
+_real_done = False
+try:
+    # cache del modello STABILE (fuori dal repo, sotto la temp di sistema): scarica
+    # una volta sola e riusa nelle run successive, niente ~500MB ad ogni suite.
+    cache_real = str(Path(tempfile.gettempdir()) / "gas_vec_model_cache")
+    d_real = tempfile.mkdtemp(prefix="gas_vec_real_")
+    vs_real = VectorStore(default_vectors_path(d_real), model_cache_dir=cache_real)
+    if not vs_real.available:
+        raise RuntimeError("vector store non available (numpy/fastembed)")
+    if vs_real.index("diario", 1, "il gatto dorme sul divano") is None:
+        raise RuntimeError("modello non caricabile (pesi/rete assenti)")
+    vs_real.index("diario", 2, "ho comprato una macchina nuova")
+    res_r = vs_real.search("il felino riposa sul sofà", k=2, min_sim=0.0)
+    _cc = _sqlite3.connect(str(vs_real.db_path))
+    dim_db = _cc.execute("SELECT dim FROM vettori WHERE source_ref='1'").fetchone()[0]
+    blob = _cc.execute("SELECT vettore FROM vettori WHERE source_ref='1'").fetchone()[0]
+    _cc.close()
+    norma = float(_np_vec.linalg.norm(_np_vec.frombuffer(blob, dtype=_np_vec.float32)))
+    _real_done = True
+except Exception as _e_real:
+    skip("T30e embedding reale (384-dim normalizzato + similarità italiana)",
+         str(_e_real)[:70])
+if _real_done:
+    check("T30e embedding reale: 384-dim normalizzato + frase simile più vicina della diversa",
+          dim_db == EMBED_DIM and abs(norma - 1.0) < 1e-3
+          and len(res_r) >= 1 and res_r[0]["source_ref"] == "1",
+          f"dim={dim_db} norma={norma:.4f} top={res_r[0]['source_ref'] if res_r else None}")
+
+# T30f — fail-safe (R-vec-1): una cella BLOB FISICAMENTE corrotta (troncata) non fa
+# crashare search; il try/except di _search_vec avvolge anche vstack/from_blob/matmul
+# e cattura ValueError -> degrado a []. Stesso modello+dim della query così che la
+# riga corrotta venga davvero selezionata dal WHERE (il mismatch di modello da solo
+# non la intercetterebbe).
+vs_corr = vec_tmp(embed_fn=_fake_embed)
+vs_corr.index("diario", 1, "gatto felino")          # una riga BUONA
+_cx = _sqlite3.connect(str(vs_corr.db_path))
+_cx.execute("INSERT INTO vettori (source, source_ref, testo, ts, vettore, dim, model) "
+            "VALUES ('diario','999','riga rotta',NULL,?,?,?)",
+            (b"abc", len(_VOC), vs_corr.model_name))  # BLOB di 3 byte: non multiplo di 4
+_cx.commit(); _cx.close()
+_no_crash_corr = True
+try:
+    r_corr = vs_corr.search("gatto felino", k=5, min_sim=0.0)
+except Exception:
+    _no_crash_corr = False; r_corr = "CRASH"
+check("T30f (R-vec-1) cella BLOB corrotta -> search degrada a [], nessun crash",
+      _no_crash_corr and r_corr == [],
+      f"r={r_corr}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

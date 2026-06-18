@@ -18,3 +18,10 @@ reports/snapshots.log.1
 .gas_memory.db
 .gas_memory.db-wal
 .gas_memory.db-shm
+# Vector store: sidecar CACHE ricostruibile dal diario (NON fonte di verità, NON nel backup)
+.gas_vectors.db
+.gas_vectors.db-wal
+.gas_vectors.db-shm
+# Cache dei pesi del modello di embedding (fastembed/HuggingFace)
+local_cache/
+.fastembed_cache/
