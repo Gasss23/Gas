@@ -1,36 +1,28 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-18 (vector store WIRING al kernel)
+# 🔀 DIFF DI SESSIONE — 2026-06-19 (comando CLI `gas reindex`, review #25)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni sessione.
 
 ## Tema
-FASE 2 — WIRING del vector store (fetta 1 già in main, review #23) al motore: retrieval
-semantico agganciato a `run_turn` (catch-up indexing) e `ricorda` (cascata + snippet
-datato). Opt-in via env `GAS_VECTORS` (default OFF).
+FASE 2 — comando di MANUTENZIONE UMANA `gas reindex`: ricostruisce da zero l'indice
+vettoriale `.gas_vectors.db` dal diario. Più: prima esecuzione REALE della suite vettoriale
+nel Codespace (numpy/fastembed installati), conferma che `reindex` è solo-CLI, fix R-reidx-2.
 
 ## File toccati
-- **`gas.py`**: `_env_flag` (helper feature-gate); `__init__` costruisce `self.vectors`
-  solo se `GAS_VECTORS` truthy (doppia cintura fail-safe come self.memory), default OFF;
-  `self._vec_watermark` + `VEC_CATCHUP_MAX` (env override) + `VEC_MIN_SIM`; `_vettori_catchup()`
-  (indicizzazione pigra/bounded, una volta per turno fuori dal loop); `_fmt_evento_datato`
-  (snippet ts + stato corrente del lead); `_ricorda(query)` cascata NON regressiva
-  FTS→semantico-riempie→substring; chiamata a `_vettori_catchup()` in run_turn dopo il backup.
-- **`modules/memory/store.py`**: `diario_dopo(after_id, limit)` + `get_diario(id)`, SOLA
-  LETTURA (immutabilità diario intatta).
-- **`modules/memory/vectors.py`**: `index_batch` (embedding in blocco) + `max_source_ref`
-  (watermark).
-- **`tests/test_unit_kernel.py`**: T31a-g (wiring). Suite **145→152**, 0 FAIL.
+- **`gas.py`** (+42, solo aggiunte): funzione `reindex(root_dir, vectors)` + dispatch
+  `gas reindex` in `main()`. Tocca solo la cache derivata, mai il diario; exit 0/1; zero token.
+- **`tests/test_unit_kernel.py`** (+~37): blocco T32 (T32a ricostruzione dal diario,
+  T32b idempotenza, T32c fail-safe vector store degradato → rc=1). Commento di T32c
+  corretto (fix R-reidx-2).
+- **`reports/stato_progetto.md`**, **`reports/ultimo_report.md`**, **`reports/diff_sessione.md`**:
+  doc di fine task (review #25, suite 155, riserve).
 
-## Decisione di design (deviazione onesta dal §FINALE)
-Misurato dal vivo che il MiniLM separa DEBOLMENTE le query corte italiane (distrattore
-'caffè' 0.288 > pertinente 'offerta' 0.237). Il §FINALE proponeva "semantico prima": avrebbe
-REGREDITO la precisione. Invertito a "FTS autorità + semantico che RIEMPIE", soglia
-`VEC_MIN_SIM=0.30`. Robustezza > potenza: il layer nuovo non regredisce il comportamento odierno.
+## Ambiente
+- Installati nel venv: numpy 2.4.6, fastembed 0.8.0, onnxruntime 1.27.0 (wheel OK su x86_64).
+- Modello del progetto: `paraphrase-multilingual-MiniLM-L12-v2` (qdrant onnx-Q), cache ~241MB.
+- Cold embed reale ~1.83s. NB: fastembed → mean pooling invece di CLS (cambio comportamento).
 
-## Processo
-- Verifiche dal vivo: suite 152/152; E2E reale (GAS_VECTORS=1) query 'vendita' → recupero
-  semantico "offerta commerciale ad Anna — lead Anna: oggi 'interessato'"; misure soglia reali.
-- Review #24 (revisore) → APPROVATO CON RISERVE. Invarianti motore intatte, default-OFF
-  bit-identico, immutabilità diario verificata. Riserve R-wire-1..4 (minori, non sicurezza)
-  tracciate in `stato_progetto.md`.
-- `gas.py` toccato ma invarianti (`_get_window`/`_cap_window_chars`/`for _ in range(10)`/
-  sandbox/snapshot/pin) INTATTE.
+## Esito
+- Revisore: **APPROVATO CON RISERVE** (review #25). R-reidx-1 e R-reidx-2 chiuse in sessione;
+  R-reidx-3 (RAM) → checklist pre-deploy; R-reidx-deps nuovo.
+- `reindex` confermato **solo-CLI** (fuori da `tools_schema` e dal dispatcher del loop).
+- Suite COMPLETA **155 PASS, 0 FAIL** (T30/T31/T32 girati davvero).

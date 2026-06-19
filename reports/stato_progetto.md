@@ -1,6 +1,30 @@
 # 📊 STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-19 (Comando CLI `gas reindex` — review #25 APPROVATO CON RISERVE, fix R-reidx-2
+> incluso, commit motore vedi `reports/ultimo_report.md`):** aggiunto il comando di
+> MANUTENZIONE UMANA `gas reindex` (gas.py: funzione `reindex()` + dispatch in `main()`)
+> che RICOSTRUISCE da zero l'indice vettoriale `.gas_vectors.db` dal diario. È l'operazione
+> umana dietro al catch-up automatico: serve dopo un cambio di modello di embedding (vettori
+> vecchi incompatibili per modello/dim), per indicizzare in un colpo un diario già grosso, o
+> se si sospetta un indice incoerente. SICURO: tocca SOLO la cache derivata, MAI il
+> diario/`.gas_memory.db`; `ricostruisci_da_diario` calcola tutti gli embedding PRIMA di
+> svuotare → un fallimento NON distrugge l'indice buono. ESPLICITO/on-demand: costruisce il
+> vector store a prescindere da `GAS_VECTORS`. Exit code 0 OK / 1 in degrado; ZERO token LLM
+> (solo embedding locali). **CONFERMATO solo-CLI:** `reindex` NON è in `tools_schema`
+> (gas.py:337-344) né nel dispatcher `execute_tool_call` (gas.py:1079-1180, ogni nome ignoto
+> → "Tool non trovato.") → fuori dalla mano del modello, stessa classe di `unisci_contatti`/
+> restore/`git gc` (operazione irreversibile = manutenzione umana). Test T32a-c (ricostruzione
+> dal diario, idempotenza svuota+ripopola, fail-safe vector store degradato → rc=1 senza crash).
+> **R-reidx-2 CHIUSA in sessione:** corretto il commento di T32c (parte da sidecar GIÀ
+> corrotto → si ferma al check `vs.available`, NON esercita "calcola gli embedding prima di
+> svuotare"; quella barriera è coperta da T30c). **VERIFICA DAL VIVO con dipendenze reali:**
+> numpy 2.4.6 + fastembed 0.8.0 installati nel venv (onnxruntime 1.27.0 wheel OK su x86_64),
+> suite COMPLETA **152→155, 0 FAIL** coi blocchi T30/T31/T32 girati DAVVERO (prima saltati per
+> `ModuleNotFoundError: numpy`). Modello del progetto: `paraphrase-multilingual-MiniLM-L12-v2`
+> (qdrant onnx-Q), cache ~241MB su disco; cold embed reale ~1.83s (primo embed, include load
+> lazy). NB fastembed avvisa che il modello ora usa **mean pooling invece di CLS** → cambio di
+> comportamento dell'embedding tra versioni: caso d'uso tipico di `gas reindex`.
 > **2026-06-18 (Vector store WIRING — retrieval semantico AGGANCIATO al kernel, review
 > #24 APPROVATO CON RISERVE, commit motore vedi `reports/ultimo_report.md`):** la fetta 1
 > (storage+embedding) ora è CABLATA a `run_turn`/`ricorda`. `gas.py`: `self.vectors`
@@ -454,7 +478,11 @@
 - **Fix `_get_window`** (ricerca all'indietro senza cap): review #1
   retroattiva → APPROVATO CON RISERVE.
 - **Suite unit test a zero token** (`tests/test_unit_kernel.py`):
-  **152 PASS, 0 FAIL** (2026-06-18). Dai 145 si aggiungono i 7 T31 (wiring vector store:
+  **155 PASS, 0 FAIL** (2026-06-19, eseguita DAVVERO con numpy/fastembed installati nel venv —
+  i blocchi vettoriali T30/T31/T32 prima si SALTAVANO per `ModuleNotFoundError: numpy`). Dai 152
+  si aggiungono i 3 T32 (comando CLI `gas reindex`: T32a ricostruzione dal diario rc=0+vettori,
+  T32b idempotenza svuota+ripopola, T32c fail-safe vector store degradato → rc=1 senza crash).
+  Storico: dai 145 si aggiungono i 7 T31 (wiring vector store:
   T31a catch-up indicizza il diario nuovo + watermark + idempotente, T31b catch-up bounded
   a scaglioni di VEC_CATCHUP_MAX, T31c snippet datato (ts) + stato corrente del lead, T31d
   semantico RIEMPIE quando FTS è assente (recall/nessun buco), T31e vector store degradato
@@ -536,6 +564,25 @@
   del modulo. Era latente (modulo non cablato) ma è precondizione di sicurezza per esporre
   `search` al loop. Chiusa su prescrizione del revisore; T30f morde (riga corrotta dello
   stesso model+dim della query → `search` degrada a []).
+- ✅ **R-reidx-1 (verifica dal vivo della suite vettoriale) — CHIUSA** (review #25,
+  2026-06-19): la riserva nasceva perché numpy/fastembed non erano installati nel Codespace,
+  quindi la suite si fermava a riga ~1612 (`ModuleNotFoundError: numpy`) PRIMA dei blocchi
+  T30/T31/T32. Installate le dipendenze nel venv (`venv/bin/pip install numpy fastembed`:
+  numpy 2.4.6, fastembed 0.8.0, onnxruntime 1.27.0 — wheel OK su x86_64), la suite COMPLETA
+  gira **155 PASS, 0 FAIL** con T30/T31/T32 esercitati DAVVERO (embedding reale 384-dim incluso).
+  Conteggio reale verificato, non a memoria.
+- 🟡 **R-reidx-deps (la suite vettoriale non girava nel Codespace) — NUOVO** (review #25,
+  2026-06-19, da presidiare al deploy): numpy/fastembed NON erano installati nell'ambiente di
+  sviluppo → i blocchi T30/T31/T32 venivano saltati silenziosamente prima di questa sessione.
+  Ora installati nel venv. **AZIONE:** verificare che numpy + fastembed (+ onnxruntime) restino
+  dichiarati in `requirements.txt` e nell'ambiente del deploy VPS, altrimenti il layer vettoriale
+  e `gas reindex` degradano a no-op (fail-safe, ma muto) e la CI salterebbe di nuovo i test.
+- 🟡 **R-reidx-3 (picco RAM di `reindex` su diario grande) — voce CHECKLIST pre-deploy VPS**
+  (review #25, eredita R-vec-3, informativa): `reindex`/`ricostruisci_da_diario` materializza
+  TUTTI gli embedding in RAM prima del DELETE+INSERT (necessario per non distruggere l'indice
+  buono su errore). Su un diario molto grande e **VPS a 1GB** il picco di memoria va validato;
+  mitigazione candidata se stretto: re-index a scaglioni o swap. Non difetto del codice, da
+  verificare al deploy.
 - 🟡 **R-vec-2 (costanti/path del vector store non configurabili via env)** (review #23,
   minore): `DEFAULT_VECTORS_FILENAME`, `EMBED_MODEL_NAME`, `EMBED_DIM`, `timeout=10`
   hardcoded — stessa classe di `GAS_MEMORY_DB`/`WINDOW_CHAR_CAP`/`SNAPSHOT_KEEP`. Per il

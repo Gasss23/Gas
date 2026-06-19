@@ -1,134 +1,87 @@
-# Vector store — WIRING: retrieval semantico agganciato al kernel
+# 📋 ULTIMO REPORT — Comando CLI `gas reindex` (review #25)
 
-**Data:** 2026-06-18
-**Commit motore:** vedi hash stampato a fine task (revisore #24 — APPROVATO CON RISERVE)
-**Commit doc:** vedi hash stampato a fine task
-**Suite:** **152/152, 0 FAIL** (era 145)
-**Scope:** cablaggio della fetta 1 (storage+embedding, già in main, review #23) al motore:
-`run_turn` (catch-up indexing) + `ricorda` (cascata semantica) + snippet datato. Tocca
-`gas.py`. Invarianti del motore blindato INTATTE.
+**Data:** 2026-06-19
+**Esito:** ✅ COMMIT ESEGUITO — revisore APPROVATO CON RISERVE, fix R-reidx-2 incluso, suite 155/155, `reindex` confermato solo-CLI.
 
 ---
 
-## COSA È STATO FATTO
+## Cosa è stato fatto
 
-### 1. `gas.py __init__` — `self.vectors` OPT-IN e fail-safe
-- Costruito SOLO se env `GAS_VECTORS` è truthy (nuovo helper `_env_flag`: vero per
-  1/true/on/yes/si, tutto il resto → False). **Default OFF di proposito**: il modello di
-  embedding pesa ~500MB su disco + RAM (R-vec-3, VPS 1GB irrisolta) — non va imposto al
-  deploy base né alla suite. Quando OFF, GAS gira **bit-identico a ieri**.
-- Stessa **doppia cintura fail-safe** di `self.memory` (try/except in `__init__` → `None`).
-- `self._vec_watermark` (id diario max già indicizzato, risolto al primo turno dal sidecar)
-  + `self.VEC_CATCHUP_MAX` (env `GAS_VECTORS_CATCHUP_MAX`) + costante `VEC_MIN_SIM`.
+1. **Comando CLI `gas reindex`** (`gas.py`: funzione `reindex()` + dispatch in `main()`):
+   ricostruisce da zero l'indice vettoriale `.gas_vectors.db` a partire dal diario.
+   Manutenzione UMANA (post cambio modello embedding / diario grosso da indicizzare /
+   indice sospetto incoerente). Sicuro: tocca solo la cache derivata, mai il diario;
+   calcola gli embedding prima di svuotare → un fallimento non distrugge l'indice buono.
+   Exit code 0 OK / 1 in degrado. Zero token LLM (solo embedding locali).
 
-### 2. `_vettori_catchup()` — indicizzazione pigra, bounded, una volta per turno
-- Chiamato in `run_turn` DOPO `_memoria_backup_auto`, **FUORI dal `for _ in range(10)`**
-  (come pin e backup): nessun impatto sul loop agentico.
-- Indicizza solo le righe di diario **NUOVE** oltre il watermark (lettore incrementale
-  `MemoryStore.diario_dopo`), in BLOCCO (`VectorStore.index_batch` = una sola chiamata di
-  embedding), BOUNDED a `VEC_CATCHUP_MAX` per turno → niente picchi dopo lunghe pause,
-  l'arretrato si recupera in più turni. Avanza il watermark **solo se l'index riesce**.
-- Fail-safe §9: vector store assente/degradato o memoria assente → no-op, turno prosegue.
+2. **Test T32a-c** (`tests/test_unit_kernel.py`): ricostruzione dal diario, idempotenza
+   (svuota+ripopola, non duplica), fail-safe (vector store degradato → rc=1, nessun crash).
 
-### 3. `_ricorda(query)` — cascata NON regressiva + snippet datato
-- **FTS5 (base)**: `cerca_diario` resta l'autorità lessicale → **comportamento odierno
-  preservato**, mai soppresso.
-- **Semantico (riempie)**: solo se FTS non satura `n` e il layer è attivo, `vectors.search`
-  aggiunge gli hit per SIGNIFICATO che FTS ha mancato, deduplicati per id, fino a `n`.
-- **Substring (pavimento)**: ultimo fallback se tutto il resto è vuoto (invariato).
-- **Snippet `_fmt_evento_datato`**: ogni evento mostra il `ts` SORGENTE e, se legato a un
-  lead (`contatto_id`), lo **stato CORRENTE** del lead letto LIVE dalla rubrica (non
-  denormalizzato nel sidecar). "La memoria non mente" anche in lettura: il ricordo è un
-  evento passato datato, ma chi legge vede se è ancora valido.
-
-### 4. Supporto in `store.py` / `vectors.py`
-- `MemoryStore.diario_dopo(after_id, limit)` e `get_diario(id)` — **SOLA LETTURA**
-  (immutabilità append-only del diario intatta).
-- `VectorStore.index_batch(items)` (embedding in blocco) e `max_source_ref(source)`
-  (watermark).
+3. **Fix R-reidx-2** (commento di T32c): corretto per allinearlo a ciò che il test
+   esercita davvero (parte da sidecar GIÀ corrotto → si ferma al check `vs.available`,
+   NON esercita "calcola gli embedding prima di svuotare"; quella barriera è coperta da T30c).
 
 ---
 
-## DECISIONE DI DESIGN — deviazione ONESTA dal §FINALE (motivata da misura dal vivo)
+## Verifiche dal vivo (richieste esplicitamente)
 
-Il §FINALE della fetta 1 proponeva "semantico PRIMA, poi FTS". **Misurando dal vivo** la
-qualità del MiniLM su query corte italiane ho trovato che NON separa in modo affidabile:
+### 1) Dipendenze + suite reale
+- Installate nel venv: **numpy 2.4.6**, **fastembed 0.8.0**, **onnxruntime 1.27.0**.
+- Wheel `onnxruntime` su arch del Codespace (**x86_64**): installata **senza problemi**.
+- Suite COMPLETA `python tests/test_unit_kernel.py`: **155 PASS, 0 FAIL**.
+- I blocchi **T30/T31/T32** girano DAVVERO (prima saltati per `ModuleNotFoundError: numpy`,
+  la suite si fermava a riga ~1612). Incluso l'embedding REALE T30e (dim=384, norma=1.0000).
+- **Download modello:** il progetto usa `paraphrase-multilingual-MiniLM-L12-v2` (qdrant onnx-Q),
+  cache su disco **~241 MB** (`/tmp/gas_vec_model_cache`). Cold embed (primo embed reale,
+  include il load lazy del modello): **~1.83 s**.
+- **NB:** fastembed avvisa che questo modello ora usa **mean pooling invece di CLS embedding**
+  → cambio di comportamento dell'embedding tra versioni di fastembed. È esattamente il caso
+  d'uso di `gas reindex` (re-indicizzare se i vettori storici diventano incompatibili).
 
-```
-query 'preventivo':  'telefonata di vendita' 0.33 | 'caffè al bar' 0.288 |
-                     'offerta commerciale ad Anna' 0.237   ← il pertinente PERDE col rumore
-query 'animale domestico':  'gatto dorme' 0.148  ← praticamente pari al rumore
-query 'vendita':     'telefonata di vendita' 0.562  ← qui invece separa bene
-```
+### 2) Conferma `reindex` SOLO-CLI
+- `reindex` **NON** è in `tools_schema` (gas.py:337-344, che elenca solo i 6 tool:
+  run_command, write_file, read_file, ricorda, salva_contatto, imposta_stato_contatto).
+- `reindex` **NON** è nel dispatcher del loop `execute_tool_call` (gas.py:1079-1180):
+  ogni nome non gestito cade nel ramo `else → "Tool non trovato."` (gas.py:1180).
+- È invocabile SOLO da CLI: dispatch in `main()` (gas.py:1556-1557, `gas reindex`).
+- → Fuori dalla mano del modello, stessa classe di `unisci_contatti`/restore-snapshot/`git gc`
+  (operazione irreversibile = manutenzione umana). **Conferma: solo-CLI.**
 
-Mettere il semantico PRIMA di FTS avrebbe **REGREDITO** la precisione: il rumore semantico
-(es. 'caffè' per 'preventivo') avrebbe soppresso i match lessicali esatti di FTS. Ho quindi
-**invertito** la cascata: **FTS resta l'autorità** (precisione, comportamento collaudato),
-il **semantico RIEMPIE** solo i posti liberi (recall additivo per significato), mai
-sopprimendo. Soglia `VEC_MIN_SIM=0.30` conservativa. È la scelta giusta per "robustezza >
-potenza": un layer nuovo non deve mai peggiorare ciò che già funziona. Riserva R-wire-1
-(soglia da rendere env-config e ri-tarare sul corpus reale); R-wire-2 (qualità MiniLM
-limitata = limite di POTENZA del modello forzato dall'assenza di e5-small + RAM VPS).
-
----
-
-## VERIFICHE (dal vivo)
-
-### A. Suite
-`python tests/test_unit_kernel.py` → **`152 PASS, 0 FAIL`** (era 145). Nuovi T31a-g:
-catch-up (indicizza/watermark/idempotenza), catch-up bounded a scaglioni, snippet datato +
-stato corrente del lead, semantico che RIEMPIE quando FTS è assente, fail-safe del layer
-degradato (catch-up no-op + ricorda non crasha), default OFF (vectors None), gate env lazy.
-
-### B. End-to-end REALE (modello vero, `GAS_VECTORS=1`)
-Seed: lead Anna ('interessato') + evento "ho mandato l'offerta commerciale ad Anna" + un
-distrattore. Query **'vendita'** (che FTS NON matcha lessicalmente) → recuperata per
-SIGNIFICATO:
-```
-Diario per 'vendita' (1):
-- [2026-06-18] ho mandato l'offerta commerciale ad Anna — lead Anna: oggi 'interessato'
-```
-Conferma: catch-up reale (2 indicizzati, watermark 2), recall semantico + snippet datato +
-stato lead live. (Onestà: per query corte/astratte il MiniLM a volte non aggancia il
-pertinente — R-wire-2; il fallback FTS/substring resta sempre il pavimento.)
-
-### C. `git diff --cached --stat` (commit motore)
-```
- gas.py                    | 122 ++++++++++++++++++++++-
- modules/memory/store.py   |  30 ++++++
- modules/memory/vectors.py |  46 ++++++++
- tests/test_unit_kernel.py | 113 +++++++++++++++++
-```
-Invarianti motore (`_get_window`/`_cap_window_chars`/`for _ in range(10)`/sandbox/snapshot/
-pin always-on) INTATTE. Con GAS_VECTORS spento il ramo semantico è gated da
-`vectors is not None and available` → comportamento bit-identico.
+### 3) Fix R-reidx-2
+- Eseguito (commento di T32c riscritto). Suite rieseguita dopo il fix: **155 PASS, 0 FAIL**.
 
 ---
 
-## PROCESSO
-- **Gate di review §3**: diff su `gas.py`+`modules/`+`tests/` → subagent **revisore** sul
-  diff staged PRIMA del commit → **APPROVATO CON RISERVE** (review #24). Verifiche del
-  revisore: invarianti motore intatte, default-OFF bit-identico, immutabilità diario,
-  bontà della deviazione di design. Riserve **R-wire-1..4** (minori) tracciate in
-  `stato_progetto.md`; nessuna è di sicurezza, quindi tracciate (non chiuse in sessione).
-- `stato_progetto.md` e `diff_sessione.md` aggiornati; `memoria_revisore.md` aggiornata dal
-  revisore (2 lezioni nuove datate 2026-06-18).
+## VERDETTO INTEGRALE DEL REVISORE (review #25)
+
+> **File revisionati:**
+> - `/workspaces/Gas/gas.py` — nuova funzione `reindex()` (righe ~1512-1550) + dispatch in `main()`
+> - `/workspaces/Gas/tests/test_unit_kernel.py` — blocco T32 (T32a/b/c, righe ~1847-1881)
+>
+> **VERDETTO: APPROVATO CON RISERVE**
+>
+> Riserve da tracciare in `reports/stato_progetto.md`:
+> - **R-reidx-1 (principale):** verifica dal vivo della suite (T30-T32, claim 152→155) NON eseguibile in questo ambiente — numpy/fastembed assenti sia nel python di sistema sia nel venv `/workspaces/Gas/venv`, la suite si ferma a riga 1612 (`ModuleNotFoundError: numpy`) prima del blocco vettori. Logica corretta per ispezione, ma l'esecuzione reale (e il conteggio suite) va fatta nell'ambiente con le dipendenze prima di chiudere la fetta.
+> - **R-reidx-2 (minore):** il commento di T32c sovra-dichiara la barriera che morde — parte da sidecar già corrotto, quindi non esercita "calcola gli embedding prima di svuotare" (gas vectors.py:318). Allineare il commento o aggiungere un caso con indice popolato + embedder che degrada a metà.
+> - **R-reidx-3 (informativa, eredita R-vec-3):** `reindex` materializza tutti gli embedding in RAM prima del DELETE — picco memoria da validare al deploy VPS 1GB su diario grande.
+>
+> Nessun antipattern del Wall of Shame, fail-safe §9 integro, cache derivata mai dato di verità, invarianti motore intatte. Non ho committato nulla. Memoria del revisore aggiornata in `/workspaces/Gas/.claude/agents/memoria_revisore.md`.
 
 ---
 
-## COME USARLO / ABILITARLO
-- **Acceso:** `export GAS_VECTORS=1` (default OFF). Tetti: `GAS_VECTORS_CATCHUP_MAX`
-  (righe/turno). Sidecar `<root>/.gas_vectors.db` (gitignorato, cache ricostruibile).
-- **VPS:** prima di accendere, pre-provisionare i pesi del modello (R-vec-3) e verificare
-  la wheel onnxruntime ARM + la RAM. Con GAS_VECTORS spento Gas funziona identico, senza il
-  modello.
+## Stato delle riserve dopo questa sessione
 
-## §FINALE — Cosa resta fuori (PROPOSTE, non fatte)
-1. **`gas reindex` umano**: un comando CLI che chiami `VectorStore.ricostruisci_da_diario`
-   (già esposto, motore pronto) per un rebuild completo dell'indice — utile dopo un cambio
-   di modello o un sospetto di indice incoerente. Operazione manuale/umana, non autopilot.
-2. **R-wire-1**: `GAS_VECTORS_MIN_SIM` configurabile via env + ri-taratura della soglia sul
-   primo diario reale del VPS (oggi 0.30 da pochi esempi sintetici).
-3. **R-wire-2 / R-vec-3**: rivalutare un modello e5 (qualità semantica migliore) quando si
-   scioglie il nodo RAM del VPS — la qualità del retrieval per significato è oggi limitata
-   dal MiniLM, scelto per vincoli di disponibilità/RAM, non per qualità.
+- **R-reidx-1 → ✅ CHIUSA:** dipendenze installate, suite reale **155/155**, conteggio verificato (non a memoria).
+- **R-reidx-2 → ✅ CHIUSA:** commento di T32c corretto.
+- **R-reidx-3 → 🟡 voce CHECKLIST pre-deploy VPS** (picco RAM di reindex su diario grande, VPS 1GB).
+- **R-reidx-deps → 🟡 NUOVO:** la suite vettoriale non girava nel Codespace (numpy/fastembed assenti);
+  ora installati; verificare che restino in `requirements.txt` e nell'ambiente del deploy.
+
+---
+
+## Note di processo
+Il fix R-reidx-2 è una correzione di SOLO COMMENTO in un test, che implementa esattamente la
+riserva sollevata dal revisore; non altera il comportamento del motore né la logica dei test.
+La revisione del motore (verdetto sopra) resta valida; il commit è stato autorizzato
+esplicitamente dall'utente in base alle tre condizioni vincolanti (suite reale verde,
+T30/T31/T32 0 FAIL, reindex solo-CLI), tutte soddisfatte.
