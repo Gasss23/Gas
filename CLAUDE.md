@@ -49,19 +49,27 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 
 ## 10. FUTURE ROADMAP & PRIORITIES
 
-Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione.
+Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione. WINDOW_CHAR_CAP sulla finestra a granularita di messaggio (2026-06-14, review #7/#8) e manutenzione snapshot in gas doctor (2026-06-14, review #10) — **FASE 1 CHIUSA**. **FASE 2 (cervello/memoria low-cost) CHIUSA** (2026-06-15 → 2026-06-19): memoria SQLite con diario IMMUTABILE (review #12/#13), iniezione always-on + tool ricorda (review #14), CRM contatti dal loop con chiavi normalizzate/chiave_norm (review #15/#16/#22), ricerca FTS5 sul diario (review #18), backup automatico anti-corruzione del DB (review #19), vector store fetta 1 storage+embedding (review #23) + wiring retrieval semantico al kernel opt-in GAS_VECTORS (review #24), comando CLI gas reindex (review #25).
 
-### 🔴 FASE 1 — Blindatura del Terminale & Sicurezza (Priorità Alta)
+### 🔴 FASE 1 — Blindatura del Terminale & Sicurezza — ✅ CHIUSA
 - Snapshot preventivo anti-autodistruzione — ✅ FATTO (2026-06-11), base della blindatura.
 - Sandbox OS per run_command (bwrap/unshare: namespace di rete chiuso + filesystem read-only) — ✅ FATTO: chiude DEL TUTTO il finding esfiltrazione. Implementati la sonda reale _probe_os_sandbox (cache di processo), il prefisso _bwrap_prefix (--unshare-net/--unshare-pid + fs read-only) e le due modalita GAS_SANDBOX_MODE: os_strict (fail-closed se bwrap/namespace assenti) e os_with_fallback (degrada alla sola sandbox applicativa). Check di disponibilita presente in gas doctor.
-- WINDOW_CHAR_CAP sulla finestra, a granularita di messaggio (mai slicing) — blocca lo spreco di token nei messaggi; rimedio proposto in review #1.
-- (collegato) Manutenzione snapshot in gas doctor: conteggio ref, gc degli oggetti orfani, rotazione di reports/snapshots.log (riserve R2/R3 review #3).
+- WINDOW_CHAR_CAP sulla finestra, a granularita di messaggio (mai slicing) — ✅ FATTO (2026-06-14, review #7/#8): tetto rigido 24000 char via _cap_window_chars, scarto di messaggi interi + riallineamento a un role:user (mai slicing, §5).
+- Manutenzione snapshot in gas doctor: conteggio ref, gc degli oggetti orfani, rotazione di reports/snapshots.log — ✅ FATTO (2026-06-14, review #10): retention ibrida (count+età), doctor sez.7 di solo report, gc OPT-IN manuale (nessun prune distruttivo automatico, §10).
 
-### 🧠 FASE 2 — Il Cervello di Jarvis & Memoria Low-Cost (Priorità Alta)
-- Database locale SQLite per la memorizzazione dei fatti rigidi (gratis, zero token).
-- Vector DB locale per i ricordi a lungo termine senza consumo di token di contesto.
-- Script revisor.py (API low-cost) per sbloccare il "Claude Council" senza spendere ~10€/giorno. NB: chiarire all'avvio cosa si intende per "Claude Council" — il nome non corrisponde a un prodotto Anthropic noto al 2026-06-13.
-- **Backup della memoria.** Il DB di memoria (file SQLite singolo `<root>/.gas_memory.db`, FUORI da git) è il dato più prezioso e MENO rimpiazzabile del sistema: mesi di relazioni coi lead, NON ricostruibili come il codice. ATTENZIONE: la "macchina del tempo" snapshot NON lo copre — fotografa solo il repo git, e il DB è gitignorato di proposito (file singolo per backup banale). L'helper `MemoryStore.backup()` produce una copia `.bak` LOCALE timestampata: protegge dall'AUTO-CORRUZIONE (copia coerente via API SQLite nativa), NON dalla morte del disco. Il backup OFF-MACHINE (vera protezione anti-disastro: copia su volume/host esterno) è da FASE 5 / deploy VPS ed è banale proprio perché il DB è un file singolo.
+### 🧠 FASE 2 — Il Cervello di Jarvis & Memoria Low-Cost — ✅ CHIUSA
+- Database locale SQLite per i fatti rigidi (gratis, zero token) — ✅ FATTO (2026-06-15, review #12/#13): modulo `modules/memory/`, DB file singolo `.gas_memory.db`, diario append-only IMMUTABILE (trigger BEFORE UPDATE/DELETE → ABORT) + rubrica contatti mutabile. CRM dal loop con tool salva_contatto/imposta_stato_contatto e chiavi normalizzate (chiave_norm UNIQUE + NFKC) — ✅ FATTO (review #15/#16/#22). Iniezione always-on (_memoria_pin) + tool ricorda di sola lettura — ✅ FATTO (review #14). Ricerca FTS5 sul diario (Strato A) — ✅ FATTO (2026-06-17, review #18).
+- Vector DB locale per i ricordi a lungo termine senza consumo di token — ✅ FATTO (2026-06-18): fetta 1 storage+embedding semantico locale (fastembed `paraphrase-multilingual-MiniLM-L12-v2`, sidecar `.gas_vectors.db` cache derivata, cosine brute-force, review #23) + wiring al kernel — retrieval semantico opt-in via env `GAS_VECTORS`, catch-up indexing in run_turn + cascata FTS→semantico in ricorda (review #24). Comando CLI di manutenzione `gas reindex` (ricostruisce l'indice dal diario) — ✅ FATTO (2026-06-19, review #25).
+- **Backup della memoria** — ✅ FATTO per l'auto-corruzione (2026-06-17, review #19): `MemoryStore.backup()` + `backup_auto()` THROTTLED con integrity-gate (un DB corrotto non viene mai copiato sopra i backup buoni) + rotazione, e check in gas doctor sez.8. Il backup OFF-MACHINE (anti-disastro disco, copia su volume/host esterno) resta a FASE 5 / deploy VPS — vedi item aperti.
+- (parcheggiato, NON prioritario) Script revisor.py (API low-cost) per il "Claude Council". NB: chiarire cosa si intende per "Claude Council" — il nome non corrisponde a un prodotto Anthropic noto. Nessun impegno.
+
+### 🟡 ITEM APERTI / PROSSIMI PASSI (in ordine di priorità)
+1. **R-wire-1 — soglia semantica `VEC_MIN_SIM` configurabile via env + ri-taratura** sul primo diario reale del VPS (oggi 0.30 hardcoded, tarata su esempi sintetici x86; il MiniLM separa debolmente le query corte IT). Rendere `GAS_VECTORS_MIN_SIM` come `CATCHUP_MAX` per non richiedere redeploy.
+2. **R-crm-norm-2 — esporre `collisione_chiave_norm` in gas doctor sez.8**, PRIMA del deploy VPS: se la migrazione chiave_norm trova duplicati storici, `available=False` e la memoria si spegne in SILENZIO; il doctor deve renderlo visibile.
+3. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato al nodo RAM del VPS (R-vec-3): da decidere insieme al vincolo memoria del deploy.
+4. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS (1GB); mitigazione candidata: re-index a scaglioni o swap.
+5. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
+6. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include il backup OFF-MACHINE della memoria.
 
 ### 🎙️ FASE 3 — Interfaccia Vocale (Priorità Media — Core Feature)
 - Whisper (STT) per ricevere comandi vocali diretti (input terminale a mani libere durante lo sviluppo).
@@ -72,7 +80,8 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 - Algoritmi di persuasione locali per il copy e i DM di marketing.
 
 ### 🚀 FASE 5 — Autonomia Totale & VPS (Priorità Lunga)
-- Deploy su VPS h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
+- Migrazione/deploy su **VPS Hetzner** (target indicato dall'utente) h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
+- Backup OFF-MACHINE della memoria (copia di `.gas_memory.db` su volume/host esterno) — vera protezione anti-disastro disco, banale perché il DB è un file singolo.
 - Automazione canali brand.
 
 ### 💡 Idee da valutare (NON prioritarie)
