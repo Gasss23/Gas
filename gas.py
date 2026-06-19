@@ -1509,10 +1509,52 @@ def doctor(root_dir: Optional[str] = None) -> int:
     print("\nVERDETTO: TUTTO OK")
     return 0
 
+
+def reindex(root_dir: Optional[str] = None,
+            vectors: Optional[VectorStore] = None) -> int:
+    """Comando `gas reindex`: RICOSTRUISCE da zero l'indice vettoriale (la cache
+    derivata `.gas_vectors.db`) a partire dal diario. È l'operazione UMANA dietro al
+    catch-up automatico: serve dopo un cambio di modello di embedding (i vettori
+    vecchi sono di un altro modello/dim → incompatibili), per indicizzare in un colpo
+    un diario già grosso quando si accende il layer, o se si sospetta un indice
+    incoerente. SICURA: tocca SOLO la cache derivata, MAI il diario/`.gas_memory.db`
+    (che restano la verità intatta); e `ricostruisci_da_diario` calcola tutti gli
+    embedding PRIMA di svuotare, quindi un fallimento NON distrugge l'indice buono.
+
+    Esplicito e on-demand: costruisce il vector store a prescindere da `GAS_VECTORS`
+    (chi lancia `reindex` vuole l'indice ora). `vectors` è un seam di test (iniezione
+    di un VectorStore con embed_fn deterministica). Exit code 0 se OK, 1 in degrado.
+    NON consuma token LLM (solo embedding locali)."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    memory = MemoryStore(default_db_path(root))
+    if not memory.available:
+        print("✗ reindex: memoria non disponibile/degradata — niente da indicizzare.")
+        return 1
+    vs = vectors if vectors is not None else VectorStore(default_vectors_path(root))
+    if not vs.available:
+        print("✗ reindex: vector store non disponibile (numpy/fastembed assenti o DB "
+              "sidecar corrotto). Installa le dipendenze (requirements.txt) e riprova.")
+        return 1
+    import time
+    t0 = time.time()
+    n = vs.ricostruisci_da_diario(memory)
+    dt = time.time() - t0
+    if n is None:
+        print("✗ reindex: ricostruzione fallita (modello non caricabile/rete assente o "
+              "errore DB). L'indice preesistente NON è stato toccato.")
+        return 1
+    print(f"✓ reindex: {n} eventi del diario re-indicizzati in {dt:.1f}s")
+    print(f"  sidecar: {vs.db_path}")
+    print(f"  vettori 'diario' nell'indice: {vs.conta('diario')}")
+    return 0
+
+
 def main():
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "doctor":
         sys.exit(doctor())
+    if len(sys.argv) > 1 and sys.argv[1] == "reindex":
+        sys.exit(reindex())
     kernel = GasKernel()
     while True:
         try:

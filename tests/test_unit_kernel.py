@@ -1844,6 +1844,43 @@ check("T31g gate env GAS_VECTORS=1 costruisce il vector store (lazy, no download
       isinstance(k31g.vectors, VectorStore) and k31g.vectors.available is True,
       f"vectors={type(k31g.vectors).__name__ if k31g.vectors else None}")
 
+# ---------- T32: comando CLI `gas reindex` ----------
+# Ricostruisce da zero l'indice vettoriale dal diario (cache derivata). Testato con
+# vector store iniettato (embed_fn deterministica), niente modello reale. ZERO token.
+
+# T32a — reindex ricostruisce l'indice dal diario: rc=0 + vettori indicizzati
+k32 = kernel_tmp()
+k32.memory.append_diario("nota", "preventivo per anna")
+k32.memory.append_diario("nota", "caffè al bar con marco")
+d32 = tempfile.mkdtemp(prefix="gas_reidx_")
+vs32 = VectorStore(default_vectors_path(d32), embed_fn=_fake_embed)
+rc32 = gas.reindex(root_dir=os.environ["GAS_CWD"], vectors=vs32)
+check("T32a gas reindex: ricostruisce l'indice dal diario (rc=0 + vettori indicizzati)",
+      rc32 == 0 and vs32.conta("diario") == 2,
+      f"rc={rc32} conta={vs32.conta('diario')}")
+
+# T32b — reindex è IDEMPOTENTE (svuota e ripopola): ri-eseguire non duplica
+rc32b = gas.reindex(root_dir=os.environ["GAS_CWD"], vectors=vs32)
+check("T32b gas reindex idempotente: ri-eseguire non duplica",
+      rc32b == 0 and vs32.conta("diario") == 2,
+      f"rc={rc32b} conta={vs32.conta('diario')}")
+
+# T32c — fail-safe: vector store DEGRADATO (sidecar non-SQLite -> available=False) ->
+# reindex esce con rc=1 al check `vs.available`, PRIMA di toccare il diario, senza crash.
+# NB: questo caso si ferma a monte, quindi NON esercita la barriera "calcola gli embedding
+# prima di svuotare" (quella vive in ricostruisci_da_diario, coperta da T30c con embed_fn ok).
+pbad32 = Path(tempfile.mkdtemp(prefix="gas_reidx_bad_")) / "corrotto.gas_vectors.db"
+pbad32.write_bytes(b"non e' sqlite")
+vs_bad32 = VectorStore(pbad32, embed_fn=_fake_embed)
+_nc32 = True
+try:
+    rc32c = gas.reindex(root_dir=os.environ["GAS_CWD"], vectors=vs_bad32)
+except Exception:
+    _nc32 = False; rc32c = "CRASH"
+check("T32c gas reindex fail-safe: vector store degradato -> rc=1, nessun crash",
+      _nc32 and rc32c == 1 and vs_bad32.available is False,
+      f"nc={_nc32} rc={rc32c}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
