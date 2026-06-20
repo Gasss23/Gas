@@ -31,13 +31,15 @@ OUT=$(jq -rs '
 # Niente trigger o nessun testo trovato -> non toccare il file (fail-safe)
 [ -n "$OUT" ] || exit 0
 
-DEST="/workspaces/Gas/reports/ultima_risposta.md"
+# Root del repo: GAS_REPO_DIR (override per test) oppure parent dello script
+REPO_DIR="${GAS_REPO_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+DEST="$REPO_DIR/reports/ultima_risposta.md"
 printf '%s\n' "$OUT" > "$DEST"
 
 # Auto-push: rende il file visibile su Claude Web senza copia-incolla.
 # Tutto fail-safe: qualunque errore git NON deve mai bloccare la chiusura del turno.
 (
-  cd /workspaces/Gas 2>/dev/null || exit 0
+  cd "$REPO_DIR" 2>/dev/null || exit 0
   git add reports/ultima_risposta.md 2>/dev/null
   if ! git diff --cached --quiet reports/ultima_risposta.md 2>/dev/null; then
     git commit -q -m "chore(scrivi-rep): ultima risposta salvata" 2>/dev/null
