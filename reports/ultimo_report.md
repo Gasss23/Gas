@@ -1,87 +1,109 @@
-# 📋 ULTIMO REPORT — Comando CLI `gas reindex` (review #25)
+# ULTIMO REPORT — Backup off-machine + doctor memoria rumoroso (review #26/#27)
 
-**Data:** 2026-06-19
-**Esito:** ✅ COMMIT ESEGUITO — revisore APPROVATO CON RISERVE, fix R-reidx-2 incluso, suite 155/155, `reindex` confermato solo-CLI.
-
----
-
-## Cosa è stato fatto
-
-1. **Comando CLI `gas reindex`** (`gas.py`: funzione `reindex()` + dispatch in `main()`):
-   ricostruisce da zero l'indice vettoriale `.gas_vectors.db` a partire dal diario.
-   Manutenzione UMANA (post cambio modello embedding / diario grosso da indicizzare /
-   indice sospetto incoerente). Sicuro: tocca solo la cache derivata, mai il diario;
-   calcola gli embedding prima di svuotare → un fallimento non distrugge l'indice buono.
-   Exit code 0 OK / 1 in degrado. Zero token LLM (solo embedding locali).
-
-2. **Test T32a-c** (`tests/test_unit_kernel.py`): ricostruzione dal diario, idempotenza
-   (svuota+ripopola, non duplica), fail-safe (vector store degradato → rc=1, nessun crash).
-
-3. **Fix R-reidx-2** (commento di T32c): corretto per allinearlo a ciò che il test
-   esercita davvero (parte da sidecar GIÀ corrotto → si ferma al check `vs.available`,
-   NON esercita "calcola gli embedding prima di svuotare"; quella barriera è coperta da T30c).
+**Data:** 2026-06-20
+**Esito:** COMMIT ESEGUITO (56a6dc3) — revisore #26 e #27 APPROVATI CON RISERVE, suite 158 PASS, 8 FAIL pre-esistenti Windows. T33a-h + T34a-e tutti PASS.
 
 ---
 
-## Verifiche dal vivo (richieste esplicitamente)
+## Cosa e' stato fatto
 
-### 1) Dipendenze + suite reale
-- Installate nel venv: **numpy 2.4.6**, **fastembed 0.8.0**, **onnxruntime 1.27.0**.
-- Wheel `onnxruntime` su arch del Codespace (**x86_64**): installata **senza problemi**.
-- Suite COMPLETA `python tests/test_unit_kernel.py`: **155 PASS, 0 FAIL**.
-- I blocchi **T30/T31/T32** girano DAVVERO (prima saltati per `ModuleNotFoundError: numpy`,
-  la suite si fermava a riga ~1612). Incluso l'embedding REALE T30e (dim=384, norma=1.0000).
-- **Download modello:** il progetto usa `paraphrase-multilingual-MiniLM-L12-v2` (qdrant onnx-Q),
-  cache su disco **~241 MB** (`/tmp/gas_vec_model_cache`). Cold embed (primo embed reale,
-  include il load lazy del modello): **~1.83 s**.
-- **NB:** fastembed avvisa che questo modello ora usa **mean pooling invece di CLS embedding**
-  → cambio di comportamento dell'embedding tra versioni di fastembed. È esattamente il caso
-  d'uso di `gas reindex` (re-indicizzare se i vettori storici diventano incompatibili).
+### TASK A (review #26) — Backup off-machine del DB memoria
 
-### 2) Conferma `reindex` SOLO-CLI
-- `reindex` **NON** è in `tools_schema` (gas.py:337-344, che elenca solo i 6 tool:
-  run_command, write_file, read_file, ricorda, salva_contatto, imposta_stato_contatto).
-- `reindex` **NON** è nel dispatcher del loop `execute_tool_call` (gas.py:1079-1180):
-  ogni nome non gestito cade nel ramo `else → "Tool non trovato."` (gas.py:1180).
-- È invocabile SOLO da CLI: dispatch in `main()` (gas.py:1556-1557, `gas reindex`).
-- → Fuori dalla mano del modello, stessa classe di `unisci_contatti`/restore-snapshot/`git gc`
-  (operazione irreversibile = manutenzione umana). **Conferma: solo-CLI.**
+1. **`modules/memory/store.py`**: nuovo metodo `backup_offsite_auto(offsite_dir, min_interval_sec, keep)`:
+   - Backup THROTTLED su dir esterna configurabile (anti-disastro disco).
+   - Throttle SEPARATO da `backup_auto` (la dir esterna puo' essere lenta/NFS).
+   - Cintura integrita': `integrity_check` prima di ogni copia (DB corrotto NON viene mai copiato offsite).
+   - Riusa `backup()` e `integrity_check()` senza reimplementarli.
+   - Fail-safe sec. 9: cattura `(sqlite3.Error, OSError)`, mai crash.
 
-### 3) Fix R-reidx-2
-- Eseguito (commento di T32c riscritto). Suite rieseguita dopo il fix: **155 PASS, 0 FAIL**.
+2. **`gas.py`**:
+   - Costanti di classe `MEMORY_BACKUP_OFFSITE_EVERY_SEC=86400` e `MEMORY_BACKUP_OFFSITE_KEEP=10`.
+   - `__init__`: override env `GAS_MEMORY_BACKUP_OFFSITE_DIR/_EVERY_SEC/_KEEP` (via `_env_int`/env var).
+   - `_memoria_backup_auto()`: blocco off-site condizionale (solo se dir configurata), fail-safe separato.
+   - Nuova funzione `backup_cmd()` **SOLO-CLI**: controlla integrita', esegue backup locale + opzionalmente off-site, exit 0/1. NON in `tools_schema` e NON nel dispatcher (fuori dalla mano del modello, stessa classe di `reindex`/`unisci_contatti`).
+   - Dispatch `gas backup` in `main()`.
+   - Doctor sez.8: check off-site dir+eta' ultimo backup, INDIPENDENTE da `mem.available` (check puramente filesystem; `mem` ora dichiarata `None` prima del blocco if/else).
+
+3. **`tests/test_unit_kernel.py`**: T33a-h (tutti PASS):
+   - T33a: `backup_offsite_auto` scrive file SQLite integro nella dir esterna.
+   - T33b: cintura integrita' — sorgente corrotta -> skip, nessun crash.
+   - T33c: rotazione via `_backup_retention` (funzione pura, 5 file finti, OS-agnostica per evitare WinError 32).
+   - T33d: throttle — seconda chiamata entro intervallo -> None.
+   - T33e: fail-safe — file al posto della dir -> OSError -> None, nessun crash.
+   - T33f: default OFF — env non settata -> `MEMORY_BACKUP_OFFSITE_DIR is None`.
+   - T33g: `gas backup` CLI exit 0 + stampa path backup locale.
+   - T33h: `gas backup` CLI con sorgente non disponibile -> exit 1.
+
+### TASK B (review #27) — Doctor fallimento silenzioso della memoria reso RUMOROSO
+
+4. **`gas.py`** (solo `doctor()` sez.8):
+   - Quando `mem.available` e' False, il doctor distingue due casi **rumorosi** invece del vecchio silenzio:
+     - `mem.collisione_chiave_norm` valorizzato -> `FAIL` esplicito coi gruppi duplicati (es. "migrazione chiave_norm bloccata: duplicati storici sulla stessa chiave normalizzata, da fondere MANUALMENTE ('anna' -> righe 1,2)").
+     - altrimenti -> `FAIL` esplicito "DB non apribile, schema non inizializzabile o corruzione all'init".
+   - In entrambi i casi exit code == 1 (FAIL nel report doctor). Chiude **R-crm-norm-2**.
+   - Vector store visibility: dopo il check off-site, il doctor controlla `GAS_VECTORS` e riporta:
+     - `OK` se abilitato e sidecar apribile.
+     - `WARN` se abilitato ma non disponibile (deps assenti o sidecar corrotto).
+     - `OK` "disabilitato" se non settata.
+   - Zero download del modello: `VectorStore.__init__` e' lazy (il modello si carica solo al primo `index_batch`/`search`). Verificato: T34d con sidecar corrotto finisce in WARN senza nessun download, in millisecondi.
+
+5. **`tests/test_unit_kernel.py`**: T34a-e (tutti PASS):
+   - T34a: DB con collisione chiave_norm -> `available=False`, `collisione_chiave_norm` valorizzato, doctor exit=1, "collisione" in stdout.
+   - T34b: DB corrotto -> doctor exit=1 con "FAIL" in stdout, nessun crash.
+   - T34c: DB sano vuoto -> NESSUN "FAIL" nelle righe Memoria "apertura"/"integrita" (no regressione).
+   - T34d: `GAS_VECTORS=1` + sidecar corrotto -> "WARN" e "vector store" in stdout, nessun download.
+   - T34e: `GAS_VECTORS` non settata -> "disabilitato" in stdout.
 
 ---
 
-## VERDETTO INTEGRALE DEL REVISORE (review #25)
+## Suite
 
-> **File revisionati:**
-> - `/workspaces/Gas/gas.py` — nuova funzione `reindex()` (righe ~1512-1550) + dispatch in `main()`
-> - `/workspaces/Gas/tests/test_unit_kernel.py` — blocco T32 (T32a/b/c, righe ~1847-1881)
->
-> **VERDETTO: APPROVATO CON RISERVE**
->
-> Riserve da tracciare in `reports/stato_progetto.md`:
-> - **R-reidx-1 (principale):** verifica dal vivo della suite (T30-T32, claim 152→155) NON eseguibile in questo ambiente — numpy/fastembed assenti sia nel python di sistema sia nel venv `/workspaces/Gas/venv`, la suite si ferma a riga 1612 (`ModuleNotFoundError: numpy`) prima del blocco vettori. Logica corretta per ispezione, ma l'esecuzione reale (e il conteggio suite) va fatta nell'ambiente con le dipendenze prima di chiudere la fetta.
-> - **R-reidx-2 (minore):** il commento di T32c sovra-dichiara la barriera che morde — parte da sidecar già corrotto, quindi non esercita "calcola gli embedding prima di svuotare" (gas vectors.py:318). Allineare il commento o aggiungere un caso con indice popolato + embedder che degrada a metà.
-> - **R-reidx-3 (informativa, eredita R-vec-3):** `reindex` materializza tutti gli embedding in RAM prima del DELETE — picco memoria da validare al deploy VPS 1GB su diario grande.
->
-> Nessun antipattern del Wall of Shame, fail-safe §9 integro, cache derivata mai dato di verità, invarianti motore intatte. Non ho committato nulla. Memoria del revisore aggiornata in `/workspaces/Gas/.claude/agents/memoria_revisore.md`.
+```
+158 PASS, 8 FAIL
+```
+
+I FAIL sono TUTTI pre-esistenti su Windows:
+- T9a, T9c: dipendenti da env API non settate.
+- T11c2, T11e, T12a, T12c, T12e: bwrap/namespace non disponibili su Windows.
+- T26b: WinError 32 (file locking Windows su SQLite backup) — pre-esistente, benigno su Linux/VPS.
+
+I 15 nuovi test (T33a-h + T34a-e) sono tutti PASS.
+
+NB: la suite su Windows richiede `PYTHONUTF8=1` per il carattere `approx` in T18f (pre-esistente cp1252 issue); non e' un nuovo FAIL.
 
 ---
 
-## Stato delle riserve dopo questa sessione
+## Riserve aperte post-review
 
-- **R-reidx-1 → ✅ CHIUSA:** dipendenze installate, suite reale **155/155**, conteggio verificato (non a memoria).
-- **R-reidx-2 → ✅ CHIUSA:** commento di T32c corretto.
-- **R-reidx-3 → 🟡 voce CHECKLIST pre-deploy VPS** (picco RAM di reindex su diario grande, VPS 1GB).
-- **R-reidx-deps → 🟡 NUOVO:** la suite vettoriale non girava nel Codespace (numpy/fastembed assenti);
-  ora installati; verificare che restino in `requirements.txt` e nell'ambiente del deploy.
+**R26-1** (review #26, minore): `backup_cmd()` ritorna exit 0 anche quando il backup off-site fallisce (solo il locale e' garantito). Comportamento difendibile (off-site e' best-effort), ma da documentare: uno script `gas backup && rclone sync` sul VPS non deve aspettarsi exit 1 sul fallimento off-site.
+
+**R26-2** (review #26, minore): manca un test kernel-level che verifichi l'aggancio di `_memoria_backup_auto` col blocco off-site ATTIVO (candidato T33i in sessione futura; T33a/f coprono implicitamente il comportamento).
+
+**R27-1** (review #27, riserva cosmetica): alias `_dvp` importato ma inutilizzato a riga 1555 — CORRETTO prima del commit (rimosso l'alias, usa il nome importato a livello di modulo).
+
+---
+
+## VERDETTI INTEGRALI DEI REVISORI
+
+### Review #26 (TASK A) — APPROVATO CON RISERVE
+
+"La review #26 (TASK A — Backup OFF-MACHINE del DB memoria) e' approvata. Il codice e' corretto, il fail-safe sec. 9 e' rispettato in tutti i path, la cintura d'integrita' e' implementata correttamente, il throttle e' separato da quello locale, `backup_cmd` e' fuori da `tools_schema` e dal dispatcher, il doctor gestisce correttamente `mem=None`, le invarianti motore sono intatte e i test T33a-h coprono i casi rilevanti con buona mordacita'."
+
+Riserve non bloccanti: R26-1 (exit-code backup_cmd best-effort off-site), R26-2 (manca T33i kernel-aggancio).
+
+### Review #27 (TASK B) — APPROVATO CON RISERVE
+
+"Si — e' esattamente cio' che R-crm-norm-2 richiedeva. Il ramo `collisione_chiave_norm` stampa il dettaglio dei gruppi duplicati [...], mentre il ramo generico 'DB non apribile, schema non inizializzabile o corruzione all'init' e' onesto sui casi residui. La distinzione e' utile operativamente: l'operatore sul VPS capisce immediatamente se deve fare un merge manuale dei contatti o indagare una corruzione. [...] La modifica e' confinata alla funzione `doctor()`. `run_turn`, il loop a 10 iterazioni, `_get_window`/`_cap_window_chars`, provider, finestra, sandbox, snapshot e pin sono INVARIATI."
+
+Riserva non bloccante: R27-1 (alias `_dvp` inutilizzato — corretta prima del commit).
+
+Chiude: **R-crm-norm-2** (dal finding aperto di review #22).
 
 ---
 
 ## Note di processo
-Il fix R-reidx-2 è una correzione di SOLO COMMENTO in un test, che implementa esattamente la
-riserva sollevata dal revisore; non altera il comportamento del motore né la logica dei test.
-La revisione del motore (verdetto sopra) resta valida; il commit è stato autorizzato
-esplicitamente dall'utente in base alle tre condizioni vincolanti (suite reale verde,
-T30/T31/T32 0 FAIL, reindex solo-CLI), tutte soddisfatte.
+
+- Commit motore: `56a6dc3` (review #26 + #27 insieme, entrambi approvati).
+- I report off-machine (remoto reale: rclone/rsync/volume montato) non sono testabili in dev: dichiarati FASE 5/deploy VPS.
+- Invarianti motore intatte: `_get_window`/`_cap_window_chars`/`for _ in range(10)`/sandbox/snapshot/`_memoria_pin` non toccati.
+- T18f crash cp1252 (pre-esistente, carattere `approx` nella stringa di dettaglio): la suite completa richiede `PYTHONUTF8=1` su Windows; sul VPS Linux gira identica.

@@ -1,28 +1,31 @@
-# 🔀 DIFF DI SESSIONE — 2026-06-19 (comando CLI `gas reindex`, review #25)
+# DIFF DI SESSIONE — 2026-06-20 (backup off-machine + doctor rumoroso, review #26/#27)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni sessione.
 
 ## Tema
-FASE 2 — comando di MANUTENZIONE UMANA `gas reindex`: ricostruisce da zero l'indice
-vettoriale `.gas_vectors.db` dal diario. Più: prima esecuzione REALE della suite vettoriale
-nel Codespace (numpy/fastembed installati), conferma che `reindex` è solo-CLI, fix R-reidx-2.
 
-## File toccati
-- **`gas.py`** (+42, solo aggiunte): funzione `reindex(root_dir, vectors)` + dispatch
-  `gas reindex` in `main()`. Tocca solo la cache derivata, mai il diario; exit 0/1; zero token.
-- **`tests/test_unit_kernel.py`** (+~37): blocco T32 (T32a ricostruzione dal diario,
-  T32b idempotenza, T32c fail-safe vector store degradato → rc=1). Commento di T32c
-  corretto (fix R-reidx-2).
-- **`reports/stato_progetto.md`**, **`reports/ultimo_report.md`**, **`reports/diff_sessione.md`**:
-  doc di fine task (review #25, suite 155, riserve).
+Sessione continuata da un contesto precedente (compresso). Due TASK dal prompt originale:
 
-## Ambiente
-- Installati nel venv: numpy 2.4.6, fastembed 0.8.0, onnxruntime 1.27.0 (wheel OK su x86_64).
-- Modello del progetto: `paraphrase-multilingual-MiniLM-L12-v2` (qdrant onnx-Q), cache ~241MB.
-- Cold embed reale ~1.83s. NB: fastembed → mean pooling invece di CLS (cambio comportamento).
+- **TASK A** (review #26): backup off-machine del DB memoria su dir esterna configurabile.
+- **TASK B** (review #27): doctor — fallimento silenzioso della memoria reso rumoroso + vector store visibility.
+
+## File toccati (commit `56a6dc3`)
+
+- **`modules/memory/store.py`** (+32, solo aggiunte): metodo `backup_offsite_auto()`.
+- **`gas.py`** (+130, -11): costanti OFFSITE, `__init__` env vars, `_memoria_backup_auto()` esteso, nuova `backup_cmd()` SOLO-CLI, dispatch `gas backup` in `main()`, doctor sez.8 (check off-site + fallimento memoria rumoroso + vector store visibility + `mem=None` prima del blocco).
+- **`tests/test_unit_kernel.py`** (+253): T33a-h (TASK A) + T34a-e (TASK B) + helper `_doctor_inproc`.
+- **`.claude/agents/memoria_revisore.md`** (+2): lezioni #26 e #27.
+- **`reports/`**: ultimo_report.md, stato_progetto.md, diff_sessione.md (questo file).
+
+## Fix minori in sessione
+
+- Alias `_dvp` importato ma inutilizzato a riga 1555 di gas.py (riserva R27-1 del revisore): rimosso prima del commit.
+- T18f crash cp1252 (pre-esistente): la suite completa richiede `PYTHONUTF8=1` su Windows per il carattere `approx` nel dettaglio. Non un nuovo FAIL; sul VPS Linux gira identica.
 
 ## Esito
-- Revisore: **APPROVATO CON RISERVE** (review #25). R-reidx-1 e R-reidx-2 chiuse in sessione;
-  R-reidx-3 (RAM) → checklist pre-deploy; R-reidx-deps nuovo.
-- `reindex` confermato **solo-CLI** (fuori da `tools_schema` e dal dispatcher del loop).
-- Suite COMPLETA **155 PASS, 0 FAIL** (T30/T31/T32 girati davvero).
+
+- Revisore #26: **APPROVATO CON RISERVE** (R26-1 exit-code best-effort off-site, R26-2 manca T33i).
+- Revisore #27: **APPROVATO CON RISERVE** (R27-1 alias _dvp — corretta prima del commit; chiude R-crm-norm-2).
+- Suite: **158 PASS, 8 FAIL** — tutti i FAIL pre-esistenti Windows. T33a-h + T34a-e tutti PASS.
+- Commit motore: `56a6dc3`.
+- R-crm-norm-2 **CHIUSA** (finding aperto dalla review #22).

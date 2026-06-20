@@ -1,6 +1,17 @@
-# 📊 STATO PROGETTO GAS
+# STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-20 (Backup off-machine + doctor memoria rumoroso — review #26/#27 APPROVATI
+> CON RISERVE, commit motore `56a6dc3`, suite 158/8 FAIL pre-esistenti Windows):**
+> TASK A: nuovo `backup_offsite_auto()` in `store.py` (throttle SEPARATO, cintura integrita',
+> fail-safe sec.9); `backup_cmd()` SOLO-CLI in `gas.py` (`gas backup`, NON in tools_schema);
+> `_memoria_backup_auto()` esteso col blocco off-site condizionale; doctor sez.8 check off-site
+> dir+eta' indipendente da `mem.available`. Env: `GAS_MEMORY_BACKUP_OFFSITE_DIR/_EVERY_SEC/_KEEP`.
+> Riserve R26-1 (exit-code best-effort off-site) e R26-2 (manca T33i kernel-aggancio), non bloccanti.
+> TASK B: doctor sez.8 fallimento memoria RUMOROSO: collisione chiave_norm -> FAIL esplicito coi
+> gruppi; corruzione generica -> FAIL esplicito (invece del vecchio silenzio). Vector store
+> visibility senza download modello (VectorStore.__init__ lazy). Chiude **R-crm-norm-2**.
+> Riserva R27-1 (alias _dvp) corretta prima del commit. Test: T33a-h + T34a-e, tutti PASS.
 > **2026-06-19 (Comando CLI `gas reindex` — review #25 APPROVATO CON RISERVE, fix R-reidx-2
 > incluso, commit motore vedi `reports/ultimo_report.md`):** aggiunto il comando di
 > MANUTENZIONE UMANA `gas reindex` (gas.py: funzione `reindex()` + dispatch in `main()`)
@@ -170,6 +181,20 @@
 
 ## Stato del motore
 
+- **Memoria FASE 2 — Backup OFF-MACHINE + doctor rumoroso ATTIVI** (2026-06-20, review #26/#27
+  APPROVATI CON RISERVE, commit `56a6dc3`): TASK A: `store.py` aggiunge `backup_offsite_auto()`
+  — copia THROTTLED su dir esterna (throttle SEPARATO da backup locale, cintura integrita', fail-safe
+  sec.9, riusa `backup()`/`integrity_check()`). `gas.py`: costanti `MEMORY_BACKUP_OFFSITE_EVERY_SEC`
+  (86400s) / `_KEEP` (10), override env `GAS_MEMORY_BACKUP_OFFSITE_DIR/_EVERY_SEC/_KEEP`;
+  `_memoria_backup_auto()` esteso col blocco off-site condizionale; `backup_cmd()` SOLO-CLI (exit 0/1,
+  NON in tools_schema/dispatcher); dispatch `gas backup` in `main()`; doctor sez.8 check off-site
+  dir+eta' INDIPENDENTE da `mem.available` (`mem` dichiarata `None` prima del blocco). TASK B:
+  doctor sez.8 distingue collisione chiave_norm (FAIL esplicito coi gruppi) da corruzione generica
+  (FAIL esplicito "DB non apribile/schema/corruzione") — chiude R-crm-norm-2. Vector store visibility
+  senza download: `VectorStore.__init__` e' lazy (modello = solo al primo index/search), fail-safe nel
+  try/except del doctor. Riserve aperte: R26-1 (exit-code backup_cmd best-effort off-site, da
+  documentare sul VPS); R26-2 (manca T33i aggancio kernel — candidato futuro); R27-1 corretta prima
+  del commit. Invarianti motore intatte. Test T33a-h + T34a-e tutti PASS. Suite 158/8.
 - **Memoria FASE 2 — Vector store WIRING (retrieval semantico AGGANCIATO) ATTIVO,
   OPT-IN via `GAS_VECTORS`** (2026-06-18, review #24 APPROVATO CON RISERVE): la fetta 1 è
   ora cablata al motore. `gas.py`: `self.vectors` (gated da env `GAS_VECTORS` via `_env_flag`,
@@ -716,14 +741,11 @@
   PREVENTIVA candidata — **policy di chiave canonica** (preferire SEMPRE l'email
   quando disponibile) — resta NON presa (scelta umana). Finché il merge è manuale,
   un **un-merge non è necessario** (registrato, nessun impegno).
-- 🟡 **R-crm-norm-2 (osservabilità collisione chiave_norm)** (review #22, 2026-06-18,
-  minore non bloccante): se la migrazione R-crm-1 trova duplicati storici sulla stessa
-  `chiave_norm`, lo store si blocca fail-closed (`available=False`) e registra il dettaglio
-  dei gruppi in conflitto in `self.collisione_chiave_norm`, MA questo NON è ancora esposto
-  in `gas doctor` sez. 8 "Memoria". Su VPS un DB bloccato per collisione apparirebbe come
-  "memoria non operativa" senza i gruppi a portata dell'operatore. Coerente con lo scope
-  della fetta (gas.py invariato); follow-up: in doctor mostrare `collisione_chiave_norm`
-  quando valorizzato. NB oggi il DB di sviluppo è vuoto → caso non attivo.
+- ✅ **R-crm-norm-2 (osservabilita' collisione chiave_norm) — CHIUSA** (review #27, 2026-06-20,
+  TASK B): il doctor sez.8 ora distingue collisione chiave_norm da corruzione generica con FAIL
+  esplicito e messaggio specifico inclusi i gruppi duplicati. Sul VPS l'operatore vede
+  immediatamente se deve fare un merge manuale o indagare una corruzione. Test T34a morde il caso.
+  Chiude il follow-up aperto dalla review #22.
 - 🟡 **Riserve CRM contatti dal loop** (R-mem-crm, review #15, minori non bloccanti):
   (R-crm-2) `int(c["id"])` in `_imposta_stato_contatto` assume id convertibile (sempre
   vero con PK INTEGER SQLite, e protetto dal try/except globale) — cosmetico.
@@ -777,13 +799,12 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
-- **C — Subagent revisore** (`.claude/agents/revisore.md`): **24 review completate**,
-  ultima la **#24** (vector store WIRING al kernel, 2026-06-18, APPROVATO CON RISERVE →
-  R-wire-1..4 minori tracciate). Prima la **#23** (vector store fetta 1, 2026-06-18,
-  APPROVATO CON RISERVE → R-vec-1 chiusa in sessione su sua prescrizione, R-vec-2/R-vec-3
-  tracciate). Prima la **#22**
-  (R-crm-1 refactor a `chiave_norm` separata + NFKC, 2026-06-18,
-  APPROVATO CON RISERVE → R-crm-norm-2). Elenco in ordine: #1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 (TASK B),
+- **C — Subagent revisore** (`.claude/agents/revisore.md`): **26 review completate**,
+  ultima la **#27** (doctor memoria rumoroso + vector store visibility, 2026-06-20, APPROVATO
+  CON RISERVE → R27-1 corretta prima del commit, R-crm-norm-2 CHIUSA). Prima la **#26**
+  (backup off-machine, 2026-06-20, APPROVATO CON RISERVE → R26-1 exit-code best-effort,
+  R26-2 manca T33i). Prima la **#25** (gas reindex, 2026-06-19, APPROVATO CON RISERVE).
+  Elenco in ordine: #1, #2, #3, #3-bis, #4, #5, #6, #7, #8, #9 (TASK B),
   #10 (TASK C), review hook SessionEnd TASK 1 (2026-06-15, APPROVATO), #12 Memoria
   FASE 2 fetta 1 (APPROVATO CON RISERVE), #13 fetta 2a (APPROVATO CON RISERVE),
   #14 fetta 2b (APPROVATO CON RISERVE), #15 CRM contatti dal loop + chiusura R1/R2/R3
@@ -793,7 +814,10 @@
   #19 backup automatico del DB (APPROVATO, 2 note cosmetiche), #20 doctor 402→WARN sui
   rung free (APPROVATO), #21 declassamento `unisci_contatti` (APPROVATO, 1 nota
   cosmetica), #22 R-crm-1 refactor a `chiave_norm` separata + NFKC (APPROVATO CON
-  RISERVE → R-crm-norm-2). Lezioni datate in `.claude/agents/memoria_revisore.md`.
+  RISERVE → R-crm-norm-2 chiusa in #27), #23 vector store fetta 1 (APPROVATO CON
+  RISERVE), #24 wiring kernel (APPROVATO CON RISERVE), #25 gas reindex (APPROVATO CON
+  RISERVE), #26 backup off-machine (APPROVATO CON RISERVE), #27 doctor rumoroso +
+  vector visibility (APPROVATO CON RISERVE). Lezioni datate in `.claude/agents/memoria_revisore.md`.
 
 ## Prossimi passi (in ordine di priorità)
 
