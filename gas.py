@@ -313,6 +313,15 @@ class GasKernel:
         self.MEMORY_PIN_CONTACTS = _env_int("GAS_MEMORY_PIN_CONTACTS", GasKernel.MEMORY_PIN_CONTACTS, min_val=0)
         self.MEMORY_PIN_EVENTS = _env_int("GAS_MEMORY_PIN_EVENTS", GasKernel.MEMORY_PIN_EVENTS, min_val=0)
         self.MEMORY_BACKUP_EVERY_SEC = _env_int("GAS_MEMORY_BACKUP_EVERY_SEC", GasKernel.MEMORY_BACKUP_EVERY_SEC, min_val=0)
+        # Backup off-site: dir esterna configurabile (vuota = OFF, default).
+        _raw_offsite = os.environ.get("GAS_MEMORY_BACKUP_OFFSITE_DIR", "").strip()
+        self.MEMORY_BACKUP_OFFSITE_DIR: Optional[str] = _raw_offsite if _raw_offsite else None
+        self.MEMORY_BACKUP_OFFSITE_EVERY_SEC = _env_int(
+            "GAS_MEMORY_BACKUP_OFFSITE_EVERY_SEC",
+            GasKernel.MEMORY_BACKUP_OFFSITE_EVERY_SEC, min_val=0)
+        self.MEMORY_BACKUP_OFFSITE_KEEP = _env_int(
+            "GAS_MEMORY_BACKUP_OFFSITE_KEEP",
+            GasKernel.MEMORY_BACKUP_OFFSITE_KEEP, min_val=0)
         # Retrieval semantico (FASE 2 — wiring): vector store su sidecar SEPARATO
         # (.gas_vectors.db), cache DERIVATA dal diario. OPT-IN via env GAS_VECTORS
         # perché carica un modello di embedding locale (~500MB su disco + RAM): di
@@ -437,10 +446,17 @@ class GasKernel:
     # Il DB di memoria è il dato più prezioso e meno rimpiazzabile: un backup
     # THROTTLED (copia coerente via API SQLite) parte a inizio turno, al più una
     # volta ogni MEMORY_BACKUP_EVERY_SEC, con rotazione a MEMORY_BACKUP_KEEP copie.
-    # Protegge dall'auto-corruzione; il backup OFF-MACHINE è da FASE 5 (VPS).
+    # Protegge dall'auto-corruzione.
     # Override via env (risolti in __init__): GAS_MEMORY_BACKUP_EVERY_SEC / _KEEP.
     MEMORY_BACKUP_EVERY_SEC = 6 * 3600   # un backup ogni ~6 ore di attività
     MEMORY_BACKUP_KEEP = 10              # copie .bak conservate (rotazione)
+    # --- Backup off-site della memoria (anti-disastro-disco, FASE 5/VPS) ---
+    # Throttle SEPARATO: la dir esterna (volume montato / dir sincronizzata) può
+    # essere lenta senza interferire col backup locale. Default OFF (dir vuota).
+    # Override via env (risolti in __init__): GAS_MEMORY_BACKUP_OFFSITE_DIR /
+    # _EVERY_SEC / _KEEP.
+    MEMORY_BACKUP_OFFSITE_EVERY_SEC = 86400  # una volta al giorno
+    MEMORY_BACKUP_OFFSITE_KEEP = 10
 
     # --- Retrieval semantico (FASE 2 — wiring del vector store) ---
     # Quante righe di diario nuove indicizzare AL MASSIMO per turno (catch-up
@@ -779,20 +795,28 @@ class GasKernel:
             logging.warning(f"diario non scritto ({tipo}): {e}")
 
     def _memoria_backup_auto(self) -> None:
-        """Backup automatico THROTTLED del DB di memoria (anti auto-corruzione,
-        §10 FASE 2): delega a MemoryStore.backup_auto, che copia solo se l'ultimo
-        backup è più vecchio di MEMORY_BACKUP_EVERY_SEC e il DB è integro, con
-        rotazione a MEMORY_BACKUP_KEEP copie. FAIL-SAFE §9: memoria assente/
-        degradata o qualunque errore → nessun backup, il turno PROSEGUE, mai crash.
-        È codice fidato del kernel (copia in-process di un file locale): nessun
-        sandbox/snapshot, come le altre scritture di memoria."""
+        """Backup automatico THROTTLED del DB di memoria: backup LOCALE (anti
+        auto-corruzione) + backup OFF-SITE (anti-disastro-disco, solo se
+        GAS_MEMORY_BACKUP_OFFSITE_DIR è configurata). Entrambi THROTTLED e con
+        throttle SEPARATI (la dir esterna può essere lenta). FAIL-SAFE §9: memoria
+        assente/degradata o qualunque errore → il turno PROSEGUE, mai crash."""
         if self.memory is None:
             return
         try:
             self.memory.backup_auto(self.MEMORY_BACKUP_EVERY_SEC,
                                     keep=self.MEMORY_BACKUP_KEEP)
         except Exception as e:
-            logging.warning(f"backup memoria saltato: {e}")
+            logging.warning(f"backup memoria locale saltato: {e}")
+        # Backup off-site (solo se configurato): throttle separato, fail-safe §9.
+        if self.MEMORY_BACKUP_OFFSITE_DIR is not None:
+            try:
+                self.memory.backup_offsite_auto(
+                    self.MEMORY_BACKUP_OFFSITE_DIR,
+                    self.MEMORY_BACKUP_OFFSITE_EVERY_SEC,
+                    keep=self.MEMORY_BACKUP_OFFSITE_KEEP,
+                )
+            except Exception as e:
+                logging.warning(f"backup off-site saltato: {e}")
 
     def _vettori_catchup(self) -> None:
         """Catch-up indexing del vector store: indicizza nel sidecar le righe di
@@ -1470,14 +1494,20 @@ def doctor(root_dir: Optional[str] = None) -> int:
     # esiste, per non crearlo come effetto collaterale della diagnosi.
     from modules.memory import MemoryStore, default_db_path
     mem_path = default_db_path(root)
+    mem: Optional[MemoryStore] = None   # definita sotto se DB esiste
     if not mem_path.exists():
         check("Memoria", ".gas_memory.db", "WARN",
               "assente (verrà creato al primo run agentico)")
     else:
         mem = MemoryStore(mem_path)
         if not mem.available:
-            check("Memoria", "apertura", "FAIL",
-                  "DB non apribile o schema non inizializzabile")
+            # TASK B: motivo esplicito del fallimento (collisione vs. corruzione).
+            if mem.collisione_chiave_norm:
+                check("Memoria", "apertura", "FAIL",
+                      f"collisione chiave_norm: {mem.collisione_chiave_norm[:100]}")
+            else:
+                check("Memoria", "apertura", "FAIL",
+                      "DB non apribile, schema non inizializzabile o corruzione all'init")
         else:
             ok_int, det_int = mem.integrity_check()
             check("Memoria", "integrità", "OK" if ok_int else "FAIL",
@@ -1494,6 +1524,48 @@ def doctor(root_dir: Optional[str] = None) -> int:
                 check("Memoria", "backup", "OK",
                       f"ultimo {age_h:.1f}h fa, {n_bak} copie ({last_bak.name})")
 
+    # TASK A — off-site backup: check dir + età ultimo backup (solo se configurata).
+    # Indipendente da mem.available: la dir check è puramente filesystem.
+    _offsite_env = os.environ.get("GAS_MEMORY_BACKUP_OFFSITE_DIR", "").strip()
+    if _offsite_env:
+        _odir = Path(_offsite_env)
+        if not _odir.exists():
+            check("Memoria", "off-site dir", "WARN",
+                  f"{_offsite_env!r} non esiste (backup off-site rotto)")
+        elif not os.access(_offsite_env, os.W_OK):
+            check("Memoria", "off-site dir", "WARN",
+                  f"{_offsite_env!r} non scrivibile (backup off-site rotto)")
+        else:
+            _last_off = mem.ultimo_backup(_odir) if mem is not None else None
+            if _last_off is None:
+                check("Memoria", "off-site bak", "WARN",
+                      "dir ok ma nessun backup off-site ancora")
+            else:
+                _age_off = (time.time() - _last_off.stat().st_mtime) / 3600
+                _n_off = len(mem._backup_files(_odir)) if mem is not None else 0
+                check("Memoria", "off-site bak", "OK",
+                      f"ultimo {_age_off:.1f}h fa, {_n_off} copie")
+    else:
+        check("Memoria", "off-site bak", "OK", "non configurato (OFF)")
+
+    # TASK B — vector store visibility (chiude R-reidx-deps): controlla SOLO
+    # importabilità/flag, NIENTE download del modello né embedding. Zero token.
+    if _env_flag("GAS_VECTORS"):
+        try:
+            from modules.memory.vectors import VectorStore as _VS
+            _vs_probe = _VS(default_vectors_path(root))  # init: DB sidecar, NO model load
+            if _vs_probe.available:
+                check("Memoria", "vector store", "OK",
+                      "dipendenze ok, sidecar apribile (GAS_VECTORS=1)")
+            else:
+                check("Memoria", "vector store", "WARN",
+                      "GAS_VECTORS=1 ma non disponibile (deps assenti o sidecar corrotto)")
+        except Exception as _e:
+            check("Memoria", "vector store", "WARN",
+                  f"GAS_VECTORS=1 ma errore probe ({str(_e)[:50]})")
+    else:
+        check("Memoria", "vector store", "OK", "disabilitato (GAS_VECTORS non settata)")
+
     # Report tabellare
     print("\n=== GAS DOCTOR ===\n")
     for r in results:
@@ -1507,6 +1579,40 @@ def doctor(root_dir: Optional[str] = None) -> int:
         print(f"\nVERDETTO: OPERATIVO CON AVVISI ({warns} avvisi)")
         return 0
     print("\nVERDETTO: TUTTO OK")
+    return 0
+
+
+def backup_cmd(root_dir: Optional[str] = None) -> int:
+    """Comando `gas backup`: backup on-demand integrity-gated su locale + off-site
+    (se GAS_MEMORY_BACKUP_OFFSITE_DIR è configurata). SOLO-CLI come `gas reindex`
+    — NON in tools_schema né nel dispatcher, fuori dalla mano del modello.
+    Sorgente corrotta → exit 1 con messaggio chiaro. Zero token LLM."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    from modules.memory import MemoryStore, default_db_path
+    mem = MemoryStore(default_db_path(root))
+    if not mem.available:
+        print("[KO] backup: memoria non disponibile -- impossibile fare backup.")
+        return 1
+    ok, det = mem.integrity_check()
+    if not ok:
+        print(f"[KO] backup: integrita' KO ({det[:60]}) -- backup NON eseguito.")
+        return 1
+    dest = mem.backup()
+    if dest is None:
+        print("[KO] backup: backup locale fallito.")
+        return 1
+    print(f"[OK] backup locale: {dest}")
+    raw_offsite = os.environ.get("GAS_MEMORY_BACKUP_OFFSITE_DIR", "").strip()
+    if raw_offsite:
+        keep = _env_int("GAS_MEMORY_BACKUP_OFFSITE_KEEP",
+                        GasKernel.MEMORY_BACKUP_OFFSITE_KEEP, min_val=0)
+        dest_off = mem.backup(raw_offsite, keep=keep)
+        if dest_off is None:
+            print(f"[KO] backup off-site: fallito (dir: {raw_offsite})")
+        else:
+            print(f"[OK] backup off-site: {dest_off}")
+    else:
+        print("  (off-site non configurato: GAS_MEMORY_BACKUP_OFFSITE_DIR vuota)")
     return 0
 
 
@@ -1555,6 +1661,8 @@ def main():
         sys.exit(doctor())
     if len(sys.argv) > 1 and sys.argv[1] == "reindex":
         sys.exit(reindex())
+    if len(sys.argv) > 1 and sys.argv[1] == "backup":
+        sys.exit(backup_cmd())
     kernel = GasKernel()
     while True:
         try:

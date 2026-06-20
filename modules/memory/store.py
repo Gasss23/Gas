@@ -770,3 +770,35 @@ class MemoryStore:
         except (sqlite3.Error, OSError) as e:
             log.warning("backup_auto fallita (%s): %s", self.db_path, e)
             return None
+
+    def backup_offsite_auto(self, offsite_dir: Union[str, Path],
+                            min_interval_sec: int,
+                            keep: Optional[int] = None) -> Optional[Path]:
+        """Backup THROTTLED off-site (anti-disastro-disco): copia il DB su una
+        destinazione ESTERNA configurabile (volume montato / dir sincronizzata).
+        Throttle SEPARATO da backup_auto: la dir esterna può essere lenta o remota
+        senza interferire con il backup locale. CINTURA D'INTEGRITÀ: verifica la
+        SORGENTE prima di copiare (un DB corrotto NON deve avvelenare l'unico
+        recupero disponibile sul volume esterno). Riusa backup() (API sqlite nativa,
+        mai shutil) e integrity_check() senza reimplementarli. Ritorna il path della
+        copia, o None se non era ora / sorgente corrotta / dir non accessibile /
+        degrado. Fail-safe §9: non solleva mai."""
+        try:
+            odir = Path(offsite_dir)
+            # Throttle: ricava l'ultimo backup off-site dai file nella dir esterna.
+            last = self.ultimo_backup(odir)
+            if last is not None:
+                eta = time.time() - last.stat().st_mtime
+                if eta < max(0, min_interval_sec):
+                    return None  # non ancora ora
+            # Integrità: mai copiare un DB corrotto sul volume di recupero.
+            ok, det = self.integrity_check()
+            if not ok:
+                log.warning("backup_offsite saltato: integrità KO su %s (%s)",
+                            self.db_path, det)
+                return None
+            return self.backup(odir, keep=keep)
+        except (sqlite3.Error, OSError) as e:
+            log.warning("backup_offsite_auto fallita (%s -> %s): %s",
+                        self.db_path, offsite_dir, e)
+            return None

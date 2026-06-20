@@ -1881,6 +1881,259 @@ check("T32c gas reindex fail-safe: vector store degradato -> rc=1, nessun crash"
       _nc32 and rc32c == 1 and vs_bad32.available is False,
       f"nc={_nc32} rc={rc32c}")
 
+# ============================================================
+# T33 — Backup off-site (TASK A, review #26)
+# ============================================================
+
+# T33a — off-site configurato: dopo il backup il file esiste nella dir esterna
+#         ed è un DB SQLite valido con integrità OK.
+import sqlite3 as _sqlite3
+d33 = tempfile.mkdtemp(prefix="gas_offsite_")
+st33 = MemoryStore(os.path.join(tempfile.mkdtemp(prefix="gas_mem33_"), ".gas_memory.db"))
+st33.append_diario("nota", "test off-site")
+r33a = st33.backup_offsite_auto(d33, min_interval_sec=0)
+_files33 = list(Path(d33).glob("*.bak"))
+_integ33 = False
+if _files33:
+    try:
+        with _sqlite3.connect(str(_files33[0])) as _c:
+            _row = _c.execute("PRAGMA quick_check").fetchone()
+            _integ33 = (_row and _row[0] == "ok")
+    except Exception:
+        pass
+check("T33a backup_offsite_auto: file nella dir esterna + DB SQLite integro",
+      r33a is not None and len(_files33) == 1 and _integ33,
+      f"path={r33a} files={len(_files33)} integ={_integ33}")
+
+# T33b — cintura integrità: sorgente corrotta → copia off-site SALTATA, warning,
+#         no crash.
+_d33b = tempfile.mkdtemp(prefix="gas_offsite_b_")
+_dbpath33b = Path(tempfile.mkdtemp(prefix="gas_mem33b_")) / ".gas_memory.db"
+_dbpath33b.write_bytes(b"non e' sqlite - corrotto")
+st33b = MemoryStore(_dbpath33b)   # available=False (DB non apribile)
+_nc33b = True
+_r33b = "NORUN"
+try:
+    # Creiamo lo store su un DB vero per poter chiamare backup_offsite_auto,
+    # poi simuliamo integrity_check KO patchando il metodo.
+    _st33b_real = MemoryStore(os.path.join(tempfile.mkdtemp(), ".gas_memory.db"))
+    _orig_ic = _st33b_real.integrity_check
+    _st33b_real.integrity_check = lambda: (False, "test corruzione simulata")
+    _r33b = _st33b_real.backup_offsite_auto(_d33b, min_interval_sec=0)
+    _st33b_real.integrity_check = _orig_ic
+except Exception as _ex33b:
+    _nc33b = False; _r33b = f"CRASH:{_ex33b}"
+_files33b = list(Path(_d33b).glob("*.bak"))
+check("T33b backup_offsite_auto: sorgente corrotta → skip + nessun crash",
+      _nc33b and _r33b is None and len(_files33b) == 0,
+      f"nc={_nc33b} r={_r33b} files={len(_files33b)}")
+
+# T33c — rotazione off-site keep=N: la policy di retention è corretta (funzione pura).
+# Si testa _backup_retention direttamente (OS-agnostico) perché su Windows f.unlink()
+# può fallire se il processo OS mantiene ancora il lock sulla copia appena chiusa
+# (WinError 32 — stessa limitazione di T26b, preesistente, benigna su Linux/VPS).
+_d33c = tempfile.mkdtemp(prefix="gas_offsite_c_")
+_st33c = MemoryStore(os.path.join(tempfile.mkdtemp(prefix="gas_mem33c_"), ".gas_memory.db"))
+# Crea 5 file .bak finti (nomi ordinabili cronologicamente)
+_fakes33c = []
+for _i33c in range(5):
+    _f = Path(_d33c) / f".gas_memory.20260620T00{_i33c:04d}_000000Z.bak"
+    _f.write_bytes(b"fake")
+    _fakes33c.append(_f)
+_found33c = _st33c._backup_files(Path(_d33c))
+_keep33c, _drop33c = _st33c._backup_retention(_found33c, keep=3)
+check("T33c backup_offsite rotazione: _backup_retention keep=3 su 5 file = 2 da scartare",
+      len(_found33c) == 5 and len(_keep33c) == 3 and len(_drop33c) == 2
+      and _drop33c == _fakes33c[:2],
+      f"found={len(_found33c)} keep={len(_keep33c)} drop={len(_drop33c)}")
+
+# T33d — throttle: seconda chiamata entro l'intervallo → nessuna seconda copia.
+_d33d = tempfile.mkdtemp(prefix="gas_offsite_d_")
+_st33d = MemoryStore(os.path.join(tempfile.mkdtemp(prefix="gas_mem33d_"), ".gas_memory.db"))
+_st33d.append_diario("nota", "test throttle")
+_r33d1 = _st33d.backup_offsite_auto(_d33d, min_interval_sec=9999)
+_r33d2 = _st33d.backup_offsite_auto(_d33d, min_interval_sec=9999)
+_files33d = list(Path(_d33d).glob("*.bak"))
+check("T33d backup_offsite throttle: seconda chiamata entro intervallo → nessuna copia",
+      _r33d1 is not None and _r33d2 is None and len(_files33d) == 1,
+      f"r1={_r33d1} r2={_r33d2} files={len(_files33d)}")
+
+# T33e — fail-safe: path off-site non valido (FILE al posto della dir) → None + no crash.
+# NB: backup() crea la dir se non esiste (mkdir parents=True) — quello è il comportamento
+# CORRETTO. Il vero fail-safe si testa con un path dove mkdir fallisce: se un FILE occupa
+# il percorso dove si vuole creare la dir, mkdir solleva OSError → catchato → return None.
+_d33e_parent = tempfile.mkdtemp(prefix="gas_e_parent_")
+_d33e_blocked = os.path.join(_d33e_parent, "gas_offsite_dir")
+Path(_d33e_blocked).write_bytes(b"I am a file, not a dir")   # blocca mkdir
+_st33e = MemoryStore(os.path.join(tempfile.mkdtemp(prefix="gas_mem33e_"), ".gas_memory.db"))
+_st33e.append_diario("nota", "test path bloccato")
+_nc33e = True
+_r33e = "NORUN"
+try:
+    _r33e = _st33e.backup_offsite_auto(_d33e_blocked, min_interval_sec=0)
+except Exception as _ex33e:
+    _nc33e = False; _r33e = f"CRASH:{_ex33e}"
+check("T33e backup_offsite fail-safe: path bloccato (file al posto dir) → None + nessun crash",
+      _nc33e and _r33e is None,
+      f"nc={_nc33e} r={_r33e}")
+
+# T33f — default OFF: env non settata → comportamento identico a oggi.
+_env_bak = os.environ.pop("GAS_MEMORY_BACKUP_OFFSITE_DIR", None)
+_k33f = kernel_tmp()
+check("T33f default OFF: MEMORY_BACKUP_OFFSITE_DIR=None se env non settata",
+      _k33f.MEMORY_BACKUP_OFFSITE_DIR is None,
+      f"offsite_dir={_k33f.MEMORY_BACKUP_OFFSITE_DIR!r}")
+if _env_bak is not None:
+    os.environ["GAS_MEMORY_BACKUP_OFFSITE_DIR"] = _env_bak
+
+# T33g — CLI `gas backup`: gira, stampa i path, exit 0.
+_nc33g = True
+_rc33g = "NORUN"
+_out33g = ""
+try:
+    import io as _io33g, contextlib as _ctx33g
+    _buf33g = _io33g.StringIO()
+    with _ctx33g.redirect_stdout(_buf33g):
+        _rc33g = gas.backup_cmd(root_dir=os.environ["GAS_CWD"])
+    _out33g = _buf33g.getvalue()
+except Exception as _ex33g:
+    _nc33g = False; _rc33g = f"CRASH:{_ex33g}"
+check("T33g gas backup CLI: exit 0 + stampa path backup locale",
+      _nc33g and _rc33g == 0 and "backup locale" in _out33g,
+      f"nc={_nc33g} rc={_rc33g} out={_out33g[:80]!r}")
+
+# T33h — CLI `gas backup` con sorgente corrotta → exit 1.
+_nc33h = True; _rc33h = "NORUN"
+try:
+    import io as _io33h, contextlib as _ctx33h
+    _buf33h = _io33h.StringIO()
+    # Usiamo un root_dir con DB non esistente/non apribile → mem.available=False
+    _d33h = tempfile.mkdtemp(prefix="gas_bkcli_bad_")
+    _fake_db33h = Path(_d33h) / ".gas_memory.db"
+    _fake_db33h.write_bytes(b"non sqlite")
+    with _ctx33h.redirect_stdout(_buf33h):
+        _rc33h = gas.backup_cmd(root_dir=_d33h)
+except Exception as _ex33h:
+    _nc33h = False; _rc33h = f"CRASH:{_ex33h}"
+check("T33h gas backup CLI sorgente non disponibile → exit 1",
+      _nc33h and _rc33h == 1,
+      f"nc={_nc33h} rc={_rc33h}")
+
+# ============================================================
+# T34 — doctor visibility (TASK B, review #27)
+# ============================================================
+import io as _io34
+import contextlib as _ctx34
+import sqlite3 as _sq34
+
+def _doctor_inproc(root_dir, extra_env=None):
+    """Chiama gas.doctor(root_dir) in-process catturando stdout.
+    Imposta/ripristina le env richieste per il test, così _env_flag() le vede.
+    Ritorna (stdout_str, exit_code)."""
+    _saved = {}
+    if extra_env:
+        for k, v in extra_env.items():
+            _saved[k] = os.environ.get(k)
+            if v:
+                os.environ[k] = v
+            else:
+                os.environ.pop(k, None)
+    _buf = _io34.StringIO()
+    try:
+        with _ctx34.redirect_stdout(_buf):
+            _rc = gas.doctor(root_dir=root_dir)
+    finally:
+        for k, v in _saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    return _buf.getvalue(), _rc
+
+# T34a — DB con collisione chiave_norm → memory available=False +
+#         collisione_chiave_norm valorizzata → doctor stampa i gruppi, exit FAIL.
+_d34a = tempfile.mkdtemp(prefix="gas_dr34a_")
+_db34a = os.path.join(_d34a, ".gas_memory.db")
+# Creiamo manualmente due righe con la stessa chiave_norm senza UNIQUE index
+# (schema base, prima della migrazione _ensure_columns che lo creerebbe).
+with _sq34.connect(_db34a) as _c34a:
+    _c34a.executescript("""
+        CREATE TABLE IF NOT EXISTS contatti (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chiave TEXT NOT NULL, chiave_norm TEXT,
+            nome TEXT, contatto TEXT,
+            stato TEXT NOT NULL DEFAULT 'nuovo',
+            ultimo_contatto TEXT, prossima_azione TEXT, note TEXT,
+            creato_il TEXT NOT NULL, aggiornato_il TEXT NOT NULL,
+            merged_into INTEGER
+        );
+        INSERT INTO contatti (chiave, chiave_norm, stato, creato_il, aggiornato_il)
+        VALUES ('Anna', 'anna', 'nuovo', '2026-01-01', '2026-01-01');
+        INSERT INTO contatti (chiave, chiave_norm, stato, creato_il, aggiornato_il)
+        VALUES (' anna ', 'anna', 'nuovo', '2026-01-01', '2026-01-01');
+        CREATE TABLE IF NOT EXISTS diario (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL, tipo TEXT NOT NULL,
+            descrizione TEXT NOT NULL, contatto_id INTEGER
+        );
+    """)
+_ms34a = MemoryStore(_db34a)
+check("T34a collisione chiave_norm: available=False + collisione_chiave_norm valorizzata",
+      not _ms34a.available and _ms34a.collisione_chiave_norm is not None
+      and "anna" in _ms34a.collisione_chiave_norm,
+      f"avail={_ms34a.available} collis={_ms34a.collisione_chiave_norm!r}")
+# Doctor in-process: root=_d34a → trova il DB, rileva collisione → FAIL
+_out34a, _rc34a = _doctor_inproc(_d34a)
+check("T34a doctor stampa collisione + exit FAIL",
+      _rc34a == 1 and ("collisione" in _out34a.lower() or "chiave_norm" in _out34a.lower()),
+      f"rc={_rc34a} out={_out34a[-400:]!r}")
+
+# T34b — DB corrotto → doctor lo riporta (FAIL), nessun crash, exit FAIL.
+_d34b = tempfile.mkdtemp(prefix="gas_dr34b_")
+_db34b = Path(_d34b) / ".gas_memory.db"
+_db34b.write_bytes(b"non e' sqlite - corrotto")
+_out34b, _rc34b = _doctor_inproc(_d34b)
+check("T34b doctor DB corrotto: FAIL in output, nessun crash",
+      _rc34b == 1 and "FAIL" in _out34b,
+      f"rc={_rc34b} out={_out34b[-300:]!r}")
+
+# T34c — DB vuoto sano → nessun FAIL nella sezione Memoria (nessuna regressione).
+# NB: il doctor complessivo può comunque fallire per motivi NON legati alla memoria
+# (API keys assenti, sandbox assente, ecc.) — quello che conta è che la SEZIONE
+# Memoria non aggiunga FAIL extra per un DB sano.
+_d34c = tempfile.mkdtemp(prefix="gas_dr34c_")
+_ms34c = MemoryStore(os.path.join(_d34c, ".gas_memory.db"))
+check("T34c precondizione: DB sano disponibile",
+      _ms34c.available, f"avail={_ms34c.available}")
+_out34c, _rc34c = _doctor_inproc(_d34c)
+_mem_fail34c = any(
+    "FAIL" in line and "Memoria" in line
+    for line in _out34c.splitlines()
+    if "apertura" in line or "integrit" in line.lower()
+)
+check("T34c doctor DB sano: nessun FAIL di Memoria per DB integro",
+      not _mem_fail34c,
+      f"mem_fail={_mem_fail34c} out={_out34c[-300:]!r}")
+
+# T34d — GAS_VECTORS=1 con sidecar corrotto → doctor WARN, NESSUN download modello.
+# VectorStore.__init__ NON carica il modello (lazy); se il sidecar è corrotto →
+# _db_available=False → available=False → doctor → WARN.
+_d34d = tempfile.mkdtemp(prefix="gas_dr34d_")
+MemoryStore(os.path.join(_d34d, ".gas_memory.db"))   # DB sano nella dir di test
+(Path(_d34d) / ".gas_vectors.db").write_bytes(b"sidecar corrotto")
+_out34d, _rc34d = _doctor_inproc(_d34d, extra_env={"GAS_VECTORS": "1"})
+check("T34d doctor GAS_VECTORS=1 + sidecar corrotto → WARN nel vector store",
+      "WARN" in _out34d and "vector store" in _out34d.lower(),
+      f"rc={_rc34d} out={_out34d[-300:]!r}")
+
+# T34e — GAS_VECTORS non settata → nota neutra "disabilitato".
+_d34e = tempfile.mkdtemp(prefix="gas_dr34e_")
+MemoryStore(os.path.join(_d34e, ".gas_memory.db"))
+_out34e, _rc34e = _doctor_inproc(_d34e, extra_env={"GAS_VECTORS": ""})
+check("T34e doctor GAS_VECTORS non settata → nota neutra 'disabilitato'",
+      "disabilitato" in _out34e,
+      f"rc={_rc34e} out={_out34e[-300:]!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
