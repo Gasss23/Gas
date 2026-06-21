@@ -96,5 +96,14 @@ INTATTE; nessun antipattern del Wall of Shame (§5).
 - **Residuo aperto:** ri-taratura del valore sul primo diario reale del VPS → voce CHECKLIST
   pre-deploy VPS (FASE 5), non eseguibile ora (richiede il diario reale).
 - **Segnalazione fuori scope:** l'item aperto #2 di CLAUDE.md (R-crm-norm-2) risulta già CHIUSO
-  il 2026-06-20 (review #27) — la lista item aperti è stale su quel punto; non toccata in questo
-  task (decisione umana).
+  il 2026-06-20 (review #27) — la lista item aperti era stale su quel punto.
+
+---
+
+## FOLLOW-UP (stesso giorno — pulizia documentazione, su richiesta umana)
+
+Rimosso da CLAUDE.md sez.10 l'item aperto **R-crm-norm-2** (già chiuso 2026-06-20, review #27,
+commit `56a6dc3`) e rinumerati gli item aperti (ora 5: R-wire-1 residuo, e5-small, R-reidx-3,
+FASE 3, FASE 5). Aggiunta una riga "Chiusi di recente (storico)" per non perdere la traccia.
+Modifica **solo-doc** (nessun diff su `gas.py`/`brains/`/`modules/`/`tests/`): gate di review e
+commit del motore NON applicabili.

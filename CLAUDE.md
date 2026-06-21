@@ -65,11 +65,12 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### 🟡 ITEM APERTI / PROSSIMI PASSI (in ordine di priorità)
 1. **R-wire-1 (RESIDUO) — ri-taratura di `VEC_MIN_SIM` sul primo diario reale del VPS.** La configurabilità via env è ✅ FATTA (2026-06-21, review #28): helper `_env_float` fail-safe + clamp [0,1], override `GAS_VECTORS_MIN_SIM` risolto in `__init__` come `CATCHUP_MAX`, default di classe 0.30 INVARIATO. Resta SOLO la ri-taratura del valore, che richiede il diario reale (il MiniLM separa debolmente le query corte IT) → voce CHECKLIST pre-deploy VPS, niente redeploy necessario per cambiarlo.
-2. **R-crm-norm-2 — esporre `collisione_chiave_norm` in gas doctor sez.8**, PRIMA del deploy VPS: se la migrazione chiave_norm trova duplicati storici, `available=False` e la memoria si spegne in SILENZIO; il doctor deve renderlo visibile.
-3. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato al nodo RAM del VPS (R-vec-3): da decidere insieme al vincolo memoria del deploy.
-4. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS (1GB); mitigazione candidata: re-index a scaglioni o swap.
-5. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
-6. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include il backup OFF-MACHINE della memoria.
+2. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato al nodo RAM del VPS (R-vec-3): da decidere insieme al vincolo memoria del deploy.
+3. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS (1GB); mitigazione candidata: re-index a scaglioni o swap.
+4. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
+5. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include il backup OFF-MACHINE della memoria.
+
+> Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`).
 
 ### 🎙️ FASE 3 — Interfaccia Vocale (Priorità Media — Core Feature)
 - Whisper (STT) per ricevere comandi vocali diretti (input terminale a mani libere durante lo sviluppo).

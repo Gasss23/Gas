@@ -17,7 +17,8 @@ ri-tararla al deploy senza redeploy.
 - **`tests/test_unit_kernel.py`** (+24): nuovo test T22f2 (5 casi: assente→default, presente→parse
   helper, valido→kernel reale, sporco→default classe, clamp alto→1.0 / basso→0.0; ripristino env).
 - **`CLAUDE.md`**: sez.10 — R-wire-1 spostato da "azionabile" a "residuo ri-taratura" (item #1),
-  nota di chiusura nella riga Completati FASE 2 (review #28).
+  nota di chiusura nella riga Completati FASE 2 (review #28). Follow-up: rimosso l'item aperto #2
+  R-crm-norm-2 (già chiuso 2026-06-20) + rinumerazione + riga "Chiusi di recente (storico)".
 - **`reports/`**: ultimo_report.md (canonico R-wire-1), stato_progetto.md (entry + bullet motore),
   diff_sessione.md (questo file).
 
