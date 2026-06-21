@@ -1064,6 +1064,30 @@ finally:
 check("T22f (R2) override env dei tetti memoria + fail-safe valore sporco", ok_env,
       f"chars={k_env.MEMORY_PIN_CHAR_CAP} events={k_env.MEMORY_PIN_EVENTS}")
 
+# T22f2 (R-wire-1) — soglia semantica VEC_MIN_SIM override via env + _env_float fail-safe/clamp
+_saved_sim = os.environ.get("GAS_VECTORS_MIN_SIM")
+try:
+    os.environ["GAS_VECTORS_MIN_SIM"] = "0.7"                           # presente -> parsato dall'helper
+    ok_float = (
+        _gasmod._env_float("NON_ESISTE_SIM_XYZ", 0.30) == 0.30          # assente -> default
+        and _gasmod._env_float("GAS_VECTORS_MIN_SIM", 0.30) == 0.7      # presente -> parse a livello helper
+    )
+    os.environ["GAS_VECTORS_MIN_SIM"] = "0.45"                          # valido -> parsato (wiring kernel)
+    k_sim = kernel_tmp()
+    ok_valid = k_sim.VEC_MIN_SIM == 0.45
+    os.environ["GAS_VECTORS_MIN_SIM"] = "abc"                          # sporco -> default classe
+    ok_dirty = kernel_tmp().VEC_MIN_SIM == GasKernel.VEC_MIN_SIM
+    os.environ["GAS_VECTORS_MIN_SIM"] = "5.0"                          # fuori range -> clamp 1.0
+    ok_hi = kernel_tmp().VEC_MIN_SIM == 1.0
+    os.environ["GAS_VECTORS_MIN_SIM"] = "-1"                           # negativo -> clamp 0.0
+    ok_lo = kernel_tmp().VEC_MIN_SIM == 0.0
+finally:
+    if _saved_sim is None: os.environ.pop("GAS_VECTORS_MIN_SIM", None)
+    else: os.environ["GAS_VECTORS_MIN_SIM"] = _saved_sim
+check("T22f2 (R-wire-1) VEC_MIN_SIM override env + _env_float clamp/fail-safe",
+      ok_float and ok_valid and ok_dirty and ok_hi and ok_lo,
+      f"valid={ok_valid} dirty={ok_dirty} hi={ok_hi} lo={ok_lo}")
+
 # T22g (R3) — scansione robusta: un'azione vera resta visibile sotto rumore denso
 k = kernel_tmp()
 k.memory.append_diario("messaggio", "AZIONE VERA molto indietro")  # la più vecchia

@@ -265,6 +265,23 @@ def _env_int(name: str, default: int, min_val: int = 1) -> int:
         return default
 
 
+def _env_float(name: str, default: float, min_val: float = 0.0,
+               max_val: float = 1.0) -> float:
+    """Legge un float da una variabile d'ambiente, FAIL-SAFE come `_env_int`:
+    assente o non parsabile -> default; fuori range -> clampato a [min_val,
+    max_val]. Usato per la soglia di similarità coseno VEC_MIN_SIM (R-wire-1):
+    ri-tarabile al deploy senza ricompilare. Default di max_val=1.0 perché la
+    similarità coseno degli embedding normalizzati è naturalmente limitata a 1."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return min(max_val, max(min_val, float(raw)))
+    except (TypeError, ValueError):
+        logging.warning(f"{name}={raw!r} non è un float valido — uso default {default}")
+        return default
+
+
 def _env_flag(name: str) -> bool:
     """Legge un flag booleano da env, FAIL-SAFE: vero solo per 1/true/on/yes/si
     (case-insensitive); assente o qualsiasi altro valore → False. Usato per i
@@ -343,6 +360,9 @@ class GasKernel:
         # pause; recupera l'arretrato in più turni.
         self._vec_watermark: Optional[int] = None
         self.VEC_CATCHUP_MAX = _env_int("GAS_VECTORS_CATCHUP_MAX", GasKernel.VEC_CATCHUP_MAX, min_val=1)
+        # Soglia di similarità semantica ri-tarabile al deploy senza ricompilare
+        # (R-wire-1): il default x86 0.30 va ricalibrato sul primo diario reale del VPS.
+        self.VEC_MIN_SIM = _env_float("GAS_VECTORS_MIN_SIM", GasKernel.VEC_MIN_SIM)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
@@ -466,7 +486,8 @@ class GasKernel:
     # dal vivo: il MiniLM mean-pooled separa DEBOLMENTE le query corte in italiano
     # (coseni reali ~0.2-0.6 anche per coppie pertinenti, niente soglia netta), quindi
     # il semantico è un SUPPLEMENTO di recall che RIEMPIE i posti liberi dopo FTS, non
-    # un sostituto della precisione lessicale (R-wire-1). Soglia conservativa e tarabile.
+    # un sostituto della precisione lessicale (R-wire-1). Soglia conservativa e
+    # tarabile: override env GAS_VECTORS_MIN_SIM, risolto in __init__.
     VEC_MIN_SIM = 0.30
 
     @staticmethod
