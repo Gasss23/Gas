@@ -20,7 +20,7 @@
 
 set -uo pipefail
 
-REPO="${GAS_REPO_DIR:-/workspaces/Gas}"
+REPO="${GAS_REPO_DIR:-${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR non settata, hook interrotto}}"
 cd "$REPO" 2>/dev/null || exit 0
 
 # 1) Stage del solo allowlist esplicita.

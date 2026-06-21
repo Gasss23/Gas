@@ -10,6 +10,7 @@
 #    di CLAUDE.md sez.3, non un sostituto. La barriera primaria resta l'istruzione.
 #  - Legge il comando da tool_input.command (JSON su stdin), non da `cat` grezzo.
 
+: "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR non settata, hook interrotto}"
 INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 [ -n "$CMD" ] || exit 0
@@ -17,7 +18,7 @@ CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 # Non e' un git commit -> non interferire
 printf '%s' "$CMD" | grep -Eq 'git[[:space:]].*commit' || exit 0
 
-cd /workspaces/Gas 2>/dev/null || exit 0
+cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || exit 0
 
 # Il diff staged tocca il motore?
 if ! git diff --cached --name-only 2>/dev/null | grep -Eq '^(gas\.py|brains/|modules/|tests/)'; then

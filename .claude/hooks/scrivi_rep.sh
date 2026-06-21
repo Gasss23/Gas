@@ -6,6 +6,7 @@
 # messaggio. Senza trigger non scrive nulla (non gira "ogni volta").
 # Salva la risposta che PRECEDE il messaggio "scrivi rep", non la replica al trigger.
 
+: "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR non settata, hook interrotto}"
 INPUT=$(cat)
 TP=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
 [ -n "$TP" ] && [ -f "$TP" ] || exit 0
@@ -32,7 +33,7 @@ OUT=$(jq -rs '
 [ -n "$OUT" ] || exit 0
 
 # Root del repo: GAS_REPO_DIR (override per test) oppure parent dello script
-REPO_DIR="${GAS_REPO_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+REPO_DIR="${GAS_REPO_DIR:-$CLAUDE_PROJECT_DIR}"
 DEST="$REPO_DIR/reports/ultima_risposta.md"
 printf '%s\n' "$OUT" > "$DEST"
 
