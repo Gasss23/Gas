@@ -9,10 +9,27 @@
 #    (alias, heredoc esotici, git -C): e' una RETE sopra la regola di workflow
 #    di CLAUDE.md sez.3, non un sostituto. La barriera primaria resta l'istruzione.
 #  - Legge il comando da tool_input.command (JSON su stdin), non da `cat` grezzo.
+#  - L'input hook puo' essere un array JSON [{...}] o un oggetto {}: gestito.
 
 : "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR non settata, hook interrotto}"
 INPUT=$(cat)
-CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
+
+# Parser JSON a cascata: jq -> python3 (se funziona) -> python -> perl
+# Usiamo test di esecuzione reale (non solo command -v) perche' su Windows
+# python3 puo' essere uno stub Microsoft Store che esiste ma exit != 0.
+_parse_cmd() {
+  if command -v jq >/dev/null 2>&1; then
+    jq -r '(.[0] // .) | .tool_input.command // empty'
+  elif python3 -c "import sys" >/dev/null 2>&1; then
+    python3 -c "import json,sys; d=json.load(sys.stdin); o=d[0] if isinstance(d,list) else d; print(o.get('tool_input',{}).get('command',''))"
+  elif python -c "import sys" >/dev/null 2>&1; then
+    python -c "import json,sys; d=json.load(sys.stdin); o=d[0] if isinstance(d,list) else d; print(o.get('tool_input',{}).get('command',''))"
+  else
+    perl -MJSON::PP -e 'my $d=JSON::PP->new->decode(do{local$/;<STDIN>}); my $o=ref($d)eq"ARRAY"?$d->[0]:$d; print $o->{tool_input}{command}//"" if $o->{tool_input}'
+  fi
+}
+
+CMD=$(printf '%s' "$INPUT" | _parse_cmd 2>/dev/null)
 [ -n "$CMD" ] || exit 0
 
 # Non e' un git commit -> non interferire
