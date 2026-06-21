@@ -1,6 +1,25 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-21 (R-wire-1 — soglia semantica `VEC_MIN_SIM` env-configurabile — review #28
+> APPROVATO):** chiusa la parte AZIONABILE dell'item aperto #1. `gas.py`: nuovo helper PURO
+> `_env_float(name, default, min_val=0.0, max_val=1.0)` fail-safe come `_env_int`/`_env_flag`
+> (assente→default; non parsabile→default + `logging.warning` §9; fuori range→clamp a
+> [min_val,max_val]; default `max_val=1.0` perché il coseno di vettori normalizzati è ≤1).
+> `__init__` risolve `self.VEC_MIN_SIM = _env_float("GAS_VECTORS_MIN_SIM", GasKernel.VEC_MIN_SIM)`,
+> stesso pattern di `VEC_CATCHUP_MAX`; il call-site del retrieval semantico (`min_sim=self.VEC_MIN_SIM`)
+> usa l'attributo d'istanza → override NON inerte. Default di classe `VEC_MIN_SIM = 0.30` INVARIATO
+> → con env assente comportamento bit-identico. NON serve redeploy per ri-tarare. Resta SOLO la
+> ri-taratura del valore sul primo diario reale (deploy-dependent) → CHECKLIST pre-deploy VPS.
+> Test T22f2 (assente→default, valido→0.45 via kernel reale, sporco→default classe, clamp alto→1.0,
+> clamp basso→0.0; ripristino env nel `finally`); ridondanza minore segnalata dal revisore corretta
+> in sessione (la seconda asserzione duplicata sostituita da un parse a livello helper su valore
+> presente). Invarianti motore intatte; nessun antipattern §5. **Suite Windows (venv): 158 PASS,
+> 9 FAIL** — i 9 FAIL sono TUTTI pre-esistenti/ambientali (bwrap T11/T12/T13d2, env API/storia
+> T9a/T9c, WinError32 backup T26b): VERIFICATO su HEAD pulito (stash) = 157 PASS / **stessi 9 FAIL**,
+> quindi R-wire-1 aggiunge esattamente +1 PASS (T22f2) e 0 regressioni. NB il "158/8" dei report
+> precedenti era un conteggio leggermente datato dei FAIL ambientali Windows (un test snapshot
+> flippa per stato git accumulato, NON per codice).
 > **2026-06-20 (Backup off-machine + doctor memoria rumoroso — review #26/#27 APPROVATI
 > CON RISERVE, commit motore `56a6dc3`, suite 158/8 FAIL pre-esistenti Windows):**
 > TASK A: nuovo `backup_offsite_auto()` in `store.py` (throttle SEPARATO, cintura integrita',
@@ -181,6 +200,16 @@
 
 ## Stato del motore
 
+- **Soglia semantica `VEC_MIN_SIM` ENV-CONFIGURABILE** (2026-06-21, review #28 APPROVATO):
+  nuovo helper PURO `_env_float(name, default, min_val=0.0, max_val=1.0)` (fail-safe come
+  `_env_int`: assente→default, non parsabile→default+`logging.warning`, fuori range→clamp a
+  [min_val,max_val]; `max_val=1.0` perché il coseno di vettori normalizzati è ≤1). `__init__`
+  risolve `self.VEC_MIN_SIM = _env_float("GAS_VECTORS_MIN_SIM", GasKernel.VEC_MIN_SIM)`, stesso
+  pattern di `VEC_CATCHUP_MAX`; usato dal call-site del retrieval semantico (`min_sim=self.VEC_MIN_SIM`).
+  Default di classe `0.30` INVARIATO → env assente = comportamento bit-identico. La soglia ora si
+  ri-tara al deploy SENZA redeploy. Chiude la parte azionabile di R-wire-1; la ri-taratura del
+  valore sul diario reale resta voce CHECKLIST pre-deploy VPS. Test T22f2. Suite Windows 158/9
+  (9 FAIL pre-esistenti ambientali, verificati identici su HEAD pulito).
 - **Memoria FASE 2 — Backup OFF-MACHINE + doctor rumoroso ATTIVI** (2026-06-20, review #26/#27
   APPROVATI CON RISERVE, commit `56a6dc3`): TASK A: `store.py` aggiunge `backup_offsite_auto()`
   — copia THROTTLED su dir esterna (throttle SEPARATO da backup locale, cintura integrita', fail-safe

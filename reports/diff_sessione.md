@@ -1,31 +1,43 @@
-# DIFF DI SESSIONE — 2026-06-20 (backup off-machine + doctor rumoroso, review #26/#27)
+# DIFF DI SESSIONE — 2026-06-21 (R-wire-1: `VEC_MIN_SIM` env-configurabile, review #28)
 
 > Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni sessione.
 
 ## Tema
 
-Sessione continuata da un contesto precedente (compresso). Due TASK dal prompt originale:
+Sessione ripresa da un contesto precedente interrotto per budget (il test T22f2 era già scritto).
+Chiusura della parte azionabile dell'item aperto #1 **R-wire-1**: rendere la soglia di similarità
+coseno `VEC_MIN_SIM` configurabile via env (`GAS_VECTORS_MIN_SIM`), come `VEC_CATCHUP_MAX`, per
+ri-tararla al deploy senza redeploy.
 
-- **TASK A** (review #26): backup off-machine del DB memoria su dir esterna configurabile.
-- **TASK B** (review #27): doctor — fallimento silenzioso della memoria reso rumoroso + vector store visibility.
+## File toccati
 
-## File toccati (commit `56a6dc3`)
+- **`gas.py`** (+23, -1): nuovo helper PURO `_env_float` (fail-safe + clamp [min,max]); risoluzione
+  `self.VEC_MIN_SIM = _env_float("GAS_VECTORS_MIN_SIM", GasKernel.VEC_MIN_SIM)` in `__init__`;
+  commento del default di classe `VEC_MIN_SIM = 0.30` aggiornato (default INVARIATO).
+- **`tests/test_unit_kernel.py`** (+24): nuovo test T22f2 (5 casi: assente→default, presente→parse
+  helper, valido→kernel reale, sporco→default classe, clamp alto→1.0 / basso→0.0; ripristino env).
+- **`CLAUDE.md`**: sez.10 — R-wire-1 spostato da "azionabile" a "residuo ri-taratura" (item #1),
+  nota di chiusura nella riga Completati FASE 2 (review #28).
+- **`reports/`**: ultimo_report.md (canonico R-wire-1), stato_progetto.md (entry + bullet motore),
+  diff_sessione.md (questo file).
 
-- **`modules/memory/store.py`** (+32, solo aggiunte): metodo `backup_offsite_auto()`.
-- **`gas.py`** (+130, -11): costanti OFFSITE, `__init__` env vars, `_memoria_backup_auto()` esteso, nuova `backup_cmd()` SOLO-CLI, dispatch `gas backup` in `main()`, doctor sez.8 (check off-site + fallimento memoria rumoroso + vector store visibility + `mem=None` prima del blocco).
-- **`tests/test_unit_kernel.py`** (+253): T33a-h (TASK A) + T34a-e (TASK B) + helper `_doctor_inproc`.
-- **`.claude/agents/memoria_revisore.md`** (+2): lezioni #26 e #27.
-- **`reports/`**: ultimo_report.md, stato_progetto.md, diff_sessione.md (questo file).
+## Fix in sessione
 
-## Fix minori in sessione
+- Ridondanza minore in T22f2 (nota non bloccante del revisore): la seconda asserzione era un
+  duplicato identico della prima (`assente→default`) → sostituita da un parse a livello helper su
+  valore presente. Suite rieseguita: T22f2 resta PASS.
 
-- Alias `_dvp` importato ma inutilizzato a riga 1555 di gas.py (riserva R27-1 del revisore): rimosso prima del commit.
-- T18f crash cp1252 (pre-esistente): la suite completa richiede `PYTHONUTF8=1` su Windows per il carattere `approx` nel dettaglio. Non un nuovo FAIL; sul VPS Linux gira identica.
+## Verifica
+
+- Suite Windows (venv, `PYTHONUTF8=1`): **158 PASS, 9 FAIL**.
+- I 9 FAIL sono pre-esistenti/ambientali: VERIFICATO su HEAD pulito (stash) = **157 PASS, stessi
+  9 FAIL** → R-wire-1 = +1 PASS (T22f2), 0 regressioni.
+- FAIL ambientali: bwrap T11c2/T11e/T12a/T12c/T12e/T13d2, env T9a/T9c, WinError32 T26b.
 
 ## Esito
 
-- Revisore #26: **APPROVATO CON RISERVE** (R26-1 exit-code best-effort off-site, R26-2 manca T33i).
-- Revisore #27: **APPROVATO CON RISERVE** (R27-1 alias _dvp — corretta prima del commit; chiude R-crm-norm-2).
-- Suite: **158 PASS, 8 FAIL** — tutti i FAIL pre-esistenti Windows. T33a-h + T34a-e tutti PASS.
-- Commit motore: `56a6dc3`.
-- R-crm-norm-2 **CHIUSA** (finding aperto dalla review #22).
+- Revisore #28: **APPROVATO** (nessuna riserva bloccante; nota minore corretta in sessione;
+  memoria revisore non aggiornata — lezione già presente).
+- **R-wire-1 (parte azionabile) CHIUSO**; residuo = ri-taratura sul diario reale VPS (FASE 5).
+- Segnalato all'umano: item aperto #2 di CLAUDE.md (R-crm-norm-2) è già chiuso dal 2026-06-20
+  (lista stale), non toccato in questa sessione.
