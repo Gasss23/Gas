@@ -65,11 +65,21 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 - (parcheggiato, NON prioritario) Script revisor.py (API low-cost) per il "Claude Council". NB: chiarire cosa si intende per "Claude Council" — il nome non corrisponde a un prodotto Anthropic noto. Nessun impegno.
 
 ### 🟡 ITEM APERTI / PROSSIMI PASSI (in ordine di priorità)
-1. **R-wire-1 (RESIDUO) — ri-taratura di `VEC_MIN_SIM` sul primo diario reale del VPS.** La configurabilità via env è ✅ FATTA (2026-06-21, review #28): helper `_env_float` fail-safe + clamp [0,1], override `GAS_VECTORS_MIN_SIM` risolto in `__init__` come `CATCHUP_MAX`, default di classe 0.30 INVARIATO. Resta SOLO la ri-taratura del valore, che richiede il diario reale (il MiniLM separa debolmente le query corte IT) → voce CHECKLIST pre-deploy VPS, niente redeploy necessario per cambiarlo.
-2. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato al nodo RAM del VPS (R-vec-3): da decidere insieme al vincolo memoria del deploy.
-3. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS (1GB); mitigazione candidata: re-index a scaglioni o swap.
-4. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
-5. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include il backup OFF-MACHINE della memoria.
+1. **🔴 URGENTE — Controllo della spesa token (soluzione DEFINITIVA).** Spesa rilevata ~8€/giorno (22 e 23 giugno 2026): troppo per lo stato attuale di GAS. Intervenire con massima urgenza. **PRIMO PASSO obbligatorio = DIAGNOSI, non tagli alla cieca: distinguere DOVE vanno i token.** Ipotesi forte da verificare insieme: il costo di questi giorni è quasi tutto **lato SVILUPPO (Claude Code / Opus in queste sessioni lunghe)**, NON il runtime di GAS (che non è ancora deployato h24). Le due leve sono diverse:
+   - **(A) Costo di sviluppo (Claude Code) — è ciò che ha speso 8€ oggi.** Idee da valutare: usare un modello più economico (Sonnet) per i task meccanici/di routine e riservare Opus alla strategia; ridurre il contesto ricaricato ogni sessione (CLAUDE.md e `reports/stato_progetto.md` ~899 righe/~35k token vengono letti spesso → potare/archiviare lo storico in un file separato fa risparmiare token ad ogni turno); evitare ri-letture di file grandi; sessioni più corte e mirate; `/fast` con criterio.
+   - **(B) Costo a runtime (kernel GAS, per quando girerà h24 sul VPS).** Idee: tetto rigido `max_tokens`; preferire SEMPRE i rung gratuiti della cascata (Groq/Gemini/OpenRouter-free/Ollama) e usare Claude SOLO per la strategia; `WINDOW_CHAR_CAP`/pin già aiutano; **contabilità token osservabile** (log per turno/provider, comando tipo `gas tokens`) — "non puoi controllare ciò che non misuri"; **budget giornaliero con kill-switch** fail-safe.
+   - Esito atteso della soluzione definitiva: (1) MISURARE la spesa, (2) routing cheap-by-default, (3) cap giornaliero con stop. **Da valutare e scegliere insieme domani.**
+2. **📱 Accesso/controllo di Claude Code su GAS da telefono (lavorare in mobilità, anche da assente).** Obiettivo: lanciare comandi a Claude Code per lavorare su GAS quando non sono al PC. Idee da valutare insieme domani (nessun impegno):
+   - **Claude Code su web/mobile** (claude.ai/code dal browser del telefono, puntato al repo) — la via più diretta, zero infrastruttura.
+   - **Bridge bot (Telegram/WhatsApp) → VPS**: il telefono manda comandi a un bot, il VPS esegue Claude Code headless. Si sposa con l'identità "Jarvis" e con FASE 3 (vocale) + FASE 5 (VPS).
+   - **GitHub-centrico**: aprire issue/commenti dal telefono che un Claude Code GitHub Action raccoglie ed esegue (ora che la CI/Actions è in piedi).
+   - **SSH dal telefono** (Termius/Blink) in tmux sul VPS — low-effort, tecnico.
+   - Naturale da abilitare una volta su VPS (FASE 5); valutare sicurezza/autorizzazione degli accessi remoti.
+3. **R-wire-1 (RESIDUO) — ri-taratura di `VEC_MIN_SIM` sul primo diario reale del VPS.** La configurabilità via env è ✅ FATTA (2026-06-21, review #28): helper `_env_float` fail-safe + clamp [0,1], override `GAS_VECTORS_MIN_SIM` risolto in `__init__` come `CATCHUP_MAX`, default di classe 0.30 INVARIATO. Resta SOLO la ri-taratura del valore, che richiede il diario reale (il MiniLM separa debolmente le query corte IT) → voce CHECKLIST pre-deploy VPS, niente redeploy necessario per cambiarlo.
+4. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato al nodo RAM del VPS (R-vec-3): da decidere insieme al vincolo memoria del deploy.
+5. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS (1GB); mitigazione candidata: re-index a scaglioni o swap.
+6. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
+7. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include il backup OFF-MACHINE della memoria.
 
 > Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`).
 
