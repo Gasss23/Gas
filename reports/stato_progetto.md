@@ -1,6 +1,23 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-23 (Infrastruttura di osservabilità di fine sessione — CI + handoff — task
+> NON-motore, niente revisore):** due fette di sola infrastruttura/doc, motore INTATTO.
+> FETTA 1: `.github/workflows/ci.yml` (NUOVO) — `on: push`, ubuntu-latest, Python 3.11
+> (= venv 3.11.9), installa `requirements.txt`, lancia `tests/test_unit_kernel.py`.
+> Verde/rosso OGGETTIVO via **exit code nativo** del runner (`sys.exit(1 if FAIL else 0)`,
+> CONFERMATO in sonda: exit=1 con 9 FAIL) → nessun parsing, nessuna modifica a `tests/`.
+> ZERO token LLM: niente API key/secrets/provider/`gas doctor`. bubblewrap NON installato
+> in v1 di proposito (comportamento dei test OS-specifici in CI da decidere dalla PRIMA RUN).
+> `requirements.txt`: aggiunto `onnxruntime>=1.17` esplicito (backend fastembed) per non far
+> saltare i blocchi vettoriali T30/T31/T32 in CI (R-reidx-deps). FETTA 2: `reports/handoff.md`
+> (NUOVO, istituzione D) — dossier di fine sessione compilato su questa sessione come primo
+> esempio reale; AGGREGA `ultimo_report.md` senza sostituirlo + aggiunge lo stato CI. CLAUDE.md
+> §3: istituzione D + "tre"→"quattro". **DECISIONE UMANA APERTA:** verificare la PRIMA RUN CI
+> su GitHub Actions (verde/rosso + PASS/FAIL/SKIP); WSL2 NON accessibile (nessuna distro) →
+> la prima run è l'unica sonda Linux. Se FAIL ambientali (bwrap/env) persistono su Linux,
+> gestirli è TASK SEPARATO che tocca `tests/` (→ revisore), NON fatto qui. Suite Windows in
+> sonda invariata: 158/9 (9 FAIL ambientali noti). Commit: `0eb5322` (CI), `d135bc7` (handoff).
 > **2026-06-21 (R-wire-1 — soglia semantica `VEC_MIN_SIM` env-configurabile — review #28
 > APPROVATO):** chiusa la parte AZIONABILE dell'item aperto #1. `gas.py`: nuovo helper PURO
 > `_env_float(name, default, min_val=0.0, max_val=1.0)` fail-safe come `_env_int`/`_env_flag`
@@ -828,6 +845,11 @@
 
 - **A — `reports/stato_progetto.md`**: questo file, aggiornato a fine task.
 - **B — `reports/diff_sessione.md`**: riepilogo del diff a fine sessione.
+- **D — `reports/handoff.md`** (dal 2026-06-23): dossier autocontenuto di fine sessione
+  (§DECISIONI UMANE in cima, esito sonda, `git diff --stat` reale, `git log` dei commit,
+  delta test motore, verdetto integrale del revisore, stato ultima run CI). AGGREGA
+  `ultimo_report.md` per la revisione e aggiunge lo stato CI; NON lo sostituisce. Affiancato
+  dalla CI GitHub Actions (`.github/workflows/ci.yml`, FETTA 1).
 - **C — Subagent revisore** (`.claude/agents/revisore.md`): **26 review completate**,
   ultima la **#27** (doctor memoria rumoroso + vector store visibility, 2026-06-20, APPROVATO
   CON RISERVE → R27-1 corretta prima del commit, R-crm-norm-2 CHIUSA). Prima la **#26**
