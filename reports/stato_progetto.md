@@ -1,6 +1,22 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-23 (CI — run auto-verificabile / job summary + gate sandbox — SOLO-WORKFLOW,
+> niente revisore):** chiusa la lacuna di osservabilità emersa verificando la run precedente
+> (`4f8d014`): l'esito bwrap e il conteggio PASS/FAIL/SKIP stavano SOLO nel log dietro auth
+> (`/logs` → HTTP 403, `gh` assente), e lo smoke-test `|| echo BWRAP_FAIL` rendeva lo step
+> sempre "success" nascondendo il fallimento del sandbox → impossibile distinguere "sandbox
+> attivo + 2 FAIL attesi (T9a/T9c)" da "BWRAP_FAIL + 7 FAIL" senza scaricare lo zip. `ci.yml`
+> (`5dab394`): smoke-test esposto come output (`smoke1`/`smoke2` in `$GITHUB_OUTPUT`); step
+> **Job summary** (`if: always`, `set +e`) che scrive in `$GITHUB_STEP_SUMMARY` (pagina della
+> run, niente zip/auth) esito bwrap + riga RIEPILOGO + SKIP + lista FAIL; step **Gate — sandbox
+> OS attivo** (`if: always`, per ultimo) che va rosso con `::error::` SOLO se `smoke2 != BWRAP_OK`
+> → distingue "rosso da sandbox" (STOP GATE → micro-task skip-on-CI, tocca `tests/`, con revisore)
+> da "rosso da T9a/T9c" (atteso); suite con `tee` + `pipefail` → exit code NATIVO preservato, il
+> verdetto NON è mai mascherato (niente allowlist di test nel workflow = niente parsing fragile).
+> YAML validato in locale (PyYAML, 7 step). `tests/`/`gas.py` INVARIATI. ZERO token LLM. NUOVA
+> riserva CI-4: il job resta rosso finché T9a/T9c (env) sono rossi anche col sandbox attivo →
+> verde pieno = micro-task su `tests/`, fuori scope solo-workflow.
 > **2026-06-23 (CI — abilitazione del sandbox OS / bubblewrap nel runner — SOLO-WORKFLOW,
 > niente revisore):** la prima run CI era 160 PASS / 7 FAIL / 4 SKIP su Linux; 5 FAIL da
 > ASSENZA bwrap (T11c2/T11e/T12a/T12c/T12e: `os_strict` + runner senza bwrap → `run_command`

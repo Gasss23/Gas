@@ -5,56 +5,46 @@
 > l'handoff lo AGGREGA per la revisione e ci aggiunge lo stato della CI.
 > Si riscrive a ogni sessione (la storia completa sta in git).
 
-**Sessione:** 2026-06-23 — CI: abilitazione del sandbox OS (bubblewrap) nel runner
+**Sessione:** 2026-06-23 — CI auto-verificabile (job summary + gate sandbox)
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-1. **Verificare la run post-push su GitHub Actions** leggendo nel log:
-   - smoke-test bwrap: **BWRAP_OK / BWRAP_FAIL** (smoke-test 1 post-install + smoke-test 2
-     post-sysctl);
-   - i 5 test bwrap (T11c2, T11e, T12a, T12c, T12e) col sandbox attivo → attesi PASS;
-   - i 4 test T13 (a rete-isolata, b fs-read-only, c segreto-mascherato, e comando-in-bwrap)
-     → attesi GIRARE (non più [SKIP]) e PASS;
-   - conteggio PASS/FAIL/SKIP finale.
-2. **STOP GATE:** se lo smoke-test resta `BWRAP_FAIL` anche dopo il sysctl → `os_strict` NON
-   esercitabile sul runner GitHub → aprire **micro-task 2** (skip-on-CI dei test bwrap, tocca
-   `tests/` → CON REVISORE). NON skippato/committato workaround su `tests/` in autonomia.
-3. **T9a/T9c** (env API / storia su root temp) restano fuori scope → micro-task 2.
+1. **Verificare la run post-push** (commit più recente su GitHub Actions). Ora SENZA
+   scaricare il log: la pagina della run mostra un **Job Summary** con esito bwrap
+   (`BWRAP_OK`/`BWRAP_FAIL` pre e post sysctl), riga `RIEPILOGO: N PASS, M FAIL`, conteggio
+   `SKIP` e lista FAIL; e lo step **"Gate — sandbox OS attivo"** è verde/rosso a sé:
+   - **verde** = sandbox attivo (5 bwrap + 4 T13 hanno esercitato il profilo reale);
+   - **rosso** = `BWRAP_FAIL` → STOP GATE → micro-task skip-on-CI (tocca `tests/`, revisore).
+2. CI verde piena = micro-task su `tests/` (T9a/T9c + eventuale skip bwrap), fuori scope
+   solo-workflow.
 
 ---
 
-## ESITO SONDA (FASE 0, sola lettura)
+## ESITO SONDA / CONTESTO
 
-1. **T13a/b/c/e (oggi SKIP):** gated da `OS_SB = gas._probe_os_sandbox()[0]` (riga 380) +
-   `if OS_SB: ... else skip`. Reagiscono alla disponibilità REALE → con bwrap GIRANO. ✓
-2. **T11c2/T11e/T12a/T12c/T12e (oggi FAIL):** dipendono dall'esecuzione di `run_command`
-   (oggi negato fail-closed senza bwrap). Col sandbox presente eseguono → PASS. T11c2 forza il
-   fallimento snapshot via dir non-git (ortogonale al sandbox): col sandbox attivo il flusso
-   arriva allo snapshot-fail → messaggio "snapshot" atteso → PASS. ✓
-3. **PIVOT T13d/T13d2 (oggi PASS):** FORZANO l'assenza in modo deterministico
-   (`os_sandbox_available = False` sull'istanza, righe 434/443) — NON dipendono dall'ambiente
-   reale. Installare bwrap NON li flippa. ✓ → VIA LIBERA, installare bwrap è solo-workflow.
-
-Nessun test attualmente-PASS dipende dall'assenza reale del sandbox.
+Follow-up della verifica della run `4f8d014`: job failure, step sandbox "success", step
+suite "failure" — MA "failure" è atteso anche col sandbox attivo (T9a/T9c restano), lo step
+sandbox era "success" per costruzione (`|| echo BWRAP_FAIL`), e il log dettagliato è dietro
+auth (HTTP 403, `gh` assente). → non si poteva distinguere il caso buono dallo STOP GATE
+senza lo zip. Lacuna chiusa rendendo la run auto-verificabile.
 
 ---
 
-## GIT DIFF --STAT (sessione, vs `6f3793a`)
+## GIT DIFF --STAT (sessione, vs `4f8d014`)
 
 ```
- .github/workflows/ci.yml | 32 ++++++++++++++++++++++++++++++--
- 1 file changed, 30 insertions(+), 2 deletions(-)
+ .github/workflows/ci.yml | 89 ++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 78 insertions(+), 11 deletions(-)
 ```
 
-> Snapshot dopo il commit di FETTA 1, prima del commit dei report (questo handoff +
-> ultimo_report + stato_progetto si aggiungono al commit finale). Storia git = fonte.
+> Snapshot dopo il commit del workflow, prima del commit dei report. Storia git = fonte.
 
 ## GIT LOG (commit della sessione)
 
 ```
-919f677 ci: abilita il sandbox OS (bubblewrap) nel runner prima della suite
+5dab394 ci: run auto-verificabile (job summary + gate sandbox) senza scaricare il log
 ```
 (+ commit finale dei report — vedi git log vivo.)
 
@@ -62,8 +52,7 @@ Nessun test attualmente-PASS dipende dall'assenza reale del sandbox.
 
 ## DELTA TEST DEL MOTORE
 
-**0.** `tests/` e `gas.py` INVARIATI. La sonda ha confermato che non serve toccarli (pivot
-T13d/T13d2 deterministico). Dichiarato onestamente, non gonfiato.
+**0.** `tests/` e `gas.py` INVARIATI. Solo workflow.
 
 ## VERDETTO DEL REVISORE
 
@@ -73,7 +62,7 @@ Il gate di review (CLAUDE.md §3) scatta solo sui diff che toccano
 
 ## STATO CI
 
-**Prima run COL SANDBOX da verificare su GitHub Actions.** Contesto: la run precedente
-(prima del sandbox) era 160 PASS / 7 FAIL / 4 SKIP su Linux. Atteso col sandbox attivo: i 5
-bwrap-FAIL → PASS, i 4 T13-SKIP → PASS, restano i 2 env-FAIL (T9a/T9c, fuori scope). Il
-numero OGGETTIVO lo riempie la run, non l'agente. Vedi §DECISIONI UMANE #1.
+**Run post-push da verificare**, ora a colpo d'occhio dalla pagina della run (Job Summary +
+step "Gate — sandbox OS attivo"), senza zip né auth. Il verdetto del job NON è mascherato:
+resta rosso finché esistono FAIL (oggi attesi T9a/T9c), ma il *perché* è leggibile. Verde
+pieno = micro-task su `tests/` (fuori scope solo-workflow).
