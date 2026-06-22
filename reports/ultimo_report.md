@@ -1,104 +1,98 @@
-# Infrastruttura di osservabilità di fine sessione — CI + handoff
+# CI — abilitazione del sandbox OS (bubblewrap) nel runner
 
 **Data:** 2026-06-23
-**Task:** costruire l'infrastruttura di osservabilità di fine sessione in due fette —
-FETTA 1 CI (workflow GitHub Actions che gira la suite a ogni push, verde/rosso oggettivo);
-FETTA 2 HANDOFF (`reports/handoff.md` + istituzionalizzazione chirurgica in CLAUDE.md/stato).
-**Tipo:** infrastruttura/doc NON-motore. **Revisore:** non applicabile (nessun diff su
-`gas.py`/`brains/`/`modules/`/`tests/`). **Scope BLOCCATO rispettato:** nessun tocco al motore,
-nessun tocco a R26-1/R26-2.
+**Task:** SOLO-WORKFLOW. Mettere il runner GitHub Actions in condizione di ESERCITARE il
+sandbox OS (bwrap), così i 5 test bwrap-FAIL si chiudono e i 4 test del profilo sandbox
+(oggi [SKIP]) si accendono → prima verifica CONTINUA del sandbox OS (meccanismo che rende
+sicuro l'h24 sul VPS).
+**Tipo:** infrastruttura CI (`.github/workflows/`) NON-motore. **Revisore:** non applicabile
+(nessun diff su `gas.py`/`brains/`/`modules/`/`tests/`).
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-1. **Verificare la PRIMA RUN della CI su GitHub Actions** (verde/rosso + conteggio
-   PASS/FAIL/SKIP). Non è verificabile in locale: la prova finale è la run su Actions DOPO
-   il push. NON ho scritto "CI verde" senza averla vista girare.
-2. **WSL2 NON accessibile** (`wsl` presente ma nessuna distribuzione Linux installata) → la
-   prima run CI è l'**unica sonda Linux**. Da decidere DOPO averla vista:
-   - comportamento in CI dei 6 test bwrap/namespace (T11c2, T11e, T12a, T12c, T12e, T13d2)
-     **senza bubblewrap** sul runner (non installato in v1): skip / fail / pass?
-   - comportamento dei 2 test env API/storia (T9a, T9c) e di T26b (WinError32, Windows-only,
-     atteso PASS su Linux) sul runner Linux.
-3. **SE la prima run è ROSSA per FAIL ambientali che persistono su Linux:** gestirli è un
-   **TASK SEPARATO** che toccherebbe `tests/` (skip-on-CI, install bubblewrap, ecc.) →
-   richiede revisore. In questa sessione **NON ho toccato motore né suite** per far passare
-   la CI: lo scope lo decide l'umano. La CI come infrastruttura è corretta a prescindere dal
-   fatto che la suite risulti verde o rossa.
+1. **Verificare la run post-push su GitHub Actions** (https://github.com/Gasss23/Gas/actions),
+   leggendo nel log:
+   - **lo smoke-test bwrap**: `BWRAP_OK` o `BWRAP_FAIL` (sia smoke-test 1 post-install, sia
+     smoke-test 2 post-sysctl) — è il risultato della sonda runtime sui namespace;
+   - **i 5 test bwrap** (T11c2, T11e, T12a, T12c, T12e) col sandbox attivo → attesi PASS;
+   - **i 4 test T13** (T13a rete-isolata, T13b fs-read-only, T13c segreto-mascherato,
+     T13e comando-in-bwrap) → attesi GIRARE (non più [SKIP]) e PASS;
+   - **conteggio PASS/FAIL/SKIP finale**.
+2. **STOP GATE — se lo smoke-test resta `BWRAP_FAIL` anche dopo il sysctl** (GitHub nega del
+   tutto gli unprivileged userns): `os_strict` NON è esercitabile sul runner. In tal caso la
+   CI resta ROSSA sui 5 bwrap-FAIL e va aperto il **micro-task 2** (skip-on-CI dei test
+   bwrap, che tocca `tests/` → CON REVISORE). NON ho skippato test né committato workaround
+   su `tests/` da solo.
+3. **Restano fuori scope T9a/T9c** (env API / storia su root temp): toccano `tests/` →
+   micro-task 2, NON trattati qui.
 
 ---
 
-## ESITO SONDA (FASE 0)
+## ESITO SONDA (FASE 0, sola lettura)
 
-1. **`requirements.txt`** esiste. Dichiarava `numpy>=1.26` + `fastembed>=0.8`, **NON
-   `onnxruntime` esplicito** (transitiva di fastembed). → Aggiunto `onnxruntime>=1.17`
-   esplicito (floor conservativo) per non far saltare i blocchi vettoriali T30/T31/T32 in CI
-   (R-reidx-deps). Completare requirements era IN SCOPE (presupposto di una CI utile, file
-   non-motore).
-2. **Lancio suite + exit code:** `python tests/test_unit_kernel.py`; coda del runner
-   `sys.exit(1 if FAIL else 0)`. **VERIFICATO dal vivo: `exit=1` con 9 FAIL.** → exit code
-   nativo ≠0 sui FAIL: la CI si fida dell'exit code senza parsare l'output, **nessuna
-   modifica a `tests/`**.
-3. **Run Linux (WSL2):** NON eseguibile (nessuna distro Linux installata). Ci affidiamo alla
-   prima run CI come unica sonda Linux.
-4. **Python del venv:** **3.11.9** → workflow su `3.11`.
+Letto `tests/test_unit_kernel.py`. Determinato COME ogni test ottiene lo stato del sandbox:
 
-Suite Windows in sonda (PYTHONUTF8=1): **158 PASS / 9 FAIL, exit=1**. I 9 FAIL sono i noti
-ambientali Windows (bwrap T11c2/T11e/T12a/T12c/T12e/T13d2, env API/storia T9a/T9c, WinError32
-T26b), non difetti introdotti qui.
+1. **T13a/b/c/e (oggi SKIP):** gated da `OS_SB = gas._probe_os_sandbox()[0]` (riga 380); ogni
+   test è dentro `if OS_SB: ... else: skip(...)` (righe 391/401/416/452). Reagiscono alla
+   disponibilità **REALE** del sandbox → con bwrap installato e namespace concessi GIREREBBERO.
+   **Confermato sì.**
+2. **T11c2/T11e/T12a/T12c/T12e (oggi FAIL):** dipendono dall'ESECUZIONE di `run_command`. Oggi,
+   su runner senza bwrap + `os_strict`, `run_command` è negato fail-closed → i test che si
+   aspettano output/effetto falliscono. Con sandbox presente `run_command` esegue → tornano
+   PASS. Caso particolare **T11c2** (riga 248): forza il fallimento dello snapshot usando una
+   dir **non-git** (`k_nogit`) con comando lecito `ls -la`; il check sandbox è ortogonale —
+   oggi corto-circuita PRIMA con un diniego "sandbox OS"; col sandbox presente il flusso
+   prosegue fino allo snapshot che fallisce come da disegno → messaggio "snapshot" atteso → PASS.
+3. **PIVOT — T13d/T13d2 (oggi PASS):** **FORZANO l'assenza in modo deterministico** —
+   `k_strict.os_sandbox_available = False` (riga 434) e `k_fb.os_sandbox_available = False`
+   (riga 443) sull'ISTANZA, NON leggono `_probe_os_sandbox()`. Il commento del test lo dichiara:
+   *"deterministico, NON richiede bwrap: si forza os_sandbox_available=False"*. → Installare
+   bwrap **NON li flippa** PASS→FAIL.
 
-**La sonda NON ha rivelato necessità di toccare `tests/`/`gas.py`:** l'exit code nativo basta
-→ nessuno STOP GATE attivato sulla CI.
+**DECISIONE:** T13d/T13d2 forzano l'assenza (deterministici) e T13a-e + i 5 bwrap-FAIL
+reagiscono alla presenza reale; nessun test attualmente-PASS dipende dall'assenza reale del
+sandbox. → Installare bwrap nel workflow è **PULITO e SOLO-WORKFLOW** → VIA LIBERA per FETTA 1.
 
 ---
 
-## COSA È STATO FATTO
+## COSA È STATO FATTO — FETTA 1 (Commit `919f677`)
 
-### FETTA 1 — CI (Commit `0eb5322`)
-- **`.github/workflows/ci.yml`** (NUOVO): `on: push`, runner `ubuntu-latest`,
-  `actions/setup-python@v5` a `3.11` con `cache: pip`, `pip install -r requirements.txt`,
-  `python tests/test_unit_kernel.py`. Il job è ROSSO se la suite fallisce via exit code
-  nativo del runner. **ZERO token LLM:** nessun `env:` di provider, nessun blocco `secrets:`,
-  nessun `gas doctor`. `PYTHONUTF8=1` per parità con l'esecuzione del progetto. bubblewrap NON
-  installato in v1 (di proposito).
-- **`requirements.txt`:** aggiunto `onnxruntime>=1.17` esplicito con commento (vedi sonda).
+`.github/workflows/ci.yml`, nuovo step **prima** della suite ("Enable OS sandbox (bubblewrap)"):
+1. `sudo apt-get update && sudo apt-get install -y bubblewrap`.
+2. **Smoke-test 1** esplicito (output nel log): `bwrap --unshare-all --ro-bind / / /bin/true
+   && echo BWRAP_OK || echo BWRAP_FAIL`.
+3. **Rilassamento unprivileged userns** (ubuntu-24.04 li restringe via AppArmor), guardato
+   sull'esistenza delle chiavi: `kernel.apparmor_restrict_unprivileged_userns=0` e
+   `kernel.unprivileged_userns_clone=1` (best-effort, `|| true`). Benigno sul runner
+   EFFIMERO della CI; **NON tocca `os_strict` del VPS** (lì il sandbox resta fail-closed).
+4. **Smoke-test 2** post-sysctl (output nel log).
+5. Step suite **INVARIATO** (`PYTHONUTF8=1`, `python tests/test_unit_kernel.py`), ora DOPO lo
+   step sandbox.
 
-### FETTA 2 — HANDOFF (Commit `d135bc7`)
-- **`reports/handoff.md`** (NUOVO, istituzione D): dossier autocontenuto compilato su QUESTA
-  sessione (primo esempio reale). Ordine: §DECISIONI UMANE in cima, esito sonda,
-  `git diff --stat` reale, `git log` dei commit, delta test motore (0), verdetto revisore
-  (non applicabile), stato CI (prima run da verificare). AGGREGA `ultimo_report.md`, NON lo
-  sostituisce.
-- **CLAUDE.md §3:** aggiunta l'istituzione **D** (handoff.md) + aggiornato "tre"→"quattro"
-  istituzioni di processo.
-- **`reports/stato_progetto.md`:** riga "D — reports/handoff.md" nelle Istituzioni di processo
-  + entry datata 2026-06-23 in testa (questo commit finale dei report).
+ZERO token LLM: nessun provider, nessun secrets, nessuna API key. Nessun altro cambiamento.
 
 ---
 
 ## DELTA TEST DEL MOTORE
 
-**0.** La CI è infrastruttura: NON aggiunge né modifica test del kernel. `tests/` INVARIATO.
-Dichiarato onestamente, non gonfiato.
+**0.** `tests/` e `gas.py` INVARIATI. La sonda ha confermato che non serve toccarli (il pivot
+T13d/T13d2 è deterministico) → nessuno STOP GATE attivato.
 
 ## VERDETTO DEL REVISORE
 
-**Non applicabile — task non-motore.** Diff solo su `.github/workflows/ci.yml`,
-`requirements.txt`, `reports/*.md`, `CLAUDE.md`. Il gate di review (CLAUDE.md §3) scatta solo
-sui diff che toccano `gas.py`/`brains/`/`modules/`/`tests/`.
+**Non applicabile — task non-motore.** Diff solo su `.github/workflows/ci.yml` (+ report).
 
 ## STATO CI
 
-**Prima run da verificare su GitHub Actions** (vedi §DECISIONI UMANE #1). Il numero oggettivo
-lo riempie la run, non l'agente.
+**Prima run COL SANDBOX da verificare su GitHub Actions** (vedi §DECISIONI UMANE #1). La
+prova è la run post-push: smoke-test BWRAP_OK/FAIL + conteggio PASS/FAIL/SKIP. NON scrivo
+"CI verde" senza averla vista girare.
 
----
-
-## RISERVE / NOTE NUOVE
-- **CI-1:** la suite ha 9 FAIL ambientali noti su Windows; quali persistano su Linux è ignoto
-  finché non gira la prima CI (WSL2 non accessibile). Se persistono, la CI resterà ROSSA finché
-  non si decide come gestirli (TASK SEPARATO su `tests/`, con revisore). La CI è corretta come
-  infrastruttura; la verde/rosso è un fatto da osservare, non da forzare.
-- **CI-2:** v1 NON installa bubblewrap nel runner: scelta deliberata per OSSERVARE il
-  comportamento reale dei test OS-specifici in CI prima di decidere a priori.
+## RISERVE / NOTE
+- **CI-3 (NUOVA):** la chiusura dei 5 bwrap-FAIL dipende dal fatto che il runner GitHub
+  conceda gli unprivileged userns dopo il sysctl. Se `BWRAP_FAIL` persiste → micro-task 2
+  (skip-on-CI, tocca `tests/`, con revisore). Non forzato qui.
+- **CI-1/CI-2** (sessione precedente) superate da questo step: bwrap ora è installato e
+  abilitato di proposito.

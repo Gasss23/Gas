@@ -1,6 +1,22 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato del progetto. Aggiornata a fine di ogni task.
+> **2026-06-23 (CI — abilitazione del sandbox OS / bubblewrap nel runner — SOLO-WORKFLOW,
+> niente revisore):** la prima run CI era 160 PASS / 7 FAIL / 4 SKIP su Linux; 5 FAIL da
+> ASSENZA bwrap (T11c2/T11e/T12a/T12c/T12e: `os_strict` + runner senza bwrap → `run_command`
+> negato fail-closed) + 4 SKIP (T13a/b/c/e, mai girati in automatico). FASE 0 sonda (sola
+> lettura) su `tests/test_unit_kernel.py`: T13a/b/c/e gated da `_probe_os_sandbox()` reale
+> (righe 380/391+) → girano con bwrap; T11c2/.../T12e dipendono dall'esecuzione di run_command;
+> **PIVOT T13d/T13d2 FORZANO `os_sandbox_available=False` sull'istanza (righe 434/443), NON
+> dipendono dall'ambiente reale** → installare bwrap NON li flippa. Nessun test PASS dipende
+> dall'assenza reale → VIA LIBERA solo-workflow. FETTA 1 (`919f677`): step nuovo in `ci.yml`
+> prima della suite — `apt-get install bubblewrap` + smoke-test esplicito (BWRAP_OK/FAIL nel
+> log) + rilassamento unprivileged userns via sysctl (ubuntu-24.04 li restringe via AppArmor;
+> benigno sul runner EFFIMERO, NON tocca `os_strict` del VPS) + re-smoke-test; suite invariata.
+> `tests/`/`gas.py` INVARIATI. ZERO token LLM. **DECISIONE UMANA:** verificare la run post-push
+> (smoke-test BWRAP_OK/FAIL; 5 bwrap + 4 T13 col sandbox; conteggio finale). STOP GATE: se
+> BWRAP_FAIL persiste dopo sysctl → micro-task 2 (skip-on-CI, tocca `tests/`, con revisore),
+> NON fatto qui. T9a/T9c (env API/storia) restano fuori scope → micro-task 2.
 > **2026-06-23 (Infrastruttura di osservabilità di fine sessione — CI + handoff — task
 > NON-motore, niente revisore):** due fette di sola infrastruttura/doc, motore INTATTO.
 > FETTA 1: `.github/workflows/ci.yml` (NUOVO) — `on: push`, ubuntu-latest, Python 3.11
