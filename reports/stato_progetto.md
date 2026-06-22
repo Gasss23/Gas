@@ -16,7 +16,10 @@
 > verdetto NON è mai mascherato (niente allowlist di test nel workflow = niente parsing fragile).
 > YAML validato in locale (PyYAML, 7 step). `tests/`/`gas.py` INVARIATI. ZERO token LLM. NUOVA
 > riserva CI-4: il job resta rosso finché T9a/T9c (env) sono rossi anche col sandbox attivo →
-> verde pieno = micro-task su `tests/`, fuori scope solo-workflow.
+> verde pieno = micro-task su `tests/`, fuori scope solo-workflow. **VERIFICATO (run `cd46d0f`,
+> API pubblica): step "Gate — sandbox OS attivo" = SUCCESS → BWRAP_OK → il sandbox OS si attiva
+> sul runner GitHub. Obiettivo "sandbox OS esercitabile in CI" RAGGIUNTO; job ancora rosso per i
+> soli T9a/T9c attesi. Conteggio esatto nel Job Summary della run (senza zip).**
 > **2026-06-23 (CI — abilitazione del sandbox OS / bubblewrap nel runner — SOLO-WORKFLOW,
 > niente revisore):** la prima run CI era 160 PASS / 7 FAIL / 4 SKIP su Linux; 5 FAIL da
 > ASSENZA bwrap (T11c2/T11e/T12a/T12c/T12e: `os_strict` + runner senza bwrap → `run_command`

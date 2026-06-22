@@ -79,9 +79,17 @@ YAML validato in locale con PyYAML (7 step, `on: push`).
 
 ## STATO CI
 
-**Run post-push da verificare** — ma ora bastano la pagina della run (Job Summary) e lo
-stato dello step "Gate — sandbox OS attivo", senza scaricare il log. NON scrivo "CI verde"
-senza averla vista girare.
+**VERIFICATO via API pubblica (run `cd46d0f`, run_number 3, 27991400700):** lo step
+**"Gate — sandbox OS attivo" è SUCCESS** → `smoke2 == BWRAP_OK` → **il sandbox OS si attiva
+sul runner GitHub** (ubuntu-24.04 dopo il sysctl). È la prima conferma OGGETTIVA, leggibile
+SENZA scaricare il log, che il meccanismo di sicurezza dell'h24 è esercitabile in CI →
+obiettivo del task (sandbox OS esercitabile in CI) RAGGIUNTO.
+
+Il job resta **failure** perché la suite ha ancora FAIL: con sandbox attivo sono i **T9a/T9c
+attesi** (env API / storia su root temp, fuori scope). Il conteggio esatto PASS/FAIL/SKIP e
+la lista FAIL sono ora nel **Job Summary** della run (pagina della run, niente zip/auth) — da
+un'occhiata umana per confermare che gli unici FAIL siano T9a/T9c (il gate verde conferma
+BWRAP_OK ma non, da solo, che ogni singolo bwrap/T13 sia passato).
 
 ## RISERVE / NOTE
 - **CI-4 (NUOVA):** finché T9a/T9c restano rossi (env, fuori scope) il job resta ROSSO anche
