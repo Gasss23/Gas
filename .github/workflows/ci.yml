@@ -6,6 +6,11 @@ name: CI
 # Il job è ROSSO se la suite fallisce: il runner tests/test_unit_kernel.py termina
 # con `sys.exit(1 if FAIL else 0)` (exit code nativo ≠0 sui FAIL, verificato in sonda),
 # quindi il fail dello step propaga senza parsing dell'output.
+#
+# Dal 2026-06-23 il runner installa e ABILITA il sandbox OS (bubblewrap) PRIMA della
+# suite: così i 5 test bwrap (T11c2/T11e/T12a/T12c/T12e) eseguono run_command e i 4
+# test del profilo sandbox (T13a/b/c/e, prima [SKIP]) GIRANO davvero → prima verifica
+# CONTINUA del meccanismo che rende sicuro l'h24 sul VPS.
 
 on: push
 
@@ -30,9 +35,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Enable OS sandbox (bubblewrap)
+        # Installa bwrap e VERIFICA che possa creare gli unprivileged user namespace.
+        # ubuntu-24.04 (ubuntu-latest) di default li RESTRINGE via AppArmor → senza
+        # rilassamento bwrap fallisce ANCHE da installato. Lo smoke-test ESPLICITO
+        # (BWRAP_OK/BWRAP_FAIL) finisce nel log ed È il risultato della sonda runtime.
+        # NB: rilassare gli userns QUI è benigno — è il runner EFFIMERO della CI, NON
+        # tocca GAS_SANDBOX_MODE=os_strict del VPS (lì il sandbox resta fail-closed).
+        run: |
+          set -x
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          echo "=== smoke-test 1 (post-install, pre-sysctl) ==="
+          bwrap --unshare-all --ro-bind / / /bin/true && echo BWRAP_OK || echo BWRAP_FAIL
+          echo "=== rilasso unprivileged userns (solo se le chiavi esistono) ==="
+          if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          fi
+          if sysctl -n kernel.unprivileged_userns_clone >/dev/null 2>&1; then
+            sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          fi
+          echo "=== smoke-test 2 (post-sysctl) ==="
+          bwrap --unshare-all --ro-bind / / /bin/true && echo BWRAP_OK || echo BWRAP_FAIL
+
       - name: Run unit suite (zero token LLM)
-        # bubblewrap NON è installato di proposito in questa v1: come si comportano in
-        # CI i test OS-specifici (bwrap/namespace) lo decideremo dalla PRIMA RUN.
+        # Eseguito DOPO l'abilitazione del sandbox: _probe_os_sandbox() deve vedere
+        # bwrap + namespace disponibili (vedi smoke-test sopra nel log).
         env:
           PYTHONUTF8: "1"   # parità con l'esecuzione del progetto su Windows
         run: python tests/test_unit_kernel.py
