@@ -11,6 +11,12 @@ name: CI
 # suite: così i 5 test bwrap (T11c2/T11e/T12a/T12c/T12e) eseguono run_command e i 4
 # test del profilo sandbox (T13a/b/c/e, prima [SKIP]) GIRANO davvero → prima verifica
 # CONTINUA del meccanismo che rende sicuro l'h24 sul VPS.
+#
+# AUTO-VERIFICABILE senza scaricare il log (2026-06-23): lo smoke-test bwrap e il
+# conteggio PASS/FAIL/SKIP della suite finiscono nel JOB SUMMARY (visibile nella pagina
+# della run, senza auth/zip); uno step-gate finale diventa rosso in modo inequivocabile
+# SOLO se il sandbox non si attiva → "rosso da sandbox" si distingue da "rosso da test".
+# Il verdetto della suite NON viene mai mascherato: l'exit code nativo resta la verità.
 
 on: push
 
@@ -36,31 +42,92 @@ jobs:
           pip install -r requirements.txt
 
       - name: Enable OS sandbox (bubblewrap)
+        id: sandbox
         # Installa bwrap e VERIFICA che possa creare gli unprivileged user namespace.
         # ubuntu-24.04 (ubuntu-latest) di default li RESTRINGE via AppArmor → senza
         # rilassamento bwrap fallisce ANCHE da installato. Lo smoke-test ESPLICITO
-        # (BWRAP_OK/BWRAP_FAIL) finisce nel log ed È il risultato della sonda runtime.
-        # NB: rilassare gli userns QUI è benigno — è il runner EFFIMERO della CI, NON
-        # tocca GAS_SANDBOX_MODE=os_strict del VPS (lì il sandbox resta fail-closed).
+        # (BWRAP_OK/BWRAP_FAIL) finisce nel log E come output dello step (riusato dal
+        # summary e dallo step-gate). NB: rilassare gli userns QUI è benigno — è il runner
+        # EFFIMERO della CI, NON tocca GAS_SANDBOX_MODE=os_strict del VPS (lì fail-closed).
+        # Questo step NON fallisce mai su BWRAP_FAIL: lascia girare la suite per avere il
+        # quadro completo; la distinzione "rosso da sandbox" la fa lo step-gate finale.
         run: |
-          set -x
           sudo apt-get update
           sudo apt-get install -y bubblewrap
-          echo "=== smoke-test 1 (post-install, pre-sysctl) ==="
-          bwrap --unshare-all --ro-bind / / /bin/true && echo BWRAP_OK || echo BWRAP_FAIL
-          echo "=== rilasso unprivileged userns (solo se le chiavi esistono) ==="
+          smoke() { bwrap --unshare-all --ro-bind / / /bin/true >/dev/null 2>&1 && echo OK || echo FAIL; }
+          r1="$(smoke)"
+          echo "smoke-test 1 (post-install, pre-sysctl): BWRAP_${r1}"
+          # ubuntu-24.04 restringe gli unprivileged userns via AppArmor: rilasso se la chiave esiste.
           if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           fi
           if sysctl -n kernel.unprivileged_userns_clone >/dev/null 2>&1; then
             sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
           fi
-          echo "=== smoke-test 2 (post-sysctl) ==="
-          bwrap --unshare-all --ro-bind / / /bin/true && echo BWRAP_OK || echo BWRAP_FAIL
+          r2="$(smoke)"
+          echo "smoke-test 2 (post-sysctl): BWRAP_${r2}"
+          {
+            echo "smoke1=BWRAP_${r1}"
+            echo "smoke2=BWRAP_${r2}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Run unit suite (zero token LLM)
         # Eseguito DOPO l'abilitazione del sandbox: _probe_os_sandbox() deve vedere
-        # bwrap + namespace disponibili (vedi smoke-test sopra nel log).
+        # bwrap + namespace disponibili (vedi smoke-test sopra). L'output è copiato in un
+        # file (tee) per il summary; `pipefail` fa propagare l'exit code NATIVO della
+        # suite → il verdetto verde/rosso non viene mai mascherato.
         env:
           PYTHONUTF8: "1"   # parità con l'esecuzione del progetto su Windows
-        run: python tests/test_unit_kernel.py
+        run: |
+          set -o pipefail
+          python tests/test_unit_kernel.py 2>&1 | tee "$RUNNER_TEMP/suite_output.txt"
+
+      - name: Job summary (esito a colpo d'occhio)
+        if: always()
+        # Scrive nel JOB SUMMARY (pagina della run, niente zip/auth): esito bwrap +
+        # conteggio della suite + lista dei FAIL. Puramente informativo: non cambia il
+        # verdetto del job.
+        run: |
+          set +e   # step puramente informativo: un grep senza match non deve abortirlo
+          out="$RUNNER_TEMP/suite_output.txt"
+          {
+            echo "## ⛽ GAS CI — esito osservabilità"
+            echo ""
+            echo "| Segnale | Valore |"
+            echo "|---|---|"
+            echo "| Sandbox OS post-install  | ${{ steps.sandbox.outputs.smoke1 }} |"
+            echo "| Sandbox OS post-sysctl   | ${{ steps.sandbox.outputs.smoke2 }} |"
+            if [ -f "$out" ]; then
+              riep="$(grep -E 'RIEPILOGO:' "$out" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+              nskip="$(grep -c '\[SKIP\]' "$out" || true)"
+              echo "| Suite | ${riep:-non disponibile} |"
+              echo "| SKIP  | ${nskip} |"
+            else
+              echo "| Suite | output non disponibile (la suite non è partita) |"
+            fi
+            echo ""
+            if [ -f "$out" ]; then
+              echo "### FAIL"
+              echo '```'
+              grep -E 'FAIL: ' "$out" || echo "(nessun FAIL)"
+              echo '```'
+            fi
+            echo ""
+            echo "> _Nota: il job resta ROSSO finché esiste un solo FAIL (exit code nativo della suite)._"
+            echo "> _Se gli unici FAIL sono T9a/T9c (env API / storia su root temp) il sandbox è OK:_"
+            echo "> _renderli verdi tocca \`tests/\` → micro-task con revisore, fuori dallo scope solo-workflow._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Gate — sandbox OS attivo
+        if: always()
+        # Rosso INEQUIVOCABILE e nominato se bwrap non crea i namespace nemmeno dopo il
+        # sysctl: distingue lo STOP GATE ("rosso da sandbox" → micro-task skip-on-CI dei
+        # test bwrap, tocca tests/, con revisore) dal "rosso da T9a/T9c" (atteso). Eseguito
+        # per ULTIMO così il summary è già stato scritto.
+        run: |
+          if [ "${{ steps.sandbox.outputs.smoke2 }}" != "BWRAP_OK" ]; then
+            echo "::error::Sandbox OS NON attivabile sul runner (smoke-test=${{ steps.sandbox.outputs.smoke2 }})."
+            echo "::error::I 5 test bwrap restano rossi: STOP GATE → micro-task skip-on-CI (tocca tests/, con revisore)."
+            exit 1
+          fi
+          echo "Sandbox OS attivo (BWRAP_OK): i test bwrap/T13 hanno potuto esercitare il profilo reale."
