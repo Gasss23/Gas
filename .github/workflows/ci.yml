@@ -1,0 +1,38 @@
+name: CI
+
+# Osservabilità di fine sessione — verde/rosso OGGETTIVO della suite unit a ogni push.
+# Gira a ZERO token LLM: NESSUNA API key, NESSUN secrets.*, NESSUN provider LLM,
+# NESSUN `gas doctor` con ping reali. Solo la suite pure-Python + le sue dipendenze.
+# Il job è ROSSO se la suite fallisce: il runner tests/test_unit_kernel.py termina
+# con `sys.exit(1 if FAIL else 0)` (exit code nativo ≠0 sui FAIL, verificato in sonda),
+# quindi il fail dello step propaga senza parsing dell'output.
+
+on: push
+
+jobs:
+  unit-suite:
+    runs-on: ubuntu-latest
+    # Nessun `env:` di provider e nessun blocco `secrets:` — di proposito.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"   # combacia col venv del progetto (3.11.9)
+          cache: pip
+
+      - name: Install dependencies
+        # numpy + fastembed + onnxruntime devono installarsi qui, altrimenti i
+        # blocchi vettoriali T30/T31/T32 si saltano e la CI non prova metà del sistema.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run unit suite (zero token LLM)
+        # bubblewrap NON è installato di proposito in questa v1: come si comportano in
+        # CI i test OS-specifici (bwrap/namespace) lo decideremo dalla PRIMA RUN.
+        env:
+          PYTHONUTF8: "1"   # parità con l'esecuzione del progetto su Windows
+        run: python tests/test_unit_kernel.py

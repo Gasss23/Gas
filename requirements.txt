@@ -13,3 +13,9 @@ openai>=1.40
 # e pre-scaricare i pesi del modello (rete non garantita a runtime). Vedi report.
 numpy>=1.26
 fastembed>=0.8
+# onnxruntime è il backend di inferenza di fastembed (di norma tirato come
+# dipendenza transitiva). Dichiarato ESPLICITAMENTE perché senza di esso i
+# blocchi di test vettoriali T30/T31/T32 si SALTANO silenziosamente (la CI
+# non proverebbe metà del sistema). Floor conservativo: la risoluzione reale
+# la fissa fastembed. NB VPS ARM: verificare la wheel per l'arch al deploy (R-vec-3).
+onnxruntime>=1.17
