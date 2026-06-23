@@ -48,6 +48,16 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 ## 9. SECURITY & ERROR HANDLING
 - Ogni eccezione nei provider deve essere intercettata, loggata come logging.warning nella "scatola nera" (gas_debug.log), attivando immediatamente il fallback sul brain successivo senza far crashare il programma.
 
+## 11. DISCIPLINA TOKEN (attiva dal 2026-06-23)
+
+Spesa rilevata 20€ in 2 giorni (22–23 giu 2026): 100% costo di sviluppo Claude Code su Opus 4.8, GAS runtime = 0€.
+
+- **Modello**: default `opusplan` (Opus solo in plan mode, Sonnet per l'esecuzione). Opus puro SOLO se l'utente lo chiede esplicitamente per strategia/architettura.
+- **`/clear`** tra task non correlati per non trascinare contesto inutile.
+- **Non ri-leggere file grandi senza motivo**: preferire Read mirato con offset/limit, o Grep. In particolare `reports/stato_progetto.md` va letto selettivamente (Grep per la sezione che serve).
+- **Tenere `stato_progetto.md` snello** (~100 righe): lo storico va in `reports/archivio_stato.md`. NON spostare storico nell'attivo.
+- **Monitoraggio**: `/cost` in sessione; console Anthropic → Usage per vedere il breakdown per modello.
+
 ## 10. FUTURE ROADMAP & PRIORITIES
 
 Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione. WINDOW_CHAR_CAP sulla finestra a granularita di messaggio (2026-06-14, review #7/#8) e manutenzione snapshot in gas doctor (2026-06-14, review #10) — **FASE 1 CHIUSA**. **FASE 2 (cervello/memoria low-cost) CHIUSA** (2026-06-15 → 2026-06-19): memoria SQLite con diario IMMUTABILE (review #12/#13), iniezione always-on + tool ricorda (review #14), CRM contatti dal loop con chiavi normalizzate/chiave_norm (review #15/#16/#22), ricerca FTS5 sul diario (review #18), backup automatico anti-corruzione del DB (review #19), vector store fetta 1 storage+embedding (review #23) + wiring retrieval semantico al kernel opt-in GAS_VECTORS (review #24), comando CLI gas reindex (review #25). Soglia semantica `VEC_MIN_SIM` resa env-configurabile via `GAS_VECTORS_MIN_SIM` (2026-06-21, review #28) — chiude la parte azionabile di R-wire-1 (resta solo la ri-taratura, deploy-dependent).
