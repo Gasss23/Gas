@@ -1,5 +1,20 @@
 {
+  "model": "claude-sonnet-4-6",
+  "env": {
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
+  },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '=== REGOLE CRITICHE GAS (post-compact) === (1) REVISORE OBBLIGATORIO: prima di ogni commit che tocca gas.py/brains/modules/tests/, invocare il subagent revisore e attendere il verdetto APPROVATO. (2) SCOPE: fare SOLO lo scope dato — se serve altro, fermati e scrivilo in DECISIONI UMANE RICHIESTE nel report. (3) REPORTING CANONICO: a fine task scrivere reports/ultimo_report.md, committare+pushare, poi stampare: path report + hash commit + cat integrale + git diff --stat. (4) NO OPERAZIONI IRREVERSIBILI nel loop (niente merge/gc/restore/delete non autorizzati).'"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [

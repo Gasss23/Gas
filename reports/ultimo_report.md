@@ -1,98 +1,75 @@
-# CI — run auto-verificabile (job summary + gate sandbox)
+# Report — Sfoltimento CLAUDE.md + Config frugale Claude Code
+Data: 2026-06-24
 
-**Data:** 2026-06-23
-**Task:** chiudere la lacuna di osservabilità emersa verificando la run precedente — il
-segnale critico (esito bwrap, conteggio PASS/FAIL/SKIP) stava SOLO nel log dietro auth
-(HTTP 403), quindi una "CI di osservabilità" non era di fatto osservabile senza scaricare
-lo zip. Renderla leggibile a colpo d'occhio dalla pagina della run.
-**Tipo:** infrastruttura CI (`.github/workflows/`) NON-motore. **Revisore:** non applicabile
-(nessun diff su `gas.py`/`brains/`/`modules/`/`tests/`).
+## DECISIONI UMANE RICHIESTE
+Nessuna.
 
 ---
 
-## §DECISIONI UMANE RICHIESTE
+## FETTA 1 — Sfoltimento CLAUDE.md (SPOSTA, non cancellare)
 
-1. **Verificare la run post-push** (https://github.com/Gasss23/Gas/actions, commit più
-   recente): ora il **Job Summary** della run mostra senza scaricare nulla —
-   - esito smoke-test bwrap (post-install + post-sysctl): `BWRAP_OK` / `BWRAP_FAIL`;
-   - la riga `RIEPILOGO: N PASS, M FAIL` della suite + conteggio `SKIP`;
-   - la lista dei FAIL.
-   E lo step **"Gate — sandbox OS attivo"** è rosso/verde a sé:
-   - **verde** → sandbox attivo: i 5 bwrap + 4 T13 hanno esercitato il profilo reale; gli
-     eventuali FAIL residui sono T9a/T9c (env, attesi);
-   - **rosso** → `BWRAP_FAIL`: STOP GATE, il runner GitHub nega gli userns → micro-task
-     skip-on-CI dei test bwrap (tocca `tests/`, **con revisore**).
-2. La via verso una CI **verde** piena resta il micro-task su `tests/` (T9a/T9c + eventuale
-   skip-on-CI bwrap): fuori dallo scope solo-workflow, da autorizzare.
+**Esito: ✅ COMPLETATA**
 
----
+- Creato `reports/roadmap.md` con intestazione breve e INTERA sezione §10 originale.
+- Rimosso da CLAUDE.md il contenuto verboso di §10 (51 righe, righe 61–111 del file originale).
+- Inserito al suo posto un sommario compatto di 12 righe: 5 FASI a una riga + 3 item aperti TOP + puntatore a reports/roadmap.md.
+- NON toccate le sezioni 1–9 e §11 DISCIPLINA TOKEN.
+- NON toccati reports/stato_progetto.md né reports/stato_storico.md.
 
-## CONTESTO (perché questo intervento)
-
-Verificando la run precedente (commit `4f8d014`) via API pubblica: job **failure**, step
-sandbox **success**, step suite **failure**. Ma:
-- "failure" del job è ATTESO anche nel caso buono (T9a/T9c restano rossi per disegno);
-- lo step sandbox risultava "success" SEMPRE, perché lo smoke-test era `... || echo
-  BWRAP_FAIL` → non falliva lo step nemmeno a sandbox assente;
-- il log dettagliato (BWRAP_OK/FAIL, conteggio) è dietro auth (`/logs` → HTTP 403) e `gh`
-  non è installato.
-
-→ Impossibile distinguere "sandbox attivo, 2 FAIL attesi" da "BWRAP_FAIL, 7 FAIL" senza lo
-zip. Lacuna reale per un'infrastruttura di osservabilità. Chiusa qui.
+**Prova di zero-perdita:**
+- Righe spostate da CLAUDE.md: 51 (contenuto §10, righe 61–111)
+- Righe in reports/roadmap.md: 51 (contenuto §10 identico + 1 riga intestazione = 52 totali nel file)
+- Controllo: ogni paragrafo, voce, item numerato e sotto-sezione (FASE 1, FASE 2, FASE 3, FASE 4, FASE 5, item aperti, idee) è presente integralmente in reports/roadmap.md. Nessun contenuto eliminato, solo spostato.
 
 ---
 
-## COSA È STATO FATTO (Commit `5dab394`)
+## FETTA 2 — .claude/settings.json (MERGE, preserva l'esistente)
 
-`.github/workflows/ci.yml`, sempre ZERO token LLM, nessun secrets/provider:
+**Esito: ✅ COMPLETATA**
 
-1. **Smoke-test esposto come output** dello step `Enable OS sandbox` (`id: sandbox`):
-   `smoke1`/`smoke2` (= `BWRAP_OK`/`BWRAP_FAIL` pre/post sysctl) in `$GITHUB_OUTPUT`,
-   riusati dagli step successivi. Lo step **non fallisce** su BWRAP_FAIL: lascia girare la
-   suite per avere il quadro completo (la distinzione la fa il gate finale).
-2. **Step `Run unit suite`**: ora `set -o pipefail` + `tee "$RUNNER_TEMP/suite_output.txt"`
-   → l'output è catturato per il summary E l'**exit code NATIVO della suite resta il
-   verdetto** (il verde/rosso non viene mai mascherato).
-3. **Step `Job summary`** (`if: always()`, `set +e`): scrive nel `$GITHUB_STEP_SUMMARY`
-   (pagina della run, niente zip/auth) una tabella con esito bwrap, riga RIEPILOGO, SKIP e
-   lista FAIL. Puramente informativo, non cambia il verdetto.
-4. **Step `Gate — sandbox OS attivo`** (`if: always()`, per ULTIMO così il summary è già
-   scritto): `exit 1` con `::error::` chiaro SOLO se `smoke2 != BWRAP_OK` → "rosso da
-   sandbox" diventa un segnale nominato e distinto dal "rosso da T9a/T9c".
+Aggiunti in cima al file (prima di "hooks"):
+- `"model": "claude-sonnet-4-6"`
+- `"env": { "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1" }`
 
-**Decisioni di principio rispettate:** non maschero il verdetto della suite (nessun
-allowlist di test "accettabili" nel workflow — sarebbe il parsing fragile vietato dalla
-spec originale); informo, non override. La CI resta rossa finché esistono FAIL, ma ora il
-*perché* è leggibile a colpo d'occhio.
-
-YAML validato in locale con PyYAML (7 step, `on: push`).
+Hook esistenti preservati intatti: SessionEnd (session_end.sh), PreToolUse/Bash (review_gate.sh), Stop (scrivi_rep.sh).
 
 ---
 
-## DELTA TEST DEL MOTORE
+## FETTA 3 — Hook SessionStart+compact (MERGE negli hook)
 
-**0.** `tests/` e `gas.py` INVARIATI.
+**Esito: ✅ COMPLETATA**
 
-## VERDETTO DEL REVISORE
+Aggiunto hook `SessionStart` con matcher `compact` che emette via stdout le 4 regole critiche:
+1. Revisore obbligatorio prima di ogni commit che tocca il motore
+2. Fare SOLO lo scope dato — se serve altro, scrivere in DECISIONI UMANE RICHIESTE
+3. Reporting canonico obbligatorio (ultimo_report.md + hash + cat + diff --stat)
+4. Nessuna operazione irreversibile nel loop
 
-**Non applicabile — task non-motore.** Diff solo su `.github/workflows/ci.yml` (+ report).
+Hook esistenti NON toccati (SessionEnd, PreToolUse, Stop).
 
-## STATO CI
+---
 
-**VERIFICATO via API pubblica (run `cd46d0f`, run_number 3, 27991400700):** lo step
-**"Gate — sandbox OS attivo" è SUCCESS** → `smoke2 == BWRAP_OK` → **il sandbox OS si attiva
-sul runner GitHub** (ubuntu-24.04 dopo il sysctl). È la prima conferma OGGETTIVA, leggibile
-SENZA scaricare il log, che il meccanismo di sicurezza dell'h24 è esercitabile in CI →
-obiettivo del task (sandbox OS esercitabile in CI) RAGGIUNTO.
+## FETTA 4 — Custom command /fine-task
 
-Il job resta **failure** perché la suite ha ancora FAIL: con sandbox attivo sono i **T9a/T9c
-attesi** (env API / storia su root temp, fuori scope). Il conteggio esatto PASS/FAIL/SKIP e
-la lista FAIL sono ora nel **Job Summary** della run (pagina della run, niente zip/auth) — da
-un'occhiata umana per confermare che gli unici FAIL siano T9a/T9c (il gate verde conferma
-BWRAP_OK ma non, da solo, che ogni singolo bwrap/T13 sia passato).
+**Esito: ✅ COMPLETATA**
 
-## RISERVE / NOTE
-- **CI-4 (NUOVA):** finché T9a/T9c restano rossi (env, fuori scope) il job resta ROSSO anche
-  con sandbox attivo. È onesto ma il segnale "verde" non è raggiungibile senza il micro-task
-  su `tests/`. Mitigazione: il gate sandbox + summary rendono leggibile il "rosso buono".
-- **CI-3** (sessione precedente) di fatto risolta: l'esito bwrap è ora visibile senza auth.
+Creata directory `.claude/commands/` (non esisteva).
+Creato `.claude/commands/fine-task.md` con:
+- Istruzioni step-by-step del reporting canonico
+- Formato commit corretto (solo doc, no motore)
+- Stampa obbligatoria: path + hash + cat integrale + git diff --stat
+- Invariante esplicita: nessun riassunto verbale diverso dal file
+
+---
+
+## RIEPILOGO FILE TOCCATI
+
+| File | Operazione |
+|------|-----------|
+| `CLAUDE.md` | §10 sostituita con sommario compatto (−39 righe nette) |
+| `reports/roadmap.md` | CREATO — contiene §10 integrale |
+| `.claude/settings.json` | Aggiunti model + env + hook SessionStart/compact |
+| `.claude/commands/fine-task.md` | CREATO — comando /fine-task |
+| `reports/ultimo_report.md` | QUESTO FILE |
+
+Nessun file del motore (gas.py, brains/, modules/, tests/) toccato → revisore NON invocato (corretto per task doc/.claude/).
