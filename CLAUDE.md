@@ -55,7 +55,7 @@ Spesa rilevata 20€ in 2 giorni (22–23 giu 2026): 100% costo di sviluppo Clau
 - **Modello**: default `opusplan` (Opus solo in plan mode, Sonnet per l'esecuzione). Opus puro SOLO se l'utente lo chiede esplicitamente per strategia/architettura.
 - **`/clear`** tra task non correlati per non trascinare contesto inutile.
 - **Non ri-leggere file grandi senza motivo**: preferire Read mirato con offset/limit, o Grep. In particolare `reports/stato_progetto.md` va letto selettivamente (Grep per la sezione che serve).
-- **Tenere `stato_progetto.md` snello** (~100 righe): lo storico va in `reports/archivio_stato.md`. NON spostare storico nell'attivo.
+- **Tenere `stato_progetto.md` snello** (~100 righe): lo storico va in `reports/stato_storico.md`. NON spostare storico nell'attivo.
 - **Monitoraggio**: `/cost` in sessione; console Anthropic → Usage per vedere il breakdown per modello.
 
 ## 10. FUTURE ROADMAP & PRIORITIES

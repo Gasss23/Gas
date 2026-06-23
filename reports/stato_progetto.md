@@ -1,8 +1,8 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-23** (split storico → `reports/archivio_stato.md`)
-> Storico sessioni, dettaglio componenti, finding chiusi: `reports/archivio_stato.md`
+> Ultimo aggiornamento: **2026-06-23** (split storico → `reports/stato_storico.md`)
+> Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
@@ -30,7 +30,7 @@ Componenti attive:
 
 ## Finding aperti (🟡 attivi)
 
-> Chiusi in `reports/archivio_stato.md` e `reports/finding_archiviati.md`.
+> Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
 - 🟡 **R-reidx-deps** — numpy/fastembed/onnxruntime devono restare in `requirements.txt` e nel deploy VPS; senza, layer vettoriale e `gas reindex` degradano silenziosamente.
 - 🟡 **R-reidx-3** — picco RAM di `reindex` su diario grande (VPS 1GB): checklist pre-deploy.
@@ -61,7 +61,7 @@ Componenti attive:
 ## Istituzioni di processo
 
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
-- **A-arch** — `reports/archivio_stato.md`: storico sessioni + finding chiusi + dettaglio motore.
+- **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
 - **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **28 review**. Ultima: **#28** (VEC_MIN_SIM env-config, 2026-06-21). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
