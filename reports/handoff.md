@@ -1,68 +1,64 @@
-# 🤝 HANDOFF — Dossier di fine sessione
+# HANDOFF — Dossier di fine sessione
 
-> Dossier autocontenuto per la revisione di fine sessione. **NON sostituisce
-> `reports/ultimo_report.md`** (che resta la fonte di verità del singolo task):
-> l'handoff lo AGGREGA per la revisione e ci aggiunge lo stato della CI.
-> Si riscrive a ogni sessione (la storia completa sta in git).
-
-**Sessione:** 2026-06-23 — CI auto-verificabile (job summary + gate sandbox)
+**Sessione:** 2026-06-24 — FETTA 1+2: estensione /fine-task + VPS 1GB→4GB
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-1. **Verificare la run post-push** (commit più recente su GitHub Actions). Ora SENZA
-   scaricare il log: la pagina della run mostra un **Job Summary** con esito bwrap
-   (`BWRAP_OK`/`BWRAP_FAIL` pre e post sysctl), riga `RIEPILOGO: N PASS, M FAIL`, conteggio
-   `SKIP` e lista FAIL; e lo step **"Gate — sandbox OS attivo"** è verde/rosso a sé:
-   - **verde** = sandbox attivo (5 bwrap + 4 T13 hanno esercitato il profilo reale);
-   - **rosso** = `BWRAP_FAIL` → STOP GATE → micro-task skip-on-CI (tocca `tests/`, revisore).
-2. CI verde piena = micro-task su `tests/` (T9a/T9c + eventuale skip bwrap), fuori scope
-   solo-workflow.
+Nessuna.
 
 ---
 
-## ESITO SONDA / CONTESTO
+## ESITO / CONTESTO
 
-Follow-up della verifica della run `4f8d014`: job failure, step sandbox "success", step
-suite "failure" — MA "failure" è atteso anche col sandbox attivo (T9a/T9c restano), lo step
-sandbox era "success" per costruzione (`|| echo BWRAP_FAIL`), e il log dettagliato è dietro
-auth (HTTP 403, `gh` assente). → non si poteva distinguere il caso buono dallo STOP GATE
-senza lo zip. Lacuna chiusa rendendo la run auto-verificabile.
+Task doc/.claude/ puro, nessun revisore. Due fette:
+1. `/fine-task` esteso: invariante git output verbatim, -10 invece di -15, regola ferrea in step 0 e in INVARIANTE finale.
+2. VPS: ogni riferimento "1GB" aggiornato a CX22=4GB in stato_progetto.md e roadmap.md; R-reidx-3 e R-vec-3 annotati con ri-valutazione su base 4GB. CI-4 marcato risolto in stato_progetto.md (fix applicata nel task precedente, 2026-06-24).
 
 ---
 
-## GIT DIFF --STAT (sessione, vs `4f8d014`)
+## GIT LOG --ONELINE (sessione)
 
 ```
- .github/workflows/ci.yml | 89 ++++++++++++++++++++++++++++++++++++++++++------
- 1 file changed, 78 insertions(+), 11 deletions(-)
+0fbb59a docs(report): CI-4 skip T9a/T9c — verdetto revisore APPROVATO
+089b061 test(ci): skip condizionale T9a/T9c su assenza API key live
+732bbb1 docs(config): allinea §11 a Sonnet default + crea .claudeignore
+ddc33b5 feat(skill): /fine-task esteso — handoff.md + diff_sessione.md + git log grezzo
+31df4d9 docs(config): sfoltimento CLAUDE.md + config frugale Claude Code
+3ce2062 docs(token): rinomina archivio_stato.md → stato_storico.md, aggiorna riferimenti
+86fcf85 docs(token): split stato_progetto.md + disciplina token in CLAUDE.md
+08e896c docs(roadmap): item URGENTE controllo spesa token + accesso Claude Code da telefono
+fe025de docs(report): verifica run cd46d0f - gate sandbox SUCCESS, BWRAP_OK confermato
+cd46d0f docs(report): CI auto-verificabile (job summary + gate sandbox) - report + handoff + stato
 ```
 
-> Snapshot dopo il commit del workflow, prima del commit dei report. Storia git = fonte.
+---
 
-## GIT LOG (commit della sessione)
+## GIT DIFF --STAT (sessione — questo task)
 
 ```
-5dab394 ci: run auto-verificabile (job summary + gate sandbox) senza scaricare il log
+ .claude/agents/memoria_revisore.md |  1 +
+ .claude/commands/fine-task.md      | 13 +++++++++----
+ reports/roadmap.md                 |  4 ++--
+ reports/stato_progetto.md          | 15 +++++++--------
+ 4 files changed, 19 insertions(+), 14 deletions(-)
 ```
-(+ commit finale dei report — vedi git log vivo.)
 
 ---
 
 ## DELTA TEST DEL MOTORE
 
-**0.** `tests/` e `gas.py` INVARIATI. Solo workflow.
+0. Nessuna modifica a gas.py/tests/ — task doc puro.
+
+---
 
 ## VERDETTO DEL REVISORE
 
-**Non applicabile — task non-motore.** Diff solo su `.github/workflows/ci.yml` (+ report).
-Il gate di review (CLAUDE.md §3) scatta solo sui diff che toccano
-`gas.py`/`brains/`/`modules/`/`tests/`: nessuno toccato.
+Non applicabile — task non-motore.
+
+---
 
 ## STATO CI
 
-**Run post-push da verificare**, ora a colpo d'occhio dalla pagina della run (Job Summary +
-step "Gate — sandbox OS attivo"), senza zip né auth. Il verdetto del job NON è mascherato:
-resta rosso finché esistono FAIL (oggi attesi T9a/T9c), ma il *perché* è leggibile. Verde
-pieno = micro-task su `tests/` (fuori scope solo-workflow).
+CI-4 risolto nel task precedente (2026-06-24, commit `089b061`): T9a/T9c ora [SKIP] su assenza API key. Job atteso verde dopo push. Da verificare su GitHub Actions post-push.

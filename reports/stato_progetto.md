@@ -6,10 +6,9 @@
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **28 review** completate. Suite: **158 PASS, 9 FAIL**
-(9 FAIL ambientali Windows pre-esistenti: bwrap T11/T12/T13d2, env API T9a/T9c, WinError32 T26b).
-CI GitHub Actions (`.github/workflows/ci.yml`): BWRAP_OK confermato sul runner Linux;
-job rosso solo per T9a/T9c attesi (riserva CI-4).
+FASE 1 ✅ e FASE 2 ✅ chiuse. **28 review** completate. Suite: **158 PASS, 7 FAIL**
+(7 FAIL ambientali Windows pre-esistenti: bwrap T11/T12/T13d2, WinError32 T26b — T9a/T9c ora SKIP condizionale in CI).
+CI GitHub Actions (`.github/workflows/ci.yml`): BWRAP_OK confermato sul runner Linux; **CI-4 risolto** (2026-06-24): T9a/T9c ora [SKIP] su assenza API key, job verde.
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -33,9 +32,9 @@ Componenti attive:
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
 - 🟡 **R-reidx-deps** — numpy/fastembed/onnxruntime devono restare in `requirements.txt` e nel deploy VPS; senza, layer vettoriale e `gas reindex` degradano silenziosamente.
-- 🟡 **R-reidx-3** — picco RAM di `reindex` su diario grande (VPS 1GB): checklist pre-deploy.
+- 🟡 **R-reidx-3** — picco RAM di `reindex` su diario grande. [VPS confermato Hetzner CX22 = 4GB RAM — vincolo 1GB obsoleto; criticità da ri-valutare su base 4GB prima del deploy.]
 - 🟡 **R-vec-2** — costanti vector store non configurabili via env (`GAS_VECTORS_DB`, `GAS_EMBED_MODEL`): valutare al deploy.
-- 🟡 **R-vec-3** — portabilità ARM + RAM VPS (~504MB modello) non verificata: checklist pre-deploy.
+- 🟡 **R-vec-3** — portabilità ARM non verificata (~504MB modello MiniLM). [VPS confermato CX22 = 4GB RAM — il modello occupa ~12% della RAM disponibile; il vincolo memoria non è più critico. Resta da verificare l'architettura CPU (ARM vs x86) al deploy.]
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
 - 🟡 **R-wire-2** — qualità semantica MiniLM limitata su query corte IT: limite di potenza, non correttezza. Legato a R-vec-3.
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
@@ -43,14 +42,14 @@ Componenti attive:
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): solo cold doctor + warning statico in run_turn. Rimandato per falsi positivi.
 - 🟡 **R-crm-1b** — identità cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
 - 🟡 **MEMORY_PIN_SCAN hardcoded** — le 3 costanti principali pin sono env-override, ma `MEMORY_PIN_SCAN=200` resta fisso: valutare `GAS_MEMORY_PIN_SCAN` al deploy.
-- 🟡 **CI-4** — job resta rosso finché T9a/T9c (env API) non risolti: micro-task su `tests/` (tocca motore → revisore).
+- ✅ **CI-4** — risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
 ## Prossimi passi (in ordine di priorità)
 
 1. **🔴 URGENTE — Controllo spesa token** (soluzione definitiva): vedere CLAUDE.md §10 item #1. Diagnosi fatta (23-06-2026): spesa = 100% Claude Code in sviluppo su Opus 4.8, GAS runtime = 0€. Azioni: `opusplan` attivo + stato_progetto snello (THIS).
 2. **📱 Accesso Claude Code da telefono**: vedere CLAUDE.md §10 item #2.
-3. **CI-4 — verde pieno**: micro-task su `tests/` per gestire T9a/T9c in CI (tocca motore, con revisore).
+3. ~~**CI-4 — verde pieno**~~ ✅ risolto (2026-06-24).
 4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 5. **FASE 5 — Deploy VPS Hetzner**: checklist pre-deploy (R-vec-3, R-reidx-3, R-wire-1 ri-taratura, R-reidx-deps, ollama, backup off-machine).
 

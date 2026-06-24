@@ -9,9 +9,12 @@ Esegui queste operazioni NELL'ORDINE, senza saltare passi.
 Esegui questi comandi e tieni l'output — lo incolli verbatim nei file sotto:
 
 ```bash
-git log --oneline -15
-git diff --stat HEAD~1 HEAD   # aggiusta ~N se hai fatto più commit in questa sessione
+git log --oneline -10
+git diff --stat HEAD~N HEAD   # sostituisci N col numero di commit fatti in questa sessione
 ```
+
+**REGOLA FERREA — output git verbatim**: incolla le righe grezze con hash e messaggi.
+`"Ultimi 10 commit, tutti docs"` NON è accettabile — vanno le righe vere. Output grezzo o niente.
 
 ---
 
@@ -51,13 +54,13 @@ Template obbligatorio (sezioni in quest'ordine):
 ## GIT LOG --ONELINE (sessione)
 
 ```
-<output GREZZO di `git log --oneline -15` — nessuna modifica>
+<output GREZZO di `git log --oneline -10` — nessuna modifica, righe con hash e messaggi>
 ```
 
 ## GIT DIFF --STAT (sessione)
 
 ```
-<output GREZZO di `git diff --stat HEAD~N HEAD`>
+<output GREZZO di `git diff --stat HEAD~N HEAD` — nessuna modifica>
 ```
 
 ## DELTA TEST DEL MOTORE
@@ -108,3 +111,5 @@ NON includere nel commit file del motore (gas.py, brains/, modules/, tests/) —
 ## INVARIANTE
 
 Non dare MAI a voce un riassunto diverso dal contenuto dei file. Ogni discrepanza tra ciò che dici e ciò che sta nei file è un errore da segnalare.
+
+**INVARIANTE GIT OUTPUT**: mai sostituire l'output di `git log` o `git diff --stat` con prosa o riassunti. "Ultimi 10 commit, tutti docs" NON è accettabile — vanno le righe vere con hash e messaggi. Se l'output è lungo, incollalo comunque intero.

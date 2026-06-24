@@ -28,8 +28,8 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
    - **SSH dal telefono** (Termius/Blink) in tmux sul VPS — low-effort, tecnico.
    - Naturale da abilitare una volta su VPS (FASE 5); valutare sicurezza/autorizzazione degli accessi remoti.
 3. **R-wire-1 (RESIDUO) — ri-taratura di `VEC_MIN_SIM` sul primo diario reale del VPS.** La configurabilità via env è ✅ FATTA (2026-06-21, review #28): helper `_env_float` fail-safe + clamp [0,1], override `GAS_VECTORS_MIN_SIM` risolto in `__init__` come `CATCHUP_MAX`, default di classe 0.30 INVARIATO. Resta SOLO la ri-taratura del valore, che richiede il diario reale (il MiniLM separa debolmente le query corte IT) → voce CHECKLIST pre-deploy VPS, niente redeploy necessario per cambiarlo.
-4. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato al nodo RAM del VPS (R-vec-3): da decidere insieme al vincolo memoria del deploy.
-5. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS (1GB); mitigazione candidata: re-index a scaglioni o swap.
+4. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato a R-vec-3. [VPS CX22 = 4GB RAM — il vincolo memoria non è più critico (~504MB = 12% RAM); la scelta del modello può essere guidata da qualità e portabilità ARM, non da RAM.]
+5. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS. [VPS confermato Hetzner CX22 = 4GB RAM — vincolo "1GB" obsoleto; criticità da ri-valutare su base 4GB: probabilmente non bloccante, ma verificare con diario reale.]
 6. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
 7. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include il backup OFF-MACHINE della memoria.
 
