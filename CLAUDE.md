@@ -52,7 +52,7 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 
 Spesa rilevata 20€ in 2 giorni (22–23 giu 2026): 100% costo di sviluppo Claude Code su Opus 4.8, GAS runtime = 0€.
 
-- **Modello**: default `opusplan` (Opus solo in plan mode, Sonnet per l'esecuzione). Opus puro SOLO se l'utente lo chiede esplicitamente per strategia/architettura.
+- **Modello**: default Sonnet 4.6 (esecuzione). Opus SOLO on-demand via `/model opus` per strategia/architettura — mai automatico.
 - **`/clear`** tra task non correlati per non trascinare contesto inutile.
 - **Non ri-leggere file grandi senza motivo**: preferire Read mirato con offset/limit, o Grep. In particolare `reports/stato_progetto.md` va letto selettivamente (Grep per la sezione che serve).
 - **Tenere `stato_progetto.md` snello** (~100 righe): lo storico va in `reports/stato_storico.md`. NON spostare storico nell'attivo.

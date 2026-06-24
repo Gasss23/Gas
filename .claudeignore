@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.db
+.gas_memory.db
+.gas_vectors.db
+*.log
+gas_debug.log
