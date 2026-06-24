@@ -1,56 +1,88 @@
-# Report — 2026-06-24 — Diagnostica config + fine-task.md
+# Report — 2026-06-24 — CI-4: verifica skip T9a/T9c
 
 ## Task
 
-Due fette doc/config. Scope: CLAUDE.md §11, .claudeignore, ispezione statica fine-task.md.
-Motore, hook, revisore: NON toccati.
+Rendere verde la CI gestendo onestamente T9a/T9c (falliscono in CI per assenza API key
+Gemini/Groq sul runner). Fix atteso: skip CONDIZIONALE su assenza env var, con reason esplicita.
+NON toccare T11/T12/T13d2 (bwrap) né T26b (WinError32). Invocare revisore sul diff prima del commit.
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna.
+Nessuna — ma vedere §Stato CI: CI-4 era già chiusa, CI va verificata su GitHub Actions
+per confermare che il green sia effettivo dopo `089b061`.
 
 ---
 
-## Esito fetta per fetta
+## Esito
 
-### FETTA 1 — config
+**Il task CI-4 era già completato in `089b061` (sessione precedente, 2026-06-24 18:51).**
 
-**1.1 CLAUDE.md §11 — allineamento modello**
+### Verifica codice (ispezione lines 145–161, tests/test_unit_kernel.py)
 
-- **Stato: già fatto (commit 732bbb1).**
-- La riga "default opusplan" era già stata corretta in una sessione precedente.
-- CLAUDE.md §11 attuale: `Modello: default Sonnet 4.6 (esecuzione). Opus SOLO on-demand via /model opus`.
-- `.claude/settings.json` conferma `"model": "claude-sonnet-4-6"`. Allineamento perfetto.
-- Nessuna modifica necessaria.
+Il fix è in place dall'inizio di questa sessione:
 
-**1.2 .claudeignore**
+```python
+_has_live_keys = bool(os.environ.get("GEMINI_API_KEY") and os.environ.get("GROQ_API_KEY"))
+if _has_live_keys:
+    check("T9a ogni provider cappato a 10 iterazioni", ...)
+else:
+    skip("T9a ogni provider cappato a 10 iterazioni",
+         "richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI")
+...
+if _has_live_keys:
+    check("T9c storia salvata su disco nella root temporanea", ...)
+else:
+    skip("T9c storia salvata su disco nella root temporanea",
+         "richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI")
+```
 
-- **Stato: già fatto (commit 732bbb1).**
-- File esiste con esattamente il contenuto richiesto (venv/, .venv/, __pycache__/, *.pyc, *.db, .gas_memory.db, .gas_vectors.db, *.log, gas_debug.log).
-- Nessuna modifica necessaria.
+### Verifica suite locale (venv\Scripts\python tests\test_unit_kernel.py)
 
-### FETTA 2 — diagnostica fine-task.md (ispezione statica)
+Output grezzo (righe rilevanti):
 
-**2.1 Genera handoff.md?**
-- SÌ. Step 2 di fine-task.md è "Scrivi reports/handoff.md" con template esplicito.
+```
+[SKIP] T9a ogni provider cappato a 10 iterazioni — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
+[PASS] T9b loop infinito assorbito senza crash, pipeline esausta dichiarata — tool_res=0 errori=1
+[SKIP] T9c storia salvata su disco nella root temporanea — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
 
-**2.2 Ordine sezioni template handoff**
-- **DIFETTO TROVATO**: ordine invertito rispetto a CLAUDE.md §3.D.
-- CLAUDE.md §3.D prescrive: `git diff --stat` PRIMA di `git log`.
-- fine-task.md aveva: `GIT LOG --ONELINE` PRIMA di `GIT DIFF --STAT`.
-- **FIX APPLICATO**: swap delle due sezioni nel template di Step 2.
-- Ordine corretto ora: DECISIONI UMANE → ESITO/CONTESTO → GIT DIFF --STAT → GIT LOG --ONELINE → DELTA TEST → VERDETTO REVISORE → STATO CI.
+=== RIEPILOGO: 158 PASS, 7 FAIL ===
+  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed)
+  FAIL: T11e run_command fa scattare lo snapshot
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale
+  FAIL: T12c pipe non interpretata (niente shell)
+  FAIL: T12e command substitution non eseguita (resta letterale)
+  FAIL: T13d2 os_with_fallback + sandbox assente -> esegue (sandbox applicativa)
+  FAIL: T26b backup: copia leggibile + rotazione ultime N + retention pura
+```
 
-**2.3 Path hardcoded**
-- Nessun path assoluto, nessun `/workspaces/`, nessun Codespace path.
-- Tutti i riferimenti sono relativi (`reports/ultimo_report.md`, `reports/handoff.md`, etc.).
-- Git commands standard senza path assoluti.
-- **PATH: OK**
+**Conclusione**: T9a → [SKIP], T9c → [SKIP]. I 7 FAIL rimanenti sono TUTTI fuori scope
+(bwrap su Windows: T11c2, T11e, T12a, T12c, T12e; WinError32: T13d2; file locking Windows: T26b).
+
+### Analisi CI (linux + bwrap)
+
+In CI (ubuntu-latest, bwrap disponibile, zero API key):
+- T9a: `_has_live_keys = False` → `skip()` → non in FAIL ✓
+- T9b: Pipeline esausta con cascade vuota (0 provider) → PASS ✓
+- T9c: `_has_live_keys = False` → `skip()` → non in FAIL ✓
+- T11c2, T11e, T12a, T12c, T12e: bwrap disponibile su Linux → PASS atteso ✓
+- T13d2: `wc` disponibile su Linux, no WinError2 → PASS atteso ✓
+- T26b: nessun file locking su Linux → PASS atteso ✓
+
+**CI prevista VERDE dopo `089b061`.**
+
+### Revisore
+
+Non invocato: questa sessione NON modifica tests/, gas.py, brains/, modules/.
+Nessun diff di motore su cui invocare il gate.
 
 ---
 
 ## Anomalie
 
-Nessuna anomalia. FETTA 1 era già coperta da una sessione precedente (commit 732bbb1); il task era stato eseguito correttamente dalla sessione del 2026-06-23.
+Il task era già completato ma è stato ri-assegnato come se fosse aperto. Probabile causa:
+la sessione precedente non ha potuto verificare direttamente il verde su GitHub Actions
+(gh CLI non disponibile) e il task era rimasto nello stato "chiuso per rapporto" ma senza
+conferma visiva del verde. **Azione raccomandata**: aprire GitHub Actions sulla repo
+Gasss23/Gas e verificare che la run su `089b061` (o successiva) sia verde.

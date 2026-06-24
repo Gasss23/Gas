@@ -6,13 +6,17 @@
 
 | File | Cosa è cambiato |
 |------|----------------|
-| `.claude/commands/fine-task.md` | Swap sezioni template handoff: `GIT DIFF --STAT` ora prima di `GIT LOG --ONELINE`, allineato a CLAUDE.md §3.D |
-| `reports/ultimo_report.md` | Report di questa sessione |
-| `reports/handoff.md` | Handoff di questa sessione |
+| `reports/ultimo_report.md` | Report CI-4: task già completato in 089b061, verifica locale confermata |
+| `reports/handoff.md` | Handoff con §DECISIONI UMANE: verificare CI su GitHub Actions |
 | `reports/diff_sessione.md` | Questo file (riscritto) |
 
 ## File NON toccati (scope rispettato)
 
-- `gas.py`, `brains/`, `modules/`, `tests/` — motore intatto
+- `tests/test_unit_kernel.py` — fix già in place, nessuna modifica
+- `gas.py`, `brains/`, `modules/` — motore intatto
 - `.claude/hooks/` — hook intatti
-- `CLAUDE.md`, `.claudeignore`, `.claude/settings.json` — già corretti in 732bbb1
+
+## Nota di sessione
+
+Task CI-4 era già chiuso da `089b061`. Questa sessione ha solo verificato
+e documentato. Azione pendente: conferma visiva CI verde su GitHub Actions.
