@@ -51,16 +51,16 @@ Template obbligatorio (sezioni in quest'ordine):
 
 ---
 
-## GIT LOG --ONELINE (sessione)
-
-```
-<output GREZZO di `git log --oneline -10` — nessuna modifica, righe con hash e messaggi>
-```
-
 ## GIT DIFF --STAT (sessione)
 
 ```
 <output GREZZO di `git diff --stat HEAD~N HEAD` — nessuna modifica>
+```
+
+## GIT LOG --ONELINE (sessione)
+
+```
+<output GREZZO di `git log --oneline -10` — nessuna modifica, righe con hash e messaggi>
 ```
 
 ## DELTA TEST DEL MOTORE

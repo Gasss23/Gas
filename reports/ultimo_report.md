@@ -1,39 +1,56 @@
-# Report task — 2026-06-24
-## Titolo: FETTA 1+2 — estensione /fine-task + VPS 1GB→4GB
+# Report — 2026-06-24 — Diagnostica config + fine-task.md
+
+## Task
+
+Due fette doc/config. Scope: CLAUDE.md §11, .claudeignore, ispezione statica fine-task.md.
+Motore, hook, revisore: NON toccati.
+
+---
 
 ## DECISIONI UMANE RICHIESTE
+
 Nessuna.
 
 ---
 
-## Esito fette
+## Esito fetta per fetta
 
-### FETTA 1 — .claude/commands/fine-task.md
-Esteso con:
-- `git log --oneline -10` (era -15)
-- `git diff --stat HEAD~N HEAD` con nota esplicita di sostituire N
-- **REGOLA FERREA** in step 0: output git verbatim, righe con hash e messaggi, `"Ultimi 10 commit, tutti docs"` NON accettabile
-- Template handoff.md: note verbatim su GIT LOG e GIT DIFF --STAT aggiornate di conseguenza
-- **INVARIANTE GIT OUTPUT** aggiunta in fondo: mai sostituire con prosa o riassunti, se lungo incollare intero
+### FETTA 1 — config
 
-### FETTA 2 — VPS 1GB→4GB
-File toccati: `reports/stato_progetto.md`, `reports/roadmap.md`. CLAUDE.md non aveva riferimenti 1GB, nessuna modifica.
+**1.1 CLAUDE.md §11 — allineamento modello**
 
-**stato_progetto.md:**
-- R-reidx-3: "VPS 1GB" → annotazione CX22=4GB, criticità da ri-valutare
-- R-vec-3: "RAM VPS" → annotazione CX22=4GB, ~12% RAM disponibile, non più critico; resta ARM da verificare
-- CI-4: aggiornato a ✅ risolto (2026-06-24), suite 9 FAIL → 7 FAIL (T9a/T9c ora SKIP)
-- Prossimi passi: CI-4 barrato come completato
+- **Stato: già fatto (commit 732bbb1).**
+- La riga "default opusplan" era già stata corretta in una sessione precedente.
+- CLAUDE.md §11 attuale: `Modello: default Sonnet 4.6 (esecuzione). Opus SOLO on-demand via /model opus`.
+- `.claude/settings.json` conferma `"model": "claude-sonnet-4-6"`. Allineamento perfetto.
+- Nessuna modifica necessaria.
 
-**roadmap.md:**
-- R-reidx-3 (item 5): "VPS (1GB)" → annotazione CX22=4GB, criticità da ri-valutare
-- R-vec-3 (item 4): vincolo memoria non più critico (12% RAM); scelta modello guidata da qualità/ARM
+**1.2 .claudeignore**
 
-## File toccati
-- `.claude/commands/fine-task.md`
-- `reports/stato_progetto.md`
-- `reports/roadmap.md`
-- `reports/ultimo_report.md` (questo file)
-- `reports/handoff.md`
-- `reports/diff_sessione.md`
-- `.claude/agents/memoria_revisore.md` (aggiornato da revisore in task CI-4, committato ora)
+- **Stato: già fatto (commit 732bbb1).**
+- File esiste con esattamente il contenuto richiesto (venv/, .venv/, __pycache__/, *.pyc, *.db, .gas_memory.db, .gas_vectors.db, *.log, gas_debug.log).
+- Nessuna modifica necessaria.
+
+### FETTA 2 — diagnostica fine-task.md (ispezione statica)
+
+**2.1 Genera handoff.md?**
+- SÌ. Step 2 di fine-task.md è "Scrivi reports/handoff.md" con template esplicito.
+
+**2.2 Ordine sezioni template handoff**
+- **DIFETTO TROVATO**: ordine invertito rispetto a CLAUDE.md §3.D.
+- CLAUDE.md §3.D prescrive: `git diff --stat` PRIMA di `git log`.
+- fine-task.md aveva: `GIT LOG --ONELINE` PRIMA di `GIT DIFF --STAT`.
+- **FIX APPLICATO**: swap delle due sezioni nel template di Step 2.
+- Ordine corretto ora: DECISIONI UMANE → ESITO/CONTESTO → GIT DIFF --STAT → GIT LOG --ONELINE → DELTA TEST → VERDETTO REVISORE → STATO CI.
+
+**2.3 Path hardcoded**
+- Nessun path assoluto, nessun `/workspaces/`, nessun Codespace path.
+- Tutti i riferimenti sono relativi (`reports/ultimo_report.md`, `reports/handoff.md`, etc.).
+- Git commands standard senza path assoluti.
+- **PATH: OK**
+
+---
+
+## Anomalie
+
+Nessuna anomalia. FETTA 1 era già coperta da una sessione precedente (commit 732bbb1); il task era stato eseguito correttamente dalla sessione del 2026-06-23.
