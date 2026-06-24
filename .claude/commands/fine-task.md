@@ -11,6 +11,7 @@ Esegui questi comandi e tieni l'output — lo incolli verbatim nei file sotto:
 ```bash
 git log --oneline -10
 git diff --stat HEAD~N HEAD   # sostituisci N col numero di commit fatti in questa sessione
+gh run list -L 3              # se gh disponibile e autenticato; altrimenti "CI NON VERIFICATA (gh assente)"
 ```
 
 **REGOLA FERREA — output git verbatim**: incolla le righe grezze con hash e messaggi.
@@ -30,6 +31,9 @@ Contenuto obbligatorio:
 
 ## 2. Scrivi reports/handoff.md
 
+Il dossier deve essere AUTONOMO: un revisore esterno lo legge e ha tutto, zero follow-up.
+Tutte le sezioni sono VERBATIM (mai parafrasi, mai riassunti al posto dell'output reale).
+
 Template obbligatorio (sezioni in quest'ordine):
 
 ```markdown
@@ -39,41 +43,50 @@ Template obbligatorio (sezioni in quest'ordine):
 
 ---
 
-## §DECISIONI UMANE RICHIESTE
+## §0 DECISIONI UMANE RICHIESTE
 
 <lista numerata, o "Nessuna." se vuota>
 
 ---
 
-## ESITO / CONTESTO
+## §1 SCOPE
 
-<sintesi tecnica del task: cosa è stato fatto e perché>
+<per ogni prompt/task della sessione: 1-3 righe su cosa chiedeva>
 
 ---
 
-## GIT DIFF --STAT (sessione)
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-<output GREZZO di `git diff --stat HEAD~N HEAD` — nessuna modifica>
+<output GREZZO di `git diff --stat HEAD~N HEAD`>
 ```
 
-## GIT LOG --ONELINE (sessione)
+## §3 GIT LOG --ONELINE (sessione)
 
 ```
-<output GREZZO di `git log --oneline -10` — nessuna modifica, righe con hash e messaggi>
+<output GREZZO di `git log --oneline -10` — righe con hash e messaggi, nessuna modifica>
 ```
 
-## DELTA TEST DEL MOTORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-<"0. Nessuna modifica a gas.py/tests/" OPPURE esito della suite>
+<Per OGNI commit che tocca gas.py/brains/modules/tests/: verdetto INTEGRALE del revisore,
+incollato. Se nessun commit motore: "nessun diff motore, revisore non richiesto.">
 
-## VERDETTO DEL REVISORE
+## §5 DELTA TEST DEL MOTORE
 
-<verdetto INTEGRALE del revisore se il task ha toccato il motore, altrimenti "Non applicabile — task non-motore.">
+<"Nessuna modifica a gas.py/tests/" OPPURE: numeri prima→dopo + blocco RIEPILOGO reale
+incollato + quali FAIL sono fuori scope e perché>
 
-## STATO CI
+## §6 STATO CI
 
-<esito ultima run CI visibile su GitHub Actions, o "Da verificare post-push.">
+<output REALE di `gh run list -L 3` + esito run sul commit di sessione.
+Se gh assente o non autenticato: "CI NON VERIFICATA (gh assente)".
+VIETATO scrivere "prevista verde" senza output reale.>
+
+## §7 RISERVE APERTE
+
+<Riserve estratte dai verdetti revisore di questa sessione + finding nuovi emersi.
+"Nessuna." se vuoto.>
 ```
 
 ---

@@ -114,15 +114,14 @@ jobs:
             fi
             echo ""
             echo "> _Nota: il job resta ROSSO finché esiste un solo FAIL (exit code nativo della suite)._"
-            echo "> _Se gli unici FAIL sono T9a/T9c (env API / storia su root temp) il sandbox è OK:_"
-            echo "> _renderli verdi tocca \`tests/\` → micro-task con revisore, fuori dallo scope solo-workflow._"
+            echo "> _T9a/T9c sono SKIP in CI su assenza GEMINI/GROQ API key — non FAIL attesi._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Gate — sandbox OS attivo
         if: always()
         # Rosso INEQUIVOCABILE e nominato se bwrap non crea i namespace nemmeno dopo il
         # sysctl: distingue lo STOP GATE ("rosso da sandbox" → micro-task skip-on-CI dei
-        # test bwrap, tocca tests/, con revisore) dal "rosso da T9a/T9c" (atteso). Eseguito
+        # test bwrap, tocca tests/, con revisore) da "T9a/T9c SKIP in CI" (assenza API key). Eseguito
         # per ULTIMO così il summary è già stato scritto.
         run: |
           if [ "${{ steps.sandbox.outputs.smoke2 }}" != "BWRAP_OK" ]; then

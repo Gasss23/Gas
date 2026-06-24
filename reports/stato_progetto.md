@@ -42,6 +42,7 @@ Componenti attive:
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): solo cold doctor + warning statico in run_turn. Rimandato per falsi positivi.
 - 🟡 **R-crm-1b** — identità cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
 - 🟡 **MEMORY_PIN_SCAN hardcoded** — le 3 costanti principali pin sono env-override, ma `MEMORY_PIN_SCAN=200` resta fisso: valutare `GAS_MEMORY_PIN_SCAN` al deploy.
+- 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - ✅ **CI-4** — risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 

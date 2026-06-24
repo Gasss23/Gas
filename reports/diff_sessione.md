@@ -1,22 +1,14 @@
-# DIFF SESSIONE — 2026-06-24
+# Diff sessione — 2026-06-24 Infra/Doc handoff autonomo + gh + ci.yml + riserva openrouter
 
-> Fotografia dell'ULTIMA sessione (la storia completa sta in git). Riscritta a ogni sessione.
+> Si riscrive a ogni sessione. La storia completa sta in git.
 
 ## File toccati
 
-| File | Cosa è cambiato |
-|------|----------------|
-| `reports/ultimo_report.md` | Report CI-4: task già completato in 089b061, verifica locale confermata |
-| `reports/handoff.md` | Handoff con §DECISIONI UMANE: verificare CI su GitHub Actions |
-| `reports/diff_sessione.md` | Questo file (riscritto) |
-
-## File NON toccati (scope rispettato)
-
-- `tests/test_unit_kernel.py` — fix già in place, nessuna modifica
-- `gas.py`, `brains/`, `modules/` — motore intatto
-- `.claude/hooks/` — hook intatti
-
-## Nota di sessione
-
-Task CI-4 era già chiuso da `089b061`. Questa sessione ha solo verificato
-e documentato. Azione pendente: conferma visiva CI verde su GitHub Actions.
+| File | Cosa è cambiato e perché |
+|---|---|
+| `.claude/commands/fine-task.md` | Template handoff.md esteso da 6 a 8 sezioni numerate (§0–§7) VERBATIM; aggiunto `gh run list -L 3` nella raccolta dati; nuovo §1 SCOPE e §7 RISERVE APERTE. |
+| `.github/workflows/ci.yml` | Righe 117-118 e commento Gate step: T9a/T9c ora descritti come SKIP (non FAIL attesi). Allineato alla fix CI-4 già applicata. |
+| `reports/stato_progetto.md` | Aggiunta riserva R-ci-openrouter da verdetto revisore CI-4. |
+| `reports/ultimo_report.md` | Report task sessione. |
+| `reports/handoff.md` | Dossier fine sessione (§0–§7). |
+| `reports/diff_sessione.md` | Questo file. |

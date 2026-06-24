@@ -1,42 +1,47 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-06-24 — CI-4: verifica skip T9a/T9c
+**Sessione:** 2026-06-24 — Infra/Doc: handoff autonomo + gh + ci.yml + riserva openrouter
 
 ---
 
-## §DECISIONI UMANE RICHIESTE
+## §0 DECISIONI UMANE RICHIESTE
 
-1. **Verifica CI su GitHub Actions**: `gh` CLI non disponibile in sessione. Controllare
-   manualmente che la run su `089b061` (o successiva) sia VERDE su Gasss23/Gas Actions.
-   Se rossa per cause diverse da T9a/T9c, aprire nuovo task con diff specifico.
-
----
-
-## ESITO / CONTESTO
-
-Il task CI-4 (skip condizionale T9a/T9c) era già completato in commit `089b061`
-della sessione precedente (2026-06-24 18:51). Questa sessione ha:
-1. Letto l'intero file `tests/test_unit_kernel.py` (2175 righe) per ispezione
-2. Eseguito la suite locale: 158 PASS, 7 FAIL — T9a/T9c NON in FAIL ([SKIP])
-3. Analizzato il comportamento atteso in CI (Linux + bwrap)
-4. Confermato: nessuna modifica al codice necessaria
-
-Nessun diff di motore → revisore non invocato → nessun gate PreToolUse.
+1. **gh CLI non disponibile** (né su Windows né in WSL2 — WSL2 non ha distribuzioni installate).
+   Per attivare §6 CI negli handoff futuri, installare gh:
+   - Windows nativo: `winget install GitHub.cli`, poi `gh auth login`
+   - Oppure: `wsl --install Ubuntu`, poi `sudo apt install gh`, poi `gh auth login`
+   Finché gh è assente, §6 CI riporterà "CI NON VERIFICATA (gh assente)".
 
 ---
 
-## GIT DIFF --STAT (sessione)
+## §1 SCOPE
+
+**Task unico — 4 fette doc/infra:**
+- FETTA 1: verificare gh, installarlo se assente, poi estendere il template handoff.md in fine-task.md con 8 sezioni autonome VERBATIM (§0–§7).
+- FETTA 2: verificare .claudeignore e CLAUDE.md §11 (coerenza Sonnet default); applicare se mancante/incoerente.
+- FETTA 3: in ci.yml righe ~117-118, allineare la dicitura T9a/T9c da "FAIL attesi" a "SKIP in CI se mancano API key".
+- FETTA 4: recuperare dal verdetto revisore CI-4 la riserva su OPENROUTER_API_KEY e tracciarla in stato_progetto.md come R-ci-openrouter.
+
+---
+
+## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md | 14 +++++---
- reports/handoff.md       | 43 ++++++++++++----------
- reports/ultimo_report.md | 94 ++++++++++++++++++++++++++++++++----------------
- 3 files changed, 97 insertions(+), 54 deletions(-)
+ .claude/commands/fine-task.md | 39 ++++++++++++++++++++++++++-------------
+ .github/workflows/ci.yml      |  5 ++---
+ reports/roadmap.md            |  7 +++++++
+ reports/stato_progetto.md     |  1 +
+ 4 files changed, 36 insertions(+), 16 deletions(-)
 ```
 
-## GIT LOG --ONELINE (sessione)
+(reports/roadmap.md era già modificato prima della sessione — non toccato da questo task)
+
+---
+
+## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2044749 docs(ci-4): verifica task già completato — T9a/T9c skip confermato da suite locale
 3d37208 docs(fine-task+config): fix ordine template handoff + diagnostica FETTA 1 già ok
 19d25b2 docs(fine-task+vps): invariante git verbatim + VPS 1GB→4GB + CI-4 chiuso
 0fbb59a docs(report): CI-4 skip T9a/T9c — verdetto revisore APPROVATO
@@ -46,23 +51,35 @@ ddc33b5 feat(skill): /fine-task esteso — handoff.md + diff_sessione.md + git l
 31df4d9 docs(config): sfoltimento CLAUDE.md + config frugale Claude Code
 3ce2062 docs(token): rinomina archivio_stato.md → stato_storico.md, aggiorna riferimenti
 86fcf85 docs(token): split stato_progetto.md + disciplina token in CLAUDE.md
-08e896c docs(roadmap): item URGENTE controllo spesa token + accesso Claude Code da telefono
 ```
 
-## DELTA TEST DEL MOTORE
+(Commit di sessione: il commit di questo report — hash disponibile dopo il push)
 
-0. Nessuna modifica a gas.py/tests/ — nessuna modifica di codice applicata.
-   Suite locale eseguita a SOLO SCOPO DI VERIFICA: 158 PASS, 7 FAIL (bwrap/WinError32/T26b),
-   T9a [SKIP], T9b [PASS], T9c [SKIP].
+---
 
-## VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Non applicabile — nessuna modifica al motore/test in questa sessione.
-Il diff `089b061` (che aveva toccato tests/) era già stato approvato dal revisore
-nella sessione precedente (vedi commit `0fbb59a docs(report): CI-4 skip T9a/T9c — verdetto revisore APPROVATO`).
+nessun diff motore, revisore non richiesto.
 
-## STATO CI
+Tutti i file toccati sono doc/infra: `.claude/commands/fine-task.md`, `.github/workflows/ci.yml`, `reports/`.
 
-Da verificare su GitHub Actions (gh CLI non disponibile).
-Analisi: CI attesa VERDE dopo `089b061` — T9a/T9c skippati, tutti gli altri test
-si comportano correttamente in ambiente Linux + bwrap.
+---
+
+## §5 DELTA TEST DEL MOTORE
+
+Nessuna modifica a gas.py/brains/modules/tests/. Suite invariata: **158 PASS, 7 FAIL** (7 FAIL ambientali Windows pre-esistenti).
+
+---
+
+## §6 STATO CI
+
+CI NON VERIFICATA (gh assente — né su Windows né WSL2; vedi §0 DECISIONI UMANE RICHIESTE).
+
+Ultima run CI nota: CI-4 risolto (2026-06-24, commit 089b061), job verde su runner Linux (BWRAP_OK confermato).
+
+---
+
+## §7 RISERVE APERTE
+
+- **R-ci-openrouter** (da revisore CI-4, 2026-06-24): T9a è fragile se OPENROUTER_API_KEY è presente — il test la poppava prima del turno T9 ma la tolleranza non è garantita formalmente. Tracciata in stato_progetto.md.
+- **gh assente su Windows**: finché non installato, §6 CI negli handoff sarà "CI NON VERIFICATA". Decisione umana richiesta per l'installazione.
