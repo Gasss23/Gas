@@ -1,85 +1,115 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-06-24 — Infra/Doc: handoff autonomo + gh + ci.yml + riserva openrouter
+**Sessione:** 2026-06-25/26 — 3 task autonomi: env-config sprint + token accounting esteso
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **gh CLI non disponibile** (né su Windows né in WSL2 — WSL2 non ha distribuzioni installate).
-   Per attivare §6 CI negli handoff futuri, installare gh:
-   - Windows nativo: `winget install GitHub.cli`, poi `gh auth login`
-   - Oppure: `wsl --install Ubuntu`, poi `sudo apt install gh`, poi `gh auth login`
-   Finché gh è assente, §6 CI riporterà "CI NON VERIFICATA (gh assente)".
+1. **`gh auth login` ancora pendente.** gh 2.95.0 installato. Il login è interattivo — eseguire nel prompt:
+   ```
+   ! gh auth login
+   ```
+   Scegli: GitHub.com → HTTPS → Authenticate with browser. Dopo il login §6 CI sarà popolato con dati reali.
+
+2. **Prezzi `_PROVIDER_PRICE_PER_MTok` da verificare.** La tabella prezzi in `gas.py` (righe ~115-123) è approssimata al 2025-06. Controllare le pagine ufficiali Gemini/Groq e aggiornare se sono cambiati. In particolare: Groq llama-3.3-70b potrebbe essere nella free tier (prezzo effettivo 0) — decidere se tenerlo al costo pay-as-you-go o azzerarlo.
 
 ---
 
 ## §1 SCOPE
 
-**Task unico — 4 fette doc/infra:**
-- FETTA 1: verificare gh, installarlo se assente, poi estendere il template handoff.md in fine-task.md con 8 sezioni autonome VERBATIM (§0–§7).
-- FETTA 2: verificare .claudeignore e CLAUDE.md §11 (coerenza Sonnet default); applicare se mancante/incoerente.
-- FETTA 3: in ci.yml righe ~117-118, allineare la dicitura T9a/T9c da "FAIL attesi" a "SKIP in CI se mancano API key".
-- FETTA 4: recuperare dal verdetto revisore CI-4 la riserva su OPENROUTER_API_KEY e tracciarla in stato_progetto.md come R-ci-openrouter.
+**3 task completati in autonomia (utente assente):**
+
+- **Task 1 — Env-configurabilità sprint** (review #31): 3 finding aperti chiusi — `GAS_WINDOW_CHAR_CAP`, `GAS_MEMORY_PIN_SCAN`, `GAS_VECTORS_DB`, `GAS_EMBED_MODEL` ora configurabili via env seguendo il pattern `_env_int` esistente. `gas doctor` aggiornato con sezione 9 "Config" (valori effettivi sempre visibili).
+
+- **Task 2 — Stima costi token** (review #32): `gas tokens` ora mostra una colonna "Costo (USD)" calcolata da `_PROVIDER_PRICE_PER_MTok` (prezzi appross. 2025-06). Loop aggregazione protetto da try/except su JSONL malformati (§9).
+
+- **Task 0 — R-reidx-3 + token accounting** (review #30, sessione precedente): già nel commit `a02fb44` — riportato per completezza.
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## §2 SONDA OS SANDBOX
+
+Non sondato questa sessione (nessuna modifica al sandbox). Ultimo stato noto: bwrap non disponibile su Windows (T11/T12 FAIL pre-esistenti, CI Linux verde).
+
+---
+
+## §3 GIT DIFF --STAT (sessione)
 
 ```
- .claude/commands/fine-task.md | 39 ++++++++++++++++++++++++++-------------
- .github/workflows/ci.yml      |  5 ++---
- reports/roadmap.md            |  7 +++++++
- reports/stato_progetto.md     |  1 +
- 4 files changed, 36 insertions(+), 16 deletions(-)
+ .claude/agents/memoria_revisore.md |   2 +
+ gas.py                             |  73 ++++++++++++++++----
+ reports/diff_sessione.md           |  33 ++++-----
+ reports/stato_progetto.md          |  12 ++--
+ reports/ultimo_report.md           | 138 ++++++++++++++++---------------------
+ tests/test_unit_kernel.py          | 137 ++++++++++++++++++++++++++++++++++++
+ 6 files changed, 277 insertions(+), 118 deletions(-)
 ```
 
-(reports/roadmap.md era già modificato prima della sessione — non toccato da questo task)
+Base: `a02fb44` (feat(reindex+tokens) — sessione precedente)
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## §4 GIT LOG (commit della sessione)
 
 ```
-2044749 docs(ci-4): verifica task già completato — T9a/T9c skip confermato da suite locale
-3d37208 docs(fine-task+config): fix ordine template handoff + diagnostica FETTA 1 già ok
-19d25b2 docs(fine-task+vps): invariante git verbatim + VPS 1GB→4GB + CI-4 chiuso
-0fbb59a docs(report): CI-4 skip T9a/T9c — verdetto revisore APPROVATO
-089b061 test(ci): skip condizionale T9a/T9c su assenza API key live
-732bbb1 docs(config): allinea §11 a Sonnet default + crea .claudeignore
-ddc33b5 feat(skill): /fine-task esteso — handoff.md + diff_sessione.md + git log grezzo
-31df4d9 docs(config): sfoltimento CLAUDE.md + config frugale Claude Code
-3ce2062 docs(token): rinomina archivio_stato.md → stato_storico.md, aggiorna riferimenti
-86fcf85 docs(token): split stato_progetto.md + disciplina token in CLAUDE.md
+62e635f feat(tokens-cost): stima costi USD per provider in gas tokens
+f64b46e feat(env-config): GAS_WINDOW_CHAR_CAP + GAS_MEMORY_PIN_SCAN + GAS_VECTORS_DB + GAS_EMBED_MODEL
 ```
 
-(Commit di sessione: il commit di questo report — hash disponibile dopo il push)
+---
+
+## §5 DELTA TEST
+
+| | Inizio sessione | Fine sessione |
+|---|---|---|
+| PASS | 163 | 171 |
+| FAIL | 7 | 7 |
+| Nuovi test | — | T37a-T37e (env-config), T38a-T38c (costi) |
+
+7 FAIL pre-esistenti Windows/bwrap invariati.
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §6 VERDETTO REVISORE (integrale)
 
-nessun diff motore, revisore non richiesto.
+### Review #31 — Env-configurabilità sprint
 
-Tutti i file toccati sono doc/infra: `.claude/commands/fine-task.md`, `.github/workflows/ci.yml`, `reports/`.
+**APPROVATO CON RISERVE**
+
+> Cosa è corretto: il pattern `self.X = _env_int("ENV", GasKernel.X, min_val=N)` è esattamente quello atteso. `min_val=10` per MEMORY_PIN_SCAN: corretto. `min_val=1000` per WINDOW_CHAR_CAP: corretto. Doctor sempre OK per Config: appropriato. T37a-T37e testano i 3 rami critici. Nessuna violazione Wall of Shame. Guardrail loop e `_get_window` intatti.
+>
+> **R37-1** (minore tecnica, CHIUSA pre-commit): `Path(_vec_db)` senza `.resolve()` → aggiunto `.resolve()` per coerenza con `self.root`.
+>
+> **R37-2** (doc gap, CHIUSA): stato_progetto.md aggiornato nello stesso commit.
+>
+> Suite: 168 PASS, 7 FAIL pre-esistenti Windows invariati.
+
+### Review #32 — Stima costi token
+
+**APPROVATO CON RISERVE**
+
+> Cosa funziona bene: `Dict[str, Tuple[float, float]]` corretto e leggibile. Fallback `.get(prov, (0.0, 0.0))` è il pattern fail-safe esatto. Flag `has_costs` logicamente corretto. T38a/T38b/T38c coprono i casi principali. La feature è direttamente allineata con l'item #1 priorità assoluta della roadmap (controllo spesa token). Nessun guardrail toccato.
+>
+> **R32-1** (minore, CHIUSA pre-commit): mancanza try/except nel loop aggregazione → aggiunto `try/except (TypeError, ValueError): continue` su record JSONL malformati.
+>
+> **R32-2** (cosmetica, CHIUSA): commento T38b impreciso sull'arrotondamento → corretto.
+>
+> Suite: 171 PASS, 7 FAIL pre-esistenti Windows invariati.
 
 ---
 
-## §5 DELTA TEST DEL MOTORE
+## §7 STATO CI
 
-Nessuna modifica a gas.py/brains/modules/tests/. Suite invariata: **158 PASS, 7 FAIL** (7 FAIL ambientali Windows pre-esistenti).
+**gh non autenticato** — `gh auth login` pendente (§0, decisione umana). Non verificabile questa sessione.
 
----
-
-## §6 STATO CI
-
-CI NON VERIFICATA (gh assente — né su Windows né WSL2; vedi §0 DECISIONI UMANE RICHIESTE).
-
-Ultima run CI nota: CI-4 risolto (2026-06-24, commit 089b061), job verde su runner Linux (BWRAP_OK confermato).
+Ultimo stato noto: **CI-4 VERDE** (2026-06-24, commit `2044749`). T9a/T9c ora [SKIP] su assenza API key, job verde su runner Linux. Nessuna modifica a `.github/workflows/ci.yml` questa sessione → CI attesa ancora verde.
 
 ---
 
-## §7 RISERVE APERTE
+## §8 PROSSIMI PASSI SUGGERITI
 
-- **R-ci-openrouter** (da revisore CI-4, 2026-06-24): T9a è fragile se OPENROUTER_API_KEY è presente — il test la poppava prima del turno T9 ma la tolleranza non è garantita formalmente. Tracciata in stato_progetto.md.
-- **gh assente su Windows**: finché non installato, §6 CI negli handoff sarà "CI NON VERIFICATA". Decisione umana richiesta per l'installazione.
+1. `! gh auth login` → sblocca §6 CI nelle prossime sessioni.
+2. Verificare/aggiornare `_PROVIDER_PRICE_PER_MTok` con i prezzi attuali (decisione #2 sopra).
+3. **FASE 3 — Interfaccia vocale** (Whisper STT + ElevenLabs TTS) — prossimo milestone.
+4. **FASE 5 — Deploy VPS Hetzner** — checklist pre-deploy: R-vec-3 (ARM), R-reidx-3 (ri-taratura), R-wire-1 (VEC_MIN_SIM reale), R-reidx-deps (requirements.txt).
