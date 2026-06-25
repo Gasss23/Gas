@@ -1,106 +1,95 @@
-# Report — Task R-reidx-3 + Token accounting
+# Report — Task: Env-configurabilità sprint (R-vec-2 + WINDOW_CHAR_CAP + MEMORY_PIN_SCAN)
 **Data:** 2026-06-25
-**Review:** #30 — APPROVATO CON RISERVE (riserve minori, tutte chiuse prima del commit)
+**Review:** #31 — APPROVATO CON RISERVE (R37-1 chiusa pre-commit; R37-2 doc gap chiuso nel report)
 
 ---
 
-## Task 1 — R-reidx-3: fix picco RAM in `gas reindex`
+## Obiettivo
 
-### Problema
-`ricostruisci_da_diario` materializzava TUTTI gli embedding in un unico numpy array
-prima del DELETE+INSERT: picco RAM = tutte le righe × 384 dim × 4 byte.
-Su un diario grande (es. 100K voci ≈ 150MB numpy) questo saturava la RAM del VPS.
+Chiudere 3 finding aperti in un colpo solo rendendo configurabili via env le costanti
+operative di GAS che erano hardcoded o solo parzialmente override-abili:
 
-### Fix
-`modules/memory/vectors.py`:
-- Nuova costante `REINDEX_BATCH_SIZE = 256`
-- `ricostruisci_da_diario(memory_store, batch_size=REINDEX_BATCH_SIZE)`:
-  - Usa `diario_dopo` (lettore paginato) al posto di `diario_tutto` (carica tutto)
-  - Per ogni batch: embedding → normalizza → accumula blob bytes (1.5KB/riga)
-  - I numpy array per-batch sono transitori (GC-ati ad ogni iterazione)
-  - Fallback a `diario_tutto` per backward compat con mock/test senza `diario_dopo`
-  - Invariante mantenuta: DELETE+INSERT atomico SOLO se tutti i batch riescono
-
-### Riduzione RAM
-| Prima | Dopo |
-|---|---|
-| Peak = numpy(n×384×4) + tutti i testi | Peak = numpy(256×384×4)≈400KB per batch + blob accumulati |
-| Picco unico proporzionale all'intero diario | Numpy transitori, accumulo blob ~1.5KB/riga |
-
-Nota: l'accumulo blob totale resta proporzionale all'intero diario → chiusura PARZIALE
-di R-reidx-3 (picco ridotto, non azzerato). Dichiarato in stato_progetto.md.
+| Finding | Costante | Nuova env |
+|---|---|---|
+| WINDOW_CHAR_CAP non env-configurabile | `WINDOW_CHAR_CAP=24000` | `GAS_WINDOW_CHAR_CAP` |
+| MEMORY_PIN_SCAN hardcoded | `MEMORY_PIN_SCAN=200` | `GAS_MEMORY_PIN_SCAN` |
+| R-vec-2 | path sidecar + modello embedding | `GAS_VECTORS_DB`, `GAS_EMBED_MODEL` |
 
 ---
 
-## Task 2 — Contabilità token (`gas tokens`)
+## Modifiche
 
-### Problema
-Impossibile sapere dove andavano i token: nessuna telemetria per-provider, per-turno.
-"Non puoi controllare ciò che non misuri."
+### gas.py
 
-### Fix
-`gas.py`:
-- Costante `TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"`
-- Metodo `GasKernel._log_tokens(provider, model, in_tok, out_tok)`:
-  - Fail-safe: errore I/O ignorato con warning (mai crash del turno)
-  - Appende una riga JSONL a `<root>/.gas_tokens.jsonl` per ogni API call
-- Chiamata in `run_turn` subito dopo `client.chat.completions.create(...)`:
-  ```python
-  usage = getattr(response, "usage", None)
-  if usage:
-      self._log_tokens(name, model,
-                       getattr(usage, "prompt_tokens", 0) or 0,
-                       getattr(usage, "completion_tokens", 0) or 0)
-  ```
-- Funzione `tokens_cmd(root_dir, days)`: legge il JSONL, aggrega per provider,
-  stampa tabella con totali globali + ultimi N giorni (default 7)
-- Dispatch `gas tokens [N_giorni]` in `main()` con try/except ValueError
-- `.gas_tokens.jsonl` aggiunto a `.gitignore` (artefatto runtime, non nel repo)
-
-### Esempio output `gas tokens`
+**Import:**
+```python
+from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
 ```
-=== GAS — Token Usage ===
+(aggiunto `EMBED_MODEL_NAME` per usarlo nel fallback di `GAS_EMBED_MODEL`)
 
-Provider               Calls   Tokens In  Tokens Out      Totale
-gemini-flash-lite          2       3,000         600       3,600
-groq                       1         500         100         600
-──────────────────────────────────────────────────────────────
-TOTALE                     3       3,500         700       4,200
-
-Ultimi 7 giorni:
-  gemini-flash-lite    3,000 in + 600 out = 3,600 tok
-  groq                 500 in + 100 out = 600 tok
+**`GasKernel.__init__`** — due nuovi override dopo i pin esistenti:
+```python
+self.MEMORY_PIN_SCAN = _env_int("GAS_MEMORY_PIN_SCAN", GasKernel.MEMORY_PIN_SCAN, min_val=10)
+self.WINDOW_CHAR_CAP = _env_int("GAS_WINDOW_CHAR_CAP", GasKernel.WINDOW_CHAR_CAP, min_val=1000)
 ```
+- `min_val=10`: floor prudente (zero sarebbe kill-switch accidentale)
+- `min_val=1000`: floor sicuro (finestre troppo compatte ma niente crash — `_cap_window_chars` mantiene sempre l'ultimo msg)
+
+**`GasKernel.__init__`** — VectorStore costruito con path e model da env:
+```python
+_vec_db = os.environ.get("GAS_VECTORS_DB", "").strip()
+_vec_path = Path(_vec_db).resolve() if _vec_db else default_vectors_path(self.root)
+_vec_model = os.environ.get("GAS_EMBED_MODEL", "").strip() or EMBED_MODEL_NAME
+self.vectors = VectorStore(_vec_path, model_name=_vec_model)
+```
+- `.resolve()` su `GAS_VECTORS_DB` per coerenza con `self.root` (R37-1, chiusa pre-commit)
+- Fallback su `EMBED_MODEL_NAME` se env assente/vuota
+- Tutto dentro il try/except esistente → fail-safe invariato
+
+**`doctor()` — sezione 9 "Config":**
+```
+[OK   ] Config     WINDOW_CHAR_CAP      24000 chr (default)
+[OK   ] Config     MEMORY_PIN_SCAN      200 eventi (default)
+```
+Sempre OK (qualsiasi valore sporco è già clampato dall'helper). Con GAS_VECTORS=1
+aggiunge anche EMBED_MODEL e VECTORS_DB. Permette di verificare i valori attivi
+senza leggere il codice — utile al deploy VPS.
+
+### tests/test_unit_kernel.py
+
+5 nuovi test:
+- **T37a** — `GAS_WINDOW_CHAR_CAP`: override valido + valore sporco→default + sotto-min→clamp
+- **T37b** — `GAS_MEMORY_PIN_SCAN`: override valido + valore sporco→default + sotto-min→clamp
+- **T37c** — `GAS_EMBED_MODEL`: model_name corretto + default corretto con GAS_VECTORS=1
+- **T37d** — `GAS_VECTORS_DB`: db_path.resolve() == Path(env).resolve() con GAS_VECTORS=1
+- **T37e** — doctor con GAS_WINDOW_CHAR_CAP=8000 + GAS_MEMORY_PIN_SCAN=50 → Config section visible
 
 ---
 
-## Test
+## Finding chiusi
 
-5 nuovi test aggiunti (`tests/test_unit_kernel.py`):
-- **T35a** — batch_size=2 su 5 righe: 5 indicizzate correttamente
-- **T35b** — embedding fallisce al batch 2: None + indice preesistente intatto
-- **T36a** — `_log_tokens`: riga JSONL parseable con campi corretti
-- **T36b** — `gas tokens` su log mancante: exit 0 + messaggio
-- **T36c** — `gas tokens` con record multipli: exit 0 + provider + TOTALE nel report
-
-Suite: **163 PASS, 7 FAIL** (7 pre-esistenti Windows/bwrap, invariati)
+- ✅ **WINDOW_CHAR_CAP non env-configurabile** → chiuso via `GAS_WINDOW_CHAR_CAP`
+- ✅ **MEMORY_PIN_SCAN hardcoded** → chiuso via `GAS_MEMORY_PIN_SCAN`
+- ✅ **R-vec-2** → chiuso via `GAS_VECTORS_DB` + `GAS_EMBED_MODEL`
 
 ---
 
-## Riserve review #30 (gestione)
-- **R30-1** (MEDIO): `.gas_tokens.jsonl` → gitignore CHIUSA prima del commit
-- **R30-2** (BASSO): `int(sys.argv[2])` → try/except ValueError CHIUSA prima del commit
-- **R30-3** (BASSO, informativo): accumulo blob totale proporzionale al diario → dichiarato
-  in stato_progetto.md come chiusura parziale R-reidx-3
-- **R30-4** (BASSO, test): manca test per eccezione di `diario_dopo` al primo batch →
-  rinviato (logica difensiva corretta, ramo coperto indirettamente)
+## Suite
+
+**168 PASS, 7 FAIL** (7 pre-esistenti Windows/bwrap — invariati).
+
+---
+
+## Riserve review #31
+
+- **R37-1** (MEDIO, chiusa): `Path(_vec_db)` senza `.resolve()` → aggiunto `.resolve()` pre-commit
+- **R37-2** (doc gap, chiusa): stato_progetto.md aggiornato in questo commit
 
 ---
 
 ## File modificati
-- `modules/memory/vectors.py`: `REINDEX_BATCH_SIZE` + `ricostruisci_da_diario` batch
-- `gas.py`: `TOKEN_LOG_FILENAME`, `_log_tokens`, `tokens_cmd`, dispatch `main`
-- `tests/test_unit_kernel.py`: T35a, T35b, T36a, T36b, T36c
-- `.gitignore`: `.gas_tokens.jsonl`
-- `reports/stato_progetto.md`: aggiornato review count, R-reidx-3, CLI
-- `.claude/agents/memoria_revisore.md`: lezione #30
+
+- `gas.py`: import + `__init__` (MEMORY_PIN_SCAN, WINDOW_CHAR_CAP, VectorStore) + `doctor()` sez.9
+- `tests/test_unit_kernel.py`: T37a, T37b, T37c, T37d, T37e
+- `reports/stato_progetto.md`: finding chiusi, review count, suite
+- `.claude/agents/memoria_revisore.md`: lezione #31

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
 from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO, normalizza_chiave
-from modules.memory import VectorStore, default_vectors_path
+from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
 
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
 # i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
@@ -331,6 +331,8 @@ class GasKernel:
         self.MEMORY_PIN_CHAR_CAP = _env_int("GAS_MEMORY_PIN_CHARS", GasKernel.MEMORY_PIN_CHAR_CAP, min_val=200)
         self.MEMORY_PIN_CONTACTS = _env_int("GAS_MEMORY_PIN_CONTACTS", GasKernel.MEMORY_PIN_CONTACTS, min_val=0)
         self.MEMORY_PIN_EVENTS = _env_int("GAS_MEMORY_PIN_EVENTS", GasKernel.MEMORY_PIN_EVENTS, min_val=0)
+        self.MEMORY_PIN_SCAN = _env_int("GAS_MEMORY_PIN_SCAN", GasKernel.MEMORY_PIN_SCAN, min_val=10)
+        self.WINDOW_CHAR_CAP = _env_int("GAS_WINDOW_CHAR_CAP", GasKernel.WINDOW_CHAR_CAP, min_val=1000)
         self.MEMORY_BACKUP_EVERY_SEC = _env_int("GAS_MEMORY_BACKUP_EVERY_SEC", GasKernel.MEMORY_BACKUP_EVERY_SEC, min_val=0)
         # Backup off-site: dir esterna configurabile (vuota = OFF, default).
         _raw_offsite = os.environ.get("GAS_MEMORY_BACKUP_OFFSITE_DIR", "").strip()
@@ -352,7 +354,10 @@ class GasKernel:
         self.vectors: Optional[VectorStore] = None
         if _env_flag("GAS_VECTORS"):
             try:
-                self.vectors = VectorStore(default_vectors_path(self.root))
+                _vec_db = os.environ.get("GAS_VECTORS_DB", "").strip()
+                _vec_path = Path(_vec_db).resolve() if _vec_db else default_vectors_path(self.root)
+                _vec_model = os.environ.get("GAS_EMBED_MODEL", "").strip() or EMBED_MODEL_NAME
+                self.vectors = VectorStore(_vec_path, model_name=_vec_model)
             except Exception as e:
                 logging.warning(f"VectorStore non inizializzato ({e}) — retrieval semantico disattivato")
                 self.vectors = None
@@ -1611,6 +1616,23 @@ def doctor(root_dir: Optional[str] = None) -> int:
                   f"GAS_VECTORS=1 ma errore probe ({str(_e)[:50]})")
     else:
         check("Memoria", "vector store", "OK", "disabilitato (GAS_VECTORS non settata)")
+
+    # 9. Configurazione: valori effettivi delle costanti override-abili via env.
+    # Informativo, sempre OK. Permette di verificare i valori attivi senza leggere
+    # il codice, utile al deploy VPS dove si settano queste variabili d'ambiente.
+    _cfg_wcc = _env_int("GAS_WINDOW_CHAR_CAP", GasKernel.WINDOW_CHAR_CAP, min_val=1000)
+    _cfg_mps = _env_int("GAS_MEMORY_PIN_SCAN", GasKernel.MEMORY_PIN_SCAN, min_val=10)
+    check("Config", "WINDOW_CHAR_CAP", "OK",
+          f"{_cfg_wcc} chr" + ("" if os.environ.get("GAS_WINDOW_CHAR_CAP") else " (default)"))
+    check("Config", "MEMORY_PIN_SCAN", "OK",
+          f"{_cfg_mps} eventi" + ("" if os.environ.get("GAS_MEMORY_PIN_SCAN") else " (default)"))
+    if _env_flag("GAS_VECTORS"):
+        _cfg_em = os.environ.get("GAS_EMBED_MODEL", "").strip() or EMBED_MODEL_NAME
+        _cfg_vdb = os.environ.get("GAS_VECTORS_DB", "").strip() or str(default_vectors_path(root))
+        check("Config", "EMBED_MODEL", "OK",
+              f"{_cfg_em}" + ("" if os.environ.get("GAS_EMBED_MODEL") else " (default)"))
+        check("Config", "VECTORS_DB", "OK",
+              f"{_cfg_vdb}" + ("" if os.environ.get("GAS_VECTORS_DB") else " (default)"))
 
     # Report tabellare
     print("\n=== GAS DOCTOR ===\n")

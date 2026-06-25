@@ -6,7 +6,7 @@
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **30 review** completate. Suite: **163 PASS, 7 FAIL**
+FASE 1 ✅ e FASE 2 ✅ chiuse. **31 review** completate. Suite: **168 PASS, 7 FAIL**
 (7 FAIL ambientali Windows pre-esistenti: bwrap T11/T12/T13d2, WinError32 T26b — T9a/T9c ora SKIP condizionale in CI).
 CI GitHub Actions (`.github/workflows/ci.yml`): BWRAP_OK confermato sul runner Linux; **CI-4 risolto** (2026-06-24): T9a/T9c ora [SKIP] su assenza API key, job verde.
 
@@ -33,15 +33,15 @@ Componenti attive:
 
 - 🟡 **R-reidx-deps** — numpy/fastembed/onnxruntime devono restare in `requirements.txt` e nel deploy VPS; senza, layer vettoriale e `gas reindex` degradano silenziosamente.
 - 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` ora usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX22 4GB il picco totale è gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
-- 🟡 **R-vec-2** — costanti vector store non configurabili via env (`GAS_VECTORS_DB`, `GAS_EMBED_MODEL`): valutare al deploy.
+- ✅ **R-vec-2** — `GAS_VECTORS_DB` + `GAS_EMBED_MODEL` configurabili via env (review #31, 2026-06-25).
 - 🟡 **R-vec-3** — portabilità ARM non verificata (~504MB modello MiniLM). [VPS confermato CX22 = 4GB RAM — il modello occupa ~12% della RAM disponibile; il vincolo memoria non è più critico. Resta da verificare l'architettura CPU (ARM vs x86) al deploy.]
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
 - 🟡 **R-wire-2** — qualità semantica MiniLM limitata su query corte IT: limite di potenza, non correttezza. Legato a R-vec-3.
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
-- 🟡 **WINDOW_CHAR_CAP non env-configurabile** (R2 review #7): valutare `GAS_WINDOW_CHAR_CAP` al deploy VPS / pipeline Whisper.
+- ✅ **WINDOW_CHAR_CAP non env-configurabile** — `GAS_WINDOW_CHAR_CAP` configurabile via env, min_val=1000 (review #31, 2026-06-25).
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): solo cold doctor + warning statico in run_turn. Rimandato per falsi positivi.
 - 🟡 **R-crm-1b** — identità cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
-- 🟡 **MEMORY_PIN_SCAN hardcoded** — le 3 costanti principali pin sono env-override, ma `MEMORY_PIN_SCAN=200` resta fisso: valutare `GAS_MEMORY_PIN_SCAN` al deploy.
+- ✅ **MEMORY_PIN_SCAN hardcoded** — `GAS_MEMORY_PIN_SCAN` configurabile via env, min_val=10 (review #31, 2026-06-25).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - ✅ **CI-4** — risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
@@ -63,7 +63,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **30 review**. Ultima: **#30** (R-reidx-3 + token accounting, 2026-06-25). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **31 review**. Ultima: **#31** (env-configurabilità sprint, 2026-06-25). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 
 ## Note operative VPS — non per oggi

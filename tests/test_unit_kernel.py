@@ -2256,6 +2256,95 @@ check("T36c gas tokens: exit 0 + provider nel report + totali coerenti",
       rc36c == 0 and "gemini-flash-lite" in _out36c and "groq" in _out36c and "TOTALE" in _out36c,
       f"rc={rc36c} out={_out36c!r}")
 
+# ============================================================
+# T37 — Env-configurabilità (WINDOW_CHAR_CAP, MEMORY_PIN_SCAN, GAS_EMBED_MODEL, GAS_VECTORS_DB)
+# ============================================================
+
+# T37a — GAS_WINDOW_CHAR_CAP override → k.WINDOW_CHAR_CAP risolto + clamp + fail-safe
+_sv37a = os.environ.get("GAS_WINDOW_CHAR_CAP")
+try:
+    os.environ["GAS_WINDOW_CHAR_CAP"] = "8000"
+    ok37a_valid = kernel_tmp().WINDOW_CHAR_CAP == 8000
+    os.environ["GAS_WINDOW_CHAR_CAP"] = "abc"      # sporco → default
+    ok37a_dirty = kernel_tmp().WINDOW_CHAR_CAP == GasKernel.WINDOW_CHAR_CAP
+    os.environ["GAS_WINDOW_CHAR_CAP"] = "100"       # sotto min_val=1000 → clamp
+    ok37a_low = kernel_tmp().WINDOW_CHAR_CAP == 1000
+finally:
+    if _sv37a is None: os.environ.pop("GAS_WINDOW_CHAR_CAP", None)
+    else: os.environ["GAS_WINDOW_CHAR_CAP"] = _sv37a
+check("T37a GAS_WINDOW_CHAR_CAP: override env + clamp + fail-safe",
+      ok37a_valid and ok37a_dirty and ok37a_low,
+      f"valid={ok37a_valid} dirty={ok37a_dirty} low={ok37a_low}")
+
+# T37b — GAS_MEMORY_PIN_SCAN override → k.MEMORY_PIN_SCAN risolto + clamp + fail-safe
+_sv37b = os.environ.get("GAS_MEMORY_PIN_SCAN")
+try:
+    os.environ["GAS_MEMORY_PIN_SCAN"] = "50"
+    ok37b_valid = kernel_tmp().MEMORY_PIN_SCAN == 50
+    os.environ["GAS_MEMORY_PIN_SCAN"] = "abc"       # sporco → default
+    ok37b_dirty = kernel_tmp().MEMORY_PIN_SCAN == GasKernel.MEMORY_PIN_SCAN
+    os.environ["GAS_MEMORY_PIN_SCAN"] = "3"         # sotto min_val=10 → clamp
+    ok37b_low = kernel_tmp().MEMORY_PIN_SCAN == 10
+finally:
+    if _sv37b is None: os.environ.pop("GAS_MEMORY_PIN_SCAN", None)
+    else: os.environ["GAS_MEMORY_PIN_SCAN"] = _sv37b
+check("T37b GAS_MEMORY_PIN_SCAN: override env + clamp + fail-safe",
+      ok37b_valid and ok37b_dirty and ok37b_low,
+      f"valid={ok37b_valid} dirty={ok37b_dirty} low={ok37b_low}")
+
+# T37c — GAS_EMBED_MODEL override → k.vectors.model_name usa il modello env
+# (GAS_VECTORS=1 richiesto; il modello non viene scaricato — init è lazy).
+_sv37c_vec = os.environ.get("GAS_VECTORS")
+_sv37c_model = os.environ.get("GAS_EMBED_MODEL")
+try:
+    os.environ["GAS_VECTORS"] = "1"
+    os.environ["GAS_EMBED_MODEL"] = "my-custom-model"
+    _k37c = kernel_tmp()
+    ok37c = (_k37c.vectors is not None
+             and _k37c.vectors.model_name == "my-custom-model")
+    os.environ.pop("GAS_EMBED_MODEL", None)         # assente → EMBED_MODEL_NAME di default
+    _k37c_def = kernel_tmp()
+    ok37c_def = (_k37c_def.vectors is not None
+                 and _k37c_def.vectors.model_name == gas.EMBED_MODEL_NAME)
+finally:
+    if _sv37c_vec is None: os.environ.pop("GAS_VECTORS", None)
+    else: os.environ["GAS_VECTORS"] = _sv37c_vec
+    if _sv37c_model is None: os.environ.pop("GAS_EMBED_MODEL", None)
+    else: os.environ["GAS_EMBED_MODEL"] = _sv37c_model
+check("T37c GAS_EMBED_MODEL: override env → model_name corretto + default corretto",
+      ok37c and ok37c_def,
+      f"ok={ok37c} def={ok37c_def}")
+
+# T37d — GAS_VECTORS_DB override → k.vectors.db_path usa il path env
+_sv37d_vec = os.environ.get("GAS_VECTORS")
+_sv37d_db = os.environ.get("GAS_VECTORS_DB")
+_d37d = tempfile.mkdtemp(prefix="gas_vdb37d_")
+_custom_vdb = str(Path(_d37d) / "custom_vec.db")
+try:
+    os.environ["GAS_VECTORS"] = "1"
+    os.environ["GAS_VECTORS_DB"] = _custom_vdb
+    _k37d = kernel_tmp()
+    ok37d = (_k37d.vectors is not None
+             and _k37d.vectors.db_path == Path(_custom_vdb).resolve())
+finally:
+    if _sv37d_vec is None: os.environ.pop("GAS_VECTORS", None)
+    else: os.environ["GAS_VECTORS"] = _sv37d_vec
+    if _sv37d_db is None: os.environ.pop("GAS_VECTORS_DB", None)
+    else: os.environ["GAS_VECTORS_DB"] = _sv37d_db
+check("T37d GAS_VECTORS_DB: override env → db_path usa il path env",
+      ok37d, f"db_path={_k37d.vectors.db_path if _k37d.vectors else None!r}")
+
+# T37e — doctor mostra la sezione Config con valori env attivi
+_d37e = tempfile.mkdtemp(prefix="gas_dr37e_")
+MemoryStore(os.path.join(_d37e, ".gas_memory.db"))
+_out37e, _rc37e = _doctor_inproc(_d37e, extra_env={
+    "GAS_WINDOW_CHAR_CAP": "8000",
+    "GAS_MEMORY_PIN_SCAN": "50",
+})
+check("T37e doctor mostra Config section con valori env",
+      "8000" in _out37e and "50" in _out37e and "Config" in _out37e,
+      f"rc={_rc37e} out={_out37e[-400:]!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

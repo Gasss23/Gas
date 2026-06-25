@@ -1,4 +1,4 @@
-# Diff sessione — 2026-06-25 R-reidx-3 + Token accounting
+# Diff sessione — 2026-06-25 Env-configurabilità sprint
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
 
@@ -6,25 +6,26 @@
 
 | File | Cosa |
 |---|---|
-| `modules/memory/vectors.py` | `REINDEX_BATCH_SIZE=256` + `ricostruisci_da_diario` riscritto a batch |
-| `gas.py` | `TOKEN_LOG_FILENAME`, `_log_tokens`, `tokens_cmd`, dispatch `gas tokens` |
-| `tests/test_unit_kernel.py` | T35a, T35b, T36a, T36b, T36c (5 nuovi test) |
-| `.gitignore` | `.gas_tokens.jsonl` aggiunto |
-| `reports/stato_progetto.md` | Review count 28→30, R-reidx-3 aggiornato, CLI gas tokens |
-| `.claude/agents/memoria_revisore.md` | Lezione review #30 |
-| `reports/ultimo_report.md` | Report task corrente |
-| `reports/diff_sessione.md` | Questo file |
+| `gas.py` | import `EMBED_MODEL_NAME`; `__init__` MEMORY_PIN_SCAN + WINDOW_CHAR_CAP overrides; VectorStore con `GAS_VECTORS_DB`/`GAS_EMBED_MODEL`; `doctor()` sez.9 Config |
+| `tests/test_unit_kernel.py` | T37a, T37b, T37c, T37d, T37e (5 nuovi test) |
+| `reports/stato_progetto.md` | finding chiusi, review count 30→31, suite 163→168 |
+| `.claude/agents/memoria_revisore.md` | lezione review #31 |
+| `reports/ultimo_report.md` | report task corrente |
+| `reports/diff_sessione.md` | questo file |
 
 ## Cosa è cambiato e perché
 
-**R-reidx-3 (batch reindex):** Il metodo `ricostruisci_da_diario` materializzava
-l'intero diario in RAM (numpy array full-size) prima del DELETE. Ora legge il diario
-pagine di 256 righe via `diario_dopo`, i numpy array sono transitori per batch, e
-l'atomic swap avviene solo se tutti i batch riescono. Invariante di sicurezza mantenuta.
+**Env-configurabilità sprint:** 3 finding aperti chiusi in un colpo solo. Tutte le
+costanti operative rilevanti di GAS ora sono override-abili via env senza ricompilare,
+seguendo il pattern `_env_int`/`_env_float`/`_env_flag` già consolidato.
 
-**Token accounting:** GAS non aveva alcuna visibilità sui token spesi per provider.
-`_log_tokens` scrive una riga JSONL per ogni API call in `run_turn`; `gas tokens [N]`
-aggrega e stampa la tabella. Zero token LLM, fail-safe, gitignorato.
+- `GAS_WINDOW_CHAR_CAP` → `WINDOW_CHAR_CAP` (default 24000, min_val=1000)
+- `GAS_MEMORY_PIN_SCAN` → `MEMORY_PIN_SCAN` (default 200, min_val=10)
+- `GAS_VECTORS_DB` → path sidecar vettoriale (`.resolve()` per coerenza con self.root)
+- `GAS_EMBED_MODEL` → modello embedding (fallback su `EMBED_MODEL_NAME`)
 
-**Review #30:** APPROVATO CON RISERVE. Riserve R30-1 (gitignore) e R30-2 (int ValueError)
-chiuse prima del commit. R30-3 e R30-4 dichiarate in stato_progetto e memoria_revisore.
+`gas doctor` mostra ora una sezione 9 "Config" con i valori effettivi (sempre OK —
+qualsiasi valore sporco è già clampato dall'helper), utile al deploy VPS.
+
+**Review #31:** APPROVATO CON RISERVE. R37-1 (`.resolve()`) chiusa pre-commit;
+R37-2 (doc gap finding chiusi) chiusa in questo report/commit.
