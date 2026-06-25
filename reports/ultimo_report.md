@@ -1,19 +1,13 @@
-# Report — Task: Env-configurabilità sprint (R-vec-2 + WINDOW_CHAR_CAP + MEMORY_PIN_SCAN)
+# Report — Task: Stima costi token (`gas tokens` + `_PROVIDER_PRICE_PER_MTok`)
 **Data:** 2026-06-25
-**Review:** #31 — APPROVATO CON RISERVE (R37-1 chiusa pre-commit; R37-2 doc gap chiuso nel report)
+**Review:** #32 — APPROVATO CON RISERVE (R32-1 try/except chiusa pre-commit; R32-2 cosmetic commento corretto)
 
 ---
 
 ## Obiettivo
 
-Chiudere 3 finding aperti in un colpo solo rendendo configurabili via env le costanti
-operative di GAS che erano hardcoded o solo parzialmente override-abili:
-
-| Finding | Costante | Nuova env |
-|---|---|---|
-| WINDOW_CHAR_CAP non env-configurabile | `WINDOW_CHAR_CAP=24000` | `GAS_WINDOW_CHAR_CAP` |
-| MEMORY_PIN_SCAN hardcoded | `MEMORY_PIN_SCAN=200` | `GAS_MEMORY_PIN_SCAN` |
-| R-vec-2 | path sidecar + modello embedding | `GAS_VECTORS_DB`, `GAS_EMBED_MODEL` |
+Completare il token accounting aggiungendo la stima del costo in USD al comando
+`gas tokens`. "Non puoi controllare ciò che non misuri" (CLAUDE.md §11).
 
 ---
 
@@ -21,75 +15,70 @@ operative di GAS che erano hardcoded o solo parzialmente override-abili:
 
 ### gas.py
 
-**Import:**
+**Nuova costante `_PROVIDER_PRICE_PER_MTok`** (aggiunta subito dopo `TOKEN_LOG_FILENAME`):
 ```python
-from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
+_PROVIDER_PRICE_PER_MTok: Dict[str, Tuple[float, float]] = {
+    "gemini-flash-lite": (0.10,  0.40),   # input USD/MTok / output USD/MTok
+    "gemini-flash":      (0.30,  2.50),
+    "groq":              (0.59,  0.79),
+    "openrouter":        (0.00,  0.00),   # free tier → 0
+    "ollama":            (0.00,  0.00),   # locale → 0
+}
 ```
-(aggiunto `EMBED_MODEL_NAME` per usarlo nel fallback di `GAS_EMBED_MODEL`)
+Prezzi approssimati al 2025-06. Chiave = nome provider come registrato da `_log_tokens`.
 
-**`GasKernel.__init__`** — due nuovi override dopo i pin esistenti:
-```python
-self.MEMORY_PIN_SCAN = _env_int("GAS_MEMORY_PIN_SCAN", GasKernel.MEMORY_PIN_SCAN, min_val=10)
-self.WINDOW_CHAR_CAP = _env_int("GAS_WINDOW_CHAR_CAP", GasKernel.WINDOW_CHAR_CAP, min_val=1000)
-```
-- `min_val=10`: floor prudente (zero sarebbe kill-switch accidentale)
-- `min_val=1000`: floor sicuro (finestre troppo compatte ma niente crash — `_cap_window_chars` mantiene sempre l'ultimo msg)
+**`tokens_cmd` aggiornato:**
+- Accumula `cost` per bucket: `in_t * p_in / 1_000_000 + out_t * p_out / 1_000_000`
+- try/except (TypeError, ValueError) nel loop body: record JSONL malformato → skip silenzioso (§9)
+- Aggiunge colonna "Costo (★ USD)" se almeno un provider ha prezzo > 0; altrimenti "Costo" senza simbolo
+- Mostra costo per-provider nella sezione "ultimi N giorni"
+- Aggiunge riga TOTALE nella sezione "recenti"
+- Nota "★ prezzi appross. (2025-06)" visibile solo se `has_costs` è True
 
-**`GasKernel.__init__`** — VectorStore costruito con path e model da env:
-```python
-_vec_db = os.environ.get("GAS_VECTORS_DB", "").strip()
-_vec_path = Path(_vec_db).resolve() if _vec_db else default_vectors_path(self.root)
-_vec_model = os.environ.get("GAS_EMBED_MODEL", "").strip() or EMBED_MODEL_NAME
-self.vectors = VectorStore(_vec_path, model_name=_vec_model)
+### Esempio output `gas tokens` aggiornato:
 ```
-- `.resolve()` su `GAS_VECTORS_DB` per coerenza con `self.root` (R37-1, chiusa pre-commit)
-- Fallback su `EMBED_MODEL_NAME` se env assente/vuota
-- Tutto dentro il try/except esistente → fail-safe invariato
+=== GAS — Token Usage ===  (.gas_tokens.jsonl)
 
-**`doctor()` — sezione 9 "Config":**
+Provider                Calls    Tokens In   Tokens Out       Totale  Costo (★ USD)
+─────────────────────────────────────────────────────────────────────────────────────
+gemini-flash-lite           2        3,000          600        3,600 $      0.0005
+groq                        1          500          100          600 $      0.0004
+─────────────────────────────────────────────────────────────────────────────────────
+TOTALE                      3        3,500          700        4,200 $      0.0009
+
+Ultimi 7 giorni:
+  gemini-flash-lite    3,000 in + 600 out = 3,600 tok  $0.0005
+  groq                 500 in + 100 out = 600 tok  $0.0004
+  TOTALE               3,500 in + 700 out  $0.0009
+
+  ★ prezzi appross. (2025-06) — aggiornare _PROVIDER_PRICE_PER_MTok se cambiano
 ```
-[OK   ] Config     WINDOW_CHAR_CAP      24000 chr (default)
-[OK   ] Config     MEMORY_PIN_SCAN      200 eventi (default)
-```
-Sempre OK (qualsiasi valore sporco è già clampato dall'helper). Con GAS_VECTORS=1
-aggiunge anche EMBED_MODEL e VECTORS_DB. Permette di verificare i valori attivi
-senza leggere il codice — utile al deploy VPS.
 
 ### tests/test_unit_kernel.py
 
-5 nuovi test:
-- **T37a** — `GAS_WINDOW_CHAR_CAP`: override valido + valore sporco→default + sotto-min→clamp
-- **T37b** — `GAS_MEMORY_PIN_SCAN`: override valido + valore sporco→default + sotto-min→clamp
-- **T37c** — `GAS_EMBED_MODEL`: model_name corretto + default corretto con GAS_VECTORS=1
-- **T37d** — `GAS_VECTORS_DB`: db_path.resolve() == Path(env).resolve() con GAS_VECTORS=1
-- **T37e** — doctor con GAS_WINDOW_CHAR_CAP=8000 + GAS_MEMORY_PIN_SCAN=50 → Config section visible
-
----
-
-## Finding chiusi
-
-- ✅ **WINDOW_CHAR_CAP non env-configurabile** → chiuso via `GAS_WINDOW_CHAR_CAP`
-- ✅ **MEMORY_PIN_SCAN hardcoded** → chiuso via `GAS_MEMORY_PIN_SCAN`
-- ✅ **R-vec-2** → chiuso via `GAS_VECTORS_DB` + `GAS_EMBED_MODEL`
+3 nuovi test:
+- **T38a** — `_PROVIDER_PRICE_PER_MTok`: 5 provider attesi + tuple (float, float)
+- **T38b** — `tokens_cmd`: costo gemini-flash-lite corretto (1000 in + 200 out → "$0.0002") + nota appross visibile
+- **T38c** — `tokens_cmd`: provider ignoto → costo 0.0 + nota appross NON visibile
 
 ---
 
 ## Suite
 
-**168 PASS, 7 FAIL** (7 pre-esistenti Windows/bwrap — invariati).
+**171 PASS, 7 FAIL** (7 pre-esistenti Windows/bwrap — invariati).
 
 ---
 
-## Riserve review #31
+## Riserve review #32
 
-- **R37-1** (MEDIO, chiusa): `Path(_vec_db)` senza `.resolve()` → aggiunto `.resolve()` pre-commit
-- **R37-2** (doc gap, chiusa): stato_progetto.md aggiornato in questo commit
+- **R32-1** (MINORE, chiusa): mancanza try/except nel loop aggregazione → aggiunto `try/except (TypeError, ValueError): continue`
+- **R32-2** (cosmetica, chiusa): commento T38b impreciso sull'arrotondamento → corretto pre-commit
 
 ---
 
 ## File modificati
 
-- `gas.py`: import + `__init__` (MEMORY_PIN_SCAN, WINDOW_CHAR_CAP, VectorStore) + `doctor()` sez.9
-- `tests/test_unit_kernel.py`: T37a, T37b, T37c, T37d, T37e
-- `reports/stato_progetto.md`: finding chiusi, review count, suite
-- `.claude/agents/memoria_revisore.md`: lezione #31
+- `gas.py`: `_PROVIDER_PRICE_PER_MTok` + `tokens_cmd` (costo, try/except, TOTALE recenti)
+- `tests/test_unit_kernel.py`: T38a, T38b, T38c
+- `reports/stato_progetto.md`: review count, suite, CLI gas tokens
+- `.claude/agents/memoria_revisore.md`: lezione #32

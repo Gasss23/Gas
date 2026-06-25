@@ -2345,6 +2345,54 @@ check("T37e doctor mostra Config section con valori env",
       "8000" in _out37e and "50" in _out37e and "Config" in _out37e,
       f"rc={_rc37e} out={_out37e[-400:]!r}")
 
+# ============================================================
+# T38 — Stima costi token (_PROVIDER_PRICE_PER_MTok + tokens_cmd)
+# ============================================================
+
+# T38a — _PROVIDER_PRICE_PER_MTok contiene i 5 provider attesi con tuple (float, float)
+_providers_attesi = {"gemini-flash-lite", "gemini-flash", "groq", "openrouter", "ollama"}
+ok38a = (
+    _providers_attesi <= set(gas._PROVIDER_PRICE_PER_MTok)
+    and all(isinstance(v, tuple) and len(v) == 2
+            and all(isinstance(x, float) for x in v)
+            for v in gas._PROVIDER_PRICE_PER_MTok.values())
+)
+check("T38a _PROVIDER_PRICE_PER_MTok: 5 provider + tuple (float,float)",
+      ok38a, f"keys={set(gas._PROVIDER_PRICE_PER_MTok)}")
+
+# T38b — tokens_cmd calcola costo correttamente:
+# gemini-flash-lite: 1000 in × 0.10/1M + 200 out × 0.40/1M = 0.00018 USD esatto;
+# formattato a 4 decimali → "0.0002" (arrotondamento: 5a cifra = 8 → round-up).
+_d38b = tempfile.mkdtemp(prefix="gas_tok38b_")
+subprocess.run(["git", "init", "-q", _d38b], check=True, capture_output=True)
+k38b = GasKernel(root_dir=_d38b)
+k38b._log_tokens("gemini-flash-lite", "gemini-2.5-flash-lite", 1000, 200)
+_buf38b = io.StringIO()
+with redirect_stdout(_buf38b):
+    rc38b = gas.tokens_cmd(root_dir=_d38b)
+_out38b = _buf38b.getvalue()
+_p_in, _p_out = gas._PROVIDER_PRICE_PER_MTok["gemini-flash-lite"]
+_expected_cost38b = 1000 * _p_in / 1_000_000 + 200 * _p_out / 1_000_000
+ok38b = (rc38b == 0
+         and "$" in _out38b
+         and f"{_expected_cost38b:.4f}" in _out38b
+         and "appross" in _out38b)
+check("T38b tokens_cmd: costo gemini-flash-lite corretto + nota appross visibile",
+      ok38b, f"rc={rc38b} cost_exp={_expected_cost38b:.6f} out={_out38b!r}")
+
+# T38c — provider senza prezzo (chiave ignota) → costo 0.0, nessun crash
+_d38c = tempfile.mkdtemp(prefix="gas_tok38c_")
+subprocess.run(["git", "init", "-q", _d38c], check=True, capture_output=True)
+k38c = GasKernel(root_dir=_d38c)
+k38c._log_tokens("provider-sconosciuto", "model-x", 5000, 1000)
+_buf38c = io.StringIO()
+with redirect_stdout(_buf38c):
+    rc38c = gas.tokens_cmd(root_dir=_d38c)
+_out38c = _buf38c.getvalue()
+ok38c = rc38c == 0 and "0.0000" in _out38c and "appross" not in _out38c
+check("T38c tokens_cmd: provider ignoto → costo 0.0 + nota appross NON visibile",
+      ok38c, f"rc={rc38c} out={_out38c!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

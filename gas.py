@@ -112,6 +112,17 @@ OPENROUTER_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct:free"  # tool-capable
 OLLAMA_MODEL = "qwen2.5:7b-instruct"                             # tool-capable
 TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità token per-chiamata
 
+# Prezzi per milione di token (USD), approssimati — aggiornare se cambiano.
+# Fonte: pagine prezzi ufficiali (rilevate al 2025-06).
+# Chiave: nome provider come registrato in _log_tokens / .gas_tokens.jsonl.
+_PROVIDER_PRICE_PER_MTok: Dict[str, Tuple[float, float]] = {
+    "gemini-flash-lite": (0.10,  0.40),   # gemini-2.5-flash-lite: input / output
+    "gemini-flash":      (0.30,  2.50),   # gemini-2.5-flash (no-thinking)
+    "groq":              (0.59,  0.79),   # llama-3.3-70b-versatile (pay-as-you-go)
+    "openrouter":        (0.00,  0.00),   # meta-llama free tier → 0
+    "ollama":            (0.00,  0.00),   # locale → 0
+}
+
 # Registro STATICO dei modelli che DICHIARANO function calling. Serve SOLO per
 # l'osservabilità nella scatola nera (sez.9): il rilevamento a runtime del degrado
 # a solo-testo è rimandato (falsi positivi, TASK B / R2 #5). Tutti i modelli della
@@ -1756,39 +1767,53 @@ def tokens_cmd(root_dir: Optional[str] = None, days: Optional[int] = None) -> in
     except Exception:
         pass
 
-    # Aggregazione globale e per provider
-    totali: Dict[str, Dict[str, int]] = {}
-    recenti: Dict[str, Dict[str, int]] = {}
+    # Aggregazione globale e per provider (token + costo stimato)
+    totali: Dict[str, Dict] = {}
+    recenti: Dict[str, Dict] = {}
     for r in records:
         prov = r.get("provider", "?")
-        in_t = int(r.get("in", 0))
-        out_t = int(r.get("out", 0))
+        try:
+            in_t = int(r.get("in", 0))
+            out_t = int(r.get("out", 0))
+        except (TypeError, ValueError):
+            continue  # record JSONL malformato — skip silenzioso (§9)
+        p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(prov, (0.0, 0.0))
+        cost = in_t * p_in / 1_000_000 + out_t * p_out / 1_000_000
         for bucket, cond in ((totali, True), (recenti, cutoff is not None and r.get("ts", "") >= cutoff)):
             if not cond:
                 continue
             if prov not in bucket:
-                bucket[prov] = {"turns": 0, "in": 0, "out": 0}
+                bucket[prov] = {"turns": 0, "in": 0, "out": 0, "cost": 0.0}
             bucket[prov]["turns"] += 1
             bucket[prov]["in"] += in_t
             bucket[prov]["out"] += out_t
+            bucket[prov]["cost"] += cost
 
+    has_costs = any(d["cost"] > 0 for d in totali.values())
+    cost_lbl = "Costo (★ USD)" if has_costs else "Costo"
     print(f"\n=== GAS — Token Usage ===  ({log_path.name})\n")
-    hdr = f"{'Provider':<22} {'Calls':>6} {'Tokens In':>12} {'Tokens Out':>12} {'Totale':>12}"
+    hdr = f"{'Provider':<22} {'Calls':>6} {'Tokens In':>12} {'Tokens Out':>12} {'Totale':>12} {cost_lbl:>14}"
     print(hdr)
     print("─" * len(hdr))
     g_turns = g_in = g_out = 0
+    g_cost = 0.0
     for prov, d in sorted(totali.items()):
         tot = d["in"] + d["out"]
-        print(f"{prov:<22} {d['turns']:>6,} {d['in']:>12,} {d['out']:>12,} {tot:>12,}")
-        g_turns += d["turns"]; g_in += d["in"]; g_out += d["out"]
+        print(f"{prov:<22} {d['turns']:>6,} {d['in']:>12,} {d['out']:>12,} {tot:>12,} ${d['cost']:>12.4f}")
+        g_turns += d["turns"]; g_in += d["in"]; g_out += d["out"]; g_cost += d["cost"]
     print("─" * len(hdr))
-    print(f"{'TOTALE':<22} {g_turns:>6,} {g_in:>12,} {g_out:>12,} {g_in+g_out:>12,}")
+    print(f"{'TOTALE':<22} {g_turns:>6,} {g_in:>12,} {g_out:>12,} {g_in+g_out:>12,} ${g_cost:>12.4f}")
 
     if recenti:
+        r_cost = sum(d["cost"] for d in recenti.values())
         print(f"\nUltimi {n_days} giorni:")
         for prov, d in sorted(recenti.items()):
-            print(f"  {prov:<20} {d['in']:,} in + {d['out']:,} out = {d['in']+d['out']:,} tok")
+            print(f"  {prov:<20} {d['in']:,} in + {d['out']:,} out = {d['in']+d['out']:,} tok  ${d['cost']:.4f}")
+        print(f"  {'TOTALE':<20} {sum(d['in'] for d in recenti.values()):,} in + "
+              f"{sum(d['out'] for d in recenti.values()):,} out  ${r_cost:.4f}")
 
+    if has_costs:
+        print("\n  ★ prezzi appross. (2025-06) — aggiornare _PROVIDER_PRICE_PER_MTok se cambiano")
     print()
     return 0
 

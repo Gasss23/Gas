@@ -1,4 +1,4 @@
-# Diff sessione — 2026-06-25 Env-configurabilità sprint
+# Diff sessione — 2026-06-25 (due task: env-config sprint + stima costi token)
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
 
@@ -6,26 +6,20 @@
 
 | File | Cosa |
 |---|---|
-| `gas.py` | import `EMBED_MODEL_NAME`; `__init__` MEMORY_PIN_SCAN + WINDOW_CHAR_CAP overrides; VectorStore con `GAS_VECTORS_DB`/`GAS_EMBED_MODEL`; `doctor()` sez.9 Config |
-| `tests/test_unit_kernel.py` | T37a, T37b, T37c, T37d, T37e (5 nuovi test) |
-| `reports/stato_progetto.md` | finding chiusi, review count 30→31, suite 163→168 |
-| `.claude/agents/memoria_revisore.md` | lezione review #31 |
-| `reports/ultimo_report.md` | report task corrente |
+| `gas.py` | env-config sprint (MEMORY_PIN_SCAN, WINDOW_CHAR_CAP, GAS_VECTORS_DB, GAS_EMBED_MODEL, doctor sez.9 Config) + stima costi (`_PROVIDER_PRICE_PER_MTok`, `tokens_cmd` aggiornato) |
+| `tests/test_unit_kernel.py` | T37a-T37e (env-config) + T38a-T38c (stima costi) — 8 nuovi test |
+| `reports/stato_progetto.md` | finding chiusi (R-vec-2, WINDOW_CHAR_CAP, MEMORY_PIN_SCAN), review 30→32, suite 163→171 |
+| `.claude/agents/memoria_revisore.md` | lezioni review #31 e #32 |
+| `reports/ultimo_report.md` | report task corrente (stima costi) |
 | `reports/diff_sessione.md` | questo file |
 
 ## Cosa è cambiato e perché
 
-**Env-configurabilità sprint:** 3 finding aperti chiusi in un colpo solo. Tutte le
-costanti operative rilevanti di GAS ora sono override-abili via env senza ricompilare,
-seguendo il pattern `_env_int`/`_env_float`/`_env_flag` già consolidato.
+**Task 1 — Env-configurabilità sprint (review #31):** 3 finding aperti chiusi:
+`GAS_WINDOW_CHAR_CAP`, `GAS_MEMORY_PIN_SCAN`, `GAS_VECTORS_DB`, `GAS_EMBED_MODEL` —
+stesso pattern `_env_int` esistente. `gas doctor` aggiornato con sezione 9 "Config".
 
-- `GAS_WINDOW_CHAR_CAP` → `WINDOW_CHAR_CAP` (default 24000, min_val=1000)
-- `GAS_MEMORY_PIN_SCAN` → `MEMORY_PIN_SCAN` (default 200, min_val=10)
-- `GAS_VECTORS_DB` → path sidecar vettoriale (`.resolve()` per coerenza con self.root)
-- `GAS_EMBED_MODEL` → modello embedding (fallback su `EMBED_MODEL_NAME`)
-
-`gas doctor` mostra ora una sezione 9 "Config" con i valori effettivi (sempre OK —
-qualsiasi valore sporco è già clampato dall'helper), utile al deploy VPS.
-
-**Review #31:** APPROVATO CON RISERVE. R37-1 (`.resolve()`) chiusa pre-commit;
-R37-2 (doc gap finding chiusi) chiusa in questo report/commit.
+**Task 2 — Stima costi token (review #32):** `gas tokens` ora mostra una colonna
+"Costo (★ USD)" con la stima per-provider calcolata da `_PROVIDER_PRICE_PER_MTok`
+(prezzi appross. 2025-06). Provider ignoto → costo 0.0 senza nota. Loop protetto da
+try/except su record JSONL malformati (§9). TOTALE aggiunto alla sezione "recenti".
