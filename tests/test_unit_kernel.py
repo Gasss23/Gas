@@ -2168,6 +2168,94 @@ check("T34e doctor GAS_VECTORS non settata → nota neutra 'disabilitato'",
       "disabilitato" in _out34e,
       f"rc={_rc34e} out={_out34e[-300:]!r}")
 
+# ============================================================
+# T35 — ricostruisci_da_diario batch (R-reidx-3)
+# ============================================================
+# Verifica che il processing a batch produca lo stesso risultato del bulk,
+# mantenendo l'invariante: indice esistente NON toccato se un batch fallisce.
+
+# T35a — batch > diario: stesso risultato con batch_size < len(diario)
+mem35 = mem_tmp()
+for i in range(5):
+    mem35.append_diario("nota", f"evento numero {i} per test batch")
+vs35 = vec_tmp(embed_fn=_fake_embed)
+n35 = vs35.ricostruisci_da_diario(mem35, batch_size=2)  # 3 batch: 2+2+1
+check("T35a ricostruisci batch: 5 righe, batch_size=2 → 5 indicizzate",
+      n35 == 5 and vs35.conta("diario") == 5,
+      f"n={n35} conta={vs35.conta('diario')}")
+
+# T35b — embedding fallisce al secondo batch → indice preesistente intatto
+_call_count_35b = [0]
+def _embed_fail_second(testi):
+    _call_count_35b[0] += 1
+    if _call_count_35b[0] >= 2:
+        return None  # simula fallimento al secondo batch
+    import numpy as np
+    return np.random.rand(len(testi), 384).astype(np.float32)
+
+mem35b = mem_tmp()
+for i in range(4):
+    mem35b.append_diario("nota", f"evento {i}")
+vs35b = vec_tmp(embed_fn=_fake_embed)
+vs35b.ricostruisci_da_diario(mem35b, batch_size=10)  # popola con 4 voci
+prev_count = vs35b.conta("diario")
+# Ora ricrea con embed_fn che fallisce al secondo batch
+vs35b._embed_fn = _embed_fail_second
+_call_count_35b[0] = 0
+n35b = vs35b.ricostruisci_da_diario(mem35b, batch_size=2)
+check("T35b ricostruisci batch: fallimento batch 2 → None + indice preesistente intatto",
+      n35b is None and vs35b.conta("diario") == prev_count,
+      f"n={n35b} conta={vs35b.conta('diario')} prev={prev_count}")
+
+# ============================================================
+# T36 — Token accounting (_log_tokens + gas tokens)
+# ============================================================
+import io
+from contextlib import redirect_stdout
+
+# T36a — _log_tokens scrive una riga JSONL parseable
+_d36 = tempfile.mkdtemp(prefix="gas_tok36_")
+subprocess.run(["git", "init", "-q", _d36], check=True, capture_output=True)
+k36 = GasKernel(root_dir=_d36)
+k36._log_tokens("gemini-flash-lite", "gemini-2.5-flash-lite", 1234, 456)
+log36_path = Path(_d36) / gas.TOKEN_LOG_FILENAME
+_log36_ok = False
+try:
+    with open(log36_path, "r", encoding="utf-8") as f:
+        rec = json.loads(f.readline())
+    _log36_ok = (rec.get("provider") == "gemini-flash-lite"
+                 and rec.get("in") == 1234
+                 and rec.get("out") == 456
+                 and "ts" in rec)
+except Exception as e36:
+    _log36_ok = False
+check("T36a _log_tokens: riga JSONL parseable con campi corretti",
+      _log36_ok, f"path={log36_path} exists={log36_path.exists()}")
+
+# T36b — gas tokens su log mancante → exit 0, messaggio informativo
+_d36b = tempfile.mkdtemp(prefix="gas_tok36b_")
+_buf36b = io.StringIO()
+with redirect_stdout(_buf36b):
+    rc36b = gas.tokens_cmd(root_dir=_d36b)
+check("T36b gas tokens log mancante → exit 0 + messaggio",
+      rc36b == 0 and "Nessun log" in _buf36b.getvalue(),
+      f"rc={rc36b} out={_buf36b.getvalue()!r}")
+
+# T36c — gas tokens con record → exit 0, totali corretti nel report
+_d36c = tempfile.mkdtemp(prefix="gas_tok36c_")
+subprocess.run(["git", "init", "-q", _d36c], check=True, capture_output=True)
+k36c = GasKernel(root_dir=_d36c)
+k36c._log_tokens("gemini-flash-lite", "gemini-2.5-flash-lite", 1000, 200)
+k36c._log_tokens("groq", "llama-3.3-70b", 500, 100)
+k36c._log_tokens("gemini-flash-lite", "gemini-2.5-flash-lite", 2000, 400)
+_buf36c = io.StringIO()
+with redirect_stdout(_buf36c):
+    rc36c = gas.tokens_cmd(root_dir=_d36c)
+_out36c = _buf36c.getvalue()
+check("T36c gas tokens: exit 0 + provider nel report + totali coerenti",
+      rc36c == 0 and "gemini-flash-lite" in _out36c and "groq" in _out36c and "TOTALE" in _out36c,
+      f"rc={rc36c} out={_out36c!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

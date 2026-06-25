@@ -68,6 +68,8 @@ except Exception as _e:  # pragma: no cover — esercitato simulando l'assenza n
 
 DEFAULT_VECTORS_FILENAME: str = ".gas_vectors.db"
 
+REINDEX_BATCH_SIZE: int = 256  # righe per batch in ricostruisci_da_diario (R-reidx-3)
+
 # Modello di default. NB: la spec originale chiedeva `intfloat/multilingual-e5-small`,
 # assente dal catalogo di fastembed 0.8.0; su scelta umana esplicita si usa il MiniLM
 # multilingue 384-dim (entra nei vincoli RAM del VPS, regge l'italiano). Cambiare
@@ -287,50 +289,79 @@ class VectorStore:
             log.warning("VectorStore.max_source_ref fallita (%s): %s", self.db_path, e)
             return None
 
-    def ricostruisci_da_diario(self, memory_store: Any) -> Optional[int]:
-        """Svuota i vettori `source='diario'` e li RI-INDICIZZA dal diario di
-        `memory_store` (sarà il motore del futuro `gas reindex`; qui NON cablato a
-        un comando CLI). Legge TUTTE le voci del diario in SOLA LETTURA (immutabilità
-        del diario intatta). Ritorna il numero di righe indicizzate, o None in degrado.
+    def ricostruisci_da_diario(self, memory_store: Any,
+                               batch_size: int = REINDEX_BATCH_SIZE) -> Optional[int]:
+        """Svuota i vettori `source='diario'` e li RI-INDICIZZA dal diario in BATCH
+        per limitare il picco di RAM (R-reidx-3): i numpy array sono transitori
+        (uno per batch, ~batch_size×dim×4B), i blob accumulati sono ~1.5 KB/riga.
+        Usa `diario_dopo` (lettore paginato) se disponibile; fallback a `diario_tutto`
+        per compatibilità con mock/test che non espongono il lettore paginato.
 
-        Ordine SICURO: prima calcola TUTTI gli embedding (se falliscono → None, NON
-        si tocca l'indice esistente), poi in UNA transazione svuota e re-inserisce.
-        Un indice è una cache ricostruibile: ricostruire da un diario vuoto = indice
-        vuoto (operazione esplicita, non un effetto collaterale)."""
+        Ordine SICURO (invariante): prima accumula TUTTI i blob (se un batch fallisce
+        → None, NON si tocca l'indice esistente), poi in UNA transazione svuota e
+        re-inserisce. Un indice è una cache ricostruibile: diario vuoto = indice vuoto."""
         if not self.available or memory_store is None:
             return None
-        # Lettore di SOLA LETTURA "tutte le voci"; se assente, degrada senza crash.
-        lettore = getattr(memory_store, "diario_tutto", None)
-        if not callable(lettore):
-            log.warning("VectorStore.ricostruisci: memory_store senza diario_tutto — degrado")
-            return None
-        try:
-            righe = lettore()
-        except Exception as e:
-            log.warning("VectorStore.ricostruisci: lettura diario fallita (%s)", e)
+        lettore_paginato = getattr(memory_store, "diario_dopo", None)
+        lettore_bulk = getattr(memory_store, "diario_tutto", None)
+        if not callable(lettore_paginato) and not callable(lettore_bulk):
+            log.warning("VectorStore.ricostruisci: memory_store senza diario_dopo/diario_tutto — degrado")
             return None
 
-        vec_norm = None
-        if righe:
-            testi = [self._p_prefix + str(r["descrizione"]) for r in righe]
-            mat = self._embed_raw(testi)
-            if mat is None:
-                return None  # embedding non disponibile: NON svuotare l'indice buono
-            vec_norm = self._normalizza(mat)
+        # Tipo interno: (source_ref, testo, ts, blob, dim)
+        accumulati: List[Tuple[str, str, Optional[str], bytes, int]] = []
         try:
+            if callable(lettore_paginato):
+                after_id = 0
+                while True:
+                    try:
+                        righe = lettore_paginato(after_id, limit=batch_size)
+                    except Exception as e:
+                        log.warning("VectorStore.ricostruisci: diario_dopo(%d) fallita (%s)", after_id, e)
+                        return None
+                    if not righe:
+                        break
+                    testi = [self._p_prefix + str(r["descrizione"]) for r in righe]
+                    mat = self._embed_raw(testi)
+                    if mat is None:
+                        return None  # NON svuotare l'indice buono
+                    vec_norm = self._normalizza(mat)
+                    for i, r in enumerate(righe):
+                        accumulati.append((
+                            str(r["id"]), str(r["descrizione"]), r.get("ts"),
+                            self._to_blob(vec_norm[i]), int(vec_norm[i].shape[0]),
+                        ))
+                    after_id = int(righe[-1]["id"])
+            else:
+                try:
+                    righe = lettore_bulk()
+                except Exception as e:
+                    log.warning("VectorStore.ricostruisci: diario_tutto fallita (%s)", e)
+                    return None
+                if righe:
+                    testi = [self._p_prefix + str(r["descrizione"]) for r in righe]
+                    mat = self._embed_raw(testi)
+                    if mat is None:
+                        return None
+                    vec_norm = self._normalizza(mat)
+                    for i, r in enumerate(righe):
+                        accumulati.append((
+                            str(r["id"]), str(r["descrizione"]), r.get("ts"),
+                            self._to_blob(vec_norm[i]), int(vec_norm[i].shape[0]),
+                        ))
+
+            # Atomic swap: solo qui tocchiamo l'indice esistente
             with self._connect() as con:
                 con.execute("DELETE FROM vettori WHERE source = 'diario'")
-                for i, r in enumerate(righe):
+                for (source_ref, testo, ts, blob, dim) in accumulati:
                     con.execute(
                         "INSERT OR REPLACE INTO vettori "
                         "(source, source_ref, testo, ts, vettore, dim, model) "
                         "VALUES ('diario', ?, ?, ?, ?, ?, ?)",
-                        (str(r["id"]), str(r["descrizione"]), r["ts"],
-                         self._to_blob(vec_norm[i]), int(vec_norm[i].shape[0]),
-                         self.model_name),
+                        (source_ref, testo, ts, blob, dim, self.model_name),
                     )
                 con.commit()
-            return len(righe)
+            return len(accumulati)
         except (sqlite3.Error, OSError) as e:
             log.warning("VectorStore.ricostruisci fallita (%s): %s", self.db_path, e)
             return None

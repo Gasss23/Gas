@@ -1,37 +1,106 @@
-# Report — Infra/Doc: handoff autonomo + gh + ci.yml + riserva openrouter
-**Data:** 2026-06-24
+# Report — Task R-reidx-3 + Token accounting
+**Data:** 2026-06-25
+**Review:** #30 — APPROVATO CON RISERVE (riserve minori, tutte chiuse prima del commit)
 
-## DECISIONI UMANE RICHIESTE
+---
 
-1. **gh CLI non disponibile** (né su Windows né in WSL2 — WSL2 non ha distribuzioni installate).
-   Per attivare il §6 CI nell'handoff, installare gh manualmente:
-   - Windows nativo: `winget install GitHub.cli`, poi `gh auth login`
-   - Oppure installare WSL2 (`wsl --install Ubuntu`) e poi `sudo apt install gh` + `gh auth login`
-   Finché gh è assente, il §6 CI nei futuri handoff riporterà "CI NON VERIFICATA (gh assente)".
+## Task 1 — R-reidx-3: fix picco RAM in `gas reindex`
 
-## Fette eseguite
+### Problema
+`ricostruisci_da_diario` materializzava TUTTI gli embedding in un unico numpy array
+prima del DELETE+INSERT: picco RAM = tutte le righe × 384 dim × 4 byte.
+Su un diario grande (es. 100K voci ≈ 150MB numpy) questo saturava la RAM del VPS.
 
-### FETTA 1 — gh + template handoff.md/fine-task.md
-- **gh check**: assente su Windows e in WSL2 (WSL2 non installato). Decisione umana tracciata sopra.
-- **.claude/commands/fine-task.md**: aggiornato template handoff.md da 6 sezioni generiche a 8 sezioni numerate (§0–§7), tutte VERBATIM. Aggiunto nel §0 la raccolta di `gh run list -L 3`. Nessun ESITO / CONTESTO libero — sostituito da §1 SCOPE (cosa chiedeva ogni prompt) + §7 RISERVE APERTE.
+### Fix
+`modules/memory/vectors.py`:
+- Nuova costante `REINDEX_BATCH_SIZE = 256`
+- `ricostruisci_da_diario(memory_store, batch_size=REINDEX_BATCH_SIZE)`:
+  - Usa `diario_dopo` (lettore paginato) al posto di `diario_tutto` (carica tutto)
+  - Per ogni batch: embedding → normalizza → accumula blob bytes (1.5KB/riga)
+  - I numpy array per-batch sono transitori (GC-ati ad ogni iterazione)
+  - Fallback a `diario_tutto` per backward compat con mock/test senza `diario_dopo`
+  - Invariante mantenuta: DELETE+INSERT atomico SOLO se tutti i batch riescono
 
-### FETTA 2 — .claudeignore e CLAUDE.md §11
-- **.claudeignore**: già presente e completo (venv/ .venv/ __pycache__/ *.pyc *.db .gas_memory.db .gas_vectors.db *.log gas_debug.log). **SKIP**.
-- **CLAUDE.md §11**: già allineato ("default Sonnet 4.6, Opus on-demand via /model opus"). **SKIP**.
+### Riduzione RAM
+| Prima | Dopo |
+|---|---|
+| Peak = numpy(n×384×4) + tutti i testi | Peak = numpy(256×384×4)≈400KB per batch + blob accumulati |
+| Picco unico proporzionale all'intero diario | Numpy transitori, accumulo blob ~1.5KB/riga |
 
-### FETTA 3 — ci.yml T9a/T9c FAIL → SKIP
-- Righe 117-118: rimosso "FAIL sono T9a/T9c (env API / storia su root temp) il sandbox è OK" + "renderli verdi tocca tests/ → micro-task con revisore". Sostituito con: "T9a/T9c sono SKIP in CI su assenza GEMINI/GROQ API key — non FAIL attesi."
-- Riga 125 (commento Gate step): aggiornato "rosso da T9a/T9c (atteso)" → "T9a/T9c SKIP in CI (assenza API key)".
-- Grep di verifica: nessun'altra occorrenza T9a/T9c con dicitura FAIL nel file.
+Nota: l'accumulo blob totale resta proporzionale all'intero diario → chiusura PARZIALE
+di R-reidx-3 (picco ridotto, non azzerato). Dichiarato in stato_progetto.md.
 
-### FETTA 4 — R-ci-openrouter in stato_progetto.md
-- Aggiunta riserva 🟡 **R-ci-openrouter** in Finding aperti: "T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24)."
-- Testo esatto del revisore: "T9a è fragile se OPENROUTER_API_KEY è presente (ma il test già la poppava prima del turno T9)."
+---
 
-## File toccati
-- `.claude/commands/fine-task.md` (template handoff §0–§7)
-- `.github/workflows/ci.yml` (T9a/T9c FAIL → SKIP)
-- `reports/stato_progetto.md` (R-ci-openrouter aggiunta)
-- `reports/ultimo_report.md` (questo file)
-- `reports/handoff.md` (dossier sessione)
-- `reports/diff_sessione.md` (diff sessione)
+## Task 2 — Contabilità token (`gas tokens`)
+
+### Problema
+Impossibile sapere dove andavano i token: nessuna telemetria per-provider, per-turno.
+"Non puoi controllare ciò che non misuri."
+
+### Fix
+`gas.py`:
+- Costante `TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"`
+- Metodo `GasKernel._log_tokens(provider, model, in_tok, out_tok)`:
+  - Fail-safe: errore I/O ignorato con warning (mai crash del turno)
+  - Appende una riga JSONL a `<root>/.gas_tokens.jsonl` per ogni API call
+- Chiamata in `run_turn` subito dopo `client.chat.completions.create(...)`:
+  ```python
+  usage = getattr(response, "usage", None)
+  if usage:
+      self._log_tokens(name, model,
+                       getattr(usage, "prompt_tokens", 0) or 0,
+                       getattr(usage, "completion_tokens", 0) or 0)
+  ```
+- Funzione `tokens_cmd(root_dir, days)`: legge il JSONL, aggrega per provider,
+  stampa tabella con totali globali + ultimi N giorni (default 7)
+- Dispatch `gas tokens [N_giorni]` in `main()` con try/except ValueError
+- `.gas_tokens.jsonl` aggiunto a `.gitignore` (artefatto runtime, non nel repo)
+
+### Esempio output `gas tokens`
+```
+=== GAS — Token Usage ===
+
+Provider               Calls   Tokens In  Tokens Out      Totale
+gemini-flash-lite          2       3,000         600       3,600
+groq                       1         500         100         600
+──────────────────────────────────────────────────────────────
+TOTALE                     3       3,500         700       4,200
+
+Ultimi 7 giorni:
+  gemini-flash-lite    3,000 in + 600 out = 3,600 tok
+  groq                 500 in + 100 out = 600 tok
+```
+
+---
+
+## Test
+
+5 nuovi test aggiunti (`tests/test_unit_kernel.py`):
+- **T35a** — batch_size=2 su 5 righe: 5 indicizzate correttamente
+- **T35b** — embedding fallisce al batch 2: None + indice preesistente intatto
+- **T36a** — `_log_tokens`: riga JSONL parseable con campi corretti
+- **T36b** — `gas tokens` su log mancante: exit 0 + messaggio
+- **T36c** — `gas tokens` con record multipli: exit 0 + provider + TOTALE nel report
+
+Suite: **163 PASS, 7 FAIL** (7 pre-esistenti Windows/bwrap, invariati)
+
+---
+
+## Riserve review #30 (gestione)
+- **R30-1** (MEDIO): `.gas_tokens.jsonl` → gitignore CHIUSA prima del commit
+- **R30-2** (BASSO): `int(sys.argv[2])` → try/except ValueError CHIUSA prima del commit
+- **R30-3** (BASSO, informativo): accumulo blob totale proporzionale al diario → dichiarato
+  in stato_progetto.md come chiusura parziale R-reidx-3
+- **R30-4** (BASSO, test): manca test per eccezione di `diario_dopo` al primo batch →
+  rinviato (logica difensiva corretta, ramo coperto indirettamente)
+
+---
+
+## File modificati
+- `modules/memory/vectors.py`: `REINDEX_BATCH_SIZE` + `ricostruisci_da_diario` batch
+- `gas.py`: `TOKEN_LOG_FILENAME`, `_log_tokens`, `tokens_cmd`, dispatch `main`
+- `tests/test_unit_kernel.py`: T35a, T35b, T36a, T36b, T36c
+- `.gitignore`: `.gas_tokens.jsonl`
+- `reports/stato_progetto.md`: aggiornato review count, R-reidx-3, CLI
+- `.claude/agents/memoria_revisore.md`: lezione #30

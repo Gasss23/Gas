@@ -6,7 +6,7 @@
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **28 review** completate. Suite: **158 PASS, 7 FAIL**
+FASE 1 ✅ e FASE 2 ✅ chiuse. **30 review** completate. Suite: **163 PASS, 7 FAIL**
 (7 FAIL ambientali Windows pre-esistenti: bwrap T11/T12/T13d2, WinError32 T26b — T9a/T9c ora SKIP condizionale in CI).
 CI GitHub Actions (`.github/workflows/ci.yml`): BWRAP_OK confermato sul runner Linux; **CI-4 risolto** (2026-06-24): T9a/T9c ora [SKIP] su assenza API key, job verde.
 
@@ -19,7 +19,7 @@ Componenti attive:
 - Vector store `.gas_vectors.db` opt-in `GAS_VECTORS` (MiniLM 384-dim, cosine brute-force)
 - CRM dal loop: tool `salva_contatto`/`imposta_stato_contatto`, identità su `chiave_norm` NFKC
 - Iniezione always-on `_memoria_pin` (system msg) + tool `ricorda` (sola lettura)
-- CLI `gas doctor` / `gas reindex` / `gas backup`
+- CLI `gas doctor` / `gas reindex` / `gas backup` / **`gas tokens [N_giorni]`** (contabilità token)
 
 ## Pipeline provider (paracadute)
 
@@ -32,7 +32,7 @@ Componenti attive:
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
 - 🟡 **R-reidx-deps** — numpy/fastembed/onnxruntime devono restare in `requirements.txt` e nel deploy VPS; senza, layer vettoriale e `gas reindex` degradano silenziosamente.
-- 🟡 **R-reidx-3** — picco RAM di `reindex` su diario grande. [VPS confermato Hetzner CX22 = 4GB RAM — vincolo 1GB obsoleto; criticità da ri-valutare su base 4GB prima del deploy.]
+- 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` ora usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX22 4GB il picco totale è gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
 - 🟡 **R-vec-2** — costanti vector store non configurabili via env (`GAS_VECTORS_DB`, `GAS_EMBED_MODEL`): valutare al deploy.
 - 🟡 **R-vec-3** — portabilità ARM non verificata (~504MB modello MiniLM). [VPS confermato CX22 = 4GB RAM — il modello occupa ~12% della RAM disponibile; il vincolo memoria non è più critico. Resta da verificare l'architettura CPU (ARM vs x86) al deploy.]
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
@@ -63,7 +63,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **28 review**. Ultima: **#28** (VEC_MIN_SIM env-config, 2026-06-21). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **30 review**. Ultima: **#30** (R-reidx-3 + token accounting, 2026-06-25). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 
 ## Note operative VPS — non per oggi

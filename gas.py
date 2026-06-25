@@ -4,6 +4,7 @@ import json
 import shlex
 import logging
 import subprocess
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
@@ -109,6 +110,7 @@ GEMINI_FLASH_MODEL = "gemini-2.5-flash"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 OPENROUTER_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct:free"  # tool-capable
 OLLAMA_MODEL = "qwen2.5:7b-instruct"                             # tool-capable
+TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità token per-chiamata
 
 # Registro STATICO dei modelli che DICHIARANO function calling. Serve SOLO per
 # l'osservabilità nella scatola nera (sez.9): il rilevamento a runtime del degrado
@@ -385,6 +387,24 @@ class GasKernel:
                 json.dump(self.history, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logging.error(f"Errore scrittura storico: {e}")
+
+    def _log_tokens(self, provider: str, model: str, in_tok: int, out_tok: int) -> None:
+        """Appende una riga JSONL al log token (TOKEN_LOG_FILENAME). Fail-safe: un
+        errore di I/O non interrompe mai il turno (§9). Log per-chiamata API, non
+        per-turno: cattura ogni round-trip inside il loop agentico."""
+        try:
+            record = {
+                "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+                "provider": provider,
+                "model": model,
+                "in": int(in_tok),
+                "out": int(out_tok),
+            }
+            log_path = self.root / TOKEN_LOG_FILENAME
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        except Exception as e:
+            logging.warning("_log_tokens: scrittura fallita (%s) — ignorato", e)
 
     def _add_to_history(self, role: str, content: Optional[str] = None, tool_calls: Optional[List[Any]] = None, tool_call_id: Optional[str] = None, name: Optional[str] = None):
         """Costruisce un dizionario puro, evitando oggetti complessi."""
@@ -1312,6 +1332,11 @@ class GasKernel:
                         except Exception:
                             logging.warning(f"retry Gemini 400 ({name}): ancora 400, fallback")
                             raise
+                    usage = getattr(response, "usage", None)
+                    if usage:
+                        self._log_tokens(name, model,
+                                         getattr(usage, "prompt_tokens", 0) or 0,
+                                         getattr(usage, "completion_tokens", 0) or 0)
                     msg = response.choices[0].message
 
                     if msg.tool_calls:
@@ -1676,6 +1701,76 @@ def reindex(root_dir: Optional[str] = None,
     return 0
 
 
+def tokens_cmd(root_dir: Optional[str] = None, days: Optional[int] = None) -> int:
+    """Comando `gas tokens`: report di contabilità token aggregato dal log
+    TOKEN_LOG_FILENAME. Raggruppa per provider, mostra totali globali e degli ultimi
+    N giorni (default 7). Exit code 0. Zero token LLM."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    log_path = root / TOKEN_LOG_FILENAME
+    if not log_path.exists():
+        print("Nessun log token trovato. Il log si popola dalla prima chiamata ai provider.")
+        return 0
+
+    records: List[Dict[str, Any]] = []
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+    except Exception as e:
+        print(f"✗ tokens: lettura log fallita ({e})")
+        return 1
+
+    if not records:
+        print("Log token vuoto.")
+        return 0
+
+    n_days = days if days is not None else 7
+    cutoff = None
+    try:
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=n_days)).strftime("%Y-%m-%dT%H:%M:%S")
+    except Exception:
+        pass
+
+    # Aggregazione globale e per provider
+    totali: Dict[str, Dict[str, int]] = {}
+    recenti: Dict[str, Dict[str, int]] = {}
+    for r in records:
+        prov = r.get("provider", "?")
+        in_t = int(r.get("in", 0))
+        out_t = int(r.get("out", 0))
+        for bucket, cond in ((totali, True), (recenti, cutoff is not None and r.get("ts", "") >= cutoff)):
+            if not cond:
+                continue
+            if prov not in bucket:
+                bucket[prov] = {"turns": 0, "in": 0, "out": 0}
+            bucket[prov]["turns"] += 1
+            bucket[prov]["in"] += in_t
+            bucket[prov]["out"] += out_t
+
+    print(f"\n=== GAS — Token Usage ===  ({log_path.name})\n")
+    hdr = f"{'Provider':<22} {'Calls':>6} {'Tokens In':>12} {'Tokens Out':>12} {'Totale':>12}"
+    print(hdr)
+    print("─" * len(hdr))
+    g_turns = g_in = g_out = 0
+    for prov, d in sorted(totali.items()):
+        tot = d["in"] + d["out"]
+        print(f"{prov:<22} {d['turns']:>6,} {d['in']:>12,} {d['out']:>12,} {tot:>12,}")
+        g_turns += d["turns"]; g_in += d["in"]; g_out += d["out"]
+    print("─" * len(hdr))
+    print(f"{'TOTALE':<22} {g_turns:>6,} {g_in:>12,} {g_out:>12,} {g_in+g_out:>12,}")
+
+    if recenti:
+        print(f"\nUltimi {n_days} giorni:")
+        for prov, d in sorted(recenti.items()):
+            print(f"  {prov:<20} {d['in']:,} in + {d['out']:,} out = {d['in']+d['out']:,} tok")
+
+    print()
+    return 0
+
+
 def main():
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "doctor":
@@ -1684,6 +1779,13 @@ def main():
         sys.exit(reindex())
     if len(sys.argv) > 1 and sys.argv[1] == "backup":
         sys.exit(backup_cmd())
+    if len(sys.argv) > 1 and sys.argv[1] == "tokens":
+        try:
+            days = int(sys.argv[2]) if len(sys.argv) > 2 else None
+        except ValueError:
+            print(f"Uso: gas tokens [giorni]  (es. gas tokens 7)")
+            sys.exit(1)
+        sys.exit(tokens_cmd(days=days))
     kernel = GasKernel()
     while True:
         try:

@@ -25,3 +25,5 @@ reports/snapshots.log.1
 # Cache dei pesi del modello di embedding (fastembed/HuggingFace)
 local_cache/
 .fastembed_cache/
+# Log di contabilità token: file di runtime, non entra nel repo (R30-1)
+.gas_tokens.jsonl
