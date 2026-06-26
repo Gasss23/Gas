@@ -9,10 +9,19 @@ Esegui queste operazioni NELL'ORDINE, senza saltare passi.
 Esegui questi comandi e tieni l'output — lo incolli verbatim nei file sotto:
 
 ```bash
-git log --oneline -10
-git diff --stat HEAD~N HEAD   # sostituisci N col numero di commit fatti in questa sessione
+# Calcola la base della sessione = ultimo commit che ha toccato reports/handoff.md
+BASE=$(git log --oneline -- reports/handoff.md | head -1 | awk '{print $1}')
+# Fallback se handoff.md non è mai stato committato
+[ -z "$BASE" ] && BASE=$(git rev-list --max-parents=0 HEAD)
+echo "BASE=$BASE"
+
+git diff --stat ${BASE}..HEAD
+git log --oneline ${BASE}..HEAD
 gh run list -L 3              # se gh disponibile e autenticato; altrimenti "CI NON VERIFICATA (gh assente)"
 ```
+
+`${BASE}..HEAD` copre SOLO i commit di questa sessione (dal commit precedente di handoff.md escluso).
+Usa SEMPRE questo range per §2 e §3 — mai `HEAD~N` con N fisso, mai `git log -10`.
 
 **REGOLA FERREA — output git verbatim**: incolla le righe grezze con hash e messaggi.
 `"Ultimi 10 commit, tutti docs"` NON è accettabile — vanno le righe vere. Output grezzo o niente.
@@ -23,8 +32,9 @@ gh run list -L 3              # se gh disponibile e autenticato; altrimenti "CI 
 
 Contenuto obbligatorio:
 - Data e titolo del task
-- Esito riga-per-riga di ogni fetta/step eseguito
 - DECISIONI UMANE RICHIESTE (se esistono, in cima al file)
+- Esito per ogni fetta/step dello scope — **incluse quelle saltate o differite**:
+  `FATTA` / `SALTATA — <motivo>` / `DEFERITA — <motivo>`
 - Eventuali anomalie riscontrate
 
 ---
@@ -49,22 +59,26 @@ Template obbligatorio (sezioni in quest'ordine):
 
 ---
 
-## §1 SCOPE
+## §1 SCOPE & ESITO FETTE
 
-<per ogni prompt/task della sessione: 1-3 righe su cosa chiedeva>
+Per ogni fetta/task dello scope:
+- **Fetta N — <titolo>**: `FATTA` / `SALTATA — <motivo>` / `DEFERITA — <motivo>`
+  <1-2 righe di dettaglio se utile>
+
+Tutte le fette devono comparire qui — incluse quelle saltate.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-<output GREZZO di `git diff --stat HEAD~N HEAD`>
+<output GREZZO di `git diff --stat ${BASE}..HEAD`>
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-<output GREZZO di `git log --oneline -10` — righe con hash e messaggi, nessuna modifica>
+<output GREZZO di `git log --oneline ${BASE}..HEAD` — righe con hash e messaggi, nessuna modifica>
 ```
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
@@ -94,7 +108,7 @@ VIETATO scrivere "prevista verde" senza output reale.>
 ## 3. Scrivi reports/diff_sessione.md
 
 Contenuto:
-- File toccati in questa sessione (da `git diff --stat`)
+- File toccati in questa sessione (da `git diff --stat ${BASE}..HEAD`)
 - Per ogni file: cosa è cambiato e perché (una riga)
 - Nota: questo file si riscrive a ogni sessione; la storia completa sta in git
 
