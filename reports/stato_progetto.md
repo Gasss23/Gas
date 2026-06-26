@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-23** (split storico → `reports/stato_storico.md`)
+> Ultimo aggiornamento: **2026-06-27** (fix template `/fine-task`: range sessione dinamico + esito fette)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -48,7 +48,7 @@ Componenti attive:
 
 ## Prossimi passi (in ordine di priorità)
 
-1. **🔴 URGENTE — Controllo spesa token** (soluzione definitiva): vedere CLAUDE.md §10 item #1. Diagnosi fatta (23-06-2026): spesa = 100% Claude Code in sviluppo su Opus 4.8, GAS runtime = 0€. Azioni: `opusplan` attivo + stato_progetto snello (THIS).
+1. **🔴 URGENTE — Controllo spesa token** (soluzione definitiva): vedere CLAUDE.md §11. Diagnosi (23-06-2026): spesa = 100% Claude Code sviluppo su Opus 4.8, GAS runtime = 0€. Disciplina attiva: Sonnet 4.6 default, Opus on-demand, `/clear` tra task, stato_progetto snello.
 2. **📱 Accesso Claude Code da telefono**: vedere CLAUDE.md §10 item #2.
 3. ~~**CI-4 — verde pieno**~~ ✅ risolto (2026-06-24).
 4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
@@ -65,6 +65,7 @@ Componenti attive:
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
 - **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **32 review**. Ultima: **#32** (stima costi token, 2026-06-25). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
+- **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
 ## Note operative VPS — non per oggi
 
