@@ -1,225 +1,70 @@
-# HANDOFF — Verifica indipendente R-vec-2b
-
-**Sessione:** 2026-06-27 — Verifica post-build fingerprint-guard (commit 9e70bbf)
+# Handoff sessione 2026-06-27 — probe telemetria + observability doctor
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-**Nessuna.**
+**D1 — Bug probe vector store in doctor:**  
+`gas doctor` usa `default_vectors_path(root)` hardcoded per il probe del vector store (gas.py:1628), ignorando `GAS_VECTORS_DB` env. Se sul VPS si setta un path custom, il probe e il runtime guardano DB diversi → possibile falso OK in doctor mentre il layer è disabilitato a runtime. Richiede modifica a doctor. **Tuo OK per procedere?**
 
-Tutti e 4 i punti strutturali del guard sono verificati sani.
+**D2 — Motivo fingerprint-guard non visibile in doctor:**  
+Quando il guard disabilita il layer, il WARN di doctor è `"deps assenti o sidecar corrotto"` (generico). Il motivo specifico (mismatch modello, DB legacy, deps) è solo in `gas_debug.log`. Per visibilità h24 unattended servirebbe propagare un `disable_reason` da VectorStore a doctor. Richiede modifica a entrambi i moduli. **Vuoi pianificarlo come item del roadmap?**
 
-**RISERVA MINORE (non bloccante):** il conteggio test in questa sessione di verifica è
-**175 PASS / 8 FAIL** vs **177 PASS / 6 FAIL** dichiarato nell'handoff di build. La
-differenza è spiegata da 2 test ambientali Windows che in questa run risultano FAIL
-anziché PASS/SKIP: `T13d2` (WinError2, `os_with_fallback`) e `T26c` (timing backup).
-Nessuno dei due test tocca il fingerprint-guard. I 6 FAIL originali (bwrap Windows +
-T26b) sono tutti presenti. La discrepanza di 2 va investigata in una sessione
-dedicata se il conteggio diventa baseline VPS.
+**D3 — Degrado solo-testo per-turno (finding R2 #5) resta aperto:**  
+Nessun rilevamento runtime. Il commento in gas.py:128 dice "rimandato per falsi positivi". Se si vuole implementare, il punto d'aggancio naturale è nel loop agentico a gas.py:1381-1387 (confronto tra tool_calls attesi e risposta arrivata). **Da pianificare o lasciare aperto?**
 
 ---
 
-## §VERDETTO SINTETICO
+## Esito sonda
 
-**A VERIFICATO SANO**
+| ID | Domanda | Risposta sintetica |
+|----|---------|-------------------|
+| A1 | Schema `.gas_tokens.jsonl` | JSONL append-only: ts, provider, model, in, out, event("call"\|"fallthrough"), reason(opt) |
+| A2 | Punto unico fallthrough | gas.py:1388-1404 — `except Exception` nel loop provider + `_log_tokens(event="fallthrough")` + `continue` |
+| A3 | Conteggio per-provider | ✅ Già implementato (commit 2eb0e30): `gas tokens` tabella + `gas doctor` sezione Telemetria |
+| A4 | 429 distinguibile | ✅ Sì — campo `reason` = "429: quota esaurita" vs err_text[:60] per KO generici |
+| B1 | Sezioni doctor | 11 sezioni: API keys, Provider, Paracadute, File, Storia, Log, Sandbox OS, Snapshot, Memoria, Config, Telemetria |
+| B2 | Motivo disable vector | ⚠️ WARN generico + bug path (D1+D2) |
+| B3 | Degrado solo-testo | ⚠️ Non implementato (D3) |
 
-Il fingerprint-guard di R-vec-2b è reale, non auto-certificato. Il confronto avviene
-su `model_id` (non solo `dim`). Il test critico dim-uguale/model-diverso esiste e
-passa. Il fail-safe è un disable pulito, non un raise. La suite T39 è tutta verde.
-
----
-
-## §1 — IL CUORE DEL GUARD (confronto model_id, non solo dim)
-
-**Sorgente:** `modules/memory/vectors.py`, metodo `__init__` di `VectorStore`.
-
-Righe esatte del confronto (estratte da `git show 9e70bbf:modules/memory/vectors.py`):
-
-```python
-else:
-    fp = self._read_fingerprint(con)
-    if fp is None:
-        # Legacy o provenienza ignota: fingerprint assente → fail-closed.
-        log.warning(
-            "VectorStore: sidecar %s senza fingerprint (DB legacy o "
-            "provenienza ignota) — layer disabilitato. "
-            "Esegui 'gas reindex' per ricostruire con il modello corrente.",
-            self.db_path)
-        _guard_ok = False
-    else:
-        stored_model, stored_dim = fp
-        if stored_model != self.model_name or stored_dim != self.dim:
-            log.warning(
-                "VectorStore: fingerprint mismatch su %s — "
-                "DB contiene model=%r dim=%d, configurato model=%r dim=%d. "
-                "Layer disabilitato. Esegui 'gas reindex' per ricostruire "
-                "con il modello corrente.",
-                self.db_path, stored_model, stored_dim,
-                self.model_name, self.dim)
-            _guard_ok = False
-```
-
-**La condizione è `stored_model != self.model_name or stored_dim != self.dim`.**
-
-Il ramo che rifiuta quando dim COINCIDE ma model_id DIFFERISCE **esiste e si attiva**:
-basta che `stored_model != self.model_name` sia True, indipendentemente dalla dim.
-Il guard NON è inutile su coppie 384-dim diverse.
+Referto completo: `reports/probe_telemetria.md`
 
 ---
 
-## §2 — IL TEST CHE ESERCITA IL PATH CRITICO (dim uguale, model_id diverso)
+## git diff --stat sessione
 
-**T39b** — righe `tests/test_unit_kernel.py:2410-2430`:
-
-```python
-# T39b — fingerprint mismatch model_id, stessa dim → fail-closed (cuore del guard)
-_d39b = tempfile.mkdtemp(prefix="gas_vec39b_")
-_p39b = default_vectors_path(_d39b)
-# Crea il DB manualmente con fingerprint di un modello DIVERSO (stessa dim 384)
-with _sq39.connect(str(_p39b)) as _c39b:
-    _c39b.executescript("""
-        CREATE TABLE IF NOT EXISTS vettori (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source TEXT NOT NULL, source_ref TEXT NOT NULL,
-            testo TEXT NOT NULL, ts TEXT,
-            vettore BLOB NOT NULL, dim INTEGER NOT NULL, model TEXT NOT NULL,
-            UNIQUE(source, source_ref, model)
-        );
-        CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-        INSERT OR REPLACE INTO metadata VALUES ('model_id', 'intfloat/multilingual-e5-small');
-        INSERT OR REPLACE INTO metadata VALUES ('model_dim', '384');
-    """)
-_vs39b = VectorStore(_p39b, embed_fn=_fake_embed)   # embed_fn ok, ma fingerprint mismatch
-check("T39b fingerprint-guard: model_id diverso stessa dim → fail-closed (available=False)",
-      _vs39b.available is False and _vs39b._db_available is False,
-      f"available={_vs39b.available} _db_available={_vs39b._db_available}")
 ```
-
-**Configurazione del test:**
-- DB contiene: `model_id='intfloat/multilingual-e5-small'`, `model_dim='384'`
-- VectorStore aperto con: `model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'` (default), `dim=384`
-- `embed_fn=_fake_embed` → l'embedder sarebbe disponibile, il mismatch è solo sul model_id
-
-**Output grezzo dalla suite:**
+ reports/probe_telemetria.md | 200 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 200 insertions(+)
 ```
-[PASS] T39b fingerprint-guard: model_id diverso stessa dim → fail-closed (available=False) — available=False _db_available=False
-```
-
-Il path critico è testato e verde.
 
 ---
 
-## §3 — GLI ALTRI DUE PATH
-
-**Fingerprint ASSENTE (DB legacy) → rifiuta fail-closed:**
+## git log sessione
 
 ```
-[PASS] T39c fingerprint-guard: DB legacy senza fingerprint → fail-closed (available=False) — available=False _db_available=False
+19e69dd docs(sonda): probe telemetria provider + observability gas doctor 2026-06-27
 ```
-
-T39c crea un DB con schema `vettori` ma senza tabella `metadata` (simula DB pre-guard).
-Il DDL crea `metadata` (idempotente), ma la tabella è vuota → `_read_fingerprint` ritorna
-`None` → `_guard_ok = False`. (righe `tests/test_unit_kernel.py:2432-2451`)
-
-**Fingerprint COINCIDENTE → procede:**
-
-```
-[PASS] T39a fingerprint-guard: DB nuovo con modello corrente → available=True — available=True
-```
-
-T39a apre un DB appena creato con lo stesso modello di default → fingerprint scritto nel
-costruttore stesso → riapertura concettuale identica: `available=True`. (righe `2403-2408`)
 
 ---
 
-## §4 — FAIL-SAFE §9 (guard disabilita il layer, non crasha)
+## Delta test
 
-Righe esatte di `__init__` che chiudono il guard:
-
-```python
-        except (sqlite3.Error, OSError) as e:
-            log.warning("VectorStore: init sidecar fallita su %s (%s) — degrado",
-                        self.db_path, e)
-            _guard_ok = False
-        if _guard_ok:
-            self._db_available = True
-```
-
-`_db_available` è inizializzato a `False` nel costruttore (`self._db_available: bool = False`).
-Il guard che rifiuta **non esegue `self._db_available = True`**: nessun raise, nessun crash.
-
-Ogni metodo pubblico (`index`, `search`, `index_batch`, `ricostruisci_da_diario`, `conta`)
-inizia con:
-
-```python
-if not self.available:
-    return None   # oppure [] o 0 secondo il tipo
-```
-
-Il turno dell'agente prosegue con `available=False` → tutte le operazioni vettoriali
-restituiscono degrado silenzioso, coerente con §9 CLAUDE.md ("turno prosegue, mai crash").
-
-**Non è un `raise`. È un `disable`.**
+N/A — motore non toccato. CI ultimo run: `28292278960` su commit `adc7701` → **SUCCESS** (187 PASS, 0 FAIL).
 
 ---
 
-## §5 — ESITO SUITE REALE (output grezzo)
+## Verdetto revisore
 
-Comando: `venv\Scripts\python.exe tests/test_unit_kernel.py` (Windows, PYTHONUTF8=1)
-
-**T39 (estratto grezzo dall'output):**
-```
-[PASS] T39a fingerprint-guard: DB nuovo con modello corrente → available=True — available=True
-[PASS] T39b fingerprint-guard: model_id diverso stessa dim → fail-closed (available=False) — available=False _db_available=False
-[PASS] T39c fingerprint-guard: DB legacy senza fingerprint → fail-closed (available=False) — available=False _db_available=False
-[PASS] T39d gas reindex scrive fingerprint; riapertura con modello corretto → available=True — n=1 reopen_available=True
-[PASS] T39e recovery: DB mismatch → reindex (sostituzione) → riapertura → available=True — mismatch_ok=True reopen_available=True
-```
-
-**Riepilogo grezzo:**
-```
-=== RIEPILOGO: 175 PASS, 8 FAIL ===
-  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
-  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non dispon
-  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-  FAIL: T13d2 os_with_fallback + sandbox assente -> esegue (sandbox applicativa) — Errore eseguendo run_command: [WinError 2] Impossibile trova
-  FAIL: T26b backup: copia leggibile + rotazione ultime N + retention pura — rimasti=4 keep=2 drop=3
-  FAIL: T26c backup_auto throttled: crea, poi salta, intervallo 0 ricrea — first=True second=None third=False
-```
-
-**Note sul conteggio:**
-- Handoff build (4e14f09) dichiarava: 177 PASS / 6 FAIL.
-- Questa verifica: 175 PASS / 8 FAIL. Totale 183 test = coerente (178 baseline + 5 T39).
-- Differenza: T13d2 (WinError2, ambientale Windows) e T26c (timing backup) risultano FAIL
-  anziché SKIP/PASS. **Nessuno dei due test tocca il fingerprint-guard.**
-- I 5 bwrap Windows (T11c2, T11e, T12a, T12c, T12e) + T26b = 6 FAIL originali: tutti presenti.
+N/A — nessuna modifica al motore in questa sessione.
 
 ---
 
-## §6 — VERDETTO REVISORE #34 VERBATIM
+## Stato CI (FETTA 1 — .github/workflows/ci.yml)
 
-Estratto dall'handoff di build commit `4e14f09` (`reports/handoff.md`, §4):
-
-> **Review #34 — APPROVATO CON RISERVE**
->
-> Il codice è tecnicamente corretto su tutti e 5 i punti esaminati:
-> - **TOC-TOU** (`_db_existed` prima del `connect`): accettabile in contesto single-process GAS. Manca solo un commento esplicito che dichiari il vincolo.
-> - **Due `con.commit()`**: corretti. Il `with con:` fa auto-commit in `__exit__` come no-op; il primo commit fissa il DDL, il secondo il fingerprint; se `_write_fingerprint` lancia, il rollback riguarda solo l'uncommitted e `_guard_ok=False`.
-> - **Gestione transazioni nelle helper**: il contratto "il chiamante committa" è dichiarato e rispettato in tutti i call-site (`__init__` e `ricostruisci_da_diario`).
-> - **Fingerprint nella stessa transazione dell'atomic swap**: corretto e desiderabile — o vettori+fingerprint nuovi oppure stato preesistente intatto, senza stati intermedi incoerenti.
-> - **T39b/T39c senza `_SCHEMA`**: fedeli al legacy reale; `CREATE TABLE/INDEX IF NOT EXISTS` su tabelle già esistenti è idempotente, e la tabella `metadata` vuota (T39c) porta correttamente a `None` → fail-closed.
->
-> **Riserve (non bloccanti):**
-> 1. R1 — Aggiungere un commento al check `_db_existed` che dichiari il vincolo single-process.
-> 2. R2 — Manca T39e: path di recovery VPS (mismatch → reindex → riapertura → available=True).
->
-> Entrambe risolte prima del commit.
-
----
-
-## §git log (sessione di verifica)
-
-Nessun commit di motore in questa sessione (read-only). Solo questo handoff di verifica.
+- **Ultimo run:** `28292278960` — `2026-06-27T14:38:45Z`
+- **Commit:** `adc7701` (docs(revisore): lezioni sessione 2026-06-27)
+- **Esito:** ✅ SUCCESS
+- **Suite:** 187 PASS, 0 FAIL
+- **Bwrap:** attivo (ubuntu-24.04, AppArmor rilassato nel runner CI)
+- **Note:** nessun push di motore in questa sessione → CI non rilanciata; stato valido dal push precedente su `adc7701`
