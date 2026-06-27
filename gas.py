@@ -428,6 +428,44 @@ class GasKernel:
         except Exception as e:
             logging.warning("_log_tokens: scrittura fallita (%s) — ignorato", e)
 
+    def _daily_cost_usd(self) -> float:
+        """Somma i costi (USD stimati) degli ultimi 86400 secondi dal log token.
+        FAIL-SAFE: log assente/corrotto → 0.0 (mai bloccare il turno per log
+        mancante, §9). Zero token LLM: sola lettura file locale."""
+        try:
+            log_path = self.root / TOKEN_LOG_FILENAME
+            if not log_path.exists():
+                return 0.0
+            from datetime import timedelta
+            # Stesso formato di _log_tokens ("ts": strftime("%Y-%m-%dT%H:%M:%S")) →
+            # il confronto stringa lessicografico è corretto (ISO 8601 senza "Z").
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+            total = 0.0
+            with open(log_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                    except Exception:
+                        continue
+                    if r.get("event", "call") == "fallthrough":
+                        continue
+                    if r.get("ts", "") < cutoff:
+                        continue
+                    prov = r.get("provider", "?")
+                    p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(prov, (0.0, 0.0))
+                    try:
+                        total += int(r.get("in", 0)) * p_in / 1_000_000
+                        total += int(r.get("out", 0)) * p_out / 1_000_000
+                    except (TypeError, ValueError):
+                        continue
+            return total
+        except Exception as e:
+            logging.warning("_daily_cost_usd fallita (%s) — budget non applicato", e)
+            return 0.0
+
     def _add_to_history(self, role: str, content: Optional[str] = None, tool_calls: Optional[List[Any]] = None, tool_call_id: Optional[str] = None, name: Optional[str] = None):
         """Costruisce un dizionario puro, evitando oggetti complessi."""
         entry = {"role": role}
@@ -1293,6 +1331,19 @@ class GasKernel:
         # loop dei provider. No-op se GAS_VECTORS è spento o il layer è degradato.
         self._vettori_catchup()
 
+        # Budget giornaliero kill-switch (§11, GAS_DAILY_TOKEN_BUDGET in USD):
+        # se configurato, somma i costi 24h dal log locale e blocca se superato.
+        # Fail-safe §9: errore nella lettura → 0.0, il turno PROSEGUE comunque.
+        _budget = _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
+        if _budget > 0.0:
+            _spent = self._daily_cost_usd()
+            if _spent >= _budget:
+                yield {"type": "error",
+                       "content": (f"Budget giornaliero esaurito: ${_spent:.4f} spesi "
+                                   f"(limite ${_budget:.2f} USD). "
+                                   "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
+                return
+
         # Endpoint/modelli dalle costanti di modulo (punto unico, condiviso con doctor).
         # Pavimento offline Ollama: NON gira nel Codespace. Sul PC/VPS si esporta
         # GAS_OLLAMA_URL=http://localhost:11434/v1 (endpoint OpenAI-compatibile di
@@ -1898,6 +1949,94 @@ def tokens_cmd(root_dir: Optional[str] = None, days: Optional[int] = None) -> in
     return 0
 
 
+def calibrate_vectors_cmd(root_dir: Optional[str] = None, n_sample: int = 20) -> int:
+    """Comando `gas calibrate-vectors`: campiona N righe del diario come query,
+    cerca ciascuna nel vector store, mostra la distribuzione degli score coseno
+    e suggerisce un valore per GAS_VECTORS_MIN_SIM sul diario reale.
+    Zero token LLM — solo embedding locali + lettura DB."""
+    import random
+    root = Path(root_dir or os.getcwd()).resolve()
+    from modules.memory import MemoryStore, default_db_path
+    mem = MemoryStore(default_db_path(root))
+    if not mem.available:
+        print("✗ calibrate-vectors: memoria non disponibile — niente da campionare.")
+        return 1
+    vs = VectorStore(default_vectors_path(root))
+    if not vs.available:
+        dr = getattr(vs, "disable_reason", "") or "dipendenze assenti"
+        print(f"✗ calibrate-vectors: vector store non disponibile ({dr}).")
+        print("  Esegui prima: pip install numpy fastembed onnxruntime && gas reindex")
+        return 1
+    righe = mem.diario_recente(500)
+    if len(righe) < 5:
+        print(f"✗ calibrate-vectors: diario troppo piccolo ({len(righe)} righe, minimo 5).")
+        return 1
+    sample = random.sample(righe, min(n_sample, len(righe)))
+    scores: List[float] = []
+    print(f"\n=== GAS — Calibrazione VEC_MIN_SIM  (n_sample={len(sample)}) ===\n")
+    for r in sample:
+        query = str(r.get("descrizione", ""))
+        hits = vs.search(query, k=6, min_sim=0.0, source="diario")
+        for h in hits:
+            if str(h.get("source_ref")) != str(r.get("id")):
+                scores.append(float(h["score"]))
+    if not scores:
+        print("Nessun risultato: esegui 'gas reindex' per popolare l'indice, poi riprova.")
+        return 1
+    scores.sort(reverse=True)
+    n = len(scores)
+    p25 = scores[n * 3 // 4]   # 25° percentile (scores ordinati DESC)
+    p50 = scores[n // 2]
+    p75 = scores[n // 4]
+    mean_ = sum(scores) / n
+    cur_sim = _env_float("GAS_VECTORS_MIN_SIM", 0.30)
+    print(f"Score coseno ({n} hit, auto-match esclusi):")
+    print(f"  max={scores[0]:.3f}  p75={p75:.3f}  p50={p50:.3f}  p25={p25:.3f}  min={scores[-1]:.3f}  mean={mean_:.3f}")
+    print(f"\nValore corrente: GAS_VECTORS_MIN_SIM={cur_sim:.2f}")
+    suggested = max(0.10, min(0.80, round(p25 - 0.05, 2)))
+    print(f"Suggerimento:    GAS_VECTORS_MIN_SIM={suggested:.2f}  (p25 - 0.05, conservativo)")
+    n_above = sum(1 for s in scores if s >= suggested)
+    print(f"  Con soglia {suggested:.2f}: {n_above}/{n} hit ({100*n_above//n}%) superano la soglia")
+    print(f"\nNel .env del VPS:  export GAS_VECTORS_MIN_SIM={suggested:.2f}")
+    return 0
+
+
+def eval_vectors_cmd(root_dir: Optional[str] = None, query: Optional[str] = None,
+                     k: int = 10) -> int:
+    """Comando `gas eval-vectors [query]`: ricerca semantica di test per valutare
+    qualità del retrieval e confrontare modelli (cambia GAS_EMBED_MODEL + gas reindex).
+    Senza query mostra le statistiche del vector store. Zero token LLM."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    vs = VectorStore(default_vectors_path(root))
+    if not vs.available:
+        dr = getattr(vs, "disable_reason", "") or "dipendenze assenti"
+        print(f"✗ eval-vectors: vector store non disponibile ({dr}).")
+        print("  Esegui prima: pip install numpy fastembed onnxruntime && gas reindex")
+        return 1
+    n_vettori = vs.conta("diario")
+    cur_sim = _env_float("GAS_VECTORS_MIN_SIM", 0.30)
+    print(f"\n=== GAS — Eval Vectors ===")
+    print(f"  Modello:   {vs.model_name}")
+    print(f"  Dimensione:{vs.dim}")
+    print(f"  Vettori:   {n_vettori}  (source='diario')")
+    print(f"  Min sim:   {cur_sim:.2f}  (GAS_VECTORS_MIN_SIM)")
+    print(f"  Alt. mod.: intfloat/multilingual-e5-small  (384-dim, stessa infra)")
+    print(f"             → per valutare: GAS_EMBED_MODEL=intfloat/multilingual-e5-small gas reindex")
+    if not query:
+        print("\nUso: gas eval-vectors \"la tua query\"  [k=10]")
+        return 0
+    hits = vs.search(query, k=k, min_sim=0.0, source="diario")
+    print(f"\nQuery: {query!r}  →  {len(hits)} risultati (k={k}, min_sim=0.0)\n")
+    for i, h in enumerate(hits):
+        ts = str(h.get("ts") or "")[:10]
+        score = float(h["score"])
+        testo = str(h.get("testo") or "")[:90].replace("\n", " ")
+        marker = "✓" if score >= cur_sim else "✗"
+        print(f"  {marker} [{i+1:2}] score={score:.3f}  [{ts}]  {testo}")
+    print(f"\n  ✓=sopra soglia ({cur_sim:.2f})  ✗=sotto soglia")
+    return 0
+
+
 def main():
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "doctor":
@@ -1913,6 +2052,22 @@ def main():
             print(f"Uso: gas tokens [giorni]  (es. gas tokens 7)")
             sys.exit(1)
         sys.exit(tokens_cmd(days=days))
+    if len(sys.argv) > 1 and sys.argv[1] == "calibrate-vectors":
+        try:
+            n = int(sys.argv[2]) if len(sys.argv) > 2 else 20
+        except ValueError:
+            n = 20
+        sys.exit(calibrate_vectors_cmd(n_sample=n))
+    if len(sys.argv) > 1 and sys.argv[1] == "eval-vectors":
+        query = sys.argv[2] if len(sys.argv) > 2 else None
+        try:
+            k = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+        except ValueError:
+            k = 10
+        sys.exit(eval_vectors_cmd(query=query, k=k))
+    if len(sys.argv) > 1 and sys.argv[1] == "telegram":
+        from modules.telegram.bot import run_bot
+        sys.exit(run_bot())
     kernel = GasKernel()
     while True:
         try:

@@ -2584,6 +2584,99 @@ check("T40b gemini-flash-lite (obbligatorio) 402 → reason='KO' nel JSONL fallt
       _ft40.get("gemini-flash-lite") == "KO",
       f"fallthrough reasons: {_ft40}")
 
+# ---------- T41-T44: budget giornaliero (_daily_cost_usd + kill-switch) ----------
+print("\n--- T41-T44: budget giornaliero ---")
+import tempfile as _tmpmod
+
+_k41 = kernel_tmp()
+
+# T41: log assente → 0.0 (fail-safe)
+check("T41 _daily_cost_usd log assente -> 0.0", _k41._daily_cost_usd() == 0.0)
+
+# T42: log con sole entry vecchie (>24h) → 0.0
+_log41 = _k41.root / gas.TOKEN_LOG_FILENAME
+_old_ts = "2020-01-01T00:00:00"
+with open(_log41, "w", encoding="utf-8") as _flog41:
+    _flog41.write(json.dumps({"ts": _old_ts, "provider": "gemini-flash-lite",
+                               "model": "x", "in": 1000000, "out": 500000, "event": "call"}) + "\n")
+check("T42 _daily_cost_usd entry >24h -> 0.0", _k41._daily_cost_usd() == 0.0)
+
+# T43: log con entry recente → costo corretto (gemini-flash-lite: 0.10in/0.40out per MTok)
+from datetime import datetime, timezone, timedelta as _td
+_now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+with open(_log41, "w", encoding="utf-8") as _flog41:
+    _flog41.write(json.dumps({"ts": _now_ts, "provider": "gemini-flash-lite",
+                               "model": "x", "in": 1_000_000, "out": 500_000, "event": "call"}) + "\n")
+_cost43 = _k41._daily_cost_usd()
+_expected43 = 1_000_000 * 0.10 / 1_000_000 + 500_000 * 0.40 / 1_000_000  # 0.1 + 0.2 = 0.3
+check("T43 _daily_cost_usd entry recente -> costo corretto",
+      abs(_cost43 - _expected43) < 0.0001, f"calcolato={_cost43:.4f} atteso={_expected43:.4f}")
+
+# T44: run_turn con budget superato → event type=error, nessuna chiamata AI
+_k44 = kernel_tmp()
+_log44 = _k44.root / gas.TOKEN_LOG_FILENAME
+_now_ts44 = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+# Scrivo 10 USD di spesa recente (supera qualsiasi budget ragionevole)
+with open(_log44, "w", encoding="utf-8") as _flog44:
+    _flog44.write(json.dumps({"ts": _now_ts44, "provider": "gemini-flash",
+                               "model": "x", "in": 10_000_000, "out": 3_000_000, "event": "call"}) + "\n")
+os.environ["GAS_DAILY_TOKEN_BUDGET"] = "0.01"
+_events44 = []
+try:
+    _events44 = list(_k44.run_turn("test budget"))
+finally:
+    os.environ.pop("GAS_DAILY_TOKEN_BUDGET", None)
+_has_budget_error = any(e.get("type") == "error" and "Budget" in e.get("content", "")
+                        for e in _events44)
+check("T44 run_turn con budget esaurito → event error con 'Budget'", _has_budget_error,
+      f"events={_events44}")
+
+# ---------- T45-T48: modulo Telegram (struttura + CLI) ----------
+print("\n--- T45-T48: modulo Telegram ---")
+try:
+    import modules.telegram.bot as _tgmod
+    check("T45 modules.telegram.bot importabile", True)
+except ImportError as _e45:
+    check("T45 modules.telegram.bot importabile", False, str(_e45))
+
+# T46: run_bot senza TELEGRAM_BOT_TOKEN → exit 1
+_env_save46 = {k: os.environ.pop(k, None)
+               for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS")}
+try:
+    _rc46 = _tgmod.run_bot(root_dir=str(kernel_tmp().root))
+    check("T46 run_bot senza token → rc=1", _rc46 == 1, f"rc={_rc46}")
+finally:
+    for _k46, _v46 in _env_save46.items():
+        if _v46 is not None: os.environ[_k46] = _v46
+
+# T47: run_bot con token ma senza TELEGRAM_ALLOWED_IDS → exit 1
+_env_save47 = {k: os.environ.pop(k, None)
+               for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS")}
+os.environ["TELEGRAM_BOT_TOKEN"] = "dummy:token"
+try:
+    _rc47 = _tgmod.run_bot(root_dir=str(kernel_tmp().root))
+    check("T47 run_bot senza ALLOWED_IDS → rc=1", _rc47 == 1, f"rc={_rc47}")
+finally:
+    os.environ.pop("TELEGRAM_BOT_TOKEN", None)
+    for _k47, _v47 in _env_save47.items():
+        if _v47 is not None: os.environ[_k47] = _v47
+
+# T48: _handle_update con chat_id non autorizzato → nessuna eccezione, nessun invio
+_allowed48: "set[int]" = {999}
+_sent48: list = []
+def _fake_send48(base_url: str, chat_id: int, text: str) -> None:
+    _sent48.append((chat_id, text))
+_orig_send48 = _tgmod._send_text
+_tgmod._send_text = _fake_send48
+try:
+    _tgmod._handle_update(
+        "http://fake", {"update_id": 1, "message": {"chat": {"id": 123}, "text": "ciao"}},
+        _allowed48, None)
+    check("T48 _handle_update id non autorizzato → nessun invio", len(_sent48) == 0,
+          f"sent={_sent48}")
+finally:
+    _tgmod._send_text = _orig_send48
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
