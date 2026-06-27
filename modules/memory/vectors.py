@@ -116,6 +116,14 @@ _SCHEMA: Tuple[str, ...] = (
     """,
     "CREATE INDEX IF NOT EXISTS idx_vettori_source ON vettori(source)",
     "CREATE INDEX IF NOT EXISTS idx_vettori_model ON vettori(model, dim)",
+    # Fingerprint del modello: guard fail-closed contro mismatch embed → similarity sbagliate.
+    # (model_id, model_dim) scritti alla creazione e aggiornati da gas reindex.
+    """
+    CREATE TABLE IF NOT EXISTS metadata (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    """,
 )
 
 
@@ -145,16 +153,48 @@ class VectorStore:
         self._embedder_available: bool = (_np is not None) and (
             embed_fn is not None or _TextEmbedding is not None)
         self._db_available: bool = False
+        # Fingerprint-guard (R-vec-2b): un DB con vettori di un altro modello restituisce
+        # similarity sbagliate SENZA errore ("la memoria mente"). Il guard è fail-closed:
+        # mismatch o provenienza ignota → layer DISABILITATO, turno PROSEGUE (§9).
+        _db_existed = self.db_path.exists()  # TOC-TOU accettabile: GAS è single-process
+        _guard_ok = True
         try:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             with self._connect() as con:
                 for ddl in _SCHEMA:
                     con.execute(ddl)
                 con.commit()
-            self._db_available = True
+                if not _db_existed:
+                    # DB appena creato: scrivi subito il fingerprint del modello corrente.
+                    self._write_fingerprint(con)
+                    con.commit()
+                else:
+                    fp = self._read_fingerprint(con)
+                    if fp is None:
+                        # Legacy o provenienza ignota: fingerprint assente → fail-closed.
+                        log.warning(
+                            "VectorStore: sidecar %s senza fingerprint (DB legacy o "
+                            "provenienza ignota) — layer disabilitato. "
+                            "Esegui 'gas reindex' per ricostruire con il modello corrente.",
+                            self.db_path)
+                        _guard_ok = False
+                    else:
+                        stored_model, stored_dim = fp
+                        if stored_model != self.model_name or stored_dim != self.dim:
+                            log.warning(
+                                "VectorStore: fingerprint mismatch su %s — "
+                                "DB contiene model=%r dim=%d, configurato model=%r dim=%d. "
+                                "Layer disabilitato. Esegui 'gas reindex' per ricostruire "
+                                "con il modello corrente.",
+                                self.db_path, stored_model, stored_dim,
+                                self.model_name, self.dim)
+                            _guard_ok = False
         except (sqlite3.Error, OSError) as e:
             log.warning("VectorStore: init sidecar fallita su %s (%s) — degrado",
                         self.db_path, e)
+            _guard_ok = False
+        if _guard_ok:
+            self._db_available = True
 
     @property
     def available(self) -> bool:
@@ -162,6 +202,25 @@ class VectorStore:
         return self._db_available and self._embedder_available
 
     # ------------------------------------------------------------------ infra
+    def _read_fingerprint(self, con: sqlite3.Connection) -> Optional[Tuple[str, int]]:
+        """Legge (model_id, dim) dalla tabella metadata. None se assente/incompleto."""
+        try:
+            rows = {r[0]: r[1] for r in con.execute(
+                "SELECT key, value FROM metadata WHERE key IN ('model_id', 'model_dim')"
+            ).fetchall()}
+            if "model_id" not in rows or "model_dim" not in rows:
+                return None
+            return rows["model_id"], int(rows["model_dim"])
+        except (sqlite3.Error, ValueError):
+            return None
+
+    def _write_fingerprint(self, con: sqlite3.Connection) -> None:
+        """Scrive/aggiorna (model_id, dim) nella tabella metadata (il chiamante committa)."""
+        con.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES ('model_id', ?)",
+                    (self.model_name,))
+        con.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES ('model_dim', ?)",
+                    (str(self.dim),))
+
     def _connect(self) -> sqlite3.Connection:
         con = sqlite3.connect(str(self.db_path), timeout=10)
         con.row_factory = sqlite3.Row
@@ -350,7 +409,9 @@ class VectorStore:
                             self._to_blob(vec_norm[i]), int(vec_norm[i].shape[0]),
                         ))
 
-            # Atomic swap: solo qui tocchiamo l'indice esistente
+            # Atomic swap: solo qui tocchiamo l'indice esistente.
+            # Il fingerprint viene scritto/aggiornato nella stessa transazione:
+            # dopo un reindex deliberato il DB ha il fingerprint del modello corrente.
             with self._connect() as con:
                 con.execute("DELETE FROM vettori WHERE source = 'diario'")
                 for (source_ref, testo, ts, blob, dim) in accumulati:
@@ -360,6 +421,7 @@ class VectorStore:
                         "VALUES ('diario', ?, ?, ?, ?, ?, ?)",
                         (source_ref, testo, ts, blob, dim, self.model_name),
                     )
+                self._write_fingerprint(con)
                 con.commit()
             return len(accumulati)
         except (sqlite3.Error, OSError) as e:
