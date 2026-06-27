@@ -404,6 +404,79 @@ class GasKernel:
         except Exception as e:
             logging.error(f"Errore scrittura storico: {e}")
 
+    # --- Compressione cronologia (FASE 2.5) ---
+    # Default configurabili via env: GAS_HISTORY_MAX_MSGS, GAS_HISTORY_KEEP_MSGS.
+    # Nessun token LLM consumato: riepilogo deterministico testuale.
+    HISTORY_MAX_MSGS = 100   # trigger auto-compressione
+    HISTORY_KEEP_MSGS = 20   # messaggi recenti preservati intatti
+
+    def _compress_history_if_needed(self, force: bool = False) -> bool:
+        """Comprime la cronologia se len(history) > GAS_HISTORY_MAX_MSGS.
+        Con force=True comprime sempre (usato da CLI compress-history).
+        Strategia: i messaggi più vecchi vengono riassunti in un testo
+        deterministico (niente LLM, niente token). Fail-safe §9: qualsiasi
+        eccezione lascia la history invariata e ritorna False.
+
+        Allineamento al confine old/recent: i messaggi di recent che precedono
+        il primo 'user' vengono scartati (possono essere tool/assistant orfani
+        non inviabili come testa della finestra). Questo può far perdere 0-N
+        messaggi al confine — accettabile perché l'invariante _get_window
+        (finestra deve partire da user) ha priorità sulla completezza."""
+        max_msgs = _env_int("GAS_HISTORY_MAX_MSGS", self.HISTORY_MAX_MSGS, min_val=20)
+        keep_msgs = _env_int("GAS_HISTORY_KEEP_MSGS", self.HISTORY_KEEP_MSGS, min_val=10)
+        if keep_msgs > max_msgs:
+            logging.warning(
+                "Misconfiguration: GAS_HISTORY_KEEP_MSGS=%d > GAS_HISTORY_MAX_MSGS=%d "
+                "— la compressione si attiverà solo quando n > keep (%d)",
+                keep_msgs, max_msgs, keep_msgs,
+            )
+        if not force and len(self.history) <= max_msgs:
+            return False
+        if len(self.history) <= keep_msgs:
+            return False
+        try:
+            recent = self.history[-keep_msgs:]
+            old = self.history[:-keep_msgs]
+            # Riepilogo deterministico dei messaggi compressi
+            lines: List[str] = [
+                f"[RIEPILOGO SESSIONI PRECEDENTI — {len(old)} messaggi compressi]"
+            ]
+            for msg in old:
+                role = msg.get("role", "?")
+                content = (msg.get("content") or "").strip()
+                tool_calls = msg.get("tool_calls") or []
+                if tool_calls:
+                    names = [
+                        (tc.get("function") or {}).get("name", "?")
+                        for tc in tool_calls
+                    ]
+                    lines.append(f"[{role}] chiamate tool: {', '.join(names)}")
+                elif content:
+                    lines.append(f"[{role}] {content[:300]}")
+            summary = "\n".join(lines)
+            # Allinea recent al primo user per rispettare l'invariante _get_window.
+            # I messaggi prima del primo user in recent vengono scartati (R-comp-1).
+            start = 0
+            for i, m in enumerate(recent):
+                if m.get("role") == "user":
+                    start = i
+                    break
+            recent = recent[start:]
+            self.history = [
+                {"role": "user", "content": summary},
+                {"role": "assistant",
+                 "content": "Compreso. Proseguo dalla conversazione precedente."},
+            ] + recent
+            self._save_history()
+            logging.info(
+                "Cronologia compressa: %d→%d messaggi (%d old → riepilogo, %d scartati al confine)",
+                len(old) + keep_msgs, len(self.history), len(old), start,
+            )
+            return True
+        except Exception as e:
+            logging.warning("_compress_history_if_needed fallita (%s) — history invariata", e)
+            return False
+
     def _log_tokens(self, provider: str, model: str, in_tok: int, out_tok: int,
                     event: str = "call", reason: Optional[str] = None) -> None:
         """Appende una riga JSONL al log token (TOKEN_LOG_FILENAME). Fail-safe: un
@@ -1308,6 +1381,9 @@ class GasKernel:
             return f"Errore eseguendo {name}: {str(e)}"
 
     def run_turn(self, user_prompt: str) -> Generator[Dict[str, Any], None, None]:
+        # Compressione automatica cronologia (FASE 2.5): no-op se sotto soglia.
+        # Zero token LLM. Fail-safe §9: eccezioni → history invariata, turno OK.
+        self._compress_history_if_needed()
         self._add_to_history("user", content=user_prompt)
 
         from brains.router import classifica_compito
@@ -2037,6 +2113,31 @@ def eval_vectors_cmd(root_dir: Optional[str] = None, query: Optional[str] = None
     return 0
 
 
+def compress_history_cmd(root_dir: Optional[str] = None) -> int:
+    """Comando `gas compress-history`: comprime forzatamente la cronologia
+    .gas_history.json sostituendo i messaggi più vecchi con un riepilogo
+    deterministico (niente LLM, niente token). Utile prima del deploy VPS
+    o per azzerare il contesto accumulato senza perdere la continuità."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    kernel = GasKernel(root_dir=str(root))
+    n_before = len(kernel.history)
+    if n_before == 0:
+        print("✓ compress-history: cronologia vuota, niente da fare.")
+        return 0
+    keep = _env_int("GAS_HISTORY_KEEP_MSGS", GasKernel.HISTORY_KEEP_MSGS, min_val=10)
+    print(f"\n=== GAS — Comprimi cronologia ===")
+    print(f"  Messaggi attuali:   {n_before}")
+    print(f"  Messaggi da tenere: {keep}  (GAS_HISTORY_KEEP_MSGS)")
+    ok = kernel._compress_history_if_needed(force=True)
+    if ok:
+        n_after = len(kernel.history)
+        print(f"  Messaggi dopo:      {n_after}")
+        print(f"✓ Compressi {n_before - n_after} messaggi in riepilogo testuale.")
+    else:
+        print(f"○ Niente da comprimere (n={n_before} ≤ keep={keep}).")
+    return 0
+
+
 def main():
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "doctor":
@@ -2065,6 +2166,8 @@ def main():
         except ValueError:
             k = 10
         sys.exit(eval_vectors_cmd(query=query, k=k))
+    if len(sys.argv) > 1 and sys.argv[1] == "compress-history":
+        sys.exit(compress_history_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())

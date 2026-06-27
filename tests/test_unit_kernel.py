@@ -2677,6 +2677,70 @@ try:
 finally:
     _tgmod._send_text = _orig_send48
 
+# ---------- T49-T52: compressione cronologia (FASE 2.5) ----------
+print("\n--- T49-T52: compressione cronologia ---")
+import tempfile as _tempfile
+
+def _mk_kernel_with_history(n_msgs: int):
+    _td = _tempfile.mkdtemp()
+    _k = GasKernel(root_dir=_td)
+    for i in range(n_msgs):
+        _role = "user" if i % 2 == 0 else "assistant"
+        _k.history.append({"role": _role, "content": f"messaggio {i}"})
+    _k._save_history()
+    return _k, _td
+
+# T49 — sotto soglia: nessuna compressione
+_k49, _td49 = _mk_kernel_with_history(10)
+os.environ["GAS_HISTORY_MAX_MSGS"] = "50"
+_r49 = _k49._compress_history_if_needed()
+check("T49 _compress_history sotto soglia -> False, history invariata",
+      _r49 is False and len(_k49.history) == 10, f"r={_r49} n={len(_k49.history)}")
+os.environ.pop("GAS_HISTORY_MAX_MSGS", None)
+
+# T50 — sopra soglia: compressione + struttura corretta
+_k50, _td50 = _mk_kernel_with_history(40)
+os.environ["GAS_HISTORY_MAX_MSGS"] = "20"
+os.environ["GAS_HISTORY_KEEP_MSGS"] = "6"
+_r50 = _k50._compress_history_if_needed()
+_h50 = _k50.history
+_ok50 = (
+    _r50 is True
+    and len(_h50) < 40
+    and _h50[0]["role"] == "user"
+    and "RIEPILOGO" in _h50[0]["content"]
+    and _h50[1]["role"] == "assistant"
+)
+check("T50 _compress_history sopra soglia -> True, struttura user/assistant/recenti",
+      _ok50, f"r={_r50} n_orig=40 n_now={len(_h50)} roles={[m['role'] for m in _h50[:3]]}")
+os.environ.pop("GAS_HISTORY_MAX_MSGS", None)
+os.environ.pop("GAS_HISTORY_KEEP_MSGS", None)
+
+# T51 — force=True: comprime anche sotto soglia
+_k51, _td51 = _mk_kernel_with_history(30)
+os.environ["GAS_HISTORY_MAX_MSGS"] = "200"
+os.environ["GAS_HISTORY_KEEP_MSGS"] = "8"
+_r51 = _k51._compress_history_if_needed(force=True)
+_ok51 = _r51 is True and len(_k51.history) < 30 and _k51.history[0]["role"] == "user"
+check("T51 _compress_history force=True -> comprime sempre indipendente da soglia",
+      _ok51, f"r={_r51} n_orig=30 n_now={len(_k51.history)}")
+os.environ.pop("GAS_HISTORY_MAX_MSGS", None)
+os.environ.pop("GAS_HISTORY_KEEP_MSGS", None)
+
+# T52 — persistenza: history compressa salvata su disco, riletta coerente
+_k52, _td52 = _mk_kernel_with_history(30)
+os.environ["GAS_HISTORY_KEEP_MSGS"] = "6"
+_k52._compress_history_if_needed(force=True)
+_k52b = GasKernel(root_dir=_td52)
+_ok52 = (
+    len(_k52b.history) < 30
+    and _k52b.history[0]["role"] == "user"
+    and "RIEPILOGO" in _k52b.history[0]["content"]
+)
+check("T52 _compress_history persiste su disco e si rilegge coerente",
+      _ok52, f"n={len(_k52b.history)} role0={_k52b.history[0]['role'] if _k52b.history else '?'}")
+os.environ.pop("GAS_HISTORY_KEEP_MSGS", None)
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
