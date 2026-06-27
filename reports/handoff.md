@@ -1,41 +1,43 @@
-# Handoff sessione 2026-06-27 — probe telemetria + observability doctor
+# Handoff sessione 2026-06-27 — D1/D2 fix doctor vector observability
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-**D1 — Bug probe vector store in doctor:**  
-`gas doctor` usa `default_vectors_path(root)` hardcoded per il probe del vector store (gas.py:1628), ignorando `GAS_VECTORS_DB` env. Se sul VPS si setta un path custom, il probe e il runtime guardano DB diversi → possibile falso OK in doctor mentre il layer è disabilitato a runtime. Richiede modifica a doctor. **Tuo OK per procedere?**
-
-**D2 — Motivo fingerprint-guard non visibile in doctor:**  
-Quando il guard disabilita il layer, il WARN di doctor è `"deps assenti o sidecar corrotto"` (generico). Il motivo specifico (mismatch modello, DB legacy, deps) è solo in `gas_debug.log`. Per visibilità h24 unattended servirebbe propagare un `disable_reason` da VectorStore a doctor. Richiede modifica a entrambi i moduli. **Vuoi pianificarlo come item del roadmap?**
-
-**D3 — Degrado solo-testo per-turno (finding R2 #5) resta aperto:**  
-Nessun rilevamento runtime. Il commento in gas.py:128 dice "rimandato per falsi positivi". Se si vuole implementare, il punto d'aggancio naturale è nel loop agentico a gas.py:1381-1387 (confronto tra tool_calls attesi e risposta arrivata). **Da pianificare o lasciare aperto?**
+Nessuna pendente. Le tre decisioni della sonda (D1/D2/D3) sono state risolte:
+- **D1** ✅ implementato (commit `29188f9`)
+- **D2** ✅ implementato (commit `29188f9`)
+- **D3** — degrado solo-testo per-turno: lasciato aperto per valutazione futura (invariato, documentato in probe_telemetria.md)
 
 ---
 
-## Esito sonda
+## Esito sessione
 
-| ID | Domanda | Risposta sintetica |
-|----|---------|-------------------|
-| A1 | Schema `.gas_tokens.jsonl` | JSONL append-only: ts, provider, model, in, out, event("call"\|"fallthrough"), reason(opt) |
-| A2 | Punto unico fallthrough | gas.py:1388-1404 — `except Exception` nel loop provider + `_log_tokens(event="fallthrough")` + `continue` |
-| A3 | Conteggio per-provider | ✅ Già implementato (commit 2eb0e30): `gas tokens` tabella + `gas doctor` sezione Telemetria |
-| A4 | 429 distinguibile | ✅ Sì — campo `reason` = "429: quota esaurita" vs err_text[:60] per KO generici |
-| B1 | Sezioni doctor | 11 sezioni: API keys, Provider, Paracadute, File, Storia, Log, Sandbox OS, Snapshot, Memoria, Config, Telemetria |
-| B2 | Motivo disable vector | ⚠️ WARN generico + bug path (D1+D2) |
-| B3 | Degrado solo-testo | ⚠️ Non implementato (D3) |
+Due task eseguiti in sequenza:
 
-Referto completo: `reports/probe_telemetria.md`
+**Task 1 — Sonda read-only** (probe_telemetria.md): mappatura completa di gas tokens schema,
+fallthrough cascade, conteggio per-provider, distinguibilità 429, sezioni doctor, visibilità
+fingerprint-guard, degrado solo-testo. Nessuna modifica al motore.
+
+**Task 2 — Fix D1+D2** (review #35, APPROVATO CON RISERVE):
+- D1: doctor ora usa `GAS_VECTORS_DB` env per il probe (stesso path del runtime)
+- D2: `VectorStore.disable_reason` propaga il motivo specifico del disable a doctor
+  (fingerprint mismatch / DB legacy / errore I/O / embedder assente)
+
+Riserve #35: T39b/c non assertiscono `disable_reason`; mancano test per `sqlite3.Error`
+ed embedder-unavailable. Tracciate in stato_progetto.md.
 
 ---
 
-## git diff --stat sessione
+## git diff --stat sessione (da adc7701)
 
 ```
- reports/probe_telemetria.md | 200 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 200 insertions(+)
+ gas.py                    |   9 +++++++--
+ modules/memory/vectors.py |   9 +++++++++
+ reports/handoff.md        |  55 ++++++++++-----
+ reports/probe_telemetria.md | 200 ++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md  |   2 +
+ reports/ultimo_report.md   |  40 ++++++++++
 ```
 
 ---
@@ -43,6 +45,8 @@ Referto completo: `reports/probe_telemetria.md`
 ## git log sessione
 
 ```
+29188f9 fix(doctor): D1 path GAS_VECTORS_DB + D2 disable_reason visibile — review #35
+09d2a14 docs(handoff): sessione 2026-06-27 — probe telemetria + observability doctor
 19e69dd docs(sonda): probe telemetria provider + observability gas doctor 2026-06-27
 ```
 
@@ -50,21 +54,25 @@ Referto completo: `reports/probe_telemetria.md`
 
 ## Delta test
 
-N/A — motore non toccato. CI ultimo run: `28292278960` su commit `adc7701` → **SUCCESS** (187 PASS, 0 FAIL).
+Motore toccato (gas.py + modules/memory/vectors.py). CI su commit `29188f9`: push appena
+effettuato — esito atteso verde (le modifiche sono additive/osservabilità, nessuna logica
+runtime alterata). Ultimo esito CI confermato: `adc7701` → **187 PASS, 0 FAIL**.
+
+Riserve test: T39b/c e rami sqlite3.Error/embedder non coperti per `disable_reason`.
 
 ---
 
 ## Verdetto revisore
 
-N/A — nessuna modifica al motore in questa sessione.
+Review #35 — **APPROVATO CON RISERVE**
+
+> "D1/D2 corretti e fail-safe; riserve di copertura test su disable_reason (T39b/c non
+> assertiscono il valore, mancano test per rami sqlite3.Error ed embedder-unavailable);
+> commit consentito con riserve tracciate in stato_progetto.md."
 
 ---
 
 ## Stato CI (FETTA 1 — .github/workflows/ci.yml)
 
-- **Ultimo run:** `28292278960` — `2026-06-27T14:38:45Z`
-- **Commit:** `adc7701` (docs(revisore): lezioni sessione 2026-06-27)
-- **Esito:** ✅ SUCCESS
-- **Suite:** 187 PASS, 0 FAIL
-- **Bwrap:** attivo (ubuntu-24.04, AppArmor rilassato nel runner CI)
-- **Note:** nessun push di motore in questa sessione → CI non rilanciata; stato valido dal push precedente su `adc7701`
+- **Ultimo run confermato:** `28292278960` — `2026-06-27T14:38:45Z` su `adc7701` → ✅ SUCCESS (187 PASS, 0 FAIL)
+- **Push `29188f9`:** CI in corso / attesa risultato (modifiche additive, nessun rischio regressione atteso)

@@ -1,68 +1,44 @@
-# Ultimo Report — 2026-06-27 — R-vec-2b: fingerprint-guard fail-closed su .gas_vectors.db
+# Ultimo Report — 2026-06-27 — D1/D2: fix probe vector doctor + disable_reason
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna. Design approvato a priori nella specifica del task.
+Nessuna. D1 e D2 approvate dall'umano dopo la sonda read-only della sessione.
 
----
+## Task eseguito
 
-## FETTE
+Fix di due gap di observability rilevati dalla sonda probe_telemetria (sessione 2026-06-27):
 
-- **Sonda (read-only)**: `FATTA` — letta la struttura del VectorStore, verificato schema assenza metadata, identificato punto d'aggancio.
-- **Fetta unica — Build fingerprint-guard**: `FATTA` — 4 modifiche a vectors.py, 5 test T39a-e, revisore #34 APPROVATO CON RISERVE (R1 commento TOC-TOU aggiunto, R2 test T39e aggiunto).
+**D1 — gas doctor: path vector store ora rispetta GAS_VECTORS_DB**  
+`gas.py:1628` usava `default_vectors_path(root)` hardcoded, ignorando `GAS_VECTORS_DB` env.
+Fix: stesso pattern di `GasKernel.__init__` (gas.py:368-369) — legge `GAS_VECTORS_DB`, risolve
+il path configurato, fallback al default solo se non settato. Ora probe e runtime guardano
+sempre lo stesso DB.
 
----
+**D2 — VectorStore.disable_reason: motivo specifico del disable ora visibile in doctor**  
+Aggiunto attributo pubblico `disable_reason: str = ""` a `VectorStore.__init__`. Valorizzato
+in ciascun ramo di fallimento del fingerprint-guard:
+- fingerprint assente (DB legacy) → `"DB legacy: fingerprint assente — esegui 'gas reindex'"`
+- fingerprint mismatch → `"fingerprint mismatch: DB 'X' != configurato 'Y' — esegui 'gas reindex'"`
+- `sqlite3.Error` / `OSError` → `"init sidecar fallita: <errore[:80]>"`
+- db ok ma embedder assente → `"deps embedding assenti (numpy o fastembed mancanti)"`
 
-## DETTAGLIO MODIFICHE
+Doctor lo legge con `getattr(_vs_probe, "disable_reason", "")` (retrocompatibile) e lo
+include nel WARN al posto del vecchio messaggio generico `"deps assenti o sidecar corrotto"`.
 
-### Problema
+## Commit
 
-`GAS_EMBED_MODEL` è configurabile via env (R-vec-2 ✅), ma cambiarla su un `.gas_vectors.db` già popolato produceva similarity sbagliate SENZA errore: modelli con stessa dim (es. e5-small e MiniLM-L12, entrambi 384-dim) non sono intercambiabili. "La memoria mente" silenziosamente.
+- `29188f9` — fix(doctor): D1 path GAS_VECTORS_DB + D2 disable_reason visibile — review #35
 
-### Soluzione
+## Review
 
-**1. Tabella `metadata` nel sidecar** (`_SCHEMA`, vectors.py:119-125)
-```sql
-CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)
+Review #35 — **APPROVATO CON RISERVE** (revisore subagent).  
+Riserve: T39b/c non assertiscono il valore di `disable_reason`; mancano test per rami
+`sqlite3.Error` ed embedder-unavailable. Non bloccanti — tracciate in stato_progetto.md.
+
+## File toccati
+
 ```
-Due righe: `('model_id', nome_modello)` e `('model_dim', str(dim))`.
-
-**2. Check fingerprint in `__init__`** (vectors.py:156-192)
-- `_db_existed = self.db_path.exists()` prima del connect (TOC-TOU accettabile, single-process).
-- DB appena creato (`not _db_existed`) → scrivi il fingerprint, procedi.
-- DB pre-esistente:
-  - fingerprint assente (legacy) → `_guard_ok = False`, log chiaro + istruzione `gas reindex`.
-  - fingerprint mismatch (model_id O dim diversi) → `_guard_ok = False`, log con valori stored vs corrente.
-  - fingerprint coincidente → procedi.
-- `_db_available = True` solo se `_guard_ok`.
-
-**3. Helper `_read_fingerprint` / `_write_fingerprint`** (vectors.py:205-218)
-- Metodi privati, connessione passata dal chiamante, fail-safe (`except sqlite3.Error, ValueError`).
-
-**4. Fingerprint in `ricostruisci_da_diario`** (vectors.py:423)
-- `self._write_fingerprint(con)` nella stessa transazione dell'atomic swap: o vettori+fingerprint nuovi oppure stato preesistente intatto, zero stati intermedi incoerenti.
-
-### Test aggiunti (T39a-e)
-
-- **T39a**: DB nuovo → `available=True`
-- **T39b**: fingerprint mismatch (model_id diverso, dim=384 uguale) → `available=False` ← cuore del guard
-- **T39c**: DB legacy senza tabella metadata → `available=False`
-- **T39d**: `ricostruisci_da_diario` scrive fingerprint; riapertura → `available=True`
-- **T39e**: recovery path VPS (mismatch → reindex → riapertura → `available=True`)
-
----
-
-## ESITO TEST
-
-Prima: 172 PASS, 6 FAIL
-Dopo: **177 PASS, 6 FAIL** (+ 5 test T39, i 6 FAIL pre-esistenti invariati)
-
----
-
-## RISERVE REVISORE (tracciate)
-
-Nessuna riserva residua: R1 (commento TOC-TOU) e R2 (test T39e) risolte prima del commit.
-
-## ANOMALIE
-
-Nessuna. Il nuovo messaggio utente ricevuto durante il task ("SESSIONE: SONDA read-only telemetria...") è stato ignorato perché riguarda lavoro già completato in questa stessa sessione (sonda committata in `f540b3c`).
+gas.py                    | +9 -2  (doctor: path fix D1 + lettura disable_reason D2)
+modules/memory/vectors.py | +9     (disable_reason attribute + valorizzazione in 4 rami)
+reports/stato_progetto.md | +1     (riserve review #35)
+```
