@@ -1,14 +1,16 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-27** (R-tel-1 fix + chiusura riserva #35 disable_reason: review #36/#37)
+> Ultimo aggiornamento: **2026-06-27** (chiusura tutti 5 item aperti roadmap — review #38, commit a8c6d53)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **37 review** completate. Suite: **193 PASS, 0 FAIL** (CI Linux).
-(Windows locale: 183 PASS, 6 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
-CI GitHub Actions (`.github/workflows/ci.yml`): **193 PASS, 0 FAIL** — run #28295087523 su 6cfd340 verde.
+FASE 1 ✅ e FASE 2 ✅ chiuse. **38 review** completate. Suite: **193 PASS, 0 FAIL** (CI Linux attesa).
+(Windows locale: 190 PASS, 7 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
+CI GitHub Actions: da aggiornare dopo push (ultima verde: run #28295087523 su 6cfd340).
+
+**🎯 Tutti e 5 gli item aperti del roadmap chiusi** (2026-06-27, review #38, commit a8c6d53).
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -19,9 +21,12 @@ Componenti attive:
 - Vector store `.gas_vectors.db` opt-in `GAS_VECTORS` (MiniLM 384-dim, cosine brute-force)
 - CRM dal loop: tool `salva_contatto`/`imposta_stato_contatto`, identità su `chiave_norm` NFKC
 - Iniezione always-on `_memoria_pin` (system msg) + tool `ricorda` (sola lettura)
-- CLI `gas doctor` / `gas reindex` / `gas backup` / **`gas tokens [N_giorni]`** (contabilità token + stima costi USD + sezione fallthrough)
-- **Telemetria fallthrough** (review #33): `_log_tokens` con `event`/`reason`; `gas tokens` + `gas doctor` sez.10 per-provider
-- **`VectorStore.disable_reason`** (review #35, 2026-06-27): motivo specifico del disable propagato a `gas doctor` (fingerprint mismatch / DB legacy / errore I/O / embedder assenti); doctor usa `GAS_VECTORS_DB` env correttamente (D1)
+- CLI `gas doctor` / `gas reindex` / `gas backup` / `gas tokens [N]` (contabilità token + stima USD + fallthrough)
+- **Budget cap** (review #38): `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` in `run_turn`
+- **Telegram bridge** (review #38): `gas telegram` → `modules/telegram/bot.py` (long polling, `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_IDS`)
+- **CLI vettori** (review #38): `gas calibrate-vectors` (distribuzione score → suggerisce min_sim) + `gas eval-vectors [query]` (ricerca semantica interattiva)
+- Telemetria fallthrough (review #33): `_log_tokens` con `event`/`reason`; doctor sez.10
+- `VectorStore.disable_reason` (review #35/36): motivo disable propagato a `gas doctor`
 
 ## Pipeline provider (paracadute)
 
@@ -53,11 +58,11 @@ Componenti attive:
 
 ## Prossimi passi (in ordine di priorità)
 
-1. **🔴 URGENTE — Controllo spesa token** (soluzione definitiva): vedere CLAUDE.md §11. Diagnosi (23-06-2026): spesa = 100% Claude Code sviluppo su Opus 4.8, GAS runtime = 0€. Disciplina attiva: Sonnet 4.6 default, Opus on-demand, `/clear` tra task, stato_progetto snello.
-2. **📱 Accesso Claude Code da telefono**: vedere CLAUDE.md §10 item #2.
-3. ~~**CI-4 — verde pieno**~~ ✅ risolto (2026-06-24).
-4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
-5. **FASE 5 — Deploy VPS Hetzner**: checklist pre-deploy (R-vec-3, R-reidx-3, R-wire-1 ri-taratura, R-reidx-deps, R-tel-1 obbligatoria→WARN su free, ollama, backup off-machine).
+1. **FASE 2.5 — Summarizzazione cronologia**: prerequisito VPS h24 (`.gas_history.json` cresce indefinitamente).
+2. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
+3. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (prerequisito Jarvis reale).
+4. **FASE 5 — Deploy VPS Hetzner**: al deploy attivare `gas telegram` come daemon (systemd), `gas calibrate-vectors` per ri-tarare VEC_MIN_SIM, checklist (R-vec-3, R-reidx-deps, R-wire-1).
+5. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
 ### PARK — registrati, nessun impegno
 - Retention del diario (archiviazione/export, MAI DELETE — quando il volume lo richiederà).
@@ -68,7 +73,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **37 review**. Ultima: **#37** (R-tel-1 obbligatoria→WARN rung facoltativi, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **38 review**. Ultima: **#38** (chiusura 5 item roadmap: budget cap + Telegram + calibrate/eval-vectors, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 

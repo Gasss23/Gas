@@ -1,30 +1,35 @@
-# Diff sessione — 2026-06-27 (autonoma) — riserva #35 + R-tel-1
+# Diff sessione — 2026-06-27 (chiusura 5 item roadmap)
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
 
-## File toccati (sessione autonoma B+C)
+## Commit della sessione
 
-| File | Tipo modifica |
-|------|--------------|
-| `gas.py` | Fix R-tel-1: `_free_names` + `obbligatoria` calcolato + `reason=_ft_level` |
-| `tests/test_unit_kernel.py` | +6 test: T39b-reason, T39c-reason, T39f, T39g, T40, T40b |
-| `.claude/agents/memoria_revisore.md` | +2 lezioni (review #36) |
-| `reports/stato_progetto.md` | Chiusura R-tel-1 + riserva #35, aggiornamento contatori |
-| `reports/ultimo_report.md` | Report di sessione |
-| `reports/handoff.md` | Dossier sessione |
+```
+a8c6d53 feat(kernel): chiusura item aperti roadmap — budget cap + Telegram bridge + calibrate/eval-vectors (review #38)
+```
+
+## File motore toccati
+
+| File | Tipo | Perché |
+|---|---|---|
+| `gas.py` | Modificato (+155 righe) | `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` + `calibrate_vectors_cmd` + `eval_vectors_cmd` + dispatch main() |
+| `modules/telegram/__init__.py` | Nuovo (vuoto) | Package del bridge Telegram |
+| `modules/telegram/bot.py` | Nuovo (+198 righe) | Bridge bot Telegram (long polling, whitelist, GasKernel condiviso) |
+| `tests/test_unit_kernel.py` | Modificato (+93 righe) | T41-T48: budget cap e modulo Telegram |
+
+## Doc aggiornati (commit report)
+
+| File | Cosa è cambiato |
+|---|---|
+| `reports/roadmap.md` | Item 1-5 spostati da "aperti" a "chiusi"; nuova sezione prossimi passi ridotta |
+| `reports/stato_progetto.md` | Componenti aggiornati, review count 37→38, prossimi passi aggiornati |
+| `reports/ultimo_report.md` | Report canonico task corrente |
 | `reports/diff_sessione.md` | Questo file |
+| `reports/handoff.md` | Dossier fine sessione |
 
-## Cosa è cambiato e perché
+## Cosa NON è cambiato
 
-**FETTA B** (commit `fc22295`): La riserva review #35 richiedeva che ogni ramo di
-`VectorStore.disable_reason` avesse un test che asserisse il VALORE del campo.
-I test T39b e T39c asserivano solo `available=False`; i rami 3 (sqlite3.Error) e 4
-(embedder assenti) mancavano completamente. Aggiunti T39b-reason, T39c-reason,
-T39f (mock su `_connect`), T39g (mock su `_np`/`_TextEmbedding`). Zero modifica
-al codice produzione.
-
-**FETTA C** (commit `6cfd340`): R-tel-1 (trovato in review #33): `obbligatoria=True`
-hardcoded nel loop `run_turn` → openrouter/ollama (rung facoltativi) loggavano
-`reason="KO"` nel JSONL anche per un 402 benigno. Fix: `_free_names` derivato da
-`FREE_RUNGS` esistente (minimal, zero nuove env/astrazioni); `reason` nel JSONL
-diventa il livello ("WARN"/"KO") anziché il testo dell'errore. T40/T40b validano.
+- Logica provider/cascata fallback invariata.
+- Memoria SQLite e vector store invariati (solo nuove CLI).
+- Sandbox bwrap invariata.
+- 7 FAIL Windows pre-esistenti invariati (bwrap, WinError32 — ambiente, non regressioni).

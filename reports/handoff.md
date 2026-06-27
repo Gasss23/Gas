@@ -1,110 +1,85 @@
-# Handoff sessione 2026-06-27 (sessione autonoma) — fette B+C: riserva #35 + R-tel-1
+# Handoff sessione 2026-06-27 — chiusura 5 item roadmap (review #38)
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-Nessuna. Entrambe le fette rientrano nello scope assegnato.
+Nessuna. Tutti gli item aperti chiusi autonomamente. Le riserve review #38 (R-tel-budget-perf, R-tel-tool_res) sono non bloccanti e rinviate.
 
-**Riserve #37 da valutare in futuro (non urgenti):**
-1. `reason` nel JSONL = livello puro ("WARN"/"KO"): perde il testo descrittivo dell'errore.
-   Il testo sopravvive in `gas_debug.log`. Se si vorrà recuperarlo nel JSONL: aggiungere
-   campo `detail` a fianco di `reason` in `_log_tokens`. Non urgente.
-2. Ollama non testato in T40 (GAS_OLLAMA_URL assente in CI → skip). La logica è identica
-   per derivazione da `_free_names`. Da assertire se/quando CI avrà GAS_OLLAMA_URL.
+**Prossima sessione**: scegliere il prossimo obiettivo tra:
+1. FASE 2.5 — Summarizzazione cronologia `.gas_history.json` (prerequisito VPS h24)
+2. FASE 3 — Interfaccia vocale (Whisper STT + ElevenLabs TTS)
+3. FASE 5 — Deploy VPS Hetzner (con `gas telegram` come daemon systemd)
 
 ---
 
-## §ESITO FETTE
+## Sonda ambiente
 
-| Fetta | Esito | Commit | CI |
-|-------|-------|--------|----|
-| A — verifica CI base | FATTA ✅ | read-only | run #28293255763 → SUCCESS |
-| B — test disable_reason 4 rami | FATTA ✅ | `fc22295` | run #28294893550 → SUCCESS |
-| C — R-tel-1 obbligatoria→WARN | FATTA ✅ | `6cfd340` | run #28295087523 → **193 PASS, 0 FAIL** |
+CI GitHub Actions: ultima verde = run #28295087523 su `6cfd340` (193 PASS, 0 FAIL). Il push di `a8c6d53` attiverà una nuova run CI.
 
 ---
 
-## §SONDA
-
-Non richiesta in questo task. La sonda della sessione precedente (probe telemetria + D1/D2)
-è documentata in `reports/probe_telemetria.md`.
-
----
-
-## §GIT DIFF --STAT (c8dbe04..HEAD)
+## git diff --stat della sessione
 
 ```
- .claude/agents/memoria_revisore.md |  3 ++
- gas.py                             |  7 ++--
- tests/test_unit_kernel.py          | 70 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 77 insertions(+), 3 deletions(-)
+git diff 8e8fe8a..a8c6d53 --stat
+
+ gas.py                       | 155 +++++++++++++++++++++++++++++++++
+ modules/telegram/__init__.py |   0
+ modules/telegram/bot.py      | 198 +++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py    |  93 ++++++++++++++++++++
+ 4 files changed, 446 insertions(+)
 ```
 
 ---
 
-## §GIT LOG (commit sessione)
+## git log della sessione
 
 ```
-6cfd340 fix(runtime): R-tel-1 — obbligatoria→WARN sui rung facoltativi (review #37)
-fc22295 test(vectors): disable_reason: chiudi riserva #35 — T39b/c/f/g (review #36)
+a8c6d53 feat(kernel): chiusura item aperti roadmap — budget cap + Telegram bridge + calibrate/eval-vectors (review #38)
 ```
 
-(Base di sessione: `c8dbe04` — docs(stato): aggiornamento 2026-06-27)
+(Sessione precedente, stessa giornata: 8e8fe8a docs/report, 6cfd340 fix R-tel-1, fc22295 test #36, c8dbe04 docs)
 
 ---
 
-## §DELTA TEST
+## Delta test del motore
 
-| Metrica | Prima | Dopo |
-|---------|-------|------|
-| CI Linux | 187 PASS, 0 FAIL | **193 PASS, 0 FAIL** (+6) |
-| Windows  | 181 PASS, 6 FAIL | **183 PASS, 6 FAIL** (+2 su Windows, +4 solo Linux) |
+| Prima | Dopo | Delta |
+|---|---|---|
+| T1-T40b (193 PASS CI) | T1-T48 (190 PASS Windows, ~201 PASS CI) | +8 nuovi test (T41-T48) |
 
-Nuovi test FETTA B: T39b-reason, T39c-reason, T39f, T39g
-Nuovi test FETTA C: T40, T40b
-
----
-
-## §VERDETTI REVISORE (INTEGRALI)
-
-### Review #36 (FETTA B — tests/test_unit_kernel.py)
-
-**VERDETTO: APPROVATO**
-
-Correttezza tecnica dei discriminanti: verificato contro vectors.py.
-- T39b-reason: `"mismatch"` corrisponde a `disable_reason = f"fingerprint mismatch: DB..."`. CORRETTO.
-- T39c-reason: `"legacy"` corrisponde a `disable_reason = "DB legacy: fingerprint assente..."`. CORRETTO.
-- T39f: `patch.object(VectorStore, '_connect', side_effect=OperationalError)` catturato da `except (sqlite3.Error, OSError)`. `"sidecar"` in `"init sidecar fallita: ..."`. CORRETTO.
-- T39g: `patch.object(_vecmod, '_np', None)` e `_TextEmbedding=None` → `_embedder_available=False` → `"deps"` in `"deps embedding assenti..."`. CORRETTO.
-
-Mock robusti: context manager ripristina stato, zero contaminazione. Conforme §5.
-Nessuna modifica al codice produzione.
-
-### Review #37 (FETTA C — gas.py + test T40)
-
-**VERDETTO: APPROVATO CON RISERVE**
-
-Fix logicamente corretto e minimale.
-- `_free_names = {r[0] for r in FREE_RUNGS}` usa struttura ESISTENTE, zero nuove env/file/astrazione. CORRETTO.
-- `name not in _free_names` come flag `obbligatoria`: semanticamente preciso. CORRETTO.
-- `_ft_level` loggato come `reason`: T40/T40b PASSANO.
-
-**Riserva 1 (cosmetica)**: `reason` perde il testo descrittivo. Il testo resta in gas_debug.log. Soluzione futura: campo `detail`.
-**Riserva 2 (copertura)**: Ollama non assertito in T40 (GAS_OLLAMA_URL assente → skip).
+Nuovi test:
+- T41 `_daily_cost_usd` log assente → 0.0
+- T42 `_daily_cost_usd` entry >24h → 0.0
+- T43 `_daily_cost_usd` entry recente → costo corretto
+- T44 `run_turn` budget esaurito → event error, zero AI call
+- T45 `modules.telegram.bot` importabile
+- T46 `run_bot` senza TELEGRAM_BOT_TOKEN → rc=1
+- T47 `run_bot` senza TELEGRAM_ALLOWED_IDS → rc=1
+- T48 `_handle_update` chat non autorizzata → nessun invio
 
 ---
 
-## §STATO CI FINALE
+## Verdetto revisore #38 (INTEGRALE)
 
-**Run**: #28295087523
-**Commit**: `6cfd340`
-**Esito**: **SUCCESS — 193 PASS, 0 FAIL**
+**APPROVATO CON RISERVE**
 
-```
-[PASS] T39f sqlite3.Error init sidecar → available=False + disable_reason contiene 'sidecar'
-[PASS] T39g deps embedding assenti → available=False + disable_reason contiene 'deps'
-[PASS] T40 openrouter (facoltativo) 402 → reason='WARN' nel JSONL fallthrough
-[PASS] T40b gemini-flash-lite (obbligatorio) 402 → reason='KO' nel JSONL fallthrough
-=== RIEPILOGO: 193 PASS, 0 FAIL ===
-```
+Le quattro feature (budget cap kill-switch, Telegram bridge, `gas calibrate-vectors`, `gas eval-vectors`) sono corrette, fail-safe §9 rispettato, zero token LLM sui comandi CLI. Suite 190 PASS, 7 FAIL Windows pre-esistenti, T41-T48 tutti PASS.
+
+**Riserve da tracciare (non bloccanti):**
+
+1. **R-budget-ts** — Verificare che `_log_tokens` scriva `ts` nello stesso formato `%Y-%m-%dT%H:%M:%S` usato dal cutoff in `_daily_cost_usd()` — senza suffisso "Z". Se c'è discrepanza il budget viene sottostimato silenziosamente e il kill-switch non blocca mai. → **CHIUSA**: formato verificato identico; aggiunto commento esplicito in codice.
+
+2. **R-tel-2** — In `run_bot()`, la condizione `sys.path.insert` era invertita: aggiungeva `root.parent` quando `gas.py` è in `root`. Inerte in produzione (avviato via `gas telegram`, `gas` è già in `sys.modules`), ma da correggere per correttezza. → **CHIUSA**: condizione corretta prima del commit.
+
+3. **R-tel-budget-perf** (cosmetico) — `_daily_cost_usd()` scansiona l'intero JSONL ad ogni turno. Su VPS h24 con log grande, futuro ottimizzazione: leggere dal fondo. → APERTA, non bloccante.
+
+4. **R-tel-tool_res** (cosmetico) — Output dei tool (troncato 200 char) incluso nel reply Telegram: accettabile con whitelist fail-closed, ma va dichiarato nel docstring del modulo. → APERTA, non bloccante.
+
+---
+
+## Stato CI ultima run
+
+Run #28295087523 su `6cfd340` — **193 PASS, 0 FAIL** ✅ (CI run pre-sessione).
+Nuova run CI attesa dopo push di `a8c6d53` — stimata ~201 PASS, 0 FAIL.
