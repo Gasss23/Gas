@@ -1,62 +1,56 @@
-# Ultimo Report — 2026-06-27 (chiusura 5 item roadmap)
+# Ultimo Report — 2026-06-27 (FASE 2.5 + verifica R-budget-tz)
 
 **Data**: 2026-06-27
-**Review gate**: #38 — APPROVATO CON RISERVE
-**Commit motore**: `a8c6d53`
+**Review gate**: #39 — APPROVATO CON RISERVE
+**Commit motore**: `65c4c7b`
 
 ---
 
-## Task: Chiusura di tutti e 5 gli item aperti del roadmap
+## Task 1: Verifica R-budget-tz (falsa riserva) ✅
 
-Tutti e 5 gli item aperti di `reports/roadmap.md` sono stati chiusi in questa sessione.
+Il SE aveva segnalato rischio MEDIO: `_log_tokens` potrebbe scrivere ora locale mentre `_daily_cost_usd` usa UTC.
 
----
-
-## Item 1 — Controllo spesa token (DEFINITIVO) ✅
-
-- Nuovo metodo `_daily_cost_usd()` su `GasKernel`: legge `.gas_tokens.jsonl`, somma costi 24h usando `_PROVIDER_PRICE_PER_MTok`. Zero token LLM. Fail-safe §9: log assente/corrotto → 0.0.
-- Kill-switch in `run_turn()`: legge `GAS_DAILY_TOKEN_BUDGET` (USD float via `_env_float`). Se configurato e budget superato: yield `{"type": "error", "content": "Budget giornaliero esaurito: $X.XXXX spesi (limite $Y.YY USD)."}` + `return`. Zero token consumati.
-- Formato timestamp `ts` verificato identico tra `_log_tokens` e cutoff (ISO 8601 senza "Z") — R-budget-ts chiusa.
-- Test T41-T44: tutti PASS (log assente, entry >24h, entry recente→costo corretto, budget esaurito→event error).
+**Verifica**: `_log_tokens` usa già `datetime.now(timezone.utc).strftime(...)` — stesso formato del cutoff in `_daily_cost_usd`. Entrambi i lati usano UTC esplicito. Nessun fix necessario. R-budget-tz **chiusa come falsa riserva**.
 
 ---
 
-## Item 2 — Accesso telefono: Telegram bridge bot ✅
+## Task 2: FASE 2.5 — Compressione automatica `.gas_history.json` ✅
 
-`modules/telegram/bot.py` + `modules/telegram/__init__.py`
+**Problema**: su VPS h24 la cronologia cresce indefinitamente (2-N messaggi per turno). Dopo settimane di attività la finestra satura i limiti token dei provider.
 
-- `run_bot()`: legge `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_IDS` (fail-closed: assenti → rc=1). Un `GasKernel` condiviso. Long polling `getUpdates timeout=60`. Fail-safe §9 su ogni iterazione.
-- `_handle_update()`: verifica whitelist chat_id, invia typing, chiama `run_turn()`, raccoglie eventi `final`/`tool_res`/`error`, `sendMessage` con troncamento a 4096 char.
-- Zero nuove dipendenze (urllib stdlib).
-- Correzione R-tel-2: `sys.path.insert` aveva condizione invertita — corretto.
-- Test T45-T48: tutti PASS (import, no token→rc=1, no ALLOWED_IDS→rc=1, chat non autorizzata→nessun invio).
+**Implementazione**:
 
-**Avvio VPS**: `export TELEGRAM_BOT_TOKEN=<token> TELEGRAM_ALLOWED_IDS=<chat_id> && gas telegram`
+### `_compress_history_if_needed(force=False)` su GasKernel
 
----
+Logica:
+1. Legge `GAS_HISTORY_MAX_MSGS` (default 100) e `GAS_HISTORY_KEEP_MSGS` (default 20) via `_env_int` fail-safe.
+2. Warning se keep > max (misconfiguration, R-comp-2 chiusa).
+3. Se `len(history) <= max_msgs` e non `force`: ritorna False (no-op).
+4. Costruisce riepilogo deterministico testuale dei messaggi `history[:-keep_msgs]`: role + content[:300] o nomi tool call.
+5. Allinea `recent = history[-keep_msgs:]` al primo user (scarta messaggi orfani al confine, R-comp-1 documentata).
+6. Sostituisce history con: `[user(riepilogo), assistant(ack)] + recent`.
+7. Chiama `_save_history()` e ritorna True.
+8. Fail-safe §9: qualsiasi eccezione → history invariata, ritorna False.
 
-## Item 3 — Calibrazione VEC_MIN_SIM (R-wire-1) ✅
+**Zero token LLM**. Compressione puramente deterministica.
 
-`gas calibrate-vectors [N]` → `calibrate_vectors_cmd()`
+### Auto-trigger in `run_turn()`
 
-- Campiona N righe diario, query semantica su ognuna (auto-match escluso), distribuzione score coseno.
-- Suggerisce `GAS_VECTORS_MIN_SIM = max(0.10, min(0.80, p25 - 0.05))`.
-- Strumento da eseguire al deploy VPS sul diario reale.
+```python
+self._compress_history_if_needed()   # FASE 2.5 — no-op se sotto soglia
+self._add_to_history("user", content=user_prompt)
+```
 
----
+### CLI `gas compress-history`
 
-## Item 4 — Evaluation e5-small vs MiniLM ✅
+Forza la compressione manuale (utile pre-deploy VPS o per reset del contesto).
 
-`gas eval-vectors [query] [k]` → `eval_vectors_cmd()`
+### Costanti di classe
 
-- Mostra: modello, dim, n. vettori, min_sim. Con query: top-k risultati con score e soglia.
-- `_MODEL_PREFIXES` già conteneva e5-small con prefissi corretti; zero cambio infra.
-
----
-
-## Item 5 — R-reidx-3 picco RAM ✅ (chiuso review #30, docs aggiornati)
-
-`ricostruisci_da_diario` usa batch paginati `REINDEX_BATCH_SIZE=256`. Su VPS CX22 4GB non bloccante.
+```python
+HISTORY_MAX_MSGS = 100   # trigger auto-compressione
+HISTORY_KEEP_MSGS = 20   # messaggi recenti preservati intatti
+```
 
 ---
 
@@ -64,24 +58,29 @@ Tutti e 5 gli item aperti di `reports/roadmap.md` sono stati chiusi in questa se
 
 | Ambiente | PASS | FAIL | Note |
 |---|---|---|---|
-| Windows (PYTHONUTF8=1) | 190 | 7 | 7 FAIL pre-esistenti (bwrap, WinError32) |
-| CI Linux (attesa) | ~201 | 0 | +8 nuovi test rispetto a 193 precedenti |
+| Windows (PYTHONUTF8=1) | 194 | 7 | 7 FAIL pre-esistenti (bwrap, WinError32) |
+| CI Linux (attesa) | ~205 | 0 | +4 test rispetto a 201 precedenti |
+
+**Test nuovi (T49-T52)**:
+- T49: sotto soglia → False, history invariata
+- T50: sopra soglia → True, struttura user(riepilogo)/assistant(ack)/recenti
+- T51: force=True → comprime sempre indipendentemente dalla soglia
+- T52: persistenza su disco — rilettura coerente
 
 ---
 
-## Riserve review #38 (non bloccanti)
+## Riserve review #39 (non bloccanti)
 
-- **R-tel-budget-perf**: scan JSONL completo ad ogni turno — ottimizzazione futura (lettura dal fondo).
-- **R-tel-tool_res**: tool output compressi nel reply Telegram — accettabile, annotare nel docstring.
+- **R-comp-1**: messaggi al confine old→recent scartati dall'allineamento (documentato nel docstring).
+- **R-comp-2**: misconfiguration keep>max → warning logging aggiunto.
+- **R-comp-3**: test edge-case "nessun user in recent" e misconfiguration — futuri.
 
 ---
 
-## Diff stat motore (commit a8c6d53)
+## Diff stat motore (commit 65c4c7b)
 
 ```
-gas.py                       | 155 +++++++++++++++++++++++++++++++++
-modules/telegram/__init__.py |   0
-modules/telegram/bot.py      | 198 +++++++++++++++++++++++++++++++++++++++++++
-tests/test_unit_kernel.py    |  93 ++++++++++++++++++++
-4 files changed, 446 insertions(+)
+gas.py                    | 100 +++++++++++++++++++++++++++
+tests/test_unit_kernel.py |  67 ++++++++++++++++++
+2 files changed, 167 insertions(+)
 ```

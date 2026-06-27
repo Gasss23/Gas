@@ -1,16 +1,17 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-27** (chiusura tutti 5 item aperti roadmap — review #38, commit a8c6d53)
+> Ultimo aggiornamento: **2026-06-27** (FASE 2.5 compressione history review #39 + verifica R-budget-tz chiusa)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **38 review** completate. Suite: **193 PASS, 0 FAIL** (CI Linux attesa).
-(Windows locale: 190 PASS, 7 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
-CI GitHub Actions: da aggiornare dopo push (ultima verde: run #28295087523 su 6cfd340).
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **39 review** completate. Suite: **~205 PASS, 0 FAIL** (CI Linux attesa).
+(Windows locale: 194 PASS, 7 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
+CI GitHub Actions: da aggiornare dopo push.
 
 **🎯 Tutti e 5 gli item aperti del roadmap chiusi** (2026-06-27, review #38, commit a8c6d53).
+**✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -25,6 +26,7 @@ Componenti attive:
 - **Budget cap** (review #38): `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` in `run_turn`
 - **Telegram bridge** (review #38): `gas telegram` → `modules/telegram/bot.py` (long polling, `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_IDS`)
 - **CLI vettori** (review #38): `gas calibrate-vectors` (distribuzione score → suggerisce min_sim) + `gas eval-vectors [query]` (ricerca semantica interattiva)
+- **Compressione history** (review #39, FASE 2.5): `_compress_history_if_needed()` auto-trigger in `run_turn`; `gas compress-history` CLI. Env: `GAS_HISTORY_MAX_MSGS` (default 100), `GAS_HISTORY_KEEP_MSGS` (default 20). Zero token LLM.
 - Telemetria fallthrough (review #33): `_log_tokens` con `event`/`reason`; doctor sez.10
 - `VectorStore.disable_reason` (review #35/36): motivo disable propagato a `gas doctor`
 
@@ -58,7 +60,7 @@ Componenti attive:
 
 ## Prossimi passi (in ordine di priorità)
 
-1. **FASE 2.5 — Summarizzazione cronologia**: prerequisito VPS h24 (`.gas_history.json` cresce indefinitamente).
+1. ~~**FASE 2.5**~~ ✅ chiusa (review #39, 2026-06-27).
 2. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 3. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (prerequisito Jarvis reale).
 4. **FASE 5 — Deploy VPS Hetzner**: al deploy attivare `gas telegram` come daemon (systemd), `gas calibrate-vectors` per ri-tarare VEC_MIN_SIM, checklist (R-vec-3, R-reidx-deps, R-wire-1).
@@ -73,7 +75,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **38 review**. Ultima: **#38** (chiusura 5 item roadmap: budget cap + Telegram + calibrate/eval-vectors, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **39 review**. Ultima: **#39** (FASE 2.5 compressione history, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
