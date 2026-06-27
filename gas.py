@@ -1622,16 +1622,21 @@ def doctor(root_dir: Optional[str] = None) -> int:
 
     # TASK B — vector store visibility (chiude R-reidx-deps): controlla SOLO
     # importabilità/flag, NIENTE download del modello né embedding. Zero token.
+    # D1: usa lo stesso path che userebbe GasKernel.__init__ (rispetta GAS_VECTORS_DB).
+    # D2: legge disable_reason da VectorStore per WARN specifico anziché generico.
     if _env_flag("GAS_VECTORS"):
         try:
             from modules.memory.vectors import VectorStore as _VS
-            _vs_probe = _VS(default_vectors_path(root))  # init: DB sidecar, NO model load
+            _vec_db_env = os.environ.get("GAS_VECTORS_DB", "").strip()
+            _vec_probe_path = Path(_vec_db_env).resolve() if _vec_db_env else default_vectors_path(root)
+            _vs_probe = _VS(_vec_probe_path)  # init: DB sidecar, NO model load
             if _vs_probe.available:
                 check("Memoria", "vector store", "OK",
                       "dipendenze ok, sidecar apribile (GAS_VECTORS=1)")
             else:
+                _dr = getattr(_vs_probe, "disable_reason", "") or "non disponibile"
                 check("Memoria", "vector store", "WARN",
-                      "GAS_VECTORS=1 ma non disponibile (deps assenti o sidecar corrotto)")
+                      f"GAS_VECTORS=1 ma disabilitato: {_dr}")
         except Exception as _e:
             check("Memoria", "vector store", "WARN",
                   f"GAS_VECTORS=1 ma errore probe ({str(_e)[:50]})")

@@ -153,6 +153,7 @@ class VectorStore:
         self._embedder_available: bool = (_np is not None) and (
             embed_fn is not None or _TextEmbedding is not None)
         self._db_available: bool = False
+        self.disable_reason: str = ""   # motivo leggibile se available è False (D2)
         # Fingerprint-guard (R-vec-2b): un DB con vettori di un altro modello restituisce
         # similarity sbagliate SENZA errore ("la memoria mente"). Il guard è fail-closed:
         # mismatch o provenienza ignota → layer DISABILITATO, turno PROSEGUE (§9).
@@ -177,6 +178,7 @@ class VectorStore:
                             "provenienza ignota) — layer disabilitato. "
                             "Esegui 'gas reindex' per ricostruire con il modello corrente.",
                             self.db_path)
+                        self.disable_reason = "DB legacy: fingerprint assente — esegui 'gas reindex'"
                         _guard_ok = False
                     else:
                         stored_model, stored_dim = fp
@@ -188,13 +190,20 @@ class VectorStore:
                                 "con il modello corrente.",
                                 self.db_path, stored_model, stored_dim,
                                 self.model_name, self.dim)
+                            self.disable_reason = (
+                                f"fingerprint mismatch: DB {stored_model!r} != "
+                                f"configurato {self.model_name!r} — esegui 'gas reindex'"
+                            )
                             _guard_ok = False
         except (sqlite3.Error, OSError) as e:
             log.warning("VectorStore: init sidecar fallita su %s (%s) — degrado",
                         self.db_path, e)
+            self.disable_reason = f"init sidecar fallita: {str(e)[:80]}"
             _guard_ok = False
         if _guard_ok:
             self._db_available = True
+        if self._db_available and not self._embedder_available:
+            self.disable_reason = "deps embedding assenti (numpy o fastembed mancanti)"
 
     @property
     def available(self) -> bool:

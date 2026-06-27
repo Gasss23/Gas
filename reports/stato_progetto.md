@@ -47,6 +47,7 @@ Componenti attive:
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - ✅ **CI-4** — risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
 - 🟡 **R-tel-1** (review #33, 2026-06-27) — `obbligatoria=True` hardcoded nel loop runtime per `_classify_provider_error`: i provider facoltativi (openrouter/ollama) ricevono motivo `"KO"` invece di `"WARN"` nel campo `reason` del JSONL. Puramente cosmetico/diagnostico, nessun impatto funzionale. Da valutare a occasione ri-taratura VPS.
+- 🟡 **Riserve review #35** (2026-06-27, D1/D2 disable_reason): T39b/c non assertiscono il valore di `disable_reason` (solo `available=False`); mancano test per rami `sqlite3.Error` e embedder-unavailable. Nessun impatto funzionale — copertura test da completare a prossima occasione.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
 ## Prossimi passi (in ordine di priorità)
