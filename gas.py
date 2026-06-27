@@ -404,18 +404,24 @@ class GasKernel:
         except Exception as e:
             logging.error(f"Errore scrittura storico: {e}")
 
-    def _log_tokens(self, provider: str, model: str, in_tok: int, out_tok: int) -> None:
+    def _log_tokens(self, provider: str, model: str, in_tok: int, out_tok: int,
+                    event: str = "call", reason: Optional[str] = None) -> None:
         """Appende una riga JSONL al log token (TOKEN_LOG_FILENAME). Fail-safe: un
         errore di I/O non interrompe mai il turno (§9). Log per-chiamata API, non
-        per-turno: cattura ogni round-trip inside il loop agentico."""
+        per-turno: cattura ogni round-trip inside il loop agentico.
+        event="call" (default) = risposta ricevuta; event="fallthrough" = provider
+        fallito e cascata al successivo (in/out=0, reason=motivo classificato)."""
         try:
-            record = {
+            record: Dict[str, Any] = {
                 "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
                 "provider": provider,
                 "model": model,
                 "in": int(in_tok),
                 "out": int(out_tok),
+                "event": event,
             }
+            if reason is not None:
+                record["reason"] = reason
             log_path = self.root / TOKEN_LOG_FILENAME
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -1391,6 +1397,10 @@ class GasKernel:
                     ]
                     logging.warning(f"Diagnosi 400 {name}: payload = {' | '.join(seq)}")
                 logging.warning(f"Provider {name} ({model}) fallito: {e}")
+                _, _ft_reason = _classify_provider_error(
+                    getattr(e, "status_code", None), str(e), True)
+                self._log_tokens(name, model, 0, 0,
+                                 event="fallthrough", reason=_ft_reason)
                 continue
         yield {"type": "error", "content": "Pipeline esausta."}
 
@@ -1645,6 +1655,44 @@ def doctor(root_dir: Optional[str] = None) -> int:
         check("Config", "VECTORS_DB", "OK",
               f"{_cfg_vdb}" + ("" if os.environ.get("GAS_VECTORS_DB") else " (default)"))
 
+    # 10. Telemetria runtime: call count + fallthrough per-provider dal log token.
+    # Lettura locale (.gas_tokens.jsonl), zero token LLM, zero ping.
+    _tok_path = root / TOKEN_LOG_FILENAME
+    if not _tok_path.exists():
+        check("Telemetria", TOKEN_LOG_FILENAME, "OK",
+              "assente (si popola dal primo run agentico)")
+    else:
+        try:
+            _tel: Dict[str, Dict] = {}
+            with open(_tok_path, "r", encoding="utf-8") as _tf:
+                for _tline in _tf:
+                    _tline = _tline.strip()
+                    if not _tline:
+                        continue
+                    try:
+                        _rec = json.loads(_tline)
+                    except Exception:
+                        continue
+                    _pv = _rec.get("provider", "?")
+                    _ev = _rec.get("event", "call")
+                    if _pv not in _tel:
+                        _tel[_pv] = {"calls": 0, "fallthrough": 0, "last_reason": ""}
+                    if _ev == "fallthrough":
+                        _tel[_pv]["fallthrough"] += 1
+                        if _rec.get("reason"):
+                            _tel[_pv]["last_reason"] = _rec["reason"]
+                    else:
+                        _tel[_pv]["calls"] += 1
+            for _pv, _td in sorted(_tel.items()):
+                _ft = _td["fallthrough"]
+                _det = f"calls={_td['calls']}, fallthrough={_ft}"
+                if _ft > 0 and _td["last_reason"]:
+                    _det += f", ultimo: {_td['last_reason'][:50]}"
+                check("Telemetria", _pv, "WARN" if _ft > 0 else "OK", _det)
+        except Exception as _te:
+            check("Telemetria", "lettura log", "WARN",
+                  f"errore lettura {TOKEN_LOG_FILENAME}: {str(_te)[:50]}")
+
     # Report tabellare
     print("\n=== GAS DOCTOR ===\n")
     for r in results:
@@ -1767,27 +1815,43 @@ def tokens_cmd(root_dir: Optional[str] = None, days: Optional[int] = None) -> in
     except Exception:
         pass
 
-    # Aggregazione globale e per provider (token + costo stimato)
+    # Aggregazione globale e per provider: separa call (event="call" o assente,
+    # retrocompatibile) da fallthrough (event="fallthrough").
     totali: Dict[str, Dict] = {}
     recenti: Dict[str, Dict] = {}
+    ft_totali: Dict[str, Dict] = {}    # fallthrough globali
+    ft_recenti: Dict[str, Dict] = {}   # fallthrough ultimi N giorni
     for r in records:
         prov = r.get("provider", "?")
+        evt = r.get("event", "call")   # retrocompat: assente → "call"
         try:
             in_t = int(r.get("in", 0))
             out_t = int(r.get("out", 0))
         except (TypeError, ValueError):
             continue  # record JSONL malformato — skip silenzioso (§9)
-        p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(prov, (0.0, 0.0))
-        cost = in_t * p_in / 1_000_000 + out_t * p_out / 1_000_000
-        for bucket, cond in ((totali, True), (recenti, cutoff is not None and r.get("ts", "") >= cutoff)):
-            if not cond:
-                continue
-            if prov not in bucket:
-                bucket[prov] = {"turns": 0, "in": 0, "out": 0, "cost": 0.0}
-            bucket[prov]["turns"] += 1
-            bucket[prov]["in"] += in_t
-            bucket[prov]["out"] += out_t
-            bucket[prov]["cost"] += cost
+        is_recent = cutoff is not None and r.get("ts", "") >= cutoff
+        if evt == "fallthrough":
+            reason = r.get("reason") or ""
+            for bucket, cond in ((ft_totali, True), (ft_recenti, is_recent)):
+                if not cond:
+                    continue
+                if prov not in bucket:
+                    bucket[prov] = {"count": 0, "last_reason": ""}
+                bucket[prov]["count"] += 1
+                if reason:
+                    bucket[prov]["last_reason"] = reason
+        else:
+            p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(prov, (0.0, 0.0))
+            cost = in_t * p_in / 1_000_000 + out_t * p_out / 1_000_000
+            for bucket, cond in ((totali, True), (recenti, is_recent)):
+                if not cond:
+                    continue
+                if prov not in bucket:
+                    bucket[prov] = {"turns": 0, "in": 0, "out": 0, "cost": 0.0}
+                bucket[prov]["turns"] += 1
+                bucket[prov]["in"] += in_t
+                bucket[prov]["out"] += out_t
+                bucket[prov]["cost"] += cost
 
     has_costs = any(d["cost"] > 0 for d in totali.values())
     cost_lbl = "Costo (★ USD)" if has_costs else "Costo"
@@ -1811,6 +1875,16 @@ def tokens_cmd(root_dir: Optional[str] = None, days: Optional[int] = None) -> in
             print(f"  {prov:<20} {d['in']:,} in + {d['out']:,} out = {d['in']+d['out']:,} tok  ${d['cost']:.4f}")
         print(f"  {'TOTALE':<20} {sum(d['in'] for d in recenti.values()):,} in + "
               f"{sum(d['out'] for d in recenti.values()):,} out  ${r_cost:.4f}")
+
+    if ft_totali:
+        print(f"\nFallthrough (provider falliti → cascata al successivo):")
+        fhdr = f"  {'Provider':<20} {'Tot':>5} {'Ultimi '+str(n_days)+'gg':>12}  Ultimo motivo"
+        print(fhdr)
+        print("  " + "─" * (len(fhdr) - 2))
+        for prov, d in sorted(ft_totali.items()):
+            ft_rec = ft_recenti.get(prov, {}).get("count", 0)
+            reason = d.get("last_reason", "")[:50]
+            print(f"  {prov:<20} {d['count']:>5,} {ft_rec:>12,}  {reason}")
 
     if has_costs:
         print("\n  ★ prezzi appross. (2025-06) — aggiornare _PROVIDER_PRICE_PER_MTok se cambiano")

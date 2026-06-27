@@ -1,13 +1,13 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-27** (fix template `/fine-task`: range sessione dinamico + esito fette)
+> Ultimo aggiornamento: **2026-06-27** (telemetria fallthrough per-provider: review #33)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **32 review** completate. Suite: **171 PASS, 7 FAIL**
-(7 FAIL ambientali Windows pre-esistenti: bwrap T11/T12/T13d2, WinError32 T26b — T9a/T9c ora SKIP condizionale in CI).
+FASE 1 ✅ e FASE 2 ✅ chiuse. **33 review** completate. Suite: **172 PASS, 6 FAIL**
+(6 FAIL ambientali Windows pre-esistenti: bwrap T11/T12, WinError32 T26b — T9a/T9c ora SKIP condizionale in CI).
 CI GitHub Actions (`.github/workflows/ci.yml`): BWRAP_OK confermato sul runner Linux; **CI-4 risolto** (2026-06-24): T9a/T9c ora [SKIP] su assenza API key, job verde.
 
 Componenti attive:
@@ -19,7 +19,8 @@ Componenti attive:
 - Vector store `.gas_vectors.db` opt-in `GAS_VECTORS` (MiniLM 384-dim, cosine brute-force)
 - CRM dal loop: tool `salva_contatto`/`imposta_stato_contatto`, identità su `chiave_norm` NFKC
 - Iniezione always-on `_memoria_pin` (system msg) + tool `ricorda` (sola lettura)
-- CLI `gas doctor` / `gas reindex` / `gas backup` / **`gas tokens [N_giorni]`** (contabilità token + stima costi USD)
+- CLI `gas doctor` / `gas reindex` / `gas backup` / **`gas tokens [N_giorni]`** (contabilità token + stima costi USD + sezione fallthrough)
+- **Telemetria fallthrough** (review #33, 2026-06-27): `_log_tokens` estesa con `event`/`reason`; fallthrough loggato nell'`except` di `run_turn` via `_classify_provider_error`; `gas tokens` separa call da fallthrough; `gas doctor` sez.10 mostra contatori per-provider
 
 ## Pipeline provider (paracadute)
 
@@ -44,6 +45,7 @@ Componenti attive:
 - ✅ **MEMORY_PIN_SCAN hardcoded** — `GAS_MEMORY_PIN_SCAN` configurabile via env, min_val=10 (review #31, 2026-06-25).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - ✅ **CI-4** — risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
+- 🟡 **R-tel-1** (review #33, 2026-06-27) — `obbligatoria=True` hardcoded nel loop runtime per `_classify_provider_error`: i provider facoltativi (openrouter/ollama) ricevono motivo `"KO"` invece di `"WARN"` nel campo `reason` del JSONL. Puramente cosmetico/diagnostico, nessun impatto funzionale. Da valutare a occasione ri-taratura VPS.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
 ## Prossimi passi (in ordine di priorità)
@@ -63,7 +65,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **32 review**. Ultima: **#32** (stima costi token, 2026-06-25). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **33 review**. Ultima: **#33** (telemetria fallthrough, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
