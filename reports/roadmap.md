@@ -30,10 +30,24 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 3. **R-wire-1 (RESIDUO) — ri-taratura di `VEC_MIN_SIM` sul primo diario reale del VPS.** La configurabilità via env è ✅ FATTA (2026-06-21, review #28): helper `_env_float` fail-safe + clamp [0,1], override `GAS_VECTORS_MIN_SIM` risolto in `__init__` come `CATCHUP_MAX`, default di classe 0.30 INVARIATO. Resta SOLO la ri-taratura del valore, che richiede il diario reale (il MiniLM separa debolmente le query corte IT) → voce CHECKLIST pre-deploy VPS, niente redeploy necessario per cambiarlo.
 4. **Valutare il modello e5-small al posto di MiniLM** (qualità del retrieval italiano), legato a R-vec-3. [VPS CX22 = 4GB RAM — il vincolo memoria non è più critico (~504MB = 12% RAM); la scelta del modello può essere guidata da qualità e portabilità ARM, non da RAM.]
 5. **R-reidx-3 — picco RAM di `gas reindex` su diario grande** (materializza tutti gli embedding prima del DELETE) → voce CHECKLIST pre-deploy VPS. [VPS confermato Hetzner CX22 = 4GB RAM — vincolo "1GB" obsoleto; criticità da ri-valutare su base 4GB: probabilmente non bloccante, ma verificare con diario reale.]
-6. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
-7. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include il backup OFF-MACHINE della memoria.
+6. **FASE 2.5 — Summarizzazione cronologia** (prerequisito VPS; vedi FASE 2.5 sotto).
+7. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi FASE 3 sotto).
+8. **FASE 4.5 — Task scheduler autonomo** (prerequisito Jarvis reale; vedi FASE 4.5 sotto).
+9. **FASE 5 — Migrazione/deploy su VPS Hetzner** (target indicato dall'utente; vedi FASE 5 sotto). Include backup OFF-MACHINE + process management systemd.
 
 > Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`).
+
+### 🗂️ FASE 2.5 — Summarizzazione Cronologia (Prerequisito VPS h24)
+
+Senza questa fase, `.gas_history.json` cresce indefinitamente h24 sul VPS. `_get_window()` taglia ma non comprime — il contesto esplode in settimane.
+
+- **Trigger:** quando la storia supera N messaggi (es. 200), Gas condensa la parte più vecchia in un "blocco riassunto" testuale.
+- **Destinazione:** il riassunto finisce nel system prompt (come estensione del `gas_identity.md`) + una riga nel diario (così è recuperabile via FTS/semantico). Il file `.gas_history.json` si resetta alla finestra recente.
+- **Fail-safe §9:** se la summarizzazione fallisce, si mantiene la storia tronca via `_get_window()` — niente crash, degrado silenzioso.
+- **Modello preferito:** Gemini Flash (context lungo, basso costo) per la condensazione; Claude solo in fallback.
+- **Dipendenze:** nessuna — si inserisce nel kernel come step in `_load_history()` o in `save_history()`.
+
+---
 
 ### 🎙️ FASE 3 — Interfaccia Vocale (Priorità Media — Core Feature)
 - Whisper (STT) per ricevere comandi vocali diretti (input terminale a mani libere durante lo sviluppo).
@@ -43,10 +57,30 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 - Modulo Meta Ads e automazione della lead generation.
 - Algoritmi di persuasione locali per il copy e i DM di marketing.
 
+### 🤖 FASE 4.5 — Task Scheduler Autonomo (Prerequisito Jarvis reale)
+
+Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di notte. Prerequisito logico al deploy h24.
+
+- **Catalogo task autonomi:** lista configurabile di intenzioni che Gas esegue su schedule (es. "rassegna stampa lead dal diario", "follow-up DM scaduti da CRM", "report giornaliero token + stato contatti"). Il catalogo è un file YAML/JSON (non codice hard-coded) — l'utente può aggiungere task senza toccare il motore.
+- **Loop scheduler:** cron interno (o systemd timer) che a orari configurabili istanzia `GasKernel`, esegue il task dalla lista, salva il risultato nel diario, chiude. Ogni run è atomico e indipendente — un fallimento non blocca il prossimo.
+- **Fail-safe §9:** se un task crasha, il loop lo logga in `gas_debug.log`, salta al prossimo, NON va in loop infinito (cap 10 iterazioni già presente).
+- **Convergenza col bridge Telegram (item #2):** il bot può triggerare task dal telefono + ricevere l'output — stessa infrastruttura.
+- **Dipendenze:** FASE 2.5 (storia non infinita) + FASE 5 (process management) — va implementata insieme al deploy.
+
+---
+
 ### 🚀 FASE 5 — Autonomia Totale & VPS (Priorità Lunga)
 - Migrazione/deploy su **VPS Hetzner** (target indicato dall'utente) h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
 - Backup OFF-MACHINE della memoria (copia di `.gas_memory.db` su volume/host esterno) — vera protezione anti-disastro disco, banale perché il DB è un file singolo.
 - Automazione canali brand.
+- **Process management + self-healing:** systemd unit con `Restart=always` + `RestartSec=10` per sopravvivere ai crash notturni senza presidio. Alert Telegram se Gas non risponde da N minuti (watchdog). Convergenza col bridge bot (item #2): stessa infrastruttura per notifiche push e comandi da telefono. Senza questo, un crash alle 3am blocca Jarvis fino al mattino.
 
 ### 💡 Idee da valutare (NON prioritarie)
 - Valutare utilizzo o integrazione openclaw (agente IA esterno). NB: prima verificare licenza, dipendenze, qualità e superficie di sicurezza; mai copia-incolla nel motore. Idea parcheggiata, nessun impegno.
+
+### 🗣️ DA DISCUTERE (delta da roadmap alternativa — da valutare se/quando fare)
+- **`gas --brain <name>`** — flag CLI esplicito per scegliere il brain sul singolo comando (es. `gas --brain gemini "analizza log"`), con ruoli distinti: Claude = Architetto (strategia/approvazione), Gemini = Memoria (contesti fino a 1-2M token), DeepSeek = Operaio (alta frequenza, basso costo). Oggi la cascata è automatica; questo aggiunge controllo umano diretto.
+- **DeepSeek V4 Flash come operaio di default** — alternativa/complemento a Groq per task ad alta frequenza ($0.14 input / $0.28 output per M token + context caching aggressivo). Da valutare rispetto a Groq già integrato: se vale la complessità di un provider in più.
+- **"Il Consiglio" — dettaglio implementativo** (espansione della voce già parcheggiata): invocazione automatica dopo N fallimenti di test consecutivi (blocco loop cieco per risparmiare token); sotto-agenti specializzati low-cost (Contrarian del Cloud, First-Principles Thinker, L'Esecutore) che dibattono su DeepSeek V4 Flash; sintesi del log passata a Claude (The Chairman) per verdetto e patch finale. Da discutere: N soglia, costo del consiglio vs costo del loop cieco, integrazione col revisore.
+- **`revisore.md` modulare** — scomposizione del profilo del revisore in micro-profili caricati dinamicamente da Gas a seconda del task (es. "review sicurezza", "review CRM", "review memoria"). Obiettivo: abbattere i token fissi iniettati a ogni chiamata. Da valutare impatto reale vs complessità di gestione.
+- **Notifiche push sullo smartphone** per monitorare i deploy e i run sul VPS (es. alert se Gas crasha, se la CI diventa rossa, se un job notturno finisce). Da valutare insieme al bridge bot Telegram (già in item #2) — potrebbero essere la stessa cosa.

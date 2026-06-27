@@ -62,13 +62,15 @@ Spesa rilevata 20€ in 2 giorni (22–23 giu 2026): 100% costo di sviluppo Clau
 
 - FASE 1 — Blindatura & Sicurezza — ✅ CHIUSA (sandbox bwrap, WINDOW_CHAR_CAP, snapshot)
 - FASE 2 — Cervello & Memoria Low-Cost — ✅ CHIUSA (SQLite diario+CRM, FTS5, vector store, backup)
+- FASE 2.5 — Summarizzazione cronologia (compressione .gas_history.json h24) — futura
 - FASE 3 — Interfaccia Vocale (Whisper STT + ElevenLabs TTS) — futura
 - FASE 4 — Moduli di Business (Meta Ads, lead gen) — futura
-- FASE 5 — Deploy VPS Hetzner h24 + backup off-machine — futura
+- FASE 5 — Deploy VPS Hetzner h24 + backup off-machine + process management (systemd + self-healing) — futura
 
 **Item aperti TOP:**
 1. 🔴 Controllo spesa token (DIAGNOSI: sviluppo vs runtime, cap giornaliero, routing cheap-by-default)
 2. 📱 Accesso Claude Code da telefono (claude.ai/code, bridge bot Telegram, SSH tmux)
 3. R-wire-1 residuo: ri-taratura VEC_MIN_SIM su diario reale VPS (env già configurabile)
+4. 🤖 Task scheduler autonomo (catalogo task notturni — prerequisito Jarvis reale su VPS)
 
 Dettaglio completo, completati storici e priorità: reports/roadmap.md
