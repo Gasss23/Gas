@@ -2538,6 +2538,52 @@ check("T39g deps embedding assenti → available=False + disable_reason contiene
       _vs39g.available is False and "deps" in _vs39g.disable_reason,
       f"available={_vs39g.available} reason={_vs39g.disable_reason!r}")
 
+# ---------- T40: R-tel-1 — rung facoltativi → reason='WARN', obbligatori → 'KO' ----------
+# Tutti i provider falliscono con 402 (crediti esauriti). Dopo il fix di R-tel-1:
+#   - obbligatori (gemini-flash-lite, gemini-flash, groq) → reason="KO"
+#   - facoltativi (openrouter)                            → reason="WARN"
+class _Fake402Error40(Exception):
+    status_code = 402
+class _FakeCompletions40:
+    def create(self, model=None, **kwargs):
+        raise _Fake402Error40("402 Payment Required")
+class _FakeOpenAI40:
+    def __init__(self, base_url=None, api_key=None):
+        self.chat = SimpleNamespace(completions=_FakeCompletions40())
+_env_save40 = {k: os.environ.pop(k, None)
+               for k in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+os.environ["GEMINI_API_KEY"] = "dummy-gemini-40"
+os.environ["GROQ_API_KEY"] = "dummy-groq-40"
+os.environ["OPENROUTER_API_KEY"] = "dummy-or-40"
+gas.OpenAI = _FakeOpenAI40
+try:
+    k40 = kernel_tmp()
+    list(k40.run_turn("test tel"))
+finally:
+    gas.OpenAI = _vero_openai
+    for _kk40, _vv40 in _env_save40.items():
+        if _vv40 is not None: os.environ[_kk40] = _vv40
+        else: os.environ.pop(_kk40, None)
+_jsonl40 = k40.root / gas.TOKEN_LOG_FILENAME
+_ft40: dict = {}
+if _jsonl40.exists():
+    with open(_jsonl40, encoding="utf-8") as _f40:
+        for _line40 in _f40:
+            _line40 = _line40.strip()
+            if not _line40: continue
+            try:
+                _r40 = json.loads(_line40)
+                if _r40.get("event") == "fallthrough":
+                    _ft40[_r40["provider"]] = _r40.get("reason")
+            except Exception:
+                pass
+check("T40 openrouter (facoltativo) 402 → reason='WARN' nel JSONL fallthrough",
+      _ft40.get("openrouter") == "WARN",
+      f"fallthrough reasons: {_ft40}")
+check("T40b gemini-flash-lite (obbligatorio) 402 → reason='KO' nel JSONL fallthrough",
+      _ft40.get("gemini-flash-lite") == "KO",
+      f"fallthrough reasons: {_ft40}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

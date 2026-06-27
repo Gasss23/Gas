@@ -1307,6 +1307,7 @@ class GasKernel:
             ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE_MODEL),
             ("ollama",     "GAS_OLLAMA_URL",     OLLAMA_URL,     OLLAMA_MODEL),
         ]
+        _free_names = {r[0] for r in FREE_RUNGS}  # {"openrouter", "ollama"}
 
         if compito == "semplice":
             providers = [
@@ -1397,10 +1398,10 @@ class GasKernel:
                     ]
                     logging.warning(f"Diagnosi 400 {name}: payload = {' | '.join(seq)}")
                 logging.warning(f"Provider {name} ({model}) fallito: {e}")
-                _, _ft_reason = _classify_provider_error(
-                    getattr(e, "status_code", None), str(e), True)
+                _ft_level, _ = _classify_provider_error(
+                    getattr(e, "status_code", None), str(e), name not in _free_names)
                 self._log_tokens(name, model, 0, 0,
-                                 event="fallthrough", reason=_ft_reason)
+                                 event="fallthrough", reason=_ft_level)
                 continue
         yield {"type": "error", "content": "Pipeline esausta."}
 
