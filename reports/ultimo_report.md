@@ -1,56 +1,68 @@
-# Ultimo Report — 2026-06-27 — Build telemetria fallthrough per-provider
+# Ultimo Report — 2026-06-27 — R-vec-2b: fingerprint-guard fail-closed su .gas_vectors.db
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna. Opzione A (stesso `.gas_tokens.jsonl` con campo `event`) implementata e approvata dal revisore.
+Nessuna. Design approvato a priori nella specifica del task.
 
 ---
 
 ## FETTE
 
-- **FETTA UNICA — Build telemetria (gas.py)**: `FATTA`
-  4 punti implementati, revisore #33 APPROVATO CON RISERVE (R-tel-1 cosmetica, tracciata).
+- **Sonda (read-only)**: `FATTA` — letta la struttura del VectorStore, verificato schema assenza metadata, identificato punto d'aggancio.
+- **Fetta unica — Build fingerprint-guard**: `FATTA` — 4 modifiche a vectors.py, 5 test T39a-e, revisore #34 APPROVATO CON RISERVE (R1 commento TOC-TOU aggiunto, R2 test T39e aggiunto).
 
 ---
 
 ## DETTAGLIO MODIFICHE
 
-### 1. `_log_tokens` (gas.py:407-430)
-Estesa con parametri opzionali `event: str = "call"` e `reason: Optional[str] = None`.
-- `event="call"` (default) → comportamento invariato, record JSONL retrocompatibili
-- `event="fallthrough"` → in/out=0, reason=motivo classificato
-- Campo `event` ora sempre presente nel record; `reason` solo se non-None
+### Problema
 
-### 2. Aggancio fallthrough in `run_turn` (gas.py:1397-1400)
-Nell'`except` del loop provider, dopo il `logging.warning`:
-```python
-_, _ft_reason = _classify_provider_error(
-    getattr(e, "status_code", None), str(e), True)
-self._log_tokens(name, model, 0, 0, event="fallthrough", reason=_ft_reason)
+`GAS_EMBED_MODEL` è configurabile via env (R-vec-2 ✅), ma cambiarla su un `.gas_vectors.db` già popolato produceva similarity sbagliate SENZA errore: modelli con stessa dim (es. e5-small e MiniLM-L12, entrambi 384-dim) non sono intercambiabili. "La memoria mente" silenziosamente.
+
+### Soluzione
+
+**1. Tabella `metadata` nel sidecar** (`_SCHEMA`, vectors.py:119-125)
+```sql
+CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)
 ```
-`_classify_provider_error` è il classificatore già usato in `doctor()` — ora collegato anche al loop runtime (prima era "morto" per il loop).
+Due righe: `('model_id', nome_modello)` e `('model_dim', str(dim))`.
 
-### 3. `tokens_cmd` (gas.py:1815-1891)
-- Aggregazione separata: `totali`/`recenti` per call, `ft_totali`/`ft_recenti` per fallthrough
-- I record fallthrough (in/out=0) non entrano nel calcolo costo USD
-- Nuova sezione di output "Fallthrough" mostrata solo se ft_totali non vuoto: Provider, Tot, UltimiNgg, Ultimo motivo
+**2. Check fingerprint in `__init__`** (vectors.py:156-192)
+- `_db_existed = self.db_path.exists()` prima del connect (TOC-TOU accettabile, single-process).
+- DB appena creato (`not _db_existed`) → scrivi il fingerprint, procedi.
+- DB pre-esistente:
+  - fingerprint assente (legacy) → `_guard_ok = False`, log chiaro + istruzione `gas reindex`.
+  - fingerprint mismatch (model_id O dim diversi) → `_guard_ok = False`, log con valori stored vs corrente.
+  - fingerprint coincidente → procedi.
+- `_db_available = True` solo se `_guard_ok`.
 
-### 4. `doctor()` sez.10 Telemetria (gas.py:1655-1698)
-Lettura locale `.gas_tokens.jsonl` — zero token LLM, zero ping.
-- Log assente → `[OK] assente (si popola dal primo run agentico)`
-- Log presente → per provider: `calls=N, fallthrough=M` + ultimo motivo se M>0
-- Esito: OK se nessun fallthrough, WARN se almeno uno
-- Fail-safe triplo: file assente, record malformati, eccezione generica
+**3. Helper `_read_fingerprint` / `_write_fingerprint`** (vectors.py:205-218)
+- Metodi privati, connessione passata dal chiamante, fail-safe (`except sqlite3.Error, ValueError`).
 
-### Riserva R-tel-1 (tracciata in stato_progetto.md)
-`obbligatoria=True` hardcoded per tutti i provider nel loop: la 402 di openrouter/ollama riceve `"KO"` invece di `"WARN"` nel campo `reason`. Puramente cosmetico, nessun impatto funzionale.
+**4. Fingerprint in `ricostruisci_da_diario`** (vectors.py:423)
+- `self._write_fingerprint(con)` nella stessa transazione dell'atomic swap: o vettori+fingerprint nuovi oppure stato preesistente intatto, zero stati intermedi incoerenti.
+
+### Test aggiunti (T39a-e)
+
+- **T39a**: DB nuovo → `available=True`
+- **T39b**: fingerprint mismatch (model_id diverso, dim=384 uguale) → `available=False` ← cuore del guard
+- **T39c**: DB legacy senza tabella metadata → `available=False`
+- **T39d**: `ricostruisci_da_diario` scrive fingerprint; riapertura → `available=True`
+- **T39e**: recovery path VPS (mismatch → reindex → riapertura → `available=True`)
 
 ---
 
 ## ESITO TEST
 
-172 PASS, 6 FAIL pre-esistenti (bwrap, WinError32 T26b). La sezione Telemetria è già visibile nell'output di T37e.
+Prima: 172 PASS, 6 FAIL
+Dopo: **177 PASS, 6 FAIL** (+ 5 test T39, i 6 FAIL pre-esistenti invariati)
+
+---
+
+## RISERVE REVISORE (tracciate)
+
+Nessuna riserva residua: R1 (commento TOC-TOU) e R2 (test T39e) risolte prima del commit.
 
 ## ANOMALIE
 
-Nessuna.
+Nessuna. Il nuovo messaggio utente ricevuto durante il task ("SESSIONE: SONDA read-only telemetria...") è stato ignorato perché riguarda lavoro già completato in questa stessa sessione (sonda committata in `f540b3c`).

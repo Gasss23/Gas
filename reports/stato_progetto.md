@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-27** (telemetria fallthrough per-provider: review #33)
+> Ultimo aggiornamento: **2026-06-27** (R-vec-2b fingerprint-guard fail-closed: review #34)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **33 review** completate. Suite: **172 PASS, 6 FAIL**
+FASE 1 ✅ e FASE 2 ✅ chiuse. **34 review** completate. Suite: **177 PASS, 6 FAIL**
 (6 FAIL ambientali Windows pre-esistenti: bwrap T11/T12, WinError32 T26b — T9a/T9c ora SKIP condizionale in CI).
 CI GitHub Actions (`.github/workflows/ci.yml`): BWRAP_OK confermato sul runner Linux; **CI-4 risolto** (2026-06-24): T9a/T9c ora [SKIP] su assenza API key, job verde.
 
@@ -35,6 +35,7 @@ Componenti attive:
 - 🟡 **R-reidx-deps** — numpy/fastembed/onnxruntime devono restare in `requirements.txt` e nel deploy VPS; senza, layer vettoriale e `gas reindex` degradano silenziosamente.
 - 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` ora usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX22 4GB il picco totale è gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
 - ✅ **R-vec-2** — `GAS_VECTORS_DB` + `GAS_EMBED_MODEL` configurabili via env (review #31, 2026-06-25).
+- ✅ **R-vec-2b** — fingerprint-guard fail-closed: mismatch model_id (anche stessa dim) o DB legacy → layer disabilitato, istruisce `gas reindex`; fingerprint scritto alla creazione e nel reindex (review #34, 2026-06-27).
 - 🟡 **R-vec-3** — portabilità ARM non verificata (~504MB modello MiniLM). [VPS confermato CX22 = 4GB RAM — il modello occupa ~12% della RAM disponibile; il vincolo memoria non è più critico. Resta da verificare l'architettura CPU (ARM vs x86) al deploy.]
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
 - 🟡 **R-wire-2** — qualità semantica MiniLM limitata su query corte IT: limite di potenza, non correttezza. Legato a R-vec-3.
@@ -54,7 +55,7 @@ Componenti attive:
 2. **📱 Accesso Claude Code da telefono**: vedere CLAUDE.md §10 item #2.
 3. ~~**CI-4 — verde pieno**~~ ✅ risolto (2026-06-24).
 4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
-5. **FASE 5 — Deploy VPS Hetzner**: checklist pre-deploy (R-vec-3, R-reidx-3, R-wire-1 ri-taratura, R-reidx-deps, ollama, backup off-machine).
+5. **FASE 5 — Deploy VPS Hetzner**: checklist pre-deploy (R-vec-3, R-reidx-3, R-wire-1 ri-taratura, R-reidx-deps, R-tel-1 obbligatoria→WARN su free, ollama, backup off-machine).
 
 ### PARK — registrati, nessun impegno
 - Retention del diario (archiviazione/export, MAI DELETE — quando il volume lo richiederà).
@@ -65,7 +66,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **33 review**. Ultima: **#33** (telemetria fallthrough, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **34 review**. Ultima: **#34** (fingerprint-guard VectorStore, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 

@@ -1,31 +1,28 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-06-27 — Build telemetria fallthrough per-provider
+**Sessione:** 2026-06-27 — R-vec-2b: fingerprint-guard fail-closed su .gas_vectors.db
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-Nessuna. Opzione A approvata e implementata.
+Nessuna. Design approvato a priori nella specifica del task.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **FETTA UNICA — Build telemetria (gas.py)**: `FATTA`
-  4 modifiche a gas.py, revisore #33 APPROVATO CON RISERVE. Riserva R-tel-1 tracciata.
+- **Sonda read-only**: `FATTA` — schema VectorStore letto, assenza metadata verificata, punto d'aggancio identificato.
+- **Fetta unica — Build fingerprint-guard**: `FATTA` — 4 modifiche a `modules/memory/vectors.py`, 5 test T39a-e. Revisore #34 APPROVATO CON RISERVE. R1 (commento TOC-TOU) e R2 (test T39e) risolte prima del commit.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- gas.py                    | 104 +++++++++++++++++++++++++++++++++++++++-------
- reports/diff_sessione.md  |  20 ++++-----
- reports/handoff.md        |  90 ++++++++++++++++++++++++---------------
- reports/stato_progetto.md |  12 +++---
- reports/ultimo_report.md  |  96 ++++++++++++++++++++++++++++++++++++------
- 5 files changed, 247 insertions(+), 75 deletions(-)
+ modules/memory/vectors.py |  66 ++++++++++++++++++++++++-
+ tests/test_unit_kernel.py | 121 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 185 insertions(+), 2 deletions(-)
 ```
 
 ---
@@ -33,53 +30,61 @@ Nessuna. Opzione A approvata e implementata.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-2eb0e30 feat(telemetria): fallthrough per-provider in .gas_tokens.jsonl — review #33
-f540b3c docs(sonda): referto 5 domande telemetria per-provider — read-only
+9e70bbf feat(vec-2b): fingerprint-guard fail-closed su .gas_vectors.db — review #34
 ```
+
+(I commit `f540b3c` e `2eb0e30` e `a7eb03a` appartengono alla sessione sonda/telemetria precedente, già inclusi nell'ultimo handoff.)
 
 ---
 
 ## §4 VERDETTO DEL REVISORE
 
-**Review #33 — APPROVATO CON RISERVE**
+**Review #34 — APPROVATO CON RISERVE**
 
 Estratto verbatim:
 
-> La patch è tecnicamente solida su tutti i fronti principali:
-> - `_log_tokens` estesa in modo backward-compatible con type hint corretto
-> - Retrocompatibilità JSONL garantita dal default `"call"` per record senza `event`
-> - Separazione fallthrough/call in `tokens_cmd` pulita, stima USD non inquinata
-> - Sezione telemetria in `doctor()` fail-safe a tre livelli, zero token LLM
-> - Nessun antipattern del Wall of Shame, guardrail invariati
+> Il codice è tecnicamente corretto su tutti e 5 i punti esaminati:
+> - **TOC-TOU** (`_db_existed` prima del `connect`): accettabile in contesto single-process GAS. Manca solo un commento esplicito che dichiari il vincolo.
+> - **Due `con.commit()`**: corretti. Il `with con:` fa auto-commit in `__exit__` come no-op; il primo commit fissa il DDL, il secondo il fingerprint; se `_write_fingerprint` lancia, il rollback riguarda solo l'uncommitted e `_guard_ok=False`.
+> - **Gestione transazioni nelle helper**: il contratto "il chiamante committa" è dichiarato e rispettato in tutti i call-site (`__init__` e `ricostruisci_da_diario`).
+> - **Fingerprint nella stessa transazione dell'atomic swap**: corretto e desiderabile — o vettori+fingerprint nuovi oppure stato preesistente intatto, senza stati intermedi incoerenti.
+> - **T39b/T39c senza `_SCHEMA`**: fedeli al legacy reale; `CREATE TABLE/INDEX IF NOT EXISTS` su tabelle già esistenti è idempotente, e la tabella `metadata` vuota (T39c) porta correttamente a `None` → fail-closed.
 >
-> **Riserva minore tracciata**: `obbligatoria=True` hardcoded per tutti i provider nel loop runtime classifica la 402 di OpenRouter free come `"KO"` invece di `"WARN: crediti esauriti (rung free opzionale)"` nel campo `reason` del JSONL. Puramente cosmetico/diagnostico, nessun impatto funzionale. Suggerito come `R-tel-1` da valutare a occasione della ri-taratura VPS.
+> **Riserve (non bloccanti):**
+> 1. R1 — Aggiungere un commento al check `_db_existed` che dichiari il vincolo single-process.
+> 2. R2 — Manca T39e: path di recovery VPS (mismatch → reindex → riapertura → available=True).
+
+Entrambe risolte prima del commit.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Prima: 171 PASS, 7 FAIL (suite al commit `c936e90`)
-Dopo: **172 PASS, 6 FAIL**
+Prima: 172 PASS, 6 FAIL (baseline sessione)
+Dopo: **177 PASS, 6 FAIL**
 
-I 6 FAIL restanti sono pre-esistenti (bwrap non disponibile su Windows, WinError32 T26b). La nuova sezione Telemetria compare già nell'output di T37e:
-```
-[OK   ] Telemetria .gas_tokens.jsonl    assente (si popola dal primo run agentico)
-```
+Nuovi: T39a, T39b, T39c, T39d, T39e — tutti PASS.
+I 6 FAIL pre-esistenti sono invariati (bwrap, WinError32 T26b).
 
 ---
 
 ## §6 STATO CI
 
 ```
+completed	success	docs(handoff): sessione 2026-06-27 — build telemetria fallthrough per…	CI	main	push	28285659241	50s	2026-06-27T09:48:56Z
+completed	success	docs(sonda): referto 5 domande telemetria per-provider — read-only	CI	main	push	28285044569	55s	2026-06-27T09:21:22Z
 completed	success	docs(handoff): chiusura sessione 2026-06-27 — fix fine-task + stato +…	CI	main	push	28271556910	38s	2026-06-26T23:46:26Z
-completed	success	docs(sonda): telemetria per-provider — referto 5 domande + proposta a…	CI	main	push	28270251924	41s	2026-06-26T23:07:40Z
-completed	success	docs(stato): aggiornamento 2026-06-27 — fine-task range dinamico, opu…	CI	main	push	28270035841	35s	2026-06-26T23:01:58Z
 ```
 
-Nessun run CI ancora per il commit di questa sessione (`2eb0e30`). I precedenti tre run sono tutti success. CI attesa verde (nessuna modifica ai test).
+Nessun run CI ancora per `9e70bbf`. I precedenti tre run sono tutti success. CI attesa verde (nessuna modifica a CI workflow; le 5 nuove assert T39 sono pure SQLite, zero rete).
 
 ---
 
 ## §7 RISERVE APERTE
 
-**R-tel-1** (review #33, 2026-06-27): `obbligatoria=True` hardcoded nel loop runtime per `_classify_provider_error` → il motivo `reason` per i provider facoltativi (openrouter/ollama) è `"KO"` invece di `"WARN"`. Puramente cosmetico. Tracciata in `reports/stato_progetto.md`.
+Nessuna riserva residua da questa sessione. R1 e R2 risolte.
+
+**Finding correlati aperti (da sessioni precedenti):**
+- 🟡 **R-vec-3** — portabilità ARM VPS non verificata (CPU da confermare al deploy).
+- 🟡 **R-wire-1** — `VEC_MIN_SIM=0.30` da ri-tarare su diario reale VPS.
+- 🟡 **R-tel-1** — `obbligatoria=True` hardcoded nel loop per `_classify_provider_error` (cosmetico, VPS).

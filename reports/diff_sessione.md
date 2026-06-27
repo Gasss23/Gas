@@ -1,4 +1,4 @@
-# Diff sessione — 2026-06-27 — Build telemetria fallthrough per-provider
+# Diff sessione — 2026-06-27 — R-vec-2b: fingerprint-guard fail-closed su .gas_vectors.db
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
 
@@ -6,14 +6,18 @@
 
 | File | Cosa è cambiato | Perché |
 |------|----------------|--------|
-| `gas.py` | `_log_tokens` +event/reason; aggancio fallthrough in `run_turn`; `tokens_cmd` separa call/ft; `doctor` sez.10 Telemetria | Build telemetria per-provider (review #33) |
-| `reports/stato_progetto.md` | 33 review, 172/6, +R-tel-1, +componente telemetria | Aggiornamento stato post-task |
-| `reports/ultimo_report.md` | Dettaglio build (4 modifiche + riserva) | Report canonico task |
+| `modules/memory/vectors.py` | +tabella `metadata`, +`_read_fingerprint`/`_write_fingerprint`, guard in `__init__`, fingerprint in `ricostruisci_da_diario` | R-vec-2b: guard fail-closed vs mismatch modello (review #34) |
+| `tests/test_unit_kernel.py` | +T39a-e: guard corretto, mismatch stessa-dim, legacy, reindex+riapertura, recovery VPS | Copertura dei 4 casi del guard |
+| `reports/stato_progetto.md` | 34 review, 177/6, +R-vec-2b ✅, FASE 5 checklist aggiornata | Aggiornamento stato post-task |
+| `reports/ultimo_report.md` | Dettaglio build R-vec-2b | Report canonico task |
 | `reports/handoff.md` | Dossier con diff stat, log, verdetto revisore, delta test | Dossier sessione |
 | `reports/diff_sessione.md` | Questo file | Fotografia sessione |
 
 ## Commit di sessione
 
-1. `f540b3c` — sonda read-only (5 domande, nessuna modifica motore)
-2. `2eb0e30` — build telemetria (gas.py + stato_progetto)
-3. Commit report (questo)
+1. `9e70bbf` — build fingerprint-guard (vectors.py + tests)
+2. Commit report (questo)
+
+## Nota messaggio duplicato
+
+Durante il task è arrivato un secondo messaggio utente con spec "SESSIONE: SONDA read-only telemetria" — già completata e committata in `f540b3c` nella stessa sessione. Ignorato correttamente.
