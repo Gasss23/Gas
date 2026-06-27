@@ -1,14 +1,14 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-27** (R-vec-2b fingerprint-guard fail-closed: review #34)
+> Ultimo aggiornamento: **2026-06-27** (D1/D2 fix doctor vector observability: review #35)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **34 review** completate. Suite: **177 PASS, 6 FAIL**
-(6 FAIL ambientali Windows pre-esistenti: bwrap T11/T12, WinError32 T26b — T9a/T9c ora SKIP condizionale in CI).
-CI GitHub Actions (`.github/workflows/ci.yml`): BWRAP_OK confermato sul runner Linux; **CI-4 risolto** (2026-06-24): T9a/T9c ora [SKIP] su assenza API key, job verde.
+FASE 1 ✅ e FASE 2 ✅ chiuse. **35 review** completate. Suite: **187 PASS, 0 FAIL** (CI Linux).
+(Windows locale: 6 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
+CI GitHub Actions (`.github/workflows/ci.yml`): **187 PASS, 0 FAIL** — verde su tutti i commit di sessione.
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -20,7 +20,8 @@ Componenti attive:
 - CRM dal loop: tool `salva_contatto`/`imposta_stato_contatto`, identità su `chiave_norm` NFKC
 - Iniezione always-on `_memoria_pin` (system msg) + tool `ricorda` (sola lettura)
 - CLI `gas doctor` / `gas reindex` / `gas backup` / **`gas tokens [N_giorni]`** (contabilità token + stima costi USD + sezione fallthrough)
-- **Telemetria fallthrough** (review #33, 2026-06-27): `_log_tokens` estesa con `event`/`reason`; fallthrough loggato nell'`except` di `run_turn` via `_classify_provider_error`; `gas tokens` separa call da fallthrough; `gas doctor` sez.10 mostra contatori per-provider
+- **Telemetria fallthrough** (review #33): `_log_tokens` con `event`/`reason`; `gas tokens` + `gas doctor` sez.10 per-provider
+- **`VectorStore.disable_reason`** (review #35, 2026-06-27): motivo specifico del disable propagato a `gas doctor` (fingerprint mismatch / DB legacy / errore I/O / embedder assenti); doctor usa `GAS_VECTORS_DB` env correttamente (D1)
 
 ## Pipeline provider (paracadute)
 
@@ -67,7 +68,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **34 review**. Ultima: **#34** (fingerprint-guard VectorStore, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **35 review**. Ultima: **#35** (D1/D2 disable_reason + path fix, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
