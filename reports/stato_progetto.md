@@ -1,14 +1,14 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-27** (D1/D2 fix doctor vector observability: review #35)
+> Ultimo aggiornamento: **2026-06-27** (R-tel-1 fix + chiusura riserva #35 disable_reason: review #36/#37)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅ e FASE 2 ✅ chiuse. **35 review** completate. Suite: **187 PASS, 0 FAIL** (CI Linux).
-(Windows locale: 6 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
-CI GitHub Actions (`.github/workflows/ci.yml`): **187 PASS, 0 FAIL** — verde su tutti i commit di sessione.
+FASE 1 ✅ e FASE 2 ✅ chiuse. **37 review** completate. Suite: **193 PASS, 0 FAIL** (CI Linux).
+(Windows locale: 183 PASS, 6 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
+CI GitHub Actions (`.github/workflows/ci.yml`): **193 PASS, 0 FAIL** — run #28295087523 su 6cfd340 verde.
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -47,8 +47,8 @@ Componenti attive:
 - ✅ **MEMORY_PIN_SCAN hardcoded** — `GAS_MEMORY_PIN_SCAN` configurabile via env, min_val=10 (review #31, 2026-06-25).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - ✅ **CI-4** — risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
-- 🟡 **R-tel-1** (review #33, 2026-06-27) — `obbligatoria=True` hardcoded nel loop runtime per `_classify_provider_error`: i provider facoltativi (openrouter/ollama) ricevono motivo `"KO"` invece di `"WARN"` nel campo `reason` del JSONL. Puramente cosmetico/diagnostico, nessun impatto funzionale. Da valutare a occasione ri-taratura VPS.
-- 🟡 **Riserve review #35** (2026-06-27, D1/D2 disable_reason): T39b/c non assertiscono il valore di `disable_reason` (solo `available=False`); mancano test per rami `sqlite3.Error` e embedder-unavailable. Nessun impatto funzionale — copertura test da completare a prossima occasione.
+- ✅ **R-tel-1** (chiuso review #37, 2026-06-27) — `_free_names` derivato da `FREE_RUNGS`; `name not in _free_names` come flag `obbligatoria`; `reason` nel JSONL = livello ("WARN"/"KO"). T40/T40b confermano. Riserve cosmetiche #37: (1) `reason` perde il testo descrittivo (→ `detail` futuro); (2) ollama non assertito in T40 (GAS_OLLAMA_URL assente → skip).
+- ✅ **Riserve review #35** (chiuse review #36, 2026-06-27) — T39b-reason/T39c-reason aggiungono assert su `disable_reason`; T39f (ramo `sqlite3.Error`) e T39g (ramo embedder assenti) coprono i 4 rami. Tutti PASS.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
 ## Prossimi passi (in ordine di priorità)
@@ -68,7 +68,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **35 review**. Ultima: **#35** (D1/D2 disable_reason + path fix, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **37 review**. Ultima: **#37** (R-tel-1 obbligatoria→WARN rung facoltativi, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
