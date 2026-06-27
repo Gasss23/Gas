@@ -1,4 +1,4 @@
-# Diff sessione — 2026-06-27 — Sonda telemetria per-provider (read-only)
+# Diff sessione — 2026-06-27 — Build telemetria fallthrough per-provider
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
 
@@ -6,12 +6,14 @@
 
 | File | Cosa è cambiato | Perché |
 |------|----------------|--------|
-| `reports/ultimo_report.md` | Riscritto con 5 risposte sonda telemetria per-provider | Referto canonico della fetta unica |
-| `reports/handoff.md` | Riscritto con dossier sonda + §0 decisioni umane + §7 finding | Dossier autonomo per revisione umana |
-| `reports/diff_sessione.md` | Riscritto (questo file) | Fotografia sessione corrente |
+| `gas.py` | `_log_tokens` +event/reason; aggancio fallthrough in `run_turn`; `tokens_cmd` separa call/ft; `doctor` sez.10 Telemetria | Build telemetria per-provider (review #33) |
+| `reports/stato_progetto.md` | 33 review, 172/6, +R-tel-1, +componente telemetria | Aggiornamento stato post-task |
+| `reports/ultimo_report.md` | Dettaglio build (4 modifiche + riserva) | Report canonico task |
+| `reports/handoff.md` | Dossier con diff stat, log, verdetto revisore, delta test | Dossier sessione |
+| `reports/diff_sessione.md` | Questo file | Fotografia sessione |
 
-## Note sessione
+## Commit di sessione
 
-Sessione interamente read-only. Nessuna modifica al motore (gas.py, brains/, modules/, tests/).
-Nessun commit motore → revisore non richiesto.
-Unico commit: questo, contenente i tre file di report.
+1. `f540b3c` — sonda read-only (5 domande, nessuna modifica motore)
+2. `2eb0e30` — build telemetria (gas.py + stato_progetto)
+3. Commit report (questo)
