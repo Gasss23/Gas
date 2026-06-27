@@ -2428,6 +2428,9 @@ _vs39b = VectorStore(_p39b, embed_fn=_fake_embed)   # embed_fn ok, ma fingerprin
 check("T39b fingerprint-guard: model_id diverso stessa dim → fail-closed (available=False)",
       _vs39b.available is False and _vs39b._db_available is False,
       f"available={_vs39b.available} _db_available={_vs39b._db_available}")
+check("T39b-reason fingerprint mismatch → disable_reason contiene 'mismatch'",
+      "mismatch" in _vs39b.disable_reason,
+      f"disable_reason={_vs39b.disable_reason!r}")
 
 # T39c — fingerprint assente (DB legacy, nessuna tabella metadata) → fail-closed
 _d39c = tempfile.mkdtemp(prefix="gas_vec39c_")
@@ -2449,6 +2452,9 @@ _vs39c = VectorStore(_p39c, embed_fn=_fake_embed)
 check("T39c fingerprint-guard: DB legacy senza fingerprint → fail-closed (available=False)",
       _vs39c.available is False and _vs39c._db_available is False,
       f"available={_vs39c.available} _db_available={_vs39c._db_available}")
+check("T39c-reason DB legacy → disable_reason contiene 'legacy'",
+      "legacy" in _vs39c.disable_reason,
+      f"disable_reason={_vs39c.disable_reason!r}")
 
 # T39d — gas reindex scrive il fingerprint; dopo reindex il DB è riapribile col modello corrente.
 # Richiede embed_fn (usa _fake_embed, niente modello reale) + un memory store con dati.
@@ -2513,6 +2519,24 @@ _vs39e_reopen = VectorStore(_p39e, embed_fn=_fake_embed)
 check("T39e recovery: DB mismatch → reindex (sostituzione) → riapertura → available=True",
       _mismatch_ok and _vs39e_reopen.available is True,
       f"mismatch_ok={_mismatch_ok} reopen_available={_vs39e_reopen.available}")
+
+# T39f — sqlite3.Error durante init sidecar → disable_reason contiene "sidecar" (ramo 3)
+from unittest.mock import patch as _patch_mock39
+_d39f = tempfile.mkdtemp(prefix="gas_vec39f_")
+with _patch_mock39.object(VectorStore, '_connect', side_effect=_sq39.OperationalError("forced error")):
+    _vs39f = VectorStore(default_vectors_path(_d39f), embed_fn=_fake_embed)
+check("T39f sqlite3.Error init sidecar → available=False + disable_reason contiene 'sidecar'",
+      _vs39f.available is False and "sidecar" in _vs39f.disable_reason,
+      f"available={_vs39f.available} reason={_vs39f.disable_reason!r}")
+
+# T39g — embedder assenti (numpy/fastembed) → disable_reason contiene "deps" (ramo 4)
+_d39g = tempfile.mkdtemp(prefix="gas_vec39g_")
+with _patch_mock39.object(_vecmod, '_np', None), \
+     _patch_mock39.object(_vecmod, '_TextEmbedding', None):
+    _vs39g = VectorStore(default_vectors_path(_d39g))  # no embed_fn: deps simulate assenti
+check("T39g deps embedding assenti → available=False + disable_reason contiene 'deps'",
+      _vs39g.available is False and "deps" in _vs39g.disable_reason,
+      f"available={_vs39g.available} reason={_vs39g.disable_reason!r}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
