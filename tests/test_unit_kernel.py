@@ -2741,6 +2741,77 @@ check("T52 _compress_history persiste su disco e si rilegge coerente",
       _ok52, f"n={len(_k52b.history)} role0={_k52b.history[0]['role'] if _k52b.history else '?'}")
 os.environ.pop("GAS_HISTORY_KEEP_MSGS", None)
 
+# ---------- T53-T54: R-comp-1 fix + caso degenere ----------
+print("\n--- T53-T54: R-comp-1 fix + caso degenere ---")
+
+# T53 — boundary piegato nel summary, non droppato (R-comp-1 fix)
+# NB: _env_int(..., min_val=10) clamp GAS_HISTORY_KEEP_MSGS a minimo 10.
+# Si costruisce la history in modo che recent[-10:] inizi con 3 messaggi
+# assistant portatori del marcatore, prima del primo user.
+#
+# Layout (22 messaggi totali):
+#   indexes 0-11:  12 old messages (alternating user/asst)
+#   indexes 12-14: 3 boundary assistant con MARKER (in recent[:3])
+#   indexes 15-21: 7 messages inizianti con user (recent[3:])
+# keep_msgs=10 → recent=history[-10:]=history[12..21]
+# recent[0..2]=asst(M) → start=3; boundary=3 msg; to_compress=old(12)+boundary(3)=15
+_MARKER_53 = "MARCATORE_COMP1_XK9"
+_td53 = _tempfile.mkdtemp()
+_k53 = GasKernel(root_dir=_td53)
+for _i53 in range(12):
+    _k53.history.append({"role": "user" if _i53 % 2 == 0 else "assistant",
+                          "content": f"old {_i53}"})
+_k53.history.append({"role": "assistant", "content": f"boundary1 {_MARKER_53}"})   # idx 12
+_k53.history.append({"role": "assistant", "content": f"boundary2 {_MARKER_53}"})   # idx 13
+_k53.history.append({"role": "assistant", "content": f"boundary3 {_MARKER_53}"})   # idx 14
+_k53.history.append({"role": "user", "content": "primo user recente"})              # idx 15
+_k53.history.append({"role": "assistant", "content": "risposta 1"})                 # idx 16
+_k53.history.append({"role": "user", "content": "secondo user recente"})            # idx 17
+_k53.history.append({"role": "assistant", "content": "risposta 2"})                 # idx 18
+_k53.history.append({"role": "user", "content": "terzo user recente"})              # idx 19
+_k53.history.append({"role": "assistant", "content": "risposta 3"})                 # idx 20
+_k53.history.append({"role": "user", "content": "quarto user recente"})             # idx 21
+# Total: 22 msg. max_msgs clamped to 20 (min_val=20), 22>20 → triggers.
+os.environ["GAS_HISTORY_MAX_MSGS"] = "20"
+os.environ["GAS_HISTORY_KEEP_MSGS"] = "10"
+_r53 = _k53._compress_history_if_needed()
+_summary53 = _k53.history[0]["content"] if _k53.history else ""
+_ok53 = (
+    _r53 is True
+    and _k53.history[0]["role"] == "user"
+    and _MARKER_53 in _summary53               # (a) marker catturato, non droppato
+    and "15 messaggi compressi" in _summary53  # (c) old(12)+boundary(3)=15 nel header
+)
+check("T53 R-comp-1: boundary piegato nel summary (marker presente, count corretto)",
+      _ok53,
+      f"r={_r53} role0={_k53.history[0]['role'] if _k53.history else '?'} "
+      f"marker={'SI' if _MARKER_53 in _summary53 else 'NO'} "
+      f"count15={'SI' if '15 messaggi compressi' in _summary53 else 'NO'}")
+os.environ.pop("GAS_HISTORY_MAX_MSGS", None)
+os.environ.pop("GAS_HISTORY_KEEP_MSGS", None)
+
+# T54 — caso degenere: history di soli assistant/tool, nessun user
+# Verifica invariante history[0]==user e window parte da user (R-comp-1 ramo for/break senza match)
+_td54 = _tempfile.mkdtemp()
+_k54 = GasKernel(root_dir=_td54)
+for _i54 in range(30):
+    _k54.history.append({"role": "assistant", "content": f"assistant msg {_i54}"})
+os.environ["GAS_HISTORY_MAX_MSGS"] = "15"
+os.environ["GAS_HISTORY_KEEP_MSGS"] = "10"
+_r54 = _k54._compress_history_if_needed()
+_w54 = _k54._get_window()
+_ok54 = (
+    _r54 is True
+    and _k54.history[0]["role"] == "user"
+    and bool(_w54) and _w54[0]["role"] == "user"
+)
+check("T54 degenere no-user: history[0] e window[0] partono da role user",
+      _ok54,
+      f"r={_r54} h0={_k54.history[0]['role'] if _k54.history else '?'} "
+      f"w0={_w54[0]['role'] if _w54 else '?'}")
+os.environ.pop("GAS_HISTORY_MAX_MSGS", None)
+os.environ.pop("GAS_HISTORY_KEEP_MSGS", None)
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

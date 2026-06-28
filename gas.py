@@ -418,10 +418,10 @@ class GasKernel:
         eccezione lascia la history invariata e ritorna False.
 
         Allineamento al confine old/recent: i messaggi di recent che precedono
-        il primo 'user' vengono scartati (possono essere tool/assistant orfani
-        non inviabili come testa della finestra). Questo può far perdere 0-N
-        messaggi al confine — accettabile perché l'invariante _get_window
-        (finestra deve partire da user) ha priorità sulla completezza."""
+        il primo 'user' vengono piegati nel riepilogo (stesso formato di old),
+        non scartati (R-comp-1 fix). Zero drop silenzioso. L'invariante
+        _get_window (finestra deve partire da user) è garantita dal summary
+        che ha sempre role='user'."""
         max_msgs = _env_int("GAS_HISTORY_MAX_MSGS", self.HISTORY_MAX_MSGS, min_val=20)
         keep_msgs = _env_int("GAS_HISTORY_KEEP_MSGS", self.HISTORY_KEEP_MSGS, min_val=10)
         if keep_msgs > max_msgs:
@@ -437,11 +437,22 @@ class GasKernel:
         try:
             recent = self.history[-keep_msgs:]
             old = self.history[:-keep_msgs]
-            # Riepilogo deterministico dei messaggi compressi
+            # Allinea recent al primo user per rispettare l'invariante _get_window.
+            # I messaggi di recent che precedono il primo user vengono piegati nel
+            # riepilogo (R-comp-1 fix): zero drop silenzioso.
+            start = 0
+            for i, m in enumerate(recent):
+                if m.get("role") == "user":
+                    start = i
+                    break
+            boundary = recent[:start]
+            recent = recent[start:]
+            # Riepilogo deterministico: old + eventuali boundary piegati
+            to_compress = old + boundary
             lines: List[str] = [
-                f"[RIEPILOGO SESSIONI PRECEDENTI — {len(old)} messaggi compressi]"
+                f"[RIEPILOGO SESSIONI PRECEDENTI — {len(to_compress)} messaggi compressi]"
             ]
-            for msg in old:
+            for msg in to_compress:
                 role = msg.get("role", "?")
                 content = (msg.get("content") or "").strip()
                 tool_calls = msg.get("tool_calls") or []
@@ -454,14 +465,6 @@ class GasKernel:
                 elif content:
                     lines.append(f"[{role}] {content[:300]}")
             summary = "\n".join(lines)
-            # Allinea recent al primo user per rispettare l'invariante _get_window.
-            # I messaggi prima del primo user in recent vengono scartati (R-comp-1).
-            start = 0
-            for i, m in enumerate(recent):
-                if m.get("role") == "user":
-                    start = i
-                    break
-            recent = recent[start:]
             self.history = [
                 {"role": "user", "content": summary},
                 {"role": "assistant",
@@ -469,8 +472,8 @@ class GasKernel:
             ] + recent
             self._save_history()
             logging.info(
-                "Cronologia compressa: %d→%d messaggi (%d old → riepilogo, %d scartati al confine)",
-                len(old) + keep_msgs, len(self.history), len(old), start,
+                "Cronologia compressa: %d→%d messaggi (%d old + %d boundary → riepilogo)",
+                len(old) + keep_msgs, len(self.history), len(old), len(boundary),
             )
             return True
         except Exception as e:
