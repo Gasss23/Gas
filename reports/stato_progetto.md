@@ -46,11 +46,11 @@ Componenti attive:
 
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
-- 🟡 **R-reidx-deps** — numpy/fastembed/onnxruntime devono restare in `requirements.txt` e nel deploy VPS; senza, layer vettoriale e `gas reindex` degradano silenziosamente.
+- ✅ **R-reidx-deps** — CHIUSO (2026-06-29): requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante (crash deploy fresh); coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate disponibili (pip download, zero build). Runtime al deploy.
 - 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` ora usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX22 4GB il picco totale è gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
 - ✅ **R-vec-2** — `GAS_VECTORS_DB` + `GAS_EMBED_MODEL` configurabili via env (review #31, 2026-06-25).
 - ✅ **R-vec-2b** — fingerprint-guard fail-closed: mismatch model_id (anche stessa dim) o DB legacy → layer disabilitato, istruisce `gas reindex`; fingerprint scritto alla creazione e nel reindex (review #34, 2026-06-27).
-- 🟡 **R-vec-3** — portabilità ARM non verificata (~504MB modello MiniLM). [VPS confermato CX22 = 4GB RAM — il modello occupa ~12% della RAM disponibile; il vincolo memoria non è più critico. Resta da verificare l'architettura CPU (ARM vs x86) al deploy.]
+- 🟡 **R-vec-3** — RIDOTTO (2026-06-29): wheel x86_64 installabili confermate (manylinux_2_28, pip download OK); resta da provare import+embedding a runtime sul CX22 (FASE 5).
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
 - 🟡 **R-wire-2** — qualità semantica MiniLM limitata su query corte IT: limite di potenza, non correttezza. Legato a R-vec-3.
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
@@ -71,7 +71,7 @@ Componenti attive:
 3. **📱 Accesso dev tooling da telefono**: item 2 roadmap — claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) è già disponibile ma non è questo.
 4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
-6. **FASE 5 — Deploy VPS Hetzner**: al deploy → `gas telegram` daemon (systemd), `gas calibrate-vectors` (item 3), checklist R-vec-3 / R-reidx-deps / R-wire-1 / R-reidx-3 (item 5).
+6. **FASE 5 — Deploy VPS Hetzner**: al deploy → `gas telegram` daemon (systemd), `gas calibrate-vectors` (item 3), checklist R-vec-3 (import+embedding runtime) / R-wire-1 / R-reidx-3 (item 5). [R-reidx-deps ✅ chiuso]
 7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
 ### PARK — registrati, nessun impegno
