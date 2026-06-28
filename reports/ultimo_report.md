@@ -84,7 +84,7 @@ tests/test_unit_kernel.py | 71 +++++++++++++++++++++++++++++++++++++++++++++++
 | FAIL rimasti | 8 (di cui T53 appena fallito) | **7 (tutti pre-esistenti bwrap/WinError32)** |
 | Nuovi test | — | T53, T54 |
 | T49-T52 (preesistenti compressione) | PASS | **PASS** (nessuna regressione) |
-| CI Linux | — | in attesa su `cde4d94` |
+| CI Linux | — | **SUCCESS** run #28307518983 su `cde4d94` ✅ |
 
 ---
 

@@ -62,7 +62,7 @@ Il fix chiude correttamente R-comp-1 (riserva aperta in review #39): i messaggi 
 
 ## Stato CI ultima run
 
-Run su `9d32e3e` (sessione precedente): verde. Nuova run su `cde4d94` in attesa. Stima: ~207 PASS, 0 FAIL (Linux, +2 nuovi test vs 205 precedenti).
+Run #28307518983 su `cde4d94` — **SUCCESS** ✅ (nessun FAIL, `--log-failed` vuoto).
 
 ---
 

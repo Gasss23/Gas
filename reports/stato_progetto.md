@@ -7,7 +7,7 @@
 ## Stato motore
 
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **40 review** completate. Suite: **196 PASS, 7 FAIL** (Windows locale, pre-esistenti bwrap/WinError32).
-CI GitHub Actions: in attesa su `cde4d94`.
+CI GitHub Actions: run #28307518983 su `cde4d94` — **SUCCESS** ✅.
 
 **🎯 Tutti e 5 gli item aperti del roadmap chiusi** (2026-06-27, review #38, commit a8c6d53).
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
