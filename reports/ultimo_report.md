@@ -1,97 +1,121 @@
-# Ultimo Report — 2026-06-28 (fix R-comp-1 boundary compressione)
-
-**Data**: 2026-06-28
-**Review gate**: #40 — APPROVATO
-**Commit motore**: `cde4d94`
+# deps: pin core riproducibile + requests, escludi voce/Windows
+**Data:** 2026-06-29 | **Scope:** solo requirements.txt — nessun tocco al motore
 
 ---
 
-## Task: Fix R-comp-1 — boundary al confine piegato nel summary
+## A — DIRETTI MANCANTI VERIFICATI
 
-Chiusura della riserva R-comp-1 aperta in review #39 (FASE 2.5):
-i messaggi di `recent` che precedevano il primo `user` venivano scartati
-silenziosamente. Fix applicato + 2 test aggiunti (T53, T54).
+Grep fresco su gas.py, brains/, modules/ → filtrando stdlib + locali → 5 terzi:
 
----
+| PyPI | import | dove | top-level? | in old req.txt |
+|------|--------|------|-----------|----------------|
+| `openai` | `from openai import OpenAI` | gas.py:11 | ✅ sì | ✅ sì |
+| `requests` | `import requests` | brains/*.py (tutti e 4) | ✅ sì | ❌ **MANCANTE** |
+| `numpy` | `import numpy as _np` | modules/memory/vectors.py:57 | lazy try/except | ✅ sì |
+| `fastembed` | `from fastembed import TextEmbedding` | modules/memory/vectors.py:63 | lazy try/except | ✅ sì |
+| `onnxruntime` | _(transitivo di fastembed)_ | — | — | ✅ sì (esplicito) |
 
-## Parte A — Fix `_compress_history_if_needed` (gas.py)
-
-**Problema**: nella vecchia logica, dopo aver separato `old` e `recent`, il codice
-trovava il primo `user` in `recent` e faceva `recent = recent[start:]`, scartando
-silenziosamente `recent[:start]` (0..keep_msgs-1 messaggi: assistant/tool orfani
-al confine).
-
-**Fix**:
-```python
-# Prima: start detection + recent = recent[start:]  (drop silenzioso)
-# Dopo:
-boundary = recent[:start]
-recent = recent[start:]
-to_compress = old + boundary   # old + eventuali boundary piegati
-lines = [f"[RIEPILOGO SESSIONI PRECEDENTI — {len(to_compress)} messaggi compressi]"]
-for msg in to_compress:        # stesso loop/formato di prima, ora su old+boundary
-    ...
-summary = "\n".join(lines)
-```
-
-- Zero drop silenzioso: tutti i messaggi al confine finiscono nel riepilogo.
-- Formato identico a `old`: stesso troncamento `content[:300]`, stessa notazione tool call.
-- Header aggiornato: `len(to_compress) = len(old) + len(boundary)`.
-- Caso degenere (no user in `recent`): `boundary=[]`, comportamento invariato.
-- `logging.info` aggiornato: `"… (%d old + %d boundary → riepilogo)"`.
-- Docstring aggiornato: rimuove il vecchio testo "scartati … accettabile".
+**Confermato: SOLO `requests` era il diretto mancante.** Nessun altro buco emerso.
+torch/whisper/elevenlabs/pywin32/comtypes → ZERO occorrenze. Confermato.
 
 ---
 
-## Parte B — Test T53 e T54
-
-**T53 — R-comp-1 (il fix)**:
-- History: 12 old (alternating) + 3 boundary assistant con `MARCATORE_COMP1_XK9` + 7 recent starting user (tot 22 msg).
-- `GAS_HISTORY_KEEP_MSGS=10`, `GAS_HISTORY_MAX_MSGS=20` → `recent=history[-10:]` inizia con i 3 boundary.
-- `start=3`, `boundary=[asst(M),asst(M),asst(M)]`, `to_compress=old(12)+boundary(3)=15`.
-- Assert: (a) marker in `history[0]["content"]`; (b) `history[0]["role"]=="user"`; (c) `"15 messaggi compressi"` in summary. **PASS**.
-
-**T54 — caso degenere no-user**:
-- History: 30 messaggi `assistant` (nessun user).
-- `start=0`, `boundary=[]`, `to_compress=old`. Summary = user. Window[0] = user.
-- Assert: `history[0]["role"]=="user"` e `_get_window()[0]["role"]=="user"`. **PASS**.
-
----
-
-## Verdetto revisore #40 (INTEGRALE)
-
-**APPROVATO**
-
-Il fix chiude correttamente R-comp-1 (riserva aperta in review #39): i messaggi al confine old/recent che precedono il primo user vengono ora piegati nel riepilogo invece di essere scartati silenziosamente. Il caso degenere (nessun user in `recent`, start=0) produce `boundary=[]` → comportamento identico alla versione precedente. L'invariante `_get_window` (history parte sempre da `role='user'`) è garantita perché il summary ha sempre `role='user'`. T53 e T54 coprono rispettivamente il caso nominale e il caso degenere, entrambi PASS. Nessuna violazione degli antipattern §5, nessuna regressione.
-
----
-
-## Git diff --stat (commit cde4d94)
+## B — VERSIONI REALI INSTALLATE (output grezzo)
 
 ```
-gas.py                    | 37 ++++++++++++------------
-tests/test_unit_kernel.py | 71 +++++++++++++++++++++++++++++++++++++++++++++++
-2 files changed, 91 insertions(+), 17 deletions(-)
+pip show openai numpy onnxruntime fastembed requests | grep -E "^(Name|Version):"
+
+Name: openai
+Version: 2.43.0
+Name: numpy
+Version: 2.4.6
+Name: onnxruntime
+Version: 1.27.0
+Name: fastembed
+Version: 0.8.0
+Name: requests
+Version: 2.34.2
 ```
 
 ---
 
-## Delta test
+## C — CHECK STATICO OPENAI 2.x
 
-| Metrica | Prima | Dopo |
-|---------|-------|------|
-| Test Windows | 190 PASS, 7 FAIL | **196 PASS, 7 FAIL** |
-| FAIL rimasti | 7 pre-esistenti (bwrap/WinError32) | **7 pre-esistenti (bwrap/WinError32)** |
-| Nuovi test | — | T53, T54 |
-| T49-T52 (preesistenti compressione) | PASS | **PASS** (nessuna regressione) |
-| CI Linux | — | **SUCCESS** run #28307518983 su `cde4d94` ✅ |
+### Usi SDK trovati in gas.py (righe grezze)
+
+```
+gas.py:11  from openai import OpenAI
+
+# istanziazione (run_turn, main loop):
+gas.py:1465  client = OpenAI(base_url=url, api_key=os.environ.get(env))
+
+# chiamata (normale + retry Gemini 400):
+gas.py:1469  response = client.chat.completions.create(
+gas.py:1471      model=model, messages=payload, tools=self.tools_schema, tool_choice="auto"
+gas.py:1480  response = client.chat.completions.create(  # retry
+gas.py:1481      model=model, messages=payload, tools=self.tools_schema, tool_choice="auto"
+
+# lettura response:
+gas.py:1488  usage = getattr(response, "usage", None)
+gas.py:1491  getattr(usage, "prompt_tokens", 0)
+gas.py:1492  getattr(usage, "completion_tokens", 0)
+gas.py:1493  msg = response.choices[0].message
+gas.py:1495  if msg.tool_calls:
+gas.py:1496      ... msg.content ... msg.tool_calls ...
+gas.py:1498      tc.function.name, tc.function.arguments
+gas.py:1508      tc.id
+gas.py:1512  elif msg.content:
+
+# gestione eccezioni (status_code):
+gas.py:1532  getattr(e, "status_code", None)
+
+# istanziazione (doctor):
+gas.py:1575  client = OpenAI(base_url=url, api_key=os.environ[env], timeout=15)
+gas.py:1577  client.chat.completions.create(model=model, messages=[...], max_tokens=1)
+gas.py:1581  getattr(e, "status_code", None)
+```
+
+### Esito check 2.x (fonte: METADATA del pacchetto installato)
+
+Il README dentro `openai-2.43.0.dist-info/METADATA` dice testualmente:
+> *"The previous standard (**supported indefinitely**) for generating text is the
+> [Chat Completions API](https://platform.openai.com/docs/api-reference/chat)."*
+
+Verifica punto per punto:
+
+| uso | stato in 2.x | note |
+|-----|-------------|------|
+| `OpenAI(base_url=..., api_key=..., timeout=...)` | ✅ invariato | costruttore identico |
+| `client.chat.completions.create(...)` | ✅ **supported indefinitely** | dichiarato esplicitamente nel README 2.x |
+| `response.choices[0].message` | ✅ invariato | struttura ChatCompletion non cambiata |
+| `msg.tool_calls`, `tc.function.name`, `tc.function.arguments`, `tc.id` | ✅ invariati | |
+| `getattr(response, "usage", None)` + `getattr(usage, "prompt_tokens/completion_tokens", 0)` | ✅ safe | getattr con default — robusto a qualunque variazione |
+| `getattr(e, "status_code", None)` | ✅ presente | `APIStatusError.status_code` confermato in `_exceptions.py` 2.43.0 |
+
+**Esito: tutti gli usi sono compatibili 2.x → pin `openai==2.43.0` approvato.**
+
+Nota: la macchina sta già girando openai 2.43.0 con test verdi — il check statico
+lo conferma formalmente ma non aggiunge nuova evidenza a ciò che già funziona.
 
 ---
 
-## §RISERVE
+## D — requirements.txt FINALE (cat)
 
-Nessuna riserva nuova. Osservazioni annotate durante il lavoro:
+```
+# voce (torch/whisper/elevenlabs) e Windows-only: esclusi dal deploy core
+openai==2.43.0
+requests==2.34.2
+numpy==2.4.6
+onnxruntime==1.27.0
+fastembed==0.8.0
+```
 
-1. **Crescita summary**: con boundary = `keep_msgs-1` (caso peggiore), il summary cresce al massimo di `keep_msgs-1` righe in più, ognuna ≤ ~310 char. Con `HISTORY_KEEP_MSGS=20`, worst case: +19 righe × ~310 char ≈ +5.9KB nel singolo messaggio summary. Il summary viene poi gestito da `_cap_window_chars` che già taglia per `WINDOW_CHAR_CAP`. Nessuna interazione critica, ma annotato per VPS con log grande.
+**Logica del pin:**
+- `openai==2.43.0` — versione operativa con test verdi, check 2.x clean
+- `requests==2.34.2` — aggiunto: era il diretto mancante (crash deploy fresh)
+- `numpy==2.4.6` + `onnxruntime==1.27.0` — coppia ABI pinnata insieme (numpy 2.x rompe ABI)
+- `fastembed==0.8.0` — layer vettoriale fail-safe
+- onnxruntime resta esplicito (non solo transitivo): necessario per non saltare T30/T31/T32 in CI
 
-2. **T54 (degenere) già funzionava prima del fix**: il loop `for i, m in enumerate(recent)` con `start=0` default lasciava `recent` invariato anche nella vecchia versione. T54 è utile come regression guard per il ramo `for-break senza match`.
+**Limite noto:** wheel testate su Windows AMD64. Verifica manylinux_x86_64 al deploy CX22:
+`pip download -r requirements.txt --platform manylinux_x86_64 --python-version 311 --only-binary=:all:`

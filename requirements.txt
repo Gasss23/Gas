@@ -1,21 +1,6 @@
-# Dipendenze runtime di GAS. Installazione: pip install -r requirements.txt
-# (in venv Python 3.11+). Vedi deploy_vps_bozza.txt FASE 3.
-
-# Client unico OpenAI-compatibile: parla con TUTTI i provider della cascata
-# (Gemini, Groq, OpenRouter, Ollama) via API OpenAI-style.
-openai>=1.40
-
-# --- FASE 2: retrieval semantico (modulo modules/memory/vectors.py) ---
-# Embedding LOCALE (zero token, offline dopo il primo download dei pesi) +
-# brute-force cosine in numpy. Layer ADDITIVO e fail-safe: se queste due mancano,
-# GAS gira IDENTICO (il vector store resta available=False e degrada).
-# NB VPS ARM (Oracle Ampere): verificare le wheel onnxruntime per l'arch al deploy
-# e pre-scaricare i pesi del modello (rete non garantita a runtime). Vedi report.
-numpy>=1.26
-fastembed>=0.8
-# onnxruntime è il backend di inferenza di fastembed (di norma tirato come
-# dipendenza transitiva). Dichiarato ESPLICITAMENTE perché senza di esso i
-# blocchi di test vettoriali T30/T31/T32 si SALTANO silenziosamente (la CI
-# non proverebbe metà del sistema). Floor conservativo: la risoluzione reale
-# la fissa fastembed. NB VPS ARM: verificare la wheel per l'arch al deploy (R-vec-3).
-onnxruntime>=1.17
+# voce (torch/whisper/elevenlabs) e Windows-only: esclusi dal deploy core
+openai==2.43.0
+requests==2.34.2
+numpy==2.4.6
+onnxruntime==1.27.0
+fastembed==0.8.0
