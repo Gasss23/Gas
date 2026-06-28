@@ -1,17 +1,17 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-27** (FASE 2.5 compressione history review #39 + verifica R-budget-tz chiusa)
+> Ultimo aggiornamento: **2026-06-28** (fix R-comp-1 — boundary piegato nel summary, review #40)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **39 review** completate. Suite: **~205 PASS, 0 FAIL** (CI Linux attesa).
-(Windows locale: 194 PASS, 7 FAIL ambientali pre-esistenti: bwrap T11/T12, WinError32 T26b — non nuovi difetti.)
-CI GitHub Actions: da aggiornare dopo push.
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **40 review** completate. Suite: **196 PASS, 7 FAIL** (Windows locale, pre-esistenti bwrap/WinError32).
+CI GitHub Actions: in attesa su `cde4d94`.
 
 **🎯 Tutti e 5 gli item aperti del roadmap chiusi** (2026-06-27, review #38, commit a8c6d53).
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
+**✅ R-comp-1** — boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -75,7 +75,7 @@ Componenti attive:
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **39 review**. Ultima: **#39** (FASE 2.5 compressione history, 2026-06-27). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **40 review**. Ultima: **#40** (R-comp-1 fix boundary, 2026-06-28). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 

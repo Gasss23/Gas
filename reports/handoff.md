@@ -1,32 +1,32 @@
-# Handoff sessione 2026-06-27 — FASE 2.5 compressione history (review #39)
+# Handoff sessione 2026-06-28 — fix R-comp-1 boundary compressione (review #40)
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-Nessuna.
+Nessuna. Fix puntuale, scope delimitato, approvato dal revisore.
 
 **Prossima sessione**: scegliere tra:
 1. FASE 3 — Interfaccia vocale (Whisper STT + ElevenLabs TTS)
-2. FASE 5 — Deploy VPS Hetzner (con `gas telegram` + `gas compress-history` pre-deploy)
-3. Tuning `GAS_HISTORY_MAX_MSGS`/`KEEP_MSGS` sul caso d'uso reale (default 100/20 potrebbero essere aggiustati)
+2. FASE 5 — Deploy VPS Hetzner (systemd + `gas telegram` daemon)
+3. Riserve review #38 non bloccanti (R-tel-budget-perf, R-tel-tool_res)
 
 ---
 
 ## Sonda ambiente
 
-CI GitHub Actions: ultima verde = run #28295087523 su `6cfd340` (193 PASS). Il push di `65c4c7b` attiverà nuova run CI.
-
-**Verifica R-budget-tz** (riserva segnalata dal SE): `_log_tokens` usa già `datetime.now(timezone.utc)` — stessa timezone del cutoff in `_daily_cost_usd`. Falsa riserva, chiusa.
+CI GitHub Actions: in attesa su `cde4d94` (push di questa sessione). Ultima verde: `9d32e3e`.
 
 ---
 
-## git diff --stat della sessione (da 932f17c a 65c4c7b)
+## git diff --stat della sessione
 
 ```
-gas.py                    | 100 +++++++++++++++++++++++++++
-tests/test_unit_kernel.py |  67 ++++++++++++++++++
-2 files changed, 167 insertions(+)
+git diff 9d32e3e..cde4d94 --stat
+
+gas.py                    | 37 ++++++++++++------------
+tests/test_unit_kernel.py | 71 +++++++++++++++++++++++++++++++++++++++++++++++
+2 files changed, 91 insertions(+), 17 deletions(-)
 ```
 
 ---
@@ -34,36 +34,41 @@ tests/test_unit_kernel.py |  67 ++++++++++++++++++
 ## git log della sessione
 
 ```
-65c4c7b feat(kernel): FASE 2.5 — compressione automatica .gas_history.json (review #39)
+cde4d94 fix(kernel): R-comp-1 — boundary al confine piegato nel summary (review #40)
 ```
-
-(Sessione precedente stessa giornata: 932f17c docs 5 item, a8c6d53 feat roadmap items)
 
 ---
 
 ## Delta test del motore
 
 | Prima | Dopo | Delta |
-|---|---|---|
-| T1-T48 (190 PASS Windows, 201 PASS CI) | T1-T52 (194 PASS Windows, ~205 PASS CI) | +4 nuovi test (T49-T52) |
+|-------|------|-------|
+| 190 PASS, 7 FAIL Windows | **196 PASS, 7 FAIL Windows** | +2 nuovi test (T53, T54) |
+| T49-T52 PASS | T49-T52 PASS | nessuna regressione |
+
+Nuovi test:
+- T53: boundary con marcatore → marker in summary + count corretto → PASS
+- T54: history soli assistant → history[0] e window[0] = user → PASS
 
 ---
 
-## Verdetto revisore #39 (INTEGRALE)
+## Verdetto revisore #40 (INTEGRALE)
 
-**APPROVATO CON RISERVE**
+**APPROVATO**
 
-Il codice è corretto, fail-safe §9 rispettato, zero token LLM, invariante `_get_window` garantita, 194 PASS / 7 FAIL pre-esistenti Windows, T49-T52 tutti PASS.
-
-**Riserve minori (non bloccanti):**
-
-- **R-comp-1** — I messaggi al confine old→recent scartati dall'allineamento non entrano né nel riepilogo né nei recenti preservati (silently dropped). → CHIUSA: documentata nel docstring.
-- **R-comp-2** — Misconfiguration `GAS_HISTORY_KEEP_MSGS > GAS_HISTORY_MAX_MSGS`: il trigger effettivo diventa silenziosamente `keep_msgs`. → CHIUSA: aggiunto `logging.warning` quando rilevata.
-- **R-comp-3** — Test mancanti: caso "nessun user in recent" e caso misconfiguration. → APERTA, futura.
+Il fix chiude correttamente R-comp-1 (riserva aperta in review #39): i messaggi al confine old/recent che precedono il primo user vengono ora piegati nel riepilogo invece di essere scartati silenziosamente. Il caso degenere (nessun user in `recent`, start=0) produce `boundary=[]` → comportamento identico alla versione precedente. L'invariante `_get_window` (history parte sempre da `role='user'`) è garantita perché il summary ha sempre `role='user'`. T53 e T54 coprono rispettivamente il caso nominale e il caso degenere, entrambi PASS. Nessuna violazione degli antipattern §5, nessuna regressione.
 
 ---
 
 ## Stato CI ultima run
 
-Run #28295087523 su `6cfd340` — **193 PASS, 0 FAIL** ✅ (pre-sessione).
-Nuova run CI attesa dopo push di `65c4c7b` — stimata ~205 PASS, 0 FAIL.
+Run su `9d32e3e` (sessione precedente): verde. Nuova run su `cde4d94` in attesa. Stima: ~207 PASS, 0 FAIL (Linux, +2 nuovi test vs 205 precedenti).
+
+---
+
+## §RISERVE aperte (da sessione corrente)
+
+1. **Crescita summary worst-case**: con boundary=keep_msgs-1, il summary cresce fino a ~6KB extra. Già gestito da `_cap_window_chars`. Non critico. Annotato.
+2. **T54 già funzionava prima**: il caso degenere no-user era già safe nella vecchia versione. T54 aggiunto come regression guard.
+
+Riserve precedenti ancora aperte: R-tel-budget-perf, R-tel-tool_res (review #38, non bloccanti).
