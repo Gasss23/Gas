@@ -9,9 +9,15 @@
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **40 review** completate. Suite: **196 PASS, 7 FAIL** (Windows locale, pre-esistenti bwrap/WinError32).
 CI GitHub Actions: run #28307518983 su `cde4d94` — **SUCCESS** ✅.
 
-**🎯 Tutti e 5 gli item aperti del roadmap chiusi** (2026-06-27, review #38, commit a8c6d53).
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **✅ R-comp-1** — boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
+
+**Stato item roadmap (review #38, commit a8c6d53) — stato reale:**
+- 🔴 **Item 1 — Controllo spesa token**: `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` committati. Agiscono sul runtime GAS (Gemini/Groq free tier, costo ~0€). La spesa problematica (Claude Code dev su Opus) NON è tracciata in `.gas_tokens.jsonl` e NON viene intercettata. → **APERTO**: la disciplina dev (sez. 11 CLAUDE.md) resta l'unica leva reale.
+- 🟡 **Item 2 — Accesso da telefono**: `gas telegram` committato — interfaccia RUNTIME (GAS risponde all'utente via Telegram bot). L'accesso al dev tooling (Claude Code / repo da telefono via claude.ai/code o SSH+tmux) NON è stato implementato. → **APERTO** (il bridge runtime è una FASE 5 anticipata utile; l'item originale dev tooling resta aperto).
+- 🟡 **Item 3 — R-wire-1 VEC_MIN_SIM**: `gas calibrate-vectors` committato — strumento di misura su diario reale (distribuzione score coseno, suggerisce soglia). La taratura effettiva richiede esecuzione sul VPS con diario reale. → **APERTO** (strumento pronto, taratura da fare al deploy).
+- 🟡 **Item 4 — eval e5-small**: `gas eval-vectors` committato — espone statistiche vector store e ricerca semantica interattiva, documenta e5-small come alternativa configurabile. Valutazione comparativa e migrazione del modello NON effettuate. → **APERTO**.
+- 🟡 **Item 5 — R-reidx-3 picco RAM**: batch paginati già introdotti in review #30 (2026-06-25). Non toccato in review #38. → **APERTO** (ridotto, chiusura definitiva al deploy VPS).
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -61,10 +67,12 @@ Componenti attive:
 ## Prossimi passi (in ordine di priorità)
 
 1. ~~**FASE 2.5**~~ ✅ chiusa (review #39, 2026-06-27).
-2. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
-3. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (prerequisito Jarvis reale).
-4. **FASE 5 — Deploy VPS Hetzner**: al deploy attivare `gas telegram` come daemon (systemd), `gas calibrate-vectors` per ri-tarare VEC_MIN_SIM, checklist (R-vec-3, R-reidx-deps, R-wire-1).
-5. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
+2. **🔴 Spesa token dev**: item 1 roadmap — il budget cap runtime è inerte sul free tier. La leva reale è la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
+3. **📱 Accesso dev tooling da telefono**: item 2 roadmap — claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) è già disponibile ma non è questo.
+4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
+5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
+6. **FASE 5 — Deploy VPS Hetzner**: al deploy → `gas telegram` daemon (systemd), `gas calibrate-vectors` (item 3), checklist R-vec-3 / R-reidx-deps / R-wire-1 / R-reidx-3 (item 5).
+7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
 ### PARK — registrati, nessun impegno
 - Retention del diario (archiviazione/export, MAI DELETE — quando il volume lo richiederà).

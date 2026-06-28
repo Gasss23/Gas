@@ -15,7 +15,7 @@ Nessuna. Fix puntuale, scope delimitato, approvato dal revisore.
 
 ## Sonda ambiente
 
-CI GitHub Actions: in attesa su `cde4d94` (push di questa sessione). Ultima verde: `9d32e3e`.
+CI GitHub Actions: run #28307518983 su `cde4d94` — **SUCCESS** ✅ (`--log-failed` vuoto).
 
 ---
 
