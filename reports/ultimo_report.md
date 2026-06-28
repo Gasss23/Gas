@@ -1,121 +1,72 @@
-# deps: pin core riproducibile + requests, escludi voce/Windows
-**Data:** 2026-06-29 | **Scope:** solo requirements.txt — nessun tocco al motore
+# Report task — doctor visibility layer memoria SQLite
+**Data:** 2026-06-29
+**Scope:** Sonda (FASE 1) + verdetto GATE STOP #1
 
 ---
 
-## A — DIRETTI MANCANTI VERIFICATI
+## Esito: GATE STOP #1 — già coperto, niente da fare
 
-Grep fresco su gas.py, brains/, modules/ → filtrando stdlib + locali → 5 terzi:
+### Sonda (read-only)
 
-| PyPI | import | dove | top-level? | in old req.txt |
-|------|--------|------|-----------|----------------|
-| `openai` | `from openai import OpenAI` | gas.py:11 | ✅ sì | ✅ sì |
-| `requests` | `import requests` | brains/*.py (tutti e 4) | ✅ sì | ❌ **MANCANTE** |
-| `numpy` | `import numpy as _np` | modules/memory/vectors.py:57 | lazy try/except | ✅ sì |
-| `fastembed` | `from fastembed import TextEmbedding` | modules/memory/vectors.py:63 | lazy try/except | ✅ sì |
-| `onnxruntime` | _(transitivo di fastembed)_ | — | — | ✅ sì (esplicito) |
+Letta la funzione `doctor()` in `gas.py` righe 1538–1808 e il modulo
+`modules/memory/store.py` righe 1–805.
 
-**Confermato: SOLO `requests` era il diretto mancante.** Nessun altro buco emerso.
-torch/whisper/elevenlabs/pywin32/comtypes → ZERO occorrenze. Confermato.
+La **Sezione 8** di `doctor` (commento "# 8. Memoria di lungo periodo",
+righe 1695–1775) apre già il layer SQLite e ne dichiara lo stato in modo
+speculare a `disable_reason` del vector store.
 
----
+#### Check già presenti
 
-## B — VERSIONI REALI INSTALLATE (output grezzo)
+| Ramo di degrado | Variabile | Righe doctor | Esito emesso |
+|---|---|---|---|
+| DB assente | `mem_path.exists()` == False | 1701–1703 | WARN "assente (verrà creato al primo run)" |
+| Init fallita — collisione `chiave_norm` | `mem.collisione_chiave_norm` | 1708–1710 | FAIL + dettaglio collisione |
+| Init fallita — corruzione/permessi | `mem.available == False` (else) | 1711–1713 | FAIL "DB non apribile..." |
+| DB aperto ma corrotto | `mem.integrity_check()` → `PRAGMA quick_check` | 1715–1717 | OK/FAIL |
+| FTS5 assente | `mem.fts_available` | 1718–1720 | OK/WARN |
+| Nessun backup locale | `mem.ultimo_backup()` | 1720–1728 | WARN |
+| Backup stantio | età backup > 0 h | 1725–1728 | OK con età |
 
-```
-pip show openai numpy onnxruntime fastembed requests | grep -E "^(Name|Version):"
+#### Paragone con `disable_reason` (vector store, righe 1758–1775)
 
-Name: openai
-Version: 2.43.0
-Name: numpy
-Version: 2.4.6
-Name: onnxruntime
-Version: 1.27.0
-Name: fastembed
-Version: 0.8.0
-Name: requests
-Version: 2.34.2
-```
+Il pattern è identico:
+- Vector store: `_vs_probe.available` + `_vs_probe.disable_reason`
+- Memoria SQLite: `mem.available` + `mem.collisione_chiave_norm`
 
----
+Entrambi emettono un singolo FAIL o WARN con motivo esplicito.
+La memoria SQLite espone addirittura più granularità (integrity_check, FTS5, backup).
 
-## C — CHECK STATICO OPENAI 2.x
+### Rami di degrado — silenzioso o visibile?
 
-### Usi SDK trovati in gas.py (righe grezze)
+Tutti i rami identificati nel brief sono **visibili a freddo** tramite doctor:
 
-```
-gas.py:11  from openai import OpenAI
+- `MemoryStore.__init__` fallisce → `available = False` → doctor FAIL con motivo
+- `_memoria_pin()` → ricade su pin vuoto quando `available = False`: il per-turno
+  è silenzioso PER DESIGN (finding rimandato, FUORI SCOPE), ma il degrado a freddo
+  è visibile via doctor.
+- `ricorda`, `salva_contatto`, `imposta_stato_contatto` → degradano su `available = False`
+  oppure su eccezioni SQLite/OSError catturate: già coperto dal check `available`.
 
-# istanziazione (run_turn, main loop):
-gas.py:1465  client = OpenAI(base_url=url, api_key=os.environ.get(env))
+### Conclusione
 
-# chiamata (normale + retry Gemini 400):
-gas.py:1469  response = client.chat.completions.create(
-gas.py:1471      model=model, messages=payload, tools=self.tools_schema, tool_choice="auto"
-gas.py:1480  response = client.chat.completions.create(  # retry
-gas.py:1481      model=model, messages=payload, tools=self.tools_schema, tool_choice="auto"
+Nessun gap. Nessun codice da scrivere.
 
-# lettura response:
-gas.py:1488  usage = getattr(response, "usage", None)
-gas.py:1491  getattr(usage, "prompt_tokens", 0)
-gas.py:1492  getattr(usage, "completion_tokens", 0)
-gas.py:1493  msg = response.choices[0].message
-gas.py:1495  if msg.tool_calls:
-gas.py:1496      ... msg.content ... msg.tool_calls ...
-gas.py:1498      tc.function.name, tc.function.arguments
-gas.py:1508      tc.id
-gas.py:1512  elif msg.content:
-
-# gestione eccezioni (status_code):
-gas.py:1532  getattr(e, "status_code", None)
-
-# istanziazione (doctor):
-gas.py:1575  client = OpenAI(base_url=url, api_key=os.environ[env], timeout=15)
-gas.py:1577  client.chat.completions.create(model=model, messages=[...], max_tokens=1)
-gas.py:1581  getattr(e, "status_code", None)
-```
-
-### Esito check 2.x (fonte: METADATA del pacchetto installato)
-
-Il README dentro `openai-2.43.0.dist-info/METADATA` dice testualmente:
-> *"The previous standard (**supported indefinitely**) for generating text is the
-> [Chat Completions API](https://platform.openai.com/docs/api-reference/chat)."*
-
-Verifica punto per punto:
-
-| uso | stato in 2.x | note |
-|-----|-------------|------|
-| `OpenAI(base_url=..., api_key=..., timeout=...)` | ✅ invariato | costruttore identico |
-| `client.chat.completions.create(...)` | ✅ **supported indefinitely** | dichiarato esplicitamente nel README 2.x |
-| `response.choices[0].message` | ✅ invariato | struttura ChatCompletion non cambiata |
-| `msg.tool_calls`, `tc.function.name`, `tc.function.arguments`, `tc.id` | ✅ invariati | |
-| `getattr(response, "usage", None)` + `getattr(usage, "prompt_tokens/completion_tokens", 0)` | ✅ safe | getattr con default — robusto a qualunque variazione |
-| `getattr(e, "status_code", None)` | ✅ presente | `APIStatusError.status_code` confermato in `_exceptions.py` 2.43.0 |
-
-**Esito: tutti gli usi sono compatibili 2.x → pin `openai==2.43.0` approvato.**
-
-Nota: la macchina sta già girando openai 2.43.0 con test verdi — il check statico
-lo conferma formalmente ma non aggiunge nuova evidenza a ciò che già funziona.
+Il gate di ingresso GATE STOP #1 è soddisfatto: il layer memoria SQLite è già
+dichiarato da `doctor` in modo equivalente (e più dettagliato) al `disable_reason`
+del vector store.
 
 ---
 
-## D — requirements.txt FINALE (cat)
+## Finding residuo (FUORI SCOPE — da decidere)
 
-```
-# voce (torch/whisper/elevenlabs) e Windows-only: esclusi dal deploy core
-openai==2.43.0
-requests==2.34.2
-numpy==2.4.6
-onnxruntime==1.27.0
-fastembed==0.8.0
-```
+Il degrado **per-turno** (quando il layer si degrada DOPO l'avvio, durante un
+turno agentico) resta SILENZIOSO: il fail-safe §9 logga un warning nel
+`gas_debug.log` ma non lo propaga al runtime della sessione. Questo finding è
+esplicitamente rimandato nel brief ("Degrado a solo-testo per-turno, rimandato
+APPOSTA per falsi positivi"). Se in futuro si vuole affrontarlo, il punto di
+intervento corretto è in `_memoria_pin()` (aggiunge un token nel contesto quando
+`available` diventa False a runtime), non in `doctor`.
 
-**Logica del pin:**
-- `openai==2.43.0` — versione operativa con test verdi, check 2.x clean
-- `requests==2.34.2` — aggiunto: era il diretto mancante (crash deploy fresh)
-- `numpy==2.4.6` + `onnxruntime==1.27.0` — coppia ABI pinnata insieme (numpy 2.x rompe ABI)
-- `fastembed==0.8.0` — layer vettoriale fail-safe
-- onnxruntime resta esplicito (non solo transitivo): necessario per non saltare T30/T31/T32 in CI
+---
 
-**Limite noto:** wheel testate su Windows AMD64. Verifica manylinux_x86_64 al deploy CX22:
-`pip download -r requirements.txt --platform manylinux_x86_64 --python-version 311 --only-binary=:all:`
+*Nessun file modificato. Nessun commit necessario.*
