@@ -69,8 +69,9 @@ Spesa rilevata 20€ in 2 giorni (22–23 giu 2026): 100% costo di sviluppo Clau
 
 **Item aperti TOP:**
 1. 🔴 Controllo spesa token (DIAGNOSI: sviluppo vs runtime, cap giornaliero, routing cheap-by-default)
-2. 📱 Accesso Claude Code da telefono (claude.ai/code, bridge bot Telegram, SSH tmux)
+2. 📱 Telegram dual-control: GAS runtime + Claude Code entrambi comandabili da telefono (GAS bot già pronto; manca bridge Claude Code → Telegram)
 3. R-wire-1 residuo: ri-taratura VEC_MIN_SIM su diario reale VPS (env già configurabile)
 4. 🤖 Task scheduler autonomo (catalogo task notturni — prerequisito Jarvis reale su VPS)
+5. 🎬 Video learning: GAS trascrive e studia video (YouTube/locale) → diario SQLite (Gemini multimodale o pipeline Whisper+LLM)
 
 Dettaglio completo, completati storici e priorità: reports/roadmap.md

@@ -75,6 +75,11 @@ Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di
 - **Process management + self-healing:** systemd unit con `Restart=always` + `RestartSec=10` per sopravvivere ai crash notturni senza presidio. Alert Telegram se Gas non risponde da N minuti (watchdog). Convergenza col bridge bot (item #2): stessa infrastruttura per notifiche push e comandi da telefono. Senza questo, un crash alle 3am blocca Jarvis fino al mattino.
 
 ### 💡 Idee da valutare (NON prioritarie)
+
+- **Telegram dual-control: GAS + Claude Code insieme** — Il bot `gas telegram` esiste già (FASE 2, item #2). Il passo successivo è espandere il bridge in modo che dal telefono si possano inviare comandi sia a GAS runtime (già funzionante) sia a Claude Code (sessione di sviluppo): es. "controlla CI", "scrivi feature X", "dimmi lo stato del progetto". I due agenti si coordinano: GAS risponde sullo stato runtime, Claude Code agisce sul codice. Architettura da definire (webhook condiviso vs. due bot distinti vs. un orchestratore GAS che inltra a CC). Prerequisito: VPS h24 (FASE 5) per tenere tutto sempre attivo. Dipende da bridge Claude Code → canale Telegram (da esplorare: Claude Code CLI in background su VPS con stdin/stdout rediretto al bot).
+
+- **Video learning — GAS studia e apprende da video** — Capacità di "leggere" un video (YouTube URL o file locale): trascrizione automatica (Whisper STT già in roadmap FASE 3, o API Gemini multimodale che accetta video direttamente), estrazione di concetti chiave, salvataggio compresso nel diario SQLite (memoria long-term FASE 2). GAS può poi rispondere a domande basandosi sui video studiati via FTS/semantico. Use case: studiare webinar di marketing, tutorial tecnici, content dei competitor. Da valutare: Gemini 1.5/2.0 con context video nativo vs. pipeline Whisper + LLM testuale (tradeoff costo/qualità). Convergenza naturale con FASE 3 (Whisper già pianificato) e FASE 2 (memoria già presente).
+
 - Valutare utilizzo o integrazione openclaw (agente IA esterno). NB: prima verificare licenza, dipendenze, qualità e superficie di sicurezza; mai copia-incolla nel motore. Idea parcheggiata, nessun impegno.
 
 ### 🗣️ DA DISCUTERE (delta da roadmap alternativa — da valutare se/quando fare)
