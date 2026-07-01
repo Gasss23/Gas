@@ -24,7 +24,7 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 2. ✅ **Accesso telefono — Telegram bridge bot** (`gas telegram`) — `modules/telegram/bot.py`: long polling via urllib stdlib (zero nuove dipendenze), whitelist `TELEGRAM_ALLOWED_IDS` fail-closed, un GasKernel condiviso per uso single-user/Jarvis. Avvio: `export TELEGRAM_BOT_TOKEN=<token> TELEGRAM_ALLOWED_IDS=<chat_id> && gas telegram`. Prerequisito VPS per h24 (FASE 5) ma il codice è pronto al deploy.
 3. ✅ **R-wire-1 ri-taratura VEC_MIN_SIM** — `gas calibrate-vectors [N]`: campiona N righe diario come query, mostra distribuzione score coseno, suggerisce valore soglia. Strumento per tarare `GAS_VECTORS_MIN_SIM` sul diario reale VPS. Env-config già implementata (review #28). Il valore 0.30 default rimane fino al deploy reale.
 4. ✅ **e5-small evaluation** — `gas eval-vectors [query] [k]`: mostra statistiche vector store (modello, dim, n. vettori, min_sim) e risultati semantici con score. Nota e5-small come alternativa (`GAS_EMBED_MODEL=intfloat/multilingual-e5-small`, stessa infra 384-dim, prefissi già gestiti in `_MODEL_PREFIXES`). Valutazione effettiva avviene a runtime col diario reale.
-5. ✅ **R-reidx-3 picco RAM** — Già chiuso (review #30, 2026-06-25): `ricostruisci_da_diario` usa batch paginati (`diario_dopo`, `REINDEX_BATCH_SIZE=256`), numpy transitori per batch (~400KB), accumulo blob ~1.5KB/riga. Su VPS CX22 4GB non bloccante.
+5. ✅ **R-reidx-3 picco RAM** — Già chiuso (review #30, 2026-06-25): `ricostruisci_da_diario` usa batch paginati (`diario_dopo`, `REINDEX_BATCH_SIZE=256`), numpy transitori per batch (~400KB), accumulo blob ~1.5KB/riga. Su VPS CX33 8GB non bloccante.
 
 ### 🟡 PROSSIMI PASSI (in ordine di priorità)
 
@@ -34,7 +34,7 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 4. **FASE 5 — Deploy VPS Hetzner** (vedi sotto). Include: attivare `gas telegram` come daemon, backup off-machine, process management systemd, ri-tarare `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
 5. **Riserve aperte dalla review #38**: R-tel-budget-perf (scan JSONL al crescere del log), R-tel-tool_res (cosmetico, tool result nel reply Telegram).
 
-> Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul CX22 (FASE 5).
+> Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul CX33 (FASE 5).
 
 ### 🗂️ FASE 2.5 — Summarizzazione Cronologia (Prerequisito VPS h24)
 
