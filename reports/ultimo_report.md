@@ -1,72 +1,72 @@
-# Report task — doctor visibility layer memoria SQLite
-**Data:** 2026-06-29
-**Scope:** Sonda (FASE 1) + verdetto GATE STOP #1
+# Report task — prova sviluppo Gas da telefono (comando `gas version`)
+**Data:** 2026-07-01
+**Scope:** Prova pratica end-to-end "sviluppo reale da telefono" (Claude Code on the web, client mobile) + risposta alle domande dell'utente su capacità/limiti di questo accesso
 
 ---
 
-## Esito: GATE STOP #1 — già coperto, niente da fare
+## DECISIONI UMANE RICHIESTE
 
-### Sonda (read-only)
-
-Letta la funzione `doctor()` in `gas.py` righe 1538–1808 e il modulo
-`modules/memory/store.py` righe 1–805.
-
-La **Sezione 8** di `doctor` (commento "# 8. Memoria di lungo periodo",
-righe 1695–1775) apre già il layer SQLite e ne dichiara lo stato in modo
-speculare a `disable_reason` del vector store.
-
-#### Check già presenti
-
-| Ramo di degrado | Variabile | Righe doctor | Esito emesso |
-|---|---|---|---|
-| DB assente | `mem_path.exists()` == False | 1701–1703 | WARN "assente (verrà creato al primo run)" |
-| Init fallita — collisione `chiave_norm` | `mem.collisione_chiave_norm` | 1708–1710 | FAIL + dettaglio collisione |
-| Init fallita — corruzione/permessi | `mem.available == False` (else) | 1711–1713 | FAIL "DB non apribile..." |
-| DB aperto ma corrotto | `mem.integrity_check()` → `PRAGMA quick_check` | 1715–1717 | OK/FAIL |
-| FTS5 assente | `mem.fts_available` | 1718–1720 | OK/WARN |
-| Nessun backup locale | `mem.ultimo_backup()` | 1720–1728 | WARN |
-| Backup stantio | età backup > 0 h | 1725–1728 | OK con età |
-
-#### Paragone con `disable_reason` (vector store, righe 1758–1775)
-
-Il pattern è identico:
-- Vector store: `_vs_probe.available` + `_vs_probe.disable_reason`
-- Memoria SQLite: `mem.available` + `mem.collisione_chiave_norm`
-
-Entrambi emettono un singolo FAIL o WARN con motivo esplicito.
-La memoria SQLite espone addirittura più granularità (integrity_check, FTS5, backup).
-
-### Rami di degrado — silenzioso o visibile?
-
-Tutti i rami identificati nel brief sono **visibili a freddo** tramite doctor:
-
-- `MemoryStore.__init__` fallisce → `available = False` → doctor FAIL con motivo
-- `_memoria_pin()` → ricade su pin vuoto quando `available = False`: il per-turno
-  è silenzioso PER DESIGN (finding rimandato, FUORI SCOPE), ma il degrado a freddo
-  è visibile via doctor.
-- `ricorda`, `salva_contatto`, `imposta_stato_contatto` → degradano su `available = False`
-  oppure su eccezioni SQLite/OSError catturate: già coperto dal check `available`.
-
-### Conclusione
-
-Nessun gap. Nessun codice da scrivere.
-
-Il gate di ingresso GATE STOP #1 è soddisfatto: il layer memoria SQLite è già
-dichiarato da `doctor` in modo equivalente (e più dettagliato) al `disable_reason`
-del vector store.
+Nessuna.
 
 ---
 
-## Finding residuo (FUORI SCOPE — da decidere)
+## Esito per fetta
 
-Il degrado **per-turno** (quando il layer si degrada DOPO l'avvio, durante un
-turno agentico) resta SILENZIOSO: il fail-safe §9 logga un warning nel
-`gas_debug.log` ma non lo propaga al runtime della sessione. Questo finding è
-esplicitamente rimandato nel brief ("Degrado a solo-testo per-turno, rimandato
-APPOSTA per falsi positivi"). Se in futuro si vuole affrontarlo, il punto di
-intervento corretto è in `_memoria_pin()` (aggiunge un token nel contesto quando
-`available` diventa False a runtime), non in `doctor`.
+### Fetta 1 — Rispondere se/come si può sviluppare Gas da telefono
+`FATTA`. Ricerca (agent `claude-code-guide`) + prova empirica diretta (questa
+sessione stessa, `entrypoint: remote_mobile`). Risposta: sì, via claude.ai/code
+da browser mobile (ambiente cloud isolato, fresh clone del repo) oppure via
+`claude remote-control` (ambiente locale/VPS reale, per ora non ancora in uso
+perché richiede FASE 5). Chiariti a richiesta dell'utente: differenze di
+capacità rispetto a un PC, RAM del sandbox cloud (15 GiB liberi, 4 core — dato
+reale da `free -h`/`nproc` in questa sessione), e il flusso concreto per
+portare il codice sviluppato qui nell'ambiente dove Gas gira davvero
+(commit → push → merge → `git pull` manuale + riavvio sull'ambiente reale;
+nessun deploy automatico, non essendo ancora implementata FASE 5).
+
+### Fetta 2 — Task di prova reale: comando `gas version`
+`FATTA`. Modifica scelta apposta piccola e a basso rischio per dimostrare
+l'intero ciclo codice→test→review→commit→push→CI, non per introdurre una
+feature complessa:
+- `GAS_VERSION = "0.2.0"` (costante di modulo, `gas.py`)
+- `version_cmd() -> int`: stampa versione Gas + versione Python, zero token
+  LLM, zero I/O su file/rete (stesso spirito di `gas doctor`)
+- Wiring nel dispatcher CLI di `main()` (stesso pattern isolato di
+  doctor/reindex/backup/tokens/...)
+- Test T55 in `tests/test_unit_kernel.py` (pattern `redirect_stdout` già in
+  uso a T36), verifica `version_cmd() == 0` e presenza di `GAS_VERSION`
+  nell'output
+
+Validazione diretta: `python gas.py version` → `Gas 0.2.0` / `Python 3.11.15`,
+exit 0. Suite completa: 198 PASS, 5 FAIL (T11c2/T11e/T12a/T12c/T12e, tutti
+pre-esistenti per assenza del binario `bwrap` in questo sandbox cloud — non
+riconducibili alla modifica, confermato anche dal revisore).
+
+**Gate revisore (CLAUDE.md sez. 3):** invocato sul diff staged di
+`gas.py` + `tests/test_unit_kernel.py`. **Verdetto: APPROVATO**, nessuna
+riserva bloccante, nessuna lezione nuova per `.claude/agents/memoria_revisore.md`.
+
+**Commit e push:** `d992c47` su `claude/phone-gas-development-10svqc`.
+
+**CI:** run #50 (id `28531063303`) su commit `d992c47` → **completed / success**.
 
 ---
 
-*Nessun file modificato. Nessun commit necessario.*
+## Verifica per l'utente (da PC)
+
+```
+git fetch origin claude/phone-gas-development-10svqc
+git checkout claude/phone-gas-development-10svqc
+git pull
+python gas.py version
+```
+
+---
+
+## Anomalie riscontrate
+
+`reports/handoff.md` non veniva riscritto da diverse sessioni: il range
+`${BASE}..HEAD` usato per §2/§3 dell'handoff include quindi anche 5 commit
+di sessioni precedenti (tutti `docs:`/`deps:`, non di questa sessione) oltre
+al commit `d992c47` di questo task. Segnalato per trasparenza, nessuna azione
+correttiva richiesta (la storia completa resta in git).

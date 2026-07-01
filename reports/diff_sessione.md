@@ -1,46 +1,49 @@
-# Diff sessione — 2026-06-28 (fix R-comp-1)
+# Diff sessione — 2026-07-01 (comando `gas version`, prova sviluppo da telefono)
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
 
 ## Commit della sessione
 
 ```
-cde4d94 fix(kernel): R-comp-1 — boundary al confine piegato nel summary (review #40)
+d992c47 feat(gas): aggiungi comando `gas version`
 ```
 
 ## File toccati
 
 ```
-gas.py                    | 37 ++++++++++++------------
-tests/test_unit_kernel.py | 71 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
-2 files changed, 91 insertions(+), 17 deletions(-)
+gas.py                    | 13 +++++++++++++
+tests/test_unit_kernel.py |  9 +++++++++
+2 files changed, 22 insertions(+)
 ```
 
 ## Cosa è cambiato e perché
 
-### gas.py — `_compress_history_if_needed`
+### gas.py
 
-**Prima**: i messaggi di `recent` che precedevano il primo `user` venivano scartati
-silenziosamente (drop R-comp-1). La logica trovava `start` = primo user in `recent`,
-poi faceva `recent = recent[start:]`, perdendo `recent[:start]`.
+- Aggiunta costante di modulo `GAS_VERSION = "0.2.0"`.
+- Aggiunta funzione `version_cmd() -> int`: stampa `Gas {GAS_VERSION}` e
+  `Python {sys.version}`, ritorna 0. Zero I/O, zero rete, zero token LLM,
+  nessuna dipendenza da `GasKernel` — stesso spirito di `gas doctor`.
+- Wiring nel dispatcher CLI di `main()`: nuovo ramo `sys.argv[1] == "version"`,
+  stesso pattern isolato usato da `doctor`/`reindex`/`backup`/`tokens`/ecc.
 
-**Dopo**: estratto `boundary = recent[:start]`; calcolato `to_compress = old + boundary`;
-il loop di compressione ora itera `to_compress` (non più solo `old`). L'header del
-riepilogo riflette il conteggio aggiornato. Zero drop silenzioso.
+Perché: task di prova concordata con l'utente per dimostrare l'intero ciclo
+"sviluppo reale di Gas da telefono" (Claude Code on the web, client mobile) —
+codice → test → review obbligatoria del subagent `revisore` → commit → push
+→ CI, verificabile poi da PC con `python gas.py version`.
 
-Aggiornati anche: docstring (rimosso "scartati … accettabile"), `logging.info`
-(ora mostra `old + boundary → riepilogo` invece di `scartati al confine`).
+### tests/test_unit_kernel.py
 
-### tests/test_unit_kernel.py — T53 e T54
+Aggiunto **T55**: cattura lo stdout di `version_cmd()` con `redirect_stdout`
+(pattern già in uso da T36) e verifica `r == 0` e presenza di `GAS_VERSION`
+nell'output.
 
-**T53**: verifica il fix. Costruisce una history con 3 messaggi assistant (con marcatore
-stringa) prima del primo user nella finestra `recent`. Asserisce che il marcatore compaia
-nel summary (non droppato) e che l'header conti correttamente `old+boundary`.
+## Note
 
-**T54**: promuove il caso degenere (history di soli assistant, nessun user). Asserisce
-che dopo la compressione `history[0]["role"]=="user"` e la window parta da user.
-
-## Sessione precedente
-
-`9d32e3e` docs report FASE 2.5 (2026-06-27) — la riserva R-comp-1 di review #39 era
-stata lasciata aperta come non bloccante e chiusa in questa sessione.
+- Diff scelto apposta piccolo e a rischio nullo (nessun tocco a history,
+  finestra, provider, sandbox) proprio perché lo scopo era testare il
+  *processo* di sviluppo da telefono, non introdurre una feature.
+- Il range `${BASE}..HEAD` usato nell'handoff di questa sessione include
+  anche 5 commit di sessioni precedenti mai chiuse con un handoff — vedi
+  `reports/handoff.md` §2/§3 per il dettaglio. Il commit reale di questa
+  sessione è solo `d992c47`.
