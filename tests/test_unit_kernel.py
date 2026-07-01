@@ -2812,6 +2812,15 @@ check("T54 degenere no-user: history[0] e window[0] partono da role user",
 os.environ.pop("GAS_HISTORY_MAX_MSGS", None)
 os.environ.pop("GAS_HISTORY_KEEP_MSGS", None)
 
+# T55 — comando `gas version`: exit 0, zero token, stampa GAS_VERSION
+_buf55 = io.StringIO()
+with redirect_stdout(_buf55):
+    _r55 = gas.version_cmd()
+_out55 = _buf55.getvalue()
+check("T55 version_cmd: exit 0 e stampa GAS_VERSION",
+      _r55 == 0 and gas.GAS_VERSION in _out55,
+      f"r={_r55} out={_out55.strip()!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

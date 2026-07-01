@@ -12,6 +12,8 @@ from openai import OpenAI
 from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO, normalizza_chiave
 from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
 
+GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
+
 # Console solo da WARNING in su; il file (scatola nera) riceve tutto ciò che
 # i logger lasciano passare. Il root logger resta a WARNING, quindi le librerie
 # (httpx ecc.) non inquinano il log: solo i logger alzati esplicitamente a INFO
@@ -1879,6 +1881,15 @@ def backup_cmd(root_dir: Optional[str] = None) -> int:
     return 0
 
 
+def version_cmd() -> int:
+    """Comando `gas version`: stampa versione Gas e Python. Zero token LLM,
+    zero I/O su file/rete -- solo per verifica rapida (es. dopo un deploy)."""
+    import sys
+    print(f"Gas {GAS_VERSION}")
+    print(f"Python {sys.version.split()[0]}")
+    return 0
+
+
 def reindex(root_dir: Optional[str] = None,
             vectors: Optional[VectorStore] = None) -> int:
     """Comando `gas reindex`: RICOSTRUISCE da zero l'indice vettoriale (la cache
@@ -2143,6 +2154,8 @@ def compress_history_cmd(root_dir: Optional[str] = None) -> int:
 
 def main():
     import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "version":
+        sys.exit(version_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "doctor":
         sys.exit(doctor())
     if len(sys.argv) > 1 and sys.argv[1] == "reindex":
