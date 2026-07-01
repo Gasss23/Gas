@@ -1,118 +1,107 @@
-# Report task — Allineamento canonici pre-S1 (FASE 5)
-**Data:** 2026-07-02
-**Scope:** DOC-ONLY. Allineare i canonici del repo allo stato reale della sonda S0 (eseguita 2026-06-30, mai committata). Zero modifiche al motore (gas.py, brains/, modules/, tests/). Nessuna review revisore necessaria.
+# Report — Correttivo DOC-ONLY post-a15ff61 (FASE 5, 2026-07-02)
 
----
+> Scope: DOC-ONLY sopra a15ff61. Zero modifiche a gas.py, brains/, modules/, tests/.
+> Nessuna review revisore (nessun file motore toccato).
 
 ## §1 SCOPE & ESITO FETTE
 
-| Fetta | Titolo | Esito |
-|-------|--------|-------|
-| Fetta 0 | git pull + lettura stato_progetto.md corrente | **FATTA** |
-| Fetta 1 | R-vec-pool: analisi fingerprint vector store | **FATTA** |
-| Fetta 2 | Allineamento canonici (CX33, review #41, R-vec-pool, sicurezza, systemd) | **FATTA** |
+| Fetta | Descrizione | Esito |
+|-------|-------------|-------|
+| 0 | git pull + lettura stato_progetto.md corrente (post-a15ff61) | **FATTA** |
+| 1 | Verifica conteggio 208 test su CI run #28539899123 | **FATTA** |
+| 2 | Chiusura R-vec-3 su evidenza sonda S0 + aggiornamento stato_progetto.md | **FATTA** |
+| 3 | Fatti macchina reali (sonda 2026-07-02) + FINDING no-swap in stato_progetto.md | **FATTA** |
+| 4 | Requisito non-root specifico (VECTORS_DB /root/gas/.gas_vectors.db) in stato_progetto.md | **FATTA** |
+| 5 | Verifica lezione #40 dangling in memoria_revisore.md | **FATTA** — già committata, nessun diff pendente |
 
 ---
 
-## §2 FETTA 0 — STATO A TERRA
+## §2 FETTA 1 — Verifica conteggio 208 (CI run #28539899123)
 
-- `git pull` → Already up to date. Repo locale già allineato.
-- `reports/stato_progetto.md` letto: riferiva CX22/4GB (ERRATO), review #40, CI run #28307518983 su cde4d94, suite 196 PASS 7 FAIL.
-- `.claude/agents/memoria_revisore.md`: ultima lezione #40 (2026-06-28). Aveva una modifica locale non committata (aggiunta lezione #40 già scritta ma non staggiata).
-- `reports/handoff.md` (sessione gas version): evidenza esplicita di review #41 APPROVATO, nessuna lezione nuova.
-- CI `gh run list --branch main --limit 5`: ultima run reale = **#28539899123** (success, "Merge branch 'main'", 2026-07-01, commit `76cd3bb`).
+### Riga grezza dal log CI (evidenza)
 
----
-
-## §3 FETTA 1 — REFERTO R-VEC-POOL
-
-**File esaminato:** `modules/memory/vectors.py`
-
-**Funzione che scrive il fingerprint** (`_write_fingerprint`, riga 226):
-```python
-con.execute("INSERT OR REPLACE INTO metadata VALUES ('model_id', ?)", (self.model_name,))
-con.execute("INSERT OR REPLACE INTO metadata VALUES ('model_dim', ?)", (str(self.dim),))
+```
+unit-suite  UNKNOWN STEP  2026-07-01T18:43:45.9338850Z  === RIEPILOGO: 208 PASS, 0 FAIL ===
 ```
 
-**Funzione che lo legge e confronta** (`_read_fingerprint` + confronto in `__init__`, righe 214-197):
-```python
-stored_model, stored_dim = fp
-if stored_model != self.model_name or stored_dim != self.dim:
-    # mismatch → layer disabilitato
+### 2 SKIP confermati da log
+
+```
+[SKIP] T9a ogni provider cappato a 10 iterazioni — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
+[SKIP] T9c storia salvata su disco nella root temporanea — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
 ```
 
-**Risposta alla domanda netta:**
-Il fingerprint include **SOLO il nome/id del modello** (`model_id`) e la **dimensione** (`model_dim` = 384, costante hardcoded `EMBED_DIM`). **NON include** la versione di fastembed né il tipo di pooling (mean/CLS).
+### Verdetto
 
-**Rischio — drift SILENZIOSO:**
-Un bump di fastembed che cambia la strategia di pooling per lo stesso nome modello (es. mean→CLS sullo stesso `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`) NON verrebbe rilevato dal guard:
-- `stored_model` = `self.model_name` → match ✓
-- `stored_dim` = 384 → match ✓ (la dim non cambia)
-- Guard passa → layer ABILITATO
-- Ma i vettori in DB sono stati computati con pooling A, le nuove query usano pooling B → le dot product restituiscono similarity sbagliate **senza alcun warning**
-
-**Mitigazione attuale:** `requirements.txt` ha `fastembed==0.8.0` pinnato (revisione 2026-06-29). Il rischio è latente ma non attivo finché fastembed non viene aggiornato manualmente.
-
-**Raccomandazione (senza toccare codice ora):**
-1. Al deploy VPS: documentare `gas reindex` come prassi obbligatoria dopo ogni upgrade di fastembed (→ già aggiunto nelle Note operative VPS di stato_progetto.md).
-2. In una review futura (bassa priorità, non S1): valutare di includere `fastembed.__version__` nel fingerprint → mismatch esplicito invece di drift silenzioso. Patch minimale: aggiungere una terza riga `('fastembed_ver', fastembed.__version__)` in `_write_fingerprint` e confrontarla in `__init__`.
-
-**Finding aperto:** 🟡 **R-vec-pool** aggiunto a stato_progetto.md.
+Il log conferma **208 PASS, 0 FAIL**. Il "2 SKIP" in stato_progetto.md è ricavato dai `[SKIP]` T9a/T9c (il RIEPILOGO custom non li conta separatamente). Il numero 208 è corretto — **nessuna correzione** a stato_progetto.md necessaria per il conteggio.
 
 ---
 
-## §4 FETTA 2 — MODIFICHE APPORTATE
+## §3 FETTA 2 — Chiusura R-vec-3
 
-Tutte DOC-ONLY. File toccati: `reports/stato_progetto.md`, `reports/roadmap.md`.
+### Stato precedente
+`🟡 RIDOTTO` — wheels installabili confermate, embedding a runtime NON ancora provato su CX33.
 
-### 4.1 CX22/4GB → CX33/8GB
-- `stato_progetto.md` riga R-reidx-3: "Su CX22 4GB" → "Su CX33 8GB"
-- `stato_progetto.md` riga R-vec-3: "sul CX22" → "sul CX33"
-- `roadmap.md` (2 occorrenze): "CX22 4GB" e "sul CX22" → corretti
-- `stato_storico.md`: nessuna occorrenza (verificato)
+### Evidenza sonda S0 (2026-06-30, box CX33)
+```
+[OK] BAAI/bge-small-en-v1.5: dims=384 load=3.5s embed=0.01s
+[OK] sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2: dims=384 load=5.0s embed=0.02s (UserWarning: mean pooling invece di CLS)
+PICCO_RSS_MB 697
+```
 
-### 4.2 Conteggio review e suite (evidenza da CI + handoff)
-- Review #41: APPROVATO (gas version 0.2.0, 2026-07-01) — evidenza da `reports/handoff.md` (§4 integrale). Nessuna lezione nuova → memoria_revisore.md correttamente ferma a #40.
-- Suite CI (run #28539899123, Ubuntu runner, bwrap attivo): **208 PASS, 0 FAIL, 2 SKIP** (T9a/T9c skip su assenza API key live). Suite Windows locale (cloud sandbox gas version): 198 PASS, 5 FAIL (bwrap).
-- CI reference aggiornato: run #28539899123 su `76cd3bb` — SUCCESS ✅
-
-### 4.3 R-vec-3 aggiornamento
-Aggiunta nota esplicita: "Chiusura R-vec-3 + misura RAM rinviate a **S1b** (primo embedding reale + pre-scald cache di proprietà utente runtime; NON lanciare embedding usa-e-getta root)."
-
-### 4.4 R-vec-pool aperto
-Aggiunto come finding 🟡 in stato_progetto.md (vedi §3 per dettaglio).
-
-### 4.5 Note operative VPS — hardware corretto
-Hardware VPS aggiornato a **CX33 / 8 GB Helsinki** (errore CX22 rimosso ovunque).
-
-### 4.6 Nota ollama pavimento 3B
-Aggiunta in Note operative VPS: ollama sul VPS deve usare modello 3B (es. qwen2.5:3b-instruct), NON 7B — gli 8 GB sono condivisi da GAS + embedder fastembed (~500 MB cache) + bot trading demo coabitante.
-
-### 4.7 Contesto sicurezza S1 (bot trading coabitante)
-Registrato in Note operative VPS:
-- (a) `os_strict` OBBLIGATORIO finché il bot trading coabita
-- (b) utente runtime non-root = requisito RAFFORZATO (chiavi exchange sulla stessa macchina di AI che esegue codice = superficie di esfiltrazione)
-
-### 4.8 Decisione systemd ratificata
-Registrata in Note operative VPS: `gas doctor` NON gatea l'avvio systemd (esce 1 anche su sole API key assenti). Comportamento corretto: `Restart=always` + notifica Telegram al primo turno se degradato.
+### Azioni in stato_progetto.md
+- R-vec-3: da `🟡 RIDOTTO` a `✅ CHIUSO`.
+- Boundary esplicito registrato: prova che l'embedder importa e produce vettori di dim corretta sul box reale; NON prova qualità semantica (→ R-wire-2) né comportamento sotto carico RAM concorrente.
+- Rimossa nota "chiusura R-vec-3 rinviata a S1b" (ora chiuso; a S1b resta solo la misura RAM a regime del singolo modello).
+- Caveat RSS: picco 697MB misurato a DUE modelli residenti; produzione carica UN SOLO modello → footprint reale < 697MB; 697 = ceiling conservativo.
+- Prossimi passi item 6: rimosso R-vec-3 dalla checklist, aggiunta nota "R-vec-3 ✅ chiuso".
 
 ---
 
-## §5 VERIFICA FINALE
+## §4 FETTA 3 — Fatti macchina (sonda 2026-07-02, box CX33)
 
-Grep CX22 post-edit su `reports/`:
-- stato_progetto.md: 0 occorrenze ✅
-- roadmap.md: 0 occorrenze ✅
-- stato_storico.md: 0 (non c'era) ✅
+### Dati rilevati
+```
+uname -m = x86_64
+nproc = 4
+Mem total 7.6Gi, available 7.1Gi (a vuoto)
+Disco / 75G, 70G liberi (4% usato)
+SWAP = 0B (NESSUNO swap configurato)
+```
 
-Nessuna modifica a gas.py, brains/, modules/, tests/ — scope DOC-ONLY rispettato.
+### Azioni in stato_progetto.md
+- Hardware aggiornato con specifiche reali: x86_64, 4 core, 7.6Gi RAM usabile (7.1Gi a vuoto), 70Gi disco liberi.
+- 🔴 FINDING no-swap registrato con le tre conseguenze:
+  - (a) Unit systemd S1b: MemoryHigh ~1.5Gi / MemoryMax ~2Gi su GAS.
+  - (b) Ollama 3B always-on: rivalutare → on-demand o 1-1.5B; decisione rinviata a S3.
+  - (c) OPZIONE S1a (non decisa): swap file 2-4Gi come cuscinetto h24.
 
 ---
 
-## §6 NOTE PER S1
+## §5 FETTA 4 — Requisito non-root specifico
 
-S1 NON è stata avviata (scope di questo task = allineamento canonici). Azioni per S1:
-- Aprire con checklist di sicurezza aggiornata (os_strict, non-root, bot trading context)
-- S1b per chiusura R-vec-3: primo embedding reale + misura RSS → NON prima (cache root anti-pattern)
-- Confermare VEC_MIN_SIM con diario reale (R-wire-1)
-- `gas doctor` come verifica post-avvio (non gate), via notifica Telegram
+### Evidenza sonda S0
+```
+VECTORS_DB /root/gas/.gas_vectors.db
+```
+Runtime + cache/db girano sotto `/root` come root.
+
+### Azione in stato_progetto.md
+Aggiunta clausola (c) a nota #3 "Contesto sicurezza OBBLIGATORIO per S1":
+> Requisito esplicito S1: creare utente runtime dedicato non-root e spostare working dir + model cache + `.gas_*.db` fuori da `/root`, di proprietà di quell'utente.
+
+Il giro precedente aveva il contesto generico non-root; questa è la fotografia specifica del fatto.
+
+---
+
+## §6 FETTA 5 — Lezione #40 dangling
+
+`git diff HEAD -- .claude/agents/memoria_revisore.md` → output vuoto. Nessuna modifica pendente. Già committata nel giro precedente. **Nessuna azione necessaria.**
+
+---
+
+## §7 NOTE SULLO SCOPE
+
+- Zero modifiche a file motore (gas.py, brains/, modules/, tests/). Gate revisore non attivato.
+- `reports/verifica_fase25.md` era già presente come untracked pre-sessione — non appartiene a questo task, lasciata invariata.
+- S1 non iniziata. Proposta di prima riga S1 da fare in sessione dedicata.

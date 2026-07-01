@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-02** (allineamento canonici FASE 5 — sonda S0 + gas version 0.2.0, review #41)
+> Ultimo aggiornamento: **2026-07-02** (correttivo post-a15ff61: R-vec-3 ✅ chiuso, no-swap finding, req non-root specifico, verifica conteggio test CI)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -51,7 +51,7 @@ Componenti attive:
 - 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` ora usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX33 8GB il picco totale è gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
 - ✅ **R-vec-2** — `GAS_VECTORS_DB` + `GAS_EMBED_MODEL` configurabili via env (review #31, 2026-06-25).
 - ✅ **R-vec-2b** — fingerprint-guard fail-closed: mismatch model_id (anche stessa dim) o DB legacy → layer disabilitato, istruisce `gas reindex`; fingerprint scritto alla creazione e nel reindex (review #34, 2026-06-27).
-- 🟡 **R-vec-3** — RIDOTTO (2026-06-29): wheel x86_64 installabili confermate (manylinux_2_28, pip download OK); resta da provare import+embedding a runtime sul CX33 (FASE 5). Chiusura R-vec-3 + misura RAM rinviate a **S1b** (primo embedding reale + pre-scald cache di proprietà utente runtime; NON lanciare embedding usa-e-getta root: lascerebbe cache di proprietà sbagliata).
+- ✅ **R-vec-3** — CHIUSO (2026-07-02, sonda S0 2026-06-30 su CX33): import + embedding a runtime confermati sul box reale — BAAI/bge-small-en-v1.5 dims=384 load=3.5s, paraphrase-multilingual-MiniLM-L12-v2 dims=384 load=5.0s. **Boundary esplicito**: prova che l'embedder importa e produce vettori di dim corretta sul box reale; NON prova qualità semantica (→ R-wire-2) né comportamento sotto carico RAM concorrente (ollama+bot). Picco RSS 697MB a DUE modelli residenti (bge-small + multilingua); produzione carica UN SOLO modello (EMBED_MODEL multilingua) → footprint reale < 697MB; 697 = ceiling conservativo, NON il costo del singolo modello. A S1b resta SOLO la misura RAM a regime del singolo modello.
 - 🟡 **R-vec-pool** (2026-07-02, Fetta 1): il fingerprint del vector store (R-vec-2b) include **SOLO** `model_id` (nome stringa) e `model_dim` (384 hardcoded), **NON** la versione di fastembed né il tipo di pooling (mean/CLS). Rischio: un bump di fastembed che cambia il pooling sullo stesso nome modello produce **drift SILENZIOSO** delle similarity senza mismatch rilevato dal guard. Mitigazione attuale: `fastembed==0.8.0` pinnato in requirements.txt — il rischio si attiva solo su upgrade manuale. Raccomandazione: al deploy VPS, dopo ogni upgrade fastembed eseguire `gas reindex` come prassi obbligatoria; valutare di includere `fastembed.__version__` nel fingerprint in una review futura.
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
 - 🟡 **R-wire-2** — qualità semantica MiniLM limitata su query corte IT: limite di potenza, non correttezza. Legato a R-vec-3.
@@ -73,7 +73,7 @@ Componenti attive:
 3. **📱 Accesso dev tooling da telefono**: item 2 roadmap — claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) è già disponibile ma non è questo.
 4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
-6. **FASE 5 — Deploy VPS Hetzner CX33/8GB**: al deploy → `gas telegram` daemon (systemd), `gas calibrate-vectors` (item 3), checklist R-vec-3+R-vec-pool (`gas reindex` dopo ogni upgrade fastembed) / R-wire-1 / R-reidx-3 (item 5). [R-reidx-deps ✅ chiuso] Sonde S1+ pianificate.
+6. **FASE 5 — Deploy VPS Hetzner CX33/8GB**: al deploy → `gas telegram` daemon (systemd), `gas calibrate-vectors` (item 3), checklist R-vec-pool (`gas reindex` dopo ogni upgrade fastembed) / R-wire-1 / R-reidx-3 (item 5). [R-reidx-deps ✅ chiuso; R-vec-3 ✅ chiuso] Sonde S1+ pianificate.
 7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
 ### PARK — registrati, nessun impegno
@@ -91,12 +91,17 @@ Componenti attive:
 
 ## Note operative VPS — non per oggi
 
-> Registrate il 2026-06-15 (aggiornate 2026-07-02, sonda S0 + allineamento canonici).
+> Registrate il 2026-06-15 (aggiornate 2026-07-02, sonda S0 + allineamento canonici + correttivo post-a15ff61: R-vec-3 ✅ chiuso, no-swap finding, req non-root specifico).
 
-**Hardware confermato:** Hetzner **CX33 / 8 GB RAM** Helsinki (NON CX22/4GB come da nota precedente errata).
+**Hardware confermato (sonda diretta 2026-07-02):** Hetzner **CX33** Helsinki — x86_64, 4 core, 7.6Gi RAM usabile (7.1Gi disponibile a vuoto), 70Gi disco liberi (NON CX22/4GB come da nota precedente errata).
+
+🔴 **FINDING no-swap (sonda 2026-07-02):** il box NON ha swap (default Hetzner). Su 7.6Gi condivisi da OS + GAS+embedder + ollama 3B + bot trading demo, un picco = OOM killer SECCO (nessun cuscinetto) su macchina h24 non presidiata → viola "zero crash". Conseguenze:
+- (a) La unit systemd di S1b DEVE settare `MemoryHigh`/`MemoryMax` su GAS (ordine di grandezza: `MemoryHigh ~1.5Gi`, `MemoryMax ~2Gi` — GAS+embedder stanno <1Gi a regime, il margine copre i picchi di reindex; da affinare a S1b con misura reale). Scopo: se qualcosa sfonda, GAS degrada/riparte in modo prevedibile via `Restart=always` invece di innescare un OOM che colpisce il bot trading.
+- (b) Ollama "3B always-on" da RIVALUTARE → probabile on-demand (spawn quando la cascata arriva a ollama, unload dopo) o modello 1-1.5B se always-on, causa RAM limitata + no-swap. Decisione a S3, qui solo registrata come aperta.
+- (c) OPZIONE S1a da valutare: aggiungere swap file 2-4Gi (costo trascurabile su 70Gi liberi) come cuscinetto per h24 non presidiato. Non decisa, messa sul tavolo.
 
 1. **Snapshot**: 0 ref in dev è ATTESO (il runtime GAS non gira qui). Sul VPS gli snapshot nasceranno da `run_command`/`write_file` → se doctor sez.7 mostrasse 0 ref sul VPS sarebbe anomalo. ~4427 oggetti loose = detrito git (stash/churn), non snapshot; `git gc` OPT-IN li riassorbe.
 2. **OpenRouter free ~28s**: rung lento, paracadute non piano operativo. Ollama locale = pavimento rapido a costo zero. **Modello ollama per VPS: 3B (es. `qwen2.5:3b-instruct`), NON 7B** — gli 8 GB sono condivisi da GAS + embedder fastembed (~500 MB model cache) + bot trading demo coabitante; un 7B esaurisce la RAM.
-3. **Contesto sicurezza OBBLIGATORIO per S1** (bot trading demo coabitante): (a) `GAS_SANDBOX_MODE=os_strict` OBBLIGATORIO finché il bot trading coabita — chiavi exchange sulla stessa macchina di un'AI che esegue codice = superficie di esfiltrazione non accettabile in os_with_fallback; (b) utente runtime **non-root** è requisito di sicurezza RAFFORZATO (non solo best practice): processo AI con accesso codice + chiavi exchange dello stesso utente root = game over in caso di exploit.
+3. **Contesto sicurezza OBBLIGATORIO per S1** (bot trading demo coabitante): (a) `GAS_SANDBOX_MODE=os_strict` OBBLIGATORIO finché il bot trading coabita — chiavi exchange sulla stessa macchina di un'AI che esegue codice = superficie di esfiltrazione non accettabile in os_with_fallback; (b) utente runtime **non-root** è requisito di sicurezza RAFFORZATO (non solo best practice): processo AI con accesso codice + chiavi exchange dello stesso utente root = game over in caso di exploit; (c) **Requisito esplicito S1**: creare utente runtime dedicato non-root e spostare working dir + model cache + `.gas_*.db` fuori da `/root`, di proprietà di quell'utente. Evidenza sonda S0: `VECTORS_DB /root/gas/.gas_vectors.db` — runtime e cache/db girano attualmente sotto `/root` come root.
 4. **Decisione systemd ratificata**: `gas doctor` NON deve essere ExecStartPre/gate di avvio — esce 1 anche su sole API key assenti (semantica dichiarata in CLAUDE.md sez.3). Comportamento corretto: `Restart=always` + `RestartSec=10` + notifica Telegram al primo turno se degradato (doctor come check post-avvio, non blocco pre-avvio).
 5. **R-vec-pool (2026-07-02)**: dopo ogni upgrade di fastembed sul VPS eseguire `gas reindex` come prassi obbligatoria (fingerprint include solo model_id+dim, non versione fastembed né pooling — drift silenzioso senza reindex).
