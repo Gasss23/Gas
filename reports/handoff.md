@@ -1,18 +1,21 @@
-# HANDOFF — Dossier di fine sessione
+# Handoff — sessione 2026-07-02 (doc-only)
 
-**Sessione:** 2026-07-01 — Sonda ambiente cloud Claude Code (da telefono)
+## §DECISIONI UMANE RICHIESTE
+1. **Repo pubblico → privato prima di FASE 5** (registrata in `reports/raccomandazioni_aperte.md`). NON agita: decisione umana.
+2. **🔴 BLOCCANTE FASE 5**: postazione locale assente (no clone, no WSL sul PC). S1 hardening VPS non eseguibile finché non c'è una postazione canonica. Vedi `stato_progetto.md` § Note operative VPS #4.
+3. **Branch**: lavorato su `claude/phone-gas-development-10svqc` (già dedicato, non main) per rispettare la regola harness "no push su branch diversi". Se serve un nome branch diverso → decisione umana.
 
----
+## Esito sonda / STOP-gate
+- Falso allarme "GAS_VERSION assente in main": era un ref `origin/main` stantìo. Dopo fetch, `GAS_VERSION = "0.2.0"` confermato in main (merge `2326404` / PR #1). Nessuno STOP effettivo. Dettaglio in `ultimo_report.md` §EVIDENZA.
 
-Aggregazione breve di `reports/ultimo_report.md` (vedi lì il dettaglio completo:
-§DECISIONI, §SCOPE & ESITO, §EVIDENZA, §NOTE PIPELINE).
+## Scope sessione
+Task DOC-ONLY: 2 voci a `reports/stato_progetto.md` (§ Note operative VPS #3 confine telefono, #4 bloccante FASE 5) + nuovo `reports/raccomandazioni_aperte.md`. Nessun file motore toccato.
 
-**Branch:** `claude/phone-gas-development-10svqc`
-**Ultimo commit motore presente sul branch:** `d992c47` (feat: comando `gas version`, già APPROVATO dal revisore in sessione precedente)
-**Commit di questa sonda:** doc-only, hash disponibile dopo il commit — stampato in chiusura task come da CLAUDE.md sez. 3 (path + hash + cat integrale di `ultimo_report.md`).
+## git diff --stat (sessione)
+File toccati: `reports/stato_progetto.md`, `reports/raccomandazioni_aperte.md`, `reports/ultimo_report.md`, `reports/handoff.md`. Zero file motore.
 
-**Revisore:** N/A — task doc-only, nessun file motore (`gas.py`/`brains/`/`modules/`/`tests/`) toccato in questa sessione.
+## CI
+Triggerata su push del branch — esito **PENDING** al momento dell'handoff.
 
-**CI:** triggerata su push, esito PENDING (da verificare dopo il push di questo commit).
-
-**Esito sonda in una riga:** ambiente cloud caratterizzato — gate revisore+hook presenti e attivi (safe per task motore), bwrap assente (ramo sandbox-dipendente non verificabile qui, resta sulla CI), nessuna credenziale LLM reale (task runtime-dipendenti non eseguibili qui), deps pesanti da installare esplicitamente prima di eseguire test.
+## Revisore
+**N/A** — task doc-only, nessun file motore (gas.py/brains/modules/tests) toccato. Il gate di review non si applica (CLAUDE.md sez.3).

@@ -1,251 +1,82 @@
-# Report task — sonda ambiente cloud Claude Code (da telefono)
-**Data:** 2026-07-01
-**Scope:** Caratterizzazione READ-ONLY di questo ambiente cloud (sandbox Anthropic gestita, NON VPS, NON PC utente) + validazione loop telefono→cloud→CI→review PRIMA di affidargli lavoro reale. Nessun codice, nessuna modifica al motore.
+# Ultimo report — task DOC-ONLY (confine telefono + bloccante FASE 5 + raccomandazione repo privato)
 
----
+**Data:** 2026-07-02 · **Branch:** `claude/phone-gas-development-10svqc` · **Tipo:** doc-only (nessun file motore toccato)
 
-## §DECISIONI PER L'UMANO
+## §DECISIONI UMANE
 
-**Domanda: quali classi di task Gas sono SICURE da telefono (in questa sessione cloud), e qual è il confine?**
+1. **Branch dedicato — reconciliazione:** la Fetta 1 chiedeva "un branch nuovo dedicato (NON main)". Le istruzioni hard dell'harness impongono di sviluppare e pushare SOLO su `claude/phone-gas-development-10svqc` ("NEVER push to a different branch without explicit permission"). Questo branch è già dedicato e NON è main → soddisfa l'intento (niente main). Ho quindi lavorato qui invece di creare un branch divergente, per non violare la regola dell'harness. Se serve davvero un branch con nome diverso, è decisione umana.
 
-Risposta basata sui fatti raccolti in §EVIDENZA:
+2. **Falso allarme STOP-gate GAS_VERSION (risolto, nessuna azione richiesta):** il primo comando della Fetta 0 (`git show origin/main:gas.py | grep GAS_VERSION`) ha restituito "ASSENTE" perché il ref locale `origin/main` era **stantìo** (puntava a `f3a8acc`, precedente al merge). Dopo `git fetch origin main`, `origin/main` = `a71353a` e `GAS_VERSION = "0.2.0"` **è presente** in `main` (riga 15), mergiato via `2326404` / PR #1 (`b3b9dc5`). Lo stato è **coerente**: la condizione di STOP ("GAS_VERSION non in main") NON è realmente verificata. Evidenza integrale in §EVIDENZA.
 
-**SICURE, senza limitazioni:**
-- Task doc-only (reports, roadmap, stato_progetto, handoff) — nessun gate richiesto, rischio nullo.
-- Probe/analisi read-only del codice (come questo stesso task).
+3. **Repo pubblico → privato:** registrata in `reports/raccomandazioni_aperte.md`. NON agita: decisione dell'umano.
 
-**SICURE, CON il gate attivo (verificato presente):**
-- Modifiche a `gas.py`/`modules/`/`tests/` — perché in questo ambiente sono presenti **entrambi** i meccanismi di sicurezza previsti da CLAUDE.md sez. 3:
-  1. `.claude/agents/revisore.md` (PRESENTE) — il subagent di review è invocabile.
-  2. `.claude/settings.json` ha il gate deterministico `PreToolUse` su Bash che lancia `.claude/hooks/review_gate.sh` (rete di sicurezza), più `SessionStart` che re-inietta le 4 regole critiche dopo un compact, più `SessionEnd`/`Stop` per reporting/backup automatico.
-  Quindi un task che tocca il motore da telefono È sicuro, A CONDIZIONE che il gate venga rispettato (mai bypassare con `--no-verify` o auto-commit).
+## §SCOPE & ESITO FETTE
 
-**CONFINE — cose che questo ambiente NON può verificare/eseguire per davvero, da tenere presenti prima di affidargli task reali:**
-1. **Sandbox OS (bwrap) ASSENTE.** `command -v bwrap` → non trovato. Qualsiasi comportamento che dipende dal sandbox `run_command` (i 5 test T11c2/T11e/T12a/T12c/T12e, la sicurezza h24 vera) qui **fallisce sempre** per assenza del binario, non per un bug — non è possibile validare qui il comportamento sandbox-dipendente. La verifica reale resta la CI (che installa bwrap esplicitamente) o un ambiente con bwrap preinstallato.
-2. **Nessun provider LLM reale configurato.** Le variabili tipo `GITHUB_TOKEN`/`AWS_SECRET_ACCESS_KEY` viste in `env` sono placeholder (`proxy-injected`) del proxy di rete, non credenziali vere; non ci sono chiavi Claude/Gemini/Groq reali. Task che richiedono chiamate LLM vere (`gas doctor` con ping reali, `run_turn` end-to-end, `gas telegram` con bot vero) NON sono eseguibili qui — solo codice/test a zero token.
-3. **Dipendenze pesanti assenti di default.** `pytest, fastembed, onnxruntime, openai, numpy` non risultano importabili finché non si installano esplicitamente (`pip install -r requirements.txt`, verificato in una sessione precedente con un venv temporaneo). Non è un blocco, ma un passo manuale necessario prima di eseguire la suite di test — da tenere a mente per non dare per scontato che "il venv sia pronto".
-4. **Ambiente effimero, scollegato da VPS/PC.** Nessun task qui può toccare stato reale di produzione (diario/CRM veri, deploy VPS) — solo codice, git, CI.
+| Fetta | Descrizione | Esito |
+|-------|-------------|-------|
+| 0 | Verifica stato read-only (branch, log, GAS_VERSION in main, ref merge) | **FATTA** |
+| 1 | Due voci aggiunte a "Note operative VPS" di `stato_progetto.md` | **FATTA** |
+| 2 | `reports/raccomandazioni_aperte.md` (1 voce: repo privato) | **FATTA** |
+| 3 | Report + handoff + commit doc-only sul branch | **FATTA** |
+| — | Creazione branch nuovo divergente | **SALTATA** (vedi §DECISIONI #1) |
+| — | Toccare gas.py/brains/modules/tests | **NON ESEGUITA** (fuori scope, per design) |
+| — | Merge / push su main / git distruttivi | **NON ESEGUITA** (fuori scope, per design) |
 
-**Proposta (NON eseguita, solo segnalata):** se si vuole rendere questo ambiente cloud in grado di validare ANCHE il ramo sandbox-dipendente senza aspettare la CI, si potrebbe aggiungere un hook `SessionStart` che installa `bubblewrap` via apt (stesso comando già usato dalla CI in `.github/workflows/ci.yml`), analogamente a come `settings.json` già inietta le regole critiche post-compact. È una scelta di setup ambiente, non di codice motore — decisione umana, non eseguita in questa sonda.
+## §EVIDENZA (output verbatim Fetta 0)
 
----
-
-## §SCOPE & ESITO
-
-| Fetta | Esito |
-|---|---|
-| Fetta 1 — Sonda ambiente (read-only) | `FATTA` |
-| Fetta 2 — Report (ultimo_report.md + handoff.md) | `FATTA` |
-| Fetta 3 — Commit + push (solo reports/) | `FATTA` |
-| Esecuzione suite di test / installazione pacchetti | `SALTATA — vietato esplicitamente dallo scope (VIETATO: lanciare la suite, installare pacchetti)` |
-| Modifiche a gas.py/brains/modules/tests | `SALTATA — fuori scope per design (sonda read-only)` |
-
----
-
-## §EVIDENZA
-
-### Ambiente
+Primo check (ref `origin/main` STANTÌO, pre-fetch):
 
 ```
-=== uname -a ===
-Linux vm 6.18.5 #1 SMP PREEMPT_DYNAMIC @0 x86_64 x86_64 x86_64 GNU/Linux
-
-=== nproc ===
-4
-
-=== free -h ===
-               total        used        free      shared  buff/cache   available
-Mem:            15Gi       521Mi        14Gi       4.2Mi       475Mi        15Gi
-Swap:             0B          0B          0B
-
-=== df -h . ===
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/vda        252G  7.2G   30G  20% /
-
-=== /etc/os-release ===
-PRETTY_NAME="Ubuntu 24.04.4 LTS"
-NAME="Ubuntu"
-VERSION_ID="24.04"
-VERSION="24.04.4 LTS (Noble Numbat)"
-VERSION_CODENAME=noble
-ID=ubuntu
-ID_LIKE=debian
-HOME_URL="https://www.ubuntu.com/"
-SUPPORT_URL="https://help.ubuntu.com/"
-BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-UBUNTU_CODENAME=noble
-LOGO=ubuntu-logo
-```
-
-```
-=== python3 --version ===
-Python 3.11.15
-
-=== pip --version ===
-pip 24.0 from /usr/lib/python3/dist-packages/pip (python 3.11)
-
-=== node --version ===
-v22.22.2
-
-=== git --version ===
-git version 2.43.0
-```
-
-```
-=== bwrap/socat ===
-bwrap: ASSENTE
-socat: ASSENTE
-
-=== proxy env ===
-CCR_AGENT_PROXY_ENABLED=1
-no_proxy=localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,anthropic.com,.anthropic.com,*.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local
-GH_TOKEN=proxy-injected
-CCR_UPSTREAM_PROXY_ENABLED=1
-CLOUDSDK_PROXY_TYPE=http
-GITHUB_TOKEN=proxy-injected
-CLOUDSDK_AUTH_ACCESS_TOKEN=proxy-injected
-CLOUDSDK_PROXY_PORT=33447
-CLAUDE_CODE_PROXY_RESOLVES_HOSTS=true
-CCR_TEST_GITPROXY=1
-AWS_SECRET_ACCESS_KEY=proxy-injected
-https_proxy=http://127.0.0.1:33447
-GLOBAL_AGENT_NO_PROXY=localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,anthropic.com,.anthropic.com,*.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local
-ELECTRON_GET_USE_PROXY=1
-JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=33447 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|anthropic.com|*.anthropic.com|*.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
-NO_PROXY=localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,anthropic.com,.anthropic.com,*.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local
-AWS_ACCESS_KEY_ID=proxy-injected
-HTTPS_PROXY=http://127.0.0.1:33447
-npm_config_noproxy=localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,anthropic.com,.anthropic.com,*.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local
-YARN_HTTPS_PROXY=http://127.0.0.1:33447
-CLOUDSDK_PROXY_ADDRESS=127.0.0.1
-npm_config_https_proxy=http://127.0.0.1:33447
-DOCKER_HTTPS_PROXY=http://127.0.0.1:33447
-GLOBAL_AGENT_HTTPS_PROXY=http://127.0.0.1:33447
-```
-
-### Repo + macchina di sicurezza (inventario)
-
-```
-=== git rev-parse --abbrev-ref HEAD ===
+=== BRANCH ===
 claude/phone-gas-development-10svqc
-
-=== git remote -v ===
-origin	http://local_proxy@127.0.0.1:41729/git/Gasss23/Gas (fetch)
-origin	http://local_proxy@127.0.0.1:41729/git/Gasss23/Gas (push)
-
-=== git log --oneline -5 ===
+=== LOG ===
+2da9513 docs(sonda): caratterizzazione ambiente cloud CC da telefono
 c728b01 docs(report): fine task prova sviluppo da telefono — gas version, CI green
 d992c47 feat(gas): aggiungi comando `gas version`
 f3a8acc docs(stato): sonda doctor sez.8 — confermata copertura completa memoria SQLite a freddo
 4ac00e8 docs(report): sonda doctor memoria SQLite — già coperto, niente da fare
-eebde1a docs(roadmap): chiudi R-reidx-deps, riduci R-vec-3 (2026-06-29)
+=== GAS_VERSION in main ===
+GAS_VERSION ASSENTE in main
+=== riferimento merge ===
+riferimento merge non trovato
 ```
 
-```
-=== ls -la .claude .claude/agents .claude/hooks .claude/commands ===
-total 24
-drwxr-xr-x  5 root root 4096 Jul  1 18:47 .
-drwxr-xr-x 11 root root 4096 Jul  1 16:02 ..
-drwxr-xr-x  2 root root 4096 Jul  1 11:12 agents
-drwxr-xr-x  2 root root 4096 Jul  1 11:12 commands
-drwxr-xr-x  2 root root 4096 Jul  1 11:12 hooks
--rw-r--r--  1 root root 1860 Jul  1 11:12 settings.json
---- .claude/agents ---
-total 64
-drwxr-xr-x 2 root root  4096 Jul  1 11:12 .
-drwxr-xr-x 5 root root  4096 Jul  1 18:47 ..
--rw-r--r-- 1 root root 49491 Jul  1 11:12 memoria_revisore.md
--rw-r--r-- 1 root root  2740 Jul  1 11:12 revisore.md
---- .claude/hooks ---
-total 20
-drwxr-xr-x 2 root root 4096 Jul  1 11:12 .
-drwxr-xr-x 5 root root 4096 Jul  1 18:47 ..
--rwxr-xr-x 1 root root 2567 Jul  1 11:12 review_gate.sh
--rwxr-xr-x 1 root root 2149 Jul  1 11:12 scrivi_rep.sh
--rwxr-xr-x 1 root root 2287 Jul  1 11:12 session_end.sh
---- .claude/commands ---
-total 16
-drwxr-xr-x 2 root root 4096 Jul  1 11:12 .
-drwxr-xr-x 5 root root 4096 Jul  1 18:47 ..
--rw-r--r-- 1 root root 4378 Jul  1 11:12 fine-task.md
-```
+Secondo check (dopo `git fetch origin main` — stato REALE):
 
 ```
-=== revisore.md presence ===
-revisore: PRESENTE
+=== fetch main ===
+ * branch            main       -> FETCH_HEAD
+   f3a8acc..a71353a  main       -> origin/main
+=== origin/main HEAD ===
+a71353a docs(fase5): correttivo post-a15ff61 — R-vec-3 chiuso, no-swap finding, req non-root specifico
+a15ff61 docs(fase5): allineamento canonici pre-S1 — CX33, review #41, R-vec-pool
+76cd3bb Merge branch 'main' of https://github.com/Gasss23/Gas
+2326404 Merge branch 'claude/phone-gas-development-10svqc'
+b3b9dc5 Merge pull request #1: comando gas version — prova sviluppo da telefono
+=== is d992c47 in origin/main? ===
+  origin/claude/phone-gas-development-10svqc
+  origin/main
+=== GAS_VERSION on current branch gas.py ===
+15:GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
+=== how does 'gas version' work? search origin/main ===
+15:GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
+1884:def version_cmd() -> int:
+1888:    print(f"Gas {GAS_VERSION}")
+2157:    if len(sys.argv) > 1 and sys.argv[1] == "version":
+2158:        sys.exit(version_cmd())
 ```
 
-```
-== .claude/settings.json ==
-{
-  "model": "claude-sonnet-4-6",
-  "env": {
-    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '=== REGOLE CRITICHE GAS (post-compact) === (1) REVISORE OBBLIGATORIO: prima di ogni commit che tocca gas.py/brains/modules/tests/, invocare il subagent revisore e attendere il verdetto APPROVATO. (2) SCOPE: fare SOLO lo scope dato — se serve altro, fermati e scrivilo in DECISIONI UMANE RICHIESTE nel report. (3) REPORTING CANONICO: a fine task scrivere reports/ultimo_report.md, committare+pushare, poi stampare: path report + hash commit + cat integrale + git diff --stat. (4) NO OPERAZIONI IRREVERSIBILI nel loop (niente merge/gc/restore/delete non autorizzati).'"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/session_end.sh",
-            "timeout": 60,
-            "statusMessage": "Auto-commit selettivo (reports/doc/history, motore MAI)..."
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/review_gate.sh",
-            "timeout": 15,
-            "statusMessage": "Gate review: il commit del motore richiede il revisore..."
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/scrivi_rep.sh",
-            "timeout": 30,
-            "statusMessage": "scrivi rep: controllo trigger e salvataggio risposta..."
-          }
-        ]
-      }
-    ]
-  }
-}
-== .claude/settings.local.json ==
-(assente)
+**Conclusione evidenza:** `GAS_VERSION = "0.2.0"` è in `main` (merge `2326404` / PR #1 `b3b9dc5`). Il primo "ASSENTE" era un artefatto di ref locale stantìo, non uno stato incoerente. Nessuno STOP effettivo.
+
+## §DIFF (reports/stato_progetto.md)
+
+```diff
+@@ -93,3 +93,5 @@ Componenti attive:
+ 
+ 1. **Snapshot**: 0 ref in dev è ATTESO ...
+ 2. **OpenRouter free ~28s**: rung lento ...
++3. **Confine sviluppo da telefono** (Claude Code cloud, sondato 2026-07-01): loop telefono→cloud→revisore→CI validato su evidenza reale (revisore+hook scattano nel cloud; CI verde run #50 su `d992c47`). CONFINE DURO: `bwrap` ASSENTE nel sandbox cloud → test sandbox/`run_command`/snapshot strutturalmente rossi lì, NON validabili da telefono (solo CI). Nessuna credenziale LLM nel cloud → runtime GAS non eseguibile lì. Fattibile da telefono: doc-only + motore leggero non-sandbox verificabile da CI. Da sondare a parte: claude remote-control (ambiente reale, claim non verificato).
++4. **🔴 BLOCCANTE FASE 5 — postazione locale assente** (verificato 2026-07-01): il PC dell'utente non ha clone del repo (un solo disco C:, zero `.git` fino a 6 livelli) né WSL con distro. Sviluppo finora interamente da Claude Code cloud. S1 (hardening VPS via SSH: key-only, non-root, fail2ban, unattended-upgrades) NON eseguibile finché non esiste una postazione locale canonica. Prerequisito prima di qualsiasi slice S1: `wsl --install -d Ubuntu`, `git clone` dentro Ubuntu (una sola postazione), verifica chiave SSH Hetzner con console web come recovery, `gas doctor` locale.
 ```
 
-```
-=== deps presenti ===
-deps presenti: ['requests']
-```
-
----
-
-## §NOTE PIPELINE
-
-- Branch corrente: `claude/phone-gas-development-10svqc` (NOTA: non `main` — questo branch ha già una PR #1 mergiata in una sessione precedente della stessa conversazione telefono; il checkout locale di questa sonda non è stato aggiornato dal merge, che è avvenuto via API GitHub, non via `git pull`. Nessuna azione correttiva presa: la sonda è read-only per design).
-- CI GitHub Actions parte sul push, esito da verificare da PC (o da questa stessa sessione via l'integrazione GitHub, come già fatto nel task precedente).
+Nuovo file: `reports/raccomandazioni_aperte.md` (1 voce, repo pubblico→privato).
