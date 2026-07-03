@@ -2410,7 +2410,9 @@ check("T39a fingerprint-guard: DB nuovo con modello corrente → available=True"
 # T39b — fingerprint mismatch model_id, stessa dim → fail-closed (cuore del guard)
 _d39b = tempfile.mkdtemp(prefix="gas_vec39b_")
 _p39b = default_vectors_path(_d39b)
-# Crea il DB manualmente con fingerprint di un modello DIVERSO (stessa dim 384)
+# Crea il DB manualmente con fingerprint di un modello DIVERSO (stessa dim 384).
+# Include fastembed_version per avere un fingerprint completo (il campo assente
+# sarebbe trattato come "legacy" anziché "mismatch").
 with _sq39.connect(str(_p39b)) as _c39b:
     _c39b.executescript("""
         CREATE TABLE IF NOT EXISTS vettori (
@@ -2423,6 +2425,7 @@ with _sq39.connect(str(_p39b)) as _c39b:
         CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         INSERT OR REPLACE INTO metadata VALUES ('model_id', 'intfloat/multilingual-e5-small');
         INSERT OR REPLACE INTO metadata VALUES ('model_dim', '384');
+        INSERT OR REPLACE INTO metadata VALUES ('fastembed_version', '0.0.0-test-fake');
     """)
 _vs39b = VectorStore(_p39b, embed_fn=_fake_embed)   # embed_fn ok, ma fingerprint mismatch
 check("T39b fingerprint-guard: model_id diverso stessa dim → fail-closed (available=False)",
@@ -2487,6 +2490,7 @@ with _sq39.connect(str(_p39e)) as _c39e:
         CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         INSERT OR REPLACE INTO metadata VALUES ('model_id', 'vecchio-modello');
         INSERT OR REPLACE INTO metadata VALUES ('model_dim', '384');
+        INSERT OR REPLACE INTO metadata VALUES ('fastembed_version', '0.0.0-test-fake');
     """)
 # Prima apertura: mismatch → fail-closed
 _vs39e_old = VectorStore(_p39e, embed_fn=_fake_embed)
@@ -2537,6 +2541,92 @@ with _patch_mock39.object(_vecmod, '_np', None), \
 check("T39g deps embedding assenti → available=False + disable_reason contiene 'deps'",
       _vs39g.available is False and "deps" in _vs39g.disable_reason,
       f"available={_vs39g.available} reason={_vs39g.disable_reason!r}")
+
+# ---------- T39h-T39k: versione fastembed nel fingerprint (R-vec-pool) ----------
+
+# T39h — il fingerprint scritto include la versione fastembed corrente
+_d39h = tempfile.mkdtemp(prefix="gas_vec39h_")
+_p39h = default_vectors_path(_d39h)
+_vs39h = VectorStore(_p39h, embed_fn=_fake_embed)
+with _sq39.connect(str(_p39h)) as _c39h:
+    _rows39h = {r[0]: r[1] for r in _c39h.execute(
+        "SELECT key, value FROM metadata"
+    ).fetchall()}
+check("T39h fingerprint scritto include fastembed_version corrente",
+      _rows39h.get("fastembed_version") == _vecmod._FASTEMBED_VERSION,
+      f"stored={_rows39h.get('fastembed_version')!r} current={_vecmod._FASTEMBED_VERSION!r}")
+
+# T39i — versione fastembed memorizzata ≠ corrente → guard scatta, layer off,
+#         disable_reason contiene 'mismatch', reindex istruito
+_d39i = tempfile.mkdtemp(prefix="gas_vec39i_")
+_p39i = default_vectors_path(_d39i)
+with _sq39.connect(str(_p39i)) as _c39i:
+    _c39i.executescript(f"""
+        CREATE TABLE IF NOT EXISTS vettori (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL, source_ref TEXT NOT NULL,
+            testo TEXT NOT NULL, ts TEXT,
+            vettore BLOB NOT NULL, dim INTEGER NOT NULL, model TEXT NOT NULL,
+            UNIQUE(source, source_ref, model)
+        );
+        CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT OR REPLACE INTO metadata VALUES ('model_id', '{_vecmod.EMBED_MODEL_NAME}');
+        INSERT OR REPLACE INTO metadata VALUES ('model_dim', '{_vecmod.EMBED_DIM}');
+        INSERT OR REPLACE INTO metadata VALUES ('fastembed_version', '0.0.0-test-fake');
+    """)
+_vs39i = VectorStore(_p39i, embed_fn=_fake_embed)
+check("T39i fastembed version diversa → fail-closed (available=False)",
+      _vs39i.available is False and _vs39i._db_available is False,
+      f"available={_vs39i.available} _db_available={_vs39i._db_available}")
+check("T39i-reason fastembed version mismatch → disable_reason contiene 'mismatch' e 'reindex'",
+      "mismatch" in _vs39i.disable_reason and "reindex" in _vs39i.disable_reason,
+      f"disable_reason={_vs39i.disable_reason!r}")
+
+# T39j — fingerprint legacy senza campo fastembed_version → fail-closed, disable_reason 'legacy'
+_d39j = tempfile.mkdtemp(prefix="gas_vec39j_")
+_p39j = default_vectors_path(_d39j)
+with _sq39.connect(str(_p39j)) as _c39j:
+    _c39j.executescript(f"""
+        CREATE TABLE IF NOT EXISTS vettori (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL, source_ref TEXT NOT NULL,
+            testo TEXT NOT NULL, ts TEXT,
+            vettore BLOB NOT NULL, dim INTEGER NOT NULL, model TEXT NOT NULL,
+            UNIQUE(source, source_ref, model)
+        );
+        CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT OR REPLACE INTO metadata VALUES ('model_id', '{_vecmod.EMBED_MODEL_NAME}');
+        INSERT OR REPLACE INTO metadata VALUES ('model_dim', '{_vecmod.EMBED_DIM}');
+    """)
+_vs39j = VectorStore(_p39j, embed_fn=_fake_embed)
+check("T39j fingerprint legacy senza fastembed_version → fail-closed (available=False)",
+      _vs39j.available is False and _vs39j._db_available is False,
+      f"available={_vs39j.available} _db_available={_vs39j._db_available}")
+check("T39j-reason fingerprint legacy → disable_reason contiene 'legacy' e 'reindex'",
+      "legacy" in _vs39j.disable_reason and "reindex" in _vs39j.disable_reason,
+      f"disable_reason={_vs39j.disable_reason!r}")
+
+# T39k — versione coincidente → layer attivo, nessun falso positivo
+_d39k = tempfile.mkdtemp(prefix="gas_vec39k_")
+_p39k = default_vectors_path(_d39k)
+with _sq39.connect(str(_p39k)) as _c39k:
+    _c39k.executescript(f"""
+        CREATE TABLE IF NOT EXISTS vettori (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL, source_ref TEXT NOT NULL,
+            testo TEXT NOT NULL, ts TEXT,
+            vettore BLOB NOT NULL, dim INTEGER NOT NULL, model TEXT NOT NULL,
+            UNIQUE(source, source_ref, model)
+        );
+        CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT OR REPLACE INTO metadata VALUES ('model_id', '{_vecmod.EMBED_MODEL_NAME}');
+        INSERT OR REPLACE INTO metadata VALUES ('model_dim', '{_vecmod.EMBED_DIM}');
+        INSERT OR REPLACE INTO metadata VALUES ('fastembed_version', '{_vecmod._FASTEMBED_VERSION}');
+    """)
+_vs39k = VectorStore(_p39k, embed_fn=_fake_embed)
+check("T39k fingerprint completo e coincidente → available=True (nessun falso positivo)",
+      _vs39k.available is True,
+      f"available={_vs39k.available} reason={_vs39k.disable_reason!r}")
 
 # ---------- T40: R-tel-1 — rung facoltativi → reason='WARN', obbligatori → 'KO' ----------
 # Tutti i provider falliscono con 402 (crediti esauriti). Dopo il fix di R-tel-1:

@@ -1,107 +1,74 @@
-# Report — Correttivo DOC-ONLY post-a15ff61 (FASE 5, 2026-07-02)
+# Report R-vec-pool — Aggiunta fastembed_version al fingerprint (2026-07-03)
 
-> Scope: DOC-ONLY sopra a15ff61. Zero modifiche a gas.py, brains/, modules/, tests/.
-> Nessuna review revisore (nessun file motore toccato).
+## Task
+Fetta unica di R-vec-pool: aggiungere `fastembed.__version__` al fingerprint del vector
+store, estendendo il guard esistente (R-vec-2b). Scope: SOLO il campo versione. Introspezione
+pooling reale = fuori scope (decisione umana).
 
-## §1 SCOPE & ESITO FETTE
+## Precheck
+`fastembed.__version__` == `"0.8.0"` — accessibile in modo stabile e affidabile.
 
-| Fetta | Descrizione | Esito |
-|-------|-------------|-------|
-| 0 | git pull + lettura stato_progetto.md corrente (post-a15ff61) | **FATTA** |
-| 1 | Verifica conteggio 208 test su CI run #28539899123 | **FATTA** |
-| 2 | Chiusura R-vec-3 su evidenza sonda S0 + aggiornamento stato_progetto.md | **FATTA** |
-| 3 | Fatti macchina reali (sonda 2026-07-02) + FINDING no-swap in stato_progetto.md | **FATTA** |
-| 4 | Requisito non-root specifico (VECTORS_DB /root/gas/.gas_vectors.db) in stato_progetto.md | **FATTA** |
-| 5 | Verifica lezione #40 dangling in memoria_revisore.md | **FATTA** — già committata, nessun diff pendente |
+## Modifiche — modules/memory/vectors.py
 
----
-
-## §2 FETTA 1 — Verifica conteggio 208 (CI run #28539899123)
-
-### Riga grezza dal log CI (evidenza)
-
+### 1. Cattura versione a livello modulo (righe 68-73)
+```python
+try:
+    import fastembed as _fastembed_mod
+    _FASTEMBED_VERSION: str = str(_fastembed_mod.__version__)
+except Exception as _e_fev:
+    _FASTEMBED_VERSION = "unknown"
+    log.warning("vector store: fastembed.__version__ non accessibile (%s) — fingerprint usa 'unknown'", _e_fev)
 ```
-unit-suite  UNKNOWN STEP  2026-07-01T18:43:45.9338850Z  === RIEPILOGO: 208 PASS, 0 FAIL ===
+Fail-safe: se `__version__` non fosse accessibile, fingerprint usa `"unknown"` e il guard
+degraderebbe ugualmente in modo corretto (confronto stringa).
+
+### 2. Attributo istanza `self._fastembed_version`
+Aggiunto in `__init__` dopo `self._embedder = None`. Fisso per tutta la vita dell'istanza.
+
+### 3. `_read_fingerprint` — tipo restituito aggiornato
+`Optional[Tuple[str, int]]` → `Optional[Tuple[str, int, Optional[str]]]`
+
+La terza componente è `None` se `fastembed_version` è assente dalla tabella `metadata`
+(DB scritto prima di questa modifica). `None` ≠ stringa vuota: distinzione intenzionale.
+
+### 4. `_write_fingerprint` — scrive anche `fastembed_version`
+Aggiunto `INSERT OR REPLACE INTO metadata ('fastembed_version', ?)` con `self._fastembed_version`.
+Chiamato SIA alla creazione del DB SIA nel `ricostruisci_da_diario` (reindex).
+
+### 5. Logica di confronto in `__init__`
+Tre rami fail-closed (dopo unpack `stored_model, stored_dim, stored_fe_ver = fp`):
+
+1. **`stored_fe_ver is None`** → "DB legacy: fastembed_version assente — esegui 'gas reindex'"
+2. **model_id ≠ OR dim ≠ OR fastembed_version ≠** → "fingerprint mismatch ..."
+   - Se solo fastembed_version diversa: `"fingerprint mismatch: DB fastembed='X' != 'Y' — esegui 'gas reindex'"`
+   - Se model_id diverso: `"fingerprint mismatch: DB 'model_A' != configurato 'model_B' — esegui 'gas reindex'"`
+3. **Tutto coincide** → guard OK, layer disponibile.
+
+## Modifiche — tests/test_unit_kernel.py
+
+### T39b e T39e aggiornati
+I DB manuali ora includono `fastembed_version = '0.0.0-test-fake'` per avere un fingerprint
+completo (senza, cadrebbero nel path "legacy" invece di "mismatch").
+
+### T39h-T39k aggiunti (4 nuovi test)
+- **T39h**: fingerprint scritto include la versione fastembed corrente.
+- **T39i**: fastembed_version='0.0.0-test-fake' (model_id/dim corretti) → guard scatta,
+  disable_reason contiene 'mismatch' e 'reindex'.
+- **T39j**: DB legacy senza campo fastembed_version (model_id/dim corretti) → guard scatta,
+  disable_reason contiene 'legacy' e 'reindex'.
+- **T39k**: fingerprint completo e coincidente → available=True, nessun falso positivo.
+
+## Verdetto revisore
+**APPROVATO CON RISERVE** (review #42). Riserve risolte nello stesso commit:
+1. `log.warning` nell'`except` del blocco `_FASTEMBED_VERSION` → applicato.
+2. Commento schema SQL aggiornato a `(model_id, model_dim, fastembed_version)` → applicato.
+
+## Risultati test
+```
+=== RIEPILOGO: 216 PASS, 0 FAIL ===
 ```
 
-### 2 SKIP confermati da log
-
-```
-[SKIP] T9a ogni provider cappato a 10 iterazioni — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
-[SKIP] T9c storia salvata su disco nella root temporanea — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
-```
-
-### Verdetto
-
-Il log conferma **208 PASS, 0 FAIL**. Il "2 SKIP" in stato_progetto.md è ricavato dai `[SKIP]` T9a/T9c (il RIEPILOGO custom non li conta separatamente). Il numero 208 è corretto — **nessuna correzione** a stato_progetto.md necessaria per il conteggio.
-
----
-
-## §3 FETTA 2 — Chiusura R-vec-3
-
-### Stato precedente
-`🟡 RIDOTTO` — wheels installabili confermate, embedding a runtime NON ancora provato su CX33.
-
-### Evidenza sonda S0 (2026-06-30, box CX33)
-```
-[OK] BAAI/bge-small-en-v1.5: dims=384 load=3.5s embed=0.01s
-[OK] sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2: dims=384 load=5.0s embed=0.02s (UserWarning: mean pooling invece di CLS)
-PICCO_RSS_MB 697
-```
-
-### Azioni in stato_progetto.md
-- R-vec-3: da `🟡 RIDOTTO` a `✅ CHIUSO`.
-- Boundary esplicito registrato: prova che l'embedder importa e produce vettori di dim corretta sul box reale; NON prova qualità semantica (→ R-wire-2) né comportamento sotto carico RAM concorrente.
-- Rimossa nota "chiusura R-vec-3 rinviata a S1b" (ora chiuso; a S1b resta solo la misura RAM a regime del singolo modello).
-- Caveat RSS: picco 697MB misurato a DUE modelli residenti; produzione carica UN SOLO modello → footprint reale < 697MB; 697 = ceiling conservativo.
-- Prossimi passi item 6: rimosso R-vec-3 dalla checklist, aggiunta nota "R-vec-3 ✅ chiuso".
-
----
-
-## §4 FETTA 3 — Fatti macchina (sonda 2026-07-02, box CX33)
-
-### Dati rilevati
-```
-uname -m = x86_64
-nproc = 4
-Mem total 7.6Gi, available 7.1Gi (a vuoto)
-Disco / 75G, 70G liberi (4% usato)
-SWAP = 0B (NESSUNO swap configurato)
-```
-
-### Azioni in stato_progetto.md
-- Hardware aggiornato con specifiche reali: x86_64, 4 core, 7.6Gi RAM usabile (7.1Gi a vuoto), 70Gi disco liberi.
-- 🔴 FINDING no-swap registrato con le tre conseguenze:
-  - (a) Unit systemd S1b: MemoryHigh ~1.5Gi / MemoryMax ~2Gi su GAS.
-  - (b) Ollama 3B always-on: rivalutare → on-demand o 1-1.5B; decisione rinviata a S3.
-  - (c) OPZIONE S1a (non decisa): swap file 2-4Gi come cuscinetto h24.
-
----
-
-## §5 FETTA 4 — Requisito non-root specifico
-
-### Evidenza sonda S0
-```
-VECTORS_DB /root/gas/.gas_vectors.db
-```
-Runtime + cache/db girano sotto `/root` come root.
-
-### Azione in stato_progetto.md
-Aggiunta clausola (c) a nota #3 "Contesto sicurezza OBBLIGATORIO per S1":
-> Requisito esplicito S1: creare utente runtime dedicato non-root e spostare working dir + model cache + `.gas_*.db` fuori da `/root`, di proprietà di quell'utente.
-
-Il giro precedente aveva il contesto generico non-root; questa è la fotografia specifica del fatto.
-
----
-
-## §6 FETTA 5 — Lezione #40 dangling
-
-`git diff HEAD -- .claude/agents/memoria_revisore.md` → output vuoto. Nessuna modifica pendente. Già committata nel giro precedente. **Nessuna azione necessaria.**
-
----
-
-## §7 NOTE SULLO SCOPE
-
-- Zero modifiche a file motore (gas.py, brains/, modules/, tests/). Gate revisore non attivato.
-- `reports/verifica_fase25.md` era già presente come untracked pre-sessione — non appartiene a questo task, lasciata invariata.
-- S1 non iniziata. Proposta di prima riga S1 da fare in sessione dedicata.
+## Stato R-vec-pool
+**CHIUSO**. Il guard copre ora: model_id + model_dim + fastembed_version.
+Introspezione pooling reale = fuori scope (decisione umana).
+Dopo ogni upgrade fastembed sul VPS: `gas reindex` (prassi obbligatoria, ora rafforzata dal guard).

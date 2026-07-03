@@ -65,6 +65,13 @@ except Exception as _e:  # pragma: no cover — esercitato simulando l'assenza n
     _TextEmbedding = None
     log.warning("vector store: fastembed non disponibile (%s) — layer degradato", _e)
 
+try:
+    import fastembed as _fastembed_mod
+    _FASTEMBED_VERSION: str = str(_fastembed_mod.__version__)
+except Exception as _e_fev:
+    _FASTEMBED_VERSION = "unknown"
+    log.warning("vector store: fastembed.__version__ non accessibile (%s) — fingerprint usa 'unknown'", _e_fev)
+
 
 DEFAULT_VECTORS_FILENAME: str = ".gas_vectors.db"
 
@@ -117,7 +124,7 @@ _SCHEMA: Tuple[str, ...] = (
     "CREATE INDEX IF NOT EXISTS idx_vettori_source ON vettori(source)",
     "CREATE INDEX IF NOT EXISTS idx_vettori_model ON vettori(model, dim)",
     # Fingerprint del modello: guard fail-closed contro mismatch embed → similarity sbagliate.
-    # (model_id, model_dim) scritti alla creazione e aggiornati da gas reindex.
+    # (model_id, model_dim, fastembed_version) scritti alla creazione e aggiornati da gas reindex.
     """
     CREATE TABLE IF NOT EXISTS metadata (
         key   TEXT PRIMARY KEY,
@@ -147,6 +154,7 @@ class VectorStore:
         # di fastembed (utile a verificare il ranking con vettori deterministici).
         self._embed_fn: Optional[EmbedFn] = embed_fn
         self._embedder = None  # istanza fastembed, caricata pigramente al primo uso
+        self._fastembed_version: str = _FASTEMBED_VERSION
         # disponibilità dell'embedding: serve numpy E (una embed_fn iniettata OPPURE
         # fastembed importabile). Il caricamento dei pesi è pigro: un suo fallimento a
         # runtime abbassa questo flag (vedi _embed_raw).
@@ -181,19 +189,38 @@ class VectorStore:
                         self.disable_reason = "DB legacy: fingerprint assente — esegui 'gas reindex'"
                         _guard_ok = False
                     else:
-                        stored_model, stored_dim = fp
-                        if stored_model != self.model_name or stored_dim != self.dim:
+                        stored_model, stored_dim, stored_fe_ver = fp
+                        if stored_fe_ver is None:
+                            # DB scritto prima di R-vec-pool: fastembed_version assente → legacy.
+                            log.warning(
+                                "VectorStore: sidecar %s con fingerprint pre-R-vec-pool "
+                                "(fastembed_version assente) — layer disabilitato. "
+                                "Esegui 'gas reindex' per ricostruire.",
+                                self.db_path)
+                            self.disable_reason = (
+                                "DB legacy: fastembed_version assente — esegui 'gas reindex'"
+                            )
+                            _guard_ok = False
+                        elif (stored_model != self.model_name or stored_dim != self.dim
+                              or stored_fe_ver != self._fastembed_version):
                             log.warning(
                                 "VectorStore: fingerprint mismatch su %s — "
-                                "DB contiene model=%r dim=%d, configurato model=%r dim=%d. "
+                                "DB model=%r dim=%d fastembed=%r, "
+                                "configurato model=%r dim=%d fastembed=%r. "
                                 "Layer disabilitato. Esegui 'gas reindex' per ricostruire "
                                 "con il modello corrente.",
-                                self.db_path, stored_model, stored_dim,
-                                self.model_name, self.dim)
-                            self.disable_reason = (
-                                f"fingerprint mismatch: DB {stored_model!r} != "
-                                f"configurato {self.model_name!r} — esegui 'gas reindex'"
-                            )
+                                self.db_path, stored_model, stored_dim, stored_fe_ver,
+                                self.model_name, self.dim, self._fastembed_version)
+                            if stored_model == self.model_name and stored_dim == self.dim:
+                                self.disable_reason = (
+                                    f"fingerprint mismatch: DB fastembed={stored_fe_ver!r} != "
+                                    f"{self._fastembed_version!r} — esegui 'gas reindex'"
+                                )
+                            else:
+                                self.disable_reason = (
+                                    f"fingerprint mismatch: DB {stored_model!r} != "
+                                    f"configurato {self.model_name!r} — esegui 'gas reindex'"
+                                )
                             _guard_ok = False
         except (sqlite3.Error, OSError) as e:
             log.warning("VectorStore: init sidecar fallita su %s (%s) — degrado",
@@ -211,24 +238,28 @@ class VectorStore:
         return self._db_available and self._embedder_available
 
     # ------------------------------------------------------------------ infra
-    def _read_fingerprint(self, con: sqlite3.Connection) -> Optional[Tuple[str, int]]:
-        """Legge (model_id, dim) dalla tabella metadata. None se assente/incompleto."""
+    def _read_fingerprint(self, con: sqlite3.Connection) -> Optional[Tuple[str, int, Optional[str]]]:
+        """Legge (model_id, dim, fastembed_version) dalla tabella metadata.
+        None se model_id o model_dim assenti. fastembed_version=None se campo mancante (DB legacy pre-R-vec-pool)."""
         try:
             rows = {r[0]: r[1] for r in con.execute(
-                "SELECT key, value FROM metadata WHERE key IN ('model_id', 'model_dim')"
+                "SELECT key, value FROM metadata "
+                "WHERE key IN ('model_id', 'model_dim', 'fastembed_version')"
             ).fetchall()}
             if "model_id" not in rows or "model_dim" not in rows:
                 return None
-            return rows["model_id"], int(rows["model_dim"])
+            return rows["model_id"], int(rows["model_dim"]), rows.get("fastembed_version")
         except (sqlite3.Error, ValueError):
             return None
 
     def _write_fingerprint(self, con: sqlite3.Connection) -> None:
-        """Scrive/aggiorna (model_id, dim) nella tabella metadata (il chiamante committa)."""
+        """Scrive/aggiorna (model_id, dim, fastembed_version) nella tabella metadata (il chiamante committa)."""
         con.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES ('model_id', ?)",
                     (self.model_name,))
         con.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES ('model_dim', ?)",
                     (str(self.dim),))
+        con.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES ('fastembed_version', ?)",
+                    (self._fastembed_version,))
 
     def _connect(self) -> sqlite3.Connection:
         con = sqlite3.connect(str(self.db_path), timeout=10)
