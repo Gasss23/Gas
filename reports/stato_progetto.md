@@ -1,13 +1,13 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-02** (correttivo post-a15ff61: R-vec-3 âœ… chiuso, no-swap finding, req non-root specifico, verifica conteggio test CI)
+> Ultimo aggiornamento: **2026-07-03** (sonda postazione locale WSL â T13 bwrap PASS, postazione locale RISOLTO)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **41 review** completate. Suite CI: **208 PASS, 0 FAIL, 2 SKIP** (Ubuntu runner, T9a/T9c skip su assenza API key live); Windows locale: 198 PASS, 5 FAIL (bwrap pre-esistenti).
-CI GitHub Actions: run #28539899123 su `76cd3bb` â€” **SUCCESS** âœ….
+FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **42 review** completate. Suite (locale WSL bwrap, sonda 2026-07-03): **214 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). Con API keys live: 216 PASS.
+CI GitHub Actions: run #28665577327 su `51f9e1e` â **SUCCESS** â (ultimo run pre-sonda).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **âœ… R-comp-1** â€” boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
@@ -85,7 +85,7 @@ Componenti attive:
 - **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** â€” `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **41 review**. Ultima: **#41** (gas version 0.2.0, 2026-07-01 â€” APPROVATO, nessuna lezione nuova). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **42 review**. Ultima: **#42** (R-vec-pool + sonda postazione locale, 2026-07-03). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** â€” `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); Â§1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
@@ -106,4 +106,4 @@ Componenti attive:
 4. **Decisione systemd ratificata**: `gas doctor` NON deve essere ExecStartPre/gate di avvio â€” esce 1 anche su sole API key assenti (semantica dichiarata in CLAUDE.md sez.3). Comportamento corretto: `Restart=always` + `RestartSec=10` + notifica Telegram al primo turno se degradato (doctor come check post-avvio, non blocco pre-avvio).
 5. **R-vec-pool ✅ (2026-07-03)**: fingerprint ora include `fastembed_version`. Upgrade fastembed → mismatch versione → guard spegne il layer e obbliga a `gas reindex` (fail-closed). Il reindex non è più affidato alla memoria dell operatore ma forzato dal codice.
 6.  **Confine sviluppo da telefono** (Claude Code cloud, sondato 2026-07-01): loop telefonoâ†’cloudâ†’revisoreâ†’CI validato su evidenza reale (revisore+hook scattano nel cloud; CI verde run #50 su `d992c47`). CONFINE DURO: `bwrap` ASSENTE nel sandbox cloud â†’ test sandbox/`run_command`/snapshot strutturalmente rossi lÃ¬, NON validabili da telefono (solo CI). Nessuna credenziale LLM nel cloud â†’ runtime GAS non eseguibile lÃ¬. Fattibile da telefono: doc-only + motore leggero non-sandbox verificabile da CI. Da sondare a parte: claude remote-control (ambiente reale, claim non verificato). Limite accertato 2026-07-02: Claude Code cloud pusha SOLO sul branch di sessione, NON crea branch â†’ i task cloud si stratificano, serve estrai-e-cancella a valle.
-7. **ðŸ”´ BLOCCANTE FASE 5 â€” postazione locale assente** (verificato 2026-07-01): il PC non ha clone del repo (un solo disco C:, zero `.git` fino a 6 livelli) nÃ© WSL con distro. Sviluppo finora interamente da Claude Code cloud. S1 (hardening VPS via SSH: key-only, non-root, fail2ban, unattended-upgrades) NON eseguibile finchÃ© non esiste una postazione locale canonica. Prerequisito prima di qualsiasi slice S1: `wsl --install -d Ubuntu`, `git clone` dentro Ubuntu (una sola postazione), verifica chiave SSH Hetzner con console web come recovery, `gas doctor` locale.
+7. **â RISOLTO â postazione locale WSL operativa** (sonda 2026-07-03): bubblewrap 0.9.0, suite 214 PASS, T13a-T13e bwrap tutti â. Sviluppo locale pienamente abilitato (clone git + venv + suite + bwrap). La barriera FASE 5 era questa; ora rimossa.

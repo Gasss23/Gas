@@ -1,49 +1,41 @@
-# Diff sessione — 2026-07-01 (comando `gas version`, prova sviluppo da telefono)
+# Diff sessione — 2026-07-03 (sonda postazione locale WSL)
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
 
 ## Commit della sessione
 
 ```
-d992c47 feat(gas): aggiungi comando `gas version`
+eabc454 docs(sonda): sonda postazione locale WSL — suite 214 PASS, T13 bwrap PASS
 ```
+
+(Branch `sonda/postazione-locale`. Merge su main: decisione umana.)
 
 ## File toccati
 
 ```
-gas.py                    | 13 +++++++++++++
-tests/test_unit_kernel.py |  9 +++++++++
-2 files changed, 22 insertions(+)
+ reports/sonda_locale_suite.txt | 326 ++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md       | 195 ++++++++++++++++--------
+ 2 files changed, 462 insertions(+), 59 deletions(-)
 ```
 
 ## Cosa è cambiato e perché
 
-### gas.py
+### reports/sonda_locale_suite.txt (nuovo file)
 
-- Aggiunta costante di modulo `GAS_VERSION = "0.2.0"`.
-- Aggiunta funzione `version_cmd() -> int`: stampa `Gas {GAS_VERSION}` e
-  `Python {sys.version}`, ritorna 0. Zero I/O, zero rete, zero token LLM,
-  nessuna dipendenza da `GasKernel` — stesso spirito di `gas doctor`.
-- Wiring nel dispatcher CLI di `main()`: nuovo ramo `sys.argv[1] == "version"`,
-  stesso pattern isolato usato da `doctor`/`reindex`/`backup`/`tokens`/ecc.
+Output verbatim completo della suite di test (`python tests/test_unit_kernel.py`)
+eseguita sulla postazione locale WSL Ubuntu 24.04 con bubblewrap 0.9.0 presente.
+Non esisteva prima: il cloud GitHub Actions non produce mai questo output con bwrap attivo.
 
-Perché: task di prova concordata con l'utente per dimostrare l'intero ciclo
-"sviluppo reale di Gas da telefono" (Claude Code on the web, client mobile) —
-codice → test → review obbligatoria del subagent `revisore` → commit → push
-→ CI, verificabile poi da PC con `python gas.py version`.
+### reports/ultimo_report.md
 
-### tests/test_unit_kernel.py
-
-Aggiunto **T55**: cattura lo stdout di `version_cmd()` con `redirect_stdout`
-(pattern già in uso da T36) e verifica `r == 0` e presenza di `GAS_VERSION`
-nell'output.
+Report della sonda: esito delle 3 fette (suite completa, gate revisore, report),
+conteggio PASS/FAIL/SKIP letto dal file, confronto con canonico, meccanismo gate.
 
 ## Note
 
-- Diff scelto apposta piccolo e a rischio nullo (nessun tocco a history,
-  finestra, provider, sandbox) proprio perché lo scopo era testare il
-  *processo* di sviluppo da telefono, non introdurre una feature.
-- Il range `${BASE}..HEAD` usato nell'handoff di questa sessione include
-  anche 5 commit di sessioni precedenti mai chiuse con un handoff — vedi
-  `reports/handoff.md` §2/§3 per il dettaglio. Il commit reale di questa
-  sessione è solo `d992c47`.
+- Nessun file motore toccato (vincolo inviolabile rispettato).
+- La sonda NON è un task di feature: è la verifica che questa postazione WSL
+  regge il ciclo di sviluppo che il cloud non dà (bwrap, T13a-T13e).
+- Esito principale: **T13a-T13e PASS** — la postazione è pienamente abilitata.
+- Il finding "BLOCCANTE FASE 5 — postazione locale assente" (nota VPS #7 in
+  stato_progetto.md) è ora RISOLTO.
