@@ -1,13 +1,61 @@
+Ora il reporting obbligatorio:
+
+**Path:** `reports/ultimo_report.md`
+**Hash commit:** `39bc337`
+
 ---
 
-## ✅ Recap semplice
+```
+# Report R-vec-pool — Aggiunta fastembed_version al fingerprint (2026-07-03)
 
-Mi hai chiesto di **sistemare il 402 di OpenRouter**. La situazione era doppia, e l'ho gestita così:
+## Task
+Fetta unica di R-vec-pool: aggiungere `fastembed.__version__` al fingerprint del vector
+store, estendendo il guard esistente (R-vec-2b). Scope: SOLO il campo versione. Introspezione
+pooling reale = fuori scope (decisione umana).
 
-**1. La parte che potevo fare io — il codice.** Il problema vero non era che Gas si rompesse (a runtime già si arrangiava da solo: se OpenRouter è esaurito, salta al provider successivo). Il problema era che la diagnosi `gas doctor` mostrava un **allarme rosso (KO)** per un provider che è solo un **paracadute gratuito di riserva**. Ho corretto: ora quel caso diventa un **avviso giallo onesto**, mentre per i provider veri a pagamento un 402 resta giustamente un allarme. Tutto verificato, **132 test verdi**, revisore **approvato**, già su GitHub.
+## Precheck
+`fastembed.__version__` == `"0.8.0"` — accessibile in modo stabile e affidabile.
 
-**2. La parte che puoi fare solo tu — i crediti.** Non ho accesso al tuo account OpenRouter. Se vuoi riattivare quel quarto provider gratuito, devi mettere un piccolo credito su **`openrouter.ai/credits`** (i modelli `:free` spesso lo richiedono una volta sola per sbloccarsi). Ma **non è urgente**: Gas funziona benissimo lo stesso, perché ha già Gemini e Groq davanti, e Ollama come pavimento sul VPS.
+## Modifiche — modules/memory/vectors.py
 
-**Stato finale:** task conclusa e pubblicata. Riferimento `reports/ultimo_report.md`, commit motore `7220c28`, doc `189dabd`. Working tree pulito, tutto su GitHub.
+### 1. Cattura versione a livello modulo (righe 68-73)
+...
+Fail-safe: se `__version__` non fosse accessibile, fingerprint usa `"unknown"` e il guard
+degraderebbe ugualmente in modo corretto (confronto stringa).
 
-Quando vuoi, puoi revisionare entrambe le modifiche di oggi (backup memoria + doctor 402) col project engineer.
+### 2. Attributo istanza `self._fastembed_version`
+Aggiunto in `__init__` dopo `self._embedder = None`. Fisso per tutta la vita dell'istanza.
+
+### 3. `_read_fingerprint` — tipo restituito aggiornato
+`Optional[Tuple[str, int]]` → `Optional[Tuple[str, int, Optional[str]]]`
+La terza componente è `None` se `fastembed_version` è assente (DB pre-questa-modifica).
+
+### 4. `_write_fingerprint` — scrive anche `fastembed_version`
+Chiamato SIA alla creazione del DB SIA nel `ricostruisci_da_diario` (reindex).
+
+### 5. Logica di confronto in `__init__`
+Tre rami fail-closed:
+1. `stored_fe_ver is None` → "DB legacy: fastembed_version assente — esegui 'gas reindex'"
+2. mismatch → "fingerprint mismatch ..."
+3. Tutto coincide → guard OK.
+
+## Modifiche — tests/test_unit_kernel.py
+- T39b/T39e aggiornati: DB manuale include `fastembed_version = '0.0.0-test-fake'`
+- T39h: fingerprint scritto include la versione fastembed corrente
+- T39i: fastembed_version diversa → guard scatta, 'mismatch' + 'reindex'
+- T39j: DB legacy senza campo → 'legacy' + 'reindex'
+- T39k: fingerprint coincidente → available=True, nessun falso positivo
+
+## Verdetto revisore
+APPROVATO CON RISERVE (review #42). Riserve risolte nello stesso commit.
+
+## Risultati test
+=== RIEPILOGO: 216 PASS, 0 FAIL ===
+
+## Stato R-vec-pool
+CHIUSO. Il guard copre ora: model_id + model_dim + fastembed_version.
+```
+
+---
+
+**Recap semplice:** Ho aggiunto la versione di fastembed al "timbro di sicurezza" del database vettoriale. Adesso, se aggiorni fastembed a una versione nuova e riapri GAS, il sistema si accorge che il timbro non coincide, disabilita il layer vettoriale e ti dice di eseguire `gas reindex` — invece di produrre silenziosamente risultati di ricerca sbagliati. DB creati prima di oggi vengono trattati come "vecchi" (stessa protezione: fail-closed + reindex richiesto). Tutti i 216 test passano, il revisore ha approvato, commit `39bc337` pushato.
