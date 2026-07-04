@@ -1,6 +1,6 @@
 # RUNBOOK — FASE 5 S1: Hardening SSH + Base VPS
 **Target:** Hetzner CX33, Helsinki, Ubuntu 24.04 — `root@204.168.251.92`  
-**Revisione:** 2026-07-04 v2  
+**Revisione:** 2026-07-04 v3  
 **Eseguito manualmente dall'umano** in una sessione SSH con console Hetzner aperta.
 
 ---
@@ -62,6 +62,7 @@ lsb_release -cs
 # output atteso: noble
 
 apt-get update -qq
+# Nota: se dà "Could not get lock /var/lib/dpkg/lock-frontend", unattended-upgrades sta girando in background — attendere 1-2 minuti o fermarlo temporaneamente con `systemctl stop unattended-upgrades`.
 ```
 
 ### 1b. Installazione
@@ -213,6 +214,19 @@ useradd --create-home --shell /bin/bash --comment "GAS runtime" gas
 # verifica
 id gas
 # output atteso: uid=<N>(gas) gid=<N>(gas) groups=<N>(gas)
+```
+
+### 3d-pre. Check: GAS non deve essere in esecuzione durante la copia del DB
+
+> **Copiare `.gas_memory.db` mentre GAS scrive = rischio di DB corrotto o snapshot incoerente.**  
+> La memoria non deve mentire. Verificare SEMPRE prima di copiare.  
+> (Attualmente GAS NON gira sul VPS, ma il check resta come guardia permanente.)
+
+```bash
+pgrep -f gas.py && echo "STOP: GAS in esecuzione, la copia del DB sarebbe inconsistente" \
+  || echo "GAS non attivo, copia sicura"
+# Se il primo ramo si attiva → fermare GAS prima di procedere:
+#   pkill -f gas.py   oppure   systemctl stop gas   (dipende da come è avviato)
 ```
 
 ### 3d. Spostamento working directory GAS
@@ -441,6 +455,34 @@ sshd -t
 
 > **Se `sshd -t` produce output di errore → esegui il rollback sotto. NON fare il reload.**
 
+### 5e-pre. Verifica socket activation (Ubuntu 24.04)
+
+> **Ubuntu 24.04 usa per default `ssh.socket` (socket activation systemd):**  
+> il demone sshd viene avviato on-demand dal socket, non come servizio permanente.  
+> `ssh.service` gestisce la sessione una volta stabilita; `ssh.socket` ascolta sulla porta 22.  
+> Ricaricare solo il service lascerebbe il socket col vecchio listener — il reload della  
+> config deve coinvolgere anche il socket.
+>
+> **root e gas restano connessi** durante `restart ssh.socket`: il socket riavvia solo il  
+> listener delle nuove connessioni in ingresso, NON chiude le sessioni SSH già stabilite.
+
+```bash
+systemctl is-active ssh.socket
+# output "active"  → socket activation attiva → vedi procedura sotto
+# output "inactive" / "unknown" → procedi con il reload normale al 5e
+```
+
+**Se `ssh.socket` è active:**
+
+```bash
+# Valida prima
+sshd -t
+# Se OK:
+systemctl reload ssh          # ricarica config nelle sessioni attive
+systemctl restart ssh.socket  # riavvia il listener per le nuove connessioni
+# root e gas rimangono connessi — solo i nuovi tentativi di login usano la nuova config
+```
+
 ### 5e. Reload (NON restart)
 
 ```bash
@@ -466,8 +508,12 @@ ssh root@204.168.251.92
 # atteso: Permission denied (publickey).
 
 # Test 3 — login con password (deve fallire)
-ssh -o PreferredAuthentications=password gas@204.168.251.92
-# atteso: Permission denied (publickey).
+# IMPORTANTE: aggiungere -o PubkeyAuthentication=no, altrimenti il client tenta
+# la key prima della password e il rifiuto riporta "publickey" anche se la password
+# fosse ancora abilitata — il test sarebbe falsato.
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no gas@204.168.251.92
+# atteso: "Permission denied (password)." IMMEDIATO (nessuna prompt)
+# Se chiede la password → password auth ancora attiva → hardening NON applicato
 ```
 
 ### 5g. Esito
@@ -533,8 +579,11 @@ ssh root@204.168.251.92
 # atteso: Permission denied (publickey).
 
 # Login gas con password — deve fallire
-ssh -o PreferredAuthentications=password gas@204.168.251.92
-# atteso: Permission denied (publickey).
+# IMPORTANTE: -o PubkeyAuthentication=no obbliga il client a usare solo password;
+# senza questo flag il test è falsato (vedi nota passo 5f).
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no gas@204.168.251.92
+# atteso: "Permission denied (password)." IMMEDIATO (nessuna prompt)
+# Se chiede la password → password auth ancora attiva → hardening NON applicato
 ```
 
 ### 6c. Stato finale atteso
