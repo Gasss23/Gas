@@ -1,6 +1,6 @@
 # RUNBOOK — FASE 5 S1: Hardening SSH + Base VPS
 **Target:** Hetzner CX33, Helsinki, Ubuntu 24.04 — `root@204.168.251.92`  
-**Autore:** Claude Code — 2026-07-04  
+**Revisione:** 2026-07-04 v2  
 **Eseguito manualmente dall'umano** in una sessione SSH con console Hetzner aperta.
 
 ---
@@ -12,7 +12,7 @@
 > Un passo saltato o eseguito fuori ordine può causare **lockout permanente** senza console.
 
 > **Console Hetzner = unica rete di sicurezza contro lockout.**  
-> Se la console non è accessibile, **non toccare sshd né il firewall** — fermati al passo 0.
+> Se la console non è accessibile, **non toccare sshd** — fermati al passo 0.
 
 ---
 
@@ -20,14 +20,13 @@
 
 **Obiettivo:** verificare che la console Hetzner sia accessibile e funzionante PRIMA di qualsiasi modifica.
 
-### Azioni
+### Azioni (dal browser, non dalla sessione SSH)
 
-1. Vai su [console.hetzner.com](https://console.hetzner.com) dal browser.
-2. Seleziona il server `CX33 Helsinki`.
-3. Apri la **Console VNC** (pulsante "Console" in alto a destra nella pagina server).
-4. Nella console VNC, premi `Invio` — deve apparire il prompt di login.
-5. Effettua login come `root` con la password root.
-6. Verifica che il prompt risponda (es. `root@<hostname>:~#`).
+1. Vai su **console.hetzner.com** dal browser.
+2. Seleziona il server CX33 Helsinki → pulsante **Console** in alto a destra.
+3. Nella console VNC che si apre, premi `Invio`.
+4. Effettua login come `root` con la password root del VPS.
+5. Verifica che il prompt risponda.
 
 ### Output atteso
 
@@ -40,63 +39,67 @@ root@<hostname>:~#
 
 ### Verifica prima di procedere
 
-- Console VNC: **accessibile e login root funzionante** → ✅ puoi procedere
-- Console VNC: **non accessibile o login fallito** → 🔴 **STOP. Non toccare sshd.**
+| Esito console VNC | Decisione |
+|---|---|
+| Accessibile + login root OK | ✅ Procedi al passo 1 |
+| Non accessibile / login fallito | 🔴 **STOP — non toccare sshd in nessun caso** |
 
 ### Rollback
 
-N/A — nessuna modifica eseguita in questo passo.
+N/A — nessuna modifica eseguita.
 
 ---
 
 ## PASSO 1 — unattended-upgrades
 
-**Obiettivo:** abilitare gli aggiornamenti automatici di sicurezza (kernel, librerie critiche).  
-**Rischio:** basso. Reversibile. Non tocca sshd né la rete.
+**Obiettivo:** aggiornamenti automatici di sicurezza (kernel, librerie).  
+**Rischio:** basso. Reversibile. Non tocca sshd.
 
-### Prerequisito
+### 1a. Verifica distro e aggiornamento indice
 
 ```bash
-# Sulla sessione SSH root già aperta
-uname -a          # verifica kernel Ubuntu 24.04
-lsb_release -a    # verifica distro
+lsb_release -cs
+# output atteso: noble
+
+apt-get update -qq
 ```
 
-Output atteso: `Ubuntu 24.04.*`, `Kernel: 6.x.*`
-
-### Installazione
+### 1b. Installazione
 
 ```bash
-apt-get update -qq
 apt-get install -y unattended-upgrades apt-listchanges
 ```
 
-Output atteso: `... unattended-upgrades is already the newest version` oppure `Setting up unattended-upgrades...` — entrambi OK.
+Output atteso (uno dei due):
 
-### Configurazione
-
-```bash
-dpkg-reconfigure -plow unattended-upgrades
+```
+unattended-upgrades is already the newest version (...)
 ```
 
-Alla domanda "Automatically download and install stable updates?" → seleziona **Sì**.
+oppure:
 
-Oppure in modo non interattivo:
+```
+Setting up unattended-upgrades (2.x) ...
+```
+
+### 1c. Configurazione (non interattiva)
 
 ```bash
-echo 'APT::Periodic::Update-Package-Lists "1";
+cat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
-APT::Periodic::AutocleanInterval "7";' > /etc/apt/apt.conf.d/20auto-upgrades
+APT::Periodic::AutocleanInterval "7";
+EOF
 ```
 
-### Verifica
+### 1d. Verifica
 
 ```bash
 cat /etc/apt/apt.conf.d/20auto-upgrades
-# deve mostrare i valori sopra
+# deve mostrare i 3 valori sopra
 
-systemctl status unattended-upgrades
-# deve essere: active (running)  o  active (exited) — entrambi OK
+systemctl status unattended-upgrades | grep -E "Active:"
+# atteso: Active: active (running)  oppure  Active: active (exited) — entrambi OK
 ```
 
 ### Rollback
@@ -110,16 +113,20 @@ rm -f /etc/apt/apt.conf.d/20auto-upgrades
 
 ## PASSO 2 — fail2ban
 
-**Obiettivo:** bloccare IP che fanno brute-force su SSH (protezione passiva, logga in `/var/log/fail2ban.log`).  
-**Rischio:** basso. Reversibile. Non tocca sshd.conf.
+**Obiettivo:** bloccare IP che fanno brute-force su SSH.  
+**Rischio:** basso. Reversibile. Non tocca sshd_config.
 
-### Installazione
+### 2a. Installazione
 
 ```bash
 apt-get install -y fail2ban
 ```
 
-### Configurazione jail SSH
+### 2b. Jail SSH
+
+> **Nota Ubuntu 24.04:** `/var/log/auth.log` esiste se rsyslog è attivo, ma fail2ban su
+> Ubuntu 24.04 preferisce leggere da journald. `backend = auto` sceglie il metodo corretto
+> automaticamente (journald se disponibile, file altrimenti).
 
 ```bash
 cat > /etc/fail2ban/jail.d/sshd-local.conf << 'EOF'
@@ -127,40 +134,39 @@ cat > /etc/fail2ban/jail.d/sshd-local.conf << 'EOF'
 enabled  = true
 port     = ssh
 filter   = sshd
-logpath  = /var/log/auth.log
+backend  = auto
 maxretry = 5
 bantime  = 1h
 findtime = 10m
 EOF
 ```
 
-### Avvio e abilitazione
+### 2c. Avvio
 
 ```bash
 systemctl enable fail2ban
 systemctl restart fail2ban
 ```
 
-### Verifica
+### 2d. Verifica
 
 ```bash
-systemctl status fail2ban
-# deve essere: active (running)
+systemctl status fail2ban | grep -E "Active:"
+# atteso: Active: active (running)
 
 fail2ban-client status sshd
-# deve mostrare: Currently banned: 0  (a meno che qualcuno non stia già attaccando)
 ```
 
-Output atteso `fail2ban-client status sshd`:
+Output atteso:
 
 ```
 Status for the jail: sshd
 |- Filter
 |  |- Currently failed: 0
-|  `- Total failed: 0
+|  `- Total failed:     0
 `- Actions
    |- Currently banned: 0
-   `- Total banned: 0
+   `- Total banned:     0
 ```
 
 ### Rollback
@@ -176,238 +182,253 @@ rm -f /etc/fail2ban/jail.d/sshd-local.conf
 
 ## PASSO 3 — Utente runtime non-root 'gas'
 
-**Obiettivo:** creare l'utente sotto cui girerà GAS in produzione. Spostare working dir, model cache e database fuori da `/root`. NON avviare GAS ora.  
+**Obiettivo:** creare l'utente sotto cui girerà GAS. Spostare working dir, cache modelli e DB fuori da `/root`. NON avviare GAS ora.  
 **Rischio:** medio (modifica struttura file). Reversibile. Non tocca sshd.
-
-> **Assunzione:** i file GAS si trovano in `/root/gas/` e i DB in `/root/*.db` o `/root/gas/*.db`.  
-> Adatta i path se la struttura reale è diversa — controlla prima con `ls /root/`.
 
 ### 3a. Verifica struttura attuale
 
 ```bash
 ls -la /root/
 ls -la /root/gas/ 2>/dev/null || echo "no /root/gas"
-ls /root/*.db 2>/dev/null || echo "no db in /root"
-ls /root/gas/*.db 2>/dev/null || echo "no db in /root/gas"
-# annotati i path reali prima di procedere
+find /root -name ".gas_*.db" -o -name ".gas_history.json" -o -name ".gas_*.jsonl" 2>/dev/null
+ls -la /root/.cache/ 2>/dev/null || echo "no /root/.cache"
+
+# Annota i path reali prima di procedere al passo 3b
 ```
 
-### 3b. Creazione utente
+### 3b. Verifica UID disponibile
+
+> **Nota:** il bot trading potrebbe già occupare uid/gid 1001.  
+> Verifica prima di assegnare l'utente.
+
+```bash
+getent passwd | awk -F: '$3 >= 1000 {print $1, $3}' | sort -k2 -n
+# mostra gli utenti non-sistema; annota quale uid è il prossimo libero
+```
+
+### 3c. Creazione utente
 
 ```bash
 useradd --create-home --shell /bin/bash --comment "GAS runtime" gas
 # verifica
 id gas
-# output atteso: uid=1001(gas) gid=1001(gas) groups=1001(gas)
+# output atteso: uid=<N>(gas) gid=<N>(gas) groups=<N>(gas)
 ```
 
-### 3c. Spostamento working directory GAS
+### 3d. Spostamento working directory GAS
 
 ```bash
-# Sostituisci /root/gas con il path reale rilevato al passo 3a
+# Adatta /root/gas al path reale rilevato al passo 3a
 cp -a /root/gas /home/gas/gas
 chown -R gas:gas /home/gas/gas
-ls -la /home/gas/gas/   # verifica contenuto
+ls -la /home/gas/gas/ | head -20
 ```
 
-### 3d. Spostamento model cache fastembed
+### 3e. Spostamento model cache fastembed
 
 ```bash
-# La cache fastembed di default va in ~/.cache/huggingface o ~/.cache/fastembed
-# Controlla dove si trova
-ls -la /root/.cache/ 2>/dev/null
+# Verifica cosa c'è in /root/.cache
+ls /root/.cache/ 2>/dev/null || echo "cache assente"
 
-# Se esiste /root/.cache/fastembed (o /root/.cache/huggingface):
-cp -a /root/.cache /home/gas/.cache
-chown -R gas:gas /home/gas/.cache
-ls /home/gas/.cache/
+# Se esiste (fastembed scarica in ~/.cache/fastembed o ~/.cache/huggingface):
+if [ -d /root/.cache ]; then
+  cp -a /root/.cache /home/gas/.cache
+  chown -R gas:gas /home/gas/.cache
+  echo "cache copiata"
+fi
+ls /home/gas/.cache/ 2>/dev/null
 ```
 
-### 3e. Spostamento database SQLite (.gas_*.db)
+### 3f. Spostamento DB extra in /root (se presenti fuori da /root/gas/)
 
 ```bash
-# Identifica i DB dal passo 3a — esempio tipico:
-# /root/gas/.gas_memory.db, /root/gas/.gas_tokens.jsonl, /root/gas/.gas_history.json
-
-# I DB sono già dentro /root/gas/ e dunque già copiati al passo 3c.
-# Se ci sono DB extra in /root/ direttamente:
+# I DB dentro /root/gas/ sono già stati copiati al passo 3d.
+# Questo loop copia solo eventuali DB direttamente in /root/:
 for f in /root/.gas_*.db /root/.gas_*.jsonl /root/.gas_history.json; do
-  [ -e "$f" ] && cp -a "$f" /home/gas/ && chown gas:gas /home/gas/$(basename "$f")
+  [ -e "$f" ] || continue
+  cp -a "$f" /home/gas/
+  chown gas:gas "/home/gas/$(basename "$f")"
+  echo "copiato: $f"
 done
-ls -la /home/gas/.gas_* 2>/dev/null
+ls -la /home/gas/.gas_* 2>/dev/null || echo "nessun DB extra in /root"
 ```
 
-### 3f. Verifica ownership
+### 3g. Verifica ownership
 
 ```bash
 find /home/gas -not -user gas -not -group gas 2>/dev/null | head -20
 # output atteso: nessuna riga (tutto owned da gas:gas)
 ```
 
-### 3g. Verifica struttura home
+### 3h. Verifica struttura home
 
 ```bash
 ls -la /home/gas/
-# atteso: gas/, .cache/ (eventuale), .gas_*.db (eventuali)
+# atteso: gas/ (working dir), .cache/ (eventuale), .gas_* (eventuali)
 ```
 
 > **NON avviare GAS come utente gas ora.**  
-> I path originali in /root rimangono intatti fino a S1b (rollback sicuro).  
-> Non cancellare /root/gas/ finché il deploy non è confermato funzionante.
+> I path originali in `/root` rimangono intatti (rollback sicuro).  
+> Non cancellare `/root/gas/` finché il deploy non è confermato funzionante.
 
 ### Rollback
 
 ```bash
-# Se qualcosa va storto: l'utente gas si elimina, i dati originali sono intatti in /root
 userdel -r gas
-# /root/gas/ e /root/*.db rimangono intatti — nessun dato perso
+# /root/gas/ e i DB in /root/ rimangono intatti — nessun dato perso
 ```
 
 ---
 
 ## PASSO 4 — SSH key-only per l'utente 'gas'
 
-**Obiettivo:** configurare il login via chiave pubblica per l'utente `gas` e verificarlo SU UNA SECONDA SESSIONE SSH prima di procedere.
-
 > 🔴 **RECOVERY = console Hetzner**  
 > **Non procedere se il pre-flight (passo 0) è fallito.**
 
-> **REGOLA CRITICA:** Non chiudere la sessione root attiva finché una nuova sessione SSH via chiave per l'utente `gas` non è confermata funzionante.
+> **REGOLA CRITICA:** Non chiudere la sessione root attiva finché una nuova sessione SSH  
+> via chiave per l'utente `gas` non è confermata funzionante al passo 4d.
 
-### 4a. Copia la chiave pubblica
+**Obiettivo:** installare la chiave pubblica per `gas` e verificarne il funzionamento su una seconda sessione SSH indipendente.
 
-Hai bisogno della tua chiave pubblica SSH (es. `~/.ssh/id_ed25519.pub` o `~/.ssh/id_rsa.pub` sulla tua macchina locale).
-
-**Sulla tua macchina locale** (non sul VPS), copia il contenuto della chiave:
+### 4a. Ottieni la chiave pubblica (sulla tua macchina locale)
 
 ```bash
-# macchina locale — mostra la chiave pubblica
+# Sulla tua macchina LOCALE — mostra la chiave pubblica da copiare
 cat ~/.ssh/id_ed25519.pub
 # oppure
 cat ~/.ssh/id_rsa.pub
 ```
 
-Annota il contenuto (es. `ssh-ed25519 AAAA... commento`).
+Copia il contenuto (riga intera: `ssh-ed25519 AAAA... commento`).
 
-### 4b. Installa la chiave sul VPS (sulla sessione root già aperta)
+### 4b. Installa la chiave sul VPS (sessione root)
 
 ```bash
 # Sul VPS, nella sessione root
 mkdir -p /home/gas/.ssh
 chmod 700 /home/gas/.ssh
 
-# Incolla il contenuto della chiave pubblica qui sotto tra le virgolette
-echo "ssh-ed25519 AAAA...TUA_CHIAVE_PUBBLICA... commento" >> /home/gas/.ssh/authorized_keys
+# Incolla la tua chiave pubblica al posto del placeholder
+echo "INCOLLA_QUI_LA_CHIAVE_PUBBLICA_COMPLETA" >> /home/gas/.ssh/authorized_keys
 
 chmod 600 /home/gas/.ssh/authorized_keys
 chown -R gas:gas /home/gas/.ssh
+```
 
-# Verifica
+### 4c. Verifica permessi e contenuto
+
+```bash
+ls -la /home/gas/.ssh/
+# atteso:
+# drwx------  .ssh      (700, owned gas:gas)
+# -rw-------  authorized_keys  (600, owned gas:gas)
+
 cat /home/gas/.ssh/authorized_keys
 # deve mostrare la tua chiave pubblica
 ```
 
-### 4c. Test login in una NUOVA sessione SSH (tenendo aperta quella root)
+### 4d. Test login in una NUOVA sessione SSH
 
-**Apri un nuovo terminale sulla tua macchina locale** — NON chiudere la sessione root attiva sul VPS.
+> **Apri un NUOVO terminale sulla tua macchina locale.**  
+> NON chiudere la sessione root attiva sul VPS.
 
 ```bash
-# Nuovo terminale locale — test login via key per utente gas
+# Nuovo terminale locale
 ssh -i ~/.ssh/id_ed25519 gas@204.168.251.92
-# oppure con id_rsa:
+# oppure
 ssh -i ~/.ssh/id_rsa gas@204.168.251.92
 ```
 
 Output atteso:
 
 ```
-Welcome to Ubuntu 24.04 LTS
+Welcome to Ubuntu 24.04 LTS (GNU/Linux 6.x.x-xx-generic x86_64)
 gas@<hostname>:~$
 ```
 
-### 4d. Verifica dalla sessione gas
+Dalla sessione gas:
 
 ```bash
-# Nella sessione gas appena aperta
 whoami    # → gas
-id        # → uid=1001(gas) gid=1001(gas) groups=1001(gas)
-ls ~      # → vedi gas/, .cache/ (eventuale)
+id        # → uid=<N>(gas) gid=<N>(gas) groups=<N>(gas)
+ls ~      # → gas/  e altri file copiati
 ```
 
-### 4e. Verifica esito
+### 4e. Esito
 
-- Login via key funzionante → **✅ CONFERMATO. Tieni aperta la sessione root. Procedi al passo 5.**
-- Login via key fallito → **🔴 STOP. Diagnosi problema prima di procedere. NON toccare sshd_config.**
+| Risultato | Azione |
+|---|---|
+| Login gas via key ✅ | Tieni aperta la sessione root. Procedi al passo 5. |
+| Login fallito 🔴 | STOP. Diagnosi sotto. NON toccare sshd_config. |
 
 **Diagnosi se il login fallisce:**
 
 ```bash
 # Sulla sessione root
-# Controlla permission (devono essere esatte):
 ls -la /home/gas/.ssh/
-# .ssh: drwx------ (700), authorized_keys: -rw------- (600), owner: gas:gas
+# .ssh deve essere 700, authorized_keys 600, owner gas:gas
 
-# Controlla SELinux/AppArmor (Ubuntu 24.04 usa AppArmor)
-aa-status | grep sshd
-
-# Controlla sshd log
-journalctl -u ssh --since "5 minutes ago" | tail -30
+journalctl -u ssh --since "2 minutes ago" | tail -30
+# cerca "Authentication refused" o "bad ownership"
 ```
 
 ### Rollback
 
 ```bash
-# Rimuove accesso key per gas — root non è stato toccato
 rm -rf /home/gas/.ssh
+# accesso key rimosso; root è ancora accessibile via password
 ```
 
 ---
 
 ## PASSO 5 — sshd_config: key-only, no root login
 
-**Obiettivo:** disabilitare l'autenticazione via password e il login root diretto via SSH.
-
 > 🔴 **RECOVERY = console Hetzner**  
 > **Non procedere se il pre-flight (passo 0) è fallito.**  
-> **Non procedere se il passo 4 NON è confermato: la sessione gas via key deve essere aperta e funzionante.**
+> **Non procedere se il passo 4 NON è confermato: la sessione gas via key deve essere aperta.**
 
-> **REGOLA CRITICA:** La sessione root attiva e la sessione gas via key devono essere entrambe aperte durante questo passo.
+> **REGOLA CRITICA:** Mantieni aperte ENTRAMBE le sessioni (root + gas via key) durante  
+> l'intero passo 5. La sessione root è la rete di rollback manuale; la console Hetzner è  
+> la rete finale.
 
-### 5a. Backup della configurazione attuale
+**Obiettivo:** disabilitare autenticazione password e login root diretto via SSH.
+
+### 5a. Controlla i dropin esistenti (specifico Ubuntu 24.04 + Hetzner)
+
+> **Nota:** Hetzner cloud-init può aver scritto `/etc/ssh/sshd_config.d/50-cloud-init.conf`
+> con `PasswordAuthentication yes`. Su Ubuntu 24.04 i dropin vengono letti in ordine
+> alfabetico; un file con prefisso `99-` sovrascrive `50-cloud-init.conf`.
 
 ```bash
-# Sulla sessione root
-cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak.$(date +%Y%m%d_%H%M%S)
-ls -la /etc/ssh/sshd_config.bak.*
-```
+ls /etc/ssh/sshd_config.d/ 2>/dev/null || echo "directory dropin assente"
+cat /etc/ssh/sshd_config.d/50-cloud-init.conf 2>/dev/null || echo "nessun dropin cloud-init"
 
-### 5b. Modifica sshd_config
-
-```bash
-# Mostra le righe rilevanti prima della modifica
+# Mostra anche le direttive rilevanti nella config principale
 grep -E "PasswordAuthentication|PermitRootLogin|PubkeyAuthentication" /etc/ssh/sshd_config
 ```
 
-Modifica i parametri:
+### 5b. Crea il dropin di hardening
+
+> Invece di modificare il file principale (rischio con `sed` su configurazioni multi-riga),
+> si aggiunge un dropin `99-hardening.conf` che prende precedenza su tutti i dropin
+> precedenti (incluso `50-cloud-init.conf`).
 
 ```bash
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-```
-
-### 5c. Verifica le modifiche
-
-```bash
-grep -E "PasswordAuthentication|PermitRootLogin|PubkeyAuthentication" /etc/ssh/sshd_config
-```
-
-Output atteso:
-
-```
-PubkeyAuthentication yes
+cat > /etc/ssh/sshd_config.d/99-hardening.conf << 'EOF'
+# Hardening S1 — 2026-07-04
 PasswordAuthentication no
 PermitRootLogin no
+PubkeyAuthentication yes
+EOF
+
+chmod 600 /etc/ssh/sshd_config.d/99-hardening.conf
+```
+
+### 5c. Verifica il dropin
+
+```bash
+cat /etc/ssh/sshd_config.d/99-hardening.conf
+# deve mostrare le 3 direttive sopra
 ```
 
 ### 5d. Validazione sintattica PRIMA del reload
@@ -415,65 +436,64 @@ PermitRootLogin no
 ```bash
 sshd -t
 # output atteso: nessun output = configurazione valida
-# se c'è output = errore di sintassi → NON procedere, vedi rollback
+# qualsiasi output = errore → rollback immediato, NON procedere al reload
 ```
 
-> **Se `sshd -t` produce output di errore → rollback immediato (vedi sotto). NON eseguire il reload.**
+> **Se `sshd -t` produce output di errore → esegui il rollback sotto. NON fare il reload.**
 
 ### 5e. Reload (NON restart)
 
 ```bash
-# reload preserva le sessioni attive; restart le chiude
+# reload: ricarica la config senza interrompere le sessioni attive
+# restart: chiude tutte le sessioni — NON usare restart
 systemctl reload ssh
 
-# verifica che il servizio sia ancora attivo
-systemctl status ssh | head -5
+systemctl status ssh | grep -E "Active:"
+# atteso: Active: active (running)
 ```
 
-Output atteso: `Active: active (running)`
+### 5f. Verifica su nuova sessione (terzo terminale)
 
-### 5f. Verifica finale su NUOVA sessione (terzo terminale)
-
-**Apri un terzo terminale sulla tua macchina locale.**
+> **Apri un TERZO terminale sulla tua macchina locale.**
 
 ```bash
-# Test: login via key per gas → deve funzionare
+# Test 1 — login gas via key (deve funzionare)
 ssh -i ~/.ssh/id_ed25519 gas@204.168.251.92
-whoami  # → gas
+whoami   # → gas
 
-# Test: login root via SSH → deve fallire (Permission denied)
+# Test 2 — login root via SSH (deve fallire)
 ssh root@204.168.251.92
-# atteso: Permission denied (publickey)
+# atteso: Permission denied (publickey).
 
-# Test: login con password → deve fallire
+# Test 3 — login con password (deve fallire)
 ssh -o PreferredAuthentications=password gas@204.168.251.92
-# atteso: Permission denied (publickey)
+# atteso: Permission denied (publickey).
 ```
 
-### 5g. Verifica esito
+### 5g. Esito
 
-- Tutti e tre i test del passo 5f passano → **✅ Configurazione hardening SSH completata.**
-- Login gas via key fallisce dopo reload → **🔴 Rollback immediato (sessione root ancora aperta).**
+| Risultato | Azione |
+|---|---|
+| Tutti e 3 i test passano ✅ | Hardening SSH completato. Procedi al passo 6. |
+| Test 1 (gas via key) fallisce 🔴 | Rollback immediato (sessione root ancora aperta). |
 
 ### Rollback
 
 ```bash
-# Sulla sessione root ancora aperta — ripristina il backup
-BACKUP=$(ls /etc/ssh/sshd_config.bak.* | sort | tail -1)
-cp "$BACKUP" /etc/ssh/sshd_config
+# Sulla sessione root ancora aperta
+rm /etc/ssh/sshd_config.d/99-hardening.conf
 
-# Valida prima di ricaricare
+# Valida e ricarica
 sshd -t && systemctl reload ssh
 
-# Verifica ripristino
-grep -E "PasswordAuthentication|PermitRootLogin" /etc/ssh/sshd_config
-systemctl status ssh | head -3
+# Verifica che il login con password torni a funzionare
+grep -E "PasswordAuthentication|PermitRootLogin" /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null
 ```
 
-Se anche il reload fallisce dopo il ripristino → **usa la console Hetzner** per riavviare il servizio SSH via VNC:
+Se anche il reload fallisce dopo il ripristino → **usa la console Hetzner VNC**:
 
 ```bash
-# Console Hetzner VNC
+# Console Hetzner VNC (ultimo rimedio)
 systemctl restart ssh
 ```
 
@@ -483,85 +503,90 @@ systemctl restart ssh
 
 **Obiettivo:** riepilogo stato post-hardening e check integrale.
 
-### 6a. Checklist verifica
-
-Esegui dalla sessione `gas` (non root):
+### 6a. Checklist stato servizi (dalla sessione gas)
 
 ```bash
-# Stato servizi
-systemctl status unattended-upgrades | grep -E "Active|Loaded"
-systemctl status fail2ban | grep -E "Active|Loaded"
-systemctl status ssh | grep -E "Active|Loaded"
+systemctl status unattended-upgrades | grep -E "Active:"
+systemctl status fail2ban | grep -E "Active:"
+systemctl status ssh | grep -E "Active:"
 
-# fail2ban jail sshd
 fail2ban-client status sshd
 
-# Configurazione SSH
-sshd -t && echo "sshd config OK"
-grep -E "PasswordAuthentication|PermitRootLogin|PubkeyAuthentication" /etc/ssh/sshd_config
+sshd -t && echo "sshd config: OK"
 
-# Utente gas
-id gas
-ls -la /home/gas/
-
-# Permessi .ssh
-ls -la /home/gas/.ssh/
+# Direttive hardening attive (inclusi dropin)
+sshd -T | grep -E "passwordauthentication|permitrootlogin|pubkeyauthentication"
+# atteso:
+# passwordauthentication no
+# permitrootlogin no
+# pubkeyauthentication yes
 ```
 
-### 6b. Test lockout check
+> **Nota:** `sshd -T` mostra la configurazione effettiva consolidata (main config + dropin),
+> non solo quello che è scritto nel file. È la fonte di verità per la config attiva.
+
+### 6b. Test lockout (da un quarto terminale locale)
 
 ```bash
-# Da un quarto terminale locale — tenta login root (deve fallire):
+# Login root via SSH — deve fallire
 ssh root@204.168.251.92
 # atteso: Permission denied (publickey).
 
-# Login con password su gas (deve fallire):
+# Login gas con password — deve fallire
 ssh -o PreferredAuthentications=password gas@204.168.251.92
 # atteso: Permission denied (publickey).
 ```
 
-### 6c. Stato atteso finale
+### 6c. Stato finale atteso
 
 | Componente | Stato atteso |
 |---|---|
-| unattended-upgrades | active/enabled |
+| unattended-upgrades | active (running o exited) |
 | fail2ban jail sshd | enabled, 0 banned |
-| SSH: PasswordAuthentication | no |
-| SSH: PermitRootLogin | no |
-| SSH: PubkeyAuthentication | yes |
-| Utente gas | uid=1001, home=/home/gas |
-| /home/gas/.ssh | 700, authorized_keys 600 |
-| /home/gas/gas/ | copia working dir, owned gas:gas |
-| /root/gas/ | INTATTO (non cancellare fino a S1b) |
+| `sshd -T` passwordauthentication | no |
+| `sshd -T` permitrootlogin | no |
+| `sshd -T` pubkeyauthentication | yes |
+| `/etc/ssh/sshd_config.d/99-hardening.conf` | presente, chmod 600 |
+| Utente gas | creato, home=/home/gas |
+| `/home/gas/.ssh` | 700, authorized_keys 600 |
+| `/home/gas/gas/` | copia working dir, owner gas:gas |
+| `/root/gas/` | INTATTO (non cancellare fino a S1b) |
 
 ---
 
 ## TABELLA ROLLBACK RIEPILOGATIVA
 
-| Passo | Rischio lockout | Rollback rapido | Recovery se lockout |
+| Passo | Rischio lockout | Rollback | Recovery se lockout |
 |---|---|---|---|
 | 0 Pre-flight | N/A | N/A | N/A |
-| 1 unattended-upgrades | Nessuno | `apt-get remove --purge unattended-upgrades` | N/A |
-| 2 fail2ban | Nessuno (non tocca sshd) | `apt-get remove --purge fail2ban; rm /etc/fail2ban/jail.d/sshd-local.conf` | N/A |
+| 1 unattended-upgrades | Nessuno | `apt-get remove --purge unattended-upgrades; rm /etc/apt/apt.conf.d/20auto-upgrades` | N/A |
+| 2 fail2ban | Nessuno | `systemctl stop fail2ban; apt-get remove --purge fail2ban; rm /etc/fail2ban/jail.d/sshd-local.conf` | N/A |
 | 3 Utente gas | Nessuno | `userdel -r gas` (dati originali in /root intatti) | N/A |
-| **4 SSH key** | **⚠️ MEDIO** (se authorized_keys errato) | `rm -rf /home/gas/.ssh` | Console Hetzner VNC |
-| **5 sshd_config** | **🔴 ALTO** (lockout se config errata) | `cp sshd_config.bak.* /etc/ssh/sshd_config && sshd -t && systemctl reload ssh` | Console Hetzner VNC → `systemctl restart ssh` |
+| **4 SSH key** | **⚠️ MEDIO** | `rm -rf /home/gas/.ssh` | Console Hetzner VNC |
+| **5 sshd_config** | **🔴 ALTO** | `rm /etc/ssh/sshd_config.d/99-hardening.conf && sshd -t && systemctl reload ssh` | Console Hetzner VNC → `systemctl restart ssh` |
 | 6 Verifica finale | Nessuno | N/A | N/A |
 
 ---
 
-## NOTE PER FETTE SUCCESSIVE (FUORI SCOPE S1 — proposta)
+## PROPOSTA FETTE SUCCESSIVE (FUORI SCOPE S1 — decisione umana)
 
-Le seguenti attività NON sono in scope di questo runbook. Decisione di includerle spetta all'umano:
+Le seguenti attività NON sono in scope di questo runbook:
 
-**FETTA 2 — proposta (S1b):**
+**Candidati per S1b:**
 
-1. **systemd unit GAS** con `MemoryHigh=1500M` / `MemoryMax=2000M` — FINDING no-swap (sonda 2026-07-02): il box non ha swap, un OOM uccide GAS e potenzialmente il bot trading. La unit systemd con limiti di memoria garantisce un degradamento prevedibile (`Restart=always`) invece di un OOM casuale. Parametri da affinare con misura reale dopo il primo avvio.
+1. **swap file 2–4 GiB** — il box non ha swap (FINDING no-swap, sonda 2026-07-02). Su 7.6 GiB
+   condivisi con bot trading e GAS, un picco = OOM killer senza cuscinetto. Costo: 2–4 GiB su
+   70 GiB liberi. Comando: `fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile` + riga in `/etc/fstab`.
 
-2. **swap file 2-4 GiB** — opzione cuscinetto (costo: ~2-4 GiB su 70 GiB liberi) per macchina h24 non presidiata. Decisione aperta da sonda S0.
+2. **systemd unit GAS** con `MemoryHigh=1500M` / `MemoryMax=2000M` — limita il blast radius di
+   GAS in caso di picco (embedder + reindex), garantisce `Restart=always` prevedibile invece di
+   OOM casuale. Parametri da affinare con misura reale dopo il primo avvio.
 
-3. **Spostamento VECTORS_DB** — `GAS_VECTORS_DB` configurabile via env (già fatto in review #31). Al deploy va impostato esplicitamente sotto `/home/gas/gas/` e non sotto `/root`. Da fare in concomitanza con la prima run GAS come utente gas.
+3. **Spostamento VECTORS_DB** — al primo avvio GAS come utente `gas`, impostare
+   `GAS_VECTORS_DB=/home/gas/gas/.gas_vectors.db` via env/systemd unit, altrimenti il layer
+   vettoriale usa il path di default che potrebbe puntare a `/root`.
 
-4. **ollama on-demand vs always-on** — decisione aperta da stato_progetto.md: su 7.6 GiB condivisi, un modello 3B always-on riduce il margine. Valutare spawn on-demand.
+4. **ollama on-demand** — 3B always-on su 7.6 GiB condivisi lascia poco margine. Valutare
+   spawn on-demand (avvio al primo turno ollama, unload dopo). Decisione aperta.
 
-**Queste voci NON fanno parte di S1. Includile nel prossimo scope se deciso.**
+**Queste voci NON fanno parte di S1. Includile nel prossimo scope se deciso dall'umano.**
