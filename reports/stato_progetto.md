@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-03** (sonda postazione locale WSL â T13 bwrap PASS, postazione locale RISOLTO)
+> Ultimo aggiornamento: **2026-07-04** (S1 hardening VPS eseguito)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -73,7 +73,7 @@ Componenti attive:
 3. **ðŸ“± Accesso dev tooling da telefono**: item 2 roadmap â€” claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) Ã¨ giÃ  disponibile ma non Ã¨ questo.
 4. **FASE 3 â€” Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 5. **FASE 4.5 â€” Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
-6. **FASE 5 — Deploy VPS Hetzner CX33/8GB**: al deploy → `gas telegram` daemon (systemd), `gas calibrate-vectors` (item 3), R-wire-1 / R-reidx-3 (item 5). Reindex-su-upgrade-fastembed FORZATO dal guard (review #42), non più checklist manuale. [R-reidx-deps ✅ chiuso; R-vec-3 ✅ chiuso] Sonde S1+ pianificate.
+6. **FASE 5 S1 ✅ completato (2026-07-04)** → prossimo S1b (candidati: swap file 2-4GiB, systemd unit GAS con MemoryHigh/MemoryMax, VECTORS_DB path a /home/gas/gas/, ollama on-demand). Decisione scope S1b umana.
 7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
 ### PARK â€” registrati, nessun impegno
@@ -107,3 +107,11 @@ Componenti attive:
 5. **R-vec-pool ✅ (2026-07-03)**: fingerprint ora include `fastembed_version`. Upgrade fastembed → mismatch versione → guard spegne il layer e obbliga a `gas reindex` (fail-closed). Il reindex non è più affidato alla memoria dell operatore ma forzato dal codice.
 6.  **Confine sviluppo da telefono** (Claude Code cloud, sondato 2026-07-01): loop telefonoâ†’cloudâ†’revisoreâ†’CI validato su evidenza reale (revisore+hook scattano nel cloud; CI verde run #50 su `d992c47`). CONFINE DURO: `bwrap` ASSENTE nel sandbox cloud â†’ test sandbox/`run_command`/snapshot strutturalmente rossi lÃ¬, NON validabili da telefono (solo CI). Nessuna credenziale LLM nel cloud â†’ runtime GAS non eseguibile lÃ¬. Fattibile da telefono: doc-only + motore leggero non-sandbox verificabile da CI. Da sondare a parte: claude remote-control (ambiente reale, claim non verificato). Limite accertato 2026-07-02: Claude Code cloud pusha SOLO sul branch di sessione, NON crea branch â†’ i task cloud si stratificano, serve estrai-e-cancella a valle.
 7. **â RISOLTO â postazione locale WSL operativa** (sonda 2026-07-03): bubblewrap 0.9.0, suite 214 PASS, T13a-T13e bwrap tutti â. Sviluppo locale pienamente abilitato (clone git + venv + suite + bwrap). La barriera FASE 5 era questa; ora rimossa.
+8. **✅ S1 ESEGUITO (2026-07-04):** hardening SSH + utente runtime completati sul VPS CX33.
+   - unattended-upgrades: attivo (running)
+   - fail2ban: attivo, jail sshd, backend=auto, 4 IP bannati al reboot
+   - Utente `gas` (uid=1000): creato, `/home/gas/gas/` copia working dir, `/home/gas/.cache/` model cache fastembed
+   - sshd hardening: `PasswordAuthentication no`, `PermitRootLogin no`, `PubkeyAuthentication yes` (dropin `/etc/ssh/sshd_config.d/99-hardening.conf`)
+   - Kernel aggiornato: 6.8.0-134-generic (reboot post-S1 ok)
+   - `/root/gas/` INTATTO (non cancellare fino a S1b confermato)
+   - Accesso SSH: solo `gas@204.168.251.92` via chiave ed25519. Login root SSH disabilitato.
