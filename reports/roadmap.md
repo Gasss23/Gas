@@ -37,6 +37,10 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 > Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul CX33 (FASE 5).
 
+### Deprecazioni provider
+
+- 2026-08-16 — Groq llama-3.3-70b-versatile (rung 3) in pensione: migrare a groq/qwen3-27b (o nome modello Groq ufficiale da verificare al momento della migrazione). Trigger: comunicazione ufficiale Groq. Azione: aggiornare RUNG_3_MODEL in configurazione + test round-trip.
+
 ### 🗂️ FASE 2.5 — Summarizzazione Cronologia (Prerequisito VPS h24)
 
 Senza questa fase, `.gas_history.json` cresce indefinitamente h24 sul VPS. `_get_window()` taglia ma non comprime — il contesto esplode in settimane.
