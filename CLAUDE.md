@@ -62,10 +62,10 @@ Spesa rilevata 20€ in 2 giorni (22–23 giu 2026): 100% costo di sviluppo Clau
 
 - FASE 1 — Blindatura & Sicurezza — ✅ CHIUSA (sandbox bwrap, WINDOW_CHAR_CAP, snapshot)
 - FASE 2 — Cervello & Memoria Low-Cost — ✅ CHIUSA (SQLite diario+CRM, FTS5, vector store, backup)
-- FASE 2.5 — Summarizzazione cronologia (compressione .gas_history.json h24) — futura
+- FASE 2.5 — Summarizzazione cronologia (compressione .gas_history.json h24) — ✅ CHIUSA (2026-06-27, review #39, commit 65c4c7b)
 - FASE 3 — Interfaccia Vocale (Whisper STT + ElevenLabs TTS) — futura
 - FASE 4 — Moduli di Business (Meta Ads, lead gen) — futura
-- FASE 5 — Deploy VPS Hetzner h24 + backup off-machine + process management (systemd + self-healing) — futura
+- FASE 5 — Deploy VPS Hetzner h24 + backup off-machine + process management (systemd + self-healing) — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2)
 
 **Item aperti TOP:**
 1. 🔴 Controllo spesa token (DIAGNOSI: sviluppo vs runtime, cap giornaliero, routing cheap-by-default)
