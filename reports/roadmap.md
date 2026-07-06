@@ -2,7 +2,7 @@ Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato co
 
 ## 10. FUTURE ROADMAP & PRIORITIES
 
-Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione. WINDOW_CHAR_CAP sulla finestra a granularita di messaggio (2026-06-14, review #7/#8) e manutenzione snapshot in gas doctor (2026-06-14, review #10) — **FASE 1 CHIUSA**. **FASE 2 (cervello/memoria low-cost) CHIUSA** (2026-06-15 → 2026-06-19): memoria SQLite con diario IMMUTABILE (review #12/#13), iniezione always-on + tool ricorda (review #14), CRM contatti dal loop con chiavi normalizzate/chiave_norm (review #15/#16/#22), ricerca FTS5 sul diario (review #18), backup automatico anti-corruzione del DB (review #19), vector store fetta 1 storage+embedding (review #23) + wiring retrieval semantico al kernel opt-in GAS_VECTORS (review #24), comando CLI gas reindex (review #25). Soglia semantica `VEC_MIN_SIM` resa env-configurabile via `GAS_VECTORS_MIN_SIM` (2026-06-21, review #28) — chiude la parte azionabile di R-wire-1 (resta solo la ri-taratura, deploy-dependent). **ITEM APERTI CHIUSI TUTTI** (2026-06-27, review #38, commit a8c6d53): budget cap `GAS_DAILY_TOKEN_BUDGET` + Telegram bridge bot `modules/telegram/bot.py` + `gas calibrate-vectors` + `gas eval-vectors` + R-reidx-3 già chiuso (review #30).
+Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione. WINDOW_CHAR_CAP sulla finestra a granularita di messaggio (2026-06-14, review #7/#8) e manutenzione snapshot in gas doctor (2026-06-14, review #10) — **FASE 1 CHIUSA**. **FASE 2 (cervello/memoria low-cost) CHIUSA** (2026-06-15 → 2026-06-19): memoria SQLite con diario IMMUTABILE (review #12/#13), iniezione always-on + tool ricorda (review #14), CRM contatti dal loop con chiavi normalizzate/chiave_norm (review #15/#16/#22), ricerca FTS5 sul diario (review #18), backup automatico anti-corruzione del DB (review #19), vector store fetta 1 storage+embedding (review #23) + wiring retrieval semantico al kernel opt-in GAS_VECTORS (review #24), comando CLI gas reindex (review #25). Soglia semantica `VEC_MIN_SIM` resa env-configurabile via `GAS_VECTORS_MIN_SIM` (2026-06-21, review #28) — chiude la parte azionabile di R-wire-1 (resta solo la ri-taratura, deploy-dependent). **ITEM APERTI CHIUSI TUTTI** (2026-06-27, review #38, commit a8c6d53): budget cap `GAS_DAILY_TOKEN_BUDGET` + Telegram bridge bot `modules/telegram/bot.py` + `gas calibrate-vectors` + `gas eval-vectors` + R-reidx-3 già chiuso (review #30). **FASE 2.5 (compressione history) CHIUSA** (2026-06-27, review #39, commit 65c4c7b): `_compress_history_if_needed()` auto-trigger + `gas compress-history` CLI, zero token LLM. **FASE 5 IN CORSO**: S1 ✅ hardening SSH + utente runtime (2026-07-04), S1b ✅ (2026-07-04), prossimo S2.
 
 ### 🔴 FASE 1 — Blindatura del Terminale & Sicurezza — ✅ CHIUSA
 - Snapshot preventivo anti-autodistruzione — ✅ FATTO (2026-06-11), base della blindatura.
@@ -29,10 +29,10 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 ### 🟡 PROSSIMI PASSI (in ordine di priorità)
 
 1. ⚠️ **Migrazione rung Groq (deadline 16 ago 2026):** `llama-3.3-70b-versatile` dismesso. Sostituire con modello Groq attivo (candidato: Qwen3 27B — verificare nome API su console Groq prima del commit).
-2. **FASE 2.5 — Summarizzazione cronologia** (prerequisito VPS h24; vedi sotto).
+2. ✅ **FASE 2.5 — Summarizzazione cronologia** — CHIUSA (2026-06-27, review #39, commit 65c4c7b).
 3. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi sotto).
 4. **FASE 4.5 — Task scheduler autonomo** (prerequisito Jarvis reale; vedi sotto).
-5. **FASE 5 — Deploy VPS Hetzner** (vedi sotto). Include: attivare `gas telegram` come daemon, backup off-machine, process management systemd, ri-tarare `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
+5. **FASE 5 — Deploy VPS Hetzner** — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2). Include: attivare `gas telegram` come daemon, backup off-machine, process management systemd, ri-tarare `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
 6. **Riserve aperte dalla review #38**: R-tel-budget-perf (scan JSONL al crescere del log), R-tel-tool_res (cosmetico, tool result nel reply Telegram).
 
 > Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul CX33 (FASE 5).
@@ -41,15 +41,15 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 - 2026-08-16 — Groq llama-3.3-70b-versatile (rung 3) in pensione: migrare a groq/qwen3-27b (o nome modello Groq ufficiale da verificare al momento della migrazione). Trigger: comunicazione ufficiale Groq. Azione: aggiornare RUNG_3_MODEL in configurazione + test round-trip.
 
-### 🗂️ FASE 2.5 — Summarizzazione Cronologia (Prerequisito VPS h24)
+### ✅ FASE 2.5 — Summarizzazione Cronologia — CHIUSA (2026-06-27, review #39, commit 65c4c7b)
 
-Senza questa fase, `.gas_history.json` cresce indefinitamente h24 sul VPS. `_get_window()` taglia ma non comprime — il contesto esplode in settimane.
+`_compress_history_if_needed()` auto-trigger in `run_turn`; `gas compress-history` CLI. Env: `GAS_HISTORY_MAX_MSGS` (default 100), `GAS_HISTORY_KEEP_MSGS` (default 20). Zero token LLM. Test T54 copre il caso degenere no-user (R-comp-1, review #40, commit cde4d94).
 
-- **Trigger:** quando la storia supera N messaggi (es. 200), Gas condensa la parte più vecchia in un "blocco riassunto" testuale.
-- **Destinazione:** il riassunto finisce nel system prompt (come estensione del `gas_identity.md`) + una riga nel diario (così è recuperabile via FTS/semantico). Il file `.gas_history.json` si resetta alla finestra recente.
-- **Fail-safe §9:** se la summarizzazione fallisce, si mantiene la storia tronca via `_get_window()` — niente crash, degrado silenzioso.
-- **Modello preferito:** Gemini Flash (context lungo, basso costo) per la condensazione; Claude solo in fallback.
-- **Dipendenze:** nessuna — si inserisce nel kernel come step in `_load_history()` o in `save_history()`.
+Per memoria storica — design originale implementato:
+- **Trigger:** quando la storia supera N messaggi, Gas condensa la parte più vecchia in un "blocco riassunto" testuale.
+- **Destinazione:** il riassunto finisce nel system prompt + una riga nel diario (recuperabile via FTS/semantico). Il file `.gas_history.json` si resetta alla finestra recente.
+- **Fail-safe §9:** se la summarizzazione fallisce, storia tronca via `_get_window()` — niente crash, degrado silenzioso.
+- **Modello preferito:** Gemini Flash (context lungo, basso costo); Claude solo in fallback.
 
 ---
 
@@ -73,7 +73,7 @@ Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di
 
 ---
 
-### 🚀 FASE 5 — Autonomia Totale & VPS (Priorità Lunga)
+### 🟡 FASE 5 — Autonomia Totale & VPS — IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2)
 - Migrazione/deploy su **VPS Hetzner** (target indicato dall'utente) h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
 - Backup OFF-MACHINE della memoria (copia di `.gas_memory.db` su volume/host esterno) — vera protezione anti-disastro disco, banale perché il DB è un file singolo.
 - Automazione canali brand.
