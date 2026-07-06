@@ -58,20 +58,9 @@ Spesa rilevata 20€ in 2 giorni (22–23 giu 2026): 100% costo di sviluppo Clau
 - **Tenere `stato_progetto.md` snello** (~100 righe): lo storico va in `reports/stato_storico.md`. NON spostare storico nell'attivo.
 - **Monitoraggio**: `/cost` in sessione; console Anthropic → Usage per vedere il breakdown per modello.
 
-## 10. ROADMAP — SOMMARIO
+## 10. ROADMAP
 
-- FASE 1 — Blindatura & Sicurezza — ✅ CHIUSA (sandbox bwrap, WINDOW_CHAR_CAP, snapshot)
-- FASE 2 — Cervello & Memoria Low-Cost — ✅ CHIUSA (SQLite diario+CRM, FTS5, vector store, backup)
-- FASE 2.5 — Summarizzazione cronologia (compressione .gas_history.json h24) — ✅ CHIUSA (2026-06-27, review #39, commit 65c4c7b)
-- FASE 3 — Interfaccia Vocale (Whisper STT + ElevenLabs TTS) — futura
-- FASE 4 — Moduli di Business (Meta Ads, lead gen) — futura
-- FASE 5 — Deploy VPS Hetzner h24 + backup off-machine + process management (systemd + self-healing) — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2)
-
-**Item aperti TOP:**
-1. 🔴 Controllo spesa token (DIAGNOSI: sviluppo vs runtime, cap giornaliero, routing cheap-by-default)
-2. 📱 Telegram dual-control: GAS runtime + Claude Code entrambi comandabili da telefono (GAS bot già pronto; manca bridge Claude Code → Telegram)
-3. R-wire-1 residuo: ri-taratura VEC_MIN_SIM su diario reale VPS (env già configurabile)
-4. 🤖 Task scheduler autonomo (catalogo task notturni — prerequisito Jarvis reale su VPS)
-5. 🎬 Video learning: GAS trascrive e studia video (YouTube/locale) → diario SQLite (Gemini multimodale o pipeline Whisper+LLM)
-
-Dettaglio completo, completati storici e priorità: reports/roadmap.md
+La roadmap completa — fasi e loro stato, item aperti, priorità, completati storici —
+vive in `reports/roadmap.md` (fonte unica autorevole).
+Questa sezione NON riporta stato per-fase di proposito: un sommario duplicato va fuori
+sync con la fonte. Per lo stato del giorno: `reports/roadmap.md` + `reports/stato_progetto.md`.
