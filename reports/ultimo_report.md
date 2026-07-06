@@ -1,86 +1,72 @@
-# Report — Riallineamento CLAUDE.md sez. 10 (FASE 2.5 + FASE 5)
+# Report — Sez. 10 CLAUDE.md convertita in puntatore a roadmap.md
 
-**Data:** 2026-07-06  
-**Scope:** doc-only, sez. 10 CLAUDE.md — SOLO lista fasi (2 righe). Nessuna modifica al motore. Niente revisore, niente test.  
-**Branch:** `docs/riallineamento-sez10-fase25-fase5`
-
----
-
-## Fonti consultate (live)
-
-- `reports/stato_progetto.md` — fonte primaria (aggiornato 2026-07-04)
-- `reports/roadmap.md` — fonte secondaria
+**Data:** 2026-07-06
+**Scope:** doc-only, sez. 10 CLAUDE.md. Nessuna modifica al motore. Niente revisore, niente test.
+**Branch:** `docs/sez10-puntatore-roadmap`
 
 ---
 
-## Modifiche apportate
+## Esito sonda (obbligatoria)
 
-### 1. FASE 2.5 — da "futura" a ✅ CHIUSA
+Confronto sez. 10 CLAUDE.md vs `reports/roadmap.md`:
 
-**Prima:**
-```
-- FASE 2.5 — Summarizzazione cronologia (compressione .gas_history.json h24) — futura
-```
+| Elemento in sez. 10 | Presente in roadmap.md |
+|---|---|
+| FASE 1 ✅ CHIUSA | ✅ sez. FASE 1, dettagliata |
+| FASE 2 ✅ CHIUSA | ✅ sez. FASE 2, dettagliata |
+| FASE 2.5 ✅ CHIUSA | ✅ sez. FASE 2.5 con review #39 / commit 65c4c7b |
+| FASE 3 futura | ✅ sez. FASE 3 |
+| FASE 4 futura | ✅ sez. FASE 4 |
+| FASE 5 🟡 IN CORSO S1+S1b | ✅ sez. FASE 5 con S1 ✅ / S1b ✅ / prossimo S2 |
+| Item 1 — Spesa token | ✅ ITEM APERTI CHIUSI + dettaglio cap giornaliero |
+| Item 2 — Telegram dual-control | ✅ sezione "Idee da valutare" |
+| Item 3 — R-wire-1 VEC_MIN_SIM | ✅ PROSSIMI PASSI / FASE 5 entry |
+| Item 4 — Task scheduler autonomo | ✅ sez. FASE 4.5 dettagliata |
+| Item 5 — Video learning | ✅ sezione "Idee da valutare" |
 
-**Dopo:**
-```
-- FASE 2.5 — Summarizzazione cronologia (compressione .gas_history.json h24) — ✅ CHIUSA (2026-06-27, review #39, commit 65c4c7b)
-```
+**Verdetto:** `reports/roadmap.md` è il superset completo. Nessuna informazione unica in sez. 10. Condizione necessaria soddisfatta — sostituzione eseguita.
 
-**Fonte:** `stato_progetto.md` riga 12: `✅ FASE 2.5 compressione history (2026-06-27, review #39, commit 65c4c7b)`  
-**Valori attesi dall'utente:** review #39 ✅, nessuna divergenza.
-
----
-
-### 2. FASE 5 — da "futura" a 🟡 IN CORSO
-
-**Prima:**
-```
-- FASE 5 — Deploy VPS Hetzner h24 + backup off-machine + process management (systemd + self-healing) — futura
-```
-
-**Dopo:**
-```
-- FASE 5 — Deploy VPS Hetzner h24 + backup off-machine + process management (systemd + self-healing) — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2)
-```
-
-**Fonte:** `stato_progetto.md` header riga 4 + riga 76:  
-- Header: `Ultimo aggiornamento: 2026-07-04 (S1 ✅, S1b ✅)`  
-- Riga 76: `FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04) → prossimo S2 (decide operatore)`
+**Nota struttura CLAUDE.md:** sez. 11 (DISCIPLINA TOKEN) si trova alle righe 51-59, PRIMA della sez. 10 (righe 61-77, ultima del file). La sostituzione ha toccato solo righe 61-77, nessun rischio di tagliare materiale di altre sezioni.
 
 ---
 
-## Discrepanza rilevata nel file canonico (SEGNALAZIONE — nessuna azione)
+## Modifica applicata
 
-`stato_progetto.md` contiene un'incoerenza interna su S1b:
-- **Riga 4 (header) e riga 76 (prossimi passi):** `S1b ✅` — confermato completato il 2026-07-04
-- **Riga 118 (Note operative VPS):** `"S1b: da confermare in dettaglio — dati da integrare"`
+**Header:** `## 10. ROADMAP — SOMMARIO` → `## 10. ROADMAP`
 
-La riga 118 suggerisce che S1b sia stato eseguito ma non ancora documentato nella sezione dettagli VPS. Si è scelto di usare lo stato della riga 76 per CLAUDE.md. Nessuna correzione apportata a `stato_progetto.md` (fuori scope).
+**Contenuto sostituito (rimosso):**
+- Lista 6 fasi con stato
+- "Item aperti TOP" con 5 voci
+- Riga "Dettaglio completo, completati storici e priorità: reports/roadmap.md"
 
-**Divergenza vs atteso dall'utente:** l'utente indicava "S1b ✅ swap+systemd" come contenuto atteso — il file canonico non specifica i dettagli di S1b nella riga di sintesi (solo `S1b ✅`). I dettagli "swap+systemd" NON compaiono nella riga di sintesi. Si è usato solo `S1b ✅ 2026-07-04` senza aggiungere dettagli non verificabili dalla riga di sintesi.
+**Contenuto nuovo (stub):**
+```
+## 10. ROADMAP
+
+La roadmap completa — fasi e loro stato, item aperti, priorità, completati storici —
+vive in `reports/roadmap.md` (fonte unica autorevole).
+Questa sezione NON riporta stato per-fase di proposito: un sommario duplicato va fuori
+sync con la fonte. Per lo stato del giorno: `reports/roadmap.md` + `reports/stato_progetto.md`.
+```
 
 ---
 
-## Derive rilevate FUORI SCOPE (proposte per l'umano)
+## Derive rilevate FUORI SCOPE (non corrette — decisione all'umano)
 
-Rilevate ma **non corrette** — decisione all'umano:
+**A. Stato inconsistente negli "Item aperti TOP" rimossi**
+Alcuni item avevano etichette di stato obsolete rispetto a `roadmap.md`:
+- Item 1 (Spesa token): marcato 🔴 in sez. 10, ma ✅ chiuso in roadmap.md (runtime cap implementato; il problema residuo è disciplina dev, non una feature mancante).
+- Item 3 (R-wire-1): marcato come residuo aperto in sez. 10, ma il tool `gas calibrate-vectors` è ✅ chiuso in roadmap.md (resta solo taratura al deploy VPS).
 
-**A. `reports/roadmap.md` — FASE 2.5 ancora descritta come futura**  
-Sezione `🟡 PROSSIMI PASSI` riga 32 elenca ancora FASE 2.5 come da fare. Sezione dettaglio `🗂️ FASE 2.5` (righe 44-52) non ha marcatura ✅. Va riallineata.
+Questi item spariscono con la conversione; la loro fonte autorevole resta `roadmap.md`.
 
-**B. `reports/roadmap.md` — paragrafo `Completati (storico)` non include FASE 2.5 né S1/S1b di FASE 5.**
-
-**C. `stato_progetto.md` riga 118 — S1b "da confermare in dettaglio"**  
-Incoerenza interna: header + riga 76 dicono S1b ✅, riga 118 dice "da confermare". Andrebbe aggiornata con i dati reali di S1b.
-
-**D. CLAUDE.md sez. 10 — "Item aperti TOP" potenzialmente non aggiornati**  
-Item 1 (spesa token) e item 2 (Telegram) nella lista non riflettono la riclassificazione 🔴/🟡 di `stato_progetto.md`. Fuori scope (la consegna vieta di toccare quella lista).
+**B. Riga 1 di `reports/roadmap.md` fa ancora riferimento a CLAUDE.md come co-fonte**
+Il file apre con: `"Sommario e stato corrente in CLAUDE.md e reports/stato_progetto.md."` — dopo questa modifica, CLAUDE.md non ha più un sommario, solo un puntatore. La riga andrebbe aggiornata in `roadmap.md` per riflettere il nuovo ruolo di CLAUDE.md sez. 10.
 
 ---
 
 ## Verifica finale
 
-Righe toccate in CLAUDE.md: **2** — solo le due righe della lista fasi in sez. 10.  
-Lista "Item aperti TOP": **non toccata**.  
-Altre sezioni: **non toccate**.
+Righe toccate in CLAUDE.md: **17 rimosse + 5 nuove** — solo sez. 10.
+Sez. 11 e tutte le altre sezioni: **non toccate**.
+`reports/roadmap.md`: **non toccato**.
