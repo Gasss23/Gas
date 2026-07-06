@@ -1,30 +1,19 @@
-# REPORT — Allineamento conteggio test in stato_progetto.md
+# REPORT: Aggiornamento stato_progetto.md — S1b + pulizia VNC
 
-**Data:** 2026-07-04
-**Task:** solo-doc — allineare eventuale conteggio test stale ("208") nell'header di `reports/stato_progetto.md` alla forma canonica (214 PASS, 0 FAIL, 2 SKIP; 216 con API keys live).
+**Data:** 2026-07-06
+**Task:** 4 modifiche chirurgiche a `reports/stato_progetto.md` (solo-doc, nessuna review revisore)
 
----
+## Modifiche applicate
 
-## ESITO: niente da correggere
+1. **Header** — `Ultimo aggiornamento` cambiato da `(S1 hardening VPS eseguito)` a `(S1 ✅, S1b ✅)`
+2. **Prossimi passi, item 6** — testo FASE 5 S1 sostituito con `FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04) → prossimo S2 (decide operatore)`
+3. **Note operative VPS, punto 9 aggiunto** — `S1b: da confermare in dettaglio — dati da integrare`
+4. **Riferimento VNC** — nessun match trovato in stato_progetto.md; punto 4 non ha richiesto modifiche (testo già assente).
 
-- **Step 1 — grep "208"**: FATTA. `grep -n "208" reports/stato_progetto.md` → **nessuna occorrenza**.
-- **Step 2 — sostituzione**: SALTATA — non applicabile (nessun "208" trovato).
-- **Step 3 — verifica coerenza**: FATTA. L'header (riga 9) riporta già la forma canonica:
-  > Suite (locale WSL bwrap, sonda 2026-07-03): **214 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). Con API keys live: 216 PASS.
+## File toccati
 
-  Header e corpo concordano (riga 109 conferma "suite 214 PASS"). Nessun conteggio stale nel file.
-
-**`reports/stato_progetto.md` NON è stato modificato**, come previsto dal caso 3 del task.
-
-## Anomalie
-
-Nessuna.
-
-## Nota sul reporting
-
-Lo skill /fine-task prevede anche `handoff.md` e `diff_sessione.md`; lo STOP GATE del task
-("SOLO reports/stato_progetto.md + reports/ultimo_report.md, nessun altro .md") prevale,
-quindi quei file sono SALTATI per questo task.
+- `reports/stato_progetto.md` (4 modifiche — 3 effettive, 1 no-op)
+- `reports/ultimo_report.md` (questo file)
 
 ## DECISIONI UMANE RICHIESTE
 

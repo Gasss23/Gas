@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-04** (S1 hardening VPS eseguito)
+> Ultimo aggiornamento: **2026-07-04** (S1 ✅, S1b ✅)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -73,7 +73,7 @@ Componenti attive:
 3. **ðŸ“± Accesso dev tooling da telefono**: item 2 roadmap â€” claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) Ã¨ giÃ  disponibile ma non Ã¨ questo.
 4. **FASE 3 â€” Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 5. **FASE 4.5 â€” Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
-6. **FASE 5 S1 ✅ completato (2026-07-04)** → prossimo S1b (candidati: swap file 2-4GiB, systemd unit GAS con MemoryHigh/MemoryMax, VECTORS_DB path a /home/gas/gas/, ollama on-demand). Decisione scope S1b umana.
+6. **FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04)** → prossimo S2 (decide operatore)
 7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
 ### PARK â€” registrati, nessun impegno
@@ -115,3 +115,4 @@ Componenti attive:
    - Kernel aggiornato: 6.8.0-134-generic (reboot post-S1 ok)
    - `/root/gas/` INTATTO (non cancellare fino a S1b confermato)
    - Accesso SSH: solo `gas@204.168.251.92` via chiave ed25519. Login root SSH disabilitato.
+9. **S1b:** da confermare in dettaglio — dati da integrare
