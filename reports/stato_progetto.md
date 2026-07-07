@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-07** (coerenza canonici + item taratura RAM)
+> Ultimo aggiornamento: **2026-07-07** (migrazione Groq gpt-oss-120b: codice ✅, validazione live PENDING)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -59,7 +59,9 @@ Componenti attive:
 - âœ… **WINDOW_CHAR_CAP non env-configurabile** â€” `GAS_WINDOW_CHAR_CAP` configurabile via env, min_val=1000 (review #31, 2026-06-25).
 - ðŸŸ¡ **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) giÃ  copre tutti i rami a freddo â€” sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe Â§9). Rimandato per falsi positivi.
 - ðŸŸ¡ **R-crm-1b** â€” identitÃ  cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
-- 🟡 **R-groq-slash** (review #43, 2026-07-07) — validare che il formato `openai/gpt-oss-120b` (slash-namespace) sia accettato dall’endpoint Groq `/v1/chat/completions` con una chiamata reale prima del deploy VPS. In caso di rifiuto il rung degrada silenziosamente (fail-safe §9, zero crash).
+- 🟡 **R-groq-slash** (2026-07-07) — validare che il formato `openai/gpt-oss-120b` (slash-namespace) sia accettato dall’endpoint Groq `/v1/chat/completions` con una chiamata live reale (tool call inclusa). PENDING: round-trip in corso questa sessione. In caso di rifiuto il rung degrada silenziosamente (fail-safe §9, zero crash).
+- 🟡 **R-groq-dup** (2026-07-07, DEFERITO) — `"openai/gpt-oss-120b"` è hardcoded in tre file (`brains/groq_brain.py`, `brains/claude_brain.py`, `brains/gemini_brain.py`). Fonte unica richiesta: env `GAS_GROQ_MODEL` con default o modulo config dedicato. **NON** importare da `gas.py` nei brains: rischio circular import. Decisione umana richiesta su dove definire il default (config.py separato o solo env). Deferito a fetta separata.
+- ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = **comportamento atteso, non regressione**. Il paracadute §9 gestisce silenziosamente.
 - âœ… **MEMORY_PIN_SCAN hardcoded** â€” `GAS_MEMORY_PIN_SCAN` configurabile via env, min_val=10 (review #31, 2026-06-25).
 - ðŸŸ¡ **R-ci-openrouter** â€” T9a fragile se OPENROUTER_API_KEY Ã¨ presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non Ã¨ garantita formalmente (revisore CI-4, 2026-06-24).
 - âœ… **CI-4** â€” risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
