@@ -1,4 +1,4 @@
-Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato corrente in CLAUDE.md e reports/stato_progetto.md.
+Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato corrente in reports/roadmap.md (roadmap) + reports/stato_progetto.md (stato vivo). CLAUDE.md sez. 10 è solo un puntatore a questo file.
 
 ## 10. FUTURE ROADMAP & PRIORITIES
 

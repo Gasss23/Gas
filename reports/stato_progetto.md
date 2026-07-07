@@ -115,4 +115,4 @@ Componenti attive:
    - Kernel aggiornato: 6.8.0-134-generic (reboot post-S1 ok)
    - `/root/gas/` INTATTO (non cancellare fino a S1b confermato)
    - Accesso SSH: solo `gas@204.168.251.92` via chiave ed25519. Login root SSH disabilitato.
-9. **S1b:** da confermare in dettaglio — dati da integrare
+9. **S1b ✅ (2026-07-04):** swap file 2GiB attivo (cuscinetto anti-OOM, vedi finding no-swap sopra); unit systemd `/etc/systemd/system/gas.service` con `User=gas`, `MemoryHigh=1500M`, `MemoryMax=2000M`, `Restart=always`; `.env.prod` in `/home/gas/gas/.env.prod` con permessi `chmod 600`; servizio attivo confermato. Data di misura RAM a regime del singolo modello: non registrato.
