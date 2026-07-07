@@ -28,7 +28,7 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### 🟡 PROSSIMI PASSI (in ordine di priorità)
 
-1. ⚠️ **Migrazione rung Groq (deadline 16 ago 2026):** `llama-3.3-70b-versatile` dismesso. Sostituire con modello Groq attivo (candidato: Qwen3 27B — verificare nome API su console Groq prima del commit).
+1. ✅ **Migrazione rung Groq** — CHIUSA (2026-07-07, review #43): `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`. Tool use ✅, più economico ($0.15/$0.60 vs $0.59/$0.79). Deadline 16 ago anticipata.
 2. ✅ **FASE 2.5 — Summarizzazione cronologia** — CHIUSA (2026-06-27, review #39, commit 65c4c7b).
 3. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi sotto).
 4. **FASE 4.5 — Task scheduler autonomo** (prerequisito Jarvis reale; vedi sotto).
@@ -41,7 +41,8 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### Deprecazioni provider
 
-- 2026-08-16 — Groq llama-3.3-70b-versatile (rung 3) in pensione: migrare a groq/qwen3-27b (o nome modello Groq ufficiale da verificare al momento della migrazione). Trigger: comunicazione ufficiale Groq. Azione: aggiornare RUNG_3_MODEL in configurazione + test round-trip.
+- ✅ 2026-07-07 — Groq llama-3.3-70b-versatile migrato a openai/gpt-oss-120b (review #43). Tool use ✅, $0.15/$0.60 per MTok. Deadline originale 2026-08-16 anticipata. Riserva aperta: R-groq-slash (validare slash-namespace sul deploy reale VPS).
+- ⚠️ 2026-07-17 — Groq qwen/qwen3-32b in pensione (solo 10 gg dalla scoperta — non usato in GAS; annotato per memoria).
 
 ### ✅ FASE 2.5 — Summarizzazione Cronologia — CHIUSA (2026-06-27, review #39, commit 65c4c7b)
 
