@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-04** (S1 ✅, S1b ✅)
+> Ultimo aggiornamento: **2026-07-07** (coerenza canonici + item taratura RAM)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore

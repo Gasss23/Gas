@@ -7,30 +7,26 @@ tests/. Nessuna review revisore richiesta (policy reports/doc).
 
 ## Esito
 
-### Fetta 1 — coerenza S1b in reports/stato_progetto.md
-✅ Fatta. La nota operativa 9 diceva "S1b: da confermare in dettaglio — dati da integrare",
-in contraddizione con l'header (riga 4) che già dichiara "S1 ✅, S1b ✅ (2026-07-04)".
-Sostituita con il dettaglio reale di S1b fornito e ratificato:
-- swap file 2GiB attivo
-- unit systemd `/etc/systemd/system/gas.service`: `User=gas`, `MemoryHigh=1500M`,
-  `MemoryMax=2000M`, `Restart=always`
-- `.env.prod` in `/home/gas/gas/.env.prod`, permessi `chmod 600`
-- servizio attivo confermato
+### Fetta 1 — header reports/stato_progetto.md
+✅ Fatta. Riga 4 aggiornata da:
+`Ultimo aggiornamento: **2026-07-04** (S1 ✅, S1b ✅)`
+a:
+`Ultimo aggiornamento: **2026-07-07** (coerenza canonici + item taratura RAM)`
+Nessun altro punto del file toccato.
 
-Un dato richiesto (data della misura RAM a regime del singolo modello) non era verificabile
-da file/git disponibili: riportato esplicitamente come "non registrato" invece di stimarlo,
-come da istruzione.
+### Fetta 2 — nuovo item aperto in reports/roadmap.md
+✅ Fatta. Registrato in FASE 5 (sezione item aperti, NON tra i completati), tra
+"Backup OFF-MACHINE" e "Process management + self-healing":
 
-### Fetta 2 — riga 1 di reports/roadmap.md
-✅ Fatta. Rimosso il riferimento a CLAUDE.md come co-fonte dello stato. La riga ora indica
-come fonte: `reports/roadmap.md` (roadmap) + `reports/stato_progetto.md` (stato vivo), con nota
-che CLAUDE.md sez. 10 è solo un puntatore a questo file.
+> **Taratura MemoryHigh/MemoryMax di gas.service su misura RAM reale a regime**
+> (GAS + embedder singolo modello). Valori attuali 1500M/2000M conservativi, mai
+> misurati (vedi nota 9 stato_progetto.md: misura "non registrato"). Da eseguire
+> sul VPS insieme a R-wire-1 (VEC_MIN_SIM).
 
 ## Stop gate
 Rispettato: nessun file toccato oltre `stato_progetto.md`, `roadmap.md` e questo report.
-Nessun altro dato inventato o stimato oltre quelli forniti nelle istruzioni del task.
 
 ## File toccati
-- `reports/stato_progetto.md` (nota operativa 9 riscritta con dettaglio reale S1b)
-- `reports/roadmap.md` (riga 1: fonte stato corretta)
+- `reports/stato_progetto.md` (riga 4: data + motivo aggiornati)
+- `reports/roadmap.md` (nuovo item aperto FASE 5, taratura RAM systemd)
 - `reports/ultimo_report.md` (questo file)

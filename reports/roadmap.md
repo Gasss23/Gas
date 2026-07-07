@@ -79,6 +79,7 @@ Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di
 - Migrazione/deploy su **VPS Hetzner** (target indicato dall'utente) h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
 - Backup OFF-MACHINE della memoria (copia di `.gas_memory.db` su volume/host esterno) — vera protezione anti-disastro disco, banale perché il DB è un file singolo.
 - Automazione canali brand.
+- **Taratura MemoryHigh/MemoryMax di gas.service su misura RAM reale a regime** (GAS + embedder singolo modello). Valori attuali 1500M/2000M conservativi, mai misurati (vedi nota 9 stato_progetto.md: misura "non registrato"). Da eseguire sul VPS insieme a R-wire-1 (VEC_MIN_SIM).
 - **Process management + self-healing:** systemd unit con `Restart=always` + `RestartSec=10` per sopravvivere ai crash notturni senza presidio. Alert Telegram se Gas non risponde da N minuti (watchdog). Convergenza col bridge bot (item #2): stessa infrastruttura per notifiche push e comandi da telefono. Senza questo, un crash alle 3am blocca Jarvis fino al mattino.
 
 ### 💡 Idee da valutare (NON prioritarie)
