@@ -11,6 +11,9 @@ from typing import List, Dict, Any, Generator, Optional, Tuple
 from openai import OpenAI
 from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO, normalizza_chiave
 from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
+from brains.model_ids import (
+    MODEL_GEMINI_LITE, MODEL_GEMINI_FLASH, MODEL_GROQ, MODEL_OPENROUTER, MODEL_OLLAMA,
+)
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
 
@@ -107,11 +110,11 @@ def _probe_os_sandbox(force: bool = False) -> Tuple[bool, str]:
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 GROQ_URL = "https://api.groq.com/openai/v1"
 OPENROUTER_URL = "https://openrouter.ai/api/v1"
-GEMINI_FLASH_LITE_MODEL = "gemini-2.5-flash-lite"
-GEMINI_FLASH_MODEL = "gemini-2.5-flash"
-GROQ_MODEL = "llama-3.3-70b-versatile"
-OPENROUTER_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct:free"  # tool-capable
-OLLAMA_MODEL = "qwen2.5:7b-instruct"                             # tool-capable
+GEMINI_FLASH_LITE_MODEL = MODEL_GEMINI_LITE
+GEMINI_FLASH_MODEL = MODEL_GEMINI_FLASH
+GROQ_MODEL = MODEL_GROQ
+OPENROUTER_FREE_MODEL = MODEL_OPENROUTER                        # tool-capable
+OLLAMA_MODEL = MODEL_OLLAMA                                      # tool-capable
 TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità token per-chiamata
 
 # Prezzi per milione di token (USD), approssimati — aggiornare se cambiano.

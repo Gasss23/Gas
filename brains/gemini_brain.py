@@ -1,6 +1,8 @@
 import os
 import requests
 
+from brains.model_ids import MODEL_GEMINI_FLASH, MODEL_GROQ
+
 class FakeGeminiResponse:
     def __init__(self, text):
         # Modificato da self.text a self.content per allinearsi a gas.py
@@ -15,7 +17,7 @@ def chat(history, tools_schema=None, **kwargs):
     """
     google_key = os.environ.get("GEMINI_API_KEY")
     if google_key:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={google_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_GEMINI_FLASH}:generateContent?key={google_key}"
         headers = {"Content-Type": "application/json"}
         
         # Converte la history di Gas nel formato 'contents' richiesto da Google
@@ -61,8 +63,8 @@ def chat(history, tools_schema=None, **kwargs):
         
         try:
             g_res = requests.post(groq_url, headers=groq_headers, json={
-                "model": "llama-3.3-70b-versatile", 
-                "messages": messages, 
+                "model": MODEL_GROQ,
+                "messages": messages,
                 "temperature": 0.3
             }, timeout=15)
             if g_res.status_code == 200:

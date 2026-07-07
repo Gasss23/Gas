@@ -3,6 +3,7 @@
 Tutto gira su root temporanee con client API finto iniettato in gas.OpenAI:
 nessuna chiamata reale, nessuna scrittura su .gas_history.json del repo.
 """
+import importlib
 import json
 import os
 import subprocess
@@ -2910,6 +2911,16 @@ _out55 = _buf55.getvalue()
 check("T55 version_cmd: exit 0 e stampa GAS_VERSION",
       _r55 == 0 and gas.GAS_VERSION in _out55,
       f"r={_r55} out={_out55.strip()!r}")
+
+# T56 — brains/model_ids: override env riflesso nella costante (fonte unica model id)
+from brains import model_ids as _mid56
+os.environ["GAS_MODEL_GROQ"] = "test-override-t56"
+importlib.reload(_mid56)
+_ok56 = _mid56.MODEL_GROQ == "test-override-t56"
+check("T56 model_ids: override env GAS_MODEL_GROQ riflesso nella costante",
+      _ok56, f"MODEL_GROQ={_mid56.MODEL_GROQ!r}")
+os.environ.pop("GAS_MODEL_GROQ", None)
+importlib.reload(_mid56)  # ripristina default, non contamina il resto della suite
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

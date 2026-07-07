@@ -2,6 +2,8 @@ import os
 import json
 import requests
 
+from brains.model_ids import MODEL_GROQ, MODEL_OPENROUTER
+
 class FakeMsg:
     def __init__(self, content, tool_calls=None):
         self.content = content
@@ -56,7 +58,7 @@ def chat(messages, tools_schema=None):
         models_to_try = [
             "anthropic/claude-3.5-sonnet", "anthropic/claude-3.5-sonnet:beta",
             "google/gemini-2.5-pro", "meta-llama/llama-3.3-70b-instruct",
-            "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1:free"
+            MODEL_OPENROUTER, "deepseek/deepseek-r1:free"
         ]
         
         for model_name in models_to_try:
@@ -73,7 +75,7 @@ def chat(messages, tools_schema=None):
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         groq_headers = {"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}", "Content-Type": "application/json"}
         try:
-            g_res = requests.post(groq_url, headers=groq_headers, json={"model": "llama-3.3-70b-versatile", "messages": formatted_messages, "temperature": 0.2}, timeout=15)
+            g_res = requests.post(groq_url, headers=groq_headers, json={"model": MODEL_GROQ, "messages": formatted_messages, "temperature": 0.2}, timeout=15)
             if g_res.status_code == 200:
                 response = g_res
                 print("  \033[92m✔ Canale Cloud saturato o non disponibile. Esecuzione assistita da Groq (Llama 3.3)\033[0m")

@@ -2,6 +2,8 @@ import os
 import json
 import requests
 
+from brains.model_ids import MODEL_GROQ
+
 class FakeMsg:
     def __init__(self, content, tool_calls=None):
         self.content = content
@@ -22,7 +24,7 @@ def chat(messages, tools_schema=None):
     }
     
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": MODEL_GROQ,
         "messages": messages,
         "temperature": 0.1
     }
