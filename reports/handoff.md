@@ -1,102 +1,94 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-06 — Riallineamento roadmap e conversione sez. 10 CLAUDE.md in puntatore
+**Sessione:** 2026-07-07 — Migrazione Groq gpt-oss-120b: fetta unica (4 punti)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-Nessuna.
+1. **GROQ_API_KEY mancante** — Non trovata nell'ambiente (nessun .env nel progetto, nessuna variabile Windows persistente). Richiesta per completare il PUNTO 2 (round-trip live con tool call reale) e sbloccare il gate revisore + commit motore. Fornire con `$env:GROQ_API_KEY = "gsk_..."` in sessione oppure creare un `.env` nel progetto o impostarla come variabile Windows persistente.
+2. **R-groq-dup architettura (decisione rimandabile)** — `"openai/gpt-oss-120b"` è hardcoded in 3 file (`groq_brain.py`, `claude_brain.py`, `gemini_brain.py`). Serve fonte unica. Opzioni: (a) env `GAS_GROQ_MODEL` con default in ogni brain; (b) `config.py` separato che espone la costante. NON importare da `gas.py` (circular import). Decisione umana prima di aprire la fetta R-groq-dup.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Riallineamento FASE 2.5 e FASE 5 in CLAUDE.md sez. 10**: `FATTA`
-  FASE 2.5: futura → ✅ CHIUSA (2026-06-27, review #39, commit 65c4c7b).
-  FASE 5: futura → 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2).
-  Fonte: reports/stato_progetto.md live. Branch docs/riallineamento-sez10-fase25-fase5, merge su main.
+- **PUNTO 1 — `reasoning_effort: "low"` nei 3 brain**: `FATTA`
+  Aggiunto al payload JSON in `brains/groq_brain.py` (payload principale), `brains/claude_brain.py` (Groq fallback rung 2), `brains/gemini_brain.py` (Groq fallback rung 3). Temperature e timeout invariati. Uncommitted — attende round-trip + revisore.
 
-- **Fetta 2 — Riallineamento FASE 2.5 e FASE 5 in reports/roadmap.md**: `FATTA`
-  Stesse correzioni in 4 punti: header FASE 2.5, header FASE 5, PROSSIMI PASSI,
-  paragrafo Completati (storico). Commit 3ade896 su main.
+- **PUNTO 2 — Round-trip live con tool call reale**: `SALTATA — GROQ_API_KEY assente`
+  Nessun .env nel progetto. Variabile non presente né in sessione né in env Windows persistente. Round-trip non eseguito. Conseguenze: R-groq-slash resta APERTO, doc PENDING, revisore non invocato, commit motore bloccato.
 
-- **Fetta 3 — Conversione sez. 10 CLAUDE.md in puntatore secco**: `FATTA`
-  Sonda: 11/11 elementi di sez. 10 presenti in roadmap.md (superset confermato).
-  Sostituiti: lista 6 fasi + Item aperti TOP (5 voci) + riga finale puntatore.
-  Nuovo stub: 4 righe che puntano a reports/roadmap.md + reports/stato_progetto.md.
-  Branch docs/sez10-puntatore-roadmap, merge su main, push. Verificato via GitHub API.
+- **PUNTO 3 — Doc oneste (roadmap.md, stato_progetto.md)**: `FATTA`
+  "✅ CHIUSA (review #43)" rimosso da entrambi i file (review non ancora avvenuta). Stato reale scritto: "migrazione codice fatta 2026-07-07; validazione live: PENDING". Grep "review #43" → 0 match. Incluso in questo commit di report.
 
----
-
-## §2 GIT DIFF --STAT (sessione)
-
-```
- CLAUDE.md                       |  21 +-
- reports/roadmap.md              |  33 ++-
- reports/runbook_s1_hardening.md | 641 ++++++++++++++++++++++++++++++++++++++++
- reports/stato_progetto.md       |  13 +-
- reports/ultimo_report.md        | 171 +++--------
- 5 files changed, 722 insertions(+), 157 deletions(-)
-```
+- **PUNTO 4 — Finding in stato_progetto.md**: `FATTA`
+  (a) R-groq-slash lasciato APERTO PENDING (condizionale rispettata: chiudere SOLO se punto 2 passa).
+  (b) R-groq-dup aperto: hardcoded triplicato, deferito a fetta separata, decisione umana richiesta.
+  (c) Nota TPM: burst 8K < 12K llama → fallthrough OpenRouter più frequente = atteso, non regressione.
+  Incluso in questo commit di report.
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## §2 GIT DIFF --STAT (sessione, commit 3f542c1..HEAD)
 
 ```
-5bf7c25 merge: converti sez. 10 CLAUDE.md in puntatore a reports/roadmap.md
-9d96581 docs(sez10): converti sommario roadmap in puntatore a reports/roadmap.md
-3ade896 docs(roadmap): riallinea FASE 2.5 (chiusa) e FASE 5 (in corso)
-ff3f52c merge: riallineamento sez. 10 CLAUDE.md (FASE 2.5 chiusa, FASE 5 in corso)
-821af40 docs(sez10): riallinea FASE 2.5 (chiusa) e FASE 5 (in corso) in CLAUDE.md
-8a57d4a docs(roadmap): aggiungi sezione deprecazioni provider — Groq deadline 16 ago 2026
-6c91233 docs(vps): aggiorna token Telegram su VPS — restart gas PID 7831
-04bfa0e docs(fase5): aggiorna stato_progetto — S1b flag, punto 9 VPS, rimozione VNC
-5c8051f docs(roadmap): aggiungi migrazione rung Groq — deadline 16 ago 2026
-d4ff945 docs(fase5-s1): S1 eseguito — hardening SSH, utente gas, kernel 6.8.0-134
-8910d3c docs(stato-progetto): verifica conteggio test — nessun '208' stale, niente da correggere
-4c98106 docs(fase5-s1): runbook v3 — 4 patch chirurgiche (socket activation, test pw, DB copy, apt lock)
-affb72b docs(fase5-s1): runbook v2 — dropin sshd, fail2ban backend=auto, uid check
-1c87dd4 docs(fase5-s1): runbook hardening SSH+base VPS CX33
+ reports/roadmap.md        | 5 +++--
+ reports/stato_progetto.md | 3 ++-
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+```
+
+**Nota**: questa sessione NON ha ancora commitatti file motore. Il diff sopra mostra solo l'auto-commit `5b3c4c0` della sessione precedente. Le modifiche di questa sessione (brains + doc) sono in working tree, uncommitted. Diff working tree vs HEAD (git diff --stat HEAD):
+
+```
+ .claude/agents/memoria_revisore.md | 1 +
+ brains/claude_brain.py             | 4 ++--
+ brains/gemini_brain.py             | 7 ++++---
+ brains/groq_brain.py               | 5 +++--
+ gas.py                             | 4 ++--
+ reports/roadmap.md                 | 4 ++--
+ reports/stato_progetto.md          | 6 ++++--
+ tests/test_unit_kernel.py          | 2 +-
+ 8 files changed, 19 insertions(+), 14 deletions(-) [uncommitted]
+```
+
+---
+
+## §3 GIT LOG --ONELINE (sessione, commit 3f542c1..HEAD)
+
+```
+5b3c4c0 auto-commit fine sessione 2026-07-07_20:19 [solo reports/doc/history, motore escluso]
 ```
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore — tutti i commit toccano esclusivamente reports/, CLAUDE.md e roadmap.md.
-Revisore non richiesto.
+**PENDING** — Il revisore non è stato invocato perché il PUNTO 2 (round-trip live) è bloccato da GROQ_API_KEY mancante. I file motore (`brains/groq_brain.py`, `brains/claude_brain.py`, `brains/gemini_brain.py`, `gas.py`, `tests/test_unit_kernel.py`) sono in working tree, NON committati. Il gate revisore (CLAUDE.md sez. 3) richiede verdetto APPROVATO/CON RISERVE prima del commit motore. Nessun bypass autorizzato.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/. Delta test non applicabile.
+Nessun test eseguito in questa sessione. Le modifiche ai brains (aggiunta `reasoning_effort: "low"`) sono formalmente non rompenti (parametro aggiuntivo nel payload, nessuna logica di parsing cambiata). La suite attuale al baseline: **214 PASS, 0 FAIL, 2 SKIP** (sonda 2026-07-03). Il test `test_unit_kernel.py` ha un aggiornamento pre-esistente (nome modello groq in log: `llama-3.3-70b` → `openai/gpt-oss-120b`) — già parte del diff pre-esistente, non introdotto in questa sessione.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	merge: converti sez. 10 CLAUDE.md in puntatore a reports/roadmap.md	CI	main	push	28814461654	54s	2026-07-06T18:34:45Z
-completed	success	docs(roadmap): riallinea FASE 2.5 (chiusa) e FASE 5 (in corso)	CI	main	push	28813957078	36s	2026-07-06T18:26:27Z
-completed	success	docs(sez10): converti sommario roadmap in puntatore a reports/roadmap.md	CI	docs/sez10-puntatore-roadmap	push	28813280328	52s	2026-07-06T18:15:11Z
+completed	success	Merge branch 'refactor/model-ids-fonte-unica'	CI	main	push	28874912495	42s	2026-07-07T14:41:10Z
+completed	success	chore(scrivi-rep): ultima risposta salvata	CI	main	push	28873830930	46s	2026-07-07T14:25:32Z
+completed	success	refactor(brains): fonte unica per gli ID modello della cascata (model…	CI	refactor/model-ids-fonte-unica	push	28873785626	39s	2026-07-07T14:24:53Z
 ```
 
-CI verde su tutti e 3 i run della sessione.
+Ultimo run su `main`: **SUCCESS** (commit `5b3c4c0` / merge `refactor/model-ids-fonte-unica`, 2026-07-07T14:41:10Z). Nessun commit motore questa sessione → nessun run CI da questa sessione.
 
 ---
 
 ## §7 RISERVE APERTE
 
-1. **Push anticipato su main** — commit 821af40/ff3f52c/3ade896 pushati senza conferma
-   esplicita dell'utente. L'utente aveva elencato gli hash come riferimento; interpretato
-   erroneamente come autorizzazione. Da registrare come pattern da evitare.
-
-2. **Riga 1 di reports/roadmap.md stale** — apre con "Sommario e stato corrente in
-   CLAUDE.md e reports/stato_progetto.md." Dopo la conversione sez. 10 in puntatore,
-   CLAUDE.md non ha più un sommario. La riga andrebbe aggiornata. Fuori scope, segnalata.
-
-3. **Incoerenza interna stato_progetto.md su S1b** — riga 76 dice S1b ✅, riga 118 dice
-   "da confermare in dettaglio — dati da integrare". Segnalata, non corretta (fuori scope).
+- **R-groq-slash** (2026-07-07) — APERTO PENDING round-trip live. Validare slash-namespace `openai/gpt-oss-120b` e tool_calls sull'endpoint Groq `/v1/chat/completions` con chiamata reale. Sblocca il revisore + commit motore.
+- **R-groq-dup** (2026-07-07, DEFERITO) — `"openai/gpt-oss-120b"` hardcoded in 3 brain. Fonte unica richiesta. Decisione umana su dove definire il default prima di aprire la fetta.
+- **TPM nota** — burst 8K gpt-oss-120b < 12K llama: fallthrough OpenRouter più frequente = atteso. Monitorare se il fallthrough in produzione crea latenza percepibile (OpenRouter free ~28s).
+- **Riserve pre-esistenti attive**: R-wire-1, R-wire-2, R-crm-1b, R-reidx-3, Esfiltrazione (os_with_fallback), R-ci-openrouter, Degrado silenzioso, Riserve minori — dettaglio in `stato_progetto.md`.
