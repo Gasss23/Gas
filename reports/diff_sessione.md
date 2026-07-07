@@ -1,27 +1,25 @@
 # Diff sessione — 2026-07-07 (migrazione Groq gpt-oss-120b: fetta unica)
 
 > Si riscrive a ogni sessione. La storia completa sta in git.
-> BASE sessione: `3f542c1` (ultimo commit che ha toccato handoff.md)
+> BASE sessione: `de9909c` (ultimo commit che ha toccato reports/handoff.md)
 
-## File con modifiche committate questa sessione (3f542c1..HEAD)
+## File toccati nei commit di questa sessione (de9909c..HEAD)
 
-Solo l'auto-commit `5b3c4c0` della sessione precedente rientra nel range:
-- `reports/roadmap.md` — auto-commit sessione precedente (non questa sessione)
-- `reports/stato_progetto.md` — auto-commit sessione precedente (non questa sessione)
+Da `git diff --stat de9909c..HEAD`:
 
-## File con modifiche uncommitted questa sessione (working tree vs HEAD)
+- `.claude/agents/memoria_revisore.md` — aggiunta lezione slash-namespace Groq vs OpenRouter (il formato `provider/model` con slash è convenzione OpenRouter, non Groq storica; validare sempre con chiamata live prima del deploy)
+- `reports/roadmap.md` — (1) rimosso "review #43" non ancora avvenuta, stato PENDING; (2) nota deprecazione Groq aggiornata; (3) aggiunto item "Indagine latenza GAS" non urgente (segnalato dall'utente: ~5s più lento del solito)
+- `reports/stato_progetto.md` — aggiornato header data, R-groq-slash APERTO PENDING, R-groq-dup aperto (deferito), nota TPM 8K burst = comportamento atteso
 
-- `brains/groq_brain.py` — aggiunto `"reasoning_effort": "low"` al payload Groq principale (PUNTO 1)
-- `brains/claude_brain.py` — aggiunto `"reasoning_effort": "low"` al payload Groq fallback + aggiornato messaggio console (PUNTO 1; model rename era già nel diff pre-esistente)
-- `brains/gemini_brain.py` — aggiunto `"reasoning_effort": "low"` al payload Groq fallback (PUNTO 1; model rename era già nel diff pre-esistente)
-- `gas.py` — `GROQ_MODEL` e tabella prezzi (pre-esistente dal branch `refactor/model-ids-fonte-unica`, mergiato oggi; non toccato questa sessione)
-- `tests/test_unit_kernel.py` — nome modello groq in log aggiornato (pre-esistente, non toccato questa sessione)
-- `.claude/agents/memoria_revisore.md` — aggiunta lezione (pre-esistente, staged prima di questa sessione)
-- `reports/roadmap.md` — rimosso "review #43" / "CHIUSA", stato reale "PENDING" (PUNTO 3)
-- `reports/stato_progetto.md` — rimosso "review #43", aggiornato header, R-groq-slash PENDING, R-groq-dup aperto, nota TPM (PUNTI 3+4)
+## File modificati in working tree (non committati, pending revisore)
+
+- `brains/groq_brain.py` — `reasoning_effort: "low"` aggiunto al payload principale; usa `MODEL_GROQ` da `brains/model_ids.py`
+- `brains/claude_brain.py` — `reasoning_effort: "low"` aggiunto al payload Groq fallback; usa `MODEL_GROQ`
+- `brains/gemini_brain.py` — `reasoning_effort: "low"` aggiunto al payload Groq fallback; usa `MODEL_GROQ`
+- `tests/test_unit_kernel.py` — model log string (`llama-3.3-70b` → `openai/gpt-oss-120b`) residuo da stash
 
 ## Note
 
-- PUNTO 2 (round-trip live) SALTATO: GROQ_API_KEY non disponibile → nessuna chiamata live eseguita
-- File motore (`brains/`, `gas.py`, `tests/`) uncommitted: attesa round-trip + gate revisore
-- `reports/verifica_fase25.md` — untracked, non toccato in questa sessione
+- PUNTO 2 (round-trip live con GROQ_API_KEY) SALTATO: chiave non disponibile → file motore uncommitted
+- Merge `refactor/model-ids-fonte-unica` (ore 14:41) ha cambiato struttura brain durante la sessione: risolti conflitti mantenendo upstream + aggiunta reasoning_effort
+- `reports/verifica_fase25.md` — untracked, non toccato
