@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-07** (migrazione Groq gpt-oss-120b: codice ✅, validazione live PENDING)
+> Ultimo aggiornamento: **2026-07-08** (migrazione Groq gpt-oss-120b: validazione live ✅ review #44 APPROVATO CON RISERVE — R-groq-slash e R-groq-dup CHIUSI)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -59,8 +59,8 @@ Componenti attive:
 - âœ… **WINDOW_CHAR_CAP non env-configurabile** â€” `GAS_WINDOW_CHAR_CAP` configurabile via env, min_val=1000 (review #31, 2026-06-25).
 - ðŸŸ¡ **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) giÃ  copre tutti i rami a freddo â€” sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe Â§9). Rimandato per falsi positivi.
 - ðŸŸ¡ **R-crm-1b** â€” identitÃ  cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
-- 🟡 **R-groq-slash** (2026-07-07) — validare che il formato `openai/gpt-oss-120b` (slash-namespace) sia accettato dall’endpoint Groq `/v1/chat/completions` con una chiamata live reale (tool call inclusa). PENDING: round-trip in corso questa sessione. In caso di rifiuto il rung degrada silenziosamente (fail-safe §9, zero crash).
-- 🟡 **R-groq-dup** (2026-07-07, DEFERITO) — `"openai/gpt-oss-120b"` è hardcoded in tre file (`brains/groq_brain.py`, `brains/claude_brain.py`, `brains/gemini_brain.py`). Fonte unica richiesta: env `GAS_GROQ_MODEL` con default o modulo config dedicato. **NON** importare da `gas.py` nei brains: rischio circular import. Decisione umana richiesta su dove definire il default (config.py separato o solo env). Deferito a fetta separata.
+- ✅ **R-groq-slash** (CHIUSO 2026-07-08) — formato `openai/gpt-oss-120b` accettato: STATUS 200, tool_calls parsate, latenza 1138ms, 7 reasoning_tokens. Validazione live eseguita con `reasoning_effort: "low"` (commit f028e51, review #44).
+- ✅ **R-groq-dup** (CHIUSO 2026-07-08) — tutti e tre i brain importano `MODEL_GROQ` da `brains/model_ids.py` (fonte unica). Sorgente già unificata dal merge `model-ids-fonte-unica` (`eb0509f`). Confermato da revisore #44.
 - ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = **comportamento atteso, non regressione**. Il paracadute §9 gestisce silenziosamente.
 - âœ… **MEMORY_PIN_SCAN hardcoded** â€” `GAS_MEMORY_PIN_SCAN` configurabile via env, min_val=10 (review #31, 2026-06-25).
 - ðŸŸ¡ **R-ci-openrouter** â€” T9a fragile se OPENROUTER_API_KEY Ã¨ presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non Ã¨ garantita formalmente (revisore CI-4, 2026-06-24).
@@ -88,7 +88,7 @@ Componenti attive:
 - **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **42 review**. Ultima: **#42** (R-vec-pool + sonda postazione locale, 2026-07-03). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **44 review**. Ultima: **#44** (migrazione gpt-oss-120b + reasoning_effort low, 2026-07-08). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** â€” `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); Â§1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
@@ -119,3 +119,5 @@ Componenti attive:
    - `/root/gas/` INTATTO (non cancellare fino a S1b confermato)
    - Accesso SSH: solo `gas@204.168.251.92` via chiave ed25519. Login root SSH disabilitato.
 9. **S1b ✅ (2026-07-04):** swap file 2GiB attivo (cuscinetto anti-OOM, vedi finding no-swap sopra); unit systemd `/etc/systemd/system/gas.service` con `User=gas`, `MemoryHigh=1500M`, `MemoryMax=2000M`, `Restart=always`; `.env.prod` in `/home/gas/gas/.env.prod` con permessi `chmod 600`; servizio attivo confermato. Data di misura RAM a regime del singolo modello: non registrato.
+
+
