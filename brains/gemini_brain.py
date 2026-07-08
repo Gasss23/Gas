@@ -65,7 +65,8 @@ def chat(history, tools_schema=None, **kwargs):
             g_res = requests.post(groq_url, headers=groq_headers, json={
                 "model": MODEL_GROQ,
                 "messages": messages,
-                "temperature": 0.3
+                "temperature": 0.3,
+                "reasoning_effort": "low"
             }, timeout=15)
             if g_res.status_code == 200:
                 text_out = g_res.json()["choices"][0]["message"]["content"]

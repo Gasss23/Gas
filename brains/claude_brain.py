@@ -75,10 +75,10 @@ def chat(messages, tools_schema=None):
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         groq_headers = {"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}", "Content-Type": "application/json"}
         try:
-            g_res = requests.post(groq_url, headers=groq_headers, json={"model": MODEL_GROQ, "messages": formatted_messages, "temperature": 0.2}, timeout=15)
+            g_res = requests.post(groq_url, headers=groq_headers, json={"model": MODEL_GROQ, "messages": formatted_messages, "temperature": 0.2, "reasoning_effort": "low"}, timeout=15)
             if g_res.status_code == 200:
                 response = g_res
-                print("  \033[92m✔ Canale Cloud saturato o non disponibile. Esecuzione assistita da Groq (Llama 3.3)\033[0m")
+                print("  \033[92m✔ Canale Cloud saturato o non disponibile. Esecuzione assistita da Groq (gpt-oss-120b)\033[0m")
         except Exception:
             pass
 

@@ -26,7 +26,8 @@ def chat(messages, tools_schema=None):
     payload = {
         "model": MODEL_GROQ,
         "messages": messages,
-        "temperature": 0.1
+        "temperature": 0.1,
+        "reasoning_effort": "low"
     }
     
     if tools_schema:

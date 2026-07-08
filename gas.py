@@ -123,7 +123,7 @@ TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità
 _PROVIDER_PRICE_PER_MTok: Dict[str, Tuple[float, float]] = {
     "gemini-flash-lite": (0.10,  0.40),   # gemini-2.5-flash-lite: input / output
     "gemini-flash":      (0.30,  2.50),   # gemini-2.5-flash (no-thinking)
-    "groq":              (0.59,  0.79),   # llama-3.3-70b-versatile (pay-as-you-go)
+    "groq":              (0.15,  0.60),   # openai/gpt-oss-120b (pay-as-you-go)
     "openrouter":        (0.00,  0.00),   # meta-llama free tier → 0
     "ollama":            (0.00,  0.00),   # locale → 0
 }
