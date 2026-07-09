@@ -22,9 +22,10 @@ def chat(messages, tools_schema=None):
     }
     
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "messages": messages,
-        "temperature": 0.1
+        "temperature": 0.1,
+        "reasoning_effort": "low"
     }
     
     if tools_schema:

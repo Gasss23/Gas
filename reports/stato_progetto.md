@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-06-28** (fix R-comp-1 — boundary piegato nel summary, review #40)
+> Ultimo aggiornamento: **2026-07-09** (migrazione modello rung Groq → `openai/gpt-oss-120b`, review #41)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **40 review** completate. Suite: **196 PASS, 7 FAIL** (Windows locale, pre-esistenti bwrap/WinError32).
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **41 review** completate. Suite: **196 PASS, 7 FAIL** (Windows locale, pre-esistenti bwrap/WinError32).
 CI GitHub Actions: run #28307518983 su `cde4d94` — **SUCCESS** ✅.
 
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -38,7 +38,7 @@ Componenti attive:
 
 ## Pipeline provider (paracadute)
 
-1. `gemini-2.5-flash-lite` → 2. `gemini-2.5-flash` → 3. `groq/llama-3.3-70b-versatile`
+1. `gemini-2.5-flash-lite` → 2. `gemini-2.5-flash` → 3. `groq/openai/gpt-oss-120b` (`reasoning_effort: low`)
    → 4. `openrouter` free (`meta-llama/llama-3.3-70b-instruct:free`)
    → 5. `ollama` offline (`qwen2.5:7b-instruct`, solo se `GAS_OLLAMA_URL` settata)
 
@@ -62,6 +62,7 @@ Componenti attive:
 - ✅ **CI-4** — risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
 - ✅ **R-tel-1** (chiuso review #37, 2026-06-27) — `_free_names` derivato da `FREE_RUNGS`; `name not in _free_names` come flag `obbligatoria`; `reason` nel JSONL = livello ("WARN"/"KO"). T40/T40b confermano. Riserve cosmetiche #37: (1) `reason` perde il testo descrittivo (→ `detail` futuro); (2) ollama non assertito in T40 (GAS_OLLAMA_URL assente → skip).
 - ✅ **Riserve review #35** (chiuse review #36, 2026-06-27) — T39b-reason/T39c-reason aggiungono assert su `disable_reason`; T39f (ramo `sqlite3.Error`) e T39g (ramo embedder assenti) coprono i 4 rami. Tutti PASS.
+- 🟡 **Riserve review #41** (migrazione Groq `openai/gpt-oss-120b`, 2026-07-09, APPROVATO CON RISERVE): (R-groq41-1) **doc-sync** pipeline provider aggiornata a nuovo model-id ✅ fatto in questo commit; (R-groq41-2) validazione a caldo §7 non eseguibile in review (manca `GROQ_API_KEY`+rete) — round-trip agentico reale da fare in ambiente con chiave; (R-groq41-3) confermare a caldo che il modello reasoning restituisca ancora `tool_calls` in formato OpenAI in `groq_brain.py` (altrimenti quel rung degrada a solo-testo, comunque fail-safe §9, non crash).
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
 ## Prossimi passi (in ordine di priorità)
