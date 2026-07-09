@@ -75,7 +75,7 @@ Componenti attive:
 
 1. ~~**FASE 2.5**~~ âœ… chiusa (review #39, 2026-06-27).
 2. **ðŸ”´ Spesa token dev**: item 1 roadmap â€” il budget cap runtime Ã¨ inerte sul free tier. La leva reale Ã¨ la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
-3. **ðŸ“± Accesso dev tooling da telefono**: item 2 roadmap â€” claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) Ã¨ giÃ  disponibile ma non Ã¨ questo.
+3. **ðŸ“± Accesso dev tooling da telefono**: item 2 roadmap â€” claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) Ã¨ giÃ  disponibile ma non Ã¨ questo. **Sonda Dispatch pendente** (pairing QR + task doc-only da telefono; verificare ambiente Win/WSL, hook, modello). Se OK, item 2 chiuso senza bridge custom.
 4. **FASE 3 â€” Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 5. **FASE 4.5 â€” Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
 6. **FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04)** → prossimo S2 (decide operatore)

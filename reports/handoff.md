@@ -115,3 +115,14 @@ Riserve review #44 (non bloccanti, tracciate in `stato_progetto.md`):
 - **A** — `reasoning_effort` hardcoded nei payload Groq: se `GAS_MODEL_GROQ` env sovrascrive con un modello non-reasoning, il parametro causa un 4xx silente. Il fail-safe §9 regge (fallback attivo, zero crash), ma la diagnostica è opaca. Suggerito: commento inline che documenta il vincolo modello.
 - **B** — Prezzi Groq ($0.15/$0.60 per MTok): non verificabili staticamente, da confrontare con pricing page Groq al deploy VPS.
 - **C** — T36c usa stringa letterale `"openai/gpt-oss-120b"` invece di importare la costante `MODEL_GROQ`. Aggiornamento manuale necessario alla prossima migrazione modello. Cosmetica.
+
+---
+
+## §8 ADDENDUM — sessione cloud 2026-07-09 (doc-only, post-reset branch)
+
+Contesto: il branch `claude/phone-gas-development-10svqc` è stato riallineato a main (`457fabe`); i commit doc della sessione cloud precedente (Dispatch/Cowork/Mirage, `fa212a6` e precedenti) sono rimasti fuori dalla nuova storia. Riapplicati add-only su richiesta umana ("scrivili lo stesso senza sostituire quello che c'è già").
+
+- `reports/roadmap.md` — DA DISCUTERE: aggiunti **Claude Dispatch (candidato accesso dev da telefono, IN VALIDAZIONE)** e **Controllo Telegram unificato (ridimensionato)** con rimando alla spec "🌉 Ponte GAS↔CC human-gated" (che già copre il canale GAS→CC). Ricreata sezione **🅿️ PARK** in coda con **Mirage** e **Claude Cowork**.
+- `reports/stato_progetto.md` — Prossimi passi #3: annotata **sonda Dispatch pendente** (se OK, item 2 chiuso senza bridge custom).
+- Nessun file motore toccato in questo addendum → gate revisore non applicabile (CLAUDE.md sez.3). Nota per la sessione cloud: la migrazione Groq era stata duplicata qui su branch (review #41, `4137921`) — superata e assorbita da `f028e51` su main (review #44, con validazione live che chiude R-groq41-2/3); nessuna azione residua.
+- ⚠️ **Finding encoding**: `reports/stato_progetto.md` (versione da sessione PC) contiene righe con doppia codifica UTF-8 (es. `Ã¨` per `è`, `â€”` per `—`), mischiate a righe corrette. Probabile pipeline Windows senza `PYTHONUTF8=1`/UTF-8. Non corretto in massa: decisione umana (fix meccanico possibile, doc-only).
