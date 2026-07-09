@@ -28,20 +28,20 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### 🟡 PROSSIMI PASSI (in ordine di priorità)
 
-1. 🟡 **Migrazione rung Groq** — migrazione codice fatta 2026-07-07; validazione live: PENDING (round-trip reale con tool call da completare prima del verdetto revisore). `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`. Più economico ($0.15/$0.60 vs $0.59/$0.79). Deadline 16 ago anticipata.
+1. ✅ **Migrazione rung Groq** — `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`. Validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`, latenza 1138ms). Commit `f028e51`, review #44 APPROVATO CON RISERVE, 2026-07-08. **COMPLETATA**.
 2. ✅ **FASE 2.5 — Summarizzazione cronologia** — CHIUSA (2026-06-27, review #39, commit 65c4c7b).
 3. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi sotto).
 4. **FASE 4.5 — Task scheduler autonomo** (prerequisito Jarvis reale; vedi sotto).
 5. **FASE 5 — Deploy VPS Hetzner** — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2). Include: attivare `gas telegram` come daemon, backup off-machine, process management systemd, ri-tarare `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
 6. **Riserve aperte dalla review #38**: R-tel-budget-perf (scan JSONL al crescere del log), R-tel-tool_res (cosmetico, tool result nel reply Telegram).
 7. **Rung 4 OpenRouter in degrado** — `meta-llama/llama-3.3-70b-instruct:free` soggetto a rate limit upstream crescenti; diversi modelli free-tier OpenRouter hanno perso l'accesso gratuito a giugno 2026. Da investigare: modello free alternativo stabile o declassare rung 4 a best-effort dichiarato. Stato: APERTO, priorità media.
-8. **Config-drift stringhe modello** — stringhe modello hardcoded in `claude_brain.py` e `gemini_brain.py`, fuori dalla definizione della cascata. Serve single source of truth; attenzione: se i brains importano da gas.py, rischio import circolare. Fetta separata futura, solo registrazione. Stato: APERTO, priorità media.
+8. ✅ **Config-drift stringhe modello** — `brains/model_ids.py` = fonte unica dei 5 ID cascata, env-overridabili (`GAS_MODEL_*`). Merge `eb0509f`, commit `160543a`, review #43, 2026-07-07. **CHIUSO**.
 
 > Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul CX33 (FASE 5).
 
 ### Deprecazioni provider
 
-- 🟡 2026-07-07 — Groq llama-3.3-70b-versatile → openai/gpt-oss-120b: migrazione codice fatta. Validazione live (tool call reale) PENDING; review revisore PENDING. $0.15/$0.60 per MTok. Deadline originale 2026-08-16 anticipata. Finding aperto: R-groq-slash (validare slash-namespace + tool_calls sull'endpoint live).
+- ✅ 2026-07-08 — Groq llama-3.3-70b-versatile → openai/gpt-oss-120b: **COMPLETATA**. Commit `f028e51`, review #44 APPROVATO CON RISERVE, validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`). R-groq-slash e R-groq-dup CHIUSI. $0.15/$0.60 per MTok.
 - ⚠️ 2026-07-17 — Groq qwen/qwen3-32b in pensione (solo 10 gg dalla scoperta — non usato in GAS; annotato per memoria).
 
 ### 🧭 DECISIONI CASCATA PROVIDER — registrate 2026-07-07 (decisioni umane)

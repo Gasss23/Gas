@@ -1,88 +1,70 @@
-# REPORT — 2026-07-09 — TASK DOC-ONLY: registrazione decisioni 2026-07-07 (verifica re-esecuzione)
+# REPORT — 2026-07-09 — TASK DOC-ONLY: allineamento canonici a git reale (3 fix)
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna bloccante. Tre incoerenze residue (stale) segnalate come proposte —
-stesse proposte già individuate dalla sessione precedente (08:00). Decisione
-umana se completare in un task futuro.
+Nessuna.
 
 ---
 
-## Contesto re-esecuzione
+## Scope
 
-Al momento dell'avvio, il working tree locale aveva:
-- `reports/stato_progetto.md` modificato (solo header) — cambio da una sessione
-  parziale precedente, NON committato.
-- `reports/verifica_fase25.md` untracked (irrilevante al task).
-- Local branch dietro origin/main di **3 commit**.
-
-Una sessione precedente (2026-07-09 ~08:00, CI run `29003285932` SUCCESS) aveva
-già completato l'intero task e pushato. Azione eseguita in questa sessione:
-`git restore reports/stato_progetto.md` (scarta modifica locale stale) +
-`git pull --ff-only` (fast-forward a `d7e4d89`).
+Task doc-only: toccati SOLO `reports/roadmap.md`, `reports/stato_progetto.md`,
+`reports/ultimo_report.md`. Zero file di motore. Nessuna review revisore.
+Push diretto su main (policy doc-only).
 
 ---
 
-## Verifica per punto (tutti FATTA dalla sessione precedente)
+## Esito per punto
 
-### 1) reports/stato_progetto.md
+### Fix 1 — roadmap.md §PROSSIMI PASSI item 8 "Config-drift stringhe modello"
 
-- **1a ✅** — Merge `refactor/model-ids-fonte-unica` (merge `eb0509f`, commit `160543a`)
-  registrato: item "config-drift stringhe modello" **CHIUSO**. `brains/model_ids.py`
-  = fonte unica dei 5 ID cascata, env-overridabili (`GAS_MODEL_*`). Suite 217 PASS
-  incluso T56. Contatore review corretto a **44** (da `memoria_revisore.md`, ultima
-  #44, 2026-07-08 — era stale a 42 nella sezione Stato motore).
-- **1b ✅** — Finding 🟡 **R-legacy-slice** aggiunto (riserva #1 revisore, review
-  #43): `brains/claude_brain.py:38` — `for m in messages[-8:]`, slicing raw,
-  violazione sez. 5 CLAUDE.md. INERTE oggi (legacy non wired); bloccante se
-  ri-agganciato. Debito tecnico latente, nessuna azione ora.
-- **1c ✅** — Caveat suite registrato: i 217 PASS sono da Codespace dove bwrap NON
-  è validabile; verifica bwrap demandata a CI/WSL locale.
-- **1d ✅** — CI run merge: **ID 28874912495**, evento push su `eb0509f`
-  ("Merge branch 'refactor/model-ids-fonte-unica'"), 2026-07-07T14:41:10Z —
-  **SUCCESS ✅**.
+**FATTA.** Da `Stato: APERTO` a:
 
-### 2) reports/roadmap.md
+> ✅ **Config-drift stringhe modello** — `brains/model_ids.py` = fonte unica dei
+> 5 ID cascata, env-overridabili (`GAS_MODEL_*`). Merge `eb0509f`, commit
+> `160543a`, review #43, 2026-07-07. **CHIUSO**.
 
-- **2a ✅** — Sezione "🧭 DECISIONI CASCATA PROVIDER" aggiunta: rung 4 Cerebras
-  `zai-glm-4.7` (5 RPM, 30K TPM, 1M token/giorno, doc ufficiale 2026-07-07);
-  Gate 1 (sonda contesto, possibile cap 8.192 token) e Gate 2 (tool-call
-  `disable_reasoning: true`, parsing id duplicati) bloccanti pre-wiring.
-- **2b ✅** — Mistral API (free "Experiment", ~1B token/mese) aggiunto come
-  CANDIDATO fetta separata post-Cerebras, stessi gate. TRIGGER DATI registrato
-  (evento, non data): prima di lead reali → policy dati tutti i provider free.
-- **2c ✅** — Decisioni registrate 2026-07-07: (i) NO cascata oltre ~6 rung;
-  (ii) NO GitHub Models runtime; (iii) OpenRouter sblocco $10 RINVIATO;
-  (iv) rung premium futuro = Claude API budget-cappata (Haiku 4.5 rif. 2026-07-07).
-- **2d ✅** — "🌉 Ponte GAS↔Claude Code human-gated (Telegram)" aggiunto integrale:
-  flusso proposta-file → Telegram → `/approva <id>` → listener lato DEV →
-  branch mai main. 8 vincoli sicurezza non negoziabili. Prerequisito FASE 5.
+### Fix 2 — roadmap.md §PROSSIMI PASSI item 1 + §Deprecazioni primo bullet
 
-### 3) Sezione "Pipeline provider"
+**FATTA.**
 
-**NON toccata** — la migrazione Groq era già mergiata su main (commit `f028e51`,
-review #44, 2026-07-08) e la sezione riflette già lo stato reale.
+Item 1 da `validazione live: PENDING` a:
 
----
+> ✅ **Migrazione rung Groq** — `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`.
+> Validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`,
+> latenza 1138ms). Commit `f028e51`, review #44 APPROVATO CON RISERVE, 2026-07-08.
+> **COMPLETATA**.
 
-## Proposte (fuori scope — decisione umana)
+§Deprecazioni primo bullet da `PENDING` a:
 
-Tre incoerenze residue non toccate per rispettare "Fai SOLO quanto elencato":
+> ✅ 2026-07-08 — Groq llama-3.3-70b-versatile → openai/gpt-oss-120b:
+> **COMPLETATA**. Commit `f028e51`, review #44 APPROVATO CON RISERVE,
+> validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`).
+> R-groq-slash e R-groq-dup CHIUSI. $0.15/$0.60 per MTok.
 
-1. `reports/roadmap.md` §PROSSIMI PASSI item 8 "Config-drift stringhe modello"
-   risulta ancora "Stato: APERTO" — ora chiuso (merge `eb0509f`).
-2. `reports/roadmap.md` §PROSSIMI PASSI item 1 "Migrazione rung Groq —
-   validazione live: PENDING" e §Deprecazioni primo bullet sono stale —
-   migrazione completata 2026-07-08 (commit `f028e51`, review #44).
-3. `reports/stato_progetto.md` §Stato motore riga CI ("run #28665577327 su
-   `51f9e1e`") è il run pre-sonda; l'ultimo su main è `28967120717` su
-   `9187804` (SUCCESS, 2026-07-08).
+### Fix 3 — stato_progetto.md §Stato motore riga CI
+
+**FATTA.** Run ID letto da `gh run list --branch main --limit 5` (NON da memoria).
+
+Ultimo run SUCCESS su main al momento del task: **run #29031945029** su `87ad26f`
+("docs(report): verifica re-esecuzione task doc-only 2026-07-07"), 2026-07-09T16:03:15Z.
+
+Sostituito:
+
+> `CI GitHub Actions: run #28665577327 su `51f9e1e` [mojibake] **SUCCESS** [mojibake] (ultimo run pre-sonda).`
+
+con:
+
+> `CI GitHub Actions: run #29031945029 su `87ad26f` ✅ **SUCCESS** ✅ (ultimo run su main, 2026-07-09).`
+
+Nota tecnica: la riga originale conteneva checkmark mojibake (doppia codifica
+UTF-8, con U+0085 NEL incorporato) che impediva la sostituzione testuale standard.
+Risolto con sostituzione byte-level in PowerShell.
 
 ---
 
-## Scope e note operative
+## Note operative
 
-- Tocati in questa sessione: SOLO `reports/ultimo_report.md` (questo file).
-- Zero file di motore.
-- `git pull --ff-only` eseguito per allineare local a remote (`d7e4d89`).
-- CI sulla sessione precedente: run `29003285932` — SUCCESS ✅.
+- Zero token LLM runtime; run CI letto via `gh` (metadati).
+- File toccati: `reports/roadmap.md`, `reports/stato_progetto.md`,
+  `reports/ultimo_report.md`.

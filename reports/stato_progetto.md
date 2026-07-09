@@ -7,7 +7,7 @@
 ## Stato motore
 
 FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **44 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #44, 2026-07-08). Suite (locale WSL bwrap, sonda 2026-07-03): **214 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). Con API keys live: 216 PASS.
-CI GitHub Actions: run #28665577327 su `51f9e1e` â **SUCCESS** â (ultimo run pre-sonda).
+CI GitHub Actions: run #29031945029 su `87ad26f` ✅ **SUCCESS** ✅ (ultimo run su main, 2026-07-09).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **âœ… R-comp-1** â€” boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
