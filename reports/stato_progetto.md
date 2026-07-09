@@ -1,17 +1,18 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-08** (migrazione Groq gpt-oss-120b: validazione live ✅ review #44 APPROVATO CON RISERVE — R-groq-slash e R-groq-dup CHIUSI)
+> Ultimo aggiornamento: **2026-07-09** (registrazione merge model-ids-fonte-unica + finding R-legacy-slice + caveat suite Codespace — task doc-only)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **42 review** completate. Suite (locale WSL bwrap, sonda 2026-07-03): **214 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). Con API keys live: 216 PASS.
+FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **44 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #44, 2026-07-08). Suite (locale WSL bwrap, sonda 2026-07-03): **214 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). Con API keys live: 216 PASS.
 CI GitHub Actions: run #28665577327 su `51f9e1e` â **SUCCESS** â (ultimo run pre-sonda).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **âœ… R-comp-1** â€” boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
 **âœ… gas version 0.2.0** (2026-07-01, review #41 APPROVATO, commit d992c47 â†’ merge 2326404): `gas version` â†’ stampa versione + Python, zero token LLM. Test T55. Nessuna lezione nuova per memoria_revisore.md.
+**✅ Config-drift stringhe modello — CHIUSO** (2026-07-07, review #43, branch `refactor/model-ids-fonte-unica`: merge `eb0509f`, commit `160543a`): `brains/model_ids.py` = fonte unica dei 5 ID modello della cascata, env-overridabili (`GAS_MODEL_*`). Suite della sessione: **217 PASS incluso T56**. **Caveat suite**: quei 217 PASS sono stati ottenuti in Codespace, dove i test bwrap NON sono validabili (comportamento noto); la verifica bwrap reale resta demandata a CI/postazione WSL locale. **CI sul merge**: run ID **28874912495** (run n. 85, evento push su `eb0509f`, 2026-07-07) — **SUCCESS** ✅.
 
 **Stato item roadmap (review #38, commit a8c6d53) â€” stato reale:**
 - ðŸ”´ **Item 1 â€” Controllo spesa token**: `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` committati. Agiscono sul runtime GAS (Gemini/Groq free tier, costo ~0â‚¬). La spesa problematica (Claude Code dev su Opus) NON Ã¨ tracciata in `.gas_tokens.jsonl` e NON viene intercettata. â†’ **APERTO**: la disciplina dev (sez. 11 CLAUDE.md) resta l'unica leva reale.
@@ -61,6 +62,7 @@ Componenti attive:
 - ðŸŸ¡ **R-crm-1b** â€” identitÃ  cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
 - ✅ **R-groq-slash** (CHIUSO 2026-07-08) — formato `openai/gpt-oss-120b` accettato: STATUS 200, tool_calls parsate, latenza 1138ms, 7 reasoning_tokens. Validazione live eseguita con `reasoning_effort: "low"` (commit f028e51, review #44).
 - ✅ **R-groq-dup** (CHIUSO 2026-07-08) — tutti e tre i brain importano `MODEL_GROQ` da `brains/model_ids.py` (fonte unica). Sorgente già unificata dal merge `model-ids-fonte-unica` (`eb0509f`). Confermato da revisore #44.
+- 🟡 **R-legacy-slice** (riserva #1 revisore, review #43 model_ids, registrata 2026-07-09): `brains/claude_brain.py:38` contiene `for m in messages[-8:]` — slicing raw della history, violazione sez. 5 CLAUDE.md. Oggi INERTE: file legacy non wired al kernel attivo, zero copertura test. Diventa bloccante se i brain legacy venissero mai ri-agganciati. Debito tecnico latente, nessuna azione ora.
 - ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = **comportamento atteso, non regressione**. Il paracadute §9 gestisce silenziosamente.
 - âœ… **MEMORY_PIN_SCAN hardcoded** â€” `GAS_MEMORY_PIN_SCAN` configurabile via env, min_val=10 (review #31, 2026-06-25).
 - ðŸŸ¡ **R-ci-openrouter** â€” T9a fragile se OPENROUTER_API_KEY Ã¨ presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non Ã¨ garantita formalmente (revisore CI-4, 2026-06-24).

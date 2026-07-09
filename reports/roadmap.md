@@ -44,6 +44,56 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 - 🟡 2026-07-07 — Groq llama-3.3-70b-versatile → openai/gpt-oss-120b: migrazione codice fatta. Validazione live (tool call reale) PENDING; review revisore PENDING. $0.15/$0.60 per MTok. Deadline originale 2026-08-16 anticipata. Finding aperto: R-groq-slash (validare slash-namespace + tool_calls sull'endpoint live).
 - ⚠️ 2026-07-17 — Groq qwen/qwen3-32b in pensione (solo 10 gg dalla scoperta — non usato in GAS; annotato per memoria).
 
+### 🧭 DECISIONI CASCATA PROVIDER — registrate 2026-07-07 (decisioni umane)
+
+**a) DECISO — Nuovo rung 4 cascata: Cerebras `zai-glm-4.7`** (free tier: 5 RPM, 30K TPM, 1M token/giorno; fonte doc ufficiale Cerebras, verificata 2026-07-07). Entra PRIMA di OpenRouter, che scala a rung 5, Ollama a 6. DUE GATE BLOCCANTI prima di qualsiasi wiring (fetta futura, prima sonda poi progetto):
+- **Gate 1**: sonda live del contesto free tier — due fonti terze riportano cap 8.192 token non presente nei doc ufficiali; chiamata di prova con prompt >9K token e lettura dell'errore. Se il cap è reale, il design va rifatto (finestra rung-specifica o modello alternativo gpt-oss-120b su Cerebras come piano B).
+- **Gate 2**: round-trip test tool-call reale con `disable_reasoning: true` nel payload dal giorno zero (GLM-4.7 è reasoning model — stessa classe di trappola del reasoning_effort su Groq); verifica parsing tool_call incluso il caso id duplicati (Cerebras è severo).
+
+Motivazione priorità: rung 4 OpenRouter in degrado documentato e decisione di NON sbloccare i 1000 req/giorno (vedi punto c-iii) — Cerebras è la mitigazione principale.
+
+**b) CANDIDATO — Rung Mistral API** (tier free "Experiment", ~1B token/mese da fonte terza, limiti esatti da leggere in Admin Console). Fetta SEPARATA, solo DOPO che il rung Cerebras è wired e validato. Stessi gate: sonda limiti reali + round-trip tool-call.
+
+**TRIGGER DATI** (vale per TUTTA la cascata, evento non data): prima che dati di persone reali (lead veri) entrino in diario/CRM → rivedere la policy dati di tutti i provider free (i tier gratuiti possono usare i prompt per training, Gemini e Mistral inclusi) e decidere upgrade a tier no-training.
+
+**c) DECISIONI REGISTRATE 2026-07-07:**
+- (i) NO all'espansione della cascata oltre ~6 rung (latenza fallthrough, superficie manutenzione, esaurimento correlato, qualità tool-calling imprevedibile, ToS/dati).
+- (ii) NO GitHub Models come rung runtime: tier dichiaratamente di prototipazione (~50 req/giorno high-tier, cap 8K in/4K out, concorrenza 2) + token GitHub sul VPS coabitato col bot trading = superficie credenziali inaccettabile; uso consentito solo come playground dev per confronto modelli.
+- (iii) OpenRouter sblocco $10 (50→1000 req/giorno) valutato e RINVIATO ("non ora, GAS non è pronto") — reversibile, azione da console, zero codice.
+- (iv) Rung premium futuro = Claude API budget-cappata via GAS_DAILY_TOKEN_BUDGET (Haiku 4.5 $1/$5 MTok riferimento 2026-07-07), distinto da Claude Code che resta SOLO agente di sviluppo.
+
+### 🌉 Ponte GAS↔Claude Code human-gated (Telegram) — NUOVO ITEM (2026-07-07)
+
+Prerequisito: FASE 5 stabile. Nessun impegno di data.
+
+Flusso: GAS genera una proposta come FILE strutturato (titolo,
+motivazione, scope, file stimati) → notifica Telegram con ID univoco →
+approvazione umana esplicita `/approva <id>` da chat whitelistata →
+listener lato DEV (PC/WSL, MAI sul VPS) preleva la proposta approvata e
+la passa a Claude Code con gli STOP gate standard → branch, mai main →
+report canonico → review umana.
+Vincoli di sicurezza (non negoziabili):
+1. Direzione della fiducia: il VPS non ottiene MAI credenziali del PC
+   dev. Il listener dev fa PULL delle proposte; niente viene mai pushato
+   dal VPS verso il PC. No SSH VPS→PC.
+2. Bot Telegram SEPARATO dal bot runtime GAS (token e chat diversi):
+   compromettere il bot runtime non deve aprire il canale di comando dev.
+3. Comandi whitelistati: solo `/approva <id>` e `/rifiuta <id>`. MAI
+   testo libero inoltrato a Claude Code — il testo libero è la
+   superficie RCE.
+4. Approvazione informata: la proposta è un file leggibile prima di
+   approvare, non un riassunto.
+5. ID monouso + scadenza (es. 24h) contro replay.
+6. Rate limit proposte (es. max 3/giorno): GAS non può spammare il
+   budget dev.
+7. Due budget: Claude Code resta su Sonnet default con cap per proposta;
+   budget dev e runtime mai confusi.
+8. Audit nel diario: ogni proposta e decisione loggata (la memoria non
+   deve mentire).
+Aperto da risolvere in fase di design: il ponte funziona solo a PC
+acceso; alternativa coda persistente + Claude Code cloud ha confini duri
+già accertati (no bwrap nel cloud, push solo su branch di sessione).
+
 ### ✅ FASE 2.5 — Summarizzazione Cronologia — CHIUSA (2026-06-27, review #39, commit 65c4c7b)
 
 `_compress_history_if_needed()` auto-trigger in `run_turn`; `gas compress-history` CLI. Env: `GAS_HISTORY_MAX_MSGS` (default 100), `GAS_HISTORY_KEEP_MSGS` (default 20). Zero token LLM. Test T54 copre il caso degenere no-user (R-comp-1, review #40, commit cde4d94).
