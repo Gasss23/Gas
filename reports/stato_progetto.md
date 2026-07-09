@@ -69,7 +69,7 @@ Componenti attive:
 
 1. ~~**FASE 2.5**~~ ✅ chiusa (review #39, 2026-06-27).
 2. **🔴 Spesa token dev**: item 1 roadmap — il budget cap runtime è inerte sul free tier. La leva reale è la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
-3. **📱 Accesso dev tooling da telefono**: item 2 roadmap — claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) è già disponibile ma non è questo.
+3. **📱 Accesso dev tooling da telefono**: item 2 roadmap — claude.ai/code o SSH+tmux. `gas telegram` (runtime bot) è già disponibile ma non è questo. **Sonda Dispatch pendente** (pairing QR + task doc-only da telefono; verificare ambiente Win/WSL, hook, modello). Se OK, item 2 chiuso senza bridge custom.
 4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
 5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
 6. **FASE 5 — Deploy VPS Hetzner**: al deploy → `gas telegram` daemon (systemd), `gas calibrate-vectors` (item 3), checklist R-vec-3 (import+embedding runtime) / R-wire-1 / R-reidx-3 (item 5). [R-reidx-deps ✅ chiuso]
