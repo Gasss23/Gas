@@ -1,9 +1,18 @@
-Fatto.
+`reports/handoff.md` aggiornato, commit `384f4f5` pushato. Working tree pulito.
 
-Path: `reports/ultimo_report.md`
-Branch: `refactor/model-ids-fonte-unica` (pushato, **non mergiato su main** come richiesto)
-Hash commit: `160543aa6c2f769a61bdd1812149547bf70de2b3`
+**Handoff sessione 2026-07-09** — contenuto secondo template istituzione D:
 
-Contenuto integrale del report riportato sopra (identico a quello committato).
+- **§DECISIONI UMANE** (in cima): validazione a caldo Groq R-groq41-2/3 (serve `GROQ_API_KEY`), sonda Dispatch pendente, bloccante FASE 5 (postazione locale), repo public→private, branch dedicato.
+- **Esito sonda/STOP**: nessuno STOP; i 3 file motore "orfani" a inizio sessione erano una migrazione Groq coerente; aggiunte roadmap in add-only.
+- **git diff --stat** reale della sessione (`c67137e..fa212a6`, 6 file) + **git log** dei 3 commit.
+- **Delta test motore**: suite non eseguibile in cloud (bwrap assente + no GROQ_API_KEY) → delegata a CI + ambiente con chiave.
+- **Verdetto revisore #41 INTEGRALE**, incollato non riassunto (APPROVATO CON RISERVE), con stato riserve.
+- **CI**: run#92 su `4137921` (motore) **SUCCESS ✅**, run#94 su HEAD doc **pending**.
 
-**Recap semplice:** ho cercato in tutto il progetto dove erano scritti "a mano" i nomi dei modelli AI (5 punti principali + alcuni extra in codice vecchio non collegato al motore attivo). Ho creato un unico file (`brains/model_ids.py`) che li contiene tutti, e fatto in modo che sia `gas.py` sia i vecchi file "brain" li leggano da lì invece di ripeterli — così in futuro basterà cambiare un valore in un solo posto. Nessun modello è stato cambiato, solo la fonte. Il revisore ha approvato con due riserve non bloccanti (proposte nel report, non eseguite perché fuori dallo scope di oggi). Tutto pushato sul branch dedicato, pronto per un merge umano quando vorrai.
+Branch a fine sessione:
+- `384f4f5` docs handoff ← HEAD
+- `fa212a6` docs roadmap (Dispatch/Telegram/Cowork)
+- `cec8e9f` memoria revisore #41
+- `4137921` migrazione Groq `gpt-oss-120b`
+
+Nota: l'handoff cita run#94 come *pending* perché lo era al momento della scrittura; il commit dell'handoff stesso (`384f4f5`) avrà generato una run successiva. Se vuoi te la verifico verde prima di chiudere.
