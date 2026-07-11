@@ -64,3 +64,5 @@ La roadmap completa — fasi e loro stato, item aperti, priorità, completati st
 vive in `reports/roadmap.md` (fonte unica autorevole).
 Questa sezione NON riporta stato per-fase di proposito: un sommario duplicato va fuori
 sync con la fonte. Per lo stato del giorno: `reports/roadmap.md` + `reports/stato_progetto.md`.
+
+- Lucchetto main (attivo dal 2026-07-09): ruleset GitHub `main-lock` — NESSUN push diretto su main (nemmeno doc/report), PR obbligatoria con check CI `unit-suite` verde; self-merge consentito (0 approvazioni). Conseguenze: OGNI sessione (anche doc-only) parte da un branch; i report viaggiano sul branch di sessione e arrivano a main col merge della PR; gli hook (session_end, scrivi_rep) continuano a pushare il branch corrente e non devono MAI tentare push su main. Merge doc-only: PR + merge da browser, oppure `gh pr merge --auto --merge` una volta installato gh. NON aggiungere mai `paths-ignore` a ci.yml: il check required smetterebbe di riportare sulle PR doc-only, rendendole immergeabili.
