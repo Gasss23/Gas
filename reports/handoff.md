@@ -89,9 +89,9 @@ Delta rispetto alla sessione precedente: +3 test, tutti PASS.
 ## Stato CI
 
 - Run 29238671218 (commit 290a336+fe225ef): **SUCCESS** (32s)
-- Run 29240158307 (commit b3c8bb1, T44d): **pending** al momento del handoff
+- Run 29240223711 (commit b3c8bb1+f2c6edd, T44d): **SUCCESS** (39s)
 
-PR #6 pronta per self-merge dopo CI verde: https://github.com/Gasss23/Gas/pull/6
+PR #6 pronta per self-merge: https://github.com/Gasss23/Gas/pull/6
 
 ---
 
