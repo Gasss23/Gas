@@ -2723,6 +2723,86 @@ _has_budget_error = any(e.get("type") == "error" and "Budget" in e.get("content"
 check("T44 run_turn con budget esaurito → event error con 'Budget'", _has_budget_error,
       f"events={_events44}")
 
+# ---------- T44b-T44c: prezzi Groq env-overridabili (riserva #44B) ----------
+print("\n--- T44b-T44c: prezzi Groq env-overridabili ---")
+import importlib as _importlib
+import brains.model_ids as _mid
+
+# T44b — default (senza env): i prezzi Groq in _PROVIDER_PRICE_PER_MTok corrispondono
+# alle costanti di model_ids (0.15 in / 0.60 out).
+_groq_p44b = gas._PROVIDER_PRICE_PER_MTok["groq"]
+check("T44b prezzi Groq default: (0.15, 0.60) da model_ids",
+      _groq_p44b == (_mid.GROQ_PRICE_IN_USD_PER_1M, _mid.GROQ_PRICE_OUT_USD_PER_1M)
+      and abs(_groq_p44b[0] - 0.15) < 1e-9
+      and abs(_groq_p44b[1] - 0.60) < 1e-9,
+      f"prezzi={_groq_p44b}")
+
+# T44c — con env GAS_GROQ_PRICE_IN/OUT custom: _daily_cost_usd() usa i nuovi prezzi.
+# Simula un reload del modulo dopo aver settato l'env, poi usa un kernel fresco.
+_env_bak44c = {k: os.environ.pop(k, None) for k in ("GAS_GROQ_PRICE_IN", "GAS_GROQ_PRICE_OUT")}
+os.environ["GAS_GROQ_PRICE_IN"]  = "1.00"
+os.environ["GAS_GROQ_PRICE_OUT"] = "2.00"
+try:
+    _mid_reload = _importlib.reload(_mid)
+    _p_in_c  = _mid_reload.GROQ_PRICE_IN_USD_PER_1M
+    _p_out_c = _mid_reload.GROQ_PRICE_OUT_USD_PER_1M
+    _k44c = kernel_tmp()
+    _log44c = _k44c.root / gas.TOKEN_LOG_FILENAME
+    _now_ts44c = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    with open(_log44c, "w", encoding="utf-8") as _f44c:
+        _f44c.write(json.dumps({"ts": _now_ts44c, "provider": "groq",
+                                 "model": "openai/gpt-oss-120b",
+                                 "in": 1_000_000, "out": 1_000_000, "event": "call"}) + "\n")
+    # Aggiorna la tabella prezzi nel modulo gas con i valori ricaricati dall'env.
+    gas._PROVIDER_PRICE_PER_MTok["groq"] = (_p_in_c, _p_out_c)
+    _cost44c = _k44c._daily_cost_usd()
+    _expected44c = 1.00 + 2.00  # 1M in × 1.00/MTok + 1M out × 2.00/MTok = 3.00 USD
+    check("T44c prezzi Groq env-override: _daily_cost_usd usa i nuovi prezzi",
+          abs(_cost44c - _expected44c) < 0.0001,
+          f"calcolato={_cost44c:.4f} atteso={_expected44c:.4f} p_in={_p_in_c} p_out={_p_out_c}")
+finally:
+    for _k44c_env, _v44c_env in _env_bak44c.items():
+        if _v44c_env is not None:
+            os.environ[_k44c_env] = _v44c_env
+        else:
+            os.environ.pop(_k44c_env, None)
+    # Ripristina i prezzi Groq al valore di default nel modulo gas.
+    _importlib.reload(_mid)
+    gas._PROVIDER_PRICE_PER_MTok["groq"] = (
+        _mid.GROQ_PRICE_IN_USD_PER_1M, _mid.GROQ_PRICE_OUT_USD_PER_1M
+    )
+
+# ---------- T44d: fallback anti-crash env non parsabile (riserva #44B review #46) ----------
+print("\n--- T44d: fallback env non parsabile ---")
+# Verifica che il try/except in brains/model_ids.py copra i valori non numerici:
+# sia GAS_GROQ_PRICE_IN="abc" sia GAS_GROQ_PRICE_OUT="xyz" → nessuna eccezione,
+# entrambe le costanti ricadono sui default 0.15 / 0.60.
+# Il try avvolge entrambe le float() nello stesso blocco (scelta di coerenza): se anche
+# solo una delle due env è invalida, entrambe cadono al default.
+_env_bak44d = {k: os.environ.pop(k, None) for k in ("GAS_GROQ_PRICE_IN", "GAS_GROQ_PRICE_OUT")}
+os.environ["GAS_GROQ_PRICE_IN"]  = "abc"
+os.environ["GAS_GROQ_PRICE_OUT"] = "xyz"
+try:
+    _mid_reload44d = _importlib.reload(_mid)
+    _p_in_44d  = _mid_reload44d.GROQ_PRICE_IN_USD_PER_1M
+    _p_out_44d = _mid_reload44d.GROQ_PRICE_OUT_USD_PER_1M
+    check("T44d env non parsabile (abc/xyz) → no crash, default 0.15/0.60",
+          abs(_p_in_44d - 0.15) < 1e-9 and abs(_p_out_44d - 0.60) < 1e-9,
+          f"p_in={_p_in_44d} p_out={_p_out_44d}")
+except Exception as _e44d:
+    check("T44d env non parsabile (abc/xyz) → no crash, default 0.15/0.60",
+          False, f"eccezione sollevata: {_e44d!r}")
+finally:
+    for _k44d_env, _v44d_env in _env_bak44d.items():
+        if _v44d_env is not None:
+            os.environ[_k44d_env] = _v44d_env
+        else:
+            os.environ.pop(_k44d_env, None)
+    _importlib.reload(_mid)
+    gas._PROVIDER_PRICE_PER_MTok["groq"] = (
+        _mid.GROQ_PRICE_IN_USD_PER_1M, _mid.GROQ_PRICE_OUT_USD_PER_1M
+    )
+
 # ---------- T45-T48: modulo Telegram (struttura + CLI) ----------
 print("\n--- T45-T48: modulo Telegram ---")
 try:

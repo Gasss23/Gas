@@ -13,6 +13,7 @@ from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CON
 from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
 from brains.model_ids import (
     MODEL_GEMINI_LITE, MODEL_GEMINI_FLASH, MODEL_GROQ, MODEL_OPENROUTER, MODEL_OLLAMA,
+    GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
@@ -123,7 +124,7 @@ TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità
 _PROVIDER_PRICE_PER_MTok: Dict[str, Tuple[float, float]] = {
     "gemini-flash-lite": (0.10,  0.40),   # gemini-2.5-flash-lite: input / output
     "gemini-flash":      (0.30,  2.50),   # gemini-2.5-flash (no-thinking)
-    "groq":              (0.15,  0.60),   # openai/gpt-oss-120b (pay-as-you-go)
+    "groq":              (GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M),  # env-overridabili GAS_GROQ_PRICE_IN/OUT
     "openrouter":        (0.00,  0.00),   # meta-llama free tier → 0
     "ollama":            (0.00,  0.00),   # locale → 0
 }
