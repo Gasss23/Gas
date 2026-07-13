@@ -1,54 +1,98 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-13 — Aggiornamento stato_progetto.md ref merge PR #4 riserve #44 A/C
+**Sessione:** 2026-07-13 — fix riserva #44B prezzi Groq env-overridabili
+**Branch:** fix/riserva-44B-groq-prezzi-env
+**Commit motore:** 290a336
 
 ---
 
-## §0 DECISIONI UMANE RICHIESTE
+## § DECISIONI UMANE RICHIESTE
 
-1. **Creare e mergiare nuova PR** per portare `ced5e34` su main (branch `fix/review44-riserve-AC`).
-   CI run `29235746940` era in_progress al momento del commit di fine sessione. Una volta verde: PR + self-merge (0 approvazioni richieste).
-
----
-
-## §1 SCOPE & ESITO FETTE
-
-- **Fetta unica — aggiorna finding riserve #44 A/C in stato_progetto.md**: `FATTA`
-  Bullet `🟡 Riserve review #44` promosso a `✅ Riserve review #44 A e C — CHIUSE` con ref: Review #45 APPROVATO, merge PR #4 su main (3836111), CI run 29235274026 SUCCESS. Riserva B mantenuta `🟡 APERTA` con puntatore `gas.py:126`. Nessun file motore toccato.
+**Nessuna decisione umana richiesta.** La PR è pronta per self-merge dopo CI verde.
+Per aggiornare i prezzi Groq sul VPS: `GAS_GROQ_PRICE_IN` e `GAS_GROQ_PRICE_OUT`
+nel `.env`, poi riavvio Gas. Nessuna modifica al codice necessaria.
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## Sonda diagnostica
+
+Non eseguita (fetta di configurabilità pura, nessun percorso runtime alterato).
+
+---
+
+## `git diff --stat` reale della sessione
 
 ```
- reports/stato_progetto.md | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ brains/model_ids.py       |  9 +++++++++
+ gas.py                    |  3 ++-
+ tests/test_unit_kernel.py | 49 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 60 insertions(+), 1 deletion(-)
 ```
 
-## §3 GIT LOG --ONELINE (sessione)
+(Più reports/ — non conteggiati nel diff del motore)
+
+---
+
+## `git log` commit della sessione
 
 ```
-ced5e34 docs(stato): chiude riserve #44 A+C con ref merge reale PR #4 (3836111) + CI 29235274026
+290a336 fix(prezzi-groq): rende prezzi Groq env-overridabili (riserva #44B)
 ```
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+---
 
-Nessun diff motore, revisore non richiesto.
+## Delta test del motore
 
-## §5 DELTA TEST DEL MOTORE
+| Stato | Totale |
+|-------|--------|
+| PASS  | 219    |
+| FAIL  | 0      |
 
-Nessuna modifica a gas.py/tests/.
+Nuovi test aggiunti: **T44b**, **T44c** (prezzi Groq default e env-override).
+Delta rispetto alla sessione precedente: +2 test, tutti PASS.
 
-## §6 STATO CI
+---
 
-```
-in_progress		docs(stato): chiude riserve #44 A+C con ref merge reale PR #4 (383611…	CI	fix/review44-riserve-AC	push	29235746940	20s	2026-07-13T08:31:37Z
-completed	success	Merge pull request #4 from Gasss23/fix/review44-riserve-AC	CI	main	push	29235274026	59s	2026-07-13T08:23:34Z
-completed	success	docs(fine-task): handoff + ultimo_report + diff_sessione — riserve A+…	CI	fix/review44-riserve-AC	push	29234473189	38s	2026-07-13T08:10:10Z
-```
+## Verdetto revisore (integrale)
 
-Run `29235746940` in_progress sul commit di sessione `ced5e34`. Run `29235274026` SUCCESS = merge PR #4 su main.
+### Review #46 — prima passata (pre-fix)
 
-## §7 RISERVE APERTE
+> APPROVATO CON RISERVE
+>
+> C'è un bug non bloccante: le due righe `float(os.getenv(...))` in
+> `brains/model_ids.py` non hanno il `try/except`. Se qualcuno setta
+> `GAS_GROQ_PRICE_IN=abc` sul VPS, gas.py crasha all'avvio senza possibilità
+> di recupero. Fix triviale (due try/except, nessun logging necessario).
+> Da chiudere prima del deploy, non prima del commit.
 
-- 🟡 **Riserva B review #44** — Prezzi Groq $0.15/$0.60 hardcoded in `gas.py:126`: verificare pricing page al deploy VPS. Non bloccante.
+### Review #46 — seconda passata (post-fix)
+
+> **APPROVATO**
+>
+> Il fix chiude correttamente la riserva #44B. Il codice è coerente con la
+> filosofia "zero crash", i test coprono i path rilevanti, e l'invariante del
+> modulo standalone è rispettata.
+>
+> Osservazione di design: il `try` avvolge entrambe le `float()` nello stesso
+> blocco — se `GAS_GROQ_PRICE_IN` è valido ma `GAS_GROQ_PRICE_OUT` è invalido,
+> entrambi cadono al default. Scelta di coerenza (input/output accoppiati),
+> difendibile, non bloccante.
+>
+> Osservazione minore: non esiste un test per il ramo fallback (env invalido →
+> default). La logica è banale e la copertura sarebbe di valore quasi nullo.
+
+---
+
+## Stato CI
+
+**In attesa.** PR non ancora aperta al momento di questo handoff.
+CI `unit-suite` richiesta dal ruleset `main-lock` prima del merge.
+Atteso: SUCCESS (suite locale 219/0).
+
+---
+
+## Riserve aperte residue (da stato_progetto.md)
+
+- **R-legacy-slice**: `brains/claude_brain.py:38` raw slice `[-8:]` — file legacy
+  non wired, inerte. Diventa bloccante solo se il brain legacy viene ri-agganciato.
+- Tutte le riserve #44 (A, B, C) ora CHIUSE.

@@ -126,7 +126,7 @@ Componenti attive:
 
 - ✅ **Riserve review #44 A e C — CHIUSE** (2026-07-13): commento inline reasoning_effort nei 3 brain (groq_brain.py, claude_brain.py, gemini_brain.py) + T36c legato a MODEL_GROQ (fonte unica). Review #45 APPROVATO. Merge PR #4 su main (3836111), CI run 29235274026 SUCCESS.
   (A) ✅ **CHIUSO** — commento inline aggiunto che documenta il vincolo reasoning_effort="low" e il rischio di override con modello non-reasoning.
-  (B) 🟡 **APERTA** — Prezzi Groq $0.15/$0.60 hardcoded in gas.py:126: verificare pricing page al deploy VPS.
+  (B) ✅ **CHIUSO** (2026-07-13) — Prezzi Groq ora in `brains/model_ids.py` come costanti env-overridabili `GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT` (fallback 0.15/0.60). Commit `290a336`, PR fix/riserva-44B-groq-prezzi-env. Review #46 APPROVATO.
   (C) ✅ **CHIUSO** — T36c ora usa la costante MODEL_GROQ (import da brains/model_ids.py) invece del literal.
 - ⚠️ **Nota di processo — scope creep sessione 2026-07-08**: fetta concordata = migrazione Groq; fuori mandato: (1) chiuso R-groq-dup (era deferito a slice separata), (2) toccato CLAUDE.md, (3) toccato runbook_s1. Esito tecnico corretto (review #44), ma lo scope lo decide l'operatore: registrata recidiva dell'anti-pattern. Mitigazione strutturale: ruleset `main-lock` attivo dal 2026-07-09 (no push diretto su main, CI `unit-suite` required, self-merge).
 
