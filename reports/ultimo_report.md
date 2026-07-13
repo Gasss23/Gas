@@ -1,38 +1,26 @@
-# Ultimo Report — 2026-07-13
-## Task: Riserva #44B — prezzi Groq env-overridabili + copertura fallback (T44d)
+# Report: doc-only — banca decisione Cerebras NO-GO (2026-07-13)
 
-**Branch:** fix/riserva-44B-groq-prezzi-env
-**PR:** #6 — CI SUCCESS, pronta per self-merge
+## File toccati
 
----
+- `reports/stato_progetto.md` — aggiornata riga "Ultimo aggiornamento"; aggiunto blocco verbatim Cerebras NO-GO nella sezione Finding/note, prima di "Prossimi passi".
+- `reports/roadmap.md` — item `**a) DECISO — Cerebras zai-glm-4.7**` → `~~DECISO~~ -> SCARTATO/NO-GO` con rimando a stato_progetto.md e data 2026-07-13.
 
-## DECISIONI UMANE RICHIESTE
-
-**Nessuna.** Self-merge PR #6 da browser dopo lettura di questo report.
-
----
-
-## Esito fette
-
-- **Fetta 1 — prezzi Groq env-overridabili**: `FATTA`
-  - `brains/model_ids.py`: aggiunte `GROQ_PRICE_IN_USD_PER_1M` / `GROQ_PRICE_OUT_USD_PER_1M` lette da `GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT`, con `try/except` contro valori non numerici (fallback silenzioso ai default 0.15/0.60).
-  - `gas.py`: import delle costanti; sostituito il literal `(0.15, 0.60)` in `_PROVIDER_PRICE_PER_MTok["groq"]`.
-  - Test T44b (default) + T44c (env-override): entrambi PASS.
-  - Gate revisore #46 (due passate): APPROVATO.
-
-- **Fetta 2 — copertura ramo fallback (T44d)**: `FATTA`
-  - Aggiunto T44d: setta `GAS_GROQ_PRICE_IN="abc"` e `GAS_GROQ_PRICE_OUT="xyz"`, verifica nessuna eccezione e costanti a default 0.15/0.60.
-  - Solo test — gate revisore formale non obbligatorio; suite reale eseguita.
-
-## Suite test finale
+## git diff --stat reale
 
 ```
-=== RIEPILOGO: 220 PASS, 0 FAIL ===
-[PASS] T44b prezzi Groq default: (0.15, 0.60) da model_ids — prezzi=(0.15, 0.6)
-[PASS] T44c prezzi Groq env-override: _daily_cost_usd usa i nuovi prezzi — calcolato=3.0000 atteso=3.0000 p_in=1.0 p_out=2.0
-[PASS] T44d env non parsabile (abc/xyz) → no crash, default 0.15/0.60 — p_in=0.15 p_out=0.6
+reports/roadmap.md        |  8 ++------
+reports/stato_progetto.md | 22 +++++++++++++++++++++-
+2 files changed, 23 insertions(+), 7 deletions(-)
 ```
 
-## Anomalie
+## STOP GATE 1 verificato
 
-Nessuna.
+Nessun file del motore (gas.py, brains/, modules/, tests/) è stato toccato. Doc-only confermato. Gate revisore non applicabile.
+
+## STOP GATE 2 verificato
+
+Branch `docs/cerebras-no-go`, nessun push su main. PR aperta per merge solo a CI verde.
+
+## Esito
+
+COMPLETATO. La decisione Cerebras NO-GO è ora bankizzata in entrambe le fonti canoniche: stato_progetto.md (dettaglio integrale verbatim) e roadmap.md (voce aggiornata con rimando).

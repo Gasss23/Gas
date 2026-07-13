@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-13** (hardening token Claude Code — verificato CHIUSO via curl: token Codespace OAuth non ha Administration su ruleset)
+> Ultimo aggiornamento: **2026-07-13** (Cerebras zai-glm-4.7 — sonda NO-GO; bancato in finding)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -70,6 +70,26 @@ Componenti attive:
 - âœ… **R-tel-1** (chiuso review #37, 2026-06-27) â€” `_free_names` derivato da `FREE_RUNGS`; `name not in _free_names` come flag `obbligatoria`; `reason` nel JSONL = livello ("WARN"/"KO"). T40/T40b confermano. Riserve cosmetiche #37: (1) `reason` perde il testo descrittivo (â†’ `detail` futuro); (2) ollama non assertito in T40 (GAS_OLLAMA_URL assente â†’ skip).
 - âœ… **Riserve review #35** (chiuse review #36, 2026-06-27) â€” T39b-reason/T39c-reason aggiungono assert su `disable_reason`; T39f (ramo `sqlite3.Error`) e T39g (ramo embedder assenti) coprono i 4 rami. Tutti PASS.
 - ðŸŸ¡ **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
+
+
+### Cerebras zai-glm-4.7 free — SCARTATO come rung-4 (sonda live 2026-07-13, Codespace)
+NO-GO. Due limiti ambientali misurati live, entrambi bloccanti per un paracadute h24 non presidiato:
+1. Cap contesto free tier = 8192 token — MISURATO verbatim dall'API (context_length_exceeded ... limit is 8192).
+   La doc ufficiale del modello dichiara 64k ED È FALSA. 8192 non basta per system + memory pin + tool schema
+   + window 24k char; e il rung-4 scatta sui turni carichi (window piena) = contesto massimo quando il ceiling
+   è più stretto (correlazione cattiva).
+2. Coda free satura — 429 queue_exceeded su tentativi ad orari diversi. Disponibilità non garantita fuori dal
+   nostro controllo → viola "paracadute affidabile".
+Tool call (Gate 2) mai testata (coda satura), ma irrilevante: i due limiti bastano allo scarto.
+Rung-4 resta OpenRouter. Motore NON toccato. Ri-valutabile SOLO su tier a pagamento Cerebras (131k, no coda)
+= decisione di budget separata.
+Sotto-lezioni:
+- disable_reasoning su Cerebras DEPRECATO dal 2026-07-21; parametro vivo = reasoning_effort="none".
+- Metodo sonde: uno script che segna FAIL su 403/429 è cieco al livello rete/coda. Un "FAIL" della sonda NON è
+  fallimento di merito finché non si escludono blocco Cloudflare (403 err 1010 → risolto con User-Agent browser)
+  e coda satura (429).
+Prossimo candidato rung eventuale = Mistral (sessione a parte, sonda data-policy prima dei lead reali nel CRM).
+Valutare anche SE serve un 5° rung (cascata già Gemini×2 + Groq + OpenRouter + Ollama).
 
 ## Prossimi passi (in ordine di prioritÃ )
 
