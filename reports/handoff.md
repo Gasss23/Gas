@@ -36,6 +36,9 @@ Non eseguita (fetta di configurabilità pura, nessun percorso runtime alterato).
 ## `git log` commit della sessione
 
 ```
+b3c8bb1 test(prezzi-groq): T44d — copertura ramo fallback env non parsabile
+710df64 docs(handoff): aggiorna stato CI — unit-suite PASS (run 29238671218)
+fe225ef docs(fine-task): ultimo_report + handoff + diff_sessione — riserva #44B chiusa
 290a336 fix(prezzi-groq): rende prezzi Groq env-overridabili (riserva #44B)
 ```
 
@@ -45,11 +48,11 @@ Non eseguita (fetta di configurabilità pura, nessun percorso runtime alterato).
 
 | Stato | Totale |
 |-------|--------|
-| PASS  | 219    |
+| PASS  | 220    |
 | FAIL  | 0      |
 
-Nuovi test aggiunti: **T44b**, **T44c** (prezzi Groq default e env-override).
-Delta rispetto alla sessione precedente: +2 test, tutti PASS.
+Nuovi test aggiunti: **T44b**, **T44c**, **T44d** (prezzi Groq default, env-override e fallback anti-crash).
+Delta rispetto alla sessione precedente: +3 test, tutti PASS.
 
 ---
 
@@ -85,8 +88,10 @@ Delta rispetto alla sessione precedente: +2 test, tutti PASS.
 
 ## Stato CI
 
-**SUCCESS.** PR #6 — CI `unit-suite` PASS (run 29238671218, 32s).
-Pronta per self-merge: https://github.com/Gasss23/Gas/pull/6
+- Run 29238671218 (commit 290a336+fe225ef): **SUCCESS** (32s)
+- Run 29240158307 (commit b3c8bb1, T44d): **pending** al momento del handoff
+
+PR #6 pronta per self-merge dopo CI verde: https://github.com/Gasss23/Gas/pull/6
 
 ---
 
