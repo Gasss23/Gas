@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-09** (registrazione merge model-ids-fonte-unica + finding R-legacy-slice + caveat suite Codespace — task doc-only)
+> Ultimo aggiornamento: **2026-07-13** (hardening token Claude Code — verificato CHIUSO via curl: token Codespace OAuth non ha Administration su ruleset)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -132,4 +132,4 @@ Componenti attive:
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ⬜ **Installare `gh` CLI** — comodità, non requisito: il merge PR si fa già da browser o da Codespace (gh preinstallato). Serve solo per merge doc-only da terminale locale. Consigliato `sudo apt install gh`. Non bloccante.
-- ⬜ **Hardening token Claude Code** (sicurezza, priorità media): il token che Claude Code impugna (SSH key WSL o GITHUB_TOKEN Codespace) può ancora, via API, modificare/spegnere il ruleset `main-lock` stesso. Il lucchetto ferma gli slip di processo, NON un agente con credenziali da admin. Fix: sostituire l'auth con un fine-grained PAT limitato a Contents:RW + Pull requests:RW, SENZA scope Administration → il ruleset diventa amministrabile solo da browser. Task ~10 min, separato.
+- ✅ **Hardening token Claude Code** — verificato 2026-07-13: token Codespace OAuth (`ghu_*`) non ha Administration per default. Tentativo di scrittura su ruleset `main-lock` (id 18805824) → 404/403 confermato via curl. Lucchetto non aggirabile dal token di Claude Code. CHIUSO.
