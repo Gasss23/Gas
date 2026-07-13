@@ -2772,6 +2772,37 @@ finally:
         _mid.GROQ_PRICE_IN_USD_PER_1M, _mid.GROQ_PRICE_OUT_USD_PER_1M
     )
 
+# ---------- T44d: fallback anti-crash env non parsabile (riserva #44B review #46) ----------
+print("\n--- T44d: fallback env non parsabile ---")
+# Verifica che il try/except in brains/model_ids.py copra i valori non numerici:
+# sia GAS_GROQ_PRICE_IN="abc" sia GAS_GROQ_PRICE_OUT="xyz" → nessuna eccezione,
+# entrambe le costanti ricadono sui default 0.15 / 0.60.
+# Il try avvolge entrambe le float() nello stesso blocco (scelta di coerenza): se anche
+# solo una delle due env è invalida, entrambe cadono al default.
+_env_bak44d = {k: os.environ.pop(k, None) for k in ("GAS_GROQ_PRICE_IN", "GAS_GROQ_PRICE_OUT")}
+os.environ["GAS_GROQ_PRICE_IN"]  = "abc"
+os.environ["GAS_GROQ_PRICE_OUT"] = "xyz"
+try:
+    _mid_reload44d = _importlib.reload(_mid)
+    _p_in_44d  = _mid_reload44d.GROQ_PRICE_IN_USD_PER_1M
+    _p_out_44d = _mid_reload44d.GROQ_PRICE_OUT_USD_PER_1M
+    check("T44d env non parsabile (abc/xyz) → no crash, default 0.15/0.60",
+          abs(_p_in_44d - 0.15) < 1e-9 and abs(_p_out_44d - 0.60) < 1e-9,
+          f"p_in={_p_in_44d} p_out={_p_out_44d}")
+except Exception as _e44d:
+    check("T44d env non parsabile (abc/xyz) → no crash, default 0.15/0.60",
+          False, f"eccezione sollevata: {_e44d!r}")
+finally:
+    for _k44d_env, _v44d_env in _env_bak44d.items():
+        if _v44d_env is not None:
+            os.environ[_k44d_env] = _v44d_env
+        else:
+            os.environ.pop(_k44d_env, None)
+    _importlib.reload(_mid)
+    gas._PROVIDER_PRICE_PER_MTok["groq"] = (
+        _mid.GROQ_PRICE_IN_USD_PER_1M, _mid.GROQ_PRICE_OUT_USD_PER_1M
+    )
+
 # ---------- T45-T48: modulo Telegram (struttura + CLI) ----------
 print("\n--- T45-T48: modulo Telegram ---")
 try:
