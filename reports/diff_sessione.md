@@ -1,17 +1,21 @@
-# DIFF SESSIONE — 2026-07-08
+# DIFF SESSIONE — 2026-07-13
 
 > Riscritto a ogni sessione. Storia completa: git log.
 
-## File toccati (da `git diff --stat 62f4df2..HEAD`)
+**Task:** Chiusura riserve A e C della review #44
+**Range:** b2a0a07..HEAD (branch fix/review44-riserve-AC)
+
+## File toccati
 
 | File | Cosa è cambiato e perché |
-|---|---|
-| `brains/model_ids.py` | Default `MODEL_GROQ`: `llama-3.3-70b-versatile` → `openai/gpt-oss-120b` |
-| `brains/groq_brain.py` | Aggiunto `reasoning_effort: "low"` al payload principale Groq |
-| `brains/claude_brain.py` | Aggiunto `reasoning_effort: "low"` al payload Groq fallback (rung 2); aggiornata stringa log |
-| `brains/gemini_brain.py` | Aggiunto `reasoning_effort: "low"` al payload Groq fallback (rung 3) |
-| `gas.py` | Prezzi Groq aggiornati: `0.59/0.79` → `0.15/0.60` per MTok (nuova tabella gpt-oss-120b) |
-| `tests/test_unit_kernel.py` | T36c: stringa model ID `"llama-3.3-70b"` → `"openai/gpt-oss-120b"` per allineamento |
-| `.claude/agents/memoria_revisore.md` | Aggiunta lezione #44: parametri capability-vincolati hardcoded con modello env-overridabile |
-| `reports/stato_progetto.md` | Finding R-groq-slash e R-groq-dup chiusi; review count → #44; data → 2026-07-08 |
-| `reports/ultimo_report.md` | Report task: 4/4 punti completati, round-trip verbatim, verdetto revisore #44 |
+|------|--------------------------|
+| `brains/groq_brain.py` | Aggiunto commento 3 righe sopra `"reasoning_effort": "low"` — documenta il vincolo (gpt-oss-120b reasoning model) e il rischio di override. Fetta A. |
+| `brains/claude_brain.py` | Aggiunto commento inline prima della chiamata Groq fallback — stesso razionale. Fetta A. |
+| `brains/gemini_brain.py` | Aggiunto commento inline sopra `"reasoning_effort": "low"` nel fallback Groq. Fetta A. |
+| `tests/test_unit_kernel.py` | Aggiunto `from brains.model_ids import MODEL_GROQ` top-level; T36c sostituisce literal `"openai/gpt-oss-120b"` con `MODEL_GROQ`. Fetta C. |
+| `reports/stato_progetto.md` | Riserve A e C marchiate CHIUSE; riserva B confermata aperta. |
+| `reports/ultimo_report.md` | Report del task riscritto. |
+| `reports/handoff.md` | Dossier di fine sessione riscritto. |
+| `CLAUDE.md` | Modifiche da sessioni precedenti (non di questa sessione). |
+| `reports/roadmap.md` | Modifiche da sessioni precedenti (non di questa sessione). |
+| `reports/ultima_risposta.md` | Aggiornato da hook scrivi_rep (sessioni precedenti). |
