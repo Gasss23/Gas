@@ -66,6 +66,7 @@ def chat(history, tools_schema=None, **kwargs):
                 "model": MODEL_GROQ,
                 "messages": messages,
                 "temperature": 0.3,
+                # obbligatorio: gpt-oss-120b è reasoning; override non-reasoning → 4xx silente, §9 regge
                 "reasoning_effort": "low"
             }, timeout=15)
             if g_res.status_code == 200:

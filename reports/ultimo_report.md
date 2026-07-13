@@ -1,24 +1,41 @@
-# Report task — 2026-07-13
+# Report — Chiusura riserve A e C della review #44
 
-## Task
-Verifica e chiusura item **Hardening token Claude Code** (DA FARE, aperto 2026-07-09).
+**Data:** 2026-07-13
+**Branch:** fix/review44-riserve-AC
+**PR:** #4 — https://github.com/Gasss23/Gas/pull/4
+**Commit motore:** abc0894
+**Commit report:** 030cf21
+**Review revisore:** #45 — APPROVATO (nessuna riserva)
 
-## Esito
-**CHIUSO ✅** — nessuna azione correttiva necessaria.
+---
 
-## Evidenza
-Tentativo di PUT su ruleset `main-lock` (id 18805824) via curl con token Codespace OAuth (`ghu_*`):
+## DECISIONI UMANE RICHIESTE
 
-```
-Resource not accessible by integration
-```
+- Merge PR #4 (dopo CI verde — già SUCCESS su entrambi i commit di sessione).
+- Riserva B (prezzi Groq $0.15/$0.60): verificare sulla pricing page di Groq al deploy VPS. Fuori scope di questa sessione.
 
-Il token `ghu_*` (GitHub OAuth/Codespace) non ha scope `Administration` per default → impossibile modificare o disabilitare il ruleset `main-lock` via API. Il lucchetto su `main` non è aggirabile dal token che Claude Code impugna in Codespace.
+---
 
-## Modifica al progetto
-- `reports/stato_progetto.md`: bullet `⬜ Hardening token Claude Code` → `✅ CHIUSO`, data aggiornata a 2026-07-13.
-- Nessuna modifica al motore (gas.py, brains/, modules/, tests/).
+## Esito fette
 
-## Branch / PR
-- Branch: `docs/hardening-token-chiuso`
-- PR: #3 — https://github.com/Gasss23/Gas/pull/3
+- **Fetta A — commento inline reasoning_effort**: `FATTA`
+  Aggiunto commento in `brains/groq_brain.py`, `brains/claude_brain.py`, `brains/gemini_brain.py`.
+
+- **Fetta B — verifica prezzi Groq**: `SALTATA — esplicitamente fuori scope per istruzione operatore`
+  Riserva B resta aperta in stato_progetto.md.
+
+- **Fetta C — T36c usa costante MODEL_GROQ**: `FATTA`
+  Sostituito literal `"openai/gpt-oss-120b"` con `MODEL_GROQ` in T36c; aggiunto import top-level.
+
+---
+
+## Suite test
+
+**217 PASS, 0 FAIL**
+Ambiente: Codespace. I test bwrap (T9a/T9c, T13a-T13e) non sono validabili localmente — verifica bwrap reale demandata a CI/WSL.
+
+---
+
+## Anomalie / note
+
+Nessuna anomalia. Il grep ha rivelato che `reasoning_effort: "low"` è presente in tre file (groq_brain.py, claude_brain.py, gemini_brain.py) — non solo nel brain principale. Commentati tutti e tre per coerenza.

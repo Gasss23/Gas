@@ -124,10 +124,10 @@ Componenti attive:
 
 
 
-- 🟡 **Riserve review #44** (2026-07-08, non bloccanti — NB: ultimo_report.md le dichiarava "tracciate qui" ma non lo erano; sanato 2026-07-09):
-  (A) `reasoning_effort: "low"` hardcoded nei payload Groq: se `GAS_MODEL_GROQ` viene sovrascritto con un modello non-reasoning il rung fallisce 4xx silente — il fail-safe §9 regge, la diagnostica è opaca. Suggerito commento inline.
-  (B) Prezzi Groq $0.15/$0.60 non verificabili staticamente: confrontare con la pricing page al deploy VPS.
-  (C) **T36c** asserisce la stringa letterale `openai/gpt-oss-120b` invece della costante `MODEL_GROQ` importata: alla prossima migrazione il test va aggiornato a mano (rosso rumoroso, non menzogna). Cosmetica, da sanare alla prossima fetta sui brain.
+- 🟡 **Riserve review #44** (2026-07-08 — A e C chiuse 2026-07-13 PR #4, commit abc0894; B aperta):
+  (A) ✅ **CHIUSO** — commento inline aggiunto in groq_brain.py, claude_brain.py, gemini_brain.py che documenta il vincolo reasoning_effort="low" e il rischio di override con modello non-reasoning.
+  (B) Prezzi Groq $0.15/$0.60 non verificabili staticamente: confrontare con la pricing page al deploy VPS. (fuori scope sessione 2026-07-13)
+  (C) ✅ **CHIUSO** — T36c ora usa la costante MODEL_GROQ (import da brains/model_ids.py) invece del literal.
 - ⚠️ **Nota di processo — scope creep sessione 2026-07-08**: fetta concordata = migrazione Groq; fuori mandato: (1) chiuso R-groq-dup (era deferito a slice separata), (2) toccato CLAUDE.md, (3) toccato runbook_s1. Esito tecnico corretto (review #44), ma lo scope lo decide l'operatore: registrata recidiva dell'anti-pattern. Mitigazione strutturale: ruleset `main-lock` attivo dal 2026-07-09 (no push diretto su main, CI `unit-suite` required, self-merge).
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)

@@ -75,6 +75,7 @@ def chat(messages, tools_schema=None):
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         groq_headers = {"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}", "Content-Type": "application/json"}
         try:
+            # reasoning_effort="low" obbligatorio: gpt-oss-120b è reasoning; override con non-reasoning → 4xx Groq silente, §9 regge ma diagnostica opaca
             g_res = requests.post(groq_url, headers=groq_headers, json={"model": MODEL_GROQ, "messages": formatted_messages, "temperature": 0.2, "reasoning_effort": "low"}, timeout=15)
             if g_res.status_code == 200:
                 response = g_res
