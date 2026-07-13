@@ -1,38 +1,45 @@
 # Ultimo Report — 2026-07-13
-## Task: Riserva #44B — prezzi Groq env-overridabili + copertura fallback (T44d)
+## Task: Chiusura canonici riserva #44B (doc-only)
 
 **Branch:** fix/riserva-44B-groq-prezzi-env
-**PR:** #6 — CI SUCCESS, pronta per self-merge
+**Tipo:** doc-only — nessun file motore toccato
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-**Nessuna.** Self-merge PR #6 da browser dopo lettura di questo report.
+**Nessuna.** Self-merge PR dopo CI verde (check unit-suite required anche per doc-only, main lucchettato).
 
 ---
 
 ## Esito fette
 
-- **Fetta 1 — prezzi Groq env-overridabili**: `FATTA`
-  - `brains/model_ids.py`: aggiunte `GROQ_PRICE_IN_USD_PER_1M` / `GROQ_PRICE_OUT_USD_PER_1M` lette da `GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT`, con `try/except` contro valori non numerici (fallback silenzioso ai default 0.15/0.60).
-  - `gas.py`: import delle costanti; sostituito il literal `(0.15, 0.60)` in `_PROVIDER_PRICE_PER_MTok["groq"]`.
-  - Test T44b (default) + T44c (env-override): entrambi PASS.
-  - Gate revisore #46 (due passate): APPROVATO.
+- **Fetta unica — aggiornamento canonici**: `FATTA`
 
-- **Fetta 2 — copertura ramo fallback (T44d)**: `FATTA`
-  - Aggiunto T44d: setta `GAS_GROQ_PRICE_IN="abc"` e `GAS_GROQ_PRICE_OUT="xyz"`, verifica nessuna eccezione e costanti a default 0.15/0.60.
-  - Solo test — gate revisore formale non obbligatorio; suite reale eseguita.
+### Modifiche a reports/stato_progetto.md
 
-## Suite test finale
+1. **Contatore review → #46** (era #44): riga "Stato motore" e istituzione C aggiornate
+   con `ultima #46, 2026-07-13`.
 
-```
-=== RIEPILOGO: 220 PASS, 0 FAIL ===
-[PASS] T44b prezzi Groq default: (0.15, 0.60) da model_ids — prezzi=(0.15, 0.6)
-[PASS] T44c prezzi Groq env-override: _daily_cost_usd usa i nuovi prezzi — calcolato=3.0000 atteso=3.0000 p_in=1.0 p_out=2.0
-[PASS] T44d env non parsabile (abc/xyz) → no crash, default 0.15/0.60 — p_in=0.15 p_out=0.6
-```
+2. **Conteggio test → 220 PASS** (erano 214/216): aggiornato il baseline con riferimento a
+   CI run 29240223711 (2026-07-13) — 220 PASS, 0 FAIL, 2 SKIP.
 
-## Anomalie
+3. **Riserva #44B → CHIUSA** verbatim:
+   > prezzi Groq env-overridabili (GAS_GROQ_PRICE_IN/GAS_GROQ_PRICE_OUT), valore $0.15/$0.60
+   > verificato su groq.com/pricing 2026-07-13, try/except anti-crash coperto da T44d,
+   > CI run 29240223711 SUCCESS, merge PR #6. Review #46 APPROVATO.
 
-Nessuna.
+4. **Micro-finding di processo** (aggiunto dopo nota scope-creep):
+   > handoff diff --stat riciclato dalla sessione precedente, non rigenerato — svista di copia;
+   > log/conteggio/CI erano coerenti. Claude Code rigeneri sempre git diff --stat reale, mai riciclarlo.
+
+5. **Promemoria DA FARE — locale Giulia**:
+   > Locale Giulia da riallineare a origin/main (PR #6 mergiata sul remoto, locale ancora
+   > indietro). Al rientro, PRIMA di lavorare: git fetch origin + git merge --ff-only origin/main.
+   > Non creare branch da locale vecchio.
+
+## Gate di stop
+
+- Nessun file motore toccato (gas.py, brains/, modules/, tests/).
+- Solo doc: reports/stato_progetto.md + reports/ultimo_report.md.
+- Nessuna review revisore richiesta (commit doc-only).

@@ -1,12 +1,12 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-13** (hardening token Claude Code — verificato CHIUSO via curl: token Codespace OAuth non ha Administration su ruleset)
+> Ultimo aggiornamento: **2026-07-13** (chiusura riserva #44B — prezzi Groq env-overridabili, 220 PASS, 46 review)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **44 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #44, 2026-07-08). Suite (locale WSL bwrap, sonda 2026-07-03): **214 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). Con API keys live: 216 PASS.
+FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **46 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #46, 2026-07-13). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). CI run 29240223711 (2026-07-13): **220 PASS** ✅.
 CI GitHub Actions: run #29031945029 su `87ad26f` ✅ **SUCCESS** ✅ (ultimo run su main, 2026-07-09).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -90,7 +90,7 @@ Componenti attive:
 - **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **44 review**. Ultima: **#44** (migrazione gpt-oss-120b + reasoning_effort low, 2026-07-08). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **46 review**. Ultima: **#46** (prezzi Groq env-overridabili T44d, 2026-07-13). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** â€” `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); Â§1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
@@ -126,10 +126,12 @@ Componenti attive:
 
 - ✅ **Riserve review #44 A e C — CHIUSE** (2026-07-13): commento inline reasoning_effort nei 3 brain (groq_brain.py, claude_brain.py, gemini_brain.py) + T36c legato a MODEL_GROQ (fonte unica). Review #45 APPROVATO. Merge PR #4 su main (3836111), CI run 29235274026 SUCCESS.
   (A) ✅ **CHIUSO** — commento inline aggiunto che documenta il vincolo reasoning_effort="low" e il rischio di override con modello non-reasoning.
-  (B) ✅ **CHIUSO** (2026-07-13) — Prezzi Groq ora in `brains/model_ids.py` come costanti env-overridabili `GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT` (fallback 0.15/0.60). Commit `290a336`, PR fix/riserva-44B-groq-prezzi-env. Review #46 APPROVATO.
+  (B) ✅ **CHIUSA** (2026-07-13) — prezzi Groq env-overridabili (`GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT`), valore $0.15/$0.60 verificato su groq.com/pricing 2026-07-13, try/except anti-crash coperto da T44d, CI run 29240223711 SUCCESS, merge PR #6. Review #46 APPROVATO.
   (C) ✅ **CHIUSO** — T36c ora usa la costante MODEL_GROQ (import da brains/model_ids.py) invece del literal.
 - ⚠️ **Nota di processo — scope creep sessione 2026-07-08**: fetta concordata = migrazione Groq; fuori mandato: (1) chiuso R-groq-dup (era deferito a slice separata), (2) toccato CLAUDE.md, (3) toccato runbook_s1. Esito tecnico corretto (review #44), ma lo scope lo decide l'operatore: registrata recidiva dell'anti-pattern. Mitigazione strutturale: ruleset `main-lock` attivo dal 2026-07-09 (no push diretto su main, CI `unit-suite` required, self-merge).
+- ℹ️ **Micro-finding di processo — handoff diff --stat riciclato** (2026-07-13): il `diff --stat` nel handoff era riciclato dalla sessione precedente, non rigenerato — svista di copia; log/conteggio/CI erano coerenti. Nota: Claude Code rigeneri sempre `git diff --stat` reale nel handoff, mai riciclarlo.
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ⬜ **Installare `gh` CLI** — comodità, non requisito: il merge PR si fa già da browser o da Codespace (gh preinstallato). Serve solo per merge doc-only da terminale locale. Consigliato `sudo apt install gh`. Non bloccante.
 - ✅ **Hardening token Claude Code** — verificato 2026-07-13: token Codespace OAuth (`ghu_*`) non ha Administration per default. Tentativo di scrittura su ruleset `main-lock` (id 18805824) → 404/403 confermato via curl. Lucchetto non aggirabile dal token di Claude Code. CHIUSO.
+- ⬜ **Locale Giulia da riallineare a origin/main** (PR #6 mergiata sul remoto, locale ancora indietro). Al rientro, PRIMA di lavorare: `git fetch origin` + `git merge --ff-only origin/main`. Non creare branch da locale vecchio.
