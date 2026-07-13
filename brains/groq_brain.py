@@ -27,6 +27,9 @@ def chat(messages, tools_schema=None):
         "model": MODEL_GROQ,
         "messages": messages,
         "temperature": 0.1,
+        # obbligatorio: gpt-oss-120b è un reasoning model. Se GAS_MODEL_GROQ viene
+        # sovrascritto con un modello non-reasoning, Groq risponde 4xx (silente via §9);
+        # il fallthrough regge ma la diagnostica è opaca.
         "reasoning_effort": "low"
     }
     

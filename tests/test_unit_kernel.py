@@ -15,6 +15,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import gas
 from gas import GasKernel
+from brains.model_ids import MODEL_GROQ
 
 PASS, FAIL = [], []
 
@@ -2247,7 +2248,7 @@ _d36c = tempfile.mkdtemp(prefix="gas_tok36c_")
 subprocess.run(["git", "init", "-q", _d36c], check=True, capture_output=True)
 k36c = GasKernel(root_dir=_d36c)
 k36c._log_tokens("gemini-flash-lite", "gemini-2.5-flash-lite", 1000, 200)
-k36c._log_tokens("groq", "openai/gpt-oss-120b", 500, 100)
+k36c._log_tokens("groq", MODEL_GROQ, 500, 100)
 k36c._log_tokens("gemini-flash-lite", "gemini-2.5-flash-lite", 2000, 400)
 _buf36c = io.StringIO()
 with redirect_stdout(_buf36c):
