@@ -85,9 +85,8 @@ Delta rispetto alla sessione precedente: +2 test, tutti PASS.
 
 ## Stato CI
 
-**In attesa.** PR non ancora aperta al momento di questo handoff.
-CI `unit-suite` richiesta dal ruleset `main-lock` prima del merge.
-Atteso: SUCCESS (suite locale 219/0).
+**SUCCESS.** PR #6 — CI `unit-suite` PASS (run 29238671218, 32s).
+Pronta per self-merge: https://github.com/Gasss23/Gas/pull/6
 
 ---
 
