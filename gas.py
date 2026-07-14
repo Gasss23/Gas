@@ -2156,6 +2156,27 @@ def compress_history_cmd(root_dir: Optional[str] = None) -> int:
     return 0
 
 
+def check_dups_cmd(root_dir: Optional[str] = None) -> int:
+    """Comando `gas check-dups`: rilevamento duplicati email nel CRM (sola lettura).
+    Scrive nel diario una riga di segnalazione per ogni coppia trovata e stampa
+    il rapporto. Zero token LLM. Exit 0 anche se ci sono sospetti (WARN, non FAIL)."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    mem = MemoryStore(default_db_path(root))
+    print("\n=== GAS — Check duplicati email CRM ===")
+    if not mem.available:
+        print("FAIL — memoria non disponibile (DB assente o corrotto).")
+        return 1
+    coppie = mem.rileva_duplicati_email()
+    if not coppie:
+        print("OK — nessun sospetto duplicato email trovato.")
+        return 0
+    print(f"WARN — {len(coppie)} coppia/e sospetta/e (email condivisa cross-campo):")
+    for c in coppie:
+        print(f"  {c['chiave_a']!r} ~ {c['chiave_b']!r}  (email: {c['email']})")
+    print("Segnalazione scritta nel diario. Fondere con: _unisci_contatti.")
+    return 0
+
+
 def main():
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "version":
@@ -2188,6 +2209,8 @@ def main():
         sys.exit(eval_vectors_cmd(query=query, k=k))
     if len(sys.argv) > 1 and sys.argv[1] == "compress-history":
         sys.exit(compress_history_cmd())
+    if len(sys.argv) > 1 and sys.argv[1] == "check-dups":
+        sys.exit(check_dups_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())

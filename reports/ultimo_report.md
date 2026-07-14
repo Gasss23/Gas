@@ -1,151 +1,78 @@
-# SONDA R-crm-1b — Fetta 0: anatomia del CRM attuale
+# R-crm-1b Fetta 1 — Rilevamento duplicati email
 
 **Sessione:** feature/crm-dup-detect — 2026-07-14
-**Scope:** sonda di lettura del codice reale. NESSUN codice scritto.
+**Scope:** implementazione rilevatore duplicati email cross-campo. NESSUNA fusione automatica.
+**Review:** #47 — APPROVATO CON RISERVE (riserve minori tracciate in stato_progetto.md)
 
 ---
 
-## Domanda 1 — Come si costruisce `chiave_norm` in `upsert_contatto`?
+## Cosa è stato fatto
 
-Il tool `salva_contatto` del loop chiama `gas.py:1221` → `_salva_contatto` → `memory.upsert_contatto`.
+### 1. `modules/memory/store.py` — rilevatore sola lettura
 
-In `store.py:376`:
+**`_is_email(valore)`** (staticmethod, puro, fail-safe):
+- Pattern minimale: almeno 1 char prima di `@`, dominio con punto e TLD non vuoto
+- Mai solleva, ritorna `False` su qualsiasi input malformato
 
-```python
-chiave_norm = normalizza_chiave(chiave)
-```
+**`rileva_duplicati_email() → List[Dict]`**:
+- Legge tutti i contatti VIVI (`merged_into IS NULL`)
+- Estrae email da `chiave_norm` e da `contatto` per ogni scheda, normalizzate con `normalizza_chiave`
+- Costruisce indice `email → {id: scheda}` (dedup per id all'interno della stessa email)
+- Per ogni email con ≥2 contatti distinti → coppia sospetta
+- Per ogni coppia: `append_diario("sospetto_duplicato_email", "sospetto duplicato: ... (email ...)")`
+- Ritorna lista `[{chiave_a, id_a, chiave_b, id_b, email}]`
+- Fail-safe §9: `[] in degrado`, never raises
 
-dove `chiave` è il **primo argomento** di `upsert_contatto` (l'identificatore dichiarato dal modello:
-es. `'anna@ex.com'`, `'Anna Rossi'`, `'+39 333 000'`).
+### 2. `gas.py` — comando CLI
 
-`normalizza_chiave` (`store.py:148-186`) è **pura e lessicale**:
+**`check_dups_cmd(root_dir)`**:
+- `gas check-dups` dalla shell
+- Instanzia MemoryStore, chiama `rileva_duplicati_email()`, stampa rapporto
+- Exit 0 in entrambi i casi (OK: nessun duplicato; WARN: coppie trovate)
+- Exit 1 solo se memoria non disponibile
+- NON esposto al loop LLM (non in `tools_schema`, non in `execute_tool_call`)
 
-```python
-testo = unicodedata.normalize("NFKC", str(chiave))
-return " ".join(testo.split()).lower()
-```
+### 3. `tests/test_unit_kernel.py` — T57 (7 test)
 
-Step in ordine: str → NFKC (unifica varianti tipografiche) → collasso whitespace via `split()` → `lower()`.
-
-**NON** estrae la parte locale dell'email, **NON** toglie il `+` del telefono, **NON** usa il
-campo `nome`. La docstring lo dice esplicitamente (store.py:164-165):
-
-> v1: NESSUNA logica speciale per telefono/email (es. strip del '+' iniziale o del dominio):
-> è solo canonicalizzazione LESSICALE.
-
-`chiave_norm` **deriva unicamente dal valore passato come `chiave`**, non da email/nome/telefono
-in campi separati.
-
----
-
-## Domanda 2 — Due contatti con la STESSA email: collidono o sono due record?
-
-**Dipende da come viene usato il campo `chiave`.**
-
-Caso A — l'email è la `chiave` (uso corretto):
-
-```python
-salva_contatto(chiave='anna@ex.com', nome='Anna')
-salva_contatto(chiave='anna@ex.com', nome='Anna Rossi')   # seconda chiamata
-```
-
-`chiave_norm = 'anna@ex.com'` in entrambi → `ON CONFLICT(chiave_norm) DO UPDATE` (store.py:387).
-**Un solo record**: la seconda chiamata aggiorna il primo (nessun duplicato).
-
-Caso B — il modello usa chiavi diverse per la stessa persona (es. nome vs email):
-
-```python
-salva_contatto(chiave='anna rossi', contatto='anna@ex.com')
-salva_contatto(chiave='anna@ex.com')
-```
-
-`chiave_norm('anna rossi') = 'anna rossi'` ≠ `chiave_norm('anna@ex.com') = 'anna@ex.com'`
-→ **DUE record distinti**. Questo è il duplicato cross-formato che R-crm-1b deve rilevare.
-
-Il campo `contatto` (TEXT libero, store.py:108) può contenere email/telefono/handle ma
-**non è la chiave** e non partecipa all'indice UNIQUE. L'unica identità è `chiave_norm`.
-
-**Conclusione: il caso "stessa email = due contatti" ESISTE** ogni volta che lo stesso recapito
-appare come `chiave` per un salvataggio e in `contatto` per un altro (o in `chiave` con forme
-diverse). Lo scope di R-crm-1b è reale.
-
----
-
-## Domanda 3 — Esiste un campo telefono normalizzato?
-
-No. Schema tabella `contatti` (store.py:95-121):
-
-| campo | tipo | ruolo |
+| Test | Caso | Esito |
 |---|---|---|
-| `chiave` | TEXT NOT NULL | grafia originale dell'identità (as-entered) |
-| `chiave_norm` | TEXT NOT NULL | forma canonica (UNIQUE, deriva da `chiave`) |
-| `nome` | TEXT | nome leggibile |
-| `contatto` | TEXT | **campo libero**: email/telefono/handle — non normalizzato |
-| `stato` | TEXT | stato funnel |
-| `note` | TEXT | testo libero |
-
-`normalizza_chiave` si applica **solo** al campo `chiave` al momento dell'upsert.
-Il campo `contatto` entra nel DB esattamente come passato dal modello, senza alcuna
-canonicalizzazione. Non esiste un campo separato per email o telefono.
-
-Implicazione: due schede della stessa persona potrebbero avere
-`contatto='anna@ex.com'` l'una e `chiave='anna@ex.com'` l'altra —
-il rilevatore deve confrontare i due campi cross-record.
+| T57a | match cross-campo `chiave↔contatto` + segnalazione nel diario | PASS |
+| T57b | stessa email come chiave → già fusi → nessun falso segnale | PASS |
+| T57c | nomi identici senza email → nessun segnale | PASS |
+| T57d | fail-safe DB corrotto → `[]` senza crash | PASS |
+| T57e | lapidi escluse → nessuna falsa coppia | PASS |
+| T57f | match cross-`contatto` (stessa email in campo libero) | PASS |
+| T57g | CLI `check_dups_cmd`: OK e WARN stampati correttamente | PASS |
 
 ---
 
-## Domanda 4 — Com'è fatto `unisci_contatti` oggi?
+## Verdetto revisore #47
 
-**Store** (`store.py:428`):
+**APPROVATO CON RISERVE**
 
-```python
-def unisci_contatti(self, chiave_da: str, chiave_verso: str) -> Optional[int]:
-```
+Riserva bloccante (corretta prima del commit): `nota` → `note` in T57b.
 
-Firma: due chiavi (non ID). Risolve entrambe al canonico via `_risolvi_canonico`
-(segue `merged_into` se è già una lapide). Poi:
-
-1. **COALESCE anagrafica**: completa i campi NULL del canonico (`chiave_verso`) dai dati
-   del doppione (`chiave_da`) — solo i campi assenti, non sovrascrive mai.
-2. **Ri-punta lapidi**: UPDATE su `contatti.merged_into` dai vecchi puntatori a `da`
-   verso il canonico (invariante: catena profonda max 1).
-3. **Marca lapide**: `da.merged_into = canonico_id` — il doppione diventa lapide.
-
-Nessun UPDATE/DELETE sul diario (immutabile). Stato funnel non toccato. Idempotente.
-Ritorna `id` del canonico, o `None` in degrado.
-
-**Dispatcher `gas.py` (righe 1383-1387)**:
-
-```python
-# unisci_contatti NON è più un tool autopilot: il merge di lead è
-# mutante e irreversibile (lossy), quindi è MANUTENZIONE UMANA e non
-# passa più di qui (vedi _unisci_contatti). Il meccanismo di merge
-# in MemoryStore resta intatto. Tool ignoto → diniego pulito.
-return "Tool non trovato."
-```
-
-`unisci_contatti` **non è esposto come tool nel loop**: il branch nel dispatcher non esiste.
-Il wrapper `_unisci_contatti` (gas.py:1254) esiste ma è helper per uso manuale futuro.
-Il modello non può invocare merge da sé — in linea col DIVIETO dello scope.
+Riserve minori tracciate in `stato_progetto.md`:
+- Re-entry diario su invocazioni ripetute (accettabile per audit log)
+- Messaggio CLI `_unisci_contatti` → da correggere in `unisci_contatti` (cosmetic, fetta successiva)
 
 ---
 
-## Sintesi e implicazioni per lo scope
+## Vincoli rispettati
 
-| Punto | Stato attuale |
-|---|---|
-| Chiave di identità | `chiave_norm = normalizza_chiave(chiave)` — lessicale, no semantica |
-| Collisione stessa email | Solo se email usata come `chiave` in entrambi i salvataggi |
-| Duplicati cross-formato | Esistono: stesso lead, `chiave` diversa (nome vs email vs tel) |
-| Normalizzazione telefono | Assente — `contatto` è TEXT libero |
-| `unisci_contatti` | Implementato in store.py (merge a lapide), NON autopilot |
-| Fusione umana | Confermata: `_unisci_contatti` è helper manuale, non tool LLM |
-
-**Lo scope R-crm-1b è valido.** I duplicati cross-formato esistono. Il rilevatore deve:
-- confrontare il campo `contatto` tra record diversi (match email-email o tel-tel)
-- eventualmente somiglianza di `nome` (con soglia alta per evitare falsi-merge)
-- NON fondere mai: solo segnalare i candidati all'operatore.
+- GAS NON fonde mai autonomamente (zero merge in questo diff)
+- Diario immutabile: solo `append_diario`, zero UPDATE/DELETE
+- `unisci_contatti` non esposto al loop (confermato: dispatcher invariato)
+- Fail-safe §9: `[]` in degrado su DB corrotto/assente
 
 ---
 
-*Sonda completata. Attendo via dell'operatore per le fette successive.*
+## Cosa resta aperto
+
+- Fetta 2 (telefono): normalizzazione numero telefonico + match cross-campo
+- Fetta 3 (nome): somiglianza fuzzy (da decidere con l'operatore prima di implementare)
+- Riserva cosmetic: messaggio CLI `_unisci_contatti` → `unisci_contatti`
+
+---
+
+*La sonda (Fetta 0) è in git come commit `b99c1f1`. Questo report sovrascrive il precedente.*

@@ -1,19 +1,24 @@
-# Diff sessione — 2026-07-14 (docs/sfoltita-finding)
+# diff_sessione — 2026-07-14 (R-crm-1b Fetta 1 email)
 
 > Fotografia dell'ultima sessione. La storia completa sta in git.
-> BASE: b4e15bd (ultimo commit su reports/handoff.md prima di questa sessione)
+
+Branch: `feature/crm-dup-detect`
 
 ## File toccati
 
 ```
- reports/finding_archiviati.md |  15 ++++++
- reports/stato_progetto.md     |  51 +++++++++-----------
- reports/ultimo_report.md      | 105 ++++++++++++++++++++++++++++++++++++------
- 3 files changed, 129 insertions(+), 42 deletions(-)
+modules/memory/store.py   +65 righe  (rilevatore _is_email + rileva_duplicati_email)
+gas.py                    +26 righe  (check_dups_cmd + entry point main)
+tests/test_unit_kernel.py +93 righe  (sezione T57, 7 test)
+reports/ultimo_report.md             (report sessione)
+reports/stato_progetto.md            (review #47, finding R-crm-1b aggiornato)
+reports/diff_sessione.md             (questo file)
 ```
 
-## Dettaglio per file
+## Cosa è cambiato e perché
 
-- **reports/finding_archiviati.md** — aggiunte 15 righe: entry compresso per ciascuno dei 15 finding archiviati (CI-4, R-reidx-deps, R-vec-2, WINDOW_CHAR_CAP, MEMORY_PIN_SCAN, R-vec-2b, R-tel-1, Riserve#35, R-vec-3, R-vec-pool, R-groq-dup, R-groq-slash, Riserve#44 A+C, Riserva#44B, Hardening token)
-- **reports/stato_progetto.md** — sezione "Finding aperti" riscritta: rimossi 13 item ✅ dalla sezione principale + blocco Riserve#44 A/B/C da Note VPS + riga Hardening token dal DA FARE. Aggiunte 3 subsection (DEPLOY VPS, Limiti noti, Debito latente). Emoji mojibake corrette in UTF-8 pulito. Aggiornata riga "Ultimo aggiornamento".
-- **reports/ultimo_report.md** — riscritto con esito spot-check per tutti i 15 candidati, conteggio righe prima/dopo (30→16), nota contatore review già corretto.
+- **`_is_email`**: helper statico per riconoscere un'email con pattern minimale (`@` + dominio). Serve per filtrare i valori da confrontare ed evitare match su nomi, URL, testo libero.
+- **`rileva_duplicati_email`**: sola lettura sui contatti vivi + append al diario per ogni coppia trovata. La segnalazione è persistente ma non bloccante. Escluse le lapidi dalla query.
+- **`check_dups_cmd`**: entry point CLI controllato dall'operatore, non esposto al loop LLM. La scelta CLI vs tool ricorda-style è stata fatta perché il rilevamento non deve scattare automaticamente ad ogni turno.
+- **T57**: 7 test coprono i casi: cross-campo chiave↔contatto, no-falso-positivo su stessa chiave, nomi senza email, fail-safe corrotto, lapidi escluse, cross-contatto, CLI.
+- **Riserva bloccante corretta**: `nota` → `note` nel parametro di T57b (typo rilevato dal revisore #47).

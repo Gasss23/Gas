@@ -1,12 +1,12 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-14** (sfoltita finding aperti — 15 item archiviati) origin/main
+> Ultimo aggiornamento: **2026-07-14** (R-crm-1b Fetta 1 email — rilevatore duplicati + CLI) feature/crm-dup-detect
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **46 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #46, 2026-07-13). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). CI run 29240223711 (2026-07-13): **220 PASS** ✅.
+FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **47 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #47, 2026-07-14). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). CI run 29240223711 (2026-07-13): **220 PASS** ✅. Suite Fetta 1 R-crm-1b: **+7 test T57 PASS** (in-process, 0 token).
 CI GitHub Actions: run #29031945029 su `87ad26f` ✅ **SUCCESS** ✅ (ultimo run su main, 2026-07-09).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -50,7 +50,7 @@ Componenti attive:
 
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
-- 🟡 **R-crm-1b** — identità cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
+- 🟡 **R-crm-1b** — Fetta 1 email ✅ (2026-07-14, review #47): `rileva_duplicati_email()` + CLI `gas check-dups`. Fette successive (telefono, nome) da decidere. Riserve minori #47: re-entry diario su invocazioni ripetute (accettabile per audit log); messaggio CLI `_unisci_contatti` → da correggere in `unisci_contatti` (cosmetic).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
@@ -96,7 +96,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM). or
 - **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **46 review**. Ultima: **#46** (prezzi Groq env-overridabili T44d, 2026-07-13). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **47 review**. Ultima: **#47** (R-crm-1b Fetta 1 email, 2026-07-14). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** â€” `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); Â§1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 

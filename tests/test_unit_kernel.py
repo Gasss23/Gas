@@ -3003,6 +3003,99 @@ check("T56 model_ids: override env GAS_MODEL_GROQ riflesso nella costante",
 os.environ.pop("GAS_MODEL_GROQ", None)
 importlib.reload(_mid56)  # ripristina default, non contamina il resto della suite
 
+# ---------- T57: rilevamento duplicati email cross-campo (R-crm-1b Fetta 1) ----------
+# rileva_duplicati_email() + check_dups_cmd CLI. SOLA LETTURA sui contatti;
+# scrittura SOLO append al diario. ZERO token.
+print("\n--- T57: rilevamento duplicati email cross-campo ---")
+
+# T57a — match cross-campo chiave↔contatto: 'anna rossi' con contatto='anna@ex.com'
+# e 'anna@ex.com' come chiave → stessa email → coppia segnalata nel diario.
+m57 = mem_tmp()
+m57.upsert_contatto("anna rossi", nome="Anna", contatto="anna@ex.com")
+m57.upsert_contatto("anna@ex.com")
+d57_ante = len(m57.diario_recente(50))
+coppie57a = m57.rileva_duplicati_email()
+d57_post = m57.diario_recente(50)
+check("T57a match cross-campo chiave↔contatto: coppia trovata + segnalazione nel diario",
+      len(coppie57a) == 1
+      and coppie57a[0]["email"] == "anna@ex.com"
+      and len(d57_post) == d57_ante + 1
+      and any("sospetto duplicato" in e["descrizione"]
+              and "anna@ex.com" in e["descrizione"] for e in d57_post)
+      and any(e["tipo"] == "sospetto_duplicato_email" for e in d57_post),
+      f"coppie={len(coppie57a)} diario_delta={len(d57_post)-d57_ante}")
+
+# T57b — stessa email già come chiave in entrambi → upsert li ha fusi → 1 solo record
+# → nessun falso segnale (non c'è coppia di schede distinte da confrontare).
+m57b = mem_tmp()
+m57b.upsert_contatto("bob@ex.com", nome="Bob")
+m57b.upsert_contatto("bob@ex.com", note="update")        # stessa chiave → update, non insert
+coppie57b = m57b.rileva_duplicati_email()
+check("T57b stessa email come chiave in entrambi → già fusi → nessun falso segnale",
+      len(m57b.lista_contatti()) == 1 and coppie57b == [],
+      f"contatti={len(m57b.lista_contatti())} coppie={len(coppie57b)}")
+
+# T57c — nomi identici senza email: nessun match (il rilevatore filtra solo email).
+m57c = mem_tmp()
+m57c.upsert_contatto("Carla Bianchi", nome="Carla")
+m57c.upsert_contatto("carla bianchi srl", nome="Carla")  # nome simile, chiave diversa, no email
+coppie57c = m57c.rileva_duplicati_email()
+check("T57c nomi identici senza email → nessun segnale (no match sul solo nome)",
+      len(m57c.lista_contatti()) == 2 and coppie57c == [],
+      f"contatti={len(m57c.lista_contatti())} coppie={len(coppie57c)}")
+
+# T57d — fail-safe: memoria degradata (DB corrotto) → nessun crash, ritorna [].
+m57d = mem_tmp()
+with open(m57d.db_path, "wb") as _f57:
+    _f57.write(b"not-a-db")
+m57d_broken = MemoryStore(m57d.db_path)     # available=False dopo corruzione
+no_crash57 = True
+coppie57d: list = []
+try:
+    coppie57d = m57d_broken.rileva_duplicati_email()
+except Exception:
+    no_crash57 = False
+check("T57d fail-safe: DB corrotto → nessun crash, ritorna []",
+      no_crash57 and coppie57d == [] and m57d_broken.available is False,
+      f"crash={not no_crash57} coppie={coppie57d} avail={m57d_broken.available}")
+
+# T57e — le LAPIDI sono escluse: un lead fuso non contribuisce a false coppie.
+m57e = mem_tmp()
+m57e.upsert_contatto("anna@ex.com", nome="Anna")
+m57e.upsert_contatto("anna rossi", nome="Anna", contatto="anna@ex.com")
+m57e.unisci_contatti("anna rossi", "anna@ex.com")    # 'anna rossi' diventa lapide
+coppie57e = m57e.rileva_duplicati_email()
+check("T57e lapidi escluse: lead già fuso non genera falsa coppia",
+      len(m57e.lista_contatti()) == 1 and coppie57e == [],
+      f"vivi={len(m57e.lista_contatti())} coppie={len(coppie57e)}")
+
+# T57f — match cross-contatto: due schede con email in campo `contatto` (no chiave).
+m57f = mem_tmp()
+m57f.upsert_contatto("Mario Rossi", nome="Mario", contatto="shared@ex.com")
+m57f.upsert_contatto("Luigi Bianchi", nome="Luigi", contatto="shared@ex.com")
+coppie57f = m57f.rileva_duplicati_email()
+check("T57f match cross-contatto: stessa email in campo contatto di due schede → segnala",
+      len(coppie57f) == 1 and coppie57f[0]["email"] == "shared@ex.com",
+      f"coppie={len(coppie57f)} email={coppie57f[0]['email'] if coppie57f else None!r}")
+
+# T57g — check_dups_cmd CLI: output corretto per i casi no-duplicati e con-duplicati.
+import gas as _gas57
+_buf57_ok = io.StringIO()
+with redirect_stdout(_buf57_ok):
+    _r57_ok = _gas57.check_dups_cmd(root_dir=str(Path(m57b.db_path).parent))
+_buf57_warn = io.StringIO()
+with redirect_stdout(_buf57_warn):
+    m57g = mem_tmp()
+    m57g.upsert_contatto("giulia@ex.com")
+    m57g.upsert_contatto("giulia rossi", contatto="giulia@ex.com")
+    _r57_warn = _gas57.check_dups_cmd(root_dir=str(Path(m57g.db_path).parent))
+_out_ok = _buf57_ok.getvalue()
+_out_warn = _buf57_warn.getvalue()
+check("T57g check_dups_cmd CLI: OK senza duplicati, WARN con duplicati",
+      _r57_ok == 0 and "OK" in _out_ok
+      and _r57_warn == 0 and "WARN" in _out_warn and "giulia@ex.com" in _out_warn,
+      f"ok={_r57_ok}/{_out_ok.strip()[:30]!r} warn={_r57_warn}/{_out_warn.strip()[:40]!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

@@ -671,6 +671,71 @@ class MemoryStore:
             log.warning("lista_contatti fallita (%s): %s", self.db_path, e)
             return []
 
+    # -------------------------------------------------- rilevamento duplicati
+    @staticmethod
+    def _is_email(valore: Optional[str]) -> bool:
+        """Pattern email minimale: almeno un carattere prima di '@', dominio con
+        almeno un punto e parte finale non vuota. PURO e FAIL-SAFE: mai solleva."""
+        if not valore:
+            return False
+        s = str(valore).strip()
+        at = s.rfind("@")
+        if at <= 0:
+            return False
+        domain = s[at + 1:]
+        dot = domain.rfind(".")
+        return dot > 0 and bool(domain[dot + 1:].strip())
+
+    def rileva_duplicati_email(self) -> List[Dict[str, Any]]:
+        """SOLA LETTURA sui contatti: trova coppie di schede VIVE che condividono
+        la stessa email (confrontando `chiave_norm` e il campo `contatto` di ciascuna,
+        normalizzati con normalizza_chiave). Match SOLO su email (pattern '@'+dominio);
+        nomi e testo generico non generano segnali. Per ogni coppia trovata scrive
+        una riga append-only nel diario (tipo 'sospetto_duplicato_email'): questa è
+        la segnalazione persistente per l'operatore. Ritorna la lista delle coppie
+        (dizionari con chiave_a/id_a/chiave_b/id_b/email). [] in degrado (§9)."""
+        if not self.available:
+            return []
+        try:
+            with self._connect() as con:
+                righe = self._rows(con.execute(
+                    "SELECT id, chiave, chiave_norm, contatto "
+                    "FROM contatti WHERE merged_into IS NULL"
+                ))
+        except (sqlite3.Error, OSError) as e:
+            log.warning("rileva_duplicati_email: lettura contatti fallita (%s): %s",
+                        self.db_path, e)
+            return []
+        # Indice email_norm → {id: {id, chiave}} (dedup per id, ignora sorgente)
+        email_idx: Dict[str, Dict[int, Dict[str, Any]]] = {}
+        for r in righe:
+            for raw in (r.get("chiave_norm"), r.get("contatto")):
+                norm = normalizza_chiave(raw)
+                if self._is_email(norm):
+                    email_idx.setdefault(norm, {})[int(r["id"])] = {
+                        "id": int(r["id"]), "chiave": r["chiave"]
+                    }
+        # Coppie: email con ≥2 contatti distinti
+        coppie: List[Dict[str, Any]] = []
+        for email, per_id in email_idx.items():
+            schede = list(per_id.values())
+            if len(schede) < 2:
+                continue
+            for i in range(len(schede)):
+                for j in range(i + 1, len(schede)):
+                    a, b = schede[i], schede[j]
+                    coppie.append({
+                        "chiave_a": a["chiave"], "id_a": a["id"],
+                        "chiave_b": b["chiave"], "id_b": b["id"],
+                        "email": email,
+                    })
+                    self.append_diario(
+                        "sospetto_duplicato_email",
+                        f"sospetto duplicato: {a['chiave']!r} ~ {b['chiave']!r}"
+                        f" (email {email})",
+                    )
+        return coppie
+
     # ------------------------------------------------------------- integrità
     def integrity_check(self) -> Tuple[bool, str]:
         """Verifica l'integrità del DB via `PRAGMA quick_check` (più rapido di
