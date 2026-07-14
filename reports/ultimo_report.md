@@ -1,45 +1,28 @@
-# Ultimo Report — 2026-07-13
-## Task: Chiusura canonici riserva #44B (doc-only)
+# Report — docs: chiude item gh-CLI (2026-07-14)
 
-**Branch:** fix/riserva-44B-groq-prezzi-env
-**Tipo:** doc-only — nessun file motore toccato
+## Task
+FETTA UNICA doc-only: aggiorna `reports/stato_progetto.md` — chiudi item "Installare gh CLI" e aggiorna "Ultimo aggiornamento".
 
----
+## Esito: FATTO ✅
 
-## DECISIONI UMANE RICHIESTE
+### Modifiche effettuate (solo `reports/stato_progetto.md`)
+| Campo | Prima | Dopo |
+|-------|-------|------|
+| Ultimo aggiornamento | 2026-07-13 (chiusura riserva #44B…) | 2026-07-14 (gh CLI installato su Giulia — CHIUSO) |
+| Item gh CLI | ⬜ Installare gh CLI — comodità, non requisito… | ✅ gh CLI installato su Giulia — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: gh repo view Gasss23/Gas OK, branch main visto. CHIUSO. |
 
-**Nessuna.** Self-merge PR dopo CI verde (check unit-suite required anche per doc-only, main lucchettato).
+### File NON toccati
+gas.py, brains/, modules/, tests/, CLAUDE.md, nessun altro file.
 
----
+## Workflow lucchetto
+- Branch: `docs/gh-chiuso`
+- Commit: `b0a852d` — `docs(stato): chiude item gh-CLI — v2.96.0 installato su Giulia 2026-07-14`
+- PR: https://github.com/Gasss23/Gas/pull/9
+- Merge: in attesa CI verde (doc-only, atteso pass triviale)
 
-## Esito fette
+## Gate revisore
+Non richiesto: diff tocca solo `reports/` (nessun file motore).
 
-- **Fetta unica — aggiornamento canonici**: `FATTA`
-
-### Modifiche a reports/stato_progetto.md
-
-1. **Contatore review → #46** (era #44): riga "Stato motore" e istituzione C aggiornate
-   con `ultima #46, 2026-07-13`.
-
-2. **Conteggio test → 220 PASS** (erano 214/216): aggiornato il baseline con riferimento a
-   CI run 29240223711 (2026-07-13) — 220 PASS, 0 FAIL, 2 SKIP.
-
-3. **Riserva #44B → CHIUSA** verbatim:
-   > prezzi Groq env-overridabili (GAS_GROQ_PRICE_IN/GAS_GROQ_PRICE_OUT), valore $0.15/$0.60
-   > verificato su groq.com/pricing 2026-07-13, try/except anti-crash coperto da T44d,
-   > CI run 29240223711 SUCCESS, merge PR #6. Review #46 APPROVATO.
-
-4. **Micro-finding di processo** (aggiunto dopo nota scope-creep):
-   > handoff diff --stat riciclato dalla sessione precedente, non rigenerato — svista di copia;
-   > log/conteggio/CI erano coerenti. Claude Code rigeneri sempre git diff --stat reale, mai riciclarlo.
-
-5. **Promemoria DA FARE — locale Giulia**:
-   > Locale Giulia da riallineare a origin/main (PR #6 mergiata sul remoto, locale ancora
-   > indietro). Al rientro, PRIMA di lavorare: git fetch origin + git merge --ff-only origin/main.
-   > Non creare branch da locale vecchio.
-
-## Gate di stop
-
-- Nessun file motore toccato (gas.py, brains/, modules/, tests/).
-- Solo doc: reports/stato_progetto.md + reports/ultimo_report.md.
-- Nessuna review revisore richiesta (commit doc-only).
+## Gate di stop rispettato
+- Solo `reports/stato_progetto.md` modificato.
+- Nessun altro item chiuso, nessun altro file toccato.
