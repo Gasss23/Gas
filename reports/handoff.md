@@ -1,31 +1,38 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-14 — Chiusura item gh-CLI su Giulia (doc-only)
+**Sessione:** 2026-07-14 — Sfoltita Finding aperti (docs/sfoltita-finding)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge PR #9** (https://github.com/Gasss23/Gas/pull/9): CI verde su entrambi i commit della sessione (`b0a852d`, `ec65560`). Doc-only, self-merge consentito. Da browser o `gh pr merge 9 --merge`.
+1. **Merge PR docs/sfoltita-finding → main**: CI verde (run 29315847317, SUCCESS). Operazione: merge da browser GitHub o `gh pr merge --merge`. Doc-only, nessun revisore richiesto.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta unica — aggiorna stato_progetto.md**: `FATTA`
-  Chiuso item "Installare gh CLI" (⬜ → ✅) con dettaglio versione/protocollo/account/scopes verificati. Aggiornata riga "Ultimo aggiornamento" a 2026-07-14. Solo `reports/stato_progetto.md` toccato.
+- **Fetta 1 — Spot-check di merito (15 candidati ✅):** `FATTA`
+  Tutti i 15 candidati verificati da codice/test/commit reale. Nessun RETROCESSO.
+
+- **Fetta 2 — Archiviazione finding verificati in finding_archiviati.md:** `FATTA`
+  15 item spostati (compressi a riga datata).
+
+- **Fetta 3 — Riclassifica 🟡 aperti con nuove subsection:** `FATTA`
+  Struttura Finding aperti ora: 5 🟡 attivi | DEPLOY VPS (3) | Limiti noti (1) | Debito latente (1) | nota TPM ℹ️.
+
+- **Fetta 4 — Riconcilia contatore review:** `FATTA — nessuna modifica necessaria`
+  Contatore già 46 in entrambe le occorrenze. Coincide con memoria_revisore.md (ultima #46, 2026-07-13).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
-> Nota: BASE=`91df3df` (ultimo commit di handoff.md). Il commit `d3939bf` è pre-sessione (presente nel git log all'apertura della conversazione); appartiene alla sessione precedente. Commit di questa sessione: `b0a852d`, `ec65560`.
-
 ```
- .claude/agents/memoria_revisore.md |  1 +
- reports/stato_progetto.md          | 12 +++++----
- reports/ultimo_report.md           | 52 +++++++++++++++-----------------------
- 3 files changed, 29 insertions(+), 36 deletions(-)
+ reports/finding_archiviati.md |  15 ++++++
+ reports/stato_progetto.md     |  51 +++++++++-----------
+ reports/ultimo_report.md      | 105 ++++++++++++++++++++++++++++++++++++------
+ 3 files changed, 129 insertions(+), 42 deletions(-)
 ```
 
 ---
@@ -33,12 +40,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-ec65560 docs(fine-task): report chiusura item gh-CLI — 2026-07-14
-b0a852d docs(stato): chiude item gh-CLI — v2.96.0 installato su Giulia 2026-07-14
-d3939bf docs(canonici): chiude riserva #44B, contatori #46/220 PASS, micro-finding handoff
+7cc5ac6 docs(sfoltita-finding): sfoltisce Finding aperti — 15 item archiviati, 3 subsection
 ```
-
-_(`d3939bf` = pre-sessione, sessione precedente)_
 
 ---
 
@@ -50,22 +53,24 @@ Nessun diff motore (gas.py, brains/, modules/, tests/ non toccati). Revisore non
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/. Suite invariata: **220 PASS, 0 FAIL, 2 SKIP** (baseline sessione precedente).
+Nessuna modifica a gas.py/tests/. Suite invariata: 220 PASS, 0 FAIL, 2 SKIP (ultima run confermata CI 29240223711).
 
 ---
 
 ## §6 STATO CI
 
 ```
+completed	success	docs(sfoltita-finding): sfoltisce Finding aperti — 15 item archiviati…	CI	docs/sfoltita-finding	push	29315847317	43s	2026-07-14T07:49:14Z
+completed	success	docs(fine-task): handoff + diff_sessione — chiusura item gh-CLI 2026-…	CI	docs/gh-chiuso	push	29314656551	33s	2026-07-14T07:28:10Z
 completed	success	docs(fine-task): report chiusura item gh-CLI — 2026-07-14	CI	docs/gh-chiuso	push	29313794393	42s	2026-07-14T07:12:35Z
-completed	success	docs(stato): chiude item gh-CLI — v2.96.0 installato su Giulia 2026-0…	CI	docs/gh-chiuso	push	29313733619	43s	2026-07-14T07:11:28Z
-completed	success	docs: banca decisione Cerebras NO-GO (sonda live 2026-07-13)	CI	main	push	29283316488	36s	2026-07-13T20:40:20Z
 ```
 
-CI **SUCCESS** ✅ su entrambi i commit della sessione (run 29313794393 e 29313733619).
+Run di sessione: **29315847317** su branch `docs/sfoltita-finding`, commit `7cc5ac6` — **SUCCESS** ✅.
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna. Task doc-only puro, nessuna riserva tecnica emersa.
+Nessuna riserva nuova emersa. Task doc-only di riorganizzazione, nessun nuovo codice.
+
+Finding aperti invariati (nessun ✅ nuovo aggiunto, nessun RETROCESSO dalla sfoltita).
