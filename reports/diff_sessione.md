@@ -1,28 +1,19 @@
-# DIFF SESSIONE — 2026-07-13
+# Diff sessione — 2026-07-14 (docs/sfoltita-finding)
 
-> Riscritto a ogni sessione. Storia completa: git log.
+> Fotografia dell'ultima sessione. La storia completa sta in git.
+> BASE: b4e15bd (ultimo commit su reports/handoff.md prima di questa sessione)
 
-## Branch: fix/riserva-44B-groq-prezzi-env
-
-## File toccati (da `git diff --stat` rispetto a main)
+## File toccati
 
 ```
- brains/model_ids.py       |  9 +++++
- gas.py                    |  3 +-
- reports/diff_sessione.md  | 36 +++++++++++++----
- reports/handoff.md        | 98 +++++++++++++++++++++++++++++++++++------------
- reports/stato_progetto.md |  2 +-
- reports/ultimo_report.md  | 80 ++++++++++++++++++++++++++++++--------
- tests/test_unit_kernel.py | 80 ++++++++++++++++++++++++++++++++++++++
- 7 files changed, 258 insertions(+), 50 deletions(-)
+ reports/finding_archiviati.md |  15 ++++++
+ reports/stato_progetto.md     |  51 +++++++++-----------
+ reports/ultimo_report.md      | 105 ++++++++++++++++++++++++++++++++++++------
+ 3 files changed, 129 insertions(+), 42 deletions(-)
 ```
 
 ## Dettaglio per file
 
-- **`brains/model_ids.py`**: aggiunte costanti `GROQ_PRICE_IN_USD_PER_1M` / `GROQ_PRICE_OUT_USD_PER_1M` lette da env `GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT` con `try/except` (fallback 0.15/0.60); chiude riserva #44B.
-- **`gas.py`**: importa le due nuove costanti da `brains/model_ids`; sostituisce i literal `(0.15, 0.60)` in `_PROVIDER_PRICE_PER_MTok["groq"]`.
-- **`tests/test_unit_kernel.py`**: aggiunti T44b (verifica default), T44c (verifica env-override + `_daily_cost_usd`), T44d (verifica fallback anti-crash con env non numerici). Suite: 219→220 PASS.
-- **`reports/stato_progetto.md`**: riserva #44B marcata CHIUSA con ref commit e PR.
-- **`reports/ultimo_report.md`**: riscritto con esito fette, suite, gate revisore.
-- **`reports/handoff.md`**: riscritto con template canonico — diff/log reali, verdetti revisore integrali, stato CI verbatim.
-- **`reports/diff_sessione.md`**: questo file — riscritto.
+- **reports/finding_archiviati.md** — aggiunte 15 righe: entry compresso per ciascuno dei 15 finding archiviati (CI-4, R-reidx-deps, R-vec-2, WINDOW_CHAR_CAP, MEMORY_PIN_SCAN, R-vec-2b, R-tel-1, Riserve#35, R-vec-3, R-vec-pool, R-groq-dup, R-groq-slash, Riserve#44 A+C, Riserva#44B, Hardening token)
+- **reports/stato_progetto.md** — sezione "Finding aperti" riscritta: rimossi 13 item ✅ dalla sezione principale + blocco Riserve#44 A/B/C da Note VPS + riga Hardening token dal DA FARE. Aggiunte 3 subsection (DEPLOY VPS, Limiti noti, Debito latente). Emoji mojibake corrette in UTF-8 pulito. Aggiornata riga "Ultimo aggiornamento".
+- **reports/ultimo_report.md** — riscritto con esito spot-check per tutti i 15 candidati, conteggio righe prima/dopo (30→16), nota contatore review già corretto.
