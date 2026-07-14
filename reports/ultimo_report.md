@@ -1,48 +1,103 @@
-# Report — 2026-07-14 — Sfoltita Finding aperti
+# R-crm-1b Fetta 1 — Comando CLI `gas merge-contacts` + fix hint
 
-## DECISIONI UMANE RICHIESTE
-
-- **Merge PR docs/sfoltita-finding → main**: CI verde (run 29315847317, SUCCESS). Merge doc-only da browser o `gh pr merge --merge`.
+**Data**: 2026-07-14
+**Branch**: feature/crm-dup-detect
+**Commit motore**: 9515626
 
 ---
 
-## Scope e esito fette
+## DECISIONI UMANE RICHIESTE
 
-**Fetta 1 — Spot-check di merito (15 candidati ✅):** `FATTA`
-Tutti i 15 candidati verificati da codice/test/commit reale. Nessun RETROCESSO.
-Dettaglio per item:
-- R-reidx-deps: VERIFICATO — requirements.txt pinnato (openai==2.43.0, requests==2.34.2, numpy==2.4.6, onnxruntime==1.27.0, fastembed==0.8.0)
-- R-vec-2: VERIFICATO — gas.py:374,376 legge GAS_VECTORS_DB e GAS_EMBED_MODEL da env
-- R-vec-2b: VERIFICATO — test T39b/T39c/T39f/T39g presenti
-- R-vec-3: VERIFICATO — testo dice "NON prova qualità semantica"; R-wire-2 residuo 🟡 non toccato
-- R-vec-pool: VERIFICATO — test T39h-T39k; fastembed_version nel fingerprint
-- WINDOW_CHAR_CAP: VERIFICATO — gas.py:352 env-overridabile min_val=1000
-- R-groq-slash: VERIFICATO — commit f028e51 in log; nota lasciata com'è (singola run)
-- R-groq-dup: VERIFICATO — merge eb0509f in log
-- MEMORY_PIN_SCAN: VERIFICATO — gas.py:351 env-overridabile min_val=10
-- CI-4: VERIFICATO — T9a/T9c skip condizionale in test:149,153,159,162
-- R-tel-1: VERIFICATO — gas.py:1446 _free_names da FREE_RUNGS
-- Riserve #35: VERIFICATO — T39b-reason/T39c-reason/T39f/T39g nei test
-- Riserve #44 A e C: VERIFICATO — merge PR #4 hash 3836111 in log
-- Riserva #44B: VERIFICATO — brains/model_ids.py:11-16 try/except su float(os.getenv(...))
-- Hardening token Claude Code: VERIFICATO — commit 72c2040 in log + curl 404/403 su ruleset
+Nessuna.
 
-**Fetta 2 — Archiviazione finding verificati:** `FATTA`
-15 item spostati (taglia-e-incolla compresso) da stato_progetto.md a finding_archiviati.md.
+---
 
-**Fetta 3 — Riclassifica 🟡 aperti:** `FATTA`
-- Restano 🟡 attivi: Esfiltrazione, Degrado solo-testo, R-crm-1b, R-ci-openrouter, Riserve minori
-- Nuova subsection DEPLOY VPS: R-reidx-3, R-wire-1, RAM a regime (3 sotto-punti)
-- Nuova subsection Limiti noti (non-finding): R-wire-2
-- Nuova subsection Debito latente: R-legacy-slice
-- TPM burst: degradato da item a nota ℹ️ inline
+## SCOPE & ESITO FETTE
 
-**Fetta 4 — Riconcilia contatore review:** `FATTA — nessuna modifica necessaria`
-Contatore letto da .claude/agents/memoria_revisore.md: ultima review #46 (2026-07-13).
-stato_progetto.md già riportava 46 in entrambe le occorrenze. Nessuna modifica.
+- **Fetta 1 — comando CLI `gas merge-contacts <da> <verso>`**: `FATTA`
+  Implementato con preview, conferma interattiva y/N, rete di sicurezza (snapshot diario atomico), fail-safe §9.
+- **Fix hint `check_dups_cmd`**: `FATTA`
+  Da `_unisci_contatti` a `gas merge-contacts <da> <verso>`.
+- **Fetta 2 — idempotenza diario**: `DEFERITA — fuori scope fetta 1, nessuna modifica`
+- **Fetta 3 — telefono**: `DEFERITA — fuori scope fetta 1, nessuna modifica`
 
---- origin/main
+---
 
-## STOP GATE 1 verificato
+## SONDA (pre-implementazione)
 
-Nessuna. Il file stato_progetto.md aveva encoding mojibake per le emoji — gestito via Python (edit chirurgico sui byte UTF-8 raw). origin/main
+### `unisci_contatti` in `store.py` (riga 428)
+- Transazionale: unico `with self._connect() as con:` — rollback automatico su eccezione. ✓
+- Campi fusi via COALESCE: nome, contatto, prossima_azione, note
+- Lapide: `da` marcato con `merged_into = canonico_id` (non cancellato)
+- NON scrive nel diario: mancava snapshot di `da` e evento merge
+- Nessuna preview: eseguiva il merge direttamente
+- **Conclusione**: meccanismo corretto, mancava la rete di sicurezza
+
+### Hint in `check_dups_cmd` (riga 2176)
+- Stampava `_unisci_contatti` — metodo interno Python, non invocabile da CLI.
+
+---
+
+## IMPLEMENTAZIONE
+
+### `modules/memory/store.py` — `unisci_contatti_con_snapshot()`
+
+Nuovo metodo (NON tocca `unisci_contatti` esistente). Tutto in **un'unica transazione SQLite**:
+
+1. Legge `da` e `verso` (→ None se mancano)
+2. Calcola preview: campi da riempire, conflitti (verso vince)
+3. **RETE DI SICUREZZA** PRIMA di qualsiasi UPDATE:
+   - INSERT `merge_snapshot`: snapshot integrale JSON di `da` nel diario
+   - INSERT `merge_evento`: riepilogo campi e conflitti
+4. UPDATE COALESCE su `verso`
+5. Re-punta lapidi precedenti da `da` a `verso`
+6. Marca `da` come lapide
+7. COMMIT
+
+Se il diario INSERT fallisce → eccezione → rollback automatico → rubrica invariata → restituisce `None`.
+
+### `gas.py` — `merge_contacts_cmd()`
+
+Comando solo umano (NON tool agente, non in `execute_tool_call`/`tools_schema`):
+
+```
+gas merge-contacts <chiave_da> <chiave_verso> [--yes]
+```
+
+Preview obbligatoria → conferma y/N (default N) → merge atomico.
+
+### `gas.py` — Fix hint e routing
+
+- `check_dups_cmd`: hint corretto a `gas merge-contacts <da> <verso>`
+- `main()`: routing `merge-contacts` aggiunto
+
+---
+
+## TEST REALI — T58 (6/6 PASS, CI verde)
+
+| Test | Scenario | Risultato |
+|------|----------|-----------|
+| T58a | Merge riuscito: campi vuoti di `verso` riempiti da `da` | PASS |
+| T58b | Conflitto: `verso` vince, valore scartato di `da` nel result | PASS |
+| T58c | Diario: `merge_snapshot` + `merge_evento` presenti con JSON di `da` | PASS |
+| T58d | Chiave inesistente → None, rubrica invariata | PASS |
+| T58e | FAIL-SAFE: tabella diario droppata → None, `merged_into` resta NULL | PASS |
+| T58f | Fix hint: `check_dups_cmd` output contiene `merge-contacts` | PASS |
+
+---
+
+## VERDETTO REVISORE
+
+**APPROVATO CON RISERVE** — due fix cosmetici applicati prima del commit:
+1. f-string mancante in `gas.py:2282` → corretta
+2. Variabile `id_carla` inutilizzata in T58c → rimossa
+
+---
+
+## STOP GATE RISPETTATI
+
+- SOLO Fetta 1: non toccata idempotenza diario (fetta 2) né telefono (fetta 3)
+- merge NON esposto come tool agente in nessuna forma
+- Diario: solo append (INSERT), mai rewrite/delete
+- `unisci_contatti` esistente NON modificato
+- Branch → PR necessaria per arrivare su main (lucchetto attivo)

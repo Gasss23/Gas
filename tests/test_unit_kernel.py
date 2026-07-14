@@ -3003,6 +3003,201 @@ check("T56 model_ids: override env GAS_MODEL_GROQ riflesso nella costante",
 os.environ.pop("GAS_MODEL_GROQ", None)
 importlib.reload(_mid56)  # ripristina default, non contamina il resto della suite
 
+# ---------- T57: rilevamento duplicati email cross-campo (R-crm-1b Fetta 1) ----------
+# rileva_duplicati_email() + check_dups_cmd CLI. SOLA LETTURA sui contatti;
+# scrittura SOLO append al diario. ZERO token.
+print("\n--- T57: rilevamento duplicati email cross-campo ---")
+
+# T57a — match cross-campo chiave↔contatto: 'anna rossi' con contatto='anna@ex.com'
+# e 'anna@ex.com' come chiave → stessa email → coppia segnalata nel diario.
+m57 = mem_tmp()
+m57.upsert_contatto("anna rossi", nome="Anna", contatto="anna@ex.com")
+m57.upsert_contatto("anna@ex.com")
+d57_ante = len(m57.diario_recente(50))
+coppie57a = m57.rileva_duplicati_email()
+d57_post = m57.diario_recente(50)
+check("T57a match cross-campo chiave↔contatto: coppia trovata + segnalazione nel diario",
+      len(coppie57a) == 1
+      and coppie57a[0]["email"] == "anna@ex.com"
+      and len(d57_post) == d57_ante + 1
+      and any("sospetto duplicato" in e["descrizione"]
+              and "anna@ex.com" in e["descrizione"] for e in d57_post)
+      and any(e["tipo"] == "sospetto_duplicato_email" for e in d57_post),
+      f"coppie={len(coppie57a)} diario_delta={len(d57_post)-d57_ante}")
+
+# T57b — stessa email già come chiave in entrambi → upsert li ha fusi → 1 solo record
+# → nessun falso segnale (non c'è coppia di schede distinte da confrontare).
+m57b = mem_tmp()
+m57b.upsert_contatto("bob@ex.com", nome="Bob")
+m57b.upsert_contatto("bob@ex.com", note="update")        # stessa chiave → update, non insert
+coppie57b = m57b.rileva_duplicati_email()
+check("T57b stessa email come chiave in entrambi → già fusi → nessun falso segnale",
+      len(m57b.lista_contatti()) == 1 and coppie57b == [],
+      f"contatti={len(m57b.lista_contatti())} coppie={len(coppie57b)}")
+
+# T57c — nomi identici senza email: nessun match (il rilevatore filtra solo email).
+m57c = mem_tmp()
+m57c.upsert_contatto("Carla Bianchi", nome="Carla")
+m57c.upsert_contatto("carla bianchi srl", nome="Carla")  # nome simile, chiave diversa, no email
+coppie57c = m57c.rileva_duplicati_email()
+check("T57c nomi identici senza email → nessun segnale (no match sul solo nome)",
+      len(m57c.lista_contatti()) == 2 and coppie57c == [],
+      f"contatti={len(m57c.lista_contatti())} coppie={len(coppie57c)}")
+
+# T57d — fail-safe: memoria degradata (DB corrotto) → nessun crash, ritorna [].
+m57d = mem_tmp()
+with open(m57d.db_path, "wb") as _f57:
+    _f57.write(b"not-a-db")
+m57d_broken = MemoryStore(m57d.db_path)     # available=False dopo corruzione
+no_crash57 = True
+coppie57d: list = []
+try:
+    coppie57d = m57d_broken.rileva_duplicati_email()
+except Exception:
+    no_crash57 = False
+check("T57d fail-safe: DB corrotto → nessun crash, ritorna []",
+      no_crash57 and coppie57d == [] and m57d_broken.available is False,
+      f"crash={not no_crash57} coppie={coppie57d} avail={m57d_broken.available}")
+
+# T57e — le LAPIDI sono escluse: un lead fuso non contribuisce a false coppie.
+m57e = mem_tmp()
+m57e.upsert_contatto("anna@ex.com", nome="Anna")
+m57e.upsert_contatto("anna rossi", nome="Anna", contatto="anna@ex.com")
+m57e.unisci_contatti("anna rossi", "anna@ex.com")    # 'anna rossi' diventa lapide
+coppie57e = m57e.rileva_duplicati_email()
+check("T57e lapidi escluse: lead già fuso non genera falsa coppia",
+      len(m57e.lista_contatti()) == 1 and coppie57e == [],
+      f"vivi={len(m57e.lista_contatti())} coppie={len(coppie57e)}")
+
+# T57f — match cross-contatto: due schede con email in campo `contatto` (no chiave).
+m57f = mem_tmp()
+m57f.upsert_contatto("Mario Rossi", nome="Mario", contatto="shared@ex.com")
+m57f.upsert_contatto("Luigi Bianchi", nome="Luigi", contatto="shared@ex.com")
+coppie57f = m57f.rileva_duplicati_email()
+check("T57f match cross-contatto: stessa email in campo contatto di due schede → segnala",
+      len(coppie57f) == 1 and coppie57f[0]["email"] == "shared@ex.com",
+      f"coppie={len(coppie57f)} email={coppie57f[0]['email'] if coppie57f else None!r}")
+
+# T57g — check_dups_cmd CLI: output corretto per i casi no-duplicati e con-duplicati.
+import gas as _gas57
+_buf57_ok = io.StringIO()
+with redirect_stdout(_buf57_ok):
+    _r57_ok = _gas57.check_dups_cmd(root_dir=str(Path(m57b.db_path).parent))
+_buf57_warn = io.StringIO()
+with redirect_stdout(_buf57_warn):
+    m57g = mem_tmp()
+    m57g.upsert_contatto("giulia@ex.com")
+    m57g.upsert_contatto("giulia rossi", contatto="giulia@ex.com")
+    _r57_warn = _gas57.check_dups_cmd(root_dir=str(Path(m57g.db_path).parent))
+_out_ok = _buf57_ok.getvalue()
+_out_warn = _buf57_warn.getvalue()
+check("T57g check_dups_cmd CLI: OK senza duplicati, WARN con duplicati",
+      _r57_ok == 0 and "OK" in _out_ok
+      and _r57_warn == 0 and "WARN" in _out_warn and "giulia@ex.com" in _out_warn,
+      f"ok={_r57_ok}/{_out_ok.strip()[:30]!r} warn={_r57_warn}/{_out_warn.strip()[:40]!r}")
+
+# ---------- T58: merge-contacts CLI umano (R-crm-1b Fetta 1) ----------
+# Blinda il comando `gas merge-contacts` e la rete di sicurezza (snapshot diario
+# atomico). ZERO token LLM. La funzione unisci_contatti_con_snapshot è il cuore.
+
+# T58a — merge riuscito: campi vuoti di 'verso' riempiti da 'da', 'verso' sopravvive.
+m58a = mem_tmp()
+m58a.upsert_contatto("anna", nome="Anna", note="cliente vip")
+m58a.upsert_contatto("anna@ex.com", contatto="anna@ex.com")   # nome e note vuoti
+r58a = m58a.unisci_contatti_con_snapshot("anna", "anna@ex.com")
+canon58a = m58a.get_contatto_per_chiave("anna@ex.com")
+lapide58a = m58a.get_contatto_per_chiave("anna")   # vecchia chiave → risolve al canonico
+vivi58a = m58a.lista_contatti()
+check("T58a merge: verso sopravvive, campi vuoti riempiti da da, vecchia chiave risolve",
+      r58a is not None and not r58a.get("no_op")
+      and len(vivi58a) == 1
+      and canon58a is not None and lapide58a is not None
+      and canon58a["id"] == lapide58a["id"]
+      and canon58a["nome"] == "Anna"
+      and canon58a["contatto"] == "anna@ex.com"
+      and canon58a["note"] == "cliente vip"
+      and len(r58a["campi_riempiti"]) >= 1,   # almeno nome riempito
+      f"r={r58a} vivi={len(vivi58a)} nome={canon58a.get('nome') if canon58a else None!r}")
+
+# T58b — conflitto: verso vince, valore scartato riportato nel risultato.
+m58b = mem_tmp()
+m58b.upsert_contatto("bob", nome="Bob Rossi", note="nota di bob")
+m58b.upsert_contatto("bob@ex.com", nome="Bob Bianchi")   # nome diverso → conflitto
+r58b = m58b.unisci_contatti_con_snapshot("bob", "bob@ex.com")
+canon58b = m58b.get_contatto_per_chiave("bob@ex.com")
+check("T58b conflitto: verso vince (nome verso), scartato di da riportato",
+      r58b is not None and not r58b.get("no_op")
+      and canon58b is not None and canon58b["nome"] == "Bob Bianchi"   # verso vince
+      and len(r58b["conflitti"]) >= 1
+      and any(c[0] == "nome" and c[1] == "Bob Bianchi" and c[2] == "Bob Rossi"
+              for c in r58b["conflitti"]),
+      f"nome={canon58b.get('nome') if canon58b else None!r} conflitti={r58b.get('conflitti')}")
+
+# T58c — diario: snapshot integrale di 'da' + evento merge presenti DOPO il merge.
+m58c = mem_tmp()
+m58c.upsert_contatto("carla", nome="Carla", note="info importante")
+m58c.upsert_contatto("carla@ex.com")
+m58c.unisci_contatti_con_snapshot("carla", "carla@ex.com")
+# Tutti gli eventi del canonico (include lapidi via diario_di_contatto)
+id_canon58c = m58c.get_contatto_per_chiave("carla@ex.com")["id"]
+storia58c = m58c.diario_di_contatto(id_canon58c)
+tipi58c = [e["tipo"] for e in storia58c]
+snapshot_desc = next((e["descrizione"] for e in storia58c if e["tipo"] == "merge_snapshot"), "")
+check("T58c diario: snapshot integrale (merge_snapshot) e evento (merge_evento) presenti",
+      "merge_snapshot" in tipi58c and "merge_evento" in tipi58c
+      and "carla" in snapshot_desc     # chiave di 'da' nello snapshot
+      and "Carla" in snapshot_desc,    # nome di 'da' nello snapshot
+      f"tipi={tipi58c} snap={snapshot_desc[:60]!r}")
+
+# T58d — chiave inesistente → None, rubrica invariata.
+m58d = mem_tmp()
+m58d.upsert_contatto("dora@ex.com", nome="Dora")
+n_prima58d = len(m58d.lista_contatti())
+r_ghost = m58d.unisci_contatti_con_snapshot("ghost_inesistente", "dora@ex.com")
+r_ghost2 = m58d.unisci_contatti_con_snapshot("dora@ex.com", "ghost_inesistente2")
+n_dopo58d = len(m58d.lista_contatti())
+check("T58d chiave inesistente → None, rubrica invariata",
+      r_ghost is None and r_ghost2 is None
+      and n_prima58d == n_dopo58d == 1,
+      f"r_ghost={r_ghost} r_ghost2={r_ghost2} n={n_dopo58d}")
+
+# T58e — fail-safe: write diario fallito (tabella assente) → nessuna modifica rubrica.
+# Simula un DB degradato droppando la tabella diario DOPO aver creato i contatti.
+m58e = mem_tmp()
+m58e.upsert_contatto("eva", nome="Eva")
+m58e.upsert_contatto("eva@ex.com", contatto="eva@ex.com")
+id_eva = m58e.get_contatto_per_chiave("eva")["id"]
+id_eva_email = m58e.get_contatto_per_chiave("eva@ex.com")["id"]
+import sqlite3 as _sqlite3_58e
+# Droppa la tabella diario per simulare un DB degradato
+with _sqlite3_58e.connect(str(m58e.db_path)) as _c58e:
+    _c58e.execute("DROP TABLE diario")
+    _c58e.commit()
+r58e = m58e.unisci_contatti_con_snapshot("eva", "eva@ex.com")
+# Verifica: nessuna modifica ai contatti (merged_into deve restare NULL per entrambi)
+with _sqlite3_58e.connect(str(m58e.db_path)) as _v58e:
+    _v58e.row_factory = _sqlite3_58e.Row
+    eva_raw = _v58e.execute("SELECT merged_into FROM contatti WHERE id = ?", (id_eva,)).fetchone()
+    eva_email_raw = _v58e.execute("SELECT merged_into FROM contatti WHERE id = ?", (id_eva_email,)).fetchone()
+check("T58e fail-safe: write diario fallito → None, rubrica invariata (no lapide)",
+      r58e is None
+      and eva_raw is not None and eva_raw["merged_into"] is None
+      and eva_email_raw is not None and eva_email_raw["merged_into"] is None,
+      f"r={r58e} merged_eva={eva_raw['merged_into'] if eva_raw else '?'} "
+      f"merged_email={eva_email_raw['merged_into'] if eva_email_raw else '?'}")
+
+# T58f — CLI merge_contacts_cmd: hint check-dups punta al comando reale.
+_buf58f = io.StringIO()
+with redirect_stdout(_buf58f):
+    m58f = mem_tmp()
+    m58f.upsert_contatto("frank@ex.com")
+    m58f.upsert_contatto("frank rossi", contatto="frank@ex.com")
+    gas.check_dups_cmd(root_dir=str(Path(m58f.db_path).parent))
+_out58f = _buf58f.getvalue()
+check("T58f check-dups hint: punta a 'gas merge-contacts', non a '_unisci_contatti'",
+      "merge-contacts" in _out58f and "_unisci_contatti" not in _out58f,
+      f"out={_out58f.strip()[-80:]!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

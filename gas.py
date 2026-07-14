@@ -2156,6 +2156,135 @@ def compress_history_cmd(root_dir: Optional[str] = None) -> int:
     return 0
 
 
+def check_dups_cmd(root_dir: Optional[str] = None) -> int:
+    """Comando `gas check-dups`: rilevamento duplicati email nel CRM (sola lettura).
+    Scrive nel diario una riga di segnalazione per ogni coppia trovata e stampa
+    il rapporto. Zero token LLM. Exit 0 anche se ci sono sospetti (WARN, non FAIL)."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    mem = MemoryStore(default_db_path(root))
+    print("\n=== GAS — Check duplicati email CRM ===")
+    if not mem.available:
+        print("FAIL — memoria non disponibile (DB assente o corrotto).")
+        return 1
+    coppie = mem.rileva_duplicati_email()
+    if not coppie:
+        print("OK — nessun sospetto duplicato email trovato.")
+        return 0
+    print(f"WARN — {len(coppie)} coppia/e sospetta/e (email condivisa cross-campo):")
+    for c in coppie:
+        print(f"  {c['chiave_a']!r} ~ {c['chiave_b']!r}  (email: {c['email']})")
+    print("Segnalazione scritta nel diario. Fondere con: gas merge-contacts <da> <verso>.")
+    return 0
+
+
+def _print_record(rec: Dict[str, Any]) -> None:
+    """Stampa un record contatto in modo leggibile per la preview del merge."""
+    campi = ("chiave", "nome", "contatto", "stato", "prossima_azione", "note")
+    for c in campi:
+        val = rec.get(c)
+        if val:
+            print(f"    {c}: {val!r}")
+
+
+def merge_contacts_cmd(root_dir: Optional[str] = None) -> int:
+    """Comando `gas merge-contacts <da> <verso> [--yes]`.
+
+    Fonde due schede CRM: 'verso' sopravvive (canonico), 'da' diventa lapide.
+    Preview obbligatoria con dettaglio di campi riempiti e conflitti.
+    RETE DI SICUREZZA: snapshot integrale di 'da' scritto nel diario append-only
+    PRIMA di qualsiasi modifica alla rubrica, nella stessa transazione SQLite.
+    Conferma interattiva y/N di default; --yes per saltarla.
+    Fail-safe (§9): chiave mancante → errore chiaro, zero modifiche; errore DB
+    → rollback automatico, stato invariato, mai crash.
+    NON esposto come tool dell'agente: solo comando umano."""
+    import sys
+    raw_args = sys.argv[2:]
+    yes_flag = "--yes" in raw_args
+    pos_args = [a for a in raw_args if a != "--yes"]
+
+    if len(pos_args) < 2:
+        print("Uso: gas merge-contacts <chiave_da> <chiave_verso> [--yes]")
+        print("  chiave_da   : lead che diventerà lapide (assorbito)")
+        print("  chiave_verso: lead sopravvissuto (il canonico)")
+        return 1
+
+    chiave_da, chiave_verso = pos_args[0], pos_args[1]
+    root = Path(root_dir or os.getcwd()).resolve()
+    mem = MemoryStore(default_db_path(root))
+
+    if not mem.available:
+        print("FAIL — memoria non disponibile (DB assente o corrotto).")
+        return 1
+
+    rec_da = mem.get_contatto_per_chiave(chiave_da)
+    if rec_da is None:
+        print(f"ERRORE — chiave '{chiave_da}' non trovata nella rubrica. Nulla da unire.")
+        return 1
+    rec_verso = mem.get_contatto_per_chiave(chiave_verso)
+    if rec_verso is None:
+        print(f"ERRORE — chiave '{chiave_verso}' non trovata nella rubrica. Nulla da unire.")
+        return 1
+
+    if normalizza_chiave(chiave_da) == normalizza_chiave(chiave_verso):
+        print("OK — stessa chiave normalizzata: nessuna operazione necessaria.")
+        return 0
+
+    CAMPI = ("nome", "contatto", "prossima_azione", "note")
+    campi_riempiti = []
+    conflitti = []
+    for campo in CAMPI:
+        v = rec_verso.get(campo) or ""
+        d = rec_da.get(campo) or ""
+        if not v and d:
+            campi_riempiti.append((campo, d))
+        elif v and d and v != d:
+            conflitti.append((campo, v, d))
+
+    print("\n=== GAS — Merge contatti CRM ===")
+    print(f"\nDA (diventerà lapide):   {chiave_da!r}")
+    _print_record(rec_da)
+    print(f"\nVERSO (sopravvissuto):   {chiave_verso!r}")
+    _print_record(rec_verso)
+
+    print("\n--- Preview risultato ---")
+    if not campi_riempiti and not conflitti:
+        print("  Nessuna modifica anagrafica ('verso' ha già tutti i campi valorizzati).")
+    for campo, val in campi_riempiti:
+        print(f"  RIEMPIE   {campo}: {val!r}  ← da '{chiave_da}'")
+    for campo, vince, scartato in conflitti:
+        print(f"  CONFLITTO {campo}: mantiene {vince!r}, SCARTA {scartato!r} (da '{chiave_da}')")
+    print(f"\n  '{chiave_da}' → lapide (merged_into = '{chiave_verso}')")
+    print("  Diario di entrambi preservato (lapide immutabile, append-only).")
+    print("  Snapshot di 'da' scritto nel diario prima di qualsiasi modifica.")
+
+    if not yes_flag:
+        try:
+            risposta = input("\nProcedere con il merge? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nOperazione annullata.")
+            return 0
+        if risposta != "y":
+            print("Operazione annullata.")
+            return 0
+
+    result = mem.unisci_contatti_con_snapshot(chiave_da, chiave_verso)
+    if result is None:
+        print("FAIL — merge non riuscito (degrado DB). Rubrica invariata.")
+        return 1
+    if result.get("no_op"):
+        print("OK — lead già uniti: nessuna operazione eseguita.")
+        return 0
+
+    print(f"\nSUCCESSO — '{chiave_da}' fuso in '{chiave_verso}' "
+          f"(canonico id={result['canonico_id']}).")
+    print("Snapshot e evento merge scritti nel diario prima della modifica.")
+    if conflitti:
+        print(f"Valori scartati ('{chiave_da}' li aveva, '{chiave_verso}' ha vinto):")
+        for campo, _, scartato in conflitti:
+            print(f"  {campo}: {scartato!r}")
+    return 0
+
+
 def main():
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "version":
@@ -2188,6 +2317,10 @@ def main():
         sys.exit(eval_vectors_cmd(query=query, k=k))
     if len(sys.argv) > 1 and sys.argv[1] == "compress-history":
         sys.exit(compress_history_cmd())
+    if len(sys.argv) > 1 and sys.argv[1] == "check-dups":
+        sys.exit(check_dups_cmd())
+    if len(sys.argv) > 1 and sys.argv[1] == "merge-contacts":
+        sys.exit(merge_contacts_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())
