@@ -187,6 +187,55 @@ def normalizza_chiave(chiave: Optional[str]) -> str:
     return " ".join(testo.split()).lower()
 
 
+_PREFISSO_ITALIA = "39"
+
+
+def normalizza_telefono(valore: Optional[str]) -> str:
+    """Forma canonica di un numero di telefono per il confronto (PURA, IDEMPOTENTE).
+
+    Passi: strip dei separatori (spazi/trattini/punti/parentesi), equivalenza tra
+    '+' e '00' iniziali (standard ITU-T), aggiunta automatica del prefisso Italia
+    (39) per i numeri locali italiani a 9-10 cifre che iniziano con '0' o '3'.
+    Range valido post-normalizzazione: 9-15 cifre (E.164). Ignora valori con '@'
+    (sono email, non telefoni).
+
+    Fail-safe (§9): None/non convertibile/fuori range → '' (mai eccezione).
+    Idempotente: normalizza_telefono(normalizza_telefono(x)) == normalizza_telefono(x).
+    """
+    if valore is None:
+        return ""
+    try:
+        s = str(valore).strip()
+    except Exception:  # pragma: no cover — coercizione difensiva
+        return ""
+    if "@" in s:
+        return ""  # è un'email, non un telefono
+    # Rimuovi tutto tranne cifre e il '+' iniziale
+    raw = re.sub(r"[^\d+]", "", s)
+    if not raw:
+        return ""
+    # '+' e '00' iniziali sono equivalenti (ITU-T): normalizza a sole cifre
+    if raw.startswith("+"):
+        digits = raw[1:]
+    elif raw.startswith("00"):
+        digits = raw[2:]
+    else:
+        digits = raw
+    # Strip difensivo: rimuove eventuali '+' interni residui da input patologici
+    digits = re.sub(r"\D", "", digits)
+    # Numero locale italiano (9-10 cifre che inizia con '0' o '3', senza prefisso
+    # 39 già presente): aggiunge il prefisso paese. Il controllo su '0'/'3' evita
+    # di aggiungere '39' a numeri stranieri brevi.
+    if (9 <= len(digits) <= 10
+            and (digits.startswith("0") or digits.startswith("3"))
+            and not digits.startswith(_PREFISSO_ITALIA)):
+        digits = _PREFISSO_ITALIA + digits
+    # Valida range E.164: 9-15 cifre totali
+    if not (9 <= len(digits) <= 15):
+        return ""
+    return digits
+
+
 class MemoryStore:
     """Accesso al DB di memoria. Connessioni a vita breve (una per operazione):
     semplice, niente stato condiviso fra thread, e ogni metodo è blindato in
@@ -786,14 +835,48 @@ class MemoryStore:
         dot = domain.rfind(".")
         return dot > 0 and bool(domain[dot + 1:].strip())
 
+    @staticmethod
+    def _is_phone(valore: Optional[str]) -> bool:
+        """Pattern telefono: delegato a normalizza_telefono (non vuoto → valido).
+        PURO e FAIL-SAFE: mai solleva."""
+        return bool(normalizza_telefono(valore))
+
+    def _append_sospetto(self, tipo: str, descrizione_base: str,
+                         id_a: int, id_b: int) -> None:
+        """Scrive nel diario una riga di sospetto (tipo: sospetto_duplicato_*)
+        SOLO se la coppia non è già segnalata. Tag '[ids:X,Y]' nella descrizione
+        permette il check idempotente: LIKE '%[ids:X,Y]%' sulla descrizione. I caratteri
+        '[', ']', ',' non sono wildcard in SQLite LIKE → nessun falso positivo.
+        FAIL-SAFE (§9): errore nel check → skip + warning. Non solleva mai."""
+        lo, hi = min(id_a, id_b), max(id_a, id_b)
+        tag = f"[ids:{lo},{hi}]"
+        descrizione = f"{descrizione_base} {tag}"
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT COUNT(*) FROM diario WHERE tipo = ? AND descrizione LIKE ?",
+                    (tipo, f"%{tag}%"),
+                ).fetchone()
+                if row and int(row[0]) > 0:
+                    return  # già nel diario: skip idempotente
+                con.execute(
+                    "INSERT INTO diario (ts, tipo, descrizione, contatto_id) "
+                    "VALUES (?, ?, ?, ?)",
+                    (_now_iso(), tipo, descrizione, None),
+                )
+                con.commit()
+        except (sqlite3.Error, OSError) as e:
+            log.warning("_append_sospetto: check/write fallito (%s) — skip", e)
+
     def rileva_duplicati_email(self) -> List[Dict[str, Any]]:
         """SOLA LETTURA sui contatti: trova coppie di schede VIVE che condividono
         la stessa email (confrontando `chiave_norm` e il campo `contatto` di ciascuna,
         normalizzati con normalizza_chiave). Match SOLO su email (pattern '@'+dominio);
         nomi e testo generico non generano segnali. Per ogni coppia trovata scrive
-        una riga append-only nel diario (tipo 'sospetto_duplicato_email'): questa è
-        la segnalazione persistente per l'operatore. Ritorna la lista delle coppie
-        (dizionari con chiave_a/id_a/chiave_b/id_b/email). [] in degrado (§9)."""
+        una riga append-only nel diario (tipo 'sospetto_duplicato_email'), IDEMPOTENTE:
+        stesso sospetto già nel diario → nessuna riga aggiuntiva (via _append_sospetto).
+        Ritorna la lista delle coppie (dizionari con chiave_a/id_a/chiave_b/id_b/email).
+        [] in degrado (§9)."""
         if not self.available:
             return []
         try:
@@ -829,10 +912,62 @@ class MemoryStore:
                         "chiave_b": b["chiave"], "id_b": b["id"],
                         "email": email,
                     })
-                    self.append_diario(
+                    self._append_sospetto(
                         "sospetto_duplicato_email",
                         f"sospetto duplicato: {a['chiave']!r} ~ {b['chiave']!r}"
                         f" (email {email})",
+                        a["id"], b["id"],
+                    )
+        return coppie
+
+    def rileva_duplicati_telefono(self) -> List[Dict[str, Any]]:
+        """SOLA LETTURA sui contatti: trova coppie di schede VIVE che condividono
+        lo stesso numero di telefono normalizzato (via normalizza_telefono sul campo
+        `chiave_norm` e `contatto`). Match SOLO su valori riconosciuti come telefono
+        (9-15 cifre, senza '@'). Per ogni coppia scrive una riga append-only nel
+        diario (tipo 'sospetto_duplicato_telefono'), IDEMPOTENTE: stesso sospetto già
+        nel diario → nessuna riga aggiuntiva. Ritorna la lista delle coppie (dizionari
+        con chiave_a/id_a/chiave_b/id_b/telefono). [] in degrado (§9)."""
+        if not self.available:
+            return []
+        try:
+            with self._connect() as con:
+                righe = self._rows(con.execute(
+                    "SELECT id, chiave, chiave_norm, contatto "
+                    "FROM contatti WHERE merged_into IS NULL"
+                ))
+        except (sqlite3.Error, OSError) as e:
+            log.warning("rileva_duplicati_telefono: lettura contatti fallita (%s): %s",
+                        self.db_path, e)
+            return []
+        # Indice tel_norm → {id: {id, chiave}} (dedup per id, ignora sorgente)
+        tel_idx: Dict[str, Dict[int, Dict[str, Any]]] = {}
+        for r in righe:
+            for raw in (r.get("chiave_norm"), r.get("contatto")):
+                norm = normalizza_telefono(raw)
+                if norm:
+                    tel_idx.setdefault(norm, {})[int(r["id"])] = {
+                        "id": int(r["id"]), "chiave": r["chiave"]
+                    }
+        # Coppie: telefono con ≥2 contatti distinti
+        coppie: List[Dict[str, Any]] = []
+        for tel, per_id in tel_idx.items():
+            schede = list(per_id.values())
+            if len(schede) < 2:
+                continue
+            for i in range(len(schede)):
+                for j in range(i + 1, len(schede)):
+                    a, b = schede[i], schede[j]
+                    coppie.append({
+                        "chiave_a": a["chiave"], "id_a": a["id"],
+                        "chiave_b": b["chiave"], "id_b": b["id"],
+                        "telefono": tel,
+                    })
+                    self._append_sospetto(
+                        "sospetto_duplicato_telefono",
+                        f"sospetto duplicato: {a['chiave']!r} ~ {b['chiave']!r}"
+                        f" (telefono {tel})",
+                        a["id"], b["id"],
                     )
         return coppie
 

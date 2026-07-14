@@ -3198,6 +3198,128 @@ check("T58f check-dups hint: punta a 'gas merge-contacts', non a '_unisci_contat
       "merge-contacts" in _out58f and "_unisci_contatti" not in _out58f,
       f"out={_out58f.strip()[-80:]!r}")
 
+# ---------- T59: idempotenza diario — rileva_duplicati_email (R-crm-1b Fetta 2) ----------
+# Ogni run NON deve ri-appendere sospetti già segnalati. Tag [ids:X,Y] nella
+# descrizione permette il check; il diario resta IMMUTABILE (append-only).
+print("\n--- T59: idempotenza diario check-dups email ---")
+
+# T59a — secondo run rileva_duplicati_email: stessa coppia → NON aggiunge riga diario
+m59 = mem_tmp()
+m59.upsert_contatto("alfa@ex.com")
+m59.upsert_contatto("alfa rossi", contatto="alfa@ex.com")
+d59_ante = len(m59.diario_recente(100))
+m59.rileva_duplicati_email()         # primo run: scrive il sospetto
+d59_dopo1 = len(m59.diario_recente(100))
+m59.rileva_duplicati_email()         # secondo run: stessa coppia, già nel diario
+d59_dopo2 = len(m59.diario_recente(100))
+check("T59a idempotenza email: stesso sospetto 2 volte → 1 sola riga diario",
+      d59_dopo1 == d59_ante + 1      # primo run: aggiunge 1
+      and d59_dopo2 == d59_dopo1,    # secondo run: nessuna nuova riga
+      f"ante={d59_ante} dopo1={d59_dopo1} dopo2={d59_dopo2}")
+
+# T59b — sospetti DIVERSI → righe DISTINTE nel diario
+m59b = mem_tmp()
+m59b.upsert_contatto("beta1@ex.com")
+m59b.upsert_contatto("beta rossi", contatto="beta1@ex.com")
+m59b.upsert_contatto("beta2@ex.com")
+m59b.upsert_contatto("beta bianchi", contatto="beta2@ex.com")
+m59b.rileva_duplicati_email()
+tipi59b = [e for e in m59b.diario_recente(20)
+           if e["tipo"] == "sospetto_duplicato_email"]
+check("T59b sospetti email diversi → righe distinte nel diario",
+      len(tipi59b) == 2,
+      f"righe_sospetto={len(tipi59b)}")
+
+# T59c — tag [ids:X,Y] presente nella descrizione del sospetto
+m59c = mem_tmp()
+m59c.upsert_contatto("gamma@ex.com")
+m59c.upsert_contatto("gamma rossi", contatto="gamma@ex.com")
+m59c.rileva_duplicati_email()
+riga59c = next(
+    (e for e in m59c.diario_recente(10) if e["tipo"] == "sospetto_duplicato_email"),
+    None
+)
+check("T59c tag [ids:X,Y] presente nella descrizione del sospetto diario",
+      riga59c is not None and "[ids:" in riga59c["descrizione"],
+      f"desc={riga59c['descrizione'][:80] if riga59c else None!r}")
+
+# ---------- T60: normalizzazione telefono + duplicati telefono (R-crm-1b Fetta 3) ----------
+print("\n--- T60: normalizzazione telefono e rilevamento duplicati ---")
+from modules.memory import normalizza_telefono as _norm_tel
+
+# T60a — normalizza_telefono: forme diverse dello stesso numero italiano → stesso canonico
+_tel_forme = [
+    "+39 333 123 4567",    # internazionale con spazi
+    "0039333 1234567",     # 0039 senza spazi
+    "333 123-4567",        # locale con trattini
+    "333.123.4567",        # locale con punti
+    "+39-333-123-4567",    # internazionale con trattini
+]
+_tel_norms = [_norm_tel(f) for f in _tel_forme]
+check("T60a normalizza_telefono: forme diverse → stesso canonico",
+      len(set(_tel_norms)) == 1 and _tel_norms[0] != "",
+      f"canoni={_tel_norms}")
+
+# T60b — due contatti con lo stesso numero (forme diverse) → coppia + riga diario
+m60b = mem_tmp()
+m60b.upsert_contatto("Marco Rossi", nome="Marco", contatto="+39 333 123 4567")
+m60b.upsert_contatto("333 123 4567")   # stesso numero, forma locale
+d60b_ante = len(m60b.diario_recente(50))
+coppie60b = m60b.rileva_duplicati_telefono()
+d60b_post = m60b.diario_recente(50)
+check("T60b duplicati telefono: stesso numero normalizzato → coppia segnalata + diario",
+      len(coppie60b) == 1
+      and len(d60b_post) == d60b_ante + 1
+      and any(e["tipo"] == "sospetto_duplicato_telefono" for e in d60b_post),
+      f"coppie={len(coppie60b)} diario_delta={len(d60b_post)-d60b_ante}")
+
+# T60c — numeri diversi → nessuna coppia
+m60c = mem_tmp()
+m60c.upsert_contatto("Luca Verde", contatto="333 111 2222")
+m60c.upsert_contatto("Sara Viola", contatto="333 333 4444")
+coppie60c = m60c.rileva_duplicati_telefono()
+check("T60c numeri diversi → nessun falso positivo telefono",
+      coppie60c == [],
+      f"coppie={coppie60c}")
+
+# T60d — contatti senza numero → nessun falso positivo
+m60d = mem_tmp()
+m60d.upsert_contatto("Nadia Solo", nome="Nadia")
+m60d.upsert_contatto("Oreste Duo", nome="Oreste")
+coppie60d = m60d.rileva_duplicati_telefono()
+check("T60d contatti senza numero → nessun falso positivo telefono",
+      coppie60d == [],
+      f"coppie={coppie60d}")
+
+# T60e — idempotenza: stesso telefono rilevato due volte → una sola riga diario
+m60e = mem_tmp()
+m60e.upsert_contatto("Pietro Rossi", contatto="+39 344 555 6666")
+m60e.upsert_contatto("344 555 6666")   # stesso numero, forma locale
+d60e_ante = len(m60e.diario_recente(50))
+m60e.rileva_duplicati_telefono()       # primo run
+d60e_dopo1 = len(m60e.diario_recente(50))
+m60e.rileva_duplicati_telefono()       # secondo run: stessa coppia
+d60e_dopo2 = len(m60e.diario_recente(50))
+check("T60e idempotenza diario telefono: stesso sospetto 2 volte → 1 sola riga",
+      d60e_dopo1 == d60e_ante + 1
+      and d60e_dopo2 == d60e_dopo1,
+      f"ante={d60e_ante} dopo1={d60e_dopo1} dopo2={d60e_dopo2}")
+
+# T60f — check_dups_cmd include i risultati telefono nel report CLI
+import gas as _gas60
+import io as _io60
+from contextlib import redirect_stdout as _rs60
+m60f = mem_tmp()
+m60f.upsert_contatto("Quirino Rossi", contatto="+39 355 666 7777")
+m60f.upsert_contatto("355 666 7777")
+_buf60f = _io60.StringIO()
+with _rs60(_buf60f):
+    _r60f = _gas60.check_dups_cmd(root_dir=str(Path(m60f.db_path).parent))
+_out60f = _buf60f.getvalue()
+check("T60f check_dups_cmd include risultati telefono nel report",
+      _r60f == 0 and "WARN" in _out60f and "telefon" in _out60f.lower(),
+      f"r={_r60f} out={_out60f.strip()[-80:]!r}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

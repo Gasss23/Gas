@@ -2157,22 +2157,29 @@ def compress_history_cmd(root_dir: Optional[str] = None) -> int:
 
 
 def check_dups_cmd(root_dir: Optional[str] = None) -> int:
-    """Comando `gas check-dups`: rilevamento duplicati email nel CRM (sola lettura).
-    Scrive nel diario una riga di segnalazione per ogni coppia trovata e stampa
-    il rapporto. Zero token LLM. Exit 0 anche se ci sono sospetti (WARN, non FAIL)."""
+    """Comando `gas check-dups`: rilevamento duplicati email e telefono nel CRM (sola lettura).
+    Scrive nel diario una riga di segnalazione per ogni coppia trovata, idempotente:
+    stesso sospetto già nel diario non viene ri-scritto. Zero token LLM.
+    Exit 0 anche se ci sono sospetti (WARN, non FAIL)."""
     root = Path(root_dir or os.getcwd()).resolve()
     mem = MemoryStore(default_db_path(root))
-    print("\n=== GAS — Check duplicati email CRM ===")
+    print("\n=== GAS — Check duplicati CRM ===")
     if not mem.available:
         print("FAIL — memoria non disponibile (DB assente o corrotto).")
         return 1
-    coppie = mem.rileva_duplicati_email()
-    if not coppie:
-        print("OK — nessun sospetto duplicato email trovato.")
+    coppie_email = mem.rileva_duplicati_email()
+    coppie_tel = mem.rileva_duplicati_telefono()
+    if not coppie_email and not coppie_tel:
+        print("OK — nessun sospetto duplicato trovato (email né telefono).")
         return 0
-    print(f"WARN — {len(coppie)} coppia/e sospetta/e (email condivisa cross-campo):")
-    for c in coppie:
-        print(f"  {c['chiave_a']!r} ~ {c['chiave_b']!r}  (email: {c['email']})")
+    if coppie_email:
+        print(f"WARN — {len(coppie_email)} coppia/e sospetta/e per email condivisa:")
+        for c in coppie_email:
+            print(f"  {c['chiave_a']!r} ~ {c['chiave_b']!r}  (email: {c['email']})")
+    if coppie_tel:
+        print(f"WARN — {len(coppie_tel)} coppia/e sospetta/e per telefono condiviso:")
+        for c in coppie_tel:
+            print(f"  {c['chiave_a']!r} ~ {c['chiave_b']!r}  (tel: {c['telefono']})")
     print("Segnalazione scritta nel diario. Fondere con: gas merge-contacts <da> <verso>.")
     return 0
 
