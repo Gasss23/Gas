@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-13** (chiusura riserva #44B — prezzi Groq env-overridabili, 220 PASS, 46 review)
+> Ultimo aggiornamento: **2026-07-14** (gh CLI installato su Giulia — CHIUSO)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -132,6 +132,6 @@ Componenti attive:
 - ℹ️ **Micro-finding di processo — handoff diff --stat riciclato** (2026-07-13): il `diff --stat` nel handoff era riciclato dalla sessione precedente, non rigenerato — svista di copia; log/conteggio/CI erano coerenti. Nota: Claude Code rigeneri sempre `git diff --stat` reale nel handoff, mai riciclarlo.
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
-- ⬜ **Installare `gh` CLI** — comodità, non requisito: il merge PR si fa già da browser o da Codespace (gh preinstallato). Serve solo per merge doc-only da terminale locale. Consigliato `sudo apt install gh`. Non bloccante.
+- ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
 - ✅ **Hardening token Claude Code** — verificato 2026-07-13: token Codespace OAuth (`ghu_*`) non ha Administration per default. Tentativo di scrittura su ruleset `main-lock` (id 18805824) → 404/403 confermato via curl. Lucchetto non aggirabile dal token di Claude Code. CHIUSO.
 - ⬜ **Locale Giulia da riallineare a origin/main** (PR #6 mergiata sul remoto, locale ancora indietro). Al rientro, PRIMA di lavorare: `git fetch origin` + `git merge --ff-only origin/main`. Non creare branch da locale vecchio.
