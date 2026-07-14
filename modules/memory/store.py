@@ -34,6 +34,7 @@ le fondamenta.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import sqlite3
@@ -480,6 +481,105 @@ class MemoryStore:
                 return canonico_id
         except (sqlite3.Error, OSError) as e:
             log.warning("unisci_contatti fallita (%s): %s", self.db_path, e)
+            return None
+
+    def unisci_contatti_con_snapshot(
+        self, chiave_da: str, chiave_verso: str
+    ) -> Optional[Dict[str, Any]]:
+        """Merge atomico con rete di sicurezza (R-crm-1b Fetta 1, comando umano CLI).
+
+        Identico a unisci_contatti (lapide, COALESCE, ri-punta lapidi esistenti) ma
+        aggiunge due INSERT nel diario COME PRIMA COSA della stessa transazione:
+          - 'merge_snapshot': snapshot integrale JSON del record 'da' (pre-merge);
+          - 'merge_evento': riepilogo campi riempiti e conflitti.
+
+        FAIL-SAFE (invariante non opzionale): se i write sul diario falliscono,
+        l'intera transazione fa ROLLBACK automatico → rubrica invariata. Garantito
+        dal fatto che tutti gli INSERT/UPDATE sono nello stesso 'with con:' SQLite.
+
+        Ritorna un dict {canonico_id, campi_riempiti, conflitti, no_op} oppure None
+        in caso di chiave mancante o degrado (§9). 'no_op=True' = lead già identici.
+        """
+        try:
+            with self._connect() as con:
+                verso = self._risolvi_canonico(con, normalizza_chiave(chiave_verso))
+                da = self._risolvi_canonico(con, normalizza_chiave(chiave_da))
+                if verso is None or da is None:
+                    return None
+                canonico_id, da_id = int(verso["id"]), int(da["id"])
+                if da_id == canonico_id:
+                    return {"canonico_id": canonico_id, "campi_riempiti": [],
+                            "conflitti": [], "no_op": True}
+
+                # Calcola preview (campi da riempire e conflitti)
+                campi_testo = ("nome", "contatto", "prossima_azione", "note")
+                campi_riempiti: List[Tuple[str, str]] = []
+                conflitti: List[Tuple[str, str, str]] = []
+                for campo in campi_testo:
+                    v_val = verso.get(campo) or ""
+                    d_val = da.get(campo) or ""
+                    if not v_val and d_val:
+                        campi_riempiti.append((campo, d_val))
+                    elif v_val and d_val and v_val != d_val:
+                        conflitti.append((campo, v_val, d_val))
+
+                now = _now_iso()
+
+                # RETE DI SICUREZZA: snapshot di 'da' NEL DIARIO prima di ogni UPDATE
+                snapshot_desc = (
+                    f"MERGE SNAPSHOT — lead '{chiave_da}' (id={da_id}) fuso in "
+                    f"'{chiave_verso}' (id={canonico_id}). "
+                    f"Snapshot: {json.dumps(dict(da), ensure_ascii=False, default=str)}"
+                )
+                con.execute(
+                    "INSERT INTO diario (ts, tipo, descrizione, contatto_id) "
+                    "VALUES (?, ?, ?, ?)",
+                    (now, "merge_snapshot", snapshot_desc, da_id),
+                )
+                evento_desc = (
+                    f"Merge: '{chiave_da}' → lapide di '{chiave_verso}' "
+                    f"(id={canonico_id}). Riempiti: {[c for c, _ in campi_riempiti]}. "
+                    f"Conflitti (verso vince): {[(c, v) for c, v, _ in conflitti]}."
+                )
+                con.execute(
+                    "INSERT INTO diario (ts, tipo, descrizione, contatto_id) "
+                    "VALUES (?, ?, ?, ?)",
+                    (now, "merge_evento", evento_desc, canonico_id),
+                )
+
+                # 1) completa anagrafica del canonico dai campi del doppione
+                con.execute(
+                    "UPDATE contatti SET "
+                    "  nome = COALESCE(nome, ?), "
+                    "  contatto = COALESCE(contatto, ?), "
+                    "  prossima_azione = COALESCE(prossima_azione, ?), "
+                    "  note = COALESCE(note, ?), "
+                    "  aggiornato_il = ? "
+                    "WHERE id = ?",
+                    (da.get("nome"), da.get("contatto"), da.get("prossima_azione"),
+                     da.get("note"), now, canonico_id),
+                )
+                # 2) ri-punta al canonico le lapidi che puntavano al doppione
+                con.execute(
+                    "UPDATE contatti SET merged_into = ? WHERE merged_into = ?",
+                    (canonico_id, da_id),
+                )
+                # 3) marca il doppione come lapide del canonico
+                con.execute(
+                    "UPDATE contatti SET merged_into = ?, aggiornato_il = ? "
+                    "WHERE id = ?",
+                    (canonico_id, now, da_id),
+                )
+                con.commit()
+                return {
+                    "canonico_id": canonico_id,
+                    "campi_riempiti": campi_riempiti,
+                    "conflitti": conflitti,
+                    "no_op": False,
+                }
+        except (sqlite3.Error, OSError) as e:
+            log.warning("unisci_contatti_con_snapshot fallita (%s): %s",
+                        self.db_path, e)
             return None
 
     # ---------------------------------------------------------------- letture
