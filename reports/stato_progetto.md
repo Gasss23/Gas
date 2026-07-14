@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-14** (gh CLI installato su Giulia — CHIUSO)
+> Ultimo aggiornamento: **2026-07-14** (sfoltita finding aperti — 15 item archiviati)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -44,33 +44,31 @@ Componenti attive:
    â†’ 4. `openrouter` free (`meta-llama/llama-3.3-70b-instruct:free`)
    â†’ 5. `ollama` offline (`qwen2.5:7b-instruct`, solo se `GAS_OLLAMA_URL` settata)
 
-## Finding aperti (ðŸŸ¡ attivi)
+## Finding aperti (🟡 attivi)
 
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
-- âœ… **R-reidx-deps** â€” CHIUSO (2026-06-29): requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante (crash deploy fresh); coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate disponibili (pip download, zero build). Runtime al deploy.
-- ðŸŸ¡ **R-reidx-3** â€” picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` ora usa batch paginati (`diario_dopo`) â€” numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX33 8GB il picco totale Ã¨ gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
-- âœ… **R-vec-2** â€” `GAS_VECTORS_DB` + `GAS_EMBED_MODEL` configurabili via env (review #31, 2026-06-25).
-- âœ… **R-vec-2b** â€” fingerprint-guard fail-closed: mismatch model_id (anche stessa dim) o DB legacy â†’ layer disabilitato, istruisce `gas reindex`; fingerprint scritto alla creazione e nel reindex (review #34, 2026-06-27).
-- âœ… **R-vec-3** â€” CHIUSO (2026-07-02, sonda S0 2026-06-30 su CX33): import + embedding a runtime confermati sul box reale â€” BAAI/bge-small-en-v1.5 dims=384 load=3.5s, paraphrase-multilingual-MiniLM-L12-v2 dims=384 load=5.0s. **Boundary esplicito**: prova che l'embedder importa e produce vettori di dim corretta sul box reale; NON prova qualitÃ  semantica (â†’ R-wire-2) nÃ© comportamento sotto carico RAM concorrente (ollama+bot). Picco RSS 697MB a DUE modelli residenti (bge-small + multilingua); produzione carica UN SOLO modello (EMBED_MODEL multilingua) â†’ footprint reale < 697MB; 697 = ceiling conservativo, NON il costo del singolo modello. A S1b resta SOLO la misura RAM a regime del singolo modello.
-- âœ… **R-vec-pool** (2026-07-03, review #42): `fastembed.__version__` aggiunto al fingerprint del vector store â€” sia in scrittura (creazione DB + `gas reindex`) sia in lettura (guard). DB legacy senza campo â†’ fail-closed ("DB legacy: fastembed_version assente"). Mismatch versione su stessa model_id+dim â†’ "fingerprint mismatch: DB fastembed=... â‰  ...". Test T39h-T39k (4 casi) aggiunti. Suite: 216 PASS. Introspezione pooling reale = FUORI SCOPE (decisione umana); `fastembed==0.8.0` resta pinnato in requirements.txt.
-- ðŸŸ¡ **R-wire-1** (RESIDUO) â€” `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config giÃ  fatto (review #28).
-- ðŸŸ¡ **R-wire-2** â€” qualitÃ  semantica MiniLM limitata su query corte IT: limite di potenza, non correttezza. Legato a R-vec-3.
-- ðŸŸ¡ **Esfiltrazione** â€” chiusa in `os_strict` con bwrap; in `os_with_fallback` resta ðŸŸ¡.
-- âœ… **WINDOW_CHAR_CAP non env-configurabile** â€” `GAS_WINDOW_CHAR_CAP` configurabile via env, min_val=1000 (review #31, 2026-06-25).
-- ðŸŸ¡ **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) giÃ  copre tutti i rami a freddo â€” sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe Â§9). Rimandato per falsi positivi.
-- ðŸŸ¡ **R-crm-1b** â€” identitÃ  cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
-- ✅ **R-groq-slash** (CHIUSO 2026-07-08) — formato `openai/gpt-oss-120b` accettato: STATUS 200, tool_calls parsate, latenza 1138ms, 7 reasoning_tokens. Validazione live eseguita con `reasoning_effort: "low"` (commit f028e51, review #44).
-- ✅ **R-groq-dup** (CHIUSO 2026-07-08) — tutti e tre i brain importano `MODEL_GROQ` da `brains/model_ids.py` (fonte unica). Sorgente già unificata dal merge `model-ids-fonte-unica` (`eb0509f`). Confermato da revisore #44.
-- 🟡 **R-legacy-slice** (riserva #1 revisore, review #43 model_ids, registrata 2026-07-09): `brains/claude_brain.py:38` contiene `for m in messages[-8:]` — slicing raw della history, violazione sez. 5 CLAUDE.md. Oggi INERTE: file legacy non wired al kernel attivo, zero copertura test. Diventa bloccante se i brain legacy venissero mai ri-agganciati. Debito tecnico latente, nessuna azione ora.
-- ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = **comportamento atteso, non regressione**. Il paracadute §9 gestisce silenziosamente.
-- âœ… **MEMORY_PIN_SCAN hardcoded** â€” `GAS_MEMORY_PIN_SCAN` configurabile via env, min_val=10 (review #31, 2026-06-25).
-- ðŸŸ¡ **R-ci-openrouter** â€” T9a fragile se OPENROUTER_API_KEY Ã¨ presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non Ã¨ garantita formalmente (revisore CI-4, 2026-06-24).
-- âœ… **CI-4** â€” risolto (2026-06-24): T9a/T9c skip condizionale su assenza API key live, CI verde.
-- âœ… **R-tel-1** (chiuso review #37, 2026-06-27) â€” `_free_names` derivato da `FREE_RUNGS`; `name not in _free_names` come flag `obbligatoria`; `reason` nel JSONL = livello ("WARN"/"KO"). T40/T40b confermano. Riserve cosmetiche #37: (1) `reason` perde il testo descrittivo (â†’ `detail` futuro); (2) ollama non assertito in T40 (GAS_OLLAMA_URL assente â†’ skip).
-- âœ… **Riserve review #35** (chiuse review #36, 2026-06-27) â€” T39b-reason/T39c-reason aggiungono assert su `disable_reason`; T39f (ramo `sqlite3.Error`) e T39g (ramo embedder assenti) coprono i 4 rami. Tutti PASS.
-- ðŸŸ¡ **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
+- 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
+- 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
+- 🟡 **R-crm-1b** — identità cross-formato non prevenuta (es. `anna@ex.com` vs `Anna`): meccanismo merge manuale disponibile (`unisci_contatti`), policy chiave canonica non presa.
+- 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
+- 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
+### DEPLOY VPS — da tarare su dati reali
+
+- 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX33 8GB gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
+- 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
+- 🟡 **RAM a regime del singolo modello** — `MemoryHigh=1500M`/`MemoryMax=2000M` in `gas.service` (S1b, 2026-07-04): misura reale non ancora registrata. Da rilevare su VPS con diario attivo prima di affinare i limiti systemd.
+
+### Limiti noti (non-finding)
+
+- **R-wire-2** — qualità semantica MiniLM limitata su query corte IT: limite di potenza, non correttezza. Legato a R-vec-3 (chiuso).
+
+### Debito latente
+
+- **R-legacy-slice** (riserva #1 revisore, review #43, 2026-07-09): `brains/claude_brain.py:38` contiene `for m in messages[-8:]` — slicing raw della history, violazione sez. 5 CLAUDE.md. INERTE: file legacy non wired al kernel attivo, zero copertura test. Diventa bloccante solo se i brain legacy venissero ri-agganciati. Nessuna azione ora.
+
+> ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = comportamento atteso, non regressione.
 ## Prossimi passi (in ordine di prioritÃ )
 
 1. ~~**FASE 2.5**~~ âœ… chiusa (review #39, 2026-06-27).
@@ -124,14 +122,9 @@ Componenti attive:
 
 
 
-- ✅ **Riserve review #44 A e C — CHIUSE** (2026-07-13): commento inline reasoning_effort nei 3 brain (groq_brain.py, claude_brain.py, gemini_brain.py) + T36c legato a MODEL_GROQ (fonte unica). Review #45 APPROVATO. Merge PR #4 su main (3836111), CI run 29235274026 SUCCESS.
-  (A) ✅ **CHIUSO** — commento inline aggiunto che documenta il vincolo reasoning_effort="low" e il rischio di override con modello non-reasoning.
-  (B) ✅ **CHIUSA** (2026-07-13) — prezzi Groq env-overridabili (`GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT`), valore $0.15/$0.60 verificato su groq.com/pricing 2026-07-13, try/except anti-crash coperto da T44d, CI run 29240223711 SUCCESS, merge PR #6. Review #46 APPROVATO.
-  (C) ✅ **CHIUSO** — T36c ora usa la costante MODEL_GROQ (import da brains/model_ids.py) invece del literal.
 - ⚠️ **Nota di processo — scope creep sessione 2026-07-08**: fetta concordata = migrazione Groq; fuori mandato: (1) chiuso R-groq-dup (era deferito a slice separata), (2) toccato CLAUDE.md, (3) toccato runbook_s1. Esito tecnico corretto (review #44), ma lo scope lo decide l'operatore: registrata recidiva dell'anti-pattern. Mitigazione strutturale: ruleset `main-lock` attivo dal 2026-07-09 (no push diretto su main, CI `unit-suite` required, self-merge).
 - ℹ️ **Micro-finding di processo — handoff diff --stat riciclato** (2026-07-13): il `diff --stat` nel handoff era riciclato dalla sessione precedente, non rigenerato — svista di copia; log/conteggio/CI erano coerenti. Nota: Claude Code rigeneri sempre `git diff --stat` reale nel handoff, mai riciclarlo.
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
-- ✅ **Hardening token Claude Code** — verificato 2026-07-13: token Codespace OAuth (`ghu_*`) non ha Administration per default. Tentativo di scrittura su ruleset `main-lock` (id 18805824) → 404/403 confermato via curl. Lucchetto non aggirabile dal token di Claude Code. CHIUSO.
 - ⬜ **Locale Giulia da riallineare a origin/main** (PR #6 mergiata sul remoto, locale ancora indietro). Al rientro, PRIMA di lavorare: `git fetch origin` + `git merge --ff-only origin/main`. Non creare branch da locale vecchio.
