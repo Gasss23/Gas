@@ -1,21 +1,22 @@
-# diff_sessione — 2026-07-14 (R-crm-1b Fetta 1)
+# diff_sessione — 2026-07-14 (R-crm-1b Fette 2+3)
 
 > Fotografia dell'ultima sessione. La storia completa sta in git.
 
 ## File toccati
 
-| File | Δ righe | Cosa è cambiato e perché |
-|------|---------|--------------------------|
-| `modules/memory/store.py` | +101 | Aggiunto `import json` e nuovo metodo `unisci_contatti_con_snapshot`: merge atomico con snapshot diario nella stessa transazione SQLite (rete di sicurezza R-crm-1b fetta 1) |
-| `gas.py` | +112 / -1 | Aggiunto `_print_record` (helper display), `merge_contacts_cmd` (comando CLI umano con preview/conferma/fail-safe), routing `merge-contacts` in `main()`, fix hint `check_dups_cmd` da `_unisci_contatti` a `gas merge-contacts <da> <verso>` |
-| `tests/test_unit_kernel.py` | +102 | Aggiunti T58a–T58f: test reali round-trip per il nuovo comando (merge riuscito, conflitto, diario snapshot, chiave inesistente, fail-safe diario degradato, fix hint) |
-| `reports/ultimo_report.md` | aggiornato | Report canonico della fetta 1 |
-| `reports/handoff.md` | aggiornato | Dossier di fine sessione |
-| `reports/diff_sessione.md` | aggiornato | Questo file |
+| File | Delta |
+|------|-------|
+| `modules/memory/store.py` | +141 righe — `normalizza_telefono`, `_is_phone`, `_append_sospetto`, modifica `rileva_duplicati_email`, nuovo `rileva_duplicati_telefono` |
+| `gas.py` | +13 righe nette — `check_dups_cmd` aggiornato per email + telefono |
+| `modules/memory/__init__.py` | +2 righe — esporta `normalizza_telefono` |
+| `tests/test_unit_kernel.py` | +122 righe — T59 (3 test idempotenza) + T60 (6 test telefono) |
 
-## Commit di sessione
+## Perché
 
-```
-04aa45e docs(crm-dup-detect): report fetta 1 — gas merge-contacts + fix hint
-9515626 feat(crm-dup-detect): R-crm-1b Fetta 1 — comando CLI gas merge-contacts + fix hint
-```
+**Fetta 2 (idempotenza):** `rileva_duplicati_email` ri-appendeva gli stessi sospetti ad ogni run. Con lo scheduler FASE 4.5 h24, il diario si sarebbe gonfiato di ripetizioni. Soluzione: helper `_append_sospetto` con tag `[ids:X,Y]` + check LIKE prima di scrivere.
+
+**Fetta 3 (telefono):** il CRM rileva duplicati solo per email. Aggiunto trigger telefono: `normalizza_telefono` (pura, idempotente, gestisce forme +39/0039/locale), `rileva_duplicati_telefono` (speculare a email), integrazione in `check_dups_cmd`.
+
+## Review revisore
+
+Review #49 — APPROVATO CON RISERVE per entrambe le fette. Riserve applicate prima del commit.

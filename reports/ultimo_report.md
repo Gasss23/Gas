@@ -1,103 +1,121 @@
-# R-crm-1b Fetta 1 — Comando CLI `gas merge-contacts` + fix hint
+# REPORT TASK — R-crm-1b Fette 2+3
 
-**Data**: 2026-07-14
-**Branch**: feature/crm-dup-detect
-**Commit motore**: 9515626
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-Nessuna.
+**Data:** 2026-07-14  
+**Branch:** feature/crm-dup-detect  
+**Task:** R-crm-1b — Fetta 2 (idempotenza diario) + Fetta 3 (telefono)  
 
 ---
 
-## SCOPE & ESITO FETTE
+## ESITO
 
-- **Fetta 1 — comando CLI `gas merge-contacts <da> <verso>`**: `FATTA`
-  Implementato con preview, conferma interattiva y/N, rete di sicurezza (snapshot diario atomico), fail-safe §9.
-- **Fix hint `check_dups_cmd`**: `FATTA`
-  Da `_unisci_contatti` a `gas merge-contacts <da> <verso>`.
-- **Fetta 2 — idempotenza diario**: `DEFERITA — fuori scope fetta 1, nessuna modifica`
-- **Fetta 3 — telefono**: `DEFERITA — fuori scope fetta 1, nessuna modifica`
+| Fetta | Descrizione | Esito |
+|-------|-------------|-------|
+| Fetta 2 | Idempotenza diario `rileva_duplicati_email` | ✅ FATTA |
+| Fetta 3 | Normalizzazione telefono + `rileva_duplicati_telefono` | ✅ FATTA |
 
 ---
 
-## SONDA (pre-implementazione)
+## SONDA PREVENTIVA (pre-codice)
 
-### `unisci_contatti` in `store.py` (riga 428)
-- Transazionale: unico `with self._connect() as con:` — rollback automatico su eccezione. ✓
-- Campi fusi via COALESCE: nome, contatto, prossima_azione, note
-- Lapide: `da` marcato con `merged_into = canonico_id` (non cancellato)
-- NON scrive nel diario: mancava snapshot di `da` e evento merge
-- Nessuna preview: eseguiva il merge direttamente
-- **Conclusione**: meccanismo corretto, mancava la rete di sicurezza
+**Fetta 2 — idempotenza:**
+- `rileva_duplicati_email` (store.py) chiamava `self.append_diario(...)` direttamente per ogni coppia trovata, senza verificare se la coppia era già nel diario. Ogni run ri-appendeva gli stessi sospetti.
+- Finding R1 (INSERT OR REPLACE aggirava trigger): confermato latente ma SEPARATO dall'idempotenza. Non toccato (scope STOP GATE 2).
 
-### Hint in `check_dups_cmd` (riga 2176)
-- Stampava `_unisci_contatti` — metodo interno Python, non invocabile da CLI.
+**Fetta 3 — telefono:**
+- Campo `contatto` è TEXT unstructured (confermato: `contatto TEXT,` nel DDL). Nessun campo phone/email separato.
+- Schema `_is_email` / `rileva_duplicati_email` è il modello da replicare.
 
 ---
 
-## IMPLEMENTAZIONE
+## MODIFICHE EFFETTUATE
 
-### `modules/memory/store.py` — `unisci_contatti_con_snapshot()`
+### `modules/memory/store.py`
 
-Nuovo metodo (NON tocca `unisci_contatti` esistente). Tutto in **un'unica transazione SQLite**:
+1. **`normalizza_telefono(valore)` (funzione modulo, pura, idempotente):**
+   - Strip separatori (spazi/trattini/punti/parentesi)
+   - Equivalenza `+` e `00` iniziali (ITU-T)
+   - Aggiunta automatica prefisso Italia (`39`) per numeri locali a 9-10 cifre che iniziano con `0` o `3`
+   - Strip difensivo `re.sub(r"\D", "", digits)` per `+` interni da input patologici (riserva R1 revisore)
+   - Range valido: 9-15 cifre (E.164). Fail-safe §9: `None`/fuori range → `""`
 
-1. Legge `da` e `verso` (→ None se mancano)
-2. Calcola preview: campi da riempire, conflitti (verso vince)
-3. **RETE DI SICUREZZA** PRIMA di qualsiasi UPDATE:
-   - INSERT `merge_snapshot`: snapshot integrale JSON di `da` nel diario
-   - INSERT `merge_evento`: riepilogo campi e conflitti
-4. UPDATE COALESCE su `verso`
-5. Re-punta lapidi precedenti da `da` a `verso`
-6. Marca `da` come lapide
-7. COMMIT
+2. **`_is_phone(valore)` (metodo statico MemoryStore):**
+   - Delegato a `normalizza_telefono` (non vuoto → valido). Puro, fail-safe.
 
-Se il diario INSERT fallisce → eccezione → rollback automatico → rubrica invariata → restituisce `None`.
+3. **`_append_sospetto(tipo, descrizione_base, id_a, id_b)` (metodo privato MemoryStore):**
+   - Helper condiviso da `rileva_duplicati_email` e `rileva_duplicati_telefono`
+   - Tag `[ids:X,Y]` (X < Y) nella descrizione: permette check idempotente via `LIKE '%[ids:X,Y]%'`
+   - `[`, `]`, `,` NON sono wildcard in SQLite LIKE → nessun falso positivo
+   - SELECT + INSERT in connessione unica (atomico)
+   - FAIL-SAFE: errore nel check → `log.warning` + skip (no duplicato, no crash)
 
-### `gas.py` — `merge_contacts_cmd()`
+4. **`rileva_duplicati_email` (modificata):**
+   - Usa `_append_sospetto` invece di `append_diario` diretto
+   - Stesso sospetto già nel diario → zero nuove righe (idempotente)
+   - Logica di rilevamento invariata
 
-Comando solo umano (NON tool agente, non in `execute_tool_call`/`tools_schema`):
+5. **`rileva_duplicati_telefono` (nuovo):**
+   - Speculare a `rileva_duplicati_email`
+   - Usa `normalizza_telefono` sul campo `chiave_norm` e `contatto`
+   - Tipo diario: `sospetto_duplicato_telefono`
+   - Idempotente (via `_append_sospetto`)
+   - Fail-safe §9: lapidi escluse, memoria degradata → `[]`
+
+### `modules/memory/__init__.py`
+
+- Aggiunto `normalizza_telefono` agli export pubblici
+
+### `gas.py` — `check_dups_cmd`
+
+- Chiama ora sia `rileva_duplicati_email` che `rileva_duplicati_telefono`
+- Output separato per email e telefono con sezioni WARN distinte
+- Messaggio OK aggiornato: "nessun sospetto duplicato trovato (email né telefono)"
+
+### `tests/test_unit_kernel.py`
+
+**T59 — Idempotenza diario (Fetta 2):**
+- T59a: stesso sospetto email 2 volte → 1 sola riga diario
+- T59b: sospetti email diversi → righe distinte nel diario
+- T59c: tag `[ids:X,Y]` presente nella descrizione del sospetto
+
+**T60 — Telefono (Fetta 3):**
+- T60a: `normalizza_telefono` — 5 forme diverse → stesso canonico
+- T60b: due contatti stesso numero normalizzato → coppia segnalata + riga diario
+- T60c: numeri diversi → nessun falso positivo
+- T60d: contatti senza numero → nessun falso positivo
+- T60e: idempotenza diario telefono — stesso sospetto 2 volte → 1 sola riga
+- T60f: `check_dups_cmd` include risultati telefono nel report CLI
+
+---
+
+## RISULTATO SUITE
 
 ```
-gas merge-contacts <chiave_da> <chiave_verso> [--yes]
+=== RIEPILOGO: 242 PASS, 0 FAIL ===
 ```
 
-Preview obbligatoria → conferma y/N (default N) → merge atomico.
-
-### `gas.py` — Fix hint e routing
-
-- `check_dups_cmd`: hint corretto a `gas merge-contacts <da> <verso>`
-- `main()`: routing `merge-contacts` aggiunto
+Delta: +11 test (T59a/b/c + T60a/b/c/d/e/f).
 
 ---
 
-## TEST REALI — T58 (6/6 PASS, CI verde)
+## VERDETTI REVISORE (review #49)
 
-| Test | Scenario | Risultato |
-|------|----------|-----------|
-| T58a | Merge riuscito: campi vuoti di `verso` riempiti da `da` | PASS |
-| T58b | Conflitto: `verso` vince, valore scartato di `da` nel result | PASS |
-| T58c | Diario: `merge_snapshot` + `merge_evento` presenti con JSON di `da` | PASS |
-| T58d | Chiave inesistente → None, rubrica invariata | PASS |
-| T58e | FAIL-SAFE: tabella diario droppata → None, `merged_into` resta NULL | PASS |
-| T58f | Fix hint: `check_dups_cmd` output contiene `merge-contacts` | PASS |
+### Fetta 2 — APPROVATO CON RISERVE
 
----
+> Il meccanismo `_append_sospetto` è tecnicamente corretto: tag normalizzato (min,max), LIKE letterale sicuro su SQLite, SELECT+INSERT in connessione unica, exception handler completo. I test T59a/b/c coprono correttamente i tre casi. Riserva: errore di documentazione nel docstring ("LIKE ... sul tipo" invece di "sulla descrizione") — non bloccante.
 
-## VERDETTO REVISORE
+Riserva applicata prima del commit.
 
-**APPROVATO CON RISERVE** — due fix cosmetici applicati prima del commit:
-1. f-string mancante in `gas.py:2282` → corretta
-2. Variabile `id_carla` inutilizzata in T58c → rimossa
+### Fetta 3 — APPROVATO CON RISERVE
+
+> `normalizza_telefono` è fail-safe e idempotente; `rileva_duplicati_telefono` è strutturalmente speculare a quella email. T60a-f coprono normalizzazione, detection, falsi positivi, idempotenza. Riserve: (R1) regex `[^\d+]` lascia `+` interni su input patologici — aggiungere `re.sub(r"\D", "", digits)` dopo gestione prefisso; (R2) import ridondanti T60 — cosmetico.
+
+Riserva R1 applicata. R2 non applicata (cosmetica).
 
 ---
 
-## STOP GATE RISPETTATI
+## INVARIANTI RISPETTATE
 
-- SOLO Fetta 1: non toccata idempotenza diario (fetta 2) né telefono (fetta 3)
-- merge NON esposto come tool agente in nessuna forma
-- Diario: solo append (INSERT), mai rewrite/delete
-- `unisci_contatti` esistente NON modificato
-- Branch → PR necessaria per arrivare su main (lucchetto attivo)
+- Diario APPEND-ONLY e IMMUTABILE: idempotenza = NON scrivere il duplicato, mai riscrivere/cancellare (§6). ✅
+- FAIL-SAFE §9: errore nel check → log + skip, mai crash. ✅
+- STOP GATE 2 rispettato: R1/hardening diario NON toccato, sonda Dispatch telefono NON toccata. ✅
+- main-lock: modifiche su feature/crm-dup-detect. ✅

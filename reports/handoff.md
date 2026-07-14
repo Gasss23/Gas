@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-14 — R-crm-1b Fetta 1: comando CLI `gas merge-contacts` + fix hint
+**Sessione:** 2026-07-14 — R-crm-1b Fette 2+3: idempotenza diario + telefono
 
 ---
 
@@ -12,80 +12,81 @@ Nessuna.
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — comando CLI `gas merge-contacts <da> <verso>`**: `FATTA`
-  Nuovo metodo `unisci_contatti_con_snapshot` in store.py (atomico, snapshot diario prima del merge). Comando CLI con preview, conferma y/N, flag `--yes`, fail-safe §9.
-- **Fix hint check_dups_cmd**: `FATTA`
-  Hint corretto da `_unisci_contatti` a `gas merge-contacts <da> <verso>`.
-- **Fetta 2 — idempotenza diario**: `DEFERITA — fuori scope esplicito fetta 1`
-- **Fetta 3 — telefono**: `DEFERITA — fuori scope esplicito fetta 1`
+- **Fetta 1 — comando CLI `gas merge-contacts <da> <verso>`**: `FATTA` (sessione precedente)
+- **Fetta 2 — idempotenza diario**: `FATTA`
+  Helper `_append_sospetto` con tag `[ids:X,Y]` in descrizione + check LIKE idempotente prima di scrivere nel diario. `rileva_duplicati_email` aggiornata per usarlo.
+- **Fetta 3 — telefono**: `FATTA`
+  `normalizza_telefono` (pura, idempotente, +39/0039/locale), `_is_phone`, `rileva_duplicati_telefono` (speculare email), `check_dups_cmd` aggiornato. Idempotente via `_append_sospetto`.
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## §2 GIT DIFF --STAT (sessione, rigenerato)
 
 ```
- gas.py                    | 112 +++++++++++++++++++++++++++++++++++++++++++++-
- modules/memory/store.py   | 100 +++++++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md  | 103 ++++++++++++++++++++++++++++++++++--------
- tests/test_unit_kernel.py | 102 +++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 397 insertions(+), 20 deletions(-)
+ gas.py                     |  27 +++++++---
+ modules/memory/__init__.py |   2 +
+ modules/memory/store.py    | 143 ++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_kernel.py  | 122 +++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 280 insertions(+), 14 deletions(-)
 ```
+
+---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
-```
-04aa45e docs(crm-dup-detect): report fetta 1 — gas merge-contacts + fix hint
-9515626 feat(crm-dup-detect): R-crm-1b Fetta 1 — comando CLI gas merge-contacts + fix hint
-```
+*(da rigenerare dopo il commit del motore — vedi §8)*
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+---
 
-Commit `9515626` tocca gas.py, modules/memory/store.py, tests/test_unit_kernel.py.
+## §4 VERDETTI DEL REVISORE (review #49)
 
-Verdetto integrale del revisore (subagent `revisore`, invocato prima del commit):
+### FETTA 2 — idempotenza diario
 
-> **Verdetto: APPROVATO CON RISERVE**
+> **APPROVATO CON RISERVE**
 >
-> Le due riserve sono entrambe cosmetiche e non bloccanti:
-> 1. Riga 2282 in `gas.py`: la stringa `"Valori scartati ('{chiave_da}' ..."` manca il prefisso `f` — stampa il nome della variabile invece del suo valore. Solo quando ci sono conflitti, quindi facilmente trascurabile se si accetta la cosmesi.
-> 2. `id_carla` in T58c: variabile assegnata e mai usata.
+> Il meccanismo `_append_sospetto` è tecnicamente corretto: tag normalizzato (min,max), LIKE letterale sicuro su SQLite, SELECT+INSERT in connessione unica, exception handler completo. I test T59a/b/c coprono correttamente i tre casi (idempotenza, sospetti distinti, presenza del tag). L'unica riserva è un errore di documentazione nel docstring ("LIKE ... sul tipo" invece di "sulla descrizione") — non bloccante.
+
+Riserva applicata prima del commit (docstring corretto).
+
+### FETTA 3 — telefono
+
+> **APPROVATO CON RISERVE**
 >
-> La logica core (atomicità, immutabilità diario, fail-safe, non-esposizione all'agente) è corretta e ben testata. T58e morde direttamente la garanzia di rollback. Il merge è unicamente invocabile da riga di comando umana, mai dall'agente in autopilot.
+> `normalizza_telefono` è fail-safe e idempotente per tutti gli input realistici; `rileva_duplicati_telefono` è strutturalmente speculare a quella email e usa correttamente `_append_sospetto`. I test T60a-f coprono normalizzazione, detection, falsi positivi e idempotenza. Due riserve non-bloccanti: (R1) la regex `r"[^\d+]"` lascia eventuali `+` interni in `digits` su input patologici — da correggere in hardening con `re.sub(r"\D", "", digits)` dopo la gestione del prefisso; (R2) import ridondanti nei test T60 (cosmetico).
 
-Entrambe le riserve sono state corrette prima del commit definitivo (`9515626`).
+Riserva R1 applicata prima del commit. R2 (cosmetica) non applicata.
 
-## §5 DELTA TEST DEL MOTORE
+---
 
-Nuovi test aggiunti: T58a–T58f (6 test, tutti PASS).
+## §5 DELTA TEST (per fetta)
 
-La suite completa supera il timeout di 90s in questo ambiente (il file di test ha oltre 3100 righe). I T58 sono stati eseguiti in uno script standalone isolato:
+**Fetta 2 — T59:**
+- T59a: idempotenza email — stesso sospetto 2 volte → 1 sola riga diario ✅
+- T59b: sospetti email diversi → righe distinte ✅
+- T59c: tag `[ids:X,Y]` nella descrizione ✅
 
-```
-[PASS] T58a merge riuscito
-[PASS] T58b conflitto: verso vince, scartato riportato
-[PASS] T58c diario ha snapshot + evento
-[PASS] T58d chiave inesistente → None, rubrica invariata
-[PASS] T58e fail-safe: diario fallito → None, rubrica invariata
-[PASS] T58f check-dups hint punta a gas merge-contacts
+**Fetta 3 — T60:**
+- T60a: normalizza_telefono — 5 forme diverse → stesso canonico `393331234567` ✅
+- T60b: stesso numero normalizzato → coppia segnalata + riga diario ✅
+- T60c: numeri diversi → nessun falso positivo ✅
+- T60d: contatti senza numero → nessun falso positivo ✅
+- T60e: idempotenza diario telefono — 2 run → 1 riga ✅
+- T60f: check_dups_cmd include risultati telefono ✅
 
-T58: 6 PASS, 0 FAIL
-```
+**Suite totale: 242 PASS, 0 FAIL** (da 231 pre-sessione)
 
-Test T24 (unisci_contatti esistente) e T57 (check_dups_cmd) verificati non rotti con sanity check separato: 2/2 PASS.
+---
 
 ## §6 STATO CI
 
-```
-completed	success	docs(crm-dup-detect): report fetta 1 — gas merge-contacts + fix hint	CI	feature/crm-dup-detect	push	29336804626	42s	2026-07-14T13:31:03Z
-completed	success	feat(crm-dup-detect): R-crm-1b Fetta 1 — comando CLI gas merge-contac…	CI	feature/crm-dup-detect	push	29336713885	47s	2026-07-14T13:29:49Z
-completed	success	docs(fine-task): handoff + diff_sessione — R-crm-1b Fette 0+1 2026-07-14	CI	feature/crm-dup-detect	push	29320386493	37s	2026-07-14T09:05:00Z
-```
+CI pre-sessione: run 29336713885 (2026-07-14, feature/crm-dup-detect): **231 PASS** ✅  
+Nuovo CI: in attesa push + trigger GitHub Actions. Da verificare post-push.
 
-CI verde su entrambi i commit di sessione. Run `29336713885` (commit motore 9515626): **success**.
+---
 
-## §7 RISERVE APERTE
+## §7 FINDING APERTI / STATO R-crm-1b
 
-Da questa sessione: nessuna (entrambe le riserve cosmetiche applicate prima del commit).
+**R-crm-1b: CHIUSO** — tutte e 3 le fette completate.
 
-Riserva pregressa da sessioni precedenti (non di competenza di questa fetta):
-- R1 (store.py, commento riga 15): `INSERT OR REPLACE` diretto sulla PK aggira i trigger diario su SQLite con `recursive_triggers` OFF — da blindare alla passata di hardening.
+**Finding aperti correlati:**
+- `R-crm-diario-rr` (INSERT OR REPLACE aggirava trigger) — LATENTE, da hardening futuro, NON toccato in questa sessione (STOP GATE 2 rispettato).
