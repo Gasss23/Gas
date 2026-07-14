@@ -1,12 +1,12 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-14** (R-crm-1b Fetta 1 email — rilevatore duplicati + CLI) feature/crm-dup-detect
+> Ultimo aggiornamento: **2026-07-14** (R-crm-1b Fetta 1 — gas merge-contacts + fix hint) feature/crm-dup-detect
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **47 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #47, 2026-07-14). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti â). CI run 29240223711 (2026-07-13): **220 PASS** ✅. Suite Fetta 1 R-crm-1b: **+7 test T57 PASS** (in-process, 0 token).
+FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **48 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #48, 2026-07-14). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). +7 T57 + 6 T58 aggiunti. CI run 29336713885 (2026-07-14, feature/crm-dup-detect): **231 PASS** ✅ (grep -c "[PASS]" su log).
 CI GitHub Actions: run #29031945029 su `87ad26f` ✅ **SUCCESS** ✅ (ultimo run su main, 2026-07-09).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -50,7 +50,7 @@ Componenti attive:
 
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
-- 🟡 **R-crm-1b** — Fetta 1 email ✅ (2026-07-14, review #47): `rileva_duplicati_email()` + CLI `gas check-dups`. Fette successive (telefono, nome) da decidere. Riserve minori #47: re-entry diario su invocazioni ripetute (accettabile per audit log); messaggio CLI `_unisci_contatti` → da correggere in `unisci_contatti` (cosmetic).
+- 🟡 **R-crm-1b** — Fetta email ✅ + merge umano ✅ (review #47+#48, 2026-07-14): `rileva_duplicati_email()` + CLI `gas check-dups` + `gas merge-contacts <da> <verso>` (preview, conferma y/N, snapshot diario atomico pre-merge, fail-safe §9). Hint `check_dups_cmd` corretto. Resta 🟡 per: idempotenza diario (fetta 2), telefono (fetta 3).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
@@ -67,6 +67,7 @@ Componenti attive:
 ### Debito latente
 
 - **R-legacy-slice** (riserva #1 revisore, review #43, 2026-07-09): `brains/claude_brain.py:38` contiene `for m in messages[-8:]` — slicing raw della history, violazione sez. 5 CLAUDE.md. INERTE: file legacy non wired al kernel attivo, zero copertura test. Diventa bloccante solo se i brain legacy venissero ri-agganciati. Nessuna azione ora.
+- **R-crm-diario-rr** (riserva R1 store.py commento riga 15, registrata 2026-07-14): `INSERT OR REPLACE` diretto sulla PK in `contatti` aggira i trigger di immutabilità del diario con `recursive_triggers` OFF (comportamento default SQLite): il DELETE implicito nella replace non attiva i trigger. Conseguenza: una scrittura contatto tramite INSERT OR REPLACE non diarizza l'overwrite. Viola "la memoria non mente" (§6 CLAUDE.md). LATENTE: il codice applicativo usa solo INSERT puro, il buco si apre a chi accede al file .db direttamente. Da blindare alla passata di hardening del diario (correlato a R-crm-1b fetta 2 — idempotenza).
 
 > ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = comportamento atteso, non regressione.
 
@@ -96,7 +97,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM). or
 - **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** â `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **47 review**. Ultima: **#47** (R-crm-1b Fetta 1 email, 2026-07-14). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **48 review**. Ultima: **#48** (R-crm-1b Fetta 1 merge umano, 2026-07-14). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** â€” `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); Â§1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
 
