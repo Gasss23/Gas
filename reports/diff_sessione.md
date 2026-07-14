@@ -1,30 +1,21 @@
-# diff_sessione — 2026-07-14 (R-crm-1b Fette 0+1)
+# diff_sessione — 2026-07-14 (R-crm-1b Fetta 1)
 
 > Fotografia dell'ultima sessione. La storia completa sta in git.
-> Branch: `feature/crm-dup-detect`
 
-## File toccati (da git diff --stat f0f4ca8..HEAD)
+## File toccati
+
+| File | Δ righe | Cosa è cambiato e perché |
+|------|---------|--------------------------|
+| `modules/memory/store.py` | +101 | Aggiunto `import json` e nuovo metodo `unisci_contatti_con_snapshot`: merge atomico con snapshot diario nella stessa transazione SQLite (rete di sicurezza R-crm-1b fetta 1) |
+| `gas.py` | +112 / -1 | Aggiunto `_print_record` (helper display), `merge_contacts_cmd` (comando CLI umano con preview/conferma/fail-safe), routing `merge-contacts` in `main()`, fix hint `check_dups_cmd` da `_unisci_contatti` a `gas merge-contacts <da> <verso>` |
+| `tests/test_unit_kernel.py` | +102 | Aggiunti T58a–T58f: test reali round-trip per il nuovo comando (merge riuscito, conflitto, diario snapshot, chiave inesistente, fail-safe diario degradato, fix hint) |
+| `reports/ultimo_report.md` | aggiornato | Report canonico della fetta 1 |
+| `reports/handoff.md` | aggiornato | Dossier di fine sessione |
+| `reports/diff_sessione.md` | aggiornato | Questo file |
+
+## Commit di sessione
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- gas.py                             |  23 ++++++++
- modules/memory/store.py            |  65 ++++++++++++++++++++++
- reports/diff_sessione.md           |  25 +++++----
- reports/roadmap.md                 |   8 +--
- reports/stato_progetto.md          |  16 ++++--
- reports/ultimo_report.md           | 108 +++++++++++++++++++++++--------------
- tests/test_unit_kernel.py          |  93 ++++++++++++++++++++++++++++++++
- 8 files changed, 280 insertions(+), 59 deletions(-)
+04aa45e docs(crm-dup-detect): report fetta 1 — gas merge-contacts + fix hint
+9515626 feat(crm-dup-detect): R-crm-1b Fetta 1 — comando CLI gas merge-contacts + fix hint
 ```
-
-## Cosa è cambiato e perché
-
-- **`modules/memory/store.py`** — aggiunto `_is_email()` (pattern email minimale, puro) e `rileva_duplicati_email()` (sola lettura + append diario per ogni coppia trovata): implementazione Fetta 1 R-crm-1b
-- **`gas.py`** — aggiunto `check_dups_cmd()` + entry point `gas check-dups` in `main()`: espone il rilevatore come CLI operatore, non come tool LLM
-- **`tests/test_unit_kernel.py`** — aggiunta sezione T57 (7 test): coprono match cross-campo, no-false-positive, fail-safe, lapidi escluse, CLI
-- **`reports/stato_progetto.md`** — contatore review 46→47, finding R-crm-1b aggiornato (Fetta 1 ✅), riserve #47 tracciate
-- **`reports/ultimo_report.md`** — report sessione corrente (questo file si sovrascrive a ogni task)
-- **`reports/handoff.md`** — dossier fine sessione
-- **`reports/diff_sessione.md`** — questo file
-- **`.claude/agents/memoria_revisore.md`** — aggiornato dal subagent revisore con lezione #47
-- **`reports/roadmap.md`** — modificato in sessione precedente (commit 544da0e/60269af, non questa fetta)
