@@ -76,7 +76,7 @@ Riserva R1 applicata prima del commit. R2 (cosmetica) non applicata.
 - T60e: idempotenza diario telefono — 2 run → 1 riga ✅
 - T60f: check_dups_cmd include risultati telefono ✅
 
-**Suite totale: 242 PASS, 0 FAIL** (da 231 pre-sessione)
+**Suite totale: 240 PASS, 0 FAIL** (CI run 29342632131; da 231 pre-sessione +9 nuovi. Locale Codespace: 242 per T9a/T9c con API keys — CI è la fonte autorevole.)
 
 ---
 

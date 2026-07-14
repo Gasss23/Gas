@@ -1,12 +1,12 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-14** (R-crm-1b Fette 2+3 — idempotenza diario + telefono) feature/crm-dup-detect
+> Ultimo aggiornamento: **2026-07-14** (doc-only: R-crm-1b chiuso in archiviati, suite 240 PASS CI verificata) feature/crm-dup-detect
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **49 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #49, 2026-07-14). Suite locale: **242 PASS, 0 FAIL** (+11 test: T59a/b/c + T60a/b/c/d/e/f). CI run 29336713885 (2026-07-14, feature/crm-dup-detect): **231 PASS** ✅ (pre-fette 2+3 — nuovo CI in attesa push).
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **49 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #49, 2026-07-14). Suite: **240 PASS, 0 FAIL** (CI run 29342632131, 2026-07-14, +9 test: T59a/b/c + T60a-f). CI pre-sessione run 29336713885: **231 PASS** ✅. (NB: locale Codespace conta 242 per T9a/T9c che passano con API keys — comportamento noto, CI è la fonte autorevole.)
 CI GitHub Actions: run #29031945029 su `87ad26f` ✅ **SUCCESS** ✅ (ultimo run su main, 2026-07-09).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -50,7 +50,6 @@ Componenti attive:
 
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
-- ✅ **R-crm-1b** — CHIUSO (review #47+#48+#49, 2026-07-14): tutte e 3 le fette completate. Fetta 1: `rileva_duplicati_email()` + CLI `gas check-dups` + `gas merge-contacts`. Fetta 2: idempotenza diario via `_append_sospetto` + tag `[ids:X,Y]`. Fetta 3: `normalizza_telefono` + `rileva_duplicati_telefono` + `check_dups_cmd` aggiornato.
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 

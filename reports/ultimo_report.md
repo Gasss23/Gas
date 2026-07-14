@@ -90,10 +90,10 @@
 ## RISULTATO SUITE
 
 ```
-=== RIEPILOGO: 242 PASS, 0 FAIL ===
+CI run 29342632131: 240 PASS, 0 FAIL
 ```
 
-Delta: +11 test (T59a/b/c + T60a/b/c/d/e/f).
+Delta: +9 test (T59a/b/c + T60a-f). Locale Codespace conta 242 per T9a/T9c con API keys — CI è la fonte autorevole.
 
 ---
 
