@@ -1,35 +1,100 @@
-# R-crm-1b Fette 0+1 — Sonda CRM + Rilevamento duplicati email
+# R-crm-1b Fetta 1 — Comando CLI `gas merge-contacts` + fix hint
 
-**Data:** 2026-07-14
-**Branch:** feature/crm-dup-detect
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-1. **Merge PR `feature/crm-dup-detect` → main**: CI verde (run 29319472091, SUCCESS). `gh pr merge --merge` o browser GitHub.
-2. **Scope fette successive R-crm-1b**: decidere se e quando implementare Fetta 2 (telefono) e/o Fetta 3 (somiglianza nome — fuzzy). Non implementate in questa sessione per rispetto dello STOP GATE.
-3. **Fix cosmetic riserva #47**: messaggio CLI stampa `_unisci_contatti` (underscore, convenzione Python per metodo privato) — andrebbe `unisci_contatti`. Banale, 1 riga. Da fare nella prossima fetta o come micro-fix.
+**Branch**: feature/crm-dup-detect
+**Commit**: 9515626
+**Data**: 2026-07-14
 
 ---
 
-## Esito fette
+## SONDA
 
-- **Fetta 0 — Sonda CRM**: `FATTA`
-  Risposto alle 4 domande della sonda leggendo il codice reale (store.py, gas.py). Risultato: lo scope R-crm-1b è valido, il caso "stessa email = due contatti" esiste. Report committato in `b99c1f1`.
+### (a) `unisci_contatti` in `store.py` (riga 428)
+- **Transazionale**: un unico `with self._connect() as con:` — tutti e 3 gli UPDATE nella stessa transazione SQLite con rollback automatico su eccezione. ✓
+- **Campi fusi via COALESCE**: nome, contatto, prossima_azione, note
+- **Lapide**: `da` marcato con `merged_into = canonico_id` (non cancellato mai)
+- **NON scrive nel diario**: nessun snapshot di `da`, nessun evento merge
+- **Nessuna preview**: esegue il merge direttamente
+- **Conclusione**: meccanismo corretto, mancava la rete di sicurezza (snapshot diario atomico)
 
-- **Fetta 1 — Rilevamento duplicati email**: `FATTA`
-  `rileva_duplicati_email()` in `modules/memory/store.py` + CLI `gas check-dups` in `gas.py` + 7 test T57 PASS. Review #47 APPROVATO CON RISERVE. Riserva bloccante (`nota`→`note` in T57b) corretta prima del commit.
-
-- **Fetta 2 — Telefono**: `SALTATA — fuori scope sessione (STOP GATE)`
-  Non implementata: le istruzioni prevedono STOP dopo la Fetta 1 email.
-
-- **Fetta 3 — Somiglianza nome**: `SALTATA — fuori scope sessione (STOP GATE)`
-  Non implementata: richiede decisione operatore su strategia fuzzy.
+### (b) Hint in `check_dups_cmd` (riga 2176)
+- Stampava `_unisci_contatti` con underscore — metodo interno Python, non invocabile da CLI. Sbagliato.
 
 ---
 
-## Riserve aperte (review #47)
+## IMPLEMENTATO
 
-- **Re-entry diario**: invocazioni ripetute di `rileva_duplicati_email()` sulle stesse coppie accumulano righe duplicate nel diario. Accettabile per audit log, documentato ma non bloccante.
-- **Messaggio CLI cosmetic**: stampa `_unisci_contatti` (metodo privato per convenzione) invece di `unisci_contatti` (metodo pubblico). Confonde l'operatore. Da correggere in una prossima fetta.
+### 1. `modules/memory/store.py` — `unisci_contatti_con_snapshot()`
+
+Nuovo metodo (NON tocca `unisci_contatti` esistente) che fa tutto in **UN'unica transazione SQLite**:
+
+1. Legge `da` e `verso` (entrambi devono esistere → None se mancano)
+2. Calcola preview: campi da riempire e conflitti (verso vince su entrambi valorizzati e diversi)
+3. **RETE DI SICUREZZA** (PRIMA di qualsiasi UPDATE):
+   - INSERT `merge_snapshot`: snapshot integrale JSON di `da` nel diario
+   - INSERT `merge_evento`: riepilogo campi riempiti e conflitti
+4. UPDATE COALESCE su `verso` (riempie i NULL da `da`)
+5. Re-punta le lapidi precedenti da `da` a `verso`
+6. Marca `da` come lapide (`merged_into = canonico_id`)
+7. COMMIT
+
+**Garanzia FAIL-SAFE**: se il diario INSERT fallisce → eccezione SQLite → rollback automatico → rubrica invariata → restituisce `None`.
+
+Ritorna `dict {canonico_id, campi_riempiti, conflitti, no_op}` oppure `None` in degrado.
+
+### 2. `gas.py` — `merge_contacts_cmd()`
+
+Comando **solo umano** (NON tool agente, non in `execute_tool_call`, non in `tools_schema`):
+
+```
+gas merge-contacts <chiave_da> <chiave_verso> [--yes]
+```
+
+Flow:
+1. Verifica esistenza di entrambe le chiavi (errore chiaro se mancante)
+2. **Preview** obbligatoria: mostra entrambi i record, campi che verranno riempiti, conflitti con valore scartato esplicitato
+3. Conferma interattiva `y/N` (default N; `--yes` per saltare)
+4. Chiama `mem.unisci_contatti_con_snapshot()` — atomico con rete di sicurezza
+5. Stampa SUCCESSO con dettaglio valori scartati (se conflitti)
+
+### 3. `gas.py` — Fix hint `check_dups_cmd`
+
+Prima: `Fondere con: _unisci_contatti.`
+Dopo: `Fondere con: gas merge-contacts <da> <verso>.`
+
+### 4. `gas.py` — Routing in `main()`
+
+```python
+if len(sys.argv) > 1 and sys.argv[1] == "merge-contacts":
+    sys.exit(merge_contacts_cmd())
+```
+
+---
+
+## TEST REALI — T58 (6/6 PASS)
+
+| Test | Scenario | Risultato |
+|------|----------|-----------|
+| T58a | Merge riuscito: campi vuoti di `verso` riempiti da `da`, `verso` sopravvive | PASS |
+| T58b | Conflitto: `verso` vince su `nome`, valore scartato di `da` nel result | PASS |
+| T58c | Diario: `merge_snapshot` e `merge_evento` presenti, snapshot contiene JSON di `da` | PASS |
+| T58d | Chiave inesistente → None, rubrica invariata | PASS |
+| T58e | FAIL-SAFE: tabella diario droppata → None, `merged_into` resta NULL per entrambi | PASS |
+| T58f | Fix hint: output di `check_dups_cmd` contiene `merge-contacts`, non `_unisci_contatti` | PASS |
+
+---
+
+## VERDETTO REVISORE
+
+**APPROVATO CON RISERVE** — due fix cosmetici applicati prima del commit:
+1. f-string mancante in `gas.py:2282` (stampava nome variabile letterale) → corretta
+2. Variabile `id_carla` non usata in T58c → rimossa
+
+---
+
+## STOP GATE RISPETTATI
+
+- SOLO Fetta 1: non toccata idempotenza diario (fetta 2) né telefono (fetta 3)
+- merge NON esposto come tool dell'agente in nessuna forma
+- Diario: solo append (INSERT), mai rewrite/delete
+- `unisci_contatti` esistente NON modificato (aggiunto `unisci_contatti_con_snapshot` separato)
+- Branch → PR prevista; mai push diretto su main
