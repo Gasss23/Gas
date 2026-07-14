@@ -12,22 +12,30 @@ Nessuna.
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — comando CLI `gas merge-contacts <da> <verso>`**: `FATTA` (sessione precedente)
+- **Fetta 1 — `gas merge-contacts` + CLI check-dups + fix hint**: `FATTA` (sessione precedente, commit 9515626)
 - **Fetta 2 — idempotenza diario**: `FATTA`
-  Helper `_append_sospetto` con tag `[ids:X,Y]` in descrizione + check LIKE idempotente prima di scrivere nel diario. `rileva_duplicati_email` aggiornata per usarlo.
+  `_append_sospetto` con tag `[ids:X,Y]` in descrizione + check LIKE idempotente prima di scrivere nel diario. `rileva_duplicati_email` aggiornata per usarlo. T59a/b/c.
 - **Fetta 3 — telefono**: `FATTA`
-  `normalizza_telefono` (pura, idempotente, +39/0039/locale), `_is_phone`, `rileva_duplicati_telefono` (speculare email), `check_dups_cmd` aggiornato. Idempotente via `_append_sospetto`.
+  `normalizza_telefono` (pura, idempotente, +39/0039/locale), `_is_phone`, `rileva_duplicati_telefono` (speculare email), `check_dups_cmd` aggiornato per email+telefono. T60a-f.
+- **Doc-only chiusura R-crm-1b**: `FATTA`
+  R-crm-1b spostato da finding aperti a `finding_archiviati.md`. Conteggio CI riconciliato: 240 PASS (non 242).
 
 ---
 
-## §2 GIT DIFF --STAT (sessione, rigenerato)
+## §2 GIT DIFF --STAT (sessione)
 
 ```
- gas.py                     |  27 +++++++---
- modules/memory/__init__.py |   2 +
- modules/memory/store.py    | 143 ++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_kernel.py  | 122 +++++++++++++++++++++++++++++++++++++++
- 4 files changed, 280 insertions(+), 14 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +
+ gas.py                             |  27 ++++---
+ modules/memory/__init__.py         |   2 +
+ modules/memory/store.py            | 143 ++++++++++++++++++++++++++++++++++-
+ reports/diff_sessione.md           |  33 +++++----
+ reports/finding_archiviati.md      |   1 +
+ reports/handoff.md                 | 100 +++++++++++++------------
+ reports/stato_progetto.md          |   8 +-
+ reports/ultimo_report.md           | 148 +++++++++++++++++++++----------------
+ tests/test_unit_kernel.py          | 122 ++++++++++++++++++++++++++++++
+ 10 files changed, 440 insertions(+), 147 deletions(-)
 ```
 
 ---
@@ -35,13 +43,20 @@ Nessuna.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0935efc docs(crm-dup-detect): chiusura R-crm-1b — archivia finding, corregge conteggio CI 240 PASS
+759d12f docs(crm-dup-detect): handoff — CI run 29342632131 SUCCESS, 242 PASS
 83ae3e4 docs(crm-dup-detect): aggiorna report — R-crm-1b fette 2+3, review #49, 242 PASS
 1d32819 feat(crm-dup-detect): R-crm-1b Fette 2+3 — idempotenza diario + telefono
+7f17c08 auto-commit fine sessione 2026-07-14_14:20 [solo reports/doc/history, motore escluso]
+a58757f docs(crm-dup-detect): aggiorna stato_progetto — R-crm-1b fette 1+2, finding R-crm-diario-rr, 48 review, 231 PASS CI
 ```
 
 ---
 
-## §4 VERDETTI DEL REVISORE (review #49)
+## §4 VERDETTO DEL REVISORE (per commit motore)
+
+Commit `1d32819` tocca `gas.py`, `modules/memory/store.py`, `modules/memory/__init__.py`, `tests/test_unit_kernel.py`.
+Revisore invocato (subagent `revisore`, review #49) prima del commit. Verdetti integrali:
 
 ### FETTA 2 — idempotenza diario
 
@@ -61,35 +76,34 @@ Riserva R1 applicata prima del commit. R2 (cosmetica) non applicata.
 
 ---
 
-## §5 DELTA TEST (per fetta)
+## §5 DELTA TEST DEL MOTORE
 
-**Fetta 2 — T59:**
-- T59a: idempotenza email — stesso sospetto 2 volte → 1 sola riga diario ✅
-- T59b: sospetti email diversi → righe distinte ✅
-- T59c: tag `[ids:X,Y]` nella descrizione ✅
+Pre-sessione: 231 PASS (CI run 29336713885, feature/crm-dup-detect).
+Post-sessione: **240 PASS** (CI run 29342632131, feature/crm-dup-detect).
+Delta: **+9 test** — T59a, T59b, T59c, T60a, T60b, T60c, T60d, T60e, T60f.
 
-**Fetta 3 — T60:**
-- T60a: normalizza_telefono — 5 forme diverse → stesso canonico `393331234567` ✅
-- T60b: stesso numero normalizzato → coppia segnalata + riga diario ✅
-- T60c: numeri diversi → nessun falso positivo ✅
-- T60d: contatti senza numero → nessun falso positivo ✅
-- T60e: idempotenza diario telefono — 2 run → 1 riga ✅
-- T60f: check_dups_cmd include risultati telefono ✅
+```
+=== RIEPILOGO: 240 PASS, 0 FAIL ===
+```
 
-**Suite totale: 240 PASS, 0 FAIL** (CI run 29342632131; da 231 pre-sessione +9 nuovi. Locale Codespace: 242 per T9a/T9c con API keys — CI è la fonte autorevole.)
+NB: locale Codespace conta 242 — differenza di 2 sono T9a/T9c che passano con API keys live in Codespace ma vengono skippati in CI. Comportamento noto e documentato. CI è la fonte autorevole.
 
 ---
 
 ## §6 STATO CI
 
-CI pre-sessione: run 29336713885 (2026-07-14): **231 PASS** ✅  
-CI post-sessione: run **29342632131** (2026-07-14, feature/crm-dup-detect, commit 83ae3e4): **SUCCESS** ✅ — unit-suite in 52s.
+```
+completed	success	docs(crm-dup-detect): chiusura R-crm-1b — archivia finding, corregge …	CI	feature/crm-dup-detect	push	29343210527	49s	2026-07-14T14:58:02Z
+completed	success	docs(crm-dup-detect): handoff — CI run 29342632131 SUCCESS, 242 PASS	CI	feature/crm-dup-detect	push	29342729272	44s	2026-07-14T14:51:34Z
+completed	success	docs(crm-dup-detect): aggiorna report — R-crm-1b fette 2+3, review #4…	CI	feature/crm-dup-detect	push	29342632131	56s	2026-07-14T14:50:14Z
+```
+
+CI run su commit motore (`1d32819`, via push `83ae3e4`): run **29342632131** — **SUCCESS** ✅ (56s).
+CI run su HEAD sessione (`0935efc`): run **29343210527** — **SUCCESS** ✅ (49s).
 
 ---
 
-## §7 FINDING APERTI / STATO R-crm-1b
+## §7 RISERVE APERTE
 
-**R-crm-1b: CHIUSO** — tutte e 3 le fette completate.
-
-**Finding aperti correlati:**
-- `R-crm-diario-rr` (INSERT OR REPLACE aggirava trigger) — LATENTE, da hardening futuro, NON toccato in questa sessione (STOP GATE 2 rispettato).
+- `R-crm-diario-rr` (latente, debito): `INSERT OR REPLACE` diretto sulla PK in `contatti` aggira i trigger di immutabilità del diario con `recursive_triggers` OFF. Codice applicativo usa solo INSERT puro — buco aperto solo ad accesso diretto al file `.db`. Da hardening futuro.
+- `R-legacy-slice` (latente): `brains/claude_brain.py:38` slicing raw `messages[-8:]`. File legacy non wired al kernel, inerte. Diventa bloccante solo se ri-agganciato.
