@@ -34,7 +34,10 @@ Nessuna.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
-*(da rigenerare dopo il commit del motore — vedi §8)*
+```
+83ae3e4 docs(crm-dup-detect): aggiorna report — R-crm-1b fette 2+3, review #49, 242 PASS
+1d32819 feat(crm-dup-detect): R-crm-1b Fette 2+3 — idempotenza diario + telefono
+```
 
 ---
 
@@ -79,8 +82,8 @@ Riserva R1 applicata prima del commit. R2 (cosmetica) non applicata.
 
 ## §6 STATO CI
 
-CI pre-sessione: run 29336713885 (2026-07-14, feature/crm-dup-detect): **231 PASS** ✅  
-Nuovo CI: in attesa push + trigger GitHub Actions. Da verificare post-push.
+CI pre-sessione: run 29336713885 (2026-07-14): **231 PASS** ✅  
+CI post-sessione: run **29342632131** (2026-07-14, feature/crm-dup-detect, commit 83ae3e4): **SUCCESS** ✅ — unit-suite in 52s.
 
 ---
 
