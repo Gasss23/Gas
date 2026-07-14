@@ -1,4 +1,4 @@
-Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato corrente in reports/roadmap.md (roadmap) + reports/stato_progetto.md (stato vivo). CLAUDE.md sez. 10 è solo un puntatore a questo file.
+﻿Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato corrente in reports/roadmap.md (roadmap) + reports/stato_progetto.md (stato vivo). CLAUDE.md sez. 10 è solo un puntatore a questo file.
 
 ## 10. FUTURE ROADMAP & PRIORITIES
 
@@ -46,11 +46,7 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### 🧭 DECISIONI CASCATA PROVIDER — registrate 2026-07-07 (decisioni umane)
 
-**a) DECISO — Nuovo rung 4 cascata: Cerebras `zai-glm-4.7`** (free tier: 5 RPM, 30K TPM, 1M token/giorno; fonte doc ufficiale Cerebras, verificata 2026-07-07). Entra PRIMA di OpenRouter, che scala a rung 5, Ollama a 6. DUE GATE BLOCCANTI prima di qualsiasi wiring (fetta futura, prima sonda poi progetto):
-- **Gate 1**: sonda live del contesto free tier — due fonti terze riportano cap 8.192 token non presente nei doc ufficiali; chiamata di prova con prompt >9K token e lettura dell'errore. Se il cap è reale, il design va rifatto (finestra rung-specifica o modello alternativo gpt-oss-120b su Cerebras come piano B).
-- **Gate 2**: round-trip test tool-call reale con `disable_reasoning: true` nel payload dal giorno zero (GLM-4.7 è reasoning model — stessa classe di trappola del reasoning_effort su Groq); verifica parsing tool_call incluso il caso id duplicati (Cerebras è severo).
-
-Motivazione priorità: rung 4 OpenRouter in degrado documentato e decisione di NON sbloccare i 1000 req/giorno (vedi punto c-iii) — Cerebras è la mitigazione principale.
+**a) ~~DECISO~~ -> SCARTATO/NO-GO — Cerebras `zai-glm-4.7` come rung-4** (sonda live 2026-07-13). Cap contesto free tier = 8192 token (doc ufficiale dichiara 64k, falsa) + coda free satura (429 queue_exceeded). Entrambi bloccanti per paracadute h24. Dettaglio integrale in `reports/stato_progetto.md` § Cerebras zai-glm-4.7 free — SCARTATO come rung-4 (2026-07-13).
 
 **b) CANDIDATO — Rung Mistral API** (tier free "Experiment", ~1B token/mese da fonte terza, limiti esatti da leggere in Admin Console). Fetta SEPARATA, solo DOPO che il rung Cerebras è wired e validato. Stessi gate: sonda limiti reali + round-trip tool-call.
 

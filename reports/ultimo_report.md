@@ -41,8 +41,8 @@ Dettaglio per item:
 Contatore letto da .claude/agents/memoria_revisore.md: ultima review #46 (2026-07-13).
 stato_progetto.md già riportava 46 in entrambe le occorrenze. Nessuna modifica.
 
----
+--- origin/main
 
-## Anomalie
+## STOP GATE 1 verificato
 
-Nessuna. Il file stato_progetto.md aveva encoding mojibake per le emoji — gestito via Python (edit chirurgico sui byte UTF-8 raw).
+Nessuna. Il file stato_progetto.md aveva encoding mojibake per le emoji — gestito via Python (edit chirurgico sui byte UTF-8 raw). origin/main

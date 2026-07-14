@@ -1,7 +1,7 @@
 ﻿# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-14** (sfoltita finding aperti — 15 item archiviati)
+> Ultimo aggiornamento: **2026-07-14** (sfoltita finding aperti — 15 item archiviati) origin/main
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -69,6 +69,14 @@ Componenti attive:
 - **R-legacy-slice** (riserva #1 revisore, review #43, 2026-07-09): `brains/claude_brain.py:38` contiene `for m in messages[-8:]` — slicing raw della history, violazione sez. 5 CLAUDE.md. INERTE: file legacy non wired al kernel attivo, zero copertura test. Diventa bloccante solo se i brain legacy venissero ri-agganciati. Nessuna azione ora.
 
 > ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = comportamento atteso, non regressione.
+
+### Decisione bancata — Cerebras zai-glm-4.7 free (sonda 2026-07-13)
+
+NO-GO come rung-4. Due limiti bloccanti per paracadute h24 non presidiato:
+1. Cap contesto free tier = **8192 token** misurato live (doc dichiara 64k — falso). Insufficiente per system + pin + schema + window.
+2. Coda free satura — 429 queue_exceeded a orari diversi. Disponibilità non garantita.
+Rung-4 resta OpenRouter. Ri-valutabile solo su tier a pagamento (131k, no coda) = decisione di budget separata.
+Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM). origin/main
 ## Prossimi passi (in ordine di prioritÃ )
 
 1. ~~**FASE 2.5**~~ âœ… chiusa (review #39, 2026-06-27).
