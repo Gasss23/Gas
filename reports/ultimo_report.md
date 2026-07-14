@@ -1,78 +1,35 @@
-# R-crm-1b Fetta 1 — Rilevamento duplicati email
+# R-crm-1b Fette 0+1 — Sonda CRM + Rilevamento duplicati email
 
-**Sessione:** feature/crm-dup-detect — 2026-07-14
-**Scope:** implementazione rilevatore duplicati email cross-campo. NESSUNA fusione automatica.
-**Review:** #47 — APPROVATO CON RISERVE (riserve minori tracciate in stato_progetto.md)
-
----
-
-## Cosa è stato fatto
-
-### 1. `modules/memory/store.py` — rilevatore sola lettura
-
-**`_is_email(valore)`** (staticmethod, puro, fail-safe):
-- Pattern minimale: almeno 1 char prima di `@`, dominio con punto e TLD non vuoto
-- Mai solleva, ritorna `False` su qualsiasi input malformato
-
-**`rileva_duplicati_email() → List[Dict]`**:
-- Legge tutti i contatti VIVI (`merged_into IS NULL`)
-- Estrae email da `chiave_norm` e da `contatto` per ogni scheda, normalizzate con `normalizza_chiave`
-- Costruisce indice `email → {id: scheda}` (dedup per id all'interno della stessa email)
-- Per ogni email con ≥2 contatti distinti → coppia sospetta
-- Per ogni coppia: `append_diario("sospetto_duplicato_email", "sospetto duplicato: ... (email ...)")`
-- Ritorna lista `[{chiave_a, id_a, chiave_b, id_b, email}]`
-- Fail-safe §9: `[] in degrado`, never raises
-
-### 2. `gas.py` — comando CLI
-
-**`check_dups_cmd(root_dir)`**:
-- `gas check-dups` dalla shell
-- Instanzia MemoryStore, chiama `rileva_duplicati_email()`, stampa rapporto
-- Exit 0 in entrambi i casi (OK: nessun duplicato; WARN: coppie trovate)
-- Exit 1 solo se memoria non disponibile
-- NON esposto al loop LLM (non in `tools_schema`, non in `execute_tool_call`)
-
-### 3. `tests/test_unit_kernel.py` — T57 (7 test)
-
-| Test | Caso | Esito |
-|---|---|---|
-| T57a | match cross-campo `chiave↔contatto` + segnalazione nel diario | PASS |
-| T57b | stessa email come chiave → già fusi → nessun falso segnale | PASS |
-| T57c | nomi identici senza email → nessun segnale | PASS |
-| T57d | fail-safe DB corrotto → `[]` senza crash | PASS |
-| T57e | lapidi escluse → nessuna falsa coppia | PASS |
-| T57f | match cross-`contatto` (stessa email in campo libero) | PASS |
-| T57g | CLI `check_dups_cmd`: OK e WARN stampati correttamente | PASS |
+**Data:** 2026-07-14
+**Branch:** feature/crm-dup-detect
 
 ---
 
-## Verdetto revisore #47
+## DECISIONI UMANE RICHIESTE
 
-**APPROVATO CON RISERVE**
-
-Riserva bloccante (corretta prima del commit): `nota` → `note` in T57b.
-
-Riserve minori tracciate in `stato_progetto.md`:
-- Re-entry diario su invocazioni ripetute (accettabile per audit log)
-- Messaggio CLI `_unisci_contatti` → da correggere in `unisci_contatti` (cosmetic, fetta successiva)
+1. **Merge PR `feature/crm-dup-detect` → main**: CI verde (run 29319472091, SUCCESS). `gh pr merge --merge` o browser GitHub.
+2. **Scope fette successive R-crm-1b**: decidere se e quando implementare Fetta 2 (telefono) e/o Fetta 3 (somiglianza nome — fuzzy). Non implementate in questa sessione per rispetto dello STOP GATE.
+3. **Fix cosmetic riserva #47**: messaggio CLI stampa `_unisci_contatti` (underscore, convenzione Python per metodo privato) — andrebbe `unisci_contatti`. Banale, 1 riga. Da fare nella prossima fetta o come micro-fix.
 
 ---
 
-## Vincoli rispettati
+## Esito fette
 
-- GAS NON fonde mai autonomamente (zero merge in questo diff)
-- Diario immutabile: solo `append_diario`, zero UPDATE/DELETE
-- `unisci_contatti` non esposto al loop (confermato: dispatcher invariato)
-- Fail-safe §9: `[]` in degrado su DB corrotto/assente
+- **Fetta 0 — Sonda CRM**: `FATTA`
+  Risposto alle 4 domande della sonda leggendo il codice reale (store.py, gas.py). Risultato: lo scope R-crm-1b è valido, il caso "stessa email = due contatti" esiste. Report committato in `b99c1f1`.
+
+- **Fetta 1 — Rilevamento duplicati email**: `FATTA`
+  `rileva_duplicati_email()` in `modules/memory/store.py` + CLI `gas check-dups` in `gas.py` + 7 test T57 PASS. Review #47 APPROVATO CON RISERVE. Riserva bloccante (`nota`→`note` in T57b) corretta prima del commit.
+
+- **Fetta 2 — Telefono**: `SALTATA — fuori scope sessione (STOP GATE)`
+  Non implementata: le istruzioni prevedono STOP dopo la Fetta 1 email.
+
+- **Fetta 3 — Somiglianza nome**: `SALTATA — fuori scope sessione (STOP GATE)`
+  Non implementata: richiede decisione operatore su strategia fuzzy.
 
 ---
 
-## Cosa resta aperto
+## Riserve aperte (review #47)
 
-- Fetta 2 (telefono): normalizzazione numero telefonico + match cross-campo
-- Fetta 3 (nome): somiglianza fuzzy (da decidere con l'operatore prima di implementare)
-- Riserva cosmetic: messaggio CLI `_unisci_contatti` → `unisci_contatti`
-
----
-
-*La sonda (Fetta 0) è in git come commit `b99c1f1`. Questo report sovrascrive il precedente.*
+- **Re-entry diario**: invocazioni ripetute di `rileva_duplicati_email()` sulle stesse coppie accumulano righe duplicate nel diario. Accettabile per audit log, documentato ma non bloccante.
+- **Messaggio CLI cosmetic**: stampa `_unisci_contatti` (metodo privato per convenzione) invece di `unisci_contatti` (metodo pubblico). Confonde l'operatore. Da correggere in una prossima fetta.
