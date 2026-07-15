@@ -14,25 +14,19 @@ Nessuna.
 ## Esito fette
 
 - **Fetta unica — aggiorna §0 di fine-task.md**: `FATTA`
-  - Aggiunto `git fetch origin` prima di `git merge-base`, con motivazione esplicita nel file.
+  - Aggiunto `git fetch origin` prima di `git merge-base origin/main HEAD`, con motivazione esplicita nel file: "senza fetch, origin/main locale può essere stale e il merge-base risale a un fork point vecchio → ${BASE}..HEAD include commit di sessioni precedenti".
+  - Aggiunto guard di errore: se `git merge-base` restituisce vuoto, `/fine-task` si FERMA con messaggio esplicito, nessun fallback silenzioso.
   - Rimosso residuo vecchio approccio: commento `(a differenza di git log -- reports/handoff.md)`.
-  - Aggiunto guard di errore: se `git merge-base` restituisce vuoto, `/fine-task` si FERMA con messaggio esplicito.
+  - §2, §3, §5 NON toccati: continuano a usare `${BASE}`, semantica invariata.
 
 ---
 
-## diff --stat reale (file modificato in questa fetta)
+## diff --stat reale (§0, raccolto live)
 
 ```
- .claude/commands/fine-task.md | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
-```
-
----
-
-## Hash merge-base live (`git fetch origin && git merge-base origin/main HEAD`)
-
-```
-ce9ae5e39f0932b74f3d70d3c7235931b470079e
+ .claude/commands/fine-task.md | 13 +++++++--
+ reports/ultimo_report.md      | 66 +++++++++++++++++++++++++++++--------------
+ 2 files changed, 56 insertions(+), 23 deletions(-)
 ```
 
 ---
@@ -56,6 +50,12 @@ ce9ae5e39f0932b74f3d70d3c7235931b470079e
 
 ---
 
+## Anomalie
+
+Nessuna.
+
+---
+
 ## Stop gate
 
-Nessun altro file toccato. reports/stato_progetto.md, CLAUDE.md e qualsiasi altro file fuori scope NON sono stati modificati.
+Nessun file fuori scope toccato. reports/stato_progetto.md, CLAUDE.md e qualsiasi altro file non menzionato nel task NON sono stati modificati.

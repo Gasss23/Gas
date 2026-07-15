@@ -1,12 +1,10 @@
-# diff_sessione — 2026-07-15 (Fix guardia handoff.md e auto-riferimento §5)
+# diff_sessione — 2026-07-15 (fix §0 fine-task: git fetch + guard errore merge-base)
 
 > Fotografia dell'ultima sessione. La storia completa sta in git.
 
-## File toccati (BASE=3987dbe..HEAD)
+## File toccati (BASE=ce9ae5e..HEAD)
 
 | File | Cosa è cambiato e perché |
 |------|--------------------------|
-| `.claude/commands/fine-task.md` | Aggiunto check comune pre-punti 4 e 5 (guardia su handoff.md non rigenerato); rimosso auto-riferimento "punto 5" nell'ultimo vincolo |
-| `reports/roadmap.md` | Aggiornamento stato item roadmap (sessione precedente) |
-| `reports/stato_progetto.md` | Aggiornamento stato progetto (sessione precedente) |
-| `reports/ultimo_report.md` | Report di fine task — prima sessione (URL handoff), poi questa sessione (fix guardia) |
+| `.claude/commands/fine-task.md` | Aggiunto `git fetch origin` prima di `git merge-base` (con motivazione esplicita inline), guard di errore su merge-base vuoto, rimosso residuo vecchio commento `a differenza di git log -- reports/handoff.md` |
+| `reports/ultimo_report.md` | Report canonico di fine task — sostituisce quello della sessione precedente |
