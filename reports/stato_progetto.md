@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-15** (micro-finding PR #14 no-review + BASE=merge-base + item Giulia riallineato)
+> Ultimo aggiornamento: **2026-07-15** (revisione fondamenta Fable-5: F1 provato, F6/F7 nuovi, pulizia 17 file morti — PR di questa sessione)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -52,6 +52,7 @@ Componenti attive:
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
 - 🟡 **R-crm-1b** — Fetta email ✅ + merge umano ✅ (review #47+#48, 2026-07-14): `rileva_duplicati_email()` + CLI `gas check-dups` + `gas merge-contacts <da> <verso>` (preview, conferma y/N, snapshot diario atomico pre-merge, fail-safe §9). Hint `check_dups_cmd` corretto. Resta 🟡 per: idempotenza diario (fetta 2), telefono (fetta 3).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
+- 🟡 **F6-history-atomica** (revisione Fable-5, 2026-07-15): `_save_history` scrive `.gas_history.json` senza write-tmp+rename (non atomico, viola §4) e `_load_history` ingoia la corruzione senza nemmeno un warning → un kill a metà scrittura (OOM) produce amnesia conversazionale SILENZIOSA al riavvio. Il diario SQLite non è coinvolto. Fix pianificato (fetta piccola, dopo F1): tmp + `os.replace`, warning + quarantena `.corrupt` in load.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
 ### DEPLOY VPS — da tarare su dati reali
@@ -67,7 +68,8 @@ Componenti attive:
 ### Debito latente
 
 - **R-legacy-slice** (riserva #1 revisore, review #43, 2026-07-09): `brains/claude_brain.py:38` contiene `for m in messages[-8:]` — slicing raw della history, violazione sez. 5 CLAUDE.md. INERTE: file legacy non wired al kernel attivo, zero copertura test. Diventa bloccante solo se i brain legacy venissero ri-agganciati. Nessuna azione ora.
-- **R-crm-diario-rr** (riserva R1 store.py commento riga 15, registrata 2026-07-14): `INSERT OR REPLACE` diretto sulla PK in `contatti` aggira i trigger di immutabilità del diario con `recursive_triggers` OFF (comportamento default SQLite): il DELETE implicito nella replace non attiva i trigger. Conseguenza: una scrittura contatto tramite INSERT OR REPLACE non diarizza l'overwrite. Viola "la memoria non mente" (§6 CLAUDE.md). LATENTE: il codice applicativo usa solo INSERT puro, il buco si apre a chi accede al file .db direttamente. Da blindare alla passata di hardening del diario (correlato a R-crm-1b fetta 2 — idempotenza).
+- **R-crm-diario-rr → PROMOSSO A FETTA** (registrato 2026-07-14; **CONFERMATO EMPIRICAMENTE 2026-07-15**, revisione Fable-5): con `recursive_triggers` OFF (default SQLite) un `INSERT OR REPLACE` sulla PK del diario riscrive la riga aggirando i trigger di immutabilità (il DELETE implicito non li attiva) — dimostrato su DB di test con gli stessi trigger. `PRAGMA recursive_triggers=ON` in `MemoryStore._connect()` chiude il buco (dimostrato). Il codice applicativo usa solo INSERT puro, merge inclusi (verificato): esposizione = accesso diretto al `.db` o refactor futuro distratto. T19f copre solo UPDATE/DELETE: il varco NON è testato. **Fix = prossima fetta motore**: 1 riga in `_connect()` + test che pretende ABORT su INSERT OR REPLACE.
+- **Note minori — revisione Fable-5 (2026-07-15, nessuna azione impegnata)**: (a) logging su path RELATIVO `gas_debug.log` (segue la cwd, non la root: ok sotto systemd, log vagante se lanciato da altra dir); (b) messaggi di `_cap_tool_output` suggeriscono `sed -n` che l'allowlist nega (F4); (c) `classifica_compito`: ogni messaggio ≥60 char = "complesso" → salta spesso flash-lite (costo ~0 oggi); (d) il bot Telegram processa anche `edited_message` (ri-editare un vecchio messaggio lo ri-esegue; innocuo con whitelist); (e) commento prezzi Gemini in gas.py datato 2025-06 (allineare alla prossima occasione); (f) CLAUDE.md sez.2 descriveva cascata e Core Files non più reali (corretto nella fetta 2 di questa PR).
 
 > ℹ️ **TPM burst gpt-oss-120b** — limite TPM 8K (vs 12K del precedente llama-3.3-70b-versatile). Fallthrough a OpenRouter più frequente in caso di burst = comportamento atteso, non regressione.
 
@@ -139,4 +141,5 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
-- ⬜ **Locale Giulia da riallineare a origin/main** — 2026-07-15: **PR #14 e #15 mergiate sul remoto**, locale indietro (la nota precedente citava PR #6: obsoleta). Al rientro su Giulia, PRIMA di lavorare: `git fetch origin` + `git merge --ff-only origin/main`. Non creare branch da locale vecchio. Non eseguibile da Codespace. Alternativa valutata: `/rc` — utilizzabile SOLO se una sessione `claude` è già viva su Giulia lanciata da `~/Gas` (PC acceso): non è un servizio remoto, non copre il caso "fuori casa a PC spento". Nessun impegno a tenere Giulia h24.
+- ✅ **WSL locale riallineato a origin/main** — 2026-07-15: eseguito a mano da terminale WSL (`git fetch` + `checkout main` + `merge --ff-only`), `/home/gqual/Gas` ora a `9cbab56`; branch locale esaurito `docs/roadmap-item2-chiuso` cancellato (`-d` accettato = già dentro main). Registrato qui perché un allineamento manuale NON lascia traccia in git. CHIUSO.
+- ℹ️ **Nomenclatura ambienti — clone Windows eliminato** (2026-07-15): esisteva un SECONDO clone del repo su `C:\Users\gqual\Gas` (PowerShell) oltre a quello WSL, in contraddizione con la regola "non esiste un locale separato dal WSL". Ha già prodotto un incidente: un allineamento eseguito sul clone sbagliato da un branch morto (`docs/cerebras-no-go`) scambiato per main. Deciso ed eseguito: clone Windows RIMOSSO, `~/Gas` su WSL (`/home/gqual/Gas`) è l'UNICO locale canonico. Se ricompare un clone Windows, è un errore da rimuovere: due cloni divergono in silenzio e la memoria comincia a mentire.
