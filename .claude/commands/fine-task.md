@@ -9,10 +9,9 @@ Esegui queste operazioni NELL'ORDINE, senza saltare passi.
 Esegui questi comandi e tieni l'output — lo incolli verbatim nei file sotto:
 
 ```bash
-# Calcola la base della sessione = ultimo commit che ha toccato reports/handoff.md
-BASE=$(git log --oneline -- reports/handoff.md | head -1 | awk '{print $1}')
-# Fallback se handoff.md non è mai stato committato
-[ -z "$BASE" ] && BASE=$(git rev-list --max-parents=0 HEAD)
+# Calcola la base della sessione = punto di fork del branch corrente da origin/main
+# Stabile: non si sposta dopo i commit della sessione (a differenza di git log -- reports/handoff.md)
+BASE=$(git merge-base origin/main HEAD)
 echo "BASE=$BASE"
 
 git diff --stat ${BASE}..HEAD
@@ -20,7 +19,7 @@ git log --oneline ${BASE}..HEAD
 gh run list -L 3              # se gh disponibile e autenticato; altrimenti "CI NON VERIFICATA (gh assente)"
 ```
 
-`${BASE}..HEAD` copre SOLO i commit di questa sessione (dal commit precedente di handoff.md escluso).
+`${BASE}..HEAD` copre SOLO i commit di questa sessione (dal punto di fork da origin/main escluso).
 Usa SEMPRE questo range per §2 e §3 — mai `HEAD~N` con N fisso, mai `git log -10`.
 
 **REGOLA FERREA — output git verbatim**: incolla le righe grezze con hash e messaggi.
@@ -131,7 +130,37 @@ NON includere nel commit file del motore (gas.py, brains/, modules/, tests/) —
 1. Path del report: `reports/ultimo_report.md`
 2. Hash del commit (output di `git rev-parse HEAD`)
 3. Contenuto integrale di `reports/ultimo_report.md`
-4. Contenuto integrale di `reports/handoff.md`
+
+**Check comune (vale per i punti 4 e 5) — esegui UNA sola volta:**
+```bash
+git diff --stat ${BASE}..HEAD -- reports/handoff.md
+```
+- Output **vuoto** → `reports/handoff.md` NON è stato rigenerato in questa sessione.
+- Output **non vuoto** → `reports/handoff.md` è stato rigenerato in questa sessione.
+
+4. Contenuto integrale di `reports/handoff.md`:
+   - Check **vuoto** → scrivi esattamente: `"handoff.md non rigenerato in questa sessione — nessun contenuto da stampare."`
+   - Check **non vuoto** → catta il contenuto integrale del file.
+
+   *Motivo: un handoff di sessione precedente stampato come output della sessione corrente è indistinguibile da uno fresco. Il file non mente, mente il contesto in cui viene presentato.*
+
+5. URL dell'handoff — segui l'ordine, non invertibile:
+
+   **Prerequisito**: commit e push del branch già completati (passi 1-2 sopra).
+
+   Usa l'esito del check comune sopra (non rieseguirlo):
+   - Check **vuoto** → scrivi esattamente: `"handoff.md non rigenerato in questa sessione"`. Non stampare alcun URL.
+   - Check **non vuoto** → prosegui:
+
+   ```bash
+   git rev-parse HEAD
+   ```
+   URL da stampare: `https://raw.githubusercontent.com/Gasss23/Gas/<SHA>/reports/handoff.md`
+
+   **Vincoli (motivo, non decorazione)**:
+   - Usa SEMPRE `git rev-parse HEAD`. NON usare `git log -1 ... -- reports/handoff.md`: quel comando restituisce l'ultimo commit che ha toccato il file, che può essere di una sessione precedente. Non fallisce, non dà 404: serve in silenzio un handoff vecchio con URL apparentemente valido (failure mode osservato, micro-finding 2026-07-13).
+   - L'URL deve essere pinnato allo SHA. Mai al branch (`/main/` o `/<branch>/`): raw.githubusercontent può servire contenuto stale su ref mobili.
+   - Non inventare MAI un URL. Se il check diff --stat è vuoto, l'assenza dell'URL è l'informazione corretta.
 
 ---
 

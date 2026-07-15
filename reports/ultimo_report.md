@@ -1,76 +1,37 @@
-# Report — docs/header-park-tmux
+# Report — 2026-07-15 — Fix guardia handoff.md e auto-riferimento §5
 
-**Data:** 2026-07-15
-**Branch:** docs/header-park-tmux
-**Scope:** DOC-ONLY — micro-fix header + item PARK in reports/stato_progetto.md
+## DECISIONI UMANE RICHIESTE
 
----
-
-## Esito per fetta
-
-| Fetta | Stato | Note |
-|-------|-------|------|
-| 1 — pulizia header | **FATTA** | BOM rimosso, " origin/main" spurio rimosso (riga 80), data aggiornata |
-| 2 — PARK item tmux | **FATTA** | Item aggiunto dopo riga GDPR nella sezione PARK |
+Nessuna.
 
 ---
 
-## Fetta 1 — dettaglio grep "origin/main"
+## Scope & Esito
 
-Grep eseguito prima di qualsiasi modifica: `grep -n "origin/main" reports/stato_progetto.md`
+### FETTA UNICA — 2 fix a `.claude/commands/fine-task.md` (doc-only)
 
-| Riga | Testo | Decisione | Motivo |
-|------|-------|-----------|--------|
-| 80 | `...lead CRM). origin/main` | **RIMOSSO** | Rumore spurio appiccicato a fine riga — nessun contesto tecnico |
-| 140 | `riallineare a origin/main` | **NON TOCCATO** | Frase tecnica legittima (istruzione operativa git) |
-| 140 | `merge --ff-only origin/main` | **NON TOCCATO** | Comando git legittimo nella stessa riga |
+**FIX 1 — guardia sul punto 4**: `FATTA`
+Aggiunto blocco "Check comune (vale per i punti 4 e 5)" tra il punto 3 e il punto 4.
+Il check esegue `git diff --stat ${BASE}..HEAD -- reports/handoff.md` una sola volta.
+Il punto 4 ora condiziona il cat:
+- output vuoto → stampa `"handoff.md non rigenerato in questa sessione — nessun contenuto da stampare."`
+- output non vuoto → catta il file.
+Il punto 5 riferisce lo stesso esito senza rieseguire il comando.
+Motivo incluso nel file: un handoff di sessione precedente presentato come output corrente è indistinguibile da uno fresco.
 
-Nessuna occorrenza ambigua.
+**FIX 2 — auto-riferimento numerico**: `FATTA`
+"Se il check al punto 5 è vuoto, l'assenza dell'URL è l'informazione corretta"
+→ "Se il check diff --stat è vuoto, l'assenza dell'URL è l'informazione corretta".
+Grep `punto [0-9]` sul file dopo il fix: nessun altro riferimento auto-numerato rimasto.
 
-### BOM UTF-8
+### Verifica scope ${BASE}
 
-Confermato con `hexdump`: bytes iniziali `ef bb bf` (BOM). Rimosso con `sed -i '1s/^\xEF\xBB\xBF//'`.
-Verifica post-modifica: file inizia ora con `23 20` (`# `). OK
-
-### Data header
-
-Riga 4 aggiornata da `**2026-07-14**` a `**2026-07-15**` con causale `header-park-tmux: BOM rimosso + item PARK tmux aggiunto`.
-
-### Mojibake nel corpo
-
-NON toccato — fuori scope deliberato come da istruzioni task.
-
----
-
-## Fetta 2 — item PARK aggiunto
-
-Aggiunto dopo l'item GDPR nella sezione `### PARK — registrati, nessun impegno`:
-
-```
-- SSH + tmux come via di accesso al dev tooling da telefono (item 2 roadmap):
-  registrato come alternativa a Dispatch, nessun impegno. Da riprendere SOLO se
-  la sonda Dispatch fallisce. Caveat di sicurezza da valutare prima di qualsiasi
-  implementazione: esporre una sessione tmux con Claude Code = superficie RCE
-  sulla box di sviluppo/repo; richiede design a fiducia mono-direzionale e
-  autenticazione separata.
-```
-
-Stile adattato: voce puntata singola, sostanza invariata.
+`${BASE}` è definito in §0 del documento. Il check comune in §5 usa `${BASE}..HEAD -- reports/handoff.md`,
+coerente con i range già presenti in §2 e §3. Stesso punto di dipendenza del check preesistente al punto 5.
+**Verdetto**: in scope. Stop gate non attivato.
 
 ---
 
-## git diff --stat REALE
+## Anomalie
 
-```
-reports/stato_progetto.md | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
-```
-
----
-
-## Stop gate
-
-- Nessun file di motore toccato (gas.py, brains/, modules/, tests/): OK
-- Nessuna review revisore invocata (commit doc-only): OK
-- Nessun fix mojibake effettuato (fuori scope): OK
-- Nessuna altra modifica oltre a reports/stato_progetto.md e reports/ultimo_report.md: OK
+Nessuna.
