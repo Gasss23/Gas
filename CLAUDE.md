@@ -5,8 +5,8 @@ Gas non è un tool di coding, ma un agente AI personale autonomo destinato a gir
 
 ## 2. ARCHITECTURE & TECH STACK
 - Language: Python 3.11+ gestito in ambiente virtuale (venv).
-- Architecture: Pipeline multi-brain con sistema di paracadute (fallback automatico a cascata: Claude per strategia, Gemini per dati, Groq per velocità).
-- Core Files: gas.py (Kernel), modules/marketing/ (Funnel).
+- Architecture: Pipeline multi-brain con paracadute a cascata (Gemini → Groq → OpenRouter free → Ollama; fonte unica degli ID: brains/model_ids.py). Claude NON è un rung runtime: è il dev-agent (Claude Code).
+- Core Files: gas.py (Kernel), modules/memory/ (Memoria), modules/telegram/ (Bridge). Il funnel marketing è FASE 4: da costruire, oggi non esiste.
 
 ## 3. CORE COMMANDS & WORKFLOWS
 - Esecuzione Kernel / Test: python -c "from gas import GasKernel; ..."
