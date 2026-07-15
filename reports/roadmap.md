@@ -34,6 +34,19 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 4. **FASE 4.5 — Task scheduler autonomo** (prerequisito Jarvis reale; vedi sotto).
 5. **FASE 5 — Deploy VPS Hetzner** — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2). Include: attivare `gas telegram` come daemon, backup off-machine, process management systemd, ri-tarare `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
 6. **Riserve aperte dalla review #38**: R-tel-budget-perf (scan JSONL al crescere del log), R-tel-tool_res (cosmetico, tool result nel reply Telegram).
+
+### 🔍 REVISIONE FONDAMENTA — Fable 5 (2026-07-15, SHA 9cbab56)
+
+Audit integrale a occhi freschi di kernel, memoria, vettori, sandbox, snapshot, cascata, bridge Telegram (~3.8k righe). Verdetto: fondamenta SOLIDE, nessuna riscrittura giustificata. Finding (dettaglio in stato_progetto.md):
+
+1. 🔴 **F1 = R-crm-diario-rr, PROVATO** — `INSERT OR REPLACE` riscrive una riga del diario aggirando i trigger di immutabilità (dimostrato su DB di test); `PRAGMA recursive_triggers=ON` in `MemoryStore._connect()` chiude il buco (dimostrato). T19f copre solo UPDATE/DELETE: il varco non è testato. **PROSSIMA FETTA MOTORE**: fix 1 riga + test che pretende ABORT su INSERT OR REPLACE.
+2. 🟡 **F6 — atomicità `.gas_history.json`** — `_save_history` scrive senza tmp+rename (viola §4) e `_load_history` ingoia la corruzione senza warning → amnesia conversazionale SILENZIOSA dopo un kill a metà scrittura. Fetta piccola dopo F1: write-tmp + `os.replace` + warning e quarantena `.corrupt` in load.
+3. 🟡 **F2 — budget kill-switch non ricontrollato dentro il turno** — check solo a inizio `run_turn`: worst-case ~20-30 chiamate oltre soglia in un singolo turno (~$0.045 su gemini-flash). Inerte sul free tier. **GATED**: prerequisito del primo rung runtime a pagamento (Claude API), non prima.
+4. ✅ **F3 — pulizia file morti** — ESEGUITA in questa PR: 17 file rimossi (junk root, brain legacy con slicing §5, self_improve/, modules/marketing/ vuoto), `brains/router.py` ridotto al solo `classifica_compito`. Suite verificata a delta zero pre/post.
+5. 🟢 **F4 — messaggi `_cap_tool_output` suggeriscono `sed -n`** non in allowlist — cosmetico, accodabile a una futura fetta motore.
+6. 🟢 **F5 — kernel Telegram single-history condiviso** — vincolo di design dichiarato: da sciogliere nel progetto "controllo Telegram unificato", non prima.
+7. 🟡 **F7 — `.venv/` non gitignorato → lo snapshot lo inghiotte** — `.gitignore` conteneva `venv/` ma NON `.venv/` (col punto): `_snapshot()` fa `git add -A`, quindi in una root con `.venv/` ogni snapshot preventivo assorbe l'intero virtualenv nell'albero (migliaia di file, snapshot lenti, repo gonfio — correlato ai ~4427 oggetti loose già annotati). Riga `.venv/` aggiunta al `.gitignore` in questa PR. **RESIDUO NON CHIUSO**: verificare sul VPS come si chiama il venv di produzione (`ls -a /home/gas/gas/`) — se è `.venv`, il problema era vivo in h24; se è `venv`, era già coperto. Runbook SSH, non task Claude Code.
+
 7. **Rung 4 OpenRouter in degrado** — `meta-llama/llama-3.3-70b-instruct:free` soggetto a rate limit upstream crescenti; diversi modelli free-tier OpenRouter hanno perso l'accesso gratuito a giugno 2026. Da investigare: modello free alternativo stabile o declassare rung 4 a best-effort dichiarato. Stato: APERTO, priorità media.
 8. ✅ **Config-drift stringhe modello** — `brains/model_ids.py` = fonte unica dei 5 ID cascata, env-overridabili (`GAS_MODEL_*`). Merge `eb0509f`, commit `160543a`, review #43, 2026-07-07. **CHIUSO**.
 
