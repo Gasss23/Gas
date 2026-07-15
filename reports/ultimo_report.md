@@ -1,62 +1,76 @@
-# Chiusura item 2 roadmap — Accesso da telefono / dev tooling
+# Report — docs/header-park-tmux
 
-**Data**: 2026-07-15
-**Branch**: docs/roadmap-item2-chiuso
-**Tipo**: DOC-ONLY (nessun file motore toccato)
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-Nessuna.
+**Data:** 2026-07-15
+**Branch:** docs/header-park-tmux
+**Scope:** DOC-ONLY — micro-fix header + item PARK in reports/stato_progetto.md
 
 ---
 
-## SCOPE & ESITO FETTE
+## Esito per fetta
 
-- **Fetta 1 (unica) — chiusura item 2 roadmap nei canonici**: `FATTA`
-  Aggiornati `reports/roadmap.md` e `reports/stato_progetto.md` per riflettere la chiusura
-  dell'item "Accesso da telefono / dev tooling", verificata live tramite la sonda Remote
-  Control (`/rc`) su Giulia/WSL: sessione locale raggiunta da telefono, lettura file reale
-  del repo confermata. Nessun bridge custom necessario.
-
----
-
-## MODIFICHE
-
-### `reports/roadmap.md`
-- Voce "Accesso dev tooling da telefono — Claude Dispatch (candidato)": stato passato da
-  `IN VALIDAZIONE — sonda pendente` a `✅ CHIUSO (2026-07-15)`, con motivazione (sonda
-  Remote Control verificata live, nessun bridge custom necessario).
-
-### `reports/stato_progetto.md`
-- Sezione "Stato item roadmap": Item 2 da `🟡 APERTO` a `✅ CHIUSO (2026-07-15)`, stessa
-  motivazione.
-- "Prossimi passi" punto 3: rimossa la dicitura "Sonda Dispatch pendente", sostituita con
-  riga di chiusura.
-- Note operative VPS, punto 6 ("Confine sviluppo da telefono"): aggiunta sotto-nota con
-  verifica Remote Control locale (2026-07-15), caveat operativo (cwd ereditata dal lancio —
-  lanciare sempre da `~/Gas`) e caveat sessioni (☁️ = cloud non canonico vs icona
-  computer+verde = Giulia locale, per evitare falsi verdi da task bwrap in cloud).
-
-Nessun altro file toccato (verificato con `git status --short` / `git diff --stat`).
+| Fetta | Stato | Note |
+|-------|-------|------|
+| 1 — pulizia header | **FATTA** | BOM rimosso, " origin/main" spurio rimosso (riga 80), data aggiornata |
+| 2 — PARK item tmux | **FATTA** | Item aggiunto dopo riga GDPR nella sezione PARK |
 
 ---
 
-## STOP GATE RISPETTATI
+## Fetta 1 — dettaglio grep "origin/main"
 
-- Solo Fetta 1: nessun file motore (`gas.py`, `brains/`, `modules/`, `tests/`) modificato.
-- Branch nuovo `docs/roadmap-item2-chiuso` creato da `main` locale (aggiornato con
-  `origin/main` per quanto verificabile: il fetch SSH non è disponibile in questo ambiente —
-  `ssh-askpass` assente/publickey rifiutata — ma `git status` segnalava il locale già
-  allineato a `origin/main` prima della creazione del branch).
-- Nessun commit su main: PR necessaria per il merge (lucchetto `main-lock` attivo).
-- Nessuna review del subagent `revisore` richiesta: commit di soli `reports/*.md`, esente
-  per regola CLAUDE.md §3.
+Grep eseguito prima di qualsiasi modifica: `grep -n "origin/main" reports/stato_progetto.md`
 
-## NOTA PER L'OPERATORE (fuori scope, non applicata)
+| Riga | Testo | Decisione | Motivo |
+|------|-------|-----------|--------|
+| 80 | `...lead CRM). origin/main` | **RIMOSSO** | Rumore spurio appiccicato a fine riga — nessun contesto tecnico |
+| 140 | `riallineare a origin/main` | **NON TOCCATO** | Frase tecnica legittima (istruzione operativa git) |
+| 140 | `merge --ff-only origin/main` | **NON TOCCATO** | Comando git legittimo nella stessa riga |
 
-La riga "Ultimo aggiornamento" in cima a `reports/stato_progetto.md` (riga 4) riporta ancora
-la sessione precedente (2026-07-14, R-crm-1b). Non l'ho toccata perché non era tra gli item
-richiesti nella Fetta 1 e lo stop gate vieta di fare "altro" senza fermarsi prima. Se
-l'operatore vuole, la si aggiorna in una sessione successiva.
+Nessuna occorrenza ambigua.
+
+### BOM UTF-8
+
+Confermato con `hexdump`: bytes iniziali `ef bb bf` (BOM). Rimosso con `sed -i '1s/^\xEF\xBB\xBF//'`.
+Verifica post-modifica: file inizia ora con `23 20` (`# `). OK
+
+### Data header
+
+Riga 4 aggiornata da `**2026-07-14**` a `**2026-07-15**` con causale `header-park-tmux: BOM rimosso + item PARK tmux aggiunto`.
+
+### Mojibake nel corpo
+
+NON toccato — fuori scope deliberato come da istruzioni task.
+
+---
+
+## Fetta 2 — item PARK aggiunto
+
+Aggiunto dopo l'item GDPR nella sezione `### PARK — registrati, nessun impegno`:
+
+```
+- SSH + tmux come via di accesso al dev tooling da telefono (item 2 roadmap):
+  registrato come alternativa a Dispatch, nessun impegno. Da riprendere SOLO se
+  la sonda Dispatch fallisce. Caveat di sicurezza da valutare prima di qualsiasi
+  implementazione: esporre una sessione tmux con Claude Code = superficie RCE
+  sulla box di sviluppo/repo; richiede design a fiducia mono-direzionale e
+  autenticazione separata.
+```
+
+Stile adattato: voce puntata singola, sostanza invariata.
+
+---
+
+## git diff --stat REALE
+
+```
+reports/stato_progetto.md | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+```
+
+---
+
+## Stop gate
+
+- Nessun file di motore toccato (gas.py, brains/, modules/, tests/): OK
+- Nessuna review revisore invocata (commit doc-only): OK
+- Nessun fix mojibake effettuato (fuori scope): OK
+- Nessuna altra modifica oltre a reports/stato_progetto.md e reports/ultimo_report.md: OK

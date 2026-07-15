@@ -1,7 +1,7 @@
-﻿# STATO PROGETTO GAS
+# STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-14** (R-crm-1b Fetta 1 — gas merge-contacts + fix hint) feature/crm-dup-detect
+> Ultimo aggiornamento: **2026-07-15** (header-park-tmux: BOM rimosso + item PARK tmux aggiunto)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -77,7 +77,7 @@ NO-GO come rung-4. Due limiti bloccanti per paracadute h24 non presidiato:
 1. Cap contesto free tier = **8192 token** misurato live (doc dichiara 64k — falso). Insufficiente per system + pin + schema + window.
 2. Coda free satura — 429 queue_exceeded a orari diversi. Disponibilità non garantita.
 Rung-4 resta OpenRouter. Ri-valutabile solo su tier a pagamento (131k, no coda) = decisione di budget separata.
-Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM). origin/main
+Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 ## Prossimi passi (in ordine di prioritÃ )
 
 1. ~~**FASE 2.5**~~ âœ… chiusa (review #39, 2026-06-27).
@@ -91,6 +91,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM). or
 ### PARK â€” registrati, nessun impegno
 - Retention del diario (archiviazione/export, MAI DELETE â€” quando il volume lo richiederÃ ).
 - GDPR / dati personali lead: da guardare a FASE 4.
+- SSH + tmux come via di accesso al dev tooling da telefono (item 2 roadmap): registrato come alternativa a Dispatch, nessun impegno. Da riprendere SOLO se la sonda Dispatch fallisce. Caveat di sicurezza da valutare prima di qualsiasi implementazione: esporre una sessione tmux con Claude Code = superficie RCE sulla box di sviluppo/repo; richiede design a fiducia mono-direzionale e autenticazione separata.
 
 ## Istituzioni di processo
 
