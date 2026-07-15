@@ -5,24 +5,32 @@
 ## Sessione
 
 Branch: `chore/fondamenta-registro-pulizia` (da main `9cbab56`)
-Commit: `bdec279`, `1b03adc`
+Commit: `bdec279`, `1b03adc`, `942c5c8`
 
-## File toccati (HEAD~2..HEAD)
+## File toccati (BASE=9cbab56..HEAD)
 
-### Modificati
-- `reports/roadmap.md` — blocco "REVISIONE FONDAMENTA Fable-5" inserito dopo item #6
-- `reports/stato_progetto.md` — header aggiornato; F6-history-atomica inserita in Finding aperti; R-crm-diario-rr promosso a fetta; note minori Fable-5 aggiunte; item locale/clone Windows risolti; R-legacy-slice chiuso
-- `.gitignore` — aggiunta riga `.venv/` sotto `venv/` (fix F7)
-- `CLAUDE.md` sez.2 — cascata e Core Files aggiornati alla realtà del codice
-- `brains/router.py` — ridotto da 62 a 18 righe: rimosso get_brain/rispondi/_chiama legacy; mantenuto solo classifica_compito
+### Aggiunti / modificati — motore e config
+- `.gitignore` — aggiunta riga `.venv/` sotto `venv/` (fix F7: snapshot non assorbe più il virtualenv)
+- `CLAUDE.md` sez.2 — cascata e Core Files aggiornati alla realtà del codice attivo
+- `brains/router.py` — ridotto da 62 a 18 righe: rimossi get_brain/rispondi/_chiama legacy; mantenuto solo classifica_compito
 
-### Rimossi (17 file)
-- `gas`, `router` — junk root (testo)
-- `brains/claude_brain.py`, `gemini_brain.py`, `groq_brain.py`, `openrouter_brain.py` — brain legacy non wired
-- `self_improve/__init__.py`, `loop.py`, `researcher.py` — modulo non wired
-- `modules/marketing/campaign.py`, `funnel_test.py`, `test_postcleanup.py`, `test_finale.py`, `riassunto_canone.md`, `strategy.txt` — marketing husk FASE 4
+### Rimossi — 17 file morti
+- `gas`, `router` — junk root (testo, non Python)
+- `brains/claude_brain.py` — brain legacy non wired; conteneva messages[-8:] (violazione §5)
+- `brains/gemini_brain.py` — brain legacy non wired
+- `brains/groq_brain.py` — brain legacy non wired
+- `brains/openrouter_brain.py` — brain legacy non wired
+- `self_improve/__init__.py`, `self_improve/loop.py`, `self_improve/researcher.py` — modulo non wired, non testato
+- `modules/marketing/campaign.py`, `funnel_test.py`, `test_postcleanup.py`, `test_finale.py`, `riassunto_canone.md`, `strategy.txt` — marketing husk FASE 4 (da costruire)
 - `deploy_vps_bozza.txt`, `test_agente.py` — junk root
+
+### Modificati — reports
+- `reports/roadmap.md` — blocco "REVISIONE FONDAMENTA Fable-5" inserito dopo item #6 della lista PROSSIMI PASSI
+- `reports/stato_progetto.md` — header aggiornato; F6-history-atomica in Finding aperti; R-crm-diario-rr promosso a fetta; note minori Fable-5; item locale/clone Windows chiusi; R-legacy-slice marcato chiuso
+- `reports/ultimo_report.md` — report di fine task (questa sessione)
+- `reports/handoff.md` — dossier di fine sessione (questa sessione)
+- `reports/diff_sessione.md` — questo file
 
 ## Perché
 
-Audit integrale da Fable-5 (SHA 9cbab56) confermava che i file rimossi erano codice morto non collegato al kernel attivo. `claude_brain.py` conteneva anche slicing `messages[-8:]` (violazione §5). La pulizia abbatte il debito di superficie manutenibile senza rischi (delta suite zero, grep residui vuoto, revisore APPROVATO).
+Audit integrale da Fable-5 (SHA 9cbab56) confermava fondamenta SOLIDE e 17 file morti non connessi al kernel. `claude_brain.py` conteneva anche `messages[-8:]` (slicing raw §5). Pulizia abbatte il debito di superficie manutenibile senza rischi (delta suite zero, grep residui vuoto, revisore APPROVATO).

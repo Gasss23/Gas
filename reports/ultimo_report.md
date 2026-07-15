@@ -2,6 +2,12 @@
 
 Branch: `chore/fondamenta-registro-pulizia`
 
+## DECISIONI UMANE RICHIESTE
+
+1. **Merge PR #17** (`chore/fondamenta-registro-pulizia` → main): CI verde ✅ — revisiona diff e approva il merge.
+2. **Residuo F7 — venv su VPS**: verificare via SSH il naming del venv di produzione (`ls -a /home/gas/gas/`) — se è `.venv` il buco snapshot era vivo in h24, se è `venv` era già coperto. Runbook SSH, non task Claude Code.
+3. **Priorità prossima fetta motore (F1)**: confermare se procedere con `R-crm-diario-rr` (1 riga `_connect()` + test) oppure un'altra fetta (R-crm-1b fette 2-3, FASE 3 vocale).
+
 ## Scope
 
 Registrazione dei finding dell'audit Fable-5 (SHA 9cbab56) + pulizia 17 file morti.
@@ -16,11 +22,12 @@ Registrazione dei finding dell'audit Fable-5 (SHA 9cbab56) + pulizia 17 file mor
 ## Commit della sessione
 
 ```
-bdec279  docs: registra revisione fondamenta Fable-5 (F1 provato, F6/F7 nuovi, F2-F5) + chiude item allineamento locale
+942c5c8  docs(report): fine sessione revisione-fondamenta — ultimo_report, handoff, diff_sessione, stato_progetto (chiude R-legacy-slice)
 1b03adc  chore: rimuove 17 file morti (brain legacy, self_improve, marketing husk, junk root); router.py ridotto a classifica_compito; .venv/ gitignorato [revisione Fable-5, F3+F7]
+bdec279  docs: registra revisione fondamenta Fable-5 (F1 provato, F6/F7 nuovi, F2-F5) + chiude item allineamento locale
 ```
 
-## diff --stat reale della sessione (HEAD~2..HEAD)
+## diff --stat reale (BASE=9cbab56..HEAD)
 
 ```
  .gitignore                            |   1 +
@@ -38,20 +45,23 @@ bdec279  docs: registra revisione fondamenta Fable-5 (F1 provato, F6/F7 nuovi, F
  modules/marketing/strategy.txt        |   1 -
  modules/marketing/test_finale.py      |  13 ----
  modules/marketing/test_postcleanup.py |   1 -
+ reports/diff_sessione.md              |  30 ++++++--
+ reports/handoff.md                    | 102 ++++++++++++++++++---------
  reports/roadmap.md                    |  13 ++++
- reports/stato_progetto.md             |   9 ++-
+ reports/stato_progetto.md             |  11 +--
+ reports/ultimo_report.md              |  98 +++++++++++++++++++++-----
  router                                |   4 --
  self_improve/__init__.py              |   0
  self_improve/loop.py                  |  93 -------------------------
  self_improve/researcher.py            |  85 -----------------------
  test_agente.py                        |  16 -----
- 22 files changed, 27 insertions(+), 694 deletions(-)
+ 25 files changed, 200 insertions(+), 753 deletions(-)
 ```
 
 ## Delta test suite
 
-- PRE-modifica: **231 PASS, 0 FAIL** (suite completa)
-- POST-modifica: **231 PASS, 0 FAIL** (delta zero)
+- PRE-Fetta 2: **231 PASS, 0 FAIL**
+- POST-Fetta 2: **231 PASS, 0 FAIL** — delta zero ✅
 
 ## Verifiche Fetta 2
 
@@ -59,29 +69,9 @@ bdec279  docs: registra revisione fondamenta Fable-5 (F1 provato, F6/F7 nuovi, F
 - `classifica_compito('ciao')` → **semplice** ✅
 - `.venv/` gitignore: `.gitignore:2:.venv/ .venv/x` ✅
 
-## Verdetto revisore (Fetta 2 — integrale)
+## CI
 
-```
-## VERDETTO: APPROVATO
-
-La fetta è chirurgica e priva di rischi. Rimuove esclusivamente codice morto confermato,
-risolve un finding latente (R-legacy-slice su claude_brain.py) per via radicale,
-corregge il gitignore (F7) e allinea CLAUDE.md alla realtà del codebase.
-Delta suite: zero. Nessun guardrail indebolito. Nessun antipattern introdotto.
-
-Verifiche revisore:
-- 17 file rimossi: tutti confermati non wired (gas.py importa solo brains.model_ids
-  e brains.router.classifica_compito)
-- brains/router.py: preserva esattamente classifica_compito, import os legacy rimosso
-- .gitignore: additivo, nessun effetto collaterale
-- CLAUDE.md sez.2: tutte le affermazioni verificate accurate rispetto al codice
-- Nessun effetto collaterale inatteso rilevato
-```
-
-## Stato CI
-
-PR non ancora aperta al momento della scrittura. CI run atteso su push + PR creation.
-Ultima CI su main: run #29031945029 su `87ad26f` ✅ SUCCESS (2026-07-09).
+- Run ID: `29452996720` — **completed SUCCESS** su `chore/fondamenta-registro-pulizia` (2026-07-15T21:44:25Z)
 
 ## Finding registrati in questa sessione
 
@@ -91,5 +81,9 @@ Ultima CI su main: run #29031945029 su `87ad26f` ✅ SUCCESS (2026-07-09).
 - ✅ **F3 — pulizia file morti** → ESEGUITA in questa PR
 - 🟢 **F4 — messaggi sed -n** → cosmetico, fetta futura
 - 🟢 **F5 — single-history Telegram** → vincolo di design
-- 🟡 **F7 — .venv/ gitignore** → fix eseguito; residuo: verificare naming venv su VPS (runbook SSH)
+- 🟡 **F7 — .venv/ gitignore** → fix eseguito; residuo VPS: runbook SSH
 - ✅ **R-legacy-slice** → CHIUSO (rimosso con claude_brain.py)
+
+## PR
+
+https://github.com/Gasss23/Gas/pull/17 — CI ✅ SUCCESS, in attesa di merge.
