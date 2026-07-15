@@ -1,52 +1,56 @@
-# Report — docs/fine-task-url-handoff
+# Report — 2026-07-15 — Fix guardia handoff.md e auto-riferimento §5
 
-**Data:** 2026-07-15
-**Branch:** docs/fine-task-url-handoff
-**Scope:** DOC-ONLY — aggiunta regola URL handoff in .claude/commands/fine-task.md
+## DECISIONI UMANE RICHIESTE
 
----
-
-## Esito fetta unica
-
-| Fetta | Stato |
-|-------|-------|
-| Aggiunta regola URL handoff in fine-task.md | **FATTA** |
+Nessuna.
 
 ---
 
-## Dettaglio modifica
+## Scope & Esito
 
-Aggiunta nella sezione `## 5. Stampa a terminale ESATTAMENTE` come punto 5 della lista.
+### FETTA UNICA — Fix §5 di `.claude/commands/fine-task.md`
 
-Sostanza invariata rispetto alle istruzioni ricevute:
-- Ordine obbligatorio: commit → push → verifica diff stat → SHA → URL
-- Check `git diff --stat ${BASE}..HEAD -- reports/handoff.md`: se vuoto → nessun URL, scrivi la frase esatta
-- Comando corretto: `git rev-parse HEAD` (non `git log -1 -- reports/handoff.md`)
-- Vincoli documentati con motivo: failure mode 2026-07-13, stale cache su ref mobili
+**FIX 1 (guardia punto 4)**: `FATTA`
+Aggiunto blocco "Check comune (vale per i punti 4 e 5)" — `git diff --stat ${BASE}..HEAD -- reports/handoff.md` — tra il punto 3 e il punto 4.
+Il punto 4 ("Contenuto integrale di reports/handoff.md") usa ora l'esito del check:
+- output vuoto → stampa esattamente `"handoff.md non rigenerato in questa sessione — nessun contenuto da stampare."`
+- output non vuoto → catta il contenuto integrale del file.
+Il punto 5 riferisce lo stesso check comune senza rieseguirlo (zero duplicazione del comando).
+Motivo incluso nel file: un handoff di sessione precedente presentato come output corrente è indistinguibile da uno fresco.
 
-Forma adattata allo stile del file: lista numerata con sotto-passi, code block bash, grassetto per i vincoli.
+**FIX 2 (auto-riferimento numerico)**: `FATTA`
+Riga `"Se il check al punto 5 è vuoto, l'assenza dell'URL è l'informazione corretta"` corretta in
+`"Se il check diff --stat è vuoto, l'assenza dell'URL è l'informazione corretta"`.
+Grep `"punto 5|punto 4|punto [0-9]"` sul file: nessun altro riferimento auto-numerato rimasto.
 
 ---
 
-## git diff --stat REALE
+## Verifica scope ${BASE}
+
+`${BASE}` è definito in §0 del documento (`BASE=$(git log --oneline -- reports/handoff.md | head -1 | awk '{print $1}')` con fallback al root commit).
+Il check comune in §5 usa `${BASE}..HEAD -- reports/handoff.md`, esattamente come i range in §2 e §3 del template handoff.
+La stessa variabile era già usata dal check originale del punto 5 (commit 0c18e40): questa sessione non introduce un nuovo punto di dipendenza, consolida quello già esistente.
+**Verdetto**: `${BASE}` è in scope. Stop gate non attivato.
+
+---
+
+## git diff --stat della sessione (BASE=3987dbe..HEAD, committed)
 
 ```
-.claude/commands/fine-task.md | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ .claude/commands/fine-task.md |  20 ++++++++
+ reports/roadmap.md            |   2 +-
+ reports/stato_progetto.md     |  19 ++++----
+ reports/ultimo_report.md      | 103 +++++++++++-------------------------------
+ 4 files changed, 58 insertions(+), 86 deletions(-)
 ```
 
----
-
-## Stop gate
-
-- Nessun file di motore toccato (gas.py, brains/, modules/, tests/): OK
-- Nessuna review revisore invocata (commit doc-only): OK
-- Nessun altro file toccato oltre a .claude/commands/fine-task.md e reports/ultimo_report.md: OK
+(Diff sopra = stato pre-commit-correzione. Il commit di questa sessione aggiunge
++18/-8 su fine-task.md e riscrive ultimo_report.md.)
 
 ---
 
-## URL handoff
+## Note
 
-`git diff --stat ${BASE}..HEAD -- reports/handoff.md` → vuoto.
-
-**handoff.md non rigenerato in questa sessione.**
+- Task doc-only: nessun diff su gas.py, brains/, modules/, tests/. Revisore non invocato (CLAUDE.md §3).
+- handoff.md NON rigenerato in questa sessione (`git diff --stat 3987dbe..HEAD -- reports/handoff.md` vuoto) → nessun URL handoff, nessun cat dell'handoff.
+- CI ultima run sul branch: `completed success` (run 29396997007, commit 0c18e40, 2026-07-15T07:20:06Z).
