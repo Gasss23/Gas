@@ -132,6 +132,26 @@ NON includere nel commit file del motore (gas.py, brains/, modules/, tests/) —
 2. Hash del commit (output di `git rev-parse HEAD`)
 3. Contenuto integrale di `reports/ultimo_report.md`
 4. Contenuto integrale di `reports/handoff.md`
+5. URL dell'handoff — segui l'ordine, non invertibile:
+
+   **Prerequisito**: commit e push del branch già completati (passi 1-2 sopra).
+
+   Verifica che `reports/handoff.md` sia stato rigenerato in QUESTA sessione:
+   ```bash
+   git diff --stat ${BASE}..HEAD -- reports/handoff.md
+   ```
+   - Output **vuoto** → scrivi esattamente: `"handoff.md non rigenerato in questa sessione"`. Non stampare alcun URL.
+   - Output **non vuoto** → prosegui:
+
+   ```bash
+   git rev-parse HEAD
+   ```
+   URL da stampare: `https://raw.githubusercontent.com/Gasss23/Gas/<SHA>/reports/handoff.md`
+
+   **Vincoli (motivo, non decorazione)**:
+   - Usa SEMPRE `git rev-parse HEAD`. NON usare `git log -1 ... -- reports/handoff.md`: quel comando restituisce l'ultimo commit che ha toccato il file, che può essere di una sessione precedente. Non fallisce, non dà 404: serve in silenzio un handoff vecchio con URL apparentemente valido (failure mode osservato, micro-finding 2026-07-13).
+   - L'URL deve essere pinnato allo SHA. Mai al branch (`/main/` o `/<branch>/`): raw.githubusercontent può servire contenuto stale su ref mobili.
+   - Non inventare MAI un URL. Se il check al punto 5 è vuoto, l'assenza dell'URL è l'informazione corretta.
 
 ---
 
