@@ -1,61 +1,33 @@
-# Report — 2026-07-15 — fix §0 fine-task: git fetch + guard errore merge-base
+# Report fine task — 2026-07-15
 
-**Branch:** fix/fine-task-base-mergebase
-**Scope:** fetta unica, doc-only — modifica SOLO .claude/commands/fine-task.md
+## Scope
 
----
+Doc-only, fetta unica. Modifica esclusiva di `reports/stato_progetto.md` con 4 modifiche a testo esatto fornito dal task.
 
-## DECISIONI UMANE RICHIESTE
+## Esito fetta
 
-Nessuna.
+**FATTA**
 
----
+## Modifiche applicate (esatte)
 
-## Esito fette
+1. **MODIFICA 1 — header** `Ultimo aggiornamento`: sostituita parentesi con testo `(micro-finding PR #14 no-review + BASE=merge-base + item Giulia riallineato)`.
+2. **MODIFICA 2 — D-cmd**: riga sostituita integralmente con: BASE = `git merge-base origin/main HEAD`, fetch obbligatorio, guard bloccante se merge-base vuoto, caveat residuo documentato.
+3. **MODIFICA 3 — micro-finding PR #14**: aggiunta nota in coda alle note di processo: PR #14 mergiata senza revisione, recidiva "gate saltato perché il cambio sembrava piccolo".
+4. **MODIFICA 4 — item Giulia**: riga sostituita integralmente con: PR #14+#15 mergiate (obsoleta la citazione PR #6), caveat `/rc`, confine "non eseguibile da Codespace", nessun impegno h24.
 
-- **Fetta unica — aggiorna §0 di fine-task.md**: `FATTA`
-  - Aggiunto `git fetch origin` prima di `git merge-base origin/main HEAD`, con motivazione esplicita nel file: "senza fetch, origin/main locale può essere stale e il merge-base risale a un fork point vecchio → ${BASE}..HEAD include commit di sessioni precedenti".
-  - Aggiunto guard di errore: se `git merge-base` restituisce vuoto, `/fine-task` si FERMA con messaggio esplicito, nessun fallback silenzioso.
-  - Rimosso residuo vecchio approccio: commento `(a differenza di git log -- reports/handoff.md)`.
-  - §2, §3, §5 NON toccati: continuano a usare `${BASE}`, semantica invariata.
-
----
-
-## diff --stat reale (§0, raccolto live)
+## git diff --stat (reale)
 
 ```
- .claude/commands/fine-task.md | 13 +++++++--
- reports/ultimo_report.md      | 66 +++++++++++++++++++++++++++++--------------
- 2 files changed, 56 insertions(+), 23 deletions(-)
+ reports/stato_progetto.md | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 ```
 
----
+## Commit e PR
 
-## Grep di verifica
+- Commit: `9b65660`
+- Branch: `chore/stato-microfinding-pr14`
+- PR: https://github.com/Gasss23/Gas/pull/16
 
-### `grep -n 'handoff commit' .claude/commands/fine-task.md` → vuoto (OK)
+## Proposte scartate
 
-```
-(nessun output)
-```
-
-### `grep -n 'merge-base' .claude/commands/fine-task.md`
-
-```
-12:# 1. Aggiorna origin/main locale prima di calcolare il merge-base.
-13:#    Senza fetch, origin/main locale può essere stale e il merge-base risale
-19:BASE=$(git merge-base origin/main HEAD)
-21:  echo "ERRORE: git merge-base origin/main HEAD fallito o ha restituito vuoto — /fine-task si FERMA."
-```
-
----
-
-## Anomalie
-
-Nessuna.
-
----
-
-## Stop gate
-
-Nessun file fuori scope toccato. reports/stato_progetto.md, CLAUDE.md e qualsiasi altro file non menzionato nel task NON sono stati modificati.
+Nessuna. Il task era completamente specificato; nessuna modifica aggiuntiva individuata da proporre.

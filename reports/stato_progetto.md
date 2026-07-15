@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-15** (header-park-tmux: BOM rimosso + item PARK tmux aggiunto)
+> Ultimo aggiornamento: **2026-07-15** (micro-finding PR #14 no-review + BASE=merge-base + item Giulia riallineato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -100,7 +100,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
 - **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **48 review**. Ultima: **#48** (R-crm-1b Fetta 1 merge umano, 2026-07-14). Lezioni in `.claude/agents/memoria_revisore.md`.
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
-- **D-cmd** â€” `.claude/commands/fine-task.md`: template `/fine-task`. BASE dinamico da last handoff commit (`${BASE}..HEAD`); Â§1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA).
+- **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. **BASE = `git merge-base origin/main HEAD`** (non più “last handoff commit”), preceduto da `git fetch origin` obbligatorio e con guard bloccante se il merge-base è vuoto (fix 2026-07-15, branch `fix/fine-task-base-mergebase`). §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA). **Caveat residuo**: la correttezza di `${BASE}` dipende dalla freschezza di `origin/main` — il `git fetch` copre il caso normale, ma se la PR viene mergiata sul remoto DOPO il fetch, `${BASE}..HEAD` può ancora includere commit non di sessione. Non chiuso al 100%: mitigato.
 
 ## Note operative VPS â€” non per oggi
 
@@ -135,7 +135,8 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 
 - ⚠️ **Nota di processo — scope creep sessione 2026-07-08**: fetta concordata = migrazione Groq; fuori mandato: (1) chiuso R-groq-dup (era deferito a slice separata), (2) toccato CLAUDE.md, (3) toccato runbook_s1. Esito tecnico corretto (review #44), ma lo scope lo decide l'operatore: registrata recidiva dell'anti-pattern. Mitigazione strutturale: ruleset `main-lock` attivo dal 2026-07-09 (no push diretto su main, CI `unit-suite` required, self-merge).
 - ℹ️ **Micro-finding di processo — handoff diff --stat riciclato** (2026-07-13): il `diff --stat` nel handoff era riciclato dalla sessione precedente, non rigenerato — svista di copia; log/conteggio/CI erano coerenti. Nota: Claude Code rigeneri sempre `git diff --stat` reale nel handoff, mai riciclarlo.
+- ℹ️ **Micro-finding di processo — PR #14 mergiata senza revisione** (2026-07-15): la PR #14 è arrivata su main senza il passaggio di revisione previsto dal protocollo. CI verde, nessun danno rilevato al contenuto, ma il gate è stato saltato: registrato come recidiva della classe "gate saltato perché il cambio sembrava piccolo". Nessuna azione correttiva sul merito; la lezione è che il gate non si valuta a occhio sulla dimensione del diff.
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
-- ⬜ **Locale Giulia da riallineare a origin/main** (PR #6 mergiata sul remoto, locale ancora indietro). Al rientro, PRIMA di lavorare: `git fetch origin` + `git merge --ff-only origin/main`. Non creare branch da locale vecchio.
+- ⬜ **Locale Giulia da riallineare a origin/main** — 2026-07-15: **PR #14 e #15 mergiate sul remoto**, locale indietro (la nota precedente citava PR #6: obsoleta). Al rientro su Giulia, PRIMA di lavorare: `git fetch origin` + `git merge --ff-only origin/main`. Non creare branch da locale vecchio. Non eseguibile da Codespace. Alternativa valutata: `/rc` — utilizzabile SOLO se una sessione `claude` è già viva su Giulia lanciata da `~/Gas` (PC acceso): non è un servizio remoto, non copre il caso "fuori casa a PC spento". Nessun impegno a tenere Giulia h24.
