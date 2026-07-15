@@ -1,4 +1,9 @@
-# Report — 2026-07-15 — Fix guardia handoff.md e auto-riferimento §5
+# Report — 2026-07-15 — fix §0 fine-task: git fetch + guard errore merge-base
+
+**Branch:** fix/fine-task-base-mergebase
+**Scope:** fetta unica, doc-only — modifica SOLO .claude/commands/fine-task.md
+
+---
 
 ## DECISIONI UMANE RICHIESTE
 
@@ -6,32 +11,51 @@ Nessuna.
 
 ---
 
-## Scope & Esito
+## Esito fette
 
-### FETTA UNICA — 2 fix a `.claude/commands/fine-task.md` (doc-only)
-
-**FIX 1 — guardia sul punto 4**: `FATTA`
-Aggiunto blocco "Check comune (vale per i punti 4 e 5)" tra il punto 3 e il punto 4.
-Il check esegue `git diff --stat ${BASE}..HEAD -- reports/handoff.md` una sola volta.
-Il punto 4 ora condiziona il cat:
-- output vuoto → stampa `"handoff.md non rigenerato in questa sessione — nessun contenuto da stampare."`
-- output non vuoto → catta il file.
-Il punto 5 riferisce lo stesso esito senza rieseguire il comando.
-Motivo incluso nel file: un handoff di sessione precedente presentato come output corrente è indistinguibile da uno fresco.
-
-**FIX 2 — auto-riferimento numerico**: `FATTA`
-"Se il check al punto 5 è vuoto, l'assenza dell'URL è l'informazione corretta"
-→ "Se il check diff --stat è vuoto, l'assenza dell'URL è l'informazione corretta".
-Grep `punto [0-9]` sul file dopo il fix: nessun altro riferimento auto-numerato rimasto.
-
-### Verifica scope ${BASE}
-
-`${BASE}` è definito in §0 del documento. Il check comune in §5 usa `${BASE}..HEAD -- reports/handoff.md`,
-coerente con i range già presenti in §2 e §3. Stesso punto di dipendenza del check preesistente al punto 5.
-**Verdetto**: in scope. Stop gate non attivato.
+- **Fetta unica — aggiorna §0 di fine-task.md**: `FATTA`
+  - Aggiunto `git fetch origin` prima di `git merge-base`, con motivazione esplicita nel file.
+  - Rimosso residuo vecchio approccio: commento `(a differenza di git log -- reports/handoff.md)`.
+  - Aggiunto guard di errore: se `git merge-base` restituisce vuoto, `/fine-task` si FERMA con messaggio esplicito.
 
 ---
 
-## Anomalie
+## diff --stat reale (file modificato in questa fetta)
 
-Nessuna.
+```
+ .claude/commands/fine-task.md | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+```
+
+---
+
+## Hash merge-base live (`git fetch origin && git merge-base origin/main HEAD`)
+
+```
+ce9ae5e39f0932b74f3d70d3c7235931b470079e
+```
+
+---
+
+## Grep di verifica
+
+### `grep -n 'handoff commit' .claude/commands/fine-task.md` → vuoto (OK)
+
+```
+(nessun output)
+```
+
+### `grep -n 'merge-base' .claude/commands/fine-task.md`
+
+```
+12:# 1. Aggiorna origin/main locale prima di calcolare il merge-base.
+13:#    Senza fetch, origin/main locale può essere stale e il merge-base risale
+19:BASE=$(git merge-base origin/main HEAD)
+21:  echo "ERRORE: git merge-base origin/main HEAD fallito o ha restituito vuoto — /fine-task si FERMA."
+```
+
+---
+
+## Stop gate
+
+Nessun altro file toccato. reports/stato_progetto.md, CLAUDE.md e qualsiasi altro file fuori scope NON sono stati modificati.

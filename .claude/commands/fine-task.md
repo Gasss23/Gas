@@ -9,9 +9,18 @@ Esegui queste operazioni NELL'ORDINE, senza saltare passi.
 Esegui questi comandi e tieni l'output — lo incolli verbatim nei file sotto:
 
 ```bash
-# Calcola la base della sessione = punto di fork del branch corrente da origin/main
-# Stabile: non si sposta dopo i commit della sessione (a differenza di git log -- reports/handoff.md)
+# 1. Aggiorna origin/main locale prima di calcolare il merge-base.
+#    Senza fetch, origin/main locale può essere stale e il merge-base risale
+#    a un fork point vecchio → ${BASE}..HEAD include commit di sessioni precedenti.
+git fetch origin
+
+# 2. Calcola la base della sessione = punto di fork del branch corrente da origin/main.
+#    Stabile: non si sposta dopo i commit della sessione.
 BASE=$(git merge-base origin/main HEAD)
+if [ -z "${BASE}" ]; then
+  echo "ERRORE: git merge-base origin/main HEAD fallito o ha restituito vuoto — /fine-task si FERMA."
+  exit 1
+fi
 echo "BASE=$BASE"
 
 git diff --stat ${BASE}..HEAD
