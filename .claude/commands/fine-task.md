@@ -9,10 +9,9 @@ Esegui queste operazioni NELL'ORDINE, senza saltare passi.
 Esegui questi comandi e tieni l'output — lo incolli verbatim nei file sotto:
 
 ```bash
-# Calcola la base della sessione = ultimo commit che ha toccato reports/handoff.md
-BASE=$(git log --oneline -- reports/handoff.md | head -1 | awk '{print $1}')
-# Fallback se handoff.md non è mai stato committato
-[ -z "$BASE" ] && BASE=$(git rev-list --max-parents=0 HEAD)
+# Calcola la base della sessione = punto di fork del branch corrente da origin/main
+# Stabile: non si sposta dopo i commit della sessione (a differenza di git log -- reports/handoff.md)
+BASE=$(git merge-base origin/main HEAD)
 echo "BASE=$BASE"
 
 git diff --stat ${BASE}..HEAD
@@ -20,7 +19,7 @@ git log --oneline ${BASE}..HEAD
 gh run list -L 3              # se gh disponibile e autenticato; altrimenti "CI NON VERIFICATA (gh assente)"
 ```
 
-`${BASE}..HEAD` copre SOLO i commit di questa sessione (dal commit precedente di handoff.md escluso).
+`${BASE}..HEAD` copre SOLO i commit di questa sessione (dal punto di fork da origin/main escluso).
 Usa SEMPRE questo range per §2 e §3 — mai `HEAD~N` con N fisso, mai `git log -10`.
 
 **REGOLA FERREA — output git verbatim**: incolla le righe grezze con hash e messaggi.
