@@ -1,73 +1,107 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-15 — doc: micro-finding PR #14 no-review + BASE=merge-base + item Giulia riallineato
+**Sessione:** 2026-07-15 — revisione fondamenta Fable-5: audit integrale + pulizia 17 file morti
 
 ---
 
-## §0 DECISIONI UMANE RICHIESTE
+## § DECISIONI UMANE RICHIESTE
 
-Nessuna.
-
----
-
-## §1 SCOPE & ESITO FETTE
-
-- **Fetta unica — aggiorna reports/stato_progetto.md (4 modifiche a testo esatto)**: `FATTA`
-  - MODIFICA 1: header `Ultimo aggiornamento` aggiornato.
-  - MODIFICA 2: voce D-cmd riscritta con BASE=merge-base, fetch obbligatorio, guard vuoto, caveat residuo.
-  - MODIFICA 3: micro-finding PR #14 mergiata senza revisione aggiunto in coda alle note di processo.
-  - MODIFICA 4: item Giulia riallineato — PR #14+#15 (non più solo #6), caveat /rc, confine Codespace, nessun impegno h24.
-
-**File toccati fuori dall'allowlist del task (STOP GATE):**
-- `reports/diff_sessione.md` — NON scritto: il task imponeva di toccare solo `reports/handoff.md` e `reports/ultimo_report.md`. Proposta: riscrivere `diff_sessione.md` nella prossima sessione utile o come task dedicato.
+1. **Merge PR** `chore/fondamenta-registro-pulizia` → main: revisiona diff (22 file, 694 delete, 27 insert) e approva il merge se soddisfatto. CI deve essere verde prima del merge.
+2. **Residuo F7 — venv su VPS**: verificare via SSH il naming del venv di produzione (`ls -a /home/gas/gas/`) per sapere se il buco snapshot era vivo in h24 sul VPS. Se è `.venv` → era un problema attivo; se è `venv` → era già coperto. Runbook SSH, non task Claude Code.
+3. **Prossima fetta motore (F1)**: confermare priorità relativa di `R-crm-diario-rr` (1 riga `_connect()` + test) vs altri task in coda (R-crm-1b fette 2-3, FASE 3 vocale).
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## Sonda
+
+Nessuna sonda live eseguita in questa sessione (sessione doc+pulizia). Suite: 231 PASS, 0 FAIL pre e post.
+
+---
+
+## git diff --stat reale della sessione (HEAD~2..HEAD)
 
 ```
- reports/stato_progetto.md |  7 ++---
- reports/ultimo_report.md  | 66 ++++++++++++++---------------------------------
- 2 files changed, 23 insertions(+), 50 deletions(-)
+ .gitignore                            |   1 +
+ CLAUDE.md                             |   4 +-
+ brains/claude_brain.py                | 125 ----------------------------------
+ brains/gemini_brain.py                |  78 ---------------------
+ brains/groq_brain.py                  |  52 --------------
+ brains/openrouter_brain.py            |  73 --------------------
+ brains/router.py                      |  53 ++------------
+ deploy_vps_bozza.txt                  |  82 ----------------------
+ gas                                   |  11 ---
+ modules/marketing/campaign.py         |   1 -
+ modules/marketing/funnel_test.py      |   1 -
+ modules/marketing/riassunto_canone.md |   5 --
+ modules/marketing/strategy.txt        |   1 -
+ modules/marketing/test_finale.py      |  13 ----
+ modules/marketing/test_postcleanup.py |   1 -
+ reports/roadmap.md                    |  13 ++++
+ reports/stato_progetto.md             |   9 ++-
+ router                                |   4 --
+ self_improve/__init__.py              |   0
+ self_improve/loop.py                  |  93 -------------------------
+ self_improve/researcher.py            |  85 -----------------------
+ test_agente.py                        |  16 -----
+ 22 files changed, 27 insertions(+), 694 deletions(-)
 ```
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## git log commit della sessione
 
 ```
-c682aa8 docs(report): ultimo_report task stato-microfinding-pr14
-9b65660 docs(stato): micro-finding PR #14 no-review + BASE=merge-base + item Giulia riallineato
+1b03adc  chore: rimuove 17 file morti (brain legacy, self_improve, marketing husk, junk root); router.py ridotto a classifica_compito; .venv/ gitignorato [revisione Fable-5, F3+F7]
+bdec279  docs: registra revisione fondamenta Fable-5 (F1 provato, F6/F7 nuovi, F2-F5) + chiude item allineamento locale
 ```
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## Delta test suite
 
-nessun diff motore, revisore non richiesto.
+| Momento | PASS | FAIL |
+|---------|------|------|
+| PRE-Fetta 2 | 231 | 0 |
+| POST-Fetta 2 | 231 | 0 |
 
-Task doc-only: nessun commit tocca `gas.py`, `brains/`, `modules/`, `tests/`. Gate revisore non invocato per design — dichiarato esplicitamente come da istruzione del task.
-
----
-
-## §5 DELTA TEST DEL MOTORE
-
-Nessuna modifica a `gas.py`/`tests/`. Nessun delta test da riportare.
+Delta zero ✅
 
 ---
 
-## §6 STATO CI
+## Verdetto revisore INTEGRALE (Fetta 2)
 
 ```
-completed	success	docs(report): ultimo_report task stato-microfinding-pr14	CI	chore/stato-microfinding-pr14	push	29402617517	35s	2026-07-15T08:56:27Z
-completed	success	docs(stato): micro-finding PR #14 no-review + BASE=merge-base + item …	CI	chore/stato-microfinding-pr14	push	29402529009	40s	2026-07-15T08:55:03Z
-completed	success	Merge pull request #15 from Gasss23/fix/fine-task-base-mergebase	CI	main	push	29401469724	35s	2026-07-15T08:37:42Z
-```
+## REVIEW PRE-COMMIT — Fetta 2 "pulizia file morti" (2026-07-15)
 
-Entrambi i commit della sessione su `chore/stato-microfinding-pr14`: **SUCCESS** ✅ (run ID 29402617517 e 29402529009).
+Verifica 1 — I 17 file rimossi sono davvero non wired: CONFERMATO.
+  gas.py importa solo brains.model_ids e brains.router.classifica_compito.
+
+Verifica 2 — brains/router.py ridotto: CORRETTO.
+  Preserva esattamente classifica_compito. import os legacy rimosso correttamente.
+  Default mutable (memoria=[]) rimosso con le funzioni legacy.
+
+Verifica 3 — .gitignore: CORRETTO.
+  .venv/ posizionata sotto venv/, additiva, nessun effetto collaterale.
+
+Verifica 4 — CLAUDE.md sez.2: ACCURATO.
+  Cascata, brains/model_ids.py, Claude non rung runtime, modules/memory/ e /telegram/
+  tutti confermati rispetto al codice reale.
+
+Verifica 5 — Effetti collaterali inattesi: Nessuno rilevato.
+  Guardrail intatti. R-legacy-slice (messages[-8:]) chiuso alla radice.
+
+## VERDETTO: APPROVATO
+
+La fetta è chirurgica e priva di rischi. Rimuove esclusivamente codice morto confermato,
+risolve un finding latente (R-legacy-slice su claude_brain.py) per via radicale,
+corregge il gitignore (F7) e allinea CLAUDE.md alla realtà del codebase.
+Delta suite: zero. Nessun guardrail indebolito. Nessun antipattern introdotto.
+```
 
 ---
 
-## §7 RISERVE APERTE
+## Stato CI (FETTA 1 — .github/workflows/ci.yml)
 
-- **diff_sessione.md non aggiornato**: il STOP GATE del task imponeva di non toccare file oltre all'allowlist; `diff_sessione.md` resta con il contenuto della sessione precedente. Da riscrivere nella prossima sessione.
+- Ultima run su main: #29031945029 su `87ad26f` ✅ SUCCESS (2026-07-09)
+- Run su questa PR: attesa dopo push. La PR non è ancora aperta al momento della scrittura di questo handoff.
+- CI check `unit-suite` required per merge (ruleset `main-lock`).
