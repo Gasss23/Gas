@@ -397,18 +397,50 @@ class GasKernel:
         ]
 
     def _load_history(self) -> List[Dict[str, Any]]:
-        if self.db_path.exists():
+        if not self.db_path.exists():
+            return []
+        try:
+            with open(self.db_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logging.warning("Storia corrotta, messa in quarantena: %s", e)
             try:
-                with open(self.db_path, "r", encoding="utf-8") as f: return json.load(f)
-            except Exception: return []
-        return []
+                ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+                corrupt = self.db_path.parent / f".gas_history.json.corrupt.{ts}"
+                if corrupt.exists():
+                    ts = datetime.now().strftime("%Y%m%d-%H%M%S%f")
+                    corrupt = self.db_path.parent / f".gas_history.json.corrupt.{ts}"
+                self.db_path.rename(corrupt)
+            except Exception as e2:
+                logging.warning("Quarantena storia fallita: %s", e2)
+            return []
 
     def _save_history(self):
+        tmp_path: Optional[Path] = None
         try:
-            with open(self.db_path, "w", encoding="utf-8") as f:
-                json.dump(self.history, f, indent=2, ensure_ascii=False)
+            data = json.dumps(self.history, indent=2, ensure_ascii=False)
+            tmp_path = self.db_path.parent / f".gas_history.json.tmp.{os.getpid()}"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                f.write(data)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, self.db_path)
+            tmp_path = None
+            try:
+                dir_fd = os.open(str(self.db_path.parent), os.O_RDONLY)
+                try:
+                    os.fsync(dir_fd)
+                finally:
+                    os.close(dir_fd)
+            except Exception:
+                pass
         except Exception as e:
-            logging.error(f"Errore scrittura storico: {e}")
+            logging.warning("Errore scrittura atomica storico: %s", e)
+            if tmp_path is not None:
+                try:
+                    tmp_path.unlink()
+                except Exception:
+                    pass
 
     # --- Compressione cronologia (FASE 2.5) ---
     # Default configurabili via env: GAS_HISTORY_MAX_MSGS, GAS_HISTORY_KEEP_MSGS.
