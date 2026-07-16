@@ -217,3 +217,58 @@ class TestSessionEndPush:
         assert "exit code" in result.stderr.lower(), (
             f"Warning deve riportare il codice di uscita: {result.stderr!r}"
         )
+
+
+class TestSessionEndAddRobust:
+    """
+    T-hook-f: git add robusto quando .gas_history.json è assente.
+    Verifica che l'hook staggi e committi reports/x.md anche senza .gas_history.json.
+    """
+
+    def test_hook_f_add_without_gas_history(self, tmp_path):
+        """T-hook-f: no .gas_history.json + reports/x.md modificato → commit avviene comunque."""
+        # Setup bare origin per evitare interferenza del push fallito
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feature/f"],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push", "origin", "feature/f"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        # Crea reports/x.md ma NON .gas_history.json (assenza deliberata — il bug
+        # precedente avrebbe causato git add di uscire 128 e non staggiare nulla)
+        reports = work / "reports"
+        reports.mkdir(exist_ok=True)
+        (reports / "x.md").write_text("# test fetta 2\n")
+
+        before = _commit_count(work)
+        result = _run_hook(work)
+
+        assert result.returncode == 0, (
+            f"Atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert _commit_count(work) == before + 1, (
+            f"Atteso 1 commit in più (prima={before}, dopo={_commit_count(work)}); "
+            f"stderr={result.stderr!r}"
+        )
+        # Verifica che reports/x.md sia nel commit HEAD
+        committed = subprocess.run(
+            ["git", "show", "--name-only", "--format=", "HEAD"],
+            cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        assert "reports/x.md" in committed, (
+            f"reports/x.md dovrebbe essere nel commit HEAD: {committed!r}"
+        )

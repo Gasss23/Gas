@@ -38,8 +38,23 @@ if [ "$_cur_branch" = "main" ]; then
   exit 0
 fi
 
-# 1) Stage del solo allowlist esplicita.
-git add reports/ '*.md' .gas_history.json 2>/dev/null || true
+# 1) Stage del solo allowlist esplicita — lista DINAMICA per evitare il bug
+#    git: se un pathspec non matcha nulla, git add esce 128 e non staggia NULLA.
+_to_add=()
+[ -d reports ] && _to_add+=("reports/")
+if git ls-files '*.md' 2>/dev/null | grep -q . || \
+   git ls-files --others --exclude-standard '*.md' 2>/dev/null | grep -q .; then
+  _to_add+=("*.md")
+fi
+[ -f .gas_history.json ] && _to_add+=(".gas_history.json")
+
+if [ "${#_to_add[@]}" -eq 0 ]; then
+  exit 0
+fi
+if ! git add "${_to_add[@]}"; then
+  echo "session_end: git add fallito su branch '$_cur_branch' (path: ${_to_add[*]})." >&2
+  exit 0
+fi
 
 # 2) INVARIANTE DI SICUREZZA: se un file del motore fosse finito in staging
 #    (per qualunque via), NON committarlo. Lo si toglie dallo staging in modo
@@ -47,7 +62,10 @@ git add reports/ '*.md' .gas_history.json 2>/dev/null || true
 ENGINE_RE='^(gas\.py|brains/|modules/|tests/)'
 mapfile -t staged_engine < <(git diff --cached --name-only 2>/dev/null | grep -E "$ENGINE_RE")
 if [ "${#staged_engine[@]}" -gt 0 ]; then
-  git restore --staged "${staged_engine[@]}" 2>/dev/null || true
+  if ! git restore --staged "${staged_engine[@]}"; then
+    echo "session_end: restore --staged fallito; engine files potrebbero essere in staging." >&2
+    exit 0
+  fi
 fi
 
 # 3) Niente in staging -> ESCI senza commit (condizionale: niente commit vuoti).
