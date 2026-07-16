@@ -1,22 +1,34 @@
-# Diff sessione — 2026-07-16 (doc/hook: guard SessionEnd + obbligo riga revisore)
+# Diff sessione — 2026-07-16 (fix/hook-push-ref: push su branch corrente + git add robusto)
 
 > Fotografia della sessione corrente. Si riscrive a ogni sessione; la storia completa sta in git.
-> Branch: docs/hook-guard-session-end — BASE: 9a9278e (origin/main al fork)
 
-## File toccati (da `git diff --stat ${BASE}..HEAD`)
+## git diff --stat origin/main..HEAD
 
-| File | Inserzioni | Rimozioni | Perché |
-|------|-----------|-----------|--------|
-| `.claude/agents/revisore.md` | +30 | -3 | Fetta 1: aggiunto obbligo riga contatore dopo ogni review |
-| `.claude/agents/memoria_revisore.md` | +1 | 0 | Fetta 2: revisore ha aggiunto riga #51 (APPROVATO, guard SessionEnd) |
-| `.claude/hooks/session_end.sh` | +15 | 0 | Fetta 2: guard bloccante main/detached HEAD in cima allo script |
-| `tests/test_unit_hooks.py` | +132 | 0 | Fetta 2: nuovo file — T-hook-a/b/c su repo git reali, 3/3 PASS |
-| `reports/stato_progetto.md` | +7 | -1 | Fetta 3: contatore review → 51, note guard e backfill pendente |
-| `reports/ultimo_report.md` | +93 | -79 | Report canonico task (sovrascritto da sessione precedente) + CI |
+```
+ .claude/hooks/scrivi_rep.sh  |  18 +++-
+ .claude/hooks/session_end.sh |  35 ++++++-
+ tests/test_unit_hooks.py     | 227 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 271 insertions(+), 9 deletions(-)
+```
 
-## Note
+## Commit della sessione
 
-- `tests/test_unit_hooks.py` tocca la directory `tests/`: il revisore è stato invocato sulla Fetta 2 (verdetto APPROVATO #51).
-- `gas.py`, `brains/`, `modules/` non toccati.
-- `CLAUDE.md` non toccato (fuori scope esplicito).
-- `memoria_revisore.md` backfill (#48–#50): PENDENTE, richiede WSL locale — non toccato in questa sessione per decisione dell'operatore.
+```
+065d7c9 fix(hook): scrivi_rep.sh push su branch corrente + T-hook-g
+cf5c0ba fix(hook): session_end.sh git add dinamico + T-hook-f
+8b05058 fix(hook): session_end.sh push su branch corrente + T-hook-d/e
+```
+
+## Cosa è cambiato e perché
+
+### .claude/hooks/session_end.sh
+- **Riga 42** (ex `git add reports/ '*.md' .gas_history.json 2>/dev/null || true`): sostituito con lista dinamica dei pathspec — solo i pathspec che matchano almeno un file vengono inclusi, evitando il bug git exit-128-non-staggia-nulla. Invariante engine-files (`git restore --staged`) reso esplicito.
+- **Riga 60** (ex `git push -q origin main 2>/dev/null || true`): ora `git push -q origin HEAD:"refs/heads/$_cur_branch"` — push sul branch corrente, non main. Warning esplicito su stderr con branch name e exit code se il push fallisce; mai silenzio.
+
+### .claude/hooks/scrivi_rep.sh
+- **Riga 47** (ex `git push -q origin main 2>/dev/null`): stesso fix. Aggiunto: branch detection nella subshell, guard main-lock, push su branch corrente, error reporting. Rimossi `2>/dev/null` su `git add` e `git commit`.
+
+### tests/test_unit_hooks.py
+- Aggiunti T-hook-d, T-hook-e, T-hook-f, T-hook-g su repo git reali con bare origin.
+- `import json` aggiunto, `SCRIVI_REP_HOOK` path aggiunto.
+- Tre nuove classi di test: `TestSessionEndPush`, `TestSessionEndAddRobust`, `TestScriviRepPush`.
