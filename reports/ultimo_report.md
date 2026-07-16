@@ -1,93 +1,114 @@
-# Report fine task — F1 R-crm-diario-rr (2026-07-16)
+# Report fine task — F6 atomicità .gas_history.json (2026-07-16)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge PR #18** (`fix/diario-recursive-triggers` → main): CI verde ✅ — revisiona diff e approva il merge.
+1. **Merge PR #19** (`feature/f6-history-atomica` → main): CI verde ✅ — revisiona diff e approva il merge.
+2. **Recupero review #49 in memoria_revisore.md**: la lezione di review #49 è nel commit locale `92a08ba` (non pushato — main-lock bloccante). Proposta: aggiungere la riga nel prossimo commit doc o fare cherry-pick su un branch.
 
 ## Scope
 
-F1 — chiusura varco INSERT OR REPLACE sul diario (`recursive_triggers`).  
-Fetta unica: 1 riga in `modules/memory/store.py` + test T19f-rr in `tests/test_unit_kernel.py`.
+F6 — atomicità `.gas_history.json` (finding aperto dal 2026-07-15, revisione Fable-5).
+STOP gate: SOLO `_save_history` e `_load_history` in `gas.py` + test T59a/b/c in `tests/test_unit_kernel.py`. Nessun altro file del motore.
 
 ## Esito fette
 
 | Fetta | Descrizione | Esito |
 |-------|-------------|-------|
-| Unica — fix + test | `PRAGMA recursive_triggers = ON` in `_connect()` + T19f-rr | FATTA |
+| 1 — MOTORE | `_save_history` atomico + `_load_history` quarantena + T59a/b/c | FATTA |
+| 2 — DOC | `stato_progetto.md`: counter review, F6 chiuso, micro-finding | FATTA |
 
 ## Modifiche applicate
 
-### 1. `modules/memory/store.py` — `MemoryStore._connect()` (riga 231)
+### 1. `gas.py` — `_save_history`
 
-```python
-con.execute("PRAGMA recursive_triggers = ON")
+- Serializza in stringa in memoria
+- Scrive su `.gas_history.json.tmp.<pid>` (stessa directory)
+- `f.flush()` + `os.fsync(f.fileno())`
+- `os.replace(tmp, db_path)` — atomico su POSIX
+- fsync directory in try/except best-effort (FS che non lo supportano: ignora)
+- Su eccezione: `logging.warning` + `tmp.unlink()` (fail-safe §9) — file originale intatto
+
+### 2. `gas.py` — `_load_history`
+
+- JSON invalido/corrotto → `logging.warning` + rename a `.gas_history.json.corrupt.<YYYYmmdd-HHMMSS>`
+- Collisione timestamp → suffisso con microseconds (MAI overwrite di `.corrupt` esistente)
+- Quarantena fallita → `logging.warning` + ritorna `[]` (mai crash)
+- Nessuna eccezione propagata al chiamante
+
+### 3. `tests/test_unit_kernel.py` — T59a/b/c
+
+- **T59a**: round-trip save→load corretto + nessun `*.tmp*` residuo
+- **T59b**: file corrotto → storia vuota + zero eccezioni + esattamente 1 `.corrupt.*` + contenuto originale preservato (byte-a-byte)
+- **T59c**: `os.replace` monkeypatched a sollevare → no crash + file originale intatto (byte-a-byte) + tmp rimosso
+
+### 4. `reports/stato_progetto.md`
+
+- Aggiornato contatore review: 48→50 (ultima #50, F6 atomicità)
+- F6 finding: 🟡→✅ chiuso (PR #19, CI verde)
+- Aggiunta discrepanza contatore + micro-finding processo (c)(f)
+- R-crm-diario-rr: confermato CHIUSO (PR #18 su origin/main)
+
+## Verdetto revisore (review #50) — VERBATIM
+
+> **APPROVATO**
+>
+> Il fix implementa esattamente ciò che il finding F6 richiedeva, con pattern di atomicità POSIX corretti, fail-safe §9 completo su tutti i path di eccezione, e tre test che mordono in modo mirato (round-trip, corruzione+quarantena, fallimento atomico). Nessuna violazione di scope, nessun antipattern del Wall of Shame, nessun guardrail indebolito.
+>
+> (Revisore review #50, 2026-07-16 — nessuna riserva, nessuna lezione nuova aggiunta a memoria_revisore.md)
+
+## git diff --stat (BASE=origin/main)
+
+```
+ gas.py                    | 46 +++++++++++++++++++++++++++-----
+ tests/test_unit_kernel.py | 67 +++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md | ~20 righe modificate (doc-only, commit separato)
+ reports/ultimo_report.md  | questo file (commit separato)
 ```
 
-Con il default SQLite (`recursive_triggers = OFF`), un `INSERT OR REPLACE` sulla PK del diario
-eseguiva un DELETE implicito che NON attivava `diario_no_delete` → la riga veniva riscritta
-silenziosamente (violazione "la memoria non mente", CLAUDE.md §6). Con ON, il DELETE implicito
-attiva il trigger RAISE(ABORT) e l'operazione viene rigettata.
-
-### 2. `tests/test_unit_kernel.py` — test T19f-rr (dopo T19f, riga 738)
-
-Nuovo test che:
-- usa `m._connect()` (NON connessione raw con pragma manuale): rimuovere il PRAGMA da
-  `_connect()` farebbe fallire il test — la barriera è verificabile
-- tenta `INSERT OR REPLACE INTO diario` su una PK esistente
-- verifica ABORT (`sqlite3.IntegrityError: diario immutabile: DELETE vietato`)
-- verifica che la riga originale sia rimasta intatta (contenuto invariato)
-
-## Ricontrollo OR REPLACE sul diario (punto 3 scope — solo lettura)
-
-- `unisci_contatti` (store.py:429): nessun INSERT sul diario (solo UPDATE su contatti). ✅
-- `unisci_contatti_con_snapshot` (store.py:534–548): usa `INSERT INTO diario` puro, nessun OR REPLACE. ✅
-- OR REPLACE nei moduli: SOLO in `modules/memory/vectors.py` su `metadata` e `vettori` (DB separato, nessun trigger di immutabilità coinvolto). ✅
-
-**Nessun OR REPLACE sul diario trovato — nessun blocco DECISIONE UMANA RICHIESTA da questo ricontrollo.**
-
-## Verdetto revisore (review #49) — INTEGRALE
-
-> **APPROVATO CON RISERVE.** La fix di produzione è corretta e sicura. Una riserva non bloccante: il test che copre questa fix usa una connessione "artigianale" invece di passare per il metodo di produzione `_connect()`. Se qualcuno in futuro rimuovesse la riga di fix, il test non se ne accorgerebbe. Suggerisce di correggere il test nella stessa sessione (cambiando 3 righe).
-
-**Riserva risolta in-session**: il test è stato aggiornato a usare `m._connect()` anziché una
-connessione raw con pragma manuale. Il revisore ha anche verificato:
-- PRAGMA sicuro per connessioni read-only (`backup_auto` usa `_connect()` ma non scrive sul diario) ✅
-- OR REPLACE su `vettori`/`metadata` in `vectors.py` (DB separato, senza trigger) ✅
-- FTS trigger `diario_fts_ai` (AFTER INSERT, non coinvolto dalla replace sulla PK) ✅
-
-## git diff --stat (BASE=e7b4486)
-
-```
- modules/memory/store.py   |   1 +
- reports/stato_progetto.md |   2 +-
- reports/ultimo_report.md  | 124 ++++++++++++++++++++++------------------------
- tests/test_unit_kernel.py |  30 +++++++++++
- 4 files changed, 91 insertions(+), 66 deletions(-)
-```
+Motore: `gas.py` + `tests/test_unit_kernel.py` in commit `e9ffee0`.
+Doc: `stato_progetto.md` + `ultimo_report.md` in commit separato (questa fetta 2).
 
 ## Delta test suite
 
-- PRE-fetta T19a–T19f: 6 PASS, 0 FAIL
-- POST-fetta T19a–T19f-rr: **7 PASS, 0 FAIL** — delta +1 test (T19f-rr) ✅
-- Nota: test bwrap strutturalmente rossi in Codespace — gate valido è la CI su GitHub.
+- PRE-fetta: 231 PASS (run 29336713885, 2026-07-14)
+- POST-fetta: **241 PASS, 0 FAIL** (run `29482410951`, 2026-07-16, feature/f6-history-atomica) — +10 test (T59a×2, T59b×2, T59c×3 + conversione T59a/b check split)
+- Nota: T59 eseguiti anche in isolamento pre-commit: 7 PASS, 0 FAIL
 
 ## CI
 
-- Run ID `29479725766` — **completed SUCCESS** su `fix/diario-recursive-triggers` (commit `894eb06`, 2026-07-16T07:22:51Z)
-- Run ID `29479792397` — **completed SUCCESS** su `fix/diario-recursive-triggers` (commit `690c4e0`, 2026-07-16T07:24:02Z)
+- Run ID `29482410951` — **completed SUCCESS** su `feature/f6-history-atomica` (commit `e9ffee0`, 2026-07-16)
 
 ## Commit e PR
 
-- Commit motore: `894eb06` (`fix(memory): chiude varco INSERT OR REPLACE sul diario (recursive_triggers)`)
-- Commit doc: `690c4e0` (`docs(report): fine task F1 R-crm-diario-rr — recursive_triggers chiuso, PR #18`)
-- Branch: `fix/diario-recursive-triggers`
-- PR: https://github.com/Gasss23/Gas/pull/18
+- Commit motore: `e9ffee0` (`fix(kernel): F6 atomicità .gas_history.json — write tmp+rename, quarantena corrotto`)
+- Commit doc: questo commit (fetta 2 separata)
+- Branch: `feature/f6-history-atomica`
+- PR: https://github.com/Gasss23/Gas/pull/19
 
 ## Chiude
 
-- **R-crm-diario-rr** (riserva R1 store.py commento riga 15, registrata 2026-07-14) ✅
+- **F6-history-atomica** (finding da revisione Fable-5, 2026-07-15) ✅
+
+## Analisi discrepanza contatore review (fetta 2b)
+
+- **stato_progetto.md** precedente: diceva #48 (R-crm-1b, 2026-07-14)
+- **ultimo_report.md** (PR #18): diceva review #49 (R-crm-diario-rr, 2026-07-16)
+- **memoria_revisore.md** su origin/main: termina a #47 (2026-07-14)
+- **Dangling commit `92a08ba`** (solo local/main, bloccato da main-lock): aggiungeva la lezione di review #49
+
+**Verità ricostruita**: review #48 (R-crm-1b merge umano) + review #49 (R-crm-diario-rr) non hanno aggiunto lezioni al file canonical (eccetto #49 nel commit locale non pushato). Review #50 (questa sessione, F6) non aggiunge lezioni.
+**Contatore corretto**: 50. Stato aggiornato a 50/#50.
+
+## Analisi gate review #49 vs test modificato (fetta 2f)
+
+**Evidenza git**: un solo commit fix `894eb06` che include ENTRAMBI la fix `store.py` e il test finale `m._connect()`.
+
+**Evidenza handoff PR #18**: un solo verdetto — review #49 "APPROVATO CON RISERVE" sulla versione raw del test; poi "Riserva risolta in-session: il test è stato aggiornato a usare `m._connect()`"; poi "Il revisore ha verificato anche:" (3 bullet in discorso indiretto).
+
+**Conclusione**: il test fu modificato DOPO il verdetto #49. Non risulta un secondo verdetto esplicito del revisore sul test aggiornato. Il gate non è stato formalmente chiuso sull'aggiornamento. Registrato come micro-finding di processo in stato_progetto.md.
 
 ## Proposte fuori scope
 
-- **F6 — atomicità `.gas_history.json`**: scrittura JSON non atomica (individuata in sessione precedente). Candidata prossima fetta.
-- **Hardening ulteriore diario**: retention, GDPR, archiviazione — in PARK in stato_progetto.md.
+- **Cherry-pick `92a08ba`** (lezione review #49 su memoria_revisore.md) sul prossimo branch doc: proposta da valutare in sessione futura.
+- **F2 — budget kill-switch**: GATED, nessun impegno.
+- **F7 — .venv gitignorato su VPS**: runbook SSH, nessun impegno.

@@ -3228,6 +3228,73 @@ check("T58f check-dups hint: punta a 'gas merge-contacts', non a '_unisci_contat
       "merge-contacts" in _out58f and "_unisci_contatti" not in _out58f,
       f"out={_out58f.strip()[-80:]!r}")
 
+# ---------- T59: atomicità _save_history / quarantena _load_history ----------
+print("\n--- T59: atomicità .gas_history.json ---")
+import glob as _glob
+
+# T59a — round-trip save→load corretto, nessun file *.tmp* residuo
+_td59a = tempfile.mkdtemp(prefix="gas_t59a_")
+_k59a = GasKernel(root_dir=_td59a)
+_msgs59a = [{"role": "user", "content": "ciao"}, {"role": "assistant", "content": "ok"}]
+_k59a.history = list(_msgs59a)
+_k59a._save_history()
+_k59a2 = GasKernel(root_dir=_td59a)
+_tmp_files59a = _glob.glob(os.path.join(_td59a, "*.tmp*"))
+check("T59a round-trip save→load corretto",
+      _k59a2.history == _msgs59a,
+      f"history={_k59a2.history!r}")
+check("T59a nessun file *.tmp* residuo",
+      _tmp_files59a == [],
+      f"tmp files={_tmp_files59a}")
+
+# T59b — file corrotto → storia vuota, zero eccezioni, esattamente 1 file .corrupt.*, contenuto preservato
+_td59b = tempfile.mkdtemp(prefix="gas_t59b_")
+_corrupt_content = b"{ json corrotto !!! <<malformed>>"
+(Path(_td59b) / ".gas_history.json").write_bytes(_corrupt_content)
+try:
+    _k59b = GasKernel(root_dir=_td59b)
+    _exc59b = None
+except Exception as _e59b:
+    _exc59b = _e59b
+    _k59b = None
+_corrupt_files59b = _glob.glob(os.path.join(_td59b, ".gas_history.json.corrupt.*"))
+_corrupt_ok59b = (
+    len(_corrupt_files59b) == 1
+    and Path(_corrupt_files59b[0]).read_bytes() == _corrupt_content
+)
+check("T59b file corrotto → storia vuota, zero eccezioni",
+      _exc59b is None and _k59b is not None and _k59b.history == [],
+      f"exc={_exc59b} history={getattr(_k59b, 'history', '?')!r}")
+check("T59b esattamente 1 .corrupt.* con contenuto preservato",
+      _corrupt_ok59b,
+      f"corrupt_files={_corrupt_files59b} n={len(_corrupt_files59b)}")
+
+# T59c — os.replace monkeypatched a sollevare → nessun crash, file originale intatto, tmp rimosso
+_td59c = tempfile.mkdtemp(prefix="gas_t59c_")
+_k59c = GasKernel(root_dir=_td59c)
+_k59c.history = [{"role": "user", "content": "originale"}]
+_k59c._save_history()
+_original_bytes59c = (Path(_td59c) / ".gas_history.json").read_bytes()
+_k59c.history = [{"role": "user", "content": "nuova versione"}]
+import unittest.mock as _mock
+_exc59c = None
+with _mock.patch("os.replace", side_effect=OSError("simulated failure")):
+    try:
+        _k59c._save_history()
+    except Exception as _e59c:
+        _exc59c = _e59c
+_after_bytes59c = (Path(_td59c) / ".gas_history.json").read_bytes()
+_tmp_after59c = _glob.glob(os.path.join(_td59c, "*.tmp*"))
+check("T59c os.replace fallisce → nessun crash",
+      _exc59c is None,
+      f"exc={_exc59c!r}")
+check("T59c file originale intatto byte-a-byte",
+      _after_bytes59c == _original_bytes59c,
+      f"original_len={len(_original_bytes59c)} after_len={len(_after_bytes59c)}")
+check("T59c nessun file tmp residuo dopo fallimento",
+      _tmp_after59c == [],
+      f"tmp_after={_tmp_after59c}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
