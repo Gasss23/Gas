@@ -23,6 +23,21 @@ set -uo pipefail
 REPO="${GAS_REPO_DIR:-${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR non settata, hook interrotto}}"
 cd "$REPO" 2>/dev/null || exit 0
 
+# 0) GUARD MAIN-LOCK / DETACHED HEAD — BLOCCANTE.
+# Su main o HEAD detached NON committare mai: main è protetto da ruleset
+# GitHub e un commit su HEAD detached sarebbe irraggiungibile.
+# Il warning va su stderr in modo RUMOROSO: uno skip silenzioso è la
+# memoria che mente per omissione.
+_cur_branch="$(git symbolic-ref --short HEAD 2>/dev/null)"
+if [ $? -ne 0 ]; then
+  echo "session_end: HEAD detached, commit saltato — main-lock. Committare a mano su un branch." >&2
+  exit 0
+fi
+if [ "$_cur_branch" = "main" ]; then
+  echo "session_end: HEAD su main, commit saltato — main-lock. Committare a mano su un branch." >&2
+  exit 0
+fi
+
 # 1) Stage del solo allowlist esplicita.
 git add reports/ '*.md' .gas_history.json 2>/dev/null || true
 
