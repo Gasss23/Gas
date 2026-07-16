@@ -41,10 +41,22 @@ printf '%s\n' "$OUT" > "$DEST"
 # Tutto fail-safe: qualunque errore git NON deve mai bloccare la chiusura del turno.
 (
   cd "$REPO_DIR" 2>/dev/null || exit 0
-  git add reports/ultima_risposta.md 2>/dev/null
+  _cur_branch="$(git symbolic-ref --short HEAD 2>/dev/null)"
+  if [ $? -ne 0 ] || [ "$_cur_branch" = "main" ]; then
+    echo "scrivi_rep: HEAD su main o detached, push saltato — main-lock." >&2
+    exit 0
+  fi
+  git add reports/ultima_risposta.md
   if ! git diff --cached --quiet reports/ultima_risposta.md 2>/dev/null; then
-    git commit -q -m "chore(scrivi-rep): ultima risposta salvata" 2>/dev/null
-    git push -q origin main 2>/dev/null
+    if ! git commit -q -m "chore(scrivi-rep): ultima risposta salvata"; then
+      echo "scrivi_rep: git commit fallito su branch '$_cur_branch'." >&2
+      exit 0
+    fi
+    git push -q origin HEAD:"refs/heads/$_cur_branch"
+    _push_rc=$?
+    if [ "$_push_rc" -ne 0 ]; then
+      echo "scrivi_rep: git push fallito su branch '$_cur_branch' (exit code $_push_rc)." >&2
+    fi
   fi
 ) || true
 
