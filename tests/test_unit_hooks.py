@@ -130,3 +130,90 @@ class TestSessionEndGuard:
         assert "detach" in result.stderr.lower() or "main-lock" in result.stderr, (
             f"Warning non menziona 'detach': {result.stderr!r}"
         )
+
+
+class TestSessionEndPush:
+    """
+    T-hook-d/e: verifica che l'hook pushes sul branch corrente (non su main)
+    e che un push fallito produca warning su stderr con exit 0.
+    """
+
+    def _init_bare_origin(self, bare_path: Path, work_path: Path, branch: str) -> None:
+        """Crea un bare repo, collega come origin e prepara il branch dato."""
+        bare_path.mkdir()
+        subprocess.run(["git", "init", "--bare", str(bare_path)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare_path)],
+            cwd=work_path, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push", "origin", "main"],
+            cwd=work_path, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "checkout", "-b", branch],
+            cwd=work_path, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push", "origin", branch],
+            cwd=work_path, check=True, capture_output=True,
+        )
+
+    def test_hook_d_push_to_feature_branch_not_main(self, tmp_path):
+        """T-hook-d: HEAD su feature/x → commit pushato su origin/feature/x, NON su origin/main."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        self._init_bare_origin(bare, work, "feature/x")
+        _add_allowlist_file(work)
+
+        result = _run_hook(work)
+
+        assert result.returncode == 0, f"exit non-zero: {result.stderr!r}"
+
+        # Il commit su origin/feature/x è l'auto-commit dell'hook
+        feature_msg = subprocess.run(
+            ["git", "--git-dir", str(bare), "log", "--format=%s", "-1", "feature/x"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        assert "auto-commit" in feature_msg, (
+            f"Messaggio commit atteso 'auto-commit', trovato: {feature_msg!r}"
+        )
+
+        # origin/main ha ancora solo il commit init (non l'auto-commit)
+        main_log = subprocess.run(
+            ["git", "--git-dir", str(bare), "log", "--oneline", "main"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip().splitlines()
+        assert len(main_log) == 1, (
+            f"origin/main non dovrebbe avere nuovi commit: {main_log}"
+        )
+
+    def test_hook_e_push_failure_warns_and_exits_zero(self, tmp_path):
+        """T-hook-e: origin inesistente → exit 0 + warning su stderr con branch e exit code."""
+        _init_repo(tmp_path)
+        subprocess.run(
+            ["git", "checkout", "-b", "feature/y"],
+            cwd=tmp_path, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "remote", "add", "origin", "/nonexistent/path/repo.git"],
+            cwd=tmp_path, check=True, capture_output=True,
+        )
+        _add_allowlist_file(tmp_path)
+
+        result = _run_hook(tmp_path)
+
+        assert result.returncode == 0, (
+            f"Atteso exit 0 anche con push fallito, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert result.stderr.strip(), "Warning atteso su stderr, ma stderr è vuoto"
+        assert "push" in result.stderr.lower() and "fallito" in result.stderr.lower(), (
+            f"Warning deve menzionare 'push fallito': {result.stderr!r}"
+        )
+        assert "feature/y" in result.stderr, (
+            f"Warning deve nominare il branch 'feature/y': {result.stderr!r}"
+        )
+        assert "exit code" in result.stderr.lower(), (
+            f"Warning deve riportare il codice di uscita: {result.stderr!r}"
+        )

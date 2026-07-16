@@ -56,6 +56,13 @@ if git diff --cached --quiet 2>/dev/null; then
 fi
 
 # 4) Commit + push, tutto fail-safe (mai bloccare la chiusura della sessione).
-git commit -q -m "auto-commit fine sessione $(date -u +%Y-%m-%d_%H:%M) [solo reports/doc/history, motore escluso]" 2>/dev/null || true
-git push -q origin main 2>/dev/null || true
+if ! git commit -q -m "auto-commit fine sessione $(date -u +%Y-%m-%d_%H:%M) [solo reports/doc/history, motore escluso]"; then
+  echo "session_end: git commit fallito su branch '$_cur_branch'." >&2
+  exit 0
+fi
+git push -q origin HEAD:"refs/heads/$_cur_branch"
+_push_rc=$?
+if [ "$_push_rc" -ne 0 ]; then
+  echo "session_end: git push fallito su branch '$_cur_branch' (exit code $_push_rc)." >&2
+fi
 exit 0
