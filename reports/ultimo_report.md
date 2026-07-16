@@ -128,5 +128,6 @@ Il revisore ha segnalato (nota non bloccante #2) che la riga `git push -q origin
 ## §7 CI
 
 **PR #20** → `docs/hook-guard-session-end` → main
-**Run CI:** `29486703079` — `unit-suite` → **SUCCESS** ✅ (2026-07-16T09:19:50Z)
+**Run CI più recente:** `29486783027` — `unit-suite` → **SUCCESS** ✅ (2026-07-16T09:20:34Z) su commit `fc30f56`
+**Run CI Fetta 2:** `29486703079` — `unit-suite` → **SUCCESS** ✅ (2026-07-16T09:19:16Z) su commit `6081376`
 Hash commit Fetta 2: `11b96ce`.
