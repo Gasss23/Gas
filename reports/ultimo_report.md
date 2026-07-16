@@ -127,5 +127,6 @@ Il revisore ha segnalato (nota non bloccante #2) che la riga `git push -q origin
 
 ## §7 CI
 
-PR aperta verso main: pendente al momento della scrittura di questo report.
+**PR #20** → `docs/hook-guard-session-end` → main
+**Run CI:** `29486703079` — `unit-suite` → **SUCCESS** ✅ (2026-07-16T09:19:50Z)
 Hash commit Fetta 2: `11b96ce`.
