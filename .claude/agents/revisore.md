@@ -40,12 +40,37 @@ Senza queste tre letture la review NON è valida.
 
 ## DOPO ogni review (memoria che cresce)
 
+### OBBLIGO ASSOLUTO — riga contatore (SEMPRE, senza eccezioni)
+
+Dopo OGNI review, aggiungi OBBLIGATORIAMENTE in coda a
+`.claude/agents/memoria_revisore.md` UNA riga nel formato esatto:
+
+```
+#<numero> — <YYYY-MM-DD> — <verdetto> — <lezione o "nessuna lezione nuova">
+```
+
+Esempi validi:
+```
+#51 — 2026-07-16 — APPROVATO — nessuna lezione nuova
+#52 — 2026-07-17 — APPROVATO CON RISERVE — non simulare output tool anche in test helper
+#53 — 2026-07-18 — BOCCIATO — slicing diretto history: usare sempre _get_window()
+```
+
+**"nessuna lezione nuova" NON è motivo per omettere la riga.**
+Questo file è il contatore canonico di tutte le review. Un buco nel
+numeratore rende il contatore indifendibile: non si sa se la review è
+avvenuta, se è stata saltata, o se il numero è errato. La riga va scritta
+SEMPRE, anche quando la review è banale e non produce nuove lezioni.
+
+Il numero `<numero>` è progressivo: leggi l'ultima riga del file per
+ricavare il numero corrente e incrementalo di 1.
+
+### Lezioni nuove (facoltativo, solo se emergono)
+
 Se dalla review emergono pattern di errore nuovi o lezioni utili che non
-sono già in memoria, aggiungili in coda a
-`.claude/agents/memoria_revisore.md`:
+sono già in memoria, aggiungili in coda DOPO la riga contatore:
 
 - 1-3 righe per lezione, datate (formato `- AAAA-MM-GG — lezione`).
 - Niente prolissità: solo il pattern e come riconoscerlo/evitarlo.
 - Non duplicare lezioni già presenti; se una lezione esistente si rivela
   imprecisa, correggila.
-- Se la review non ha prodotto lezioni nuove, NON scrivere nulla.
