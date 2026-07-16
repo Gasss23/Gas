@@ -1,13 +1,13 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-15** (revisione fondamenta Fable-5: F1 provato, F6/F7 nuovi, pulizia 17 file morti — PR di questa sessione)
+> Ultimo aggiornamento: **2026-07-16** (F6 atomicità .gas_history.json: PR #19, CI verde; doc: contatore review, micro-finding processo)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **48 review** completate (contatore da `.claude/agents/memoria_revisore.md`: ultima #48, 2026-07-14). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). +7 T57 + 6 T58 aggiunti. CI run 29336713885 (2026-07-14, feature/crm-dup-detect): **231 PASS** ✅ (grep -c "[PASS]" su log).
-CI GitHub Actions: run #29031945029 su `87ad26f` ✅ **SUCCESS** ✅ (ultimo run su main, 2026-07-09).
+FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **50 review** completate (ultima #50, 2026-07-16, F6 atomicità). ⚠️ Discrepanza contatore pre-sessione: stato precedente diceva #48, ultimo_report (PR #18) diceva #49, `memoria_revisore.md` su origin/main termina a #47 — la lezione di review #49 è solo nel commit locale `92a08ba` non pushato (hook auto-commit bloccato da main-lock). Correttivo proposto in report: cherry-pick o re-aggiunta riga in PR doc. Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). +7 T57 + 6 T58 + 5 T59 aggiunti. CI run 29482410951 (2026-07-16, feature/f6-history-atomica): **241 PASS** ✅.
+CI GitHub Actions: run `29482410951` su `e9ffee0` (feature/f6-history-atomica) ✅ **SUCCESS** ✅ (2026-07-16). Ultimo run su main: run `29031945029` su `87ad26f` ✅ (2026-07-09).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **âœ… R-comp-1** â€” boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
@@ -52,7 +52,7 @@ Componenti attive:
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
 - 🟡 **R-crm-1b** — Fetta email ✅ + merge umano ✅ (review #47+#48, 2026-07-14): `rileva_duplicati_email()` + CLI `gas check-dups` + `gas merge-contacts <da> <verso>` (preview, conferma y/N, snapshot diario atomico pre-merge, fail-safe §9). Hint `check_dups_cmd` corretto. Resta 🟡 per: idempotenza diario (fetta 2), telefono (fetta 3).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
-- 🟡 **F6-history-atomica** (revisione Fable-5, 2026-07-15): `_save_history` scrive `.gas_history.json` senza write-tmp+rename (non atomico, viola §4) e `_load_history` ingoia la corruzione senza nemmeno un warning → un kill a metà scrittura (OOM) produce amnesia conversazionale SILENZIOSA al riavvio. Il diario SQLite non è coinvolto. Fix pianificato (fetta piccola, dopo F1): tmp + `os.replace`, warning + quarantena `.corrupt` in load.
+- ✅ **F6-history-atomica CHIUSO** (2026-07-16, review #50 APPROVATO, PR #19, CI run `29482410951` ✅ 241 PASS): `_save_history` usa ora tmp+`os.replace` atomico (fsync); `_load_history` quarantena il file corrotto in `.gas_history.json.corrupt.<ts>` (logging.warning, mai crash). Test T59a/b/c. Merge PR #19 pendente (umano).
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
 ### DEPLOY VPS — da tarare su dati reali
@@ -100,7 +100,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **48 review**. Ultima: **#48** (R-crm-1b Fetta 1 merge umano, 2026-07-14). Lezioni in `.claude/agents/memoria_revisore.md`.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **50 review**. Ultima: **#50** (F6 atomicità .gas_history.json, 2026-07-16). Lezioni in `.claude/agents/memoria_revisore.md` (origin/main termina a #47 — v. discrepanza in Stato motore).
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. **BASE = `git merge-base origin/main HEAD`** (non più “last handoff commit”), preceduto da `git fetch origin` obbligatorio e con guard bloccante se il merge-base è vuoto (fix 2026-07-15, branch `fix/fine-task-base-mergebase`). §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA). **Caveat residuo**: la correttezza di `${BASE}` dipende dalla freschezza di `origin/main` — il `git fetch` copre il caso normale, ma se la PR viene mergiata sul remoto DOPO il fetch, `${BASE}..HEAD` può ancora includere commit non di sessione. Non chiuso al 100%: mitigato.
 
@@ -138,6 +138,10 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ⚠️ **Nota di processo — scope creep sessione 2026-07-08**: fetta concordata = migrazione Groq; fuori mandato: (1) chiuso R-groq-dup (era deferito a slice separata), (2) toccato CLAUDE.md, (3) toccato runbook_s1. Esito tecnico corretto (review #44), ma lo scope lo decide l'operatore: registrata recidiva dell'anti-pattern. Mitigazione strutturale: ruleset `main-lock` attivo dal 2026-07-09 (no push diretto su main, CI `unit-suite` required, self-merge).
 - ℹ️ **Micro-finding di processo — handoff diff --stat riciclato** (2026-07-13): il `diff --stat` nel handoff era riciclato dalla sessione precedente, non rigenerato — svista di copia; log/conteggio/CI erano coerenti. Nota: Claude Code rigeneri sempre `git diff --stat` reale nel handoff, mai riciclarlo.
 - ℹ️ **Micro-finding di processo — PR #14 mergiata senza revisione** (2026-07-15): la PR #14 è arrivata su main senza il passaggio di revisione previsto dal protocollo. CI verde, nessun danno rilevato al contenuto, ma il gate è stato saltato: registrato come recidiva della classe "gate saltato perché il cambio sembrava piccolo". Nessuna azione correttiva sul merito; la lezione è che il gate non si valuta a occhio sulla dimensione del diff.
+- ℹ️ **Micro-finding di processo — verdetto revisore parafrasato sotto etichetta 'INTEGRALE'** (2026-07-16, handoff F1 R-crm-diario-rr): il verdetto della review #49 era riportato in discorso indiretto ma marchiato 'INTEGRALE'. Un riassunto etichettato come verbatim è peggio di un riassunto dichiarato: rende non verificabile il gate. Regola dal 2026-07-16: il verdetto del revisore va copia-incollato VERBATIM in ultimo_report.md e in handoff.md.
+- ℹ️ **Micro-finding di processo — test modificato post-review senza ri-review** (2026-07-16, PR #18): la review #49 vide il test T19f-rr nella versione con connessione raw (riserva sollevata). Il test fu aggiornato in-session a usare `m._connect()` e committato in `894eb06` senza un secondo verdetto esplicito del revisore. Evidenza: handoff PR #18 riporta un solo verdetto (#49 APPROVATO CON RISERVE); nessun 'APPROVATO' finale post-aggiornamento. Gate formalmente non chiuso sull'aggiornamento. Regola dal 2026-07-16 (già nel prompt di sessione): se si applica una modifica richiesta dal revisore, RI-INVOCARE il revisore sul nuovo diff e riportare ENTRAMBI i verdetti verbatim.
+- ℹ️ **Nota di processo — review #49 in commit locale non pushato** (2026-07-16): la lezione di review #49 (2026-07-16) era stata aggiunta a `memoria_revisore.md` dall'hook auto-commit SessionEnd nel commit `92a08ba`, ma quel commit è rimasto solo su `local/main` (main-lock ha bloccato il push diretto). Su `origin/main` il file termina ancora a review #47. Proposta: aggiungere la riga di review #49 a `memoria_revisore.md` nel prossimo commit doc o PR.
+- ✅ **R-crm-diario-rr CHIUSO con PR #18** (2026-07-16): confermato da `git log origin/main` — `fe0e476 Merge pull request #18 from Gasss23/fix/diario-recursive-triggers` è su main. Finding chiuso.
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
