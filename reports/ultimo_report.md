@@ -1,89 +1,93 @@
-# Ultimo report — sessione revisione-fondamenta (2026-07-15)
-
-Branch: `chore/fondamenta-registro-pulizia`
+# Report fine task — F1 R-crm-diario-rr (2026-07-16)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge PR #17** (`chore/fondamenta-registro-pulizia` → main): CI verde ✅ — revisiona diff e approva il merge.
-2. **Residuo F7 — venv su VPS**: verificare via SSH il naming del venv di produzione (`ls -a /home/gas/gas/`) — se è `.venv` il buco snapshot era vivo in h24, se è `venv` era già coperto. Runbook SSH, non task Claude Code.
-3. **Priorità prossima fetta motore (F1)**: confermare se procedere con `R-crm-diario-rr` (1 riga `_connect()` + test) oppure un'altra fetta (R-crm-1b fette 2-3, FASE 3 vocale).
+1. **Merge PR #18** (`fix/diario-recursive-triggers` → main): CI verde ✅ — revisiona diff e approva il merge.
 
 ## Scope
 
-Registrazione dei finding dell'audit Fable-5 (SHA 9cbab56) + pulizia 17 file morti.
+F1 — chiusura varco INSERT OR REPLACE sul diario (`recursive_triggers`).  
+Fetta unica: 1 riga in `modules/memory/store.py` + test T19f-rr in `tests/test_unit_kernel.py`.
 
 ## Esito fette
 
 | Fetta | Descrizione | Esito |
 |-------|-------------|-------|
-| 1 — DOC-ONLY | Inserimento blocco revisione fondamenta in roadmap.md + 5 modifiche a stato_progetto.md | FATTA |
-| 2 — PULIZIA FILE MORTI | 17 git rm + router.py ridotto + .venv/ in .gitignore + 2 righe CLAUDE.md sez.2 | FATTA |
+| Unica — fix + test | `PRAGMA recursive_triggers = ON` in `_connect()` + T19f-rr | FATTA |
 
-## Commit della sessione
+## Modifiche applicate
+
+### 1. `modules/memory/store.py` — `MemoryStore._connect()` (riga 231)
+
+```python
+con.execute("PRAGMA recursive_triggers = ON")
+```
+
+Con il default SQLite (`recursive_triggers = OFF`), un `INSERT OR REPLACE` sulla PK del diario
+eseguiva un DELETE implicito che NON attivava `diario_no_delete` → la riga veniva riscritta
+silenziosamente (violazione "la memoria non mente", CLAUDE.md §6). Con ON, il DELETE implicito
+attiva il trigger RAISE(ABORT) e l'operazione viene rigettata.
+
+### 2. `tests/test_unit_kernel.py` — test T19f-rr (dopo T19f, riga 738)
+
+Nuovo test che:
+- usa `m._connect()` (NON connessione raw con pragma manuale): rimuovere il PRAGMA da
+  `_connect()` farebbe fallire il test — la barriera è verificabile
+- tenta `INSERT OR REPLACE INTO diario` su una PK esistente
+- verifica ABORT (`sqlite3.IntegrityError: diario immutabile: DELETE vietato`)
+- verifica che la riga originale sia rimasta intatta (contenuto invariato)
+
+## Ricontrollo OR REPLACE sul diario (punto 3 scope — solo lettura)
+
+- `unisci_contatti` (store.py:429): nessun INSERT sul diario (solo UPDATE su contatti). ✅
+- `unisci_contatti_con_snapshot` (store.py:534–548): usa `INSERT INTO diario` puro, nessun OR REPLACE. ✅
+- OR REPLACE nei moduli: SOLO in `modules/memory/vectors.py` su `metadata` e `vettori` (DB separato, nessun trigger di immutabilità coinvolto). ✅
+
+**Nessun OR REPLACE sul diario trovato — nessun blocco DECISIONE UMANA RICHIESTA da questo ricontrollo.**
+
+## Verdetto revisore (review #49) — INTEGRALE
+
+> **APPROVATO CON RISERVE.** La fix di produzione è corretta e sicura. Una riserva non bloccante: il test che copre questa fix usa una connessione "artigianale" invece di passare per il metodo di produzione `_connect()`. Se qualcuno in futuro rimuovesse la riga di fix, il test non se ne accorgerebbe. Suggerisce di correggere il test nella stessa sessione (cambiando 3 righe).
+
+**Riserva risolta in-session**: il test è stato aggiornato a usare `m._connect()` anziché una
+connessione raw con pragma manuale. Il revisore ha anche verificato:
+- PRAGMA sicuro per connessioni read-only (`backup_auto` usa `_connect()` ma non scrive sul diario) ✅
+- OR REPLACE su `vettori`/`metadata` in `vectors.py` (DB separato, senza trigger) ✅
+- FTS trigger `diario_fts_ai` (AFTER INSERT, non coinvolto dalla replace sulla PK) ✅
+
+## git diff --stat (BASE=e7b4486)
 
 ```
-942c5c8  docs(report): fine sessione revisione-fondamenta — ultimo_report, handoff, diff_sessione, stato_progetto (chiude R-legacy-slice)
-1b03adc  chore: rimuove 17 file morti (brain legacy, self_improve, marketing husk, junk root); router.py ridotto a classifica_compito; .venv/ gitignorato [revisione Fable-5, F3+F7]
-bdec279  docs: registra revisione fondamenta Fable-5 (F1 provato, F6/F7 nuovi, F2-F5) + chiude item allineamento locale
-```
-
-## diff --stat reale (BASE=9cbab56..HEAD)
-
-```
- .gitignore                            |   1 +
- CLAUDE.md                             |   4 +-
- brains/claude_brain.py                | 125 ----------------------------------
- brains/gemini_brain.py                |  78 ---------------------
- brains/groq_brain.py                  |  52 --------------
- brains/openrouter_brain.py            |  73 --------------------
- brains/router.py                      |  53 ++------------
- deploy_vps_bozza.txt                  |  82 ----------------------
- gas                                   |  11 ---
- modules/marketing/campaign.py         |   1 -
- modules/marketing/funnel_test.py      |   1 -
- modules/marketing/riassunto_canone.md |   5 --
- modules/marketing/strategy.txt        |   1 -
- modules/marketing/test_finale.py      |  13 ----
- modules/marketing/test_postcleanup.py |   1 -
- reports/diff_sessione.md              |  30 ++++++--
- reports/handoff.md                    | 102 ++++++++++++++++++---------
- reports/roadmap.md                    |  13 ++++
- reports/stato_progetto.md             |  11 +--
- reports/ultimo_report.md              |  98 +++++++++++++++++++++-----
- router                                |   4 --
- self_improve/__init__.py              |   0
- self_improve/loop.py                  |  93 -------------------------
- self_improve/researcher.py            |  85 -----------------------
- test_agente.py                        |  16 -----
- 25 files changed, 200 insertions(+), 753 deletions(-)
+ modules/memory/store.py   |   1 +
+ reports/stato_progetto.md |   2 +-
+ reports/ultimo_report.md  | 124 ++++++++++++++++++++++------------------------
+ tests/test_unit_kernel.py |  30 +++++++++++
+ 4 files changed, 91 insertions(+), 66 deletions(-)
 ```
 
 ## Delta test suite
 
-- PRE-Fetta 2: **231 PASS, 0 FAIL**
-- POST-Fetta 2: **231 PASS, 0 FAIL** — delta zero ✅
-
-## Verifiche Fetta 2
-
-- Residui grep (groq_brain/gemini_brain/openrouter_brain/claude_brain/self_improve/test_agente): **VUOTO** ✅
-- `classifica_compito('ciao')` → **semplice** ✅
-- `.venv/` gitignore: `.gitignore:2:.venv/ .venv/x` ✅
+- PRE-fetta T19a–T19f: 6 PASS, 0 FAIL
+- POST-fetta T19a–T19f-rr: **7 PASS, 0 FAIL** — delta +1 test (T19f-rr) ✅
+- Nota: test bwrap strutturalmente rossi in Codespace — gate valido è la CI su GitHub.
 
 ## CI
 
-- Run ID: `29452996720` — **completed SUCCESS** su `chore/fondamenta-registro-pulizia` (2026-07-15T21:44:25Z)
+- Run ID `29479725766` — **completed SUCCESS** su `fix/diario-recursive-triggers` (commit `894eb06`, 2026-07-16T07:22:51Z)
+- Run ID `29479792397` — **completed SUCCESS** su `fix/diario-recursive-triggers` (commit `690c4e0`, 2026-07-16T07:24:02Z)
 
-## Finding registrati in questa sessione
+## Commit e PR
 
-- 🔴 **F1 = R-crm-diario-rr** → PROSSIMA FETTA MOTORE (1 riga `_connect()` + test)
-- 🟡 **F6 — atomicità .gas_history.json** → fetta piccola dopo F1
-- 🟡 **F2 — budget kill-switch** → GATED (primo rung runtime a pagamento)
-- ✅ **F3 — pulizia file morti** → ESEGUITA in questa PR
-- 🟢 **F4 — messaggi sed -n** → cosmetico, fetta futura
-- 🟢 **F5 — single-history Telegram** → vincolo di design
-- 🟡 **F7 — .venv/ gitignore** → fix eseguito; residuo VPS: runbook SSH
-- ✅ **R-legacy-slice** → CHIUSO (rimosso con claude_brain.py)
+- Commit motore: `894eb06` (`fix(memory): chiude varco INSERT OR REPLACE sul diario (recursive_triggers)`)
+- Commit doc: `690c4e0` (`docs(report): fine task F1 R-crm-diario-rr — recursive_triggers chiuso, PR #18`)
+- Branch: `fix/diario-recursive-triggers`
+- PR: https://github.com/Gasss23/Gas/pull/18
 
-## PR
+## Chiude
 
-https://github.com/Gasss23/Gas/pull/17 — CI ✅ SUCCESS, in attesa di merge.
+- **R-crm-diario-rr** (riserva R1 store.py commento riga 15, registrata 2026-07-14) ✅
+
+## Proposte fuori scope
+
+- **F6 — atomicità `.gas_history.json`**: scrittura JSON non atomica (individuata in sessione precedente). Candidata prossima fetta.
+- **Hardening ulteriore diario**: retention, GDPR, archiviazione — in PARK in stato_progetto.md.

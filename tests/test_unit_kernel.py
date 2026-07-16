@@ -735,6 +735,36 @@ check("T19f diario immutabile (UPDATE e DELETE bloccati)",
       up_bloccato and del_bloccato and righe_intatte,
       f"up={up_bloccato} del={del_bloccato} intatte={righe_intatte}")
 
+# T19f-rr — varco INSERT OR REPLACE chiuso da recursive_triggers ON
+# Con recursive_triggers OFF (default SQLite) un INSERT OR REPLACE sulla PK del
+# diario eseguiva un DELETE implicito che NON attivava diario_no_delete → buco di
+# immutabilità silenzioso. _connect() ora imposta recursive_triggers = ON: il DELETE
+# implicito della REPLACE attiva il trigger e l'operazione viene ABORTITA.
+# La connessione passa VOLUTAMENTE da m._connect() (non raw): se il PRAGMA venisse
+# rimosso da _connect(), questo test fallirebbe, rendendo la barriera verificabile.
+with m._connect() as _con_rr:
+    _row_prima = _con_rr.execute(
+        "SELECT descrizione FROM diario WHERE id=?", (id1,)
+    ).fetchone()
+    _desc_orig = _row_prima["descrizione"] if _row_prima else None
+    _rr_bloccato = False
+    try:
+        _con_rr.execute(
+            "INSERT OR REPLACE INTO diario (id, ts, tipo, descrizione, contatto_id) "
+            "VALUES (?, datetime('now'), 'manomesso', 'riga-sostituita', NULL)",
+            (id1,),
+        )
+        _con_rr.commit()
+    except _sqlite3.Error:
+        _rr_bloccato = True
+    _row_dopo = _con_rr.execute(
+        "SELECT descrizione FROM diario WHERE id=?", (id1,)
+    ).fetchone()
+    _riga_intatta = _row_dopo is not None and _row_dopo["descrizione"] == _desc_orig
+check("T19f-rr INSERT OR REPLACE sul diario bloccato (recursive_triggers ON)",
+      _rr_bloccato and _riga_intatta,
+      f"bloccato={_rr_bloccato} intatta={_riga_intatta} desc_orig={_desc_orig!r}")
+
 # T19g — diario_di_contatto lega gli eventi al lead
 m.append_diario("messaggio", "inviato DM", contatto_id=cid)
 m.append_diario("messaggio", "nessuna risposta", contatto_id=cid)
