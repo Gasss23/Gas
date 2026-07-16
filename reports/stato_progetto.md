@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-16** (F6 atomicità .gas_history.json: PR #19, CI verde; doc: contatore review, micro-finding processo)
+> Ultimo aggiornamento: **2026-07-16** (doc/hook: guard SessionEnd main-lock + obbligo riga revisore; branch docs/hook-guard-session-end)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -100,7 +100,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **50 review**. Ultima: **#50** (F6 atomicità .gas_history.json, 2026-07-16). Lezioni in `.claude/agents/memoria_revisore.md` (origin/main termina a #47 — v. discrepanza in Stato motore).
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **51 review**. Ultima: **#51** (guard SessionEnd, 2026-07-16, APPROVATO). Lezioni in `.claude/agents/memoria_revisore.md`. ⚠️ Backfill #48–#50 = PENDENTE (richiede WSL locale — commit `92a08ba` non pushato, non raggiungibile da Codespace; ricostruzione a memoria vietata). Il file sarà completo da #51 in poi: questa sessione produce la prima riga nel nuovo formato canonico `#N — YYYY-MM-DD — verdetto — lezione`.
 - **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. **BASE = `git merge-base origin/main HEAD`** (non più “last handoff commit”), preceduto da `git fetch origin` obbligatorio e con guard bloccante se il merge-base è vuoto (fix 2026-07-15, branch `fix/fine-task-base-mergebase`). §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA). **Caveat residuo**: la correttezza di `${BASE}` dipende dalla freschezza di `origin/main` — il `git fetch` copre il caso normale, ma se la PR viene mergiata sul remoto DOPO il fetch, `${BASE}..HEAD` può ancora includere commit non di sessione. Non chiuso al 100%: mitigato.
 
@@ -142,6 +142,9 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ℹ️ **Micro-finding di processo — test modificato post-review senza ri-review** (2026-07-16, PR #18): la review #49 vide il test T19f-rr nella versione con connessione raw (riserva sollevata). Il test fu aggiornato in-session a usare `m._connect()` e committato in `894eb06` senza un secondo verdetto esplicito del revisore. Evidenza: handoff PR #18 riporta un solo verdetto (#49 APPROVATO CON RISERVE); nessun 'APPROVATO' finale post-aggiornamento. Gate formalmente non chiuso sull'aggiornamento. Regola dal 2026-07-16 (già nel prompt di sessione): se si applica una modifica richiesta dal revisore, RI-INVOCARE il revisore sul nuovo diff e riportare ENTRAMBI i verdetti verbatim.
 - ℹ️ **Nota di processo — review #49 in commit locale non pushato** (2026-07-16): la lezione di review #49 (2026-07-16) era stata aggiunta a `memoria_revisore.md` dall'hook auto-commit SessionEnd nel commit `92a08ba`, ma quel commit è rimasto solo su `local/main` (main-lock ha bloccato il push diretto). Su `origin/main` il file termina ancora a review #47. Proposta: aggiungere la riga di review #49 a `memoria_revisore.md` nel prossimo commit doc o PR.
 - ✅ **R-crm-diario-rr CHIUSO con PR #18** (2026-07-16): confermato da `git log origin/main` — `fe0e476 Merge pull request #18 from Gasss23/fix/diario-recursive-triggers` è su main. Finding chiuso.
+- ℹ️ **Guard SessionEnd main-lock/detached HEAD** (2026-07-16, branch `docs/hook-guard-session-end`): aggiunto in cima a `.claude/hooks/session_end.sh` un guard bloccante — se HEAD è su `main` o detached, hook stampa warning su stderr e esce senza commit. Test T-hook-a/b/c su repo git reali: 3/3 PASS. Revisore: APPROVATO (#51). Fetta 2 completata. CI pendente.
+- ℹ️ **Obbligo riga-per-review in revisore.md** (2026-07-16, stessa PR): sezione "DOPO ogni review" di `.claude/agents/revisore.md` riscritta — obbligo esplicito di aggiungere UNA riga contatore dopo OGNI review (formato `#N — YYYY-MM-DD — verdetto — lezione`), anche se la lezione è "nessuna lezione nuova". Il file è il contatore canonico: un buco lo rende indifendibile.
+- ⚠️ **Backfill memoria_revisore.md #48–#50 PENDENTE** (2026-07-16): il commit `92a08ba` (lezioni #48–#49) è solo su `local/main` (WSL), non pushato, non raggiungibile da Codespace. Ricostruzione a memoria = vietata. Eseguire il backfill dalla postazione WSL locale (cherry-pick o re-aggiunta riga) in una sessione separata con accesso alla macchina locale. Fino ad allora `memoria_revisore.md` su origin/main inizia a #51 (questo branch) dopo una lacuna #48–#50.
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
