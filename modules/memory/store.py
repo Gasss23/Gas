@@ -228,6 +228,7 @@ class MemoryStore:
         con = sqlite3.connect(str(self.db_path), timeout=10)
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA foreign_keys = ON")
+        con.execute("PRAGMA recursive_triggers = ON")
         return con
 
     def _init_schema(self, con: sqlite3.Connection) -> None:
