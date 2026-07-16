@@ -5,15 +5,21 @@
 ## git diff --stat origin/main..HEAD
 
 ```
- .claude/hooks/scrivi_rep.sh  |  18 +++-
- .claude/hooks/session_end.sh |  35 ++++++-
- tests/test_unit_hooks.py     | 227 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 271 insertions(+), 9 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +
+ .claude/hooks/scrivi_rep.sh        |  18 ++-
+ .claude/hooks/session_end.sh       |  35 +++++-
+ reports/diff_sessione.md           |  44 ++++---
+ reports/handoff.md                 | 138 +++++++++++-----------
+ reports/stato_progetto.md          |  11 +-
+ reports/ultimo_report.md           | 160 ++++++++++++--------------
+ tests/test_unit_hooks.py           | 227 ++++++++++++++++++++++++++++++++++++-
+ 8 files changed, 453 insertions(+), 183 deletions(-)
 ```
 
 ## Commit della sessione
 
 ```
+b754be5 docs(fix-hook-push-ref): reports + memoria_revisore #52-#54
 065d7c9 fix(hook): scrivi_rep.sh push su branch corrente + T-hook-g
 cf5c0ba fix(hook): session_end.sh git add dinamico + T-hook-f
 8b05058 fix(hook): session_end.sh push su branch corrente + T-hook-d/e
@@ -22,13 +28,21 @@ cf5c0ba fix(hook): session_end.sh git add dinamico + T-hook-f
 ## Cosa è cambiato e perché
 
 ### .claude/hooks/session_end.sh
-- **Riga 42** (ex `git add reports/ '*.md' .gas_history.json 2>/dev/null || true`): sostituito con lista dinamica dei pathspec — solo i pathspec che matchano almeno un file vengono inclusi, evitando il bug git exit-128-non-staggia-nulla. Invariante engine-files (`git restore --staged`) reso esplicito.
-- **Riga 60** (ex `git push -q origin main 2>/dev/null || true`): ora `git push -q origin HEAD:"refs/heads/$_cur_branch"` — push sul branch corrente, non main. Warning esplicito su stderr con branch name e exit code se il push fallisce; mai silenzio.
+- **Riga 42** (ex `git add reports/ '*.md' .gas_history.json 2>/dev/null || true`): sostituito con lista dinamica dei pathspec — solo i pathspec che matchano almeno un file vengono inclusi, evitando il bug git exit-128-non-staggia-nulla. Invariante engine-files (`git restore --staged`) reso esplicito (F2).
+- **Riga 60** (ex `git push -q origin main 2>/dev/null || true`): ora `git push -q origin HEAD:"refs/heads/$_cur_branch"` — push sul branch corrente, non main. Warning esplicito su stderr con branch name e exit code se il push fallisce; mai silenzio (F1).
 
 ### .claude/hooks/scrivi_rep.sh
-- **Riga 47** (ex `git push -q origin main 2>/dev/null`): stesso fix. Aggiunto: branch detection nella subshell, guard main-lock, push su branch corrente, error reporting. Rimossi `2>/dev/null` su `git add` e `git commit`.
+- **Riga 47** (ex `git push -q origin main 2>/dev/null`): stesso fix. Aggiunto: branch detection nella subshell, guard main-lock, push su branch corrente, error reporting. Rimossi `2>/dev/null` su `git add` e `git commit` (F3).
 
 ### tests/test_unit_hooks.py
 - Aggiunti T-hook-d, T-hook-e, T-hook-f, T-hook-g su repo git reali con bare origin.
-- `import json` aggiunto, `SCRIVI_REP_HOOK` path aggiunto.
-- Tre nuove classi di test: `TestSessionEndPush`, `TestSessionEndAddRobust`, `TestScriviRepPush`.
+- `import json` aggiunto, `SCRIZI_REP_HOOK` path aggiunto. Tre nuove classi: `TestSessionEndPush`, `TestSessionEndAddRobust`, `TestScriviRepPush`.
+
+### .claude/agents/memoria_revisore.md
+- Aggiornata con lezioni #52 (assertioni discriminanti), #53 (osservabilità invarianti), #54 (guard pattern atomico).
+
+### reports/ (meta-documenti)
+- `ultimo_report.md`: report canonico del task con scope/esito F1-F4, verdetti VERBATIM, delta test, CI.
+- `handoff.md`: dossier autocontenuto con §0-§8, verdetti integrali, sonda grep ante-fix, riserve aperte.
+- `stato_progetto.md`: finding risolti, contatore review +3, CI run aggiornato.
+- `diff_sessione.md`: questo file — fotografia della sessione.
