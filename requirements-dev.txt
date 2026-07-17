@@ -1,0 +1,2 @@
+# Dipendenze di SVILUPPO/CI. NON installare sul VPS: il deploy è requirements.txt.
+pytest==9.1.1
