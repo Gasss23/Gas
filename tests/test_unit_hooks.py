@@ -355,3 +355,24 @@ class TestScriviRepPush:
         assert len(main_log) == 1, (
             f"origin/main non dovrebbe avere nuovi commit: {main_log}"
         )
+
+    def test_hook_h_main_no_commit(self, tmp_path):
+        """T-hook-h: scrivi_rep.sh su main → 0 commit nuovi, exit 0, warning su stderr."""
+        work = tmp_path / "work"
+        _init_repo(work)  # HEAD su main per default
+        (work / "reports").mkdir(exist_ok=True)
+
+        transcript = tmp_path / "transcript.json"
+        self._make_transcript(transcript, "Risposta di test hook-h")
+
+        before = _commit_count(work)
+        result = self._run_scrivi_rep(work, transcript)
+
+        assert result.returncode == 0, f"exit non-zero: {result.stderr!r}"
+        assert _commit_count(work) == before, (
+            f"Attesi {before} commit, trovati {_commit_count(work)}; stderr: {result.stderr!r}"
+        )
+        assert result.stderr.strip(), "Warning atteso su stderr, ma stderr è vuoto"
+        assert "main" in result.stderr, (
+            f"Warning non menziona 'main': {result.stderr!r}"
+        )
