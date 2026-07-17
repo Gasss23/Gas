@@ -1,48 +1,20 @@
-# Diff sessione — 2026-07-16 (fix/hook-push-ref: push su branch corrente + git add robusto)
+# Diff sessione — 2026-07-17 (docs/sanitize-post-pr21: sanitizzazione stato post-merge PR #21 e PR #19)
 
 > Fotografia della sessione corrente. Si riscrive a ogni sessione; la storia completa sta in git.
 
-## git diff --stat origin/main..HEAD
+## git diff --stat (BASE=8f9cf7b → HEAD)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +
- .claude/hooks/scrivi_rep.sh        |  18 ++-
- .claude/hooks/session_end.sh       |  35 +++++-
- reports/diff_sessione.md           |  44 ++++---
- reports/handoff.md                 | 138 +++++++++++-----------
- reports/stato_progetto.md          |  11 +-
- reports/ultimo_report.md           | 160 ++++++++++++--------------
- tests/test_unit_hooks.py           | 227 ++++++++++++++++++++++++++++++++++++-
- 8 files changed, 453 insertions(+), 183 deletions(-)
+ reports/stato_progetto.md |  10 +--
+ reports/ultimo_report.md  | 163 +++++++++++++---------------------------------
+ 2 files changed, 51 insertions(+), 122 deletions(-)
 ```
 
-## Commit della sessione
+## File toccati
 
-```
-b754be5 docs(fix-hook-push-ref): reports + memoria_revisore #52-#54
-065d7c9 fix(hook): scrivi_rep.sh push su branch corrente + T-hook-g
-cf5c0ba fix(hook): session_end.sh git add dinamico + T-hook-f
-8b05058 fix(hook): session_end.sh push su branch corrente + T-hook-d/e
-```
-
-## Cosa è cambiato e perché
-
-### .claude/hooks/session_end.sh
-- **Riga 42** (ex `git add reports/ '*.md' .gas_history.json 2>/dev/null || true`): sostituito con lista dinamica dei pathspec — solo i pathspec che matchano almeno un file vengono inclusi, evitando il bug git exit-128-non-staggia-nulla. Invariante engine-files (`git restore --staged`) reso esplicito (F2).
-- **Riga 60** (ex `git push -q origin main 2>/dev/null || true`): ora `git push -q origin HEAD:"refs/heads/$_cur_branch"` — push sul branch corrente, non main. Warning esplicito su stderr con branch name e exit code se il push fallisce; mai silenzio (F1).
-
-### .claude/hooks/scrivi_rep.sh
-- **Riga 47** (ex `git push -q origin main 2>/dev/null`): stesso fix. Aggiunto: branch detection nella subshell, guard main-lock, push su branch corrente, error reporting. Rimossi `2>/dev/null` su `git add` e `git commit` (F3).
-
-### tests/test_unit_hooks.py
-- Aggiunti T-hook-d, T-hook-e, T-hook-f, T-hook-g su repo git reali con bare origin.
-- `import json` aggiunto, `SCRIZI_REP_HOOK` path aggiunto. Tre nuove classi: `TestSessionEndPush`, `TestSessionEndAddRobust`, `TestScriviRepPush`.
-
-### .claude/agents/memoria_revisore.md
-- Aggiornata con lezioni #52 (assertioni discriminanti), #53 (osservabilità invarianti), #54 (guard pattern atomico).
-
-### reports/ (meta-documenti)
-- `ultimo_report.md`: report canonico del task con scope/esito F1-F4, verdetti VERBATIM, delta test, CI.
-- `handoff.md`: dossier autocontenuto con §0-§8, verdetti integrali, sonda grep ante-fix, riserve aperte.
-- `stato_progetto.md`: finding risolti, contatore review +3, CI run aggiornato.
-- `diff_sessione.md`: questo file — fotografia della sessione.
+| File | Cosa è cambiato | Perché |
+|---|---|---|
+| `reports/stato_progetto.md` | 5 edit: header data, CI run list su main, F6-history-atomica "Merge PR #19 pendente" → merge `9a9278e` ✅, hook push "merge PENDENTE" × 2 → merge `8f9cf7b` ✅ | Sanitizzazione post-merge PR #21 e PR #19: eliminati tutti i "merge PENDENTE" ormai falsi, CI run list aggiornata |
+| `reports/ultimo_report.md` | Riscritto per /fine-task con §0 decisioni umane, §1 esito fette, §2 anomalie | Report canonico di fine sessione + correzione anomalia (hash errato in risposta precedente) |
+| `reports/handoff.md` | Riscritto per sessione corrente | Dossier autonomo di fine sessione |
+| `reports/diff_sessione.md` | Riscritto per sessione corrente (questo file) | Fotografia della sessione |
