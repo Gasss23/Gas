@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-17** (sanitize-post-pr21: PR #21 → merge 8f9cf7b su main ✅ CI run 29505642515; PR #19 → merge 9a9278e su main ✅ CI run 29484338680)
+> Ultimo aggiornamento: **2026-07-17** (sanitize-post-pr21 F1-bis+F2-bis: sonda CI unit-suite → gap R-ci-hooks scoperto; stato_progetto sanitizzato post-merge PR #21 + PR #19)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **54 review** completate (ultima #54, 2026-07-16, Fetta 3 hook scrivi_rep.sh, APPROVATO CON RISERVE). ⚠️ Discrepanza contatore pre-sessione: stato precedente diceva #48, ultimo_report (PR #18) diceva #49, `memoria_revisore.md` su origin/main termina a #47 — la lezione di review #49 è solo nel commit locale `92a08ba` non pushato (hook auto-commit bloccato da main-lock). Correttivo proposto in report: cherry-pick o re-aggiunta riga in PR doc. Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). +7 T57 + 6 T58 + 5 T59 aggiunti. CI run 29482410951 (2026-07-16, feature/f6-history-atomica): **241 PASS** ✅.
+FASE 1 âœ…, FASE 2 âœ… e **FASE 2.5** âœ… chiuse. **54 review** completate (ultima #54, 2026-07-16, Fetta 3 hook scrivi_rep.sh, APPROVATO CON RISERVE). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). +7 T57 + 6 T58 + 5 T59 aggiunti. CI run 29482410951 (2026-07-16, feature/f6-history-atomica): **241 PASS** ✅.
 CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #21 run `29505642515` su `8f9cf7b` (2026-07-16) · PR #20 run `29487631549` su `fbf8246` (2026-07-16) · PR #19 run `29484338680` su `9a9278e` (2026-07-16) · PR #18 run `29481225884` su `fe0e476` (2026-07-16).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -52,6 +52,7 @@ Componenti attive:
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
 - 🟡 **R-crm-1b** — Fetta email ✅ + merge umano ✅ (review #47+#48, 2026-07-14): `rileva_duplicati_email()` + CLI `gas check-dups` + `gas merge-contacts <da> <verso>` (preview, conferma y/N, snapshot diario atomico pre-merge, fail-safe §9). Hint `check_dups_cmd` corretto. Resta 🟡 per: idempotenza diario (fetta 2), telefono (fetta 3).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
+- 🟡 **R-ci-hooks** — `tests/test_unit_hooks.py` NON eseguito da CI (sonda 2026-07-17): il job `unit-suite` esegue SOLO `python tests/test_unit_kernel.py` (ci.yml riga 83). Il file `test_unit_hooks.py` esiste in `tests/` (T-hook-a/b/c/d/e/f/g, 227 righe) ma non compare in nessun comando del workflow. Il verde di `unit-suite` NON copre i test degli hook bash.
 - ✅ **F6-history-atomica CHIUSO** (2026-07-16, review #50 APPROVATO, PR #19, CI run `29482410951` ✅ 241 PASS): `_save_history` usa ora tmp+`os.replace` atomico (fsync); `_load_history` quarantena il file corrotto in `.gas_history.json.corrupt.<ts>` (logging.warning, mai crash). Test T59a/b/c. **Mergeata → 9a9278e su main ✅ (2026-07-16, CI run 29484338680 SUCCESS)**.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 
