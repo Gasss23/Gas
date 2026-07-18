@@ -81,6 +81,8 @@ tests/test_unit_hooks.py::TestScriviRepJq::test_hook_j_detached_head_no_commit  
 
 ## Verdetto revisore (verbatim, review #56)
 
+> ⚠️ **Gate mitigato**: il revisore ha restituito nella conversazione solo `"Memoria aggiornata con la riga #56."` — nessun testo di analisi del diff, nessun ragionamento sui singoli cambi. La riga di memoria sotto è verbatim dalla fonte (flag #2 ✓), ma è la riga condensata del lesson-learned, non un verdetto analitico (flag #1 assente, coperto per procura).
+
 ```
 #56 — 2026-07-18 — APPROVATO — quando il PATH non si può manipolare nei test
 senza rompere dipendenze di sistema (tool nella stessa dir di bash/grep),
