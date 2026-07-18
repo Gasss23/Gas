@@ -376,3 +376,105 @@ class TestScriviRepPush:
         assert "main" in result.stderr, (
             f"Warning non menziona 'main': {result.stderr!r}"
         )
+
+
+class TestScriviRepJq:
+    """
+    T-hook-i/j: fail-loud jq in scrivi_rep.sh (riserva #55).
+    """
+
+    def _make_transcript(self, path: Path, response_text: str) -> None:
+        """Crea un transcript JSONL minimale con trigger 'scrivi rep'."""
+        lines = [
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": response_text}]}},
+            {"type": "user", "message": {"content": "scrivi rep"}},
+        ]
+        path.write_text("\n".join(json.dumps(line) for line in lines))
+
+    def _run_scrivi_rep(
+        self, repo: Path, transcript: Path, extra_env: dict | None = None
+    ) -> subprocess.CompletedProcess:
+        stdin_data = json.dumps({"transcript_path": str(transcript)})
+        env = {
+            **os.environ,
+            "CLAUDE_PROJECT_DIR": str(repo),
+            "GAS_REPO_DIR": str(repo),
+        }
+        if extra_env:
+            env.update(extra_env)
+        return subprocess.run(
+            ["bash", str(SCRIVI_REP_HOOK)],
+            input=stdin_data,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_hook_i_no_jq_warns_and_exits_zero(self, tmp_path):
+        """T-hook-i: trigger presente + jq assente → warning su stderr, exit 0, nessun file, nessun commit.
+
+        jq viene "nascosto" con un fake eseguibile che fallisce (exit 1), preposto al PATH reale.
+        L'hook usa 'jq --version' come functional check: il fake fa fallire il check.
+        """
+        work = tmp_path / "work"
+        _init_repo(work)
+        (work / "reports").mkdir(exist_ok=True)
+
+        transcript = tmp_path / "transcript.json"
+        self._make_transcript(transcript, "Risposta di test hook-i")
+
+        # Fake jq: eseguibile che fallisce il functional check (jq --version)
+        fake_bin = tmp_path / "fake_bin"
+        fake_bin.mkdir()
+        fake_jq = fake_bin / "jq"
+        fake_jq.write_text("#!/bin/bash\nexit 1\n")
+        fake_jq.chmod(0o755)
+        broken_jq_path = str(fake_bin) + ":" + os.environ.get("PATH", "")
+
+        before = _commit_count(work)
+        result = self._run_scrivi_rep(work, transcript, {"PATH": broken_jq_path})
+
+        assert result.returncode == 0, (
+            f"Atteso exit 0 con jq assente, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert result.stderr.strip(), "Warning atteso su stderr con jq assente, ma stderr è vuoto"
+        assert "jq" in result.stderr.lower() or "dipendenza" in result.stderr.lower(), (
+            f"Warning deve menzionare jq o dipendenza mancante: {result.stderr!r}"
+        )
+        assert not (work / "reports" / "ultima_risposta.md").exists(), (
+            "ultima_risposta.md NON deve essere scritto quando jq è assente"
+        )
+        assert _commit_count(work) == before, (
+            f"Nessun commit atteso con jq assente; prima={before}, dopo={_commit_count(work)}"
+        )
+
+    def test_hook_j_detached_head_no_commit(self, tmp_path):
+        """T-hook-j: trigger presente, jq disponibile, HEAD detached → warning su stderr, exit 0, nessun commit."""
+        work = tmp_path / "work"
+        _init_repo(work)
+        head_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "checkout", "--detach", head_sha],
+            cwd=work, check=True, capture_output=True,
+        )
+        (work / "reports").mkdir(exist_ok=True)
+
+        transcript = tmp_path / "transcript.json"
+        self._make_transcript(transcript, "Risposta di test hook-j")
+
+        before = _commit_count(work)
+        result = self._run_scrivi_rep(work, transcript)
+
+        assert result.returncode == 0, (
+            f"Atteso exit 0 con HEAD detached, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert _commit_count(work) == before, (
+            f"Nessun commit atteso con HEAD detached; prima={before}, dopo={_commit_count(work)}"
+        )
+        assert result.stderr.strip(), "Warning atteso su stderr con HEAD detached, ma stderr è vuoto"
+        assert "detach" in result.stderr.lower() or "main-lock" in result.stderr, (
+            f"Warning deve menzionare 'detach' o 'main-lock': {result.stderr!r}"
+        )

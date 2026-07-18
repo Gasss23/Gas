@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stop hook ON-DEMAND — zero token LLM. Autorizzato esplicitamente dall'utente
-# (incl. auto-push su main) il 2026-06-13.
+# (pusha sul branch corrente) il 2026-06-13.
 # Salva in reports/ultima_risposta.md l'ultima risposta SOSTANZIALE di Claude,
 # ma SOLO quando l'utente l'ha chiesto con il trigger "scrivi rep" nel suo ultimo
 # messaggio. Senza trigger non scrive nulla (non gira "ogni volta").
@@ -8,8 +8,19 @@
 
 : "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR non settata, hook interrotto}"
 INPUT=$(cat)
-TP=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+
+# Estrai transcript_path senza dipendere da jq (hook payload è JSON a riga singola)
+TP=$(printf '%s' "$INPUT" | sed -n 's/.*"transcript_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [ -n "$TP" ] && [ -f "$TP" ] || exit 0
+
+# Pre-filtro trigger senza jq: esce silenzioso se "scrivi rep" non è nel transcript
+grep -qi "scrivi rep" "$TP" 2>/dev/null || exit 0
+
+# Trigger rilevato: jq è necessario per l'estrazione — fail-loud se assente o non funzionante
+if ! jq --version >/dev/null 2>&1; then
+    echo "scrivi_rep: jq non trovato — dipendenza mancante, feature scrivi rep inerte." >&2
+    exit 0
+fi
 
 # 1) indice dell'ultimo messaggio UTENTE (stringa) col trigger "scrivi rep"
 # 2) testo dell'ultimo messaggio ASSISTANT con blocco "text" PRIMA di quell'indice

@@ -1,51 +1,35 @@
-# Diff sessione — 2026-07-18 (FETTA DOC fix/ci-hook-tests — canonici post-review #55)
+# Diff sessione — 2026-07-19 (R-hook-jq — fix/hook-jq-failloud)
 
 > Fotografia della sessione corrente. Si riscrive a ogni sessione; la storia completa sta in git.
-> BASE (merge-base origin/main): 6ee5c85ff8866899f9de470d3ccdb4cf2dfba24a
+> BASE (merge-base origin/main): fd3d47aaf5fc19e81433931bf8404eefb7c3a39c
 
----
+## File toccati
 
-## File toccati (git diff --stat BASE..HEAD)
+| File | Tipo modifica |
+|------|--------------|
+| `.claude/hooks/scrivi_rep.sh` | fix: fail-loud jq, TP extraction via sed, grep pre-filter, commento riga 3 |
+| `tests/test_unit_hooks.py` | feat: classe TestScriviRepJq con T-hook-i e T-hook-j |
+| `reports/ultimo_report.md` | doc: report task R-hook-jq |
+| `reports/stato_progetto.md` | doc: chiude R-hook-jq, aggiorna revisore a #56 |
+| `reports/diff_sessione.md` | doc: questa sessione |
+| `.claude/agents/memoria_revisore.md` | doc: riga #56 aggiunta dal revisore |
+
+## Cosa è cambiato e perché
+
+**scrivi_rep.sh**: Il bug R-hook-jq era che con jq assente, `jq 2>/dev/null` sopprimeva l'errore "command not found", TP diventava vuoto e l'hook usciva silenzioso — la feature "scrivi rep" era inerte in silenzio. Fix: (1) `transcript_path` estratto via sed anziché jq; (2) trigger rilevato via `grep` prima di controllare jq; (3) check funzionale `jq --version` fail-loud. Commento riga 3 corretto (era stantio dal main-lock). Nota tecnica: non è stato possibile nascondere jq da PATH nel test perché `/bin` è symlink a `/usr/bin` — jq, bash, grep, sed nella stessa directory. Usato `jq --version` + fake jq (eseguibile, exit 1) come alternativa.
+
+**test_unit_hooks.py**: Aggiunti T-hook-i (jq assente → warning, no file, no commit) e T-hook-j (HEAD detached + jq disponibile → warning, no commit). Precondizione guard detached-HEAD verificata prima di scrivere T-hook-j: guard già presente e funzionante (pattern `! _cur_branch="$(git symbolic-ref ...)"` — exit status propaga dal cmd substitution).
+
+## Commit della sessione
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- .claude/hooks/scrivi_rep.sh        |   3 +-
- .claude/hooks/session_end.sh       |   3 +-
- .github/workflows/ci.yml           |  10 ++
- reports/diff_sessione.md           |  39 +++---
- reports/handoff.md                 | 275 +++++--------------------------------
- reports/stato_progetto.md          |  18 ++-
- reports/ultimo_report.md           |  83 +++++++++--
- requirements-dev.txt               |   2 +
- tests/test_unit_hooks.py           |  21 +++
- 10 files changed, 175 insertions(+), 280 deletions(-)
+0ced9e0  fix(hook): fail-loud jq in scrivi_rep.sh + test T-hook-i/j
 ```
 
----
+## Stato test
 
-## Commit della sessione (questa conversazione: solo add10c5)
+10/10 PASS (test_unit_hooks.py). Nessuna regressione.
 
-| Hash | Cosa e perché |
-|------|---------------|
-| `add10c5` | FETTA DOC: 10 modifiche chirurgiche a `stato_progetto.md` (punti a–j del prompt operatore) + aggiornamento report canonici. Doc-only, no codice. |
+## Verdetto revisore
 
-## Commit del branch completo (tutte le sessioni dal BASE)
-
-| Hash | File chiave | Perché |
-|------|-------------|--------|
-| `add10c5` | `reports/stato_progetto.md`, `reports/ultimo_report.md` | FETTA DOC: canonici aggiornati post-review #55 |
-| `81f8935` | `reports/`, `memoria_revisore.md` | auto-commit SessionEnd sessione precedente (riga #55) |
-| `bbfc04c` | `reports/handoff.md`, `reports/ultimo_report.md` | fine-task sessione revisore interrotta |
-| `f6d7a62` | `.claude/hooks/scrivi_rep.sh`, `.claude/hooks/session_end.sh` | Fetta 2b: pattern atomico su entrambi gli hook (riserva #51) |
-| `721ef9f` | `tests/test_unit_hooks.py` | Fetta 2a: T-hook-h — test guard main-lock su scrivi_rep.sh |
-| `7f034b9` | `reports/` | doc fetta 1 |
-| `1ed3524` | `.github/workflows/ci.yml`, `requirements-dev.txt` | Fetta 1: cablare hook suite in CI |
-
----
-
-## Note
-
-- `.claude/hooks/scrivi_rep.sh` e `session_end.sh`: modificati in `f6d7a62` (forma atomica). Non toccati in questa sessione.
-- `tests/test_unit_hooks.py`: +21 righe in `721ef9f` (T-hook-h). Non toccato in questa sessione.
-- `reports/stato_progetto.md`: unico file sostanzialmente modificato in questa sessione (add10c5).
-- Push bloccato da SSH passphrase senza ssh-agent: `add10c5` è solo locale al momento della scrittura di questo file.
+Review #56 — APPROVATO.
