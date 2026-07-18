@@ -41,8 +41,7 @@ printf '%s\n' "$OUT" > "$DEST"
 # Tutto fail-safe: qualunque errore git NON deve mai bloccare la chiusura del turno.
 (
   cd "$REPO_DIR" 2>/dev/null || exit 0
-  _cur_branch="$(git symbolic-ref --short HEAD 2>/dev/null)"
-  if [ $? -ne 0 ] || [ "$_cur_branch" = "main" ]; then
+  if ! _cur_branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || [ "$_cur_branch" = "main" ]; then
     echo "scrivi_rep: HEAD su main o detached, push saltato — main-lock." >&2
     exit 0
   fi

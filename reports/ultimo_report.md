@@ -1,21 +1,60 @@
-# ultimo_report — docs/sanitize-post-pr21 — F0 + F1-bis + F2-bis — 2026-07-17
-
-## §0 DECISIONI UMANE RICHIESTE
-
-1. **R-ci-hooks — task separato (fuori scope)**: `tests/test_unit_hooks.py` (T-hook-a/b/c/d/e/f/g) non è eseguito da CI. Decidere se aggiungere `python tests/test_unit_hooks.py` al job `unit-suite` in `ci.yml`. Tocca `ci.yml` → task separato; non committato qui.
-2. **Merge PR docs/sanitize-post-pr21 → main** — solo doc/report, CI run 29570876259 ✅ SUCCESS, self-merge consentito.
+# ULTIMO REPORT — FETTA DOC fix/ci-hook-tests
+**Data**: 2026-07-18
+**Branch**: fix/ci-hook-tests
+**Task**: Aggiornamento canonici doc-only post-review #55. Scope definito dall'operatore nel prompt.
 
 ---
 
-## §1 SCOPE & ESITO FETTE
+## DECISIONI UMANE RICHIESTE
 
-- **F0 — Verifica hash merge (PR #21 e PR #19)**: `FATTA` — hash confermati dall'operatore; output verbatim di `git log origin/main --merges --oneline -5` nel report. PR #21 → `8f9cf7b`, PR #19 → `9a9278e`.
-- **F1-bis — Sonda CI unit-suite (SOLA LETTURA)**: `FATTA` — contraddizione sciolta: CI usa `python tests/test_unit_kernel.py` (non pytest), exit code reale (`sys.exit(1 if FAIL else 0)` riga 3302, livello modulo). Gap scoperto: `tests/test_unit_hooks.py` non eseguito da CI. Finding R-ci-hooks aperto.
-- **F2-bis — Completamento reports/stato_progetto.md**: `FATTA` — 5 punti verificati: (a)(b) da FETTA 2 precedente; (c) blocco discrepanza contatore rimosso; (d) finding R-ci-hooks aggiunto; (e) header aggiornato.
+1. **Push manuale richiesto**: ssh-agent non attivo su WSL, passphrase sulla chiave — push da terminale interattivo (`git push` dopo `eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519`).
+2. **PR fix/ci-hook-tests → main**: apertura e merge NON effettuati (stop gate). L'operatore decide quando e se mergiare.
+3. **Debito Codespace**: Codespace ha branch `fix/ci-hook-tests` con sessione interrotta (sporco non committato). Bonificare o eliminare in sessione dedicata.
+4. **R-hook-jq** (finding nuovo 🔴): fix deferito. L'operatore decide la priorità e lo scope del task correttivo (fail-loud + T-hook-i + cleanup riga 3 hook + riserva #55(1) detached-HEAD).
 
 ---
 
-## §2 ANOMALIE
+## ESITO FETTE
 
-- Precedente /fine-task: il handoff non conteneva ci.yml verbatim né le risposte F1-bis puntuali — era un rimando al report. Corretto in questa esecuzione: handoff ora autocontenuto.
-- Precedente risposta tabulare: `8b37a4c` indicato come merge PR #17 invece di `e7b4486`. Regola salvata in memoria: output git va sempre incollato verbatim.
+| Fetta | Stato | Note |
+|-------|-------|------|
+| FETTA DOC (unica) | FATTA | 10 modifiche chirurgiche a `stato_progetto.md` (a–j) + report canonici aggiornati |
+
+---
+
+## MODIFICHE APPLICATE A stato_progetto.md
+
+**(a)** R-ci-hooks: `227 righe` → `357 righe`; lista test aggiornata a T-hook-a/b/c/d/e/f/g/**h**.
+
+**(b)** R-ci-hooks: aggiunta riga `**Stato (2026-07-18)**` — MITIGATO SU BRANCH, NON CHIUSO. CI esegue test hook da commit `1ed3524` (run `29591105016` ✅, poi `29592358732` ✅ su HEAD `f6d7a62`). Su main il gap resta fino al merge della PR.
+
+**(c)** Guard SessionEnd: `"Fetta 2 completata. CI pendente."` → `"PR #20 su main (fbf8246, CI run 29487631549 ✅)."`
+
+**(d)** Riserve hook #52–#54: entrambe RISOLTE.
+  - (a) pattern fragile → RISOLTA in `f6d7a62` (forma atomica)
+  - (b) test guard mancante su `scrivi_rep.sh` → RISOLTA in `721ef9f` (T-hook-h). Confermato verdetto #55.
+
+**(e)** Lista CI su main: aggiunto `PR #22 merge 6ee5c85 (2026-07-18)`.
+
+**(f)** NUOVO FINDING 🔴 **R-hook-jq**: `scrivi_rep.sh` invoca `jq` con `2>/dev/null` che sopprime anche "command not found". Feature "scrivi rep" INERTE IN SILENZIO su macchine senza jq. Fix DEFERITO.
+
+**(g)** NUOVO FINDING 🟡 **R-ci-summary** (riserva #55(2), cosmetica): hook suite non appare nel Job Summary CI. Gate corretto, manca visibilità. Non bloccante.
+
+**(h)** Nota 7 WSL: STANTIA → stato reale 2026-07-17/18: venv ricreato (Python 3.12.3 ≠ 3.11), solo pytest installato, jq assente fino al 2026-07-17, passphrase SSH senza agent = push hook inerte.
+
+**(i)** Nuova nota Debito Codespace.
+
+**(j)** Istituzione §C: `54 review` → `55 review`; `ultima #54` → `ultima #55 (2026-07-18, APPROVATO CON RISERVE)`. Nota incoerenza data post-mezzanotte (sessione su commit 2026-07-17, riga porta data 2026-07-18).
+
+---
+
+## REVISORE
+
+**NON INVOCATO** — task doc-only (solo `reports/` e `reports/stato_progetto.md`). CLAUDE.md §3: commit che toccano esclusivamente reports/*.md e .claude/agents/memoria_revisore.md non richiedono review.
+
+---
+
+## ANOMALIE RISCONTRATE
+
+- **Push bloccato**: SSH passphrase senza ssh-agent → push non completabile da Claude Code (hook non-interattivo). Richiede azione manuale. Documentato nella nota 7 WSL appena aggiornata.
+- **git fetch fallito** (SSH): `origin/main` locale potenzialmente stale. Il merge-base calcolato (`6ee5c85`) coincide con il merge di PR #22 — coerente con lo stato del branch.

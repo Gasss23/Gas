@@ -27,6 +27,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # I test hook ESEGUONO gli hook, che fanno `git push`. Il checkout di default
+          # lascia il token di push nel .git/config del workspace. Nessuno step di questa
+          # CI pusha → togliere le credenziali chiude la superficie senza costo.
+          persist-credentials: false
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
@@ -40,6 +45,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Enable OS sandbox (bubblewrap)
         id: sandbox
@@ -81,6 +87,10 @@ jobs:
         run: |
           set -o pipefail
           python tests/test_unit_kernel.py 2>&1 | tee "$RUNNER_TEMP/suite_output.txt"
+
+      - name: Run hook suite (pytest, zero token LLM)
+        if: always()
+        run: python -m pytest tests/test_unit_hooks.py -v
 
       - name: Job summary (esito a colpo d'occhio)
         if: always()
