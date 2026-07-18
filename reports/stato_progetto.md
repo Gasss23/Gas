@@ -1,13 +1,13 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-19** (R-hook-jq CHIUSO: fix/hook-jq-failloud, review #56 APPROVATO, 10/10 PASS)
+> Ultimo aggiornamento: **2026-07-19** (R-hook-jq: merge PR #25 → `c609e31` su main, CI run `29664233791` ✅ SUCCESS)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **56 review** completate (ultima #56, 2026-07-19, R-hook-jq fix/hook-jq-failloud, APPROVATO). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). Hook suite: **10 PASS** (T-hook-a…j). CI run 29482410951 (2026-07-16, feature/f6-history-atomica): **241 PASS** ✅.
-CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #24 merge `fd3d47a` (2026-07-18) · PR #23 run su `2f1e015` (2026-07-18) · PR #22 merge `6ee5c85` (2026-07-18) · PR #21 run `29505642515` su `8f9cf7b` (2026-07-16).
+CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18) · PR #22 merge `6ee5c85` (2026-07-18).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **âœ… R-comp-1** â€” boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
