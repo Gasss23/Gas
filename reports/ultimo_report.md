@@ -1,60 +1,107 @@
-# ULTIMO REPORT — FETTA DOC fix/ci-hook-tests
-**Data**: 2026-07-18
-**Branch**: fix/ci-hook-tests
-**Task**: Aggiornamento canonici doc-only post-review #55. Scope definito dall'operatore nel prompt.
+# R-hook-jq — fail-loud jq in scrivi_rep.sh
+
+**Data:** 2026-07-19  
+**Branch:** fix/hook-jq-failloud  
+**Commit codice:** 0ced9e0  
+**Scope:** SOLO `.claude/hooks/scrivi_rep.sh` + `tests/test_unit_hooks.py`  
 
 ---
 
-## DECISIONI UMANE RICHIESTE
+## Esito per fetta
 
-1. **Push manuale richiesto**: ssh-agent non attivo su WSL, passphrase sulla chiave — push da terminale interattivo (`git push` dopo `eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519`).
-2. **PR fix/ci-hook-tests → main**: apertura e merge NON effettuati (stop gate). L'operatore decide quando e se mergiare.
-3. **Debito Codespace**: Codespace ha branch `fix/ci-hook-tests` con sessione interrotta (sporco non committato). Bonificare o eliminare in sessione dedicata.
-4. **R-hook-jq** (finding nuovo 🔴): fix deferito. L'operatore decide la priorità e lo scope del task correttivo (fail-loud + T-hook-i + cleanup riga 3 hook + riserva #55(1) detached-HEAD).
+### FETTA 1 — scrivi_rep.sh — FATTA
 
----
+**(a) Fail-loud jq**
 
-## ESITO FETTE
+Ristrutturazione minima del flusso per permettere il rilevamento del trigger senza jq:
 
-| Fetta | Stato | Note |
-|-------|-------|------|
-| FETTA DOC (unica) | FATTA | 10 modifiche chirurgiche a `stato_progetto.md` (a–j) + report canonici aggiornati |
+1. `transcript_path` estratto da stdin via `sed` (anziché `jq -r`) — rimuove la dipendenza circolare nella fase di ingresso.
+2. Aggiunto pre-filtro `grep -qi "scrivi rep" "$TP"` per rilevare il trigger senza jq.
+3. Aggiunto check funzionale `if ! jq --version >/dev/null 2>&1; then` — fail-loud: emette warning su stderr e esce con 0.
 
----
+Contratto comportamentale rispettato:
+- Nessun trigger → `grep` non trova nulla → exit 0 silenzioso, stderr vuoto, nessun file, nessun commit. ✓
+- Trigger + jq disponibile → comportamento attuale invariato. ✓  
+- Trigger + jq assente → warning su stderr ("jq non trovato — dipendenza mancante, feature scrivi rep inerte"), exit 0, nessun file scritto, nessun commit. ✓ **NUOVO**
 
-## MODIFICHE APPLICATE A stato_progetto.md
+Nota tecnica: impossibile nascondere jq da PATH rimuovendo directory — su questo sistema `/bin` è symlink a `/usr/bin`, quindi jq, bash, grep, sed sono nella stessa directory. Usato `jq --version` (functional check) anziché `command -v jq` (presence check) per permettere il mock nel test via fake jq eseguibile (exit 1). Il revisore ha approvato il trade-off (review #56).
 
-**(a)** R-ci-hooks: `227 righe` → `357 righe`; lista test aggiornata a T-hook-a/b/c/d/e/f/g/**h**.
+Stop gate conforme: nessun file oltre scrivi_rep.sh toccato in questa fetta.
 
-**(b)** R-ci-hooks: aggiunta riga `**Stato (2026-07-18)**` — MITIGATO SU BRANCH, NON CHIUSO. CI esegue test hook da commit `1ed3524` (run `29591105016` ✅, poi `29592358732` ✅ su HEAD `f6d7a62`). Su main il gap resta fino al merge della PR.
+**(b) Commento riga 3**
 
-**(c)** Guard SessionEnd: `"Fetta 2 completata. CI pendente."` → `"PR #20 su main (fbf8246, CI run 29487631549 ✅)."`
+`# (incl. auto-push su main) il 2026-06-13.` → `# (pusha sul branch corrente) il 2026-06-13.`
 
-**(d)** Riserve hook #52–#54: entrambe RISOLTE.
-  - (a) pattern fragile → RISOLTA in `f6d7a62` (forma atomica)
-  - (b) test guard mancante su `scrivi_rep.sh` → RISOLTA in `721ef9f` (T-hook-h). Confermato verdetto #55.
-
-**(e)** Lista CI su main: aggiunto `PR #22 merge 6ee5c85 (2026-07-18)`.
-
-**(f)** NUOVO FINDING 🔴 **R-hook-jq**: `scrivi_rep.sh` invoca `jq` con `2>/dev/null` che sopprime anche "command not found". Feature "scrivi rep" INERTE IN SILENZIO su macchine senza jq. Fix DEFERITO.
-
-**(g)** NUOVO FINDING 🟡 **R-ci-summary** (riserva #55(2), cosmetica): hook suite non appare nel Job Summary CI. Gate corretto, manca visibilità. Non bloccante.
-
-**(h)** Nota 7 WSL: STANTIA → stato reale 2026-07-17/18: venv ricreato (Python 3.12.3 ≠ 3.11), solo pytest installato, jq assente fino al 2026-07-17, passphrase SSH senza agent = push hook inerte.
-
-**(i)** Nuova nota Debito Codespace.
-
-**(j)** Istituzione §C: `54 review` → `55 review`; `ultima #54` → `ultima #55 (2026-07-18, APPROVATO CON RISERVE)`. Nota incoerenza data post-mezzanotte (sessione su commit 2026-07-17, riga porta data 2026-07-18).
+Stantio dal main-lock (2026-07-09): l'hook pusha sul branch corrente, mai su main.
 
 ---
 
-## REVISORE
+### FETTA 2 — T-hook-i — FATTA
 
-**NON INVOCATO** — task doc-only (solo `reports/` e `reports/stato_progetto.md`). CLAUDE.md §3: commit che toccano esclusivamente reports/*.md e .claude/agents/memoria_revisore.md non richiedono review.
+**Precondizione detached-HEAD verificata prima di scrivere FETTA 3:**  
+Il guard in `scrivi_rep.sh` riga 55: `if ! _cur_branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || [ "$_cur_branch" = "main" ]`. In bash, l'exit status di un'assegnazione propaga dall'exit status del command substitution interno: `git symbolic-ref` esce non-zero su HEAD detached → assegnazione non-zero → `!` → condizione vera → guard attivo. Verificato empiricamente. Guard COPRE detached-HEAD → T-hook-j va scritto.
+
+**T-hook-i:** repo temp, branch feature/i, transcript con "scrivi rep", fake jq (eseguibile, exit 1) preposto al PATH.  
+Asserzioni: exit 0 ✓ · stderr non vuoto e cita "jq"/"dipendenza" ✓ · `ultima_risposta.md` NON scritto ✓ · 0 commit nuovi ✓
 
 ---
 
-## ANOMALIE RISCONTRATE
+### FETTA 3 — T-hook-j — FATTA
 
-- **Push bloccato**: SSH passphrase senza ssh-agent → push non completabile da Claude Code (hook non-interattivo). Richiede azione manuale. Documentato nella nota 7 WSL appena aggiornata.
-- **git fetch fallito** (SSH): `origin/main` locale potenzialmente stale. Il merge-base calcolato (`6ee5c85`) coincide con il merge di PR #22 — coerente con lo stato del branch.
+**T-hook-j:** repo temp, checkout hash (HEAD detached), transcript con "scrivi rep", jq reale disponibile.  
+Asserzioni: exit 0 ✓ · warning su stderr cita "detach"/"main-lock" ✓ · 0 commit nuovi ✓
+
+Nota: con jq disponibile e trigger presente, `ultima_risposta.md` VIENE scritto (step prima del guard branch). Il test asserisce solo sull'assenza di commit, allineato al contratto del guard.
+
+---
+
+## Verifica
+
+```
+source venv/bin/activate && python -m pytest tests/test_unit_hooks.py -v
+```
+
+```
+tests/test_unit_hooks.py::TestSessionEndGuard::test_hook_a_main_no_commit        PASSED
+tests/test_unit_hooks.py::TestSessionEndGuard::test_hook_b_feature_branch_commits PASSED
+tests/test_unit_hooks.py::TestSessionEndGuard::test_hook_c_detached_head_no_commit PASSED
+tests/test_unit_hooks.py::TestSessionEndPush::test_hook_d_push_to_feature_branch_not_main PASSED
+tests/test_unit_hooks.py::TestSessionEndPush::test_hook_e_push_failure_warns_and_exits_zero PASSED
+tests/test_unit_hooks.py::TestSessionEndAddRobust::test_hook_f_add_without_gas_history PASSED
+tests/test_unit_hooks.py::TestScriviRepPush::test_hook_g_push_to_feature_branch_not_main PASSED
+tests/test_unit_hooks.py::TestScriviRepPush::test_hook_h_main_no_commit           PASSED
+tests/test_unit_hooks.py::TestScriviRepJq::test_hook_i_no_jq_warns_and_exits_zero PASSED
+tests/test_unit_hooks.py::TestScriviRepJq::test_hook_j_detached_head_no_commit    PASSED
+10 passed in 2.17s
+```
+
+**10/10 PASS — nessun rosso.**
+
+---
+
+## Verdetto revisore (verbatim, review #56)
+
+```
+#56 — 2026-07-18 — APPROVATO — quando il PATH non si può manipolare nei test
+senza rompere dipendenze di sistema (tool nella stessa dir di bash/grep),
+usare functional check (`tool --version`) + fake eseguibile (exit 1) invece
+di presence check (`command -v`): permette il mock controllato senza effetti
+collaterali su altri tool.
+```
+
+---
+
+## Diff
+
+**`.claude/hooks/scrivi_rep.sh`** — +12 righe, -1 riga (TP extraction via sed, grep pre-filter, jq functional check, commento corretto)  
+**`tests/test_unit_hooks.py`** — +103 righe (classe TestScriviRepJq con T-hook-i e T-hook-j)
+
+Files toccati: 2/2 in scope. Nessun file fuori scope.
+
+---
+
+## Stop gate finale
+
+- ci.yml: NON toccato ✓  
+- session_end.sh: NON toccato ✓  
+- gas.py / brains/ / modules/: NON toccati ✓
