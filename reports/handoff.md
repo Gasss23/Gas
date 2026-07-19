@@ -1,33 +1,37 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-19 — DOC: chiusura flag #1 R-hook-jq + debito Codespace
+**Sessione:** 2026-07-19 — R-crm-1b Fetta 2: idempotenza diario rileva_duplicati_email
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **PR #26 self-merge** — doc-only, CI `29666180480` ✅ SUCCESS su `docs/stato-merge-pr25`. Pronta per merge.
+1. **PR #27 self-merge** — `fix/crm-idemp-diario` su main. CI ✅ SUCCESS su entrambi i commit di sessione. URL: https://github.com/Gasss23/Gas/pull/27
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **F0 — Bonifica Codespace**: `FATTA` (azione umana esterna)  
-  Codespace era dirty su `fix/ci-hook-tests` (stash ref, sessione interrotta). Branch remoto già mergiato in PR #23 (`2f1e015`) → dirt solo locale al Codespace, cruft. Operatore ha eseguito `gh codespace delete`: stash ref e branch rimossi con l'ambiente. Documentato in edit (2d) di `stato_progetto.md`. Nessuna azione agente sul repo.
+- **Fetta 2 — idempotenza diario rileva_duplicati_email**: `FATTA` ✅
+  Token stabile `[k=<email>|<id_lo>-<id_hi>]` embedded nella descrizione; pre-check
+  SELECT prima di ogni `append_diario`; FAIL-OPEN §9 su degrado; return invariato.
+  Docstring aggiornata (riserva revisore #57 chiusa in-session). Test T57h/i/j.
+  Suite: **247 PASS, 0 FAIL**.
 
-- **F1 — Verifica CI run `29664233791`**: `FATTA`  
-  `gh run view 29664233791` → conclusion SUCCESS, step "Run hook suite (pytest, zero token LLM)" ✓. Gate bloccante superato.
-
-- **F2 — Edit `reports/stato_progetto.md`**: `FATTA`  
-  4 edit verbatim applicati: (2a) header aggiornato, (2b) hook suite con conferma CI, (2c) blocco R-hook-jq riscritto con Flag #1 CHIUSO + Flag #2 registrato, (2d) debito Codespace → ✅ CHIUSO. STOP gate rispettato: solo `reports/stato_progetto.md` toccato.
+- **Fetta 3 — telefono**: `DEFERITA — fuori scope di questo task (STOP gate operatore)`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/stato_progetto.md | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ modules/memory/store.py            |  41 +++++++++--
+ reports/handoff.md                 |  93 +++++++++++++++--------
+ reports/stato_progetto.md          |   6 +-
+ reports/ultimo_report.md           | 146 +++++++++++++++++++++++--------------
+ tests/test_unit_kernel.py          |  79 ++++++++++++++++++++
+ 6 files changed, 269 insertions(+), 97 deletions(-)
 ```
 
 ---
@@ -35,40 +39,88 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-289807c docs(stato): chiude flag #1 R-hook-jq e debito Codespace
-877c7b9 docs(stato): registra merge PR #25 su main (c609e31, CI 29664233791)
+63f1f5b docs(stato): R-crm-1b fetta 2 completata — PR #27 in CI, handoff aggiornato
+22ea680 fix(crm): idempotenza diario in rileva_duplicati_email (R-crm-1b fetta 2)
 ```
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §4 VERDETTO DEL REVISORE (INTEGRALE — review #57)
 
-Nessun diff motore — task doc-only (`reports/stato_progetto.md` unico file toccato).
-Revisore **non invocato** (CLAUDE.md sez.3: commit di soli reports/doc non richiedono review).
+> **Verdetto: APPROVATO CON RISERVE**
+>
+> **Correttezza tecnica — store.py**
+> - Il token stabile `[k=<email_norm>|<id_lo>-<id_hi>]` è deterministico: `min/max`
+>   sugli id garantisce lo stesso token indipendentemente dall'ordine di iterazione.
+> - L'escaping LIKE è corretto. I caratteri `[`, `]` e `|` nel token non sono
+>   metacaratteri LIKE in SQLite: sono letterali.
+> - Il pre-check usa `with self._connect()` in modo coerente con il resto del codebase.
+> - `append_diario` ha il proprio `try/except` con log e `return None`: il FAIL-OPEN
+>   del pre-check non può produrre crash a valle.
+> - L'immutabilità del diario (§6) è preservata: il pre-check è sola lettura;
+>   `append_diario` resta l'unico ingresso di scrittura.
+> - FAIL-SAFE §9: `except (sqlite3.Error, OSError)` logga su `gas_debug.log` con
+>   path DB e messaggio, poi FAIL-OPEN. Corretto a due livelli.
+> - Il return di `coppie` è invariato: la funzione segnala sempre tutte le coppie
+>   trovate indipendentemente dallo stato del diario.
+>
+> **Correttezza tecnica — test**
+> - T57h (caso base): morde il buco originale e verifica che il return non sia soppresso.
+> - T57i (coppie progressive): testa il caso misto "alcune già loggiate, altre nuove".
+> - T57j (fail-open): monkey-patch legittimo su metodo di istanza, nessuna violazione §5.
+>   La connessione droppata copre il ramo `except` del pre-check e verifica che
+>   `append_diario` venga comunque chiamato.
+> - Nessun raw history slicing, nessuna tool simulation (Wall of Shame §5 pulito).
+> - Guardrail critici: nessuno toccato.
+>
+> **Riserva 1 — docstring di `rileva_duplicati_email` non aggiornata:**
+> Diceva ancora "scrive una riga append-only nel diario" senza menzionare l'idempotenza.
+> Da aggiornare nella prossima occasione utile, senza necessità di re-review.
+>
+> Il commit può procedere.
+
+**Riserva chiusa in-session:** docstring aggiornata prima del commit.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py` / `brains/` / `modules/` / `tests/`. Nessun delta test.
+Suite prima (main `d9651af`): 220 PASS, 0 FAIL. Suite dopo: **247 PASS, 0 FAIL**.
+
+```
+=== RIEPILOGO: 247 PASS, 0 FAIL ===
+```
+
+| Test | Descrizione | Esito |
+|------|-------------|-------|
+| T57h | doppia invocazione → 1 riga diario, 2ª call ritorna coppia | ✅ PASS |
+| T57i | terza scheda → 2 nuove coppie 1 volta, originale non ri-appesa | ✅ PASS |
+| T57j | fail-open (DROP TABLE diario) → append tentato, no crash | ✅ PASS |
+| T57a-g | regressione esistente | ✅ PASS |
+| T58/T59 | regressione esistente | ✅ PASS |
 
 ---
 
 ## §6 STATO CI
 
-Output `gh run list -L 3 --repo Gasss23/Gas`:
-
 ```
-completed	success	docs(stato): chiude flag #1 R-hook-jq e debito Codespace	CI	docs/stato-merge-pr25	push	29666180480	43s	2026-07-18T23:59:43Z
-completed	success	docs(stato): registra merge PR #25 su main (c609e31, CI 29664233791)	CI	docs/stato-merge-pr25	push	29664469453	41s	2026-07-18T23:00:49Z
-completed	success	Merge pull request #25 from Gasss23/fix/hook-jq-failloud	CI	docs/stato-merge-pr25	push	29664439555	47s	2026-07-18T23:00:00Z
+completed  success  docs(stato): R-crm-1b fetta 2 completata — PR #27 in CI, handoff aggi…  CI  fix/crm-idemp-diario  push  29694108571  48s  2026-07-19T16:03:57Z
+completed  success  fix(crm): idempotenza diario in rileva_duplicati_email (R-crm-1b fett…  CI  fix/crm-idemp-diario  push  29693950202  43s  2026-07-19T15:59:37Z
+completed  success  Merge pull request #26 from Gasss23/docs/stato-merge-pr25               CI  main                  push  29666650626  54s  2026-07-19T00:15:22Z
 ```
 
-**Run CI sul commit di sessione (`289807c`):** run ID `29666180480` — **SUCCESS** ✅  
-**Run CI gate F1 verificato (`c609e31` su main):** run ID `29664233791` — **SUCCESS** ✅, step "Run hook suite" ✓
+Entrambi i commit di sessione (`22ea680`, `63f1f5b`) hanno CI ✅ SUCCESS su `fix/crm-idemp-diario`.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **Flag #2 — micro-finding di processo (non bloccante):** revisore #56 ha restituito solo la riga di memoria (`#56 — APPROVATO — …`), nessuna analisi del diff. Il gate motore si applicava (diff toccava `tests/`) ma ha prodotto un verdetto degenere: il merito è stato validato per altra via (ispezione diretta su main + CI reale). Stessa classe di PR #14/#18. Già registrato in `stato_progetto.md`. Nessuna azione impegnata.
+Riserva revisore #57 **chiusa in-session** (docstring aggiornata prima del commit). Nessuna riserva aperta da questa sessione.
+
+---
+
+## §8 STATO R-crm-1b
+
+- ✅ Fetta email + merge umano (review #47+#48, 2026-07-14)
+- ✅ **Fetta 2 — idempotenza diario** (review #57, 2026-07-19, PR #27 — in attesa di self-merge)
+- 🟡 Fetta 3 — telefono: prossima sessione
