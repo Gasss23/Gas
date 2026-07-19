@@ -1,22 +1,24 @@
-# Diff sessione — 2026-07-19 (DOC: chiusura flag #1 R-hook-jq + debito Codespace)
+# Diff sessione — 2026-07-19 — R-crm-1b Fetta 2: idempotenza diario rileva_duplicati_email
 
 > Fotografia della sessione corrente. Si riscrive a ogni sessione; la storia completa sta in git.
 
-## File toccati
+## File toccati (`git diff --stat d9651af..HEAD`)
 
 ```
- reports/stato_progetto.md | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ modules/memory/store.py            |  41 +++++++++--
+ reports/handoff.md                 |  93 +++++++++++++++--------
+ reports/stato_progetto.md          |   6 +-
+ reports/ultimo_report.md           | 146 +++++++++++++++++++++++--------------
+ tests/test_unit_kernel.py          |  79 ++++++++++++++++++++
+ 6 files changed, 269 insertions(+), 97 deletions(-)
 ```
 
 ## Dettaglio per file
 
-- **`reports/stato_progetto.md`** — 4 edit doc-only su branch `docs/stato-merge-pr25`:
-  - (2a) Header "Ultimo aggiornamento": aggiunto "R-hook-jq CHIUSO, flag #1 per ispezione" per riflettere il completamento verificato via CI.
-  - (2b) Riga hook suite: aggiunta conferma "confermato da CI run 29664233791 su main" per ancorare il verde locale a un artefatto CI reale.
-  - (2c) Voce R-hook-jq CHIUSO: sostituita con blocco completo (Flag #1 CHIUSO per ispezione exit-status-based + merito coperto da CI reale + Flag #2 micro-finding di processo revisore degenere).
-  - (2d) Voce "ℹ️ Debito Codespace": convertita in "✅ Debito Codespace CHIUSO — Codespace deprecato" a documentare la cancellazione dell'ambiente da parte dell'operatore.
-
-## Task non in scope (STOP gate rispettato)
-
-Nessun file fuori `reports/` toccato. CLAUDE.md, roadmap.md, ci.yml, motore: invariati.
+- **modules/memory/store.py** — idempotenza `rileva_duplicati_email()`: token stabile `[k=<email>|<id_lo>-<id_hi>]` nella descrizione + pre-check SELECT LIKE prima di ogni `append_diario` + FAIL-OPEN §9 su degrado + docstring aggiornata.
+- **tests/test_unit_kernel.py** — aggiunti T57h (doppia invocazione), T57i (terza scheda con stessa email), T57j (fail-open DROP TABLE diario). Suite: 247 PASS, 0 FAIL.
+- **.claude/agents/memoria_revisore.md** — aggiornato dal revisore #57 (riga contatore).
+- **reports/ultimo_report.md** — report R-crm-1b fetta 2 con verdetto revisore #57 integrale.
+- **reports/stato_progetto.md** — header, contatore review (#57), finding R-crm-1b aggiornati.
+- **reports/handoff.md** — dossier sessione con CI reale (run `29693950202` e `29694108571` ✅ SUCCESS).
