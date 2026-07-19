@@ -792,9 +792,11 @@ class MemoryStore:
         la stessa email (confrontando `chiave_norm` e il campo `contatto` di ciascuna,
         normalizzati con normalizza_chiave). Match SOLO su email (pattern '@'+dominio);
         nomi e testo generico non generano segnali. Per ogni coppia trovata scrive
-        una riga append-only nel diario (tipo 'sospetto_duplicato_email'): questa è
-        la segnalazione persistente per l'operatore. Ritorna la lista delle coppie
-        (dizionari con chiave_a/id_a/chiave_b/id_b/email). [] in degrado (§9)."""
+        al più UNA riga nel diario (tipo 'sospetto_duplicato_email', idempotente:
+        token stabile '[k=<email>|<id_lo>-<id_hi>]' nella descrizione; pre-check
+        SELECT prima di ogni append; FAIL-OPEN §9 se il pre-check degrada). Ritorna
+        la lista COMPLETA delle coppie correnti (mai soppressa dal pre-check).
+        [] in degrado (§9)."""
         if not self.available:
             return []
         try:
@@ -825,16 +827,39 @@ class MemoryStore:
             for i in range(len(schede)):
                 for j in range(i + 1, len(schede)):
                     a, b = schede[i], schede[j]
+                    id_lo, id_hi = min(a["id"], b["id"]), max(a["id"], b["id"])
+                    idem_token = f"[k={email}|{id_lo}-{id_hi}]"
+                    descr = (
+                        f"sospetto duplicato: {a['chiave']!r} ~ {b['chiave']!r}"
+                        f" (email {email}) {idem_token}"
+                    )
                     coppie.append({
                         "chiave_a": a["chiave"], "id_a": a["id"],
                         "chiave_b": b["chiave"], "id_b": b["id"],
                         "email": email,
                     })
-                    self.append_diario(
-                        "sospetto_duplicato_email",
-                        f"sospetto duplicato: {a['chiave']!r} ~ {b['chiave']!r}"
-                        f" (email {email})",
-                    )
+                    # Idempotency pre-check: skip append if this pair already logged.
+                    _do_append = True
+                    try:
+                        _pat = (
+                            "%" + idem_token.replace("%", r"\%").replace("_", r"\_") + "%"
+                        )
+                        with self._connect() as _con:
+                            _row = _con.execute(
+                                "SELECT 1 FROM diario WHERE tipo=?"
+                                " AND descrizione LIKE ? ESCAPE '\\' LIMIT 1",
+                                ("sospetto_duplicato_email", _pat),
+                            ).fetchone()
+                        if _row is not None:
+                            _do_append = False
+                    except (sqlite3.Error, OSError) as _e:
+                        log.warning(
+                            "rileva_duplicati_email: pre-check idempotenza fallito"
+                            " (%s): %s", self.db_path, _e,
+                        )
+                        # FAIL-OPEN §9: append comunque
+                    if _do_append:
+                        self.append_diario("sospetto_duplicato_email", descr)
         return coppie
 
     # ------------------------------------------------------------- integrità

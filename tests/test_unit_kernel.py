@@ -3126,6 +3126,85 @@ check("T57g check_dups_cmd CLI: OK senza duplicati, WARN con duplicati",
       and _r57_warn == 0 and "WARN" in _out_warn and "giulia@ex.com" in _out_warn,
       f"ok={_r57_ok}/{_out_ok.strip()[:30]!r} warn={_r57_warn}/{_out_warn.strip()[:40]!r}")
 
+# ---------- T57h/i/j: idempotenza diario rileva_duplicati_email (R-crm-1b Fetta 2) ----------
+print("\n--- T57h/i/j: idempotenza diario rileva_duplicati_email ---")
+
+# T57h — doppia invocazione su stessa coppia → ESATTAMENTE 1 riga sospetto nel diario
+# dopo entrambe le call; la 2ª call RITORNA ancora la coppia (return non cambia).
+m57h = mem_tmp()
+m57h.upsert_contatto("alice@ex.com")
+m57h.upsert_contatto("alice rossi", contatto="alice@ex.com")
+coppie57h_1 = m57h.rileva_duplicati_email()
+d57h_1 = [r for r in m57h.diario_recente(100) if r["tipo"] == "sospetto_duplicato_email"]
+coppie57h_2 = m57h.rileva_duplicati_email()
+d57h_2 = [r for r in m57h.diario_recente(100) if r["tipo"] == "sospetto_duplicato_email"]
+check("T57h doppia invocazione: 1 riga diario dopo 1ª call",
+      len(d57h_1) == 1,
+      f"diario_dopo_1={len(d57h_1)}")
+check("T57h doppia invocazione: ancora 1 riga diario dopo 2ª call (no duplicato)",
+      len(d57h_2) == 1,
+      f"diario_dopo_2={len(d57h_2)}")
+check("T57h 2ª call ritorna ancora la coppia",
+      len(coppie57h_1) == 1 and len(coppie57h_2) == 1,
+      f"coppie_1={len(coppie57h_1)} coppie_2={len(coppie57h_2)}")
+
+# T57i — terza scheda con stessa email aggiunta DOPO la 1ª detection:
+# le 2 nuove coppie vengono loggiate UNA volta; la coppia originale non è ri-appesa.
+# 3ª invocazione: nessuna nuova riga (tutte e 3 le coppie già nel diario).
+m57i = mem_tmp()
+m57i.upsert_contatto("bob@ex.com")
+m57i.upsert_contatto("bob rossi", contatto="bob@ex.com")
+coppie57i_1 = m57i.rileva_duplicati_email()          # 1 coppia
+d57i_1 = [r for r in m57i.diario_recente(100) if r["tipo"] == "sospetto_duplicato_email"]
+m57i.upsert_contatto("roberto bianchi", contatto="bob@ex.com")
+coppie57i_2 = m57i.rileva_duplicati_email()          # 3 coppie, 2 nuove
+d57i_2 = [r for r in m57i.diario_recente(100) if r["tipo"] == "sospetto_duplicato_email"]
+coppie57i_3 = m57i.rileva_duplicati_email()          # 3 coppie, nessuna nuova
+d57i_3 = [r for r in m57i.diario_recente(100) if r["tipo"] == "sospetto_duplicato_email"]
+check("T57i 1ª call: 1 coppia, 1 riga diario",
+      len(coppie57i_1) == 1 and len(d57i_1) == 1,
+      f"coppie_1={len(coppie57i_1)} d_1={len(d57i_1)}")
+check("T57i 2ª call (dopo 3ª scheda): 3 coppie, 3 righe diario (2 nuove)",
+      len(coppie57i_2) == 3 and len(d57i_2) == 3,
+      f"coppie_2={len(coppie57i_2)} d_2={len(d57i_2)}")
+check("T57i 3ª call: 3 coppie ritornate, diario invariato (0 nuove righe)",
+      len(coppie57i_3) == 3 and len(d57i_3) == 3,
+      f"coppie_3={len(coppie57i_3)} d_3={len(d57i_3)}")
+
+# T57j — fail-open: pre-check diario fallisce → append viene TENTATO comunque, nessun crash.
+# Simula degrado droppando la tabella diario DOPO la creazione dei contatti:
+# il SELECT contatti (in testa alla funzione) avviene su tabella intatta;
+# il pre-check SELECT diario e il successivo INSERT diario falliscono entrambi (warning).
+# Invarianti: nessun crash + coppia ritornata + append_diario chiamato.
+import sqlite3 as _sqlite3_57j
+m57j = mem_tmp()
+m57j.upsert_contatto("helen@ex.com")
+m57j.upsert_contatto("helen rossi", contatto="helen@ex.com")
+with _sqlite3_57j.connect(str(m57j.db_path)) as _c57j:
+    _c57j.execute("DROP TABLE diario")
+    _c57j.commit()
+_append_called_57j = [False]
+_real_append_57j = m57j.append_diario
+def _tracked_append_57j(*args, **kwargs):
+    _append_called_57j[0] = True
+    return _real_append_57j(*args, **kwargs)
+m57j.append_diario = _tracked_append_57j
+_no_crash_57j = True
+_coppie_57j: list = []
+try:
+    _coppie_57j = m57j.rileva_duplicati_email()
+except Exception:
+    _no_crash_57j = False
+check("T57j fail-open: pre-check fallisce → nessun crash",
+      _no_crash_57j,
+      f"crash={not _no_crash_57j}")
+check("T57j fail-open: coppia ritornata nonostante degrado diario",
+      len(_coppie_57j) == 1,
+      f"coppie={len(_coppie_57j)}")
+check("T57j fail-open: append_diario chiamato (fail-open, non soppresso)",
+      _append_called_57j[0],
+      f"append_called={_append_called_57j[0]}")
+
 # ---------- T58: merge-contacts CLI umano (R-crm-1b Fetta 1) ----------
 # Blinda il comando `gas merge-contacts` e la rete di sicurezza (snapshot diario
 # atomico). ZERO token LLM. La funzione unisci_contatti_con_snapshot è il cuore.
