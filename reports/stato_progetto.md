@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-19** (R-hook-jq CHIUSO, flag #1 per ispezione: merge PR #25 → `c609e31` su main, CI run `29664233791` ✅ SUCCESS)
+> Ultimo aggiornamento: **2026-07-19** (R-crm-1b fetta 2 idempotenza diario: PR #27 fix/crm-idemp-diario in CI)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **56 review** completate (ultima #56, 2026-07-19, R-hook-jq fix/hook-jq-failloud, APPROVATO). Suite (locale WSL bwrap, sonda 2026-07-03): **220 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys live; T13a-T13e bwrap tutti ✅). Hook suite: **10 PASS** (T-hook-a…j). (confermato da CI run 29664233791 su main). CI run 29482410951 (2026-07-16, feature/f6-history-atomica): **241 PASS** ✅.
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **57 review** completate (ultima #57, 2026-07-19, R-crm-1b fetta 2, APPROVATO CON RISERVE — riserva docstring chiusa in-session). Suite WSL locale (2026-07-19, fix/crm-idemp-diario): **247 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys; T57h/i/j nuovi ✅). Hook suite: **10 PASS**. CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #25 merge `c609e31` (2026-07-19) · PR #24 `fd3d47a` (2026-07-18) · PR #23 `2f1e015` (2026-07-18).
 CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18) · PR #22 merge `6ee5c85` (2026-07-18).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -50,7 +50,7 @@ Componenti attive:
 
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
-- 🟡 **R-crm-1b** — Fetta email ✅ + merge umano ✅ (review #47+#48, 2026-07-14): `rileva_duplicati_email()` + CLI `gas check-dups` + `gas merge-contacts <da> <verso>` (preview, conferma y/N, snapshot diario atomico pre-merge, fail-safe §9). Hint `check_dups_cmd` corretto. Resta 🟡 per: idempotenza diario (fetta 2), telefono (fetta 3).
+- 🟡 **R-crm-1b** — Fetta email ✅ + merge umano ✅ (review #47+#48, 2026-07-14) + **fetta 2 idempotenza diario ✅** (review #57, 2026-07-19, PR #27 in CI): token stabile `[k=<email>|<id_lo>-<id_hi>]` embedded nella descrizione; pre-check SELECT prima di ogni `append_diario`; FAIL-OPEN §9; T57h/i/j. Resta 🟡 per: telefono (fetta 3).
 - 🟡 **R-ci-openrouter** — T9a fragile se OPENROUTER_API_KEY è presente: il test la poppava prima del turno T9 ma la tolleranza alla presenza di OPENROUTER non è garantita formalmente (revisore CI-4, 2026-06-24).
 - ✅ **R-ci-hooks CHIUSO** (2026-07-18, merge `2f1e015` PR #23, CI run `29645320495` ✅ SUCCESS su main): `tests/test_unit_hooks.py` ora eseguito da CI. Storia del finding sotto. // ex-🟡 — `tests/test_unit_hooks.py` NON eseguito da CI (sonda 2026-07-17): il job `unit-suite` esegue SOLO `python tests/test_unit_kernel.py` (ci.yml riga 83). Il file `test_unit_hooks.py` esiste in `tests/` (T-hook-a/b/c/d/e/f/g/h, 357 righe) ma non compare in nessun comando del workflow. Il verde copre `tests/test_unit_kernel.py` meno gli SKIP (T9a/T9c su assenza GEMINI/GROQ API key), e NON copre `tests/test_unit_hooks.py`.
   **Implicazione**: I finding hook chiusi con PR #20 (fbf8246) e PR #21 (8f9cf7b) citano "CI run ✅ SUCCESS" come evidenza. Quel verde non ha eseguito alcun test degli hook: `tests/test_unit_hooks.py` non è nel workflow. L'unica evidenza che T-hook-a…g passano è un `pytest tests/test_unit_hooks.py` eseguito in locale e riportato dall'agente — non un artefatto CI. Nessun difetto accertato negli hook; ma la citazione del verde CI accanto a un fix di hook implica una validazione che non è avvenuta. Finché R-ci-hooks è aperto, il verde CI non è evidenza valida per modifiche a `.claude/hooks/`.
