@@ -7,7 +7,7 @@
 | File | Cosa è cambiato | Perché |
 |------|----------------|--------|
 | `reports/stato_progetto.md` | §8: IP → `<VPS_IP>`, utente `gas` → `<VPS_USER>`, dropin → `<SSH_DROPIN>`, key type → `<KEY_TYPE>`; aggiunta riga ⚠️ SCRUB in cima a item §8 | Rimozione IP e superficie SSH dai file HEAD (MITIGATO) |
-| `reports/runbook_s1_hardening.md` | 8 occorrenze di `204.168.251.92` → `<VPS_IP>` | IP esposto nel runbook eseguito manualmente in sessione S1 |
+| `reports/runbook_s1_hardening.md` | 8 occorrenze del valore IP del VPS → `<VPS_IP>` | IP esposto nel runbook eseguito manualmente in sessione S1 |
 | `reports/roadmap.md` | Voce 0 aggiunta in cima a PROSSIMI PASSI: 🔒 Privatizzare repo ALTA URGENZA | Tracciare l'azione necessaria a chiudere definitivamente la questione IP |
 | `reports/ultimo_report.md` | Riscritto con esito task e decisioni umane richieste | Reporting canonico di fine task |
 | `reports/handoff.md` | Riscritto con dossier sessione completo | Dossier autonomo per revisione esterna |

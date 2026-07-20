@@ -15,10 +15,10 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **§0 — Base fresca**: `FATTA` — fetch origin, branch `docs/scrub-ip-ssh` da `origin/main` (`e7acf75`). Guard `git log -1 --oneline origin/main` OK.
-- **§1 — Scrub IP/SSH in `reports/stato_progetto.md`**: `FATTA` — IP `204.168.251.92` → `<VPS_IP>`, utente `gas` → `<VPS_USER>`, dropin `99-hardening.conf` → `<SSH_DROPIN>`, key type `ed25519` → `<KEY_TYPE>`. Aggiunta riga ⚠️ SCRUB in cima a item §8.
+- **§1 — Scrub IP/SSH in `reports/stato_progetto.md`**: `FATTA` — valore IP del VPS → `<VPS_IP>`, utente `gas` → `<VPS_USER>`, dropin `99-hardening.conf` → `<SSH_DROPIN>`, key type `ed25519` → `<KEY_TYPE>`. Aggiunta riga ⚠️ SCRUB in cima a item §8.
 - **§1 — Scrub IP in `reports/runbook_s1_hardening.md`**: `FATTA` — 8 occorrenze sostituite con `<VPS_IP>` via `replace_all`.
 - **§1 — Scrub IP in `CLAUDE.md`**: `SALTATA — IP assente` (grep: 0 occorrenze).
-- **§1 — Grep post-scrub su tutti i file tracciati**: `FATTA` — 0 occorrenze residue di `204.168.251.92`.
+- **§1 — Grep post-scrub su tutti i file tracciati**: `FATTA` — 0 occorrenze residue del valore IP del VPS.
 - **§2 — Item roadmap privatizzazione**: `FATTA` — voce 0 aggiunta in cima a `### 🟡 PROSSIMI PASSI` in `reports/roadmap.md` con tag ALTA URGENZA, trigger, costo, dipendenza Pro, nota fork.
 - **§3 — Commit + push**: `FATTA` — commit `683cd08`, branch `docs/scrub-ip-ssh` su origin.
 
