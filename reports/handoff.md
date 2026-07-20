@@ -1,126 +1,82 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-19 — R-crm-1b Fetta 2: idempotenza diario rileva_duplicati_email
+**Sessione:** 2026-07-20 — doc-only: item "Secondo cervello personale (Jarvis cognitivo)" in roadmap
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **PR #27 self-merge** — `fix/crm-idemp-diario` su main. CI ✅ SUCCESS su entrambi i commit di sessione. URL: https://github.com/Gasss23/Gas/pull/27
+Nessuna.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 2 — idempotenza diario rileva_duplicati_email**: `FATTA` ✅
-  Token stabile `[k=<email>|<id_lo>-<id_hi>]` embedded nella descrizione; pre-check
-  SELECT prima di ogni `append_diario`; FAIL-OPEN §9 su degrado; return invariato.
-  Docstring aggiornata (riserva revisore #57 chiusa in-session). Test T57h/i/j.
-  Suite: **247 PASS, 0 FAIL**.
-
-- **Fetta 3 — telefono**: `DEFERITA — fuori scope di questo task (STOP gate operatore)`
+- **Fetta unica — inserimento verbatim item "🧬 Secondo cervello personale" in `reports/roadmap.md`, subito prima di `### 🅿️ PARK`**: `FATTA`
+  Commit `26bcbab`: 1 file, 50 inserzioni, 0 rimozioni (inserzione pura). PR #30 → CI verde → self-merge `23221a0` su main.
+- **Revisore**: `SALTATA — doc-only, nessun file motore (gate non applicabile, CLAUDE.md sez.3)`
+- **/fine-task (questo dossier)**: `FATTA` — commit doc successivo al merge, sul branch di sessione.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
+Range canonico `${BASE}..HEAD` al momento del /fine-task (BASE=`38882c88ba175d5ee25d198dbaf350fbd93222c5` = HEAD, PR già mergiata → range VUOTO):
+
 ```
- .claude/agents/memoria_revisore.md |   1 +
- modules/memory/store.py            |  41 +++++++++--
- reports/handoff.md                 |  93 +++++++++++++++--------
- reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           | 146 +++++++++++++++++++++++--------------
- tests/test_unit_kernel.py          |  79 ++++++++++++++++++++
- 6 files changed, 269 insertions(+), 97 deletions(-)
+(vuoto)
 ```
 
----
+Range REALE di sessione, fork da origin/main `6218f7e` → HEAD pre-/fine-task (etichetta esplicita, vedi anomalia 2 in ultimo_report.md):
+
+```
+ reports/roadmap.md         | 50 ++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultima_risposta.md | 19 +++++++++++++++++-
+ 2 files changed, 68 insertions(+), 1 deletion(-)
+```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
+Range canonico `${BASE}..HEAD`:
+
 ```
-63f1f5b docs(stato): R-crm-1b fetta 2 completata — PR #27 in CI, handoff aggiornato
-22ea680 fix(crm): idempotenza diario in rileva_duplicati_email (R-crm-1b fetta 2)
+(vuoto)
 ```
 
----
+Range REALE di sessione `6218f7e..HEAD` (pre-/fine-task):
 
-## §4 VERDETTO DEL REVISORE (INTEGRALE — review #57)
+```
+38882c8 chore(scrivi-rep): ultima risposta salvata
+26bcbab docs(roadmap): item Secondo cervello personale (Jarvis cognitivo)
+```
 
-> **Verdetto: APPROVATO CON RISERVE**
->
-> **Correttezza tecnica — store.py**
-> - Il token stabile `[k=<email_norm>|<id_lo>-<id_hi>]` è deterministico: `min/max`
->   sugli id garantisce lo stesso token indipendentemente dall'ordine di iterazione.
-> - L'escaping LIKE è corretto. I caratteri `[`, `]` e `|` nel token non sono
->   metacaratteri LIKE in SQLite: sono letterali.
-> - Il pre-check usa `with self._connect()` in modo coerente con il resto del codebase.
-> - `append_diario` ha il proprio `try/except` con log e `return None`: il FAIL-OPEN
->   del pre-check non può produrre crash a valle.
-> - L'immutabilità del diario (§6) è preservata: il pre-check è sola lettura;
->   `append_diario` resta l'unico ingresso di scrittura.
-> - FAIL-SAFE §9: `except (sqlite3.Error, OSError)` logga su `gas_debug.log` con
->   path DB e messaggio, poi FAIL-OPEN. Corretto a due livelli.
-> - Il return di `coppie` è invariato: la funzione segnala sempre tutte le coppie
->   trovate indipendentemente dallo stato del diario.
->
-> **Correttezza tecnica — test**
-> - T57h (caso base): morde il buco originale e verifica che il return non sia soppresso.
-> - T57i (coppie progressive): testa il caso misto "alcune già loggiate, altre nuove".
-> - T57j (fail-open): monkey-patch legittimo su metodo di istanza, nessuna violazione §5.
->   La connessione droppata copre il ramo `except` del pre-check e verifica che
->   `append_diario` venga comunque chiamato.
-> - Nessun raw history slicing, nessuna tool simulation (Wall of Shame §5 pulito).
-> - Guardrail critici: nessuno toccato.
->
-> **Riserva 1 — docstring di `rileva_duplicati_email` non aggiornata:**
-> Diceva ancora "scrive una riga append-only nel diario" senza menzionare l'idempotenza.
-> Da aggiornare nella prossima occasione utile, senza necessità di re-review.
->
-> Il commit può procedere.
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-**Riserva chiusa in-session:** docstring aggiornata prima del commit.
-
----
+Nessun diff motore, revisore non richiesto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Suite prima (main `d9651af`): 220 PASS, 0 FAIL. Suite dopo: **247 PASS, 0 FAIL**.
-
-```
-=== RIEPILOGO: 247 PASS, 0 FAIL ===
-```
-
-| Test | Descrizione | Esito |
-|------|-------------|-------|
-| T57h | doppia invocazione → 1 riga diario, 2ª call ritorna coppia | ✅ PASS |
-| T57i | terza scheda → 2 nuove coppie 1 volta, originale non ri-appesa | ✅ PASS |
-| T57j | fail-open (DROP TABLE diario) → append tentato, no crash | ✅ PASS |
-| T57a-g | regressione esistente | ✅ PASS |
-| T58/T59 | regressione esistente | ✅ PASS |
-
----
+Nessuna modifica a gas.py/tests/. La CI `unit-suite` sul head della PR è comunque SUCCESS (vedi §6).
 
 ## §6 STATO CI
 
+`gh` CLI assente in questo ambiente → `gh run list` non eseguibile. Esito verificato via GitHub MCP (`pull_request_read get_check_runs` su PR #30), output REALE:
+
 ```
-completed  success  docs(stato): R-crm-1b fetta 2 completata — PR #27 in CI, handoff aggi…  CI  fix/crm-idemp-diario  push  29694108571  48s  2026-07-19T16:03:57Z
-completed  success  fix(crm): idempotenza diario in rileva_duplicati_email (R-crm-1b fett…  CI  fix/crm-idemp-diario  push  29693950202  43s  2026-07-19T15:59:37Z
-completed  success  Merge pull request #26 from Gasss23/docs/stato-merge-pr25               CI  main                  push  29666650626  54s  2026-07-19T00:15:22Z
+{"total_count":1,"check_runs":[{"id":88371993484,"name":"unit-suite","status":"completed","conclusion":"success","html_url":"https://github.com/Gasss23/Gas/actions/runs/29748351419/job/88371993484","details_url":"https://github.com/Gasss23/Gas/actions/runs/29748351419/job/88371993484","started_at":"2026-07-20T13:55:28Z","completed_at":"2026-07-20T13:56:11Z"}]}
 ```
 
-Entrambi i commit di sessione (`22ea680`, `63f1f5b`) hanno CI ✅ SUCCESS su `fix/crm-idemp-diario`.
+Merge PR #30 eseguito DOPO questo SUCCESS. Output REALE del merge (MCP `merge_pull_request`):
 
----
+```
+{"sha":"23221a01a67cf14f2c7430c6e9370cfd2cf9ea8a","merged":true,"message":"Pull Request successfully merged"}
+```
+
+Nota: un secondo run (`29748275428`, evento push) è partito sullo stesso head; fa fede il check run della PR sopra.
 
 ## §7 RISERVE APERTE
 
-Riserva revisore #57 **chiusa in-session** (docstring aggiornata prima del commit). Nessuna riserva aperta da questa sessione.
+Nessuna riserva revisore (nessun commit motore). Finding operativi nuovi, registrati in ultimo_report.md:
 
----
-
-## §8 STATO R-crm-1b
-
-- ✅ Fetta email + merge umano (review #47+#48, 2026-07-14)
-- ✅ **Fetta 2 — idempotenza diario** (review #57, 2026-07-19, PR #27 — in attesa di self-merge)
-- 🟡 Fetta 3 — telefono: prossima sessione
+1. Poll CI via `grep '"conclusion"'` sul check-runs API dà falso positivo (`"conclusion": null` mentre il run è in corso) — testare il valore non-null, non la presenza del campo.
+2. L'hook `scrivi-rep` può accodare un commit auto al branch di PR prima del merge (qui `38882c8` dentro PR #30) — comportamento di feature autorizzata, ma da sapere quando si contano i commit di una PR.

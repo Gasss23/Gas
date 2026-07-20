@@ -1,24 +1,20 @@
-# Diff sessione — 2026-07-19 — R-crm-1b Fetta 2: idempotenza diario rileva_duplicati_email
+# Diff sessione — 2026-07-20 — doc-only: item "Secondo cervello personale (Jarvis cognitivo)"
 
 > Fotografia della sessione corrente. Si riscrive a ogni sessione; la storia completa sta in git.
 
-## File toccati (`git diff --stat d9651af..HEAD`)
+## File toccati (range reale di sessione `6218f7e..38882c8`, PR #30 mergiata in `23221a0`)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- modules/memory/store.py            |  41 +++++++++--
- reports/handoff.md                 |  93 +++++++++++++++--------
- reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           | 146 +++++++++++++++++++++++--------------
- tests/test_unit_kernel.py          |  79 ++++++++++++++++++++
- 6 files changed, 269 insertions(+), 97 deletions(-)
+ reports/roadmap.md         | 50 ++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultima_risposta.md | 19 +++++++++++++++++-
+ 2 files changed, 68 insertions(+), 1 deletion(-)
 ```
 
 ## Dettaglio per file
 
-- **modules/memory/store.py** — idempotenza `rileva_duplicati_email()`: token stabile `[k=<email>|<id_lo>-<id_hi>]` nella descrizione + pre-check SELECT LIKE prima di ogni `append_diario` + FAIL-OPEN §9 su degrado + docstring aggiornata.
-- **tests/test_unit_kernel.py** — aggiunti T57h (doppia invocazione), T57i (terza scheda con stessa email), T57j (fail-open DROP TABLE diario). Suite: 247 PASS, 0 FAIL.
-- **.claude/agents/memoria_revisore.md** — aggiornato dal revisore #57 (riga contatore).
-- **reports/ultimo_report.md** — report R-crm-1b fetta 2 con verdetto revisore #57 integrale.
-- **reports/stato_progetto.md** — header, contatore review (#57), finding R-crm-1b aggiornati.
-- **reports/handoff.md** — dossier sessione con CI reale (run `29693950202` e `29694108571` ✅ SUCCESS).
+- `reports/roadmap.md` — inserito verbatim l'item "🧬 Secondo cervello personale — Jarvis cognitivo" (blocco fornito dall'operatore) subito prima di `### 🅿️ PARK`; inserzione pura, 0 righe rimosse. Perché: registrare in roadmap l'obiettivo magazzino personale + clone cognitivo con framing onesto e caveat vincolanti (segmentazione memoria, privacy/trigger dati ×2, RAM VPS, confine autonomia).
+- `reports/ultima_risposta.md` — aggiornato automaticamente dall'hook Stop `scrivi_rep.sh` (commit `38882c8`, feature autorizzata di sync multi-device); non toccato a mano.
+
+## Post-merge (questo commit)
+
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — riscritti col rituale /fine-task; committati sul branch di sessione dopo il merge della PR #30.
