@@ -1,5 +1,5 @@
 # RUNBOOK — FASE 5 S1: Hardening SSH + Base VPS
-**Target:** Hetzner CX33, Helsinki, Ubuntu 24.04 — `root@204.168.251.92`  
+**Target:** Hetzner CX33, Helsinki, Ubuntu 24.04 — `root@<VPS_IP>`  
 **Revisione:** 2026-07-04 v3  
 **Eseguito manualmente dall'umano** in una sessione SSH con console Hetzner aperta.
 
@@ -348,9 +348,9 @@ cat /home/gas/.ssh/authorized_keys
 
 ```bash
 # Nuovo terminale locale
-ssh -i ~/.ssh/id_ed25519 gas@204.168.251.92
+ssh -i ~/.ssh/id_ed25519 gas@<VPS_IP>
 # oppure
-ssh -i ~/.ssh/id_rsa gas@204.168.251.92
+ssh -i ~/.ssh/id_rsa gas@<VPS_IP>
 ```
 
 Output atteso:
@@ -500,18 +500,18 @@ systemctl status ssh | grep -E "Active:"
 
 ```bash
 # Test 1 — login gas via key (deve funzionare)
-ssh -i ~/.ssh/id_ed25519 gas@204.168.251.92
+ssh -i ~/.ssh/id_ed25519 gas@<VPS_IP>
 whoami   # → gas
 
 # Test 2 — login root via SSH (deve fallire)
-ssh root@204.168.251.92
+ssh root@<VPS_IP>
 # atteso: Permission denied (publickey).
 
 # Test 3 — login con password (deve fallire)
 # IMPORTANTE: aggiungere -o PubkeyAuthentication=no, altrimenti il client tenta
 # la key prima della password e il rifiuto riporta "publickey" anche se la password
 # fosse ancora abilitata — il test sarebbe falsato.
-ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no gas@204.168.251.92
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no gas@<VPS_IP>
 # atteso: "Permission denied (password)." IMMEDIATO (nessuna prompt)
 # Se chiede la password → password auth ancora attiva → hardening NON applicato
 ```
@@ -575,13 +575,13 @@ sshd -T | grep -E "passwordauthentication|permitrootlogin|pubkeyauthentication"
 
 ```bash
 # Login root via SSH — deve fallire
-ssh root@204.168.251.92
+ssh root@<VPS_IP>
 # atteso: Permission denied (publickey).
 
 # Login gas con password — deve fallire
 # IMPORTANTE: -o PubkeyAuthentication=no obbliga il client a usare solo password;
 # senza questo flag il test è falsato (vedi nota passo 5f).
-ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no gas@204.168.251.92
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no gas@<VPS_IP>
 # atteso: "Permission denied (password)." IMMEDIATO (nessuna prompt)
 # Se chiede la password → password auth ancora attiva → hardening NON applicato
 ```

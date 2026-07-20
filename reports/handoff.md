@@ -1,82 +1,65 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-20 — doc-only: item "Secondo cervello personale (Jarvis cognitivo)" in roadmap
+**Sessione:** 2026-07-20 — scrub IP/SSH dai canonici + roadmap privatizzazione
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-Nessuna.
+1. **Aprire PR e mergare `docs/scrub-ip-ssh`** — doc-only, CI verde su entrambi i commit.
+2. **Verificare fork pubblici del repo** prima di privatizzare: se esistono, l'IP è già uscito e va valutata la rotazione IP su Hetzner.
+3. **Privatizzare repo (GitHub Pro + privato)** — ALTA URGENZA. GitHub Pro = $4/mese; senza Pro il repo privato spegne il ruleset `main-lock`. Pro + privato = unica mossa. Vedere roadmap item 0 in PROSSIMI PASSI.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta unica — inserimento verbatim item "🧬 Secondo cervello personale" in `reports/roadmap.md`, subito prima di `### 🅿️ PARK`**: `FATTA`
-  Commit `26bcbab`: 1 file, 50 inserzioni, 0 rimozioni (inserzione pura). PR #30 → CI verde → self-merge `23221a0` su main.
-- **Revisore**: `SALTATA — doc-only, nessun file motore (gate non applicabile, CLAUDE.md sez.3)`
-- **/fine-task (questo dossier)**: `FATTA` — commit doc successivo al merge, sul branch di sessione.
+- **§0 — Base fresca**: `FATTA` — fetch origin, branch `docs/scrub-ip-ssh` da `origin/main` (`e7acf75`). Guard `git log -1 --oneline origin/main` OK.
+- **§1 — Scrub IP/SSH in `reports/stato_progetto.md`**: `FATTA` — valore IP del VPS → `<VPS_IP>`, utente `gas` → `<VPS_USER>`, dropin `99-hardening.conf` → `<SSH_DROPIN>`, key type `ed25519` → `<KEY_TYPE>`. Aggiunta riga ⚠️ SCRUB in cima a item §8.
+- **§1 — Scrub IP in `reports/runbook_s1_hardening.md`**: `FATTA` — 8 occorrenze sostituite con `<VPS_IP>` via `replace_all`.
+- **§1 — Scrub IP in `CLAUDE.md`**: `SALTATA — IP assente` (grep: 0 occorrenze).
+- **§1 — Grep post-scrub su tutti i file tracciati**: `FATTA` — 0 occorrenze residue del valore IP del VPS.
+- **§2 — Item roadmap privatizzazione**: `FATTA` — voce 0 aggiunta in cima a `### 🟡 PROSSIMI PASSI` in `reports/roadmap.md` con tag ALTA URGENZA, trigger, costo, dipendenza Pro, nota fork.
+- **§3 — Commit + push**: `FATTA` — commit `683cd08`, branch `docs/scrub-ip-ssh` su origin.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
-Range canonico `${BASE}..HEAD` al momento del /fine-task (BASE=`38882c88ba175d5ee25d198dbaf350fbd93222c5` = HEAD, PR già mergiata → range VUOTO):
-
 ```
-(vuoto)
-```
-
-Range REALE di sessione, fork da origin/main `6218f7e` → HEAD pre-/fine-task (etichetta esplicita, vedi anomalia 2 in ultimo_report.md):
-
-```
- reports/roadmap.md         | 50 ++++++++++++++++++++++++++++++++++++++++++++++
- reports/ultima_risposta.md | 19 +++++++++++++++++-
- 2 files changed, 68 insertions(+), 1 deletion(-)
+ reports/roadmap.md              |   2 +
+ reports/runbook_s1_hardening.md |  16 +++----
+ reports/stato_progetto.md       |   7 +--
+ reports/ultimo_report.md        | 103 +++++++++++++++++++++++++++++++++-------
+ 4 files changed, 99 insertions(+), 29 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
-Range canonico `${BASE}..HEAD`:
-
 ```
-(vuoto)
-```
-
-Range REALE di sessione `6218f7e..HEAD` (pre-/fine-task):
-
-```
-38882c8 chore(scrivi-rep): ultima risposta salvata
-26bcbab docs(roadmap): item Secondo cervello personale (Jarvis cognitivo)
+1ce0148 chore(scrivi-rep): report task scrub IP/SSH (683cd08)
+683cd08 docs(security): scrub IP/SSH dai canonici (MITIGATO) + roadmap privatizzazione
 ```
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore, revisore non richiesto.
+Nessun diff motore (nessun file in `gas.py`, `brains/`, `modules/`, `tests/` toccato) — revisore non richiesto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/. La CI `unit-suite` sul head della PR è comunque SUCCESS (vedi §6).
+Nessuna modifica a `gas.py`/`tests/`.
 
 ## §6 STATO CI
 
-`gh` CLI assente in questo ambiente → `gh run list` non eseguibile. Esito verificato via GitHub MCP (`pull_request_read get_check_runs` su PR #30), output REALE:
-
 ```
-{"total_count":1,"check_runs":[{"id":88371993484,"name":"unit-suite","status":"completed","conclusion":"success","html_url":"https://github.com/Gasss23/Gas/actions/runs/29748351419/job/88371993484","details_url":"https://github.com/Gasss23/Gas/actions/runs/29748351419/job/88371993484","started_at":"2026-07-20T13:55:28Z","completed_at":"2026-07-20T13:56:11Z"}]}
-```
-
-Merge PR #30 eseguito DOPO questo SUCCESS. Output REALE del merge (MCP `merge_pull_request`):
-
-```
-{"sha":"23221a01a67cf14f2c7430c6e9370cfd2cf9ea8a","merged":true,"message":"Pull Request successfully merged"}
+completed	success	chore(scrivi-rep): report task scrub IP/SSH (683cd08)	CI	docs/scrub-ip-ssh	push	29769658047	38s	2026-07-20T18:53:03Z
+completed	success	docs(security): scrub IP/SSH dai canonici (MITIGATO) + roadmap privat…	CI	docs/scrub-ip-ssh	push	29769420808	39s	2026-07-20T18:49:43Z
+completed	success	Merge pull request #31 from Gasss23/docs/roadmap-secondo-cervello	CI	main	push	29752371106	41s	2026-07-20T14:49:32Z
 ```
 
-Nota: un secondo run (`29748275428`, evento push) è partito sullo stesso head; fa fede il check run della PR sopra.
+Entrambi i commit di sessione: CI **success**.
 
 ## §7 RISERVE APERTE
 
-Nessuna riserva revisore (nessun commit motore). Finding operativi nuovi, registrati in ultimo_report.md:
-
-1. Poll CI via `grep '"conclusion"'` sul check-runs API dà falso positivo (`"conclusion": null` mentre il run è in corso) — testare il valore non-null, non la presenza del campo.
-2. L'hook `scrivi-rep` può accodare un commit auto al branch di PR prima del merge (qui `38882c8` dentro PR #30) — comportamento di feature autorizzata, ma da sapere quando si contano i commit di una PR.
+- **Stato sicurezza IP**: MITIGATO (file HEAD puliti), NON chiuso. L'IP resta nella history git pubblica finché il repo non diventa privato. Azione richiesta: privatizzazione (decisione umana, vedere §0).
+- **Fork pubblici**: non verificati in questa sessione. Se esistono, l'IP è già uscito indipendentemente dalla privatizzazione — valutare rotazione IP su Hetzner.
