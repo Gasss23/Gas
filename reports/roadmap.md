@@ -161,6 +161,56 @@ Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di
 - **Accesso dev tooling da telefono — Claude Dispatch (candidato).** Soluzione candidata: Claude Dispatch (funzione ufficiale Anthropic in Cowork/Claude Code, lanciata 2026-03-17): pairing QR telefono↔desktop, thread persistente, i task di sviluppo partono come sessioni Claude Code che ereditano CLAUDE.md. Stato: ✅ CHIUSO (2026-07-15) — sonda Remote Control (`/rc`) su Giulia/WSL verificata live — sessione locale raggiunta da telefono, lettura file reale del repo confermata. Nessun bridge custom necessario. Vincolo: PC acceso e app desktop aperta. Regole di sicurezza vincolanti: modalità 'chiedi prima di agire', accesso SOLO alla cartella repo, computer use OFF, mai pre-autorizzare azioni (il PC dev detiene la chiave SSH della VPS di produzione).
 - **Controllo Telegram unificato (ridimensionato).** SUPERATO PER METÀ da Dispatch: il canale tu→Claude Code da telefono lo copre Dispatch (ufficiale, niente bridge custom = niente superficie RCE da costruire e mantenere). Resta valido SOLO il canale GAS→Claude Code human-gated (la VPS propone, l'umano approva via /approva): Dispatch non lo copre — la spec di sicurezza è l'item "🌉 Ponte GAS↔Claude Code human-gated (Telegram)" sopra (listener pull-only, ID monouso 24h, whitelist comandi, max 3 proposte/giorno, audit log). Trade-off accettato: GAS si comanda da Telegram, lo sviluppo dall'app Claude. NB: ridimensiona anche l'idea "Telegram dual-control" in 💡 Idee da valutare (il canale telefono→CC lo coprirebbe Dispatch).
 
+### 🧬 Secondo cervello personale — "Jarvis cognitivo" (MOLTO IMPORTANTE, NON prioritario)
+
+Posizione: DOPO FASE 3 (voce) + deploy VPS h24. Senza voce non ci si parla comodo,
+senza VPS h24 non vive. Prima si chiude la roadmap principale.
+
+Obiettivo — MISTO, entrambe le parti richieste esplicitamente da Gas:
+1. Magazzino personale — cattura/organizza/recupera conoscenze, note, decisioni,
+   ragionamenti, video DI GAS (non i lead).
+2. Clone cognitivo — l'agente ragiona nello stile e con le priorità di Gas,
+   condizionato sulle sue memorie.
+
+Già COSTRUITO (substrato FASE 2): memoria SQLite (diario + contatti) + FTS5 +
+vector store semantico + `_memoria_pin` always-on + tool `ricorda`. È il substrato
+del magazzino, oggi puntato solo su CRM/lead. Il motore c'è; mancano sorgente
+personale, segmentazione, iniezione d'identità.
+
+NUOVO (da costruire): ingestione del corpus personale (note/decisioni/video/
+ragionamenti) — converge con *video learning* (ingest→trascrizione→memoria) e
+*FASE 3 voce* (interfaccia a mani libere): non è una deviazione, è la sintesi di
+pezzi già in roadmap sotto la bandiera "Jarvis personale". Più segmentazione
+memoria e iniezione stile/identità nel system prompt.
+
+FRAMING ONESTO — NON oversell (registrato apposta): un LLM può imitare lo STILE
+di Gas (esempi + prompt identità) e RECUPERARE/APPLICARE le sue conoscenze. NON
+ragiona col giudizio di Gas: produce output plausibili condizionati sui suoi dati.
+"Cervello che ragiona come me" = (memoria di Gas) + (stile iniettato) + (modello
+che ragiona bene). Assistente ottimo informato da Gas, non clone fedele della sua
+testa. Chi promette "pensa come te" vende fumo.
+
+CAVEAT VINCOLANTI (non negoziabili):
+- Segmentazione — "la memoria non deve mentire": le conoscenze personali NON
+  stanno nello stesso namespace dei lead. Regole diverse: nota personale =
+  mutabile/revisionabile; diario = immutabile append-only. Mescolarli rompe
+  entrambi i modelli → store separato o partizione rigida, MAI tutto in
+  `.gas_memory.db` alla rinfusa.
+- Privacy / TRIGGER DATI ×2: il corpus personale è il dato più sensibile mai
+  inserito. Il trigger dati già registrato (rivedere la policy di training dei
+  provider free prima dei dati reali) qui vale doppio: sapere personale che passa
+  da tier gratuiti che si allenano sui prompt = esposizione reale. Probabile
+  requisito: tier no-training o solo-locale (Ollama) per il corpus personale.
+- RAM/VPS: indice vettoriale personale che cresce + reindex pesa su box stretta
+  (8GB, no-swap mitigato 2GB, coabita col bot trading). Scala e volume da
+  dimensionare.
+- Confine autonomia: "risponde col contesto di Gas" = sicuro. "Agisce come Gas"
+  (manda messaggi, decide a suo nome) = superficie di fiducia separata →
+  human-gated, coerente con "le operazioni irreversibili non stanno in mano al
+  modello".
+
+Dipendenze: FASE 2 (memoria, fatta) + video learning + FASE 3 voce + FASE 5 VPS h24.
+
 ### 🅿️ PARK (parcheggiati — nessun impegno, da rivalutare al momento giusto)
 - **Mirage (strukto-ai/mirage) — VFS unificato per AI agents**: valutare a FASE 4 (integrazioni marketing multi-servizio) come alternativa a N SDK separati. Progetto nato 2026-05-06, ~3.3k stelle a luglio 2026, open source, SDK Python in-process (shell bash custom, no subshell host, vede solo i mount). Condizioni vincolanti se mai adottato: mount READ-ONLY + allowlist risorse, MAI write verso cloud in autopilot, incompatibile con coabitazione bot trading (superficie esfiltrazione). Fonte: reel + verifica web 2026-07-08.
 - **Claude Cowork**: agente desktop per knowledge work (file locali, report, slide). Non tocca il motore (che passa da Claude Code + revisore + hook). Rivalutare a FASE 4 per materiale marketing e pipeline video-ingestion locale (trascrizione→analisi→nota markdown).
