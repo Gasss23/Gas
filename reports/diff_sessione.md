@@ -1,20 +1,21 @@
-# Diff sessione — 2026-07-20 — doc-only: item "Secondo cervello personale (Jarvis cognitivo)"
+# Diff sessione — 2026-07-20 — scrub IP/SSH dai canonici + roadmap privatizzazione
 
 > Fotografia della sessione corrente. Si riscrive a ogni sessione; la storia completa sta in git.
 
-## File toccati (range reale di sessione `6218f7e..38882c8`, PR #30 mergiata in `23221a0`)
+## File toccati
+
+| File | Cosa è cambiato | Perché |
+|------|----------------|--------|
+| `reports/stato_progetto.md` | §8: IP → `<VPS_IP>`, utente `gas` → `<VPS_USER>`, dropin → `<SSH_DROPIN>`, key type → `<KEY_TYPE>`; aggiunta riga ⚠️ SCRUB in cima a item §8 | Rimozione IP e superficie SSH dai file HEAD (MITIGATO) |
+| `reports/runbook_s1_hardening.md` | 8 occorrenze di `204.168.251.92` → `<VPS_IP>` | IP esposto nel runbook eseguito manualmente in sessione S1 |
+| `reports/roadmap.md` | Voce 0 aggiunta in cima a PROSSIMI PASSI: 🔒 Privatizzare repo ALTA URGENZA | Tracciare l'azione necessaria a chiudere definitivamente la questione IP |
+| `reports/ultimo_report.md` | Riscritto con esito task e decisioni umane richieste | Reporting canonico di fine task |
+| `reports/handoff.md` | Riscritto con dossier sessione completo | Dossier autonomo per revisione esterna |
+| `reports/diff_sessione.md` | Riscritto per questa sessione | Fotografia sessione corrente |
+
+## Commit di sessione
 
 ```
- reports/roadmap.md         | 50 ++++++++++++++++++++++++++++++++++++++++++++++
- reports/ultima_risposta.md | 19 +++++++++++++++++-
- 2 files changed, 68 insertions(+), 1 deletion(-)
+1ce0148 chore(scrivi-rep): report task scrub IP/SSH (683cd08)
+683cd08 docs(security): scrub IP/SSH dai canonici (MITIGATO) + roadmap privatizzazione
 ```
-
-## Dettaglio per file
-
-- `reports/roadmap.md` — inserito verbatim l'item "🧬 Secondo cervello personale — Jarvis cognitivo" (blocco fornito dall'operatore) subito prima di `### 🅿️ PARK`; inserzione pura, 0 righe rimosse. Perché: registrare in roadmap l'obiettivo magazzino personale + clone cognitivo con framing onesto e caveat vincolanti (segmentazione memoria, privacy/trigger dati ×2, RAM VPS, confine autonomia).
-- `reports/ultima_risposta.md` — aggiornato automaticamente dall'hook Stop `scrivi_rep.sh` (commit `38882c8`, feature autorizzata di sync multi-device); non toccato a mano.
-
-## Post-merge (questo commit)
-
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — riscritti col rituale /fine-task; committati sul branch di sessione dopo il merge della PR #30.
