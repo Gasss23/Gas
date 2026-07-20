@@ -28,6 +28,8 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### 🟡 PROSSIMI PASSI (in ordine di priorità)
 
+0. 🔒 **Privatizzare repo — ALTA URGENZA** — trigger: prima che entrino dati lead reali / maturità GAS. Richiede GitHub Pro ($4/mese): su Free il repo privato SPEGNE il ruleset main-lock (rulesets su privati = solo Pro/Team/Enterprise). Quindi Pro + privato è UN'unica mossa. Chiude anche l'IP in history (IP 2026-07-20: già scrubato dai file HEAD, ma resta nella history git pubblica — stato MITIGATO, NON chiuso). Verificare fork pubblici prima: se esistono, l'IP è già uscito e va valutata la rotazione IP su Hetzner.
+
 1. ✅ **Migrazione rung Groq** — `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`. Validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`, latenza 1138ms). Commit `f028e51`, review #44 APPROVATO CON RISERVE, 2026-07-08. **COMPLETATA**.
 2. ✅ **FASE 2.5 — Summarizzazione cronologia** — CHIUSA (2026-06-27, review #39, commit 65c4c7b).
 3. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi sotto).

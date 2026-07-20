@@ -132,13 +132,14 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
    - ✅ Remote Control locale verificato (2026-07-15): `cd ~/Gas && claude` + `/rc` → QR → app. CAVEAT OPERATIVO: la sessione eredita la cwd del lancio — lanciare SEMPRE da ~/Gas. CAVEAT SESSIONI: in app, ☁️ = Claude Code cloud (no bwrap, non canonico), icona computer+verde = Giulia locale. Non confonderle: un task bwrap in cloud dà falso verde. Confine invariato: da telefono solo doc-only + motore non-sandbox; bwrap solo locale/CI.
 7. **⚠️ STANTIA — postazione locale WSL** (aggiornata 2026-07-18): venv era ASSENTE al 2026-07-17, ricreato con `python3 -m venv venv` (Python 3.12.3 — NON 3.11 come dichiarato altrove in CLAUDE.md); contiene SOLO pytest 9.1.1 da `requirements-dev.txt` → dipendenze del motore NON installate, suite kernel su WSL NON eseguibile finché non si fa `pip install -r requirements.txt`. jq era ASSENTE, installato a mano (jq-1.7, 2026-07-17). Chiave SSH `id_ed25519` con PASSPHRASE senza ssh-agent → hook non-interattivi NON possono pushare: auto-push di `session_end.sh`/`scrivi_rep.sh` è INERTE su WSL, il push va fatto a mano. Tutte azioni manuali senza traccia in git: registrate qui. **DECISIONE ssh-agent (2026-07-18)**: adottato agent-per-sessione (`eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519`, una passphrase per boot) — mitigazione, NON cura: gli hook restano inerti se l'agent non è avviato. **Fix durevole APERTO (da decidere)**: migrare il remote a HTTPS (`gh` già autenticato HTTPS → push non-interattivo, hook vivi senza rito per-boot); costo = token gh a riposo sul dev box (accettabile, non è il VPS). Non impegnato in questa sessione.
 8. **✅ S1 ESEGUITO (2026-07-04):** hardening SSH + utente runtime completati sul VPS CX33.
+   ⚠️ SCRUB IP/SSH (2026-07-20): dato rimosso dai file HEAD. Stato = MITIGATO, NON chiuso: l'IP resta nella history git pubblica finché il repo non diventa privato. Cura vera = privatizzazione (vedi roadmap).
    - unattended-upgrades: attivo (running)
    - fail2ban: attivo, jail sshd, backend=auto, 4 IP bannati al reboot
-   - Utente `gas` (uid=1000): creato, `/home/gas/gas/` copia working dir, `/home/gas/.cache/` model cache fastembed
-   - sshd hardening: `PasswordAuthentication no`, `PermitRootLogin no`, `PubkeyAuthentication yes` (dropin `/etc/ssh/sshd_config.d/99-hardening.conf`)
+   - Utente `<VPS_USER>` (uid=1000): creato, `/home/<VPS_USER>/gas/` copia working dir, `/home/<VPS_USER>/.cache/` model cache fastembed
+   - sshd hardening: `PasswordAuthentication no`, `PermitRootLogin no`, `PubkeyAuthentication yes` (dropin `/etc/ssh/sshd_config.d/<SSH_DROPIN>`)
    - Kernel aggiornato: 6.8.0-134-generic (reboot post-S1 ok)
    - `/root/gas/` INTATTO (non cancellare fino a S1b confermato)
-   - Accesso SSH: solo `gas@204.168.251.92` via chiave ed25519. Login root SSH disabilitato.
+   - Accesso SSH: solo `<VPS_USER>@<VPS_IP>` via chiave `<KEY_TYPE>`. Login root SSH disabilitato.
 9. **S1b ✅ (2026-07-04):** swap file 2GiB attivo (cuscinetto anti-OOM, vedi finding no-swap sopra); unit systemd `/etc/systemd/system/gas.service` con `User=gas`, `MemoryHigh=1500M`, `MemoryMax=2000M`, `Restart=always`; `.env.prod` in `/home/gas/gas/.env.prod` con permessi `chmod 600`; servizio attivo confermato. Data di misura RAM a regime del singolo modello: non registrato.
 
 
