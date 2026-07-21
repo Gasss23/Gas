@@ -1,43 +1,38 @@
-# ULTIMO REPORT — 2026-07-21
+# ULTIMO REPORT — 2026-07-21 (2ª parte)
 
-**Task:** doc-only — registrazione esiti sessione 2026-07-21 (chiusura giro item fuori-roadmap)
-**Branch:** `docs/chiusura-giro-2026-07-21`
-**Commit:** `0848a2f`
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-1. **🔴 Ripristinare accesso SSH al VPS** — primo blocco da sciogliere. La chiave WSL (`~/.ssh/id_ed25519`) è rifiutata (`Permission denied (publickey)`): non è in `authorized_keys` del VPS. Serve una via non-SSH per ri-autorizzarla.
-2. **🔴 Recuperare/reimpostare password root VPS** — necessaria per la console Hetzner (unica via non-SSH per ri-autorizzare la chiave a caldo). Alternativa = Rescue Mode, ma riavvia GAS in produzione.
-3. **🟡 Abilitare 2FA su Hetzner** — non attivo (banner console 2026-07-21).
-4. **Privatizzazione repo** (roadmap item 0) — cura definitiva dello scrub IP, che resta MITIGATO finché la history git è pubblica.
+**Task:** DOC-ONLY — registrare in `reports/stato_progetto.md` gli esiti della sessione 2026-07-21, 2ª parte (accesso VPS ripristinato + sonda `.venv`)
+**Branch:** `docs/giro-vps-2026-07-21-p2`
+**Commit:** `9e1b2e5`
 
 ---
 
-## Esito per step dello scope
+## Scope rispettato
 
-| Step | Esito |
-|------|-------|
-| §0 `git fetch origin` + `git checkout -b docs/chiusura-giro-2026-07-21 origin/main` (`f2679a4`) | FATTA |
-| Append blocco VERBATIM in fondo a "### DA FARE — sviluppo/processo (aperti dal 2026-07-09)" di `reports/stato_progetto.md` | FATTA — 10 righe, inserzione pura (0 rimozioni), nessun IP in chiaro |
-| `git commit` "docs: chiusura giro 2026-07-21 (scrub MITIGATO, HTTPS vivo, accesso VPS perso)" | FATTA — commit content-identico già presente su origin come `0848a2f` |
-| `git push -u origin docs/chiusura-giro-2026-07-21` | GIÀ FATTO da un'esecuzione parallela — vedi Anomalia 1; nessun force-push |
-| `reports/ultimo_report.md` (questo file) | FATTA |
+Solo `reports/stato_progetto.md` modificato:
+1. Riga "> Ultimo aggiornamento:" aggiornata a **2026-07-21**.
+2. Sezione finale "### Sessione 2026-07-21 — chiusura giro item fuori-roadmap" sostituita integralmente col blocco fornito dall'operatore (VERBATIM, nessuna parafrasi).
+
+Nessun IP reale scritto: `<VPS_IP>` usato ovunque, come da mandato.
 
 ---
 
-## git diff --stat reale (sessione, `f2679a4..HEAD`)
+## Dichiarazione revisore
+
+**Revisore NON invocato — corretto**: il diff della sessione tocca esclusivamente `reports/stato_progetto.md` (doc), non tocca `gas.py`, `brains/`, `modules/` né `tests/`. Il gate di review (CLAUDE.md sez.3) si applica solo a modifiche del motore; un cambio doc-only ne è fuori per definizione.
+
+---
+
+## git diff --stat reale (sessione)
 
 ```
- reports/stato_progetto.md | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ reports/stato_progetto.md | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
 ```
 
 ---
 
-## Anomalie / Note
+## STOP gate — nessuna azione oltre lo scope
 
-1. **Push già presente su origin (commit gemello).** Al `git push` il remote risultava già avanti: `origin/docs/chiusura-giro-2026-07-21` conteneva `0848a2f`, con messaggio e padre (`f2679a4`) identici al mio commit locale (`c412552`) e `git diff HEAD origin` **vuoto** (contenuto identico). Causa probabile: il prompt del task è arrivato duplicato (una volta prima e una dopo il `/model`), quindi un'altra istanza ha eseguito e pushato lo stesso append. Ho **allineato il locale al commit remoto** (`git reset --hard`, contenuto identico → nessuna perdita) invece di force-pushare il mio SHA gemello: riscrivere storia già pubblicata a parità di contenuto viola lo STOP gate senza alcun beneficio.
-2. **Nessun IP in chiaro** scritto in file, comando o output: `<VPS_IP>` usato ovunque, come da mandato.
-3. **STOP gate rispettato**: niente merge, niente motore, niente revisore, nessuna azione oltre append + commit(già presente) + questo report.
+Come da mandato, NON toccato: motore, F7, copia VPS, VPS stesso. I due finding aperti (F7 confermato aperto sul VPS; copia VPS stantia vs origin/main) restano registrati nel report ma **nessun fix applicato** in questa sessione — la scelta della strada (1: patch minima `.gitignore` VPS a caldo, vs 2: riallineamento pulito FASE 5 S2) è dell'operatore.
+
+Niente merge: PR da aprire e mergiare dall'operatore.
