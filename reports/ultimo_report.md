@@ -1,17 +1,20 @@
-# Report — rammendo nota VPS §7 + fingerprint chiave WSL + igiene canonici
+# Report — correttivo pre-merge: F7 fattibile, label fingerprint, PR #33/#34, finding encoding
 **Data:** 2026-07-22  
 **Branch:** docs/rammendo-nota7-fingerprint  
+**Commit questo correttivo:** (vedi sotto — generato dopo la scrittura di questo file)  
 **Revisore:** NON invocato — task doc-only, esente CLAUDE.md sez.3
 
 ---
 
 ## §DECISIONI UMANE RICHIESTE
 
-1. **Label fingerprint vs authorized_keys**: la riga aggiunta alla sessione 2026-07-21 recita "Fingerprint chiave WSL (da autorizzare sul VPS al rientro)" ma la stessa sessione documenta già "Chiave WSL `id_ed25519` ora in `authorized_keys` di `gas`". Le due affermazioni sono contraddittorie. La label "DA AUTORIZZARE" è fuorviante: la chiave È già autorizzata. Nessuna modifica autonoma: l'agente ha seguito il brief letteralmente e segnala la discrepanza qui. Decisione: lasciare la label così o aggiornare a "GIÀ AUTORIZZATA, fingerprint di riferimento"?
+Nessuna.
 
-2. **F7 BLOCCATA vs SSH già ripristinato**: la riga aggiunta recita "⛔ F7 — BLOCCATA su prerequisito 'accesso SSH al VPS ripristinato'" ma SSH è stato ripristinato nella stessa sessione 2026-07-21 (✅ ACCESSO SSH AL VPS RIPRISTINATO). La riga è formalmente contraddittoria con il file. Potrebbe essere più accurata con "prerequisito soddisfatto, fix non eseguito in sessione". Agente ha seguito il brief letteralmente. Confermare o correggere?
+---
 
-3. **PR #33 e #34 mancanti dalla lista CI**: `gh run list` mostra PR #33 (CI `29848173628`, 2026-07-21 ✅) e PR #34 (CI `29898591182`, 2026-07-22 ✅) — non erano nel brief. Agente NON le ha aggiunte. Aggiungere?
+## Hash commit di questa sessione
+
+`3fe13ca5e5bd455428e040ba28f7e7fef60ac8c6`
 
 ---
 
@@ -19,60 +22,61 @@
 
 | Fetta | Esito | Note |
 |-------|-------|------|
-| **FETTA 1** — rammendo nota §7 | **FATTA** | Heading da "STANTIA" a "PARZIALMENTE STANTIA — vedi coda"; capoverso finale aggiunto |
-| **FETTA 2a** — fingerprint chiave WSL | **FATTA** | `SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE` verificato live con `ssh-keygen -lf ~/.ssh/id_ed25519.pub` |
-| **FETTA 2b** — fingerprint → riga ACCESSO SSH | **FATTA** | Aggiunto in coda alla riga ✅ ACCESSO SSH RIPRISTINATO (vedi §DECISIONI #1 per label) |
-| **FETTA 2c** — riga F7 BLOCCATA | **FATTA** | Aggiunta come riga separata dopo il 🔴 F7 CONFERMATO (vedi §DECISIONI #2 per contraddizione logica) |
-| **FETTA 3a** — header "Ultimo aggiornamento" | **SALTATA — già corretta** | Il file diceva già `2026-07-21` — nessuna modifica necessaria |
-| **FETTA 3b** — contatore review §C | **FATTA** | `memoria_revisore.md` ultima riga = `#57`; §C allineata da 56→57 |
-| **FETTA 3c** — aggiunta PR #32 lista CI | **FATTA** | Hash `f2679a4` verificato su `origin/main`; CI `29775144603` ✅ SUCCESS verificato con `gh run list` |
+| **FETTA A** — correggi riga F7 | **FATTA** | ⛔ BLOCCATA → 🟡 APERTA e FATTIBILE; tampone dichiarato esplicitato |
+| **FETTA B** — correggi label fingerprint | **FATTA** | "da autorizzare sul VPS al rientro" → "fingerprint di riferimento della chiave WSL autorizzata sul VPS" |
+| **FETTA C** — aggiungi PR #33 e #34 lista CI | **FATTA** | Entrambe verificate (hash + run ID da comandi reali) |
+| **FETTA D** — finding R-encoding | **FATTA** | Riga 🟡 R-encoding aggiunta in fondo a "DA FARE — sviluppo/processo" |
 
 ---
 
-## `git diff --stat` reale della sessione
+## `git diff --stat` reale dell'intera sessione (vs commit precedente)
 
 ```
- reports/stato_progetto.md | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ reports/stato_progetto.md | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 ```
 
 ---
 
-## Fingerprint verificato
+## FETTA B — evidenza authorized_keys trovata
 
-```
-256 SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE gqual@gas-dev-wsl (ED25519)
-```
-Fonte: `ssh-keygen -lf ~/.ssh/id_ed25519.pub` — eseguito live questa sessione.
+Riga trovata in `reports/stato_progetto.md` (riga 173, verificata con grep):
+
+> `Chiave WSL \`id_ed25519\` ora in \`authorized_keys\` di \`gas\`.`
+
+Evidenza presente e dichiarativa (output sessione 2026-07-21, non ri-verificato con SSH live in questa sessione). Sufficiente per la riscrittura della label: la chiave risulta autorizzata per dichiarazione della sessione stessa.
 
 ---
 
-## Procedura contatore review (FETTA 3b)
+## FETTA C — hash e run ID verificati
 
-Fonte consultata: `.claude/agents/memoria_revisore.md`  
-Ultima riga del file: `#57 — 2026-07-19 — APPROVATO CON RISERVE — pre-check idempotenza diario via LIKE...`  
-Numero trovato: **#57**
+Comandi usati: `git fetch origin && git log origin/main --oneline` + `gh run list --limit 10`
 
-Stato pre-rammendo:
-- `Stato motore` diceva **57** (ultima #57) → ✅ già corretto
-- `Istituzioni di processo §C` diceva **56** (ultima #56) → ✗ disallineato
+| PR | Hash merge (origin/main) | CI Run ID | Data | Esito |
+|----|--------------------------|-----------|------|-------|
+| #34 | `45a1708` | `29898591182` | 2026-07-22 | ✅ SUCCESS |
+| #33 | `5dae638` | `29848173628` | 2026-07-21 | ✅ SUCCESS |
 
-Azione: §C allineata a **57**, con indicazione esplicita della fonte (`memoria_revisore.md` ultima riga `#57`).
+---
+
+## Esito CI del branch docs/rammendo-nota7-fingerprint
+
+```
+completed  success  docs: rammendo nota VPS §7, fingerprint chiave WSL, F7 bloccata, igie…
+CI  docs/rammendo-nota7-fingerprint  push  29906744166  49s  2026-07-22T09:07:56Z
+```
+
+Solo il commit 661f30b ha run CI sul branch; il commit di questo correttivo non ha ancora run (sarà triggerato dal push).
 
 ---
 
 ## Incoerenze trovate e NON corrette
 
-1. **PR #33 e PR #34 mancanti dalla lista CI**: visibili in `gh run list`, entrambe ✅ SUCCESS. Non erano nel brief → non aggiunte. Listate qui per decisione umana (vedi §DECISIONI #3).
-
-2. **Label fingerprint contraddittoria** (vedi §DECISIONI #1): la label "da autorizzare sul VPS al rientro" non è coerente con "Chiave WSL `id_ed25519` ora in `authorized_keys` di `gas`" già nel file. Non corretta autonomamente.
-
-3. **⛔ F7 BLOCCATA contraddittoria** (vedi §DECISIONI #2): SSH è ✅ nella stessa sessione → la riga di blocco è formalmente stantia. Non corretta autonomamente.
-
-4. **Encoding rotto in alcune righe di `stato_progetto.md`**: compaiono sequenze come `âœ…`, `ðŸ"´`, `â€"` nelle righe 12–21 e altrove. NON corrette (fuori scope del brief; richiedono ispezione/decisione umana su encoding).
+1. **Encoding rotto** (`âœ…`, `ðŸ"´`, `â€"`) nelle righe 12–21 e altrove — registrato come 🟡 R-encoding in DA FARE, NON corretto per rispetto del STOP BLOCCANTE del brief.
+2. **PR #33/#34 prima di questo correttivo**: le due PR erano già in `gh run list` come SUCCESS e negli hash di origin/main; non erano nel brief originale. Aggiunte ora.
 
 ---
 
 ## Dichiarazione esplicita
 
-**Revisore NON invocato** — task doc-only, esente per CLAUDE.md sez.3.
+**Revisore NON invocato** — task doc-only, esente CLAUDE.md sez.3.
