@@ -1,57 +1,94 @@
-# Report — fix/encoding-stato-progetto — 2026-07-23
+# Report — docs/allineamento-canonici-2026-07-23
 
-**Task**: Bonifica mojibake UTF-8 in `reports/stato_progetto.md` + chiusura finding R-encoding.
-**Branch**: `fix/encoding-stato-progetto`
-**Tipo**: DOC-ONLY (solo `reports/`)
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-Nessuna.
+**Branch**: `docs/allineamento-canonici-2026-07-23`
+**Data**: 2026-07-23
+**Revisore invocato**: NO — diff doc-only, nessun file di motore toccato (solo `reports/stato_progetto.md` e `reports/ultimo_report.md`). Gate revisore non applicabile per policy (CLAUDE.md §3).
 
 ---
 
-## Esito fette
+## Esito per fetta
 
-- **Fetta 1 — Riparazione encoding** (`01cd95b`): `FATTA`
-  Script `/tmp/fix_moji.py` (esatto, non modificato) — 37 righe riparate, 1 non riparabile (riga 167, l'item R-encoding stesso che citava le sequenze mojibake come esempi). Tutte e 5 le verifiche bloccanti superate prima del commit.
+| Fetta | Stato |
+|-------|-------|
+| 1a — Bonifica branch remoti: riga 🟡 → ✅ + riga "Automatically delete" | FATTA |
+| 1b — Mitigazione strutturale: sostituzione blocco con CORREZIONE + fix strutturale reale | FATTA |
+| 2 — Nuova sezione `gasmerge` + sequenza merge + fix identità git | FATTA |
 
-- **Fetta 2 — Chiusura finding R-encoding** (`b695e63`): `FATTA`
-  Riga 167 sostituita con testo di chiusura canonico. File passa da 287 a 293 righe (atteso: sostituzione semantica da 1 a 7 righe).
-
----
-
-## Misure reali (Fetta 1)
-
-| Metrica | Attesa brief | Reale | Esito |
-|---------|-------------|-------|-------|
-| Righe totali | 287 | 287 | ✅ |
-| Righe riparate | 37 | 37 | ✅ |
-| Righe NON riparabili | 1 (riga 167) | 1 (riga 167) | ✅ |
-
-**Nessuna divergenza** rispetto alle attese del brief.
+**Rettifica in-session (Fetta 2)**: l'operatore ha inviato una versione corretta della SEQUENZA DI MERGE OBBLIGATORIA (aggiunto il punto 4: revisione umana handoff.md PRIMA del merge, con spiegazione di cosa gasmerge non verifica). Applicata prima del commit di Fetta 2.
 
 ---
 
-## Verifiche bloccanti (Fetta 1 — tutte superate prima del commit)
+## Hash commit
 
-| # | Check | Risultato | Esito |
-|---|-------|-----------|-------|
-| 1 | `wc -l` = 287 | `287` | ✅ |
-| 2 | 1 file, ~37 righe | `1 file changed, 37 ins(+), 37 del(-)` | ✅ |
-| 3 | insertions == deletions | `37 == 37` | ✅ |
-| 4 | nessun IP nel file | `0 match (exit 1)` | ✅ |
-| 5 | diff visivo: solo emoji/accentati | verificato riga per riga | ✅ |
+- **Fetta 1**: `c279381` — `docs(stato): corregge bonifica branch e mitigazione token gh — 2 punti falsi`
+- **Fetta 2**: `0a05933` — `docs(stato): registra gasmerge, sequenza merge e fix identità git`
+- **Report**: commit separato (questo file)
 
 ---
 
-## STOP gate
+## Gate identità (post commit 1)
 
-- ✅ Solo `reports/stato_progetto.md` + `reports/ultimo_report.md` toccati
-- ✅ Fetta 1 e Fetta 2 in commit separati
-- ✅ `/tmp/fix_moji.py` non committato
-- ✅ Nessun motore/brains/modules/tests toccato
-- ✅ Revisore non invocato (diff doc-only — dichiarato)
-- ✅ PR #39 aperta, non mergiata
-- ✅ CI: `completed / success` (run 29962058903, branch fix/encoding-stato-progetto)
+```
+Gasss23 <290517909+Gasss23@users.noreply.github.com>
+```
+✅ Corrisponde all'atteso.
+
+---
+
+## Verifiche bloccanti — output reale
+
+### 1. `git diff --stat origin/main..HEAD`
+
+```
+ reports/stato_progetto.md | 70 +++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 64 insertions(+), 6 deletions(-)
+```
+✅ Solo `reports/stato_progetto.md` (+ questo report nel commit del report). Nessun file di motore.
+
+### 2. `git grep -n "204\.168" -- . ; echo "EXIT=$?"`
+
+```
+EXIT=1
+```
+✅ Zero match.
+
+### 3. `git grep -n "27 head\|22 mergiati\|token \`gh\` dedicato a scope ridotto"`
+
+```
+reports/stato_progetto.md:177:- ✅ **Bonifica branch remoti ESEGUITA** (2026-07-22): da **27 head a 5**. I 22 branch mergiati in `main` sono stati cancellati da origin. [...]
+reports/stato_progetto.md:286:fix "un token `gh` dedicato a scope ridotto (senza permesso di merge)". **VERIFICATO IMPOSSIBILE** [...]
+EXIT=0
+```
+
+⚠️ **EXIT=0 = match trovati, ma NON sono residui falsi.** Spiegazione:
+- Riga 177: "27 head a 5" e "22 branch mergiati" compaiono nella nuova riga VERA che descrive la bonifica eseguita (da 27 head a 5, i 22 mergiati cancellati). I numeri sono corretti e contestualizzati.
+- Riga 286: "token `gh` dedicato a scope ridotto" è citato all'interno del blocco di debunking — il testo dice letteralmente `fix "un token … scope ridotto". **VERIFICATO IMPOSSIBILE**`. È la citazione della mitigazione fasulla, usata per smentirla.
+
+Non esistono residui del falso framing originale. Le frasi originali ("🟡 Bonifica branch remoti — misura reale", "L'unico fix strutturale sarebbe un token gh dedicato…", "Nessun impegno preso.") sono state rimosse.
+
+### 4. `git log --format='%an <%ae>' origin/main..HEAD`
+
+```
+Gasss23 <290517909+Gasss23@users.noreply.github.com>
+Gasss23 <290517909+Gasss23@users.noreply.github.com>
+```
+✅ Entrambi i commit firmati con identità corretta.
+
+### 5. Righe del file PRIMA e DOPO
+
+- **PRIMA**: 293 (verifica: 351 − 47 insert Fetta 2 − 11 net Fetta 1 = 293; corrisponde al mandato)
+- **DOPO**: 351
+
+---
+
+## Numero PR
+
+[assegnato al push]
+
+---
+
+## ⛔ STOP GENERALE
+
+Nessuna altra modifica eseguita. Nessun file di motore toccato. Se rilevate ulteriori
+correzioni da fare al canonico, sono state deliberatamente NON eseguite in questa
+sessione: verranno proposte in un task separato.
