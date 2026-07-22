@@ -245,3 +245,41 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 
 - ✅ **GAS in produzione**: `systemctl is-active gas` → `active`, verificato a
   fine sessione. Il servizio non si è mai fermato.
+
+### ℹ️ Micro-finding di processo — merge su main eseguito da dentro Claude Code (2026-07-22)
+
+**Fatto**: la PR #36 (doc-only) è stata mergiata lanciando `gh pr merge --merge 36`
+**dentro la sessione Claude Code**, invece che a mano dall'operatore (browser o
+terminale WSL). Merge risultante: `4c63ff3` su main.
+
+**Merito**: nessun danno. PR doc-only; CI `29940124532` ✅ SUCCESS **prima** del
+merge; scope verificato sull'handoff; invariante IP verificata prima del merge
+(`git grep "204\.168"` sul branch = 0 match); la decisione di mergiare era già
+stata presa dall'operatore.
+
+**Classe**: parente di "PR #14 mergiata senza revisione" (2026-07-15), ma è una
+variante diversa e va detta con precisione, altrimenti la memoria mente:
+- lo STOP gate del prompt diceva "NON mergiare la PR" e **ha funzionato**:
+  l'agente non ha mergiato di propria iniziativa;
+- è stato l'operatore a consegnargli il comando.
+Il gate umano non è stato saltato — è stato **eseguito dal canale sbagliato**.
+
+**Perché conta comunque**: il merge umano è l'ultima barriera contro scope creep e
+auto-promozione dell'agente su main. Se `gh pr merge` passa abitualmente per la
+mano dell'agente, quella barriera torna **disciplinare** — e il progetto ha già
+stabilito (ruleset `main-lock`, 2026-07-09) che le barriere disciplinari non
+reggono quando l'agente gira con le credenziali dell'owner.
+
+**Regola dal 2026-07-22**: il merge su main si esegue SEMPRE a mano (browser o
+terminale WSL), MAI da dentro una sessione Claude Code. Vale anche per i doc-only.
+
+**Mitigazione strutturale — registrata, NON decisa**: oggi `gh` in WSL è
+autenticato con l'account owner, quindi Claude Code eredita il permesso di merge.
+L'unico fix strutturale sarebbe un token `gh` dedicato a scope ridotto (senza
+permesso di merge) per le sessioni agente. Costo/beneficio non valutato.
+Nessun impegno preso.
+
+**Nota**: questo commit è stato scritto a mano, senza sessione Claude Code —
+quindi senza `ultimo_report.md` né `handoff.md`. Non è una violazione
+dell'istituzione D: non c'è alcun auto-report d'agente da verificare, il diff è
+il report.
