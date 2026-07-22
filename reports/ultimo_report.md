@@ -1,8 +1,8 @@
-# Report — correttivo pre-merge: F7 fattibile, label fingerprint, PR #33/#34, finding encoding
-**Data:** 2026-07-22  
-**Branch:** docs/rammendo-nota7-fingerprint  
-**Commit questo correttivo:** (vedi sotto — generato dopo la scrittura di questo file)  
-**Revisore:** NON invocato — task doc-only, esente CLAUDE.md sez.3
+# ULTIMO REPORT — 2026-07-22
+
+**Task:** DOC-ONLY — rammendo canonici post-sessione 2026-07-21 (nota VPS §7, fingerprint chiave WSL, F7, igiene canonici) + correttivo pre-merge
+**Branch:** `docs/rammendo-nota7-fingerprint`
+**Data:** 2026-07-22
 
 ---
 
@@ -12,71 +12,29 @@ Nessuna.
 
 ---
 
-## Hash commit di questa sessione
-
-`cb29cf6231ad4854daa4d6b00a0c8fd493aac3bb`
-
----
-
 ## Esito per fetta
+
+### Task 1 — rammendo (commit 661f30b)
+
+| Fetta | Esito | Note |
+|-------|-------|------|
+| **FETTA 1** — rammendo nota §7 | **FATTA** | Heading "STANTIA" → "PARZIALMENTE STANTIA — vedi coda"; capoverso finale aggiunto |
+| **FETTA 2a** — fingerprint chiave WSL | **FATTA** | `SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE` verificato live con `ssh-keygen -lf` |
+| **FETTA 2b** — fingerprint → riga ACCESSO SSH | **FATTA** | Aggiunto in coda alla riga ✅ ACCESSO SSH RIPRISTINATO |
+| **FETTA 2c** — riga F7 BLOCCATA | **FATTA** (corretta nel task 2) | Aggiunta come da brief; contraddizione logica corretta nel commit successivo |
+| **FETTA 3a** — header "Ultimo aggiornamento" | **SALTATA — già corretta** | Il file diceva già `2026-07-21` |
+| **FETTA 3b** — contatore review §C | **FATTA** | §C allineata 56→57 (fonte: `memoria_revisore.md` ultima riga `#57`) |
+| **FETTA 3c** — PR #32 lista CI | **FATTA** | Hash `f2679a4`, CI `29775144603` ✅ verificati live |
+
+### Task 2 — correttivo pre-merge (commit cb29cf6 + 967448c)
 
 | Fetta | Esito | Note |
 |-------|-------|------|
 | **FETTA A** — correggi riga F7 | **FATTA** | ⛔ BLOCCATA → 🟡 APERTA e FATTIBILE; tampone dichiarato esplicitato |
-| **FETTA B** — correggi label fingerprint | **FATTA** | "da autorizzare sul VPS al rientro" → "fingerprint di riferimento della chiave WSL autorizzata sul VPS" |
-| **FETTA C** — aggiungi PR #33 e #34 lista CI | **FATTA** | Entrambe verificate (hash + run ID da comandi reali) |
-| **FETTA D** — finding R-encoding | **FATTA** | Riga 🟡 R-encoding aggiunta in fondo a "DA FARE — sviluppo/processo" |
+| **FETTA B** — label fingerprint | **FATTA** | "da autorizzare sul VPS al rientro" → "fingerprint di riferimento della chiave WSL autorizzata sul VPS" |
+| **FETTA C** — PR #33 e #34 lista CI | **FATTE** | PR #33: `5dae638` CI `29848173628` ✅; PR #34: `45a1708` CI `29898591182` ✅ |
+| **FETTA D** — finding R-encoding | **FATTA** | 🟡 R-encoding aggiunto in DA FARE (file NON toccato nel contenuto, solo registrato) |
 
 ---
 
-## `git diff --stat` reale dell'intera sessione (vs commit precedente)
-
-```
- reports/stato_progetto.md | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
-```
-
----
-
-## FETTA B — evidenza authorized_keys trovata
-
-Riga trovata in `reports/stato_progetto.md` (riga 173, verificata con grep):
-
-> `Chiave WSL \`id_ed25519\` ora in \`authorized_keys\` di \`gas\`.`
-
-Evidenza presente e dichiarativa (output sessione 2026-07-21, non ri-verificato con SSH live in questa sessione). Sufficiente per la riscrittura della label: la chiave risulta autorizzata per dichiarazione della sessione stessa.
-
----
-
-## FETTA C — hash e run ID verificati
-
-Comandi usati: `git fetch origin && git log origin/main --oneline` + `gh run list --limit 10`
-
-| PR | Hash merge (origin/main) | CI Run ID | Data | Esito |
-|----|--------------------------|-----------|------|-------|
-| #34 | `45a1708` | `29898591182` | 2026-07-22 | ✅ SUCCESS |
-| #33 | `5dae638` | `29848173628` | 2026-07-21 | ✅ SUCCESS |
-
----
-
-## Esito CI del branch docs/rammendo-nota7-fingerprint
-
-```
-completed  success  docs: rammendo nota VPS §7, fingerprint chiave WSL, F7 bloccata, igie…
-CI  docs/rammendo-nota7-fingerprint  push  29906744166  49s  2026-07-22T09:07:56Z
-```
-
-Solo il commit 661f30b ha run CI sul branch; il commit di questo correttivo non ha ancora run (sarà triggerato dal push).
-
----
-
-## Incoerenze trovate e NON corrette
-
-1. **Encoding rotto** (`âœ…`, `ðŸ"´`, `â€"`) nelle righe 12–21 e altrove — registrato come 🟡 R-encoding in DA FARE, NON corretto per rispetto del STOP BLOCCANTE del brief.
-2. **PR #33/#34 prima di questo correttivo**: le due PR erano già in `gh run list` come SUCCESS e negli hash di origin/main; non erano nel brief originale. Aggiunte ora.
-
----
-
-## Dichiarazione esplicita
-
-**Revisore NON invocato** — task doc-only, esente CLAUDE.md sez.3.
+## Revisore NON invocato — doc-only, esente CLAUDE.md sez.3
