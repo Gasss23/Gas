@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-22 — DOC-ONLY: chiusura item stato_progetto.md (4 fette)
+**Sessione:** 2026-07-22 — DOC-ONLY: chiusura item stato_progetto.md (4 fette + correzione contatore review)
 
 ---
 
@@ -15,7 +15,7 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — riga CI (PR #37 + PR #36)**: `FATTA` — prepend in riga 10; run ID `29942831200` e `29941994238` verificati live con `gh run list`.
-- **Fetta 2 — onestà contatore review**: `FATTA` — sostituzione "Fonte contatore" in riga 111; 2 divergenze rispetto al prompt (29 numeri, non 28; gap 7–18+20–25, non 7–25 perché #19 presente); scritti i valori misurati.
+- **Fetta 2 — onestà contatore review**: `FATTA + CORRETTA` — prima stesura con numeri inaffidabili (29, poi corretto: `#19` era ref a PR, non review; 4 formati di entry → nessun conteggio difendibile); corretta nella stessa sessione eliminando numeri totali e liste gap. Testo finale: solo dati verificabili (`#57` massimo, contigui da `#51` a `#57`).
 - **Fetta 3 — bonifica branch remoti**: `FATTA` — nuovo item in DA FARE; 27 heads, 22 mergiati, 4 non mergiati confermati live.
 - **Fetta 4 — R-crm-1b fetta 3 telefono**: `FATTA` — nuovo finding in DA FARE; assenza su `origin/main` confermata con `git grep` (0 match).
 
@@ -24,9 +24,11 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/stato_progetto.md |   6 ++-
- reports/ultimo_report.md  | 102 +++++++++++++++++++++++++++++-----------------
- 2 files changed, 69 insertions(+), 39 deletions(-)
+ reports/diff_sessione.md  | 14 ++++------
+ reports/handoff.md        | 70 +++++++++++++++++++++++------------------------
+ reports/stato_progetto.md |  6 ++--
+ reports/ultimo_report.md  | 66 ++++++++++++++++----------------------------
+ 4 files changed, 67 insertions(+), 89 deletions(-)
 ```
 
 (BASE=`cb7ba8b46b45116f51b11ce58ae487331e5b7473`)
@@ -36,6 +38,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2d55775 docs(stato): correggi misura contatore review — rimossi numeri inaffidabili (#19 era PR, non review; 4 formati diversi)
+cb773bc docs(fine-task): handoff + diff_sessione 2026-07-22 chiusura-item
 c109a2d docs(stato): 4 fette chiusura item 2026-07-22 — CI, contatore review, branch bonifica, R-crm-1b fetta 3
 ```
 
@@ -56,12 +60,12 @@ Nessuna modifica a gas.py/tests/.
 ## §6 STATO CI
 
 ```
+completed	success	docs(stato): correggi misura contatore review — rimossi numeri inaffi…	CI	docs/chiusura-item-2026-07-22	push	29949274273	45s	2026-07-22T19:02:18Z
+completed	success	docs(fine-task): handoff + diff_sessione 2026-07-22 chiusura-item	CI	docs/chiusura-item-2026-07-22	push	29948493723	45s	2026-07-22T18:51:22Z
 completed	success	docs(stato): 4 fette chiusura item 2026-07-22 — CI, contatore review,…	CI	docs/chiusura-item-2026-07-22	push	29945734396	58s	2026-07-22T18:13:26Z
-completed	success	Merge pull request #37 from Gasss23/docs/microfinding-merge-agente	CI	main	push	29942831200	50s	2026-07-22T17:33:20Z
-completed	success	docs(processo): micro-finding merge su main da dentro Claude Code	CI	docs/microfinding-merge-agente	push	29942609225	40s	2026-07-22T17:30:19Z
 ```
 
-Run di sessione: `29945734396` — branch `docs/chiusura-item-2026-07-22` — **SUCCESS** (58s)
+Ultimo run di sessione: `29949274273` — branch `docs/chiusura-item-2026-07-22` — **SUCCESS** (45s)
 
 ---
 
@@ -70,6 +74,6 @@ Run di sessione: `29945734396` — branch `docs/chiusura-item-2026-07-22` — **
 Nessun verdetto revisore questa sessione (diff doc-only).
 
 Finding nuovi emersi:
-- **R-crm-1b fetta 3 (telefono)**: codice esiste su `feature/crm-dup-detect` ma NON su main. Decisione aperta su strategia di recupero.
-- **Bonifica branch remoti**: 22 branch mergiati da cancellare (UI GitHub), 4 non mergiati da preservare.
-- **Divergenza contatore review**: il file `memoria_revisore.md` contiene 29 numeri #N distinti (non 28 come indicato nel prompt), con gap non contigui sotto #51. Il contatore "57 review" è ereditato dallo storico e non ricostruibile dal file.
+- **R-crm-1b fetta 3 (telefono)**: codice esiste su `feature/crm-dup-detect` ma NON su main. Decisione aperta su strategia di recupero (riscrittura vs cherry-pick).
+- **Bonifica branch remoti**: 22 branch mergiati da cancellare (UI GitHub), 4 non mergiati da preservare (`feature/crm-dup-detect` in particolare NON cancellabile finché fetta 3 non chiusa su main).
+- **Contatore review inaffidabile**: `memoria_revisore.md` usa formati eterogenei → nessun conteggio automatico difendibile. Dati verificabili: massimo `#57`, contigui solo `#51`–`#57`.

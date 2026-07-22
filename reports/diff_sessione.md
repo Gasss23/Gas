@@ -7,7 +7,7 @@
 
 | File | Cosa è cambiato | Perché |
 |------|----------------|--------|
-| `reports/stato_progetto.md` | Riga CI: prepend PR #37 e PR #36 con run ID reali; sezione C: "Fonte contatore" espansa con avviso onestà e misure reali; DA FARE: aggiunto item bonifica branch remoti (27 heads, 22 mergiati, 4 non mergiati) e finding R-crm-1b fetta 3 telefono (codice su branch non mergiato, assente su main) | Aggiornamento canonico stato_progetto.md con 4 fette di chiusura item |
-| `reports/ultimo_report.md` | Riscritto con esito sessione corrente, misure reali, decisioni umane richieste, divergenze rispetto al prompt | Report canonico fine task |
-| `reports/handoff.md` | Riscritto con dossier completo sessione: scope, diff --stat, log, CI, riserve | Dossier fine sessione per revisore esterno |
+| `reports/stato_progetto.md` | Riga CI: prepend PR #37/#36 con run ID reali; sezione C: "Fonte contatore" espansa + corretta (rimossi numeri inaffidabili, conservati solo dati verificabili: max `#57`, contigui `#51`–`#57`); DA FARE: aggiunto item bonifica branch remoti e finding R-crm-1b fetta 3 | 4 fette di chiusura item + correzione contatore review |
+| `reports/ultimo_report.md` | Riscritto due volte: prima con esito 4 fette, poi aggiornato con correzione contatore | Report canonico fine task (sessione completa) |
+| `reports/handoff.md` | Riscritto: dossier completo sessione (scope, diff --stat, log, CI, riserve) | Dossier fine sessione per revisore esterno |
 | `reports/diff_sessione.md` | Questo file — riscritto per sessione corrente | Fotografia della sessione |
