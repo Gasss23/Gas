@@ -7,76 +7,51 @@
 
 ---
 
-## Esito fette
+## DECISIONI UMANE RICHIESTE
 
-| Fetta | Stato | Note |
-|-------|-------|------|
-| FETTA 1 — riga CI (PR #37 + PR #36) | FATTA | Run ID verificati live con `gh run list` |
-| FETTA 2 — onestà contatore review | FATTA | 1 divergenza rispetto al prompt (vedi sotto) |
-| FETTA 3 — bonifica branch remoti | FATTA | Numeri confermati live, nessuna divergenza |
-| FETTA 4 — R-crm-1b fetta 3 telefono | FATTA | Assenza su main confermata via `git grep` |
+1. **R-crm-1b fetta 3 (telefono)**: scegliere tra riscrittura pulita su main vs recupero dal branch `feature/crm-dup-detect` (commit `1d32819`, review #49 non più valida sul contesto attuale). Blocca la chiusura di R-crm-1b.
+2. **Bonifica branch remoti**: 22 branch mergiati cancellabili da UI GitHub. Azione umana richiesta — NON da sessione agente.
 
 ---
 
-## Misure reali rilevate
+## Esito fette
+
+| Fetta | Stato | Dettaglio |
+|-------|-------|-----------|
+| FETTA 1 — riga CI (PR #37 + PR #36) | FATTA | Run ID verificati live: `29942831200` e `29941994238` |
+| FETTA 2 — onestà contatore review | FATTA | 2 divergenze rispetto al prompt (vedi sotto) |
+| FETTA 3 — bonifica branch remoti | FATTA | Numeri confermati live, nessuna divergenza |
+| FETTA 4 — R-crm-1b fetta 3 telefono | FATTA | Assenza su main confermata via `git grep` (0 match) |
+
+---
+
+## Misure reali e divergenze
 
 ### Fetta 1 — CI run ID
-- PR #37 merge `cb7ba8b` (2026-07-22): run `29942831200` SUCCESS (50s)
-- PR #36 merge `4c63ff3` (2026-07-22): run `29941994238` SUCCESS (38s)
+- PR #37 `cb7ba8b` (2026-07-22): run `29942831200` SUCCESS (50s)
+- PR #36 `4c63ff3` (2026-07-22): run `29941994238` SUCCESS (38s)
 
-Fonte: `gh run list --branch main --limit 10` — nessuna invenzione.
+### Fetta 2 — memoria_revisore.md (divergenze dal prompt)
 
-### Fetta 2 — memoria_revisore.md
-
-Comando: `grep -oE '#[0-9]+' .claude/agents/memoria_revisore.md | tr -d '#' | sort -n | uniq`
+Comando usato: `grep -oE '#[0-9]+' .claude/agents/memoria_revisore.md | tr -d '#' | sort -n | uniq`
 
 - Righe totali: **100** (corrisponde al prompt)
-- Numeri `#N` distinti: **29** — il prompt dice 28 — **DIVERGENZA**
-- Numeri trovati: 5, 6, 19, 26, 27, 29, 30, 31, 32, 36, 37, 38, 39, 40, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
-- Contigui da #51 a #57: confermato
-- Numero più alto: #57
-- Mancanti sotto #51: `1–4, 7–18, 20–25, 28, 33–35, 41, 45`
-  Il prompt scriveva "7–25": impreciso perché **#19 è presente** nel file, quindi il gap reale è 7–18 + 20–25, non 7–25 — **DIVERGENZA**
-
-Scritti nel file i valori misurati (29 numeri distinti; gap corretti).
-
-Verifica "57" nelle due sezioni NON toccati (obbligatorio):
-- Riga 9: "**57 review** completate" — invariato
-- Riga 111: "**57 review**. Ultima: **#57**" — invariato
+- Numeri `#N` distinti: **29** — il prompt diceva 28 — **DIVERGENZA scritta nel file**
+- Numeri trovati: 5, 6, 19, 26, 27, 29-32, 36-40, 42-44, 46-57
+- Gap mancanti sotto #51: `1–4, 7–18, 20–25, 28, 33–35, 41, 45`
+  Il prompt scriveva "7–25" ma #19 è presente → gap corretto in `7–18, 20–25` — **DIVERGENZA scritta nel file**
+- I "57" nelle due sezioni (riga 9 e riga 111) NON sono stati toccati — verificato
 
 ### Fetta 3 — branch remoti
+- 27 heads su origin, 26 oltre main
+- 22 mergiati in main (escl. main stesso)
+- 4 non mergiati: `feature/crm-dup-detect`, `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc`
 
-Comandi: `git branch -r --merged origin/main` / `--no-merged`
-
-- Merged (output grezzo): 24 righe (1 HEAD pseudo-ref + 23 branch reali incl. main)
-- Branch mergiati in main (escluso main stesso): **22**
-- Non mergiati: **4** — `feature/crm-dup-detect`, `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc`
-- Totale heads su origin: **27** (23 merged incl. main + 4 non-merged), oltre main: **26**
-
-Nessuna divergenza dai numeri del prompt.
-
-### Fetta 4 — telefono su main
-
-Comando: `git grep -nE 'normalizza_telefono|rileva_duplicati_telefono' origin/main -- modules/`
-
-Output: vuoto (0 match) — funzioni assenti su `origin/main` confermato.
+### Fetta 4 — funzioni telefono
+- `git grep normalizza_telefono|rileva_duplicati_telefono origin/main -- modules/`: 0 match
 
 ---
 
 ## Invariante IP
 
-Verificato PRE e POST edit:
-```
-git grep -nE '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b' -- reports/stato_progetto.md
-```
-Risultato: **0 match**
-
----
-
-## Scope rispettato
-
-- Toccato SOLO: `reports/stato_progetto.md` e `reports/ultimo_report.md`
-- File di motore: non toccati
-- Branch remoti: non cancellati
-- PR: non mergiate
-- Mojibake: non corretto (sessione dedicata separata, come da stop gate)
+`git grep -nE IP_PATTERN -- reports/stato_progetto.md` → **0 match** pre e post edit.
