@@ -9,17 +9,17 @@
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **57 review** completate (ultima #57, 2026-07-19, R-crm-1b fetta 2, APPROVATO CON RISERVE — riserva docstring chiusa in-session). Suite WSL locale (2026-07-19, fix/crm-idemp-diario): **247 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys; T57h/i/j nuovi ✅). Hook suite: **10 PASS**.
 CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #37 merge `cb7ba8b` (2026-07-22, CI `29942831200`) · PR #36 merge `4c63ff3` (2026-07-22, CI `29941994238`) · PR #35 merge `425ba5c` (2026-07-22, CI `29919691907`) · PR #34 merge `45a1708` (2026-07-22, CI `29898591182`) · PR #33 merge `5dae638` (2026-07-21, CI `29848173628`) · PR #32 merge `f2679a4` (2026-07-20, CI `29775144603`) · PR #27 merge `21548f74` (2026-07-19, CI `29695063005`) · PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18).
 
-**âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
-**âœ… R-comp-1** â€” boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
-**âœ… gas version 0.2.0** (2026-07-01, review #41 APPROVATO, commit d992c47 â†’ merge 2326404): `gas version` â†’ stampa versione + Python, zero token LLM. Test T55. Nessuna lezione nuova per memoria_revisore.md.
+**✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
+**✅ R-comp-1** — boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
+**✅ gas version 0.2.0** (2026-07-01, review #41 APPROVATO, commit d992c47 → merge 2326404): `gas version` → stampa versione + Python, zero token LLM. Test T55. Nessuna lezione nuova per memoria_revisore.md.
 **✅ Config-drift stringhe modello — CHIUSO** (2026-07-07, review #43, branch `refactor/model-ids-fonte-unica`: merge `eb0509f`, commit `160543a`): `brains/model_ids.py` = fonte unica dei 5 ID modello della cascata, env-overridabili (`GAS_MODEL_*`). Suite della sessione: **217 PASS incluso T56**. **Caveat suite**: quei 217 PASS sono stati ottenuti in Codespace, dove i test bwrap NON sono validabili (comportamento noto); la verifica bwrap reale resta demandata a CI/postazione WSL locale. **CI sul merge**: run ID **28874912495** (run n. 85, evento push su `eb0509f`, 2026-07-07) — **SUCCESS** ✅.
 
-**Stato item roadmap (review #38, commit a8c6d53) â€” stato reale:**
-- ðŸ”´ **Item 1 â€” Controllo spesa token**: `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` committati. Agiscono sul runtime GAS (Gemini/Groq free tier, costo ~0â‚¬). La spesa problematica (Claude Code dev su Opus) NON Ã¨ tracciata in `.gas_tokens.jsonl` e NON viene intercettata. â†’ **APERTO**: la disciplina dev (sez. 11 CLAUDE.md) resta l'unica leva reale.
+**Stato item roadmap (review #38, commit a8c6d53) — stato reale:**
+- 🔴 **Item 1 — Controllo spesa token**: `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` committati. Agiscono sul runtime GAS (Gemini/Groq free tier, costo ~0€). La spesa problematica (Claude Code dev su Opus) NON è tracciata in `.gas_tokens.jsonl` e NON viene intercettata. → **APERTO**: la disciplina dev (sez. 11 CLAUDE.md) resta l'unica leva reale.
 - ✅ **Item 2 — Accesso da telefono**: `gas telegram` committato — interfaccia RUNTIME (GAS risponde all'utente via Telegram bot). Accesso al dev tooling da telefono risolto via Remote Control (`/rc`): sessione locale su Giulia/WSL raggiunta da telefono, lettura file reale del repo confermata, nessun bridge custom necessario. → **CHIUSO (2026-07-15)**.
-- ðŸŸ¡ **Item 3 â€” R-wire-1 VEC_MIN_SIM**: `gas calibrate-vectors` committato â€” strumento di misura su diario reale (distribuzione score coseno, suggerisce soglia). La taratura effettiva richiede esecuzione sul VPS con diario reale. â†’ **APERTO** (strumento pronto, taratura da fare al deploy).
-- ðŸŸ¡ **Item 4 â€” eval e5-small**: `gas eval-vectors` committato â€” espone statistiche vector store e ricerca semantica interattiva, documenta e5-small come alternativa configurabile. Valutazione comparativa e migrazione del modello NON effettuate. â†’ **APERTO**.
-- ðŸŸ¡ **Item 5 â€” R-reidx-3 picco RAM**: batch paginati giÃ  introdotti in review #30 (2026-06-25). Non toccato in review #38. â†’ **APERTO** (ridotto, chiusura definitiva al deploy VPS).
+- 🟡 **Item 3 — R-wire-1 VEC_MIN_SIM**: `gas calibrate-vectors` committato — strumento di misura su diario reale (distribuzione score coseno, suggerisce soglia). La taratura effettiva richiede esecuzione sul VPS con diario reale. → **APERTO** (strumento pronto, taratura da fare al deploy).
+- 🟡 **Item 4 — eval e5-small**: `gas eval-vectors` committato — espone statistiche vector store e ricerca semantica interattiva, documenta e5-small come alternativa configurabile. Valutazione comparativa e migrazione del modello NON effettuate. → **APERTO**.
+- 🟡 **Item 5 — R-reidx-3 picco RAM**: batch paginati già introdotti in review #30 (2026-06-25). Non toccato in review #38. → **APERTO** (ridotto, chiusura definitiva al deploy VPS).
 
 Componenti attive:
 - Snapshot preventivo anti-autodistruzione (fail-closed, refs/gas/snapshots/)
@@ -28,21 +28,21 @@ Componenti attive:
 - `WINDOW_CHAR_CAP=24000` + `_cap_window_chars` (no slicing, scarto messaggi interi)
 - Memoria SQLite `.gas_memory.db`: diario IMMUTABILE + rubrica contatti + FTS5 + backup auto
 - Vector store `.gas_vectors.db` opt-in `GAS_VECTORS` (MiniLM 384-dim, cosine brute-force)
-- CRM dal loop: tool `salva_contatto`/`imposta_stato_contatto`, identitÃ  su `chiave_norm` NFKC
+- CRM dal loop: tool `salva_contatto`/`imposta_stato_contatto`, identità su `chiave_norm` NFKC
 - Iniezione always-on `_memoria_pin` (system msg) + tool `ricorda` (sola lettura)
-- CLI `gas doctor` / `gas reindex` / `gas backup` / `gas tokens [N]` (contabilitÃ  token + stima USD + fallthrough)
+- CLI `gas doctor` / `gas reindex` / `gas backup` / `gas tokens [N]` (contabilità token + stima USD + fallthrough)
 - **Budget cap** (review #38): `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` in `run_turn`
-- **Telegram bridge** (review #38): `gas telegram` â†’ `modules/telegram/bot.py` (long polling, `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_IDS`)
-- **CLI vettori** (review #38): `gas calibrate-vectors` (distribuzione score â†’ suggerisce min_sim) + `gas eval-vectors [query]` (ricerca semantica interattiva)
+- **Telegram bridge** (review #38): `gas telegram` → `modules/telegram/bot.py` (long polling, `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_IDS`)
+- **CLI vettori** (review #38): `gas calibrate-vectors` (distribuzione score → suggerisce min_sim) + `gas eval-vectors [query]` (ricerca semantica interattiva)
 - **Compressione history** (review #39, FASE 2.5): `_compress_history_if_needed()` auto-trigger in `run_turn`; `gas compress-history` CLI. Env: `GAS_HISTORY_MAX_MSGS` (default 100), `GAS_HISTORY_KEEP_MSGS` (default 20). Zero token LLM.
 - Telemetria fallthrough (review #33): `_log_tokens` con `event`/`reason`; doctor sez.10
 - `VectorStore.disable_reason` (review #35/36): motivo disable propagato a `gas doctor`
 
 ## Pipeline provider (paracadute)
 
-1. `gemini-2.5-flash-lite` â†’ 2. `gemini-2.5-flash` â†’ 3. `groq/openai/gpt-oss-120b`
-   â†’ 4. `openrouter` free (`meta-llama/llama-3.3-70b-instruct:free`)
-   â†’ 5. `ollama` offline (`qwen2.5:7b-instruct`, solo se `GAS_OLLAMA_URL` settata)
+1. `gemini-2.5-flash-lite` → 2. `gemini-2.5-flash` → 3. `groq/openai/gpt-oss-120b`
+   → 4. `openrouter` free (`meta-llama/llama-3.3-70b-instruct:free`)
+   → 5. `ollama` offline (`qwen2.5:7b-instruct`, solo se `GAS_OLLAMA_URL` settata)
 
 ## Finding aperti (🟡 attivi)
 
@@ -88,47 +88,47 @@ NO-GO come rung-4. Due limiti bloccanti per paracadute h24 non presidiato:
 2. Coda free satura — 429 queue_exceeded a orari diversi. Disponibilità non garantita.
 Rung-4 resta OpenRouter. Ri-valutabile solo su tier a pagamento (131k, no coda) = decisione di budget separata.
 Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
-## Prossimi passi (in ordine di prioritÃ )
+## Prossimi passi (in ordine di priorità)
 
-1. ~~**FASE 2.5**~~ âœ… chiusa (review #39, 2026-06-27).
-2. **ðŸ”´ Spesa token dev**: item 1 roadmap â€” il budget cap runtime Ã¨ inerte sul free tier. La leva reale Ã¨ la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
+1. ~~**FASE 2.5**~~ ✅ chiusa (review #39, 2026-06-27).
+2. **🔴 Spesa token dev**: item 1 roadmap — il budget cap runtime è inerte sul free tier. La leva reale è la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
 3. **✅ Accesso dev tooling da telefono**: item 2 roadmap — CHIUSO (2026-07-15) via Remote Control (`/rc`): sonda su Giulia/WSL verificata live, nessun bridge custom necessario.
-4. **FASE 3 â€” Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
-5. **FASE 4.5 â€” Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
+4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
+5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
 6. **FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04)** → prossimo S2 (decide operatore)
 7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
-### PARK â€” registrati, nessun impegno
-- Retention del diario (archiviazione/export, MAI DELETE â€” quando il volume lo richiederÃ ).
+### PARK — registrati, nessun impegno
+- Retention del diario (archiviazione/export, MAI DELETE — quando il volume lo richiederà).
 - GDPR / dati personali lead: da guardare a FASE 4.
 - SSH + tmux come via di accesso al dev tooling da telefono (item 2 roadmap): registrato come alternativa a Dispatch, nessun impegno. Da riprendere SOLO se la sonda Dispatch fallisce. Caveat di sicurezza da valutare prima di qualsiasi implementazione: esporre una sessione tmux con Claude Code = superficie RCE sulla box di sviluppo/repo; richiede design a fiducia mono-direzionale e autenticazione separata.
 
 ## Istituzioni di processo
 
-- **A** â€” `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
-- **A-arch** â€” `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
-- **B** â€” `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
+- **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
+- **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
+- **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
 - **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **57 review**. Ultima: **#57** (R-crm-1b fetta 2 idempotenza diario, 2026-07-19, APPROVATO CON RISERVE). Fonte contatore: numero più alto citato in `.claude/agents/memoria_revisore.md` (`#57`). ⚠️ Il file NON è un registro completo per-review: l'obbligo "una riga per ogni review" è in vigore solo dal 2026-07-16 (#51). Misura 2026-07-22: 100 righe, almeno 4 formati di entry diversi (`(review #N)`, `(review #N TASK X)`, `- #N — data`, `#N — data`, più entry prive di numero). Conseguenza: NESSUN conteggio automatico è difendibile — metodi diversi danno risultati diversi. Gli unici dati verificabili sono: numero più alto citato = `#57`; entries contigue SOLO da `#51` a `#57`. Sotto `#51` il file è un log di lezioni, non un registro. Il conteggio "57 review" è ereditato dallo storico e NON è ricostruibile dal file: contare per validarlo è un metodo INVALIDO. Lezioni in `.claude/agents/memoria_revisore.md`. ✅ Backfill #48–#50 ESEGUITO (2026-07-18, PR #24).
-- **D** â€” `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
+- **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. **BASE = `git merge-base origin/main HEAD`** (non più “last handoff commit”), preceduto da `git fetch origin` obbligatorio e con guard bloccante se il merge-base è vuoto (fix 2026-07-15, branch `fix/fine-task-base-mergebase`). §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA). **Caveat residuo**: la correttezza di `${BASE}` dipende dalla freschezza di `origin/main` — il `git fetch` copre il caso normale, ma se la PR viene mergiata sul remoto DOPO il fetch, `${BASE}..HEAD` può ancora includere commit non di sessione. Non chiuso al 100%: mitigato.
 
-## Note operative VPS â€” non per oggi
+## Note operative VPS — non per oggi
 
-> Registrate il 2026-06-15 (aggiornate 2026-07-02, sonda S0 + allineamento canonici + correttivo post-a15ff61: R-vec-3 âœ… chiuso, no-swap finding, req non-root specifico).
+> Registrate il 2026-06-15 (aggiornate 2026-07-02, sonda S0 + allineamento canonici + correttivo post-a15ff61: R-vec-3 ✅ chiuso, no-swap finding, req non-root specifico).
 
-**Hardware confermato (sonda diretta 2026-07-02):** Hetzner **CX33** Helsinki â€” x86_64, 4 core, 7.6Gi RAM usabile (7.1Gi disponibile a vuoto), 70Gi disco liberi (NON CX22/4GB come da nota precedente errata).
+**Hardware confermato (sonda diretta 2026-07-02):** Hetzner **CX33** Helsinki — x86_64, 4 core, 7.6Gi RAM usabile (7.1Gi disponibile a vuoto), 70Gi disco liberi (NON CX22/4GB come da nota precedente errata).
 
-ðŸ”´ **FINDING no-swap (sonda 2026-07-02):** il box NON ha swap (default Hetzner). Su 7.6Gi condivisi da OS + GAS+embedder + ollama 3B + bot trading demo, un picco = OOM killer SECCO (nessun cuscinetto) su macchina h24 non presidiata â†’ viola "zero crash". Conseguenze:
-- (a) La unit systemd di S1b DEVE settare `MemoryHigh`/`MemoryMax` su GAS (ordine di grandezza: `MemoryHigh ~1.5Gi`, `MemoryMax ~2Gi` â€” GAS+embedder stanno <1Gi a regime, il margine copre i picchi di reindex; da affinare a S1b con misura reale). Scopo: se qualcosa sfonda, GAS degrada/riparte in modo prevedibile via `Restart=always` invece di innescare un OOM che colpisce il bot trading.
-- (b) Ollama "3B always-on" da RIVALUTARE â†’ probabile on-demand (spawn quando la cascata arriva a ollama, unload dopo) o modello 1-1.5B se always-on, causa RAM limitata + no-swap. Decisione a S3, qui solo registrata come aperta.
+🔴 **FINDING no-swap (sonda 2026-07-02):** il box NON ha swap (default Hetzner). Su 7.6Gi condivisi da OS + GAS+embedder + ollama 3B + bot trading demo, un picco = OOM killer SECCO (nessun cuscinetto) su macchina h24 non presidiata → viola "zero crash". Conseguenze:
+- (a) La unit systemd di S1b DEVE settare `MemoryHigh`/`MemoryMax` su GAS (ordine di grandezza: `MemoryHigh ~1.5Gi`, `MemoryMax ~2Gi` — GAS+embedder stanno <1Gi a regime, il margine copre i picchi di reindex; da affinare a S1b con misura reale). Scopo: se qualcosa sfonda, GAS degrada/riparte in modo prevedibile via `Restart=always` invece di innescare un OOM che colpisce il bot trading.
+- (b) Ollama "3B always-on" da RIVALUTARE → probabile on-demand (spawn quando la cascata arriva a ollama, unload dopo) o modello 1-1.5B se always-on, causa RAM limitata + no-swap. Decisione a S3, qui solo registrata come aperta.
 - (c) OPZIONE S1a da valutare: aggiungere swap file 2-4Gi (costo trascurabile su 70Gi liberi) come cuscinetto per h24 non presidiato. Non decisa, messa sul tavolo.
 
-1. **Snapshot**: 0 ref in dev Ã¨ ATTESO (il runtime GAS non gira qui). Sul VPS gli snapshot nasceranno da `run_command`/`write_file` â†’ se doctor sez.7 mostrasse 0 ref sul VPS sarebbe anomalo. ~4427 oggetti loose = detrito git (stash/churn), non snapshot; `git gc` OPT-IN li riassorbe.
-2. **OpenRouter free ~28s**: rung lento, paracadute non piano operativo. Ollama locale = pavimento rapido a costo zero. **Modello ollama per VPS: 3B (es. `qwen2.5:3b-instruct`), NON 7B** â€” gli 8 GB sono condivisi da GAS + embedder fastembed (~500 MB model cache) + bot trading demo coabitante; un 7B esaurisce la RAM.
-3. **Contesto sicurezza OBBLIGATORIO per S1** (bot trading demo coabitante): (a) `GAS_SANDBOX_MODE=os_strict` OBBLIGATORIO finchÃ© il bot trading coabita â€” chiavi exchange sulla stessa macchina di un'AI che esegue codice = superficie di esfiltrazione non accettabile in os_with_fallback; (b) utente runtime **non-root** Ã¨ requisito di sicurezza RAFFORZATO (non solo best practice): processo AI con accesso codice + chiavi exchange dello stesso utente root = game over in caso di exploit; (c) **Requisito esplicito S1**: creare utente runtime dedicato non-root e spostare working dir + model cache + `.gas_*.db` fuori da `/root`, di proprietÃ  di quell'utente. Evidenza sonda S0: `VECTORS_DB /root/gas/.gas_vectors.db` â€” runtime e cache/db girano attualmente sotto `/root` come root.
-4. **Decisione systemd ratificata**: `gas doctor` NON deve essere ExecStartPre/gate di avvio â€” esce 1 anche su sole API key assenti (semantica dichiarata in CLAUDE.md sez.3). Comportamento corretto: `Restart=always` + `RestartSec=10` + notifica Telegram al primo turno se degradato (doctor come check post-avvio, non blocco pre-avvio).
+1. **Snapshot**: 0 ref in dev è ATTESO (il runtime GAS non gira qui). Sul VPS gli snapshot nasceranno da `run_command`/`write_file` → se doctor sez.7 mostrasse 0 ref sul VPS sarebbe anomalo. ~4427 oggetti loose = detrito git (stash/churn), non snapshot; `git gc` OPT-IN li riassorbe.
+2. **OpenRouter free ~28s**: rung lento, paracadute non piano operativo. Ollama locale = pavimento rapido a costo zero. **Modello ollama per VPS: 3B (es. `qwen2.5:3b-instruct`), NON 7B** — gli 8 GB sono condivisi da GAS + embedder fastembed (~500 MB model cache) + bot trading demo coabitante; un 7B esaurisce la RAM.
+3. **Contesto sicurezza OBBLIGATORIO per S1** (bot trading demo coabitante): (a) `GAS_SANDBOX_MODE=os_strict` OBBLIGATORIO finché il bot trading coabita — chiavi exchange sulla stessa macchina di un'AI che esegue codice = superficie di esfiltrazione non accettabile in os_with_fallback; (b) utente runtime **non-root** è requisito di sicurezza RAFFORZATO (non solo best practice): processo AI con accesso codice + chiavi exchange dello stesso utente root = game over in caso di exploit; (c) **Requisito esplicito S1**: creare utente runtime dedicato non-root e spostare working dir + model cache + `.gas_*.db` fuori da `/root`, di proprietà di quell'utente. Evidenza sonda S0: `VECTORS_DB /root/gas/.gas_vectors.db` — runtime e cache/db girano attualmente sotto `/root` come root.
+4. **Decisione systemd ratificata**: `gas doctor` NON deve essere ExecStartPre/gate di avvio — esce 1 anche su sole API key assenti (semantica dichiarata in CLAUDE.md sez.3). Comportamento corretto: `Restart=always` + `RestartSec=10` + notifica Telegram al primo turno se degradato (doctor come check post-avvio, non blocco pre-avvio).
 5. **R-vec-pool ✅ (2026-07-03)**: fingerprint ora include `fastembed_version`. Upgrade fastembed → mismatch versione → guard spegne il layer e obbliga a `gas reindex` (fail-closed). Il reindex non è più affidato alla memoria dell operatore ma forzato dal codice.
-6.  **Confine sviluppo da telefono** (Claude Code cloud, sondato 2026-07-01): loop telefonoâ†’cloudâ†’revisoreâ†’CI validato su evidenza reale (revisore+hook scattano nel cloud; CI verde run #50 su `d992c47`). CONFINE DURO: `bwrap` ASSENTE nel sandbox cloud â†’ test sandbox/`run_command`/snapshot strutturalmente rossi lÃ¬, NON validabili da telefono (solo CI). Nessuna credenziale LLM nel cloud â†’ runtime GAS non eseguibile lÃ¬. Fattibile da telefono: doc-only + motore leggero non-sandbox verificabile da CI. Da sondare a parte: claude remote-control (ambiente reale, claim non verificato). Limite accertato 2026-07-02: Claude Code cloud pusha SOLO sul branch di sessione, NON crea branch â†’ i task cloud si stratificano, serve estrai-e-cancella a valle.
+6.  **Confine sviluppo da telefono** (Claude Code cloud, sondato 2026-07-01): loop telefono→cloud→revisore→CI validato su evidenza reale (revisore+hook scattano nel cloud; CI verde run #50 su `d992c47`). CONFINE DURO: `bwrap` ASSENTE nel sandbox cloud → test sandbox/`run_command`/snapshot strutturalmente rossi lì, NON validabili da telefono (solo CI). Nessuna credenziale LLM nel cloud → runtime GAS non eseguibile lì. Fattibile da telefono: doc-only + motore leggero non-sandbox verificabile da CI. Da sondare a parte: claude remote-control (ambiente reale, claim non verificato). Limite accertato 2026-07-02: Claude Code cloud pusha SOLO sul branch di sessione, NON crea branch → i task cloud si stratificano, serve estrai-e-cancella a valle.
    - ✅ Remote Control locale verificato (2026-07-15): `cd ~/Gas && claude` + `/rc` → QR → app. CAVEAT OPERATIVO: la sessione eredita la cwd del lancio — lanciare SEMPRE da ~/Gas. CAVEAT SESSIONI: in app, ☁️ = Claude Code cloud (no bwrap, non canonico), icona computer+verde = Giulia locale. Non confonderle: un task bwrap in cloud dà falso verde. Confine invariato: da telefono solo doc-only + motore non-sandbox; bwrap solo locale/CI.
 7. **⚠️ PARZIALMENTE STANTIA — vedi coda — postazione locale WSL** (aggiornata 2026-07-18): venv era ASSENTE al 2026-07-17, ricreato con `python3 -m venv venv` (Python 3.12.3 — NON 3.11 come dichiarato altrove in CLAUDE.md); contiene SOLO pytest 9.1.1 da `requirements-dev.txt` → dipendenze del motore NON installate, suite kernel su WSL NON eseguibile finché non si fa `pip install -r requirements.txt`. jq era ASSENTE, installato a mano (jq-1.7, 2026-07-17). Chiave SSH `id_ed25519` con PASSPHRASE senza ssh-agent → hook non-interattivi NON possono pushare: auto-push di `session_end.sh`/`scrivi_rep.sh` è INERTE su WSL, il push va fatto a mano. Tutte azioni manuali senza traccia in git: registrate qui. **DECISIONE ssh-agent (2026-07-18)**: adottato agent-per-sessione (`eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519`, una passphrase per boot) — mitigazione, NON cura: gli hook restano inerti se l'agent non è avviato. **Fix durevole APERTO (da decidere)**: migrare il remote a HTTPS (`gh` già autenticato HTTPS → push non-interattivo, hook vivi senza rito per-boot); costo = token gh a riposo sul dev box (accettabile, non è il VPS). Non impegnato in questa sessione.
    **⚠️ STANTIA dal 2026-07-21 — solo la parte ssh-agent/passphrase/hook inerti**: il remote di `~/Gas` è GIÀ HTTPS e `gh auth setup-git` rende il push git non-interattivo — hook vivi senza rito per-boot (registrato nel blocco "Sessione 2026-07-21"). Il **Fix durevole** è dunque CHIUSO. Il resto della nota (venv assente → ricreato, Python 3.12.3, jq installato a mano) resta valido.
