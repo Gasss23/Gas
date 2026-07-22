@@ -83,7 +83,7 @@ Gasss23 <290517909+Gasss23@users.noreply.github.com>
 
 ## Numero PR
 
-[assegnato al push]
+**PR #40** — https://github.com/Gasss23/Gas/pull/40
 
 ---
 
