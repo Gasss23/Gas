@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-19** (R-crm-1b fetta 2 idempotenza diario: merge PR #27 → `21548f74` su main, CI run `29695063005` ✅ SUCCESS)
+> Ultimo aggiornamento: **2026-07-21** (accesso SSH VPS ripristinato via varco password temporaneo poi richiuso; sonda .venv FATTA → F7 confermato APERTO sul VPS; reboot GAS non pianificato da Ctrl+Alt+Del, ripartito active)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -166,10 +166,13 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 
 ### Sessione 2026-07-21 — chiusura giro item fuori-roadmap
 
-- ✅ **Scrub IP/SSH** (2026-07-20, PR #32 `f2679a4`): IP via da HEAD, verificato su albero mergiato via git grep (esatto+parziale = 0) — unica claim verificata in-chat da Claude. Stato **MITIGATO** (resta in history pubblica → cura = privatizzazione, roadmap item 0).
-- ✅ **Fork = 0** [da output `gh repo view`, 2026-07-21]: nessun fork pubblico → l'IP non è uscito su terzi.
-- ✅ **ssh-agent → HTTPS** [da output WSL]: remote di `~/Gas` GIÀ HTTPS; `gh auth setup-git` + probe `git push --dry-run` = HTTPS-AUTH-OK senza passphrase → hook vivi. **RETTIFICA nota VPS §7**: scenario "SSH+passphrase, hook inerti" SUPERATO/STANTIO.
-- 🔴 **ACCESSO SSH AL VPS PERSO da postazione WSL** [da output WSL, 2026-07-21]: `ssh gas@<VPS_IP>` → `Permission denied (publickey)`. Chiave WSL (`~/.ssh/id_ed25519`, `SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE`) offerta ma rifiutata: NON in `authorized_keys` del VPS (probabile: autorizzata vecchia chiave Windows poi eliminata). Blocca ogni operazione VPS.
-- 🔴 **PASSWORD ROOT VPS non recuperabile** [riportato, 2026-07-21]: serve per console Hetzner (via non-SSH per ri-autorizzare la chiave a caldo). Alternativa = Rescue Mode (riavvia GAS in prod). **DA FARE — primo blocco da sciogliere.**
-- 🟡 **2FA Hetzner non attivo** [banner console 2026-07-21]: abilitare.
-- ⛔ **Sonda `.venv` VPS BLOCCATA** — prerequisito: accesso SSH ripristinato. Chiudeva anche **F7** (nome venv VPS `.venv` vs `venv`). Da rifare.
+- ✅ **Scrub IP/SSH** (2026-07-20, PR #32 `f2679a4`): IP via da HEAD, verificato su albero mergiato via git grep (esatto+parziale = 0). Stato **MITIGATO** (resta in history pubblica → cura = privatizzazione, roadmap item 0).
+- ✅ **Fork = 0** [output `gh repo view`, 2026-07-21]: nessun fork pubblico → l'IP non è uscito su terzi.
+- ✅ **ssh-agent → HTTPS** [output WSL]: remote di `~/Gas` GIÀ HTTPS; hook git vivi senza passphrase. NB: riguarda il push GIT, NON la chiave SSH del VPS (che ha passphrase, vedi sotto).
+- ✅ **ACCESSO SSH AL VPS RIPRISTINATO** (2026-07-21) [ex-🔴]: root pw resettata a caldo da Cloud Console (nessun reboot da lì). Metodo pubkey-via-gist FALLITO — la console noVNC Hetzner non incolla e mappa `/`→`&`/`?` (mangling sistematico); ripiegato su varco password temporaneo (`00-temp.conf` PasswordAuth yes → `ssh-copy-id` da WSL → varco RICHIUSO). Verifica: `ssh gas@<VPS_IP>` = OK/`gas`; `sshd -T` → `passwordauthentication no`; `passwd -l gas`. Chiave WSL `id_ed25519` ora in `authorized_keys` di `gas`.
+- ⚠️ **Reboot GAS in prod NON pianificato** (2026-07-21): Ctrl+Alt+Del involontario in console noVNC = reset macchina. GAS ripartito da solo (`Restart=always`), `systemctl is-active gas` = `active`. Downtime breve, nessun danno. Lezione: Ctrl+Alt+Del in console Hetzner riavvia il server.
+- 🟡 **2FA Hetzner non attivo** [banner console 2026-07-21]: ancora da abilitare.
+- ✅ **Sonda `.venv` VPS FATTA** (2026-07-21) [ex-⛔]: prod usa **`.venv`** (col punto); `ExecStart=…/.venv/bin/python … gas.py telegram`; `.gitignore` della copia VPS ignora solo `venv/`, NON `.venv/`.
+- 🔴 **F7 CONFERMATO APERTO SUL VPS** (2026-07-21): il fix `.gitignore` (`.venv/`) è in origin/main ma la copia VPS (`/home/<VPS_USER>/gas/`, fatta a S1 2026-07-04) è STANTIA e non lo ha → ogni snapshot preventivo su prod inghiotte il virtualenv. **Fix minimo (strada 1)**: aggiungere `.venv/` al `.gitignore` della copia VPS. **Fix pulito (strada 2)**: riallineare la copia VPS a origin/main — deploy vero (FASE 5 S2), non a caldo.
+- 🟡 **Copia VPS stantia vs origin/main** (nuovo finding, 2026-07-21): la working copy di prod diverge dal repo (emerso da F7). Riallineamento = FASE 5 S2, con revisore + verifica, non a caldo.
+- ℹ️ **Chiave SSH del VPS ha passphrase** (2026-07-21): `~/.ssh/id_ed25519` su WSL la richiede → per hook/comandi non-interattivi verso il VPS serve `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519` a inizio sessione. Distinto dal push git (HTTPS, no passphrase).
