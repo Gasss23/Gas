@@ -14,7 +14,7 @@ Nessuna.
 
 ## Hash commit di questa sessione
 
-`3fe13ca5e5bd455428e040ba28f7e7fef60ac8c6`
+`cb29cf6231ad4854daa4d6b00a0c8fd493aac3bb`
 
 ---
 
