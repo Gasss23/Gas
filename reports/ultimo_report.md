@@ -1,40 +1,40 @@
-# ULTIMO REPORT — 2026-07-21 (2ª parte)
+# ULTIMO REPORT — 2026-07-22
 
-**Task:** DOC-ONLY — registrare in `reports/stato_progetto.md` gli esiti della sessione 2026-07-21 2ª parte (accesso VPS ripristinato + sonda `.venv` + F7 confermato)
-**Branch:** `docs/giro-vps-2026-07-21-p2`
-**Data:** 2026-07-21
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-1. **F7 — scelta della strada**: la copia VPS è stantia e il `.gitignore` non contiene `.venv/`. Due opzioni:
-   - **Strada 1** (fix minimo a caldo): aggiungere `.venv/` al `.gitignore` della copia VPS via SSH.
-   - **Strada 2** (deploy pulito): riallineare la copia VPS a `origin/main` — FASE 5 S2, con revisore + verifica.
-   L'operatore decide quale strada e quando.
-
-2. **2FA Hetzner**: banner console 2026-07-21 segnala 2FA non attivo. Da abilitare (nessuna urgenza tecnica immediata ma sicurezza dell'account Cloud Console).
+**Task:** DOC-ONLY — rammendo canonici post-sessione 2026-07-21 (nota VPS §7, fingerprint chiave WSL, F7, igiene canonici) + correttivo pre-merge
+**Branch:** `docs/rammendo-nota7-fingerprint`
+**Data:** 2026-07-22
 
 ---
 
-## Esito fette
+## §DECISIONI UMANE RICHIESTE
 
-- **Fetta 1 — Aggiornamento riga "Ultimo aggiornamento"**: `FATTA` — riga aggiornata a 2026-07-21 con sintesi accesso VPS + sonda `.venv` + F7 + reboot.
-- **Fetta 2 — Sostituzione sezione finale stato_progetto.md**: `FATTA` — blocco "### Sessione 2026-07-21 — chiusura giro item fuori-roadmap" sostituito VERBATIM dal testo fornito dall'operatore. Nessuna parafrasi, nessun IP reale (usato `<VPS_IP>`).
-- **Fetta 3 — Scrittura ultimo_report.md + commit + push**: `FATTA` — commit `d2fc827`, branch `docs/giro-vps-2026-07-21-p2` pushato su origin.
+Nessuna.
 
 ---
 
-## Dichiarazione revisore
+## Esito per fetta
 
-**Revisore NON invocato — corretto**: il diff della sessione tocca esclusivamente `reports/stato_progetto.md` e `reports/ultimo_report.md` (doc), non tocca `gas.py`, `brains/`, `modules/` né `tests/`. Il gate di review (CLAUDE.md sez.3) si applica solo a modifiche del motore; un cambio doc-only ne è fuori per definizione.
+### Task 1 — rammendo (commit 661f30b)
+
+| Fetta | Esito | Note |
+|-------|-------|------|
+| **FETTA 1** — rammendo nota §7 | **FATTA** | Heading "STANTIA" → "PARZIALMENTE STANTIA — vedi coda"; capoverso finale aggiunto |
+| **FETTA 2a** — fingerprint chiave WSL | **FATTA** | `SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE` verificato live con `ssh-keygen -lf` |
+| **FETTA 2b** — fingerprint → riga ACCESSO SSH | **FATTA** | Aggiunto in coda alla riga ✅ ACCESSO SSH RIPRISTINATO |
+| **FETTA 2c** — riga F7 BLOCCATA | **FATTA** (corretta nel task 2) | Aggiunta come da brief; contraddizione logica corretta nel commit successivo |
+| **FETTA 3a** — header "Ultimo aggiornamento" | **SALTATA — già corretta** | Il file diceva già `2026-07-21` |
+| **FETTA 3b** — contatore review §C | **FATTA** | §C allineata 56→57 (fonte: `memoria_revisore.md` ultima riga `#57`) |
+| **FETTA 3c** — PR #32 lista CI | **FATTA** | Hash `f2679a4`, CI `29775144603` ✅ verificati live |
+
+### Task 2 — correttivo pre-merge (commit cb29cf6 + 967448c)
+
+| Fetta | Esito | Note |
+|-------|-------|------|
+| **FETTA A** — correggi riga F7 | **FATTA** | ⛔ BLOCCATA → 🟡 APERTA e FATTIBILE; tampone dichiarato esplicitato |
+| **FETTA B** — label fingerprint | **FATTA** | "da autorizzare sul VPS al rientro" → "fingerprint di riferimento della chiave WSL autorizzata sul VPS" |
+| **FETTA C** — PR #33 e #34 lista CI | **FATTE** | PR #33: `5dae638` CI `29848173628` ✅; PR #34: `45a1708` CI `29898591182` ✅ |
+| **FETTA D** — finding R-encoding | **FATTA** | 🟡 R-encoding aggiunto in DA FARE (file NON toccato nel contenuto, solo registrato) |
 
 ---
 
-## Scope rispettato
-
-STOP gate rispettato:
-- NON toccato: motore (gas.py, brains/, modules/, tests/), F7 non fixato, copia VPS non toccata, VPS non toccato.
-- I due finding aperti (F7 confermato APERTO sul VPS; copia VPS stantia vs origin/main) sono **registrati** nel report ma nessun fix applicato — la scelta della strada è dell'operatore.
-
-Niente merge: PR da aprire e mergiare dall'operatore.
+## Revisore NON invocato — doc-only, esente CLAUDE.md sez.3
