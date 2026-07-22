@@ -174,7 +174,8 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - 🟡 **2FA Hetzner**: da attivare; recovery code da salvare OFFLINE prima di confermare.
 - 🟡 **Ispezionare `/root/.ssh/authorized_keys` sul VPS** (residuo gas-vps): `PermitRootLogin no` mitiga ma non è chiuso.
 - 🟡 **Decidere se rimuovere `gas-vps` da Hetzner Security → SSH Keys**: ogni server nuovo creato da quel progetto eredita quella chiave.
-- 🟡 **Bonifica branch remoti — misura reale 2026-07-22**: 27 head su origin → 26 oltre `main`. **22 mergiati in main** (cancellabili senza perdita). **4 NON mergiati**: `feature/crm-dup-detect`, `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc`. Qualsiasi stima precedente (~15 / 28) è ERRATA e superata da questa misura. Metodo: `git branch -r --merged origin/main` / `--no-merged` su clone blobless. ⛔ CANCELLAZIONE = azione umana da UI GitHub, MAI da sessione agente.
+- ✅ **Bonifica branch remoti ESEGUITA** (2026-07-22): da **27 head a 5**. I 22 branch mergiati in `main` sono stati cancellati da origin. Restano `main` + **4 NON mergiati**, tutti da NON cancellare senza verifica: `feature/crm-dup-detect` (⛔ contiene la fetta 3 telefono, vedi sotto), `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc`. Metodo di misura: `git ls-remote --heads origin`. Azione eseguita da terminale/UI: **nessuna traccia in git**, registrata qui. ⛔ CANCELLAZIONE = azione umana, MAI da sessione agente.
+- ℹ️ **Setting GitHub "Automatically delete head branches" — valutato e NON attivato** (2026-07-22): decisione consapevole, non una dimenticanza. Motivo: la cancellazione automatica al merge toglie la finestra di verifica manuale su un branch appena mergiato. La bonifica resta manuale e deliberata.
 - 🔴 **R-crm-1b fetta 3 (telefono) — codice ESISTE ma NON è su main** (rilevato 2026-07-22): il branch non mergiato `feature/crm-dup-detect`, commit `1d32819` (review **#49**, 2026-07-14), contiene in `modules/memory/store.py` `normalizza_telefono()` e `rileva_duplicati_telefono()` + test dedicati. Su `origin/main` quelle funzioni NON esistono (verificato con git grep). Il commit fonde fette 2+3: la fetta 2 su main è entrata DIVERSA (PR #27, review #57) → cherry-pick in conflitto su `store.py` e review #49 non più valida sul contesto attuale. **DECISIONE APERTA (operatore)**: riscrittura pulita su main vs recupero dal branch. ⛔ VIETATO cancellare `feature/crm-dup-detect` finché fetta 3 non è chiusa su main.
 
 ### Sessione 2026-07-21 — chiusura giro item fuori-roadmap
@@ -281,11 +282,21 @@ reggono quando l'agente gira con le credenziali dell'owner.
 **Regola dal 2026-07-22**: il merge su main si esegue SEMPRE a mano (browser o
 terminale WSL), MAI da dentro una sessione Claude Code. Vale anche per i doc-only.
 
-**Mitigazione strutturale — registrata, NON decisa**: oggi `gh` in WSL è
-autenticato con l'account owner, quindi Claude Code eredita il permesso di merge.
-L'unico fix strutturale sarebbe un token `gh` dedicato a scope ridotto (senza
-permesso di merge) per le sessioni agente. Costo/beneficio non valutato.
-Nessun impegno preso.
+**Mitigazione strutturale — CORREZIONE 2026-07-23**: il canonico registrava come possibile
+fix "un token `gh` dedicato a scope ridotto (senza permesso di merge)". **VERIFICATO
+IMPOSSIBILE**: aprire una PR e mergiarla richiedono lo stesso set di permessi
+(Contents:write + Pull requests:write) — non sono separabili su un singolo account. Un
+token che può aprire PR può anche mergiarle. La riga precedente era quindi una mitigazione
+inesistente registrata come possibile: rimossa.
+
+**Unico fix strutturale reale (decisione APERTA, non impegnata)**: un secondo account
+GitHub (machine user) per le sessioni agente + `main-lock` con 1 approvazione richiesta —
+GitHub vieta l'auto-approvazione, quindi l'agente potrebbe aprire la PR ma non chiuderla
+da solo. Costo: un secondo account da gestire. Da valutare insieme alla privatizzazione
+del repo (roadmap item 0), che richiede comunque una revisione dei permessi.
+
+**Nel frattempo la barriera è `gasmerge` + disciplina** (vedi sezione dedicata): il gate
+è reale ma resta AGGIRABILE dall'agente, che conserva il permesso tecnico di mergiare.
 
 **Nota**: questo commit è stato scritto a mano, senza sessione Claude Code —
 quindi senza `ultimo_report.md` né `handoff.md`. Non è una violazione
