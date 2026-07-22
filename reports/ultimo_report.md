@@ -1,40 +1,67 @@
-# Report — docs/chiusura-item-2026-07-22 (sessione completa)
+# Report — fix/encoding-stato-progetto — 2026-07-23
 
-**Data**: 2026-07-22
-**Branch**: `docs/chiusura-item-2026-07-22`
-**Tipo sessione**: DOC-ONLY (solo `reports/`)
-**Revisore**: NON invocato — diff doc-only, il gate motore non si applica.
+## Task
+Bonifica mojibake UTF-8 in `reports/stato_progetto.md` (testo UTF-8 letto come cp1252 e ri-salvato).
+Due fette in commit separati. Nessun altro file toccato.
 
----
-
-## DECISIONI UMANE RICHIESTE
-
-1. **R-crm-1b fetta 3 (telefono)**: scegliere tra riscrittura pulita su main vs recupero dal branch `feature/crm-dup-detect` (commit `1d32819`, review #49 non più valida sul contesto attuale). Blocca la chiusura di R-crm-1b.
-2. **Bonifica branch remoti**: 22 branch mergiati cancellabili da UI GitHub. Azione umana — NON da sessione agente.
-3. **PR #38**: mergiare `docs/chiusura-item-2026-07-22` dopo verifica (doc-only, self-merge consentito).
+## Revisore
+Non invocato: diff doc-only (solo `reports/stato_progetto.md`, zero motore/brains/modules/tests).
 
 ---
 
-## Esito fette (sessione completa)
+## Fetta 1 — Riparazione encoding (commit `01cd95b`)
 
-| Fetta | Stato | Dettaglio |
-|-------|-------|-----------|
-| FETTA 1 — riga CI (PR #37 + PR #36) | FATTA | Run ID `29942831200` e `29941994238` verificati live |
-| FETTA 2 — onestà contatore review | FATTA + CORRETTA | Prima stesura con numeri inaffidabili (29/#19 era PR); corretta nella stessa sessione: rimossi tutti i conteggi, conservati solo dati verificabili |
-| FETTA 3 — bonifica branch remoti | FATTA | 27 heads, 22 mergiati, 4 non mergiati — confermati live |
-| FETTA 4 — R-crm-1b fetta 3 telefono | FATTA | Assenza su `origin/main` confermata via `git grep` (0 match) |
-| CORREZIONE fetta 2 | FATTA | `#19` in `memoria_revisore.md` era ref a PR, non review; 4 formati di entry → nessun conteggio difendibile; rimossi numeri totali e liste gap |
+**Script usato**: `/tmp/fix_moji.py` (esattamente come da istruzione, non modificato).
 
----
+**Misure reali:**
+- Righe totali: **287**
+- Righe riparate: **37**
+- Righe NON riparabili: **1** (riga 167 — l'item R-encoding che citava le sequenze mojibake come esempi nel testo)
 
-## Anomalie / divergenze rilevate
+**Righe riparate (numeri):**
+12, 13, 14, 17, 18, 20, 21, 22, 31, 33, 35, 36, 43, 44, 45, 91, 93, 94, 96, 97,
+101, 102, 108, 109, 110, 112, 115, 117, 119, 121, 122, 123, 126, 127, 128, 129, 131
 
-- Prompt indicava 28 numeri `#N` distinti — il grep restituiva 29, ma `#19` era un riferimento a PR, non a una review, rendendo il numero invalido. Corretto in-session eliminando il conteggio.
-- Prompt indicava gap "7–25" ma `#19` era presente nel file — anche questo eliminato come non difendibile.
-- Testo finale in `stato_progetto.md`: nessun numero totale, nessuna lista gap; solo dati verificabili (`#57` massimo, contigui solo da `#51` a `#57`).
+**Coincidenza con attesa dal brief:** ✅ 37 riparate, 1 NON riparabile (riga 167), 287 righe — nessuna divergenza.
 
 ---
 
-## Invariante IP
+## Verifiche bloccanti (tutte superate prima del commit)
 
-`git grep -nE IP_PATTERN -- reports/stato_progetto.md` → **0 match** verificato.
+| # | Check | Risultato | Esito |
+|---|-------|-----------|-------|
+| 1 | `wc -l` = 287 | `287 reports/stato_progetto.md` | ✅ |
+| 2 | `git diff --stat` = 1 file, ~37 righe | `1 file changed, 37 insertions(+), 37 deletions(-)` | ✅ |
+| 3 | `git diff --numstat` insertions == deletions | `37	37` | ✅ |
+| 4 | `git grep` IP = 0 match | exit code 1 (nessun match) | ✅ |
+| 5 | Diff visivo: ogni riga cambia solo per emoji/accentati | Verificato riga per riga nel diff completo | ✅ |
+
+Tipi di mojibake corretti: `â€"` → `—`, `âœ…` → `✅`, `â†'` → `→`, `ðŸ"´` → `🔴`,
+`ðŸŸ¡` → `🟡`, `Ã¨` → `è`, `Ã ` → `à`, `GiÃ ` → `già`, `Ã©` → `é`, ecc.
+
+---
+
+## Fetta 2 — Chiusura finding (commit `b695e63`)
+
+Riga 167 sostituita con il testo di chiusura R-encoding come da template del brief.
+Il file cresce da 287 a 293 righe (item da 1 riga → 7 righe): comportamento atteso,
+la sostituzione è semantica non encoding.
+
+---
+
+## Log commit della sessione
+
+```
+b695e63 docs(stato): chiude R-encoding
+01cd95b fix(encoding): ripara mojibake UTF-8 in stato_progetto.md (37 righe)
+```
+
+---
+
+## STOP gate
+
+- ✅ Solo `reports/stato_progetto.md` toccato
+- ✅ Fetta 1 e fetta 2 in commit separati
+- ✅ `/tmp/fix_moji.py` non committato
+- ✅ Nessun merge, nessun `gh pr merge`, nessun motore/brains/modules/tests toccato
+- ✅ PR aperta, non mergiata (vedi sotto)
