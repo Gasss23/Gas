@@ -1,13 +1,13 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-21** (accesso SSH VPS ripristinato via varco password temporaneo poi richiuso; sonda .venv FATTA → F7 confermato APERTO sul VPS; reboot GAS non pianificato da Ctrl+Alt+Del, ripartito active)
+> Ultimo aggiornamento: **2026-07-22** (sonda VPS + rientro accesso SSH)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **57 review** completate (ultima #57, 2026-07-19, R-crm-1b fetta 2, APPROVATO CON RISERVE — riserva docstring chiusa in-session). Suite WSL locale (2026-07-19, fix/crm-idemp-diario): **247 PASS, 0 FAIL, 2 SKIP** (T9a/T9c no API keys; T57h/i/j nuovi ✅). Hook suite: **10 PASS**.
-CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #34 merge `45a1708` (2026-07-22, CI `29898591182`) · PR #33 merge `5dae638` (2026-07-21, CI `29848173628`) · PR #32 merge `f2679a4` (2026-07-20, CI `29775144603`) · PR #27 merge `21548f74` (2026-07-19, CI `29695063005`) · PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18).
+CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #35 merge `425ba5c` (2026-07-22, CI `29919691907`) · PR #34 merge `45a1708` (2026-07-22, CI `29898591182`) · PR #33 merge `5dae638` (2026-07-21, CI `29848173628`) · PR #32 merge `f2679a4` (2026-07-20, CI `29775144603`) · PR #27 merge `21548f74` (2026-07-19, CI `29695063005`) · PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18).
 
 **âœ… FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **âœ… R-comp-1** â€” boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
@@ -165,6 +165,9 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ℹ️ **Nomenclatura ambienti — clone Windows eliminato** (2026-07-15): esisteva un SECONDO clone del repo su `C:\Users\gqual\Gas` (PowerShell) oltre a quello WSL, in contraddizione con la regola "non esiste un locale separato dal WSL". Ha già prodotto un incidente: un allineamento eseguito sul clone sbagliato da un branch morto (`docs/cerebras-no-go`) scambiato per main. Deciso ed eseguito: clone Windows RIMOSSO, `~/Gas` su WSL (`/home/gqual/Gas`) è l'UNICO locale canonico. Se ricompare un clone Windows, è un errore da rimuovere: due cloni divergono in silenzio e la memoria comincia a mentire.
 - ✅ **Debito Codespace CHIUSO — Codespace deprecato** (2026-07-19): sviluppo ora SOLO su WSL locale (`~/Gas`). Il Codespace era dirty su `fix/ci-hook-tests` (sessione interrotta); nessun branch remoto omonimo (mergiato in PR #23, `2f1e015`) → dirt solo locale al Codespace, cruft. Bonifica: Codespace **cancellato** (azione umana, `gh codespace delete`). Codespace non è più un ambiente attivo del progetto. // ex-ℹ️ debito 2026-07-18.
 - 🟡 **R-encoding** — mojibake UTF-8 diffuso in `reports/stato_progetto.md` (sequenze tipo `âœ…`, `ðŸ"´`, `â€"`), rilevato 2026-07-22. Non corretto: la bonifica tocca l'intero file e richiede sessione dedicata con verifica riga per riga. Rischio: nessuno funzionale, ma degrada la leggibilità del canonico.
+- 🟡 **2FA Hetzner**: da attivare; recovery code da salvare OFFLINE prima di confermare.
+- 🟡 **Ispezionare `/root/.ssh/authorized_keys` sul VPS** (residuo gas-vps): `PermitRootLogin no` mitiga ma non è chiuso.
+- 🟡 **Decidere se rimuovere `gas-vps` da Hetzner Security → SSH Keys**: ogni server nuovo creato da quel progetto eredita quella chiave.
 
 ### Sessione 2026-07-21 — chiusura giro item fuori-roadmap
 
@@ -179,3 +182,66 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - 🟡 **F7 — APERTA e FATTIBILE** (prerequisito SSH soddisfatto, fix non eseguito in sessione): la strada 1 (aggiungere `.venv/` al `.gitignore` della copia VPS via SSH) è ora percorribile, ma è un **tampone dichiarato**, non una chiusura pulita — la cura è la strada 2 (riallineamento copia VPS a origin/main, FASE 5 S2).
 - 🟡 **Copia VPS stantia vs origin/main** (nuovo finding, 2026-07-21): la working copy di prod diverge dal repo (emerso da F7). Riallineamento = FASE 5 S2, con revisore + verifica, non a caldo.
 - ℹ️ **Chiave SSH del VPS ha passphrase** (2026-07-21): `~/.ssh/id_ed25519` su WSL la richiede → per hook/comandi non-interattivi verso il VPS serve `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519` a inizio sessione. Distinto dal push git (HTTPS, no passphrase).
+
+### Sessione 2026-07-22 — rientro accesso VPS + chiusura F7
+
+- ✅ **F7 CHIUSO**: il VPS usa `/home/gas/gas/.venv` (CON il punto).
+  Verificato via ssh, `test -d` diretto. Il `.gitignore` locale (righe 1-2)
+  contiene sia `venv/` sia `.venv/` → copertura completa, non più tampone.
+
+- ✅ **Rilievo FETTA B CHIUSO**: fingerprint
+  `SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE` (gqual@gas-dev-wsl)
+  verificato presente in `/home/gas/.ssh/authorized_keys` del VPS.
+
+- 🔴→✅ **RETTIFICA — "ACCESSO SSH AL VPS PERSO" era una DIAGNOSI ERRATA.**
+  La riga del 2026-07-21 attribuiva il blocco a "chiave non in authorized_keys
+  (probabile: autorizzata vecchia chiave Windows poi eliminata)". FALSO.
+  Causa reale: `ssh -o BatchMode=yes` + chiave con passphrase e nessun
+  ssh-agent caricato → ssh non offre alcuna identità; il server risponde
+  "Permission denied (publickey)" che è indistinguibile da "chiave non
+  autorizzata". La chiave WSL era autorizzata sul VPS da sempre.
+  LEZIONE: "Permission denied (publickey)" NON è evidenza di chiave mancante.
+  Prima di qualsiasi diagnosi serve `ssh -v` e `ssh-add -l`.
+  NON cancellata la riga 2026-07-21: è corretta nell'esito (accesso ripristinato),
+  errata nella causa. La storia degli errori è memoria, non rumore.
+
+- ℹ️ **Chiave `gas-vps`** (SHA256:ZEYaopShkG5R+BhOJ9NhtsGB9Cc2XaS4CB1rtMQmZEU)
+  identificata: è la chiave del clone Windows deprecato
+  (`C:\Users\gqual\.ssh\id_ed25519`), registrata nell'account Hetzner come
+  "gas-vps" (fingerprint MD5 combaciante, creata 23gg fa = setup server S1).
+  CON passphrase. Rischio terzi: ESCLUSO.
+  RIMOSSA da `authorized_keys` del VPS (ambiente deprecato per policy 2026-07-15).
+  Backup lasciato sul VPS: `~/.ssh/authorized_keys.bak.<timestamp>`.
+  `authorized_keys` ora contiene UNA sola riga (chiave WSL), verificato con
+  connessione NUOVA post-modifica.
+
+- ⚠️ **RESIDUO NON VERIFICATO**: `/root/.ssh/authorized_keys` NON ispezionato.
+  Potrebbe contenere ancora la chiave `gas-vps`. `PermitRootLogin no` la rende
+  inerte via SSH, ma non è chiuso. Stato: MITIGATO, non chiuso.
+
+- ⚠️ **RESIDUO**: la chiave `gas-vps` resta registrata in Hetzner Security →
+  SSH Keys. Ogni server NUOVO creato da quel progetto nascerà autorizzando
+  quella chiave. Decisione separata: rimuoverla o tenerla. Non decisa oggi.
+
+- ℹ️ **Azioni transitorie dalla console Hetzner** (nessuna traccia in git):
+  dropin `/etc/ssh/sshd_config.d/00-temp.conf` con `PasswordAuthentication yes`,
+  creato e POI RIMOSSO; `sshd -T | grep -i passwordauthentication` → `no`
+  verificato dopo la rimozione. `passwd gas` impostata poi `passwd -l gas`
+  rilockata. `loadkeys it`. Nessun reboot, nessun riavvio di sshd oltre reload.
+  COSTO REGISTRATO: finestra di alcuni minuti con `PasswordAuthentication yes`
+  su IP pubblico (fail2ban attivo). Superficie di brute force temporanea,
+  aperta su una diagnosi che si è poi rivelata sbagliata.
+
+- ⚠️ **CAMBIO DI COMPORTAMENTO**: `passwd -l gas` blocca anche `sudo` con password
+  per l'utente gas. Le operazioni admin sul VPS passano ora da root/console.
+
+- ℹ️ **PRECISAZIONE alla nota VPS §7** (evitare che la memoria menta) —
+  due cose DIVERSE, non confonderle:
+  (a) push git da WSL: remote HTTPS, `gh auth setup-git` → nessun agent
+      necessario, hook vivi. Confermato 2026-07-21.
+  (b) ssh al VPS: la chiave `~/.ssh/id_ed25519` HA passphrase → serve
+      `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519` a ogni sessione.
+      Confermato 2026-07-22.
+
+- ✅ **GAS in produzione**: `systemctl is-active gas` → `active`, verificato a
+  fine sessione. Il servizio non si è mai fermato.

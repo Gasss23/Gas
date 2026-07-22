@@ -1,40 +1,79 @@
-# ULTIMO REPORT — 2026-07-22
+# Ultimo report — 2026-07-22
 
-**Task:** DOC-ONLY — rammendo canonici post-sessione 2026-07-21 (nota VPS §7, fingerprint chiave WSL, F7, igiene canonici) + correttivo pre-merge
-**Branch:** `docs/rammendo-nota7-fingerprint`
-**Data:** 2026-07-22
+## Task
 
----
+DOC-ONLY. Aggiornamento `reports/stato_progetto.md` con esito sessione 2026-07-22
+(sonda VPS, chiusura F7, rettifica diagnosi SSH, gestione chiave gas-vps).
 
-## §DECISIONI UMANE RICHIESTE
+## Branch
 
-Nessuna.
+`docs/sonda-vps-2026-07-22` (da `origin/main` → 425ba5c)
 
----
+## File toccati
 
-## Esito per fetta
+- `reports/stato_progetto.md` — unica modifica (4 edit descritti sotto)
+- `reports/ultimo_report.md` — questo file
 
-### Task 1 — rammendo (commit 661f30b)
+## Modifiche apportate
 
-| Fetta | Esito | Note |
-|-------|-------|------|
-| **FETTA 1** — rammendo nota §7 | **FATTA** | Heading "STANTIA" → "PARZIALMENTE STANTIA — vedi coda"; capoverso finale aggiunto |
-| **FETTA 2a** — fingerprint chiave WSL | **FATTA** | `SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE` verificato live con `ssh-keygen -lf` |
-| **FETTA 2b** — fingerprint → riga ACCESSO SSH | **FATTA** | Aggiunto in coda alla riga ✅ ACCESSO SSH RIPRISTINATO |
-| **FETTA 2c** — riga F7 BLOCCATA | **FATTA** (corretta nel task 2) | Aggiunta come da brief; contraddizione logica corretta nel commit successivo |
-| **FETTA 3a** — header "Ultimo aggiornamento" | **SALTATA — già corretta** | Il file diceva già `2026-07-21` |
-| **FETTA 3b** — contatore review §C | **FATTA** | §C allineata 56→57 (fonte: `memoria_revisore.md` ultima riga `#57`) |
-| **FETTA 3c** — PR #32 lista CI | **FATTA** | Hash `f2679a4`, CI `29775144603` ✅ verificati live |
+### 1. Header
 
-### Task 2 — correttivo pre-merge (commit cb29cf6 + 967448c)
+Aggiornato "Ultimo aggiornamento" da `2026-07-21` a `2026-07-22 (sonda VPS +
+rientro accesso SSH)`.
 
-| Fetta | Esito | Note |
-|-------|-------|------|
-| **FETTA A** — correggi riga F7 | **FATTA** | ⛔ BLOCCATA → 🟡 APERTA e FATTIBILE; tampone dichiarato esplicitato |
-| **FETTA B** — label fingerprint | **FATTA** | "da autorizzare sul VPS al rientro" → "fingerprint di riferimento della chiave WSL autorizzata sul VPS" |
-| **FETTA C** — PR #33 e #34 lista CI | **FATTE** | PR #33: `5dae638` CI `29848173628` ✅; PR #34: `45a1708` CI `29898591182` ✅ |
-| **FETTA D** — finding R-encoding | **FATTA** | 🟡 R-encoding aggiunto in DA FARE (file NON toccato nel contenuto, solo registrato) |
+### 2. CI runs — PR #35 aggiunta
 
----
+Aggiunta in testa alla riga CI:
+`PR #35 merge 425ba5c (2026-07-22, CI 29919691907)`
 
-## Revisore NON invocato — doc-only, esente CLAUDE.md sez.3
+Run ID recuperato live con `gh run list --branch main --limit 5`.
+Output verificato: completed / success / 2026-07-22T12:27:28Z.
+
+### 3. Contatore review — verifica e allineamento
+
+**Metodo**: lettura integrale di `.claude/agents/memoria_revisore.md` (100 righe
+totali). Ultima riga del file contiene il marcatore `#57` (2026-07-19).
+Ultima review = **#57**.
+
+**Risultato**: ENTRAMBE le sezioni di `stato_progetto.md` riportavano già
+**57 review / ultima #57** prima di questa sessione — il file era già allineato.
+Nessuna modifica al contatore necessaria.
+La discrepanza descritta nel brief ("punto C dice 56") era relativa a uno stato
+precedente al merge PR #35.
+
+### 4. DA FARE — 3 nuovi item 🟡
+
+Aggiunti dopo R-encoding nella sezione `### DA FARE — sviluppo/processo`:
+
+- 🟡 2FA Hetzner: da attivare; recovery code da salvare OFFLINE prima di confermare.
+- 🟡 Ispezionare `/root/.ssh/authorized_keys` sul VPS (residuo gas-vps).
+- 🟡 Decidere se rimuovere `gas-vps` da Hetzner Security → SSH Keys.
+
+### 5. Nuovo blocco — Sessione 2026-07-22
+
+Aggiunto in fondo al file (dopo Sessione 2026-07-21). Contenuto (tutti dati
+verificati live):
+
+- ✅ F7 CHIUSO: VPS usa `.venv` (con punto), verificato via ssh test -d.
+  .gitignore locale ha sia venv/ sia .venv/ → copertura completa.
+- ✅ Rilievo FETTA B CHIUSO: fingerprint SHA256:/BJvnyxJIKj00Od...
+  verificato presente in authorized_keys del VPS.
+- 🔴→✅ RETTIFICA diagnosi SSH: causa reale era BatchMode=yes + chiave con
+  passphrase senza ssh-agent, NON chiave mancante. Riga 2026-07-21 conservata.
+- ℹ️ Chiave gas-vps identificata (clone Windows deprecato), rimossa da
+  authorized_keys del VPS, backup lasciato su VPS.
+- ⚠️ Residuo: /root/.ssh/authorized_keys non ispezionato (mitigato da
+  PermitRootLogin no). Stato: MITIGATO, non chiuso.
+- ⚠️ Residuo: gas-vps ancora in Hetzner SSH Keys.
+- ℹ️ Azioni transitorie console Hetzner: PasswordAuth yes/no, passwd lock gas.
+- ⚠️ CAMBIO: passwd -l gas blocca sudo con password per utente gas.
+- ℹ️ Precisazione §7: push git (HTTPS, no agent) ≠ ssh al VPS (chiave con
+  passphrase, agent richiesto a ogni sessione).
+- ✅ GAS active a fine sessione, servizio mai interrotto.
+
+## Invarianti rispettate
+
+- Nessun IP VPS in chiaro (grep confermato negativo).
+- Nessuna modifica al motore (gas.py, brains/, modules/, tests/).
+- Revisore NON invocato (DOC-ONLY).
+- PR NON mergiata.
