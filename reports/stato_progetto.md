@@ -302,3 +302,50 @@ del repo (roadmap item 0), che richiede comunque una revisione dei permessi.
 quindi senza `ultimo_report.md` né `handoff.md`. Non è una violazione
 dell'istituzione D: non c'è alcun auto-report d'agente da verificare, il diff è
 il report.
+
+### Sessione 2026-07-23 — allineamento canonici (azioni senza traccia in git)
+
+- ✅ **`gasmerge` — gate di merge locale** (installato e collaudato 2026-07-22). Vive in
+  `~/bin/gasmerge`, **fuori dal repo** (quindi non versionato, non testato da CI, non
+  revisionato: se la macchina si perde, si perde lo strumento). Uso: `gasmerge <numero-PR>`
+  da WSL. Fa: verifica CI verde (blocca se non lo è), invariante IP, rilevamento file di
+  motore nel diff, conferma digitata, merge, delete del branch remoto e locale,
+  `pull --ff-only`, prune, stampa hash di main e numero di head.
+  **Sostituisce il merge da browser.**
+  ⚠️ **CAVEAT — cosa NON fa**: non toglie all'agente il permesso di mergiare. `gh` in WSL
+  resta autenticato con l'account owner, quindi una sessione Claude Code può ancora
+  eseguire `gh pr merge`. La barriera resta **disciplinare**, non strutturale — la stessa
+  classe di barriera che il progetto ha già dichiarato insufficiente quando ha adottato
+  `main-lock` (2026-07-09). L'unico fix strutturale è il secondo account (vedi sopra).
+
+- **SEQUENZA DI MERGE OBBLIGATORIA** (dal 2026-07-22, ordine rettificato 2026-07-23):
+  1) Claude Code fa il lavoro e apre la PR; 2) `/fine-task` nella STESSA sessione;
+  3) **chiudere la sessione (Ctrl+D) — obbligatorio**: l'hook `session_end` pusha il
+  branch all'uscita e ricreerebbe un branch appena cancellato, inoltre `gasmerge` fa
+  checkout di main nella stessa working dir; 4) **revisione umana dell'`handoff.md`
+  PRIMA del merge** — `gasmerge` verifica CI, invariante IP e presenza di file di
+  motore, cioè la FORMA: non verifica lo SCOPE concordato né il merito, non sa cosa
+  era stato mandato e non riconosce un "CHIUSO" dichiarato su un finding chiuso a
+  metà. Quel controllo è umano e va fatto prima, non dopo: dopo il merge si può solo
+  constatare; 5) solo con esito positivo: `gasmerge <numero-PR>` in WSL.
+  Mai `gh pr merge` da dentro una sessione agente.
+
+- ✅ **Identità git su WSL CORRETTA** (2026-07-23). Rilevato: `~/.gitconfig` **globale**
+  conteneva i placeholder letterali `TUO_NOME` / `TUA_EMAIL_GITHUB` — non "configurazione
+  mancante" ma valori segnaposto mai sostituiti, validi per **ogni** repo della macchina.
+  Conseguenza misurata su `origin/main`: **ogni commit di lavoro** prodotto da WSL/Claude
+  Code è firmato `TUO_NOME <TUA_EMAIL_GITHUB>` (es. `01cd95b`, `b695e63`, `a675c56`,
+  `33018ba`); solo i merge commit portano l'identità reale, perché li crea GitHub.
+  Corretto a: `Gasss23` / `290517909+Gasss23@users.noreply.github.com` (email **noreply**
+  di GitHub, non quella reale: il repo è pubblico e l'email reale in chiaro su ogni commit
+  è superficie per gli scraper — la reale resta comunque nella history nei merge commit).
+  **Il fix vale SOLO IN AVANTI.** La history NON è stata riscritta, deliberatamente:
+  cambierebbe tutti gli hash, e i canonici citano hash ovunque (`21548f74`, `2f1e015`,
+  `c609e31`, `1510807`…) — si otterrebbe un file che mente su ogni riga per riparare un
+  campo cosmetico. I commit vecchi restano firmati placeholder: è un fatto, non un residuo
+  da nascondere.
+  **Decisione APERTA (non impegnata)**: usare un trailer `Co-Authored-By` per distinguere
+  in `git log` i commit d'agente da quelli scritti a mano. Oggi quella distinzione esiste
+  solo come nota scritta a mano nei canonici (micro-finding 2026-07-22). Non messa
+  nell'author: l'author è chi è responsabile, e il responsabile è l'operatore in entrambi
+  i casi — l'agente gira con le sue credenziali.
