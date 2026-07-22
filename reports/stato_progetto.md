@@ -164,7 +164,13 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ✅ **WSL locale riallineato a origin/main** — 2026-07-15: eseguito a mano da terminale WSL (`git fetch` + `checkout main` + `merge --ff-only`), `/home/gqual/Gas` ora a `9cbab56`; branch locale esaurito `docs/roadmap-item2-chiuso` cancellato (`-d` accettato = già dentro main). Registrato qui perché un allineamento manuale NON lascia traccia in git. CHIUSO.
 - ℹ️ **Nomenclatura ambienti — clone Windows eliminato** (2026-07-15): esisteva un SECONDO clone del repo su `C:\Users\gqual\Gas` (PowerShell) oltre a quello WSL, in contraddizione con la regola "non esiste un locale separato dal WSL". Ha già prodotto un incidente: un allineamento eseguito sul clone sbagliato da un branch morto (`docs/cerebras-no-go`) scambiato per main. Deciso ed eseguito: clone Windows RIMOSSO, `~/Gas` su WSL (`/home/gqual/Gas`) è l'UNICO locale canonico. Se ricompare un clone Windows, è un errore da rimuovere: due cloni divergono in silenzio e la memoria comincia a mentire.
 - ✅ **Debito Codespace CHIUSO — Codespace deprecato** (2026-07-19): sviluppo ora SOLO su WSL locale (`~/Gas`). Il Codespace era dirty su `fix/ci-hook-tests` (sessione interrotta); nessun branch remoto omonimo (mergiato in PR #23, `2f1e015`) → dirt solo locale al Codespace, cruft. Bonifica: Codespace **cancellato** (azione umana, `gh codespace delete`). Codespace non è più un ambiente attivo del progetto. // ex-ℹ️ debito 2026-07-18.
-- 🟡 **R-encoding** — mojibake UTF-8 diffuso in `reports/stato_progetto.md` (sequenze tipo `âœ…`, `ðŸ"´`, `â€"`), rilevato 2026-07-22. Non corretto: la bonifica tocca l'intero file e richiede sessione dedicata con verifica riga per riga. Rischio: nessuno funzionale, ma degrada la leggibilità del canonico.
+- ✅ **R-encoding CHIUSO** (2026-07-22, branch `fix/encoding-stato-progetto`): mojibake
+  UTF-8 (testo UTF-8 letto come cp1252) riparato su 37 righe di `reports/stato_progetto.md`.
+  Metodo deterministico, zero dipendenze: riscrittura di una riga SOLO se il round-trip
+  inverso `nuova.encode('utf-8').decode(cp1252|latin-1)` restituisce esattamente la
+  vecchia — gate che rende strutturalmente impossibile una modifica semantica.
+  1 riga non riparata (questo item stesso, che citava le sequenze mojibake come esempi):
+  esclusa correttamente dal gate. Conteggio righe invariato, invariante IP verificata.
 - 🟡 **2FA Hetzner**: da attivare; recovery code da salvare OFFLINE prima di confermare.
 - 🟡 **Ispezionare `/root/.ssh/authorized_keys` sul VPS** (residuo gas-vps): `PermitRootLogin no` mitiga ma non è chiuso.
 - 🟡 **Decidere se rimuovere `gas-vps` da Hetzner Security → SSH Keys**: ogni server nuovo creato da quel progetto eredita quella chiave.
