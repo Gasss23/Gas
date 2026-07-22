@@ -1,13 +1,18 @@
-# Diff sessione — 2026-07-22
+# Diff sessione — 2026-07-23
 
 > Fotografia della sessione corrente. Si riscrive a ogni sessione; la storia completa sta in git.
-> Branch: `docs/chiusura-item-2026-07-22` — BASE: `cb7ba8b` (merge PR #37)
+> Branch: `fix/encoding-stato-progetto` — BASE: `654bc80` (merge PR #38)
 
 ## File toccati
 
-| File | Cosa è cambiato | Perché |
-|------|----------------|--------|
-| `reports/stato_progetto.md` | Riga CI: prepend PR #37/#36 con run ID reali; sezione C: "Fonte contatore" espansa + corretta (rimossi numeri inaffidabili, conservati solo dati verificabili: max `#57`, contigui `#51`–`#57`); DA FARE: aggiunto item bonifica branch remoti e finding R-crm-1b fetta 3 | 4 fette di chiusura item + correzione contatore review |
-| `reports/ultimo_report.md` | Riscritto due volte: prima con esito 4 fette, poi aggiornato con correzione contatore | Report canonico fine task (sessione completa) |
-| `reports/handoff.md` | Riscritto: dossier completo sessione (scope, diff --stat, log, CI, riserve) | Dossier fine sessione per revisore esterno |
-| `reports/diff_sessione.md` | Questo file — riscritto per sessione corrente | Fotografia della sessione |
+| File | Cambiamento |
+|------|-------------|
+| `reports/stato_progetto.md` | Fetta 1: ripara 37 righe mojibake UTF-8 (cp1252→UTF-8, metodo round-trip deterministico). Fetta 2: riga 167 R-encoding sostituita con testo di chiusura (287→293 righe). |
+| `reports/ultimo_report.md` | Report del task: misure reali, 5 verifiche bloccanti, esito fette. |
+| `reports/handoff.md` | Dossier fine sessione (questo file viene riscritto ogni sessione). |
+| `reports/diff_sessione.md` | Questo file (riscritto ogni sessione). |
+
+## Motivo
+
+Sessione dedicata alla chiusura del finding R-encoding aperto il 2026-07-22.
+Nessuna modifica al motore (gas.py, brains/, modules/, tests/).

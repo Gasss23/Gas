@@ -1,40 +1,57 @@
-# Report — docs/chiusura-item-2026-07-22 (sessione completa)
+# Report — fix/encoding-stato-progetto — 2026-07-23
 
-**Data**: 2026-07-22
-**Branch**: `docs/chiusura-item-2026-07-22`
-**Tipo sessione**: DOC-ONLY (solo `reports/`)
-**Revisore**: NON invocato — diff doc-only, il gate motore non si applica.
+**Task**: Bonifica mojibake UTF-8 in `reports/stato_progetto.md` + chiusura finding R-encoding.
+**Branch**: `fix/encoding-stato-progetto`
+**Tipo**: DOC-ONLY (solo `reports/`)
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **R-crm-1b fetta 3 (telefono)**: scegliere tra riscrittura pulita su main vs recupero dal branch `feature/crm-dup-detect` (commit `1d32819`, review #49 non più valida sul contesto attuale). Blocca la chiusura di R-crm-1b.
-2. **Bonifica branch remoti**: 22 branch mergiati cancellabili da UI GitHub. Azione umana — NON da sessione agente.
-3. **PR #38**: mergiare `docs/chiusura-item-2026-07-22` dopo verifica (doc-only, self-merge consentito).
+Nessuna.
 
 ---
 
-## Esito fette (sessione completa)
+## Esito fette
 
-| Fetta | Stato | Dettaglio |
-|-------|-------|-----------|
-| FETTA 1 — riga CI (PR #37 + PR #36) | FATTA | Run ID `29942831200` e `29941994238` verificati live |
-| FETTA 2 — onestà contatore review | FATTA + CORRETTA | Prima stesura con numeri inaffidabili (29/#19 era PR); corretta nella stessa sessione: rimossi tutti i conteggi, conservati solo dati verificabili |
-| FETTA 3 — bonifica branch remoti | FATTA | 27 heads, 22 mergiati, 4 non mergiati — confermati live |
-| FETTA 4 — R-crm-1b fetta 3 telefono | FATTA | Assenza su `origin/main` confermata via `git grep` (0 match) |
-| CORREZIONE fetta 2 | FATTA | `#19` in `memoria_revisore.md` era ref a PR, non review; 4 formati di entry → nessun conteggio difendibile; rimossi numeri totali e liste gap |
+- **Fetta 1 — Riparazione encoding** (`01cd95b`): `FATTA`
+  Script `/tmp/fix_moji.py` (esatto, non modificato) — 37 righe riparate, 1 non riparabile (riga 167, l'item R-encoding stesso che citava le sequenze mojibake come esempi). Tutte e 5 le verifiche bloccanti superate prima del commit.
+
+- **Fetta 2 — Chiusura finding R-encoding** (`b695e63`): `FATTA`
+  Riga 167 sostituita con testo di chiusura canonico. File passa da 287 a 293 righe (atteso: sostituzione semantica da 1 a 7 righe).
 
 ---
 
-## Anomalie / divergenze rilevate
+## Misure reali (Fetta 1)
 
-- Prompt indicava 28 numeri `#N` distinti — il grep restituiva 29, ma `#19` era un riferimento a PR, non a una review, rendendo il numero invalido. Corretto in-session eliminando il conteggio.
-- Prompt indicava gap "7–25" ma `#19` era presente nel file — anche questo eliminato come non difendibile.
-- Testo finale in `stato_progetto.md`: nessun numero totale, nessuna lista gap; solo dati verificabili (`#57` massimo, contigui solo da `#51` a `#57`).
+| Metrica | Attesa brief | Reale | Esito |
+|---------|-------------|-------|-------|
+| Righe totali | 287 | 287 | ✅ |
+| Righe riparate | 37 | 37 | ✅ |
+| Righe NON riparabili | 1 (riga 167) | 1 (riga 167) | ✅ |
+
+**Nessuna divergenza** rispetto alle attese del brief.
 
 ---
 
-## Invariante IP
+## Verifiche bloccanti (Fetta 1 — tutte superate prima del commit)
 
-`git grep -nE IP_PATTERN -- reports/stato_progetto.md` → **0 match** verificato.
+| # | Check | Risultato | Esito |
+|---|-------|-----------|-------|
+| 1 | `wc -l` = 287 | `287` | ✅ |
+| 2 | 1 file, ~37 righe | `1 file changed, 37 ins(+), 37 del(-)` | ✅ |
+| 3 | insertions == deletions | `37 == 37` | ✅ |
+| 4 | nessun IP nel file | `0 match (exit 1)` | ✅ |
+| 5 | diff visivo: solo emoji/accentati | verificato riga per riga | ✅ |
+
+---
+
+## STOP gate
+
+- ✅ Solo `reports/stato_progetto.md` + `reports/ultimo_report.md` toccati
+- ✅ Fetta 1 e Fetta 2 in commit separati
+- ✅ `/tmp/fix_moji.py` non committato
+- ✅ Nessun motore/brains/modules/tests toccato
+- ✅ Revisore non invocato (diff doc-only — dichiarato)
+- ✅ PR #39 aperta, non mergiata
+- ✅ CI: `completed / success` (run 29962058903, branch fix/encoding-stato-progetto)
