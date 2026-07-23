@@ -36,7 +36,7 @@ jobs:
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"   # combacia col venv del progetto (3.11.9)
+          python-version: "3.11"   # DIVERGENZA DICHIARATA: CI usa 3.11, venv WSL è 3.12.3 (misurato 2026-07-24)
           cache: pip
 
       - name: Install dependencies
@@ -139,15 +139,15 @@ jobs:
             fi
             echo ""
             echo "> _Nota: il job resta ROSSO finché esiste un solo FAIL (exit code nativo della suite)._"
-            echo "> _T9a/T9c sono SKIP in CI su assenza GEMINI/GROQ API key — non FAIL attesi._"
+            echo "> _T9a/T9c girano sempre con chiavi fittizie e client OpenAI finto (zero rete, zero token)._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Gate — sandbox OS attivo
         if: always()
         # Rosso INEQUIVOCABILE e nominato se bwrap non crea i namespace nemmeno dopo il
         # sysctl: distingue lo STOP GATE ("rosso da sandbox" → micro-task skip-on-CI dei
-        # test bwrap, tocca tests/, con revisore) da "T9a/T9c SKIP in CI" (assenza API key). Eseguito
-        # per ULTIMO così il summary è già stato scritto.
+        # test bwrap, tocca tests/, con revisore) dai test T9a/T9c (ora sempre verdi con
+        # chiavi fittizie e client finto). Eseguito per ULTIMO così il summary è già scritto.
         run: |
           if [ "${{ steps.sandbox.outputs.smoke2 }}" != "BWRAP_OK" ]; then
             echo "::error::Sandbox OS NON attivabile sul runner (smoke-test=${{ steps.sandbox.outputs.smoke2 }})."

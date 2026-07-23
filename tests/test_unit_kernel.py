@@ -132,8 +132,15 @@ gas.OpenAI = FakeOpenAI
 # I rung gratuiti (openrouter/ollama) sono OPZIONALI e la loro presenza dipende
 # dall'ambiente: per un conteggio deterministico della cascata 'semplice' (3
 # provider obbligatori) li disattiviamo qui, ripristinando l'ambiente dopo.
+# Le chiavi Gemini/Groq sono OBBLIGATORIE per costruire i rung: iniettiamo valori
+# fittizi in modo che la cascata monti tutti e 3 i provider (il client è già finto:
+# OpenAI=FakeOpenAI, zero rete, zero token).
 _or_key = os.environ.pop("OPENROUTER_API_KEY", None)
 _ol_url = os.environ.pop("GAS_OLLAMA_URL", None)
+_gem_key = os.environ.get("GEMINI_API_KEY")
+_groq_key = os.environ.get("GROQ_API_KEY")
+if _gem_key is None: os.environ["GEMINI_API_KEY"] = "fake-gemini-key-for-test"
+if _groq_key is None: os.environ["GROQ_API_KEY"] = "fake-groq-key-for-test"
 try:
     k = kernel_tmp()
     eventi = list(k.run_turn("ciao test loop"))  # corto, no keyword -> 'semplice' -> 3 provider
@@ -141,26 +148,19 @@ finally:
     gas.OpenAI = _vero_openai
     if _or_key is not None: os.environ["OPENROUTER_API_KEY"] = _or_key
     if _ol_url is not None: os.environ["GAS_OLLAMA_URL"] = _ol_url
+    if _gem_key is None: os.environ.pop("GEMINI_API_KEY", None)
+    if _groq_key is None: os.environ.pop("GROQ_API_KEY", None)
 
 tool_res = [e for e in eventi if e["type"] == "tool_res"]
 errori = [e for e in eventi if e["type"] == "error"]
-_has_live_keys = bool(os.environ.get("GEMINI_API_KEY") and os.environ.get("GROQ_API_KEY"))
-if _has_live_keys:
-    check("T9a ogni provider cappato a 10 iterazioni",
-          all(n == 10 for n in chiamate.values()) and len(chiamate) == 3,
-          f"chiamate per modello: {chiamate}")
-else:
-    skip("T9a ogni provider cappato a 10 iterazioni",
-         "richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI")
+check("T9a ogni provider cappato a 10 iterazioni",
+      all(n == 10 for n in chiamate.values()) and len(chiamate) == 3,
+      f"chiamate per modello: {chiamate}")
 check("T9b loop infinito assorbito senza crash, pipeline esausta dichiarata",
       len(errori) == 1 and errori[0]["content"] == "Pipeline esausta.",
       f"tool_res={len(tool_res)} errori={len(errori)}")
-if _has_live_keys:
-    check("T9c storia salvata su disco nella root temporanea",
-          k.db_path.exists() and k.db_path.stat().st_size > 0)
-else:
-    skip("T9c storia salvata su disco nella root temporanea",
-         "richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI")
+check("T9c storia salvata su disco nella root temporanea",
+      k.db_path.exists() and k.db_path.stat().st_size > 0)
 
 # ---------- T9d: rung gratuiti — append in coda + skip pulito senza endpoint ----------
 # OpenRouter presente (chiave fittizia) -> deve comparire IN CODA; Ollama senza
