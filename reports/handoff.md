@@ -1,78 +1,75 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-23 — Allineamento canonici (2 punti falsi + 3 omissioni)
+**Sessione:** 2026-07-23 — fix/ci-summary-openrouter
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-Nessuna.
+1. **Merge PR #41** (https://github.com/Gasss23/Gas/pull/41): FETTA 1 è pronta e CI è verde. Il merge è azione umana da browser.
+2. **FETTA 2 (T9a deterministico)**: richiede installazione delle dipendenze del motore nel venv locale (`pip install -r requirements.txt`) per poter eseguire e validare la suite kernel. Poi aprire micro-task separato.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1a — Bonifica branch remoti**: `FATTA`
-  Riga 🟡 `Bonifica branch remoti — misura reale 2026-07-22` sostituita con ✅ (`da 27 head a 5`, azione eseguita registrata). Aggiunta riga "Automatically delete head branches — valutato e NON attivato".
+- **FETTA 1 — R-ci-summary**: `FATTA` — `70d1b0d`
+  Aggiunto `set -o pipefail` + `tee` allo step hook suite; Job Summary ora mostra entrambe le suite. Revisore: APPROVATO senza riserve. CI: verde.
 
-- **Fetta 1b — Mitigazione strutturale**: `FATTA`
-  Blocco 5 righe ("token gh dedicato a scope ridotto / Nessun impegno preso") sostituito con CORREZIONE 2026-07-23: mitigazione VERIFICATA IMPOSSIBILE (stessi permessi per aprire e chiudere PR); inserito fix strutturale reale (secondo account machine user).
-
-- **Fetta 2 — Sezione nuova**: `FATTA`
-  Aggiunta sezione "Sessione 2026-07-23 — allineamento canonici": `gasmerge` (gate locale, caveat disciplinare), SEQUENZA DI MERGE OBBLIGATORIA (5 step), fix identità git su WSL (placeholder → Gasss23/noreply).
-  Rettifica in-session: l'operatore ha corretto la SEQUENZA aggiungendo il punto 4 (revisione umana handoff.md PRIMA del merge). Applicata prima del commit.
+- **FETTA 2 — R-ci-openrouter (T9a deterministico)**: `DEFERITA — suite kernel non eseguibile in locale (ModuleNotFoundError: No module named 'openai')`
+  La fix è stata analizzata (rimuovere gate `_has_live_keys`, iniettare chiavi fake GEMINI+GROQ) ma non implementata né committata. Richiede dipendenze motore nel venv.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/stato_progetto.md |  70 ++++++++++++++++++++++++++++---
- reports/ultimo_report.md  | 105 +++++++++++++++++++++++++++++++---------------
- 2 files changed, 135 insertions(+), 40 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ .github/workflows/ci.yml           |  25 +++++--
+ reports/ultimo_report.md           | 137 ++++++++++++++++++++++++++++++++-----
+ 3 files changed, 141 insertions(+), 22 deletions(-)
 ```
-
----
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-059df55 docs(fine-task): aggiorna report con numero PR #40
-2d92167 docs(fine-task): report allineamento-canonici 2026-07-23
-0a05933 docs(stato): registra gasmerge, sequenza merge e fix identità git
-c279381 docs(stato): corregge bonifica branch e mitigazione token gh — 2 punti falsi
+f81ca79 docs(fine-task): report fix/ci-summary-openrouter 2026-07-23
+70d1b0d ci(summary): aggiungi hook suite al Job Summary con pipefail
 ```
-
----
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore — revisore non richiesto. Il diff tocca solo `reports/` (doc-only).
+FETTA 1 tocca `.github/workflows/ci.yml` (non motore), ma il revisore è stato invocato obbligatoriamente per il motivo dichiarato: si sta modificando la barriera di validazione CI.
 
----
+Verdetto INTEGRALE del revisore (verbatim):
+
+```
+File aggiornato: /home/gqual/Gas/.claude/agents/memoria_revisore.md (riga #58 aggiunta in coda).
+
+Riepilogo: Il diff è approvato senza riserve. Il meccanismo `set -o pipefail` è il
+solo intervento necessario e sufficiente per preservare l'exit code di pytest attraverso
+la pipe `tee`, ed è già usato in modo identico per la suite kernel. Il passo summary
+rimane puramente informativo con `set +e` e guardie `[ -f ... ]` su tutti i file prodotti.
+Nessun guardrail indebolito, nessun antipattern del Wall of Shame.
+```
+
+**Verdetto: APPROVATO senza riserve.**
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/.
-
----
+Nessuna modifica a gas.py/brains/modules/tests/ in questa sessione.
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(fine-task): aggiorna report con numero PR #40	CI	docs/allineamento-canonici-2026-07-23	push	29966225114	51s	2026-07-22T23:28:19Z
-completed	success	docs(fine-task): report allineamento-canonici 2026-07-23	CI	docs/allineamento-canonici-2026-07-23	push	29966196513	48s	2026-07-22T23:27:46Z
-completed	success	Merge pull request #39 from Gasss23/fix/encoding-stato-progetto	CI	main	push	29964250718	44s	2026-07-22T22:50:59Z
+completed	success	docs(fine-task): report fix/ci-summary-openrouter 2026-07-23	CI	fix/ci-summary-openrouter	push	30026544452	1m0s	2026-07-23T16:46:12Z
+completed	success	ci(summary): aggiungi hook suite al Job Summary con pipefail	CI	fix/ci-summary-openrouter	push	30026355096	46s	2026-07-23T16:43:37Z
+completed	success	Merge pull request #40 from Gasss23/docs/allineamento-canonici-2026-0…	CI	main	push	29967190300	45s	2026-07-22T23:47:32Z
 ```
 
-Run CI sul branch di sessione: **SUCCESS** ✅ (run `29966225114` su `059df55`).
-
----
+Entrambi i commit di sessione: **verde**. Il run 30026355096 (70d1b0d, ci fix) è il run rilevante ed è verde — la hook suite con `set -o pipefail` ha passato tutti i 10 test.
 
 ## §7 RISERVE APERTE
 
-**Verifica 3 — grep frasi corrette EXIT=0**: il grep `"27 head\|22 mergiati\|token \`gh\` dedicato a scope ridotto"` ha restituito EXIT=0 (match trovati). Non sono residui falsi:
-- Riga 177: "27 head a 5" e "22 branch mergiati" compaiono nella nuova riga vera ✅ (la bonifica ha portato da 27 a 5 head, i 22 mergiati sono stati cancellati). I numeri sono corretti.
-- Riga 286: "token `gh` dedicato a scope ridotto" è citato nel blocco CORREZIONE per smentirlo — il testo dice `fix "un token … scope ridotto". **VERIFICATO IMPOSSIBILE**`.
-
-Nessuna riserva tecnica aperta da questa sessione.
+- **T9a DEFERITA (riserva CI-4 storica)**: il gate `_has_live_keys` rende T9a sempre SKIP in CI. Fix analizzata ma non implementata per mancanza delle dipendenze motore nel venv. Da fare nel prossimo micro-task.
+- Nessuna nuova riserva emersa dal revisore in questa sessione.
