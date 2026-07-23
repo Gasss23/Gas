@@ -90,7 +90,9 @@ jobs:
 
       - name: Run hook suite (pytest, zero token LLM)
         if: always()
-        run: python -m pytest tests/test_unit_hooks.py -v
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_hooks.py -v 2>&1 | tee "$RUNNER_TEMP/hooks_output.txt"
 
       - name: Job summary (esito a colpo d'occhio)
         if: always()
@@ -100,6 +102,7 @@ jobs:
         run: |
           set +e   # step puramente informativo: un grep senza match non deve abortirlo
           out="$RUNNER_TEMP/suite_output.txt"
+          hout="$RUNNER_TEMP/hooks_output.txt"
           {
             echo "## ⛽ GAS CI — esito osservabilità"
             echo ""
@@ -110,16 +113,28 @@ jobs:
             if [ -f "$out" ]; then
               riep="$(grep -E 'RIEPILOGO:' "$out" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
               nskip="$(grep -c '\[SKIP\]' "$out" || true)"
-              echo "| Suite | ${riep:-non disponibile} |"
-              echo "| SKIP  | ${nskip} |"
+              echo "| Suite kernel | ${riep:-non disponibile} |"
+              echo "| SKIP kernel  | ${nskip} |"
             else
-              echo "| Suite | output non disponibile (la suite non è partita) |"
+              echo "| Suite kernel | output non disponibile (la suite non è partita) |"
+            fi
+            if [ -f "$hout" ]; then
+              hriep="$(grep -E '^=.*(passed|failed|error)' "$hout" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+              echo "| Hook suite   | ${hriep:-non disponibile} |"
+            else
+              echo "| Hook suite   | output non disponibile (la hook suite non è partita) |"
             fi
             echo ""
             if [ -f "$out" ]; then
-              echo "### FAIL"
+              echo "### FAIL kernel suite"
               echo '```'
               grep -E 'FAIL: ' "$out" || echo "(nessun FAIL)"
+              echo '```'
+            fi
+            if [ -f "$hout" ]; then
+              echo "### FAIL hook suite"
+              echo '```'
+              grep -E '^FAILED ' "$hout" || echo "(nessun FAIL)"
               echo '```'
             fi
             echo ""
