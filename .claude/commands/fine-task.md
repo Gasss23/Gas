@@ -4,9 +4,9 @@ Esegui queste operazioni NELL'ORDINE, senza saltare passi.
 
 ---
 
-## 0. Raccogli i dati grezzi (PRIMA di scrivere qualsiasi file)
+## 0. Calcola BASE (PRIMA di scrivere qualsiasi file — i blocchi git si raccolgono in 4bis)
 
-Esegui questi comandi e tieni l'output — lo incolli verbatim nei file sotto:
+Esegui questi comandi. BASE è stabile e si calcola ora; i blocchi git di §2/§3/§6 si generano nel passo 4bis, dopo lo stage dei report.
 
 ```bash
 # 1. Aggiorna origin/main locale prima di calcolare il merge-base.
@@ -22,14 +22,9 @@ if [ -z "${BASE}" ]; then
   exit 1
 fi
 echo "BASE=$BASE"
-
-git diff --stat ${BASE}..HEAD
-git log --oneline ${BASE}..HEAD
-gh run list -L 3              # se gh disponibile e autenticato; altrimenti "CI NON VERIFICATA (gh assente)"
 ```
 
-`${BASE}..HEAD` copre SOLO i commit di questa sessione (dal punto di fork da origin/main escluso).
-Usa SEMPRE questo range per §2 e §3 — mai `HEAD~N` con N fisso, mai `git log -10`.
+`${BASE}..HEAD` copre SOLO i commit di questa sessione (dal punto di fork da origin/main escluso). Usa SEMPRE questo range in 4bis per §2, §3 e §6 — mai `HEAD~N` con N fisso, mai `git log -10`.
 
 **REGOLA FERREA — output git verbatim**: incolla le righe grezze con hash e messaggi.
 `"Ultimi 10 commit, tutti docs"` NON è accettabile — vanno le righe vere. Output grezzo o niente.
@@ -89,6 +84,8 @@ Tutte le fette devono comparire qui — incluse quelle saltate.
 <output GREZZO di `git log --oneline ${BASE}..HEAD` — righe con hash e messaggi, nessuna modifica>
 ```
 
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
+
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
 <Per OGNI commit che tocca gas.py/brains/modules/tests/: verdetto INTEGRALE del revisore,
@@ -103,7 +100,8 @@ incollato + quali FAIL sono fuori scope e perché>
 
 <output REALE di `gh run list -L 3` + esito run sul commit di sessione.
 Se gh assente o non autenticato: "CI NON VERIFICATA (gh assente)".
-VIETATO scrivere "prevista verde" senza output reale.>
+VIETATO scrivere "prevista verde" senza output reale.
+Se gli ultimi commit non hanno ancora una run CI al momento della scrittura, scrivere esattamente "run non ancora disponibile alla scrittura dell'handoff" per quei SHA. Vietato ometterli in silenzio e vietato attribuirgli la run di un commit precedente. Nota che la copertura pre-merge è garantita altrove da `gasmerge` (gh pr checks --watch), non da questo campo.>
 
 **Mappatura commit→run OBBLIGATORIA**: per ogni commit di sessione indica la run CI
 che lo ha testato, o dichiara esplicitamente "nessuna run su questo SHA". VIETATE le
@@ -129,15 +127,40 @@ Contenuto:
 
 ---
 
-## 4. Committa e pusha
+## 4. Stage dei file di report
 
 ```bash
 git add reports/ultimo_report.md reports/handoff.md reports/diff_sessione.md
-git commit -m "docs(<descrizione-breve>): <cosa hai fatto>"
-git push
 ```
 
 NON includere nel commit file del motore (gas.py, brains/, modules/, tests/) — quelli richiedono il revisore.
+
+---
+
+## 4bis. RIGENERA I BLOCCHI GIT (ultimo passo prima del commit)
+
+Esegui ora, con i file di report già in stage:
+
+```bash
+git diff --cached --stat ${BASE}     # ← va in §2 di handoff.md
+git log --oneline ${BASE}..HEAD      # ← va in §3 di handoff.md
+gh run list -L 3                     # ← va in §6 di handoff.md (se gh disponibile; altrimenti "CI NON VERIFICATA (gh assente)")
+```
+
+**Perché `--cached` contro `${BASE}`**: `git diff --cached --stat ${BASE}` mostra tutto ciò che è in stage rispetto a BASE, inclusi i file di report appena aggiunti (ultimo_report.md, handoff.md, diff_sessione.md). `git diff --stat ${BASE}..HEAD` non li vedrebbe: quei file non esistono ancora in nessun commit HEAD.
+
+Riscrivi §2 e §3 (e §6) nel file `reports/handoff.md` con questi output. Poi re-aggiungi in stage l'handoff aggiornato:
+
+```bash
+git add reports/handoff.md
+```
+
+SOLO ORA committa e pusha:
+
+```bash
+git commit -m "docs(<descrizione-breve>): <cosa hai fatto>"
+git push
+```
 
 ---
 
@@ -185,3 +208,9 @@ git diff --stat ${BASE}..HEAD -- reports/handoff.md
 Non dare MAI a voce un riassunto diverso dal contenuto dei file. Ogni discrepanza tra ciò che dici e ciò che sta nei file è un errore da segnalare.
 
 **INVARIANTE GIT OUTPUT**: mai sostituire l'output di `git log` o `git diff --stat` con prosa o riassunti. "Ultimi 10 commit, tutti docs" NON è accettabile — vanno le righe vere con hash e messaggi. Se l'output è lungo, incollalo comunque intero.
+
+---
+
+## GATE POST-FINE-TASK
+
+SE COMMITTI QUALSIASI COSA DOPO /fine-task, DEVI RI-ESEGUIRE /fine-task PER INTERO. Un handoff che non copre l'ultimo commit del branch è un handoff che mente. Nessuna eccezione per "era solo un doc".
