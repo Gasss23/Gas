@@ -1,138 +1,103 @@
-# Report task: fix/ci-summary-openrouter — 2026-07-23
+# Report: fix/t9a-deterministico — 2026-07-24
+
+## DECISIONI UMANE RICHIESTE
+
+1. **Merge PR #42** (`fix/t9a-deterministico`): eseguire `gasmerge 42` da terminale WSL dopo revisione di `reports/handoff.md`. NON mergiare da sessione agente.
 
 ## Esito per fetta
 
 | Fetta | Esito | Note |
 |---|---|---|
-| FETTA 1 — R-ci-summary | **FATTA** | commit `70d1b0d` |
-| FETTA 2 — R-ci-openrouter (T9a) | **DEFERITA** | suite kernel non eseguibile in locale (dipendenze assenti) |
+| 0 — Sanare venv | FATTA | Nessun commit — azione senza traccia git |
+| 1 — T9a/T9c deterministici | FATTA | Commit `f6b6caa`, revisore #59 APPROVATO |
+| 2 — Canonici stato_progetto.md | FATTA | Commit `0034a17` |
 
 ---
 
-## FETTA 1 — R-ci-summary
+## FETTA 0 — SANARE IL VENV (nessun commit)
 
-### Problema risolto
-Lo step "Run hook suite" in ci.yml non catturava l'output verso un file,
-quindi la hook suite (pytest tests/test_unit_hooks.py) non compariva nel
-Job Summary della run CI.
-
-### Modifica apportata
-Solo `.github/workflows/ci.yml`. Nient'altro.
-
-1. **Step "Run hook suite"**: aggiunto `set -o pipefail` e `tee "$RUNNER_TEMP/hooks_output.txt"`
-   per catturare l'output mantenendo l'exit code nativo di pytest.
-2. **Step "Job summary"**: aggiunta lettura di `$RUNNER_TEMP/hooks_output.txt`,
-   riga nella tabella per "Hook suite", sezione "### FAIL hook suite".
-   Rinominate le righe esistenti da "Suite"/"SKIP" a "Suite kernel"/"SKIP kernel"
-   per distinguerle visivamente.
-
-### diff --stat (rigenerato live)
-
-```
- .github/workflows/ci.yml | 25 ++++++++++++++++++++-----
- 1 file changed, 20 insertions(+), 5 deletions(-)
-```
-
-### Hash commit FETTA 1
-`70d1b0d` — `ci(summary): aggiungi hook suite al Job Summary con pipefail`
-
-### CI
-`completed success` — run 30026355096 (46s, 2026-07-23T16:43:37Z)
+- **Python del venv WSL**: 3.12.3
+- **Dipendenze installate** (2026-07-24, senza traccia in git):
+  `pip install -r requirements.txt -r requirements-dev.txt`
+  — openai 2.43.0 · fastembed 0.8.0 · numpy 2.4.6 · onnxruntime 1.27.0 · requests 2.34.2 · pytest 9.1.1
+- **Suite kernel PRIMA (pre-fix)**:
+  ```
+  === RIEPILOGO: 248 PASS, 0 FAIL ===
+  [SKIP] T9a ogni provider cappato a 10 iterazioni — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
+  [SKIP] T9c storia salvata su disco nella root temporanea — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
+  ```
 
 ---
 
-## PROVE OBBLIGATORIE (FETTA 1)
+## FETTA 1 — T9a/T9c DETERMINISTICI
 
-### (a) Meccanismo pipefail — comando e output reali
+### Modifiche
 
-```bash
-$ set -o pipefail; false | tee /dev/null; echo "exit code: $?"
-exit code: 1
+**`tests/test_unit_kernel.py`** (blocco T9):
+- Iniettate `GEMINI_API_KEY="fake-gemini-key-for-test"` e `GROQ_API_KEY="fake-groq-key-for-test"` nel blocco try/finally con pattern save/restore identico a quello già presente per `OPENROUTER_API_KEY` e `GAS_OLLAMA_URL`.
+- Rimosso gate `_has_live_keys` (inutilizzato dopo la rimozione dei branch if/else).
+- T9a e T9c ora sono `check(...)` incondizionali.
+
+**`.github/workflows/ci.yml`** (SOLO commenti, zero modifiche agli step):
+- `python-version: "3.11"`: commento corretto — divergenza 3.11 CI vs 3.12.3 WSL dichiarata.
+- Job Summary: riga T9a/T9c aggiornata (erano SKIP, ora sempre verdi con chiavi fittizie).
+- Step "Gate — sandbox OS attivo": commento allineato.
+
+### Prove obbligatorie
+
+**(a) Suite DOPO il fix:**
+```
+[PASS] T9a ogni provider cappato a 10 iterazioni — chiamate per modello: {'gemini-2.5-flash-lite': 10, 'gemini-2.5-flash': 10, 'openai/gpt-oss-120b': 10}
+[PASS] T9b loop infinito assorbito senza crash, pipeline esausta dichiarata — tool_res=30 errori=1
+[PASS] T9c storia salvata su disco nella root temporanea
+=== RIEPILOGO: 250 PASS, 0 FAIL ===
+(0 SKIP residui)
 ```
 
-`set -o pipefail` propaga l'exit code del comando sinistro della pipe
-(qui `false`, exit 1) anche quando `tee` termina con 0.
-Senza pipefail il risultato sarebbe `exit code: 0` — gate CI silenziosamente cieco.
+**(b) Prova zero-rete (ispezione gas.py):**
+- Ogni rung in `run_turn` (gas.py:1503): `client = OpenAI(base_url=url, api_key=os.environ.get(env))` — intercettato da `gas.OpenAI = FakeOpenAI`.
+- `_probe_free_model` / `urllib` (gas.py:159-167): chiamati SOLO da `doctor()` (gas.py:1629), NON raggiungibili da `run_turn`.
 
-### (b) pytest tests/test_unit_hooks.py — output reale locale
-
+**(c) Prova one-off zero-rete (socket.socket bloccato nello stesso processo, NON committata):**
 ```
-platform linux -- Python 3.12.3, pytest-9.1.1
-collected 10 items
-
-tests/test_unit_hooks.py::TestSessionEndGuard::test_hook_a_main_no_commit PASSED
-tests/test_unit_hooks.py::TestSessionEndGuard::test_hook_b_feature_branch_commits PASSED
-tests/test_unit_hooks.py::TestSessionEndGuard::test_hook_c_detached_head_no_commit PASSED
-tests/test_unit_hooks.py::TestSessionEndPush::test_hook_d_push_to_feature_branch_not_main PASSED
-tests/test_unit_hooks.py::TestSessionEndPush::test_hook_e_push_failure_warns_and_exits_zero PASSED
-tests/test_unit_hooks.py::TestSessionEndAddRobust::test_hook_f_add_without_gas_history PASSED
-tests/test_unit_hooks.py::TestScriviRepPush::test_hook_g_push_to_feature_branch_not_main PASSED
-tests/test_unit_hooks.py::TestScriviRepPush::test_hook_h_main_no_commit PASSED
-tests/test_unit_hooks.py::TestScriviRepJq::test_hook_i_no_jq_warns_and_exits_zero PASSED
-tests/test_unit_hooks.py::TestScriviRepJq::test_hook_j_detached_head_no_commit PASSED
-
-10 passed in 2.18s
+[PASS] T9a ogni provider cappato a 10 iterazioni — chiamate per modello: {'gemini-2.5-flash-lite': 10, 'gemini-2.5-flash': 10, 'openai/gpt-oss-120b': 10}
+[PASS] T9b loop infinito assorbito senza crash, pipeline esausta dichiarata — tool_res=30 errori=1
+[PASS] T9c storia salvata su disco nella root temporanea
+=== RIEPILOGO: 250 PASS, 0 FAIL ===
+EXIT CODE: 0
 ```
 
-**10 PASS, 0 FAIL, 0 SKIP.**
+### Revisore
+
+**Revisore #59 (2026-07-24) — VERDETTO INTEGRALE VERBATIM:**
+
+> **VERDETTO FINALE: APPROVATO**
+>
+> Il commit può procedere. File aggiornato: `/home/gqual/Gas/.claude/agents/memoria_revisore.md` (riga `#59` aggiunta in coda).
 
 ---
 
-## VERDETTO REVISORE FETTA 1 (verbatim, copia-incolla)
+## FETTA 2 — CANONICI (reports/stato_progetto.md)
 
-```
-File aggiornato: /home/gqual/Gas/.claude/agents/memoria_revisore.md (riga #58 aggiunta in coda).
-
-Riepilogo: Il diff è approvato senza riserve. Il meccanismo `set -o pipefail` è il
-solo intervento necessario e sufficiente per preservare l'exit code di pytest attraverso
-la pipe `tee`, ed è già usato in modo identico per la suite kernel. Il passo summary
-rimane puramente informativo con `set +e` e guardie `[ -f ... ]` su tutti i file prodotti.
-Nessun guardrail indebolito, nessun antipattern del Wall of Shame.
-```
-
-**Verdetto: APPROVATO senza riserve.**
+1. Review counter: #57 → #59 (#58=PR#41 R-ci-summary, #59=T9a/T9c). Fonte: `tail -20 .claude/agents/memoria_revisore.md`.
+2. R-ci-summary: ✅ CHIUSO (PR #41, merge `55959ef`, CI `30051234981`).
+3. R-ci-openrouter: ✅ CHIUSO con storia degli errori conservata. Difetto reale: gate `_has_live_keys` → T9a/T9c sempre SKIP in CI → cap loop agentico (CLAUDE.md §8) mai coperto da CI.
+4. Nuovo ℹ️ lezione T9b: test verde a vuoto (cascata a 0 rung) non dimostra ciò che dichiara.
+5. CI: aggiunti PR #40 (`4391c8b`, CI `29967190300`) e PR #41 (`55959ef`, CI `30051234981`).
+6. Head origin: 5 (live `git ls-remote --heads origin | wc -l`, pre-push di sessione).
+7. §7 venv WSL: aggiornato — dipendenze 2026-07-24, Python 3.12.3 vs 3.11 CI come ℹ️ nota aperta.
+8. Errore dichiarato: "Suite WSL locale 2026-07-19: 247 PASS" era falso (suite non eseguibile su WSL in quel momento).
+9. Azioni senza traccia git registrate nella sezione sessione 2026-07-24.
 
 ---
 
-## FETTA 2 — R-ci-openrouter (T9a) — DEFERITA
-
-### Motivo
-La suite kernel (`tests/test_unit_kernel.py`) non è eseguibile in locale:
+## CI
 
 ```
-$ python tests/test_unit_kernel.py
-Traceback (most recent call last):
-  File "tests/test_unit_kernel.py", line 16, in <module>
-    import gas
-  File "gas.py", line 11, in <module>
-    from openai import OpenAI
-ModuleNotFoundError: No module named 'openai'
+completed	success	docs(fine-task): handoff + diff_sessione 2026-07-24 fix/t9a-determini…	CI	fix/t9a-deterministico	push	30055128981	51s	2026-07-24T00:05:10Z
+completed	success	docs(canonici): allinea stato_progetto.md — sessione 2026-07-24	CI	fix/t9a-deterministico	push	30054898882	37s	2026-07-24T00:00:35Z
+completed	success	Merge pull request #41 from Gasss23/fix/ci-summary-openrouter	CI	main	push	30051234981	55s	2026-07-23T22:49:59Z
 ```
 
-Il venv contiene solo pytest e le dipendenze degli hook; le dipendenze del
-motore (openai, ecc.) non sono installate.
-
-### Analisi della fix necessaria (non implementata)
-T9a è gated su `_has_live_keys = bool(GEMINI_API_KEY and GROQ_API_KEY)`,
-ovvero viene eseguito SOLO se le chiavi reali sono presenti. In CI non lo
-sono, quindi T9a è SEMPRE SKIP in CI. La fix corretta sarebbe:
-- Aggiungere chiavi fake per GEMINI e GROQ prima del run (come già fatto
-  per OPENROUTER con `os.environ.pop`)
-- Rimuovere il gate `_has_live_keys` per T9a (lasciandolo solo per T9c se
-  T9c richiede verifica su disco — da valutare)
-- Così T9a girerebbe sempre, deterministicamente, con FakeOpenAI
-
-### Come procedere
-Installare `pip install -r requirements.txt` nel venv di sviluppo locale,
-eseguire la suite kernel (`python tests/test_unit_kernel.py`), validare le
-due condizioni (OPENROUTER assente / iniettata fake), poi committare la fetta
-in un PR separato con revisore.
-
-La fetta 2 NON è stata committata. La PR attuale contiene solo FETTA 1.
-
----
-
-## PR
-
-URL: https://github.com/Gasss23/Gas/pull/41
-NON mergiare — il merge è azione umana da browser.
+Tutti i commit di sessione su `fix/t9a-deterministico`: ✅ SUCCESS.
+PR #42: https://github.com/Gasss23/Gas/pull/42
