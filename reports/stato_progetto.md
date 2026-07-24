@@ -65,27 +65,20 @@ Componenti attive:
 - ✅ **F6-history-atomica CHIUSO** (2026-07-16, review #50 APPROVATO, PR #19, CI run `29482410951` ✅ 241 PASS): `_save_history` usa ora tmp+`os.replace` atomico (fsync); `_load_history` quarantena il file corrotto in `.gas_history.json.corrupt.<ts>` (logging.warning, mai crash). Test T59a/b/c. **Mergeata → 9a9278e su main ✅ (2026-07-16, CI run 29484338680 SUCCESS)**.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 - 🟡 **R-verdetto-evidenza** — l'obbligo di citare ≥2 elementi del diff è verificabile solo a occhio; un verdetto può citare path:riga plausibili senza averli letti. Fix strutturale: check meccanico che i path:riga citati esistano nel diff sotto review. Non impegnato.
-- 🟡 **R-gasmerge-failopen** (aperto 2026-07-24, riserve verdetto #61 APPROVATO CON RISERVE):
-  (1) `scripts/gasmerge.sh:70-71` — `git diff --name-only | grep -E ... || true` sotto
-  pipefail: un errore reale di git (rc≥2) è indistinguibile da "nessun match" (rc=1) → il
-  rilevamento file-motore fallisce in fail-open stampando "nessuno (doc-only)".
-  (2) `scripts/gasmerge.sh:64-67` — stesso pattern su `git grep` dell'invariante IP dentro
-  la condizione `if`: un errore reale del comando produce lo stesso esito di "0 match" e
-  lo script stampa "0 match OK" senza aver verificato nulla. Guardrail di sicurezza in
-  fail-open: è il difetto più grave dei tre.
-  (3) `scripts/gasmerge.sh:16` vs `64,70-71` — `git fetch` unico PRIMA di un'attesa CI fino
-  a 900s: i controlli successivi leggono refs potenzialmente stantii mentre `gh pr merge`
-  mergia lo stato attuale della PR. Gap TOCTOU introdotto dal watch lungo di questa sessione.
-  (4) [rilievo operatore, non del revisore] `scripts/gasmerge.sh:14` usa `command -v jq`
-  (presence check) mentre il progetto ha già stabilito con R-hook-jq / review #56 che serve
-  il functional check `jq --version`: un jq presente ma rotto passa il gate.
-  (5) [rilievo operatore] `scripts/gasmerge.sh:64` applica l'invariante IP SOLO a `reports/`:
-  un IP in CLAUDE.md, scripts/, .claude/ o nel codice non viene bloccato, mentre lo scrub
-  2026-07-20 riguardava tutto HEAD.
-  (6) [nit cosmetico] il messaggio d'uso stampa il numero del parametro posizionale
-  (`line 13: 1: uso: gasmerge <numero-PR>`) invece del solo testo. Cosmetico.
-  Stato: NON chiuso, gasmerge resta usabile ma la sua copertura è più stretta di quanto i
-  canonici lasciassero credere. Fix alla prossima sessione dedicata.
+- ✅ **R-gasmerge-failopen CHIUSO** (2026-07-24, branch `fix/gasmerge-failopen`, review #62 + #63 APPROVATI CON RISERVE):
+  (1) ✅ **git diff fail-open** → separato git diff da grep, case rc 0/1/≥2, BLOCCA su errore git (T-gasmerge-g).
+  (2) ✅ **git grep fail-open** → set+e/RC/set-e/case, BLOCCA su rc≥2 invece di stampare "0 match OK" (T-gasmerge-e).
+  (3) ✅ **TOCTOU** → secondo `git fetch --prune` dopo attesa CI; `HEAD_SHA=$(gh pr view ... --json headRefOid)` + `--match-head-commit "$HEAD_SHA"` su `gh pr merge`.
+  (4) ✅ **jq presence-check** → sostituito con `jq --version` functional check, coerente con #56 (T-gasmerge-c).
+  (5) ✅ **scope IP solo reports/** → esteso a tutto l'albero del branch; sonda origin/main: 0 match (T-gasmerge-f).
+  (6) ✅ **messaggio d'uso con numero parametro** → validazione esplicita, solo testo su stderr, exit 2 (T-gasmerge-a/b).
+  Suite: 7 test PASS, 6/7 FAIL su vecchio script (1 PASS = guard preesistente, regressione).
+  Riserve aperte (non bloccanti, da monitorare):
+  - **#62-R1**: pattern IP quad-dotted può colpire versioni software (es. "1.0.0.0"); oggi 0 match.
+  - **#62-R2**: `--match-head-commit` non coperto da test (da aggiungere se si porta gasmerge in CI).
+  - **#63-R1**: stub git hardcoda `/usr/bin/git` (non portabile su sistemi con git altrove).
+  - **#63-R2**: `/tmp/gaspr.json` condiviso tra test non thread-safe (pytest-xdist con -n>1 non testato).
+  Cambio di superficie: `GAS_REPO_DIR` rende gasmerge puntabile a repo arbitrario via env — non aggiunge potere reale (chi ha `gh` è già owner), ma dichiarato.
 
 ### DEPLOY VPS — da tarare su dati reali
 
