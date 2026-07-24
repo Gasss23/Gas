@@ -2,8 +2,9 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Review PR #43** (`chore/hardening-processo`, https://github.com/Gasss23/Gas/pull/43): 5 commit (incluso questo report), NON mergiata da questa sessione. Merge SOLO a mano (`gasmerge 43` da terminale WSL, oppure `./scripts/gasmerge.sh 43` una volta mergiata questa stessa PR) dopo lettura di questo report.
-2. **Riserve fetta 3 non tracciate in `stato_progetto.md`** (vedi sotto): decidere se aprire un finding dedicato o assorbirle nel prossimo giro canonici. Non impegnate in questa sessione per rispetto dello scope prescritto fetta per fetta.
+1. **Review PR #43** (`chore/hardening-processo`, https://github.com/Gasss23/Gas/pull/43): 6 commit, NON mergiata da questa sessione. Merge SOLO a mano da terminale WSL dopo lettura di questo report.
+2. ~~Riserve fetta 3 non tracciate in `stato_progetto.md`~~ — **RISOLTO in questa fetta**: `R-gasmerge-failopen` aperto in `reports/stato_progetto.md` con le 3 riserve del revisore + 2 rilievi aggiuntivi dell'operatore (functional check jq, invariante IP limitata a `reports/`).
+3. **Merito review #60/#61 (subagent general-purpose in ruolo di revisore) verificato a campione dall'operatore**: accettato come valido, non ri-revisionato. Micro-finding registrato in `stato_progetto.md`. Regola ribadita: lanciare sempre `cd ~/Gas && claude`.
 
 ## Esito per fetta
 
@@ -13,8 +14,28 @@
 | 2 — Formato obbligatorio verdetto (.claude/agents/revisore.md) | FATTA | `fd07a6d` | non richiesto (conflitto d'interesse) |
 | 3 — scripts/gasmerge.sh hardening | FATTA | `81933c9` | APPROVATO CON RISERVE |
 | 4 — Canonici (fine-task.md §6 + stato_progetto.md ×5) + PR | FATTA | `6f5ba71` | non richiesto (doc-only) |
+| 5 — Fix posizione §6 fine-task.md + R-gasmerge-failopen + deviazione gate + contatore review | FATTA | *(vedi sotto)* | non richiesto (doc-only, nessun file di motore) |
 
 Prerequisito eseguito: `git fetch origin && git checkout -b chore/hardening-processo origin/main` da `1ebea40` (PR #42 mergiata). Nessun merge eseguito, nessun push su main, nessun `gh pr merge`.
+
+---
+
+## FETTA 5 — Fix posizione §6 + R-gasmerge-failopen + deviazione gate + contatore review (doc-only)
+
+1. **Fix di posizione `.claude/commands/fine-task.md` §6**: il `>` di chiusura del placeholder angolare era finito DOPO la regola "Mappatura commit→run OBBLIGATORIA" invece che dopo "VIETATO scrivere «prevista verde» senza output reale.", lasciando la regola imprigionata dentro il placeholder invece che fuori come testo normativo. Spostato, testo della regola invariato.
+2. **`reports/stato_progetto.md`**: aggiunto il finding aperto 🟡 `R-gasmerge-failopen` con le 3 riserve del verdetto #61 (fail-open `git diff`/`git grep`, gap TOCTOU) più 2 rilievi dell'operatore (presence-check jq invece di functional-check, invariante IP limitata a `reports/`).
+3. **`reports/stato_progetto.md`**: aggiunto il micro-finding "Deviazione di gate — subagent revisore non invocato nativamente", con causa (cwd di lancio `/home/gqual` invece di `~/Gas`), verifica a campione dell'operatore, e richiamo alla regola già registrata (nota VPS §6) di lanciare sempre da `~/Gas`.
+4. **`reports/stato_progetto.md`**: contatore review allineato da "59 review / ultima #59" a "61 review / ultima #61 (scripts/gasmerge.sh, APPROVATO CON RISERVE); #60 = T9 gate falsy, APPROVATO" — sia nella riga di stato motore sia nell'istituzione C. Fonte verificata live:
+   ```
+   $ tail -5 .claude/agents/memoria_revisore.md
+   #58 — 2026-07-23 — APPROVATO — nessuna lezione nuova
+   #59 — 2026-07-24 — APPROVATO — nessuna lezione nuova
+   #60 — 2026-07-24 — APPROVATO — Quando un gate di iniezione env passa da `is None` a falsy [...]
+   #61 — 2026-07-24 — APPROVATO CON RISERVE — Grep/diff usati come CONDIZIONE di un `if` [...]
+   - 2026-07-24 — Un `git fetch` unico eseguito PRIMA di un'attesa lunga [...]
+   ```
+
+Nessun file di motore toccato (gas.py/brains/modules/tests/scripts non modificati). Nessun revisore richiesto e nessuno invocato.
 
 ---
 

@@ -6,9 +6,9 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Review PR #43** (`chore/hardening-processo`, https://github.com/Gasss23/Gas/pull/43): 5 commit, NON mergiata da questa sessione. Merge SOLO a mano da terminale WSL dopo lettura di questo dossier.
-2. **Riserve fetta 3 non tracciate in `stato_progetto.md`**: il verdetto #61 (APPROVATO CON RISERVE su `scripts/gasmerge.sh`) ha trovato 3 riserve reali (fail-open di `git grep`/`git diff` su errore comando vs "nessun match"; gap TOCTOU tra il fetch iniziale e i controlli post-watch-CI). Non impegnate in questa sessione per rispetto dello scope prescritto fetta per fetta. Decidere se aprire un finding `R-gasmerge-failopen` dedicato al prossimo giro canonici.
-3. **Subagent `revisore` non registrato in questo harness** (vedi §4): verificare se la sostituzione con un agente `general-purpose` istruito a impersonare il revisore è accettabile come gate valido per le fette 1 e 3, o se vanno ri-revisionate quando l'ambiente esporrà il subagent dedicato.
+1. **Review PR #43** (`chore/hardening-processo`, https://github.com/Gasss23/Gas/pull/43): 6 commit, NON mergiata da questa sessione. Merge SOLO a mano da terminale WSL dopo lettura di questo dossier.
+2. ~~Riserve fetta 3 non tracciate~~ — **RISOLTO in fetta 5**: `R-gasmerge-failopen` aperto in `stato_progetto.md`.
+3. **Merito review #60/#61 (subagent `general-purpose` in ruolo di revisore) verificato a campione dall'operatore in questa fetta**: accettato come valido, non ri-revisionato. Micro-finding "Deviazione di gate" registrato. Nessuna azione ulteriore richiesta salvo lanciare sempre `cd ~/Gas && claude`.
 
 ---
 
@@ -19,6 +19,8 @@
 - **Fetta 3 — scripts/gasmerge.sh hardening**: `FATTA` — commit `81933c9`, revisore APPROVATO CON RISERVE (3 riserve, vedi §7). Testato contro PR #42 chiusa (blocco corretto), argomento assente/non numerico (bloccano), HEAD/git status invariati. Non eseguito su PR aperte (vietato dal prompt).
 - **Fetta 4 — Canonici (fine-task.md §6 + stato_progetto.md ×5) + apertura PR**: `FATTA` — commit `6f5ba71`, doc-only, nessun revisore. PR #43 aperta, non mergiata.
 - **Report di sessione (`reports/ultimo_report.md`)**: `FATTA` — commit `4fd0d31`, doc-only.
+- **`/fine-task` (handoff + diff_sessione)**: `FATTA` — commit `f5c120c`, doc-only.
+- **Fetta 5 — Fix posizione §6 fine-task.md + R-gasmerge-failopen + deviazione gate + contatore review**: `FATTA` — doc-only, nessun file di motore toccato, nessun revisore richiesto/invocato. Dettaglio: (a) `>` di chiusura del placeholder §6 spostato prima della regola mappatura commit→run, testo invariato; (b) `R-gasmerge-failopen` aperto con 3 riserve verdetto #61 + 2 rilievi operatore (jq presence-check, invariante IP limitata a reports/); (c) micro-finding "Deviazione di gate" (cwd di lancio, subagent non esposto, merito verificato a campione); (d) contatore review allineato 59→61 (stato motore + istituzione C), fonte `tail -5 memoria_revisore.md` verificata live.
 
 Tutte le fette dello scope compaiono qui. Nessuna saltata o differita.
 
@@ -190,10 +192,12 @@ Nessuna formula collettiva "tutti i commit hanno CI verde" — mappatura per sin
 
 ## §7 RISERVE APERTE
 
-- **Riserve verdetto #61 su `scripts/gasmerge.sh`** (APPROVATO CON RISERVE, non bloccanti ma reali):
+- **🟡 R-gasmerge-failopen** (aperto in `stato_progetto.md` in fetta 5, verdetto #61 APPROVATO CON RISERVE + rilievi operatore):
   1. `scripts/gasmerge.sh:70-71` — `git diff --name-only ... | grep -E ... || true` sotto `pipefail`: un errore REALE di `git diff` (rc≥2, es. ref stantio) viene confuso con "nessun match" (rc=1), il rilevamento file-motore fallisce silenziosamente in fail-open.
-  2. `scripts/gasmerge.sh:64-67` — stesso pattern sull'invariante IP (`git grep` in condizione `if` sotto `set -e`): un errore reale del comando produce lo stesso esito di "0 match", nessun blocco.
+  2. `scripts/gasmerge.sh:64-67` — stesso pattern sull'invariante IP (`git grep` in condizione `if` sotto `set -e`): un errore reale del comando produce lo stesso esito di "0 match", nessun blocco. Guardrail di sicurezza in fail-open: il più grave dei tre.
   3. `scripts/gasmerge.sh:16` vs `64,70-71` — `git fetch` unico prima di un'attesa CI fino a 900s: i controlli successivi possono leggere refs stantii se il branch della PR cambia durante l'attesa, mentre il merge finale prende lo stato attuale.
-  Non tracciate in `reports/stato_progetto.md` in questa sessione (fuori scope fetta 3). Proposta: finding `R-gasmerge-failopen` al prossimo giro canonici.
-- **🟡 R-verdetto-evidenza** (introdotto in questa sessione, `stato_progetto.md`): l'obbligo di citare ≥2 elementi del diff nel verdetto è verificabile solo a occhio; un verdetto può citare `path:riga` plausibili senza averli letti. Fix strutturale (check meccanico) non impegnato.
-- **Subagent `revisore` non registrato nell'harness** (vedi §0 e §4): sostituzione con `general-purpose` in ruolo, da validare con l'operatore.
+  4. [rilievo operatore] `scripts/gasmerge.sh:14` — `command -v jq` (presence check) invece del functional check `jq --version` già stabilito con R-hook-jq/review #56: un jq presente ma rotto passa il gate.
+  5. [rilievo operatore] `scripts/gasmerge.sh:64` — invariante IP limitata a `reports/`: un IP in CLAUDE.md/scripts/.claude/codice non viene bloccato, mentre lo scrub 2026-07-20 riguardava tutto HEAD.
+  Stato: NON chiuso, fix rimandato a sessione dedicata.
+- **🟡 R-verdetto-evidenza** (introdotto sessione precedente, `stato_progetto.md`): l'obbligo di citare ≥2 elementi del diff nel verdetto è verificabile solo a occhio; un verdetto può citare `path:riga` plausibili senza averli letti. Fix strutturale (check meccanico) non impegnato.
+- **Deviazione di gate — subagent `revisore` non registrato nell'harness** (registrata in `stato_progetto.md` in fetta 5): cwd di lancio sessione `/home/gqual` invece di `~/Gas` → `.claude/agents/` non scoperto. Review #60/#61 prodotte da `general-purpose` in ruolo. Merito verificato a campione dall'operatore in questa fetta (citazioni path:riga corrispondenti al codice reale, difetto #60 riprodotto con `git stash`): **accettate come valide, non ri-revisionate**. Regola ribadita: lanciare sempre `cd ~/Gas && claude`.
