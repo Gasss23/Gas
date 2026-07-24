@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Review PR #43** (`chore/hardening-processo`, https://github.com/Gasss23/Gas/pull/43): 4 commit, NON mergiata da questa sessione. Merge SOLO a mano (`gasmerge 43` da terminale WSL) dopo lettura di questo report.
+1. **Review PR #43** (`chore/hardening-processo`, https://github.com/Gasss23/Gas/pull/43): 5 commit (incluso questo report), NON mergiata da questa sessione. Merge SOLO a mano (`gasmerge 43` da terminale WSL, oppure `./scripts/gasmerge.sh 43` una volta mergiata questa stessa PR) dopo lettura di questo report.
 2. **Riserve fetta 3 non tracciate in `stato_progetto.md`** (vedi sotto): decidere se aprire un finding dedicato o assorbirle nel prossimo giro canonici. Non impegnate in questa sessione per rispetto dello scope prescritto fetta per fetta.
 
 ## Esito per fetta
@@ -249,14 +249,19 @@ Diff completo verificato con `git diff` prima del commit (vedi commit `6f5ba71`)
 ## CI di questa sessione
 
 ```
-$ gh run list -L 5 --branch chore/hardening-processo
-completed  success  docs(canonici): mappatura commit->run obbligatoria + 5 correzioni sta…  CI  chore/hardening-processo  push  30078697173  42s  2026-07-24T08:22:29Z
+$ gh run list -L 3
+completed	success	docs(report): reports/ultimo_report.md — sessione chore/hardening-pro…	CI	chore/hardening-processo	push	30078926449	58s	2026-07-24T08:26:23Z
+completed	success	docs(canonici): mappatura commit->run obbligatoria + 5 correzioni sta…	CI	chore/hardening-processo	push	30078697173	42s	2026-07-24T08:22:29Z
+completed	success	Merge pull request #42 from Gasss23/fix/t9a-deterministico	CI	main	push	30055699560	52s	2026-07-24T00:16:08Z
 ```
 
-**Mappatura commit→run** (applicando SUBITO la regola appena introdotta in fetta 4 — caso di studio reale):
-- 4 commit pushati in un UNICO `git push -u origin chore/hardening-processo`: `1551312`, `fd07a6d`, `81933c9`, `6f5ba71`.
-- GitHub Actions ha generato **UNA sola run per il push**: `30078697173`, `headSha = 6f5ba71...` (il commit di testa), conclusion `success`.
-- **`1551312`, `fd07a6d`, `81933c9` NON hanno mai avuto una run propria** — sono coperti solo indirettamente perché il loro contenuto è incluso nell'albero testato al momento del push (`6f5ba71`). Copertura sostanziale sì, run individuale no. Dichiarato esplicitamente come richiesto dalla nuova regola §6, non riassunto con "tutti i commit hanno CI verde".
+**Mappatura commit→run** (applicando SUBITO la regola introdotta in fetta 4 — caso di studio reale, 2 push separati in questa sessione):
+- Push 1 (`1551312`, `fd07a6d`, `81933c9`, `6f5ba71`) → **UNA sola run**: `30078697173`, `headSha = 6f5ba71...` (verificato con `gh run view 30078697173 --json headSha`), conclusion `success`.
+  - `1551312`, `fd07a6d`, `81933c9` **NON hanno mai avuto una run propria** — coperti solo indirettamente perché il loro contenuto è incluso nell'albero testato al momento del push (`6f5ba71`). Copertura sostanziale sì, run individuale no.
+  - `6f5ba71` → run propria: `30078697173` ✅ SUCCESS.
+- Push 2 (`4fd0d31`, commit del report) → run propria: `30078926449`, `headSha = 4fd0d31...` (verificato), conclusion `success`.
+
+Nessuna formula collettiva del tipo "tutti i commit hanno CI verde" — mappatura esplicita per singolo SHA come richiesto dalla nuova regola §6.
 
 ---
 
@@ -273,6 +278,7 @@ Non ho installato nulla (shellcheck esplicitamente NON installato, come richiest
 ## Riepilogo commit sul branch (`chore/hardening-processo`, base `1ebea40`)
 
 ```
+4fd0d31 docs(report): reports/ultimo_report.md — sessione chore/hardening-processo
 6f5ba71 docs(canonici): mappatura commit->run obbligatoria + 5 correzioni stato_progetto
 81933c9 feat(scripts): versiona gasmerge.sh — wrapper anti-corruzione, CI watch reale, provenienza
 fd07a6d docs(revisore): formato obbligatorio del verdetto — vieta verdetti degeneri
@@ -280,3 +286,5 @@ fd07a6d docs(revisore): formato obbligatorio del verdetto — vieta verdetti deg
 ```
 
 PR: https://github.com/Gasss23/Gas/pull/43 (APERTA, non mergiata).
+
+Nota: `git diff --stat`/`git log --oneline` di `${BASE}..HEAD` (BASE = `git merge-base origin/main HEAD` = `1ebea40`) includono anche questo stesso commit di aggiornamento report, essendo /fine-task eseguito DOPO di esso in questa stessa sessione.
