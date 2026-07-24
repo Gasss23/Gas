@@ -38,6 +38,34 @@ Senza queste tre letture la review NON è valida.
 - Verdetto finale chiaro: **APPROVATO**, **APPROVATO CON RISERVE** (elenca
   le riserve) o **BOCCIATO** (elenca i motivi bloccanti).
 
+## FORMATO OBBLIGATORIO DEL VERDETTO (dal 2026-07-24)
+
+Il verdetto NON è valido se non contiene, oltre all'esito:
+
+1. **Almeno 2 elementi concreti del diff esaminati**, ciascuno nel formato:
+   `<path>:<riga>` — cosa fa — rischio esaminato — esito (ok / riserva / blocco).
+   I path e le righe devono esistere nel diff sotto review: citare un file non
+   presente nel diff invalida il verdetto.
+2. **Un rischio esplicitamente escluso**: cosa NON hai verificato e perché
+   (es. "comportamento su VPS non verificato: non riproducibile in dev").
+
+Un verdetto composto dalla sola riga di esito (es. "APPROVATO — nessuna lezione nuova")
+è **NULLO D'UFFICIO**: l'agente principale deve ri-invocare il revisore e NON può
+committare nel frattempo. Il verdetto nullo va comunque riportato nel report, seguito
+da quello valido: la storia degli errori è memoria, non rumore.
+
+La riga contatore in `memoria_revisore.md` resta obbligatoria e NON sostituisce il
+verdetto: è il contatore, non l'evidenza.
+
+**Motivo — 3 recidive registrate**: review #56 (2026-07-18) e #59 (2026-07-24) hanno
+prodotto la sola riga di memoria senza analisi del diff; PR #14 (gate saltato) e PR #18
+(modifica post-review senza ri-review) sono passate con gate degenere. Un verdetto senza
+evidenza verificabile non distingue una review avvenuta da una non avvenuta.
+
+**Limite dichiarato**: questa è una regola di forma, verificabile solo a occhio. Un
+verdetto può citare `file:riga` plausibili senza averli letti. Il fix strutturale
+(check meccanico che i path:riga citati esistano nel diff) è un finding aperto.
+
 ## DOPO ogni review (memoria che cresce)
 
 ### OBBLIGO ASSOLUTO — riga contatore (SEMPRE, senza eccezioni)
