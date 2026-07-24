@@ -1,13 +1,13 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-24** (sanare venv, T9a/T9c deterministici, allineamento canonici)
+> Ultimo aggiornamento: **2026-07-24 (p2)** (merge PR #43, registrazioni di processo, sanare contraddizione F7)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **61 review** completate (ultima #61, 2026-07-24, scripts/gasmerge.sh, APPROVATO CON RISERVE; #60 = T9 gate falsy, 2026-07-24, APPROVATO). Suite WSL locale (2026-07-24, fix/t9a-deterministico): **250 PASS, 0 FAIL, 0 SKIP** (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **10 PASS**. ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
-CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #41 merge `55959ef` (2026-07-23, CI `30051234981`) · PR #40 merge `4391c8b` (2026-07-22, CI `29967190300`) · PR #37 merge `cb7ba8b` (2026-07-22, CI `29942831200`) · PR #36 merge `4c63ff3` (2026-07-22, CI `29941994238`) · PR #35 merge `425ba5c` (2026-07-22, CI `29919691907`) · PR #34 merge `45a1708` (2026-07-22, CI `29898591182`) · PR #33 merge `5dae638` (2026-07-21, CI `29848173628`) · PR #32 merge `f2679a4` (2026-07-20, CI `29775144603`) · PR #27 merge `21548f74` (2026-07-19, CI `29695063005`) · PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18).
+CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #43 merge `b3379b7` (2026-07-24, CI `30099181638`) · PR #41 merge `55959ef` (2026-07-23, CI `30051234981`) · PR #40 merge `4391c8b` (2026-07-22, CI `29967190300`) · PR #37 merge `cb7ba8b` (2026-07-22, CI `29942831200`) · PR #36 merge `4c63ff3` (2026-07-22, CI `29941994238`) · PR #35 merge `425ba5c` (2026-07-22, CI `29919691907`) · PR #34 merge `45a1708` (2026-07-22, CI `29898591182`) · PR #33 merge `5dae638` (2026-07-21, CI `29848173628`) · PR #32 merge `f2679a4` (2026-07-20, CI `29775144603`) · PR #27 merge `21548f74` (2026-07-19, CI `29695063005`) · PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18).
 
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
 **✅ R-comp-1** — boundary piegato nel summary (2026-06-28, review #40, commit cde4d94). Caso degenere no-user coperto da T54.
@@ -82,6 +82,8 @@ Componenti attive:
   (5) [rilievo operatore] `scripts/gasmerge.sh:64` applica l'invariante IP SOLO a `reports/`:
   un IP in CLAUDE.md, scripts/, .claude/ o nel codice non viene bloccato, mentre lo scrub
   2026-07-20 riguardava tutto HEAD.
+  (6) [nit cosmetico] il messaggio d'uso stampa il numero del parametro posizionale
+  (`line 13: 1: uso: gasmerge <numero-PR>`) invece del solo testo. Cosmetico.
   Stato: NON chiuso, gasmerge resta usabile ma la sua copertura è più stretta di quanto i
   canonici lasciassero credere. Fix alla prossima sessione dedicata.
 
@@ -204,6 +206,20 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
   difetto #60 riprodotto con git stash): accettate come valide, NON ri-revisionate.
   Recidiva di un caveat già registrato (nota VPS §6: la sessione eredita la cwd del lancio,
   lanciare SEMPRE da ~/Gas). Regola ribadita: `cd ~/Gas && claude`, mai altrove.
+
+### Sessione 2026-07-24 (p2) — merge PR #43 e registrazioni di processo
+
+- ℹ️ **RECIDIVA — handoff §2/§3/§6 non rigenerati (PR #43)** (2026-07-24): dichiarati 5 commit / 7 file / 403 inserzioni / 67 delezioni; reali 7 commit / 9 file / 611 inserzioni / 108 delezioni. File mancanti da §2: `reports/handoff.md`, `reports/diff_sessione.md`. Commit mancanti da §3: `f5c120c`, `a88c161`. §6 fermo a `4fd0d31`, non copriva gli ultimi due commit. Causa: il template imponeva la raccolta dei blocchi in §0, PRIMA della scrittura dei file di report — i report non potevano comparire in un `git diff --stat ${BASE}..HEAD` calcolato prima della loro esistenza. Stessa famiglia del micro-finding 2026-07-13 (diff --stat riciclato), ma causa DIVERSA: là era copia-incolla manuale, qui è la struttura del template che garantisce la discrepanza. Fix strutturale: fetta A di questa sessione (step 4bis — blocchi rigenerati dopo `git add`, con `git diff --cached --stat ${BASE}`).
+
+- ℹ️ **PR #43 mergiata DA BROWSER, non con gasmerge** (2026-07-24): il gate gasmerge con scrutinio rinforzato su file in `tests/` e `scripts/` NON è scattato. Merito verificato dall'operatore file per file prima del merge; invariante IP verificata a parte su tutto l'albero (non solo `reports/`, 0 match); CI ✅ verde garantita dal required check di main-lock. Nessun danno accertato. Registrato perché il gate è stato aggirato per CANALE, non per merito.
+
+- 🔴→✅ **CHIUSO IN QUESTA SESSIONE — ~/bin/gasmerge NON era un symlink** (rilevato 2026-07-24): `~/bin/gasmerge` = 1747 byte, `scripts/gasmerge.sh` = 4054 byte → due script DIVERSI. Il gate versionato in PR #43 non era quello effettivamente eseguito; girava ancora la vecchia copia non versionata con il difetto noto (`gh pr checks` senza `--watch`). Conseguenza: i fix di R-gasmerge-failopen su `scripts/gasmerge.sh` avrebbero avuto effetto ZERO sul gate reale. Risolto: `ln -sfn ~/Gas/scripts/gasmerge.sh ~/bin/gasmerge`, verificato con `ls -l`. Backup della vecchia copia in `~/bin/gasmerge.vecchio.bak`. AZIONE SENZA TRACCIA IN GIT — registrata qui come richiesto dal protocollo.
+
+- ℹ️ **Deviazione di gate PR #43: review #60/#61 da general-purpose** (2026-07-24): le review #60 e #61 sono state prodotte da un agente `general-purpose` in ruolo revisore, subagent nativo non esposto (sessione lanciata da `/home/gqual`, non da `~/Gas`). Già dichiarata nell'handoff di PR #43; qui tracciata come finding di processo. Regola operativa ribadita: lanciare SEMPRE `cd ~/Gas && claude`.
+
+- ℹ️ **R-gasmerge-failopen — nit punto 6 aggiunto** (2026-07-24): il messaggio d'uso di `scripts/gasmerge.sh` stampa il numero del parametro posizionale (`line 13: 1: uso: gasmerge <numero-PR>`) invece del solo testo. Cosmetico. Aggiunto come punto (6) al finding R-gasmerge-failopen.
+
+- ℹ️ **Head su origin** (misurato live 2026-07-24 con `git ls-remote --heads origin | wc -l`): **5**. CI: PR #43 merge `b3379b7` (2026-07-24, CI `30099181638` ✅ SUCCESS) — aggiornata riga CI di testa.
 
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
