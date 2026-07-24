@@ -137,10 +137,14 @@ gas.OpenAI = FakeOpenAI
 # OpenAI=FakeOpenAI, zero rete, zero token).
 _or_key = os.environ.pop("OPENROUTER_API_KEY", None)
 _ol_url = os.environ.pop("GAS_OLLAMA_URL", None)
-_gem_key = os.environ.get("GEMINI_API_KEY")
-_groq_key = os.environ.get("GROQ_API_KEY")
-if _gem_key is None: os.environ["GEMINI_API_KEY"] = "fake-gemini-key-for-test"
-if _groq_key is None: os.environ["GROQ_API_KEY"] = "fake-groq-key-for-test"
+_MISSING = object()
+_gem_key = os.environ.get("GEMINI_API_KEY", _MISSING)
+_groq_key = os.environ.get("GROQ_API_KEY", _MISSING)
+# gate falsy (non `is None`): run_turn monta il rung solo se `os.environ.get(env)`
+# e' truthy, quindi una chiave presente ma vuota ("") deve far scattare l'iniezione
+# esattamente come una chiave assente.
+if not (_gem_key if _gem_key is not _MISSING else ""): os.environ["GEMINI_API_KEY"] = "fake-gemini-key-for-test"
+if not (_groq_key if _groq_key is not _MISSING else ""): os.environ["GROQ_API_KEY"] = "fake-groq-key-for-test"
 try:
     k = kernel_tmp()
     eventi = list(k.run_turn("ciao test loop"))  # corto, no keyword -> 'semplice' -> 3 provider
@@ -148,8 +152,10 @@ finally:
     gas.OpenAI = _vero_openai
     if _or_key is not None: os.environ["OPENROUTER_API_KEY"] = _or_key
     if _ol_url is not None: os.environ["GAS_OLLAMA_URL"] = _ol_url
-    if _gem_key is None: os.environ.pop("GEMINI_API_KEY", None)
-    if _groq_key is None: os.environ.pop("GROQ_API_KEY", None)
+    if _gem_key is _MISSING: os.environ.pop("GEMINI_API_KEY", None)
+    else: os.environ["GEMINI_API_KEY"] = _gem_key
+    if _groq_key is _MISSING: os.environ.pop("GROQ_API_KEY", None)
+    else: os.environ["GROQ_API_KEY"] = _groq_key
 
 tool_res = [e for e in eventi if e["type"] == "tool_res"]
 errori = [e for e in eventi if e["type"] == "error"]

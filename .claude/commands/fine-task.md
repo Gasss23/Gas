@@ -105,6 +105,13 @@ incollato + quali FAIL sono fuori scope e perché>
 Se gh assente o non autenticato: "CI NON VERIFICATA (gh assente)".
 VIETATO scrivere "prevista verde" senza output reale.>
 
+**Mappatura commit→run OBBLIGATORIA**: per ogni commit di sessione indica la run CI
+che lo ha testato, o dichiara esplicitamente "nessuna run su questo SHA". VIETATE le
+formule collettive tipo "tutti i commit hanno CI verde": GitHub Actions crea una run
+per *push*, non per commit — più commit pushati insieme condividono una sola run, che
+testa SOLO l'albero del commit di testa. Un commit intermedio mai testato va dichiarato
+tale, anche quando il suo contenuto è incluso nell'albero testato successivamente.
+
 ## §7 RISERVE APERTE
 
 <Riserve estratte dai verdetti revisore di questa sessione + finding nuovi emersi.
