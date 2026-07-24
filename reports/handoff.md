@@ -1,23 +1,20 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-23 — fix/ci-summary-openrouter
+**Sessione:** 2026-07-24 — fix/t9a-deterministico (sanare venv, T9a/T9c deterministici, allineamento canonici)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge PR #41** (https://github.com/Gasss23/Gas/pull/41): FETTA 1 è pronta e CI è verde. Il merge è azione umana da browser.
-2. **FETTA 2 (T9a deterministico)**: richiede installazione delle dipendenze del motore nel venv locale (`pip install -r requirements.txt`) per poter eseguire e validare la suite kernel. Poi aprire micro-task separato.
+1. **Merge PR #42** (`fix/t9a-deterministico`): eseguire `gasmerge 42` da terminale WSL DOPO revisione di questo handoff. NON mergiare da sessione agente.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **FETTA 1 — R-ci-summary**: `FATTA` — `70d1b0d`
-  Aggiunto `set -o pipefail` + `tee` allo step hook suite; Job Summary ora mostra entrambe le suite. Revisore: APPROVATO senza riserve. CI: verde.
-
-- **FETTA 2 — R-ci-openrouter (T9a deterministico)**: `DEFERITA — suite kernel non eseguibile in locale (ModuleNotFoundError: No module named 'openai')`
-  La fix è stata analizzata (rimuovere gate `_has_live_keys`, iniettare chiavi fake GEMINI+GROQ) ma non implementata né committata. Richiede dipendenze motore nel venv.
+- **Fetta 0 — Sanare il venv**: `FATTA` — `pip install -r requirements.txt -r requirements-dev.txt` su Python 3.12.3. Nessun commit (azione senza traccia git, registrata in stato_progetto.md).
+- **Fetta 1 — T9a/T9c deterministici**: `FATTA` — commit `f6b6caa`, revisore #59 APPROVATO. T9a/T9c ora `check(...)` incondizionali con chiavi fittizie iniettate. 250 PASS, 0 FAIL, 0 SKIP.
+- **Fetta 2 — Canonici (stato_progetto.md)**: `FATTA` — commit `0034a17`. 9 punti applicati con dati live.
 
 ---
 
@@ -25,51 +22,70 @@
 
 ```
  .claude/agents/memoria_revisore.md |   1 +
- .github/workflows/ci.yml           |  25 +++++--
- reports/ultimo_report.md           | 137 ++++++++++++++++++++++++++++++++-----
- 3 files changed, 141 insertions(+), 22 deletions(-)
+ .github/workflows/ci.yml           |   8 +-
+ reports/stato_progetto.md          |  21 +++--
+ reports/ultimo_report.md           | 175 +++++++++++++++----------------------
+ tests/test_unit_kernel.py          |  28 +++---
+ 5 files changed, 102 insertions(+), 131 deletions(-)
 ```
+
+---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-f81ca79 docs(fine-task): report fix/ci-summary-openrouter 2026-07-23
-70d1b0d ci(summary): aggiungi hook suite al Job Summary con pipefail
+0034a17 docs(canonici): allinea stato_progetto.md — sessione 2026-07-24
+f6b6caa test(T9a/T9c): rendi deterministici iniettando chiavi fittizie Gemini/Groq
 ```
+
+---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-FETTA 1 tocca `.github/workflows/ci.yml` (non motore), ma il revisore è stato invocato obbligatoriamente per il motivo dichiarato: si sta modificando la barriera di validazione CI.
+Commit `f6b6caa` tocca `tests/test_unit_kernel.py` → revisore obbligatorio.
 
-Verdetto INTEGRALE del revisore (verbatim):
+**Revisore #59 (2026-07-24) — VERDETTO INTEGRALE VERBATIM:**
 
-```
-File aggiornato: /home/gqual/Gas/.claude/agents/memoria_revisore.md (riga #58 aggiunta in coda).
+> **VERDETTO FINALE: APPROVATO**
+>
+> Il commit può procedere. File aggiornato: `/home/gqual/Gas/.claude/agents/memoria_revisore.md` (riga `#59` aggiunta in coda).
 
-Riepilogo: Il diff è approvato senza riserve. Il meccanismo `set -o pipefail` è il
-solo intervento necessario e sufficiente per preservare l'exit code di pytest attraverso
-la pipe `tee`, ed è già usato in modo identico per la suite kernel. Il passo summary
-rimane puramente informativo con `set +e` e guardie `[ -f ... ]` su tutti i file prodotti.
-Nessun guardrail indebolito, nessun antipattern del Wall of Shame.
-```
-
-**Verdetto: APPROVATO senza riserve.**
+---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/brains/modules/tests/ in questa sessione.
+**PRIMA** (venv WSL, fetta 0, pre-fix):
+```
+=== RIEPILOGO: 248 PASS, 0 FAIL ===
+[SKIP] T9a ogni provider cappato a 10 iterazioni — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
+[SKIP] T9c storia salvata su disco nella root temporanea — richiede API key live (GEMINI_API_KEY, GROQ_API_KEY), skip in CI
+```
+
+**DOPO** (venv WSL, fetta 1, post-fix):
+```
+[PASS] T9a ogni provider cappato a 10 iterazioni — chiamate per modello: {'gemini-2.5-flash-lite': 10, 'gemini-2.5-flash': 10, 'openai/gpt-oss-120b': 10}
+[PASS] T9b loop infinito assorbito senza crash, pipeline esausta dichiarata — tool_res=30 errori=1
+[PASS] T9c storia salvata su disco nella root temporanea
+=== RIEPILOGO: 250 PASS, 0 FAIL ===
+```
+
+Delta: +2 PASS (T9a, T9c), -2 SKIP. T9b: da "verde a vuoto" (0 rung) a test reale (30 tool_res).
+
+---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(fine-task): report fix/ci-summary-openrouter 2026-07-23	CI	fix/ci-summary-openrouter	push	30026544452	1m0s	2026-07-23T16:46:12Z
-completed	success	ci(summary): aggiungi hook suite al Job Summary con pipefail	CI	fix/ci-summary-openrouter	push	30026355096	46s	2026-07-23T16:43:37Z
-completed	success	Merge pull request #40 from Gasss23/docs/allineamento-canonici-2026-0…	CI	main	push	29967190300	45s	2026-07-22T23:47:32Z
+completed	success	docs(canonici): allinea stato_progetto.md — sessione 2026-07-24	CI	fix/t9a-deterministico	push	30054898882	37s	2026-07-24T00:00:35Z
+completed	success	Merge pull request #41 from Gasss23/fix/ci-summary-openrouter	CI	main	push	30051234981	55s	2026-07-23T22:49:59Z
+completed	success	docs(fine-task): handoff + diff_sessione 2026-07-23 fix/ci-summary-op…	CI	fix/ci-summary-openrouter	push	30044108736	38s	2026-07-23T20:55:23Z
 ```
 
-Entrambi i commit di sessione: **verde**. Il run 30026355096 (70d1b0d, ci fix) è il run rilevante ed è verde — la hook suite con `set -o pipefail` ha passato tutti i 10 test.
+Run `30054898882` su `fix/t9a-deterministico` (HEAD `0034a17`): **✅ SUCCESS**. La CI ha girato sulla HEAD del branch che include entrambi i commit di sessione.
+
+---
 
 ## §7 RISERVE APERTE
 
-- **T9a DEFERITA (riserva CI-4 storica)**: il gate `_has_live_keys` rende T9a sempre SKIP in CI. Fix analizzata ma non implementata per mancanza delle dipendenze motore nel venv. Da fare nel prossimo micro-task.
-- Nessuna nuova riserva emersa dal revisore in questa sessione.
+- **ℹ️ Divergenza Python 3.12.3 (WSL) vs 3.11 (CI)**: dichiarata, non sanata. Registrata in stato_progetto.md §7 come nota aperta. Non bloccante.
+- **ℹ️ Lezione T9b**: con chiavi fittizie T9b diventa test reale (30 tool_res). Comportamento "verde a vuoto" era precedente alla fetta 1 — ora chiuso.
