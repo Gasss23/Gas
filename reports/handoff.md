@@ -12,7 +12,7 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 0 — Sanare il venv**: `FATTA` — `pip install -r requirements.txt -r requirements-dev.txt` su Python 3.12.3. Nessun commit (azione senza traccia git, registrata in stato_progetto.md).
+- **Fetta 0 — Sanare il venv**: `FATTA` — `pip install -r requirements.txt -r requirements-dev.txt` su Python 3.12.3. Nessun commit (azione senza traccia git, registrata in stato_progetto.md §sessione 2026-07-24).
 - **Fetta 1 — T9a/T9c deterministici**: `FATTA` — commit `f6b6caa`, revisore #59 APPROVATO. T9a/T9c ora `check(...)` incondizionali con chiavi fittizie iniettate. 250 PASS, 0 FAIL, 0 SKIP.
 - **Fetta 2 — Canonici (stato_progetto.md)**: `FATTA` — commit `0034a17`. 9 punti applicati con dati live.
 
@@ -23,10 +23,12 @@
 ```
  .claude/agents/memoria_revisore.md |   1 +
  .github/workflows/ci.yml           |   8 +-
+ reports/diff_sessione.md           |  26 +++---
+ reports/handoff.md                 |  78 +++++++++++-------
  reports/stato_progetto.md          |  21 +++--
- reports/ultimo_report.md           | 175 +++++++++++++++----------------------
- tests/test_unit_kernel.py          |  28 +++---
- 5 files changed, 102 insertions(+), 131 deletions(-)
+ reports/ultimo_report.md           | 164 +++++++++++++------------------------
+ tests/test_unit_kernel.py          |  28 +++----
+ 7 files changed, 151 insertions(+), 175 deletions(-)
 ```
 
 ---
@@ -34,6 +36,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2a01147 docs(fine-task): handoff + diff_sessione 2026-07-24 fix/t9a-deterministico
 0034a17 docs(canonici): allinea stato_progetto.md — sessione 2026-07-24
 f6b6caa test(T9a/T9c): rendi deterministici iniettando chiavi fittizie Gemini/Groq
 ```
@@ -69,23 +72,24 @@ Commit `f6b6caa` tocca `tests/test_unit_kernel.py` → revisore obbligatorio.
 === RIEPILOGO: 250 PASS, 0 FAIL ===
 ```
 
-Delta: +2 PASS (T9a, T9c), -2 SKIP. T9b: da "verde a vuoto" (0 rung) a test reale (30 tool_res).
+Delta: +2 PASS (T9a, T9c), −2 SKIP. T9b: da "verde a vuoto" (0 rung, cascata non costruita) a test reale (30 tool_res, 3 provider × 10 iterazioni cap).
 
 ---
 
 ## §6 STATO CI
 
 ```
+completed	success	docs(fine-task): handoff + diff_sessione 2026-07-24 fix/t9a-determini…	CI	fix/t9a-deterministico	push	30055128981	51s	2026-07-24T00:05:10Z
 completed	success	docs(canonici): allinea stato_progetto.md — sessione 2026-07-24	CI	fix/t9a-deterministico	push	30054898882	37s	2026-07-24T00:00:35Z
 completed	success	Merge pull request #41 from Gasss23/fix/ci-summary-openrouter	CI	main	push	30051234981	55s	2026-07-23T22:49:59Z
-completed	success	docs(fine-task): handoff + diff_sessione 2026-07-23 fix/ci-summary-op…	CI	fix/ci-summary-openrouter	push	30044108736	38s	2026-07-23T20:55:23Z
 ```
 
-Run `30054898882` su `fix/t9a-deterministico` (HEAD `0034a17`): **✅ SUCCESS**. La CI ha girato sulla HEAD del branch che include entrambi i commit di sessione.
+Tutti e 3 i commit di sessione su `fix/t9a-deterministico` hanno CI ✅ SUCCESS.
+Run `30055128981` (fine-task commit `2a01147`): **✅ SUCCESS**.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **ℹ️ Divergenza Python 3.12.3 (WSL) vs 3.11 (CI)**: dichiarata, non sanata. Registrata in stato_progetto.md §7 come nota aperta. Non bloccante.
-- **ℹ️ Lezione T9b**: con chiavi fittizie T9b diventa test reale (30 tool_res). Comportamento "verde a vuoto" era precedente alla fetta 1 — ora chiuso.
+- **ℹ️ Divergenza Python 3.12.3 (WSL) vs 3.11 (CI)**: dichiarata, non sanata. Registrata in stato_progetto.md §7 come nota aperta. Non bloccante — i test passano in entrambi gli ambienti.
+- **Nessuna riserva dal revisore #59** (APPROVATO, nessuna lezione nuova).
