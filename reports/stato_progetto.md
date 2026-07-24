@@ -92,6 +92,7 @@ Componenti attive:
 - 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX33 8GB gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
 - 🟡 **RAM a regime del singolo modello** — `MemoryHigh=1500M`/`MemoryMax=2000M` in `gas.service` (S1b, 2026-07-04): misura reale non ancora registrata. Da rilevare su VPS con diario attivo prima di affinare i limiti systemd.
+- 🟡 **Verifica riserva evidenza F7** — al prossimo accesso SSH al VPS: `cat /home/gas/gas/.gitignore | head -5` → confermare che contenga `.venv/`. La verifica 2026-07-22 cita "il .gitignore locale (righe 1-2)" senza specificare se VPS o repo — se era il .gitignore del repo, F7 non è chiuso. (riserva di evidenza — vedi sessione 2026-07-22 e FETTA C di questa sessione.)
 
 ### Limiti noti (non-finding)
 
@@ -249,8 +250,8 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ⚠️ **Reboot GAS in prod NON pianificato** (2026-07-21): Ctrl+Alt+Del involontario in console noVNC = reset macchina. GAS ripartito da solo (`Restart=always`), `systemctl is-active gas` = `active`. Downtime breve, nessun danno. Lezione: Ctrl+Alt+Del in console Hetzner riavvia il server.
 - 🟡 **2FA Hetzner non attivo** [banner console 2026-07-21]: ancora da abilitare.
 - ✅ **Sonda `.venv` VPS FATTA** (2026-07-21) [ex-⛔]: prod usa **`.venv`** (col punto); `ExecStart=…/.venv/bin/python … gas.py telegram`; `.gitignore` della copia VPS ignora solo `venv/`, NON `.venv/`.
-- 🔴 **F7 CONFERMATO APERTO SUL VPS** (2026-07-21): il fix `.gitignore` (`.venv/`) è in origin/main ma la copia VPS (`/home/<VPS_USER>/gas/`, fatta a S1 2026-07-04) è STANTIA e non lo ha → ogni snapshot preventivo su prod inghiotte il virtualenv. **Fix minimo (strada 1)**: aggiungere `.venv/` al `.gitignore` della copia VPS. **Fix pulito (strada 2)**: riallineare la copia VPS a origin/main — deploy vero (FASE 5 S2), non a caldo.
-- 🟡 **F7 — APERTA e FATTIBILE** (prerequisito SSH soddisfatto, fix non eseguito in sessione): la strada 1 (aggiungere `.venv/` al `.gitignore` della copia VPS via SSH) è ora percorribile, ma è un **tampone dichiarato**, non una chiusura pulita — la cura è la strada 2 (riallineamento copia VPS a origin/main, FASE 5 S2).
+- ℹ️ [SUPERATA dalla verifica 2026-07-22 — vedi F7 CHIUSO sotto] **F7 CONFERMATO APERTO SUL VPS** (2026-07-21): il fix `.gitignore` (`.venv/`) è in origin/main ma la copia VPS (`/home/<VPS_USER>/gas/`, fatta a S1 2026-07-04) è STANTIA e non lo ha → ogni snapshot preventivo su prod inghiotte il virtualenv. **Fix minimo (strada 1)**: aggiungere `.venv/` al `.gitignore` della copia VPS. **Fix pulito (strada 2)**: riallineare la copia VPS a origin/main — deploy vero (FASE 5 S2), non a caldo.
+- ℹ️ [SUPERATA dalla verifica 2026-07-22 — vedi F7 CHIUSO sotto] **F7 — APERTA e FATTIBILE** (prerequisito SSH soddisfatto, fix non eseguito in sessione): la strada 1 (aggiungere `.venv/` al `.gitignore` della copia VPS via SSH) è ora percorribile, ma è un **tampone dichiarato**, non una chiusura pulita — la cura è la strada 2 (riallineamento copia VPS a origin/main, FASE 5 S2).
 - 🟡 **Copia VPS stantia vs origin/main** (nuovo finding, 2026-07-21): la working copy di prod diverge dal repo (emerso da F7). Riallineamento = FASE 5 S2, con revisore + verifica, non a caldo.
 - ℹ️ **Chiave SSH del VPS ha passphrase** (2026-07-21): `~/.ssh/id_ed25519` su WSL la richiede → per hook/comandi non-interattivi verso il VPS serve `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519` a inizio sessione. Distinto dal push git (HTTPS, no passphrase).
 
@@ -259,6 +260,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ✅ **F7 CHIUSO**: il VPS usa `/home/gas/gas/.venv` (CON il punto).
   Verificato via ssh, `test -d` diretto. Il `.gitignore` locale (righe 1-2)
   contiene sia `venv/` sia `.venv/` → copertura completa, non più tampone.
+  ⚠️ RISERVA DI EVIDENZA: la verifica 2026-07-22 cita "il .gitignore locale (righe 1-2)". Agli atti NON risulta se sia il .gitignore della copia VPS (`/home/gas/gas/.gitignore`) o quello del repo. Se era quello del repo, F7 non è chiuso. Da verificare al prossimo accesso SSH al VPS con: `cat /home/gas/gas/.gitignore | head -5`.
 
 - ✅ **Rilievo FETTA B CHIUSO**: fingerprint
   `SHA256:/BJvnyxJIKj00Odj4onGIKszb2W3icqneeLhabKfnoE` (gqual@gas-dev-wsl)
