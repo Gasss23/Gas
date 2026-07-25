@@ -18,6 +18,22 @@ from pathlib import Path
 
 _REF_RE = re.compile(r"([\w./\-]+\.\w+):(\d+)")
 
+# Estensioni sorgente attese nei path citati dal revisore.
+# I TLD (.com, .io, .org ...) non sono in questa lista — filtro per escludere
+# falsi positivi su URL come github.com:443 o //host.ext:port.
+_VALID_EXTENSIONS = {
+    ".py", ".sh", ".md", ".yaml", ".yml",
+    ".json", ".toml", ".ini", ".cfg", ".txt",
+    ".js", ".ts", ".go", ".rs", ".c", ".h",
+    ".html", ".css", ".sql",
+}
+
+
+def _is_valid_path(path: str) -> bool:
+    """Ritorna True se il path ha un'estensione sorgente plausibile."""
+    ext = Path(path).suffix.lower()
+    return ext in _VALID_EXTENSIONS
+
 
 def _get_repo() -> Path:
     r = subprocess.run(
@@ -106,7 +122,8 @@ def main(argv: list[str]) -> int:
         print("check_verdetto: non applicabile (reports/handoff.md non nel diff di sessione).")
         return 0
 
-    refs = _REF_RE.findall(sec4)
+    # Filtra i match: tieni solo quelli con estensione sorgente plausibile
+    refs = [(p, l) for p, l in _REF_RE.findall(sec4) if _is_valid_path(p)]
     if not refs:
         print("check_verdetto: nessun riferimento path:riga in §4 — OK (nulla da verificare).")
         return 0
