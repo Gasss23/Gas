@@ -155,3 +155,31 @@ jobs:
             exit 1
           fi
           echo "Sandbox OS attivo (BWRAP_OK): i test bwrap/T13 hanno potuto esercitare il profilo reale."
+
+  handoff-check:
+    # Verifica che §2 GIT DIFF --STAT di reports/handoff.md dichiari esattamente
+    # i file modificati in questa sessione. Job SEPARATO: non tocca unit-suite
+    # (il required check di main-lock). fetch-depth: 0 obbligatorio per git merge-base.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch origin/main (per git merge-base)
+        # Il checkout con fetch-depth: 0 scarica tutto il grafo, ma origin/main
+        # deve essere esplicitamente presente come ref locale per merge-base.
+        run: git fetch origin main
+
+      - name: Run check_handoff
+        run: python scripts/check_handoff.py
+
+      - name: Run check_verdetto
+        run: python scripts/check_verdetto.py
