@@ -1,48 +1,46 @@
-# Report — 2026-07-24 (p2): blocchi git rigenerati, registrazioni, sanare F7
-
-**Data:** 2026-07-24  
-**Branch:** docs/fine-task-git-blocks  
-**Revisore:** NON invocato — sessione doc-only, nessun file di motore nel diff (gas.py, brains/, modules/, tests/ assenti dal diff).
-
----
+# Task: fix/handoff-check-ci — check_handoff + check_verdetto + job CI + test
+**Data:** 2026-07-25
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna.
+1. Merge della PR #45 (feat(ci): check_handoff + check_verdetto + job handoff-check).
+2. Valutare R3 (riserva revisore): aggiungere `handoff-check` come required check nel ruleset GitHub main-lock? Oggi il job è informativo — blocca la run CI ma non blocca il merge. Decisione operatore.
 
 ---
 
-## Esito per fetta
+## Esito fette
 
-- **FETTA A — .claude/commands/fine-task.md: blocchi git rigenerati per ultimi**: FATTA
-  - A1: §0 rinominato "Calcola BASE"; intro aggiornata; blocchi §2/§3/§6 rimossi da §0.
-  - A2: nuovo step "4bis — RIGENERA I BLOCCHI GIT" con `git diff --cached --stat ${BASE}`, `git log`, `gh run list`; spiegazione `--cached` vs `${BASE}..HEAD`; update handoff poi commit.
-  - A3: NB obbligatorio in §3 del template handoff (commit fine-task non compare nel log per costruzione).
-  - A4: regola §6 — commit senza run CI: scrivere "run non ancora disponibile alla scrittura dell'handoff"; vietato omettere o attribuire run di commit precedente.
-  - A5: GATE POST-FINE-TASK in maiuscolo a fine file — rieseguire /fine-task se si committa dopo.
+- **FETTA 1 — scripts/check_handoff.py**: `FATTA`
+  Stdlib-only. Guard main/diff-vuoto/handoff-non-nel-diff. SET confronto (non conteggi).
+  Allowlist: reports/ultima_risposta.md. Collaudo reale: EXIT 1 su 9c72e1f/PR#44.
 
-- **FETTA B — reports/stato_progetto.md: registrazioni 2026-07-24**: FATTA
-  - B1: recidiva handoff §2/§3/§6 non rigenerati (PR #43) — numeri misurati, causa strutturale distinta dal micro-finding 2026-07-13.
-  - B2: PR #43 mergiata da browser invece di gasmerge — gate aggirato per canale, nessun danno.
-  - B3: ~/bin/gasmerge non era symlink — risolto con ln -sfn; azione senza traccia in git.
-  - B4: deviazione gate PR #43 review #60/#61 da general-purpose.
-  - B5: R-gasmerge-failopen punto (6) — nit messaggio d'uso parametro posizionale.
-  - B6: riga CI di testa aggiornata (PR #43 b3379b7 CI 30099181638 ✅); head origin = 5.
+- **FETTA 2 — scripts/check_verdetto.py**: `FATTA`
+  Regex path:riga in §4. Verifica: path in diff + riga esiste in file a HEAD.
+  Dichiarazione MITIGATO (non CHIUSO) nell'output. Guard "nessun diff motore".
 
-- **FETTA C — reports/stato_progetto.md: sanare contraddizione F7**: FATTA
-  - C1: righe 2026-07-21 (🔴 F7 CONFERMATO APERTO, 🟡 F7 APERTA e FATTIBILE) marcate ℹ️ SUPERATE — storia mantenuta, prefisso aggiunto.
-  - C2: riserva di evidenza sotto ✅ F7 CHIUSO; stessa verifica come 🟡 nella coda DEPLOY VPS.
-  - C3: 🟡 Copia VPS stantia vs origin/main NON toccata — finding separato, resta aperto.
+- **FETTA 3 — job handoff-check in ci.yml**: `FATTA`
+  Job separato, non tocca unit-suite. fetch-depth:0 + git fetch origin main.
+  Sonda eseguita: run 30156146780 → handoff-check success, unit-suite success.
 
----
+- **FETTA 4 — template fine-task.md**: `FATTA`
+  4a: vincoli §2 (SET esatto e vincolante, conteggi approssimati per costruzione).
+  4b: allowlist documentata con motivazione.
+  4c: regola §0 — "Nessuna." vietato con PR aperta.
 
-## Diff reale per file
+- **FETTA 5 — tests/test_unit_handoff_check.py**: `FATTA`
+  9 test pytest, repo git temporanei reali. Tutti PASS.
+  Collaudo reale: exit 1 su commit 9c72e1f (merge PR #44 ometteva handoff.md).
 
-- `.claude/commands/fine-task.md` — 41 inserzioni, 12 delezioni (FETTA A: step 4bis, regole §3/§6, gate)
-- `reports/stato_progetto.md` — 22 inserzioni, 4 delezioni (FETTE B e C: nuova sezione p2, F7 sanato, coda VPS)
+## Verdetto revisore: APPROVATO CON RISERVE
 
----
+R1: regex `_REF_RE` in check_verdetto può fare falsi positivi su URL nel verdetto.
+R3: `handoff-check` non è required check nel ruleset main-lock — decisione operatore.
 
-## Dichiarazione
+## DA TRASCRIVERE IN stato_progetto.md
 
-Revisore NON invocato — sessione doc-only, nessun file di motore nel diff.
+- R-handoff-check IMPLEMENTATO: scripts/check_handoff.py + check_verdetto.py + job CI + 9 test.
+  PR #45 aperta, CI verde (run 30156146780), sonda superata.
+- R-verdetto-evidenza: stato MITIGATO (non CHIUSO) — check_verdetto.py verifica
+  che le citazioni path:riga siano verificabili, non che il revisore abbia letto il codice.
+- R1 riserva aperta: regex _REF_RE falsi positivi su URL — da raffinare.
+- R3 decisione aperta: rendere handoff-check required nel ruleset main-lock?
