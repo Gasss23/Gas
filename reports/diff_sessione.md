@@ -1,11 +1,15 @@
-# Diff sessione — docs/fine-task-git-blocks (2026-07-24 p2)
+# Diff sessione — fix/gasmerge-failopen — 2026-07-25
 
 > Riscritto a ogni sessione. La storia completa sta in git.
 
-## File toccati
+File toccati (da `git diff --stat BASE..HEAD`):
 
-- `.claude/commands/fine-task.md` — step 4bis introdotto (blocchi git rigenerati dopo git add, con git diff --cached --stat); §0 semplificato a solo calcolo BASE; NB aggiunto a §3 (commit fine-task non nel log per costruzione); regola §6 aggiunta (run non disponibile); GATE POST-FINE-TASK in fondo.
-- `reports/stato_progetto.md` — nuova sezione "Sessione 2026-07-24 (p2)" con B1-B6; riga CI di testa aggiornata (PR #43 b3379b7); punto (6) aggiunto a R-gasmerge-failopen; righe F7 2026-07-21 marcate SUPERATE; riserva evidenza F7 aggiunta sotto F7 CHIUSO; voce 🟡 aggiunta nella coda DEPLOY VPS.
-- `reports/ultimo_report.md` — report di questa sessione.
-- `reports/diff_sessione.md` — questo file.
-- `reports/handoff.md` — dossier di fine sessione.
+| File | Δ | Motivo |
+|------|---|--------|
+| `scripts/gasmerge.sh` | +65 -17 | Fix R-gasmerge-failopen fette 1-3: validazione arg, jq functional, GAS_REPO_DIR, fail-closed IP/diff, secondo fetch, TOCTOU --match-head-commit |
+| `tests/test_unit_gasmerge.py` | +302 (nuovo) | 7 test per i 6 difetti chiusi; stubs gh+git, repo reali, verifica discriminazione old vs new |
+| `reports/stato_progetto.md` | aggiornato | R-gasmerge-failopen da 🟡 a ✅ CHIUSO, 4 riserve, cambio superficie GAS_REPO_DIR |
+| `reports/ultimo_report.md` | aggiornato | Report canonico del task |
+| `reports/handoff.md` | aggiornato | Dossier di fine sessione |
+| `reports/diff_sessione.md` | aggiornato (questo file) | Diff sessione |
+| `.claude/agents/memoria_revisore.md` | +2 righe | Contatori review #62 e #63 aggiunti dal revisore |
