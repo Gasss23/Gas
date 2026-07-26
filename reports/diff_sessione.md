@@ -1,18 +1,23 @@
-# Diff sessione — fix/handoff-check-ci (2026-07-25)
+# Diff sessione — fix/gasmerge-failopen (2026-07-26)
 
 > Riscritto a ogni sessione. La storia completa sta in git.
 
-File toccati (da `git diff --stat BASE..HEAD` dove BASE = de2f2f5):
+## File toccati (BASE c7f6fac..HEAD)
 
-- `.claude/agents/memoria_revisore.md` — aggiornato dal revisore con lezioni della review
-- `.claude/commands/fine-task.md` — regola §0 PR aperta; vincoli §2 verificati CI; allowlist
-- `.github/workflows/ci.yml` — aggiunto job handoff-check (separato da unit-suite)
-- `reports/diff_sessione.md` — questo file (riscritto per la sessione)
-- `reports/handoff.md` — dossier di fine sessione (riscritto)
-- `reports/ultimo_report.md` — report di fine task (riscritto)
-- `scripts/check_handoff.py` — nuovo: verifica SET file §2 vs diff reale; allowlist
-- `scripts/check_verdetto.py` — nuovo + fix R1: verifica path:riga §4; filtro _VALID_EXTENSIONS
-- `tests/test_unit_handoff_check.py` — nuovo: 9 test pytest con repo git temporanei reali
+| File | Cosa è cambiato |
+|---|---|
+| `scripts/gasmerge.sh` | FETTA 1: invariante IP riscritta con filtro 2-passi fail-closed + marker `gasmerge-ip-ok`; FETTA 2: HEAD_SHA catturato pre-prompt, ri-verifica TOCTOU post-read aggiunta |
+| `tests/test_unit_gasmerge.py` | FETTE 3: helper `_run_with_stdin`; classe `TestIPAllowlist` (3 test); classe `TestTOCTOU` (1 test); marker `# gasmerge-ip-ok` su righe sorgente con IP |
+| `.claude/agents/memoria_revisore.md` | FETTA 0: UNION+RENUMBER conflitto merge (#62/#63 branch intatti, #62 main → #64); review #65 aggiunta dal revisore (APPROVATO CON RISERVE) |
+| `reports/stato_progetto.md` | FETTA 4: contatore review 61→65; R-gasmerge-failopen aggiornato con FETTE 1-3 + riserve; collisione #62 documentata; istituzioni di processo C aggiornata |
+| `reports/ultimo_report.md` | Fine-task: fonte di verità del task con verdetto verbatim e proof pytest |
+| `reports/handoff.md` | Fine-task: dossier autonomo per revisione PR #46 |
+| `reports/diff_sessione.md` | Fine-task: questo file |
 
-Nota: questa sessione NON tocca gas.py, brains/, modules/.
-Fix R1 (regex falsi positivi su URL) applicato nella stessa sessione.
+## Nota sessione
+
+Sessione 2026-07-26 ha gestito due sotto-sessioni a causa di interruzione contesto.
+Prima sotto-sessione: interrotta al tentativo di merge conflict (STOP corretto, senza risolvere).
+Seconda sotto-sessione: ricetta ESATTA da utente → FETTE 0-4 completate; /fine-task
+interrotto prima del commit per esaurimento contesto. Terza invocazione (questo file):
+/fine-task completato, commit e push definitivi.
