@@ -60,6 +60,11 @@ Template obbligatorio (sezioni in quest'ordine):
 
 <lista numerata, o "Nessuna." se vuota>
 
+**REGOLA §0**: "Nessuna." è ammesso SOLO se la sessione non lascia nulla in mano
+all'operatore. Se la PR di sessione non è ancora mergiata, §0 deve contenere almeno:
+"1. Merge della PR #<numero> (<titolo-breve>)."
+Scrivere "Nessuna." con una PR aperta è un errore — nasconde lavoro umano richiesto.
+
 ---
 
 ## §1 SCOPE & ESITO FETTE
@@ -77,6 +82,17 @@ Tutte le fette devono comparire qui — incluse quelle saltate.
 ```
 <output GREZZO di `git diff --stat ${BASE}..HEAD`>
 ```
+
+**VINCOLI VERIFICATI DA CI (job handoff-check):**
+- Il **SET di file** dichiarato in questo blocco deve essere esatto e uguale al diff reale.
+  La CI confronta i path a sinistra del '|' con `git diff --name-only BASE..HEAD`.
+  Un file omesso o fantasma fa fallire il job.
+- I **conteggi di righe** (colonna a destra del '|') sono approssimati per costruzione:
+  `reports/handoff.md` conta se stesso tra le righe modificate, ma il suo conteggio finale
+  è ignoto al momento della scrittura. La CI NON confronta mai i conteggi, solo i path.
+- **Allowlist CI**: `reports/ultima_risposta.md` è escluso dal confronto.
+  Motivo: quel file viene committato dall'hook `scrivi_rep` DOPO il fine-task, quindi
+  la sua assenza dal §2 è strutturale e attesa — non un errore.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
