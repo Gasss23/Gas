@@ -1,57 +1,76 @@
-# Task: fix/handoff-check-ci — check_handoff + check_verdetto + job CI + test
-**Data:** 2026-07-25
+# REPORT FINE TASK — fix/gasmerge-failopen rifinitura (2026-07-26/27)
+
+**Data:** 2026-07-27
+**Branch:** fix/gasmerge-failopen (PR #46)
+**Scope:** Rifinitura pre-merge — sblocco self-block IP + chiusura #65-R1 + self-check + revisore #66
+
+---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #45 (feat(ci): check_handoff + check_verdetto + job handoff-check).
-2. Valutare R3 (riserva revisore): aggiungere `handoff-check` come required check nel
-   ruleset GitHub main-lock? Oggi blocca la run CI ma non il merge automatico.
+1. **Merge della PR #46** (fix/gasmerge-failopen) — CI verde, self-check OK.
+   Usare `gasmerge 46`.
+2. **#66-R1** (minore aperta): guard `[ -n "$HEAD_SHA" ]` senza test stub dedicato.
+   Fail-closed in pratica; non bloccante.
 
 ---
 
 ## Esito fette
 
-- **FETTA 1 — scripts/check_handoff.py**: `FATTA`
-  Stdlib-only. Guard main/diff-vuoto/handoff-non-nel-diff. SET confronto (non conteggi).
-  Allowlist: reports/ultima_risposta.md. Collaudo reale: EXIT 1 su commit 9c72e1f (PR #44).
+- **Item 1 — sblocco self-block IP**: `FATTA`
+  Rimosso l'IP-esempio letterale da `reports/ultimo_report.md:38` (prosa descrittiva).
+  Rimosso IP letterale da `tests/test_unit_gasmerge.py:392` (docstring).
+  Regola applicata: nei doc/docstring nessun IP letterale; marker `gasmerge-ip-ok`
+  solo dove il letterale serve (valori fixture nel corpo del test).
 
-- **FETTA 2 — scripts/check_verdetto.py**: `FATTA`
-  Regex path:riga in §4. Verifica: path in diff + riga esiste nel file a HEAD.
-  Dichiarazione MITIGATO (non CHIUSO). Guard "nessun diff motore".
-  Fix R1 applicato nella stessa sessione: filtro _VALID_EXTENSIONS esclude falsi positivi
-  su URL (github.com:443, //host.ext:port).
+- **Item 2 — chiusura #65-R1 guard HEAD_SHA**: `FATTA`
+  `scripts/gasmerge.sh:158` — aggiunto:
+  `[ -n "$HEAD_SHA" ] || { echo "BLOCCO: HEAD_SHA vuoto — head non verificabile"; exit 1; }`
+  Riserva #65-R1 CHIUSA.
 
-- **FETTA 3 — job handoff-check in ci.yml**: `FATTA`
-  Job separato, non tocca unit-suite. fetch-depth:0 + git fetch origin main.
-  Sonda 1 (955cf2e): run 30156146780 → success (handoff-check + unit-suite verdi).
-  Sonda 2 (e690295): run 30156259526 → failure (R1 falso positivo).
-  Sonda 3 (6f6b79b): run 30156723788 → success (fix R1 applicato).
+- **Item 3 — self-check obbligatorio**: `FATTA`
+  Eseguito dopo commit + push su `origin/fix/gasmerge-failopen`.
+  Output verbatim:
+  ```
+  SELF-CHECK OK: 0 IP non-allowlistati residui
+  ```
+  Ri-eseguito dopo /fine-task commit: `SELF-CHECK OK: 0 IP non-allowlistati residui`.
 
-- **FETTA 4 — template fine-task.md**: `FATTA`
-  4a: vincoli §2 (SET esatto e vincolante, conteggi approssimati per costruzione).
-  4b: allowlist documentata con motivazione.
-  4c: regola §0 — "Nessuna." vietato con PR aperta.
+- **Item 4 — revisore #66**: `FATTA — APPROVATO CON RISERVE`
 
-- **FETTA 5 — tests/test_unit_handoff_check.py**: `FATTA`
-  9 test pytest, repo git temporanei reali. 9/9 PASS.
-  Collaudo reale: exit 1 su commit 9c72e1f (PR #44 ometteva handoff.md da §2).
+---
 
-## Anomalie riscontrate
+## VERDETTO REVISORE #66 (VERBATIM da .claude/agents/memoria_revisore.md)
 
-- R1 (riserva revisore già segnalata): regex `_REF_RE` in check_verdetto.py catturava
-  URL come `github.com:443` nel testo del verdetto → CI rossa su e690295.
-  Fix applicato nella stessa sessione: filtro _VALID_EXTENSIONS esclude TLD.
+```
+#66 — 2026-07-26 — APPROVATO CON RISERVE — chiude #65-R1 (guard HEAD_SHA vuoto);
+rimozione IP dal docstring test (self-block invariante IP). R1 nuova: guard
+`[ -n "$HEAD_SHA" ]` senza test stub dedicato (minore). R2 ereditata #65-R2:
+--match-head-commit senza test positiva end-to-end.
+```
 
-## Verdetto revisore: APPROVATO CON RISERVE
+---
 
-- R3: `handoff-check` non è required check nel ruleset main-lock — decisione operatore.
-- R-verdetto-evidenza: MITIGATO (non CHIUSO) — check_verdetto verifica verificabilità
-  citazioni, non lettura effettiva del codice.
+## OUTPUT PYTEST (11/11 PASS)
 
-## DA TRASCRIVERE IN stato_progetto.md
+```
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/gqual/Gas/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/gqual/Gas
+plugins: anyio-4.14.2
+collecting ... collected 11 items
 
-- R-handoff-check IMPLEMENTATO: scripts/check_handoff.py + check_verdetto.py + job CI + 9 test.
-  PR #45 aperta. CI: sonda 1 verde, sonda 2 rossa (R1), sonda 3 verde.
-- R-verdetto-evidenza: stato MITIGATO (non CHIUSO).
-- R1: CHIUSO nel fix della stessa sessione (_VALID_EXTENSIONS).
-- R3 decisione aperta: rendere handoff-check required nel ruleset main-lock?
+tests/test_unit_gasmerge.py::TestArgValidation::test_no_arg_exits_2 PASSED [  9%]
+tests/test_unit_gasmerge.py::TestArgValidation::test_non_numeric_arg_exits_2 PASSED [ 18%]
+tests/test_unit_gasmerge.py::TestJqCheck::test_broken_jq_exits_with_message PASSED [ 27%]
+tests/test_unit_gasmerge.py::TestPRState::test_pr_not_open_blocks PASSED [ 36%]
+tests/test_unit_gasmerge.py::TestIPGuard::test_git_grep_error_blocks PASSED [ 45%]
+tests/test_unit_gasmerge.py::TestIPGuard::test_ip_outside_reports_blocks PASSED [ 54%]
+tests/test_unit_gasmerge.py::TestDiffGuard::test_git_diff_name_only_error_blocks PASSED [ 63%]
+tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_with_marker_passes PASSED [ 72%]
+tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_without_marker_blocks PASSED [ 81%]
+tests/test_unit_gasmerge.py::TestIPAllowlist::test_public_ip_without_marker_blocks PASSED [ 90%]
+tests/test_unit_gasmerge.py::TestTOCTOU::test_head_changed_during_confirm_blocks PASSED [100%]
+============================== 11 passed in 4.14s ==============================
+```

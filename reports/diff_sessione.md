@@ -1,18 +1,15 @@
-# Diff sessione — fix/handoff-check-ci (2026-07-25)
+# Diff sessione — fix/gasmerge-failopen rifinitura (2026-07-27)
 
 > Riscritto a ogni sessione. La storia completa sta in git.
 
-File toccati (da `git diff --stat BASE..HEAD` dove BASE = de2f2f5):
+## File toccati (BASE c7f6fac..HEAD)
 
-- `.claude/agents/memoria_revisore.md` — aggiornato dal revisore con lezioni della review
-- `.claude/commands/fine-task.md` — regola §0 PR aperta; vincoli §2 verificati CI; allowlist
-- `.github/workflows/ci.yml` — aggiunto job handoff-check (separato da unit-suite)
-- `reports/diff_sessione.md` — questo file (riscritto per la sessione)
-- `reports/handoff.md` — dossier di fine sessione (riscritto)
-- `reports/ultimo_report.md` — report di fine task (riscritto)
-- `scripts/check_handoff.py` — nuovo: verifica SET file §2 vs diff reale; allowlist
-- `scripts/check_verdetto.py` — nuovo + fix R1: verifica path:riga §4; filtro _VALID_EXTENSIONS
-- `tests/test_unit_handoff_check.py` — nuovo: 9 test pytest con repo git temporanei reali
-
-Nota: questa sessione NON tocca gas.py, brains/, modules/.
-Fix R1 (regex falsi positivi su URL) applicato nella stessa sessione.
+| File | Cosa è cambiato e perché |
+|---|---|
+| `scripts/gasmerge.sh` | Guard HEAD_SHA vuoto (chiude #65-R1); FETTE 1+2 sessioni precedenti |
+| `tests/test_unit_gasmerge.py` | Docstring ripulita da IP letterale (self-block invariante); 4 nuovi test da sessioni precedenti |
+| `.claude/agents/memoria_revisore.md` | Review #66 aggiunta dal revisore; #64/#65 da sessioni precedenti |
+| `reports/stato_progetto.md` | Aggiornamenti FETTA 4 (contatore 61→65, R-gasmerge-failopen) |
+| `reports/ultimo_report.md` | Fonte di verità: rifinitura IP + #65-R1; proof pytest verbatim |
+| `reports/handoff.md` | Dossier autonomo per revisione e merge PR #46 |
+| `reports/diff_sessione.md` | Questo file |

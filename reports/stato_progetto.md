@@ -6,7 +6,7 @@
 
 ## Stato motore
 
-FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **61 review** completate (ultima #61, 2026-07-24, scripts/gasmerge.sh, APPROVATO CON RISERVE; #60 = T9 gate falsy, 2026-07-24, APPROVATO). Suite WSL locale (2026-07-24, fix/t9a-deterministico): **250 PASS, 0 FAIL, 0 SKIP** (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **10 PASS**. ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **66 review** completate (ultima #66, 2026-07-26, scripts/gasmerge.sh + tests/test_unit_gasmerge.py, APPROVATO CON RISERVE; #64 = check_verdetto.py PR #45, 2026-07-25, APPROVATO CON RISERVE). Suite WSL locale (2026-07-24, fix/t9a-deterministico): **250 PASS, 0 FAIL, 0 SKIP** (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **10 PASS**. ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
 CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS): PR #43 merge `b3379b7` (2026-07-24, CI `30099181638`) · PR #41 merge `55959ef` (2026-07-23, CI `30051234981`) · PR #40 merge `4391c8b` (2026-07-22, CI `29967190300`) · PR #37 merge `cb7ba8b` (2026-07-22, CI `29942831200`) · PR #36 merge `4c63ff3` (2026-07-22, CI `29941994238`) · PR #35 merge `425ba5c` (2026-07-22, CI `29919691907`) · PR #34 merge `45a1708` (2026-07-22, CI `29898591182`) · PR #33 merge `5dae638` (2026-07-21, CI `29848173628`) · PR #32 merge `f2679a4` (2026-07-20, CI `29775144603`) · PR #27 merge `21548f74` (2026-07-19, CI `29695063005`) · PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18).
 
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -65,27 +65,29 @@ Componenti attive:
 - ✅ **F6-history-atomica CHIUSO** (2026-07-16, review #50 APPROVATO, PR #19, CI run `29482410951` ✅ 241 PASS): `_save_history` usa ora tmp+`os.replace` atomico (fsync); `_load_history` quarantena il file corrotto in `.gas_history.json.corrupt.<ts>` (logging.warning, mai crash). Test T59a/b/c. **Mergeata → 9a9278e su main ✅ (2026-07-16, CI run 29484338680 SUCCESS)**.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 - 🟡 **R-verdetto-evidenza** — l'obbligo di citare ≥2 elementi del diff è verificabile solo a occhio; un verdetto può citare path:riga plausibili senza averli letti. Fix strutturale: check meccanico che i path:riga citati esistano nel diff sotto review. Non impegnato.
-- 🟡 **R-gasmerge-failopen** (aperto 2026-07-24, riserve verdetto #61 APPROVATO CON RISERVE):
-  (1) `scripts/gasmerge.sh:70-71` — `git diff --name-only | grep -E ... || true` sotto
-  pipefail: un errore reale di git (rc≥2) è indistinguibile da "nessun match" (rc=1) → il
-  rilevamento file-motore fallisce in fail-open stampando "nessuno (doc-only)".
-  (2) `scripts/gasmerge.sh:64-67` — stesso pattern su `git grep` dell'invariante IP dentro
-  la condizione `if`: un errore reale del comando produce lo stesso esito di "0 match" e
-  lo script stampa "0 match OK" senza aver verificato nulla. Guardrail di sicurezza in
-  fail-open: è il difetto più grave dei tre.
-  (3) `scripts/gasmerge.sh:16` vs `64,70-71` — `git fetch` unico PRIMA di un'attesa CI fino
-  a 900s: i controlli successivi leggono refs potenzialmente stantii mentre `gh pr merge`
-  mergia lo stato attuale della PR. Gap TOCTOU introdotto dal watch lungo di questa sessione.
-  (4) [rilievo operatore, non del revisore] `scripts/gasmerge.sh:14` usa `command -v jq`
-  (presence check) mentre il progetto ha già stabilito con R-hook-jq / review #56 che serve
-  il functional check `jq --version`: un jq presente ma rotto passa il gate.
-  (5) [rilievo operatore] `scripts/gasmerge.sh:64` applica l'invariante IP SOLO a `reports/`:
-  un IP in CLAUDE.md, scripts/, .claude/ o nel codice non viene bloccato, mentre lo scrub
-  2026-07-20 riguardava tutto HEAD.
-  (6) [nit cosmetico] il messaggio d'uso stampa il numero del parametro posizionale
-  (`line 13: 1: uso: gasmerge <numero-PR>`) invece del solo testo. Cosmetico.
-  Stato: NON chiuso, gasmerge resta usabile ma la sua copertura è più stretta di quanto i
-  canonici lasciassero credere. Fix alla prossima sessione dedicata.
+- ✅ **R-gasmerge-failopen CHIUSO** (2026-07-24, branch `fix/gasmerge-failopen`, review #62 + #63 APPROVATI CON RISERVE):
+  (1) ✅ **git diff fail-open** → separato git diff da grep, case rc 0/1/≥2, BLOCCA su errore git (T-gasmerge-g).
+  (2) ✅ **git grep fail-open** → set+e/RC/set-e/case, BLOCCA su rc≥2 invece di stampare "0 match OK" (T-gasmerge-e).
+  (3) ✅ **TOCTOU** → secondo `git fetch --prune` dopo attesa CI; `HEAD_SHA=$(gh pr view ... --json headRefOid)` + `--match-head-commit "$HEAD_SHA"` su `gh pr merge`.
+  (4) ✅ **jq presence-check** → sostituito con `jq --version` functional check, coerente con #56 (T-gasmerge-c).
+  (5) ✅ **scope IP solo reports/** → esteso a tutto l'albero del branch; sonda origin/main: 0 match (T-gasmerge-f).
+  (6) ✅ **messaggio d'uso con numero parametro** → validazione esplicita, solo testo su stderr, exit 2 (T-gasmerge-a/b).
+  Suite: 7 test PASS, 6/7 FAIL su vecchio script (1 PASS = guard preesistente, regressione).
+  Riserve aperte (non bloccanti, da monitorare):
+  - **#62-R1** → MITIGATO in sessione 2026-07-26 (vedi sotto).
+  - **#62-R2** → ereditata come #65-R2 (vedi sotto).
+  - **#63-R1**: stub git hardcoda `/usr/bin/git` (non portabile su sistemi con git altrove).
+  - **#63-R2** → ereditata come #65-R3 (vedi sotto).
+  Cambio di superficie: `GAS_REPO_DIR` rende gasmerge puntabile a repo arbitrario via env — non aggiunge potere reale (chi ha `gh` è già owner), ma dichiarato.
+  **Sessione 2026-07-26 — FETTE 1-3 completate (review #65 APPROVATO CON RISERVE):**
+  - ✅ **FETTA 1** — invariante IP: marker `gasmerge-ip-ok` + filtro a 2 passi fail-closed. Deny-by-default: un IP senza marker blocca sempre (es. "1.0.0.0" → BLOCCO); con marker sulla stessa riga → allowlistato (`FILTER_RC=1` = tutti OK; `FILTER_RC>=2` = errore filtro → BLOCCO). #62-R1 MITIGATO. # gasmerge-ip-ok
+  - ✅ **FETTA 2** — TOCTOU completo: HEAD_SHA catturato dopo tutti i controlli e prima del prompt; ri-fetch + ri-lettura head post-read; BLOCCO "head cambiata durante la conferma". Residuo dichiarato: micro-ms sincroni pre-prompt.
+  - ✅ **FETTA 3** — test: 11/11 PASS (erano 7); proof fail-su-vecchio: FAIL su `test_ip_with_marker_passes` e `test_head_changed_during_confirm_blocks` su `/tmp/gasmerge_pre.sh`.
+  Riserve da #65 (non bloccanti):
+  - **#65-R1** (nuova): guard HEAD_SHA vuoto mancante — se jq produce output vuoto, HEAD_SHA=""; il confronto `"" != ""` è false e si procede con `--match-head-commit ""`. Fail-closed in pratica (gh rifiuta SHA vuoto) ma non nel codice. Fix: `[ -n "$HEAD_SHA" ]` dopo la cattura.
+  - **#65-R2** (ereditata #62-R2): `--match-head-commit` senza copertura test positiva end-to-end.
+  - **#65-R3** (ereditata #63-R2): `/tmp/gaspr.json` condiviso nel pattern headRefName del nuovo stub TOCTOU — non thread-safe con pytest-xdist.
+  **Collisione contatore #62 riconciliata (2026-07-26):** sessioni parallele avevano minato entrambe #62 da #61. main #62 = PR #45 (check_verdetto.py, 07-25); branch #62/#63 = gasmerge failopen + test (07-24). Al merge di origin/main nel branch: branch tiene #62/#63, review PR #45 rinumerata in #64. Nessuna review persa — la memoria non mente.
 
 ### DEPLOY VPS — da tarare su dati reali
 
@@ -133,7 +135,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **61 review**. Ultima: **#61** (scripts/gasmerge.sh, 2026-07-24, APPROVATO CON RISERVE). **#60** = T9 gate falsy (2026-07-24, APPROVATO). Fonte contatore: numero più alto citato in `.claude/agents/memoria_revisore.md` (`#61`, verificato con `tail -5` il 2026-07-24). ⚠️ Il file NON è un registro completo per-review: l'obbligo "una riga per ogni review" è in vigore solo dal 2026-07-16 (#51). Conseguenza: NESSUN conteggio automatico è difendibile — metodi diversi danno risultati diversi. Gli unici dati verificabili sono: numero più alto citato = `#61`; entries contigue SOLO da `#51` a `#61`. Sotto `#51` il file è un log di lezioni, non un registro. Il conteggio "61 review" è ereditato dallo storico e NON è ricostruibile dal file: contare per validarlo è un metodo INVALIDO. Lezioni in `.claude/agents/memoria_revisore.md`. ✅ Backfill #48–#50 ESEGUITO (2026-07-18, PR #24).
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **66 review**. Ultima: **#66** (scripts/gasmerge.sh + tests/test_unit_gasmerge.py, 2026-07-26, APPROVATO CON RISERVE). **#64** = check_verdetto.py PR #45 (2026-07-25, APPROVATO CON RISERVE). Fonte contatore: numero più alto citato in `.claude/agents/memoria_revisore.md` (`#65`, verificato con `tail -5` il 2026-07-26). ⚠️ Il file NON è un registro completo per-review: l'obbligo "una riga per ogni review" è in vigore solo dal 2026-07-16 (#51). Conseguenza: NESSUN conteggio automatico è difendibile — metodi diversi danno risultati diversi. Gli unici dati verificabili sono: numero più alto citato = `#65`; entries contigue SOLO da `#51` a `#66`. Sotto `#51` il file è un log di lezioni, non un registro. Il conteggio "66 review" è ereditato dallo storico e NON è ricostruibile dal file: contare per validarlo è un metodo INVALIDO. Lezioni in `.claude/agents/memoria_revisore.md`. ✅ Backfill #48–#50 ESEGUITO (2026-07-18, PR #24). ℹ️ **Collisione #62 riconciliata** (2026-07-26): sessioni parallele avevano prodotto due entry #62 da #61; riconciliate al merge con branch #62/#63 intatti e main #62 rinumerata in #64.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. **BASE = `git merge-base origin/main HEAD`** (non più “last handoff commit”), preceduto da `git fetch origin` obbligatorio e con guard bloccante se il merge-base è vuoto (fix 2026-07-15, branch `fix/fine-task-base-mergebase`). §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA). **Caveat residuo**: la correttezza di `${BASE}` dipende dalla freschezza di `origin/main` — il `git fetch` copre il caso normale, ma se la PR viene mergiata sul remoto DOPO il fetch, `${BASE}..HEAD` può ancora includere commit non di sessione. Non chiuso al 100%: mitigato.
 
