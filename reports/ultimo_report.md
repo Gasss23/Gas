@@ -1,41 +1,42 @@
-# REPORT FINE TASK — fix/gasmerge-failopen rifinitura (sessione 2026-07-26)
+# REPORT FINE TASK — fix/gasmerge-failopen rifinitura (2026-07-26/27)
 
-**Data:** 2026-07-26
+**Data:** 2026-07-27
 **Branch:** fix/gasmerge-failopen (PR #46)
-**Scope:** Rifinitura pre-merge: sblocco self-block IP + chiusura #65-R1
+**Scope:** Rifinitura pre-merge — sblocco self-block IP + chiusura #65-R1 + self-check + revisore #66
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #46** (fix/gasmerge-failopen) — branch pronto, CI verde, self-check OK.
+1. **Merge della PR #46** (fix/gasmerge-failopen) — CI verde, self-check OK.
    Usare `gasmerge 46`.
-2. **R1 (da #66) minore**: guard `[ -n "$HEAD_SHA" ]` non ha test stub dedicato.
-   Non bloccante — il ramo fallisce fail-closed via `gh pr merge` se SHA invalido.
+2. **#66-R1** (minore aperta): guard `[ -n "$HEAD_SHA" ]` senza test stub dedicato.
+   Fail-closed in pratica; non bloccante.
 
 ---
 
-## Esito task
+## Esito fette
 
-- **Sblocco self-block IP (item 1)**: `FATTO`
-  - `reports/ultimo_report.md:38` — rimossi IP letterali da prosa descrittiva.
-  - `tests/test_unit_gasmerge.py:392` — rimosso IP letterale da docstring.
-  - Regola applicata: nei doc/docstring nessun IP letterale senza marker; il marker
-    va solo dove il letterale serve (valori fixture nel corpo del test).
+- **Item 1 — sblocco self-block IP**: `FATTA`
+  Rimosso IP letterale `1.0.0.0` da `reports/ultimo_report.md:38` (prosa descrittiva).
+  Rimosso IP letterale da `tests/test_unit_gasmerge.py:392` (docstring).
+  Regola applicata: nei doc/docstring nessun IP letterale; marker `gasmerge-ip-ok`
+  solo dove il letterale serve (valori fixture nel corpo del test).
 
-- **Chiusura #65-R1 (item 2)**: `FATTO`
-  - `scripts/gasmerge.sh:158` — aggiunto guard esplicito:
-    `[ -n "$HEAD_SHA" ] || { echo "BLOCCO: HEAD_SHA vuoto — head non verificabile"; exit 1; }`
-  - Riserva #65-R1 CHIUSA.
+- **Item 2 — chiusura #65-R1 guard HEAD_SHA**: `FATTA`
+  `scripts/gasmerge.sh:158` — aggiunto:
+  `[ -n "$HEAD_SHA" ] || { echo "BLOCCO: HEAD_SHA vuoto — head non verificabile"; exit 1; }`
+  Riserva #65-R1 CHIUSA.
 
-- **Self-check (item 3)**: `FATTO — SELF-CHECK OK`
+- **Item 3 — self-check obbligatorio**: `FATTA`
+  Eseguito dopo commit + push su `origin/fix/gasmerge-failopen`.
   Output verbatim:
   ```
   SELF-CHECK OK: 0 IP non-allowlistati residui
   ```
+  Ri-eseguito dopo /fine-task commit: `SELF-CHECK OK: 0 IP non-allowlistati residui`.
 
-- **Revisore #66 (item 4)**: `APPROVATO CON RISERVE`
-  R1 minore (guard senza test stub), R2 ereditata #65-R2.
+- **Item 4 — revisore #66**: `FATTA — APPROVATO CON RISERVE`
 
 ---
 

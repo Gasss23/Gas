@@ -1,15 +1,15 @@
-# Diff sessione — fix/gasmerge-failopen rifinitura (2026-07-26)
+# Diff sessione — fix/gasmerge-failopen rifinitura (2026-07-27)
 
 > Riscritto a ogni sessione. La storia completa sta in git.
 
 ## File toccati (BASE c7f6fac..HEAD)
 
-| File | Cosa è cambiato |
+| File | Cosa è cambiato e perché |
 |---|---|
-| `scripts/gasmerge.sh` | Guard HEAD_SHA vuoto aggiunto (chiude #65-R1); FETTE 1+2 sessione precedente |
-| `tests/test_unit_gasmerge.py` | Rimosso IP letterale da docstring (self-block invariante); 4 nuovi test sessione precedente |
-| `.claude/agents/memoria_revisore.md` | Review #66 aggiunta; #64 e #65 da sessione precedente |
-| `reports/stato_progetto.md` | Aggiornamenti FETTA 4 sessione precedente |
-| `reports/ultimo_report.md` | Rifinitura: rimossi IP letterali da prosa; fonte verità task |
-| `reports/handoff.md` | Dossier autonomo per revisione PR #46 |
+| `scripts/gasmerge.sh` | Guard HEAD_SHA vuoto (chiude #65-R1); FETTE 1+2 sessioni precedenti |
+| `tests/test_unit_gasmerge.py` | Docstring ripulita da IP letterale (self-block invariante); 4 nuovi test da sessioni precedenti |
+| `.claude/agents/memoria_revisore.md` | Review #66 aggiunta dal revisore; #64/#65 da sessioni precedenti |
+| `reports/stato_progetto.md` | Aggiornamenti FETTA 4 (contatore 61→65, R-gasmerge-failopen) |
+| `reports/ultimo_report.md` | Fonte di verità: rifinitura IP + #65-R1; proof pytest verbatim |
+| `reports/handoff.md` | Dossier autonomo per revisione e merge PR #46 |
 | `reports/diff_sessione.md` | Questo file |
