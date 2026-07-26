@@ -126,6 +126,19 @@ def _run(repo: Path, fake_bin: Path, args: list[str] | None = None) -> subproces
     return subprocess.run(cmd, env=env, capture_output=True, text=True)
 
 
+def _run_with_stdin(
+    repo: Path, fake_bin: Path, args: list[str] | None = None, stdin_data: str = ""
+) -> subprocess.CompletedProcess:
+    """Come _run, ma inietta stdin_data nel processo (per superare `read -r ANS`)."""
+    env = {
+        **os.environ,
+        "GAS_REPO_DIR": str(repo),
+        "PATH": str(fake_bin) + ":" + os.environ.get("PATH", ""),
+    }
+    cmd = ["bash", str(GASMERGE)] + (args if args is not None else ["123"])
+    return subprocess.run(cmd, env=env, capture_output=True, text=True, input=stdin_data)
+
+
 # ---------------------------------------------------------------------------
 # Fetta 1c — validazione argomento PR
 # ---------------------------------------------------------------------------
@@ -254,7 +267,7 @@ class TestIPGuard:
         subprocess.run(["git", "checkout", "-b", "feat"], cwd=work, check=True, capture_output=True)
 
         # IP in README.md — fuori da reports/
-        (work / "README.md").write_text("server: 192.168.1.100\n")
+        (work / "README.md").write_text("server: 192.168.1.100\n")  # gasmerge-ip-ok
         subprocess.run(["git", "add", "README.md"], cwd=work, check=True, capture_output=True)
         subprocess.run(["git", "commit", "-m", "add ip"], cwd=work, check=True, capture_output=True)
         subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
@@ -270,7 +283,7 @@ class TestIPGuard:
         assert "BLOCCO" in result.stdout and "IP" in result.stdout, (
             f"Output deve contenere BLOCCO e IP: {result.stdout!r}"
         )
-        assert "192.168.1.100" in result.stdout, (
+        assert "192.168.1.100" in result.stdout, (  # gasmerge-ip-ok
             f"Match IP deve essere stampato: {result.stdout!r}"
         )
 
@@ -299,4 +312,148 @@ class TestDiffGuard:
         assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
         assert "nessuno (doc-only)" not in result.stdout, (
             f"'nessuno (doc-only)' non deve apparire quando git diff fallisce: {result.stdout!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Fette F1/F2 — marker IP allowlist + TOCTOU
+# ---------------------------------------------------------------------------
+
+class TestIPAllowlist:
+    """Invariante IP con marker gasmerge-ip-ok: deny-by-default, allowlist esplicita."""
+
+    def _make_repo_with_ip_file(
+        self, tmp_path: Path, file_content: str, filename: str = "README.md"
+    ) -> tuple[Path, Path]:
+        """Crea bare+work con un file contenente una riga IP sul branch feat."""
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "feat"], cwd=work, check=True, capture_output=True)
+        target = work / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(file_content)
+        subprocess.run(["git", "add", str(filename)], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "add file with ip"],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        return work, bare
+
+    def test_ip_with_marker_passes(self, tmp_path):
+        """IP + marker gasmerge-ip-ok sulla stessa riga del file → invariante PASSA.
+
+        La riga nel repo ha '1.0.0.0 # gasmerge-ip-ok': il filtro la riconosce
+        come vouch umano e la esclude. Il gate produce il messaggio allowlistat*.
+        """
+        work, _ = self._make_repo_with_ip_file(
+            tmp_path,
+            "server: 1.0.0.0 # gasmerge-ip-ok\n",  # gasmerge-ip-ok
+            "reports/example.md",
+        )
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        # Script arriverà al prompt di conferma: stdin EOF → ANNULLATO, ma il gate IP
+        # ha già stampato il messaggio di allowlist prima di quel punto.
+        result = _run(work, fake_bin)
+        assert "Tutti gli IP sono allowlistati" in result.stdout, (
+            f"IP marcato deve produrre messaggio allowlist: stdout={result.stdout!r}"
+        )
+        assert "BLOCCO: trovati IP" not in result.stdout, (
+            f"IP marcato non deve bloccare: stdout={result.stdout!r}"
+        )
+
+    def test_ip_without_marker_blocks(self, tmp_path):
+        """IP senza marker → BLOCCO anche se l'indirizzo è di documentazione."""
+        work, _ = self._make_repo_with_ip_file(
+            tmp_path,
+            "gateway: 1.0.0.0\n",  # gasmerge-ip-ok
+        )
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, (
+            f"Atteso exit non-zero con IP non marcato, got 0; stdout={result.stdout!r}"
+        )
+        assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
+        assert "1.0.0.0" in result.stdout, (  # gasmerge-ip-ok
+            f"Match IP non marcato deve essere stampato: {result.stdout!r}"
+        )
+
+    def test_public_ip_without_marker_blocks(self, tmp_path):
+        """IP pubblico RFC5737 (203.0.113.9) senza marker → BLOCCO."""
+        work, _ = self._make_repo_with_ip_file(
+            tmp_path,
+            "remote: 203.0.113.9\n",  # gasmerge-ip-ok
+        )
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, (
+            f"Atteso exit non-zero con IP pubblico, got 0; stdout={result.stdout!r}"
+        )
+        assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
+        assert "203.0.113.9" in result.stdout, (  # gasmerge-ip-ok
+            f"Match IP pubblico deve essere stampato: {result.stdout!r}"
+        )
+
+
+class TestTOCTOU:
+    """TOCTOU: HEAD_SHA cambia tra cattura pre-read e ri-verifica post-read → BLOCCO."""
+
+    def test_head_changed_during_confirm_blocks(self, tmp_path):
+        """Stub gh stateful: 1ª headRefOid → SHA_A, 2ª → SHA_B → BLOCCO 'head cambiata'.
+
+        La 1ª chiamata avviene alla cattura HEAD_SHA (dopo i controlli, prima del read).
+        La 2ª avviene alla ri-verifica post-read. Stdin alimenta '123' al prompt.
+        """
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        counter_file = tmp_path / "oid_counter"
+        counter_file.write_text("0")
+        counter_path = str(counter_file)
+        stub = fake_bin / "gh"
+        stub.write_text(f"""#!/usr/bin/env bash
+case "$*" in
+  *"headRefName,title,state"*)
+    printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > /tmp/gaspr.json
+    exit 0 ;;
+  *"--watch"*)
+    exit 0 ;;
+  *"name,bucket"*)
+    printf '%s\\n' '[{{"name":"unit-suite","bucket":"pass"}}]'
+    exit 0 ;;
+  *"headRefOid"*)
+    COUNT=$(cat "{counter_path}" 2>/dev/null || echo 0)
+    if [ "$COUNT" = "0" ]; then
+      echo "aaa1111111111111111111111111111111111"
+      echo "1" > "{counter_path}"
+    else
+      echo "bbb2222222222222222222222222222222222"
+    fi
+    exit 0 ;;
+  *"pr merge"*)
+    exit 0 ;;
+  *)
+    exit 0 ;;
+esac
+""")
+        stub.chmod(0o755)
+        # Passa "123" allo stdin così `read -r ANS` ottiene il numero PR e procede
+        result = _run_with_stdin(work, fake_bin, stdin_data="123\n")
+        assert result.returncode != 0, (
+            f"Atteso exit non-zero con head cambiata, got 0; stdout={result.stdout!r}"
+        )
+        assert "BLOCCO" in result.stdout and "head cambiata" in result.stdout, (
+            f"Atteso BLOCCO head cambiata: stdout={result.stdout!r}"
         )

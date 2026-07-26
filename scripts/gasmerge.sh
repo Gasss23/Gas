@@ -77,20 +77,38 @@ git fetch --prune origin >/dev/null
 
 echo
 echo "--- INVARIANTE IP ---"
-# Pattern: set +e / RC / set -e per distinguere 0 (match), 1 (nessun match),
-# >=2 (errore reale) — stesso schema delle righe 35-45.
-# Scope: tutto l'albero del branch (non solo reports/).
+# Gate deny-by-default su tutto l'albero del branch: qualsiasi riga con IP
+# quad-dotted viene bloccata. Eccezione esplicita: se la riga contiene il
+# token letterale "gasmerge-ip-ok" è allowlistata (vouch umano per esempi
+# o fixture che devono contenere indirizzi noti). Il gate resta disciplinare
+# anche dopo il filtro: rc>=2 dal filtro = errore reale del filtro → BLOCCO
+# (mai fail-open). Il marker va sulla riga sorgente dell'esempio, NON sui
+# file temporanei scritti dal test (così il guard li becca comunque).
 set +e
 IP_MATCHES=$(git grep -nE '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b' "origin/$BRANCH")
 IP_RC=$?
 set -e
 case "$IP_RC" in
+  1) echo "0 IP trovati — OK" ;;
   0)
-    echo "BLOCCO: trovato IP nell'albero del branch:"
-    echo "$IP_MATCHES"
-    exit 1
+    # IPs trovati: filtra le righe che portano il marker di allowlist esplicito.
+    set +e
+    RESIDUAL=$(echo "$IP_MATCHES" | grep -v 'gasmerge-ip-ok')
+    FILTER_RC=$?
+    set -e
+    case "$FILTER_RC" in
+      1) echo "Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK" ;;
+      0)
+        echo "BLOCCO: trovati IP non allowlistati nell'albero del branch:"
+        echo "$RESIDUAL"
+        exit 1
+        ;;
+      *)
+        echo "BLOCCO: errore nel filtro allowlist (rc=$FILTER_RC) — gate IP non verificato"
+        exit 1
+        ;;
+    esac
     ;;
-  1) echo "0 match OK" ;;
   *)
     echo "BLOCCO: git grep uscito con codice $IP_RC — verifica IP NON eseguita"
     exit 1
@@ -130,13 +148,32 @@ if [ -n "$(git status --porcelain scripts/gasmerge.sh)" ]; then
   echo "*** GASMERGE MODIFICATO E NON COMMITTATO ***"
 fi
 echo
+# Cattura HEAD_SHA DOPO tutti i controlli e PRIMA della stampa di conferma:
+# copre il TOCTOU tra i controlli (IP, engine, CI) e il merge. La ri-verifica
+# post-read (sotto) copre il residuo durante l'attesa umana al prompt.
+# Residuo dichiarato: tra IP/engine check e questa cattura esiste ancora un
+# micro-intervallo (provenienza script, echo), ma è sul percorso sincrono
+# PRIMA della pausa umana — ordine di grandezza milliseconds, non minuti.
+HEAD_SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
 echo "Lo scope è quello che avevi chiesto? Se sì digita $PR, altrimenti INVIO per annullare."
 read -r ANS
 [ "$ANS" = "$PR" ] || { echo "ANNULLATO"; exit 1; }
 
-# Cattura SHA head PR nello stesso momento dei controlli per chiudere il TOCTOU:
-# gh pr merge fallisce se la head è cambiata dopo i controlli.
-HEAD_SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+# Ri-verifica TOCTOU post-conferma: ri-fetch + ri-lettura head.
+# Blocca se la head è cambiata mentre attendevamo al prompt (finestra umana).
+git fetch --prune origin >/dev/null
+set +e
+NEW_HEAD=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+TOCTOU_RC=$?
+set -e
+if [ "$TOCTOU_RC" -ne 0 ]; then
+  echo "BLOCCO: ri-lettura head PR fallita (rc=$TOCTOU_RC) — merge annullato per sicurezza"
+  exit 1
+fi
+if [ "$NEW_HEAD" != "$HEAD_SHA" ]; then
+  echo "BLOCCO: head cambiata durante la conferma ($HEAD_SHA → $NEW_HEAD) — riavvia gasmerge"
+  exit 1
+fi
 gh pr merge "$PR" --merge --delete-branch --match-head-commit "$HEAD_SHA"
 git checkout main && git pull --ff-only origin main
 git branch -d "$BRANCH" 2>/dev/null || true
