@@ -18,7 +18,7 @@
 ## Esito fette
 
 - **Item 1 — sblocco self-block IP**: `FATTA`
-  Rimosso IP letterale l'IP-esempio letterale da `reports/ultimo_report.md:38` (prosa descrittiva).
+  Rimosso l'IP-esempio letterale da `reports/ultimo_report.md:38` (prosa descrittiva).
   Rimosso IP letterale da `tests/test_unit_gasmerge.py:392` (docstring).
   Regola applicata: nei doc/docstring nessun IP letterale; marker `gasmerge-ip-ok`
   solo dove il letterale serve (valori fixture nel corpo del test).
