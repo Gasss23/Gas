@@ -389,7 +389,7 @@ class TestIPAllowlist:
         )
 
     def test_public_ip_without_marker_blocks(self, tmp_path):
-        """IP pubblico RFC5737 (203.0.113.9) senza marker → BLOCCO."""
+        """IP pubblico RFC5737 senza marker → BLOCCO."""
         work, _ = self._make_repo_with_ip_file(
             tmp_path,
             "remote: 203.0.113.9\n",  # gasmerge-ip-ok

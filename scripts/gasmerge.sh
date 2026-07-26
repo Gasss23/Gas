@@ -155,6 +155,7 @@ echo
 # micro-intervallo (provenienza script, echo), ma è sul percorso sincrono
 # PRIMA della pausa umana — ordine di grandezza milliseconds, non minuti.
 HEAD_SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+[ -n "$HEAD_SHA" ] || { echo "BLOCCO: HEAD_SHA vuoto — head non verificabile"; exit 1; }
 echo "Lo scope è quello che avevi chiesto? Se sì digita $PR, altrimenti INVIO per annullare."
 read -r ANS
 [ "$ANS" = "$PR" ] || { echo "ANNULLATO"; exit 1; }

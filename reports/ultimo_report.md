@@ -35,8 +35,8 @@
 
 - **FETTA 3 — test con proof fail-su-vecchio**: `FATTA`
   - `_run_with_stdin` aggiunto per iniettare stdin al prompt `read -r ANS`.
-  - `TestIPAllowlist`: (a) IP marcato → OK, (b) IP 1.0.0.0 non marcato → BLOCCO,
-    (c) IP pubblico 203.0.113.9 → BLOCCO. # gasmerge-ip-ok
+  - `TestIPAllowlist`: (a) IP marcato → OK, (b) IP privato non marcato → BLOCCO,
+    (c) IP pubblico RFC5737 non marcato → BLOCCO.
   - `TestTOCTOU`: stub gh con counter file stateful → BLOCCO "head cambiata".
   - Marker `# gasmerge-ip-ok` su tutte le righe sorgente Python contenenti IP.
   - **PROOF fail-su-vecchio** (`GASMERGE_SCRIPT=/tmp/gasmerge_pre.sh`): 2 FAILED
