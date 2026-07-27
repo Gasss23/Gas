@@ -1,96 +1,102 @@
-# Report — R-crm-1b Fetta 3: dedup telefono
-**Data:** 2026-07-27
-**Branch:** feature/crm-dup-telefono
-**Commit motore:** f6259eb
+# Report R-crm-1b Fetta 4 — Esposizione duplicati a doctor + CLI
+
+**Data**: 2026-07-27  
+**Branch**: feature/crm-dup-telefono  
+**Task**: R-crm-1b Fetta 4 — gas doctor sezione CRM + comando `gas duplicati`
 
 ---
 
-## DECISIONI UMANE RICHIESTE
+## § ESITO FETTE
 
-1. **Merge della PR** `feature/crm-dup-telefono → main` (CI verde su `c8ab4be` — run `30241988037` ✅).
-2. **Decidere se esporre** `normalizza_telefono` / `rileva_duplicati_telefono` in `gas doctor`, CLI `check-dups`, o tool `ricorda` — non fatto per stop gate; proposto nel report.
-
----
-
-## Esito fette
-
-**Fetta UNICA — R-crm-1b fetta 3 (dedup telefono):** `FATTA`
-
-Due funzioni aggiunte in `modules/memory/store.py`:
-
-### 1. `normalizza_telefono(telefono: Optional[str]) -> str`
-Funzione pura e fail-safe. Regole in ordine:
-- `None` o `""` → `""`
-- Normalizzazione Unicode NFKC
-- `'+'` mantenuto SOLO se è il primo carattere non-spazio; tutte le cifre estratte, resto scartato
-- Se le cifre iniziano con `"00"` (e non c'era `+`) → sostituisce `"00"` con `"+"`
-- Gate di plausibilità:
-  - Con `+`: deve matchare `^\+\d{8,15}$` → restituisce così; altrimenti `""`
-  - Senza `+` (cifre nude): assume IT (+39) SOLO se mobile `^3\d{8,9}$` oppure fisso `^0\d{7,10}$` → `"+39"` + cifre (lo `0` iniziale del fisso non viene rimosso)
-  - Qualsiasi altra sequenza (nomi, email, ID numerici) → `""`
-
-### 2. `rileva_duplicati_telefono(self) -> List[Dict[str, Any]]`
-Specchio 1:1 di `rileva_duplicati_email`:
-- SOLA LETTURA su `contatti WHERE merged_into IS NULL`
-- Indicizza `chiave_norm` e `contatto` di ogni riga via `normalizza_telefono`; solo i non-vuoti generano segnale
-- Diario: tipo `"sospetto_duplicato_telefono"`, token idempotente `[k=<telefono>|<id_lo>-<id_hi>]`
-- Pre-check `SELECT ... LIKE ESCAPE` prima di ogni `append_diario`; FAIL-OPEN §9 se il pre-check degrada
-- `[] se not self.available`
-
-Esportata `normalizza_telefono` da `modules/memory/__init__.py` (`__all__` aggiornato).
+| Fetta | Descrizione | Stato |
+|-------|-------------|-------|
+| 1 | `rileva_duplicati_email()` in store.py + test T57 | ✅ CHIUSA (sessioni precedenti) |
+| 2 | Idempotenza diario `sospetto_duplicato_email` + test T57h/i/j | ✅ CHIUSA (sessioni precedenti) |
+| 3 | `normalizza_telefono` + `rileva_duplicati_telefono()` + test T60 | ✅ CHIUSA (sessione precedente) |
+| 4 | `gas doctor` sezione CRM + comando `gas duplicati` | ✅ FATTA |
 
 ---
 
-## Test reali eseguiti
+## § SCOPE RISPETTATO
 
-Suite completa `tests/test_unit_kernel.py`: **272 PASS, 0 FAIL**.
+**SOLA LETTURA**: le funzioni `rileva_duplicati_email()` e `rileva_duplicati_telefono()` (già esistenti, già revisionate) sono state chiamate senza modificarle. Nessuna chiamata a `unisci_contatti`, `unisci_contatti_con_snapshot` o funzioni che scrivono sul DB.
 
-22 nuovi test T60a–T60m:
-
-| Test | Verifica |
-|------|----------|
-| T60a | Separatori/spazi/parentesi rimossi (`+39 (333) 123-4567` → `+393331234567`) |
-| T60b | `+39 333 123 4567` → forma canonica |
-| T60c | `0039 333 123 4567` → `+393331234567` (prefisso 00→+) |
-| T60d | Mobile nudo `3331234567` → `+393331234567` |
-| T60e | Fisso nudo `06 1234567` → `+39061234567` (0 preservato) |
-| T60f | Equivalenza: `333 123 4567` == `+39 3331234567` |
-| T60g | Gate: `anna`/`a@b.com`/`12345`/`1234567890123456` → `""` |
-| T60h | `None`/`""` → `""` |
-| T60i | 2 schede stesso telefono → 1 coppia + 1 riga diario `sospetto_duplicato_telefono` |
-| T60j | Idempotenza: 2ª chiamata → diario invariato, coppia ancora ritornata |
-| T60k | FAIL-OPEN: DROP TABLE diario → nessun crash, coppia ritornata, `append_diario` chiamato |
-| T60l | Store non available (DB corrotto) → `[]` senza crash |
-| T60m | Nomi/email non generano segnale telefono |
+**VIETATO non violato**: nessun tool aggiunto al loop, nessuna modifica a `run_turn`, `tools_schema` o system prompt.
 
 ---
 
-## Revisore
+## § MODIFICHE EFFETTUATE
 
-**Review #67 — APPROVATO CON RISERVE**
+### `gas.py`
 
-Elementi esaminati:
-- `re.sub(r"[^\d]", "", testo)` rimuove correttamente `+` interni (lezione #49 recepita)
-- Lettura doppia `(chiave_norm, contatto)` via `.get()` safe (pattern identico a `rileva_duplicati_email`)
-- T60k fail-open: in-process, nessuna simulazione output — conforme §5 CLAUDE.md
-- Guardrail §8 (loop cap), §9 (fail-safe), §5 (no tool simulation) verificati ✓
+**1. `doctor()` — nuova sezione CRM** (dopo TASK B, vector store):
+- Chiama `mem.rileva_duplicati_email()` e `mem.rileva_duplicati_telefono()` se `mem` è disponibile
+- Conta le coppie: esito `WARN` se > 0 con messaggio `"N email, M telefono — usa: gas duplicati"`, esito `OK` se nessuno
+- Se memoria assente/degradata: `OK` con `"non disponibile (memoria assente/degradata)"`
+- Wrap in `try/except` → fail-safe §9 completo: mai crash, mai exit 1
 
-Riserve non bloccanti: R1 e R2 (vedi handoff §7).
+**2. Nuova funzione `duplicati_cmd()`**:
+- Comando `gas duplicati`: elenca le coppie sospette (email E telefono) in output leggibile
+- Output strutturato: `[EMAIL] N coppia/e sospetta/e` + righe dettaglio, poi `[TELEFONO]`
+- Fail-safe: memoria non disponibile → messaggio e return 0, mai crash
+- Exit 0 sempre (informativo, non un errore)
+- Zero token LLM, sola lettura
 
----
-
-## Stop gate rispettati
-
-- ✅ NON esposto in `gas doctor`, CLI, `_memoria_pin`, tool `ricorda`
-- ✅ Non toccato `rileva_duplicati_email` né `normalizza_chiave` né schema DB
-- ✅ NON emerge necessità di colonna `telefono_norm` (normalizzazione at-query-time)
-- ✅ Branch distinto da `feature/crm-dup-detect` (non cancellato)
-- ✅ Test eseguiti davvero, output reale
+**3. `main()`**: aggiunto routing `gas duplicati` → `duplicati_cmd()`
 
 ---
 
-## Prossimi passi suggeriti (da decidere umanamente)
+## § TEST
 
-- Esposizione in `gas doctor` / CLI `check-dups` / tool `ricorda`
-- Test R2: scheda A con telefono come chiave primaria + scheda B con telefono in `contatto` in coppia
-- Valutare se accorpare con una futura fetta CLI
+**Suite eseguita (REALE, non simulata):**
+
+```
+276 PASS, 0 FAIL
+```
+
+### Nuovi test T61 (4 casi):
+
+| Test | Descrizione | Esito |
+|------|-------------|-------|
+| T61a | doctor CRM: 1 coppia email + 1 coppia telefono → riga `[WARN]` | PASS |
+| T61b | doctor CRM: DB vuoto (nessun duplicato) → riga `[OK] nessuno` | PASS |
+| T61c | `duplicati_cmd`: lista email + telefono, exit 0 | PASS |
+| T61d | `duplicati_cmd` fail-safe: DB corrotto → exit 0, nessun crash | PASS |
+
+---
+
+## § VERDETTO REVISORE (VERBATIM, review #68)
+
+VERDETTO: APPROVATO CON RISERVE
+
+Il diff è tecnicamente corretto, rispetta la filosofia "robustezza > potenza, zero crash",
+non tocca run_turn/tools_schema/system prompt, non espone funzioni di scrittura CRM al
+modello, implementa correttamente il fail-safe §9 in entrambi i path (doctor e `duplicati_cmd`),
+e i 4 nuovi test T61a–T61d coprono i casi principali.
+
+Riserve da tracciare in `stato_progetto.md` (non bloccanti, commit consentito):
+
+- R1 — gas.py:1815: commento `# 11. CRM` fuori sequenza nel file rispetto a `# 9` (riga 1832)
+  e `# 10` (riga 1849). Cosmetico.
+- R2 — tests/test_unit_kernel.py:3622: condizione T61d con `or "Duplicati"` sempre vera
+  — il test verifica no-crash ed exit 0 ma non asserisce strettamente il messaggio
+  "non disponibile".
+
+---
+
+## § DIVIETI RISPETTATI (checklist)
+
+- SOLA LETTURA: nessuna chiamata a `unisci_contatti` / `unisci_contatti_con_snapshot` / funzioni di scrittura
+- NESSUN tool aggiunto al loop, `tools_schema` o system prompt non toccati
+- `run_turn` non toccato
+- Fail-safe §9 in entrambi i path (doctor e CLI)
+- Exit code doctor invariato (WARN non causa exit 1)
+- Revisore invocato prima del commit, verdetto VERBATIM qui incollato
+- Test REALI eseguiti (276 PASS, 0 FAIL)
+
+---
+
+## § RISERVE APERTE (non bloccanti)
+
+- **#68-R1** (cosmetica): commento `# 11. CRM` fuori sequenza rispetto a `# 9`/`# 10` in gas.py
+- **#68-R2** (test): condizione T61d con `or "Duplicati"` sempre vera — non asserisce strettamente "non disponibile"
