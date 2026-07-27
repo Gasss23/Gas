@@ -1812,6 +1812,23 @@ def doctor(root_dir: Optional[str] = None) -> int:
     else:
         check("Memoria", "vector store", "OK", "disabilitato (GAS_VECTORS non settata)")
 
+    # 11. CRM — duplicati sospetti (email + telefono). INFORMATIVO: mai FAIL,
+    # conta > 0 → WARN (visibile ma non causa exit 1). Fail-safe §9: memoria
+    # assente/degradata → "non disponibile", prosegue senza crash.
+    try:
+        if mem is not None and mem.available:
+            _n_email = len(mem.rileva_duplicati_email())
+            _n_tel = len(mem.rileva_duplicati_telefono())
+            if _n_email == 0 and _n_tel == 0:
+                check("CRM", "duplicati sospetti", "OK", "nessuno")
+            else:
+                check("CRM", "duplicati sospetti", "WARN",
+                      f"{_n_email} email, {_n_tel} telefono — usa: gas duplicati")
+        else:
+            check("CRM", "duplicati sospetti", "OK", "non disponibile (memoria assente/degradata)")
+    except Exception as _e_crm:
+        check("CRM", "duplicati sospetti", "OK", f"non disponibile: {str(_e_crm)[:40]}")
+
     # 9. Configurazione: valori effettivi delle costanti override-abili via env.
     # Informativo, sempre OK. Permette di verificare i valori attivi senza leggere
     # il codice, utile al deploy VPS dove si settano queste variabili d'ambiente.
@@ -2317,6 +2334,54 @@ def merge_contacts_cmd(root_dir: Optional[str] = None) -> int:
     return 0
 
 
+def duplicati_cmd(root_dir: Optional[str] = None) -> int:
+    """Comando `gas duplicati`: elenca le coppie sospette di duplicati nel CRM
+    (email E telefono). SOLA LETTURA, zero token LLM. Exit 0 anche con duplicati
+    trovati (informativo, non un errore). Fail-safe §9: memoria assente/degradata →
+    messaggio chiaro e 0, mai crash."""
+    root = Path(root_dir or os.getcwd()).resolve()
+    mem = MemoryStore(default_db_path(root))
+    print("\n=== GAS — Duplicati CRM (sola lettura) ===")
+    if not mem.available:
+        print("Memoria non disponibile (DB assente o corrotto) — 0 / non disponibile.")
+        return 0
+
+    coppie_email: List[Dict[str, Any]] = []
+    coppie_tel: List[Dict[str, Any]] = []
+    email_ok = True
+    tel_ok = True
+
+    try:
+        coppie_email = mem.rileva_duplicati_email()
+    except Exception as _e_de:
+        email_ok = False
+        logging.warning("duplicati_cmd: rileva_duplicati_email fallita: %s", _e_de)
+
+    try:
+        coppie_tel = mem.rileva_duplicati_telefono()
+    except Exception as _e_dt:
+        tel_ok = False
+        logging.warning("duplicati_cmd: rileva_duplicati_telefono fallita: %s", _e_dt)
+
+    n_e = len(coppie_email) if email_ok else 0
+    n_t = len(coppie_tel) if tel_ok else 0
+
+    print(f"\n[EMAIL] {'non disponibile' if not email_ok else f'{n_e} coppia/e sospetta/e'}")
+    for c in coppie_email:
+        print(f"  {c['chiave_a']!r} ~ {c['chiave_b']!r}  (email: {c['email']})")
+
+    print(f"\n[TELEFONO] {'non disponibile' if not tel_ok else f'{n_t} coppia/e sospetta/e'}")
+    for c in coppie_tel:
+        print(f"  {c['chiave_a']!r} ~ {c['chiave_b']!r}  (telefono: {c['telefono']})")
+
+    n_tot = n_e + n_t
+    if n_tot > 0:
+        print(f"\nTotale: {n_tot} coppia/e sospetta/e. Per unire: gas merge-contacts <da> <verso>.")
+    else:
+        print("\nNessun duplicato sospetto trovato.")
+    return 0
+
+
 def main():
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "version":
@@ -2351,6 +2416,8 @@ def main():
         sys.exit(compress_history_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "check-dups":
         sys.exit(check_dups_cmd())
+    if len(sys.argv) > 1 and sys.argv[1] == "duplicati":
+        sys.exit(duplicati_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "merge-contacts":
         sys.exit(merge_contacts_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
