@@ -1,53 +1,36 @@
-# Report sessione 2026-07-27 — Verifica fetta 4 + fix handoff-check CI
+# REPORT — stato_progetto.md: chiusura canonica R-crm-1b
 
-**Data**: 2026-07-27  
-**Branch**: feature/crm-dup-telefono  
-**Sessione**: post-/clear, verifica stato fetta 4
-
----
-
-## § DECISIONI UMANE RICHIESTE
-
-1. **Merge della PR** `feature/crm-dup-telefono → main` (CI: job `handoff-check` da verificare dopo questo commit; `unit-suite` era 276 PASS 0 FAIL ✅).
+**Data:** 2026-07-27
+**Task:** Aggiornamento canonico `reports/stato_progetto.md` — 4 modifiche circoscritte post-merge PR #47
 
 ---
 
-## § ESITO FETTE
+## DECISIONI UMANE RICHIESTE
 
-| Fetta | Descrizione | Stato |
-|-------|-------------|-------|
-| 1 | `rileva_duplicati_email()` in store.py + test T57 | ✅ CHIUSA (sessioni precedenti) |
-| 2 | Idempotenza diario `sospetto_duplicato_email` + test T57h/i/j | ✅ CHIUSA (sessioni precedenti) |
-| 3 | `normalizza_telefono` + `rileva_duplicati_telefono()` + test T60 | ✅ CHIUSA (sessione precedente) |
-| 4 | `gas doctor` sezione CRM + comando `gas duplicati` | ✅ CHIUSA (sessione precedente, commit 638c894) |
+1. **Merge PR `docs/stato-crm1b-chiuso-finale`** (aperta, doc-only, CI deve essere verde).
+2. **Finding line 244** — la riga `🔴 R-crm-1b fetta 3 (telefono) — codice ESISTE ma NON è su main` con `DECISIONE APERTA (operatore)` è ora stale (risolto dal merge PR #47). Valutare se marcarla ✅ CHIUSO nella prossima sessione (fuori scope di questo task per STOP GATE).
 
 ---
 
-## § ANOMALIE / FINDING
+## ESITO FETTE
 
-### CI failure `handoff-check` — commit 78b3a76
+**Fetta 1 — R-crm-1b con PR #47 reference**: `FATTA`
+- Aggiunto `merge PR #47 \`d67b12a\` 2026-07-27` nell'opening del finding.
+- Chiarita sequenza: email+merge+idempotenza+telefono fetta 3 review #67 + esposizione fetta 4 review #68.
 
-Il job `handoff-check` ha fallito sul commit `78b3a76` (docs fine-task fetta 4):
+**Fetta 2 — DECISIONE APERTA dedup doctor/CLI: CHIUSA**: `FATTA`
+- Aggiunta nota esplicita nel finding R-crm-1b: esposto email+telefono in `gas doctor` (sez. CRM) + `gas duplicati`, sola lettura, nessuna funzione di scrittura esposta al modello.
 
-- **SET REALE** (9 file, da `git diff --name-only BASE..HEAD`): includeva `gas.py`
-- **SET DICHIARATO** in §2 handoff.md: 8 file — `gas.py` era omesso
+**Fetta 3 — Traccia 4 riserve R1-R4**: `FATTA`
+- Rimossi i due gruppi separati "Riserve #67 R1/R2" e "Riserve #68 R1/R2" (counter che ripartiva da R1 per ogni review).
+- Sostituiti con etichette continue: R1 `int(r["id"])` fuori try/except (#67); R2 `chiave_norm` non coperto da T60 (#67); R3 commento `# 11 CRM` fuori sequenza (cosmetico, #68); R4 T61d `or "Duplicati"` sempre vera (#68).
 
-Output CI verbatim:
-```
-check_handoff: ERRORE — set file incoerente.
-
-In diff ma NON in §2 (omessi dall'handoff):
-  gas.py
-```
-
-**Root cause**: l'handoff.md del fine-task fetta 4 non ha incluso `gas.py` nel blocco §2 (`git diff --cached --stat BASE` al momento del fine-task aveva già `gas.py` in staging dalla sessione, ma è stato omesso per errore).
-
-**Fix**: il presente commit rigenera `reports/handoff.md` con §2 corretto (tutti i 9 file, incluso `gas.py`).
+**Fetta 4 — Correggi meta-nota contatore (#65 → #68)**: `FATTA`
+- Il "contatore" era il doppio set R1/R2 interno al finding (ripartiva per ogni review). Ora R1-R4 unificati. I campi globali (Stato motore, Istituzione C) erano già a #68.
 
 ---
 
-## § AZIONE DI QUESTA SESSIONE
+## ANOMALIE
 
-- Zero nuove implementazioni (fetta 4 era già completa).
-- Rigenerazione handoff.md con §2 corretto per sbloccare `handoff-check`.
-- Nessun diff al motore → revisore non richiesto.
+- Nessuna anomalia tecnica.
+- Segnalato: line 244 (`🔴 R-crm-1b fetta 3...`) è stale — non toccata per STOP GATE, proposta in §0.
