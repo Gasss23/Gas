@@ -1,36 +1,73 @@
-# REPORT — stato_progetto.md: chiusura canonica R-crm-1b
+# Report: doc-only stato R-crm-1b final (branch docs/stato-crm1b-final)
 
-**Data:** 2026-07-27
-**Task:** Aggiornamento canonico `reports/stato_progetto.md` — 4 modifiche circoscritte post-merge PR #47
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-1. **Merge PR `docs/stato-crm1b-chiuso-finale`** (aperta, doc-only, CI deve essere verde).
-2. **Finding line 244** — la riga `🔴 R-crm-1b fetta 3 (telefono) — codice ESISTE ma NON è su main` con `DECISIONE APERTA (operatore)` è ora stale (risolto dal merge PR #47). Valutare se marcarla ✅ CHIUSO nella prossima sessione (fuori scope di questo task per STOP GATE).
+**Data**: 2026-07-27  
+**Scope**: `reports/stato_progetto.md` — sola doc, nessun motore/test/script.  
+**Branch**: `docs/stato-crm1b-final` (da main fresco post-PR #49)
 
 ---
 
-## ESITO FETTE
+## Esito per punto
 
-**Fetta 1 — R-crm-1b con PR #47 reference**: `FATTA`
-- Aggiunto `merge PR #47 \`d67b12a\` 2026-07-27` nell'opening del finding.
-- Chiarita sequenza: email+merge+idempotenza+telefono fetta 3 review #67 + esposizione fetta 4 review #68.
+### Punto 1 — R-crm-1b riga ~53: merge PR #47, decisione CHIUSA, 4 riserve
+**GIÀ FATTO da PR #48** (`docs/stato-crm1b-chiuso-finale`, merge `32a9a41`).
 
-**Fetta 2 — DECISIONE APERTA dedup doctor/CLI: CHIUSA**: `FATTA`
-- Aggiunta nota esplicita nel finding R-crm-1b: esposto email+telefono in `gas doctor` (sez. CRM) + `gas duplicati`, sola lettura, nessuna funzione di scrittura esposta al modello.
+La riga 53 in main contiene già:
+- `merge PR #47 \`d67b12a\` 2026-07-27`
+- `DECISIONE APERTA dedup doctor/CLI → CHIUSA`
+- R1–R4 tracciate verbatim (int(r["id"]) fuori try/except; ramo chiave_norm non coperto da T60; commento `# 11 CRM` fuori sequenza; T61d `or "Duplicati"` sempre vera)
 
-**Fetta 3 — Traccia 4 riserve R1-R4**: `FATTA`
-- Rimossi i due gruppi separati "Riserve #67 R1/R2" e "Riserve #68 R1/R2" (counter che ripartiva da R1 per ogni review).
-- Sostituiti con etichette continue: R1 `int(r["id"])` fuori try/except (#67); R2 `chiave_norm` non coperto da T60 (#67); R3 commento `# 11 CRM` fuori sequenza (cosmetico, #68); R4 T61d `or "Duplicati"` sempre vera (#68).
+Nessuna modifica necessaria.
 
-**Fetta 4 — Correggi meta-nota contatore (#65 → #68)**: `FATTA`
-- Il "contatore" era il doppio set R1/R2 interno al finding (ripartiva per ogni review). Ora R1-R4 unificati. I campi globali (Stato motore, Istituzione C) erano già a #68.
+### Punto 2 — Riga ~244: da 🔴 a ✅ fetta 3 telefono
+**GIÀ FATTO da PR #48** (commit `150ad7c` "R-crm-1b fetta 3 CHIUSA su main (244), revoca ⛔ crm-dup-detect (242)").
+
+La riga 244 in main già recita:
+- `✅ **R-crm-1b fetta 3 (telefono) — CHIUSA su main** (2026-07-27): risolta con RISCRITTURA PULITA (branch \`feature/crm-dup-telefono\`, review #67, merge PR #47 \`d67b12a\`), NON col recupero da \`feature/crm-dup-detect\`. ... branch superato. ⛔ precedente REVOCATO.`
+
+Nessuna modifica necessaria.
+
+### Punto 3 — CI line: aggiungere PR #47 e successivi
+**FATTO in questa sessione.**
+
+CI run verificati da `gh run list --branch main --limit 10` (tutti ✅ SUCCESS):
+- PR #49 merge `64ff011` (2026-07-27, CI `30302270332`)
+- PR #48 merge `32a9a41` (2026-07-27, CI `30301777849`)
+- PR #47 merge `d67b12a` (2026-07-27, CI `30282530884`)
+- PR #46 merge `6f303cf` (2026-07-26, CI `30223085074`)
+- PR #45 merge `c7f6fac` (2026-07-25, CI `30160569148`)
+- PR #44 merge `de2f2f5` (2026-07-24, CI `30116369695`)
+
+Aggiunti in testa alla riga CI (in ordine decrescente PR#), prefisso naturale rispetto alla entry PR #43 già presente. SHAs verificati da `git log --oneline origin/main`. Nessun ID inventato.
+
+Nota su PR #46: emerge chiaramente dal log (`6f303cf`, 2026-07-26, CI `30223085074` ✅) — incluso.
+
+### Punto 4 — Contatore review #68
+**ALLINEATO, nessuna azione.**
+
+`reports/stato_progetto.md` riga 9: "**68 review**" con ultima #68.  
+`.claude/agents/memoria_revisore.md` ultima voce: `#68 — 2026-07-27 — APPROVATO CON RISERVE — …`
+
+Entrambi a #68. `memoria_revisore.md` NON toccato.
+
+### Punto 5 — "Ultimo aggiornamento"
+**FATTO in questa sessione.**
+
+Aggiornato da:
+`(R-crm-1b fetta 4: doctor sezione CRM + gas duplicati CLI, review #68 APPROVATO CON RISERVE)`  
+a:  
+`(doc-only: allineamento CI line PR #44–#49 + verifica coerenza post-PR #47 su stato_progetto.md)`
 
 ---
 
-## ANOMALIE
+## File modificati
+- `reports/stato_progetto.md` (2 modifiche: riga 4 e riga 10)
+- `reports/ultimo_report.md` (questo file)
 
-- Nessuna anomalia tecnica.
-- Segnalato: line 244 (`🔴 R-crm-1b fetta 3...`) è stale — non toccata per STOP GATE, proposta in §0.
+## File NON toccati (rispetto allo STOP GATE)
+- `gas.py`, `brains/`, `modules/`, `tests/`, `scripts/`, hooks, `memoria_revisore.md`
+
+---
+
+## Azioni fuori scope segnalate (NON eseguite)
+- Cancellazione branch `feature/crm-dup-detect`: azione umana, mai da sessione agente (già dichiarato in riga 244 del file).
+- Eventuale update di altri finding o canonici: nessun altro gap identificato in questa lettura.
