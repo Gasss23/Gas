@@ -92,3 +92,77 @@
 - **Isolamento Sandbox Docker:** Ogni codice o tool generato dall'AI confinato in sandbox isolata dal SO principale; validazione tramite unit test interni prima del deploy.
 - **Gateway di Veto Umano (HITL — Human-in-the-Loop):** Modifiche strutturali, nuovi tool stabili e azioni ad alto rischio entrano in produzione solo dopo approvazione esplicita via Telegram. Il rifiuto alimenta il circuito di feedback negativo (Tabù Cognitivo).
 - **Git Auto-Commit & Disaster Recovery:** Ogni modifica autorizzata genera un commit su Git; hot-backup notturno crittografato su Cloudflare R2 per ripristino flash totale da zero.
+
+---
+
+## 🚀 GAS WEB OS — AI-Powered Local Business Acquisition System
+
+> **Stato: DA VALUTARE** — Documento operativo ricevuto 2026-07-27, non filtrato per compatibilità con Gas.
+> Progetto distinto dal "Blueprint Supremo" sopra: qui l'obiettivo è un sistema commerciale
+> automatizzato per vendere siti web e servizi digitali ad attività locali, non un upgrade
+> dell'infrastruttura cognitiva di Gas. Da valutare se/come integrarlo (verticale FASE 4 —
+> Moduli di Business — o progetto satellite separato).
+
+### Obiettivo del sistema
+
+Trasformare **lead freddo → opportunità commerciale → cliente** con il minimo lavoro manuale:
+1. Trovare automaticamente attività locali potenzialmente interessate.
+2. Analizzare la loro presenza digitale.
+3. Identificare problemi e opportunità.
+4. Generare una strategia commerciale personalizzata (AI).
+5. Generare un mockup del sito.
+6. Organizzare tutto in un CRM.
+7. Gestire follow-up e pipeline commerciale.
+8. Scalare fino a migliaia di lead.
+
+### Stack tecnologico
+
+- **Database lead — Airtable**: archivio di tutte le aziende trovate, dati attività, analisi AI, scoring, stato commerciale.
+- **CRM commerciale — HubSpot**: solo lead qualificati (interessati, appuntamenti, trattative, clienti) — mai migliaia di lead freddi.
+- **Automazioni — Make**: workflow, trasferimento dati, trigger, comunicazione tra strumenti, creazione task.
+- **Intelligenza artificiale**: OpenAI API o Gemini API. Agente principale: **GAS WEB SCOUT AI**.
+
+### Database Airtable — base "GAS WEB AGENCY OS"
+
+**Tabella LEADS:**
+- *Identificazione*: Lead ID, nome attività, categoria/sottocategoria, comune, indirizzo, telefono, email, referente, ruolo.
+- *Origine lead*: fonte (Google Maps, Pagine Gialle, Instagram, Facebook, Referral, Altro), data inserimento, inserito da.
+- *Analisi presenza digitale*: sito web (URL), sito presente (❌ Nessuno / 🟡 Vecchio / 🟢 Professionale), qualità sito (1-10), mobile friendly (checkbox), Google Business (checkbox), recensioni (numero + rating), social (Instagram, Facebook).
+- *Analisi AI*: Lead Score (0-100), potenziale cliente (Basso/Medio/Alto/Premium), problema principale (in termini commerciali, non tecnici — es. "perde traffico da Google" non "manca HTML5"), opportunità trovata, angolo vendita (frase personalizzata per la chiamata), idea homepage (struttura proposta), audit AI completo.
+- *Stato lead (pipeline)*: ⚪ Nuovo Lead → 🔍 Analisi AI → 🎨 Mockup in creazione → 🟢 Pronto per contatto → 📞 Contattato → 🔥 Interessato → 📅 Appuntamento fissato → 💻 Demo effettuata → 💰 Preventivo inviato → 🏆 Cliente / ❌ Perso.
+
+**Tabella WEBSITE CONCEPTS** (mockup): nome progetto, azienda collegata, screenshot sito attuale, nuovo concept homepage, prompt utilizzato, stato (Da creare / In lavorazione / Pronto / Presentato / Approvato).
+
+**Tabella SALES ACTIONS**: lead collegato, tipo attività (Telefonata / WhatsApp / Email / Demo / Follow-up), data, risultato, note.
+
+**Viste**: 🔥 Lead Caldi (Score >80), 📞 Da Chiamare Oggi (stato = Pronto per contatto), 🎨 Mockup da Creare, Follow-up (prossimo contatto = oggi).
+
+**Dashboard "GAS Sales Command Center"**: lead totali, nuovi/settimana, analizzati, score medio, lead caldi, chiamate effettuate, appuntamenti, preventivi, clienti chiusi, fatturato pipeline.
+
+### Agente AI "GAS WEB SCOUT"
+
+Ruolo: consulente digitale + commerciale B2B + growth strategist. Non deve vendere siti, deve trovare "perché questa attività sta perdendo opportunità?".
+
+- **Input**: nome attività, categoria, località, indirizzo, telefono, sito, Google Business, recensioni, Instagram, Facebook.
+- **Output**: analisi attività (settore/valore/potenziale) → analisi digitale (sito, mobile, CTA, recensioni, social) → problemi commerciali (mai tecnici) → opportunità (sito, landing, Google, WhatsApp, funnel) → script di chiamata personalizzato → idea homepage (Hero, Servizi, Recensioni, Portfolio, CTA) → Lead Score.
+- **Calcolo Lead Score**: +20 nessun sito, +20 settore alto valore, +15 molte recensioni, +15 attività consolidata, +15 presenza online debole, +15 potenziale acquisizione clienti.
+
+### Automazioni Make
+
+1. **Nuovo lead inserito** → trigger nuovo record Airtable → invio dati a Gas AI → ricezione analisi → aggiornamento Airtable.
+2. **Lead Score alto** (>80) → crea task chiamata priorità alta + notifica.
+3. **Creazione mockup** → quando lead qualificato → AI genera struttura sito + copy + proposta.
+4. **Follow-up automatico** → se nessuna risposta → reminder a 7 giorni.
+5. **Passaggio a HubSpot** → quando lead interessato → crea contatto HubSpot + deal commerciale.
+
+### Processo operativo quotidiano
+
+Mattina: sistema analizza i lead → si apre vista "Lead Score >80" → per ogni lead si rivede il report AI, si controlla il mockup, si personalizza l'apertura → chiamata (obiettivo: ottenere una demo, non vendere) → presentazione (problema/opportunità/soluzione) → chiusura vendendo "un sistema per generare più richieste clienti", non un sito.
+
+### Priorità di sviluppo
+
+- **Fase 1 (MVP)**: Airtable + pipeline + database lead + AI Analyst manuale + prime automazioni Make.
+- **Fase 2**: raccolta automatica lead, analisi automatica siti, generazione audit, generazione mockup.
+- **Fase 3**: agenti AI multipli specializzati — Gas Scout (trova aziende), Gas Analyst (analizza), Gas Sales (crea script), Gas Follow-up (gestisce ricontatti).
+
+**Obiettivo finale**: 1000 attività raccolte → AI analizza tutte → seleziona le migliori 100 → crea opportunità → prepara le chiamate → l'operatore fa solo la vendita.
