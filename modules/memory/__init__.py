@@ -17,6 +17,7 @@ from .store import (
     DEFAULT_DB_FILENAME,
     default_db_path,
     normalizza_chiave,
+    normalizza_telefono,
 )
 from .vectors import (
     VectorStore,
@@ -35,6 +36,7 @@ __all__ = [
     "DEFAULT_DB_FILENAME",
     "default_db_path",
     "normalizza_chiave",
+    "normalizza_telefono",
     "VectorStore",
     "DEFAULT_VECTORS_FILENAME",
     "EMBED_MODEL_NAME",

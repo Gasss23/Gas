@@ -1,117 +1,136 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-27 — fix/gasmerge-failopen rifinitura pre-merge (PR #46)
+**Sessione:** 2026-07-27 — Verifica fetta 4 + fix handoff-check CI
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #46** (fix/gasmerge-failopen) — CI verde, self-check OK, revisore #66
-   APPROVATO CON RISERVE. Usare `gasmerge 46`.
-2. **#66-R1** (minore): guard `[ -n "$HEAD_SHA" ]` senza test stub dedicato. Non bloccante.
+1. **Merge della PR** `feature/crm-dup-telefono → main` (CI: job `handoff-check` atteso verde dopo questo commit; `unit-suite` 276 PASS 0 FAIL ✅).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Item 1 — sblocco self-block IP**: `FATTA`
-  Rimossi IP letterali da prosa descrittiva (`reports/ultimo_report.md`) e da docstring
-  (`tests/test_unit_gasmerge.py:392`). Marker `gasmerge-ip-ok` conservato solo sui valori
-  fixture nel corpo del test (dove il letterale serve davvero).
-
-- **Item 2 — chiusura #65-R1 guard HEAD_SHA**: `FATTA`
-  `scripts/gasmerge.sh:158`: `[ -n "$HEAD_SHA" ] || { echo "BLOCCO: ..."; exit 1; }`
-  Riserva #65-R1 CHIUSA.
-
-- **Item 3 — self-check obbligatorio**: `FATTA`
-  Output: `SELF-CHECK OK: 0 IP non-allowlistati residui` (eseguito sia post-codice
-  che post-fine-task).
-
-- **Item 4 — revisore #66**: `FATTA — APPROVATO CON RISERVE`
+- **Fetta 1 — rileva_duplicati_email**: `CHIUSA` — sessioni precedenti.
+- **Fetta 2 — idempotenza diario email**: `CHIUSA` — sessioni precedenti.
+- **Fetta 3 — dedup telefono**: `CHIUSA` — commit f6259eb (sessione precedente).
+- **Fetta 4 — gas doctor CRM + gas duplicati**: `CHIUSA` — commit 638c894 (sessione precedente). Questa sessione ha solo verificato lo stato: entrambe le feature (sezione CRM in `doctor()` riga 1815 e `duplicati_cmd()` riga 2337) erano già presenti. Nessun nuovo codice scritto.
+- **Finding sessione — fix handoff-check**: `FATTO` — §2 precedente ometteva `gas.py`; corretto in questo commit.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 +-
- reports/diff_sessione.md           |  27 +--
- reports/handoff.md                 | 106 ++++-----
- reports/stato_progetto.md          |  48 ++--
- reports/ultimo_report.md           |  97 ++++----
- scripts/gasmerge.sh                | 120 ++++++++--
- tests/test_unit_gasmerge.py        | 459 +++++++++++++++++++++++++++++++++++++
- 7 files changed, 705 insertions(+), 158 deletions(-)
+ .claude/agents/memoria_revisore.md |   2 +
+ gas.py                             |  67 ++++++++++
+ modules/memory/__init__.py         |   2 +
+ modules/memory/store.py            | 123 +++++++++++++++++++
+ reports/diff_sessione.md           |  29 +++--
+ reports/handoff.md                 | 132 ++++++++++----------
+ reports/stato_progetto.md          |  10 +-
+ reports/ultimo_report.md           |  87 +++++--------
+ tests/test_unit_kernel.py          | 242 +++++++++++++++++++++++++++++++++++++
+ 9 files changed, 561 insertions(+), 133 deletions(-)
 ```
 
-**VINCOLI VERIFICATI DA CI**: il commit di fine-task non compare nel §3 per costruzione.
+**VINCOLI VERIFICATI DA CI (job handoff-check):**
+Il set di path sopra deve corrispondere esattamente a `git diff --name-only BASE..HEAD`.
+`reports/ultima_risposta.md` è escluso dall'allowlist CI (committato dall'hook post fine-task).
+I conteggi di righe sono approssimati per costruzione (handoff.md conta se stesso).
 
 ---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-a7b07eb docs(fine-task): report + handoff rifinitura fix/gasmerge-failopen 2026-07-26
-749c4a9 fix(gasmerge): chiudi #65-R1 + sblocco self-block IP (rifinitura PR #46)
-403851d docs(fine-task): report + handoff sessione 2026-07-26 fix/gasmerge-failopen
-b6bd2c0 fix(gasmerge): FETTE 1+2+3 — marker IP allowlist + TOCTOU pre-read + test
-e011395 Merge remote-tracking branch 'origin/main' into fix/gasmerge-failopen
-7e7e578 docs(fine-task): handoff + report sessione 2026-07-26 (STOP merge conflict)
-f21493b docs(fine-task): handoff + diff_sessione fix/gasmerge-failopen 2026-07-25
-32ce77a docs(gasmerge): report + stato_progetto R-gasmerge-failopen ✅ CHIUSO
-2bb289f test(gasmerge): test suite R-gasmerge-failopen (fette 1b/1c/2a/2b/2c)
-88538df fix(gasmerge): chiudi finding R-gasmerge-failopen fette 1-3
+78b3a76 docs(fine-task): report + stato_progetto R-crm-1b fetta 4 (2026-07-27)
+638c894 feat(crm): R-crm-1b fetta 4 — espone duplicati a doctor + CLI gas duplicati
+5d9ae20 docs(fine-task): handoff + diff_sessione R-crm-1b fetta 3 (2026-07-27)
+c8ab4be docs(fine-task): report + stato_progetto R-crm-1b fetta 3 (2026-07-27)
+f6259eb feat(crm): R-crm-1b fetta 3 — dedup telefono (normalizza_telefono + rileva_duplicati_telefono)
 ```
 
-NB: il commit di fine-task non compare; il suo hash è stampato al passo 5.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `749c4a9` tocca `scripts/gasmerge.sh` e `tests/test_unit_gasmerge.py`.
-Revisore #66 invocato prima del commit. Verdetto VERBATIM da `.claude/agents/memoria_revisore.md`:
+Nessun commit motore in questa sessione (zero diff su gas.py/brains/modules/tests/).
 
-```
-#66 — 2026-07-26 — APPROVATO CON RISERVE — chiude #65-R1 (guard HEAD_SHA vuoto);
-rimozione IP dal docstring test (self-block invariante IP). R1 nuova: guard
-`[ -n "$HEAD_SHA" ]` senza test stub dedicato (minore). R2 ereditata #65-R2:
---match-head-commit senza test positiva end-to-end.
-```
+Il verdetto per i commit di sessione che toccano il motore (`f6259eb` e `638c894`) è riportato di seguito per completezza (incollato verbatim dai report delle sessioni precedenti):
+
+**Commit f6259eb** — review #67 APPROVATO CON RISERVE
+
+> Elementi esaminati:
+> - `modules/memory/store.py:223` — `digits = re.sub(r"[^\d]", "", testo)` — rimozione di tutto il non-numerico (inclusi `+` interni): la lezione #49 della memoria (regex `[^\d+]` conservava i `+` producendo canonici con `+` interni) è stata recepita correttamente. Esito: **ok**.
+> - `modules/memory/store.py:938` — `for raw in (r.get("chiave_norm"), r.get("contatto"))` — la lettura doppia cerca il telefono sia nella chiave normalizzata sia nel campo contatto. Il pattern è identico alla versione `rileva_duplicati_email` già revisionata in #57. Esito: **ok**.
+> - `tests/test_unit_kernel.py:3472–3500` (T60k) — test fail-open: conforme alla sez. 5 di CLAUDE.md. Esito: **ok**.
+> - `tests/test_unit_kernel.py:3438–3451` (T60i) — ramo `chiave_norm` della tupla non esercitato in nessun test T60: riserva R2.
+>
+> Riserve (non bloccanti):
+> - R1 — `int(r["id"])` fuori try/except post-lettura. Non bloccante.
+> - R2 — ramo `chiave_norm` non coperto dai test T60. Non bloccante.
+
+**Commit 638c894** — review #68 APPROVATO CON RISERVE
+
+> VERDETTO: APPROVATO CON RISERVE
+>
+> Il diff è tecnicamente corretto, rispetta la filosofia "robustezza > potenza, zero crash",
+> non tocca run_turn/tools_schema/system prompt, non espone funzioni di scrittura CRM al
+> modello, implementa correttamente il fail-safe §9 in entrambi i path (doctor e `duplicati_cmd`),
+> e i 4 nuovi test T61a–T61d coprono i casi principali.
+>
+> Riserve da tracciare in `stato_progetto.md` (non bloccanti, commit consentito):
+> - R1 — gas.py:1815: commento `# 11. CRM` fuori sequenza nel file rispetto a `# 9` e `# 10`. Cosmetico.
+> - R2 — tests/test_unit_kernel.py:3622: condizione T61d con `or "Duplicati"` sempre vera — il test verifica no-crash ed exit 0 ma non asserisce strettamente il messaggio "non disponibile".
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Modifica al docstring in `tests/test_unit_gasmerge.py` (riga 392, nessun impatto logico).
-11/11 PASS confermati prima del commit.
+**Prima (main):** 250 PASS.
+**Dopo (HEAD):** 276 PASS, 0 FAIL.
+**Delta:** +26 test (T60a–T60m: 22 su dedup telefono; T61a–T61d: 4 su doctor CRM + duplicati_cmd).
 
+Output riepilogo reale (run CI `30247532892`, unit-suite):
 ```
-============================== 11 passed in 4.14s ==============================
+=== RIEPILOGO: 276 PASS, 0 FAIL ===
 ```
 
 ---
 
 ## §6 STATO CI
 
+Output `gh run list -L 3`:
 ```
-completed	success	docs(fine-task): report + handoff rifinitura fix/gasmerge-failopen 20…	CI	fix/gasmerge-failopen	push	30221972221	58s	2026-07-26T21:52:35Z
-completed	success	fix(gasmerge): chiudi #65-R1 + sblocco self-block IP (rifinitura PR #46)	CI	fix/gasmerge-failopen	push	30221870791	41s	2026-07-26T21:49:36Z
-completed	success	docs(fine-task): report + handoff sessione 2026-07-26 fix/gasmerge-fa…	CI	fix/gasmerge-failopen	push	30220644954	46s	2026-07-26T21:14:01Z
+completed	failure	docs(fine-task): report + stato_progetto R-crm-1b fetta 4 (2026-07-27)	CI	feature/crm-dup-telefono	push	30247532892	45s	2026-07-27T07:49:18Z
+completed	success	docs(fine-task): handoff + diff_sessione R-crm-1b fetta 3 (2026-07-27)	CI	feature/crm-dup-telefono	push	30242319126	39s	2026-07-27T06:18:41Z
+completed	success	docs(fine-task): report + stato_progetto R-crm-1b fetta 3 (2026-07-27)	CI	feature/crm-dup-telefono	push	30241988037	51s	2026-07-27T06:12:31Z
 ```
 
-**Mappatura commit→run:**
-- `a7b07eb` (fine-task precedente) → run 30221972221 ✅ success
-- `749c4a9` (codice rifinitura) → run 30221870791 ✅ success
-- `403851d` (fine-task FETTE 0-4) → run 30220644954 ✅ success
-- `b6bd2c0`, `e011395`, `7e7e578`, `f21493b`, `32ce77a`, `2bb289f`, `88538df` → run non in questa L3; testati come albero incluso in run precedenti o in sessioni anteriori
-- Commit di fine-task (questo) → run non ancora disponibile alla scrittura dell'handoff
+**Mappatura commit → run:**
+
+- `78b3a76` (docs fine-task fetta 4) → run `30247532892` ❌ FAILURE. Job `handoff-check` fallito: `gas.py` omesso da §2. Job `unit-suite`: 276 PASS, 0 FAIL ✅.
+- `638c894` (feat motore fetta 4) → **nessuna run propria su questo SHA** (pushato nello stesso push di `78b3a76`). Contenuto incluso nell'albero testato dalla run `30247532892`.
+- `5d9ae20` (docs handoff fetta 3) → run `30242319126` ✅ SUCCESS.
+- `c8ab4be` (docs fine-task fetta 3) → run `30241988037` ✅ SUCCESS.
+- `f6259eb` (feat motore fetta 3) → nessuna run propria. Contenuto incluso nell'albero testato da run `30241988037`.
+
+**Commit di questa sessione** (docs fix handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **#66-R1** (minore, 2026-07-26): guard `[ -n "$HEAD_SHA" ]` senza test stub dedicato.
-  Fail-closed in pratica. Fix futuro: test stub con `gh` restituente stringa vuota.
-- **#66-R2** (ereditata #65-R2): `--match-head-commit` senza copertura test positiva.
-- **R3-CI-ruleset**: `handoff-check` non required nel ruleset main-lock (decisione operatore).
+Da review #67 (f6259eb):
+- **R1** — `int(r["id"])` fuori try/except in `rileva_duplicati_telefono` (non critico: SQLite garantisce INTEGER PK).
+- **R2** — ramo `chiave_norm` non coperto da T60: nessun test con telefono come chiave primaria in coppia con telefono nel campo `contatto`.
+
+Da review #68 (638c894):
+- **R3** (ex #68-R1) — commento `# 11. CRM` in `doctor()` fuori sequenza rispetto a `# 9` / `# 10`. Cosmetico.
+- **R4** (ex #68-R2) — condizione T61d con `or "Duplicati"` sempre vera: non asserisce strettamente "non disponibile".
+
+Tutte tracciate in `reports/stato_progetto.md`.

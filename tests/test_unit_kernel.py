@@ -675,6 +675,7 @@ check("T18f _ref_age_epoch parsa il ts dal nome ref",
 import sqlite3 as _sqlite3
 from modules.memory import (
     MemoryStore, STATI_CONTATTO, STATI_CHIUSI, STATO_DEFAULT, default_db_path,
+    normalizza_telefono,
 )
 
 def mem_tmp() -> MemoryStore:
@@ -3379,6 +3380,247 @@ check("T59c file originale intatto byte-a-byte",
 check("T59c nessun file tmp residuo dopo fallimento",
       _tmp_after59c == [],
       f"tmp_after={_tmp_after59c}")
+
+# ---------- T60: normalizza_telefono + rileva_duplicati_telefono (R-crm-1b Fetta 3) ----------
+print("\n--- T60: normalizza_telefono ---")
+
+# T60a — separatori, spazi e parentesi nel mezzo vengono rimossi
+check("T60a separatori/spazi/parentesi rimossi",
+      normalizza_telefono("+39 (333) 123-4567") == "+393331234567",
+      f"got={normalizza_telefono('+39 (333) 123-4567')!r}")
+
+# T60b — numero internazionale con + preserva la forma canonica (spazi rimossi)
+check("T60b +39 333 123 4567 preserva",
+      normalizza_telefono("+39 333 123 4567") == "+393331234567",
+      f"got={normalizza_telefono('+39 333 123 4567')!r}")
+
+# T60c — prefisso 00 → + (formato internazionale alternativo)
+check("T60c 0039... → +39...",
+      normalizza_telefono("0039 333 123 4567") == "+393331234567",
+      f"got={normalizza_telefono('0039 333 123 4567')!r}")
+
+# T60d — mobile nudo (10 cifre, inizia con 3) → assume IT
+check("T60d mobile nudo 3331234567 → +393331234567",
+      normalizza_telefono("3331234567") == "+393331234567",
+      f"got={normalizza_telefono('3331234567')!r}")
+
+# T60e — fisso nudo (09 cifre, inizia con 0) → assume IT, lo 0 NON si rimuove
+check("T60e fisso nudo '06 1234567' → '+39061234567'",
+      normalizza_telefono("06 1234567") == "+39061234567",
+      f"got={normalizza_telefono('06 1234567')!r}")
+
+# T60f — equivalenza: "333 123 4567" (senza prefisso) == "+39 3331234567" (con)
+check("T60f equivalenza mobile nudo e internazionale",
+      normalizza_telefono("333 123 4567") == normalizza_telefono("+39 3331234567"),
+      f"nudo={normalizza_telefono('333 123 4567')!r} int={normalizza_telefono('+39 3331234567')!r}")
+
+# T60g — gate plausibilità: nomi, email e ID numerici → "" (nessun segnale)
+_gate_cases = [
+    ("anna", "nome"),
+    ("a@b.com", "email"),
+    ("12345", "ID corto"),
+    ("1234567890123456", "ID lungo 16 cifre"),
+]
+for _val, _desc in _gate_cases:
+    check(f"T60g gate plausibilità: {_desc} {_val!r} → \"\"",
+          normalizza_telefono(_val) == "",
+          f"got={normalizza_telefono(_val)!r}")
+
+# T60h — None e stringa vuota → ""
+check("T60h None → \"\"",
+      normalizza_telefono(None) == "",
+      f"got={normalizza_telefono(None)!r}")
+check("T60h stringa vuota → \"\"",
+      normalizza_telefono("") == "",
+      f"got={normalizza_telefono('')!r}")
+
+print("\n--- T60i-T60m: rileva_duplicati_telefono ---")
+
+# T60i — 2 schede stesso telefono (formati diversi) → 1 coppia + 1 riga diario
+m60i = mem_tmp()
+m60i.upsert_contatto("mario rossi", contatto="+39 333 123 4567")
+m60i.upsert_contatto("mario bianchi", contatto="3331234567")
+d60i_ante = len(m60i.diario_recente(50))
+coppie60i = m60i.rileva_duplicati_telefono()
+d60i_post = m60i.diario_recente(50)
+check("T60i 2 schede stesso telefono → 1 coppia",
+      len(coppie60i) == 1 and coppie60i[0]["telefono"] == "+393331234567",
+      f"coppie={len(coppie60i)} tel={coppie60i[0]['telefono'] if coppie60i else None!r}")
+check("T60i 1 riga diario sospetto_duplicato_telefono",
+      len(d60i_post) == d60i_ante + 1
+      and any(e["tipo"] == "sospetto_duplicato_telefono" for e in d60i_post),
+      f"diario_delta={len(d60i_post)-d60i_ante}")
+
+# T60j — idempotenza: 2ª chiamata NON aggiunge righe al diario, ritorna ancora la coppia
+m60j = mem_tmp()
+m60j.upsert_contatto("alice rossi", contatto="+39 333 999 0000")
+m60j.upsert_contatto("alice bianchi", contatto="3339990000")
+coppie60j_1 = m60j.rileva_duplicati_telefono()
+d60j_1 = [r for r in m60j.diario_recente(100) if r["tipo"] == "sospetto_duplicato_telefono"]
+coppie60j_2 = m60j.rileva_duplicati_telefono()
+d60j_2 = [r for r in m60j.diario_recente(100) if r["tipo"] == "sospetto_duplicato_telefono"]
+check("T60j idempotenza: 1 riga diario dopo 1ª call",
+      len(d60j_1) == 1,
+      f"diario_dopo_1={len(d60j_1)}")
+check("T60j idempotenza: ancora 1 riga diario dopo 2ª call",
+      len(d60j_2) == 1,
+      f"diario_dopo_2={len(d60j_2)}")
+check("T60j 2ª call ritorna ancora la coppia",
+      len(coppie60j_1) == 1 and len(coppie60j_2) == 1,
+      f"coppie_1={len(coppie60j_1)} coppie_2={len(coppie60j_2)}")
+
+# T60k — fail-open: pre-check diario fallisce → append tentato comunque, nessun crash
+import sqlite3 as _sqlite3_60k
+m60k = mem_tmp()
+m60k.upsert_contatto("+393331234567")
+m60k.upsert_contatto("mario verdi", contatto="3331234567")
+with _sqlite3_60k.connect(str(m60k.db_path)) as _c60k:
+    _c60k.execute("DROP TABLE diario")
+    _c60k.commit()
+_append_called_60k = [False]
+_real_append_60k = m60k.append_diario
+def _tracked_append_60k(*args, **kwargs):
+    _append_called_60k[0] = True
+    return _real_append_60k(*args, **kwargs)
+m60k.append_diario = _tracked_append_60k
+_no_crash_60k = True
+_coppie_60k: list = []
+try:
+    _coppie_60k = m60k.rileva_duplicati_telefono()
+except Exception:
+    _no_crash_60k = False
+check("T60k fail-open: pre-check fallisce → nessun crash",
+      _no_crash_60k,
+      f"crash={not _no_crash_60k}")
+check("T60k fail-open: coppia ritornata nonostante degrado diario",
+      len(_coppie_60k) == 1,
+      f"coppie={len(_coppie_60k)}")
+check("T60k fail-open: append_diario chiamato (fail-open, non soppresso)",
+      _append_called_60k[0],
+      f"append_called={_append_called_60k[0]}")
+
+# T60l — [] se store non available (DB corrotto)
+m60l = mem_tmp()
+with open(m60l.db_path, "wb") as _f60l:
+    _f60l.write(b"not-a-db")
+m60l_broken = MemoryStore(m60l.db_path)
+_no_crash_60l = True
+_coppie_60l: list = []
+try:
+    _coppie_60l = m60l_broken.rileva_duplicati_telefono()
+except Exception:
+    _no_crash_60l = False
+check("T60l store non available → [] e nessun crash",
+      _no_crash_60l and _coppie_60l == [] and m60l_broken.available is False,
+      f"crash={not _no_crash_60l} coppie={_coppie_60l} avail={m60l_broken.available}")
+
+# T60m — nomi/email NON generano segnale telefono (gate plausibilità in contesto reale)
+m60m = mem_tmp()
+m60m.upsert_contatto("anna rossi", nome="Anna")
+m60m.upsert_contatto("anna bianchi", nome="Anna", contatto="anna@ex.com")
+coppie60m = m60m.rileva_duplicati_telefono()
+check("T60m nomi/email non generano segnale telefono",
+      coppie60m == [],
+      f"coppie={len(coppie60m)}")
+
+# ---------- T61: doctor sezione CRM + gas duplicati CLI (R-crm-1b Fetta 4) ----------
+# Espone rileva_duplicati_email/telefono (già esistenti) a doctor e a un nuovo
+# comando CLI. SOLA LETTURA. Zero token LLM.
+print("\n--- T61: doctor CRM section + gas duplicati CLI ---")
+
+import gas as _gas61
+import io
+from contextlib import redirect_stdout
+
+def _doctor_inproc_61(root_dir, extra_env=None):
+    """Chiama gas.doctor(root_dir) in-process catturando stdout."""
+    import os as _os61
+    old_env = {k: _os61.environ.get(k) for k in (extra_env or {})}
+    for k, v in (extra_env or {}).items():
+        if v is None:
+            _os61.environ.pop(k, None)
+        else:
+            _os61.environ[k] = v
+    buf = io.StringIO()
+    try:
+        with redirect_stdout(buf):
+            rc = _gas61.doctor(root_dir=root_dir)
+    finally:
+        for k, old in old_env.items():
+            if old is None:
+                _os61.environ.pop(k, None)
+            else:
+                _os61.environ[k] = old
+    return buf.getvalue(), rc
+
+# T61a — doctor CRM section: DB con 1 coppia email + 1 coppia telefono
+# → sezione CRM riporta "1 email, 1 telefono", esito WARN, exit code 0.
+import tempfile as _tf61
+_d61a = _tf61.mkdtemp(prefix="gas_t61a_")
+_m61a = MemoryStore(os.path.join(_d61a, ".gas_memory.db"))
+_m61a.upsert_contatto("anna@ex.com")
+_m61a.upsert_contatto("anna rossi", contatto="anna@ex.com")          # coppia email
+_m61a.upsert_contatto("mario bianchi", contatto="+39 333 111 2222")  # coppia telefono
+_m61a.upsert_contatto("+393331112222")
+_out61a, _rc61a = _doctor_inproc_61(_d61a)
+_crm61a_lines = [l for l in _out61a.splitlines() if "CRM" in l and "duplicati sospetti" in l]
+_crm61a_line = _crm61a_lines[0] if _crm61a_lines else ""
+check("T61a doctor CRM: 1 email + 1 telefono → WARN nella riga CRM",
+      bool(_crm61a_line)
+      and "1 email" in _crm61a_line
+      and "1 telefono" in _crm61a_line
+      and "WARN" in _crm61a_line,
+      f"crm_line={_crm61a_line.strip()!r}")
+
+# T61b — doctor CRM section quando nessun duplicato → esito OK, exit 0.
+_d61b = _tf61.mkdtemp(prefix="gas_t61b_")
+MemoryStore(os.path.join(_d61b, ".gas_memory.db"))   # DB sano vuoto
+_out61b, _rc61b = _doctor_inproc_61(_d61b)
+_crm61b_lines = [l for l in _out61b.splitlines() if "CRM" in l and "duplicati sospetti" in l]
+_crm61b_line = _crm61b_lines[0] if _crm61b_lines else ""
+check("T61b doctor CRM: nessun duplicato → OK nella riga CRM",
+      bool(_crm61b_line)
+      and "OK" in _crm61b_line
+      and "nessuno" in _crm61b_line,
+      f"crm_line={_crm61b_line.strip()!r}")
+
+# T61c — duplicati_cmd CLI: DB con coppia email + coppia telefono → output
+# corretto con entrambe le sezioni, exit 0.
+_d61c = _tf61.mkdtemp(prefix="gas_t61c_")
+_m61c = MemoryStore(os.path.join(_d61c, ".gas_memory.db"))
+_m61c.upsert_contatto("giulia@ex.com")
+_m61c.upsert_contatto("giulia rossi", contatto="giulia@ex.com")
+_m61c.upsert_contatto("luigi bianchi", contatto="3331234567")
+_m61c.upsert_contatto("+393331234567")
+_buf61c = io.StringIO()
+with redirect_stdout(_buf61c):
+    _rc61c = _gas61.duplicati_cmd(root_dir=_d61c)
+_out61c = _buf61c.getvalue()
+check("T61c duplicati_cmd: lista email + telefono, exit 0",
+      _rc61c == 0
+      and "[EMAIL]" in _out61c
+      and "giulia@ex.com" in _out61c
+      and "[TELEFONO]" in _out61c
+      and "+393331234567" in _out61c,
+      f"rc={_rc61c} email={'giulia@ex.com' in _out61c} tel={'+393331234567' in _out61c}")
+
+# T61d — duplicati_cmd fail-safe: DB corrotto → exit 0, nessun crash, messaggio chiaro.
+_d61d = _tf61.mkdtemp(prefix="gas_t61d_")
+_db61d = os.path.join(_d61d, ".gas_memory.db")
+with open(_db61d, "wb") as _f61d:
+    _f61d.write(b"not-a-db")
+_buf61d = io.StringIO()
+_no_crash_61d = True
+_rc61d = -1
+try:
+    with redirect_stdout(_buf61d):
+        _rc61d = _gas61.duplicati_cmd(root_dir=_d61d)
+except Exception:
+    _no_crash_61d = False
+_out61d = _buf61d.getvalue()
+check("T61d duplicati_cmd fail-safe: DB corrotto → exit 0, nessun crash",
+      _no_crash_61d and _rc61d == 0 and ("non disponibile" in _out61d or "Duplicati" in _out61d),
+      f"crash={not _no_crash_61d} rc={_rc61d} out={_out61d.strip()[:60]!r}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
