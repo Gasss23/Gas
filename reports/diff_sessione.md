@@ -1,14 +1,24 @@
-# Diff sessione — R-crm-1b Fetta 3: dedup telefono (2026-07-27)
+# Diff sessione 2026-07-27 (post-/clear, verifica fetta 4)
 
 > Riscritto a ogni sessione. La storia completa sta in git.
 
-## File toccati
+## File toccati in questa sessione
+
+Rispetto a `origin/main` (BASE = 6f303cf), il branch `feature/crm-dup-telefono` contiene:
 
 | File | Cosa è cambiato e perché |
 |------|--------------------------|
-| `modules/memory/store.py` | Aggiunta `normalizza_telefono` (funzione pura, gate plausibilità IT) + `rileva_duplicati_telefono` (specchio 1:1 di `rileva_duplicati_email`, SOLA LETTURA, diario idempotente) |
-| `modules/memory/__init__.py` | Aggiunta `normalizza_telefono` a import e `__all__` per esportarla dal modulo |
-| `tests/test_unit_kernel.py` | Aggiunto import `normalizza_telefono` + 22 test T60a–T60m (12 unit su `normalizza_telefono`, 10 integration su `rileva_duplicati_telefono`) |
-| `reports/stato_progetto.md` | R-crm-1b marcato ✅ CHIUSO; riserve R1/R2 tracciate |
-| `reports/ultimo_report.md` | Report di fine task (sovrascritto da sessione precedente) |
-| `.claude/agents/memoria_revisore.md` | Aggiornato dal revisore (#67, riga contatore aggiunta) |
+| `.claude/agents/memoria_revisore.md` | Appunti review #67 e #68 aggiunti dal revisore |
+| `gas.py` | Sezione CRM in `doctor()` (riga 1815) + `duplicati_cmd()` + routing in `main()` — fetta 4 (commit 638c894) |
+| `modules/memory/__init__.py` | Export `rileva_duplicati_telefono`, `normalizza_telefono` — fetta 3 (commit f6259eb) |
+| `modules/memory/store.py` | `normalizza_telefono` + `rileva_duplicati_telefono` — fetta 3 (commit f6259eb) |
+| `reports/diff_sessione.md` | Questo file (aggiornato a ogni sessione) |
+| `reports/handoff.md` | Rigenerato: §2 ora include `gas.py` (fix handoff-check CI) |
+| `reports/stato_progetto.md` | Stato aggiornato a fetta 4 completata |
+| `reports/ultimo_report.md` | Report questa sessione: verifica fetta 4 già completata + finding CI |
+| `tests/test_unit_kernel.py` | T60a–T60m (dedup telefono) + T61a–T61d (doctor CRM + duplicati_cmd) |
+
+## Note
+
+- Questa sessione non ha prodotto commit al motore: fetta 4 era già implementata.
+- L'unica modifica sostanziale è la rigenerazione di `reports/handoff.md` con §2 corretto.
