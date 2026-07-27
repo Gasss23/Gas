@@ -1,41 +1,35 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-27 — stato_progetto.md: chiusura canonica R-crm-1b post-merge PR #47
+**Sessione:** 2026-07-27 — doc-only: allineamento CI line PR #44–#49 + verifica coerenza R-crm-1b
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge PR `docs/stato-crm1b-chiuso-finale`** — doc-only, CI ✅ SUCCESS (run `30283269963`).
-2. **Finding line 244 stale** — `🔴 R-crm-1b fetta 3 (telefono) — codice ESISTE ma NON è su main` con `DECISIONE APERTA (operatore)` è ora stale (risolto dal merge PR #47 `d67b12a`). Valutare marcatura ✅ CHIUSO nella prossima sessione (fuori scope di questo task per STOP GATE esplicito dello scope).
+1. Merge della PR `docs/stato-crm1b-final` (titolo: "docs(stato): allinea CI line PR #44–#49 + aggiorna Ultimo aggiornamento").
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-**Fetta 1 — R-crm-1b con PR #47 `d67b12a`**: `FATTA`
-- Opening aggiornato con merge PR #47 e sequenza fette (#67 telefono + #68 esposizione).
+Scope completo: aggiornamento `reports/stato_progetto.md` per allineare lo stato doc post-merge PR #47 (R-crm-1b). 5 punti assegnati.
 
-**Fetta 2 — DECISIONE APERTA dedup doctor/CLI: CHIUSA**: `FATTA`
-- Nota esplicita aggiunta: `gas doctor` (sez. CRM) + `gas duplicati`, sola lettura, nessuna funzione di scrittura esposta al modello.
-
-**Fetta 3 — 4 riserve R1-R4 unificate**: `FATTA`
-- Rimossi due gruppi separati (R1/R2 per #67, R1/R2 per #68 — counter che ripartiva).
-- Sostituiti con R1–R4 continui: R1 `int(r["id"])` (#67); R2 `chiave_norm` T60 (#67); R3 `# 11 CRM` cosmetico (#68); R4 T61d `or "Duplicati"` (#68).
-
-**Fetta 4 — Meta-nota contatore coerente con #68**: `FATTA`
-- Il "contatore" da correggere era il doppio R1/R2 interno al finding. Ora R1-R4 continui. Campi globali (Stato motore, Istituzione C) erano già a #68.
+- **Punto 1 — R-crm-1b riga ~53 (merge PR #47 + decisione CHIUSA + R1–R4)**: `SALTATA — già fatto da PR #48` (`docs/stato-crm1b-chiuso-finale`, merge `32a9a41`, commit `659350b`). Contenuto verificato presente e corretto.
+- **Punto 2 — Riga ~244: da 🔴 a ✅ fetta 3 telefono**: `SALTATA — già fatto da PR #48` (commit `150ad7c` "R-crm-1b fetta 3 CHIUSA su main (244), revoca ⛔ crm-dup-detect (242)"). Contenuto verificato presente e corretto.
+- **Punto 3 — CI line: aggiungere PR #47 e run successivi**: `FATTA`. Aggiunti PR #44–#49 in testa alla riga CI (run ID reali da `gh run list`, SHAs da `git log`). PR #46 incluso (dati chiari dal log).
+- **Punto 4 — Contatore review #68**: `SALTATA — già allineato`. Verificato: stato_progetto.md riga 9 = "**68 review**", memoria_revisore.md ultima voce = `#68 — 2026-07-27`. Nessun disallineamento, `memoria_revisore.md` non toccato.
+- **Punto 5 — "Ultimo aggiornamento"**: `FATTA`. Aggiornato da nota R-crm-1b fetta 4 a nota doc-only corrente.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  22 ++-------
- reports/handoff.md        | 115 +++++++++++-----------------------------------
- reports/stato_progetto.md |   2 +-
- reports/ultimo_report.md  |  57 ++++++++---------------
- 4 files changed, 53 insertions(+), 143 deletions(-)
+ reports/diff_sessione.md  | 17 +++++-----
+ reports/handoff.md        | 54 +++++++++++++-------------------
+ reports/stato_progetto.md |  4 +--
+ reports/ultimo_report.md  | 79 ++++++++++++++++++++++++++++++++++-------------
+ 4 files changed, 91 insertions(+), 63 deletions(-)
 ```
 
 ---
@@ -43,38 +37,38 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-659350b docs(stato): chiudi R-crm-1b + riserve R1-R4 + decisione dedup
+2657bc6 docs(stato): allinea CI line PR #44–#49 + aggiorna Ultimo aggiornamento
 ```
 
-_(il commit di fine-task non compare — verrà aggiunto al push)_
+NB: il commit di fine-task che conterrà handoff.md/diff_sessione.md non compare qui per costruzione.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore in questa sessione (solo `reports/`). Revisore non richiesto.
+Nessun diff motore, revisore non richiesto. Il diff tocca solo `reports/` (doc-only).
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/. Delta test non applicabile.
+Nessuna modifica a `gas.py`/`tests/`.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(stato): chiudi R-crm-1b + riserve R1-R4 + decisione dedup	CI	docs/stato-crm1b-chiuso-finale	push	30283269963	47s	2026-07-27T16:07:33Z
-completed	success	Merge pull request #47 from Gasss23/feature/crm-dup-telefono	CI	main	push	30282530884	45s	2026-07-27T15:58:25Z
-completed	success	docs(fine-task): fix handoff-check CI + rigenera handoff R-crm-1b fet…	CI	feature/crm-dup-telefono	push	30276327037	42s	2026-07-27T14:41:33Z
+completed	success	docs(stato): allinea CI line PR #44–#49 + aggiorna Ultimo aggiornamento	CI	docs/stato-crm1b-final	push	30302861901	40s	2026-07-27T20:30:23Z
+completed	success	Merge pull request #49 from Gasss23/docs/roadmap-2-idee	CI	main	push	30302270332	48s	2026-07-27T20:22:02Z
+completed	success	docs(roadmap): park blueprint FASE 4 marketing (funnel lead + GAS WEB…	CI	docs/roadmap-2-idee	push	30302163443	50s	2026-07-27T20:20:30Z
 ```
 
-**Mappatura commit → run:**
-- `659350b` (`docs(stato): chiudi R-crm-1b...`) → run `30283269963` ✅ SUCCESS
+**Mappatura commit→run:**
+- `2657bc6` (push su `docs/stato-crm1b-final`) → CI run `30302861901` ✅ SUCCESS
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna riserva da revisore (nessun diff motore). Finding aperto proposto in §0 punto 2 (line 244 stale — fuori scope di questa sessione).
+Nessuna riserva nuova in questa sessione. Riserve pregresse R1–R4 (review #67/#68) già tracciate in `reports/stato_progetto.md` riga 53.
