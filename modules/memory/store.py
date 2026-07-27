@@ -187,6 +187,53 @@ def normalizza_chiave(chiave: Optional[str]) -> str:
     return " ".join(testo.split()).lower()
 
 
+def normalizza_telefono(telefono: Optional[str]) -> str:
+    """Normalizzazione AGGRESSIVA di un numero di telefono con gate di plausibilità.
+
+    Permette di confrontare due valori testuali (chiave/contatto di un lead) e
+    riconoscere che rappresentano lo stesso numero fisico (dedup CRM). NON trasforma
+    nomi, email o ID numerici corti/lunghi: il gate di plausibilità li esclude.
+
+    Passi (in ordine):
+    - None o "" → "".
+    - Normalizzazione Unicode NFKC (stessa tecnica di normalizza_chiave).
+    - Il '+' è mantenuto SOLO se è il primo carattere non-spazio; tutte le cifre
+      dell'intera stringa vengono estratte, il resto scartato.
+    - Se le cifre iniziano con "00" (e non c'era '+') → sostituisce "00" con "+".
+    - Gate di plausibilità:
+        * Con '+': deve matchare ^\+\d{8,15}$ → restituisce così; altrimenti "".
+        * Senza '+' (cifre nude): assume IT (+39) SOLO se:
+            - mobile ^3\d{8,9}$ (9-10 cifre) → "+39" + cifre
+            - fisso  ^0\d{7,10}$ (8-11 cifre) → "+39" + cifre (lo 0 NON si rimuove)
+          Qualsiasi altra sequenza (nomi, email, ID numerici fuori pattern) → "".
+
+    Funzione PURA e FAIL-SAFE: mai solleva. "" = gate non superato (non è un telefono).
+    """
+    if not telefono:
+        return ""
+    try:
+        testo = str(telefono)
+    except Exception:  # pragma: no cover
+        return ""
+    try:
+        testo = unicodedata.normalize("NFKC", testo)
+    except (TypeError, ValueError):  # pragma: no cover
+        pass
+    has_plus = testo.lstrip().startswith("+")
+    digits = re.sub(r"[^\d]", "", testo)
+    if not has_plus and digits.startswith("00"):
+        digits = digits[2:]
+        has_plus = True
+    if has_plus:
+        candidate = "+" + digits
+        return candidate if re.match(r"^\+\d{8,15}$", candidate) else ""
+    if re.match(r"^3\d{8,9}$", digits):
+        return "+39" + digits
+    if re.match(r"^0\d{7,10}$", digits):
+        return "+39" + digits
+    return ""
+
+
 class MemoryStore:
     """Accesso al DB di memoria. Connessioni a vita breve (una per operazione):
     semplice, niente stato condiviso fra thread, e ogni metodo è blindato in
@@ -860,6 +907,82 @@ class MemoryStore:
                         # FAIL-OPEN §9: append comunque
                     if _do_append:
                         self.append_diario("sospetto_duplicato_email", descr)
+        return coppie
+
+    def rileva_duplicati_telefono(self) -> List[Dict[str, Any]]:
+        """SOLA LETTURA sui contatti: trova coppie di schede VIVE che condividono
+        lo stesso numero di telefono normalizzato (confrontando `chiave_norm` e il
+        campo `contatto` di ciascuna con normalizza_telefono). Match SOLO su valori
+        plausibilmente un telefono; nomi, email e ID numerici non generano segnali.
+        Per ogni coppia trovata scrive al più UNA riga nel diario (tipo
+        'sospetto_duplicato_telefono', idempotente: token stabile
+        '[k=<telefono>|<id_lo>-<id_hi>]' nella descrizione; pre-check SELECT prima
+        di ogni append; FAIL-OPEN §9 se il pre-check degrada). Ritorna la lista
+        COMPLETA delle coppie correnti (mai soppressa dal pre-check).
+        [] in degrado (§9)."""
+        if not self.available:
+            return []
+        try:
+            with self._connect() as con:
+                righe = self._rows(con.execute(
+                    "SELECT id, chiave, chiave_norm, contatto "
+                    "FROM contatti WHERE merged_into IS NULL"
+                ))
+        except (sqlite3.Error, OSError) as e:
+            log.warning("rileva_duplicati_telefono: lettura contatti fallita (%s): %s",
+                        self.db_path, e)
+            return []
+        # Indice telefono_norm → {id: {id, chiave}} (dedup per id, ignora sorgente)
+        tel_idx: Dict[str, Dict[int, Dict[str, Any]]] = {}
+        for r in righe:
+            for raw in (r.get("chiave_norm"), r.get("contatto")):
+                norm = normalizza_telefono(raw)
+                if norm:
+                    tel_idx.setdefault(norm, {})[int(r["id"])] = {
+                        "id": int(r["id"]), "chiave": r["chiave"]
+                    }
+        # Coppie: telefono con ≥2 schede distinte
+        coppie: List[Dict[str, Any]] = []
+        for telefono, per_id in tel_idx.items():
+            schede = list(per_id.values())
+            if len(schede) < 2:
+                continue
+            for i in range(len(schede)):
+                for j in range(i + 1, len(schede)):
+                    a, b = schede[i], schede[j]
+                    id_lo, id_hi = min(a["id"], b["id"]), max(a["id"], b["id"])
+                    idem_token = f"[k={telefono}|{id_lo}-{id_hi}]"
+                    descr = (
+                        f"sospetto duplicato: {a['chiave']!r} ~ {b['chiave']!r}"
+                        f" (telefono {telefono}) {idem_token}"
+                    )
+                    coppie.append({
+                        "chiave_a": a["chiave"], "id_a": a["id"],
+                        "chiave_b": b["chiave"], "id_b": b["id"],
+                        "telefono": telefono,
+                    })
+                    # Idempotency pre-check: skip append se questa coppia è già loggata.
+                    _do_append = True
+                    try:
+                        _pat = (
+                            "%" + idem_token.replace("%", r"\%").replace("_", r"\_") + "%"
+                        )
+                        with self._connect() as _con:
+                            _row = _con.execute(
+                                "SELECT 1 FROM diario WHERE tipo=?"
+                                " AND descrizione LIKE ? ESCAPE '\\' LIMIT 1",
+                                ("sospetto_duplicato_telefono", _pat),
+                            ).fetchone()
+                        if _row is not None:
+                            _do_append = False
+                    except (sqlite3.Error, OSError) as _e:
+                        log.warning(
+                            "rileva_duplicati_telefono: pre-check idempotenza fallito"
+                            " (%s): %s", self.db_path, _e,
+                        )
+                        # FAIL-OPEN §9: append comunque
+                    if _do_append:
+                        self.append_diario("sospetto_duplicato_telefono", descr)
         return coppie
 
     # ------------------------------------------------------------- integrità

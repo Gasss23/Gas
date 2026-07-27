@@ -675,6 +675,7 @@ check("T18f _ref_age_epoch parsa il ts dal nome ref",
 import sqlite3 as _sqlite3
 from modules.memory import (
     MemoryStore, STATI_CONTATTO, STATI_CHIUSI, STATO_DEFAULT, default_db_path,
+    normalizza_telefono,
 )
 
 def mem_tmp() -> MemoryStore:
@@ -3379,6 +3380,148 @@ check("T59c file originale intatto byte-a-byte",
 check("T59c nessun file tmp residuo dopo fallimento",
       _tmp_after59c == [],
       f"tmp_after={_tmp_after59c}")
+
+# ---------- T60: normalizza_telefono + rileva_duplicati_telefono (R-crm-1b Fetta 3) ----------
+print("\n--- T60: normalizza_telefono ---")
+
+# T60a — separatori, spazi e parentesi nel mezzo vengono rimossi
+check("T60a separatori/spazi/parentesi rimossi",
+      normalizza_telefono("+39 (333) 123-4567") == "+393331234567",
+      f"got={normalizza_telefono('+39 (333) 123-4567')!r}")
+
+# T60b — numero internazionale con + preserva la forma canonica (spazi rimossi)
+check("T60b +39 333 123 4567 preserva",
+      normalizza_telefono("+39 333 123 4567") == "+393331234567",
+      f"got={normalizza_telefono('+39 333 123 4567')!r}")
+
+# T60c — prefisso 00 → + (formato internazionale alternativo)
+check("T60c 0039... → +39...",
+      normalizza_telefono("0039 333 123 4567") == "+393331234567",
+      f"got={normalizza_telefono('0039 333 123 4567')!r}")
+
+# T60d — mobile nudo (10 cifre, inizia con 3) → assume IT
+check("T60d mobile nudo 3331234567 → +393331234567",
+      normalizza_telefono("3331234567") == "+393331234567",
+      f"got={normalizza_telefono('3331234567')!r}")
+
+# T60e — fisso nudo (09 cifre, inizia con 0) → assume IT, lo 0 NON si rimuove
+check("T60e fisso nudo '06 1234567' → '+39061234567'",
+      normalizza_telefono("06 1234567") == "+39061234567",
+      f"got={normalizza_telefono('06 1234567')!r}")
+
+# T60f — equivalenza: "333 123 4567" (senza prefisso) == "+39 3331234567" (con)
+check("T60f equivalenza mobile nudo e internazionale",
+      normalizza_telefono("333 123 4567") == normalizza_telefono("+39 3331234567"),
+      f"nudo={normalizza_telefono('333 123 4567')!r} int={normalizza_telefono('+39 3331234567')!r}")
+
+# T60g — gate plausibilità: nomi, email e ID numerici → "" (nessun segnale)
+_gate_cases = [
+    ("anna", "nome"),
+    ("a@b.com", "email"),
+    ("12345", "ID corto"),
+    ("1234567890123456", "ID lungo 16 cifre"),
+]
+for _val, _desc in _gate_cases:
+    check(f"T60g gate plausibilità: {_desc} {_val!r} → \"\"",
+          normalizza_telefono(_val) == "",
+          f"got={normalizza_telefono(_val)!r}")
+
+# T60h — None e stringa vuota → ""
+check("T60h None → \"\"",
+      normalizza_telefono(None) == "",
+      f"got={normalizza_telefono(None)!r}")
+check("T60h stringa vuota → \"\"",
+      normalizza_telefono("") == "",
+      f"got={normalizza_telefono('')!r}")
+
+print("\n--- T60i-T60m: rileva_duplicati_telefono ---")
+
+# T60i — 2 schede stesso telefono (formati diversi) → 1 coppia + 1 riga diario
+m60i = mem_tmp()
+m60i.upsert_contatto("mario rossi", contatto="+39 333 123 4567")
+m60i.upsert_contatto("mario bianchi", contatto="3331234567")
+d60i_ante = len(m60i.diario_recente(50))
+coppie60i = m60i.rileva_duplicati_telefono()
+d60i_post = m60i.diario_recente(50)
+check("T60i 2 schede stesso telefono → 1 coppia",
+      len(coppie60i) == 1 and coppie60i[0]["telefono"] == "+393331234567",
+      f"coppie={len(coppie60i)} tel={coppie60i[0]['telefono'] if coppie60i else None!r}")
+check("T60i 1 riga diario sospetto_duplicato_telefono",
+      len(d60i_post) == d60i_ante + 1
+      and any(e["tipo"] == "sospetto_duplicato_telefono" for e in d60i_post),
+      f"diario_delta={len(d60i_post)-d60i_ante}")
+
+# T60j — idempotenza: 2ª chiamata NON aggiunge righe al diario, ritorna ancora la coppia
+m60j = mem_tmp()
+m60j.upsert_contatto("alice rossi", contatto="+39 333 999 0000")
+m60j.upsert_contatto("alice bianchi", contatto="3339990000")
+coppie60j_1 = m60j.rileva_duplicati_telefono()
+d60j_1 = [r for r in m60j.diario_recente(100) if r["tipo"] == "sospetto_duplicato_telefono"]
+coppie60j_2 = m60j.rileva_duplicati_telefono()
+d60j_2 = [r for r in m60j.diario_recente(100) if r["tipo"] == "sospetto_duplicato_telefono"]
+check("T60j idempotenza: 1 riga diario dopo 1ª call",
+      len(d60j_1) == 1,
+      f"diario_dopo_1={len(d60j_1)}")
+check("T60j idempotenza: ancora 1 riga diario dopo 2ª call",
+      len(d60j_2) == 1,
+      f"diario_dopo_2={len(d60j_2)}")
+check("T60j 2ª call ritorna ancora la coppia",
+      len(coppie60j_1) == 1 and len(coppie60j_2) == 1,
+      f"coppie_1={len(coppie60j_1)} coppie_2={len(coppie60j_2)}")
+
+# T60k — fail-open: pre-check diario fallisce → append tentato comunque, nessun crash
+import sqlite3 as _sqlite3_60k
+m60k = mem_tmp()
+m60k.upsert_contatto("+393331234567")
+m60k.upsert_contatto("mario verdi", contatto="3331234567")
+with _sqlite3_60k.connect(str(m60k.db_path)) as _c60k:
+    _c60k.execute("DROP TABLE diario")
+    _c60k.commit()
+_append_called_60k = [False]
+_real_append_60k = m60k.append_diario
+def _tracked_append_60k(*args, **kwargs):
+    _append_called_60k[0] = True
+    return _real_append_60k(*args, **kwargs)
+m60k.append_diario = _tracked_append_60k
+_no_crash_60k = True
+_coppie_60k: list = []
+try:
+    _coppie_60k = m60k.rileva_duplicati_telefono()
+except Exception:
+    _no_crash_60k = False
+check("T60k fail-open: pre-check fallisce → nessun crash",
+      _no_crash_60k,
+      f"crash={not _no_crash_60k}")
+check("T60k fail-open: coppia ritornata nonostante degrado diario",
+      len(_coppie_60k) == 1,
+      f"coppie={len(_coppie_60k)}")
+check("T60k fail-open: append_diario chiamato (fail-open, non soppresso)",
+      _append_called_60k[0],
+      f"append_called={_append_called_60k[0]}")
+
+# T60l — [] se store non available (DB corrotto)
+m60l = mem_tmp()
+with open(m60l.db_path, "wb") as _f60l:
+    _f60l.write(b"not-a-db")
+m60l_broken = MemoryStore(m60l.db_path)
+_no_crash_60l = True
+_coppie_60l: list = []
+try:
+    _coppie_60l = m60l_broken.rileva_duplicati_telefono()
+except Exception:
+    _no_crash_60l = False
+check("T60l store non available → [] e nessun crash",
+      _no_crash_60l and _coppie_60l == [] and m60l_broken.available is False,
+      f"crash={not _no_crash_60l} coppie={_coppie_60l} avail={m60l_broken.available}")
+
+# T60m — nomi/email NON generano segnale telefono (gate plausibilità in contesto reale)
+m60m = mem_tmp()
+m60m.upsert_contatto("anna rossi", nome="Anna")
+m60m.upsert_contatto("anna bianchi", nome="Anna", contatto="anna@ex.com")
+coppie60m = m60m.rileva_duplicati_telefono()
+check("T60m nomi/email non generano segnale telefono",
+      coppie60m == [],
+      f"coppie={len(coppie60m)}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
