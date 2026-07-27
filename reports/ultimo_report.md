@@ -1,76 +1,94 @@
-# REPORT FINE TASK — fix/gasmerge-failopen rifinitura (2026-07-26/27)
-
+# Report — R-crm-1b Fetta 3: dedup telefono
 **Data:** 2026-07-27
-**Branch:** fix/gasmerge-failopen (PR #46)
-**Scope:** Rifinitura pre-merge — sblocco self-block IP + chiusura #65-R1 + self-check + revisore #66
+**Branch:** feature/crm-dup-telefono
+**Commit motore:** f6259eb
 
 ---
 
-## DECISIONI UMANE RICHIESTE
+## Cosa è stato fatto
 
-1. **Merge della PR #46** (fix/gasmerge-failopen) — CI verde, self-check OK.
-   Usare `gasmerge 46`.
-2. **#66-R1** (minore aperta): guard `[ -n "$HEAD_SHA" ]` senza test stub dedicato.
-   Fail-closed in pratica; non bloccante.
+Implementate due funzioni in `modules/memory/store.py` (scope SOLO queste due, nient'altro toccato):
 
----
+### 1. `normalizza_telefono(telefono: Optional[str]) -> str`
 
-## Esito fette
+Funzione pura e fail-safe. Regole in ordine:
+- `None` o `""` → `""`
+- Normalizzazione Unicode NFKC
+- `'+'` mantenuto SOLO se è il primo carattere non-spazio; tutte le cifre estratte, resto scartato
+- Se le cifre iniziano con `"00"` (e non c'era `+`) → sostituisce `"00"` con `"+"`
+- **Gate di plausibilità:**
+  - Con `+`: deve matchare `^\+\d{8,15}$` → restituisce così; altrimenti `""`
+  - Senza `+` (cifre nude): assume IT (+39) SOLO se mobile `^3\d{8,9}$` oppure fisso `^0\d{7,10}$` → `"+39"` + cifre (lo `0` iniziale del fisso non viene rimosso)
+  - Qualsiasi altra sequenza (nomi, email, ID numerici corti/lunghi) → `""`
 
-- **Item 1 — sblocco self-block IP**: `FATTA`
-  Rimosso l'IP-esempio letterale da `reports/ultimo_report.md:38` (prosa descrittiva).
-  Rimosso IP letterale da `tests/test_unit_gasmerge.py:392` (docstring).
-  Regola applicata: nei doc/docstring nessun IP letterale; marker `gasmerge-ip-ok`
-  solo dove il letterale serve (valori fixture nel corpo del test).
+### 2. `rileva_duplicati_telefono(self) -> List[Dict[str, Any]]`
 
-- **Item 2 — chiusura #65-R1 guard HEAD_SHA**: `FATTA`
-  `scripts/gasmerge.sh:158` — aggiunto:
-  `[ -n "$HEAD_SHA" ] || { echo "BLOCCO: HEAD_SHA vuoto — head non verificabile"; exit 1; }`
-  Riserva #65-R1 CHIUSA.
+Specchio 1:1 di `rileva_duplicati_email`:
+- SOLA LETTURA su `contatti WHERE merged_into IS NULL`
+- Indicizza `chiave_norm` e `contatto` di ogni riga via `normalizza_telefono`; solo i non-vuoti generano segnale
+- Coppie = stesso telefono su ≥2 schede distinte
+- Diario: tipo `"sospetto_duplicato_telefono"`, token idempotente `[k=<telefono>|<id_lo>-<id_hi>]`
+- Pre-check `SELECT ... LIKE ESCAPE` prima di ogni `append_diario`; FAIL-OPEN §9 se il pre-check degrada
+- `[] se not self.available`
 
-- **Item 3 — self-check obbligatorio**: `FATTA`
-  Eseguito dopo commit + push su `origin/fix/gasmerge-failopen`.
-  Output verbatim:
-  ```
-  SELF-CHECK OK: 0 IP non-allowlistati residui
-  ```
-  Ri-eseguito dopo /fine-task commit: `SELF-CHECK OK: 0 IP non-allowlistati residui`.
-
-- **Item 4 — revisore #66**: `FATTA — APPROVATO CON RISERVE`
+Esportata `normalizza_telefono` da `modules/memory/__init__.py` (`__all__` aggiornato).
 
 ---
 
-## VERDETTO REVISORE #66 (VERBATIM da .claude/agents/memoria_revisore.md)
+## Test reali eseguiti
 
-```
-#66 — 2026-07-26 — APPROVATO CON RISERVE — chiude #65-R1 (guard HEAD_SHA vuoto);
-rimozione IP dal docstring test (self-block invariante IP). R1 nuova: guard
-`[ -n "$HEAD_SHA" ]` senza test stub dedicato (minore). R2 ereditata #65-R2:
---match-head-commit senza test positiva end-to-end.
-```
+Suite completa `tests/test_unit_kernel.py`: **272 PASS, 0 FAIL**.
+
+22 nuovi test T60a–T60m:
+
+| Test | Verifica |
+|------|----------|
+| T60a | Separatori/spazi/parentesi rimossi (`+39 (333) 123-4567` → `+393331234567`) |
+| T60b | `+39 333 123 4567` → forma canonica |
+| T60c | `0039 333 123 4567` → `+393331234567` (prefisso 00→+) |
+| T60d | Mobile nudo `3331234567` → `+393331234567` |
+| T60e | Fisso nudo `06 1234567` → `+39061234567` (0 preservato) |
+| T60f | Equivalenza: `333 123 4567` == `+39 3331234567` |
+| T60g | Gate: `anna`/`a@b.com`/`12345`/`1234567890123456` → `""` |
+| T60h | `None`/`""` → `""` |
+| T60i | 2 schede stesso telefono → 1 coppia + 1 riga diario `sospetto_duplicato_telefono` |
+| T60j | Idempotenza: 2ª chiamata → diario invariato, coppia ancora ritornata |
+| T60k | FAIL-OPEN: DROP TABLE diario → nessun crash, coppia ritornata, `append_diario` chiamato |
+| T60l | Store non available (DB corrotto) → `[]` senza crash |
+| T60m | Nomi/email non generano segnale telefono |
 
 ---
 
-## OUTPUT PYTEST (11/11 PASS)
+## Revisore
 
-```
-============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/gqual/Gas/venv/bin/python3
-cachedir: .pytest_cache
-rootdir: /home/gqual/Gas
-plugins: anyio-4.14.2
-collecting ... collected 11 items
+**Review #67 — APPROVATO CON RISERVE**
 
-tests/test_unit_gasmerge.py::TestArgValidation::test_no_arg_exits_2 PASSED [  9%]
-tests/test_unit_gasmerge.py::TestArgValidation::test_non_numeric_arg_exits_2 PASSED [ 18%]
-tests/test_unit_gasmerge.py::TestJqCheck::test_broken_jq_exits_with_message PASSED [ 27%]
-tests/test_unit_gasmerge.py::TestPRState::test_pr_not_open_blocks PASSED [ 36%]
-tests/test_unit_gasmerge.py::TestIPGuard::test_git_grep_error_blocks PASSED [ 45%]
-tests/test_unit_gasmerge.py::TestIPGuard::test_ip_outside_reports_blocks PASSED [ 54%]
-tests/test_unit_gasmerge.py::TestDiffGuard::test_git_diff_name_only_error_blocks PASSED [ 63%]
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_with_marker_passes PASSED [ 72%]
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_without_marker_blocks PASSED [ 81%]
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_public_ip_without_marker_blocks PASSED [ 90%]
-tests/test_unit_gasmerge.py::TestTOCTOU::test_head_changed_during_confirm_blocks PASSED [100%]
-============================== 11 passed in 4.14s ==============================
-```
+Elementi esaminati:
+- `re.sub(r"[^\d]", "", testo)` rimuove correttamente `+` interni (lezione #49 recepita)
+- Lettura doppia `(chiave_norm, contatto)` via `.get()` safe (pattern identico a `rileva_duplicati_email`)
+- T60k fail-open: in-process, nessuna simulazione output — conforme §5 CLAUDE.md
+- Guardrail §8 (loop cap), §9 (fail-safe), §5 (no tool simulation) verificati ✓
+
+**Riserve non bloccanti:**
+- **R1** — `int(r["id"])` fuori dal try/except post-lettura; SQLite garantisce INTEGER PK ma non blindato esplicitamente
+- **R2** — Ramo `chiave_norm` non coperto da T60 (T60i–T60m usano sempre il telefono nel campo `contatto`; copertura futura)
+
+Riserve tracciate in `reports/stato_progetto.md`.
+
+---
+
+## Stop gate rispettati
+
+- ✅ NON esposto in `gas doctor`, CLI, `_memoria_pin`, tool `ricorda`
+- ✅ NOT toccato `rileva_duplicati_email` né `normalizza_chiave` né schema DB
+- ✅ NON emerge necessità di colonna `telefono_norm` (normalizzazione at-query-time)
+- ✅ Branch distinto da `feature/crm-dup-detect` (non cancellato)
+- ✅ Test eseguiti davvero, output reale
+
+---
+
+## Prossimi passi suggeriti (da decidere umanamente)
+
+- Esposizione in `gas doctor` / CLI `check-dups` / tool `ricorda` (attualmente non presenti per stop gate)
+- Colma R2: test con telefono come chiave primaria di una scheda e come `contatto` dell'altra
+- Valutare se aprire PR o accorpare con altra fetta
