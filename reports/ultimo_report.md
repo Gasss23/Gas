@@ -4,6 +4,18 @@
 **Data**: 2026-07-29
 **Scope**: solo `reports/stato_progetto.md` e questo file. Nessun altro file toccato.
 
+## DECISIONI UMANE RICHIESTE
+
+1. Merge della PR #52 (docs(riconciliazione): swap (c)→✅ S1b + micro-finding branch orfano).
+
+---
+
+## Esito fette
+
+- **EDIT 1 — punto (c) swap**: `FATTA` — riga riconciliata da "Non decisa" a ✅ ESEGUITA a S1b.
+- **EDIT 2 — micro-finding branch orfano**: `FATTA` — voce aggiunta in fondo a "### DA FARE".
+- **Riga Ultimo aggiornamento**: `FATTA` — aggiornata a 2026-07-29.
+
 ---
 
 ## Cosa è cambiato
