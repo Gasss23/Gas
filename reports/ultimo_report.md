@@ -1,94 +1,109 @@
-# Ultimo report — doc-only: swap riconciliazione + branch orfano
-
-**Branch**: `docs/swap-e-branch-orfano`
-**Data**: 2026-07-29
-**Scope**: solo `reports/stato_progetto.md` e questo file. Nessun altro file toccato.
-
-## DECISIONI UMANE RICHIESTE
-
-1. Merge della PR #52 (docs(riconciliazione): swap (c)→✅ S1b + micro-finding branch orfano).
+# Ultimo report — doc-only: regole operative vive + item aperti sepolti
+**Data**: 2026-07-29  
+**Branch**: docs/regole-e-aperti  
+**Task**: Estrazione sezione "Regole operative vive" e riemersione item aperti sepolti nelle sezioni-sessione di `reports/stato_progetto.md`. Solo aggiunte, zero cancellazioni.
 
 ---
 
-## Esito fette
+## § 1 — FETTE ESEGUITE
 
-- **EDIT 1 — punto (c) swap**: `FATTA` — riga riconciliata da "Non decisa" a ✅ ESEGUITA a S1b.
-- **EDIT 2 — micro-finding branch orfano**: `FATTA` — voce aggiunta in fondo a "### DA FARE".
-- **Riga Ultimo aggiornamento**: `FATTA` — aggiornata a 2026-07-29.
-
----
-
-## Cosa è cambiato
-
-### EDIT 1 — punto (c) swap (riga 151 → riscritta)
-
-Il punto (c) della sezione "Note operative VPS" recitava:
-> `(c) OPZIONE S1a da valutare: aggiungere swap file 2-4Gi … Non decisa, messa sul tavolo.`
-
-Era un **detrito**: lo swap file 2GiB era stato attivato il 2026-07-04 (punto 9 della stessa sezione, S1b ✅). La riga era rimasta "Non decisa" per 24 giorni dopo l'esecuzione.
-
-**Riscritta come**:
-> `(c) ✅ SUPERATA — ESEGUITA a S1b (2026-07-04): swap file 2GiB attivo sul VPS …`
-
-Non toccato: punto (a) (ancora aperto), punto (b) Ollama always-on (ancora aperto, decisione a S3), finding 🔴 no-swap (storia, resta).
-
-### EDIT 2 — nuova voce in "### DA FARE — sviluppo/processo"
-
-Aggiunta in fondo alla sezione (prima di "### Sessione 2026-07-21") la registrazione del micro-finding di processo sul branch `docs/stato-roadmap-hygiene` (`409ad54`): lavoro completo ma mai promosso a PR, canonici che descrivevano uno stato post-merge inesistente per giorni. Classe nuova ("lavoro che non atterra e sparisce dal radar"), contromisura minima e fix strutturale possibile (non impegnato).
-
-### Riga "Ultimo aggiornamento"
-
-Aggiornata da `2026-07-28` a `2026-07-29` con descrizione dei due edit.
+| Fetta | Esito |
+|-------|-------|
+| PARTE 1 — Sezione "## Regole operative vive" | FATTA |
+| PARTE 2 — Scan item aperti nelle sezioni-sessione | FATTA |
+| PARTE 2 — Aggiunta item non in corpo attivo | FATTA |
+| reports/ultimo_report.md | FATTA |
+| Commit + PR | FATTA |
 
 ---
 
-## git diff REALE
+## § 2 — PARTE 1: Regole operative vive
 
-```diff
-diff --git a/reports/stato_progetto.md b/reports/stato_progetto.md
-index 0cb451b..4f4f8c4 100644
---- a/reports/stato_progetto.md
-+++ b/reports/stato_progetto.md
-@@ -1,7 +1,7 @@
- # STATO PROGETTO GAS
- 
- > Fotografia viva dello stato. Aggiornata a fine di ogni task.
--> Ultimo aggiornamento: **2026-07-28** (doc-only: bonifica branch remoti A1+A2,
-+> Ultimo aggiornamento: **2026-07-29** (doc-only: riconciliazione swap (c)→✅
- > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
- 
-@@ -148,7 +148,10 @@
- - (b) Ollama "3B always-on" da RIVALUTARE …
--- (c) OPZIONE S1a da valutare: aggiungere swap file 2-4Gi … Non decisa, messa sul tavolo.
-+- (c) ✅ **SUPERATA — ESEGUITA a S1b (2026-07-04)**: swap file **2GiB** attivo sul VPS
-+  (vedi punto 9 di questa sezione). L'opzione era "da valutare" al 2026-07-02; la
-+  decisione è stata presa e applicata. Riga riconciliata il 2026-07-28 (era rimasta
-+  "Non decisa" per 24 giorni dopo l'esecuzione).
- 
-@@ -246,6 +246,18 @@
- - ✅ **R-crm-1b fetta 3 (telefono) — CHIUSA su main** …
-+- ℹ️ **Micro-finding di processo — branch di sessione mai promosso a PR** (rilevato
-+  2026-07-28): il branch `docs/stato-roadmap-hygiene` (`409ad54`) è rimasto **2 commit
-+  avanti su main, 0 indietro, senza PR aperta** dalla sessione hygiene. Lavoro completo
-+  (`/fine-task` eseguito, handoff presente, hook che ha pushato il branch) ma **mai
-+  atterrato su main**, e **non registrato in nessun canonico**: per giorni i canonici
-+  hanno descritto uno stato "post-merge hygiene" che non esisteva. Classe NUOVA: non è
-+  gate saltato né scope creep, è **lavoro fatto che non atterra e sparisce dal radar**.
-+  La memoria ha mentito per OMISSIONE. Recuperato con PR dedicata il 2026-07-28.
-+  **Contromisura minima (disciplinare, non strutturale)**: a fine di ogni giro,
-+  `git ls-remote --heads origin` e confronto col numero di head atteso; ogni head in
-+  più va spiegata o chiusa. Fix strutturale possibile, NON impegnato: uno step in
-+  `/fine-task` che stampi `gh pr list --head <branch>` e FERMI se è vuoto.
- 
- ### Sessione 2026-07-21 — chiusura giro item fuori-roadmap
-```
+Sezione inserita subito **dopo** `## Istituzioni di processo` (riga 142 del file risultante), **prima** di `## Note operative VPS`. Ogni regola in forma imperativa, con data e puntatore alla sezione d'origine letta nel file.
+
+### Mapping R1-R10 → origine nel file
+
+| Regola | Trovata? | Riga fonte (main pre-edit) | Sezione d'origine |
+|--------|----------|---------------------------|-------------------|
+| **R1** | ✅ | 349-350 | `### ℹ️ Micro-finding merge su main (2026-07-22)` |
+| **R2** | ✅ | 388-398 | `### Sessione 2026-07-23`, sezione SEQUENZA DI MERGE OBBLIGATORIA |
+| **R3** | ✅ | 214, 162, 224 | `### Sessione 2026-07-24`, sezione "Deviazione di gate"; nota VPS §6 |
+| **R4** | ✅ | 177-178 | micro-finding verdetto parafrasato + test post-review (2026-07-16) |
+| **R5** | ✅ | 175 | micro-finding handoff diff --stat riciclato (2026-07-13) |
+| **R6** | ✅ | 242 (riga ⛔) | `### DA FARE`, sezione "Bonifica branch remoti ESEGUITA" |
+| **R7** | ✅ | 259, 318-320 | `### Sessione 2026-07-21` ℹ️ chiave SSH; confermato `### Sessione 2026-07-22` |
+| **R8** | ✅ | 279-280 | `### Sessione 2026-07-22`, rettifica "ACCESSO SSH AL VPS PERSO era una DIAGNOSI ERRATA" |
+| **R9** | ✅ | 311-312 | `### Sessione 2026-07-22`, ⚠️ CAMBIO DI COMPORTAMENTO |
+| **R10** | ✅ | 222 | `### Sessione 2026-07-24 (p2)`, 🔴→✅ "~/bin/gasmerge NON era un symlink" |
+
+Nessun "R\<n\> NON TROVATA". Tutte e 10 le regole erano presenti nel file.
 
 ---
 
-## Dichiarazione scope
+## § 3 — PARTE 2: Scan item aperti nelle sezioni-sessione
 
-**Nessun altro file è stato toccato.** I due edit riguardano esclusivamente `reports/stato_progetto.md`. Nessuna modifica a gas.py, brains/, modules/, tests/, .claude/, .github/ o altri file. Nessun revisore invocato (doc-only per regola di progetto).
+### Sezioni scansionate
 
-Incoerenze aggiuntive rilevate durante la lettura (fuori scope, proposte per task separati):
-- La riga `### DA FARE — sviluppo/processo (aperti dal 2026-07-09)` riporta ancora "aperti dal 2026-07-09" nell'intestazione ma molti item sono ormai ✅ chiusi. Non toccata: riordinare intestazioni = rischio riformattazione fuori mandato.
-- La sezione "Istituzioni di processo" conta "68 review" — non verificato se aggiornato, fuori scope.
+1. `### Sessione 2026-07-24 — sanare venv, T9a/T9c deterministici` (righe 188-211 pre-edit)
+2. `### Sessione 2026-07-24 (p2) — merge PR #43 e registrazioni di processo` (righe 213-225)
+3. `### Sessione 2026-07-21 — chiusura giro item fuori-roadmap` (righe 247-259)
+4. `### Sessione 2026-07-22 — rientro accesso VPS + chiusura F7` (righe 261-323)
+5. `### ℹ️ Micro-finding di processo — merge su main eseguito da dentro Claude Code (2026-07-22)` (righe 325-371)
+6. `### Sessione 2026-07-23 — allineamento canonici (azioni senza traccia in git)` (righe 373-418)
+
+### Lista completa righe con flag trovate per sezione
+
+#### § Sessione 2026-07-24 (righe 188-225)
+Nessuna riga con 🟡, 🔴, ⚠️, ⛔, APERT, NON VERIFICATO, RESIDUO, non decisa, MITIGATO.
+→ Nessun item aperto.
+
+#### § Sessione 2026-07-21 (righe 247-259)
+- Riga 253: `⚠️ Reboot GAS in prod NON pianificato` — evento passato, GAS ripartito da solo, nessun danno, risolto. **Non item aperto da tracciare.**
+- Riga 254: `🟡 2FA Hetzner non attivo` — **GIÀ nel corpo attivo** (DA FARE riga 239). Non aggiunto.
+- Riga 258: `🟡 Copia VPS stantia vs origin/main` — **NON nel corpo attivo** → **AGGIUNTO** a DA FARE.
+
+#### § Sessione 2026-07-22 (righe 261-323)
+- Riga 266: `⚠️ RISERVA DI EVIDENZA` (F7 .gitignore) — **GIÀ nel corpo attivo** (DEPLOY VPS riga 97, "Verifica riserva evidenza F7"). Non aggiunto.
+- Riga 294: `⚠️ RESIDUO NON VERIFICATO: /root/.ssh/authorized_keys` — **GIÀ nel corpo attivo** (DA FARE riga 240). Non aggiunto.
+- Riga 298: `⚠️ RESIDUO: chiave gas-vps in Hetzner Security` — **GIÀ nel corpo attivo** (DA FARE riga 241). Non aggiunto.
+- Riga 311: `⚠️ CAMBIO DI COMPORTAMENTO: passwd -l gas` — fatto documentato sul comportamento attuale del VPS, non item da tracciare. **Non aggiunto.**
+
+#### § ℹ️ Micro-finding merge su main (righe 325-371)
+- Riga 359: `decisione APERTA, non impegnata` (secondo account GitHub) — **NON nel corpo attivo** → **AGGIUNTO** a DA FARE.
+
+#### § Sessione 2026-07-23 (righe 373-418)
+- Riga 382: `⚠️ CAVEAT — cosa NON fa gasmerge` — limitazione documentata, non item da tracciare. **Non aggiunto.**
+- Riga 414: `Decisione APERTA (non impegnata)` (trailer Co-Authored-By) — **NON nel corpo attivo** → **AGGIUNTO** a DA FARE.
+
+---
+
+## § 4 — Verifica item noti dal task
+
+| Item | Trovato? | In corpo attivo? | Azione |
+|------|----------|------------------|--------|
+| 🟡 2FA Hetzner non attivo | ✅ riga 254 (sess. 2026-07-21), riga 269 (DA FARE) | ✅ DA FARE riga 239 | Nessuna (già presente) |
+| ⚠️ /root/.ssh/authorized_keys non ispezionato (MITIGATO) | ✅ riga 294 (sess. 2026-07-22) | ✅ DA FARE riga 240 | Nessuna (già presente) |
+| 🟡 chiave gas-vps in Hetzner Security (non decisa) | ✅ riga 298 (sess. 2026-07-22) | ✅ DA FARE riga 241 | Nessuna (già presente) |
+| ⚠️ RISERVA DI EVIDENZA F7 | ✅ riga 266 (sess. 2026-07-22) | ✅ DEPLOY VPS riga 97 | Nessuna (già presente) |
+| 🟡 copia VPS stantia vs origin/main (FASE 5 S2) | ✅ riga 258 (sess. 2026-07-21) | ❌ assente | **AGGIUNTO** a DA FARE |
+
+---
+
+## § 5 — Item aggiunti al corpo attivo (PARTE 2)
+
+Aggiunti al fondo di `### DA FARE — sviluppo/processo`:
+
+1. `🟡 Copia VPS stantia vs origin/main` (2026-07-21) — verbatim dalla riga 258 della sessione 2026-07-21.
+2. `⚠️ Decisione APERTA — Secondo account GitHub` (2026-07-22) — dalla decisione APERTA nella sezione ℹ️ Micro-finding merge su main.
+3. `⚠️ Decisione APERTA — Trailer Co-Authored-By` (2026-07-23) — dalla decisione APERTA nella sessione 2026-07-23.
+
+---
+
+## § 6 — STOP GATE
+
+- **Nessuna riga cancellata**: file cresciuto da 418 a 470 righe (+52). Le due operazioni sono state entrambe additive.
+- **Nessuna regola inventata**: tutte le R1-R10 trovate nel file e copiate dal testo reale (non scritte a memoria).
+- **Nessuna archiviazione anticipata**: item dubbi trattati come aperti.
+- **File toccati**: solo `reports/stato_progetto.md` e `reports/ultimo_report.md`.
+- **Revisore**: NON invocato (doc-only, come da istruzioni).
+- **Merge**: NON eseguito.
