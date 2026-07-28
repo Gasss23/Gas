@@ -139,6 +139,40 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. **BASE = `git merge-base origin/main HEAD`** (non più “last handoff commit”), preceduto da `git fetch origin` obbligatorio e con guard bloccante se il merge-base è vuoto (fix 2026-07-15, branch `fix/fine-task-base-mergebase`). §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA). **Caveat residuo**: la correttezza di `${BASE}` dipende dalla freschezza di `origin/main` — il `git fetch` copre il caso normale, ma se la PR viene mergiata sul remoto DOPO il fetch, `${BASE}..HEAD` può ancora includere commit non di sessione. Non chiuso al 100%: mitigato.
 
+## Regole operative vive
+
+> Estratte dal testo delle sessioni. Per merito e contesto completo, vedi la sezione d'origine citata.
+
+- **R1** (2026-07-22) — Esegui il merge su main SEMPRE a mano da WSL con `gasmerge <PR>`; MAI `gh pr merge` da dentro una sessione Claude Code. Vale anche per i doc-only.
+  Origine: `### ℹ️ Micro-finding di processo — merge su main eseguito da dentro Claude Code (2026-07-22)`, riga "Regola dal 2026-07-22"; confermato `### Sessione 2026-07-23`, sezione SEQUENZA DI MERGE OBBLIGATORIA.
+
+- **R2** (2026-07-22, rettificata 2026-07-23) — Rispetta la SEQUENZA DI MERGE OBBLIGATORIA: 1) apri la PR; 2) `/fine-task` nella STESSA sessione; 3) chiudi la sessione (Ctrl+D); 4) revisiona l'`handoff.md` PRIMA del merge (scope e merito li verifica solo l'operatore); 5) solo allora: `gasmerge <numero-PR>` in WSL.
+  Origine: `### Sessione 2026-07-23 — allineamento canonici`, sezione "SEQUENZA DI MERGE OBBLIGATORIA".
+
+- **R3** (2026-07-24) — Lancia SEMPRE `cd ~/Gas && claude`. La sessione eredita la cwd: da altra directory `.claude/agents/` non viene scoperto e il subagent revisore non esiste.
+  Origine: `### Sessione 2026-07-24 — sanare venv`, sezione "Deviazione di gate — subagent revisore non invocato nativamente"; confermato nota VPS §6 e `### Sessione 2026-07-24 (p2)`.
+
+- **R4** (2026-07-16) — Incolla il verdetto del revisore VERBATIM in `ultimo_report.md` e `handoff.md`. Se applichi una modifica richiesta dal revisore, RI-INVOCA il revisore e riporta ENTRAMBI i verdetti verbatim.
+  Origine: micro-finding "verdetto revisore parafrasato sotto etichetta 'INTEGRALE'" + micro-finding "test modificato post-review senza ri-review" (entrambi 2026-07-16).
+
+- **R5** (rilevato 2026-07-13, fix strutturale 2026-07-24) — In `handoff.md`, rigenera SEMPRE `git diff --stat` con `git diff --cached --stat ${BASE}` DOPO `git add`; non riciclarlo da sessione precedente.
+  Origine: micro-finding "handoff diff --stat riciclato" (2026-07-13); fix strutturale `### Sessione 2026-07-24 (p2)`.
+
+- **R6** (2026-07-22) — La cancellazione di branch remoti è azione UMANA, MAI da sessione agente.
+  Origine: `### DA FARE — sviluppo/processo`, riga ⛔ nella sezione "Bonifica branch remoti ESEGUITA".
+
+- **R7** (2026-07-21) — Per SSH al VPS: esegui `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519` a inizio sessione (la chiave HA passphrase). Distinto dal push git (HTTPS, no passphrase).
+  Origine: `### Sessione 2026-07-21`, ℹ️ "Chiave SSH del VPS ha passphrase"; confermato `### Sessione 2026-07-22`.
+
+- **R8** (2026-07-22) — `Permission denied (publickey)` NON è evidenza di chiave mancante. Prima di qualsiasi diagnosi: `ssh -v` e `ssh-add -l`.
+  Origine: `### Sessione 2026-07-22`, rettifica "ACCESSO SSH AL VPS PERSO era una DIAGNOSI ERRATA".
+
+- **R9** (2026-07-22) — `passwd -l gas` blocca anche `sudo` con password per l'utente gas. Le operazioni admin sul VPS passano da root/console.
+  Origine: `### Sessione 2026-07-22`, ⚠️ "CAMBIO DI COMPORTAMENTO".
+
+- **R10** (2026-07-24) — `~/bin/gasmerge` DEVE essere un symlink a `scripts/gasmerge.sh` (verifica con `ls -l`). Una copia divergente significa che il gate versionato non è quello che gira.
+  Origine: `### Sessione 2026-07-24 (p2)`, 🔴→✅ "~/bin/gasmerge NON era un symlink"; ℹ️ "gasmerge portato in scripts/gasmerge.sh".
+
 ## Note operative VPS — non per oggi
 
 > Registrate il 2026-06-15 (aggiornate 2026-07-02, sonda S0 + allineamento canonici + correttivo post-a15ff61: R-vec-3 ✅ chiuso, no-swap finding, req non-root specifico).
@@ -258,6 +292,9 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
   `git ls-remote --heads origin` e confronto col numero di head atteso; ogni head in
   più va spiegata o chiusa. Fix strutturale possibile, NON impegnato: uno step in
   `/fine-task` che stampi `gh pr list --head <branch>` e FERMI se è vuoto.
+- 🟡 **Copia VPS stantia vs origin/main** (2026-07-21, `### Sessione 2026-07-21`): la working copy di prod diverge dal repo (emerso da F7). Riallineamento = FASE 5 S2, con revisore + verifica, non a caldo.
+- ⚠️ **Decisione APERTA — Secondo account GitHub** (2026-07-22, `### ℹ️ Micro-finding merge su main`): machine user per sessioni agente + `main-lock` con 1 approvazione richiesta — GitHub vieta l'auto-approvazione, l'agente non potrebbe chiudere la PR da solo. Da valutare insieme alla privatizzazione del repo (roadmap item 0).
+- ⚠️ **Decisione APERTA — Trailer `Co-Authored-By`** (2026-07-23, `### Sessione 2026-07-23`): per distinguere in `git log` i commit d'agente da quelli scritti a mano. Non impegnata — il responsabile è l'operatore in entrambi i casi.
 
 ### Sessione 2026-07-21 — chiusura giro item fuori-roadmap
 
