@@ -125,6 +125,14 @@ Per memoria storica — design originale implementato:
 - Modulo Meta Ads e automazione della lead generation.
 - Algoritmi di persuasione locali per il copy e i DM di marketing.
 
+> **Blueprint FASE 4 parcheggiato**: `reports/roadmap_da_valutare.md` — dettaglio operativo completo (funnel lead + GAS WEB SCOUT AI + automazioni Make/Airtable/HubSpot). Da valutare SOLO a completamento della roadmap principale; nessun item va in sviluppo prima di quella revisione.
+>
+> ℹ️ **Origine (B1)**: il file è arrivato tramite commit "2 idee" (PR #49, 2026-07-27) — etichetta fuorviante (il commit conteneva in realtà 2 documenti distinti: questo blueprint operativo di 169 righe + un singolo bullet in "💡 Idee da valutare"). L'etichetta è poco descrittiva, il contenuto è autonomo e strutturato.
+>
+> ⚠️ **Caveat GDPR (B2)**: i dati lead su Make/HubSpot/Airtable sono privacy-sensitive. Provider senza no-training-tier **ESCLUSI dal CRM** — vincolo già nei canonici ("TRIGGER DATI" in roadmap.md § Decisioni Cascata Provider). Il blueprint presuppone tier no-training o equivalente per tutti i provider che toccano dati di persone reali.
+>
+> 🔀 **Biforcazione architetturale APERTA (B3)**: il blueprint adotta Make (no-code) come orchestratore principale; GAS è un agente Python. La scelta tra *GAS-motore-Python orchestra tutto* e *Make no-code + GAS come agente specializzato* è una decisione di architettura **NON PRESA** — da decidere prima di sviluppare qualsiasi fetta FASE 4. Non trattarla come scelta già fatta.
+
 ### 🤖 FASE 4.5 — Task Scheduler Autonomo (Prerequisito Jarvis reale)
 
 Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di notte. Prerequisito logico al deploy h24.
