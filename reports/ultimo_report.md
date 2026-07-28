@@ -1,73 +1,60 @@
-# Report: doc-only stato R-crm-1b final (branch docs/stato-crm1b-final)
-
-**Data**: 2026-07-27  
-**Scope**: `reports/stato_progetto.md` — sola doc, nessun motore/test/script.  
-**Branch**: `docs/stato-crm1b-final` (da main fresco post-PR #49)
+# Report — Sessione doc-only hygiene stato/roadmap
+**Data**: 2026-07-28
+**Branch**: docs/stato-roadmap-hygiene
+**Tipo**: DOC-ONLY — nessuna modifica a motore/test/script/hooks/agenti
 
 ---
 
 ## Esito per punto
 
-### Punto 1 — R-crm-1b riga ~53: merge PR #47, decisione CHIUSA, 4 riserve
-**GIÀ FATTO da PR #48** (`docs/stato-crm1b-chiuso-finale`, merge `32a9a41`).
+### A1 — Bonifica branch remoti: aggiornamento da 4 a 3 NON mergiati ✅ FATTO
+- `feature/crm-dup-detect` rimosso dall'elenco dei branch ancora esistenti.
+- Elenco aggiornato: `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc`. Totale head = 4 (main + 3).
+- Nota storica mantenuta (detect superato da rewrite PR #47 ed eliminato da origin) ma spostata FUORI dall'elenco dei branch attivi.
 
-La riga 53 in main contiene già:
-- `merge PR #47 \`d67b12a\` 2026-07-27`
-- `DECISIONE APERTA dedup doctor/CLI → CHIUSA`
-- R1–R4 tracciate verbatim (int(r["id"]) fuori try/except; ramo chiave_norm non coperto da T60; commento `# 11 CRM` fuori sequenza; T61d `or "Duplicati"` sempre vera)
+### A2 — Lezione push --delete ✅ FATTO
+- Aggiunta come riga separata subito dopo la voce "Bonifica branch remoti":
+  `git push origin --delete` non rifiuta branch non-fully-merged (a differenza di `git branch -d`). Ha funzionato per esito su crm-dup-detect, non per meccanismo. REGOLA: verifica a mano con `git branch --merged origin/main` o grep prima di cancellare.
 
-Nessuna modifica necessaria.
+### A3 — Potatura CI line ✅ FATTO
+- `reports/stato_progetto.md`: riga CI trimma a PR #44–#49 (6 voci). Aggiunto puntatore "storico PR #23–#43 → `reports/stato_storico.md` § CI storica".
+- `reports/stato_storico.md`: aggiunto heading "## CI storica (run su main, PR #23–#43)" con le 13 voci verbatim (PR #43, #41, #40, #37, #36, #35, #34, #33, #32, #27, #25, #24, #23). Nessun dato inventato.
+- Conteggio: 19 voci originali → 6 in attivo + 13 in storico = 19 (coerente).
 
-### Punto 2 — Riga ~244: da 🔴 a ✅ fetta 3 telefono
-**GIÀ FATTO da PR #48** (commit `150ad7c` "R-crm-1b fetta 3 CHIUSA su main (244), revoca ⛔ crm-dup-detect (242)").
+### A4 — Cross-reference R-verdetto-evidenza ✅ FATTO
+- Aggiunta riga: "**Cross-ref (stessa classe D)**: barriera solo disciplinare in attesa di enforcement strutturale/meccanico — identica alla famiglia dei gate 'regola di forma' del progetto (main-lock rete = structural; revisore.md obbligo-evidenza = disciplinare). Il check specifico mancante: verificare automaticamente che ogni path:riga dichiarato nel verdetto esista davvero nel diff sottoposto."
 
-La riga 244 in main già recita:
-- `✅ **R-crm-1b fetta 3 (telefono) — CHIUSA su main** (2026-07-27): risolta con RISCRITTURA PULITA (branch \`feature/crm-dup-telefono\`, review #67, merge PR #47 \`d67b12a\`), NON col recupero da \`feature/crm-dup-detect\`. ... branch superato. ⛔ precedente REVOCATO.`
+### B1 — Nota origine blueprint FASE 4 in roadmap.md ✅ FATTO
+- Aggiunto blocco di note sotto il FASE 4 header in `reports/roadmap.md` con puntatore esplicito a `reports/roadmap_da_valutare.md`.
+- Nota: il commit "2 idee" (PR #49) conteneva 2 documenti distinti: il blueprint operativo di 169 righe (`roadmap_da_valutare.md`) + un singolo bullet in "💡 Idee da valutare". Etichetta PR poco descrittiva, contenuto autonomo.
 
-Nessuna modifica necessaria.
+### B2 — Caveat GDPR accanto al blueprint ✅ FATTO
+- Aggiunta nota GDPR nel blocco FASE 4 di `reports/roadmap.md`: dati lead su Make/HubSpot/Airtable = privacy-sensitive; provider senza no-training-tier ESCLUSI dal CRM; vincolo già nei canonici ("TRIGGER DATI").
 
-### Punto 3 — CI line: aggiungere PR #47 e successivi
-**FATTO in questa sessione.**
-
-CI run verificati da `gh run list --branch main --limit 10` (tutti ✅ SUCCESS):
-- PR #49 merge `64ff011` (2026-07-27, CI `30302270332`)
-- PR #48 merge `32a9a41` (2026-07-27, CI `30301777849`)
-- PR #47 merge `d67b12a` (2026-07-27, CI `30282530884`)
-- PR #46 merge `6f303cf` (2026-07-26, CI `30223085074`)
-- PR #45 merge `c7f6fac` (2026-07-25, CI `30160569148`)
-- PR #44 merge `de2f2f5` (2026-07-24, CI `30116369695`)
-
-Aggiunti in testa alla riga CI (in ordine decrescente PR#), prefisso naturale rispetto alla entry PR #43 già presente. SHAs verificati da `git log --oneline origin/main`. Nessun ID inventato.
-
-Nota su PR #46: emerge chiaramente dal log (`6f303cf`, 2026-07-26, CI `30223085074` ✅) — incluso.
-
-### Punto 4 — Contatore review #68
-**ALLINEATO, nessuna azione.**
-
-`reports/stato_progetto.md` riga 9: "**68 review**" con ultima #68.  
-`.claude/agents/memoria_revisore.md` ultima voce: `#68 — 2026-07-27 — APPROVATO CON RISERVE — …`
-
-Entrambi a #68. `memoria_revisore.md` NON toccato.
-
-### Punto 5 — "Ultimo aggiornamento"
-**FATTO in questa sessione.**
-
-Aggiornato da:
-`(R-crm-1b fetta 4: doctor sezione CRM + gas duplicati CLI, review #68 APPROVATO CON RISERVE)`  
-a:  
-`(doc-only: allineamento CI line PR #44–#49 + verifica coerenza post-PR #47 su stato_progetto.md)`
+### B3 — Biforcazione architetturale aperta ✅ FATTO
+- Aggiunta nota: la scelta tra GAS-motore-Python e orchestrazione no-code Make è una decisione di architettura NON PRESA — aperta da decidere prima di sviluppare qualsiasi fetta FASE 4. Non scritta come scelta già fatta.
 
 ---
 
-## File modificati
-- `reports/stato_progetto.md` (2 modifiche: riga 4 e riga 10)
-- `reports/ultimo_report.md` (questo file)
+## File toccati
 
-## File NON toccati (rispetto allo STOP GATE)
-- `gas.py`, `brains/`, `modules/`, `tests/`, `scripts/`, hooks, `memoria_revisore.md`
+| File | Modifica |
+|------|----------|
+| `reports/stato_progetto.md` | A1+A2 (bonifica branch), A3 (CI line trim), A4 (cross-ref R-verdetto), "Ultimo aggiornamento" |
+| `reports/stato_storico.md` | A3: aggiunto heading "## CI storica (run su main, PR #23–#43)" + 13 voci verbatim |
+| `reports/roadmap.md` | B1+B2+B3: blocco note FASE 4 blueprint con origine, GDPR, biforcazione architetturale |
 
----
+## File NON toccati (STOP GATE rispettato)
 
-## Azioni fuori scope segnalate (NON eseguite)
-- Cancellazione branch `feature/crm-dup-detect`: azione umana, mai da sessione agente (già dichiarato in riga 244 del file).
-- Eventuale update di altri finding o canonici: nessun altro gap identificato in questa lettura.
+gas.py, brains/, modules/, tests/, scripts/, .claude/hooks/, .claude/agents/memoria_revisore.md — nessuna modifica.
+
+## Punti fuori-scope NON eseguiti
+
+Nessuno. Tutti e 7 i punti della sessione eseguiti. Nessun out-of-scope rilevato che richiedesse la fermata prevista dal gate.
+
+## Note di processo
+
+- Il blueprint FASE 4 vive in `reports/roadmap_da_valutare.md` (file aggiunto da PR #49). Le note B1/B2/B3 sono state aggiunte in `reports/roadmap.md` nella sezione FASE 4 come puntatore annotato.
+- stato_progetto.md post-modifica: 418 righe (era 417 — CI trim risparmia ~13 voci condensate in 1 riga, lezione push --delete aggiunge 2 righe).
+- stato_storico.md post-modifica: 286 righe (era 278 — +8 righe heading + nota + CI storica).
+- roadmap.md post-modifica: 228 righe (era 220 — +8 righe blocco note FASE 4).

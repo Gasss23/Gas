@@ -135,6 +135,14 @@
 
 ---
 
+## CI storica (run su main, PR #23–#43)
+
+> Spostata qui da `reports/stato_progetto.md` (A3, 2026-07-28) per tenere la riga CI attiva snella (~PR #44 in poi).
+
+CI GitHub Actions — run su main (tutti ✅ SUCCESS): PR #43 merge `b3379b7` (2026-07-24, CI `30099181638`) · PR #41 merge `55959ef` (2026-07-23, CI `30051234981`) · PR #40 merge `4391c8b` (2026-07-22, CI `29967190300`) · PR #37 merge `cb7ba8b` (2026-07-22, CI `29942831200`) · PR #36 merge `4c63ff3` (2026-07-22, CI `29941994238`) · PR #35 merge `425ba5c` (2026-07-22, CI `29919691907`) · PR #34 merge `45a1708` (2026-07-22, CI `29898591182`) · PR #33 merge `5dae638` (2026-07-21, CI `29848173628`) · PR #32 merge `f2679a4` (2026-07-20, CI `29775144603`) · PR #27 merge `21548f74` (2026-07-19, CI `29695063005`) · PR #25 merge `c609e31` (2026-07-19, CI `29664233791`) · PR #24 merge `fd3d47a` (2026-07-18) · PR #23 merge `2f1e015` (2026-07-18).
+
+---
+
 ## Stato del motore — dettaglio storico (FASE 1 + FASE 2)
 
 ### VEC_MIN_SIM env-configurabile (review #28, 2026-06-21)
