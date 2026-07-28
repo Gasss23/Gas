@@ -1,59 +1,82 @@
-# Report — Sessione doc-only hygiene stato/roadmap
-**Data**: 2026-07-28
-**Branch**: docs/stato-roadmap-hygiene
-**Tipo**: DOC-ONLY — nessuna modifica a motore/test/script/hooks/agenti
+# Ultimo report — doc-only: swap riconciliazione + branch orfano
+
+**Branch**: `docs/swap-e-branch-orfano`
+**Data**: 2026-07-29
+**Scope**: solo `reports/stato_progetto.md` e questo file. Nessun altro file toccato.
 
 ---
 
-## DECISIONI UMANE RICHIESTE
+## Cosa è cambiato
 
-1. Merge della PR `docs/stato-roadmap-hygiene` (hygiene stato/roadmap — 7 punti doc).
+### EDIT 1 — punto (c) swap (riga 151 → riscritta)
 
----
+Il punto (c) della sezione "Note operative VPS" recitava:
+> `(c) OPZIONE S1a da valutare: aggiungere swap file 2-4Gi … Non decisa, messa sul tavolo.`
 
-## Esito per punto
+Era un **detrito**: lo swap file 2GiB era stato attivato il 2026-07-04 (punto 9 della stessa sezione, S1b ✅). La riga era rimasta "Non decisa" per 24 giorni dopo l'esecuzione.
 
-### A1 — Bonifica branch remoti: 4 → 3 NON mergiati — FATTA
-- `feature/crm-dup-detect` rimosso dall'elenco branch attivi.
-- Elenco aggiornato: `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc`. Totale head = 4 (main + 3).
-- Nota storica (detect superato da rewrite PR #47, poi eliminato da origin) spostata FUORI dall'elenco dei branch ancora esistenti.
+**Riscritta come**:
+> `(c) ✅ SUPERATA — ESEGUITA a S1b (2026-07-04): swap file 2GiB attivo sul VPS …`
 
-### A2 — Lezione push --delete — FATTA
-- Aggiunta come riga separata adiacente alla voce "Bonifica branch remoti":
-  `git push origin --delete` non rifiuta branch non-fully-merged. Funzionato per esito (detect superato), non per meccanismo. REGOLA: verificare `git branch --merged origin/main` o grep del codice chiave prima di cancellare.
+Non toccato: punto (a) (ancora aperto), punto (b) Ollama always-on (ancora aperto, decisione a S3), finding 🔴 no-swap (storia, resta).
 
-### A3 — Potatura CI line — FATTA
-- `reports/stato_progetto.md`: riga CI trimma a PR #44–#49 (6 voci). Aggiunto puntatore a stato_storico.md.
-- `reports/stato_storico.md`: aggiunto heading "## CI storica (run su main, PR #23–#43)" + 13 voci verbatim (PR #43, #41, #40, #37, #36, #35, #34, #33, #32, #27, #25, #24, #23).
-- Conteggio di integrità: 19 voci originali → 6 in attivo + 13 in storico = 19 ✅.
+### EDIT 2 — nuova voce in "### DA FARE — sviluppo/processo"
 
-### A4 — Cross-reference R-verdetto-evidenza — FATTA
-- Aggiunta riga: "**Cross-ref (stessa classe D)**: barriera solo disciplinare in attesa di enforcement strutturale/meccanico — identica alla famiglia dei gate 'regola di forma' del progetto (main-lock rete = structural; revisore.md obbligo-evidenza = disciplinare). Il check specifico mancante: verificare automaticamente che ogni path:riga dichiarato nel verdetto esista davvero nel diff sottoposto."
+Aggiunta in fondo alla sezione (prima di "### Sessione 2026-07-21") la registrazione del micro-finding di processo sul branch `docs/stato-roadmap-hygiene` (`409ad54`): lavoro completo ma mai promosso a PR, canonici che descrivevano uno stato post-merge inesistente per giorni. Classe nuova ("lavoro che non atterra e sparisce dal radar"), contromisura minima e fix strutturale possibile (non impegnato).
 
-### B1 — Nota origine blueprint FASE 4 — FATTA
-- Blocco di note aggiunto in `reports/roadmap.md` sotto FASE 4 header, con puntatore a `reports/roadmap_da_valutare.md`.
-- Il commit "2 idee" (PR #49) conteneva 2 documenti distinti: blueprint operativo 169 righe + singolo bullet "💡 Idee da valutare". Etichetta fuorviante, contenuto autonomo e strutturato.
+### Riga "Ultimo aggiornamento"
 
-### B2 — Caveat GDPR accanto al blueprint — FATTA
-- Nota aggiunta in blocco FASE 4 di `reports/roadmap.md`: dati lead su Make/HubSpot/Airtable = privacy-sensitive; provider senza no-training-tier ESCLUSI dal CRM; vincolo già nei canonici ("TRIGGER DATI").
-
-### B3 — Biforcazione architetturale aperta — FATTA
-- Nota aggiunta: la scelta tra GAS-motore-Python e no-code Make è una decisione di architettura NON PRESA — aperta, da decidere prima di sviluppare qualsiasi fetta FASE 4. Non scritta come scelta già fatta.
+Aggiornata da `2026-07-28` a `2026-07-29` con descrizione dei due edit.
 
 ---
 
-## File toccati
+## git diff REALE
 
-| File | Modifica |
-|------|----------|
-| `reports/stato_progetto.md` | A1+A2 (bonifica branch + lezione push --delete), A3 (CI line trim), A4 (cross-ref R-verdetto), "Ultimo aggiornamento" |
-| `reports/stato_storico.md` | A3: heading "## CI storica (run su main, PR #23–#43)" + 13 voci verbatim |
-| `reports/roadmap.md` | B1+B2+B3: blocco note FASE 4 blueprint (origine, GDPR, biforcazione) |
+```diff
+diff --git a/reports/stato_progetto.md b/reports/stato_progetto.md
+index 0cb451b..4f4f8c4 100644
+--- a/reports/stato_progetto.md
++++ b/reports/stato_progetto.md
+@@ -1,7 +1,7 @@
+ # STATO PROGETTO GAS
+ 
+ > Fotografia viva dello stato. Aggiornata a fine di ogni task.
+-> Ultimo aggiornamento: **2026-07-28** (doc-only: bonifica branch remoti A1+A2,
++> Ultimo aggiornamento: **2026-07-29** (doc-only: riconciliazione swap (c)→✅
+ > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
+ 
+@@ -148,7 +148,10 @@
+ - (b) Ollama "3B always-on" da RIVALUTARE …
+-- (c) OPZIONE S1a da valutare: aggiungere swap file 2-4Gi … Non decisa, messa sul tavolo.
++- (c) ✅ **SUPERATA — ESEGUITA a S1b (2026-07-04)**: swap file **2GiB** attivo sul VPS
++  (vedi punto 9 di questa sezione). L'opzione era "da valutare" al 2026-07-02; la
++  decisione è stata presa e applicata. Riga riconciliata il 2026-07-28 (era rimasta
++  "Non decisa" per 24 giorni dopo l'esecuzione).
+ 
+@@ -246,6 +246,18 @@
+ - ✅ **R-crm-1b fetta 3 (telefono) — CHIUSA su main** …
++- ℹ️ **Micro-finding di processo — branch di sessione mai promosso a PR** (rilevato
++  2026-07-28): il branch `docs/stato-roadmap-hygiene` (`409ad54`) è rimasto **2 commit
++  avanti su main, 0 indietro, senza PR aperta** dalla sessione hygiene. Lavoro completo
++  (`/fine-task` eseguito, handoff presente, hook che ha pushato il branch) ma **mai
++  atterrato su main**, e **non registrato in nessun canonico**: per giorni i canonici
++  hanno descritto uno stato "post-merge hygiene" che non esisteva. Classe NUOVA: non è
++  gate saltato né scope creep, è **lavoro fatto che non atterra e sparisce dal radar**.
++  La memoria ha mentito per OMISSIONE. Recuperato con PR dedicata il 2026-07-28.
++  **Contromisura minima (disciplinare, non strutturale)**: a fine di ogni giro,
++  `git ls-remote --heads origin` e confronto col numero di head atteso; ogni head in
++  più va spiegata o chiusa. Fix strutturale possibile, NON impegnato: uno step in
++  `/fine-task` che stampi `gh pr list --head <branch>` e FERMI se è vuoto.
+ 
+ ### Sessione 2026-07-21 — chiusura giro item fuori-roadmap
+```
 
-## STOP GATE rispettato
+---
 
-Nessuna modifica a: gas.py, brains/, modules/, tests/, scripts/, .claude/hooks/, .claude/agents/memoria_revisore.md.
+## Dichiarazione scope
 
-## Punti fuori-scope NON eseguiti
+**Nessun altro file è stato toccato.** I due edit riguardano esclusivamente `reports/stato_progetto.md`. Nessuna modifica a gas.py, brains/, modules/, tests/, .claude/, .github/ o altri file. Nessun revisore invocato (doc-only per regola di progetto).
 
-Nessuno — tutti e 7 i punti eseguiti. Nessun out-of-scope rilevato che richiedesse la fermata prevista dal gate.
+Incoerenze aggiuntive rilevate durante la lettura (fuori scope, proposte per task separati):
+- La riga `### DA FARE — sviluppo/processo (aperti dal 2026-07-09)` riporta ancora "aperti dal 2026-07-09" nell'intestazione ma molti item sono ormai ✅ chiusi. Non toccata: riordinare intestazioni = rischio riformattazione fuori mandato.
+- La sezione "Istituzioni di processo" conta "68 review" — non verificato se aggiornato, fuori scope.
