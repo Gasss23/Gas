@@ -1,16 +1,17 @@
-# Diff sessione 2026-07-29 — doc-only: riconciliazione swap + branch orfano
+# Diff sessione 2026-07-29 — doc-only: regole operative vive + item aperti sepolti
 
 > Riscritto a ogni sessione. La storia completa sta in git.
 
 ## File toccati
 
-| File | Cosa è cambiato e perché |
-|------|--------------------------|
-| `reports/stato_progetto.md` | EDIT 1: punto (c) VPS riscritto da "Non decisa" a ✅ ESEGUITA a S1b — era detrito di 24 giorni. EDIT 2: voce ℹ️ micro-finding branch orfano aggiunta in fondo a "### DA FARE". Riga "Ultimo aggiornamento" aggiornata. |
-| `reports/ultimo_report.md` | Report di task aggiornato (era il report della sessione hygiene precedente). |
-| `reports/handoff.md` | Dossier di fine sessione (riscritto da sessione precedente). |
-| `reports/diff_sessione.md` | Questo file (riscritto da sessione precedente). |
+| File | Cosa è cambiato |
+|------|-----------------|
+| `reports/stato_progetto.md` | +52 righe: sezione `## Regole operative vive` (R1-R10) dopo Istituzioni di processo; 3 item aperti aggiunti a `### DA FARE` (Copia VPS stantia, Decisione APERTA Secondo account GitHub, Decisione APERTA Co-Authored-By). Zero cancellazioni. |
+| `reports/ultimo_report.md` | Report del task: mapping R1-R10, scan sezioni-sessione, STOP GATE, anomalia auto-commit. |
+| `reports/handoff.md` | Dossier di fine sessione con §0-§7. |
+| `reports/diff_sessione.md` | Questo file. |
 
-## Nota
+## Note
 
-Task doc-only. Nessun commit di motore (gas.py/brains/modules/tests). Nessun revisore invocato.
+- `stato_progetto.md` è già su main via PR #52 (auto-commit ae9e9b3 catturato dall'hook session_end e mergiato con `docs/swap-e-branch-orfano`). PR #53 aggiunge solo i file di report.
+- Nessun file del motore toccato. Revisore non invocato.
