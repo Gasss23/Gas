@@ -8,6 +8,12 @@
 
 ## ESITO: COMPLETATO ✅
 
+### Fette
+
+- **STEP 0 — Guard pre-archiviazione**: FATTO. Tutte le 6 sessioni archiviabili.
+- **STEP 1 — Archivia sessioni**: FATTO. 6 sezioni → stato_storico.md, rinvii al posto.
+- **STEP 2 — Archivia finding ✅**: FATTO. 9 finding → storico (testo integrale) + finding_archiviati.md (one-liner); riserve residue mantenute VERBATIM.
+
 ---
 
 ## STEP 0 — Guard pre-archiviazione
@@ -44,16 +50,6 @@ Dettaglio verifiche:
 | Sessione 2026-07-24 (p2) | sp[249:263] | 14 |
 | **TOTALE** | | **211 righe** |
 
-Rinvii lasciati in `stato_progetto.md`:
-```
-> Sessione 2026-07-24 archiviata in `reports/stato_storico.md`.
-> Sessione 2026-07-24 (p2) archiviata in `reports/stato_storico.md`.
-> Sessione 2026-07-21 archiviata in `reports/stato_storico.md`.
-> Sessione 2026-07-22 archiviata in `reports/stato_storico.md`.
-> Sessione 2026-07-22 (ℹ️ micro-finding processo — merge su main) archiviata in `reports/stato_storico.md`.
-> Sessione 2026-07-23 archiviata in `reports/stato_storico.md`.
-```
-
 ---
 
 ## STEP 2 — Finding ✅ archiviati
@@ -66,20 +62,6 @@ One-liner → `reports/finding_archiviati.md`.
 
 - **R-crm-1b**: corpo archiviato; riserve R1–R4 mantenute VERBATIM.
 - **R-gasmerge-failopen**: corpo archiviato; riserve #65-R1, #65-R2, #65-R3, #63-R1 mantenute VERBATIM.
-
-Finding archiviati:
-
-| Finding | Data chiusura | Note |
-|---|---|---|
-| R-legacy-slice | 2026-07-15 | branch cleanup F3 |
-| F6-history-atomica | 2026-07-16 | review #50, PR #19 |
-| R-crm-diario-rr | 2026-07-16 | review #18, PR fix/diario-recursive-triggers |
-| R-ci-hooks | 2026-07-18 | merge PR #23 |
-| R-hook-jq | 2026-07-19 | merge PR #25 |
-| R-ci-summary | 2026-07-23 | PR #41 |
-| R-ci-openrouter | 2026-07-24 | review #59, commit f6b6caa |
-| R-gasmerge-failopen | 2026-07-24 | review #62+#63+#65 — RISERVE RESIDUE |
-| R-crm-1b | 2026-07-27 | review #67+#68, merge PR #47 — RISERVE RESIDUE |
 
 ---
 
@@ -99,12 +81,3 @@ Finding archiviati:
 **Nota 🟡 count 20→16**: le 4 🟡 archiviate erano duplicati (2FA Hetzner + Copia VPS
 stantia già in DA FARE) o riferimenti storici `ex-🟡` in testo di finding ✅ già chiusi.
 Il corpus attivo delle 🟡 (16 voci) è rimasto invariato.
-
----
-
-## File toccati
-
-- `reports/stato_progetto.md` (470 → 235 righe)
-- `reports/stato_storico.md` (286 → 536 righe)
-- `reports/finding_archiviati.md` (35 → 44 righe)
-- `reports/ultimo_report.md` (questo file)
