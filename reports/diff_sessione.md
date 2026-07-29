@@ -1,17 +1,15 @@
-# Diff sessione 2026-07-29 — doc-only: regole operative vive + item aperti sepolti
+# Diff sessione — 2026-07-29
 
-> Riscritto a ogni sessione. La storia completa sta in git.
+Task: doc-only — archiviazione stato_progetto.md (6 sessioni + 9 finding ✅)
+Branch: docs/archiviazione-stato
 
 ## File toccati
 
-| File | Cosa è cambiato |
-|------|-----------------|
-| `reports/stato_progetto.md` | +52 righe: sezione `## Regole operative vive` (R1-R10) dopo Istituzioni di processo; 3 item aperti aggiunti a `### DA FARE` (Copia VPS stantia, Decisione APERTA Secondo account GitHub, Decisione APERTA Co-Authored-By). Zero cancellazioni. |
-| `reports/ultimo_report.md` | Report del task: mapping R1-R10, scan sezioni-sessione, STOP GATE, anomalia auto-commit. |
-| `reports/handoff.md` | Dossier di fine sessione con §0-§7. |
-| `reports/diff_sessione.md` | Questo file. |
-
-## Note
-
-- `stato_progetto.md` è già su main via PR #52 (auto-commit ae9e9b3 catturato dall'hook session_end e mergiato con `docs/swap-e-branch-orfano`). PR #53 aggiunge solo i file di report.
-- Nessun file del motore toccato. Revisore non invocato.
+| File | Cambio |
+|---|---|
+| `reports/stato_progetto.md` | Rimosse 6 sezioni-sessione (→ rinvii) + 9 finding ✅ (→ riserve residue o rimossi); 470→235 righe |
+| `reports/stato_storico.md` | Aggiunte 211 righe sessioni (§ Changelog) + 38 righe finding (§ Finding chiusi); 286→536 righe |
+| `reports/finding_archiviati.md` | Aggiunti 9 one-liner per i finding ✅ chiusi; 35→44 righe |
+| `reports/ultimo_report.md` | Report di fine task (questo task) |
+| `reports/handoff.md` | Dossier di fine sessione |
+| `reports/diff_sessione.md` | Questo file |
