@@ -5,71 +5,72 @@
 
 ---
 
-## §DECISIONI UMANE RICHIESTE
+## §0 DECISIONI UMANE RICHIESTE
 
-Nessuna decisione bloccante. Due segnalazioni informative:
-
-1. **🟡 count calo 20→16** (dichiarato in ultimo_report.md): i 4 cali sono strutturalmente
-   innocui (2 duplicati sessione + 2 ex-🟡 in finding chiusi), ma tecnicamente violano la
-   specifica numerica. L'operatore può confermare o richiedere un fix separato.
-
-2. **3 item ✅ galleggianti** (stato_progetto.md righe 186/191/192): R-crm-diario-rr,
-   Riserve hook, Backfill — fuori scope STEP 2. Proposta di cleanup in sessione dedicata.
+1. Merge della PR #55 (docs: verifica archiviazione stato PR #54 — 2026-07-29).
+2. Valutare il 🟡 count -4 (20→16): spiegato in ultimo_report.md come innocuo; conferma o richiesta di fix separato a discrezione dell'operatore.
+3. Decidere se i 3 item ✅ galleggianti (stato_progetto.md righe 186/191/192) richiedono cleanup in sessione dedicata.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **FETTA UNICA**: Verifica del lavoro di PR #54 — VERIFICATA ✅
-  - STEP 1 (6 sessioni archiviate): CONFERMATO
-  - STEP 2 (9 finding ✅ archiviati): CONFERMATO
-  - Conteggi righe 791→815: CONFERMATO
-  - Item aperti preservati: CONFERMATO
+- **Fetta unica — Verifica archiviazione PR #54**: `FATTA`
+  - STEP 0 guard: nessun item aperto sepolto nelle sessioni archiviate ✅
+  - STEP 1 (6 sessioni verbatim in storico): confermato ✅
+  - STEP 2 (9 finding ✅ archiviati, 0 ✅ nel Finding aperti): confermato ✅
+  - Righe 791→815 (+24): confermato ✅
+  - 🟡 count 20→16: calo di 4 dichiarato e spiegato ✅
 
 ---
 
-## §2 git diff --stat della sessione
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-reports/diff_sessione.md   |  24 ++++++++++++++++--------
-reports/handoff.md         |  55 +++++++++++++++++++++++++++++++++++++++------
-reports/ultimo_report.md   | 104 +++++++++++++++++++++++++++++++++++++++++++++
-3 files changed, ~183 insertions(+), ~14 deletions(-)
+ reports/diff_sessione.md |  29 +++++---
+ reports/handoff.md       |  75 ++++++++++----------
+ reports/ultimo_report.md | 179 ++++++++++++++++++++++++++++++++---------------
+ 3 files changed, 180 insertions(+), 103 deletions(-)
 ```
 
-(Solo report, nessuna modifica ai file di contenuto)
+---
+
+## §3 GIT LOG --ONELINE (sessione)
+
+```
+d1a0eca docs(fine-task): handoff + diff_sessione + ultimo_report — verifica archiviazione PR #54 2026-07-29
+```
+
+NB: il commit di fine-task che aggiorna questo file non compare nel log sopra, per costruzione.
 
 ---
 
-## §3 git log dei commit della sessione
+## §4 VERDETTO DEL REVISORE
 
-_(da completare dopo commit)_
-
----
-
-## §4 Delta test del motore
-
-Non applicabile — task doc-only, nessuna modifica al motore.
+Nessun diff motore, revisore non richiesto. Task doc-only: nessun commit tocca gas.py, brains/, modules/, tests/.
 
 ---
 
-## §5 Verdetto revisore
+## §5 DELTA TEST DEL MOTORE
 
-Non applicabile — task doc-only, nessun commit di motore.
-
----
-
-## §6 Stato CI
-
-Ultima CI nota: PR #54 merge `ed760d7` (2026-07-29) — il commit del motore
-associato era già su main; questa sessione non aggiunge commit di motore.
-Nessuna nuova run CI attesa o necessaria.
+Nessuna modifica a gas.py/tests/ in questa sessione.
 
 ---
 
-## §7 Nota di processo
+## §6 STATO CI
 
-PR #54 è stata mergiata PRIMA dell'inizio di questa sessione. Il task era già completo.
-La sessione ha eseguito la verifica post-facto del protocollo come descritto in STEP 0.
-Questo è il caso normale quando un task viene richiesto dopo che un'altra sessione
-l'ha già completato — la verifica resta utile come audit indipendente.
+```
+completed	success	docs(fine-task): handoff + diff_sessione + ultimo_report — verifica a…	CI	docs/archiviazione-stato	push	30476015335	51s	2026-07-29T17:35:16Z
+completed	success	Merge pull request #54 from Gasss23/docs/archiviazione-stato	CI	main	push	30474422234	59s	2026-07-29T17:14:27Z
+completed	success	docs(fine-task): handoff + diff_sessione + ultimo_report — archiviazi…	CI	docs/archiviazione-stato	push	30470867245	44s	2026-07-29T16:28:16Z
+```
+
+**Mappatura commit→run:**
+- `d1a0eca` (unico commit di sessione) → run `30476015335` su `docs/archiviazione-stato`, push, **SUCCESS** ✅
+
+---
+
+## §7 RISERVE APERTE
+
+- 🟡 count -4 (20→16): dichiarato in §1; strutturalmente innocuo ma viola la verifica numerica della specifica. Proposta: nessuna azione immediata, operatore valuta.
+- 3 item ✅ galleggianti (stato_progetto.md righe 186/191/192): fuori scope STEP 2, STOP GATE applicato. Proposta: cleanup in sessione dedicata.
