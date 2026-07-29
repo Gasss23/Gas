@@ -33,3 +33,12 @@
 - **2026-07-13** — Riserve review #44 A e C: commento inline `reasoning_effort` nei 3 brain; T36c legato a MODEL_GROQ (fonte unica). CHIUSE. (review #45, merge PR #4 3836111)
 - **2026-07-13** — Riserva #44B: prezzi Groq env-overridabili (`GAS_GROQ_PRICE_IN`/`GAS_GROQ_PRICE_OUT`), try/except per valore non parsabile, T44d. CHIUSA. (review #46, merge PR #6)
 - **2026-07-13** — Hardening token Claude Code: token Codespace OAuth (`ghu_*`) non ha Administration → lucchetto `main-lock` non aggirabile da Claude Code (verificato via curl, 404/403 su ruleset id 18805824). CHIUSO.
+- **2026-07-16** — F6-history-atomica: `_save_history` con tmp+`os.replace` atomico (fsync); `_load_history` quarantena file corrotto; test T59a/b/c. CI run `29484338680` ✅. CHIUSO. (review #50, PR #19 `9a9278e`)
+- **2026-07-15** — R-legacy-slice: `brains/claude_brain.py` rimosso con pulizia F3 — slicing `messages[-8:]` eliminato alla radice. CHIUSO. (branch cleanup F3)
+- **2026-07-16** — R-crm-diario-rr: `PRAGMA recursive_triggers = ON` in `MemoryStore._connect()`; test T19f-rr. CHIUSO CON RISERVE. (review #18, PR `fix/diario-recursive-triggers`)
+- **2026-07-18** — R-ci-hooks: `test_unit_hooks.py` aggiunto al job `unit-suite` di `ci.yml`. CI run `29645320495` ✅ SUCCESS. CHIUSO. (merge PR #23 `2f1e015`)
+- **2026-07-19** — R-hook-jq: `scrivi_rep.sh` fail-loud su jq assente/non funzionante; test T-hook-i/T-hook-j. CI run `29664233791` ✅. CHIUSO. (merge PR #25 `c609e31`)
+- **2026-07-23** — R-ci-summary: hook suite visibile nel Job Summary di `ci.yml` via `tee` + step summary. CI `30051234981` ✅. CHIUSO. (PR #41, merge `55959ef`)
+- **2026-07-24** — R-ci-openrouter: T9a/T9c deterministici — inject GEMINI/GROQ chiavi fittizie, eliminato `_has_live_keys`; cap loop agentico coperto in CI; 250 PASS, 0 SKIP. CHIUSO. (review #59, commit `f6b6caa`)
+- **2026-07-24** — R-gasmerge-failopen: 6 fix (fail-open git diff+grep, TOCTOU, jq check, scope IP, validazione param); FETTE 1-3; 11/11 PASS. 4 riserve residue (#65-R1, #65-R2, #65-R3, #63-R1). CHIUSO CON RISERVE. (review #62+#63+#65)
+- **2026-07-27** — R-crm-1b: email+merge+idempotenza+telefono+esposizione operatore (`gas doctor` CRM + `gas duplicati`); 276 PASS. 4 riserve residue R1–R4. CHIUSO CON RISERVE. (review #67+#68, merge PR #47 `d67b12a`)

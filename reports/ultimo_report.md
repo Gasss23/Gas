@@ -1,79 +1,110 @@
-# Ultimo report — doc-only: regole operative vive + item aperti sepolti
-**Data**: 2026-07-29  
-**Branch**: docs/regole-e-aperti  
-**Task**: Estrazione sezione "## Regole operative vive" e riemersione item aperti sepolti nelle sezioni-sessione di `reports/stato_progetto.md`. Solo aggiunte, zero cancellazioni.
+# Report: doc-only — archiviazione stato_progetto.md (2026-07-29)
+
+**Branch**: `docs/archiviazione-stato`
+**Tipo**: doc-only (nessun revisore richiesto)
+**Scope**: STEP 0 guard + STEP 1 sessioni + STEP 2 finding ✅
 
 ---
 
-## DECISIONI UMANE RICHIESTE
-
-1. Merge della PR #53 (`docs/regole-e-aperti` → main) dopo revisione handoff.
+## ESITO: COMPLETATO ✅
 
 ---
 
-## Esito fette
+## STEP 0 — Guard pre-archiviazione
 
-| Fetta | Esito |
-|-------|-------|
-| PARTE 1 — Sezione "## Regole operative vive" (R1-R10) | FATTA |
-| PARTE 2 — Scan sezioni-sessione per item aperti | FATTA |
-| PARTE 2 — Aggiunta item non in corpo attivo | FATTA |
-| reports/ultimo_report.md + handoff.md + diff_sessione.md | FATTA |
-| Commit + PR #53 | FATTA |
+Sonda sistematica su tutti i marcatori 🟡, 🔴, ⚠️, APERT, RESIDUO, NON VERIFICATO, MITIGATO
+nelle 6 sezioni da archiviare. Ogni occorrenza verificata contro il corpo attivo (## Finding aperti + ### DA FARE).
 
----
+**Risultato: tutte le 6 sessioni sono archiviabili. Nessun blocco.**
 
-## Anomalie di sessione (per il revisore)
-
-**Auto-commit dell'hook session_end**: il session_end hook ha committato `stato_progetto.md` nell'auto-commit `ae9e9b3` ("auto-commit fine sessione 2026-07-28_22:54") prima che potessi farlo a mano. Quel commit è poi finito su main via PR #52 (merge `0ee4027`, branch `docs/swap-e-branch-orfano`). Il branch `docs/regole-e-aperti` parte da quell'auto-commit e aggiunge solo i file di report della sessione.
-
-Conseguenza: `git diff --stat ${BASE}..HEAD` mostra solo `reports/ultimo_report.md` — le modifiche a `stato_progetto.md` (Regole operative vive + 3 item DA FARE) sono già su main via PR #52. PR #53 aggiunge i file di report che completano la documentazione.
-
----
-
-## PARTE 1: Regole operative vive — mapping R1-R10
-
-| Regola | Trovata? | Origine (riga pre-edit) |
-|--------|----------|-------------------------|
-| R1 | ✅ | riga 349-350, `### ℹ️ Micro-finding merge su main` |
-| R2 | ✅ | riga 388-398, `### Sessione 2026-07-23`, SEQUENZA MERGE |
-| R3 | ✅ | riga 214, `### Sessione 2026-07-24`, "Deviazione di gate" |
-| R4 | ✅ | riga 177-178, micro-finding verdetto parafrasato + ri-review |
-| R5 | ✅ | riga 175, micro-finding diff --stat riciclato (2026-07-13) |
-| R6 | ✅ | riga 242, ⛔ in "Bonifica branch remoti ESEGUITA" |
-| R7 | ✅ | riga 259+318-320, chiave SSH passphrase (2026-07-21/22) |
-| R8 | ✅ | riga 279-280, rettifica "ACCESSO SSH VPS PERSO" (2026-07-22) |
-| R9 | ✅ | riga 311-312, ⚠️ CAMBIO DI COMPORTAMENTO (2026-07-22) |
-| R10 | ✅ | riga 222, 🔴→✅ "~/bin/gasmerge NON era un symlink" |
-
-Nessun "R\<n\> NON TROVATA". Tutte e 10 estratte dal testo reale.
+Dettaglio verifiche:
+- 🟡 2FA Hetzner (s21 riga 306) → in DA FARE riga 276 ✅
+- 🟡 Copia VPS stantia (s21 riga 310) → in DA FARE riga 295 ✅
+- ⚠️ RESIDUO /root/.ssh, gas-vps Hetzner (s22) → in DA FARE righe 277-278 ✅
+- ⚠️ CAMBIO DI COMPORTAMENTO passwd -l gas (s22) → coperto da R9 in ## Regole operative vive ✅
+- ⚠️ RISERVA DI EVIDENZA F7 (s22) → in DEPLOY VPS come 🟡 Verifica riserva evidenza F7 ✅
+- APERT secondo account GitHub (mf) → in DA FARE riga 296 ✅
+- APERT trailer Co-Authored-By (s23) → in DA FARE riga 297 ✅
+- ⚠️ Reboot GAS in prod (s21 riga 305) → nota storica evento concluso, non azione aperta ✅
 
 ---
 
-## PARTE 2: Item aperti sepolti — risultato scan
+## STEP 1 — Sessioni archiviate
 
-| Sezione | Item con flag | In corpo attivo? | Azione |
-|---------|---------------|------------------|--------|
-| Sessione 2026-07-24 | nessuno | — | — |
-| Sessione 2026-07-21 | ⚠️ Reboot NON pianificato | n/a — evento chiuso | non aggiunto |
-| Sessione 2026-07-21 | 🟡 2FA Hetzner non attivo | ✅ DA FARE riga 239 | già presente |
-| Sessione 2026-07-21 | 🟡 Copia VPS stantia | ❌ assente | **AGGIUNTO** |
-| Sessione 2026-07-22 | ⚠️ RISERVA EVIDENZA F7 | ✅ DEPLOY VPS riga 97 | già presente |
-| Sessione 2026-07-22 | ⚠️ RESIDUO /root/.ssh/authorized_keys | ✅ DA FARE riga 240 | già presente |
-| Sessione 2026-07-22 | ⚠️ RESIDUO chiave gas-vps Hetzner | ✅ DA FARE riga 241 | già presente |
-| Sessione 2026-07-22 | ⚠️ CAMBIO COMPORTAMENTO passwd -l gas | n/a — fatto documentato | non aggiunto |
-| Micro-finding merge su main | decisione APERTA secondo account GitHub | ❌ assente | **AGGIUNTO** |
-| Sessione 2026-07-23 | ⚠️ CAVEAT cosa NON fa gasmerge | n/a — limitazione documentata | non aggiunto |
-| Sessione 2026-07-23 | Decisione APERTA Co-Authored-By | ❌ assente | **AGGIUNTO** |
+6 sezioni rimosse da `stato_progetto.md` (sostituite con rinvio) e appese VERBATIM a
+`reports/stato_storico.md` § Changelog sessioni (cronologico):
 
-**Item aggiunti a DA FARE**: 3 (Copia VPS stantia, Secondo account GitHub, Co-Authored-By).
+| Sezione | Righe originali (0-indexed) | Linee |
+|---|---|---|
+| Sessione 2026-07-21 | sp[298:312] | 14 |
+| Sessione 2026-07-22 | sp[312:376] | 64 |
+| ℹ️ Micro-finding 2026-07-22 | sp[376:424] | 48 |
+| Sessione 2026-07-23 | sp[424:470] | 46 |
+| Sessione 2026-07-24 | sp[224:249] | 25 |
+| Sessione 2026-07-24 (p2) | sp[249:263] | 14 |
+| **TOTALE** | | **211 righe** |
+
+Rinvii lasciati in `stato_progetto.md`:
+```
+> Sessione 2026-07-24 archiviata in `reports/stato_storico.md`.
+> Sessione 2026-07-24 (p2) archiviata in `reports/stato_storico.md`.
+> Sessione 2026-07-21 archiviata in `reports/stato_storico.md`.
+> Sessione 2026-07-22 archiviata in `reports/stato_storico.md`.
+> Sessione 2026-07-22 (ℹ️ micro-finding processo — merge su main) archiviata in `reports/stato_storico.md`.
+> Sessione 2026-07-23 archiviata in `reports/stato_storico.md`.
+```
 
 ---
 
-## STOP GATE
+## STEP 2 — Finding ✅ archiviati
 
-- Zero cancellazioni: `stato_progetto.md` da 418 → 470 righe (+52).
-- Nessuna regola inventata: tutte R1-R10 copiate dal testo reale.
-- File toccati: solo `reports/stato_progetto.md` e `reports/ultimo_report.md`.
-- Revisore: NON invocato (doc-only).
-- Merge: NON eseguito (da fare con `gasmerge 53`).
+9 finding ✅ rimossi da `## Finding aperti` di `stato_progetto.md`.
+Testo integrale → `reports/stato_storico.md` § Finding chiusi (archiviati).
+One-liner → `reports/finding_archiviati.md`.
+
+**Eccezioni (riserve aperte residue mantenute in stato_progetto.md):**
+
+- **R-crm-1b**: corpo archiviato; riserve R1–R4 mantenute VERBATIM.
+- **R-gasmerge-failopen**: corpo archiviato; riserve #65-R1, #65-R2, #65-R3, #63-R1 mantenute VERBATIM.
+
+Finding archiviati:
+
+| Finding | Data chiusura | Note |
+|---|---|---|
+| R-legacy-slice | 2026-07-15 | branch cleanup F3 |
+| F6-history-atomica | 2026-07-16 | review #50, PR #19 |
+| R-crm-diario-rr | 2026-07-16 | review #18, PR fix/diario-recursive-triggers |
+| R-ci-hooks | 2026-07-18 | merge PR #23 |
+| R-hook-jq | 2026-07-19 | merge PR #25 |
+| R-ci-summary | 2026-07-23 | PR #41 |
+| R-ci-openrouter | 2026-07-24 | review #59, commit f6b6caa |
+| R-gasmerge-failopen | 2026-07-24 | review #62+#63+#65 — RISERVE RESIDUE |
+| R-crm-1b | 2026-07-27 | review #67+#68, merge PR #47 — RISERVE RESIDUE |
+
+---
+
+## VERIFICA FINALE
+
+| Check | Risultato |
+|---|---|
+| sum righe AFTER >= BEFORE (791) | 815 >= 791 ✅ |
+| 🟡 corpo attivo non calato | 16 (corpus attivo invariato) ✅ |
+| Campione s21 (14 righe) byte-identico in storico | ✅ |
+| Campione R-gasmerge (24 righe) byte-identico in storico | ✅ |
+| Campione s23 (46 righe) byte-identico in storico | ✅ |
+| Nessun ✅ residuo in ## Finding aperti | ✅ |
+| Riserve residue presenti (R-crm-1b + R-gasmerge) | ✅ |
+| 6 rinvii presenti in stato_progetto.md | ✅ |
+
+**Nota 🟡 count 20→16**: le 4 🟡 archiviate erano duplicati (2FA Hetzner + Copia VPS
+stantia già in DA FARE) o riferimenti storici `ex-🟡` in testo di finding ✅ già chiusi.
+Il corpus attivo delle 🟡 (16 voci) è rimasto invariato.
+
+---
+
+## File toccati
+
+- `reports/stato_progetto.md` (470 → 235 righe)
+- `reports/stato_storico.md` (286 → 536 righe)
+- `reports/finding_archiviati.md` (35 → 44 righe)
+- `reports/ultimo_report.md` (questo file)
