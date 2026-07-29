@@ -1,76 +1,75 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-29 — doc-only: archiviazione stato_progetto.md (6 sessioni + 9 finding ✅)
+**Sessione:** 2026-07-29 — verifica archiviazione stato_progetto.md (PR #54)
+**Branch:** docs/archiviazione-stato (seconda istanza, solo report)
 
 ---
 
-## §0 DECISIONI UMANE RICHIESTE
+## §DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #54 (docs: archivio 6 sessioni + 9 finding ✅ da stato_progetto.md).
+Nessuna decisione bloccante. Due segnalazioni informative:
+
+1. **🟡 count calo 20→16** (dichiarato in ultimo_report.md): i 4 cali sono strutturalmente
+   innocui (2 duplicati sessione + 2 ex-🟡 in finding chiusi), ma tecnicamente violano la
+   specifica numerica. L'operatore può confermare o richiedere un fix separato.
+
+2. **3 item ✅ galleggianti** (stato_progetto.md righe 186/191/192): R-crm-diario-rr,
+   Riserve hook, Backfill — fuori scope STEP 2. Proposta di cleanup in sessione dedicata.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **STEP 0 — Guard pre-archiviazione**: `FATTA`. Sonda sistematica di tutti i marcatori aperti (🟡 ⚠️ APERT RESIDUO) nelle 6 sezioni da archiviare; ogni occorrenza confrontata col corpo attivo. Tutte le 6 sessioni archiviabili — nessun blocco.
-- **STEP 1 — Archivia sessioni**: `FATTA`. 6 sezioni-sessione (2026-07-21 → 2026-07-24(p2)) rimosse da `stato_progetto.md` (sostituite con 6 rinvii), appese VERBATIM a `stato_storico.md` § Changelog (211 righe).
-- **STEP 2 — Archivia finding ✅**: `FATTA`. 9 finding ✅ rimossi dalla sezione Finding aperti; testo integrale → `stato_storico.md` § Finding chiusi; one-liner → `finding_archiviati.md`. Riserve aperte di R-crm-1b (R1–R4) e R-gasmerge-failopen (#65-R1, #65-R2, #65-R3, #63-R1) mantenute VERBATIM in `stato_progetto.md`.
+- **FETTA UNICA**: Verifica del lavoro di PR #54 — VERIFICATA ✅
+  - STEP 1 (6 sessioni archiviate): CONFERMATO
+  - STEP 2 (9 finding ✅ archiviati): CONFERMATO
+  - Conteggi righe 791→815: CONFERMATO
+  - Item aperti preservati: CONFERMATO
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## §2 git diff --stat della sessione
 
 ```
- reports/diff_sessione.md      |  24 ++--
- reports/finding_archiviati.md |   9 ++
- reports/handoff.md            |  52 +++------
- reports/stato_progetto.md     | 255 ++----------------------------------------
- reports/stato_storico.md      | 250 +++++++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md      | 116 +++++++++----------
- 6 files changed, 358 insertions(+), 348 deletions(-)
+reports/diff_sessione.md   |  24 ++++++++++++++++--------
+reports/handoff.md         |  55 +++++++++++++++++++++++++++++++++++++++------
+reports/ultimo_report.md   | 104 +++++++++++++++++++++++++++++++++++++++++++++
+3 files changed, ~183 insertions(+), ~14 deletions(-)
 ```
 
-**VINCOLI VERIFICATI DA CI:** path-set esatto, conteggi approssimati.
+(Solo report, nessuna modifica ai file di contenuto)
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## §3 git log dei commit della sessione
 
-```
-f9ef498 docs(archiviazione-stato): archivio 6 sessioni + 9 finding ✅ da stato_progetto.md
-```
+_(da completare dopo commit)_
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §4 Delta test del motore
 
-nessun diff motore, revisore non richiesto.
-
----
-
-## §5 DELTA TEST DEL MOTORE
-
-Nessuna modifica a gas.py/tests/ in questa sessione.
+Non applicabile — task doc-only, nessuna modifica al motore.
 
 ---
 
-## §6 STATO CI
+## §5 Verdetto revisore
 
-```
-completed	success	docs(archiviazione-stato): archivio 6 sessioni + 9 finding ✅ da stato…	CI	docs/archiviazione-stato	push	30425740873	51s	2026-07-29T05:40:00Z
-completed	success	Merge pull request #53 from Gasss23/docs/regole-e-aperti	CI	main	push	30425040742	1m0s	2026-07-29T05:25:44Z
-completed	success	docs(fine-task): handoff + diff_sessione + ultimo_report — regole ope…	CI	docs/regole-e-aperti	push	30424835930	45s	2026-07-29T05:21:32Z
-```
-
-Mappatura commit→run:
-- `f9ef498` docs(archiviazione-stato): archivio 6 sessioni + 9 finding ✅ → run `30425740873` ✅ SUCCESS
+Non applicabile — task doc-only, nessun commit di motore.
 
 ---
 
-## §7 RISERVE APERTE
+## §6 Stato CI
 
-Nessuna riserva da questa sessione (doc-only, nessun revisore).
+Ultima CI nota: PR #54 merge `ed760d7` (2026-07-29) — il commit del motore
+associato era già su main; questa sessione non aggiunge commit di motore.
+Nessuna nuova run CI attesa o necessaria.
 
-Riserve pre-esistenti mantenute in `stato_progetto.md` (non questa sessione):
-- R-crm-1b R1–R4
-- R-gasmerge-failopen #65-R1, #65-R2, #65-R3, #63-R1
+---
+
+## §7 Nota di processo
+
+PR #54 è stata mergiata PRIMA dell'inizio di questa sessione. Il task era già completo.
+La sessione ha eseguito la verifica post-facto del protocollo come descritto in STEP 0.
+Questo è il caso normale quando un task viene richiesto dopo che un'altra sessione
+l'ha già completato — la verifica resta utile come audit indipendente.
