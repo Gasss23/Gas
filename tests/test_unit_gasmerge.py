@@ -407,6 +407,38 @@ class TestIPAllowlist:
         )
 
 
+def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:
+    """Stub gh: headRefOid sempre identico (head invariata), pr merge registra argomenti.
+
+    Il merge_log viene scritto SOLO quando gh riceve 'pr merge': se il file non esiste
+    dopo l'esecuzione, il merge non è stato chiamato. Se esiste, il test può asserire
+    che --match-head-commit <sha> compaia come coppia negli argomenti registrati.
+    """
+    stub = fake_bin / "gh"
+    merge_log_path = str(merge_log)
+    stub.write_text(f"""#!/usr/bin/env bash
+case "$*" in
+  *"headRefName,title,state"*)
+    printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > /tmp/gaspr.json
+    exit 0 ;;
+  *"--watch"*)
+    exit 0 ;;
+  *"name,bucket"*)
+    printf '%s\\n' '[{{"name":"unit-suite","bucket":"pass"}}]'
+    exit 0 ;;
+  *"headRefOid"*)
+    echo "{sha}"
+    exit 0 ;;
+  *"pr merge"*)
+    echo "$@" >> "{merge_log_path}"
+    exit 0 ;;
+  *)
+    exit 0 ;;
+esac
+""")
+    stub.chmod(0o755)
+
+
 class TestTOCTOU:
     """TOCTOU: HEAD_SHA cambia tra cattura pre-read e ri-verifica post-read → BLOCCO."""
 
@@ -456,4 +488,49 @@ esac
         )
         assert "BLOCCO" in result.stdout and "head cambiata" in result.stdout, (
             f"Atteso BLOCCO head cambiata: stdout={result.stdout!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# TOCTOU positivo: head invariata → --match-head-commit passato con SHA corretto
+# ---------------------------------------------------------------------------
+
+class TestTOCTOUPositive:
+    """TOCTOU positivo: HEAD invariata → gh pr merge invocato CON --match-head-commit <SHA>.
+
+    Il difetto che questo test cattura è --match-head-commit assente o SHA sbagliato.
+    Un test che asserisce solo 'exit 0' non vale nulla: passerebbe anche se il flag
+    sparisse. Il test legge il merge_log scritto dallo stub e verifica la coppia
+    '--match-head-commit <SHA_atteso>' negli argomenti reali.
+    """
+
+    _SHA = "abc1234def5678abc1234def5678abc1234de"
+
+    def test_head_unchanged_merge_uses_match_head_commit(self, tmp_path):
+        """HEAD invariata → gh pr merge include --match-head-commit <SHA_atteso>.
+
+        Lo stub restituisce sempre lo stesso SHA per headRefOid (head non cambia).
+        Gli argomenti di pr merge vengono scritti su merge_log. Il test asserisce
+        che '--match-head-commit <SHA>' compaia come coppia nel log.
+        """
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge_args.log"
+        _make_stub_gh_recording_merge(fake_bin, merge_log, self._SHA)
+
+        result = _run_with_stdin(work, fake_bin, stdin_data="123\n")
+
+        assert result.returncode == 0, (
+            f"Atteso exit 0 con head invariata, got {result.returncode}; "
+            f"stdout={result.stdout!r}; stderr={result.stderr!r}"
+        )
+        assert merge_log.exists(), (
+            f"Stub non ha scritto merge_log — 'pr merge' non è stato chiamato; "
+            f"stdout={result.stdout!r}"
+        )
+        recorded = merge_log.read_text()
+        assert f"--match-head-commit {self._SHA}" in recorded, (
+            f"'--match-head-commit {self._SHA}' NON trovato negli argomenti di pr merge. "
+            f"Registrato: {recorded!r}"
         )
