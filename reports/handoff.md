@@ -31,12 +31,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md     |  34 ++++++++++
- reports/handoff.md           |  80 +++++++++++++++++++++
- reports/stato_progetto.md    |   6 +-
- reports/ultimo_report.md     |  93 +++++++++++++++++++++++++
- tests/test_unit_gasmerge.py  |  77 +++++++++++++++++++++
- 5 files changed, 287 insertions(+), 3 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ reports/diff_sessione.md           |  38 +++++---
+ reports/handoff.md                 |  89 ++++++++++-------
+ reports/stato_progetto.md          |   6 +-
+ reports/ultimo_report.md           | 191 ++++++++++++++-----------------------
+ tests/test_unit_gasmerge.py        |  77 +++++++++++++++
+ 6 files changed, 231 insertions(+), 171 deletions(-)
 ```
 
 ---
@@ -44,9 +45,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+67df8a1 docs(fine-task): ultimo_report + handoff + diff_sessione — copertura POSITIVA --match-head-commit 2026-07-30
 c21696d test(gasmerge): copertura POSITIVA end-to-end di --match-head-commit (#65-R2/#63-R2)
 ```
-(+ commit report, da fare dopo questo handoff)
 
 ---
 
@@ -88,8 +89,15 @@ Suite kernel (276 PASS): non toccata in questa sessione.
 
 ---
 
-## §6 STATO CI (ultima run su main)
+## §6 STATO CI
 
-Ultimo merge su main: PR #55 (`8cc5d5e`, 2026-07-29).
-La PR corrente (test/gasmerge-match-head) è in fase di apertura — CI run non ancora
-disponibile. Il check richiesto da main-lock è `unit-suite`.
+```
+completed  failure  docs(fine-task): ultimo_report + handoff + diff_sessione — copertura …  CI  test/gasmerge-match-head  push  30562518669  59s  2026-07-30T16:40:25Z
+completed  success  docs(fine-task): rigenera handoff.md — §2 corretto (7 file vs 3) per …  CI  fix/gasmerge-hardening      push  30502504715  1m25s  2026-07-30T00:23:04Z
+completed  failure  docs(fine-task): ultimo_report + handoff + stato + diff — fix/gasmerg…  CI  fix/gasmerge-hardening      push  30502331055  1m11s  2026-07-30T00:19:40Z
+```
+
+**Mappatura commit→run:**
+- `67df8a1` (docs fine-task prev): run `30562518669` — **FAILURE** (handoff-check: `.claude/agents/memoria_revisore.md` in diff ma NON in §2). Fix applicato in questo commit.
+- `c21696d` (test gasmerge): commit intermedio — nessuna run diretta su questo SHA (testato nell'albero di `67df8a1`).
+- Commit corrente (/fine-task regen): run non ancora disponibile alla scrittura dell'handoff.

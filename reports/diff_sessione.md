@@ -6,6 +6,7 @@ Task: test-only — copertura POSITIVA end-to-end `--match-head-commit` (#65-R2/
 
 - `tests/test_unit_gasmerge.py` — aggiunta `_make_stub_gh_recording_merge` +
   `TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit` (+77 righe)
+- `.claude/agents/memoria_revisore.md` — riga #69 aggiunta dal subagent revisore
 - `reports/ultimo_report.md` — riscritto con esito task
 - `reports/diff_sessione.md` — riscritto (questo file)
 - `reports/stato_progetto.md` — review 68→69, #65-R2 marcato ✅ CHIUSO, test count 11→12
