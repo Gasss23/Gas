@@ -1,152 +1,105 @@
-# Ultimo Report — Verifica archiviazione stato (2026-07-29)
+# Ultimo Report — Test TOCTOU positivo --match-head-commit (2026-07-30)
 
-**Task**: doc-only — verifica del lavoro di PR #54 (`docs/archiviazione-stato`)
-**Branch**: docs/archiviazione-stato (seconda istanza, verifica)
-**Esito**: PR #54 VERIFICATO — task già completato correttamente
+**Task**: test-only — copertura POSITIVA end-to-end di `--match-head-commit` (#65-R2/#63-R2)
+**Branch**: test/gasmerge-match-head
+**Esito**: ✅ COMPLETATO — #65-R2 CHIUSO, 11→12 test gasmerge, mordacità verificata
 
 ---
 
 ## ESITO DEL TASK
 
-Il task di archiviazione (STEP 1: 6 sessioni + STEP 2: 9 finding ✅) è stato completato
-da PR #54 (`f9ef498`, mergiata `ed760d7`). La presente sessione ha eseguito la
-verifica secondo il protocollo STEP 0 del task.
+Aggiunta `TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit` a
+`tests/test_unit_gasmerge.py`. Il test chiude il finding #65-R2/#63-R2:
+copertura POSITIVA della coppia `--match-head-commit <SHA>` invocata da `gasmerge`.
 
-**Nessuna modifica ai file di contenuto** (stato_progetto.md, stato_storico.md,
-finding_archiviati.md) — il lavoro era già fatto correttamente.
-
----
-
-## STEP 0 — GUARD PRE-ARCHIVIAZIONE (verifica a posteriori)
-
-### a) Conteggi righe
-
-| File | PRIMA (PR #53, `5aa6ee1`) | DOPO (PR #54, attuale) |
-|------|---------------------------|------------------------|
-| `reports/stato_progetto.md` | 470 | 235 |
-| `reports/stato_storico.md` | 286 | 536 |
-| `reports/finding_archiviati.md` | 35 | 44 |
-| **TOTALE** | **791** | **815** |
-
-DOPO (815) > PRIMA (791): **+24 righe** — nessuna perdita di testo. ✅
-
-### b/c) Verifica item aperti nelle sezioni archiviate
-
-Per ogni sezione archiviata, ogni marcatore 🟡/⚠️/RESIDUO/APERT/MITIGATO è stato
-verificato contro il corpo attivo di `stato_progetto.md`:
-
-**Sessione 2026-07-21** (storico righe 136-148):
-- `🟡 2FA Hetzner non attivo` → stato_progetto.md riga 209 ✅
-- `🟡 Copia VPS stantia vs origin/main` → stato_progetto.md riga 228 ✅
-- `⚠️ Reboot GAS in prod NON pianificato` → evento PASSATO risolto (GAS ripartito da solo), non item aperto ✅
-
-**Sessione 2026-07-22** (storico righe 150-212):
-- `⚠️ RISERVA DI EVIDENZA` F7 → stato_progetto.md riga 69 (`🟡 Verifica riserva evidenza F7`) ✅
-- `⚠️ RESIDUO NON VERIFICATO` /root/.ssh → stato_progetto.md riga 210 ✅
-- `MITIGATO, non chiuso` (idem) ✅
-- `⚠️ RESIDUO` chiave gas-vps in Hetzner → stato_progetto.md riga 211 ✅
-- `⚠️ CAMBIO DI COMPORTAMENTO` passwd -l → R9 in "## Regole operative vive" ✅
-
-**Sessione ℹ️ Micro-finding merge su main** (storico righe 214-260):
-- `decisione APERTA` secondo account GitHub → stato_progetto.md riga 229 ✅
-
-**Sessione 2026-07-23** (storico righe 262-307):
-- `⚠️ CAVEAT — cosa NON fa` gasmerge → R2 in "## Regole operative vive" ✅
-- `Decisione APERTA` Co-Authored-By → stato_progetto.md riga 230 ✅
-
-**Sessioni 2026-07-24 e 2026-07-24 (p2)** (storico righe 308-345):
-- Nessun item aperto autonomo ✅
-
-**STOP GATE: NESSUNA sezione archiviata conteneva item aperti non presenti nel corpo attivo.** ✅
+**Nessuna modifica a `scripts/gasmerge.sh`** nel diff finale (verificato con `git diff`).
 
 ---
 
-## STEP 1 — SESSIONI (verifica)
+## COSA FA IL TEST
 
-Sei sezioni archiviate presenti verbatim in `reports/stato_storico.md`:
-- `### Sessione 2026-07-21 — chiusura giro item fuori-roadmap` (righe 136-148)
-- `### Sessione 2026-07-22 — rientro accesso VPS + chiusura F7` (righe 150-212)
-- `### ℹ️ Micro-finding di processo — merge su main eseguito da dentro Claude Code` (righe 214-260)
-- `### Sessione 2026-07-23 — allineamento canonici` (righe 262-307)
-- `### Sessione 2026-07-24 — sanare venv, T9a/T9c deterministici` (righe 308-331)
-- `### Sessione 2026-07-24 (p2) — merge PR #43 e registrazioni di processo` (righe 333-345)
+Scenario: HEAD invariata tra pre-prompt e post-prompt (TOCTOU check supera) →
+`gh pr merge` viene invocato con `--match-head-commit <SHA_atteso>`.
 
-Campione verbatim (Sessione 2026-07-21, prima riga dopo l'header):
+Meccanismo di asserzione:
+- Stub `_make_stub_gh_recording_merge`: intercetta `pr merge` e scrive gli argomenti
+  su `merge_log` (path in `tmp_path`), poi esce 0.
+- Il test:
+  1. `assert result.returncode == 0` — nessun BLOCCO spurio
+  2. `assert merge_log.exists()` — `pr merge` è stato effettivamente chiamato
+  3. `assert f"--match-head-commit {SHA}" in recorded` — la coppia flag+SHA è presente
+
+Un test che asserisce solo "exit 0" passerebbe anche se il flag sparisse: questa
+asserzione è la misura effettiva della mordacità richiesta.
+
+---
+
+## PROVA DI MORDACITÀ (obbligatoria)
+
+Rimossa temporaneamente la riga `--match-head-commit "$HEAD_SHA"` da `gasmerge.sh`,
+eseguito il test → **FALLISCE** con:
+
 ```
-- ✅ **Scrub IP/SSH** (2026-07-20, PR #32 `f2679a4`): IP via da HEAD, verificato su albero mergiato via git grep (esatto+parziale = 0). Stato **MITIGATO** (resta in history pubblica → cura = privatizzazione, roadmap item 0).
+AssertionError: '--match-head-commit abc1234def5678abc1234def5678abc1234de' NON trovato
+negli argomenti di pr merge. Registrato: 'pr merge 123 --merge --delete-branch\n'
 ```
-Identico al testo nel commit `f9ef498` e nell'attuale `stato_storico.md`. ✅
 
-Archive reference in `stato_progetto.md` per ognuna delle 6 sessioni: presenti. ✅
-
----
-
-## STEP 2 — FINDING ✅ (verifica)
-
-Nove finding archiviati da PR #54:
-
-| # | Data | Finding | Note |
-|---|------|---------|------|
-| 28 | 2026-07-15 | R-legacy-slice | finding_archiviati.md riga 37 |
-| 29 | 2026-07-16 | F6-history-atomica | finding_archiviati.md riga 36 |
-| 30 | 2026-07-16 | R-crm-diario-rr | finding_archiviati.md riga 38 |
-| 31 | 2026-07-18 | R-ci-hooks | finding_archiviati.md riga 39 |
-| 32 | 2026-07-19 | R-hook-jq | finding_archiviati.md riga 40 |
-| 33 | 2026-07-23 | R-ci-summary | finding_archiviati.md riga 41 |
-| 34 | 2026-07-24 | R-ci-openrouter | finding_archiviati.md riga 42 |
-| 35 | 2026-07-24 | R-gasmerge-failopen | finding_archiviati.md riga 43; **riserve aperte residue mantenute** |
-| 36 | 2026-07-27 | R-crm-1b | finding_archiviati.md riga 44; **riserve aperte residue mantenute** |
-
-`## Finding aperti (🟡 attivi)` in stato_progetto.md: **zero ✅** — conforme al STEP 2. ✅
-
-Riserve aperte presenti verbatim in stato_progetto.md:
-- R-gasmerge-failopen: #65-R1, #65-R2, #65-R3, #63-R1 (righe 59-62) ✅
-- R-crm-1b: R1, R2, R3, R4 (righe 53-54) ✅
+Ripristinato `gasmerge.sh`, `git diff scripts/gasmerge.sh` → vuoto ✅.
 
 ---
 
-## VERIFICA FINALE
+## SUITE GASMERGE (prima → dopo)
 
-### Conteggio 🟡 (declared issue)
+**Prima (main):** 11 test — tutti PASS
+**Dopo (test/gasmerge-match-head):** 12 test — tutti PASS
 
-| Quando | Conteggio linee con 🟡 in stato_progetto.md |
-|--------|---------------------------------------------|
-| PRIMA (PR #53) | 20 |
-| DOPO (PR #54, attuale) | 16 |
-| Delta | **-4** |
+```
+tests/test_unit_gasmerge.py::TestArgValidation::test_no_arg_exits_2 PASSED
+tests/test_unit_gasmerge.py::TestArgValidation::test_non_numeric_arg_exits_2 PASSED
+tests/test_unit_gasmerge.py::TestJqCheck::test_broken_jq_exits_with_message PASSED
+tests/test_unit_gasmerge.py::TestPRState::test_pr_not_open_blocks PASSED
+tests/test_unit_gasmerge.py::TestIPGuard::test_git_grep_error_blocks PASSED
+tests/test_unit_gasmerge.py::TestIPGuard::test_ip_outside_reports_blocks PASSED
+tests/test_unit_gasmerge.py::TestDiffGuard::test_git_diff_name_only_error_blocks PASSED
+tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_with_marker_passes PASSED
+tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_without_marker_blocks PASSED
+tests/test_unit_gasmerge.py::TestIPAllowlist::test_public_ip_without_marker_blocks PASSED
+tests/test_unit_gasmerge.py::TestTOCTOU::test_head_changed_during_confirm_blocks PASSED
+tests/test_unit_gasmerge.py::TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit PASSED
 
-La specifica dice "NON deve calare." Il calo è di 4. **Spiegazione verificata:**
-- **-2**: duplicati interni alle sessioni (`🟡 2FA Hetzner non attivo` e `🟡 Copia VPS stantia`
-  erano SIA nel corpo della sessione (archiviate) SIA nel corpo attivo di `stato_progetto.md`
-  come voci separate. Il calo rimuove le copie nelle sessioni; le voci del corpo attivo restano.
-- **-2**: marcatori `// ex-🟡` all'interno di finding ✅ CHIUSI (R-ci-hooks e R-ci-summary),
-  testo storico dentro voci già chiuse — non item aperti.
-
-**Nessun item aperto 🟡 è stato perso.** I 15 item 🟡 del corpo attivo pre-PR #54 sono
-tutti presenti post-PR #54. Il calo di 4 è strutturalmente innocuo ma tecnicamente
-viola la verifica numerica della specifica. **Dichiarato come finding di processo.**
-
-### 3 item ✅ galleggianti
-
-In `stato_progetto.md` righe 186, 191, 192 restano 3 item ✅ (R-crm-diario-rr CHIUSO,
-Riserve hook #52-54 RISOLTE, Backfill #48-50 ESEGUITO) in una zona non sezione
-("## Note operative VPS" area, prima di "### DA FARE"). Non erano in "## Finding aperti"
-quindi fuori scope di STEP 2. Il loro contenuto è già in `stato_storico.md`.
-**STOP GATE applicato: non rimossi.** Proposta di cleanup per sessione dedicata.
+12 passed in 2.14s
+```
 
 ---
 
-## Non-archiviati (conforme a specifica)
+## VERDETTO REVISORE (integrale)
 
-Rimangono nel corpo attivo di `stato_progetto.md` per specifica:
-- `🟡 R-verdetto-evidenza`, `🟡 Esfiltrazione os_with_fallback`, `🟡 Degrado solo-testo per-turno`,
-  `🟡 Riserve minori` ✅
-- `### DEPLOY VPS — da tarare su dati reali` ✅
-- `## Regole operative vive` ✅
-- `## Note operative VPS` ✅
+**APPROVATO CON RISERVE**
+
+> `tests/test_unit_gasmerge.py:429-431` — arm `*"headRefOid"*` restituisce SHA identico
+> a entrambe le chiamate (pre-prompt e post-prompt) → TOCTOU check passa, nessun BLOCCO
+> spurio. Rischio ordine arm: nessun conflitto con `*"pr merge"*` perché le rispettive
+> `$*` non si sovrappongono. **Esito: ok**.
+>
+> `tests/test_unit_gasmerge.py:432-434` + `533` — `echo "$@"` registra gli argomenti
+> reali di `gh pr merge`; l'asserzione `f"--match-head-commit {self._SHA}" in recorded`
+> è mordace (fallirebbe su flag assente o SHA errato). Doppia guardia con
+> `assert merge_log.exists()` che certifica che il ramo `pr merge` sia stato raggiunto.
+> **Esito: ok**.
+>
+> **Riserva 1 (minore):** firma di `_make_stub_gh_recording_merge` senza `-> None`
+> (CLAUDE.md §4). Coerente col pattern dell'intero file; correggibile al prossimo refactor.
+>
+> **Riserva 2 (pre-esistente):** `/tmp/gaspr.json` hardcoded, già tracciato come #65-R3.
+> Non aggravata da questo diff.
+>
+> **Finding #65-R2 / #63-R2: CHIUSO.**
 
 ---
 
-## CI
+## STOP GATE BLOCCANTE — verifica
 
-Non applicabile (task doc-only, nessuna modifica al motore).
+- `git diff scripts/gasmerge.sh` → vuoto ✅ (nessuna modifica al script nel diff finale)
+- La rimozione temporanea è stata ripristinata prima del commit ✅
+- Diff staged: solo `tests/test_unit_gasmerge.py` ✅
+- PR aperta, NON mergiata ✅ (istruzione rispettata)
