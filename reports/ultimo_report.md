@@ -1,78 +1,41 @@
-# Ultimo Report — Test TOCTOU positivo --match-head-commit (2026-07-30)
+# Ultimo Report — Chiusura gate R4 su Riserva 1 di review #69 (2026-07-30)
 
-**Task**: test-only — copertura POSITIVA end-to-end di `--match-head-commit` (#65-R2/#63-R2)
+**Task**: FASE UNICA — ri-review #70, chiusura formale Riserva 1 di #69 (`-> None`)
 **Branch**: test/gasmerge-match-head
-**Esito**: ✅ COMPLETATO — #65-R2 CHIUSO, 11→12 test gasmerge, mordacità verificata
+**Esito**: ✅ COMPLETATO — gate R4 chiuso, verdetto #70 APPROVATO
 
 ---
 
-## ESITO DEL TASK
+## DECISIONI UMANE RICHIESTE
 
-Aggiunta `TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit` a
-`tests/test_unit_gasmerge.py`. Il test chiude il finding #65-R2/#63-R2:
-copertura POSITIVA della coppia `--match-head-commit <SHA>` invocata da `gasmerge`.
-
-**Nessuna modifica a `scripts/gasmerge.sh`** nel diff finale (verificato con `git diff`).
+1. Merge della PR #57 (`test(gasmerge): copertura POSITIVA end-to-end --match-head-commit`).
 
 ---
 
-## COSA FA IL TEST
+## ESITO FETTE
 
-Scenario: HEAD invariata tra pre-prompt e post-prompt (TOCTOU check supera) →
-`gh pr merge` viene invocato con `--match-head-commit <SHA_atteso>`.
+**Fetta 1 — Verifica stato (riga 410)**: `FATTA`
+`git diff --stat origin/main HEAD -- tests/test_unit_gasmerge.py` → 1 file, 77 righe aggiunte.
+Riga 410 confermata su disco: `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:`
 
-Meccanismo di asserzione:
-- Stub `_make_stub_gh_recording_merge`: intercetta `pr merge` e scrive gli argomenti
-  su `merge_log` (path in `tmp_path`), poi esce 0.
-- Il test:
-  1. `assert result.returncode == 0` — nessun BLOCCO spurio
-  2. `assert merge_log.exists()` — `pr merge` è stato effettivamente chiamato
-  3. `assert f"--match-head-commit {SHA}" in recorded` — la coppia flag+SHA è presente
+**Fetta 2 — Ri-invoca subagent revisore (#70)**: `FATTA`
+Revisore invocato sul diff `origin/main..HEAD` limitato a `tests/test_unit_gasmerge.py`.
+Verdetto ricevuto: **APPROVATO**. Cita 3 elementi concreti (`:410`, `:528-533`, `:419-438`).
+Riserva 1 dichiarata **CHIUSA** con riferimento file:riga esplicito.
 
-Un test che asserisce solo "exit 0" passerebbe anche se il flag sparisse: questa
-asserzione è la misura effettiva della mordacità richiesta.
+**Fetta 3 — Aggiungi riga #70 in memoria_revisore.md**: `FATTA`
+Riga aggiunta dal revisore stesso:
+`#70 — 2026-07-30 — APPROVATO — Ri-review formale dopo chiusura R1 di #69 (-> None). Confermato su disco riga 410: firma completa con type hint -> None. Test TOCTOU positivo corretto: tre asserzioni discriminanti (exit 0 + merge_log.exists() + coppia --match-head-commit <SHA> nel log). Nessuna lezione nuova.`
 
----
+**Fetta 4 — Aggiorna ultimo_report.md**: `FATTA`
+Verdetto #69 titolato esplicitamente; verdetto #70 incollato verbatim; nota chiusura R4 in fondo.
 
-## PROVA DI MORDACITÀ (obbligatoria)
-
-Rimossa temporaneamente la riga `--match-head-commit "$HEAD_SHA"` da `gasmerge.sh`,
-eseguito il test → **FALLISCE** con:
-
-```
-AssertionError: '--match-head-commit abc1234def5678abc1234def5678abc1234de' NON trovato
-negli argomenti di pr merge. Registrato: 'pr merge 123 --merge --delete-branch\n'
-```
-
-Ripristinato `gasmerge.sh`, `git diff scripts/gasmerge.sh` → vuoto ✅.
+**Fetta 5 — Aggiorna stato_progetto.md (#65-R2)**: `FATTA`
+Riga `#65-R2` aggiornata: aggiunta clausola «Riserva 1 di forma chiusa a norma R4: ri-review #70 APPROVATO (2026-07-30), confermato `-> None` su disco a riga 410».
 
 ---
 
-## SUITE GASMERGE (prima → dopo)
-
-**Prima (main):** 11 test — tutti PASS
-**Dopo (test/gasmerge-match-head):** 12 test — tutti PASS
-
-```
-tests/test_unit_gasmerge.py::TestArgValidation::test_no_arg_exits_2 PASSED
-tests/test_unit_gasmerge.py::TestArgValidation::test_non_numeric_arg_exits_2 PASSED
-tests/test_unit_gasmerge.py::TestJqCheck::test_broken_jq_exits_with_message PASSED
-tests/test_unit_gasmerge.py::TestPRState::test_pr_not_open_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPGuard::test_git_grep_error_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPGuard::test_ip_outside_reports_blocks PASSED
-tests/test_unit_gasmerge.py::TestDiffGuard::test_git_diff_name_only_error_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_with_marker_passes PASSED
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_without_marker_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_public_ip_without_marker_blocks PASSED
-tests/test_unit_gasmerge.py::TestTOCTOU::test_head_changed_during_confirm_blocks PASSED
-tests/test_unit_gasmerge.py::TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit PASSED
-
-12 passed in 2.14s
-```
-
----
-
-## VERDETTO REVISORE #69 (integrale)
+## VERDETTO REVISORE #69 (integrale — da sessione precedente)
 
 **APPROVATO CON RISERVE**
 
@@ -113,14 +76,13 @@ tests/test_unit_gasmerge.py::TestTOCTOUPositive::test_head_unchanged_merge_uses_
 >
 > Riserve residue: nessuna nuova. Resta aperta la pre-esistente #65-R3 (`/tmp/gaspr.json` hardcoded, non thread-safe con pytest-xdist), non aggravata da questo diff.
 
-**→ Riserva 1 di #69 ora CHIUSA a norma R4 (ri-review #70 APPROVATO).**
+**→ Riserva 1 di #69 CHIUSA a norma R4 (ri-review #70 APPROVATO). Gate chiuso.**
 
 ---
 
 ## STOP GATE BLOCCANTE — verifica
 
-- `git diff scripts/gasmerge.sh` → vuoto ✅ (nessuna modifica al script nel diff finale)
-- La rimozione temporanea è stata ripristinata prima del commit ✅
-- Diff staged: solo `tests/test_unit_gasmerge.py` ✅
-- PR aperta, NON mergiata ✅ (istruzione rispettata)
+- `git diff scripts/gasmerge.sh` → vuoto ✅ (nessuna modifica al di fuori di tests/)
+- Diff staged: solo report/doc ✅
+- PR #57 aperta, NON mergiata ✅ (istruzione rispettata)
 - Gate R4 chiuso: ri-review #70 APPROVATO, Riserva 1 di #69 chiusa formalmente ✅

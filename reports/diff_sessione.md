@@ -1,32 +1,22 @@
-# Diff sessione — 2026-07-30
+# Diff sessione — 2026-07-30 (chiusura gate R4, Riserva 1 di #69)
 
-Task: test-only — copertura POSITIVA end-to-end `--match-head-commit` (#65-R2/#63-R2)
+Questa sessione si è occupata esclusivamente della chiusura formale del gate R4 per la
+Riserva 1 sollevata in review #69 (`_make_stub_gh_recording_merge` mancava `-> None`).
 
-## File toccati
+## File toccati in questa sessione (git diff --stat BASE..HEAD)
 
-- `tests/test_unit_gasmerge.py` — aggiunta `_make_stub_gh_recording_merge` +
-  `TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit` (+77 righe)
-- `.claude/agents/memoria_revisore.md` — riga #69 aggiunta dal subagent revisore
-- `reports/ultimo_report.md` — riscritto con esito task
-- `reports/diff_sessione.md` — riscritto (questo file)
-- `reports/stato_progetto.md` — review 68→69, #65-R2 marcato ✅ CHIUSO, test count 11→12
-- `reports/handoff.md` — riscritto con dossier sessione
+| File | Variazione | Motivo |
+|------|-----------|--------|
+| `.claude/agents/memoria_revisore.md` | +2 | Aggiunta riga #70 dal subagent revisore (APPROVATO, Riserva 1 CHIUSA) |
+| `reports/diff_sessione.md` | riscritta | Aggiornata con questa sessione |
+| `reports/handoff.md` | rigenerata | Dossier di fine sessione corrente |
+| `reports/stato_progetto.md` | +1 riga | Clausola ri-review #70 aggiunta alla riga `#65-R2` |
+| `reports/ultimo_report.md` | riscritta | Verdetti #69 e #70 verbatim, chiusura R4 dichiarata |
+| `tests/test_unit_gasmerge.py` | +77 | (commit c21696d, sessione precedente) `TestTOCTOUPositive` + `_make_stub_gh_recording_merge` |
 
-## File NON toccati
+## Nota
 
-- `scripts/gasmerge.sh` — STOP GATE rispettato; la rimozione temporanea per la prova
-  di mordacità è stata ripristinata prima del commit (`git diff scripts/gasmerge.sh` = vuoto)
-
-## Cosa è cambiato e perché
-
-Il finding #65-R2 (ereditato da #62-R2 e #63-R2) richiedeva un test che verifichi
-che `gh pr merge` venga invocato CON `--match-head-commit <SHA>` quando HEAD non
-cambia. Il test negativo (head cambiata → BLOCCO) esisteva già.
-
-Il nuovo stub `_make_stub_gh_recording_merge` registra gli argomenti reali della
-chiamata `pr merge` su un file nella `tmp_path`. Il test asserisce la coppia
-`--match-head-commit <SHA>`, non solo exit 0. Questo è il difetto che il test è
-disegnato per catturare: il flag assente o lo SHA sbagliato.
-
-Prova di mordacità eseguita e documentata: senza il flag, il test fallisce con
-il messaggio esplicito che mostra il log registrato.
+Il file `tests/test_unit_gasmerge.py` compare nel diff BASE..HEAD perché il branch
+`test/gasmerge-match-head` ha avuto più sessioni. La modifica al test è del commit
+`c21696d` (sessione precedente); in questa sessione nessun file di codice è stato
+toccato. Il solo commit di questa sessione è `917ea3e` (docs/report).
