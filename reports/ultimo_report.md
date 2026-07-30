@@ -1,126 +1,87 @@
-# ULTIMO REPORT — fix/gasmerge-hardening (PR #56)
+# Report fine task — Rebase fix/gasmerge-hardening su main (2026-07-31)
 
-**Data:** 2026-07-30  
-**Branch:** fix/gasmerge-hardening  
-**PR:** #56 — fix(gasmerge): hardening #65-R1/#63-R1/#65-R3  
-**Commit principale:** 61db9f9  
+## §1 SCOPE & ESITO FETTE
 
----
+| Fetta | Stato | Note |
+|-------|-------|------|
+| FETTA 1 — Rebase + risoluzione conflitto | FATTA | Conflitto su tests/test_unit_gasmerge.py risolto unendo branch+main; fix /tmp→$GASPR_JSON in _make_stub_gh_recording_merge; report files via --theirs |
+| FETTA 2 — Riconciliazione canonici | FATTA | #69 branch → #71; #65-R2 chiuso; contatore review → #72; stato_progetto.md aggiornato |
+| FETTA 3 — Revisore #72 | FATTA | APPROVATO — nessuna riserva |
+| FETTA 4 — Suite + CI | FATTA (locale) / IN ATTESA (CI) | 13 PASS 0 FAIL in locale; CI run in corso |
 
-## ESITO: APPROVATO E PR APERTA (NON MERGATO)
+## §2 FETTA 1 — Rebase
 
-Tre fix applicati su `scripts/gasmerge.sh` e `tests/test_unit_gasmerge.py`.
-Revisore APPROVATO (review #69). Suite: 12/12 PASS. PR aperta per review umana.
+- `git rebase origin/main` eseguito da `fix/gasmerge-hardening`.
+- **Conflitto 1** (atteso): `tests/test_unit_gasmerge.py` — uniti stub branch (con `$GASPR_JSON`) e nuovi `_make_stub_gh_recording_merge` + `TestTOCTOUPositive` di PR #57.
+- **FIX #65-R3 critico**: `_make_stub_gh_recording_merge` in PR #57 aveva `/tmp/gaspr.json` hardcoded → convertito a `"$GASPR_JSON"`. Stub sempre invocato da test che passano via gasmerge.sh (che esporta `GASPR_JSON`): nessun caso di invocazione senza gasmerge.sh trovato.
+- **Conflitto 2** (atteso): `.claude/agents/memoria_revisore.md` — #69 branch rinumerata #71; #69/#70 di main preservate intatte.
+- **Conflitti su report** (ultimo_report.md, handoff.md, diff_sessione.md, stato_progetto.md): risolti con `--theirs` (versione main), rigenerati in questa sessione.
+- Rebase completato su `740ccc5`.
 
----
-
-## FIX 1 — #65-R1: guard su NEW_HEAD vuoto (post-conferma)
-
-**File:** `scripts/gasmerge.sh:177`  
-**Aggiunto:** `[ -n "$NEW_HEAD" ] || { echo "BLOCCO: NEW_HEAD vuoto (ri-lettura post-conferma) — head non verificabile"; exit 1; }`
-
-Il guard per HEAD_SHA (prima cattura) era già in place a riga 158.
-Il guard per NEW_HEAD (ri-lettura post-conferma) mancava: senza di esso, `gh` poteva
-restituire stringa vuota con exit 0, e il TOCTOU check bloccava comunque via
-`"" != "SHA_valido"` ma con il messaggio fuorviante "head cambiata".
-
-**Prova mordacità:**
-- HEAD_SHA vuoto (1ª cattura): script blocca con "BLOCCO: HEAD_SHA vuoto — head non verificabile" (exit 1) ✅
-- NEW_HEAD vuoto (post-conferma) — PRIMA del fix: blocca via TOCTOU con "BLOCCO: head cambiata durante la conferma (aaa111... → )" (fuorviante)
-- NEW_HEAD vuoto (post-conferma) — CON il fix: blocca con "BLOCCO: NEW_HEAD vuoto (ri-lettura post-conferma) — head non verificabile" ✅
-- Nuovo test T-fix1: `TestTOCTOU::test_new_head_empty_blocks_with_explicit_message` verifica che "head cambiata" NON appaia con NEW_HEAD vuoto
-
----
-
-## FIX 2 — #63-R1: git risolto dinamicamente negli stub di test
-
-**File:** `tests/test_unit_gasmerge.py:101,116`  
-**Cambio:** `shutil.which("git")` al momento della creazione dello stub (in Python,
-prima che `fake_bin` venga preposta a PATH), poi il path viene incorporato come
-letterale nell'`exec` del body bash dello stub.
-
-**Strategia:** il git reale viene risolto nel processo Python (che ha PATH originale,
-senza `fake_bin`). L'`exec "/abs/path/git"` nel body bash usa un path assoluto → nessun
-lookup PATH → nessuna ricorsione. Fallback `/usr/bin/git` se `shutil.which` ritorna None.
-
-**Prova no-ricorsione:** la suite termina in ~4s (12 test), nessun timeout.
-
----
-
-## FIX 3 — #65-R3: /tmp/gaspr.json condiviso → mktemp per-run
-
-**File:** `scripts/gasmerge.sh:27-29`, `tests/test_unit_gasmerge.py:68,441`
-
-Script:
-```bash
-GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)
-export GASPR_JSON
-trap 'rm -f "$GASPR_JSON"' EXIT
+Post-rebase log:
 ```
-Tutte le occorrenze di `/tmp/gaspr.json` nel body script sostituite con `"$GASPR_JSON"`.
-
-Test: gli stub bash che scrivono il JSON leggono `$GASPR_JSON` ereditato tramite
-`export` dal processo padre (gasmerge.sh). Nessun path fisso /tmp residuo nella suite.
-
----
-
-## Verifiche reali eseguite
-
-a) **Suite gasmerge:** 12/12 PASS (11 esistenti invariati + 1 nuovo test mordacità)
-
-```
-tests/test_unit_gasmerge.py::TestArgValidation::test_no_arg_exits_2 PASSED
-tests/test_unit_gasmerge.py::TestArgValidation::test_non_numeric_arg_exits_2 PASSED
-tests/test_unit_gasmerge.py::TestJqCheck::test_broken_jq_exits_with_message PASSED
-tests/test_unit_gasmerge.py::TestPRState::test_pr_not_open_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPGuard::test_git_grep_error_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPGuard::test_ip_outside_reports_blocks PASSED
-tests/test_unit_gasmerge.py::TestDiffGuard::test_git_diff_name_only_error_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_with_marker_passes PASSED
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_ip_without_marker_blocks PASSED
-tests/test_unit_gasmerge.py::TestIPAllowlist::test_public_ip_without_marker_blocks PASSED
-tests/test_unit_gasmerge.py::TestTOCTOU::test_head_changed_during_confirm_blocks PASSED
-tests/test_unit_gasmerge.py::TestTOCTOU::test_new_head_empty_blocks_with_explicit_message PASSED
-12 passed in 3.97s
+94bf46c docs(fine-task): rigenera handoff.md
+6c201fb docs(fine-task): ultimo_report + handoff + stato + diff — fix/gasmerge-hardening PR #56
+dd8406c chore: aggiorna memoria revisore (review #69 fix/gasmerge-hardening)
+b18dcb5 fix(gasmerge): hardening #65-R1/#63-R1/#65-R3 — guard NEW_HEAD, git dinamico, mktemp
 ```
 
-b) **Suite kernel (test_unit_kernel.py):** INTERNALERROR pre-esistente (sys.exit a livello
-modulo che confonde pytest). Non causato da questa sessione. Suite hooks+handoff: 19/19 PASS.
+## §3 FETTA 2 — Riconciliazione canonici
 
-c) **Prova mordacità FIX 1:** output reale incluso sopra. ✅
+### memoria_revisore.md
+- Rinumerazione: branch #69 → #71 (preservata lezione "diff testuale passato a voce può divergere dal file reale staged").
+- #69/#70 di main intatte.
+- #72 aggiunta dal revisore dopo la review (FETTA 3).
 
-d) **bash -n scripts/gasmerge.sh:** syntax OK  
-   **Dry-run argomento non numerico:** `uso: gasmerge <numero-PR>  (argomento non numerico: 'abc')` → exit 2 ✅
+### stato_progetto.md — blocco #65-R*
+Stato finale:
+- ✅ **#65-R1** — guard `[ -n "$NEW_HEAD" ]` post-conferma (PR #56)
+- ✅ **#65-R2** — test positivo --match-head-commit `TestTOCTOUPositive` (main PR #57 + review #69/#70)
+- ✅ **#65-R3** — mktemp per-run + `$GASPR_JSON` + stub PR #57 convertito (PR #56 + rebase #72)
+- ✅ **#63-R1** — `shutil.which("git")` in Python (PR #56)
 
----
+### Contatore review
+Aggiornato a massimo #72 in "Stato motore" e §C.
 
-## Revisore — verdetto INTEGRALE (review #69, 2026-07-30)
+## §4 FETTA 3 — Verdetto revisore #72 (VERBATIM)
 
-**APPROVATO — review #69 (2026-07-30)**
+```
+#72 — 2026-07-31 — APPROVATO — fix/gasmerge-hardening rebasato su main: FIX 1 guard NEW HEAD (gasmerge.sh:177), FIX 2 git dinamico (test:101/116), FIX 3 mktemp (gasmerge.sh:27-29), stub PR #57 convertiti a $GASPR_JSON. Grep reale: zero /tmp/gaspr.json residui. Chiude #65-R1/#65-R3/#63-R1 + fix critico rebase. Nessuna lezione nuova.
+```
 
-Il commit sul branch `fix/gasmerge-hardening` che tocca `scripts/gasmerge.sh` e
-`tests/test_unit_gasmerge.py` è autorizzato.
+Verdetto: **APPROVATO** — nessuna riserva aperta.
 
-Elementi verificati:
-- `scripts/gasmerge.sh:27-29` — mktemp/export/trap EXIT: chiude #65-R3, fail-closed corretto
-- `scripts/gasmerge.sh:177` — guard NEW_HEAD vuoto: blocco esplicito e diagnosticamente
-  corretto, posizionato nel punto giusto della sequenza TOCTOU
-- `tests/test_unit_gasmerge.py:101,116` — `shutil.which("git")`: chiude #63-R1, fallback
-  /usr/bin/git presente
-- `tests/test_unit_gasmerge.py:473-523` — nuovo test stateful con counter file: mordace
-  sul FIX 1 (rimuovere il guard produce "head cambiata" che fa fallire l'asserzione dedicata)
+Verifica #65-R3: grep reale su `tests/test_unit_gasmerge.py` — zero occorrenze di `/tmp/gaspr.json` hardcoded confermate dal revisore.
 
-Riserva ereditata ancora aperta: **#65-R2** (`--match-head-commit` senza copertura test
-end-to-end positiva) — non toccata da questo diff, da tenere tracciata in `stato_progetto.md`.
+## §5 FETTA 4 — Suite locale
 
----
+```
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1
+collected 13 items
 
-## Finding chiusi da questa sessione
+TestArgValidation::test_no_arg_exits_2 PASSED
+TestArgValidation::test_non_numeric_arg_exits_2 PASSED
+TestJqCheck::test_broken_jq_exits_with_message PASSED
+TestPRState::test_pr_not_open_blocks PASSED
+TestIPGuard::test_git_grep_error_blocks PASSED
+TestIPGuard::test_ip_outside_reports_blocks PASSED
+TestDiffGuard::test_git_diff_name_only_error_blocks PASSED
+TestIPAllowlist::test_ip_with_marker_passes PASSED
+TestIPAllowlist::test_ip_without_marker_blocks PASSED
+TestIPAllowlist::test_public_ip_without_marker_blocks PASSED
+TestTOCTOU::test_head_changed_during_confirm_blocks PASSED
+TestTOCTOU::test_new_head_empty_blocks_with_explicit_message PASSED
+TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit PASSED
 
-- ✅ **#65-R1** — guard HEAD_SHA/NEW_HEAD vuoto (missing piece = guard NEW_HEAD post-conferma)
-- ✅ **#63-R1** — stub git hardcoda /usr/bin/git
-- ✅ **#65-R3** — /tmp/gaspr.json condiviso non thread-safe
+============================== 13 passed in 4.59s ==============================
+```
 
-## Finding aperti residui (non toccati per mandate)
+**13 PASS, 0 FAIL, 0 SKIP.**
 
-- 🟡 **#65-R2** — `--match-head-commit` senza copertura test positiva end-to-end
+## §6 Push e CI
+
+- `git push --force-with-lease origin fix/gasmerge-hardening` — OK.
+- **CI run ID**: `30586096350` — **SUCCESS** ✅
+  - `unit-suite` (ID 91017697323): ✅ 37s
+  - `handoff-check` (ID 91017697557): ✅ 10s
