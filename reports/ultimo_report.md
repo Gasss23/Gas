@@ -1,152 +1,88 @@
-# Ultimo Report — Verifica archiviazione stato (2026-07-29)
+# Ultimo Report — Chiusura gate R4 su Riserva 1 di review #69 (2026-07-30)
 
-**Task**: doc-only — verifica del lavoro di PR #54 (`docs/archiviazione-stato`)
-**Branch**: docs/archiviazione-stato (seconda istanza, verifica)
-**Esito**: PR #54 VERIFICATO — task già completato correttamente
-
----
-
-## ESITO DEL TASK
-
-Il task di archiviazione (STEP 1: 6 sessioni + STEP 2: 9 finding ✅) è stato completato
-da PR #54 (`f9ef498`, mergiata `ed760d7`). La presente sessione ha eseguito la
-verifica secondo il protocollo STEP 0 del task.
-
-**Nessuna modifica ai file di contenuto** (stato_progetto.md, stato_storico.md,
-finding_archiviati.md) — il lavoro era già fatto correttamente.
+**Task**: FASE UNICA — ri-review #70, chiusura formale Riserva 1 di #69 (`-> None`)
+**Branch**: test/gasmerge-match-head
+**Esito**: ✅ COMPLETATO — gate R4 chiuso, verdetto #70 APPROVATO
 
 ---
 
-## STEP 0 — GUARD PRE-ARCHIVIAZIONE (verifica a posteriori)
+## DECISIONI UMANE RICHIESTE
 
-### a) Conteggi righe
-
-| File | PRIMA (PR #53, `5aa6ee1`) | DOPO (PR #54, attuale) |
-|------|---------------------------|------------------------|
-| `reports/stato_progetto.md` | 470 | 235 |
-| `reports/stato_storico.md` | 286 | 536 |
-| `reports/finding_archiviati.md` | 35 | 44 |
-| **TOTALE** | **791** | **815** |
-
-DOPO (815) > PRIMA (791): **+24 righe** — nessuna perdita di testo. ✅
-
-### b/c) Verifica item aperti nelle sezioni archiviate
-
-Per ogni sezione archiviata, ogni marcatore 🟡/⚠️/RESIDUO/APERT/MITIGATO è stato
-verificato contro il corpo attivo di `stato_progetto.md`:
-
-**Sessione 2026-07-21** (storico righe 136-148):
-- `🟡 2FA Hetzner non attivo` → stato_progetto.md riga 209 ✅
-- `🟡 Copia VPS stantia vs origin/main` → stato_progetto.md riga 228 ✅
-- `⚠️ Reboot GAS in prod NON pianificato` → evento PASSATO risolto (GAS ripartito da solo), non item aperto ✅
-
-**Sessione 2026-07-22** (storico righe 150-212):
-- `⚠️ RISERVA DI EVIDENZA` F7 → stato_progetto.md riga 69 (`🟡 Verifica riserva evidenza F7`) ✅
-- `⚠️ RESIDUO NON VERIFICATO` /root/.ssh → stato_progetto.md riga 210 ✅
-- `MITIGATO, non chiuso` (idem) ✅
-- `⚠️ RESIDUO` chiave gas-vps in Hetzner → stato_progetto.md riga 211 ✅
-- `⚠️ CAMBIO DI COMPORTAMENTO` passwd -l → R9 in "## Regole operative vive" ✅
-
-**Sessione ℹ️ Micro-finding merge su main** (storico righe 214-260):
-- `decisione APERTA` secondo account GitHub → stato_progetto.md riga 229 ✅
-
-**Sessione 2026-07-23** (storico righe 262-307):
-- `⚠️ CAVEAT — cosa NON fa` gasmerge → R2 in "## Regole operative vive" ✅
-- `Decisione APERTA` Co-Authored-By → stato_progetto.md riga 230 ✅
-
-**Sessioni 2026-07-24 e 2026-07-24 (p2)** (storico righe 308-345):
-- Nessun item aperto autonomo ✅
-
-**STOP GATE: NESSUNA sezione archiviata conteneva item aperti non presenti nel corpo attivo.** ✅
+1. Merge della PR #57 (`test(gasmerge): copertura POSITIVA end-to-end --match-head-commit`).
 
 ---
 
-## STEP 1 — SESSIONI (verifica)
+## ESITO FETTE
 
-Sei sezioni archiviate presenti verbatim in `reports/stato_storico.md`:
-- `### Sessione 2026-07-21 — chiusura giro item fuori-roadmap` (righe 136-148)
-- `### Sessione 2026-07-22 — rientro accesso VPS + chiusura F7` (righe 150-212)
-- `### ℹ️ Micro-finding di processo — merge su main eseguito da dentro Claude Code` (righe 214-260)
-- `### Sessione 2026-07-23 — allineamento canonici` (righe 262-307)
-- `### Sessione 2026-07-24 — sanare venv, T9a/T9c deterministici` (righe 308-331)
-- `### Sessione 2026-07-24 (p2) — merge PR #43 e registrazioni di processo` (righe 333-345)
+**Fetta 1 — Verifica stato (riga 410)**: `FATTA`
+`git diff --stat origin/main HEAD -- tests/test_unit_gasmerge.py` → 1 file, 77 righe aggiunte.
+Riga 410 confermata su disco: `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:`
 
-Campione verbatim (Sessione 2026-07-21, prima riga dopo l'header):
-```
-- ✅ **Scrub IP/SSH** (2026-07-20, PR #32 `f2679a4`): IP via da HEAD, verificato su albero mergiato via git grep (esatto+parziale = 0). Stato **MITIGATO** (resta in history pubblica → cura = privatizzazione, roadmap item 0).
-```
-Identico al testo nel commit `f9ef498` e nell'attuale `stato_storico.md`. ✅
+**Fetta 2 — Ri-invoca subagent revisore (#70)**: `FATTA`
+Revisore invocato sul diff `origin/main..HEAD` limitato a `tests/test_unit_gasmerge.py`.
+Verdetto ricevuto: **APPROVATO**. Cita 3 elementi concreti (`:410`, `:528-533`, `:419-438`).
+Riserva 1 dichiarata **CHIUSA** con riferimento file:riga esplicito.
 
-Archive reference in `stato_progetto.md` per ognuna delle 6 sessioni: presenti. ✅
+**Fetta 3 — Aggiungi riga #70 in memoria_revisore.md**: `FATTA`
+Riga aggiunta dal revisore stesso:
+`#70 — 2026-07-30 — APPROVATO — Ri-review formale dopo chiusura R1 di #69 (-> None). Confermato su disco riga 410: firma completa con type hint -> None. Test TOCTOU positivo corretto: tre asserzioni discriminanti (exit 0 + merge_log.exists() + coppia --match-head-commit <SHA> nel log). Nessuna lezione nuova.`
 
----
+**Fetta 4 — Aggiorna ultimo_report.md**: `FATTA`
+Verdetto #69 titolato esplicitamente; verdetto #70 incollato verbatim; nota chiusura R4 in fondo.
 
-## STEP 2 — FINDING ✅ (verifica)
-
-Nove finding archiviati da PR #54:
-
-| # | Data | Finding | Note |
-|---|------|---------|------|
-| 28 | 2026-07-15 | R-legacy-slice | finding_archiviati.md riga 37 |
-| 29 | 2026-07-16 | F6-history-atomica | finding_archiviati.md riga 36 |
-| 30 | 2026-07-16 | R-crm-diario-rr | finding_archiviati.md riga 38 |
-| 31 | 2026-07-18 | R-ci-hooks | finding_archiviati.md riga 39 |
-| 32 | 2026-07-19 | R-hook-jq | finding_archiviati.md riga 40 |
-| 33 | 2026-07-23 | R-ci-summary | finding_archiviati.md riga 41 |
-| 34 | 2026-07-24 | R-ci-openrouter | finding_archiviati.md riga 42 |
-| 35 | 2026-07-24 | R-gasmerge-failopen | finding_archiviati.md riga 43; **riserve aperte residue mantenute** |
-| 36 | 2026-07-27 | R-crm-1b | finding_archiviati.md riga 44; **riserve aperte residue mantenute** |
-
-`## Finding aperti (🟡 attivi)` in stato_progetto.md: **zero ✅** — conforme al STEP 2. ✅
-
-Riserve aperte presenti verbatim in stato_progetto.md:
-- R-gasmerge-failopen: #65-R1, #65-R2, #65-R3, #63-R1 (righe 59-62) ✅
-- R-crm-1b: R1, R2, R3, R4 (righe 53-54) ✅
+**Fetta 5 — Aggiorna stato_progetto.md (#65-R2)**: `FATTA`
+Riga `#65-R2` aggiornata: aggiunta clausola «Riserva 1 di forma chiusa a norma R4: ri-review #70 APPROVATO (2026-07-30), confermato `-> None` su disco a riga 410».
 
 ---
 
-## VERIFICA FINALE
+## VERDETTO REVISORE #69 (integrale — da sessione precedente)
 
-### Conteggio 🟡 (declared issue)
+**APPROVATO CON RISERVE**
 
-| Quando | Conteggio linee con 🟡 in stato_progetto.md |
-|--------|---------------------------------------------|
-| PRIMA (PR #53) | 20 |
-| DOPO (PR #54, attuale) | 16 |
-| Delta | **-4** |
-
-La specifica dice "NON deve calare." Il calo è di 4. **Spiegazione verificata:**
-- **-2**: duplicati interni alle sessioni (`🟡 2FA Hetzner non attivo` e `🟡 Copia VPS stantia`
-  erano SIA nel corpo della sessione (archiviate) SIA nel corpo attivo di `stato_progetto.md`
-  come voci separate. Il calo rimuove le copie nelle sessioni; le voci del corpo attivo restano.
-- **-2**: marcatori `// ex-🟡` all'interno di finding ✅ CHIUSI (R-ci-hooks e R-ci-summary),
-  testo storico dentro voci già chiuse — non item aperti.
-
-**Nessun item aperto 🟡 è stato perso.** I 15 item 🟡 del corpo attivo pre-PR #54 sono
-tutti presenti post-PR #54. Il calo di 4 è strutturalmente innocuo ma tecnicamente
-viola la verifica numerica della specifica. **Dichiarato come finding di processo.**
-
-### 3 item ✅ galleggianti
-
-In `stato_progetto.md` righe 186, 191, 192 restano 3 item ✅ (R-crm-diario-rr CHIUSO,
-Riserve hook #52-54 RISOLTE, Backfill #48-50 ESEGUITO) in una zona non sezione
-("## Note operative VPS" area, prima di "### DA FARE"). Non erano in "## Finding aperti"
-quindi fuori scope di STEP 2. Il loro contenuto è già in `stato_storico.md`.
-**STOP GATE applicato: non rimossi.** Proposta di cleanup per sessione dedicata.
+> `tests/test_unit_gasmerge.py:429-431` — arm `*"headRefOid"*` restituisce SHA identico
+> a entrambe le chiamate (pre-prompt e post-prompt) → TOCTOU check passa, nessun BLOCCO
+> spurio. Rischio ordine arm: nessun conflitto con `*"pr merge"*` perché le rispettive
+> `$*` non si sovrappongono. **Esito: ok**.
+>
+> `tests/test_unit_gasmerge.py:432-434` + `533` — `echo "$@"` registra gli argomenti
+> reali di `gh pr merge`; l'asserzione `f"--match-head-commit {self._SHA}" in recorded`
+> è mordace (fallirebbe su flag assente o SHA errato). Doppia guardia con
+> `assert merge_log.exists()` che certifica che il ramo `pr merge` sia stato raggiunto.
+> **Esito: ok**.
+>
+> **Riserva 1 (minore):** firma di `_make_stub_gh_recording_merge` senza `-> None`
+> (CLAUDE.md §4). Coerente col pattern dell'intero file; correggibile al prossimo refactor.
+>
+> **Riserva 2 (pre-esistente):** `/tmp/gaspr.json` hardcoded, già tracciato come #65-R3.
+> Non aggravata da questo diff.
+>
+> **Finding #65-R2 / #63-R2: CHIUSO.**
 
 ---
 
-## Non-archiviati (conforme a specifica)
+## VERDETTO REVISORE #70 — RI-REVIEW R4 (integrale)
 
-Rimangono nel corpo attivo di `stato_progetto.md` per specifica:
-- `🟡 R-verdetto-evidenza`, `🟡 Esfiltrazione os_with_fallback`, `🟡 Degrado solo-testo per-turno`,
-  `🟡 Riserve minori` ✅
-- `### DEPLOY VPS — da tarare su dati reali` ✅
-- `## Regole operative vive` ✅
-- `## Note operative VPS` ✅
+**APPROVATO**
+
+> `tests/test_unit_gasmerge.py:410` — `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:` — type hint `-> None` presente e confermato da Read del file su disco (offset 400, limit 140). Tutti e tre i parametri hanno type hint espliciti (Path, Path, str). Riserva 1 di #69 esaminata: CHIUSA. Rischio "violazione CLAUDE.md §4 rigoroso uso type hints": esito ok.
+>
+> `tests/test_unit_gasmerge.py:528-533` — blocco delle tre asserzioni in `test_head_unchanged_merge_uses_match_head_commit`: (1) `assert result.returncode == 0`; (2) `assert merge_log.exists()` — se `gh pr merge` non venisse invocato, il file non esiste e il test cade; (3) `assert f"--match-head-commit {self._SHA}" in recorded` — controlla la coppia flag+valore come sottostringa del log prodotto da `echo "$@"`. Mordacità verificata: se `gasmerge.sh` omettesse `--match-head-commit` o passasse uno SHA diverso, l'asserzione (3) fallirebbe correttamente. Il `merge_log` vive in `tmp_path / "merge_args.log"` (path univoco per invocazione pytest), isolato dal `/tmp/gaspr.json` già noto. Rischio "test che asserisce solo exit 0 non discrimina": esito ok — la catena di tre asserzioni è discriminante.
+>
+> `tests/test_unit_gasmerge.py:419-438` — corpo bash dello stub: pattern `case "$*" in` con ordine `*"headRefOid"*` PRIMA di `*"pr merge"*` e `*"--watch"*` PRIMA di `*"pr merge"*`. Rischio "collisione pattern se gasmerge.sh chiamasse `gh pr merge --watch`": la chiamata reale di `gh pr checks --watch` non contiene `pr merge`, quindi l'intercettazione errata non si produce. Ordine dei rami sicuro nel contesto reale. Rischio "interpolazione `{sha}` senza escape in testo bash": SHA git sono esadecimali puri, nessun carattere speciale bash possibile. Esito ok.
+>
+> Rischio esplicitamente escluso: il comportamento end-to-end su VPS con più worker paralleli (pytest-xdist) non è verificabile nell'ambiente di review — il rischio `/tmp/gaspr.json` condiviso tra test concorrenti (riserva #65-R3, già tracciata) rimane aperto ma non aggravato da questo diff.
+>
+> **Riserva 1 di #69 (-> None): CHIUSA** — riga 410 su disco: `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:`.
+>
+> Riserve residue: nessuna nuova. Resta aperta la pre-esistente #65-R3 (`/tmp/gaspr.json` hardcoded, non thread-safe con pytest-xdist), non aggravata da questo diff.
+
+**→ Riserva 1 di #69 CHIUSA a norma R4 (ri-review #70 APPROVATO). Gate chiuso.**
 
 ---
 
-## CI
+## STOP GATE BLOCCANTE — verifica
 
-Non applicabile (task doc-only, nessuna modifica al motore).
+- `git diff scripts/gasmerge.sh` → vuoto ✅ (nessuna modifica al di fuori di tests/)
+- Diff staged: solo report/doc ✅
+- PR #57 aperta, NON mergiata ✅ (istruzione rispettata)
+- Gate R4 chiuso: ri-review #70 APPROVATO, Riserva 1 di #69 chiusa formalmente ✅
