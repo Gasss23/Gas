@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-30** (test/gasmerge-match-head: copertura POSITIVA end-to-end `--match-head-commit` — #65-R2/#63-R2 CHIUSI)
+> Ultimo aggiornamento: **2026-07-30** (fix/gasmerge-hardening PR #56: chiusi #65-R1/#65-R3/#63-R1; aperto #65-R2)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **69 review** completate (ultima #69, 2026-07-30, test_unit_gasmerge TOCTOU positivo, APPROVATO CON RISERVE; #68, 2026-07-27, gas.py doctor CRM + duplicati_cmd, APPROVATO CON RISERVE). Suite WSL locale (2026-07-27, feature/crm-dup-telefono): **276 PASS, 0 FAIL, 0 SKIP** (kernel); gasmerge suite: **12 PASS** (da 11, +1 TestTOCTOUPositive) (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **10 PASS**. ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **68 review** completate (ultima #68, 2026-07-27, gas.py doctor CRM + duplicati_cmd, APPROVATO CON RISERVE; #67 = rileva_duplicati_telefono fetta 3, APPROVATO CON RISERVE). Suite WSL locale (2026-07-27, feature/crm-dup-telefono): **276 PASS, 0 FAIL, 0 SKIP** (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **10 PASS**. ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
 CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS; storico PR #23–#43 → `reports/stato_storico.md` § CI storica): PR #49 merge `64ff011` (2026-07-27, CI `30302270332`) · PR #48 merge `32a9a41` (2026-07-27, CI `30301777849`) · PR #47 merge `d67b12a` (2026-07-27, CI `30282530884`) · PR #46 merge `6f303cf` (2026-07-26, CI `30223085074`) · PR #45 merge `c7f6fac` (2026-07-25, CI `30160569148`) · PR #44 merge `de2f2f5` (2026-07-24, CI `30116369695`).
 
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -56,10 +56,10 @@ Componenti attive:
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
 - 🟡 **R-verdetto-evidenza** — l'obbligo di citare ≥2 elementi del diff è verificabile solo a occhio; un verdetto può citare path:riga plausibili senza averli letti. Fix strutturale: check meccanico che i path:riga citati esistano nel diff sotto review. Non impegnato. **Cross-ref (stessa classe D)**: barriera solo disciplinare in attesa di enforcement strutturale/meccanico — identica alla famiglia dei gate "regola di forma" del progetto (main-lock rete = structural; revisore.md obbligo-evidenza = disciplinare). Il check specifico mancante: verificare automaticamente che ogni path:riga dichiarato nel verdetto esista davvero nel diff sottoposto.
 - **Riserve aperte residue (R-gasmerge-failopen archiviato)** — corpo completo archiviato in `reports/stato_storico.md` (§ Finding chiusi archiviati).
-  - **#65-R1** (nuova): guard HEAD_SHA vuoto mancante — se jq produce output vuoto, HEAD_SHA=""; il confronto `"" != ""` è false e si procede con `--match-head-commit ""`. Fail-closed in pratica (gh rifiuta SHA vuoto) ma non nel codice. Fix: `[ -n "$HEAD_SHA" ]` dopo la cattura.
-  - ✅ **#65-R2** (ereditata #62-R2): **CHIUSO** (2026-07-30, test/gasmerge-match-head, review #69 APPROVATO CON RISERVE) — `TestTOCTOUPositive` + stub `_make_stub_gh_recording_merge` con merge_log; mordacità verificata. Riserva 1 di forma (mancava `-> None`) chiusa a norma R4: ri-review #70 APPROVATO (2026-07-30), confermato `-> None` su disco a riga 410.
-  - **#65-R3** (ereditata #63-R2): `/tmp/gaspr.json` condiviso nel pattern headRefName del nuovo stub TOCTOU — non thread-safe con pytest-xdist.
-  - **#63-R1**: stub git hardcoda `/usr/bin/git` (non portabile su sistemi con git altrove).
+  - ✅ **#65-R1** (chiuso 2026-07-30, PR #56): guard `[ -n "$NEW_HEAD" ]` aggiunto post-conferma. Il guard HEAD_SHA (prima cattura) era già in place; il caso NEW_HEAD post-prompt era il missing piece.
+  - 🟡 **#65-R2** (ereditata #62-R2): `--match-head-commit` senza copertura test positiva end-to-end. NON toccato da PR #56 per mandate esplicito.
+  - ✅ **#65-R3** (chiuso 2026-07-30, PR #56): `mktemp /tmp/gaspr.XXXXXX.json` per-run + `export GASPR_JSON` + `trap EXIT`. Stub ereditano la variabile.
+  - ✅ **#63-R1** (chiuso 2026-07-30, PR #56): `shutil.which("git")` in Python risolve il git reale prima che fake_bin sia preposta a PATH.
 
 ### DEPLOY VPS — da tarare su dati reali
 
