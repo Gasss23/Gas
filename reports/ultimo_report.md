@@ -72,7 +72,7 @@ tests/test_unit_gasmerge.py::TestTOCTOUPositive::test_head_unchanged_merge_uses_
 
 ---
 
-## VERDETTO REVISORE (integrale)
+## VERDETTO REVISORE #69 (integrale)
 
 **APPROVATO CON RISERVE**
 
@@ -97,9 +97,30 @@ tests/test_unit_gasmerge.py::TestTOCTOUPositive::test_head_unchanged_merge_uses_
 
 ---
 
+## VERDETTO REVISORE #70 — RI-REVIEW R4 (integrale)
+
+**APPROVATO**
+
+> `tests/test_unit_gasmerge.py:410` — `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:` — type hint `-> None` presente e confermato da Read del file su disco (offset 400, limit 140). Tutti e tre i parametri hanno type hint espliciti (Path, Path, str). Riserva 1 di #69 esaminata: CHIUSA. Rischio "violazione CLAUDE.md §4 rigoroso uso type hints": esito ok.
+>
+> `tests/test_unit_gasmerge.py:528-533` — blocco delle tre asserzioni in `test_head_unchanged_merge_uses_match_head_commit`: (1) `assert result.returncode == 0`; (2) `assert merge_log.exists()` — se `gh pr merge` non venisse invocato, il file non esiste e il test cade; (3) `assert f"--match-head-commit {self._SHA}" in recorded` — controlla la coppia flag+valore come sottostringa del log prodotto da `echo "$@"`. Mordacità verificata: se `gasmerge.sh` omettesse `--match-head-commit` o passasse uno SHA diverso, l'asserzione (3) fallirebbe correttamente. Il `merge_log` vive in `tmp_path / "merge_args.log"` (path univoco per invocazione pytest), isolato dal `/tmp/gaspr.json` già noto. Rischio "test che asserisce solo exit 0 non discrimina": esito ok — la catena di tre asserzioni è discriminante.
+>
+> `tests/test_unit_gasmerge.py:419-438` — corpo bash dello stub: pattern `case "$*" in` con ordine `*"headRefOid"*` PRIMA di `*"pr merge"*` e `*"--watch"*` PRIMA di `*"pr merge"*`. Rischio "collisione pattern se gasmerge.sh chiamasse `gh pr merge --watch`": la chiamata reale di `gh pr checks --watch` non contiene `pr merge`, quindi l'intercettazione errata non si produce. Ordine dei rami sicuro nel contesto reale. Rischio "interpolazione `{sha}` senza escape in testo bash": SHA git sono esadecimali puri, nessun carattere speciale bash possibile. Esito ok.
+>
+> Rischio esplicitamente escluso: il comportamento end-to-end su VPS con più worker paralleli (pytest-xdist) non è verificabile nell'ambiente di review — il rischio `/tmp/gaspr.json` condiviso tra test concorrenti (riserva #65-R3, già tracciata) rimane aperto ma non aggravato da questo diff.
+>
+> **Riserva 1 di #69 (-> None): CHIUSA** — riga 410 su disco: `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:`.
+>
+> Riserve residue: nessuna nuova. Resta aperta la pre-esistente #65-R3 (`/tmp/gaspr.json` hardcoded, non thread-safe con pytest-xdist), non aggravata da questo diff.
+
+**→ Riserva 1 di #69 ora CHIUSA a norma R4 (ri-review #70 APPROVATO).**
+
+---
+
 ## STOP GATE BLOCCANTE — verifica
 
 - `git diff scripts/gasmerge.sh` → vuoto ✅ (nessuna modifica al script nel diff finale)
 - La rimozione temporanea è stata ripristinata prima del commit ✅
 - Diff staged: solo `tests/test_unit_gasmerge.py` ✅
 - PR aperta, NON mergiata ✅ (istruzione rispettata)
+- Gate R4 chiuso: ri-review #70 APPROVATO, Riserva 1 di #69 chiusa formalmente ✅
