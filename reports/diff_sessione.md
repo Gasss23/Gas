@@ -1,31 +1,20 @@
-# Diff sessione — 2026-07-30
+# Diff sessione — 2026-07-31
 
-Task: hardening scripts/gasmerge.sh + suite test (PR #56, branch fix/gasmerge-hardening)
+Task: Rebase fix/gasmerge-hardening su origin/main — riconciliazione canonici + review #72
 
 ## File toccati
 
-```
- .claude/agents/memoria_revisore.md |  1 +
- scripts/gasmerge.sh                | 12 +++---
- tests/test_unit_gasmerge.py        | 76 ++++++++++++++++++++++++++++++-
- 3 files changed, 79 insertions(+), 10 deletions(-)
-```
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `scripts/gasmerge.sh` | FIX 1: guard `[ -n "$NEW_HEAD" ]` post-conferma (#65-R1); FIX 2: `shutil.which("git")` reso dinamico negli stub (#63-R1); FIX 3: `mktemp` per-run + `export GASPR_JSON` + `trap EXIT` (#65-R3) — commit di sessione precedente, qui incluso nel range BASE..HEAD |
+| `tests/test_unit_gasmerge.py` | Rebase: unione stub branch ($GASPR_JSON) + stub/classi PR #57 (`_make_stub_gh_recording_merge`, `TestTOCTOUPositive`); FIX critico: `/tmp/gaspr.json` → `"$GASPR_JSON"` in `_make_stub_gh_recording_merge`; nuovo test `test_new_head_empty_blocks_with_explicit_message` (guard NEW_HEAD vuoto) |
+| `.claude/agents/memoria_revisore.md` | Rinumerazione branch #69 → #71 (risoluzione conflitto rebase); aggiunta #72 (APPROVATO, revisore su diff post-rebase) |
+| `reports/stato_progetto.md` | Tutti i #65-R* ✅ chiusi; contatore review → #72; header aggiornato al 2026-07-31 |
+| `reports/ultimo_report.md` | Rigenerato: esito 4 fette, verdetto #72 verbatim, suite 13 PASS, CI run ID |
+| `reports/handoff.md` | Rigenerato con dossier sessione corrente (rebase + review #72) |
+| `reports/diff_sessione.md` | Questo file — riscritto per sessione 2026-07-31 |
 
-## Cosa è cambiato e perché
+## Note
 
-**scripts/gasmerge.sh** (+12/-4):
-- FIX 3: mktemp per-run (`GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)`) + export + trap EXIT. Sostituisce il path fisso `/tmp/gaspr.json` condiviso fra test → thread-safe con pytest-xdist.
-- FIX 1: guard `[ -n "$NEW_HEAD" ]` post-conferma. Il guard per HEAD_SHA era già a riga 158; il caso NEW_HEAD (ri-lettura dopo il prompt) mancava.
-
-**tests/test_unit_gasmerge.py** (+76/-6):
-- FIX 2: `shutil.which("git")` in Python risolve il git reale PRIMA che fake_bin sia preposta a PATH → nessuna ricorsione nell'`exec` del body dello stub.
-- FIX 3: stub `_make_stub_gh` e stub inline TOCTOU: `> /tmp/gaspr.json` → `> "$GASPR_JSON"` (ereditato via export da gasmerge.sh).
-- FIX 1 mordacità: nuovo test `test_new_head_empty_blocks_with_explicit_message` — stub stateful (1ª headRefOid → SHA valido, 2ª → "") verifica che il BLOCCO citi "vuoto" e NON "head cambiata".
-
-**memoria_revisore.md**: riga review #69 aggiunta dal revisore.
-
-## Suite
-
-- Gasmerge: 12/12 PASS (era 11/11)
-- Hooks+handoff: 19/19 PASS
-- Kernel: INTERNALERROR pre-esistente (sys.exit a livello modulo), non regressionato
+- Il rebase ha incluso nell'albero finale anche i fix del branch pre-esistente (`b18dcb5`): `scripts/gasmerge.sh` e `tests/test_unit_gasmerge.py` erano già stati modificati nella sessione precedente; il rebase li ha portati su origin/main aggiungendo la risoluzione del conflitto con PR #57.
+- Nessuna modifica a `gas.py`, `brains/`, `modules/`.
