@@ -28,6 +28,12 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### 🟡 PROSSIMI PASSI (in ordine di priorità)
 
+#### 🔧 LAVORO IN SOSPESO — branch e task pendenti
+
+- **fix/gasmerge-hardening (SHA 6082a25)** — branch non mergiato, non revisionato. Chiude #65-R1 (guard `[ -n "$HEAD_SHA" ]` mancante) e #63-R1 (git `/usr/bin/git` hardcoded). Prerequisiti: rebase su main (conflitto certo su `tests/` + `stato_progetto.md`), revisore, CI verde, revisione umana.
+- **Micro-task doc** — 3 registrazioni pendenti: (1) finding hook `session_end` + sessioni parallele; (2) archiviare 3 ✅ galleggianti in `stato_progetto.md`; (3) raffinare check 🟡 di processo.
+- **3 branch parcheggiati** — `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc` — lavoro non atterrato su main. NON eliminare senza verifica umana; ispezionare e decidere (merge, rebase, o close).
+
 0. 🔒 **Privatizzare repo — ALTA URGENZA** — trigger: prima che entrino dati lead reali / maturità GAS. Richiede GitHub Pro ($4/mese): su Free il repo privato SPEGNE il ruleset main-lock (rulesets su privati = solo Pro/Team/Enterprise). Quindi Pro + privato è UN'unica mossa. Chiude anche l'IP in history (IP 2026-07-20: già scrubato dai file HEAD, ma resta nella history git pubblica — stato MITIGATO, NON chiuso). Verificare fork pubblici prima: se esistono, l'IP è già uscito e va valutata la rotazione IP su Hetzner.
 
 1. ✅ **Migrazione rung Groq** — `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`. Validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`, latenza 1138ms). Commit `f028e51`, review #44 APPROVATO CON RISERVE, 2026-07-08. **COMPLETATA**.
@@ -36,6 +42,15 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 4. **FASE 4.5 — Task scheduler autonomo** (prerequisito Jarvis reale; vedi sotto).
 5. **FASE 5 — Deploy VPS Hetzner** — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2). Include: attivare `gas telegram` come daemon, backup off-machine, process management systemd, ri-tarare `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
 6. **Riserve aperte dalla review #38**: R-tel-budget-perf (scan JSONL al crescere del log), R-tel-tool_res (cosmetico, tool result nel reply Telegram).
+7. **🟡 R-verdetto-evidenza** — check meccanico che ogni path:riga citato nel verdetto del revisore esista nel diff sottoposto. Oggi solo disciplinare; gap rilevato 2026-07-30 (`-> None`). Fetta tooling piccola, non bloccante.
+
+#### 🧩 RISERVE DI CODICE APERTE (tracked, non bloccanti)
+
+**gasmerge (#65/#63):** #65-R1 guard `[ -n "$HEAD_SHA" ]` mancante; #65-R3 `/tmp/gaspr.json` non thread-safe con pytest-xdist; #63-R1 `/usr/bin/git` hardcoded.
+**R-crm-1b:** R1 `int(r["id"])` fuori try/except; R2 ramo `chiave_norm` non coperto da T60; R3 commento cosmetico; R4 `T61d or "Duplicati"` sempre vera.
+**Riserve minori** (dettaglio in `stato_progetto.md`): `cap_window_chars` R-test-1, chdir trap R2#6, falsi positivi path-check R3#4, snapshot TASK C, hook SessionEnd, R-mem/R-mem2a, R26-1/R26-2 backup.
+**🟡 Degrado solo-testo per-turno** — silenzioso (warning in log), rimandato per falsi positivi.
+**🟡 Esfiltrazione in `os_with_fallback`** — chiusa solo in `os_strict`; in fallback mode resta 🟡.
 
 ### 🔍 REVISIONE FONDAMENTA — Fable 5 (2026-07-15, SHA 9cbab56)
 
@@ -117,9 +132,46 @@ Per memoria storica — design originale implementato:
 
 ---
 
-### 🎙️ FASE 3 — Interfaccia Vocale (Priorità Media — Core Feature)
-- Whisper (STT) per ricevere comandi vocali diretti (input terminale a mani libere durante lo sviluppo).
-- ElevenLabs (TTS) per far rispondere GAS a voce alta come un vero assistente personale.
+### 🧠 FASE 2.6 — Intelligenza Accumulata (Priorità Alta — da implementare)
+
+Due ragionamenti autonomi di Gas alla fine di ogni task:
+
+**A) Compressione critica del contesto (target 10.000 token)**
+Al termine di ogni task Gas risponde a: *"Se domani dovessimo riprendere avendo solo 10.000 token di contesto, quali informazioni sono assolutamente indispensabili per continuare senza perdere qualità?"*
+- Output: recap denso e noise-free archiviato nel diario + iniettabile come contesto critico nella task successiva correlata.
+- Obiettivo: ridurre il consumo di token e accelerare l'avvio delle task future.
+- Convergenza con FASE 2.5 (`_compress_history_if_needed`): la compressione della storia gestisce il volume; questo modulo distilla il **valore** da portare avanti — sono due cose distinte.
+
+**B) Knowledge Base permanente (apprendimento accumulato)**
+Al termine di ogni task Gas risponde a: *"Cosa abbiamo imparato? Errori, decisioni, best practice, pattern e regole emerse — quali dovrebbero diventare conoscenza permanente?"*
+- Se non c'è nessun apprendimento rilevante, Gas risponde: "Nessun nuovo apprendimento permanente."
+- Output: voce nel diario con tag `tipo=apprendimento` + sezione recuperabile via FTS/semantico.
+- Obiettivo: Gas diventa progressivamente più intelligente task dopo task, senza accumulare rumore.
+- Dipendenze: FASE 2 (diario SQLite) ✅ + store separato o partizione rigida dal namespace lead (coerente col caveat Jarvis cognitivo § "la memoria non deve mentire").
+
+---
+
+### 🎙️ FASE 3 — Interfaccia Vocale Ibrida (Priorità Media — Core Feature)
+
+**Vision**: Gas non è un chatbot — è un collaboratore intelligente. L'utente avvia in voce, continua in testo e torna alla voce senza perdere il contesto. Ogni conversazione deve dare la sensazione di lavorare con un vero partner di business.
+
+**Pipeline vocale:** Whisper (STT) → cervello GAS → ElevenLabs (TTS)
+
+- **Whisper STT** — ricezione comandi vocali diretti, input a mani libere.
+- **ElevenLabs TTS + identità vocale** — risposta con voce coerente e riconoscibile; creare una voce personalizzata ElevenLabs (eventualmente basata sulla voce del fondatore) — Gas deve sembrare una persona reale, non un sintetizzatore.
+- **Modalità ibrida voce + testo** — passaggio trasparente voce↔testo senza spezzare il contesto conversazionale.
+
+**Adattamento intelligente della profondità:**
+Gas calibra autonomamente la lunghezza della risposta senza che l'utente debba chiederlo.
+- Target: ~20 secondi equivalenti per una risposta standard; se bastano 5-10s, meglio.
+- Superare i 20s solo quando è realmente necessario.
+- Gas valuta autonomamente: complessità, importanza della decisione, livello utente, urgenza, contesto — e decide quanto parlare, quanto approfondire, quando fare esempi, quando sintetizzare.
+
+**Interruzione intelligente mid-risposta (funzione distintiva):**
+Durante una risposta vocale l'utente può interrompere con comandi naturali; Gas adatta immediatamente la risposta mantenendo il contesto, senza ricominciare da capo:
+`"Vai al punto."` · `"Riassumi."` · `"Spiegamelo meglio."` · `"Fammi un esempio."` · `"Vai più nel dettaglio."` · `"Saltiamo questa parte."` · `"Continua."` · `"Parla più lentamente."` · `"Spiegamelo come se fossi un principiante."` · `"Dammi la versione tecnica."`
+
+**Dipendenze:** FASE 2 (memoria contesto) ✅ · FASE 2.5 (storia non infinita) ✅ · FASE 2.6 (KB accumulata) consigliata prima.
 
 ### 📈 FASE 4 — Moduli di Business (Priorità Media)
 - Modulo Meta Ads e automazione della lead generation.
@@ -153,6 +205,10 @@ Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di
 - **Process management + self-healing:** systemd unit con `Restart=always` + `RestartSec=10` per sopravvivere ai crash notturni senza presidio. Alert Telegram se Gas non risponde da N minuti (watchdog). Convergenza col bridge bot (item #2): stessa infrastruttura per notifiche push e comandi da telefono. Senza questo, un crash alle 3am blocca Jarvis fino al mattino.
 
 - **Indagine latenza risposte GAS** (non urgente, segnalato 2026-07-07) — risposte ~5s più lente del solito. Possibili cause da verificare: migrazione a `openai/gpt-oss-120b` su Groq (TTFT diverso), burst TPM 8K → fallthrough OpenRouter (~28s), latenza rete VPS. Da misurare: confronto TTFT `gpt-oss-120b` vs `llama-3.3-70b-versatile` in condizioni analoghe; timing fallthrough registrato nel log (`gas_debug.log`).
+- **🔴 Bot trading su VPS dedicato PRIMA dei fondi reali** — standing security gate: chiavi exchange + AI che esegue codice sulla stessa box = superficie di esfiltrazione; 8GB no-swap insufficienti per GAS+embedder+ollama+bot. Non è "un giorno", è una precondizione. Azione: umana/infra.
+- **🟡 2FA Hetzner** — attivare; recovery code OFFLINE prima di confermare. Azione: umana.
+- **🟡 /root/.ssh/authorized_keys sul VPS** — ispezionare residuo; `PermitRootLogin no` mitiga, non chiude. Azione: umana.
+- **🟡 Chiave gas-vps in Hetzner Security → SSH Keys** — decidere se rimuovere: ogni server nuovo creato dal progetto eredita quella chiave. Azione: umana.
 
 ### 💡 Idee da valutare (NON prioritarie)
 
@@ -172,6 +228,8 @@ Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di
 - **Notifiche push sullo smartphone** per monitorare i deploy e i run sul VPS (es. alert se Gas crasha, se la CI diventa rossa, se un job notturno finisce). Da valutare insieme al bridge bot Telegram (già in item #2) — potrebbero essere la stessa cosa.
 - **Accesso dev tooling da telefono — Claude Dispatch (candidato).** Soluzione candidata: Claude Dispatch (funzione ufficiale Anthropic in Cowork/Claude Code, lanciata 2026-03-17): pairing QR telefono↔desktop, thread persistente, i task di sviluppo partono come sessioni Claude Code che ereditano CLAUDE.md. Stato: ✅ CHIUSO (2026-07-15) — sonda Remote Control (`/rc`) su Giulia/WSL verificata live — sessione locale raggiunta da telefono, lettura file reale del repo confermata. Nessun bridge custom necessario. Vincolo: PC acceso e app desktop aperta. Regole di sicurezza vincolanti: modalità 'chiedi prima di agire', accesso SOLO alla cartella repo, computer use OFF, mai pre-autorizzare azioni (il PC dev detiene la chiave SSH della VPS di produzione).
 - **Controllo Telegram unificato (ridimensionato).** SUPERATO PER METÀ da Dispatch: il canale tu→Claude Code da telefono lo copre Dispatch (ufficiale, niente bridge custom = niente superficie RCE da costruire e mantenere). Resta valido SOLO il canale GAS→Claude Code human-gated (la VPS propone, l'umano approva via /approva): Dispatch non lo copre — la spec di sicurezza è l'item "🌉 Ponte GAS↔Claude Code human-gated (Telegram)" sopra (listener pull-only, ID monouso 24h, whitelist comandi, max 3 proposte/giorno, audit log). Trade-off accettato: GAS si comanda da Telegram, lo sviluppo dall'app Claude. NB: ridimensiona anche l'idea "Telegram dual-control" in 💡 Idee da valutare (il canale telefono→CC lo coprirebbe Dispatch).
+- **Secondo account GitHub (machine user)** — con main-lock a 1 approvazione l'agente non può chiudere la PR da solo (GitHub vieta auto-approvazione). Da valutare insieme alla privatizzazione repo (item #0 PROSSIMI PASSI).
+- **Trailer `Co-Authored-By`** — convenzione per distinguere commit agente/mano nel `git log` (filterable). Non impegnata; da decidere se e come standardizzare.
 
 ### 🧬 Secondo cervello personale — "Jarvis cognitivo" (MOLTO IMPORTANTE, NON prioritario)
 
