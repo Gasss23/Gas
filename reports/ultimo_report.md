@@ -1,28 +1,43 @@
-# ULTIMO REPORT — Rebase fix/gasmerge-hardening su origin/main (2026-07-31)
+# ULTIMO REPORT — Fix verdetto §4 handoff — path completi per check_verdetto CI (2026-07-31)
 
 **Data:** 2026-07-31
 **Branch:** fix/gasmerge-hardening
-**Task:** Rebase Giro A su main (PR #57 già mergiata), riconciliazione canonici, review #72, CI
+**Task:** Fix doc-only: sostituire verdetto #72 (path abbreviati) con #73 (path completi dalla root) in §4 handoff.md per sbloccare check_verdetto CI su PR #56. Il codice è APPROVATO, nessuna modifica al diff del motore.
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #56** (`fix/gasmerge-hardening`) — branch rebasato, CI SUCCESS, pronto per gasmerge da WSL.
+1. **Merge della PR #56** (`fix/gasmerge-hardening`) — branch rebasato, CI pendente per questo fix, pronto per gasmerge da WSL dopo CI verde.
 
 ---
 
-## §1 SCOPE & ESITO FETTE
+## §1 SCOPE & ESITO FETTE (sessione corrente — fix check_verdetto)
 
-- **FETTA 1 — Rebase + risoluzione conflitto**: `FATTA`
-  Conflitto atteso su `tests/test_unit_gasmerge.py` risolto unendo branch (stub con `$GASPR_JSON`, `test_new_head_empty_blocks_with_explicit_message`) + main PR #57 (`_make_stub_gh_recording_merge`, `TestTOCTOUPositive`). Fix critico: `/tmp/gaspr.json` hardcoded in `_make_stub_gh_recording_merge` → `"$GASPR_JSON"`. Conflitto su `memoria_revisore.md` risolto rinumerando branch #69 → #71. Report files risolti con `--theirs`.
+- **FETTA 1 — Re-invocazione revisore (#73)**: `FATTA`
+  Subagent revisore invocato sul diff `origin/main..HEAD`. Merito già approvato (#72): istruzione esplicita di ri-emettere con path completi dalla root. Line count verificati: `scripts/gasmerge.sh`=190 righe, `tests/test_unit_gasmerge.py`=600 righe. STOP GATE non scattato (nessun problema nuovo). Verdetto: **APPROVATO** (#73).
 
-- **FETTA 2 — Riconciliazione canonici**: `FATTA`
-  - `memoria_revisore.md`: branch #69 → #71; #69/#70 di main intatte; lezione "diff a voce può divergere dal file reale" preservata in #71.
-  - `stato_progetto.md`: tutti i #65-R* ✅ chiusi (#65-R2 chiuso da main PR #57 + review #69/#70); contatore review aggiornato → #72.
+- **FETTA 2 — Sostituzione §4 handoff.md + aggiornamento memoria**: `FATTA`
+  `reports/handoff.md` §4: rimosso verdetto #72 (path abbreviati), inserito #73 verbatim (path completi). `memoria_revisore.md`: riga #73 aggiunta dal subagent revisore. `ultimo_report.md`: questo file.
 
-- **FETTA 3 — Revisore #72 sul diff post-rebase**: `FATTA`
-  Verdetto: **APPROVATO** — nessuna riserva. Grep reale: zero `/tmp/gaspr.json` residui.
+- **FETTE 3–4 — Gate check + commit/push**: pendente.
 
-- **FETTA 4 — Suite locale + CI**: `FATTA`
-  Locale: **13 PASS, 0 FAIL, 0 SKIP**. CI run `30586096350`: **SUCCESS** (`unit-suite` ✅ 37s, `handoff-check` ✅ 10s).
+---
+
+## §2 VERDETTI VERBATIM (traccia onesta)
+
+### Verdetto #72 (bloccante — path abbreviati)
+
+```
+#72 — 2026-07-31 — APPROVATO — fix/gasmerge-hardening rebasato su main: FIX 1 guard NEW HEAD (gasmerge.sh:177), FIX 2 git dinamico (test:101/116), FIX 3 mktemp (gasmerge.sh:27-29), stub PR #57 convertiti a $GASPR_JSON. Grep reale: zero /tmp/gaspr.json residui. Chiude #65-R1/#65-R3/#63-R1 + fix critico rebase. Nessuna lezione nuova.
+```
+
+**Perché bloccava:** `check_verdetto.py` cerca `gasmerge.sh` nel diff di sessione ma il file è `scripts/gasmerge.sh` → "path NON nel diff di sessione" → exit 1.
+
+### Verdetto #73 (fix — path completi dalla root)
+
+```
+#73 — 2026-07-31 — APPROVATO — fix/gasmerge-hardening rebasato su main: FIX 1 guard NEW_HEAD (scripts/gasmerge.sh:177 `[ -n "$NEW_HEAD" ] || { echo "BLOCCO...`), FIX 2 git dinamico (tests/test_unit_gasmerge.py:101 e :116 `shutil.which("git") or "/usr/bin/git"`), FIX 3 mktemp (scripts/gasmerge.sh:27 `GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)`), stub PR #57 convertiti a $GASPR_JSON. Rischio escluso: comportamento a runtime su VPS (non riproducibile in dev, demandato a CI e deploy). Chiude #65-R1/#65-R3/#63-R1 + fix critico rebase. Nessuna lezione nuova.
+```
+
+**Riferimenti verificati:** `scripts/gasmerge.sh:177` (≤190), `tests/test_unit_gasmerge.py:101` (≤600), `scripts/gasmerge.sh:27` (≤190) — tutti nel diff di sessione.

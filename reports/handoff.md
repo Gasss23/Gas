@@ -56,12 +56,12 @@ NB: il commit di fine-task che contiene questo file non compare qui per costruzi
 
 ## §4 VERDETTO DEL REVISORE
 
-Il diff tocca `tests/test_unit_gasmerge.py` e `scripts/gasmerge.sh` → revisore invocato (review #72).
+Il diff tocca `tests/test_unit_gasmerge.py` e `scripts/gasmerge.sh` → revisore invocato (review #73, ri-emissione #72 con path completi dalla root).
 
-**Verdetto #72 (VERBATIM):**
+**Verdetto #73 (VERBATIM):**
 
 ```
-#72 — 2026-07-31 — APPROVATO — fix/gasmerge-hardening rebasato su main: FIX 1 guard NEW HEAD (gasmerge.sh:177), FIX 2 git dinamico (test:101/116), FIX 3 mktemp (gasmerge.sh:27-29), stub PR #57 convertiti a $GASPR_JSON. Grep reale: zero /tmp/gaspr.json residui. Chiude #65-R1/#65-R3/#63-R1 + fix critico rebase. Nessuna lezione nuova.
+#73 — 2026-07-31 — APPROVATO — fix/gasmerge-hardening rebasato su main: FIX 1 guard NEW_HEAD (scripts/gasmerge.sh:177 `[ -n "$NEW_HEAD" ] || { echo "BLOCCO...`), FIX 2 git dinamico (tests/test_unit_gasmerge.py:101 e :116 `shutil.which("git") or "/usr/bin/git"`), FIX 3 mktemp (scripts/gasmerge.sh:27 `GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)`), stub PR #57 convertiti a $GASPR_JSON. Rischio escluso: comportamento a runtime su VPS (non riproducibile in dev, demandato a CI e deploy). Chiude #65-R1/#65-R3/#63-R1 + fix critico rebase. Nessuna lezione nuova.
 ```
 
 ---
