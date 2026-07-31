@@ -24,12 +24,15 @@ PR="$1"
 jq --version >/dev/null 2>&1 || { echo "ERRORE: jq assente o non funzionante"; exit 1; }
 # GAS_REPO_DIR override per i test; default = prod (stesso pattern di session_end.sh).
 cd "${GAS_REPO_DIR:-$HOME/Gas}" || exit 1
+GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)
+export GASPR_JSON
+trap 'rm -f "$GASPR_JSON"' EXIT
 git fetch --prune origin >/dev/null
 
-gh pr view "$PR" --json headRefName,title,state > /tmp/gaspr.json
-BRANCH=$(jq -r .headRefName /tmp/gaspr.json)
-TITLE=$(jq -r .title /tmp/gaspr.json)
-STATE=$(jq -r .state /tmp/gaspr.json)
+gh pr view "$PR" --json headRefName,title,state > "$GASPR_JSON"
+BRANCH=$(jq -r .headRefName "$GASPR_JSON")
+TITLE=$(jq -r .title "$GASPR_JSON")
+STATE=$(jq -r .state "$GASPR_JSON")
 [ "$STATE" = "OPEN" ] || { echo "BLOCCO: PR #$PR è $STATE"; exit 1; }
 
 echo "=== PR #$PR — $TITLE"
@@ -171,6 +174,7 @@ if [ "$TOCTOU_RC" -ne 0 ]; then
   echo "BLOCCO: ri-lettura head PR fallita (rc=$TOCTOU_RC) — merge annullato per sicurezza"
   exit 1
 fi
+[ -n "$NEW_HEAD" ] || { echo "BLOCCO: NEW_HEAD vuoto (ri-lettura post-conferma) — head non verificabile"; exit 1; }
 if [ "$NEW_HEAD" != "$HEAD_SHA" ]; then
   echo "BLOCCO: head cambiata durante la conferma ($HEAD_SHA → $NEW_HEAD) — riavvia gasmerge"
   exit 1

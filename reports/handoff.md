@@ -1,31 +1,27 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-30 — Chiusura gate R4 su Riserva 1 di review #69
+**Sessione:** 2026-07-31 — Rebase fix/gasmerge-hardening su main
+**Branch:** fix/gasmerge-hardening
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #57 (`test(gasmerge): copertura POSITIVA end-to-end --match-head-commit`).
+1. **Merge della PR #56** (`fix(gasmerge): hardening #65-R1/#63-R1/#65-R3`) — branch rebasato su `740ccc5` (origin/main), CI SUCCESS `30586227791`. Pronto per `gasmerge` da WSL.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Verifica riga 410 (`-> None`)**: `FATTA`
-  `tests/test_unit_gasmerge.py:410` su disco: `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:` confermato.
+- **FETTA 1 — Rebase + risoluzione conflitto**: `FATTA`
+  `git rebase origin/main` da `fix/gasmerge-hardening`. Conflitto atteso su `tests/test_unit_gasmerge.py` risolto unendo: stub branch (con `$GASPR_JSON`, `test_new_head_empty_blocks_with_explicit_message` in `TestTOCTOU`) + nuovi da main PR #57 (`_make_stub_gh_recording_merge` con fix `/tmp→$GASPR_JSON`, `TestTOCTOUPositive`). Conflitto su `memoria_revisore.md` risolto rinumerando branch #69 → #71 (lezione preservata). Report files risolti con `--theirs` (rigenerati in questa sessione).
 
-- **Fetta 2 — Ri-invoca subagent revisore (#70)**: `FATTA`
-  Verdetto APPROVATO; Riserva 1 dichiarata CHIUSA con riferimenti file:riga.
+- **FETTA 2 — Riconciliazione canonici**: `FATTA`
+  `memoria_revisore.md`: branch #69 → #71; #69/#70 main intatte. `stato_progetto.md`: #65-R2 ✅ chiuso (PR #57 + review #69/#70); #65-R3 aggiornato (stub PR #57 convertito); contatore review → #72.
 
-- **Fetta 3 — Riga #70 in memoria_revisore.md**: `FATTA`
-  Aggiunta dal revisore stesso a `.claude/agents/memoria_revisore.md:114`.
+- **FETTA 3 — Revisore #72**: `FATTA` — verdetto **APPROVATO**, nessuna riserva, grep reale 0 occorrenze `/tmp/gaspr.json`.
 
-- **Fetta 4 — Aggiorna ultimo_report.md (verdetti #69 + #70 verbatim)**: `FATTA`
-  Entrambi i verdetti incollati integrali; chiusura R4 dichiarata.
-
-- **Fetta 5 — Aggiorna stato_progetto.md (riga #65-R2)**: `FATTA`
-  Clausola ri-review #70 aggiunta alla riga `#65-R2`.
+- **FETTA 4 — Suite + CI**: `FATTA` — 13 PASS 0 FAIL locale; CI `30586227791` SUCCESS.
 
 ---
 
@@ -33,12 +29,13 @@
 
 ```
  .claude/agents/memoria_revisore.md |   2 +
- reports/diff_sessione.md           |  36 ++++---
- reports/handoff.md                 | 117 +++++++++++++++++------
- reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           | 188 ++++++++++++-------------------------
- tests/test_unit_gasmerge.py        |  77 +++++++++++++++
- 6 files changed, 249 insertions(+), 177 deletions(-)
+ reports/diff_sessione.md           |  32 +++++----
+ reports/handoff.md                 | 130 ++++++++++++++-----------------------
+ reports/stato_progetto.md          |  14 ++--
+ reports/ultimo_report.md           |  90 +++++--------------------
+ scripts/gasmerge.sh                |  12 ++--
+ tests/test_unit_gasmerge.py        |  78 ++++++++++++++++++++--
+ 7 files changed, 166 insertions(+), 192 deletions(-)
 ```
 
 ---
@@ -46,90 +43,89 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-917ea3e docs(gate-r4): ri-review #70 APPROVATO — chiude Riserva 1 di #69 (-> None)
-eccb157 docs(fine-task): rigenera handoff.md — §2 corretto (6 file, memoria_revisore inclusa) 2026-07-30
-67df8a1 docs(fine-task): ultimo_report + handoff + diff_sessione — copertura POSITIVA --match-head-commit 2026-07-30
-c21696d test(gasmerge): copertura POSITIVA end-to-end di --match-head-commit (#65-R2/#63-R2)
+52a849c docs(fine-task): rebase fix/gasmerge-hardening su main — review #72 APPROVATO, CI 30586096350 SUCCESS
+94bf46c docs(fine-task): rigenera handoff.md — §2 corretto (7 file vs 3) per handoff-check CI
+6c201fb docs(fine-task): ultimo_report + handoff + stato + diff — fix/gasmerge-hardening PR #56 2026-07-30
+dd8406c chore: aggiorna memoria revisore (review #69 fix/gasmerge-hardening)
+b18dcb5 fix(gasmerge): hardening #65-R1/#63-R1/#65-R3 — guard NEW_HEAD, git dinamico, mktemp
 ```
+
+NB: il commit di fine-task che contiene questo file non compare qui per costruzione.
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §4 VERDETTO DEL REVISORE
 
-**Commit `c21696d`** tocca `tests/test_unit_gasmerge.py` (77 righe aggiunte).
+Il diff tocca `tests/test_unit_gasmerge.py` e `scripts/gasmerge.sh` → revisore invocato (review #73, ri-emissione #72 con path completi dalla root).
 
-### Verdetto #69 (APPROVATO CON RISERVE — sessione precedente)
+**Verdetto #73 (VERBATIM):**
 
-> `tests/test_unit_gasmerge.py:429-431` — arm `*"headRefOid"*` restituisce SHA identico
-> a entrambe le chiamate (pre-prompt e post-prompt) → TOCTOU check passa, nessun BLOCCO
-> spurio. Rischio ordine arm: nessun conflitto con `*"pr merge"*` perché le rispettive
-> `$*` non si sovrappongono. **Esito: ok**.
->
-> `tests/test_unit_gasmerge.py:432-434` + `533` — `echo "$@"` registra gli argomenti
-> reali di `gh pr merge`; l'asserzione `f"--match-head-commit {self._SHA}" in recorded`
-> è mordace (fallirebbe su flag assente o SHA errato). Doppia guardia con
-> `assert merge_log.exists()` che certifica che il ramo `pr merge` sia stato raggiunto.
-> **Esito: ok**.
->
-> **Riserva 1 (minore):** firma di `_make_stub_gh_recording_merge` senza `-> None`
-> (CLAUDE.md §4). Coerente col pattern dell'intero file; correggibile al prossimo refactor.
->
-> **Riserva 2 (pre-esistente):** `/tmp/gaspr.json` hardcoded, già tracciato come #65-R3.
-> Non aggravata da questo diff.
->
-> **Finding #65-R2 / #63-R2: CHIUSO.**
-
-### Verdetto #70 — ri-review R4 (APPROVATO — questa sessione)
-
-> `tests/test_unit_gasmerge.py:410` — `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:` — type hint `-> None` presente e confermato da Read del file su disco (offset 400, limit 140). Tutti e tre i parametri hanno type hint espliciti (Path, Path, str). Riserva 1 di #69 esaminata: CHIUSA. Rischio "violazione CLAUDE.md §4 rigoroso uso type hints": esito ok.
->
-> `tests/test_unit_gasmerge.py:528-533` — blocco delle tre asserzioni in `test_head_unchanged_merge_uses_match_head_commit`: (1) `assert result.returncode == 0`; (2) `assert merge_log.exists()` — se `gh pr merge` non venisse invocato, il file non esiste e il test cade; (3) `assert f"--match-head-commit {self._SHA}" in recorded` — controlla la coppia flag+valore come sottostringa del log prodotto da `echo "$@"`. Mordacità verificata: se `gasmerge.sh` omettesse `--match-head-commit` o passasse uno SHA diverso, l'asserzione (3) fallirebbe correttamente. Il `merge_log` vive in `tmp_path / "merge_args.log"` (path univoco per invocazione pytest), isolato dal `/tmp/gaspr.json` già noto. Rischio "test che asserisce solo exit 0 non discrimina": esito ok — la catena di tre asserzioni è discriminante.
->
-> `tests/test_unit_gasmerge.py:419-438` — corpo bash dello stub: pattern `case "$*" in` con ordine `*"headRefOid"*` PRIMA di `*"pr merge"*` e `*"--watch"*` PRIMA di `*"pr merge"*`. Rischio "collisione pattern se gasmerge.sh chiamasse `gh pr merge --watch`": la chiamata reale di `gh pr checks --watch` non contiene `pr merge`, quindi l'intercettazione errata non si produce. Ordine dei rami sicuro nel contesto reale. Rischio "interpolazione `{sha}` senza escape in testo bash": SHA git sono esadecimali puri, nessun carattere speciale bash possibile. Esito ok.
->
-> Rischio esplicitamente escluso: il comportamento end-to-end su VPS con più worker paralleli (pytest-xdist) non è verificabile nell'ambiente di review — il rischio `/tmp/gaspr.json` condiviso tra test concorrenti (riserva #65-R3, già tracciata) rimane aperto ma non aggravato da questo diff.
->
-> **Riserva 1 di #69 (-> None): CHIUSA** — riga 410 su disco: `def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:`.
->
-> Riserve residue: nessuna nuova. Resta aperta la pre-esistente #65-R3 (`/tmp/gaspr.json` hardcoded, non thread-safe con pytest-xdist), non aggravata da questo diff.
+```
+#73 — 2026-07-31 — APPROVATO — fix/gasmerge-hardening rebasato su main: FIX 1 guard NEW_HEAD (scripts/gasmerge.sh:177 `[ -n "$NEW_HEAD" ] || { echo "BLOCCO...`), FIX 2 git dinamico (tests/test_unit_gasmerge.py:101 e :116 `shutil.which("git") or "/usr/bin/git"`), FIX 3 mktemp (scripts/gasmerge.sh:27 `GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)`), stub PR #57 convertiti a $GASPR_JSON. Rischio escluso: comportamento a runtime su VPS (non riproducibile in dev, demandato a CI e deploy). Chiude #65-R1/#65-R3/#63-R1 + fix critico rebase. Nessuna lezione nuova.
+```
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-`tests/test_unit_gasmerge.py`: 11 → 12 test (aggiunta `TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit` in commit `c21696d`, sessione precedente). Tutti PASS verificati nella sessione precedente.
+Nessuna modifica a `gas.py`, `brains/`, `modules/`.
+
+Suite `tests/test_unit_gasmerge.py` (+2 nuovi test: `test_new_head_empty_blocks_with_explicit_message`, `test_head_unchanged_merge_uses_match_head_commit`):
 
 ```
-12 passed in 2.14s
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1
+collected 13 items
+
+TestArgValidation::test_no_arg_exits_2 PASSED
+TestArgValidation::test_non_numeric_arg_exits_2 PASSED
+TestJqCheck::test_broken_jq_exits_with_message PASSED
+TestPRState::test_pr_not_open_blocks PASSED
+TestIPGuard::test_git_grep_error_blocks PASSED
+TestIPGuard::test_ip_outside_reports_blocks PASSED
+TestDiffGuard::test_git_diff_name_only_error_blocks PASSED
+TestIPAllowlist::test_ip_with_marker_passes PASSED
+TestIPAllowlist::test_ip_without_marker_blocks PASSED
+TestIPAllowlist::test_public_ip_without_marker_blocks PASSED
+TestTOCTOU::test_head_changed_during_confirm_blocks PASSED
+TestTOCTOU::test_new_head_empty_blocks_with_explicit_message PASSED
+TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit PASSED
+
+============================== 13 passed in 4.59s ==============================
 ```
 
-Nessuna modifica a `gas.py`, `brains/`, `modules/` in questa sessione.
+**13 PASS, 0 FAIL, 0 SKIP.**
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed  success  docs(gate-r4): ri-review #70 APPROVATO — chiude Riserva 1 di #69 (-> …  CI  test/gasmerge-match-head  push  30566006489  54s  2026-07-30T17:26:58Z
-completed  success  docs(fine-task): rigenera handoff.md — §2 corretto (6 file, memoria_r…  CI  test/gasmerge-match-head  push  30562968362  44s  2026-07-30T16:46:18Z
-completed  failure  docs(fine-task): ultimo_report + handoff + diff_sessione — copertura …  CI  test/gasmerge-match-head  push  30562518669  59s  2026-07-30T16:40:25Z
+completed	success	docs(fine-task): rebase fix/gasmerge-hardening su main — review #72 A…	CI	fix/gasmerge-hardening	push	30586227791	41s	2026-07-30T22:11:04Z
+completed	success	docs(fine-task): rigenera handoff.md — §2 corretto (7 file vs 3) per …	CI	fix/gasmerge-hardening	push	30586096350	39s	2026-07-30T22:08:56Z
+completed	success	Merge pull request #58 from Gasss23/docs/roadmap-sweep-2026-07-30	CI	main	push	30585164699	1m20s	2026-07-30T21:53:36Z
 ```
 
-**Mappatura commit → run:**
+**Mappatura commit → run CI:**
 
-| Commit | Messaggio | Run CI | Esito |
-|--------|-----------|--------|-------|
-| `917ea3e` | docs(gate-r4): ri-review #70 APPROVATO — chiude Riserva 1 di #69 (-> None) | 30566006489 | ✅ success |
-| `eccb157` | docs(fine-task): rigenera handoff.md — §2 corretto | 30562968362 | ✅ success |
-| `67df8a1` | docs(fine-task): ultimo_report + handoff + diff_sessione | 30562518669 | ❌ failure (handoff-check §2 errato; corretto in eccb157) |
-| `c21696d` | test(gasmerge): copertura POSITIVA end-to-end | nessuna run in -L 3 (push precedente, rotata) | — contenuto incluso nell'albero di eccb157 |
+| Commit | Messaggio | Run CI |
+|--------|-----------|--------|
+| `52a849c` | docs(fine-task): rebase fix/gasmerge-hardening su main — review #72 APPROVATO | run `30586227791` ✅ SUCCESS |
+| `94bf46c` | docs(fine-task): rigenera handoff.md — §2 corretto | run `30586096350` ✅ SUCCESS |
+| `6c201fb` | docs(fine-task): ultimo_report + handoff + stato + diff — PR #56 | nessuna run dedicata (commit intermedio nel push di `94bf46c`; albero di `94bf46c` testato da `30586096350`) |
+| `dd8406c` | chore: aggiorna memoria revisore (review #69 fix/gasmerge-hardening) | nessuna run dedicata (idem) |
+| `b18dcb5` | fix(gasmerge): hardening #65-R1/#63-R1/#65-R3 | nessuna run dedicata (commit intermedio; albero incluso in `94bf46c`, testato da `30586096350`) |
 
-Note: `67df8a1` fallì per handoff-check (§2 del handoff.md aveva set di file errato). Corretto in `eccb157` (success).
+Il commit di fine-task corrente (questo file) → run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **#65-R3** (pre-esistente, non aggravata): `/tmp/gaspr.json` hardcoded nei pattern `headRefName` degli stub bash — non thread-safe con pytest-xdist. Non bloccante in esecuzione sequenziale.
-- **#63-R1** (pre-esistente): stub git hardcoda `/usr/bin/git` — non portabile su sistemi con git altrove.
-- **#66-R1** (pre-esistente): guard `[ -n "$HEAD_SHA" ]` in `gasmerge.sh` senza test stub dedicato (minore).
+Nessuna riserva aperta da questa sessione (review #72 APPROVATO senza riserve).
+
+Riserve pre-esistenti non toccate (tracciate in `stato_progetto.md`):
+- R-reidx-3 — picco RAM reindex su diario grande (rinviata a VPS)
+- R-wire-1 — VEC_MIN_SIM tarata su esempi sintetici
+- R-verdetto-evidenza — check meccanico path:riga non impegnato
+- Riserve minori: R-test-1, R2 #6, R3 #4, riserve snapshot TASK C, hook SessionEnd, R-mem, R26-1/R26-2

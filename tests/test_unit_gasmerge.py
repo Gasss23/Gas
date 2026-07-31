@@ -4,6 +4,7 @@ Stub pattern: fake_bin/ preposta al PATH con gh e git fittizi.
 GAS_REPO_DIR: punta a repo temporanei reali (nessun side effect su ~/Gas).
 """
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -64,7 +65,7 @@ def _make_stub_gh(
     stub.write_text(f"""#!/usr/bin/env bash
 case "$*" in
   *"headRefName,title,state"*)
-    printf '{{"headRefName":"feat","title":"Test PR","state":"{state}"}}\\n' > /tmp/gaspr.json
+    printf '{{"headRefName":"feat","title":"Test PR","state":"{state}"}}\\n' > "$GASPR_JSON"
     exit 0 ;;
   *"--watch"*)
     exit {ci_rc} ;;
@@ -91,23 +92,34 @@ def _make_stub_jq_broken(fake_bin: Path) -> None:
 
 
 def _make_stub_git_grep_fail(fake_bin: Path, rc: int = 2) -> None:
-    """Stub git: intercetta 'git grep' con exit rc; delega il resto al git reale."""
+    """Stub git: intercetta 'git grep' con exit rc; delega il resto al git reale.
+
+    Il path del git reale viene risolto QUI (in Python, prima che fake_bin venga
+    preposta a PATH), così `exec real_git` nel corpo dello stub non può trovare
+    lo stub stesso per ricorsione.
+    """
+    real_git = shutil.which("git") or "/usr/bin/git"
     stub = fake_bin / "git"
     stub.write_text(f"""#!/usr/bin/env bash
 if [ "$1" = "grep" ]; then exit {rc}; fi
-exec /usr/bin/git "$@"
+exec "{real_git}" "$@"
 """)
     stub.chmod(0o755)
 
 
 def _make_stub_git_diff_name_only_fail(fake_bin: Path, rc: int = 5) -> None:
-    """Stub git: intercetta 'git diff --name-only' con exit rc; delega il resto."""
+    """Stub git: intercetta 'git diff --name-only' con exit rc; delega il resto.
+
+    Il path del git reale viene risolto QUI (in Python), prima che fake_bin venga
+    preposta a PATH — stessa strategia di _make_stub_git_grep_fail.
+    """
+    real_git = shutil.which("git") or "/usr/bin/git"
     stub = fake_bin / "git"
     stub.write_text(f"""#!/usr/bin/env bash
 if [ "$1" = "diff" ] && printf '%s\\n' "$@" | grep -q -- '--name-only'; then
   exit {rc}
 fi
-exec /usr/bin/git "$@"
+exec "{real_git}" "$@"
 """)
     stub.chmod(0o755)
 
@@ -419,7 +431,7 @@ def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> 
     stub.write_text(f"""#!/usr/bin/env bash
 case "$*" in
   *"headRefName,title,state"*)
-    printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > /tmp/gaspr.json
+    printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > "$GASPR_JSON"
     exit 0 ;;
   *"--watch"*)
     exit 0 ;;
@@ -458,7 +470,7 @@ class TestTOCTOU:
         stub.write_text(f"""#!/usr/bin/env bash
 case "$*" in
   *"headRefName,title,state"*)
-    printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > /tmp/gaspr.json
+    printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > "$GASPR_JSON"
     exit 0 ;;
   *"--watch"*)
     exit 0 ;;
@@ -488,6 +500,58 @@ esac
         )
         assert "BLOCCO" in result.stdout and "head cambiata" in result.stdout, (
             f"Atteso BLOCCO head cambiata: stdout={result.stdout!r}"
+        )
+
+    def test_new_head_empty_blocks_with_explicit_message(self, tmp_path):
+        """FIX 1 — NEW_HEAD vuoto → BLOCCO esplicito 'vuoto', NON 'head cambiata'.
+
+        Stub stateful: 1ª headRefOid → SHA valido (cattura pre-prompt), 2ª → stringa
+        vuota (ri-lettura post-conferma). Senza il nuovo guard il TOCTOU check
+        bloccherebbe comunque ma con il messaggio fuorviante 'head cambiata'; con il
+        guard il blocco è esplicito prima del confronto TOCTOU.
+        """
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        counter_file = tmp_path / "oid_counter2"
+        counter_file.write_text("0")
+        counter_path = str(counter_file)
+        stub = fake_bin / "gh"
+        stub.write_text(f"""#!/usr/bin/env bash
+case "$*" in
+  *"headRefName,title,state"*)
+    printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > "$GASPR_JSON"
+    exit 0 ;;
+  *"--watch"*)
+    exit 0 ;;
+  *"name,bucket"*)
+    printf '%s\\n' '[{{"name":"unit-suite","bucket":"pass"}}]'
+    exit 0 ;;
+  *"headRefOid"*)
+    COUNT=$(cat "{counter_path}" 2>/dev/null || echo 0)
+    if [ "$COUNT" = "0" ]; then
+      echo "aaa1111111111111111111111111111111111"
+      echo "1" > "{counter_path}"
+    else
+      echo ""
+    fi
+    exit 0 ;;
+  *"pr merge"*)
+    exit 0 ;;
+  *)
+    exit 0 ;;
+esac
+""")
+        stub.chmod(0o755)
+        result = _run_with_stdin(work, fake_bin, stdin_data="123\n")
+        assert result.returncode != 0, (
+            f"Atteso exit non-zero con NEW_HEAD vuoto, got 0; stdout={result.stdout!r}"
+        )
+        assert "BLOCCO" in result.stdout and "vuoto" in result.stdout, (
+            f"Atteso BLOCCO con 'vuoto': stdout={result.stdout!r}"
+        )
+        assert "head cambiata" not in result.stdout, (
+            f"Messaggio 'head cambiata' fuorviante per NEW_HEAD vuoto: {result.stdout!r}"
         )
 
 
