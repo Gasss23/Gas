@@ -1,20 +1,20 @@
-# Diff sessione — 2026-07-31
+# Diff sessione — 2026-08-01
 
-Task: Rebase fix/gasmerge-hardening su origin/main — riconciliazione canonici + review #72
+Task: Sonda fattibilità client voce Windows ↔ GAS (WSL) — `feature/voice-probe`
 
 ## File toccati
 
-| File | Cosa è cambiato e perché |
-|------|--------------------------|
-| `scripts/gasmerge.sh` | FIX 1: guard `[ -n "$NEW_HEAD" ]` post-conferma (#65-R1); FIX 2: `shutil.which("git")` reso dinamico negli stub (#63-R1); FIX 3: `mktemp` per-run + `export GASPR_JSON` + `trap EXIT` (#65-R3) — commit di sessione precedente, qui incluso nel range BASE..HEAD |
-| `tests/test_unit_gasmerge.py` | Rebase: unione stub branch ($GASPR_JSON) + stub/classi PR #57 (`_make_stub_gh_recording_merge`, `TestTOCTOUPositive`); FIX critico: `/tmp/gaspr.json` → `"$GASPR_JSON"` in `_make_stub_gh_recording_merge`; nuovo test `test_new_head_empty_blocks_with_explicit_message` (guard NEW_HEAD vuoto) |
-| `.claude/agents/memoria_revisore.md` | Rinumerazione branch #69 → #71 (risoluzione conflitto rebase); aggiunta #72 (APPROVATO, revisore su diff post-rebase) |
-| `reports/stato_progetto.md` | Tutti i #65-R* ✅ chiusi; contatore review → #72; header aggiornato al 2026-07-31 |
-| `reports/ultimo_report.md` | Rigenerato: esito 4 fette, verdetto #72 verbatim, suite 13 PASS, CI run ID |
-| `reports/handoff.md` | Rigenerato con dossier sessione corrente (rebase + review #72) |
-| `reports/diff_sessione.md` | Questo file — riscritto per sessione 2026-07-31 |
+| File | Cosa | Perché |
+|------|------|--------|
+| `clients/voice/probe/win_mic_test.py` | Nuovo — script Windows registrazione mic | Sonda gamma mic: 3s, salva WAV, stampa RMS, device selezionabile |
+| `clients/voice/probe/win_wakeword_test.py` | Nuovo — script Windows wake-word | Sonda openWakeWord pretrained (hey_jarvis), detection con timestamp |
+| `clients/voice/probe/win_playback_test.py` | Nuovo — script Windows playback | Sonda riproduzione WAV/MP3 su device scelto |
+| `clients/voice/probe/win_bridge_test.py` | Nuovo — script Windows bridge test | POST /ping → WSL per verificare forwarding TCP WSL2→Windows |
+| `clients/voice/probe/probe_bridge_server.py` | Nuovo — server HTTP WSL | Server stdlib (no deps) con endpoint POST /ping; testato con curl, OK su 127.0.0.1 e 172.20.137.213:8765 |
+| `clients/voice/probe/probe_apis.py` | Nuovo — probe API WSL | Groq Whisper STT (OK, HTTP 200) + ElevenLabs Flash TTS (ERRORE_API 402 piano free) |
+| `reports/ultimo_report.md` | Sovrascritto — report sonda | Report canonico con decisioni umane, esiti per gamba, runbook Windows completo |
 
-## Note
+## Cosa NON è stato toccato
 
-- Il rebase ha incluso nell'albero finale anche i fix del branch pre-esistente (`b18dcb5`): `scripts/gasmerge.sh` e `tests/test_unit_gasmerge.py` erano già stati modificati nella sessione precedente; il rebase li ha portati su origin/main aggiungendo la risoluzione del conflitto con PR #57.
-- Nessuna modifica a `gas.py`, `brains/`, `modules/`.
+- `gas.py`, `brains/`, `modules/`, `tests/` — nessuna modifica al motore
+- Il revisore non è stato invocato (corretto: perimetro non interessato)
