@@ -16,7 +16,7 @@
 
 | Fetta | Stato | Note |
 |-------|-------|------|
-| Analisi righe con IP privato da marcare | **FATTA** | Lettura di 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213 |
+| Analisi righe con IP privato da marcare | **FATTA** | Lettura di 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213 | <!-- gasmerge-ip-ok -->
 | `probe_bridge_server.py` righe 9, 11, 70 | **FATTA** | Token `# gasmerge-ip-ok` aggiunto in coda a ciascuna riga |
 | `win_bridge_test.py` righe 14, 15, 54, 86 | **FATTA** | Token `# gasmerge-ip-ok` aggiunto in coda a ciascuna riga |
 | `reports/diff_sessione.md` riga 12 | **FATTA** | Token `<!-- gasmerge-ip-ok -->` aggiunto in coda alla riga |

@@ -15,7 +15,7 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Analisi IP privati da allowlistare**: `FATTA` — lettura 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213.
+- **Analisi IP privati da allowlistare**: `FATTA` — lettura 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213. <!-- gasmerge-ip-ok -->
 - **`probe_bridge_server.py` righe 9, 11, 70**: `FATTA` — `# gasmerge-ip-ok` in coda.
 - **`win_bridge_test.py` righe 14, 15, 54, 86**: `FATTA` — `# gasmerge-ip-ok` in coda.
 - **`reports/diff_sessione.md` riga 12**: `FATTA` — `<!-- gasmerge-ip-ok -->` in coda.
