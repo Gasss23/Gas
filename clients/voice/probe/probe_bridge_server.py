@@ -6,9 +6,9 @@ Espone POST /ping  →  { "pong": true, "server": "WSL" }
 Da usare in coppia con win_bridge_test.py (Windows).
 
 Uso:
-    python probe_bridge_server.py             # default 127.0.0.1:8765
+    python probe_bridge_server.py             # default 127.0.0.1:8765  # gasmerge-ip-ok
     python probe_bridge_server.py --port 9000
-    python probe_bridge_server.py --host 0.0.0.0  # accetta da tutti gli IP
+    python probe_bridge_server.py --host 0.0.0.0  # accetta da tutti gli IP  # gasmerge-ip-ok
 
 Dipendenze: solo stdlib Python (http.server, json).
 """
@@ -67,7 +67,7 @@ def wsl_ip() -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Server HTTP ping per probe bridge WSL↔Windows")
-    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--host", default="0.0.0.0")  # gasmerge-ip-ok
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
 

@@ -11,8 +11,8 @@ Dipendenze (pip install):
     requests
 
 Uso:
-    python win_bridge_test.py                         # default 127.0.0.1:8765
-    python win_bridge_test.py --host 172.28.16.1 --port 8765
+    python win_bridge_test.py                         # default 127.0.0.1:8765  # gasmerge-ip-ok
+    python win_bridge_test.py --host 172.28.16.1 --port 8765  # gasmerge-ip-ok
     python win_bridge_test.py --repeat 5              # invia 5 ping di fila
 """
 
@@ -51,7 +51,7 @@ def do_ping(url: str, timeout: float) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Test bridge WSL2 → Windows")
-    parser.add_argument("--host", default="127.0.0.1", help="IP del server WSL (default 127.0.0.1)")
+    parser.add_argument("--host", default="127.0.0.1", help="IP del server WSL (default 127.0.0.1)")  # gasmerge-ip-ok
     parser.add_argument("--port", type=int, default=8765, help="Porta (default 8765)")
     parser.add_argument("--repeat", type=int, default=1, help="Numero di ping")
     parser.add_argument("--timeout", type=float, default=5.0, help="Timeout secondi per richiesta")
@@ -83,7 +83,7 @@ def main():
         print("  1. Il server WSL è avviato?  (python probe_bridge_server.py)")
         print("  2. Il firewall Windows blocca la porta?")
         print("     netsh advfirewall firewall add rule name='GAS-probe' dir=in action=allow protocol=TCP localport=8765")
-        print(f"  3. L'IP WSL è corretto?  In WSL: hostname -I  (usare il primo IP, non 127.0.0.1)")
+        print(f"  3. L'IP WSL è corretto?  In WSL: hostname -I  (usare il primo IP, non 127.0.0.1)")  # gasmerge-ip-ok
         sys.exit(1)
 
 
