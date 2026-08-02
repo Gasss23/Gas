@@ -1,41 +1,43 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-07-31 — Rebase fix/gasmerge-hardening su main
-**Branch:** fix/gasmerge-hardening
+**Sessione:** 2026-08-02 — Allowlist IP privati gasmerge (token gasmerge-ip-ok)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #56** (`fix(gasmerge): hardening #65-R1/#63-R1/#65-R3`) — branch rebasato su `740ccc5` (origin/main), CI SUCCESS `30586227791`. Pronto per `gasmerge` da WSL.
+1. **Merge PR #59 (`feature/voice-probe` — "feature/voice probe"):** la PR di sessione non è ancora mergiata su main — da fare dopo CI verde.
+2. **D1-ter (APERTA, da sessione precedente):** IP WSL non stabile tra reboot → scegliere `networkingMode=mirrored` in `.wslconfig` OPPURE client che risolve IP a runtime. Da decidere PRIMA dell'endpoint Fetta 1.
+3. **D2-audio (APERTA, da sessione precedente, Fetta 2):** (a) client DEVE usare `load_dotenv(override=True)`; (b) policy device output da definire.
+4. **SICUREZZA (da sessione precedente):** Rigenerare chiave ElevenLabs esposta in chat + aggiornare `.env`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **FETTA 1 — Rebase + risoluzione conflitto**: `FATTA`
-  `git rebase origin/main` da `fix/gasmerge-hardening`. Conflitto atteso su `tests/test_unit_gasmerge.py` risolto unendo: stub branch (con `$GASPR_JSON`, `test_new_head_empty_blocks_with_explicit_message` in `TestTOCTOU`) + nuovi da main PR #57 (`_make_stub_gh_recording_merge` con fix `/tmp→$GASPR_JSON`, `TestTOCTOUPositive`). Conflitto su `memoria_revisore.md` risolto rinumerando branch #69 → #71 (lezione preservata). Report files risolti con `--theirs` (rigenerati in questa sessione).
-
-- **FETTA 2 — Riconciliazione canonici**: `FATTA`
-  `memoria_revisore.md`: branch #69 → #71; #69/#70 main intatte. `stato_progetto.md`: #65-R2 ✅ chiuso (PR #57 + review #69/#70); #65-R3 aggiornato (stub PR #57 convertito); contatore review → #72.
-
-- **FETTA 3 — Revisore #72**: `FATTA` — verdetto **APPROVATO**, nessuna riserva, grep reale 0 occorrenze `/tmp/gaspr.json`.
-
-- **FETTA 4 — Suite + CI**: `FATTA` — 13 PASS 0 FAIL locale; CI `30586227791` SUCCESS.
+- **Analisi IP privati da allowlistare**: `FATTA` — lettura 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213. <!-- gasmerge-ip-ok -->
+- **`probe_bridge_server.py` righe 9, 11, 70**: `FATTA` — `# gasmerge-ip-ok` in coda.
+- **`win_bridge_test.py` righe 14, 15, 54, 86**: `FATTA` — `# gasmerge-ip-ok` in coda.
+- **`reports/diff_sessione.md` riga 12**: `FATTA` — `<!-- gasmerge-ip-ok -->` in coda.
+- **`reports/handoff.md` riga 20**: `FATTA` — `<!-- gasmerge-ip-ok -->` in coda.
+- **`reports/ultimo_report.md` righe 24, 41**: `FATTA` — `<!-- gasmerge-ip-ok -->` in coda.
+- **Verifica `git grep`**: `FATTA` — zero righe scoperte.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 +
- reports/diff_sessione.md           |  32 +++++----
- reports/handoff.md                 | 130 ++++++++++++++-----------------------
- reports/stato_progetto.md          |  14 ++--
- reports/ultimo_report.md           |  90 +++++--------------------
- scripts/gasmerge.sh                |  12 ++--
- tests/test_unit_gasmerge.py        |  78 ++++++++++++++++++++--
- 7 files changed, 166 insertions(+), 192 deletions(-)
+ clients/voice/probe/probe_apis.py          | 160 +++++++++++++++++++++++++++++
+ clients/voice/probe/probe_bridge_server.py |  86 ++++++++++++++++
+ clients/voice/probe/win_bridge_test.py     |  91 ++++++++++++++++
+ clients/voice/probe/win_mic_test.py        |  90 ++++++++++++++++
+ clients/voice/probe/win_playback_test.py   |  94 +++++++++++++++++
+ clients/voice/probe/win_wakeword_test.py   | 105 +++++++++++++++++++
+ reports/diff_sessione.md                   |  27 ++---
+ reports/handoff.md                         | 105 +++++--------------
+ reports/ultimo_report.md                   |  48 ++++-----
+ 9 files changed, 686 insertions(+), 120 deletions(-)
 ```
 
 ---
@@ -43,89 +45,49 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-52a849c docs(fine-task): rebase fix/gasmerge-hardening su main — review #72 APPROVATO, CI 30586096350 SUCCESS
-94bf46c docs(fine-task): rigenera handoff.md — §2 corretto (7 file vs 3) per handoff-check CI
-6c201fb docs(fine-task): ultimo_report + handoff + stato + diff — fix/gasmerge-hardening PR #56 2026-07-30
-dd8406c chore: aggiorna memoria revisore (review #69 fix/gasmerge-hardening)
-b18dcb5 fix(gasmerge): hardening #65-R1/#63-R1/#65-R3 — guard NEW_HEAD, git dinamico, mktemp
+0a5f4cc docs(fine-task): /fine-task F0 sonda voce — handoff canonico, fix §2 CI check, report sessione
+4056c97 docs(voice-probe): handoff + ultimo_report — sonda F0 6/6 verde, decisioni D1-ter/D2-audio aperte
+9850871 docs(voice-probe): fine-task — handoff + diff_sessione sonda voce
+1907fa2 feat(voice-probe): sonda fattibilità client voce Windows↔WSL
 ```
 
-NB: il commit di fine-task che contiene questo file non compare qui per costruzione.
+NB: il commit di fine-task che contiene questo file non compare qui, per costruzione.
 
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Il diff tocca `tests/test_unit_gasmerge.py` e `scripts/gasmerge.sh` → revisore invocato (review #73, ri-emissione #72 con path completi dalla root).
+Nessun diff motore, revisore non richiesto.
 
-**Verdetto #73 (VERBATIM):**
-
-```
-#73 — 2026-07-31 — APPROVATO — fix/gasmerge-hardening rebasato su main: FIX 1 guard NEW_HEAD (scripts/gasmerge.sh:177 `[ -n "$NEW_HEAD" ] || { echo "BLOCCO...`), FIX 2 git dinamico (tests/test_unit_gasmerge.py:101 e :116 `shutil.which("git") or "/usr/bin/git"`), FIX 3 mktemp (scripts/gasmerge.sh:27 `GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)`), stub PR #57 convertiti a $GASPR_JSON. Rischio escluso: comportamento a runtime su VPS (non riproducibile in dev, demandato a CI e deploy). Chiude #65-R1/#65-R3/#63-R1 + fix critico rebase. Nessuna lezione nuova.
-```
+Nessun file in `gas.py`, `brains/`, `modules/`, `tests/` toccato in questa sessione. I file modificati sono script probe in `clients/voice/probe/` e report in `reports/`.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py`, `brains/`, `modules/`.
-
-Suite `tests/test_unit_gasmerge.py` (+2 nuovi test: `test_new_head_empty_blocks_with_explicit_message`, `test_head_unchanged_merge_uses_match_head_commit`):
-
-```
-============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1
-collected 13 items
-
-TestArgValidation::test_no_arg_exits_2 PASSED
-TestArgValidation::test_non_numeric_arg_exits_2 PASSED
-TestJqCheck::test_broken_jq_exits_with_message PASSED
-TestPRState::test_pr_not_open_blocks PASSED
-TestIPGuard::test_git_grep_error_blocks PASSED
-TestIPGuard::test_ip_outside_reports_blocks PASSED
-TestDiffGuard::test_git_diff_name_only_error_blocks PASSED
-TestIPAllowlist::test_ip_with_marker_passes PASSED
-TestIPAllowlist::test_ip_without_marker_blocks PASSED
-TestIPAllowlist::test_public_ip_without_marker_blocks PASSED
-TestTOCTOU::test_head_changed_during_confirm_blocks PASSED
-TestTOCTOU::test_new_head_empty_blocks_with_explicit_message PASSED
-TestTOCTOUPositive::test_head_unchanged_merge_uses_match_head_commit PASSED
-
-============================== 13 passed in 4.59s ==============================
-```
-
-**13 PASS, 0 FAIL, 0 SKIP.**
+Nessuna modifica a `gas.py` / `tests/`.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(fine-task): rebase fix/gasmerge-hardening su main — review #72 A…	CI	fix/gasmerge-hardening	push	30586227791	41s	2026-07-30T22:11:04Z
-completed	success	docs(fine-task): rigenera handoff.md — §2 corretto (7 file vs 3) per …	CI	fix/gasmerge-hardening	push	30586096350	39s	2026-07-30T22:08:56Z
-completed	success	Merge pull request #58 from Gasss23/docs/roadmap-sweep-2026-07-30	CI	main	push	30585164699	1m20s	2026-07-30T21:53:36Z
+completed  success  docs(fine-task): /fine-task F0 sonda voce — handoff canonico, fix §2 …  CI  feature/voice-probe  push  30754067834  1m3s  2026-08-02T15:18:59Z
+completed  failure  docs(voice-probe): handoff + ultimo_report — sonda F0 6/6 verde, deci…  CI  feature/voice-probe  push  30753684881  42s   2026-08-02T15:08:49Z
+completed  success  docs(voice-probe): fine-task — handoff + diff_sessione sonda voce       CI  feature/voice-probe  push  30693633878  51s   2026-08-01T09:22:55Z
 ```
 
-**Mappatura commit → run CI:**
-
-| Commit | Messaggio | Run CI |
-|--------|-----------|--------|
-| `52a849c` | docs(fine-task): rebase fix/gasmerge-hardening su main — review #72 APPROVATO | run `30586227791` ✅ SUCCESS |
-| `94bf46c` | docs(fine-task): rigenera handoff.md — §2 corretto | run `30586096350` ✅ SUCCESS |
-| `6c201fb` | docs(fine-task): ultimo_report + handoff + stato + diff — PR #56 | nessuna run dedicata (commit intermedio nel push di `94bf46c`; albero di `94bf46c` testato da `30586096350`) |
-| `dd8406c` | chore: aggiorna memoria revisore (review #69 fix/gasmerge-hardening) | nessuna run dedicata (idem) |
-| `b18dcb5` | fix(gasmerge): hardening #65-R1/#63-R1/#65-R3 | nessuna run dedicata (commit intermedio; albero incluso in `94bf46c`, testato da `30586096350`) |
-
-Il commit di fine-task corrente (questo file) → run non ancora disponibile alla scrittura dell'handoff.
+**Mappatura commit→run:**
+- `1907fa2` (feat: sonda fattibilità…) — testato dalla run del push `9850871` (i due commit erano insieme); incluso nell'albero di `30693633878` `completed success`.
+- `9850871` (docs: fine-task…) — `completed success` run `30693633878` (2026-08-01).
+- `4056c97` (docs: handoff + ultimo_report…) — `completed failure` run `30753684881` (2026-08-02): job `handoff-check` fallito; corretto nel commit successivo.
+- `0a5f4cc` (docs(fine-task): /fine-task F0 sonda voce…) — `completed success` run `30754067834` (2026-08-02).
+- Commit fine-task corrente (gasmerge-ip-ok) — run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna riserva aperta da questa sessione (review #72 APPROVATO senza riserve).
-
-Riserve pre-esistenti non toccate (tracciate in `stato_progetto.md`):
-- R-reidx-3 — picco RAM reindex su diario grande (rinviata a VPS)
-- R-wire-1 — VEC_MIN_SIM tarata su esempi sintetici
-- R-verdetto-evidenza — check meccanico path:riga non impegnato
-- Riserve minori: R-test-1, R2 #6, R3 #4, riserve snapshot TASK C, hook SessionEnd, R-mem, R26-1/R26-2
+- **D1-ter:** IP WSL instabile tra reboot — decidere prima di Fetta 1 endpoint.
+- **D2-audio:** `load_dotenv(override=True)` obbligatorio nel client; policy device output da definire.
+- **SICUREZZA:** chiave ElevenLabs esposta in chat → rigenerare.
