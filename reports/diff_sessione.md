@@ -1,20 +1,27 @@
-# Diff sessione — 2026-08-01
+# Diff Sessione — 2026-08-02
 
-Task: Sonda fattibilità client voce Windows ↔ GAS (WSL) — `feature/voice-probe`
+Sessione: sonda fattibilità client voce Windows ↔ GAS (WSL) — F0 completata.
 
-## File toccati
+---
 
-| File | Cosa | Perché |
-|------|------|--------|
-| `clients/voice/probe/win_mic_test.py` | Nuovo — script Windows registrazione mic | Sonda gamma mic: 3s, salva WAV, stampa RMS, device selezionabile |
-| `clients/voice/probe/win_wakeword_test.py` | Nuovo — script Windows wake-word | Sonda openWakeWord pretrained (hey_jarvis), detection con timestamp |
-| `clients/voice/probe/win_playback_test.py` | Nuovo — script Windows playback | Sonda riproduzione WAV/MP3 su device scelto |
-| `clients/voice/probe/win_bridge_test.py` | Nuovo — script Windows bridge test | POST /ping → WSL per verificare forwarding TCP WSL2→Windows |
-| `clients/voice/probe/probe_bridge_server.py` | Nuovo — server HTTP WSL | Server stdlib (no deps) con endpoint POST /ping; testato con curl, OK su 127.0.0.1 e 172.20.137.213:8765 |
-| `clients/voice/probe/probe_apis.py` | Nuovo — probe API WSL | Groq Whisper STT (OK, HTTP 200) + ElevenLabs Flash TTS (ERRORE_API 402 piano free) |
-| `reports/ultimo_report.md` | Sovrascritto — report sonda | Report canonico con decisioni umane, esiti per gamba, runbook Windows completo |
+## File toccati (da `git diff --stat BASE..HEAD`)
 
-## Cosa NON è stato toccato
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `clients/voice/probe/probe_apis.py` | Nuovo script WSL: sonda Groq Whisper STT + ElevenLabs Flash TTS. Fix incluso: `load_dotenv(override=True)` per evitare il "402-fantasma" da variabile shell. |
+| `clients/voice/probe/probe_bridge_server.py` | Nuovo script WSL: server HTTP `/ping` su `0.0.0.0:8765` per testare il canale TCP WSL↔Windows. |
+| `clients/voice/probe/win_bridge_test.py` | Nuovo script Windows: POST `/ping` al server WSL, misura latenza. Conferma che IP WSL (~20ms) è l'unica opzione (localhost = 2050ms). |
+| `clients/voice/probe/win_mic_test.py` | Nuovo script Windows: registra 3s da microfono, misura RMS (Realtek idx1 = 1428). |
+| `clients/voice/probe/win_playback_test.py` | Nuovo script Windows: riproduce WAV/MP3 dal device scelto. |
+| `clients/voice/probe/win_wakeword_test.py` | Nuovo script Windows: detection `hey_jarvis` via openWakeWord ONNX. Score 0.538/0.610, zero falsi positivi. |
+| `reports/diff_sessione.md` | Questo file — riepilogo sessione (si riscrive a ogni sessione). |
+| `reports/handoff.md` | Dossier sessione con template canonico corretto (§2 GIT DIFF --STAT nel formato atteso da `check_handoff.py`). Sessione precedente usava `§STATO REPO` non riconosciuto dalla CI. |
+| `reports/ultimo_report.md` | Report canonico task: scope, esito F0, note operative per non ripetere intoppi. |
 
-- `gas.py`, `brains/`, `modules/`, `tests/` — nessuna modifica al motore
-- Il revisore non è stato invocato (corretto: perimetro non interessato)
+---
+
+## Note
+
+- Nessun file motore (`gas.py`, `brains/`, `modules/`, `tests/`) toccato — revisore non richiesto.
+- La CI `handoff-check` aveva fallito sul commit `4056c97` (sessione precedente) perché handoff.md mancava del template `## §2 GIT DIFF --STAT` con fence code. Corretto in questo commit.
+- La storia completa sta in git; questo file è fotografia dell'ultima sessione.

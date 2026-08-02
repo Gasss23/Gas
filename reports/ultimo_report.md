@@ -1,8 +1,17 @@
-# Sonda Fattibilità Client Voce Windows ↔ GAS (WSL) — F0 completata
+# Sonda Fattibilità Client Voce Windows ↔ GAS (WSL) — F0 completata + /fine-task
 
 **Branch:** `feature/voice-probe`
 **Data:** 2026-08-02
-**Task:** Completamento sonda F0 (6/6 gambe) + doc di sessione. Nessun file motore toccato.
+**Task:** Sonda F0 6/6 gambe verde + doc di sessione canonico (/fine-task).
+
+---
+
+## DECISIONI UMANE RICHIESTE
+
+1. **D1-ter (APERTA):** IP WSL non stabile tra reboot → scegliere `networkingMode=mirrored` in `.wslconfig` (cambia rete intera WSL, da ri-sondare) OPPURE client che risolve IP a runtime. Da decidere PRIMA dell'endpoint Fetta 1.
+2. **D2-audio (APERTA, Fetta 2):** (a) client deve usare `load_dotenv(override=True)` o torna il "402-fantasma"; (b) policy device output: default sistema vs esplicito con fallback (rischio device virtuali → audio muto).
+3. **AZIONE SICUREZZA:** Rigenerare chiave ElevenLabs esposta in chat a fine validazione + aggiornare `.env` (valore MAI nei file versionati).
+4. **Merge PR:** la PR di sessione su `feature/voice-probe` non è ancora mergiata su main — da fare dopo verifica CI verde.
 
 ---
 
@@ -10,24 +19,24 @@
 
 | Fetta | Stato | Note |
 |-------|-------|------|
-| Branch `feature/voice-probe` | **FATTA** | Commit `1907fa2` (sessione precedente) |
-| Script Windows 4x (`win_*.py`) | **FATTA** | Scritti in `clients/voice/probe/` (sessione precedente) |
-| Server WSL bridge (`probe_bridge_server.py`) | **FATTA** | Sessione precedente; testato su `127.0.0.1` e `172.20.137.213:8765` |
-| Script WSL probe API (`probe_apis.py`) | **FATTA** | STT OK; TTS 402 in sessione precedente (voice library → risolto sotto) |
-| Gambe Windows eseguite | **FATTA** | Eseguite in questa sessione (PowerShell + venv .venv-win) |
-| TTS ElevenLabs risolto | **FATTA** | voice_id Roger free-tier + `load_dotenv(override=True)` → HTTP 200, mp3 40KB |
-| Doc di sessione (handoff + report) | **FATTA** | Questo commit |
-| Fetta 1 endpoint + token auth | **DEFERITA** | Dopo decisione D1-ter (IP stabile) |
+| Branch `feature/voice-probe` | **FATTA** | Commit `1907fa2` |
+| Script Windows 4x (`win_*.py`) | **FATTA** | `clients/voice/probe/` — commit `1907fa2` |
+| Server WSL bridge (`probe_bridge_server.py`) | **FATTA** | Testato su `127.0.0.1` e `172.20.137.213:8765` — commit `1907fa2` |
+| Script WSL probe API (`probe_apis.py`) | **FATTA** | STT OK; TTS 402 (voice library) risolto in sessione — commit `1907fa2` |
+| Gambe Windows eseguite (mic, wakeword, playback, bridge) | **FATTA** | Eseguite in PowerShell con venv `.venv-win` |
+| TTS ElevenLabs risolto (voice_id Roger + `load_dotenv(override=True)`) | **FATTA** | HTTP 200, mp3 ~40KB |
+| Doc di sessione (handoff + ultimo_report + diff_sessione) | **FATTA** | Questo commit |
+| Fetta 1 endpoint WSL + token auth | **DEFERITA** | Dopo decisione D1-ter |
 
 ---
 
 ## §ESITO SONDA F0
 
-**6/6 verde.** La sonda è tecnicamente conclusa; l'architettura Windows↔WSL è fattibile.
+**6/6 verde.** Architettura Windows↔WSL tecnicamente fattibile.
 
 | Gamba | Risultato |
 |-------|-----------|
-| STT Groq Whisper | HTTP 200 — `whisper-large-v3-turbo` — risposta: "Grazie." |
+| STT Groq Whisper | HTTP 200 — `whisper-large-v3-turbo` — "Grazie." |
 | TTS ElevenLabs Flash v2.5 | HTTP 200 — voce Roger (`CwhRBWXzGAHq8TQ4Fs17`) — mp3 ~40KB |
 | Bridge WSL↔Windows | IP `172.20.137.213:8765` — ~20ms (localhost = 2050ms, inutilizzabile) |
 | Mic Realtek idx1 | RMS 1428 — segnale vocale OK |
@@ -38,47 +47,20 @@
 
 ## §NOTE OPERATIVE (per non ripetere gli intoppi)
 
-### Dove gira cosa
+**Dove gira cosa:**
+- `win_*.py` → PowerShell Windows, venv `.venv-win` attivo (`.\.venv-win\Scripts\Activate.ps1`).
+- `probe_bridge_server.py`, `probe_apis.py` → WSL, venv WSL attivo.
+- Se PowerShell nuova: ri-attiva il venv o `where.exe python` darà Hermes come prima riga.
 
-- **Script `win_*.py`** → PowerShell su Windows, con venv `.venv-win` attivo.
-- **Script `probe_bridge_server.py`, `probe_apis.py`** → WSL, con `venv` WSL attivo.
-
-### Attivare il venv Windows (non dimenticare in ogni PowerShell nuova)
-
-```powershell
-# Se sei nella dir Gas su Windows:
-.\.venv-win\Scripts\Activate.ps1
-
-# Verifica: deve comparire (.venv-win) nel prompt
-# Se `where.exe python` dà Hermes come prima riga, il venv non è attivo → riattivarlo.
-# Hermes (venv globale Windows) ha i pacchetti ma potrebbe avere versioni diverse.
+**Path da Windows (UNC WSL):**
+```
+\\wsl$\Ubuntu-24.04\home\gqual\Gas\clients\voice\probe\
 ```
 
-### Path degli script da Windows (UNC WSL)
+**"402-fantasma" ElevenLabs:** `ELEVENLABS_VOICE_ID` esportata in shell WSL scavalcava il `.env`. Fix: `load_dotenv(override=True)` + voice_id premade free-tier (`CwhRBWXzGAHq8TQ4Fs17` = Roger).
 
-```
-\\wsl$\Ubuntu-24.04\home\gqual\Gas\clients\voice\probe\win_mic_test.py
-\\wsl$\Ubuntu-24.04\home\gqual\Gas\clients\voice\probe\win_wakeword_test.py
-\\wsl$\Ubuntu-24.04\home\gqual\Gas\clients\voice\probe\win_playback_test.py
-\\wsl$\Ubuntu-24.04\home\gqual\Gas\clients\voice\probe\win_bridge_test.py
-```
+**localhost vs IP WSL:** localhost da Windows = 2050ms (muro strutturale forwarding TCP). Usare sempre IP da `hostname -I`.
 
-Oppure clonare/mappare il path su un drive Windows per comodità.
+**openWakeWord:** modelli ONNX già scaricati. Script forzano `inference_framework="onnx"` (TensorFlow assente → ImportError senza questo flag).
 
-### Intoppo ElevenLabs (il "402-fantasma")
-
-Il 402 in sessione precedente era causato da `ELEVENLABS_VOICE_ID` esportata nella shell WSL (da un test precedente con voice library) che scavalcava il valore nel `.env`.
-**Fix obbligatorio:** usare `load_dotenv(override=True)` nel client, e usare `voice_id` di voce premade free-tier (`CwhRBWXzGAHq8TQ4Fs17` = Roger).
-
-### Intoppo localhost vs IP WSL
-
-`localhost` da Windows → WSL2 = **2050ms costanti** (10/10 ping) — muro strutturale del forwarding TCP, non un glitch.
-Usare sempre l'IP `hostname -I` (WSL). L'IP cambia tra reboot: vedi D1-ter in handoff.md per la decisione pending.
-
-### openWakeWord — modelli già scaricati
-
-I modelli ONNX sono stati scaricati al primo avvio (`hey_jarvis`). Gli script forzano `inference_framework="onnx"` per evitare il fallback su TensorFlow (non installato, causerebbe ImportError).
-
-### Sicurezza
-
-La chiave ElevenLabs è stata esposta in chat durante la sessione di debug → rigenerarla a fine validazione su https://elevenlabs.io/app/settings/api-keys e aggiornare `.env` locale (il valore non va mai in file versionati).
+**Sicurezza:** chiave ElevenLabs esposta in chat → rigenerare su elevenlabs.io/app/settings/api-keys + aggiornare `.env` locale.
