@@ -1,39 +1,29 @@
-# Allowlist IP privati gasmerge — aggiunta token gasmerge-ip-ok
-
-**Branch:** `feature/voice-probe`
-**Data:** 2026-08-02
-**Task:** Aggiunta token `gasmerge-ip-ok` su ogni riga con IP privato bloccata dal guard `scripts/gasmerge.sh`.
-
----
+# Report — 2026-08-06 — Fix refusi + aggiornamento SICUREZZA ElevenLabs in stato_progetto.md
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge PR #59 (`feature/voice-probe`):** la PR di sessione non è ancora mergiata su main — da fare dopo CI verde.
+1. Merge della PR docs/stato-fase3-sonda (branch corrente — merge di fine sessione).
 
 ---
 
-## §SCOPE & ESITO FETTE
+## Scope & Esito
 
-| Fetta | Stato | Note |
-|-------|-------|------|
-| Analisi righe con IP privato da marcare | **FATTA** | Lettura di 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213 | <!-- gasmerge-ip-ok -->
-| `probe_bridge_server.py` righe 9, 11, 70 | **FATTA** | Token `# gasmerge-ip-ok` aggiunto in coda a ciascuna riga |
-| `win_bridge_test.py` righe 14, 15, 54, 86 | **FATTA** | Token `# gasmerge-ip-ok` aggiunto in coda a ciascuna riga |
-| `reports/diff_sessione.md` riga 12 | **FATTA** | Token `<!-- gasmerge-ip-ok -->` aggiunto in coda alla riga |
-| `reports/handoff.md` riga 20 | **FATTA** | Token `<!-- gasmerge-ip-ok -->` aggiunto in coda alla riga |
-| `reports/ultimo_report.md` righe 24, 41 | **FATTA** | Token `<!-- gasmerge-ip-ok -->` aggiunto in coda a ciascuna riga |
-| Verifica finale `git grep` | **FATTA** | Zero righe con IP privato senza token — output grezzo verificato |
+**Fetta 1 — Fix "Scop = decisione operatore."**
+`SALTATA — il refuso NON esiste nel file. La riga già recitava "Scope = decisione operatore." (verificato byte-per-byte con hex dump Python).`
 
----
+**Fetta 2 — Fix 'l'esio "6/6 verde"'**
+`SALTATA — il refuso NON esiste nel file. La riga già recitava "l'esito \"6/6 verde\"" (verificato).`
 
-## §ESITO VERIFICA
+**Fetta 3 — Fix "policy device ouput"**
+`SALTATA — il refuso NON esiste nel file. La riga già recitava "policy device output" (verificato).`
 
-`git grep -nE '\b[0-9]{1,3}(\.[0-9]{1,3}){3}\b'` — ogni riga restituita porta `gasmerge-ip-ok`.
-Righe già coperte (non toccate): `reports/stato_storico.md:503`, `tests/test_unit_gasmerge.py:282,298,364,369,389,399,407,417`.
+**Fetta 4 — Sostituzione riga SICUREZZA ElevenLabs (🔴→🟡)**
+`FATTA.`
+Sostituita la decisione aperta urgente (rotazione immediata) con entry che documenta: esito del `git grep` sulla history (solo env var, nessuna chiave in chiaro committata), scelta consapevole dell'operatore di non ruotare, rischio residuo ACCETTATO con nota onesta.
+Commit: `c7b65a4` — branch `docs/stato-fase3-sonda`.
 
 ---
 
-## §NOTE OPERATIVE
+## Anomalie riscontrate
 
-- Nessun file motore toccato (`gas.py`, `brains/`, `modules/`, `tests/`) — revisore non richiesto.
-- Il token `# gasmerge-ip-ok` nelle righe 9 e 11 di `probe_bridge_server.py` cade dentro il docstring; il guard `gasmerge.sh` cerca la stringa letterale sulla riga e la trova correttamente.
+I tre refusi descritti nello scope non erano presenti nel file `reports/stato_progetto.md` al momento dell'esecuzione (né nel working tree, né in nessun commit della sessione). Probabile origine: il testo originale dello scope faceva riferimento a una bozza o a un commit mai effettivamente pushato con quei refusi. Nessuna azione correttiva necessaria oltre alla verifica.
