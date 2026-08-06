@@ -1,13 +1,18 @@
-# Diff sessione — 2026-08-06
-## Task: Sanare stato_progetto.md — sonda F0, scope-creep #59, decisioni aperte
+# diff_sessione — 2026-08-06
 
-File toccati in questa sessione (branch docs/stato-fase3-sonda da 5323b9b):
+## File toccati in questa sessione
+
+(da `git diff --stat BASE..HEAD`, base = 5323b9b)
+
+---
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `reports/stato_progetto.md` | +8 righe, -1: annotata sonda F0 in §4 Prossimi passi; aggiunte 2 note datate 2026-08-02 (scope-creep #59, esito non verificato in dossier); registrate 3 decisioni aperte (D1-ter, D2-audio, SICUREZZA chiave ElevenLabs). |
-| `reports/ultimo_report.md` | Riscritto per questo task. |
-| `reports/handoff.md` | Riscritto per questa sessione. |
-| `reports/diff_sessione.md` | Riscritto (questo file). |
+| `reports/stato_progetto.md` | Riga SICUREZZA ElevenLabs: da 🔴 (decisione aperta / rotazione urgente) a 🟡 (rischio accettato dall'operatore con evidenza `git grep` — nessuna chiave in chiaro committata). |
+| `reports/ultimo_report.md` | Report di fine task (questa sessione). |
+| `reports/handoff.md` | Dossier di fine sessione (questa sessione). |
+| `reports/diff_sessione.md` | Questo file. |
 
-Nessun file motore toccato. Revisore non richiesto.
+---
+
+*Questo file si riscrive a ogni sessione; la storia completa sta in git.*
