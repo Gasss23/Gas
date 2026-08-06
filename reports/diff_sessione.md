@@ -1,23 +1,13 @@
-# Diff Sessione — 2026-08-02
+# Diff sessione — 2026-08-06
+## Task: Sanare stato_progetto.md — sonda F0, scope-creep #59, decisioni aperte
 
-Sessione: Allowlist IP privati gasmerge — aggiunta token `gasmerge-ip-ok` su ogni riga con IP privato.
-
----
-
-## File toccati (da `git diff --cached --stat BASE` dopo stage)
+File toccati in questa sessione (branch docs/stato-fase3-sonda da 5323b9b):
 
 | File | Cosa è cambiato e perché |
-|------|--------------------------|
-| `clients/voice/probe/probe_bridge_server.py` | Token `# gasmerge-ip-ok` aggiunto in coda alle righe 9, 11, 70 (IP: 127.0.0.1, 0.0.0.0) per superare il guard `gasmerge.sh`. <!-- gasmerge-ip-ok --> |
-| `clients/voice/probe/win_bridge_test.py` | Token `# gasmerge-ip-ok` aggiunto in coda alle righe 14, 15, 54, 86 (IP: 127.0.0.1, 172.28.16.1) per superare il guard `gasmerge.sh`. <!-- gasmerge-ip-ok --> |
-| `reports/diff_sessione.md` | Questo file — riepilogo sessione (si riscrive a ogni sessione). |
-| `reports/handoff.md` | Dossier sessione aggiornato; token `<!-- gasmerge-ip-ok -->` anche su riga 20 (IP: 127.0.0.1, 172.20.137.213). <!-- gasmerge-ip-ok --> |
-| `reports/ultimo_report.md` | Report canonico task; token `<!-- gasmerge-ip-ok -->` su righe 24, 41 (IP: 127.0.0.1, 172.20.137.213). <!-- gasmerge-ip-ok --> |
+|---|---|
+| `reports/stato_progetto.md` | +8 righe, -1: annotata sonda F0 in §4 Prossimi passi; aggiunte 2 note datate 2026-08-02 (scope-creep #59, esito non verificato in dossier); registrate 3 decisioni aperte (D1-ter, D2-audio, SICUREZZA chiave ElevenLabs). |
+| `reports/ultimo_report.md` | Riscritto per questo task. |
+| `reports/handoff.md` | Riscritto per questa sessione. |
+| `reports/diff_sessione.md` | Riscritto (questo file). |
 
----
-
-## Note
-
-- Nessun file motore (`gas.py`, `brains/`, `modules/`, `tests/`) toccato — revisore non richiesto.
-- Verifica finale: `git grep -nE '\b[0-9]{1,3}(\.[0-9]{1,3}){3}\b'` — ogni riga restituita porta `gasmerge-ip-ok`.
-- La storia completa sta in git; questo file è fotografia dell'ultima sessione.
+Nessun file motore toccato. Revisore non richiesto.

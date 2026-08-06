@@ -1,43 +1,38 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-02 — Allowlist IP privati gasmerge (token gasmerge-ip-ok)
+**Sessione:** 2026-08-06 — Sanare stato_progetto.md: sonda F0, scope-creep #59, decisioni aperte
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge PR #59 (`feature/voice-probe` — "feature/voice probe"):** la PR di sessione non è ancora mergiata su main — da fare dopo CI verde.
-2. **D1-ter (APERTA, da sessione precedente):** IP WSL non stabile tra reboot → scegliere `networkingMode=mirrored` in `.wslconfig` OPPURE client che risolve IP a runtime. Da decidere PRIMA dell'endpoint Fetta 1.
-3. **D2-audio (APERTA, da sessione precedente, Fetta 2):** (a) client DEVE usare `load_dotenv(override=True)`; (b) policy device output da definire.
-4. **SICUREZZA (da sessione precedente):** Rigenerare chiave ElevenLabs esposta in chat + aggiornare `.env`.
+1. Merge della PR `docs/stato-fase3-sonda` su main.
+2. **🔴 Ruotare subito la chiave ElevenLabs** esposta in chat di sessione. Verificare che non sia hardcoded in nessun file sotto `clients/`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Analisi IP privati da allowlistare**: `FATTA` — lettura 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213. <!-- gasmerge-ip-ok -->
-- **`probe_bridge_server.py` righe 9, 11, 70**: `FATTA` — `# gasmerge-ip-ok` in coda.
-- **`win_bridge_test.py` righe 14, 15, 54, 86**: `FATTA` — `# gasmerge-ip-ok` in coda.
-- **`reports/diff_sessione.md` riga 12**: `FATTA` — `<!-- gasmerge-ip-ok -->` in coda.
-- **`reports/handoff.md` riga 20**: `FATTA` — `<!-- gasmerge-ip-ok -->` in coda.
-- **`reports/ultimo_report.md` righe 24, 41**: `FATTA` — `<!-- gasmerge-ip-ok -->` in coda.
-- **Verifica `git grep`**: `FATTA` — zero righe scoperte.
+- **Fetta 1 — Annotare sonda F0 in "Prossimi passi" §4**: `FATTA`
+  Riga aggiunta sotto FASE 3: sonda atterrata (PR #59, merge 5323b9b, 2026-08-02), 6 script in `clients/voice/probe/`; sonda ≠ pipeline; FASE 3 DA COSTRUIRE.
+
+- **Fetta 2 — Note datate 2026-08-02**: `FATTA`
+  (a) Scope-creep PR #59: sonda voce + allowlist gasmerge-ip in un unico branch; recidiva classe 2026-07-08.
+  (b) Esito "6/6 verde" dichiarato solo nel subject di commit 4056c97, NON nel §1 del handoff: da riconfermare.
+
+- **Fetta 3 — Decisioni aperte D1-ter / D2-audio / SICUREZZA**: `FATTA`
+  Tre voci registrate in stato_progetto.md prima delle righe di archivio finali.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- clients/voice/probe/probe_apis.py          | 160 +++++++++++++++++++++++++++++
- clients/voice/probe/probe_bridge_server.py |  86 ++++++++++++++++
- clients/voice/probe/win_bridge_test.py     |  91 ++++++++++++++++
- clients/voice/probe/win_mic_test.py        |  90 ++++++++++++++++
- clients/voice/probe/win_playback_test.py   |  94 +++++++++++++++++
- clients/voice/probe/win_wakeword_test.py   | 105 +++++++++++++++++++
- reports/diff_sessione.md                   |  27 ++---
- reports/handoff.md                         | 105 +++++--------------
- reports/ultimo_report.md                   |  48 ++++-----
- 9 files changed, 686 insertions(+), 120 deletions(-)
+ reports/diff_sessione.md  | 28 +++++++-------------
+ reports/handoff.md        | 65 ++++++++++++++---------------------------------
+ reports/stato_progetto.md |  9 ++++++-
+ reports/ultimo_report.md  | 43 +++++++++++++++----------------
+ 4 files changed, 56 insertions(+), 89 deletions(-)
 ```
 
 ---
@@ -45,49 +40,40 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-0a5f4cc docs(fine-task): /fine-task F0 sonda voce — handoff canonico, fix §2 CI check, report sessione
-4056c97 docs(voice-probe): handoff + ultimo_report — sonda F0 6/6 verde, decisioni D1-ter/D2-audio aperte
-9850871 docs(voice-probe): fine-task — handoff + diff_sessione sonda voce
-1907fa2 feat(voice-probe): sonda fattibilità client voce Windows↔WSL
+4c41b6b docs(stato): sonda F0 atterrata su main, scope-creep #59, decisioni aperte D1-ter/D2-audio/sicurezza
 ```
 
-NB: il commit di fine-task che contiene questo file non compare qui, per costruzione.
+NB: il commit di fine-task (con i report) non compare ancora — viene creato dopo questo blocco.
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §4 VERDETTO DEL REVISORE
 
-Nessun diff motore, revisore non richiesto.
-
-Nessun file in `gas.py`, `brains/`, `modules/`, `tests/` toccato in questa sessione. I file modificati sono script probe in `clients/voice/probe/` e report in `reports/`.
+nessun diff motore, revisore non richiesto.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py` / `tests/`.
+Nessuna modifica a gas.py/tests/.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed  success  docs(fine-task): /fine-task F0 sonda voce — handoff canonico, fix §2 …  CI  feature/voice-probe  push  30754067834  1m3s  2026-08-02T15:18:59Z
-completed  failure  docs(voice-probe): handoff + ultimo_report — sonda F0 6/6 verde, deci…  CI  feature/voice-probe  push  30753684881  42s   2026-08-02T15:08:49Z
-completed  success  docs(voice-probe): fine-task — handoff + diff_sessione sonda voce       CI  feature/voice-probe  push  30693633878  51s   2026-08-01T09:22:55Z
+in_progress  docs(stato): sonda F0 atterrata su main, scope-creep #59, decisioni a…  CI  docs/stato-fase3-sonda  push  31119916342  2m28s  2026-08-06T16:27:53Z
+completed    success  Merge pull request #59 from Gasss23/feature/voice-probe  CI  main  push  30760725254  53s  2026-08-02T18:15:54Z
+completed    success  docs(voice-probe): allowlist IP su meta-righe handoff/ultimo_report (…  CI  feature/voice-probe  push  30760658988  45s  2026-08-02T18:14:07Z
 ```
 
-**Mappatura commit→run:**
-- `1907fa2` (feat: sonda fattibilità…) — testato dalla run del push `9850871` (i due commit erano insieme); incluso nell'albero di `30693633878` `completed success`.
-- `9850871` (docs: fine-task…) — `completed success` run `30693633878` (2026-08-01).
-- `4056c97` (docs: handoff + ultimo_report…) — `completed failure` run `30753684881` (2026-08-02): job `handoff-check` fallito; corretto nel commit successivo.
-- `0a5f4cc` (docs(fine-task): /fine-task F0 sonda voce…) — `completed success` run `30754067834` (2026-08-02).
-- Commit fine-task corrente (gasmerge-ip-ok) — run non ancora disponibile alla scrittura dell'handoff.
+Mappatura commit→run:
+- `4c41b6b` (commit motore sessione precedente): run CI `31119916342` in_progress al momento della scrittura dell'handoff — run su branch `docs/stato-fase3-sonda`, push del commit `4c41b6b`. Il commit dei report (questo handoff) non ha ancora una run al momento della scrittura.
+
+La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`).
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **D1-ter:** IP WSL instabile tra reboot — decidere prima di Fetta 1 endpoint.
-- **D2-audio:** `load_dotenv(override=True)` obbligatorio nel client; policy device output da definire.
-- **SICUREZZA:** chiave ElevenLabs esposta in chat → rigenerare.
+Nessuna (sessione doc-only, nessun diff motore).

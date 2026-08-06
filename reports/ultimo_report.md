@@ -1,39 +1,36 @@
-# Allowlist IP privati gasmerge — aggiunta token gasmerge-ip-ok
+# Ultimo report — 2026-08-06
+## Task: Sanare stato_progetto.md — sonda F0, scope-creep #59, decisioni aperte
 
-**Branch:** `feature/voice-probe`
-**Data:** 2026-08-02
-**Task:** Aggiunta token `gasmerge-ip-ok` su ogni riga con IP privato bloccata dal guard `scripts/gasmerge.sh`.
+**Data:** 2026-08-06
+**Branch:** docs/stato-fase3-sonda
+**Commit di sessione:** 4c41b6b
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge PR #59 (`feature/voice-probe`):** la PR di sessione non è ancora mergiata su main — da fare dopo CI verde.
+1. **Merge PR docs/stato-fase3-sonda** su main (dopo ispezione).
+2. **🔴 Ruotare subito la chiave ElevenLabs** esposta in chat (registrata in stato_progetto.md §SICUREZZA). Verificare che non sia hardcoded in nessun file sotto `clients/`.
 
 ---
 
-## §SCOPE & ESITO FETTE
+## §1 SCOPE & ESITO FETTE
 
-| Fetta | Stato | Note |
-|-------|-------|------|
-| Analisi righe con IP privato da marcare | **FATTA** | Lettura di 5 file; IP target: 0.0.0.0, 127.0.0.1, 172.28.16.1, 172.20.137.213 | <!-- gasmerge-ip-ok -->
-| `probe_bridge_server.py` righe 9, 11, 70 | **FATTA** | Token `# gasmerge-ip-ok` aggiunto in coda a ciascuna riga |
-| `win_bridge_test.py` righe 14, 15, 54, 86 | **FATTA** | Token `# gasmerge-ip-ok` aggiunto in coda a ciascuna riga |
-| `reports/diff_sessione.md` riga 12 | **FATTA** | Token `<!-- gasmerge-ip-ok -->` aggiunto in coda alla riga |
-| `reports/handoff.md` riga 20 | **FATTA** | Token `<!-- gasmerge-ip-ok -->` aggiunto in coda alla riga |
-| `reports/ultimo_report.md` righe 24, 41 | **FATTA** | Token `<!-- gasmerge-ip-ok -->` aggiunto in coda a ciascuna riga |
-| Verifica finale `git grep` | **FATTA** | Zero righe con IP privato senza token — output grezzo verificato |
+**Fetta 1 — Annotare sonda F0 in "Prossimi passi" §4**: `FATTA`
+- Aggiunta riga sotto il punto FASE 3: sonda atterrata su main (PR #59, merge 5323b9b, 2026-08-02), 6 script in `clients/voice/probe/`, con nota esplicita che sonda ≠ pipeline e FASE 3 resta DA COSTRUIRE.
 
----
+**Fetta 2 — Note datate 2026-08-02 in "Note operative / finding"**: `FATTA`
+- (a) Scope-creep PR #59: branch feature/voice-probe ha mescolato sonda voce F0 + allowlist gasmerge-ip; recidiva classe 2026-07-08.
+- (b) Esito "6/6 verde" non verificato nel §1 del handoff (solo nel subject di commit 4056c97); da riconfermare prima di Fetta 1 FASE 3.
 
-## §ESITO VERIFICA
-
-`git grep -nE '\b[0-9]{1,3}(\.[0-9]{1,3}){3}\b'` — ogni riga restituita porta `gasmerge-ip-ok`.
-Righe già coperte (non toccate): `reports/stato_storico.md:503`, `tests/test_unit_gasmerge.py:282,298,364,369,389,399,407,417`.
+**Fetta 3 — Registrare decisioni aperte D1-ter / D2-audio / SICUREZZA**: `FATTA`
+- D1-ter: IP WSL instabile tra reboot.
+- D2-audio: load_dotenv override + policy device output.
+- SICUREZZA: chiave ElevenLabs esposta in chat — 🔴 ruotare subito.
 
 ---
 
-## §NOTE OPERATIVE
+## Anomalie
 
-- Nessun file motore toccato (`gas.py`, `brains/`, `modules/`, `tests/`) — revisore non richiesto.
-- Il token `# gasmerge-ip-ok` nelle righe 9 e 11 di `probe_bridge_server.py` cade dentro il docstring; il guard `gasmerge.sh` cerca la stringa letterale sulla riga e la trova correttamente.
+- Nessun file motore toccato → revisore non richiesto.
+- Solo `reports/stato_progetto.md` modificato (+8 righe, -1).
