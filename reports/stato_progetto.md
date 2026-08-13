@@ -90,7 +90,8 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 1. ~~**FASE 2.5**~~ ✅ chiusa (review #39, 2026-06-27).
 2. **🔴 Spesa token dev**: item 1 roadmap — il budget cap runtime è inerte sul free tier. La leva reale è la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
 3. **✅ Accesso dev tooling da telefono**: item 2 roadmap — CHIUSO (2026-07-15) via Remote Control (`/rc`): sonda su Giulia/WSL verificata live, nessun bridge custom necessario.
-4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS.
+4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS. _(pipeline da costruire)_
+   - ✅ **Sonda F0 atterrata su main (2026-08-02, PR #59, merge 5323b9b)**: 6 script in `clients/voice/probe/` (client Windows↔WSL). Sonda ≠ pipeline: FASE 3 (Whisper STT + ElevenLabs TTS) resta DA COSTRUIRE.
 5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
 6. **FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04)** → prossimo S2 (decide operatore)
 7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
@@ -228,6 +229,12 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - 🟡 **Copia VPS stantia vs origin/main** (2026-07-21, `### Sessione 2026-07-21`): la working copy di prod diverge dal repo (emerso da F7). Riallineamento = FASE 5 S2, con revisore + verifica, non a caldo.
 - ⚠️ **Decisione APERTA — Secondo account GitHub** (2026-07-22, `### ℹ️ Micro-finding merge su main`): machine user per sessioni agente + `main-lock` con 1 approvazione richiesta — GitHub vieta l'auto-approvazione, l'agente non potrebbe chiudere la PR da solo. Da valutare insieme alla privatizzazione del repo (roadmap item 0).
 - ⚠️ **Decisione APERTA — Trailer `Co-Authored-By`** (2026-07-23, `### Sessione 2026-07-23`): per distinguere in `git log` i commit d'agente da quelli scritti a mano. Non impegnata — il responsabile è l'operatore in entrambi i casi.
+
+- ⚠️ **Scope-creep PR #59 (2026-08-02)**: branch `feature/voice-probe` ha mescolato due task distinti — sonda voce F0 (`clients/voice/probe/`) e allowlist gasmerge-ip. Recidiva della stessa classe registrata il 2026-07-08. Scope = decisione operatore.
+- ⚠️ **Sonda F0 "6/6 verde" non verificata in dossier (2026-08-02)**: l'esito "6/6 verde" è dichiarato SOLO nel subject del commit `4056c97`, NON nel §1 del handoff canonico. Esito NON verificato-in-dossier. Da confermare rieseguendo la sonda prima di dichiararla base solida per Fetta 1 di FASE 3.
+- ⚠️ **Decisione APERTA — D1-ter: IP WSL instabile tra reboot (2026-08-02, da handoff #59)**: l'IP del client Windows/WSL cambia tra un reboot e l'altro; l'allowlist statica nella sonda va aggiornata manualmente. Da risolvere prima di costruire la pipeline vocale permanente.
+- ⚠️ **Decisione APERTA — D2-audio: load_dotenv override + policy device output (2026-08-02, da handoff #59)**: `load_dotenv()` nel client sonda può sovrascrivere variabili già in env; il device audio di output non è configurabile senza modificare il codice. Da decidere/documentare prima di Fetta 1.
+- 🟡 **SICUREZZA — chiave ElevenLabs esposta in chat (2026-08-02, da handoff #59; decisione operatore 2026-08-06)**: la chiave API è comparsa nella chat di sessione. `git grep` su tutta la history del repo (2026-08-02) trova SOLO riferimenti a variabile d'ambiente (`os.environ.get("ELEVENLABS_API_KEY")`), NESSUNA chiave in chiaro committata. Rotazione NON eseguita: scelta consapevole dell'operatore, rischio residuo ACCETTATO. NB onesto: una chiave esposta resta compromessa a prescindere dal repo — questa è accettazione del rischio, non chiusura.
 
 > Sessione 2026-07-21 archiviata in `reports/stato_storico.md`.
 > Sessione 2026-07-22 archiviata in `reports/stato_storico.md`.
