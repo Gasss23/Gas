@@ -7,18 +7,18 @@
 
 | File | Tipo modifica |
 |------|--------------|
-| `reports/ultimo_report.md` | Riscritto — report sonda fetta 0 |
-| `reports/stato_progetto.md` | Aggiornato — riga sonda fetta 0 in §FASE 3 |
+| `reports/ultimo_report.md` | Riscritto — report sonda fetta 0 + esito fine-task |
+| `reports/handoff.md` | Scritto — dossier fine sessione |
 | `reports/diff_sessione.md` | Riscritto (questo file) |
+| `reports/stato_progetto.md` | Aggiornato — riga sonda fetta 0 in §FASE 3 |
 
 ## Cosa è cambiato e perché
 
-**Sonda fetta 0** (nessun codice di produzione):
-- Letto `gas.py` per identificare il metodo pubblico del kernel: `run_turn(user_prompt) -> Generator`.
-- Letto `requirements.txt` / `requirements-dev.txt` per inventariare le librerie HTTP disponibili.
-- Conclusione: stdlib `http.server` + `ThreadingMixIn` è sufficiente, zero nuove dipendenze.
-- Identificato il punto critico di threadsafety (history mutabile): lock globale raccomandata (Opzione A).
-- Report scritto in `reports/ultimo_report.md` con stop gate: attesa conferma operatore.
+**Sonda fetta 0** (nessun codice di produzione, nessuna modifica motore):
+- Letto `gas.py:1424` — identificato `run_turn(user_prompt) -> Generator` come metodo pubblico del kernel. È un generator: emette eventi `{"type": "final"/"error"/"tool_res"}`, non ritorna direttamente una stringa.
+- Letto `requirements.txt` / `requirements-dev.txt` — nessun framework server HTTP presente. Scelta: stdlib `http.server` + `socketserver.ThreadingMixIn`, zero nuove dipendenze.
+- Identificato punto critico threadsafety: `self.history` mutato in-place senza lock — Opzione A (lock globale) raccomandata.
+- Stop gate attivo: nessun codice endpoint scritto, tutto in attesa di conferma operatore.
 
 ## Revisore
 
