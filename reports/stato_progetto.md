@@ -1,12 +1,14 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-07-31** (fix/gasmerge-hardening rebasato su main: tutti i #65-R* chiusi — #65-R1/#65-R3/#63-R1 da PR #56; #65-R2 chiuso da main PR #57 + review #69/#70; stub #57 convertito a $GASPR_JSON; review #71 aggiunta)
+> Ultimo aggiornamento: **2026-08-13** (FASE 3 Fetta 1: endpoint HTTP voice — `modules/voice/server.py` + test + CI; review #74+#75 APPROVATO) (fix/gasmerge-hardening rebasato su main: tutti i #65-R* chiusi — #65-R1/#65-R3/#63-R1 da PR #56; #65-R2 chiuso da main PR #57 + review #69/#70; stub #57 convertito a $GASPR_JSON; review #71 aggiunta)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **72 review** completate (ultima #72, 2026-07-31, fix/gasmerge-hardening post-rebase APPROVATO; #71 = gasmerge.sh hardening APPROVATO; #70 = ri-review TOCTOU positivo APPROVATO; #69 = test TOCTOU positivo --match-head-commit APPROVATO CON RISERVE; #68 = gas.py doctor CRM, APPROVATO CON RISERVE). Suite WSL locale (2026-07-27, feature/crm-dup-telefono): **276 PASS, 0 FAIL, 0 SKIP** (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **10 PASS**. ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
+**✅ FASE 3 Fetta 1 — endpoint HTTP voice** (2026-08-13, review #74+#75 APPROVATO, branch `fase3/voice-endpoint`): `modules/voice/server.py` — `POST /voice`, auth bearer `hmac.compare_digest`, fail-closed su token assente, kernel singleton, fail-safe §9. Suite: **18 PASS**. Zero nuove dipendenze. Stop gate rispettati (gas.py non toccato).
+
 CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS; storico PR #23–#43 → `reports/stato_storico.md` § CI storica): PR #49 merge `64ff011` (2026-07-27, CI `30302270332`) · PR #48 merge `32a9a41` (2026-07-27, CI `30301777849`) · PR #47 merge `d67b12a` (2026-07-27, CI `30282530884`) · PR #46 merge `6f303cf` (2026-07-26, CI `30223085074`) · PR #45 merge `c7f6fac` (2026-07-25, CI `30160569148`) · PR #44 merge `de2f2f5` (2026-07-24, CI `30116369695`).
 
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
@@ -31,6 +33,7 @@ Componenti attive:
 - CRM dal loop: tool `salva_contatto`/`imposta_stato_contatto`, identità su `chiave_norm` NFKC
 - Iniezione always-on `_memoria_pin` (system msg) + tool `ricorda` (sola lettura)
 - CLI `gas doctor` / `gas reindex` / `gas backup` / `gas tokens [N]` (contabilità token + stima USD + fallthrough) / `gas duplicati` (lista coppie CRM sospette, sola lettura)
+- **Endpoint HTTP voice** (FASE 3 Fetta 1, review #74+#75): `modules/voice/server.py` — `POST /voice`, bearer auth, kernel singleton, single-thread stdlib, fail-closed su token assente
 - **Budget cap** (review #38): `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` in `run_turn`
 - **Telegram bridge** (review #38): `gas telegram` → `modules/telegram/bot.py` (long polling, `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_IDS`)
 - **CLI vettori** (review #38): `gas calibrate-vectors` (distribuzione score → suggerisce min_sim) + `gas eval-vectors [query]` (ricerca semantica interattiva)
@@ -54,6 +57,9 @@ Componenti attive:
   - **R1** `int(r["id"])` fuori try/except (fetta 3, #67); **R2** ramo `chiave_norm` non coperto da T60 (#67); **R3** commento `# 11 CRM` fuori sequenza in gas.py (cosmetico, #68); **R4** T61d `or "Duplicati"` sempre vera — non asserisce strettamente "non disponibile" (#68).
 - ℹ️ **Lezione T9b (2026-07-24)**: fino a questa sessione, in CI T9b era verde a vuoto. Senza chiavi, `if not os.environ.get(env): continue` in `run_turn` costruisce ZERO rung → il turno emette comunque "Pipeline esausta.": T9b passava testando "nessun provider configurato" (cascata a 0 rung), NON l'esaurimento del loop a 10 iterazioni. Con le chiavi fittizie iniettate per T9a/T9c, T9b diventa un test reale (3 provider × 10 iterazioni = 30 tool_res). **Principio**: un test verde non dimostra ciò che dichiara finché non si verifica quale ramo ha percorso.
 - 🟡 **Riserve minori** (non bloccanti, dettaglio in archivio): R-test-1 cap_window_chars, R2 #6 chdir trap, R3 #4 falsi positivi path-check, riserve snapshot TASK C, riserve hook SessionEnd, riserve R-mem2a, riserve R-mem, R26-1/R26-2 backup.
+- ✅ **R-voice-1** (review #74→#75): Content-Length non numerico → 400 — CHIUSA (fix applicata prima del commit: try/except ValueError in server.py:85-89).
+- ✅ **R-voice-2** (review #74→#75): dead code in test_tv1 — CHIUSA (codice ripulito prima del commit).
+- 🟡 **R-voice-3** (proposta, non tracciata in review): test esplicito per `Content-Length: abc` assente — bassa priorità, nessun blocco.
 - 🟡 **R-verdetto-evidenza** — l'obbligo di citare ≥2 elementi del diff è verificabile solo a occhio; un verdetto può citare path:riga plausibili senza averli letti. Fix strutturale: check meccanico che i path:riga citati esistano nel diff sotto review. Non impegnato. **Cross-ref (stessa classe D)**: barriera solo disciplinare in attesa di enforcement strutturale/meccanico — identica alla famiglia dei gate "regola di forma" del progetto (main-lock rete = structural; revisore.md obbligo-evidenza = disciplinare). Il check specifico mancante: verificare automaticamente che ogni path:riga dichiarato nel verdetto esista davvero nel diff sottoposto.
 - **Riserve aperte residue (R-gasmerge-failopen archiviato)** — corpo completo archiviato in `reports/stato_storico.md` (§ Finding chiusi archiviati).
   - ✅ **#65-R1** (chiuso 2026-07-30, PR #56): guard `[ -n "$NEW_HEAD" ]` aggiunto post-conferma. Il guard HEAD_SHA (prima cattura) era già in place; il caso NEW_HEAD post-prompt era il missing piece.

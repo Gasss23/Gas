@@ -1,69 +1,108 @@
-# SONDA FASE 3 — Fetta 0: Endpoint HTTP vocale
+# Ultimo Report — FASE 3 Fetta 1: endpoint HTTP voice
 
-**Data**: 2026-08-13
-**Branch**: `sonda/voice-endpoint`
-**Task**: Sonda fetta 0 — identificazione metodo kernel e libreria HTTP per l'endpoint vocale FASE 3.
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-1. **Merge della PR `sonda/voice-endpoint`** (o chiusura senza merge — è solo doc/sonda).
-2. **Conferma metodo kernel**: `run_turn` generator come descritto nel report — OK?
-3. **Conferma libreria HTTP**: stdlib `http.server` + `ThreadingMixIn`, zero nuove dipendenze — OK?
-4. **Conferma threadsafety**: Opzione A (lock globale, richieste vocali serializzate) — OK?
-
-Finché i punti 2-4 non sono confermati, la fetta 1 (scrittura dell'endpoint) NON parte.
+**Data:** 2026-08-13
+**Branch:** fase3/voice-endpoint
+**Task:** Scrivere l'endpoint HTTP locale in WSL che avvolge GasKernel (FASE 3, Fetta 1)
 
 ---
 
-## Esito fette
+## §SCOPE & ESITO
 
-- **Fetta 0 — Sonda**: `FATTA`
-  - Metodo kernel identificato: `GasKernel.run_turn(user_prompt: str) -> Generator` (`gas.py:1424`)
-  - Libreria HTTP scelta: stdlib `http.server` + `socketserver.ThreadingMixIn` (zero nuove dipendenze)
-  - Threadsafety: lock globale (Opzione A) raccomandato
-  - Revisore non invocato (nessuna modifica a gas.py/brains/modules/tests)
+**Scope:** endpoint HTTP `POST /voice` con autenticazione bearer, zero nuove dipendenze, kernel istanziato una volta, suite di test reali (18 test), aggiunta alla CI.
 
-- **Fetta 1 — Scrittura endpoint**: `DEFERITA — stop gate attivo, attesa conferma operatore`
+**Esito:** ✅ COMPLETATO. Fetta 1 chiusa su tutti i requisiti.
 
 ---
 
-## Dettagli sonda
+## File creati / modificati
 
-### Metodo kernel
+| File | Azione |
+|---|---|
+| `modules/voice/__init__.py` | NUOVO — package marker |
+| `modules/voice/server.py` | NUOVO — endpoint HTTP (172 righe) |
+| `tests/test_unit_voice_server.py` | NUOVO — suite pytest (18 test) |
+| `.github/workflows/ci.yml` | MODIFICATO — aggiunto step voice suite |
 
-`GasKernel.run_turn(user_prompt: str) -> Generator[Dict[str, Any], None, None]` (`gas.py:1424`)
+**File NON toccati:** `gas.py`, `brains/`, `modules/memory/`, `modules/telegram/` — stop gate rispettati.
 
-È un **generator**: emette eventi tipizzati durante il loop agentico.
+---
 
-| `type` | Contenuto | Quando |
-|--------|-----------|--------|
-| `"tool_res"` | `{"type": "tool_res", "output": str}` | Per ogni tool call (loop agentico, max 10 iter) |
-| `"final"` | `{"type": "final", "content": str}` | Risposta testuale finale |
-| `"error"` | `{"type": "error", "content": str}` | Budget esaurito / pipeline LLM esausta |
+## Requisiti coperti
 
-L'endpoint HTTP deve iterare il generator e raccogliere l'evento `"final"`. Gli eventi `"tool_res"` intermedi vengono consumati silenziosamente.
+| Requisito | Esito |
+|---|---|
+| Bind 127.0.0.1 di default, apribile via GAS_VOICE_BIND | ✅ |
+| GAS_VOICE_TOKEN obbligatorio, fail-closed all'avvio | ✅ |
+| Confronto token `hmac.compare_digest` (tempo costante) | ✅ |
+| Log AUTH FAIL con IP, MAI il token nei log | ✅ |
+| Kernel istanziato una volta all'avvio | ✅ |
+| Single-thread stdlib `http.server.HTTPServer` | ✅ |
+| Zero nuove dipendenze | ✅ |
+| Fail-safe §9: eccezione run_turn → 500, server vivo | ✅ |
+| Zero valori inchiodati nel codice | ✅ |
+| Solo `POST /voice` funzionale, altri verbi 405 | ✅ |
 
-Il kernel è stateful (`self.history` mutato in-place): va istanziato UNA VOLTA all'avvio del server, non per ogni richiesta.
+---
 
-### Libreria HTTP
+## Suite di test reali — 18 PASS, 0 FAIL
 
-**`requirements.txt`**: openai, requests (client!), numpy, onnxruntime, fastembed — nessun server HTTP.
+```
+TV1: avvio senza token → exit 1         PASS
+TV2a: no auth header → 401              PASS
+TV2b: no auth → kernel non invocato     PASS
+TV3a: token errato → 401               PASS
+TV3b: token errato loggato, niente segreto nei log  PASS
+TV4a: token corretto → 200 + content   PASS
+TV4b: tool_res silenti nella risposta  PASS
+TV5a: eccezione run_turn → 500         PASS
+TV5b: server vivo dopo eccezione       PASS
+TV6: kernel stesso oggetto per N req   PASS
+TVExtra ×4 (400/405/error-event)       PASS
+unit _token_ok ×4                      PASS
+```
 
-**Scelta**: stdlib `http.server` + `socketserver.ThreadingMixIn` — zero nuove dipendenze, portabile WSL→VPS, sufficiente per un endpoint singolo.
+Suite kernel: **276 PASS, 0 FAIL** (invariata, nessuna regressione).
 
-`ThreadingMixIn` necessario: il loop agentico può durare secondi, il server non deve bloccarsi tra richieste.
+---
 
-### Threadsafety (fuori-scope fetta 0, da confermare)
+## Diff reale (stat)
 
-`GasKernel` non ha lock interni. Con threading, due richieste concorrenti corromperebbero `self.history`.
+```
+.github/workflows/ci.yml              | +30
+modules/voice/__init__.py             | +0 (file vuoto)
+modules/voice/server.py               | +172
+tests/test_unit_voice_server.py       | +323
+```
 
-- **Opzione A** (raccomandata): `threading.Lock` globale — serializza le richieste vocali. Accettabile per uso mono-utente.
-- **Opzione B**: istanza kernel per richiesta — nessun lock, overhead disco a ogni chiamata.
+---
 
-`_save_history` usa `os.replace` atomico: safe per accessi concorrenti sul file.
+## Verdetto revisore #74 (APPROVATO CON RISERVE) — integrale
 
-### Anomalie riscontrate
+> Il diff di FASE 3 Fetta 1 (endpoint HTTP voice) è approvato con due riserve non bloccanti:
+>
+> **R1 (minore)** — `modules/voice/server.py:85`: `int(self.headers.get("Content-Length", 0) or 0)` non cattura `ValueError` per header non numerici (es. `Content-Length: abc`). Il server sopravvive ma il client riceve EOF invece di un 400 controllato. Fix raccomandato prima del deploy su VPS: avvolgere in `try/except ValueError` con risposta 400 esplicita.
+>
+> **R2 (cosmetica)** — `tests/test_unit_voice_server.py:81–83`: variabili `rc` e `result` assegnate e mai usate; `monkeypatch.delenv` + `os.environ.pop` ridondanti. Il test è corretto e passa, ma il codice è disordinato.
+>
+> Nessuna violazione dei guardrail critici: nessun slicing history, nessuna simulazione tool, §9 rispettato (except+log in do_POST), cap 10 iter delegato correttamente al kernel, stop gate rispettati (gas.py/brains/modules esistenti non toccati). Le riserve R1 e R2 vanno tracciate in `reports/stato_progetto.md`.
 
-Nessuna anomalia. La sonda ha confermato che la fetta 1 non richiede modifiche al kernel — solo un server wrapper.
+---
+
+## Verdetto revisore #75 (APPROVATO) — integrale
+
+> **Oggetto:** ri-review post-fix delle riserve R1 e R2 di review #74 (FASE 3 Fetta 1, `modules/voice/server.py` + `tests/test_unit_voice_server.py`).
+>
+> **`modules/voice/server.py:85-89`** — try/except ValueError attorno a `int(...)` — rischio: Content-Length non numerico provocava EOF al client senza risposta HTTP controllata (violazione fail-safe §9) — esito: **CHIUSA R1**. Il blocco è corretto: la guard `or 0` gestisce già il caso di header vuoto/None prima della conversione; il ValueError su valori tipo "abc" ora produce `_send_json(400, {"error": "Content-Length non valido"})` seguito da `return`, lasciando il server in piedi.
+>
+> **`tests/test_unit_voice_server.py:79-84`** — `test_tv1_no_token_refuses_start` riscritto con `monkeypatch.delenv` + `capsys` — rischio: dead code e assenza di asserzione su stdout — esito: **CHIUSA R2**. Il test usa correttamente le fixture pytest, asserisce `code == 1` e verifica che `"GAS_VOICE_TOKEN"` compaia in `captured.out`.
+>
+> Entrambe le riserve sono chiuse. La suite a 18 PASS confermata è coerente con le modifiche. Il commit può procedere.
+
+---
+
+## Proposte fuori scope (da decidere come prossime fette)
+
+1. **`gas voice` CLI entry in gas.py** — integrazione del comando `gas voice` nella CLI principale (analogia: `gas telegram`). Richiede toccare gas.py → fuori scope Fetta 1, proposta per Fetta 2.
+2. **Test Content-Length non numerico** — TVExtra potrebbe coprire il caso `Content-Length: abc` ora che R1 è chiusa. Piccola aggiunta ai test, nessun blocco.
+3. **TLS / esposizione pubblica VPS** — esplicitamente fuori scope per questa fetta.
+4. **Client Windows / STT / TTS / wake word** — fette successive.
