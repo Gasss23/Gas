@@ -1,18 +1,25 @@
-# diff_sessione — 2026-08-06
+# DIFF SESSIONE — 2026-08-13
 
-## File toccati in questa sessione
+**Branch**: `sonda/voice-endpoint`
+**Scope**: Sonda fetta 0 — endpoint HTTP vocale FASE 3. Nessuna modifica al motore.
 
-(da `git diff --stat BASE..HEAD`, base = 5323b9b)
+## File toccati
 
----
+| File | Tipo modifica |
+|------|--------------|
+| `reports/ultimo_report.md` | Riscritto — report sonda fetta 0 + esito fine-task |
+| `reports/handoff.md` | Scritto — dossier fine sessione |
+| `reports/diff_sessione.md` | Riscritto (questo file) |
+| `reports/stato_progetto.md` | Aggiornato — riga sonda fetta 0 in §FASE 3 |
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `reports/stato_progetto.md` | Riga SICUREZZA ElevenLabs: da 🔴 (decisione aperta / rotazione urgente) a 🟡 (rischio accettato dall'operatore con evidenza `git grep` — nessuna chiave in chiaro committata). |
-| `reports/ultimo_report.md` | Report di fine task (questa sessione). |
-| `reports/handoff.md` | Dossier di fine sessione (questa sessione). |
-| `reports/diff_sessione.md` | Questo file. |
+## Cosa è cambiato e perché
 
----
+**Sonda fetta 0** (nessun codice di produzione, nessuna modifica motore):
+- Letto `gas.py:1424` — identificato `run_turn(user_prompt) -> Generator` come metodo pubblico del kernel. È un generator: emette eventi `{"type": "final"/"error"/"tool_res"}`, non ritorna direttamente una stringa.
+- Letto `requirements.txt` / `requirements-dev.txt` — nessun framework server HTTP presente. Scelta: stdlib `http.server` + `socketserver.ThreadingMixIn`, zero nuove dipendenze.
+- Identificato punto critico threadsafety: `self.history` mutato in-place senza lock — Opzione A (lock globale) raccomandata.
+- Stop gate attivo: nessun codice endpoint scritto, tutto in attesa di conferma operatore.
 
-*Questo file si riscrive a ogni sessione; la storia completa sta in git.*
+## Revisore
+
+Non invocato — nessuna modifica a gas.py, brains/, modules/, tests/. Scatterà sulla fetta 1.
