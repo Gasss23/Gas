@@ -1,59 +1,56 @@
-# Handoff — sessione 2026-08-13 (FASE 3 Fetta 1)
+# HANDOFF — Dossier di fine sessione
+
+**Sessione:** 2026-08-13 — FASE 3 Fetta 1: endpoint HTTP voice
 
 ---
 
-## §DECISIONI UMANE RICHIESTE
+## §0 DECISIONI UMANE RICHIESTE
 
-1. **`gas voice` CLI entry** — aggiungere `gas voice` alla CLI principale in `gas.py` (analogia con `gas telegram`) richiede toccare `gas.py`. Fuori scope Fetta 1. Approvare come prossima micro-fetta?
-2. **PR merge** — branch `fase3/voice-endpoint` pronto per PR su main. Main-lock richiede PR + CI verde. Procedere?
-
----
-
-## §ESITO SONDA
-
-Nessuna nuova sonda in questa sessione. La sonda fetta 0 (b47e1bd, 2026-08-13) aveva già accertato:
-- `GasKernel.run_turn()` è un Generator che emette `type=final/error/tool_res`
-- Il kernel è STATEFUL
-- Nessun server HTTP in requirements.txt
-
-Fetta 1 costruita su quelle basi senza toccare il kernel.
+1. Merge della PR `fase3/voice-endpoint` → main (https://github.com/Gasss23/Gas/pull/new/fase3/voice-endpoint). Richiede CI verde.
+2. **`gas voice` CLI entry** — aggiungere il comando `gas voice` in gas.py (come `gas telegram`) richiede toccare gas.py → fuori scope Fetta 1. Approvare come prossima micro-fetta?
 
 ---
 
-## §GIT DIFF --STAT (sessione)
+## §1 SCOPE & ESITO FETTE
+
+- **Fetta 1 — endpoint HTTP `POST /voice` + test + CI**: `FATTA` — `modules/voice/server.py` (172 righe), `tests/test_unit_voice_server.py` (18 PASS), `.github/workflows/ci.yml` aggiornato. Review #74 (APPROVATO CON RISERVE) → fix R1+R2 applicate → review #75 (APPROVATO). Stop gate rispettati: gas.py non toccato, zero nuove dipendenze.
+- **`gas voice` CLI entry**: `DEFERITA — richiede toccare gas.py, fuori scope Fetta 1`.
+- **STT / TTS / wake word / client Windows**: `DEFERITA — fette successive`.
+- **TLS / esposizione pubblica VPS**: `DEFERITA — esplicitamente fuori scope`.
+
+---
+
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-.github/workflows/ci.yml              |  30 +++++++
-modules/voice/__init__.py             |   0
-modules/voice/server.py               | 172 ++++++++++++++++++++++
-tests/test_unit_voice_server.py       | 323 ++++++++++++++++++++++++++++++++++++
-reports/ultimo_report.md              | aggiornato
-reports/stato_progetto.md             | aggiornato
-reports/diff_sessione.md              | aggiornato
-reports/handoff.md                    | aggiornato
+ .claude/agents/memoria_revisore.md |   3 +
+ .github/workflows/ci.yml           |  19 +++
+ modules/voice/__init__.py          |   0
+ modules/voice/server.py            | 172 ++++++++++++++++++++
+ reports/diff_sessione.md           |  42 +++--
+ reports/handoff.md                 |  72 +++++----
+ reports/stato_progetto.md          |   8 +-
+ reports/ultimo_report.md           | 115 ++++++++-----
+ tests/test_unit_voice_server.py    | 323 +++++++++++++++++++++++++++++++++++++
+ 9 files changed, 661 insertions(+), 93 deletions(-)
 ```
 
 ---
 
-## §GIT LOG (commit di sessione)
+## §3 GIT LOG --ONELINE (sessione)
 
-*(da popolare con hash reale dopo il commit)*
+```
+47ad773 docs(fine-task): ultimo_report + handoff + diff_sessione — fase3-fetta1 (2026-08-13)
+bf04d18 feat(fase3-fetta1): endpoint HTTP POST /voice + suite 18 test
+```
 
----
-
-## §DELTA TEST
-
-| Suite | Pre-sessione | Post-sessione |
-|---|---|---|
-| Kernel unit (test_unit_kernel.py) | 276 PASS | 276 PASS (invariata) |
-| Hook suite (test_unit_hooks.py) | 10 PASS | 10 PASS (invariata) |
-| Voice suite (test_unit_voice_server.py) | — | 18 PASS (nuova) |
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ---
 
-## §VERDETTO REVISORE INTEGRALE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #74 (APPROVATO CON RISERVE)
+### Review #74 — APPROVATO CON RISERVE (commit bf04d18, modules/voice/ + tests/)
 
 > Il diff di FASE 3 Fetta 1 (endpoint HTTP voice) è approvato con due riserve non bloccanti:
 >
@@ -63,7 +60,7 @@ reports/handoff.md                    | aggiornato
 >
 > Nessuna violazione dei guardrail critici: nessun slicing history, nessuna simulazione tool, §9 rispettato (except+log in do_POST), cap 10 iter delegato correttamente al kernel, stop gate rispettati (gas.py/brains/modules esistenti non toccati). Le riserve R1 e R2 vanno tracciate in `reports/stato_progetto.md`.
 
-### Review #75 (APPROVATO — post-fix R1+R2)
+### Review #75 — APPROVATO (ri-review post-fix R1+R2)
 
 > **Oggetto:** ri-review post-fix delle riserve R1 e R2 di review #74 (FASE 3 Fetta 1, `modules/voice/server.py` + `tests/test_unit_voice_server.py`).
 >
@@ -75,6 +72,36 @@ reports/handoff.md                    | aggiornato
 
 ---
 
-## §STATO CI
+## §5 DELTA TEST DEL MOTORE
 
-Da verificare dopo il push del branch e apertura PR. Il job `unit-suite` (required da main-lock) include ora anche il nuovo step `Run voice server suite`.
+**Suite kernel (test_unit_kernel.py):** 276 PASS → 276 PASS (invariata, nessuna regressione).
+**Suite hook (test_unit_hooks.py):** 10 PASS → 10 PASS (invariata).
+**Suite voice (test_unit_voice_server.py):** 0 → **18 PASS** (nuova).
+
+```
+18 passed in 6.81s
+```
+
+Nessun file del motore (gas.py, brains/, modules/ esistenti) toccato.
+
+---
+
+## §6 STATO CI
+
+```
+completed	failure	docs(fine-task): ultimo_report + handoff + diff_sessione — fase3-fett…	CI	fase3/voice-endpoint	push	31728341993	47s	2026-08-13T17:57:54Z
+completed	success	Merge pull request #61 from Gasss23/sonda/voice-endpoint	CI	main	push	31726463881	41s	2026-08-13T17:35:25Z
+completed	success	docs(fine-task): ultimo_report + handoff + diff_sessione — sonda-fetta0	CI	sonda/voice-endpoint	push	31725674113	54s	2026-08-13T17:25:59Z
+```
+
+**Mappatura commit → run:**
+- `47ad773` (docs fine-task, push): run `31728341993` — **FAILURE** nel job `handoff-check` (§2 aveva placeholder PLACEHOLDER_DIFF_STAT — corretto in questo commit). Job `unit-suite` separato (da verificare nella run).
+- `bf04d18` (feat voice endpoint): non ha una run CI dedicata — incluso nell'albero testato dalla run su `47ad773`.
+
+---
+
+## §7 RISERVE APERTE
+
+- **R-voice-1** (review #74): Content-Length non numerico → EOF — **CHIUSA prima del commit bf04d18** (fix try/except ValueError in server.py:85-89, confermata da review #75 APPROVATO).
+- **R-voice-2** (review #74): dead code in test_tv1 — **CHIUSA prima del commit bf04d18** (codice ripulito, confermata da review #75 APPROVATO).
+- **R-voice-3** (proposta, non bloccante): test esplicito per `Content-Length: abc` assente — bassa priorità, candidata a TVExtra in una micro-fetta.

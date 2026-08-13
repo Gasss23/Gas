@@ -6,11 +6,19 @@
 
 ---
 
-## §SCOPE & ESITO
+## DECISIONI UMANE RICHIESTE
 
-**Scope:** endpoint HTTP `POST /voice` con autenticazione bearer, zero nuove dipendenze, kernel istanziato una volta, suite di test reali (18 test), aggiunta alla CI.
+1. **Merge della PR** `fase3/voice-endpoint` → main (https://github.com/Gasss23/Gas/pull/new/fase3/voice-endpoint). Richiede CI verde.
+2. **`gas voice` CLI entry** — aggiungere `gas voice` alla CLI di gas.py (analogia `gas telegram`) richiede toccare gas.py → fuori scope Fetta 1. Approvare come prossima micro-fetta?
 
-**Esito:** ✅ COMPLETATO. Fetta 1 chiusa su tutti i requisiti.
+---
+
+## §SCOPE & ESITO FETTE
+
+- **Fetta 1 — endpoint HTTP `POST /voice` + test + CI**: `FATTA` — `modules/voice/server.py` (172 righe), `tests/test_unit_voice_server.py` (18 PASS), `.github/workflows/ci.yml` aggiornato. Review #74 (APPROVATO CON RISERVE) → fix R1+R2 → review #75 (APPROVATO). Stop gate rispettati: gas.py non toccato.
+- **`gas voice` CLI entry**: `DEFERITA — richiede toccare gas.py, fuori scope Fetta 1`.
+- **STT / TTS / wake word / client Windows**: `DEFERITA — fette successive`.
+- **TLS / esposizione pubblica VPS**: `DEFERITA — esplicitamente fuori scope`.
 
 ---
 
@@ -21,7 +29,7 @@
 | `modules/voice/__init__.py` | NUOVO — package marker |
 | `modules/voice/server.py` | NUOVO — endpoint HTTP (172 righe) |
 | `tests/test_unit_voice_server.py` | NUOVO — suite pytest (18 test) |
-| `.github/workflows/ci.yml` | MODIFICATO — aggiunto step voice suite |
+| `.github/workflows/ci.yml` | MODIFICATO — aggiunto step voice suite + summary |
 
 **File NON toccati:** `gas.py`, `brains/`, `modules/memory/`, `modules/telegram/` — stop gate rispettati.
 
@@ -65,17 +73,6 @@ Suite kernel: **276 PASS, 0 FAIL** (invariata, nessuna regressione).
 
 ---
 
-## Diff reale (stat)
-
-```
-.github/workflows/ci.yml              | +30
-modules/voice/__init__.py             | +0 (file vuoto)
-modules/voice/server.py               | +172
-tests/test_unit_voice_server.py       | +323
-```
-
----
-
 ## Verdetto revisore #74 (APPROVATO CON RISERVE) — integrale
 
 > Il diff di FASE 3 Fetta 1 (endpoint HTTP voice) è approvato con due riserve non bloccanti:
@@ -97,12 +94,3 @@ tests/test_unit_voice_server.py       | +323
 > **`tests/test_unit_voice_server.py:79-84`** — `test_tv1_no_token_refuses_start` riscritto con `monkeypatch.delenv` + `capsys` — rischio: dead code e assenza di asserzione su stdout — esito: **CHIUSA R2**. Il test usa correttamente le fixture pytest, asserisce `code == 1` e verifica che `"GAS_VOICE_TOKEN"` compaia in `captured.out`.
 >
 > Entrambe le riserve sono chiuse. La suite a 18 PASS confermata è coerente con le modifiche. Il commit può procedere.
-
----
-
-## Proposte fuori scope (da decidere come prossime fette)
-
-1. **`gas voice` CLI entry in gas.py** — integrazione del comando `gas voice` nella CLI principale (analogia: `gas telegram`). Richiede toccare gas.py → fuori scope Fetta 1, proposta per Fetta 2.
-2. **Test Content-Length non numerico** — TVExtra potrebbe coprire il caso `Content-Length: abc` ora che R1 è chiusa. Piccola aggiunta ai test, nessun blocco.
-3. **TLS / esposizione pubblica VPS** — esplicitamente fuori scope per questa fetta.
-4. **Client Windows / STT / TTS / wake word** — fette successive.
