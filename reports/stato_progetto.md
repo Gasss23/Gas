@@ -92,6 +92,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 3. **✅ Accesso dev tooling da telefono**: item 2 roadmap — CHIUSO (2026-07-15) via Remote Control (`/rc`): sonda su Giulia/WSL verificata live, nessun bridge custom necessario.
 4. **FASE 3 — Interfaccia vocale**: Whisper STT + ElevenLabs TTS. _(pipeline da costruire)_
    - ✅ **Sonda F0 atterrata su main (2026-08-02, PR #59, merge 5323b9b)**: 6 script in `clients/voice/probe/` (client Windows↔WSL). Sonda ≠ pipeline: FASE 3 (Whisper STT + ElevenLabs TTS) resta DA COSTRUIRE.
+   - 🟡 **Sonda fetta 0 (2026-08-13, branch `sonda/voice-endpoint`)**: metodo kernel identificato (`run_turn` generator), libreria HTTP scelta (stdlib `http.server` + `ThreadingMixIn`, zero nuove dip). In attesa di conferma operatore prima di scrivere l'endpoint (fetta 1). Threadsafety: Opzione A (lock globale) raccomandata. Revisore non ancora invocato (nessuna modifica motore). Dettagli: `reports/ultimo_report.md`.
 5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
 6. **FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04)** → prossimo S2 (decide operatore)
 7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
