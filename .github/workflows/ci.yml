@@ -94,6 +94,12 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_hooks.py -v 2>&1 | tee "$RUNNER_TEMP/hooks_output.txt"
 
+      - name: Run voice server suite (pytest, zero token LLM)
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_voice_server.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
+
       - name: Job summary (esito a colpo d'occhio)
         if: always()
         # Scrive nel JOB SUMMARY (pagina della run, niente zip/auth): esito bwrap +
@@ -103,6 +109,7 @@ jobs:
           set +e   # step puramente informativo: un grep senza match non deve abortirlo
           out="$RUNNER_TEMP/suite_output.txt"
           hout="$RUNNER_TEMP/hooks_output.txt"
+          vout="$RUNNER_TEMP/voice_output.txt"
           {
             echo "## ⛽ GAS CI — esito osservabilità"
             echo ""
@@ -124,6 +131,12 @@ jobs:
             else
               echo "| Hook suite   | output non disponibile (la hook suite non è partita) |"
             fi
+            if [ -f "$vout" ]; then
+              vriep="$(grep -E '^=.*(passed|failed|error)' "$vout" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+              echo "| Voice suite  | ${vriep:-non disponibile} |"
+            else
+              echo "| Voice suite  | output non disponibile (la voice suite non è partita) |"
+            fi
             echo ""
             if [ -f "$out" ]; then
               echo "### FAIL kernel suite"
@@ -135,6 +148,12 @@ jobs:
               echo "### FAIL hook suite"
               echo '```'
               grep -E '^FAILED ' "$hout" || echo "(nessun FAIL)"
+              echo '```'
+            fi
+            if [ -f "$vout" ]; then
+              echo "### FAIL voice suite"
+              echo '```'
+              grep -E '^FAILED ' "$vout" || echo "(nessun FAIL)"
               echo '```'
             fi
             echo ""

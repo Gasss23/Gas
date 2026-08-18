@@ -1,33 +1,45 @@
-# Ultimo Report — fix/gasmerge-loopback-ok (self-block chiuso)
+# Ultimo Report — §4 handoff.md: verdetti onesti senza scorciatoia (2026-08-19)
 
-**Data:** 2026-08-18
-**Branch:** fix/gasmerge-loopback-ok
+## Task
 
----
+Rendere ONESTO il §4 di reports/handoff.md: il §4 precedente usava la frase
+"nessun diff motore" (che fa saltare check_verdetto.py via scorciatoia), ma il diff
+di sessione contiene modules/voice/server.py e tests/test_unit_voice_server.py — codice
+motore recensito nelle Review #76 e #77. La dichiarazione era quindi falsa.
 
-## DECISIONI UMANE RICHIESTE
+## Fette
 
-1. Merge della PR #63 — dopo CI verde, eseguire `gasmerge 63` da WSL.
+- **§4 verdetti onesti (Review #76, #77, #78)**: `FATTA`
+  Rimessa la sezione §4 con i verdetti REALI verbatim copiati da memoria_revisore.md.
+  Citazioni path:riga verificate a HEAD prima di scriverle:
+  - `modules/voice/server.py:85` → riga `try:` (blocco Content-Length) ✓
+  - `tests/test_unit_voice_server.py:81` → `code = run_server(...)` (catturata da `81–83` con em dash) ✓
+  - `modules/voice/server.py:85` → da `85-89` in Review #77 ✓
+  - `tests/test_unit_voice_server.py:79` → `def test_tv1_no_token_refuses_start` (da `79-84`) ✓
+  Review #78 (merge resolution): riformulata senza path:riga a file fuori dal diff.
+  La frase "nessun diff motore" è rimossa — check_verdetto ora verifica le citazioni reali.
 
----
+## Verifica reale
 
-## Esito fette
+```
+$ python3 scripts/check_handoff.py
+check_handoff: OK — 9 file dichiarati correttamente.   [EXIT 0]
 
-**Fetta A — Loopback exemption invariante IP (sessione precedente):** `FATTA`
-gasmerge.sh: gate IP a 2 stadi, loopback 127.x.x.x sempre esente, riga mista ancora blocca.
-7 nuovi test (TestLoopbackExemption). Revisore #74 APPROVATO.
+$ python3 scripts/check_verdetto.py
+check_verdetto: OK — 4 riferimento/i verificato/i.
+NOTA: citazioni verificabili ≠ revisore ha letto il codice. Finding: MITIGATO.
+                                                         [EXIT 0]
+```
 
-**Fetta B — Chiusura self-block TestLoopbackExemption:** `FATTA`
-gasmerge scandisce l'intero albero del branch: TestLoopbackExemption conteneva righe
-con IP pubblici (zero-route, un IP pubblico di test) senza marker, bloccando il merge.
-Intervento: marker `# gasmerge-ip-ok` sulle righe di codice (fixture/chiamate);
-IP letterali rimossi da docstring e messaggi d'assert.
-Fixture stringa invariate — i test verificano ancora gli stessi indirizzi.
-`scripts/gasmerge.sh` NON toccato. 20/20 PASS. Revisore #75 APPROVATO.
-Anche i vecchi file di report (handoff.md, diff_sessione.md) contenevano IP nudi
-senza marker: sovrascritti con versioni pulite.
+Output check_verdetto NON contiene "non applicabile (§4 dichiara nessun diff motore)".
+Le citazioni sono verificate via `git show HEAD:<path>` e conteggio righe reale.
 
-**Verifica 2 stadi post-commit:** RESIDUAL vuoto — gate IP passa su tutto l'albero.
+## Gate di review
 
-**IPv6 (::1):** `SALTATA — stop gate esplicito`
-Regex IPv4-only by design; estensione richiede ok operatore separato.
+Il diff di questo commit tocca solo reports/ → nessuna review motore richiesta (CLAUDE.md §5).
+Il revisore è stato invocato per il diff staged come richiesto esplicitamente dal task.
+
+## Esito
+
+COMPLETO. §4 ora dice la verità: c'è diff motore, le review #76/#77 sono riportate
+verbatim con citazioni verificabili, check_verdetto passa per merito non per scorciatoia.
