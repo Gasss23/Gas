@@ -450,48 +450,48 @@ class TestLoopbackExemption:
         return work, bare
 
     def test_loopback_127_0_0_1_passes(self, tmp_path):
-        """Test 1: solo 127.0.0.1 nel branch → invariante IP NON blocca."""
-        work, _ = self._make_repo_with_ip_file(tmp_path, "host: 127.0.0.1\n")
+        """Test 1: solo un loopback (127.x) nel branch → invariante IP NON blocca."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "host: 127.0.0.1\n")  # gasmerge-ip-ok
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
         _make_stub_gh(fake_bin)
         result = _run(work, fake_bin)
         assert "BLOCCO: trovati IP" not in result.stdout, (
-            f"127.0.0.1 non deve bloccare: stdout={result.stdout!r}"
+            f"IP loopback non deve bloccare: stdout={result.stdout!r}"
         )
         assert "loopback" in result.stdout, (
             f"Atteso messaggio loopback: stdout={result.stdout!r}"
         )
 
     def test_loopback_127_0_0_53_passes(self, tmp_path):
-        """Test 2: solo 127.0.0.53 (loopback diverso da .1) → NON blocca."""
-        work, _ = self._make_repo_with_ip_file(tmp_path, "dns: 127.0.0.53\n")
+        """Test 2: solo un loopback non-canonico nel branch → NON blocca."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "dns: 127.0.0.53\n")  # gasmerge-ip-ok
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
         _make_stub_gh(fake_bin)
         result = _run(work, fake_bin)
         assert "BLOCCO: trovati IP" not in result.stdout, (
-            f"127.0.0.53 non deve bloccare: stdout={result.stdout!r}"
+            f"IP loopback non-canonico non deve bloccare: stdout={result.stdout!r}"
         )
         assert "loopback" in result.stdout, (
             f"Atteso messaggio loopback: stdout={result.stdout!r}"
         )
 
     def test_0_0_0_0_still_blocks(self, tmp_path):
-        """Test 3: 0.0.0.0 non è loopback → BLOCCA ancora."""
-        work, _ = self._make_repo_with_ip_file(tmp_path, "bind: 0.0.0.0\n")
+        """Test 3: zero-route (non loopback) → BLOCCA ancora."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "bind: 0.0.0.0\n")  # gasmerge-ip-ok
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
         _make_stub_gh(fake_bin)
         result = _run(work, fake_bin)
         assert result.returncode != 0, (
-            f"0.0.0.0 deve bloccare: stdout={result.stdout!r}"
+            f"IP zero-route deve bloccare: stdout={result.stdout!r}"
         )
         assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
 
     def test_public_ip_still_blocks(self, tmp_path):
         """Test 4: IP pubblico senza marker → BLOCCA ancora."""
-        work, _ = self._make_repo_with_ip_file(tmp_path, "remote: 93.42.17.8\n")
+        work, _ = self._make_repo_with_ip_file(tmp_path, "remote: 93.42.17.8\n")  # gasmerge-ip-ok
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
         _make_stub_gh(fake_bin)
@@ -502,12 +502,12 @@ class TestLoopbackExemption:
         assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
 
     def test_mixed_loopback_and_public_blocks(self, tmp_path):
-        """Test 5 (CRITICO): riga con 127.0.0.1 E 93.42.17.8 → BLOCCA ancora.
+        """Test 5 (CRITICO): riga con loopback E IP pubblico → BLOCCA ancora.
 
         Il loopback non deve mascherare l'IP non-loopback sulla stessa riga.
         """
         work, _ = self._make_repo_with_ip_file(
-            tmp_path, "fallback: 127.0.0.1 remote: 93.42.17.8\n"
+            tmp_path, "fallback: 127.0.0.1 remote: 93.42.17.8\n"  # gasmerge-ip-ok
         )
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
