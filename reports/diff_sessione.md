@@ -1,25 +1,20 @@
-# DIFF SESSIONE — 2026-08-13
+# Diff Sessione — 2026-08-18
 
-**Branch**: `sonda/voice-endpoint`
-**Scope**: Sonda fetta 0 — endpoint HTTP vocale FASE 3. Nessuna modifica al motore.
+**Branch:** fix/gasmerge-loopback-ok
+**Commit motore:** 134579b
 
 ## File toccati
 
-| File | Tipo modifica |
-|------|--------------|
-| `reports/ultimo_report.md` | Riscritto — report sonda fetta 0 + esito fine-task |
-| `reports/handoff.md` | Scritto — dossier fine sessione |
-| `reports/diff_sessione.md` | Riscritto (questo file) |
-| `reports/stato_progetto.md` | Aggiornato — riga sonda fetta 0 in §FASE 3 |
+| File | Tipo | Cosa è cambiato |
+|------|------|-----------------|
+| `scripts/gasmerge.sh` | FIX | Invariante IP: filtro loopback 127.x.x.x a 2 stadi (step 1: rimuovi loopback-only; step 2: gasmerge-ip-ok sul residuo) |
+| `tests/test_unit_gasmerge.py` | TEST | Classe `TestLoopbackExemption` con 7 nuovi test (127.0.0.1, 127.0.0.53, 0.0.0.0, IP pubblico, riga mista, marker, regressione) |
+| `.claude/agents/memoria_revisore.md` | DOC | Aggiornato contatore review #74, 2026-08-18 |
 
-## Cosa è cambiato e perché
+## Perché
 
-**Sonda fetta 0** (nessun codice di produzione, nessuna modifica motore):
-- Letto `gas.py:1424` — identificato `run_turn(user_prompt) -> Generator` come metodo pubblico del kernel. È un generator: emette eventi `{"type": "final"/"error"/"tool_res"}`, non ritorna direttamente una stringa.
-- Letto `requirements.txt` / `requirements-dev.txt` — nessun framework server HTTP presente. Scelta: stdlib `http.server` + `socketserver.ThreadingMixIn`, zero nuove dipendenze.
-- Identificato punto critico threadsafety: `self.history` mutato in-place senza lock — Opzione A (lock globale) raccomandata.
-- Stop gate attivo: nessun codice endpoint scritto, tutto in attesa di conferma operatore.
+La pipeline vocale FASE 3 gira su localhost (127.0.0.1 come endpoint), e il gate bloccava ad ogni fetta con IP non allowlistato. La modifica insegna al gate che 127.x.x.x è sempre lecito senza marker. La sicurezza chiave (riga mista = blocco) è coperta da test dedicato e verificata esplicitamente dal revisore.
 
-## Revisore
+## Suite al commit
 
-Non invocato — nessuna modifica a gas.py, brains/, modules/, tests/. Scatterà sulla fetta 1.
+20/20 PASS (pytest tests/test_unit_gasmerge.py — 7 nuovi + 13 preesistenti).

@@ -1,79 +1,64 @@
-# HANDOFF — Dossier di fine sessione
-
-**Sessione:** 2026-08-13 — Sonda FASE 3 fetta 0: endpoint HTTP vocale
+# Handoff — 2026-08-18 — fix/gasmerge-loopback-ok
 
 ---
 
-## §0 DECISIONI UMANE RICHIESTE
+## §DECISIONI UMANE RICHIESTE
 
-1. Merge della PR `sonda/voice-endpoint` (o chiusura senza merge — è solo doc/sonda).
-2. Conferma metodo kernel: `run_turn` generator come descritto — OK?
-3. Conferma libreria HTTP: stdlib `http.server` + `ThreadingMixIn`, zero nuove dipendenze — OK?
-4. Conferma threadsafety: Opzione A (lock globale, richieste vocali serializzate) — OK?
+Nessuna bloccante.
 
-Finché i punti 2-4 non sono confermati, la fetta 1 (scrittura dell'endpoint) NON parte.
+**IPv6 (::1):** lo script è IPv4-only. La regex non è stata estesa a IPv6 come da stop gate esplicito. Se la pipeline vocale usa `::1`, proporre fetta separata.
 
----
-
-## §1 SCOPE & ESITO FETTE
-
-- **Fetta 0 — Sonda**: `FATTA`
-  Metodo kernel (`run_turn` generator, `gas.py:1424`), libreria HTTP (stdlib, zero dep), threadsafety (lock globale raccomandato) — tutto documentato in `reports/ultimo_report.md`. Revisore non invocato (nessuna modifica motore).
-
-- **Fetta 1 — Scrittura endpoint**: `DEFERITA — stop gate attivo, attesa conferma operatore`
-  Nessun codice scritto. Nessuna modifica al motore.
+**Merge:** eseguire `gasmerge <PR>` da WSL dopo che CI è verde.
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## §ESITO SONDA
+
+Non applicabile — questa sessione non è una sonda. Task di fix puntuale su `scripts/gasmerge.sh`.
+
+---
+
+## §GIT DIFF --STAT (SESSIONE)
 
 ```
- reports/diff_sessione.md  | 31 ++++++++++++--------
- reports/handoff.md        | 56 +++++++++++++-----------------------
- reports/stato_progetto.md |  1 +
- reports/ultimo_report.md  | 72 ++++++++++++++++++++++++++++++++++++-----------
- 4 files changed, 95 insertions(+), 65 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ scripts/gasmerge.sh                |  31 ++++++++++++++++++++++++------
+ tests/test_unit_gasmerge.py        | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 156 insertions(+), 6 deletions(-)
 ```
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## §GIT LOG (SESSIONE)
 
 ```
-ace1984 docs(sonda-fetta0): run_turn generator + stdlib http.server — stop gate aperto
+134579b fix(gasmerge): loopback 127.x.x.x sempre esente dall'invariante IP
 ```
-
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §DELTA TEST MOTORE
 
-Nessun diff motore (nessuna modifica a gas.py, brains/, modules/, tests/) — revisore non richiesto.
-
----
-
-## §5 DELTA TEST DEL MOTORE
-
-Nessuna modifica a gas.py/tests/ in questa sessione.
+Suite prima: 13 test in test_unit_gasmerge.py (tutti PASS).
+Suite dopo: 20 test in test_unit_gasmerge.py (20/20 PASS).
+Delta: +7 test nuovi (classe TestLoopbackExemption), 0 regressioni.
 
 ---
 
-## §6 STATO CI
+## §VERDETTO REVISORE (VERBATIM — review #74)
 
-```
-completed  success  docs(sonda-fetta0): run_turn generator + stdlib http.server — stop ga…  CI  sonda/voice-endpoint  push  31725385917  52s  2026-08-13T17:22:35Z
-completed  success  Merge pull request #60 from Gasss23/docs/stato-fase3-sonda              CI  main                  push  31723483148  41s  2026-08-13T16:59:51Z
-completed  success  docs(fine-task): ultimo_report + handoff + diff_sessione — fix-refusi…  CI  docs/stato-fase3-sonda push 31120995342  20s  2026-08-11T16:18:24Z
-```
-
-Mappatura commit→run:
-- `ace1984` → run `31725385917` su `sonda/voice-endpoint` — **SUCCESS** ✅
-- Commit fine-task (questo) → run non ancora disponibile alla scrittura dell'handoff.
+> **VERDETTO FINALE: APPROVATO**
+>
+> **Elementi verificati:**
+>
+> - `scripts/gasmerge.sh:103` — sed ERE `\b127\.[0-9]{1,3}...\b` rimuove correttamente solo i `127.x.x.x`; `0.0.0.0` e IP pubblici passano intatti. Esito: OK.
+> - `scripts/gasmerge.sh:104` — grep-qE sul residuo determina se la riga ha ancora IP non-loopback; traccia esplicita per il caso critico riga mista dimostra che `93.42.17.8` sopravvive alla strip e forza BLOCCO. Esito: OK (critico).
+> - `tests/test_unit_gasmerge.py:504` — `test_mixed_loopback_and_public_blocks` asserisce `returncode != 0` e `"BLOCCO" in stdout` in AND; entrambe le asserzioni sono discriminanti e mordono la barriera reale. Esito: OK.
+>
+> **Rischio esplicitamente escluso:** comportamento di `\b` in sed non-GNU (macOS BSD sed) — non verificabile nell'ambiente target Linux/WSL e non rilevante per CI e deploy VPS.
 
 ---
 
-## §7 RISERVE APERTE
+## §STATO CI
 
-- **Threadsafety kernel** (fuori-scope fetta 0): `GasKernel` non ha lock interni. Con `ThreadingMixIn`, due richieste concorrenti corromperebbero `self.history`. Soluzione proposta (Opzione A: lock globale) da confermare con operatore prima della fetta 1.
-- **Timeout richieste lente**: il loop agentico può richiedere svariati secondi in caso di cascata. Il client Windows deve avere timeout generoso (es. 60s). Da documentare nella fetta 1.
+CI non ancora avviata (commit appena creato su branch locale, push pendente). La suite locale 20/20 PASS è la baseline. Il check CI richiesto da main-lock è `unit-suite`.
