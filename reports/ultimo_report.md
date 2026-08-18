@@ -1,69 +1,33 @@
-# SONDA FASE 3 — Fetta 0: Endpoint HTTP vocale
+# Ultimo Report — fix/gasmerge-loopback-ok (self-block chiuso)
 
-**Data**: 2026-08-13
-**Branch**: `sonda/voice-endpoint`
-**Task**: Sonda fetta 0 — identificazione metodo kernel e libreria HTTP per l'endpoint vocale FASE 3.
+**Data:** 2026-08-18
+**Branch:** fix/gasmerge-loopback-ok
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR `sonda/voice-endpoint`** (o chiusura senza merge — è solo doc/sonda).
-2. **Conferma metodo kernel**: `run_turn` generator come descritto nel report — OK?
-3. **Conferma libreria HTTP**: stdlib `http.server` + `ThreadingMixIn`, zero nuove dipendenze — OK?
-4. **Conferma threadsafety**: Opzione A (lock globale, richieste vocali serializzate) — OK?
-
-Finché i punti 2-4 non sono confermati, la fetta 1 (scrittura dell'endpoint) NON parte.
+1. Merge della PR #63 — dopo CI verde, eseguire `gasmerge 63` da WSL.
 
 ---
 
 ## Esito fette
 
-- **Fetta 0 — Sonda**: `FATTA`
-  - Metodo kernel identificato: `GasKernel.run_turn(user_prompt: str) -> Generator` (`gas.py:1424`)
-  - Libreria HTTP scelta: stdlib `http.server` + `socketserver.ThreadingMixIn` (zero nuove dipendenze)
-  - Threadsafety: lock globale (Opzione A) raccomandato
-  - Revisore non invocato (nessuna modifica a gas.py/brains/modules/tests)
+**Fetta A — Loopback exemption invariante IP (sessione precedente):** `FATTA`
+gasmerge.sh: gate IP a 2 stadi, loopback 127.x.x.x sempre esente, riga mista ancora blocca.
+7 nuovi test (TestLoopbackExemption). Revisore #74 APPROVATO.
 
-- **Fetta 1 — Scrittura endpoint**: `DEFERITA — stop gate attivo, attesa conferma operatore`
+**Fetta B — Chiusura self-block TestLoopbackExemption:** `FATTA`
+gasmerge scandisce l'intero albero del branch: TestLoopbackExemption conteneva righe
+con IP pubblici (zero-route, un IP pubblico di test) senza marker, bloccando il merge.
+Intervento: marker `# gasmerge-ip-ok` sulle righe di codice (fixture/chiamate);
+IP letterali rimossi da docstring e messaggi d'assert.
+Fixture stringa invariate — i test verificano ancora gli stessi indirizzi.
+`scripts/gasmerge.sh` NON toccato. 20/20 PASS. Revisore #75 APPROVATO.
+Anche i vecchi file di report (handoff.md, diff_sessione.md) contenevano IP nudi
+senza marker: sovrascritti con versioni pulite.
 
----
+**Verifica 2 stadi post-commit:** RESIDUAL vuoto — gate IP passa su tutto l'albero.
 
-## Dettagli sonda
-
-### Metodo kernel
-
-`GasKernel.run_turn(user_prompt: str) -> Generator[Dict[str, Any], None, None]` (`gas.py:1424`)
-
-È un **generator**: emette eventi tipizzati durante il loop agentico.
-
-| `type` | Contenuto | Quando |
-|--------|-----------|--------|
-| `"tool_res"` | `{"type": "tool_res", "output": str}` | Per ogni tool call (loop agentico, max 10 iter) |
-| `"final"` | `{"type": "final", "content": str}` | Risposta testuale finale |
-| `"error"` | `{"type": "error", "content": str}` | Budget esaurito / pipeline LLM esausta |
-
-L'endpoint HTTP deve iterare il generator e raccogliere l'evento `"final"`. Gli eventi `"tool_res"` intermedi vengono consumati silenziosamente.
-
-Il kernel è stateful (`self.history` mutato in-place): va istanziato UNA VOLTA all'avvio del server, non per ogni richiesta.
-
-### Libreria HTTP
-
-**`requirements.txt`**: openai, requests (client!), numpy, onnxruntime, fastembed — nessun server HTTP.
-
-**Scelta**: stdlib `http.server` + `socketserver.ThreadingMixIn` — zero nuove dipendenze, portabile WSL→VPS, sufficiente per un endpoint singolo.
-
-`ThreadingMixIn` necessario: il loop agentico può durare secondi, il server non deve bloccarsi tra richieste.
-
-### Threadsafety (fuori-scope fetta 0, da confermare)
-
-`GasKernel` non ha lock interni. Con threading, due richieste concorrenti corromperebbero `self.history`.
-
-- **Opzione A** (raccomandata): `threading.Lock` globale — serializza le richieste vocali. Accettabile per uso mono-utente.
-- **Opzione B**: istanza kernel per richiesta — nessun lock, overhead disco a ogni chiamata.
-
-`_save_history` usa `os.replace` atomico: safe per accessi concorrenti sul file.
-
-### Anomalie riscontrate
-
-Nessuna anomalia. La sonda ha confermato che la fetta 1 non richiede modifiche al kernel — solo un server wrapper.
+**IPv6 (::1):** `SALTATA — stop gate esplicito`
+Regex IPv4-only by design; estensione richiede ok operatore separato.

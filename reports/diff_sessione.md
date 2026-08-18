@@ -1,25 +1,18 @@
-# DIFF SESSIONE — 2026-08-13
-
-**Branch**: `sonda/voice-endpoint`
-**Scope**: Sonda fetta 0 — endpoint HTTP vocale FASE 3. Nessuna modifica al motore.
+# Diff Sessione — 2026-08-18 — fix/gasmerge-loopback-ok (self-block)
 
 ## File toccati
 
-| File | Tipo modifica |
-|------|--------------|
-| `reports/ultimo_report.md` | Riscritto — report sonda fetta 0 + esito fine-task |
-| `reports/handoff.md` | Scritto — dossier fine sessione |
-| `reports/diff_sessione.md` | Riscritto (questo file) |
-| `reports/stato_progetto.md` | Aggiornato — riga sonda fetta 0 in §FASE 3 |
+| File | Cosa è cambiato | Perché |
+|------|-----------------|--------|
+| `tests/test_unit_gasmerge.py` | Marker gasmerge-ip-ok su righe di codice; IP letterali rimossi da docstring/assert | Self-block PR #63: righe senza marker bloccavano gasmerge sul branch stesso |
+| `.claude/agents/memoria_revisore.md` | Entry #75 aggiunta | Aggiornamento contatore post-review |
+| `reports/ultimo_report.md` | Riscritto | Reporting canonico del task |
+| `reports/handoff.md` | Riscritto (IP nudi rimossi) | Dossier sessione + fix residuo gate IP |
+| `reports/diff_sessione.md` | Riscritto | Fotografia sessione corrente |
+| `reports/stato_progetto.md` | Aggiornamento data e contatore review | Fotografia viva aggiornata |
 
-## Cosa è cambiato e perché
+## Nota
 
-**Sonda fetta 0** (nessun codice di produzione, nessuna modifica motore):
-- Letto `gas.py:1424` — identificato `run_turn(user_prompt) -> Generator` come metodo pubblico del kernel. È un generator: emette eventi `{"type": "final"/"error"/"tool_res"}`, non ritorna direttamente una stringa.
-- Letto `requirements.txt` / `requirements-dev.txt` — nessun framework server HTTP presente. Scelta: stdlib `http.server` + `socketserver.ThreadingMixIn`, zero nuove dipendenze.
-- Identificato punto critico threadsafety: `self.history` mutato in-place senza lock — Opzione A (lock globale) raccomandata.
-- Stop gate attivo: nessun codice endpoint scritto, tutto in attesa di conferma operatore.
-
-## Revisore
-
-Non invocato — nessuna modifica a gas.py, brains/, modules/, tests/. Scatterà sulla fetta 1.
+I file di report precedenti (handoff.md, diff_sessione.md da commit 2189420) contenevano
+IP non-loopback senza marker nel testo — bloccavano il gate IP di gasmerge insieme a
+TestLoopbackExemption. Sovrascritti in questo commit con versioni prive di IP nudi.

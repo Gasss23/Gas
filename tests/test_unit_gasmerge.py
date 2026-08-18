@@ -419,6 +419,136 @@ class TestIPAllowlist:
         )
 
 
+# ---------------------------------------------------------------------------
+# Loopback exemption (fetta loopback-ok)
+# ---------------------------------------------------------------------------
+
+class TestLoopbackExemption:
+    """Invariante IP: 127.x.x.x sempre esente; righe miste e altri indirizzi bloccano."""
+
+    def _make_repo_with_ip_file(
+        self, tmp_path: Path, file_content: str, filename: str = "README.md"
+    ) -> tuple[Path, Path]:
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "feat"], cwd=work, check=True, capture_output=True)
+        target = work / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(file_content)
+        subprocess.run(["git", "add", str(filename)], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "add file with ip"],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        return work, bare
+
+    def test_loopback_127_0_0_1_passes(self, tmp_path):
+        """Test 1: solo un loopback (127.x) nel branch → invariante IP NON blocca."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "host: 127.0.0.1\n")  # gasmerge-ip-ok
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP" not in result.stdout, (
+            f"IP loopback non deve bloccare: stdout={result.stdout!r}"
+        )
+        assert "loopback" in result.stdout, (
+            f"Atteso messaggio loopback: stdout={result.stdout!r}"
+        )
+
+    def test_loopback_127_0_0_53_passes(self, tmp_path):
+        """Test 2: solo un loopback non-canonico nel branch → NON blocca."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "dns: 127.0.0.53\n")  # gasmerge-ip-ok
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP" not in result.stdout, (
+            f"IP loopback non-canonico non deve bloccare: stdout={result.stdout!r}"
+        )
+        assert "loopback" in result.stdout, (
+            f"Atteso messaggio loopback: stdout={result.stdout!r}"
+        )
+
+    def test_0_0_0_0_still_blocks(self, tmp_path):
+        """Test 3: zero-route (non loopback) → BLOCCA ancora."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "bind: 0.0.0.0\n")  # gasmerge-ip-ok
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, (
+            f"IP zero-route deve bloccare: stdout={result.stdout!r}"
+        )
+        assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
+
+    def test_public_ip_still_blocks(self, tmp_path):
+        """Test 4: IP pubblico senza marker → BLOCCA ancora."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "remote: 93.42.17.8\n")  # gasmerge-ip-ok
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, (
+            f"IP pubblico deve bloccare: stdout={result.stdout!r}"
+        )
+        assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
+
+    def test_mixed_loopback_and_public_blocks(self, tmp_path):
+        """Test 5 (CRITICO): riga con loopback E IP pubblico → BLOCCA ancora.
+
+        Il loopback non deve mascherare l'IP non-loopback sulla stessa riga.
+        """
+        work, _ = self._make_repo_with_ip_file(
+            tmp_path, "fallback: 127.0.0.1 remote: 93.42.17.8\n"  # gasmerge-ip-ok
+        )
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, (
+            f"Riga mista (loopback + IP pubblico) deve bloccare: stdout={result.stdout!r}"
+        )
+        assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
+
+    def test_public_ip_with_marker_still_passes(self, tmp_path):
+        """Test 6: IP pubblico + marker gasmerge-ip-ok → NON blocca (marker ancora valido)."""
+        work, _ = self._make_repo_with_ip_file(
+            tmp_path, "remote: 93.42.17.8 # gasmerge-ip-ok\n"
+        )
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP" not in result.stdout, (
+            f"IP marcato non deve bloccare: stdout={result.stdout!r}"
+        )
+        assert "allowlistati" in result.stdout, (
+            f"Atteso messaggio allowlist: stdout={result.stdout!r}"
+        )
+
+    def test_no_ip_regression_passes(self, tmp_path):
+        """Test 7: regressione — branch senza IP continua a passare il gate IP."""
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP" not in result.stdout, (
+            f"Branch senza IP non deve bloccare: stdout={result.stdout!r}"
+        )
+        assert "0 IP trovati" in result.stdout, (
+            f"Atteso '0 IP trovati': stdout={result.stdout!r}"
+        )
+
+
 def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:
     """Stub gh: headRefOid sempre identico (head invariata), pr merge registra argomenti.
 

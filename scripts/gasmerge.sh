@@ -94,23 +94,39 @@ set -e
 case "$IP_RC" in
   1) echo "0 IP trovati — OK" ;;
   0)
-    # IPs trovati: filtra le righe che portano il marker di allowlist esplicito.
+    # Step 1: rimuovi le righe con soli IP di loopback (127.x.x.x).
+    # Logica: per ogni riga, cancella tutti i 127.x.x.x con sed; se nel residuo
+    # resta ancora un IPv4 quad-dotted, la riga originale non è loopback-only e
+    # viene tenuta. Una riga con loopback E un IP non-loopback non è esente.
     set +e
-    RESIDUAL=$(echo "$IP_MATCHES" | grep -v 'gasmerge-ip-ok')
-    FILTER_RC=$?
+    NON_LOOPBACK=$(echo "$IP_MATCHES" | while IFS= read -r line; do
+      stripped=$(echo "$line" | sed -E 's/\b127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b//g')
+      if echo "$stripped" | grep -qE '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b'; then
+        echo "$line"
+      fi
+    done)
     set -e
-    case "$FILTER_RC" in
-      1) echo "Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK" ;;
-      0)
-        echo "BLOCCO: trovati IP non allowlistati nell'albero del branch:"
-        echo "$RESIDUAL"
-        exit 1
-        ;;
-      *)
-        echo "BLOCCO: errore nel filtro allowlist (rc=$FILTER_RC) — gate IP non verificato"
-        exit 1
-        ;;
-    esac
+    if [ -z "$NON_LOOPBACK" ]; then
+      echo "Tutti gli IP sono loopback (127.x.x.x) — OK"
+    else
+      # Step 2: filtra le righe che portano il marker di allowlist esplicito.
+      set +e
+      RESIDUAL=$(echo "$NON_LOOPBACK" | grep -v 'gasmerge-ip-ok')
+      FILTER_RC=$?
+      set -e
+      case "$FILTER_RC" in
+        1) echo "Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK" ;;
+        0)
+          echo "BLOCCO: trovati IP non allowlistati nell'albero del branch:"
+          echo "$RESIDUAL"
+          exit 1
+          ;;
+        *)
+          echo "BLOCCO: errore nel filtro allowlist (rc=$FILTER_RC) — gate IP non verificato"
+          exit 1
+          ;;
+      esac
+    fi
     ;;
   *)
     echo "BLOCCO: git grep uscito con codice $IP_RC — verifica IP NON eseguita"
