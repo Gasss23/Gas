@@ -18,7 +18,7 @@
 **Contesto:** main alla data del merge è df3aab5 — include già PR #63 (fix/gasmerge-loopback-ok: loopback exemption invariante IP, review #74 APPROVATO + self-block review #75 APPROVATO).
 
 - **Fetta 1 — endpoint HTTP `POST /voice` + test + CI**: `FATTA` — `modules/voice/server.py` (172 righe), `tests/test_unit_voice_server.py` (18 PASS), `.github/workflows/ci.yml` aggiornato. Review #76 (APPROVATO CON RISERVE) → fix R1+R2 → review #77 (APPROVATO). Stop gate rispettati: gas.py non toccato.
-- **Allineamento a main (merge bookkeeping)**: `FATTA` — 5 file in conflitto (tutti bookkeeping), zero conflitti su codice motore/test/CI. STOP GATE non triggerato. Collisione numerazione #74+#75 riconciliata: review voice rinumerate #76+#77.
+- **Allineamento a main (merge bookkeeping)**: `FATTA` — 5 file in conflitto (tutti bookkeeping), zero conflitti su codice motore/test/CI. STOP GATE non triggerato. Collisione numerazione #74+#75 riconciliata: review voice rinumerate #76+#77. Review merge #78: APPROVATO.
 - **`gas voice` CLI entry**: `DEFERITA — richiede toccare gas.py, fuori scope Fetta 1`.
 - **STT / TTS / wake word / client Windows**: `DEFERITA — fette successive`.
 - **TLS / esposizione pubblica VPS**: `DEFERITA — esplicitamente fuori scope`.
@@ -26,7 +26,7 @@
 
 ---
 
-## File creati / modificati (sessione voice endpoint)
+## File creati / modificati
 
 | File | Azione |
 |---|---|
@@ -34,12 +34,17 @@
 | `modules/voice/server.py` | NUOVO — endpoint HTTP (172 righe) |
 | `tests/test_unit_voice_server.py` | NUOVO — suite pytest (18 test) |
 | `.github/workflows/ci.yml` | MODIFICATO — aggiunto step voice suite + summary |
+| `.claude/agents/memoria_revisore.md` | MODIFICATO — lezioni #76/#77/#78 + collisione riconciliata |
+| `reports/stato_progetto.md` | MODIFICATO — contatore 77 review, FASE 3 atterrata, collisione nota |
+| `reports/ultimo_report.md` | MODIFICATO — questo file |
+| `reports/handoff.md` | MODIFICATO — dossier sessione |
+| `reports/diff_sessione.md` | MODIFICATO — fotografia sessione |
 
 **File NON toccati:** `gas.py`, `brains/`, `modules/memory/`, `modules/telegram/` — stop gate rispettati.
 
 ---
 
-## Requisiti coperti
+## Requisiti coperti (endpoint voice)
 
 | Requisito | Esito |
 |---|---|
@@ -56,25 +61,17 @@
 
 ---
 
-## Suite di test reali — 18 PASS, 0 FAIL (suite voice)
+## Suite di test reali — 324 PASS totali
 
 ```
-TV1: avvio senza token → exit 1         PASS
-TV2a: no auth header → 401              PASS
-TV2b: no auth → kernel non invocato     PASS
-TV3a: token errato → 401               PASS
-TV3b: token errato loggato, niente segreto nei log  PASS
-TV4a: token corretto → 200 + content   PASS
-TV4b: tool_res silenti nella risposta  PASS
-TV5a: eccezione run_turn → 500         PASS
-TV5b: server vivo dopo eccezione       PASS
-TV6: kernel stesso oggetto per N req   PASS
-TVExtra ×4 (400/405/error-event)       PASS
-unit _token_ok ×4                      PASS
+kernel   : 276 PASS, 0 FAIL
+hooks    :  10 PASS, 0 FAIL
+voice    :  18 PASS, 0 FAIL
+gasmerge :  20 PASS, 0 FAIL
+TOTALE   : 324 PASS, 0 FAIL
 ```
 
-Suite kernel: **276 PASS, 0 FAIL** (invariata, nessuna regressione).
-Suite gasmerge: **20 PASS, 0 FAIL** (invariata — include TestLoopbackExemption da PR #63).
+Invariante IP: RESIDUAL_LINES=0 (zero non-loopback senza marker).
 
 ---
 
@@ -82,27 +79,25 @@ Suite gasmerge: **20 PASS, 0 FAIL** (invariata — include TestLoopbackExemption
 
 > Il diff di FASE 3 Fetta 1 (endpoint HTTP voice) è approvato con due riserve non bloccanti:
 >
-> **R1 (minore)** — `modules/voice/server.py:85`: `int(self.headers.get("Content-Length", 0) or 0)` non cattura `ValueError` per header non numerici (es. `Content-Length: abc`). Il server sopravvive ma il client riceve EOF invece di un 400 controllato. Fix raccomandato prima del deploy su VPS: avvolgere in `try/except ValueError` con risposta 400 esplicita.
+> **R1 (minore)** — `modules/voice/server.py:85`: `int(self.headers.get("Content-Length", 0) or 0)` non cattura `ValueError` per header non numerici (es. `Content-Length: abc`). Il server sopravvive ma il client riceve EOF invece di un 400 controllato.
 >
 > **R2 (cosmetica)** — `tests/test_unit_voice_server.py:81–83`: variabili `rc` e `result` assegnate e mai usate; `monkeypatch.delenv` + `os.environ.pop` ridondanti. Il test è corretto e passa, ma il codice è disordinato.
 >
-> Nessuna violazione dei guardrail critici: nessun slicing history, nessuna simulazione tool, §9 rispettato (except+log in do_POST), cap 10 iter delegato correttamente al kernel, stop gate rispettati (gas.py/brains/modules esistenti non toccati). Le riserve R1 e R2 vanno tracciate in `reports/stato_progetto.md`.
+> Nessuna violazione dei guardrail critici: nessun slicing history, nessuna simulazione tool, §9 rispettato, stop gate rispettati. Le riserve R1 e R2 vanno tracciate in `reports/stato_progetto.md`.
 >
-> ℹ️ Review originariamente numerata #74 sul branch; rinumerata #76 al merge (collisione con main).
+> ℹ️ Originariamente numerata #74 sul branch; rinumerata #76 al merge.
 
 ---
 
 ## Verdetto revisore #77 (APPROVATO) — integrale
 
-> **Oggetto:** ri-review post-fix delle riserve R1 e R2 di review #76 (FASE 3 Fetta 1, `modules/voice/server.py` + `tests/test_unit_voice_server.py`).
+> **Oggetto:** ri-review post-fix delle riserve R1 e R2 di review #76.
 >
-> **`modules/voice/server.py:85-89`** — try/except ValueError attorno a `int(...)` — rischio: Content-Length non numerico provocava EOF al client senza risposta HTTP controllata (violazione fail-safe §9) — esito: **CHIUSA R1**. Il blocco è corretto: la guard `or 0` gestisce già il caso di header vuoto/None prima della conversione; il ValueError su valori tipo "abc" ora produce `_send_json(400, {"error": "Content-Length non valido"})` seguito da `return`, lasciando il server in piedi.
+> `modules/voice/server.py:85-89` — try/except ValueError chiude R1. `tests/test_unit_voice_server.py:79-84` riscritto con monkeypatch.delenv + capsys chiude R2.
 >
-> **`tests/test_unit_voice_server.py:79-84`** — `test_tv1_no_token_refuses_start` riscritto con `monkeypatch.delenv` + `capsys` — rischio: dead code e assenza di asserzione su stdout — esito: **CHIUSA R2**. Il test usa correttamente le fixture pytest, asserisce `code == 1` e verifica che `"GAS_VOICE_TOKEN"` compaia in `captured.out`.
+> Entrambe le riserve chiuse. Suite 18 PASS confermata. Il commit può procedere.
 >
-> Entrambe le riserve sono chiuse. La suite a 18 PASS confermata è coerente con le modifiche. Il commit può procedere.
->
-> ℹ️ Review originariamente numerata #75 sul branch; rinumerata #77 al merge (stessa collisione).
+> ℹ️ Originariamente numerata #75 sul branch; rinumerata #77 al merge.
 
 ---
 
