@@ -1,33 +1,41 @@
-# Diff sessione — 2026-08-13
+# Diff Sessione — 2026-08-19 — allineamento fase3/voice-endpoint a main
 
-## File toccati
+## Contesto
 
-(da `git diff --stat BASE..HEAD`, BASE = b47e1bd)
+Questa sessione ha allineato il branch `fase3/voice-endpoint` a `origin/main` (df3aab5, che include già PR #63 loopback exemption). Operazione: `git merge origin/main` nel branch + risoluzione di 5 file in conflitto (tutti bookkeeping). STOP GATE non triggerato: zero conflitti su codice motore, test o CI.
+
+## File risolti nei conflitti di merge
+
+| File | Cosa è cambiato | Perché |
+|------|-----------------|--------|
+| `.claude/agents/memoria_revisore.md` | Unione voci main (#74, #75) + voice (#76, #77 — rinumerate) | Collisione: entrambi i branch avevano usato #74+#75 in modo indipendente |
+| `reports/stato_progetto.md` | Contatore review 72→77, aggiunta FASE 3 Fetta 1, aggiornamento data | Unione stato voice + stato loopback |
+| `reports/ultimo_report.md` | Riscritto: base=main (PR #63) + fatti voice endpoint (PR #62) su top | Report combinato del task di merge |
+| `reports/handoff.md` | Riscritto: base=main + fatti voice su top | Dossier sessione combinato |
+| `reports/diff_sessione.md` | Riscritto (questo file) | Fotografia sessione corrente |
+
+## File portati dal branch voice endpoint (non in conflitto, già nel branch)
 
 | File | Tipo | Descrizione |
 |---|---|---|
-| `.claude/agents/memoria_revisore.md` | MODIFICATO | Aggiunte lezioni review #74 e #75 |
 | `.github/workflows/ci.yml` | MODIFICATO | Aggiunto step `Run voice server suite` + riga summary |
 | `modules/voice/__init__.py` | NUOVO | Package marker vuoto |
 | `modules/voice/server.py` | NUOVO | Endpoint HTTP `POST /voice` (172 righe) |
-| `reports/diff_sessione.md` | MODIFICATO | Questo file |
-| `reports/handoff.md` | MODIFICATO | Dossier di sessione |
-| `reports/stato_progetto.md` | MODIFICATO | Stato FASE 3 Fetta 1 + riserve voice |
-| `reports/ultimo_report.md` | MODIFICATO | Report fetta |
 | `tests/test_unit_voice_server.py` | NUOVO | Suite pytest 18 test |
 
-## Cosa è cambiato e perché
+## Collisione numerazione review
 
-**`modules/voice/server.py`** — implementazione `POST /voice`. Avvolge `GasKernel.run_turn()` accertato dalla sonda fetta 0. Single-thread stdlib, zero dipendenze, auth bearer `hmac.compare_digest`, fail-closed su token assente, fail-safe §9. Fix post-review #74: `Content-Length` non numerico → 400 (era EOF).
+Entrambi i branch avevano usato indipendentemente i numeri #74 e #75:
+- **main** (#63): review #74 = loopback exemption APPROVATO; review #75 = self-block APPROVATO
+- **branch** (#62): review #74 (voice APPROVATO CON RISERVE) e #75 (ri-review voice APPROVATO)
 
-**`tests/test_unit_voice_server.py`** — 18 test reali (mai output simulato): TV1 avvio-senza-token, TV2 no-auth, TV3 token-errato-con-log-senza-segreto, TV4 token-corretto, TV5 eccezione-run_turn, TV6 singleton-kernel, TVExtra edge case, unit _token_ok. Fix post-review #74: dead code TV1 rimosso.
+Risoluzione: le review del branch voice sono state rinumerate **#76** e **#77**. Il counter passa a 77.
 
-**`.github/workflows/ci.yml`** — step `Run voice server suite` (pytest, `if: always()`, tee su `RUNNER_TEMP/voice_output.txt`) + riga nel job summary.
+## main (df3aab5) includeva già — non modificati da questa sessione
 
-**`.claude/agents/memoria_revisore.md`** — lezioni da review #74 e #75 aggiunte dal subagent revisore.
-
-**`reports/*`** — aggiornamenti canonici di fine sessione.
+- `scripts/gasmerge.sh`: gate IP a 2 stadi, loopback 127.x.x.x sempre esente
+- `tests/test_unit_gasmerge.py`: 20 PASS (inclusi TestLoopbackExemption × 7)
 
 ## File non toccati
 
-`gas.py`, `brains/`, `modules/memory/`, `modules/telegram/` — stop gate rispettati. `gas voice` CLI entry non aggiunta (richiede toccare gas.py → proposta per Fetta 2).
+`gas.py`, `brains/`, `modules/memory/`, `modules/telegram/` — stop gate rispettati.
