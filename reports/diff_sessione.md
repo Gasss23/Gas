@@ -1,20 +1,15 @@
-# Diff Sessione — 2026-08-18
+# Diff Sessione — 2026-08-18 — fix/gasmerge-loopback-ok
 
-**Branch:** fix/gasmerge-loopback-ok
-**Commit motore:** 134579b
+File toccati: da `git diff --stat ${BASE}..HEAD` (rigenerato al passo 4bis).
 
-## File toccati
+| File | Cosa è cambiato | Perché |
+|------|-----------------|--------|
+| `scripts/gasmerge.sh` | Invariante IP: logica a 2 stadi (loopback strip + gasmerge-ip-ok) | Blocco 127.0.0.0/8 deve essere sempre lecito senza marker per non bloccare la pipeline vocale FASE 3 su localhost |
+| `tests/test_unit_gasmerge.py` | +130 righe: classe `TestLoopbackExemption` con 7 test reali | Coprono tutti i requisiti (127.0.0.1, 127.0.0.53, 0.0.0.0, IP pub, riga mista CRITICO, marker, regressione) |
+| `.claude/agents/memoria_revisore.md` | +1 riga: entry #74 (APPROVATO 2026-08-18) | Aggiornamento contatore revisore post-review |
+| `reports/ultimo_report.md` | Riscritto (fine-task) | Reporting canonico del task |
+| `reports/handoff.md` | Riscritto (fine-task) | Dossier di sessione |
+| `reports/diff_sessione.md` | Riscritto (fine-task) | Fotografia sessione corrente |
+| `reports/stato_progetto.md` | Aggiornamento data, contatore review (72→74), stato corrente | Fotografia viva del progetto aggiornata a fine task |
 
-| File | Tipo | Cosa è cambiato |
-|------|------|-----------------|
-| `scripts/gasmerge.sh` | FIX | Invariante IP: filtro loopback 127.x.x.x a 2 stadi (step 1: rimuovi loopback-only; step 2: gasmerge-ip-ok sul residuo) |
-| `tests/test_unit_gasmerge.py` | TEST | Classe `TestLoopbackExemption` con 7 nuovi test (127.0.0.1, 127.0.0.53, 0.0.0.0, IP pubblico, riga mista, marker, regressione) |
-| `.claude/agents/memoria_revisore.md` | DOC | Aggiornato contatore review #74, 2026-08-18 |
-
-## Perché
-
-La pipeline vocale FASE 3 gira su localhost (127.0.0.1 come endpoint), e il gate bloccava ad ogni fetta con IP non allowlistato. La modifica insegna al gate che 127.x.x.x è sempre lecito senza marker. La sicurezza chiave (riga mista = blocco) è coperta da test dedicato e verificata esplicitamente dal revisore.
-
-## Suite al commit
-
-20/20 PASS (pytest tests/test_unit_gasmerge.py — 7 nuovi + 13 preesistenti).
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
