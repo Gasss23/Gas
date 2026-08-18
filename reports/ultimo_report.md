@@ -6,19 +6,17 @@ Sbloccare il job CI `handoff-check` su `fase3/voice-endpoint`.
 
 Il job era rosso NON per il codice (`unit-suite` verde) ma perché
 `scripts/check_verdetto.py` trovava in §4 di `reports/handoff.md` la citazione
-`gasmerge.sh:102-109` (Review #78): il path `gasmerge.sh` non è nel diff di
-sessione (arriva da main via PR #63) → `check_verdetto` usciva con exit 1.
+`gasmerge.sh:102-109` (Review #78): la regex cattura `gasmerge.sh:102`, path
+non nel diff di sessione (arriva da main via PR #63) → `check_verdetto` usciva
+con exit 1.
 
-## Scope
+## Fette
 
-**Un solo file toccato**: `reports/handoff.md`.
-
-- §4, corpo Review #78: rimosso `gasmerge.sh:102-109 e test:504` e riformulato
-  lo stesso concetto senza path:riga ("il motore loopback, già approvato in
-  #74/#75, arriva da main via #63 e non è toccato da questo merge, che tocca
-  solo i 5 file di bookkeeping").
-- §2 invariato (9 file dichiarati = 9 file nel diff reale).
-- Nessun codice, test, CI, gasmerge.sh toccato.
+- **Fix §4 Review #78 — handoff.md**: `FATTA`
+  Rimosso `gasmerge.sh:102-109 e test:504`; riformulato senza path:riga:
+  "il motore loopback, già approvato in #74/#75, arriva da main via #63 e non è
+  toccato da questo merge, che tocca solo i 5 file di bookkeeping."
+  §2 invariato (9 file dichiarati = 9 file nel diff reale).
 
 ## Verifica reale
 
