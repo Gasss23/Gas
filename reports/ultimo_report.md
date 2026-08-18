@@ -1,22 +1,23 @@
-# Ultimo Report — fix handoff-check CI (2026-08-19)
+# Ultimo Report — §4 handoff.md: verdetti onesti senza scorciatoia (2026-08-19)
 
 ## Task
 
-Sbloccare il job CI `handoff-check` su `fase3/voice-endpoint`.
-
-Il job era rosso NON per il codice (`unit-suite` verde) ma perché
-`scripts/check_verdetto.py` trovava in §4 di `reports/handoff.md` la citazione
-`gasmerge.sh:102-109` (Review #78): la regex cattura `gasmerge.sh:102`, path
-non nel diff di sessione (arriva da main via PR #63) → `check_verdetto` usciva
-con exit 1.
+Rendere ONESTO il §4 di reports/handoff.md: il §4 precedente usava la frase
+"nessun diff motore" (che fa saltare check_verdetto.py via scorciatoia), ma il diff
+di sessione contiene modules/voice/server.py e tests/test_unit_voice_server.py — codice
+motore recensito nelle Review #76 e #77. La dichiarazione era quindi falsa.
 
 ## Fette
 
-- **Fix §4 Review #78 — handoff.md**: `FATTA`
-  Rimosso `gasmerge.sh:102-109 e test:504`; riformulato senza path:riga:
-  "il motore loopback, già approvato in #74/#75, arriva da main via #63 e non è
-  toccato da questo merge, che tocca solo i 5 file di bookkeeping."
-  §2 invariato (9 file dichiarati = 9 file nel diff reale).
+- **§4 verdetti onesti (Review #76, #77, #78)**: `FATTA`
+  Rimessa la sezione §4 con i verdetti REALI verbatim copiati da memoria_revisore.md.
+  Citazioni path:riga verificate a HEAD prima di scriverle:
+  - `modules/voice/server.py:85` → riga `try:` (blocco Content-Length) ✓
+  - `tests/test_unit_voice_server.py:81` → `code = run_server(...)` (catturata da `81–83` con em dash) ✓
+  - `modules/voice/server.py:85` → da `85-89` in Review #77 ✓
+  - `tests/test_unit_voice_server.py:79` → `def test_tv1_no_token_refuses_start` (da `79-84`) ✓
+  Review #78 (merge resolution): riformulata senza path:riga a file fuori dal diff.
+  La frase "nessun diff motore" è rimossa — check_verdetto ora verifica le citazioni reali.
 
 ## Verifica reale
 
@@ -30,16 +31,15 @@ NOTA: citazioni verificabili ≠ revisore ha letto il codice. Finding: MITIGATO.
                                                          [EXIT 0]
 ```
 
-I 4 riferimenti rimasti e verificati (tutti nel diff di sessione):
-- `modules/voice/server.py:85` (Review #76)
-- `tests/test_unit_voice_server.py:81` (Review #76, em dash `81–83` → regex cattura `81`)
-- `modules/voice/server.py:85` (Review #77)
-- `tests/test_unit_voice_server.py:79` (Review #77, `79-84` → regex cattura `79`)
+Output check_verdetto NON contiene "non applicabile (§4 dichiara nessun diff motore)".
+Le citazioni sono verificate via `git show HEAD:<path>` e conteggio righe reale.
 
 ## Gate di review
 
-Commit di soli `reports/` → nessuna review necessaria (CLAUDE.md §5).
+Il diff di questo commit tocca solo reports/ → nessuna review motore richiesta (CLAUDE.md §5).
+Il revisore è stato invocato per il diff staged come richiesto esplicitamente dal task.
 
 ## Esito
 
-COMPLETO. CI `handoff-check` atteso verde al prossimo push.
+COMPLETO. §4 ora dice la verità: c'è diff motore, le review #76/#77 sono riportate
+verbatim con citazioni verificabili, check_verdetto passa per merito non per scorciatoia.

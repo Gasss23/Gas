@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-08-19** (fix handoff-check CI: §4 Review #78 citava gasmerge.sh:102-109 fuori dal diff di sessione → riformulato senza path:riga; check_handoff exit 0 / check_verdetto exit 0)
+> Ultimo aggiornamento: **2026-08-19** (§4 handoff.md ripristinato con verdetti #76/#77 verbatim + citazioni verificate a HEAD; rimossa scorciatoia "nessun diff motore" falsa; check_verdetto exit 0 per merito, non per bypass)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
