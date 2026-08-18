@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-08-19** (allineamento fase3/voice-endpoint → main: FASE 3 Fetta 1 (PR #62, review #76+#77) atterrata su main che include già PR #63 loopback exemption (review #74+#75); fix/gasmerge-hardening rebasato su main: tutti i #65-R* chiusi)
+> Ultimo aggiornamento: **2026-08-19** (fix handoff-check CI: §4 Review #78 citava gasmerge.sh:102-109 fuori dal diff di sessione → riformulato senza path:riga; check_handoff exit 0 / check_verdetto exit 0)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore

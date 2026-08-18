@@ -86,7 +86,7 @@ NB: il commit di fine-task che contiene questo file non compare sopra (per costr
 
 ### Review #78 — APPROVATO (merge resolution)
 
-> merge resolution fase3/voice-endpoint ← origin/main: risoluzione UNION memoria_revisore.md corretta (nessuna perdita dati, #74+#75 loopback/self-block di main intatti, voice rinumerati #76+#77); codice gasmerge.sh:102-109 e test:504 già approvati in #74+#75, invariati nel merge. Nessuna lezione nuova.
+> merge resolution fase3/voice-endpoint ← origin/main: risoluzione UNION memoria_revisore.md corretta (nessuna perdita dati, #74+#75 loopback/self-block di main intatti, voice rinumerati #76+#77); il motore loopback, già approvato in #74/#75, arriva da main via #63 e non è toccato da questo merge, che tocca solo i 5 file di bookkeeping. Nessuna lezione nuova.
 
 ---
 
