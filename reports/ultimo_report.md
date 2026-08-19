@@ -2,11 +2,17 @@
 ## Fetta A + Fetta B — robustezza motore (cd fail-closed test + core.quotePath)
 
 Branch: `fix/nonascii-cd-tests`
-Commits: `7204077` (Fetta A), `1be14b3` (Fetta B)
+Commits: `7204077` (Fetta A), `1be14b3` (Fetta B), `0186bf8` (report)
+
+## DECISIONI UMANE RICHIESTE
+
+1. Merge della PR `fix/nonascii-cd-tests → main` (Fetta A + Fetta B).
 
 ---
 
 ## FETTA A — test `cd` fail-closed in `review_gate.sh`
+
+**Esito: FATTA**
 
 ### Sonda
 `review_gate.sh` righe 38-41 contiene il guard:
@@ -32,13 +38,15 @@ Aggiunto `test_gate_e_cd_fails_blocks` alla classe `TestReviewGateFailClosed` in
 - Asserisce `returncode == 2` e `stderr` non vuoto
 
 ### Esito
-- Test FALLIVA prima? No — l'implementazione era già corretta; il test certifica il guard esistente
+- Test FALLIVA prima del fix? No — l'implementazione era già corretta; il test certifica il guard esistente
 - Suite dopo: **5/5 PASS** (T-gate-A..E)
 - Revisore: **APPROVATO** (review #83)
 
 ---
 
 ## FETTA B — `core.quotePath=false` per path non-ASCII
+
+**Esito: FATTA**
 
 ### Sonda
 Bug trovato in:
@@ -72,7 +80,7 @@ Motivazione: git è la fonte di verità del proprio formato di escaping. Delegar
    - Verifica che `check_handoff.py` esca con code 0
 
 ### Esito
-- Test FALLIVA prima del fix: **SÌ** (exit 1, con "r\\303\\251... omesso dall'handoff")
+- Test FALLIVA prima del fix: **SÌ** (exit 1, con `"r\303\251..." omesso dall'handoff`)
 - Test passa dopo il fix: **SÌ** (exit 0)
 - Suite completa `test_unit_handoff_check.py`: **10/10 PASS** (nessuna regressione)
 - Revisore: **APPROVATO CON RISERVE** (review #84)
@@ -89,5 +97,4 @@ Da aggiungere: `test_nonascii_filename_check_verdetto` in fetta futura.
 |-------|--------|------|
 | A | `7204077` | `tests/test_unit_hooks.py` |
 | B | `1be14b3` | `scripts/check_handoff.py`, `scripts/check_verdetto.py`, `tests/test_unit_handoff_check.py` |
-
-Entrambi i commit su branch `fix/nonascii-cd-tests`, da portare su main via PR.
+| report | `0186bf8` | `reports/ultimo_report.md`, `reports/stato_progetto.md`, `.claude/agents/memoria_revisore.md` |

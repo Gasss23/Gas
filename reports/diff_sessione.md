@@ -1,18 +1,18 @@
-# Diff sessione — 2026-08-19
-## Branch: fase4/check-verdetto-fail-closed
+# DIFF SESSIONE — 2026-08-19
+## Fetta A + Fetta B — cd fail-closed test + core.quotePath non-ASCII
 
-File toccati (da `git diff --stat BASE..HEAD`, BASE=9f67dfe):
+Questo file si riscrive a ogni sessione. Storia completa in git.
 
-| File | Perché |
-|------|--------|
-| `.claude/agents/memoria_revisore.md` | Aggiunta lezione review #80/#81 (sessione precedente) + #82 (questa sessione) |
-| `.claude/commands/fine-task.md` | Passo 4 aggiornato: git add ora include memoria_revisore.md e .gas_history.json (set completo) |
-| `.claude/hooks/review_gate.sh` | fix: fail-closed su git-diff failure e cd impossibile (56c2d11) |
-| `.claude/hooks/session_end.sh` | FETTA 1: rimosso auto-commit, rimane solo push fail-safe condizionale |
-| `CLAUDE.md` | Sez.3 aggiornata: descrizione hook SessionEnd corretta (R1 review #82) |
-| `reports/diff_sessione.md` | Questo file (riscritto ogni sessione) |
-| `reports/handoff.md` | Rigenerato con set reale 11 file |
-| `reports/stato_progetto.md` | Aggiornato stato review/suite + riserve FETTA 1 |
-| `reports/ultimo_report.md` | Report fine task di questa sessione |
-| `tests/test_unit_hooks.py` | R-voice-3 (test Content-Length:abc→400) + T-hook-b/d/f aggiornati per nuovo contratto session_end |
-| `tests/test_unit_voice_server.py` | R-voice-3: test esplicito Content-Length non numerico → 400 |
+---
+
+## File toccati
+
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `tests/test_unit_hooks.py` | Aggiunto `test_gate_e_cd_fails_blocks` (T-gate-E): copre il caso `cd "$CLAUDE_PROJECT_DIR"` fallisce (path inesistente → exit 2) in `review_gate.sh`. |
+| `scripts/check_handoff.py` | `_diff_names()`: aggiunto `-c core.quotePath=false` alla chiamata `git diff --name-only` — path non-ASCII escono raw (UTF-8) invece di essere escapati tra virgolette. |
+| `scripts/check_verdetto.py` | `_session_files()`: stesso fix `core.quotePath=false` per coerenza con `check_handoff.py`. |
+| `tests/test_unit_handoff_check.py` | Aggiunta classe `TestNonAsciiPath` con `test_nonascii_filename_check_handoff`: repo git reale, file `répertoire_été.md`, verifica che `check_handoff.py` non rompa il set comparison. |
+| `.claude/agents/memoria_revisore.md` | Aggiunte righe #83 (Fetta A, APPROVATO) e #84 (Fetta B, APPROVATO CON RISERVE). |
+| `reports/stato_progetto.md` | Aggiornato header + entry per Fette A e B + riserva #84 nei finding aperti. |
+| `reports/ultimo_report.md` | Report canonico di questa sessione. |
