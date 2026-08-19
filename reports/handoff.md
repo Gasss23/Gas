@@ -1,53 +1,36 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-19 — fase3/voice-endpoint: endpoint voice + CI fix + §4 onesto
+**Sessione:** 2026-08-19 — check_verdetto fail-closed + R-voice-3
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #62 (`fase3/voice-endpoint` → main) — dopo CI verde, eseguire `gasmerge 62` da WSL.
-2. **`gas voice` CLI entry** — aggiungere il comando `gas voice` in gas.py richiede toccare gas.py → fuori scope Fetta 1. Approvare come prossima micro-fetta?
+1. Merge della PR #64 (fix(review-gate): fail-closed + test R-voice-3).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-**Contesto:** main (BASE) è df3aab5 — include già PR #63 (loopback exemption + self-block, review #74+#75 APPROVATO).
+- **Fetta 1 — review_gate.sh fail-closed**: `FATTA`
+  Fix del check "nessun diff motore" fail-open → fail-closed. `cd` failure e `git diff` failure ora bloccano (exit 2). Test T-gate-A/B/C/D aggiunti su repo temporanei reali. Revisore #80: APPROVATO.
 
-- **Fetta 1 — endpoint HTTP `POST /voice` + test + CI**: `FATTA`
-  `modules/voice/server.py` (172 righe), `tests/test_unit_voice_server.py` (18 PASS), `.github/workflows/ci.yml` aggiornato. Review #76 (APPROVATO CON RISERVE) → fix R1+R2 → review #77 (APPROVATO). Stop gate rispettati: gas.py non toccato, zero nuove dipendenze.
-
-- **Allineamento a main (merge bookkeeping)**: `FATTA`
-  5 file in conflitto (tutti bookkeeping). Zero conflitti su codice motore/test/CI. Collisione numerazione #74+#75 riconciliata: review voice rinumerate #76+#77. Review merge #78: APPROVATO.
-
-- **Fix handoff-check CI (gasmerge.sh:102-109 fuori dal diff)**: `FATTA`
-  §4 Review #78 citava `gasmerge.sh:102-109` (path non in sessione). Rimosso e riformulato senza path:riga. `check_handoff` exit 0, `check_verdetto` exit 0.
-
-- **§4 onesto: verdetti #76/#77 verbatim**: `FATTA`
-  §4 usava "nessun diff motore" (scorciatoia falsa: il diff contiene modules/voice/ e tests/).
-  Rimessi i verdetti reali con citazioni verificate a HEAD. check_verdetto ora verifica le citazioni per merito.
-
-- **`gas voice` CLI entry**: `DEFERITA — richiede toccare gas.py, fuori scope Fetta 1`.
-- **STT / TTS / wake word / client Windows**: `DEFERITA — fette successive`.
-- **TLS / esposizione pubblica VPS**: `DEFERITA — esplicitamente fuori scope`.
-- **IPv6 (::1)**: `SALTATA — stop gate esplicito` — regex IPv4-only; estensione richiede ok operatore separato.
+- **Fetta 2 — test R-voice-3 Content-Length:abc→400**: `FATTA`
+  Test `test_invalid_content_length_returns_400` aggiunto in `TestTVExtra`. Usa `http.client` diretto. Il codice già gestiva il caso; mancava la copertura. Revisore #81: APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +
- .github/workflows/ci.yml           |  19 +++
- modules/voice/__init__.py          |   0
- modules/voice/server.py            | 172 ++++++++++++++++++++
- reports/diff_sessione.md           |  33 ++--
- reports/handoff.md                 | 135 +++++++---------
- reports/stato_progetto.md          |  11 +-
- reports/ultimo_report.md           |  58 ++++---
- tests/test_unit_voice_server.py    | 323 +++++++++++++++++++++++++++++++++++++
- 9 files changed, 642 insertions(+), 113 deletions(-)
+ .claude/hooks/review_gate.sh    |  21 +++++--
+ reports/diff_sessione.md        |  33 ++++------
+ reports/handoff.md              | 133 ++++++++++++++--------------------------
+ reports/stato_progetto.md       |   6 +-
+ reports/ultimo_report.md        |  83 +++++++++++++++----------
+ tests/test_unit_hooks.py        |  75 +++++++++++++++++++++-
+ tests/test_unit_voice_server.py |  27 ++++++++
+ 7 files changed, 229 insertions(+), 149 deletions(-)
 ```
 
 ---
@@ -55,92 +38,66 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-fb937f2 docs(fine-task): ultimo_report + handoff + diff_sessione — fix-handoff-check-verdetto (2026-08-19)
-f7dedeb fix(handoff-check): rimuovi citazioni gasmerge.sh:102-109 fuori dal diff sessione da §4
-8070442 docs(fine-task): ultimo_report + handoff + diff_sessione — allineamento-fase3-voice (2026-08-19)
-02ebb9a merge(fase3/voice-endpoint): allineamento a main (df3aab5 / PR #63 loopback)
-c7a0a63 docs(fine-task): ultimo_report + handoff + diff_sessione — fase3-fetta1
-47ad773 docs(fine-task): ultimo_report + handoff + diff_sessione — fase3-fetta1 (2026-08-13)
-bf04d18 feat(fase3-fetta1): endpoint HTTP POST /voice + suite 18 test
+0a06383 docs(fine-task): ultimo_report + stato_progetto — check-verdetto-fail-closed (2026-08-19)
+87cce8e test(voice): R-voice-3 — Content-Length non numerico → 400
+56c2d11 fix(review-gate): fail-closed — blocca se git diff fallisce o cd impossibile
 ```
 
-NB: il commit di fine-task che contiene questo file non compare sopra (per costruzione).
+NB: il commit di fine-task (questo file) non compare nel log per costruzione.
 
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #76 — APPROVATO CON RISERVE (commit bf04d18, modules/voice/ + tests/)
+**Commit 56c2d11** tocca `tests/test_unit_hooks.py` (tests/) → revisore richiesto.
 
-> Il diff di FASE 3 Fetta 1 (endpoint HTTP voice) è approvato con due riserve non bloccanti:
->
-> **R1 (minore)** — `modules/voice/server.py:85`: `int(self.headers.get("Content-Length", 0) or 0)` non cattura `ValueError` per header non numerici (es. `Content-Length: abc`). Il server sopravvive ma il client riceve EOF invece di un 400 controllato. Fix raccomandato prima del deploy su VPS: avvolgere in `try/except ValueError` con risposta 400 esplicita.
->
-> **R2 (cosmetica)** — `tests/test_unit_voice_server.py:81–83`: variabili `rc` e `result` assegnate e mai usate; `monkeypatch.delenv` + `os.environ.pop` ridondanti. Il test è corretto e passa, ma il codice è disordinato.
->
-> Nessuna violazione dei guardrail critici: nessun slicing history, nessuna simulazione tool, §9 rispettato (except+log in do_POST), cap 10 iter delegato correttamente al kernel, stop gate rispettati (gas.py/brains/modules esistenti non toccati). Le riserve R1 e R2 vanno tracciate in `reports/stato_progetto.md`.
->
-> ℹ️ Originariamente numerata #74 sul branch; rinumerata #76 al merge.
+**Verdetto #80 — APPROVATO** (da `.claude/agents/memoria_revisore.md:125`):
+> #80 — 2026-08-19 — APPROVATO — fix fail-closed review_gate.sh (cd → exit 2, git diff fuori pipeline → GIT_RC catturato → exit 2) + T-gate-A/B/C/D su repo temporanei reali. Nessuna lezione nuova.
 
-### Review #77 — APPROVATO (ri-review post-fix R1+R2)
+**Commit 87cce8e** tocca `tests/test_unit_voice_server.py` (tests/) → revisore richiesto.
 
-> **Oggetto:** ri-review post-fix delle riserve R1 e R2 di review #76 (FASE 3 Fetta 1, `modules/voice/server.py` + `tests/test_unit_voice_server.py`).
->
-> **`modules/voice/server.py:85-89`** — try/except ValueError attorno a `int(...)` — rischio: Content-Length non numerico provocava EOF al client senza risposta HTTP controllata (violazione fail-safe §9) — esito: **CHIUSA R1**. Il blocco è corretto: la guard `or 0` gestisce già il caso di header vuoto/None prima della conversione; il ValueError su valori tipo "abc" ora produce `_send_json(400, {"error": "Content-Length non valido"})` seguito da `return`, lasciando il server in piedi.
->
-> **`tests/test_unit_voice_server.py:79-84`** — `test_tv1_no_token_refuses_start` riscritto con `monkeypatch.delenv` + `capsys` — rischio: dead code e assenza di asserzione su stdout — esito: **CHIUSA R2**. Il test usa correttamente le fixture pytest, asserisce `code == 1` e verifica che `"GAS_VOICE_TOKEN"` compaia in `captured.out`.
->
-> Entrambe le riserve sono chiuse. La suite a 18 PASS confermata è coerente con le modifiche. Il commit può procedere.
->
-> ℹ️ Originariamente numerata #75 sul branch; rinumerata #77 al merge.
+**Verdetto #81 — APPROVATO** (da `.claude/agents/memoria_revisore.md:126`):
+> #81 — 2026-08-19 — APPROVATO — R-voice-3: test_invalid_content_length_returns_400 con http.client diretto (bypass normalizzazione urllib). Asserzioni mordenti: status==400 + "Content-Length" in error. Nessuna lezione nuova.
 
-### Review #78 — APPROVATO (merge resolution)
-
-> merge resolution fase3/voice-endpoint ← origin/main: risoluzione UNION memoria_revisore.md corretta (nessuna perdita dati, #74+#75 loopback/self-block di main intatti, voice rinumerati #76+#77); il motore loopback, già approvato in #74/#75, arriva da main via #63 e non è toccato da questo merge, che tocca solo i 5 file di bookkeeping. Nessuna lezione nuova.
+**Commit 0a06383** tocca solo `reports/` → revisore non richiesto.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Suite prima (origin/main df3aab5):
-- kernel: 276 PASS; hooks: 10 PASS; gasmerge: 20 PASS; voice: n/a
+Nessuna modifica a `gas.py`, `brains/` o `modules/`. I commit toccano `tests/` (test_unit_hooks.py e test_unit_voice_server.py).
 
-Suite dopo (HEAD post-merge):
-- kernel: **276 PASS** (invariata); hooks: **10 PASS** (invariata)
-- gasmerge: **20 PASS** (invariata, include TestLoopbackExemption da PR #63)
-- voice: **18 PASS** (nuova — da branch bf04d18)
+| Suite | Prima | Dopo | Delta |
+|---|---|---|---|
+| Hook (`test_unit_hooks.py`) | 10 PASS | 14 PASS | +4 (T-gate-A/B/C/D) |
+| Voice (`test_unit_voice_server.py`) | 18 PASS | 19 PASS | +1 (R-voice-3) |
+| Kernel (`test_unit_kernel.py`) | 276 PASS | 276 PASS | 0 |
 
 ```
-=== kernel  === 276 PASS, 0 FAIL (python tests/test_unit_kernel.py)
-=== hooks   ===  10 PASS, 0 FAIL (pytest tests/test_unit_hooks.py)
-=== voice   ===  18 PASS, 0 FAIL (pytest tests/test_unit_voice_server.py)
-=== gasmerge===  20 PASS, 0 FAIL (pytest tests/test_unit_gasmerge.py)
-TOTALE: 324 PASS, 0 FAIL
+=== HOOK SUITE: 14 passed in 1.27s ===
+=== VOICE SUITE: 19 passed in 6.71s ===
+=== KERNEL: RIEPILOGO: 276 PASS, 0 FAIL ===
 ```
-
-Invariante IP: RESIDUAL_LINES=0.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(fine-task): ultimo_report + handoff + diff_sessione — fix-handof…	CI	fase3/voice-endpoint	push	32196825431	51s	2026-08-18T23:21:31Z
-completed	success	fix(handoff-check): rimuovi citazioni gasmerge.sh:102-109 fuori dal d…	CI	fase3/voice-endpoint	push	32196577639	51s	2026-08-18T23:18:01Z
-completed	failure	docs(fine-task): ultimo_report + handoff + diff_sessione — allineamen…	CI	fase3/voice-endpoint	push	32195812371	52s	2026-08-18T23:07:26Z
+completed	success	docs(fine-task): ultimo_report + stato_progetto — check-verdetto-fail…	CI	fase4/check-verdetto-fail-closed	push	32200562411	1m2s	2026-08-19T00:15:51Z
+completed	success	Merge pull request #62 from Gasss23/fase3/voice-endpoint	CI	main	push	32198534227	55s	2026-08-18T23:45:50Z
+completed	success	docs(fine-task): §4 handoff.md verdetti #76/#77 verbatim, rimossa sco…	CI	fase3/voice-endpoint	push	32198177521	46s	2026-08-18T23:40:46Z
 ```
 
 **Mappatura commit→run:**
-- `fb937f2` (fine-task precedente): run `32196825431` — **SUCCESS** ✅
-- `f7dedeb` (fix §4 gasmerge.sh): run `32196577639` — **SUCCESS** ✅
-- `8070442` (fine-task allineamento): run `32195812371` — **FAILURE** (handoff-check: §4 citava path:riga sbagliati — corretto in `f7dedeb`)
-- `02ebb9a`, `c7a0a63`, `47ad773`, `bf04d18`: nessuna run propria — inclusi nell'albero testato da run precedenti
-- Commit fine-task corrente: run non ancora disponibile alla scrittura dell'handoff
+- `0a06383` (HEAD del push): run 32200562411 — `completed success`.
+- `87cce8e` (intermedio): nessuna run dedicata — incluso nell'albero testato da 32200562411.
+- `56c2d11` (primo commit): nessuna run dedicata — incluso nell'albero testato da 32200562411.
+
+Il commit di fine-task (questo file) viene pushato DOPO la scrittura: la sua run non è ancora disponibile alla scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **R-voice-3** (proposta, non bloccante): test esplicito per `Content-Length: abc` assente — bassa priorità, candidata a TVExtra.
-- **IPv6 loopback (::1)**: non coperto dalla regex IPv4-only di gasmerge. Se la pipeline vocale usa ::1, proporre fetta separata con ok operatore.
-- **`gas voice` CLI entry**: proposta DEFERITA — da approvare come prossima micro-fetta.
+Nessuna riserva nuova da questa sessione. Le riserve preesistenti restano invariate in `reports/stato_progetto.md`.
