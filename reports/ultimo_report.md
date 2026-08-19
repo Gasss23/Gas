@@ -1,127 +1,77 @@
-# REPORT TASK — 2026-08-19
-## fix/quotepath-non-ascii — core.quotePath=false per path non-ASCII in git diff --name-only
+# Ultimo report — R2 durabilità memoria: ricostruzione pulita
 
-Branch: `fix/quotepath-non-ascii`
-Commit: `1a45930`
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-Nessuna. Nessun trade-off aperto: il fix è localizzato, i test sono reali, il revisore ha approvato.
+**Data**: 2026-08-19
+**Branch**: fix/r2-durabilita-memoria-clean
+**Task**: Ricostruzione pulita di R2 sopra main aggiornato, senza contaminazione dei file quotePath
 
 ---
 
-## §1 — SCOPE & ESITO FETTE
+## Problema di partenza
 
-- **Sonda call site git path-parsing nel motore**: FATTA — vedi §2.
-- **Fix core.quotePath=false**: FATTA — 2 call site, sotto soglia ~3.
-- **Test reale con file non-ASCII**: FATTA — 2 test nuovi, 11 PASS totali.
-- **Commit**: FATTA — `1a45930` — review #85 APPROVATO.
+Il branch `fix/r2-durabilita-memoria` era contaminato: portava una variante vecchia e divergente del fix quotePath (commenti extra in check_handoff/verdetto e, peggio, cancellava il test non-ASCII di check_verdetto presente su main → regressione di copertura). Non andava mergiato.
 
----
+## Azioni eseguite
 
-## §2 — SONDA: invocazioni git che parsano path nel motore
-
-Sonda su: `gas.py`, `brains/`, `modules/`, `scripts/`.
-
-### gas.py — NESSUN call site path-parsing
-
-Le invocazioni git in `gas.py` sono:
-- `gas.py:802` — wrapper `git()` in `_take_snapshot`: usa `rev-parse`, `add -A`, `write-tree`, `commit-tree`, `update-ref` — nessuna parsa path dall'output.
-- `gas.py:850` — `for-each-ref --format=%(refname)`: parsa ref names (non file path).
-- `gas.py:1699` — `for-each-ref` in `doctor`: conta ref, non file path.
-- `gas.py:1711` — `count-objects -v`: parsa coppie chiave:valore numerici, non file path.
-
-**Conclusione**: `gas.py` non ha call site vulnerabili.
-
-### brains/, modules/ — NESSUN call site git
-
-Confermato da grep: nessuna invocazione git in questi directory.
-
-### scripts/ — 2 CALL SITE (unici nel motore)
-
-| File | Funzione | Riga | Comando |
-|------|----------|------|---------|
-| `scripts/check_handoff.py` | `_diff_names` | 48 | `git diff --name-only {base}..HEAD` |
-| `scripts/check_verdetto.py` | `_session_files` | 67 | `git diff --name-only {base}..HEAD` |
-
-Ogni script ha il proprio wrapper `_git()` (non condiviso). Non esiste un chokepoint unico tra i due file. Con soli 2 call site (sotto la soglia ~3), il fix viene applicato direttamente alle chiamate path-parsing, non al wrapper generico (che gestisce anche `rev-parse`, `merge-base`, `show` — non path-parsing).
-
----
-
-## §3 — FIX APPLICATO
-
-### check_handoff.py:48 (`_diff_names`)
-
-```python
-# PRIMA
-r = _git(["git", "diff", "--name-only", f"{base}..HEAD"], repo)
-# DOPO
-r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
+### 1. Nuovo branch da origin/main
 ```
-
-### check_verdetto.py:67 (`_session_files`)
-
-```python
-# PRIMA
-r = _git(["git", "diff", "--name-only", f"{base}..HEAD"], repo)
-# DOPO
-r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
+git checkout -b fix/r2-durabilita-memoria-clean origin/main
 ```
+Partenza identica a main — diff iniziale vuoto.
 
-Il flag `-c` è **per-invocazione**: non modifica `.gitconfig` utente/globale e non ha effetti collaterali su altri comandi git.
+### 2. File R2 applicati selettivamente
 
----
+| File | Fonte | Azione |
+|------|-------|--------|
+| `scripts/commit_memoria_revisore.sh` | fix/r2-durabilita-memoria | Copiato intero (file nuovo) |
+| `.claude/agents/revisore.md` | fix/r2-durabilita-memoria | Copiato (aggiunge §R2 al cablaggio) |
+| `tests/test_unit_hooks.py` | main + estrazione classe | Appesi helper R2 + `TestCommitMemoriaRevisore` alla versione main |
 
-## §4 — TEST REALE (verificato)
+### 3. File quotePath NON toccati (identici a main)
+- `scripts/check_handoff.py` ✅
+- `scripts/check_verdetto.py` ✅
+- `tests/test_unit_handoff_check.py` ✅ (nessun test non-ASCII rimosso)
 
-### Verifica before/after (subprocess reale, non simulato)
+### 4. STOP gate verificato
+```
+git diff --stat origin/main...HEAD
+```
+Mostra SOLO i file R2 (3 file) — nessun file quotePath.
+
+## Suite test
 
 ```
-SENZA fix: '"caff\303\250.txt"'   ← stringa con virgolette letterali
-CON fix:   'caffè.txt'            ← UTF-8 corretto
+TestCommitMemoriaRevisore: 4/4 PASSED
+  - T-R2-a: commit -o committa SOLO memoria_revisore.md, staging intatto
+  - T-R2-b: add && commit naive viola asserzione (a) — dimostra il bug §6
+  - T-R2-c: noop idempotente — exit 0 se file non cambiato
+  - T-R2-d: fail-safe §9 — non-git-repo → WARN in gas_debug.log → exit 0
 
-Set SENZA fix: {'"caff\\303\\250.txt"'}
-Set CON fix:   {'caffè.txt'}
-
-'caffè.txt' in SENZA fix set: False   ← test fallisce senza fix
-'caffè.txt' in CON fix set:   True    ← test passa con fix
+test_unit_handoff_check.py: 11/11 PASSED (zero regressioni quotePath)
+  - test_nonascii_filename_check_handoff ✅
+  - test_nonascii_filename_check_verdetto ✅
 ```
 
-### Suite completa
+## Verdetto revisore #86
 
-```
-tests/test_unit_handoff_check.py::TestCheckHandoff::test_omits_file_exits_1 PASSED
-tests/test_unit_handoff_check.py::TestCheckHandoff::test_correct_handoff_exits_0 PASSED
-tests/test_unit_handoff_check.py::TestCheckHandoff::test_allowlist_ultima_risposta_exits_0 PASSED
-tests/test_unit_handoff_check.py::TestCheckHandoff::test_handoff_not_in_diff_exits_0 PASSED
-tests/test_unit_handoff_check.py::TestCheckHandoff::test_on_main_exits_0 PASSED
-tests/test_unit_handoff_check.py::TestCheckHandoff::test_nonascii_filename_check_handoff PASSED
-tests/test_unit_handoff_check.py::TestCheckVerdetto::test_invalid_path_line_ref_exits_1 PASSED
-tests/test_unit_handoff_check.py::TestCheckVerdetto::test_valid_ref_exits_0 PASSED
-tests/test_unit_handoff_check.py::TestCheckVerdetto::test_no_diff_motore_exits_0 PASSED
-tests/test_unit_handoff_check.py::TestCheckVerdetto::test_nota_mitigated_not_closed PASSED
-tests/test_unit_handoff_check.py::TestCheckVerdetto::test_nonascii_filename_check_verdetto PASSED
+**APPROVATO CON RISERVE**
 
-11 passed in 3.68s
-```
+Evidenze verificate:
+- `scripts/commit_memoria_revisore.sh:48` — grep in ordine corretto ("APPROVATO CON RISERVE" prima di "APPROVATO")
+- `scripts/commit_memoria_revisore.sh:72` — `git commit -o $MEM_FILE`: meccanismo atomico path-scoped corretto, fail-safe §9 rispettato
+- `tests/test_unit_hooks.py:605` — T-R2-a con tre asserzioni discriminanti: ok
+- `.claude/agents/revisore.md:96-115` — sezione R2 cablata correttamente: ok
 
----
+Riserve (non bloccanti):
+- **R-r2-1**: forma `var=$(cmd); if [ $? -ne 0 ]` a riga 22 dello script — safe ora, fragile a edit futuri
+- **R-r2-2**: T-R2-d non esercita il path "file presente + repo non-git" (fail-safe riga 75)
 
-## §5 — VERDETTO REVISORE (INTEGRALE)
+## Commit risultante
 
-Review #85 — APPROVATO — 2026-08-19
+Il revisore ha committato atomicamente la propria memoria (`b6f4997 chore(revisore): memoria review #86 — APPROVATO CON RISERVE`) con staging R2 intatto — prova live del meccanismo R2 stesso in funzione.
 
-Elementi concreti esaminati nel diff:
+## Stato finale
 
-- `scripts/check_handoff.py:48` — aggiunta `-c core.quotePath=false` alla lista argomenti git — rischio effetti persistenti su gitconfig o regressioni su path ASCII — esito: ok (flag per-invocazione, path ASCII invariati).
-- `tests/test_unit_handoff_check.py:267-271` — cattura `merge-base` prima di `_commit_all` — rischio che la sequenza invertita renderebbe il diff BASE..HEAD vuoto e il test non mordace — esito: ok, sequenza corretta.
-
-Rischio esplicitamente escluso: compatibilità git < 2.x per il flag `-c` — non verificata, ritenuta fuori scope per gli ambienti target del progetto (WSL Ubuntu recente, GitHub Actions).
-
----
-
-## §6 — NOTE DI PROCESSO
-
-Il commit atomico del revisore (`chore(revisore): memoria review #85`) ha incluso per errore anche i file staged del motore (scenario R2-vaglio B2: `git add memoria_revisore.md && git commit` quando altri file sono in staging committa tutto). Risolto con `git reset --soft HEAD~1` e recommit separato con messaggio corretto. Il contenuto era già corretto; solo il messaggio era sbagliato. Nessuna perdita di dati.
+- Branch: `fix/r2-durabilita-memoria-clean` pronto per PR su main
+- File motore/tests/scripts non toccati oltre R2
+- Nessuna regressione su suite quotePath
+- Riserve R-r2-1/R-r2-2 tracciate in stato_progetto.md

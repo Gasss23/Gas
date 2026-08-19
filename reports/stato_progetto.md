@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-08-19** (fix/quotepath-non-ascii: core.quotePath=false in check_handoff.py:48 e check_verdetto.py:67 — review #85 APPROVATO. 2 call site, 2 test reali nuovi, 11 PASS. Chiude riserva #84.)
+> Ultimo aggiornamento: **2026-08-19** (fix/r2-durabilita-memoria-clean: ricostruzione pulita R2 sopra main aggiornato — scripts/commit_memoria_revisore.sh + cablaggio revisore.md + 4 test TestCommitMemoriaRevisore. Review #86 APPROVATO CON RISERVE. STOP gate OK: file quotePath non toccati.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -10,6 +10,7 @@ FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **82 review** completate (ulti
 **✅ FASE 3 Fetta 1 — endpoint HTTP voice** (2026-08-13, review #76+#77 APPROVATO, branch `fase3/voice-endpoint`, PR #62 — atterrata su main già con PR #63 loopback exemption): `modules/voice/server.py` — `POST /voice`, auth bearer `hmac.compare_digest`, fail-closed su token assente, kernel singleton, fail-safe §9. Suite: **18 PASS**. Zero nuove dipendenze. Stop gate rispettati (gas.py non toccato).
 **✅ Design fix session-end (2026-08-19, review #82 APPROVATO CON RISERVE, branch `fase4/check-verdetto-fail-closed`, PR #64)**: `session_end.sh` non committa più — solo push fail-safe condizionale. `fine-task.md` passo 4 include ora `memoria_revisore.md` + `.gas_history.json`. Suite hook: **14 PASS**. Riserva R2 dichiarata: sessione interrotta prima di `/fine-task` non persiste `.gas_history.json` (trade-off accettato).
 **✅ fix core.quotePath non-ASCII — check_handoff + check_verdetto (2026-08-19, review #85 APPROVATO, branch `fix/quotepath-non-ascii`)**: `check_handoff.py:_diff_names` e `check_verdetto.py:_session_files` usano ora `git -c core.quotePath=false diff --name-only`. Fix per-invocazione (non globale). 2 test reali nuovi (`test_nonascii_filename_check_handoff`, `test_nonascii_filename_check_verdetto`) su repo temporanei reali. 11 PASS. Chiude riserva #84.
+**✅ R2 durabilità memoria revisore — ricostruzione pulita (2026-08-19, review #86 APPROVATO CON RISERVE, branch `fix/r2-durabilita-memoria-clean`)**: `scripts/commit_memoria_revisore.sh` — commit path-scoped `git commit -o` di SOLO `memoria_revisore.md`, fail-safe §9 (WARN in gas_debug.log, exit 0 sempre). Cablaggio in `.claude/agents/revisore.md`. 4 test R2 in `tests/test_unit_hooks.py` (T-R2-a/b/c/d). STOP gate confermato: file quotePath identici a main. Riserve minori: R-r2-1 forma `$?` (fragile), R-r2-2 path "file presente + non-git" non coperto da T-R2-d.
 CI GitHub Actions — ultimi run su main (tutti ✅ SUCCESS; storico PR #23–#43 → `reports/stato_storico.md` § CI storica): PR #49 merge `64ff011` (2026-07-27, CI `30302270332`) · PR #48 merge `32a9a41` (2026-07-27, CI `30301777849`) · PR #47 merge `d67b12a` (2026-07-27, CI `30282530884`) · PR #46 merge `6f303cf` (2026-07-26, CI `30223085074`) · PR #45 merge `c7f6fac` (2026-07-25, CI `30160569148`) · PR #44 merge `de2f2f5` (2026-07-24, CI `30116369695`).
 
 **✅ FASE 2.5 compressione history** (2026-06-27, review #39, commit 65c4c7b).
