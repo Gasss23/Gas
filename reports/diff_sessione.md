@@ -1,16 +1,18 @@
 # Diff sessione — 2026-08-19
-## Task: check_verdetto fail-closed + R-voice-3
+## Branch: fase4/check-verdetto-fail-closed
 
-> Questo file si riscrive a ogni sessione. La storia completa sta in git.
+File toccati (da `git diff --stat BASE..HEAD`, BASE=9f67dfe):
 
-## File toccati
-
-| File | Cosa è cambiato | Perché |
-|---|---|---|
-| `.claude/hooks/review_gate.sh` | `cd` failure → exit 2; `git diff` catturato fuori pipeline con `GIT_RC` esplicito → exit 2 se non-zero | Era fail-open: pipeline bash usava exit code di grep, non di git; cd fallito → exit 0 |
-| `tests/test_unit_hooks.py` | Aggiunta classe `TestReviewGateFailClosed` con T-gate-A/B/C/D | Copertura del fix fail-closed con test reali su repo git temporanei |
-| `tests/test_unit_voice_server.py` | Aggiunto `import http.client` + `test_invalid_content_length_returns_400` in `TestTVExtra` | R-voice-3: test mancante per Content-Length:abc→400 |
-| `reports/stato_progetto.md` | Aggiornati contatori review (→81), suite (hook→14, voice→19), R-voice-3 chiusa, update header | Fine task |
-| `reports/ultimo_report.md` | Riscritto con DECISIONI UMANE RICHIESTE, esiti fette, contatori | Fine task |
-| `reports/handoff.md` | Riscritto con dossier sessione completo | Fine task |
-| `reports/diff_sessione.md` | Questo file | Fine task |
+| File | Perché |
+|------|--------|
+| `.claude/agents/memoria_revisore.md` | Aggiunta lezione review #80/#81 (sessione precedente) + #82 (questa sessione) |
+| `.claude/commands/fine-task.md` | Passo 4 aggiornato: git add ora include memoria_revisore.md e .gas_history.json (set completo) |
+| `.claude/hooks/review_gate.sh` | fix: fail-closed su git-diff failure e cd impossibile (56c2d11) |
+| `.claude/hooks/session_end.sh` | FETTA 1: rimosso auto-commit, rimane solo push fail-safe condizionale |
+| `CLAUDE.md` | Sez.3 aggiornata: descrizione hook SessionEnd corretta (R1 review #82) |
+| `reports/diff_sessione.md` | Questo file (riscritto ogni sessione) |
+| `reports/handoff.md` | Rigenerato con set reale 11 file |
+| `reports/stato_progetto.md` | Aggiornato stato review/suite + riserve FETTA 1 |
+| `reports/ultimo_report.md` | Report fine task di questa sessione |
+| `tests/test_unit_hooks.py` | R-voice-3 (test Content-Length:abc→400) + T-hook-b/d/f aggiornati per nuovo contratto session_end |
+| `tests/test_unit_voice_server.py` | R-voice-3: test esplicito Content-Length non numerico → 400 |
