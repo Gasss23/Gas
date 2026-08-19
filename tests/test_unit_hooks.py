@@ -569,3 +569,28 @@ class TestReviewGateFailClosed:
             f"Atteso exit 2 (fail-closed), got {result.returncode}; stderr={result.stderr!r}"
         )
         assert result.stderr.strip(), "Messaggio di errore atteso su stderr"
+
+    def test_gate_e_cd_fails_blocks(self, tmp_path):
+        """T-gate-E: CLAUDE_PROJECT_DIR inesistente → cd fallisce → FAIL-CLOSED (exit 2).
+
+        Copre il guard esplicito di review_gate.sh righe 38-41:
+            cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || { echo ... >&2; exit 2; }
+        T-gate-D copre il caso 'cd riesce, git diff fallisce'; questo copre
+        il caso 'cd stesso fallisce (path non esiste)'.
+        """
+        nonexistent = tmp_path / "does_not_exist"
+        # Verifica che la dir davvero non esista
+        assert not nonexistent.exists(), "Precondizione fallita: la dir non deve esistere"
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(nonexistent)}
+        result = subprocess.run(
+            ["bash", str(REVIEW_GATE_HOOK)],
+            input=self._stdin_commit(),
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 2, (
+            f"T-gate-E: atteso exit 2 (cd fallisce → fail-closed), "
+            f"got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert result.stderr.strip(), "Messaggio di errore atteso su stderr per cd fallito"
