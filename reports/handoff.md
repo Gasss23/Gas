@@ -22,6 +22,8 @@
 
 ## §2 GIT DIFF --STAT (sessione)
 
+Comando: `git diff --stat origin/main...HEAD`
+
 ```
  .claude/agents/memoria_revisore.md |   1 +
  reports/diff_sessione.md           |  21 ++++----
@@ -33,61 +35,60 @@
  7 files changed, 137 insertions(+), 112 deletions(-)
 ```
 
-*(rigenerato in 4bis con `git diff --cached --stat ${BASE}` dopo stage completo)*
+Verifica STOP GATE: tutti i file nel set consentito `{commit_memoria_revisore.sh, test_unit_hooks.py, reports/*, .claude/agents/memoria_revisore.md}`. Nessun blocco.
 
 ---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
+Comando: `git log --oneline origin/main..HEAD`
+
 ```
+a9606bd docs(fine-task): handoff e report definitivi fix/r2-riserve-86
 ff4d781 docs(fine-task): report fix/r2-riserve-86 — chiusura riserve R-r2-1 e R-r2-2
 f796f2f fix(r2-riserve-86): chiusura riserve R-r2-1 e R-r2-2 da review #86
 4019aa2 chore(revisore): memoria review #87 — APPROVATO
 ```
 
-*(il commit di fine-task che contiene questo file non compare per costruzione)*
-
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
-
-Il diff tocca `scripts/` e `tests/` — revisore invocato sul diff staged prima del commit `f796f2f`.
-
-**Review #87 — APPROVATO** (nessuna riserva)
-
-Elementi esaminati:
-- `scripts/commit_memoria_revisore.sh:21` — forma atomica `if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || [ -z "$REPO_ROOT" ]` — chiude R-r2-1 applicando la lezione #51 (pattern fragile `$?` → forma atomica). Semanticamente identica al codice rimosso, strutturalmente più robusta. Esito: ok.
-- `tests/test_unit_hooks.py:732` — `test_r2_fail_safe_mem_present_not_git` — chiude R-r2-2 coprendo il ramo precedentemente scoperto: file memoria presente + dir non-git → `git commit -o` fallisce alla riga 74 dello script → `_log_warn` scrive WARN in gas_debug.log → exit 0. Tre asserzioni discriminanti, distinte da T-R2-d (che testava uscita precoce riga 64 su file assente). Esito: ok.
-- Rischio esplicitamente escluso: comportamento quando `git` non è nel PATH (exit 127 invece di codice git canonico) — irriproducibile nell'ambiente WSL target, non bloccante.
-
----
-
-## §5 DELTA TEST DEL MOTORE
+## §4 DELTA TEST DEL MOTORE
 
 Nessuna modifica a `gas.py` / `brains/` / `modules/`. Modifiche a `tests/test_unit_hooks.py` (+1 test T-R2-e).
 
-Esito suite completa `tests/test_unit_hooks.py`:
+Comando eseguito:
 ```
-19 passed in 3.06s
+source venv/bin/activate && python -m pytest tests/test_unit_hooks.py -q
 ```
-Nessuna regressione. T-R2-e (nuovo): PASS.
+
+Output reale:
+```
+...................                                                      [100%]
+19 passed in 3.31s
+```
+
+**19 PASS, 0 FAIL.** Nessuna regressione. T-R2-e (nuovo): PASS.
+
+---
+
+## §5 VERDETTO DEL REVISORE — #87 INTEGRALE (verbatim da .claude/agents/memoria_revisore.md)
+
+```
+#87 — 2026-08-19 — APPROVATO — chiusura riserve R-r2-1 e R-r2-2 di #86: forma atomica `if ! REPO_ROOT=$(cmd)` (commit_memoria_revisore.sh:21) e test T-R2-e (test_unit_hooks.py:732) che copre il ramo "file presente + non-git → git commit fallisce → WARN + exit 0". Nessuna lezione nuova.
+```
 
 ---
 
 ## §6 STATO CI
 
+Comando: `gh run list --branch fix/r2-riserve-86 --limit 5`
+
 ```
+completed	success	docs(fine-task): handoff e report definitivi fix/r2-riserve-86	CI	fix/r2-riserve-86	push	32301097271	1m34s	2026-08-19T20:54:39Z
 completed	success	docs(fine-task): report fix/r2-riserve-86 — chiusura riserve R-r2-1 e…	CI	fix/r2-riserve-86	push	32300000572	2m12s	2026-08-19T20:42:33Z
-completed	success	Merge pull request #66 from Gasss23/fix/r2-durabilita-memoria-clean	CI	main	push	32298403050	45s	2026-08-19T20:25:02Z
-completed	success	feat(r2): ricostruzione pulita R2 durabilità memoria sopra main aggio…	CI	fix/r2-durabilita-memoria-clean	push	32296193834	1m47s	2026-08-19T20:00:50Z
 ```
 
-**Mappatura commit→run:**
-- `ff4d781` (docs(fine-task)) — run `32300000572` ✅ SUCCESS (push del branch, HEAD al momento del push)
-- `f796f2f` (fix riserve) — nessuna run su questo SHA individuale (pushato insieme a 4019aa2 e ff4d781 in un unico push; albero incluso nella run 32300000572)
-- `4019aa2` (chore revisore) — nessuna run su questo SHA individuale (idem sopra)
-
-Il commit di fine-task (`ff4d7xx`) che contiene questo handoff → run non ancora disponibile alla scrittura dell'handoff.
+**Ultima run: `32301097271` — ✅ SUCCESS** (commit `a9606bd`, push 2026-08-19T20:54:39Z)
 
 ---
 
