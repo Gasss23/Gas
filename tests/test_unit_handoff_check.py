@@ -243,6 +243,40 @@ class TestCheckHandoff:
             f"Deve stampare 'non applicabile': out={result.stdout!r} err={result.stderr!r}"
         )
 
+    def test_nonascii_filename_check_handoff(self, tmp_path):
+        """File con nome non-ASCII (caffè.txt) dichiarato correttamente in §2 → exit 0.
+
+        Senza core.quotePath=false, git diff --name-only restituisce
+        '"caff\\303\\250.txt"' (quoted) che non corrisponde a 'caffè.txt'
+        e il check avrebbe dato exit 1.
+        """
+        work = tmp_path / "work"
+        _init_repo(work)
+        _fake_origin(work, tmp_path / "bare")
+        _branch(work, "feature/test")
+
+        (work / "reports").mkdir(exist_ok=True)
+        (work / "caffè.txt").write_text("contenuto\n", encoding="utf-8")
+        _write_handoff(
+            work,
+            " caffè.txt          |  1 +\n"
+            " reports/handoff.md | 40 ++++\n"
+            " 2 files changed, 41 insertions(+)",
+        )
+
+        base = subprocess.run(
+            ["git", "merge-base", "origin/main", "HEAD"],
+            cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        _commit_all(work, "add non-ASCII file")
+
+        result = _run_check_handoff(work, base)
+
+        assert result.returncode == 0, (
+            f"File non-ASCII: atteso exit 0 (core.quotePath=false), "
+            f"got {result.returncode}; stderr={result.stderr!r}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Tests check_verdetto.py
@@ -333,4 +367,44 @@ class TestCheckVerdetto:
         )
         assert "CHIUSO" not in combined, (
             f"Output NON deve contenere 'CHIUSO': {combined!r}"
+        )
+
+    def test_nonascii_filename_check_verdetto(self, tmp_path):
+        """File con nome non-ASCII (caffè.txt) citato in §4 → exit 0.
+
+        Senza core.quotePath=false, _session_files restituisce
+        '"caff\\303\\250.txt"' (quoted); il path 'caffè.txt' non verrebbe
+        trovato nel diff e il check avrebbe dato exit 1.
+        """
+        work = tmp_path / "work"
+        bare = tmp_path / "bare"
+        _init_repo(work)
+        _fake_origin(work, bare)
+        _branch(work, "feature/test")
+
+        (work / "reports").mkdir(exist_ok=True)
+        (work / "caffè.txt").write_text(
+            "line1\nline2\nline3\nline4\nline5\n", encoding="utf-8"
+        )
+
+        base = subprocess.run(
+            ["git", "merge-base", "origin/main", "HEAD"],
+            cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+        sec4 = "Approvato. Vedi caffè.txt:3 — test non-ASCII ok."
+        _write_handoff(
+            work,
+            " caffè.txt          | 5 +++++\n"
+            " reports/handoff.md | 40 ++++\n"
+            " 2 files changed",
+            sec4,
+        )
+        _commit_all(work, "add non-ASCII file")
+
+        result = _run_check_verdetto(work, base)
+
+        assert result.returncode == 0, (
+            f"File non-ASCII: atteso exit 0 (core.quotePath=false), "
+            f"got {result.returncode}; err={result.stderr!r}"
         )

@@ -1,60 +1,127 @@
-# Report fine task — 2026-08-19
-## FETTA 1: elimina auto-commit sessione (design fix) + FETTA 2: sblocca PR #64
+# REPORT TASK — 2026-08-19
+## fix/quotepath-non-ascii — core.quotePath=false per path non-ASCII in git diff --name-only
+
+Branch: `fix/quotepath-non-ascii`
+Commit: `1a45930`
 
 ---
 
-## FETTA 1 — Elimina auto-commit di fine sessione: `FATTA`
+## DECISIONI UMANE RICHIESTE
 
-### Sonda
-L'auto-commit (`c70bc93 auto-commit fine sessione 2026-08-19_00:36`) era prodotto da
-`session_end.sh` riga 76-80: `git commit -q -m "auto-commit fine sessione ..."`.
-Conteneva `.claude/agents/memoria_revisore.md` (2 righe) perché il template `/fine-task`
-al passo 4 includeva solo `reports/ultimo_report.md reports/handoff.md reports/diff_sessione.md`
-— omettendo `memoria_revisore.md` e `.gas_history.json`.
-
-### Fix applicato
-- **`session_end.sh`**: rimosso l'intero blocco git-add + commit (step 1–4 vecchi). Rimane
-  solo il push fail-safe condizionale (step 1 nuovo): pusha se HEAD è avanti di origin o il
-  branch non esiste ancora su origin. NON committa mai.
-- **`fine-task.md` passo 4**: aggiunto `git add .claude/agents/memoria_revisore.md 2>/dev/null || true`
-  e `git add .gas_history.json 2>/dev/null || true` — set completo, nessun residuo per l'hook.
-- **`tests/test_unit_hooks.py`**: T-hook-b/d/f aggiornati per il nuovo contratto (nessun commit
-  dall'hook); classe rinominata `TestSessionEndAddRobust` → `TestSessionEndPushFallback`.
-  Suite: **14 PASS, 0 FAIL**.
-- **`CLAUDE.md` sez.3**: aggiornata descrizione hook (R1 review #82).
-
-### Review #82 (revisore)
-APPROVATO CON RISERVE
-
-Elementi del diff esaminati:
-- `.claude/hooks/session_end.sh:20-43` — logica push fail-safe (confronto SHA locale vs remoto, guard HEAD vuoto, push condizionale): tecnicamente corretta, edge case coperti. Esito: ok.
-- `tests/test_unit_hooks.py:108-111` (T-hook-b) — asserzione `_commit_count == before` vs vecchio `before + 1`: morde il nuovo contratto, discriminante. Esito: ok.
-- `tests/test_unit_hooks.py:187-204` (T-hook-d) — setup simula commit agente pre-hook, verifica SHA pushato su origin. Esito: ok.
-- `tests/test_unit_hooks.py:266-280` (T-hook-f refactored) — `git fetch origin` aggiunto prima dell'hook: critico per correttezza del confronto SHA, correttamente dichiarato nel commento. Esito: ok.
-- `.claude/commands/fine-task.md:146-151` — aggiunta `memoria_revisore.md` e `.gas_history.json` al git add con `|| true`: fail-safe corretto. Esito: ok.
-
-Riserve (non bloccanti):
-- R1: CLAUDE.md sez.3 descriva ancora il vecchio contratto → RISOLTO nello stesso commit.
-- R2: sessione interrotta prima di `/fine-task` non salva `.gas_history.json` → trade-off accettato, dichiarato in stato_progetto.md.
-
-Commit FETTA 1: `1658e33`
+Nessuna. Nessun trade-off aperto: il fix è localizzato, i test sono reali, il revisore ha approvato.
 
 ---
 
-## FETTA 2 — Sblocca PR #64 con flusso corretto: `FATTA`
+## §1 — SCOPE & ESITO FETTE
 
-Set reale della sessione: **11 file** (si è espanso da 8 a 11 con FETTA 1).
-Canonici (ultimo_report.md, handoff.md, diff_sessione.md) rigenerati col set corretto
-e committati in avanti (nessun rebase).
-
-Verifica CI: vedi handoff §6 per output `gh pr checks 64`.
+- **Sonda call site git path-parsing nel motore**: FATTA — vedi §2.
+- **Fix core.quotePath=false**: FATTA — 2 call site, sotto soglia ~3.
+- **Test reale con file non-ASCII**: FATTA — 2 test nuovi, 11 PASS totali.
+- **Commit**: FATTA — `1a45930` — review #85 APPROVATO.
 
 ---
 
-## Anomalie
+## §2 — SONDA: invocazioni git che parsano path nel motore
 
-- Il set della sessione era cresciuto da 8 a 11 file grazie a FETTA 1 (session_end.sh,
-  fine-task.md, CLAUDE.md, memoria_revisore.md aggiunti). Il vecchio handoff dichiarava 8 file.
-- Il commit `c70bc93` (auto-commit) resta nella history — non revertito per policy (nessuna
-  riscrittura della history). Il problema strutturale è chiuso: il secondo commit non si
-  ripeterà nelle sessioni future.
+Sonda su: `gas.py`, `brains/`, `modules/`, `scripts/`.
+
+### gas.py — NESSUN call site path-parsing
+
+Le invocazioni git in `gas.py` sono:
+- `gas.py:802` — wrapper `git()` in `_take_snapshot`: usa `rev-parse`, `add -A`, `write-tree`, `commit-tree`, `update-ref` — nessuna parsa path dall'output.
+- `gas.py:850` — `for-each-ref --format=%(refname)`: parsa ref names (non file path).
+- `gas.py:1699` — `for-each-ref` in `doctor`: conta ref, non file path.
+- `gas.py:1711` — `count-objects -v`: parsa coppie chiave:valore numerici, non file path.
+
+**Conclusione**: `gas.py` non ha call site vulnerabili.
+
+### brains/, modules/ — NESSUN call site git
+
+Confermato da grep: nessuna invocazione git in questi directory.
+
+### scripts/ — 2 CALL SITE (unici nel motore)
+
+| File | Funzione | Riga | Comando |
+|------|----------|------|---------|
+| `scripts/check_handoff.py` | `_diff_names` | 48 | `git diff --name-only {base}..HEAD` |
+| `scripts/check_verdetto.py` | `_session_files` | 67 | `git diff --name-only {base}..HEAD` |
+
+Ogni script ha il proprio wrapper `_git()` (non condiviso). Non esiste un chokepoint unico tra i due file. Con soli 2 call site (sotto la soglia ~3), il fix viene applicato direttamente alle chiamate path-parsing, non al wrapper generico (che gestisce anche `rev-parse`, `merge-base`, `show` — non path-parsing).
+
+---
+
+## §3 — FIX APPLICATO
+
+### check_handoff.py:48 (`_diff_names`)
+
+```python
+# PRIMA
+r = _git(["git", "diff", "--name-only", f"{base}..HEAD"], repo)
+# DOPO
+r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
+```
+
+### check_verdetto.py:67 (`_session_files`)
+
+```python
+# PRIMA
+r = _git(["git", "diff", "--name-only", f"{base}..HEAD"], repo)
+# DOPO
+r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
+```
+
+Il flag `-c` è **per-invocazione**: non modifica `.gitconfig` utente/globale e non ha effetti collaterali su altri comandi git.
+
+---
+
+## §4 — TEST REALE (verificato)
+
+### Verifica before/after (subprocess reale, non simulato)
+
+```
+SENZA fix: '"caff\303\250.txt"'   ← stringa con virgolette letterali
+CON fix:   'caffè.txt'            ← UTF-8 corretto
+
+Set SENZA fix: {'"caff\\303\\250.txt"'}
+Set CON fix:   {'caffè.txt'}
+
+'caffè.txt' in SENZA fix set: False   ← test fallisce senza fix
+'caffè.txt' in CON fix set:   True    ← test passa con fix
+```
+
+### Suite completa
+
+```
+tests/test_unit_handoff_check.py::TestCheckHandoff::test_omits_file_exits_1 PASSED
+tests/test_unit_handoff_check.py::TestCheckHandoff::test_correct_handoff_exits_0 PASSED
+tests/test_unit_handoff_check.py::TestCheckHandoff::test_allowlist_ultima_risposta_exits_0 PASSED
+tests/test_unit_handoff_check.py::TestCheckHandoff::test_handoff_not_in_diff_exits_0 PASSED
+tests/test_unit_handoff_check.py::TestCheckHandoff::test_on_main_exits_0 PASSED
+tests/test_unit_handoff_check.py::TestCheckHandoff::test_nonascii_filename_check_handoff PASSED
+tests/test_unit_handoff_check.py::TestCheckVerdetto::test_invalid_path_line_ref_exits_1 PASSED
+tests/test_unit_handoff_check.py::TestCheckVerdetto::test_valid_ref_exits_0 PASSED
+tests/test_unit_handoff_check.py::TestCheckVerdetto::test_no_diff_motore_exits_0 PASSED
+tests/test_unit_handoff_check.py::TestCheckVerdetto::test_nota_mitigated_not_closed PASSED
+tests/test_unit_handoff_check.py::TestCheckVerdetto::test_nonascii_filename_check_verdetto PASSED
+
+11 passed in 3.68s
+```
+
+---
+
+## §5 — VERDETTO REVISORE (INTEGRALE)
+
+Review #85 — APPROVATO — 2026-08-19
+
+Elementi concreti esaminati nel diff:
+
+- `scripts/check_handoff.py:48` — aggiunta `-c core.quotePath=false` alla lista argomenti git — rischio effetti persistenti su gitconfig o regressioni su path ASCII — esito: ok (flag per-invocazione, path ASCII invariati).
+- `tests/test_unit_handoff_check.py:267-271` — cattura `merge-base` prima di `_commit_all` — rischio che la sequenza invertita renderebbe il diff BASE..HEAD vuoto e il test non mordace — esito: ok, sequenza corretta.
+
+Rischio esplicitamente escluso: compatibilità git < 2.x per il flag `-c` — non verificata, ritenuta fuori scope per gli ambienti target del progetto (WSL Ubuntu recente, GitHub Actions).
+
+---
+
+## §6 — NOTE DI PROCESSO
+
+Il commit atomico del revisore (`chore(revisore): memoria review #85`) ha incluso per errore anche i file staged del motore (scenario R2-vaglio B2: `git add memoria_revisore.md && git commit` quando altri file sono in staging committa tutto). Risolto con `git reset --soft HEAD~1` e recommit separato con messaggio corretto. Il contenuto era già corretto; solo il messaggio era sbagliato. Nessuna perdita di dati.
