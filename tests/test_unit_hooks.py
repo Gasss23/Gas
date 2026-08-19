@@ -91,8 +91,12 @@ class TestSessionEndGuard:
             f"Warning non menziona 'main': {result.stderr!r}"
         )
 
-    def test_hook_b_feature_branch_commits(self, tmp_path):
-        """T-hook-b: HEAD su branch normale + file allowlist → commit creato, comportamento invariato."""
+    def test_hook_b_feature_branch_no_commit(self, tmp_path):
+        """T-hook-b: HEAD su branch normale + file allowlist non committati → 0 commit nuovi.
+
+        Dal 2026-08-19 l'hook non committa mai: il commit è responsabilità del flusso
+        /fine-task. File allowlist presenti ma non committati restano tali.
+        """
         _init_repo(tmp_path)
         subprocess.run(
             ["git", "checkout", "-b", "feature/test-hook"],
@@ -104,8 +108,8 @@ class TestSessionEndGuard:
         result = _run_hook(tmp_path)
 
         assert result.returncode == 0
-        assert _commit_count(tmp_path) == before + 1, (
-            f"Atteso 1 commit in più (prima={before}, dopo={_commit_count(tmp_path)}); "
+        assert _commit_count(tmp_path) == before, (
+            f"L'hook non deve creare commit (prima={before}, dopo={_commit_count(tmp_path)}); "
             f"stdout={result.stdout!r} stderr={result.stderr!r}"
         )
 
@@ -163,27 +167,44 @@ class TestSessionEndPush:
         )
 
     def test_hook_d_push_to_feature_branch_not_main(self, tmp_path):
-        """T-hook-d: HEAD su feature/x → commit pushato su origin/feature/x, NON su origin/main."""
+        """T-hook-d: commit agente su feature/x non pushato → hook pusha su origin/feature/x, NON su origin/main.
+
+        Simula il caso edge: /fine-task ha committato ma la sessione è terminata prima del push.
+        L'hook deve recuperare il push senza creare un nuovo commit.
+        """
         bare = tmp_path / "bare"
         work = tmp_path / "work"
         _init_repo(work)
         self._init_bare_origin(bare, work, "feature/x")
-        _add_allowlist_file(work)
+
+        # Simula il commit del flusso /fine-task (già committato, non ancora pushato).
+        agent_file = work / "reports"
+        agent_file.mkdir(exist_ok=True)
+        (agent_file / "ultimo_report.md").write_text("# report\n")
+        subprocess.run(["git", "add", "reports/ultimo_report.md"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "docs(fine-task): report sessione"],
+            cwd=work, check=True, capture_output=True,
+        )
+        before_push_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
 
         result = _run_hook(work)
 
         assert result.returncode == 0, f"exit non-zero: {result.stderr!r}"
 
-        # Il commit su origin/feature/x è l'auto-commit dell'hook
-        feature_msg = subprocess.run(
-            ["git", "--git-dir", str(bare), "log", "--format=%s", "-1", "feature/x"],
+        # origin/feature/x ha ricevuto il push del commit dell'agente
+        pushed_sha = subprocess.run(
+            ["git", "--git-dir", str(bare), "rev-parse", "feature/x"],
             capture_output=True, text=True, check=True,
         ).stdout.strip()
-        assert "auto-commit" in feature_msg, (
-            f"Messaggio commit atteso 'auto-commit', trovato: {feature_msg!r}"
+        assert pushed_sha == before_push_sha, (
+            f"origin/feature/x deve avere lo SHA del commit agente: "
+            f"atteso {before_push_sha!r}, trovato {pushed_sha!r}"
         )
 
-        # origin/main ha ancora solo il commit init (non l'auto-commit)
+        # origin/main ha ancora solo il commit init
         main_log = subprocess.run(
             ["git", "--git-dir", str(bare), "log", "--oneline", "main"],
             capture_output=True, text=True, check=True,
@@ -193,7 +214,7 @@ class TestSessionEndPush:
         )
 
     def test_hook_e_push_failure_warns_and_exits_zero(self, tmp_path):
-        """T-hook-e: origin inesistente → exit 0 + warning su stderr con branch e exit code."""
+        """T-hook-e: origin inesistente → push tentato (nessuna ref remota nota), warning + exit 0."""
         _init_repo(tmp_path)
         subprocess.run(
             ["git", "checkout", "-b", "feature/y"],
@@ -203,7 +224,7 @@ class TestSessionEndPush:
             ["git", "remote", "add", "origin", "/nonexistent/path/repo.git"],
             cwd=tmp_path, check=True, capture_output=True,
         )
-        _add_allowlist_file(tmp_path)
+        # Nessuna ref remota per feature/y → _remote_sha vuoto → push tentato → fallisce.
 
         result = _run_hook(tmp_path)
 
@@ -222,15 +243,14 @@ class TestSessionEndPush:
         )
 
 
-class TestSessionEndAddRobust:
+class TestSessionEndPushFallback:
     """
-    T-hook-f: git add robusto quando .gas_history.json è assente.
-    Verifica che l'hook staggi e committi reports/x.md anche senza .gas_history.json.
+    T-hook-f: push fail-safe: HEAD == origin → nessun push (noop).
+    Verifica che l'hook salti il push quando il branch è già sincronizzato con origin.
     """
 
-    def test_hook_f_add_without_gas_history(self, tmp_path):
-        """T-hook-f: no .gas_history.json + reports/x.md modificato → commit avviene comunque."""
-        # Setup bare origin per evitare interferenza del push fallito
+    def test_hook_f_no_push_when_synced(self, tmp_path):
+        """T-hook-f: HEAD == origin/feature/f → push skippato, 0 commit nuovi, exit 0."""
         bare = tmp_path / "bare"
         bare.mkdir()
         subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
@@ -246,34 +266,32 @@ class TestSessionEndAddRobust:
             ["git", "checkout", "-b", "feature/f"],
             cwd=work, check=True, capture_output=True,
         )
+        # Push iniziale: HEAD == origin/feature/f dopo questo punto.
         subprocess.run(
             ["git", "push", "origin", "feature/f"],
             cwd=work, check=True, capture_output=True,
         )
+        # Aggiorna la ref remota locale con fetch per far sì che il confronto SHA funzioni.
+        subprocess.run(["git", "fetch", "origin"], cwd=work, check=True, capture_output=True)
 
-        # Crea reports/x.md ma NON .gas_history.json (assenza deliberata — il bug
-        # precedente avrebbe causato git add di uscire 128 e non staggiare nulla)
-        reports = work / "reports"
-        reports.mkdir(exist_ok=True)
-        (reports / "x.md").write_text("# test fetta 2\n")
-
+        before_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
         before = _commit_count(work)
+
         result = _run_hook(work)
 
-        assert result.returncode == 0, (
-            f"Atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        assert result.returncode == 0, f"exit non-zero: {result.stderr!r}"
+        assert _commit_count(work) == before, (
+            f"L'hook non deve creare commit (prima={before}, dopo={_commit_count(work)})"
         )
-        assert _commit_count(work) == before + 1, (
-            f"Atteso 1 commit in più (prima={before}, dopo={_commit_count(work)}); "
-            f"stderr={result.stderr!r}"
-        )
-        # Verifica che reports/x.md sia nel commit HEAD
-        committed = subprocess.run(
-            ["git", "show", "--name-only", "--format=", "HEAD"],
-            cwd=work, capture_output=True, text=True, check=True,
+        after_sha = subprocess.run(
+            ["git", "--git-dir", str(bare), "rev-parse", "feature/f"],
+            capture_output=True, text=True, check=True,
         ).stdout.strip()
-        assert "reports/x.md" in committed, (
-            f"reports/x.md dovrebbe essere nel commit HEAD: {committed!r}"
+        assert after_sha == before_sha, (
+            f"origin/feature/f non deve avanzare (già sincronizzato): "
+            f"prima={before_sha!r}, dopo={after_sha!r}"
         )
 
 

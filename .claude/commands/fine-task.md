@@ -143,10 +143,15 @@ Contenuto:
 
 ---
 
-## 4. Stage dei file di report
+## 4. Stage dei file di report (set completo)
 
 ```bash
+# File di report obbligatori
 git add reports/ultimo_report.md reports/handoff.md reports/diff_sessione.md
+# Memoria revisore e history — inclusi qui per evitare che l'hook SessionEnd
+# li raccolga in un secondo commit separato (design fix 2026-08-19).
+git add .claude/agents/memoria_revisore.md 2>/dev/null || true
+git add .gas_history.json 2>/dev/null || true
 ```
 
 NON includere nel commit file del motore (gas.py, brains/, modules/, tests/) — quelli richiedono il revisore.
