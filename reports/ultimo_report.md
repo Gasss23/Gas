@@ -1,77 +1,66 @@
-# Ultimo report — R2 durabilità memoria: ricostruzione pulita
+# Report — fix/r2-riserve-86: chiusura riserve R-r2-1 e R-r2-2 (review #86)
 
-**Data**: 2026-08-19
-**Branch**: fix/r2-durabilita-memoria-clean
-**Task**: Ricostruzione pulita di R2 sopra main aggiornato, senza contaminazione dei file quotePath
+Data: 2026-08-19
+Branch: fix/r2-riserve-86
+Review: #87 — APPROVATO
 
----
+## Obiettivo
 
-## Problema di partenza
+Chiusura delle due riserve residue aperte dal review #86 su R2 (durabilità memoria revisore):
+- **R-r2-1**: forma `var=$(cmd); if [ $? -ne 0 ]` fragile → sostituire con forma atomica (lezione #51)
+- **R-r2-2**: path "file memoria PRESENTE + repo NON-git" non coperto da T-R2-d → aggiungere test T-R2-e
 
-Il branch `fix/r2-durabilita-memoria` era contaminato: portava una variante vecchia e divergente del fix quotePath (commenti extra in check_handoff/verdetto e, peggio, cancellava il test non-ASCII di check_verdetto presente su main → regressione di copertura). Non andava mergiato.
+## Fette eseguite
 
-## Azioni eseguite
+### FETTA 1 — R-r2-1 (scripts/commit_memoria_revisore.sh, riga 21-22)
 
-### 1. Nuovo branch da origin/main
+Sostituita la forma non-atomica:
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$REPO_ROOT" ]; then
 ```
-git checkout -b fix/r2-durabilita-memoria-clean origin/main
+con la forma atomica:
+```bash
+if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || [ -z "$REPO_ROOT" ]; then
 ```
-Partenza identica a main — diff iniziale vuoto.
+Nessuna altra modifica di logica. Semanticamente identica; strutturalmente allineata alla lezione #51.
 
-### 2. File R2 applicati selettivamente
+### FETTA 2 — R-r2-2 (tests/test_unit_hooks.py)
 
-| File | Fonte | Azione |
-|------|-------|--------|
-| `scripts/commit_memoria_revisore.sh` | fix/r2-durabilita-memoria | Copiato intero (file nuovo) |
-| `.claude/agents/revisore.md` | fix/r2-durabilita-memoria | Copiato (aggiunge §R2 al cablaggio) |
-| `tests/test_unit_hooks.py` | main + estrazione classe | Appesi helper R2 + `TestCommitMemoriaRevisore` alla versione main |
+Aggiunto `test_r2_fail_safe_mem_present_not_git` (T-R2-e) alla classe `TestCommitMemoriaRevisore`.
 
-### 3. File quotePath NON toccati (identici a main)
-- `scripts/check_handoff.py` ✅
-- `scripts/check_verdetto.py` ✅
-- `tests/test_unit_handoff_check.py` ✅ (nessun test non-ASCII rimosso)
+**Scenario**: `CLAUDE_PROJECT_DIR` punta a dir non-git + `memoria_revisore.md` PRESENTE.
+- Il file supera il check riga 64 (file esiste → non esce)
+- `git commit -o $MEM_FILE` fallisce (no repo) → `rc != 0`
+- `_log_warn` scrive WARN in `gas_debug.log` (riga ~75)
+- Script termina con `exit 0`
 
-### 4. STOP gate verificato
-```
-git diff --stat origin/main...HEAD
-```
-Mostra SOLO i file R2 (3 file) — nessun file quotePath.
+**Differenza da T-R2-d**: T-R2-d testa file ASSENTE → exit precoce riga 64-66 (path diverso).
+T-R2-e copre il ramo riga ~75, finora scoperto.
 
-## Suite test
+**Asserzioni**: exit 0 + gas_debug.log esiste + "WARN" nel log.
+
+## Esito test
 
 ```
-TestCommitMemoriaRevisore: 4/4 PASSED
-  - T-R2-a: commit -o committa SOLO memoria_revisore.md, staging intatto
-  - T-R2-b: add && commit naive viola asserzione (a) — dimostra il bug §6
-  - T-R2-c: noop idempotente — exit 0 se file non cambiato
-  - T-R2-d: fail-safe §9 — non-git-repo → WARN in gas_debug.log → exit 0
-
-test_unit_handoff_check.py: 11/11 PASSED (zero regressioni quotePath)
-  - test_nonascii_filename_check_handoff ✅
-  - test_nonascii_filename_check_verdetto ✅
+19/19 PASS (test_unit_hooks.py — intera suite, nessuna regressione)
+TestCommitMemoriaRevisore: 5/5 PASS (T-R2-a/b/c/d + T-R2-e nuovo)
 ```
 
-## Verdetto revisore #86
+## Verdetto revisore
 
-**APPROVATO CON RISERVE**
+Review #87 — **APPROVATO** (nessuna riserva).
+> R-r2-1: ok — forma atomica corretta, semanticamente identica al codice rimosso.
+> R-r2-2: ok — tre asserzioni discriminanti, scenario distinto da T-R2-d.
+> Rischio esplicitamente escluso: `git` non nel PATH (exit 127) — irriproducibile nell'ambiente WSL target, non bloccante.
 
-Evidenze verificate:
-- `scripts/commit_memoria_revisore.sh:48` — grep in ordine corretto ("APPROVATO CON RISERVE" prima di "APPROVATO")
-- `scripts/commit_memoria_revisore.sh:72` — `git commit -o $MEM_FILE`: meccanismo atomico path-scoped corretto, fail-safe §9 rispettato
-- `tests/test_unit_hooks.py:605` — T-R2-a con tre asserzioni discriminanti: ok
-- `.claude/agents/revisore.md:96-115` — sezione R2 cablata correttamente: ok
+## STOP gate
 
-Riserve (non bloccanti):
-- **R-r2-1**: forma `var=$(cmd); if [ $? -ne 0 ]` a riga 22 dello script — safe ora, fragile a edit futuri
-- **R-r2-2**: T-R2-d non esercita il path "file presente + repo non-git" (fail-safe riga 75)
+- File toccati: `scripts/commit_memoria_revisore.sh`, `tests/test_unit_hooks.py`
+- gas.py / brains/ / modules/ / file quotePath: NON toccati ✅
+- Revisore invocato sul diff staged PRIMA del commit ✅
 
-## Commit risultante
+## Commit
 
-Il revisore ha committato atomicamente la propria memoria (`b6f4997 chore(revisore): memoria review #86 — APPROVATO CON RISERVE`) con staging R2 intatto — prova live del meccanismo R2 stesso in funzione.
-
-## Stato finale
-
-- Branch: `fix/r2-durabilita-memoria-clean` pronto per PR su main
-- File motore/tests/scripts non toccati oltre R2
-- Nessuna regressione su suite quotePath
-- Riserve R-r2-1/R-r2-2 tracciate in stato_progetto.md
+- `4019aa2` — chore(revisore): memoria review #87 — APPROVATO (commit dal revisore)
+- `f796f2f` — fix(r2-riserve-86): chiusura riserve R-r2-1 e R-r2-2 da review #86
