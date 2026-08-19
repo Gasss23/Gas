@@ -45,7 +45,7 @@ def _get_base(override: str | None, repo: Path) -> str | None:
 
 
 def _diff_names(base: str, repo: Path) -> set[str]:
-    r = _git(["git", "diff", "--name-only", f"{base}..HEAD"], repo)
+    r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
     if r.returncode != 0:
         return set()
     return {line.strip() for line in r.stdout.splitlines() if line.strip()}
