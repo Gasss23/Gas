@@ -6,6 +6,7 @@ Gira pytest standalone: python -m pytest tests/test_unit_voice_server.py -v
 """
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import os
@@ -306,6 +307,32 @@ class TestTVExtra:
             assert False, "GET deve ritornare 4xx"
         except urllib.error.HTTPError as e:
             assert e.code in (404, 405)
+
+    def test_invalid_content_length_returns_400(self):
+        """R-voice-3: Content-Length non numerico (es. 'abc') → 400.
+
+        Usa http.client per controllo diretto degli header: urllib normalizza
+        Content-Length internamente e potrebbe non trasmettere 'abc' al server.
+        """
+        body = b'{"prompt": "ciao"}'
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request(
+            "POST", "/voice",
+            body=body,
+            headers={
+                "Authorization": f"Bearer {self.TOKEN}",
+                "Content-Type": "application/json",
+                "Content-Length": "abc",
+            },
+        )
+        resp = conn.getresponse()
+        status = resp.status
+        resp_body = json.loads(resp.read())
+        conn.close()
+        assert status == 400, f"Atteso 400, got {status}; body={resp_body}"
+        assert "Content-Length" in resp_body.get("error", ""), (
+            f"Messaggio errore deve citare 'Content-Length': {resp_body!r}"
+        )
 
 
 # ─────────────────────────────────── unit _token_ok ──────────────────────────
