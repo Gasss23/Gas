@@ -1,18 +1,20 @@
-# DIFF SESSIONE — 2026-08-19
-## Fetta A + Fetta B — cd fail-closed test + core.quotePath non-ASCII
+# DIFF SESSIONE — 2026-08-19 (R2 durabilità memoria revisore)
 
-Questo file si riscrive a ogni sessione. Storia completa in git.
-
----
+Branch: `fix/r2-durabilita-memoria`
+Base: `c6cf632` (merge PR #64, origin/main)
 
 ## File toccati
 
 | File | Cosa è cambiato e perché |
 |------|--------------------------|
-| `tests/test_unit_hooks.py` | Aggiunto `test_gate_e_cd_fails_blocks` (T-gate-E): copre il caso `cd "$CLAUDE_PROJECT_DIR"` fallisce (path inesistente → exit 2) in `review_gate.sh`. |
-| `scripts/check_handoff.py` | `_diff_names()`: aggiunto `-c core.quotePath=false` alla chiamata `git diff --name-only` — path non-ASCII escono raw (UTF-8) invece di essere escapati tra virgolette. |
-| `scripts/check_verdetto.py` | `_session_files()`: stesso fix `core.quotePath=false` per coerenza con `check_handoff.py`. |
-| `tests/test_unit_handoff_check.py` | Aggiunta classe `TestNonAsciiPath` con `test_nonascii_filename_check_handoff`: repo git reale, file `répertoire_été.md`, verifica che `check_handoff.py` non rompa il set comparison. |
-| `.claude/agents/memoria_revisore.md` | Aggiunte righe #83 (Fetta A, APPROVATO) e #84 (Fetta B, APPROVATO CON RISERVE). |
-| `reports/stato_progetto.md` | Aggiornato header + entry per Fette A e B + riserva #84 nei finding aperti. |
-| `reports/ultimo_report.md` | Report canonico di questa sessione. |
+| `scripts/commit_memoria_revisore.sh` | NUOVO — script bash per commit atomico path-scoped (`git commit -o`) di `memoria_revisore.md`; FAIL-SAFE §9; estrae review# e verdetto dall'ultima riga del file |
+| `.claude/agents/revisore.md` | Aggiunta sezione "Commit atomico R2": istruzione al revisore di chiamare `commit_memoria_revisore.sh` dopo ogni riga contatore |
+| `.claude/agents/memoria_revisore.md` | Aggiunta riga contatore #85 (dogfooding R2 dal revisore: APPROVATO CON RISERVE) |
+| `tests/test_unit_hooks.py` | Aggiunta classe `TestCommitMemoriaRevisore` con 4 test reali (T-R2-a/b/c/d) su repo temporanei; suite 15→19 PASS |
+| `reports/stato_progetto.md` | Aggiornato: R2 CHIUSA, review count 82→85, finding R2 marcato ✅ |
+| `reports/ultimo_report.md` | Riscritto: report task R2 con §1–§5 |
+| `reports/handoff.md` | Riscritto: dossier fine sessione con §2 a 11 file (fix check_handoff CI failure) |
+| `reports/diff_sessione.md` | Riscritto: questa sessione |
+| `scripts/check_handoff.py` | Fix `core.quotePath=false` non-ASCII (sessione precedente, Fetta B) |
+| `scripts/check_verdetto.py` | Fix `core.quotePath=false` non-ASCII (sessione precedente, Fetta B) |
+| `tests/test_unit_handoff_check.py` | Test non-ASCII `check_handoff` (sessione precedente, Fetta B) |
