@@ -64,7 +64,9 @@ def _get_base(override: str | None, repo: Path) -> str | None:
 
 
 def _session_files(base: str, repo: Path) -> set[str]:
-    r = _git(["git", "diff", "--name-only", f"{base}..HEAD"], repo)
+    # -c core.quotePath=false: path non-ASCII escono raw (UTF-8) invece di
+    # essere escapati tra virgolette, evitando mismatch con i path citati in §4.
+    r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
     if r.returncode != 0:
         return set()
     return {l.strip() for l in r.stdout.splitlines() if l.strip()}

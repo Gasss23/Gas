@@ -45,7 +45,10 @@ def _get_base(override: str | None, repo: Path) -> str | None:
 
 
 def _diff_names(base: str, repo: Path) -> set[str]:
-    r = _git(["git", "diff", "--name-only", f"{base}..HEAD"], repo)
+    # -c core.quotePath=false: path non-ASCII escono raw (UTF-8) invece di
+    # essere escapati tra virgolette ("r\303\251pertoire.md"), evitando
+    # mismatch nel confronto con i path dichiarati nell'handoff.
+    r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
     if r.returncode != 0:
         return set()
     return {line.strip() for line in r.stdout.splitlines() if line.strip()}

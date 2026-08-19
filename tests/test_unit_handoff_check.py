@@ -334,3 +334,48 @@ class TestCheckVerdetto:
         assert "CHIUSO" not in combined, (
             f"Output NON deve contenere 'CHIUSO': {combined!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Tests non-ASCII path (core.quotePath) — Fetta B
+# ---------------------------------------------------------------------------
+
+class TestNonAsciiPath:
+    """Fetta B — verifica che path non-ASCII non rompano il parsing di check_handoff.
+
+    Con core.quotePath=true (default git) i path non-ASCII arrivano escapati
+    tra virgolette: "r\\303\\251pertoire.md". Il parsing con line.strip() produce
+    un token errato che non corrisponde al nome reale → check_handoff segnala
+    incoerenza su file che in realtà corrispondono (falso negativo).
+
+    Fix: passare -c core.quotePath=false alle invocazioni git diff --name-only.
+    """
+
+    def test_nonascii_filename_check_handoff(self, tmp_path):
+        """File con nome non-ASCII nel diff → check_handoff lo riconosce (exit 0)."""
+        work = tmp_path / "work"
+        bare = tmp_path / "bare"
+        _init_repo(work)
+        _fake_origin(work, bare)
+        _branch(work, "feature/nonascii")
+
+        nonascii_name = "répertoire_été.md"
+        (work / nonascii_name).write_text("contenuto\n")
+        _write_handoff(
+            work,
+            f" {nonascii_name}     | 1 +\n"
+            " reports/handoff.md  | 40 ++++\n"
+            " 2 files changed, 41 insertions(+)",
+        )
+
+        base = subprocess.run(
+            ["git", "merge-base", "origin/main", "HEAD"],
+            cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        _commit_all(work, "add nonascii file")
+
+        result = _run_check_handoff(work, base)
+        assert result.returncode == 0, (
+            f"Path non-ASCII: atteso exit 0 (set coerente), got {result.returncode}; "
+            f"stdout={result.stdout!r} err={result.stderr!r}"
+        )
