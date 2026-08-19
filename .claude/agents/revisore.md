@@ -93,6 +93,27 @@ SEMPRE, anche quando la review è banale e non produce nuove lezioni.
 Il numero `<numero>` è progressivo: leggi l'ultima riga del file per
 ricavare il numero corrente e incrementalo di 1.
 
+### Commit atomico di memoria_revisore.md (R2 — durabilità su interruzione)
+
+Subito dopo aver scritto la riga contatore (e le eventuali lezioni),
+esegui tramite Bash:
+
+```bash
+bash scripts/commit_memoria_revisore.sh
+```
+
+Lo script usa `git commit -o .claude/agents/memoria_revisore.md` per
+committare SOLO quel file, anche se altri file sono in staging (es. il
+diff del motore sotto review). Il resto dell'index resta intatto.
+È FAIL-SAFE §9: qualsiasi errore (niente da committare, HEAD detached,
+lock) → warning in gas_debug.log → exit 0. Non crasha mai, non blocca
+la review.
+
+**Perché è importante**: se la sessione viene interrotta prima di
+`/fine-task`, la memoria del revisore sopravvive già committata nel repo.
+Se `/fine-task` viene eseguito normalmente, il `git add` in passo 4 è
+un no-op (il file è già committato) → idempotente.
+
 ### Lezioni nuove (facoltativo, solo se emergono)
 
 Se dalla review emergono pattern di errore nuovi o lezioni utili che non

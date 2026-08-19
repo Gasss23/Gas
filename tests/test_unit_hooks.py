@@ -594,3 +594,164 @@ class TestReviewGateFailClosed:
             f"got {result.returncode}; stderr={result.stderr!r}"
         )
         assert result.stderr.strip(), "Messaggio di errore atteso su stderr per cd fallito"
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# R2 — durabilità memoria revisore su interruzione
+# ────────────────────────────────────────────────────────────────────────────
+
+COMMIT_MEM_SCRIPT = Path(__file__).parent.parent / "scripts" / "commit_memoria_revisore.sh"
+MEM_REL = ".claude/agents/memoria_revisore.md"
+
+
+def _init_repo_with_mem(path: Path) -> None:
+    """Init repo con commit iniziale che include già memoria_revisore.md."""
+    _init_repo(path)
+    mem = path / MEM_REL
+    mem.parent.mkdir(parents=True, exist_ok=True)
+    mem.write_text("#1 — 2026-01-01 — APPROVATO — lezione iniziale\n")
+    subprocess.run(["git", "add", str(mem)], cwd=path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init mem"], cwd=path, check=True, capture_output=True)
+
+
+def _run_commit_mem(repo: Path, extra_env: dict | None = None) -> subprocess.CompletedProcess:
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        ["bash", str(COMMIT_MEM_SCRIPT)],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+class TestCommitMemoriaRevisore:
+    """R2 — commit atomico memoria_revisore.md (scripts/commit_memoria_revisore.sh)."""
+
+    def test_r2_only_memoria_committed_and_staging_intact(self, tmp_path):
+        """T-R2-a: commit -o committa SOLO memoria_revisore.md; il file motore resta staged.
+
+        Riproduce il bug §6 della sonda R2:
+          (a) HEAD contiene SOLO .claude/agents/memoria_revisore.md
+          (b) gas.py fittizio (motore) è ancora in staging dopo il commit
+          (c) lo script non crasha (exit 0)
+        """
+        _init_repo_with_mem(tmp_path)
+
+        # Metti in staging un file "motore" fittizio (NON la memoria)
+        engine = tmp_path / "gas.py"
+        engine.write_text("# motore fittizio staged\n")
+        subprocess.run(["git", "add", str(engine)], cwd=tmp_path, check=True, capture_output=True)
+
+        # Scrivi/modifica memoria_revisore.md (non staged, solo working tree)
+        mem = tmp_path / MEM_REL
+        mem.write_text(
+            "#1 — 2026-01-01 — APPROVATO — lezione iniziale\n"
+            "#2 — 2026-08-19 — APPROVATO — nessuna lezione nuova\n"
+        )
+
+        # Lancia lo script
+        result = _run_commit_mem(tmp_path)
+
+        # (c) exit 0 — non crasha
+        assert result.returncode == 0, (
+            f"T-R2-a(c): atteso exit 0, got {result.returncode}; "
+            f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        )
+
+        # (a) HEAD contiene SOLO memoria_revisore.md
+        head_files = subprocess.run(
+            ["git", "diff-tree", "--no-commit-id", "-r", "--name-only", "HEAD"],
+            cwd=tmp_path, capture_output=True, text=True, check=True,
+        ).stdout.strip().splitlines()
+        assert head_files == [MEM_REL], (
+            f"T-R2-a(a): HEAD deve contenere SOLO {MEM_REL!r}, trovato: {head_files}"
+        )
+
+        # (b) gas.py è ancora in staging
+        staged = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=tmp_path, capture_output=True, text=True, check=True,
+        ).stdout.strip().splitlines()
+        assert "gas.py" in staged, (
+            f"T-R2-a(b): gas.py deve restare staged dopo commit -o, staged={staged}"
+        )
+
+    def test_r2_add_and_commit_breaks_staging(self, tmp_path):
+        """T-R2-b: dimostra che `git add && git commit` NON è sicuro — viola l'asserzione (a).
+
+        Questa è la prova che il bug §6 esiste con l'approccio naive.
+        Con `add && commit`, il file motore staged entra nel commit insieme alla memoria
+        → HEAD contiene ENTRAMBI i file, violando (a).
+        """
+        _init_repo_with_mem(tmp_path)
+
+        engine = tmp_path / "gas.py"
+        engine.write_text("# motore fittizio staged\n")
+        subprocess.run(["git", "add", str(engine)], cwd=tmp_path, check=True, capture_output=True)
+
+        mem = tmp_path / MEM_REL
+        mem.write_text(
+            "#1 — 2026-01-01 — APPROVATO — lezione iniziale\n"
+            "#2 — 2026-08-19 — APPROVATO — nessuna lezione nuova\n"
+        )
+        subprocess.run(["git", "add", str(mem)], cwd=tmp_path, check=True, capture_output=True)
+
+        subprocess.run(
+            ["git", "commit", "-m", "naive add && commit"],
+            cwd=tmp_path,
+            env={**os.environ, "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t",
+                 "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t"},
+            check=True, capture_output=True,
+        )
+
+        head_files = subprocess.run(
+            ["git", "diff-tree", "--no-commit-id", "-r", "--name-only", "HEAD"],
+            cwd=tmp_path, capture_output=True, text=True, check=True,
+        ).stdout.strip().splitlines()
+
+        # Con add && commit, gas.py entra nel commit — violazione dell'asserzione (a)
+        assert "gas.py" in head_files, (
+            "T-R2-b: con add && commit gas.py dovrebbe essere nel commit (dimostra il bug)"
+        )
+        assert len(head_files) > 1, (
+            "T-R2-b: con add && commit HEAD deve contenere più di un file (memoria + motore)"
+        )
+
+    def test_r2_noop_idempotent(self, tmp_path):
+        """T-R2-c: se memoria_revisore.md non è cambiata, exit 0 (niente da committare).
+
+        Verifica l'idempotenza: dopo /fine-task, una seconda chiamata allo script è innocua.
+        """
+        _init_repo_with_mem(tmp_path)
+        # Non modifichiamo il file — identico a HEAD
+        result = _run_commit_mem(tmp_path)
+        assert result.returncode == 0, (
+            f"T-R2-c: atteso exit 0 su noop, got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+    def test_r2_fail_safe_not_a_git_repo(self, tmp_path):
+        """T-R2-d: CLAUDE_PROJECT_DIR punta a una dir non-git → exit 0 (fail-safe §9).
+
+        Non crasha; scrive un warning in gas_debug.log dentro CLAUDE_PROJECT_DIR.
+        """
+        not_a_repo = tmp_path / "not_a_repo"
+        not_a_repo.mkdir()
+        log_file = not_a_repo / "gas_debug.log"
+
+        result = subprocess.run(
+            ["bash", str(COMMIT_MEM_SCRIPT)],
+            env={**os.environ, "CLAUDE_PROJECT_DIR": str(not_a_repo)},
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, (
+            f"T-R2-d: atteso exit 0 (fail-safe), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert log_file.exists(), (
+            "T-R2-d: gas_debug.log deve essere creato con il warning di fail-safe"
+        )
+        assert "WARN" in log_file.read_text(), (
+            f"T-R2-d: gas_debug.log deve contenere un warning, trovato: {log_file.read_text()!r}"
+        )
