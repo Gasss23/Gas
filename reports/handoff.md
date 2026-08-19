@@ -1,21 +1,22 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-19 — fix/quotepath-non-ascii: core.quotePath=false per path non-ASCII
+**Sessione:** 2026-08-19 — fix/r2-riserve-86: chiusura riserve R-r2-1 e R-r2-2 (review #86)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR `fix/quotepath-non-ascii → main` (fix core.quotePath + 2 test reali non-ASCII).
+1. Merge della PR fix/r2-riserve-86 (chiusura riserve R-r2-1 e R-r2-2, CI SUCCESS ✅).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Sonda call site git path-parsing nel motore**: `FATTA` — 2 call site trovati in scripts/ (check_handoff.py:48, check_verdetto.py:67). gas.py/brains/modules/ confermati privi di call site path-parsing.
-- **Fix core.quotePath=false**: `FATTA` — 2 call site, sotto soglia ~3. Flag per-invocazione (-c), non globale.
-- **Test reale con file non-ASCII**: `FATTA` — 2 test nuovi su repo git temporanei reali. Verifica before/after empirica confermata. 11 PASS, 0 FAIL.
-- **Revisore**: `FATTA` — review #85 APPROVATO.
+- **Fetta 1 — R-r2-1 (forma atomica commit_memoria_revisore.sh)**: `FATTA`
+  Riga 21-22 di `scripts/commit_memoria_revisore.sh`: sostituita forma `$?` con `if ! var=$(cmd)` (lezione #51). Nessuna altra modifica di logica.
+
+- **Fetta 2 — R-r2-2 (test T-R2-e copertura buco)**: `FATTA`
+  Aggiunto `test_r2_fail_safe_mem_present_not_git` in `TestCommitMemoriaRevisore`. Copre path "mem PRESENTE + repo NON-git → git commit fallisce (riga ~75) → WARN + exit 0". Distinto da T-R2-d (file assente → exit precoce riga 64).
 
 ---
 
@@ -23,78 +24,74 @@
 
 ```
  .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  28 +++----
- reports/handoff.md                 | 141 +++++++++-----------------------
- reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           | 163 ++++++++++++++++++++++++++-----------
- scripts/check_handoff.py           |   2 +-
- scripts/check_verdetto.py          |   2 +-
- tests/test_unit_handoff_check.py   |  74 +++++++++++++++++
- 8 files changed, 245 insertions(+), 169 deletions(-)
+ reports/diff_sessione.md           |  21 ++++----
+ reports/handoff.md                 |  83 ++++++++++++++----------------
+ reports/stato_progetto.md          |   5 +-
+ reports/ultimo_report.md           | 103 +++++++++++++++++--------------------
+ scripts/commit_memoria_revisore.sh |   3 +-
+ tests/test_unit_hooks.py           |  33 ++++++++++++
+ 7 files changed, 137 insertions(+), 112 deletions(-)
 ```
+
+*(rigenerato in 4bis con `git diff --cached --stat ${BASE}` dopo stage completo)*
 
 ---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-dfa9b19 docs(report): fix/quotepath-non-ascii — core.quotePath non-ASCII, review #85 APPROVATO
-1a45930 fix(scripts): core.quotePath=false — path non-ASCII in git diff --name-only
+ff4d781 docs(fine-task): report fix/r2-riserve-86 — chiusura riserve R-r2-1 e R-r2-2
+f796f2f fix(r2-riserve-86): chiusura riserve R-r2-1 e R-r2-2 da review #86
+4019aa2 chore(revisore): memoria review #87 — APPROVATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+*(il commit di fine-task che contiene questo file non compare per costruzione)*
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `1a45930` tocca `scripts/` e `tests/` — review obbligatoria eseguita.
+Il diff tocca `scripts/` e `tests/` — revisore invocato sul diff staged prima del commit `f796f2f`.
 
-**Review #85 — APPROVATO — 2026-08-19 (verbatim)**
+**Review #87 — APPROVATO** (nessuna riserva)
 
-Elementi concreti esaminati nel diff:
-
-- `scripts/check_handoff.py:48` — aggiunta `-c core.quotePath=false` alla lista argomenti git — rischio effetti persistenti su gitconfig o regressioni su path ASCII — esito: ok (flag per-invocazione, path ASCII invariati).
-- `tests/test_unit_handoff_check.py:267-271` — cattura `merge-base` prima di `_commit_all` — rischio che la sequenza invertita renderebbe il diff BASE..HEAD vuoto e il test non mordace — esito: ok, sequenza corretta.
-
-Rischio esplicitamente escluso: compatibilità git < 2.x per il flag `-c` — non verificata, ritenuta fuori scope per gli ambienti target del progetto (WSL Ubuntu recente, GitHub Actions).
+Elementi esaminati:
+- `scripts/commit_memoria_revisore.sh:21` — forma atomica `if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || [ -z "$REPO_ROOT" ]` — chiude R-r2-1 applicando la lezione #51 (pattern fragile `$?` → forma atomica). Semanticamente identica al codice rimosso, strutturalmente più robusta. Esito: ok.
+- `tests/test_unit_hooks.py:732` — `test_r2_fail_safe_mem_present_not_git` — chiude R-r2-2 coprendo il ramo precedentemente scoperto: file memoria presente + dir non-git → `git commit -o` fallisce alla riga 74 dello script → `_log_warn` scrive WARN in gas_debug.log → exit 0. Tre asserzioni discriminanti, distinte da T-R2-d (che testava uscita precoce riga 64 su file assente). Esito: ok.
+- Rischio esplicitamente escluso: comportamento quando `git` non è nel PATH (exit 127 invece di codice git canonico) — irriproducibile nell'ambiente WSL target, non bloccante.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Modifica a `tests/test_unit_handoff_check.py` — 2 test aggiunti.
+Nessuna modifica a `gas.py` / `brains/` / `modules/`. Modifiche a `tests/test_unit_hooks.py` (+1 test T-R2-e).
 
-Prima: **9 test** in `TestCheckHandoff` + `TestCheckVerdetto`.
-Dopo: **11 test** (+`test_nonascii_filename_check_handoff`, +`test_nonascii_filename_check_verdetto`).
-
-Suite locale (`python3 -m pytest tests/test_unit_handoff_check.py -v`):
+Esito suite completa `tests/test_unit_hooks.py`:
 ```
-11 passed in 3.68s
+19 passed in 3.06s
 ```
-
-Nessuna modifica a `gas.py` — kernel invariato.
+Nessuna regressione. T-R2-e (nuovo): PASS.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(report): fix/quotepath-non-ascii — core.quotePath non-ASCII, rev…	CI	fix/quotepath-non-ascii	push	32252208259	51s	2026-08-19T12:21:09Z
-completed	failure	docs(r2-sonda): sonda durabilità memoria + proposta design commit ato…	CI	fix/r2-durabilita-memoria	push	32251201754	1m52s	2026-08-19T12:09:36Z
-completed	failure	docs(fine-task): handoff §2/§3/§6 rigenerati — run 32205642058 success	CI	fix/nonascii-cd-tests	push	32205957771	57s	2026-08-19T01:43:37Z
+completed	success	docs(fine-task): report fix/r2-riserve-86 — chiusura riserve R-r2-1 e…	CI	fix/r2-riserve-86	push	32300000572	2m12s	2026-08-19T20:42:33Z
+completed	success	Merge pull request #66 from Gasss23/fix/r2-durabilita-memoria-clean	CI	main	push	32298403050	45s	2026-08-19T20:25:02Z
+completed	success	feat(r2): ricostruzione pulita R2 durabilità memoria sopra main aggio…	CI	fix/r2-durabilita-memoria-clean	push	32296193834	1m47s	2026-08-19T20:00:50Z
 ```
 
-Mappatura commit → run:
+**Mappatura commit→run:**
+- `ff4d781` (docs(fine-task)) — run `32300000572` ✅ SUCCESS (push del branch, HEAD al momento del push)
+- `f796f2f` (fix riserve) — nessuna run su questo SHA individuale (pushato insieme a 4019aa2 e ff4d781 in un unico push; albero incluso nella run 32300000572)
+- `4019aa2` (chore revisore) — nessuna run su questo SHA individuale (idem sopra)
 
-- `1a45930` fix(scripts): nessuna run autonoma — commit intermedio, pushato insieme a `dfa9b19`. Il suo albero è incluso nella run `32252208259` che testa HEAD=`dfa9b19`.
-- `dfa9b19` docs(report): run `32252208259` — **completed success** ✅.
-
-Le failure nelle run precedenti (`32251201754`, `32205957771`) sono su branch separati (`fix/r2-durabilita-memoria`, `fix/nonascii-cd-tests`) e non riguardano questa sessione.
+Il commit di fine-task (`ff4d7xx`) che contiene questo handoff → run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **Scenario R2-vaglio B2 confermato in pratica**: il commit atomico del revisore (`chore(revisore): memoria review #85`) ha incluso tutti i file staged del motore perché erano già in staging quando il revisore ha eseguito `git commit`. Risolto con `git reset --soft HEAD~1` + recommit corretto. Il meccanismo proposto nel design R2 deve dichiarare esplicitamente questo risk e aggiungere un guard (es. `git commit --only .claude/agents/memoria_revisore.md` oppure fare `git reset HEAD` sugli altri file prima del commit atomico).
-- **Riserva #84 chiusa**: `test_nonascii_filename_check_verdetto` aggiunto in questa sessione.
+Nessuna. Review #87 APPROVATO senza riserve.
+Riserve R-r2-1 e R-r2-2 (da review #86) chiuse in questa sessione.

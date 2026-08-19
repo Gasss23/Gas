@@ -1,14 +1,15 @@
-# DIFF SESSIONE — 2026-08-19 — fix/quotepath-non-ascii
+# Diff sessione — 2026-08-19 — fix/r2-riserve-86
 
-File toccati in questa sessione (`git diff --stat BASE..HEAD`):
+Sessione: chiusura riserve R-r2-1 e R-r2-2 da review #86 (R2 durabilità memoria revisore).
+
+## File toccati
 
 | File | Cosa è cambiato e perché |
 |------|--------------------------|
-| `.claude/agents/memoria_revisore.md` | Aggiunta riga contatore #85 (APPROVATO) dopo review pre-commit del fix. |
-| `reports/stato_progetto.md` | Aggiornato header + aggiunta entry fix core.quotePath (#85) + chiusura riserva #84. |
-| `reports/ultimo_report.md` | Report di sessione: sonda, fix, test reali, verdetto #85 INTEGRALE, nota di processo R2-vaglio B2. |
-| `scripts/check_handoff.py` | Fix bug: aggiunto `-c core.quotePath=false` a `_diff_names` (riga 48) — path non-ASCII quotati da git causavano falso mismatch. |
-| `scripts/check_verdetto.py` | Fix bug: aggiunto `-c core.quotePath=false` a `_session_files` (riga 67) — stesso bug simmetrico. |
-| `tests/test_unit_handoff_check.py` | 2 test reali aggiunti: `test_nonascii_filename_check_handoff` e `test_nonascii_filename_check_verdetto`. Repo git temporanei reali, verifica fallisce senza fix. |
-
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+| `scripts/commit_memoria_revisore.sh` | Forma atomica `if ! REPO_ROOT=$(cmd)` a riga 21-22 (R-r2-1, lezione #51). Nessuna modifica di logica. |
+| `tests/test_unit_hooks.py` | Aggiunto T-R2-e: "mem PRESENTE + dir NON-git → git commit fallisce → WARN + exit 0" (R-r2-2, copre path riga ~75 dello script). |
+| `.claude/agents/memoria_revisore.md` | Riga review #87 APPROVATO aggiunta dal subagent revisore. |
+| `reports/ultimo_report.md` | Report del task con sezione DECISIONI UMANE RICHIESTE. |
+| `reports/handoff.md` | Dossier di fine sessione (questo file). |
+| `reports/diff_sessione.md` | Riepilogo diff sessione (questo file). |
+| `reports/stato_progetto.md` | Aggiornato: riserve R-r2-1/R-r2-2 chiuse, review #87 APPROVATO. |

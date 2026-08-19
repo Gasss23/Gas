@@ -4,6 +4,10 @@ Data: 2026-08-19
 Branch: fix/r2-riserve-86
 Review: #87 — APPROVATO
 
+## DECISIONI UMANE RICHIESTE
+
+1. Merge della PR fix/r2-riserve-86 (chiusura riserve R-r2-1 e R-r2-2, CI SUCCESS).
+
 ## Obiettivo
 
 Chiusura delle due riserve residue aperte dal review #86 su R2 (durabilità memoria revisore):
@@ -12,7 +16,7 @@ Chiusura delle due riserve residue aperte dal review #86 su R2 (durabilità memo
 
 ## Fette eseguite
 
-### FETTA 1 — R-r2-1 (scripts/commit_memoria_revisore.sh, riga 21-22)
+### FETTA 1 — R-r2-1 (scripts/commit_memoria_revisore.sh, riga 21-22) — FATTA
 
 Sostituita la forma non-atomica:
 ```bash
@@ -25,7 +29,7 @@ if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || [ -z "$REPO_ROOT"
 ```
 Nessuna altra modifica di logica. Semanticamente identica; strutturalmente allineata alla lezione #51.
 
-### FETTA 2 — R-r2-2 (tests/test_unit_hooks.py)
+### FETTA 2 — R-r2-2 (tests/test_unit_hooks.py) — FATTA
 
 Aggiunto `test_r2_fail_safe_mem_present_not_git` (T-R2-e) alla classe `TestCommitMemoriaRevisore`.
 
