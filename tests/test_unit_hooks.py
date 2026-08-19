@@ -1,4 +1,4 @@
-"""Tests per .claude/hooks/session_end.sh e scrivi_rep.sh."""
+"""Tests per .claude/hooks/session_end.sh, scrivi_rep.sh e review_gate.sh."""
 import json
 import os
 import subprocess
@@ -8,6 +8,7 @@ import pytest
 
 HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "session_end.sh"
 SCRIVI_REP_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "scrivi_rep.sh"
+REVIEW_GATE_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "review_gate.sh"
 
 
 def _init_repo(path: Path) -> None:
@@ -478,3 +479,75 @@ class TestScriviRepJq:
         assert "detach" in result.stderr.lower() or "main-lock" in result.stderr, (
             f"Warning deve menzionare 'detach' o 'main-lock': {result.stderr!r}"
         )
+
+
+# ─────────────────────────────── review_gate.sh ──────────────────────────────
+# T-gate-A/B/C/D: check_verdetto fail-closed.
+# Tutti i test usano repo git temporanei reali — nessun mock.
+
+class TestReviewGateFailClosed:
+    """
+    Verifica che review_gate.sh sia fail-closed:
+    l'esenzione "nessun diff motore" è consentita SOLO se git diff ha avuto
+    successo e il suo output non contiene file motore (gas.py/brains/modules/tests/).
+    Un errore di git o di cd deve bloccare il commit, non lasciarlo passare.
+    """
+
+    def _stdin_commit(self) -> str:
+        """JSON stdin che simula un tool use 'git commit'."""
+        return json.dumps([{"tool_input": {"command": "git commit -m 'test'"}}])
+
+    def _run(self, repo: Path, *, has_review_ok: bool = False) -> subprocess.CompletedProcess:
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+        if has_review_ok:
+            (repo / ".claude").mkdir(exist_ok=True)
+            (repo / ".claude" / ".review_ok").touch()
+        return subprocess.run(
+            ["bash", str(REVIEW_GATE_HOOK)],
+            input=self._stdin_commit(),
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+    def _stage(self, repo: Path, rel_path: str, content: str = "# test\n") -> None:
+        fpath = repo / rel_path
+        fpath.parent.mkdir(parents=True, exist_ok=True)
+        fpath.write_text(content)
+        subprocess.run(["git", "add", str(fpath)], cwd=repo, check=True, capture_output=True)
+
+    def test_gate_a_motor_no_review_blocks(self, tmp_path):
+        """T-gate-A: diff motore staged + .review_ok assente → BLOCCA (exit 2)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        result = self._run(tmp_path)
+        assert result.returncode == 2, (
+            f"Atteso exit 2 (blocco), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+    def test_gate_b_motor_with_review_ok_passes(self, tmp_path):
+        """T-gate-B: diff motore staged + .review_ok presente → PASSA (exit 0)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        result = self._run(tmp_path, has_review_ok=True)
+        assert result.returncode == 0, (
+            f"Atteso exit 0 (pass), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+    def test_gate_c_doc_only_passes(self, tmp_path):
+        """T-gate-C: solo file non-motore staged → esente, PASSA (exit 0)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "reports/foo.md")
+        result = self._run(tmp_path)
+        assert result.returncode == 0, (
+            f"Atteso exit 0 (esente), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+    def test_gate_d_git_failure_blocks(self, tmp_path):
+        """T-gate-D: CLAUDE_PROJECT_DIR non è un git repo → git diff fallisce → FAIL-CLOSED (exit 2)."""
+        # tmp_path esiste ma non ha .git: cd riesce, git diff fallisce → deve bloccare
+        result = self._run(tmp_path)
+        assert result.returncode == 2, (
+            f"Atteso exit 2 (fail-closed), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert result.stderr.strip(), "Messaggio di errore atteso su stderr"
