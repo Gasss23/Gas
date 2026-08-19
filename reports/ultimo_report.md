@@ -1,60 +1,93 @@
-# Report fine task — 2026-08-19
-## FETTA 1: elimina auto-commit sessione (design fix) + FETTA 2: sblocca PR #64
+# REPORT TASK — 2026-08-19
+## Fetta A + Fetta B — robustezza motore (cd fail-closed test + core.quotePath)
+
+Branch: `fix/nonascii-cd-tests`
+Commits: `7204077` (Fetta A), `1be14b3` (Fetta B)
 
 ---
 
-## FETTA 1 — Elimina auto-commit di fine sessione: `FATTA`
+## FETTA A — test `cd` fail-closed in `review_gate.sh`
 
 ### Sonda
-L'auto-commit (`c70bc93 auto-commit fine sessione 2026-08-19_00:36`) era prodotto da
-`session_end.sh` riga 76-80: `git commit -q -m "auto-commit fine sessione ..."`.
-Conteneva `.claude/agents/memoria_revisore.md` (2 righe) perché il template `/fine-task`
-al passo 4 includeva solo `reports/ultimo_report.md reports/handoff.md reports/diff_sessione.md`
-— omettendo `memoria_revisore.md` e `.gas_history.json`.
+`review_gate.sh` righe 38-41 contiene il guard:
+```bash
+cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || {
+  echo "BLOCCATO (gate review): cd in CLAUDE_PROJECT_DIR ('$CLAUDE_PROJECT_DIR') fallito — fail-closed." >&2
+  exit 2
+}
+```
+La suite esistente copriva:
+- T-gate-A: diff motore, `.review_ok` assente → blocca
+- T-gate-B: diff motore, `.review_ok` presente → passa
+- T-gate-C: solo file non-motore → esente
+- T-gate-D: `CLAUDE_PROJECT_DIR` non è un git repo → cd riesce, git diff fallisce → blocca
 
-### Fix applicato
-- **`session_end.sh`**: rimosso l'intero blocco git-add + commit (step 1–4 vecchi). Rimane
-  solo il push fail-safe condizionale (step 1 nuovo): pusha se HEAD è avanti di origin o il
-  branch non esiste ancora su origin. NON committa mai.
-- **`fine-task.md` passo 4**: aggiunto `git add .claude/agents/memoria_revisore.md 2>/dev/null || true`
-  e `git add .gas_history.json 2>/dev/null || true` — set completo, nessun residuo per l'hook.
-- **`tests/test_unit_hooks.py`**: T-hook-b/d/f aggiornati per il nuovo contratto (nessun commit
-  dall'hook); classe rinominata `TestSessionEndAddRobust` → `TestSessionEndPushFallback`.
-  Suite: **14 PASS, 0 FAIL**.
-- **`CLAUDE.md` sez.3**: aggiornata descrizione hook (R1 review #82).
+Mancava il test per il caso **cd stesso fallisce** (path inesistente).
 
-### Review #82 (revisore)
-APPROVATO CON RISERVE
+### Implementazione
+Aggiunto `test_gate_e_cd_fails_blocks` alla classe `TestReviewGateFailClosed` in `tests/test_unit_hooks.py`:
+- Crea `tmp_path / "does_not_exist"` (directory mai inizializzata)
+- Verifica con `assert not nonexistent.exists()` che la precondizione sia soddisfatta
+- Imposta `CLAUDE_PROJECT_DIR` al path inesistente, lancia l'hook
+- Asserisce `returncode == 2` e `stderr` non vuoto
 
-Elementi del diff esaminati:
-- `.claude/hooks/session_end.sh:20-43` — logica push fail-safe (confronto SHA locale vs remoto, guard HEAD vuoto, push condizionale): tecnicamente corretta, edge case coperti. Esito: ok.
-- `tests/test_unit_hooks.py:108-111` (T-hook-b) — asserzione `_commit_count == before` vs vecchio `before + 1`: morde il nuovo contratto, discriminante. Esito: ok.
-- `tests/test_unit_hooks.py:187-204` (T-hook-d) — setup simula commit agente pre-hook, verifica SHA pushato su origin. Esito: ok.
-- `tests/test_unit_hooks.py:266-280` (T-hook-f refactored) — `git fetch origin` aggiunto prima dell'hook: critico per correttezza del confronto SHA, correttamente dichiarato nel commento. Esito: ok.
-- `.claude/commands/fine-task.md:146-151` — aggiunta `memoria_revisore.md` e `.gas_history.json` al git add con `|| true`: fail-safe corretto. Esito: ok.
-
-Riserve (non bloccanti):
-- R1: CLAUDE.md sez.3 descriva ancora il vecchio contratto → RISOLTO nello stesso commit.
-- R2: sessione interrotta prima di `/fine-task` non salva `.gas_history.json` → trade-off accettato, dichiarato in stato_progetto.md.
-
-Commit FETTA 1: `1658e33`
+### Esito
+- Test FALLIVA prima? No — l'implementazione era già corretta; il test certifica il guard esistente
+- Suite dopo: **5/5 PASS** (T-gate-A..E)
+- Revisore: **APPROVATO** (review #83)
 
 ---
 
-## FETTA 2 — Sblocca PR #64 con flusso corretto: `FATTA`
+## FETTA B — `core.quotePath=false` per path non-ASCII
 
-Set reale della sessione: **11 file** (si è espanso da 8 a 11 con FETTA 1).
-Canonici (ultimo_report.md, handoff.md, diff_sessione.md) rigenerati col set corretto
-e committati in avanti (nessun rebase).
+### Sonda
+Bug trovato in:
+- `scripts/check_handoff.py:_diff_names()` (riga 48)
+- `scripts/check_verdetto.py:_session_files()` (riga 67)
 
-Verifica CI: vedi handoff §6 per output `gh pr checks 64`.
+Entrambe chiamano `git diff --name-only` e parsano l'output con `line.strip()`.
+Con `core.quotePath=true` (default git 2.x), i path non-ASCII vengono escapati:
+```
+répertoire_été.md  →  "r\303\251pertoire_\303\251t\303\251.md"
+```
+Il token prodotto da `line.strip()` non corrisponde al nome reale del file, causando falso mismatch nel confronto tra set reale e set dichiarato nell'handoff.
+
+Verificato con:
+```
+git diff --name-only                         → "r\303\251pertoire_\303\251t\303\251.md"
+git -c core.quotePath=false diff --name-only → répertoire_été.md
+```
+
+### Scelta implementativa
+**`-c core.quotePath=false` per-invocazione** (non de-quoting lato Python).
+
+Motivazione: git è la fonte di verità del proprio formato di escaping. Delegare il parsing a Python richiederebbe decodifica custom degli octal escape con gestione di edge case (escaping annidato, encoding della locale, ecc.). La flag `-c` è per-invocazione e non muta la config globale dell'utente.
+
+### Implementazione
+1. `scripts/check_handoff.py:_diff_names()` — aggiunto `-c core.quotePath=false`
+2. `scripts/check_verdetto.py:_session_files()` — idem
+3. `tests/test_unit_handoff_check.py` — nuova classe `TestNonAsciiPath` con `test_nonascii_filename_check_handoff`:
+   - Crea un file `répertoire_été.md` in un repo git temporaneo reale
+   - Scrive handoff che dichiara il file nel §2
+   - Verifica che `check_handoff.py` esca con code 0
+
+### Esito
+- Test FALLIVA prima del fix: **SÌ** (exit 1, con "r\\303\\251... omesso dall'handoff")
+- Test passa dopo il fix: **SÌ** (exit 0)
+- Suite completa `test_unit_handoff_check.py`: **10/10 PASS** (nessuna regressione)
+- Revisore: **APPROVATO CON RISERVE** (review #84)
+
+### Riserva #84 aperta (non bloccante)
+`check_verdetto.py` ha ricevuto il fix ma non ha un test speculare.
+Da aggiungere: `test_nonascii_filename_check_verdetto` in fetta futura.
 
 ---
 
-## Anomalie
+## Commit di sessione
 
-- Il set della sessione era cresciuto da 8 a 11 file grazie a FETTA 1 (session_end.sh,
-  fine-task.md, CLAUDE.md, memoria_revisore.md aggiunti). Il vecchio handoff dichiarava 8 file.
-- Il commit `c70bc93` (auto-commit) resta nella history — non revertito per policy (nessuna
-  riscrittura della history). Il problema strutturale è chiuso: il secondo commit non si
-  ripeterà nelle sessioni future.
+| Fetta | Commit | File |
+|-------|--------|------|
+| A | `7204077` | `tests/test_unit_hooks.py` |
+| B | `1be14b3` | `scripts/check_handoff.py`, `scripts/check_verdetto.py`, `tests/test_unit_handoff_check.py` |
+
+Entrambi i commit su branch `fix/nonascii-cd-tests`, da portare su main via PR.
