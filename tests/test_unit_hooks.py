@@ -1,4 +1,4 @@
-"""Tests per .claude/hooks/session_end.sh e scrivi_rep.sh."""
+"""Tests per .claude/hooks/session_end.sh, scrivi_rep.sh e review_gate.sh."""
 import json
 import os
 import subprocess
@@ -8,6 +8,7 @@ import pytest
 
 HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "session_end.sh"
 SCRIVI_REP_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "scrivi_rep.sh"
+REVIEW_GATE_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "review_gate.sh"
 
 
 def _init_repo(path: Path) -> None:
@@ -90,8 +91,12 @@ class TestSessionEndGuard:
             f"Warning non menziona 'main': {result.stderr!r}"
         )
 
-    def test_hook_b_feature_branch_commits(self, tmp_path):
-        """T-hook-b: HEAD su branch normale + file allowlist → commit creato, comportamento invariato."""
+    def test_hook_b_feature_branch_no_commit(self, tmp_path):
+        """T-hook-b: HEAD su branch normale + file allowlist non committati → 0 commit nuovi.
+
+        Dal 2026-08-19 l'hook non committa mai: il commit è responsabilità del flusso
+        /fine-task. File allowlist presenti ma non committati restano tali.
+        """
         _init_repo(tmp_path)
         subprocess.run(
             ["git", "checkout", "-b", "feature/test-hook"],
@@ -103,8 +108,8 @@ class TestSessionEndGuard:
         result = _run_hook(tmp_path)
 
         assert result.returncode == 0
-        assert _commit_count(tmp_path) == before + 1, (
-            f"Atteso 1 commit in più (prima={before}, dopo={_commit_count(tmp_path)}); "
+        assert _commit_count(tmp_path) == before, (
+            f"L'hook non deve creare commit (prima={before}, dopo={_commit_count(tmp_path)}); "
             f"stdout={result.stdout!r} stderr={result.stderr!r}"
         )
 
@@ -162,27 +167,44 @@ class TestSessionEndPush:
         )
 
     def test_hook_d_push_to_feature_branch_not_main(self, tmp_path):
-        """T-hook-d: HEAD su feature/x → commit pushato su origin/feature/x, NON su origin/main."""
+        """T-hook-d: commit agente su feature/x non pushato → hook pusha su origin/feature/x, NON su origin/main.
+
+        Simula il caso edge: /fine-task ha committato ma la sessione è terminata prima del push.
+        L'hook deve recuperare il push senza creare un nuovo commit.
+        """
         bare = tmp_path / "bare"
         work = tmp_path / "work"
         _init_repo(work)
         self._init_bare_origin(bare, work, "feature/x")
-        _add_allowlist_file(work)
+
+        # Simula il commit del flusso /fine-task (già committato, non ancora pushato).
+        agent_file = work / "reports"
+        agent_file.mkdir(exist_ok=True)
+        (agent_file / "ultimo_report.md").write_text("# report\n")
+        subprocess.run(["git", "add", "reports/ultimo_report.md"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "docs(fine-task): report sessione"],
+            cwd=work, check=True, capture_output=True,
+        )
+        before_push_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
 
         result = _run_hook(work)
 
         assert result.returncode == 0, f"exit non-zero: {result.stderr!r}"
 
-        # Il commit su origin/feature/x è l'auto-commit dell'hook
-        feature_msg = subprocess.run(
-            ["git", "--git-dir", str(bare), "log", "--format=%s", "-1", "feature/x"],
+        # origin/feature/x ha ricevuto il push del commit dell'agente
+        pushed_sha = subprocess.run(
+            ["git", "--git-dir", str(bare), "rev-parse", "feature/x"],
             capture_output=True, text=True, check=True,
         ).stdout.strip()
-        assert "auto-commit" in feature_msg, (
-            f"Messaggio commit atteso 'auto-commit', trovato: {feature_msg!r}"
+        assert pushed_sha == before_push_sha, (
+            f"origin/feature/x deve avere lo SHA del commit agente: "
+            f"atteso {before_push_sha!r}, trovato {pushed_sha!r}"
         )
 
-        # origin/main ha ancora solo il commit init (non l'auto-commit)
+        # origin/main ha ancora solo il commit init
         main_log = subprocess.run(
             ["git", "--git-dir", str(bare), "log", "--oneline", "main"],
             capture_output=True, text=True, check=True,
@@ -192,7 +214,7 @@ class TestSessionEndPush:
         )
 
     def test_hook_e_push_failure_warns_and_exits_zero(self, tmp_path):
-        """T-hook-e: origin inesistente → exit 0 + warning su stderr con branch e exit code."""
+        """T-hook-e: origin inesistente → push tentato (nessuna ref remota nota), warning + exit 0."""
         _init_repo(tmp_path)
         subprocess.run(
             ["git", "checkout", "-b", "feature/y"],
@@ -202,7 +224,7 @@ class TestSessionEndPush:
             ["git", "remote", "add", "origin", "/nonexistent/path/repo.git"],
             cwd=tmp_path, check=True, capture_output=True,
         )
-        _add_allowlist_file(tmp_path)
+        # Nessuna ref remota per feature/y → _remote_sha vuoto → push tentato → fallisce.
 
         result = _run_hook(tmp_path)
 
@@ -221,15 +243,14 @@ class TestSessionEndPush:
         )
 
 
-class TestSessionEndAddRobust:
+class TestSessionEndPushFallback:
     """
-    T-hook-f: git add robusto quando .gas_history.json è assente.
-    Verifica che l'hook staggi e committi reports/x.md anche senza .gas_history.json.
+    T-hook-f: push fail-safe: HEAD == origin → nessun push (noop).
+    Verifica che l'hook salti il push quando il branch è già sincronizzato con origin.
     """
 
-    def test_hook_f_add_without_gas_history(self, tmp_path):
-        """T-hook-f: no .gas_history.json + reports/x.md modificato → commit avviene comunque."""
-        # Setup bare origin per evitare interferenza del push fallito
+    def test_hook_f_no_push_when_synced(self, tmp_path):
+        """T-hook-f: HEAD == origin/feature/f → push skippato, 0 commit nuovi, exit 0."""
         bare = tmp_path / "bare"
         bare.mkdir()
         subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
@@ -245,34 +266,32 @@ class TestSessionEndAddRobust:
             ["git", "checkout", "-b", "feature/f"],
             cwd=work, check=True, capture_output=True,
         )
+        # Push iniziale: HEAD == origin/feature/f dopo questo punto.
         subprocess.run(
             ["git", "push", "origin", "feature/f"],
             cwd=work, check=True, capture_output=True,
         )
+        # Aggiorna la ref remota locale con fetch per far sì che il confronto SHA funzioni.
+        subprocess.run(["git", "fetch", "origin"], cwd=work, check=True, capture_output=True)
 
-        # Crea reports/x.md ma NON .gas_history.json (assenza deliberata — il bug
-        # precedente avrebbe causato git add di uscire 128 e non staggiare nulla)
-        reports = work / "reports"
-        reports.mkdir(exist_ok=True)
-        (reports / "x.md").write_text("# test fetta 2\n")
-
+        before_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
         before = _commit_count(work)
+
         result = _run_hook(work)
 
-        assert result.returncode == 0, (
-            f"Atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        assert result.returncode == 0, f"exit non-zero: {result.stderr!r}"
+        assert _commit_count(work) == before, (
+            f"L'hook non deve creare commit (prima={before}, dopo={_commit_count(work)})"
         )
-        assert _commit_count(work) == before + 1, (
-            f"Atteso 1 commit in più (prima={before}, dopo={_commit_count(work)}); "
-            f"stderr={result.stderr!r}"
-        )
-        # Verifica che reports/x.md sia nel commit HEAD
-        committed = subprocess.run(
-            ["git", "show", "--name-only", "--format=", "HEAD"],
-            cwd=work, capture_output=True, text=True, check=True,
+        after_sha = subprocess.run(
+            ["git", "--git-dir", str(bare), "rev-parse", "feature/f"],
+            capture_output=True, text=True, check=True,
         ).stdout.strip()
-        assert "reports/x.md" in committed, (
-            f"reports/x.md dovrebbe essere nel commit HEAD: {committed!r}"
+        assert after_sha == before_sha, (
+            f"origin/feature/f non deve avanzare (già sincronizzato): "
+            f"prima={before_sha!r}, dopo={after_sha!r}"
         )
 
 
@@ -478,3 +497,75 @@ class TestScriviRepJq:
         assert "detach" in result.stderr.lower() or "main-lock" in result.stderr, (
             f"Warning deve menzionare 'detach' o 'main-lock': {result.stderr!r}"
         )
+
+
+# ─────────────────────────────── review_gate.sh ──────────────────────────────
+# T-gate-A/B/C/D: check_verdetto fail-closed.
+# Tutti i test usano repo git temporanei reali — nessun mock.
+
+class TestReviewGateFailClosed:
+    """
+    Verifica che review_gate.sh sia fail-closed:
+    l'esenzione "nessun diff motore" è consentita SOLO se git diff ha avuto
+    successo e il suo output non contiene file motore (gas.py/brains/modules/tests/).
+    Un errore di git o di cd deve bloccare il commit, non lasciarlo passare.
+    """
+
+    def _stdin_commit(self) -> str:
+        """JSON stdin che simula un tool use 'git commit'."""
+        return json.dumps([{"tool_input": {"command": "git commit -m 'test'"}}])
+
+    def _run(self, repo: Path, *, has_review_ok: bool = False) -> subprocess.CompletedProcess:
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+        if has_review_ok:
+            (repo / ".claude").mkdir(exist_ok=True)
+            (repo / ".claude" / ".review_ok").touch()
+        return subprocess.run(
+            ["bash", str(REVIEW_GATE_HOOK)],
+            input=self._stdin_commit(),
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+    def _stage(self, repo: Path, rel_path: str, content: str = "# test\n") -> None:
+        fpath = repo / rel_path
+        fpath.parent.mkdir(parents=True, exist_ok=True)
+        fpath.write_text(content)
+        subprocess.run(["git", "add", str(fpath)], cwd=repo, check=True, capture_output=True)
+
+    def test_gate_a_motor_no_review_blocks(self, tmp_path):
+        """T-gate-A: diff motore staged + .review_ok assente → BLOCCA (exit 2)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        result = self._run(tmp_path)
+        assert result.returncode == 2, (
+            f"Atteso exit 2 (blocco), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+    def test_gate_b_motor_with_review_ok_passes(self, tmp_path):
+        """T-gate-B: diff motore staged + .review_ok presente → PASSA (exit 0)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        result = self._run(tmp_path, has_review_ok=True)
+        assert result.returncode == 0, (
+            f"Atteso exit 0 (pass), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+    def test_gate_c_doc_only_passes(self, tmp_path):
+        """T-gate-C: solo file non-motore staged → esente, PASSA (exit 0)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "reports/foo.md")
+        result = self._run(tmp_path)
+        assert result.returncode == 0, (
+            f"Atteso exit 0 (esente), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+    def test_gate_d_git_failure_blocks(self, tmp_path):
+        """T-gate-D: CLAUDE_PROJECT_DIR non è un git repo → git diff fallisce → FAIL-CLOSED (exit 2)."""
+        # tmp_path esiste ma non ha .git: cd riesce, git diff fallisce → deve bloccare
+        result = self._run(tmp_path)
+        assert result.returncode == 2, (
+            f"Atteso exit 2 (fail-closed), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert result.stderr.strip(), "Messaggio di errore atteso su stderr"
