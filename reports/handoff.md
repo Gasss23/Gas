@@ -61,7 +61,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 ## §4 VERDETTO DEL REVISORE — #87 INTEGRALE (verbatim da .claude/agents/memoria_revisore.md)
 
 ```
-#87 — 2026-08-19 — APPROVATO — chiusura riserve R-r2-1 e R-r2-2 di #86: forma atomica `if ! REPO_ROOT=$(cmd)` (commit_memoria_revisore.sh:21) e test T-R2-e (test_unit_hooks.py:732) che copre il ramo "file presente + non-git → git commit fallisce → WARN + exit 0". Nessuna lezione nuova.
+#87 — 2026-08-19 — APPROVATO — chiusura riserve R-r2-1 e R-r2-2 di #86: forma atomica `if ! REPO_ROOT=$(cmd)` (scripts/commit_memoria_revisore.sh:21) e test T-R2-e (tests/test_unit_hooks.py:732) che copre il ramo "file presente + non-git → git commit fallisce → WARN + exit 0". Nessuna lezione nuova.
 ```
 
 ---
