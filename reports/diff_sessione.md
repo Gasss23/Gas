@@ -1,18 +1,14 @@
-# Diff sessione — 2026-08-19
-## Branch: fase4/check-verdetto-fail-closed
+# DIFF SESSIONE — 2026-08-19 — fix/quotepath-non-ascii
 
-File toccati (da `git diff --stat BASE..HEAD`, BASE=9f67dfe):
+File toccati in questa sessione (`git diff --stat BASE..HEAD`):
 
-| File | Perché |
-|------|--------|
-| `.claude/agents/memoria_revisore.md` | Aggiunta lezione review #80/#81 (sessione precedente) + #82 (questa sessione) |
-| `.claude/commands/fine-task.md` | Passo 4 aggiornato: git add ora include memoria_revisore.md e .gas_history.json (set completo) |
-| `.claude/hooks/review_gate.sh` | fix: fail-closed su git-diff failure e cd impossibile (56c2d11) |
-| `.claude/hooks/session_end.sh` | FETTA 1: rimosso auto-commit, rimane solo push fail-safe condizionale |
-| `CLAUDE.md` | Sez.3 aggiornata: descrizione hook SessionEnd corretta (R1 review #82) |
-| `reports/diff_sessione.md` | Questo file (riscritto ogni sessione) |
-| `reports/handoff.md` | Rigenerato con set reale 11 file |
-| `reports/stato_progetto.md` | Aggiornato stato review/suite + riserve FETTA 1 |
-| `reports/ultimo_report.md` | Report fine task di questa sessione |
-| `tests/test_unit_hooks.py` | R-voice-3 (test Content-Length:abc→400) + T-hook-b/d/f aggiornati per nuovo contratto session_end |
-| `tests/test_unit_voice_server.py` | R-voice-3: test esplicito Content-Length non numerico → 400 |
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `.claude/agents/memoria_revisore.md` | Aggiunta riga contatore #85 (APPROVATO) dopo review pre-commit del fix. |
+| `reports/stato_progetto.md` | Aggiornato header + aggiunta entry fix core.quotePath (#85) + chiusura riserva #84. |
+| `reports/ultimo_report.md` | Report di sessione: sonda, fix, test reali, verdetto #85 INTEGRALE, nota di processo R2-vaglio B2. |
+| `scripts/check_handoff.py` | Fix bug: aggiunto `-c core.quotePath=false` a `_diff_names` (riga 48) — path non-ASCII quotati da git causavano falso mismatch. |
+| `scripts/check_verdetto.py` | Fix bug: aggiunto `-c core.quotePath=false` a `_session_files` (riga 67) — stesso bug simmetrico. |
+| `tests/test_unit_handoff_check.py` | 2 test reali aggiunti: `test_nonascii_filename_check_handoff` e `test_nonascii_filename_check_verdetto`. Repo git temporanei reali, verifica fallisce senza fix. |
+
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
