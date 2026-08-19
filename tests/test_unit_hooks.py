@@ -728,3 +728,36 @@ class TestCommitMemoriaRevisore:
         assert "WARN" in log_file.read_text(), (
             f"T-R2-d: gas_debug.log deve contenere un warning, trovato: {log_file.read_text()!r}"
         )
+
+    def test_r2_fail_safe_mem_present_not_git(self, tmp_path):
+        """T-R2-e: mem PRESENTE + dir NON-git → git commit fallisce (riga ~75) → WARN + exit 0.
+
+        Esercita il path fail-safe alla riga ~75 dello script: MEM_FILE trovato,
+        ma git commit -o fallisce perché la directory non è un repo git.
+        A differenza di T-R2-d (file assente → exit precoce riga 64-66), qui il file
+        esiste e l'errore emerge solo al git commit, coprendo il ramo finora scoperto.
+        """
+        not_a_repo = tmp_path / "not_a_repo"
+        not_a_repo.mkdir()
+        log_file = not_a_repo / "gas_debug.log"
+
+        mem = not_a_repo / MEM_REL
+        mem.parent.mkdir(parents=True, exist_ok=True)
+        mem.write_text("#1 — 2026-01-01 — APPROVATO — lezione iniziale\n")
+
+        result = subprocess.run(
+            ["bash", str(COMMIT_MEM_SCRIPT)],
+            env={**os.environ, "CLAUDE_PROJECT_DIR": str(not_a_repo)},
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, (
+            f"T-R2-e: atteso exit 0 (fail-safe), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert log_file.exists(), (
+            "T-R2-e: gas_debug.log deve essere creato con il warning di fail-safe"
+        )
+        assert "WARN" in log_file.read_text(), (
+            f"T-R2-e: gas_debug.log deve contenere WARN, trovato: {log_file.read_text()!r}"
+        )

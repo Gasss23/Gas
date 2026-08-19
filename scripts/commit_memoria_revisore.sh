@@ -18,8 +18,7 @@ MEM_FILE=".claude/agents/memoria_revisore.md"
 if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
     REPO_ROOT="$CLAUDE_PROJECT_DIR"
 else
-    REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-    if [ $? -ne 0 ] || [ -z "$REPO_ROOT" ]; then
+    if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || [ -z "$REPO_ROOT" ]; then
         # Impossibile trovare il repo — log e uscita silenziosa
         printf '%s [WARN] commit_memoria_revisore: impossibile trovare repo root (CLAUDE_PROJECT_DIR non settata e git rev-parse fallito)\n' \
             "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || echo 'N/A')" \
