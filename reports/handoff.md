@@ -1,114 +1,114 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-19 — fix/r2-riserve-86: chiusura riserve R-r2-1 e R-r2-2 (review #86)
+**Sessione:** 2026-08-20 — FASE 3 Fetta 2: STT server-side Groq Whisper su POST /voice
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR fix/r2-riserve-86 (chiusura riserve R-r2-1 e R-r2-2, CI SUCCESS ✅).
+1. Merge della PR #70 (feat(voice): FASE 3 Fetta 2 — STT Groq Whisper su POST /voice).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — R-r2-1 (forma atomica commit_memoria_revisore.sh)**: `FATTA`
-  Riga 21-22 di `scripts/commit_memoria_revisore.sh`: sostituita forma `$?` con `if ! var=$(cmd)` (lezione #51). Nessuna altra modifica di logica.
-
-- **Fetta 2 — R-r2-2 (test T-R2-e copertura buco)**: `FATTA`
-  Aggiunto `test_r2_fail_safe_mem_present_not_git` in `TestCommitMemoriaRevisore`. Copre path "mem PRESENTE + repo NON-git → git commit fallisce (riga ~75) → WARN + exit 0". Distinto da T-R2-d (file assente → exit precoce riga 64).
-
-- **Handoff rigenerato con canonici reali**: `FATTA`
-  reports/handoff.md riscritto con output verbatim: git log 5 commit, CI 32301887516, verdetto #87 verbatim da memoria_revisore.md.
+- **Sonda pre-implementazione**: `FATTA` — verificato come server.py legge body e invoca kernel; confermato GROQ_API_KEY presente in env/gas.py; confermato endpoint Groq `/openai/v1/audio/transcriptions` con modello `whisper-large-v3` e formato multipart.
+- **STT input su POST /voice**: `FATTA` — `modules/voice/stt.py` (nuovo), routing in `modules/voice/server.py`, fail-closed completo (503/400/502), retrocompatibilità JSON invariata.
+- **Test unitari con rete isolata**: `FATTA` — 28 nuovi test TVA (47 totali con i 19 precedenti), transport iniettato via `_conn_factory`, tutti i rami d'errore coperti.
+- **Prova end-to-end reale**: `FATTA` — `probe_tts_output.mp3` (40 KB, ElevenLabs) → Groq Whisper → `"Ciao, sono Gus, il tuo assistente vocale."` (trascrizione corretta).
+- **Revisore pre-commit**: `FATTA` — Review #88 APPROVATO CON RISERVE. R-stt-1 risolta prima del commit.
+- **TTS output (Fetta 3)**: `FUORI SCOPE` — esplicitamente escluso dallo scope.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
-Comando: `git diff --cached --stat 88b2a07fe93f06681f45672fbdc508bb08b64296`
-
 ```
- .claude/agents/memoria_revisore.md |  1 +
- reports/diff_sessione.md           | 17 +++----
- reports/handoff.md                 | 92 +++++++++++++++++++-------------------
- reports/stato_progetto.md          |  5 ++-
- reports/ultimo_report.md           | 86 ++++++++---------------------------
- scripts/commit_memoria_revisore.sh |  3 +-
- tests/test_unit_hooks.py           | 33 ++++++++++++++
- 7 files changed, 110 insertions(+), 127 deletions(-)
+ .claude/agents/memoria_revisore.md |   2 +
+ modules/voice/server.py            |  80 ++++++--
+ modules/voice/stt.py               | 157 ++++++++++++++++
+ reports/diff_sessione.md           |  31 +--
+ reports/handoff.md                 | 118 ++++++------
+ reports/stato_progetto.md          |   5 +-
+ reports/ultimo_report.md           | 140 +++++++++++---
+ tests/test_unit_voice_stt.py       | 376 +++++++++++++++++++++++++++++++++++++
+ 8 files changed, 798 insertions(+), 111 deletions(-)
 ```
 
-Verifica STOP GATE: tutti i file nel set consentito `{commit_memoria_revisore.sh, test_unit_hooks.py, reports/*, .claude/agents/memoria_revisore.md}`. Nessun blocco.
+*(I conteggi di riga sono approssimati — handoff.md conta se stesso parzialmente. La CI confronta solo i path, mai i conteggi.)*
 
 ---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
-Comando: `git log --oneline 88b2a07fe93f06681f45672fbdc508bb08b64296..HEAD`
-
 ```
-d342dec docs(fine-task): handoff rigenerato con canonici reali (git log 4 commit, CI 32301097271, verdetto #87 verbatim)
-a9606bd docs(fine-task): handoff e report definitivi fix/r2-riserve-86
-ff4d781 docs(fine-task): report fix/r2-riserve-86 — chiusura riserve R-r2-1 e R-r2-2
-f796f2f fix(r2-riserve-86): chiusura riserve R-r2-1 e R-r2-2 da review #86
-4019aa2 chore(revisore): memoria review #87 — APPROVATO
+ff4d0c4 feat(voice): FASE 3 Fetta 2 — STT server-side via Groq Whisper su POST /voice
+7ba3137 chore(revisore): memoria review #? — ?
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+*(Il commit di fine-task che contiene questo file non compare qui per costruzione.)*
 
 ---
 
-## §4 VERDETTO DEL REVISORE — #87 INTEGRALE (verbatim da .claude/agents/memoria_revisore.md)
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-```
-#87 — 2026-08-19 — APPROVATO — chiusura riserve R-r2-1 e R-r2-2 di #86: forma atomica `if ! REPO_ROOT=$(cmd)` (scripts/commit_memoria_revisore.sh:21) e test T-R2-e (tests/test_unit_hooks.py:732) che copre il ramo "file presente + non-git → git commit fallisce → WARN + exit 0". Nessuna lezione nuova.
-```
+Commit `ff4d0c4` tocca `modules/voice/server.py` e `modules/voice/stt.py` → Review #88.
+
+**APPROVATO CON RISERVE**
+
+Letture obbligatorie eseguite: CLAUDE.md, reports/stato_progetto.md, .claude/agents/memoria_revisore.md.
+
+**Elementi esaminati:**
+
+1. `modules/voice/stt.py:149` — `data = json.loads(resp_body)` nel ramo `if resp.status == 200`: se Groq risponde 200 con body non-JSON (es. pagina HTML Cloudflare), `json.JSONDecodeError` sfugge `_do_stt` (che cattura solo `GroqSTTError` e `OSError`) e risale a `BaseHTTPRequestHandler.handle_error` — il client riceve EOF senza risposta HTTP controllata. **RISERVA R-stt-1** (non bloccante, commit consentito).
+
+2. `modules/voice/server.py:101-103` — routing Content-Type: `ct_base = content_type.split(";")[0].strip().lower()` + `is_audio = ...` — coerenza con `parse_audio_body` garantita (stesso pattern di split). Lezione #76 applicata. **OK**.
+
+3. `tests/test_unit_voice_stt.py:130-175` — transport iniettato, zero rete reale. `test_empty_text_in_response` corretto (raise su silenzio in `_do_stt`, non in `stt.py`). **OK**.
+
+4. `modules/voice/server.py:169-171` — `log.warning("Groq STT network error: %s", exc)` su logger `__name__` → `gas_debug.log`. Conforme CLAUDE.md §9. **OK**.
+
+Wall of Shame: NO Raw History Slicing, NO Tool Simulation.
+
+> Commit consentito. Tracciare R-stt-1 in stato_progetto.md prima della PR.
+
+**R-stt-1 risolta prima del commit**: `try/except json.JSONDecodeError → GroqSTTError` applicato in `stt.py`; test `test_groq_200_non_json_body_raises_groq_error` aggiunto. R-stt-1 chiusa.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py` / `brains/` / `modules/`. Modifiche a `tests/test_unit_hooks.py` (+1 test T-R2-e).
+`gas.py` non modificato. Modifiche a `modules/voice/server.py`, `modules/voice/stt.py`, `tests/test_unit_voice_stt.py`.
 
-Comando eseguito:
-```
-source venv/bin/activate && python -m pytest tests/test_unit_hooks.py -q
-```
+**Risultati suite voice (pre-commit, locale WSL, Python 3.12.3):**
 
-Output reale:
 ```
-...................                                                      [100%]
-19 passed in 3.31s
+tests/test_unit_voice_stt.py    28 PASS  (nuovo)
+tests/test_unit_voice_server.py 19 PASS  (invariati, retrocompatibilità confermata)
+──────────────────────────────────────────
+TOTALE                          47 PASS / 0 FAIL / 0 SKIP
 ```
-
-**19 PASS, 0 FAIL.** Nessuna regressione. T-R2-e (nuovo): PASS.
 
 ---
 
 ## §6 STATO CI
 
-Comando: `gh run list -L 3`
-
 ```
-completed	success	docs(fine-task): handoff rigenerato con canonici reali (git log 4 com…	CI	fix/r2-riserve-86	push	32301887516	1m42s	2026-08-19T21:03:27Z
-completed	success	docs(fine-task): handoff e report definitivi fix/r2-riserve-86	CI	fix/r2-riserve-86	push	32301097271	1m34s	2026-08-19T20:54:39Z
-completed	success	docs(fine-task): report fix/r2-riserve-86 — chiusura riserve R-r2-1 e…	CI	fix/r2-riserve-86	push	32300000572	2m12s	2026-08-19T20:42:33Z
+completed  success  feat(voice): FASE 3 Fetta 2 — STT server-side via Groq Whisper su POS…  CI  feat/voice-stt-input  push  32387199582  53s  2026-08-20T15:37:04Z
+completed  success  Merge pull request #69 from Gasss23/docs/scollega-gashistory-r2-v2      CI  main                  push  32382945298  55s  2026-08-20T14:54:25Z
+completed  success  docs(stato): scollega .gas_history.json da etichetta R2 + finding aut…  CI  docs/scollega-gashistory-r2-v2  push  32382776309  57s  2026-08-20T14:52:45Z
 ```
 
-**Mappatura commit→run:**
-- `d342dec` (handoff rigenerato) — run `32301887516` ✅ SUCCESS
-- `a9606bd` (handoff e report definitivi) — nessuna run su questo SHA individuale (incluso nell'albero testato da 32301887516)
-- `ff4d781` (report fix/r2-riserve-86) — nessuna run su questo SHA individuale (idem)
-- `f796f2f` (fix riserve) — nessuna run su questo SHA individuale (idem)
-- `4019aa2` (chore revisore) — nessuna run su questo SHA individuale (idem)
+**Mappatura commit → run:**
+- `ff4d0c4` (feat voice STT): incluso nell'albero testato da run `32387199582` (HEAD della push era `7ba3137` — il revisore ha committato `memoria_revisore.md` dopo). La run `32387199582` testa l'albero al push del branch, che include `ff4d0c4`. ✅ SUCCESS.
+- `7ba3137` (chore revisore): HEAD al momento del push → testato direttamente dalla run `32387199582`. ✅ SUCCESS.
 
-**Ultima run: `32301887516` — ✅ SUCCESS** (push 2026-08-19T21:03:27Z)
-
-Il commit di fine-task che contiene questo handoff → run non ancora disponibile alla scrittura dell'handoff.
+Il commit di fine-task (questo file) non ha ancora una run CI al momento della scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna. Review #87 APPROVATO senza riserve.
-Riserve R-r2-1 e R-r2-2 (da review #86) chiuse in questa sessione.
+**R-stt-1** (review #88) — **CHIUSA prima del commit**: `json.JSONDecodeError` su Groq 200 non-JSON → avvolta in `GroqSTTError` in `stt.py`; test aggiunto. Non tracciata come aperta.
+
+Nessuna riserva aperta nuova da questa sessione.
