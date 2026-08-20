@@ -1,27 +1,46 @@
-# Report — 2026-08-19 — fix/r2-riserve-86: handoff rigenerato con canonici reali
+# Report — docs/scollega-gashistory-r2-v2
 
-## DECISIONI UMANE RICHIESTE
+**Data:** 2026-08-20  
+**Branch:** docs/scollega-gashistory-r2-v2 (nuovo branch pulito da origin/main)  
+**Sostituisce:** docs/scollega-gashistory-da-r2 (conflitti con main aggiornato, abbandonato)
 
-1. Merge della PR fix/r2-riserve-86 (chiusura riserve R-r2-1 e R-r2-2, CI SUCCESS ✅).
+## Obiettivo
 
----
+Riapplicare due correzioni a `reports/stato_progetto.md` sopra main aggiornato, senza risolvere conflitti a mano.
 
-## Esito fette
+## STOP gate
 
-- **Handoff rigenerato**: `FATTA`
-  reports/handoff.md riscritto con output git verbatim reali:
-  - §2: `git diff --stat origin/main...HEAD` — 7 file, 137+/112-
-  - §3: `git log --oneline origin/main..HEAD` — 4 commit incluso a9606bd
-  - §4: delta test reale `19 passed in 3.31s` (test_unit_hooks.py)
-  - §5: verdetto #87 incollato verbatim da memoria_revisore.md (non narrativizzato)
-  - §6: CI run `32301097271` SUCCESS 2026-08-19T20:54:39Z
+✅ SOLO `reports/stato_progetto.md` + `reports/ultimo_report.md`. Nessun codice, nessun CLAUDE.md, nessun altro file. Revisore NON coinvolto (doc-only).
 
-- **Commit e push**: `FATTO`
-  Commit `d342dec` — "docs(fine-task): handoff rigenerato con canonici reali..."
-  Push: `a9606bd..d342dec fix/r2-riserve-86 -> fix/r2-riserve-86`
+## Modifiche applicate
 
----
+### a) Review #82 — rimozione etichetta "Riserva R2"
 
-## Anomalie
+**Prima (su origin/main):**
+```
+Suite hook: **14 PASS**. Riserva R2 dichiarata: sessione interrotta prima di `/fine-task` non persiste `.gas_history.json` (trade-off accettato).
+```
 
-Nessuna.
+**Dopo:**
+```
+Suite hook: **14 PASS**. Trade-off dichiarato (senza etichetta R2 — R2 = memoria revisore, CHIUSO da PR #66+#87): sessione interrotta prima di `/fine-task` non persiste `.gas_history.json`. Vedi finding autonomo in §Finding aperti.
+```
+
+**Motivazione:** R2 è la label del progetto "durabilità memoria revisore", chiuso da PR #66+#87. Usarla per il trade-off `.gas_history.json` creava confusione semantica. Il trade-off rimane dichiarato ma come affermazione autonoma, non come riserva di un progetto già chiuso.
+
+### b) Aggiunto finding autonomo 🟡 in §Finding aperti
+
+```
+- 🟡 **.gas_history.json runtime** — non persiste se la sessione muore prima di `/fine-task`. RUNTIME (kernel aggiorna il file a ogni turno sul VPS, mai auto-committato in prod); il revisore non lo tocca (non è codice motore). Competenza: `_take_snapshot` + decisione operativa (cron push/backup) da tarare al deploy VPS. NON chiuso da R2 (R2 = durabilità `memoria_revisore.md`, CHIUSO da PR #66+#87).
+```
+
+**Motivazione:** Il finding è di classe RUNTIME (non codice motore), non coinvolge il revisore, e la sua chiusura dipende da decisioni operative al deploy VPS. Tenerlo visibile in §Finding aperti assicura che non venga dimenticato.
+
+## Verifica diff
+
+```
+ reports/stato_progetto.md | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+```
+
+Due righe toccate: una modifica inline (riga review #82) + una aggiunta (finding autonomo). Nessun altro file.
