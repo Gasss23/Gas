@@ -1,30 +1,42 @@
 """
-HTTP voice endpoint per GAS — FASE 3, Fette 1+2.
+HTTP voice endpoint per GAS — FASE 3, Fette 1+2+3.
 
 Endpoint: POST /voice
   Body (testo):  JSON {"prompt": "<testo>"}
   Body (audio):  Content-Type audio/* oppure multipart/form-data con campo 'file'
   Auth:    Header "Authorization: Bearer <token>"
-  200:     JSON {"content": "<risposta>"}
-  400:     JSON {"error": "<msg>"}       — prompt mancante/JSON invalido / audio vuoto o invalido
-  401:     JSON {"error": "Unauthorized"}
-  502:     JSON {"error": "<msg>"}       — errore Groq STT (rete/quota)
-  503:     JSON {"error": "<msg>"}       — STT non disponibile (GROQ_API_KEY assente)
-  500:     JSON {"error": "<msg>"}       — errore pipeline o kernel
+
+  Output testo (default):
+    200:   JSON {"content": "<risposta>"}
+
+  Output audio (se Accept: audio/mpeg o Accept: audio/*):
+    200:   byte MP3 grezzi (Content-Type: audio/mpeg)
+    502:   JSON {"error": "<msg>"}  — errore ElevenLabs (rete/quota)
+    503:   JSON {"error": "<msg>"}  — TTS non disponibile (ELEVENLABS_API_KEY assente)
+
+  Codici errore comuni:
+    400:   JSON {"error": "<msg>"}  — prompt mancante/JSON invalido / audio vuoto o invalido
+    401:   JSON {"error": "Unauthorized"}
+    502:   JSON {"error": "<msg>"}  — errore Groq STT o ElevenLabs TTS (rete/quota)
+    503:   JSON {"error": "<msg>"}  — STT/TTS non disponibile (chiave assente)
+    500:   JSON {"error": "<msg>"}  — errore pipeline o kernel
 
 Configurazione tramite variabili d'ambiente (da .env o export):
-  GAS_VOICE_BIND   — bind address  (default: 127.0.0.1)
-  GAS_VOICE_PORT   — porta TCP     (default: 8765)
-  GAS_VOICE_TOKEN  — token bearer  OBBLIGATORIO: assente/vuoto → il server non parte
-  GROQ_API_KEY     — chiave Groq   OBBLIGATORIO per STT audio; assente → 503 su richieste audio
+  GAS_VOICE_BIND      — bind address       (default: 127.0.0.1)
+  GAS_VOICE_PORT      — porta TCP          (default: 8765)
+  GAS_VOICE_TOKEN     — token bearer       OBBLIGATORIO: assente/vuoto → il server non parte
+  GROQ_API_KEY        — chiave Groq        OBBLIGATORIO per STT audio; assente → 503
+  ELEVENLABS_API_KEY  — chiave ElevenLabs  OBBLIGATORIO per output audio; assente → 503
+  ELEVENLABS_VOICE_ID — voice id           (default: JBFqnCBsd6RMkjVDRZzb, George premade)
 
 Sicurezza:
   - Nasce chiuso su 127.0.0.1. Aprire all'esterno SOLO settando GAS_VOICE_BIND.
   - Confronto token a TEMPO COSTANTE via hmac.compare_digest (mai ==).
   - Nessun segreto scritto nei log; ogni tentativo fallito viene loggato con IP + esito.
-  - I byte audio non vengono loggati né scritti su disco in chiaro; la chiave Groq non compare nei log.
-  - CAVEAT PRIVACY: l'audio dell'utente viene inviato ai server Groq (terza parte) per la trascrizione.
-    Trade-off dichiarato: per un agente che tocca dati/lead, questo è egress di dati vocali.
+  - I byte audio (ingresso e uscita) non vengono loggati né scritti su disco; le chiavi non compaiono nei log.
+  - CAVEAT PRIVACY (STT): l'audio dell'utente viene inviato ai server Groq (terza parte).
+  - CAVEAT PRIVACY (TTS): il testo del kernel viene inviato ai server ElevenLabs (terza parte).
+    Trade-off dichiarato: per un agente che tocca dati/lead, questo è egress di dati.
   - Kernel GasKernel istanziato UNA VOLTA all'avvio (stateful, storia condivisa).
   - Single-thread nativo: http.server.HTTPServer senza ThreadingMixIn, nessun lock.
   - Fail-safe §9: eccezione in run_turn → 500 + log in gas_debug.log, server vivo.
@@ -40,6 +52,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from modules.voice.stt import GroqSTTError, parse_audio_body, transcribe_audio
+from modules.voice.tts import DEFAULT_VOICE_ID as _TTS_DEFAULT_VOICE_ID
+from modules.voice.tts import ElevenLabsTTSError, synthesize_speech
 
 log = logging.getLogger(__name__)
 
@@ -69,6 +83,19 @@ class VoiceHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_audio(self, data: bytes) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "audio/mpeg")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _wants_audio(self) -> bool:
+        """True se il client dichiara Accept: audio/mpeg o audio/* (non audio generico */*).
+        Retrocompatibile: senza header (o Accept: application/json) → False → risposta JSON."""
+        accept = self.headers.get("Accept", "")
+        return "audio/mpeg" in accept or "audio/*" in accept
 
     def _check_auth(self) -> bool:
         """Verifica il token bearer. Logga ogni fallimento con IP; MAI il token ricevuto."""
@@ -138,7 +165,37 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": "Nessuna risposta dal kernel"})
             return
 
-        self._send_json(200, {"content": result_content})
+        if self._wants_audio():
+            self._do_tts_response(result_content)
+        else:
+            self._send_json(200, {"content": result_content})
+
+    def _do_tts_response(self, text: str) -> None:
+        """Sintetizza text via ElevenLabs e invia i byte MP3. Invia l'errore HTTP se fallisce.
+        Se text è vuoto salta la chiamata ElevenLabs e risponde JSON vuoto (mai crash)."""
+        api_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        if not api_key:
+            self._send_json(503, {"error": "TTS non disponibile: ELEVENLABS_API_KEY non configurata"})
+            return
+
+        if not text:
+            self._send_json(200, {"content": ""})
+            return
+
+        voice_id = (os.environ.get("ELEVENLABS_VOICE_ID") or _TTS_DEFAULT_VOICE_ID).strip() or _TTS_DEFAULT_VOICE_ID
+
+        try:
+            audio = synthesize_speech(text, api_key, voice_id)
+        except ElevenLabsTTSError as exc:
+            log.warning("ElevenLabs TTS error status=%s: %s", exc.status, exc.message)
+            self._send_json(502, {"error": f"Errore TTS ElevenLabs: {exc.message}"})
+            return
+        except OSError as exc:
+            log.warning("ElevenLabs TTS network error: %s", exc)
+            self._send_json(502, {"error": "Errore di rete verso ElevenLabs TTS"})
+            return
+
+        self._send_audio(audio)
 
     def _do_stt(self, raw: bytes, content_type: str) -> Optional[str]:
         """Trascrive audio → testo via Groq Whisper.
