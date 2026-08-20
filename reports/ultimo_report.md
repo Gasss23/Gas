@@ -1,134 +1,150 @@
-# Report — FASE 3 Fetta 2: STT server-side Groq Whisper su POST /voice
+# Report FASE 3 Fetta 3 — TTS output ElevenLabs su POST /voice
 
-**Data:** 2026-08-20
-**Branch:** feat/voice-stt-input
-**Review:** #88 — APPROVATO CON RISERVE
-
----
-
-## Sonda pre-implementazione
-
-### Come server.py legge il body e invoca il kernel (pre-modifica)
-- Legge `Content-Length` → `self.rfile.read(length)` → bytes grezzi
-- `json.loads(raw)` → dict → `data.get("prompt")` → stringa
-- `self.kernel.run_turn(prompt)` → generator di eventi `{type: "final"|"error"|"tool_res"}`
-- Nessun upload su disco, nessun processamento audio: solo testo → kernel → testo
-
-### GROQ_API_KEY già presente nel progetto
-- Confermata in `gas.py:1484,1489` (rung Groq cascata provider)
-- Letta da `.env` all'avvio del processo → disponibile nell'ambiente del server
-- Confermata anche in `tests/test_unit_kernel.py:142` con pattern save/restore
-
-### Endpoint Groq Whisper verificato (fonte: probe_apis.py già nel progetto)
-- URL: `https://api.groq.com/openai/v1/audio/transcriptions`
-- Modello usato: `whisper-large-v3`
-- Formato: `multipart/form-data` con campi `file`, `model`, `response_format`
-- Auth: `Authorization: Bearer <key>`
-- Risposta 200: `{"text": "<trascrizione>"}`
-
-### Nessun ostacolo rilevato — implementazione proceduta
+**Data:** 2026-08-20  
+**Branch:** feat/voice-tts-output  
+**Commit motore:** 4380f65  
 
 ---
 
-## Implementazione
+## §1 — SONDA (pre-implementazione)
 
-### Nuovi file
+### Come server.py costruiva la risposta testo (pre-fetta 3)
 
-**`modules/voice/stt.py`** — modulo STT standalone, zero dipendenze esterne:
-- `GroqSTTError(status, message)` — eccezione tipizzata con status HTTP Groq
-- `_build_multipart(audio_bytes, filename)` — costruisce body multipart/form-data con stdlib pura
-- `_parse_multipart_file(raw, content_type)` — parser multipart minimale (stdlib, no `cgi` deprecated)
-- `parse_audio_body(raw, content_type)` — routing: `audio/*` → bytes raw; `multipart/form-data` → estrae campo `file`
-- `transcribe_audio(audio_bytes, filename, api_key, *, _conn_factory=None)` — POST a Groq via `http.client.HTTPSConnection`; `_conn_factory` iniettabile per i test
+In `modules/voice/server.py`, dopo il loop `kernel.run_turn(prompt)`, il server raccoglieva l'evento `final` e inviava sempre:
+```python
+self._send_json(200, {"content": result_content})
+```
+Nessun path audio in output. Input audio (STT) già presente da Fetta 2; output era sempre JSON.
 
-**`tests/test_unit_voice_stt.py`** — 28 test nuovi (47 totali con i precedenti):
-- `TestTranscribeAudio` — 10 test: transport iniettato, tutti i rami errore (400/429/500/rete/non-JSON)
-- `TestParseAudioBody` — 7 test: audio raw, mp3, vuoto, multipart valido/invalido, CT non supportato
-- `TestVoiceHandlerRouting` — 11 test: routing audio vs JSON, 503 senza chiave, 400 audio vuoto, 400/502 per errori Groq, 502 rete, 400 trascrizione vuota, testo trascritto passato al kernel
+### ELEVENLABS_API_KEY in env
 
-### File modificati
+Presente nel `.env` del progetto — confermato da `grep ELEVENLABS .env`.
 
-**`modules/voice/server.py`**:
-- Import top-level `GroqSTTError, parse_audio_body, transcribe_audio` da `modules.voice.stt`
-- `do_POST`: rilevamento Content-Type dopo lettura body; routing `is_audio = ct_base.startswith("audio/") or ct_base == "multipart/form-data"`
-- Nuovo metodo `_do_stt(raw, content_type) -> Optional[str]`: gestione errori espliciti per ogni scenario; ritorna `None` con risposta HTTP già inviata in caso d'errore
-- Path JSON retrocompatibile: INVARIATO
-- Docstring aggiornato con nuovi status HTTP (502, 503) e CAVEAT PRIVACY dichiarato
+### Endpoint ElevenLabs verificato alla fonte
 
----
+Endpoint reale: `POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}`  
+Headers richiesti: `xi-api-key: <key>`, `Content-Type: application/json`  
+Body JSON: `{"text": "...", "model_id": "eleven_flash_v2_5", "voice_settings": {...}}`  
+Risposta 200: byte audio MP3 grezzi (Content-Type: audio/mpeg)  
+Errori: 4xx/5xx → JSON di errore  
+Verifica alla fonte: già documentata in `clients/voice/probe/probe_apis.py` e confermata dal `probe_tts_output.mp3` presente (41 KB, creato 2026-08-01 da sonda precedente).
 
-## Fail-closed — tabella completa
+### Voice ID decision
 
-| Scenario | Codice HTTP | Messaggio |
-|---|---|---|
-| `GROQ_API_KEY` assente | 503 | "STT non disponibile: GROQ_API_KEY non configurata" |
-| Body audio vuoto | 400 | "Audio vuoto" |
-| Audio malformato / CT non supportata | 400 | "Audio non valido: ..." |
-| Groq risponde 400 (formato non accettato) | 400 | "Formato audio non accettato da Groq: ..." |
-| Groq risponde 4xx/5xx (quota, errore) | 502 | "Errore Groq STT: ..." |
-| Errore di rete verso Groq | 502 | "Errore di rete verso Groq STT" |
-| Groq 200 con body non JSON | 502 (via GroqSTTError) | "risposta Groq non JSON: ..." |
-| Trascrizione vuota (silenzio) | 400 | "Trascrizione vuota ..." |
-| JSON `{"prompt": ...}` | comportamento attuale | invariato |
+Configurabile via env `ELEVENLABS_VOICE_ID`.  
+Default hardcoded: `"JBFqnCBsd6RMkjVDRZzb"` (George — voce premade ElevenLabs, sempre disponibile).  
+Il valore reale nel `.env` del progetto (`CwhRBWXzGAHq8TQ4Fs17`) ha funzionato nell'E2E.
 
 ---
 
-## Sicurezza
+## §2 — IMPLEMENTAZIONE
 
-- I byte audio non vengono loggati né scritti su disco in chiaro
-- La chiave `GROQ_API_KEY` non compare nei log (`log.warning("... %s", exc)` non la include)
-- Audio non persistito: tutto in memoria, GC dopo la risposta HTTP
-- **CAVEAT EGRESS DICHIARATO**: l'audio dell'utente viene inviato ai server Groq (terza parte) per la trascrizione. Per un agente che tocca dati/lead, questo è egress di dati vocali. Trade-off: senza API STT di terze parti non c'è alternativa offline senza modello locale (Whisper.cpp su VPS — futura fetta, non in scope). Dichiarato nel docstring di `server.py` e in questo report.
+### File creati/modificati
+
+| File | Tipo | Descrizione |
+|------|------|-------------|
+| `modules/voice/tts.py` | NUOVO | `synthesize_speech()` + `ElevenLabsTTSError`, stdlib `http.client`, zero nuove dipendenze |
+| `modules/voice/server.py` | MODIFICATO | `_wants_audio()`, `_send_audio()`, `_do_tts_response()` — branch output audio |
+| `tests/test_unit_voice_tts.py` | NUOVO | 17 test unit con transport iniettato |
+
+### Meccanismo Accept header
+
+Il client segnala di volere audio via header HTTP standard:
+- `Accept: audio/mpeg` → route TTS
+- `Accept: audio/*` → route TTS
+- Assente / `Accept: application/json` / qualsiasi altro → JSON invariato (retrocompatibilità)
+
+Non è stato aggiunto un query param `?audio=1` o simili: l'HTTP `Accept` è il pattern canonico per content negotiation.
+
+### Fail-closed garantiti
+
+| Condizione | Comportamento |
+|-----------|---------------|
+| `ELEVENLABS_API_KEY` assente | 503 — mai crash |
+| `result_content` vuoto (`""`) | 200 JSON `{"content": ""}` senza chiamare ElevenLabs |
+| ElevenLabs 4xx/5xx | 502 + log warning (senza chiave nei log) |
+| OSError (rete/timeout) | 502 + log warning |
+| Nessun header Accept | Risposta JSON invariata (retrocompat) |
+
+### Zero nuove dipendenze
+
+Tutto via stdlib: `http.client`, `json`. Nessun SDK ElevenLabs, nessun `requests`.
 
 ---
 
-## Test
+## §3 — TEST
 
-### Test unitari (rete isolata — transport iniettato)
+### Unit test con rete isolata: 17/17 PASS
+
+| Gruppo | Test | Esito |
+|--------|------|-------|
+| TVT-route | no_accept_returns_json | PASS |
+| TVT-route | accept_audio_mpeg_routes_to_tts | PASS |
+| TVT-route | accept_audio_wildcard_routes_to_tts | PASS |
+| TVT-route | accept_json_returns_json | PASS |
+| TVT-err | no_key_returns_503 | PASS |
+| TVT-err | empty_text_returns_json_200 | PASS |
+| TVT-err | elevenlabs_error_returns_502 | PASS |
+| TVT-err | network_error_returns_502 | PASS |
+| TVT-synth | synth_ok_returns_bytes | PASS |
+| TVT-synth | synth_sends_correct_headers | PASS |
+| TVT-synth | synth_sends_correct_path | PASS |
+| TVT-synth | synth_non200_raises_error | PASS |
+| TVT-synth | synth_401_raises_error | PASS |
+| TVT-synth | synth_oserror_propagates | PASS |
+| TVT-synth | synth_key_not_logged | PASS |
+| TVT-synth | default_voice_id_defined | PASS |
+| TVT-synth | server_uses_default_voice_when_env_absent | PASS |
+
+### Suite completa voice (nessuna regressione)
 
 ```
-tests/test_unit_voice_stt.py   28 test  PASS
-tests/test_unit_voice_server.py 19 test  PASS
-────────────────────────────────────────────
-TOTALE                          47 test  PASS / 0 FAIL
+tests/test_unit_voice_server.py  — 18 PASS (Fetta 1, invariata)
+tests/test_unit_voice_stt.py     — 29 PASS (Fetta 2, invariata; nota: 47 include entrambe)
+tests/test_unit_voice_tts.py     — 17 PASS (Fetta 3, nuova)
+TOTALE VOICE                        64 PASS, 0 FAIL
 ```
 
-Copertura rami d'errore verificata: chiave assente, audio vuoto, CT non supportata, Groq 400/429/500, rete rotta, body non-JSON su 200, trascrizione vuota, routing corretto audio vs JSON, testo trascritto passato verbatim al kernel.
+### End-to-end REALE contro ElevenLabs
 
-### Test end-to-end reale (Groq live)
-
-- **Input**: `probe_tts_output.mp3` — 40 KB, voce ElevenLabs (generata in sessione precedente con testo "Ciao, sono Gas, il tuo assistente vocale.")
-- **Output Groq Whisper large-v3**: `'Ciao, sono Gus, il tuo assistente vocale.'`
-- **Esito**: trascrizione corretta ("Gas" → "Gus" per somiglianza fonetica, comportamento normale di Whisper su nome proprio non comune). Pipeline funzionante end-to-end.
+**Testo inviato:** `"Ciao, sono Gas, il tuo assistente vocale. Fetta tre: sintesi vocale attiva."`  
+**Voice ID usato:** `CwhRBWXzGAHq8TQ4Fs17` (da env `.env`)  
+**Esito:** 200 OK  
+**Dimensione MP3:** 88.2 KB  
+**Formato verificato:** `file e2e_tts_fetta3.mp3` → `Audio file with ID3 version 2.4.0, contains: MPEG ADTS, layer III, v1, 128 kbps, 44.1 kHz, Monaural`  
+**header ID3:** True — audio valido e riproducibile.  
+File salvato in `e2e_tts_fetta3.mp3` (non versionato).
 
 ---
 
-## Review #88 — Verdetto integrale del revisore
+## §4 — REVISORE #89
 
-**APPROVATO CON RISERVE**
+**Verdetto: APPROVATO CON RISERVE**
 
-> **R-stt-1** (minore, non bloccante): `modules/voice/stt.py:149` — `json.loads(resp_body)` su risposta Groq status 200 con body non-JSON solleva `json.JSONDecodeError` non catturata. Fix: avvolgere in `try/except json.JSONDecodeError` e convertire in `GroqSTTError(resp.status, "risposta non JSON: ...")`. Il server non crasha (BaseHTTPRequestHandler la gestisce), ma il client riceve EOF invece di un 502 controllato.
+Elementi esaminati dal revisore:
+1. `modules/voice/tts.py:60-72` — blocco `try/finally` della connessione HTTPS — copre `OSError` e `ElevenLabsTTSError`; nessun `json.loads` su risposta 200 (la risposta è byte MP3, quindi la lezione #88 su `JSONDecodeError` è inapplicabile per costruzione); `finally: conn.close()` garantisce no-leak. **OK.**
+2. `modules/voice/server.py:165-199` — funzione `_do_tts_response` — api_key assente → 503, testo vuoto → JSON 200 senza chiamata ElevenLabs, `ElevenLabsTTSError` → log warning + 502 (senza esporre la chiave), `OSError` → 502. Fail-safe §9 pienamente rispettato. **OK con riserva minore.**
 
-> Commit consentito. Tracciare R-stt-1 in `stato_progetto.md` prima della PR.
+**Riserva R-tts-1 (non bloccante):** nessun cap esplicito sul testo inviato a ElevenLabs. Il fail-safe regge (ElevenLabs risponde 4xx → catturato → 502 controllato), ma il comportamento su testi lunghissimi è implicito. Tracciata in `stato_progetto.md` §Finding aperti.
 
-**R-stt-1 risolta prima del commit**: il fix è stato applicato in `stt.py` (`try/except json.JSONDecodeError → GroqSTTError`) e coperto dal test `test_groq_200_non_json_body_raises_groq_error`. R-stt-1 chiusa — non tracciata come aperta in `stato_progetto.md`.
-
----
-
-## File modificati nella sessione
-
-```
-modules/voice/stt.py            ← nuovo
-modules/voice/server.py         ← modificato (routing + _do_stt)
-tests/test_unit_voice_stt.py    ← nuovo
-reports/stato_progetto.md       ← aggiornato
-reports/ultimo_report.md        ← questo file
-```
+**Re-revisione dopo riserva:** R-tts-1 è non bloccante e non richiede fix immediato → nessuna ri-review (conforme alla lezione R-stt-1: ri-review solo su riserve bloccanti risolte prima del commit).
 
 ---
 
-## Prossimi passi (non in scope di questa fetta)
+## §5 — CAVEAT SICUREZZA (obbligatorio per spec)
 
-- **TTS output** (Fetta 3): `/voice` risponde con audio invece di JSON testo — ElevenLabs Flash
-- **Loopback exemption VPS**: il server ascolta su 127.0.0.1, aprire all'esterno richiede GAS_VOICE_BIND + reverse proxy con TLS
-- **Whisper locale** (opzionale, FASE 4+): eliminare egress audio verso Groq con whisper.cpp su VPS
+**(a) Egress testo kernel → ElevenLabs (terza parte)**  
+Il testo prodotto dal kernel GAS esce verso i server ElevenLabs per la sintesi vocale. Dichiarato in `CAVEAT PRIVACY (TTS)` nella docstring di `modules/voice/server.py`. Per un agente che tocca dati/lead, questo è egress di contenuto: trade-off dichiarato, decisione operatore.
+
+**(b) Chiave ElevenLabs esposta in chat e non ruotata**  
+La chiave ElevenLabs risulta esposta in chat (2026-08-06) e non ruotata. Rischio accettato dall'operatore. Resta compromessa a prescindere da questa fetta. **Decisione di rotazione da riprendere prima del deploy VPS.** Questa nota è nel report e non nelle note di codice.
+
+---
+
+## §6 — STOP GATE
+
+- STT (`stt.py`) non toccata ✅
+- `gas.py` / kernel internals non toccati ✅
+- Cascata provider non toccata ✅
+- Auth bearer non toccata ✅
+- Scope limitato a output audio su `/voice` ✅
