@@ -2,7 +2,15 @@
 
 **Data:** 2026-08-20  
 **Branch:** feat/voice-tts-output  
-**Commit motore:** 4380f65  
+**Commit motore:** 4380f65
+
+---
+
+## DECISIONI UMANE RICHIESTE
+
+1. **Push branch**: `git push -u origin feat/voice-tts-output` — il push è stato bloccato dal classifier in auto mode; eseguire manualmente.
+2. **Merge PR**: aprire PR da `feat/voice-tts-output` → `main` e fare merge con `gasmerge` (NON `gh pr merge` da Claude Code).
+3. **Rotazione chiave ElevenLabs**: la chiave risulta esposta in chat (2026-08-06) — rotazione da eseguire prima del deploy VPS.  
 
 ---
 

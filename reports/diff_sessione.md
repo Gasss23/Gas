@@ -1,22 +1,30 @@
-# DIFF SESSIONE — 2026-08-20
+# Diff sessione — 2026-08-20 — FASE 3 Fetta 3 TTS ElevenLabs
 
-> Si riscrive a ogni sessione. La storia completa sta in git.
-> Sessione: FASE 3 Fetta 2 — STT server-side Groq Whisper su POST /voice
+> Riepilogo dell'ultima sessione. Si riscrive a ogni sessione; storia completa in git.
+> BASE: 0ddad1d9e764fe344b3eea699fc7f5453690c0da (merge-base origin/main)
 
 ## File toccati
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `modules/voice/stt.py` | **NUOVO** — modulo STT standalone: `transcribe_audio()` via Groq Whisper (stdlib pura, http.client), `parse_audio_body()` routing audio/multipart, `GroqSTTError` tipizzato, parser multipart senza dipendenze deprecate |
-| `modules/voice/server.py` | **MODIFICATO** — routing Content-Type in `do_POST` (audio/* e multipart/form-data → STT, altrimenti JSON path invariato), nuovo metodo `_do_stt()` con fail-closed completo (503/400/502), docstring aggiornato con CAVEAT egress |
-| `tests/test_unit_voice_stt.py` | **NUOVO** — 28 test: transport iniettato (`_conn_factory`), routing audio vs JSON, tutti i rami d'errore (chiave assente, audio vuoto, Groq 400/429/500, rete, body non-JSON su 200), multipart parsing |
-| `.claude/agents/memoria_revisore.md` | **MODIFICATO** — revisore ha aggiunto lezione review #88: catturare `json.JSONDecodeError` dopo `resp.read()` su status 200 in moduli HTTP-client standalone |
-| `reports/stato_progetto.md` | **MODIFICATO** — aggiunta entry FASE 3 Fetta 2, aggiornato "Ultimo aggiornamento", aggiornata voce componenti attive |
-| `reports/ultimo_report.md` | **MODIFICATO** — report di fine task: sonda, implementazione, fail-closed table, sicurezza/caveat, test, verdetto revisore |
-| `reports/handoff.md` | **MODIFICATO** — dossier fine sessione: §0 decisioni umane, §1-7 secondo template |
-| `reports/diff_sessione.md` | **MODIFICATO** — questo file |
+| File | Tipo | Perché |
+|------|------|--------|
+| `modules/voice/tts.py` | NUOVO | Modulo TTS: `synthesize_speech()` + `ElevenLabsTTSError`, stdlib `http.client`, zero dipendenze esterne, `_conn_factory` iniettabile per test |
+| `modules/voice/server.py` | MODIFICATO | Aggiunto path output audio: `_wants_audio()` (Accept header), `_send_audio()`, `_do_tts_response()` con tutti i rami fail-closed; docstring aggiornata |
+| `tests/test_unit_voice_tts.py` | NUOVO | 17 test unit con rete isolata: routing, rami errore (503/502), synthesize_speech unit con _FakeConn iniettato |
+| `.claude/agents/memoria_revisore.md` | MODIFICATO | Revisore ha aggiunto lezione review #89 |
+| `reports/ultimo_report.md` | MODIFICATO | Report canonico FASE 3 Fetta 3 con DECISIONI UMANE, sonda, implementazione, test, verdetto revisore, caveat sicurezza |
+| `reports/handoff.md` | MODIFICATO | Dossier di fine sessione: §0–§7 completi |
+| `reports/diff_sessione.md` | MODIFICATO | Questo file |
+| `reports/stato_progetto.md` | MODIFICATO | Aggiunta entry Fetta 3, R-tts-1 tracciata in Finding aperti, header data aggiornato |
 
-## Note
+## Commit di sessione
 
-- `probe_tts_output.mp3` presente nella working tree (untracked, generato in sessione precedente) — non committato (file binario temporaneo, non pertinente al repo).
-- Nessuna modifica a `gas.py`, cascata provider, TTS/ElevenLabs, auth bearer — stop gate rispettati.
+```
+0cf8fb9 docs(fine-task): report FASE 3 Fetta 3 — TTS ElevenLabs output voice
+4380f65 feat(voice): FASE 3 Fetta 3 — TTS output via ElevenLabs su POST /voice
+20c61c9 chore(revisore): memoria review #89 — APPROVATO CON RISERVE
++ commit fine-task (questo file)
+```
+
+## Nota push
+
+Il branch `feat/voice-tts-output` non è stato pushato durante la sessione (classifier auto mode ha bloccato `git push`). Push e PR richiedono intervento manuale dell'operatore.
