@@ -1,23 +1,30 @@
 """
-HTTP voice endpoint per GAS — FASE 3, Fetta 1.
+HTTP voice endpoint per GAS — FASE 3, Fette 1+2.
 
 Endpoint: POST /voice
-  Body:    JSON {"prompt": "<testo>"}
+  Body (testo):  JSON {"prompt": "<testo>"}
+  Body (audio):  Content-Type audio/* oppure multipart/form-data con campo 'file'
   Auth:    Header "Authorization: Bearer <token>"
   200:     JSON {"content": "<risposta>"}
-  400:     JSON {"error": "<msg>"}       — prompt mancante/JSON invalido
+  400:     JSON {"error": "<msg>"}       — prompt mancante/JSON invalido / audio vuoto o invalido
   401:     JSON {"error": "Unauthorized"}
+  502:     JSON {"error": "<msg>"}       — errore Groq STT (rete/quota)
+  503:     JSON {"error": "<msg>"}       — STT non disponibile (GROQ_API_KEY assente)
   500:     JSON {"error": "<msg>"}       — errore pipeline o kernel
 
 Configurazione tramite variabili d'ambiente (da .env o export):
   GAS_VOICE_BIND   — bind address  (default: 127.0.0.1)
   GAS_VOICE_PORT   — porta TCP     (default: 8765)
   GAS_VOICE_TOKEN  — token bearer  OBBLIGATORIO: assente/vuoto → il server non parte
+  GROQ_API_KEY     — chiave Groq   OBBLIGATORIO per STT audio; assente → 503 su richieste audio
 
 Sicurezza:
   - Nasce chiuso su 127.0.0.1. Aprire all'esterno SOLO settando GAS_VOICE_BIND.
   - Confronto token a TEMPO COSTANTE via hmac.compare_digest (mai ==).
   - Nessun segreto scritto nei log; ogni tentativo fallito viene loggato con IP + esito.
+  - I byte audio non vengono loggati né scritti su disco in chiaro; la chiave Groq non compare nei log.
+  - CAVEAT PRIVACY: l'audio dell'utente viene inviato ai server Groq (terza parte) per la trascrizione.
+    Trade-off dichiarato: per un agente che tocca dati/lead, questo è egress di dati vocali.
   - Kernel GasKernel istanziato UNA VOLTA all'avvio (stateful, storia condivisa).
   - Single-thread nativo: http.server.HTTPServer senza ThreadingMixIn, nessun lock.
   - Fail-safe §9: eccezione in run_turn → 500 + log in gas_debug.log, server vivo.
@@ -31,6 +38,8 @@ import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from modules.voice.stt import GroqSTTError, parse_audio_body, transcribe_audio
 
 log = logging.getLogger(__name__)
 
@@ -88,16 +97,26 @@ class VoiceHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "Content-Length non valido"})
             return
         raw = self.rfile.read(length) if length > 0 else b""
-        try:
-            data: Dict[str, Any] = json.loads(raw) if raw else {}
-        except (json.JSONDecodeError, ValueError):
-            self._send_json(400, {"error": "Body JSON non valido"})
-            return
 
-        prompt = (data.get("prompt") or "").strip()
-        if not prompt:
-            self._send_json(400, {"error": "Campo 'prompt' mancante o vuoto"})
-            return
+        content_type = self.headers.get("Content-Type", "")
+        ct_base = content_type.split(";")[0].strip().lower()
+        is_audio = ct_base.startswith("audio/") or ct_base == "multipart/form-data"
+
+        if is_audio:
+            prompt = self._do_stt(raw, content_type)
+            if prompt is None:
+                return  # risposta errore già inviata
+        else:
+            try:
+                data: Dict[str, Any] = json.loads(raw) if raw else {}
+            except (json.JSONDecodeError, ValueError):
+                self._send_json(400, {"error": "Body JSON non valido"})
+                return
+
+            prompt = (data.get("prompt") or "").strip()
+            if not prompt:
+                self._send_json(400, {"error": "Campo 'prompt' mancante o vuoto"})
+                return
 
         try:
             result_content: Optional[str] = None
@@ -120,6 +139,43 @@ class VoiceHandler(BaseHTTPRequestHandler):
             return
 
         self._send_json(200, {"content": result_content})
+
+    def _do_stt(self, raw: bytes, content_type: str) -> Optional[str]:
+        """Trascrive audio → testo via Groq Whisper.
+        Invia la risposta HTTP di errore e ritorna None se qualcosa va storto."""
+        api_key = os.environ.get("GROQ_API_KEY", "").strip()
+        if not api_key:
+            self._send_json(503, {"error": "STT non disponibile: GROQ_API_KEY non configurata"})
+            return None
+
+        if not raw:
+            self._send_json(400, {"error": "Audio vuoto"})
+            return None
+
+        try:
+            audio_bytes, filename = parse_audio_body(raw, content_type)
+        except ValueError as exc:
+            self._send_json(400, {"error": f"Audio non valido: {exc}"})
+            return None
+
+        try:
+            text = transcribe_audio(audio_bytes, filename, api_key)
+        except GroqSTTError as exc:
+            if exc.status == 400:
+                self._send_json(400, {"error": f"Formato audio non accettato da Groq: {exc.message}"})
+            else:
+                self._send_json(502, {"error": f"Errore Groq STT: {exc.message}"})
+            return None
+        except OSError as exc:
+            log.warning("Groq STT network error: %s", exc)
+            self._send_json(502, {"error": "Errore di rete verso Groq STT"})
+            return None
+
+        if not text:
+            self._send_json(400, {"error": "Trascrizione vuota (silenzio o formato non supportato)"})
+            return None
+
+        return text
 
     def _method_not_allowed(self) -> None:
         self._send_json(405, {"error": "Method Not Allowed"})
