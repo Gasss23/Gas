@@ -8,14 +8,14 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge PR `sonda/voice-client-env`** — doc-only, nessun codice motore, nessun revisore richiesto.
+1. **Merge PR `sonda/voice-client-env` (PR #72)** — doc-only, nessun codice motore, nessun revisore richiesto. ✅ IP scrubbing eseguito (2026-08-21): invariante gasmerge PASS — pronto per `gasmerge 72`.
 2. **Scelta fetta client vocale**: Fetta 4a (script WSL + ffmpeg, robusto, headless) o Fetta 4b (file HTML5 browser, zero installazioni, prototipo immediato)? Dettaglio in fondo al report.
 
 ---
 
 ## Esito fette/scope
 
-- **Punto 1 — Device audio Giulia/WSL**: `FATTA` — backend WSLg 1.0.73.2, play→Windows testato.
+- **Punto 1 — Device audio Giulia/WSL**: `FATTA` — backend WSLg v1.0.73 build 2, play→Windows testato.
 - **Punto 2 — Librerie cattura/play**: `FATTA` — zero Python audio libs; ffmpeg 6.1.1 unica via.
 - **Punto 3 — D1-ter IP WSL instabile**: `FATTA` — localhost:8765 via WSL2 forwarding (default attivo).
 - **Stop gate — nessun codice scritto**: `RISPETTATO` — solo reports/ modificati.
@@ -26,7 +26,7 @@
 
 ## Punto 1 — Device audio su Giulia/WSL
 
-### Backend rilevato: WSLg 1.0.73.2
+### Backend rilevato: WSLg v1.0.73 build 2
 
 PulseAudio **non gira** come processo Linux (`pulseaudio`/`pipewire`: not running).  
 Il server audio è ospitato lato WSLg (Windows Audio ↔ RDP), raggiungibile via:
@@ -109,10 +109,10 @@ Per un client Python lo strumento corretto resta `subprocess + ffmpeg` (zero dip
 ### Stato corrente
 
 ```
-IP WSL:       172.20.137.213   (dinamico, subnet /20)
+IP WSL:       <IP-WSL redatto> (dinamico, /20)
 Hostname:     Giulia
-Gateway/host: 172.20.128.1   (Windows side)
-DNS/nameserver: 10.255.255.254
+Gateway/host: <gateway redatto>
+DNS/nameserver: <DNS redatto>
 /etc/wsl.conf: [boot] systemd=true; [user] default=gqual
 ```
 
@@ -185,7 +185,7 @@ Fetta 4b (browser HTML5) è la più semplice da prototipare (un file .html stati
 
 | # | Punto | Esito |
 |---|---|---|
-| 1 | Backend audio | WSLg 1.0.73.2, socket PulseServer attivo, play→Windows ✅ testato |
+| 1 | Backend audio | WSLg v1.0.73 build 2, socket PulseServer attivo, play→Windows ✅ testato |
 | 2 | Librerie | Solo ffmpeg (con libpulse). Zero Python audio libs. |
 | 3 | D1-ter IP | `localhost:8765` stabile via WSL2 forwarding (default) |
 | Gate | Nessun codice scritto | ✅ STOP gate rispettato |

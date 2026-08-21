@@ -14,9 +14,9 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Punto 1 — Device audio Giulia/WSL**: `FATTA` — WSLg 1.0.73.2, socket `/mnt/wslg/PulseServer` attivo, play→Windows testato via ffmpeg (exit 0). Dispositivi: PulseAudioRDPSink (output) + PulseAudioRDPSource (input).
+- **Punto 1 — Device audio Giulia/WSL**: `FATTA` — WSLg v1.0.73 build 2, socket `/mnt/wslg/PulseServer` attivo, play→Windows testato via ffmpeg (exit 0). Dispositivi: PulseAudioRDPSink (output) + PulseAudioRDPSource (input).
 - **Punto 2 — Librerie cattura/play disponibili**: `FATTA` — zero Python audio libs nel venv (sounddevice/pyaudio/pydub/playsound tutti assenti). ffmpeg 6.1.1 installato con `--enable-libpulse`: unica via funzionante senza installazioni.
-- **Punto 3 — D1-ter IP WSL instabile**: `FATTA` — IP `172.20.137.213` dinamico; `localhost:8765` raggiungibile da Windows via WSL2 forwarding (default attivo, IP WSL irrilevante per client locale). Opzioni multi-device: `networkingMode=mirrored`, avahi.
+- **Punto 3 — D1-ter IP WSL instabile**: `FATTA` — IP `<IP-WSL redatto> (dinamico, /20)`; `localhost:8765` raggiungibile da Windows via WSL2 forwarding (default attivo, IP WSL irrilevante per client locale). Opzioni multi-device: `networkingMode=mirrored`, avahi.
 - **Stop gate — nessun codice scritto**: `RISPETTATO` — solo `reports/` modificati, nessun file motore toccato.
 
 ---
