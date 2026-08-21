@@ -6,6 +6,24 @@
 
 ---
 
+## DECISIONI UMANE RICHIESTE
+
+1. **Merge PR `sonda/voice-client-env`** — doc-only, nessun codice motore, nessun revisore richiesto.
+2. **Scelta fetta client vocale**: Fetta 4a (script WSL + ffmpeg, robusto, headless) o Fetta 4b (file HTML5 browser, zero installazioni, prototipo immediato)? Dettaglio in fondo al report.
+
+---
+
+## Esito fette/scope
+
+- **Punto 1 — Device audio Giulia/WSL**: `FATTA` — backend WSLg 1.0.73.2, play→Windows testato.
+- **Punto 2 — Librerie cattura/play**: `FATTA` — zero Python audio libs; ffmpeg 6.1.1 unica via.
+- **Punto 3 — D1-ter IP WSL instabile**: `FATTA` — localhost:8765 via WSL2 forwarding (default attivo).
+- **Stop gate — nessun codice scritto**: `RISPETTATO` — solo reports/ modificati.
+
+---
+
+---
+
 ## Punto 1 — Device audio su Giulia/WSL
 
 ### Backend rilevato: WSLg 1.0.73.2
