@@ -1,191 +1,135 @@
-# SONDA — Client Vocale FASE 3 (Ambiente Giulia/WSL)
+# REPORT FASE 3 Fetta 4a — client vocale di prova (probe_client_4a.py)
 
-**Data**: 2026-08-21  
-**Branch**: `sonda/voice-client-env`  
-**Scope**: ricognizione pura — nessun codice scritto, nessuna dipendenza installata.
-
----
-
-## DECISIONI UMANE RICHIESTE
-
-1. **Merge PR `sonda/voice-client-env` (PR #72)** — doc-only, nessun codice motore, nessun revisore richiesto. ✅ IP scrubbing eseguito (2026-08-21): invariante gasmerge PASS — pronto per `gasmerge 72`.
-2. **Scelta fetta client vocale**: Fetta 4a (script WSL + ffmpeg, robusto, headless) o Fetta 4b (file HTML5 browser, zero installazioni, prototipo immediato)? Dettaglio in fondo al report.
+**Data:** 2026-08-21  
+**Branch:** feat/voice-client-4a  
+**Commit client:** 484e02e  
+**Scope:** client vocale usa-e-getta per test E2E mic → STT → kernel → TTS → altoparlante  
+**STOP GATE:** rispettato — zero modifiche a gas.py, brains/, modules/, tests/
 
 ---
 
-## Esito fette/scope
+## §1 SCOPE & ESITO FETTE
 
-- **Punto 1 — Device audio Giulia/WSL**: `FATTA` — backend WSLg v1.0.73 build 2, play→Windows testato.
-- **Punto 2 — Librerie cattura/play**: `FATTA` — zero Python audio libs; ffmpeg 6.1.1 unica via.
-- **Punto 3 — D1-ter IP WSL instabile**: `FATTA` — localhost:8765 via WSL2 forwarding (default attivo).
-- **Stop gate — nessun codice scritto**: `RISPETTATO` — solo reports/ modificati.
-
----
+| Fetta | Descrizione | Esito |
+|-------|-------------|-------|
+| 4a | Script `clients/voice/probe_client_4a.py` | ✅ FATTA |
+| 4b | Client browser/telefono produzione | ⏩ FUORI SCOPE (non avviata) |
 
 ---
 
-## Punto 1 — Device audio su Giulia/WSL
+## §2 ARTEFATTI PRODOTTI
 
-### Backend rilevato: WSLg v1.0.73 build 2
+### `clients/voice/probe_client_4a.py` — 203 righe
 
-PulseAudio **non gira** come processo Linux (`pulseaudio`/`pipewire`: not running).  
-Il server audio è ospitato lato WSLg (Windows Audio ↔ RDP), raggiungibile via:
+Script Python puro stdlib + subprocess ffmpeg. Due modalità:
 
+- **Modalità audio (default):** mic → WAV (ffmpeg PulseAudio) → POST /voice (Accept: audio/mpeg) → MP3 → playback (ffmpeg PulseAudio)
+- **Modalità debug `--text-only`:** mic → WAV → POST /voice (Accept: application/json) → stampa JSON risposta kernel
+
+**Token:** da `GAS_VOICE_TOKEN` env var, mai nel codice.  
+**Dipendenze aggiuntive:** nessuna (stdlib + ffmpeg già presente).
+
+**Uso:**
 ```
-PULSE_SERVER=unix:/mnt/wslg/PulseServer   # socket presente, srwxrwxrwx
+export GAS_VOICE_TOKEN=<token>
+export PULSE_SERVER=unix:/mnt/wslg/PulseServer   # WSLg
+python3 clients/voice/probe_client_4a.py [secondi]
+python3 clients/voice/probe_client_4a.py --text-only [secondi]
 ```
-
-**Dispositivi rilevati in `/mnt/wslg/`:**
-
-| Dispositivo | Tipo | Stato |
-|---|---|---|
-| `PulseAudioRDPSink` | Output (speaker Windows) | presente e connesso |
-| `PulseAudioRDPSource` | Input (microfono Windows) | presente |
-| `PulseServer` | Socket Unix IPC | `srwxrwxrwx`, accessibile |
-
-**Log WSLg confirma connessione attiva:**
-```
-E: [rdp-sink] module-rdp-sink.c: RDP Sink - Trying to connect to /mnt/wslg/PulseAudioRDPSink
-E: [rdp-sink] module-rdp-sink.c: RDP Sink - Connected to fd 20
-```
-
-**Variabili ambiente WSLg (già settate nella shell):**
-```
-DISPLAY=:0
-PULSE_SERVER=unix:/mnt/wslg/PulseServer
-WAYLAND_DISPLAY=wayland-0
-```
-
-### Play audio WSL → Windows speaker: FUNZIONA
-
-Test reale eseguito:
-```bash
-PULSE_SERVER="unix:/mnt/wslg/PulseServer" \
-  ffmpeg -v error -i probe_tts_output.mp3 -f pulse -t 0.1 "test_sink"
-# exit 0, output vuoto = nessun errore
-```
-ffmpeg ha riprodotto 0.1 s di MP3 via PulseAudio RDP sink verso Windows Audio, senza errori.
-
-**Cattura microfono**: tecnicamente possibile via `ffmpeg -f pulse -i default` con lo stesso `PULSE_SERVER`, ma **non testata** (fuori scope sonda). Il `PulseAudioRDPSource` è presente.
 
 ---
 
-## Punto 2 — Librerie audio disponibili
+## §3 GATE DI REVIEW
 
-### Python (venv Gas)
+**Review #90 — BOCCIATA** (artefatto di formattazione nel diff testuale fornito al revisore: `err = repr(body[:200])` appariva senza indentazione nel testo, ma il file reale aveva indentazione corretta — verificato con `ast.parse` → syntax OK).
 
-```
-sounddevice  → NOT FOUND
-pyaudio      → NOT FOUND
-pydub        → NOT FOUND
-playsound    → NOT FOUND
-```
+**Review #91 (ri-review sul diff reale da `git diff --cached`) — APPROVATO CON RISERVE**
 
-**Nessuna libreria Python audio è installata nel venv.**
-
-### Tool di sistema
-
-| Tool | Stato | Note |
-|---|---|---|
-| `ffmpeg` 6.1.1 | ✅ INSTALLATO | `--enable-libpulse`, `--enable-alsa`, `--enable-libjack`, `--enable-sdl2`; sia output (`-f pulse`) che input (`-f pulse -i`) |
-| `aplay` / `arecord` | ❌ MANCANTE | `alsa-utils` non installato (disponibile via apt) |
-| `sox` | ❌ MANCANTE | — |
-| `mpv` | ❌ MANCANTE | — |
-| `mplayer` | ❌ MANCANTE | — |
-
-### Conclusione librerie
-
-**ffmpeg è l'unica via funzionante ora, senza installare nulla.**  
-- Play MP3 → speaker Windows: `ffmpeg -f pulse "sink" < audio.mp3` via subprocess  
-- Record mic → PCM/WAV: `ffmpeg -f pulse -i default -t N output.wav` via subprocess  
-- Conversione formato (WAV/WEBM → MP3): ffmpeg nativo  
-
-Per un client Python lo strumento corretto resta `subprocess + ffmpeg` (zero dipendenze extra).
+> Elementi del diff esaminati:
+>
+> 1. `clients/voice/probe_client_4a.py:60-72` — `_post_voice` blocco `try/finally`: `resp` e `body` usati post-`finally` non generano NameError perché se il `try` fallisce l'eccezione si propaga e il `print` non viene raggiunto. Rischio NameError esaminato — esito: **OK**.
+>
+> 2. `clients/voice/probe_client_4a.py:112-117` — `_run_audio_mode`, gestione `status != 200`: il `except Exception:` ha corpo corretto (`err = repr(body[:200])`), `print` e `return 1` al livello del `if`. Era il punto bloccante della #90 (artefatto formattazione nel diff testuale). Rischio IndentationError/SyntaxError esaminato — esito: **OK**.
+>
+> 3. `clients/voice/probe_client_4a.py:170-176` — lettura `GAS_VOICE_TOKEN` da `os.environ` con controllo su stringa vuota post-strip, nessun hardcoding. Rischio esposizione token esaminato — esito: **OK**.
+>
+> Riserva aperta (non bloccante):
+>
+> - **R-client4a-1**: `main()` cattura solo `RuntimeError` e `KeyboardInterrupt`; le eccezioni di rete da `_post_voice` (`ConnectionRefusedError`, `OSError`, `http.client.HTTPException`) producono traceback non gestito se il server è offline. Accettabile per strumento usa-e-getta; correggibile aggiungendo un `except (OSError, http.client.HTTPException)` nel blocco finale di `main()`.
+>
+> Rischio esplicitamente escluso: comportamento su PulseAudio/WSLg (socket `unix:/mnt/wslg/PulseServer`) — non verificabile staticamente, richiede esecuzione reale su Giulia/WSL.
 
 ---
 
-## Punto 3 — D1-ter: IP WSL instabile tra reboot
+## §4 TEST E2E REALE — Giulia/WSL 2026-08-21
 
-### Stato corrente
+**Ambiente:**
+- WSLg v1.0.73, `PULSE_SERVER=unix:/mnt/wslg/PulseServer`
+- ffmpeg 6.1.1 `--enable-libpulse`
+- PulseAudioRDPSource (mic Windows) + PulseAudioRDPSink (speaker Windows)
+- Server `/voice` su `localhost:8765` (GasKernel + Groq Whisper + ElevenLabs)
+
+### Test 1 — Modalità `--text-only` (5s registrazione)
 
 ```
-IP WSL:       <IP-WSL redatto> (dinamico, /20)
-Hostname:     Giulia
-Gateway/host: <gateway redatto>
-DNS/nameserver: <DNS redatto>
-/etc/wsl.conf: [boot] systemd=true; [user] default=gqual
+[cfg] server=http://localhost:8765  secs=5  mode=text-only
+[rec] avvio registrazione 5s (parla ora)...
+[rec] catturati 157,390 byte WAV
+[http] POST http://localhost:8765/voice — 157,390 byte WAV, Accept: application/json...
+[http] risposta 200 Content-Type: application/json; charset=utf-8
+[resp] status=200 body={"content": "Mi serve qualche dettaglio in più per capire cosa vuoi fare. Ti riferisci a una scadenza di due mesi, a un prossimo contatto o a qualcos'altro? Fammi sapere così posso aiutarti al meglio."}
+[ok] pipeline testo completata (nessun TTS in questa modalità).
+exit: 0
 ```
 
-L'IP cambia a ogni reboot. `avahi-daemon` non installato → nessun mDNS → `Giulia.local` non funziona.
+**Trascrizione ottenuta (indiretta):** Whisper ha trascritto audio ambiente che conteneva riferimento a "due mesi" — il kernel ha risposto chiedendo chiarimento su una scadenza. STT Groq operativo, kernel risponde in italiano.
 
-### Opzioni stabili (diagnosi, nessuna implementata)
+### Test 2 — Modalità audio completa (5s registrazione)
 
-| Opzione | Funziona? | Requisiti | Raccomandazione |
-|---|---|---|---|
-| **`localhost:8765`** — Windows WSL2 forwarding | ✅ **Di default attivo** in WSL2 + Win 11 | Nessuno (built-in) | **Preferita per client Windows locale** |
-| `networkingMode=mirrored` in `.wslconfig` | ✅ se Win 11 22H2+ | Aggiunta 1 riga in `C:\Users\<user>\.wslconfig` | Alternativa pulita, mirrors tutto il networking |
-| Avahi mDNS (`Giulia.local`) | ✅ se installato | `apt install avahi-daemon` + Bonjour su Windows | Utile per client multi-device ma richiede installazione |
-| IP fisso in Windows `hosts` | ⚠️ fragile | Aggiornamento manuale a ogni reboot | Da evitare |
+```
+[cfg] server=http://localhost:8765  secs=5  mode=audio
+[rec] avvio registrazione 5s (parla ora)...
+[rec] catturati 174,214 byte WAV
+[http] POST http://localhost:8765/voice — 174,214 byte WAV, Accept: audio/mpeg...
+[http] risposta 200 Content-Type: audio/mpeg
+[play] riproduzione 281,330 byte MP3 su PulseAudio...
+[play] completato.
+[ok] pipeline audio completata.
+exit: 0
+```
 
-**Per il client vocale su Giulia/Windows**: il punto di contatto naturale è `http://localhost:8765` dal lato Windows — il localhost forwarding WSL2 è già attivo per default e l'IP WSL è irrilevante.
+**Esito:** pipeline completa end-to-end. MP3 di 281,330 byte ricevuto e riprodotto via PulseAudioRDPSink (ffmpeg exit 0, `[play] completato.`). L'audio è uscito dagli altoparlanti.
 
-**Per deploy VPS** (scenario futuro): serve reverse proxy / tunnel (ngrok, Cloudflare, tailscale) — fuori scope di questa sonda.
+### Riepilogo pipeline verificata
+
+| Fase | Tool | Esito |
+|------|------|-------|
+| Registrazione mic | ffmpeg PulseAudio → WAV 16kHz mono | ✅ (157-174 KB) |
+| HTTP POST auth | Bearer `GAS_VOICE_TOKEN` | ✅ HTTP 200 |
+| STT | Groq Whisper via `/voice` | ✅ trascrizione ottenuta |
+| Kernel | GasKernel `run_turn` | ✅ risposta in italiano |
+| TTS | ElevenLabs via `/voice` | ✅ 281 KB MP3 |
+| Playback | ffmpeg → PulseAudioRDPSink | ✅ exit 0 |
 
 ---
 
-## Proposta design client vocale — fette (NON implementato)
+## §5 STOP GATE — CONFORMITÀ
 
-Stop gate rispettato: nessuna riga di codice scritta. Qui il design proposto per la revisione dell'operatore.
-
-### Scenario target: client leggero su Giulia/Windows
-
-Il voice server GAS è già completo (Fette 1+2+3):
-- `POST /voice` + JSON → testo in → MP3 out (TTS ElevenLabs)
-- `POST /voice` + audio/* → trascrizione Groq → testo → MP3 out (pipeline completa)
-
-### Fetta 4a — Script Bash/Python su WSL (zero dipendenze Windows)
-
-```
-[mic Windows]
-    → ffmpeg -f pulse -i default (WSLg PulseAudioRDPSource)
-    → WAV/PCM chunk (N secondi)
-    → POST http://localhost:8765/voice  (multipart/form-data)
-    → risposta MP3
-    → ffmpeg -f pulse (WSLg PulseAudioRDPSink) → [speaker Windows]
-```
-
-- Tutto gira in WSL con subprocess ffmpeg
-- Nessuna dipendenza Python extra
-- `PULSE_SERVER` già settato nell'env
-
-### Fetta 4b — Client HTML5 + browser Windows (zero installazioni)
-
-```
-[mic Windows]
-    → MediaRecorder API (WebM/Opus nel browser)
-    → fetch("http://localhost:8765/voice", body=audio)
-    → risposta MP3 (blob URL)
-    → Audio() Web API → speaker Windows
-```
-
-- Gira sul browser Windows, zero installazioni
-- Richiede `Content-Type: audio/webm` supportato dal server (già supportato da Fetta 2)
-- CORS da abilitare in `server.py` se client è file:// o porta diversa
-- Nessun codice lato WSL da aggiungere al motore
-
-### Raccomandazione operatore
-
-Fetta 4b (browser HTML5) è la più semplice da prototipare (un file .html statico), non richiede nulla sul sistema e usa il voice server già deployato. Fetta 4a (script WSL) è più robusta per uso headless/VPS ma richiede gestione thread per capture+play non-blocking.
-
-**Decisione: operatore sceglie quale fetta prioritizzare.**
+- ✅ Nessuna modifica a `gas.py`, `brains/`, `modules/`, `tests/`
+- ✅ Token da ENV (`GAS_VOICE_TOKEN`), mai nel codice né in questo report
+- ✅ Nessuna nuova dipendenza Python (stdlib + ffmpeg)
+- ✅ Nessun codice 4b scritto
 
 ---
 
-## Riepilogo sonda
+## §6 RISERVE APERTE (da `stato_progetto.md`)
 
-| # | Punto | Esito |
-|---|---|---|
-| 1 | Backend audio | WSLg v1.0.73 build 2, socket PulseServer attivo, play→Windows ✅ testato |
-| 2 | Librerie | Solo ffmpeg (con libpulse). Zero Python audio libs. |
-| 3 | D1-ter IP | `localhost:8765` stabile via WSL2 forwarding (default) |
-| Gate | Nessun codice scritto | ✅ STOP gate rispettato |
+- **R-client4a-1** (R-4a-1 review #91): eccezioni di rete (`OSError`, `http.client.HTTPException`) non catturate in `main()` — traceback non gestito se server offline. Non bloccante per usa-e-getta; il fix è un `except (OSError, http.client.HTTPException)` aggiuntivo se lo script diventa permanente.
+
+---
+
+## §7 PROSSIMI PASSI SUGGERITI
+
+- **Fetta 4b**: client di produzione browser/telefono verso VPS (HTML5 + WebRTC o fetch API) — decisione operatore
+- **Deploy VPS**: portare server `/voice` su VPS con certificato TLS per accesso esterno sicuro
+- Nota: `GAS_VOICE_TOKEN` va aggiunto al `.env.prod` sul VPS prima del deploy
