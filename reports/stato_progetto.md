@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-08-22** (sonda/phantom-pr-bug: sonda ZERO-MODIFICA sul bug "phantom PR" in /fine-task. Root cause isolata: REGOLA §0 in `.claude/commands/fine-task.md:65` non ordina `gh pr list` prima di scrivere il numero PR → AI allucinates numero. Fix proposto in reports/ultimo_report.md §4. Nessun codice modificato.)
+> Ultimo aggiornamento: **2026-08-22** (sonda/phantom-pr-bug: fix phantom PR — REGOLA §0 riscritta con gate bash `gh pr list/create/view`. PR #74 aperta. Riserve R-finegat-1/2 aggiunte.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -58,7 +58,9 @@ Componenti attive:
 
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
-- 🟡 **R-phantom-pr-1** (2026-08-22, sonda/phantom-pr-bug): `/fine-task.md` REGOLA §0 (riga 65) produce "Merge della PR #<numero>" senza mai eseguire `gh pr list` — l'AI allucinates il numero (3 occorrenze il 2026-08-21). Root cause isolata. Fix proposto (snippet bash + riscrittura REGOLA §0) in `reports/ultimo_report.md §4`. NON implementato, attende decisione operatore.
+- ✅ **R-phantom-pr-1 CHIUSO** (2026-08-22, sonda/phantom-pr-bug, review #92 APPROVATO CON RISERVE, PR #74): REGOLA §0 in `.claude/commands/fine-task.md` riscritta con gate bash obbligatorio — `gh pr list --head "$BRANCH" --base main --json number,url` eseguito dopo il push; PR assente → `gh pr create --fill`; gh exit non-zero → "PR NON verificata/creata" + task INCOMPLETO. Numero PR in §0 proveniente ESCLUSIVAMENTE da output JSON di `gh`. Riserve non bloccanti: R-finegat-1 (stderr misto nel JSON capture), R-finegat-2 (pattern non-atomico GH_EXIT).
+- 🟡 **R-finegat-1** (2026-08-22, review #92): `PR_JSON=$(gh pr list ... 2>&1)` — warning stderr con exit 0 produce testo misto non-JSON; python3 lancia `json.JSONDecodeError` non catturata → §0 malformato senza segnale. Fix: `2>/dev/null` nella capture + try/except in python3.
+- 🟡 **R-finegat-2** (2026-08-22, review #92): pattern `GH_EXIT=$?; if [ $GH_EXIT -ne 0 ]` non-atomico (lezione #51); sicuro nel contesto ma da allineare alla forma `if ! PR_JSON=$(gh pr list ...); then`.
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
 - **Riserve aperte residue (R-crm-1b archiviato)** — corpo completo archiviato in `reports/stato_storico.md` (§ Finding chiusi archiviati).

@@ -1,121 +1,71 @@
-# Report — Sonda bug "phantom PR" in /fine-task
-
-**Data:** 2026-08-22  
-**Task:** SONDA ZERO-MODIFICA — individuazione della logica che produce "Merge PR #NN" fantomatica  
-**Branch:** `sonda/phantom-pr-bug`
+# Task — Fix phantom PR bug: riscrittura REGOLA §0 in /fine-task
+**Data:** 2026-08-22
+**Branch:** sonda/phantom-pr-bug
 
 ---
 
-## DECISIONI UMANE RICHIESTE
+## Fette
 
-1. **Approvare il fix proposto** e autorizzare l'implementazione in una fetta successiva (snippet completo in §Punto 4 di questo report).
-2. **Merge della PR** di questo branch (doc-only, nessun gate revisore richiesto).
+- **Fetta 1 — Riscrittura REGOLA §0 in `.claude/commands/fine-task.md`**: `FATTA`
+  REGOLA §0 sostituita con un gate procedurale bash che impone `gh pr list --head "$BRANCH" --base main --json number,url` dopo il push. Tutti i rami coperti: PR esistente → numero da JSON; PR assente → crea con `--fill`, poi `gh pr view` per numero; qualsiasi gh exit non-zero → "PR NON verificata/creata: <errore reale>" + task INCOMPLETO. Vincolo ferreo esplicito: nessun numero hardcoded, nessun placeholder.
 
----
+- **Fetta 2 — TEST A (percorso "crea")**: `FATTA`
+  Branch `sonda/phantom-pr-bug` non aveva PR. Esecuzione verbatim del gate:
+  ```
+  === TEST A: BRANCH=sonda/phantom-pr-bug ===
+  gh pr list exit=0
+  PR_JSON=[]
+  Nessuna PR trovata — creo PR...
+  gh pr create exit=0
+  CREATE_OUT=https://github.com/Gasss23/Gas/pull/74
+  gh pr view exit=0
+  VIEW_JSON={"number":74,"url":"https://github.com/Gasss23/Gas/pull/74"}
+  RISULTATO OK (creata): PR #74 — https://github.com/Gasss23/Gas/pull/74
+  ```
+  Verifica post-test: `gh pr view sonda/phantom-pr-bug --json number,url,state`
+  ```
+  {"number":74,"state":"OPEN","url":"https://github.com/Gasss23/Gas/pull/74"}
+  ```
+  Numero proveniente ESCLUSIVAMENTE da output JSON di `gh`.
 
-## Esito fette/punti scope
+- **Fetta 3 — TEST B (percorso "errore")**: `FATTA`
+  Due sotto-test eseguiti, nessun numero PR fabbricato:
+  ```
+  === TEST B: percorso errore (BRANCH=main) ===
+  GATE §0 BLOCCATO: BRANCH='main' non valido.
+  RISULTATO: PR NON verificata/creata: BRANCH non valido (main).
+  Task: INCOMPLETO
 
-- **Punto 1 — Dove è definito /fine-task**: `FATTA`  
-  File: `.claude/commands/fine-task.md` (238 righe). Unica definizione: slash command e skill puntano allo stesso file.
+  === TEST B2: percorso errore (repo inesistente → gh non-zero) ===
+  gh pr list exit=1
+  PR_JSON=GraphQL: Could not resolve to a Repository with the name 'Gasss23/NonEsiste-XYZ'. (repository)
+  RISULTATO: PR NON verificata/creata: gh pr list exit 1 — GraphQL: Could not resolve to a Repository with the name 'Gasss23/NonEsiste-XYZ'. (repository)
+  Task: INCOMPLETO
+  ```
 
-- **Punto 2 — Logica esatta che produce "Merge PR #NN"**: `FATTA`  
-  `.claude/commands/fine-task.md:65` — REGOLA §0 istruisce l'AI a scrivere il numero PR senza eseguire `gh pr list`. Root cause: pressione bidirezionale (punisce "Nessuna." ma non richiede verifica). Dettaglio in §Punto 2 sotto.
+- **Fetta 4 — Revisione subagent revisore**: `FATTA`
+  Verdetto integrale (review #92):
 
-- **Punto 3 — Sonda ambiente**: `FATTA`  
-  `gh` 2.96.0, autenticato Gasss23, `gh pr list` ritorna `[]` (corretto). Dettaglio in §Punto 3 sotto.
+  **APPROVATO CON RISERVE**
 
-- **Punto 4 — Fix proposto**: `FATTA`  
-  Snippet bash + riscrittura REGOLA §0 proposti. NON implementato per GATE DI STOP BLOCCANTE.
+  Il fix risolve correttamente il bug phantom-PR (R-phantom-pr-1): la REGOLA §0 ora impone l'esecuzione di `gh pr list` prima di scrivere qualsiasi numero in §0, eliminando la possibilità di allucinazione. La logica dei rami (BRANCH non valido / gh fallisce / PR assente / PR esistente) è completa e fail-closed. Il principio "dati reali da `gh`, mai inventati" è rispettato con un VINCOLO FERREO esplicito.
 
-- **Modifiche al codice**: `SALTATA — GATE DI STOP BLOCCANTE` (scope = solo sonda)
+  **R-finegat-1** (non bloccante): `.claude/commands/fine-task.md:78` — `PR_JSON=$(gh pr list ... 2>&1)`. Se `gh` emette un warning su stderr con exit 0, `PR_JSON` contiene testo misto non-JSON. La check `[ "$PR_JSON" = "[]" ]` fallisce, si entra nel ramo PR-già-esistente, python3 a riga 104 lancia `json.JSONDecodeError` non catturata, `PR_NUMBER`/`PR_URL` risultano vuoti, §0 viene scritto malformato senza segnale esplicito. Mitigazione: `2>/dev/null` per la capture JSON + try/except in python3.
 
----
+  **R-finegat-2** (cosmetico): `.claude/commands/fine-task.md:79-80` — `GH_EXIT=$?; if [ $GH_EXIT -ne 0 ]`. Non-atomico per la lezione #51, ma sicuro in questo contesto (nessun comando intermedio). Da allineare alla forma `if ! PR_JSON=$(gh pr list ...); then` per coerenza con il resto del progetto.
 
-## §Punto 2 — Logica esatta che produce "Merge PR #NN"
-
-**File:** `.claude/commands/fine-task.md`  
-**Riga 65** (verbatim):
-```
-"1. Merge della PR #<numero> (<titolo-breve>)."
-```
-
-**Contesto righe 62-66** (verbatim):
-```
-**REGOLA §0**: "Nessuna." è ammesso SOLO se la sessione non lascia nulla in mano
-all'operatore. Se la PR di sessione non è ancora mergiata, §0 deve contenere almeno:
-"1. Merge della PR #<numero> (<titolo-breve>)."
-Scrivere "Nessuna." con una PR aperta è un errore — nasconde lavoro umano richiesto.
-```
-
-**Root cause:** Il template istruisce l'AI su *cosa scrivere* ma **non ordina `gh pr list`** per verificare se la PR esiste. Dopo un push, l'AI:
-1. Legge REGOLA §0: `"Nessuna."` è punita se c'è PR aperta
-2. Sa di aver pushato un branch
-3. Inferisce (erroneamente) che esiste una PR → allucinates il numero
-4. Nessun check meccanico la smentisce → phantom PR nel report
-
----
-
-## §Punto 3 — Sonda ambiente (output REALE)
-
-**`gh --version`:**
-```
-gh version 2.96.0 (2026-07-02)
-```
-
-**`gh auth status`** (token redatto):
-```
-github.com
-  ✓ Logged in to github.com account Gasss23
-  - Active account: true
-  - Git operations protocol: https
-  - Token: [REDACTED]
-  - Token scopes: 'codespace', 'gist', 'read:org', 'repo', 'workflow'
-```
-
-**`gh pr list --head docs/scollega-gashistory-da-r2 --json number,url`:**
-```
-[]
-```
-
-**`gh pr list --json number,url,headRefName,state -L 5`:**
-```
-[]
-```
-
-Conclusione: `gh` disponibile, autenticato, funziona correttamente. Fix fattibile senza dipendenze nuove.
-
----
-
-## §Punto 4 — Fix proposto (NON implementato)
-
-**Dove inserire:** passo 0 di `fine-task.md`, dopo il calcolo di `BASE`, prima di scrivere qualsiasi file.
-
-**Snippet bash:**
-```bash
-# Verifica PR reale — OBBLIGATORIO prima di scrivere §0
-BRANCH=$(git branch --show-current)
-PR_JSON=$(gh pr list --head "$BRANCH" --json number,url,state 2>/dev/null)
-PR_NUMBER=$(echo "$PR_JSON" | python3 -c \
-  "import sys,json; l=json.load(sys.stdin); print(l[0]['number'] if l else '')" \
-  2>/dev/null)
-PR_URL=$(echo "$PR_JSON" | python3 -c \
-  "import sys,json; l=json.load(sys.stdin); print(l[0]['url'] if l else '')" \
-  2>/dev/null)
-echo "PR_NUMBER=${PR_NUMBER:-<nessuna PR aperta>}"
-echo "PR_URL=${PR_URL:-<nessuna PR aperta>}"
-```
-
-**Riscrittura REGOLA §0** (sostituisce righe 62-66 di `fine-task.md`):
-- Se `$PR_NUMBER` VUOTO → scrivere esattamente `"Nessuna."` (corretto, nessuna PR esiste)
-- Se `$PR_NUMBER` valorizzato → `"1. Merge della PR #${PR_NUMBER} — ${PR_URL}"`
-- Scrivere un numero non proveniente dall'output del comando è errore critico (phantom PR).
-
-**Perché funziona:** elimina entrambi i difetti — la penalità su `"Nessuna."` quando è corretta, e il placeholder `#<numero>` che invita all'allucinazione. La variabile `$PR_NUMBER` diventa fonte di verità meccanica.
-
----
+- **Fetta 5 — Aggiornamento reports/stato_progetto.md**: `FATTA`
+  R-phantom-pr-1 chiuso, riserve R-finegat-1/2 aggiunte ai finding aperti.
 
 ## Anomalie
 
-- Nessuna anomalia tecnica nell'ambiente.
-- Il bug è **puramente nel template** (`fine-task.md:65`), non in `gh` né in git/GitHub.
-- Nessun codice modificato in questa sessione (GATE DI STOP rispettato).
+Nessuna.
+
+## Scope superato / proposto / fuori mandato
+
+Nessuno. La riscrittura si è limitata a REGOLA §0 senza toccare altre parti di fine-task.md.
+
+## Riserve aperte da questa sessione
+
+- 🟡 **R-finegat-1** (non bloccante): stderr misto nel JSON capture di `gh pr list`; fix suggerito: `2>/dev/null` + try/except python3.
+- 🟡 **R-finegat-2** (cosmetico): pattern non-atomico `GH_EXIT=$?`; fix: forma `if ! PR_JSON=$(...)`.
