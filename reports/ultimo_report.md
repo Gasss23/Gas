@@ -1,71 +1,76 @@
-# Task — Fix phantom PR bug: riscrittura REGOLA §0 in /fine-task
+# Task — Allineamento voce: stato_progetto.md + ultimo_report.md
 **Data:** 2026-08-22
-**Branch:** sonda/phantom-pr-bug
+**Branch:** main
 
 ---
 
-## Fette
+## Scope
 
-- **Fetta 1 — Riscrittura REGOLA §0 in `.claude/commands/fine-task.md`**: `FATTA`
-  REGOLA §0 sostituita con un gate procedurale bash che impone `gh pr list --head "$BRANCH" --base main --json number,url` dopo il push. Tutti i rami coperti: PR esistente → numero da JSON; PR assente → crea con `--fill`, poi `gh pr view` per numero; qualsiasi gh exit non-zero → "PR NON verificata/creata: <errore reale>" + task INCOMPLETO. Vincolo ferreo esplicito: nessun numero hardcoded, nessun placeholder.
+Riallineamento SOLO dei due report (`stato_progetto.md` e `ultimo_report.md`) alla realtà sulla VOCE.
+Nessun codice motore toccato. Nessun merge. Scope deciso dal supervisore.
 
-- **Fetta 2 — TEST A (percorso "crea")**: `FATTA`
-  Branch `sonda/phantom-pr-bug` non aveva PR. Esecuzione verbatim del gate:
-  ```
-  === TEST A: BRANCH=sonda/phantom-pr-bug ===
-  gh pr list exit=0
-  PR_JSON=[]
-  Nessuna PR trovata — creo PR...
-  gh pr create exit=0
-  CREATE_OUT=https://github.com/Gasss23/Gas/pull/74
-  gh pr view exit=0
-  VIEW_JSON={"number":74,"url":"https://github.com/Gasss23/Gas/pull/74"}
-  RISULTATO OK (creata): PR #74 — https://github.com/Gasss23/Gas/pull/74
-  ```
-  Verifica post-test: `gh pr view sonda/phantom-pr-bug --json number,url,state`
-  ```
-  {"number":74,"state":"OPEN","url":"https://github.com/Gasss23/Gas/pull/74"}
-  ```
-  Numero proveniente ESCLUSIVAMENTE da output JSON di `gh`.
+---
 
-- **Fetta 3 — TEST B (percorso "errore")**: `FATTA`
-  Due sotto-test eseguiti, nessun numero PR fabbricato:
-  ```
-  === TEST B: percorso errore (BRANCH=main) ===
-  GATE §0 BLOCCATO: BRANCH='main' non valido.
-  RISULTATO: PR NON verificata/creata: BRANCH non valido (main).
-  Task: INCOMPLETO
+## Verifica preliminare (step 0)
 
-  === TEST B2: percorso errore (repo inesistente → gh non-zero) ===
-  gh pr list exit=1
-  PR_JSON=GraphQL: Could not resolve to a Repository with the name 'Gasss23/NonEsiste-XYZ'. (repository)
-  RISULTATO: PR NON verificata/creata: gh pr list exit 1 — GraphQL: Could not resolve to a Repository with the name 'Gasss23/NonEsiste-XYZ'. (repository)
-  Task: INCOMPLETO
-  ```
+File voce confermati presenti nel repo (ls -la):
+- `clients/voice/probe_client_4a.py` — 6778 byte, 2026-08-21
+- `modules/voice/server.py` — 11704 byte, 2026-08-20
+- `modules/voice/stt.py` — 5172 byte, 2026-08-20
+- `modules/voice/tts.py` — 2256 byte, 2026-08-20
+- `tests/test_unit_voice_server.py` — 14435 byte
+- `tests/test_unit_voice_stt.py` — 16383 byte
+- `tests/test_unit_voice_tts.py` — 12969 byte
 
-- **Fetta 4 — Revisione subagent revisore**: `FATTA`
-  Verdetto integrale (review #92):
+PR chiuse verificate via git log: #73 (feat/voice-client-4a), #72 (sonda/voice-client-env), #71 (feat/voice-tts-output) su main.
 
-  **APPROVATO CON RISERVE**
+---
 
-  Il fix risolve correttamente il bug phantom-PR (R-phantom-pr-1): la REGOLA §0 ora impone l'esecuzione di `gh pr list` prima di scrivere qualsiasi numero in §0, eliminando la possibilità di allucinazione. La logica dei rami (BRANCH non valido / gh fallisce / PR assente / PR esistente) è completa e fail-closed. Il principio "dati reali da `gh`, mai inventati" è rispettato con un VINCOLO FERREO esplicito.
+## Gap rilevati vs realtà
 
-  **R-finegat-1** (non bloccante): `.claude/commands/fine-task.md:78` — `PR_JSON=$(gh pr list ... 2>&1)`. Se `gh` emette un warning su stderr con exit 0, `PR_JSON` contiene testo misto non-JSON. La check `[ "$PR_JSON" = "[]" ]` fallisce, si entra nel ramo PR-già-esistente, python3 a riga 104 lancia `json.JSONDecodeError` non catturata, `PR_NUMBER`/`PR_URL` risultano vuoti, §0 viene scritto malformato senza segnale esplicito. Mitigazione: `2>/dev/null` per la capture JSON + try/except in python3.
+**Già corretto in stato_progetto.md:**
+- ✅ FASE 3 Fetta 4a presente come completata
+- R-client4a-1 e R-tts-1 già tracciati come 🟡 aperti
 
-  **R-finegat-2** (cosmetico): `.claude/commands/fine-task.md:79-80` — `GH_EXIT=$?; if [ $GH_EXIT -ne 0 ]`. Non-atomico per la lezione #51, ma sicuro in questo contesto (nessun comando intermedio). Da allineare alla forma `if ! PR_JSON=$(gh pr list ...); then` per coerenza con il resto del progetto.
+**Gap reali corretti in questa sessione:**
 
-- **Fetta 5 — Aggiornamento reports/stato_progetto.md**: `FATTA`
-  R-phantom-pr-1 chiuso, riserve R-finegat-1/2 aggiunte ai finding aperti.
+1. **Milestone ATTESTATO DAL SUPERVISORE mancante**: aggiunto dopo il blocco Fetta 4a nel §Stato motore, con etichetta esplicita "non verificato da Claude Code".
+2. **Finding "kernel rifiuta 7×8" assente**: aggiunto come 🟡 aperto in §Finding aperti.
+3. **Finding "rotazione chiave ElevenLabs prima del VPS" assente**: aggiunto come 🟡 aperto in §Finding aperti, con cross-ref al rischio esposizione 2026-08-02.
+4. **§Prossimi passi stale**: FASE 3 ancora etichettata "_(pipeline da costruire)_" → aggiornata a "Fette 1+2+3+4a ✅ su main, gate 4b APERTO".
+5. **§Componenti attive stale**: citava solo "Fetta 1+2" → aggiornata a "Fette 1+2+3+4a" con TTS + client.
+
+---
+
+## Modifiche apportate
+
+### reports/stato_progetto.md
+
+1. **§Stato motore — dopo Fetta 4a**: aggiunto milestone:
+   > **⭐ ATTESTATO DAL SUPERVISORE (2026-08-22) — prova a VOCE UMANA REALE superata (WSL)**: mic→STT→kernel→TTS→casse. text-only: STT ha reso `'sette per otto'` → `'7×8'`. audio: `200 audio/mpeg`, MP3 riprodotto, giro completo. Debito 4a "Gas capisce il parlato" CHIUSO. Gate per 4b APERTO. (Test manuale fuori repo, non verificato da Claude Code.)
+
+2. **§Finding aperti — nuovi 🟡**: 
+   - `Rotazione chiave ElevenLabs prima del VPS` (ATTESTATO DAL SUPERVISORE, 2026-08-22)
+   - `kernel rifiuta 7×8` (ATTESTATO DAL SUPERVISORE, 2026-08-22)
+
+3. **§Componenti attive**: riga voice endpoint estesa a Fette 1+2+3+4a con TTS e client.
+
+4. **§Prossimi passi**: FASE 3 aggiornata da "pipeline da costruire" a "Fette 1+2+3+4a ✅ su main, gate 4b APERTO".
+
+### reports/ultimo_report.md
+
+Riscritto (questo file) con il report del task corrente.
+
+---
 
 ## Anomalie
 
-Nessuna.
+Nessuna. Tutte le discrepanze erano esclusivamente documentali (zero codice motore toccato).
 
 ## Scope superato / proposto / fuori mandato
 
-Nessuno. La riscrittura si è limitata a REGOLA §0 senza toccare altre parti di fine-task.md.
+Nessuno. Toccati SOLO i due report indicati dallo scope. Codice motore, altri file, merge: invariati.
 
-## Riserve aperte da questa sessione
+## Riserve aperte da questo task
 
-- 🟡 **R-finegat-1** (non bloccante): stderr misto nel JSON capture di `gh pr list`; fix suggerito: `2>/dev/null` + try/except python3.
-- 🟡 **R-finegat-2** (cosmetico): pattern non-atomico `GH_EXIT=$?`; fix: forma `if ! PR_JSON=$(...)`.
+Nessuna nuova. Le riserve trovate (R-client4a-1, R-tts-1, rotazione ElevenLabs, kernel 7×8) erano già il contenuto da registrare — sono state aggiunte a §Finding aperti come richiesto, NON chiuse.
