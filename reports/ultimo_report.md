@@ -8,32 +8,38 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Approvare il fix proposto** e autorizzare l'implementazione in una fetta successiva (snippet completo in §4 di questo report).
+1. **Approvare il fix proposto** e autorizzare l'implementazione in una fetta successiva (snippet completo in §Punto 4 di questo report).
+2. **Merge della PR** di questo branch (doc-only, nessun gate revisore richiesto).
 
 ---
 
-## Fette / punti scope
+## Esito fette/punti scope
 
-### Punto 1 — Dove è definito /fine-task
+- **Punto 1 — Dove è definito /fine-task**: `FATTA`  
+  File: `.claude/commands/fine-task.md` (238 righe). Unica definizione: slash command e skill puntano allo stesso file.
 
-**FATTO.**
+- **Punto 2 — Logica esatta che produce "Merge PR #NN"**: `FATTA`  
+  `.claude/commands/fine-task.md:65` — REGOLA §0 istruisce l'AI a scrivere il numero PR senza eseguire `gh pr list`. Root cause: pressione bidirezionale (punisce "Nessuna." ma non richiede verifica). Dettaglio in §Punto 2 sotto.
 
-File: `/home/gqual/Gas/.claude/commands/fine-task.md` (238 righe)  
-È l'unica definizione: sia il custom slash command del progetto sia il skill `fine-task` puntano a questo file.
+- **Punto 3 — Sonda ambiente**: `FATTA`  
+  `gh` 2.96.0, autenticato Gasss23, `gh pr list` ritorna `[]` (corretto). Dettaglio in §Punto 3 sotto.
+
+- **Punto 4 — Fix proposto**: `FATTA`  
+  Snippet bash + riscrittura REGOLA §0 proposti. NON implementato per GATE DI STOP BLOCCANTE.
+
+- **Modifiche al codice**: `SALTATA — GATE DI STOP BLOCCANTE` (scope = solo sonda)
 
 ---
 
-### Punto 2 — Logica esatta che produce "Merge PR #NN"
-
-**FATTO.** Stringa trovata verbatim:
+## §Punto 2 — Logica esatta che produce "Merge PR #NN"
 
 **File:** `.claude/commands/fine-task.md`  
-**Riga 65:**
+**Riga 65** (verbatim):
 ```
 "1. Merge della PR #<numero> (<titolo-breve>)."
 ```
 
-**Contesto (righe 62-66):**
+**Contesto righe 62-66** (verbatim):
 ```
 **REGOLA §0**: "Nessuna." è ammesso SOLO se la sessione non lascia nulla in mano
 all'operatore. Se la PR di sessione non è ancora mergiata, §0 deve contenere almeno:
@@ -41,26 +47,19 @@ all'operatore. Se la PR di sessione non è ancora mergiata, §0 deve contenere a
 Scrivere "Nessuna." con una PR aperta è un errore — nasconde lavoro umano richiesto.
 ```
 
-**Root cause:**  
-Il template istruisce l'AI su *cosa scrivere* ("Merge della PR #<numero>") ma **non contiene nessuna istruzione** a eseguire `gh pr list --head <branch>` per verificare se una PR esiste davvero. Dopo aver pushato un branch, l'AI:
-
-1. Legge REGOLA §0: `"Nessuna." è un errore se c'è una PR aperta`
-2. Sa di aver appena pushato un branch
-3. Inferisce (erroneamente) che "deve esserci una PR" e **allucinates un numero**
-4. Nessun check meccanico la smentisce → phantom PR stampata nel report
-
-La pressione è bidirezionale: la regola **punisce** `"Nessuna."` quando una PR esiste, ma **non richiede alcuna verifica** prima di scrivere un numero. Il risultato è che l'AI preferisce allucinare un numero piuttosto che rischiare di scrivere "Nessuna." sbagliato.
+**Root cause:** Il template istruisce l'AI su *cosa scrivere* ma **non ordina `gh pr list`** per verificare se la PR esiste. Dopo un push, l'AI:
+1. Legge REGOLA §0: `"Nessuna."` è punita se c'è PR aperta
+2. Sa di aver pushato un branch
+3. Inferisce (erroneamente) che esiste una PR → allucinates il numero
+4. Nessun check meccanico la smentisce → phantom PR nel report
 
 ---
 
-### Punto 3 — Sonda ambiente (output REALE)
-
-**FATTO.**
+## §Punto 3 — Sonda ambiente (output REALE)
 
 **`gh --version`:**
 ```
 gh version 2.96.0 (2026-07-02)
-https://github.com/cli/cli/releases/tag/v2.96.0
 ```
 
 **`gh auth status`** (token redatto):
@@ -77,26 +76,21 @@ github.com
 ```
 []
 ```
-(branch remoto esistente, nessuna PR aperta → output `[]` corretto)
 
 **`gh pr list --json number,url,headRefName,state -L 5`:**
 ```
 []
 ```
-(nessuna PR aperta in questo momento)
 
-**Conclusione ambiente:** `gh` è disponibile, autenticato, e funziona correttamente. Il comando ritorna `[]` quando nessuna PR esiste. Il fix è fattibile senza dipendenze nuove.
+Conclusione: `gh` disponibile, autenticato, funziona correttamente. Fix fattibile senza dipendenze nuove.
 
 ---
 
-### Punto 4 — Fix proposto (NON implementato)
+## §Punto 4 — Fix proposto (NON implementato)
 
-**FATTO — proposta solo testuale.**
+**Dove inserire:** passo 0 di `fine-task.md`, dopo il calcolo di `BASE`, prima di scrivere qualsiasi file.
 
-**Dove inserire il fix:** nel passo 0 di `/fine-task.md`, dopo il calcolo di `BASE` e prima di scrivere qualsiasi file.
-
-**Snippet bash da aggiungere:**
-
+**Snippet bash:**
 ```bash
 # Verifica PR reale — OBBLIGATORIO prima di scrivere §0
 BRANCH=$(git branch --show-current)
@@ -111,25 +105,17 @@ echo "PR_NUMBER=${PR_NUMBER:-<nessuna PR aperta>}"
 echo "PR_URL=${PR_URL:-<nessuna PR aperta>}"
 ```
 
-**Riscrittura REGOLA §0** (da sostituire alle righe 62-66):
+**Riscrittura REGOLA §0** (sostituisce righe 62-66 di `fine-task.md`):
+- Se `$PR_NUMBER` VUOTO → scrivere esattamente `"Nessuna."` (corretto, nessuna PR esiste)
+- Se `$PR_NUMBER` valorizzato → `"1. Merge della PR #${PR_NUMBER} — ${PR_URL}"`
+- Scrivere un numero non proveniente dall'output del comando è errore critico (phantom PR).
 
-```
-**REGOLA §0**: Prima di scrivere questa sezione, esegui il blocco bash di verifica PR
-(passo 0 sotto). USA SOLO i valori restituiti da quel comando — mai un numero inventato.
-
-- Se `$PR_NUMBER` è VUOTO → scrivi esattamente: "Nessuna."
-- Se `$PR_NUMBER` è valorizzato → scrivi: "1. Merge della PR #${PR_NUMBER} — ${PR_URL}"
-
-Scrivere "Nessuna." quando `$PR_NUMBER` è vuoto è CORRETTO (nessuna PR esiste).
-Scrivere un numero non proveniente dall'output del comando è un errore critico (phantom PR).
-```
-
-**Perché funziona:** la regola attuale ha due difetti gemelli — punisce `"Nessuna."` senza dare un modo meccanico per sapere se è giustificata, e fornisce un placeholder `#<numero>` che invita all'allucinazione. Il fix elimina entrambi: la variabile `$PR_NUMBER` è la fonte di verità (vuota = nessuna PR, valorizzata = PR reale), e la regola riscritta rimuove la penalità su `"Nessuna."` quando è corretta.
+**Perché funziona:** elimina entrambi i difetti — la penalità su `"Nessuna."` quando è corretta, e il placeholder `#<numero>` che invita all'allucinazione. La variabile `$PR_NUMBER` diventa fonte di verità meccanica.
 
 ---
 
 ## Anomalie
 
 - Nessuna anomalia tecnica nell'ambiente.
-- Confermato: il bug è **puramente nel template** (fine-task.md), non in gh né nel sistema git/GitHub.
-- Nessuna modifica al codice in questa sessione.
+- Il bug è **puramente nel template** (`fine-task.md:65`), non in `gh` né in git/GitHub.
+- Nessun codice modificato in questa sessione (GATE DI STOP rispettato).
