@@ -1,12 +1,18 @@
-# Diff sessione — 2026-08-22 (sonda/phantom-pr-bug — fix REGOLA §0)
+# Diff sessione — 2026-08-22
 
-File toccati in questa sessione:
+Task: Allineamento voce — stato_progetto.md + ultimo_report.md
 
-- `.claude/commands/fine-task.md` — REGOLA §0 riscritta: sostituito testo descrittivo con gate procedurale bash che verifica/crea PR via `gh` e usa SOLO l'output JSON per il numero PR.
-- `.claude/agents/memoria_revisore.md` — review #92 aggiunta dal subagent revisore (commit `b7db11e`).
-- `reports/ultimo_report.md` — report task corrente.
-- `reports/diff_sessione.md` — questo file.
-- `reports/stato_progetto.md` — R-phantom-pr-1 chiuso, riserve R-finegat-1/2 aggiunte.
-- `reports/handoff.md` — dossier fine sessione.
+## File toccati
 
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+| File | Cosa è cambiato |
+|------|----------------|
+| `reports/stato_progetto.md` | 4 edit voce: milestone ATTESTATO DAL SUPERVISORE 2026-08-22; finding "kernel rifiuta 7×8" e "rotazione chiave ElevenLabs pre-VPS" come 🟡 aperti; §Componenti attive estesa a Fette 1+2+3+4a; §Prossimi passi FASE 3 da "pipeline da costruire" a "Fette 1+2+3+4a ✅, gate 4b APERTO". |
+| `reports/ultimo_report.md` | Riscritto con report del task corrente (allineamento voce). |
+| `reports/handoff.md` | Riscritto con dossier fine sessione corrente. |
+| `reports/diff_sessione.md` | Questo file — riscritto a ogni sessione. |
+
+## Note
+
+- Zero codice motore toccato.
+- Branch: `docs/voice-align-stato-2026-08-22`, PR #75.
+- Merge: azione umana da WSL.
