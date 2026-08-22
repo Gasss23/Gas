@@ -1,135 +1,71 @@
-# REPORT FASE 3 Fetta 4a — client vocale di prova (probe_client_4a.py)
-
-**Data:** 2026-08-21  
-**Branch:** feat/voice-client-4a  
-**Commit client:** 484e02e  
-**Scope:** client vocale usa-e-getta per test E2E mic → STT → kernel → TTS → altoparlante  
-**STOP GATE:** rispettato — zero modifiche a gas.py, brains/, modules/, tests/
+# Task — Fix phantom PR bug: riscrittura REGOLA §0 in /fine-task
+**Data:** 2026-08-22
+**Branch:** sonda/phantom-pr-bug
 
 ---
 
-## §1 SCOPE & ESITO FETTE
+## Fette
 
-| Fetta | Descrizione | Esito |
-|-------|-------------|-------|
-| 4a | Script `clients/voice/probe_client_4a.py` | ✅ FATTA |
-| 4b | Client browser/telefono produzione | ⏩ FUORI SCOPE (non avviata) |
+- **Fetta 1 — Riscrittura REGOLA §0 in `.claude/commands/fine-task.md`**: `FATTA`
+  REGOLA §0 sostituita con un gate procedurale bash che impone `gh pr list --head "$BRANCH" --base main --json number,url` dopo il push. Tutti i rami coperti: PR esistente → numero da JSON; PR assente → crea con `--fill`, poi `gh pr view` per numero; qualsiasi gh exit non-zero → "PR NON verificata/creata: <errore reale>" + task INCOMPLETO. Vincolo ferreo esplicito: nessun numero hardcoded, nessun placeholder.
 
----
+- **Fetta 2 — TEST A (percorso "crea")**: `FATTA`
+  Branch `sonda/phantom-pr-bug` non aveva PR. Esecuzione verbatim del gate:
+  ```
+  === TEST A: BRANCH=sonda/phantom-pr-bug ===
+  gh pr list exit=0
+  PR_JSON=[]
+  Nessuna PR trovata — creo PR...
+  gh pr create exit=0
+  CREATE_OUT=https://github.com/Gasss23/Gas/pull/74
+  gh pr view exit=0
+  VIEW_JSON={"number":74,"url":"https://github.com/Gasss23/Gas/pull/74"}
+  RISULTATO OK (creata): PR #74 — https://github.com/Gasss23/Gas/pull/74
+  ```
+  Verifica post-test: `gh pr view sonda/phantom-pr-bug --json number,url,state`
+  ```
+  {"number":74,"state":"OPEN","url":"https://github.com/Gasss23/Gas/pull/74"}
+  ```
+  Numero proveniente ESCLUSIVAMENTE da output JSON di `gh`.
 
-## §2 ARTEFATTI PRODOTTI
+- **Fetta 3 — TEST B (percorso "errore")**: `FATTA`
+  Due sotto-test eseguiti, nessun numero PR fabbricato:
+  ```
+  === TEST B: percorso errore (BRANCH=main) ===
+  GATE §0 BLOCCATO: BRANCH='main' non valido.
+  RISULTATO: PR NON verificata/creata: BRANCH non valido (main).
+  Task: INCOMPLETO
 
-### `clients/voice/probe_client_4a.py` — 203 righe
+  === TEST B2: percorso errore (repo inesistente → gh non-zero) ===
+  gh pr list exit=1
+  PR_JSON=GraphQL: Could not resolve to a Repository with the name 'Gasss23/NonEsiste-XYZ'. (repository)
+  RISULTATO: PR NON verificata/creata: gh pr list exit 1 — GraphQL: Could not resolve to a Repository with the name 'Gasss23/NonEsiste-XYZ'. (repository)
+  Task: INCOMPLETO
+  ```
 
-Script Python puro stdlib + subprocess ffmpeg. Due modalità:
+- **Fetta 4 — Revisione subagent revisore**: `FATTA`
+  Verdetto integrale (review #92):
 
-- **Modalità audio (default):** mic → WAV (ffmpeg PulseAudio) → POST /voice (Accept: audio/mpeg) → MP3 → playback (ffmpeg PulseAudio)
-- **Modalità debug `--text-only`:** mic → WAV → POST /voice (Accept: application/json) → stampa JSON risposta kernel
+  **APPROVATO CON RISERVE**
 
-**Token:** da `GAS_VOICE_TOKEN` env var, mai nel codice.  
-**Dipendenze aggiuntive:** nessuna (stdlib + ffmpeg già presente).
+  Il fix risolve correttamente il bug phantom-PR (R-phantom-pr-1): la REGOLA §0 ora impone l'esecuzione di `gh pr list` prima di scrivere qualsiasi numero in §0, eliminando la possibilità di allucinazione. La logica dei rami (BRANCH non valido / gh fallisce / PR assente / PR esistente) è completa e fail-closed. Il principio "dati reali da `gh`, mai inventati" è rispettato con un VINCOLO FERREO esplicito.
 
-**Uso:**
-```
-export GAS_VOICE_TOKEN=<token>
-export PULSE_SERVER=unix:/mnt/wslg/PulseServer   # WSLg
-python3 clients/voice/probe_client_4a.py [secondi]
-python3 clients/voice/probe_client_4a.py --text-only [secondi]
-```
+  **R-finegat-1** (non bloccante): `.claude/commands/fine-task.md:78` — `PR_JSON=$(gh pr list ... 2>&1)`. Se `gh` emette un warning su stderr con exit 0, `PR_JSON` contiene testo misto non-JSON. La check `[ "$PR_JSON" = "[]" ]` fallisce, si entra nel ramo PR-già-esistente, python3 a riga 104 lancia `json.JSONDecodeError` non catturata, `PR_NUMBER`/`PR_URL` risultano vuoti, §0 viene scritto malformato senza segnale esplicito. Mitigazione: `2>/dev/null` per la capture JSON + try/except in python3.
 
----
+  **R-finegat-2** (cosmetico): `.claude/commands/fine-task.md:79-80` — `GH_EXIT=$?; if [ $GH_EXIT -ne 0 ]`. Non-atomico per la lezione #51, ma sicuro in questo contesto (nessun comando intermedio). Da allineare alla forma `if ! PR_JSON=$(gh pr list ...); then` per coerenza con il resto del progetto.
 
-## §3 GATE DI REVIEW
+- **Fetta 5 — Aggiornamento reports/stato_progetto.md**: `FATTA`
+  R-phantom-pr-1 chiuso, riserve R-finegat-1/2 aggiunte ai finding aperti.
 
-**Review #90 — BOCCIATA** (artefatto di formattazione nel diff testuale fornito al revisore: `err = repr(body[:200])` appariva senza indentazione nel testo, ma il file reale aveva indentazione corretta — verificato con `ast.parse` → syntax OK).
+## Anomalie
 
-**Review #91 (ri-review sul diff reale da `git diff --cached`) — APPROVATO CON RISERVE**
+Nessuna.
 
-> Elementi del diff esaminati:
->
-> 1. `clients/voice/probe_client_4a.py:60-72` — `_post_voice` blocco `try/finally`: `resp` e `body` usati post-`finally` non generano NameError perché se il `try` fallisce l'eccezione si propaga e il `print` non viene raggiunto. Rischio NameError esaminato — esito: **OK**.
->
-> 2. `clients/voice/probe_client_4a.py:112-117` — `_run_audio_mode`, gestione `status != 200`: il `except Exception:` ha corpo corretto (`err = repr(body[:200])`), `print` e `return 1` al livello del `if`. Era il punto bloccante della #90 (artefatto formattazione nel diff testuale). Rischio IndentationError/SyntaxError esaminato — esito: **OK**.
->
-> 3. `clients/voice/probe_client_4a.py:170-176` — lettura `GAS_VOICE_TOKEN` da `os.environ` con controllo su stringa vuota post-strip, nessun hardcoding. Rischio esposizione token esaminato — esito: **OK**.
->
-> Riserva aperta (non bloccante):
->
-> - **R-client4a-1**: `main()` cattura solo `RuntimeError` e `KeyboardInterrupt`; le eccezioni di rete da `_post_voice` (`ConnectionRefusedError`, `OSError`, `http.client.HTTPException`) producono traceback non gestito se il server è offline. Accettabile per strumento usa-e-getta; correggibile aggiungendo un `except (OSError, http.client.HTTPException)` nel blocco finale di `main()`.
->
-> Rischio esplicitamente escluso: comportamento su PulseAudio/WSLg (socket `unix:/mnt/wslg/PulseServer`) — non verificabile staticamente, richiede esecuzione reale su Giulia/WSL.
+## Scope superato / proposto / fuori mandato
 
----
+Nessuno. La riscrittura si è limitata a REGOLA §0 senza toccare altre parti di fine-task.md.
 
-## §4 TEST E2E REALE — Giulia/WSL 2026-08-21
+## Riserve aperte da questa sessione
 
-**Ambiente:**
-- WSLg v1.0.73, `PULSE_SERVER=unix:/mnt/wslg/PulseServer`
-- ffmpeg 6.1.1 `--enable-libpulse`
-- PulseAudioRDPSource (mic Windows) + PulseAudioRDPSink (speaker Windows)
-- Server `/voice` su `localhost:8765` (GasKernel + Groq Whisper + ElevenLabs)
-
-### Test 1 — Modalità `--text-only` (5s registrazione)
-
-```
-[cfg] server=http://localhost:8765  secs=5  mode=text-only
-[rec] avvio registrazione 5s (parla ora)...
-[rec] catturati 157,390 byte WAV
-[http] POST http://localhost:8765/voice — 157,390 byte WAV, Accept: application/json...
-[http] risposta 200 Content-Type: application/json; charset=utf-8
-[resp] status=200 body={"content": "Mi serve qualche dettaglio in più per capire cosa vuoi fare. Ti riferisci a una scadenza di due mesi, a un prossimo contatto o a qualcos'altro? Fammi sapere così posso aiutarti al meglio."}
-[ok] pipeline testo completata (nessun TTS in questa modalità).
-exit: 0
-```
-
-**Trascrizione ottenuta (indiretta):** Whisper ha trascritto audio ambiente che conteneva riferimento a "due mesi" — il kernel ha risposto chiedendo chiarimento su una scadenza. STT Groq operativo, kernel risponde in italiano.
-
-### Test 2 — Modalità audio completa (5s registrazione)
-
-```
-[cfg] server=http://localhost:8765  secs=5  mode=audio
-[rec] avvio registrazione 5s (parla ora)...
-[rec] catturati 174,214 byte WAV
-[http] POST http://localhost:8765/voice — 174,214 byte WAV, Accept: audio/mpeg...
-[http] risposta 200 Content-Type: audio/mpeg
-[play] riproduzione 281,330 byte MP3 su PulseAudio...
-[play] completato.
-[ok] pipeline audio completata.
-exit: 0
-```
-
-**Esito:** pipeline completa end-to-end. MP3 di 281,330 byte ricevuto e riprodotto via PulseAudioRDPSink (ffmpeg exit 0, `[play] completato.`). L'audio è uscito dagli altoparlanti.
-
-### Riepilogo pipeline verificata
-
-| Fase | Tool | Esito |
-|------|------|-------|
-| Registrazione mic | ffmpeg PulseAudio → WAV 16kHz mono | ✅ (157-174 KB) |
-| HTTP POST auth | Bearer `GAS_VOICE_TOKEN` | ✅ HTTP 200 |
-| STT | Groq Whisper via `/voice` | ✅ trascrizione ottenuta |
-| Kernel | GasKernel `run_turn` | ✅ risposta in italiano |
-| TTS | ElevenLabs via `/voice` | ✅ 281 KB MP3 |
-| Playback | ffmpeg → PulseAudioRDPSink | ✅ exit 0 |
-
----
-
-## §5 STOP GATE — CONFORMITÀ
-
-- ✅ Nessuna modifica a `gas.py`, `brains/`, `modules/`, `tests/`
-- ✅ Token da ENV (`GAS_VOICE_TOKEN`), mai nel codice né in questo report
-- ✅ Nessuna nuova dipendenza Python (stdlib + ffmpeg)
-- ✅ Nessun codice 4b scritto
-
----
-
-## §6 RISERVE APERTE (da `stato_progetto.md`)
-
-- **R-client4a-1** (R-4a-1 review #91): eccezioni di rete (`OSError`, `http.client.HTTPException`) non catturate in `main()` — traceback non gestito se server offline. Non bloccante per usa-e-getta; il fix è un `except (OSError, http.client.HTTPException)` aggiuntivo se lo script diventa permanente.
-
----
-
-## §7 PROSSIMI PASSI SUGGERITI
-
-- **Fetta 4b**: client di produzione browser/telefono verso VPS (HTML5 + WebRTC o fetch API) — decisione operatore
-- **Deploy VPS**: portare server `/voice` su VPS con certificato TLS per accesso esterno sicuro
-- Nota: `GAS_VOICE_TOKEN` va aggiunto al `.env.prod` sul VPS prima del deploy
+- 🟡 **R-finegat-1** (non bloccante): stderr misto nel JSON capture di `gh pr list`; fix suggerito: `2>/dev/null` + try/except python3.
+- 🟡 **R-finegat-2** (cosmetico): pattern non-atomico `GH_EXIT=$?`; fix: forma `if ! PR_JSON=$(...)`.

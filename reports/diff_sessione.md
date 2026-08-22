@@ -1,12 +1,12 @@
-# DIFF SESSIONE — 2026-08-21 (feat/voice-client-4a)
+# Diff sessione — 2026-08-22 (sonda/phantom-pr-bug — fix REGOLA §0)
 
-File toccati in questa sessione (da `git diff --stat BASE..HEAD`, BASE=f7ad0d8):
+File toccati in questa sessione:
 
-| File | Variazione | Motivo |
-|------|-----------|--------|
-| `clients/voice/probe_client_4a.py` | +203 righe (nuovo) | Client vocale prova FASE 3 Fetta 4a: mic→WAV→/voice→MP3→altoparlante via ffmpeg+PulseAudio+stdlib |
-| `.claude/agents/memoria_revisore.md` | +2 righe | Voci review #90 (BOCCIATO) e #91 (APPROVATO CON RISERVE) aggiunte dal subagent revisore |
-| `reports/stato_progetto.md` | +2 righe nette | ✅ Fetta 4a aggiunta, R-client4a-1 tracciata |
-| `reports/ultimo_report.md` | +234/-145 righe | Riscritto: report Fetta 4a con esito E2E, verdetti revisore verbatim, log test reali |
+- `.claude/commands/fine-task.md` — REGOLA §0 riscritta: sostituito testo descrittivo con gate procedurale bash che verifica/crea PR via `gh` e usa SOLO l'output JSON per il numero PR.
+- `.claude/agents/memoria_revisore.md` — review #92 aggiunta dal subagent revisore (commit `b7db11e`).
+- `reports/ultimo_report.md` — report task corrente.
+- `reports/diff_sessione.md` — questo file.
+- `reports/stato_progetto.md` — R-phantom-pr-1 chiuso, riserve R-finegat-1/2 aggiunte.
+- `reports/handoff.md` — dossier fine sessione.
 
-Nota: `reports/handoff.md` e `reports/diff_sessione.md` compaiono solo nel commit di fine-task, non nel log sopra (non ancora in HEAD al momento del diff).
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

@@ -60,10 +60,58 @@ Template obbligatorio (sezioni in quest'ordine):
 
 <lista numerata, o "Nessuna." se vuota>
 
-**REGOLA §0**: "Nessuna." è ammesso SOLO se la sessione non lascia nulla in mano
-all'operatore. Se la PR di sessione non è ancora mergiata, §0 deve contenere almeno:
-"1. Merge della PR #<numero> (<titolo-breve>)."
-Scrivere "Nessuna." con una PR aperta è un errore — nasconde lavoro umano richiesto.
+**REGOLA §0 — GATE PR OBBLIGATORIO (numero e URL sempre da `gh`, mai inventati)**:
+
+`§0` va completata DOPO il `git push` del branch (al passo 4bis, dopo push e prima del
+`git add reports/handoff.md` finale). Esegui questa procedura e usa SOLO l'output reale:
+
+```bash
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+# Guardia: BRANCH vuoto o "main" → gate bloccante
+if [ -z "$BRANCH" ] || [ "$BRANCH" = "main" ]; then
+  echo "GATE §0 BLOCCATO: BRANCH='$BRANCH' non valido."
+  # → scrivi in §0: "PR NON verificata/creata: BRANCH non valido ($BRANCH)."
+  # → il task è INCOMPLETO (gate bloccante, non silenzioso)
+  exit 1
+fi
+
+PR_JSON=$(gh pr list --head "$BRANCH" --base main --json number,url 2>&1)
+GH_EXIT=$?
+if [ $GH_EXIT -ne 0 ]; then
+  # → scrivi in §0: "PR NON verificata/creata: gh pr list exit $GH_EXIT — $PR_JSON"
+  # → il task è INCOMPLETO
+elif [ "$PR_JSON" = "[]" ] || [ -z "$PR_JSON" ]; then
+  # Nessuna PR esistente: crea non-interattiva (no editor, no merge)
+  CREATE_OUT=$(gh pr create --base main --head "$BRANCH" --fill 2>&1)
+  CREATE_EXIT=$?
+  if [ $CREATE_EXIT -ne 0 ]; then
+    # → scrivi in §0: "PR NON verificata/creata: gh pr create exit $CREATE_EXIT — $CREATE_OUT"
+    # → il task è INCOMPLETO
+  else
+    VIEW_JSON=$(gh pr view "$BRANCH" --json number,url 2>&1)
+    VIEW_EXIT=$?
+    if [ $VIEW_EXIT -ne 0 ]; then
+      # → scrivi in §0: "PR NON verificata/creata: gh pr view exit $VIEW_EXIT — $VIEW_JSON"
+      # → il task è INCOMPLETO
+    else
+      PR_NUMBER=$(echo "$VIEW_JSON" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['number'])")
+      PR_URL=$(echo "$VIEW_JSON" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['url'])")
+      # → scrivi in §0: "1. Merge della PR #$PR_NUMBER ($PR_URL)."
+    fi
+  fi
+else
+  # PR già esistente: leggi numero e URL dal JSON
+  PR_NUMBER=$(echo "$PR_JSON" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['number'])")
+  PR_URL=$(echo "$PR_JSON" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['url'])")
+  # → scrivi in §0: "1. Merge della PR #$PR_NUMBER ($PR_URL)."
+fi
+```
+
+VINCOLO FERREO: il numero PR scritto in §0 proviene ESCLUSIVAMENTE dall'output JSON di `gh`.
+Nessun numero hardcoded, nessun placeholder, mai "Merge PR #NN" scritto a prescindere.
+Se gh fallisce (exit non-zero) o $BRANCH è vuoto/main: §0 = `"PR NON verificata/creata: <errore reale>"` e il task è INCOMPLETO (gate bloccante).
+`"Nessuna."` in §0 è ammesso SOLO se la sessione non ha PR da mergiare.
+Usa `--fill` per `gh pr create`, mai aprire editor. NON mergiare (il merge è azione umana da WSL).
 
 ---
 

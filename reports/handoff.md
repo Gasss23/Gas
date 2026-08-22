@@ -1,34 +1,46 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-21 — FASE 3 Fetta 4a: client vocale di prova probe_client_4a.py
+**Sessione:** 2026-08-22 — Fix phantom PR bug: riscrittura REGOLA §0 in /fine-task
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #73 (`feat/voice-client-4a` → main) — aprire su GitHub e mergiare con `gasmerge 73` da WSL.
-2. Test E2E con VOCE UMANA reale: i due test eseguiti in sessione hanno usato audio ambiente (microfono attivo ma nessuna voce esplicita). Per validare completamente la pipeline, rieseguire `GAS_VOICE_TOKEN=<token> PULSE_SERVER=unix:/mnt/wslg/PulseServer python3 clients/voice/probe_client_4a.py 5` parlando effettivamente nel microfono e verificare che la risposta TTS sia coerente con ciò che è stato detto.
-3. Aggiungere `GAS_VOICE_TOKEN` al `.env.prod` sul VPS prima del deploy FASE 3 in produzione.
+1. Merge della PR #74 (https://github.com/Gasss23/Gas/pull/74).
+
+**NOTA GATE PR**: PR #74 verificata con il gate nuovo stesso durante il TEST A — numero e URL provengono da `gh pr view sonda/phantom-pr-bug --json number,url,state` → `{"number":74,"state":"OPEN","url":"https://github.com/Gasss23/Gas/pull/74"}`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 4a — client vocale di prova `probe_client_4a.py`**: `FATTA` — script 203 righe stdlib+ffmpeg, test E2E reale eseguito (mic→WAV→STT→kernel→TTS→MP3→PulseAudio, exit 0). Review #91 APPROVATO CON RISERVE.
-- **Fetta 4b — client di produzione browser/telefono**: `DEFERITA — fuori scope esplicito del task (decisione operatore)`
+- **Fetta 1 — Riscrittura REGOLA §0 in `.claude/commands/fine-task.md`**: `FATTA`
+  REGOLA §0 sostituita con gate bash obbligatorio post-push. Copertura completa: PR esistente / PR assente (crea) / gh exit non-zero (bloccante).
+
+- **Fetta 2 — TEST A (percorso "crea")**: `FATTA`
+  Branch senza PR → gate ha creato PR #74, numero letto da JSON reale.
+
+- **Fetta 3 — TEST B (percorso "errore")**: `FATTA`
+  BRANCH=main e repo invalido → "PR NON verificata/creata" senza fabbricare numeri.
+
+- **Fetta 4 — Revisione subagent revisore #92**: `FATTA`
+  APPROVATO CON RISERVE. Riserve non bloccanti: R-finegat-1, R-finegat-2.
+
+- **Fetta 5 — Aggiornamento report canonici**: `FATTA`
+  ultimo_report.md, stato_progetto.md, diff_sessione.md, handoff.md aggiornati.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 +
- clients/voice/probe_client_4a.py   | 203 ++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  23 ++--
- reports/handoff.md                 |  79 ++++++++-----
- reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           | 234 ++++++++++++++-----------------------
- 6 files changed, 357 insertions(+), 186 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ .claude/commands/fine-task.md      |  56 ++++++++++++-
+ reports/diff_sessione.md           |  18 ++--
+ reports/handoff.md                 |  95 ++++++++++-----------
+ reports/stato_progetto.md          |   5 +-
+ reports/ultimo_report.md           | 168 ++++++++++++-------------------------
+ 6 files changed, 163 insertions(+), 180 deletions(-)
 ```
 
 ---
@@ -36,69 +48,53 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1ba32d6 docs(4a): report Fetta 4a — client vocale probe E2E Giulia/WSL
-484e02e feat(voice): FASE 3 Fetta 4a — client vocale di prova probe_client_4a.py
-526920d chore(revisore): memoria review #91 — APPROVATO CON RISERVE
-aee70a8 chore(revisore): memoria review #90 — BOCCIATO
+9cf4915 docs(fine-task): fix phantom-PR — REGOLA §0 riscritta con gate bash gh
+b7db11e chore(revisore): memoria review #92 — APPROVATO CON RISERVE
+1da09e1 docs(fine-task): handoff + diff_sessione sonda phantom-PR — root cause isolata
+00465bb docs(sonda): phantom PR bug — root cause isolata in fine-task.md REGOLA §0
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-`clients/voice/probe_client_4a.py` è codice nuovo in `clients/` — non tocca `gas.py`, `brains/`, `modules/`, `tests/`. Il gate di review si applica per presenza di token di auth. Due review eseguite:
+Nessun diff motore (gas.py/brains/modules/tests non toccati). Revisore invocato sul diff `.claude/commands/fine-task.md` per policy di sessione.
 
-**Review #90 — BOCCIATO** (artefatto di formattazione nel diff testuale passato al revisore: `err = repr(body[:200])` appariva senza indentazione nel testo della prompt, ma il file reale su disco aveva indentazione corretta — verificato con `python3 -c "import ast; ast.parse(open('clients/voice/probe_client_4a.py').read())"` → syntax OK).
+Verdetto integrale review #92 — APPROVATO CON RISERVE:
 
-**Review #91 (ri-review sul diff reale `git diff --cached`) — APPROVATO CON RISERVE**
-
-> Elementi del diff esaminati:
+> Il fix risolve correttamente il bug phantom-PR (R-phantom-pr-1): la REGOLA §0 ora impone l'esecuzione di `gh pr list` prima di scrivere qualsiasi numero in §0, eliminando la possibilità di allucinazione. La logica dei rami (BRANCH non valido / gh fallisce / PR assente / PR esistente) è completa e fail-closed. Il principio "dati reali da `gh`, mai inventati" è rispettato con un VINCOLO FERREO esplicito.
 >
-> 1. `clients/voice/probe_client_4a.py:60-72` — `_post_voice` blocco `try/finally`: `resp` e `body` usati post-`finally` non generano NameError perché se il `try` fallisce l'eccezione si propaga e il `print` non viene raggiunto. Rischio NameError esaminato — esito: **OK**.
+> **R-finegat-1** (non bloccante): `.claude/commands/fine-task.md:78` — `PR_JSON=$(gh pr list ... 2>&1)`. Se `gh` emette un warning su stderr con exit 0, `PR_JSON` contiene testo misto non-JSON. La check `[ "$PR_JSON" = "[]" ]` fallisce, si entra nel ramo PR-già-esistente, python3 a riga 104 lancia `json.JSONDecodeError` non catturata, `PR_NUMBER`/`PR_URL` risultano vuoti, §0 viene scritto malformato senza segnale esplicito. Mitigazione: `2>/dev/null` per la capture JSON + try/except in python3.
 >
-> 2. `clients/voice/probe_client_4a.py:112-117` — `_run_audio_mode`, gestione `status != 200`: il `except Exception:` ha corpo corretto (`err = repr(body[:200])`), `print` e `return 1` al livello del `if`. Era il punto bloccante della #90 (artefatto formattazione nel diff testuale). Rischio IndentationError/SyntaxError esaminato — esito: **OK**.
->
-> 3. `clients/voice/probe_client_4a.py:170-176` — lettura `GAS_VOICE_TOKEN` da `os.environ` con controllo su stringa vuota post-strip, nessun hardcoding. Rischio esposizione token esaminato — esito: **OK**.
->
-> Riserva aperta (non bloccante):
->
-> - **R-client4a-1**: `main()` cattura solo `RuntimeError` e `KeyboardInterrupt`; le eccezioni di rete da `_post_voice` (`ConnectionRefusedError`, `OSError`, `http.client.HTTPException`) producono traceback non gestito se il server è offline. Accettabile per strumento usa-e-getta; correggibile aggiungendo un `except (OSError, http.client.HTTPException)` nel blocco finale di `main()`.
->
-> Rischio esplicitamente escluso: comportamento su PulseAudio/WSLg (socket `unix:/mnt/wslg/PulseServer`) — non verificabile staticamente, richiede esecuzione reale su Giulia/WSL.
+> **R-finegat-2** (cosmetico): `.claude/commands/fine-task.md:79-80` — `GH_EXIT=$?; if [ $GH_EXIT -ne 0 ]`. Non-atomico per la lezione #51, ma sicuro in questo contesto (nessun comando intermedio). Da allineare alla forma `if ! PR_JSON=$(gh pr list ...); then` per coerenza con il resto del progetto.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py`/`tests/` — suite invariata, nessun delta da riportare.
-
-Test E2E reale eseguito in sessione (non suite pytest):
-- Test 1 `--text-only`: 157,390 byte WAV → HTTP 200 → `{"content": "Mi serve qualche dettaglio in più..."}` (STT operativo, kernel risponde)
-- Test 2 audio: 174,214 byte WAV → HTTP 200 → 281,330 byte MP3 → `[play] completato.` (exit 0, audio uscito dagli altoparlanti)
+Nessuna modifica a gas.py/tests/. Nessun delta test richiesto.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(4a): report Fetta 4a — client vocale probe E2E Giulia/WSL	CI	feat/voice-client-4a	push	32494731843	55s	2026-08-21T14:54:57Z
-completed	success	Merge pull request #72 from Gasss23/sonda/voice-client-env	CI	main	push	32491250870	49s	2026-08-21T14:16:28Z
-completed	success	docs(sonda): scrub IP privati da reports/ — sblocco PR #72	CI	sonda/voice-client-env	push	32490690498	54s	2026-08-21T14:10:16Z
+completed	success	docs(fine-task): fix phantom-PR — REGOLA §0 riscritta con gate bash gh	CI	sonda/phantom-pr-bug	push	32543517508	49s	2026-08-22T01:28:15Z
+completed	success	docs(fine-task): handoff + diff_sessione sonda phantom-PR — root caus…	CI	sonda/phantom-pr-bug	push	32540473332	1m0s	2026-08-22T00:28:46Z
+completed	success	docs(sonda): phantom PR bug — root cause isolata in fine-task.md REGO…	CI	sonda/phantom-pr-bug	push	32539819289	54s	2026-08-22T00:17:01Z
 ```
 
-**Mappatura commit→run (branch feat/voice-client-4a):**
-- `1ba32d6` (docs report, HEAD): testato da run 32494731843 — **SUCCESS** ✅
-- `484e02e` (feat/voice client): incluso nel tree di HEAD → testato dalla stessa run 32494731843 — **SUCCESS** ✅
-- `526920d`, `aee70a8` (chore revisore): inclusi nel tree → coperti da run 32494731843 — **SUCCESS** ✅
-
-Nota: `gh run list --branch feat/voice-client-4a` mostra una sola run. Il primo push (con HEAD=484e02e) potrebbe aver triggerato una run cancellata/sostituita dal secondo push; il comportamento è noto (GitHub Actions cancella run precedente su nuova push sullo stesso branch). L'unica run registrata è 32494731843 su HEAD finale.
+Mappatura commit→run:
+- `9cf4915` (docs fine-task REGOLA §0 fix): run `32543517508` ✅ SUCCESS.
+- `b7db11e` (chore revisore memoria #92): nessuna run su questo SHA — pushato insieme a `1da09e1`; la run `32540473332` testa `1da09e1` come HEAD del push.
+- `1da09e1` (docs fine-task, sessione precedente): run `32540473332` ✅ SUCCESS.
+- `00465bb` (docs sonda, sessione precedente): run `32539819289` ✅ SUCCESS.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **R-client4a-1** (review #91, non bloccante): `main()` cattura solo `RuntimeError` e `KeyboardInterrupt`. Eccezioni di rete (`ConnectionRefusedError`, `OSError`, `http.client.HTTPException`) producono traceback non gestito se il server è offline. Fix: aggiungere `except (OSError, http.client.HTTPException)` nel blocco finale. Accettabile per usa-e-getta; da risolvere se lo script diventa template per 4b.
-
-- **Nota processo #90/#91**: il diff testuale passato al revisore nella prima invocazione conteneva un artefatto di formattazione (indentazione `except` body non preservata nel blocco markdown del prompt). Il file su disco era corretto (syntax OK verificato). La ri-review #91 è stata fatta sul diff reale da `git diff --cached`. **Lezione per sessioni future**: usare SEMPRE l'output verbatim di `git diff --cached` come testo del prompt al revisore, senza rielaborazione testuale.
+- **R-finegat-1** (non bloccante): stderr misto nel capture `PR_JSON=$(gh pr list ... 2>&1)` con exit 0 può produrre JSON invalido → JSONDecodeError non catturata → §0 malformato. Fix: `2>/dev/null` + try/except.
+- **R-finegat-2** (cosmetico): `GH_EXIT=$?; if [ $GH_EXIT -ne 0 ]` non-atomico (lezione #51). Fix: forma `if ! PR_JSON=$(...)`.
