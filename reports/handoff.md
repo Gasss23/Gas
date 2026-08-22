@@ -37,10 +37,10 @@
  .claude/agents/memoria_revisore.md |   1 +
  .claude/commands/fine-task.md      |  56 ++++++++++++-
  reports/diff_sessione.md           |  18 ++--
- reports/handoff.md                 |  80 ++++++------------
+ reports/handoff.md                 |  95 ++++++++++-----------
  reports/stato_progetto.md          |   5 +-
  reports/ultimo_report.md           | 168 ++++++++++++-------------------------
- 6 files changed, 144 insertions(+), 184 deletions(-)
+ 6 files changed, 163 insertions(+), 180 deletions(-)
 ```
 
 ---
@@ -48,6 +48,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9cf4915 docs(fine-task): fix phantom-PR — REGOLA §0 riscritta con gate bash gh
 b7db11e chore(revisore): memoria review #92 — APPROVATO CON RISERVE
 1da09e1 docs(fine-task): handoff + diff_sessione sonda phantom-PR — root cause isolata
 00465bb docs(sonda): phantom PR bug — root cause isolata in fine-task.md REGOLA §0
@@ -80,16 +81,16 @@ Nessuna modifica a gas.py/tests/. Nessun delta test richiesto.
 ## §6 STATO CI
 
 ```
+completed	success	docs(fine-task): fix phantom-PR — REGOLA §0 riscritta con gate bash gh	CI	sonda/phantom-pr-bug	push	32543517508	49s	2026-08-22T01:28:15Z
 completed	success	docs(fine-task): handoff + diff_sessione sonda phantom-PR — root caus…	CI	sonda/phantom-pr-bug	push	32540473332	1m0s	2026-08-22T00:28:46Z
 completed	success	docs(sonda): phantom PR bug — root cause isolata in fine-task.md REGO…	CI	sonda/phantom-pr-bug	push	32539819289	54s	2026-08-22T00:17:01Z
-completed	success	Merge pull request #73 from Gasss23/feat/voice-client-4a	CI	main	push	32500841097	51s	2026-08-21T16:02:46Z
 ```
 
 Mappatura commit→run:
-- `b7db11e` (chore revisore memoria #92): nessuna run CI su questo SHA (pushato dal subagent insieme alla sessione precedente; la run `32540473332` copre `1da09e1` come HEAD del push).
+- `9cf4915` (docs fine-task REGOLA §0 fix): run `32543517508` ✅ SUCCESS.
+- `b7db11e` (chore revisore memoria #92): nessuna run su questo SHA — pushato insieme a `1da09e1`; la run `32540473332` testa `1da09e1` come HEAD del push.
 - `1da09e1` (docs fine-task, sessione precedente): run `32540473332` ✅ SUCCESS.
 - `00465bb` (docs sonda, sessione precedente): run `32539819289` ✅ SUCCESS.
-- Commit di questa sessione (fine-task.md REGOLA §0 fix): run non ancora disponibile alla scrittura dell'handoff — sarà disponibile dopo il push.
 
 ---
 
