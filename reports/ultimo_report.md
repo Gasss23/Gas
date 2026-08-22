@@ -1,135 +1,135 @@
-# REPORT FASE 3 Fetta 4a — client vocale di prova (probe_client_4a.py)
+# Report — Sonda bug "phantom PR" in /fine-task
 
-**Data:** 2026-08-21  
-**Branch:** feat/voice-client-4a  
-**Commit client:** 484e02e  
-**Scope:** client vocale usa-e-getta per test E2E mic → STT → kernel → TTS → altoparlante  
-**STOP GATE:** rispettato — zero modifiche a gas.py, brains/, modules/, tests/
+**Data:** 2026-08-22  
+**Task:** SONDA ZERO-MODIFICA — individuazione della logica che produce "Merge PR #NN" fantomatica  
+**Branch:** `sonda/phantom-pr-bug`
 
 ---
 
-## §1 SCOPE & ESITO FETTE
+## DECISIONI UMANE RICHIESTE
 
-| Fetta | Descrizione | Esito |
-|-------|-------------|-------|
-| 4a | Script `clients/voice/probe_client_4a.py` | ✅ FATTA |
-| 4b | Client browser/telefono produzione | ⏩ FUORI SCOPE (non avviata) |
+1. **Approvare il fix proposto** e autorizzare l'implementazione in una fetta successiva (snippet completo in §4 di questo report).
 
 ---
 
-## §2 ARTEFATTI PRODOTTI
+## Fette / punti scope
 
-### `clients/voice/probe_client_4a.py` — 203 righe
+### Punto 1 — Dove è definito /fine-task
 
-Script Python puro stdlib + subprocess ffmpeg. Due modalità:
+**FATTO.**
 
-- **Modalità audio (default):** mic → WAV (ffmpeg PulseAudio) → POST /voice (Accept: audio/mpeg) → MP3 → playback (ffmpeg PulseAudio)
-- **Modalità debug `--text-only`:** mic → WAV → POST /voice (Accept: application/json) → stampa JSON risposta kernel
+File: `/home/gqual/Gas/.claude/commands/fine-task.md` (238 righe)  
+È l'unica definizione: sia il custom slash command del progetto sia il skill `fine-task` puntano a questo file.
 
-**Token:** da `GAS_VOICE_TOKEN` env var, mai nel codice.  
-**Dipendenze aggiuntive:** nessuna (stdlib + ffmpeg già presente).
+---
 
-**Uso:**
+### Punto 2 — Logica esatta che produce "Merge PR #NN"
+
+**FATTO.** Stringa trovata verbatim:
+
+**File:** `.claude/commands/fine-task.md`  
+**Riga 65:**
 ```
-export GAS_VOICE_TOKEN=<token>
-export PULSE_SERVER=unix:/mnt/wslg/PulseServer   # WSLg
-python3 clients/voice/probe_client_4a.py [secondi]
-python3 clients/voice/probe_client_4a.py --text-only [secondi]
+"1. Merge della PR #<numero> (<titolo-breve>)."
 ```
 
----
-
-## §3 GATE DI REVIEW
-
-**Review #90 — BOCCIATA** (artefatto di formattazione nel diff testuale fornito al revisore: `err = repr(body[:200])` appariva senza indentazione nel testo, ma il file reale aveva indentazione corretta — verificato con `ast.parse` → syntax OK).
-
-**Review #91 (ri-review sul diff reale da `git diff --cached`) — APPROVATO CON RISERVE**
-
-> Elementi del diff esaminati:
->
-> 1. `clients/voice/probe_client_4a.py:60-72` — `_post_voice` blocco `try/finally`: `resp` e `body` usati post-`finally` non generano NameError perché se il `try` fallisce l'eccezione si propaga e il `print` non viene raggiunto. Rischio NameError esaminato — esito: **OK**.
->
-> 2. `clients/voice/probe_client_4a.py:112-117` — `_run_audio_mode`, gestione `status != 200`: il `except Exception:` ha corpo corretto (`err = repr(body[:200])`), `print` e `return 1` al livello del `if`. Era il punto bloccante della #90 (artefatto formattazione nel diff testuale). Rischio IndentationError/SyntaxError esaminato — esito: **OK**.
->
-> 3. `clients/voice/probe_client_4a.py:170-176` — lettura `GAS_VOICE_TOKEN` da `os.environ` con controllo su stringa vuota post-strip, nessun hardcoding. Rischio esposizione token esaminato — esito: **OK**.
->
-> Riserva aperta (non bloccante):
->
-> - **R-client4a-1**: `main()` cattura solo `RuntimeError` e `KeyboardInterrupt`; le eccezioni di rete da `_post_voice` (`ConnectionRefusedError`, `OSError`, `http.client.HTTPException`) producono traceback non gestito se il server è offline. Accettabile per strumento usa-e-getta; correggibile aggiungendo un `except (OSError, http.client.HTTPException)` nel blocco finale di `main()`.
->
-> Rischio esplicitamente escluso: comportamento su PulseAudio/WSLg (socket `unix:/mnt/wslg/PulseServer`) — non verificabile staticamente, richiede esecuzione reale su Giulia/WSL.
-
----
-
-## §4 TEST E2E REALE — Giulia/WSL 2026-08-21
-
-**Ambiente:**
-- WSLg v1.0.73, `PULSE_SERVER=unix:/mnt/wslg/PulseServer`
-- ffmpeg 6.1.1 `--enable-libpulse`
-- PulseAudioRDPSource (mic Windows) + PulseAudioRDPSink (speaker Windows)
-- Server `/voice` su `localhost:8765` (GasKernel + Groq Whisper + ElevenLabs)
-
-### Test 1 — Modalità `--text-only` (5s registrazione)
-
+**Contesto (righe 62-66):**
 ```
-[cfg] server=http://localhost:8765  secs=5  mode=text-only
-[rec] avvio registrazione 5s (parla ora)...
-[rec] catturati 157,390 byte WAV
-[http] POST http://localhost:8765/voice — 157,390 byte WAV, Accept: application/json...
-[http] risposta 200 Content-Type: application/json; charset=utf-8
-[resp] status=200 body={"content": "Mi serve qualche dettaglio in più per capire cosa vuoi fare. Ti riferisci a una scadenza di due mesi, a un prossimo contatto o a qualcos'altro? Fammi sapere così posso aiutarti al meglio."}
-[ok] pipeline testo completata (nessun TTS in questa modalità).
-exit: 0
+**REGOLA §0**: "Nessuna." è ammesso SOLO se la sessione non lascia nulla in mano
+all'operatore. Se la PR di sessione non è ancora mergiata, §0 deve contenere almeno:
+"1. Merge della PR #<numero> (<titolo-breve>)."
+Scrivere "Nessuna." con una PR aperta è un errore — nasconde lavoro umano richiesto.
 ```
 
-**Trascrizione ottenuta (indiretta):** Whisper ha trascritto audio ambiente che conteneva riferimento a "due mesi" — il kernel ha risposto chiedendo chiarimento su una scadenza. STT Groq operativo, kernel risponde in italiano.
+**Root cause:**  
+Il template istruisce l'AI su *cosa scrivere* ("Merge della PR #<numero>") ma **non contiene nessuna istruzione** a eseguire `gh pr list --head <branch>` per verificare se una PR esiste davvero. Dopo aver pushato un branch, l'AI:
 
-### Test 2 — Modalità audio completa (5s registrazione)
+1. Legge REGOLA §0: `"Nessuna." è un errore se c'è una PR aperta`
+2. Sa di aver appena pushato un branch
+3. Inferisce (erroneamente) che "deve esserci una PR" e **allucinates un numero**
+4. Nessun check meccanico la smentisce → phantom PR stampata nel report
+
+La pressione è bidirezionale: la regola **punisce** `"Nessuna."` quando una PR esiste, ma **non richiede alcuna verifica** prima di scrivere un numero. Il risultato è che l'AI preferisce allucinare un numero piuttosto che rischiare di scrivere "Nessuna." sbagliato.
+
+---
+
+### Punto 3 — Sonda ambiente (output REALE)
+
+**FATTO.**
+
+**`gh --version`:**
+```
+gh version 2.96.0 (2026-07-02)
+https://github.com/cli/cli/releases/tag/v2.96.0
+```
+
+**`gh auth status`** (token redatto):
+```
+github.com
+  ✓ Logged in to github.com account Gasss23
+  - Active account: true
+  - Git operations protocol: https
+  - Token: [REDACTED]
+  - Token scopes: 'codespace', 'gist', 'read:org', 'repo', 'workflow'
+```
+
+**`gh pr list --head docs/scollega-gashistory-da-r2 --json number,url`:**
+```
+[]
+```
+(branch remoto esistente, nessuna PR aperta → output `[]` corretto)
+
+**`gh pr list --json number,url,headRefName,state -L 5`:**
+```
+[]
+```
+(nessuna PR aperta in questo momento)
+
+**Conclusione ambiente:** `gh` è disponibile, autenticato, e funziona correttamente. Il comando ritorna `[]` quando nessuna PR esiste. Il fix è fattibile senza dipendenze nuove.
+
+---
+
+### Punto 4 — Fix proposto (NON implementato)
+
+**FATTO — proposta solo testuale.**
+
+**Dove inserire il fix:** nel passo 0 di `/fine-task.md`, dopo il calcolo di `BASE` e prima di scrivere qualsiasi file.
+
+**Snippet bash da aggiungere:**
+
+```bash
+# Verifica PR reale — OBBLIGATORIO prima di scrivere §0
+BRANCH=$(git branch --show-current)
+PR_JSON=$(gh pr list --head "$BRANCH" --json number,url,state 2>/dev/null)
+PR_NUMBER=$(echo "$PR_JSON" | python3 -c \
+  "import sys,json; l=json.load(sys.stdin); print(l[0]['number'] if l else '')" \
+  2>/dev/null)
+PR_URL=$(echo "$PR_JSON" | python3 -c \
+  "import sys,json; l=json.load(sys.stdin); print(l[0]['url'] if l else '')" \
+  2>/dev/null)
+echo "PR_NUMBER=${PR_NUMBER:-<nessuna PR aperta>}"
+echo "PR_URL=${PR_URL:-<nessuna PR aperta>}"
+```
+
+**Riscrittura REGOLA §0** (da sostituire alle righe 62-66):
 
 ```
-[cfg] server=http://localhost:8765  secs=5  mode=audio
-[rec] avvio registrazione 5s (parla ora)...
-[rec] catturati 174,214 byte WAV
-[http] POST http://localhost:8765/voice — 174,214 byte WAV, Accept: audio/mpeg...
-[http] risposta 200 Content-Type: audio/mpeg
-[play] riproduzione 281,330 byte MP3 su PulseAudio...
-[play] completato.
-[ok] pipeline audio completata.
-exit: 0
+**REGOLA §0**: Prima di scrivere questa sezione, esegui il blocco bash di verifica PR
+(passo 0 sotto). USA SOLO i valori restituiti da quel comando — mai un numero inventato.
+
+- Se `$PR_NUMBER` è VUOTO → scrivi esattamente: "Nessuna."
+- Se `$PR_NUMBER` è valorizzato → scrivi: "1. Merge della PR #${PR_NUMBER} — ${PR_URL}"
+
+Scrivere "Nessuna." quando `$PR_NUMBER` è vuoto è CORRETTO (nessuna PR esiste).
+Scrivere un numero non proveniente dall'output del comando è un errore critico (phantom PR).
 ```
 
-**Esito:** pipeline completa end-to-end. MP3 di 281,330 byte ricevuto e riprodotto via PulseAudioRDPSink (ffmpeg exit 0, `[play] completato.`). L'audio è uscito dagli altoparlanti.
-
-### Riepilogo pipeline verificata
-
-| Fase | Tool | Esito |
-|------|------|-------|
-| Registrazione mic | ffmpeg PulseAudio → WAV 16kHz mono | ✅ (157-174 KB) |
-| HTTP POST auth | Bearer `GAS_VOICE_TOKEN` | ✅ HTTP 200 |
-| STT | Groq Whisper via `/voice` | ✅ trascrizione ottenuta |
-| Kernel | GasKernel `run_turn` | ✅ risposta in italiano |
-| TTS | ElevenLabs via `/voice` | ✅ 281 KB MP3 |
-| Playback | ffmpeg → PulseAudioRDPSink | ✅ exit 0 |
+**Perché funziona:** la regola attuale ha due difetti gemelli — punisce `"Nessuna."` senza dare un modo meccanico per sapere se è giustificata, e fornisce un placeholder `#<numero>` che invita all'allucinazione. Il fix elimina entrambi: la variabile `$PR_NUMBER` è la fonte di verità (vuota = nessuna PR, valorizzata = PR reale), e la regola riscritta rimuove la penalità su `"Nessuna."` quando è corretta.
 
 ---
 
-## §5 STOP GATE — CONFORMITÀ
+## Anomalie
 
-- ✅ Nessuna modifica a `gas.py`, `brains/`, `modules/`, `tests/`
-- ✅ Token da ENV (`GAS_VOICE_TOKEN`), mai nel codice né in questo report
-- ✅ Nessuna nuova dipendenza Python (stdlib + ffmpeg)
-- ✅ Nessun codice 4b scritto
-
----
-
-## §6 RISERVE APERTE (da `stato_progetto.md`)
-
-- **R-client4a-1** (R-4a-1 review #91): eccezioni di rete (`OSError`, `http.client.HTTPException`) non catturate in `main()` — traceback non gestito se server offline. Non bloccante per usa-e-getta; il fix è un `except (OSError, http.client.HTTPException)` aggiuntivo se lo script diventa permanente.
-
----
-
-## §7 PROSSIMI PASSI SUGGERITI
-
-- **Fetta 4b**: client di produzione browser/telefono verso VPS (HTML5 + WebRTC o fetch API) — decisione operatore
-- **Deploy VPS**: portare server `/voice` su VPS con certificato TLS per accesso esterno sicuro
-- Nota: `GAS_VOICE_TOKEN` va aggiunto al `.env.prod` sul VPS prima del deploy
+- Nessuna anomalia tecnica nell'ambiente.
+- Confermato: il bug è **puramente nel template** (fine-task.md), non in gh né nel sistema git/GitHub.
+- Nessuna modifica al codice in questa sessione.

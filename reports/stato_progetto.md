@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-08-21** (sonda/voice-client-env: IP scrubbing PR #72 — IP privati redatti da reports/ (handoff.md, ultimo_report.md, stato_progetto.md); invariante gasmerge verificata PASS (0 hit residui); branch pushato. Merge attende operatore via `gasmerge 72`.)
+> Ultimo aggiornamento: **2026-08-22** (sonda/phantom-pr-bug: sonda ZERO-MODIFICA sul bug "phantom PR" in /fine-task. Root cause isolata: REGOLA §0 in `.claude/commands/fine-task.md:65` non ordina `gh pr list` prima di scrivere il numero PR → AI allucinates numero. Fix proposto in reports/ultimo_report.md §4. Nessun codice modificato.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -58,6 +58,7 @@ Componenti attive:
 
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
+- 🟡 **R-phantom-pr-1** (2026-08-22, sonda/phantom-pr-bug): `/fine-task.md` REGOLA §0 (riga 65) produce "Merge della PR #<numero>" senza mai eseguire `gh pr list` — l'AI allucinates il numero (3 occorrenze il 2026-08-21). Root cause isolata. Fix proposto (snippet bash + riscrittura REGOLA §0) in `reports/ultimo_report.md §4`. NON implementato, attende decisione operatore.
 - 🟡 **Esfiltrazione** — chiusa in `os_strict` con bwrap; in `os_with_fallback` resta 🟡.
 - 🟡 **Degrado a solo-testo per-turno non rilevato** (R2 review #5): cold doctor (`sez.8`) già copre tutti i rami a freddo — sonda 2026-06-29 confermata, nessun gap. Il per-turno resta SILENZIOSO (warning in `gas_debug.log`, fail-safe §9). Rimandato per falsi positivi.
 - **Riserve aperte residue (R-crm-1b archiviato)** — corpo completo archiviato in `reports/stato_storico.md` (§ Finding chiusi archiviati).
