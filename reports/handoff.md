@@ -1,44 +1,36 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-22 — Allineamento voce: stato_progetto.md + ultimo_report.md
+**Sessione:** 2026-08-25/26 — Audit read-only branch remoti
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #75 (https://github.com/Gasss23/Gas/pull/75).
+1. **Merge della PR #76** (https://github.com/Gasss23/Gas/pull/76).
+2. **Cancellazione branch SAFE** — i 3 branch con rc=0 (tip già su main) sono cancellabili senza rischio di perdita. Eseguire a mano da WSL dopo aver verificato il merge:
+   ```bash
+   git push origin --delete docs/scollega-gashistory-r2-v2
+   git push origin --delete fix/r2-durabilita-memoria-clean
+   git push origin --delete fix/r2-riserve-86
+   ```
+3. **Giudizio sui 6 branch DA-GIUDICARE-A-MANO** — vedere `reports/ultimo_report.md` §"Suggerimento per l'operatore" per le note specifiche su ciascuno.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-Task doc-only (nessun codice motore). Scope: riallineare i due report canonici alla realtà FASE 3 VOCE.
-
-- **Step 0 — Verifica file voce nel repo**: `FATTA`
-  Confermata presenza di tutti i file voce (server.py, stt.py, tts.py, probe_client_4a.py, 3 test suite). PR #71/#72/#73 su main verificate via git log.
-
-- **Step 1 — Verifica stato_progetto.md VERBATIM (stop gate "già allineato")**: `FATTA`
-  File letto. Gap identificati: 5 discrepanze voce (milestone supervisore mancante, 2 finding mancanti, prossimi passi stale, componenti attive stale). Fetta 4a e R-client4a-1/R-tts-1 già presenti — nessuna modifica finta.
-
-- **Step 2 — Correzione stato_progetto.md**: `FATTA`
-  4 edit distinti applicati: (a) milestone ATTESTATO DAL SUPERVISORE 2026-08-22; (b) due finding aperti nuovi (kernel 7×8 + rotazione chiave ElevenLabs pre-VPS); (c) componenti attive estesa a Fette 1+2+3+4a; (d) prossimi passi FASE 3 da "pipeline da costruire" a "Fette 1+2+3+4a ✅, gate 4b APERTO".
-
-- **Step 3 — Aggiornamento ultimo_report.md**: `FATTA`
-  Riscritto con report del task corrente.
-
-- **Step 4 — Commit + PR**: `FATTA`
-  Commit `6a62a03` su branch `docs/voice-align-stato-2026-08-22`. PR #75 aperta.
+- **Audit read-only branch remoti**: `FATTA` — tutti i 9 branch analizzati con `git rev-list --left-right --count` + `git merge-base --is-ancestor`. 3 SAFE-DA-CANCELLARE (rc=0), 6 DA-GIUDICARE-A-MANO (rc≠0). Zero cancellazioni, zero modifiche motore.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  24 +++++----
- reports/handoff.md        |  79 ++++++++++++-----------------
- reports/stato_progetto.md |  12 +++--
- reports/ultimo_report.md  | 123 ++++++++++++++++++++++++----------------------
- 4 files changed, 118 insertions(+), 120 deletions(-)
+ reports/diff_sessione.md  |  20 ++--
+ reports/handoff.md        |  59 ++++------
+ reports/stato_progetto.md |   7 +-
+ reports/ultimo_report.md  | 274 ++++++++++++++++++++++++++++++++++++++--------
+ 4 files changed, 262 insertions(+), 98 deletions(-)
 ```
 
 ---
@@ -46,40 +38,39 @@ Task doc-only (nessun codice motore). Scope: riallineare i due report canonici a
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-6a62a03 docs(voce): allinea stato_progetto + ultimo_report alla realtà FASE 3 fette 4a
+e382ef4 docs(audit): audit read-only branch remoti 2026-08-25
 ```
+
+NB: il commit di fine-task (questo handoff) non compare qui, per costruzione.
 
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-nessun diff motore, revisore non richiesto.
+Nessun diff motore (nessun commit tocca gas.py, brains/, modules/, tests/), revisore non richiesto.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/. Suite invariata.
+Nessuna modifica a gas.py/tests/ in questa sessione.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(voce): allinea stato_progetto + ultimo_report alla realtà FASE 3…	CI	docs/voice-align-stato-2026-08-22	push	32572990063	47s	2026-08-22T12:26:25Z
-completed	success	Merge pull request #74 from Gasss23/sonda/phantom-pr-bug	CI	main	push	32545493419	59s	2026-08-22T02:09:51Z
-completed	success	docs(fine-task): aggiorna handoff §2/§3/§6 post-commit 9cf4915	CI	sonda/phantom-pr-bug	push	32543769736	46s	2026-08-22T01:33:13Z
+completed	success	docs(audit): audit read-only branch remoti 2026-08-25	CI	chore/audit-branch-remoti	push	32877865327	50s	2026-08-25T17:26:11Z
+completed	success	Merge pull request #75 from Gasss23/docs/voice-align-stato-2026-08-22	CI	main	push	32573406812	1m41s	2026-08-22T12:35:34Z
+completed	success	docs(fine-task): handoff + diff_sessione allineamento voce 2026-08-22	CI	docs/voice-align-stato-2026-08-22	push	32573121098	56s	2026-08-22T12:29:21Z
 ```
 
-**Mappatura commit→run:**
-- `6a62a03` (docs(voce): allinea stato_progetto…) — run `32572990063` ✅ SUCCESS su branch `docs/voice-align-stato-2026-08-22`
+**Mappatura commit→run**:
+- `e382ef4` (docs(audit): audit read-only branch remoti 2026-08-25) → run `32877865327` ✅ SUCCESS (push su `chore/audit-branch-remoti`, 2026-08-25T17:26:11Z)
+- commit fine-task (questo handoff) → run non ancora disponibile alla scrittura dell'handoff
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova da questa sessione. Finding aperti registrati in stato_progetto.md:
-- 🟡 R-client4a-1 (già pre-esistente)
-- 🟡 R-tts-1 (già pre-esistente)
-- 🟡 Rotazione chiave ElevenLabs prima del VPS (nuovo, ATTESTATO DAL SUPERVISORE)
-- 🟡 kernel rifiuta 7×8 (nuovo, ATTESTATO DAL SUPERVISORE)
+Nessuna. Task doc-only (reports/), zero gate revisore richiesti.
