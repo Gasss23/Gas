@@ -6,7 +6,9 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-<!-- AGGIORNATO DOPO PUSH -->
+1. Merge della PR #77 (https://github.com/Gasss23/Gas/pull/77).
+
+2. **Configurare SSH per ri-eseguire la sonda VPS** — vedere §1 per i comandi dettagliati.
 
 ---
 
