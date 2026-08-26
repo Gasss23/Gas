@@ -1,12 +1,18 @@
-# Diff sessione — 2026-08-25/26
+# DIFF SESSIONE — 2026-08-26
 
-**Scope**: audit read-only di tutti i branch remoti ≠ main.
+**Task:** Sonda VPS read-only — fotografia stato deploy GAS
+**Branch:** sonda/vps-stato-2026-08-26
 
-## File toccati
+## File toccati questa sessione
 
-| File | Cosa è cambiato |
-|------|-----------------|
-| `reports/ultimo_report.md` | Sostituito con il report integrale dell'audit: tabella riassuntiva 9 branch, evidenza verbatim per ognuno (ahead/behind, rc, commit unici, file toccati), suggerimento cancellazioni. |
-| `reports/stato_progetto.md` | Aggiornato timestamp (2026-08-22 → 2026-08-25) e voce "Bonifica branch remoti": rimpiazzata l'entry storica con lo snapshot aggiornato (10 head totali, 3 SAFE + 6 DA-GIUDICARE-A-MANO). |
-| `reports/handoff.md` | Dossier di fine sessione (questo file). |
-| `reports/diff_sessione.md` | Questo file. |
+Solo file di report (nessuna modifica al motore):
+
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `reports/ultimo_report.md` | Report di fine task: esito sonda VPS (SALTATA — SSH non configurato) e istruzioni per ri-eseguire |
+| `reports/handoff.md` | Dossier autonomo di fine sessione |
+| `reports/diff_sessione.md` | Questo file |
+
+## Note
+
+Task interamente non eseguita per blocco SSH infrastrutturale: alias `gas` non configurato in `~/.ssh/config` + chiave con passphrase senza ssh-agent. Nessuna modifica al codice sorgente. La storia completa sta in git.
