@@ -1,55 +1,41 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-26 — Sonda VPS read-only (fotografia stato deploy GAS)
+**Sessione:** 2026-08-26 — Sonda VPS read-only: fotografia deploy GAS
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #77 (https://github.com/Gasss23/Gas/pull/77).
-
-2. **Configurare SSH per ri-eseguire la sonda VPS** — vedere §1 per i comandi dettagliati.
+2. **S2 (riallineamento VPS)**: VPS gira su `f3a8acc` (2026-06-29) — 391 commit dietro origin/main, 17 commit motore mancanti (FASE 3 completa: voice endpoint, STT Groq, TTS ElevenLabs, client 4a non deployati). Riallineamento = FASE 5 S2 — decidere timing e modalità.
+3. **Log solo timeout**: il bot non mostra conversazioni reali dal deploy (solo long-polling Telegram). Confermare che nessun utente reale abbia scritto, o investigare se Telegram sta droppando messaggi.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Stato servizio systemd gas**: SALTATA — SSH non raggiungibile (alias `gas` non configurato in `~/.ssh/config`)
-- **Fetta 2 — Stato git sul VPS** (commit, branch, git status): SALTATA — stesso blocco SSH
-- **Fetta 3 — Verifica .gitignore** (riserva F7: `.venv/` presente?): SALTATA — stesso blocco SSH
-- **Fetta 4 — Risorse di sistema** (RAM, disco, python3 --version): SALTATA — stesso blocco SSH
-- **Fetta 5 — Struttura directory e file memoria** (.gas_history.json, diario*): SALTATA — stesso blocco SSH
-- **Fetta 6 — Log recenti** (journalctl -u gas o gas_debug.log): SALTATA — stesso blocco SSH
+- **Fetta 1 — Preflight SSH + raccolta dati VPS**: `FATTA`  
+  SSH OK (echo OK, hostname gas-vps, whoami gas). Tutti i 6 comandi di ricognizione eseguiti verbatim.
 
-**Causa unica del blocco**: `~/.ssh/config` assente in questo ambiente WSL (utente `gqual`) → hostname `gas` non risolvibile (exit 255 su tutti i comandi SSH). IP VPS redatto in tutti i doc di progetto come `<VPS_IP>`. Chiave `id_ed25519` presente ma con passphrase → richiede ssh-agent non avviato.
+- **Fetta 2 — Analisi e risposte sintetiche (a)–(e)**: `FATTA`  
+  Servizio, commit, memoria, RAM/disco, discrepanze vs stato_progetto.md — tutte risposto in reports/ultimo_report.md §4.
 
-**Azioni di sblocco richieste all'operatore**:
+- **Fetta 3 — Aggiornamento stato_progetto.md**: `FATTA`  
+  Review count aggiornato (82→92 in §stato motore, 77→92 in §C), F7 chiusa, tabella sonda VPS aggiunta.
 
-```bash
-# 1. Creare ~/.ssh/config con alias gas (sostituire <VPS_IP> con IP reale Hetzner)
-cat >> ~/.ssh/config << 'EOF'
-Host gas
-    HostName <VPS_IP>
-    User gas
-    IdentityFile ~/.ssh/id_ed25519
-EOF
-
-# 2. Caricare la chiave (ha passphrase — R7 stato_progetto.md)
-eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
-
-# 3. Rilanciale la sonda:
-# ssh gas 'systemctl status gas ...'   ecc.
-```
+- **Fetta 4 — Reports + commit + push**: `FATTA`  
+  ultimo_report.md, handoff.md, diff_sessione.md scritti. Commit sul branch sonda/vps-stato-2026-08-26.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md |  24 +++--
- reports/handoff.md       |  68 ++++++------
- reports/ultimo_report.md | 276 ++++++++---------------------------------------
- 3 files changed, 93 insertions(+), 275 deletions(-)
+ reports/diff_sessione.md  |  21 ++-
+ reports/handoff.md        |  58 +++----
+ reports/stato_progetto.md |  32 +++-
+ reports/ultimo_report.md  | 402 +++++++++++++++++++++++-----------------------
+ 4 files changed, 273 insertions(+), 240 deletions(-)
 ```
 
 ---
@@ -57,14 +43,18 @@ eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit in questa sessione — log BASE..HEAD vuoto)
+b7ab347 docs(sonda-vps): fotografia deploy GAS 2026-08-26 — VPS stabile, 391 commit dietro origin/main
+cab1352 docs(sonda-vps): §0 handoff — PR #77 e istruzioni sblocco SSH
+3cde16b docs(sonda-vps): report sonda VPS 2026-08-26 — task SALTATA (SSH non configurato)
 ```
+
+NB: il commit di fine-task non compare qui — verrà aggiunto al push.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-nessun diff motore, revisore non richiesto.
+Nessun diff motore (gas.py / brains/ / modules/ / tests/ non toccati). Revisore non richiesto.
 
 ---
 
@@ -77,17 +67,24 @@ Nessuna modifica a gas.py/tests/.
 ## §6 STATO CI
 
 ```
-completed	success	Merge pull request #76 from Gasss23/chore/audit-branch-remoti	CI	main	push	32905554732	46s	2026-08-25T22:19:05Z
-completed	success	docs(fine-task): handoff + diff_sessione — audit read-only branch rem…	CI	chore/audit-branch-remoti	push	32905126005	54s	2026-08-25T22:13:50Z
-completed	success	docs(audit): audit read-only branch remoti 2026-08-25	CI	chore/audit-branch-remoti	push	32877865327	50s	2026-08-25T17:26:11Z
+completed  failure  docs(sonda-vps): fotografia deploy GAS 2026-08-26 — VPS stabile, 391 …  CI  sonda/vps-stato-2026-08-26  push  33018077555  46s  2026-08-26T22:04:14Z
+completed  success  docs(sonda-vps): §0 handoff — PR #77 e istruzioni sblocco SSH           CI  sonda/vps-stato-2026-08-26  push  33016564131  58s  2026-08-26T21:41:59Z
+completed  success  docs(sonda-vps): report sonda VPS 2026-08-26 — task SALTATA (SSH non …  CI  sonda/vps-stato-2026-08-26  push  33016452509  54s  2026-08-26T21:40:26Z
 ```
 
-Mappatura commit→run sessione corrente: **nessun commit di sessione** (log BASE..HEAD vuoto) → nessuna run CI attribuibile. Le run sopra appartengono alla sessione precedente (branch `chore/audit-branch-remoti`, ieri 2026-08-25). Il branch `sonda/vps-stato-2026-08-26` riceverà una run CI al push del commit di fine-task.
+Mappatura commit→run:
+- `3cde16b` → run 33016452509 — SUCCESS (2026-08-26T21:40:26Z)
+- `cab1352` → run 33016564131 — SUCCESS (2026-08-26T21:41:59Z)
+- `b7ab347` → run 33018077555 — FAILURE (handoff-check: stato_progetto.md omesso dal §2 del vecchio handoff — corretto in questo commit)
+- commit di fine-task (questo) → run non ancora disponibile alla scrittura dell'handoff
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna riserva nuova da questa sessione.
+Nessuna review motore questa sessione. Finding emersi dalla sonda VPS:
 
-Riserva preesistente aperta: **R-client4a-1** (review #91, non bloccante) — `probe_client_4a.py:main()` senza catch su eccezioni di rete. Da valutare se lo script diventa permanente.
+- **VPS 391 commit dietro** (17 motore): dichiarato "copia VPS stantia" — in attesa di S2.
+- **F7 chiusa**: VPS `.gitignore` ha `venv/` ma non `.venv/` — atteso per VPS stantio, fix già su origin/main.
+- **`.gas_history.json` fermo al 2026-07-06**: nessun turno kernel reale dal deploy — non è un errore se nessun utente ha scritto.
+- **Riavvio VPS 2026-08-25 17:00**: `Restart=always` ha funzionato, servizio tornato su automaticamente.
