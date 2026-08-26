@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-08-25** (chore/audit-branch-remoti: audit read-only 9 branch remoti — 3 SAFE-DA-CANCELLARE, 6 DA-GIUDICARE-A-MANO. Zero modifiche motore. Report: `reports/ultimo_report.md`.)
+> Ultimo aggiornamento: **2026-08-26** (sonda/vps-stato-2026-08-26: sonda read-only VPS — fotografia deploy GAS. Nessuna modifica. Report: `reports/ultimo_report.md`.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **82 review** completate (ultime: #82 = session-end design fix APPROVATO CON RISERVE; #81 = R-voice-3 test APPROVATO; #80 = review_gate fail-closed APPROVATO; #79 = check_verdetto handoff APPROVATO; #78 = handoff-fix APPROVATO). Suite WSL locale (2026-07-27, feature/crm-dup-telefono): **276 PASS, 0 FAIL, 0 SKIP** (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **14 PASS** (T-hook-b/d/f aggiornati per nuovo contratto session_end). Voice suite: **19 PASS** (+1 R-voice-3). ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
+FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **92 review** completate (ultime: #92 = R-phantom-pr-1 APPROVATO CON RISERVE; #91 = Fetta 4a client vocale APPROVATO CON RISERVE; #90 = BOCCIATO; #89 = TTS ElevenLabs APPROVATO CON RISERVE; #88 = STT Groq Whisper APPROVATO CON RISERVE). Suite WSL locale (2026-07-27, feature/crm-dup-telefono): **276 PASS, 0 FAIL, 0 SKIP** (dopo `pip install -r requirements.txt -r requirements-dev.txt` sul venv WSL; Python 3.12.3). Hook suite: **14 PASS** (T-hook-b/d/f aggiornati per nuovo contratto session_end). Voice suite: **19 PASS** (+1 R-voice-3). ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
 **✅ FASE 3 Fetta 1 — endpoint HTTP voice** (2026-08-13, review #76+#77 APPROVATO, branch `fase3/voice-endpoint`, PR #62 — atterrata su main già con PR #63 loopback exemption): `modules/voice/server.py` — `POST /voice`, auth bearer `hmac.compare_digest`, fail-closed su token assente, kernel singleton, fail-safe §9. Suite: **18 PASS**. Zero nuove dipendenze. Stop gate rispettati (gas.py non toccato).
 **✅ FASE 3 Fetta 2 — STT server-side Groq Whisper** (2026-08-20, review #88 APPROVATO CON RISERVE, branch `feat/voice-stt-input`): `modules/voice/stt.py` (nuovo) + `modules/voice/server.py` (routing audio). POST /voice ora accetta `audio/*` e `multipart/form-data` — trascrizione via Groq `whisper-large-v3`, zero nuove dipendenze (http.client stdlib). Retrocompatibilità JSON invariata. Fail-closed: chiave assente → 503, audio vuoto → 400, Groq 400 → 400, Groq 4xx/5xx → 502, rete → 502. Test end-to-end reale: `probe_tts_output.mp3` → `"Ciao, sono Gus, il tuo assistente vocale."`. Suite: **47 PASS** (+28 nuovi TVA). R-stt-1 risolta prima del commit (json.JSONDecodeError avvolto in GroqSTTError). CAVEAT: audio utente esce verso Groq (terza parte) — egress dati vocali dichiarato in docstring server.py.
 **🔍 SONDA ambiente client vocale FASE 3 (2026-08-21, branch `sonda/voice-client-env`)**: ricognizione pura Giulia/WSL. Audio: WSLg v1.0.73 build 2 attivo, socket `unix:/mnt/wslg/PulseServer`, play→Windows testato con ffmpeg (exit 0). Librerie: zero Python audio libs nel venv; ffmpeg 6.1.1 (`--enable-libpulse`) unica via senza installazioni. D1-ter: IP WSL dinamico; `localhost:8765` stabile via WSL2 forwarding (default). Design client fette 4a (script WSL+ffmpeg) e 4b (HTML5 browser) proposto in reports/ultimo_report.md — nessun codice scritto, decisione fetta all'operatore.
@@ -84,12 +84,36 @@ Componenti attive:
   - ✅ **#65-R3** (chiuso 2026-07-30, PR #56 + rebase): `mktemp /tmp/gaspr.XXXXXX.json` per-run + `export GASPR_JSON` + `trap EXIT`. Stub ereditano la variabile. Rebase: stub `_make_stub_gh_recording_merge` di PR #57 convertito da `/tmp/gaspr.json` hardcoded a `"$GASPR_JSON"` (revisione #71).
   - ✅ **#63-R1** (chiuso 2026-07-30, PR #56): `shutil.which("git")` in Python risolve il git reale prima che fake_bin sia preposta a PATH.
 
+### DEPLOY VPS — fotografia sonda 2026-08-26
+
+**Sonda read-only eseguita 2026-08-26.** Dati verbatim in `reports/ultimo_report.md`.
+
+| Metrica | Valore |
+|---|---|
+| Servizio | `gas.service` active (running), enabled |
+| Uptime attuale | dal 2026-08-25 17:00:04 UTC (riavvio post-boot) |
+| PID | 853 — `gas.py telegram` |
+| RAM service | 123.9 MB (peak 124.6 MB) vs limite 1.4/1.9 GB |
+| RAM sistema | 502 MB / 7.6 GiB (7%) |
+| Swap | 2 GiB, 0 usata |
+| Disco | 4.9 GB / 75 GB (7%) |
+| Python VPS | 3.12.3 |
+| Commit VPS | `f3a8acc` (2026-06-29) |
+| origin/main HEAD | `8a946c6` (2026-08-25) |
+| Commit totali dietro | 391 |
+| Commit motore dietro | 17 (FASE 3 completa mancante) |
+| `.gas_memory.db` | 53248 bytes, aggiornato 2026-08-25 17:01 |
+| `.gas_history.json` | 124 righe, fermo a 2026-07-06 (nessun turno reale) |
+| Errori log | Solo timeout Telegram (long-polling normale) |
+
+**Nota**: il VPS gira stabile su codice FASE 2 completa + fix pre-voice. FASE 3 (voice endpoint, STT, TTS, client 4a) non è deployata — da portare a S2.
+
 ### DEPLOY VPS — da tarare su dati reali
 
 - 🟡 **R-reidx-3** — picco RAM `reindex` su diario grande: **RIDOTTO** (review #30, 2026-06-25): `ricostruisci_da_diario` usa batch paginati (`diario_dopo`) — numpy transitori per batch (~400KB), accumulo blob proporzionale all'intero diario (~1.5KB/riga). Su CX33 8GB gestibile; chiusura definitiva rinviata a ri-taratura su diario reale VPS.
 - 🟡 **R-wire-1** (RESIDUO) — `VEC_MIN_SIM=0.30` tarata su esempi sintetici: ri-tarare sul diario reale del VPS. Env-config già fatto (review #28).
 - 🟡 **RAM a regime del singolo modello** — `MemoryHigh=1500M`/`MemoryMax=2000M` in `gas.service` (S1b, 2026-07-04): misura reale non ancora registrata. Da rilevare su VPS con diario attivo prima di affinare i limiti systemd.
-- 🟡 **Verifica riserva evidenza F7** — al prossimo accesso SSH al VPS: `cat /home/gas/gas/.gitignore | head -5` → confermare che contenga `.venv/`. La verifica 2026-07-22 cita "il .gitignore locale (righe 1-2)" senza specificare se VPS o repo — se era il .gitignore del repo, F7 non è chiuso. (riserva di evidenza — vedi sessione 2026-07-22 e FETTA C di questa sessione.)
+- ✅ **Verifica riserva evidenza F7 — CHIUSA (sonda 2026-08-26)**: `cat /home/gas/gas/.gitignore | head -5` eseguito su VPS — contiene `venv/`, `__pycache__/`, `*.pyc`, `logs/`, `*.bak`. NO `.venv/`. Il fix (`.venv/` gitignorato) è nel commit `1b03adc` su origin/main ma NON è deployato sul VPS (VPS stantio al 2026-06-29). `.venv/` appare come untracked (`?? .venv/`) nel git status VPS: comportamento atteso per VPS stantio, nessuna anomalia. F7 chiusa: evidenza raccolta, situazione nota e accettata fino a S2.
 
 ### Limiti noti (non-finding)
 
@@ -131,7 +155,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - **A** — `reports/stato_progetto.md` (questo file): stato vivo, aggiornato a fine task.
 - **A-arch** — `reports/stato_storico.md`: storico sessioni + finding chiusi + dettaglio motore.
 - **B** — `reports/diff_sessione.md`: diff della sessione corrente (riscritto a ogni sessione).
-- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **77 review**. Ultima: **#77** (ri-review voice APPROVATO — 2026-08-13). **#76** = FASE 3 Fetta 1 voice APPROVATO CON RISERVE→risolto (2026-08-13). **#75** = self-block PR #63 APPROVATO (2026-08-18). Fonte contatore: numero più alto citato in `.claude/agents/memoria_revisore.md`. ⚠️ Il file NON è un registro completo per-review: l'obbligo "una riga per ogni review" è in vigore solo dal 2026-07-16 (#51). Conseguenza: NESSUN conteggio automatico è difendibile — metodi diversi danno risultati diversi. Gli unici dati verificabili sono: numero più alto citato = `#77`; entries contigue SOLO da `#51` a `#77`. Sotto `#51` il file è un log di lezioni, non un registro. Il conteggio "77 review" è ereditato dallo storico e NON è ricostruibile dal file: contare per validarlo è un metodo INVALIDO. Lezioni in `.claude/agents/memoria_revisore.md`. ✅ Backfill #48–#50 ESEGUITO (2026-07-18, PR #24). ℹ️ **Collisione #62 riconciliata** (2026-07-26): sessioni parallele avevano prodotto due entry #62 da #61; riconciliate al merge con branch #62/#63 intatti e main #62 rinumerata in #64. ℹ️ **Collisione #69 riconciliata** (2026-07-31): branch fix/gasmerge-hardening aveva aggiunto #69 (gasmerge.sh hardening) collidendo con #69/#70 di main; rinumerata in #71 al rebase. ℹ️ **Collisione #74+#75 riconciliata** (2026-08-19): branch fase3/voice-endpoint e main avevano usato in modo indipendente i numeri #74 e #75; le review voice rinumerate #76+#77 al merge.
+- **C** — `.claude/agents/revisore.md`: gate obbligatorio pre-commit motore. **92 review**. Ultima: **#92** (R-phantom-pr-1 APPROVATO CON RISERVE — 2026-08-22). **#91** = Fetta 4a client vocale APPROVATO CON RISERVE (2026-08-21). **#90** = BOCCIATO (2026-08-20). **#89** = TTS ElevenLabs APPROVATO CON RISERVE (2026-08-20). **#88** = STT Groq Whisper APPROVATO CON RISERVE (2026-08-20). Fonte contatore: numero più alto citato in `.claude/agents/memoria_revisore.md`. ⚠️ Il file NON è un registro completo per-review: l'obbligo "una riga per ogni review" è in vigore solo dal 2026-07-16 (#51). Conseguenza: NESSUN conteggio automatico è difendibile — metodi diversi danno risultati diversi. Gli unici dati verificabili sono: numero più alto citato = `#77`; entries contigue SOLO da `#51` a `#77`. Sotto `#51` il file è un log di lezioni, non un registro. Il conteggio "77 review" è ereditato dallo storico e NON è ricostruibile dal file: contare per validarlo è un metodo INVALIDO. Lezioni in `.claude/agents/memoria_revisore.md`. ✅ Backfill #48–#50 ESEGUITO (2026-07-18, PR #24). ℹ️ **Collisione #62 riconciliata** (2026-07-26): sessioni parallele avevano prodotto due entry #62 da #61; riconciliate al merge con branch #62/#63 intatti e main #62 rinumerata in #64. ℹ️ **Collisione #69 riconciliata** (2026-07-31): branch fix/gasmerge-hardening aveva aggiunto #69 (gasmerge.sh hardening) collidendo con #69/#70 di main; rinumerata in #71 al rebase. ℹ️ **Collisione #74+#75 riconciliata** (2026-08-19): branch fase3/voice-endpoint e main avevano usato in modo indipendente i numeri #74 e #75; le review voice rinumerate #76+#77 al merge.
 - **D** — `reports/handoff.md`: dossier di fine sessione (DECISIONI UMANE + diff stat + log + delta test + verdetto revisore + stato CI).
 - **D-cmd** — `.claude/commands/fine-task.md`: template `/fine-task`. **BASE = `git merge-base origin/main HEAD`** (non più “last handoff commit”), preceduto da `git fetch origin` obbligatorio e con guard bloccante se il merge-base è vuoto (fix 2026-07-15, branch `fix/fine-task-base-mergebase`). §1 SCOPE & ESITO FETTE obbligatorio (FATTA/SALTATA/DEFERITA). **Caveat residuo**: la correttezza di `${BASE}` dipende dalla freschezza di `origin/main` — il `git fetch` copre il caso normale, ma se la PR viene mergiata sul remoto DOPO il fetch, `${BASE}..HEAD` può ancora includere commit non di sessione. Non chiuso al 100%: mitigato.
 
