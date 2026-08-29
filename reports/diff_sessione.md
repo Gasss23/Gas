@@ -1,17 +1,18 @@
 # Diff sessione — 2026-08-29
 
-Sessione: diagnosi bug "kernel rifiuta 7×8 in text-only mode". Sonda read-only, zero modifiche al motore.
+Branch: sonda/vps-stato-2026-08-26
+Task: Audit system prompt — direttive contraddittorie e ambigue (read-only)
 
 ## File toccati
 
-| File | Cosa è cambiato |
-|---|---|
-| `reports/ultimo_report.md` | Riscritto: diagnosi completa bug 7×8 — riproduzione verbatim, causa radice, opzioni fix |
-| `reports/stato_progetto.md` | Aggiornato finding "kernel rifiuta 7×8" con causa radice diagnosticata e tre opzioni fix |
-| `reports/handoff.md` | Riscritto: dossier di fine sessione |
-| `reports/diff_sessione.md` | Questo file (riepilogo sessione) |
+| File | Variazione | Perché |
+|------|-----------|--------|
+| `reports/ultimo_report.md` | riscritto | report integrale dell'audit con 6 finding classificati |
+| `reports/stato_progetto.md` | +intestazione aggiornata, +finding F1–F4 in §Finding aperti | aggiornamento stato dopo audit |
+| `reports/handoff.md` | riscritto | dossier di fine sessione (questo file) |
+| `reports/diff_sessione.md` | riscritto | questo file |
 
-## Nota
+## Cosa NON è stato toccato
 
-`e0afbd1` — primo commit della sessione: diagnosi. Nessun commit motore.  
-La storia completa sta in git.
+Nessuna modifica a `gas.py`, `brains/`, `modules/`, `tests/`, `gas_identity.md`.
+Stop gate bloccante rispettato: l'audit era read-only.
