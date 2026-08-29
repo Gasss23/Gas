@@ -1,41 +1,32 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-26 — Sonda VPS read-only: fotografia deploy GAS
+**Sessione:** 2026-08-29 — Diagnosi bug "kernel rifiuta 7×8 in text-only mode"
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #77 (https://github.com/Gasss23/Gas/pull/77).
-2. **S2 (riallineamento VPS)**: VPS gira su `f3a8acc` (2026-06-29) — 391 commit dietro origin/main, 17 commit motore mancanti (FASE 3 completa: voice endpoint, STT Groq, TTS ElevenLabs, client 4a non deployati). Riallineamento = FASE 5 S2 — decidere timing e modalità.
-3. **Log solo timeout**: il bot non mostra conversazioni reali dal deploy (solo long-polling Telegram). Confermare che nessun utente reale abbia scritto, o investigare se Telegram sta droppando messaggi.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Preflight SSH + raccolta dati VPS**: `FATTA`  
-  SSH OK (echo OK, hostname gas-vps, whoami gas). Tutti i 6 comandi di ricognizione eseguiti verbatim.
-
-- **Fetta 2 — Analisi e risposte sintetiche (a)–(e)**: `FATTA`  
-  Servizio, commit, memoria, RAM/disco, discrepanze vs stato_progetto.md — tutte risposto in reports/ultimo_report.md §4.
-
-- **Fetta 3 — Aggiornamento stato_progetto.md**: `FATTA`  
-  Review count aggiornato (82→92 in §stato motore, 77→92 in §C), F7 chiusa, tabella sonda VPS aggiunta.
-
-- **Fetta 4 — Reports + commit + push**: `FATTA`  
-  ultimo_report.md, handoff.md, diff_sessione.md scritti. Commit sul branch sonda/vps-stato-2026-08-26.
+- **Fetta 1 — Verifica subagent revisore**: `FATTA` — `revisore.md` e `memoria_revisore.md` presenti in `.claude/agents/`.
+- **Fetta 2 — Riproduzione bug con input reale**: `FATTA` — bug riprodotto due volte (`7×8` e `sette per otto`) con `venv/bin/python3` + chiavi da `.env`. Output verbatim catturato.
+- **Fetta 3 — Isolamento causa radice**: `FATTA` — causa radice identificata: tensione system-prompt `gas.py:50-55` vs SHELL_ALLOWLIST `gas.py:874-878` (nessun tool aritmetico). Zero tool call tentate dal modello. Pipeline funzionante, bug semantico.
+- **Fetta 4 — Fix**: `SALTATA — out-of-scope per design`. Task era diagnosi read-only. Tre opzioni di fix proposte in `reports/ultimo_report.md §4`; decisione all'operatore.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  21 ++-
- reports/handoff.md        |  58 +++----
- reports/stato_progetto.md |  32 +++-
- reports/ultimo_report.md  | 402 +++++++++++++++++++++++-----------------------
- 4 files changed, 273 insertions(+), 240 deletions(-)
+ reports/diff_sessione.md  |  19 +--
+ reports/handoff.md        |  48 +++----
+ reports/stato_progetto.md |  34 ++++-
+ reports/ultimo_report.md  | 312 +++++++++++++++-------------------------------
+ 4 files changed, 153 insertions(+), 260 deletions(-)
 ```
 
 ---
@@ -43,18 +34,20 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e0afbd1 docs(diagnosi): bug kernel-rifiuta-7x8 — causa radice isolata (system-prompt vs allowlist)
+b0dde4c docs(fine-task): handoff + diff_sessione sonda VPS 2026-08-26 — PR #77
 b7ab347 docs(sonda-vps): fotografia deploy GAS 2026-08-26 — VPS stabile, 391 commit dietro origin/main
 cab1352 docs(sonda-vps): §0 handoff — PR #77 e istruzioni sblocco SSH
 3cde16b docs(sonda-vps): report sonda VPS 2026-08-26 — task SALTATA (SSH non configurato)
 ```
 
-NB: il commit di fine-task non compare qui — verrà aggiunto al push.
+NB: il commit di fine-task (questo handoff) non compare qui per costruzione.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore (gas.py / brains/ / modules/ / tests/ non toccati). Revisore non richiesto.
+Nessun diff motore (gas.py, brains/, modules/, tests/ non toccati). Revisore non richiesto.
 
 ---
 
@@ -67,24 +60,21 @@ Nessuna modifica a gas.py/tests/.
 ## §6 STATO CI
 
 ```
-completed  failure  docs(sonda-vps): fotografia deploy GAS 2026-08-26 — VPS stabile, 391 …  CI  sonda/vps-stato-2026-08-26  push  33018077555  46s  2026-08-26T22:04:14Z
-completed  success  docs(sonda-vps): §0 handoff — PR #77 e istruzioni sblocco SSH           CI  sonda/vps-stato-2026-08-26  push  33016564131  58s  2026-08-26T21:41:59Z
-completed  success  docs(sonda-vps): report sonda VPS 2026-08-26 — task SALTATA (SSH non …  CI  sonda/vps-stato-2026-08-26  push  33016452509  54s  2026-08-26T21:40:26Z
+completed	success	docs(diagnosi): bug kernel-rifiuta-7x8 — causa radice isolata (system…	CI	sonda/vps-stato-2026-08-26	push	33255140643	54s	2026-08-29T13:29:25Z
+completed	success	docs(fine-task): handoff + diff_sessione sonda VPS 2026-08-26 — PR #77	CI	sonda/vps-stato-2026-08-26	push	33020640833	52s	2026-08-26T22:44:35Z
+completed	failure	docs(sonda-vps): fotografia deploy GAS 2026-08-26 — VPS stabile, 391 …	CI	sonda/vps-stato-2026-08-26	push	33018077555	46s	2026-08-26T22:04:14Z
 ```
 
-Mappatura commit→run:
-- `3cde16b` → run 33016452509 — SUCCESS (2026-08-26T21:40:26Z)
-- `cab1352` → run 33016564131 — SUCCESS (2026-08-26T21:41:59Z)
-- `b7ab347` → run 33018077555 — FAILURE (handoff-check: stato_progetto.md omesso dal §2 del vecchio handoff — corretto in questo commit)
-- commit di fine-task (questo) → run non ancora disponibile alla scrittura dell'handoff
+**Mappatura commit→run:**
+- `e0afbd1` (docs(diagnosi): bug kernel-rifiuta-7x8…) → run `33255140643` — **SUCCESS** ✅ (push singolo, testa questo commit)
+- `b0dde4c` (docs(fine-task): handoff…) → run `33020640833` — **SUCCESS** ✅
+- `b7ab347`, `cab1352`, `3cde16b` → run `33018077555` — **FAILURE** ❌ (sessione precedente)
+- Commit di fine-task corrente → nessuna run ancora disponibile alla scrittura dell'handoff
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna review motore questa sessione. Finding emersi dalla sonda VPS:
-
-- **VPS 391 commit dietro** (17 motore): dichiarato "copia VPS stantia" — in attesa di S2.
-- **F7 chiusa**: VPS `.gitignore` ha `venv/` ma non `.venv/` — atteso per VPS stantio, fix già su origin/main.
-- **`.gas_history.json` fermo al 2026-07-06**: nessun turno kernel reale dal deploy — non è un errore se nessun utente ha scritto.
-- **Riavvio VPS 2026-08-25 17:00**: `Restart=always` ha funzionato, servizio tornato su automaticamente.
+- **kernel rifiuta 7×8** (diagnosticato questa sessione): causa radice isolata — system prompt `gas.py:50-55` forza run_command per calcoli; SHELL_ALLOWLIST `gas.py:874-878` priva di tool aritmetici. Tre opzioni di fix in `reports/ultimo_report.md §4`. Decisione e fetta di fix all'operatore.
+- **R-finegat-1** (portata da sessione precedente): `PR_JSON=$(gh pr list ... 2>&1)` — stderr misto produce testo non-JSON con exit 0.
+- **R-finegat-2** (portata da sessione precedente): pattern `GH_EXIT=$?; if [ $GH_EXIT -ne 0 ]` non-atomico.
