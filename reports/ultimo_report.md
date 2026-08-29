@@ -1,70 +1,43 @@
-# Diagnosi bug "7×8 in text-only mode" — 2026-08-29
-
-**Branch:** `sonda/vps-stato-2026-08-26`  
-**Data:** 2026-08-29  
-**Tipo:** Sonda read-only / diagnosi. Zero modifiche al motore.  
-**Attività:** Riproduzione e isolamento del bug "kernel rifiuta 7×8" attestato il 2026-08-22.
-
----
-
-## 1. Verifica pre-task
-
-**Subagent revisore:** presente (`/.claude/agents/revisore.md` + `memoria_revisore.md` verificati da `ls .claude/agents/`). ✅
+# Audit System Prompt — Direttive contraddittorie e ambigue
+**Data:** 2026-08-29
+**Branch:** sonda/vps-stato-2026-08-26
+**Scope:** READ-ONLY audit del system prompt in gas.py. Nessuna modifica al motore.
+**Oggetto:** rilevare direttive contraddittorie, ambigue o impossibili da eseguire — stessa classe del bug 7×8.
 
 ---
 
-## 2. Riproduzione reale
+## Materiale esaminato
 
-### 2a. Ambiente
+| File | Righe | Contenuto |
+|------|-------|-----------|
+| `gas.py` | 38–60 | `_GAS_SYSTEM_PROMPT_BASE` |
+| `gas.py` | 62–68 | `_build_system_prompt()` — logic di composizione |
+| `gas.py` | 390–397 | `tools_schema` — tool esposti al modello |
+| `gas.py` | 874–878 | `SHELL_ALLOWLIST` — binari consentiti in run_command |
+| `gas_identity.md` | 1–5 | identità runtime iniettata prima del base prompt |
 
-- Python: `venv/bin/python3` (3.12, dipendenze motore installate)
-- Chiavi attive da `.env`: `GROQ_API_KEY` ✅ · `ELEVENLABS_API_KEY` ✅
-- Chiavi assenti da `.env`: `GEMINI_API_KEY` · `OPENROUTER_API_KEY`
-- Cascata effettiva per questo host (compito "semplice"): gemini-flash-lite → **SKIP** (no key) · gemini-flash → **SKIP** (no key) · **groq** (primo rung attivo)
-
-### 2b. Input 1: `"7×8"`
-
+**System prompt effettivo** (quando `gas_identity.md` esiste, gas.py:67):
 ```
-classifica_compito('7×8') = 'semplice'   ← gas.py:1480-1485
-EVENT tool_res: (nessuno)
-EVENT final: "Non ho a disposizione un comando consentito dall'allowlist che mi
-  permetta di eseguire direttamente una moltiplicazione, quindi non posso
-  verificare con run_command il risultato di 7 × 8.
-  Devo quindi dichiarare l'incertezza sul valore esatto."
+# LA TUA IDENTITÀ
+[gas_identity.md]
+
+[_GAS_SYSTEM_PROMPT_BASE]
 ```
-
-### 2c. Input 2: `"sette per otto"`
-
-```
-classifica_compito('sette per otto') = 'semplice'
-EVENT tool_res: (nessuno)
-EVENT final: "Non ho a disposizione un comando consentito dall'allowlist che mi
-  permetta di eseguire direttamente una moltiplicazione, quindi devo dichiarare
-  che non posso fornire con certezza il risultato di 7 × 8."
-```
-
-### 2d. `gas_debug.log`
-
-Nessun `WARNING Provider groq` emesso → la chiamata Groq API ha avuto **successo**.  
-Nessun `WARNING Provider gemini` → i due rung Gemini saltati per assenza chiave (nessun errore, solo `continue`).  
-Nessun evento `error` nella pipeline → la pipeline è **funzionante**.
 
 ---
 
-## 3. Causa radice
+## Finding F1 — CRITICO: "calcoli esatti" impossibili con run_command
 
-Il bug non è un crash né un fallthrough di provider. La pipeline funziona; il problema è **semantico**: il modello produce un `final` con contenuto inutile.
+**Path:righe:** `gas.py:46-48`
 
-### 3a. Meccanismo
+**Citazione verbatim:**
+```
+"Per conteggi, misure e calcoli esatti usa SEMPRE run_command (es. wc -l), "
+"non stimare mai a mente. Se non puoi verificare un dato, dichiara l'incertezza "
+"invece di inventare.\n"
+```
 
-Il sistema prompt base (`gas.py:46-55`, variabile `_GAS_SYSTEM_PROMPT_BASE`) contiene **due regole in tensione con l'allowlist**:
-
-> "Per conteggi, misure e calcoli esatti usa SEMPRE run_command (es. wc -l),  
->  non stimare mai a mente. Se non puoi verificare un dato, dichiara l'incertezza  
->  invece di inventare."
-
-La `SHELL_ALLOWLIST` (`gas.py:874-878`) include:
-
+**SHELL_ALLOWLIST effettiva** (`gas.py:874-878`):
 ```python
 SHELL_ALLOWLIST = frozenset({
     "ls", "cat", "head", "tail", "wc", "grep", "echo", "pwd", "date",
@@ -73,76 +46,139 @@ SHELL_ALLOWLIST = frozenset({
 })
 ```
 
-**Nessun comando di calcolo aritmetico** è presente: né `python`, né `bc`, né `expr`, né `awk`, né `dc`.  
-Il vet `_vet_command` (`gas.py:927-957`) rifiuta qualsiasi binario fuori allowlist.
+**Perché è un problema:** Il sistema ordina a Gas di usare run_command per "calcoli esatti" ma la SHELL_ALLOWLIST non contiene nessun calcolatore: `bc`, `expr`, `awk`, `python`, `python3` sono assenti. `seq` genera sequenze, `printf` formatta testo, `wc` conta caratteri/righe/parole — nessuno può fare aritmetica. Se l'utente chiede `7×8`, `15% di 340`, o qualunque operazione aritmetica, run_command verrà negata con "comando non consentito". Gas si trova in stallo: gli è stato ordinato di usare un tool che non ha per fare una cosa. È **esattamente la classe del bug 7×8** documentata nella diagnosi `e0afbd1`.
 
-### 3b. Catena causale
+**Opzioni fix (scelta all'operatore, NON impegnata):**
+- (a) Riscrivere la direttiva: sostituire "calcoli esatti" con "conteggi di file/righe/parole" — zero rischio, massima onestà sul perimetro reale.
+- (b) Aggiungere `bc` all'allowlist — richiede `bc` installato su VPS; rischio basso ma estende superficie.
+- (c) Aggiungere `python3` all'allowlist con regex di vetting speciale — apre esecuzione di codice arbitrario, rischio alto.
 
-1. Il modello Groq riceve `"7×8"` + system prompt con la regola "usa SEMPRE run_command".
-2. Il modello ragiona: "devo usare run_command → ma non ho un comando aritmetico nell'allowlist → non posso verificare → devo dichiarare incertezza".
-3. Il modello risponde direttamente con la dichiarazione di incertezza **senza tentare alcuna tool call** (zero eventi `tool_res`).
-4. `run_turn` emette `{"type": "final", "content": "Non ho a disposizione..."}`.
-5. `server.py:152-154` invia `{"content": "..."}` → HTTP 200 al client.
-6. Il client in `--text-only` stampa la risposta → **nessun calcolo visibile all'utente**.
-
-### 3c. Evidenza verbatim (path:riga)
-
-| Elemento | Path:riga | Contenuto |
-|---|---|---|
-| Regola "usa SEMPRE run_command" | `gas.py:50-52` | `"usa SEMPRE i tool nativi... non inventare"` |
-| Regola "dichiara incertezza" | `gas.py:53-55` | `"dichiara l'incertezza invece di inventare"` |
-| SHELL_ALLOWLIST senza aritmetica | `gas.py:874-878` | `frozenset({...})` — nessun `bc`/`python`/`expr` |
-| Vet fail-closed | `gas.py:943-950` | binario non in allowlist → messaggio di diniego |
-| Cascata "semplice" | `gas.py:1480-1485` | gemini-flash-lite → gemini-flash → groq |
-| Loop agentic | `gas.py:1504` | `for _ in range(10)` |
-| Emit final | `gas.py:1550-1554` | `elif msg.content: … yield {"type": "final", ...}` |
-| Server consuma final | `server.py:152-153` | `result_content = event.get("content", "")` |
-| Server risponde JSON | `server.py:171` | `self._send_json(200, {"content": result_content})` |
+**Raccomandazione:** opzione (a) — riscrivere la direttiva senza ampliare l'allowlist.
 
 ---
 
-## 4. Opzioni di fix (nessuna implementata — decide l'operatore)
+## Finding F2 — ALTO: gas_identity.md cita 3 tool, il kernel ne espone 6
 
-### Opzione A — Eccezione nel system prompt (solo testo)
-**Cosa:** Aggiungere al system prompt una riga del tipo:
-> "Per aritmetica elementare (moltiplicazioni, addizioni, potenze di singoli numeri) puoi rispondere direttamente — la regola run_command vale per misurazioni di file e sistema, non per calcolo puro."
+**Path:righe:** `gas_identity.md:3`
 
-**File toccati:** `gas.py:50-55` (1 riga aggiunta)  
-**Rischio:** Basso. Nessuna modifica al codice; il modello potrebbe comunque "stimare" anche su conteggi che richiedono run_command. Richiede review.  
-**Nota:** Gemini (su VPS) potrebbe comportarsi diversamente da Groq; fix da verificare su entrambi.
+**Citazione verbatim:**
+```
+agisco sul mondo con i tool nativi read_file, write_file e run_command
+```
 
-### Opzione B — Aggiungere `bc` all'allowlist
-**Cosa:** `SHELL_ALLOWLIST` include `"bc"`. Il modello può fare `run_command bc <<< "7*8"` …  
-**Attenzione:** `bc` senza shell non riceve input da stdin nel modo usuale via subprocess; richiederebbe passaggio via file temporaneo o pipe (non disponibile). Probabilmente non risolve il problema senza modifiche aggiuntive al sandbox.  
-**File toccati:** `gas.py:874-878`  
-**Rischio:** Medio. Richiede analisi dei vettori di abuso `bc`.
+**Tool effettivi** (`gas.py:390-397`, `tools_schema`):
+```
+run_command, write_file, read_file, ricorda, salva_contatto, imposta_stato_contatto
+```
 
-### Opzione C — Tool dedicato `calcola(expr)`
-**Cosa:** Nuovo tool `calcola` con `eval()` Python ristretto (solo operatori numerici + `math.*`), nessuna shell.  
-**File toccati:** `gas.py:390-397` (tools_schema) + nuovo dispatch in `execute_tool_call` + test.  
-**Rischio:** Alto (eval). Richiede sandboxing rigoroso dell'input e review completa. Soluzione più robusta a lungo termine.
+**Perché è un problema:** Gas legge la propria identità come parte del system prompt a ogni turno. Crede di avere 3 tool nativi; in realtà ne ha 6. I 3 non citati sono:
+- `ricorda` — unico modo corretto di interrogare la memoria lunga (SQLite). Senza questa istruzione, Gas potrebbe tentare `read_file("gas_memory.db")` che restituisce binario illeggibile.
+- `salva_contatto` / `imposta_stato_contatto` — CRM. Senza menzione, Gas non sa che esistono come tool invocabili.
 
-### Opzione D — `printf` con aritmetica (no-op)
-**Nota:** `printf` è già in allowlist ma non fa aritmetica senza shell. Non percorribile.
+Nessun crash immediato, ma la lacuna abbassa la probabilità che il modello usi questi tool spontaneamente per le azioni CRM/memoria.
+
+**Opzione fix:** aggiornare `gas_identity.md` con la lista completa dei 6 tool.
 
 ---
 
-## 5. Gate rispettati
+## Finding F3 — ALTO: REGOLE TASSATIVE ripetono la stessa lista incompleta
 
-- **Zero modifiche al motore** (gas.py, brains/, modules/, tests/): rispettato.
-- **Zero commit al codice** del motore: rispettato.
-- **Il revisore non è stato invocato** (task doc-only, nessun diff motore da revisionare): corretto.
+**Path:righe:** `gas.py:42`
+
+**Citazione verbatim:**
+```
+"Usa SEMPRE i tool nativi (read_file, write_file, run_command). "
+"Non inventare, descrivere o simulare mai l'output: invocali davvero e aspetta il risultato.\n"
+```
+
+**Perché è un problema:** Stessa lacuna di F2, stavolta nel corpo del base prompt. La direttiva "Usa SEMPRE i tool nativi" nomina solo 3 tool; i restanti 3 (`ricorda`, `salva_contatto`, `imposta_stato_contatto`) non compaiono mai nelle REGOLE TASSATIVE. Un modello che legge questa regola non ha motivo di sapere che "invocare sempre i tool nativi" si estende anche a loro.
+
+**Opzione fix:** aggiornare `_GAS_SYSTEM_PROMPT_BASE` con la lista completa, oppure referenziare genericamente "tutti i tool disponibili nello schema".
 
 ---
 
-## 6. Sintesi
+## Finding F4 — MEDIO: Conflitto "non bloccarti" vs "non simulare" senza path d'uscita per tool failure
 
-| Domanda | Risposta |
-|---|---|
-| Il kernel crasha? | No — evento `final` emesso correttamente |
-| Il provider fallisce? | No — Groq risponde HTTP 200 |
-| Manca un tool aritmetico? | **Sì** — nessun comando in allowlist esegue aritmetica |
-| Qual è il gate/guardia che causa il problema? | Il system prompt (`gas.py:50-55`) + l'assenza di aritmetica in SHELL_ALLOWLIST (`gas.py:874-878`) |
-| Il comportamento è coerente su `7×8` e `sette per otto`? | **Sì** — identico |
-| È bloccante per il giro audio? | No (già attestato dal supervisore 2026-08-22) |
-| Prossimo passo | L'operatore sceglie tra opzione A/B/C; poi si apre una fetta di fix con revisione |
+**Path:righe:** `gas.py:44` vs `gas.py:42-43`
+
+**Citazione A (robustezza):**
+```
+"Priorità assoluta alla robustezza: se qualcosa fallisce, gestisci l'errore senza bloccarti.\n"
+```
+
+**Citazione B (no-simulazione):**
+```
+"Non inventare, descrivere o simulare mai l'output: invocali davvero e aspetta il risultato.\n"
+```
+
+**Citazione C (workaround parziale):**
+```
+"non stimare mai a mente. Se non puoi verificare un dato, dichiara l'incertezza "
+"invece di inventare.\n"
+```
+
+**Perché è un problema:** La Citazione C offre un workaround ("dichiara l'incertezza") ma è collocata nella sezione dedicata a "conteggi, misure e calcoli" — non è presentata come policy generale di fallback per qualunque tool failure. Il modello che riceve un diniego da run_command per un caso non coperto dalla Citazione C si trova in vicolo cieco:
+- "non bloccarti" → tende a simulare (violando B)
+- "non simulare" → tende a bloccarsi (violando A)
+
+La regola C dovrebbe essere una policy globale: "se un tool call è negato e non esiste alternativa, dichiara esplicitamente il limite invece di simulare l'output."
+
+**Opzione fix:** spostare/generalizzare la Citazione C come regola di fallback universale per tool failure, non solo per verifiche numeriche.
+
+---
+
+## Finding F5 — MINORE: Doppia auto-presentazione nel prompt composto
+
+**Path:righe:** `gas_identity.md:1` + `gas.py:39`
+
+**Citazione identity:**
+```
+Sono Gas, agente AI autonomo e personale, destinato a girare h24 su VPS...
+```
+
+**Citazione base:**
+```
+"Sei Gas, un agente AI autonomo e personale che gira su VPS. "
+```
+
+**Perché è un problema:** Quando `gas_identity.md` esiste (caso normale), il prompt composto contiene due auto-presentazioni consecutive: "Sono Gas..." poi "Sei Gas...". Ridondante. Non causa crash, ma occupa token e può confondere il modello su quale delle due rappresentazioni abbia priorità (terza persona "Sei" vs prima persona "Sono"). Finding a bassa priorità.
+
+---
+
+## Finding F6 — MINORE: "echo" in allowlist "sola lettura"
+
+**Path:righe:** `gas.py:49` + `gas.py:875`
+
+**Citazione prompt:**
+```
+"run_command è confinato: esegue SOLO comandi di sola lettura da una "
+"allowlist (ls, cat, head, tail, grep, wc, cut, diff...), SENZA shell. "
+```
+
+**SHELL_ALLOWLIST (gas.py:875):**
+```python
+"ls", "cat", "head", "tail", "wc", "grep", "echo", ...
+```
+
+**Perché è un problema:** Il prompt descrive la allowlist come "sola lettura" (comandi che leggono file/stato), ma `echo` è un comando di output puro — non legge nulla. Inconsistenza concettuale. In pratica innocua (senza shell, `echo hello` funziona, `echo $PATH` stampa letteralmente `$PATH` senza espansione variabile). Finding a bassissima priorità.
+
+---
+
+## Riepilogo findings
+
+| ID | Severity | Componente | Tipo |
+|----|----------|------------|------|
+| F1 | CRITICO | gas.py:46-48 | Istruzione impossibile da eseguire |
+| F2 | ALTO | gas_identity.md:3 | Lista tool incompleta — identity |
+| F3 | ALTO | gas.py:42 | Lista tool incompleta — base prompt |
+| F4 | MEDIO | gas.py:42-44 | Conflitto tra regole senza path d'uscita |
+| F5 | MINORE | gas_identity.md:1 + gas.py:39 | Ridondanza semantica |
+| F6 | MINORE | gas.py:49 + gas.py:875 | Inconsistenza concettuale innocua |
+
+---
+
+## Conclusione
+
+F1 è il finding più grave: stessa struttura del bug 7×8. Il kernel ordina di eseguire un'azione (calcolo aritmetico) con uno strumento che non può eseguirla. F2 e F3 sono la seconda classe critica: i tool CRM/memoria esistono nel kernel ma il modello non è istruito a sapere che esistono. F4 è un'ambiguità strutturale che rende il comportamento in caso di tool failure imprevedibile.
+
+Nessuna modifica al motore effettuata in questo audit. Ogni fix richiede decisione e scope dall'operatore.
