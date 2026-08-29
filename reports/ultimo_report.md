@@ -1,98 +1,90 @@
-# REPORT TASK — Chiusura riserve calcola(): tetto anti-DoS + test stringenti
+# REPORT — Sonda E2E calcola() comportamentale
+
 **Data:** 2026-08-29
-**Branch:** sonda/vps-stato-2026-08-26
-**Review:** #94 — APPROVATO
+**Branch:** sonda/e2e-calcola-2026-08-29
+**Tipo task:** Sonda / prova comportamentale (nessuna modifica al motore)
+**Stop gate:** rispettato — 0 righe di codice motore toccate.
+**Review revisore:** non richiesta (nessun diff motore).
 
 ---
 
-## SCOPE ESEGUITO (5 punti)
+## DECISIONI UMANE RICHIESTE
 
-### 1. Tetto anti-DoS in calcola(): FATTA
+1. Merge della PR su `sonda/e2e-calcola-2026-08-29` → main (vedi §0 handoff).
+2. (Opzionale) Se si vuole isolare il bug 7×8 su Gemini: occorre `GEMINI_API_KEY` nel `.env` e un test mirato. Decisione all'operatore.
 
-Tre strati indipendenti di difesa:
+---
 
-**Strato A — validazione AST (pre-eval, zero costo):**
-- Esponente `**` deve essere un letterale `ast.Constant` ≤ `_CALCOLA_MAX_EXP` (1000).
-  Cattura: `9**9**9` → outer `**` ha right=`BinOp` (non Constant) → RIFIUTATO in 0.000s.
-- `math.factorial(n)` richiede arg letterale Constant ≤ `_CALCOLA_MAX_FACTORIAL` (1000).
-  Cattura: `math.factorial(2**100)`, `math.factorial(9**3)` → arg non letterale → RIFIUTATO.
-- `pow` rimosso da `_CALCOLA_BUILTIN_FUNCS` e dal namespace eval.
-  Cattura: `pow(9, 387420489)` → "Rifiutato: funzione non permessa 'pow'".
+## Scope
 
-**Strato B — namespace eval ripulito:** `__builtins__={}` + whitelist minimale (math, abs, round). `pow` non più presente.
+### Fetta 1 — Verifica precondizioni
+`FATTA` — revisore presente, `GROQ_API_KEY` disponibile in `.env`, kernel importabile.
 
-**Strato C — check post-eval:** `len(str(result)) > _CALCOLA_MAX_DIGITS` (500) → RIFIUTATO.
-  Cattura: risultati astronomici che passassero la validazione AST.
+### Fetta 2 — Test E2E "sette per otto"
+`FATTA` — `calcola({"expr":"7*8"})` → `56`. PASS.
 
-### 2. Whitelist nodi AST esplicitata in commento: FATTA
+### Fetta 3 — Test E2E "radice quadrata di 144"
+`FATTA` — `calcola({"expr":"math.sqrt(144)"})` → `12.0`. PASS.
 
-Aggiunto blocco commento sopra `_calcola_validate`:
+### Fetta 4 — Analisi comportamentale e report
+`FATTA` — nessun fix necessario. Stop gate rispettato.
+
+---
+
+## Risultati
+
+### TEST 1 — "sette per otto"
+
 ```
-# Whitelist nodi AST ammessi:
-#   ast.Expression, ast.Constant (int/float),
-#   ast.BinOp  (op in Add/Sub/Mult/Div/FloorDiv/Mod/Pow),
-#   ast.UnaryOp (op in USub/UAdd),
-#   ast.Call   (func validato da _calcola_validate_func),
-#   ast.Attribute (solo math.<costante>),
-#   ast.Name   (solo "math" o funzione builtin ammessa)
+INPUT: 'sette per otto'
+[TOOL RESULT] '56'
+[FINAL] '56'
+[TOOL CHIAMATO] calcola  args={"expr":"7*8"}
 ```
 
-### 3. Test end-to-end LLM live: SALTATA — API key assenti
+- Tool invocato: **`calcola`** ✅
+- Argomento: `{"expr":"7*8"}` ✅
+- Risultato: `'56'` ✅
+- Risposta finale: `'56'` ✅
+- **PASS**
 
-`python3 gas.py doctor` conferma: `GEMINI_API_KEY assente`, `GROQ_API_KEY assente`.
-Il test "sette per otto → modello chiama calcola → 56" richiede un provider attivo.
-Va eseguito al primo deploy su VPS S2. NON dichiarato passato.
+### TEST 2 — "radice quadrata di 144"
 
-### 4. Fix T62f — rifiuto stringente (R-calcola-2): FATTA
+```
+INPUT: 'radice quadrata di 144'
+[TOOL RESULT] '12.0'
+[FINAL] '12.0'
+[TOOL CHIAMATO] calcola  args={"expr":"math.sqrt(144)"}
+```
 
-Condizione aggiornata da `_r.startswith("Rifiutato") or _r.startswith("Errore")` a
-solo `_r.startswith("Rifiutato")`. Gli input malevoli producono ora SOLO "Rifiutato:"
-(per nome non permesso, costrutto non permesso, ecc.) — mai "Errore di sintassi".
-Aggiunto `pow(9, 387420489)` alla lista dei bad input.
-
-### 5. Commit hash + conferma branch: FATTA
-
-- **Commit motore #94:** `873220a`
-- **Branch:** `sonda/vps-stato-2026-08-26`
-  Motivazione branch: questo branch raccoglie l'intera sessione di sonda VPS 2026-08-26,
-  che si è estesa su più giorni di lavoro (audit system-prompt, diagnosi bug, prompt
-  hardening, calcola). Il nome è immutabile (branch già pushato con PR #77 aperta).
-
----
-
-## TEST REALI ESEGUITI (zero simulazioni)
-
-| Test | Input | Atteso | Esito |
-|------|-------|--------|-------|
-| T62f | `pow(9, 387420489)` | Rifiutato | ✅ PASS |
-| T62l | `9**9**9` | Rifiutato, elapsed=0.000s | ✅ PASS |
-| T62m | `2**1001` | Rifiutato (esponente > 1000) | ✅ PASS |
-| T62n | `math.factorial(1001)` | Rifiutato (> limite) | ✅ PASS |
-| T62o | `2**1000` | Valido (302 cifre ≤ 500) | ✅ PASS |
-| T62p | `math.factorial(9**3)` | Rifiutato (arg non letterale) | ✅ PASS |
-| T62k | `math.factorial(171)` | Numerico (310 cifre ≤ 500) | ✅ PASS |
-| T62a-T62e | aritmetica base | Risultati corretti | ✅ PASS (tutti) |
-| T62f (prev) | 6 exploit noti | Rifiutato (solo "Rifiutato:") | ✅ PASS |
-
-**Suite completa: 299 PASS, 0 FAIL** (da 292 → +7 nuovi T62l-T62p + 1 T62f aggiornato).
+- Tool invocato: **`calcola`** ✅
+- Argomento: `{"expr":"math.sqrt(144)"}` ✅
+- Risultato: `'12.0'` (float Python — corretto) ✅
+- Risposta finale: `'12.0'` ✅
+- **PASS**
 
 ---
 
-## VERDETTO REVISORE #94
+## Sintesi comportamentale
 
-**APPROVATO**
-
-Elementi verificati: difese anti-DoS su tre strati indipendenti (AST/namespace/post-eval) strutturalmente solide; T62f condizione stringente corretta; Wall of Shame §5 rispettato; nessun guardrail indebolito.
-
-Riserva residua (da #93, non bloccante): R-calcola-1 coperta in ogni caso da `except Exception → stringa errore, zero crash`.
+| Domanda | Risposta |
+|---------|----------|
+| Il modello ha invocato `calcola`? | **Sì, in entrambi i casi** |
+| Con argomenti corretti? | **Sì** (`7*8` e `math.sqrt(144)`) |
+| La risposta finale è corretta? | **Sì** (`56` e `12.0`) |
+| L'instradamento è sistematico? | **Sì** — moltiplicazione + radice, entrambi via `calcola` |
+| Fix applicati? | **Nessuno** — stop gate rispettato |
 
 ---
 
-## NOTA ANOMALIA
+## Anomalie riscontrate
 
-Round-trip LLM live NON eseguibile in questo ambiente (API key assenti). Dichiarato
-esplicitamente come richiesto. Da validare su VPS S2 al deploy.
+**Il kernel non carica `.env` automaticamente**: legge solo `os.environ`. Per eseguire test manuali in subprocess Python serve `set -a && source .env && set +a` prima di invocare Python. Senza questo, la pipeline risulta esausta (nessun provider trova la chiave). Non è un bug — è comportamento intenzionale — ma vale la pena documentarlo per i prossimi test manuali.
 
-## STOP GATE
+**`GEMINI_API_KEY` assente**: il test è stato eseguito solo su Groq. Il bug 7×8 (se legato a Gemini in certi contesti) non è stato investigato.
 
-Scope fisso rispettato: solo i 5 punti elencati. Nessun refactor aggiuntivo committato.
+---
+
+## Bug 7×8 — stato
+
+Non riproducibile con Groq. Il kernel, con la pipeline corrente, chiama correttamente `calcola`. Se il bug era legato a Gemini, rimane non investigato (manca la chiave).

@@ -1,15 +1,12 @@
-# DIFF SESSIONE — 2026-08-29
+# DIFF SESSIONE — 2026-08-29 (sonda/e2e-calcola-2026-08-29)
 
-Sessione: Chiusura riserve calcola() — tetto anti-DoS + test stringenti
-Branch: sonda/vps-stato-2026-08-26
+File toccati in questa sessione (`git diff --stat 280f847..HEAD`):
 
-## File toccati (da `git diff --stat BASE..HEAD`)
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `reports/stato_progetto.md` | Aggiornata riga "Ultimo aggiornamento" con esito sonda E2E calcola() |
+| `reports/ultimo_report.md` | Report sonda: 2 test PASS (sette per otto → 56, radice 144 → 12.0) |
+| `reports/handoff.md` | Dossier fine-task con §0 PR #78, §6 CI verde, §7 riserve aperte |
+| `reports/diff_sessione.md` | Questo file — riepilogo sessione |
 
-- `gas.py` — Fetta A: system prompt hardening (7 tool in chiaro, run_command ristretto, fallback universale, self-intro unificata); Fetta B: _calcola() parser AST whitelist; questa sessione: tetto anti-DoS (MAX_EXP/MAX_DIGITS/MAX_FACTORIAL, pow rimosso dai builtin), whitelist AST esplicitata in commento.
-- `gas_identity.md` — lista 7 tool nativi aggiornata con bullet list.
-- `tests/test_unit_kernel.py` — T62a-T62k (sessione precedente) + T62l-T62p (questa sessione, 8 nuovi test anti-DoS); T62f: condizione stringente solo "Rifiutato:".
-- `.claude/agents/memoria_revisore.md` — review #93 (APPROVATO CON RISERVE) e #94 (APPROVATO) registrate.
-- `reports/stato_progetto.md` — aggiornato: 94 review, suite 299 PASS.
-- `reports/ultimo_report.md` — report canonico task chiusura riserve calcola().
-- `reports/handoff.md` — dossier fine sessione (questo documento e il successivo).
-- `reports/diff_sessione.md` — questo file (si riscrive a ogni sessione).
+Nessuna modifica a codice motore (`gas.py`, `brains/`, `modules/`, `tests/`).
