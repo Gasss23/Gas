@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-08-29** (sonda/vps-stato-2026-08-26: chiusura riserve calcola() — tetto anti-DoS (MAX_EXP/MAX_DIGITS/MAX_FACTORIAL), fix T62f stringente — review #94 APPROVATO. Suite: 299 PASS. Report: `reports/ultimo_report.md`.)
+> Ultimo aggiornamento: **2026-08-29** (sonda/e2e-calcola-2026-08-29: prova E2E comportamentale calcola() — Groq brain, 2 test PASS: "sette per otto"→56 (tool args `7*8`), "radice di 144"→12.0 (tool args `math.sqrt(144)`). Nessuna modifica motore. Report: `reports/ultimo_report.md`.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
