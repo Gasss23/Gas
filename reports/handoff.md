@@ -1,36 +1,47 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-25/26 — Audit read-only branch remoti
+**Sessione:** 2026-08-29 — Chiusura riserve calcola(): tetto anti-DoS + test stringenti
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR #76** (https://github.com/Gasss23/Gas/pull/76).
-2. **Cancellazione branch SAFE** — i 3 branch con rc=0 (tip già su main) sono cancellabili senza rischio di perdita. Eseguire a mano da WSL dopo aver verificato il merge:
-   ```bash
-   git push origin --delete docs/scollega-gashistory-r2-v2
-   git push origin --delete fix/r2-durabilita-memoria-clean
-   git push origin --delete fix/r2-riserve-86
-   ```
-3. **Giudizio sui 6 branch DA-GIUDICARE-A-MANO** — vedere `reports/ultimo_report.md` §"Suggerimento per l'operatore" per le note specifiche su ciascuno.
+1. Merge della PR #77 (https://github.com/Gasss23/Gas/pull/77).
+2. **Deploy VPS + test E2E live**: dopo il merge, portare il codice su S2 e validare il round-trip agentico: input "sette per otto" → modello chiama `calcola('7*8')` → risposta "56". Non eseguibile in dev (API key assenti).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Audit read-only branch remoti**: `FATTA` — tutti i 9 branch analizzati con `git rev-list --left-right --count` + `git merge-base --is-ancestor`. 3 SAFE-DA-CANCELLARE (rc=0), 6 DA-GIUDICARE-A-MANO (rc≠0). Zero cancellazioni, zero modifiche motore.
+**1. Tetto anti-DoS in calcola()**: FATTA
+- Tre strati: validazione AST (esponente letterale ≤ 1000, factorial arg letterale ≤ 1000), namespace eval ripulito (`pow` rimosso), check post-eval ≤ 500 cifre.
+- `9**9**9` → RIFIUTATO in 0.000s (zero hang).
+
+**2. Whitelist nodi AST esplicitata**: FATTA
+- Blocco commento aggiunto sopra `_calcola_validate` con elenco verbatim degli `ast.*` ammessi.
+
+**3. Test end-to-end LLM live**: SALTATA — API key assenti in dev (Gemini, Groq). Da eseguire su VPS S2. NON dichiarato passato.
+
+**4. Fix T62f — rifiuto stringente (R-calcola-2)**: FATTA
+- Condizione da `startswith("Rifiutato") or startswith("Errore")` a solo `startswith("Rifiutato")`.
+- `pow(9, 387420489)` aggiunto a bad_inputs.
+
+**5. Commit hash + conferma branch**: FATTA — commit `873220a`, branch `sonda/vps-stato-2026-08-26`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  20 ++--
- reports/handoff.md        |  59 ++++------
- reports/stato_progetto.md |   7 +-
- reports/ultimo_report.md  | 274 ++++++++++++++++++++++++++++++++++++++--------
- 4 files changed, 262 insertions(+), 98 deletions(-)
+ .claude/agents/memoria_revisore.md |   2 +
+ gas.py                             | 155 +++++++++++++++++---
+ gas_identity.md                    |  11 +-
+ reports/diff_sessione.md           |  21 +--
+ reports/handoff.md                 | 112 ++++++++++----
+ reports/stato_progetto.md          |  40 ++++-
+ reports/ultimo_report.md           | 292 ++++++++-----------------------------
+ tests/test_unit_kernel.py          |  60 ++++++++
+ 8 files changed, 404 insertions(+), 289 deletions(-)
 ```
 
 ---
@@ -38,39 +49,87 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e382ef4 docs(audit): audit read-only branch remoti 2026-08-25
+873220a feat(kernel): calcola() tetto anti-DoS + fix T62f rifiuto stringente
+6f42a2b chore(revisore): memoria review #94 — APPROVATO
+d8cfb2a docs(fine-task): handoff Fetta A+B prompt hardening + calcola() 2026-08-29 — PR #77
+62af5ee feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whitelist (Fetta B)
+37b991d chore(revisore): memoria review #93 — APPROVATO CON RISERVE
+17b96d0 docs(fine-task): handoff audit system-prompt 2026-08-29 — PR #77
+7c4aec8 docs(audit): system prompt — 4 finding (CRITICO/ALTO×2/MEDIO), audit read-only
+2575e0a docs(fine-task): handoff diagnosi bug kernel-rifiuta-7x8 — 2026-08-29
+e0afbd1 docs(diagnosi): bug kernel-rifiuta-7x8 — causa radice isolata (system-prompt vs allowlist)
+b0dde4c docs(fine-task): handoff + diff_sessione sonda VPS 2026-08-26 — PR #77
+b7ab347 docs(sonda-vps): fotografia deploy GAS 2026-08-26 — VPS stabile, 391 commit dietro origin/main
+cab1352 docs(sonda-vps): §0 handoff — PR #77 e istruzioni sblocco SSH
+3cde16b docs(sonda-vps): report sonda VPS 2026-08-26 — task SALTATA (SSH non configurato)
 ```
 
-NB: il commit di fine-task (questo handoff) non compare qui, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare, per costruzione.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore (nessun commit tocca gas.py, brains/, modules/, tests/), revisore non richiesto.
+**Commit `873220a` — feat(kernel): calcola() tetto anti-DoS + fix T62f rifiuto stringente**
+
+**Verdetto review #94: APPROVATO**
+
+Elementi verificati:
+- Difese anti-DoS su tre strati indipendenti (AST/namespace/post-eval): strutturalmente solide.
+- T62f condizione stringente (`startswith("Rifiutato")` solo): corretta.
+- Wall of Shame §5 rispettato. Nessun guardrail indebolito.
+- Suite: 299 PASS, 0 FAIL.
+
+Riserva residua non bloccante: R-calcola-1 da #93 (math.factorial argomento borderline — coperta da `except Exception → stringa errore, zero crash`).
+
+**Commit `62af5ee` — feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whitelist (Fetta B)**
+
+**Verdetto review #93: APPROVATO CON RISERVE**
+
+Elementi verificati:
+- `eval` con `__builtins__={}` + namespace whitelist: sicuro contro tutti gli exploit noti.
+- System prompt: chiude F1 CRITICO, F2+F3 ALTO, F4 MEDIO dell'audit.
+
+Riserve (chiuse in questa sessione):
+- R-calcola-1: chiusa con T62k + tetto factorial.
+- R-calcola-2: chiusa con fix T62f in questa sessione.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/ in questa sessione.
+**Prima sessione corrente:** 292 PASS, 0 FAIL (baseline post-sessione precedente)
+**Dopo:** 299 PASS, 0 FAIL (+7 nuovi T62l-T62p + 1 T62f aggiornato)
+
+```
+=== RIEPILOGO: 299 PASS, 0 FAIL ===
+```
+
+Nuovi test: T62l (9**9**9 senza hang), T62m (esponente > MAX_EXP), T62n (factorial > MAX_FACTORIAL), T62o (2**1000 valido ≤ 500 cifre), T62p (factorial arg non letterale), + pow(9,387420489) in T62f.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(audit): audit read-only branch remoti 2026-08-25	CI	chore/audit-branch-remoti	push	32877865327	50s	2026-08-25T17:26:11Z
-completed	success	Merge pull request #75 from Gasss23/docs/voice-align-stato-2026-08-22	CI	main	push	32573406812	1m41s	2026-08-22T12:35:34Z
-completed	success	docs(fine-task): handoff + diff_sessione allineamento voce 2026-08-22	CI	docs/voice-align-stato-2026-08-22	push	32573121098	56s	2026-08-22T12:29:21Z
+completed	success	docs(fine-task): handoff Fetta A+B prompt hardening + calcola() 2026-…	CI	sonda/vps-stato-2026-08-26	push	33259588195	52s	2026-08-29T15:11:59Z
+completed	failure	feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whiteli…	CI	sonda/vps-stato-2026-08-26	push	33257612901	45s	2026-08-29T14:26:32Z
+completed	success	docs(fine-task): handoff audit system-prompt 2026-08-29 — PR #77	CI	sonda/vps-stato-2026-08-26	push	33256417734	1m14s	2026-08-29T14:00:00Z
 ```
 
-**Mappatura commit→run**:
-- `e382ef4` (docs(audit): audit read-only branch remoti 2026-08-25) → run `32877865327` ✅ SUCCESS (push su `chore/audit-branch-remoti`, 2026-08-25T17:26:11Z)
-- commit fine-task (questo handoff) → run non ancora disponibile alla scrittura dell'handoff
+Mappatura commit→run:
+- `873220a` (commit motore anti-DoS) → run non ancora disponibile (push avviene dopo la scrittura di questo handoff).
+- `6f42a2b` (memoria revisore #94) → nessuna run dedicata; incluso nell'albero testato dal push successivo.
+- `d8cfb2a` (fine-task sessione precedente) → run `33259588195`: `unit-suite` ✓, `handoff-check` ✓.
+- `62af5ee` (commit motore sessione precedente) → run `33257612901`: `unit-suite` ✓, `handoff-check` ✗ (§2 stale — corretto nel commit `d8cfb2a`).
+- Commit `37b991d`..`3cde16b` → sessioni precedenti, già dichiarati nei rispettivi handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna. Task doc-only (reports/), zero gate revisore richiesti.
+Da questa sessione: nessuna (R-calcola-1 e R-calcola-2 chiuse).
+
+Da sessioni precedenti (ancora aperte):
+- R-client4a-1: eccezioni di rete non gestite in main() di probe_client_4a.py — non bloccante per uso-e-getta.
+- **Rischio residuo deploy**: round-trip agentico con LLM reale non testato in dev — da validare su VPS S2.

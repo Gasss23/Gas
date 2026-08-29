@@ -3622,6 +3622,66 @@ check("T61d duplicati_cmd fail-safe: DB corrotto → exit 0, nessun crash",
       _no_crash_61d and _rc61d == 0 and ("non disponibile" in _out61d or "Duplicati" in _out61d),
       f"crash={not _no_crash_61d} rc={_rc61d} out={_out61d.strip()[:60]!r}")
 
+# ---------- T62: tool calcola() ----------
+print("\n--- T62: calcola() — parser AST whitelist ---")
+from gas import _calcola
+
+check("T62a 7*8 == '56'", _calcola("7*8") == "56")
+check("T62b math.sqrt(144) == '12.0'", _calcola("math.sqrt(144)") == "12.0")
+check("T62c (3+5)*2 == '16'", _calcola("(3+5)*2") == "16")
+check("T62d 10//3 == '3'", _calcola("10//3") == "3")
+check("T62e 2**10 == '1024'", _calcola("2**10") == "1024")
+
+# T62f: rifiuto sicurezza — solo "Rifiutato:" accettabile, non qualsiasi "Errore"
+_bad_inputs = [
+    "__import__('os')",
+    "os.system('id')",
+    "(lambda: 42)()",
+    "__builtins__",
+    "[x for x in range(3)]",
+    "open('/etc/passwd')",
+    "pow(9, 387420489)",  # pow rimosso dai builtin: deve essere Rifiutato
+]
+for _bi in _bad_inputs:
+    _r = _calcola(_bi)
+    check(f"T62f rifiuta {_bi[:28]!r}", _r.startswith("Rifiutato"),
+          f"got={_r[:60]!r}")
+
+check("T62g divisione per zero gestita (Errore non Rifiutato)", "zero" in _calcola("1/0").lower())
+check("T62h espressione vuota gestita (Errore non Rifiutato)", "vuota" in _calcola("").lower())
+
+# T62k: factorial(171) ≤ MAX_FACTORIAL(1000) e ≤ MAX_DIGITS(500) → risultato valido
+_fac171 = _calcola("math.factorial(171)")
+check("T62k factorial(171) → risultato numerico (≤ 500 cifre)",
+      _fac171.isdigit() or (_fac171[0] == "-" and _fac171[1:].isdigit()),
+      f"got={_fac171[:30]!r}")
+
+# T62l: anti-DoS ** — 9**9**9 deve essere RIFIUTATO senza hang
+import time as _time
+_t0 = _time.monotonic()
+_r_dos = _calcola("9**9**9")
+_elapsed = _time.monotonic() - _t0
+check("T62l 9**9**9 → Rifiutato (esponente non letterale)",
+      _r_dos.startswith("Rifiutato"), f"got={_r_dos[:60]!r}")
+check("T62l 9**9**9 → nessun hang (< 1s)", _elapsed < 1.0, f"elapsed={_elapsed:.3f}s")
+
+# T62m: anti-DoS ** — esponente > MAX_EXP
+check("T62m 2**1001 → Rifiutato (esponente > 1000)", _calcola("2**1001").startswith("Rifiutato"))
+
+# T62n: anti-DoS factorial — argomento > MAX_FACTORIAL
+check("T62n factorial(1001) → Rifiutato (> limite)", _calcola("math.factorial(1001)").startswith("Rifiutato"))
+
+# T62o: anti-DoS risultato — 2**1000 = 302 cifre ≤ 500 → passa; 2**500 = 151 cifre → passa
+check("T62o 2**1000 → risultato valido (302 cifre ≤ 500)", not _calcola("2**1000").startswith("Rifiutato"))
+
+# T62p: anti-DoS factorial con argomento non-letterale → Rifiutato
+check("T62p factorial(9**3) → Rifiutato (arg non letterale)", _calcola("math.factorial(9**3)").startswith("Rifiutato"))
+
+_k62 = kernel_tmp()
+check("T62i execute_tool_call dispatch 7*8", _k62.execute_tool_call("calcola", '{"expr":"7*8"}') == "56")
+check("T62j execute_tool_call tool ignoto → 'Tool non trovato.'",
+      _k62.execute_tool_call("inesistente", "{}") == "Tool non trovato.")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

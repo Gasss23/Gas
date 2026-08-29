@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import ast
+import math as _math_module
 import os
 import json
 import shlex
@@ -36,36 +38,151 @@ _snapshot_log = logging.getLogger("gas.snapshot")
 _snapshot_log.setLevel(logging.INFO)
 
 _GAS_SYSTEM_PROMPT_BASE = (
-    "Sei Gas, un agente AI autonomo e personale che gira su VPS. "
-    "Hai memoria persistente delle conversazioni in .gas_history.json.\n\n"
     "REGOLE TASSATIVE:\n"
-    "- Usa SEMPRE i tool nativi (read_file, write_file, run_command). "
-    "Non inventare, descrivere o simulare mai l'output: invocali davvero e aspetta il risultato.\n"
+    "- Hai 7 tool nativi: read_file, write_file, run_command, calcola, ricorda, "
+    "salva_contatto, imposta_stato_contatto. "
+    "Invocali davvero e aspetta il risultato reale: non inventare, descrivere o simulare mai l'output.\n"
+    "- Se un tool fallisce o viene negato dal kernel, DICHIARA esplicitamente che non puoi eseguire "
+    "quell'operazione. Non simulare né inventare mai un output alternativo, qualunque sia il contesto.\n"
     "- Priorità assoluta alla robustezza: se qualcosa fallisce, gestisci l'errore senza bloccarti.\n"
     "- Rispondi sempre in italiano, in modo conciso e diretto.\n"
-    "- Per conteggi, misure e calcoli esatti usa SEMPRE run_command (es. wc -l), "
-    "non stimare mai a mente. Se non puoi verificare un dato, dichiara l'incertezza "
-    "invece di inventare.\n"
-    "- run_command è confinato: esegue SOLO comandi di sola lettura da una "
-    "allowlist (ls, cat, head, tail, grep, wc, cut, diff...), SENZA shell. "
+    "- Per CALCOLI ARITMETICI usa SEMPRE calcola() (es. calcola('7*8'), calcola('math.sqrt(144)')). "
+    "Non calcolare mai a mente né stimare: invoca il tool e usa il risultato restituito.\n"
+    "- Per CONTEGGI E MISURE SU FILE usa run_command (es. wc -l file, grep -c pattern file). "
+    "run_command è confinato: esegue SOLO comandi di sola lettura da una allowlist "
+    "(ls, cat, head, tail, grep, wc, cut, diff...), SENZA shell. "
     "Pipe (|), redirezioni (>), concatenazioni (;, &&), command substitution "
     "($(...)) e interpreti NON funzionano: vengono trattati come testo o negati. "
-    "Per i conteggi usa le opzioni native (es. 'grep -c X file', 'wc -l file'); "
-    "per creare o modificare file usa SEMPRE write_file, mai redirezioni shell. "
-    "Inoltre, dove disponibile, run_command gira in un sandbox a livello OS "
-    "(rete ISOLATA e filesystem READ-ONLY): da lì non hai accesso di rete e non "
-    "puoi scrivere file.\n"
+    "Per creare o modificare file usa SEMPRE write_file, mai redirezioni shell. "
+    "Dove disponibile, run_command gira in sandbox OS (rete ISOLATA, filesystem READ-ONLY).\n"
     "- Non scrivere MAI file di memoria o cronologia (gas_history e simili): "
     "la memoria è gestita automaticamente dal kernel."
 )
+
+# --- Tool calcola(): aritmetica deterministica via AST, zero shell/file ---
+
+_CALCOLA_BUILTIN_FUNCS: frozenset = frozenset({"abs", "round"})  # pow escluso: DoS via pow(base, huge_exp)
+_CALCOLA_MATH_FUNCS: frozenset = frozenset({
+    "sqrt", "floor", "ceil", "log", "log2", "log10",
+    "sin", "cos", "tan", "fabs", "factorial",
+})
+_CALCOLA_MATH_CONSTS: frozenset = frozenset({"pi", "e", "tau", "inf"})
+_CALCOLA_MAX_EXP: int = 1000      # esponente letterale massimo per **
+_CALCOLA_MAX_DIGITS: int = 500    # cifre massime nel risultato stringa
+_CALCOLA_MAX_FACTORIAL: int = 1000  # argomento letterale massimo per math.factorial
+
+# Whitelist nodi AST ammessi (tutti gli altri → "costrutto non permesso"):
+#   ast.Expression, ast.Constant (int/float),
+#   ast.BinOp  (op in Add/Sub/Mult/Div/FloorDiv/Mod/Pow),
+#   ast.UnaryOp (op in USub/UAdd),
+#   ast.Call   (func validato da _calcola_validate_func),
+#   ast.Attribute (solo math.<costante>),
+#   ast.Name   (solo "math" o funzione builtin ammessa)
+
+def _calcola_validate(node: ast.AST) -> Optional[str]:
+    """Ritorna una stringa di errore se il nodo AST non è permesso, altrimenti None."""
+    if isinstance(node, ast.Expression):
+        return _calcola_validate(node.body)
+    if isinstance(node, ast.Constant):
+        if not isinstance(node.value, (int, float)):
+            return f"Rifiutato: costante non numerica ({type(node.value).__name__})."
+        return None
+    if isinstance(node, ast.BinOp):
+        if not isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div,
+                                     ast.FloorDiv, ast.Mod, ast.Pow)):
+            return "Rifiutato: operatore binario non permesso."
+        # Tetto anti-DoS: esponente ** deve essere letterale ≤ MAX_EXP
+        if isinstance(node.op, ast.Pow):
+            if not isinstance(node.right, ast.Constant) or not isinstance(node.right.value, (int, float)):
+                return (f"Rifiutato: esponente ** deve essere una costante numerica ≤ "
+                        f"{_CALCOLA_MAX_EXP} (prevenzione DoS).")
+            if abs(node.right.value) > _CALCOLA_MAX_EXP:
+                return (f"Rifiutato: esponente {node.right.value} > limite "
+                        f"{_CALCOLA_MAX_EXP} (prevenzione DoS).")
+        return _calcola_validate(node.left) or _calcola_validate(node.right)
+    if isinstance(node, ast.UnaryOp):
+        if not isinstance(node.op, (ast.USub, ast.UAdd)):
+            return "Rifiutato: operatore unario non permesso."
+        return _calcola_validate(node.operand)
+    if isinstance(node, ast.Call):
+        err = _calcola_validate_func(node.func)
+        if err:
+            return err
+        if node.keywords:
+            return "Rifiutato: argomenti keyword non permessi nelle chiamate."
+        # Tetto anti-DoS: math.factorial con argomento letterale ≤ MAX_FACTORIAL
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "factorial":
+            if (len(node.args) != 1 or not isinstance(node.args[0], ast.Constant)
+                    or not isinstance(node.args[0].value, (int, float))):
+                return ("Rifiutato: math.factorial richiede una costante intera come argomento "
+                        "(prevenzione DoS).")
+            if node.args[0].value > _CALCOLA_MAX_FACTORIAL:
+                return (f"Rifiutato: math.factorial({node.args[0].value}) > limite "
+                        f"{_CALCOLA_MAX_FACTORIAL} (prevenzione DoS).")
+        for arg in node.args:
+            err = _calcola_validate(arg)
+            if err:
+                return err
+        return None
+    if isinstance(node, ast.Attribute):
+        if (isinstance(node.value, ast.Name) and node.value.id == "math"
+                and node.attr in _CALCOLA_MATH_CONSTS):
+            return None
+        return f"Rifiutato: attributo non permesso '{ast.unparse(node)}'."
+    if isinstance(node, ast.Name):
+        if node.id in _CALCOLA_BUILTIN_FUNCS or node.id == "math":
+            return None
+        return f"Rifiutato: nome non permesso '{node.id}'."
+    return f"Rifiutato: costrutto non permesso '{type(node).__name__}'."
+
+def _calcola_validate_func(node: ast.AST) -> Optional[str]:
+    """Valida il riferimento a funzione in un ast.Call."""
+    if isinstance(node, ast.Name):
+        if node.id in _CALCOLA_BUILTIN_FUNCS:
+            return None
+        return f"Rifiutato: funzione non permessa '{node.id}'."
+    if isinstance(node, ast.Attribute):
+        if (isinstance(node.value, ast.Name) and node.value.id == "math"
+                and node.attr in _CALCOLA_MATH_FUNCS):
+            return None
+        return f"Rifiutato: funzione math non permessa '{ast.unparse(node)}'."
+    return f"Rifiutato: riferimento a funzione non permesso ({type(node).__name__})."
+
+def _calcola(expr: str) -> str:
+    """Valuta un'espressione aritmetica pura via AST (whitelist). Zero shell/file."""
+    expr = expr.strip()
+    if not expr:
+        return "Errore: espressione vuota."
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as e:
+        return f"Errore di sintassi: {e}"
+    err = _calcola_validate(tree)
+    if err:
+        return err
+    try:
+        result = eval(  # noqa: S307 — AST validato, __builtins__ vuoto, nessun accesso a shell/file
+            compile(tree, "<calcola>", "eval"),
+            {"__builtins__": {}, "math": _math_module, "abs": abs, "round": round},
+        )
+        result_str = str(result)
+        if len(result_str) > _CALCOLA_MAX_DIGITS:
+            return (f"Rifiutato: risultato troppo grande ({len(result_str)} cifre, "
+                    f"limite {_CALCOLA_MAX_DIGITS}).")
+        return result_str
+    except ZeroDivisionError:
+        return "Errore: divisione per zero."
+    except Exception as e:
+        return f"Errore nel calcolo: {str(e)}"
 
 def _build_system_prompt(root: Path) -> str:
     """Costruisce il system prompt iniettando l'identità runtime (gas_identity.md)."""
     identity_md = root / "gas_identity.md"
     if identity_md.exists():
         identity = identity_md.read_text(encoding="utf-8")
-        return f"# LA TUA IDENTITÀ\n\n{identity}\n\n{_GAS_SYSTEM_PROMPT_BASE}"
-    return _GAS_SYSTEM_PROMPT_BASE
+        return f"# LA TUA IDENTITÀ\n\n{identity}\n\n# REGOLE OPERATIVE\n\n{_GAS_SYSTEM_PROMPT_BASE}"
+    return ("Sei Gas, un agente AI autonomo e personale che gira su VPS.\n\n"
+            + _GAS_SYSTEM_PROMPT_BASE)
 
 # Cache di processo della capacità del sandbox OS: la disponibilità di
 # bwrap + namespace è statica per host, quindi sondiamo UNA volta sola (la
@@ -393,7 +510,8 @@ class GasKernel:
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate e le schede dei lead/contatti. Usalo per ricordare cosa è già successo con un lead o cosa hai già fatto in passato. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare negli eventi del diario; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
-            {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}}
+            {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
+            {"type": "function", "function": {"name": "calcola", "description": "Valuta un'espressione aritmetica pura (+ - * / // % **) e funzioni math (sqrt, floor, ceil, log, log2, log10, sin, cos, tan, fabs, factorial) e costanti (math.pi, math.e). ZERO accesso a shell o file. Usalo per qualsiasi calcolo numerico preciso.", "parameters": {"type": "object", "properties": {"expr": {"type": "string", "description": "espressione aritmetica, es. '7*8', 'math.sqrt(144)', '(3+5)*2'"}}, "required": ["expr"]}}}
         ]
 
     def _load_history(self) -> List[Dict[str, Any]]:
@@ -1411,6 +1529,9 @@ class GasKernel:
                 out = self._salva_contatto(args if isinstance(args, dict) else {})
             elif name == "imposta_stato_contatto":
                 out = self._imposta_stato_contatto(args if isinstance(args, dict) else {})
+            elif name == "calcola":
+                expr = args.get("expr", "") if isinstance(args, dict) else str(args)
+                out = _calcola(expr)
             else:
                 # unisci_contatti NON è più un tool autopilot: il merge di lead è
                 # mutante e irreversibile (lossy), quindi è MANUTENZIONE UMANA e non
