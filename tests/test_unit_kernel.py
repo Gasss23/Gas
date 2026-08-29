@@ -3622,6 +3622,41 @@ check("T61d duplicati_cmd fail-safe: DB corrotto → exit 0, nessun crash",
       _no_crash_61d and _rc61d == 0 and ("non disponibile" in _out61d or "Duplicati" in _out61d),
       f"crash={not _no_crash_61d} rc={_rc61d} out={_out61d.strip()[:60]!r}")
 
+# ---------- T62: tool calcola() ----------
+print("\n--- T62: calcola() — parser AST whitelist ---")
+from gas import _calcola
+
+check("T62a 7*8 == '56'", _calcola("7*8") == "56")
+check("T62b math.sqrt(144) == '12.0'", _calcola("math.sqrt(144)") == "12.0")
+check("T62c (3+5)*2 == '16'", _calcola("(3+5)*2") == "16")
+check("T62d 10//3 == '3'", _calcola("10//3") == "3")
+check("T62e 2**10 == '1024'", _calcola("2**10") == "1024")
+
+_bad_inputs = [
+    "__import__('os')",
+    "os.system('id')",
+    "(lambda: 42)()",
+    "__builtins__",
+    "[x for x in range(3)]",
+    "open('/etc/passwd')",
+]
+for _bi in _bad_inputs:
+    _r = _calcola(_bi)
+    check(f"T62f rifiuta {_bi[:28]!r}", _r.startswith("Rifiutato") or _r.startswith("Errore"),
+          f"got={_r[:50]!r}")
+
+check("T62g divisione per zero gestita", "zero" in _calcola("1/0").lower())
+check("T62h espressione vuota gestita", "vuota" in _calcola("").lower())
+_fac171 = _calcola("math.factorial(171)")
+check("T62k factorial grande (Python bigint): nessun crash, risultato numerico",
+      _fac171.isdigit() or (_fac171[0] == "-" and _fac171[1:].isdigit()),
+      f"got={_fac171[:30]!r}")
+
+_k62 = kernel_tmp()
+check("T62i execute_tool_call dispatch 7*8", _k62.execute_tool_call("calcola", '{"expr":"7*8"}') == "56")
+check("T62j execute_tool_call tool ignoto → 'Tool non trovato.'",
+      _k62.execute_tool_call("inesistente", "{}") == "Tool non trovato.")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
