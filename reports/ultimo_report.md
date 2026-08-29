@@ -1,45 +1,62 @@
-# REPORT TASK — Fetta A + Fetta B: Prompt hardening + tool calcola()
+# REPORT TASK — Chiusura riserve calcola(): tetto anti-DoS + test stringenti
 **Data:** 2026-08-29
 **Branch:** sonda/vps-stato-2026-08-26
-**Review:** #93 — APPROVATO CON RISERVE
+**Review:** #94 — APPROVATO
 
 ---
 
-## SCOPE ESEGUITO
+## SCOPE ESEGUITO (5 punti)
 
-### Fetta A — Prompt hardening (gas.py + gas_identity.md)
+### 1. Tetto anti-DoS in calcola(): FATTA
 
-**#1a** — Direttiva run_command ristretta: ora punta SOLO a conteggi/misure su file.
-Per i calcoli aritmetici la regola rimanda esplicitamente a `calcola()`.
+Tre strati indipendenti di difesa:
 
-**#2 + #3** — Tutti e 7 i tool nativi elencati esplicitamente in `_GAS_SYSTEM_PROMPT_BASE`
-(lista: `read_file, write_file, run_command, calcola, ricorda, salva_contatto, imposta_stato_contatto`)
-e in `gas_identity.md` (sezione tool con bullet list e descrizione per ciascuno).
+**Strato A — validazione AST (pre-eval, zero costo):**
+- Esponente `**` deve essere un letterale `ast.Constant` ≤ `_CALCOLA_MAX_EXP` (1000).
+  Cattura: `9**9**9` → outer `**` ha right=`BinOp` (non Constant) → RIFIUTATO in 0.000s.
+- `math.factorial(n)` richiede arg letterale Constant ≤ `_CALCOLA_MAX_FACTORIAL` (1000).
+  Cattura: `math.factorial(2**100)`, `math.factorial(9**3)` → arg non letterale → RIFIUTATO.
+- `pow` rimosso da `_CALCOLA_BUILTIN_FUNCS` e dal namespace eval.
+  Cattura: `pow(9, 387420489)` → "Rifiutato: funzione non permessa 'pow'".
 
-**#4** — Regola di fallback universale aggiunta: se un tool fallisce o viene negato,
-il modello DEVE dichiararlo esplicitamente. Zero simulazione di output, qualunque sia il contesto.
+**Strato B — namespace eval ripulito:** `__builtins__={}` + whitelist minimale (math, abs, round). `pow` non più presente.
 
-**#5** — Persona unificata: rimossa la self-intro duplicata da `_GAS_SYSTEM_PROMPT_BASE`.
-Quando `gas_identity.md` è presente → `_build_system_prompt` restituisce identity + regole (un'unica intro).
-Quando assente → fallback minimo `"Sei Gas..."` + regole.
+**Strato C — check post-eval:** `len(str(result)) > _CALCOLA_MAX_DIGITS` (500) → RIFIUTATO.
+  Cattura: risultati astronomici che passassero la validazione AST.
 
-**#6** — Finding echo non toccato (innocuo, come da scope operatore).
+### 2. Whitelist nodi AST esplicitata in commento: FATTA
 
-### Fetta B — Tool calcola()
+Aggiunto blocco commento sopra `_calcola_validate`:
+```
+# Whitelist nodi AST ammessi:
+#   ast.Expression, ast.Constant (int/float),
+#   ast.BinOp  (op in Add/Sub/Mult/Div/FloorDiv/Mod/Pow),
+#   ast.UnaryOp (op in USub/UAdd),
+#   ast.Call   (func validato da _calcola_validate_func),
+#   ast.Attribute (solo math.<costante>),
+#   ast.Name   (solo "math" o funzione builtin ammessa)
+```
 
-Nuovo tool deterministico aritmetico: `_calcola(expr)` + `_calcola_validate()` + `_calcola_validate_func()`.
+### 3. Test end-to-end LLM live: SALTATA — API key assenti
 
-**Implementazione:**
-- Parser AST (`ast.parse` mode=`"eval"`) + validazione ricorsiva whitelist
-- Operatori permessi: `+ - * / // % **`
-- Funzioni permesse: `abs`, `round`, `pow` (builtin); `math.sqrt/floor/ceil/log/log2/log10/sin/cos/tan/fabs/factorial`
-- Costanti permesse: `math.pi`, `math.e`, `math.tau`, `math.inf`
-- `eval` con `__builtins__={}` e namespace minimale — ZERO accesso a shell/file
-- Rifiuto esplicito di tutto ciò che non è pura aritmetica (nomi non in whitelist, lambda, listcomp, import, call non permesse)
+`python3 gas.py doctor` conferma: `GEMINI_API_KEY assente`, `GROQ_API_KEY assente`.
+Il test "sette per otto → modello chiama calcola → 56" richiede un provider attivo.
+Va eseguito al primo deploy su VPS S2. NON dichiarato passato.
 
-**Schema + dispatch:**
-- Aggiunto a `tools_schema` con description e parametro `expr` (required)
-- Dispatch in `execute_tool_call`: `elif name == "calcola": out = _calcola(expr)`
+### 4. Fix T62f — rifiuto stringente (R-calcola-2): FATTA
+
+Condizione aggiornata da `_r.startswith("Rifiutato") or _r.startswith("Errore")` a
+solo `_r.startswith("Rifiutato")`. Gli input malevoli producono ora SOLO "Rifiutato:"
+(per nome non permesso, costrutto non permesso, ecc.) — mai "Errore di sintassi".
+Aggiunto `pow(9, 387420489)` alla lista dei bad input.
+
+### 5. Commit hash + conferma branch: FATTA
+
+- **Commit motore #94:** `873220a`
+- **Branch:** `sonda/vps-stato-2026-08-26`
+  Motivazione branch: questo branch raccoglie l'intera sessione di sonda VPS 2026-08-26,
+  che si è estesa su più giorni di lavoro (audit system-prompt, diagnosi bug, prompt
+  hardening, calcola). Il nome è immutabile (branch già pushato con PR #77 aperta).
 
 ---
 
@@ -47,45 +64,35 @@ Nuovo tool deterministico aritmetico: `_calcola(expr)` + `_calcola_validate()` +
 
 | Test | Input | Atteso | Esito |
 |------|-------|--------|-------|
-| T62a | `7*8` | `'56'` | ✅ PASS |
-| T62b | `math.sqrt(144)` | `'12.0'` | ✅ PASS |
-| T62c | `(3+5)*2` | `'16'` | ✅ PASS |
-| T62d | `10//3` | `'3'` | ✅ PASS |
-| T62e | `2**10` | `'1024'` | ✅ PASS |
-| T62f | `__import__('os')` | Rifiutato | ✅ PASS |
-| T62f | `os.system('id')` | Rifiutato | ✅ PASS |
-| T62f | `(lambda: 42)()` | Rifiutato | ✅ PASS |
-| T62f | `__builtins__` | Rifiutato | ✅ PASS |
-| T62f | `[x for x in range(3)]` | Rifiutato | ✅ PASS |
-| T62f | `open('/etc/passwd')` | Rifiutato | ✅ PASS |
-| T62g | `1/0` | Errore: divisione per zero | ✅ PASS |
-| T62h | `""` (vuota) | Errore: espressione vuota | ✅ PASS |
-| T62k | `math.factorial(171)` | Bigint, nessun crash | ✅ PASS |
-| T62i | execute_tool_call dispatch `7*8` | `'56'` | ✅ PASS |
-| T62j | execute_tool_call tool ignoto | `'Tool non trovato.'` | ✅ PASS |
+| T62f | `pow(9, 387420489)` | Rifiutato | ✅ PASS |
+| T62l | `9**9**9` | Rifiutato, elapsed=0.000s | ✅ PASS |
+| T62m | `2**1001` | Rifiutato (esponente > 1000) | ✅ PASS |
+| T62n | `math.factorial(1001)` | Rifiutato (> limite) | ✅ PASS |
+| T62o | `2**1000` | Valido (302 cifre ≤ 500) | ✅ PASS |
+| T62p | `math.factorial(9**3)` | Rifiutato (arg non letterale) | ✅ PASS |
+| T62k | `math.factorial(171)` | Numerico (310 cifre ≤ 500) | ✅ PASS |
+| T62a-T62e | aritmetica base | Risultati corretti | ✅ PASS (tutti) |
+| T62f (prev) | 6 exploit noti | Rifiutato (solo "Rifiutato:") | ✅ PASS |
 
-**Suite completa: 292 PASS, 0 FAIL** (da 276 → +16 nuovi T62).
+**Suite completa: 299 PASS, 0 FAIL** (da 292 → +7 nuovi T62l-T62p + 1 T62f aggiornato).
 
 ---
 
-## VERDETTO REVISORE #93
+## VERDETTO REVISORE #94
 
-**APPROVATO CON RISERVE**
+**APPROVATO**
 
-Riserve non bloccanti (tracciate):
-- **R-calcola-1**: `math.factorial(171)` → OverflowError non testato (nota: Python bigint non dà OverflowError; aggiunto T62k che verifica nessun crash + risultato numerico).
-- **R-calcola-2**: T62f condizione `or _r.startswith("Errore")` accetta "Errore di sintassi" come risposta valida agli exploit (sicurezza reale non impattata).
+Elementi verificati: difese anti-DoS su tre strati indipendenti (AST/namespace/post-eval) strutturalmente solide; T62f condizione stringente corretta; Wall of Shame §5 rispettato; nessun guardrail indebolito.
 
-Rischio dichiarato dal revisore: round-trip agentico con modello LLM reale non verificato (richiede chiavi API live) — da validare al primo deploy VPS.
+Riserva residua (da #93, non bloccante): R-calcola-1 coperta in ogni caso da `except Exception → stringa errore, zero crash`.
 
 ---
 
-## FILE MODIFICATI
+## NOTA ANOMALIA
 
-- `gas.py` — imports (`ast`, `math`), `_GAS_SYSTEM_PROMPT_BASE`, `_calcola*`, `_build_system_prompt`, `tools_schema`, `execute_tool_call`
-- `gas_identity.md` — lista 7 tool nativi, persona coerente
-- `tests/test_unit_kernel.py` — T62a-T62k (+16 test)
+Round-trip LLM live NON eseguibile in questo ambiente (API key assenti). Dichiarato
+esplicitamente come richiesto. Da validare su VPS S2 al deploy.
 
 ## STOP GATE
 
-Scope fisso rispettato: nessun finding extra committato, nessun refactor aggiuntivo.
+Scope fisso rispettato: solo i 5 punti elencati. Nessun refactor aggiuntivo committato.

@@ -1,45 +1,47 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-29 — Fetta A prompt hardening + Fetta B tool calcola()
+**Sessione:** 2026-08-29 — Chiusura riserve calcola(): tetto anti-DoS + test stringenti
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #77 (https://github.com/Gasss23/Gas/pull/77).
-2. **Deploy VPS**: dopo il merge su main, portare il codice su S2 e validare il round-trip agentico con modello reale (Groq o Gemini) — richiesto dal revisore come rischio residuo non testabile in review statica.
+2. **Deploy VPS + test E2E live**: dopo il merge, portare il codice su S2 e validare il round-trip agentico: input "sette per otto" → modello chiama `calcola('7*8')` → risposta "56". Non eseguibile in dev (API key assenti).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-**Fetta A — Prompt hardening (gas.py + gas_identity.md)**: FATTA
-- #1a: run_command ristretto a conteggi/misure su file; calcola() indicato per aritmetica.
-- #2+#3: 7 tool nativi elencati esplicitamente nel system prompt e in gas_identity.md.
-- #4: regola fallback universale — tool fallito → dichiarazione esplicita, mai simulazione.
-- #5: self-intro unificata (rimossa da `_GAS_SYSTEM_PROMPT_BASE`, sola in gas_identity.md).
-- #6: finding echo NON toccato (innocuo, come da istruzione operatore).
+**1. Tetto anti-DoS in calcola()**: FATTA
+- Tre strati: validazione AST (esponente letterale ≤ 1000, factorial arg letterale ≤ 1000), namespace eval ripulito (`pow` rimosso), check post-eval ≤ 500 cifre.
+- `9**9**9` → RIFIUTATO in 0.000s (zero hang).
 
-**Fetta B — Tool calcola()**: FATTA
-- Parser AST ricorsivo con whitelist (operatori + funzioni math.* + costanti).
-- `eval` con `__builtins__={}` e namespace minimale — zero shell/file.
-- Schema in tools_schema; dispatch in execute_tool_call.
-- T62a-T62k: 16 nuovi test (292 PASS totali, 0 FAIL).
+**2. Whitelist nodi AST esplicitata**: FATTA
+- Blocco commento aggiunto sopra `_calcola_validate` con elenco verbatim degli `ast.*` ammessi.
+
+**3. Test end-to-end LLM live**: SALTATA — API key assenti in dev (Gemini, Groq). Da eseguire su VPS S2. NON dichiarato passato.
+
+**4. Fix T62f — rifiuto stringente (R-calcola-2)**: FATTA
+- Condizione da `startswith("Rifiutato") or startswith("Errore")` a solo `startswith("Rifiutato")`.
+- `pow(9, 387420489)` aggiunto a bad_inputs.
+
+**5. Commit hash + conferma branch**: FATTA — commit `873220a`, branch `sonda/vps-stato-2026-08-26`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- gas.py                             | 123 ++++++++++++---
+ .claude/agents/memoria_revisore.md |   2 +
+ gas.py                             | 155 +++++++++++++++++---
  gas_identity.md                    |  11 +-
  reports/diff_sessione.md           |  21 +--
- reports/handoff.md                 | 102 +++++++++----
+ reports/handoff.md                 | 112 ++++++++++----
  reports/stato_progetto.md          |  40 ++++-
- reports/ultimo_report.md           | 299 ++++++++-----------------------------
- tests/test_unit_kernel.py          |  35 +++++
- 8 files changed, 338 insertions(+), 294 deletions(-)
+ reports/ultimo_report.md           | 292 ++++++++-----------------------------
+ tests/test_unit_kernel.py          |  60 ++++++++
+ 8 files changed, 404 insertions(+), 289 deletions(-)
 ```
 
 ---
@@ -47,6 +49,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+873220a feat(kernel): calcola() tetto anti-DoS + fix T62f rifiuto stringente
+6f42a2b chore(revisore): memoria review #94 — APPROVATO
+d8cfb2a docs(fine-task): handoff Fetta A+B prompt hardening + calcola() 2026-08-29 — PR #77
 62af5ee feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whitelist (Fetta B)
 37b991d chore(revisore): memoria review #93 — APPROVATO CON RISERVE
 17b96d0 docs(fine-task): handoff audit system-prompt 2026-08-29 — PR #77
@@ -59,67 +64,72 @@ cab1352 docs(sonda-vps): §0 handoff — PR #77 e istruzioni sblocco SSH
 3cde16b docs(sonda-vps): report sonda VPS 2026-08-26 — task SALTATA (SSH non configurato)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare, per costruzione.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-**Commit:** `62af5ee feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whitelist (Fetta B)`
+**Commit `873220a` — feat(kernel): calcola() tetto anti-DoS + fix T62f rifiuto stringente**
+
+**Verdetto review #94: APPROVATO**
+
+Elementi verificati:
+- Difese anti-DoS su tre strati indipendenti (AST/namespace/post-eval): strutturalmente solide.
+- T62f condizione stringente (`startswith("Rifiutato")` solo): corretta.
+- Wall of Shame §5 rispettato. Nessun guardrail indebolito.
+- Suite: 299 PASS, 0 FAIL.
+
+Riserva residua non bloccante: R-calcola-1 da #93 (math.factorial argomento borderline — coperta da `except Exception → stringa errore, zero crash`).
+
+**Commit `62af5ee` — feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whitelist (Fetta B)**
 
 **Verdetto review #93: APPROVATO CON RISERVE**
 
-Elementi verificati con evidenza:
-- `gas.py:83` — cortocircuito `or` in ramo BinOp: semantica corretta (primo errore vince). **ok**
-- `gas.py:91` — indentazione `return err` nel diff era artefatto di formattazione; file reale ha 12 spazi. **ok**
-- `gas.py:135-138` — `eval` con `__builtins__={}` + namespace whitelist: sicuro contro tutti gli exploit noti (lambda, import, open, os.system, listcomp). **ok**
-- `gas.py:40-60` — system prompt: chiude F1 CRITICO, F2+F3 ALTO, F4 MEDIO dell'audit. **ok**
-- `tests/test_unit_kernel.py:3645` — T62f condizione `or _r.startswith("Errore")` troppo larga. **riserva minore**
+Elementi verificati:
+- `eval` con `__builtins__={}` + namespace whitelist: sicuro contro tutti gli exploit noti.
+- System prompt: chiude F1 CRITICO, F2+F3 ALTO, F4 MEDIO dell'audit.
 
-Riserve non bloccanti:
-- **R-calcola-1**: `math.factorial(171)` → OverflowError non testato (nota: Python bigint non dà OverflowError; aggiunto T62k che verifica nessun crash + risultato numerico — chiarito post-review).
-- **R-calcola-2**: T62f accetta "Errore di sintassi" come risposta valida agli exploit — riduce la discriminazione del test senza impatto sulla sicurezza reale.
-
-Rischio esplicitamente escluso dal revisore: round-trip agentico con modello reale (Groq) non verificato — richiede chiavi API live, non eseguibile in review statica. Da validare prima del deploy VPS.
+Riserve (chiuse in questa sessione):
+- R-calcola-1: chiusa con T62k + tetto factorial.
+- R-calcola-2: chiusa con fix T62f in questa sessione.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-**Prima:** 276 PASS, 0 FAIL (baseline pre-sessione)
-**Dopo:** 292 PASS, 0 FAIL (+16 nuovi T62a-T62k)
+**Prima sessione corrente:** 292 PASS, 0 FAIL (baseline post-sessione precedente)
+**Dopo:** 299 PASS, 0 FAIL (+7 nuovi T62l-T62p + 1 T62f aggiornato)
 
 ```
-=== RIEPILOGO: 292 PASS, 0 FAIL ===
+=== RIEPILOGO: 299 PASS, 0 FAIL ===
 ```
 
-Nessun FAIL. I 16 nuovi test coprono: operazioni aritmetiche base (T62a-T62e), rifiuto input malevoli (T62f ×6), edge case divisione per zero e espressione vuota (T62g-T62h), factorial bigint (T62k), dispatch execute_tool_call (T62i-T62j).
+Nuovi test: T62l (9**9**9 senza hang), T62m (esponente > MAX_EXP), T62n (factorial > MAX_FACTORIAL), T62o (2**1000 valido ≤ 500 cifre), T62p (factorial arg non letterale), + pow(9,387420489) in T62f.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed  failure  feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whiteli…  CI  sonda/vps-stato-2026-08-26  push  33257612901  45s  2026-08-29T14:26:32Z
-completed  success  docs(fine-task): handoff audit system-prompt 2026-08-29 — PR #77        CI  sonda/vps-stato-2026-08-26  push  33256417734  1m14s  2026-08-29T14:00:00Z
-completed  success  docs(audit): system prompt — 4 finding (CRITICO/ALTO×2/MEDIO), audit … CI  sonda/vps-stato-2026-08-26  push  33256290842  59s  2026-08-29T13:56:36Z
+completed	success	docs(fine-task): handoff Fetta A+B prompt hardening + calcola() 2026-…	CI	sonda/vps-stato-2026-08-26	push	33259588195	52s	2026-08-29T15:11:59Z
+completed	failure	feat(kernel): prompt hardening (Fetta A) + tool calcola() ast-whiteli…	CI	sonda/vps-stato-2026-08-26	push	33257612901	45s	2026-08-29T14:26:32Z
+completed	success	docs(fine-task): handoff audit system-prompt 2026-08-29 — PR #77	CI	sonda/vps-stato-2026-08-26	push	33256417734	1m14s	2026-08-29T14:00:00Z
 ```
 
 Mappatura commit→run:
-- `62af5ee` (commit motore) → run `33257612901` **failure**: `unit-suite` ✓ verde; `handoff-check` ✗ — §2 del handoff.md committato in `62af5ee` listava solo 4 file (reports precedenti), ma il diff reale BASE..HEAD ne aveva 8. Causa: il handoff di sessione precedente era in stage, non il nuovo. Corretto con il commit di fine-task corrente (questo).
-- `37b991d` (memoria revisore) → nessuna run dedicata; incluso nell'albero testato dalla run `33257612901`.
-- Commit `17b96d0`..`3cde16b` (sessioni precedenti) → run `33256417734` e `33256290842` (già dichiarati nei rispettivi handoff).
+- `873220a` (commit motore anti-DoS) → run non ancora disponibile (push avviene dopo la scrittura di questo handoff).
+- `6f42a2b` (memoria revisore #94) → nessuna run dedicata; incluso nell'albero testato dal push successivo.
+- `d8cfb2a` (fine-task sessione precedente) → run `33259588195`: `unit-suite` ✓, `handoff-check` ✓.
+- `62af5ee` (commit motore sessione precedente) → run `33257612901`: `unit-suite` ✓, `handoff-check` ✗ (§2 stale — corretto nel commit `d8cfb2a`).
+- Commit `37b991d`..`3cde16b` → sessioni precedenti, già dichiarati nei rispettivi handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-Da review #93 (questa sessione):
-- **R-calcola-1**: T62k aggiunto (math.factorial bigint — no OverflowError in Python 3); riserva chiusa operativamente.
-- **R-calcola-2**: T62f condizione `or _r.startswith("Errore")` troppo larga — sicurezza non impattata, test da affinare in sessione futura se si vuole discriminazione più stretta.
-- **Rischio residuo revisore**: round-trip agentico con LLM reale non verificato in review statica — da validare al primo deploy VPS su S2.
+Da questa sessione: nessuna (R-calcola-1 e R-calcola-2 chiuse).
 
 Da sessioni precedenti (ancora aperte):
-- R-stt-1: json.JSONDecodeError avvolto (chiusa).
 - R-client4a-1: eccezioni di rete non gestite in main() di probe_client_4a.py — non bloccante per uso-e-getta.
-- R-voice-3: da completare (dettaglio in handoff.md precedente).
+- **Rischio residuo deploy**: round-trip agentico con LLM reale non testato in dev — da validare su VPS S2.
