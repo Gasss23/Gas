@@ -61,12 +61,23 @@ _GAS_SYSTEM_PROMPT_BASE = (
 
 # --- Tool calcola(): aritmetica deterministica via AST, zero shell/file ---
 
-_CALCOLA_BUILTIN_FUNCS: frozenset = frozenset({"abs", "round", "pow"})
+_CALCOLA_BUILTIN_FUNCS: frozenset = frozenset({"abs", "round"})  # pow escluso: DoS via pow(base, huge_exp)
 _CALCOLA_MATH_FUNCS: frozenset = frozenset({
     "sqrt", "floor", "ceil", "log", "log2", "log10",
     "sin", "cos", "tan", "fabs", "factorial",
 })
 _CALCOLA_MATH_CONSTS: frozenset = frozenset({"pi", "e", "tau", "inf"})
+_CALCOLA_MAX_EXP: int = 1000      # esponente letterale massimo per **
+_CALCOLA_MAX_DIGITS: int = 500    # cifre massime nel risultato stringa
+_CALCOLA_MAX_FACTORIAL: int = 1000  # argomento letterale massimo per math.factorial
+
+# Whitelist nodi AST ammessi (tutti gli altri → "costrutto non permesso"):
+#   ast.Expression, ast.Constant (int/float),
+#   ast.BinOp  (op in Add/Sub/Mult/Div/FloorDiv/Mod/Pow),
+#   ast.UnaryOp (op in USub/UAdd),
+#   ast.Call   (func validato da _calcola_validate_func),
+#   ast.Attribute (solo math.<costante>),
+#   ast.Name   (solo "math" o funzione builtin ammessa)
 
 def _calcola_validate(node: ast.AST) -> Optional[str]:
     """Ritorna una stringa di errore se il nodo AST non è permesso, altrimenti None."""
@@ -80,6 +91,14 @@ def _calcola_validate(node: ast.AST) -> Optional[str]:
         if not isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div,
                                      ast.FloorDiv, ast.Mod, ast.Pow)):
             return "Rifiutato: operatore binario non permesso."
+        # Tetto anti-DoS: esponente ** deve essere letterale ≤ MAX_EXP
+        if isinstance(node.op, ast.Pow):
+            if not isinstance(node.right, ast.Constant) or not isinstance(node.right.value, (int, float)):
+                return (f"Rifiutato: esponente ** deve essere una costante numerica ≤ "
+                        f"{_CALCOLA_MAX_EXP} (prevenzione DoS).")
+            if abs(node.right.value) > _CALCOLA_MAX_EXP:
+                return (f"Rifiutato: esponente {node.right.value} > limite "
+                        f"{_CALCOLA_MAX_EXP} (prevenzione DoS).")
         return _calcola_validate(node.left) or _calcola_validate(node.right)
     if isinstance(node, ast.UnaryOp):
         if not isinstance(node.op, (ast.USub, ast.UAdd)):
@@ -91,6 +110,15 @@ def _calcola_validate(node: ast.AST) -> Optional[str]:
             return err
         if node.keywords:
             return "Rifiutato: argomenti keyword non permessi nelle chiamate."
+        # Tetto anti-DoS: math.factorial con argomento letterale ≤ MAX_FACTORIAL
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "factorial":
+            if (len(node.args) != 1 or not isinstance(node.args[0], ast.Constant)
+                    or not isinstance(node.args[0].value, (int, float))):
+                return ("Rifiutato: math.factorial richiede una costante intera come argomento "
+                        "(prevenzione DoS).")
+            if node.args[0].value > _CALCOLA_MAX_FACTORIAL:
+                return (f"Rifiutato: math.factorial({node.args[0].value}) > limite "
+                        f"{_CALCOLA_MAX_FACTORIAL} (prevenzione DoS).")
         for arg in node.args:
             err = _calcola_validate(arg)
             if err:
@@ -135,9 +163,13 @@ def _calcola(expr: str) -> str:
     try:
         result = eval(  # noqa: S307 — AST validato, __builtins__ vuoto, nessun accesso a shell/file
             compile(tree, "<calcola>", "eval"),
-            {"__builtins__": {}, "math": _math_module, "abs": abs, "round": round, "pow": pow},
+            {"__builtins__": {}, "math": _math_module, "abs": abs, "round": round},
         )
-        return str(result)
+        result_str = str(result)
+        if len(result_str) > _CALCOLA_MAX_DIGITS:
+            return (f"Rifiutato: risultato troppo grande ({len(result_str)} cifre, "
+                    f"limite {_CALCOLA_MAX_DIGITS}).")
+        return result_str
     except ZeroDivisionError:
         return "Errore: divisione per zero."
     except Exception as e:
