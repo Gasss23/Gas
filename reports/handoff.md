@@ -7,9 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. **Aggiungere `GEMINI_API_KEY` a `.env`** sul WSL locale, poi ritriggerare la sonda E2E Gemini (stessa specifica).
-2. **Merge della PR** — numero e URL da gate bash (vedere sotto).
-
-_[gate PR eseguito dopo push — §0 completato al passo 4bis]_
+2. **Merge della PR #79** (https://github.com/Gasss23/Gas/pull/79).
 
 ---
 
