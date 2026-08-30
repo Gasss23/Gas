@@ -1,12 +1,17 @@
-# DIFF SESSIONE — 2026-08-29 (sonda/e2e-calcola-2026-08-29)
+# Diff sessione — 2026-08-29
 
-File toccati in questa sessione (`git diff --stat 280f847..HEAD`):
+Sonda E2E calcola() Gemini — BLOCCATA (GEMINI_API_KEY assente)
+
+## File toccati
 
 | File | Cosa è cambiato e perché |
-|------|--------------------------|
-| `reports/stato_progetto.md` | Aggiornata riga "Ultimo aggiornamento" con esito sonda E2E calcola() |
-| `reports/ultimo_report.md` | Report sonda: 2 test PASS (sette per otto → 56, radice 144 → 12.0) |
-| `reports/handoff.md` | Dossier fine-task con §0 PR #78, §6 CI verde, §7 riserve aperte |
-| `reports/diff_sessione.md` | Questo file — riepilogo sessione |
+|---|---|
+| `reports/ultimo_report.md` | Riscritto con esito sonda Gemini: BLOCCATA per GEMINI_API_KEY assente da .env. Zero test eseguiti, zero codice toccato. |
+| `reports/stato_progetto.md` | Aggiornata riga "Ultimo aggiornamento" con esito sonda Gemini BLOCCATA. |
+| `reports/handoff.md` | Dossier di fine sessione (questo file; commit fine-task). |
+| `reports/diff_sessione.md` | Questo file (riscritto a ogni sessione). |
 
-Nessuna modifica a codice motore (`gas.py`, `brains/`, `modules/`, `tests/`).
+## Note
+
+Sessione puramente read-only + reporting. Nessun file motore toccato (gas.py, brains/, modules/, tests/).
+Stop gate precondizione rispettato come da istruzione operatore.
