@@ -100,4 +100,8 @@ Rung 1 della cascata.
 
 **ESITO GLOBALE: ✅ TUTTI PASS**
 
-Il finding "kernel rifiuta 7×8" era Groq-specifico. Gemini segue correttamente il system prompt e invoca `calcola()`. Nessun fix necessario. Zero codice toccato.
+Gemini segue correttamente il system prompt e invoca `calcola()`. **Tre caveat onesti da dichiarare**:
+- ⚠️ La causa radice diagnosticata (system prompt `gas.py:46-48` ordina `run_command` per tutti i calcoli + `SHELL_ALLOWLIST` senza tool aritmetici — bug SEMANTICO agnostico dal provider) **NON è stata rimossa dal motore**; Gemini la aggira di fatto.
+- ⚠️ L'attribuzione "Groq-specifico" è un'**ipotesi non verificata** in questa run: Groq non è stato testato il 2026-09-01, e il comportamento Groq risulta contraddittorio tra i report (diagnosi originale 2026-08-29 "Groq rifiuta" vs sonda PR #78 "Groq 2 PASS" — incompatibili, non riconciliati).
+- ⚠️ Finding 7×8: stato corretto = **VERIFICATO RISOLTO SU GEMINI**, non "CHIUSO" in senso assoluto.
+Nessun fix proposto o applicato in questa sonda. Se necessario, rimandato a decisione operatore.
