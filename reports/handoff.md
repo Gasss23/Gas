@@ -1,80 +1,112 @@
-# HANDOFF — Dossier di fine sessione
+# Handoff sessione — 2026-09-01
 
-**Sessione:** 2026-09-01 — Correzione reporting finding "kernel rifiuta 7×8"
-
----
-
-## §0 DECISIONI UMANE RICHIESTE
-
-1. Merge della PR #80 (https://github.com/Gasss23/Gas/pull/80).
+**Branch**: fix/chiusura-f1-calcola-2026-09-01  
+**Tipo**: Certificazione chiusura finding F1 CRITICO (zero modifiche al motore)
 
 ---
 
-## §1 SCOPE & ESITO FETTE
+## §DECISIONI UMANE RICHIESTE
 
-- **Fetta 1 — Correzione stato_progetto.md (finding 7×8)**: `FATTA` — Stato cambiato da ✅ CHIUSO a 🟡 VERIFICATO RISOLTO SU GEMINI. Aggiunti 3 caveat espliciti: (i) causa radice NON rimossa dal motore; (ii) comportamento Groq contraddittorio tra report; (iii) attribuzione "Groq-specifico" non provata (Groq non testato nella run 2026-09-01). Diagnosi storica mantenuta.
-- **Fetta 2 — Correzione ultimo_report.md §5**: `FATTA` — Rimossa affermazione "il finding era Groq-specifico" come fatto acquisito; sostituita con dichiarazione onesta dei 3 caveat.
-- **Fetta 3 — Fix motore (system prompt / SHELL_ALLOWLIST)**: `DEFERITA — fuori scope dichiarato (solo correzione reporting). Se necessario, task dedicato.`
+**Nessuna decisione bloccante.** Il finding F1 è chiuso, la suite è verde, il revisore ha approvato.
+
+Suggerimenti non urgenti:
+- Valutare aggiornamento VPS a commit attuale (FASE 3 completa mancante, VPS stantio al `f3a8acc` 2026-06-29).
+- Prima del deploy VPS: rotare chiave ElevenLabs (ATTESTATO SUP. 2026-08-22, ancora aperto).
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## §Esito sonda E2E
+
+**Sonda su ENTRAMBI i provider con history temporanea isolata — 4 PASS su 4**
+
+| Provider | Brain effettivo | T1 "sette per otto" | T2 "radice di 144" |
+|----------|----------------|---------------------|---------------------|
+| Gemini (GEMINI_API_KEY only) | gemini-flash (flash-lite 429 quota) | `calcola("7*8")→56` PASS | `calcola("math.sqrt(144)")→12.0` PASS |
+| Groq (GROQ_API_KEY only) | groq (MODEL_GROQ) | `calcola("7*8")→56` PASS | `calcola("math.sqrt(144)")→12.0` PASS |
+
+**Nota Gemini-flash-lite**: 429 RESOURCE_EXHAUSTED (quota gratuita giornaliera 20 RPD esaurita). Il paracadute ha funzionato: fallback su gemini-flash corretto.
+
+---
+
+## §git diff --stat (sessione)
 
 ```
- reports/diff_sessione.md  |  17 +++----
- reports/handoff.md        |  46 ++++++-------------
- reports/stato_progetto.md |   8 +++-
- reports/ultimo_report.md  | 112 +++++++++++++++++++++++++++++++++++-----------
- 4 files changed, 114 insertions(+), 69 deletions(-)
+ .claude/agents/memoria_revisore.md | 1 +
+ 1 file changed, 1 insertion(+)
+```
+
+(commit `fc211db` — revisore memoria review #95, già pushato)
+
+Report di sessione: `reports/ultimo_report.md`, `reports/stato_progetto.md`, `reports/diff_sessione.md`, `reports/handoff.md` — nel commit successivo.
+
+---
+
+## §git log commits sessione
+
+```
+fc211db chore(revisore): memoria review #95 — APPROVATO
 ```
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## §Delta test motore
 
-```
-d7e2d35 docs(fine-task): handoff sonda E2E calcola() Gemini run-2 2026-09-01
-179fb12 docs(fine-task): handoff sonda E2E calcola() Gemini 2026-09-01 — 2 PASS
-6719e9f docs(sonda): E2E calcola() Gemini — 2 PASS 2026-09-01
-```
+| Suite | Precedente | Questa sessione | Delta |
+|-------|-----------|-----------------|-------|
+| test_unit_kernel.py | 299 PASS, 0 FAIL | 299 PASS, 0 FAIL | 0 (invariata) |
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+Nessuna modifica al motore → nessun nuovo test aggiunto. Suite stabile.
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §Verdetto revisore INTEGRALE (Review #95 — APPROVATO)
 
-nessun diff motore, revisore non richiesto.
+> Commit `fc211db` confermato.
+>
+> ## VERDETTO FINALE — Review #95
+>
+> **APPROVATO**
+>
+> ### Verifica esplicita dei tre punti richiesti
+>
+> **(a) `_GAS_SYSTEM_PROMPT_BASE` — direttiva calcoli**
+> `gas.py:49-50` — ordina esplicitamente `calcola()` per calcoli aritmetici ("Per CALCOLI ARITMETICI usa SEMPRE calcola()"), con esempi `calcola('7*8')` e `calcola('math.sqrt(144)')`. La vecchia direttiva errata che ordinava `run_command` per "conteggi, misure e calcoli esatti" (F1 CRITICO, riga originale 46-48) **non è più presente**. `gas.py:51` delimita run_command a "CONTEGGI E MISURE SU FILE", scope corretto e separato. Nessun'altra riga del prompt risulta anomala: la lista tool a riga 42-44 è completa (7 tool), il contratto anti-simulazione a riga 44-46 è integro.
+>
+> **(b) `SHELL_ALLOWLIST` — assenza calcolatori**
+> `gas.py:992-996` — `SHELL_ALLOWLIST = frozenset({"ls", "cat", "head", "tail", "wc", "grep", "echo", "pwd", "date", "stat", "file", "uniq", "cut", "tr", "nl", "diff", "comm", "true", "false", "basename", "dirname", "printf", "seq", "rev"})`. Nessun calcolatore presente: `bc`, `python`, `expr`, `awk`, `perl` sono assenti. **Nessuna violazione di sicurezza**.
+>
+> **(c) Guardrail di sicurezza — nessun indebolimento**
+> `SHELL_ENV_SENSITIVE_MARKERS` (riga 1001) intatto. Sandbox bwrap (riga 1013+) intatto. Costanti anti-DoS di `calcola()` (`_CALCOLA_MAX_EXP`, `_CALCOLA_MAX_DIGITS`, `_CALCOLA_MAX_FACTORIAL`, righe 70-72) intatte. Schema tool (`tools_schema`, righe 508-514) coerente con system prompt e implementazione.
+>
+> **Rischio esplicitamente escluso**: comportamento dei provider alternativi (Groq, OpenRouter, Ollama) quando ricevono il system prompt aggiornato in turno reale — non verificabile in questa sessione senza chiavi API attive su quei rung. Il CAVEAT (ii) di stato_progetto.md (comportamento Groq contraddittorio) resta finding aperto distinto.
+>
+> File rilevanti verificati:
+> - `/home/gqual/Gas/gas.py` (righe 40-60 e 992-996)
+> - `/home/gqual/Gas/reports/stato_progetto.md`
+> - `/home/gqual/Gas/.claude/agents/memoria_revisore.md`
 
 ---
 
-## §5 DELTA TEST DEL MOTORE
+## §Stato CI (ultimo run su main)
 
-Nessuna modifica a gas.py/tests/. Suite non rieseguita.
+| Run ID | Branch | Data | Stato |
+|--------|--------|------|-------|
+| 33541870284 | main | 2026-09-01T18:08:22Z | **SUCCESS** ✅ |
+| 33327010358 | main | 2026-08-30T18:04:19Z | SUCCESS ✅ |
+| 33262188110 | main | 2026-08-29T16:09:26Z | SUCCESS ✅ |
 
----
-
-## §6 STATO CI
-
-```
-completed	success	docs(fine-task): handoff sonda E2E calcola() Gemini run-2 2026-09-01	CI	sonda/e2e-calcola-gemini-2026-09-01	push	33538544336	46s	2026-09-01T17:34:12Z
-completed	success	docs(fine-task): handoff sonda E2E calcola() Gemini 2026-09-01 — 2 PASS	CI	sonda/e2e-calcola-gemini-2026-09-01	push	33536737891	50s	2026-09-01T17:15:53Z
-completed	success	docs(sonda): E2E calcola() Gemini — 2 PASS 2026-09-01	CI	sonda/e2e-calcola-gemini-2026-09-01	push	33536359930	49s	2026-09-01T17:12:02Z
-```
-
-Mappatura commit→run:
-- `d7e2d35` → run 33538544336 ✅ SUCCESS (commit di testa al push precedente)
-- `179fb12` → nessuna run su questo SHA (commit intermedio, testato nell'albero di `d7e2d35`)
-- `6719e9f` → run 33536359930 ✅ SUCCESS (commit di testa al suo push)
-- commit di questa sessione → run non ancora disponibile alla scrittura dell'handoff
+CI FETTA 1 (`ci.yml`): runner pure-Python, zero token LLM. Ultimo run verde.
 
 ---
 
-## §7 RISERVE APERTE
+## §Riepilogo finding F1
 
-Nessuna nuova dalla sessione corrente (nessun diff motore).
+**PRIMA** (audit 2026-08-29, sistema prompt pre-`62af5ee`):
+- `gas.py:~46-48` (vecchio layout): "Per CONTEGGI, MISURE E CALCOLI ESATTI usa run_command" 
+- `SHELL_ALLOWLIST` senza calcolatori → ordine IMPOSSIBILE → bug SEMANTICO F1 CRITICO
+- Comportamento osservato: Gemini aggirava (emetteva `calcola()`) — bug mascherato; altri provider potenzialmente bloccati
 
-Finding pre-esistenti confermati nel reporting (non chiusi da questa sessione):
-- 🟡 **F1 CRITICO** — causa radice ancora aperta: `gas.py:46-48` system prompt + SHELL_ALLOWLIST senza calcolatori. Fix motore non impegnato; richiede scope dall'operatore.
-- 🟡 **Groq contraddittorio** — diagnosi 2026-08-29 "Groq rifiuta" vs sonda PR #78 "Groq 2 PASS". Da riconciliare prima di qualsiasi dichiarazione definitiva su Groq.
-- 🟡 **Attribuzione "Groq-specifico"** — ipotesi non verificata empiricamente. Groq non testato nella sonda 2026-09-01.
+**DOPO** (commit `62af5ee`, review #93, current state):
+- `gas.py:49-50`: "Per CALCOLI ARITMETICI usa SEMPRE calcola()" — ordine POSSIBILE e CORRETTO
+- `SHELL_ALLOWLIST` invariata e corretta
+- Sonda E2E 2026-09-01: Gemini 2 PASS + Groq 2 PASS → CHIUSO

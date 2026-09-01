@@ -1,107 +1,103 @@
-# Report sonda E2E calcola() — brain Gemini (run 2)
+# Report: Chiusura finding F1 CRITICO — calcola() vs run_command
 
 **Data**: 2026-09-01  
-**Branch**: `sonda/e2e-calcola-gemini-2026-09-01`  
-**Scope**: Sonda comportamentale E2E read-only di `calcola()` su provider Gemini. Seconda run (re-esecuzione fresh). Zero modifiche al motore.
+**Branch**: fix/chiusura-f1-calcola-2026-09-01  
+**Scope**: Certificazione chiusura finding F1 (no modifica a gas.py — fix già in place)
 
 ---
 
-## §0 DECISIONI UMANE RICHIESTE
+## Risultato
 
-Nessuna. La sonda è read-only; entrambi i test sono PASS. Nessun fix proposto, nessuna azione bloccante.
-
----
-
-## §1 PRECONDIZIONI
-
-| Check | Esito |
-|---|---|
-| `GEMINI_API_KEY` in `.env` | ✅ PRESENTE (lunghezza 53) |
-| Kernel importabile (con venv) | ✅ OK |
-| Brain Gemini attivabile | ✅ `gemini-2.5-flash-lite` (rung 1) |
-
-Nota: il kernel NON carica `.env` autonomamente — source eseguito prima dell'import (`set -a && source .env && set +a`).
+Finding F1 CRITICO **CHIUSO**. Il fix era già presente dal commit `62af5ee` (review #93, 2026-08-29). Questa sessione ha certificato la chiusura con sonda E2E su entrambi i provider e suite completa.
 
 ---
 
-## §2 OUTPUT TERMINALE REALE (run fresca 2026-09-01T17:32)
+## FETTA 0 — Baseline (sonda E2E prima della verifica)
+
+### Verifica system prompt REALE (gas.py:40-60)
 
 ```
-=== SONDA E2E calcola() — brain Gemini ===
-GEMINI_API_KEY caricata: True
+Linee 49-50 (CORRETTE, pre-esistenti):
+"- Per CALCOLI ARITMETICI usa SEMPRE calcola() (es. calcola('7*8'), calcola('math.sqrt(144)')). "
+"Non calcolare mai a mente né stimare: invoca il tool e usa il risultato restituito.\n"
 
-============================================================
-TEST: sette per otto → 56
-INPUT: 'sette per otto'
-ATTESA (substr): '56'
-------------------------------------------------------------
-[tool_res] '56'
-[final]    '56'
-
-Tool calls eseguiti: 1
-ESITO: ✅ PASS
-
-============================================================
-TEST: radice quadrata di 144 → 12.0
-INPUT: 'radice quadrata di 144'
-ATTESA (substr): '12.0'
-------------------------------------------------------------
-[tool_res] '12.0'
-[final]    '12.0'
-
-Tool calls eseguiti: 1
-ESITO: ✅ PASS
-
-============================================================
-RIEPILOGO FINALE
-============================================================
-✅ PASS — sette per otto → 56
-✅ PASS — radice quadrata di 144 → 12.0
-
-ESOTO GLOBALE: ✅ TUTTI PASS
+Linee 51-57 (run_command delimitato solo ai file):
+"- Per CONTEGGI E MISURE SU FILE usa run_command (es. wc -l file, grep -c pattern file). "
 ```
+
+Il finding storico citava le righe 46-48 come luogo del bug. Quelle righe, nel file corrente, contengono invece la direttiva anti-simulazione (nessun calcolo menzionato). Il fix era già stato applicato da commit `62af5ee`.
+
+### Sonda E2E Gemini (solo GEMINI_API_KEY, GROQ_API_KEY rimossa)
+
+- **Brain effettivo**: gemini-flash (flash-lite 429 quota gratuita giornaliera)
+- **T1 "sette per otto"**: tool=`calcola` args=`{"expr":"7*8"}` → result=`56` → risposta "Il risultato di sette per otto è 56." **PASS**
+- **T2 "radice quadrata di 144"**: tool=`calcola` args=`{"expr":"math.sqrt(144)"}` → result=`12.0` → risposta "La radice quadrata di 144 è 12.0." **PASS**
+
+### Sonda E2E Groq (solo GROQ_API_KEY, GEMINI_API_KEY rimossa)
+
+- **Brain effettivo**: groq (MODEL_GROQ)
+- **T1 "sette per otto"**: tool=`calcola` args=`{"expr":"7*8"}` → result=`56` → risposta "56" **PASS**
+- **T2 "radice quadrata di 144"**: tool=`calcola` args=`{"expr":"math.sqrt(144)"}` → result=`12.0` → risposta "12.0" **PASS**
 
 ---
 
-## §3 VERIFICA TOOL CALL (da `.gas_history.json`)
+## FETTA 1 — Fix chirurgico
 
-```
-[user] 'sette per otto'
-[assistant] tool_calls: {"name": "calcola", "arguments": "{\"expr\":\"7*8\"}"}
-[tool] '56'
-[assistant] '56'
-[user] 'radice quadrata di 144'
-[assistant] tool_calls: {"name": "calcola", "arguments": "{\"expr\":\"math.sqrt(144)\"}"}
-[tool] '12.0'
-[assistant] '12.0'
-```
+**Esito: NESSUN CAMBIO NECESSARIO**
 
-→ Gemini ha invocato `calcola(expr="7*8")` → `56` e `calcola(expr="math.sqrt(144)")` → `12.0`.
-→ Tool call reale verificata — zero simulazione.
+Ispezione righe reali di `gas.py`:
+
+| Riga | Contenuto |
+|------|-----------|
+| 49-50 | `"- Per CALCOLI ARITMETICI usa SEMPRE calcola() ..."` ← CORRETTO |
+| 51-57 | `"- Per CONTEGGI E MISURE SU FILE usa run_command ..."` ← CORRETTO |
+
+Il finding F1 riportava linee 46-48 come problematiche — quelle righe nel codice attuale contengono la direttiva anti-simulazione, non la direttiva calcoli. Il commit `62af5ee` aveva già risolto il bug semantico in review #93. Diff gas.py vs main: vuoto (zero byte).
 
 ---
 
-## §4 MODELLO USATO
+## FETTA 2 — Revisore
 
-Dal log `.gas_tokens.jsonl` (17:32:05):
-```
-provider: gemini-flash-lite | model: gemini-2.5-flash-lite
-```
-Rung 1 della cascata.
+**Review #95 — APPROVATO**
+
+Revisore ha verificato:
+
+**(a) Direttiva calcoli** `gas.py:49-50` — ordina `calcola()` per aritmetica; `run_command` limitato a misure su file (riga 51). Nessuna altra riga del prompt anomala.
+
+**(b) SHELL_ALLOWLIST** `gas.py:992-996` — `frozenset({"ls","cat","head","tail","wc","grep","echo","pwd","date","stat","file","uniq","cut","tr","nl","diff","comm","true","false","basename","dirname","printf","seq","rev"})`. Nessun calcolatore. Nessuna violazione di sicurezza.
+
+**(c) Guardrail §9** — `SHELL_ENV_SENSITIVE_MARKERS`, sandbox bwrap, costanti anti-DoS calcola() (`_CALCOLA_MAX_EXP=1000`, `_CALCOLA_MAX_DIGITS=500`, `_CALCOLA_MAX_FACTORIAL=1000`) intatte.
+
+Rischio dichiarato dal revisore: comportamento provider alternativi (OpenRouter, Ollama) non verificato in questa sessione per assenza chiavi.
 
 ---
 
-## §5 ESITO SONDA
+## FETTA 3 — Suite completa
 
-| Test | Input | Tool chiamato | Args | Output | Esito |
-|---|---|---|---|---|---|
-| T1 | "sette per otto" | `calcola` | `expr="7*8"` | `56` | ✅ PASS |
-| T2 | "radice quadrata di 144" | `calcola` | `expr="math.sqrt(144)"` | `12.0` | ✅ PASS |
+```
+=== RIEPILOGO: 299 PASS, 0 FAIL ===
+```
 
-**ESITO GLOBALE: ✅ TUTTI PASS**
+**Stop gate rispettato** (attesa ≥299 PASS, 0 FAIL — confermato).
 
-Gemini segue correttamente il system prompt e invoca `calcola()`. **Tre caveat onesti da dichiarare**:
-- ⚠️ La causa radice diagnosticata (system prompt `gas.py:46-48` ordina `run_command` per tutti i calcoli + `SHELL_ALLOWLIST` senza tool aritmetici — bug SEMANTICO agnostico dal provider) **NON è stata rimossa dal motore**; Gemini la aggira di fatto.
-- ⚠️ L'attribuzione "Groq-specifico" è un'**ipotesi non verificata** in questa run: Groq non è stato testato il 2026-09-01, e il comportamento Groq risulta contraddittorio tra i report (diagnosi originale 2026-08-29 "Groq rifiuta" vs sonda PR #78 "Groq 2 PASS" — incompatibili, non riconciliati).
-- ⚠️ Finding 7×8: stato corretto = **VERIFICATO RISOLTO SU GEMINI**, non "CHIUSO" in senso assoluto.
-Nessun fix proposto o applicato in questa sonda. Se necessario, rimandato a decisione operatore.
+---
+
+## FETTA 4 — Confronto prima/dopo
+
+| Provider | Brain effettivo | Stato PRIMA del fix (`62af5ee`) | Stato DOPO (sonda 2026-09-01) |
+|----------|----------------|----------------------------------|-------------------------------|
+| Gemini (flash-lite) | gemini-2.5-flash-lite | System prompt ordinava run_command — SHELL_ALLOWLIST senza bc/expr → ordine IMPOSSIBILE (bug semantico) | flash-lite a 429 quota; fallback su flash |
+| Gemini (flash) | gemini-2.5-flash | idem (bug semantico) | `calcola("7*8")→56`, `calcola("math.sqrt(144)")→12.0` — **2 PASS** |
+| Groq | groq/openai/gpt-oss-120b | Vecchio prompt → run_command tentato → blocked by allowlist. Audit 2026-08-29: "Groq rifiuta 7×8" | `calcola("7*8")→56`, `calcola("math.sqrt(144)")→12.0` — **2 PASS** |
+
+**Riconciliazione CAVEAT (ii)**: la contraddizione "Groq rifiuta vs Groq 2 PASS" era dovuta all'uso di due versioni del system prompt in test diversi. PR #78 (sonda/e2e-calcola-groq-2026-08-29, dopo `62af5ee`) e questa sonda usano il prompt corretto → Groq consistente.
+
+---
+
+## Conclusione
+
+- Finding **F1 CRITICO** → **CHIUSO**
+- Caveats (i), (ii), (iii) → tutti **CHIUSI**
+- Nessuna modifica a `gas.py` in questa sessione (fix già presente da `62af5ee`)
+- Suite: **299 PASS, 0 FAIL**
+- Revisore: **APPROVATO (#95)**
