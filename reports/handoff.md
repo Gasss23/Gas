@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #TBD (URL TBD) — da completare con gate bash post-push.
+1. Merge della PR #80 (https://github.com/Gasss23/Gas/pull/80).
 
 ---
 
