@@ -1,17 +1,18 @@
-# Diff sessione — 2026-08-29
+# Diff sessione — 2026-09-01
 
-Sonda E2E calcola() Gemini — BLOCCATA (GEMINI_API_KEY assente)
+Sessione: `sonda/e2e-calcola-gemini-2026-09-01`
+Scope: Sonda E2E comportamentale di `calcola()` su brain Gemini. Read-only sul motore.
 
 ## File toccati
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `reports/ultimo_report.md` | Riscritto con esito sonda Gemini: BLOCCATA per GEMINI_API_KEY assente da .env. Zero test eseguiti, zero codice toccato. |
-| `reports/stato_progetto.md` | Aggiornata riga "Ultimo aggiornamento" con esito sonda Gemini BLOCCATA. |
-| `reports/handoff.md` | Dossier di fine sessione (questo file; commit fine-task). |
-| `reports/diff_sessione.md` | Questo file (riscritto a ogni sessione). |
+| `reports/ultimo_report.md` | Scritto ex-novo: esito sonda E2E Gemini (2 PASS), output terminale reale, verifica tool call da history. |
+| `reports/stato_progetto.md` | Aggiornato header "Ultimo aggiornamento" + finding "kernel rifiuta 7×8" chiuso per Gemini (Groq-specifico). |
+| `reports/handoff.md` | Scritto ex-novo: dossier fine sessione. |
+| `reports/diff_sessione.md` | Questo file. |
 
 ## Note
 
-Sessione puramente read-only + reporting. Nessun file motore toccato (gas.py, brains/, modules/, tests/).
-Stop gate precondizione rispettato come da istruzione operatore.
+Zero modifiche al motore (gas.py, brains/, modules/, tests/). Nessun test suite eseguita.
+La sonda ha usato il kernel in modalità E2E: `GasKernel().run_turn(input)` consumando il generatore di eventi.
