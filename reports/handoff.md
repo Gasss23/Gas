@@ -1,40 +1,31 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-08-29 — Sonda E2E calcola() Gemini (BLOCCATA — precondizione mancante)
+**Sessione:** 2026-09-01 — Correzione reporting finding "kernel rifiuta 7×8"
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Aggiungere `GEMINI_API_KEY` a `.env`** sul WSL locale, poi ritriggerare la sonda E2E Gemini (stessa specifica).
-2. **Merge della PR #79** (https://github.com/Gasss23/Gas/pull/79).
+1. Merge della PR #80 (https://github.com/Gasss23/Gas/pull/80).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-**Fetta 1 — Verifica precondizioni (kernel importabile, GEMINI_API_KEY in .env):**
-`SALTATA PARZIALMENTE` — GEMINI_API_KEY assente da `.env`. Stop gate bloccante attivato come da istruzione operatore. Kernel non importato (inutile senza chiave Gemini).
-
-**Fetta 2 — Test E2E Gemini: "sette per otto" → calcola(7\*8) → 56:**
-`SALTATA — precondizione bloccante (GEMINI_API_KEY assente)`
-
-**Fetta 3 — Test E2E Gemini: "radice quadrata di 144" → calcola(math.sqrt(144)) → 12.0:**
-`SALTATA — precondizione bloccante (GEMINI_API_KEY assente)`
-
-**Fetta 4 — Report esito PASS/FAIL:**
-`FATTA (parziale)` — Report scritto con esito BLOCCATA + azione richiesta all'operatore. Zero output terminale test incollato (test non eseguiti).
+- **Fetta 1 — Correzione stato_progetto.md (finding 7×8)**: `FATTA` — Stato cambiato da ✅ CHIUSO a 🟡 VERIFICATO RISOLTO SU GEMINI. Aggiunti 3 caveat espliciti: (i) causa radice NON rimossa dal motore; (ii) comportamento Groq contraddittorio tra report; (iii) attribuzione "Groq-specifico" non provata (Groq non testato nella run 2026-09-01). Diagnosi storica mantenuta.
+- **Fetta 2 — Correzione ultimo_report.md §5**: `FATTA` — Rimossa affermazione "il finding era Groq-specifico" come fatto acquisito; sostituita con dichiarazione onesta dei 3 caveat.
+- **Fetta 3 — Fix motore (system prompt / SHELL_ALLOWLIST)**: `DEFERITA — fuori scope dichiarato (solo correzione reporting). Se necessario, task dedicato.`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  | 21 +++++++----
- reports/handoff.md        | 51 +++++++++++--------------
- reports/stato_progetto.md |  2 +-
- reports/ultimo_report.md  | 95 ++++++++++++++---------------------------------
- 4 files changed, 62 insertions(+), 107 deletions(-)
+ reports/diff_sessione.md  |  17 +++----
+ reports/handoff.md        |  46 ++++++-------------
+ reports/stato_progetto.md |   8 +++-
+ reports/ultimo_report.md  | 112 +++++++++++++++++++++++++++++++++++-----------
+ 4 files changed, 114 insertions(+), 69 deletions(-)
 ```
 
 ---
@@ -42,7 +33,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-44eaf19 docs(sonda): E2E calcola() Gemini — BLOCCATA, GEMINI_API_KEY assente da .env (2026-08-29)
+d7e2d35 docs(fine-task): handoff sonda E2E calcola() Gemini run-2 2026-09-01
+179fb12 docs(fine-task): handoff sonda E2E calcola() Gemini 2026-09-01 — 2 PASS
+6719e9f docs(sonda): E2E calcola() Gemini — 2 PASS 2026-09-01
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
@@ -57,26 +50,31 @@ nessun diff motore, revisore non richiesto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/.
+Nessuna modifica a gas.py/tests/. Suite non rieseguita.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(sonda): E2E calcola() Gemini — BLOCCATA, GEMINI_API_KEY assente …	CI	sonda/e2e-calcola-gemini-2026-08-29	push	33262256487	53s	2026-08-29T16:10:57Z
-completed	success	Merge pull request #78 from Gasss23/sonda/e2e-calcola-2026-08-29	CI	main	push	33262188110	54s	2026-08-29T16:09:26Z
-completed	success	docs(fine-task): handoff sonda E2E calcola() — 2 PASS Groq 2026-08-29	CI	sonda/e2e-calcola-2026-08-29	push	33261495959	54s	2026-08-29T15:54:06Z
+completed	success	docs(fine-task): handoff sonda E2E calcola() Gemini run-2 2026-09-01	CI	sonda/e2e-calcola-gemini-2026-09-01	push	33538544336	46s	2026-09-01T17:34:12Z
+completed	success	docs(fine-task): handoff sonda E2E calcola() Gemini 2026-09-01 — 2 PASS	CI	sonda/e2e-calcola-gemini-2026-09-01	push	33536737891	50s	2026-09-01T17:15:53Z
+completed	success	docs(sonda): E2E calcola() Gemini — 2 PASS 2026-09-01	CI	sonda/e2e-calcola-gemini-2026-09-01	push	33536359930	49s	2026-09-01T17:12:02Z
 ```
 
-**Mappatura commit→run:**
-- `44eaf19` (docs sonda Gemini BLOCCATA) → run `33262256487` — **SUCCESS** ✅
-- Commit fine-task (questo) → nessuna run su questo SHA al momento della scrittura dell'handoff.
+Mappatura commit→run:
+- `d7e2d35` → run 33538544336 ✅ SUCCESS (commit di testa al push precedente)
+- `179fb12` → nessuna run su questo SHA (commit intermedio, testato nell'albero di `d7e2d35`)
+- `6719e9f` → run 33536359930 ✅ SUCCESS (commit di testa al suo push)
+- commit di questa sessione → run non ancora disponibile alla scrittura dell'handoff
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova riserva da questa sessione.
+Nessuna nuova dalla sessione corrente (nessun diff motore).
 
-**Riserva operativa**: `GEMINI_API_KEY` mancante da `.env` su WSL locale — sonda non può essere completata. Azione: aggiungere la chiave e ritriggerare.
+Finding pre-esistenti confermati nel reporting (non chiusi da questa sessione):
+- 🟡 **F1 CRITICO** — causa radice ancora aperta: `gas.py:46-48` system prompt + SHELL_ALLOWLIST senza calcolatori. Fix motore non impegnato; richiede scope dall'operatore.
+- 🟡 **Groq contraddittorio** — diagnosi 2026-08-29 "Groq rifiuta" vs sonda PR #78 "Groq 2 PASS". Da riconciliare prima di qualsiasi dichiarazione definitiva su Groq.
+- 🟡 **Attribuzione "Groq-specifico"** — ipotesi non verificata empiricamente. Groq non testato nella sonda 2026-09-01.
