@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-01** (sonda/e2e-calcola-gemini-2026-09-01: sonda E2E calcola() Gemini — **2 PASS** su 2. Gemini chiama `calcola(expr="7*8")` → 56 e `calcola(expr="math.sqrt(144)")` → 12.0 correttamente. Brain: `gemini-2.5-flash-lite` (rung 1). Zero codice toccato. Report: `reports/ultimo_report.md`.) — Precedente: sonda/e2e-calcola-gemini-2026-08-29 BLOCCATA (GEMINI_API_KEY assente).
+> Ultimo aggiornamento: **2026-09-01** (sonda/e2e-calcola-gemini-2026-09-01 — run 2: sonda E2E calcola() Gemini **2 PASS** confermati su run fresca. `calcola(7*8)→56`, `calcola(math.sqrt(144))→12.0`. Brain: `gemini-2.5-flash-lite` (rung 1). Zero codice toccato. Report: `reports/ultimo_report.md`.) — Precedente: run 1 stessa sessione 2 PASS.
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore

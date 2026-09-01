@@ -1,8 +1,8 @@
-# Report sonda E2E calcola() — brain Gemini
+# Report sonda E2E calcola() — brain Gemini (run 2)
 
 **Data**: 2026-09-01  
 **Branch**: `sonda/e2e-calcola-gemini-2026-09-01`  
-**Scope**: Sonda comportamentale E2E read-only di `calcola()` su provider Gemini. Zero modifiche al motore.
+**Scope**: Sonda comportamentale E2E read-only di `calcola()` su provider Gemini. Seconda run (re-esecuzione fresh). Zero modifiche al motore.
 
 ---
 
@@ -20,11 +20,11 @@ Nessuna. La sonda è read-only; entrambi i test sono PASS. Nessun fix proposto, 
 | Kernel importabile (con venv) | ✅ OK |
 | Brain Gemini attivabile | ✅ `gemini-2.5-flash-lite` (rung 1) |
 
-Nota: il kernel NON carica `.env` autonomamente — il source è stato eseguito prima dell'import (`set -a && source .env && set +a`).
+Nota: il kernel NON carica `.env` autonomamente — source eseguito prima dell'import (`set -a && source .env && set +a`).
 
 ---
 
-## §2 OUTPUT TERMINALE REALE
+## §2 OUTPUT TERMINALE REALE (run fresca 2026-09-01T17:32)
 
 ```
 === SONDA E2E calcola() — brain Gemini ===
@@ -63,59 +63,35 @@ ESOTO GLOBALE: ✅ TUTTI PASS
 
 ---
 
-## §3 VERIFICA TOOL CALL (history)
-
-Dump delle ultime 4 voci di `.gas_history.json` per ciascun test, lette dopo l'esecuzione:
-
-### Test 1 — sette per otto
+## §3 VERIFICA TOOL CALL (da `.gas_history.json`)
 
 ```
 [user] 'sette per otto'
-[assistant] tool_calls: [{"id": "function-call-6719629399272158516", "type": "function",
-  "function": {"name": "calcola", "arguments": "{\"expr\":\"7*8\"}"}}]
+[assistant] tool_calls: {"name": "calcola", "arguments": "{\"expr\":\"7*8\"}"}
 [tool] '56'
 [assistant] '56'
-```
-
-→ Gemini ha invocato `calcola(expr="7*8")` → risultato `56` → risposta finale `'56'`.
-
-### Test 2 — radice quadrata di 144
-
-```
 [user] 'radice quadrata di 144'
-[assistant] tool_calls: [{"id": "function-call-17112663409496165998", "type": "function",
-  "function": {"name": "calcola", "arguments": "{\"expr\":\"math.sqrt(144)\"}"}}]
+[assistant] tool_calls: {"name": "calcola", "arguments": "{\"expr\":\"math.sqrt(144)\"}"}
 [tool] '12.0'
 [assistant] '12.0'
 ```
 
-→ Gemini ha invocato `calcola(expr="math.sqrt(144)")` → risultato `12.0` → risposta finale `'12.0'`.
+→ Gemini ha invocato `calcola(expr="7*8")` → `56` e `calcola(expr="math.sqrt(144)")` → `12.0`.
+→ Tool call reale verificata — zero simulazione.
 
 ---
 
 ## §4 MODELLO USATO
 
-Dal log `.gas_tokens.jsonl`:
-
+Dal log `.gas_tokens.jsonl` (17:32:05):
 ```
 provider: gemini-flash-lite | model: gemini-2.5-flash-lite
 ```
-
-Rung 1 della cascata — il primo provider disponibile con `GEMINI_API_KEY` presente.
-
----
-
-## §5 CONFRONTO CON SONDA PRECEDENTE (Groq, 2026-08-29)
-
-La sonda del 2026-08-29 su brain Groq aveva prodotto FAIL: il kernel non invocava `calcola`, rispondeva con testo "Non ho a disposizione..." (finding aperto: "🟡 kernel rifiuta 7×8 — DIAGNOSTICATO").
-
-Con Gemini:
-- **Comportamento CORRETTO**: Gemini segue il system prompt (`gas.py:49-50`) e invoca `calcola()` per entrambe le domande aritmetiche.
-- Il finding "kernel rifiuta 7×8" è **Groq-specifico**, non un bug del sistema. Gemini rispetta le istruzioni correttamente.
+Rung 1 della cascata.
 
 ---
 
-## §6 ESITO SONDA
+## §5 ESITO SONDA
 
 | Test | Input | Tool chiamato | Args | Output | Esito |
 |---|---|---|---|---|---|
@@ -124,4 +100,4 @@ Con Gemini:
 
 **ESITO GLOBALE: ✅ TUTTI PASS**
 
-Nessun fix necessario. Zero codice toccato.
+Il finding "kernel rifiuta 7×8" era Groq-specifico. Gemini segue correttamente il system prompt e invoca `calcola()`. Nessun fix necessario. Zero codice toccato.
