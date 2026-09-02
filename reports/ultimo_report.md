@@ -1,107 +1,62 @@
-# Report sonda E2E calcola() — brain Gemini (run 2)
+# Report — Fix CI handoff-check PR #81 (§4 "nessun diff motore")
 
-**Data**: 2026-09-01  
-**Branch**: `sonda/e2e-calcola-gemini-2026-09-01`  
-**Scope**: Sonda comportamentale E2E read-only di `calcola()` su provider Gemini. Seconda run (re-esecuzione fresh). Zero modifiche al motore.
-
----
-
-## §0 DECISIONI UMANE RICHIESTE
-
-Nessuna. La sonda è read-only; entrambi i test sono PASS. Nessun fix proposto, nessuna azione bloccante.
+**Data**: 2026-09-02  
+**Branch**: fix/chiusura-f1-calcola-2026-09-01  
+**PR**: #81 — https://github.com/Gasss23/Gas/pull/81  
+**Scope**: Doc-only — aggiungi frase esatta "nessun diff motore" in §4 di handoff.md per sbloccare CI job handoff-check
 
 ---
 
-## §1 PRECONDIZIONI
+## DECISIONI UMANE RICHIESTE
 
-| Check | Esito |
-|---|---|
-| `GEMINI_API_KEY` in `.env` | ✅ PRESENTE (lunghezza 53) |
-| Kernel importabile (con venv) | ✅ OK |
-| Brain Gemini attivabile | ✅ `gemini-2.5-flash-lite` (rung 1) |
-
-Nota: il kernel NON carica `.env` autonomamente — source eseguito prima dell'import (`set -a && source .env && set +a`).
+1. Merge PR #81 (https://github.com/Gasss23/Gas/pull/81) — doc-only, nessun motore toccato.
+2. Valutare deploy VPS — FASE 3 completa non deployata; VPS stantio a commit `f3a8acc` (2026-06-29).
+3. Prima del deploy VPS: rotare chiave ElevenLabs (ATTESTATO SUP. 2026-08-22, ancora aperto).
 
 ---
 
-## §2 OUTPUT TERMINALE REALE (run fresca 2026-09-01T17:32)
+## Esiti fette
 
+### FETTA 1 — Fix §4 handoff.md: FATTA
+
+**Causa CI rossa** (job `handoff-check`, sotto-check `scripts/check_verdetto.py`):
+
+`check_verdetto.py` riga 110 attiva l'esenzione solo se `§4` contiene la stringa esatta:
 ```
-=== SONDA E2E calcola() — brain Gemini ===
-GEMINI_API_KEY caricata: True
-
-============================================================
-TEST: sette per otto → 56
-INPUT: 'sette per otto'
-ATTESA (substr): '56'
-------------------------------------------------------------
-[tool_res] '56'
-[final]    '56'
-
-Tool calls eseguiti: 1
-ESITO: ✅ PASS
-
-============================================================
-TEST: radice quadrata di 144 → 12.0
-INPUT: 'radice quadrata di 144'
-ATTESA (substr): '12.0'
-------------------------------------------------------------
-[tool_res] '12.0'
-[final]    '12.0'
-
-Tool calls eseguiti: 1
-ESITO: ✅ PASS
-
-============================================================
-RIEPILOGO FINALE
-============================================================
-✅ PASS — sette per otto → 56
-✅ PASS — radice quadrata di 144 → 12.0
-
-ESOTO GLOBALE: ✅ TUTTI PASS
+re.search(r"nessun diff motore", sec4, re.IGNORECASE)
 ```
+
+La §4 precedente usava "Nessun commit motore" e "nessun diff di codice" — nessuna delle due matcha la regex. Il gate procedeva a verificare le citazioni `gas.py:49/51/992`, che non sono nel diff di sessione (la review #95 era ATTESTATIVA su codice pre-esistente) → ERRORE CI.
+
+**Fix applicato**: aggiunta in cima a §4 la frase esplicita e veritiera:
+`"§4 — nessun diff motore in questa sessione (gas.py non toccato in nessun commit di sessione)"`
+
+Il contenuto del verdetto #95 è preservato invariato come contesto.
+
+**File toccati**: solo `reports/handoff.md` (doc-only). Nessun file motore.
 
 ---
 
-## §3 VERIFICA TOOL CALL (da `.gas_history.json`)
+### FETTA 2 — Verifica locale check scripts: FATTA
 
-```
-[user] 'sette per otto'
-[assistant] tool_calls: {"name": "calcola", "arguments": "{\"expr\":\"7*8\"}"}
-[tool] '56'
-[assistant] '56'
-[user] 'radice quadrata di 144'
-[assistant] tool_calls: {"name": "calcola", "arguments": "{\"expr\":\"math.sqrt(144)\"}"}
-[tool] '12.0'
-[assistant] '12.0'
-```
+Output reale (eseguiti prima del commit):
 
-→ Gemini ha invocato `calcola(expr="7*8")` → `56` e `calcola(expr="math.sqrt(144)")` → `12.0`.
-→ Tool call reale verificata — zero simulazione.
+`python scripts/check_verdetto.py`:
+```
+check_verdetto: non applicabile (§4 dichiara nessun diff motore).
+```
+Exit 0.
+
+`python scripts/check_handoff.py`:
+```
+check_handoff: OK — 5 file dichiarati correttamente.
+```
+Exit 0.
+
+Entrambi exit 0 → commit e push autorizzati.
 
 ---
 
-## §4 MODELLO USATO
+### FETTA 3 — Riserva proposta (NON implementata): NOTA
 
-Dal log `.gas_tokens.jsonl` (17:32:05):
-```
-provider: gemini-flash-lite | model: gemini-2.5-flash-lite
-```
-Rung 1 della cascata.
-
----
-
-## §5 ESITO SONDA
-
-| Test | Input | Tool chiamato | Args | Output | Esito |
-|---|---|---|---|---|---|
-| T1 | "sette per otto" | `calcola` | `expr="7*8"` | `56` | ✅ PASS |
-| T2 | "radice quadrata di 144" | `calcola` | `expr="math.sqrt(144)"` | `12.0` | ✅ PASS |
-
-**ESITO GLOBALE: ✅ TUTTI PASS**
-
-Gemini segue correttamente il system prompt e invoca `calcola()`. **Tre caveat onesti da dichiarare**:
-- ⚠️ La causa radice diagnosticata (system prompt `gas.py:46-48` ordina `run_command` per tutti i calcoli + `SHELL_ALLOWLIST` senza tool aritmetici — bug SEMANTICO agnostico dal provider) **NON è stata rimossa dal motore**; Gemini la aggira di fatto.
-- ⚠️ L'attribuzione "Groq-specifico" è un'**ipotesi non verificata** in questa run: Groq non è stato testato il 2026-09-01, e il comportamento Groq risulta contraddittorio tra i report (diagnosi originale 2026-08-29 "Groq rifiuta" vs sonda PR #78 "Groq 2 PASS" — incompatibili, non riconciliati).
-- ⚠️ Finding 7×8: stato corretto = **VERIFICATO RISOLTO SU GEMINI**, non "CHIUSO" in senso assoluto.
-Nessun fix proposto o applicato in questa sonda. Se necessario, rimandato a decisione operatore.
+Il gate `check_verdetto.py` dipende da una stringa esatta (`"nessun diff motore"`) per attivare l'esenzione. Una regex più ampia (es. `"nessun (diff|commit) motore"`) ridurrebbe la fragilità senza cambiare la semantica. Proposto come riserva in §7 handoff.md; **non implementato** (fuori scope, script vietato da toccare in questo task).
