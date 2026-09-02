@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-01 — Chiusura finding F1 CRITICO (calcola() vs run_command)
+**Sessione:** 2026-09-01/02 — Chiusura finding F1 CRITICO (calcola() vs run_command) + fix CI handoff-check
 
 ---
 
@@ -18,7 +18,8 @@
 - **Fetta 1 — Fix chirurgico**: `SALTATA — fix già in place` — `gas.py:49-50` ha già la direttiva corretta (`calcola()` per aritmetica) dal commit `62af5ee` (review #93, 2026-08-29). `git diff main HEAD -- gas.py` = vuoto. Il finding citava righe 46-48 di una versione precedente.
 - **Fetta 2 — Revisore**: `FATTA` — Review #95 APPROVATO. Verdetto integrale in §4.
 - **Fetta 3 — Suite completa**: `FATTA` — 299 PASS, 0 FAIL. Stop gate rispettato.
-- **Fetta 4 — Confronto prima/dopo**: `FATTA` — Tabella in `reports/ultimo_report.md`.
+- **Fetta 4 — Confronto prima/dopo**: `FATTA` — Tabella in `reports/ultimo_report.md` (sessione 2026-09-01).
+- **Fetta 5 — Fix CI handoff-check (2026-09-02)**: `FATTA` — §4 aggiornato con frase esatta "nessun diff motore"; `check_verdetto.py` e `check_handoff.py` entrambi exit 0 prima del commit. Report: `reports/ultimo_report.md`.
 
 ---
 
@@ -26,11 +27,11 @@
 
 ```
  .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  37 +++++++----
- reports/handoff.md                 |  79 ++++++++++++++---------
+ reports/diff_sessione.md           |  24 ++++----
+ reports/handoff.md                 |  91 +++++++++++++++++++----------
  reports/stato_progetto.md          |   8 +--
- reports/ultimo_report.md           | 125 +++++++++++++++----------------------
- 5 files changed, 128 insertions(+), 122 deletions(-)
+ reports/ultimo_report.md           | 113 +++++++++++--------------------------
+ 5 files changed, 112 insertions(+), 125 deletions(-)
 ```
 
 ---
@@ -38,6 +39,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1f6f47f docs(fine-task): handoff F1 CRITICO chiuso — blocchi git reali 2026-09-01
 a3b87f4 docs(fine-task): chiusura finding F1 CRITICO — calcola() certificata 2026-09-01
 fc211db chore(revisore): memoria review #95 — APPROVATO
 ```
@@ -45,6 +47,8 @@ fc211db chore(revisore): memoria review #95 — APPROVATO
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
+
+**§4 — nessun diff motore in questa sessione** (gas.py non toccato in nessun commit di sessione); review #95 ATTESTATIVA su codice pre-esistente, citazioni gas.py verificate a mano ma fuori dal diff di sessione.
 
 Nessun commit motore (gas.py/brains/modules/tests/ non toccati in questa sessione). Il revisore è stato invocato in modalità ATTESTATIVA per certificare lo stato corrente.
 
@@ -85,16 +89,16 @@ Delta: 0.
 ## §6 STATO CI
 
 ```
-completed  failure  docs(fine-task): chiusura finding F1 CRITICO — calcola() certificata …  CI  fix/chiusura-f1-calcola-2026-09-01  push  33543803998  1m7s  2026-09-01T18:28:18Z
-completed  success  Merge pull request #80 from Gasss23/sonda/e2e-calcola-gemini-2026-09-01  CI  main  push  33541870284  1m1s  2026-09-01T18:08:22Z
-completed  success  docs(fine-task): aggiorna §0 handoff con PR #80 reale (gate bash)  CI  sonda/e2e-calcola-gemini-2026-09-01  push  33540427549  48s  2026-09-01T17:53:36Z
+completed	failure	docs(fine-task): handoff F1 CRITICO chiuso — blocchi git reali 2026-0…	CI	fix/chiusura-f1-calcola-2026-09-01	push	33544348675	45s	2026-09-01T18:33:42Z
+completed	failure	docs(fine-task): chiusura finding F1 CRITICO — calcola() certificata …	CI	fix/chiusura-f1-calcola-2026-09-01	push	33543803998	1m7s	2026-09-01T18:28:18Z
+completed	success	Merge pull request #80 from Gasss23/sonda/e2e-calcola-gemini-2026-09-01	CI	main	push	33541870284	1m1s	2026-09-01T18:08:22Z
 ```
 
 Mappatura commit→run:
-- `fc211db` (chore revisore): nessuna run CI su questo SHA — commit pushato isolato non triggera run separata; testato nell'albero di `a3b87f4`.
-- `a3b87f4` (docs fine-task, primo push): run `33543803998` — **FAILURE** sul job `handoff-check` (placeholder `PLACEHOLDER_DIFF_STAT` nel blocco §2). Fix applicato in commit successivo.
-
-**Nota**: il commit corrente (fine-task con blocchi git reali) non ha ancora run CI al momento della scrittura — "run non ancora disponibile alla scrittura dell'handoff".
+- `fc211db` (chore revisore): nessuna run CI su questo SHA — commit pushato isolato non triggera run separata; testato nell'albero del commit successivo.
+- `a3b87f4` (docs fine-task, primo push): run `33543803998` — **FAILURE** sul job `handoff-check` (§2 aveva placeholder `PLACEHOLDER_DIFF_STAT`).
+- `1f6f47f` (docs fine-task, blocchi git reali): run `33544348675` — **FAILURE** sul job `handoff-check` (causa: §4 dichiarava "Nessun commit motore"/"nessun diff di codice" ma `check_verdetto.py` richiede la stringa esatta `"nessun diff motore"`).
+- Commit corrente (questo fine-task, 2026-09-02): run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
@@ -103,6 +107,7 @@ Mappatura commit→run:
 Riserve emerse da questa sessione:
 - **R-quota-gemini-lite**: gemini-2.5-flash-lite ha esaurito la quota gratuita giornaliera (20 RPD) durante la sonda. Il paracadute (fallback su gemini-flash) ha funzionato correttamente. Non bloccante ma da monitorare.
 - **R-groq-openrouter-ollama**: comportamento dei provider alternativi (OpenRouter, Ollama) con il nuovo system prompt non verificato in questa sessione (assenza chiavi). Dichiarato come rischio dal revisore #95.
+- **R-verdetto-gate-string** (2026-09-02): `check_verdetto.py` attiva l'esenzione tramite stringa esatta `"nessun diff motore"`. Una regex più ampia (es. `"nessun (diff|commit) motore"`) renderebbe il gate meno fragile a variazioni lessicali. Non implementato (fuori scope — `scripts/` non toccabili in questo task); proposto per valutazione futura.
 
 Riserve precedenti rimaste aperte (non toccate in questa sessione):
 - R-finegat-1, R-finegat-2 (review #92)

@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-01** (fix/chiusura-f1-calcola-2026-09-01 — certificazione chiusura finding F1 CRITICO. Sonda E2E su ENTRAMBI i provider: Gemini (gemini-flash, flash-lite 429) e Groq — 2 PASS ciascuno, tool=`calcola()`, args corretti. Fix già in place da commit `62af5ee` (review #93). Suite: 299 PASS, 0 FAIL. Revisore: APPROVATO review #95. Report: `reports/ultimo_report.md`.)
+> Ultimo aggiornamento: **2026-09-02** (fix/chiusura-f1-calcola-2026-09-01 — fix CI doc-only: §4 handoff.md aggiornato con frase esatta "nessun diff motore" per sbloccare job handoff-check PR #81. Zero file motore toccati. Sessione precedente (2026-09-01): certificazione chiusura F1 CRITICO, sonda E2E 4 PASS, suite 299 PASS, revisore APPROVATO #95.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore

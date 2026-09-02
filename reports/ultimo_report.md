@@ -1,84 +1,62 @@
-# Report — Chiusura finding F1 CRITICO (calcola() vs run_command)
+# Report — Fix CI handoff-check PR #81 (§4 "nessun diff motore")
 
-**Data**: 2026-09-01  
+**Data**: 2026-09-02  
 **Branch**: fix/chiusura-f1-calcola-2026-09-01  
 **PR**: #81 — https://github.com/Gasss23/Gas/pull/81  
-**Scope**: Certificazione chiusura finding F1 (zero modifiche al motore — fix già in place da commit `62af5ee`)
+**Scope**: Doc-only — aggiungi frase esatta "nessun diff motore" in §4 di handoff.md per sbloccare CI job handoff-check
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge PR #81 (https://github.com/Gasss23/Gas/pull/81) — doc-only, nessun motore.
-2. Valutare deploy VPS (FASE 3 completa non deployata, VPS stantio a `f3a8acc` 2026-06-29).
-3. Prima del deploy VPS: rotare chiave ElevenLabs (ATTESTATO SUP. 2026-08-22).
+1. Merge PR #81 (https://github.com/Gasss23/Gas/pull/81) — doc-only, nessun motore toccato.
+2. Valutare deploy VPS — FASE 3 completa non deployata; VPS stantio a commit `f3a8acc` (2026-06-29).
+3. Prima del deploy VPS: rotare chiave ElevenLabs (ATTESTATO SUP. 2026-08-22, ancora aperto).
 
 ---
 
 ## Esiti fette
 
-### FETTA 0 — Baseline E2E: FATTA
+### FETTA 1 — Fix §4 handoff.md: FATTA
 
-Sonda su ENTRAMBI i provider con history temporanea isolata (`GasKernel(root_dir=tmproot)`).
+**Causa CI rossa** (job `handoff-check`, sotto-check `scripts/check_verdetto.py`):
 
-**Gemini** (solo GEMINI_API_KEY, GROQ_API_KEY rimossa):
-- Brain effettivo: gemini-flash (flash-lite 429 RESOURCE_EXHAUSTED, quota 20 RPD)
-- T1 "sette per otto": `calcola({"expr":"7*8"})` → `56` → risposta "Il risultato di sette per otto è 56." **PASS**
-- T2 "radice quadrata di 144": `calcola({"expr":"math.sqrt(144)"})` → `12.0` → "La radice quadrata di 144 è 12.0." **PASS**
-
-**Groq** (solo GROQ_API_KEY, GEMINI_API_KEY rimossa):
-- Brain effettivo: groq (MODEL_GROQ)
-- T1 "sette per otto": `calcola({"expr":"7*8"})` → `56` **PASS**
-- T2 "radice quadrata di 144": `calcola({"expr":"math.sqrt(144)"})` → `12.0` **PASS**
-
----
-
-### FETTA 1 — Fix chirurgico: SALTATA — FIX GIÀ IN PLACE
-
-Ispezione `gas.py:40-60` (`_GAS_SYSTEM_PROMPT_BASE`):
-
+`check_verdetto.py` riga 110 attiva l'esenzione solo se `§4` contiene la stringa esatta:
 ```
-Righe 49-50 (CORRETTE, pre-esistenti dal commit 62af5ee, review #93):
-"- Per CALCOLI ARITMETICI usa SEMPRE calcola() (es. calcola('7*8'), calcola('math.sqrt(144)')). "
-"Non calcolare mai a mente né stimare: invoca il tool e usa il risultato restituito.\n"
-Riga 51: "- Per CONTEGGI E MISURE SU FILE usa run_command ..."
+re.search(r"nessun diff motore", sec4, re.IGNORECASE)
 ```
 
-Il finding F1 citava le righe 46-48 come location del bug. Il file attuale a quelle righe contiene la direttiva anti-simulazione — nessun calcolo menzionato. Il fix era già presente. `git diff main HEAD -- gas.py` = vuoto.
+La §4 precedente usava "Nessun commit motore" e "nessun diff di codice" — nessuna delle due matcha la regex. Il gate procedeva a verificare le citazioni `gas.py:49/51/992`, che non sono nel diff di sessione (la review #95 era ATTESTATIVA su codice pre-esistente) → ERRORE CI.
+
+**Fix applicato**: aggiunta in cima a §4 la frase esplicita e veritiera:
+`"§4 — nessun diff motore in questa sessione (gas.py non toccato in nessun commit di sessione)"`
+
+Il contenuto del verdetto #95 è preservato invariato come contesto.
+
+**File toccati**: solo `reports/handoff.md` (doc-only). Nessun file motore.
 
 ---
 
-### FETTA 2 — Revisore: FATTA — APPROVATO (#95)
+### FETTA 2 — Verifica locale check scripts: FATTA
 
-Verdetto integrale incollato in handoff.md §4.
+Output reale (eseguiti prima del commit):
 
----
-
-### FETTA 3 — Suite completa: FATTA
-
+`python scripts/check_verdetto.py`:
 ```
-=== RIEPILOGO: 299 PASS, 0 FAIL ===
+check_verdetto: non applicabile (§4 dichiara nessun diff motore).
 ```
+Exit 0.
 
-Stop gate rispettato (attesa ≥299 PASS, 0 FAIL).
+`python scripts/check_handoff.py`:
+```
+check_handoff: OK — 5 file dichiarati correttamente.
+```
+Exit 0.
 
----
-
-### FETTA 4 — Confronto prima/dopo: FATTA
-
-| Provider | Brain effettivo | PRIMA del fix (62af5ee) | DOPO (sonda 2026-09-01) |
-|----------|----------------|--------------------------|--------------------------|
-| Gemini flash | gemini-2.5-flash | bug semantico: run_command ordinato, SHELL_ALLOWLIST senza bc/expr → impossibile | `calcola("7*8")→56`, `calcola("math.sqrt(144)")→12.0` — **2 PASS** |
-| Groq | groq (MODEL_GROQ) | bug semantico: vecchio prompt → run_command → bloccato da allowlist | `calcola("7*8")→56`, `calcola("math.sqrt(144)")→12.0` — **2 PASS** |
-
-**Riconciliazione CAVEAT (ii)**: contraddizione "Groq rifiuta vs 2 PASS" dovuta a system prompt diverso nei due test. Con nuovo prompt (post-`62af5ee`): Groq consistente.
+Entrambi exit 0 → commit e push autorizzati.
 
 ---
 
-## Conclusione
+### FETTA 3 — Riserva proposta (NON implementata): NOTA
 
-- Finding **F1 CRITICO** → **CHIUSO** (zero modifiche al motore in questa sessione)
-- Caveats (i), (ii), (iii) → tutti **CHIUSI**
-- Suite: **299 PASS, 0 FAIL**
-- Revisore: **APPROVATO (#95)**
-- PR: **#81** — https://github.com/Gasss23/Gas/pull/81
+Il gate `check_verdetto.py` dipende da una stringa esatta (`"nessun diff motore"`) per attivare l'esenzione. Una regex più ampia (es. `"nessun (diff|commit) motore"`) ridurrebbe la fragilità senza cambiare la semantica. Proposto come riserva in §7 handoff.md; **non implementato** (fuori scope, script vietato da toccare in questo task).
