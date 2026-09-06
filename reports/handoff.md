@@ -53,10 +53,10 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 Elementi del diff verificati sul file reale `/home/gqual/Gas/modules/voice/tts.py`:
 
-- `tts.py:32` — `int(os.environ.get("GAS_TTS_MAX_CHARS", _DEFAULT_TTS_MAX_CHARS))` senza `try/except ValueError` — rischio ValueError non catturata da server.py se env var non numerica — **RISERVA (R-tts-cap-1)** → **CHIUSA nella stessa sessione** (try/except aggiunto prima del commit).
-- `tts.py:56` — `assert len(truncated) <= max_chars` — assert matematicamente sempre vera per costruzione, non è un vero safety-check, disabilitabile con `-O` — **RISERVA MINORE (R-tts-cap-2)** → **CHIUSA nella stessa sessione** (sostituita con if-hard-cut).
-- `tts.py:89` — `text = _cap_text(text)` come prima riga di `synthesize_speech()`, prima di qualsiasi apertura di connessione — posizione corretta — **ok**.
-- `tts.py:57-62` — `logging.warning(...)` con stringa di formato, stile corretto, usa root logger — **ok**.
+- `modules/voice/tts.py:32` — `int(os.environ.get("GAS_TTS_MAX_CHARS", _DEFAULT_TTS_MAX_CHARS))` senza `try/except ValueError` — rischio ValueError non catturata da server.py se env var non numerica — **RISERVA (R-tts-cap-1)** → **CHIUSA nella stessa sessione** (try/except aggiunto prima del commit).
+- `modules/voice/tts.py:56` — `assert len(truncated) <= max_chars` — assert matematicamente sempre vera per costruzione, non è un vero safety-check, disabilitabile con `-O` — **RISERVA MINORE (R-tts-cap-2)** → **CHIUSA nella stessa sessione** (sostituita con if-hard-cut).
+- `modules/voice/tts.py:89` — `text = _cap_text(text)` come prima riga di `synthesize_speech()`, prima di qualsiasi apertura di connessione — posizione corretta — **ok**.
+- `modules/voice/tts.py:57` — `logging.warning(...)` con stringa di formato, stile corretto, usa root logger — **ok**.
 
 Rischio esplicitamente escluso: comportamento su testi multi-byte (CJK/emoji) non verificato senza chiamata API reale a ElevenLabs — non bloccante, fail-safe 4xx → 502 regge.
 
