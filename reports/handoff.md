@@ -1,41 +1,37 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-07 — Ricognizione audit F1..F6 (2026-08-29): verifica stato reale su main
+**Sessione:** 2026-09-07 — Ricognizione READ-ONLY deploy VPS S2
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #84 (https://github.com/Gasss23/Gas/pull/84).
-
-2. **F5 CHIUSO implicitamente — gap documentale sanato**: commit `62af5ee` (2026-08-29) aveva già rimosso "Sei Gas..." da `_GAS_SYSTEM_PROMPT_BASE` (commit msg: "self-intro unificata"). Questa sessione ha solo aggiornato i report. Se la chiusura è prematura, reverire solo `reports/stato_progetto.md`.
-
-3. **F4 MEDIO e F6 MINORE restano aperti**: scope del fix a decisione operatore. F4 = tensione `gas.py:45-47`; F6 = `echo` in `gas.py:993` SHELL_ALLOWLIST (innocuo).
+_[da completare dopo push — gate §0 in esecuzione]_
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — git fetch + branch sessione**: `FATTA` — main HEAD `3b80e33`, branch `sonda/audit-f1-f6-verifica-2026-09-07` creato.
-- **Fetta 2 — localizzazione definizioni F1..F6**: `FATTA` — estratte da `stato_progetto.md:289-294`, `handoff.md:77-78`, `ultimo_report.md` sessione precedente.
-- **Fetta 3 — verifica F1**: `FATTA` — CHIUSO confermato. `gas.py:55-56`, `gas.py:992-993`.
-- **Fetta 4 — verifica F2**: `FATTA` — CHIUSO confermato. `gas_identity.md` lista 7 tool.
-- **Fetta 5 — verifica F3**: `FATTA` — CHIUSO confermato. `gas.py:42`.
-- **Fetta 6 — verifica F4**: `FATTA` — APERTO. Tensione `gas.py:45` vs `gas.py:47` persiste.
-- **Fetta 7 — verifica F5**: `FATTA` — GAP DOCUMENTALE: F5 era già CHIUSO da `62af5ee` (commit msg esplicito "self-intro unificata"); marcato ✅ in stato_progetto.md.
-- **Fetta 8 — verifica F6**: `FATTA` — APERTO. `echo` in `gas.py:993` SHELL_ALLOWLIST (innocuo).
-- **Fetta 9 — tabella evidenza in stato_progetto.md**: `FATTA` — tabella F1..F6 con stato+evidenza file:riga inserita.
+- **Fetta 1 — git fetch + baseline**: `FATTA` — baseline VPS = `f3a8acc` (2026-06-29), HEAD origin/main = `939effd` (2026-09-07).
+- **Fetta 2 — commit motore nel range**: `FATTA` — `git log --oneline f3a8acc..origin/main -- gas.py brains/ modules/ tests/` → **45 commit motore** (2026-07-01 → 2026-09-02).
+- **Fetta 3a — nuove dipendenze**: `FATTA` — `requirements.txt` IDENTICO. Nessun pip install aggiuntivo. Voice usa solo stdlib.
+- **Fetta 3b — nuove env vars**: `FATTA` — 11 variabili nuove; obbligatorie per voice server: `ELEVENLABS_API_KEY`, `GAS_VOICE_TOKEN`. Core telegram invariato.
+- **Fetta 3c — schema DB / history**: `FATTA` — ZERO rischio dati. `.gas_history.json` formato invariato; `.gas_memory.db` nuove tabelle additive (`CREATE TABLE IF NOT EXISTS`).
+- **Fetta 3d — entrypoint / systemd**: `FATTA` — `gas.service` non nel repo, invariato. Voice server = sotto-comando `gas voice`, non avviato dal telegram service.
+- **Fetta 3e — irreversibili / passi manuali**: `FATTA` — nessuna operazione irreversibile su dati. Rischio alto: `ELEVENLABS_API_KEY` da ruotare prima del deploy.
+- **Fetta 4 — ricerca piano deploy pregresso**: `FATTA` — nessun file `reports/deploy_vps*.txt` o simile trovato. Checklist costruita ex novo.
+- **Fetta 5 — checklist in stato_progetto.md**: `FATTA` — sezione "DEPLOY VPS — Checklist S2" con tabella delta, env vars, rischi, 18 passi.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  | 19 ++++++++---------
- reports/handoff.md        | 52 ++++++++++++++++-------------------------------
- reports/stato_progetto.md | 20 +++++++++++-------
- reports/ultimo_report.md  | 49 +++++++++++++++++++-------------------------
- 4 files changed, 61 insertions(+), 79 deletions(-)
+ reports/diff_sessione.md  | 21 ++++++++-----
+ reports/handoff.md        | 52 ++++++++++++-------------------
+ reports/stato_progetto.md | 79 ++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md  | 66 +++++++++++++++++++++-----------------
+ 4 files changed, 148 insertions(+), 70 deletions(-)
 ```
 
 ---
@@ -43,8 +39,10 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit ancora al momento della scrittura — il commit di fine-task non compare per costruzione)
+(nessun commit precedente al fine-task su questo branch — primo commit della sessione)
 ```
+
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ---
 
@@ -63,19 +61,19 @@ Nessuna modifica a gas.py/tests/ — nessun delta test.
 ## §6 STATO CI
 
 ```
-completed	success	Merge pull request #83 from Gasss23/fix/identity-6-tool	CI	main	push	34064605887	52s	2026-09-06T22:38:22Z
-completed	success	docs(fine-task): handoff §0 — PR #83 (fix/identity-6-tool)	CI	fix/identity-6-tool	push	34044972478	51s	2026-09-06T16:17:40Z
-completed	success	docs(fine-task): chiusura F2 audit 2026-08-29 — gap documentale gas_i…	CI	fix/identity-6-tool	push	34044876271	45s	2026-09-06T16:15:49Z
+completed	success	Merge pull request #84 from Gasss23/sonda/audit-f1-f6-verifica-2026-0…	CI	main	push	34065679670	1m3s	2026-09-06T23:01:30Z
+completed	success	docs(fine-task): handoff §0 — PR #84 (sonda/audit-f1-f6-verifica-2026…	CI	sonda/audit-f1-f6-verifica-2026-09-07	push	34065211583	55s	2026-09-06T22:51:13Z
+completed	success	docs(fine-task): ricognizione audit F1..F6 — verifica stato reale su …	CI	sonda/audit-f1-f6-verifica-2026-09-07	push	34065172393	1m20s	2026-09-06T22:50:22Z
 ```
 
-Mappatura commit→run (sessione sonda/audit-f1-f6-verifica-2026-09-07):
-- Nessun commit di sessione pushato al momento della scrittura — run non ancora disponibile. Il commit di fine-task sarà testato dalla run CI generata dal push.
+Mappatura commit → run: nessun commit di sessione al momento della scrittura (commit di fine-task ancora da creare). Run non ancora disponibile alla scrittura dell'handoff per lo SHA di questo commit.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **F4 MEDIO aperto** (`gas.py:45-47`): tensione strutturale tra "DICHIARA che non puoi" e "gestisci senza bloccarti". Scope fix a decisione operatore.
-- **F5 gap doc chiuso**: marcato ✅ in stato_progetto.md con nota "chiuso implicitamente da `62af5ee`". Se l'operatore ritiene la chiusura prematura, reverire solo la modifica al report.
-- **F6 MINORE aperto** (`gas.py:993`): `echo` in SHELL_ALLOWLIST. Innocuo (sandbox blocca redirezioni). Nessun fix pianificato.
-- **Doppia nomenclatura F5/F6**: due serie di finding con stessa label nel repo (roadmap vs audit 2026-08-29). Nessuna ambiguità nel codice — solo attenzione nella lettura dei report.
+Nessuna (sessione read-only, nessun diff motore).
+
+---
+
+_Appendice: checklist deploy completa in `reports/stato_progetto.md` § DEPLOY VPS — Checklist S2._
