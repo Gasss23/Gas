@@ -1,17 +1,22 @@
 # DIFF SESSIONE — 2026-09-07
 
-Sessione READ-ONLY: nessuna modifica a gas.py, brains/, modules/, tests/.
+**Sessione:** Ricognizione READ-ONLY deploy VPS S2  
+**Branch:** docs/ricognizione-deploy-s2-2026-09-07  
+**Tipo:** Solo aggiornamento reports. Zero modifiche a codice o VPS.
+
+---
 
 ## File toccati
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `reports/stato_progetto.md` | Aggiornata header data/sintesi; sostituita sezione audit F1..F6 con tabella di verifica evidenza file:riga (6 righe → stato+evidenza al 2026-09-07); F5 marcato ✅ chiuso implicitamente (gap doc); contatore finding aggiornato implicitamente dalla tabella |
-| `reports/ultimo_report.md` | Riscritto con esito fette ricognizione F1..F6, anomalie, decisioni umane |
-| `reports/handoff.md` | Rigenerato per questa sessione (template canonico §0-§7) |
-| `reports/diff_sessione.md` | Questo file — riscritto per la sessione corrente |
+| `reports/stato_progetto.md` | Aggiunta sezione "DEPLOY VPS — Checklist S2": tabella delta strutturale (45 commit motore), tabella env vars nuove, tabella rischi, 18 passi deploy ordinati. Aggiornato header "Ultimo aggiornamento". |
+| `reports/ultimo_report.md` | Riscritto per questa sessione: esito 9 fette della ricognizione, tabella riepilogo delta, anomalie. |
+| `reports/handoff.md` | Riscritto per questa sessione: dossier autonomo con scope fette, §0 PR, blocchi git verbatim. |
+| `reports/diff_sessione.md` | Questo file — riscritto a ogni sessione. |
 
-## Note
+---
 
-- Zero diff su motore: scope era puramente read-only (lettura codice, verifica evidenza, scrittura report).
-- GAP DOCUMENTALE chiuso su F5: trovato che commit `62af5ee` (2026-08-29) aveva già risolto la doppia auto-presentazione; i report non lo riflettevano. Solo stato_progetto.md aggiornato — nessuna modifica a gas.py o gas_identity.md.
+## Nota
+
+La storia completa delle sessioni sta in git. Questo file è la fotografia dell'ultima sessione.

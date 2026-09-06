@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-07** (sonda/audit-f1-f6-verifica-2026-09-07 — ricognizione READ-ONLY: F1✅F2✅F3✅ confermati chiusi; F5✅ chiuso implicitamente da 62af5ee (gap doc); F4🟡F6🟡 ancora aperti. Tabella evidenza in §Finding aperti.)
+> Ultimo aggiornamento: **2026-09-07** (docs/ricognizione-deploy-s2-2026-09-07 — ricognizione READ-ONLY deploy S2: 45 commit motore da portare, FASE 3 completa + calcola() + hardening + refactor. Checklist deploy in §DEPLOY VPS — Checklist S2.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -107,6 +107,83 @@ Componenti attive:
 | Errori log | Solo timeout Telegram (long-polling normale) |
 
 **Nota**: il VPS gira stabile su codice FASE 2 completa + fix pre-voice. FASE 3 (voice endpoint, STT, TTS, client 4a) non è deployata — da portare a S2.
+
+### DEPLOY VPS — Checklist S2 (ricognizione 2026-09-07)
+
+**Baseline VPS**: commit `f3a8acc` (2026-06-29). **Target**: `origin/main` HEAD (`939effd`, 2026-09-07).  
+**Commit motore nel range**: **45** (2026-07-01 → 2026-09-02). Nessun piano deploy pregresso trovato in `reports/`.
+
+#### Cosa arriva sul VPS (delta strutturale)
+
+| Area | Cosa cambia |
+|---|---|
+| **brains/** | ELIMINATI: `claude_brain.py`, `gemini_brain.py`, `groq_brain.py`, `openrouter_brain.py` (erano già morti, non importati). NUOVO: `model_ids.py` (fonte unica 5 ID modello — `gas.py` lo importa: `from brains.model_ids import MODEL_GEMINI_LITE, MODEL_GROQ, …`). `router.py` ridotto a `classifica_compito()`. |
+| **modules/voice/** | NUOVO intero package: `server.py` (endpoint `POST /voice`), `stt.py` (STT Groq Whisper), `tts.py` (TTS ElevenLabs). Solo stdlib (`http.client`). |
+| **modules/marketing/** | ELIMINATI 6 file (dead code). |
+| **gas.py** | `calcola()` (AST whitelist + anti-DoS), prompt hardening Fetta A, atomicità `.gas_history.json` (write-tmp-rename + quarantena), `gas version`, `gas duplicati`, `gas merge-contacts`. |
+| **Modello Groq** | Cambia da `llama-3.3-70b-versatile` (hardcoded) a `openai/gpt-oss-120b` (default in `model_ids.py`, env-overridabile). |
+| **Hook Claude** | `review_gate.sh` fail-closed, `scrivi_rep.sh` main-lock guard + push su branch, `session_end.sh` push-only. Solo dev-side, non impattano VPS. |
+
+#### Nuove variabili d'ambiente
+
+| Variabile | Default | Obbligatoria per | Azione richiesta |
+|---|---|---|---|
+| `GAS_VOICE_TOKEN` | — | Voice server | **OBBLIGATORIA** se si vuole `gas voice`. Genera con `openssl rand -hex 32`. |
+| `ELEVENLABS_API_KEY` | — | TTS voice | **OBBLIGATORIA** per TTS. ⚠️ RUOTARE prima del VPS (usata in sviluppo). |
+| `ELEVENLABS_VOICE_ID` | `JBFqnCBsd6RMkjVDRZzb` | TTS voice | Opzionale. |
+| `GAS_VOICE_BIND` | `127.0.0.1` | Voice server | Solo se esposto all'esterno. |
+| `GAS_VOICE_PORT` | `8765` | Voice server | Opzionale. |
+| `GAS_TTS_MAX_CHARS` | `2000` | TTS voice | Opzionale. |
+| `GAS_MODEL_GEMINI_LITE` | `gemini-2.5-flash-lite` | Core | Opzionale (già compilato). |
+| `GAS_MODEL_GEMINI_FLASH` | `gemini-2.5-flash` | Core | Opzionale. |
+| `GAS_MODEL_GROQ` | `openai/gpt-oss-120b` | Core | Opzionale. Se `.env.prod` aveva il vecchio modello hardcoded, rimuovere. |
+| `GAS_GROQ_PRICE_IN` | `0.15` | Telemetria | Opzionale. |
+| `GAS_GROQ_PRICE_OUT` | `0.60` | Telemetria | Opzionale. |
+
+**Nota**: `GROQ_API_KEY`, `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_IDS`, `OPENROUTER_API_KEY` erano già nel `.env.prod` del VPS — nessuna modifica necessaria.
+
+#### Rischi / operazioni irreversibili
+
+| Rischio | Valutazione |
+|---|---|
+| **`.gas_history.json` formato** | NESSUN RISCHIO. Formato invariato; solo atomicità migliorata. Il file VPS sarà letto correttamente. |
+| **`.gas_memory.db` schema** | NESSUN RISCHIO. `CREATE TABLE IF NOT EXISTS` — le nuove tabelle (`vettori`, `metadata`) vengono create al primo avvio se mancanti. |
+| **Delezione file brains/** | Sicuro. I file eliminati non erano importati da `gas.py` già al baseline. |
+| **Modello Groq cambia** | ⚠️ BASSO. Comportamento Groq diverso: `openai/gpt-oss-120b` con `reasoning_effort: low` vs `llama-3.3-70b-versatile`. Comportamento potenzialmente diverso sulle risposte. |
+| **prompt hardening** | ⚠️ BASSO. System prompt modificato (riordina strumenti, aggiunge `calcola()`). Impatto: Gas preferirà `calcola()` per aritmetica invece di `run_command`. |
+| **`ELEVENLABS_API_KEY` esposta** | 🔴 ALTO. **Obbligatorio ruotare** la chiave prima del deploy S2 (usata in sessioni di sviluppo WSL — rischio leak in log). |
+
+#### Checklist passi deploy S2 (ordine obbligatorio)
+
+**PREREQUISITI (da WSL, prima di toccare il VPS)**
+
+- [ ] 1. Ruotare la chiave `ELEVENLABS_API_KEY` su [elevenlabs.io](https://elevenlabs.io) → ottenere nuova chiave.
+- [ ] 2. Generare `GAS_VOICE_TOKEN`: `openssl rand -hex 32` → salvare il valore.
+
+**SUL VPS (via SSH)**
+
+- [ ] 3. `sudo systemctl stop gas.service`
+- [ ] 4. Backup dati runtime: `cp ~/.gas_history.json ~/.gas_history.json.bak.$(date +%Y%m%d)` e `cp ~/.gas_memory.db ~/.gas_memory.db.bak.$(date +%Y%m%d)`
+- [ ] 5. `cd /home/gas/gas && git pull origin main`
+- [ ] 6. Verificare che i vecchi brain file siano spariti: `ls brains/` → deve mostrare solo `__init__.py model_ids.py router.py`
+- [ ] 7. `pip install -r requirements.txt` (stesse versioni, ma per sicurezza)
+- [ ] 8. Aggiornare `.env.prod` con le nuove variabili (almeno `ELEVENLABS_API_KEY` e `GAS_VOICE_TOKEN` se si vuole il voice server)
+- [ ] 9. `python gas.py doctor` → deve riportare exit 0 (OK/WARN, nessun FAIL)
+- [ ] 10. `sudo systemctl start gas.service`
+- [ ] 11. `sudo systemctl status gas.service` → verificare `active (running)`
+- [ ] 12. Monitorare `tail -f gas_debug.log` per 5 minuti — nessun crash o eccezione inattesa
+
+**OPZIONALE — Voice server (solo se si vuole FASE 3)**
+
+- [ ] 13. Creare `gas-voice.service` systemd separato con `ExecStart=python gas.py voice`
+- [ ] 14. Settare `ELEVENLABS_API_KEY`, `GAS_VOICE_TOKEN`, `GAS_VOICE_BIND=127.0.0.1`, `GAS_VOICE_PORT=8765` nel `.env.prod`
+- [ ] 15. `sudo systemctl enable --now gas-voice.service`
+- [ ] 16. Test: `curl -X POST http://127.0.0.1:8765/voice -H "Authorization: Bearer $GAS_VOICE_TOKEN" -H "Content-Type: application/json" -d '{"message":"test"}' -H "Accept: application/json"`
+
+**POST-DEPLOY**
+
+- [ ] 17. Ri-tarare `VEC_MIN_SIM` con `gas calibrate-vectors` sul diario reale VPS (R-wire-1)
+- [ ] 18. Misurare RAM a regime con `systemctl status gas.service` e aggiornare limiti `MemoryHigh/Max` in `gas.service` se necessario (R-reidx-3)
 
 ### DEPLOY VPS — da tarare su dati reali
 
