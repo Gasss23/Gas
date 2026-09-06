@@ -1,50 +1,43 @@
-# REPORT — Chiusura F2 audit 2026-08-29: allineamento tool in gas_identity.md
+# REPORT — Ricognizione audit F1..F6 (2026-08-29) — verifica stato reale su main
 
-**Data:** 2026-09-06
-**Branch:** fix/identity-6-tool
-**Scope:** Fetta unica — chiudere F2 (audit 2026-08-29): gas_identity.md citava solo 3 tool
+**Data:** 2026-09-07
+**Scope:** Sessione READ-ONLY. Nessuna modifica a gas.py, brains/, modules/, tests/. Solo reports/.
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **F3 ALTO chiuso in scope**: il commit `62af5ee` ha già risolto anche F3 (`_GAS_SYSTEM_PROMPT_BASE` in gas.py ora cita tutti e 7 i tool). Chiusura formale inclusa in questo task con accordo implicito dello scope; se l'operatore ritiene F3 fuori scope, reverire la modifica a stato_progetto.md (solo documentazione, nessun impatto sul motore).
+1. **F5 CHIUSO implicitamente — gap documentale da sanare**: il finding F5 (doppia auto-presentazione) era già risolto da commit `62af5ee` (2026-08-29). Il commit message recita esplicitamente "self-intro unificata (rimossa da `_GAS_SYSTEM_PROMPT_BASE`, sola in `gas_identity.md`)". I report non lo avevano mai marcato ✅. Questa sessione aggiunge la riga nel §Finding — sanzione puramente documentale. Se l'operatore ritiene la chiusura prematura, reverire la modifica a stato_progetto.md.
 
-2. **F4 MEDIO e F5/F6 minori restano aperti**: conflitto strutturale "non bloccarti" / "non simulare" (F4) e doppia auto-presentazione (F5/F6) non toccati in questo task. Scope futuro a scelta operatore.
+2. **F4 MEDIO e F6 MINORE restano aperti**: scope del fix a decisione operatore. F4 = tensione strutturale gas.py:45-47; F6 = echo in SHELL_ALLOWLIST:993 (innocuo).
+
+3. **Merge della PR** (numero da §0 handoff).
 
 ---
 
 ## Esito fette
 
-### Fetta 1 — git fetch + branch fix/identity-6-tool da main aggiornato
-**FATTA.** Branch creato da `origin/main` (HEAD `8631058`).
+- **Fetta 1 — git fetch + checkout main aggiornato**: `FATTA` — main già aggiornato, branch sessione `sonda/audit-f1-f6-verifica-2026-09-07` creato da HEAD `3b80e33`.
 
-### Fetta 2 — Lettura kernel e ricavo lista REALE tool esposti
-**FATTA.** Lista estratta verbatim da gas.py righe 508–514:
-1. `run_command`
-2. `write_file`
-3. `read_file`
-4. `ricorda`
-5. `salva_contatto`
-6. `imposta_stato_contatto`
-7. `calcola`
+- **Fetta 2 — localizzazione definizione F1..F6 nei report**: `FATTA` — definizioni estratte da `reports/stato_progetto.md:289-294`, `reports/handoff.md:77-78`, `reports/ultimo_report.md` sessione precedente.
 
-**Divergenza rilevata vs. attesa del task**: l'attesa citava 6 tool (3+3), il kernel ne espone 7. Il 7° è `calcola`, aggiunto da `62af5ee`. STOP GATE non attivato perché gas_identity.md era GIÀ allineata (vedere sotto).
+- **Fetta 3 — verifica F1 sul codice attuale**: `FATTA` — CHIUSO confermato. `gas.py:55-56` ordina `calcola()` per aritmetica; `gas.py:992-993` SHELL_ALLOWLIST senza bc/python/expr/awk. Commit `62af5ee` (F1 fix principale) + branch `fix/chiusura-f1-calcola-2026-09-01` (review #95).
 
-### Fetta 3 — Aggiornamento gas_identity.md
-**SALTATA — non necessaria.** `gas_identity.md` su main già elenca tutti e 7 i tool in modo corretto e allineato al kernel. Il commit `62af5ee` (2026-08-29 16:26) aveva già eseguito questa fix come effetto collaterale dell'aggiunta del tool `calcola`. Nessuna modifica al file necessaria.
+- **Fetta 4 — verifica F2 sul codice attuale**: `FATTA` — CHIUSO confermato. `gas_identity.md` lista 7 tool con ruolo ciascuno. Commit `62af5ee`.
 
-Verifica: `git show HEAD:gas_identity.md` mostra "Agisco sul mondo con 7 tool nativi" + lista completa (read_file, write_file, run_command, calcola, ricorda, salva_contatto, imposta_stato_contatto).
+- **Fetta 5 — verifica F3 sul codice attuale**: `FATTA` — CHIUSO confermato. `gas.py:42` "_GAS_SYSTEM_PROMPT_BASE" ora recita "Hai 7 tool nativi: read_file, write_file, run_command, calcola, ricorda, salva_contatto, imposta_stato_contatto." Commit `62af5ee`.
 
-### Fetta 4 — Revisore obbligatorio sul diff staged
-**SALTATA — non applicabile.** Nessuna modifica a gas.py, brains/, modules/, tests/. Il revisore è obbligatorio solo su diff che tocca il motore (CLAUDE.md §3). Questa sessione modifica solo reports/ (chiusura formale di finding già risolto).
+- **Fetta 6 — verifica F4 sul codice attuale**: `FATTA` — APERTO confermato, con sfumatura. Pre-fix mancava un path d'uscita generico; post-62af5ee `gas.py:45-46` aggiunge "DICHIARA esplicitamente" per qualsiasi tool failure. Tuttavia la TENSIONE STRUTTURALE tra `gas.py:45` ("DICHIARA che non puoi") e `gas.py:47` ("gestisci l'errore senza bloccarti") persiste — non è definito cosa fare DOPO la dichiarazione. F4 rimane APERTO.
 
-### Fetta 5 — Aggiornamento stato_progetto.md
-**FATTA.** Marcato F2 ALTO come ✅ CHIUSO (2026-09-06). In scope: marcato anche F3 ALTO come ✅ CHIUSO (stesso commit radice `62af5ee`). Contatore finding aperti aggiornato da 4 a 2.
+- **Fetta 7 — verifica F5 sul codice attuale**: `FATTA` — trovato GAP DOCUMENTALE. Commit `62af5ee` aveva rimosso "Sei Gas, un agente AI autonomo e personale che gira su VPS." da `_GAS_SYSTEM_PROMPT_BASE` (evidenza: `git show 62af5ee -- gas.py` + commit message "self-intro unificata"). Codice attuale: `gas.py:183` = identity("Sono Gas...") + "REGOLE TASSATIVE:" senza seconda intro → F5 era già chiuso. Marcato ✅ con nota gap doc in `stato_progetto.md`.
+
+- **Fetta 8 — verifica F6 sul codice attuale**: `FATTA` — APERTO confermato. `gas.py:993`: `"ls", "cat", "head", "tail", "wc", "grep", "echo", "pwd", "date",` — echo presente. Dichiarato innocuo (sandbox blocca redirezioni; nessun fix pianificato).
+
+- **Fetta 9 — tabella evidenza in stato_progetto.md**: `FATTA` — tabella markdown F1..F6 inserita in `reports/stato_progetto.md:289-306` con stato, definizione originale, evidenza file:riga.
 
 ---
 
-## Anomalie / finding
+## Anomalie
 
-- **F2 era già chiuso**: l'audit 2026-08-29 ha rilevato il problema nello stato pre-62af5ee. Il commit 62af5ee (stesso giorno, ore 16:26) ha risolto sia F2 che F3 come effetto collaterale. stato_progetto.md non era stato aggiornato di conseguenza. Questa sessione chiude formalmente il gap documentale.
-- **Tool count reale = 7, non 6**: il task citava "6 tool" (3+3), ma il kernel ne espone 7 perché `calcola` è stato aggiunto da 62af5ee. gas_identity.md è già aggiornata a 7.
+- **F5 era già chiuso da agosto**: commit `62af5ee` (2026-08-29 16:26) aveva risolto F5 insieme a F2, F3. Il commit message lo documenta esplicitamente. I report non avevano registrato la chiusura. Questa sessione chiude il gap puramente documentale (zero modifica al motore).
+- **Doppia nomenclatura F5/F6**: nel repo esistono due serie di finding con label F5/F6 — quella della roadmap (F5=Telegram single-history, F6=atomicità history, entrambi CHIUSI) e quella dell'audit 2026-08-29 (F5=doppia autopresentazione, F6=echo). Nessuna ambiguità nel codice ma leggendo i report va tenuta presente la distinzione.

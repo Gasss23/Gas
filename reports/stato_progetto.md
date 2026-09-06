@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-06** (fix/identity-6-tool — F2 ALTO audit 2026-08-29 CHIUSA: gas_identity.md già allineata a 7 tool da commit 62af5ee; chiusura formale in stato. F3 ALTO chiuso in scope.)
+> Ultimo aggiornamento: **2026-09-07** (sonda/audit-f1-f6-verifica-2026-09-07 — ricognizione READ-ONLY: F1✅F2✅F3✅ confermati chiusi; F5✅ chiuso implicitamente da 62af5ee (gap doc); F4🟡F6🟡 ancora aperti. Tabella evidenza in §Finding aperti.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -286,12 +286,18 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ⚠️ **Sonda F0 "6/6 verde" non verificata in dossier (2026-08-02)**: l'esito "6/6 verde" è dichiarato SOLO nel subject del commit `4056c97`, NON nel §1 del handoff canonico. Esito NON verificato-in-dossier. Da confermare rieseguendo la sonda prima di dichiararla base solida per Fetta 1 di FASE 3.
 - ⚠️ **Decisione APERTA — D1-ter: IP WSL instabile tra reboot (2026-08-02, da handoff #59)**: l'IP del client Windows/WSL cambia tra un reboot e l'altro; l'allowlist statica nella sonda va aggiornata manualmente. Da risolvere prima di costruire la pipeline vocale permanente.
 - ⚠️ **Decisione APERTA — D2-audio: load_dotenv override + policy device output (2026-08-02, da handoff #59)**: `load_dotenv()` nel client sonda può sovrascrivere variabili già in env; il device audio di output non è configurabile senza modificare il codice. Da decidere/documentare prima di Fetta 1.
-- ⚠️ **Audit system prompt — 2 finding aperti (2026-08-29, audit READ-ONLY, branch `sonda/vps-stato-2026-08-26`)**: nessuna modifica al motore; ogni fix richiede scope dall'operatore. Findings:
-  - **F1 CRITICO** `gas.py:46-48`: vedi voce dedicata ✅ (chiuso 2026-09-01).
-  - ✅ **F2 ALTO — CHIUSO (2026-09-06, branch `fix/identity-6-tool`)** `gas_identity.md`: già risolto dal commit `62af5ee` (2026-08-29 16:26) — identity aggiornata da 3 a 7 tool nativi (aggiunto `calcola` + `ricorda`, `salva_contatto`, `imposta_stato_contatto`). Verifica: `git show HEAD:gas_identity.md` mostra lista completa e allineata al kernel. Nessuna modifica aggiuntiva necessaria.
-  - ✅ **F3 ALTO — CHIUSO (2026-09-06, in scope con F2, by `62af5ee`)** `gas.py:42`: stesso commit `62af5ee` ha aggiornato `_GAS_SYSTEM_PROMPT_BASE` — ora recita "Hai 7 tool nativi: read_file, write_file, run_command, calcola, ricorda, salva_contatto, imposta_stato_contatto." Lista completa e allineata.
-  - **F4 MEDIO** `gas.py:42-44`: conflitto strutturale tra "non bloccarti" e "non simulare" — nessun path d'uscita esplicito per tool failure generica (il workaround "dichiara l'incertezza" è scoped solo ai conteggi numerici).
-  - F5/F6 minori: doppia auto-presentazione (identity + base) e "echo" classificato come "sola lettura" (innocui).
+- ⚠️ **Audit system prompt — 2026-08-29 (READ-ONLY, branch `sonda/vps-stato-2026-08-26`) → verifica ricognizione 2026-09-07 (branch `sonda/audit-f1-f6-verifica-2026-09-07`)**: nessuna modifica al motore. Stato verificato sul codice di main al 2026-09-07:
+
+  | Finding | Gravità | Definizione originale | Stato al 2026-09-07 | Evidenza file:riga |
+  |---|---|---|---|---|
+  | F1 | CRITICO | `gas.py:46-48` pre-fix: nessuna regola che ordini `calcola()` per aritmetica; kernel rifiuta "7×8" | ✅ CHIUSO (2026-09-01, review #95, branch `fix/chiusura-f1-calcola-2026-09-01`) | `gas.py:55-56` "Per CALCOLI ARITMETICI usa SEMPRE calcola()"; `gas.py:992-993` SHELL_ALLOWLIST senza bc/python/expr/awk |
+  | F2 | ALTO | `gas_identity.md`: citava solo 3 tool nativi (read_file, write_file, run_command) | ✅ CHIUSO (2026-09-06, commit `62af5ee` 2026-08-29) | `gas_identity.md` lista 7 tool con ruolo per ciascuno |
+  | F3 | ALTO | `gas.py:42` pre-fix: `_GAS_SYSTEM_PROMPT_BASE` elencava solo 3 tool | ✅ CHIUSO (2026-09-06, commit `62af5ee`) | `gas.py:42` "Hai 7 tool nativi: read_file, write_file, run_command, calcola, ricorda, salva_contatto, imposta_stato_contatto." |
+  | F4 | MEDIO | `gas.py:42-44` pre-fix: conflitto "non bloccarti" / "non simulare"; path d'uscita scoped solo ai conteggi numerici | 🟡 APERTO — mitigato ma non risolto: commit `62af5ee` ha aggiunto regola generale (`gas.py:45-46` "DICHIARA esplicitamente"), ma tensione strutturale persiste: `gas.py:45` ("DICHIARA che non puoi") vs `gas.py:47` ("gestisci senza bloccarti") senza algoritmo post-dichiarazione | `gas.py:45-47` |
+  | F5 | MINORE | `gas.py:40-41` pre-fix + `gas_identity.md`: doppia auto-presentazione — "Sei Gas..." in `_GAS_SYSTEM_PROMPT_BASE` + "Sono Gas..." in identity | ✅ **CHIUSO IMPLICITAMENTE** da `62af5ee` (2026-08-29) — commit message: "self-intro unificata (rimossa da `_GAS_SYSTEM_PROMPT_BASE`, sola in `gas_identity.md`)". **GAP DOCUMENTALE**: non marcato come chiuso nei report precedenti. | `git diff 62af5ee gas.py` mostra rimozione di `"Sei Gas, un agente AI autonomo..."` da base; `gas.py:183` path normale = identity + "REGOLE TASSATIVE:" (nessuna seconda intro) |
+  | F6 | MINORE | `gas.py:993`: `echo` in `SHELL_ALLOWLIST` classificato come "sola lettura" (non strettamente read-only) | 🟡 APERTO (innocuo: sandbox blocca redirezioni; nessun fix pianificato) | `gas.py:993` `"ls", "cat", "head", "tail", "wc", "grep", "echo", "pwd", "date",` |
+
+  **Riepilogo al 2026-09-07**: F1✅ F2✅ F3✅ chiusi; F5✅ chiuso implicitamente da `62af5ee` (gap doc); F4🟡 F6🟡 aperti (innocui o strutturali, scope a decisione operatore).
 - 🟡 **SICUREZZA — chiave ElevenLabs esposta in chat (2026-08-02, da handoff #59; decisione operatore 2026-08-06)**: la chiave API è comparsa nella chat di sessione. `git grep` su tutta la history del repo (2026-08-02) trova SOLO riferimenti a variabile d'ambiente (`os.environ.get("ELEVENLABS_API_KEY")`), NESSUNA chiave in chiaro committata. Rotazione NON eseguita: scelta consapevole dell'operatore, rischio residuo ACCETTATO. NB onesto: una chiave esposta resta compromessa a prescindere dal repo — questa è accettazione del rischio, non chiusura.
 
 > Sessione 2026-07-21 archiviata in `reports/stato_storico.md`.
