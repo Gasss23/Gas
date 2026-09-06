@@ -1,20 +1,18 @@
-# Diff sessione — 2026-09-02
+# Diff sessione — 2026-09-02 (fix/tts-cap-testo)
 
-**Branch**: fix/chiusura-f1-calcola-2026-09-01  
-**Scope**: Doc-only — fix CI handoff-check PR #81 (§4 "nessun diff motore")
+> Fotografia dell'ultima sessione. Si riscrive a ogni sessione; la storia completa sta in git.
 
-## File toccati in questa sessione (dal merge-base origin/main)
+## File toccati
 
 | File | Cosa è cambiato e perché |
-|---|---|
-| `.claude/agents/memoria_revisore.md` | Aggiunta riga review #95 APPROVATO (commit precedente sessione) |
-| `reports/diff_sessione.md` | Riscritto per questa sessione (2026-09-02 fix CI) |
-| `reports/handoff.md` | §4 aggiornato: aggiunta frase esatta "nessun diff motore" per sbloccare CI job handoff-check PR #81; §2/§3/§6 rigenerati; §7 aggiornato con riserva gate |
-| `reports/stato_progetto.md` | "Ultimo aggiornamento" aggiornato al 2026-09-02 (fix CI) |
-| `reports/ultimo_report.md` | Nuovo report per questo mini-task (fix CI doc-only) |
+|------|--------------------------|
+| `modules/voice/tts.py` | Aggiunta funzione `_cap_text()` + chiamata all'inizio di `synthesize_speech()`. Cap deterministico `GAS_TTS_MAX_CHARS` (default 2000) per chiudere R-tts-1. Import `logging` e `os` aggiunti. |
+| `tests/test_unit_voice_tts.py` | 7 nuovi test in classe `TestCapText` (TVT-cap-*). Import `_cap_text` aggiunto. 24/24 PASS. |
+| `reports/stato_progetto.md` | R-tts-1 segnata CHIUSA; review count aggiornato a #96; voice suite count aggiornato a 24 PASS. |
+| `reports/ultimo_report.md` | Report task corrente. |
+| `reports/diff_sessione.md` | Questo file. |
+| `reports/handoff.md` | Dossier di fine sessione. |
 
-## Note sessione
+## Commit di sessione
 
-Sessione 2026-09-01 aveva lasciato CI rossa su PR #81 (job `handoff-check`): §4 di handoff.md
-dichiarava "Nessun commit motore" e "nessun diff di codice" ma `check_verdetto.py` cercava
-la stringa esatta `"nessun diff motore"`. Fix: aggiunta frase esplicita in §4. Zero file motore toccati.
+- `a7f23e2` — fix(tts): cap deterministico GAS_TTS_MAX_CHARS su synthesize_speech — review #96 APPROVATO CON RISERVE

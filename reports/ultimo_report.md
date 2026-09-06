@@ -1,62 +1,58 @@
-# Report — Fix CI handoff-check PR #81 (§4 "nessun diff motore")
+# Task — R-tts-1: cap deterministico testo TTS
 
-**Data**: 2026-09-02  
-**Branch**: fix/chiusura-f1-calcola-2026-09-01  
-**PR**: #81 — https://github.com/Gasss23/Gas/pull/81  
-**Scope**: Doc-only — aggiungi frase esatta "nessun diff motore" in §4 di handoff.md per sbloccare CI job handoff-check
+**Data:** 2026-09-02
+**Branch:** fix/tts-cap-testo
+**PR:** #82 — https://github.com/Gasss23/Gas/pull/82
+**Revisore:** review #96 — APPROVATO CON RISERVE (riserve chiuse nella stessa sessione)
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge PR #81 (https://github.com/Gasss23/Gas/pull/81) — doc-only, nessun motore toccato.
-2. Valutare deploy VPS — FASE 3 completa non deployata; VPS stantio a commit `f3a8acc` (2026-06-29).
-3. Prima del deploy VPS: rotare chiave ElevenLabs (ATTESTATO SUP. 2026-08-22, ancora aperto).
+1. Merge della PR #82 (https://github.com/Gasss23/Gas/pull/82).
 
 ---
 
-## Esiti fette
+## Scope & Esito Fette
 
-### FETTA 1 — Fix §4 handoff.md: FATTA
+### Fetta UNICA — Cap deterministico GAS_TTS_MAX_CHARS in modules/voice/tts.py: FATTA
 
-**Causa CI rossa** (job `handoff-check`, sotto-check `scripts/check_verdetto.py`):
+- Aggiunta funzione `_cap_text(text: str) -> str` in `tts.py`
+- Limite configurabile via env `GAS_TTS_MAX_CHARS` (default 2000)
+- Troncamento in ordine di priorità: ultimo confine frase (., !, ?) ≤ limite → ultimo spazio → hard-cut
+- WARNING loggato con lunghezza originale, troncata e limite
+- `text = _cap_text(text)` applicato come prima istruzione di `synthesize_speech()`
+- Riserve revisore chiuse nella stessa sessione:
+  - R-tts-cap-1: `try/except ValueError` su `int(os.environ.get(...))` per env var non numerica
+  - R-tts-cap-2: `assert` sostituito con `if truncated > max_chars: hard-cut`
 
-`check_verdetto.py` riga 110 attiva l'esenzione solo se `§4` contiene la stringa esatta:
-```
-re.search(r"nessun diff motore", sec4, re.IGNORECASE)
-```
+### Test REALI (7 nuovi TVT-cap-*): FATTI — 24/24 PASS
 
-La §4 precedente usava "Nessun commit motore" e "nessun diff di codice" — nessuna delle due matcha la regex. Il gate procedeva a verificare le citazioni `gas.py:49/51/992`, che non sono nel diff di sessione (la review #95 era ATTESTATIVA su codice pre-esistente) → ERRORE CI.
+| Test | Esito |
+|------|-------|
+| test_below_limit_passes_intact | PASS |
+| test_above_limit_truncates_at_sentence_boundary | PASS |
+| test_above_limit_no_punctuation_truncates_at_space | PASS |
+| test_above_limit_no_boundary_hard_cuts | PASS |
+| test_env_override_respected | PASS |
+| test_no_warning_when_below_limit | PASS |
+| test_synthesize_never_sends_over_limit | PASS |
 
-**Fix applicato**: aggiunta in cima a §4 la frase esplicita e veritiera:
-`"§4 — nessun diff motore in questa sessione (gas.py non toccato in nessun commit di sessione)"`
+Intera voice suite: 24/24 PASS (erano 17 test pre-cap + i nuovi, più i 7 TVT-cap).
 
-Il contenuto del verdetto #95 è preservato invariato come contesto.
+### Stop gate: RISPETTATO
 
-**File toccati**: solo `reports/handoff.md` (doc-only). Nessun file motore.
-
----
-
-### FETTA 2 — Verifica locale check scripts: FATTA
-
-Output reale (eseguiti prima del commit):
-
-`python scripts/check_verdetto.py`:
-```
-check_verdetto: non applicabile (§4 dichiara nessun diff motore).
-```
-Exit 0.
-
-`python scripts/check_handoff.py`:
-```
-check_handoff: OK — 5 file dichiarati correttamente.
-```
-Exit 0.
-
-Entrambi exit 0 → commit e push autorizzati.
+Solo `modules/voice/tts.py` e `tests/test_unit_voice_tts.py` toccati. Nessun split multi-chunk, nessuno streaming, nessun refactor fuori scope — tutto differito al supervisore per valutazione.
 
 ---
 
-### FETTA 3 — Riserva proposta (NON implementata): NOTA
+## Anomalie
 
-Il gate `check_verdetto.py` dipende da una stringa esatta (`"nessun diff motore"`) per attivare l'esenzione. Una regex più ampia (es. `"nessun (diff|commit) motore"`) ridurrebbe la fragilità senza cambiare la semantica. Proposto come riserva in §7 handoff.md; **non implementato** (fuori scope, script vietato da toccare in questo task).
+Nessuna.
+
+---
+
+## Idee fuori scope (da valutare)
+
+- Split multi-chunk per testi > limite: inviare più chunk a ElevenLabs in sequenza e concatenare i byte MP3. Aumenta latenza e complessità; da valutare se l'agente VPS produce risposte sistematicamente > 2000 char.
+- Streaming ElevenLabs: ElevenLabs supporta streaming chunked; riduce latenza first-byte. Out of scope per questa fetta.

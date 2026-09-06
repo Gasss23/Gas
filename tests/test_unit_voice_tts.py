@@ -28,7 +28,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from modules.voice.server import VoiceHandler
-from modules.voice.tts import DEFAULT_VOICE_ID, ElevenLabsTTSError, synthesize_speech
+from modules.voice.tts import DEFAULT_VOICE_ID, ElevenLabsTTSError, _cap_text, synthesize_speech
 
 
 # ─────────────────────────────── helpers comuni ──────────────────────────────
@@ -316,6 +316,103 @@ def test_synth_key_not_logged(caplog):
 def test_default_voice_id_defined():
     """DEFAULT_VOICE_ID è una stringa non vuota."""
     assert isinstance(DEFAULT_VOICE_ID, str) and len(DEFAULT_VOICE_ID) > 0
+
+
+# ─────────────────────────── TVT-cap-* (R-tts-1) ────────────────────────────
+# Test del cap deterministico GAS_TTS_MAX_CHARS su _cap_text().
+
+_CAP = 50  # limite piccolo per i test; override via GAS_TTS_MAX_CHARS
+
+
+class TestCapText:
+    def test_below_limit_passes_intact(self, monkeypatch):
+        """Testo ≤ limite: ritornato intatto, nessun log WARNING."""
+        monkeypatch.setenv("GAS_TTS_MAX_CHARS", str(_CAP))
+        text = "Ciao. Come stai?"  # 16 char
+        assert _cap_text(text) == text
+
+    def test_above_limit_truncates_at_sentence_boundary(self, monkeypatch, caplog):
+        """Testo > limite con frase: troncato all'ultimo '.' ≤ limite."""
+        monkeypatch.setenv("GAS_TTS_MAX_CHARS", str(_CAP))
+        import logging
+
+        # "Frase uno. " = 11 char, "Frase due che è lunga lunga lunga lunga lunga." = 46 char
+        # Totale 57 char > 50 — l'ultimo '.' ≤ 50 è a posizione 10 (fine "Frase uno.")
+        text = "Frase uno. Frase due che e lunga lunga lunga lunga."
+        assert len(text) > _CAP
+        with caplog.at_level(logging.WARNING):
+            result = _cap_text(text)
+        assert len(result) <= _CAP
+        assert result.endswith(".")
+        # Deve contenere la prima frase completa
+        assert result == "Frase uno."
+        assert "TTS text cap" in caplog.text
+
+    def test_above_limit_no_punctuation_truncates_at_space(self, monkeypatch, caplog):
+        """Testo > limite senza punteggiatura: troncato all'ultimo spazio ≤ limite."""
+        monkeypatch.setenv("GAS_TTS_MAX_CHARS", str(_CAP))
+        import logging
+
+        # 50 char esatti prima dello spazio, poi altra parola
+        text = "parola " * 7 + "extraword"  # "parola " × 7 = 49 char, poi "extraword"
+        assert len(text) > _CAP
+        with caplog.at_level(logging.WARNING):
+            result = _cap_text(text)
+        assert len(result) <= _CAP
+        assert not result.endswith("extraword")
+        assert "TTS text cap" in caplog.text
+
+    def test_above_limit_no_boundary_hard_cuts(self, monkeypatch, caplog):
+        """Testo > limite senza spazi né punteggiatura: hard-cut esatto al limite."""
+        monkeypatch.setenv("GAS_TTS_MAX_CHARS", str(_CAP))
+        import logging
+
+        text = "x" * (_CAP + 20)
+        with caplog.at_level(logging.WARNING):
+            result = _cap_text(text)
+        assert len(result) == _CAP
+        assert "TTS text cap" in caplog.text
+
+    def test_env_override_respected(self, monkeypatch):
+        """GAS_TTS_MAX_CHARS=10 limita a 10 char."""
+        monkeypatch.setenv("GAS_TTS_MAX_CHARS", "10")
+        text = "Parola lunga che supera dieci caratteri."
+        result = _cap_text(text)
+        assert len(result) <= 10
+
+    def test_no_warning_when_below_limit(self, monkeypatch, caplog):
+        """Nessun WARNING loggato se il testo è già ≤ limite."""
+        monkeypatch.setenv("GAS_TTS_MAX_CHARS", str(_CAP))
+        import logging
+
+        text = "Ciao."
+        with caplog.at_level(logging.WARNING):
+            _cap_text(text)
+        assert "TTS text cap" not in caplog.text
+
+    def test_synthesize_never_sends_over_limit(self, monkeypatch):
+        """synthesize_speech non invia mai più di GAS_TTS_MAX_CHARS char a ElevenLabs."""
+        monkeypatch.setenv("GAS_TTS_MAX_CHARS", str(_CAP))
+        long_text = "Parola " * 100  # >> 50 char
+        captured: list[str] = []
+
+        class _CapturingConn:
+            def request(self, method, path, body=None, headers=None):
+                payload = json.loads(body)
+                captured.append(payload["text"])
+
+            def getresponse(self):
+                resp = MagicMock()
+                resp.status = 200
+                resp.read.return_value = _FAKE_MP3
+                return resp
+
+            def close(self):
+                pass
+
+        synthesize_speech(long_text, "k", "v", _conn_factory=_CapturingConn)
+        assert len(captured) == 1
+        assert len(captured[0]) <= _CAP
 
 
 def test_server_uses_default_voice_when_env_absent(monkeypatch):
