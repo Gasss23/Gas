@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-02** (fix/tts-cap-testo — R-tts-1 CHIUSA: cap deterministico GAS_TTS_MAX_CHARS su synthesize_speech, review #96 APPROVATO CON RISERVE, PR #82. Voice suite: 24 PASS (+7 TVT-cap-*).)
+> Ultimo aggiornamento: **2026-09-06** (fix/identity-6-tool — F2 ALTO audit 2026-08-29 CHIUSA: gas_identity.md già allineata a 7 tool da commit 62af5ee; chiusura formale in stato. F3 ALTO chiuso in scope.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -286,10 +286,10 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 - ⚠️ **Sonda F0 "6/6 verde" non verificata in dossier (2026-08-02)**: l'esito "6/6 verde" è dichiarato SOLO nel subject del commit `4056c97`, NON nel §1 del handoff canonico. Esito NON verificato-in-dossier. Da confermare rieseguendo la sonda prima di dichiararla base solida per Fetta 1 di FASE 3.
 - ⚠️ **Decisione APERTA — D1-ter: IP WSL instabile tra reboot (2026-08-02, da handoff #59)**: l'IP del client Windows/WSL cambia tra un reboot e l'altro; l'allowlist statica nella sonda va aggiornata manualmente. Da risolvere prima di costruire la pipeline vocale permanente.
 - ⚠️ **Decisione APERTA — D2-audio: load_dotenv override + policy device output (2026-08-02, da handoff #59)**: `load_dotenv()` nel client sonda può sovrascrivere variabili già in env; il device audio di output non è configurabile senza modificare il codice. Da decidere/documentare prima di Fetta 1.
-- ⚠️ **Audit system prompt — 4 finding aperti (2026-08-29, audit READ-ONLY, branch `sonda/vps-stato-2026-08-26`)**: nessuna modifica al motore; ogni fix richiede scope dall'operatore. Findings:
-  - **F1 CRITICO** `gas.py:46-48`: `"Per conteggi, misure e calcoli esatti usa SEMPRE run_command"` — SHELL_ALLOWLIST non contiene calcolatori (`bc`, `expr`, `awk`, `python` assenti). Ordine impossibile da eseguire per aritmetica. Stessa classe del bug 7×8.
-  - **F2 ALTO** `gas_identity.md:3`: cita solo 3 tool (`read_file, write_file, run_command`); il kernel ne espone 6 (`ricorda, salva_contatto, imposta_stato_contatto` omessi). Gas potrebbe non usarli spontaneamente.
-  - **F3 ALTO** `gas.py:42`: stessa lista incompleta nelle REGOLE TASSATIVE del base prompt.
+- ⚠️ **Audit system prompt — 2 finding aperti (2026-08-29, audit READ-ONLY, branch `sonda/vps-stato-2026-08-26`)**: nessuna modifica al motore; ogni fix richiede scope dall'operatore. Findings:
+  - **F1 CRITICO** `gas.py:46-48`: vedi voce dedicata ✅ (chiuso 2026-09-01).
+  - ✅ **F2 ALTO — CHIUSO (2026-09-06, branch `fix/identity-6-tool`)** `gas_identity.md`: già risolto dal commit `62af5ee` (2026-08-29 16:26) — identity aggiornata da 3 a 7 tool nativi (aggiunto `calcola` + `ricorda`, `salva_contatto`, `imposta_stato_contatto`). Verifica: `git show HEAD:gas_identity.md` mostra lista completa e allineata al kernel. Nessuna modifica aggiuntiva necessaria.
+  - ✅ **F3 ALTO — CHIUSO (2026-09-06, in scope con F2, by `62af5ee`)** `gas.py:42`: stesso commit `62af5ee` ha aggiornato `_GAS_SYSTEM_PROMPT_BASE` — ora recita "Hai 7 tool nativi: read_file, write_file, run_command, calcola, ricorda, salva_contatto, imposta_stato_contatto." Lista completa e allineata.
   - **F4 MEDIO** `gas.py:42-44`: conflitto strutturale tra "non bloccarti" e "non simulare" — nessun path d'uscita esplicito per tool failure generica (il workaround "dichiara l'incertezza" è scoped solo ai conteggi numerici).
   - F5/F6 minori: doppia auto-presentazione (identity + base) e "echo" classificato come "sola lettura" (innocui).
 - 🟡 **SICUREZZA — chiave ElevenLabs esposta in chat (2026-08-02, da handoff #59; decisione operatore 2026-08-06)**: la chiave API è comparsa nella chat di sessione. `git grep` su tutta la history del repo (2026-08-02) trova SOLO riferimenti a variabile d'ambiente (`os.environ.get("ELEVENLABS_API_KEY")`), NESSUNA chiave in chiaro committata. Rotazione NON eseguita: scelta consapevole dell'operatore, rischio residuo ACCETTATO. NB onesto: una chiave esposta resta compromessa a prescindere dal repo — questa è accettazione del rischio, non chiusura.
