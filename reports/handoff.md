@@ -6,7 +6,11 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-_[da completare dopo push — gate PR §0]_
+1. Merge della PR #84 (https://github.com/Gasss23/Gas/pull/84).
+
+2. **F5 CHIUSO implicitamente — gap documentale sanato**: commit `62af5ee` (2026-08-29) aveva già rimosso "Sei Gas..." da `_GAS_SYSTEM_PROMPT_BASE` (commit msg: "self-intro unificata"). Questa sessione ha solo aggiornato i report. Se la chiusura è prematura, reverire solo `reports/stato_progetto.md`.
+
+3. **F4 MEDIO e F6 MINORE restano aperti**: scope del fix a decisione operatore. F4 = tensione `gas.py:45-47`; F6 = `echo` in `gas.py:993` SHELL_ALLOWLIST (innocuo).
 
 ---
 
