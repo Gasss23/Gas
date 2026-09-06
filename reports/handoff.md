@@ -6,7 +6,10 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-_[da completare dopo push — gate §0 in esecuzione]_
+1. Merge della PR #85 (https://github.com/Gasss23/Gas/pull/85).
+2. **Ruotare `ELEVENLABS_API_KEY` prima del deploy S2** (🔴 OBBLIGATORIO): la chiave attuale è stata usata in sessioni di sviluppo WSL — rischio leak in log. Ruotare su elevenlabs.io e aggiornare `.env.prod` sul VPS.
+3. **Timing e modalità S2**: decidere quando eseguire il deploy (18 passi in checklist `stato_progetto.md` § DEPLOY VPS — Checklist S2).
+4. **Voice server su VPS**: decidere se avviare `gas voice` come servizio systemd separato (passi 13-16 della checklist).
 
 ---
 
