@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #PLACEHOLDER (URL_PLACEHOLDER). ← aggiornato in 4bis dopo push
+1. Merge della PR #83 (https://github.com/Gasss23/Gas/pull/83).
 
 2. **F3 ALTO chiuso in scope**: il commit `62af5ee` ha già risolto anche F3 (`_GAS_SYSTEM_PROMPT_BASE`). Chiusura formale inclusa; se fuori scope, reverire modifica a stato_progetto.md.
 
@@ -39,8 +39,10 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit precedente al commit di fine-task su questo branch — il commit di fine-task non compare per costruzione)
+8a38ddf docs(fine-task): chiusura F2 audit 2026-08-29 — gap documentale gas_identity.md
 ```
+
+NB: il commit che contiene questo handoff aggiornato (§0 PR #83) non compare per costruzione.
 
 ---
 
