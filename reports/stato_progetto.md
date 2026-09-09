@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-07** (docs/ricognizione-deploy-s2-2026-09-07 — ricognizione READ-ONLY deploy S2: 45 commit motore da portare, FASE 3 completa + calcola() + hardening + refactor. Checklist deploy in §DEPLOY VPS — Checklist S2.)
+> Ultimo aggiornamento: **2026-09-09** (docs/migrazione-mac-2026-09-09 — registrata migrazione Windows/WSL → MacBook Air M2 + 3 finding aperti F-mac-1/2/3. DOC-ONLY.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -58,6 +58,10 @@ Componenti attive:
 ## Finding aperti (🟡 attivi)
 
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
+
+- 🟡 **F-mac-1** (2026-09-09): i test T11c2/T11e/T12a/T12c/T12e **FAIL su macOS** perché bwrap non esiste sulla piattaforma. Devono essere SKIP su sistemi senza sandbox OS (come già fa T13d via `pytest.mark.skipif`). Fix test-only; il comportamento runtime fail-closed di `run_command` è corretto (confermato da T13d PASS).
+- 🟡 **F-mac-2** (2026-09-09): `modules/memory/store.py:204` — `SyntaxWarning: invalid escape sequence "\+"` in una regex. Correggere usando raw string (`r"\+"`). Fix minore, zero impatto funzionale.
+- 🟡 **F-mac-3** (2026-09-09): `clients/voice/probe/win_mic_test.py` chiama `sys.exit(1)` all'import se manca il modulo `sounddevice` → rompe la collection di pytest quando lanciato senza target esplicito. Rendere il file collection-safe (guard `try/except ImportError + pytest.skip`) oppure escluderlo con `collect_ignore` in `conftest.py`. Fix robustezza.
 
 - ✅ **R-phantom-pr-1 CHIUSO** (2026-08-22, sonda/phantom-pr-bug, review #92 APPROVATO CON RISERVE, PR #74): REGOLA §0 in `.claude/commands/fine-task.md` riscritta con gate bash obbligatorio — `gh pr list --head "$BRANCH" --base main --json number,url` eseguito dopo il push; PR assente → `gh pr create --fill`; gh exit non-zero → "PR NON verificata/creata" + task INCOMPLETO. Numero PR in §0 proveniente ESCLUSIVAMENTE da output JSON di `gh`. Riserve non bloccanti: R-finegat-1 (stderr misto nel JSON capture), R-finegat-2 (pattern non-atomico GH_EXIT).
 - 🟡 **R-finegat-1** (2026-08-22, review #92): `PR_JSON=$(gh pr list ... 2>&1)` — warning stderr con exit 0 produce testo misto non-JSON; python3 lancia `json.JSONDecodeError` non catturata → §0 malformato senza segnale. Fix: `2>/dev/null` nella capture + try/except in python3.
@@ -321,6 +325,19 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 
 > Sessione 2026-07-24 archiviata in `reports/stato_storico.md`.
 > Sessione 2026-07-24 (p2) archiviata in `reports/stato_storico.md`.
+### Migrazione Windows/WSL → MacBook Air M2 (2026-09-09)
+
+Ambiente ricostruito da GitHub (main allineato a origin) + file solo-locali reimportati da backup "kit di trasloco": `.env`, `.gas_memory.db` (+4 `.bak`), `.gas_history.json`, `.claude/settings.local.json`.
+
+**Verifiche superate:**
+- `gas doctor` → GEMINI+GROQ OK (chiamate reali), memoria integra (diario 14 voci), storico 72 msg.
+- `pytest tests/` → **290 PASS / 5 FAIL**.
+- I 5 FAIL sono SOLO ambiente (run_command in bwrap): T11c2, T11e, T12a, T12c, T12e — su macOS bwrap non esiste, run_command è bloccato fail-closed (corretto; confermato da T13d PASS). Su Linux/VPS passano.
+
+**Setup:** Python 3.14 (Homebrew) in venv `.venv`; chiavi caricate da `~/.zshrc` (GAS legge da `os.environ`, niente dotenv); gasmerge symlink R10 ok; Claude Code 2.1.267.
+
+**Finding aperti registrati (NON risolti ora):** F-mac-1, F-mac-2, F-mac-3 — vedi §Finding aperti.
+
 ### DA FARE — sviluppo/processo (aperti dal 2026-07-09)
 - ✅ **gh CLI installato su Giulia** — 2026-07-14: v2.96.0, git protocol HTTPS, account Gasss23, scopes repo+workflow. Verificato: `gh repo view Gasss23/Gas` OK, branch main visto. CHIUSO.
 - ✅ **WSL locale riallineato a origin/main** — 2026-07-15: eseguito a mano da terminale WSL (`git fetch` + `checkout main` + `merge --ff-only`), `/home/gqual/Gas` ora a `9cbab56`; branch locale esaurito `docs/roadmap-item2-chiuso` cancellato (`-d` accettato = già dentro main). Registrato qui perché un allineamento manuale NON lascia traccia in git. CHIUSO.
