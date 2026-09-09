@@ -1,82 +1,76 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-07 — Ricognizione READ-ONLY deploy VPS S2
+**Sessione:** 2026-09-09 — docs/migrazione-mac: registra migrazione Win/WSL→Mac + F-mac-1/2/3
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #85 (https://github.com/Gasss23/Gas/pull/85).
-2. **Ruotare `ELEVENLABS_API_KEY` prima del deploy S2** (🔴 OBBLIGATORIO): la chiave attuale è stata usata in sessioni di sviluppo WSL — rischio leak in log. Ruotare su elevenlabs.io e aggiornare `.env.prod` sul VPS.
-3. **Timing e modalità S2**: decidere quando eseguire il deploy (18 passi in checklist `stato_progetto.md` § DEPLOY VPS — Checklist S2).
-4. **Voice server su VPS**: decidere se avviare `gas voice` come servizio systemd separato (passi 13-16 della checklist).
+1. Merge della PR #86 (https://github.com/Gasss23/Gas/pull/86).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — git fetch + baseline**: `FATTA` — baseline VPS = `f3a8acc` (2026-06-29), HEAD origin/main = `939effd` (2026-09-07).
-- **Fetta 2 — commit motore nel range**: `FATTA` — `git log --oneline f3a8acc..origin/main -- gas.py brains/ modules/ tests/` → **45 commit motore** (2026-07-01 → 2026-09-02).
-- **Fetta 3a — nuove dipendenze**: `FATTA` — `requirements.txt` IDENTICO. Nessun pip install aggiuntivo. Voice usa solo stdlib.
-- **Fetta 3b — nuove env vars**: `FATTA` — 11 variabili nuove; obbligatorie per voice server: `ELEVENLABS_API_KEY`, `GAS_VOICE_TOKEN`. Core telegram invariato.
-- **Fetta 3c — schema DB / history**: `FATTA` — ZERO rischio dati. `.gas_history.json` formato invariato; `.gas_memory.db` nuove tabelle additive (`CREATE TABLE IF NOT EXISTS`).
-- **Fetta 3d — entrypoint / systemd**: `FATTA` — `gas.service` non nel repo, invariato. Voice server = sotto-comando `gas voice`, non avviato dal telegram service.
-- **Fetta 3e — irreversibili / passi manuali**: `FATTA` — nessuna operazione irreversibile su dati. Rischio alto: `ELEVENLABS_API_KEY` da ruotare prima del deploy.
-- **Fetta 4 — ricerca piano deploy pregresso**: `FATTA` — nessun file `reports/deploy_vps*.txt` o simile trovato. Checklist costruita ex novo.
-- **Fetta 5 — checklist in stato_progetto.md**: `FATTA` — sezione "DEPLOY VPS — Checklist S2" con tabella delta, env vars, rischi, 18 passi.
+- **Fetta 1 — Crea branch docs/migrazione-mac-2026-09-09**: FATTA.
+- **Fetta 2 — Aggiorna reports/stato_progetto.md (voce migrazione 2026-09-09)**: FATTA. Header aggiornato, sezione migrazione con setup Mac, verifiche gas doctor + pytest (290 PASS / 5 FAIL bwrap-only).
+- **Fetta 3 — Registra F-mac-1/F-mac-2/F-mac-3 come finding aperti**: FATTA. NON risolti — solo registrati come da scope.
+- **Fetta 4 — Apri PR**: FATTA. PR #86.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  | 21 ++++++++-----
- reports/handoff.md        | 52 ++++++++++++-------------------
- reports/stato_progetto.md | 79 ++++++++++++++++++++++++++++++++++++++++++++++-
- reports/ultimo_report.md  | 66 +++++++++++++++++++++-----------------
- 4 files changed, 148 insertions(+), 70 deletions(-)
+ reports/diff_sessione.md  | 27 +++++++++-------------
+ reports/handoff.md        | 55 +++++++++++++++++++------------------------
+ reports/stato_progetto.md | 19 ++++++++++++++-
+ reports/ultimo_report.md  | 59 +++++++++++++++++------------------------------
+ 4 files changed, 74 insertions(+), 86 deletions(-)
 ```
+
+*(da `git diff --cached --stat BASE` — include i file di report in stage non ancora committati)*
 
 ---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit precedente al fine-task su questo branch — primo commit della sessione)
+ee87365 docs(migrazione-mac): registra migrazione Win/WSL→Mac + F-mac-1/2/3
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+*(Il commit di fine-task che contiene questo file non compare in questo log per costruzione.)*
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-nessun diff motore, revisore non richiesto.
+Nessun diff motore, revisore non richiesto. DOC-ONLY: nessun file in gas.py/brains/modules/tests/ toccato.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/ — nessun delta test.
+Nessuna modifica a gas.py/tests/. Suite invariata rispetto a ultimo stato noto: **290 PASS / 5 FAIL** (bwrap-only su macOS — T11c2/T11e/T12a/T12c/T12e, strutturali, non regressioni).
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	Merge pull request #84 from Gasss23/sonda/audit-f1-f6-verifica-2026-0…	CI	main	push	34065679670	1m3s	2026-09-06T23:01:30Z
-completed	success	docs(fine-task): handoff §0 — PR #84 (sonda/audit-f1-f6-verifica-2026…	CI	sonda/audit-f1-f6-verifica-2026-09-07	push	34065211583	55s	2026-09-06T22:51:13Z
-completed	success	docs(fine-task): ricognizione audit F1..F6 — verifica stato reale su …	CI	sonda/audit-f1-f6-verifica-2026-09-07	push	34065172393	1m20s	2026-09-06T22:50:22Z
+completed	success	docs(migrazione-mac): registra migrazione Win/WSL→Mac + F-mac-1/2/3	CI	docs/migrazione-mac-2026-09-09	push	34415167628	46s	2026-09-09T23:03:24Z
+completed	success	docs(stato): scollega .gas_history.json da etichetta R2 + finding aut…	CI	docs/scollega-gashistory-da-r2	push	34379377023	56s	2026-09-09T16:51:52Z
+completed	success	docs(stato): registra merge PR #27 su main (21548f74, CI 29695063005)	CI	fix/crm-idemp-diario	push	34379376493	52s	2026-09-09T16:51:52Z
 ```
 
-Mappatura commit → run: nessun commit di sessione al momento della scrittura (commit di fine-task ancora da creare). Run non ancora disponibile alla scrittura dell'handoff per lo SHA di questo commit.
+**Mappatura commit→run:**
+- `ee87365` (commit di sessione): run CI `34415167628` — **completed success** ✅.
+- Il commit di fine-task (hash disponibile al passo 5): run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna (sessione read-only, nessun diff motore).
+Nessuna nuova riserva da review (DOC-ONLY, revisore non invocato).
 
----
-
-_Appendice: checklist deploy completa in `reports/stato_progetto.md` § DEPLOY VPS — Checklist S2._
+Finding registrati come aperti in questa sessione: F-mac-1, F-mac-2, F-mac-3 (vedi §Finding aperti in `reports/stato_progetto.md`).
