@@ -1,76 +1,69 @@
-# HANDOFF — Dossier di fine sessione
-
-**Sessione:** 2026-09-09 — docs/migrazione-mac: registra migrazione Win/WSL→Mac + F-mac-1/2/3
+# HANDOFF — cert/mac-migration-2026-09-12 — 2026-09-12
 
 ---
 
-## §0 DECISIONI UMANE RICHIESTE
+## §DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #86 (https://github.com/Gasss23/Gas/pull/86).
+1. **Merge PR #87** (cert/mac-migration-2026-09-12 → main) — doc-only, CI verde. Nessun codice motore toccato; auto-merge consentito dal ruleset.
 
----
+2. **F-mac-4: fix IP guard su Mac** — `scripts/gasmerge.sh` usa `git grep -E '\b...\b'`; macOS POSIX ERE non supporta `\b` → IP non rilevati localmente. Fix proposto: `git grep -nP '\b...\b'` (PCRE flag) o grep esterno. Decidere se fixare ora o aspettare il deploy VPS (dove non impatta).
 
-## §1 SCOPE & ESITO FETTE
-
-- **Fetta 1 — Crea branch docs/migrazione-mac-2026-09-09**: FATTA.
-- **Fetta 2 — Aggiorna reports/stato_progetto.md (voce migrazione 2026-09-09)**: FATTA. Header aggiornato, sezione migrazione con setup Mac, verifiche gas doctor + pytest (290 PASS / 5 FAIL bwrap-only).
-- **Fetta 3 — Registra F-mac-1/F-mac-2/F-mac-3 come finding aperti**: FATTA. NON risolti — solo registrati come da scope.
-- **Fetta 4 — Apri PR**: FATTA. PR #86.
+3. **F-mac-1: SKIP bwrap tests su macOS** — T11c2/T11e/T12a/T12c/T12e sono FAIL su Mac ma PASS su CI (Ubuntu). Fix test-only (non urgente, il runtime è corretto).
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## ESITO SONDA / CERTIFICAZIONE
+
+**MIGRAZIONE CERTIFICATA ✅** — L1+L2+L3 PASS, zero crash, zero danni ai dati.
+
+Vedi `reports/ultimo_report.md` per il dettaglio completo.
+
+---
+
+## `git diff --stat` REALE DELLA SESSIONE
 
 ```
- reports/diff_sessione.md  | 27 +++++++++-------------
- reports/handoff.md        | 55 +++++++++++++++++++------------------------
- reports/stato_progetto.md | 19 ++++++++++++++-
- reports/ultimo_report.md  | 59 +++++++++++++++++------------------------------
- 4 files changed, 74 insertions(+), 86 deletions(-)
+ reports/stato_progetto.md |   3 +-
+ reports/ultimo_report.md  | 166 +++++++++++++++++++++++++++++++++++++++------
+ 2 files changed, 148 insertions(+), 21 deletions(-)
 ```
-
-*(da `git diff --cached --stat BASE` — include i file di report in stage non ancora committati)*
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## `git log` DEI COMMIT DELLA SESSIONE
 
 ```
-ee87365 docs(migrazione-mac): registra migrazione Win/WSL→Mac + F-mac-1/2/3
+1c4f084 docs(cert-mac): certificazione migrazione Win/WSL→Mac — 2026-09-12
 ```
-
-*(Il commit di fine-task che contiene questo file non compare in questo log per costruzione.)*
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## DELTA TEST DEL MOTORE
 
-Nessun diff motore, revisore non richiesto. DOC-ONLY: nessun file in gas.py/brains/modules/tests/ toccato.
+Nessuna modifica al motore (gas.py, brains/, modules/, tests/) in questa sessione.  
+**Revisore: NON INVOCATO** (doc-only, regola CLAUDE.md §3 — commit di soli reports/ non richiedono review).
 
----
-
-## §5 DELTA TEST DEL MOTORE
-
-Nessuna modifica a gas.py/tests/. Suite invariata rispetto a ultimo stato noto: **290 PASS / 5 FAIL** (bwrap-only su macOS — T11c2/T11e/T12a/T12c/T12e, strutturali, non regressioni).
-
----
-
-## §6 STATO CI
-
-```
-completed	success	docs(migrazione-mac): registra migrazione Win/WSL→Mac + F-mac-1/2/3	CI	docs/migrazione-mac-2026-09-09	push	34415167628	46s	2026-09-09T23:03:24Z
-completed	success	docs(stato): scollega .gas_history.json da etichetta R2 + finding aut…	CI	docs/scollega-gashistory-da-r2	push	34379377023	56s	2026-09-09T16:51:52Z
-completed	success	docs(stato): registra merge PR #27 su main (21548f74, CI 29695063005)	CI	fix/crm-idemp-diario	push	34379376493	52s	2026-09-09T16:51:52Z
-```
-
-**Mappatura commit→run:**
-- `ee87365` (commit di sessione): run CI `34415167628` — **completed success** ✅.
-- Il commit di fine-task (hash disponibile al passo 5): run non ancora disponibile alla scrittura dell'handoff.
+Risultati suite osservati durante la certificazione (non da commit, da run reale su Mac):
+- `python tests/test_unit_kernel.py`: **290 PASS / 5 FAIL** (tutti bwrap — baseline Mac confermato)
+- `pytest tests/` (escluso test_unit_kernel.py): **111 PASS / 10 FAIL** (tutti gasmerge IP-guard — F-mac-4)
 
 ---
 
-## §7 RISERVE APERTE
+## VERDETTO INTEGRALE REVISORE
 
-Nessuna nuova riserva da review (DOC-ONLY, revisore non invocato).
+**NON APPLICABILE** — nessuna modifica al codice motore in questa sessione. Commit di soli `reports/`.
 
-Finding registrati come aperti in questa sessione: F-mac-1, F-mac-2, F-mac-3 (vedi §Finding aperti in `reports/stato_progetto.md`).
+---
+
+## STATO / ESITO ULTIMA RUN CI
+
+| Campo | Valore |
+|-------|--------|
+| Branch | cert/mac-migration-2026-09-12 |
+| Trigger | push |
+| Run ID | 34658666540 |
+| Esito | **success ✅** |
+| Durata | 52s |
+| Timestamp | 2026-09-11T23:35:58Z |
+
+CI verde: il push doc-only ha superato il check `unit-suite` (corre su Ubuntu, bwrap disponibile).
