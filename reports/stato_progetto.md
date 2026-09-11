@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-09** (docs/migrazione-mac-2026-09-09 — registrata migrazione Windows/WSL → MacBook Air M2 + 3 finding aperti F-mac-1/2/3. DOC-ONLY.)
+> Ultimo aggiornamento: **2026-09-12** (cert/mac-migration-2026-09-12 — CERTIFICAZIONE migrazione Win/WSL→Mac: L1+L2+L3 PASS, zero crash, zero danni. Nuovo finding F-mac-4 (gasmerge IP guard silenzioso su macOS). DOC-ONLY.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -59,6 +59,7 @@ Componenti attive:
 
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
+- 🟡 **F-mac-4** (2026-09-12): `scripts/gasmerge.sh` usa `git grep -E '\b...\b'` per IP detection. Su macOS, POSIX ERE **non supporta `\b`** → rc=1 (zero match) anche con IP presenti → 10 test `test_unit_gasmerge.py` FAIL. **Impatto VPS: ZERO** (Linux git grep funziona). Impatto locale Mac: gate IP non funziona se operatore usa gasmerge su Mac. Fix proposto: `git grep -nP '\b...\b'` (PCRE) o grep esterno su `git show` stdout.
 - 🟡 **F-mac-1** (2026-09-09): i test T11c2/T11e/T12a/T12c/T12e **FAIL su macOS** perché bwrap non esiste sulla piattaforma. Devono essere SKIP su sistemi senza sandbox OS (come già fa T13d via `pytest.mark.skipif`). Fix test-only; il comportamento runtime fail-closed di `run_command` è corretto (confermato da T13d PASS).
 - 🟡 **F-mac-2** (2026-09-09): `modules/memory/store.py:204` — `SyntaxWarning: invalid escape sequence "\+"` in una regex. Correggere usando raw string (`r"\+"`). Fix minore, zero impatto funzionale.
 - 🟡 **F-mac-3** (2026-09-09): `clients/voice/probe/win_mic_test.py` chiama `sys.exit(1)` all'import se manca il modulo `sounddevice` → rompe la collection di pytest quando lanciato senza target esplicito. Rendere il file collection-safe (guard `try/except ImportError + pytest.skip`) oppure escluderlo con `collect_ignore` in `conftest.py`. Fix robustezza.
