@@ -1,17 +1,12 @@
-# Diff sessione: 2026-09-09
+# DIFF SESSIONE — 2026-09-12 (cert/mac-migration-2026-09-12)
 
-**Branch:** docs/migrazione-mac-2026-09-09  
-**Tipo:** DOC-ONLY
+> Si riscrive a ogni sessione. La storia completa sta in git.
 
 ## File toccati
 
-| File | Cosa è cambiato | Perché |
-|---|---|---|
-| `reports/stato_progetto.md` | Aggiunta sezione migrazione Mac (2026-09-09) + 3 finding aperti (F-mac-1/2/3) + header aggiornato | Prima sessione su MacBook Air M2 — registrare il cambio di ambiente e i finding tecnici emersi durante il setup |
-| `reports/ultimo_report.md` | Report canonico del task | Obbligo fine-task |
-| `reports/handoff.md` | Dossier di fine sessione | Obbligo fine-task |
-| `reports/diff_sessione.md` | Questo file | Obbligo fine-task |
-
-## Note
-
-Sessione DOC-ONLY. Nessun file motore toccato. La storia completa delle sessioni precedenti sta in git.
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `reports/ultimo_report.md` | Certificazione completa migrazione Win/WSL→Mac: risultati L1/L2/L3, finding F-mac-4, verdetto finale PASS. |
+| `reports/stato_progetto.md` | Data aggiornata al 2026-09-12; nuovo finding F-mac-4 aggiunto ai finding aperti. |
+| `reports/handoff.md` | Dossier di fine sessione con §0-§7 per PR #87. |
+| `reports/diff_sessione.md` | Questo file (riepilogo diff sessione). |
