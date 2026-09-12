@@ -1,4 +1,4 @@
-"""Tests per .claude/hooks/session_end.sh, scrivi_rep.sh e review_gate.sh."""
+"""Tests per .claude/hooks/session_end.sh, scrivi_rep.sh, review_gate.sh e promemoria_end.sh."""
 import json
 import os
 import subprocess
@@ -9,6 +9,7 @@ import pytest
 HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "session_end.sh"
 SCRIVI_REP_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "scrivi_rep.sh"
 REVIEW_GATE_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "review_gate.sh"
+PROMEMORIA_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "promemoria_end.sh"
 
 
 def _init_repo(path: Path) -> None:
@@ -760,4 +761,163 @@ class TestCommitMemoriaRevisore:
         )
         assert "WARN" in log_file.read_text(), (
             f"T-R2-e: gas_debug.log deve contenere WARN, trovato: {log_file.read_text()!r}"
+        )
+
+
+# ─── Helpers per TestPromemoriaEnd ───────────────────────────────────────────
+
+def _make_git_commit(repo: Path, rel_path: str, content: str, msg: str) -> None:
+    """Aggiunge un commit nel repo di test."""
+    f = repo / rel_path
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(content)
+    subprocess.run(["git", "add", rel_path], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", msg],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        env={**os.environ,
+             "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+             "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"},
+    )
+
+
+def _init_bare_origin(work: Path, bare: Path) -> None:
+    """Crea un bare repo come origin e vi pusha il branch main del repo di lavoro."""
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=work, check=True, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "origin", "main"],
+        cwd=work, check=True, capture_output=True,
+    )
+
+
+def _run_promemoria(repo: Path) -> subprocess.CompletedProcess:
+    """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test."""
+    return subprocess.run(
+        ["bash", str(PROMEMORIA_HOOK)],
+        env={**os.environ, "CLAUDE_PROJECT_DIR": str(repo)},
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+
+
+class TestPromemoriaEnd:
+    """T-prom — hook promemoria_end.sh (soft warning, exit 0 in tutti i percorsi)."""
+
+    def test_prom_1_no_commits_since_base_no_warning(self, tmp_path):
+        """T-prom-1: nessun commit di sessione → nessun avviso, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        # Crea branch di sessione senza nuovi commit
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-1: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" not in result.stderr, (
+            f"T-prom-1: nessun avviso atteso (SESSION_COMMITS=0), stderr={result.stderr!r}"
+        )
+
+    def test_prom_2_commits_no_handoff_warns(self, tmp_path):
+        """T-prom-2: commit di sessione senza handoff aggiornato → avviso su stderr, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "some_file.txt", "contenuto\n", "feat: commit senza handoff")
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-2: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" in result.stderr, (
+            f"T-prom-2: atteso avviso su stderr, stderr={result.stderr!r}"
+        )
+
+    def test_prom_3_commits_with_handoff_no_warning(self, tmp_path):
+        """T-prom-3: commit con reports/handoff.md aggiornato → nessun avviso, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "reports/handoff.md", "# handoff\n", "docs: aggiorna handoff")
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-3: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" not in result.stderr, (
+            f"T-prom-3: nessun avviso atteso con handoff presente, stderr={result.stderr!r}"
+        )
+
+    def test_prom_4_no_origin_warns_log_exit_0(self, tmp_path):
+        """T-prom-4: nessun remote origin → WARN in gas_debug.log, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        # Nessun remote: git merge-base origin/main HEAD fallirà
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/no-origin"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "file.txt", "ciao\n", "feat: commit senza origin")
+
+        log_file = work / "gas_debug.log"
+        result = _run_promemoria(work)
+
+        assert result.returncode == 0, (
+            f"T-prom-4: atteso exit 0 (fail-safe), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert log_file.exists(), (
+            "T-prom-4: gas_debug.log deve essere creato con il WARN"
+        )
+        assert "WARN" in log_file.read_text(), (
+            f"T-prom-4: gas_debug.log deve contenere WARN, trovato: {log_file.read_text()!r}"
+        )
+
+    def test_prom_5_head_on_main_silent_exit_0(self, tmp_path):
+        """T-prom-5: HEAD su main → exit 0 silenzioso, nessun avviso, nessun log."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        # Resta su main (branch di default dopo _init_repo)
+
+        log_file = work / "gas_debug.log"
+        result = _run_promemoria(work)
+
+        assert result.returncode == 0, (
+            f"T-prom-5: atteso exit 0 su main, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" not in result.stderr, (
+            f"T-prom-5: nessun avviso atteso su main, stderr={result.stderr!r}"
+        )
+        assert result.stdout == "", (
+            f"T-prom-5: stdout deve essere vuoto su main, stdout={result.stdout!r}"
         )
