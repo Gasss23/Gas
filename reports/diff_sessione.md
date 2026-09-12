@@ -1,13 +1,19 @@
-# DIFF SESSIONE — 2026-09-12 (fix/gasmerge-ip-guard-mac)
+# DIFF SESSIONE — 2026-09-12
+**Branch:** recon/hook-audit-2026-09-12
+**Nota:** questo file si riscrive a ogni sessione. La storia completa sta in git.
 
-> Si riscrive a ogni sessione. La storia completa sta in git.
+## File toccati in questa sessione
 
-## File toccati
+Da `git diff --stat c237d08..HEAD`:
 
 | File | Cosa è cambiato e perché |
-|------|--------------------------|
-| `scripts/gasmerge.sh` | Sostituzione `\b` con ERE portabile `(^|[^0-9.])..([^0-9.]|$)` in git grep e grep; rimozione `\b` nel sed loopback-strip. Fix F-mac-4: su macOS POSIX ERE `\b` non riconosciuto → gate IP silenziosamente disabilitato. |
-| `.claude/agents/memoria_revisore.md` | Lezione review #97 aggiunta dal revisore (commit autonomo `191fa8a`). |
-| `reports/ultimo_report.md` | Report canonico del task. |
-| `reports/handoff.md` | Dossier di fine sessione. |
+|---|---|
+| `reports/stato_progetto.md` | Aggiornato header "Ultimo aggiornamento" con data sessione e descrizione task (2 volte: sonda poi design). |
+| `reports/ultimo_report.md` | Scritto ex novo: ricognizione read-only (FETTA A) + proposta design FEATURE 1 e FEATURE 2 (FETTA B). Nessun file di codice toccato. |
+| `reports/handoff.md` | Scritto in questa sessione come dossier di fine-task. |
 | `reports/diff_sessione.md` | Questo file. |
+
+## Sessione DOC-ONLY
+
+Nessun file di codice, hook, settings, comandi o test è stato modificato.
+I due commit di sessione precedenti a /fine-task erano entrambi `docs(recon):` su soli `reports/`.

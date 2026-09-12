@@ -1,35 +1,42 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-12 — fix F-mac-4: gasmerge.sh IP guard portabile Mac+Linux
+**Sessione:** 2026-09-12 — Ricognizione hook/sessione + design FEATURE 1/2
+**Branch:** recon/hook-audit-2026-09-12
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #88 (https://github.com/Gasss23/Gas/pull/88).
+Il supervisore deve approvare lo scope della proposta PRIMA di implementare — nessun file motore/hook/comando ancora modificato.
+
+1. Merge della PR #89 (https://github.com/Gasss23/Gas/pull/89).
+2. **FEATURE 1 — dove vive il check**: proposta = `scripts/check_landing.sh` (testabile) + passo 4ter in `fine-task.md`. Alternativa: bash block inline in `fine-task.md`. Decidere prima dell'implementazione.
+3. **FEATURE 1 — gh assente**: skip PR check + warning non bloccante, check A (file) e B (HEAD pushed) sempre bloccanti. Conforme?
+4. **FEATURE 2 — trigger handoff**: controlla che `reports/handoff.md` sia nel diff `BASE..HEAD`. Trigger più forte richiesto?
+5. **FEATURE 2 — evento Stop vs SessionEnd**: proposta usa `Stop` (visibile prima chiusura turno). Confermare.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **SONDA 0 — Conferma rosso di partenza (pytest + git grep)**: `FATTA` — 10 FAIL confermati, `\b` exit 1 su macOS confermato.
-- **Fix riga 91 (git grep ERE)**: `FATTA` — `\b` → `(^|[^0-9.])..([^0-9.]|$)`.
-- **Fix riga 103 (sed loopback-strip)**: `FATTA` — `\b127...\b` → `127...` (terza riga scoperta durante il fix, stessa root cause, necessaria per correttezza loopback-check).
-- **Fix riga 104 (grep -qE)**: `FATTA` — `\b` → `(^|[^0-9.])..([^0-9.]|$)`.
-- **Verifica pytest**: `FATTA` — 20/20 PASS gasmerge; 121/121 PASS suite completa.
-- **Revisore #97**: `FATTA` — APPROVATO.
+**Scope concordato:** sonda read-only del setup hook/sessione + proposta design scritta di due feature. ZERO codice scritto. ZERO hook/comando/script/test modificati.
+
+- **Fetta A — Ricognizione read-only:** `FATTA`
+  Letti integralmente: `settings.json`, `settings.local.json`, tutti e tre gli hook (`scrivi_rep.sh`, `session_end.sh`, `review_gate.sh`), `fine-task.md`, `check_handoff.py`, `check_verdetto.py`, `test_unit_hooks.py`. Verificato `gh --version` e `gh auth status`. Finding A1: SessionStart ha matcher `"compact"` — regole critiche non iniettate ad ogni sessione fresca, solo post-compressione.
+
+- **Fetta B — Proposta design (FEATURE 1 + FEATURE 2):** `FATTA`
+  Proposta scritta in `reports/ultimo_report.md` (fetta B). Nessun file di codice, hook o test scritto/modificato. Implementazione in attesa di approvazione scope.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  1 +
- reports/diff_sessione.md           | 22 ++++++--------
- reports/handoff.md                 | 60 ++++++++++++++++++++------------------
- reports/ultimo_report.md           | 44 ++++++++++++++++------------
- scripts/gasmerge.sh                |  6 ++--
- 5 files changed, 71 insertions(+), 62 deletions(-)
+ reports/diff_sessione.md  |  22 +-
+ reports/handoff.md        |  77 +++---
+ reports/stato_progetto.md |   2 +-
+ reports/ultimo_report.md  | 589 ++++++++++++++++++++++++++++++++++++++++++++--
+ 4 files changed, 611 insertions(+), 79 deletions(-)
 ```
 
 ---
@@ -37,58 +44,43 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1bad8a9 fix(gasmerge): sostituisce \b con ERE portabile nella guardia IP
-191fa8a chore(revisore): memoria review #97 — APPROVATO
+68795e5 docs(recon): design FEATURE 1 + FEATURE 2 hook/fine-task — proposta fetta B
+3919090 docs(recon): sonda read-only hook/sessione Claude Code 2026-09-12
 ```
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-**Revisore #97 — APPROVATO** (diff tocca `scripts/gasmerge.sh`, tooling critico):
-
-> Evidenza verificata nel diff (path:riga):
-> 1. `scripts/gasmerge.sh:91` — sostituzione `\b` con `(^|[^0-9.])..([^0-9.]|$)` nel `git grep -nE` — rischio esaminato: falso-open su macOS (rc=1 con IP presenti) — fix corretto, semantica fail-closed ripristinata — esito: OK.
-> 2. `scripts/gasmerge.sh:103` — rimozione `\b` dal sed loopback-strip senza sostituto — rischio esaminato: strip eccessivo su stringhe tipo `192.168.127.x.x.x` — comportamento identico a GNU sed con `\b`, nessuna regressione — esito: OK.
->
-> Rischio escluso: comportamento su VPS Linux (GNU grep/GNU sed) con la nuova regex non ri-eseguito in questa sessione — non riproducibile in dev macOS. L'analisi statica dimostra che la nuova ERE è superset di `\b` GNU (leggermente più permissiva, falsi positivi già noti da review #62), non sottoinsieme: il path critico fail-closed non può regredire su Linux.
->
-> Note: Il diff non tocca `gas.py`, `brains/`, `modules/`, `tests/` — nessun guardrail runtime coinvolto. Antipattern sez. 5 e sez. 9 non violati. I test reali (20/20 PASS su Mac, 121/121 suite completa) confermano la correttezza.
+nessun diff motore, revisore non richiesto.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py` / `modules/` / `tests/`.
-
-Delta rilevante su `scripts/gasmerge.sh` (tooling, non motore):
-- Prima: `pytest tests/test_unit_gasmerge.py` → **10 FAIL / 10 PASS**
-- Dopo: `pytest tests/test_unit_gasmerge.py` → **20/20 PASS**
-- Suite completa (excl. kernel): **121/121 PASS** (nessuna regressione)
-- Suite kernel invariata: **290 PASS / 5 FAIL** (bwrap, attesi su Mac)
+Nessuna modifica a gas.py/tests/
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	fix(gasmerge): sostituisce \b con ERE portabile nella guardia IP	CI	fix/gasmerge-ip-guard-mac	push	34661427012	46s	2026-09-12T00:22:45Z
-completed	success	docs(fine-task): handoff §0 — PR #87 (cert/mac-migration-2026-09-12)	CI	cert/mac-migration-2026-09-12	push	34659692938	45s	2026-09-11T23:52:56Z
-completed	failure	docs(handoff): handoff §0 — PR #87 (cert/mac-migration-2026-09-12)	CI	cert/mac-migration-2026-09-12	push	34659498752	50s	2026-09-11T23:49:39Z
+completed	success	docs(recon): design FEATURE 1 + FEATURE 2 hook/fine-task — proposta f…	CI	recon/hook-audit-2026-09-12	push	34683336609	1m2s	2026-09-12T08:27:58Z
+completed	success	docs(recon): sonda read-only hook/sessione Claude Code 2026-09-12	CI	recon/hook-audit-2026-09-12	push	34682462644	57s	2026-09-12T08:07:25Z
+completed	success	Merge pull request #88 from Gasss23/fix/gasmerge-ip-guard-mac	CI	main	push	34662659861	1m24s	2026-09-12T00:45:04Z
 ```
 
-Mappatura commit→run:
-- `1bad8a9` fix(gasmerge): run **34661427012** — **completed success** ✅
-- `191fa8a` chore(revisore): nessuna run diretta (pushato insieme a `1bad8a9`; incluso nell'albero testato dalla run `34661427012`)
-
-Il commit di fine-task (reports) non ha ancora una run CI al momento della scrittura dell'handoff.
+**Mappatura commit→run:**
+- `68795e5` (docs(recon): design FEATURE 1 + FEATURE 2) → run `34683336609` ✅ SUCCESS
+- `3919090` (docs(recon): sonda read-only hook/sessione) → run `34682462644` ✅ SUCCESS
+- Il commit di fine-task (questo file) → run non ancora disponibile alla scrittura dell'handoff
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **F-mac-4 CHIUSO** da questo fix per il gate IP locale su Mac.
-- **F-mac-1** (bwrap tests SKIP su macOS): aperto, non affrontato in questa sessione.
-- **F-mac-2** (SyntaxWarning `\+` in store.py): aperto, non affrontato.
-- **F-mac-3** (collection-safety win_mic_test.py): aperto, non affrontato.
-- **Falso-positivo versioni 4-numeri** (es. 1.0.73.2 matchata come IP): già noto da review #62, non peggiorato da questa modifica (esplicitamente NON affrontato per scope). (gasmerge-ip-ok)
+Nessuna riserva da commit motore (sessione DOC-ONLY).
+
+Finding aperti registrati dalla sonda (proposta, non impegni):
+- **A1** (finding ricognizione): SessionStart matcher `"compact"` → regole critiche non iniettate ad ogni sessione fresca. Valutare se rimuovere il matcher.
+- **R-finegat-1** e **R-finegat-2**: già tracciate in `stato_progetto.md` dalla sessione 2026-08-22. Questa sessione le ha rilette ma non modificate.
