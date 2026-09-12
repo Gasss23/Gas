@@ -33,7 +33,7 @@ NOTA: lo scope dichiarato era "2 righe". La terza (riga 103 `sed`) ha lo stesso 
 **REVISORE #97**: APPROVATO.
 - Semantica fail-closed verificata.
 - Nessun antipattern sez. 5/9 violato.
-- Rischio falso-positivo su versioni 4-numeri (es. 1.0.73.2) già noto da review #62 — NON peggiorato.
+- Rischio falso-positivo su versioni 4-numeri (es. 1.0.73.2) già noto da review #62 — NON peggiorato. (gasmerge-ip-ok)
 
 **FINDING NOTE**: F-mac-4 CHIUSO per il gate locale Mac. La CI GitHub (Ubuntu) non era mai stata colpita (Linux ERE supporta `\b`).
 

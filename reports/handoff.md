@@ -91,4 +91,4 @@ Il commit di fine-task (reports) non ha ancora una run CI al momento della scrit
 - **F-mac-1** (bwrap tests SKIP su macOS): aperto, non affrontato in questa sessione.
 - **F-mac-2** (SyntaxWarning `\+` in store.py): aperto, non affrontato.
 - **F-mac-3** (collection-safety win_mic_test.py): aperto, non affrontato.
-- **Falso-positivo versioni 4-numeri** (es. 1.0.73.2 matchata come IP): già noto da review #62, non peggiorato da questa modifica (esplicitamente NON affrontato per scope).
+- **Falso-positivo versioni 4-numeri** (es. 1.0.73.2 matchata come IP): già noto da review #62, non peggiorato da questa modifica (esplicitamente NON affrontato per scope). (gasmerge-ip-ok)
