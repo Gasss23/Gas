@@ -1,36 +1,44 @@
-# Report task: docs/migrazione-mac-2026-09-09
+# Report task: fix/gasmerge-ip-guard-mac — fix F-mac-4
 
-**Data:** 2026-09-09  
-**Branch:** docs/migrazione-mac-2026-09-09  
-**Tipo:** DOC-ONLY (nessuna modifica al motore)
+**Data:** 2026-09-12
+**Branch:** fix/gasmerge-ip-guard-mac
+**Tipo:** fix scripts/ (tooling merge)
+**Revisore:** #97 APPROVATO
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #86 (https://github.com/Gasss23/Gas/pull/86).
+1. Merge della PR #88 (https://github.com/Gasss23/Gas/pull/88).
 
 ---
 
 ## Esito fette
 
-**Fetta 1 — Crea branch docs/migrazione-mac-2026-09-09**: FATTA.
+**SONDA 0 — Conferma rosso di partenza**: FATTA.
+- `pytest tests/test_unit_gasmerge.py -q` → 10 FAIL / 10 PASS (confermato).
+- `git grep -nE '\b...\b' HEAD -- scripts/` → exit 1, zero match (confermato: `\b` non funziona su macOS POSIX ERE).
 
-**Fetta 2 — Aggiorna reports/stato_progetto.md (voce migrazione 2026-09-09)**: FATTA.
-- Header "Ultimo aggiornamento" aggiornato a 2026-09-09.
-- Nuova sezione `### Migrazione Windows/WSL → MacBook Air M2 (2026-09-09)` con: file reimportati dal kit di trasloco, verifiche gas doctor + pytest (290 PASS / 5 FAIL bwrap-only), setup Mac (Python 3.14, venv .venv, chiavi da ~/.zshrc, gasmerge symlink R10, Claude Code 2.1.267).
+**FIX — 3 righe in scripts/gasmerge.sh**: FATTA.
+- Riga 91 (`git grep`): `\b[0-9]...\b` → `(^|[^0-9.])..([^0-9.]|$)`
+- Riga 103 (`sed` loopback-strip): `\b127...\b` → `127...` (word boundary non necessaria per lo strip loopback; sufficiente rimuovere `127.x.x.x` ovunque nella riga)
+- Riga 104 (`grep -qE`): `\b[0-9]...\b` → `(^|[^0-9.])..([^0-9.]|$)`
 
-**Fetta 3 — Registra F-mac-1, F-mac-2, F-mac-3 come finding aperti**: FATTA.
-- F-mac-1: test T11c2/T11e/T12a/T12c/T12e FAIL su macOS (bwrap assente) → devono SKIP come T13d. Fix test-only.
-- F-mac-2: `modules/memory/store.py:204` SyntaxWarning regex `\+` → usare raw string `r"\+"`. Fix minore.
-- F-mac-3: `clients/voice/probe/win_mic_test.py` sys.exit(1) all'import senza sounddevice → rompe collection pytest. Fix robustezza.
+NOTA: lo scope dichiarato era "2 righe". La terza (riga 103 `sed`) ha lo stesso `\b` ed era necessaria per la correttezza del loopback-check: senza di essa il sed non avrebbe rimosso i loopback, e il grep (riga 104) fissato avrebbe trovato l'IP loopback nel residuo → BLOCCO errato. Inclusa nel fix come parte della stessa radice.
 
-**Fetta 4 — Apri PR**: FATTA. PR #86 — https://github.com/Gasss23/Gas/pull/86
+**VERIFICA**: FATTA.
+- `pytest tests/test_unit_gasmerge.py -q` → **20/20 PASS** (era 10 FAIL).
+- `pytest tests/ --ignore=tests/test_unit_kernel.py -q` → **121/121 PASS** (zero regressioni).
+
+**REVISORE #97**: APPROVATO.
+- Semantica fail-closed verificata.
+- Nessun antipattern sez. 5/9 violato.
+- Rischio falso-positivo su versioni 4-numeri (es. 1.0.73.2) già noto da review #62 — NON peggiorato.
+
+**FINDING NOTE**: F-mac-4 CHIUSO per il gate locale Mac. La CI GitHub (Ubuntu) non era mai stata colpita (Linux ERE supporta `\b`).
 
 ---
 
-## Gate di stop verificato
+## Anomalie
 
-- ✅ DOC-ONLY: gas.py, brains/, modules/, tests/ non toccati.
-- ✅ Finding registrati ma NON risolti (scope rispettato).
-- ✅ Nessuna review del revisore necessaria (commit doc-only).
+Nessuna anomalia critica. La terza riga `sed` (103) con `\b` non era stata identificata nell'analisi preliminare — scoperta durante l'applicazione del fix. Segnalata e gestita nel perimetro della stessa root cause.
