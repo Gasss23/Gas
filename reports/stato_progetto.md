@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-09** (docs/migrazione-mac-2026-09-09 — registrata migrazione Windows/WSL → MacBook Air M2 + 3 finding aperti F-mac-1/2/3. DOC-ONLY.)
+> Ultimo aggiornamento: **2026-09-12** (recon/hook-audit-2026-09-12 — sonda read-only setup hook/sessione Claude Code: 4 hook attivi confermati, finding A1 SessionStart matcher "compact" only. DOC-ONLY.)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
