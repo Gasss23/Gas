@@ -50,6 +50,16 @@
             "statusMessage": "scrivi rep: controllo trigger e salvataggio risposta..."
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/promemoria_end.sh",
+            "timeout": 15,
+            "statusMessage": "promemoria: verifica handoff di sessione..."
+          }
+        ]
       }
     ]
   }

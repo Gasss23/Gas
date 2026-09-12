@@ -1,4 +1,4 @@
-"""Tests per .claude/hooks/session_end.sh, scrivi_rep.sh e review_gate.sh."""
+"""Tests per .claude/hooks/session_end.sh, scrivi_rep.sh, review_gate.sh e promemoria_end.sh."""
 import json
 import os
 import subprocess
@@ -9,6 +9,7 @@ import pytest
 HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "session_end.sh"
 SCRIVI_REP_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "scrivi_rep.sh"
 REVIEW_GATE_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "review_gate.sh"
+PROMEMORIA_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "promemoria_end.sh"
 
 
 def _init_repo(path: Path) -> None:
@@ -760,4 +761,345 @@ class TestCommitMemoriaRevisore:
         )
         assert "WARN" in log_file.read_text(), (
             f"T-R2-e: gas_debug.log deve contenere WARN, trovato: {log_file.read_text()!r}"
+        )
+
+
+# ─── Helpers per TestPromemoriaEnd ───────────────────────────────────────────
+
+def _make_git_commit(repo: Path, rel_path: str, content: str, msg: str) -> None:
+    """Aggiunge un commit nel repo di test."""
+    f = repo / rel_path
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(content)
+    subprocess.run(["git", "add", rel_path], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", msg],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        env={**os.environ,
+             "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+             "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"},
+    )
+
+
+def _init_bare_origin(work: Path, bare: Path) -> None:
+    """Crea un bare repo come origin e vi pusha il branch main del repo di lavoro."""
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=work, check=True, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "origin", "main"],
+        cwd=work, check=True, capture_output=True,
+    )
+
+
+def _run_promemoria(repo: Path) -> subprocess.CompletedProcess:
+    """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test."""
+    return subprocess.run(
+        ["bash", str(PROMEMORIA_HOOK)],
+        env={**os.environ, "CLAUDE_PROJECT_DIR": str(repo)},
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+
+
+class TestPromemoriaEnd:
+    """T-prom — hook promemoria_end.sh (soft warning, exit 0 in tutti i percorsi)."""
+
+    def test_prom_1_no_commits_since_base_no_warning(self, tmp_path):
+        """T-prom-1: nessun commit di sessione → nessun avviso, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        # Crea branch di sessione senza nuovi commit
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-1: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" not in result.stderr, (
+            f"T-prom-1: nessun avviso atteso (SESSION_COMMITS=0), stderr={result.stderr!r}"
+        )
+
+    def test_prom_2_commits_no_handoff_warns(self, tmp_path):
+        """T-prom-2: commit di sessione senza handoff aggiornato → avviso su stderr, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "some_file.txt", "contenuto\n", "feat: commit senza handoff")
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-2: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" in result.stderr, (
+            f"T-prom-2: atteso avviso su stderr, stderr={result.stderr!r}"
+        )
+
+    def test_prom_3_commits_with_handoff_no_warning(self, tmp_path):
+        """T-prom-3: commit con reports/handoff.md aggiornato → nessun avviso, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "reports/handoff.md", "# handoff\n", "docs: aggiorna handoff")
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-3: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" not in result.stderr, (
+            f"T-prom-3: nessun avviso atteso con handoff presente, stderr={result.stderr!r}"
+        )
+
+    def test_prom_4_no_origin_warns_log_exit_0(self, tmp_path):
+        """T-prom-4: nessun remote origin → WARN in gas_debug.log, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        # Nessun remote: git merge-base origin/main HEAD fallirà
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/no-origin"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "file.txt", "ciao\n", "feat: commit senza origin")
+
+        log_file = work / "gas_debug.log"
+        result = _run_promemoria(work)
+
+        assert result.returncode == 0, (
+            f"T-prom-4: atteso exit 0 (fail-safe), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert log_file.exists(), (
+            "T-prom-4: gas_debug.log deve essere creato con il WARN"
+        )
+        assert "WARN" in log_file.read_text(), (
+            f"T-prom-4: gas_debug.log deve contenere WARN, trovato: {log_file.read_text()!r}"
+        )
+
+    def test_prom_5_head_on_main_silent_exit_0(self, tmp_path):
+        """T-prom-5: HEAD su main → exit 0 silenzioso, nessun avviso, nessun log."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        # Resta su main (branch di default dopo _init_repo)
+
+        log_file = work / "gas_debug.log"
+        result = _run_promemoria(work)
+
+        assert result.returncode == 0, (
+            f"T-prom-5: atteso exit 0 su main, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "ricorda /fine-task" not in result.stderr, (
+            f"T-prom-5: nessun avviso atteso su main, stderr={result.stderr!r}"
+        )
+        assert result.stdout == "", (
+            f"T-prom-5: stdout deve essere vuoto su main, stdout={result.stdout!r}"
+        )
+
+
+# ─── Helpers per TestCheckLanding ────────────────────────────────────────────
+
+CHECK_LANDING = Path(__file__).parent.parent / "scripts" / "check_landing.sh"
+
+
+def _run_check_landing(repo: Path, extra_env: dict | None = None) -> subprocess.CompletedProcess:
+    """Esegue check_landing.sh con CLAUDE_PROJECT_DIR puntato al repo di test."""
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        ["bash", str(CHECK_LANDING)],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+
+
+def _write_required_files(repo: Path) -> None:
+    """Scrive i tre file di report obbligatori non vuoti."""
+    for name in ("ultimo_report.md", "handoff.md", "diff_sessione.md"):
+        f = repo / "reports" / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(f"# {name}\ncontenuto\n")
+
+
+def _setup_repo_with_origin_and_files(work: Path, bare: Path) -> None:
+    """Init repo, crea i file obbligatori, pusha su bare origin."""
+    _init_repo(work)
+    _write_required_files(work)
+    subprocess.run(["git", "add", "-A"], cwd=work, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "add reports"],
+        cwd=work, check=True, capture_output=True,
+        env={**os.environ,
+             "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+             "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"},
+    )
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=work, check=True, capture_output=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+
+
+def _make_fake_gh(tmp_path: Path, script_body: str) -> dict:
+    """Crea un fake gh script e restituisce env con PATH aggiornato."""
+    bin_dir = tmp_path / "fakebin"
+    bin_dir.mkdir(exist_ok=True)
+    fake_gh = bin_dir / "gh"
+    fake_gh.write_text(f"#!/usr/bin/env bash\n{script_body}\n")
+    fake_gh.chmod(0o755)
+    return {"PATH": f"{bin_dir}:{os.environ['PATH']}"}
+
+
+class TestCheckLanding:
+    """T-land — scripts/check_landing.sh (Check A file, B pushed, C PR)."""
+
+    def test_land_1_all_ok_no_gh_exit_0(self, tmp_path):
+        """T-land-1: file OK, HEAD pushato, gh non in PATH → exit 0 (Check C skip)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        bare = tmp_path / "origin.git"
+        _setup_repo_with_origin_and_files(work, bare)
+
+        # Rimuovi gh dal PATH per forzare lo skip del Check C
+        env_no_gh = {"PATH": "/usr/bin:/bin"}
+        result = _run_check_landing(work, extra_env=env_no_gh)
+
+        assert result.returncode == 0, (
+            f"T-land-1: atteso exit 0 (gh assente → skip C), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+
+    def test_land_2_missing_file_exit_1(self, tmp_path):
+        """T-land-2: reports/handoff.md assente → exit 1 (Check A bloccante)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        bare = tmp_path / "origin.git"
+        _setup_repo_with_origin_and_files(work, bare)
+
+        # Rimuovi handoff.md
+        (work / "reports" / "handoff.md").unlink()
+
+        result = _run_check_landing(work, extra_env={"PATH": "/usr/bin:/bin"})
+
+        assert result.returncode == 1, (
+            f"T-land-2: atteso exit 1 (file mancante), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        assert "FAIL" in result.stderr, (
+            f"T-land-2: atteso FAIL in stderr, stderr={result.stderr!r}"
+        )
+
+    def test_land_3_empty_file_exit_1(self, tmp_path):
+        """T-land-3: reports/ultimo_report.md presente ma vuoto → exit 1 (Check A bloccante)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        bare = tmp_path / "origin.git"
+        _setup_repo_with_origin_and_files(work, bare)
+
+        # Svuota il file
+        (work / "reports" / "ultimo_report.md").write_text("")
+
+        result = _run_check_landing(work, extra_env={"PATH": "/usr/bin:/bin"})
+
+        assert result.returncode == 1, (
+            f"T-land-3: atteso exit 1 (file vuoto), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        assert "FAIL" in result.stderr, (
+            f"T-land-3: atteso FAIL in stderr, stderr={result.stderr!r}"
+        )
+
+    def test_land_4_remote_absent_exit_1(self, tmp_path):
+        """T-land-4: nessun remote per il branch → exit 1 (Check B bloccante)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        _write_required_files(work)
+        # Nessun remote: origin non esiste
+
+        result = _run_check_landing(work, extra_env={"PATH": "/usr/bin:/bin"})
+
+        assert result.returncode == 1, (
+            f"T-land-4: atteso exit 1 (remote assente), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        assert "FAIL" in result.stderr, (
+            f"T-land-4: atteso FAIL in stderr, stderr={result.stderr!r}"
+        )
+
+    def test_land_5_head_diverged_exit_1(self, tmp_path):
+        """T-land-5: HEAD locale avanti di origin (diverged) → exit 1 (Check B bloccante)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        bare = tmp_path / "origin.git"
+        _setup_repo_with_origin_and_files(work, bare)
+
+        # Aggiungi un commit locale senza pushare
+        _make_git_commit(work, "extra.txt", "extra\n", "feat: commit non pushato")
+
+        result = _run_check_landing(work, extra_env={"PATH": "/usr/bin:/bin"})
+
+        assert result.returncode == 1, (
+            f"T-land-5: atteso exit 1 (HEAD diverged), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        assert "FAIL" in result.stderr, (
+            f"T-land-5: atteso FAIL in stderr, stderr={result.stderr!r}"
+        )
+
+    def test_land_6_gh_available_no_pr_exit_1(self, tmp_path):
+        """T-land-6: A e B OK, gh disponibile + auth OK ma nessuna PR → exit 1 (Check C bloccante)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        bare = tmp_path / "origin.git"
+        _setup_repo_with_origin_and_files(work, bare)
+
+        # Fake gh: auth status ok, pr list restituisce array vuoto
+        fake_gh_script = (
+            'case "$*" in\n'
+            '  "auth status") exit 0;;\n'
+            '  pr*) echo "[]"; exit 0;;\n'
+            '  *) exit 1;;\n'
+            'esac\n'
+        )
+        env_fake = _make_fake_gh(tmp_path, fake_gh_script)
+
+        result = _run_check_landing(work, extra_env=env_fake)
+
+        assert result.returncode == 1, (
+            f"T-land-6: atteso exit 1 (nessuna PR), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        assert "FAIL" in result.stderr, (
+            f"T-land-6: atteso FAIL in stderr, stderr={result.stderr!r}"
         )

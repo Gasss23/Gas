@@ -1,1 +1,1 @@
-Passo 2: scrivo `reports/handoff.md` (con placeholder per §2/§3/§6 — vengono rigenerati al 4bis).
+Line 55 esiste (`exit 0`). Fix la riga 94 del verdetto — aggiungo `scripts/`:

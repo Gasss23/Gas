@@ -1,44 +1,46 @@
-# Report task: fix/gasmerge-ip-guard-mac — fix F-mac-4
+# REPORT — 2026-09-12: Implementazione FEATURE 1 + FEATURE 2 (hook/fine-task)
 
-**Data:** 2026-09-12
-**Branch:** fix/gasmerge-ip-guard-mac
-**Tipo:** fix scripts/ (tooling merge)
-**Revisore:** #97 APPROVATO
+**Branch:** recon/hook-audit-2026-09-12
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #88 (https://github.com/Gasss23/Gas/pull/88).
+1. Merge della PR #89 (https://github.com/Gasss23/Gas/pull/89) — contiene entrambe le fette implementate.
+2. **Riserva R-prom-1** (FETTA 1, non bloccante): `SESSION_COMMITS` in `promemoria_end.sh` usa forma non-atomica (`wc -l | tr -d`). Da allineare alla lezione #51 nella prossima occasione.
+3. **Riserva R-land-1** (FETTA 2, cosmetica): risolta nel commit — `2>&1` ridondante dopo `&>/dev/null` rimosso da `check_landing.sh:55`.
 
 ---
 
-## Esito fette
+## SCOPE & ESITO FETTE
 
-**SONDA 0 — Conferma rosso di partenza**: FATTA.
-- `pytest tests/test_unit_gasmerge.py -q` → 10 FAIL / 10 PASS (confermato).
-- `git grep -nE '\b...\b' HEAD -- scripts/` → exit 1, zero match (confermato: `\b` non funziona su macOS POSIX ERE).
+- **FETTA 1 — hook promemoria soft (`.claude/hooks/promemoria_end.sh`):** `FATTA`
+  - Nuovo hook `promemoria_end.sh`: exit 0 in tutti i percorsi; WARN in `gas_debug.log` se `git merge-base` fallisce; avviso su stderr se ci sono commit di sessione senza handoff aggiornato.
+  - `.claude/settings.json` aggiornato: seconda entry `Stop` (index [1]) dopo `scrivi_rep.sh`.
+  - Test T-prom-1..5 aggiunti a `tests/test_unit_hooks.py`: tutti PASSED.
+  - Smoke test reale: entrambi gli Stop hook exit 0 in ordine.
+  - Revisore: **APPROVATO CON RISERVE** (R-prom-1, non bloccante).
+  - Commit principale: `27c9fd9` (catturato dal hook scrivi_rep durante il turno).
 
-**FIX — 3 righe in scripts/gasmerge.sh**: FATTA.
-- Riga 91 (`git grep`): `\b[0-9]...\b` → `(^|[^0-9.])..([^0-9.]|$)`
-- Riga 103 (`sed` loopback-strip): `\b127...\b` → `127...` (word boundary non necessaria per lo strip loopback; sufficiente rimuovere `127.x.x.x` ovunque nella riga)
-- Riga 104 (`grep -qE`): `\b[0-9]...\b` → `(^|[^0-9.])..([^0-9.]|$)`
-
-NOTA: lo scope dichiarato era "2 righe". La terza (riga 103 `sed`) ha lo stesso `\b` ed era necessaria per la correttezza del loopback-check: senza di essa il sed non avrebbe rimosso i loopback, e il grep (riga 104) fissato avrebbe trovato l'IP loopback nel residuo → BLOCCO errato. Inclusa nel fix come parte della stessa radice.
-
-**VERIFICA**: FATTA.
-- `pytest tests/test_unit_gasmerge.py -q` → **20/20 PASS** (era 10 FAIL).
-- `pytest tests/ --ignore=tests/test_unit_kernel.py -q` → **121/121 PASS** (zero regressioni).
-
-**REVISORE #97**: APPROVATO.
-- Semantica fail-closed verificata.
-- Nessun antipattern sez. 5/9 violato.
-- Rischio falso-positivo su versioni 4-numeri (es. 1.0.73.2) già noto da review #62 — NON peggiorato. (gasmerge-ip-ok)
-
-**FINDING NOTE**: F-mac-4 CHIUSO per il gate locale Mac. La CI GitHub (Ubuntu) non era mai stata colpita (Linux ERE supporta `\b`).
+- **FETTA 2 — script check_landing + passo 4ter fine-task:** `FATTA`
+  - Nuovo script `scripts/check_landing.sh`: Check A (file presenti+non vuoti, BLOCCANTE), Check B (HEAD pushato, BLOCCANTE), Check C (PR aperta, BLOCCANTE solo se gh disponibile+autenticato — WARN+skip altrimenti).
+  - `.claude/commands/fine-task.md` aggiornato: passo 4ter inserito dopo git push di §4bis e prima di §5.
+  - Test T-land-1..6 aggiunti a `tests/test_unit_hooks.py`: tutti PASSED, nessun SyntaxWarning.
+  - Revisore: **APPROVATO CON RISERVE** (R-land-1 cosmetica, risolta prima del commit).
+  - Commit: `d2e766d`.
 
 ---
 
-## Anomalie
+## ANOMALIE
 
-Nessuna anomalia critica. La terza riga `sed` (103) con `\b` non era stata identificata nell'analisi preliminare — scoperta durante l'applicazione del fix. Segnalata e gestita nel perimetro della stessa root cause.
+- Il hook `scrivi_rep.sh` ha catturato le modifiche staged di FETTA 1 (promemoria_end.sh, settings.json, tests/test_unit_hooks.py) nel commit `27c9fd9` insieme a `reports/ultima_risposta.md`. Il contenuto è corretto; il messaggio di commit è `chore(scrivi-rep)` anziché il consueto `feat(hooks)`.
+- Due commit aggiuntivi del subagent revisore (`c258e8f`, `c3c90c7`) compaiono nel log di sessione: commit della memoria_revisore.md post-review.
+
+---
+
+## TEST
+
+```
+.venv/bin/pytest tests/test_unit_hooks.py::TestPromemoriaEnd -v  → 5/5 PASSED
+.venv/bin/pytest tests/test_unit_hooks.py::TestCheckLanding -v   → 6/6 PASSED
+```

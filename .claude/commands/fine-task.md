@@ -233,6 +233,20 @@ git push
 
 ---
 
+## 4ter. Verifica check_landing
+
+Dopo il push di §4bis, esegui:
+
+```bash
+CLAUDE_PROJECT_DIR=$(git rev-parse --show-toplevel) bash scripts/check_landing.sh
+```
+
+Esiti:
+- **Exit 0**: tutti i check superati (o gh assente/non autenticato → Check C skippato)
+- **Exit 1**: Check A (file mancante/vuoto), Check B (HEAD non pushato) o Check C (nessuna PR) — **STOP**: correggi il problema prima di andare al §5
+
+---
+
 ## 5. Stampa a terminale ESATTAMENTE (senza riassumere):
 
 1. Path del report: `reports/ultimo_report.md`
