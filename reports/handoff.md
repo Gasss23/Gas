@@ -33,12 +33,13 @@
  reports/diff_sessione.md           |  24 ++-
  reports/handoff.md                 |  94 +++++-----
  reports/stato_progetto.md          |   2 +-
- reports/ultima_risposta.md         |   6 +-
  reports/ultimo_report.md           |  54 +++---
  scripts/check_landing.sh           |  69 ++++++++
  tests/test_unit_hooks.py           | 344 ++++++++++++++++++++++++++++++++++++-
- 11 files changed, 572 insertions(+), 82 deletions(-)
+ 10 files changed, 566 insertions(+), 82 deletions(-)
 ```
+
+_(nota: `reports/ultima_risposta.md` è in ALLOWLIST CI ed esclusa da §2 per design)_
 
 ---
 
