@@ -88,7 +88,7 @@ echo "--- INVARIANTE IP ---"
 # (mai fail-open). Il marker va sulla riga sorgente dell'esempio, NON sui
 # file temporanei scritti dal test (così il guard li becca comunque).
 set +e
-IP_MATCHES=$(git grep -nE '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b' "origin/$BRANCH")
+IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "origin/$BRANCH")
 IP_RC=$?
 set -e
 case "$IP_RC" in
@@ -100,8 +100,8 @@ case "$IP_RC" in
     # viene tenuta. Una riga con loopback E un IP non-loopback non è esente.
     set +e
     NON_LOOPBACK=$(echo "$IP_MATCHES" | while IFS= read -r line; do
-      stripped=$(echo "$line" | sed -E 's/\b127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b//g')
-      if echo "$stripped" | grep -qE '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b'; then
+      stripped=$(echo "$line" | sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
+      if echo "$stripped" | grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
         echo "$line"
       fi
     done)
