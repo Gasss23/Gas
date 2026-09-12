@@ -91,7 +91,7 @@ Elementi esaminati dal diff:
 - `tests/test_unit_hooks.py` T-land-4: Check B attivato correttamente su repo senza commit/remote; Check A passa perché filesystem-based, non git-based — **OK**
 - `tests/test_unit_hooks.py` T-land-6: fake gh con `case "$*"` simula auth-ok + pr-list vuoto; asserzione `"FAIL" in result.stderr` discriminante — **OK**
 
-**Riserva R-land-1 (non bloccante, risolta):** `check_landing.sh:55` — `2>&1` ridondante dopo `&>/dev/null`. Corretto prima del commit.
+**Riserva R-land-1 (non bloccante, risolta):** `scripts/check_landing.sh:55` — `2>&1` ridondante dopo `&>/dev/null`. Corretto prima del commit.
 
 **Rischio escluso:** comportamento su git < 2.28 (branch default "master" invece di "main") — non riproducibile in dev.
 
