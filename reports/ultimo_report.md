@@ -2,7 +2,7 @@
 
 **Branch**: `feat/voice-client-4b`
 **Data**: 2026-09-15
-**Stato**: ✅ COMPLETO — FETTA A pulita + FETTA B eseguita
+**Stato**: ✅ COMPLETO — FETTA A pulita + FETTA B eseguita + fine-task
 
 ---
 
@@ -27,7 +27,7 @@ python3 -c "from modules.voice.server import run_server; import sys; sys.exit(ru
 - **Bind**: `127.0.0.1` (loopback, confermato da `lsof`: `localhost:ultraseek-http`)
 - **Esposizione LAN**: NESSUNA — solo loopback per design del server
 
-Note: `python -m modules.voice.server` NON funziona (nessun blocco `__main__` nel modulo). Il comando corretto è il one-liner sopra, oppure avviare da `gas.py` se integrato.
+Note: `python -m modules.voice.server` NON funziona (nessun blocco `__main__` nel modulo). Il comando corretto è il one-liner sopra.
 
 ### A2 — Giro voce REALE
 
@@ -61,12 +61,8 @@ Il server NON ha CORS headers né `do_OPTIONS`. Analisi opzioni:
 
 ### A4 — Rotazione GAS_VOICE_TOKEN
 
-Il token precedente era esposto nella conversazione/output. Rigenerato con:
-```bash
-openssl rand -hex 32
-```
-
-Aggiornato in `.env`. **Il nuovo token NON è stampato in questo report né nei log.**
+Il token precedente era esposto nella conversazione/output. Rigenerato con `openssl rand -hex 32`.
+Aggiornato in `.env` (gitignored). **Il nuovo token NON è stampato in questo report né nei log.**
 
 ---
 
@@ -78,7 +74,7 @@ Aggiornato in `.env`. **Il nuovo token NON è stampato in questo report né nei 
 - Bind: `127.0.0.1:9000` (non esposto in LAN)
 - `GET /` → serve `browser_client.html` (same dir)
 - `POST /voice` → proxy verso `http://127.0.0.1:8765/voice`
-  - Aggiunge `Authorization: Bearer <token>` (token da env, mai nel browser)
+  - Aggiunge `Authorization: Bearer <token>` (da env, mai nel browser)
   - Forwarda `Content-Type` e `Accept` originali del browser
 - `.env` caricato automaticamente da `_GAS_ROOT` (due livelli su dalla script)
 - Config: `GAS_VOICE_URL` (default `:8765`), `GAS_BROWSER_PORT` (default `9000`)
@@ -104,7 +100,7 @@ Voice server avviato su `:8765`, browser server su `:9000`:
 | `POST /voice` JSON → JSON | 200 | 18 B | 1.31s |
 | `POST /voice` WAV → MP3 | 200 | **4.641 B** | **1.87s** |
 
-MP3 di risposta validato: `Audio file with ID3 version 2.4.0, MPEG ADTS layer III, 128 kbps, 44.1 kHz, Monaural`.
+MP3 validato: `Audio file with ID3 version 2.4.0, MPEG ADTS layer III, 128 kbps, 44.1 kHz, Monaural`.
 
 ### Istruzioni uso
 
@@ -127,8 +123,8 @@ python3 clients/voice/browser_server.py
 Il diff di questa sessione tocca SOLO:
 - `clients/voice/browser_server.py` (NUOVO)
 - `clients/voice/browser_client.html` (NUOVO)
-- `.env` (rotazione token)
-- `reports/` (questo report + stato_progetto.md)
+- `.env` (rotazione token, gitignored, non committato)
+- `reports/` (report + stato_progetto.md)
 
 **Nessun file in `gas.py`, `brains/`, `modules/`, `tests/`** → gate di review obbligatorio NON si attiva.
 
@@ -147,4 +143,4 @@ Il diff di questa sessione tocca SOLO:
 
 1. **Test browser reale** — aprire http://127.0.0.1:9000 con microfono e parlare
 2. **Integrazione avvio** — aggiungere subcommand `gas voice-browser` in gas.py (FASE 4, separata)
-3. **macOS audio** — `probe_client_4a.py` usa PulseAudio (Linux/WSL); per Mac nativo serve afrecord/sox o MediaRecorder (già coperto da 4b)
+3. **macOS audio** — `probe_client_4a.py` usa PulseAudio (Linux/WSL); per Mac nativo il client browser (4b) è la via corretta
