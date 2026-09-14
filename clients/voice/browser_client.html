@@ -1,0 +1,449 @@
+<title>Gas Voice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+:root {
+  --bg:           #f8f6f2;
+  --surface:      #ffffff;
+  --fg:           #1c1a16;
+  --muted:        #948e85;
+  --accent:       #b45309;
+  --accent-glow:  rgba(180, 83, 9, 0.15);
+  --rec:          #dc2626;
+  --rec-glow:     rgba(220, 38, 38, 0.15);
+  --border:       #e8e3db;
+  --player-thumb: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:           #0c0b09;
+    --surface:      #141310;
+    --fg:           #ede9e1;
+    --muted:        #6b6760;
+    --accent:       #f59e0b;
+    --accent-glow:  rgba(245, 158, 11, 0.18);
+    --rec:          #ef4444;
+    --rec-glow:     rgba(239, 68, 68, 0.18);
+    --border:       #252219;
+    --player-thumb: #f59e0b;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:           #0c0b09;
+  --surface:      #141310;
+  --fg:           #ede9e1;
+  --muted:        #6b6760;
+  --accent:       #f59e0b;
+  --accent-glow:  rgba(245, 158, 11, 0.18);
+  --rec:          #ef4444;
+  --rec-glow:     rgba(239, 68, 68, 0.18);
+  --border:       #252219;
+  --player-thumb: #f59e0b;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Figtree', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 24px;
+  padding-block: 40px;
+  gap: 0;
+  transition: background 0.3s;
+}
+
+/* ─── Wordmark ─── */
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 52px;
+  user-select: none;
+}
+.wordmark-fuel {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ─── Button + sonar rings ─── */
+.btn-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--rec);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .recording .ring:nth-child(1) { animation: sonar 2s ease-out infinite 0.0s; }
+  .recording .ring:nth-child(2) { animation: sonar 2s ease-out infinite 0.65s; }
+  .recording .ring:nth-child(3) { animation: sonar 2s ease-out infinite 1.3s; }
+}
+
+@keyframes sonar {
+  0%   { opacity: 0.55; transform: scale(1);   }
+  100% { opacity: 0;    transform: scale(2.6);  }
+}
+
+#btn-record {
+  position: relative;
+  z-index: 1;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  box-shadow: 0 2px 20px var(--accent-glow), 0 1px 4px rgba(0,0,0,0.2);
+  outline: none;
+}
+
+#btn-record:focus-visible {
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent);
+}
+
+#btn-record:hover:not(:disabled) {
+  transform: scale(1.06);
+  box-shadow: 0 4px 32px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.25);
+}
+
+#btn-record:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+#btn-record:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.recording #btn-record {
+  background: var(--surface);
+  color: var(--rec);
+  box-shadow: 0 0 0 2px var(--rec), 0 2px 20px var(--rec-glow);
+}
+
+.recording #btn-record:hover:not(:disabled) {
+  transform: scale(1.04);
+  box-shadow: 0 0 0 2px var(--rec), 0 4px 32px var(--rec-glow);
+}
+
+/* Icon swap */
+.icon { display: block; pointer-events: none; }
+.icon-stop { display: none; }
+
+.recording .icon-mic  { display: none; }
+.recording .icon-stop { display: block; }
+
+/* Sending state */
+@media (prefers-reduced-motion: no-preference) {
+  .sending #btn-record .icon-mic {
+    animation: spin 1.1s linear infinite;
+    transform-origin: center;
+  }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Status ─── */
+#status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.02em;
+  min-height: 1em;
+  margin-bottom: 40px;
+  transition: color 0.15s;
+}
+
+#status.error { color: var(--rec); }
+#status.live   { color: var(--accent); }
+
+/* ─── Audio player ─── */
+#player-wrap {
+  width: 100%;
+  max-width: 300px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+audio {
+  width: 100%;
+  height: 34px;
+  border-radius: 4px;
+  accent-color: var(--player-thumb);
+}
+
+/* ─── Hint ─── */
+.hint {
+  margin-top: 36px;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: center;
+  opacity: 0.6;
+  user-select: none;
+}
+</style>
+
+<div class="wordmark">
+  <span class="wordmark-fuel" aria-hidden="true"></span>
+  Gas Voice
+</div>
+
+<div class="btn-wrap" id="btn-wrap">
+  <div class="ring" aria-hidden="true"></div>
+  <div class="ring" aria-hidden="true"></div>
+  <div class="ring" aria-hidden="true"></div>
+  <button id="btn-record" aria-label="Registra" aria-pressed="false">
+    <!-- Mic icon -->
+    <svg class="icon icon-mic" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="9" y="2" width="6" height="11" rx="3"/>
+      <path d="M5 11a7 7 0 0014 0h-2a5 5 0 01-10 0H5zM11 20v-2.07A7.003 7.003 0 015.05 12H7a5 5 0 009.95 0h1.95A7.003 7.003 0 0113 17.93V20h-2z"/>
+    </svg>
+    <!-- Stop icon -->
+    <svg class="icon icon-stop" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="5" y="5" width="14" height="14" rx="2"/>
+    </svg>
+  </button>
+</div>
+
+<p id="status" role="status" aria-live="polite">pronto</p>
+
+<div id="player-wrap" hidden>
+  <p class="player-label">risposta</p>
+  <audio id="player" controls></audio>
+</div>
+
+<p class="hint" id="hint">space per registrare</p>
+
+<script>
+"use strict";
+
+const btnWrap  = document.getElementById("btn-wrap");
+const btn      = document.getElementById("btn-record");
+const statusEl = document.getElementById("status");
+const playerWrap = document.getElementById("player-wrap");
+const player   = document.getElementById("player");
+const hint     = document.getElementById("hint");
+
+// Feature check
+if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
+  setStatus("browser non supportato: serve getUserMedia + MediaRecorder", true);
+  btn.disabled = true;
+}
+
+let recorder = null;
+let chunks   = [];
+let stream   = null;
+
+function setStatus(msg, isError = false, isLive = false) {
+  statusEl.textContent = msg;
+  statusEl.className = isError ? "error" : isLive ? "live" : "";
+}
+
+function setRecordingUI(active) {
+  if (active) {
+    btnWrap.classList.add("recording");
+    btn.setAttribute("aria-pressed", "true");
+    btn.setAttribute("aria-label", "Stop e invia");
+    hint.textContent = "clicca per fermare";
+  } else {
+    btnWrap.classList.remove("recording");
+    btn.setAttribute("aria-pressed", "false");
+    btn.setAttribute("aria-label", "Registra");
+    hint.textContent = "space per registrare";
+  }
+}
+
+function setSendingUI(active) {
+  if (active) {
+    btnWrap.classList.add("sending");
+    btn.disabled = true;
+  } else {
+    btnWrap.classList.remove("sending");
+    btn.disabled = false;
+  }
+}
+
+// Pick the best supported MIME type
+function pickMimeType() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+    "audio/mp4",
+    "",
+  ];
+  return candidates.find(t => !t || MediaRecorder.isTypeSupported(t)) || "";
+}
+
+async function startRecording() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    const msg = e.name === "NotAllowedError"
+      ? "permesso microfono negato"
+      : "errore microfono: " + e.message;
+    setStatus(msg, true);
+    return;
+  }
+
+  chunks = [];
+  const mimeType = pickMimeType();
+  const opts = mimeType ? { mimeType } : {};
+
+  try {
+    recorder = new MediaRecorder(stream, opts);
+  } catch (e) {
+    setStatus("errore MediaRecorder: " + e.message, true);
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    return;
+  }
+
+  const actualType = recorder.mimeType || "audio/webm";
+
+  recorder.ondataavailable = e => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+
+  recorder.onstop = async () => {
+    // Stop mic track
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    setRecordingUI(false);
+    setSendingUI(true);
+    setStatus("invio…");
+
+    const audioBlob = new Blob(chunks, { type: actualType });
+    const ct = actualType.split(";")[0]; // strip codecs for Content-Type header
+
+    const t0 = performance.now();
+    let resp;
+
+    try {
+      resp = await fetch("/voice", {
+        method: "POST",
+        headers: {
+          "Content-Type": ct,
+          "Accept": "audio/mpeg",
+        },
+        body: audioBlob,
+      });
+    } catch (e) {
+      setSendingUI(false);
+      setStatus("errore di rete: " + e.message, true);
+      return;
+    }
+
+    if (!resp.ok) {
+      let errMsg = `${resp.status} ${resp.statusText}`;
+      try {
+        const j = await resp.json();
+        errMsg = j.error || errMsg;
+      } catch (_) {}
+      setSendingUI(false);
+      setStatus("errore: " + errMsg, true);
+      return;
+    }
+
+    const mp3Blob = await resp.blob();
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+    const bytes = mp3Blob.size;
+
+    // Revoke previous object URL to free memory
+    if (player.dataset.prevUrl) {
+      URL.revokeObjectURL(player.dataset.prevUrl);
+    }
+    const url = URL.createObjectURL(mp3Blob);
+    player.dataset.prevUrl = url;
+    player.src = url;
+    playerWrap.hidden = false;
+
+    setSendingUI(false);
+    setStatus(`${bytes.toLocaleString("it")} B · ${elapsed}s`);
+
+    player.onended = () => setStatus("pronto");
+
+    try {
+      await player.play();
+    } catch (_) {
+      // Autoplay may be blocked — user can press play manually
+      setStatus(`${bytes.toLocaleString("it")} B · ${elapsed}s · premi play ↑`);
+    }
+  };
+
+  recorder.start();
+  setRecordingUI(true);
+  setStatus("● in ascolto…", false, true);
+}
+
+function stopRecording() {
+  if (recorder && recorder.state === "recording") {
+    recorder.stop();
+    setStatus("elaborazione…");
+  }
+}
+
+btn.addEventListener("click", async () => {
+  if (recorder && recorder.state === "recording") {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+});
+
+// Spacebar shortcut (only when body/document is focused, not inside another control)
+document.addEventListener("keydown", e => {
+  if (e.code !== "Space") return;
+  if (["INPUT", "TEXTAREA", "BUTTON", "SELECT"].includes(document.activeElement?.tagName)) return;
+  e.preventDefault();
+  btn.click();
+});
+</script>
