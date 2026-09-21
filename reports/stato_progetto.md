@@ -222,7 +222,7 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 2. **🔴 Spesa token dev**: item 1 roadmap — il budget cap runtime è inerte sul free tier. La leva reale è la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
 3. **✅ Accesso dev tooling da telefono**: item 2 roadmap — CHIUSO (2026-07-15) via Remote Control (`/rc`): sonda su Giulia/WSL verificata live, nessun bridge custom necessario.
 4. ✅ **FASE 3 — Interfaccia vocale — COMPLETATA** (2026-09-15, PR #90): pipeline mic→STT Groq Whisper→kernel→TTS ElevenLabs→audio; fette 1+2+3+4a+4b su main. ⭐ ATTESTATO DAL SUPERVISORE (2026-08-22): prova vocale umana reale superata su WSL.
-5. 🔵 **GAS risponde SEMPRE in italiano** — **PROSSIMO IMMEDIATO** (ordine operatore 2026-09-21). Fetta motore piccola: lingua di risposta obbligatoria indipendente dalla lingua di input.
+5. ✅ **GAS risponde SEMPRE in italiano** — **COMPLETATO** (2026-09-21, PR feat/lang-rule-italian). Regola di lingua rafforzata in `_GAS_SYSTEM_PROMPT_BASE` (gas.py:48) e aggiunta in cima a `gas_identity.md`. Test T63a/b/c/d. Revisore #100: APPROVATO.
 6. **FASE 4.5 — Task scheduler autonomo** ("Direttore"): catalogo YAML task autonomi. NB: con VPS perso, va implementato **IN LOCALE sul Mac** (launchd/cron, non systemd). Primo mattone dell'orchestratore.
 7. **FASE 5 — 🔴 RESET (2026-09-14)**: VPS Hetzner perso per mancato pagamento. S1/S1b non più validi. Da rifare da ZERO su server nuovo. **RIMANDATO** per scelta operatore. Vedere §Trasversali OBBLIGATORI in roadmap.md prima del prossimo deploy.
 8. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
