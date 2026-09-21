@@ -3682,6 +3682,43 @@ check("T62i execute_tool_call dispatch 7*8", _k62.execute_tool_call("calcola", '
 check("T62j execute_tool_call tool ignoto → 'Tool non trovato.'",
       _k62.execute_tool_call("inesistente", "{}") == "Tool non trovato.")
 
+# ---------- T63: regola di lingua italiana nel system prompt ----------
+# Verifica strutturale: la regola "sempre in italiano" appare nel prompt
+# sia nella costante base sia nel prompt costruito (con/senza gas_identity.md).
+
+_RULE_MARKER = "anche se l'utente scrive in un'altra lingua"
+
+check(
+    "T63a _GAS_SYSTEM_PROMPT_BASE contiene regola lingua forte",
+    _RULE_MARKER in gas._GAS_SYSTEM_PROMPT_BASE,
+    f"cercato: {_RULE_MARKER!r}",
+)
+
+_tmp63_no_id = tempfile.mkdtemp(prefix="gas_t63_noid_")
+subprocess.run(["git", "init", "-q", _tmp63_no_id], check=True, capture_output=True)
+_prompt_no_id = gas._build_system_prompt(Path(_tmp63_no_id))
+check(
+    "T63b _build_system_prompt senza gas_identity.md contiene regola lingua",
+    _RULE_MARKER in _prompt_no_id,
+)
+
+_tmp63_with_id = tempfile.mkdtemp(prefix="gas_t63_id_")
+subprocess.run(["git", "init", "-q", _tmp63_with_id], check=True, capture_output=True)
+(Path(_tmp63_with_id) / "gas_identity.md").write_text(
+    "LINGUA: Rispondi SEMPRE in italiano, dal primo messaggio, "
+    "anche se l'utente scrive in un'altra lingua.\n\nIdentità di test.\n"
+)
+_prompt_with_id = gas._build_system_prompt(Path(_tmp63_with_id))
+check(
+    "T63c _build_system_prompt con gas_identity.md contiene regola lingua",
+    _RULE_MARKER in _prompt_with_id,
+)
+
+check(
+    "T63d gas_identity.md reale contiene regola lingua",
+    _RULE_MARKER in Path(__file__).resolve().parents[1].joinpath("gas_identity.md").read_text(),
+)
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
