@@ -1,18 +1,17 @@
-# DIFF SESSIONE — 2026-09-21 (re-verifica lang-rule-italian)
+# Diff sessione — 2026-09-21
 
-Questo file si riscrive a ogni sessione. La storia completa sta in git.
+Sessione: allineamento canonici (suite reale macOS + sonda E2E lang-rule)
 
 ## File toccati
 
 | File | Cosa è cambiato e perché |
-|------|--------------------------|
-| `reports/ultimo_report.md` | Riscritto: re-verifica completa con esito sonda (STOP GATE), 3 test reali PASS, proposta TTS posticipata, anomalie MemoryStore |
-| `reports/stato_progetto.md` | Header "Ultimo aggiornamento" aggiornato alla sessione corrente |
-| `reports/handoff.md` | Scritto: dossier fine sessione con §0-§7 canonici |
-| `reports/diff_sessione.md` | Questo file |
+|---|---|
+| `reports/stato_progetto.md` | Aggiornato contatore suite da "299 PASS WSL 2026-08-29" a numeri reali macOS 2026-09-21 (294+5 kernel, 132 pytest); aggiunto esito sonda E2E Groq con risposta verbatim |
+| `reports/ultimo_report.md` | Report completo dei 3 passi: PASSO 1 (suite reale), PASSO 2 (sonda E2E), PASSO 3 (analisi branch fantasma) |
+| `reports/handoff.md` | Dossier di fine sessione |
+| `reports/diff_sessione.md` | Questo file — diff della sessione corrente |
 
-## Note sessione
+## Nessuna modifica al motore
 
-Task originale (lang-rule-italian) già completato in PR #92 (commit 32dd6c2).
-Questa sessione è pura re-verifica: sonda → STOP GATE → test reali → report.
-Nessuna modifica al motore.
+gas.py, gas_identity.md, brains/, modules/, tests/ — nessun file toccato.
+Stop gate rispettato.
