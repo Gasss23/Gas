@@ -1,52 +1,67 @@
-# Report — Aggiornamento roadmap.md al 2026-09-21
+# Report task: GAS risponde SEMPRE in italiano
 
 **Data:** 2026-09-21  
-**Tipo task:** doc-only (nessuna modifica a motore/codice/test)  
-**Branch:** main (doc-only, PR obbligatoria da main-lock)
+**Branch:** feat/lang-rule-italian  
+**Commit motore:** 32dd6c2
 
 ---
 
-## Esito
+## Problema
 
-✅ **FATTO** — `reports/roadmap.md` aggiornato allo stato reale di oggi.
+Nel test vocale 4b (PR #90) GAS rispondeva in inglese fino al 3° turno.
+Il system prompt non forzava l'italiano in modo esplicito e forte.
 
----
+## Sonda preliminare
 
-## Fatti applicati (confermati dall'operatore)
+| File | Situazione pre-modifica |
+|------|------------------------|
+| `gas.py:48` | `"- Rispondi sempre in italiano, in modo conciso e diretto.\n"` — regola debole, niente "dal primo messaggio" né "anche se l'utente scrive in un'altra lingua" |
+| `gas_identity.md` | Nessuna regola di lingua. Viene iniettata **prima** di `_GAS_SYSTEM_PROMPT_BASE`, quindi è il posto più autorevole. |
 
-1. **FASE 3 VOCE = ✅ COMPLETATA** — pipeline mic→STT Groq Whisper→kernel→TTS ElevenLabs→audio; fette 1+2+3+4a+4b tutte su main; attestazione voce umana reale (2026-08-22); client browser HTML5 fetta 4b mergiato su main (PR #90, 2026-09-15). La sezione era ancora marcata come "futura" — corretta.
+## Modifiche applicate (minime e chirurgiche)
 
-2. **FASE 5 = 🔴 RESET** — VPS Hetzner PERSO il 2026-09-14 per mancato pagamento. Dati `.gas_memory.db` / `.gas_history.json` / `.env.prod` cancellati irrevocabilmente. S1/S1b eseguiti sul vecchio VPS non più validi. Sezione aggiornata da "IN CORSO" a "RESET". Aggiunta lezione VPS in §Trasversali OBBLIGATORI (backup off-server + pagamento blindato + 2FA, obbligatori dal giorno 1 del prossimo deploy).
+### 1. `gas.py:48` — regola base rafforzata
+```
+- LINGUA: Rispondi SEMPRE in italiano, dal primo messaggio, anche se l'utente scrive in un'altra lingua. Sii conciso e diretto.
+```
+(sostituisce la riga debole precedente)
 
-3. **FASE 4.5 = prossimo grande lavoro** — Primo mattone dell'"Orchestratore / Direttore". Nota architetturale aggiunta: dipendeva da "FASE 5 + systemd"; con VPS perso va ripensato IN LOCALE sul Mac (launchd/cron).
+### 2. `gas_identity.md` — regola aggiunta in testa
+```
+LINGUA: Rispondi SEMPRE in italiano, dal primo messaggio, anche se l'utente scrive in un'altra lingua.
+```
+Posizionata prima di qualsiasi testo identitario perché l'identity viene iniettata per prima nel system prompt quando il file esiste.
 
-4. **Ordine operatore (2026-09-14, aggiornato 2026-09-21)** — registrato in cima a §PROSSIMI PASSI sia in roadmap.md sia in stato_progetto.md:
-   1. voce 4b ✅
-   2. GAS risponde SEMPRE in italiano ← **PROSSIMO IMMEDIATO**
-   3. auto-apprendimento / auto-sviluppo
-   4. motore marketing (tra gli ultimi)
-   VPS rimandato.
+### 3. `tests/test_unit_kernel.py` — test T63a/b/c/d
+- **T63a**: `_GAS_SYSTEM_PROMPT_BASE` contiene il marker "anche se l'utente scrive in un'altra lingua"
+- **T63b**: `_build_system_prompt` senza `gas_identity.md` → contiene la regola
+- **T63c**: `_build_system_prompt` con `gas_identity.md` → contiene la regola
+- **T63d**: il file `gas_identity.md` reale deployato contiene la regola
 
-5. **Trasversali OBBLIGATORI pre-deploy** — nuova sezione in roadmap.md §PROSSIMI PASSI: backup off-server automatico + pagamento server blindato + rotazione ElevenLabs + privatizzare repo + disciplina spesa token.
+Tutti e 4 **PASS**. I 5 FAIL invariati sono bwrap/sandbox (Linux-only, attivi solo in CI).
 
-6. **Header** — aggiunta riga `> Fonte unica autorevole della roadmap. Ultimo aggiornamento: 2026-09-21.` in cima al file.
+## Verdetto revisore (review #100) — VERBATIM
 
----
+**APPROVATO**
 
-## File modificati
+> `gas.py:48` — sostituisce regola debole con regola forte — rischio: ~4 token aggiuntivi + potenziale duplicazione con gas_identity.md quando entrambi attivi — esito: **ok** (enfasi intenzionale per compliance LLM; ridondanza difensiva deliberata).
+>
+> `gas_identity.md:1-2` — aggiunge regola LINGUA IN CIMA al file identity, prima di qualsiasi altro testo — rischio: budget token (~200 token dichiarati in CLAUDE.md §6) + possibile conflitto logico con gas.py:48 — esito: **ok** (budget ampliamente rispettato; posizionamento in testa garantisce priorità; coesistenza con la regola in base è ridondanza consapevole e difensiva, non conflitto).
+>
+> `tests/test_unit_kernel.py:3685-3723` (blocco T63, 4 test) — T63a verifica presenza marker in `_GAS_SYSTEM_PROMPT_BASE`; T63b/T63c verificano `_build_system_prompt` senza/con gas_identity.md; T63d verifica il file reale deployato. Rischio: T63c quasi tautologico (scrive il marker, lo rilegge); path resolution `parents[1]` = /Users/gas/Gas corretto — esito: **ok** (T63d è il test con valore reale; pattern mkdtemp+git init già consolidato; struttura test corretta).
+>
+> Antipattern Wall of Shame: ASSENTI. Guardrail (loop cap, _get_window, _cap_window_chars, eccezioni provider): NON TOCCATI. Coerenza roadmap: implementa esattamente l'ordine operatore 2026-09-21.
+>
+> Rischio esplicitamente escluso: comportamento runtime reale con utenti che scrivono in lingue diverse — non verificabile senza sessione live con provider LLM reale.
 
-| File | Tipo modifica |
-|---|---|
-| `reports/roadmap.md` | Aggiornamento contenuto (fatti operatore 2026-09-21) |
-| `reports/stato_progetto.md` | Aggiornamento riga "Ultimo aggiornamento" + sezione §Prossimi passi |
-| `reports/ultimo_report.md` | Questo file |
+## STOP gate rispettato
 
-**Nessuna modifica a:** `gas.py`, `brains/`, `modules/`, `tests/`, hook, CI.
+- Voce TTS non toccata (nessun cambio a lingua/voce ElevenLabs)
+- Cascata/provider non toccata
+- Memoria, sandbox non toccate
+- Nessun refactor fuori scope
 
----
+## Stato post-task
 
-## Note per sessioni future
-
-- Il **prossimo task immediato** per il motore è: far rispondere GAS sempre in italiano (fetta piccola, system prompt / gas_identity.md).
-- FASE 4.5 va riprogettata per Mac locale prima di qualsiasi implementazione.
-- Il prossimo VPS andrà blindato dal giorno 1: backup off-server + pagamento attivo sono prerequisiti non negoziabili (lezione perdita 2026-09-14).
+- `reports/stato_progetto.md` aggiornato (item 5: ✅ COMPLETATO)
+- PR feat/lang-rule-italian pronta per merge
