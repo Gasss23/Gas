@@ -1,42 +1,58 @@
-# Handoff sessione — 2026-09-21
+# HANDOFF — Dossier di fine sessione
 
-## §DECISIONI UMANE RICHIESTE
-
-Nessuna. Task completato autonomamente. Unica azione richiesta: merge PR feat/lang-rule-italian.
-
-**NOTA TTS** (STOP gate rispettato): se la voce ElevenLabs ha un accento non-italiano, potrebbe essere utile cambiare la voice ID con una voce italiana. Non fatto in questa sessione (fuori scope ordine operatore). Proporre se il test vocale post-merge lo evidenzia.
+**Sessione:** 2026-09-21 — GAS risponde SEMPRE in italiano
 
 ---
 
-## Esito sonda
+## §0 DECISIONI UMANE RICHIESTE
 
-- `_GAS_SYSTEM_PROMPT_BASE` aveva già regola debole, ora rafforzata.
-- `gas_identity.md` non aveva nessuna regola di lingua, ora ce l'ha in cima.
+1. Merge della PR #92 (https://github.com/Gasss23/Gas/pull/92).
 
-## `git diff --stat` reale della sessione
+---
+
+## §1 SCOPE & ESITO FETTE
+
+- **Fetta 1 — Sonda**: FATTA. `gas.py:48` aveva regola debole; `gas_identity.md` senza regola di lingua.
+- **Fetta 2 — Fix motore**: FATTA. Regola rafforzata in `_GAS_SYSTEM_PROMPT_BASE` (gas.py:48) e aggiunta in cima a `gas_identity.md`.
+- **Fetta 3 — Test T63a/b/c/d**: FATTA. 4 test strutturali, tutti PASS.
+- **Fetta 4 — Revisore**: FATTA. Review #100: APPROVATO (nessuna riserva).
+- **Voce TTS**: SALTATA — STOP gate. Non toccata in questa sessione.
+
+---
+
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-gas.py                    |  2 +-
-gas_identity.md           |  2 ++
-tests/test_unit_kernel.py | 37 +++++++++++++++++++++++++++++++++++++
-3 files changed, 40 insertions(+), 1 deletion(-)
+ .claude/agents/memoria_revisore.md |  1 +
+ gas.py                             |  2 +-
+ gas_identity.md                    |  2 +
+ reports/diff_sessione.md           | 23 +++++++----
+ reports/handoff.md                 | 81 ++++++++++++++++++++++++++++----------
+ reports/stato_progetto.md          |  2 +-
+ reports/ultimo_report.md           | 55 +++++++-------------------
+ tests/test_unit_kernel.py          | 37 +++++++++++++++++
+ 8 files changed, 132 insertions(+), 71 deletions(-)
 ```
 
-## `git log` commit della sessione
+---
+
+## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1f3cd14 docs(fine-task): handoff + report lang-rule-italian 2026-09-21
 32dd6c2 feat(lang): forza risposta sempre in italiano dal primo messaggio
+ae77d24 chore(revisore): memoria review #100 — APPROVATO
 ```
 
-## Delta test
+NB: il commit di fine-task corrente non compare qui per costruzione.
 
-- **Prima**: 289 PASS, 5 FAIL (bwrap/Linux)
-- **Dopo**: 294 PASS, 5 FAIL (bwrap/Linux, invariati)
-- **T63a/b/c/d**: tutti PASS
+---
 
-## Verdetto revisore #100 — INTEGRALE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-**APPROVATO**
+Commit motore: `32dd6c2 feat(lang): forza risposta sempre in italiano dal primo messaggio`
+
+**APPROVATO** (review #100 — 2026-09-21)
 
 `gas.py:48` — sostituisce regola debole con regola forte — rischio: ~4 token aggiuntivi + potenziale duplicazione con gas_identity.md quando entrambi attivi — esito: ok (enfasi intenzionale per compliance LLM; ridondanza difensiva deliberata).
 
@@ -48,6 +64,46 @@ Antipattern Wall of Shame: ASSENTI. Guardrail (loop cap, _get_window, _cap_windo
 
 Rischio esplicitamente escluso: comportamento runtime reale con utenti che scrivono in lingue diverse — non verificabile senza sessione live con provider LLM reale.
 
-## Stato CI
+---
 
-PR non ancora aperta — CI girerà al push. I test bwrap (T11c2/T11e/T12a/T12c/T12e) richiedono bwrap su Ubuntu: PASS atteso in CI come nelle sessioni precedenti.
+## §5 DELTA TEST DEL MOTORE
+
+- **Prima**: 289 PASS, 5 FAIL (bwrap/sandbox Linux-only)
+- **Dopo**: 294 PASS, 5 FAIL (bwrap/sandbox Linux-only, invariati)
+- **Nuovi test**: T63a/b/c/d — tutti PASS
+
+Riepilogo suite (locale, .venv/bin/python):
+```
+=== RIEPILOGO: 294 PASS, 5 FAIL ===
+  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
+  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
+  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
+  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
+```
+
+I 5 FAIL sono bwrap/sandbox — richiedono kernel Linux con user namespace. Attivi in CI (Ubuntu). Invariati rispetto a prima della sessione.
+
+---
+
+## §6 STATO CI
+
+```
+completed	failure	docs(fine-task): handoff + report lang-rule-italian 2026-09-21	CI	feat/lang-rule-italian	push	35580697621	50s	2026-09-21T08:58:27Z
+completed	success	Merge pull request #91 from Gasss23/docs/roadmap-update-2026-09-21	CI	main	push	35579895884	56s	2026-09-21T08:49:14Z
+completed	success	docs(fine-task): handoff + report roadmap-update-2026-09-21	CI	docs/roadmap-update-2026-09-21	push	35579080529	51s	2026-09-21T08:39:55Z
+```
+
+Mappatura commit→run:
+- `ae77d24` chore(revisore): nessuna run CI su questo SHA (non era HEAD al momento del push)
+- `32dd6c2` feat(lang): nessuna run CI su questo SHA (non era HEAD al momento del push)
+- `1f3cd14` docs(fine-task): run 35580697621 — **FAILURE** (handoff-check: blocco §2 mancante). Causa: handoff.md non aveva il formato canonico. Risolto con /fine-task corrente.
+
+Run corrente (questo commit): non ancora disponibile alla scrittura dell'handoff.
+
+---
+
+## §7 RISERVE APERTE
+
+- Nessuna riserva dal revisore #100.
+- **Nota TTS** (non riserva, proposta): se la voce ElevenLabs ha accento non-italiano, potrebbe valere cambiare voice ID con una voce italiana. Non fatto in questa sessione (STOP gate). Valutare dopo il test vocale post-merge.
