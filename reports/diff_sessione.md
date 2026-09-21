@@ -1,21 +1,21 @@
-# DIFF SESSIONE — 2026-09-12
-**Branch:** recon/hook-audit-2026-09-12
-**Nota:** questo file si riscrive a ogni sessione. La storia completa sta in git.
+# DIFF SESSIONE — 2026-09-15
 
-## File toccati in questa sessione
+Branch: `feat/voice-client-4b`
+Sessione: FASE 3 Fetta 4b — Client Vocale Browser HTML5
 
-Da `git diff --stat c237d08..HEAD`:
+## File toccati
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `.claude/agents/memoria_revisore.md` | Aggiornata dal subagent revisore dopo le due review (commit c258e8f, c3c90c7). |
-| `.claude/commands/fine-task.md` | Aggiunto passo 4ter (check_landing) dopo §4bis push e prima di §5. |
-| `.claude/hooks/promemoria_end.sh` | Nuovo hook Stop soft: avvisa su stderr se ci sono commit di sessione senza handoff aggiornato. |
-| `.claude/settings.json` | Aggiunta seconda entry Stop array (index [1]) per promemoria_end.sh. |
-| `reports/diff_sessione.md` | Questo file. |
-| `reports/handoff.md` | Dossier fine sessione — fette FEATURE 1 + FEATURE 2. |
-| `reports/stato_progetto.md` | Aggiornato header data sessione. |
-| `reports/ultima_risposta.md` | Salvata dall'hook scrivi_rep. |
-| `reports/ultimo_report.md` | Riscritto con esito implementazione FETTA 1 + FETTA 2. |
-| `scripts/check_landing.sh` | Nuovo script pre-merge: Check A (file), B (HEAD pushato), C (PR aperta). |
-| `tests/test_unit_hooks.py` | Aggiunti T-prom-1..5 (promemoria_end.sh) e T-land-1..6 (check_landing.sh), costante PROMEMORIA_HOOK, helper _make_git_commit/_init_bare_origin/_run_promemoria/_run_check_landing/_write_required_files/_setup_repo_with_origin_and_files/_make_fake_gh. |
+| `clients/voice/browser_server.py` | NUOVO. Proxy HTTP stdlib (127.0.0.1:9000 → :8765): serve browser_client.html + forwarda POST /voice con Bearer auth aggiunto lato server. Approccio same-origin: zero CORS, zero modifiche a modules/. |
+| `clients/voice/browser_client.html` | NUOVO. Client HTML5: getUserMedia → MediaRecorder(webm/opus) → POST /voice → play MP3. Tema dark/light, shortcut Space, status monospace con byte+tempo. Font Figtree + JetBrains Mono. |
+| `reports/stato_progetto.md` | Aggiornato: data ultimo aggiornamento + aggiunta riga Fetta 4b (✅ FASE 3 Fetta 4b) con esito, byte e tempi reali. |
+| `reports/ultimo_report.md` | Riscritto: report completo Fetta A (sonda) + Fetta B (client browser). Nuovi rispetto al precedente: tabella test E2E, istruzioni uso, analisi CORS. |
+| `reports/handoff.md` | Riscritto per questa sessione (dossier autonomo fine-task). |
+| `reports/diff_sessione.md` | Questo file — riepilogo sessione. |
+
+## NON toccato
+
+- `gas.py`, `brains/`, `modules/`, `tests/` — invariati
+- `.env` — token ruotato su disco (gitignored, non committato)
+- Suite test — invariata, 64 PASS precedenti confermati
