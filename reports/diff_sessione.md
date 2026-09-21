@@ -1,20 +1,18 @@
-# Diff sessione — 2026-09-21
+# DIFF SESSIONE — 2026-09-21 (re-verifica lang-rule-italian)
+
+Questo file si riscrive a ogni sessione. La storia completa sta in git.
 
 ## File toccati
 
-| File | Delta | Perché |
-|------|-------|--------|
-| `.claude/agents/memoria_revisore.md` | +1 | Revisore #100: aggiunta riga memoria |
-| `gas.py` | +1 -1 | Regola lingua rafforzata in `_GAS_SYSTEM_PROMPT_BASE` (gas.py:48) |
-| `gas_identity.md` | +2 | Regola lingua aggiunta in cima (priorità massima nel system prompt) |
-| `tests/test_unit_kernel.py` | +37 | Test T63a/b/c/d: verifica strutturale regola di lingua |
-| `reports/stato_progetto.md` | +1 -1 | Item 5 aggiornato a ✅ COMPLETATO |
-| `reports/ultimo_report.md` | riscritta | Report canonico del task |
-| `reports/handoff.md` | riscritta | Dossier fine-sessione canonico |
-| `reports/diff_sessione.md` | riscritta | Questo file |
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `reports/ultimo_report.md` | Riscritto: re-verifica completa con esito sonda (STOP GATE), 3 test reali PASS, proposta TTS posticipata, anomalie MemoryStore |
+| `reports/stato_progetto.md` | Header "Ultimo aggiornamento" aggiornato alla sessione corrente |
+| `reports/handoff.md` | Scritto: dossier fine sessione con §0-§7 canonici |
+| `reports/diff_sessione.md` | Questo file |
 
-## Cosa è cambiato e perché
+## Note sessione
 
-GAS rispondeva in inglese nel test vocale 4b (PR #90). La regola di lingua nel system prompt era debole ("Rispondi sempre in italiano") e assente da `gas_identity.md` (che ha precedenza nel system prompt quando esiste). Soluzione minima: rafforzamento in entrambi i file con "dal primo messaggio, anche se l'utente scrive in un'altra lingua". Ridondanza difensiva approvata (revisore #100).
-
-Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+Task originale (lang-rule-italian) già completato in PR #92 (commit 32dd6c2).
+Questa sessione è pura re-verifica: sonda → STOP GATE → test reali → report.
+Nessuna modifica al motore.
