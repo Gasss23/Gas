@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-21** (doc: roadmap aggiornata — FASE 3 COMPLETATA, FASE 5 RESET dopo perdita VPS Hetzner 2026-09-14, ordine operatore 2026-09-21 registrato)
+> Ultimo aggiornamento: **2026-09-21** (re-verifica lang-rule-italian: STOP GATE attivo — regola già presente e funzionante, 3 test reali PASS)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
