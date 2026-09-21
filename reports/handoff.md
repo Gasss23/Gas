@@ -1,37 +1,39 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-21 — GAS risponde SEMPRE in italiano
+**Sessione:** 2026-09-21 — Allineamento canonici: suite reale macOS + sonda E2E lang-rule
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #92 (https://github.com/Gasss23/Gas/pull/92).
+1. Merge della PR #93 (https://github.com/Gasss23/Gas/pull/93).
+2. Decisione sul branch `docs/reverifica-lang-rule`: il branch contiene solo 4 file doc di sessione (reports/), nessun codice motore. Da scartare (chiudere/cancellare) — azione umana (R6).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Sonda**: FATTA. `gas.py:48` aveva regola debole; `gas_identity.md` senza regola di lingua.
-- **Fetta 2 — Fix motore**: FATTA. Regola rafforzata in `_GAS_SYSTEM_PROMPT_BASE` (gas.py:48) e aggiunta in cima a `gas_identity.md`.
-- **Fetta 3 — Test T63a/b/c/d**: FATTA. 4 test strutturali, tutti PASS.
-- **Fetta 4 — Revisore**: FATTA. Review #100: APPROVATO (nessuna riserva).
-- **Voce TTS**: SALTATA — STOP gate. Non toccata in questa sessione.
+- **Fetta 1 — Suite kernel reale (macOS, 2026-09-21)**: `FATTA`  
+  Eseguita con `python tests/test_unit_kernel.py`. 294 PASS, 5 FAIL bwrap (F-mac-1). Più `pytest tests/ --ignore=test_unit_kernel.py` → 132 PASS. Nessuna regressione.
+
+- **Fetta 2 — Sonda E2E lingua italiana (input inglese)**: `FATTA`  
+  Gemini a quota (free tier 20/day). Groq (gpt-oss-120b) ha risposto in italiano dal primo messaggio. Risposta verbatim nel report.
+
+- **Fetta 3 — Analisi branch `docs/reverifica-lang-rule`**: `FATTA`  
+  Solo doc di sessione (4 file reports/). Nessun contenuto non recuperabile. Decisione cancellazione all'operatore.
+
+- **Motore**: `SALTATA` — Stop gate rispettato, nessuna modifica a gas.py/gas_identity.md/brains/modules/tests/.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  1 +
- gas.py                             |  2 +-
- gas_identity.md                    |  2 +
- reports/diff_sessione.md           | 23 +++++++----
- reports/handoff.md                 | 81 ++++++++++++++++++++++++++++----------
- reports/stato_progetto.md          |  2 +-
- reports/ultimo_report.md           | 55 +++++++-------------------
- tests/test_unit_kernel.py          | 37 +++++++++++++++++
- 8 files changed, 132 insertions(+), 71 deletions(-)
+reports/diff_sessione.md  |  25 +++++------
+ reports/handoff.md        |  95 ++++++++++++++++++++++++++---------------------------
+ reports/stato_progetto.md |   6 +--
+ reports/ultimo_report.md  | 106 ++++++++++++++++++++++++++++++++++++++++------
+ 4 files changed, 146 insertions(+), 86 deletions(-)
 ```
 
 ---
@@ -39,71 +41,62 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-1f3cd14 docs(fine-task): handoff + report lang-rule-italian 2026-09-21
-32dd6c2 feat(lang): forza risposta sempre in italiano dal primo messaggio
-ae77d24 chore(revisore): memoria review #100 — APPROVATO
+e7164e4 docs(allineamento): suite reale macOS + sonda E2E lang-rule PASS
+935957d docs(fine-task): handoff re-verifica lang-rule-italian 2026-09-21
+ac75417 docs(re-verifica): lang-rule-italian confermata — STOP GATE attivo, 3 test PASS
 ```
 
-NB: il commit di fine-task corrente non compare qui per costruzione.
+*(Il commit di fine-task che contiene questo file non compare qui per costruzione)*
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore: `32dd6c2 feat(lang): forza risposta sempre in italiano dal primo messaggio`
+Nessun diff motore, revisore non richiesto.
 
-**APPROVATO** (review #100 — 2026-09-21)
-
-`gas.py:48` — sostituisce regola debole con regola forte — rischio: ~4 token aggiuntivi + potenziale duplicazione con gas_identity.md quando entrambi attivi — esito: ok (enfasi intenzionale per compliance LLM; ridondanza difensiva deliberata).
-
-`gas_identity.md:1-2` — aggiunge regola LINGUA IN CIMA al file identity, prima di qualsiasi altro testo — rischio: budget token (~200 token dichiarati in CLAUDE.md §6) + possibile conflitto logico con gas.py:48 — esito: ok (budget ampliamente rispettato; posizionamento in testa garantisce priorità; coesistenza con la regola in base è ridondanza consapevole e difensiva, non conflitto).
-
-`tests/test_unit_kernel.py:3685-3723` (blocco T63, 4 test) — T63a verifica presenza marker in `_GAS_SYSTEM_PROMPT_BASE`; T63b/T63c verificano `_build_system_prompt` senza/con gas_identity.md; T63d verifica il file reale deployato. Rischio: T63c quasi tautologico (scrive il marker, lo rilegge); path resolution `parents[1]` = /Users/gas/Gas corretto — esito: ok (T63d è il test con valore reale; pattern mkdtemp+git init già consolidato; struttura test corretta).
-
-Antipattern Wall of Shame: ASSENTI. Guardrail (loop cap, _get_window, _cap_window_chars, eccezioni provider): NON TOCCATI. Coerenza roadmap: implementa esattamente l'ordine operatore 2026-09-21.
-
-Rischio esplicitamente escluso: comportamento runtime reale con utenti che scrivono in lingue diverse — non verificabile senza sessione live con provider LLM reale.
+Nessun file del motore (gas.py, brains/, modules/, tests/) toccato in questa sessione.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- **Prima**: 289 PASS, 5 FAIL (bwrap/sandbox Linux-only)
-- **Dopo**: 294 PASS, 5 FAIL (bwrap/sandbox Linux-only, invariati)
-- **Nuovi test**: T63a/b/c/d — tutti PASS
+Nessuna modifica a gas.py/tests/. Suite eseguita come misura, non come verifica post-modifica.
 
-Riepilogo suite (locale, .venv/bin/python):
+**Risultato misura (stato reale macOS 2026-09-21):**
+
 ```
 === RIEPILOGO: 294 PASS, 5 FAIL ===
-  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
+  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed)
   FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
-  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
-  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
-  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale
+  FAIL: T12c pipe non interpretata (niente shell)
+  FAIL: T12e command substitution non eseguita (resta letterale)
 ```
 
-I 5 FAIL sono bwrap/sandbox — richiedono kernel Linux con user namespace. Attivi in CI (Ubuntu). Invariati rispetto a prima della sessione.
+I 5 FAIL sono fuori scope: sono F-mac-1 (bwrap non disponibile su macOS), già documentato. Su Linux/WSL tutti 299 PASS.
+
+Pytest altri file: **132 PASS, 0 FAIL**.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	failure	docs(fine-task): handoff + report lang-rule-italian 2026-09-21	CI	feat/lang-rule-italian	push	35580697621	50s	2026-09-21T08:58:27Z
-completed	success	Merge pull request #91 from Gasss23/docs/roadmap-update-2026-09-21	CI	main	push	35579895884	56s	2026-09-21T08:49:14Z
-completed	success	docs(fine-task): handoff + report roadmap-update-2026-09-21	CI	docs/roadmap-update-2026-09-21	push	35579080529	51s	2026-09-21T08:39:55Z
+completed  success  docs(allineamento): suite reale macOS + sonda E2E lang-rule PASS  CI  docs/reverifica-lang-rule  push  35601116039  46s  2026-09-21T12:42:41Z
+completed  success  docs(fine-task): handoff re-verifica lang-rule-italian 2026-09-21  CI  docs/reverifica-lang-rule  push  35597967629  46s  2026-09-21T12:10:07Z
+completed  success  docs(re-verifica): lang-rule-italian confermata — STOP GATE attivo, 3…  CI  docs/reverifica-lang-rule  push  35597683730  1m32s  2026-09-21T12:07:08Z
 ```
 
-Mappatura commit→run:
-- `ae77d24` chore(revisore): nessuna run CI su questo SHA (non era HEAD al momento del push)
-- `32dd6c2` feat(lang): nessuna run CI su questo SHA (non era HEAD al momento del push)
-- `1f3cd14` docs(fine-task): run 35580697621 — **FAILURE** (handoff-check: blocco §2 mancante). Causa: handoff.md non aveva il formato canonico. Risolto con /fine-task corrente.
-
-Run corrente (questo commit): non ancora disponibile alla scrittura dell'handoff.
+**Mappatura commit→run**:
+- `ac75417` (docs/re-verifica): run CI `35597683730` — **completed success** ✅
+- `935957d` (docs/fine-task): run CI `35597967629` — **completed success** ✅
+- `e7164e4` (docs/allineamento): run CI `35601116039` — **completed success** ✅
+- commit fine-task (questo file): run non ancora disponibile alla scrittura dell'handoff
 
 ---
 
 ## §7 RISERVE APERTE
 
-- Nessuna riserva dal revisore #100.
-- **Nota TTS** (non riserva, proposta): se la voce ElevenLabs ha accento non-italiano, potrebbe valere cambiare voice ID con una voce italiana. Non fatto in questa sessione (STOP gate). Valutare dopo il test vocale post-merge.
+Nessuna nuova riserva emersa in questa sessione.
+
+Riserve preesistenti invariate: F-mac-1 (bwrap macOS), F-mac-2 (SyntaxWarning regex), F-mac-3 (win_mic_test.py collection), R-finegat-1, R-finegat-2 — dettaglio in stato_progetto.md §Finding aperti.
