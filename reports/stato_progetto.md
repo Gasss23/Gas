@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-15** (feat/voice-client-4b — FASE 3 Fetta 4b: client browser HTML5. FETTA A (sonda): server parte OK su 127.0.0.1:8765, pipeline STT+TTS live confermata, token GAS_VOICE_TOKEN ruotato. FETTA B: browser_server.py (proxy stdlib) + browser_client.html. Test E2E reale: GET HTML 200, POST JSON 200 in 1.31s, POST WAV→MP3 200 4641B in 1.87s.)
+> Ultimo aggiornamento: **2026-09-21** (doc: roadmap aggiornata — FASE 3 COMPLETATA, FASE 5 RESET dopo perdita VPS Hetzner 2026-09-14, ordine operatore 2026-09-21 registrato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -216,16 +216,16 @@ Rung-4 resta OpenRouter. Ri-valutabile solo su tier a pagamento (131k, no coda) 
 Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 ## Prossimi passi (in ordine di priorità)
 
+> **Ordine operatore (2026-09-14, aggiornato 2026-09-21):** (1) voce 4b ✅ → (2) GAS risponde SEMPRE in italiano → (3) auto-apprendimento/auto-sviluppo → (4) motore marketing (tra gli ultimi). VPS rimandato.
+
 1. ~~**FASE 2.5**~~ ✅ chiusa (review #39, 2026-06-27).
 2. **🔴 Spesa token dev**: item 1 roadmap — il budget cap runtime è inerte sul free tier. La leva reale è la disciplina dev (sez. 11): `/clear` tra task, Sonnet default, Opus on-demand.
 3. **✅ Accesso dev tooling da telefono**: item 2 roadmap — CHIUSO (2026-07-15) via Remote Control (`/rc`): sonda su Giulia/WSL verificata live, nessun bridge custom necessario.
-4. **FASE 3 — Interfaccia vocale**: Fette 1+2+3+4a ✅ su main. ⭐ ATTESTATO DAL SUPERVISORE (2026-08-22): prova vocale umana reale superata su WSL. Gate per fetta 4b APERTO (client browser HTML5 — decisione operatore).
-   - ✅ **Sonda F0 atterrata su main (2026-08-02, PR #59, merge 5323b9b)**: 6 script in `clients/voice/probe/` (client Windows↔WSL).
-   - ✅ **Fette 1+2+3+4a chiuse**: pipeline mic→STT Groq→kernel→TTS ElevenLabs→MP3 completa e testata E2E su WSL. Vedi Stato motore §FASE 3 per dettaglio.
-   - 🟡 **Fetta 4b** (client browser HTML5): non impegnata — decisione operatore.
-5. **FASE 4.5 — Task scheduler autonomo**: catalogo YAML task notturni (item 4 roadmap, prerequisito Jarvis).
-6. **FASE 5 S1 ✅ e S1b ✅ completati (2026-07-04)** → prossimo S2 (decide operatore)
-7. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
+4. ✅ **FASE 3 — Interfaccia vocale — COMPLETATA** (2026-09-15, PR #90): pipeline mic→STT Groq Whisper→kernel→TTS ElevenLabs→audio; fette 1+2+3+4a+4b su main. ⭐ ATTESTATO DAL SUPERVISORE (2026-08-22): prova vocale umana reale superata su WSL.
+5. 🔵 **GAS risponde SEMPRE in italiano** — **PROSSIMO IMMEDIATO** (ordine operatore 2026-09-21). Fetta motore piccola: lingua di risposta obbligatoria indipendente dalla lingua di input.
+6. **FASE 4.5 — Task scheduler autonomo** ("Direttore"): catalogo YAML task autonomi. NB: con VPS perso, va implementato **IN LOCALE sul Mac** (launchd/cron, non systemd). Primo mattone dell'orchestratore.
+7. **FASE 5 — 🔴 RESET (2026-09-14)**: VPS Hetzner perso per mancato pagamento. S1/S1b non più validi. Da rifare da ZERO su server nuovo. **RIMANDATO** per scelta operatore. Vedere §Trasversali OBBLIGATORI in roadmap.md prima del prossimo deploy.
+8. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
 
 ### PARK — registrati, nessun impegno
 - Retention del diario (archiviazione/export, MAI DELETE — quando il volume lo richiederà).
