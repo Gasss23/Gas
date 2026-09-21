@@ -1,8 +1,10 @@
-﻿Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato corrente in reports/roadmap.md (roadmap) + reports/stato_progetto.md (stato vivo). CLAUDE.md sez. 10 è solo un puntatore a questo file.
+Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato corrente in reports/roadmap.md (roadmap) + reports/stato_progetto.md (stato vivo). CLAUDE.md sez. 10 è solo un puntatore a questo file.
+
+> Fonte unica autorevole della roadmap. Ultimo aggiornamento: **2026-09-21**.
 
 ## 10. FUTURE ROADMAP & PRIORITIES
 
-Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione. WINDOW_CHAR_CAP sulla finestra a granularita di messaggio (2026-06-14, review #7/#8) e manutenzione snapshot in gas doctor (2026-06-14, review #10) — **FASE 1 CHIUSA**. **FASE 2 (cervello/memoria low-cost) CHIUSA** (2026-06-15 → 2026-06-19): memoria SQLite con diario IMMUTABILE (review #12/#13), iniezione always-on + tool ricorda (review #14), CRM contatti dal loop con chiavi normalizzate/chiave_norm (review #15/#16/#22), ricerca FTS5 sul diario (review #18), backup automatico anti-corruzione del DB (review #19), vector store fetta 1 storage+embedding (review #23) + wiring retrieval semantico al kernel opt-in GAS_VECTORS (review #24), comando CLI gas reindex (review #25). Soglia semantica `VEC_MIN_SIM` resa env-configurabile via `GAS_VECTORS_MIN_SIM` (2026-06-21, review #28) — chiude la parte azionabile di R-wire-1 (resta solo la ri-taratura, deploy-dependent). **ITEM APERTI CHIUSI TUTTI** (2026-06-27, review #38, commit a8c6d53): budget cap `GAS_DAILY_TOKEN_BUDGET` + Telegram bridge bot `modules/telegram/bot.py` + `gas calibrate-vectors` + `gas eval-vectors` + R-reidx-3 già chiuso (review #30). **FASE 2.5 (compressione history) CHIUSA** (2026-06-27, review #39, commit 65c4c7b): `_compress_history_if_needed()` auto-trigger + `gas compress-history` CLI, zero token LLM. **FASE 5 IN CORSO**: S1 ✅ hardening SSH + utente runtime (2026-07-04), S1b ✅ (2026-07-04), prossimo S2.
+Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione. WINDOW_CHAR_CAP sulla finestra a granularita di messaggio (2026-06-14, review #7/#8) e manutenzione snapshot in gas doctor (2026-06-14, review #10) — **FASE 1 CHIUSA**. **FASE 2 (cervello/memoria low-cost) CHIUSA** (2026-06-15 → 2026-06-19): memoria SQLite con diario IMMUTABILE (review #12/#13), iniezione always-on + tool ricorda (review #14), CRM contatti dal loop con chiavi normalizzate/chiave_norm (review #15/#16/#22), ricerca FTS5 sul diario (review #18), backup automatico anti-corruzione del DB (review #19), vector store fetta 1 storage+embedding (review #23) + wiring retrieval semantico al kernel opt-in GAS_VECTORS (review #24), comando CLI gas reindex (review #25). Soglia semantica `VEC_MIN_SIM` resa env-configurabile via `GAS_VECTORS_MIN_SIM` (2026-06-21, review #28) — chiude la parte azionabile di R-wire-1 (resta solo la ri-taratura, deploy-dependent). **ITEM APERTI CHIUSI TUTTI** (2026-06-27, review #38, commit a8c6d53): budget cap `GAS_DAILY_TOKEN_BUDGET` + Telegram bridge bot `modules/telegram/bot.py` + `gas calibrate-vectors` + `gas eval-vectors` + R-reidx-3 già chiuso (review #30). **FASE 2.5 (compressione history) CHIUSA** (2026-06-27, review #39, commit 65c4c7b): `_compress_history_if_needed()` auto-trigger + `gas compress-history` CLI, zero token LLM. **FASE 3 VOCE ✅ COMPLETATA** (2026-09-15, PR #90): pipeline mic→STT Groq Whisper→kernel→TTS ElevenLabs→audio; fette 1+2+3+4a+4b tutte su main; provata a voce umana reale (attestazione supervisore 2026-08-22); client browser HTML5 fetta 4b mergiato su main (PR #90, 2026-09-15). **FASE 5 RESET (2026-09-14)**: VPS Hetzner PERSO per mancato pagamento — dati cancellati irrevocabilmente. S1/S1b eseguiti sul vecchio VPS non sono più validi. Da rifare da ZERO su server nuovo. Decisione operatore (2026-09-21): VPS rimandato, prima il cervello.
 
 ### 🔴 FASE 1 — Blindatura del Terminale & Sicurezza — ✅ CHIUSA
 - Snapshot preventivo anti-autodistruzione — ✅ FATTO (2026-06-11), base della blindatura.
@@ -13,7 +15,7 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 ### 🧠 FASE 2 — Il Cervello di Jarvis & Memoria Low-Cost — ✅ CHIUSA
 - Database locale SQLite per i fatti rigidi (gratis, zero token) — ✅ FATTO (2026-06-15, review #12/#13): modulo `modules/memory/`, DB file singolo `.gas_memory.db`, diario append-only IMMUTABILE (trigger BEFORE UPDATE/DELETE → ABORT) + rubrica contatti mutabile. CRM dal loop con tool salva_contatto/imposta_stato_contatto e chiavi normalizzate (chiave_norm UNIQUE + NFKC) — ✅ FATTO (review #15/#16/#22). Iniezione always-on (_memoria_pin) + tool ricorda di sola lettura — ✅ FATTO (review #14). Ricerca FTS5 sul diario (Strato A) — ✅ FATTO (2026-06-17, review #18).
 - Vector DB locale per i ricordi a lungo termine senza consumo di token — ✅ FATTO (2026-06-18): fetta 1 storage+embedding semantico locale (fastembed `paraphrase-multilingual-MiniLM-L12-v2`, sidecar `.gas_vectors.db` cache derivata, cosine brute-force, review #23) + wiring al kernel — retrieval semantico opt-in via env `GAS_VECTORS`, catch-up indexing in run_turn + cascata FTS→semantico in ricorda (review #24). Comando CLI di manutenzione `gas reindex` (ricostruisce l'indice dal diario) — ✅ FATTO (2026-06-19, review #25).
-- **Backup della memoria** — ✅ FATTO per l'auto-corruzione (2026-06-17, review #19): `MemoryStore.backup()` + `backup_auto()` THROTTLED con integrity-gate (un DB corrotto non viene mai copiato sopra i backup buoni) + rotazione, e check in gas doctor sez.8. Il backup OFF-MACHINE (anti-disastro disco, copia su volume/host esterno) resta a FASE 5 / deploy VPS — vedi item aperti.
+- **Backup della memoria** — ✅ FATTO per l'auto-corruzione (2026-06-17, review #19): `MemoryStore.backup()` + `backup_auto()` THROTTLED con integrity-gate (un DB corrotto non viene mai copiato sopra i backup buoni) + rotazione, e check in gas doctor sez.8. Il backup OFF-MACHINE (anti-disastro disco, copia su volume/host esterno) resta OBBLIGATORIO prima di ogni nuovo deploy VPS — vedi §Trasversali OBBLIGATORI.
 - (parcheggiato, NON prioritario) Script revisor.py (API low-cost) per il "Claude Council". NB: chiarire cosa si intende per "Claude Council" — il nome non corrisponde a un prodotto Anthropic noto. Nessun impegno.
 
 ### ✅ ITEM APERTI CHIUSI (2026-06-27, review #38, commit a8c6d53)
@@ -28,19 +30,39 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 ### 🟡 PROSSIMI PASSI (in ordine di priorità)
 
+#### 🗺️ ORDINE OPERATORE (2026-09-14, aggiornato 2026-09-21)
+
+> Priorità vincolante decisa dall'operatore. Non alterare senza istruzione esplicita.
+
+1. ✅ **Voce 4b** — client browser HTML5 (PR #90, 2026-09-15). FATTO.
+2. 🔵 **GAS risponde SEMPRE in italiano** — fetta motore piccola: lingua di risposta obbligatoria indipendente dalla lingua di input. **PROSSIMO IMMEDIATO**.
+3. **Auto-apprendimento / auto-sviluppo** — GAS diventa progressivamente più intelligente senza input umani (converge con FASE 2.6 e "Jarvis cognitivo").
+4. **Motore marketing (FASE 4)** — tra gli ultimi. Non prima del cervello.
+5. **VPS** — rimandato a tempo indeterminato per scelta operatore. Prima il cervello, poi un server potente blindato dal giorno 1.
+
+#### 🔒 TRASVERSALI OBBLIGATORI (prima di ogni nuovo deploy VPS — lezione 2026-09-14)
+
+> Il VPS Hetzner è stato PERSO il 2026-09-14 per mancato pagamento. Dati `.gas_memory.db` / `.gas_history.json` cancellati irrevocabilmente. Lezione: il deploy futuro deve essere blindato dal giorno 1.
+
+- **Pagamento server blindato**: carta/metodo di pagamento verificato + alert fatturazione attivo prima di accendere il server. Non opzionale.
+- **Backup off-server automatico**: copia automatica di `.gas_memory.db` (diario/CRM) e `.gas_history.json` su host/volume ESTERNO, attivata il giorno stesso del deploy. Mai fidarsi del solo disco VPS.
+- **Rotazione chiave ElevenLabs** prima del deploy (usata in sviluppo WSL — rischio leak in log).
+- **Privatizzare repo** (GitHub Pro, $4/mese): rulesets su privati richiedono Pro/Team. Su Free il repo privato SPEGNE il ruleset main-lock. Chiude anche l'IP in history (stato MITIGATO dal scrub HEAD, NON chiuso: IP resta nella history git pubblica).
+- **Disciplina spesa token dev**: Sonnet default, Opus solo on-demand via `/model opus`.
+
 #### 🔧 LAVORO IN SOSPESO — branch e task pendenti
 
 - **fix/gasmerge-hardening (SHA 6082a25)** — branch non mergiato, non revisionato. Chiude #65-R1 (guard `[ -n "$HEAD_SHA" ]` mancante) e #63-R1 (git `/usr/bin/git` hardcoded). Prerequisiti: rebase su main (conflitto certo su `tests/` + `stato_progetto.md`), revisore, CI verde, revisione umana.
 - **Micro-task doc** — 3 registrazioni pendenti: (1) finding hook `session_end` + sessioni parallele; (2) archiviare 3 ✅ galleggianti in `stato_progetto.md`; (3) raffinare check 🟡 di processo.
 - **3 branch parcheggiati** — `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc` — lavoro non atterrato su main. NON eliminare senza verifica umana; ispezionare e decidere (merge, rebase, o close).
 
-0. 🔒 **Privatizzare repo — ALTA URGENZA** — trigger: prima che entrino dati lead reali / maturità GAS. Richiede GitHub Pro ($4/mese): su Free il repo privato SPEGNE il ruleset main-lock (rulesets su privati = solo Pro/Team/Enterprise). Quindi Pro + privato è UN'unica mossa. Chiude anche l'IP in history (IP 2026-07-20: già scrubato dai file HEAD, ma resta nella history git pubblica — stato MITIGATO, NON chiuso). Verificare fork pubblici prima: se esistono, l'IP è già uscito e va valutata la rotazione IP su Hetzner.
+0. 🔒 **Privatizzare repo — ALTA URGENZA** — trigger: prima che entrino dati lead reali / maturità GAS. Richiede GitHub Pro ($4/mese): su Free il repo privato SPEGNE il ruleset main-lock (rulesets su privati = solo Pro/Team/Enterprise). Quindi Pro + privato è UN'unica mossa. Chiude anche l'IP in history (IP 2026-07-20: già scrubato dai file HEAD, ma resta nella history git pubblica — stato MITIGATO, NON chiuso). Verificare fork pubblici prima: se esistono, l'IP è già uscito e va valutata la rotazione IP sul nuovo VPS.
 
 1. ✅ **Migrazione rung Groq** — `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`. Validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`, latenza 1138ms). Commit `f028e51`, review #44 APPROVATO CON RISERVE, 2026-07-08. **COMPLETATA**.
 2. ✅ **FASE 2.5 — Summarizzazione cronologia** — CHIUSA (2026-06-27, review #39, commit 65c4c7b).
-3. **FASE 3 — Interfaccia vocale: Whisper (STT) e successive** (vedi sotto).
-4. **FASE 4.5 — Task scheduler autonomo** (prerequisito Jarvis reale; vedi sotto).
-5. **FASE 5 — Deploy VPS Hetzner** — 🟡 IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2). Include: attivare `gas telegram` come daemon, backup off-machine, process management systemd, ri-tarare `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
+3. ✅ **FASE 3 — Interfaccia vocale** — COMPLETATA (2026-09-15, PR #90). Pipeline mic→STT Groq Whisper→kernel→TTS ElevenLabs→audio; fette 1+2+3+4a+4b su main; attestazione voce umana reale (2026-08-22).
+4. **FASE 4.5 — Task scheduler autonomo** (primo mattone dell'"Orchestratore / Direttore"; vedi sotto). **PROSSIMO GRANDE LAVORO**. NB: dipendeva da "FASE 5 + systemd"; con VPS perso va ripensato IN LOCALE sul Mac.
+5. **FASE 5 — Deploy VPS** — 🔴 **RESET (2026-09-14)**: VPS Hetzner perso per mancato pagamento. S1/S1b eseguiti sul vecchio VPS non più validi. Da rifare da ZERO su server nuovo, blindato dal giorno 1 (vedi §Trasversali OBBLIGATORI). **RIMANDATO** per scelta operatore (prima il cervello, poi un VPS potente).
 6. **Riserve aperte dalla review #38**: R-tel-budget-perf (scan JSONL al crescere del log), R-tel-tool_res (cosmetico, tool result nel reply Telegram).
 7. **🟡 R-verdetto-evidenza** — check meccanico che ogni path:riga citato nel verdetto del revisore esista nel diff sottoposto. Oggi solo disciplinare; gap rilevato 2026-07-30 (`-> None`). Fetta tooling piccola, non bloccante.
 
@@ -62,12 +84,12 @@ Audit integrale a occhi freschi di kernel, memoria, vettori, sandbox, snapshot, 
 4. ✅ **F3 — pulizia file morti** — ESEGUITA in questa PR: 17 file rimossi (junk root, brain legacy con slicing §5, self_improve/, modules/marketing/ vuoto), `brains/router.py` ridotto al solo `classifica_compito`. Suite verificata a delta zero pre/post.
 5. 🟢 **F4 — messaggi `_cap_tool_output` suggeriscono `sed -n`** non in allowlist — cosmetico, accodabile a una futura fetta motore.
 6. 🟢 **F5 — kernel Telegram single-history condiviso** — vincolo di design dichiarato: da sciogliere nel progetto "controllo Telegram unificato", non prima.
-7. 🟡 **F7 — `.venv/` non gitignorato → lo snapshot lo inghiotte** — `.gitignore` conteneva `venv/` ma NON `.venv/` (col punto): `_snapshot()` fa `git add -A`, quindi in una root con `.venv/` ogni snapshot preventivo assorbe l'intero virtualenv nell'albero (migliaia di file, snapshot lenti, repo gonfio — correlato ai ~4427 oggetti loose già annotati). Riga `.venv/` aggiunta al `.gitignore` in questa PR. **RESIDUO NON CHIUSO**: verificare sul VPS come si chiama il venv di produzione (`ls -a /home/gas/gas/`) — se è `.venv`, il problema era vivo in h24; se è `venv`, era già coperto. Runbook SSH, non task Claude Code.
+7. 🟡 **F7 — `.venv/` non gitignorato → lo snapshot lo inghiotte** — `.gitignore` conteneva `venv/` ma NON `.venv/` (col punto): `_snapshot()` fa `git add -A`, quindi in una root con `.venv/` ogni snapshot preventivo assorbe l'intero virtualenv nell'albero (migliaia di file, snapshot lenti, repo gonfio — correlato ai ~4427 oggetti loose già annotati). Riga `.venv/` aggiunta al `.gitignore` in questa PR. **RESIDUO NON CHIUSO**: verificare sul nuovo VPS come si chiama il venv di produzione prima del deploy.
 
 7. **Rung 4 OpenRouter in degrado** — `meta-llama/llama-3.3-70b-instruct:free` soggetto a rate limit upstream crescenti; diversi modelli free-tier OpenRouter hanno perso l'accesso gratuito a giugno 2026. Da investigare: modello free alternativo stabile o declassare rung 4 a best-effort dichiarato. Stato: APERTO, priorità media.
 8. ✅ **Config-drift stringhe modello** — `brains/model_ids.py` = fonte unica dei 5 ID cascata, env-overridabili (`GAS_MODEL_*`). Merge `eb0509f`, commit `160543a`, review #43, 2026-07-07. **CHIUSO**.
 
-> Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul CX33 (FASE 5).
+> Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul nuovo VPS (FASE 5).
 
 ### Deprecazioni provider
 
@@ -151,29 +173,26 @@ Al termine di ogni task Gas risponde a: *"Cosa abbiamo imparato? Errori, decisio
 
 ---
 
-### 🎙️ FASE 3 — Interfaccia Vocale Ibrida (Priorità Media — Core Feature)
+### 🎙️ FASE 3 — Interfaccia Vocale Ibrida — ✅ COMPLETATA (2026-09-15, PR #90)
 
-**Vision**: Gas non è un chatbot — è un collaboratore intelligente. L'utente avvia in voce, continua in testo e torna alla voce senza perdere il contesto. Ogni conversazione deve dare la sensazione di lavorare con un vero partner di business.
+**Pipeline vocale completata:** mic→STT Groq Whisper→kernel GAS→TTS ElevenLabs→MP3 audio.
 
-**Pipeline vocale:** Whisper (STT) → cervello GAS → ElevenLabs (TTS)
+**Fette su main:**
+- ✅ **Fetta 1** — endpoint HTTP `POST /voice`, bearer auth, kernel singleton, fail-safe §9 (2026-08-13, PR #62+#63, review #76+#77).
+- ✅ **Fetta 2** — STT server-side Groq Whisper: `modules/voice/stt.py` + routing audio (2026-08-20, review #88).
+- ✅ **Fetta 3** — TTS output ElevenLabs: `modules/voice/tts.py` + risposta MP3 (2026-08-20, review #89).
+- ✅ **Fetta 4a** — client vocale di prova WSL+ffmpeg: `clients/voice/probe_client_4a.py`, pipeline mic→WAV→POST→MP3→playback (2026-08-21, review #91). ⭐ ATTESTATO DAL SUPERVISORE (2026-08-22): giro completo voce umana reale superato su WSL.
+- ✅ **Fetta 4b** — client browser HTML5: `clients/voice/browser_server.py` (proxy stdlib :9000→:8765) + `clients/voice/browser_client.html` (getUserMedia→POST→play MP3) (2026-09-15, PR #90).
 
-- **Whisper STT** — ricezione comandi vocali diretti, input a mani libere.
-- **ElevenLabs TTS + identità vocale** — risposta con voce coerente e riconoscibile; creare una voce personalizzata ElevenLabs (eventualmente basata sulla voce del fondatore) — Gas deve sembrare una persona reale, non un sintetizzatore.
-- **Modalità ibrida voce + testo** — passaggio trasparente voce↔testo senza spezzare il contesto conversazionale.
+**Vision originale (raggiunta):** Gas non è un chatbot — è un collaboratore intelligente. L'utente avvia in voce, continua in testo e torna alla voce senza perdere il contesto.
 
-**Adattamento intelligente della profondità:**
-Gas calibra autonomamente la lunghezza della risposta senza che l'utente debba chiederlo.
-- Target: ~20 secondi equivalenti per una risposta standard; se bastano 5-10s, meglio.
-- Superare i 20s solo quando è realmente necessario.
-- Gas valuta autonomamente: complessità, importanza della decisione, livello utente, urgenza, contesto — e decide quanto parlare, quanto approfondire, quando fare esempi, quando sintetizzare.
+**Funzionalità aperte (post-FASE 3, non impegnate):**
+- Adattamento intelligente della profondità (~20s target per risposta standard).
+- Interruzione intelligente mid-risposta con comandi naturali.
+- ElevenLabs voce personalizzata (basata sulla voce del fondatore).
+- Modalità ibrida voce+testo trasparente.
 
-**Interruzione intelligente mid-risposta (funzione distintiva):**
-Durante una risposta vocale l'utente può interrompere con comandi naturali; Gas adatta immediatamente la risposta mantenendo il contesto, senza ricominciare da capo:
-`"Vai al punto."` · `"Riassumi."` · `"Spiegamelo meglio."` · `"Fammi un esempio."` · `"Vai più nel dettaglio."` · `"Saltiamo questa parte."` · `"Continua."` · `"Parla più lentamente."` · `"Spiegamelo come se fossi un principiante."` · `"Dammi la versione tecnica."`
-
-**Dipendenze:** FASE 2 (memoria contesto) ✅ · FASE 2.5 (storia non infinita) ✅ · FASE 2.6 (KB accumulata) consigliata prima.
-
-### 📈 FASE 4 — Moduli di Business (Priorità Media)
+### 📈 FASE 4 — Moduli di Business (Tra gli ultimi — ordine operatore 2026-09-21)
 - Modulo Meta Ads e automazione della lead generation.
 - Algoritmi di persuasione locali per il copy e i DM di marketing.
 
@@ -185,40 +204,49 @@ Durante una risposta vocale l'utente può interrompere con comandi naturali; Gas
 >
 > 🔀 **Biforcazione architetturale APERTA (B3)**: il blueprint adotta Make (no-code) come orchestratore principale; GAS è un agente Python. La scelta tra *GAS-motore-Python orchestra tutto* e *Make no-code + GAS come agente specializzato* è una decisione di architettura **NON PRESA** — da decidere prima di sviluppare qualsiasi fetta FASE 4. Non trattarla come scelta già fatta.
 
-### 🤖 FASE 4.5 — Task Scheduler Autonomo (Prerequisito Jarvis reale)
+### 🤖 FASE 4.5 — Task Scheduler Autonomo ("Direttore" / Orchestratore) — PROSSIMO GRANDE LAVORO
 
-Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di notte. Prerequisito logico al deploy h24.
+Senza questa fase GAS risponde ma non *agisce* di notte. Primo mattone dell'orchestratore.
+
+> ⚠️ **Ripensamento architetturale (2026-09-21)**: dipendeva da "FASE 5 + systemd". Con VPS perso, va implementato **IN LOCALE sul Mac** (launchd o loop autonomo, non systemd). La logica del catalogo YAML resta valida; il runtime cambia.
 
 - **Catalogo task autonomi:** lista configurabile di intenzioni che Gas esegue su schedule (es. "rassegna stampa lead dal diario", "follow-up DM scaduti da CRM", "report giornaliero token + stato contatti"). Il catalogo è un file YAML/JSON (non codice hard-coded) — l'utente può aggiungere task senza toccare il motore.
-- **Loop scheduler:** cron interno (o systemd timer) che a orari configurabili istanzia `GasKernel`, esegue il task dalla lista, salva il risultato nel diario, chiude. Ogni run è atomico e indipendente — un fallimento non blocca il prossimo.
+- **Loop scheduler:** su Mac: launchd plist o cron locale; su VPS futuro: systemd timer. A orari configurabili istanzia `GasKernel`, esegue il task dalla lista, salva il risultato nel diario, chiude. Ogni run è atomico e indipendente — un fallimento non blocca il prossimo.
 - **Fail-safe §9:** se un task crasha, il loop lo logga in `gas_debug.log`, salta al prossimo, NON va in loop infinito (cap 10 iterazioni già presente).
 - **Convergenza col bridge Telegram (item #2):** il bot può triggerare task dal telefono + ricevere l'output — stessa infrastruttura.
-- **Dipendenze:** FASE 2.5 (storia non infinita) + FASE 5 (process management) — va implementata insieme al deploy.
+- **Dipendenze:** FASE 2.5 (storia non infinita) ✅ + runtime locale (Mac) o FASE 5 futuro per h24.
 
 ---
 
-### 🟡 FASE 5 — Autonomia Totale & VPS — IN CORSO (S1 ✅ 2026-07-04, S1b ✅ 2026-07-04, prossimo S2)
-- Migrazione/deploy su **VPS Hetzner** (target indicato dall'utente) h24 con trigger temporali (cron-job) per far lavorare Jarvis di notte a computer spento.
-- Backup OFF-MACHINE della memoria (copia di `.gas_memory.db` su volume/host esterno) — vera protezione anti-disastro disco, banale perché il DB è un file singolo.
-- Automazione canali brand.
-- **Taratura MemoryHigh/MemoryMax di gas.service su misura RAM reale a regime** (GAS + embedder singolo modello). Valori attuali 1500M/2000M conservativi, mai misurati (vedi nota 9 stato_progetto.md: misura "non registrato"). Da eseguire sul VPS insieme a R-wire-1 (VEC_MIN_SIM).
-- **Process management + self-healing:** systemd unit con `Restart=always` + `RestartSec=10` per sopravvivere ai crash notturni senza presidio. Alert Telegram se Gas non risponde da N minuti (watchdog). Convergenza col bridge bot (item #2): stessa infrastruttura per notifiche push e comandi da telefono. Senza questo, un crash alle 3am blocca Jarvis fino al mattino.
+### 🔴 FASE 5 — Autonomia Totale & VPS — RESET (2026-09-14)
 
-- **Indagine latenza risposte GAS** (non urgente, segnalato 2026-07-07) — risposte ~5s più lente del solito. Possibili cause da verificare: migrazione a `openai/gpt-oss-120b` su Groq (TTFT diverso), burst TPM 8K → fallthrough OpenRouter (~28s), latenza rete VPS. Da misurare: confronto TTFT `gpt-oss-120b` vs `llama-3.3-70b-versatile` in condizioni analoghe; timing fallthrough registrato nel log (`gas_debug.log`).
-- **🔴 Bot trading su VPS dedicato PRIMA dei fondi reali** — standing security gate: chiavi exchange + AI che esegue codice sulla stessa box = superficie di esfiltrazione; 8GB no-swap insufficienti per GAS+embedder+ollama+bot. Non è "un giorno", è una precondizione. Azione: umana/infra.
-- **🟡 2FA Hetzner** — attivare; recovery code OFFLINE prima di confermare. Azione: umana.
-- **🟡 /root/.ssh/authorized_keys sul VPS** — ispezionare residuo; `PermitRootLogin no` mitiga, non chiude. Azione: umana.
-- **🟡 Chiave gas-vps in Hetzner Security → SSH Keys** — decidere se rimuovere: ogni server nuovo creato dal progetto eredita quella chiave. Azione: umana.
+> **VPS Hetzner PERSO il 2026-09-14** per mancato pagamento. Dati `.gas_memory.db`, `.gas_history.json`, `.env.prod` cancellati irrevocabilmente dal provider. S1/S1b eseguiti sul vecchio VPS (2026-07-04) non sono più validi. **Tutto da rifare da ZERO su server nuovo.**
+>
+> **Decisione operatore (2026-09-21): VPS RIMANDATO.** Prima il cervello (FASE 2.6 + auto-apprendimento + GAS in italiano), poi un VPS potente, blindato dal giorno 1.
+
+**Quando si riprenderà, i prerequisiti NON NEGOZIABILI sono (lezione VPS perso):**
+- Pagamento verificato + alert fatturazione attivo il giorno 1.
+- Backup off-server automatico attivo il giorno 1 (`.gas_memory.db` + `.gas_history.json` su host esterno).
+- 2FA Hetzner attivo con recovery code OFFLINE.
+- Deploy da ZERO: creare nuovo utente runtime non-root, nuova unit systemd, nuove chiavi API ruotate.
+
+**Obiettivi invariati per il deploy futuro:**
+- VPS h24 con trigger temporali (launchd/systemd) per Jarvis notturno.
+- Backup OFF-MACHINE della memoria (anti-disastro disco).
+- `gas telegram` come daemon.
+- Taratura `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
+- Process management + self-healing: systemd `Restart=always` + watchdog Telegram.
+- **🔴 Bot trading su VPS dedicato PRIMA dei fondi reali** — standing security gate: chiavi exchange + AI che esegue codice sulla stessa box = superficie di esfiltrazione. Non è "un giorno", è una precondizione.
 
 ### 💡 Idee da valutare (NON prioritarie)
 
 - **Telegram dual-control: GAS + Claude Code insieme** — Il bot `gas telegram` esiste già (FASE 2, item #2). Il passo successivo è espandere il bridge in modo che dal telefono si possano inviare comandi sia a GAS runtime (già funzionante) sia a Claude Code (sessione di sviluppo): es. "controlla CI", "scrivi feature X", "dimmi lo stato del progetto". I due agenti si coordinano: GAS risponde sullo stato runtime, Claude Code agisce sul codice. Architettura da definire (webhook condiviso vs. due bot distinti vs. un orchestratore GAS che inltra a CC). Prerequisito: VPS h24 (FASE 5) per tenere tutto sempre attivo. Dipende da bridge Claude Code → canale Telegram (da esplorare: Claude Code CLI in background su VPS con stdin/stdout rediretto al bot).
 
-- **Video learning — GAS studia e apprende da video** — Capacità di "leggere" un video (YouTube URL o file locale): trascrizione automatica (Whisper STT già in roadmap FASE 3, o API Gemini multimodale che accetta video direttamente), estrazione di concetti chiave, salvataggio compresso nel diario SQLite (memoria long-term FASE 2). GAS può poi rispondere a domande basandosi sui video studiati via FTS/semantico. Use case: studiare webinar di marketing, tutorial tecnici, content dei competitor. Da valutare: Gemini 1.5/2.0 con context video nativo vs. pipeline Whisper + LLM testuale (tradeoff costo/qualità). Convergenza naturale con FASE 3 (Whisper già pianificato) e FASE 2 (memoria già presente).
+- **Video learning — GAS studia e apprende da video** — Capacità di "leggere" un video (YouTube URL o file locale): trascrizione automatica (Whisper STT già in roadmap FASE 3, o API Gemini multimodale che accetta video direttamente), estrazione di concetti chiave, salvataggio compresso nel diario SQLite (memoria long-term FASE 2). GAS può poi rispondere a domande basandosi sui video studiati via FTS/semantico. Use case: studiare webinar di marketing, tutorial tecnici, content dei competitor. Da valutare: Gemini 1.5/2.0 con context video nativo vs. pipeline Whisper + LLM testuale (tradeoff costo/qualità). Convergenza naturale con FASE 3 (Whisper già completato ✅) e FASE 2 (memoria già presente).
 
 - Valutare utilizzo o integrazione openclaw (agente IA esterno). NB: prima verificare licenza, dipendenze, qualità e superficie di sicurezza; mai copia-incolla nel motore. Idea parcheggiata, nessun impegno.
 
-- **Automazione totale di Gas sulla macchina locale (co-work autonomo, orario schedulato)** — Task semplice: aprire un BRIEFING dedicato per trovare un metodo/soluzione (app, sito, servizio — la forma non conta) che permetta a Gas di controllare la macchina locale in autonomia, partendo da solo a un orario prestabilito della giornata, ma SEMPRE e SOLO col consenso esplicito dell'utente e con le dovute protezioni dai rischi (azioni irreversibili, superficie di controllo macchina). Converge con FASE 4.5 (Task Scheduler Autonomo, oggi solo VPS) e con i vincoli di sicurezza già registrati per Claude Dispatch (HITL, "chiedi prima di agire", computer-use OFF di default): qui il salto in più è il controllo diretto della macchina locale da parte di Gas stesso, non solo del filesystem del repo. Nessuna soluzione decisa: da esplorare e decidere insieme dopo il briefing.
+- **Automazione totale di Gas sulla macchina locale (co-work autonomo, orario schedulato)** — Task semplice: aprire un BRIEFING dedicato per trovare un metodo/soluzione (app, sito, servizio — la forma non conta) che permetta a Gas di controllare la macchina locale in autonomia, partendo da solo a un orario prestabilito della giornata, ma SEMPRE e SOLO col consenso esplicito dell'utente e con le dovute protezioni dai rischi (azioni irreversibili, superficie di controllo macchina). Converge con FASE 4.5 (Task Scheduler Autonomo) e con i vincoli di sicurezza già registrati per Claude Dispatch (HITL, "chiedi prima di agire", computer-use OFF di default): qui il salto in più è il controllo diretto della macchina locale da parte di Gas stesso, non solo del filesystem del repo. Nessuna soluzione decisa: da esplorare e decidere insieme dopo il briefing.
 
 ### 🗣️ DA DISCUTERE (delta da roadmap alternativa — da valutare se/quando fare)
 - **`gas --brain <name>`** — flag CLI esplicito per scegliere il brain sul singolo comando (es. `gas --brain gemini "analizza log"`), con ruoli distinti: Claude = Architetto (strategia/approvazione), Gemini = Memoria (contesti fino a 1-2M token), DeepSeek = Operaio (alta frequenza, basso costo). Oggi la cascata è automatica; questo aggiunge controllo umano diretto.
@@ -233,8 +261,7 @@ Senza questa fase il VPS è solo remote hosting: Gas risponde ma non *agisce* di
 
 ### 🧬 Secondo cervello personale — "Jarvis cognitivo" (MOLTO IMPORTANTE, NON prioritario)
 
-Posizione: DOPO FASE 3 (voce) + deploy VPS h24. Senza voce non ci si parla comodo,
-senza VPS h24 non vive. Prima si chiude la roadmap principale.
+Posizione: DOPO FASE 3 (voce) ✅ + deploy VPS h24. Senza VPS h24 non vive. Prima si chiude la roadmap principale.
 
 Obiettivo — MISTO, entrambe le parti richieste esplicitamente da Gas:
 1. Magazzino personale — cattura/organizza/recupera conoscenze, note, decisioni,
@@ -249,7 +276,7 @@ personale, segmentazione, iniezione d'identità.
 
 NUOVO (da costruire): ingestione del corpus personale (note/decisioni/video/
 ragionamenti) — converge con *video learning* (ingest→trascrizione→memoria) e
-*FASE 3 voce* (interfaccia a mani libere): non è una deviazione, è la sintesi di
+*FASE 3 voce* ✅ (interfaccia a mani libere): non è una deviazione, è la sintesi di
 pezzi già in roadmap sotto la bandiera "Jarvis personale". Più segmentazione
 memoria e iniezione stile/identità nel system prompt.
 
@@ -279,7 +306,7 @@ CAVEAT VINCOLANTI (non negoziabili):
   human-gated, coerente con "le operazioni irreversibili non stanno in mano al
   modello".
 
-Dipendenze: FASE 2 (memoria, fatta) + video learning + FASE 3 voce + FASE 5 VPS h24.
+Dipendenze: FASE 2 (memoria, fatta) + video learning + FASE 3 voce ✅ + FASE 5 VPS h24.
 
 ### 🅿️ PARK (parcheggiati — nessun impegno, da rivalutare al momento giusto)
 - **Mirage (strukto-ai/mirage) — VFS unificato per AI agents**: valutare a FASE 4 (integrazioni marketing multi-servizio) come alternativa a N SDK separati. Progetto nato 2026-05-06, ~3.3k stelle a luglio 2026, open source, SDK Python in-process (shell bash custom, no subshell host, vede solo i mount). Condizioni vincolanti se mai adottato: mount READ-ONLY + allowlist risorse, MAI write verso cloud in autopilot, incompatibile con coabitazione bot trading (superficie esfiltrazione). Fonte: reel + verifica web 2026-07-08.
