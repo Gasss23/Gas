@@ -1,17 +1,18 @@
-# Diff sessione — 2026-09-21
+# DIFF SESSIONE — 2026-09-21 — Sonda Autonomia GAS cap#1
 
-Sessione: allineamento canonici (suite reale macOS + sonda E2E lang-rule)
+> Questo file si riscrive a ogni sessione. La storia completa sta in git.
 
 ## File toccati
 
 | File | Cosa è cambiato e perché |
-|---|---|
-| `reports/stato_progetto.md` | Aggiornato contatore suite da "299 PASS WSL 2026-08-29" a numeri reali macOS 2026-09-21 (294+5 kernel, 132 pytest); aggiunto esito sonda E2E Groq con risposta verbatim |
-| `reports/ultimo_report.md` | Report completo dei 3 passi: PASSO 1 (suite reale), PASSO 2 (sonda E2E), PASSO 3 (analisi branch fantasma) |
-| `reports/handoff.md` | Dossier di fine sessione |
-| `reports/diff_sessione.md` | Questo file — diff della sessione corrente |
+|------|--------------------------|
+| `reports/ultimo_report.md` | Riscritto con sonda completa del sottosistema memoria/conoscenza + piano a fette K0-K4 + rischi R-K1…R-K6 per la capacità "studia/comprendi". |
+| `reports/stato_progetto.md` | Aggiunto finding sonda `🔵 SONDA Autonomia #1` in cima alla sezione Finding aperti. |
+| `reports/handoff.md` | Dossier fine sessione: §0 PR #94, §1 fette, §2 diff-stat, §3 log, §4-§7 sonda-only. |
+| `reports/diff_sessione.md` | Questo file — fotografia della sessione. |
 
-## Nessuna modifica al motore
+## Note
 
-gas.py, gas_identity.md, brains/, modules/, tests/ — nessun file toccato.
-Stop gate rispettato.
+- Zero file motore toccati (stop gate rispettato).
+- `.gas_vectors.db` non esiste su questa macchina (non creato, non modificato).
+- `.gas_memory.db` ispezionato in sola lettura (nessuna scrittura).

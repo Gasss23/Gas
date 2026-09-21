@@ -1,39 +1,43 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-21 — Allineamento canonici: suite reale macOS + sonda E2E lang-rule
+**Sessione:** 2026-09-21 — Sonda Autonomia GAS, Capacità #1 "Studia/Comprendi"
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #93 (https://github.com/Gasss23/Gas/pull/93).
-2. Decisione sul branch `docs/reverifica-lang-rule`: il branch contiene solo 4 file doc di sessione (reports/), nessun codice motore. Da scartare (chiudere/cancellare) — azione umana (R6).
+1. Merge della PR #94 (https://github.com/Gasss23/Gas/pull/94).
+
+Decisioni di merito richieste prima di procedere all'implementazione (dettaglio in `reports/ultimo_report.md` §6):
+- Dove vive la prima fonte fidata (suggerimento: `knowledge/sources.yaml` in git).
+- Granularità chunk (default proposto ~500 token).
+- Policy versioning (keep 1 vs keep N).
+- Sequenza fette: K2 standalone prima di K3, o K2+K3 in una sessione?
+- Attivare `GAS_VECTORS=1` sul Mac dev prima di iniziare K1/K2.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Suite kernel reale (macOS, 2026-09-21)**: `FATTA`  
-  Eseguita con `python tests/test_unit_kernel.py`. 294 PASS, 5 FAIL bwrap (F-mac-1). Più `pytest tests/ --ignore=test_unit_kernel.py` → 132 PASS. Nessuna regressione.
-
-- **Fetta 2 — Sonda E2E lingua italiana (input inglese)**: `FATTA`  
-  Gemini a quota (free tier 20/day). Groq (gpt-oss-120b) ha risposto in italiano dal primo messaggio. Risposta verbatim nel report.
-
-- **Fetta 3 — Analisi branch `docs/reverifica-lang-rule`**: `FATTA`  
-  Solo doc di sessione (4 file reports/). Nessun contenuto non recuperabile. Decisione cancellazione all'operatore.
-
-- **Motore**: `SALTATA` — Stop gate rispettato, nessuna modifica a gas.py/gas_identity.md/brains/modules/tests/.
+- **Sonda prerequisito — verifica revisore.md**: `FATTA` — `.claude/agents/revisore.md` presente.
+- **Sonda 1 — ispezione `.gas_memory.db`**: `FATTA` — schema completo, 20 righe diario (tutte `calcola` da test), contatti vuoti, FTS5 attivo.
+- **Sonda 2 — ispezione `.gas_vectors.db`**: `FATTA` — file NON esiste. Modulo `vectors.py` implementato, opt-in via `GAS_VECTORS=1`.
+- **Sonda 3 — ricerca RAG/ingest esterno**: `FATTA` — confermata assenza totale. Nessun percorso ingest, nessuna tabella `knowledge`, nessuna lista fonti.
+- **Sonda 4 — punto di innesto**: `FATTA` — identificato: `source='knowledge'` nel sidecar vettoriale, alimentato da ingestor off-loop.
+- **Piano a fette K0-K4**: `FATTA` — proposto a parole in `reports/ultimo_report.md` §3.
+- **Rischi ed edge case**: `FATTA` — R-K1 … R-K6 in §4 del report.
+- **STOP GATE — zero codice scritto**: `RISPETTATO` — zero file motore toccati.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-reports/diff_sessione.md  |  25 +++++------
- reports/handoff.md        |  95 ++++++++++++++++++++++++++---------------------------
- reports/stato_progetto.md |   6 +--
- reports/ultimo_report.md  | 106 ++++++++++++++++++++++++++++++++++++++++------
- 4 files changed, 146 insertions(+), 86 deletions(-)
+ reports/diff_sessione.md  |  21 +++--
+ reports/handoff.md        |  85 ++++++++---------
+ reports/stato_progetto.md |   2 +
+ reports/ultimo_report.md  | 229 ++++++++++++++++++++++++++++++++--------------
+ 4 files changed, 209 insertions(+), 128 deletions(-)
 ```
 
 ---
@@ -41,62 +45,45 @@ reports/diff_sessione.md  |  25 +++++------
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e7164e4 docs(allineamento): suite reale macOS + sonda E2E lang-rule PASS
-935957d docs(fine-task): handoff re-verifica lang-rule-italian 2026-09-21
-ac75417 docs(re-verifica): lang-rule-italian confermata — STOP GATE attivo, 3 test PASS
+f8f45b3 docs(sonda): autonomia cap#1 studia/comprendi — sonda architetturale + piano a fette
 ```
 
-*(Il commit di fine-task che contiene questo file non compare qui per costruzione)*
+NB: il commit di fine-task che contiene questo file non compare nel log, per costruzione.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore, revisore non richiesto.
+nessun diff motore, revisore non richiesto.
 
-Nessun file del motore (gas.py, brains/, modules/, tests/) toccato in questa sessione.
+Nessun file in `gas.py`, `brains/`, `modules/`, `tests/` è stato toccato in questa sessione.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/. Suite eseguita come misura, non come verifica post-modifica.
+Nessuna modifica a `gas.py`/`tests/` in questa sessione.
 
-**Risultato misura (stato reale macOS 2026-09-21):**
-
-```
-=== RIEPILOGO: 294 PASS, 5 FAIL ===
-  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed)
-  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
-  FAIL: T12a comando in allowlist (wc) eseguito, output reale
-  FAIL: T12c pipe non interpretata (niente shell)
-  FAIL: T12e command substitution non eseguita (resta letterale)
-```
-
-I 5 FAIL sono fuori scope: sono F-mac-1 (bwrap non disponibile su macOS), già documentato. Su Linux/WSL tutti 299 PASS.
-
-Pytest altri file: **132 PASS, 0 FAIL**.
+Suite precedente confermata in `reports/stato_progetto.md`: 294 PASS macOS kernel + 132 PASS altri test + 14 PASS hook suite (2026-09-21).
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed  success  docs(allineamento): suite reale macOS + sonda E2E lang-rule PASS  CI  docs/reverifica-lang-rule  push  35601116039  46s  2026-09-21T12:42:41Z
-completed  success  docs(fine-task): handoff re-verifica lang-rule-italian 2026-09-21  CI  docs/reverifica-lang-rule  push  35597967629  46s  2026-09-21T12:10:07Z
-completed  success  docs(re-verifica): lang-rule-italian confermata — STOP GATE attivo, 3…  CI  docs/reverifica-lang-rule  push  35597683730  1m32s  2026-09-21T12:07:08Z
+completed	success	docs(sonda): autonomia cap#1 studia/comprendi — sonda architetturale …	CI	sonda/autonomia-studia-cap1	push	35618104536	1m2s	2026-09-21T15:19:03Z
+completed	success	Merge pull request #93 from Gasss23/docs/reverifica-lang-rule	CI	main	push	35610842651	46s	2026-09-21T14:14:43Z
+completed	success	docs(fine-task): handoff allineamento canonici lang-rule 2026-09-21	CI	docs/reverifica-lang-rule	push	35601409212	47s	2026-09-21T12:45:39Z
 ```
 
-**Mappatura commit→run**:
-- `ac75417` (docs/re-verifica): run CI `35597683730` — **completed success** ✅
-- `935957d` (docs/fine-task): run CI `35597967629` — **completed success** ✅
-- `e7164e4` (docs/allineamento): run CI `35601116039` — **completed success** ✅
-- commit fine-task (questo file): run non ancora disponibile alla scrittura dell'handoff
+**Mappatura commit→run:**
+- `f8f45b3` (docs(sonda)…): run `35618104536` — **SUCCESS** ✅. Testato (push branch sonda/autonomia-studia-cap1).
+- Il commit di fine-task (handoff+diff_sessione): **nessuna run su questo SHA** al momento della scrittura dell'handoff — run non ancora disponibile alla scrittura dell'handoff. Il diff è solo report/doc (nessun motore toccato).
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova riserva emersa in questa sessione.
+Nessuna. Sessione sonda-only, zero codice scritto, zero commit motore.
 
-Riserve preesistenti invariate: F-mac-1 (bwrap macOS), F-mac-2 (SyntaxWarning regex), F-mac-3 (win_mic_test.py collection), R-finegat-1, R-finegat-2 — dettaglio in stato_progetto.md §Finding aperti.
+Decisioni umane richieste elencate in §0 e in `reports/ultimo_report.md` §6.
