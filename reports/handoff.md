@@ -28,10 +28,11 @@
  .claude/agents/memoria_revisore.md |   1 +
  .claude/hooks/promemoria_end.sh    |  47 ++++---
  reports/diff_sessione.md           |  37 +++---
- reports/handoff.md                 | 129 +++++++++++---------
+ reports/handoff.md                 | 137 +++++++++++++--------
+ reports/stato_progetto.md          |   5 +-
  reports/ultimo_report.md           | 243 +++++++++++--------------------------
  tests/test_unit_hooks.py           | 151 +++++++++++++++++++----
- 6 files changed, 324 insertions(+), 284 deletions(-)
+ 7 files changed, 344 insertions(+), 277 deletions(-)
 ```
 
 ---
@@ -39,13 +40,16 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+024149c docs(stato): aggiorna stato_progetto per fix promemoria_end 2026-09-23
+9202b8e docs(fine-task): handoff aggiornato §0 §6 — PR #95, CI mappata
+64f0df7 docs(fine-task): handoff FIX promemoria_end blocco JSON 2026-09-23
 176c25d fix(hook): promemoria_end — blocco JSON Stop hook con logica handoff fresco
 689cb36 chore(revisore): memoria review #101 — APPROVATO
 906b5dd docs(fine-task): handoff sonda fine-task incostante — PR #95
 64d6528 docs(sonda): report sola lettura fine-task incostante — findings F1-F4
 ```
 
-NB: il commit di fine-task (64f0df7) non compare per costruzione — viene aggiunto dopo.
+NB: il commit di fine-task che contiene questo file non compare per costruzione.
 
 ---
 
@@ -116,18 +120,22 @@ tests/test_unit_hooks.py::TestPromemoriaEnd::test_prom_7_non_git_dir_exit_0 PASS
 ## §6 STATO CI
 
 ```
-in_progress		docs(fine-task): handoff FIX promemoria_end blocco JSON 2026-09-23	CI	sonda/fine-task-recon-2026-09-23	push	35792534936	8s	2026-09-22T22:28:08Z
-completed	success	docs(fine-task): handoff sonda fine-task incostante — PR #95	CI	sonda/fine-task-recon-2026-09-23	push	35791093450	47s	2026-09-22T22:12:28Z
-completed	success	docs(sonda): report sola lettura fine-task incostante — findings F1-F4	CI	sonda/fine-task-recon-2026-09-23	push	35791053455	51s	2026-09-22T22:12:03Z
+in_progress		docs(stato): aggiorna stato_progetto per fix promemoria_end 2026-09-23	CI	sonda/fine-task-recon-2026-09-23	push	35792734510	17s	2026-09-22T22:30:21Z
+completed	success	docs(fine-task): handoff aggiornato §0 §6 — PR #95, CI mappata	CI	sonda/fine-task-recon-2026-09-23	push	35792660666	53s	2026-09-22T22:29:32Z
+completed	failure	docs(fine-task): handoff FIX promemoria_end blocco JSON 2026-09-23	CI	sonda/fine-task-recon-2026-09-23	push	35792534936	48s	2026-09-22T22:28:08Z
 ```
 
 **Mappatura commit → run:**
 
-- `64d6528` docs(sonda): report sola lettura — run 35791053455 (completed success, push precedente)
-- `906b5dd` docs(fine-task): handoff incostante PR #95 — run 35791093450 (completed success, push precedente)
-- `689cb36` chore(revisore): memoria review #101 — nessuna run propria; incluso nel tree pushato con 176c25d e 64f0df7
+- `64d6528` docs(sonda): findings F1-F4 — nessuna run propria; incluso in push precedente sessione sonda (run non rilevante)
+- `906b5dd` docs(fine-task): handoff PR #95 — nessuna run propria in questa sessione; push precedente
+- `689cb36` chore(revisore): memoria review #101 — nessuna run propria; push insieme a 176c25d e 64f0df7
 - `176c25d` fix(hook): promemoria_end blocco JSON — nessuna run propria; incluso nel tree pushato con 64f0df7
-- `64f0df7` docs(fine-task): handoff FIX promemoria_end — run 35792534936 (in_progress al momento della scrittura; testa il tree che include 689cb36 + 176c25d)
+- `64f0df7` docs(fine-task): handoff FIX (primo) — run 35792534936 **failure** (handoff §2 ancora placeholder in questo commit, check_handoff correttamente fallisce sul SET DICHIARATO vuoto)
+- `9202b8e` docs(fine-task): handoff aggiornato §0 §6 — run 35792660666 **completed success** (handoff con §2 completo)
+- `024149c` docs(stato): aggiorna stato_progetto — run 35792734510 **in_progress al momento della scrittura**
+
+**Nota sul failure 35792534936**: il check_handoff ha rilevato SET DICHIARATO = 0 file vs SET REALE = 6 file. Causa: commit 64f0df7 conteneva il handoff con §2 ancora placeholder. Comportamento ATTESO e CORRETTO del check: il fallimento documenta una violazione reale (handoff incompleto al momento del push). La run successiva (35792660666) ha correttamente superato il check con §2 compilato.
 
 ---
 
@@ -136,3 +144,5 @@ completed	success	docs(sonda): report sola lettura fine-task incostante — find
 Nessuna riserva dal revisore #101.
 
 **Finding F3 (partenza su main) non in scope**: se si vuole affrontare, richiede sessione dedicata con decisione umana su strategia.
+
+**Nota processo**: commettere `stato_progetto.md` separatamente dopo il handoff commit ha causato un secondo ciclo di /fine-task. Da evitare: includere sempre `stato_progetto.md` nello stesso stage+commit dei report.
