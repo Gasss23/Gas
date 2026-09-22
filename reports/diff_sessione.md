@@ -1,18 +1,25 @@
-# Diff sessione — 2026-09-22/23
-## Autonomia #1 "Studia/Comprendi" — K0+K1+K2
+# Diff sessione — 2026-09-23
+## FIX promemoria_end.sh — blocco JSON Stop hook
 
-File toccati (BASE = 060beae, merge-base origin/main):
+Questa sessione ha implementato la FETTA 1 del fix `/fine-task` automatico.
 
-| File | Cambio | Motivo |
-|------|--------|--------|
-| `knowledge/sources.yaml` | +21 righe (nuovo) | K0: catalogo fonti fidate YAML |
-| `knowledge/test_source.txt` | +38 righe (nuovo) | K0: fonte test locale per validare pipeline |
-| `tools/ingest_knowledge.py` | +268 righe (nuovo) | K1+K2: schema .gas_knowledge.db + CLI ingest idempotente |
-| `.gitignore` | +4 righe | Aggiunta esclusione `.gas_knowledge.db` + WAL/SHM |
-| `requirements.txt` | +1 riga | Aggiunta `pyyaml>=6.0` (era già installata nel .venv) |
-| `reports/stato_progetto.md` | +3 righe | Aggiunta entry K0+K1+K2 completati |
-| `reports/ultimo_report.md` | riscritto | Report task + struttura fine-task (DECISIONI, fette FATTA/DEFERITA) |
-| `reports/handoff.md` | riscritto | Handoff sessione corrente con CI failure documentata |
-| `reports/diff_sessione.md` | riscritto | Questo file |
+---
 
-Nota: `.gas_knowledge.db` creato localmente dal test ma escluso dal repo via `.gitignore`.
+## File toccati
+
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `.claude/hooks/promemoria_end.sh` | Riscrittura da soft-warning stderr a blocco JSON stdout; aggiunta logica handoff fresco (ultimo commit non-chore), lettura `stop_hook_active` da stdin, filtro `chore(scrivi-rep):` da SESSION_COMMITS, fail-open in tutti i percorsi |
+| `tests/test_unit_hooks.py` | 9 test aggiornati/aggiunti per nuova semantica: `_run_promemoria` ora passa stdin JSON, helper `_is_blocked`, test T-prom-1..7 + 3b + 3c su repo git reali |
+| `.claude/agents/memoria_revisore.md` | Riga #101 aggiunta dal revisore (APPROVATO) |
+| `reports/ultimo_report.md` | Report di fine task (questa sessione) |
+| `reports/handoff.md` | Handoff di fine sessione (questa sessione) |
+| `reports/diff_sessione.md` | Questo file |
+
+---
+
+## Note
+
+- Suite 34/34 green dopo le modifiche.
+- Test e2e manuale confermato su branch temporaneo (mai pushato, eliminato).
+- Revisore #101: APPROVATO senza riserve.
