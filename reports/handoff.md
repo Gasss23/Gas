@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-_[da completare dopo git push — vedi procedura §0]_
+1. Merge della PR #95 (https://github.com/Gasss23/Gas/pull/95).
 
 ---
 
@@ -24,13 +24,28 @@ _[da completare dopo git push — vedi procedura §0]_
 
 ## §2 GIT DIFF --STAT (sessione)
 
-_[da completare al passo 4bis con `git diff --cached --stat ${BASE}`]_
+```
+ .claude/agents/memoria_revisore.md |   1 +
+ .claude/hooks/promemoria_end.sh    |  47 ++++---
+ reports/diff_sessione.md           |  37 +++---
+ reports/handoff.md                 | 129 +++++++++++---------
+ reports/ultimo_report.md           | 243 +++++++++++--------------------------
+ tests/test_unit_hooks.py           | 151 +++++++++++++++++++----
+ 6 files changed, 324 insertions(+), 284 deletions(-)
+```
 
 ---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
-_[da completare al passo 4bis]_
+```
+176c25d fix(hook): promemoria_end — blocco JSON Stop hook con logica handoff fresco
+689cb36 chore(revisore): memoria review #101 — APPROVATO
+906b5dd docs(fine-task): handoff sonda fine-task incostante — PR #95
+64d6528 docs(sonda): report sola lettura fine-task incostante — findings F1-F4
+```
+
+NB: il commit di fine-task (64f0df7) non compare per costruzione — viene aggiunto dopo.
 
 ---
 
@@ -76,8 +91,7 @@ Testo integrale del verdetto:
 
 `tests/test_unit_hooks.py` modificato (non gas.py/brains/modules/).
 
-**Prima:** 25 test in `TestPromemoriaEnd` (5 test, alcuni ormai obsoleti con stderr semantics).
-**Dopo:** 34 test totali — 9 test in `TestPromemoriaEnd`, tutti green.
+**Prima → Dopo:** 25 test → 34 test totali; classe `TestPromemoriaEnd` da 5 a 9 test.
 
 ```
 ============================= test session starts ==============================
@@ -101,7 +115,19 @@ tests/test_unit_hooks.py::TestPromemoriaEnd::test_prom_7_non_git_dir_exit_0 PASS
 
 ## §6 STATO CI
 
-_[da completare al passo 4bis]_
+```
+in_progress		docs(fine-task): handoff FIX promemoria_end blocco JSON 2026-09-23	CI	sonda/fine-task-recon-2026-09-23	push	35792534936	8s	2026-09-22T22:28:08Z
+completed	success	docs(fine-task): handoff sonda fine-task incostante — PR #95	CI	sonda/fine-task-recon-2026-09-23	push	35791093450	47s	2026-09-22T22:12:28Z
+completed	success	docs(sonda): report sola lettura fine-task incostante — findings F1-F4	CI	sonda/fine-task-recon-2026-09-23	push	35791053455	51s	2026-09-22T22:12:03Z
+```
+
+**Mappatura commit → run:**
+
+- `64d6528` docs(sonda): report sola lettura — run 35791053455 (completed success, push precedente)
+- `906b5dd` docs(fine-task): handoff incostante PR #95 — run 35791093450 (completed success, push precedente)
+- `689cb36` chore(revisore): memoria review #101 — nessuna run propria; incluso nel tree pushato con 176c25d e 64f0df7
+- `176c25d` fix(hook): promemoria_end blocco JSON — nessuna run propria; incluso nel tree pushato con 64f0df7
+- `64f0df7` docs(fine-task): handoff FIX promemoria_end — run 35792534936 (in_progress al momento della scrittura; testa il tree che include 689cb36 + 176c25d)
 
 ---
 
