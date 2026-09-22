@@ -6,7 +6,13 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-[da completare dopo git push — vedi procedura §0]
+1. Merge della PR #95 (https://github.com/Gasss23/Gas/pull/95).
+
+**Azioni tecniche aperte (findings F1-F4):**
+- **F3** (principale): sessioni che partono su `main` → fine-task §0 bloccante. Valutare aggiunta guard in SessionStart o rinforzo regole R2/R3.
+- **F1**: `chmod +x .claude/hooks/promemoria_end.sh` (cosmetic, non bloccante).
+- **F4**: PR #89 aveva commit post-fine-task senza ri-esecuzione — registrato come recidiva.
+- **F2**: nessun hook SubagentStop — info, nessuna azione obbligatoria.
 
 ---
 
