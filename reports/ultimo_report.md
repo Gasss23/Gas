@@ -1,7 +1,25 @@
 # Autonomia GAS — Capacità #1 "Studia/Comprendi" — K0+K1+K2
 > Task: prima fetta di codice (knowledge store + CLI ingest off-loop)
-> Data: 2026-09-22
+> Data: 2026-09-22 → 2026-09-23
 > Branch: sonda/autonomia-studia-cap1
+
+---
+
+## DECISIONI UMANE RICHIESTE
+
+1. **Merge della PR** (vedere §0 di handoff.md per numero e URL esatti).
+2. **Prima fonte reale**: approvare una fonte reale in `knowledge/sources.yaml` (commit umano esplicito) prima di procedere con K3.
+3. **K3 (wiring `ricorda`)**: decidere se procedere nella stessa sessione o aprire un task separato — tocca `gas.py`, richiede gate revisore.
+
+---
+
+## ESITO FETTE
+
+- **K0 — `knowledge/sources.yaml`**: FATTA — catalogo fonti creato, una fonte test locale
+- **K1 — schema `.gas_knowledge.db`**: FATTA — DB separato con partial unique index versioning
+- **K2 — `tools/ingest_knowledge.py`**: FATTA — CLI off-loop, idempotente, versioning superseded
+- **K3 — wiring `ricorda` in gas.py**: DEFERITA — VIETATA in questo scope (tocca il motore)
+- **K4 — protezioni anti-prompt-injection**: DEFERITA — fuori scope esplicito
 
 ---
 
