@@ -1,0 +1,21 @@
+# GAS — Knowledge Source Catalog
+# IMPORTANTE: solo un commit umano può aggiungere/rimuovere/modificare entry.
+# Questo file è la fonte unica di autorità su cosa Gas è autorizzato a studiare.
+#
+# Campi per ogni entry:
+#   nome       : slug stabile (usato come source_name nel DB)
+#   tipo       : file | url  (v1: solo "file" supportato da ingest_knowledge.py)
+#   uri        : path relativo al repo (per tipo=file) o URL (per tipo=url)
+#   descrizione: testo leggibile per l'operatore
+#   approvata_il: data ISO dell'approvazione umana
+#   chunk_max  : numero massimo di chunk ingeribili da questa fonte (protezione anti-crescita)
+#   attiva     : true/false — false = non re-ingerita, ma i chunk esistenti non sono cancellati
+
+sources:
+  - nome: test_local
+    tipo: file
+    uri: knowledge/test_source.txt
+    descrizione: "Fonte di test locale per validare il pipeline K0-K2 (non una fonte reale)"
+    approvata_il: "2026-09-22"
+    chunk_max: 10
+    attiva: true
