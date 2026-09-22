@@ -28,3 +28,7 @@ local_cache/
 .fastembed_cache/
 # Log di contabilità token: file di runtime, non entra nel repo (R30-1)
 .gas_tokens.jsonl
+# Knowledge store: DB separato (non diario), generato da ingest_knowledge.py
+.gas_knowledge.db
+.gas_knowledge.db-wal
+.gas_knowledge.db-shm

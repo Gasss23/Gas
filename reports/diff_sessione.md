@@ -1,17 +1,18 @@
-# Diff sessione — 2026-09-21
+# Diff sessione — 2026-09-22/23
+## Autonomia #1 "Studia/Comprendi" — K0+K1+K2
 
-Sessione: allineamento canonici (suite reale macOS + sonda E2E lang-rule)
+File toccati (BASE = 060beae, merge-base origin/main):
 
-## File toccati
+| File | Cambio | Motivo |
+|------|--------|--------|
+| `knowledge/sources.yaml` | +21 righe (nuovo) | K0: catalogo fonti fidate YAML |
+| `knowledge/test_source.txt` | +38 righe (nuovo) | K0: fonte test locale per validare pipeline |
+| `tools/ingest_knowledge.py` | +268 righe (nuovo) | K1+K2: schema .gas_knowledge.db + CLI ingest idempotente |
+| `.gitignore` | +4 righe | Aggiunta esclusione `.gas_knowledge.db` + WAL/SHM |
+| `requirements.txt` | +1 riga | Aggiunta `pyyaml>=6.0` (era già installata nel .venv) |
+| `reports/stato_progetto.md` | +3 righe | Aggiunta entry K0+K1+K2 completati |
+| `reports/ultimo_report.md` | riscritto | Report task + struttura fine-task (DECISIONI, fette FATTA/DEFERITA) |
+| `reports/handoff.md` | riscritto | Handoff sessione corrente con CI failure documentata |
+| `reports/diff_sessione.md` | riscritto | Questo file |
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `reports/stato_progetto.md` | Aggiornato contatore suite da "299 PASS WSL 2026-08-29" a numeri reali macOS 2026-09-21 (294+5 kernel, 132 pytest); aggiunto esito sonda E2E Groq con risposta verbatim |
-| `reports/ultimo_report.md` | Report completo dei 3 passi: PASSO 1 (suite reale), PASSO 2 (sonda E2E), PASSO 3 (analisi branch fantasma) |
-| `reports/handoff.md` | Dossier di fine sessione |
-| `reports/diff_sessione.md` | Questo file — diff della sessione corrente |
-
-## Nessuna modifica al motore
-
-gas.py, gas_identity.md, brains/, modules/, tests/ — nessun file toccato.
-Stop gate rispettato.
+Nota: `.gas_knowledge.db` creato localmente dal test ma escluso dal repo via `.gitignore`.

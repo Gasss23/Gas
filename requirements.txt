@@ -4,3 +4,4 @@ requests==2.34.2
 numpy==2.4.6
 onnxruntime==1.27.0
 fastembed==0.8.0
+pyyaml>=6.0

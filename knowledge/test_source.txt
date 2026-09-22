@@ -1,0 +1,38 @@
+## Principi di autonomia di GAS
+
+GAS è un agente AI personale progettato per operare in modo autonomo su VPS.
+La filosofia centrale è: robustezza prima della potenza. Un sistema che non crasha
+mai vale più di un sistema potente ma instabile.
+
+Il pipeline multi-brain segue una cascata di fallback: Gemini → Groq → OpenRouter
+→ Ollama. Ogni provider viene tentato in ordine; se fallisce, si passa al successivo
+senza interrompere la sessione. Ogni eccezione viene loggata in gas_debug.log.
+
+## Memoria e conoscenza
+
+GAS distingue tre livelli di memoria:
+
+1. **Diario runtime** (.gas_memory.db, tabella `diario`): eventi append-only generati
+   durante le conversazioni. Immutabile: non si cancella, non si modifica. È la
+   "scatola nera" del comportamento passato.
+
+2. **Contatti/CRM** (.gas_memory.db, tabella `contatti`): anagrafica mutabile dei lead
+   e delle persone con cui GAS interagisce. Lo stato del funnel viene aggiornato tramite
+   tool dedicati (`salva_contatto`, `imposta_stato_contatto`).
+
+3. **Knowledge base** (.gas_knowledge.db): conoscenza deliberata ingerita da fonti
+   fidate approvate dall'operatore. Separata dal diario per mantenere isolamento tra
+   memoria runtime e conoscenza statica.
+
+## Guardrail anti-loop
+
+Il ciclo `run_turn` è blindato da un massimo di 10 iterazioni. Superato il limite,
+il turno termina con un messaggio di avviso all'utente. Questo guardrail è la prima
+difesa contro loop infiniti che consumerebbero il budget API.
+
+## Principio "la memoria non mente"
+
+Ogni dato memorizzato porta sempre con sé la propria datazione originale.
+I chunk di conoscenza mostrano `ts_source` (data della fonte), non la data di ingest.
+Se la data della fonte è ignota, si mostra `ts_ingested` con prefisso esplicito.
+Il retrieval mostra sempre l'origine di ogni informazione: [FONTE: nome].
