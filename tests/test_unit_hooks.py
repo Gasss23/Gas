@@ -796,29 +796,42 @@ def _init_bare_origin(work: Path, bare: Path) -> None:
     )
 
 
-def _run_promemoria(repo: Path) -> subprocess.CompletedProcess:
-    """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test."""
+def _run_promemoria(repo: Path, *, stop_hook_active: bool = False) -> subprocess.CompletedProcess:
+    """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test.
+
+    Passa il payload JSON Stop hook su stdin (simula il runtime Claude Code).
+    """
+    payload = json.dumps({"stop_hook_active": stop_hook_active, "transcript_path": ""})
     return subprocess.run(
         ["bash", str(PROMEMORIA_HOOK)],
         env={**os.environ, "CLAUDE_PROJECT_DIR": str(repo)},
+        input=payload,
         capture_output=True,
         text=True,
         cwd=repo,
     )
 
 
-class TestPromemoriaEnd:
-    """T-prom — hook promemoria_end.sh (soft warning, exit 0 in tutti i percorsi)."""
+def _is_blocked(result: subprocess.CompletedProcess) -> bool:
+    """True se l'hook ha emesso una decisione di blocco JSON su stdout."""
+    try:
+        data = json.loads(result.stdout.strip())
+        return data.get("decision") == "block"
+    except (json.JSONDecodeError, AttributeError):
+        return False
 
-    def test_prom_1_no_commits_since_base_no_warning(self, tmp_path):
-        """T-prom-1: nessun commit di sessione → nessun avviso, exit 0."""
+
+class TestPromemoriaEnd:
+    """T-prom — hook promemoria_end.sh (blocco JSON su stdout, exit 0 in tutti i percorsi)."""
+
+    def test_prom_1_no_commits_since_base_no_block(self, tmp_path):
+        """T-prom-1: nessun commit di sessione → nessun blocco, exit 0."""
         work = tmp_path / "work"
         work.mkdir()
         _init_repo(work)
         bare = tmp_path / "origin.git"
         _init_bare_origin(work, bare)
 
-        # Crea branch di sessione senza nuovi commit
         subprocess.run(
             ["git", "checkout", "-b", "feat/test"],
             cwd=work, check=True, capture_output=True,
@@ -828,12 +841,12 @@ class TestPromemoriaEnd:
         assert result.returncode == 0, (
             f"T-prom-1: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
         )
-        assert "ricorda /fine-task" not in result.stderr, (
-            f"T-prom-1: nessun avviso atteso (SESSION_COMMITS=0), stderr={result.stderr!r}"
+        assert not _is_blocked(result), (
+            f"T-prom-1: nessun blocco atteso (SESSION_COMMITS=0), stdout={result.stdout!r}"
         )
 
-    def test_prom_2_commits_no_handoff_warns(self, tmp_path):
-        """T-prom-2: commit di sessione senza handoff aggiornato → avviso su stderr, exit 0."""
+    def test_prom_2_commits_no_handoff_blocks(self, tmp_path):
+        """T-prom-2: commit di sessione senza handoff → blocco JSON su stdout, exit 0."""
         work = tmp_path / "work"
         work.mkdir()
         _init_repo(work)
@@ -850,12 +863,35 @@ class TestPromemoriaEnd:
         assert result.returncode == 0, (
             f"T-prom-2: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
         )
-        assert "ricorda /fine-task" in result.stderr, (
-            f"T-prom-2: atteso avviso su stderr, stderr={result.stderr!r}"
+        assert _is_blocked(result), (
+            f"T-prom-2: atteso blocco JSON su stdout, stdout={result.stdout!r}"
         )
 
-    def test_prom_3_commits_with_handoff_no_warning(self, tmp_path):
-        """T-prom-3: commit con reports/handoff.md aggiornato → nessun avviso, exit 0."""
+    def test_prom_3_handoff_as_last_commit_no_block(self, tmp_path):
+        """T-prom-3: handoff come ultimo commit → nessun blocco, exit 0."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "some_file.txt", "ciao\n", "feat: qualcosa")
+        _make_git_commit(work, "reports/handoff.md", "# handoff\n", "docs: aggiorna handoff")
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-3: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert not _is_blocked(result), (
+            f"T-prom-3: nessun blocco atteso (handoff è ultimo commit), stdout={result.stdout!r}"
+        )
+
+    def test_prom_3b_commits_after_handoff_blocks(self, tmp_path):
+        """T-prom-3b: commit DOPO handoff → blocco (handoff non è più l'ultimo)."""
         work = tmp_path / "work"
         work.mkdir()
         _init_repo(work)
@@ -867,17 +903,42 @@ class TestPromemoriaEnd:
             cwd=work, check=True, capture_output=True,
         )
         _make_git_commit(work, "reports/handoff.md", "# handoff\n", "docs: aggiorna handoff")
+        _make_git_commit(work, "extra.txt", "dopo\n", "feat: commit dopo handoff")
 
         result = _run_promemoria(work)
         assert result.returncode == 0, (
-            f"T-prom-3: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+            f"T-prom-3b: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
         )
-        assert "ricorda /fine-task" not in result.stderr, (
-            f"T-prom-3: nessun avviso atteso con handoff presente, stderr={result.stderr!r}"
+        assert _is_blocked(result), (
+            f"T-prom-3b: atteso blocco (commit dopo handoff), stdout={result.stdout!r}"
+        )
+
+    def test_prom_3c_only_chore_after_handoff_no_block(self, tmp_path):
+        """T-prom-3c: solo chore(scrivi-rep): dopo handoff → nessun blocco."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "reports/handoff.md", "# handoff\n", "docs: aggiorna handoff")
+        _make_git_commit(work, "reports/ultima_risposta.md", "testo\n",
+                         "chore(scrivi-rep): ultima risposta salvata")
+
+        result = _run_promemoria(work)
+        assert result.returncode == 0, (
+            f"T-prom-3c: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert not _is_blocked(result), (
+            f"T-prom-3c: nessun blocco atteso (solo chore dopo handoff), stdout={result.stdout!r}"
         )
 
     def test_prom_4_no_origin_warns_log_exit_0(self, tmp_path):
-        """T-prom-4: nessun remote origin → WARN in gas_debug.log, exit 0."""
+        """T-prom-4: nessun remote origin → WARN in gas_debug.log, exit 0, nessun blocco."""
         work = tmp_path / "work"
         work.mkdir()
         _init_repo(work)
@@ -901,25 +962,73 @@ class TestPromemoriaEnd:
         assert "WARN" in log_file.read_text(), (
             f"T-prom-4: gas_debug.log deve contenere WARN, trovato: {log_file.read_text()!r}"
         )
+        assert not _is_blocked(result), (
+            f"T-prom-4: nessun blocco atteso (fail-open su git error), stdout={result.stdout!r}"
+        )
 
     def test_prom_5_head_on_main_silent_exit_0(self, tmp_path):
-        """T-prom-5: HEAD su main → exit 0 silenzioso, nessun avviso, nessun log."""
+        """T-prom-5: HEAD su main → exit 0 silenzioso, nessun blocco."""
         work = tmp_path / "work"
         work.mkdir()
         _init_repo(work)
         # Resta su main (branch di default dopo _init_repo)
 
-        log_file = work / "gas_debug.log"
         result = _run_promemoria(work)
 
         assert result.returncode == 0, (
             f"T-prom-5: atteso exit 0 su main, got {result.returncode}; stderr={result.stderr!r}"
         )
-        assert "ricorda /fine-task" not in result.stderr, (
-            f"T-prom-5: nessun avviso atteso su main, stderr={result.stderr!r}"
+        assert not _is_blocked(result), (
+            f"T-prom-5: nessun blocco atteso su main, stdout={result.stdout!r}"
         )
         assert result.stdout == "", (
             f"T-prom-5: stdout deve essere vuoto su main, stdout={result.stdout!r}"
+        )
+
+    def test_prom_6_stop_hook_active_true_no_block(self, tmp_path):
+        """T-prom-6: stop_hook_active=true → exit 0 silenzioso (anti-loop)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        # Commit senza handoff: normalmente bloccherebbe
+        _make_git_commit(work, "file.txt", "ciao\n", "feat: commit senza handoff")
+
+        result = _run_promemoria(work, stop_hook_active=True)
+        assert result.returncode == 0, (
+            f"T-prom-6: atteso exit 0 (anti-loop), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert not _is_blocked(result), (
+            f"T-prom-6: nessun blocco con stop_hook_active=true, stdout={result.stdout!r}"
+        )
+        assert result.stdout == "", (
+            f"T-prom-6: stdout deve essere vuoto (anti-loop), stdout={result.stdout!r}"
+        )
+
+    def test_prom_7_non_git_dir_exit_0(self, tmp_path):
+        """T-prom-7: directory non-git → exit 0 silenzioso (fail-open)."""
+        non_git = tmp_path / "not_a_repo"
+        non_git.mkdir()
+
+        result = subprocess.run(
+            ["bash", str(PROMEMORIA_HOOK)],
+            env={**os.environ, "CLAUDE_PROJECT_DIR": str(non_git)},
+            input=json.dumps({"stop_hook_active": False}),
+            capture_output=True,
+            text=True,
+            cwd=non_git,
+        )
+        assert result.returncode == 0, (
+            f"T-prom-7: atteso exit 0 su dir non-git, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert not _is_blocked(result), (
+            f"T-prom-7: nessun blocco atteso su dir non-git, stdout={result.stdout!r}"
         )
 
 
