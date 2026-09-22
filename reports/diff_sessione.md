@@ -1,18 +1,25 @@
 # Diff sessione — 2026-09-23
+## FIX promemoria_end.sh — blocco JSON Stop hook
 
-> Questo file si riscrive a ogni sessione. La storia completa sta in git.
+Questa sessione ha implementato la FETTA 1 del fix `/fine-task` automatico.
 
-## File toccati in questa sessione
+---
 
-(da git diff --cached --stat BASE — vedi §2 handoff.md per output grezzo)
+## File toccati
 
 | File | Cosa è cambiato e perché |
-|---|---|
-| `reports/ultimo_report.md` | Report sonda /fine-task incostante: findings F1-F4, decisioni umane richieste |
-| `reports/handoff.md` | Dossier di fine sessione: §0-§7, diff stat, log, stato CI |
-| `reports/diff_sessione.md` | Questo file — riepilogo sessione corrente |
+|------|--------------------------|
+| `.claude/hooks/promemoria_end.sh` | Riscrittura da soft-warning stderr a blocco JSON stdout; aggiunta logica handoff fresco (ultimo commit non-chore), lettura `stop_hook_active` da stdin, filtro `chore(scrivi-rep):` da SESSION_COMMITS, fail-open in tutti i percorsi |
+| `tests/test_unit_hooks.py` | 9 test aggiornati/aggiunti per nuova semantica: `_run_promemoria` ora passa stdin JSON, helper `_is_blocked`, test T-prom-1..7 + 3b + 3c su repo git reali |
+| `.claude/agents/memoria_revisore.md` | Riga #101 aggiunta dal revisore (APPROVATO) |
+| `reports/ultimo_report.md` | Report di fine task (questa sessione) |
+| `reports/handoff.md` | Handoff di fine sessione (questa sessione) |
+| `reports/diff_sessione.md` | Questo file |
 
-## Nota
+---
 
-Sessione sola lettura — nessuna modifica a file di codice, hook o settings.
-Branch: `sonda/fine-task-recon-2026-09-23` (creato a fine raccolta dati perché la sessione era partita su main — finding F3).
+## Note
+
+- Suite 34/34 green dopo le modifiche.
+- Test e2e manuale confermato su branch temporaneo (mai pushato, eliminato).
+- Revisore #101: APPROVATO senza riserve.

@@ -1,40 +1,87 @@
-# Report — 2026-09-23 — Sonda sola lettura: /fine-task incostante
+# Ultimo Report — 2026-09-23
+## FIX /fine-task automatico — promemoria_end.sh (FETTA 1)
+
+**Data:** 2026-09-23  
+**Branch:** sonda/fine-task-recon-2026-09-23  
+**Commit motore:** 176c25d
+
+---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **F3 — causa principale "fine-task incostante"**: questa sessione è iniziata su `main` (clean, senza branch). La procedura `/fine-task §0` blocca con gate INCOMPLETO quando `BRANCH=main`. Se le sessioni vengono aperte senza creare prima un branch, fine-task non può completare. **Azione**: rafforzare il promemoria di inizio sessione (es. aggiungere a SessionStart un guard che avvisa se si è su main) o aggiornare R2/R3 in stato_progetto.md con regola esplicita.
-
-2. **F4 — PR #89 violazione GATE POST-FINE-TASK**: tre commit post-fine-task (db8b624, c52e58b, e1d5dd8) senza ri-esecuzione di /fine-task. L'handoff di quella sessione non copriva l'ultimo commit. **Azione**: nessun fix retroattivo necessario, ma segnalare come finding ricorrente se si ripete.
-
-3. **F1 — promemoria_end.sh non eseguibile**: il file ha `-rw-r--r--` invece di `-rwxr-xr-x`. Inerte in pratica (chiamato con `bash`), ma va allineato per coerenza: `chmod +x .claude/hooks/promemoria_end.sh`. **Azione**: decidere se correggere ora o lasciare.
+1. **Merge PR** (URL da rilevare al passo 4bis con `gh`).
+2. **F3 (partenza su main) — fuori scope dichiarato**: il passo 0 ha rilevato che il branch corrente era già attivo (sonda/fine-task-recon-2026-09-23); la questione "partenza da main" non è stata affrontata in questa sessione. Se si vuole risolvere F3, richiede una sessione dedicata.
 
 ---
 
-## Scope
+## ESITO FETTE
 
-**Fetta 1 — Raccolta dati verbatim (sola lettura)**: `FATTA`
-- Letti: settings.json, settings.local.json, tutti i 4 hook, fine-task.md, git log -30, gas_debug.log (tail -50 filtrato), claude --version.
-- Nessuna modifica a file di codice, hook o settings.
+### PASSO 0 — Pre-check bloccante
+**FATTO** — `settings.local.json` letto: nessuna chiave `hooks` o `disableAllHooks`. Contenuto verbatim:
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(bwrap --version)",
+      "Bash(claude --version)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git reset *)",
+      "Bash(git grep *)"
+    ]
+  }
+}
+```
+Nessun blocco: procede con FETTA 1.
+
+### Verifica formato hook Stop (prerequisito)
+**FATTO** — Formato confermato dal binario Claude Code 2.1.280:
+- Campo stdin: `stop_hook_active` (bool)
+- Blocco: `{"decision":"block","reason":"..."}` su stdout, exit 0
+- Anti-loop: `stop_hook_active == true` → exit 0 silenzioso
+
+### FETTA 1a — Riscrittura `.claude/hooks/promemoria_end.sh`
+**FATTO** — Comportamento implementato:
+- Legge stdin JSON; se `stop_hook_active == true` → exit 0 (anti-loop)
+- branch main, BASE non calcolabile, qualsiasi errore git → exit 0 + WARN in gas_debug.log (fail-open, no rete)
+- `SESSION_COMMITS` = commit in BASE..HEAD esclusi soggetti `^chore(scrivi-rep):`
+- "Handoff fresco" = ultimo commit non-chore tocca `reports/handoff.md` (via `git diff-tree`)
+- `SESSION_COMMITS > 0` e handoff NON fresco → `{"decision":"block","reason":"..."}` su stdout
+- Altrimenti exit 0 silenzioso
+- `chmod +x` applicato
+
+### FETTA 1b — Test in `tests/test_unit_hooks.py`
+**FATTO** — 9 test aggiornati/aggiunti (classe `TestPromemoriaEnd`):
+- T-prom-1: 0 commit → no blocco
+- T-prom-2: commit senza handoff → blocco JSON su stdout
+- T-prom-3: handoff come ultimo commit → no blocco
+- T-prom-3b: commit dopo handoff → blocco
+- T-prom-3c: solo chore(scrivi-rep) dopo handoff → no blocco
+- T-prom-4: no origin → WARN log, exit 0, no blocco
+- T-prom-5: HEAD su main → silenzioso
+- T-prom-6: `stop_hook_active=true` → exit 0 anti-loop
+- T-prom-7: dir non-git → exit 0
+- Tutti su repo git reali temporanei, nessun mock
+- Suite completa: **34/34 green**
+
+### Test e2e manuale
+**FATTO** — Branch temporaneo `test/promemoria-e2e` creato, commit dummy senza handoff.
+Output hook verificato:
+```
+{"decision":"block","reason":"Commit di sessione non coperti da handoff: esegui /fine-task per intero prima di chiudere."}
+EXIT: 0
+```
+Branch mai pushato, eliminato dopo il test.
+
+### Revisore (gate obbligatorio — diff tocca tests/)
+**FATTO** — Review #101: **APPROVATO** (nessuna riserva).
+
+### Fette F2, F3 (fuori scope dichiarato)
+**SALTATE — fuori scope**: il task copre SOLO FETTA 1 (promemoria_end.sh + test). F2/F3 non esistono in questo scope.
 
 ---
 
-## Esito
+## ANOMALIE
 
-Sonda completata. Dati raccolti verbatim e riportati nella risposta di sessione. Findings principali:
-
-- **F1**: `promemoria_end.sh` non ha bit eseguibile (`-rw-r--r--`). Non blocca (chiamato via `bash`), ma incongruente.
-- **F2**: Nessun hook `SubagentStop` registrato in settings.json. Info.
-- **F3** (causa principale): sessioni che iniziano su `main` → `fine-task §0` bloccante (`BRANCH=main`). Questa sessione stessa ne è esempio: partita su main, creato branch solo a fine raccolta dati.
-- **F4**: PR #89 ha 3 commit post-fine-task senza ri-esecuzione di /fine-task (violazione GATE POST-FINE-TASK).
-
-`gas_debug.log` (tail 50): nessuna traccia di hook/fine-task/Stop nelle ultime 50 righe — le righe visibili sono tutte WARNING di test memoria e provider 402/429 del 2026-09-21.
-
-Claude Code version: `2.1.280`
-
----
-
-## Anomalie riscontrate
-
-- Il `promemoria_end.sh` è datato `12 set 23:33` (stessa data degli altri hook, ma permissions diverse) — probabilmente creato senza `chmod +x` in quella sessione.
-- `settings.local.json` è correttamente ignorato da `.gitignore:11`.
-- Tutti i path hook usano `$CLAUDE_PROJECT_DIR` (non path hardcoded) — corretto.
+- Nessuna anomalia riscontrata.
+- `grep -cv` su input vuoto: verificato che rc=1 viene catturato dall'`||` e la guard `^[0-9]+$` copre edge case; comportamento confermato dal test T-prom-1.
