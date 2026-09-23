@@ -796,20 +796,35 @@ def _init_bare_origin(work: Path, bare: Path) -> None:
     )
 
 
-def _run_promemoria(repo: Path, *, stop_hook_active: bool = False) -> subprocess.CompletedProcess:
+def _run_promemoria(
+    repo: Path, *, stop_hook_active: bool = False, extra_env: dict | None = None
+) -> subprocess.CompletedProcess:
     """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test.
 
     Passa il payload JSON Stop hook su stdin (simula il runtime Claude Code).
     """
     payload = json.dumps({"stop_hook_active": stop_hook_active, "transcript_path": ""})
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(
         ["bash", str(PROMEMORIA_HOOK)],
-        env={**os.environ, "CLAUDE_PROJECT_DIR": str(repo)},
+        env=env,
         input=payload,
         capture_output=True,
         text=True,
         cwd=repo,
     )
+
+
+def _make_broken_python3_path(tmp_path: Path) -> str:
+    """PATH prepended with a fake python3 that exits 1 (simulates python3 absent)."""
+    fake_bin = tmp_path / "fake_bin_no_py3"
+    fake_bin.mkdir()
+    fake_py = fake_bin / "python3"
+    fake_py.write_text("#!/bin/bash\nexit 1\n")
+    fake_py.chmod(0o755)
+    return str(fake_bin) + ":" + os.environ.get("PATH", "")
 
 
 def _is_blocked(result: subprocess.CompletedProcess) -> bool:
@@ -1029,6 +1044,52 @@ class TestPromemoriaEnd:
         )
         assert not _is_blocked(result), (
             f"T-prom-7: nessun blocco atteso su dir non-git, stdout={result.stdout!r}"
+        )
+
+    def test_prom_8_stop_hook_active_no_python3_no_block(self, tmp_path):
+        """T-prom-8: stop_hook_active=true + python3 assente → grep fallback → exit 0, nessun blocco."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "file.txt", "ciao\n", "feat: commit senza handoff")
+
+        broken_path = _make_broken_python3_path(tmp_path)
+        result = _run_promemoria(work, stop_hook_active=True, extra_env={"PATH": broken_path})
+        assert result.returncode == 0, (
+            f"T-prom-8: atteso exit 0 (grep fallback), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert not _is_blocked(result), (
+            f"T-prom-8: nessun blocco con stop_hook_active=true (grep fallback), stdout={result.stdout!r}"
+        )
+
+    def test_prom_8b_stop_hook_false_no_python3_blocks(self, tmp_path):
+        """T-prom-8b: stop_hook_active=false + python3 assente + commit senza handoff → blocco JSON."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "file.txt", "ciao\n", "feat: commit senza handoff")
+
+        broken_path = _make_broken_python3_path(tmp_path)
+        result = _run_promemoria(work, stop_hook_active=False, extra_env={"PATH": broken_path})
+        assert result.returncode == 0, (
+            f"T-prom-8b: atteso exit 0, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert _is_blocked(result), (
+            f"T-prom-8b: atteso blocco JSON (python3 assente, stop_hook_active=false), stdout={result.stdout!r}"
         )
 
 

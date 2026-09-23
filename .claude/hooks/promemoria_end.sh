@@ -17,6 +17,7 @@ _SHA=$(printf '%s' "$INPUT" | python3 -c \
     "import json,sys; d=json.load(sys.stdin); print('1' if d.get('stop_hook_active') else '0')" \
     2>/dev/null)
 [[ "$_SHA" == "1" ]] && exit 0
+[[ -z "$_SHA" ]] && printf '%s' "$INPUT" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true' && exit 0
 
 # HEAD su main → exit silenzioso (main-lock: no operazioni di push/block)
 BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0
