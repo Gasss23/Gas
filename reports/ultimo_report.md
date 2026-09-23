@@ -1,87 +1,42 @@
-# Ultimo Report — 2026-09-23
-## FIX /fine-task automatico — promemoria_end.sh (FETTA 1)
-
-**Data:** 2026-09-23  
-**Branch:** sonda/fine-task-recon-2026-09-23  
-**Commit motore:** 176c25d
-
----
+# Report — 2026-09-23 — fix(promemoria-end): grep fallback anti-loop python3 assente
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Merge PR** (URL da rilevare al passo 4bis con `gh`).
-2. **F3 (partenza su main) — fuori scope dichiarato**: il passo 0 ha rilevato che il branch corrente era già attivo (sonda/fine-task-recon-2026-09-23); la questione "partenza da main" non è stata affrontata in questa sessione. Se si vuole risolvere F3, richiede una sessione dedicata.
+1. Merge della PR su branch `fix/promemoria-riserve` (numero e URL da inserire dopo push — vedi handoff §0).
 
 ---
 
-## ESITO FETTE
+## Scope e esito fette
 
-### PASSO 0 — Pre-check bloccante
-**FATTO** — `settings.local.json` letto: nessuna chiave `hooks` o `disableAllHooks`. Contenuto verbatim:
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(bwrap --version)",
-      "Bash(claude --version)",
-      "Bash(git fetch *)",
-      "Bash(git checkout *)",
-      "Bash(git reset *)",
-      "Bash(git grep *)"
-    ]
-  }
-}
+### PASSO 0 — Registra esito TEST A
+FATTA. Blocco arrivato: sì. Testo: "Commit di sessione non coperti da handoff: esegui /fine-task per intero prima di chiudere." Anti-loop: sì (secondo stop passato senza blocco). WARN log: nessuno.
+
+### FETTA 1 — grep fallback in promemoria_end.sh
+FATTA. Aggiunta una riga dopo `[[ "$_SHA" == "1" ]] && exit 0`:
 ```
-Nessun blocco: procede con FETTA 1.
-
-### Verifica formato hook Stop (prerequisito)
-**FATTO** — Formato confermato dal binario Claude Code 2.1.280:
-- Campo stdin: `stop_hook_active` (bool)
-- Blocco: `{"decision":"block","reason":"..."}` su stdout, exit 0
-- Anti-loop: `stop_hook_active == true` → exit 0 silenzioso
-
-### FETTA 1a — Riscrittura `.claude/hooks/promemoria_end.sh`
-**FATTO** — Comportamento implementato:
-- Legge stdin JSON; se `stop_hook_active == true` → exit 0 (anti-loop)
-- branch main, BASE non calcolabile, qualsiasi errore git → exit 0 + WARN in gas_debug.log (fail-open, no rete)
-- `SESSION_COMMITS` = commit in BASE..HEAD esclusi soggetti `^chore(scrivi-rep):`
-- "Handoff fresco" = ultimo commit non-chore tocca `reports/handoff.md` (via `git diff-tree`)
-- `SESSION_COMMITS > 0` e handoff NON fresco → `{"decision":"block","reason":"..."}` su stdout
-- Altrimenti exit 0 silenzioso
-- `chmod +x` applicato
-
-### FETTA 1b — Test in `tests/test_unit_hooks.py`
-**FATTO** — 9 test aggiornati/aggiunti (classe `TestPromemoriaEnd`):
-- T-prom-1: 0 commit → no blocco
-- T-prom-2: commit senza handoff → blocco JSON su stdout
-- T-prom-3: handoff come ultimo commit → no blocco
-- T-prom-3b: commit dopo handoff → blocco
-- T-prom-3c: solo chore(scrivi-rep) dopo handoff → no blocco
-- T-prom-4: no origin → WARN log, exit 0, no blocco
-- T-prom-5: HEAD su main → silenzioso
-- T-prom-6: `stop_hook_active=true` → exit 0 anti-loop
-- T-prom-7: dir non-git → exit 0
-- Tutti su repo git reali temporanei, nessun mock
-- Suite completa: **34/34 green**
-
-### Test e2e manuale
-**FATTO** — Branch temporaneo `test/promemoria-e2e` creato, commit dummy senza handoff.
-Output hook verificato:
+[[ -z "$_SHA" ]] && printf '%s' "$INPUT" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true' && exit 0
 ```
-{"decision":"block","reason":"Commit di sessione non coperti da handoff: esegui /fine-task per intero prima di chiudere."}
-EXIT: 0
-```
-Branch mai pushato, eliminato dopo il test.
+Copre il caso python3 assente o fallente: `_SHA` vuota → grep POSIX → exit 0 se `stop_hook_active=true`.
 
-### Revisore (gate obbligatorio — diff tocca tests/)
-**FATTO** — Review #101: **APPROVATO** (nessuna riserva).
+### FETTA 2 — test hook in CI
+SALTATA (nessuna modifica necessaria). La CI esegue già `python -m pytest tests/test_unit_hooks.py -v` allo step "Run hook suite" di `.github/workflows/ci.yml`. Aggiunta di 1-3 righe non richiesta.
 
-### Fette F2, F3 (fuori scope dichiarato)
-**SALTATE — fuori scope**: il task copre SOLO FETTA 1 (promemoria_end.sh + test). F2/F3 non esistono in questo scope.
+### FETTA 3 — verifica F1 (solo lettura)
+FATTA. Output verbatim:
+- `git ls-files -s`: `100755 b70a25bf324b69d0ac9a485508c48fa3702dae42 0	.claude/hooks/promemoria_end.sh`
+- `.claude/settings.json` riga 58: `"command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/promemoria_end.sh"`
 
----
+### TEST T-prom-8 e T-prom-8b
+FATTI. Aggiunto helper `_make_broken_python3_path` e due test:
+- T-prom-8: `stop_hook_active=true` + python3 rotto → nessun blocco (grep fallback)
+- T-prom-8b: `stop_hook_active=false` + python3 rotto + commit senza handoff → blocco JSON
 
-## ANOMALIE
+Suite completa: **36/36 passed**.
 
-- Nessuna anomalia riscontrata.
-- `grep -cv` su input vuoto: verificato che rc=1 viene catturato dall'`||` e la guard `^[0-9]+$` copre edge case; comportamento confermato dal test T-prom-1.
+## Revisore
+
+Review #102 — 2026-09-23: **APPROVATO**. Nessuna riserva aperta.
+
+## Anomalie
+
+Nessuna.
