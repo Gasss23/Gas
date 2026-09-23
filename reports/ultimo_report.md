@@ -1,42 +1,28 @@
-# Report — 2026-09-23 — fix(promemoria-end): grep fallback anti-loop python3 assente
-
-## DECISIONI UMANE RICHIESTE
-
-1. Merge della PR su branch `fix/promemoria-riserve` (numero e URL da inserire dopo push — vedi handoff §0).
+# Sonda auto-apprendimento — ricognizione stato attuale
+**Data:** 2026-09-23  
+**Branch:** sonda/auto-apprendimento-recon
 
 ---
 
-## Scope e esito fette
+## Fetta unica — Ricognizione e mappatura del sistema di memoria
 
-### PASSO 0 — Registra esito TEST A
-FATTA. Blocco arrivato: sì. Testo: "Commit di sessione non coperti da handoff: esegui /fine-task per intero prima di chiudere." Anti-loop: sì (secondo stop passato senza blocco). WARN log: nessuno.
+**FATTA**
 
-### FETTA 1 — grep fallback in promemoria_end.sh
-FATTA. Aggiunta una riga dopo `[[ "$_SHA" == "1" ]] && exit 0`:
-```
-[[ -z "$_SHA" ]] && printf '%s' "$INPUT" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true' && exit 0
-```
-Copre il caso python3 assente o fallente: `_SHA` vuota → grep POSIX → exit 0 se `stop_hook_active=true`.
+Eseguita ricognizione completa del codice reale (senza modifiche). Output: `reports/sonda_auto_apprendimento.md`.
 
-### FETTA 2 — test hook in CI
-SALTATA (nessuna modifica necessaria). La CI esegue già `python -m pytest tests/test_unit_hooks.py -v` allo step "Run hook suite" di `.github/workflows/ci.yml`. Aggiunta di 1-3 righe non richiesta.
+### Cosa è stato mappato
 
-### FETTA 3 — verifica F1 (solo lettura)
-FATTA. Output verbatim:
-- `git ls-files -s`: `100755 b70a25bf324b69d0ac9a485508c48fa3702dae42 0	.claude/hooks/promemoria_end.sh`
-- `.claude/settings.json` riga 58: `"command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/promemoria_end.sh"`
+1. **Schema DB** verificato su copia di `.gas_memory.db`: tabelle `diario`, `contatti`, `diario_fts`, `vettori` (in `.gas_vectors.db`). Confermati trigger di immutabilità sul diario.
+2. **Formato diario** verificato su dati reali: 20 righe, tutte `tipo="calcola"`, formato `"args | [OK/KO] output[:160]"`.
+3. **Compressione history** (FASE 2.5): documentata la perdita di contenuto oltre 300 char e la struttura delle sequenze tool_use.
+4. **Recupero** — due canali: `_memoria_pin()` always-on (3000 char nel system prompt) + tool `ricorda` con cascata FTS5 → semantico (opt-in) → substring.
+5. **Telemetria** — `.gas_tokens.jsonl` esiste (24 righe), traccia fallthrough provider con classificazione `KO/QUOTA/WARN`.
+6. **Tool di scrittura** — `salva_contatto` e `imposta_stato_contatto` accessibili all'agente; `unisci_contatti` solo per uso umano manuale.
+7. **7 rischi identificati** per un sistema di auto-apprendimento.
+8. **3 opzioni design** proposte per il capitolo auto-apprendimento.
 
-### TEST T-prom-8 e T-prom-8b
-FATTI. Aggiunto helper `_make_broken_python3_path` e due test:
-- T-prom-8: `stop_hook_active=true` + python3 rotto → nessun blocco (grep fallback)
-- T-prom-8b: `stop_hook_active=false` + python3 rotto + commit senza handoff → blocco JSON
+### Anomalie riscontrate
 
-Suite completa: **36/36 passed**.
-
-## Revisore
-
-Review #102 — 2026-09-23: **APPROVATO**. Nessuna riserva aperta.
-
-## Anomalie
-
-Nessuna.
+- **R2 (prompt injection)**: nessuna sanitizzazione del testo estratto dalla memoria prima dell'iniezione nel pin (verificato `gas.py:1221-1222`).
+- **Caveat immutabilità**: con `recursive_triggers = OFF` (default SQLite pre-`_connect`), `INSERT OR REPLACE` sulla PK aggirava i trigger. Risolto in `_connect()` con `PRAGMA recursive_triggers = ON` (`store.py:278`).
+- Il `.gas_vectors.db` non esiste: il vector store è opt-in via `GAS_VECTORS` e non ancora abilitato.
