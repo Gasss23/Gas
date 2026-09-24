@@ -382,6 +382,15 @@ class MemoryStore:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_contatti_chiave_norm "
             "ON contatti(chiave_norm)"
         )
+        # Fetta 1 auto-apprendimento: colonne fonte e turno_id nel diario.
+        # ADDITIVO/NULLABLE: le righe vecchie restano NULL (nessun backfill —
+        # non si inventa una fonte per eventi passati). Trigger immutabilità
+        # intatti: ALTER ADD COLUMN non tocca trigger esistenti.
+        diario_cols = {r["name"] for r in con.execute("PRAGMA table_info(diario)")}
+        if "fonte" not in diario_cols:
+            con.execute("ALTER TABLE diario ADD COLUMN fonte TEXT")
+        if "turno_id" not in diario_cols:
+            con.execute("ALTER TABLE diario ADD COLUMN turno_id TEXT")
 
     @staticmethod
     def _rows(cur: sqlite3.Cursor) -> List[Dict[str, Any]]:
@@ -389,15 +398,19 @@ class MemoryStore:
 
     # --------------------------------------------------------------- scritture
     def append_diario(self, tipo: str, descrizione: str,
-                      contatto_id: Optional[int] = None) -> Optional[int]:
+                      contatto_id: Optional[int] = None,
+                      fonte: Optional[str] = None,
+                      turno_id: Optional[str] = None) -> Optional[int]:
         """Aggiunge un evento al diario (append-only). Ritorna l'id della riga,
-        o None in caso di degrado. MAI UPDATE/DELETE: questo è l'unico ingresso."""
+        o None in caso di degrado. MAI UPDATE/DELETE: questo è l'unico ingresso.
+        fonte: chi ha prodotto l'evento ('kernel'|'utente'|'modello'), None=sconosciuto.
+        turno_id: uuid4 del turno corrente, None per eventi fuori turno."""
         try:
             with self._connect() as con:
                 cur = con.execute(
-                    "INSERT INTO diario (ts, tipo, descrizione, contatto_id) "
-                    "VALUES (?, ?, ?, ?)",
-                    (_now_iso(), tipo, descrizione, contatto_id),
+                    "INSERT INTO diario (ts, tipo, descrizione, contatto_id, fonte, turno_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (_now_iso(), tipo, descrizione, contatto_id, fonte, turno_id),
                 )
                 con.commit()
                 return int(cur.lastrowid)
