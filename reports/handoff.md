@@ -1,35 +1,30 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-23 — fix(promemoria-end): grep fallback anti-loop python3 assente
+**Sessione:** 2026-09-23 — Sonda auto-apprendimento (ricognizione, nessuna modifica al codice)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #96 (https://github.com/Gasss23/Gas/pull/96).
+1. Merge della PR #97 (https://github.com/Gasss23/Gas/pull/97).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PASSO 0 — Esito TEST A**: `FATTA` — blocco arrivato sì, testo verbatim confermato, anti-loop sì, WARN log nessuno.
-- **FETTA 1 — grep fallback promemoria_end.sh**: `FATTA` — aggiunta una riga di fallback grep POSIX quando `_SHA` è vuota (python3 assente/fallente).
-- **FETTA 2 — test hook in CI**: `SALTATA — nessuna modifica necessaria` — `test_unit_hooks.py` già incluso nel workflow CI allo step "Run hook suite".
-- **FETTA 3 — verifica F1 (solo lettura)**: `FATTA` — output verbatim riportato nel report.
-- **TEST T-prom-8 / T-prom-8b**: `FATTI` — helper `_make_broken_python3_path` + 2 nuovi test. 36/36 passed.
+- **Fetta unica — Ricognizione sistema di memoria**: `FATTA`  
+  Creato `reports/sonda_auto_apprendimento.md` con mappatura completa del codice reale (185 righe). Nessuna modifica a gas.py, brains/, modules/, tests/.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 +
- .claude/hooks/promemoria_end.sh    |   1 +
- reports/diff_sessione.md           |  26 ++-------
- reports/handoff.md                 | 115 +++++++------------------------------
- reports/ultimo_report.md           |  97 +++++++++----------------------
- tests/test_unit_hooks.py           |  65 ++++++++++++++++++++-
- 6 files changed, 118 insertions(+), 188 deletions(-)
+reports/diff_sessione.md            |  16 ++--
+ reports/handoff.md                  |  56 +++--------
+ reports/sonda_auto_apprendimento.md | 185 ++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md            |  52 ++++------
+ 4 files changed, 225 insertions(+), 84 deletions(-)
 ```
 
 ---
@@ -37,53 +32,40 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-54ddaaf fix(promemoria-end): grep fallback anti-loop quando python3 assente
-4465a20 chore(revisore): memoria review #? — ?
+32aa643 docs(sonda): ricognizione stato memoria per capitolo auto-apprendimento
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine task che contiene questo file non compare in questo log, per costruzione.
 
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-**Review #102 — 2026-09-23 — APPROVATO**
-
-Diff sotto review: `.claude/hooks/promemoria_end.sh` + `tests/test_unit_hooks.py`
-
-> 1. `.claude/hooks/promemoria_end.sh:20` — `[[ -z "$_SHA" ]] && printf '%s' "$INPUT" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true' && exit 0` — aggiunge fallback grep quando python3 assente/fallente. La catena `&&` è atomica: se grep non trova match, non fa exit e lo script prosegue verso il blocco. Il pattern POSIX `[[:space:]]` funziona su macOS e Linux con `-E`. Rischio falso positivo su payload anomali esaminato e escluso. Esito: OK.
->
-> 2. `tests/test_unit_hooks.py:820` — helper `_make_broken_python3_path` + test T-prom-8 (riga 1049) e T-prom-8b (riga 1072). La fake python3 esce con rc=1 e nessun output → `_SHA=""`. Solo python3 è "rotto"; git, grep, awk restano accessibili via PATH originale. T-prom-8 ha asserzioni discriminanti. T-prom-8b complementare. Esito: OK.
->
-> Rischio esplicitamente escluso: comportamento del grep con locale non-standard — regex usa solo ASCII, payload sempre ASCII-safe. Non bloccante.
->
-> Coerenza con la filosofia del progetto: il fix rafforza il guardrail anti-loop. Fail-open intatto. Non tocca gas.py, brains/, modules/. Nessun antipattern Wall of Shame.
-
-**APPROVATO**
+Nessun diff motore, revisore non richiesto.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py` o ai test del motore (`tests/test_unit_kernel.py`). Modifiche solo a `tests/test_unit_hooks.py` (hook suite). Suite hooks: 36/36 passed (output reale, run locale pre-commit).
+Nessuna modifica a gas.py/tests/.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	Merge pull request #95 from Gasss23/sonda/fine-task-recon-2026-09-23	CI	main	push	35798054651	49s	2026-09-22T23:34:17Z
-completed	success	docs(fine-task): handoff finale — copre 024149c stato_progetto, §6 CI…	CI	sonda/fine-task-recon-2026-09-23	push	35792902797	54s	2026-09-22T22:32:13Z
-completed	failure	docs(stato): aggiorna stato_progetto per fix promemoria_end 2026-09-23	CI	sonda/fine-task-recon-2026-09-23	push	35792734510	52s	2026-09-22T22:30:21Z
+completed	success	docs(sonda): ricognizione stato memoria per capitolo auto-apprendimento	CI	sonda/auto-apprendimento-recon	push	35891138641	52s	2026-09-23T16:47:06Z
+completed	success	Merge pull request #96 from Gasss23/fix/promemoria-riserve	CI	main	push	35890080319	50s	2026-09-23T16:37:52Z
+completed	success	docs(fine-task): handoff 2026-09-23 fix promemoria-end grep fallback	CI	fix/promemoria-riserve	push	35888569471	58s	2026-09-23T16:24:51Z
 ```
 
-Mappatura commit→run:
-- `4465a20` (chore revisore) — run non ancora disponibile su questo SHA (push appena avvenuto)
-- `54ddaaf` (fix hook + test) — run non ancora disponibile su questo SHA (push appena avvenuto)
-- Il commit di fine-task (questo file) verrà testato dalla run sul push corrente.
+**Mappatura commit→run:**
+- `32aa643` (docs sonda) → run `35891138641` su branch `sonda/auto-apprendimento-recon` — `completed success`
+- commit di fine-task (docs fine-task) → run non ancora disponibile alla scrittura dell'handoff
 
 ---
 
 ## §7 RISERVE APERTE
 
-Nessuna. Review #102 APPROVATO senza riserve.
+- **R2 — Prompt injection dai ricordi**: nessuna sanitizzazione del testo estratto da `.gas_memory.db` prima dell'iniezione nel `_memoria_pin()` (`gas.py:1221-1222`). Da indirizzare in FASE 3 auto-apprendimento.
+- **Caveat immutabilità diario** (riserva R1 nota): `INSERT OR REPLACE` sulla PK aggira i trigger di immutabilità con `recursive_triggers = OFF`; mitigato in `_connect()` con `PRAGMA recursive_triggers = ON` (`store.py:278`), ma da blindare a passata di hardening (`store.py:15-17`).
