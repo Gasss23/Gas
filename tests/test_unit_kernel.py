@@ -863,16 +863,18 @@ script_a = [[("write_file", '{"relative_path": "uno.txt", "content": "1"}'),
            "fatto tutto"]
 ev_a = run_turn_scriptato(k, "scrivi e leggi", script_a)
 diario_a = k.memory.diario_recente(10)  # DESC: più recente prima
+# Filtra turno_fine (aggiunto da fetta-1 apprendimento): non conta come tool call
+diario_a_tool = [r for r in diario_a if r["tipo"] != "turno_fine"]
 # atteso (in ordine cronologico): write uno, write due, read uno
-crono = list(reversed(diario_a))
-ordine_ok = (len(diario_a) == 3
+crono = list(reversed(diario_a_tool))
+ordine_ok = (len(diario_a_tool) == 3
              and "path='uno.txt'" in crono[0]["descrizione"] and crono[0]["tipo"] == "write_file"
              and "path='due.txt'" in crono[1]["descrizione"] and crono[1]["tipo"] == "write_file"
              and "path='uno.txt'" in crono[2]["descrizione"] and crono[2]["tipo"] == "read_file")
 final_a = [e for e in ev_a if e["type"] == "final"]
 check("T20a round-trip multi-tool: 1 riga/diario per tool, ordine giusto",
       ordine_ok and len(final_a) == 1,
-      f"n={len(diario_a)} tipi={[r['tipo'] for r in crono]} final={len(final_a)}")
+      f"n={len(diario_a_tool)} tipi={[r['tipo'] for r in crono]} final={len(final_a)}")
 
 # T20b — tutti gli esiti delle write sono OK e la read di file esistente è OK
 esiti_a = [r["descrizione"].split("|")[-1].strip() for r in crono]
@@ -883,14 +885,15 @@ check("T20b esiti positivi marcati [OK]", all(e.startswith("[OK]") for e in esit
 k = kernel_tmp()
 script_c = [[("read_file", '{"relative_path": "non_esiste.txt"}')], "gestito l'errore"]
 ev_c = run_turn_scriptato(k, "leggi inesistente", script_c)
-diario_c = k.memory.diario_recente(5)
+# Filtra turno_fine: interessa solo le righe di tool call
+diario_c_tool = [r for r in k.memory.diario_recente(5) if r["tipo"] != "turno_fine"]
 final_c = [e for e in ev_c if e["type"] == "final"]
 err_c = [e for e in ev_c if e["type"] == "error"]
 check("T20c tool fallito -> diario [KO] e turno NON interrotto",
-      len(diario_c) == 1 and "[KO]" in diario_c[0]["descrizione"]
-      and diario_c[0]["tipo"] == "read_file"
+      len(diario_c_tool) == 1 and "[KO]" in diario_c_tool[0]["descrizione"]
+      and diario_c_tool[0]["tipo"] == "read_file"
       and len(final_c) == 1 and len(err_c) == 0,
-      f"diario={diario_c[0]['descrizione'][:80] if diario_c else 'VUOTO'} final={len(final_c)}")
+      f"diario={diario_c_tool[0]['descrizione'][:80] if diario_c_tool else 'VUOTO'} final={len(final_c)}")
 
 # T20d — memoria DEGRADATA (DB corrotto): il round-trip funziona comunque
 k = kernel_tmp()
@@ -3718,6 +3721,220 @@ check(
     "T63d gas_identity.md reale contiene regola lingua",
     _RULE_MARKER in Path(__file__).resolve().parents[1].joinpath("gas_identity.md").read_text(),
 )
+
+# ---------- T64: fetta 1 auto-apprendimento — fonte + turno_id + turno_fine ----------
+print("\n--- T64: auto-apprendimento fetta 1 (fonte, turno_id, turno_fine) ---")
+import sqlite3 as _sqlite3_t64
+import tempfile as _tf_t64
+
+# T64a — migrazione diario su DB legacy (senza fonte/turno_id):
+# le colonne compaiono, le righe vecchie restano NULL, i trigger restano attivi.
+_d64a = Path(tempfile.mkdtemp(prefix="gas_t64a_"))
+_db64a = _d64a / ".gas_memory.db"
+with _sqlite3_t64.connect(str(_db64a)) as _c64a:
+    _c64a.execute(
+        "CREATE TABLE diario (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "ts TEXT NOT NULL, tipo TEXT NOT NULL, descrizione TEXT NOT NULL, "
+        "contatto_id INTEGER)"
+    )
+    _c64a.execute("CREATE TABLE contatti (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                  "chiave TEXT NOT NULL, chiave_norm TEXT NOT NULL, "
+                  "nome TEXT, contatto TEXT, "
+                  "stato TEXT NOT NULL DEFAULT 'nuovo', "
+                  "ultimo_contatto TEXT, prossima_azione TEXT, note TEXT, "
+                  "creato_il TEXT NOT NULL, aggiornato_il TEXT NOT NULL)")
+    _c64a.execute(
+        "INSERT INTO diario (ts, tipo, descrizione) VALUES (?,?,?)",
+        ("2026-01-01T00:00:00", "vecchio", "evento prima della migrazione")
+    )
+    _c64a.execute(
+        "CREATE TRIGGER diario_no_update BEFORE UPDATE ON diario "
+        "BEGIN SELECT RAISE(ABORT, 'diario immutabile: UPDATE vietato'); END"
+    )
+    _c64a.execute(
+        "CREATE TRIGGER diario_no_delete BEFORE DELETE ON diario "
+        "BEGIN SELECT RAISE(ABORT, 'diario immutabile: DELETE vietato'); END"
+    )
+    _c64a.commit()
+
+from modules.memory import MemoryStore as _MS64
+_m64a = _MS64(_db64a)
+check("T64a MemoryStore disponibile dopo migrazione legacy", _m64a.available,
+      f"available={_m64a.available}")
+
+with _sqlite3_t64.connect(str(_db64a)) as _c64a:
+    _cols64a = {r[1] for r in _c64a.execute("PRAGMA table_info(diario)").fetchall()}
+check("T64a colonna 'fonte' aggiunta al diario legacy", "fonte" in _cols64a,
+      f"cols={_cols64a}")
+check("T64a colonna 'turno_id' aggiunta al diario legacy", "turno_id" in _cols64a,
+      f"cols={_cols64a}")
+
+with _sqlite3_t64.connect(str(_db64a)) as _c64a:
+    _r64a = _c64a.execute("SELECT fonte, turno_id FROM diario WHERE tipo='vecchio'").fetchone()
+check("T64a righe vecchie: fonte=NULL", _r64a is not None and _r64a[0] is None,
+      f"fonte={_r64a[0] if _r64a else 'N/A'}")
+check("T64a righe vecchie: turno_id=NULL", _r64a is not None and _r64a[1] is None,
+      f"turno_id={_r64a[1] if _r64a else 'N/A'}")
+
+_upd64a_blocked = False
+with _sqlite3_t64.connect(str(_db64a)) as _c64a:
+    _c64a.execute("PRAGMA recursive_triggers = ON")
+    try:
+        _c64a.execute("UPDATE diario SET descrizione='manomesso' WHERE tipo='vecchio'")
+        _c64a.commit()
+    except _sqlite3_t64.Error:
+        _upd64a_blocked = True
+check("T64a trigger UPDATE ancora attivo dopo migrazione", _upd64a_blocked)
+
+_del64a_blocked = False
+with _sqlite3_t64.connect(str(_db64a)) as _c64a:
+    _c64a.execute("PRAGMA recursive_triggers = ON")
+    try:
+        _c64a.execute("DELETE FROM diario WHERE tipo='vecchio'")
+        _c64a.commit()
+    except _sqlite3_t64.Error:
+        _del64a_blocked = True
+check("T64a trigger DELETE ancora attivo dopo migrazione", _del64a_blocked)
+
+# T64h — DIARIO_NOISE_TIPI include 'turno_fine' (filtro memoria always-on)
+check("T64h DIARIO_NOISE_TIPI include 'turno_fine'",
+      "turno_fine" in gas.GasKernel.DIARIO_NOISE_TIPI)
+
+# T64b — esito=ok: tool OK + risposta finale → 1 riga turno_fine con esito=ok
+_k64b = kernel_tmp()
+_script_64b = [[("calcola", '{"expr": "6*7"}')], "il risultato è 42"]
+_ev64b = run_turn_scriptato(_k64b, "quanto fa 6*7", _script_64b)
+_diario64b = _k64b.memory.diario_recente(10)
+_fine64b = [r for r in _diario64b if r["tipo"] == "turno_fine"]
+check("T64b esattamente 1 riga turno_fine (esito ok)",
+      len(_fine64b) == 1,
+      f"n={len(_fine64b)}")
+check("T64b esito=ok (tool OK + risposta finale)",
+      bool(_fine64b) and "esito=ok" in _fine64b[0]["descrizione"],
+      f"descr={_fine64b[0]['descrizione'] if _fine64b else 'ASSENTE'}")
+check("T64b fonte=kernel nella riga turno_fine",
+      bool(_fine64b) and _fine64b[0].get("fonte") == "kernel",
+      f"fonte={_fine64b[0].get('fonte') if _fine64b else 'N/A'}")
+check("T64b turno_id valorizzato nella riga turno_fine",
+      bool(_fine64b) and bool(_fine64b[0].get("turno_id")),
+      f"turno_id={_fine64b[0].get('turno_id') if _fine64b else 'N/A'}")
+_final64b = [e for e in _ev64b if e.get("type") == "final"]
+check("T64b risposta finale prodotta (round-trip OK)",
+      len(_final64b) == 1)
+
+# T64c — esito=parziale: tool KO + risposta finale
+_k64c = kernel_tmp()
+_script_64c = [[("read_file", '{"relative_path": "non_esiste.txt"}')], "gestito"]
+_ev64c = run_turn_scriptato(_k64c, "leggi un file inesistente", _script_64c)
+_diario64c = _k64c.memory.diario_recente(10)
+_fine64c = [r for r in _diario64c if r["tipo"] == "turno_fine"]
+check("T64c esattamente 1 riga turno_fine (esito parziale)",
+      len(_fine64c) == 1,
+      f"n={len(_fine64c)}")
+check("T64c esito=parziale (tool KO + risposta finale)",
+      bool(_fine64c) and "esito=parziale" in _fine64c[0]["descrizione"],
+      f"descr={_fine64c[0]['descrizione'] if _fine64c else 'ASSENTE'}")
+check("T64c tool_ko=1 nella descrizione",
+      bool(_fine64c) and "tool_ko=1" in _fine64c[0]["descrizione"],
+      f"descr={_fine64c[0]['descrizione'] if _fine64c else 'ASSENTE'}")
+
+# T64d — esito=ko: tutti i provider falliscono (nessuna risposta finale)
+_k64d = kernel_tmp()
+_orig_oai64d = gas.OpenAI
+class _FakeOAI64d:
+    def __init__(self, base_url=None, api_key=None):
+        class _CC:
+            def create(self, **kw):
+                raise RuntimeError("provider simulato KO — T64d")
+        self.chat = SimpleNamespace(completions=_CC())
+gas.OpenAI = _FakeOAI64d
+_saved64d = {k: os.environ.get(k) for k in
+             ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+os.environ["GEMINI_API_KEY"] = "dummy-t64d"
+for _kk64d in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+    os.environ.pop(_kk64d, None)
+try:
+    _ev64d = list(_k64d.run_turn("test ko provider"))
+finally:
+    gas.OpenAI = _orig_oai64d
+    for _kk64d, _v64d in _saved64d.items():
+        if _v64d is None: os.environ.pop(_kk64d, None)
+        else: os.environ[_kk64d] = _v64d
+_diario64d = _k64d.memory.diario_recente(10)
+_fine64d = [r for r in _diario64d if r["tipo"] == "turno_fine"]
+check("T64d esattamente 1 riga turno_fine (ko-provider)",
+      len(_fine64d) == 1,
+      f"n={len(_fine64d)}")
+check("T64d esito=ko (provider falliti, nessuna risposta)",
+      bool(_fine64d) and "esito=ko" in _fine64d[0]["descrizione"],
+      f"descr={_fine64d[0]['descrizione'] if _fine64d else 'ASSENTE'}")
+
+# T64e — esito=ko: GeneratorExit (generatore chiuso a metà)
+_k64e = kernel_tmp()
+_script_64e = [[("calcola", '{"expr": "1+1"}')], "risultato: 2"]
+_saved64e = {k: os.environ.get(k) for k in
+             ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+for _kk64e in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+    os.environ.pop(_kk64e, None)
+os.environ["GEMINI_API_KEY"] = "dummy-t64e"
+_orig64e = gas.OpenAI
+class _FakeOAI64e:
+    def __init__(self, base_url=None, api_key=None):
+        self.chat = SimpleNamespace(completions=ScriptedCompletions(_script_64e))
+gas.OpenAI = _FakeOAI64e
+try:
+    _gen64e = _k64e.run_turn("test generatorexit")
+    _first64e = next(_gen64e)   # consuma il primo evento (tool_res)
+    _gen64e.close()             # lancia GeneratorExit → finally fires
+finally:
+    gas.OpenAI = _orig64e
+    for _kk64e, _v64e in _saved64e.items():
+        if _v64e is None: os.environ.pop(_kk64e, None)
+        else: os.environ[_kk64e] = _v64e
+_diario64e = _k64e.memory.diario_recente(10)
+_fine64e = [r for r in _diario64e if r["tipo"] == "turno_fine"]
+check("T64e esattamente 1 riga turno_fine dopo GeneratorExit",
+      len(_fine64e) == 1,
+      f"n={len(_fine64e)}")
+check("T64e esito=ko dopo GeneratorExit (risposta finale non prodotta)",
+      bool(_fine64e) and "esito=ko" in _fine64e[0]["descrizione"],
+      f"descr={_fine64e[0]['descrizione'] if _fine64e else 'ASSENTE'}")
+
+# T64f — memoria None: il turno completa e nessun crash (no turno_fine scritto,
+# ma nessuna eccezione sollevata da _chiudi_turno)
+_k64f = kernel_tmp()
+_k64f.memory = None
+_ev64f = run_turn_scriptato(_k64f, "memoria None f1",
+                            [[("calcola", '{"expr":"2+2"}')], "quattro"])
+check("T64f memoria None → turno completa senza crash",
+      len([e for e in _ev64f if e.get("type") == "final"]) == 1)
+
+# T64g — turno_id coerente: tutti gli eventi dello stesso turno portano lo
+# stesso turno_id non-None, e fonte='kernel'
+_k64g = kernel_tmp()
+_script_64g = [[("calcola", '{"expr":"2+3"}'), ("calcola", '{"expr":"4+5"}')], "ok"]
+_ev64g = run_turn_scriptato(_k64g, "test coerenza turno_id", _script_64g)
+_diario64g = _k64g.memory.diario_recente(10)
+_ids64g = [r.get("turno_id") for r in _diario64g if r.get("turno_id")]
+_fonti64g = [r.get("fonte") for r in _diario64g]
+check("T64g stesso turno_id su tutti gli eventi del turno (2 tool + turno_fine)",
+      len(_ids64g) >= 3 and len(set(_ids64g)) == 1,
+      f"n_ids={len(_ids64g)} distinti={len(set(_ids64g))}")
+check("T64g fonte=kernel su tutti gli eventi",
+      all(f == "kernel" for f in _fonti64g),
+      f"fonti={_fonti64g}")
+
+# T64i — 2 turni → 2 righe turno_fine distinte, con turno_id diversi
+_k64i = kernel_tmp()
+run_turn_scriptato(_k64i, "primo turno",
+                   [[("calcola", '{"expr":"1+1"}')], "2"])
+run_turn_scriptato(_k64i, "secondo turno", ["solo risposta"])
+_diario64i = _k64i.memory.diario_recente(20)
+_fines64i = [r for r in _diario64i if r["tipo"] == "turno_fine"]
+check("T64i 2 turni → 2 righe turno_fine distinte",
+      len(_fines64i) == 2 and
+      _fines64i[0].get("turno_id") != _fines64i[1].get("turno_id"),
+      f"n={len(_fines64i)} ids={[r.get('turno_id','')[:8] for r in _fines64i]}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

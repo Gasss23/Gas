@@ -6,6 +6,7 @@ import json
 import shlex
 import logging
 import subprocess
+import uuid
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -772,7 +773,7 @@ class GasKernel:
     MEMORY_PIN_SCAN = 200
     # Rumore di sola lettura: eventi che NON meritano l'iniezione always-on (il
     # diario li conserva comunque a monte — decisione A; il filtro è di LETTURA).
-    DIARIO_NOISE_TIPI = frozenset({"read_file", "run_command", "ricorda"})
+    DIARIO_NOISE_TIPI = frozenset({"read_file", "run_command", "ricorda", "turno_fine"})
 
     # --- Backup automatico della memoria (anti auto-corruzione, §10 FASE 2) ---
     # Il DB di memoria è il dato più prezioso e meno rimpiazzabile: un backup
@@ -1112,7 +1113,9 @@ class GasKernel:
         snippet = s.replace("\n", " ")[:160]
         return f"[{'KO' if negativo else 'OK'}] {snippet}"
 
-    def _diario_log(self, tipo: str, descrizione: str) -> None:
+    def _diario_log(self, tipo: str, descrizione: str,
+                    fonte: Optional[str] = None,
+                    turno_id: Optional[str] = None) -> None:
         """Registra UN evento nel diario della memoria, in modo FAIL-SAFE (§9):
         la memoria che non scrive NON deve MAI interrompere il turno. La memoria
         assente/degradata o qualunque errore vengono solo loggati nella scatola
@@ -1121,7 +1124,7 @@ class GasKernel:
         if self.memory is None:
             return
         try:
-            self.memory.append_diario(tipo, descrizione)
+            self.memory.append_diario(tipo, descrizione, fonte=fonte, turno_id=turno_id)
         except Exception as e:
             # append_diario è già blindato (ritorna None in degrado); questa è
             # solo una cintura ulteriore perché il loop non cada MAI per il diario.
@@ -1543,156 +1546,193 @@ class GasKernel:
             return f"Errore eseguendo {name}: {str(e)}"
 
     def run_turn(self, user_prompt: str) -> Generator[Dict[str, Any], None, None]:
-        # Compressione automatica cronologia (FASE 2.5): no-op se sotto soglia.
-        # Zero token LLM. Fail-safe §9: eccezioni → history invariata, turno OK.
-        self._compress_history_if_needed()
-        self._add_to_history("user", content=user_prompt)
+        # --- Fetta 1 auto-apprendimento: tracking per turno_fine ---
+        _turno_id = str(uuid.uuid4())
+        _turno_tool_n = 0
+        _turno_tool_ko = 0
+        _turno_provider = "nessuno"
+        _turno_final = False
+        _turno_fine_scritto = False
+        _turno_classe = "semplice"  # aggiornato da classifica_compito (vedi sotto)
 
-        from brains.router import classifica_compito
-        compito = classifica_compito(user_prompt)
-
-        # Iniezione memoria ALWAYS-ON (fetta 2b): calcolata UNA volta per turno
-        # (no eco delle azioni in corso, no query ripetute nel loop a 10 iter).
-        # Vive nel messaggio system (system_prompt + mem_pin), FUORI dalla
-        # finestra: _get_window/_cap_window_chars restano intatti. Fail-safe:
-        # "" se la memoria è assente/degradata.
-        mem_pin = self._memoria_pin()
-
-        # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
-        # una volta per turno valuta se è ora di una copia coerente; il throttling
-        # e l'integrità sono gestiti da MemoryStore.backup_auto. Fail-safe: non
-        # interrompe mai il turno.
-        self._memoria_backup_auto()
-
-        # Catch-up indexing del vector store (retrieval semantico): indicizza le
-        # nuove righe di diario nel sidecar, una volta per turno e BOUNDED, FUORI dal
-        # loop dei provider. No-op se GAS_VECTORS è spento o il layer è degradato.
-        self._vettori_catchup()
-
-        # Budget giornaliero kill-switch (§11, GAS_DAILY_TOKEN_BUDGET in USD):
-        # se configurato, somma i costi 24h dal log locale e blocca se superato.
-        # Fail-safe §9: errore nella lettura → 0.0, il turno PROSEGUE comunque.
-        _budget = _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
-        if _budget > 0.0:
-            _spent = self._daily_cost_usd()
-            if _spent >= _budget:
-                yield {"type": "error",
-                       "content": (f"Budget giornaliero esaurito: ${_spent:.4f} spesi "
-                                   f"(limite ${_budget:.2f} USD). "
-                                   "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
+        def _chiudi_turno() -> None:
+            nonlocal _turno_fine_scritto
+            if _turno_fine_scritto:
                 return
+            _turno_fine_scritto = True
+            esito = (
+                "ok" if (_turno_final and _turno_tool_ko == 0)
+                else "parziale" if _turno_final
+                else "ko"
+            )
+            descr = (
+                f"esito={esito} ; tool={_turno_tool_n} ; "
+                f"tool_ko={_turno_tool_ko} ; provider={_turno_provider} ; "
+                f"classe={_turno_classe}"
+            )
+            self._diario_log("turno_fine", descr, fonte="kernel", turno_id=_turno_id)
 
-        # Endpoint/modelli dalle costanti di modulo (punto unico, condiviso con doctor).
-        # Pavimento offline Ollama: NON gira nel Codespace. Sul PC/VPS si esporta
-        # GAS_OLLAMA_URL=http://localhost:11434/v1 (endpoint OpenAI-compatibile di
-        # Ollama). Se la variabile e' assente, il rung viene saltato dal gate del
-        # loop (`if not os.environ.get(env): continue`) -> skip pulito, mai crash.
-        OLLAMA_URL = os.environ.get("GAS_OLLAMA_URL")
+        try:
+            # Compressione automatica cronologia (FASE 2.5): no-op se sotto soglia.
+            # Zero token LLM. Fail-safe §9: eccezioni → history invariata, turno OK.
+            self._compress_history_if_needed()
+            self._add_to_history("user", content=user_prompt)
 
-        # Rung GRATUITI, sempre ULTIMI: rete di salvataggio a budget zero.
-        # Ollama: la "chiave" del gate e' GAS_OLLAMA_URL (presenza), percio'
-        # api_key=base_url=URL: Ollama ignora la chiave, e' deliberato.
-        FREE_RUNGS = [
-            ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE_MODEL),
-            ("ollama",     "GAS_OLLAMA_URL",     OLLAMA_URL,     OLLAMA_MODEL),
-        ]
-        _free_names = {r[0] for r in FREE_RUNGS}  # {"openrouter", "ollama"}
+            from brains.router import classifica_compito
+            compito = classifica_compito(user_prompt)
+            _turno_classe = compito
 
-        if compito == "semplice":
-            providers = [
-                ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_LITE_MODEL),
-                ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_MODEL),
-                ("groq",              "GROQ_API_KEY",   GROQ_URL,   GROQ_MODEL),
-            ] + FREE_RUNGS
-        else:
-            providers = [
-                ("gemini-flash", "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_MODEL),
-                ("groq",         "GROQ_API_KEY",   GROQ_URL,   GROQ_MODEL),
-            ] + FREE_RUNGS
+            # Iniezione memoria ALWAYS-ON (fetta 2b): calcolata UNA volta per turno
+            # (no eco delle azioni in corso, no query ripetute nel loop a 10 iter).
+            # Vive nel messaggio system (system_prompt + mem_pin), FUORI dalla
+            # finestra: _get_window/_cap_window_chars restano intatti. Fail-safe:
+            # "" se la memoria è assente/degradata.
+            mem_pin = self._memoria_pin()
 
-        for name, env, url, model in providers:
-            if not os.environ.get(env): continue
-            # Osservabilità (sez.9): se il brain selezionato monta un modello che
-            # NON dichiara function calling, il turno sarebbe tool-blind (read_file/
-            # write_file persi). Solo log nella scatola nera: NON si forza lo skip,
-            # NON si tocca l'ordine del fallback. Rilevamento a runtime rimandato.
-            if not _model_tool_capable(model):
-                logging.warning(f"brain {name}: modello {model} senza function calling "
-                                f"dichiarato, turno potenzialmente tool-blind")
-            payload: List[Dict[str, Any]] = []
-            try:
-                client = OpenAI(base_url=url, api_key=os.environ.get(env))
-                for _ in range(10):  # max 10 iterazioni agentic loop
-                    payload = [{"role": "system", "content": self.system_prompt + mem_pin}] + self._get_window()
-                    try:
-                        response = client.chat.completions.create(
-                            model=model, messages=payload,
-                            tools=self.tools_schema, tool_choice="auto"
-                        )
-                    except Exception as e:
-                        # Il 400 di Gemini può essere transitorio (diagnosi
-                        # 2026-06-10: stesso payload accettato 5/5 al replay):
-                        # UN solo retry con payload identico, poi fallback
-                        if not (name.startswith("gemini") and "400" in str(e)[:120]):
-                            raise
+            # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
+            # una volta per turno valuta se è ora di una copia coerente; il throttling
+            # e l'integrità sono gestiti da MemoryStore.backup_auto. Fail-safe: non
+            # interrompe mai il turno.
+            self._memoria_backup_auto()
+
+            # Catch-up indexing del vector store (retrieval semantico): indicizza le
+            # nuove righe di diario nel sidecar, una volta per turno e BOUNDED, FUORI dal
+            # loop dei provider. No-op se GAS_VECTORS è spento o il layer è degradato.
+            self._vettori_catchup()
+
+            # Budget giornaliero kill-switch (§11, GAS_DAILY_TOKEN_BUDGET in USD):
+            # se configurato, somma i costi 24h dal log locale e blocca se superato.
+            # Fail-safe §9: errore nella lettura → 0.0, il turno PROSEGUE comunque.
+            _budget = _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
+            if _budget > 0.0:
+                _spent = self._daily_cost_usd()
+                if _spent >= _budget:
+                    yield {"type": "error",
+                           "content": (f"Budget giornaliero esaurito: ${_spent:.4f} spesi "
+                                       f"(limite ${_budget:.2f} USD). "
+                                       "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
+                    return
+
+            # Endpoint/modelli dalle costanti di modulo (punto unico, condiviso con doctor).
+            # Pavimento offline Ollama: NON gira nel Codespace. Sul PC/VPS si esporta
+            # GAS_OLLAMA_URL=http://localhost:11434/v1 (endpoint OpenAI-compatibile di
+            # Ollama). Se la variabile e' assente, il rung viene saltato dal gate del
+            # loop (`if not os.environ.get(env): continue`) -> skip pulito, mai crash.
+            OLLAMA_URL = os.environ.get("GAS_OLLAMA_URL")
+
+            # Rung GRATUITI, sempre ULTIMI: rete di salvataggio a budget zero.
+            # Ollama: la "chiave" del gate e' GAS_OLLAMA_URL (presenza), percio'
+            # api_key=base_url=URL: Ollama ignora la chiave, e' deliberato.
+            FREE_RUNGS = [
+                ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE_MODEL),
+                ("ollama",     "GAS_OLLAMA_URL",     OLLAMA_URL,     OLLAMA_MODEL),
+            ]
+            _free_names = {r[0] for r in FREE_RUNGS}  # {"openrouter", "ollama"}
+
+            if compito == "semplice":
+                providers = [
+                    ("gemini-flash-lite", "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_LITE_MODEL),
+                    ("gemini-flash",      "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_MODEL),
+                    ("groq",              "GROQ_API_KEY",   GROQ_URL,   GROQ_MODEL),
+                ] + FREE_RUNGS
+            else:
+                providers = [
+                    ("gemini-flash", "GEMINI_API_KEY", GEMINI_URL, GEMINI_FLASH_MODEL),
+                    ("groq",         "GROQ_API_KEY",   GROQ_URL,   GROQ_MODEL),
+                ] + FREE_RUNGS
+
+            for name, env, url, model in providers:
+                if not os.environ.get(env): continue
+                _turno_provider = name
+                # Osservabilità (sez.9): se il brain selezionato monta un modello che
+                # NON dichiara function calling, il turno sarebbe tool-blind (read_file/
+                # write_file persi). Solo log nella scatola nera: NON si forza lo skip,
+                # NON si tocca l'ordine del fallback. Rilevamento a runtime rimandato.
+                if not _model_tool_capable(model):
+                    logging.warning(f"brain {name}: modello {model} senza function calling "
+                                    f"dichiarato, turno potenzialmente tool-blind")
+                payload: List[Dict[str, Any]] = []
+                try:
+                    client = OpenAI(base_url=url, api_key=os.environ.get(env))
+                    for _ in range(10):  # max 10 iterazioni agentic loop
+                        payload = [{"role": "system", "content": self.system_prompt + mem_pin}] + self._get_window()
                         try:
                             response = client.chat.completions.create(
                                 model=model, messages=payload,
                                 tools=self.tools_schema, tool_choice="auto"
                             )
-                            logging.warning(f"retry Gemini 400 ({name}): OK")
-                        except Exception:
-                            logging.warning(f"retry Gemini 400 ({name}): ancora 400, fallback")
-                            raise
-                    usage = getattr(response, "usage", None)
-                    if usage:
-                        self._log_tokens(name, model,
-                                         getattr(usage, "prompt_tokens", 0) or 0,
-                                         getattr(usage, "completion_tokens", 0) or 0)
-                    msg = response.choices[0].message
+                        except Exception as e:
+                            # Il 400 di Gemini può essere transitorio (diagnosi
+                            # 2026-06-10: stesso payload accettato 5/5 al replay):
+                            # UN solo retry con payload identico, poi fallback
+                            if not (name.startswith("gemini") and "400" in str(e)[:120]):
+                                raise
+                            try:
+                                response = client.chat.completions.create(
+                                    model=model, messages=payload,
+                                    tools=self.tools_schema, tool_choice="auto"
+                                )
+                                logging.warning(f"retry Gemini 400 ({name}): OK")
+                            except Exception:
+                                logging.warning(f"retry Gemini 400 ({name}): ancora 400, fallback")
+                                raise
+                        usage = getattr(response, "usage", None)
+                        if usage:
+                            self._log_tokens(name, model,
+                                             getattr(usage, "prompt_tokens", 0) or 0,
+                                             getattr(usage, "completion_tokens", 0) or 0)
+                        msg = response.choices[0].message
 
-                    if msg.tool_calls:
-                        self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
-                        for tc in msg.tool_calls:
-                            out = self.execute_tool_call(tc.function.name, tc.function.arguments)
-                            # Diario memoria (FASE 2 fetta 2a, SOLO scrittura):
-                            # una riga per OGNI tool call, DOPO l'esecuzione per
-                            # catturarne l'esito (negativo incluso). Fail-safe
-                            # (§9): la memoria che non scrive NON ferma il turno.
-                            self._diario_log(
-                                tc.function.name,
-                                f"{self._riassumi_args(tc.function.name, tc.function.arguments)}"
-                                f" | {self._esito_sintetico(out)}",
-                            )
-                            self._add_to_history("tool", content=out, tool_call_id=tc.id, name=tc.function.name)
-                            yield {"type": "tool_res", "output": out}
-                        self._save_history()
-                        # continua il loop per ottenere la risposta finale
-                    elif msg.content:
-                        self._add_to_history("assistant", content=msg.content)
-                        self._save_history()
-                        yield {"type": "final", "content": msg.content}
-                        return
-                    else:
-                        break  # risposta vuota inattesa
-            except Exception as e:
-                if name.startswith("gemini") and "400" in str(e)[:120]:
-                    # Diagnosi 400: sequenza dei role della finestra inviata,
-                    # con dettaglio tool_calls/content per gli assistant
-                    seq = [
-                        f"assistant(tool_calls={len(m.get('tool_calls') or [])},"
-                        f"content={'sì' if m.get('content') else 'no'})"
-                        if m["role"] == "assistant" else m["role"]
-                        for m in payload
-                    ]
-                    logging.warning(f"Diagnosi 400 {name}: payload = {' | '.join(seq)}")
-                logging.warning(f"Provider {name} ({model}) fallito: {e}")
-                _ft_level, _ = _classify_provider_error(
-                    getattr(e, "status_code", None), str(e), name not in _free_names)
-                self._log_tokens(name, model, 0, 0,
-                                 event="fallthrough", reason=_ft_level)
-                continue
-        yield {"type": "error", "content": "Pipeline esausta."}
+                        if msg.tool_calls:
+                            self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
+                            for tc in msg.tool_calls:
+                                out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                                # Diario memoria (FASE 2 fetta 2a + fetta 1 apprendimento):
+                                # una riga per OGNI tool call, con fonte='kernel' e turno_id.
+                                # Fail-safe (§9): la memoria che non scrive NON ferma il turno.
+                                _esito_str = self._esito_sintetico(out)
+                                _turno_tool_n += 1
+                                if _esito_str.startswith("[KO]"):
+                                    _turno_tool_ko += 1
+                                self._diario_log(
+                                    tc.function.name,
+                                    f"{self._riassumi_args(tc.function.name, tc.function.arguments)}"
+                                    f" | {_esito_str}",
+                                    fonte="kernel",
+                                    turno_id=_turno_id,
+                                )
+                                self._add_to_history("tool", content=out, tool_call_id=tc.id, name=tc.function.name)
+                                yield {"type": "tool_res", "output": out}
+                            self._save_history()
+                            # continua il loop per ottenere la risposta finale
+                        elif msg.content:
+                            self._add_to_history("assistant", content=msg.content)
+                            self._save_history()
+                            _turno_final = True
+                            yield {"type": "final", "content": msg.content}
+                            return
+                        else:
+                            break  # risposta vuota inattesa
+                except Exception as e:
+                    if name.startswith("gemini") and "400" in str(e)[:120]:
+                        # Diagnosi 400: sequenza dei role della finestra inviata,
+                        # con dettaglio tool_calls/content per gli assistant
+                        seq = [
+                            f"assistant(tool_calls={len(m.get('tool_calls') or [])},"
+                            f"content={'sì' if m.get('content') else 'no'})"
+                            if m["role"] == "assistant" else m["role"]
+                            for m in payload
+                        ]
+                        logging.warning(f"Diagnosi 400 {name}: payload = {' | '.join(seq)}")
+                    logging.warning(f"Provider {name} ({model}) fallito: {e}")
+                    _ft_level, _ = _classify_provider_error(
+                        getattr(e, "status_code", None), str(e), name not in _free_names)
+                    self._log_tokens(name, model, 0, 0,
+                                     event="fallthrough", reason=_ft_level)
+                    continue
+            yield {"type": "error", "content": "Pipeline esausta."}
+        finally:
+            _chiudi_turno()
 
 def doctor(root_dir: Optional[str] = None) -> int:
     """Auto-diagnosi di Gas: check di integrità senza consumare token LLM
