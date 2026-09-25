@@ -147,3 +147,4 @@
 #102 — 2026-09-23 — APPROVATO — fallback grep anti-loop stop_hook_active (riserva #101). Verificati: promemoria_end.sh:20 (grep -Eq regex POSIX, catena && atomica, no falsi positivi su payload Claude Code), test_unit_hooks.py:820 (_make_broken_python3_path: solo python3 rotto, altri tool intatti), T-prom-8/8b asserzioni discriminanti.
 - 2026-09-23 — Quando python3 è usato in bash come parser JSON monouso, aggiungere un fallback grep DOPO il check positivo e condizionato a VAR vuota: `[[ -z "$VAR" ]] && grep -Eq '"key"[[:space:]]*:[[:space:]]*true' <<< "$INPUT" && exit 0`. Regex senza anchoring accettabile per payload con struttura fissa e controllata (es. Stop hook Claude Code).
 #103 — 2026-09-24 — APPROVATO — fetta 1 auto-apprendimento (fonte+turno_id+turno_fine). Nessuna lezione nuova.
+#104 — 2026-09-25 — APPROVATO — fetta 2 auto-apprendimento (sanitize+delimitatori memoria, turno_tentati, guard fonte). Nessuna lezione nuova.

@@ -54,6 +54,9 @@ STATI_CONTATTO: Tuple[str, ...] = (
 STATO_DEFAULT: str = "nuovo"
 # Stati "invalidanti": il lead è fuori dal gioco, GAS non deve più inseguirlo.
 STATI_CHIUSI: frozenset = frozenset({"rifiutato", "chiuso"})
+# Valori ammessi per il campo `fonte` del diario (Fetta C auto-apprendimento).
+# Valore non ammesso → WARN + NULL (fail-safe §9, il turno NON crasha).
+FONTI_AMMESSE: frozenset = frozenset({"kernel", "utente", "modello"})
 
 DEFAULT_DB_FILENAME: str = ".gas_memory.db"
 # Quante copie .bak tenere di default (rotazione anti-accumulo, come la retention
@@ -405,6 +408,10 @@ class MemoryStore:
         o None in caso di degrado. MAI UPDATE/DELETE: questo è l'unico ingresso.
         fonte: chi ha prodotto l'evento ('kernel'|'utente'|'modello'), None=sconosciuto.
         turno_id: uuid4 del turno corrente, None per eventi fuori turno."""
+        # Fetta C: guard su fonte — valore non ammesso → WARN + NULL (fail-safe §9)
+        if fonte is not None and fonte not in FONTI_AMMESSE:
+            log.warning("append_diario: fonte non ammessa %r (salvato NULL)", fonte)
+            fonte = None
         try:
             with self._connect() as con:
                 cur = con.execute(
