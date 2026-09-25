@@ -68,7 +68,7 @@
 >    `_turno_tentati`: `_turno_provider` settato SOLO nel ramo `_turno_final = True`,
 >    `_turno_tentati` accumula ogni provider tentato. Semantica corretta. `descr` cresce
 >    ma è testo libero, nessuna migrazione schema SQLite.
-> 3. `modules/memory/store.py:59` + `store.py:412-414` — `FONTI_AMMESSE` + guard in
+> 3. `modules/memory/store.py:59` + `modules/memory/store.py:412-414` — `FONTI_AMMESSE` + guard in
 >    `append_diario`: conforme fail-safe §9, valore non ammesso → WARN + NULL, zero crash.
 > 4. `gas.py:79` — regola anti-injection nel system prompt: conforme.
 > 5. Wall of Shame §5: conforme. Cap 10 iterazioni (§8): intatto. `_get_window()`:
