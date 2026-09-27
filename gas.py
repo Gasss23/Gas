@@ -46,14 +46,13 @@ _MEMORIA_DATI_CLOSE = "</memoria_dati>"
 
 def _sanitize_memory_text(text: str) -> str:
     """Neutralizza testo estratto dalla memoria prima dell'iniezione nel prompt.
-    Escapa i tag delimitatori del blocco <memoria_dati> usando entità HTML (così
-    il testo sostituto non contiene i tag originali come sottostringa, eliminando
-    il rischio che un LLM interpreti l'escape come tag reale). Rimuove caratteri
-    di controllo C0 eccetto \\n (0x0A) e \\t (0x09). PURA: nessun effetto
+    Escapa TUTTI i < e > → entità HTML, rendendo impossibile iniettare tag
+    arbitrari (incluse varianti uppercase/spazi). I tag reali del blocco
+    <memoria_dati> vengono aggiunti dai chiamanti DOPO la sanitizzazione.
+    Rimuove C0 (eccetto \\n e \\t) e C1 (0x80-0x9F). PURA: nessun effetto
     collaterale."""
-    text = text.replace(_MEMORIA_DATI_OPEN, "&lt;memoria_dati&gt;")
-    text = text.replace(_MEMORIA_DATI_CLOSE, "&lt;/memoria_dati&gt;")
-    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    text = text.replace('<', '&lt;').replace('>', '&gt;')
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f]', '', text)
 
 
 _GAS_SYSTEM_PROMPT_BASE = (
