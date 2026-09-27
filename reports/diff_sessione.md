@@ -1,15 +1,19 @@
-# Diff sessione — 2026-09-24
-
-Branch: feat/apprendimento-f1-esiti  
-Scope: Auto-apprendimento Fetta 1 — fonte + turno_id + turno_fine nel diario
+# Diff sessione — 2026-09-25
 
 ## File toccati
 
-| File | Cosa è cambiato | Perché |
-|------|----------------|--------|
-| `gas.py` | `import uuid`; `DIARIO_NOISE_TIPI` += `"turno_fine"`; `_diario_log` accetta `fonte`/`turno_id`; `run_turn` wrappato in `try/finally` con tracking per-turno e `_chiudi_turno()` | Scrivere una riga `turno_fine` a fine ogni turno con esito deterministico (fetta 1 auto-apprendimento) |
-| `modules/memory/store.py` | `_ensure_columns` aggiunge colonne `fonte`/`turno_id` al diario; `append_diario` accetta `fonte`/`turno_id` | Struttura dati per identificare fonte e raggruppare eventi per turno nel diario |
-| `tests/test_unit_kernel.py` | T64a–T64i nuovi (24 test); T20a/b/c aggiornati per filtrare `turno_fine` | Copertura migrazione, tutti gli esiti (ok/parziale/ko), GeneratorExit, memoria None, coerenza turno_id |
-| `.claude/agents/memoria_revisore.md` | Aggiunta riga contatore review #103 | Aggiornamento memoria del revisore dopo APPROVATO |
-| `reports/stato_progetto.md` | Aggiornamento data, contatore review (#103), baseline test (318 PASS) | Fotografia viva dello stato del progetto |
-| `reports/ultimo_report.md` | Report completo fetta 1: modifiche, test, E2E, review | Fonte di verità del task |
+| File | Cosa è cambiato e perché |
+|------|--------------------------|
+| `gas.py` | Fetta A: `import re`, costanti `_MEMORIA_DATI_OPEN/_CLOSE`, `_sanitize_memory_text` (sanitizzazione memoria anti-injection), aggiornamento `_GAS_SYSTEM_PROMPT_BASE` (regola dato storico), `_memoria_pin` (sanitize campi + wrapper), `_ricorda` (sanitize + wrapper). Fetta B: `_turno_tentati` tracking, `_turno_provider` spostato al ramo successo, `tentati=` aggiunto a `_chiudi_turno`. |
+| `modules/memory/store.py` | Fetta C: `FONTI_AMMESSE = frozenset{...}` + guard in `append_diario` (valore non ammesso → WARN + NULL, fail-safe §9). |
+| `modules/memory/__init__.py` | Export di `FONTI_AMMESSE` aggiunto all'import e a `__all__`. |
+| `tests/test_unit_kernel.py` | +21 test: T65a-f (Fetta A: sanitizzazione, wrapper, regola system prompt), T66a-c (Fetta B: provider onesto, tentati), T67a-e (Fetta C: guard fonte). |
+| `.claude/agents/memoria_revisore.md` | Riga #104 aggiunta dal revisore (2026-09-25, APPROVATO). |
+| `reports/stato_progetto.md` | Aggiornato: header data/review, counter review (103→104), numeri suite (318→339 PASS). |
+| `reports/ultimo_report.md` | Riscritto per fetta 2: obiettivo, modifiche, test, E2E reale, review #104. |
+
+## Note
+
+- Fetta A etichetta MITIGATO (non CHIUSO): i delimitatori riducono la prompt injection, non la eliminano.
+- Fette B e C: CHIUSO — dati deterministici, test coprono tutti i rami.
+- Suite: 339 PASS, 5 FAIL (bwrap macOS F-mac-1, invariati).
