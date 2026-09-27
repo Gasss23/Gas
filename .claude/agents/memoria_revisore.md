@@ -148,3 +148,4 @@
 - 2026-09-23 — Quando python3 è usato in bash come parser JSON monouso, aggiungere un fallback grep DOPO il check positivo e condizionato a VAR vuota: `[[ -z "$VAR" ]] && grep -Eq '"key"[[:space:]]*:[[:space:]]*true' <<< "$INPUT" && exit 0`. Regex senza anchoring accettabile per payload con struttura fissa e controllata (es. Stop hook Claude Code).
 #103 — 2026-09-24 — APPROVATO — fetta 1 auto-apprendimento (fonte+turno_id+turno_fine). Nessuna lezione nuova.
 #104 — 2026-09-25 — APPROVATO — fetta 2 auto-apprendimento (sanitize+delimitatori memoria, turno_tentati, guard fonte). Nessuna lezione nuova.
+#105 — 2026-09-27 — APPROVATO — _sanitize_memory_text hardening: escape universale <> (nessun doppio-escape sull'&), regex C1 aggiunta, T65g discriminante. Nessuna lezione nuova.
