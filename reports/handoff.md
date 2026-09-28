@@ -1,56 +1,32 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-28 — Fetta 3a lezioni quarantena + fix pre-merge + CI format fix
+**Sessione:** 2026-09-28 — Autonomia K3+K4 (knowledge base in ricorda + 6 protezioni)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #101 (https://github.com/Gasss23/Gas/pull/101).
-2. **Fetta 3b**: decidere se/quando implementare il generatore LLM di lezioni (proposte automatiche). Fuori scope questa sessione.
-3. **R-lez-bis-1** (cosmetica, non bloccante): `_MEM_FILE_PREFIXES` definita inline — spostare a costante di modulo in sessione futura se si desidera.
-4. **R-lez-2** (non bloccante, ereditata): nessun blocco architetturale `lezioni_*` in `execute_tool_call`. Mitigata da T68n.
+1. Merge della PR #[DA_COMPILARE_POST_PUSH] ([URL_DA_COMPILARE_POST_PUSH]).
+2. Riserva R-k4-3 (cosmetica test): T69b check primario vacuosamente True se blocco `<conoscenza_dati>` assente. Il check discriminante è T69b.2. Da correggere in sessione futura se fastidiosa.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 3a — lezioni in quarantena**: `FATTA`
-  Tabella DB `lezioni` (stato/autore/testo, CHECK DB-level), CLI SOLO UMANA `gas lezioni` (aggiungi/lista/approva/rifiuta/ritira), `_lezioni_pin()` inietta blocco `<lezioni_dati>` nel system prompt (max 10 approvate, escape _sanitize_memory_text, fail-safe §9). T68a-T68n: 15/15 PASS.
+- **FETTA 0 — Sonda (sola lettura)**: `FATTA` — K0-K2 confermati su origin/main (`d46868c`). K3/K4 non in contraddizione con le protezioni. `ricorda()` non leggeva `.gas_knowledge.db` prima di questa sessione. Path knowledge DB: costante in `tools/ingest_knowledge.py`, env `GAS_KNOWLEDGE_DB` non esistente in gas.py (aggiunta ora).
 
-- **Fetta 3a-bis — fix pre-merge**: `FATTA`
-  Lista testo completo+autore, rifiuto `\n`/`\r` (store.py:1186), guard JSON R-lez-3 (gas.py:2677-2686), `write_file` guardrail esteso a `.gas_memory/.gas_vectors/.gas_tokens`. T68o-T68s: 5/5 PASS. 0 nuovi FAIL.
+- **FETTA 1 — K3+K4**: `FATTA` — `_knowledge_search()` aggiunto, wiring in `_ricorda()`, 6 protezioni K4 implementate, 17 test T69a-T69h, E2E su copia 10/10. Review #108 APPROVATO CON RISERVE. Riserve R-k4-1/R-k4-2 chiuse prima del commit; R-k4-3 aperta.
 
-- **Fetta CI-fix — handoff formato canonico**: `FATTA`
-  `reports/handoff.md` riscritto con struttura §0-§5. Causa: regex CI cercava il titolo canonico della sezione 2; titolo era libero e `reports/*.md` mancavano dal set dichiarato. `check_handoff: OK — 8 file`. `check_verdetto: OK — 7 riferimenti`.
+- **Autonomia #2/#3**: `DEFERITA — STOP BLOCCANTE rispettato` (scope limitato a K3+K4 come da istruzioni; nessun codice fuori dai 6 punti K4).
 
-**Verifica DB E2E** (`gas lezioni lista` su `.gas_memory.db` reale):
-
-```
-Nessuna lezione trovata.
-```
-
-DB di produzione pulito. Le lezioni dell'E2E erano su DB temporaneo in-process.
-
-**Delta test motore:**
-- Baseline (2026-09-27, main): 346 PASS, 5 FAIL (F-mac-1 bwrap)
-- Fetta 3a (0c816a9): 361 PASS, 5 FAIL (+15 PASS T68a-T68n)
-- Fetta 3a-bis (427fcf0): **366 PASS, 5 FAIL** (+5 PASS T68o-T68s, 0 nuovi FAIL)
+- **Script CI / fix fuori scope**: `SALTATA — non pertinente a K3+K4 e non in scope` (STOP BLOCCANTE rispettato).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 +
- gas.py                             | 145 +++++++++++++++++++++++++-
- modules/memory/store.py            | 149 +++++++++++++++++++++++++++
- reports/diff_sessione.md           |  26 ++---
- reports/handoff.md                 | 172 ++++++++++++++++++++-----------
- reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           | 199 +++++-------------------------------
- tests/test_unit_kernel.py          | 201 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 636 insertions(+), 264 deletions(-)
+[DA_COMPILARE_4BIS]
 ```
 
 ---
@@ -58,95 +34,103 @@ DB di produzione pulito. Le lezioni dell'E2E erano su DB temporaneo in-process.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-aafcb12 docs(ci-fix): ultimo_report + stato_progetto aggiornati per CI fix handoff
-f8d2368 fix(ci): handoff §2 — stat reale post-commit (137 righe handoff, 666/228)
-50ce0ae fix(ci): handoff.md — titoli canonici §0-§5, tutti 8 file in §2 GIT DIFF --STAT
-6dfbcfd docs(fetta3a-bis): report + handoff + stato_progetto aggiornati
-427fcf0 fix(fetta3a-bis): lista testo completo+autore, \n rifiutato, R-lez-3, write_file esteso
-f88e081 chore(revisore): memoria review #107 — APPROVATO CON RISERVE
-715af86 fix(fetta3a): concordanza grammaticale R-lez-1 + verdetto revisore verbatim
-8dfdf08 chore(revisore): memoria review #106 — APPROVATO CON RISERVE
-625e34d docs(fine-task): handoff 2026-09-28 Fetta 3a lezioni quarantena
-0c816a9 feat(fetta3a): lezioni in quarantena — tabella + CLI umana + iniezione prompt
+[DA_COMPILARE_4BIS]
 ```
 
-NB: il commit di fine-task che contiene questo file non compare nel log, per costruzione.
-
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #107 — Fetta 3a-bis (INTEGRALE)
+Commit `6249e16` tocca `gas.py` e `tests/test_unit_kernel.py` — review #108 obbligatoria.
 
-**APPROVATO CON RISERVE**
+**Verdetto integrale review #108:**
 
-**1. `gas.py:1552` — `_MEM_FILE_PREFIXES` e guardrail write_file esteso**: Introduce tupla locale e sostituisce il singolo check con `any(p in normalized for p in _MEM_FILE_PREFIXES)`. La normalizzazione `lower().replace("-","_").replace(" ","_")` già applicata garantisce: `.gas_memory.db-wal` → bloccato; `.GAS_MEMORY.db` → bloccato. T68s verifica 6 varianti. Rischio falsi positivi: trascurabile. **ok.** Riserva cosmetica: `_MEM_FILE_PREFIXES` inline — meglio come costante di modulo (R-lez-bis-1), non bloccante.
+> ## VERDETTO REVIEW #108 — K3+K4 (knowledge base in ricorda + 6 protezioni)
+>
+> **Branch:** feat/autonomia-k3-k4
+> **File esaminati:** gas.py, tests/test_unit_kernel.py
+>
+> ---
+>
+> ### APPROVATO CON RISERVE
+>
+> ---
+>
+> ### Evidenze concrete esaminate
+>
+> **gas.py:~1467** — `cap_n = min(int(n), self.KNOWLEDGE_MAX_RESULTS)` è posizionata PRIMA del blocco `try/except Exception` che copre la connessione SQLite. Se `n` fosse non-int-convertibile, l'eccezione sfugge a `_knowledge_search` e raggiunge `_ricorda` senza catch (nessun try/except nel call site). Rischio esaminato: propagazione non coperta da fail-safe §9. In pratica `n` è sempre int (schema tool + call in `_ricorda`), ma non è fail-safe per costruzione. Esito: **riserva minore R-k4-1**.
+>
+> **gas.py:~1638** (hunk @@ -1549) — `_MEM_FILE_PREFIXES` estesa con `.gas_knowledge`. Verifica: `".gas_knowledge.db-wal".lower().replace("-","_").replace(" ","_")` → `".gas_knowledge.db_wal"` contiene `.gas_knowledge` come substring → bloccato correttamente. T69f testa `.gas_knowledge.db`, `.GAS_KNOWLEDGE.db`, `.gas_knowledge.db-wal`. Esito: **ok, K4.4 soddisfatto**.
+>
+> ### Verifica K4 completa
+>
+> | # | Requisito | Esito |
+> |---|-----------|-------|
+> | K4.1 | Contenuto dentro `<conoscenza_dati>`, `_sanitize_memory_text`, "dati non istruzioni" | ✅ gas.py ~1479/1496, T69a/T69b.2 |
+> | K4.2 | Cap deterministico env-overridabile (MAX_RESULTS=5, MAX_CHARS=2000) | ✅ gas.py ~536-540/839-840, SQL LIMIT + loop break, T69c/T69d |
+> | K4.3 | Solo chunk con fonte in sources.yaml | ✅ gas.py ~1451-1465: carica YAML, filtra `attiva=True`, SQL IN con `approved`, T69e |
+> | K4.4 | write_file blocca .gas_knowledge* | ✅ gas.py ~1638, T69f |
+> | K4.5 | Nessun tool scrittura knowledge nel loop | ✅ tools_schema senza voci knowledge-write, SQLite `?mode=ro`, T69f2/T69f2b |
+> | K4.6 | DB assente/corrotto → ricorda funziona, nessun crash | ✅ gas.py ~1446-1448 (exists check), ~1478-1480 (except), T69g/T69g3 |
+>
+> ### Antipattern Wall of Shame
+> Nessun raw history slicing. Nessuna simulazione tool. T69h usa mock class strutturato. ✅
+>
+> ### Guardrail integrità
+> `_knowledge_search` non tocca `range(10)`, non modifica la finestra, non auto-chiama. ✅
+>
+> ### Riserve (non bloccanti)
+>
+> - **R-k4-1** (minore): `gas.py:~1467` — `cap_n = min(int(n), self.KNOWLEDGE_MAX_RESULTS)` fuori dal try/except. Fix: spostare dentro il `try` oppure aggiungere un outer catch nel call site di `_ricorda`.
+> - **R-k4-2** (cosmetica): `gas.py:~1477` — `source_name` e `ts` nel header non passano per `_sanitize_memory_text`. Rischio pratico nullo (ts[:10] non abbastanza lungo per un tag completo, source_name operator-controlled), ma non coerente con defense-in-depth applicata a `testo`.
+> - **R-k4-3** (cosmetica test): `tests/test_unit_kernel.py:~4380` — T69b check primario con logica chained-split vacuosamente True se il blocco `<conoscenza_dati>` è assente. Il check discriminante reale è T69b.2.
+>
+> ### Rischio esplicitamente escluso
+> `gas doctor` non verificato per il check di PyYAML assente o DB knowledge presente ma non leggibile: il diff non tocca la sezione doctor, fuori scope della fetta K3/K4.
 
-**2. `modules/memory/store.py:1186` — rifiuto `\n`/`\r`**: Check DOPO strip() e PRIMA del len-check. Interazione con strip() corretta. T68q verifica rifiuto + assenza scrittura DB. **ok.**
-
-**3. `gas.py:2677-2686` — guard JSON, testo completo, autore**: `try/except (json.JSONDecodeError, TypeError)` chiude R-lez-3. Fallback `"<illeggibile>"`. Rimozione `[:80]` corretta. T68r inietta JSON malformato via sqlite3 → verifica `rc==0 AND "<illeggibile>"`. **ok.**
-
-**4. T68o-T68s**: 5/5 PASS. `_run_lezioni_cmd` in-process con `redirect_stdout` + `sys.argv` patch — corretto. Nessun antipattern Wall of Shame. **ok.**
-
-**Verifica guardrail**: cap 10 iterazioni non toccato. `_get_window()` non toccato. Wall of Shame pulito. Fail-safe §9 rispettato.
-
-**Riserve non bloccanti:**
-- R-lez-bis-1 (cosmetica): `_MEM_FILE_PREFIXES` inline
-- R-lez-2 (ereditata da #106): nessun blocco architetturale `lezioni_*`
-
----
-
-### Review #106 — Fetta 3a (INTEGRALE)
-
-**APPROVATO CON RISERVE**
-
-**`gas.py:1282-1300` — `_lezioni_pin()`**: calcolato una volta per turno, fuori dal loop per-provider. Fail-safe su due livelli. Escape via `_sanitize_memory_text`. E2E reale conferma escape funzionante. **ok.**
-
-**`gas.py:1718` — payload con `lezioni_pin`**: copre TUTTI i provider. `_get_window()` non toccato. Cap 10 iterazioni non toccato. **ok.**
-
-**`gas.py:2607-2706` — `lezioni_cmd()` CLI SOLO UMANA**: try/except ValueError su int(argv[3]). Guard `mem.available`. Docstring "VIETATO". T68n asserisce assenza tool "lezione". **ok.**
-
-**`modules/memory/store.py:1174-1278`**: CHECK DDL + validazione applicativa. `_transiziona_lezione` legge prima di scrivere. `get_lezioni_approvate` bounded. **ok.**
-
-**T68a-T68n**: 15/15 PASS. **ok.**
-
-**Riserve:** R-lez-1 (cosmetic, già fixata); R-lez-2 (minore, nessun blocco architetturale); R-lez-3 (json.loads — chiusa da fetta 3a-bis).
+**Azioni post-review**: R-k4-1 (chiusa: `cap_n` spostato dentro `try`), R-k4-2 (chiusa: `source_name`/`ts` sanitizzati), R-k4-3 (aperta, tracciata qui e in `stato_progetto.md`).
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Baseline (main, 2026-09-27): 346 PASS, 5 FAIL (bwrap F-mac-1)
-- Fetta 3a (0c816a9): +15 PASS T68a-T68n → 361 PASS, 5 FAIL
-- Fetta 3a-bis (427fcf0): +5 PASS T68o-T68s → **366 PASS, 5 FAIL**
-- CI-fix commits (50ce0ae/f8d2368/aafcb12): solo reports/ — zero diff motore, suite invariata
+Prima → dopo:
 
-I 5 FAIL sono F-mac-1 (bwrap, fuori scope macOS — documentato).
+| Metrica | Prima | Dopo |
+|---------|-------|------|
+| PASS | 366 | 383 |
+| FAIL | 5 | 5 |
+| Nuovi test | — | +17 (T69a-T69h) |
+
+RIEPILOGO (output reale):
+
+```
+=== RIEPILOGO: 383 PASS, 5 FAIL ===
+  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non dispon
+  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+```
+
+I 5 FAIL sono tutti F-mac-1 (bwrap macOS, noti e attesi): `T11c2`, `T11e`, `T12a`, `T12c`, `T12e`. Nessun nuovo FAIL introdotto da questa sessione.
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(ci-fix): ultimo_report + stato_progetto aggiornati per CI fix ha…	CI	feat/fetta3a-lezioni-quarantena	push	36451515673	1m46s	2026-09-28T16:30:22Z
-completed	failure	docs(fetta3a-bis): report + handoff + stato_progetto aggiornati	CI	feat/fetta3a-lezioni-quarantena	push	36444333487	58s	2026-09-28T15:32:17Z
-completed	failure	fix(fetta3a): concordanza grammaticale R-lez-1 + verdetto revisore ve…	CI	feat/fetta3a-lezioni-quarantena	push	36436194656	53s	2026-09-28T14:32:06Z
+[DA_COMPILARE_4BIS]
 ```
-
-**Mappatura commit → run:**
-- `aafcb12` (docs-ci-fix) → run 36451515673 — **success** ✅
-- `f8d2368` (fix ci stat) → run non visibile in `gh run list -L 3` (push intermedio)
-- `50ce0ae` (fix ci titoli) → run non visibile in `gh run list -L 3` (push intermedio)
-- `6dfbcfd` (docs fetta3a-bis) → run 36444333487 — **failure** (causa: handoff titoli non canonici — corretto da 50ce0ae)
-- `427fcf0`, `f88e081` → run non separata (inclusa nel push di 6dfbcfd o run 36444333487)
-- `715af86`, `8dfdf08`, `625e34d`, `0c816a9` → run 36436194656 — **failure** (causa identica, ora corretta)
-
-La run 36451515673 (in_progress) testa l'albero finale con il fix — attesa verde.
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **R-lez-bis-1** (cosmetica): `_MEM_FILE_PREFIXES` inline in gas.py — spostare a costante di modulo in sessione futura.
-- **R-lez-2** (minore, ereditata da #106): nessun blocco architetturale `lezioni_*` in `execute_tool_call`. Mitigata da T68n.
-- **R-ci-1** (robustezza): regex di `check_handoff.py:_declared_set` (`r"##\s*§2\s+GIT DIFF --STAT.*?\`\`\`"`) NON è ancorata a inizio riga — aggancia citazioni inline del titolo prima del titolo vero. Fix: aggiungere `re.MULTILINE` e ancorare con `^` (`r"^##\s*§2\s+GIT DIFF --STAT"`). Fetta futura.
+Dalla sessione corrente (review #108):
+- **R-k4-3** (cosmetica test): T69b check primario con logica chained-split vacuosamente True quando blocco `<conoscenza_dati>` assente. Il check discriminante è T69b.2. Da correggere in sessione futura.
+
+Ereditate da sessioni precedenti:
+- **R-lez-bis-1** (cosmetica, fetta 3a-bis): vedi stato_progetto.md
+- **R-lez-2** (ereditata, fetta 3a): vedi stato_progetto.md
+- **R-ci-1** (regex check_handoff da ancorare a `^`): vedi stato_progetto.md

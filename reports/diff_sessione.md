@@ -1,16 +1,24 @@
-# Diff sessione — 2026-09-28 (Fetta 3a + 3a-bis + CI fix)
+# DIFF SESSIONE — 2026-09-28 (K3+K4 knowledge base in ricorda)
 
-> Fotografia dell'ultima sessione. La storia completa sta in git.
+> Fotografia dell'ultima sessione. Si riscrive a ogni sessione; la storia completa sta in git.
 
-## File toccati (git diff --stat BASE..HEAD)
+## File toccati
 
-| File | Motivo |
-|------|--------|
-| `.claude/agents/memoria_revisore.md` | Aggiornata con lezioni review #106 e #107 |
-| `gas.py` | Tabella lezioni: `_lezioni_pin()`, payload provider, `lezioni_cmd()`, guardrail `write_file` esteso, guard JSON |
-| `modules/memory/store.py` | DDL `lezioni`, validazione, `_transiziona_lezione`, `get_lezioni_approvate`, rifiuto `\n`/`\r` |
-| `reports/diff_sessione.md` | Questo file — riscritto a ogni sessione |
-| `reports/handoff.md` | Dossier di fine sessione; riscritto con titoli canonici §0-§5 per CI fix |
-| `reports/stato_progetto.md` | Aggiornato stato PR #101 + nota CI fix |
-| `reports/ultimo_report.md` | Report task CI fix + /fine-task |
-| `tests/test_unit_kernel.py` | T68a-T68s (20 test lezioni: DDL, pin, CLI, guardrail, edge case) |
+| File | Tipo | Cosa è cambiato e perché |
+|------|------|--------------------------|
+| `gas.py` | modificato | K3: aggiunto `_knowledge_search()` + wiring in `_ricorda()`; K4: costanti `_CONOSCENZA_DATI_OPEN/CLOSE`, class constants `KNOWLEDGE_MAX_RESULTS/CHARS`, env init `knowledge_db_path`, esteso `_MEM_FILE_PREFIXES` con `.gas_knowledge`, aggiornata descrizione tool `ricorda`. |
+| `tests/test_unit_kernel.py` | modificato | +17 test T69a-T69h per i 6 punti K4 + round-trip agentico. |
+| `.claude/agents/memoria_revisore.md` | modificato | Review #108 aggiunta (APPROVATO CON RISERVE, commit `6a0a2f7`). |
+
+## Commit di sessione
+
+```
+6249e16 feat(autonomia): K3+K4 — ricorda() pesca .gas_knowledge.db + 6 protezioni
+6a0a2f7 chore(revisore): memoria review #108 — APPROVATO CON RISERVE
+```
+
+## Note
+
+- File NON toccati: `brains/`, `modules/`, `tools/ingest_knowledge.py`, `knowledge/`.
+- `.gas_memory.db` e `.gas_knowledge.db` della repo principale non toccati (E2E su copia temporanea).
+- Suite: 383 PASS, 5 FAIL (invariati F-mac-1 bwrap macOS).
