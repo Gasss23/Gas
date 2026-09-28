@@ -1,16 +1,16 @@
-# Diff sessione — 2026-09-27
+# Diff sessione — 2026-09-28 (Fetta 3a + 3a-bis + CI fix)
 
-**Branch:** fix/r2-sanitize-hardening  
-**Task:** R2 Sanitize Hardening — fetta 2b chiusura riserve fetta A
+> Fotografia dell'ultima sessione. La storia completa sta in git.
 
-## File toccati
+## File toccati (git diff --stat BASE..HEAD)
 
-| File | Cosa è cambiato e perché |
-|------|--------------------------|
-| `gas.py` | `_sanitize_memory_text`: escape universale `<`→`&lt;` e `>`→`&gt;` (non solo tag esatti) + C1 (0x80-0x9F) nella regex — chiude bypass con varianti uppercase/spazi |
-| `tests/test_unit_kernel.py` | +7 test T65g: varianti bypass (`</MEMORIA_DATI>`, spazi, uppercase) + C1 + invarianza testo normale — coprono la nuova logica di sanitizzazione |
-| `.claude/agents/memoria_revisore.md` | Riga review #105 APPROVATO aggiunta dal subagent revisore |
-| `reports/ultimo_report.md` | Report task sessione corrente (punti 1/2/3, verdetto #105 integrale) |
-| `reports/stato_progetto.md` | Aggiornato con esito fix/r2-sanitize-hardening + review #105 APPROVATO |
-| `reports/handoff.md` | Dossier di fine sessione (questo file) |
-| `reports/diff_sessione.md` | Questo file — riepilogo sessione corrente |
+| File | Motivo |
+|------|--------|
+| `.claude/agents/memoria_revisore.md` | Aggiornata con lezioni review #106 e #107 |
+| `gas.py` | Tabella lezioni: `_lezioni_pin()`, payload provider, `lezioni_cmd()`, guardrail `write_file` esteso, guard JSON |
+| `modules/memory/store.py` | DDL `lezioni`, validazione, `_transiziona_lezione`, `get_lezioni_approvate`, rifiuto `\n`/`\r` |
+| `reports/diff_sessione.md` | Questo file — riscritto a ogni sessione |
+| `reports/handoff.md` | Dossier di fine sessione; riscritto con titoli canonici §0-§5 per CI fix |
+| `reports/stato_progetto.md` | Aggiornato stato PR #101 + nota CI fix |
+| `reports/ultimo_report.md` | Report task CI fix + /fine-task |
+| `tests/test_unit_kernel.py` | T68a-T68s (20 test lezioni: DDL, pin, CLI, guardrail, edge case) |
