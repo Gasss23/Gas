@@ -1183,6 +1183,8 @@ class MemoryStore:
         testo = testo.strip() if testo else ""
         if not testo:
             return None, "Il testo della lezione non può essere vuoto."
+        if "\n" in testo or "\r" in testo:
+            return None, "Il testo della lezione non può contenere a-capo (\\n, \\r): una lezione = una riga."
         if len(testo) > LEZIONE_TESTO_MAX:
             return None, (f"Il testo supera il limite di {LEZIONE_TESTO_MAX} caratteri "
                           f"({len(testo)} forniti). Non si tronca: accorcia il testo.")

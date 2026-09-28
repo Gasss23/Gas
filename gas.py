@@ -1549,7 +1549,8 @@ class GasKernel:
                 # Guardrail: la memoria è gestita solo dal kernel, mai dai modelli
                 # (llama su Groq allucina scritture su varianti di gas_history)
                 normalized = args["relative_path"].lower().replace("-", "_").replace(" ", "_")
-                if "gas_history" in normalized:
+                _MEM_FILE_PREFIXES = ("gas_history", ".gas_memory", ".gas_vectors", ".gas_tokens")
+                if any(p in normalized for p in _MEM_FILE_PREFIXES):
                     return ("Operazione negata: la memoria di Gas è gestita "
                             "automaticamente dal kernel, non scriverla mai.")
                 path = self._safe_path(cwd, args["relative_path"])
@@ -2673,11 +2674,16 @@ def lezioni_cmd(root_dir: Optional[str] = None) -> int:
         filtro_str = f" [stato={stato_filtro}]" if stato_filtro else ""
         print(f"\n=== Lezioni{filtro_str} ({len(lezioni)}) ===")
         for l in lezioni:
-            turni_str = ", ".join(json.loads(l.get("turni_sorgente") or "[]") or [])
-            turni_label = f" | turni: {turni_str}" if turni_str else ""
+            try:
+                turni_list = json.loads(l.get("turni_sorgente") or "[]") or []
+                turni_str = ", ".join(turni_list)
+                turni_label = f" | turni: {turni_str}" if turni_str else ""
+            except (json.JSONDecodeError, TypeError):
+                turni_label = " | turni: <illeggibile>"
             decisa = f" | decisa: {str(l.get('decisa_il') or '')[:10]}" if l.get("decisa_il") else ""
-            print(f"  [{l['id']:>4}] [{l['stato']:<10}] {l['testo'][:80]}"
-                  f"{decisa}{turni_label}")
+            autore_label = f" | autore: {l.get('autore', '?')}"
+            print(f"  [{l['id']:>4}] [{l['stato']:<10}] {l['testo']}"
+                  f"{autore_label}{decisa}{turni_label}")
         return 0
 
     elif sub in ("approva", "rifiuta", "ritira"):
