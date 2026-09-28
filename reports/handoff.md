@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #[DA_COMPILARE_POST_PUSH] ([URL_DA_COMPILARE_POST_PUSH]).
+1. Merge della PR #102 (https://github.com/Gasss23/Gas/pull/102).
 2. Riserva R-k4-3 (cosmetica test): T69b check primario vacuosamente True se blocco `<conoscenza_dati>` assente. Il check discriminante è T69b.2. Da correggere in sessione futura se fastidiosa.
 
 ---
@@ -26,7 +26,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-[DA_COMPILARE_4BIS]
+ .claude/agents/memoria_revisore.md |   1 +
+ gas.py                             |  92 +++++++++++++-
+ reports/diff_sessione.md           |  34 +++--
+ reports/handoff.md                 | 184 +++++++++++++--------------
+ reports/stato_progetto.md          |   8 +-
+ reports/ultimo_report.md           | 144 +++++++++++++++++----
+ tests/test_unit_kernel.py          | 251 +++++++++++++++++++++++++++++++++++++
+ 7 files changed, 569 insertions(+), 145 deletions(-)
 ```
 
 ---
@@ -34,7 +41,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-[DA_COMPILARE_4BIS]
+6249e16 feat(autonomia): K3+K4 — ricorda() pesca .gas_knowledge.db + 6 protezioni
+6a0a2f7 chore(revisore): memoria review #108 — APPROVATO CON RISERVE
 ```
 
 ---
@@ -120,8 +128,15 @@ I 5 FAIL sono tutti F-mac-1 (bwrap macOS, noti e attesi): `T11c2`, `T11e`, `T12a
 ## §6 STATO CI
 
 ```
-[DA_COMPILARE_4BIS]
+in_progress		docs(fine-task): handoff + report K3+K4 autonomia knowledge 2026-09-28	CI	feat/autonomia-k3-k4	push	36477977180	13s	2026-09-28T20:16:05Z
+completed	success	Merge pull request #101 from Gasss23/feat/fetta3a-lezioni-quarantena	CI	main	push	36468992436	1m1s	2026-09-28T18:58:43Z
+completed	success	fix(ci): handoff §1 — rimuovi citazione inline titolo §2 che ingannav…	CI	feat/fetta3a-lezioni-quarantena	push	36461669985	50s	2026-09-28T17:56:18Z
 ```
+
+**Mappatura commit→run:**
+- `ffb4d81` (docs fine-task reports): run CI `36477977180` — in_progress al momento della scrittura (run non ancora completata).
+- `6249e16` (feat K3+K4 codice): incluso nell'albero pushato con `ffb4d81` sulla stessa run `36477977180` — nessuna run autonoma su questo SHA intermedio.
+- `6a0a2f7` (chore revisore): incluso nell'albero pushato — nessuna run autonoma su questo SHA intermedio.
 
 ---
 
