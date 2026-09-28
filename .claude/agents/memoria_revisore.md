@@ -149,3 +149,4 @@
 #103 — 2026-09-24 — APPROVATO — fetta 1 auto-apprendimento (fonte+turno_id+turno_fine). Nessuna lezione nuova.
 #104 — 2026-09-25 — APPROVATO — fetta 2 auto-apprendimento (sanitize+delimitatori memoria, turno_tentati, guard fonte). Nessuna lezione nuova.
 #105 — 2026-09-27 — APPROVATO — _sanitize_memory_text hardening: escape universale <> (nessun doppio-escape sull'&), regex C1 aggiunta, T65g discriminante. Nessuna lezione nuova.
+#106 — 2026-09-28 — APPROVATO CON RISERVE — fetta 3a lezioni quarantena. R-lez-1 (cosmetic): gas.py:82 concordanza grammaticale "sono" → "è". R-lez-2 (minore): nessun blocco architetturale in execute_tool_call per metodi lezioni_ (mitigato da T68n). E2E reale conferma escape strutturale e comportamento corretto post-injection.
