@@ -42,11 +42,11 @@ DB di produzione pulito. Le lezioni dell'E2E Fetta 3a erano su DB temporaneo in-
  gas.py                             | 145 +++++++++++++++++++++++-
  modules/memory/store.py            | 149 +++++++++++++++++++++++++
  reports/diff_sessione.md           |  36 +++---
- reports/handoff.md                 | 144 ++++++++++--------------
+ reports/handoff.md                 | 137 +++++++++++------------
  reports/stato_progetto.md          |   6 +-
  reports/ultimo_report.md           | 218 ++++++++++++++-----------------------
  tests/test_unit_kernel.py          | 201 ++++++++++++++++++++++++++++++++++
- 8 files changed, 662 insertions(+), 239 deletions(-)
+ 8 files changed, 666 insertions(+), 228 deletions(-)
 ```
 
 ---
