@@ -1,6 +1,10 @@
-# Handoff sessione 2026-09-28 — Fetta 3a + 3a-bis (lezioni quarantena + fix pre-merge)
+# HANDOFF — Dossier di fine sessione
 
-## DECISIONI UMANE RICHIESTE
+**Sessione:** 2026-09-28 — Fetta 3a + 3a-bis (lezioni quarantena + fix pre-merge)
+
+---
+
+## §0 DECISIONI UMANE RICHIESTE
 
 1. **Merge PR #101** (`feat/fetta3a-lezioni-quarantena`): dopo review, eseguire `gasmerge 101`.
 2. **Fetta 3b**: decidere se/quando implementare il generatore LLM di lezioni (proposte automatiche). Fuori scope.
@@ -9,7 +13,13 @@
 
 ---
 
-## Verifica DB E2E (output integrale `gas lezioni lista` su .gas_memory.db reale)
+## §1 SCOPE & ESITO FETTE
+
+**Fetta 3a** — lezioni in quarantena: tabella DB, CLI umana (`gas lezioni lista/approva/elimina`), iniezione prompt. 15/15 test PASS (T68a-T68n).
+
+**Fetta 3a-bis** — fix pre-merge: lista testo completo+autore, rifiuto `\n`/`\r`, guard JSON R-lez-3, `write_file` guardrail esteso. 5/5 test PASS (T68o-T68s). 0 nuovi FAIL.
+
+**Verifica DB E2E** (`gas lezioni lista` su `.gas_memory.db` reale):
 
 ```
 Nessuna lezione trovata.
@@ -17,23 +27,34 @@ Nessuna lezione trovata.
 
 DB di produzione pulito. Le lezioni dell'E2E Fetta 3a erano su DB temporaneo in-process (`kernel_tmp()`).
 
----
+**Delta test motore:**
 
-## git diff --stat BASE..HEAD (questa sessione, fetta 3a + 3a-bis)
-
-```
- .claude/agents/memoria_revisore.md |   6 +
- gas.py                             | 231 +++++++++++++++++++++++++++++++++++++++++++++
- modules/memory/store.py            | 120 +++++++++++++++++++++++++++
- tests/test_unit_kernel.py          | 201 +++++++++++++++++++++++++++++++++++++++
- 4 files changed, 558 insertions(+), 9 deletions(-)
-```
+- Baseline (2026-09-27, main): 346 PASS, 5 FAIL (F-mac-1 bwrap)
+- Fetta 3a (0c816a9): 361 PASS, 5 FAIL (+15 PASS T68a-T68n)
+- Fetta 3a-bis (427fcf0): **366 PASS, 5 FAIL** (+5 PASS T68o-T68s, 0 nuovi FAIL)
 
 ---
 
-## git log sessione (dal branch, ultimi 6 commit)
+## §2 GIT DIFF --STAT (sessione)
 
 ```
+ .claude/agents/memoria_revisore.md |   2 +
+ gas.py                             | 145 +++++++++++++++++++++++-
+ modules/memory/store.py            | 149 +++++++++++++++++++++++++
+ reports/diff_sessione.md           |  36 +++---
+ reports/handoff.md                 | 144 ++++++++++--------------
+ reports/stato_progetto.md          |   6 +-
+ reports/ultimo_report.md           | 218 ++++++++++++++-----------------------
+ tests/test_unit_kernel.py          | 201 ++++++++++++++++++++++++++++++++++
+ 8 files changed, 662 insertions(+), 239 deletions(-)
+```
+
+---
+
+## §3 GIT LOG --ONELINE (sessione)
+
+```
+6dfbcfd docs(fetta3a-bis): report + handoff + stato_progetto aggiornati
 427fcf0 fix(fetta3a-bis): lista testo completo+autore, \n rifiutato, R-lez-3, write_file esteso
 f88e081 chore(revisore): memoria review #107 — APPROVATO CON RISERVE
 715af86 fix(fetta3a): concordanza grammaticale R-lez-1 + verdetto revisore verbatim
@@ -44,15 +65,9 @@ f88e081 chore(revisore): memoria review #107 — APPROVATO CON RISERVE
 
 ---
 
-## Delta test motore
+## §4 VERDETTO DEL REVISORE
 
-**Baseline (2026-09-27, main)**: 346 PASS, 5 FAIL (F-mac-1 bwrap)  
-**Fetta 3a (0c816a9)**: 361 PASS, 5 FAIL (+15 PASS T68a-T68n)  
-**Fetta 3a-bis (427fcf0)**: **366 PASS, 5 FAIL** (+5 PASS T68o-T68s, 0 nuovi FAIL)
-
----
-
-## Verdetto revisore #107 (INTEGRALE)
+### Review #107 — Fetta 3a-bis (INTEGRALE)
 
 **APPROVATO CON RISERVE**
 
@@ -72,13 +87,7 @@ f88e081 chore(revisore): memoria review #107 — APPROVATO CON RISERVE
 
 ---
 
-## Stato CI
-
-PR #101 aperta. CI `.github/workflows/ci.yml` — verificare stato su GitHub prima del merge.
-
----
-
-## Verdetto revisore #106 (INTEGRALE — Fetta 3a)
+### Review #106 — Fetta 3a (INTEGRALE)
 
 **APPROVATO CON RISERVE**
 
@@ -93,3 +102,9 @@ PR #101 aperta. CI `.github/workflows/ci.yml` — verificare stato su GitHub pri
 **T68a-T68n**: 15/15 PASS. **ok.**
 
 **Riserve:** R-lez-1 (cosmetic, già fixata); R-lez-2 (minore, nessun blocco architetturale); R-lez-3 (json.loads — chiusa da questa fetta 3a-bis).
+
+---
+
+## §5 STATO CI
+
+PR #101 aperta (`feat/fetta3a-lezioni-quarantena`). CI `.github/workflows/ci.yml` — stato da verificare su GitHub prima del merge.
