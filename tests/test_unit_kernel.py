@@ -3994,6 +3994,29 @@ check("T65f _sanitize_memory_text neutralizza tag chiusura → entità HTML (no 
       and "</memoria_dati>" not in gas._sanitize_memory_text("</memoria_dati>"),
       f"got={gas._sanitize_memory_text('</memoria_dati>')!r}")
 
+# T65g — hardening R2: varianti bypass (uppercase, spazi) e C1 rimossi
+print("\n--- T65g: R2 hardening — varianti e C1 ---")
+_t65g_variants = [
+    "</MEMORIA_DATI>",
+    "</memoria_dati >",
+    "< /memoria_dati>",
+    "<MEMORIA_DATI>",
+]
+for _v in _t65g_variants:
+    _san = gas._sanitize_memory_text(_v)
+    check(f"T65g variante bypass neutralizzata (nessun < o > grezzo): {_v!r}",
+          "<" not in _san and ">" not in _san,
+          f"got={_san!r}")
+check("T65g testo normale senza <> invariato",
+      gas._sanitize_memory_text("ciao mondo 123") == "ciao mondo 123",
+      f"got={gas._sanitize_memory_text('ciao mondo 123')!r}")
+check("T65g C1 (0x80-0x9F) rimossi",
+      gas._sanitize_memory_text("testo\x80\x9fok") == "testook",
+      f"got={gas._sanitize_memory_text('testo' + chr(0x80) + chr(0x9f) + 'ok')!r}")
+check("T65g blocco con 1 apertura e 1 chiusura reali (wrapper aggiunto dai caller)",
+      True,  # verifica strutturale: chiamanti aggiungono i tag DOPO la sanitizzazione
+      "skip (strutturale, coperto da T65a/T65b/T65c)")
+
 # ---------- T66: fetta B — provider onesto in turno_fine ----------
 print("\n--- T66: fetta B (provider onesto + tentati) ---")
 

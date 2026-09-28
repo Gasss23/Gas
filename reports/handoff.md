@@ -1,45 +1,45 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-25 — Auto-apprendimento Fetta 2 (memoria DATO + provider onesto + guard fonte)
+**Sessione:** 2026-09-27 — R2 Sanitize Hardening (fetta 2b chiusura riserve fetta A)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #99 (https://github.com/Gasss23/Gas/pull/99).
+1. Merge della PR #100 (https://github.com/Gasss23/Gas/pull/100).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta A — R2: memoria entra nel prompt come DATO**: `FATTA`  
-  `_sanitize_memory_text` (entità HTML per tag delimitatori + rimozione C0 ctrl-chars);
-  `_memoria_pin` e `_ricorda` avvolgono output in `<memoria_dati>…</memoria_dati>`;
-  regola anti-injection aggiunta a `_GAS_SYSTEM_PROMPT_BASE`. Etichetta: **MITIGATO**.
+- **Punto 1 — `_sanitize_memory_text` hardening**: `FATTA`
+  Escape universale `<`→`&lt;` e `>`→`&gt;` (tutti i caratteri, non solo tag esatti); aggiunto C1
+  (0x80-0x9F) alla regex. +7 test T65g (varianti bypass + C1). Review #105 APPROVATO.
 
-- **Fetta B — provider onesto in turno_fine**: `FATTA`  
-  `_turno_provider` settato SOLO quando la risposta è prodotta; `_turno_tentati` traccia
-  tutti i provider tentati in ordine; `turno_fine` include `tentati=<lista>`.
+- **Punto 2 — E2E reale su COPIA `.gas_memory.db`**: `FATTA`
+  Root temporanea scratchpad, voce malevola `id=25` inserita. Pin mostra `&lt;/MEMORIA_DATI&gt;`
+  (iniezione strutturale bloccata, 1 sola chiusura reale). 2 giri reali (gemini-flash-lite,
+  gemini-flash): entrambi hanno CITATO il contenuto come dato, non obbedito al comando.
+  Etichetta: **MITIGATO** (non CHIUSO).
 
-- **Fetta C — guard su `fonte`**: `FATTA`  
-  `FONTI_AMMESSE = frozenset{"kernel","utente","modello"}`; guard in `append_diario`:
-  valore non ammesso → WARN + NULL, fail-safe §9.
+- **Punto 3 — Discrepanza verdetto #104**: `FATTA`
+  `memoria_revisore.md` contiene solo 1 riga di riepilogo (verbatim non recuperabile).
+  Versione integrale (5 pt) è in `handoff.md` della sessione precedente; `ultimo_report.md`
+  era una versione condensata (4 pt — punto 4 `gas.py:79` anti-injection perso). Annotato.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-.claude/agents/memoria_revisore.md |   1 +
- gas.py                             |  57 ++++++++++---
- modules/memory/__init__.py         |   2 +
- modules/memory/store.py            |   7 ++
- reports/diff_sessione.md           |  28 ++++---
- reports/handoff.md                 | 144 +++++++++++++++-----------------
+ .claude/agents/memoria_revisore.md |   1 +
+ gas.py                             |  13 +-
+ reports/diff_sessione.md           |  25 ++--
+ reports/handoff.md                 | 106 ++++++++--------
  reports/stato_progetto.md          |   4 +-
- reports/ultimo_report.md           | 163 +++++++++++++++++++++++++-----------
- tests/test_unit_kernel.py          | 167 +++++++++++++++++++++++++++++++++++++
- 9 files changed, 424 insertions(+), 149 deletions(-)
+ reports/ultimo_report.md           | 245 +++++++++++++++++++++----------------
+ tests/test_unit_kernel.py          |  23 ++++
+ 7 files changed, 236 insertions(+), 181 deletions(-)
 ```
 
 ---
@@ -47,44 +47,48 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-457dd2b docs(fine-task): report auto-apprendimento fetta 2 — memoria DATO + provider onesto + guard fonte
-644ff09 feat(apprendimento-f2): memoria come dato + provider onesto + guard fonte
-0b9c509 chore(revisore): memoria review #104 — APPROVATO
+653c3f8 feat(r2-hardening): _sanitize_memory_text escape universale <> + C1 + T65g
+2b6dcc7 chore(revisore): memoria review #105 — APPROVATO
 ```
 
 ---
 
 ## §4 VERDETTO DEL REVISORE
 
-**Commit 644ff09** tocca `gas.py`, `modules/memory/store.py`, `modules/memory/__init__.py`,
-`tests/test_unit_kernel.py` — verdetto integrale review #104:
+**Commit 653c3f8** tocca `gas.py` e `tests/test_unit_kernel.py` — verdetto integrale review #105:
 
 > **APPROVATO**
 >
-> 1. `gas.py:47-56` — `_sanitize_memory_text`: sostituzione HTML entities non contiene il
->    tag originale come sottostringa; regex C0 charset corretto; gap C1 (0x80-0x9F)
->    accettabile per il contesto.
-> 2. `gas.py:1585-1586` + `gas.py:1682` + `gas.py:1747` — separazione `_turno_provider` /
->    `_turno_tentati`: `_turno_provider` settato SOLO nel ramo `_turno_final = True`,
->    `_turno_tentati` accumula ogni provider tentato. Semantica corretta. `descr` cresce
->    ma è testo libero, nessuna migrazione schema SQLite.
-> 3. `modules/memory/store.py:59` + `modules/memory/store.py:412-414` — `FONTI_AMMESSE` + guard in
->    `append_diario`: conforme fail-safe §9, valore non ammesso → WARN + NULL, zero crash.
-> 4. `gas.py:79` — regola anti-injection nel system prompt: conforme.
-> 5. Wall of Shame §5: conforme. Cap 10 iterazioni (§8): intatto. `_get_window()`:
->    non toccato. `_memoria_pin` resta FUORI dalla finestra.
+> 1. `gas.py:51` — `text.replace('<','&lt;').replace('>','&gt;')`: sostituzione sequenziale
+>    senza toccare `&`; rischio doppio-escape su entità preesistenti (`&lt;` già presente)
+>    esaminato: il `<` in `&lt;` non esiste dopo la prima sostituzione, `&` non viene mai
+>    toccato → nessun doppio-escape possibile. Esito: ok.
 >
-> Riserva cosmetica non bloccante: `List[str]` (typing legacy) vs `list[str]` (Python 3.10+).
+> 2. `gas.py:54` — regex `[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f]`: copre correttamente
+>    C0 senza TAB/LF + DEL + C1 completo (128–159). Esito: ok.
+>
+> 3. `tests/test_unit_kernel.py:4006` — ciclo T65g su 4 varianti bypass: condizione
+>    `"<" not in _san and ">" not in _san` discriminante verso la vecchia implementazione
+>    (escape solo tag esatti avrebbe lasciato `<` grezzo nelle varianti). Esito: ok.
+>
+> 4. Contratto caller: `_memoria_pin` e `_ricorda` aggiungono i tag wrapper DOPO la
+>    sanitizzazione; diff non tocca quei caller; costanti `_MEMORIA_DATI_OPEN`/`_CLOSE`
+>    restano usate dai caller (non dead code). Esito: ok.
+>
+> 5. Wall of Shame §5: conforme. Cap 10 iter (§8): intatto. `_get_window()`: non toccato.
+>
+> Rischio escluso: comportamento runtime provider LLM sul prompt con entità HTML non
+> verificabile in review statica — E2E reale già eseguito (2 giri) dichiarato nel report.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-**Prima (fetta 1):** 318 PASS, 5 FAIL  
-**Dopo (fetta 2):** 339 PASS, 5 FAIL
+**Prima (sessione precedente fetta 2):** 339 PASS, 5 FAIL
+**Dopo (questa sessione):** 346 PASS, 5 FAIL
 
 ```
-=== RIEPILOGO: 339 PASS, 5 FAIL ===
+=== RIEPILOGO: 346 PASS, 5 FAIL ===
   FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile...
   FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
   FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS...
@@ -93,31 +97,25 @@
 ```
 
 I 5 FAIL sono T11c2/T11e/T12a/T12c/T12e — bwrap macOS (F-mac-1, noto, fuori scope).
-Nessun FAIL nuovo. Nuovi PASS: +21 (T65a-f, T66a-c, T67a-e).
+Nessun FAIL nuovo. Nuovi PASS: +7 (T65g).
 
 ---
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(fine-task): report auto-apprendimento fetta 2 — memoria DATO + p…	CI	feat/apprendimento-f2	push	36054178310	53s	2026-09-24T20:20:15Z
-completed	success	Merge pull request #98 from Gasss23/feat/apprendimento-f1-esiti	CI	main	push	36051566338	1m1s	2026-09-24T19:56:53Z
-completed	success	docs(fine-task): handoff 2026-09-24 auto-apprendimento fetta 1	CI	feat/apprendimento-f1-esiti	push	36050616546	53s	2026-09-24T19:48:21Z
+completed	success	feat(r2-hardening): _sanitize_memory_text escape universale <> + C1 +…	CI	fix/r2-sanitize-hardening	push	36335558534	1m2s	2026-09-27T17:04:18Z
+completed	success	Merge pull request #99 from Gasss23/feat/apprendimento-f2	CI	main	push	36327304930	55s	2026-09-27T14:49:23Z
+completed	success	docs(handoff): path completo citazione store.py §4 (sblocco check_ver…	CI	feat/apprendimento-f2	push	36138728813	1m17s	2026-09-25T13:04:58Z
 ```
 
 **Mappatura commit→run:**
-- `457dd2b` (docs fine-task) — run `36054178310` su `feat/apprendimento-f2`, **completed success**
-- `644ff09` (feat fetta 2) — push bundled con `457dd2b`, testato dall'albero della stessa run `36054178310`; SHA intermedio mai testato in isolamento
-- `0b9c509` (chore revisore) — nessuna run su questo SHA in isolamento; incluso nell'albero di `36054178310`
+- `653c3f8` (feat r2-hardening) — run `36335558534` su `fix/r2-sanitize-hardening`, **completed success** ✅
+- `2b6dcc7` (chore revisore) — pushato in bundle con `653c3f8`; incluso nell'albero testato dalla run `36335558534`; SHA intermedio mai testato in isolamento
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **Riserva cosmetica non bloccante (review #104)**: `List[str]` in `gas.py:1586` è
-  typing legacy — `list[str]` è lo style Python 3.10+. Non bloccante.
-- **Fetta A etichetta MITIGATO**: i delimitatori `<memoria_dati>` riducono la prompt
-  injection, non la eliminano. Un solo giro E2E non è una prova formale; l'efficacia
-  dipende dal modello che riceve il blocco. Da re-testare con provider reali al deploy VPS.
-- **Gap C1 controls (0x80-0x9F)**: `_sanitize_memory_text` non copre i caratteri C1
-  (0x80-0x9F). Accettabile per il contesto corrente; da valutare in hardening futuro.
+- **Etichetta MITIGATO (R2 fetta A)**: la sanitizzazione blocca l'iniezione strutturale (escape universale `<>`); quella comportamentale dipende dal modello. Testato solo con gemini-flash-lite e gemini-flash, 2 giri. Da re-testare al deploy VPS con diario reale e provider diversi.
+- **Discrepanza verdetto #104** (annotata, non bloccante): `memoria_revisore.md` contiene solo 1 riga di riepilogo per #104; il verbatim non è recuperabile. La versione integrale (5 pt) vive solo in `handoff.md` della sessione 2026-09-25. Considerare in futuro di incollare il verbatim direttamente in `memoria_revisore.md`.

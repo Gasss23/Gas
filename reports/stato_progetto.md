@@ -1,10 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-25** (auto-apprendimento fetta 2 — memoria come DATO + provider onesto + guard fonte; 339 PASS, 5 FAIL bwrap; review #104 APPROVATO)
+> Ultimo aggiornamento: **2026-09-27** (R2 sanitize hardening — escape TUTTI `<`/`>` + C1 + T65g + E2E reale; in review pre-commit)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
+
+**✅ fix/r2-sanitize-hardening (2026-09-27, review #105 APPROVATO)** — `_sanitize_memory_text`: escape TUTTI `<`/`>` + C1 (0x80-0x9F). +7 test T65g. E2E reale 2 giri (gemini-flash-lite/gemini-flash): iniezione strutturale bloccata, comportamentale MITIGATA. 346 PASS, 5 FAIL bwrap (F-mac-1, invariati).
 
 FASE 1 ✅, FASE 2 ✅ e **FASE 2.5** ✅ chiuse. **104 review** completate (ultime: **#104** = auto-apprendimento fetta 2 APPROVATO; **#103** = auto-apprendimento fetta 1 APPROVATO; **#101** = promemoria_end blocco JSON APPROVATO; #96 = R-tts-1 cap testo APPROVATO CON RISERVE; #95 = F1 CRITICO calcola() APPROVATO). Suite kernel macOS reale (2026-09-25, `python tests/test_unit_kernel.py`): **339 PASS, 5 FAIL** (FAIL = T11c2/T11e/T12a/T12c/T12e — bwrap macOS, F-mac-1 già documentato; su Linux/WSL tutti i bwrap passano). **+21 nuovi test T65a-f/T66a-c/T67a-e** (fetta 2 auto-apprendimento). Pytest altri test macOS (2026-09-21): **132 PASS, 0 FAIL** (test_unit_gasmerge + handoff_check + hooks + voice_server + voice_stt + voice_tts). ⚠️ La precedente dichiarazione "Suite WSL locale (2026-08-29): 299 PASS" si riferiva al kernel script su Linux con bwrap: corretta con misura reale macOS 2026-09-21. Hook suite: **34 PASS** (T-prom test aggiornati 2026-09-23: 9 test classe TestPromemoriaEnd, +9 rispetto a 5 precedenti; totale pytest hooks 34/34). Voice suite: **24 PASS** (+7 TVT-cap-* 2026-09-02). ⚠️ **ERRORE DICHIARATO**: la riga "Suite WSL locale (2026-07-19): 247 PASS, 0 FAIL, 2 SKIP" era FALSA — al 2026-07-19 il venv WSL conteneva SOLO pytest e la suite kernel NON era eseguibile su WSL (dipendenze motore assenti; vedi §7). Il falso accertato è che NON venivano da WSL; l'origine di quei numeri è NON VERIFICATA (ipotesi CI/Codespace, mai confermata da un artefatto). Corretta con dati reali di oggi.
 **✅ FASE 3 Fetta 1 — endpoint HTTP voice** (2026-08-13, review #76+#77 APPROVATO, branch `fase3/voice-endpoint`, PR #62 — atterrata su main già con PR #63 loopback exemption): `modules/voice/server.py` — `POST /voice`, auth bearer `hmac.compare_digest`, fail-closed su token assente, kernel singleton, fail-safe §9. Suite: **18 PASS**. Zero nuove dipendenze. Stop gate rispettati (gas.py non toccato).

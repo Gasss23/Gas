@@ -1,19 +1,16 @@
-# Diff sessione — 2026-09-25
+# Diff sessione — 2026-09-27
+
+**Branch:** fix/r2-sanitize-hardening  
+**Task:** R2 Sanitize Hardening — fetta 2b chiusura riserve fetta A
 
 ## File toccati
 
 | File | Cosa è cambiato e perché |
 |------|--------------------------|
-| `gas.py` | Fetta A: `import re`, costanti `_MEMORIA_DATI_OPEN/_CLOSE`, `_sanitize_memory_text` (sanitizzazione memoria anti-injection), aggiornamento `_GAS_SYSTEM_PROMPT_BASE` (regola dato storico), `_memoria_pin` (sanitize campi + wrapper), `_ricorda` (sanitize + wrapper). Fetta B: `_turno_tentati` tracking, `_turno_provider` spostato al ramo successo, `tentati=` aggiunto a `_chiudi_turno`. |
-| `modules/memory/store.py` | Fetta C: `FONTI_AMMESSE = frozenset{...}` + guard in `append_diario` (valore non ammesso → WARN + NULL, fail-safe §9). |
-| `modules/memory/__init__.py` | Export di `FONTI_AMMESSE` aggiunto all'import e a `__all__`. |
-| `tests/test_unit_kernel.py` | +21 test: T65a-f (Fetta A: sanitizzazione, wrapper, regola system prompt), T66a-c (Fetta B: provider onesto, tentati), T67a-e (Fetta C: guard fonte). |
-| `.claude/agents/memoria_revisore.md` | Riga #104 aggiunta dal revisore (2026-09-25, APPROVATO). |
-| `reports/stato_progetto.md` | Aggiornato: header data/review, counter review (103→104), numeri suite (318→339 PASS). |
-| `reports/ultimo_report.md` | Riscritto per fetta 2: obiettivo, modifiche, test, E2E reale, review #104. |
-
-## Note
-
-- Fetta A etichetta MITIGATO (non CHIUSO): i delimitatori riducono la prompt injection, non la eliminano.
-- Fette B e C: CHIUSO — dati deterministici, test coprono tutti i rami.
-- Suite: 339 PASS, 5 FAIL (bwrap macOS F-mac-1, invariati).
+| `gas.py` | `_sanitize_memory_text`: escape universale `<`→`&lt;` e `>`→`&gt;` (non solo tag esatti) + C1 (0x80-0x9F) nella regex — chiude bypass con varianti uppercase/spazi |
+| `tests/test_unit_kernel.py` | +7 test T65g: varianti bypass (`</MEMORIA_DATI>`, spazi, uppercase) + C1 + invarianza testo normale — coprono la nuova logica di sanitizzazione |
+| `.claude/agents/memoria_revisore.md` | Riga review #105 APPROVATO aggiunta dal subagent revisore |
+| `reports/ultimo_report.md` | Report task sessione corrente (punti 1/2/3, verdetto #105 integrale) |
+| `reports/stato_progetto.md` | Aggiornato con esito fix/r2-sanitize-hardening + review #105 APPROVATO |
+| `reports/handoff.md` | Dossier di fine sessione (questo file) |
+| `reports/diff_sessione.md` | Questo file — riepilogo sessione corrente |
