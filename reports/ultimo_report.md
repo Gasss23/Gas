@@ -1,8 +1,8 @@
-# Report task — Fix CI PR #101: handoff.md formato canonico + /fine-task
+# Report task — Fix CI PR #101: handoff.md regex-citation fix
 
 **Data:** 2026-09-28
 **Branch:** feat/fetta3a-lezioni-quarantena
-**Scope:** Solo formato `reports/handoff.md` — zero modifiche al codice.
+**Scope:** Solo `reports/handoff.md` — zero modifiche a scripts/ né al motore.
 
 ---
 
@@ -14,18 +14,21 @@
 
 ## Esito fette
 
-### Fetta CI-fix — Riscrittura handoff.md con titoli canonici §0-§5: `FATTA`
+### Fetta CI-fix-2 — Fix citazione inline in §1 handoff.md: `FATTA`
 
-**Causa del fallimento CI:** `scripts/check_handoff.py` cercava la sezione con regex `##\s*§2\s+GIT DIFF --STAT`. L'handoff esistente aveva:
-- Titolo non numerico: `## git diff --stat BASE..HEAD (questa sessione, ...)`
-- Diff stat con solo 4 file sorgente; `reports/*.md` mancavano
+**Causa del fallimento CI (PR #101, run 36451515673 già verde per la prima fetta):**
+
+`scripts/check_handoff.py:_declared_set` usa regex:
+```
+r"##\s*§2\s+GIT DIFF --STAT.*?```(.*?)```"
+```
+senza ancoraggio `^` a inizio riga. In `reports/handoff.md` la riga 25 (§1) conteneva il testo letterale `` `## §2 GIT DIFF --STAT` `` tra backtick; la regex agganciava QUELLA citazione invece del titolo vero alla riga 42 (`## §2 GIT DIFF --STAT`), leggendo un fence sbagliato con set dichiarato = 0 file.
 
 **Azioni:**
-1. Riscritto `reports/handoff.md` con struttura §0-§5 (template canonico da main)
-2. Commit fix formato: `50ce0ae`
-3. Aggiornato §2 con stat reale post-commit
-4. Commit stat: `f8d2368`
-5. Aggiornato `ultimo_report.md` + `stato_progetto.md`; commit `aafcb12`
+1. In `reports/handoff.md` §1 (riga 25): sostituito "regex CI cercava `` `## §2 GIT DIFF --STAT` ``" con "regex CI cercava il titolo canonico della sezione 2".
+2. Aggiunto in §7 la riserva **R-ci-1**: regex da ancorare a inizio riga (`re.MULTILINE + ^`) — fetta futura.
+3. Aggiornato §2 con stat reale post-modifica.
+4. Aggiornati `ultimo_report.md` e `stato_progetto.md`.
 
 **Output check (entrambi OK):**
 ```

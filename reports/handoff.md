@@ -22,7 +22,7 @@
   Lista testo completo+autore, rifiuto `\n`/`\r` (store.py:1186), guard JSON R-lez-3 (gas.py:2677-2686), `write_file` guardrail esteso a `.gas_memory/.gas_vectors/.gas_tokens`. T68o-T68s: 5/5 PASS. 0 nuovi FAIL.
 
 - **Fetta CI-fix — handoff formato canonico**: `FATTA`
-  `reports/handoff.md` riscritto con struttura §0-§5. Causa: regex CI cercava `## §2 GIT DIFF --STAT`; titolo era libero e `reports/*.md` mancavano dal set dichiarato. `check_handoff: OK — 8 file`. `check_verdetto: OK — 7 riferimenti`.
+  `reports/handoff.md` riscritto con struttura §0-§5. Causa: regex CI cercava il titolo canonico della sezione 2; titolo era libero e `reports/*.md` mancavano dal set dichiarato. `check_handoff: OK — 8 file`. `check_verdetto: OK — 7 riferimenti`.
 
 **Verifica DB E2E** (`gas lezioni lista` su `.gas_memory.db` reale):
 
@@ -46,11 +46,11 @@ DB di produzione pulito. Le lezioni dell'E2E erano su DB temporaneo in-process.
  gas.py                             | 145 +++++++++++++++++++++++++-
  modules/memory/store.py            | 149 +++++++++++++++++++++++++++
  reports/diff_sessione.md           |  26 ++---
- reports/handoff.md                 | 168 ++++++++++++++++++-------------
+ reports/handoff.md                 | 172 ++++++++++++++++++++-----------
  reports/stato_progetto.md          |   6 +-
  reports/ultimo_report.md           | 199 +++++-------------------------------
  tests/test_unit_kernel.py          | 201 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 632 insertions(+), 264 deletions(-)
+ 8 files changed, 636 insertions(+), 264 deletions(-)
 ```
 
 ---
@@ -149,3 +149,4 @@ La run 36451515673 (in_progress) testa l'albero finale con il fix — attesa ver
 
 - **R-lez-bis-1** (cosmetica): `_MEM_FILE_PREFIXES` inline in gas.py — spostare a costante di modulo in sessione futura.
 - **R-lez-2** (minore, ereditata da #106): nessun blocco architetturale `lezioni_*` in `execute_tool_call`. Mitigata da T68n.
+- **R-ci-1** (robustezza): regex di `check_handoff.py:_declared_set` (`r"##\s*§2\s+GIT DIFF --STAT.*?\`\`\`"`) NON è ancorata a inizio riga — aggancia citazioni inline del titolo prima del titolo vero. Fix: aggiungere `re.MULTILINE` e ancorare con `^` (`r"^##\s*§2\s+GIT DIFF --STAT"`). Fetta futura.

@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-28** (Fetta 3a lezioni quarantena — tabella lezioni + CLI umana + iniezione prompt, review #106 APPROVATO CON RISERVE, PR #101 aperta)
+> Ultimo aggiornamento: **2026-09-28** (Fetta 3a lezioni quarantena + CI fix regex-citation §1 handoff — PR #101 aperta, R-ci-1 tracciata)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-**🔄 feat/fetta3a-lezioni-quarantena (2026-09-28, review #106+#107 APPROVATO CON RISERVE, PR #101 aperta — CI fix handoff formato §0-§5 2026-09-28)** — Fetta 3a: Tabella `lezioni` (stato/autore/testo CHECK DB-level), CLI SOLO UMANA `gas lezioni` (aggiungi/lista/approva/rifiuta/ritira), `_lezioni_pin()` inietta blocco `<lezioni_dati>` nel system prompt (max 10 approvate, escape _sanitize_memory_text, fail-safe §9). T68a-T68n. Fetta 3a-bis: lista testo completo+autore, rifiuto \n/\r, R-lez-3 chiusa (json guard), write_file esteso a .gas_memory/.gas_vectors/.gas_tokens. T68o-T68s. Suite: **366 PASS, 5 FAIL** F-mac-1 (invariati). Riserve aperte: R-lez-bis-1 (cosmetica), R-lez-2 (ereditata).
+**🔄 feat/fetta3a-lezioni-quarantena (2026-09-28, review #106+#107 APPROVATO CON RISERVE, PR #101 aperta — CI fix handoff formato §0-§5 + CI fix regex-citation §1 2026-09-28)** — Fetta 3a: Tabella `lezioni` (stato/autore/testo CHECK DB-level), CLI SOLO UMANA `gas lezioni` (aggiungi/lista/approva/rifiuta/ritira), `_lezioni_pin()` inietta blocco `<lezioni_dati>` nel system prompt (max 10 approvate, escape _sanitize_memory_text, fail-safe §9). T68a-T68n. Fetta 3a-bis: lista testo completo+autore, rifiuto \n/\r, R-lez-3 chiusa (json guard), write_file esteso a .gas_memory/.gas_vectors/.gas_tokens. T68o-T68s. Suite: **366 PASS, 5 FAIL** F-mac-1 (invariati). Riserve aperte: R-lez-bis-1 (cosmetica), R-lez-2 (ereditata), R-ci-1 (regex check_handoff da ancorare a `^`).
 
 **✅ fix/r2-sanitize-hardening (2026-09-27, review #105 APPROVATO)** — `_sanitize_memory_text`: escape TUTTI `<`/`>` + C1 (0x80-0x9F). +7 test T65g. E2E reale 2 giri (gemini-flash-lite/gemini-flash): iniezione strutturale bloccata, comportamentale MITIGATA. 346 PASS, 5 FAIL bwrap (F-mac-1, invariati).
 
