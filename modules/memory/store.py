@@ -58,6 +58,19 @@ STATI_CHIUSI: frozenset = frozenset({"rifiutato", "chiuso"})
 # Valore non ammesso → WARN + NULL (fail-safe §9, il turno NON crasha).
 FONTI_AMMESSE: frozenset = frozenset({"kernel", "utente", "modello"})
 
+# --- Lezioni (Fetta 3a auto-apprendimento) ---
+# Stati del ciclo di vita di una lezione. La revoca porta a 'ritirata' (no DELETE).
+STATI_LEZIONE: Tuple[str, ...] = ("proposta", "approvata", "rifiutata", "ritirata")
+AUTORI_LEZIONE: Tuple[str, ...] = ("umano", "llm")
+# Transizioni ammesse: {stato_corrente: frozenset(stati_raggiungibili)}
+TRANSIZIONI_LEZIONE: Dict[str, frozenset] = {
+    "proposta":  frozenset({"approvata", "rifiutata"}),
+    "approvata": frozenset({"ritirata"}),
+    "rifiutata": frozenset(),
+    "ritirata":  frozenset(),
+}
+LEZIONE_TESTO_MAX: int = 300
+
 DEFAULT_DB_FILENAME: str = ".gas_memory.db"
 # Quante copie .bak tenere di default (rotazione anti-accumulo, come la retention
 # degli snapshot). Il backup locale protegge dall'AUTO-CORRUZIONE; quello
@@ -129,6 +142,25 @@ _SCHEMA: Tuple[str, ...] = (
     # migrazione ha garantito la colonna: su un DB legacy (tabella contatti senza
     # merged_into) crearlo qui solleverebbe "no such column" e manderebbe l'init in
     # degrado proprio sui DB che la migrazione deve salvare.
+    # --- LEZIONI: catalogo delle lezioni approvate da Gas (Fetta 3a) ---
+    # Immutabilità PARZIALE: le transizioni di stato sono permesse (non si cancella
+    # mai — la revoca porta a 'ritirata'); il testo è immutabile una volta inserito.
+    # CHECK a livello DB per stato, autore e lunghezza testo.
+    """
+    CREATE TABLE IF NOT EXISTS lezioni (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        testo          TEXT    NOT NULL CHECK(length(testo) > 0 AND length(testo) <= 300),
+        stato          TEXT    NOT NULL DEFAULT 'proposta'
+                               CHECK(stato IN ('proposta', 'approvata', 'rifiutata', 'ritirata')),
+        turni_sorgente TEXT    NOT NULL DEFAULT '[]',
+        autore         TEXT    NOT NULL DEFAULT 'umano'
+                               CHECK(autore IN ('umano', 'llm')),
+        creata_il      TEXT    NOT NULL,
+        decisa_il      TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_lezioni_stato ON lezioni(stato)",
+    "CREATE INDEX IF NOT EXISTS idx_lezioni_decisa ON lezioni(decisa_il)",
 )
 
 
@@ -1136,3 +1168,118 @@ class MemoryStore:
             log.warning("backup_offsite_auto fallita (%s -> %s): %s",
                         self.db_path, offsite_dir, e)
             return None
+
+    # ------------------------------------------------------------ lezioni (Fetta 3a)
+
+    def aggiungi_lezione(
+        self,
+        testo: str,
+        turni_sorgente: Optional[List[str]] = None,
+        autore: str = "umano",
+    ) -> Tuple[Optional[int], str]:
+        """Inserisce una nuova lezione in stato 'proposta'. Solo INSERT (mai OR REPLACE).
+        Ritorna (id, '') in caso di successo, (None, msg_errore) altrimenti.
+        Testo: non vuoto, max LEZIONE_TESTO_MAX caratteri — nessun troncamento silenzioso."""
+        testo = testo.strip() if testo else ""
+        if not testo:
+            return None, "Il testo della lezione non può essere vuoto."
+        if len(testo) > LEZIONE_TESTO_MAX:
+            return None, (f"Il testo supera il limite di {LEZIONE_TESTO_MAX} caratteri "
+                          f"({len(testo)} forniti). Non si tronca: accorcia il testo.")
+        if autore not in AUTORI_LEZIONE:
+            return None, f"Autore non valido: {autore!r} (ammessi: {AUTORI_LEZIONE})"
+        turni_json = json.dumps(turni_sorgente or [])
+        try:
+            with self._connect() as con:
+                cur = con.execute(
+                    "INSERT INTO lezioni (testo, stato, turni_sorgente, autore, creata_il) "
+                    "VALUES (?, 'proposta', ?, ?, ?)",
+                    (testo, turni_json, autore, _now_iso()),
+                )
+                con.commit()
+                return int(cur.lastrowid), ""
+        except (sqlite3.Error, OSError) as e:
+            log.warning("aggiungi_lezione fallita (%s): %s", self.db_path, e)
+            return None, f"Errore DB: {e}"
+
+    def _transiziona_lezione(
+        self, lezione_id: int, nuovo_stato: str
+    ) -> Tuple[bool, str]:
+        """Transizione di stato per una lezione. Controlla che la transizione sia
+        ammessa da TRANSIZIONI_LEZIONE; imposta decisa_il sui passaggi terminali.
+        Nessuna scrittura in caso di errore. Ritorna (True, '') o (False, msg)."""
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT stato FROM lezioni WHERE id = ?", (lezione_id,)
+                ).fetchone()
+                if row is None:
+                    return False, f"Lezione {lezione_id} non trovata."
+                stato_corrente = row["stato"]
+                ammessi = TRANSIZIONI_LEZIONE.get(stato_corrente, frozenset())
+                if nuovo_stato not in ammessi:
+                    if not ammessi:
+                        return False, (f"La lezione è in stato '{stato_corrente}' "
+                                       f"(stato terminale, nessuna transizione ammessa).")
+                    return False, (f"Transizione non ammessa: '{stato_corrente}' → "
+                                   f"'{nuovo_stato}'. Ammesse da '{stato_corrente}': "
+                                   f"{sorted(ammessi)}.")
+                now = _now_iso()
+                con.execute(
+                    "UPDATE lezioni SET stato = ?, decisa_il = ? WHERE id = ?",
+                    (nuovo_stato, now, lezione_id),
+                )
+                con.commit()
+                return True, ""
+        except (sqlite3.Error, OSError) as e:
+            log.warning("_transiziona_lezione fallita (%s): %s", self.db_path, e)
+            return False, f"Errore DB: {e}"
+
+    def approva_lezione(self, lezione_id: int) -> Tuple[bool, str]:
+        """Transizione proposta → approvata."""
+        return self._transiziona_lezione(lezione_id, "approvata")
+
+    def rifiuta_lezione(self, lezione_id: int) -> Tuple[bool, str]:
+        """Transizione proposta → rifiutata."""
+        return self._transiziona_lezione(lezione_id, "rifiutata")
+
+    def ritira_lezione(self, lezione_id: int) -> Tuple[bool, str]:
+        """Transizione approvata → ritirata. (Le revoche portano a 'ritirata', no DELETE.)"""
+        return self._transiziona_lezione(lezione_id, "ritirata")
+
+    def lista_lezioni(
+        self, stato: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Ritorna le lezioni, filtrate per stato se specificato, ordinate per creata_il DESC.
+        Fail-safe §9: errore → []."""
+        try:
+            with self._connect() as con:
+                if stato is not None:
+                    rows = con.execute(
+                        "SELECT * FROM lezioni WHERE stato = ? ORDER BY creata_il DESC",
+                        (stato,),
+                    ).fetchall()
+                else:
+                    rows = con.execute(
+                        "SELECT * FROM lezioni ORDER BY creata_il DESC"
+                    ).fetchall()
+                return [dict(r) for r in rows]
+        except (sqlite3.Error, OSError) as e:
+            log.warning("lista_lezioni fallita (%s): %s", self.db_path, e)
+            return []
+
+    def get_lezioni_approvate(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Ritorna le lezioni in stato 'approvata', ordinate per decisa_il DESC (più recenti
+        prima), al massimo `limit`. Usato per l'iniezione nel prompt (Fetta 3a).
+        Fail-safe §9: errore → []."""
+        try:
+            with self._connect() as con:
+                rows = con.execute(
+                    "SELECT * FROM lezioni WHERE stato = 'approvata' "
+                    "ORDER BY decisa_il DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+                return [dict(r) for r in rows]
+        except (sqlite3.Error, OSError) as e:
+            log.warning("get_lezioni_approvate fallita (%s): %s", self.db_path, e)
+            return []
