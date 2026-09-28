@@ -1,27 +1,26 @@
-# Diff sessione 2026-09-28 — Fetta 3a lezioni quarantena
+# Diff sessione 2026-09-28 — Fetta 3a + 3a-bis (lezioni quarantena + fix pre-merge)
 
 ## File toccati
 
 | File | Variazione |
 |------|-----------|
-| `modules/memory/store.py` | +118 righe: tabella `lezioni` (schema DDL), costanti STATI/TRANSIZIONI/LEZIONE_TESTO_MAX, metodi aggiungi/approva/rifiuta/ritira/lista/get_lezioni_approvate |
-| `gas.py` | +218 righe: costanti _LEZIONI_DATI_*, regola system prompt, _lezioni_pin(), run_turn (lezioni_pin), lezioni_cmd(), main() dispatch |
-| `tests/test_unit_kernel.py` | +130 righe: T68a-T68n (15 test lezioni) |
-| `reports/ultimo_report.md` | Riscritto: report Fetta 3a |
-| `reports/stato_progetto.md` | Aggiornato: riga motore Fetta 3a + contatore review 106 + suite 361 |
-| `reports/handoff.md` | Aggiornato: dossier sessione |
+| `modules/memory/store.py` | +120 righe: tabella `lezioni`, metodi lezioni, rifiuto \n/\r |
+| `gas.py` | +231 righe: `_lezioni_pin()`, `lezioni_cmd()`, write_file esteso, lista testo completo+autore, R-lez-3 guard |
+| `tests/test_unit_kernel.py` | +201 righe: T68a-T68n (Fetta 3a) + T68o-T68s (Fetta 3a-bis) |
+| `reports/ultimo_report.md` | Riscritto: report Fetta 3a-bis |
+| `reports/stato_progetto.md` | Aggiornato: review #107, suite 366 |
+| `reports/handoff.md` | Aggiornato: dossier completo 3a+3a-bis |
 
 ## Cosa è cambiato e perché
 
-- **Tabella `lezioni`**: requisito Fetta 3a — catalogo persistente di lezioni umane che Gas può portarsi nel prompt. Additiva (CREATE IF NOT EXISTS), nessuna modifica a diario/contatti. CHECK a livello DB per sicurezza.
-- **CLI `gas lezioni`**: unico punto di ingresso UMANO per aggiungere/approvare/rifiutare/ritirare lezioni. Nessun tool esposto al modello (T68n).
-- **`_lezioni_pin()`**: iniezione nel system prompt delle sole lezioni approvate (max 10, escape, fail-safe §9), separata da `_memoria_pin` (`<memoria_dati>`).
-- **Test T68a-T68n**: copertura completa dei casi d'uso + edge case (lezione malevola, transizioni vietate, testi invalidi, no-tool).
+- **Fetta 3a** (commit `0c816a9`): catalogo lezioni persistente, CLI umana, iniezione `<lezioni_dati>` nel system prompt.
+- **Fix grammaticale R-lez-1** (commit `715af86`): "sono dati" → "è dati".
+- **Fetta 3a-bis** (commit `427fcf0`): 4 fix pre-merge — lista testo completo+autore, rifiuto \n/\r, R-lez-3 chiusa, write_file esteso a file memoria kernel.
 
 ## Numeri chiave
 
-- Commit: `0c816a9`
-- PR: #101
-- Suite: 361 PASS, 5 FAIL (F-mac-1 invariati)
-- Nuovi test: 15/15 PASS
-- Revisore #106: APPROVATO CON RISERVE
+- Commit fetta 3a-bis: `427fcf0`
+- PR: #101 (aperta, non ancora mergiata)
+- Suite: **366 PASS, 5 FAIL** (F-mac-1 invariati)
+- Nuovi test: 20/20 PASS (T68a-T68n + T68o-T68s)
+- Revisori: #106 + #107 — entrambi APPROVATO CON RISERVE
