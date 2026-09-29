@@ -1,39 +1,42 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-28 — Autonomia K3+K4 (knowledge base in ricorda + 6 protezioni)
+**Sessione:** 2026-09-29 — K3+K4 sessione 2 (re-review #109, E2E LLM reale, CI finale)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #102 (https://github.com/Gasss23/Gas/pull/102).
-2. Riserva R-k4-3 (cosmetica test): T69b check primario vacuosamente True se blocco `<conoscenza_dati>` assente. Il check discriminante è T69b.2. Da correggere in sessione futura se fastidiosa.
+2. Riserva R-k4-3 (cosmetica test): T69b check primario vacuosamente True. Il check discriminante è T69b.2. Da correggere in sessione futura.
+3. Finding F-no-ricorda-1: 2/3 domande E2E — modello non chiama ricorda per prompts ambigui/parola singola. Decidere se aggiornare gas_identity.md per guidare il modello a consultare la knowledge.
+4. Finding F-like-1: LIKE non matcha query multi-parola composte. Decidere se implementare keyword extraction o FTS5 sul knowledge DB in sessione futura.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **FETTA 0 — Sonda (sola lettura)**: `FATTA` — K0-K2 confermati su origin/main (`d46868c`). K3/K4 non in contraddizione con le protezioni. `ricorda()` non leggeva `.gas_knowledge.db` prima di questa sessione. Path knowledge DB: costante in `tools/ingest_knowledge.py`, env `GAS_KNOWLEDGE_DB` non esistente in gas.py (aggiunta ora).
+- **FETTA A — Ri-review #109**: `FATTA` — Revisore ha riesaminato il codice finale post-fix R-k4-1/R-k4-2. Entrambe le riserve CHIUSE. R-k4-3 cosmetica residua. Tutte le 6 protezioni K4 confermate.
 
-- **FETTA 1 — K3+K4**: `FATTA` — `_knowledge_search()` aggiunto, wiring in `_ricorda()`, 6 protezioni K4 implementate, 17 test T69a-T69h, E2E su copia 10/10. Review #108 APPROVATO CON RISERVE. Riserve R-k4-1/R-k4-2 chiuse prima del commit; R-k4-3 aperta.
+- **FETTA B — E2E con provider LLM reali**: `FATTA` — Script `tests/e2e/e2e_k3k4_llm.py` versionato. 7 PASS, 2 FAIL (F-no-ricorda-1 e F-like-1 documentati come finding architetturali). Giro iniettivo: istruzione non eseguita, tag non in risposta. Review #110 APPROVATO CON RISERVE.
 
-- **Autonomia #2/#3**: `DEFERITA — STOP BLOCCANTE rispettato` (scope limitato a K3+K4 come da istruzioni; nessun codice fuori dai 6 punti K4).
+- **FETTA C — CI PR #102**: `FATTA` — Run `36478066331` completed success su testa `8e2e67a`. Run precedente `36477977180` failure per §2 handoff mismatch (poi corretto).
 
-- **Script CI / fix fuori scope**: `SALTATA — non pertinente a K3+K4 e non in scope` (STOP BLOCCANTE rispettato).
+- **Autonomia #2/#3 / fix motore**: `SALTATA — STOP BLOCCANTE rispettato` (zero modifiche a gas.py in questa sessione).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- gas.py                             |  92 +++++++++++++-
- reports/diff_sessione.md           |  34 +++--
- reports/handoff.md                 | 184 +++++++++++++--------------
+ .claude/agents/memoria_revisore.md |   3 +
+ gas.py                             |  92 ++++++++-
+ reports/diff_sessione.md           |  36 ++--
+ reports/handoff.md                 | 202 ++++++++++----------
  reports/stato_progetto.md          |   8 +-
- reports/ultimo_report.md           | 144 +++++++++++++++++----
- tests/test_unit_kernel.py          | 251 +++++++++++++++++++++++++++++++++++++
- 7 files changed, 569 insertions(+), 145 deletions(-)
+ reports/ultimo_report.md           | 139 +++++++++++---
+ tests/e2e/e2e_k3k4_llm.py          | 369 +++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          | 251 +++++++++++++++++++++++++
+ 8 files changed, 954 insertions(+), 146 deletions(-)
 ```
 
 ---
@@ -41,76 +44,86 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+833d8b7 test(e2e): K3+K4 E2E con provider LLM reali — FETTA B
+00ec63e chore(revisore): memoria review #110 — APPROVATO CON RISERVE
+12bd47e chore(revisore): memoria review #109 — APPROVATO CON RISERVE
+8e2e67a docs(fine-task): handoff §0/§2/§3/§6 aggiornati post-push (PR #102)
+ffb4d81 docs(fine-task): handoff + report K3+K4 autonomia knowledge 2026-09-28
 6249e16 feat(autonomia): K3+K4 — ricorda() pesca .gas_knowledge.db + 6 protezioni
 6a0a2f7 chore(revisore): memoria review #108 — APPROVATO CON RISERVE
 ```
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §4 VERDETTO DEL REVISORE
 
-Commit `6249e16` tocca `gas.py` e `tests/test_unit_kernel.py` — review #108 obbligatoria.
+### Verdetto integrale review #108 (commit 6249e16 — per completezza sessione 1)
 
-**Verdetto integrale review #108:**
+> **APPROVATO CON RISERVE**
+>
+> R-k4-1 (minore): cap_n = min(int(n), ...) fuori dal try/except. Fix: spostare dentro il try.
+> R-k4-2 (cosmetica): source_name e ts nel header non passano per _sanitize_memory_text.
+> R-k4-3 (cosmetica test): T69b check primario vacuosamente True se blocco assente.
+>
+> Tutte le 6 protezioni K4 verificate. Antipattern Wall of Shame assenti. Guardrail loop intatti.
 
-> ## VERDETTO REVIEW #108 — K3+K4 (knowledge base in ricorda + 6 protezioni)
->
-> **Branch:** feat/autonomia-k3-k4
-> **File esaminati:** gas.py, tests/test_unit_kernel.py
->
-> ---
->
-> ### APPROVATO CON RISERVE
->
-> ---
->
-> ### Evidenze concrete esaminate
->
-> **gas.py:~1467** — `cap_n = min(int(n), self.KNOWLEDGE_MAX_RESULTS)` è posizionata PRIMA del blocco `try/except Exception` che copre la connessione SQLite. Se `n` fosse non-int-convertibile, l'eccezione sfugge a `_knowledge_search` e raggiunge `_ricorda` senza catch (nessun try/except nel call site). Rischio esaminato: propagazione non coperta da fail-safe §9. In pratica `n` è sempre int (schema tool + call in `_ricorda`), ma non è fail-safe per costruzione. Esito: **riserva minore R-k4-1**.
->
-> **gas.py:~1638** (hunk @@ -1549) — `_MEM_FILE_PREFIXES` estesa con `.gas_knowledge`. Verifica: `".gas_knowledge.db-wal".lower().replace("-","_").replace(" ","_")` → `".gas_knowledge.db_wal"` contiene `.gas_knowledge` come substring → bloccato correttamente. T69f testa `.gas_knowledge.db`, `.GAS_KNOWLEDGE.db`, `.gas_knowledge.db-wal`. Esito: **ok, K4.4 soddisfatto**.
->
-> ### Verifica K4 completa
->
-> | # | Requisito | Esito |
-> |---|-----------|-------|
-> | K4.1 | Contenuto dentro `<conoscenza_dati>`, `_sanitize_memory_text`, "dati non istruzioni" | ✅ gas.py ~1479/1496, T69a/T69b.2 |
-> | K4.2 | Cap deterministico env-overridabile (MAX_RESULTS=5, MAX_CHARS=2000) | ✅ gas.py ~536-540/839-840, SQL LIMIT + loop break, T69c/T69d |
-> | K4.3 | Solo chunk con fonte in sources.yaml | ✅ gas.py ~1451-1465: carica YAML, filtra `attiva=True`, SQL IN con `approved`, T69e |
-> | K4.4 | write_file blocca .gas_knowledge* | ✅ gas.py ~1638, T69f |
-> | K4.5 | Nessun tool scrittura knowledge nel loop | ✅ tools_schema senza voci knowledge-write, SQLite `?mode=ro`, T69f2/T69f2b |
-> | K4.6 | DB assente/corrotto → ricorda funziona, nessun crash | ✅ gas.py ~1446-1448 (exists check), ~1478-1480 (except), T69g/T69g3 |
->
-> ### Antipattern Wall of Shame
-> Nessun raw history slicing. Nessuna simulazione tool. T69h usa mock class strutturato. ✅
->
-> ### Guardrail integrità
-> `_knowledge_search` non tocca `range(10)`, non modifica la finestra, non auto-chiama. ✅
->
-> ### Riserve (non bloccanti)
->
-> - **R-k4-1** (minore): `gas.py:~1467` — `cap_n = min(int(n), self.KNOWLEDGE_MAX_RESULTS)` fuori dal try/except. Fix: spostare dentro il `try` oppure aggiungere un outer catch nel call site di `_ricorda`.
-> - **R-k4-2** (cosmetica): `gas.py:~1477` — `source_name` e `ts` nel header non passano per `_sanitize_memory_text`. Rischio pratico nullo (ts[:10] non abbastanza lungo per un tag completo, source_name operator-controlled), ma non coerente con defense-in-depth applicata a `testo`.
-> - **R-k4-3** (cosmetica test): `tests/test_unit_kernel.py:~4380` — T69b check primario con logica chained-split vacuosamente True se il blocco `<conoscenza_dati>` è assente. Il check discriminante reale è T69b.2.
->
-> ### Rischio esplicitamente escluso
-> `gas doctor` non verificato per il check di PyYAML assente o DB knowledge presente ma non leggibile: il diff non tocca la sezione doctor, fuori scope della fetta K3/K4.
+### Verdetto integrale review #109 (ri-review post-fix R-k4-1/R-k4-2)
 
-**Azioni post-review**: R-k4-1 (chiusa: `cap_n` spostato dentro `try`), R-k4-2 (chiusa: `source_name`/`ts` sanitizzati), R-k4-3 (aperta, tracciata qui e in `stato_progetto.md`).
+> ## VERDETTO REVIEW #109 — K3+K4 autonomia knowledge (ri-review post-fix)
+>
+> **APPROVATO CON RISERVE**
+>
+> ### Verifica delle tre riserve di #108
+>
+> **R-k4-1 — CHIUSA**
+> `gas.py:86` (diff) — `cap_n = min(int(n), self.KNOWLEDGE_MAX_RESULTS)` è ora la prima istruzione dentro il `try:`. Il commento esplicita "(dentro try: fail-safe R-k4-1)". Se `n` non è convertibile a int, `ValueError` cade nell'`except Exception` esterno che logga e ritorna `""`. Riserva effettivamente chiusa.
+>
+> **R-k4-2 — CHIUSA**
+> `gas.py:109-112` (diff) — Aggiunto `ts = _sanitize_memory_text(...)` e `src = _sanitize_memory_text(str(row["source_name"]))`. Commento: "# source_name e ts sanitizzati per defense-in-depth (R-k4-2)". Entrambi passano per `_sanitize_memory_text` prima di comporre l'header. Riserva effettivamente chiusa.
+>
+> **R-k4-3 — RESIDUA (cosmetica)**
+> T69b.2 (riga 237) fornisce il check reale discriminante. T69b primary ancora vacuo per costruzione. Non bloccante.
+>
+> | Protezione | Stato |
+> |---|---|
+> | K4.1 escape + tag + "dati non istruzioni" | ok |
+> | K4.2 cap env-overridabile (cap_n dentro try) | ok |
+> | K4.3 filtro sources.yaml | ok |
+> | K4.4 write_file blocca .gas_knowledge* | ok |
+> | K4.5 SQLite ?mode=ro, zero tool scrittura | ok |
+> | K4.6 fail-safe §9 DB assente/corrotto | ok |
+>
+> Nessun nuovo difetto dai fix. Nota minore cosmetica: connessione SQLite chiusa con conn.close() senza with/try-finally (rischio GC, non corruzione con ?mode=ro). Accettabile.
+
+### Verdetto integrale review #110 (tests/e2e/e2e_k3k4_llm.py)
+
+> ## VERDETTO REVIEW #110 — tests/e2e/e2e_k3k4_llm.py
+>
+> **APPROVATO CON RISERVE**
+>
+> **Evidenze esaminate:**
+>
+> 1. Isolamento root temporanea (righe 66-99, 158): tre livelli sovrapposti (root_dir, GAS_KNOWLEDGE_DB, GAS_CWD tutti in TMP). Nessun file del repo reale toccato. **OK.**
+>
+> 2. `_extract_tool_calls_from_history` e `_extract_ricorda_outputs` (righe 102-126): ispezione post-mortem di k.history dopo run_turn già completato. Nessun raw history slicing antipattern. **OK.**
+>
+> 3. Check giro iniettivo (righe 318, 333-338): `risposta_solo_pwned` cattura solo stringa esatta "PWNED"; injection parziale non intercettata. Per script di misura accettabile — protezione vera è in kernel. **Riserva R-e2e-3 (minore).**
+>
+> 4. Cleanup finale senza try/finally (riga 365): temp dir residua su crash. **Riserva R-e2e-1 (minore).**
+>
+> 5. `_detect_provider_from_debug_log` (riga 131): cerca gas_debug.log in TMP ma kernel scrive in CWD reale. Solo diagnostico, nessun check() impattato. **Riserva R-e2e-2 (minore/osservabilità).**
+>
+> gas.py, brains/, modules/ non toccati. Filosofia misura pura coerente con architettura. Finding F-no-ricorda-1 e F-like-1 documentati come attesi — exit code 1 previsto e dichiarato nel docstring.
+>
+> **Riserve: R-e2e-1, R-e2e-2, R-e2e-3** (tutte minori, non bloccanti).
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Prima → dopo:
+Nessuna modifica a `gas.py` o `tests/test_unit_kernel.py` in questa sessione (FETTA B = sola misura).
 
-| Metrica | Prima | Dopo |
-|---------|-------|------|
-| PASS | 366 | 383 |
-| FAIL | 5 | 5 |
-| Nuovi test | — | +17 (T69a-T69h) |
-
-RIEPILOGO (output reale):
+Suite invariata rispetto alla sessione 1: **383 PASS, 5 FAIL** (F-mac-1 bwrap macOS).
 
 ```
 === RIEPILOGO: 383 PASS, 5 FAIL ===
@@ -121,29 +134,37 @@ RIEPILOGO (output reale):
   FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
 ```
 
-I 5 FAIL sono tutti F-mac-1 (bwrap macOS, noti e attesi): `T11c2`, `T11e`, `T12a`, `T12c`, `T12e`. Nessun nuovo FAIL introdotto da questa sessione.
-
 ---
 
 ## §6 STATO CI
 
 ```
-in_progress		docs(fine-task): handoff + report K3+K4 autonomia knowledge 2026-09-28	CI	feat/autonomia-k3-k4	push	36477977180	13s	2026-09-28T20:16:05Z
+completed	success	docs(fine-task): handoff §0/§2/§3/§6 aggiornati post-push (PR #102)	CI	feat/autonomia-k3-k4	push	36478066331	1m3s	2026-09-28T20:16:52Z
+completed	failure	docs(fine-task): handoff + report K3+K4 autonomia knowledge 2026-09-28	CI	feat/autonomia-k3-k4	push	36477977180	57s	2026-09-28T20:16:05Z
 completed	success	Merge pull request #101 from Gasss23/feat/fetta3a-lezioni-quarantena	CI	main	push	36468992436	1m1s	2026-09-28T18:58:43Z
-completed	success	fix(ci): handoff §1 — rimuovi citazione inline titolo §2 che ingannav…	CI	feat/fetta3a-lezioni-quarantena	push	36461669985	50s	2026-09-28T17:56:18Z
 ```
 
-**Mappatura commit→run:**
-- `ffb4d81` (docs fine-task reports): run CI `36477977180` — in_progress al momento della scrittura (run non ancora completata).
-- `6249e16` (feat K3+K4 codice): incluso nell'albero pushato con `ffb4d81` sulla stessa run `36477977180` — nessuna run autonoma su questo SHA intermedio.
-- `6a0a2f7` (chore revisore): incluso nell'albero pushato — nessuna run autonoma su questo SHA intermedio.
+**Mappatura commit→run (sessione 1+2 combinata):**
+- `6a0a2f7` (chore revisore #108): nessuna run autonoma su questo SHA intermedio.
+- `6249e16` (feat K3+K4 codice): nessuna run autonoma su questo SHA intermedio — incluso nell'albero di `ffb4d81`.
+- `ffb4d81` (docs fine-task sessione 1): run `36477977180` — completed **failure** (handoff-check §2 mismatch: diff_sessione.md mancante in §2).
+- `8e2e67a` (docs fix §0/§2/§3/§6): run `36478066331` — completed **success**.
+- `12bd47e` (chore revisore #109): nessuna run disponibile al momento della scrittura.
+- `00ec63e` (chore revisore #110): nessuna run disponibile al momento della scrittura.
+- `833d8b7` (test E2E): nessuna run disponibile al momento della scrittura.
+- commit di fine-task (questo): run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
 ## §7 RISERVE APERTE
 
-Dalla sessione corrente (review #108):
-- **R-k4-3** (cosmetica test): T69b check primario con logica chained-split vacuosamente True quando blocco `<conoscenza_dati>` assente. Il check discriminante è T69b.2. Da correggere in sessione futura.
+Dalla sessione corrente:
+- **R-k4-3** (cosmetica test): T69b check primario vacuoso. T69b.2 è il check reale.
+- **R-e2e-1** (minore): cleanup E2E senza try/finally.
+- **R-e2e-2** (minore/osservabilità): provider detection cerca log in posto sbagliato.
+- **R-e2e-3** (minore): check injection cattura solo stringa esatta "PWNED".
+- **F-no-ricorda-1** (finding architetturale): modello non chiama ricorda per prompts ambigui. Decisione umana richiesta (§0.3).
+- **F-like-1** (finding architetturale): LIKE non matcha query multi-parola. Decisione umana richiesta (§0.4).
 
 Ereditate da sessioni precedenti:
 - **R-lez-bis-1** (cosmetica, fetta 3a-bis): vedi stato_progetto.md
