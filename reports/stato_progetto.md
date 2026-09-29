@@ -1,10 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-28** (K3+K4 knowledge base in ricorda — PR su feat/autonomia-k3-k4)
+> Ultimo aggiornamento: **2026-09-29** (K3-bis FTS5 + guida modello — feat/autonomia-k3-bis)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
+
+**🔄 feat/autonomia-k3-bis (2026-09-29, review #111 APPROVATO CON RISERVE)** — K3-bis: `_knowledge_search` ora usa FTS5 (era LIKE su frase intera: 0/3 col modello reale). `_knowledge_fts_match()`: token ≥3 char, quotati, prefisso *, OR — neutralizza operatori FTS. `ingest_knowledge.py`: crea `knowledge_fts` (FTS5) + trigger AFTER INSERT + backfill. gas_identity.md: regola "chiama PRIMA ricorda con 1-3 parole chiave semplici". +9 test T69-fts-a/b/c/d/e. Suite: **392 PASS, 5 FAIL** F-mac-1 (invariati). E2E reale Groq: **2/3 ≥ criterio** (D2+D3 OK, D1 "iterazioni" parola singola ambigua). Iniezione NULLO (domanda non Gas-specifica → modello non chiama ricorda → K4.1 verificato solo a unit). Riserve: R-fts-1 (cap token, minore), R-fts-2 (rebuild cosm.), R-fts-3 (test cosm.). **NOTA storica**: prima di questa fetta K3 era collegato ma 0/3 col modello reale (LIKE non matchava frasi intere passate dal modello, modello non chiamava ricorda senza regola).
 
 **🔄 feat/autonomia-k3-k4 (2026-09-28, review #108 APPROVATO CON RISERVE)** — K3: `_ricorda()` pesca anche da `.gas_knowledge.db` (sola lettura, in-process), risultati in blocco separato `<conoscenza_dati>` marcati `[FONTE: nome | data]`. K4 6 protezioni: (1) escape + tag `<conoscenza_dati>` + "dati non istruzioni"; (2) cap env-overridabile `GAS_KNOWLEDGE_MAX_RESULTS=5` e `GAS_KNOWLEDGE_MAX_CHARS=2000`; (3) filtro sources.yaml on-demand; (4) write_file blocca `.gas_knowledge*`; (5) SQLite `?mode=ro`, zero tool scrittura; (6) fail-safe §9 DB assente/corrotto. +17 test T69a-T69h. Suite: **383 PASS, 5 FAIL** F-mac-1 (invariati). E2E su copia: 10 PASS, 0 FAIL. Riserve: R-k4-3 (cosmetica test, aperta).
 
