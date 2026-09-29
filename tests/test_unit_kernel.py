@@ -4352,8 +4352,15 @@ _KNOWLEDGE_DDL = [
     "CREATE INDEX IF NOT EXISTS idx_k_source ON knowledge(source_name)",
 ]
 
+_KNOWLEDGE_FTS_DDL = [
+    "CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(testo, content='knowledge', content_rowid='id')",
+    "CREATE TRIGGER IF NOT EXISTS knowledge_fts_ai AFTER INSERT ON knowledge "
+    "BEGIN INSERT INTO knowledge_fts(rowid, testo) VALUES (new.id, new.testo); END",
+]
+
+
 def _make_knowledge_root() -> tuple:
-    """Crea root temporanea con kernel, DB knowledge e sources.yaml.
+    """Crea root temporanea con kernel, DB knowledge (+ FTS5) e sources.yaml.
     Ritorna (kernel, root_path, db_path)."""
     import subprocess
     tmp = tempfile.mkdtemp(prefix="gas_ktest_")
@@ -4379,6 +4386,11 @@ def _make_knowledge_root() -> tuple:
     conn = _sq3.connect(str(db_path))
     for stmt in _KNOWLEDGE_DDL:
         conn.execute(stmt)
+    # FTS5 (idempotente): crea virtual table e trigger PRIMA dell'INSERT
+    # così il trigger popola knowledge_fts ad ogni insert.
+    for stmt in _KNOWLEDGE_FTS_DDL:
+        conn.execute(stmt)
+    conn.commit()
     _now = "2026-09-28T10:00:00+00:00"
     _chunks = [
         ("test_src", "chunk_0000", "Il codice segreto di Gas è 42-BANANA.", "2026-01-01"),
@@ -4577,6 +4589,92 @@ check("T69h.2 round-trip: risposta finale cita '42-BANANA' (knowledge usata)",
 
 # Ripristina GAS_KNOWLEDGE_DB
 os.environ.pop("GAS_KNOWLEDGE_DB", None)
+
+# ---------- T69-fts: FTS5 knowledge search ----------
+print("\n--- T69-fts: FTS5 knowledge (tokenizzazione, operatori, edge-case) ---")
+from gas import GasKernel as _GasKernel69fts
+
+# T69-fts-a — _knowledge_fts_match: token ≥3 char estratti, quotati, uniti in OR
+_fts_q1 = GasKernel._knowledge_fts_match("Gas progetto")
+check("T69-fts-a token ≥3 char estratti e quotati",
+      '"gas"*' in _fts_q1 and '"progetto"*' in _fts_q1,
+      f"fts_q={_fts_q1!r}")
+check("T69-fts-a uniti in OR (non AND implicito)",
+      ' OR ' in _fts_q1,
+      f"fts_q={_fts_q1!r}")
+
+# T69-fts-b — token con operatori FTS → neutralizzati (quotati, nessun errore di sintassi)
+# Query con AND/OR/NOT, virgolette, parentesi, due punti → tutti diventano prefissi sicuri
+_ops_query = 'AND OR NOT NEAR "quoted" (paren) col:val ABC123'
+_fts_qb = GasKernel._knowledge_fts_match(_ops_query)
+# Gli operatori AND/OR/NOT/NEAR, le virgolette, i due punti NON devono apparire
+# come operatori raw nella query FTS5 (devono essere dentro virgolette doppie)
+_raw_ops = [op for op in (" AND ", " OR ", " NOT ", " NEAR ") if op in _fts_qb]
+check("T69-fts-b operatori FTS neutralizzati (nessun operatore raw non-OR)",
+      len(_raw_ops) == 0 or _raw_ops == [" OR "],
+      f"raw_ops={_raw_ops!r} fts_q={_fts_qb!r}")
+# Verifica che la query non produca errori su un DB reale
+_k69fts_b, _, _kdb69fts_b = _make_knowledge_root()
+try:
+    import sqlite3 as _sq3fts
+    _conn_b = _sq3fts.connect(f"file:{_kdb69fts_b}?mode=ro", uri=True)
+    _conn_b.execute(
+        "SELECT rowid FROM knowledge_fts WHERE knowledge_fts MATCH ?", (_fts_qb,)
+    ).fetchall()
+    _conn_b.close()
+    _fts_b_no_error = True
+except Exception as _e_b:
+    _fts_b_no_error = False
+    print(f"  errore FTS5 con ops: {_e_b!r}")
+check("T69-fts-b query con operatori non produce errore FTS5",
+      _fts_b_no_error,
+      f"fts_q={_fts_qb!r}")
+
+# T69-fts-c — tutti token < 3 char → return '' senza crash
+_fts_qc = GasKernel._knowledge_fts_match("a b")
+check("T69-fts-c token < 3 char → '' (nessun token estratto)",
+      _fts_qc == '',
+      f"fts_q={_fts_qc!r}")
+_k69fts_c, _, _ = _make_knowledge_root()
+_r69fts_c = _k69fts_c._knowledge_search("a b", 5)
+check("T69-fts-c query senza token ≥3 → '' senza crash",
+      _r69fts_c == '',
+      f"result={_r69fts_c!r}")
+
+# T69-fts-d — FTS table assente (DB legacy senza knowledge_fts) → '' + warning, nessun crash
+import io as _io69fts, logging as _log69fts
+_k69fts_d, _, _kdb69fts_d = _make_knowledge_root()
+# Ricrea il DB senza FTS5 (solo tabella base)
+import sqlite3 as _sq3_d
+_conn_d = _sq3_d.connect(str(_kdb69fts_d))
+_conn_d.execute("DROP TRIGGER IF EXISTS knowledge_fts_ai")
+_conn_d.execute("DROP TABLE IF EXISTS knowledge_fts")
+_conn_d.commit()
+_conn_d.close()
+_k69fts_d.knowledge_db_path = _kdb69fts_d
+_buf69fts_d = _io69fts.StringIO()
+_h69fts_d = _log69fts.StreamHandler(_buf69fts_d)
+_h69fts_d.setLevel(_log69fts.WARNING)
+_log69fts.getLogger().addHandler(_h69fts_d)
+try:
+    _r69fts_d = _k69fts_d._knowledge_search("codice segreto", 5)
+    _warn69fts_d = _buf69fts_d.getvalue()
+finally:
+    _log69fts.getLogger().removeHandler(_h69fts_d)
+check("T69-fts-d FTS table assente → '' senza crash",
+      _r69fts_d == '',
+      f"result={_r69fts_d!r}")
+check("T69-fts-d FTS table assente → warning loggato",
+      "FTS5" in _warn69fts_d or "knowledge_fts" in _warn69fts_d or "knowledge" in _warn69fts_d.lower(),
+      f"warn={_warn69fts_d[:200]!r}")
+
+# T69-fts-e — FTS5 tokenizzata trova chunk via parole chiave (non substring esatta)
+# query "codice" → deve trovare il chunk con "codice segreto"
+_k69fts_e, _, _ = _make_knowledge_root()
+_r69fts_e = _k69fts_e._ricorda(query="codice", n=5)
+check("T69-fts-e FTS5 trova chunk per parola chiave singola 'codice'",
+      "<conoscenza_dati>" in _r69fts_e and "42-BANANA" in _r69fts_e,
+      f"result={_r69fts_e[:200]!r}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

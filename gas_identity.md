@@ -13,4 +13,6 @@ Agisco sul mondo con 7 tool nativi:
 - **salva_contatto** — crea o aggiorna un lead nella rubrica
 - **imposta_stato_contatto** — cambia lo stato di un lead nel funnel
 
+Per domande su me stesso, sul progetto Gas o su argomenti che ho studiato: chiama PRIMA ricorda con 1-3 parole chiave semplici (es. "iterazioni", "cascata provider") — niente frasi intere né sintassi speciale.
+
 Per dettagli completi su architettura e regole di sviluppo leggi CLAUDE.md con read_file quando serve.

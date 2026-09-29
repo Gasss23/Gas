@@ -81,7 +81,30 @@ def open_db(path: Path) -> sqlite3.Connection:
     for stmt in _DDL:
         conn.execute(stmt)
     conn.commit()
+    _init_fts(conn)
     return conn
+
+
+def _init_fts(conn: sqlite3.Connection) -> None:
+    """Crea tabella FTS5 e trigger di sync per la knowledge base.
+    Idempotente (IF NOT EXISTS). Backfill dei chunk preesistenti via 'rebuild'.
+    Fail-safe: SQLite senza FTS5 → solo warning, il DB resta usabile."""
+    try:
+        conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts "
+            "USING fts5(testo, content='knowledge', content_rowid='id')"
+        )
+        conn.execute(
+            "CREATE TRIGGER IF NOT EXISTS knowledge_fts_ai "
+            "AFTER INSERT ON knowledge "
+            "BEGIN INSERT INTO knowledge_fts(rowid, testo) VALUES (new.id, new.testo); END"
+        )
+        # Backfill idempotente: indicizza chunk preesistenti (DB legacy o chunk
+        # scritti prima che la virtual table esistesse).
+        conn.execute("INSERT INTO knowledge_fts(knowledge_fts) VALUES('rebuild')")
+        conn.commit()
+    except sqlite3.Error as e:
+        log.warning("FTS5 non disponibile o errore init (%s) — knowledge_fts assente", e)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
