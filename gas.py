@@ -1436,14 +1436,30 @@ class GasKernel:
                 result = result + "\n" + k_block
         return result
 
+    @staticmethod
+    def _knowledge_fts_match(query: str) -> str:
+        """Costruisce query FTS5 sicura: token ≥3 char, quotati, prefisso *, uniti in OR.
+        Le virgolette neutralizzano operatori FTS (AND/OR/NOT/NEAR, parentesi, :).
+        Ritorna '' se non ci sono token validi (→ nessuna ricerca)."""
+        tokens = re.findall(r'\w{3,}', str(query or '').lower(), flags=re.UNICODE)
+        if not tokens:
+            return ''
+        return ' OR '.join(f'"{t}"*' for t in tokens)
+
     def _knowledge_search(self, query: str, n: int) -> str:
-        """Cerca chunk in .gas_knowledge.db corrispondenti alla query.
+        """Cerca chunk in .gas_knowledge.db corrispondenti alla query via FTS5.
         K3/K4: sola lettura, fail-safe §9, cap deterministico, filtro fonte, escape injection.
-        Ritorna stringa vuota se DB assente/corrotto/nessun risultato."""
+        FTS5 assente o errore → warning + return '' (mai fallback a LIKE).
+        Ritorna stringa vuota se DB assente/corrotto/nessun risultato/nessun token."""
         import sqlite3 as _sq3
         db_path = self.knowledge_db_path
         if not db_path.exists():
             logging.warning("knowledge DB assente (%s) — ricerca knowledge saltata", db_path)
+            return ""
+        # FTS5: costruisci query sicura da testo libero. Nessun token → nessuna ricerca.
+        fts_match = self._knowledge_fts_match(query)
+        if not fts_match:
+            logging.warning("knowledge search: nessun token ≥3 char in query %r — saltata", query)
             return ""
         # K4.3: carica fonti approvate da sources.yaml (al momento della query, non cached).
         sources_yaml = self.root / "knowledge" / "sources.yaml"
@@ -1460,23 +1476,26 @@ class GasKernel:
             return ""
         if not approved:
             return ""
-        # K4.2: cap deterministico sul numero di risultati (dentro try: fail-safe R-k4-1).
+        # K4.2: cap deterministico sul numero di risultati (dentro try: fail-safe §9).
         try:
             cap_n = min(int(n), self.KNOWLEDGE_MAX_RESULTS)
             conn = _sq3.connect(f"file:{db_path}?mode=ro", uri=True)
             conn.row_factory = _sq3.Row
             placeholders = ",".join("?" * len(approved))
-            q_lower = f"%{query.lower()}%"
+            # FTS5: JOIN knowledge_fts → knowledge per filtrare stato e source_name.
+            # Se knowledge_fts non esiste (DB legacy senza ingest FTS) →
+            # "no such table" catturato sotto → warning + return "".
             rows = conn.execute(
-                f"SELECT source_name, testo, ts_source, ts_ingested FROM knowledge "
-                f"WHERE stato='active' AND source_name IN ({placeholders}) "
-                f"AND LOWER(testo) LIKE ? "
-                f"ORDER BY id DESC LIMIT ?",
-                (*sorted(approved), q_lower, cap_n),
+                f"SELECT k.source_name, k.testo, k.ts_source, k.ts_ingested "
+                f"FROM knowledge_fts f JOIN knowledge k ON k.id = f.rowid "
+                f"WHERE knowledge_fts MATCH ? "
+                f"AND k.stato='active' AND k.source_name IN ({placeholders}) "
+                f"ORDER BY bm25(knowledge_fts) LIMIT ?",
+                (fts_match, *sorted(approved), cap_n),
             ).fetchall()
             conn.close()
         except Exception as _e:
-            logging.warning("knowledge search fallita (%s) — knowledge saltata", _e)
+            logging.warning("knowledge search FTS5 fallita (%s) — knowledge saltata", _e)
             return ""
         if not rows:
             return ""
