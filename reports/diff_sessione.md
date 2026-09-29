@@ -1,34 +1,22 @@
-# Diff Sessione — K3-bis FTS5
+# Diff sessione — 2026-09-29: K3-bis FETTA 1+2
 
-**Data:** 2026-09-29  
-**Branch:** feat/autonomia-k3-bis (basato su feat/autonomia-k3-k4 via merge)
+> Questa sessione è continuazione del branch feat/autonomia-k3-bis.
+> La sessione precedente aveva aggiunto FTS5 + E2E test.
+> Questa sessione: refactor test iniezione + aggiornamento gas_identity.md.
 
-## File toccati (diff da main)
+## File toccati in questa sessione
 
-| File | Tipo | Motivo |
-|------|------|--------|
-| `gas.py` | modifica | `_knowledge_fts_match()` + `_knowledge_search` FTS5 al posto di LIKE |
-| `tools/ingest_knowledge.py` | modifica | `_init_fts()`: FTS5 table + trigger + backfill |
-| `gas_identity.md` | modifica | Regola ricorda con parole chiave semplici |
-| `tests/test_unit_kernel.py` | modifica | `_make_knowledge_root()` FTS5 + T69-fts-a/b/c/d/e |
-| `tests/e2e/e2e_k3k4_llm.py` | riscrittura | R-e2e-2 fix + injection innocua + criterio ≥2/3 |
-| `reports/ultimo_report.md` | aggiornamento | risultati K3-bis |
-| `reports/stato_progetto.md` | aggiornamento | stato corrente + nota storica "K3 era 0/3" |
+(Commit `568cf12` + `e1739df`)
 
-## Cosa è cambiato e perché
+| File | Cosa è cambiato | Perché |
+|---|---|---|
+| tests/e2e/e2e_k3k4_llm.py | Iniezione su argomento Gas, INSERT con tutti i campi (stato=active, origine_uri, versione), try/finally, D1b/D2b/D3b post-iniezione | FETTA 1: il chunk iniettivo era su "ricette" (argomento non Gas) e mancava stato='active' nell'INSERT; iniezione non discriminante |
+| gas_identity.md | Riga ricorda: aggiunto "e knowledge studiata" dopo "rubrica lead" | FETTA 2: allineamento documentale — ricorda legge già la knowledge base dal K3 |
+| .claude/agents/memoria_revisore.md | Aggiunta riga review #113 APPROVATO CON RISERVE | Review gate obbligatorio |
 
-**FTS5 su knowledge (FETTA 1)**: la ricerca LIKE falliva quando il modello passava frasi intere o
-query multi-parola con parole diverse da quelle nel chunk. FTS5 con tokenizzazione OR
-(ogni token ≥3 char) trova i chunk per parole chiave indipendenti.
+## Note
 
-**Guida al modello (FETTA 2)**: senza una regola esplicita in gas_identity.md, il modello
-non chiamava ricorda per D1/D2 (rispondeva dal proprio training). La regola porta D2+D3
-a usare ricorda con parole chiave semplici, che FTS5 matcha correttamente.
-
-**E2E reale**: 2/3 ≥ criterio. D1 ("iterazioni" parola singola ambigua) ancora non chiama
-ricorda — comportamento atteso perché il termine è generico. Iniezione NULLO: la domanda
-sulle ricette non è Gas-specifica, il modello (correttamente) non consulta la knowledge base.
-
-## Commit di sessione
-
-- `b76c120` — feat(autonomia): K3-bis — FTS5 su knowledge + regola ricorda in gas_identity (review #111)
+- STOP BLOCCANTE rispettato: zero modifiche a gas.py, brains/, modules/
+- T63 verde (4/4) dopo la modifica a gas_identity.md
+- R-e2e-1 CHIUSA (try/finally), R-e2e-new-1 CHIUSA (INSERT completo), R-e2e-new-2 CHIUSA (commento trigger)
+- Riserve aperte: R-e2e-refactor-1 (minore), R-e2e-refactor-2 (cosm.)
