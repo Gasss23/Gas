@@ -1,16 +1,26 @@
-# Diff sessione — 2026-09-28 (Fetta 3a + 3a-bis + CI fix)
+# DIFF SESSIONE — 2026-09-29 (K3+K4 sessione 2: re-review, E2E LLM, CI finale)
 
-> Fotografia dell'ultima sessione. La storia completa sta in git.
+> Fotografia dell'ultima sessione. Si riscrive a ogni sessione; la storia completa sta in git.
 
-## File toccati (git diff --stat BASE..HEAD)
+## File toccati
 
-| File | Motivo |
-|------|--------|
-| `.claude/agents/memoria_revisore.md` | Aggiornata con lezioni review #106 e #107 |
-| `gas.py` | Tabella lezioni: `_lezioni_pin()`, payload provider, `lezioni_cmd()`, guardrail `write_file` esteso, guard JSON |
-| `modules/memory/store.py` | DDL `lezioni`, validazione, `_transiziona_lezione`, `get_lezioni_approvate`, rifiuto `\n`/`\r` |
-| `reports/diff_sessione.md` | Questo file — riscritto a ogni sessione |
-| `reports/handoff.md` | Dossier di fine sessione; riscritto con titoli canonici §0-§5 per CI fix |
-| `reports/stato_progetto.md` | Aggiornato stato PR #101 + nota CI fix |
-| `reports/ultimo_report.md` | Report task CI fix + /fine-task |
-| `tests/test_unit_kernel.py` | T68a-T68s (20 test lezioni: DDL, pin, CLI, guardrail, edge case) |
+| File | Tipo | Cosa è cambiato e perché |
+|------|------|--------------------------|
+| `tests/e2e/e2e_k3k4_llm.py` | nuovo | FETTA B: E2E con provider LLM reali (3 domande + giro iniettivo); parsing tool calls da k.history; review #110 APPROVATO CON RISERVE. |
+| `.claude/agents/memoria_revisore.md` | modificato | Review #109 e #110 aggiunte (APPROVATO CON RISERVE). |
+| `reports/ultimo_report.md` | modificato | Report sessione 2: FETTA A/B/C, finding F-no-ricorda-1/F-like-1/F-inject-no-match. |
+| `reports/handoff.md` | modificato | Dossier sessione 2: §0 PR #102, §2/§3 git aggiornati, §4 verdetti #109/#110, §5 delta test, §6 CI finale. |
+| `reports/diff_sessione.md` | modificato | Questo file (sessione 2). |
+
+## Commit di sessione (sessione 2, da BASE 57c5d90)
+
+```
+(vedere §3 handoff per log completo)
+```
+
+## Note
+
+- `gas.py`, `brains/`, `modules/` NON toccati (FETTA B è sola misura).
+- `tests/test_unit_kernel.py` NON toccato (suite invariata: 383 PASS, 5 FAIL F-mac-1).
+- `tests/e2e/e2e_k3k4_llm.py` è il primo script E2E vero con provider reali del progetto.
+- Provider detection "sconosciuto" è un limite tecnico (non esposto da run_turn): side effect atteso.
