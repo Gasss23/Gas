@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR — URL da completare dopo push (→ §0 gate procedure)
+1. Merge della PR #104 (https://github.com/Gasss23/Gas/pull/104)
 
 **Decisioni di design dal documento (operatore deve rispondere prima di C4):**
 2. `imposta_stato_contatto` — UNCERTAIN o IRREVERSIBLE per stati finali? (§8a design_cancello.md)
@@ -44,10 +44,10 @@ Zero codice scritto — STOP gate rispettato.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit su questo branch prima del commit di fine-task — log vuoto)
+ff3b5b2 docs(cancello): design gate autonomia GAS — inventario tool, classificatore, coda approvazioni, F-diario-eco
 ```
 
-NB: il commit di fine-task che contiene questo file non compare nel log per costruzione.
+NB: il commit di fine-task che aggiorna §0 di questo file non compare nel log per costruzione.
 
 ---
 
