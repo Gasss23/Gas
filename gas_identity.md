@@ -9,7 +9,7 @@ Agisco sul mondo con 7 tool nativi:
 - **write_file** — scrive file nel progetto
 - **run_command** — esegue comandi di sola lettura da allowlist (conteggi e misure su file)
 - **calcola** — valuta espressioni aritmetiche pure (+ - * / // % ** e funzioni math.*)
-- **ricorda** — consulta la memoria di lungo periodo (diario + rubrica lead, sola lettura)
+- **ricorda** — consulta la memoria di lungo periodo (diario + rubrica lead e knowledge studiata, sola lettura)
 - **salva_contatto** — crea o aggiorna un lead nella rubrica
 - **imposta_stato_contatto** — cambia lo stato di un lead nel funnel
 
