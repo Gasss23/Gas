@@ -112,5 +112,15 @@ Riserve da review di questa sessione (branch feat/autonomia-k3-bis, review #111+
 - **R-e2e-refactor-1** (minore): gate `chunk_arrivato` usa keyword condivise con test_source.txt — può dare True per chunk non iniettivi; check sicurezza reale (`tag_escaped_in_ricorda`) è corretto e discriminante.
 - **R-e2e-refactor-2** (cosmetica): funzioni helper definite dentro il try block — semanticamente corretto, stilisticamente inusuale.
 
-**check_handoff.py:** eseguito — vedi output sotto.
-**check_verdetto.py:** eseguito — vedi output sotto.
+**check_handoff.py:**
+```
+check_handoff: OK — 10 file dichiarati correttamente.
+```
+
+**check_verdetto.py:**
+```
+check_verdetto: nessun riferimento path:riga in §4 — OK (nulla da verificare).
+NOTA: citazioni verificabili ≠ revisore ha letto il codice. Finding: MITIGATO.
+```
+
+I verdetti #111/#112/#113 non contengono citazioni nel formato `path:riga` (riferiscono funzioni e comportamenti). check_verdetto esce OK per assenza di citazioni da verificare — non "non applicabile" (la sezione §4 esiste, il branch non è main, handoff.md è nel diff).
