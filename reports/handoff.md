@@ -1,33 +1,31 @@
-# Handoff sessione: design/cancello-v2
+# Handoff sessione: design/cancello-v2 (v2 + patch 8d + anti-discrepanza)
 
 > Data: 2026-09-30  
-> Branch: design/cancello-v2
+> Branch: design/cancello-v2  
+> PR: https://github.com/Gasss23/Gas/pull/105
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-**Nessuna.** Tutte le decisioni §8 del documento `design_cancello.md` sono state chiuse con le scelte dell'operatore 2026-09-29. Le prossime decisioni richieste emergeranno all'implementazione:
+**Nessuna.** Tutte le decisioni §8 del documento `design_cancello.md` sono ora chiuse:
+- 8a UNCERTAIN+C-d ✅ | 8b Approva/Rifiuta ✅ | 8c 30 min ✅ | 8d per-azione ✅ | 8e os_strict ✅ | 8f turno suddiviso ✅ | F-diario-eco Opzione A ✅
 
-- §8d (batch approvazioni M1) rimane aperta — da valutare dopo C4 quando il volume reale è misurabile.
-- §C-pin (fix testo libero nel pin di `_memoria_pin`) è un finding tecnico aperto: da decidere se affrontarlo prima o dopo le fette C1–C5.
+Prossime decisioni emergeranno all'implementazione:
+- §C-pin (fix testo libero nel pin di `_memoria_pin`): finding tecnico aperto, da decidere se affrontarlo prima o dopo le fette C1–C5.
 
 ---
 
 ## §1 Esito sonda
 
-Nessuna sonda in questa sessione. Sessione doc-only.
+Nessuna sonda. Sessione doc-only.
 
 ---
 
-## §2 git diff --stat della sessione
+## §2 git diff --stat della sessione (vs main)
 
 ```
-reports/design_cancello.md | 246 +++++++++++++++++++++++++++------------------
-reports/diff_sessione.md   |  25 +++--
-reports/stato_progetto.md  |   4 +-
-reports/ultimo_report.md   |  75 +++++++-------
-4 files changed, 203 insertions(+), 147 deletions(-)
+PLACEHOLDER — da aggiornare con i numeri reali post-commit
 ```
 
 ---
@@ -35,7 +33,7 @@ reports/ultimo_report.md   |  75 +++++++-------
 ## §3 git log commit sessione
 
 ```
-6b9ff49 docs(cancello-v2): design gate v2 — correzioni C-a/b/c/d + decisioni operatore 2026-09-29
+PLACEHOLDER — da aggiornare post-commit
 ```
 
 PR: https://github.com/Gasss23/Gas/pull/105
@@ -63,38 +61,51 @@ Non applicabile per sessione doc-only. Il check CI `unit-suite` è richiesto per
 
 ## §7 Riepilogo modifiche
 
-### `reports/design_cancello.md` → v2
+### `reports/design_cancello.md` → v2 (464 righe)
 
-Aggiornato con correzioni tecniche C-a/b/c/d e decisioni operatore 2026-09-29:
+**Sessione 1 (correzioni C-a/b/c/d + decisioni 8a/b/c/e/f):**
 
-**C-a §3 contaminazione:**
-- Verificato nel codice (gas.py:1239–1295): `_memoria_pin` inietta `prossima_azione` e `descrizione` eventi — testo libero da terze parti. Fatto documentato: oggi ogni turno con pin non vuoto nasce con testo libero di terzi nel system prompt.
-- Contaminazione riscritta come per-finestra (non per-turno): il turno è contaminato se nella finestra inviata al provider c'è un tool result contaminante.
+- §3 contaminazione riscritta come per-finestra: il turno è contaminato se nella finestra inviata al provider c'è un tool result contaminante (non basta l'esecuzione nel turno corrente).
+- `_memoria_pin` (gas.py:1239–1295): inietta `prossima_azione` e `descrizione` eventi — testo libero da terze parti. Fatto: oggi ogni turno con pin non vuoto nasce con testo libero di terzi nel system prompt.
 - `read_file` contamina sempre (rimossa eccezione "file non di sistema").
-
-**C-b §4 read-back integrale:**
-- `tool_args_json` mostrato integralmente (no troncamento 500 char). Se troppo grande → diniego automatico.
+- §4 read-back integrale (no troncamento 500 char); se troppo grande → diniego automatico.
 - `id` approvazione = UUID casuale monouso (non autoincrement).
 - Approvazione legata a hash SHA-256 degli args; kernel esegue args salvati.
 - Callback solo da `TELEGRAM_ALLOWED_IDS`.
+- Fetta C4 = turno suddiviso (polling sincrono bloccherebbe il thread del bot Telegram).
+- C-d: scritture CRM eseguibili in turno contaminato fino a 5 totali; dalla sesta → approvazione.
 
-**C-c §8f + Fetta C4 — turno suddiviso:**
-- Architettura: azione parcheggiata in DB, turno si chiude; su Approva nuovo turno di sblocco.
-- Motivazione: bot Telegram su singolo thread — polling sincrono bloccherebbe il thread.
+**Sessione 2 (decisione 8d):**
 
-**C-d CRM in turno contaminato:**
-- `salva_contatto`/`imposta_stato_contatto` eseguibili fino a 5 scritture CRM/turno contaminato; dalla sesta → approvazione.
+- §8d: DECISO 2026-09-30 — firma per-azione, niente batch.
 
-**Decisioni §8 chiuse (tutte):**
-- 8a: UNCERTAIN+tetto C-d | 8b: solo Approva/Rifiuta | 8c: 30 min | 8e: os_strict determina classe | 8f: turno suddiviso | F-diario-eco: Opzione A prima di C1.
+**Decisioni §8 chiuse (tutte 8):**
+
+| # | Decisione |
+|---|---|
+| 8a | `imposta_stato_contatto` UNCERTAIN anche per stati finali; tetto C-d (5 scritture CRM/turno contaminato) |
+| 8b | Solo [Approva]/[Rifiuta]; [Modifica] = fetta C6 futura |
+| 8c | Timeout 30 min (`GAS_APPROVAL_TIMEOUT_SECS=1800`) |
+| 8d | Firma per-azione, niente batch |
+| 8e | `run_command` UNCERTAIN solo se `GAS_SANDBOX_MODE=os_strict`; altrimenti IRREVERSIBLE |
+| 8f | Turno suddiviso |
+| F-diario-eco | Opzione A, fetta autonoma prima di C1; fix vale solo in avanti |
 
 ---
 
 ## §8 Prossimi passi consigliati
 
-1. **F-diario-eco** (fetta autonoma, prima di C1): modificare `gas.py:~1859` per il solo ramo `ricorda` — sostituire `_esito_sintetico(out)` con `f"[OK] {n} risultati restituiti"`.
-2. **C1** — scaffolding `modules/gate/gate.py`: `GateClass`, `GATE_ALLOWLIST`, `gate_classify()`. Zero modifiche a gas.py.
-3. **C2** — integrazione in `run_turn`: flag `_finestra_contaminata`, gate check prima di `execute_tool_call`.
-4. **C3** — coda approvazioni SQLite: tabella `approvals` con schema v2 (UUID, hash, telegram_user_id).
+1. **F-diario-eco** (fetta autonoma, prima di C1): `gas.py:~1859`, ramo `ricorda` — sostituire `_esito_sintetico(out)` con `f"[OK] {n} risultati restituiti"`.
+2. **C1** — `modules/gate/gate.py`: `GateClass`, `GATE_ALLOWLIST`, `gate_classify()`. Zero modifiche a gas.py.
+3. **C2** — integrazione `run_turn`: `_finestra_contaminata`, gate check prima di `execute_tool_call`.
+4. **C3** — tabella `approvals` schema v2 (UUID, hash, telegram_user_id).
 5. **C4** — bridge Telegram turno suddiviso.
 6. **C5** — hardening scadenza e audit.
+
+---
+
+## §9 Output check scripts
+
+```
+PLACEHOLDER — da compilare post-commit
+```

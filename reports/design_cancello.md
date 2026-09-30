@@ -445,7 +445,7 @@ Motivazione: 5 minuti è troppo stretto se l'utente è lontano dal telefono; 30 
 
 ### 8d. Batch di approvazioni per M1
 
-Non ancora deciso — da valutare in fase C5/C6 quando il volume reale di approvazioni sarà misurabile. Domanda aperta: per-azione vs. batch con soglia N.
+**DECISO 2026-09-30:** Firma per-azione, niente batch. Ogni azione irreversibile richiede la sua firma singola; nessun raggruppamento di approvazioni. L'ipotesi batch resta valutabile solo in futuro (fetta C6) se il volume lo giustificherà, ma il default è per-azione.
 
 ### 8e. Ruolo di `run_command` nel cancello
 
