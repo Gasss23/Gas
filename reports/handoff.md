@@ -22,10 +22,15 @@ Nessuna sonda. Sessione doc-only.
 
 ---
 
-## §2 git diff --stat della sessione (vs main)
+## §2 GIT DIFF --STAT della sessione (vs main)
 
 ```
-PLACEHOLDER — da aggiornare con i numeri reali post-commit
+reports/design_cancello.md | 246 +++++++++++++++++++++++++++------------------
+reports/diff_sessione.md   |  37 ++++---
+reports/handoff.md         | 109 ++++++++++++--------
+reports/stato_progetto.md  |   4 +-
+reports/ultimo_report.md   |  61 +++++------
+5 files changed, 268 insertions(+), 189 deletions(-)
 ```
 
 ---
@@ -33,7 +38,9 @@ PLACEHOLDER — da aggiornare con i numeri reali post-commit
 ## §3 git log commit sessione
 
 ```
-PLACEHOLDER — da aggiornare post-commit
+e3cda69 docs(cancello-v2): §8d chiusa + anti-discrepanza handoff (K-b/K-g/K-h)
+6f7cefd docs(cancello-v2): aggiorna §3 handoff con SHA commit e PR #105
+6b9ff49 docs(cancello-v2): design gate v2 — correzioni C-a/b/c/d + decisioni operatore 2026-09-29
 ```
 
 PR: https://github.com/Gasss23/Gas/pull/105
@@ -107,5 +114,8 @@ Non applicabile per sessione doc-only. Il check CI `unit-suite` è richiesto per
 ## §9 Output check scripts
 
 ```
-PLACEHOLDER — da compilare post-commit
+check_handoff: OK — 5 file dichiarati correttamente.
+check_verdetto: §4 non trovata in reports/handoff.md — non applicabile.
 ```
+
+(check_handoff EXIT: 0, check_verdetto EXIT: 0)
