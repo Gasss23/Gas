@@ -10,8 +10,10 @@ Key invariants:
 - Never raises: all exceptions caught internally → DENY (fail-closed).
 - default-STOP: any tool not in GATE_ALLOWLIST → DENY.
 - GATE_ALLOWLIST is hardcoded; no YAML, no env override.
-- Path normalization: unicodedata NFC + os.path.normpath + casefold.
+- Path normalization: unicodedata NFKC + os.path.normpath + casefold.
   Absolute paths and paths starting with ".." → DENY.
+  NFKC (not NFC) required: FULLWIDTH characters (U+FF0E ．, U+FF0F ／) are
+  not reduced to ASCII equivalents by NFC but are by NFKC.
 - Path denylist: any path whose normalized form (or any component) starts
   with a denied prefix → DENY for both read_file and write_file.
   Same check for each token of run_command args (conservative).
@@ -81,11 +83,12 @@ _DENY_PREFIXES: tuple[str, ...] = (
 def _normalize_path(p: str) -> str:
     """Normalize a path string for denylist comparison.
 
-    Steps: unicodedata NFC → strip leading './' loops → os.path.normpath →
+    Steps: unicodedata NFKC → strip leading './' loops → os.path.normpath →
     casefold.  Raises ValueError for absolute paths or traversal (starts with
     '..' after normpath).
+    NFKC reduces FULLWIDTH characters (U+FF0E ．, U+FF0F ／) to ASCII '.', '/'.
     """
-    p = unicodedata.normalize("NFC", p)
+    p = unicodedata.normalize("NFKC", p)
     # Strip any number of leading "./" sequences.
     while p.startswith("./"):
         p = p[2:]
@@ -200,7 +203,14 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
                     return GateClass.DENY
                 if _in_denylist(norm):
                     return GateClass.DENY
-            # All tokens clean → apply §8e sandbox mode rule.
+            # Belt-and-suspenders: whole-command substring check (NFKC + casefold).
+            # Catches --flag=.env.prod and -f.env patterns where the token itself
+            # is not a normalizable path but embeds a denied name as a value.
+            cmd_norm = unicodedata.normalize("NFKC", command).casefold()
+            for prefix in _DENY_PREFIXES:
+                if prefix in cmd_norm:
+                    return GateClass.DENY
+            # All checks clean → apply §8e sandbox mode rule.
             sandbox_mode = os.environ.get("GAS_SANDBOX_MODE", "")
             if sandbox_mode == "os_strict":
                 return GateClass.UNCERTAIN

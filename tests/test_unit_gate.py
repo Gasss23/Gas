@@ -296,3 +296,48 @@ class TestRunCommand:
         r = gate_classify("run_command", {"command": "wc -l reports/note.md"})
         assert r == GateClass.UNCERTAIN
         # After test, monkeypatch fixture undoes the env change automatically.
+
+    # R-gate-2 fix: --flag=value bypass (substring check)
+    def test_flag_eq_env_prod_deny(self, monkeypatch):
+        monkeypatch.setenv("GAS_SANDBOX_MODE", "os_strict")
+        assert gate_classify("run_command", {"command": "grep --file=.env.prod x"}) == GateClass.DENY
+
+    def test_short_flag_env_deny(self, monkeypatch):
+        monkeypatch.delenv("GAS_SANDBOX_MODE", raising=False)
+        assert gate_classify("run_command", {"command": "grep -f.env x"}) == GateClass.DENY
+
+    def test_traversal_to_env_deny(self, monkeypatch):
+        monkeypatch.delenv("GAS_SANDBOX_MODE", raising=False)
+        assert gate_classify("run_command", {"command": "cat reports/../.env"}) == GateClass.DENY
+
+    def test_uppercase_gas_memory_deny(self, monkeypatch):
+        monkeypatch.setenv("GAS_SANDBOX_MODE", "os_strict")
+        assert gate_classify("run_command", {"command": "wc -l .GAS_MEMORY.db"}) == GateClass.DENY
+
+    def test_dotslash_modules_deny(self, monkeypatch):
+        monkeypatch.delenv("GAS_SANDBOX_MODE", raising=False)
+        assert gate_classify("run_command", {"command": "cat ./modules/gate/gate.py"}) == GateClass.DENY
+
+    def test_normal_command_not_denied(self, monkeypatch):
+        monkeypatch.delenv("GAS_SANDBOX_MODE", raising=False)
+        assert gate_classify("run_command", {"command": "wc -l reports/note.md"}) == GateClass.IRREVERSIBLE
+
+
+# ---------------------------------------------------------------------------
+# T-gate-nfkc: NFKC normalization (R-gate-1 fix)
+# ---------------------------------------------------------------------------
+
+class TestNFKC:
+    def test_fullwidth_gas_memory_write_deny(self):
+        # U+FF0E = FULLWIDTH FULL STOP — NFKC reduces it to ASCII '.'
+        # "．" + "gas_memory．db" → ".gas_memory.db" after NFKC
+        fullwidth_path = "．gas_memory．db"  # ．gas_memory．db
+        assert _wf(fullwidth_path) == GateClass.DENY
+
+    def test_fullwidth_dot_env_write_deny(self):
+        fullwidth_path = "．env"  # ．env
+        assert _wf(fullwidth_path) == GateClass.DENY
+
+    def test_fullwidth_gas_memory_read_deny(self):
+        fullwidth_path = "．gas_memory．db"
+        assert _rf(fullwidth_path) == GateClass.DENY

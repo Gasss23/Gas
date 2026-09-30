@@ -40,10 +40,14 @@ REVIEW_NUM="${1:-}"
 VERDICT="${2:-}"
 
 if [ -z "$REVIEW_NUM" ] || [ -z "$VERDICT" ]; then
-    LAST_LINE=$(tail -1 "${REPO_ROOT}/${MEM_FILE}" 2>/dev/null)
+    # Pattern riga contatore: ^#NNN — data — VERDETTO — ...
+    # tail -1 sul file intero non basta: le righe di lezione (che iniziano con '-')
+    # possono contenere riferimenti come "(lezione #12)" → grep -oE '#[0-9]+' | head -1
+    # estrarre un numero sbagliato. Cerchiamo solo le righe che INIZIANO con '#NNN'.
+    LAST_LINE=$(grep -E '^#[0-9]+' "${REPO_ROOT}/${MEM_FILE}" 2>/dev/null | tail -1)
     if [ -n "$LAST_LINE" ]; then
         # Pattern riga contatore: #86 — 2026-08-19 — APPROVATO CON RISERVE — ...
-        REVIEW_NUM=$(printf '%s' "$LAST_LINE" | grep -oE '#[0-9]+' | grep -oE '[0-9]+' | head -1)
+        REVIEW_NUM=$(printf '%s' "$LAST_LINE" | grep -oE '^#[0-9]+' | grep -oE '[0-9]+')
         VERDICT=$(printf '%s' "$LAST_LINE" | grep -oE 'APPROVATO CON RISERVE|APPROVATO|BOCCIATO' | head -1)
     fi
 fi

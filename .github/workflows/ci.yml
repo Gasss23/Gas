@@ -100,6 +100,12 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_voice_server.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
 
+      - name: Run gate suite (pytest, zero token LLM)
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_gate.py -v 2>&1 | tee "$RUNNER_TEMP/gate_output.txt"
+
       - name: Job summary (esito a colpo d'occhio)
         if: always()
         # Scrive nel JOB SUMMARY (pagina della run, niente zip/auth): esito bwrap +
@@ -137,6 +143,13 @@ jobs:
             else
               echo "| Voice suite  | output non disponibile (la voice suite non è partita) |"
             fi
+            gout="$RUNNER_TEMP/gate_output.txt"
+            if [ -f "$gout" ]; then
+              griep="$(grep -E '^=.*(passed|failed|error)' "$gout" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+              echo "| Gate suite   | ${griep:-non disponibile} |"
+            else
+              echo "| Gate suite   | output non disponibile (la gate suite non è partita) |"
+            fi
             echo ""
             if [ -f "$out" ]; then
               echo "### FAIL kernel suite"
@@ -154,6 +167,12 @@ jobs:
               echo "### FAIL voice suite"
               echo '```'
               grep -E '^FAILED ' "$vout" || echo "(nessun FAIL)"
+              echo '```'
+            fi
+            if [ -f "$gout" ]; then
+              echo "### FAIL gate suite"
+              echo '```'
+              grep -E '^FAILED ' "$gout" || echo "(nessun FAIL)"
               echo '```'
             fi
             echo ""
