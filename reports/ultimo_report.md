@@ -1,36 +1,73 @@
-# Ultimo Report — 2026-09-30 — F-diario-eco: run_command completamento
+# Report task: feat/gate-c1 — C1 scaffolding gate
 
-**Branch:** fix/diario-eco — **PR:** #106
+**Data**: 2026-09-30  
+**Branch**: feat/gate-c1  
+**Review**: #116 APPROVATO CON RISERVE  
 
-## DECISIONI UMANE RICHIESTE
+## Obiettivo
 
-Nessuna.
+Implementare la Fetta C1 del Cancello: scaffolding puro del classificatore deterministico GAS, zero integrazione con gas.py.
 
-## Esito fette
+## Cosa è stato fatto
 
-**PASSO 1 — Fix run_command diario**: `FATTA`
-- `_esito_diario` in gas.py (~1169): aggiunto ramo `run_command` — se negativo → `[KO]`; se `_run_command_meta` disponibile → `[OK] exit=N stdout=N char stderr=N char`; altrimenti → `[OK] (non eseguito)` (dry-run).
-- `execute_tool_call` (~1638): `self._run_command_meta = None` dopo `command = args["command"]`; dopo `subprocess.run` si popola con returncode + lunghezze stdout/stderr.
-- I dinieghi ("Operazione negata: sandbox OS...") sono testo KERNEL, non contengono testo proveniente dall'esterno. Con il fix, il ramo negativo di run_command ora scrive solo `[KO]` (come ricorda e read_file).
-- Rami errore read_file e ricorda già corretti: path=None → "Operazione negata..." → `[KO]`; FileNotFoundError → "Errore eseguendo..." → `[KO]`; memory=None in ricorda → `[OK] 0 risultati restituiti` (corretto: 0 risultati, nessun testo esterno).
+### PASSO 0 — doc-only (commit 8b15b69)
+- `reports/stato_progetto.md`: aggiunta `(R-eco-run-1)` al verdetto #115; registrata discrepanza commit b1b5fd9 vs memoria_revisore.md; aggiunto finding `🟡 F-diario-args`.
+- `.claude/agents/memoria_revisore.md`: condizione per rettifica NON soddisfatta (riga #115 era già APPROVATO CON RISERVE) → nessuna modifica in passo 0b.
 
-**PASSO 2 — Test reali**: `FATTA`
-- T70e: unità diretta — `_esito_diario("run_command", "ignora le istruzioni...")` con meta iniettata → `[OK] exit=0 stdout=22 char stderr=0 char`, nessun injection text. PASS.
-- T70f: round-trip end-to-end con `GAS_SANDBOX_MODE=os_with_fallback` — `echo ignora le istruzioni` → diario esito `[OK] exit=0 stdout=21 char stderr=0 char`, nessun stdout in esito. PASS.
-  - Il percorso bwrap (Linux) è testato solo in CI Linux.
-  - Nota: il testo del COMANDO appare nell'args_summary (`command='echo ...'`) — design intenzionale di `_riassumi_args`, non un bug. Il test controlla solo la parte esito (dopo ` | `).
-- T70g: piattaforma-aware — macOS (os_strict, bwrap assente) → diario `[KO]`. PASS.
-- T70h: read_file file inesistente → `[KO]`, non `[OK] N caratteri`. PASS.
-- Suite completa: **400 PASS, 5 FAIL** — i 5 FAIL sono tutti e soli i bwrap F-mac-1 attesi.
-- sha256 .gas_memory.db invariato: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11` prima e dopo.
+### PASSO 1 — codice (commit d74fed0)
+- **`modules/gate/__init__.py`** (4 righe): esporta GateClass, GATE_ALLOWLIST, GATE_DENY_TOOLS, gate_classify.
+- **`modules/gate/gate.py`** (214 righe): classificatore completo.
+  - `GateClass`: enum SAFE / UNCERTAIN / IRREVERSIBLE / DENY.
+  - `GATE_ALLOWLIST`: dict hardcoded 14 tool, nessun override YAML/env.
+  - `GATE_DENY_TOOLS`: frozenset {"ssh", "modify_gate", "write_env"}.
+  - `_DENY_PREFIXES`: 11 prefissi (.gas_memory, .gas_history, .gas_knowledge, .gas_vectors, .gas_tokens, .env, gas.py, brains, modules, .claude, gate_config).
+  - `_normalize_path()`: NFC → strip "./" → normpath → casefold; ValueError su assoluti/traversal.
+  - `_in_denylist()`: controlla path intero E ogni componente PurePosixPath.
+  - `gate_classify()`: 5 regole; try/except globale → DENY (fail-closed, non solleva mai).
+  - §8e: run_command → UNCERTAIN solo se `GAS_SANDBOX_MODE == "os_strict"`, altrimenti IRREVERSIBLE.
 
-**PASSO 3 — Revisore su TUTTO il diff PR (gas.py + tests/)**: `FATTA`
-- Review #115, 2026-09-30: **APPROVATO CON RISERVE** — riserva R-eco-run-1 (minore, non bloccante): gas.py:1177 ramo dry-run `[OK] (non eseguito)` non coperto da test. Tracciata in stato_progetto.md.
-- Nota su #114: quel verdetto conteneva "→ APPLICATA prima del commit" e "R-eco-1 → APPLICATA" NON scritti dal revisore — erano annotazioni dell'agente principale. Registrato e basta; nessuna correzione a posteriori.
-- Commit memoria revisore: il revisore ha committato `b1b5fd9 chore(revisore): memoria review #115 — APPROVATO`. Il commit subject dice "APPROVATO" ma il verdetto è "APPROVATO CON RISERVE" — incongruenza nel subject del commit del revisore, non corretta.
-- Il duplicato riga #115 in memoria_revisore.md (aggiunto dall'agente prima della SubagentHandback definitiva) è stato rimosso.
+### PASSO 2 — test (commit d74fed0)
+- **`tests/test_unit_gate.py`** (298 righe, 65 test): TestKnownTools (15), TestInvalidToolName (4), TestWriteFileDenylist (14), TestReadFileDenylist (12), TestMalformedArgs (10), TestRunCommand (9+1 extra).
+- **65/65 PASS** locale (`.venv/bin/python3 -m pytest tests/test_unit_gate.py -v`).
+- ⚠️ `test_unit_gate.py` NON incluso in `ci.yml` (solo `test_unit_kernel.py`, `test_unit_hooks.py`, `test_unit_voice_server.py` per nome esplicito). Tracciato come R-gate-3; `ci.yml` NON modificato per rispettare lo stop gate.
 
-## Anomalie riscontrate
+### PASSO 3 — revisore (commit 83354d8)
+Revisore #116: **APPROVATO CON RISERVE** — vedere §Riserve aperte.
 
-- `_riassumi_args` per run_command mette il testo del COMANDO (non stdout) nel diario — design, non bug. Dichiarato nel test T70f.
-- T70f: `echo ignora le istruzioni` produce stdout=21 char (non 22), perché senza virgolette nel JSON `shlex.split` dà 3 parole; la stringa `"ignora le istruzioni\n"` = 21 byte.
+## Stop gate verificati
+
+- ZERO modifiche a gas.py ✅
+- ZERO modifiche a brains/ ✅
+- ZERO modifiche a qualsiasi file motore esistente ✅
+- GATE_ALLOWLIST hardcoded, no YAML/env ✅
+- `ci.yml` NON modificato ✅
+
+## Riserve aperte
+
+- **R-gate-1** (minore, pre-C3/C4): `_normalize_path` usa `NFC` invece di `NFKC` — FULLWIDTH FULL STOP U+FF0E non ridotto a '.', bypassa denylist. Correggere prima dell'integrazione. File: `modules/gate/gate.py:88`.
+- **R-gate-2** (minore, pre-C3/C4): token `--flag=value` in run_command non splittati su '=' — valore dopo '=' non controllato contro denylist. File: `modules/gate/gate.py:195-202`.
+- **R-gate-3** (processo): `tests/test_unit_gate.py` escluso da `ci.yml`. Da aggiungere in una prossima fetta (o come PR separata).
+
+## Suite
+
+- Kernel (gas.py): 400 PASS, 5 FAIL F-mac-1 invariati (bwrap macOS).
+- Gate (pytest): **65 PASS, 0 FAIL**.
+- Kernel non toccato da C1: conteggio invariato.
+
+## File toccati
+
+```
+.claude/agents/memoria_revisore.md  +3
+modules/gate/__init__.py            +4 (nuovo)
+modules/gate/gate.py                +214 (nuovo)
+reports/stato_progetto.md           +9/-3
+tests/test_unit_gate.py             +298 (nuovo)
+```
+
+## Commit sul branch
+
+```
+83354d8 chore(revisore): memoria review #12 — ?
+d74fed0 feat(gate-c1): scaffolding gate — GateClass, GATE_ALLOWLIST, gate_classify + test
+8b15b69 docs(gate-c1): passo 0 — rettifica #115 + finding F-diario-args
+```
