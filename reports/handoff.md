@@ -1,82 +1,121 @@
-# HANDOFF — Dossier di fine sessione
+# Handoff sessione: design/cancello-v2 (v2 + patch 8d + anti-discrepanza)
 
-**Sessione:** 2026-09-29 — Design del Cancello (Gate Autonomia GAS)
+> Data: 2026-09-30  
+> Branch: design/cancello-v2  
+> PR: https://github.com/Gasss23/Gas/pull/105
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #104 (https://github.com/Gasss23/Gas/pull/104)
+**Nessuna.** Tutte le decisioni §8 del documento `design_cancello.md` sono ora chiuse:
+- 8a UNCERTAIN+C-d ✅ | 8b Approva/Rifiuta ✅ | 8c 30 min ✅ | 8d per-azione ✅ | 8e os_strict ✅ | 8f turno suddiviso ✅ | F-diario-eco Opzione A ✅
 
-**Decisioni di design dal documento (operatore deve rispondere prima di C4):**
-2. `imposta_stato_contatto` — UNCERTAIN o IRREVERSIBLE per stati finali? (§8a design_cancello.md)
-3. Interfaccia Telegram: [Approva]/[Rifiuta] o aggiungere [Modifica]? (§8b)
-4. Timeout approvazione: 5 min default? (§8c) — raccomandazione tecnica: sì
-5. Batch approvazioni M1: per-azione o approva-batch oltre N=3? (§8d)
-6. `run_command` nel gate: UNCERTAIN / IRREVERSIBLE / classe dinamica? (§8e)
-7. Architettura sospensione turno C4: sincrona (polling) vs suddiviso vs asincrona? (§8f)
-8. F-diario-eco: aprire finding dedicato e schedulare fix Opzione A? (§7 design_cancello.md)
+Prossime decisioni emergeranno all'implementazione:
+- §C-pin (fix testo libero nel pin di `_memoria_pin`): finding tecnico aperto, da decidere se affrontarlo prima o dopo le fette C1–C5.
 
 ---
 
-## §1 SCOPE & ESITO FETTE
+## §1 Esito sonda
 
-**Fetta unica — Documento di architettura `reports/design_cancello.md`**: `FATTA`
-
-Prodotto: documento di 310 righe (8 sezioni) con inventario tool, classificatore deterministico, regola input non fidato, canale firma Telegram, file intoccabili, piano fette C1–C5, finding F-diario-eco, domande aperte per l'operatore.
-
-Zero codice scritto — STOP gate rispettato.
+Nessuna sonda. Sessione doc-only.
 
 ---
 
-## §2 GIT DIFF --STAT (sessione)
+## §2 GIT DIFF --STAT della sessione (vs main)
 
 ```
- reports/design_cancello.md | 410 +++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md   |  24 +--
- reports/handoff.md         |  70 ++++----
- reports/ultimo_report.md   | 115 +++----------
- 4 files changed, 476 insertions(+), 143 deletions(-)
+reports/design_cancello.md | 246 +++++++++++++++++++++++++++------------------
+reports/diff_sessione.md   |  37 ++++---
+reports/handoff.md         | 109 ++++++++++++--------
+reports/stato_progetto.md  |   4 +-
+reports/ultimo_report.md   |  61 +++++------
+5 files changed, 268 insertions(+), 189 deletions(-)
 ```
 
 ---
 
-## §3 GIT LOG --ONELINE (sessione)
+## §3 git log commit sessione
 
 ```
-ff3b5b2 docs(cancello): design gate autonomia GAS — inventario tool, classificatore, coda approvazioni, F-diario-eco
+e3cda69 docs(cancello-v2): §8d chiusa + anti-discrepanza handoff (K-b/K-g/K-h)
+6f7cefd docs(cancello-v2): aggiorna §3 handoff con SHA commit e PR #105
+6b9ff49 docs(cancello-v2): design gate v2 — correzioni C-a/b/c/d + decisioni operatore 2026-09-29
 ```
 
-NB: il commit di fine-task che aggiorna §0 di questo file non compare nel log per costruzione.
+PR: https://github.com/Gasss23/Gas/pull/105
 
 ---
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+## §4 Delta test motore
 
-nessun diff motore, revisore non richiesto.
-
----
-
-## §5 DELTA TEST DEL MOTORE
-
-Nessuna modifica a gas.py/tests/ — nessun delta test.
+Zero. Sessione doc-only, nessuna modifica a gas.py/brains/modules/tests/.  
+Suite invariata: **392 PASS, 5 FAIL** F-mac-1 (invariati da sessione precedente).
 
 ---
 
-## §6 STATO CI
+## §5 Verdetto revisore
+
+Non richiesto. La sessione non tocca gas.py, brains/, modules/ o tests/: il gate di review obbligatorio non si attiva per commit di soli reports/.
+
+---
+
+## §6 Stato CI
+
+Non applicabile per sessione doc-only. Il check CI `unit-suite` è richiesto per merge PR; si attiverà al momento della PR.
+
+---
+
+## §7 Riepilogo modifiche
+
+### `reports/design_cancello.md` → v2 (464 righe)
+
+**Sessione 1 (correzioni C-a/b/c/d + decisioni 8a/b/c/e/f):**
+
+- §3 contaminazione riscritta come per-finestra: il turno è contaminato se nella finestra inviata al provider c'è un tool result contaminante (non basta l'esecuzione nel turno corrente).
+- `_memoria_pin` (gas.py:1239–1295): inietta `prossima_azione` e `descrizione` eventi — testo libero da terze parti. Fatto: oggi ogni turno con pin non vuoto nasce con testo libero di terzi nel system prompt.
+- `read_file` contamina sempre (rimossa eccezione "file non di sistema").
+- §4 read-back integrale (no troncamento 500 char); se troppo grande → diniego automatico.
+- `id` approvazione = UUID casuale monouso (non autoincrement).
+- Approvazione legata a hash SHA-256 degli args; kernel esegue args salvati.
+- Callback solo da `TELEGRAM_ALLOWED_IDS`.
+- Fetta C4 = turno suddiviso (polling sincrono bloccherebbe il thread del bot Telegram).
+- C-d: scritture CRM eseguibili in turno contaminato fino a 5 totali; dalla sesta → approvazione.
+
+**Sessione 2 (decisione 8d):**
+
+- §8d: DECISO 2026-09-30 — firma per-azione, niente batch.
+
+**Decisioni §8 chiuse (tutte 8):**
+
+| # | Decisione |
+|---|---|
+| 8a | `imposta_stato_contatto` UNCERTAIN anche per stati finali; tetto C-d (5 scritture CRM/turno contaminato) |
+| 8b | Solo [Approva]/[Rifiuta]; [Modifica] = fetta C6 futura |
+| 8c | Timeout 30 min (`GAS_APPROVAL_TIMEOUT_SECS=1800`) |
+| 8d | Firma per-azione, niente batch |
+| 8e | `run_command` UNCERTAIN solo se `GAS_SANDBOX_MODE=os_strict`; altrimenti IRREVERSIBLE |
+| 8f | Turno suddiviso |
+| F-diario-eco | Opzione A, fetta autonoma prima di C1; fix vale solo in avanti |
+
+---
+
+## §8 Prossimi passi consigliati
+
+1. **F-diario-eco** (fetta autonoma, prima di C1): `gas.py:~1859`, ramo `ricorda` — sostituire `_esito_sintetico(out)` con `f"[OK] {n} risultati restituiti"`.
+2. **C1** — `modules/gate/gate.py`: `GateClass`, `GATE_ALLOWLIST`, `gate_classify()`. Zero modifiche a gas.py.
+3. **C2** — integrazione `run_turn`: `_finestra_contaminata`, gate check prima di `execute_tool_call`.
+4. **C3** — tabella `approvals` schema v2 (UUID, hash, telegram_user_id).
+5. **C4** — bridge Telegram turno suddiviso.
+6. **C5** — hardening scadenza e audit.
+
+---
+
+## §9 Output check scripts
 
 ```
-completed	success	Merge pull request #103 from Gasss23/feat/autonomia-k3-bis	CI	main	push	36568023530	54s	2026-09-29T12:25:37Z
-completed	success	docs(fine-task): E2E K3+K4 LLM — prima esecuzione reale 2026-09-29	CI	feat/autonomia-k3-bis	push	36558584824	57s	2026-09-29T10:55:43Z
-completed	success	chore(fine-task): aggiunge output check_handoff + check_verdetto in §7	CI	feat/autonomia-k3-bis	push	36556131699	53s	2026-09-29T10:31:47Z
+check_handoff: OK — 5 file dichiarati correttamente.
+check_verdetto: §4 non trovata in reports/handoff.md — non applicabile.
 ```
 
-Commit di questa sessione: run non ancora disponibile alla scrittura dell'handoff (branch appena pushato, CI non ancora triggerata). Nota: sessione doc-only, CI testa solo motore e suite.
-
----
-
-## §7 RISERVE APERTE
-
-Nessuna riserva dal revisore (revisore non invocato — nessun diff motore).
-
-**Finding nuovo emerso:** F-diario-eco — l'output di `ricorda` (160 chars via `_esito_sintetico`) entra nel diario immutabile, bypassa la revoca fonte K4.3. Descritto in §7 di `reports/design_cancello.md`. Correzione proposta (Opzione A — una riga di modifica) non implementata. Da schedulare come finding autonomo.
+(check_handoff EXIT: 0, check_verdetto EXIT: 0)

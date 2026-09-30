@@ -1,10 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-29** (K3-bis FTS5 + guida modello — feat/autonomia-k3-bis)
+> Ultimo aggiornamento: **2026-09-30** (design/cancello-v2 — v2+8d chiusa, anti-discrepanza handoff)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
+
+**🔄 design/cancello-v2 (2026-09-30, doc-only)** — `reports/design_cancello.md` aggiornato a v2+8d con decisioni operatore 2026-09-29+30. Correzioni sessione 1: §3 contaminazione per-finestra; `_memoria_pin` inietta testo libero terzi (gas.py:1239–1295); `read_file` contamina sempre; §4 read-back integrale, UUID monouso, hash args, TELEGRAM_ALLOWED_IDS; C4 turno suddiviso; C-d tetto 5 CRM. Sessione 2: §8d chiusa (per-azione, no batch); anti-discrepanza handoff (§2/§3 corretti, check_handoff exit 0). Tutte le 8 decisioni §8 ora chiuse. 464 righe. ZERO codice.
 
 **🔄 feat/autonomia-k3-bis (2026-09-29, review #111+#112+#113 APPROVATO CON RISERVE)** — K3-bis: `_knowledge_search` ora usa FTS5 (era LIKE su frase intera: 0/3 col modello reale). `_knowledge_fts_match()`: token ≥3 char, quotati, prefisso *, OR — neutralizza operatori FTS. `ingest_knowledge.py`: crea `knowledge_fts` (FTS5) + trigger AFTER INSERT + backfill. gas_identity.md: regola "chiama PRIMA ricorda con 1-3 parole chiave semplici" + "e knowledge studiata". +9 test T69-fts-a/b/c/d/e. Suite: **392 PASS, 5 FAIL** F-mac-1 (invariati). E2E reale Groq: **2/3 ≥ criterio** (D2+D3 OK, D1 "iterazioni" parola singola ambigua). Iniezione FETTA 1+2 (2026-09-29, review #113): chunk Gas-topic (cascata provider), INSERT con tutti i campi (stato='active'), try/finally, D1b/D2b/D3b post-iniezione. Riserve aperte: R-fts-1 (cap token, minore), R-fts-2 (rebuild cosm.), R-fts-3 (test cosm.), R-e2e-refactor-1 (gate chunk_arrivato impreciso ma conservativo, minore), R-e2e-refactor-2 (helper dentro try, cosm.). Chiuse in questa sessione: R-e2e-1 (try/finally), R-e2e-new-1 (INSERT stato=active), R-e2e-new-2 (commento trigger). **NOTA storica**: prima di questa fetta K3 era collegato ma 0/3 col modello reale (LIKE non matchava frasi intere passate dal modello, modello non chiamava ricorda senza regola).
 

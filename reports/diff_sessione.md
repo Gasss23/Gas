@@ -1,19 +1,28 @@
-# DIFF SESSIONE — 2026-09-29
+# Diff sessione: design/cancello-v2 (patch anti-discrepanza + 8d)
 
-Branch: design/cancello  
-Base: ca3515a (Merge pull request #103 from Gasss23/feat/autonomia-k3-bis)
+> Data: 2026-09-30  
+> Branch: design/cancello-v2
 
-## File toccati
+## File toccati (questa sessione, 2026-09-30 patch)
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `reports/design_cancello.md` | NUOVO — documento di architettura del gate autonomia (Il Cancello): inventario tool, classificatore deterministico, regola input non fidato, coda approvazioni Telegram, file intoccabili, piano fette C1–C5, finding F-diario-eco, domande aperte per l'operatore |
-| `reports/ultimo_report.md` | RISCRITTO — report di fine task: scope, esito fette, DECISIONI UMANE RICHIESTE |
-| `reports/diff_sessione.md` | RISCRITTO — questo file |
-| `reports/handoff.md` | RISCRITTO — dossier di fine sessione |
+| File | Tipo | Cosa è cambiato |
+|---|---|---|
+| `reports/design_cancello.md` | doc | §8d chiusa: per-azione, no batch |
+| `reports/stato_progetto.md` | doc | Aggiornamento riga sessione v2+8d |
+| `reports/ultimo_report.md` | doc | Report sessione patch |
+| `reports/diff_sessione.md` | doc | Questo file |
+| `reports/handoff.md` | doc | §0/§2/§3/§7 corretti (anti-discrepanza, K-g, K-b) |
 
-## Note
+## File toccati (sessione precedente, 2026-09-30 v2)
 
-- Zero modifiche a gas.py, brains/, modules/, tests/, gas_identity.md (STOP gate rispettato).
-- Sessione doc-only: revisore non invocato (nessun diff motore).
-- Branch creato da main (ca3515a) — prima sessione su questo branch.
+| File | Tipo | Cosa è cambiato |
+|---|---|---|
+| `reports/design_cancello.md` | doc | v2: correzioni C-a/b/c/d + decisioni §8a/b/c/e/f chiuse |
+| `reports/stato_progetto.md` | doc | Aggiornamento data + riga sessione |
+| `reports/ultimo_report.md` | doc | Report sessione v2 |
+| `reports/diff_sessione.md` | doc | Precedente versione |
+| `reports/handoff.md` | doc | Handoff v2 (parzialmente corretto ora) |
+
+## Nessuna modifica al codice
+
+Entrambe le sessioni sono doc-only. Zero modifiche a gas.py, brains/, modules/, tests/.
