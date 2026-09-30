@@ -1,121 +1,129 @@
-# Handoff sessione: design/cancello-v2 (v2 + patch 8d + anti-discrepanza)
+# HANDOFF — Dossier di fine sessione
 
-> Data: 2026-09-30  
-> Branch: design/cancello-v2  
-> PR: https://github.com/Gasss23/Gas/pull/105
+**Sessione:** 2026-09-30 — F-diario-eco (diario non registra testo output)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-**Nessuna.** Tutte le decisioni §8 del documento `design_cancello.md` sono ora chiuse:
-- 8a UNCERTAIN+C-d ✅ | 8b Approva/Rifiuta ✅ | 8c 30 min ✅ | 8d per-azione ✅ | 8e os_strict ✅ | 8f turno suddiviso ✅ | F-diario-eco Opzione A ✅
-
-Prossime decisioni emergeranno all'implementazione:
-- §C-pin (fix testo libero nel pin di `_memoria_pin`): finding tecnico aperto, da decidere se affrontarlo prima o dopo le fette C1–C5.
+1. Merge della PR #106 (https://github.com/Gasss23/Gas/pull/106).
 
 ---
 
-## §1 Esito sonda
+## §1 SCOPE & ESITO FETTE
 
-Nessuna sonda. Sessione doc-only.
+- **Passo 1 — SONDA (sola lettura)**: `FATTA`  
+  Trovato punto di scrittura (`gas.py:1881`), identificati tool che copiano testo non fidato nel diario. Conteggio deterministico N per `ricorda` possibile via `parti[]` (STOP GATE non scatta).
+
+- **Passo 2 — FIX (ricorda + read_file)**: `FATTA`  
+  Aggiunto `_esito_diario()`. `ricorda` → `"[OK] N risultati restituiti"`. `read_file` → `"[OK] N caratteri letti"`. `run_command` segnalato come finding, NON corretto (out of scope per task).
+
+- **Passo 3 — TEST REALI**: `FATTA`  
+  4 nuovi test T70a–d tutti PASS. Suite: 396 PASS, 5 FAIL (tutti F-mac-1 bwrap noti). sha256 DB reale invariato.
+
+- **Passo 4 — REVISORE**: `FATTA`  
+  Review #114 APPROVATO CON RISERVE. R-eco-1 applicata (commento coupling regex). R-eco-2 non bloccante.
 
 ---
 
-## §2 GIT DIFF --STAT della sessione (vs main)
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-reports/design_cancello.md | 246 +++++++++++++++++++++++++++------------------
-reports/diff_sessione.md   |  37 ++++---
-reports/handoff.md         | 109 ++++++++++++--------
-reports/stato_progetto.md  |   4 +-
-reports/ultimo_report.md   |  61 +++++------
-5 files changed, 268 insertions(+), 189 deletions(-)
+ .claude/agents/memoria_revisore.md |   2 +
+ gas.py                             |  26 ++++++-
+ reports/diff_sessione.md           |  34 +++------
+ reports/handoff.md                 | 139 ++++++++++++++++++-------------------
+ reports/stato_progetto.md          |   3 +-
+ reports/ultimo_report.md           |  78 +++++++++++++++------
+ tests/test_unit_kernel.py          |  83 ++++++++++++++++++++++
+ 7 files changed, 246 insertions(+), 119 deletions(-)
 ```
 
 ---
 
-## §3 git log commit sessione
+## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e3cda69 docs(cancello-v2): §8d chiusa + anti-discrepanza handoff (K-b/K-g/K-h)
-6f7cefd docs(cancello-v2): aggiorna §3 handoff con SHA commit e PR #105
-6b9ff49 docs(cancello-v2): design gate v2 — correzioni C-a/b/c/d + decisioni operatore 2026-09-29
+85c4698 docs: aggiorna stato_progetto — F-diario-eco chiuso in avanti (review #114)
+927c378 feat(diario-eco): ricorda e read_file scrivono solo conteggi nel diario
+a3afcfd chore(revisore): memoria review #? — ?
 ```
 
-PR: https://github.com/Gasss23/Gas/pull/105
+---
+
+## §4 VERDETTO DEL REVISORE (per commit motore)
+
+Commit `927c378` tocca `gas.py` e `tests/test_unit_kernel.py`.
+
+### Verdetto revisore #114 — F-diario-eco — 2026-09-30
+
+**APPROVATO CON RISERVE**
 
 ---
 
-## §4 Delta test motore
+### Elementi del diff esaminati
 
-Zero. Sessione doc-only, nessuna modifica a gas.py/brains/modules/tests/.  
-Suite invariata: **392 PASS, 5 FAIL** F-mac-1 (invariati da sessione precedente).
+1. **`gas.py:~1152-1167` — metodo `_esito_diario`**
+   Nuovo metodo che specializza l'esito diario per `ricorda` (solo conteggio `_ricorda_n`, mai testo output) e `read_file` (solo conteggio caratteri via regex, fallback su `len(out)`). Per tutti gli altri tool delega a `_esito_sintetico` invariato. Il vettore injection (testo non fidato nel diario immutabile) è rimosso per costruzione. `getattr(self, '_ricorda_n', 0)` è fail-safe §9 corretto. **Esito: ok.**
 
----
+2. **`gas.py:~1370-1373` — in `ricorda()`: inizializzazione e calcolo `_ricorda_n`**
+   `self._ricorda_n: int = 0` posto in testa alla funzione, prima di ogni ramo (incluso "memoria None"). Calcolo finale `sum(1 for p in parti if p.startswith("- ["))` deterministico sulla struttura dati, non sul testo. Reset garantito ad ogni chiamata. **Esito: ok.**
 
-## §5 Verdetto revisore
+3. **`gas.py:~1881` — sostituzione in `run_turn`**
+   `_esito_sintetico(out)` → `_esito_diario(tc.function.name, out)`. Retrocompatibilità per tutti i tool non specializzati garantita (delega). Loop cap 10 iterazioni non toccato. Contatori `_turno_tool_n`/`_turno_tool_ko` aggiornati correttamente a valle. **Esito: ok.**
 
-Non richiesto. La sessione non tocca gas.py, brains/, modules/ o tests/: il gate di review obbligatorio non si attiva per commit di soli reports/.
+### Verifiche negative (Wall of Shame)
+- Nessun raw history slicing (`[-N:]` o simili): assente.
+- Nessuna simulazione di output tool: assente.
+- `_get_window()` non toccato.
 
----
+### Riserve (non bloccanti)
 
-## §6 Stato CI
+- **R-eco-1 (minore):** il regex `r'erano (\d+) caratteri totali'` è accoppiato implicitamente al formato preciso del messaggio di troncamento di `read_file`. Un cambio futuro del testo fa cadere silenziosamente su `len(out)` (comportamento corretto, non crash) senza segnale. Raccomandazione: aggiungere un commento che documenti l'accoppiamento. **→ APPLICATA prima del commit.**
+- **R-eco-2 (minore):** i test T70a/b/c/d non sono visibili nel diff fornito al revisore; il claim "tutti PASS" è accettato sulla base della nota dell'autore ma non verificato direttamente.
 
-Non applicabile per sessione doc-only. Il check CI `unit-suite` è richiesto per merge PR; si attiverà al momento della PR.
+### Rischio esplicitamente escluso
+Comportamento su chiamate multiple a `ricorda` nello stesso turno verificato dal test T70c (2 call, round-trip integro).
 
----
-
-## §7 Riepilogo modifiche
-
-### `reports/design_cancello.md` → v2 (464 righe)
-
-**Sessione 1 (correzioni C-a/b/c/d + decisioni 8a/b/c/e/f):**
-
-- §3 contaminazione riscritta come per-finestra: il turno è contaminato se nella finestra inviata al provider c'è un tool result contaminante (non basta l'esecuzione nel turno corrente).
-- `_memoria_pin` (gas.py:1239–1295): inietta `prossima_azione` e `descrizione` eventi — testo libero da terze parti. Fatto: oggi ogni turno con pin non vuoto nasce con testo libero di terzi nel system prompt.
-- `read_file` contamina sempre (rimossa eccezione "file non di sistema").
-- §4 read-back integrale (no troncamento 500 char); se troppo grande → diniego automatico.
-- `id` approvazione = UUID casuale monouso (non autoincrement).
-- Approvazione legata a hash SHA-256 degli args; kernel esegue args salvati.
-- Callback solo da `TELEGRAM_ALLOWED_IDS`.
-- Fetta C4 = turno suddiviso (polling sincrono bloccherebbe il thread del bot Telegram).
-- C-d: scritture CRM eseguibili in turno contaminato fino a 5 totali; dalla sesta → approvazione.
-
-**Sessione 2 (decisione 8d):**
-
-- §8d: DECISO 2026-09-30 — firma per-azione, niente batch.
-
-**Decisioni §8 chiuse (tutte 8):**
-
-| # | Decisione |
-|---|---|
-| 8a | `imposta_stato_contatto` UNCERTAIN anche per stati finali; tetto C-d (5 scritture CRM/turno contaminato) |
-| 8b | Solo [Approva]/[Rifiuta]; [Modifica] = fetta C6 futura |
-| 8c | Timeout 30 min (`GAS_APPROVAL_TIMEOUT_SECS=1800`) |
-| 8d | Firma per-azione, niente batch |
-| 8e | `run_command` UNCERTAIN solo se `GAS_SANDBOX_MODE=os_strict`; altrimenti IRREVERSIBLE |
-| 8f | Turno suddiviso |
-| F-diario-eco | Opzione A, fetta autonoma prima di C1; fix vale solo in avanti |
+### Memoria
+Riga #114 aggiunta a `.claude/agents/memoria_revisore.md` e committata atomicamente (commit `a3afcfd`).
 
 ---
 
-## §8 Prossimi passi consigliati
+## §5 DELTA TEST DEL MOTORE
 
-1. **F-diario-eco** (fetta autonoma, prima di C1): `gas.py:~1859`, ramo `ricorda` — sostituire `_esito_sintetico(out)` con `f"[OK] {n} risultati restituiti"`.
-2. **C1** — `modules/gate/gate.py`: `GateClass`, `GATE_ALLOWLIST`, `gate_classify()`. Zero modifiche a gas.py.
-3. **C2** — integrazione `run_turn`: `_finestra_contaminata`, gate check prima di `execute_tool_call`.
-4. **C3** — tabella `approvals` schema v2 (UUID, hash, telegram_user_id).
-5. **C4** — bridge Telegram turno suddiviso.
-6. **C5** — hardening scadenza e audit.
+**Prima**: 392 PASS, 5 FAIL (bwrap F-mac-1)  
+**Dopo**: 396 PASS, 5 FAIL (bwrap F-mac-1)
 
----
-
-## §9 Output check scripts
+I 5 FAIL (T11c2, T11e, T12a, T12c, T12e) sono fuori scope: richiedono bwrap, non disponibile su macOS. Tutti preesistenti, nessuno introdotto da questa sessione.
 
 ```
-check_handoff: OK — 5 file dichiarati correttamente.
-check_verdetto: §4 non trovata in reports/handoff.md — non applicabile.
+=== RIEPILOGO: 396 PASS, 5 FAIL ===
+  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non dispon
+  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
 ```
 
-(check_handoff EXIT: 0, check_verdetto EXIT: 0)
+---
+
+## §6 STATO CI
+
+```
+completed	success	docs: aggiorna stato_progetto — F-diario-eco chiuso in avanti (review…	CI	fix/diario-eco	push	36767210942	46s	2026-09-30T19:39:42Z
+completed	success	feat(diario-eco): ricorda e read_file scrivono solo conteggi nel diario	CI	fix/diario-eco	push	36767165101	56s	2026-09-30T19:39:18Z
+completed	success	Merge pull request #105 from Gasss23/design/cancello-v2	CI	main	push	36728170408	58s	2026-09-30T14:18:53Z
+```
+
+**Mappatura commit→run:**
+- `a3afcfd` (chore revisore) — pushato insieme a `927c378`; testato nell'albero di `927c378` dalla run `36767165101` (success).
+- `927c378` (feat diario-eco) — run `36767165101` — **success**
+- `85c4698` (docs stato_progetto) — run `36767210942` — **success**
+
+---
+
+## §7 RISERVE APERTE
+
+- **R-eco-2** (minore, revisore #114): test T70a–d non verificati direttamente dal revisore sul diff statico — accettato sulla base del claim autore. Non bloccante.
+- **F-run_command-diario** (finding segnalato, non corretto per scope): `run_command` copia stdout+stderr nel diario immutabile (confermato sonda 1b, riga 1652 gas.py). Da correggere in fetta separata.

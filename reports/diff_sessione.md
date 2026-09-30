@@ -1,28 +1,14 @@
-# Diff sessione: design/cancello-v2 (patch anti-discrepanza + 8d)
+# DIFF SESSIONE — 2026-09-30 (fix/diario-eco)
 
-> Data: 2026-09-30  
-> Branch: design/cancello-v2
+## File toccati
 
-## File toccati (questa sessione, 2026-09-30 patch)
+| File | Cosa è cambiato e perché |
+|---|---|
+| `gas.py` | Aggiunto `_esito_diario()`, reset+set `self._ricorda_n` in `_ricorda`, sostituzione `_esito_sintetico→_esito_diario` in `run_turn`. Fix F-diario-eco: diario non registra più testo non fidato. |
+| `tests/test_unit_kernel.py` | Aggiunti test T70a–d per verificare che ricorda/read_file scrivano solo conteggi nel diario. |
+| `reports/stato_progetto.md` | Aggiunto finding F-diario-eco (chiuso in avanti), aggiornata data. |
+| `.claude/agents/memoria_revisore.md` | Riga #114 aggiunta dal revisore dopo review. |
 
-| File | Tipo | Cosa è cambiato |
-|---|---|---|
-| `reports/design_cancello.md` | doc | §8d chiusa: per-azione, no batch |
-| `reports/stato_progetto.md` | doc | Aggiornamento riga sessione v2+8d |
-| `reports/ultimo_report.md` | doc | Report sessione patch |
-| `reports/diff_sessione.md` | doc | Questo file |
-| `reports/handoff.md` | doc | §0/§2/§3/§7 corretti (anti-discrepanza, K-g, K-b) |
+## Nota
 
-## File toccati (sessione precedente, 2026-09-30 v2)
-
-| File | Tipo | Cosa è cambiato |
-|---|---|---|
-| `reports/design_cancello.md` | doc | v2: correzioni C-a/b/c/d + decisioni §8a/b/c/e/f chiuse |
-| `reports/stato_progetto.md` | doc | Aggiornamento data + riga sessione |
-| `reports/ultimo_report.md` | doc | Report sessione v2 |
-| `reports/diff_sessione.md` | doc | Precedente versione |
-| `reports/handoff.md` | doc | Handoff v2 (parzialmente corretto ora) |
-
-## Nessuna modifica al codice
-
-Entrambe le sessioni sono doc-only. Zero modifiche a gas.py, brains/, modules/, tests/.
+Questo file si riscrive a ogni sessione; la storia completa sta in git.

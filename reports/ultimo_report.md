@@ -1,35 +1,67 @@
-# Report sessione: design/cancello-v2 (patch anti-discrepanza + 8d)
+# REPORT — F-diario-eco (2026-09-30)
 
-> Data: 2026-09-30  
-> Branch: design/cancello-v2  
-> Tipo: doc-only (ZERO codice)
+**Branch:** `fix/diario-eco`  
+**Commit motore:** `927c378`  
+**PR:** #106 — https://github.com/Gasss23/Gas/pull/106  
+**Revisore:** review #114 — APPROVATO CON RISERVE
 
-## Obiettivo
+---
 
-Correggere `reports/design_cancello.md` e `reports/handoff.md` su tre punti: anti-discrepanza handoff (K-h), conteggio righe design_cancello.md (K-g), decisione §8d (K-b). PR #105 già aperta — stesso branch.
+## DECISIONI UMANE RICHIESTE
 
-## Cosa è stato fatto
+Nessuna.
 
-### K-b — §8d design_cancello.md
+---
 
-Sostituita la riga "Non ancora deciso..." con decisione operatore:
-> DECISO 2026-09-30: firma per-azione, niente batch. Ogni azione irreversibile richiede la sua firma singola; nessun raggruppamento. L'ipotesi batch resta valutabile solo in futuro (fetta C6).
+## Esito per fetta
 
-### K-g — numero righe design_cancello.md
+**PASSO 1 — SONDA (sola lettura)**
+FATTA.
+- Punto di scrittura diario: `gas.py:1881` — `_esito_str = self._esito_sintetico(out)` all'interno di `run_turn`.
+- Tool che copiano testo non fidato nel diario:
+  - `ricorda` (SÌ): output `<memoria_dati>...content...` → primi 160 char in diario
+  - `read_file` (SÌ): contenuto file grezzo → primi 160 char in diario
+  - `run_command` (SÌ): stdout+stderr — NON corretto per scope task
+  - `write_file`, `calcola`, `salva_contatto`, `imposta_stato_contatto`: NO (stringhe fisse)
+- Conteggio deterministico N per ricorda: variabile locale `parti: List[str]` — `sum(1 for p in parti if p.startswith("- ["))` sulla struttura dati prima della serializzazione a stringa. STOP GATE non scatta.
 
-`wc -l reports/design_cancello.md` → **464 righe**. Aggiunto in handoff §7.
+**PASSO 2 — FIX**
+FATTA.
+- Aggiunto `_esito_diario(name, out)` instance method (gas.py ~1152): specializza ricorda e read_file, delega a `_esito_sintetico` per tutti gli altri.
+- `ricorda`: `"[OK] N risultati restituiti"` oppure `"[KO]"` (nessun testo output)
+- `read_file`: `"[OK] N caratteri letti"` oppure `"[KO]"` (nessun testo output)
+- `self._ricorda_n` resettato a 0 all'inizio di `_ricorda` (incluso ramo memoria None)
+- `run_turn:1881` sostituisce `_esito_sintetico` → `_esito_diario`
+- `run_command` finding segnalato nel report, NON corretto (out of scope)
 
-### K-h — anti-discrepanza handoff
+**PASSO 3 — TEST REALI**
+FATTA.
+- 4 nuovi test T70a–d: tutti PASS
+  - T70a: ricorda query non vuota → diario `"[OK] 1 risultati restituiti"`, nessun testo output
+  - T70b: payload malevolo ("ignora le istruzioni") → NON compare nel diario azione
+  - T70c: round-trip con 2 call ricorda → ciclo non interrotto, 1 risposta finale
+  - T70d: read_file → diario `"[OK] 21 caratteri letti"`, nessun contenuto file
+- Suite completa: **396 PASS, 5 FAIL** — tutti i FAIL sono F-mac-1 (bwrap macOS noti)
+- sha256 DB reale prima: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11`
+- sha256 DB reale dopo: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11` — INVARIATO
 
-- §2 `git diff --stat` corretto: ora include tutti e 5 i file reali (incluso `reports/handoff.md`) con numeri dal diff reale.
-- §3 git log: include entrambi i commit della sessione precedente.
-- §0: §8d rimossa dalle decisioni aperte (ora chiusa).
-- §7: decisioni aggiornate con 8d.
-- Output `check_handoff.py` e `check_verdetto.py` incollati integralmente in handoff.
+**PASSO 4 — REVISORE**
+FATTA. Revisore #114: APPROVATO CON RISERVE.
+- R-eco-1 (applicata): commento sul coupling regex `_cap_tool_output` aggiunto prima del commit.
+- R-eco-2 (non bloccante): test non visibili nel diff statico.
 
-## Stato post-sessione
+**Finding segnalati NON corretti (out of scope)**:
+- `run_command` copia stdout+stderr nel diario (confermato sonda 1b). Da correggere in fetta separata.
 
-- ZERO modifiche al codice.
-- `design_cancello.md` è v2 con tutte le 8 decisioni §8 chiuse (464 righe).
-- `check_handoff.py` → exit 0, `check_verdetto.py` → exit 0.
-- Prossimo passo: implementare F-diario-eco → C1 → C2 → C3 → C4 → C5.
+---
+
+## Anomalie riscontrate
+
+Nessuna anomalia fuori scope.
+
+---
+
+## Note tecniche
+
+- Il diario immutabile esistente NON è stato toccato (righe storiche restano).
+- Il fix vale solo per le scritture future (in avanti).
