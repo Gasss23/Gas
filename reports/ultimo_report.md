@@ -1,73 +1,41 @@
-# Report task: feat/gate-c1 — C1 scaffolding gate
+# Report task: feat/gate-c1 — fix C1 (NFKC, substring run_command, ci.yml, commit_memoria_revisore)
 
-**Data**: 2026-09-30  
+**Data**: 2026-10-01  
 **Branch**: feat/gate-c1  
-**Review**: #116 APPROVATO CON RISERVE  
+**Review**: #117 APPROVATO CON RISERVE  
 
-## Obiettivo
+## DECISIONI UMANE RICHIESTE
 
-Implementare la Fetta C1 del Cancello: scaffolding puro del classificatore deterministico GAS, zero integrazione con gas.py.
+Nessuna. Tutte le riserve di C1 chiuse. Riserve residue pre-C2:
+- **R-nw-1** (minore): controllo puramente lessicale — symlink non risolti. Da gestire in C2 con `Path.resolve()` + root confinement.
+- **R-nw-2** (cosmetic): substring check su comando intero può dare false deny su dir che iniziano con prefix deny (es. `brains_backup/` → contiene "brains" → DENY). Fail-closed by design.
 
-## Cosa è stato fatto
+## Esito fette
 
-### PASSO 0 — doc-only (commit 8b15b69)
-- `reports/stato_progetto.md`: aggiunta `(R-eco-run-1)` al verdetto #115; registrata discrepanza commit b1b5fd9 vs memoria_revisore.md; aggiunto finding `🟡 F-diario-args`.
-- `.claude/agents/memoria_revisore.md`: condizione per rettifica NON soddisfatta (riga #115 era già APPROVATO CON RISERVE) → nessuna modifica in passo 0b.
-
-### PASSO 1 — codice (commit d74fed0)
-- **`modules/gate/__init__.py`** (4 righe): esporta GateClass, GATE_ALLOWLIST, GATE_DENY_TOOLS, gate_classify.
-- **`modules/gate/gate.py`** (214 righe): classificatore completo.
-  - `GateClass`: enum SAFE / UNCERTAIN / IRREVERSIBLE / DENY.
-  - `GATE_ALLOWLIST`: dict hardcoded 14 tool, nessun override YAML/env.
-  - `GATE_DENY_TOOLS`: frozenset {"ssh", "modify_gate", "write_env"}.
-  - `_DENY_PREFIXES`: 11 prefissi (.gas_memory, .gas_history, .gas_knowledge, .gas_vectors, .gas_tokens, .env, gas.py, brains, modules, .claude, gate_config).
-  - `_normalize_path()`: NFC → strip "./" → normpath → casefold; ValueError su assoluti/traversal.
-  - `_in_denylist()`: controlla path intero E ogni componente PurePosixPath.
-  - `gate_classify()`: 5 regole; try/except globale → DENY (fail-closed, non solleva mai).
-  - §8e: run_command → UNCERTAIN solo se `GAS_SANDBOX_MODE == "os_strict"`, altrimenti IRREVERSIBLE.
-
-### PASSO 2 — test (commit d74fed0)
-- **`tests/test_unit_gate.py`** (298 righe, 65 test): TestKnownTools (15), TestInvalidToolName (4), TestWriteFileDenylist (14), TestReadFileDenylist (12), TestMalformedArgs (10), TestRunCommand (9+1 extra).
-- **65/65 PASS** locale (`.venv/bin/python3 -m pytest tests/test_unit_gate.py -v`).
-- ⚠️ `test_unit_gate.py` NON incluso in `ci.yml` (solo `test_unit_kernel.py`, `test_unit_hooks.py`, `test_unit_voice_server.py` per nome esplicito). Tracciato come R-gate-3; `ci.yml` NON modificato per rispettare lo stop gate.
-
-### PASSO 3 — revisore (commit 83354d8)
-Revisore #116: **APPROVATO CON RISERVE** — vedere §Riserve aperte.
-
-## Stop gate verificati
-
-- ZERO modifiche a gas.py ✅
-- ZERO modifiche a brains/ ✅
-- ZERO modifiche a qualsiasi file motore esistente ✅
-- GATE_ALLOWLIST hardcoded, no YAML/env ✅
-- `ci.yml` NON modificato ✅
-
-## Riserve aperte
-
-- **R-gate-1** (minore, pre-C3/C4): `_normalize_path` usa `NFC` invece di `NFKC` — FULLWIDTH FULL STOP U+FF0E non ridotto a '.', bypassa denylist. Correggere prima dell'integrazione. File: `modules/gate/gate.py:88`.
-- **R-gate-2** (minore, pre-C3/C4): token `--flag=value` in run_command non splittati su '=' — valore dopo '=' non controllato contro denylist. File: `modules/gate/gate.py:195-202`.
-- **R-gate-3** (processo): `tests/test_unit_gate.py` escluso da `ci.yml`. Da aggiungere in una prossima fetta (o come PR separata).
+- **FIX 1 — CI (R-gate-3)**: `FATTA` — step "Run gate suite" aggiunto a ci.yml; gate output incluso nel job summary.
+- **FIX 2 — run_command substring (R-gate-2)**: `FATTA` — `gate.py:206-212`: NFKC+casefold sull'intera stringa comando; se contiene sottostringa deny → DENY. `grep --file=.env.prod x`, `grep -f.env x` → ora DENY. 6 test nuovi in TestRunCommand.
+- **FIX 3 — NFKC (R-gate-1)**: `FATTA` — `gate.py:91`: NFC → NFKC. FULLWIDTH FULL STOP U+FF0E (．) ora ridotto a ASCII '.'. 3 test nuovi in TestNFKC.
+- **FIX 4 — commit_memoria_revisore.sh bug**: `FATTA` — `scripts/commit_memoria_revisore.sh:47`: `tail -1` → `grep -E '^#[0-9]+' ... | tail -1`. Il vecchio codice estraeva `#12` da "(lezione #12)" nell'ultima riga; il nuovo cerca solo righe che iniziano con `^#NNN`. 1 test nuovo T-R2-f in TestCommitMemoriaRevisore.
 
 ## Suite
 
-- Kernel (gas.py): 400 PASS, 5 FAIL F-mac-1 invariati (bwrap macOS).
-- Gate (pytest): **65 PASS, 0 FAIL**.
-- Kernel non toccato da C1: conteggio invariato.
+- Gate (pytest): **74 PASS, 0 FAIL** (+9: 6 TestRunCommand + 3 TestNFKC)
+- Hook (pytest): **37 PASS, 0 FAIL** (+1: T-R2-f)
+- Kernel: **400 PASS, 5 FAIL** F-mac-1 bwrap macOS (invariati)
+- `.gas_memory.db` SHA256 invariato: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11`
 
-## File toccati
-
-```
-.claude/agents/memoria_revisore.md  +3
-modules/gate/__init__.py            +4 (nuovo)
-modules/gate/gate.py                +214 (nuovo)
-reports/stato_progetto.md           +9/-3
-tests/test_unit_gate.py             +298 (nuovo)
-```
-
-## Commit sul branch
+## File toccati (questa sessione)
 
 ```
-83354d8 chore(revisore): memoria review #12 — ?
-d74fed0 feat(gate-c1): scaffolding gate — GateClass, GATE_ALLOWLIST, gate_classify + test
-8b15b69 docs(gate-c1): passo 0 — rettifica #115 + finding F-diario-args
+modules/gate/gate.py               — NFKC, substring check run_command, docstring
+tests/test_unit_gate.py            — +9 test (TestRunCommand ×6, TestNFKC ×3)
+.github/workflows/ci.yml           — step gate suite + gate nel job summary
+scripts/commit_memoria_revisore.sh — fix grep '^#[0-9]+' invece di tail -1
+tests/test_unit_hooks.py           — +1 test T-R2-f
+reports/stato_progetto.md          — aggiornamento + nota commit errati 83354d8/a3afcfd
+.claude/agents/memoria_revisore.md — #117 da revisore
 ```
+
+## Nota commit errati (registrata)
+
+`83354d8` ("chore(revisore): memoria review #12 — ?") e `a3afcfd` ("chore(revisore): memoria review #? — ?") hanno subject errati a causa del bug ora corretto in commit_memoria_revisore.sh. I commit NON vengono riscritti; registrati in stato_progetto.md.

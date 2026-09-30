@@ -1,47 +1,44 @@
-# Diff sessione: feat/gate-c1 (2026-09-30)
+# Diff sessione: feat/gate-c1 fix C1 (2026-10-01)
 
 ## File toccati
 
 ```
-.claude/agents/memoria_revisore.md  +3   (review #116 aggiunta)
-modules/gate/__init__.py            +4   (NUOVO — esporta gate module)
-modules/gate/gate.py               +214  (NUOVO — classificatore C1)
-reports/stato_progetto.md          +9/-3 (aggiornamento header + entry C1 + counter review)
-tests/test_unit_gate.py            +298  (NUOVO — 65 test gate)
-reports/ultimo_report.md                 (NUOVO — report task)
-reports/handoff.md                       (NUOVO — handoff sessione)
-reports/diff_sessione.md                 (questo file)
+modules/gate/gate.py               — NFC→NFKC (R-gate-1); substring check run_command (R-gate-2); docstring aggiornato
+tests/test_unit_gate.py            — +9 test: TestRunCommand ×6 (R-gate-2), TestNFKC ×3 (R-gate-1)
+.github/workflows/ci.yml           — step "Run gate suite" + gate nel job summary (R-gate-3)
+scripts/commit_memoria_revisore.sh — fix: grep '^#[0-9]+' invece di tail -1 (FIX-4)
+tests/test_unit_hooks.py           — +1 test T-R2-f (verifica #116 estratto, non #12)
+reports/stato_progetto.md          — header aggiornato, entry C1 + nota commit errati
+.claude/agents/memoria_revisore.md — #117 APPROVATO CON RISERVE aggiunto dal revisore
+reports/ultimo_report.md           — report canonico sessione
+reports/handoff.md                 — handoff sessione
+reports/diff_sessione.md           — questo file
 ```
 
 ## Cosa è cambiato e perché
 
-### `modules/gate/gate.py` (nuovo, 214 righe)
-Classificatore deterministico C1. Implementa le 5 regole del design §6:
-- GateClass enum (SAFE/UNCERTAIN/IRREVERSIBLE/DENY)
-- GATE_ALLOWLIST hardcoded, GATE_DENY_TOOLS frozenset
-- Denylist path (NFC+normpath+casefold, 11 prefissi §2b+§5)
-- §8e run_command: UNCERTAIN solo se `GAS_SANDBOX_MODE == "os_strict"`
-- Fail-closed: nessuna eccezione propagata verso l'esterno
+### `modules/gate/gate.py`
+- Riga 91: `NFC` → `NFKC`. FULLWIDTH FULL STOP U+FF0E non ridotto da NFC, bypassava la denylist. NFKC lo riduce ad ASCII '.'.
+- Righe 206-212: aggiunto substring check belt-and-suspenders sull'intera stringa comando (NFKC+casefold). Copre `--flag=.env.prod` e `-f.env` dove il token non è un path normalizzabile.
 
-### `modules/gate/__init__.py` (nuovo, 4 righe)
-Punto di ingresso del modulo; esporta i 4 simboli pubblici.
+### `tests/test_unit_gate.py`
+- 6 test TestRunCommand: coprono i casi R-gate-2 (flag_eq_env_prod, short_flag_env, traversal_to_env, uppercase_gas_memory, dotslash_modules, normal_command_not_denied).
+- 3 test TestNFKC: coprono R-gate-1 (fullwidth write/read con U+FF0E).
 
-### `tests/test_unit_gate.py` (nuovo, 298 righe, 65 test)
-Copertura completa del classificatore in isolamento (no GasKernel, no LLM, no DB):
-- Tool noti, tool non validi, denylist write_file/read_file, args malformati, run_command sandbox.
+### `.github/workflows/ci.yml`
+- Step "Run gate suite (pytest, zero token LLM)" aggiunto dopo voice suite (stesso stile).
+- Gate output aggiunto al job summary (griep + FAIL gate).
 
-### `.claude/agents/memoria_revisore.md`
-Revisore ha aggiunto riga #116 (APPROVATO CON RISERVE, R-gate-1/2/3) e 2 lezioni: NFC vs NFKC per path di sicurezza; vettore --flag=value.
+### `scripts/commit_memoria_revisore.sh`
+- Bug: `tail -1` sul file intero prendeva l'ultima riga (una nota lezione contenente "(lezione #12)") → `grep -oE '#[0-9]+' | head -1` estraeva #12.
+- Fix: `grep -E '^#[0-9]+' ... | tail -1` cerca solo le righe che iniziano con `^#NNN`.
+- `grep -oE '^#[0-9]+'` (ancorato a inizio riga) per REVIEW_NUM, eliminando ambiguità.
 
-### `reports/stato_progetto.md`
-- Header aggiornato al task corrente
-- Entry feat/gate-c1 aggiunta in cima a Stato motore
-- Counter review: 108 → 116
-- Suite gate: 65 PASS menzionati
+### `tests/test_unit_hooks.py`
+- T-R2-f: file con #12 + #116 + nota lezione contenente "#12" → subject atteso "#116 — APPROVATO CON RISERVE".
 
 ## Cosa NON è cambiato
 
-- `gas.py` — invariato (stop gate C1) ✅
+- `gas.py` — invariato ✅
 - `brains/` — invariato ✅
-- `.github/workflows/ci.yml` — invariato (R-gate-3 tracciata) ✅
 - Qualsiasi altro file motore — invariato ✅

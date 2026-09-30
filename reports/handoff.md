@@ -1,81 +1,118 @@
-# Handoff sessione: feat/gate-c1 (2026-09-30)
+# HANDOFF — Dossier di fine sessione
 
-## §0 — DECISIONI UMANE RICHIESTE
-
-Nessuna decisione bloccante. Riserve tecniche da risolvere prima dell'integrazione C3/C4:
-
-1. **R-gate-1** — `modules/gate/gate.py:88`: sostituire `unicodedata.normalize("NFC", p)` con `unicodedata.normalize("NFKC", p)`. Caratteri FULLWIDTH (U+FF0E ．, U+FF0F ／) non ridotti da NFC, bypassano la denylist.
-2. **R-gate-2** — `modules/gate/gate.py:195-202`: splittare ogni token su `=` se inizia con `-`; controllare la parte destra contro `_in_denylist`. Vettore `--flag=.env.prod` attualmente non bloccato.
-3. **R-gate-3** — `.github/workflows/ci.yml`: aggiungere step `python -m pytest tests/test_unit_gate.py` al workflow CI. Non modificato in C1 per rispettare lo stop gate scope.
-
-**PR**: https://github.com/Gasss23/Gas/pull/107 (feat/gate-c1 → main, no merge)
+**Sessione:** 2026-10-01 — feat/gate-c1 fix C1 (NFKC, substring run_command, ci.yml gate suite, bug commit_memoria_revisore)
 
 ---
 
-## §1 — Esito sonda / test
+## §0 DECISIONI UMANE RICHIESTE
 
-- Gate test (locale): **65 PASS, 0 FAIL** (`python -m pytest tests/test_unit_gate.py -v`)
-- Suite kernel macOS (pre-C1, invariata): **400 PASS, 5 FAIL** F-mac-1 (bwrap macOS, pre-esistenti, non toccati da C1)
-- `.gas_memory.db` SHA256 invariato: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11` (confermato durante la sessione)
+1. Merge della PR #107 (https://github.com/Gasss23/Gas/pull/107).
+
+Riserve residue da considerare in C2:
+- R-nw-1 (minore): controllo puramente lessicale — symlink non risolti. Da gestire in C2 con `Path.resolve()` + root confinement.
+- R-nw-2 (cosmetic): substring check su comando intero può dare false deny su dir che iniziano con prefix deny (es. `brains_backup/`). Fail-closed by design; da documentare all'integrazione C2.
 
 ---
 
-## §2 — `git diff --stat` REALE della sessione
+## §1 SCOPE & ESITO FETTE
+
+- **FIX 1 — CI (R-gate-3)**: `FATTA` — step "Run gate suite" in ci.yml + gate nel job summary.
+- **FIX 2 — run_command substring (R-gate-2)**: `FATTA` — `gate.py:206-212` NFKC+casefold sull'intera stringa; 6 test nuovi TestRunCommand.
+- **FIX 3 — NFKC (R-gate-1)**: `FATTA` — `gate.py:91` NFC→NFKC; 3 test nuovi TestNFKC.
+- **FIX 4 — commit_memoria_revisore.sh bug**: `FATTA` — `scripts/commit_memoria_revisore.sh:47` grep ancorato a `^#[0-9]+`; 1 test T-R2-f.
+
+---
+
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-.claude/agents/memoria_revisore.md |   3 +
+ .claude/agents/memoria_revisore.md |   6 +
+ .github/workflows/ci.yml           |  19 ++
  modules/gate/__init__.py           |   4 +
- modules/gate/gate.py               | 214 ++++++++++++++++++++++++++
- reports/stato_progetto.md          |   9 +++++---
- tests/test_unit_gate.py            | 298 +++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md           | (nuovo)
- reports/handoff.md                 | (nuovo)
- reports/diff_sessione.md           | (nuovo)
+ modules/gate/gate.py               | 224 ++++++++++++++++++++++++
+ reports/diff_sessione.md           |  51 ++++--
+ reports/handoff.md                 | (questo file — conteggio approssimato)
+ reports/stato_progetto.md          |   9 +-
+ reports/ultimo_report.md           |  63 +++----
+ scripts/commit_memoria_revisore.sh |   8 +-
+ tests/test_unit_gate.py            | 343 +++++++++++++++++++++++++++++++++++++
+ tests/test_unit_hooks.py           |  38 ++++
+ 11 files changed, 759 insertions(+), 125 deletions(-)
 ```
 
 (BASE = `12eccd5f22cc711474ff66515e18ae12d77ef86d`)
 
 ---
 
-## §3 — `git log` dei commit della sessione
+## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4f8fc73 fix(gate-c1): R-gate-1 NFKC, R-gate-2 substring check, R-gate-3 ci.yml, FIX-4 commit_memoria
+f2d6d35 chore(revisore): memoria review #117 — APPROVATO CON RISERVE
+e39e132 docs(gate-c1): fine-task — ultimo_report + handoff + diff_sessione + stato_progetto
 83354d8 chore(revisore): memoria review #12 — ?
 d74fed0 feat(gate-c1): scaffolding gate — GateClass, GATE_ALLOWLIST, gate_classify + test
 8b15b69 docs(gate-c1): passo 0 — rettifica #115 + finding F-diario-args
 ```
 
----
-
-## §4 — Verdetto INTEGRALE revisore #116
-
-**APPROVATO CON RISERVE**
-
-> #116 — 2026-09-30 — APPROVATO CON RISERVE — Gate C1 scaffolding (modules/gate/gate.py + tests/test_unit_gate.py). R-gate-1: NFC invece di NFKC (gate.py:88) — FULLWIDTH FULL STOP U+FF0E non ridotto a '.', bypassa denylist. R-gate-2: token --flag=value in run_command (gate.py:195-202) non splittati su '=', valore dopo '=' non controllato. R-gate-3: tests/test_unit_gate.py escluso da ci.yml. Entrambe R-gate-1 e R-gate-2 da chiudere prima dell'integrazione C3/C4.
-
-Lezioni aggiunte in memoria_revisore.md:
-
-> - 2026-09-30 — In un modulo di sicurezza che normalizza path con Unicode, NFC non è sufficiente: i caratteri di compatibilità (FULLWIDTH FULL STOP ．U+FF0E, FULLWIDTH SOLIDUS ／U+FF0F) non vengono ridotti ai corrispondenti ASCII da NFC, solo da NFKC. Usare sempre NFKC nei path classifier di sicurezza. Corollario: la lezione CRM del 2026-06-18 "NFKC PRIMA di collapse-whitespace/lower" vale anche per i path di sicurezza, non solo per le chiavi CRM.
-> - 2026-09-30 — Il vettore --flag=value per run_command (lezione #12) rimane aperto anche dopo C1. Il Gate deve splittare ogni token sul primo '=' se inizia con '-' e controllare la parte destra contro la denylist. Non bloccante in C1 (zero integrazione con gas.py) ma obbligatorio prima dell'integrazione C3/C4.
+NB: il commit di fine-task che contiene questo file non compare qui (non ancora committato).
 
 ---
 
-## §5 — Finding CI
+## §4 VERDETTO DEL REVISORE
 
-**R-gate-3 (processo)**: `tests/test_unit_gate.py` NON incluso in `.github/workflows/ci.yml`.
+### Review #117 — APPROVATO CON RISERVE
 
-Il workflow CI (`ci.yml`) include solo per nome esplicito:
-- `python tests/test_unit_kernel.py`
-- `python -m pytest tests/test_unit_hooks.py`
-- `python -m pytest tests/test_unit_voice_server.py`
+**Testo integrale:**
 
-Il nuovo file `tests/test_unit_gate.py` non verrà eseguito in CI finché non verrà aggiunto un passo dedicato. `ci.yml` NON è stato modificato in questa fetta per rispettare lo stop gate (scope C1 = solo nuovo modulo, zero file motore/infra esistenti). Da risolvere in una prossima fetta o PR separata.
+> #117 — 2026-10-01 — APPROVATO CON RISERVE — fix C1: R-gate-1 (NFKC, gate.py:91), R-gate-2 (substring check gate.py:206-212), R-gate-3 (ci.yml:103 step gate suite), bug commit_memoria_revisore.sh:47 (grep '^#[0-9]+' invece di tail -1). R-nw-1 (minore, pre-C2): controllo puramente lessicale — symlink non risolti (da gestire in C2 con Path.resolve()). R-nw-2 (cosmetic): substring check su comando intero può dare false deny su dir che iniziano con prefix deny (es. brains_backup/).
+
+**Riserve aperte post-review:**
+
+- **R-nw-1** (minore, pre-C2): symlink non risolti — `read_file("safe_link → .gas_memory.db")` passa il gate. Richiede `Path.resolve()` con root confinement in C2.
+- **R-nw-2** (cosmetic): false deny su dir con nome che inizia con prefix deny. Fail-closed by design.
+
+**Analisi vettori bypass (richiesta esplicita):**
+
+> Il controllo è puramente lessicale (NFKC+normpath+casefold + substring matching). Vettori coperti: path assoluti, traversal, FULLWIDTH Unicode, --flag=value, case variations. Vettori residui: symlink (non risolti lessicalmente — richiede Path.resolve() + root confinement in C2); variabili d'ambiente ($GAS_HISTORY_FILE) — non espanse con shell=False; alias shell — non applicabili con shell=False.
 
 ---
 
-## §6 — Prossimi passi consigliati
+## §5 DELTA TEST DEL MOTORE
 
-1. Chiudere R-gate-1 (NFC→NFKC) e R-gate-2 (--flag=value split) in C1-bis o C2 prima dell'integrazione.
-2. Aggiungere step pytest gate a `ci.yml` (R-gate-3).
-3. Procedere con Fetta C2 (integrazione gate in gas.py/execute_tool_call, gating DENY e UNCERTAIN).
-4. Merge PR #107 dopo CI verde.
+Suite gate: **74 PASS, 0 FAIL** (era 65; +9: TestRunCommand ×6, TestNFKC ×3).  
+Suite hook: **37 PASS, 0 FAIL** (era 34 hooks; +1 T-R2-f nel contesto hooks R2).  
+Suite kernel: **400 PASS, 5 FAIL** (invariata — F-mac-1 bwrap macOS, pre-esistenti).  
+`.gas_memory.db` SHA256: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11` (invariato).
+
+---
+
+## §6 STATO CI
+
+```
+completed  failure  docs(gate-c1): fine-task — ultimo_report + handoff …  CI  feat/gate-c1  push  36781609144  1m15s  2026-09-30T21:47:01Z
+completed  success  chore(revisore): memoria review #12 — ?               CI  feat/gate-c1  push  36781509635  1m34s  2026-09-30T21:46:04Z
+completed  success  Merge pull request #106 from Gasss23/fix/diario-eco   CI  main          push  36779657997  1m2s   2026-09-30T21:28:33Z
+```
+
+**Mappatura commit → run CI:**
+
+- `8b15b69` (passo 0): nessuna run su questo SHA (pushato insieme al successivo).
+- `d74fed0` (scaffolding gate): nessuna run su questo SHA (pushato insieme al successivo).
+- `83354d8` (revisore #12): run `36781509635` — `success`. Testa l'albero di d74fed0+83354d8.
+- `e39e132` (fine-task sessione precedente): run `36781609144` — **`failure`**. Causa: handoff-check CI (§2 handoff fuori sync). Superata dalla nuova run post-push di questa sessione.
+- `f2d6d35` (revisore #117): nessuna run su questo SHA (non ancora pushato).
+- `4f8fc73` (fix C1 code): nessuna run su questo SHA (non ancora pushato).
+- commit fine-task questa sessione: run non ancora disponibile alla scrittura dell'handoff.
+
+---
+
+## §7 RISERVE APERTE
+
+Da questa sessione (review #117):
+- **R-nw-1** (minore, pre-C2): symlink non risolti — `Path.resolve()` + root confinement in C2.
+- **R-nw-2** (cosmetic): false deny su dir con nome che inizia con prefix deny (es. `brains_backup/`).
+
+Commit errati (storico, non correggibili senza rewrite):
+- `83354d8`: subject "memoria review #12 — ?" (causa: bug commit_memoria_revisore.sh, ora corretto)
+- `a3afcfd`: subject "memoria review #? — ?" (stessa causa)

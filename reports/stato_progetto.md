@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-09-30** (feat/gate-c1 — C1 scaffolding: GateClass, GATE_ALLOWLIST, gate_classify, 65 test)
+> Ultimo aggiornamento: **2026-10-01** (feat/gate-c1 — fix C1: NFKC, substring run_command, ci.yml gate suite, bug commit_memoria_revisore)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-**🔄 feat/gate-c1 (2026-09-30, review #116 APPROVATO CON RISERVE)** — C1 scaffolding gate: `modules/gate/gate.py` + `modules/gate/__init__.py` + `tests/test_unit_gate.py`. GateClass enum (SAFE/UNCERTAIN/IRREVERSIBLE/DENY), GATE_ALLOWLIST hardcoded (no YAML/env), GATE_DENY_TOOLS, `gate_classify()` 5 regole (default-STOP, path denylist NFC+normpath, §8e sandbox run_command). 65 test T-gate-kn/nm/wf-deny/rf-deny/ma/rc — tutti PASS locale. Stop gate rispettati: ZERO modifiche a gas.py/motore. Riserve: R-gate-1 (NFC→NFKC, pre-integrazione C3/C4), R-gate-2 (--flag=value bypass, pre-integrazione C3/C4), R-gate-3 (test_unit_gate.py non in ci.yml — da aggiungere).
+**🔄 feat/gate-c1 (2026-10-01, review #116 APPROVATO CON RISERVE → fix C1 + re-review #117 pending)** — C1 scaffolding gate chiuso con 4 fix: R-gate-1 (NFKC), R-gate-2 (substring run_command), R-gate-3 (ci.yml gate suite), FIX-4 (commit_memoria_revisore.sh). Suite gate: **74 PASS, 0 FAIL** (+9 test R-gate-1/R-gate-2/TestNFKC). Hook: **37 PASS** (+T-R2-f). Kernel: 400 PASS, 5 FAIL F-mac-1 invariati. ⚠️ **Commit errati**: `83354d8` ("memoria review #12 — ?") e `a3afcfd` ("memoria review #? — ?") hanno subject errati a causa del bug nel commit_memoria_revisore.sh (ora corretto). I commit non vengono riscritti.
 
 **🔄 design/cancello-v2 (2026-09-30, doc-only)** — `reports/design_cancello.md` aggiornato a v2+8d con decisioni operatore 2026-09-29+30. Correzioni sessione 1: §3 contaminazione per-finestra; `_memoria_pin` inietta testo libero terzi (gas.py:1239–1295); `read_file` contamina sempre; §4 read-back integrale, UUID monouso, hash args, TELEGRAM_ALLOWED_IDS; C4 turno suddiviso; C-d tetto 5 CRM. Sessione 2: §8d chiusa (per-azione, no batch); anti-discrepanza handoff (§2/§3 corretti, check_handoff exit 0). Tutte le 8 decisioni §8 ora chiuse. 464 righe. ZERO codice.
 
