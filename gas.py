@@ -1166,6 +1166,15 @@ class GasKernel:
             m = re.search(r'erano (\d+) caratteri totali', out)
             n_chars = int(m.group(1)) if m else len(out)
             return f"[OK] {n_chars} caratteri letti"
+        if name == "run_command":
+            if negativo:
+                return "[KO]"
+            meta = getattr(self, "_run_command_meta", None)
+            if meta is not None:
+                return (f"[OK] exit={meta['exit']} "
+                        f"stdout={meta['stdout_n']} char "
+                        f"stderr={meta['stderr_n']} char")
+            return "[OK] (non eseguito)"
         return self._esito_sintetico(out)
 
     def _diario_log(self, tipo: str, descrizione: str,
@@ -1626,6 +1635,7 @@ class GasKernel:
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
             if name == "run_command":
                 command = args["command"]
+                self._run_command_meta = None
                 # 1) Vetting PRIMA di tutto: i comandi negati non sprecano
                 #    nemmeno uno snapshot (mitiga in parte R2).
                 argv, motivo = self._vet_command(command, cwd)
@@ -1673,6 +1683,11 @@ class GasKernel:
                 res = subprocess.run(exec_argv, shell=False, cwd=cwd,
                                      capture_output=True, text=True, timeout=60,
                                      env=self._sanitized_subprocess_env())
+                self._run_command_meta = {
+                    "exit": res.returncode,
+                    "stdout_n": len(res.stdout),
+                    "stderr_n": len(res.stderr),
+                }
                 out = res.stdout + res.stderr
             elif name == "write_file":
                 # Guardrail: la memoria è gestita solo dal kernel, mai dai modelli
