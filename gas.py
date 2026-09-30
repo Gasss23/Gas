@@ -1150,6 +1150,24 @@ class GasKernel:
         snippet = s.replace("\n", " ")[:160]
         return f"[{'KO' if negativo else 'OK'}] {snippet}"
 
+    def _esito_diario(self, name: str, out: str) -> str:
+        """Esito per il diario: specializzato per i tool che restituiscono dati
+        non fidati (F-diario-eco). ricorda/read_file scrivono solo conteggi,
+        mai testo dell'output. Gli altri tool delegano a _esito_sintetico."""
+        s = (out or "").strip()
+        negativo = s.startswith("Errore eseguendo") or s.startswith("Operazione negata")
+        if name == "ricorda":
+            return "[KO]" if negativo else f"[OK] {getattr(self, '_ricorda_n', 0)} risultati restituiti"
+        if name == "read_file":
+            if negativo:
+                return "[KO]"
+            # Regex accoppiata al formato di _cap_tool_output ("erano N caratteri totali").
+            # Se quel testo cambia, il fallback è len(out) (corretto, non crash).
+            m = re.search(r'erano (\d+) caratteri totali', out)
+            n_chars = int(m.group(1)) if m else len(out)
+            return f"[OK] {n_chars} caratteri letti"
+        return self._esito_sintetico(out)
+
     def _diario_log(self, tipo: str, descrizione: str,
                     fonte: Optional[str] = None,
                     turno_id: Optional[str] = None) -> None:
@@ -1352,6 +1370,9 @@ class GasKernel:
         scrittura/mutazione. Output compatto (poi capato da _cap_tool_output come
         ogni tool). Fail-safe: memoria None/degradata → messaggio gentile, mai
         crash (le letture di MemoryStore degradano già a [])."""
+        # Conteggio deterministico per il diario (F-diario-eco): si azzera qui
+        # così anche il ramo "memoria None" lascia il valore a 0.
+        self._ricorda_n: int = 0
         if self.memory is None:
             return "Memoria non disponibile: nessun ricordo accessibile."
         try:
@@ -1424,6 +1445,9 @@ class GasKernel:
             parti.append(f"Ultimi {len(eventi)} eventi del diario:")
             parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in eventi]
                       or ["- (diario vuoto)"])
+        # Conteggio deterministico (F-diario-eco): conta le voci risultato dalla
+        # struttura dati, non dal testo — le righe "- [" sono gli entry effettivi.
+        self._ricorda_n = sum(1 for p in parti if p.startswith("- ["))
         # R2 fetta A: sanitizza il contenuto della memoria (previene injection via
         # ricordi malevoli) e lo racchiude nel blocco dati delimitato.
         contenuto = "\n".join(parti) if parti else "Nessun ricordo."
@@ -1856,7 +1880,7 @@ class GasKernel:
                                 # Diario memoria (FASE 2 fetta 2a + fetta 1 apprendimento):
                                 # una riga per OGNI tool call, con fonte='kernel' e turno_id.
                                 # Fail-safe (§9): la memoria che non scrive NON ferma il turno.
-                                _esito_str = self._esito_sintetico(out)
+                                _esito_str = self._esito_diario(tc.function.name, out)
                                 _turno_tool_n += 1
                                 if _esito_str.startswith("[KO]"):
                                     _turno_tool_ko += 1
