@@ -25,9 +25,10 @@ Nessuna.
 - sha256 .gas_memory.db invariato: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11` prima e dopo.
 
 **PASSO 3 — Revisore su TUTTO il diff PR (gas.py + tests/)**: `FATTA`
-- Review #115, 2026-09-30: **APPROVATO** — nessuna riserva.
+- Review #115, 2026-09-30: **APPROVATO CON RISERVE** — riserva R-eco-run-1 (minore, non bloccante): gas.py:1177 ramo dry-run `[OK] (non eseguito)` non coperto da test. Tracciata in stato_progetto.md.
 - Nota su #114: quel verdetto conteneva "→ APPLICATA prima del commit" e "R-eco-1 → APPLICATA" NON scritti dal revisore — erano annotazioni dell'agente principale. Registrato e basta; nessuna correzione a posteriori.
-- Commit memoria revisore con `#115`: scritto correttamente (non `#? — ?`).
+- Commit memoria revisore: il revisore ha committato `b1b5fd9 chore(revisore): memoria review #115 — APPROVATO`. Il commit subject dice "APPROVATO" ma il verdetto è "APPROVATO CON RISERVE" — incongruenza nel subject del commit del revisore, non corretta.
+- Il duplicato riga #115 in memoria_revisore.md (aggiunto dall'agente prima della SubagentHandback definitiva) è stato rimosso.
 
 ## Anomalie riscontrate
 
