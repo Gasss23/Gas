@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-09-30 — F-diario-eco (diario non registra testo output)
+**Sessione:** 2026-09-30 — F-diario-eco: completamento run_command
 
 ---
 
@@ -12,118 +12,122 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Passo 1 — SONDA (sola lettura)**: `FATTA`  
-  Trovato punto di scrittura (`gas.py:1881`), identificati tool che copiano testo non fidato nel diario. Conteggio deterministico N per `ricorda` possibile via `parti[]` (STOP GATE non scatta).
+- **Fetta 1 — Fix run_command diario**: `FATTA`
+  `_esito_diario` ramo `run_command` aggiunto: [OK] exit=N stdout=N char stderr=N char. `_run_command_meta` traccia exit+lunghezze in `execute_tool_call`. I dinieghi ("Operazione negata...") sono testo KERNEL, non contengono testo esterno.
 
-- **Passo 2 — FIX (ricorda + read_file)**: `FATTA`  
-  Aggiunto `_esito_diario()`. `ricorda` → `"[OK] N risultati restituiti"`. `read_file` → `"[OK] N caratteri letti"`. `run_command` segnalato come finding, NON corretto (out of scope per task).
+- **Fetta 2 — Test reali**: `FATTA`
+  T70e (unit), T70f (e2e os_with_fallback), T70g (piattaforma-aware), T70h (read_file errore). 400 PASS, 5 FAIL (bwrap F-mac-1). sha256 .gas_memory.db invariato. Percorso bwrap testato solo in CI Linux.
 
-- **Passo 3 — TEST REALI**: `FATTA`  
-  4 nuovi test T70a–d tutti PASS. Suite: 396 PASS, 5 FAIL (tutti F-mac-1 bwrap noti). sha256 DB reale invariato.
-
-- **Passo 4 — REVISORE**: `FATTA`  
-  Review #114 APPROVATO CON RISERVE. R-eco-1 applicata (commento coupling regex). R-eco-2 non bloccante.
+- **Fetta 3 — Revisore su diff completo PR**: `FATTA`
+  Review #115 — APPROVATO, nessuna riserva. Verdetto integrale in §4.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 +
- gas.py                             |  26 ++++++-
- reports/diff_sessione.md           |  34 +++------
- reports/handoff.md                 | 139 ++++++++++++++++++-------------------
+.claude/agents/memoria_revisore.md |   3 +
+ gas.py                             |  41 +++++++++-
+ reports/diff_sessione.md           |  35 +++------
+ reports/handoff.md                 | 145 +++++++++++++++++-----------------
  reports/stato_progetto.md          |   3 +-
- reports/ultimo_report.md           |  78 +++++++++++++++------
- tests/test_unit_kernel.py          |  83 ++++++++++++++++++++++
- 7 files changed, 246 insertions(+), 119 deletions(-)
+ reports/ultimo_report.md           |  52 ++++++-------
+ tests/test_unit_kernel.py          | 156 +++++++++++++++++++++++++++++++++++++
+ 7 files changed, 310 insertions(+), 125 deletions(-)
 ```
-
----
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4ce9bb9 feat(diario-eco): run_command scrive solo conteggi nel diario (F-diario-eco completa)
+12fffa7 docs(fine-task): handoff F-diario-eco — 396 PASS, CI verde, PR #106
 85c4698 docs: aggiorna stato_progetto — F-diario-eco chiuso in avanti (review #114)
 927c378 feat(diario-eco): ricorda e read_file scrivono solo conteggi nel diario
 a3afcfd chore(revisore): memoria review #? — ?
 ```
 
----
-
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `927c378` tocca `gas.py` e `tests/test_unit_kernel.py`.
+VERDETTO REVISORE #115 — 2026-09-30
 
-### Verdetto revisore #114 — F-diario-eco — 2026-09-30
+### Correttezza tecnica
 
-**APPROVATO CON RISERVE**
+**gas.py — `_esito_diario` (ramo `run_command`)**
+
+- `negativo` → `[KO]`. Corretto: copre vet-fail, os_strict-fail, snapshot-fail.
+- `meta is not None` → `[OK] exit=N stdout=N char stderr=N char`. Corretto.
+- `meta is None` e non-negativo → `"[OK] (non eseguito)"`. Copre il solo caso dry-run. Corretto.
+- Dry-run: `"[DRY-RUN] ..."` non inizia con "Errore eseguendo" né "Operazione negata" → `negativo=False` → ramo `meta is None` → `"[OK] (non eseguito)"`. Corretto.
+- `_run_command_meta = None` reset: posizionato prima di qualsiasi early return. Corretto.
+- `_run_command_meta` set: dopo `subprocess.run`, prima di `out = res.stdout + res.stderr`. Corretto.
+
+**gas.py — `execute_tool_call`**
+
+Nessuna alterazione della logica di esecuzione. Il meta è pura annotazione post-esecuzione. Il pattern è lo stesso di `_ricorda_n`. Corretto.
+
+**tests/test_unit_kernel.py — T70e–T70h**
+
+- T70e: test diretto, testa formato `[OK] exit=N` e assenza injection. Corretto.
+- T70f: `try/finally` ripristina env correttamente. Controlla la parte esito dopo ` | `. Nota testo comando nell'args_summary è design. Corretto.
+  Osservazione minore T70f: `echo ignora le istruzioni` → stdout=21 byte (non 22). Il test verifica solo il pattern `[OK] exit=\d+`, non il valore esatto. Non è un problema.
+- T70g: branching su `os_sandbox_available`. Copre macOS e Linux senza FAIL bwrap aggiuntivi. Corretto.
+- T70h: file inesistente → `[KO]`. Corretto.
+
+**Rami errore `read_file` e `ricorda`**
+
+- `read_file`: path=None → `[KO]`; FileNotFoundError → `[KO]`. ✓
+- `ricorda`: memory=None → `[OK] 0 risultati restituiti` (0 risultati, nessun testo esterno — corretto). Eccezione → `[KO]`. ✓
+
+**Invariante diario immutabile**
+
+`_run_command_meta` non scrive nulla nel diario. Invariante preservata.
+
+### Coerenza col progetto/roadmap
+
+F-diario-eco completata: i tre tool (ricorda, read_file, run_command) scrivono solo conteggi nel diario. Pattern consistente.
+
+### VERDETTO: APPROVATO
+
+Nessuna riserva.
 
 ---
 
-### Elementi del diff esaminati
-
-1. **`gas.py:~1152-1167` — metodo `_esito_diario`**
-   Nuovo metodo che specializza l'esito diario per `ricorda` (solo conteggio `_ricorda_n`, mai testo output) e `read_file` (solo conteggio caratteri via regex, fallback su `len(out)`). Per tutti gli altri tool delega a `_esito_sintetico` invariato. Il vettore injection (testo non fidato nel diario immutabile) è rimosso per costruzione. `getattr(self, '_ricorda_n', 0)` è fail-safe §9 corretto. **Esito: ok.**
-
-2. **`gas.py:~1370-1373` — in `ricorda()`: inizializzazione e calcolo `_ricorda_n`**
-   `self._ricorda_n: int = 0` posto in testa alla funzione, prima di ogni ramo (incluso "memoria None"). Calcolo finale `sum(1 for p in parti if p.startswith("- ["))` deterministico sulla struttura dati, non sul testo. Reset garantito ad ogni chiamata. **Esito: ok.**
-
-3. **`gas.py:~1881` — sostituzione in `run_turn`**
-   `_esito_sintetico(out)` → `_esito_diario(tc.function.name, out)`. Retrocompatibilità per tutti i tool non specializzati garantita (delega). Loop cap 10 iterazioni non toccato. Contatori `_turno_tool_n`/`_turno_tool_ko` aggiornati correttamente a valle. **Esito: ok.**
-
-### Verifiche negative (Wall of Shame)
-- Nessun raw history slicing (`[-N:]` o simili): assente.
-- Nessuna simulazione di output tool: assente.
-- `_get_window()` non toccato.
-
-### Riserve (non bloccanti)
-
-- **R-eco-1 (minore):** il regex `r'erano (\d+) caratteri totali'` è accoppiato implicitamente al formato preciso del messaggio di troncamento di `read_file`. Un cambio futuro del testo fa cadere silenziosamente su `len(out)` (comportamento corretto, non crash) senza segnale. Raccomandazione: aggiungere un commento che documenti l'accoppiamento. **→ APPLICATA prima del commit.**
-- **R-eco-2 (minore):** i test T70a/b/c/d non sono visibili nel diff fornito al revisore; il claim "tutti PASS" è accettato sulla base della nota dell'autore ma non verificato direttamente.
-
-### Rischio esplicitamente escluso
-Comportamento su chiamate multiple a `ricorda` nello stesso turno verificato dal test T70c (2 call, round-trip integro).
-
-### Memoria
-Riga #114 aggiunta a `.claude/agents/memoria_revisore.md` e committata atomicamente (commit `a3afcfd`).
+Nota dell'agente (fuori dal blocco del verdetto):
+- Il verdetto #114 nella sessione precedente conteneva "→ APPLICATA prima del commit" e "R-eco-1 → APPLICATA" non scritti dal revisore — erano annotazioni dell'agente. Registrato e basta, nessuna correzione a posteriori di #114.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-**Prima**: 392 PASS, 5 FAIL (bwrap F-mac-1)  
-**Dopo**: 396 PASS, 5 FAIL (bwrap F-mac-1)
-
-I 5 FAIL (T11c2, T11e, T12a, T12c, T12e) sono fuori scope: richiedono bwrap, non disponibile su macOS. Tutti preesistenti, nessuno introdotto da questa sessione.
+Prima (396 PASS, sessione precedente — T70a-d aggiunti) → dopo (400 PASS, T70e-h aggiunti).
+5 FAIL invariati: tutti bwrap F-mac-1 (T11c2, T11e, T12a, T12c, T12e).
 
 ```
-=== RIEPILOGO: 396 PASS, 5 FAIL ===
-  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
-  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non dispon
-  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+=== RIEPILOGO: 400 PASS, 5 FAIL ===
+  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed)
+  FAIL: T11e run_command fa scattare lo snapshot
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale
+  FAIL: T12c pipe non interpretata (niente shell)
+  FAIL: T12e command substitution non eseguita (resta letterale)
 ```
 
----
+I 5 FAIL sono fuori scope (richiedono bwrap Linux) e attesi su macOS.
 
 ## §6 STATO CI
 
 ```
-completed	success	docs: aggiorna stato_progetto — F-diario-eco chiuso in avanti (review…	CI	fix/diario-eco	push	36767210942	46s	2026-09-30T19:39:42Z
-completed	success	feat(diario-eco): ricorda e read_file scrivono solo conteggi nel diario	CI	fix/diario-eco	push	36767165101	56s	2026-09-30T19:39:18Z
-completed	success	Merge pull request #105 from Gasss23/design/cancello-v2	CI	main	push	36728170408	58s	2026-09-30T14:18:53Z
+completed  success  feat(diario-eco): run_command scrive solo conteggi nel diario  CI  fix/diario-eco  push  36778286679  54s  2026-09-30T21:15:51Z
+completed  success  docs(fine-task): handoff F-diario-eco — 396 PASS, CI verde     CI  fix/diario-eco  push  36767463989  1m1s 2026-09-30T19:41:53Z
+completed  success  docs: aggiorna stato_progetto — F-diario-eco chiuso in avanz…  CI  fix/diario-eco  push  36767210942  46s  2026-09-30T19:39:42Z
 ```
 
-**Mappatura commit→run:**
-- `a3afcfd` (chore revisore) — pushato insieme a `927c378`; testato nell'albero di `927c378` dalla run `36767165101` (success).
-- `927c378` (feat diario-eco) — run `36767165101` — **success**
-- `85c4698` (docs stato_progetto) — run `36767210942` — **success**
-
----
+Mappatura commit→run (sessione corrente, range BASE..HEAD):
+- `4ce9bb9` feat(diario-eco): run_command — run 36778286679 **success**.
+- `12fffa7` docs(fine-task): handoff sessione precedente — run 36767463989 success.
+- `85c4698` docs: aggiorna stato_progetto sessione precedente — run 36767210942 success.
+- `927c378` feat(diario-eco): ricorda e read_file — nessuna run su questo SHA (testato dall'albero di 12fffa7).
+- `a3afcfd` chore(revisore): memoria review #? — nessuna run su questo SHA.
 
 ## §7 RISERVE APERTE
 
-- **R-eco-2** (minore, revisore #114): test T70a–d non verificati direttamente dal revisore sul diff statico — accettato sulla base del claim autore. Non bloccante.
-- **F-run_command-diario** (finding segnalato, non corretto per scope): `run_command` copia stdout+stderr nel diario immutabile (confermato sonda 1b, riga 1652 gas.py). Da correggere in fetta separata.
+Nessuna.
