@@ -34,7 +34,11 @@ reports/ultimo_report.md   |  75 +++++++-------
 
 ## §3 git log commit sessione
 
-(da compilare dopo il commit)
+```
+6b9ff49 docs(cancello-v2): design gate v2 — correzioni C-a/b/c/d + decisioni operatore 2026-09-29
+```
+
+PR: https://github.com/Gasss23/Gas/pull/105
 
 ---
 
