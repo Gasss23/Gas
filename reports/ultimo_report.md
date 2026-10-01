@@ -1,41 +1,39 @@
-# Report task: feat/gate-c1 — fix C1 (NFKC, substring run_command, ci.yml, commit_memoria_revisore)
+# Ultimo Report — 2026-10-01
+## Task: fix CI/handoff-check PR #107 — correggi handoff §4 path corti
 
-**Data**: 2026-10-01  
-**Branch**: feat/gate-c1  
-**Review**: #117 APPROVATO CON RISERVE  
+**DECISIONI UMANE RICHIESTE:**
+1. Merge della PR #107 (https://github.com/Gasss23/Gas/pull/107).
 
-## DECISIONI UMANE RICHIESTE
-
-Nessuna. Tutte le riserve di C1 chiuse. Riserve residue pre-C2:
-- **R-nw-1** (minore): controllo puramente lessicale — symlink non risolti. Da gestire in C2 con `Path.resolve()` + root confinement.
-- **R-nw-2** (cosmetic): substring check su comando intero può dare false deny su dir che iniziano con prefix deny (es. `brains_backup/` → contiene "brains" → DENY). Fail-closed by design.
+---
 
 ## Esito fette
 
-- **FIX 1 — CI (R-gate-3)**: `FATTA` — step "Run gate suite" aggiunto a ci.yml; gate output incluso nel job summary.
-- **FIX 2 — run_command substring (R-gate-2)**: `FATTA` — `gate.py:206-212`: NFKC+casefold sull'intera stringa comando; se contiene sottostringa deny → DENY. `grep --file=.env.prod x`, `grep -f.env x` → ora DENY. 6 test nuovi in TestRunCommand.
-- **FIX 3 — NFKC (R-gate-1)**: `FATTA` — `gate.py:91`: NFC → NFKC. FULLWIDTH FULL STOP U+FF0E (．) ora ridotto a ASCII '.'. 3 test nuovi in TestNFKC.
-- **FIX 4 — commit_memoria_revisore.sh bug**: `FATTA` — `scripts/commit_memoria_revisore.sh:47`: `tail -1` → `grep -E '^#[0-9]+' ... | tail -1`. Il vecchio codice estraeva `#12` da "(lezione #12)" nell'ultima riga; il nuovo cerca solo righe che iniziano con `^#NNN`. 1 test nuovo T-R2-f in TestCommitMemoriaRevisore.
+- **Fetta 1 — Diagnosi CI failure**: `FATTA`
+  `check_verdetto.py` cercava `gate.py:91`, `gate.py:206`, `ci.yml:103`, `commit_memoria_revisore.sh:47` nel diff di sessione; il diff usa path completi (`modules/gate/gate.py`, `.github/workflows/ci.yml`, `scripts/commit_memoria_revisore.sh`) → mismatch → exit 1.
 
-## Suite
+- **Fetta 2 — Correzione §4 handoff.md**: `FATTA`
+  Sostituito il blocco verdetto (che spacciava la riga di memoria per testo integrale con path corti) con: "verdetto completo non conservato, disponibile solo la riga di memoria." → check_verdetto.py: nessun riferimento path:riga → exit 0.
 
-- Gate (pytest): **74 PASS, 0 FAIL** (+9: 6 TestRunCommand + 3 TestNFKC)
-- Hook (pytest): **37 PASS, 0 FAIL** (+1: T-R2-f)
-- Kernel: **400 PASS, 5 FAIL** F-mac-1 bwrap macOS (invariati)
-- `.gas_memory.db` SHA256 invariato: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11`
+- **Fetta 3 — Correzione §5 handoff.md**: `FATTA`
+  Annotazione "era 34 hooks; +1 T-R2-f = 37" errata sostituita con count reale da pytest: 37 passed in 7.07s.
 
-## File toccati (questa sessione)
+- **Fetta 4 — Correzione §6 handoff.md**: `FATTA`
+  Aggiornato con run 36785017430, riga gate suite (74 passed in 0.13s), mapping commit corretto.
 
-```
-modules/gate/gate.py               — NFKC, substring check run_command, docstring
-tests/test_unit_gate.py            — +9 test (TestRunCommand ×6, TestNFKC ×3)
-.github/workflows/ci.yml           — step gate suite + gate nel job summary
-scripts/commit_memoria_revisore.sh — fix grep '^#[0-9]+' invece di tail -1
-tests/test_unit_hooks.py           — +1 test T-R2-f
-reports/stato_progetto.md          — aggiornamento + nota commit errati 83354d8/a3afcfd
-.claude/agents/memoria_revisore.md — #117 da revisore
-```
+- **Fetta 5 — Correzione §2 handoff.md**: `FATTA`
+  Sostituito conteggio approssimato handoff.md con count reale da `git diff --cached --stat`: 153 righe.
 
-## Nota commit errati (registrata)
+- **Fetta 6 — Verifica locale**: `FATTA`
+  check_handoff.py: exit 0, "OK — 11 file dichiarati correttamente."
+  check_verdetto.py: exit 0, "nessun riferimento path:riga in §4 — OK (nulla da verificare)."
 
-`83354d8` ("chore(revisore): memoria review #12 — ?") e `a3afcfd` ("chore(revisore): memoria review #? — ?") hanno subject errati a causa del bug ora corretto in commit_memoria_revisore.sh. I commit NON vengono riscritti; registrati in stato_progetto.md.
+- **Fetta 7 — Push e CI**: `FATTA`
+  Commit 1303df5 pushato su feat/gate-c1.
+  gh pr checks 107: handoff-check pass, unit-suite pass (run 36835067453).
+
+---
+
+## Anomalie riscontrate
+
+- Il verdetto completo della review #117 non è stato conservato (solo riga di memoria in memoria_revisore.md). Il testo integrale non è recuperabile. §4 ora lo dichiara esplicitamente per coerenza con le istruzioni fine-task.
+- La riga di memoria usa path corti per costruzione (è un sommario compresso); check_verdetto.py non gestisce path-corti vs path-completi: la soluzione corretta è §4 senza citazioni non verificabili, non rimappare i path.
