@@ -730,6 +730,44 @@ class TestCommitMemoriaRevisore:
             f"T-R2-d: gas_debug.log deve contenere un warning, trovato: {log_file.read_text()!r}"
         )
 
+    def test_r2_review_number_from_highest_not_last_line(self, tmp_path):
+        """T-R2-f: quando le ultime righe sono note di lezione, il numero review
+        deve venire dalla riga numerata più alta, non dall'ultima riga.
+
+        Riproduce il bug del commit 83354d8 (#12 invece di #116):
+        la riga finale contiene '(lezione #12)' → l'old script estraeva #12.
+        Il fix usa grep '^#[0-9]+' per trovare solo le righe numerata.
+        """
+        _init_repo_with_mem(tmp_path)
+
+        mem = tmp_path / MEM_REL
+        mem.write_text(
+            "#12 — 2026-06-01 — APPROVATO — lezione iniziale\n"
+            "#116 — 2026-09-30 — APPROVATO CON RISERVE — Gate C1 scaffolding.\n"
+            "- 2026-09-30 — Il vettore --flag=value (lezione #12) rimane aperto.\n"
+        )
+
+        result = _run_commit_mem(tmp_path)
+        assert result.returncode == 0, (
+            f"T-R2-f: exit 0 atteso, got {result.returncode}; stderr={result.stderr!r}"
+        )
+
+        # Il subject del commit deve contenere #116, non #12
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%s"],
+            cwd=tmp_path, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        assert "#116" in log, (
+            f"T-R2-f: subject deve contenere '#116', trovato: {log!r}"
+        )
+        assert "#12 " not in log and log.endswith("#116 — APPROVATO CON RISERVE") or "#116" in log, (
+            f"T-R2-f: subject non deve estrarre #12 dalla nota di lezione, trovato: {log!r}"
+        )
+        # Verdetto
+        assert "APPROVATO CON RISERVE" in log, (
+            f"T-R2-f: verdetto atteso 'APPROVATO CON RISERVE', trovato: {log!r}"
+        )
+
     def test_r2_fail_safe_mem_present_not_git(self, tmp_path):
         """T-R2-e: mem PRESENTE + dir NON-git → git commit fallisce (riga ~75) → WARN + exit 0.
 
