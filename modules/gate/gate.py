@@ -62,6 +62,12 @@ GATE_ALLOWLIST: dict[str, GateClass] = {
 # Explicitly denied tools (belt-and-suspenders on top of "not in allowlist").
 GATE_DENY_TOOLS: frozenset[str] = frozenset({"ssh", "modify_gate", "write_env"})
 
+# Tools whose output is untrusted external input (§3b): seeing any of their
+# results in the conversation window marks the window as contaminated.
+UNTRUSTED_INPUT_TOOLS: frozenset[str] = frozenset({
+    "ricorda", "read_file", "browser_scrape", "fetch_email",
+})
+
 # Denylist path component prefixes — union of design §2b and §5.
 # All entries are casefold; no trailing slashes (comparison uses startswith).
 # .env covers .env.prod, .env.local, .envrc, etc. (intentional per design).
