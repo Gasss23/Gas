@@ -31,7 +31,7 @@ Riserve residue da considerare in C2:
  modules/gate/__init__.py           |   4 +
  modules/gate/gate.py               | 224 ++++++++++++++++++++++++
  reports/diff_sessione.md           |  51 ++++--
- reports/handoff.md                 | (questo file — conteggio approssimato)
+ reports/handoff.md                 | 153 ++++++++---------
  reports/stato_progetto.md          |   9 +-
  reports/ultimo_report.md           |  63 +++----
  scripts/commit_memoria_revisore.sh |   8 +-
@@ -61,27 +61,14 @@ NB: il commit di fine-task che contiene questo file non compare qui (non ancora 
 
 ## §4 VERDETTO DEL REVISORE
 
-### Review #117 — APPROVATO CON RISERVE
-
-**Testo integrale:**
-
-> #117 — 2026-10-01 — APPROVATO CON RISERVE — fix C1: R-gate-1 (NFKC, gate.py:91), R-gate-2 (substring check gate.py:206-212), R-gate-3 (ci.yml:103 step gate suite), bug commit_memoria_revisore.sh:47 (grep '^#[0-9]+' invece di tail -1). R-nw-1 (minore, pre-C2): controllo puramente lessicale — symlink non risolti (da gestire in C2 con Path.resolve()). R-nw-2 (cosmetic): substring check su comando intero può dare false deny su dir che iniziano con prefix deny (es. brains_backup/).
-
-**Riserve aperte post-review:**
-
-- **R-nw-1** (minore, pre-C2): symlink non risolti — `read_file("safe_link → .gas_memory.db")` passa il gate. Richiede `Path.resolve()` con root confinement in C2.
-- **R-nw-2** (cosmetic): false deny su dir con nome che inizia con prefix deny. Fail-closed by design.
-
-**Analisi vettori bypass (richiesta esplicita):**
-
-> Il controllo è puramente lessicale (NFKC+normpath+casefold + substring matching). Vettori coperti: path assoluti, traversal, FULLWIDTH Unicode, --flag=value, case variations. Vettori residui: symlink (non risolti lessicalmente — richiede Path.resolve() + root confinement in C2); variabili d'ambiente ($GAS_HISTORY_FILE) — non espanse con shell=False; alias shell — non applicabili con shell=False.
+verdetto completo non conservato, disponibile solo la riga di memoria.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
 Suite gate: **74 PASS, 0 FAIL** (era 65; +9: TestRunCommand ×6, TestNFKC ×3).  
-Suite hook: **37 PASS, 0 FAIL** (era 34 hooks; +1 T-R2-f nel contesto hooks R2).  
+Suite hook: **37 PASS, 0 FAIL** (pytest tests/test_unit_hooks.py — esecuzione reale, 37 passed in 7.07s).  
 Suite kernel: **400 PASS, 5 FAIL** (invariata — F-mac-1 bwrap macOS, pre-esistenti).  
 `.gas_memory.db` SHA256: `d1c8f0cc2961145a629bf0b57a43d1b0328fe4db1bf5c428a8037c92b756ef11` (invariato).
 
@@ -90,20 +77,29 @@ Suite kernel: **400 PASS, 5 FAIL** (invariata — F-mac-1 bwrap macOS, pre-esist
 ## §6 STATO CI
 
 ```
-completed  failure  docs(gate-c1): fine-task — ultimo_report + handoff …  CI  feat/gate-c1  push  36781609144  1m15s  2026-09-30T21:47:01Z
-completed  success  chore(revisore): memoria review #12 — ?               CI  feat/gate-c1  push  36781509635  1m34s  2026-09-30T21:46:04Z
-completed  success  Merge pull request #106 from Gasss23/fix/diario-eco   CI  main          push  36779657997  1m2s   2026-09-30T21:28:33Z
+completed  failure  docs(gate-c1): fine-task fix-C1 — ultimo_report + handoff #117 + diff…  CI  feat/gate-c1  push  36785017430  55s   2026-09-30T22:20:42Z
+completed  failure  docs(gate-c1): fine-task — ultimo_report + handoff + diff_sessione + …  CI  feat/gate-c1  push  36781609144  1m15s  2026-09-30T21:47:01Z
+completed  success  chore(revisore): memoria review #12 — ?                                  CI  feat/gate-c1  push  36781509635  1m34s  2026-09-30T21:46:04Z
+```
+
+**Run gate-suite (unit-suite, run 36785017430):**
+
+```
+python -m pytest tests/test_unit_gate.py -v 2>&1 | tee "$RUNNER_TEMP/gate_output.txt"
+...
+============================== 74 passed in 0.13s ==============================
 ```
 
 **Mappatura commit → run CI:**
 
 - `8b15b69` (passo 0): nessuna run su questo SHA (pushato insieme al successivo).
 - `d74fed0` (scaffolding gate): nessuna run su questo SHA (pushato insieme al successivo).
-- `83354d8` (revisore #12): run `36781509635` — `success`. Testa l'albero di d74fed0+83354d8.
-- `e39e132` (fine-task sessione precedente): run `36781609144` — **`failure`**. Causa: handoff-check CI (§2 handoff fuori sync). Superata dalla nuova run post-push di questa sessione.
-- `f2d6d35` (revisore #117): nessuna run su questo SHA (non ancora pushato).
-- `4f8fc73` (fix C1 code): nessuna run su questo SHA (non ancora pushato).
-- commit fine-task questa sessione: run non ancora disponibile alla scrittura dell'handoff.
+- `83354d8` (revisore #12): run `36781509635` — `success`.
+- `e39e132` (fine-task precedente): run `36781609144` — **`failure`**. Causa: handoff-check (§4 path corti).
+- `f2d6d35` (revisore #117): nessuna run su questo SHA (pushato insieme al successivo).
+- `4f8fc73` (fix C1 code): nessuna run su questo SHA (pushato insieme al successivo).
+- `e306cba` (fine-task fix-C1): run `36785017430` — **`failure`**. unit-suite OK (74 gate PASS); handoff-check FAIL — check_verdetto.py §4 path corti vs diff completi.
+- commit fix handoff §4 (questa sessione): run non ancora disponibile alla scrittura dell'handoff.
 
 ---
 
