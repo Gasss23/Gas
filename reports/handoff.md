@@ -79,11 +79,11 @@ Diff tocca `tests/test_unit_hooks.py` e `scripts/fine_task_finale.sh`: gate revi
 >
 > 1. **`scripts/fine_task_finale.sh:67`** — `git grep -nE` sull'albero `HEAD`.
 >    - Rischio esaminato: regex diversa da gasmerge.sh:91, oppure ambito ristretto.
->    - Esito: **ok**. La regex è identica byte per byte. L'ambito è tutto l'albero: cambia solo il ref (`HEAD` invece di `origin/$BRANCH`), ed è corretto perché il gate gira prima del push. Ho simulato il gate sull'albero staged reale (`git write-tree`): il residuo è vuoto, quindi non blocca la sessione corrente.
+>    - Esito: **ok**. La regex è identica byte per byte a quella di gasmerge.sh (riga 91). L'ambito è tutto l'albero: cambia solo il ref (`HEAD` invece di `origin/$BRANCH`), ed è corretto perché il gate gira prima del push. Ho simulato il gate sull'albero staged reale (`git write-tree`): il residuo è vuoto, quindi non blocca la sessione corrente.
 >
 > 2. **`scripts/fine_task_finale.sh:77-84`** — filtro loopback riga per riga via `sed`.
 >    - Rischio esaminato: una riga con sia loopback sia un IP non-loopback che passa il filtro.
->    - Esito: **ok**. La logica è identica a gasmerge.sh:97-110 (si tolgono i 127.x e si ri-testa il residuo). L'ordine è lo stesso di gasmerge: prima il loopback, poi l'allowlist.
+>    - Esito: **ok**. La logica è identica a gasmerge.sh (righe 97-110) (si tolgono i 127.x e si ri-testa il residuo). L'ordine è lo stesso di gasmerge: prima il loopback, poi l'allowlist.
 >
 > 3. **`scripts/fine_task_finale.sh:93-110`** — gestione dei codici di ritorno: rc 1 → OK, rc 0 → STOP, rc diverso da 0/1 → STOP.
 >    - Rischio esaminato: fail-open su errore di `git grep` o di `grep -v`.
@@ -108,6 +108,7 @@ Diff tocca `tests/test_unit_hooks.py` e `scripts/fine_task_finale.sh`: gate revi
 > 8. **`tests/test_unit_hooks.py:1739-1773`** — T-finale-4c: IP con token, exit 0 atteso.
 >    - Esito: **ok**. Lo stderr mostra Gate A e Gate B "non applicabile", poi il Gate IP. Il push è un no-op perché l'upstream è già impostato (riga 1760). HEAD coincide con `@{u}`. L'handoff non è nel diff, quindi esce con "URL_HANDOFF: non disponibile" ed exit 0.
 >    - Mutation test: rimuovendo l'allowlist, T-4c fallisce.
+>    - Nota: il revisore cita anche il token `# gasmerge-ip-ok` su test_unit_kernel.py (riga 4946) come esempio di uso precedente dello stesso pattern.
 >
 > 9. **`.claude/agents/memoria_revisore.md:178`** (riga #122) — sostituzione con `<IP-fittizio>`.
 >    - Esito: **ok**. Il word-diff mostra una sola sostituzione: l'IP letterale diventa `<IP-fittizio>`. Il resto del testo storico di #122 è invariato.
