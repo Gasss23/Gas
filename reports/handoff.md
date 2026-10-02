@@ -1,146 +1,137 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-02 — fix gate IP T72b + chiusura R-c2-9
+**Sessione:** 2026-10-02 — chore/hook-fine-task-obbligatorio
 
 ---
 
-## §0 — DECISIONI UMANE RICHIESTE
+## §0 DECISIONI UMANE RICHIESTE
 
-Nessuna decisione umana bloccante in questa sessione.
-
-**Prossimo passo suggerito:** eseguire `gasmerge 108` per mergiare PR #108 (feat/cancello-c2). Il gate IP era l'unico blocco noto; ora risolto.
+1. Merge della PR #110 (https://github.com/Gasss23/Gas/pull/110)
 
 ---
 
-## §1 — Sonda gasmerge.sh IP allowlist
+## §1 SCOPE & ESITO FETTE
 
-**Meccanismo trovato (scripts/gasmerge.sh righe 91–135):**
-
-Il gate IP usa `git grep -nE` su tutto l'albero del branch per trovare IPv4 quad-dotted. Poi:
-1. Rimuove le righe con soli loopback `127.x.x.x` (via `sed` + re-grep residuo)
-2. Filtra le righe che contengono il token letterale **`gasmerge-ip-ok`** via `grep -v 'gasmerge-ip-ok'`
-3. Se residuo non vuoto → `BLOCCO: trovati IP non allowlistati` + `exit 1`
-
-Il token `gasmerge-ip-ok` va sulla riga sorgente dell'esempio/fixture (non sui file temporanei scritti dal test, che il guard becca comunque — nota dal commento stesso dello script).
+- **Fetta 0 — SONDA**: `FATTA` — nessuna modifica; confermato gap rispetto ai requisiti.
+- **Fetta 1 — scripts/fine_task_finale.sh**: `FATTA` — script deterministico: gate A/B/IP + push (mai main) + guardia HEAD==@{u} + URL_HANDOFF (solo se handoff rigenerato).
+- **Fetta 2 — promemoria_end.sh contatore per sessione**: `FATTA` — session_id da payload stdin, formato `session_id:count`, reset su cambio sessione, path worktree-safe, WARN su log.
+- **Fetta 3 — Test reali (49 totali)**: `FATTA` — T-prom-counter-session, T-finale-3 (non disponibile), T-finale-3b (URL reale), T-finale-4 assert preciso.
+- **Fetta 4 — DOC**: `FATTA` — fine-task.md §4bis/§5 + CLAUDE.md regola reporting.
+- **Fetta 5 — Revisore Opus**: `FATTA` — #122 BOCCIATO → fix → #123 APPROVATO.
 
 ---
 
-## §2 GIT DIFF --STAT
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-.claude/agents/memoria_revisore.md |   8 ++
- gas.py                             |  99 ++++++++++++++++----
- modules/gate/gate.py               |   6 ++
- reports/diff_sessione.md           |  29 ++++--
- reports/handoff.md                 | 170 ++++++++++++++++++++--------------
- reports/stato_progetto.md          |  11 ++-
- reports/ultimo_report.md           | 107 +++++++++++++++++-----
- tests/test_unit_kernel.py          | 183 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 486 insertions(+), 127 deletions(-)
+ .claude/agents/memoria_revisore.md |   4 +
+ .claude/commands/fine-task.md      |  62 +++---
+ .claude/hooks/promemoria_end.sh    |  61 +++++-
+ CLAUDE.md                          |   2 +-
+ reports/diff_sessione.md           |  38 ++--
+ reports/handoff.md                 | 171 ++++++++--------
+ reports/ultimo_report.md           |  97 ++-------
+ scripts/fine_task_finale.sh        | 112 +++++++++++
+ tests/test_unit_hooks.py           | 399 ++++++++++++++++++++++++++++++++++++-
+ 9 files changed, 711 insertions(+), 235 deletions(-)
 ```
 
 ---
 
-## §3 — git log (commit della sessione corrente)
+## §3 GIT LOG --ONELINE (sessione)
 
 ```
-a0a5294 fix(tests): sblocca gate IP T72b e stringe assert T71h read
-5d7f052 chore(revisore): memoria review #121 — APPROVATO
+9863352 chore(hook-fine-task): script deterministico + contatore per sessione + test
+ac51ccf chore(revisore): memoria review #123 — APPROVATO
+c644990 chore(revisore): memoria review #122 — BOCCIATO
 ```
 
-Commit dell'intera branch (per completezza):
-```
-a0a5294 fix(tests): sblocca gate IP T72b e stringe assert T71h read
-5d7f052 chore(revisore): memoria review #121 — APPROVATO
-f393434 docs(cancello-c2): fine-task — handoff con CI verde a14373a
-a14373a docs(cancello-c2): fine-task fix-CI — §2 handoff con tutti e 8 i file del diff
-9edb255 docs(cancello-c2): fix-session — review #120 T71h APPROVATO CON RISERVE
-0ee4fa9 chore(revisore): memoria review #120 — APPROVATO CON RISERVE
-7d1f94b docs(cancello-c2): fine-task fix-CI — handoff §2 con formato check_handoff corretto
-1764ee8 docs(cancello-c2): fine-task — ultimo_report + handoff + diff_sessione + stato_progetto
-c388c0f feat(cancello-c2): C2 gate integration + R-nw-1 path hardening
-b5b99d6 chore(revisore): memoria review #119 — APPROVATO CON RISERVE
-1759355 chore(revisore): memoria review #118 — APPROVATO CON RISERVE
-```
+NB: il commit di fine-task non compare qui per costruzione.
 
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §4 VERDETTO DEL REVISORE (per commit motore)
+
+Il commit 9863352 tocca `tests/test_unit_hooks.py` → revisore obbligatorio.
 
 ```
-## VERDETTO REVIEW #121 — APPROVATO
+## VERDETTO REVIEW #123 — APPROVATO
 
-Diff revisionato: tests/test_unit_kernel.py (2 modifiche puntuali)
+Branch: chore/hook-fine-task-obbligatorio
+Data: 2026-10-02
+Revisore: subagent revisore (review #123)
 
-### Elementi del diff esaminati
+Letture preliminari:
+- CLAUDE.md §5 (Wall of Shame): letto ✓
+- reports/stato_progetto.md: letto ✓
+- .claude/agents/memoria_revisore.md: letto ✓ (ultima entry #122 = BOCCIATO)
 
-1. tests/test_unit_kernel.py:4920 — sostituisce "test" in _out71h_r con _out71h_r == "test"
-   rischio: regression se read_file inietta prefix/suffix nel contenuto restituito
-   esito: ok (suite 423 PASS confermata, chiude R-c2-9 da review #120)
+Evidenze del diff esaminate:
 
-2. tests/test_unit_kernel.py:4946 — aggiunge # gasmerge-ip-ok in coda alla riga con IP fittizio
-   <IP-fittizio> nel fixture T72b
-   rischio: il marker potrebbe esentare per errore un IP reale in codice produzione
-   esito: ok (è commento in riga di fixture test, IP è parametro fittizio, comportamento DENY
-   del test invariato)
+.claude/hooks/promemoria_end.sh:160-170 — Contatore per sessione: file nel formato
+session_id:count, reset implicito quando STORED_SID != SESSION_ID. Rischio esaminato:
+session_id vuoto se python3 fallisce → counter globale in modalità degradata (accettabile
+come fallback; la logica primaria è corretta). Esito: ok — B1 chiusa.
 
-### Rischio esplicitamente escluso
+scripts/fine_task_finale.sh:305-310 — git diff --quiet "${BASE}..HEAD" -- reports/handoff.md:
+exit 0 = nessuna modifica → "non disponibile", exit 1 = modificato → URL. Rischio esaminato:
+BASE vuoto (branch orfano) → condizione falsa → URL stampato incondizionatamente. Edge case
+accettabile come fail-open. Esito: ok — B2 chiusa.
 
-Comportamento runtime su VPS non verificato: le modifiche sono puramente nel layer test
-(nessuna modifica a gas.py, brains/, modules/), zero impatto sulla pipeline produzione.
+scripts/fine_task_finale.sh:267-283 — Gate IP con grep -oE per estrarre singoli indirizzi,
+poi grep -vE '^127\.' sul token. Una riga con 127.x e 10.x produce due token; 10.x supera
+il filtro. Il failure mode di #122 è eliminato. Esito: ok — R1 chiusa.
 
-### Controllo antipattern (Wall of Shame)
+tests/test_unit_hooks.py:730-732 — Assert T-finale-4: "IP trovato in reports/" in result.stderr
+(non più "ip" in result.stderr.lower()). Discriminante. Esito: ok — R3 chiusa.
 
-- Nessun raw history slicing
-- Nessuna simulazione di tool
-- _get_window() non toccata
-- Loop cap (10 iterazioni) non toccato
-- Guardrail API intatti
+scripts/fine_task_finale.sh:231-235 — cd "$PROJECT_DIR" prima di check_handoff.py e
+check_verdetto.py. Esito: ok — R2 chiusa.
 
-### Coerenza roadmap/progetto
+.claude/hooks/promemoria_end.sh:148-151 — git rev-parse --git-dir worktree-safe + guard
+path assoluto. Esito: ok — R4 chiusa.
 
-La modifica 1 chiude la riserva R-c2-9 aperta in review #120. La modifica 2 sblocca il merge
-della PR senza alterare la logica del test. Entrambe rispettano "robustezza > potenza".
+.claude/hooks/promemoria_end.sh:176-180 — WARN al 4° tentativo su stderr e gas_debug.log
+con || true. Esito: ok — R5 chiusa.
+
+Antipattern Wall of Shame: nessun raw history slicing. Nessuna simulazione tool.
+Guardrail §8 (cap 10 iterazioni, _get_window) non toccati. ✓
+
+Rischio esplicitamente escluso: comportamento su git worktree reale non verificato.
+In un worktree git rev-parse --git-dir restituisce .git/worktrees/<nome>. I test usano
+repo standard. Non riproducibile in dev (il progetto non usa worktree).
 
 VERDETTO FINALE: APPROVATO
 
-Suite: 423 PASS, 5 FAIL F-mac-1 (attesi, non regressioni). Il commit può procedere.
+Tutti i problemi bloccanti (B1, B2) e le riserve (R1–R5) della review #122 sono risolti
+correttamente. Fix tecnicamente corretti, fail-safe, coerenti con la filosofia "zero crash"
+del progetto. Nessun guardrail indebolito.
 ```
 
-Nota: unico intervento sul verbatim = IP fittizio redatto in <IP-fittizio> per l'invariante IP di gasmerge.
+---
+
+## §5 DELTA TEST DEL MOTORE
+
+Nessuna modifica a gas.py/modules/brains/. I test aggiunti sono in `tests/test_unit_hooks.py`.
+
+Suite hooks: **49 PASS, 0 FAIL** (baseline era 47 PASS, 0 FAIL).
 
 ---
 
-## §5 — Delta test motore
-
-Suite kernel: **423 PASS, 5 FAIL** (invariati vs sessione precedente).
-
-I 5 FAIL sono tutti F-mac-1 (bwrap/sandbox macOS non disponibile):
-- T11c2, T11e, T12a, T12c, T12e
-
-Nessuna regressione introdotta.
-
----
-
-## §6 — Stato CI
-
-Ultimo run CI su feat/cancello-c2: **verde** (commit `a14373a`, verificato nella sessione precedente).
-Il commit di questa sessione (`a0a5294`) tocca SOLO `tests/test_unit_kernel.py` — i 5 FAIL bwrap
-sono già noti e presenti sulla branch prima di questo fix. CI atteso verde anche su `a0a5294`.
-
----
-
-## §7 — Riserve aperte (non bloccanti)
-
-- R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-10
-- **R-c2-9: CHIUSA** (questa sessione)
-
----
-
-## §8 — Simulazione invariante IP (verbatim)
+## §6 STATO CI
 
 ```
-=== Simulazione invariante IP (test_unit_kernel.py, HEAD post-fix) ===
-git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
-Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK. ZERO BLOCCHI.
+queued  chore(hook-fine-task): script deterministico + contatore…  CI  chore/hook-fine-task-obbligatorio  push  37045838781  2026-10-02T18:12:11Z
 ```
+
+Mappatura commit→run:
+- `9863352` (commit motore di sessione): run 37045838781 — in coda al momento della scrittura
+- `ac51ccf` (chore revisore #123): nessuna run (non è il commit di testa pushato)
+- `c644990` (chore revisore #122): nessuna run (non è il commit di testa pushato)
+
+---
+
+## §7 RISERVE APERTE
+
+- **Worktree behavior non testato**: il path `git rev-parse --git-dir` in un worktree reale non è coperto dai test (il progetto non usa worktree in produzione — rischio accettato).
+- Nessuna altra riserva.
