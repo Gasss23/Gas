@@ -224,12 +224,33 @@ Riscrivi §2 e §3 (e §6) nel file `reports/handoff.md` con questi output. Poi 
 git add reports/handoff.md
 ```
 
-SOLO ORA committa e pusha:
+**Titoli delle sezioni**: leggi i titoli attesi direttamente dalle regex `re.search(r"##\s*§...` in `scripts/check_handoff.py` e `scripts/check_verdetto.py`. Vietato inventare varianti.
+
+SOLO ORA committa:
 
 ```bash
 git commit -m "docs(<descrizione-breve>): <cosa hai fatto>"
-git push
 ```
+
+### Gate + push + URL (script deterministico)
+
+```bash
+bash scripts/fine_task_finale.sh
+```
+
+Lo script esegue nell'ordine: gate A (check_handoff), gate B (check_verdetto), gate IP (nessun IP in reports/), push del branch (MAI main), guardia HEAD==@{u}, stampa `URL_HANDOFF`. Se qualsiasi gate è rosso → exit 1 + messaggio chiaro, nessun push.
+
+### CI post-push (step manuale)
+
+```bash
+# Ottieni il run ID del push appena fatto
+gh run list --branch $(git rev-parse --abbrev-ref HEAD) -L 1
+
+# Attendi la run (l'esito REALE va in §6 di handoff.md — mai "prevista verde")
+gh run watch <run-id>
+```
+
+Aggiorna §6 di handoff.md con l'esito reale, poi ri-stage + ri-committa + ri-esegui `bash scripts/fine_task_finale.sh` **solo se §6 era errato**.
 
 ---
 
@@ -253,36 +274,17 @@ Esiti:
 2. Hash del commit (output di `git rev-parse HEAD`)
 3. Contenuto integrale di `reports/ultimo_report.md`
 
-**Check comune (vale per i punti 4 e 5) — esegui UNA sola volta:**
-```bash
-git diff --stat ${BASE}..HEAD -- reports/handoff.md
-```
-- Output **vuoto** → `reports/handoff.md` NON è stato rigenerato in questa sessione.
-- Output **non vuoto** → `reports/handoff.md` è stato rigenerato in questa sessione.
+4. URL dell'handoff — lo script `fine_task_finale.sh` lo stampa già come `URL_HANDOFF: ...`.
+   Riportalo qui (output verbatim dello script).
 
-4. Contenuto integrale di `reports/handoff.md`:
-   - Check **vuoto** → scrivi esattamente: `"handoff.md non rigenerato in questa sessione — nessun contenuto da stampare."`
-   - Check **non vuoto** → catta il contenuto integrale del file.
+   **Motivo**: l'URL pinnato allo SHA è il file — il cat integrale è ridondante e introduce
+   rischio di discrepanza tra ciò che si incolla e ciò che è committato.
+   Se `fine_task_finale.sh` non è stato eseguito (sessione senza handoff rigenerato),
+   scrivi esattamente: `"handoff.md non rigenerato in questa sessione — URL non disponibile."`
 
-   *Motivo: un handoff di sessione precedente stampato come output della sessione corrente è indistinguibile da uno fresco. Il file non mente, mente il contesto in cui viene presentato.*
-
-5. URL dell'handoff — segui l'ordine, non invertibile:
-
-   **Prerequisito**: commit e push del branch già completati (passi 1-2 sopra).
-
-   Usa l'esito del check comune sopra (non rieseguirlo):
-   - Check **vuoto** → scrivi esattamente: `"handoff.md non rigenerato in questa sessione"`. Non stampare alcun URL.
-   - Check **non vuoto** → prosegui:
-
-   ```bash
-   git rev-parse HEAD
-   ```
-   URL da stampare: `https://raw.githubusercontent.com/Gasss23/Gas/<SHA>/reports/handoff.md`
-
-   **Vincoli (motivo, non decorazione)**:
-   - Usa SEMPRE `git rev-parse HEAD`. NON usare `git log -1 ... -- reports/handoff.md`: quel comando restituisce l'ultimo commit che ha toccato il file, che può essere di una sessione precedente. Non fallisce, non dà 404: serve in silenzio un handoff vecchio con URL apparentemente valido (failure mode osservato, micro-finding 2026-07-13).
-   - L'URL deve essere pinnato allo SHA. Mai al branch (`/main/` o `/<branch>/`): raw.githubusercontent può servire contenuto stale su ref mobili.
-   - Non inventare MAI un URL. Se il check diff --stat è vuoto, l'assenza dell'URL è l'informazione corretta.
+   **Vincoli (invarianti)**:
+   - L'URL deve essere quello stampato da `fine_task_finale.sh` (SHA lungo di HEAD al momento del push).
+   - Non inventare MAI un URL.
 
 ---
 

@@ -835,13 +835,15 @@ def _init_bare_origin(work: Path, bare: Path) -> None:
 
 
 def _run_promemoria(
-    repo: Path, *, stop_hook_active: bool = False, extra_env: dict | None = None
+    repo: Path, *, stop_hook_active: bool = False, extra_env: dict | None = None,
+    session_id: str = "",
 ) -> subprocess.CompletedProcess:
     """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test.
 
     Passa il payload JSON Stop hook su stdin (simula il runtime Claude Code).
     """
-    payload = json.dumps({"stop_hook_active": stop_hook_active, "transcript_path": ""})
+    payload = json.dumps({"stop_hook_active": stop_hook_active, "transcript_path": "",
+                          "session_id": session_id})
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
     if extra_env:
         env.update(extra_env)
@@ -1310,4 +1312,397 @@ class TestCheckLanding:
         )
         assert "FAIL" in result.stderr, (
             f"T-land-6: atteso FAIL in stderr, stderr={result.stderr!r}"
+        )
+
+
+# ─── TestPromemoriaCounter ────────────────────────────────────────────────────
+#
+# Verifica il nuovo comportamento a contatore di promemoria_end.sh:
+#   - 1°/2°/3° invocazione → blocca (JSON su stdout)
+#   - 4° invocazione → fail-open + WARNING su stderr (nessun JSON di blocco)
+#   - Handoff fresco dopo blocchi → azzera il contatore
+#
+# Tutti i test usano repo git temporanei reali con un bare origin (per merge-base).
+
+FINE_TASK_FINALE = Path(__file__).parent.parent / "scripts" / "fine_task_finale.sh"
+
+
+def _run_promemoria_fresh(repo: Path, session_id: str = "") -> subprocess.CompletedProcess:
+    """Esegue promemoria_end.sh con stop_hook_active=false (condizione di blocco potenziale)."""
+    return _run_promemoria(repo, stop_hook_active=False, session_id=session_id)
+
+
+def _read_prom_counter(repo: Path) -> int:
+    """Legge il contatore da promemoria_block_count (formato 'session_id:count')."""
+    raw = (repo / ".git" / "promemoria_block_count").read_text().strip()
+    return int(raw.split(":")[-1])
+
+
+class TestPromemoriaCounter:
+    """T-prom-counter — comportamento a contatore (max 3 blocchi, poi fail-open)."""
+
+    def _setup_repo_with_commit_no_handoff(self, tmp_path: Path):
+        """Init repo con origin, feature branch, commit senza handoff (blocco atteso)."""
+        work = tmp_path / "work"
+        work.mkdir()
+        _init_repo(work)
+        bare = tmp_path / "origin.git"
+        _init_bare_origin(work, bare)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-counter"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit(work, "some_file.txt", "contenuto\n", "feat: commit senza handoff")
+        return work
+
+    def test_prom_counter_1st_blocks(self, tmp_path):
+        """T-prom-counter-1: 1° invocazione → blocca (JSON su stdout, count=1)."""
+        work = self._setup_repo_with_commit_no_handoff(tmp_path)
+        result = _run_promemoria_fresh(work)
+        assert result.returncode == 0, f"T-prom-counter-1: atteso exit 0, got {result.returncode}"
+        assert _is_blocked(result), (
+            f"T-prom-counter-1: atteso blocco JSON al 1° tentativo, stdout={result.stdout!r}"
+        )
+        count = _read_prom_counter(work)
+        assert count == 1, f"T-prom-counter-1: contatore atteso 1, trovato {count}"
+
+    def test_prom_counter_2nd_blocks(self, tmp_path):
+        """T-prom-counter-2: 2° invocazione → blocca ancora (count=2)."""
+        work = self._setup_repo_with_commit_no_handoff(tmp_path)
+        _run_promemoria_fresh(work)  # 1° invocazione
+        result = _run_promemoria_fresh(work)  # 2° invocazione
+        assert result.returncode == 0
+        assert _is_blocked(result), (
+            f"T-prom-counter-2: atteso blocco JSON al 2° tentativo, stdout={result.stdout!r}"
+        )
+        count = _read_prom_counter(work)
+        assert count == 2, f"T-prom-counter-2: contatore atteso 2, trovato {count}"
+
+    def test_prom_counter_3rd_blocks(self, tmp_path):
+        """T-prom-counter-3: 3° invocazione → blocca ancora (count=3)."""
+        work = self._setup_repo_with_commit_no_handoff(tmp_path)
+        for _ in range(2):
+            _run_promemoria_fresh(work)
+        result = _run_promemoria_fresh(work)  # 3°
+        assert result.returncode == 0
+        assert _is_blocked(result), (
+            f"T-prom-counter-3: atteso blocco JSON al 3° tentativo, stdout={result.stdout!r}"
+        )
+        count = _read_prom_counter(work)
+        assert count == 3, f"T-prom-counter-3: contatore atteso 3, trovato {count}"
+
+    def test_prom_counter_4th_fail_open(self, tmp_path):
+        """T-prom-counter-4: 4° invocazione → fail-open (nessun blocco JSON) + WARNING su stderr."""
+        work = self._setup_repo_with_commit_no_handoff(tmp_path)
+        for _ in range(3):
+            _run_promemoria_fresh(work)
+        result = _run_promemoria_fresh(work)  # 4°
+        assert result.returncode == 0, f"T-prom-counter-4: atteso exit 0, got {result.returncode}"
+        assert not _is_blocked(result), (
+            f"T-prom-counter-4: atteso fail-open (nessun blocco JSON) al 4° tentativo, "
+            f"stdout={result.stdout!r}"
+        )
+        assert result.stderr.strip(), (
+            "T-prom-counter-4: atteso WARNING su stderr al 4° tentativo"
+        )
+        assert "WARN" in result.stderr or "warn" in result.stderr.lower(), (
+            f"T-prom-counter-4: WARNING deve contenere 'WARN', stderr={result.stderr!r}"
+        )
+
+    def test_prom_counter_reason_is_imperative(self, tmp_path):
+        """T-prom-counter-reason: il blocco usa la reason imperativa richiesta."""
+        work = self._setup_repo_with_commit_no_handoff(tmp_path)
+        result = _run_promemoria_fresh(work)
+        assert _is_blocked(result), f"T-prom-counter-reason: atteso blocco, stdout={result.stdout!r}"
+        data = json.loads(result.stdout.strip())
+        reason = data.get("reason", "")
+        assert "fine-task" in reason.lower() or "/fine-task" in reason, (
+            f"T-prom-counter-reason: reason deve menzionare /fine-task, reason={reason!r}"
+        )
+        assert "obbligatorio" in reason.lower() or "ORA" in reason, (
+            f"T-prom-counter-reason: reason deve essere imperativa ('obbligatorio' o 'ORA'), "
+            f"reason={reason!r}"
+        )
+
+    def test_prom_counter_fresh_handoff_resets_counter(self, tmp_path):
+        """T-prom-counter-reset: handoff fresco azzera il contatore."""
+        work = self._setup_repo_with_commit_no_handoff(tmp_path)
+        for _ in range(2):
+            _run_promemoria_fresh(work)
+        count_before = _read_prom_counter(work)
+        assert count_before == 2
+
+        # Aggiungi commit con handoff
+        _make_git_commit(work, "reports/handoff.md", "# handoff\n", "docs: handoff fresco")
+        result = _run_promemoria_fresh(work)
+        assert result.returncode == 0
+        assert not _is_blocked(result), (
+            f"T-prom-counter-reset: nessun blocco atteso con handoff fresco, "
+            f"stdout={result.stdout!r}"
+        )
+        assert not (work / ".git" / "promemoria_block_count").exists(), (
+            "T-prom-counter-reset: il file contatore deve essere rimosso dopo handoff fresco"
+        )
+
+    def test_prom_counter_session_id_resets_on_new_session(self, tmp_path):
+        """T-prom-counter-session: cambio session_id → contatore riparte da 0 (B1)."""
+        work = self._setup_repo_with_commit_no_handoff(tmp_path)
+
+        # Sessione A: 4 tentativi → il 4° è fail-open
+        for _ in range(3):
+            r = _run_promemoria_fresh(work, session_id="session-A")
+            assert _is_blocked(r), "sessione-A tentativo 1-3: atteso blocco"
+        r4 = _run_promemoria_fresh(work, session_id="session-A")
+        assert not _is_blocked(r4), "sessione-A tentativo 4: atteso fail-open"
+
+        # Nuova sessione B: counter deve ripartire da 0 → primo tentativo blocca di nuovo
+        r_b1 = _run_promemoria_fresh(work, session_id="session-B")
+        assert _is_blocked(r_b1), (
+            f"T-prom-counter-session: sessione-B 1° tentativo: atteso blocco (reset), "
+            f"stdout={r_b1.stdout!r}"
+        )
+        count_b = _read_prom_counter(work)
+        assert count_b == 1, (
+            f"T-prom-counter-session: contatore sessione-B atteso 1, trovato {count_b}"
+        )
+
+
+# ─── TestFinaleScript ────────────────────────────────────────────────────────
+#
+# Verifica scripts/fine_task_finale.sh su repo git temporanei reali.
+#   T-finale-1: branch main → exit 1 (mai push su main)
+#   T-finale-2: check_handoff fallisce → exit 1, nessun push
+#   T-finale-3: tutto verde → URL_HANDOFF stampato su stdout, exit 0
+#   T-finale-4: IP in reports/ → exit 1, nessun push
+
+
+def _run_finale(
+    repo: Path,
+    extra_env: dict | None = None,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess:
+    """Esegue fine_task_finale.sh con CLAUDE_PROJECT_DIR puntato al repo di test."""
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        ["bash", str(FINE_TASK_FINALE)],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=cwd or repo,
+    )
+
+
+def _make_git_commit_env(repo: Path, rel_path: str, content: str, msg: str) -> None:
+    """Commit con GIT_{AUTHOR,COMMITTER} espliciti (compatibile con repo senza config)."""
+    f = repo / rel_path
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(content)
+    subprocess.run(["git", "add", rel_path], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", msg],
+        cwd=repo, check=True, capture_output=True,
+        env={**os.environ,
+             "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+             "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"},
+    )
+
+
+class TestFinaleScript:
+    """T-finale — scripts/fine_task_finale.sh."""
+
+    def test_finale_1_main_branch_rejected(self, tmp_path):
+        """T-finale-1: HEAD su main → exit 1, messaggio errore su stderr."""
+        _init_repo(tmp_path)
+        # HEAD su main (default dopo _init_repo)
+        result = _run_finale(tmp_path)
+        assert result.returncode == 1, (
+            f"T-finale-1: atteso exit 1 (main), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "main" in result.stderr.lower() or "ERRORE" in result.stderr, (
+            f"T-finale-1: messaggio deve menzionare 'main', stderr={result.stderr!r}"
+        )
+
+    def test_finale_2_check_handoff_fails_exit_1_no_push(self, tmp_path):
+        """T-finale-2: check_handoff fallisce → exit 1, nessun push.
+
+        Setup: feature branch con commit che include sia foo.txt sia reports/handoff.md,
+        ma §2 di handoff.md dichiara solo foo.txt (mismatch → check_handoff exit 1).
+        """
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-finale"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        # §2 dichiara solo foo.txt ma il diff reale è {foo.txt, reports/handoff.md}
+        handoff_content = (
+            "# HANDOFF\n\n"
+            "## §2 GIT DIFF --STAT (sessione)\n\n"
+            "```\n"
+            " foo.txt | 1 +\n"
+            " 1 file changed, 1 insertion(+)\n"
+            "```\n\n"
+            "## §4 VERDETTO DEL REVISORE (per commit motore)\n\n"
+            "nessun diff motore, revisore non richiesto.\n"
+        )
+        _make_git_commit_env(work, "foo.txt", "bar\n", "feat: foo")
+        _make_git_commit_env(work, "reports/handoff.md", handoff_content, "docs: handoff (§2 incompleto)")
+
+        before_sha = subprocess.run(
+            ["git", "--git-dir", str(bare), "rev-parse", "refs/heads/main"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+        result = _run_finale(work, cwd=work)
+
+        assert result.returncode == 1, (
+            f"T-finale-2: atteso exit 1 (check_handoff rosso), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        # Nessun push: il branch non deve esistere su origin
+        rev = subprocess.run(
+            ["git", "--git-dir", str(bare), "rev-parse", "refs/heads/feat/test-finale"],
+            capture_output=True, text=True,
+        )
+        branch_exists_on_origin = rev.returncode == 0
+        assert not branch_exists_on_origin, (
+            f"T-finale-2: il branch non deve essere pushato dopo check_handoff rosso, "
+            f"trovato su origin: {rev.stdout.strip()!r}"
+        )
+
+    def test_finale_3_all_green_no_handoff_url_not_available(self, tmp_path):
+        """T-finale-3: diff vuoto → handoff.md non rigenerato → URL_HANDOFF: non disponibile (B2)."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-green"],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push", "-u", "origin", "feat/test-green"],
+            cwd=work, check=True, capture_output=True,
+        )
+        # Nessun commit sul branch → diff BASE..HEAD vuoto → handoff.md non rigenerato
+        # Nessun file in reports/ → Gate IP OK
+
+        result = _run_finale(work, cwd=work)
+
+        assert result.returncode == 0, (
+            f"T-finale-3: atteso exit 0, got {result.returncode}; "
+            f"stderr={result.stderr!r} stdout={result.stdout!r}"
+        )
+        assert "URL_HANDOFF: non disponibile" in result.stdout, (
+            f"T-finale-3: atteso 'URL_HANDOFF: non disponibile' (handoff non rigenerato), "
+            f"stdout={result.stdout!r}"
+        )
+        assert "raw.githubusercontent.com" not in result.stdout, (
+            f"T-finale-3: NON atteso URL reale quando handoff non rigenerato, stdout={result.stdout!r}"
+        )
+
+    def test_finale_3b_handoff_regenerated_url_printed(self, tmp_path):
+        """T-finale-3b: reports/handoff.md nel diff sessione → URL reale con SHA lungo."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-3b"],
+            cwd=work, check=True, capture_output=True,
+        )
+        # Commit reports/handoff.md con §2 valido (solo reports/handoff.md) e §4 OK, nessun IP
+        handoff_valid = (
+            "# HANDOFF\n\n"
+            "## §2 GIT DIFF --STAT (sessione)\n\n"
+            "```\n"
+            " reports/handoff.md | 10 ++\n"
+            " 1 file changed, 10 insertions(+)\n"
+            "```\n\n"
+            "## §4 VERDETTO DEL REVISORE (per commit motore)\n\n"
+            "nessun diff motore, revisore non richiesto.\n"
+        )
+        _make_git_commit_env(work, "reports/handoff.md", handoff_valid, "docs: handoff rigenerato")
+        # Pusha il branch (con tracking) — il push successivo dentro lo script è no-op
+        subprocess.run(
+            ["git", "push", "-u", "origin", "feat/test-3b"],
+            cwd=work, check=True, capture_output=True,
+        )
+        sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+        result = _run_finale(work, cwd=work)
+
+        assert result.returncode == 0, (
+            f"T-finale-3b: atteso exit 0, got {result.returncode}; "
+            f"stderr={result.stderr!r} stdout={result.stdout!r}"
+        )
+        assert "raw.githubusercontent.com" in result.stdout, (
+            f"T-finale-3b: URL reale atteso su stdout, stdout={result.stdout!r}"
+        )
+        assert sha in result.stdout, (
+            f"T-finale-3b: URL deve contenere SHA lungo {sha!r}, stdout={result.stdout!r}"
+        )
+
+    def test_finale_4_ip_in_reports_exit_1_no_push(self, tmp_path):
+        """T-finale-4: IP in reports/ (committed) → exit 1, nessun nuovo push."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-ip"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        # §2 vuoto e §4 "nessun diff motore" → check_handoff non applicabile, check_verdetto OK
+        # MA ci sono IP nel reports/handoff.md
+        handoff_ip = (
+            "# HANDOFF\n\n"
+            "## §2 GIT DIFF --STAT (sessione)\n\n"
+            "```\n"
+            " reports/handoff.md | 1 +\n"
+            " 1 file changed, 1 insertion(+)\n"
+            "```\n\n"
+            "## §4 VERDETTO DEL REVISORE (per commit motore)\n\n"
+            "nessun diff motore, revisore non richiesto.\n\n"
+            "## §6 STATO CI\n\n"
+            "Connessione al server 192.168.1.1 riuscita.\n"
+        )
+        _make_git_commit_env(work, "reports/handoff.md", handoff_ip, "docs: handoff con IP")
+
+        result = _run_finale(work, cwd=work)
+
+        assert result.returncode == 1, (
+            f"T-finale-4: atteso exit 1 (IP trovato), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        assert "IP trovato in reports/" in result.stderr, (
+            f"T-finale-4: stderr deve contenere 'IP trovato in reports/', stderr={result.stderr!r}"
         )
