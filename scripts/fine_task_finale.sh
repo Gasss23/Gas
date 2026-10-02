@@ -7,7 +7,7 @@
 # Ordine:
 #   1. Gate A — check_handoff.py
 #   2. Gate B — check_verdetto.py
-#   3. Gate IP — nessun IP nei reports/ (nemmeno fittizi; filtro per IP, non per riga)
+#   3. Gate IP — nessun IP nell'albero del branch (identico a gasmerge.sh: loopback ok, token gasmerge-ip-ok ok)
 #   4. Push del branch corrente (MAI main)
 #   5. Guardia HEAD == @{u}
 #   6. URL_HANDOFF con SHA lungo (solo se handoff.md è stato rigenerato in questa sessione)
@@ -60,26 +60,55 @@ if [[ $GB -ne 0 ]]; then
     exit 1
 fi
 
-# Gate IP — R1: filtro per singolo IP estratto (non per riga intera)
-# Uso grep -oE per estrarre i soli indirizzi, poi escludo loopback e allowlist
+# Gate IP — logica identica a gasmerge.sh: tutto l'albero, stesso regex, stesso filtro loopback+allowlist.
+# Step 1: loopback-only (per riga, via sed). Step 2: gasmerge-ip-ok allowlist.
 printf '=== Gate IP ===\n' >&2
-ALL_IP_LINES=$(git grep -nE '([0-9]{1,3}\.){3}[0-9]{1,3}' -- reports/ 2>/dev/null || true)
-if [[ -n "$ALL_IP_LINES" ]]; then
-    # Rimuovi righe allowlistate (gasmerge-ip-ok)
-    FILTERED=$(printf '%s\n' "$ALL_IP_LINES" | grep -v 'gasmerge-ip-ok' || true)
-    if [[ -n "$FILTERED" ]]; then
-        # Estrai solo gli indirizzi IPv4 e filtra i loopback
-        NONLOOP=$(printf '%s\n' "$FILTERED" \
-            | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' \
-            | grep -vE '^127\.' || true)
-        if [[ -n "$NONLOOP" ]]; then
-            printf 'fine_task_finale: STOP — IP trovato in reports/ — sostituisci con <IP-redatto> e ripeti.\n' >&2
-            printf '%s\n' "$FILTERED" >&2
-            exit 1
-        fi
+set +e
+IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' HEAD)
+IP_RC=$?
+set -e
+case "$IP_RC" in
+  1) printf 'Gate IP: 0 IP trovati — OK\n' >&2 ;;
+  0)
+    # Step 1: rimuovi righe con soli IP di loopback (127.x.x.x).
+    # Per ogni riga, cancella tutti i 127.x.x.x con sed; se nel residuo
+    # resta ancora un IPv4 quad-dotted, la riga non è loopback-only.
+    # Una riga con loopback E un IP non-loopback non è esente.
+    set +e
+    NON_LOOPBACK=$(printf '%s\n' "$IP_MATCHES" | while IFS= read -r line; do
+      stripped=$(printf '%s\n' "$line" | sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
+      if printf '%s\n' "$stripped" | grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
+        printf '%s\n' "$line"
+      fi
+    done)
+    set -e
+    if [[ -z "$NON_LOOPBACK" ]]; then
+      printf 'Gate IP: tutti gli IP sono loopback (127.x.x.x) — OK\n' >&2
+    else
+      # Step 2: filtra le righe con il marker di allowlist esplicito.
+      set +e
+      RESIDUAL=$(printf '%s\n' "$NON_LOOPBACK" | grep -v 'gasmerge-ip-ok')
+      FILTER_RC=$?
+      set -e
+      case "$FILTER_RC" in
+        1) printf 'Gate IP: tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK\n' >&2 ;;
+        0)
+          printf 'fine_task_finale: STOP — IP trovato nell'\''albero del branch — sostituisci con <IP-redatto> o aggiungi gasmerge-ip-ok e ripeti.\n' >&2
+          printf '%s\n' "$RESIDUAL" >&2
+          exit 1
+          ;;
+        *)
+          printf 'fine_task_finale: STOP — errore nel filtro allowlist (rc=%d) — gate IP non verificato\n' "$FILTER_RC" >&2
+          exit 1
+          ;;
+      esac
     fi
-fi
-printf 'Gate IP: OK\n' >&2
+    ;;
+  *)
+    printf 'fine_task_finale: STOP — git grep uscito con codice %d — verifica IP NON eseguita\n' "$IP_RC" >&2
+    exit 1
+    ;;
+esac
 
 # Push
 printf '=== Push ===\n' >&2

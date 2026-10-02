@@ -1693,7 +1693,7 @@ class TestFinaleScript:
             "## §4 VERDETTO DEL REVISORE (per commit motore)\n\n"
             "nessun diff motore, revisore non richiesto.\n\n"
             "## §6 STATO CI\n\n"
-            "Connessione al server 192.168.1.1 riuscita.\n"
+            "Connessione al server 192.168.1.1 riuscita.\n"  # gasmerge-ip-ok
         )
         _make_git_commit_env(work, "reports/handoff.md", handoff_ip, "docs: handoff con IP")
 
@@ -1703,6 +1703,72 @@ class TestFinaleScript:
             f"T-finale-4: atteso exit 1 (IP trovato), got {result.returncode}; "
             f"stderr={result.stderr!r}"
         )
-        assert "IP trovato in reports/" in result.stderr, (
-            f"T-finale-4: stderr deve contenere 'IP trovato in reports/', stderr={result.stderr!r}"
+        assert "IP trovato" in result.stderr, (
+            f"T-finale-4: stderr deve contenere 'IP trovato', stderr={result.stderr!r}"
+        )
+
+    def test_finale_4b_ip_outside_reports_exit_1(self, tmp_path):
+        """T-finale-4b: IP fuori da reports/ senza token → exit 1 (full-tree check)."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-4b"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        # File fuori da reports/ con IP non-loopback, senza token
+        _make_git_commit_env(work, "scripts/test_ip.sh", "echo 10.0.0.1\n", "chore: script con IP")  # gasmerge-ip-ok
+
+        result = _run_finale(work, cwd=work)
+
+        assert result.returncode == 1, (
+            f"T-finale-4b: atteso exit 1 (IP fuori reports/), got {result.returncode}; "
+            f"stderr={result.stderr!r}"
+        )
+        assert "IP trovato" in result.stderr, (
+            f"T-finale-4b: stderr deve contenere 'IP trovato', stderr={result.stderr!r}"
+        )
+
+    def test_finale_4c_ip_with_token_passes_gate(self, tmp_path):
+        """T-finale-4c: IP con token gasmerge-ip-ok sulla stessa riga → Gate IP OK."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-4c"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        # IP con token gasmerge-ip-ok sulla stessa riga → allowlistato
+        _make_git_commit_env(
+            work, "scripts/test_allowed.sh",
+            "echo 10.0.0.1  # gasmerge-ip-ok\n",
+            "chore: script con IP allowlistato",
+        )
+        subprocess.run(
+            ["git", "push", "-u", "origin", "feat/test-4c"],
+            cwd=work, check=True, capture_output=True,
+        )
+
+        result = _run_finale(work, cwd=work)
+
+        assert result.returncode == 0, (
+            f"T-finale-4c: atteso exit 0 (IP allowlistato), got {result.returncode}; "
+            f"stderr={result.stderr!r} stdout={result.stdout!r}"
+        )
+        assert "IP trovato" not in result.stderr, (
+            f"T-finale-4c: nessun blocco IP atteso, stderr={result.stderr!r}"
         )
