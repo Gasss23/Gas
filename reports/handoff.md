@@ -25,18 +25,18 @@ Il token `gasmerge-ip-ok` va sulla riga sorgente dell'esempio/fixture (non sui f
 
 ---
 
-## §2 — git diff --stat (branch vs main)
+## §2 GIT DIFF --STAT
 
 ```
 .claude/agents/memoria_revisore.md |   8 ++
  gas.py                             |  99 ++++++++++++++++----
  modules/gate/gate.py               |   6 ++
- reports/diff_sessione.md           |  22 ++---
- reports/handoff.md                 | 110 ++++++++++------------
+ reports/diff_sessione.md           |  29 ++++--
+ reports/handoff.md                 | 170 ++++++++++++++++++++--------------
  reports/stato_progetto.md          |  11 ++-
- reports/ultimo_report.md           |  43 ++++-----
+ reports/ultimo_report.md           | 107 +++++++++++++++++-----
  tests/test_unit_kernel.py          | 183 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 360 insertions(+), 122 deletions(-)
+ 8 files changed, 486 insertions(+), 127 deletions(-)
 ```
 
 ---
@@ -65,7 +65,7 @@ b5b99d6 chore(revisore): memoria review #119 — APPROVATO CON RISERVE
 
 ---
 
-## §4 — Verdetto revisore #121 (VERBATIM INTEGRALE)
+## §4 VERDETTO DEL REVISORE
 
 ```
 ## VERDETTO REVIEW #121 — APPROVATO
