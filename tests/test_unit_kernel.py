@@ -4832,6 +4832,189 @@ _no_ok70h = not bool(_re_eco.search(r'\[OK\] \d+ caratteri', _desc70h))
 check("T70h read_file ramo errore (file inesistente): diario [KO], non [OK] N caratteri",
       len(_diario70h) == 1 and _ko70h and _no_ok70h, f"desc={_desc70h!r}")
 
+# ---------- T71: R-nw-1 — _safe_path symlink + case-insensitive denylist ----------
+# Test su filesystem reale (tmpdir), ZERO mock del path.
+
+import os as _os71, tempfile as _tf71
+from pathlib import Path as _P71
+
+def _k71():
+    tmp = _tf71.mkdtemp(prefix="gas_test_nw1_")
+    import subprocess
+    subprocess.run(["git", "init", "-q", tmp], check=True, capture_output=True)
+    _os71.environ["GAS_CWD"] = tmp
+    return GasKernel(root_dir=tmp), tmp
+
+# T71a — symlink dentro root → .gas_memory.db = negato
+_k71a, _r71a = _k71()
+_target71a = _P71(_r71a) / ".gas_memory.db"
+_target71a.write_text("db", encoding="utf-8")
+_sym71a = _P71(_r71a) / "link_a_memoria"
+_sym71a.symlink_to(_target71a)
+_out71a = _k71a.execute_tool_call("read_file", '{"relative_path": "link_a_memoria"}')
+check("T71a symlink dentro root → .gas_memory.db = negato",
+      "Operazione negata" in _out71a, f"out={_out71a[:80]!r}")
+
+# T71b — symlink → file fuori dalla root = negato
+_k71b, _r71b = _k71()
+_outside71b = _tf71.NamedTemporaryFile(delete=False, suffix=".txt")
+_outside71b.write(b"secret")
+_outside71b.close()
+_sym71b = _P71(_r71b) / "link_outside"
+_sym71b.symlink_to(_outside71b.name)
+_out71b = _k71b.execute_tool_call("read_file", '{"relative_path": "link_outside"}')
+check("T71b symlink → file fuori root = negato",
+      "Operazione negata" in _out71b, f"out={_out71b[:80]!r}")
+_os71.unlink(_outside71b.name)
+
+# T71c — traversal con ../ = negato
+_k71c, _r71c = _k71()
+_out71c = _k71c.execute_tool_call("read_file", '{"relative_path": "../etc/passwd"}')
+check("T71c traversal ../ = negato",
+      "Operazione negata" in _out71c, f"out={_out71c[:80]!r}")
+
+# T71d — .GAS_MEMORY.db e .Gas_Memory.DB = negati (case-insensitive)
+_k71d, _r71d = _k71()
+_out71d1 = _k71d.execute_tool_call("write_file", '{"relative_path": ".GAS_MEMORY.db", "content": "x"}')
+_out71d2 = _k71d.execute_tool_call("write_file", '{"relative_path": ".Gas_Memory.DB", "content": "x"}')
+check("T71d .GAS_MEMORY.db case-insensitive = negato",
+      "Operazione negata" in _out71d1, f"out={_out71d1[:80]!r}")
+check("T71d .Gas_Memory.DB case-insensitive = negato",
+      "Operazione negata" in _out71d2, f"out={_out71d2[:80]!r}")
+
+# T71e — write su file nuovo DENTRO la root = consentito
+_k71e, _r71e = _k71()
+_out71e = _k71e.execute_tool_call("write_file", '{"relative_path": "nuovo.txt", "content": "ciao"}')
+check("T71e write file nuovo dentro root = consentito",
+      _out71e.startswith("Successo"), f"out={_out71e[:80]!r}")
+
+# T71f — symlink rotto = diniego senza crash
+_k71f, _r71f = _k71()
+_sym71f = _P71(_r71f) / "link_rotto"
+_sym71f.symlink_to(_P71(_r71f) / "non_esiste_mai.xyz")
+_out71f = _k71f.execute_tool_call("read_file", '{"relative_path": "link_rotto"}')
+check("T71f symlink rotto = diniego senza crash (Operazione negata o Errore)",
+      "Operazione negata" in _out71f or "Errore" in _out71f, f"out={_out71f[:80]!r}")
+
+# T71g — symlink ciclico = diniego senza crash
+_k71g, _r71g = _k71()
+_sym71g = _P71(_r71g) / "link_ciclico"
+_sym71g.symlink_to(_sym71g)
+_out71g = _k71g.execute_tool_call("read_file", '{"relative_path": "link_ciclico"}')
+check("T71g symlink ciclico = diniego senza crash",
+      "Operazione negata" in _out71g or "Errore" in _out71g, f"out={_out71g[:80]!r}")
+
+# T71h — regressione R-c2-1: root con prefisso "gas_history_" nella cartella di sistema
+# NON deve bloccare i file DENTRO la root (bug pre-fix: path.parts assoluti)
+_tmp71h = _tf71.mkdtemp(prefix="gas_history_regression_")
+import subprocess as _sp71h
+_sp71h.run(["git", "init", "-q", _tmp71h], check=True, capture_output=True)
+_os71.environ["GAS_CWD"] = _tmp71h
+_k71h = GasKernel(root_dir=_tmp71h)
+# Scrive e legge un file normale: NON deve essere bloccato dalla denylist
+_out71h_w = _k71h.execute_tool_call("write_file", '{"relative_path": "ok.txt", "content": "test"}')
+_out71h_r = _k71h.execute_tool_call("read_file", '{"relative_path": "ok.txt"}')
+check("T71h root con prefisso gas_history_: file normale CONSENTITO (write)",
+      _out71h_w.startswith("Successo"), f"out={_out71h_w[:80]!r}")
+check("T71h root con prefisso gas_history_: file normale CONSENTITO (read)",
+      _out71h_r == "test", f"out={_out71h_r[:80]!r}")
+# Ma .gas_history.json dentro quella root deve essere ancora negato
+_out71h_deny = _k71h.execute_tool_call("write_file", '{"relative_path": ".gas_history.json", "content": "x"}')
+check("T71h root con prefisso gas_history_: .gas_history.json NEGATO",
+      "Operazione negata" in _out71h_deny, f"out={_out71h_deny[:80]!r}")
+
+# ---------- T72: C2 — gate check in run_turn ----------
+
+from modules.gate.gate import GateClass as _GC72, UNTRUSTED_INPUT_TOOLS as _UIT72
+
+# T72a — tool SAFE (calcola) passa invariato senza gate log
+_k72a = kernel_tmp()
+_script72a = [
+    [("calcola", '{"expr": "2+2"}')],
+    "quattro",
+]
+_events72a = run_turn_scriptato(_k72a, "calcola 2+2", _script72a)
+_tool_res72a = [e for e in _events72a if e["type"] == "tool_res"]
+_final72a = [e for e in _events72a if e["type"] == "final"]
+check("T72a tool SAFE (calcola) passa invariato",
+      len(_tool_res72a) == 1 and "4" in _tool_res72a[0]["output"] and len(_final72a) == 1,
+      f"out={_tool_res72a[0]['output'][:40] if _tool_res72a else 'NESSUNO'}")
+
+# T72b — tool DENY bloccato senza crash (turno prosegue fino a risposta finale)
+_k72b = kernel_tmp()
+_script72b = [
+    [("ssh_vps", '{"host": "1.2.3.4"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
+    "bloccato come previsto",
+]
+_events72b = run_turn_scriptato(_k72b, "prova ssh", _script72b)
+_tool_res72b = [e for e in _events72b if e["type"] == "tool_res"]
+_final72b = [e for e in _events72b if e["type"] == "final"]
+_err72b = [e for e in _events72b if e["type"] == "error"]
+check("T72b tool DENY bloccato, risposta 'Operazione negata'",
+      len(_tool_res72b) == 1 and "Operazione negata" in _tool_res72b[0]["output"],
+      f"out={_tool_res72b[0]['output'][:80] if _tool_res72b else 'NESSUNO'}")
+check("T72b turno non crashato (risposta finale ricevuta)",
+      len(_final72b) == 1 and len(_err72b) == 0,
+      f"final={len(_final72b)} err={len(_err72b)}")
+
+# T72c — ricorda + salva_contatto in sequenza: finestra contaminata → stub approved
+# Script: iter 1 → ricorda; iter 2 → salva_contatto; iter 3 → risposta finale.
+# Dopo ricorda, la finestra ha un tool result con role=tool name=ricorda.
+# salva_contatto è UNCERTAIN: in finestra contaminata viene promossa a IRREVERSIBLE,
+# ma C2 la esegue comunque (stub). Il test verifica che il loop completa senza crash.
+_k72c = kernel_tmp()
+_script72c = [
+    [("ricorda", '{"query": "lead"}')],
+    [("salva_contatto", '{"nome": "Mario", "chiave": "mario_rossi", "email": "m@r.it"}')],
+    "ok stub approved",
+]
+_events72c = run_turn_scriptato(_k72c, "ricorda e salva", _script72c)
+_tool_res72c = [e for e in _events72c if e["type"] == "tool_res"]
+_final72c = [e for e in _events72c if e["type"] == "final"]
+_err72c = [e for e in _events72c if e["type"] == "error"]
+check("T72c ricorda+salva_contatto: 2 tool_res, loop completa senza crash",
+      len(_tool_res72c) == 2 and len(_final72c) == 1 and len(_err72c) == 0,
+      f"tool_res={len(_tool_res72c)} final={len(_final72c)} err={len(_err72c)}")
+# salva_contatto con finestra contaminata NON restituisce "Operazione negata"
+# (stub approved → eseguito) ma il risultato non è un errore di gate.
+check("T72c salva_contatto stub approved: output NON è diniego",
+      len(_tool_res72c) == 2 and "Operazione negata" not in _tool_res72c[1]["output"],
+      f"out={_tool_res72c[1]['output'][:80] if len(_tool_res72c) >= 2 else 'MANCANTE'}")
+
+# T72d — UNTRUSTED_INPUT_TOOLS include ricorda e read_file
+check("T72d UNTRUSTED_INPUT_TOOLS contiene 'ricorda'",
+      "ricorda" in _UIT72, f"tools={_UIT72}")
+check("T72d UNTRUSTED_INPUT_TOOLS contiene 'read_file'",
+      "read_file" in _UIT72, f"tools={_UIT72}")
+
+# T72e — _finestra_e_contaminata: test diretto del metodo puro (R-c2-3)
+from gas import GasKernel as _GK72e
+_clean_window = [
+    {"role": "user", "content": "ciao"},
+    {"role": "assistant", "content": "ok"},
+]
+_dirty_window_ricorda = [
+    {"role": "user", "content": "cerca"},
+    {"role": "tool", "name": "ricorda", "content": "risultati"},
+    {"role": "assistant", "content": "trovato"},
+]
+_dirty_window_read = [
+    {"role": "tool", "name": "read_file", "content": "testo"},
+]
+_dirty_window_calcola = [  # calcola NON contamina
+    {"role": "tool", "name": "calcola", "content": "42"},
+]
+check("T72e finestra pulita (nessun tool contaminante) → non contaminata",
+      not _GK72e._finestra_e_contaminata(_clean_window))
+check("T72e finestra con ricorda → contaminata",
+      _GK72e._finestra_e_contaminata(_dirty_window_ricorda))
+check("T72e finestra con read_file → contaminata",
+      _GK72e._finestra_e_contaminata(_dirty_window_read))
+check("T72e finestra con calcola (non contaminante) → non contaminata",
+      not _GK72e._finestra_e_contaminata(_dirty_window_calcola))
+check("T72e finestra vuota → non contaminata",
+      not _GK72e._finestra_e_contaminata([]))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

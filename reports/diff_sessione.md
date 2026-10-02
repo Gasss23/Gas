@@ -1,17 +1,26 @@
-# Diff sessione — 2026-10-01
+# Diff Sessione — 2026-10-02 (feat/cancello-c2 fix gate IP + R-c2-9)
 
-Sessione: fix CI/handoff-check PR #107
+## File toccati questa sessione
 
-## File toccati in questa sessione
+| File | Tipo modifica |
+|------|---------------|
+| `tests/test_unit_kernel.py` | Fix riga 4946 (gasmerge-ip-ok) + riga 4920 (assert esatto) |
+| `reports/stato_progetto.md` | Aggiornamento stato feat/cancello-c2 |
+| `reports/ultimo_report.md` | Report task corrente |
+| `reports/diff_sessione.md` | Questo file |
+| `reports/handoff.md` | Handoff sessione |
 
-(Da `git diff --stat BASE..HEAD` — vedi handoff §2 per il dettaglio completo.)
+## Cosa è cambiato e perché
 
-File modificati in questa sessione specifica (fix handoff §4):
+**tests/test_unit_kernel.py:4946** — La riga del fixture T72b conteneva l'IP fittizio `1.2.3.4` senza il token `gasmerge-ip-ok`. Il gate IP di `scripts/gasmerge.sh` bloccava il merge della PR #108. Fix: aggiunto `# gasmerge-ip-ok` in coda (meccanismo ufficiale di allowlist). Il test DENY è invariato: il blocco testa che `ssh_vps` non sia nell'allowlist dei tool, non l'IP.
 
-| File | Cosa è cambiato | Perché |
-|------|-----------------|--------|
-| `reports/handoff.md` | §4 sostituito con "verdetto completo non conservato, disponibile solo la riga di memoria." §5 count hook reale. §6 aggiornato con run 36785017430 e riga gate (74 passed). §2 conteggio reale 153 righe. | check_verdetto.py falliva perché i path corti in §4 (gate.py:91) non coincidevano con i path completi nel diff di sessione (modules/gate/gate.py). |
+**tests/test_unit_kernel.py:4920** — Riserva R-c2-9 da review #120: il check T71h usava `"test" in _out71h_r` (substring) invece di `_out71h_r == "test"` (uguaglianza esatta). `read_file` restituisce il contenuto raw, quindi l'uguaglianza è corretta e più rigorosa. Fix applicato; T71h PASS confermato.
 
-**Nota**: tutti gli altri file nel §2 del handoff (gate.py, ci.yml, test_unit_gate.py ecc.) appartengono a commit di sessioni precedenti su questo branch. Questa sessione ha prodotto UN solo commit: 1303df5 (fix §4) + questo commit di fine-task.
+## Commit della sessione
 
-Questo file si riscrive a ogni sessione; la storia completa sta in git.
+- `a0a5294` — fix(tests): sblocca gate IP T72b e stringe assert T71h read
+- `5d7f052` — chore(revisore): memoria review #121 — APPROVATO (generato dal revisore)
+
+## Suite
+
+423 PASS, 5 FAIL F-mac-1 (invariati, bwrap macOS non disponibile).

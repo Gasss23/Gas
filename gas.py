@@ -19,6 +19,7 @@ from brains.model_ids import (
     MODEL_GEMINI_LITE, MODEL_GEMINI_FLASH, MODEL_GROQ, MODEL_OPENROUTER, MODEL_OLLAMA,
     GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
+from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
 
@@ -911,16 +912,60 @@ class GasKernel:
             "estrarre solo ciò che serve.]"
         )
 
+    # Prefissi di file di sistema che il modello non può mai leggere o scrivere
+    # (R-nw-1). Include sia le varianti con il dot (file reali del kernel) sia
+    # "gas_history" senza dot (difesa in profondità contro allucinazioni LLM).
+    # Il confronto usa casefold + normalizzazione trattino/spazio → _ per
+    # catturare varianti come 'gas-history-backup.txt' (retro-compatibilità T6).
+    _SAFE_PATH_DENY_PREFIXES: tuple = (
+        ".gas_memory", ".gas_history", ".gas_vectors",
+        ".gas_tokens", ".gas_knowledge",
+        "gas_history",  # undotted: LLM hallucination variants
+    )
+
+    @staticmethod
+    def _deny_part(part: str, prefixes: tuple) -> bool:
+        """True se 'part' inizia con uno dei prefissi (casefold + norm trattini/spazi)."""
+        p = part.casefold().replace("-", "_").replace(" ", "_")
+        for prefix in prefixes:
+            pn = prefix.replace("-", "_")
+            if p.startswith(pn):
+                return True
+        return False
+
+    @staticmethod
+    def _finestra_e_contaminata(window: List[Dict[str, Any]]) -> bool:
+        """True se la finestra contiene un tool result di un tool contaminante (§3b).
+        Puro (no side-effect), riutilizzabile nei test diretti (R-c2-3)."""
+        return any(
+            m.get("role") == "tool" and m.get("name") in UNTRUSTED_INPUT_TOOLS
+            for m in window
+        )
+
     def _safe_path(self, cwd: Path, relative_path: str) -> Optional[Path]:
-        # Guardrail anti-traversal: il path risolto deve restare dentro la
-        # root. Con write_file un "../" può autodistruggere file esterni,
-        # con read_file può esfiltrare segreti (es. API key in ~/.bashrc)
-        # dentro la history. None = negato.
-        path = (cwd / relative_path).resolve()
-        if not path.is_relative_to(self.root):
-            logging.warning(f"Path traversal bloccato: {relative_path!r} risolve fuori root ({path})")
+        # R-nw-1: (a) resolve strict=False, (b) confinamento prima della denylist,
+        # (c) casefold su ogni componente del path risolto, (d) fail-closed.
+        try:
+            path = Path(cwd / relative_path).resolve(strict=False)
+            root_resolved = self.root.resolve(strict=False)
+            # (b) Confinamento: il path risolto deve stare dentro la root.
+            if not path.is_relative_to(root_resolved):
+                logging.warning(
+                    f"Path traversal bloccato: {relative_path!r} risolve fuori root ({path})")
+                return None
+            # (c) Denylist SOLO DOPO il confinamento, sui componenti RELATIVI alla root
+            # (R-c2-1: non sui componenti assoluti — la root stessa potrebbe contenere
+            # stringhe come "gas_history" nel suo percorso di sistema).
+            for part in path.relative_to(root_resolved).parts:
+                if self._deny_part(part, self._SAFE_PATH_DENY_PREFIXES):
+                    logging.warning(
+                        f"Path negato per denylist (casefold): {relative_path!r} → parte {part!r}")
+                    return None
+            return path
+        except Exception as _e:
+            # (d) Fail-closed: eccezione nella risoluzione (symlink ciclico, ecc.) = diniego.
+            logging.warning(f"Path negato per eccezione nella risoluzione: {relative_path!r} — {_e}")
             return None
-        return path
 
     # Snapshot preventivo (anti-autodistruzione): fotografa il repo PRIMA di
     # ogni operazione che può alterare i file. Meccanismo: indice git
@@ -1690,18 +1735,14 @@ class GasKernel:
                 }
                 out = res.stdout + res.stderr
             elif name == "write_file":
-                # Guardrail: la memoria è gestita solo dal kernel, mai dai modelli
-                # (llama su Groq allucina scritture su varianti di gas_history)
-                normalized = args["relative_path"].lower().replace("-", "_").replace(" ", "_")
-                _MEM_FILE_PREFIXES = ("gas_history", ".gas_memory", ".gas_vectors", ".gas_tokens", ".gas_knowledge")
-                if any(p in normalized for p in _MEM_FILE_PREFIXES):
-                    return ("Operazione negata: la memoria di Gas è gestita "
-                            "automaticamente dal kernel, non scriverla mai.")
+                # Guardrail: denylist + confinamento ora in _safe_path (R-nw-1).
+                # _safe_path restituisce None se il path esce dalla root, se è
+                # un file di sistema protetto, o se la risoluzione fallisce.
                 path = self._safe_path(cwd, args["relative_path"])
                 if path is None:
                     return (f"Operazione negata: il percorso '{args['relative_path']}' "
-                            "esce dalla root di Gas. Usa solo percorsi relativi "
-                            "interni al progetto.")
+                            "esce dalla root di Gas o è un file di sistema protetto. "
+                            "Usa solo percorsi relativi interni al progetto.")
                 # Snapshot preventivo DOPO la validazione del path: fotografa
                 # lo stato prima di sovrascrivere
                 if self._snapshot("write_file", args["relative_path"]) is None:
@@ -1860,7 +1901,12 @@ class GasKernel:
                 try:
                     client = OpenAI(base_url=url, api_key=os.environ.get(env))
                     for _ in range(10):  # max 10 iterazioni agentic loop
-                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin}] + self._get_window()
+                        # C2: calcola contaminazione dalla finestra PRIMA di inviare
+                        # al provider (§3b). Ricalcolata a ogni iterazione perché la
+                        # finestra può scorrere tra un'iterazione e l'altra.
+                        _window = self._get_window()
+                        _finestra_contaminata = self._finestra_e_contaminata(_window)
+                        payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin}] + _window
                         try:
                             response = client.chat.completions.create(
                                 model=model, messages=payload,
@@ -1891,7 +1937,22 @@ class GasKernel:
                         if msg.tool_calls:
                             self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
                             for tc in msg.tool_calls:
-                                out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                                # C2: gate check prima di eseguire.
+                                _gc = gate_classify(tc.function.name, tc.function.arguments)
+                                if _gc == GateClass.DENY:
+                                    logging.warning(f"[GATE] DENY: {tc.function.name}")
+                                    out = "Operazione negata: azione non consentita in modalità autonoma."
+                                elif _gc == GateClass.IRREVERSIBLE or (
+                                    _gc == GateClass.UNCERTAIN and _finestra_contaminata
+                                ):
+                                    # C2 stub: approvazione auto (coda reale in C3).
+                                    logging.warning(
+                                        f"[GATE-C2-STUB] {tc.function.name} → {_gc.value} "
+                                        f"(contaminato={_finestra_contaminata}) — approvazione stub"
+                                    )
+                                    out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                                else:
+                                    out = self.execute_tool_call(tc.function.name, tc.function.arguments)
                                 # Diario memoria (FASE 2 fetta 2a + fetta 1 apprendimento):
                                 # una riga per OGNI tool call, con fonte='kernel' e turno_id.
                                 # Fail-safe (§9): la memoria che non scrive NON ferma il turno.

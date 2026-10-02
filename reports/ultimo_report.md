@@ -1,39 +1,98 @@
-# Ultimo Report — 2026-10-01
-## Task: fix CI/handoff-check PR #107 — correggi handoff §4 path corti
+# Ultimo Report — fix gate IP T72b + R-c2-9
 
-**DECISIONI UMANE RICHIESTE:**
-1. Merge della PR #107 (https://github.com/Gasss23/Gas/pull/107).
-
----
-
-## Esito fette
-
-- **Fetta 1 — Diagnosi CI failure**: `FATTA`
-  `check_verdetto.py` cercava `gate.py:91`, `gate.py:206`, `ci.yml:103`, `commit_memoria_revisore.sh:47` nel diff di sessione; il diff usa path completi (`modules/gate/gate.py`, `.github/workflows/ci.yml`, `scripts/commit_memoria_revisore.sh`) → mismatch → exit 1.
-
-- **Fetta 2 — Correzione §4 handoff.md**: `FATTA`
-  Sostituito il blocco verdetto (che spacciava la riga di memoria per testo integrale con path corti) con: "verdetto completo non conservato, disponibile solo la riga di memoria." → check_verdetto.py: nessun riferimento path:riga → exit 0.
-
-- **Fetta 3 — Correzione §5 handoff.md**: `FATTA`
-  Annotazione "era 34 hooks; +1 T-R2-f = 37" errata sostituita con count reale da pytest: 37 passed in 7.07s.
-
-- **Fetta 4 — Correzione §6 handoff.md**: `FATTA`
-  Aggiornato con run 36785017430, riga gate suite (74 passed in 0.13s), mapping commit corretto.
-
-- **Fetta 5 — Correzione §2 handoff.md**: `FATTA`
-  Sostituito conteggio approssimato handoff.md con count reale da `git diff --cached --stat`: 153 righe.
-
-- **Fetta 6 — Verifica locale**: `FATTA`
-  check_handoff.py: exit 0, "OK — 11 file dichiarati correttamente."
-  check_verdetto.py: exit 0, "nessun riferimento path:riga in §4 — OK (nulla da verificare)."
-
-- **Fetta 7 — Push e CI**: `FATTA`
-  Commit 1303df5 pushato su feat/gate-c1.
-  gh pr checks 107: handoff-check pass, unit-suite pass (run 36835067453).
+**Data:** 2026-10-02
+**Branch:** feat/cancello-c2
+**Commit:** a0a5294
+**Task:** sblocca gasmerge gate IP + chiude riserva R-c2-9
 
 ---
 
-## Anomalie riscontrate
+## §1 — SONDA gasmerge.sh IP allowlist (VERBATIM)
 
-- Il verdetto completo della review #117 non è stato conservato (solo riga di memoria in memoria_revisore.md). Il testo integrale non è recuperabile. §4 ora lo dichiara esplicitamente per coerenza con le istruzioni fine-task.
-- La riga di memoria usa path corti per costruzione (è un sommario compresso); check_verdetto.py non gestisce path-corti vs path-completi: la soluzione corretta è §4 senza citazioni non verificabili, non rimappare i path.
+Meccanismo (`scripts/gasmerge.sh` righe 91–135):
+
+```
+IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "origin/$BRANCH")
+```
+
+- Step 1: rimuove le righe con soli IP di loopback `127.x.x.x` via `sed` + grep residuo.
+- Step 2: filtra con `grep -v 'gasmerge-ip-ok'` — le righe che contengono il token letterale **`gasmerge-ip-ok`** sono allowlistate (vouch umano esplicito sulla riga sorgente).
+- Se residuo non vuoto → `BLOCCO: trovati IP non allowlistati` + `exit 1`.
+
+---
+
+## §2 — FIX applicati
+
+**tests/test_unit_kernel.py:4946** — aggiunto `# gasmerge-ip-ok`:
+```python
+# prima
+[("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY
+# dopo
+[("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
+```
+Il test T72b continua a testare il DENY: `ssh_vps` non è nell'allowlist dei tool → `Operazione negata`. L'IP `<IP-fittizio>` è esclusivamente un parametro della fixture, non una connessione reale.
+
+**tests/test_unit_kernel.py:4920** — assert T71h read più preciso (chiude R-c2-9):
+```python
+# prima
+"test" in _out71h_r
+# dopo
+_out71h_r == "test"
+```
+`read_file` restituisce il contenuto raw (non wrappato), quindi l'uguaglianza esatta è corretta e più rigida.
+
+---
+
+## §3 — Suite kernel
+
+```
+=== RIEPILOGO: 423 PASS, 5 FAIL ===
+  FAIL: T11c2 snapshot fallito -> run_command (sandbox bwrap non disponibile)
+  FAIL: T11e run_command fa scattare lo snapshot (bwrap non disponibile)
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale (bwrap non disponibile)
+  FAIL: T12c pipe non interpretata (bwrap non disponibile)
+  FAIL: T12e command substitution non eseguita (bwrap non disponibile)
+```
+
+**423 PASS, 5 FAIL F-mac-1** — tutti i FAIL sono bwrap/macOS, invariati rispetto alla baseline.
+
+---
+
+## §4 — Simulazione invariante IP (verbatim)
+
+```
+=== Simulazione invariante IP (test_unit_kernel.py, HEAD post-fix) ===
+git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
+Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK. ZERO BLOCCHI.
+```
+
+---
+
+## §5 — Verdetto revisore #121 (VERBATIM)
+
+```
+VERDETTO FINALE: APPROVATO
+
+Diff revisionato: tests/test_unit_kernel.py (2 modifiche puntuali)
+
+1. tests/test_unit_kernel.py:4920 — sostituisce "test" in _out71h_r con _out71h_r == "test"
+   rischio: regression se read_file inietta prefix/suffix — esito: ok (suite 423 PASS confermata,
+   chiude R-c2-9 da review #120)
+
+2. tests/test_unit_kernel.py:4946 — aggiunge # gasmerge-ip-ok in coda alla riga con IP fittizio
+   <IP-fittizio> nel fixture T72b — rischio: il marker potrebbe esentare per errore un IP reale in
+   codice produzione — esito: ok (è commento in riga di fixture test, IP è parametro fittizio,
+   comportamento DENY del test invariato)
+
+Controllo antipattern: nessun raw history slicing, nessuna simulazione di tool, _get_window()
+non toccata, loop cap (10 iterazioni) non toccato, guardrail API intatti.
+
+Suite: 423 PASS, 5 FAIL F-mac-1 (attesi, non regressioni). Il commit può procedere.
+```
+
+---
+
+## §6 — Riserve aggiornate
+
+- **R-c2-9: CHIUSA** (assert esatto T71h read)
+- Riserve aperte non bloccanti: R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-10
