@@ -4917,7 +4917,7 @@ _out71h_r = _k71h.execute_tool_call("read_file", '{"relative_path": "ok.txt"}')
 check("T71h root con prefisso gas_history_: file normale CONSENTITO (write)",
       _out71h_w.startswith("Successo"), f"out={_out71h_w[:80]!r}")
 check("T71h root con prefisso gas_history_: file normale CONSENTITO (read)",
-      "test" in _out71h_r, f"out={_out71h_r[:80]!r}")
+      _out71h_r == "test", f"out={_out71h_r[:80]!r}")
 # Ma .gas_history.json dentro quella root deve essere ancora negato
 _out71h_deny = _k71h.execute_tool_call("write_file", '{"relative_path": ".gas_history.json", "content": "x"}')
 check("T71h root con prefisso gas_history_: .gas_history.json NEGATO",
@@ -4943,7 +4943,7 @@ check("T72a tool SAFE (calcola) passa invariato",
 # T72b — tool DENY bloccato senza crash (turno prosegue fino a risposta finale)
 _k72b = kernel_tmp()
 _script72b = [
-    [("ssh_vps", '{"host": "1.2.3.4"}')],  # ssh non è nell'allowlist → DENY
+    [("ssh_vps", '{"host": "1.2.3.4"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
     "bloccato come previsto",
 ]
 _events72b = run_turn_scriptato(_k72b, "prova ssh", _script72b)
