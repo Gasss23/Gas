@@ -272,6 +272,33 @@ def _uuid_valido(approval_id: Any) -> bool:
         return False
 
 
+def _num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _approval_row_valida(d: Dict[str, Any]) -> bool:
+    """True solo se ogni colonna di una riga `approvals` ha il tipo atteso.
+    SQLite non impone i tipi (affinità): una riga scritta da SQL grezzo può avere
+    tool_args_json BLOB o ts_expiry TEXT. Riga non conforme → la lettura NEGA
+    (fail-closed §9, R-c3-1), mai eccezione."""
+    return (
+        isinstance(d.get("id"), str)
+        and isinstance(d.get("tool_name"), str)
+        and isinstance(d.get("tool_args_json"), str)
+        and isinstance(d.get("tool_args_hash"), str)
+        and isinstance(d.get("azione_leggibile"), str)
+        and isinstance(d.get("stato"), str)
+        and _num(d.get("ts_created"))
+        and _num(d.get("ts_expiry"))
+        and (d.get("turno_id") is None or isinstance(d.get("turno_id"), str))
+        and (d.get("ts_resolved") is None or _num(d.get("ts_resolved")))
+        and (d.get("risolto_da") is None or isinstance(d.get("risolto_da"), str))
+        and (d.get("telegram_user_id") is None
+             or (isinstance(d.get("telegram_user_id"), int)
+                 and not isinstance(d.get("telegram_user_id"), bool)))
+    )
+
+
 def default_db_path(root: Union[str, Path]) -> Path:
     """Path di default del DB di memoria: <root>/.gas_memory.db (fuori da git)."""
     return Path(root) / DEFAULT_DB_FILENAME
@@ -1466,9 +1493,12 @@ class MemoryStore:
             if row is None:
                 return None
             d = dict(row)
+            if not _approval_row_valida(d):
+                log.warning("get_approval: riga %s con tipi non validi — negata", approval_id)
+                return None
             d["hash_ok"] = hash_args(d["tool_args_json"]) == d["tool_args_hash"]
             return d
-        except (sqlite3.Error, OSError) as e:
+        except (sqlite3.Error, OSError, TypeError, ValueError, AttributeError) as e:
             log.warning("get_approval fallita (%s): %s", self.db_path, e)
             return None
 
@@ -1504,6 +1534,11 @@ class MemoryStore:
                 if row is None:
                     con.rollback()
                     return False, "Approvazione non trovata."
+                if not _approval_row_valida(dict(row)):
+                    con.rollback()
+                    log.warning("resolve_approval: riga %s con tipi non validi — negata",
+                                approval_id)
+                    return False, "Richiesta corrotta (tipi non validi): negata."
                 if row["stato"] != "pending":
                     con.rollback()
                     return False, f"Già risolta (stato '{row['stato']}'): nessuna modifica."
@@ -1535,7 +1570,7 @@ class MemoryStore:
                 if cur.rowcount != 1:
                     return False, "Approvazione non più pending: nessuna modifica."
                 return True, ""
-        except (sqlite3.Error, OSError) as e:
+        except (sqlite3.Error, OSError, TypeError, ValueError, AttributeError) as e:
             log.warning("resolve_approval fallita (%s): %s — nessuna approvazione",
                         self.db_path, e)
             return False, f"Errore DB: {e}"
@@ -1550,8 +1585,16 @@ class MemoryStore:
                     "ORDER BY ts_created ASC",
                     (time.time(),),
                 ).fetchall()
-            return [dict(r) for r in rows]
-        except (sqlite3.Error, OSError) as e:
+            valide = []
+            for r in rows:
+                d = dict(r)
+                if _approval_row_valida(d):
+                    valide.append(d)
+                else:
+                    log.warning("get_pending_approvals: riga %r con tipi non validi — esclusa",
+                                d.get("id"))
+            return valide
+        except (sqlite3.Error, OSError, TypeError, ValueError, AttributeError) as e:
             log.warning("get_pending_approvals fallita (%s): %s", self.db_path, e)
             return []
 

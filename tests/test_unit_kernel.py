@@ -5018,6 +5018,7 @@ check("T72e finestra vuota → non contaminata",
 # ---------- T73: C3 — coda approvazioni SQLite (design_cancello §4a/§C3) ----------
 # Test REALI: DB SQLite vero in una dir temporanea, nessun mock della coda.
 import hashlib as _hl73
+import logging
 import sqlite3 as _sq73
 import time as _time73
 import uuid as _uuid73
@@ -5265,6 +5266,62 @@ check("T73g round-trip: 2 tool call + risposta finale, nessun errore",
       f"tool_res={len(_tool_res73g)} final={len(_final73g)} err={len(_err73g)}")
 check("T73g il loop non tocca la coda: richiesta ancora 'pending'",
       _id73g is not None and _k73g.memory.get_approval(_id73g)["stato"] == "pending")
+
+# T73h — R-c3-1: righe con tipi errati inserite a mano (SQL grezzo) → la lettura
+# NEGA (None / False / esclusa), mai eccezione; WARN nella scatola nera.
+_m73h = _ms73()
+_now73h = _time73.time()
+_ins73h = ("INSERT INTO approvals (id, turno_id, tool_name, tool_args_json, tool_args_hash, "
+           "azione_leggibile, stato, ts_created, ts_expiry, telegram_user_id) "
+           "VALUES (?, NULL, 'send_email', ?, ?, 'x', 'pending', ?, ?, ?)")
+_args73h = '{"to": "a@example.com"}'
+_id73h_blob, _id73h_text, _id73h_uid = (str(_uuid73.uuid4()) for _ in range(3))
+_raw73(_m73h, _ins73h, (_id73h_blob, _args73h.encode("utf-8"), _hash73(_args73h),
+                        _now73h, _now73h + 600, None))          # tool_args_json BLOB
+_raw73(_m73h, _ins73h, (_id73h_text, _args73h, _hash73(_args73h),
+                        _now73h, "mai", None))                  # ts_expiry TEXT
+_raw73(_m73h, _ins73h, (_id73h_uid, _args73h, _hash73(_args73h),
+                        _now73h, _now73h + 600, "utente"))      # telegram_user_id TEXT
+_typ73h = _raw73(_m73h, "SELECT typeof(tool_args_json), typeof(ts_expiry), "
+                        "typeof(telegram_user_id) FROM approvals ORDER BY rowid")
+check("T73h precondizione: righe corrotte davvero nel DB (blob/text/text)",
+      _typ73h == [("blob", "real", "null"), ("text", "text", "null"), ("text", "real", "text")],
+      str(_typ73h))
+_logrec73h: list = []
+class _H73h(logging.Handler):
+    def emit(self, record):
+        _logrec73h.append(record)
+_h73h = _H73h(level=logging.WARNING)
+logging.getLogger("modules.memory.store").addHandler(_h73h)
+try:
+    _exc73h = None
+    try:
+        _get73h = [_m73h.get_approval(i) for i in (_id73h_blob, _id73h_text, _id73h_uid)]
+        _res73h = [_m73h.resolve_approval(i, "approved", telegram_user_id=1)
+                   for i in (_id73h_blob, _id73h_text, _id73h_uid)]
+        _rej73h = _m73h.resolve_approval(_id73h_text, "rejected")
+        _pend73h = _m73h.get_pending_approvals()
+    except Exception as e:  # il contratto è proprio che qui NON si arrivi
+        _exc73h = e
+finally:
+    logging.getLogger("modules.memory.store").removeHandler(_h73h)
+check("T73h lettura righe corrotte → nessuna eccezione", _exc73h is None, repr(_exc73h))
+check("T73h get_approval su riga corrotta → None (negata)",
+      _exc73h is None and _get73h == [None, None, None], str(_get73h if _exc73h is None else ""))
+check("T73h resolve_approval('approved') su riga corrotta → negata",
+      _exc73h is None and all(r[0] is False for r in _res73h), str(_res73h if _exc73h is None else ""))
+check("T73h resolve_approval('rejected') su riga corrotta → negata",
+      _exc73h is None and _rej73h[0] is False, str(_rej73h if _exc73h is None else ""))
+check("T73h get_pending_approvals esclude le righe corrotte",
+      _exc73h is None and _pend73h == [], str(_pend73h if _exc73h is None else ""))
+check("T73h righe corrotte NON approvate nel DB (stato resta 'pending')",
+      _raw73(_m73h, "SELECT DISTINCT stato FROM approvals") == [("pending",)])
+check("T73h WARNING nella scatola nera per ogni lettura negata",
+      sum(1 for r in _logrec73h if "tipi non validi" in r.getMessage()) >= 7,
+      str([r.getMessage() for r in _logrec73h]))
+_ok73h = _m73h.enqueue_approval("send_email", {"to": "b@example.com"})
+check("T73h coda resta usabile: una riga sana accanto alle corrotte si approva",
+      _ok73h is not None and _m73h.resolve_approval(_ok73h, "approved", telegram_user_id=7)[0] is True)
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
