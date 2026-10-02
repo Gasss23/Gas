@@ -1,170 +1,159 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-02 — Fix IP-gate: sblocco branch chore/hook-fine-task-obbligatorio per gasmerge
+**Sessione:** 2026-10-02 — Fetta C3 cancello: coda approvazioni SQLite (feat/cancello-c3)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #110 (https://github.com/Gasss23/Gas/pull/110).
+1. Gate B `check_verdetto.py` rosso sul §4 verbatim (path abbreviati `store.py:…` e `gas.py:1948` fuori diff). Verdetto NON ritoccato per istruzione operatore → report non committati, branch non pushato. Scegliere: accettare/bypassare, far ri-emettere il verdetto con path completi, o correggere prima check_verdetto.
+2. PR NON verificata/creata: branch `feat/cancello-c3` non pushato (STOP al gate §4). `gh pr list --head feat/cancello-c3 --base main` → `[]`.
+3. PR #109: superata da #110 — merge/chiusura a discrezione dell'operatore.
+4. Mini-fetta R-c3-1 prima di C4; poi C4 (rimozione stub C2, turno di sblocco, Telegram).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — `memoria_revisore.md:179`: sostituzione IP con `<IP-fittizio>`**: FATTA  
-  Sostituito IP fittizio alla riga #122. Nient'altro toccato nel file.
-
-- **Fetta 2 — `test_unit_hooks.py:1696`: aggiunta `# gasmerge-ip-ok`**: FATTA  
-  Token aggiunto come commento Python fuori dalla stringa. Comportamento del test invariato.
-
-- **Fetta 3 — `fine_task_finale.sh` Gate IP allineato a `gasmerge.sh`**: FATTA  
-  Full-tree (HEAD), regex word-boundary identica, loopback-first via sed per-riga, allowlist gasmerge-ip-ok.
-
-- **Fetta 4 — Test aggiornati**: FATTA  
-  T-finale-4 assertion aggiornata; T-finale-4b e T-finale-4c aggiunti. Suite: 51/51 PASS.
-
-- **Fetta 5 — Simulazione invariante gasmerge**: FATTA  
-  Zero blocchi sull'albero di lavoro con logica gasmerge completa (printf-based, no echo).
-
-- **Fetta 6 — Revisore Opus #124**: FATTA  
-  APPROVATO CON RISERVE. R-finale-1 (media): set -e attivo dopo gate IP. R-finale-2 (bassa/nota): allowlist per riga condivisa con gasmerge.
+- **Step 0 — Sonda**: `FATTA` — #109 OPEN e superata da #110; spec §C3 letta; stub C2 a gas.py:1947-1952.
+- **Step 1 — Doc stato_progetto**: `FATTA`
+- **Step 2 — Implementazione §C3 (solo store.py, scope spec)**: `FATTA`
+- **Step 3 — Test reali T73a-g**: `FATTA` — 423→463 PASS, 5 FAIL F-mac-1 invariati.
+- **Step 4 — Revisore Opus**: `FATTA` — review #125 APPROVATO CON RISERVE.
+- **Commit/push report + PR**: `DEFERITA — gate check_verdetto rosso sul verdetto verbatim; STOP per istruzione operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 +
- .claude/commands/fine-task.md      |  62 ++---
- .claude/hooks/promemoria_end.sh    |  61 ++++-
- CLAUDE.md                          |   2 +-
- reports/diff_sessione.md           |  47 ++--
- reports/handoff.md                 | 225 +++++++++---------
- reports/stato_progetto.md          |   4 +-
- reports/ultimo_report.md           | 111 ++-------
- scripts/fine_task_finale.sh        | 141 +++++++++++
- tests/test_unit_hooks.py           | 465 ++++++++++++++++++++++++++++++++++++-
- 10 files changed, 866 insertions(+), 258 deletions(-)
+ .claude/agents/memoria_revisore.md |   2 +
+ modules/memory/store.py            | 288 +++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  34 ++---
+ reports/handoff.md                 | 248 +++++++++++++++-----------------
+ reports/stato_progetto.md          |   4 +
+ reports/ultimo_report.md           |  56 ++++----
+ tests/test_unit_kernel.py          | 251 ++++++++++++++++++++++++++++++++
+ 7 files changed, 700 insertions(+), 183 deletions(-)
 ```
-
----
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-d63b4c9 docs(reports): rimuovi IP letterali da diff_sessione e ultimo_report
-ed16651 docs(handoff): fix §4 citazioni context-only per check_verdetto
-169c6e2 docs(handoff): fix §4 cross-reference format per check_verdetto
-a0932b5 docs(fine-task): report + handoff + diff_sessione — fix IP-gate #124
-fa78fb5 fix(ip-gate): allinea fine_task_finale.sh a gasmerge.sh (full-tree, token, fix fixture)
-ade4c1a chore(revisore): memoria review #124 — APPROVATO CON RISERVE
-0accbb7 docs(hook-fine-task-obbligatorio): aggiorna §6 handoff con esito CI (SUCCESS)
-0bb3743 docs(hook-fine-task-obbligatorio): fix §4 handoff — citazioni file:line corrette
-bfb8dee docs(hook-fine-task-obbligatorio): report fine-task + handoff + diff_sessione
-9863352 chore(hook-fine-task): script deterministico + contatore per sessione + test
-ac51ccf chore(revisore): memoria review #123 — APPROVATO
-c644990 chore(revisore): memoria review #122 — BOCCIATO
+4f16a65 feat(cancello-c3): coda approvazioni SQLite in store.py (review #125 APPROVATO CON RISERVE)
+aa0b0d0 chore(revisore): memoria review #125 — APPROVATO CON RISERVE
 ```
-
----
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-**Review #124 — 2026-10-02 — APPROVATO CON RISERVE**
+Commit motore `4f16a65` — verdetto integrale review #125:
 
-Diff tocca `tests/test_unit_hooks.py` e `scripts/fine_task_finale.sh`: gate revisore applicato.
+## Verdetto review #125 — Fetta C3, coda approvazioni SQLite (branch feat/cancello-c3, diff staged)
 
-> ### REVIEW #124 — branch chore/hook-fine-task-obbligatorio — APPROVATO CON RISERVE
->
-> Ho fatto le letture obbligatorie (CLAUDE.md §5/§9, reports/stato_progetto.md, .claude/agents/memoria_revisore.md fino a #123). Il diff non tocca gas.py, brains/ o modules/: non c'è slicing della history, non c'è simulazione di tool e i guardrail runtime (cap 10 iterazioni, `_get_window`) restano intatti.
->
-> **Elementi del diff esaminati**
->
-> 1. **`scripts/fine_task_finale.sh:67`** — `git grep -nE` sull'albero `HEAD`.
->    - Rischio esaminato: regex diversa da gasmerge.sh (riga 91), oppure ambito ristretto.
->    - Esito: **ok**. La regex è identica byte per byte a quella di gasmerge.sh (riga 91). L'ambito è tutto l'albero: cambia solo il ref (`HEAD` invece di `origin/$BRANCH`), ed è corretto perché il gate gira prima del push. Ho simulato il gate sull'albero staged reale (`git write-tree`): il residuo è vuoto, quindi non blocca la sessione corrente.
->
-> 2. **`scripts/fine_task_finale.sh:77-84`** — filtro loopback riga per riga via `sed`.
->    - Rischio esaminato: una riga con sia loopback sia un IP non-loopback che passa il filtro.
->    - Esito: **ok**. La logica è identica a gasmerge.sh (righe 97-110) (si tolgono i 127.x e si ri-testa il residuo). L'ordine è lo stesso di gasmerge: prima il loopback, poi l'allowlist.
->
-> 3. **`scripts/fine_task_finale.sh:93-110`** — gestione dei codici di ritorno: rc 1 → OK, rc 0 → STOP, rc diverso da 0/1 → STOP.
->    - Rischio esaminato: fail-open su errore di `git grep` o di `grep -v`.
->    - Esito: **ok**. Tutti i rami non attesi finiscono in `exit 1`.
->
-> 4. **`scripts/fine_task_finale.sh:69,84,92`** — `set -e` dopo ogni `set +e`.
->    - Rischio esaminato: lo script nasce con solo `set -uo pipefail` (riga 17), quindi questo toggle attiva errexit per tutto il resto dello script.
->    - Esito: **riserva R1**. L'ho riprodotto con un remoto bare in sola scrittura negata: `git push` (riga 115) fallisce e lo script esce subito, senza mai stampare il messaggio "ERRORE git push fallito" delle righe 117-119. Il codice di uscita è quello di git (qui 1, in altri casi può essere 128), non quello normalizzato. Non è un fail-open, perché si esce comunque con codice diverso da zero senza URL. Però contraddice il contratto della riga 15 ("exit 1 + messaggio chiaro"), e le righe 116-120 diventano codice morto.
->
-> 5. **`scripts/fine_task_finale.sh:90`** — allowlist con `grep -v 'gasmerge-ip-ok'` sulla riga intera.
->    - Rischio esaminato: è proprio la lezione di #122 (l'allowlist per riga lascia passare altri IP sulla stessa riga).
->    - Esito: **riserva R2**. È una regressione voluta rispetto al R1 di #122, che filtrava IP per IP. È giustificata: ora il gate guarda tutto l'albero, e deve accettare gli stessi token che accetta gasmerge (per esempio test_unit_kernel.py riga 4946), altrimenti bloccherebbe righe che il merge consente. Il limite è condiviso con gasmerge, quindi non aggiunge superficie. Va però tracciato.
->
-> 6. **`tests/test_unit_hooks.py:1696` e `1706`** — T-finale-4: token come commento Python, assertion portata a "IP trovato".
->    - Rischio esaminato: l'assertion potrebbe essere soddisfatta da messaggi che non riguardano un blocco IP.
->    - Esito: **ok**. Il token `# gasmerge-ip-ok` sta fuori dalla stringa, quindi non finisce nell'handoff di test, che resta bloccato. La sottostringa "IP trovato" compare solo nella riga STOP (riga 96): "0 IP trovati" non la contiene (finisce in "i", non in "o"). Insieme al controllo `returncode == 1`, l'assertion discrimina.
->
-> 7. **`tests/test_unit_hooks.py:1727`** — T-finale-4b: la fixture con l'IP sta in `scripts/test_ip.sh` del repo temporaneo, il token sta sulla riga sorgente Python.
->    - Esito: **ok**. Nel file del repo di test l'IP compare senza token. Nel repo reale gasmerge vede il token sulla riga Python.
->    - Mutation test: con l'ambito ristretto a `reports/`, T-4b fallisce, quindi il test morde.
->
-> 8. **`tests/test_unit_hooks.py:1739-1773`** — T-finale-4c: IP con token, exit 0 atteso.
->    - Esito: **ok**. Lo stderr mostra Gate A e Gate B "non applicabile", poi il Gate IP. Il push è un no-op perché l'upstream è già impostato (riga 1760). HEAD coincide con `@{u}`. L'handoff non è nel diff, quindi esce con "URL_HANDOFF: non disponibile" ed exit 0.
->    - Mutation test: rimuovendo l'allowlist, T-4c fallisce.
->    - Nota: il revisore cita anche il token `# gasmerge-ip-ok` su test_unit_kernel.py (riga 4946) come esempio di uso precedente dello stesso pattern.
->
-> 9. **`.claude/agents/memoria_revisore.md:178`** (riga #122) — sostituzione con `<IP-fittizio>`.
->    - Esito: **ok**. Il word-diff mostra una sola sostituzione: l'IP letterale diventa `<IP-fittizio>`. Il resto del testo storico di #122 è invariato.
->
-> **Test eseguiti**
-> - `tests/test_unit_hooks.py`: 51 passati su 51.
-> - Sottoinsieme `finale`: 7 su 7.
-> - Mutazioni (no allowlist; ambito `reports/`): uccise da 4c e da 4b.
->
-> **Riserve (da tracciare in stato_progetto.md)**
-> - **R1 (media)**: errexit resta attivo dopo il gate IP. Ripristinare lo stato precedente (togliere i `set -e` e lasciare `set +e` fino alla fine, oppure salvare e ripristinare `$-`), così le righe 116-120 tornano raggiungibili e l'uscita torna normalizzata a 1 con messaggio. Conviene aggiungere un test con push fallito che verifichi la presenza di "ERRORE git push fallito" nello stderr.
-> - **R2 (bassa, nota)**: l'allowlist per riga rende esente ogni IP presente su una riga che contiene il token. Il limite è condiviso con gasmerge.sh. Annullare il R1 di #122 è stata una scelta consapevole per allinearsi a gasmerge e va dichiarata come limite noto.
+**ESITO: APPROVATO CON RISERVE**
 
----
+Prima di iniziare ho letto quanto previsto: CLAUDE.md (sez. 5, 8, 9 e 10), reports/stato_progetto.md (letto in modo mirato), la mia memoria (.claude/agents/memoria_revisore.md, fino alla #124) e le sezioni di design_cancello.md che servivano: §4a–§4f, §C3–§C5 e §8c/§8d.
+
+Ho rilanciato la suite: `tests/test_unit_kernel.py` dà **463 PASS / 5 FAIL**. I 5 FAIL sono quelli già noti di F-mac-1 (T11c2, T11e, T12a, T12c, T12e: manca bwrap su macOS). Tutti i 40 check T73 sono verdi. Le sonde sugli edge case le ho fatte con uno script nello scratchpad, senza toccare il repo.
+
+### Elementi del diff esaminati
+
+1. `modules/memory/store.py:182` (tabella `approvals`) e `:224` (trigger `approvals_payload_immutabile`), più gli altri 3 trigger: una richiesta nasce solo `pending`, la DELETE è vietata, lo stato non cambia più dopo la risoluzione, il payload non cambia mai.
+   - Rischi esaminati: aggiramento con SQL grezzo e con `INSERT OR REPLACE`.
+   - `recursive_triggers = ON` era già attivo in `_connect` (store.py:421), quindi il percorso REPLACE→DELETE resta bloccato. Questo lo coprono T73c (store.py:5131 non esiste: il test è a tests/test_unit_kernel.py:5131) e T73b.
+   - Esito: **ok**.
+2. `modules/memory/store.py:1500` (`BEGIN IMMEDIATE` dentro `with self._connect()`), insieme a `WHERE stato='pending'` e al controllo `rowcount != 1`. Le funzioni toccate sono resolve, expire e il ramo di revoca.
+   - Rischi esaminati: doppia risoluzione e race tra due callback.
+   - Il blocco di scrittura immediato più l'UPDATE condizionato rendono la risoluzione idempotente. Un `return` dentro il `with` va bene: chiude la transazione con commit o rollback.
+   - Esito: **ok**.
+3. `modules/memory/store.py:1469` (`hash_args(d["tool_args_json"])` in get_approval) e `:1511` (`now >= row["ts_expiry"]` in resolve_approval).
+   - Rischio esaminato: coda corrotta, che secondo il contratto deve dare "mai eccezione".
+   - **Riprodotto**: se una riga viene inserita con SQL grezzo con `tool_args_json` di tipo BLOB, sia get_approval sia resolve_approval sollevano `AttributeError: 'bytes' object has no attribute 'encode'`. Se `ts_expiry` è TEXT, resolve_approval solleva `TypeError`.
+   - Con `ts_expiry` TEXT la riga resta inoltre per sempre in get_pending_approvals (in SQLite TEXT > REAL) e expire_stale_approvals non la fa mai scadere.
+   - Gli except prendono solo `(sqlite3.Error, OSError)`.
+   - L'esito resta fail-closed (nessuna approvazione concessa), ma l'eccezione arriva al chiamante, cioè al thread del bot in C4.
+   - Esito: **riserva R-c3-1**.
+4. `modules/memory/store.py:1446` (`now + timeout_secs`).
+   - Rischio esaminato: parametro `timeout_secs` non validato.
+   - Riprodotto: con `timeout_secs="10"` si ha un `TypeError` non intercettato; con `float("inf")` la richiesta non scade mai.
+   - Il parametro lo passa il kernel, non il modello.
+   - Esito: **riserva R-c3-2** (minore).
+5. `modules/memory/store.py:1490` (whitelist di `risolto_da`).
+   - Rischio esaminato: correttezza del dato di audit.
+   - Riprodotto: `resolve_approval(id, "approved", 1, risolto_da="kernel_revoca")` restituisce `(True, '')`, cioè un'approvazione registrata come revoca del kernel. In più `rejected` accetta `telegram_user_id="pippo"`, che viene salvato come testo.
+   - Esito: **riserve R-c3-3 e R-c3-4** (minori).
+6. `tests/test_unit_kernel.py:5203-5204` (T73e: DB corrotto, tabella assente, file sparito) e `:5262` (T73g, round-trip agentico §7).
+   - Rischi esaminati: test reali o mockati, e se discriminano davvero.
+   - Il DB è un vero SQLite in una directory temporanea, senza alcun mock della coda. T73g esegue 2 tool call reali più la risposta finale e verifica che la richiesta resti `pending`.
+   - Nessun test copre le righe con tipo sbagliato (vedi R-c3-1).
+   - Esito: **ok**.
+7. `tests/test_unit_kernel.py:5247` (T73f) e verifica diretta del codice.
+   - Rischio esaminato: un tool di approvazione esposto al modello.
+   - `grep approv gas.py` trova solo il commento dello stub C2 (gas.py:1948), che non è nel diff e resta fino a C4 come deciso dall'operatore.
+   - Non c'è nessun tool di approvazione in tools_schema né in GATE_ALLOWLIST, e `execute_tool_call` risponde "Tool non trovato.".
+   - Esito: **ok**.
+
+Ho controllato il Wall of Shame: il diff non fa slicing della history e non simula output dei tool. Rispetta "zero gas.py", come da scope deciso.
+
+### Riserve (da tracciare in stato_progetto.md)
+
+- **R-c3-1 (media, da chiudere PRIMA di C4)**: va reso vero il contratto "coda corrotta → mai eccezione" per righe con tipi sbagliati (store.py:1469, :1511). Ci sono due strade: aggiungere allo schema `CHECK(typeof(tool_args_json)='text')` e `CHECK(typeof(ts_expiry) IN ('real','integer'))` (la tabella è nuova, quindi non serve migrazione), oppure intercettare `TypeError`/`AttributeError` sui valori letti. Serve anche un test con INSERT grezzo di tipi sbagliati.
+- **R-c3-2 (minore)**: validare `timeout_secs` (intero finito; altrimenti default e WARN).
+- **R-c3-3 (minore)**: `approved` deve richiedere `risolto_da == "telegram_user"`.
+- **R-c3-4 (minore)**: anche `rejected` dovrebbe pretendere `telegram_user_id` intero o None.
+- **R-c3-5 (cosmetica)**: get/resolve/pending/expire non controllano `self.available`. Se il file sparisce, `sqlite3.connect` ricrea un `.db` vuoto senza schema (riprodotto). Non porta a crash: l'errore viene intercettato e si ha un diniego.
+
+### Rischi esplicitamente esclusi
+
+- **Concorrenza reale multi-processo** (due processi che risolvono nello stesso istante): non l'ho verificata con un test. La valutazione si basa solo sulla lettura del codice (`BEGIN IMMEDIATE`, `timeout=10`, `WHERE stato='pending'`). Il bot Telegram che la eserciterebbe non esiste ancora (C4).
+- **Comportamento su VPS/Linux**: non riproducibile in dev su macOS, lo copre la CI.
+- **Limite di read-back Telegram (~4096 caratteri, §4c)**: fuori scope, riguarda C4 come deciso dall'operatore.
+
+### Memoria del revisore
+
+Ho aggiunto in `/Users/gas/Gas/.claude/agents/memoria_revisore.md` la riga contatore #125 e una lezione (except sqlite3.Error non basta con la tipizzazione dinamica di SQLite). Nessun IP letterale. Il file è committato da solo con `scripts/commit_memoria_revisore.sh` (commit `aa0b0d0`). Il diff staged (store.py, stato_progetto.md, test_unit_kernel.py) resta intatto nell'index.
+
+### Correzione nel testo sopra
+
+Al punto 1 ho scritto per errore "store.py:5131": il riferimento giusto è `tests/test_unit_kernel.py:5131`, come indicato lì stesso.
+
+File rilevanti:
+- /Users/gas/Gas/modules/memory/store.py
+- /Users/gas/Gas/tests/test_unit_kernel.py
+- /Users/gas/Gas/reports/design_cancello.md
+- /Users/gas/Gas/.claude/agents/memoria_revisore.md
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py. Modifiche a `tests/test_unit_hooks.py` (gate/hook only):
-- Suite hook prima: 48/48 (stimato da sessione precedente)
-- Suite hook dopo: **51/51 PASS** (+3 test: T-finale-4b, T-finale-4c, assertion T-finale-4 aggiornata)
-- Nessuna modifica a `tests/test_unit_kernel.py`
+Prima (origin/main ce3d392): `423 PASS, 5 FAIL`. Dopo (4f16a65): `463 PASS, 5 FAIL` (+40 check T73).
 
----
+```
+=== RIEPILOGO: 463 PASS, 5 FAIL ===
+  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
+  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non dispon
+  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
+```
+
+I 5 FAIL sono F-mac-1 (bwrap assente su macOS), fuori scope. pytest gate+hooks+voice_server: 144 passed prima e dopo.
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(reports): rimuovi IP letterali da diff_sessione e ultimo_report	CI	chore/hook-fine-task-obbligatorio	push	37053631494	1m0s	2026-10-02T19:21:55Z
-completed	success	docs(hook-fine-task-obbligatorio): aggiorna §6 handoff con esito CI (…	CI	chore/hook-fine-task-obbligatorio	push	37046253217	54s	2026-10-02T18:15:54Z
-completed	success	docs(hook-fine-task-obbligatorio): fix §4 handoff — citazioni file:li…	CI	chore/hook-fine-task-obbligatorio	push	37046109893	54s	2026-10-02T18:14:38Z
-completed	success	chore(hook-fine-task): script deterministico + contatore per sessione…	CI	chore/hook-fine-task-obbligatorio	push	37045838781	1m3s	2026-10-02T18:12:11Z
+completed	success	Merge pull request #110 from Gasss23/chore/hook-fine-task-obbligatorio	CI	main	push	37056446724	53s	2026-10-02T19:47:55Z
+completed	success	docs(handoff): aggiorna §0 §2 §3 §6 con dati reali post-CI (SUCCESS)	CI	chore/hook-fine-task-obbligatorio	push	37053843630	54s	2026-10-02T19:23:53Z
+completed	success	docs(reports): rimuovi IP letterali da diff_sessione e ultimo_report	CI	chore/hook-fine-task-obbligatorio	push	37053631494	1m4s	2026-10-02T19:21:55Z
 ```
 
-**Mappatura commit→run:**
-- `d63b4c9` docs(reports) — HEAD run 37053631494 (SUCCESS, 1m0s) — testa l'intero albero inclusi `fa78fb5` e `ade4c1a`
-- `ed16651`, `169c6e2`, `a0932b5` docs — commits intermedi dello stesso push; nessuno è stato HEAD di una run autonoma; contenuto incluso nell'albero testato da run 37053631494
-- `fa78fb5` fix(ip-gate) — nessuna run autonoma; incluso nel push `d63b4c9` → testato da run 37053631494
-- `ade4c1a` chore(revisore) — nessuna run autonoma; incluso nel push `d63b4c9` → testato da run 37053631494
-- `0accbb7` docs — HEAD run 37046253217 (SUCCESS)
-- `0bb3743` docs — HEAD run 37046109893 (SUCCESS)
-- `bfb8dee` docs — nessuna run autonoma; incluso nell'albero HEAD `9863352` testato da run 37045838781
-- `9863352` chore(hook-fine-task) — HEAD run 37045838781 (SUCCESS)
-- `ac51ccf`, `c644990` — precedenti a questa sessione, coperti da run precedenti
-
----
+- `aa0b0d0`: nessuna run su questo SHA (non pushato).
+- `4f16a65`: nessuna run su questo SHA (non pushato).
 
 ## §7 RISERVE APERTE
 
-Da review #124:
-- **R-finale-1 (media)**: `set -e` attivo dopo gate IP in `fine_task_finale.sh` → push fallisce senza messaggio normalizzato; righe 116-120 diventano codice morto. Fix: ripristinare stato `set +e` dopo gate, o avvolgere push in `set +e`. Aggiungere test push-fallito.
-- **R-finale-2 (bassa/nota)**: allowlist per riga in Gate IP — limite condiviso con gasmerge.sh, dichiarato consapevolmente.
-
-Riserve ereditate (da stato_progetto.md, non chiuse in questa sessione):
-- R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-10 (feat/cancello-c2)
-- R-fts-1, R-fts-2, R-fts-3, R-e2e-refactor-1, R-e2e-refactor-2 (k3-bis)
+- R-c3-1 (media, da chiudere PRIMA di C4): righe con tipi sbagliati da SQL grezzo → eccezione fuori dagli except in get/resolve.
+- R-c3-2 (minore): validare `timeout_secs`.
+- R-c3-3 (minore): `approved` deve richiedere `risolto_da == "telegram_user"`.
+- R-c3-4 (minore): `rejected` deve pretendere `telegram_user_id` int o None.
+- R-c3-5 (cosmetica): get/resolve/pending/expire non controllano `self.available`.
+- Finding nuovo: il verdetto verbatim #125 non passa `check_verdetto.py` (path abbreviati / fuori diff) — conferma F-verdetto-ritoccato.
