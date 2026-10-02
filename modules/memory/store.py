@@ -34,12 +34,15 @@ le fondamenta.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
 import re
 import sqlite3
 import time
 import unicodedata
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -70,6 +73,14 @@ TRANSIZIONI_LEZIONE: Dict[str, frozenset] = {
     "ritirata":  frozenset(),
 }
 LEZIONE_TESTO_MAX: int = 300
+
+# --- Coda approvazioni (cancello, Fetta C3 — design_cancello.md §4a/§C3) ---
+# Stati di una richiesta di approvazione. Si esce da 'pending' UNA sola volta:
+# dopo la prima risoluzione lo stato è immutabile (trigger DB + WHERE stato='pending').
+STATI_APPROVAL: Tuple[str, ...] = ("pending", "approved", "rejected", "expired")
+RISOLTO_DA_APPROVAL: Tuple[str, ...] = ("telegram_user", "timeout", "kernel_revoca")
+# Timeout di default (§4d / §8c, DECISO 2026-09-29): 30 minuti. Override via env.
+DEFAULT_APPROVAL_TIMEOUT_SECS: int = 1800
 
 DEFAULT_DB_FILENAME: str = ".gas_memory.db"
 # Quante copie .bak tenere di default (rotazione anti-accumulo, come la retention
@@ -161,7 +172,104 @@ _SCHEMA: Tuple[str, ...] = (
     """,
     "CREATE INDEX IF NOT EXISTS idx_lezioni_stato ON lezioni(stato)",
     "CREATE INDEX IF NOT EXISTS idx_lezioni_decisa ON lezioni(decisa_il)",
+    # --- APPROVALS: coda delle azioni in attesa di firma umana (cancello §4a) ---
+    # id = UUID4 casuale monouso (NON autoincrement: non enumerabile).
+    # tool_args_json verbatim + tool_args_hash = SHA-256 → vincolo d'esecuzione.
+    # Nessuna DELETE (audit, §4d); payload immutabile; stato immutabile fuori da
+    # 'pending'. I trigger valgono anche da SQL grezzo (recursive_triggers ON in
+    # _connect chiude anche l'aggiramento via INSERT OR REPLACE).
+    """
+    CREATE TABLE IF NOT EXISTS approvals (
+        id               TEXT    PRIMARY KEY NOT NULL CHECK(length(id) = 36),
+        turno_id         TEXT,
+        tool_name        TEXT    NOT NULL CHECK(length(tool_name) > 0),
+        tool_args_json   TEXT    NOT NULL,
+        tool_args_hash   TEXT    NOT NULL CHECK(length(tool_args_hash) = 64),
+        azione_leggibile TEXT    NOT NULL,
+        stato            TEXT    NOT NULL DEFAULT 'pending'
+                                 CHECK(stato IN ('pending', 'approved', 'rejected', 'expired')),
+        ts_created       REAL    NOT NULL,
+        ts_expiry        REAL    NOT NULL,
+        ts_resolved      REAL,
+        risolto_da       TEXT    CHECK(risolto_da IS NULL OR
+                                       risolto_da IN ('telegram_user', 'timeout', 'kernel_revoca')),
+        telegram_user_id INTEGER
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_approvals_stato ON approvals(stato)",
+    """
+    CREATE TRIGGER IF NOT EXISTS approvals_solo_pending_insert
+    BEFORE INSERT ON approvals
+    WHEN NEW.stato != 'pending'
+    BEGIN
+        SELECT RAISE(ABORT, 'approvals: una richiesta nasce solo pending');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approvals_no_delete
+    BEFORE DELETE ON approvals
+    BEGIN
+        SELECT RAISE(ABORT, 'approvals: DELETE vietato (audit)');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approvals_stato_immutabile
+    BEFORE UPDATE ON approvals
+    WHEN OLD.stato != 'pending'
+    BEGIN
+        SELECT RAISE(ABORT, 'approvals: stato immutabile dopo la risoluzione');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approvals_payload_immutabile
+    BEFORE UPDATE ON approvals
+    WHEN NEW.id IS NOT OLD.id
+      OR NEW.turno_id IS NOT OLD.turno_id
+      OR NEW.tool_name IS NOT OLD.tool_name
+      OR NEW.tool_args_json IS NOT OLD.tool_args_json
+      OR NEW.tool_args_hash IS NOT OLD.tool_args_hash
+      OR NEW.azione_leggibile IS NOT OLD.azione_leggibile
+      OR NEW.ts_created IS NOT OLD.ts_created
+      OR NEW.ts_expiry IS NOT OLD.ts_expiry
+    BEGIN
+        SELECT RAISE(ABORT, 'approvals: payload firmato immutabile');
+    END
+    """,
 )
+
+
+def hash_args(tool_args_json: str) -> str:
+    """SHA-256 esadecimale di `tool_args_json` (UTF-8): il vincolo d'esecuzione
+    di un'approvazione (§4a/§4e)."""
+    return hashlib.sha256(tool_args_json.encode("utf-8")).hexdigest()
+
+
+def _approval_timeout_secs() -> int:
+    """Timeout da env GAS_APPROVAL_TIMEOUT_SECS (default 1800). Valore non
+    numerico o <= 0 → WARN + default (fail-safe §9, mai crash)."""
+    raw = os.environ.get("GAS_APPROVAL_TIMEOUT_SECS")
+    if raw is None:
+        return DEFAULT_APPROVAL_TIMEOUT_SECS
+    try:
+        val = int(raw)
+        if val > 0:
+            return val
+    except ValueError:
+        pass
+    log.warning("GAS_APPROVAL_TIMEOUT_SECS non valido (%r) — uso default %d",
+                raw, DEFAULT_APPROVAL_TIMEOUT_SECS)
+    return DEFAULT_APPROVAL_TIMEOUT_SECS
+
+
+def _uuid_valido(approval_id: Any) -> bool:
+    """True solo per un UUID in forma canonica (36 char, minuscolo, con trattini),
+    cioè esattamente come lo genera enqueue_approval."""
+    if not isinstance(approval_id, str):
+        return False
+    try:
+        return str(uuid.UUID(approval_id)) == approval_id
+    except ValueError:
+        return False
 
 
 def default_db_path(root: Union[str, Path]) -> Path:
@@ -1285,3 +1393,183 @@ class MemoryStore:
         except (sqlite3.Error, OSError) as e:
             log.warning("get_lezioni_approvate fallita (%s): %s", self.db_path, e)
             return []
+
+    # ----------------------------------------- coda approvazioni (cancello C3)
+    # Fail-closed (§9 + design_cancello §4d): ogni errore → l'azione NON è
+    # approvabile/eseguibile (None / False / []), mai eccezione verso il turno.
+    # Nessuno di questi metodi è un tool del modello: l'approvazione arriva solo
+    # da fuori dal loop (bridge Telegram, Fetta C4).
+
+    def enqueue_approval(
+        self,
+        tool_name: str,
+        tool_args: Union[str, Dict[str, Any]],
+        turno_id: Optional[str] = None,
+        azione_leggibile: Optional[str] = None,
+        timeout_secs: Optional[int] = None,
+    ) -> Optional[str]:
+        """Parcheggia un'azione in stato 'pending'. Ritorna l'UUID monouso, oppure
+        None se la coda non è disponibile o gli argomenti non sono un oggetto JSON
+        (fail-closed: senza UUID l'azione non può partire).
+        `tool_args` stringa → salvata VERBATIM (base di read-back ed esecuzione);
+        dict → serializzato una volta sola qui. L'hash è calcolato sul testo salvato."""
+        if not self.available:
+            log.warning("enqueue_approval: memoria non disponibile — azione NON accodata")
+            return None
+        if not isinstance(tool_name, str) or not tool_name:
+            log.warning("enqueue_approval: tool_name non valido (%r)", tool_name)
+            return None
+        try:
+            if isinstance(tool_args, str):
+                args_json = tool_args
+                parsed = json.loads(args_json)
+            else:
+                args_json = json.dumps(tool_args, ensure_ascii=False, sort_keys=True)
+                parsed = tool_args
+        except (TypeError, ValueError) as e:
+            log.warning("enqueue_approval: argomenti non serializzabili (%s)", e)
+            return None
+        if not isinstance(parsed, dict):
+            log.warning("enqueue_approval: argomenti non sono un oggetto JSON")
+            return None
+        if timeout_secs is None:
+            timeout_secs = _approval_timeout_secs()
+        approval_id = str(uuid.uuid4())
+        now = time.time()
+        try:
+            with self._connect() as con:
+                con.execute(
+                    "INSERT INTO approvals (id, turno_id, tool_name, tool_args_json, "
+                    "tool_args_hash, azione_leggibile, stato, ts_created, ts_expiry) "
+                    "VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+                    (approval_id, turno_id, tool_name, args_json, hash_args(args_json),
+                     azione_leggibile or f"Esegui {tool_name}", now, now + timeout_secs),
+                )
+                con.commit()
+            return approval_id
+        except (sqlite3.Error, OSError) as e:
+            log.warning("enqueue_approval fallita (%s): %s — azione NON accodata",
+                        self.db_path, e)
+            return None
+
+    def get_approval(self, approval_id: str) -> Optional[Dict[str, Any]]:
+        """Read-back integrale di una richiesta (args verbatim, nessun troncamento)
+        con `hash_ok` = SHA-256(tool_args_json) == tool_args_hash.
+        UUID malformato / inesistente / errore → None."""
+        if not _uuid_valido(approval_id):
+            return None
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT * FROM approvals WHERE id = ?", (approval_id,)
+                ).fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            d["hash_ok"] = hash_args(d["tool_args_json"]) == d["tool_args_hash"]
+            return d
+        except (sqlite3.Error, OSError) as e:
+            log.warning("get_approval fallita (%s): %s", self.db_path, e)
+            return None
+
+    def resolve_approval(
+        self,
+        approval_id: str,
+        stato: str,
+        telegram_user_id: Optional[int] = None,
+        risolto_da: str = "telegram_user",
+    ) -> Tuple[bool, str]:
+        """Porta una richiesta da 'pending' a 'approved' o 'rejected', UNA sola volta.
+        - doppia risoluzione → no-op (False): lo stato è immutabile;
+        - scaduta (now >= ts_expiry) → marcata 'expired', mai approvata (§4d);
+        - 'approved' richiede telegram_user_id intero e hash integro: args
+          manomessi → la richiesta viene revocata ('rejected', kernel_revoca).
+        Ritorna (True, '') solo se QUESTA chiamata ha risolto la richiesta."""
+        if stato not in ("approved", "rejected"):
+            return False, f"Stato non ammesso: {stato!r} (ammessi: approved, rejected)."
+        if risolto_da not in RISOLTO_DA_APPROVAL or risolto_da == "timeout":
+            return False, f"risolto_da non ammesso: {risolto_da!r}."
+        if not _uuid_valido(approval_id):
+            return False, "ID approvazione non valido."
+        if stato == "approved" and (
+            not isinstance(telegram_user_id, int) or isinstance(telegram_user_id, bool)
+        ):
+            return False, "Approvazione senza telegram_user_id: negata."
+        try:
+            with self._connect() as con:
+                con.execute("BEGIN IMMEDIATE")
+                row = con.execute(
+                    "SELECT * FROM approvals WHERE id = ?", (approval_id,)
+                ).fetchone()
+                if row is None:
+                    con.rollback()
+                    return False, "Approvazione non trovata."
+                if row["stato"] != "pending":
+                    con.rollback()
+                    return False, f"Già risolta (stato '{row['stato']}'): nessuna modifica."
+                now = time.time()
+                if now >= row["ts_expiry"]:
+                    con.execute(
+                        "UPDATE approvals SET stato = 'expired', ts_resolved = ?, "
+                        "risolto_da = 'timeout' WHERE id = ? AND stato = 'pending'",
+                        (now, approval_id),
+                    )
+                    con.commit()
+                    return False, "Approvazione scaduta: azione non eseguita."
+                if stato == "approved" and hash_args(row["tool_args_json"]) != row["tool_args_hash"]:
+                    con.execute(
+                        "UPDATE approvals SET stato = 'rejected', ts_resolved = ?, "
+                        "risolto_da = 'kernel_revoca' WHERE id = ? AND stato = 'pending'",
+                        (now, approval_id),
+                    )
+                    con.commit()
+                    log.warning("resolve_approval: hash args NON integro per %s — revocata",
+                                approval_id)
+                    return False, "Integrità argomenti violata: approvazione revocata."
+                cur = con.execute(
+                    "UPDATE approvals SET stato = ?, ts_resolved = ?, risolto_da = ?, "
+                    "telegram_user_id = ? WHERE id = ? AND stato = 'pending'",
+                    (stato, now, risolto_da, telegram_user_id, approval_id),
+                )
+                con.commit()
+                if cur.rowcount != 1:
+                    return False, "Approvazione non più pending: nessuna modifica."
+                return True, ""
+        except (sqlite3.Error, OSError) as e:
+            log.warning("resolve_approval fallita (%s): %s — nessuna approvazione",
+                        self.db_path, e)
+            return False, f"Errore DB: {e}"
+
+    def get_pending_approvals(self) -> List[Dict[str, Any]]:
+        """Richieste ancora 'pending' e NON scadute, dalla più vecchia.
+        Fail-safe §9: errore → []."""
+        try:
+            with self._connect() as con:
+                rows = con.execute(
+                    "SELECT * FROM approvals WHERE stato = 'pending' AND ts_expiry > ? "
+                    "ORDER BY ts_created ASC",
+                    (time.time(),),
+                ).fetchall()
+            return [dict(r) for r in rows]
+        except (sqlite3.Error, OSError) as e:
+            log.warning("get_pending_approvals fallita (%s): %s", self.db_path, e)
+            return []
+
+    def expire_stale_approvals(self) -> int:
+        """Marca 'expired' (risolto_da='timeout') ogni 'pending' oltre ts_expiry.
+        Le righe restano per audit (§4d). Ritorna quante ne ha scadute; errore → 0
+        (le pending scadute restano comunque non approvabili: resolve_approval e
+        get_pending_approvals ricontrollano ts_expiry)."""
+        try:
+            now = time.time()
+            with self._connect() as con:
+                cur = con.execute(
+                    "UPDATE approvals SET stato = 'expired', ts_resolved = ?, "
+                    "risolto_da = 'timeout' WHERE stato = 'pending' AND ts_expiry <= ?",
+                    (now, now),
+                )
+                con.commit()
+                return int(cur.rowcount)
+        except (sqlite3.Error, OSError) as e:
+            log.warning("expire_stale_approvals fallita (%s): %s", self.db_path, e)
+            return 0
