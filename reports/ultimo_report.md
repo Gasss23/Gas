@@ -26,11 +26,11 @@ IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{
 **tests/test_unit_kernel.py:4946** — aggiunto `# gasmerge-ip-ok`:
 ```python
 # prima
-[("ssh_vps", '{"host": "1.2.3.4"}')],  # ssh non è nell'allowlist → DENY
+[("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY
 # dopo
-[("ssh_vps", '{"host": "1.2.3.4"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
+[("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
 ```
-Il test T72b continua a testare il DENY: `ssh_vps` non è nell'allowlist dei tool → `Operazione negata`. L'IP `1.2.3.4` è esclusivamente un parametro della fixture, non una connessione reale.
+Il test T72b continua a testare il DENY: `ssh_vps` non è nell'allowlist dei tool → `Operazione negata`. L'IP `<IP-fittizio>` è esclusivamente un parametro della fixture, non una connessione reale.
 
 **tests/test_unit_kernel.py:4920** — assert T71h read più preciso (chiude R-c2-9):
 ```python
@@ -62,7 +62,7 @@ _out71h_r == "test"
 
 ```
 === Simulazione invariante IP (test_unit_kernel.py, HEAD post-fix) ===
-git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "1.2.3.4"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
+git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
 Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK. ZERO BLOCCHI.
 ```
 
@@ -80,7 +80,7 @@ Diff revisionato: tests/test_unit_kernel.py (2 modifiche puntuali)
    chiude R-c2-9 da review #120)
 
 2. tests/test_unit_kernel.py:4946 — aggiunge # gasmerge-ip-ok in coda alla riga con IP fittizio
-   1.2.3.4 nel fixture T72b — rischio: il marker potrebbe esentare per errore un IP reale in
+   <IP-fittizio> nel fixture T72b — rischio: il marker potrebbe esentare per errore un IP reale in
    codice produzione — esito: ok (è commento in riga di fixture test, IP è parametro fittizio,
    comportamento DENY del test invariato)
 

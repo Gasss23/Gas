@@ -79,7 +79,7 @@ Diff revisionato: tests/test_unit_kernel.py (2 modifiche puntuali)
    esito: ok (suite 423 PASS confermata, chiude R-c2-9 da review #120)
 
 2. tests/test_unit_kernel.py:4946 — aggiunge # gasmerge-ip-ok in coda alla riga con IP fittizio
-   1.2.3.4 nel fixture T72b
+   <IP-fittizio> nel fixture T72b
    rischio: il marker potrebbe esentare per errore un IP reale in codice produzione
    esito: ok (è commento in riga di fixture test, IP è parametro fittizio, comportamento DENY
    del test invariato)
@@ -106,6 +106,8 @@ VERDETTO FINALE: APPROVATO
 
 Suite: 423 PASS, 5 FAIL F-mac-1 (attesi, non regressioni). Il commit può procedere.
 ```
+
+Nota: unico intervento sul verbatim = IP fittizio redatto in <IP-fittizio> per l'invariante IP di gasmerge.
 
 ---
 
@@ -139,6 +141,6 @@ sono già noti e presenti sulla branch prima di questo fix. CI atteso verde anch
 
 ```
 === Simulazione invariante IP (test_unit_kernel.py, HEAD post-fix) ===
-git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "1.2.3.4"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
+git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
 Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK. ZERO BLOCCHI.
 ```
