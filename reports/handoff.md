@@ -78,7 +78,7 @@ Diff tocca `tests/test_unit_hooks.py` e `scripts/fine_task_finale.sh`: gate revi
 > **Elementi del diff esaminati**
 >
 > 1. **`scripts/fine_task_finale.sh:67`** — `git grep -nE` sull'albero `HEAD`.
->    - Rischio esaminato: regex diversa da gasmerge.sh:91, oppure ambito ristretto.
+>    - Rischio esaminato: regex diversa da gasmerge.sh (riga 91), oppure ambito ristretto.
 >    - Esito: **ok**. La regex è identica byte per byte a quella di gasmerge.sh (riga 91). L'ambito è tutto l'albero: cambia solo il ref (`HEAD` invece di `origin/$BRANCH`), ed è corretto perché il gate gira prima del push. Ho simulato il gate sull'albero staged reale (`git write-tree`): il residuo è vuoto, quindi non blocca la sessione corrente.
 >
 > 2. **`scripts/fine_task_finale.sh:77-84`** — filtro loopback riga per riga via `sed`.
@@ -95,7 +95,7 @@ Diff tocca `tests/test_unit_hooks.py` e `scripts/fine_task_finale.sh`: gate revi
 >
 > 5. **`scripts/fine_task_finale.sh:90`** — allowlist con `grep -v 'gasmerge-ip-ok'` sulla riga intera.
 >    - Rischio esaminato: è proprio la lezione di #122 (l'allowlist per riga lascia passare altri IP sulla stessa riga).
->    - Esito: **riserva R2**. È una regressione voluta rispetto al R1 di #122, che filtrava IP per IP. È giustificata: ora il gate guarda tutto l'albero, e deve accettare gli stessi token che accetta gasmerge (per esempio test_unit_kernel.py:4946), altrimenti bloccherebbe righe che il merge consente. Il limite è condiviso con gasmerge, quindi non aggiunge superficie. Va però tracciato.
+>    - Esito: **riserva R2**. È una regressione voluta rispetto al R1 di #122, che filtrava IP per IP. È giustificata: ora il gate guarda tutto l'albero, e deve accettare gli stessi token che accetta gasmerge (per esempio test_unit_kernel.py riga 4946), altrimenti bloccherebbe righe che il merge consente. Il limite è condiviso con gasmerge, quindi non aggiunge superficie. Va però tracciato.
 >
 > 6. **`tests/test_unit_hooks.py:1696` e `1706`** — T-finale-4: token come commento Python, assertion portata a "IP trovato".
 >    - Rischio esaminato: l'assertion potrebbe essere soddisfatta da messaggi che non riguardano un blocco IP.
