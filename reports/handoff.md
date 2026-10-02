@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-_[da completare dopo il push — vedi procedura §0 GATE PR]_
+1. Merge della PR #110 (https://github.com/Gasss23/Gas/pull/110).
 
 ---
 
@@ -40,12 +40,12 @@ _[da completare dopo il push — vedi procedura §0 GATE PR]_
  .claude/hooks/promemoria_end.sh    |  61 ++++-
  CLAUDE.md                          |   2 +-
  reports/diff_sessione.md           |  47 ++--
- reports/handoff.md                 | 194 +++++++---------
+ reports/handoff.md                 | 225 +++++++++---------
  reports/stato_progetto.md          |   4 +-
  reports/ultimo_report.md           | 111 ++-------
  scripts/fine_task_finale.sh        | 141 +++++++++++
  tests/test_unit_hooks.py           | 465 ++++++++++++++++++++++++++++++++++++-
- 10 files changed, 835 insertions(+), 258 deletions(-)
+ 10 files changed, 866 insertions(+), 258 deletions(-)
 ```
 
 ---
@@ -53,6 +53,10 @@ _[da completare dopo il push — vedi procedura §0 GATE PR]_
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d63b4c9 docs(reports): rimuovi IP letterali da diff_sessione e ultimo_report
+ed16651 docs(handoff): fix §4 citazioni context-only per check_verdetto
+169c6e2 docs(handoff): fix §4 cross-reference format per check_verdetto
+a0932b5 docs(fine-task): report + handoff + diff_sessione — fix IP-gate #124
 fa78fb5 fix(ip-gate): allinea fine_task_finale.sh a gasmerge.sh (full-tree, token, fix fixture)
 ade4c1a chore(revisore): memoria review #124 — APPROVATO CON RISERVE
 0accbb7 docs(hook-fine-task-obbligatorio): aggiorna §6 handoff con esito CI (SUCCESS)
@@ -136,19 +140,22 @@ Nessuna modifica a gas.py. Modifiche a `tests/test_unit_hooks.py` (gate/hook onl
 ## §6 STATO CI
 
 ```
+completed	success	docs(reports): rimuovi IP letterali da diff_sessione e ultimo_report	CI	chore/hook-fine-task-obbligatorio	push	37053631494	1m0s	2026-10-02T19:21:55Z
 completed	success	docs(hook-fine-task-obbligatorio): aggiorna §6 handoff con esito CI (…	CI	chore/hook-fine-task-obbligatorio	push	37046253217	54s	2026-10-02T18:15:54Z
 completed	success	docs(hook-fine-task-obbligatorio): fix §4 handoff — citazioni file:li…	CI	chore/hook-fine-task-obbligatorio	push	37046109893	54s	2026-10-02T18:14:38Z
 completed	success	chore(hook-fine-task): script deterministico + contatore per sessione…	CI	chore/hook-fine-task-obbligatorio	push	37045838781	1m3s	2026-10-02T18:12:11Z
 ```
 
 **Mappatura commit→run:**
-- `fa78fb5` fix(ip-gate) — run non ancora disponibile alla scrittura dell'handoff (non ancora pushato)
-- `ade4c1a` chore(revisore) memoria #124 — run non ancora disponibile alla scrittura dell'handoff (non ancora pushato)
-- `0accbb7` docs — run 37046253217 (SUCCESS, 54s)
-- `0bb3743` docs — incluso nel push che ha prodotto run 37046109893 (SUCCESS, testa HEAD `0bb3743`? no — `0accbb7` è HEAD della run 37046253217; `0bb3743` è HEAD della run 37046109893 — SUCCESS)
-- `bfb8dee` docs — incluso nel push che ha prodotto run 37045838781 (testa HEAD `9863352`; commit `bfb8dee` mai head di una run, contenuto incluso nell'albero HEAD `9863352`)
+- `d63b4c9` docs(reports) — HEAD run 37053631494 (SUCCESS, 1m0s) — testa l'intero albero inclusi `fa78fb5` e `ade4c1a`
+- `ed16651`, `169c6e2`, `a0932b5` docs — commits intermedi dello stesso push; nessuno è stato HEAD di una run autonoma; contenuto incluso nell'albero testato da run 37053631494
+- `fa78fb5` fix(ip-gate) — nessuna run autonoma; incluso nel push `d63b4c9` → testato da run 37053631494
+- `ade4c1a` chore(revisore) — nessuna run autonoma; incluso nel push `d63b4c9` → testato da run 37053631494
+- `0accbb7` docs — HEAD run 37046253217 (SUCCESS)
+- `0bb3743` docs — HEAD run 37046109893 (SUCCESS)
+- `bfb8dee` docs — nessuna run autonoma; incluso nell'albero HEAD `9863352` testato da run 37045838781
 - `9863352` chore(hook-fine-task) — HEAD run 37045838781 (SUCCESS)
-- `ac51ccf`, `c644990` — commit precedenti a questa sessione, coperti da run precedenti
+- `ac51ccf`, `c644990` — precedenti a questa sessione, coperti da run precedenti
 
 ---
 
