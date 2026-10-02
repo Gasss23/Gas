@@ -224,12 +224,54 @@ Riscrivi §2 e §3 (e §6) nel file `reports/handoff.md` con questi output. Poi 
 git add reports/handoff.md
 ```
 
-SOLO ORA committa e pusha:
+### Gate pre-commit obbligatori (esegui nell'ordine; se uno fallisce → correggi, ri-aggiungi in stage, ripeti)
+
+**Titoli delle sezioni**: leggi i titoli attesi direttamente dalle regex `re.search(r"##\s*§...` in `scripts/check_handoff.py` e `scripts/check_verdetto.py`. Vietato inventare varianti rispetto a quanto le regex prescrivono.
+
+```bash
+# Gate A — coerenza §2 GIT DIFF --STAT
+python3 scripts/check_handoff.py
+# Exit ≠ 0 → correggi §2 in handoff.md, git add reports/handoff.md, ripeti.
+
+# Gate B — citazioni §4 VERDETTO
+python3 scripts/check_verdetto.py
+# Exit ≠ 0 → correggi §4 in handoff.md, git add reports/handoff.md, ripeti.
+
+# Gate IP — nessun indirizzo IP nei report (nemmeno fittizi; regola: i report non citano MAI IP)
+if git grep -nE '([0-9]{1,3}\.){3}[0-9]{1,3}' -- reports/ \
+     | grep -v gasmerge-ip-ok \
+     | grep -vE '127\.'; then
+  echo "STOP: IP trovato in reports/ — sostituisci con <IP-redatto> e ripeti."
+  exit 1
+fi
+```
+
+Mai committare con gate rossi.
 
 ```bash
 git commit -m "docs(<descrizione-breve>): <cosa hai fatto>"
 git push
 ```
+
+### Post-push obbligatorio (URL + CI)
+
+```bash
+# 1. Attendi la fine della run CI del commit appena pushato.
+#    L'esito REALE (non "atteso") va riportato in §6 di handoff.md.
+gh run watch
+
+# 2. Verifica che HEAD sia stato pushato (URL valido solo se HEAD == origin).
+git fetch origin
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse @{u})" ]; then
+  echo "ERRORE: HEAD non pushato — URL non valido"; exit 1
+fi
+
+# 3. Stampa URL con SHA lungo — SEMPRE, prima del cat integrale.
+#    Se manca → task INCOMPLETO.
+echo "URL_HANDOFF: https://raw.githubusercontent.com/Gasss23/Gas/$(git rev-parse HEAD)/reports/handoff.md"
+```
+
+Aggiorna §6 di handoff.md con l'esito reale di `gh run watch`, poi ri-aggiungi in stage e re-committa **solo** se §6 era errato — altrimenti vai al passo successivo.
 
 ---
 

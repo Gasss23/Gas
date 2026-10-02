@@ -1,98 +1,40 @@
-# Ultimo Report — fix gate IP T72b + R-c2-9
-
+# Task: /fine-task robusto — gate pre-commit + post-push
 **Data:** 2026-10-02
-**Branch:** feat/cancello-c2
-**Commit:** a0a5294
-**Task:** sblocca gasmerge gate IP + chiude riserva R-c2-9
+**Branch:** chore/fine-task-robusto
 
 ---
 
-## §1 — SONDA gasmerge.sh IP allowlist (VERBATIM)
+## DECISIONI UMANE RICHIESTE
 
-Meccanismo (`scripts/gasmerge.sh` righe 91–135):
-
-```
-IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "origin/$BRANCH")
-```
-
-- Step 1: rimuove le righe con soli IP di loopback `127.x.x.x` via `sed` + grep residuo.
-- Step 2: filtra con `grep -v 'gasmerge-ip-ok'` — le righe che contengono il token letterale **`gasmerge-ip-ok`** sono allowlistate (vouch umano esplicito sulla riga sorgente).
-- Se residuo non vuoto → `BLOCCO: trovati IP non allowlistati` + `exit 1`.
+1. Merge della PR su main (URL da §0 di handoff.md).
 
 ---
 
-## §2 — FIX applicati
+## Esito fette
 
-**tests/test_unit_kernel.py:4946** — aggiunto `# gasmerge-ip-ok`:
-```python
-# prima
-[("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY
-# dopo
-[("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
-```
-Il test T72b continua a testare il DENY: `ssh_vps` non è nell'allowlist dei tool → `Operazione negata`. L'IP `<IP-fittizio>` è esclusivamente un parametro della fixture, non una connessione reale.
+**Fetta 0 — SONDA**: `FATTA`
+- PR #108 verificata MERGED su main (2026-10-02T15:46:50Z).
+- Sezioni rilevanti di fine-task.md lette VERBATIM (URL in §5 già presente ma senza guardia HEAD==@{u} né gh run watch).
+- `git log -p --since="10 days ago" -- .claude/commands/fine-task.md`: nessun output = nessuna modifica negli ultimi 10 giorni.
 
-**tests/test_unit_kernel.py:4920** — assert T71h read più preciso (chiude R-c2-9):
-```python
-# prima
-"test" in _out71h_r
-# dopo
-_out71h_r == "test"
-```
-`read_file` restituisce il contenuto raw (non wrappato), quindi l'uguaglianza esatta è corretta e più rigida.
+**Fetta 1 — Modifica .claude/commands/fine-task.md**: `FATTA`
+- Aggiunto blocco "Gate pre-commit obbligatori" in §4bis, prima del commit:
+  - Gate A: `python3 scripts/check_handoff.py`
+  - Gate B: `python3 scripts/check_verdetto.py`
+  - Gate IP: `git grep -nE '([0-9]{1,3}\.){3}[0-9]{1,3}' -- reports/` con filtri gasmerge-ip-ok e 127.
+  - Nota titoli: puntare alle regex degli script, vietato inventare varianti.
+- Aggiunto blocco "Post-push obbligatorio" in §4bis, dopo il push:
+  - `gh run watch` (esito REALE in §6)
+  - Guardia `HEAD == @{u}` prima di stampare URL
+  - `echo "URL_HANDOFF: ..."` con SHA lungo — SEMPRE, prima del cat.
 
----
+**Fetta 2 — Prova reale (gate a–d su questa sessione)**: `FATTA`
+- Eseguita durante questo /fine-task (vedi handoff §6 per esito CI e URL_HANDOFF stampato).
 
-## §3 — Suite kernel
-
-```
-=== RIEPILOGO: 423 PASS, 5 FAIL ===
-  FAIL: T11c2 snapshot fallito -> run_command (sandbox bwrap non disponibile)
-  FAIL: T11e run_command fa scattare lo snapshot (bwrap non disponibile)
-  FAIL: T12a comando in allowlist (wc) eseguito, output reale (bwrap non disponibile)
-  FAIL: T12c pipe non interpretata (bwrap non disponibile)
-  FAIL: T12e command substitution non eseguita (bwrap non disponibile)
-```
-
-**423 PASS, 5 FAIL F-mac-1** — tutti i FAIL sono bwrap/macOS, invariati rispetto alla baseline.
+**Stop gate**: rispettato — toccato solo `.claude/commands/fine-task.md` e `reports/`.
 
 ---
 
-## §4 — Simulazione invariante IP (verbatim)
+## Anomalie
 
-```
-=== Simulazione invariante IP (test_unit_kernel.py, HEAD post-fix) ===
-git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
-Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK. ZERO BLOCCHI.
-```
-
----
-
-## §5 — Verdetto revisore #121 (VERBATIM)
-
-```
-VERDETTO FINALE: APPROVATO
-
-Diff revisionato: tests/test_unit_kernel.py (2 modifiche puntuali)
-
-1. tests/test_unit_kernel.py:4920 — sostituisce "test" in _out71h_r con _out71h_r == "test"
-   rischio: regression se read_file inietta prefix/suffix — esito: ok (suite 423 PASS confermata,
-   chiude R-c2-9 da review #120)
-
-2. tests/test_unit_kernel.py:4946 — aggiunge # gasmerge-ip-ok in coda alla riga con IP fittizio
-   <IP-fittizio> nel fixture T72b — rischio: il marker potrebbe esentare per errore un IP reale in
-   codice produzione — esito: ok (è commento in riga di fixture test, IP è parametro fittizio,
-   comportamento DENY del test invariato)
-
-Controllo antipattern: nessun raw history slicing, nessuna simulazione di tool, _get_window()
-non toccata, loop cap (10 iterazioni) non toccato, guardrail API intatti.
-
-Suite: 423 PASS, 5 FAIL F-mac-1 (attesi, non regressioni). Il commit può procedere.
-```
-
----
-
-## §6 — Riserve aggiornate
-
-- **R-c2-9: CHIUSA** (assert esatto T71h read)
-- Riserve aperte non bloccanti: R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-10
+Nessuna anomalia. Nessun IP trovato nei report.
