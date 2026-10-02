@@ -1,26 +1,21 @@
-# Diff Sessione — 2026-10-02 (feat/cancello-c2 fix gate IP + R-c2-9)
+# DIFF SESSIONE — 2026-10-02
 
-## File toccati questa sessione
+File toccati in questa sessione (da `git diff --stat BASE..HEAD`, BASE=9f6dfd79ccdb00459b184f59cb65bc1a7e0bba85):
 
-| File | Tipo modifica |
-|------|---------------|
-| `tests/test_unit_kernel.py` | Fix riga 4946 (gasmerge-ip-ok) + riga 4920 (assert esatto) |
-| `reports/stato_progetto.md` | Aggiornamento stato feat/cancello-c2 |
-| `reports/ultimo_report.md` | Report task corrente |
-| `reports/diff_sessione.md` | Questo file |
-| `reports/handoff.md` | Handoff sessione |
+| File | Modifica |
+|------|----------|
+| `.claude/agents/memoria_revisore.md` | Review #122 risanata (IP-fittizio → `<IP-fittizio>`); review #124 aggiunta (APPROVATO CON RISERVE) |
+| `.claude/commands/fine-task.md` | Aggiornamento template /fine-task (sessione precedente) |
+| `.claude/hooks/promemoria_end.sh` | Hook promemoria: contatore per-sessione + fix logica (sessione precedente) |
+| `CLAUDE.md` | Aggiornamento §3 regola reporting (sessione precedente) |
+| `reports/diff_sessione.md` | Questo file (riscritto a ogni sessione) |
+| `reports/handoff.md` | Handoff di sessione (riscritto) |
+| `reports/ultimo_report.md` | Report fine task (riscritto) |
+| `scripts/fine_task_finale.sh` | Gate IP riscritto: full-tree (`HEAD`), regex word-boundary identica a gasmerge.sh, loopback-first per-riga via sed, allowlist gasmerge-ip-ok; header aggiornato |
+| `tests/test_unit_hooks.py` | `# gasmerge-ip-ok` su riga 1696 (fixture IP); T-finale-4 assertion aggiornata; T-finale-4b e T-finale-4c aggiunti (full-tree IP check) |
 
-## Cosa è cambiato e perché
+## Note
 
-**tests/test_unit_kernel.py:4946** — La riga del fixture T72b conteneva l'IP fittizio `1.2.3.4` senza il token `gasmerge-ip-ok`. Il gate IP di `scripts/gasmerge.sh` bloccava il merge della PR #108. Fix: aggiunto `# gasmerge-ip-ok` in coda (meccanismo ufficiale di allowlist). Il test DENY è invariato: il blocco testa che `ssh_vps` non sia nell'allowlist dei tool, non l'IP.
-
-**tests/test_unit_kernel.py:4920** — Riserva R-c2-9 da review #120: il check T71h usava `"test" in _out71h_r` (substring) invece di `_out71h_r == "test"` (uguaglianza esatta). `read_file` restituisce il contenuto raw, quindi l'uguaglianza è corretta e più rigorosa. Fix applicato; T71h PASS confermato.
-
-## Commit della sessione
-
-- `a0a5294` — fix(tests): sblocca gate IP T72b e stringe assert T71h read
-- `5d7f052` — chore(revisore): memoria review #121 — APPROVATO (generato dal revisore)
-
-## Suite
-
-423 PASS, 5 FAIL F-mac-1 (invariati, bwrap macOS non disponibile).
+- Il commit `ade4c1a` (revisore memoria #124) è stato prodotto automaticamente dallo script `scripts/commit_memoria_revisore.sh`.
+- Il commit `fa78fb5` raccoglie le tre modifiche al codice (memoria_revisore, fine_task_finale.sh, test_unit_hooks.py).
+- Suite 51/51 PASS dopo le modifiche.

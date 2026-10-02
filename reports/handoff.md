@@ -1,146 +1,170 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-02 — fix gate IP T72b + chiusura R-c2-9
+**Sessione:** 2026-10-02 — Fix IP-gate: sblocco branch chore/hook-fine-task-obbligatorio per gasmerge
 
 ---
 
-## §0 — DECISIONI UMANE RICHIESTE
+## §0 DECISIONI UMANE RICHIESTE
 
-Nessuna decisione umana bloccante in questa sessione.
-
-**Prossimo passo suggerito:** eseguire `gasmerge 108` per mergiare PR #108 (feat/cancello-c2). Il gate IP era l'unico blocco noto; ora risolto.
+1. Merge della PR #110 (https://github.com/Gasss23/Gas/pull/110).
 
 ---
 
-## §1 — Sonda gasmerge.sh IP allowlist
+## §1 SCOPE & ESITO FETTE
 
-**Meccanismo trovato (scripts/gasmerge.sh righe 91–135):**
+- **Fetta 1 — `memoria_revisore.md:179`: sostituzione IP con `<IP-fittizio>`**: FATTA  
+  Sostituito IP fittizio alla riga #122. Nient'altro toccato nel file.
 
-Il gate IP usa `git grep -nE` su tutto l'albero del branch per trovare IPv4 quad-dotted. Poi:
-1. Rimuove le righe con soli loopback `127.x.x.x` (via `sed` + re-grep residuo)
-2. Filtra le righe che contengono il token letterale **`gasmerge-ip-ok`** via `grep -v 'gasmerge-ip-ok'`
-3. Se residuo non vuoto → `BLOCCO: trovati IP non allowlistati` + `exit 1`
+- **Fetta 2 — `test_unit_hooks.py:1696`: aggiunta `# gasmerge-ip-ok`**: FATTA  
+  Token aggiunto come commento Python fuori dalla stringa. Comportamento del test invariato.
 
-Il token `gasmerge-ip-ok` va sulla riga sorgente dell'esempio/fixture (non sui file temporanei scritti dal test, che il guard becca comunque — nota dal commento stesso dello script).
+- **Fetta 3 — `fine_task_finale.sh` Gate IP allineato a `gasmerge.sh`**: FATTA  
+  Full-tree (HEAD), regex word-boundary identica, loopback-first via sed per-riga, allowlist gasmerge-ip-ok.
 
----
+- **Fetta 4 — Test aggiornati**: FATTA  
+  T-finale-4 assertion aggiornata; T-finale-4b e T-finale-4c aggiunti. Suite: 51/51 PASS.
 
-## §2 GIT DIFF --STAT
+- **Fetta 5 — Simulazione invariante gasmerge**: FATTA  
+  Zero blocchi sull'albero di lavoro con logica gasmerge completa (printf-based, no echo).
 
-```
-.claude/agents/memoria_revisore.md |   8 ++
- gas.py                             |  99 ++++++++++++++++----
- modules/gate/gate.py               |   6 ++
- reports/diff_sessione.md           |  29 ++++--
- reports/handoff.md                 | 170 ++++++++++++++++++++--------------
- reports/stato_progetto.md          |  11 ++-
- reports/ultimo_report.md           | 107 +++++++++++++++++-----
- tests/test_unit_kernel.py          | 183 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 486 insertions(+), 127 deletions(-)
-```
+- **Fetta 6 — Revisore Opus #124**: FATTA  
+  APPROVATO CON RISERVE. R-finale-1 (media): set -e attivo dopo gate IP. R-finale-2 (bassa/nota): allowlist per riga condivisa con gasmerge.
 
 ---
 
-## §3 — git log (commit della sessione corrente)
+## §2 GIT DIFF --STAT (sessione)
 
 ```
-a0a5294 fix(tests): sblocca gate IP T72b e stringe assert T71h read
-5d7f052 chore(revisore): memoria review #121 — APPROVATO
-```
-
-Commit dell'intera branch (per completezza):
-```
-a0a5294 fix(tests): sblocca gate IP T72b e stringe assert T71h read
-5d7f052 chore(revisore): memoria review #121 — APPROVATO
-f393434 docs(cancello-c2): fine-task — handoff con CI verde a14373a
-a14373a docs(cancello-c2): fine-task fix-CI — §2 handoff con tutti e 8 i file del diff
-9edb255 docs(cancello-c2): fix-session — review #120 T71h APPROVATO CON RISERVE
-0ee4fa9 chore(revisore): memoria review #120 — APPROVATO CON RISERVE
-7d1f94b docs(cancello-c2): fine-task fix-CI — handoff §2 con formato check_handoff corretto
-1764ee8 docs(cancello-c2): fine-task — ultimo_report + handoff + diff_sessione + stato_progetto
-c388c0f feat(cancello-c2): C2 gate integration + R-nw-1 path hardening
-b5b99d6 chore(revisore): memoria review #119 — APPROVATO CON RISERVE
-1759355 chore(revisore): memoria review #118 — APPROVATO CON RISERVE
+ .claude/agents/memoria_revisore.md |   6 +
+ .claude/commands/fine-task.md      |  62 ++---
+ .claude/hooks/promemoria_end.sh    |  61 ++++-
+ CLAUDE.md                          |   2 +-
+ reports/diff_sessione.md           |  47 ++--
+ reports/handoff.md                 | 225 +++++++++---------
+ reports/stato_progetto.md          |   4 +-
+ reports/ultimo_report.md           | 111 ++-------
+ scripts/fine_task_finale.sh        | 141 +++++++++++
+ tests/test_unit_hooks.py           | 465 ++++++++++++++++++++++++++++++++++++-
+ 10 files changed, 866 insertions(+), 258 deletions(-)
 ```
 
 ---
 
-## §4 VERDETTO DEL REVISORE
+## §3 GIT LOG --ONELINE (sessione)
 
 ```
-## VERDETTO REVIEW #121 — APPROVATO
-
-Diff revisionato: tests/test_unit_kernel.py (2 modifiche puntuali)
-
-### Elementi del diff esaminati
-
-1. tests/test_unit_kernel.py:4920 — sostituisce "test" in _out71h_r con _out71h_r == "test"
-   rischio: regression se read_file inietta prefix/suffix nel contenuto restituito
-   esito: ok (suite 423 PASS confermata, chiude R-c2-9 da review #120)
-
-2. tests/test_unit_kernel.py:4946 — aggiunge # gasmerge-ip-ok in coda alla riga con IP fittizio
-   <IP-fittizio> nel fixture T72b
-   rischio: il marker potrebbe esentare per errore un IP reale in codice produzione
-   esito: ok (è commento in riga di fixture test, IP è parametro fittizio, comportamento DENY
-   del test invariato)
-
-### Rischio esplicitamente escluso
-
-Comportamento runtime su VPS non verificato: le modifiche sono puramente nel layer test
-(nessuna modifica a gas.py, brains/, modules/), zero impatto sulla pipeline produzione.
-
-### Controllo antipattern (Wall of Shame)
-
-- Nessun raw history slicing
-- Nessuna simulazione di tool
-- _get_window() non toccata
-- Loop cap (10 iterazioni) non toccato
-- Guardrail API intatti
-
-### Coerenza roadmap/progetto
-
-La modifica 1 chiude la riserva R-c2-9 aperta in review #120. La modifica 2 sblocca il merge
-della PR senza alterare la logica del test. Entrambe rispettano "robustezza > potenza".
-
-VERDETTO FINALE: APPROVATO
-
-Suite: 423 PASS, 5 FAIL F-mac-1 (attesi, non regressioni). Il commit può procedere.
+d63b4c9 docs(reports): rimuovi IP letterali da diff_sessione e ultimo_report
+ed16651 docs(handoff): fix §4 citazioni context-only per check_verdetto
+169c6e2 docs(handoff): fix §4 cross-reference format per check_verdetto
+a0932b5 docs(fine-task): report + handoff + diff_sessione — fix IP-gate #124
+fa78fb5 fix(ip-gate): allinea fine_task_finale.sh a gasmerge.sh (full-tree, token, fix fixture)
+ade4c1a chore(revisore): memoria review #124 — APPROVATO CON RISERVE
+0accbb7 docs(hook-fine-task-obbligatorio): aggiorna §6 handoff con esito CI (SUCCESS)
+0bb3743 docs(hook-fine-task-obbligatorio): fix §4 handoff — citazioni file:line corrette
+bfb8dee docs(hook-fine-task-obbligatorio): report fine-task + handoff + diff_sessione
+9863352 chore(hook-fine-task): script deterministico + contatore per sessione + test
+ac51ccf chore(revisore): memoria review #123 — APPROVATO
+c644990 chore(revisore): memoria review #122 — BOCCIATO
 ```
-
-Nota: unico intervento sul verbatim = IP fittizio redatto in <IP-fittizio> per l'invariante IP di gasmerge.
 
 ---
 
-## §5 — Delta test motore
+## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Suite kernel: **423 PASS, 5 FAIL** (invariati vs sessione precedente).
+**Review #124 — 2026-10-02 — APPROVATO CON RISERVE**
 
-I 5 FAIL sono tutti F-mac-1 (bwrap/sandbox macOS non disponibile):
-- T11c2, T11e, T12a, T12c, T12e
+Diff tocca `tests/test_unit_hooks.py` e `scripts/fine_task_finale.sh`: gate revisore applicato.
 
-Nessuna regressione introdotta.
+> ### REVIEW #124 — branch chore/hook-fine-task-obbligatorio — APPROVATO CON RISERVE
+>
+> Ho fatto le letture obbligatorie (CLAUDE.md §5/§9, reports/stato_progetto.md, .claude/agents/memoria_revisore.md fino a #123). Il diff non tocca gas.py, brains/ o modules/: non c'è slicing della history, non c'è simulazione di tool e i guardrail runtime (cap 10 iterazioni, `_get_window`) restano intatti.
+>
+> **Elementi del diff esaminati**
+>
+> 1. **`scripts/fine_task_finale.sh:67`** — `git grep -nE` sull'albero `HEAD`.
+>    - Rischio esaminato: regex diversa da gasmerge.sh (riga 91), oppure ambito ristretto.
+>    - Esito: **ok**. La regex è identica byte per byte a quella di gasmerge.sh (riga 91). L'ambito è tutto l'albero: cambia solo il ref (`HEAD` invece di `origin/$BRANCH`), ed è corretto perché il gate gira prima del push. Ho simulato il gate sull'albero staged reale (`git write-tree`): il residuo è vuoto, quindi non blocca la sessione corrente.
+>
+> 2. **`scripts/fine_task_finale.sh:77-84`** — filtro loopback riga per riga via `sed`.
+>    - Rischio esaminato: una riga con sia loopback sia un IP non-loopback che passa il filtro.
+>    - Esito: **ok**. La logica è identica a gasmerge.sh (righe 97-110) (si tolgono i 127.x e si ri-testa il residuo). L'ordine è lo stesso di gasmerge: prima il loopback, poi l'allowlist.
+>
+> 3. **`scripts/fine_task_finale.sh:93-110`** — gestione dei codici di ritorno: rc 1 → OK, rc 0 → STOP, rc diverso da 0/1 → STOP.
+>    - Rischio esaminato: fail-open su errore di `git grep` o di `grep -v`.
+>    - Esito: **ok**. Tutti i rami non attesi finiscono in `exit 1`.
+>
+> 4. **`scripts/fine_task_finale.sh:69,84,92`** — `set -e` dopo ogni `set +e`.
+>    - Rischio esaminato: lo script nasce con solo `set -uo pipefail` (riga 17), quindi questo toggle attiva errexit per tutto il resto dello script.
+>    - Esito: **riserva R1**. L'ho riprodotto con un remoto bare in sola scrittura negata: `git push` (riga 115) fallisce e lo script esce subito, senza mai stampare il messaggio "ERRORE git push fallito" delle righe 117-119. Il codice di uscita è quello di git (qui 1, in altri casi può essere 128), non quello normalizzato. Non è un fail-open, perché si esce comunque con codice diverso da zero senza URL. Però contraddice il contratto della riga 15 ("exit 1 + messaggio chiaro"), e le righe 116-120 diventano codice morto.
+>
+> 5. **`scripts/fine_task_finale.sh:90`** — allowlist con `grep -v 'gasmerge-ip-ok'` sulla riga intera.
+>    - Rischio esaminato: è proprio la lezione di #122 (l'allowlist per riga lascia passare altri IP sulla stessa riga).
+>    - Esito: **riserva R2**. È una regressione voluta rispetto al R1 di #122, che filtrava IP per IP. È giustificata: ora il gate guarda tutto l'albero, e deve accettare gli stessi token che accetta gasmerge (per esempio test_unit_kernel.py riga 4946), altrimenti bloccherebbe righe che il merge consente. Il limite è condiviso con gasmerge, quindi non aggiunge superficie. Va però tracciato.
+>
+> 6. **`tests/test_unit_hooks.py:1696` e `1706`** — T-finale-4: token come commento Python, assertion portata a "IP trovato".
+>    - Rischio esaminato: l'assertion potrebbe essere soddisfatta da messaggi che non riguardano un blocco IP.
+>    - Esito: **ok**. Il token `# gasmerge-ip-ok` sta fuori dalla stringa, quindi non finisce nell'handoff di test, che resta bloccato. La sottostringa "IP trovato" compare solo nella riga STOP (riga 96): "0 IP trovati" non la contiene (finisce in "i", non in "o"). Insieme al controllo `returncode == 1`, l'assertion discrimina.
+>
+> 7. **`tests/test_unit_hooks.py:1727`** — T-finale-4b: la fixture con l'IP sta in `scripts/test_ip.sh` del repo temporaneo, il token sta sulla riga sorgente Python.
+>    - Esito: **ok**. Nel file del repo di test l'IP compare senza token. Nel repo reale gasmerge vede il token sulla riga Python.
+>    - Mutation test: con l'ambito ristretto a `reports/`, T-4b fallisce, quindi il test morde.
+>
+> 8. **`tests/test_unit_hooks.py:1739-1773`** — T-finale-4c: IP con token, exit 0 atteso.
+>    - Esito: **ok**. Lo stderr mostra Gate A e Gate B "non applicabile", poi il Gate IP. Il push è un no-op perché l'upstream è già impostato (riga 1760). HEAD coincide con `@{u}`. L'handoff non è nel diff, quindi esce con "URL_HANDOFF: non disponibile" ed exit 0.
+>    - Mutation test: rimuovendo l'allowlist, T-4c fallisce.
+>    - Nota: il revisore cita anche il token `# gasmerge-ip-ok` su test_unit_kernel.py (riga 4946) come esempio di uso precedente dello stesso pattern.
+>
+> 9. **`.claude/agents/memoria_revisore.md:178`** (riga #122) — sostituzione con `<IP-fittizio>`.
+>    - Esito: **ok**. Il word-diff mostra una sola sostituzione: l'IP letterale diventa `<IP-fittizio>`. Il resto del testo storico di #122 è invariato.
+>
+> **Test eseguiti**
+> - `tests/test_unit_hooks.py`: 51 passati su 51.
+> - Sottoinsieme `finale`: 7 su 7.
+> - Mutazioni (no allowlist; ambito `reports/`): uccise da 4c e da 4b.
+>
+> **Riserve (da tracciare in stato_progetto.md)**
+> - **R1 (media)**: errexit resta attivo dopo il gate IP. Ripristinare lo stato precedente (togliere i `set -e` e lasciare `set +e` fino alla fine, oppure salvare e ripristinare `$-`), così le righe 116-120 tornano raggiungibili e l'uscita torna normalizzata a 1 con messaggio. Conviene aggiungere un test con push fallito che verifichi la presenza di "ERRORE git push fallito" nello stderr.
+> - **R2 (bassa, nota)**: l'allowlist per riga rende esente ogni IP presente su una riga che contiene il token. Il limite è condiviso con gasmerge.sh. Annullare il R1 di #122 è stata una scelta consapevole per allinearsi a gasmerge e va dichiarata come limite noto.
 
 ---
 
-## §6 — Stato CI
+## §5 DELTA TEST DEL MOTORE
 
-Ultimo run CI su feat/cancello-c2: **verde** (commit `a14373a`, verificato nella sessione precedente).
-Il commit di questa sessione (`a0a5294`) tocca SOLO `tests/test_unit_kernel.py` — i 5 FAIL bwrap
-sono già noti e presenti sulla branch prima di questo fix. CI atteso verde anche su `a0a5294`.
-
----
-
-## §7 — Riserve aperte (non bloccanti)
-
-- R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-10
-- **R-c2-9: CHIUSA** (questa sessione)
+Nessuna modifica a gas.py. Modifiche a `tests/test_unit_hooks.py` (gate/hook only):
+- Suite hook prima: 48/48 (stimato da sessione precedente)
+- Suite hook dopo: **51/51 PASS** (+3 test: T-finale-4b, T-finale-4c, assertion T-finale-4 aggiornata)
+- Nessuna modifica a `tests/test_unit_kernel.py`
 
 ---
 
-## §8 — Simulazione invariante IP (verbatim)
+## §6 STATO CI
 
 ```
-=== Simulazione invariante IP (test_unit_kernel.py, HEAD post-fix) ===
-git grep output: HEAD:tests/test_unit_kernel.py:4946:    [("ssh_vps", '{"host": "<IP-fittizio>"}')],  # ssh non è nell'allowlist → DENY  # gasmerge-ip-ok
-Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK. ZERO BLOCCHI.
+completed	success	docs(reports): rimuovi IP letterali da diff_sessione e ultimo_report	CI	chore/hook-fine-task-obbligatorio	push	37053631494	1m0s	2026-10-02T19:21:55Z
+completed	success	docs(hook-fine-task-obbligatorio): aggiorna §6 handoff con esito CI (…	CI	chore/hook-fine-task-obbligatorio	push	37046253217	54s	2026-10-02T18:15:54Z
+completed	success	docs(hook-fine-task-obbligatorio): fix §4 handoff — citazioni file:li…	CI	chore/hook-fine-task-obbligatorio	push	37046109893	54s	2026-10-02T18:14:38Z
+completed	success	chore(hook-fine-task): script deterministico + contatore per sessione…	CI	chore/hook-fine-task-obbligatorio	push	37045838781	1m3s	2026-10-02T18:12:11Z
 ```
+
+**Mappatura commit→run:**
+- `d63b4c9` docs(reports) — HEAD run 37053631494 (SUCCESS, 1m0s) — testa l'intero albero inclusi `fa78fb5` e `ade4c1a`
+- `ed16651`, `169c6e2`, `a0932b5` docs — commits intermedi dello stesso push; nessuno è stato HEAD di una run autonoma; contenuto incluso nell'albero testato da run 37053631494
+- `fa78fb5` fix(ip-gate) — nessuna run autonoma; incluso nel push `d63b4c9` → testato da run 37053631494
+- `ade4c1a` chore(revisore) — nessuna run autonoma; incluso nel push `d63b4c9` → testato da run 37053631494
+- `0accbb7` docs — HEAD run 37046253217 (SUCCESS)
+- `0bb3743` docs — HEAD run 37046109893 (SUCCESS)
+- `bfb8dee` docs — nessuna run autonoma; incluso nell'albero HEAD `9863352` testato da run 37045838781
+- `9863352` chore(hook-fine-task) — HEAD run 37045838781 (SUCCESS)
+- `ac51ccf`, `c644990` — precedenti a questa sessione, coperti da run precedenti
+
+---
+
+## §7 RISERVE APERTE
+
+Da review #124:
+- **R-finale-1 (media)**: `set -e` attivo dopo gate IP in `fine_task_finale.sh` → push fallisce senza messaggio normalizzato; righe 116-120 diventano codice morto. Fix: ripristinare stato `set +e` dopo gate, o avvolgere push in `set +e`. Aggiungere test push-fallito.
+- **R-finale-2 (bassa/nota)**: allowlist per riga in Gate IP — limite condiviso con gasmerge.sh, dichiarato consapevolmente.
+
+Riserve ereditate (da stato_progetto.md, non chiuse in questa sessione):
+- R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-10 (feat/cancello-c2)
+- R-fts-1, R-fts-2, R-fts-3, R-e2e-refactor-1, R-e2e-refactor-2 (k3-bis)
