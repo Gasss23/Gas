@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-PLACEHOLDER §0 — da completare dopo git push (vedi procedura gh pr list/create nel template).
+1. Merge della PR #109 (https://github.com/Gasss23/Gas/pull/109).
 
 ---
 
