@@ -7,7 +7,7 @@
 ## ESITO FETTE
 
 **Fetta 1 — `memoria_revisore.md:179`: sostituzione IP con `<IP-fittizio>`**: FATTA  
-Sostituito `10.0.0.5` con `<IP-fittizio>` alla riga #122. Nient'altro toccato nel file.
+Sostituito IP-fittizio con `<IP-fittizio>` alla riga #122. Nient'altro toccato nel file.
 
 **Fetta 2 — `test_unit_hooks.py:1696`: aggiunta `# gasmerge-ip-ok`**: FATTA  
 Aggiunto il token come commento Python fuori dalla stringa. Comportamento del test invariato.

@@ -4,7 +4,7 @@ File toccati in questa sessione (da `git diff --stat BASE..HEAD`, BASE=9f6dfd79c
 
 | File | Modifica |
 |------|----------|
-| `.claude/agents/memoria_revisore.md` | Review #122 risanata (`10.0.0.5` → `<IP-fittizio>`); review #124 aggiunta (APPROVATO CON RISERVE) |
+| `.claude/agents/memoria_revisore.md` | Review #122 risanata (IP-fittizio → `<IP-fittizio>`); review #124 aggiunta (APPROVATO CON RISERVE) |
 | `.claude/commands/fine-task.md` | Aggiornamento template /fine-task (sessione precedente) |
 | `.claude/hooks/promemoria_end.sh` | Hook promemoria: contatore per-sessione + fix logica (sessione precedente) |
 | `CLAUDE.md` | Aggiornamento §3 regola reporting (sessione precedente) |
