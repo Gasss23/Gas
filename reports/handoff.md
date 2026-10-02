@@ -51,16 +51,20 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-run non ancora disponibile alla scrittura dell'handoff — push non ancora effettuato.
+gh run watch 37038021976 — esito REALE: **success** ✓
 
-gh run list -L 3 (al momento della scrittura del blocco):
 ```
-completed	success	Merge pull request #108 from Gasss23/feat/cancello-c2	CI	main	push	37029381742	55s	2026-10-02T15:46:53Z
-completed	success	docs(cancello-c2): redact IP fittizio in handoff + ultimo_report per …	CI	feat/cancello-c2	push	37024664804	55s	2026-10-02T15:06:54Z
-completed	success	docs(cancello-c2): fix handoff §2/§4 headers per check_handoff + chec…	CI	feat/cancello-c2	push	37020827027	53s	2026-10-02T14:34:35Z
+✓ chore/fine-task-robusto CI Gasss23/Gas#109 · 37038021976
+Triggered via push about 1 minute ago
+
+JOBS
+✓ handoff-check in 5s (ID 110940933724)
+✓ unit-suite in 59s (ID 110940934074)
 ```
 
-Mappatura commit→run: il commit di questa sessione (fine-task) → nessuna run su questo SHA al momento della scrittura.
+Mappatura commit→run:
+- `7b6a471` (gate pre-commit + post-push in fine-task.md) → nessuna run su questo SHA (push intermedio; l'albero di c5feceb lo include).
+- `c5feceb` (completa §0 handoff con PR #109) → run 37038021976, **success** ✓
 
 ## §7 RISERVE APERTE
 
