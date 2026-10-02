@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-02** (feat/cancello-c2 — fix-session: review #120 T71h retroattiva APPROVATO CON RISERVE)
+> Ultimo aggiornamento: **2026-10-02** (feat/cancello-c2 — fix gate IP + R-c2-9: review #121 APPROVATO)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
 
-**🔄 feat/cancello-c2 (2026-10-02, review #118+#119+#120 APPROVATO CON RISERVE)** — C2 integra il gate in `run_turn` + R-nw-1 hardening `_safe_path`. Aggiunge `UNTRUSTED_INPUT_TOOLS` + metodo puro `_finestra_e_contaminata(window)` in gas.py. Gate check prima di `execute_tool_call`: DENY → diniego, IRREVERSIBLE/UNCERTAIN+contaminata → stub approved (coda reale in C3). R-nw-1: `resolve(strict=False)`, confinamento PRIMA denylist, `relative_to(root_resolved).parts` (R-c2-1 chiusa), casefold, fail-closed. +23 test T71a-T71h + T72a-T72e. Suite: **423 PASS, 5 FAIL** F-mac-1 (invariati). Gate suite: **74 PASS**. Review #120 (2026-10-02, retroattiva su T71h): R-c2-7 CHIUSA. Riserve aperte non bloccanti: R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-9, R-c2-10. Commit: `c388c0f`.
+**🔄 feat/cancello-c2 (2026-10-02, review #118+#119+#120+#121 APPROVATO)** — C2 integra il gate in `run_turn` + R-nw-1 hardening `_safe_path`. Aggiunge `UNTRUSTED_INPUT_TOOLS` + metodo puro `_finestra_e_contaminata(window)` in gas.py. Gate check prima di `execute_tool_call`: DENY → diniego, IRREVERSIBLE/UNCERTAIN+contaminata → stub approved (coda reale in C3). R-nw-1: `resolve(strict=False)`, confinamento PRIMA denylist, `relative_to(root_resolved).parts` (R-c2-1 chiusa), casefold, fail-closed. +23 test T71a-T71h + T72a-T72e. Suite: **423 PASS, 5 FAIL** F-mac-1 (invariati). Gate suite: **74 PASS**. Review #120 (2026-10-02, retroattiva su T71h): R-c2-7 CHIUSA. Review #121 (2026-10-02): R-c2-9 CHIUSA (assert `_out71h_r == "test"` esatto), gate IP sbloccato (token `gasmerge-ip-ok` su riga 4946). Riserve aperte non bloccanti: R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo, R-c2-8, R-c2-10. Commit: `c388c0f` → `a0a5294`.
 
 **✅ feat/gate-c1 (2026-10-01, PR #107 mergiata su main)** — C1 scaffolding gate chiuso con 4 fix: R-gate-1 (NFKC), R-gate-2 (substring run_command), R-gate-3 (ci.yml gate suite), FIX-4 (commit_memoria_revisore.sh). Suite gate: **74 PASS, 0 FAIL**. Kernel: 400 PASS, 5 FAIL F-mac-1 invariati.
 
