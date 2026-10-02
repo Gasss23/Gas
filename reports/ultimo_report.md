@@ -1,50 +1,42 @@
-# Report FETTA C2 + R-nw-1 — feat/cancello-c2
+# Report sessione — feat/cancello-c2 fix-session — 2026-10-02
 
-**Data:** 2026-10-01  
-**Branch:** feat/cancello-c2
+## Scope
+Fix-session su branch `feat/cancello-c2` (PR #108). Nessun codice motore nuovo.
 
----
+## Passi eseguiti
 
-## DECISIONI UMANE RICHIESTE
+### 1. CI
+Run CI più recente su `feat/cancello-c2`: **completed/success** (SHA `7d1f94b`, run 36981821225, 2026-10-02T08:02:47Z). Ultimo SHA verde.
 
-Nessuna urgente. Prossima fetta raccomandata: **C3** (coda approvazioni SQLite) o **F-controlli-auto** (fix check_verdetto).
+### 2. Delta post-review #119
+- Review #119 (commit `b5b99d6`) aveva contato **420 PASS**. Suite attuale: **423 PASS** → delta +3.
+- T71h ha esattamente 3 `check()`. Il delta post-#119 è **solo T71h** in `tests/test_unit_kernel.py`.
+- gas.py e modules/ **NON** sono nel delta post-#119 (erano già nel diff quando #119 ha girato).
+- **Verdetto VERBATIM revisore #120** (APPROVATO CON RISERVE):
+  - T71h morde il bug pre-fix (mutation test confermato).
+  - R-c2-8 (processo): T71h già in `c388c0f` prima della review — review retroattiva, stesso pattern PR #18. Accettato.
+  - R-c2-9 (minore): riga 4920, `"test" in _out71h_r` dovrebbe essere `== "test"`. PROPOSTO (STOP GATE) — non committato in questa sessione.
+  - R-c2-10 (cosmetica): GAS_CWD non ripristinato in T71h.
+- Riserve pre-esistenti aperte: R-c2-2, R-c2-4, R-c2-5, R-c2-6 residuo (invariate).
 
----
+### 3. Verifica doc
+Grep in `reports/stato_progetto.md`:
+- **F-diario-args**: trovato riga 82 ✅
+- **F-controlli-auto**: trovato riga 83 ✅
+- **R-nw-1**: trovato riga 84 (segnato CHIUSO) ✅ — T71a-T71h tutti PASS (423 PASS, 5 FAIL solo F-mac-1). Corretto.
 
-## Esito fette
+### 4. Dichiarazione verbatim §4 handoff precedente
+§4 #118/#119 del handoff precedente: **non verificabile come verbatim** in questa sessione — la trascrizione dei subagent revisore non è recuperabile dopo `/clear`. check_verdetto CI ha passato con "14 riferimenti verificati" (run 36981821225), il che indica che le citazioni path:riga erano reali. Dichiarato nel nuovo handoff: "§4 #118/#119 = non verificabile come verbatim; originale non recuperabile in questa sessione."
 
-**Sonda (passo 0):** FATTA — C1 confermato su origin/main (PR #107, `abb7aae`). Branch `feat/cancello-c2` creato da origin/main.
+### 5. C2 stub finding
+Aggiunto in `Finding aperti` di `stato_progetto.md`:
+> C2 stub (2026-10-02, feat/cancello-c2): le azioni che richiedono approvazione (IRREVERSIBLE / UNCERTAIN+contaminata) oggi vengono eseguite senza blocco (stub — coda reale in C3). Vietato deploy autonomo prima di C3.
 
-**R-nw-1 — Path hardening `_safe_path`:** FATTA
-- `Path(...).resolve(strict=False)` esplicito
-- Confinamento `is_relative_to(root_resolved)` PRIMA della denylist
-- Denylist su `path.relative_to(root_resolved).parts` (fix R-c2-1: non sui componenti assoluti)
-- Casefold + normalizzazione trattini/spazi (retro-compatibilità T6)
-- Fail-closed: except → log eccezione + return None
-- Rimosso check inline denylist in `execute_tool_call`/write_file (consolidato in `_safe_path`)
+## File modificati in questa sessione
+- `reports/stato_progetto.md` — aggiornato header, riga motore, R-nw-1, C2 stub, R-c2-7→R-c2-8/9/10
+- `reports/ultimo_report.md` — questo file
+- `reports/diff_sessione.md` — aggiornato
+- `reports/handoff.md` — aggiornato
 
-**C2 — Integrazione gate in `run_turn`:** FATTA
-- Aggiunta costante `UNTRUSTED_INPUT_TOOLS` in `modules/gate/gate.py` (§3b)
-- Aggiunto metodo puro `GasKernel._finestra_e_contaminata(window)` (R-c2-3)
-- Calcolo `_finestra_contaminata` da `_get_window()` ad ogni iterazione del loop agentico
-- Gate check prima di `execute_tool_call`: DENY → "Operazione negata", IRREVERSIBLE/UNCERTAIN+contaminata → stub approved (coda reale in C3), altrimenti esegui
-
-**Test (passo 2):** FATTI
-- T71a-T71h: R-nw-1 (symlink, traversal, case-insensitive, regressione root con prefisso negato)
-- T72a-T72e: C2 (SAFE invariato, DENY senza crash, stub approved, UNTRUSTED_INPUT_TOOLS, `_finestra_e_contaminata` puro)
-- Suite: **423 PASS, 5 FAIL** F-mac-1 bwrap macOS (invariati, baseline 400 PASS)
-- Gate suite pytest: **74 PASS**
-
-**Revisore Opus (passo 3):** FATTO — due round di review
-- Review #118: APPROVATO CON RISERVE (6 riserve, R-c2-1 bloccante per correttezza)
-- Fix R-c2-1 (relative_to), R-c2-3 (helper puro), R-c2-6 parziale applicati
-- Review #119: APPROVATO CON RISERVE (riserve residue R-c2-2/R-c2-4/R-c2-5/R-c2-6/R-c2-7 non bloccanti)
-
-**Doc (passo 4):** FATTO
-- `reports/stato_progetto.md`: aggiornato con R-nw-1 CHIUSO, F-controlli-auto, riserve C2
-- PR #108: https://github.com/Gasss23/Gas/pull/108
-
-## Anomalie
-
-- Review #118 ha trovato bug R-c2-1 (denylist su componenti assoluti invece che relativi): corretto prima del commit e ri-reviewato.
-- `backup_gas_history.txt` (senza dot iniziale, nelle sotto-cartelle) ora passa il controllo — era bloccato dalla vecchia substring check. Registrato come R-c2-2 (minore, difesa in profondità). I file di sistema reali (`.gas_history.json`, `.gas_memory.db` ecc.) restano protetti.
+## Proposta (STOP GATE — non committata)
+- Fix R-c2-9: `tests/test_unit_kernel.py:4920` sostituire `"test" in _out71h_r` con `_out71h_r == "test"`. Fix minore, una riga, solo tests/. Valutare nella sessione C3 o in un hot-fix separato.
