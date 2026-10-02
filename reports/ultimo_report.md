@@ -2,7 +2,7 @@
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge PR #108 (https://github.com/Gasss23/Gas/pull/108) quando CI torna verde.
+1. Merge PR #108 (https://github.com/Gasss23/Gas/pull/108) — CI verde su a14373a (run 37008776684).
 
 ---
 
@@ -27,4 +27,4 @@ Nessuna modifica a script CI, codice o test.
 
 ## Anomalie
 
-Nessuna. Fix chirurgico su §2 dell'handoff.
+Nessuna. Fix chirurgico su §2 dell'handoff. CI verde su a14373a.

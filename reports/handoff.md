@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #108 (https://github.com/Gasss23/Gas/pull/108) — CI deve tornare verde con questo fix.
+1. Merge della PR #108 (https://github.com/Gasss23/Gas/pull/108) — CI verde su a14373a (run 37008776684 — success).
 2. **Fix R-c2-9 (PROPOSTO, non committato)**: `tests/test_unit_kernel.py:4920` — sostituire `"test" in _out71h_r` con `_out71h_r == "test"`. Fix minore test-only, una riga. Valutare prima del merge o in sessione C3.
 
 Prossima fetta raccomandata: **C3** — coda approvazioni SQLite (schema §4a design_cancello.md).
@@ -35,12 +35,12 @@ check_handoff → exit 0 "8 file dichiarati correttamente." | check_verdetto →
  .claude/agents/memoria_revisore.md |   7 ++
  gas.py                             |  99 ++++++++++++++++----
  modules/gate/gate.py               |   6 ++
- reports/diff_sessione.md           |  21 ++---
- reports/handoff.md                 |  92 ++++++-------------
+ reports/diff_sessione.md           |  22 ++---
+ reports/handoff.md                 |  86 +++++------------
  reports/stato_progetto.md          |  11 ++-
  reports/ultimo_report.md           |  43 ++++-----
  tests/test_unit_kernel.py          | 183 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 340 insertions(+), 122 deletions(-)
+ 8 files changed, 334 insertions(+), 123 deletions(-)
 ```
 
 ---
@@ -48,6 +48,7 @@ check_handoff → exit 0 "8 file dichiarati correttamente." | check_verdetto →
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a14373a docs(cancello-c2): fine-task fix-CI — §2 handoff con tutti e 8 i file del diff
 9edb255 docs(cancello-c2): fix-session — review #120 T71h APPROVATO CON RISERVE
 0ee4fa9 chore(revisore): memoria review #120 — APPROVATO CON RISERVE
 7d1f94b docs(cancello-c2): fine-task fix-CI — handoff §2 con formato check_handoff corretto
@@ -63,7 +64,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore in questa sessione (solo reports/handoff.md modificato). Revisore non richiesto.
+Nessun diff motore in questa sessione (solo reports/ modificato). Revisore non richiesto.
 
 I verdetti delle sessioni precedenti (review #118, #119, #120) sono nel commit 9edb255.
 
@@ -78,23 +79,24 @@ Nessuna modifica a gas.py/tests/ in questa sessione.
 ## §6 STATO CI
 
 ```
+completed	success	docs(cancello-c2): fine-task fix-CI — §2 handoff con tutti e 8 i file…	CI	feat/cancello-c2	push	37008776684	58s	2026-10-02T12:46:58Z
 completed	failure	docs(cancello-c2): fix-session — review #120 T71h APPROVATO CON RISERVE	CI	feat/cancello-c2	push	36991134830	56s	2026-10-02T09:40:27Z
 completed	success	docs(cancello-c2): fine-task fix-CI — handoff §2 con formato check_ha…	CI	feat/cancello-c2	push	36981821225	52s	2026-10-02T08:02:47Z
-completed	failure	docs(cancello-c2): fine-task — ultimo_report + handoff + diff_session…	CI	feat/cancello-c2	push	36844697132	1m13s	2026-10-01T09:44:40Z
 ```
 
 Mappatura commit→run:
-- `9edb255` (docs fix-session): run 36991134830 — completed/failure (handoff-check exit 1, questo fix lo risolve)
-- `0ee4fa9` (chore revisore): nessuna run diretta su questo SHA — incluso nell'albero testato da run 36991134830
+- `a14373a` (fine-task fix-CI §2 8 file): run 37008776684 — completed/success
+- `9edb255` (fix-session review #120): run 36991134830 — completed/failure (handoff-check, risolto da a14373a)
+- `0ee4fa9` (chore revisore #120): nessuna run diretta — incluso nell'albero testato da run 36991134830
 - `7d1f94b` (fine-task fix-CI): run 36981821225 — completed/success
-- `1764ee8` (fine-task): incluso nell'albero testato da run 36981821225
-- `c388c0f` (feat C2 gate): incluso nell'albero testato da run 36981821225
-- `b5b99d6`, `1759355` (chore revisore): inclusi nell'albero testato da run 36844697132 o 36981821225
+- `1764ee8` (fine-task): nessuna run diretta — incluso nell'albero testato da run 36981821225
+- `c388c0f` (feat C2 gate): nessuna run diretta — incluso nell'albero testato da run 36981821225
+- `b5b99d6`, `1759355` (chore revisore #118/#119): nessuna run diretta — inclusi nell'albero testato da run 36981821225
 
 ---
 
 ## §7 RISERVE APERTE
 
-- **R-c2-9 (minore, da review #120)**: `tests/test_unit_kernel.py:4920` — `"test" in _out71h_r` dovrebbe essere `_out71h_r == "test"` (falso positivo su futuri messaggi errore con "test").
-- **R-c2-10 (cosmetica, da review #120)**: GAS_CWD e tmpdir non ripristinati in T71h — stesso schema T71a-g.
-- **R-c2-2, R-c2-4, R-c2-5, R-c2-6**: residuo da #118/#119, invariate, non toccate in questa sessione.
+- **R-c2-9 (minore, da review #120)**: `tests/test_unit_kernel.py:4920` — `"test" in _out71h_r` dovrebbe essere `_out71h_r == "test"`.
+- **R-c2-10 (cosmetica, da review #120)**: GAS_CWD e tmpdir non ripristinati in T71h.
+- **R-c2-2, R-c2-4, R-c2-5, R-c2-6**: residuo da #118/#119, invariate.
