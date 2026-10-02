@@ -119,13 +119,18 @@ Suite hooks: **49 PASS, 0 FAIL** (baseline era 47 PASS, 0 FAIL).
 ## §6 STATO CI
 
 ```
-queued  chore(hook-fine-task): script deterministico + contatore…  CI  chore/hook-fine-task-obbligatorio  push  37045838781  2026-10-02T18:12:11Z
+completed  success  docs(hook-fine-task-obbligatorio): fix §4 handoff…  CI  chore/hook-fine-task-obbligatorio  push  37046109893  50s  2026-10-02T18:14:38Z
+completed  success  chore(hook-fine-task): script deterministico…       CI  chore/hook-fine-task-obbligatorio  push  37045838781  1m3s 2026-10-02T18:12:11Z
 ```
 
+Run 37046109893 su HEAD (0bb3743): unit-suite ✓ + handoff-check ✓ — SUCCESS.
+
 Mappatura commit→run:
-- `9863352` (commit motore di sessione): run 37045838781 — in coda al momento della scrittura
-- `ac51ccf` (chore revisore #123): nessuna run (non è il commit di testa pushato)
-- `c644990` (chore revisore #122): nessuna run (non è il commit di testa pushato)
+- `0bb3743` (docs fix §4 handoff): run 37046109893 — SUCCESS (unit-suite + handoff-check)
+- `bfb8dee` (docs report fine-task): nessuna run (non è il commit di testa di quella push)
+- `9863352` (commit motore di sessione): run 37045838781 — SUCCESS
+- `ac51ccf` (chore revisore #123): nessuna run (non è commit di testa di nessuna push)
+- `c644990` (chore revisore #122): nessuna run (non è commit di testa di nessuna push)
 
 ---
 
