@@ -68,44 +68,42 @@ Letture preliminari:
 
 Evidenze del diff esaminate:
 
-.claude/hooks/promemoria_end.sh:160-170 — Contatore per sessione: file nel formato
-session_id:count, reset implicito quando STORED_SID != SESSION_ID. Rischio esaminato:
-session_id vuoto se python3 fallisce → counter globale in modalità degradata (accettabile
-come fallback; la logica primaria è corretta). Esito: ok — B1 chiusa.
+.claude/hooks/promemoria_end.sh:84 — Contatore per sessione: STORED_SID == SESSION_ID
+→ usa COUNT, altrimenti COUNT=0 (reset implicito). session_id:count salvato riga 90.
+Rischio: session_id vuoto se python3 fallisce → counter globale in degraded (accettabile).
+Esito: ok — B1 chiusa.
 
-scripts/fine_task_finale.sh:305-310 — git diff --quiet "${BASE}..HEAD" -- reports/handoff.md:
-exit 0 = nessuna modifica → "non disponibile", exit 1 = modificato → URL. Rischio esaminato:
-BASE vuoto (branch orfano) → condizione falsa → URL stampato incondizionatamente. Edge case
-accettabile come fail-open. Esito: ok — B2 chiusa.
+scripts/fine_task_finale.sh:105 — git diff --quiet "${BASE}..HEAD" -- reports/handoff.md:
+exit 0 = nessuna modifica → "non disponibile", exit 1 = modificato → URL.
+BASE vuoto → condizione falsa → URL incondizionato (edge case fail-open accettabile).
+Esito: ok — B2 chiusa.
 
-scripts/fine_task_finale.sh:267-283 — Gate IP con grep -oE per estrarre singoli indirizzi,
-poi grep -vE '^127\.' sul token. Una riga con 127.x e 10.x produce due token; 10.x supera
-il filtro. Il failure mode di #122 è eliminato. Esito: ok — R1 chiusa.
+scripts/fine_task_finale.sh:72-74 — grep -oE per estrarre singoli indirizzi IPv4,
+poi grep -vE '^127\.' sul token estratto. Riga mista 127.x+10.x: produce due token,
+10.x supera il filtro. Failure mode di #122 eliminato. Esito: ok — R1 chiusa.
 
-tests/test_unit_hooks.py:730-732 — Assert T-finale-4: "IP trovato in reports/" in result.stderr
-(non più "ip" in result.stderr.lower()). Discriminante. Esito: ok — R3 chiusa.
+tests/test_unit_hooks.py — Assert T-finale-4: "IP trovato in reports/" in result.stderr.
+Non più "ip" in result.stderr.lower(). Discriminante. Esito: ok — R3 chiusa.
 
-scripts/fine_task_finale.sh:231-235 — cd "$PROJECT_DIR" prima di check_handoff.py e
-check_verdetto.py. Esito: ok — R2 chiusa.
+scripts/fine_task_finale.sh:30 — cd "$PROJECT_DIR" prima di check_handoff/verdetto.
+Esito: ok — R2 chiusa.
 
-.claude/hooks/promemoria_end.sh:148-151 — git rev-parse --git-dir worktree-safe + guard
-path assoluto. Esito: ok — R4 chiusa.
+.claude/hooks/promemoria_end.sh:68-70 — git rev-parse --git-dir + guard path assoluto.
+Worktree-safe. Esito: ok — R4 chiusa.
 
-.claude/hooks/promemoria_end.sh:176-180 — WARN al 4° tentativo su stderr e gas_debug.log
-con || true. Esito: ok — R5 chiusa.
+.claude/hooks/promemoria_end.sh:96-99 — WARN 4° tentativo: stderr e gas_debug.log con
+|| true. Esito: ok — R5 chiusa.
 
 Antipattern Wall of Shame: nessun raw history slicing. Nessuna simulazione tool.
 Guardrail §8 (cap 10 iterazioni, _get_window) non toccati. ✓
 
-Rischio esplicitamente escluso: comportamento su git worktree reale non verificato.
-In un worktree git rev-parse --git-dir restituisce .git/worktrees/<nome>. I test usano
-repo standard. Non riproducibile in dev (il progetto non usa worktree).
+Rischio esplicitamente escluso: git worktree reale non testato (progetto non usa worktree).
 
 VERDETTO FINALE: APPROVATO
 
-Tutti i problemi bloccanti (B1, B2) e le riserve (R1–R5) della review #122 sono risolti
-correttamente. Fix tecnicamente corretti, fail-safe, coerenti con la filosofia "zero crash"
-del progetto. Nessun guardrail indebolito.
+Tutti i problemi bloccanti (B1, B2) e le riserve (R1–R5) della review #122 risolti
+correttamente. Fix tecnicamente corretti, fail-safe, coerenti con "zero crash". Nessun
+guardrail indebolito.
 ```
 
 ---
