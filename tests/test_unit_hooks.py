@@ -9,6 +9,7 @@ import pytest
 HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "session_end.sh"
 SCRIVI_REP_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "scrivi_rep.sh"
 REVIEW_GATE_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "review_gate.sh"
+HASH_DIFF_SCRIPT = Path(__file__).parent.parent / "scripts" / "hash_diff_staged.sh"
 PROMEMORIA_HOOK = Path(__file__).parent.parent / ".claude" / "hooks" / "promemoria_end.sh"
 
 
@@ -520,8 +521,11 @@ class TestReviewGateFailClosed:
              stdin: "str | None" = None) -> subprocess.CompletedProcess:
         env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
         if has_review_ok:
+            # Marcatore legato al diff: SHA-256 del diff staged (scripts/hash_diff_staged.sh).
             (repo / ".claude").mkdir(exist_ok=True)
-            (repo / ".claude" / ".review_ok").touch()
+            h = subprocess.run(["bash", str(HASH_DIFF_SCRIPT)], cwd=repo,
+                               capture_output=True, text=True, check=True).stdout.strip()
+            (repo / ".claude" / ".review_ok").write_text(h + "\n")
         return subprocess.run(
             ["bash", str(REVIEW_GATE_HOOK)],
             input=self._stdin_commit() if stdin is None else stdin,
@@ -562,6 +566,55 @@ class TestReviewGateFailClosed:
         assert result.returncode == 0, (
             f"Atteso exit 0 (esente), got {result.returncode}; stderr={result.stderr!r}"
         )
+
+    def test_gate_b2_stale_marker_blocks(self, tmp_path):
+        """T-gate-B2: marcatore residuo (hash di un ALTRO diff) → BLOCCA: un .review_ok
+        dimenticato da una sessione precedente non apre il gate."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py", "# revisionato\n")
+        self._run(tmp_path, has_review_ok=True)          # marcatore per QUESTO diff
+        self._stage(tmp_path, "gas.py", "# cambiato dopo la review\n")
+        result = self._run(tmp_path)                     # marcatore ora residuo
+        assert result.returncode == 2 and "non corrisponde" in result.stderr, result.stderr
+
+    def test_gate_b3_empty_marker_blocks(self, tmp_path):
+        """T-gate-B3: marcatore vuoto (vecchio `touch .review_ok`) → BLOCCA."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        (tmp_path / ".claude").mkdir(exist_ok=True)
+        (tmp_path / ".claude" / ".review_ok").touch()
+        result = self._run(tmp_path)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_b4_unstaged_motor_blocks(self, tmp_path):
+        """T-gate-B4 (R-136-1): marcatore valido per l'index, ma una modifica al motore
+        NON in stage (entrerebbe con commit -a / pathspec) → BLOCCA."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py", "# revisionato\n")
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=tmp_path, check=True, capture_output=True)
+        self._stage(tmp_path, "gas.py", "# revisionato v2\n")
+        (tmp_path / "gas.py").write_text("# NON revisionato, solo nel working tree\n")
+        result = self._run(tmp_path, has_review_ok=True)
+        assert result.returncode == 2 and "NON in stage" in result.stderr, result.stderr
+
+    def test_gate_b5_untracked_motor_blocks(self, tmp_path):
+        """T-gate-B5 (R-136-1): file motore non tracciato (entrerebbe con add && commit) → BLOCCA."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        (tmp_path / "modules").mkdir(exist_ok=True)
+        (tmp_path / "modules" / "nuovo.py").write_text("# non tracciato\n")
+        result = self._run(tmp_path, has_review_ok=True)
+        assert result.returncode == 2 and "NON in stage" in result.stderr, result.stderr
+
+    def test_gate_b6_commit_all_with_nothing_staged_blocks(self, tmp_path):
+        """T-gate-B6 (R-136-1): nulla in stage, motore modificato nel working tree → BLOCCA
+        (un `commit -a` lo porterebbe dentro senza review)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py", "# v1\n")
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=tmp_path, check=True, capture_output=True)
+        (tmp_path / "gas.py").write_text("# v2 non revisionata\n")
+        result = self._run(tmp_path)
+        assert result.returncode == 2, result.stderr
 
     def test_gate_d_git_failure_blocks(self, tmp_path):
         """T-gate-D: CLAUDE_PROJECT_DIR non è un git repo → git diff fallisce → FAIL-CLOSED (exit 2)."""
