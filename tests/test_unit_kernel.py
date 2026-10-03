@@ -5015,6 +5015,314 @@ check("T72e finestra con calcola (non contaminante) → non contaminata",
 check("T72e finestra vuota → non contaminata",
       not _GK72e._finestra_e_contaminata([]))
 
+# ---------- T73: C3 — coda approvazioni SQLite (design_cancello §4a/§C3) ----------
+# Test REALI: DB SQLite vero in una dir temporanea, nessun mock della coda.
+import hashlib as _hl73
+import logging
+import sqlite3 as _sq73
+import time as _time73
+import uuid as _uuid73
+from modules.memory.store import MemoryStore as _MS73, hash_args as _hash73
+from modules.gate.gate import gate_classify as _gc73, GateClass as _GC73, GATE_ALLOWLIST as _GA73
+
+def _ms73() -> "_MS73":
+    return _MS73(os.path.join(tempfile.mkdtemp(prefix="gas_c3_"), ".gas_memory.db"))
+
+def _raw73(m, sql: str, params=()):
+    con = _sq73.connect(str(m.db_path))
+    try:
+        con.execute("PRAGMA recursive_triggers = ON")
+        cur = con.execute(sql, params)
+        con.commit()
+        return cur.fetchall()
+    finally:
+        con.close()
+
+# T73a — azione da approvare → in coda 'pending', NON eseguita; read-back integrale
+_m73a = _ms73()
+_dir73a = tempfile.mkdtemp(prefix="gas_c3_target_")
+_target73a = os.path.join(_dir73a, "non_deve_esistere.txt")
+_body73a = "x" * 9000  # oltre il cap tool-output (8000): il read-back NON tronca
+_args73a = json.dumps({"relative_path": _target73a, "content": _body73a})
+_id73a = _m73a.enqueue_approval("write_file", _args73a, turno_id="t-73a",
+                                azione_leggibile="Scrivi file di prova")
+_row73a = _m73a.get_approval(_id73a) if _id73a else None
+check("T73a enqueue → UUID canonico monouso",
+      isinstance(_id73a, str) and str(_uuid73.UUID(_id73a)) == _id73a, f"id={_id73a}")
+check("T73a enqueue → stato 'pending'",
+      _row73a is not None and _row73a["stato"] == "pending")
+check("T73a azione accodata NON eseguita (file target assente)",
+      not os.path.exists(_target73a))
+check("T73a read-back integrale: tool_args_json verbatim, nessun troncamento",
+      _row73a is not None and _row73a["tool_args_json"] == _args73a
+      and len(_row73a["tool_args_json"]) == len(_args73a))
+check("T73a hash = SHA-256(tool_args_json) e hash_ok",
+      _row73a is not None
+      and _row73a["tool_args_hash"] == _hl73.sha256(_args73a.encode("utf-8")).hexdigest()
+      and _row73a["hash_ok"] is True)
+check("T73a ts_expiry = ts_created + 1800 (default §8c)",
+      _row73a is not None and abs((_row73a["ts_expiry"] - _row73a["ts_created"]) - 1800) < 1e-6)
+check("T73a get_pending_approvals contiene la richiesta",
+      [r["id"] for r in _m73a.get_pending_approvals()] == [_id73a])
+_id73a2 = _m73a.enqueue_approval("write_file", _args73a)
+check("T73a stessa azione accodata due volte → due UUID distinti (firma per-azione, §8d)",
+      _id73a2 is not None and _id73a2 != _id73a)
+check("T73a argomenti non-oggetto JSON → NON accodata (None)",
+      _m73a.enqueue_approval("send_email", "[1,2]") is None
+      and _m73a.enqueue_approval("send_email", "{rotto") is None)
+
+# T73b — approvazione con UUID valido → risolta UNA sola volta; riuso → negato
+_m73b = _ms73()
+_id73b = _m73b.enqueue_approval("send_email", {"to": "a@example.com", "body": "ciao"})
+_ok73b1 = _m73b.resolve_approval(_id73b, "approved", telegram_user_id=111)
+_ok73b2 = _m73b.resolve_approval(_id73b, "approved", telegram_user_id=111)
+_ok73b3 = _m73b.resolve_approval(_id73b, "rejected", telegram_user_id=222)
+_row73b = _m73b.get_approval(_id73b)
+check("T73b prima approvazione con UUID valido → accettata", _ok73b1[0] is True, str(_ok73b1))
+check("T73b riuso dello stesso UUID → negato (no-op)", _ok73b2[0] is False, _ok73b2[1])
+check("T73b ri-risoluzione con stato diverso → negata, stato immutabile",
+      _ok73b3[0] is False and _row73b["stato"] == "approved"
+      and _row73b["telegram_user_id"] == 111 and _row73b["risolto_da"] == "telegram_user")
+check("T73b approvata → fuori da get_pending_approvals", _m73b.get_pending_approvals() == [])
+try:
+    _raw73(_m73b, "UPDATE approvals SET stato = 'pending' WHERE id = ?", (_id73b,))
+    _imm73b = False
+except _sq73.DatabaseError:
+    _imm73b = True
+check("T73b stato immutabile anche da SQL grezzo (trigger)", _imm73b)
+_id73b2 = _m73b.enqueue_approval("send_email", {"to": "b@example.com"})
+check("T73b approvazione senza telegram_user_id → negata",
+      _m73b.resolve_approval(_id73b2, "approved")[0] is False
+      and _m73b.get_approval(_id73b2)["stato"] == "pending")
+check("T73b UUID malformato / inesistente → negato",
+      _m73b.resolve_approval("non-un-uuid", "approved", 1)[0] is False
+      and _m73b.resolve_approval(_id73b2.upper(), "approved", 1)[0] is False
+      and _m73b.resolve_approval(str(_uuid73.uuid4()), "approved", 1)[0] is False)
+check("T73b stato fuori whitelist ('expired' a mano) → negato",
+      _m73b.resolve_approval(_id73b2, "expired", 1)[0] is False)
+check("T73b rifiuto → 'rejected', poi approvazione → negata",
+      _m73b.resolve_approval(_id73b2, "rejected", 5)[0] is True
+      and _m73b.resolve_approval(_id73b2, "approved", 5)[0] is False
+      and _m73b.get_approval(_id73b2)["stato"] == "rejected")
+
+# T73c — argomenti cambiati dopo la firma (hash diverso) → negato
+_m73c = _ms73()
+_id73c = _m73c.enqueue_approval("send_email", {"to": "giusto@example.com"})
+try:
+    _raw73(_m73c, "UPDATE approvals SET tool_args_json = ? WHERE id = ?",
+           ('{"to": "attaccante@example.com"}', _id73c))
+    _blk73c = False
+except _sq73.DatabaseError:
+    _blk73c = True
+check("T73c modifica args firmati da SQL grezzo → bloccata (trigger payload)", _blk73c)
+try:
+    _raw73(_m73c, "DELETE FROM approvals WHERE id = ?", (_id73c,))
+    _del73c = False
+except _sq73.DatabaseError:
+    _del73c = True
+check("T73c DELETE da SQL grezzo → bloccata (trigger audit)", _del73c)
+try:
+    _raw73(_m73c, "INSERT OR REPLACE INTO approvals (id, tool_name, tool_args_json, "
+           "tool_args_hash, azione_leggibile, stato, ts_created, ts_expiry) "
+           "VALUES (?, 'send_email', '{}', ?, 'x', 'pending', 0, 9e12)",
+           (_id73c, _hash73("{}")))
+    _rep73c = False
+except _sq73.DatabaseError:
+    _rep73c = True
+check("T73c INSERT OR REPLACE sullo stesso UUID → bloccato", _rep73c)
+try:
+    _raw73(_m73c, "INSERT INTO approvals (id, tool_name, tool_args_json, tool_args_hash, "
+           "azione_leggibile, stato, ts_created, ts_expiry) "
+           "VALUES (?, 'send_email', '{}', ?, 'x', 'approved', 0, 9e12)",
+           (str(_uuid73.uuid4()), _hash73("{}")))
+    _ins73c = False
+except _sq73.DatabaseError:
+    _ins73c = True
+check("T73c INSERT diretto già 'approved' → bloccato (nasce solo pending)", _ins73c)
+# Attaccante con accesso al file che rimuove il trigger e manomette gli args:
+_raw73(_m73c, "DROP TRIGGER approvals_payload_immutabile")
+_raw73(_m73c, "UPDATE approvals SET tool_args_json = ? WHERE id = ?",
+       ('{"to": "attaccante@example.com"}', _id73c))
+_row73c = _m73c.get_approval(_id73c)
+_res73c = _m73c.resolve_approval(_id73c, "approved", telegram_user_id=111)
+_row73c2 = _m73c.get_approval(_id73c)
+check("T73c args manomessi → hash_ok False", _row73c is not None and _row73c["hash_ok"] is False)
+check("T73c args manomessi → approvazione NEGATA", _res73c[0] is False, _res73c[1])
+check("T73c args manomessi → richiesta revocata (rejected/kernel_revoca), non più approvabile",
+      _row73c2["stato"] == "rejected" and _row73c2["risolto_da"] == "kernel_revoca"
+      and _m73c.resolve_approval(_id73c, "approved", 111)[0] is False)
+
+# T73d — scadenza: ts_expiry = now - 1 → mai approvabile, poi 'expired'
+_m73d = _ms73()
+_id73d1 = _m73d.enqueue_approval("send_email", {"to": "x@example.com"}, timeout_secs=-1)
+_id73d2 = _m73d.enqueue_approval("send_email", {"to": "y@example.com"}, timeout_secs=-1)
+_id73d3 = _m73d.enqueue_approval("send_email", {"to": "z@example.com"})
+check("T73d pending scaduta esclusa da get_pending_approvals",
+      [r["id"] for r in _m73d.get_pending_approvals()] == [_id73d3])
+_res73d = _m73d.resolve_approval(_id73d1, "approved", telegram_user_id=111)
+check("T73d approvazione dopo scadenza → negata e marcata 'expired'",
+      _res73d[0] is False and _m73d.get_approval(_id73d1)["stato"] == "expired"
+      and _m73d.get_approval(_id73d1)["risolto_da"] == "timeout", _res73d[1])
+_n73d = _m73d.expire_stale_approvals()
+check("T73d expire_stale_approvals scade solo la pending oltre ts_expiry",
+      _n73d == 1 and _m73d.get_approval(_id73d2)["stato"] == "expired"
+      and _m73d.get_approval(_id73d3)["stato"] == "pending", f"n={_n73d}")
+check("T73d expired resta in tabella (audit) e non è più risolvibile",
+      _m73d.get_approval(_id73d2) is not None
+      and _m73d.resolve_approval(_id73d2, "approved", 111)[0] is False)
+_old73d = os.environ.get("GAS_APPROVAL_TIMEOUT_SECS")
+os.environ["GAS_APPROVAL_TIMEOUT_SECS"] = "abc"
+_id73d4 = _m73d.enqueue_approval("send_email", {"to": "w@example.com"})
+os.environ["GAS_APPROVAL_TIMEOUT_SECS"] = "60"
+_id73d5 = _m73d.enqueue_approval("send_email", {"to": "v@example.com"})
+if _old73d is None:
+    os.environ.pop("GAS_APPROVAL_TIMEOUT_SECS", None)
+else:
+    os.environ["GAS_APPROVAL_TIMEOUT_SECS"] = _old73d
+_r73d4, _r73d5 = _m73d.get_approval(_id73d4), _m73d.get_approval(_id73d5)
+check("T73d env timeout non valido → default 1800; env 60 → 60",
+      abs(_r73d4["ts_expiry"] - _r73d4["ts_created"] - 1800) < 1e-6
+      and abs(_r73d5["ts_expiry"] - _r73d5["ts_created"] - 60) < 1e-6)
+
+# T73e — coda corrotta o assente → diniego senza crash (fail-closed §9)
+_d73e = tempfile.mkdtemp(prefix="gas_c3_corr_")
+_p73e = os.path.join(_d73e, ".gas_memory.db")
+with open(_p73e, "wb") as _f73e:
+    _f73e.write(b"questo non e' un database sqlite" * 64)
+try:
+    _m73e = _MS73(_p73e)
+    _r73e = (
+        _m73e.enqueue_approval("send_email", {"to": "a@example.com"}),
+        _m73e.resolve_approval(str(_uuid73.uuid4()), "approved", 1)[0],
+        _m73e.get_pending_approvals(),
+        _m73e.expire_stale_approvals(),
+        _m73e.get_approval(str(_uuid73.uuid4())),
+    )
+    _crash73e = None
+except Exception as _e73e:  # noqa: BLE001
+    _r73e, _crash73e = None, _e73e
+check("T73e DB corrotto → nessun crash", _crash73e is None, repr(_crash73e))
+check("T73e DB corrotto → enqueue None, resolve False, pending [], expire 0",
+      _r73e == (None, False, [], 0, None), repr(_r73e))
+_m73e2 = _ms73()
+_id73e2 = _m73e2.enqueue_approval("send_email", {"to": "a@example.com"})
+_raw73(_m73e2, "DROP TABLE approvals")
+try:
+    _r73e2 = (
+        _m73e2.enqueue_approval("send_email", {"to": "a@example.com"}),
+        _m73e2.resolve_approval(_id73e2, "approved", 1)[0],
+        _m73e2.get_pending_approvals(),
+        _m73e2.get_approval(_id73e2),
+    )
+    _crash73e2 = None
+except Exception as _e73e2:  # noqa: BLE001
+    _r73e2, _crash73e2 = None, _e73e2
+check("T73e tabella approvals assente → diniego senza crash",
+      _crash73e2 is None and _r73e2 == (None, False, [], None), repr(_r73e2 or _crash73e2))
+_m73e3 = _ms73()
+os.remove(_m73e3.db_path)
+os.chmod(os.path.dirname(_m73e3.db_path), 0o500)  # dir non scrivibile: il DB non si ricrea
+try:
+    _r73e3 = _m73e3.enqueue_approval("send_email", {"to": "a@example.com"})
+    _crash73e3 = None
+except Exception as _e73e3:  # noqa: BLE001
+    _r73e3, _crash73e3 = None, _e73e3
+finally:
+    os.chmod(os.path.dirname(_m73e3.db_path), 0o700)
+check("T73e file DB sparito e non ricreabile → enqueue None senza crash",
+      _crash73e3 is None and _r73e3 is None, repr(_crash73e3))
+
+# T73f — nessun tool di approvazione esposto al modello (verifica sul codice)
+_k73f = kernel_tmp()
+_tools73f = {t["function"]["name"] for t in _k73f.tools_schema}
+_bad73f = {n for n in _tools73f | set(_GA73)
+           if any(w in n.lower() for w in ("approv", "resolve", "firma", "expire", "pending", "enqueue"))}
+check("T73f tools_schema e GATE_ALLOWLIST: nessun tool di approvazione",
+      _bad73f == set(), f"trovati={_bad73f}")
+check("T73f metodi coda chiamati come tool → 'Tool non trovato.'",
+      all(_k73f.execute_tool_call(n, "{}") == "Tool non trovato."
+          for n in ("resolve_approval", "enqueue_approval", "expire_stale_approvals")))
+check("T73f gate: resolve_approval → DENY",
+      _gc73("resolve_approval", '{"approval_id": "x", "stato": "approved"}') == _GC73.DENY)
+_src73f = Path(gas.__file__).read_text(encoding="utf-8")
+check("T73f gas.py non invoca resolve_approval (approvazione solo da fuori dal loop)",
+      "resolve_approval" not in _src73f)
+
+# T73g — round-trip agentico (§7): con una richiesta in coda il loop non si interrompe
+_k73g = kernel_tmp()
+_id73g = _k73g.memory.enqueue_approval("send_email", {"to": "a@example.com"}, turno_id="t-73g")
+_script73g = [
+    [("calcola", '{"expr": "6*7"}')],
+    [("calcola", '{"expr": "1+1"}')],
+    "fatto",
+]
+_events73g = run_turn_scriptato(_k73g, "due conti", _script73g)
+_tool_res73g = [e for e in _events73g if e["type"] == "tool_res"]
+_final73g = [e for e in _events73g if e["type"] == "final"]
+_err73g = [e for e in _events73g if e["type"] == "error"]
+check("T73g round-trip: 2 tool call + risposta finale, nessun errore",
+      len(_tool_res73g) == 2 and len(_final73g) == 1 and len(_err73g) == 0
+      and "42" in _tool_res73g[0]["output"],
+      f"tool_res={len(_tool_res73g)} final={len(_final73g)} err={len(_err73g)}")
+check("T73g il loop non tocca la coda: richiesta ancora 'pending'",
+      _id73g is not None and _k73g.memory.get_approval(_id73g)["stato"] == "pending")
+
+# T73h — R-c3-1: righe con tipi errati inserite a mano (SQL grezzo) → la lettura
+# NEGA (None / False / esclusa), mai eccezione; WARN nella scatola nera.
+_m73h = _ms73()
+_now73h = _time73.time()
+_ins73h = ("INSERT INTO approvals (id, turno_id, tool_name, tool_args_json, tool_args_hash, "
+           "azione_leggibile, stato, ts_created, ts_expiry, telegram_user_id) "
+           "VALUES (?, NULL, 'send_email', ?, ?, 'x', 'pending', ?, ?, ?)")
+_args73h = '{"to": "a@example.com"}'
+_id73h_blob, _id73h_text, _id73h_uid = (str(_uuid73.uuid4()) for _ in range(3))
+_raw73(_m73h, _ins73h, (_id73h_blob, _args73h.encode("utf-8"), _hash73(_args73h),
+                        _now73h, _now73h + 600, None))          # tool_args_json BLOB
+_raw73(_m73h, _ins73h, (_id73h_text, _args73h, _hash73(_args73h),
+                        _now73h, "mai", None))                  # ts_expiry TEXT
+_raw73(_m73h, _ins73h, (_id73h_uid, _args73h, _hash73(_args73h),
+                        _now73h, _now73h + 600, "utente"))      # telegram_user_id TEXT
+_typ73h = _raw73(_m73h, "SELECT typeof(tool_args_json), typeof(ts_expiry), "
+                        "typeof(telegram_user_id) FROM approvals ORDER BY rowid")
+check("T73h precondizione: righe corrotte davvero nel DB (blob/text/text)",
+      _typ73h == [("blob", "real", "null"), ("text", "text", "null"), ("text", "real", "text")],
+      str(_typ73h))
+_logrec73h: list = []
+class _H73h(logging.Handler):
+    def emit(self, record):
+        _logrec73h.append(record)
+_h73h = _H73h(level=logging.WARNING)
+logging.getLogger("modules.memory.store").addHandler(_h73h)
+try:
+    _exc73h = None
+    try:
+        _get73h = [_m73h.get_approval(i) for i in (_id73h_blob, _id73h_text, _id73h_uid)]
+        _res73h = [_m73h.resolve_approval(i, "approved", telegram_user_id=1)
+                   for i in (_id73h_blob, _id73h_text, _id73h_uid)]
+        _rej73h = _m73h.resolve_approval(_id73h_text, "rejected")
+        _pend73h = _m73h.get_pending_approvals()
+    except Exception as e:  # il contratto è proprio che qui NON si arrivi
+        _exc73h = e
+finally:
+    logging.getLogger("modules.memory.store").removeHandler(_h73h)
+check("T73h lettura righe corrotte → nessuna eccezione", _exc73h is None, repr(_exc73h))
+check("T73h get_approval su riga corrotta → None (negata)",
+      _exc73h is None and _get73h == [None, None, None], str(_get73h if _exc73h is None else ""))
+check("T73h resolve_approval('approved') su riga corrotta → negata",
+      _exc73h is None and all(r[0] is False for r in _res73h), str(_res73h if _exc73h is None else ""))
+check("T73h resolve_approval('rejected') su riga corrotta → negata",
+      _exc73h is None and _rej73h[0] is False, str(_rej73h if _exc73h is None else ""))
+check("T73h get_pending_approvals esclude le righe corrotte",
+      _exc73h is None and _pend73h == [], str(_pend73h if _exc73h is None else ""))
+check("T73h righe corrotte NON approvate nel DB (stato resta 'pending')",
+      _raw73(_m73h, "SELECT DISTINCT stato FROM approvals") == [("pending",)])
+check("T73h WARNING nella scatola nera per ogni lettura negata",
+      sum(1 for r in _logrec73h if "tipi non validi" in r.getMessage()) >= 7,
+      str([r.getMessage() for r in _logrec73h]))
+_ok73h = _m73h.enqueue_approval("send_email", {"to": "b@example.com"})
+check("T73h coda resta usabile: una riga sana accanto alle corrotte si approva",
+      _ok73h is not None and _m73h.resolve_approval(_ok73h, "approved", telegram_user_id=7)[0] is True)
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

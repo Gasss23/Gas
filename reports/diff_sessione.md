@@ -1,21 +1,15 @@
-# DIFF SESSIONE — 2026-10-02
+# DIFF SESSIONE — 2026-10-03 — C3: chiusura R-c3-1 + review #126
 
-File toccati in questa sessione (da `git diff --stat BASE..HEAD`, BASE=9f6dfd79ccdb00459b184f59cb65bc1a7e0bba85):
+Range: `ce3d392..HEAD` (merge-base con origin/main). Il branch include anche i commit C3 del 2026-10-02.
 
-| File | Modifica |
-|------|----------|
-| `.claude/agents/memoria_revisore.md` | Review #122 risanata (IP-fittizio → `<IP-fittizio>`); review #124 aggiunta (APPROVATO CON RISERVE) |
-| `.claude/commands/fine-task.md` | Aggiornamento template /fine-task (sessione precedente) |
-| `.claude/hooks/promemoria_end.sh` | Hook promemoria: contatore per-sessione + fix logica (sessione precedente) |
-| `CLAUDE.md` | Aggiornamento §3 regola reporting (sessione precedente) |
-| `reports/diff_sessione.md` | Questo file (riscritto a ogni sessione) |
-| `reports/handoff.md` | Handoff di sessione (riscritto) |
-| `reports/ultimo_report.md` | Report fine task (riscritto) |
-| `scripts/fine_task_finale.sh` | Gate IP riscritto: full-tree (`HEAD`), regex word-boundary identica a gasmerge.sh, loopback-first per-riga via sed, allowlist gasmerge-ip-ok; header aggiornato |
-| `tests/test_unit_hooks.py` | `# gasmerge-ip-ok` su riga 1696 (fixture IP); T-finale-4 assertion aggiornata; T-finale-4b e T-finale-4c aggiunti (full-tree IP check) |
+| File | Cosa è cambiato e perché |
+|---|---|
+| `modules/memory/store.py` | C3 (2026-10-02): tabella `approvals` + trigger + metodi coda. Oggi: `_num`/`_approval_row_valida` e diniego fail-closed su righe con tipi errati in get/resolve/pending (R-c3-1). |
+| `tests/test_unit_kernel.py` | T73a-g (C3) + T73h: righe corrotte via SQL grezzo → lettura nega, nessun crash (R-c3-1). |
+| `.claude/agents/memoria_revisore.md` | Righe #125 e #126 del revisore + lezioni. |
+| `reports/stato_progetto.md` | Voce C3 onesta (pronta, non collegata, deferiti a C4), stub C2 ancora attivo, R-c3-1 chiusa, R-c3-1b nuova, PR #109 da chiudere. |
+| `reports/ultimo_report.md` | Report del task di oggi. |
+| `reports/handoff.md` | Dossier: §4 verdetto #126 verbatim, §4-bis verdetto #125 verbatim (superato). |
+| `reports/diff_sessione.md` | Questo file. |
 
-## Note
-
-- Il commit `ade4c1a` (revisore memoria #124) è stato prodotto automaticamente dallo script `scripts/commit_memoria_revisore.sh`.
-- Il commit `fa78fb5` raccoglie le tre modifiche al codice (memoria_revisore, fine_task_finale.sh, test_unit_hooks.py).
-- Suite 51/51 PASS dopo le modifiche.
+Nota: si riscrive a ogni sessione; la storia completa sta in git.

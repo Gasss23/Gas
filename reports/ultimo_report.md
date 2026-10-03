@@ -1,35 +1,34 @@
-# REPORT — 2026-10-02 — Fix IP-gate: sblocco branch chore/hook-fine-task-obbligatorio per gasmerge
+# ULTIMO REPORT — 2026-10-03 — Fetta C3 cancello: chiusura R-c3-1 + nuova review #126
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #110 (vedi §0 handoff).
+1. **Merge della PR #111** (https://github.com/Gasss23/Gas/pull/111): C3 + fix R-c3-1. Attenzione: mergiare NON attiva il cancello (vedi "Stato reale" sotto).
+2. **PR #109**: superata da #110, da chiudere SENZA merge (la chiude l'operatore).
+3. **C4** (proposta, non eseguita): collegamento della coda al loop con rimozione dello stub C2, canale umano Telegram, read-back, esito "in attesa"; più R-c3-1b (riga zombie con `ts_expiry` non numerico) da chiudere prima o dentro C4.
 
-## ESITO FETTE
+## Stato reale (onestà)
 
-**Fetta 1 — `memoria_revisore.md:179`: sostituzione IP con `<IP-fittizio>`**: FATTA  
-Sostituito IP-fittizio con `<IP-fittizio>` alla riga #122. Nient'altro toccato nel file.
+- C3 = coda approvazioni **pronta** in `modules/memory/store.py`, **NON collegata al loop**.
+- Lo **stub C2 è ancora attivo**: oggi le azioni da approvare (IRREVERSIBLE / UNCERTAIN+contaminata) partono **SENZA blocco**.
+- Collegamento al loop, canale umano, read-back ed esito "in attesa" = **C4**.
+- Invarianti 1, 5, 6 (canale umano) e 8 del prompt C3: **DEFERITA a C4** — non fatte.
+- Conflitto spec/prompt: risolto dall'operatore con "C3 come da spec" (solo store.py, zero gas.py).
 
-**Fetta 2 — `test_unit_hooks.py:1696`: aggiunta `# gasmerge-ip-ok`**: FATTA  
-Aggiunto il token come commento Python fuori dalla stringa. Comportamento del test invariato.
+## Esito per step (sessione 2026-10-03, decisioni operatore A–D)
 
-**Fetta 3 — `fine_task_finale.sh` Gate IP allineato a `gasmerge.sh`**: FATTA  
-Gate IP riscritto: full-tree (`HEAD`), stesso regex word-boundary, stessa logica loopback-first via `sed` per-riga, stessa allowlist `gasmerge-ip-ok`. Header aggiornato.
+- **A) R-c3-1 — chiusura nel branch**: FATTA. Commit `20dcadb`.
+  - `modules/memory/store.py`: nuovo `_approval_row_valida()` (tipo atteso per ogni colonna di `approvals`). Riga non conforme → `get_approval` None, `resolve_approval` rollback + (False, msg) senza scritture, `get_pending_approvals` la esclude; WARNING nel log in ogni caso. Except estesi a TypeError/ValueError/AttributeError come rete finale.
+  - Test **T73h** (reale, SQLite vero): INSERT grezzo di 3 righe corrotte (`tool_args_json` BLOB, `ts_expiry` TEXT, `telegram_user_id` TEXT) → lettura/approvazione/rifiuto negati, nessuna eccezione, stato DB invariato, WARN registrati, coda ancora usabile per una riga sana.
+  - Controprova: su `store.py` pre-fix T73h FALLISCE con `AttributeError("'bytes' object has no attribute 'encode'")`; col fix PASSA.
+  - Riserve R-c3-2..5: NON toccate (fuori mandato).
+- **B) Nuova review (revisore Opus) sul diff completo di sessione**: FATTA. Review **#126 APPROVATO CON RISERVE**, path completi dalla root. Verdetto verbatim in handoff §4; verdetto #125 verbatim in §4-bis (superato: path abbreviati + citazione errata `store.py:5131`). Nessun verdetto ritoccato, `check_verdetto.py` non modificato. Nuova riserva **R-c3-1b** (minore): riga con `ts_expiry` non numerico resta 'pending' zombie (non leggibile né approvabile). Memoria revisore: commit `0a9ccc0`.
+- **C) Onestà nei canonici**: FATTA (stato_progetto.md, questo report, handoff §1).
+- **D) Suite prima/dopo**: FATTA.
+  - Kernel: **463 PASS / 5 FAIL → 472 PASS / 5 FAIL** (+9 check T73h). I 5 FAIL sono F-mac-1 (bwrap assente su macOS: T11c2, T11e, T12a, T12c, T12e), invariati.
+  - pytest (gasmerge, gate, handoff_check, hooks, voice_server, voice_stt, voice_tts): **227 passed → 227 passed**.
+- **Fine-task**: FATTA (questo commit) — push branch + PR #111.
 
-**Fetta 4 — Test aggiornati per il nuovo scope**: FATTA  
-- T-finale-4: assertion aggiornata (`"IP trovato in reports/"` → `"IP trovato"`).  
-- T-finale-4b (nuova): IP fuori da `reports/` senza token → exit 1. Token `# gasmerge-ip-ok` sulla riga sorgente Python per allowlistare la fixture.  
-- T-finale-4c (nuova): IP con token → Gate IP OK, exit 0.  
-Suite: 51/51 PASS.
+## Anomalie
 
-**Fetta 5 — Simulazione invariante gasmerge sull'albero**: FATTA  
-Risultato: zero blocchi. Le due righe precedentemente bloccanti (memoria_revisore.md:179 e test_unit_hooks.py:1696) sono ora pulite.
-
-**Fetta 6 — Revisore Opus #124**: FATTA  
-Verdetto: APPROVATO CON RISERVE.  
-- R1 (media): `set -e` attivo dopo gate IP → push fallisce senza messaggio normalizzato; righe 116-120 diventano codice morto.  
-- R2 (bassa, nota): allowlist per riga — limite condiviso con gasmerge.sh, dichiarato consapevolmente.
-
-## ANOMALIE
-
-- `test_unit_kernel.py` ha un `sys.exit` a livello di modulo che causa INTERNALERROR quando si raccoglie l'intera suite con pytest; issue pre-esistente, fuori scope.
-- R1 del revisore: `set +e … set -e` attiva `errexit` per il resto dello script. Il fix (ripristinare lo stato o avvolgere push in `set +e`) è tracciato come riserva aperta, non bloccante per questo task.
+- Il report precedente (2026-10-02) diceva "branch mai pushato", ma all'avvio di questa sessione `origin/feat/cancello-c3` puntava già a `81086db`.
+- Il revisore non ha verificato che i WARNING arrivino al file `gas_debug.log` (il test cattura il logger del modulo in memoria): dipende dalla configurazione logging di gas.py, non toccata.
