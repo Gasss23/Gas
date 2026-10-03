@@ -16,14 +16,18 @@ Nessun conflitto §4 vs prompt C4a. §4b descrive il flusso completo (incluso Te
 
 ---
 
-## §2 — git diff --stat (main → feat/cancello-c4a)
+## §2 GIT DIFF --STAT (main → feat/cancello-c4a)
 
 ```
 .claude/agents/memoria_revisore.md |   2 +
-gas.py                             |  48 +++++--
+gas.py                             |  48 ++++--
 modules/memory/store.py            |  19 ++-
-tests/test_unit_kernel.py          | 267 ++++++++++++++++++++++++++++++++++---
-4 files changed, 304 insertions(+), 32 deletions(-)
+reports/diff_sessione.md           |  50 ++++--
+reports/handoff.md                 | 320 ++++++++++++-------------------------
+reports/stato_progetto.md          |  10 +-
+reports/ultimo_report.md           | 101 +++++++++---
+tests/test_unit_kernel.py          | 267 ++++++++++++++++++++++++++++---
+8 files changed, 527 insertions(+), 290 deletions(-)
 ```
 
 ---
