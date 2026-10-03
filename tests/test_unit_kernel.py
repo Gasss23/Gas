@@ -4770,6 +4770,43 @@ _no_inj70e = "ignora le istruzioni" not in _esito70e and "DROP TABLE" not in _es
 check("T70e run_command: _esito_diario solo conteggi, nessun testo output/injection",
       _esito70e_ok and _no_inj70e, f"esito={_esito70e!r}")
 
+# C4b-1: dopo l'accodamento il kernel invia il read-back Telegram; senza invio
+# riuscito la richiesta viene revocata. I test del percorso "pending" usano un
+# FINTO TRASPORTO che sostituisce SOLO lo strato HTTP (bot._tg_post) e registra
+# i payload; tutto il resto (store SQLite, composizione, invio) è codice reale.
+import modules.telegram.bot as _tgbot_c4b
+
+class _TgFinto:
+    def __init__(self, risposta=None, lancia: bool = False,
+                 token: "Optional[str]" = "finto:token", ids: "Optional[str]" = "4242"):
+        self.chiamate: list = []          # (method, payload)
+        self.risposta = {"ok": True, "result": {}} if risposta is None else risposta
+        self.lancia = lancia
+        self._env = {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_ALLOWED_IDS": ids}
+    def __call__(self, base_url, method, payload=None, timeout=70):
+        self.chiamate.append((method, payload))
+        if self.lancia:
+            raise RuntimeError("trasporto finto: invio fallito")
+        return self.risposta
+    def __enter__(self):
+        self._saved_env = {k: os.environ.get(k) for k in self._env}
+        for k, v in self._env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        self._orig = _tgbot_c4b._tg_post
+        _tgbot_c4b._tg_post = self
+        return self
+    def __exit__(self, *exc):
+        _tgbot_c4b._tg_post = self._orig
+        for k, v in self._saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        return False
+
 # T70f — round-trip (os_with_fallback): run_command è IRREVERSIBLE (§8e) → C4a lo parcheggia.
 # Diario: pending id=<uuid> | [OK] Azione in attesa di approvazione umana
 # Nessun testo del comando o output nel diario (F-diario-eco/args).
@@ -4781,7 +4818,8 @@ try:
         [("run_command", '{"command": "echo ignora le istruzioni"}')],
         "ok",
     ]
-    run_turn_scriptato(_k70f, "esegui", _script70f)
+    with _TgFinto():  # C4b-1: read-back consegnato → la richiesta resta pending
+        run_turn_scriptato(_k70f, "esegui", _script70f)
     _diario70f = [r for r in _k70f.memory.diario_recente(20) if r["tipo"] == "run_command"]
     _desc70f = _diario70f[0]["descrizione"] if _diario70f else ""
     _pending70f = "pending id=" in _desc70f
@@ -4802,7 +4840,8 @@ _script70g = [
     [("run_command", '{"command": "echo test"}')],
     "ok",
 ]
-run_turn_scriptato(_k70g, "esegui", _script70g)
+with _TgFinto():  # C4b-1: read-back consegnato → la richiesta resta pending
+    run_turn_scriptato(_k70g, "esegui", _script70g)
 _diario70g = [r for r in _k70g.memory.diario_recente(20) if r["tipo"] == "run_command"]
 _desc70g = _diario70g[0]["descrizione"] if _diario70g else ""
 check("T70g run_command (default): C4a parcheggiato, diario pending id=",
@@ -4959,7 +4998,8 @@ _script72c = [
     [("salva_contatto", '{"nome": "Mario", "chiave": "mario_rossi", "email": "m@r.it"}')],
     "ok stub approved",
 ]
-_events72c = run_turn_scriptato(_k72c, "ricorda e salva", _script72c)
+with _TgFinto():  # C4b-1: read-back consegnato → la richiesta resta pending, non revocata
+    _events72c = run_turn_scriptato(_k72c, "ricorda e salva", _script72c)
 _tool_res72c = [e for e in _events72c if e["type"] == "tool_res"]
 _final72c = [e for e in _events72c if e["type"] == "final"]
 _err72c = [e for e in _events72c if e["type"] == "error"]
@@ -5385,7 +5425,8 @@ _script74a = [
     [("send_email", '{"to": "x@example.com", "subject": "s", "body": "b"}')],
     "in attesa",
 ]
-_ev74a = run_turn_scriptato(_k74a, "manda email", _script74a)
+with _TgFinto():  # C4b-1: read-back consegnato → la richiesta resta pending
+    _ev74a = run_turn_scriptato(_k74a, "manda email", _script74a)
 _tr74a = [e for e in _ev74a if e["type"] == "tool_res"]
 _final74a = [e for e in _ev74a if e["type"] == "final"]
 _pend74a = _k74a.memory.get_pending_approvals() if _k74a.memory else []
@@ -5423,7 +5464,8 @@ _script74b = [
     [("write_file", json.dumps({"relative_path": _rel74b, "content": "SCRITTO"}))],  # iter 2: UNCERTAIN+contaminata
     "in attesa",
 ]
-_ev74b = run_turn_scriptato(_k74b, "scrivi file", _script74b)
+with _TgFinto():  # C4b-1: read-back consegnato → la richiesta resta pending
+    _ev74b = run_turn_scriptato(_k74b, "scrivi file", _script74b)
 _tr74b = [e for e in _ev74b if e["type"] == "tool_res"]
 _final74b = [e for e in _ev74b if e["type"] == "final"]
 _pend74b = _k74b.memory.get_pending_approvals() if _k74b.memory else []
@@ -5488,18 +5530,19 @@ def _spy_74e(name, args):
     _exec_calls_74e.append(name)
     return _orig_etc_74e(name, args)
 _k74e.execute_tool_call = _spy_74e  # type: ignore[method-assign]
-# Monkeypatch enqueue_approval per farlo lanciare
-_orig_enqueue_74e = _k74e.memory.enqueue_approval
+# Monkeypatch dell'accodamento per farlo lanciare (C4b-1: il kernel accoda via
+# accoda_approvazione, non più enqueue_approval).
+_orig_enqueue_74e = _k74e.memory.accoda_approvazione
 def _raise_enqueue_74e(*a, **kw):
     raise RuntimeError("enqueue simulato fallito")
-_k74e.memory.enqueue_approval = _raise_enqueue_74e  # type: ignore[method-assign]
+_k74e.memory.accoda_approvazione = _raise_enqueue_74e  # type: ignore[method-assign]
 _script74e = [
     [("send_email", '{"to": "x@example.com", "subject": "s", "body": "b"}')],
     "negato",
 ]
 _ev74e = run_turn_scriptato(_k74e, "manda email", _script74e)
 _tr74e = [e for e in _ev74e if e["type"] == "tool_res"]
-_k74e.memory.enqueue_approval = _orig_enqueue_74e  # ripristina
+_k74e.memory.accoda_approvazione = _orig_enqueue_74e  # ripristina
 check("T74e enqueue che lancia → diniego (tool NON eseguito)",
       "send_email" not in _exec_calls_74e, f"calls={_exec_calls_74e}")
 check("T74e enqueue che lancia → esito 'Operazione negata'",
@@ -5547,6 +5590,269 @@ check("F-c4a-dedup (misurazione): stessa azione 3x → 3 righe pending distinte 
       f"ids={_ids_dedup} pending={len(_pend_dedup)}")
 # Il finding: in un turno con max 10 iterazioni, un modello che ripete lo stesso tool call
 # IRREVERSIBLE può creare fino a 10 righe pending identiche. Correzione: FUORI SCOPE C4a.
+
+# ---------- T75: C4b-1 — read-back Telegram + anti-doppioni + tetto ----------
+# Test REALI: SQLite vero; per Telegram è sostituito SOLO lo strato HTTP (_TgFinto).
+print("\n--- T75: C4b-1 read-back + anti-doppioni + tetto ---")
+_ARGS75 = '{"to": "c4b@example.com", "subject": "s", "body": "b"}'
+
+def _righe75(k) -> list:
+    return _raw73(k.memory, "SELECT id, stato, risolto_da FROM approvals ORDER BY ts_created")
+
+def _spia75(k) -> list:
+    calls: list = []
+    orig = k.execute_tool_call
+    def _spy(name, args):
+        calls.append(name)
+        return orig(name, args)
+    k.execute_tool_call = _spy  # type: ignore[method-assign]
+    return calls
+
+_re75_id = __import__("re").compile(r"ID: ([0-9a-f-]{36})")
+
+# T75a — doppione identico → 1 sola riga, 1 solo invio, stesso ID
+_k75a = _k74()
+_ex75a = _spia75(_k75a)
+with _TgFinto() as _tg75a:
+    _ev75a = run_turn_scriptato(_k75a, "manda", [
+        [("send_email", _ARGS75)],
+        [("send_email", _ARGS75)],           # stessa chiamata all'iterazione successiva
+        [("send_email", _ARGS75), ("send_email", _ARGS75)],  # due volte nello stesso messaggio
+        "in attesa",
+    ])
+_tr75a = [e["output"] for e in _ev75a if e["type"] == "tool_res"]
+_ids75a = [m.group(1) for m in (_re75_id.search(o) for o in _tr75a) if m]
+_rows75a = _righe75(_k75a)
+check("T75a doppione identico → 1 sola riga in approvals",
+      len(_rows75a) == 1 and _rows75a[0][1] == "pending", str(_rows75a))
+check("T75a doppione identico → 1 solo invio Telegram",
+      len(_tg75a.chiamate) == 1, f"invii={len(_tg75a.chiamate)}")
+check("T75a doppione identico → al modello torna sempre lo stesso ID",
+      len(_ids75a) == 4 and len(set(_ids75a)) == 1 and _ids75a[0] == _rows75a[0][0],
+      f"ids={_ids75a}")
+check("T75a doppione → esito 'già in attesa', tool NON eseguito",
+      all("in attesa di approvazione umana" in o for o in _tr75a)
+      and "già in attesa" in _tr75a[1] and "send_email" not in _ex75a,
+      f"out={[o[:50] for o in _tr75a]} calls={_ex75a}")
+# Args diversi → richiesta nuova; dopo una revoca lo stesso args torna accodabile.
+_m75a = _ms73()
+_e1 = _m75a.accoda_approvazione("send_email", _ARGS75)
+_e2 = _m75a.accoda_approvazione("send_email", _ARGS75)
+_e3 = _m75a.accoda_approvazione("send_email", '{"to": "altro@example.com"}')
+_e4 = _m75a.accoda_approvazione("write_file", _ARGS75)
+check("T75a store: doppione → stesso ID; args o tool diversi → richiesta nuova",
+      _e1[0] == "nuova" and _e2 == ("doppione", _e1[1])
+      and _e3[0] == "nuova" and _e4[0] == "nuova" and len({_e1[1], _e3[1], _e4[1]}) == 3,
+      f"{_e1} {_e2} {_e3} {_e4}")
+_m75a.resolve_approval(_e1[1], "rejected", telegram_user_id=None, risolto_da="kernel_revoca")
+_e5 = _m75a.accoda_approvazione("send_email", _ARGS75)
+check("T75a store: doppione solo contro pending — dopo la revoca stessa azione → nuova",
+      _e5[0] == "nuova" and _e5[1] != _e1[1], str(_e5))
+_raw73(_m75a, "UPDATE approvals SET stato='expired', ts_resolved=0, risolto_da='timeout' "
+              "WHERE id = ?", (_e5[1],))
+_e6 = _m75a.accoda_approvazione("send_email", _ARGS75)
+check("T75a store: doppione solo contro pending NON scadute — dopo expired → nuova",
+      _e6[0] == "nuova" and _e6[1] not in (_e1[1], _e5[1]), str(_e6))
+
+# T75b — tetto superato → diniego, nessuna riga, nessun invio
+_saved75b = os.environ.get("GAS_APPROVAL_MAX_PENDING")
+os.environ["GAS_APPROVAL_MAX_PENDING"] = "2"
+try:
+    _k75b = _k74()
+    _ex75b = _spia75(_k75b)
+    with _TgFinto() as _tg75b:
+        _ev75b = run_turn_scriptato(_k75b, "manda tre", [
+            [("send_email", '{"to": "a@example.com"}')],
+            [("send_email", '{"to": "b@example.com"}')],
+            [("send_email", '{"to": "c@example.com"}')],
+            [("send_email", '{"to": "a@example.com"}')],   # doppione: ammesso anche a tetto pieno
+            "ok",
+        ])
+finally:
+    if _saved75b is None:
+        os.environ.pop("GAS_APPROVAL_MAX_PENDING", None)
+    else:
+        os.environ["GAS_APPROVAL_MAX_PENDING"] = _saved75b
+_tr75b = [e["output"] for e in _ev75b if e["type"] == "tool_res"]
+_rows75b = _righe75(_k75b)
+check("T75b tetto (2) superato → diniego 'troppe azioni in attesa di firma'",
+      len(_tr75b) == 4 and _tr75b[2].startswith("Operazione negata")
+      and "troppe azioni in attesa di firma" in _tr75b[2], f"out={_tr75b[2:3]}")
+check("T75b tetto superato → nessuna riga nuova (restano 2)",
+      len(_rows75b) == 2, str(_rows75b))
+check("T75b tetto superato → nessun invio (2 invii, uno per richiesta accodata)",
+      len(_tg75b.chiamate) == 2, f"invii={len(_tg75b.chiamate)}")
+check("T75b doppione a tetto pieno → stesso ID, non diniego",
+      "già in attesa" in _tr75b[3] and _rows75b[0][0] in _tr75b[3], f"out={_tr75b[3][:90]}")
+check("T75b tool NON eseguito in nessun caso", "send_email" not in _ex75b, str(_ex75b))
+_m75b = _ms73()
+_es75b = [_m75b.accoda_approvazione("send_email", {"n": i})[0] for i in range(6)]
+check("T75b default 5: la sesta richiesta distinta → 'tetto'",
+      _es75b == ["nuova"] * 5 + ["tetto"], str(_es75b))
+check("T75b default 5: righe in DB = 5",
+      _raw73(_m75b, "SELECT COUNT(*) FROM approvals") == [(5,)])
+_raw73(_m75b, "UPDATE approvals SET stato='expired', ts_resolved=0, risolto_da='timeout' "
+              "WHERE rowid = (SELECT MIN(rowid) FROM approvals)")
+check("T75b le pending scadute/risolte non contano nel tetto",
+      _m75b.accoda_approvazione("send_email", {"n": 99})[0] == "nuova")
+os.environ["GAS_APPROVAL_MAX_PENDING"] = "zero"
+try:
+    from modules.memory.store import _approval_max_pending as _amp75
+    _def75 = _amp75()
+    os.environ["GAS_APPROVAL_MAX_PENDING"] = "-3"
+    _neg75 = _amp75()
+finally:
+    os.environ.pop("GAS_APPROVAL_MAX_PENDING", None)
+    if _saved75b is not None:
+        os.environ["GAS_APPROVAL_MAX_PENDING"] = _saved75b
+check("T75b env tetto non valido → default 5", _def75 == 5 and _neg75 == 5, f"{_def75} {_neg75}")
+
+# T75c — read-back: args integrali, niente parse_mode, ID presente
+_args75c = json.dumps({"to": "terzi@example.com",
+                       "body": "*grassetto* <b>html</b> [link](http://x.y)\nriga2 ` _ ~"},
+                      ensure_ascii=False)
+_k75c = _k74()
+with _TgFinto() as _tg75c:
+    _ev75c = run_turn_scriptato(_k75c, "manda", [[("send_email", _args75c)], "ok"])
+_rows75c = _righe75(_k75c)
+_id75c = _rows75c[0][0] if _rows75c else "?"
+_m75c, _pl75c = _tg75c.chiamate[0] if _tg75c.chiamate else (None, {})
+_txt75c = (_pl75c or {}).get("text", "")
+check("T75c read-back: un solo sendMessage al chat_id autorizzato",
+      len(_tg75c.chiamate) == 1 and _m75c == "sendMessage" and _pl75c.get("chat_id") == 4242,
+      str(_tg75c.chiamate)[:200])
+check("T75c read-back: payload SENZA parse_mode (solo chat_id + text)",
+      "parse_mode" not in _pl75c and set(_pl75c) == {"chat_id", "text"}, str(sorted(_pl75c)))
+check("T75c read-back: tool_args_json INTEGRALE e verbatim",
+      _args75c in _txt75c, _txt75c[:300])
+check("T75c read-back: etichetta ARGOMENTI testo grezzo/terzi, tool, azione, scadenza",
+      "ARGOMENTI (testo grezzo, può contenere testo di terzi)" in _txt75c
+      and "Tool: send_email" in _txt75c and "Azione: Esegui send_email" in _txt75c
+      and "Scadenza: " in _txt75c, _txt75c[:300])
+check("T75c read-back: contiene l'ID approvazione",
+      f"ID approvazione: {_id75c}" in _txt75c, _txt75c[-200:])
+check("T75c dopo read-back consegnato la riga resta pending",
+      _rows75c == [(_id75c, "pending", None)], str(_rows75c))
+_d75c = [r["descrizione"] for r in _k75c.memory.diario_recente(10) if r["tipo"] == "send_email"]
+check("T75c diario: solo nome tool + id, mai args (F-diario-eco/args)",
+      _d75c and f"pending id={_id75c}" in _d75c[0] and "terzi@example.com" not in _d75c[0]
+      and "grassetto" not in _d75c[0], str(_d75c))
+check("T75c lunghezza_telegram conta in UTF-16 (emoji fuori BMP = 2)",
+      _tgbot_c4b.lunghezza_telegram("a\U0001F600") == 3)
+
+# T75d — oltre 4096 → nessun invio, riga revocata, diniego
+_k75d = _k74()
+_ex75d = _spia75(_k75d)
+_args75d = json.dumps({"to": "x@example.com", "body": "Z" * 4100})
+with _TgFinto() as _tg75d:
+    _ev75d = run_turn_scriptato(_k75d, "manda", [[("send_email", _args75d)], "ok"])
+_tr75d = [e["output"] for e in _ev75d if e["type"] == "tool_res"]
+_rows75d = _righe75(_k75d)
+check("T75d oltre 4096 → nessun invio", len(_tg75d.chiamate) == 0, str(len(_tg75d.chiamate)))
+check("T75d oltre 4096 → riga revocata (rejected/kernel_revoca)",
+      len(_rows75d) == 1 and _rows75d[0][1:] == ("rejected", "kernel_revoca"), str(_rows75d))
+check("T75d oltre 4096 → diniego 'argomenti troppo grandi per un read-back integrale'",
+      _tr75d and _tr75d[0].startswith("Operazione negata")
+      and "argomenti troppo grandi per un read-back integrale" in _tr75d[0], str(_tr75d)[:200])
+check("T75d oltre 4096 → tool NON eseguito, nessuna pending",
+      "send_email" not in _ex75d and _k75d.memory.get_pending_approvals() == [])
+_d75d = [r["descrizione"] for r in _k75d.memory.diario_recente(10) if r["tipo"] == "send_email"]
+check("T75d diario: 'revocata id=', nessun arg",
+      _d75d and "revocata id=" in _d75d[0] and "ZZZZ" not in _d75d[0]
+      and "x@example.com" not in _d75d[0], str(_d75d)[:200])
+# Limite esatto: read-back di esattamente 4096 unità → inviato (confine incluso).
+_tmpl75d = _tgbot_c4b.componi_read_back({"azione_leggibile": "A", "tool_name": "t",
+    "tool_args_json": "", "id": "0" * 36, "ts_expiry": 0.0})
+check("T75d confine: 4096 unità esatte ammesse, 4097 no",
+      _tgbot_c4b.lunghezza_telegram(_tmpl75d + "x" * (4096 - len(_tmpl75d))) == 4096
+      and _tgbot_c4b.invia_read_back("x" * 4097)[0] is False)
+
+# T75e — token mancante / invio che lancia / risposta ok=False → revoca + diniego
+def _caso75e(**tg_kwargs):
+    k = _k74()
+    ex = _spia75(k)
+    with _TgFinto(**tg_kwargs) as tg:
+        ev = run_turn_scriptato(k, "manda", [[("send_email", _ARGS75)], "ok"])
+    tr = [e["output"] for e in ev if e["type"] == "tool_res"]
+    return k, ex, tg, tr, _righe75(k)
+
+for _nome75e, _kw75e, _attese_chiamate in (
+        ("token mancante", {"token": None}, 0),
+        ("ID mancanti", {"ids": None}, 0),
+        ("invio che lancia", {"lancia": True}, 1),
+        ("risposta ok=False", {"risposta": {"ok": False}}, 1)):
+    _k75e, _ex75e, _tg75e, _tr75e, _rows75e = _caso75e(**_kw75e)
+    check(f"T75e {_nome75e} → riga revocata (rejected/kernel_revoca)",
+          len(_rows75e) == 1 and _rows75e[0][1:] == ("rejected", "kernel_revoca"), str(_rows75e))
+    check(f"T75e {_nome75e} → diniego al modello, tool NON eseguito",
+          _tr75e and _tr75e[0].startswith("Operazione negata")
+          and "Approvazione revocata" in _tr75e[0] and "send_email" not in _ex75e,
+          f"out={_tr75e[:1]} calls={_ex75e}")
+    check(f"T75e {_nome75e} → chiamate HTTP = {_attese_chiamate}, token mai nell'esito",
+          len(_tg75e.chiamate) == _attese_chiamate
+          and "finto:token" not in (_tr75e[0] if _tr75e else ""), str(len(_tg75e.chiamate)))
+# WARN nella scatola nera per invio fallito
+_logrec75e: list = []
+class _H75e(logging.Handler):
+    def emit(self, record):
+        _logrec75e.append(record.getMessage())
+_h75e = _H75e(level=logging.WARNING)
+logging.getLogger().addHandler(_h75e)
+try:
+    _caso75e(lancia=True)
+finally:
+    logging.getLogger().removeHandler(_h75e)
+check("T75e invio fallito → WARN 'approvazione revocata' nella scatola nera",
+      any("approvazione revocata" in m for m in _logrec75e), str(_logrec75e)[:300])
+# Due destinatari, uno fallisce → consegnato all'altro: basta (l'operatore sa).
+class _TgUnoSuDue(_TgFinto):
+    def __call__(self, base_url, method, payload=None, timeout=70):
+        self.chiamate.append((method, payload))
+        return {"ok": payload.get("chat_id") == 2}
+_k75e2 = _k74()
+with _TgUnoSuDue(ids="1,2,abc") as _tg75e2:
+    run_turn_scriptato(_k75e2, "manda", [[("send_email", _ARGS75)], "ok"])
+check("T75e due ID, uno solo consegnato → resta pending (ID non interi scartati)",
+      [r[1] for r in _righe75(_k75e2)] == ["pending"]
+      and sorted(p["chat_id"] for _, p in _tg75e2.chiamate) == [1, 2],
+      f"{_righe75(_k75e2)} {_tg75e2.chiamate}")
+
+# T75f — R-c3-3 / R-c3-4: chi può approvare/rifiutare
+_m75f = _ms73()
+def _p75f() -> str:
+    return _m75f.enqueue_approval("send_email", {"to": "f@example.com", "u": str(_uuid73.uuid4())})
+def _stato75f(aid):
+    return _raw73(_m75f, "SELECT stato, risolto_da, telegram_user_id FROM approvals WHERE id=?",
+                  (aid,))[0]
+_f1 = _p75f()
+_r1 = _m75f.resolve_approval(_f1, "approved", telegram_user_id=42, risolto_da="kernel_revoca")
+check("T75f R-c3-3 approved con risolto_da='kernel_revoca' → negato, nessuna scrittura",
+      _r1[0] is False and _stato75f(_f1) == ("pending", None, None), f"{_r1} {_stato75f(_f1)}")
+_r1b = _m75f.resolve_approval(_f1, "approved", telegram_user_id=42, risolto_da="timeout")
+check("T75f R-c3-3 approved con risolto_da='timeout' → negato",
+      _r1b[0] is False and _stato75f(_f1)[0] == "pending")
+_r2 = _m75f.resolve_approval(_f1, "approved", telegram_user_id=42, risolto_da="telegram_user")
+check("T75f R-c3-3 approved con telegram_user + id int → accettato",
+      _r2 == (True, "") and _stato75f(_f1) == ("approved", "telegram_user", 42), str(_stato75f(_f1)))
+_f2 = _p75f()
+_bad75f = []
+for _uid in ("123", 1.5, True, [1]):
+    _rr = _m75f.resolve_approval(_f2, "rejected", telegram_user_id=_uid)
+    if _rr[0] is not False or _stato75f(_f2) != ("pending", None, None):
+        _bad75f.append((_uid, _rr, _stato75f(_f2)))
+check("T75f R-c3-4 rejected con telegram_user_id non intero ('123', 1.5, True, [1]) → negato, nessuna scrittura",
+      _bad75f == [], str(_bad75f))
+_r3 = _m75f.resolve_approval(_f2, "rejected", telegram_user_id=7)
+check("T75f R-c3-4 rejected con id int → accettato",
+      _r3 == (True, "") and _stato75f(_f2) == ("rejected", "telegram_user", 7))
+_f3 = _p75f()
+_r4 = _m75f.revoca_approval(_f3)
+check("T75f R-c3-4 rejected con id None (revoca_approval del kernel) → accettato",
+      _r4 == (True, "") and _stato75f(_f3) == ("rejected", "kernel_revoca", None))
+_f4 = _p75f()
+_r5 = _m75f.resolve_approval(_f4, "approved", telegram_user_id=None, risolto_da="telegram_user")
+check("T75f approved senza telegram_user_id → negato (invariato)",
+      _r5[0] is False and _stato75f(_f4)[0] == "pending")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
