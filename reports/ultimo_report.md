@@ -1,27 +1,34 @@
-# ULTIMO REPORT — 2026-10-02 — Fetta C3 cancello: coda approvazioni SQLite
+# ULTIMO REPORT — 2026-10-03 — Fetta C3 cancello: chiusura R-c3-1 + nuova review #126
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **Gate §4 (check_verdetto) e verdetto verbatim**: il verdetto integrale della review #125 cita path abbreviati (`store.py:421`, `store.py:5131`, `store.py:1469`) e `gas.py:1948` (fuori dal diff). `check_verdetto.py` li considera "non nel diff di sessione" → gate B rosso. Per istruzione operatore il testo del verdetto NON è stato ritoccato: report e handoff sono scritti ma NON committati né pushati. Decidere: (a) accettare un §4 che fallisce il check (gate bypass esplicito), (b) far ri-emettere il verdetto al revisore con path completi, (c) correggere prima check_verdetto (fetta "controlli automatici", cfr. F-verdetto-ritoccato).
-2. **PR #109**: superata da #110 (vedi sotto). Merge/chiusura a discrezione dell'operatore.
-3. **Mini-fetta R-c3-1** (riserva media, da chiudere PRIMA di C4): proposta, non eseguita.
-4. **C4** (rimozione stub C2, turno di sblocco, bridge Telegram, limite read-back ~4096 char §4c): proposta, non eseguita.
+1. **Merge della PR #111** (https://github.com/Gasss23/Gas/pull/111): C3 + fix R-c3-1. Attenzione: mergiare NON attiva il cancello (vedi "Stato reale" sotto).
+2. **PR #109**: superata da #110, da chiudere SENZA merge (la chiude l'operatore).
+3. **C4** (proposta, non eseguita): collegamento della coda al loop con rimozione dello stub C2, canale umano Telegram, read-back, esito "in attesa"; più R-c3-1b (riga zombie con `ts_expiry` non numerico) da chiudere prima o dentro C4.
 
-## Esito per step
+## Stato reale (onestà)
 
-- **Step 0 — Sonda**: FATTA.
-  - #108 e #110 su origin/main. #109 OPEN (commit `7b6a471`, `c5feceb` non antenati di origin/main). Su indicazione operatore: partenza da origin/main attuale.
-  - Verifica #109 (`git diff origin/main origin/chore/fine-task-robusto -- .claude/commands/fine-task.md`): **#109 superata** — #110 sostituisce i gate inline con `scripts/fine_task_finale.sh`; mergiare #109 riporterebbe indietro main. Unico elemento di #109 non su main: il check "handoff rigenerato in questa sessione" (`git diff --stat ${BASE}..HEAD -- reports/handoff.md`) e il relativo cat condizionale.
-  - Cosa chiede §C3 (`reports/design_cancello.md:351-356`): tabella `approvals` in `modules/memory/store.py` con schema §4a (righe 192-209); metodi `enqueue_approval`, `resolve_approval(id, stato, telegram_user_id)`, `get_pending_approvals`, `expire_stale_approvals`; **zero modifiche a gas.py**; test: INSERT+resolve, doppio resolve no-op, scadenza artificiale (ts_expiry = now-1) → expired, integrità hash. Richiami: §4b (UUID uuid4 monouso, SHA-256 args, ts_expiry = now + GAS_APPROVAL_TIMEOUT_SECS), §4d/§8c (30 min, scaduta mai eseguita, resta per audit), §4e (token monouso, integrità args, stato immutabile), §8d (firma per-azione, niente batch).
-  - Stub C2: `gas.py:1947-1952` (ramo IRREVERSIBLE / UNCERTAIN+contaminata che esegue con log `[GATE-C2-STUB]`). Rimozione = C4 (`design_cancello.md:358-368`, §4b turno di sblocco via callback Telegram).
-  - Conflitto spec/brief segnalato all'operatore → decisione: **C3 come da spec** (solo store.py, stub resta fino a C4).
-- **Step 1 — Doc**: FATTA. In `reports/stato_progetto.md` §Finding aperti: F-verdetto-ritoccato, R-finale-1, nota handoff PR #109; più voce C3 con riserve R-c3-1..5.
-- **Step 2 — Implementazione §C3**: FATTA (scope spec). `modules/memory/store.py`: tabella `approvals` + 4 trigger (nasce solo pending, no DELETE, stato immutabile fuori da pending, payload immutabile); `hash_args`, `enqueue_approval`, `get_approval` (read-back integrale + `hash_ok`, aggiunta rispetto alla spec), `resolve_approval`, `get_pending_approvals`, `expire_stale_approvals`. Fail-closed su ogni errore. Nessun tool di approvazione esposto al modello. Stub C2 invariato (decisione operatore).
-- **Step 3 — Test reali**: FATTA. T73a-g (40 check, SQLite reale, nessun mock). Adattamento allo scope: "eseguita una volta sola" → "risolta una volta sola" (l'esecuzione è C4). Suite kernel: 423 PASS / 5 FAIL → 463 PASS / 5 FAIL (5 FAIL = F-mac-1). pytest gate+hooks+voice_server: 144 passed prima e dopo.
-- **Step 4 — Revisore Opus**: FATTA. Review #125 APPROVATO CON RISERVE (R-c3-1 media, R-c3-2..4 minori, R-c3-5 cosmetica). Commit motore `4f16a65`, memoria revisore `aa0b0d0`.
-- **Fine-task (commit report + push + PR)**: DEFERITA — gate B `check_verdetto.py` rosso sul §4 verbatim; per istruzione operatore il verdetto non si modifica → STOP.
+- C3 = coda approvazioni **pronta** in `modules/memory/store.py`, **NON collegata al loop**.
+- Lo **stub C2 è ancora attivo**: oggi le azioni da approvare (IRREVERSIBLE / UNCERTAIN+contaminata) partono **SENZA blocco**.
+- Collegamento al loop, canale umano, read-back ed esito "in attesa" = **C4**.
+- Invarianti 1, 5, 6 (canale umano) e 8 del prompt C3: **DEFERITA a C4** — non fatte.
+- Conflitto spec/prompt: risolto dall'operatore con "C3 come da spec" (solo store.py, zero gas.py).
+
+## Esito per step (sessione 2026-10-03, decisioni operatore A–D)
+
+- **A) R-c3-1 — chiusura nel branch**: FATTA. Commit `20dcadb`.
+  - `modules/memory/store.py`: nuovo `_approval_row_valida()` (tipo atteso per ogni colonna di `approvals`). Riga non conforme → `get_approval` None, `resolve_approval` rollback + (False, msg) senza scritture, `get_pending_approvals` la esclude; WARNING nel log in ogni caso. Except estesi a TypeError/ValueError/AttributeError come rete finale.
+  - Test **T73h** (reale, SQLite vero): INSERT grezzo di 3 righe corrotte (`tool_args_json` BLOB, `ts_expiry` TEXT, `telegram_user_id` TEXT) → lettura/approvazione/rifiuto negati, nessuna eccezione, stato DB invariato, WARN registrati, coda ancora usabile per una riga sana.
+  - Controprova: su `store.py` pre-fix T73h FALLISCE con `AttributeError("'bytes' object has no attribute 'encode'")`; col fix PASSA.
+  - Riserve R-c3-2..5: NON toccate (fuori mandato).
+- **B) Nuova review (revisore Opus) sul diff completo di sessione**: FATTA. Review **#126 APPROVATO CON RISERVE**, path completi dalla root. Verdetto verbatim in handoff §4; verdetto #125 verbatim in §4-bis (superato: path abbreviati + citazione errata `store.py:5131`). Nessun verdetto ritoccato, `check_verdetto.py` non modificato. Nuova riserva **R-c3-1b** (minore): riga con `ts_expiry` non numerico resta 'pending' zombie (non leggibile né approvabile). Memoria revisore: commit `0a9ccc0`.
+- **C) Onestà nei canonici**: FATTA (stato_progetto.md, questo report, handoff §1).
+- **D) Suite prima/dopo**: FATTA.
+  - Kernel: **463 PASS / 5 FAIL → 472 PASS / 5 FAIL** (+9 check T73h). I 5 FAIL sono F-mac-1 (bwrap assente su macOS: T11c2, T11e, T12a, T12c, T12e), invariati.
+  - pytest (gasmerge, gate, handoff_check, hooks, voice_server, voice_stt, voice_tts): **227 passed → 227 passed**.
+- **Fine-task**: FATTA (questo commit) — push branch + PR #111.
 
 ## Anomalie
 
-- Il verdetto #125 cita `store.py:5131` e se ne autocorregge in coda (→ `tests/test_unit_kernel.py:5131`): lasciato verbatim.
-- I commit `aa0b0d0` e `4f16a65` sono solo locali (branch mai pushato).
+- Il report precedente (2026-10-02) diceva "branch mai pushato", ma all'avvio di questa sessione `origin/feat/cancello-c3` puntava già a `81086db`.
+- Il revisore non ha verificato che i WARNING arrivino al file `gas_debug.log` (il test cattura il logger del modulo in memoria): dipende dalla configurazione logging di gas.py, non toccata.
