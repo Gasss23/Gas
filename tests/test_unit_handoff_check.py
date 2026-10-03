@@ -292,7 +292,8 @@ class TestCheckVerdetto:
 
         (work / "reports").mkdir(exist_ok=True)
         # Crea un file motore fittizio da citare
-        motore = work / "gas_fake.py"
+        motore = work / "modules" / "gas_fake.py"
+        motore.parent.mkdir(parents=True, exist_ok=True)
         motore.write_text("line1\nline2\nline3\nline4\nline5\n")
 
         base = subprocess.run(
@@ -300,7 +301,7 @@ class TestCheckVerdetto:
             cwd=work, capture_output=True, text=True, check=True,
         ).stdout.strip()
 
-        _write_handoff(work, " gas_fake.py | 5 +++++\n reports/handoff.md | 40 ++++\n 2 files changed", sec4)
+        _write_handoff(work, " modules/gas_fake.py | 5 +++++\n reports/handoff.md | 40 ++++\n 2 files changed", sec4)
         _commit_all(work, "add engine file and handoff")
         return base
 
@@ -325,7 +326,7 @@ class TestCheckVerdetto:
         work = tmp_path / "work"
         bare = tmp_path / "bare"
         # gas_fake.py ha 5 righe; cito riga 3 (valida)
-        sec4 = "Approvato. Vedi gas_fake.py:3 — funzione ok."
+        sec4 = "Approvato. Vedi gas_fake.py:3 — funzione ok; gas_fake.py:4 — ok."
         base = self._setup_branch_with_handoff(work, bare, sec4)
 
         result = _run_check_verdetto(work, base)
@@ -335,28 +336,12 @@ class TestCheckVerdetto:
             f"err={result.stderr!r}"
         )
 
-    def test_no_diff_motore_exits_0(self, tmp_path):
-        """§4 dichiara nessun diff motore → exit 0 'non applicabile'."""
-        work = tmp_path / "work"
-        bare = tmp_path / "bare"
-        sec4 = "nessun diff motore, revisore non richiesto."
-        base = self._setup_branch_with_handoff(work, bare, sec4)
-
-        result = _run_check_verdetto(work, base)
-
-        assert result.returncode == 0, (
-            f"nessun diff motore: atteso exit 0, got {result.returncode}; "
-            f"err={result.stderr!r}"
-        )
-        assert "non applicabile" in result.stdout.lower(), (
-            f"Deve stampare 'non applicabile': {result.stdout!r}"
-        )
 
     def test_nota_mitigated_not_closed(self, tmp_path):
         """Output di check_verdetto deve dichiarare MITIGATO, non CHIUSO."""
         work = tmp_path / "work"
         bare = tmp_path / "bare"
-        sec4 = "Approvato. Vedi gas_fake.py:2."
+        sec4 = "Approvato. Vedi gas_fake.py:2 e gas_fake.py:3."
         base = self._setup_branch_with_handoff(work, bare, sec4)
 
         result = _run_check_verdetto(work, base)
@@ -382,49 +367,101 @@ class TestCheckVerdetto:
         _commit_all(work, "contesto su main")
         _fake_origin(work, bare)
         _branch(work, "feature/test")
-        (work / "gas_fake.py").write_text("line1\nline2\nline3\n")
+        (work / "modules" / "gas_fake.py").write_text("line1\nline2\nline3\n")
         base = subprocess.run(
             ["git", "merge-base", "origin/main", "HEAD"],
             cwd=work, capture_output=True, text=True, check=True,
         ).stdout.strip()
-        _write_handoff(work, " gas_fake.py | 3 +++\n reports/handoff.md | 40 ++++\n 2 files changed", sec4)
+        _write_handoff(work, " modules/gas_fake.py | 3 +++\n reports/handoff.md | 40 ++++\n 2 files changed", sec4)
         _commit_all(work, "engine + handoff")
         return base
 
     def test_context_file_full_path_exits_0(self, tmp_path):
         """F-controlli-auto: file di contesto citato col path completo, non nel diff → OK."""
-        sec4 = "Approvato. Vedi gas_fake.py:2 e modules/telegram/bot.py:3."
+        sec4 = "Approvato. Vedi gas_fake.py:2, gas_fake.py:3 e modules/telegram/bot.py:3."
         base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
         result = _run_check_verdetto(tmp_path / "work", base)
         assert result.returncode == 0, f"err={result.stderr!r}"
 
     def test_context_short_name_unique_exits_0(self, tmp_path):
         """Nome corto (bot.py) che corrisponde a un solo file a HEAD → OK."""
-        sec4 = "Approvato. bot.py:4 gira nello stesso thread."
+        sec4 = "Approvato. gas_fake.py:1, gas_fake.py:2; bot.py:4 gira nello stesso thread."
         base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
         result = _run_check_verdetto(tmp_path / "work", base)
         assert result.returncode == 0, f"err={result.stderr!r}"
 
     def test_context_short_name_line_out_of_range_exits_1(self, tmp_path):
         """Nome corto risolto ma riga oltre la fine del file → exit 1."""
-        sec4 = "Approvato. bot.py:99."
+        sec4 = "Approvato. gas_fake.py:1, gas_fake.py:2, bot.py:99."
         base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
         result = _run_check_verdetto(tmp_path / "work", base)
         assert result.returncode == 1 and "99" in result.stderr, result.stderr
 
     def test_context_short_name_ambiguous_exits_1(self, tmp_path):
         """Nome corto che corrisponde a più file a HEAD → non verificabile, exit 1."""
-        sec4 = "Approvato. util.py:1."
+        sec4 = "Approvato. gas_fake.py:1, gas_fake.py:2, util.py:1."
         base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
         result = _run_check_verdetto(tmp_path / "work", base)
         assert result.returncode == 1 and "ambiguo" in result.stderr, result.stderr
 
     def test_context_missing_file_exits_1(self, tmp_path):
         """File citato inesistente a HEAD (né nel diff né come nome) → exit 1."""
-        sec4 = "Approvato. Vedi fantasma.py:1."
+        sec4 = "Approvato. gas_fake.py:1, gas_fake.py:2, fantasma.py:1."
         base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
         result = _run_check_verdetto(tmp_path / "work", base)
         assert result.returncode == 1 and "fantasma.py" in result.stderr, result.stderr
+
+    def test_r135_1_only_context_exits_1(self, tmp_path):
+        """R-135-1: verdetto che cita SOLO file di contesto (nessun file del diff) → exit 1."""
+        sec4 = "## VERDETTO: APPROVATO\nmodules/telegram/bot.py:3 e bot.py:4 ok."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "minimo 2" in result.stderr, result.stderr
+
+    def test_r135_2_no_citations_exits_1(self, tmp_path):
+        """R-135-2: verdetto senza alcun path:riga con diff motore → exit 1 (non 'nulla da verificare')."""
+        sec4 = "APPROVATO — nessuna lezione nuova."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1, f"out={result.stdout!r} err={result.stderr!r}"
+
+    def test_r135_2_one_empty_verdict_among_many_exits_1(self, tmp_path):
+        """R-135-2: con più verdetti nel §4, UNO vuoto basta a bocciare."""
+        sec4 = ("### #1\n## VERDETTO: APPROVATO\ngas_fake.py:1 e gas_fake.py:2 ok.\n"
+                "### #2\n## VERDETTO: APPROVATO\nnessuna lezione nuova.")
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "verdetto 2" in result.stderr, result.stderr
+
+    def test_r135_3_report_citations_do_not_count(self, tmp_path):
+        """Le citazioni di reports/ (nel diff) non contano come elementi del codice revisionato."""
+        sec4 = "## VERDETTO: APPROVATO\nreports/handoff.md:1, reports/handoff.md:2, gas_fake.py:1."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "minimo 2" in result.stderr, result.stderr
+
+    def test_r135_4_phrase_does_not_exempt_motor_diff(self, tmp_path):
+        """R-135-4: la frase 'nessun diff motore' nel §4 NON esenta se il diff tocca il motore.
+        Sostituisce il vecchio test_no_diff_motore_exits_0, che codificava il by-pass."""
+        sec4 = "nessun diff motore, revisore non richiesto."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1, f"out={result.stdout!r} err={result.stderr!r}"
+
+    def test_r135_4_no_motor_diff_not_applicable(self, tmp_path):
+        """Diff di sessione senza motore → non applicabile, qualunque cosa dica il §4."""
+        work, bare = tmp_path / "work", tmp_path / "bare"
+        _init_repo(work)
+        _fake_origin(work, bare)
+        _branch(work, "feature/doc")
+        base = subprocess.run(["git", "merge-base", "origin/main", "HEAD"], cwd=work,
+                              capture_output=True, text=True, check=True).stdout.strip()
+        (work / "docs.md").write_text("x\n")
+        _write_handoff(work, " docs.md | 1 +\n reports/handoff.md | 40 ++++\n 2 files changed",
+                       "APPROVATO senza citazioni")
+        _commit_all(work, "doc only")
+        result = _run_check_verdetto(work, base)
+        assert result.returncode == 0 and "non tocca il motore" in result.stdout, result.stdout
 
     def test_nonascii_filename_check_verdetto(self, tmp_path):
         """File con nome non-ASCII (caffè.txt) citato in §4 → exit 0.
