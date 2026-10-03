@@ -20,6 +20,7 @@ from brains.model_ids import (
     GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
+from modules.telegram import bot as _tg_bot
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
 
@@ -1239,6 +1240,75 @@ class GasKernel:
             # solo una cintura ulteriore perché il loop non cada MAI per il diario.
             logging.warning(f"diario non scritto ({tipo}): {e}")
 
+    _NEGATO_STORE = ("Operazione negata: azione bloccata in attesa di "
+                     "approvazione umana (store non disponibile).")
+
+    def _parcheggia_e_notifica(self, tool_name: str, tool_args: str,
+                               turno_id: Optional[str]) -> Tuple[str, str]:
+        """C4a/C4b-1: parcheggia un'azione IRREVERSIBLE (o UNCERTAIN+contaminata)
+        e ne invia il read-back Telegram. Il tool NON viene mai eseguito qui.
+        Ritorna (esito per il modello, etichetta diario SENZA args — F-diario-eco/args).
+        - doppione di una pending non scaduta → stesso ID, nessuna riga, nessun invio;
+        - tetto di pending raggiunto → diniego, nessuna riga, nessun invio;
+        - read-back oltre il limite Telegram, config mancante o invio fallito →
+          richiesta revocata (rejected/kernel_revoca) + diniego: mai una pending
+          di cui l'operatore non sa niente.
+        FAIL-CLOSED §9: qualunque eccezione → diniego, mai crash."""
+        if self.memory is None:
+            logging.warning("[GATE] FAIL-CLOSED %s — store non disponibile, diniego", tool_name)
+            return self._NEGATO_STORE, "gate-fail-closed"
+        try:
+            esito, aid = self.memory.accoda_approvazione(
+                tool_name, tool_args, turno_id=turno_id,
+                azione_leggibile=f"Esegui {tool_name}",
+            )
+        except Exception as e:
+            logging.warning("[GATE] accoda_approvazione eccezione (%s) — fail-closed, diniego", e)
+            esito, aid = "errore", None
+        if esito == "doppione" and aid:
+            logging.warning("[GATE-C4B] %s doppione di pending id=%s — nessun nuovo invio",
+                            tool_name, aid)
+            return (f"Azione già in attesa di approvazione umana (ID: {aid}). "
+                    f"Nessuna nuova richiesta inviata."), f"pending-doppione id={aid}"
+        if esito == "tetto":
+            return ("Operazione negata: troppe azioni in attesa di firma."), "tetto-pending"
+        if esito != "nuova" or not aid:
+            logging.warning("[GATE] FAIL-CLOSED %s — accodamento fallito (%s), diniego",
+                            tool_name, esito)
+            return self._NEGATO_STORE, "gate-fail-closed"
+
+        motivo = ""
+        try:
+            row = self.memory.get_approval(aid)
+            if row is None or not row.get("hash_ok") or row.get("stato") != "pending":
+                motivo = "richiesta non rileggibile dalla coda"
+            else:
+                testo = _tg_bot.componi_read_back(row)
+                if _tg_bot.lunghezza_telegram(testo) > _tg_bot.TELEGRAM_MAX_CHARS:
+                    motivo = "argomenti troppo grandi per un read-back integrale"
+                else:
+                    inviato, dettaglio = _tg_bot.invia_read_back(testo)
+                    if not inviato:
+                        motivo = ("impossibile notificare la richiesta di firma "
+                                  f"all'operatore ({dettaglio})")
+        except Exception as e:
+            logging.warning("[GATE-C4B] read-back id=%s eccezione: %s", aid, e)
+            motivo = "impossibile notificare la richiesta di firma all'operatore"
+        if not motivo:
+            logging.warning("[GATE-C4B] %s parcheggiato id=%s — read-back inviato", tool_name, aid)
+            return f"Azione in attesa di approvazione umana (ID: {aid}).", f"pending id={aid}"
+
+        logging.warning("[GATE-C4B] %s id=%s — %s: approvazione revocata", tool_name, aid, motivo)
+        try:
+            revocata, msg = self.memory.revoca_approval(aid)
+        except Exception as e:
+            revocata, msg = False, str(e)
+        if not revocata:
+            # Resta una pending non notificata: non approvabile senza bottoni e
+            # comunque scade a ts_expiry (§4d). Segnalata nella scatola nera.
+            logging.warning("[GATE-C4B] revoca di id=%s NON riuscita: %s", aid, msg)
+        return f"Operazione negata: {motivo}. Approvazione revocata.", f"revocata id={aid}"
+
     def _memoria_backup_auto(self) -> None:
         """Backup automatico THROTTLED del DB di memoria: backup LOCALE (anti
         auto-corruzione) + backup OFF-SITE (anti-disastro-disco, solo se
@@ -1939,50 +2009,24 @@ class GasKernel:
                             for tc in msg.tool_calls:
                                 # C2: gate check prima di eseguire.
                                 _gc = gate_classify(tc.function.name, tc.function.arguments)
-                                _gate_pending_id: Optional[str] = None
+                                _gate_diario: Optional[str] = None  # azioni al cancello: diario senza args
                                 if _gc == GateClass.DENY:
                                     logging.warning(f"[GATE] DENY: {tc.function.name}")
                                     out = "Operazione negata: azione non consentita in modalità autonoma."
                                 elif _gc == GateClass.IRREVERSIBLE or (
                                     _gc == GateClass.UNCERTAIN and _finestra_contaminata
                                 ):
-                                    # C4a: parcheggia l'azione, NON la esegue (§4b, turno suddiviso).
-                                    try:
-                                        _gate_pending_id = (
-                                            self.memory.enqueue_approval(
-                                                tc.function.name,
-                                                tc.function.arguments,
-                                                turno_id=_turno_id,
-                                                azione_leggibile=f"Esegui {tc.function.name}",
-                                            )
-                                            if self.memory is not None
-                                            else None
-                                        )
-                                    except Exception as _eq:
-                                        logging.warning(
-                                            "[GATE] enqueue_approval eccezione (%s) — fail-closed, diniego",
-                                            _eq,
-                                        )
-                                        _gate_pending_id = None
-                                    if _gate_pending_id is None:
-                                        logging.warning(
-                                            "[GATE] FAIL-CLOSED %s → %s (contaminato=%s) "
-                                            "— store non disponibile, diniego",
-                                            tc.function.name, _gc.value, _finestra_contaminata,
-                                        )
-                                        out = ("Operazione negata: azione bloccata in attesa di "
-                                               "approvazione umana (store non disponibile).")
-                                    else:
-                                        logging.warning(
-                                            "[GATE-C4A] %s → %s (contaminato=%s) — parcheggiato id=%s",
-                                            tc.function.name, _gc.value, _finestra_contaminata,
-                                            _gate_pending_id,
-                                        )
-                                        out = (f"Azione in attesa di approvazione umana "
-                                               f"(ID: {_gate_pending_id}).")
+                                    # C4a/C4b-1: parcheggia + read-back, NON esegue (§4b, turno suddiviso).
+                                    logging.warning(
+                                        "[GATE] %s → %s (contaminato=%s) — al cancello",
+                                        tc.function.name, _gc.value, _finestra_contaminata,
+                                    )
+                                    out, _gate_diario = self._parcheggia_e_notifica(
+                                        tc.function.name, tc.function.arguments, _turno_id,
+                                    )
                                 else:
                                     out = self.execute_tool_call(tc.function.name, tc.function.arguments)
-                                # Diario: per azioni pending solo nome+id (F-diario-eco/args, mai args).
+                                # Diario: per azioni al cancello solo nome+id (F-diario-eco/args, mai args).
                                 # Per tutti gli altri casi: riassunto args + esito.
                                 _esito_str = self._esito_diario(tc.function.name, out)
                                 _turno_tool_n += 1
@@ -1990,8 +2034,8 @@ class GasKernel:
                                     _turno_tool_ko += 1
                                 self._diario_log(
                                     tc.function.name,
-                                    f"pending id={_gate_pending_id} | {_esito_str}"
-                                    if _gate_pending_id is not None else
+                                    f"{_gate_diario} | {_esito_str}"
+                                    if _gate_diario is not None else
                                     f"{self._riassumi_args(tc.function.name, tc.function.arguments)}"
                                     f" | {_esito_str}",
                                     fonte="kernel",

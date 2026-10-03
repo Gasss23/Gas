@@ -28,11 +28,14 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 log = logging.getLogger(__name__)
 
 _TELEGRAM_API = "https://api.telegram.org/bot"
+# Limite Telegram del testo di sendMessage, contato in unità UTF-16
+# (un'emoji fuori dal BMP vale 2). Read-back oltre il limite → niente invio.
+TELEGRAM_MAX_CHARS: int = 4096
 
 
 # ─────────────────────────────────────────── infra HTTP ──
@@ -71,6 +74,80 @@ def _send_typing(base_url: str, chat_id: int) -> None:
     _tg_post(base_url, "sendChatAction", {"chat_id": chat_id, "action": "typing"})
 
 
+def parse_allowed_ids(raw: str) -> Tuple[Set[int], List[str]]:
+    """TELEGRAM_ALLOWED_IDS → (ID interi validi, chunk scartati perché non interi)."""
+    allowed: Set[int] = set()
+    scartati: List[str] = []
+    for chunk in (raw or "").split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        try:
+            allowed.add(int(chunk))
+        except ValueError:
+            scartati.append(chunk)
+    return allowed, scartati
+
+
+# ─────────────────────────────────── read-back approvazioni (C4b-1) ──
+# Solo INVIO: nessun bottone, nessuna callback (C4b-2). Testo semplice SENZA
+# parse_mode: Markdown/HTML nel testo di terzi potrebbe nascondere contenuto.
+
+def lunghezza_telegram(text: str) -> int:
+    """Lunghezza come la conta Telegram (unità UTF-16)."""
+    return len(text.encode("utf-16-le")) // 2
+
+
+def componi_read_back(approval: Dict[str, Any]) -> str:
+    """Testo del read-back di una richiesta 'pending' (riga di approvals).
+    `tool_args_json` INTEGRALE e verbatim, mai troncato (§4c)."""
+    scad = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime(approval["ts_expiry"]))
+    return (
+        "GAS chiede la tua firma\n\n"
+        f"Azione: {approval['azione_leggibile']}\n"
+        f"Tool: {approval['tool_name']}\n\n"
+        "ARGOMENTI (testo grezzo, può contenere testo di terzi):\n"
+        f"{approval['tool_args_json']}\n\n"
+        f"ID approvazione: {approval['id']}\n"
+        f"Scadenza: {scad}\n\n"
+        "Nessuna azione verrà eseguita senza firma. "
+        "I bottoni Approva/Rifiuta non sono ancora attivi."
+    )
+
+
+def invia_read_back(text: str) -> Tuple[bool, str]:
+    """Invia `text` (senza parse_mode) a ogni ID in TELEGRAM_ALLOWED_IDS.
+    (True, '') se ALMENO un destinatario l'ha ricevuto (risposta ok=True);
+    altrimenti (False, motivo). Mai troncamento: testo oltre TELEGRAM_MAX_CHARS
+    → (False, ...) senza invio. Fail-safe §9: nessuna eccezione propagata."""
+    try:
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        if not token:
+            return False, "TELEGRAM_BOT_TOKEN mancante"
+        allowed, _ = parse_allowed_ids(os.environ.get("TELEGRAM_ALLOWED_IDS", ""))
+        if not allowed:
+            return False, "TELEGRAM_ALLOWED_IDS mancante o senza ID validi"
+        if lunghezza_telegram(text) > TELEGRAM_MAX_CHARS:
+            return False, "testo oltre il limite Telegram"
+        base_url = f"{_TELEGRAM_API}{token}"
+        consegnati = 0
+        for chat_id in sorted(allowed):
+            resp = _tg_post(base_url, "sendMessage",
+                            {"chat_id": chat_id, "text": text}, timeout=15)
+            if isinstance(resp, dict) and resp.get("ok") is True:
+                consegnati += 1
+            else:
+                log.warning("read-back: invio a chat_id %d fallito", chat_id)
+        if consegnati == 0:
+            return False, "invio fallito verso tutti i destinatari"
+        return True, ""
+    except Exception as e:
+        # Il dettaglio resta nella scatola nera: non torna al chiamante (può
+        # contenere l'URL dell'API, cioè il token).
+        log.warning("read-back: errore di invio: %s", e)
+        return False, "errore di invio"
+
+
 # ─────────────────────────────────────────── entry point ──
 
 def run_bot(root_dir: Optional[str] = None) -> int:
@@ -92,15 +169,9 @@ def run_bot(root_dir: Optional[str] = None) -> int:
         print("  (per trovare il tuo chat_id manda /start a @userinfobot)")
         return 1
 
-    allowed: Set[int] = set()
-    for chunk in raw_ids.split(","):
-        chunk = chunk.strip()
-        if not chunk:
-            continue
-        try:
-            allowed.add(int(chunk))
-        except ValueError:
-            print(f"  WARN: '{chunk}' in TELEGRAM_ALLOWED_IDS non è un intero — ignorato")
+    allowed, scartati = parse_allowed_ids(raw_ids)
+    for chunk in scartati:
+        print(f"  WARN: '{chunk}' in TELEGRAM_ALLOWED_IDS non è un intero — ignorato")
     if not allowed:
         print("✗ gas telegram: nessun ID autorizzato valido in TELEGRAM_ALLOWED_IDS.")
         return 1

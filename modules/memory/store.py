@@ -81,6 +81,9 @@ STATI_APPROVAL: Tuple[str, ...] = ("pending", "approved", "rejected", "expired")
 RISOLTO_DA_APPROVAL: Tuple[str, ...] = ("telegram_user", "timeout", "kernel_revoca")
 # Timeout di default (§4d / §8c, DECISO 2026-09-29): 30 minuti. Override via env.
 DEFAULT_APPROVAL_TIMEOUT_SECS: int = 1800
+# Tetto delle richieste 'pending' NON scadute (C4b-1): oltre, il kernel nega
+# invece di accodare (anti-spam Telegram, §4f). Override via env.
+DEFAULT_APPROVAL_MAX_PENDING: int = 5
 
 DEFAULT_DB_FILENAME: str = ".gas_memory.db"
 # Quante copie .bak tenere di default (rotazione anti-accumulo, come la retention
@@ -259,6 +262,43 @@ def _approval_timeout_secs() -> int:
     log.warning("GAS_APPROVAL_TIMEOUT_SECS non valido (%r) — uso default %d",
                 raw, DEFAULT_APPROVAL_TIMEOUT_SECS)
     return DEFAULT_APPROVAL_TIMEOUT_SECS
+
+
+def _approval_max_pending() -> int:
+    """Tetto da env GAS_APPROVAL_MAX_PENDING (default 5). Valore non numerico
+    o <= 0 → WARN + default (fail-safe §9, mai crash)."""
+    raw = os.environ.get("GAS_APPROVAL_MAX_PENDING")
+    if raw is None:
+        return DEFAULT_APPROVAL_MAX_PENDING
+    try:
+        val = int(raw)
+        if val > 0:
+            return val
+    except ValueError:
+        pass
+    log.warning("GAS_APPROVAL_MAX_PENDING non valido (%r) — uso default %d",
+                raw, DEFAULT_APPROVAL_MAX_PENDING)
+    return DEFAULT_APPROVAL_MAX_PENDING
+
+
+def _serializza_args(tool_args: Union[str, Dict[str, Any]]) -> Optional[str]:
+    """Testo verbatim degli argomenti da accodare: stringa → così com'è (deve
+    essere un oggetto JSON); dict → serializzato una volta sola. None se non
+    serializzabile o non oggetto JSON (fail-closed: niente accodamento)."""
+    try:
+        if isinstance(tool_args, str):
+            args_json = tool_args
+            parsed = json.loads(args_json)
+        else:
+            args_json = json.dumps(tool_args, ensure_ascii=False, sort_keys=True)
+            parsed = tool_args
+    except (TypeError, ValueError) as e:
+        log.warning("approvals: argomenti non serializzabili (%s)", e)
+        return None
+    if not isinstance(parsed, dict):
+        log.warning("approvals: argomenti non sono un oggetto JSON")
+        return None
+    return args_json
 
 
 def _uuid_valido(approval_id: Any) -> bool:
@@ -1446,18 +1486,8 @@ class MemoryStore:
         if not isinstance(tool_name, str) or not tool_name:
             log.warning("enqueue_approval: tool_name non valido (%r)", tool_name)
             return None
-        try:
-            if isinstance(tool_args, str):
-                args_json = tool_args
-                parsed = json.loads(args_json)
-            else:
-                args_json = json.dumps(tool_args, ensure_ascii=False, sort_keys=True)
-                parsed = tool_args
-        except (TypeError, ValueError) as e:
-            log.warning("enqueue_approval: argomenti non serializzabili (%s)", e)
-            return None
-        if not isinstance(parsed, dict):
-            log.warning("enqueue_approval: argomenti non sono un oggetto JSON")
+        args_json = _serializza_args(tool_args)
+        if args_json is None:
             return None
         if timeout_secs is None:
             timeout_secs = _approval_timeout_secs()
@@ -1478,6 +1508,76 @@ class MemoryStore:
             log.warning("enqueue_approval fallita (%s): %s — azione NON accodata",
                         self.db_path, e)
             return None
+
+    def accoda_approvazione(
+        self,
+        tool_name: str,
+        tool_args: Union[str, Dict[str, Any]],
+        turno_id: Optional[str] = None,
+        azione_leggibile: Optional[str] = None,
+        max_pending: Optional[int] = None,
+    ) -> Tuple[str, Optional[str]]:
+        """Accodamento usato dal loop (C4b-1): anti-doppioni + tetto, ATOMICO
+        (BEGIN IMMEDIATE: controlli e INSERT nella stessa transazione).
+        Ritorna (esito, id):
+        - ("doppione", id_esistente): c'è già una 'pending' NON scaduta con stesso
+          tool_name e stesso tool_args_hash → nessuna nuova riga;
+        - ("tetto", None): le 'pending' non scadute sono già >= max_pending
+          (default env GAS_APPROVAL_MAX_PENDING, 5) → nessuna riga;
+        - ("nuova", uuid): riga 'pending' creata;
+        - ("errore", None): store/argomenti non validi o errore DB → fail-closed.
+        Il doppione si controlla PRIMA del tetto: ripetere un'azione già in coda
+        non è una richiesta nuova. `enqueue_approval` resta la primitiva C3
+        senza dedup (firma per-azione, §8d)."""
+        if not self.available:
+            log.warning("accoda_approvazione: memoria non disponibile — azione NON accodata")
+            return "errore", None
+        if not isinstance(tool_name, str) or not tool_name:
+            log.warning("accoda_approvazione: tool_name non valido (%r)", tool_name)
+            return "errore", None
+        args_json = _serializza_args(tool_args)
+        if args_json is None:
+            return "errore", None
+        if max_pending is None:
+            max_pending = _approval_max_pending()
+        args_hash = hash_args(args_json)
+        try:
+            with self._connect() as con:
+                con.execute("BEGIN IMMEDIATE")
+                now = time.time()
+                dup = con.execute(
+                    "SELECT id FROM approvals WHERE stato = 'pending' AND ts_expiry > ? "
+                    "AND tool_name = ? AND tool_args_hash = ? "
+                    "ORDER BY ts_created ASC LIMIT 1",
+                    (now, tool_name, args_hash),
+                ).fetchone()
+                if dup is not None and _uuid_valido(dup["id"]):
+                    con.rollback()
+                    return "doppione", dup["id"]
+                n_pending = con.execute(
+                    "SELECT COUNT(*) FROM approvals WHERE stato = 'pending' AND ts_expiry > ?",
+                    (now,),
+                ).fetchone()[0]
+                if n_pending >= max_pending:
+                    con.rollback()
+                    log.warning("accoda_approvazione: tetto pending raggiunto (%d >= %d) — "
+                                "%s NON accodata", n_pending, max_pending, tool_name)
+                    return "tetto", None
+                approval_id = str(uuid.uuid4())
+                con.execute(
+                    "INSERT INTO approvals (id, turno_id, tool_name, tool_args_json, "
+                    "tool_args_hash, azione_leggibile, stato, ts_created, ts_expiry) "
+                    "VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+                    (approval_id, turno_id, tool_name, args_json, args_hash,
+                     azione_leggibile or f"Esegui {tool_name}", now,
+                     now + _approval_timeout_secs()),
+                )
+                con.commit()
+                return "nuova", approval_id
+        except (sqlite3.Error, OSError, TypeError, ValueError, IndexError) as e:
+            log.warning("accoda_approvazione fallita (%s): %s — azione NON accodata",
+                        self.db_path, e)
+            return "errore", None
 
     def get_approval(self, approval_id: str) -> Optional[Dict[str, Any]]:
         """Read-back integrale di una richiesta (args verbatim, nessun troncamento)
@@ -1512,8 +1612,11 @@ class MemoryStore:
         """Porta una richiesta da 'pending' a 'approved' o 'rejected', UNA sola volta.
         - doppia risoluzione → no-op (False): lo stato è immutabile;
         - scaduta (now >= ts_expiry) → marcata 'expired', mai approvata (§4d);
-        - 'approved' richiede telegram_user_id intero e hash integro: args
-          manomessi → la richiesta viene revocata ('rejected', kernel_revoca).
+        - 'approved' richiede risolto_da='telegram_user' (R-c3-3), telegram_user_id
+          intero e hash integro: args manomessi → la richiesta viene revocata
+          ('rejected', kernel_revoca);
+        - 'rejected' richiede telegram_user_id intero o None (R-c3-4).
+        Parametri non validi → (False, msg) SENZA scritture.
         Ritorna (True, '') solo se QUESTA chiamata ha risolto la richiesta."""
         if stato not in ("approved", "rejected"):
             return False, f"Stato non ammesso: {stato!r} (ammessi: approved, rejected)."
@@ -1521,10 +1624,15 @@ class MemoryStore:
             return False, f"risolto_da non ammesso: {risolto_da!r}."
         if not _uuid_valido(approval_id):
             return False, "ID approvazione non valido."
-        if stato == "approved" and (
-            not isinstance(telegram_user_id, int) or isinstance(telegram_user_id, bool)
-        ):
+        _uid_int = isinstance(telegram_user_id, int) and not isinstance(telegram_user_id, bool)
+        if stato == "approved" and risolto_da != "telegram_user":
+            # R-c3-3: approva solo un utente Telegram, mai il kernel.
+            return False, f"Approvazione con risolto_da={risolto_da!r}: negata."
+        if stato == "approved" and not _uid_int:
             return False, "Approvazione senza telegram_user_id: negata."
+        if stato == "rejected" and telegram_user_id is not None and not _uid_int:
+            # R-c3-4: rifiuto con telegram_user_id intero, o None (revoca del kernel).
+            return False, "Rifiuto con telegram_user_id non intero: negato."
         try:
             with self._connect() as con:
                 con.execute("BEGIN IMMEDIATE")
@@ -1574,6 +1682,13 @@ class MemoryStore:
             log.warning("resolve_approval fallita (%s): %s — nessuna approvazione",
                         self.db_path, e)
             return False, f"Errore DB: {e}"
+
+    def revoca_approval(self, approval_id: str) -> Tuple[bool, str]:
+        """Revoca del kernel (C4b-1): 'pending' → 'rejected', risolto_da='kernel_revoca',
+        telegram_user_id NULL. È l'UNICA risoluzione che il kernel può chiedere:
+        non esiste un percorso del loop verso 'approved' (T73f)."""
+        return self.resolve_approval(approval_id, "rejected", telegram_user_id=None,
+                                     risolto_da="kernel_revoca")
 
     def get_pending_approvals(self) -> List[Dict[str, Any]]:
         """Richieste ancora 'pending' e NON scadute, dalla più vecchia.
