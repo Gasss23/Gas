@@ -116,7 +116,7 @@ def componi_read_back(approval: Dict[str, Any]) -> str:
 
 
 def invia_read_back(text: str) -> Tuple[bool, str]:
-    """Invia `text` (senza parse_mode) a ogni ID in TELEGRAM_ALLOWED_IDS.
+    """Invia `text` (senza parse_mode, senza anteprima link) a ogni ID in TELEGRAM_ALLOWED_IDS.
     (True, '') se ALMENO un destinatario l'ha ricevuto (risposta ok=True);
     altrimenti (False, motivo). Mai troncamento: testo oltre TELEGRAM_MAX_CHARS
     → (False, ...) senza invio. Fail-safe §9: nessuna eccezione propagata."""
@@ -133,7 +133,11 @@ def invia_read_back(text: str) -> Tuple[bool, str]:
         consegnati = 0
         for chat_id in sorted(allowed):
             resp = _tg_post(base_url, "sendMessage",
-                            {"chat_id": chat_id, "text": text}, timeout=15)
+                            {"chat_id": chat_id, "text": text,
+                             # R-c4b1-2: niente anteprima: un URL di terzi negli args
+                             # non deve diventare una card nel messaggio di firma.
+                             "link_preview_options": {"is_disabled": True}},
+                            timeout=15)
             if isinstance(resp, dict) and resp.get("ok") is True:
                 consegnati += 1
             else:
