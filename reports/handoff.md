@@ -7,7 +7,8 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #117 (https://github.com/Gasss23/Gas/pull/117). Variante A: l'agente lancia `gasmerge 117`, l'operatore conferma digitando `117`.
-2. Prova reale di un click su Telegram (bot vivo con `gas telegram`, azione innocua): da decidere quando farla. Finora non è stata provata, ed è l'ultimo passo prima di considerare M2 completa.
+2. R-135-3: riscrivere la regola di `.claude/agents/revisore.md` "citare un file non nel diff invalida il verdetto" come "≥2 elementi nel diff, citazioni di contesto ammesse e verificate a HEAD", e allineare il gate (chiuderebbe anche R-135-1/2)? È configurazione: decide l'operatore.
+3. Prova reale di un click su Telegram (bot vivo con `gas telegram`, azione innocua): da decidere quando farla. Finora non è stata provata, ed è l'ultimo passo prima di considerare M2 completa.
 
 ---
 
@@ -20,36 +21,43 @@
 - **R-c4b3-2 (test dedup portante)**: `FATTA`.
 - **Notifica di scadenza al modello**: `DEFERITA — C5 da design`.
 - **R-c4b3-5 (timeout = "esito incerto")**: `DEFERITA — riserva minore, serve una nuova fetta motore con review`.
-- **Click reale su Telegram**: `DEFERITA — decisione operatore (§0.2)`.
+- **Click reale su Telegram**: `DEFERITA — decisione operatore (§0.3)`.
+- **Gate B `check_verdetto.py`, falso positivo sui file di contesto (F-controlli-auto, parte "path corti")**: `FATTA` (commit `9951563`, review #135), su scelta dell'operatore. Il primo `fine_task_finale.sh` si era fermato su `bot.py:282`/`bot.py:417` del verdetto #133. Il verdetto non è stato ritoccato.
+- **R-135-1/R-135-2 (≥2 citazioni nel diff)**: `DEFERITA — dipende dalla decisione R-135-3 (§0.2)`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +
- gas.py                             |  81 +++++++++-
- reports/diff_sessione.md           |  12 +-
- reports/handoff.md                 | 313 +++++++++++++++++++++----------------
- reports/stato_progetto.md          |  11 +-
- reports/ultimo_report.md           |  34 ++--
- tests/test_unit_kernel.py          | 260 ++++++++++++++++++++++++++++++
- 7 files changed, 548 insertions(+), 167 deletions(-)
+ .claude/agents/memoria_revisore.md |   6 +
+ gas.py                             |  81 +++++++-
+ reports/diff_sessione.md           |  14 +-
+ reports/handoff.md                 | 374 +++++++++++++++++++++++--------------
+ reports/stato_progetto.md          |  12 +-
+ reports/ultimo_report.md           |  40 ++--
+ scripts/check_verdetto.py          |  35 +++-
+ tests/test_unit_handoff_check.py   |  57 ++++++
+ tests/test_unit_kernel.py          | 260 ++++++++++++++++++++++++++
+ 9 files changed, 705 insertions(+), 174 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9951563 fix(check_verdetto): risolve citazioni di contesto e nomi corti univoci (F-controlli-auto) — review #135 APPROVATO CON RISERVE
+8273d10 chore(revisore): memoria review #135 — APPROVATO CON RISERVE
+af4b84d docs(c4b3): fine-task — C4b-3 esito della firma nel contesto del modello, handoff (review #133/#134 APPROVATO CON RISERVE)
 4065091 feat(c4b3): esito della firma nel contesto del modello — review #133/#134 APPROVATO CON RISERVE
 626b44d chore(revisore): memoria review #134 — APPROVATO CON RISERVE
 c964d62 chore(revisore): memoria review #133 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `af4b84d` è il primo giro di fine-task: il gate B l'ha fermato prima del push, ed è stato superato da questo secondo giro.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore `4065091`. Due verdetti in sequenza: la #133 sul primo diff, la #134 sul diff finale, che chiude R-c4b3-1 e R-c4b3-2. Sono incollati per intero.
+Commit motore `4065091`, con due verdetti in sequenza: la #133 sul primo diff e la #134 sul diff finale, che chiude R-c4b3-1 e R-c4b3-2. Commit `9951563` (tocca tests/): verdetto #135. Tutti e tre sono incollati per intero.
 
 ### Verdetto #133
 
@@ -188,6 +196,57 @@ N5 non è un problema: quando meta c'è, `eseguita` è True e l'etichetta dry-ru
 - Aggiunta la riga #134 in /Users/gas/Gas/.claude/agents/memoria_revisore.md, con una lezione nuova: un segnale "partito davvero" valorizzato dopo la chiamata bloccante vuol dire in realtà "completato"; servono tre stati, e va provato con TimeoutExpired.
 - Committata con scripts/commit_memoria_revisore.sh nel commit `626b44d`, che contiene solo quel file. Il diff del motore resta in staging.
 
+### Verdetto #135 (commit `9951563`, scripts/check_verdetto.py + tests/test_unit_handoff_check.py)
+
+# Review #135: F-controlli-auto in scripts/check_verdetto.py
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Puoi committare e pushare. Su `af4b84d` non c'è nulla che blocchi. La correzione del falso positivo funziona. Però il gate allentato ha perso un legame che prima garantiva senza dirlo (R-135-1), e consiglio di ripristinarlo presto.
+
+Diff esaminato: `git diff --cached`, cioè scripts/check_verdetto.py (+35/-5) e tests/test_unit_handoff_check.py (+57).
+
+## Misure riprodotte
+- `pytest tests/test_unit_handoff_check.py`: 16 passed.
+- pytest senza test_unit_kernel.py: 237 passed.
+- `scripts/check_verdetto.py` sull'handoff reale: OK, 16 riferimenti.
+
+## Elementi del diff esaminati
+1. **scripts/check_verdetto.py:84-93, `_resolve_path`.** Risolve il path in quest'ordine: diff di sessione, poi path esatto a HEAD, poi nome corto che è suffisso `/<nome>` di un solo file.
+   - Rischio esaminato: risoluzione sbagliata o ambigua.
+   - Esito: ok. Il nome ambiguo dà exit 1 (test a :415). Se `bot.py` esiste sia nella radice sia in sottocartella vince il path esatto, quindi il risultato è deterministico. Il controllo sul numero di riga a :158 usa il path risolto, corretto.
+2. **scripts/check_verdetto.py:86, `if path in session or path in head`.**
+   - Rischio esaminato: il gate si allenta.
+   - Esito: **riserva R-135-1**, verificata.
+3. **scripts/check_verdetto.py:77, `_head_files`.** Usa `ls-tree -r` con quotePath=false, coerente con `_session_files`. Se git fallisce restituisce un insieme vuoto, cioè una citazione di contesto viene rifiutata: è fail-closed.
+   - Esito: ok.
+4. **tests/test_unit_handoff_check.py:394-427.** I 5 test coprono: path completo, nome corto, riga oltre la fine, nome ambiguo, file inesistente.
+   - Esito: ok. Manca il caso degenere "solo file di contesto", vedi R-135-1.
+
+## Il mio giudizio sull'allentamento (la tua domanda)
+L'allentamento è giusto nel principio. Citare file di contesto è buona pratica: il mio #133 doveva citare bot.py:282/417 per argomentare sulla concorrenza.
+
+La vecchia regola stretta ("ogni citazione nel diff") però garantiva implicitamente che almeno una citazione stesse nel diff. Adesso questa garanzia è sparita.
+
+- **R-135-1 (verificata con una sonda):** un §4 che contiene solo `modules/telegram/bot.py:3 e bot.py:4`, senza nessun file del diff, ora dà rc=0 ("OK — 2 riferimento/i").
+  - Correzione: contare le citazioni il cui path risolto è in `session` e richiedere ≥2, come chiede il formato del verdetto in revisore.md. Le citazioni di contesto restano ammesse in aggiunta.
+  - Aggiungere il test "solo contesto → exit 1".
+- **R-135-2 (c'era già, verificata, più grave):** un §4 senza alcun `path:riga`, per esempio "APPROVATO — nessuna lezione nuova", dà rc=0 alla riga 150 ("nulla da verificare"). Il gate accetta proprio il verdetto nullo che dovrebbe rifiutare. Si chiude con la stessa correzione di R-135-1 (≥2 citazioni nel diff), tenendo l'eccezione "nessun diff motore".
+- **R-135-3 (decisione umana, ammissione mia):** revisore.md dice "citare un file non presente nel diff invalida il verdetto". Letto alla lettera, il mio verdetto #133 non era conforme, perché citava bot.py:282/417/360 come contesto. Conteneva comunque i ≥2 elementi del diff richiesti (gas.py:1312, :1418, test :6337/:6397).
+  - Proposta: riscrivere la regola come "≥2 elementi nel diff, citazioni di contesto ammesse e verificate a HEAD", e allineare il gate a quella regola.
+  - Non tocco io revisore.md: è configurazione e la decide l'operatore.
+  - La NOTA "MITIGATO, non chiuso" resta corretta.
+
+## Rischi esplicitamente esclusi
+- **Numeri di riga verificati su HEAD anziché sullo snapshot staged revisionato:** non l'ho verificato. Il disallineamento è possibile se il codice cambia dopo la review, ma è un limite che esisteva già e non è toccato da questo diff.
+- **Comportamento di `fine_task_finale.sh` end-to-end con il nuovo gate:** non rilanciato. Ho eseguito solo `check_verdetto.py` sull'handoff reale.
+
+## Memoria
+- Aggiunta la riga #135 in /Users/gas/Gas/.claude/agents/memoria_revisore.md, più una lezione: quando si allenta un gate, reintrodurre in modo esplicito la proprietà che la regola stretta garantiva senza dirlo, e provare sempre l'input degenere.
+- Committata con `scripts/commit_memoria_revisore.sh` in `8273d10`, solo quel file. L'index con check_verdetto.py e i test resta in staging.
+
+Riserve da tracciare in /Users/gas/Gas/reports/stato_progetto.md: R-135-1, R-135-2, R-135-3.
+
 ## §5 DELTA TEST DEL MOTORE
 
 `python tests/test_unit_kernel.py`: **614 → 643 PASS / 5 FAIL** (+29 check T78a-k). Riepilogo reale sul commit `4065091`:
@@ -201,7 +260,7 @@ N5 non è un problema: quando meta c'è, `eseguita` è True e l'etichetta dry-ru
   FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
 ```
 
-I 5 FAIL sono fuori scope: F-mac-1, bwrap assente su macOS, invariati rispetto a main. `pytest tests --ignore=tests/test_unit_kernel.py`: **232 passed**, invariato.
+I 5 FAIL sono fuori scope: F-mac-1, bwrap assente su macOS, invariati rispetto a main. `pytest tests --ignore=tests/test_unit_kernel.py`: 232 → **237 passed** (5 test nuovi in `tests/test_unit_handoff_check.py`, commit `9951563`).
 
 ## §6 STATO CI
 
@@ -215,6 +274,7 @@ Mappatura commit→run:
 - `4065091` (motore): run **37142066635**, success. È la testa del push che conteneva anche `c964d62` e `626b44d`.
 - `626b44d` (memoria revisore): nessuna run su questo SHA. Era un commit intermedio dello stesso push e il suo contenuto è incluso nell'albero testato da 37142066635.
 - `c964d62` (memoria revisore): nessuna run su questo SHA, per lo stesso motivo.
+- `af4b84d`, `8273d10`, `9951563`: run non ancora disponibile alla scrittura dell'handoff (non ancora pushati).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -222,5 +282,8 @@ Mappatura commit→run:
 - **R-c4b3-3** (minore): se il processo cade tra il reclamo e la scrittura in storia, l'esito non entra mai in storia.
 - **R-c4b3-4** (dichiarata): un processo CLI separato sulla stessa root può sovrascrivere `.gas_history.json` e perdere il blocco.
 - **R-c4b3-5** (minore): un timeout di `run_command` viene raccontato come "diniego interno" invece che come "esito incerto".
+- **R-135-1** (verificata): un §4 che cita SOLO file di contesto passa il gate B.
+- **R-135-2** (preesistente, più grave): un §4 senza alcun `path:riga` passa il gate B ("nulla da verificare").
+- **R-135-3** (decisione umana): regola di revisore.md sulle citazioni fuori dal diff (§0.2).
 - Ancora aperte da C4b-2: R-c4b2-6, R-c4b2-7, R-c4b2-8, R-c4b2-10.
 - Anomalia di processo: il marcatore `.claude/.review_ok` è rimasto da C4b-2 (creato alle 19:26), quindi il gate deterministico era aperto a inizio sessione. Ora è rimosso.
