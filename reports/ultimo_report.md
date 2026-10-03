@@ -1,33 +1,40 @@
-# ULTIMO REPORT — 2026-10-03 — C4b-2: bottoni di firma + esecuzione post-approvazione
+# ULTIMO REPORT — 2026-10-03 — C4b-3: esito della firma nel contesto del modello
 
-Branch `feat/cancello-c4b2` · PR #116 · commit motore `3258094` · review #131 + #132 **APPROVATO CON RISERVE**
+Branch `feat/cancello-c4b3` · PR #117 · commit motore `4065091` (review #133 + #134) · fix gate `9951563` (review #135) · tutti **APPROVATO CON RISERVE**
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #116 (variante A: `gasmerge 116`, l'operatore conferma digitando il numero).
-2. Prova reale di un click su Telegram: fattibile con il bot vivo (`gas telegram`) e un'azione innocua. Il click reale non è ancora stato provato.
+1. Merge della PR #117 (variante A: `gasmerge 117`, l'operatore conferma digitando il numero).
+2. R-135-3: la regola di revisore.md "citare un file non nel diff invalida il verdetto" va riscritta? La proposta del revisore è "≥2 elementi nel diff, citazioni di contesto ammesse e verificate a HEAD", con il gate allineato a questa regola (chiuderebbe anche R-135-1/2).
+3. Prova reale di un click su Telegram: fattibile con il bot vivo (`gas telegram`) e un'azione innocua. Non è ancora stata provata, ed è l'ultimo passo prima di considerare M2 completa.
 
 ## Esito per step
 
-- **Registrazione C4b-1 verificato dal vivo** in stato_progetto: FATTA (la memoria temporanea è stata cancellata).
-- **Bottoni [✅ Approva] [❌ Rifiuta]** sul read-back (`ok:/no:<uuid>`, fullmatch): FATTA.
-- **Gestione callback nel bridge**: FATTA. Per essere accettato, il click deve venire da un `from.id` intero e da una chat entrambi in whitelist; altrimenti silenzio. Il bridge prima risponde al click e toglie i bottoni, poi registra la firma con `resolve_approval`. Le approvazioni orfane vengono riprese (R-c4b2-2). `getUpdates` chiede `callback_query`.
-- **Esecuzione post-approvazione** (`GasKernel.applica_firma`): FATTA. Non approva mai. Controlla whitelist e hash, prende il reclamo (`approval_esecuzioni`, al massimo una esecuzione), ricontrolla il gate (DENY) ed esegue gli args salvati. Lo stato "eseguita" vale solo se l'esito non è [KO].
-- **F-c4a-eco**: CHIUSA. Il diario "approvata id=" per `run_command` contiene solo conteggi (T77b).
-- **Esito nel contesto del modello**: DEFERITA a C4b-3 (R-c4b2-1).
-- **Notifica passiva di scadenza**: DEFERITA a C5 (design).
-- **Click reale su Telegram**: DEFERITO alla decisione dell'operatore (punto 2).
+- **Esito della firma nella storia** (`GasKernel._storia_esito_firma`, R-c4b2-1): FATTA. Struttura del blocco:
+  - notifica user del kernel: tool, ID, decisione; mai args né output; "non richiedere di nuovo";
+  - solo dopo il reclamo: tool_call con gli args SALVATI e output reale nel ruolo tool, così la contaminazione §3b si calcola come nel loop;
+  - presa d'atto del kernel.
+  
+  Il blocco è tutto-o-niente, salvato su `.gas_history.json`, scritto una volta per ID, senza chiamate LLM, fail-safe.
+- **Casi coperti**: rifiuto, firma non riconosciuta, hash non integro, esito dopo il reclamo (eseguita, DENY al ricontrollo, diniego interno, dry-run). FATTA.
+- **R-c4b2-9** (dry-run letto come "eseguita"): CHIUSA.
+- **R-c4b3-1** (review #133: "eseguita" dedotto dal testo dell'output, falsificabile): CHIUSA. Per `run_command` l'esito ora viene da `_run_command_meta`, azzerato dopo il reclamo (T78k, T78k-bis).
+- **R-c4b3-2** (dedup non provato da T78c): CHIUSA, con un nuovo check in T78d.
+- **Notifica di scadenza al modello**: DEFERITA a C5 (design).
+- **Click reale su Telegram**: DEFERITO alla decisione dell'operatore (punto 3).
+- **Gate B `check_verdetto.py` (F-controlli-auto, parte "path corti")**: FATTA, su scelta dell'operatore. Il primo `fine_task_finale.sh` si era fermato perché il verdetto #133 cita `bot.py:282` e `bot.py:417`. Ora le citazioni di contesto e i nomi corti univoci si risolvono a HEAD; i casi ambigui o inesistenti danno exit 1. 5 test nuovi. Il verdetto NON è stato ritoccato.
 
 ## Test
 
-- `python tests/test_unit_kernel.py`: 558 → **614 PASS / 5 FAIL**. I 5 FAIL sono F-mac-1 (T11c2, T11e, T12a, T12c, T12e: bwrap assente su macOS), invariati.
-- `pytest tests --ignore=tests/test_unit_kernel.py`: **232 passed**, invariato.
+- `python tests/test_unit_kernel.py`: 614 → **643 PASS / 5 FAIL**. I 5 FAIL sono F-mac-1 (T11c2, T11e, T12a, T12c, T12e: bwrap assente su macOS), invariati.
+- `pytest tests --ignore=tests/test_unit_kernel.py`: 232 → **237 passed** (5 test nuovi del gate).
 
 ## Riserve aperte
 
-R-c4b2-1, R-c4b2-6, R-c4b2-7, R-c4b2-8, R-c4b2-9, R-c4b2-10 (dettaglio in `reports/stato_progetto.md`).
+R-c4b3-3, R-c4b3-4, R-c4b3-5 (nuove, minori); R-135-1, R-135-2, R-135-3, R-135-4 (gate B); più le R-c4b2-6/7/8/10 ancora aperte. Dettaglio in `reports/stato_progetto.md`.
 
 ## Anomalie
 
-- Il marcatore del gate `.claude/.review_ok` è stato bloccato dal classificatore della modalità automatica (auto-modifica). L'ha creato l'operatore dal pannello terminale.
-- Sono state aggiunte due memorie di feedback: stile Jarvis e istruzioni passo-passo all'operatore.
+- All'inizio della sessione il marcatore `.claude/.review_ok` era già presente (creato alle 19:26, prima della review #133): era un residuo della sessione C4b-2. Il gate deterministico era quindi aperto. Il commit motore è comunque passato dal revisore (#133/#134). Ho rimosso il marcatore dopo il commit.
+- **R-135-4** (2026-10-03, verificata in fine-task): la scorciatoia "nessun diff motore" di `check_verdetto.py` scatta su QUALSIASI occorrenza della frase nel §4. Il verdetto #135 incollato per intero la contiene (in R-135-2), quindi il gate B ha risposto "non applicabile" su un handoff con diff motore. Le 25 citazioni sono state verificate a mano senza la scorciatoia: rc=0. Correzione: l'esenzione deve valere solo se il §4 è ESATTAMENTE la dichiarazione, o meglio se il diff di sessione non tocca il motore.
+- Il primo giro di fine-task (commit `af4b84d`, non pushato in quel momento) si è fermato sul gate B per il falso positivo F-controlli-auto. Il fine-task è stato rieseguito per intero dopo il fix `9951563`.
