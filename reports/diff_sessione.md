@@ -1,13 +1,13 @@
-# Diff sessione — 2026-10-03 — Suite ermetica rispetto a Telegram (fix/c4b1-suite-ermetica)
-
-> Si riscrive a ogni sessione; la storia completa sta in git.
+# DIFF SESSIONE — 2026-10-03 — C4b-2 (feat/cancello-c4b2)
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `tests/test_unit_kernel.py` | Suite isolata da Telegram: pop di TELEGRAM_*, trasporto di default che fallisce, guardia urlopen (R-c4b1-1); T76a-d; T75c adeguato all'anteprima disattivata. |
-| `modules/telegram/bot.py` | `link_preview_options.is_disabled` nel read-back (R-c4b1-2). |
-| `.claude/agents/memoria_revisore.md` | Riga #130 e lezione. |
-| `reports/stato_progetto.md` | Stato della fetta, esito del test di parità app/terminale, riserve R-erm-1/2, finding F-env-app. |
-| `reports/ultimo_report.md` | Report del task. |
-| `reports/handoff.md` | Dossier di fine sessione. |
-| `reports/diff_sessione.md` | Questo file. |
+| `gas.py` | `applica_firma`: è il turno di sblocco che esegue gli args salvati dopo la firma, al massimo una volta e in modo fail-closed. Il read-back ora passa l'ID per i bottoni. |
+| `modules/memory/store.py` | Tabella `approval_esecuzioni` (reclamo + esito, con trigger) e i metodi `reclama_esecuzione`, `registra_esito_esecuzione`, `get_esecuzione`. |
+| `modules/telegram/bot.py` | Bottoni di firma, `gestisci_callback`, ripresa delle approvazioni orfane, messaggio di esito, `allowed_updates` con `callback_query`. |
+| `tests/test_unit_kernel.py` | T75c adeguato al payload con `reply_markup`; nuovi T77a-t. |
+| `.claude/agents/memoria_revisore.md` | Memoria delle review #131 e #132. |
+| `reports/stato_progetto.md` | C4b-1 verificato dal vivo; voce C4b-2; F-c4a-eco chiusa; riserve R-c4b2-*. |
+| `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` | Report di fine task. |
+
+La storia completa sta in git.

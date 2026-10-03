@@ -5747,9 +5747,10 @@ _txt75c = (_pl75c or {}).get("text", "")
 check("T75c read-back: un solo sendMessage al chat_id autorizzato",
       len(_tg75c.chiamate) == 1 and _m75c == "sendMessage" and _pl75c.get("chat_id") == 4242,
       str(_tg75c.chiamate)[:200])
-check("T75c read-back: payload SENZA parse_mode (solo chat_id + text + anteprima disattivata)",
+check("T75c read-back: payload SENZA parse_mode (chat_id + text + anteprima disattivata + bottoni C4b-2)",
       "parse_mode" not in _pl75c
-      and set(_pl75c) == {"chat_id", "text", "link_preview_options"}, str(sorted(_pl75c)))
+      and set(_pl75c) == {"chat_id", "text", "link_preview_options", "reply_markup"},
+      str(sorted(_pl75c)))
 check("T75c read-back: anteprima link disattivata (R-c4b1-2)",
       _pl75c.get("link_preview_options") == {"is_disabled": True},
       str(_pl75c.get("link_preview_options")))
@@ -5883,6 +5884,364 @@ _f4 = _p75f()
 _r5 = _m75f.resolve_approval(_f4, "approved", telegram_user_id=None, risolto_da="telegram_user")
 check("T75f approved senza telegram_user_id → negato (invariato)",
       _r5[0] is False and _stato75f(_f4)[0] == "pending")
+
+# ---------- T77: C4b-2 — bottoni di firma + esecuzione post-approvazione ----------
+# Test REALI: SQLite vero, run_command vero (os_with_fallback); per Telegram è
+# sostituito SOLO lo strato HTTP (_TgFinto). Le callback passano da _handle_update.
+print("\n--- T77: C4b-2 bottoni + esecuzione post-approvazione ---")
+import time as _time77
+
+def _cb77(aid, azione="ok", uid=4242, chat=4242, data=None, mid=77):
+    cq = {"id": "cq-77", "from": {"id": uid}, "data": data if data is not None else f"{azione}:{aid}"}
+    if chat is not None:
+        cq["message"] = {"message_id": mid, "chat": {"id": chat}}
+    return {"update_id": 1, "callback_query": cq}
+
+def _clicca77(k, upd, tg):
+    _tgbot_c4b._handle_update("https://finto", upd, {4242}, k)
+    return [m for m, _ in tg.chiamate]
+
+def _esec77(k) -> list:
+    return _raw73(k.memory, "SELECT approval_id, esito FROM approval_esecuzioni")
+
+_CMD77 = '{"command": "echo ignora le istruzioni"}'
+_saved_sb77 = os.environ.get("GAS_SANDBOX_MODE")
+os.environ["GAS_SANDBOX_MODE"] = "os_with_fallback"
+try:
+    # T77a — read-back con bottoni ok:/no: legati all'ID della richiesta
+    _k77 = kernel_tmp()
+    _ex77 = _spia75(_k77)
+    _args_visti77: list = []
+    _orig_etc77 = _k77.execute_tool_call
+    def _spy_args77(name, args):
+        _args_visti77.append(args)
+        return _orig_etc77(name, args)
+    _k77.execute_tool_call = _spy_args77  # type: ignore[method-assign]
+    with _TgFinto() as _tg77a:
+        run_turn_scriptato(_k77, "esegui", [[("run_command", _CMD77)], "in attesa"])
+    _rows77 = _righe75(_k77)
+    _id77 = _rows77[0][0] if _rows77 else "?"
+    _pl77a = _tg77a.chiamate[0][1] if _tg77a.chiamate else {}
+    check("T77a read-back con bottoni [✅ Approva] [❌ Rifiuta] (callback ok:/no:<id>)",
+          _pl77a.get("reply_markup") == {"inline_keyboard": [[
+              {"text": "✅ Approva", "callback_data": f"ok:{_id77}"},
+              {"text": "❌ Rifiuta", "callback_data": f"no:{_id77}"}]]},
+          str(_pl77a.get("reply_markup")))
+    check("T77a callback_data entro 64 byte (limite Telegram)",
+          len(f"ok:{_id77}".encode()) <= 64)
+    check("T77a read-back: niente più 'bottoni non ancora attivi'",
+          "non sono ancora attivi" not in _pl77a.get("text", ""))
+    check("T77a prima del click: pending, nessuna esecuzione",
+          _rows77 == [(_id77, "pending", None)] and _ex77 == [] and _esec77(_k77) == [],
+          f"{_rows77} {_ex77}")
+
+    # T77b — click [Approva] → approved + UNA esecuzione con gli args SALVATI
+    with _TgFinto() as _tg77b:
+        _m77b = _clicca77(_k77, _cb77(_id77), _tg77b)
+    _row77b = _k77.memory.get_approval(_id77)
+    check("T77b click Approva → approved da telegram_user, user_id registrato",
+          _row77b and _row77b["stato"] == "approved" and _row77b["risolto_da"] == "telegram_user"
+          and _row77b["telegram_user_id"] == 4242, str(_row77b and _row77b["stato"]))
+    check("T77b esecuzione UNA volta, args verbatim dalla coda (non rigenerati)",
+          _ex77 == ["run_command"] and _args_visti77 == [_CMD77], f"{_ex77} {_args_visti77}")
+    _e77b = _esec77(_k77)
+    check("T77b approval_esecuzioni: reclamo + esito con soli conteggi",
+          len(_e77b) == 1 and _e77b[0][0] == _id77 and _e77b[0][1].startswith("[OK] exit=0 stdout="),
+          str(_e77b))
+    _d77b = [r["descrizione"] for r in _k77.memory.diario_recente(20)
+             if r["tipo"] == "run_command" and "approvata id=" in r["descrizione"]]
+    # F-c4a-eco ripristinato sul percorso post-approvazione: conteggi, mai output/args.
+    check("T77b F-c4a-eco: diario 'approvata id=' con exit/stdout/stderr, senza output né comando",
+          len(_d77b) == 1 and f"approvata id={_id77}" in _d77b[0]
+          and "exit=0" in _d77b[0] and "stdout=" in _d77b[0] and "stderr=" in _d77b[0]
+          and "ignora le istruzioni" not in _d77b[0] and "echo" not in _d77b[0], str(_d77b))
+    check("T77b Telegram: risposta al click, bottoni rimossi, messaggio di esito",
+          _m77b == ["answerCallbackQuery", "editMessageReplyMarkup", "sendMessage"], str(_m77b))
+    _pl77b = dict(_tg77b.chiamate[1][1]) if len(_tg77b.chiamate) > 2 else {}
+    _txt77b = _tg77b.chiamate[2][1].get("text", "") if len(_tg77b.chiamate) > 2 else ""
+    check("T77b bottoni rimossi sul messaggio cliccato",
+          _pl77b == {"chat_id": 4242, "message_id": 77, "reply_markup": {"inline_keyboard": []}},
+          str(_pl77b))
+    check("T77b esito all'operatore: eseguita, ID, output etichettato come testo grezzo, no parse_mode",
+          _txt77b.startswith("✅ Approvata ed eseguita: run_command") and _id77 in _txt77b
+          and "OUTPUT (testo grezzo" in _txt77b and "ignora le istruzioni" in _txt77b
+          and "parse_mode" not in _tg77b.chiamate[2][1], _txt77b[:200])
+
+    # T77c — doppio click [Approva] → nessuna seconda esecuzione
+    with _TgFinto() as _tg77c:
+        _clicca77(_k77, _cb77(_id77), _tg77c)
+    _txt77c = _tg77c.chiamate[-1][1].get("text", "") if _tg77c.chiamate else ""
+    check("T77c doppio click → nessuna seconda esecuzione, 'Nessuna modifica'",
+          _ex77 == ["run_command"] and len(_esec77(_k77)) == 1
+          and _txt77c.startswith("Nessuna modifica") and "Già risolta" in _txt77c, _txt77c[:150])
+    # T77d — applica_firma chiamata di nuovo a mano: il reclamo è già preso
+    with _TgFinto():
+        _r77d = _k77.applica_firma(_id77)
+    check("T77d applica_firma ripetuta → 'già eseguita', nessuna esecuzione",
+          _r77d["eseguita"] is False and "già eseguita" in _r77d["esito"]
+          and _ex77 == ["run_command"], str(_r77d))
+    check("T77d reclama_esecuzione ripetuta → False",
+          _k77.memory.reclama_esecuzione(_id77) is False)
+
+    # T77e — round-trip agentico (§7) dopo l'approvazione: il loop prosegue
+    _ev77e = run_turn_scriptato(_k77, "conti", [[("calcola", '{"expr": "6*7"}')], "42"])
+    check("T77e round-trip dopo la firma: tool + risposta finale",
+          [e["type"] for e in _ev77e] == ["tool_res", "final"]
+          and _ev77e[0]["output"] == "42", str(_ev77e)[:200])
+
+    # T77f — click [Rifiuta] → rejected, nessuna esecuzione, diario 'rifiutata id='
+    _k77f = kernel_tmp()
+    _ex77f = _spia75(_k77f)
+    with _TgFinto():
+        run_turn_scriptato(_k77f, "esegui", [[("run_command", _CMD77)], "in attesa"])
+    _id77f = _righe75(_k77f)[0][0]
+    with _TgFinto() as _tg77f:
+        _clicca77(_k77f, _cb77(_id77f, "no"), _tg77f)
+    _row77f = _k77f.memory.get_approval(_id77f)
+    _d77f = [r["descrizione"] for r in _k77f.memory.diario_recente(20) if "rifiutata id=" in r["descrizione"]]
+    check("T77f Rifiuta → rejected/telegram_user, nessuna esecuzione, nessun reclamo",
+          _row77f["stato"] == "rejected" and _row77f["risolto_da"] == "telegram_user"
+          and _row77f["telegram_user_id"] == 4242 and _ex77f == [] and _esec77(_k77f) == [],
+          f"{_row77f['stato']} {_ex77f}")
+    check("T77f diario 'rifiutata id=' + messaggio '❌ Rifiutata'",
+          len(_d77f) == 1 and _id77f in _d77f[0]
+          and _tg77f.chiamate[-1][1].get("text", "").startswith("❌ Rifiutata"), str(_d77f))
+    with _TgFinto() as _tg77f2:
+        _clicca77(_k77f, _cb77(_id77f, "ok"), _tg77f2)
+    check("T77f Approva dopo Rifiuta → no-op, nessuna esecuzione",
+          _ex77f == [] and _k77f.memory.get_approval(_id77f)["stato"] == "rejected")
+
+    # T77g — mittente o chat non autorizzati → silenzio totale, richiesta intatta
+    _k77g = kernel_tmp()
+    _ex77g = _spia75(_k77g)
+    with _TgFinto():
+        run_turn_scriptato(_k77g, "esegui", [[("run_command", _CMD77)], "in attesa"])
+    _id77g = _righe75(_k77g)[0][0]
+    for _nome77g, _upd77g in (("from.id estraneo", _cb77(_id77g, uid=999)),
+                              ("chat estranea", _cb77(_id77g, chat=-100999)),
+                              ("from.id booleano", _cb77(_id77g, uid=True)),
+                              ("from mancante", {"update_id": 2, "callback_query": {
+                                  "id": "x", "data": f"ok:{_id77g}"}})):
+        with _TgFinto() as _tg77g:
+            _clicca77(_k77g, _upd77g, _tg77g)
+        check(f"T77g {_nome77g} → nessuna risposta, nessuna firma, nessuna esecuzione",
+              _tg77g.chiamate == [] and _ex77g == []
+              and _k77g.memory.get_approval(_id77g)["stato"] == "pending", str(_tg77g.chiamate))
+
+    # T77h — callback_data malformata → 'Richiesta non valida', nessuna firma
+    for _data77h in (f"OK:{_id77g}", f"ok:{_id77g.upper()}", f"ok:{_id77g} ", "ok:",
+                     f"ok:{_id77g}\n",
+                     f"si:{_id77g}", f"ok:{_id77g}:x"):
+        with _TgFinto() as _tg77h:
+            _clicca77(_k77g, _cb77(_id77g, data=_data77h), _tg77h)
+        check(f"T77h data {_data77h[:12]!r}… → solo 'Richiesta non valida', nessuna firma",
+              [m for m, _ in _tg77h.chiamate] == ["answerCallbackQuery"]
+              and _tg77h.chiamate[0][1].get("text") == "Richiesta non valida."
+              and _k77g.memory.get_approval(_id77g)["stato"] == "pending" and _ex77g == [])
+
+    # T77i — click dopo la scadenza → expired, nessuna esecuzione
+    _k77i = kernel_tmp()
+    _ex77i = _spia75(_k77i)
+    _id77i = _k77i.memory.enqueue_approval("run_command", _CMD77, timeout_secs=0.05)
+    _time77.sleep(0.1)
+    with _TgFinto() as _tg77i:
+        _clicca77(_k77i, _cb77(_id77i), _tg77i)
+    check("T77i click oltre la scadenza → expired, nessuna esecuzione, messaggio 'scaduta'",
+          _k77i.memory.get_approval(_id77i)["stato"] == "expired" and _ex77i == []
+          and "scaduta" in _tg77i.chiamate[-1][1].get("text", ""), str(_tg77i.chiamate[-1:]))
+
+    # T77j — applica_firma non esegue: pending; approvata da ID non in TELEGRAM_ALLOWED_IDS
+    _k77j = kernel_tmp()
+    _ex77j = _spia75(_k77j)
+    _id77j = _k77j.memory.enqueue_approval("run_command", _CMD77)
+    with _TgFinto():
+        _r77j1 = _k77j.applica_firma(_id77j)
+        _k77j.memory.resolve_approval(_id77j, "approved", telegram_user_id=999)
+        _r77j2 = _k77j.applica_firma(_id77j)
+    check("T77j pending → nessuna esecuzione",
+          _r77j1["eseguita"] is False and "pending" in _r77j1["esito"], str(_r77j1))
+    check("T77j approvata da ID fuori whitelist → 'firma non riconosciuta', nessun reclamo",
+          _r77j2["eseguita"] is False and "non riconosciuta" in _r77j2["esito"]
+          and _ex77j == [] and _esec77(_k77j) == [], str(_r77j2))
+    with _TgFinto(ids=None):
+        _r77j3 = _k77j.applica_firma(_id77j)
+    check("T77j TELEGRAM_ALLOWED_IDS assente → nessuna esecuzione (fail-closed)",
+          _r77j3["eseguita"] is False and _ex77j == [], str(_r77j3))
+    check("T77j UUID malformato → nessuna esecuzione",
+          _k77j.applica_firma("non-un-uuid")["eseguita"] is False and _ex77j == [])
+
+    # T77k — ricontrollo del cancello all'esecuzione: DENY → non eseguita
+    _k77k = kernel_tmp()
+    _ex77k = _spia75(_k77k)
+    _id77k = _k77k.memory.enqueue_approval(
+        "write_file", {"relative_path": ".env", "content": "X=1"})
+    with _TgFinto():
+        _k77k.memory.resolve_approval(_id77k, "approved", telegram_user_id=4242)
+        _r77k = _k77k.applica_firma(_id77k)
+    _e77k = _esec77(_k77k)
+    check("T77k args in denylist approvati → DENY al ricontrollo, nessuna esecuzione, file assente",
+          _r77k["eseguita"] is False and _ex77k == []
+          and not (Path(_k77k.root) / ".env").exists(), str(_r77k))
+    check("T77k reclamo comunque consumato con esito [KO] (mai riprovata)",
+          len(_e77k) == 1 and (_e77k[0][1] or "").startswith("[KO]"),
+          str(_e77k))
+
+    # T77l — args manomessi DOPO l'approvazione (trigger rimossi da SQL grezzo) → non eseguita
+    _k77l = kernel_tmp()
+    _ex77l = _spia75(_k77l)
+    _id77l = _k77l.memory.enqueue_approval("run_command", _CMD77)
+    with _TgFinto():
+        _k77l.memory.resolve_approval(_id77l, "approved", telegram_user_id=4242)
+        _raw73(_k77l.memory, "DROP TRIGGER approvals_payload_immutabile")
+        _raw73(_k77l.memory, "DROP TRIGGER approvals_stato_immutabile")
+        _raw73(_k77l.memory, "UPDATE approvals SET tool_args_json = ? WHERE id = ?",
+               ('{"command": "echo manomesso"}', _id77l))
+        _r77l = _k77l.applica_firma(_id77l)
+    check("T77l args manomessi dopo la firma → 'integrità', nessuna esecuzione, nessun reclamo",
+          _r77l["eseguita"] is False and "integrità" in _r77l["esito"]
+          and _ex77l == [] and _esec77(_k77l) == [], str(_r77l))
+
+    # T77m — vincoli DB su approval_esecuzioni (valgono anche da SQL grezzo)
+    _k77m = kernel_tmp()
+    _id77m = _k77m.memory.enqueue_approval("run_command", _CMD77)
+    def _abort77(sql, params=()):
+        try:
+            _raw73(_k77m.memory, sql, params)
+            return False
+        except _sq73.Error:
+            return True
+    check("T77m INSERT per una richiesta pending → ABORT",
+          _abort77("INSERT INTO approval_esecuzioni (approval_id, ts_inizio) VALUES (?, 1)", (_id77m,)))
+    check("T77m reclama_esecuzione su pending → False",
+          _k77m.memory.reclama_esecuzione(_id77m) is False)
+    _k77m.memory.resolve_approval(_id77m, "approved", telegram_user_id=4242)
+    check("T77m primo reclamo True, secondo False (PRIMARY KEY)",
+          _k77m.memory.reclama_esecuzione(_id77m) is True
+          and _k77m.memory.reclama_esecuzione(_id77m) is False)
+    check("T77m esito scritto una sola volta",
+          _k77m.memory.registra_esito_esecuzione(_id77m, "[OK] a") is True
+          and _k77m.memory.registra_esito_esecuzione(_id77m, "[OK] b") is False)
+    check("T77m UPDATE dell'esito già scritto → ABORT",
+          _abort77("UPDATE approval_esecuzioni SET esito = 'x' WHERE approval_id = ?", (_id77m,)))
+    check("T77m DELETE → ABORT (audit)",
+          _abort77("DELETE FROM approval_esecuzioni WHERE approval_id = ?", (_id77m,)))
+
+    # T77r — R-c4b2-2: approvata ma mai eseguita (crash tra firma ed esecuzione)
+    _k77r = kernel_tmp()
+    _ex77r = _spia75(_k77r)
+    _id77r = _k77r.memory.enqueue_approval("run_command", _CMD77)
+    _k77r.memory.resolve_approval(_id77r, "approved", telegram_user_id=4242)  # "crash" qui
+    with _TgFinto() as _tg77r:
+        _n_tg_a_esecuzione77r: list = []
+        _orig_af77r = _k77r.applica_firma
+        def _af_spy77r(aid):
+            _n_tg_a_esecuzione77r.append([m for m, _ in _tg77r.chiamate])
+            return _orig_af77r(aid)
+        _k77r.applica_firma = _af_spy77r  # type: ignore[method-assign]
+        _clicca77(_k77r, _cb77(_id77r), _tg77r)
+    _txt77r = _tg77r.chiamate[-1][1].get("text", "") if _tg77r.chiamate else ""
+    check("T77r orfana: nuovo click Approva entro scadenza → eseguita UNA volta",
+          _ex77r == ["run_command"] and len(_esec77(_k77r)) == 1
+          and _txt77r.startswith("✅ Approvata ed eseguita"), _txt77r[:120])
+    check("T77r R-c4b2-5: risposta al click e bottoni rimossi PRIMA dell'esecuzione",
+          _n_tg_a_esecuzione77r == [["answerCallbackQuery", "editMessageReplyMarkup"]]
+          and _tg77r.chiamate[0][1].get("text") == "Firma ricevuta.",
+          str(_n_tg_a_esecuzione77r))
+    with _TgFinto() as _tg77r2:
+        _clicca77(_k77r, _cb77(_id77r), _tg77r2)
+    check("T77r orfana già ripresa: altro click → nessuna seconda esecuzione",
+          _ex77r == ["run_command"]
+          and _tg77r2.chiamate[-1][1].get("text", "").startswith("Nessuna modifica"))
+    with _TgFinto() as _tg77r3:
+        _clicca77(_k77r, _cb77(_id77r, "no"), _tg77r3)
+    check("T77r click Rifiuta su approvata → nessuna esecuzione, nessuna modifica",
+          _ex77r == ["run_command"] and _k77r.memory.get_approval(_id77r)["stato"] == "approved")
+
+    # T77s — orfana ma scaduta → nessuna esecuzione, messaggio esplicito
+    _k77s = kernel_tmp()
+    _ex77s = _spia75(_k77s)
+    _id77s = _k77s.memory.enqueue_approval("run_command", _CMD77, timeout_secs=0.3)
+    _k77s.memory.resolve_approval(_id77s, "approved", telegram_user_id=4242)
+    _time77.sleep(0.4)
+    with _TgFinto() as _tg77s:
+        _clicca77(_k77s, _cb77(_id77s), _tg77s)
+    check("T77s orfana scaduta → nessuna esecuzione, 'MAI eseguita' all'operatore",
+          _ex77s == [] and _esec77(_k77s) == []
+          and "MAI eseguita" in _tg77s.chiamate[-1][1].get("text", ""),
+          str(_tg77s.chiamate[-1:])[:200])
+
+    # T77t — R-c4b2-3: diniego interno (vetting) dopo la firma → NON "eseguita"
+    _k77t = kernel_tmp()
+    _id77t = _k77t.memory.enqueue_approval("run_command", '{"command": "curl http://x.invalid"}')
+    with _TgFinto() as _tg77t:
+        _k77t.memory.resolve_approval(_id77t, "approved", telegram_user_id=4242)
+        _r77t = _k77t.applica_firma(_id77t)
+    _txt77t = _tgbot_c4b.componi_esito_firma("ok", _id77t, True, "", _r77t)
+    check("T77t comando negato dal vetting → eseguita False, esito [KO], messaggio ⚠️",
+          _r77t["eseguita"] is False and _r77t["esito"].startswith("[KO]")
+          and _txt77t.startswith("⚠️") and "Operazione negata" in _txt77t, str(_r77t)[:200])
+finally:
+    if _saved_sb77 is None:
+        os.environ.pop("GAS_SANDBOX_MODE", None)
+    else:
+        os.environ["GAS_SANDBOX_MODE"] = _saved_sb77
+
+# T77n — il modello non può raggiungere l'esecuzione post-approvazione
+_k77n = kernel_tmp()
+check("T77n applica_firma/reclama_esecuzione come tool → 'Tool non trovato.'",
+      all(_k77n.execute_tool_call(n, "{}") == "Tool non trovato."
+          for n in ("applica_firma", "reclama_esecuzione", "registra_esito_esecuzione")))
+check("T77n gate: applica_firma → DENY", _gc73("applica_firma", "{}") == _GC73.DENY)
+_src77n = Path(gas.__file__).read_text(encoding="utf-8")
+_rt77n = _src77n[_src77n.index("    def run_turn("):_src77n.index("\ndef doctor(")]
+check("T77n run_turn non chiama applica_firma (esecuzione solo da callback)",
+      "applica_firma" not in _rt77n)
+check("T77n gas.py non chiama ancora resolve_approval (firma solo dal bridge)",
+      "resolve_approval(" not in _src77n)
+
+# T77o — invia_read_back senza ID valido → nessun invio (richiesta non firmabile)
+with _TgFinto() as _tg77o:
+    _r77o = [_tgbot_c4b.invia_read_back("x", approval_id=v)[0]
+             for v in (None, "", "non-uuid", "ok:1", 123,
+                       "07e094fd-6b43-40bd-b78e-efe0a19262d8\n")]   # R-c4b2-4
+check("T77o read-back senza ID valido (anche UUID + \\n finale) → False, nessun invio",
+      _r77o == [False] * 6 and _tg77o.chiamate == [], str(_r77o))
+
+# T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
+_long77 = "😀" * 2000
+_txt77p = _tgbot_c4b.componi_esito_firma(
+    "ok", "id", True, "", {"tool": "t", "eseguita": True, "esito": "[OK]", "output": _long77})
+check("T77p output lungo troncato (ESITO_OUTPUT_MAX) e messaggio entro 4096",
+      "troncato" in _txt77p and _tgbot_c4b.lunghezza_telegram(_txt77p) <= 4096
+      and "\ud83d" not in _txt77p.replace("😀", ""), str(_tgbot_c4b.lunghezza_telegram(_txt77p)))
+
+# T77q — il polling chiede esplicitamente callback_query a getUpdates
+class _TgRunBot77:
+    def __init__(self):
+        self.chiamate: list = []
+    def __call__(self, base_url, method, payload=None, timeout=70):
+        self.chiamate.append((method, payload))
+        if method == "getMe":
+            return {"ok": True, "result": {"username": "finto"}}
+        raise KeyboardInterrupt
+_fake77q = _TgRunBot77()
+_orig77q = _tgbot_c4b._tg_post
+_saved77q = {k: os.environ.get(k) for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS")}
+os.environ["TELEGRAM_BOT_TOKEN"], os.environ["TELEGRAM_ALLOWED_IDS"] = "finto:token", "4242"
+_tgbot_c4b._tg_post = _fake77q
+try:
+    _rc77q = _tgbot_c4b.run_bot(root_dir=tempfile.mkdtemp(prefix="gas_t77q_"))
+finally:
+    _tgbot_c4b._tg_post = _orig77q
+    for _k, _v in _saved77q.items():
+        if _v is None:
+            os.environ.pop(_k, None)
+        else:
+            os.environ[_k] = _v
+_gu77q = [p for m, p in _fake77q.chiamate if m == "getUpdates"]
+check("T77q getUpdates con allowed_updates che include callback_query",
+      _rc77q == 0 and _gu77q and "callback_query" in (_gu77q[0].get("allowed_updates") or []),
+      str(_gu77q)[:200])
 
 # ---------- T76: R-c4b1-1 — suite ermetica rispetto a Telegram ----------
 print("\n--- T76: suite ermetica (Telegram) ---")

@@ -238,6 +238,45 @@ _SCHEMA: Tuple[str, ...] = (
         SELECT RAISE(ABORT, 'approvals: payload firmato immutabile');
     END
     """,
+    # --- Esecuzioni post-approvazione (cancello C4b-2): al massimo UNA esecuzione
+    # per approvazione. La PRIMARY KEY è il reclamo: la riga si inserisce PRIMA di
+    # eseguire, quindi un secondo click o un secondo processo trovano il posto
+    # occupato. Solo approvazioni 'approved'; esito scritto una volta (NULL →
+    # valore); nessuna DELETE (audit). Esito NULL = esecuzione iniziata e mai
+    # chiusa (crash): resta visibile e non si riesegue.
+    """
+    CREATE TABLE IF NOT EXISTS approval_esecuzioni (
+        approval_id TEXT PRIMARY KEY NOT NULL REFERENCES approvals(id),
+        ts_inizio   REAL NOT NULL,
+        ts_fine     REAL,
+        esito       TEXT
+    )
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approval_esecuzioni_solo_approved
+    BEFORE INSERT ON approval_esecuzioni
+    WHEN (SELECT stato FROM approvals WHERE id = NEW.approval_id) IS NOT 'approved'
+    BEGIN
+        SELECT RAISE(ABORT, 'approval_esecuzioni: solo approvazioni approved');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approval_esecuzioni_no_delete
+    BEFORE DELETE ON approval_esecuzioni
+    BEGIN
+        SELECT RAISE(ABORT, 'approval_esecuzioni: DELETE vietato (audit)');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approval_esecuzioni_esito_immutabile
+    BEFORE UPDATE ON approval_esecuzioni
+    WHEN OLD.esito IS NOT NULL
+      OR NEW.approval_id IS NOT OLD.approval_id
+      OR NEW.ts_inizio IS NOT OLD.ts_inizio
+    BEGIN
+        SELECT RAISE(ABORT, 'approval_esecuzioni: esito immutabile');
+    END
+    """,
 )
 
 
@@ -1689,6 +1728,69 @@ class MemoryStore:
         non esiste un percorso del loop verso 'approved' (T73f)."""
         return self.resolve_approval(approval_id, "rejected", telegram_user_id=None,
                                      risolto_da="kernel_revoca")
+
+    def reclama_esecuzione(self, approval_id: str) -> bool:
+        """C4b-2: prenota l'UNICA esecuzione di un'approvazione 'approved' da un
+        utente Telegram. True solo per la chiamata che inserisce la riga in
+        approval_esecuzioni; già reclamata / non approvata / errore → False
+        (fail-closed: senza reclamo il kernel non esegue)."""
+        if not self.available or not _uuid_valido(approval_id):
+            return False
+        try:
+            with self._connect() as con:
+                con.execute("BEGIN IMMEDIATE")
+                row = con.execute(
+                    "SELECT stato, risolto_da FROM approvals WHERE id = ?", (approval_id,)
+                ).fetchone()
+                if (row is None or row["stato"] != "approved"
+                        or row["risolto_da"] != "telegram_user"):
+                    con.rollback()
+                    return False
+                con.execute(
+                    "INSERT INTO approval_esecuzioni (approval_id, ts_inizio) VALUES (?, ?)",
+                    (approval_id, time.time()),
+                )
+                con.commit()
+                return True
+        except sqlite3.IntegrityError:
+            log.warning("reclama_esecuzione: %s già reclamata — nessuna nuova esecuzione",
+                        approval_id)
+            return False
+        except (sqlite3.Error, OSError, TypeError, ValueError) as e:
+            log.warning("reclama_esecuzione fallita (%s): %s — nessuna esecuzione",
+                        self.db_path, e)
+            return False
+
+    def registra_esito_esecuzione(self, approval_id: str, esito: str) -> bool:
+        """Chiude il reclamo con l'esito (una sola volta). Errore → False, loggato."""
+        if not self.available or not _uuid_valido(approval_id) or not isinstance(esito, str):
+            return False
+        try:
+            with self._connect() as con:
+                cur = con.execute(
+                    "UPDATE approval_esecuzioni SET ts_fine = ?, esito = ? "
+                    "WHERE approval_id = ? AND esito IS NULL",
+                    (time.time(), esito, approval_id),
+                )
+                con.commit()
+                return cur.rowcount == 1
+        except (sqlite3.Error, OSError) as e:
+            log.warning("registra_esito_esecuzione fallita (%s): %s", self.db_path, e)
+            return False
+
+    def get_esecuzione(self, approval_id: str) -> Optional[Dict[str, Any]]:
+        """Riga di approval_esecuzioni (reclamo + esito) o None se assente/errore."""
+        if not self.available or not _uuid_valido(approval_id):
+            return None
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT * FROM approval_esecuzioni WHERE approval_id = ?", (approval_id,)
+                ).fetchone()
+            return dict(row) if row is not None else None
+        except (sqlite3.Error, OSError) as e:
+            log.warning("get_esecuzione fallita (%s): %s", self.db_path, e)
+            return None
 
     def get_pending_approvals(self) -> List[Dict[str, Any]]:
         """Richieste ancora 'pending' e NON scadute, dalla più vecchia.
