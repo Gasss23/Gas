@@ -1,13 +1,11 @@
-# DIFF SESSIONE — 2026-10-03 — C4b-2 (feat/cancello-c4b2)
+# DIFF SESSIONE — 2026-10-03 — C4b-3 (feat/cancello-c4b3)
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `gas.py` | `applica_firma`: è il turno di sblocco che esegue gli args salvati dopo la firma, al massimo una volta e in modo fail-closed. Il read-back ora passa l'ID per i bottoni. |
-| `modules/memory/store.py` | Tabella `approval_esecuzioni` (reclamo + esito, con trigger) e i metodi `reclama_esecuzione`, `registra_esito_esecuzione`, `get_esecuzione`. |
-| `modules/telegram/bot.py` | Bottoni di firma, `gestisci_callback`, ripresa delle approvazioni orfane, messaggio di esito, `allowed_updates` con `callback_query`. |
-| `tests/test_unit_kernel.py` | T75c adeguato al payload con `reply_markup`; nuovi T77a-t. |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #131 e #132. |
-| `reports/stato_progetto.md` | C4b-1 verificato dal vivo; voce C4b-2; F-c4a-eco chiusa; riserve R-c4b2-*. |
+| `gas.py` | Nuovo `_storia_esito_firma`: l'esito della firma entra nella storia come blocco del kernel, così il modello lo vede al turno dopo (R-c4b2-1). `applica_firma` lo chiama e, per `run_command`, ricava "eseguita" da `_run_command_meta` invece che dal testo dell'output (R-c4b2-9, R-c4b3-1). |
+| `tests/test_unit_kernel.py` | Nuovi T78a-k: blocco in storia, persistenza, payload del turno dopo, round-trip §7, dedup, rifiuto, contaminazione, DENY, dry-run, output che imita il dry-run o un diniego, meta residuo, fail-safe. |
+| `.claude/agents/memoria_revisore.md` | Memoria delle review #133 e #134. |
+| `reports/stato_progetto.md` | Voce C4b-3; R-c4b2-1, R-c4b2-9, R-c4b3-1 e R-c4b3-2 chiuse; aperte R-c4b3-3, R-c4b3-4 e R-c4b3-5. |
 | `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` | Report di fine task. |
 
 La storia completa sta in git.

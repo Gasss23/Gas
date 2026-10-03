@@ -1,25 +1,25 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-03 — C4b-2: bottoni di firma Telegram + esecuzione post-approvazione, branch `feat/cancello-c4b2`
+**Sessione:** 2026-10-03 — C4b-3: esito della firma nel contesto del modello, branch `feat/cancello-c4b3`
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #116 (https://github.com/Gasss23/Gas/pull/116) — variante A: l'agente lancia `gasmerge 116`, l'operatore conferma digitando `116`.
-2. Prova reale di un click su Telegram (bot vivo con `gas telegram`, azione innocua): da decidere quando farla. Finora il click reale non è stato provato.
+1. Merge della PR #117 (https://github.com/Gasss23/Gas/pull/117). Variante A: l'agente lancia `gasmerge 117`, l'operatore conferma digitando `117`.
+2. Prova reale di un click su Telegram (bot vivo con `gas telegram`, azione innocua): da decidere quando farla. Finora non è stata provata, ed è l'ultimo passo prima di considerare M2 completa.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Registrazione C4b-1 verificato dal vivo**: `FATTA`.
-- **Bottoni Approva/Rifiuta sul read-back**: `FATTA`.
-- **Callback nel bridge (whitelist mittente+chat, firma via resolve_approval, ripresa orfane)**: `FATTA`.
-- **Esecuzione post-approvazione (`applica_firma`, reclamo `approval_esecuzioni`, ricontrollo DENY, args salvati)**: `FATTA`.
-- **F-c4a-eco**: `FATTA` (T77b).
-- **Esito della firma nel contesto del modello**: `DEFERITA — C4b-3 (R-c4b2-1)`.
-- **Notifica passiva di scadenza**: `DEFERITA — C5 da design`.
+- **Esito della firma nella storia del modello (`_storia_esito_firma`, R-c4b2-1)**: `FATTA`.
+- **Copertura casi (rifiuto, firma non riconosciuta, hash non integro, esito post-reclamo)**: `FATTA`.
+- **R-c4b2-9 (dry-run letto come eseguita)**: `FATTA`.
+- **R-c4b3-1 ("eseguita" dal segnale del kernel, non dal testo dell'output)**: `FATTA`, chiusa dopo la review #133 e verificata nella #134.
+- **R-c4b3-2 (test dedup portante)**: `FATTA`.
+- **Notifica di scadenza al modello**: `DEFERITA — C5 da design`.
+- **R-c4b3-5 (timeout = "esito incerto")**: `DEFERITA — riserva minore, serve una nuova fetta motore con review`.
 - **Click reale su Telegram**: `DEFERITA — decisione operatore (§0.2)`.
 
 ---
@@ -27,136 +27,173 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +
- gas.py                             |  68 ++++++-
- modules/memory/store.py            | 102 +++++++++++
- modules/telegram/bot.py            | 172 +++++++++++++++++-
- reports/diff_sessione.md           |  20 +-
- reports/handoff.md                 | 184 ++++++++++++-------
- reports/stato_progetto.md          |  14 +-
- reports/ultimo_report.md           |  88 +++------
- tests/test_unit_kernel.py          | 363 ++++++++++++++++++++++++++++++++++++-
- 9 files changed, 858 insertions(+), 158 deletions(-)
+ .claude/agents/memoria_revisore.md |   4 +
+ gas.py                             |  81 +++++++++-
+ reports/diff_sessione.md           |  12 +-
+ reports/handoff.md                 | 313 +++++++++++++++++++++----------------
+ reports/stato_progetto.md          |  11 +-
+ reports/ultimo_report.md           |  34 ++--
+ tests/test_unit_kernel.py          | 260 ++++++++++++++++++++++++++++++
+ 7 files changed, 548 insertions(+), 167 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-3258094 feat(c4b2): bottoni di firma + esecuzione post-approvazione — review #131/#132 APPROVATO CON RISERVE
-ce31985 chore(revisore): memoria review #132 — APPROVATO CON RISERVE
-224353e chore(revisore): memoria review #131 — APPROVATO CON RISERVE
+4065091 feat(c4b3): esito della firma nel contesto del modello — review #133/#134 APPROVATO CON RISERVE
+626b44d chore(revisore): memoria review #134 — APPROVATO CON RISERVE
+c964d62 chore(revisore): memoria review #133 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `3258094`: review #131 (diff iniziale) e #132 (delta con i fix R-c4b2-2/3/4/5). Entrambi i verdetti sono incollati INTEGRALI qui sotto.
+Commit motore `4065091`. Due verdetti in sequenza: la #133 sul primo diff, la #134 sul diff finale, che chiude R-c4b3-1 e R-c4b3-2. Sono incollati per intero.
 
-Nota (dell'agente principale, fuori dal verdetto): è la **riemissione** del revisore secondo il precedente della #129/#130. Tre citazioni avevano il solo nome del file, forma che `check_verdetto.py` scarta. Il revisore ha cambiato solo quella forma; esito, elementi e riserve sono invariati. Il testo NON è stato ritoccato dall'agente principale. Il revisore segnala che `modules/telegram/bot.py:149` (#131) puntava alla validazione nel diff di allora: dopo il delta della #132 la stessa riga è la 150.
+### Verdetto #133
 
-### Verdetto review #131
+# Review #133: fetta C4b-3 (feat/cancello-c4b3)
 
-## Review #131: C4b-2, bottoni di firma ed esecuzione dopo l'approvazione (branch feat/cancello-c4b2, diff staged)
+## VERDETTO: APPROVATO CON RISERVE
 
-**Esito: APPROVATO CON RISERVE**
+La riserva R-c4b3-1 va chiusa prima del deploy autonomo, che resta vietato.
 
-Prima della review ho letto CLAUDE.md (sez. 5, 8, 9), `reports/stato_progetto.md` (cercando C4b, R-c4b1, F-c4a-eco, F-mac), `.claude/agents/memoria_revisore.md` e `reports/design_cancello.md` (§4b, §4e, Fetta C4).
+**Letture fatte prima della review:** CLAUDE.md (sez. 5, 6, 8, 9), stato_progetto.md (grep su C4b/R-c4b2) e memoria_revisore.md, applicata la lezione su "eseguita ≠ effetto avvenuto" (#131/#132).
 
-### Verifiche rifatte da me
-- **Suite del motore:** `python tests/test_unit_kernel.py` dà **607 PASS / 5 FAIL**. I 5 FAIL sono T11c2, T11e, T12a, T12c e T12e: sono F-mac-1 (bwrap non esiste su macOS) e non sono cambiati.
-- **Altri test:** `pytest tests --ignore=tests/test_unit_kernel.py` dà **232 passed**.
-- **Mutation test** su una copia nello scratchpad: ho tolto un controllo alla volta per vedere se i test se ne accorgono. Tutte e 5 le mutazioni fanno cadere almeno un test:
-  - M1, niente ricontrollo della whitelist nel kernel: cade T77j.
-  - M2, niente ricontrollo DENY: cade T77k, e il file `.env` viene davvero scritto.
-  - M3, niente controllo dell'hash nel kernel: cade T77l, e il comando manomesso viene eseguito.
-  - M4, niente reclamo: cadono T77b, T77c, T77d e T77k.
-  - M5, niente controllo della chat nel bridge: cadono T77g e T77h.
-- **Wall of Shame:** nessuno slicing della cronologia. L'unico `[-1:]` nel diff è su `_tg77i.chiamate`, la lista delle chiamate al finto Telegram. Nessuna simulazione dell'output dei tool: T77b esegue `run_command` davvero, in os_with_fallback. Il cap di 10 iterazioni e `_get_window` non sono toccati.
+**Diff esaminato:** `git diff --cached`, cioè gas.py (+64/-2) e tests/test_unit_kernel.py (+224).
 
-### Elementi del diff esaminati
-1. `gas.py:1312` (`applica_firma`): legge lo stato e non approva mai. Rischio esaminato: un'esecuzione partita senza firma valida, eseguita due volte o con argomenti manomessi. Esito **ok**: whitelist, `hash_ok`, reclamo e ricontrollo DENY reggono tutti (M1–M4). In più `gas.py` non chiama `resolve_approval` (T73f/T77n), e qualunque eccezione viene catturata e loggata come warning. **Riserva R-c4b2-3** (sotto).
-2. `modules/memory/store.py:1732` (`reclama_esecuzione`) e lo schema a `modules/memory/store.py:247-279`: la chiave primaria sull'ID fa da reclamo, con BEGIN IMMEDIATE, controllo di stato approved e risolto_da telegram_user, e trigger che bloccano INSERT su richieste non approvate, DELETE e una seconda scrittura dell'esito. Rischio esaminato: doppia esecuzione per doppio click o due processi, e crash durante l'esecuzione. Esito **ok**: il crash lascia l'esito vuoto e l'azione non viene mai rieseguita (fail-closed). I trigger valgono anche da SQL grezzo (T77m).
-3. `modules/telegram/bot.py:346` (`gestisci_callback`): mittente intero e non booleano dentro TELEGRAM_ALLOWED_IDS, chat dentro la whitelist, altrimenti silenzio totale. Rischio esaminato: firma da un estraneo o da un gruppo. Esito **ok** (M5). Il `chat_id` mancante viene accettato solo se il mittente è autorizzato: va bene, perché il bot non usa messaggi inline.
-4. `modules/telegram/bot.py:42` (`_CALLBACK_RE`) e `modules/telegram/bot.py:149` (validazione in `invia_read_back`): **riserva R-c4b2-4**.
-5. `modules/telegram/bot.py:232-235` (`allowed_updates` con callback_query): esito **ok**, coperto da T77q.
+## Misure riprodotte
+- `.venv/bin/python tests/test_unit_kernel.py`: **635 PASS / 5 FAIL**. I 5 FAIL sono solo F-mac-1 (T11c2, T11e, T12a, T12c, T12e).
+- `pytest tests --ignore=tests/test_unit_kernel.py`: **232 passed**.
+- **Mutation test** su una copia nello scratchpad, il repo non è stato toccato. Tutte e 7 le mutazioni fanno cadere almeno un test:
+  - M1: dedup disattivato. Cade solo T78h.
+  - M2: tolto `name` dal messaggio tool. Cadono T78a e T78e (contaminazione).
+  - M3: `dry_run=False`. Cade T78g, 2 check.
+  - M4: tolto il blocco per il rifiuto. Cade T78d, 2 check.
+  - M5: tolto `_save_history`. Cade T78a (disco e riavvio).
+  - M6: args inseriti nella notifica. Cade T78a.
+  - M7: `eseguita=True` fisso. Cadono T78f e T78g.
 
-### Riserve
-- **R-c4b2-1 (minore, dichiarata):** l'esito della firma non entra nel contesto del modello, mentre il design §4b dice che "il risultato entra come nuovo turno". Effetto pratico: il modello può chiedere di nuovo la stessa azione, che diventa una nuova richiesta da firmare. Accettabile perché la firma umana resta obbligatoria. Va chiusa in C4b-3 prima di considerare M2 completa.
-- **R-c4b2-2 (minore, verificata):** può restare un'approvazione "orfana". Se `resolve_approval` riesce ma `applica_firma` non arriva mai (crash del processo tra le due), la richiesta resta approved senza reclamo per sempre. Un nuovo click, o la riconsegna dello stesso update, risponde "Già risolta (stato 'approved'): nessuna modifica": l'operatore crede che l'azione sia stata fatta. Correzione proposta: quando lo stato è approved e il reclamo non c'è, il bridge richiama `applica_firma` (che non può eseguire due volte grazie al reclamo), oppure manda un messaggio esplicito "approvata ma mai eseguita".
-- **R-c4b2-3 (minore, verificata):** `res["eseguita"]=True` e l'intestazione "✅ Approvata ed eseguita" compaiono anche quando `execute_tool_call` restituisce "Operazione negata" (sandbox OS assente, oppure diniego di `_vet_command`). Riprodotto su macOS con os_strict: eseguita=True ed esito "[KO]". All'operatore va mostrato "eseguita" solo quando l'esito non è [KO].
-- **R-c4b2-4 (cosmetica, verificata):** `_CALLBACK_RE` finisce con `$`, che in Python accetta anche un `\n` finale. Di conseguenza `invia_read_back(..., approval_id=uuid+"\n")` passa la validazione e invia il messaggio. Non è sfruttabile, perché l'ID lo genera il kernel. Basta usare `fullmatch` oppure `\Z`.
-- **R-c4b2-5 (minore, UX):** `answerCallbackQuery` e la rimozione dei bottoni avvengono dopo l'esecuzione sincrona, che può durare fino a 60 s. In quel tempo l'operatore vede la rotella e i bottoni ancora attivi; l'errore "query too old" è possibile ma non l'ho verificato. Conviene rispondere alla callback e togliere i bottoni prima di eseguire. Il vero blocco contro il doppio click resta comunque il DB.
-- **R-c4b2-6 (dichiarate):** durante l'esecuzione il polling è fermo (coerente con il "no threading" del design), e i bottoni degli altri destinatari non vengono rimossi. Vanno tracciate in `stato_progetto.md`.
+## Elementi del diff esaminati
+1. **gas.py:1312-1348 `_storia_esito_firma`.** Aggiunge in coda alla storia un blocco che parte da `user`. È costruito per intero e poi aggiunto con `extend` (tutto o niente), salvato con `_save_history`, e ogni errore finisce in un `except` con `logging.warning`.
+   - Rischi esaminati: ancora di `_get_window`, tool orfani, crash, uso di LLM.
+   - Verifiche: la finestra del turno dopo parte da `user` e non ha orfani (T78b, e l'ho rifatto con una sonda). `history=None` non solleva eccezioni (T78j). `_NoLLM78` conferma che non c'è nessuna chiamata LLM.
+   - Esito: **ok**.
+2. **gas.py:1326 dedup sul tag.** La scansione con `tag in content` regge a contenuti non stringa senza sollevare eccezioni. Il tag sopravvive anche alla compressione, perché sta nei primi 300 caratteri del riepilogo.
+   - Esito: **ok**. Nota: T78c non prova il dedup, vedi R-c4b3-2.
+3. **gas.py:1418-1419 R-c4b2-9.** `dry_run = out.lstrip().startswith("[DRY-RUN]")`.
+   - Rischio esaminato: il flag si può falsificare con il contenuto dell'output.
+   - Esito: **riserva R-c4b3-1**, verificata (dettagli sotto).
+4. **gas.py:1381/1393/1400/1427 punti di chiamata.** Il blocco viene scritto per: rifiuto, firma non riconosciuta, hash non integro, esito dopo il reclamo. Non viene scritto per: pending, ID inesistente, store assente, reclamo fallito.
+   - Esito: **ok**, coerente con il design §4b passo 9 (T78i conferma che la storia resta invariata).
+5. **tests/test_unit_kernel.py:6337 `_disco78[-4:]`.** È l'unico slicing presente nel diff. Confronta una lista letta da disco dentro un test e non costruisce payload per i provider.
+   - Esito: **ok**, non è il caso del Wall of Shame.
+6. **tests/test_unit_kernel.py:6397 T78e.** Un `read_file` approvato rende contaminata la finestra; `run_command` no, come nel loop (gas.py:942).
+   - Esito: **ok**. Con la mutazione M2 il test cade, quindi è portante.
 
-### Cosa NON ho verificato
-- **Telegram reale:** nessun click con bot vivo. Quindi non ho verificato il comportamento di `answerCallbackQuery` dopo 60 s né la risposta reale di `editMessageReplyMarkup`: in review non c'è un bot attivo, e i test sostituiscono solo lo strato HTTP.
-- **Percorso bwrap su Linux** di `run_command` dopo la firma: non riproducibile su macOS (F-mac-1), resta alla CI.
+## Giudizio sui 4 punti chiesti
+1. **NO Tool Simulation e `_get_window`: coerente.**
+   - L'output nel ruolo `tool` è quello reale di `execute_tool_call`.
+   - La tool_call ricostruita porta gli args salvati, verificati via hash, cioè quelli che il modello aveva chiesto nel turno A.
+   - È dichiarata come atto del kernel dalla notifica `user` che la precede.
+   - Non si inventa nessun output. Il precedente del riepilogo di `_compress_history_if_needed` è pertinente.
+   - `_get_window` e `_cap_window_chars` non sono stati toccati.
+2. **Compatibilità provider: ok.**
+   - Lo schema `assistant(tool_calls, senza content) → tool(tool_call_id, name)` è identico a quello di `_add_to_history` del loop (gas.py:738).
+   - L'id `firma_<32hex>` è lungo 38 caratteri e usa solo `[A-Za-z0-9_]`.
+   - Gemini 2.5 in modalità OpenAI-compat non convalida gli id né le thought signature (solo Gemini 3 le richiede). Groq, Llama su OpenRouter e Ollama accettano id arbitrari.
+   - Non verificato dal vivo: vedi i rischi esclusi.
+3. **Concorrenza: ok come limite dichiarato.**
+   - bot.py:282 e bot.py:417/360 girano nello stesso loop di polling, a thread singolo.
+   - Un processo CLI separato con lo stesso root sovrascrive la storia (vince l'ultima scrittura): il limite c'era già e ora il blocco può andare perso. Va tracciato.
+4. **`expired` resta fuori dalla storia (C5): coerente.** La revoca per invio fallito arriva già al modello nell'output del turno A.
 
-### Memoria
-Ho aggiunto la riga contatore #131 e due lezioni in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, committate in `224353e`. Il commit contiene solo quel file: il diff staged del motore è ancora nell'index.
+## Riserve
+- **R-c4b3-1 (da chiudere prima del deploy, verificata empiricamente).** Il flag "eseguita" viene ricavato dal prefisso dell'output grezzo.
+  - Con una sonda (root con git init, `os_with_fallback`) ho approvato ed eseguito `run_command` con `echo [DRY-RUN] finto`. Risultato: `[OK] exit=0`, ma `eseguita=False`. Il modello riceve "NON è stata eseguita (modalità dry-run)" e l'operatore vede ⚠️.
+  - Stesso difetto, già presente da R-c4b2-3, con stdout che inizia per "Operazione negata": il risultato diventa `[KO]` e `eseguita=False`.
+  - La novità di C4b-3: questa informazione falsa ora entra nel contesto del modello insieme a "una nuova richiesta richiede una nuova firma". Il modello può chiedere di nuovo un'azione già eseguita, e l'operatore, che l'ha vista "non eseguita", può firmarla due volte.
+  - Correzione: ricavare il dry-run da un segnale strutturato del kernel (per `run_command`: `self.shell_mode == "dry_run"` e `_run_command_meta is None`, cioè l'esito "[OK] (non eseguito)"), e il [KO] dai rami di diniego del kernel, non da startswith sull'output. Aggiungere un test con `echo "[DRY-RUN] x"` approvato ed eseguito davvero.
+- **R-c4b3-2 (cosmetica, test).** T78c (riga 6367) non prova il dedup: con M1 resta verde, perché sul percorso approvato il reclamo fallito esce prima di arrivare a `_storia_esito_firma`. Il dedup è coperto solo da T78h. Rinominare il test o aggiungere un caso sul rifiuto ripetuto.
+- **R-c4b3-3 (minore, affine a R-c4b2-8).** Se il processo cade tra `reclama_esecuzione` e `_storia_esito_firma` (per esempio durante un `run_command` che dura fino a 60 s), il reclamo esiste ma l'esito non entra mai in storia. Il ri-click si ferma su "già eseguita o non reclamabile".
+- **R-c4b3-4 (dichiarata).** Il blocco viene sovrascritto se un processo CLI separato salva la storia sullo stesso root (vince l'ultima scrittura, limite già esistente). Va tracciata in stato_progetto.md.
 
-Va bene committare, a condizione che le riserve R-c4b2-1…6 vengano tracciate in `/Users/gas/Gas/reports/stato_progetto.md`.
+## Rischi esplicitamente esclusi
+- **Accettazione reale da parte dei provider** della sequenza con id `firma_<hex>`: non verificata, perché la suite usa provider finti e un ping reale consumerebbe quota. La compatibilità è dedotta dal fatto che lo schema è identico ai messaggi del loop, che oggi i provider accettano.
+- **Click reale su Telegram end-to-end:** non riproducibile in un ambiente di sviluppo senza operatore.
+- **Comportamento con bwrap su VPS:** il sandbox OS non c'è su Mac (F-mac-1).
 
-### Verdetto review #132
+## Memoria
+- Aggiunta la riga #133 in /Users/gas/Gas/.claude/agents/memoria_revisore.md, più una lezione: "flag di esito da startswith sull'output grezzo è falsificabile dal contenuto; usare un segnale strutturato del kernel".
+- Committata con `scripts/commit_memoria_revisore.sh`: commit `c964d62`, solo quel file; l'index con gas.py e i test resta intatto in staging.
 
-## Review #132: delta di C4b-2 dopo la #131 (branch feat/cancello-c4b2, diff staged)
+Il commit del diff è consentito (APPROVATO CON RISERVE). R-c4b3-1, R-c4b3-2, R-c4b3-3 e R-c4b3-4 vanno tracciate in /Users/gas/Gas/reports/stato_progetto.md.
 
-**Esito: APPROVATO CON RISERVE**
+### Verdetto #134
 
-R-c4b2-2, R-c4b2-3, R-c4b2-4 e R-c4b2-5 sono chiuse nel codice, e i test che le coprono cadono davvero se si toglie il fix. Restano aperte R-c4b2-1 e R-c4b2-6, come dichiarato. Le sonde hanno trovato 3 problemi nuovi minori e uno cosmetico: nessuno blocca il commit.
+# Review #134 (seguito della #133): C4b-3, chiusura di R-c4b3-1 e R-c4b3-2
 
-Ho riusato le letture obbligatorie già fatte in questa sessione per la #131 (CLAUDE.md sez. 5/8/9, `stato_progetto.md` cercando C4b, la memoria aggiornata fino alla #131, design §4b/§4e).
+## VERDETTO: APPROVATO CON RISERVE
 
-### Verifiche rifatte da me
-- **Suite del motore:** `python tests/test_unit_kernel.py` dà **614 PASS / 5 FAIL**. I 5 FAIL sono T11c2, T11e, T12a, T12c e T12e: F-mac-1 (bwrap assente su macOS), invariati. Il numero di pytest (232) l'ho misurato nella #131: il delta non tocca quei test e non l'ho rilanciato.
-- **Mutation test** su una copia nello scratchpad: ho annullato ogni fix uno alla volta. Tutte e 5 le mutazioni fanno cadere almeno un test.
+Il diff si può committare. R-c4b3-1 e R-c4b3-2 sono **chiuse**. Resta una riserva nuova, minore (R-c4b3-5), più R-c4b3-3 e R-c4b3-4 che hai già dichiarato.
 
-| Mutazione | Test che cadono |
-|---|---|
-| N1 — scadenza dell'orfana ignorata | T77s |
-| N2 — `eseguita = True` sempre | T77t, T77k |
-| N3 — `.match` al posto di `fullmatch` | 5 casi di T77h |
-| N4 — niente nuovo tentativo sull'orfana | T77r (4 check), T77s |
-| N5 — niente controllo `get_esecuzione` | T77c, T77r |
+Il verdetto #133, già consegnato, resta nella storia. Questo lo segue e copre il diff staged attuale: gas.py +81/-3, tests/test_unit_kernel.py +260.
 
-  Con N5 cadono solo i messaggi: la seconda esecuzione resta comunque bloccata dal reclamo. Quindi `get_esecuzione` serve all'esattezza del messaggio, non alla sicurezza.
-- **Wall of Shame:** nessuno slicing della cronologia nel delta e nessuna simulazione dell'output dei tool (T77r/T77t eseguono davvero). Il cap di 10 iterazioni e `_get_window` non sono toccati.
+## Misure riprodotte
+- Kernel: **643 PASS / 5 FAIL**, solo F-mac-1 (T11c2, T11e, T12a, T12c, T12e).
+- pytest senza test_unit_kernel.py: **232 passed**.
 
-### Elementi del diff esaminati
-1. `modules/telegram/bot.py` (`_riprova_orfana`, chiamata da `gestisci_callback` solo con azione "ok"): rilegge la riga e richiama `applica_firma` solo se la richiesta è approved, senza esecuzione registrata e non scaduta. Rischio esaminato: una seconda esecuzione, o un'esecuzione dopo la scadenza. Esito **ok**:
-   - il reclamo resta la barriera (N5);
-   - la scadenza è portante (N1);
-   - Rifiuta su una richiesta approved non ha effetti (T77r);
-   - in più, la riconsegna dell'update dopo un crash ora recupera da sola l'orfana.
-2. `modules/memory/store.py:1781` (`get_esecuzione`): sola lettura, UUID validato, in caso di errore restituisce None. Rischio esaminato: un errore del DB scambiato per "nessun reclamo", che farebbe ripartire `applica_firma`. Esito **ok**: `reclama_esecuzione` fallisce comunque sulla chiave primaria (fail-closed).
-3. `gas.py:1367` (`res["eseguita"] = not esito.startswith("[KO]")`). Rischio esaminato: un diniego interno mostrato all'operatore come esecuzione. Esito **ok** per vetting, sandbox e DENY (T77t, T77k). **Riserva R-c4b2-9** per il dry-run.
-4. `modules/telegram/bot.py:150` e `modules/telegram/bot.py:388` (`_CALLBACK_RE.fullmatch`): rischio esaminato, un `\n` finale accettato. Esito **ok** (T77o con UUID+"\n", T77h, N3).
-5. `bot.py`, `gestisci_callback`: `answerCallbackQuery` ("Firma ricevuta.") ed `editMessageReplyMarkup` partono prima di resolve ed esecuzione (T77r lo misura). Esito **ok** per R-c4b2-5. **Riserva R-c4b2-7.**
+**Mutation test** su una copia nello scratchpad, repo non toccato:
 
-### Riserve
-- **R-c4b2-1 (aperta, dichiarata):** l'esito della firma non entra nel contesto del modello. Va fatto in C4b-3.
-- **R-c4b2-6 (aperta, dichiarata):** il polling resta fermo durante l'esecuzione, e i bottoni degli altri destinatari non vengono rimossi.
-- **R-c4b2-7 (minore, verificata):** il fix di R-c4b2-5 toglie i bottoni prima di `resolve_approval`. Se resolve fallisce per un errore transitorio (ho simulato un `OperationalError` "database is locked"), la richiesta resta pending ma senza bottoni: l'operatore riceve "Nessuna modifica…: errore interno" e non può più firmarla da Telegram fino alla scadenza. È fail-closed (nessuna esecuzione), ma la richiesta resta bloccata. Correzione proposta: se dopo resolve lo stato è ancora pending, rimettere i bottoni con `bottoni_firma(aid)`, oppure dirlo esplicitamente nel messaggio.
-- **R-c4b2-8 (cosmetica, verificata):** se il processo si ferma a metà esecuzione, il reclamo c'è ma l'esito è vuoto. A un nuovo click il messaggio dice "Già risolta (stato 'approved'): nessuna modifica" invece di "esecuzione iniziata, esito ignoto".
-- **R-c4b2-9 (minore, verificata):** la R-c4b2-3 ha un residuo in dry-run. Con `shell_mode="dry_run"`, `_esito_diario` dà "[OK] (non eseguito)", quindi `eseguita=True` e l'operatore legge "✅ Approvata ed eseguita". Succede solo con quella configurazione; va trattato anche "(non eseguito)" o il prefisso "[DRY-RUN]".
-- **R-c4b2-10 (cosmetica, test):** in T77s, enqueue e resolve devono stare entro 0,3 s. Su una CI lenta resolve può arrivare dopo la scadenza: la richiesta diventa expired e il test cade (rischio di test instabile).
+| Mutazione | Esito | Test che la uccide |
+|---|---|---|
+| N1: `eseguita` di nuovo dal prefisso | uccisa | T78g, 2 check |
+| N2: tolto il reset di `_run_command_meta` | uccisa | T78k-bis |
+| N3: tolto il ricalcolo dell'esito da meta | uccisa | T78k sul caso "Operazione negata", sia in res sia in approval_esecuzioni (`[('[KO]',)]`) |
+| N4: dedup disattivato | uccisa | T78d (nuovo check sul rifiuto ripetuto) e T78h. Il dedup ora è portante (R-c4b3-2 chiusa) |
+| N5: `dry_run` senza `meta is None and shell_mode == "dry_run"` | sopravvive, 643/5 | nessuno |
 
-### Cosa NON ho verificato
-- **Telegram reale:** nessun click con bot vivo. In particolare non ho verificato che `answerCallbackQuery` anticipata eviti davvero l'errore "query too old": in review non c'è un bot attivo, i test sostituiscono solo lo strato HTTP.
-- **Percorso bwrap su Linux** (T77r/T77b con sandbox vera): non riproducibile su macOS (F-mac-1), resta alla CI.
+N5 non è un problema: quando meta c'è, `eseguita` è True e l'etichetta dry-run non viene mai mostrata. La condizione è difesa in profondità e non regge nulla da sola. Lo noto, non è una riserva.
 
-### Memoria
-Ho aggiunto la riga contatore #132 e una lezione in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, committate in `ce31985`. Il commit contiene solo quel file; il diff staged del motore (4 file, +693/−12) è ancora nell'index.
+## Elementi del diff esaminati
+1. **gas.py:1410, `self._run_command_meta = None` subito dopo `reclama_esecuzione`.**
+   - Rischio: un meta rimasto da un run_command precedente (turno del loop) fa sembrare eseguito un DENY al ricontrollo.
+   - Esito: **ok**. È portante: la mutazione N2 la fa cadere su T78k-bis.
+   - Ho verificato che execute_tool_call la azzera di nuovo all'ingresso (gas.py:1894) e la valorizza solo dopo `subprocess.run` (gas.py:1942).
+2. **gas.py:1420-1432, ramo `run_command`.** `esito = _esito_diario(tool, "")` quando meta c'è, `eseguita = meta is not None`.
+   - Rischio: l'output di terzi che decide l'esito (la sonda #133).
+   - Esito: **ok**. T78k usa `echo '[DRY-RUN] finto'` e `echo 'Operazione negata: finto'` eseguiti davvero: entrambi danno [OK] exit=0, ✅ e "— eseguita.".
+   - Lasciare `_esito_diario` com'è (gas.py:1199) è la scelta giusta: anteporre il controllo su meta avrebbe trasformato in [OK] i DENY e i parcheggi del loop con meta residuo.
+3. **gas.py, ramo `else`: gli altri tool parcheggiabili restano su `not esito.startswith("[KO]")`.**
+   - Rischio: il loro output è testo di terzi?
+   - Esito: **ok**. write_file, salva_contatto e imposta_stato_contatto restituiscono testo che inizia con una formula fissa del kernel. read_file non arriva al cancello nel flusso reale, ma T78e lo accoda a mano.
+4. **tests/test_unit_kernel.py:6387 (T78d, dedup sul rifiuto) e :6458-6465 (T78k-bis).** Sono test nuovi e portanti, confermato da N2 e N4. Esito: **ok**.
 
-Va bene committare, a condizione che R-c4b2-1, 6, 7, 8, 9 e 10 vengano tracciate in `/Users/gas/Gas/reports/stato_progetto.md`.
+## Riserve
+- **R-c4b3-5 (nuova, minore, verificata).** Il timeout di `subprocess.run` (60 s) non valorizza meta, quindi `eseguita=False`, esito [KO], e il modello legge "NON è stata eseguita (**diniego interno**)".
+  - In realtà il processo è partito ed è stato ucciso a 60 s, quindi può aver prodotto effetti parziali.
+  - Sonda (`subprocess.run` monkeypatchato che solleva TimeoutExpired): output "Errore eseguendo run_command: ... timed out", notifica "diniego interno".
+  - Il flag `eseguita=False` c'era già prima di C4b-3. L'etichetta "diniego interno" che arriva al modello è nuova.
+  - Mitigazione: il messaggio tool che segue dice "timed out".
+  - Correzione: distinguere tre casi, cioè non avviata, completata, avviata con esito incerto (timeout o eccezione dopo l'avvio), e dare a operatore e modello la dicitura "esito incerto".
+- **R-c4b3-3 e R-c4b3-4:** restano aperte come le hai dichiarate. Vanno tracciate in stato_progetto.md, come hai detto.
+
+## Rischi esplicitamente esclusi
+- **Tool non-run_command con output costruito da input di terzi** (es. un messaggio di salva_contatto che inizia con un campo fornito dall'utente): non ho letto ogni formato di ritorno. Ho controllato solo che i rami principali inizino con testo fisso del kernel.
+- **Timeout reale di 60 s con bwrap su VPS:** non riproducibile in dev. L'ho simulato con un monkeypatch.
+- **Accettazione reale della sequenza da parte dei provider:** fuori scope di questo delta, lo schema è invariato rispetto alla #133.
+
+## Memoria
+- Aggiunta la riga #134 in /Users/gas/Gas/.claude/agents/memoria_revisore.md, con una lezione nuova: un segnale "partito davvero" valorizzato dopo la chiamata bloccante vuol dire in realtà "completato"; servono tre stati, e va provato con TimeoutExpired.
+- Committata con scripts/commit_memoria_revisore.sh nel commit `626b44d`, che contiene solo quel file. Il diff del motore resta in staging.
 
 ## §5 DELTA TEST DEL MOTORE
 
-`python tests/test_unit_kernel.py`: **558 → 614 PASS**, FAIL 5 → 5. `pytest tests --ignore=tests/test_unit_kernel.py`: 232 → 232 passed.
+`python tests/test_unit_kernel.py`: **614 → 643 PASS / 5 FAIL** (+29 check T78a-k). Riepilogo reale sul commit `4065091`:
 
 ```
-=== RIEPILOGO: 614 PASS, 5 FAIL ===
+=== RIEPILOGO: 643 PASS, 5 FAIL ===
   FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
   FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
   FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non dispon
@@ -164,28 +201,26 @@ Va bene committare, a condizione che R-c4b2-1, 6, 7, 8, 9 e 10 vengano tracciate
   FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
 ```
 
-I 5 FAIL sono fuori scope: F-mac-1, cioè bwrap assente su macOS. Sono invariati e in CI (Linux con bwrap) passano.
+I 5 FAIL sono fuori scope: F-mac-1, bwrap assente su macOS, invariati rispetto a main. `pytest tests --ignore=tests/test_unit_kernel.py`: **232 passed**, invariato.
 
 ## §6 STATO CI
 
 ```
-completed	success	feat(c4b2): bottoni di firma + esecuzione post-approvazione — review …	CI	feat/cancello-c4b2	push	37140519481	1m10s	2026-10-03T17:26:40Z
-completed	success	Merge pull request #115 from Gasss23/fix/c4b1-suite-ermetica	CI	main	push	37114771701	1m38s	2026-10-03T09:57:18Z
-completed	success	docs(c4b1-ermetica): fine-task — test di parità app/terminale, suite …	CI	fix/c4b1-suite-ermetica	push	37114633812	1m38s	2026-10-03T09:54:46Z
+completed	success	feat(c4b3): esito della firma nel contesto del modello — review #133/…	CI	feat/cancello-c4b3	push	37142066635	57s	2026-10-03T17:51:47Z
+completed	success	Merge pull request #116 from Gasss23/feat/cancello-c4b2	CI	main	push	37140766609	1m33s	2026-10-03T17:30:34Z
+completed	success	docs(c4b2): fine-task — C4b-2 bottoni di firma + esecuzione post-appr…	CI	feat/cancello-c4b2	push	37140679398	57s	2026-10-03T17:29:15Z
 ```
 
 Mappatura commit→run:
-- `3258094` (testa al push): run 37140519481 — **completed success** (Linux con bwrap; testa l'albero di `3258094`).
-- `ce31985`: nessuna run su questo SHA (pushato insieme a `3258094`, il suo contenuto è nell'albero testato).
-- `224353e`: nessuna run su questo SHA (stesso push, contenuto incluso nell'albero testato).
-- Commit di fine-task (questo file): run non ancora disponibile alla scrittura dell'handoff.
+- `4065091` (motore): run **37142066635**, success. È la testa del push che conteneva anche `c964d62` e `626b44d`.
+- `626b44d` (memoria revisore): nessuna run su questo SHA. Era un commit intermedio dello stesso push e il suo contenuto è incluso nell'albero testato da 37142066635.
+- `c964d62` (memoria revisore): nessuna run su questo SHA, per lo stesso motivo.
+- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-c4b2-1 — l'esito della firma non entra nel contesto del modello → C4b-3.
-- R-c4b2-6 — il polling è fermo durante l'esecuzione; i bottoni degli altri destinatari non vengono rimossi.
-- R-c4b2-7 — se resolve fallisce in modo transitorio, la richiesta resta pending senza bottoni.
-- R-c4b2-8 — con reclamo presente ed esito vuoto, il messaggio è impreciso.
-- R-c4b2-9 — in dry-run l'operatore legge "eseguita".
-- R-c4b2-10 — T77s ha una soglia di 0,3 s, rischio di test instabile su CI lenta.
-- Aperte da prima: R-c4b1-3, R-c4b1-4, R-erm-1, R-erm-2, F-env-app (vedi stato_progetto).
+- **R-c4b3-3** (minore): se il processo cade tra il reclamo e la scrittura in storia, l'esito non entra mai in storia.
+- **R-c4b3-4** (dichiarata): un processo CLI separato sulla stessa root può sovrascrivere `.gas_history.json` e perdere il blocco.
+- **R-c4b3-5** (minore): un timeout di `run_command` viene raccontato come "diniego interno" invece che come "esito incerto".
+- Ancora aperte da C4b-2: R-c4b2-6, R-c4b2-7, R-c4b2-8, R-c4b2-10.
+- Anomalia di processo: il marcatore `.claude/.review_ok` è rimasto da C4b-2 (creato alle 19:26), quindi il gate deterministico era aperto a inizio sessione. Ora è rimosso.
