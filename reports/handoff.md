@@ -27,18 +27,19 @@
 
 ```
  .claude/agents/memoria_revisore.md |   2 +
- .claude/hooks/review_gate.sh       |  12 +++-
- reports/diff_sessione.md           |  13 ++--
- reports/handoff.md                 | 127 ++++++++-----------------------------
- reports/stato_progetto.md          |  10 ++-
- reports/ultimo_report.md           | 122 +++++++++++------------------------
- tests/test_unit_hooks.py           |  65 ++++++++++++++++++-
- 7 files changed, 150 insertions(+), 201 deletions(-)
+ .claude/hooks/review_gate.sh       |  12 ++-
+ reports/diff_sessione.md           |  13 +--
+ reports/handoff.md                 | 188 +++++++++++++++++++------------------
+ reports/stato_progetto.md          |  10 +-
+ reports/ultimo_report.md           | 123 ++++++++----------------
+ tests/test_unit_hooks.py           |  65 ++++++++++++-
+ 7 files changed, 222 insertions(+), 191 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+620a732 docs(gate-review): fine-task fix gate inerte — report, handoff (§4 review #129 riemessa con path completi, APPROVATO CON RISERVE), stato aggiornato
 f7af312 chore(revisore): memoria review #129 — APPROVATO CON RISERVE
 b991a99 fix(gate-review): parser jq su input oggetto + fail-closed su parse fallito — review #129 APPROVATO CON RISERVE
 ```
@@ -132,14 +133,15 @@ Nessuna modifica a gas.py, brains/ o modules/: la suite del kernel (`tests/test_
 ## §6 STATO CI
 
 ```
+in_progress		docs(gate-review): fine-task fix gate inerte — report, handoff (§4 re…	CI	fix/gate-review-jq	push	37088610625	14s	2026-10-03T02:06:14Z
 completed	success	chore(revisore): memoria review #129 — APPROVATO CON RISERVE	CI	fix/gate-review-jq	push	37088311909	1m25s	2026-10-03T02:01:32Z
 completed	success	Merge pull request #113 from Gasss23/feat/cancello-c4b1	CI	main	push	37087549992	52s	2026-10-03T01:49:21Z
-completed	success	docs(cancello-c4b1): fine-task C4b-1 — report, handoff (§4 review #12…	CI	feat/cancello-c4b1	push	37087374109	56s	2026-10-03T01:46:29Z
 ```
 
 Mappatura commit → run:
 - `f7af312` (testa del push) → run su headSha `f7af31255ddffee2468c342229470f9fffbe3e9c`, **success**. Log: `=== RIEPILOGO: 561 PASS, 0 FAIL ===`; hook 56 passed; voice 19 passed; gate 74 passed.
 - `b991a99` → nessuna run su questo SHA (pushato insieme a `f7af312`; il suo albero è incluso in quello testato).
+- `620a732` (primo commit di fine-task, pushato) → run 37088610625 in corso (in_progress) alla scrittura dell'handoff: esito non ancora disponibile.
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

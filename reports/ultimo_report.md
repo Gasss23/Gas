@@ -63,3 +63,4 @@ Prova nell'app, su branch usa-e-getta `test/gate-app-probe` (mai pushato, poi ca
 ## ANOMALIE
 
 - Il gate inerte stesso è l'anomalia principale. È registrato in stato_progetto.md come F-gate-inerte (chiuso dalla PR #114).
+- `check_verdetto.py` (gate B di `fine_task_finale.sh`) è stato rosso al primo giro: il verdetto #129 citava la riga 46 del gate col solo nome del file, senza `.claude/hooks/`, e lo script scarta i path corti (falso positivo F-controlli-auto). Il verdetto non l'ho ritoccato. Per decisione dell'operatore ho chiesto al revisore una **riemissione** con i path completi, con il merito invariato. L'handoff §4 contiene la riemissione verbatim e una nota che la dichiara. Il commit dei report del primo giro (`b40365e`) era solo locale e non pushato: l'ho annullato e rifatto.
