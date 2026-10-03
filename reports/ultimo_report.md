@@ -1,17 +1,19 @@
-# Report — Fix gate di review inerte (jq 1.7 + input oggetto)
+# Report — Test di parità app/terminale + suite ermetica rispetto a Telegram (R-c4b1-1, R-c4b1-2)
 
-**Branch:** fix/gate-review-jq (nuovo da main `9e848d0`; tutta la sessione su questo branch)
+**Branch:** fix/c4b1-suite-ermetica (nuovo da main `b2a7b34`; tutta la fetta su questo branch)
 **Data:** 2026-10-03
-**Review:** #129 — APPROVATO CON RISERVE
-**Commit:** `b991a99` (fix hook + test), `f7af312` (memoria revisore)
-**PR:** https://github.com/Gasss23/Gas/pull/114 — merge all'operatore (gasmerge)
+**Review:** #130 — APPROVATO CON RISERVE
+**Commit:** `d75acc5` (fix), `9377b4b` (memoria revisore)
+**PR:** https://github.com/Gasss23/Gas/pull/115 — merge con la variante A: l'agente lancia gasmerge, l'operatore conferma digitando il numero
 
 ---
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #114 (https://github.com/Gasss23/Gas/pull/114) con gasmerge.
-2. Opzionale: prova di controllo da terminale. Con `claude` da terminale, su questo branch o dopo il merge, ripetere il commit di prova (riga di commento in `gas.py`, stage, `git commit` senza marcatore). Atteso: "BLOCCATO (gate review)".
+1. Conferma del merge della PR #115 (https://github.com/Gasss23/Gas/pull/115): l'agente lancia `gasmerge 115` nel pannello terminale, l'operatore digita `115` (oppure INVIO per annullare).
+2. Ora si può mettere `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` in `.env` per il test reale di read-back: la suite non manda più messaggi veri.
+3. Da decidere (F-env-app): dall'app Gas gira senza chiavi API, perché `.env` lo esporta solo `~/.zshrc`. Le strade sono due: Gas legge `.env` da sé, oppure i test reali coi provider si fanno sempre da terminale.
+4. PR aperte da chiudere senza merge (spetta all'operatore): #109 (superata da #110) e #87 (vecchia certificazione della migrazione al Mac).
 
 ---
 
@@ -19,48 +21,59 @@
 
 | Passo | Esito |
 |---|---|
-| Prova del gate nell'app (prima del fix) | FATTA — commit di `gas.py` senza review **PASSATO**: gate inerte |
-| Diagnosi | FATTA — causa nello script, non nell'app (riprodotto lanciando l'hook a mano) |
-| Fix parser + fail-closed | FATTA |
-| Test con input oggetto | FATTA — T-gate-E..I |
-| Prova del gate nell'app (dopo il fix) | FATTA — stesso commit **BLOCCATO** |
-| Prova da terminale | NON fatta — superflua per la diagnosi (lo script si comporta allo stesso modo fuori dall'app); resta opzionale per l'operatore |
-| R-c4b1-1 (suite non ermetica) | DEFERITA — prossima fetta, come concordato |
+| Test di parità app ↔ terminale | FATTA — capacità identiche; differenze nelle chiavi d'ambiente, nel modello e negli strumenti MCP solo-app (dettaglio sotto). Nessun commit. |
+| Scelta della modalità di merge | FATTA — variante A, con "il più autonomamente possibile" per il resto (salvato in memoria) |
+| R-c4b1-1 suite ermetica | FATTA — chiusa |
+| R-c4b1-2 anteprima link | FATTA — chiusa |
+| Test reale Telegram | NON fatto — token ancora assente; ora si può fare in sicurezza |
 
 ---
 
-## PROVA E DIAGNOSI
+## TEST DI PARITÀ (sonda `sonda_parita.sh` nella scratchpad, sola lettura)
 
-Prova nell'app, su branch usa-e-getta `test/gate-app-probe` (mai pushato, poi cancellato): riga di commento aggiunta in `gas.py`, stage, `.claude/.review_ok` assente, `git commit` → **commit creato** (`7c38537`, poi annullato). Il gate non è scattato.
+Identico tra app e terminale:
+- macchina, utente e cwd;
+- PATH, strumenti e versioni: python 3.14.7, git 2.55.0, gh 2.100.0, jq 1.7.1-apple, claude 2.1.288;
+- repo, `import gas`, lettura di `.env`;
+- rete e autenticazione: ls-remote, push --dry-run, gh keyring, api.github.com 200, api.telegram.org 302;
+- suite: 552/5 e 232;
+- **gate di review**: commit senza marcatore BLOCCATO in entrambi;
+- subagent (incluso revisore), skill `/fine-task`, MEMORY.md, CLAUDE.md.
 
-- L'hook è registrato correttamente: `.claude/settings.json`, PreToolUse, matcher "Bash".
-- Lanciato a mano fuori dall'app, con input `{"tool_name":"Bash","tool_input":{"command":"git commit -m ..."}}` → exit 0.
-- Causa: `.claude/hooks/review_gate.sh` leggeva il comando con jq `(.[0] // .) | .tool_input.command // empty`. Con `/usr/bin/jq` (jq-1.7.1-apple), `.[0]` su un oggetto è un ERRORE ("Cannot index object with number", rc 5), e `//` non lo sopprime. Risultato: comando vuoto → `exit 0` → fail-open.
-- La CI non se ne accorgeva perché i test T-gate-A..D (`tests/test_unit_hooks.py:517`) passavano l'input solo come array `[{...}]`, che la vecchia espressione leggeva bene.
-- Conseguenza: su questo Mac il gate deterministico non ha mai bloccato nulla da quando c'è jq. Le review sono state fatte comunque per procedura (barriera primaria). Da quando: non misurato, presumibilmente dalla migrazione al Mac (2026-09-09).
+Diverso:
+1. **Chiavi API nell'ambiente.** Le chiavi API (GEMINI, GROQ, ELEVENLABS, GAS_VOICE_TOKEN) sono presenti da terminale e assenti dall'app. Il motivo è `~/.zshrc` riga 4: `set -a; source ~/Gas/.env`, che vale solo per le zsh interattive. `gas.py` non carica `.env` da solo.
+2. **Modello.** Da terminale vale Sonnet 4.6, il pin di `.claude/settings.json`; l'operatore l'ha cambiato con `/model`. Nell'app gira Opus 5.5.
+3. **Strumenti solo nell'app:** browser pane, pannello terminale, simulatore iOS, Chrome, computer-use, `ccd_*`.
+4. TERM/LANG: `dumb`/non impostata nell'app, `xterm-256color`/`C.UTF-8` da terminale.
+
+Nota: l'agente da terminale ha eseguito il prompt due volte, con risultati identici.
 
 ## FIX
 
-- jq: `if type == "array" then .[0] else . end | .tool_input.command // empty` → gestisce oggetto e array.
-- Se il parser fallisce (rc ≠ 0), il controllo "è un git commit?" si fa sul testo grezzo dell'input (fail-closed). I comandi non-commit restano liberi.
-- Rami python/perl invariati: gestivano già oggetto e array (il revisore ha eseguito il ramo python togliendo jq dal PATH; il ramo perl l'ha solo letto).
+- `tests/test_unit_kernel.py`, in testa al file:
+  - pop di `TELEGRAM_BOT_TOKEN`/`TELEGRAM_ALLOWED_IDS`;
+  - `bot._tg_post` sostituito da `_tg_post_vietato`, che registra la chiamata e lancia;
+  - guardia su `urllib.request.urlopen` verso api.telegram.org, che blocca e conta senza mai registrare il token.
+
+  I test che vogliono un invio riuscito installano `_TgFinto`, che poi ripristina il trasporto che vieta.
+- `modules/telegram/bot.py` `invia_read_back`: aggiunto `"link_preview_options": {"is_disabled": True}` al payload. `parse_mode` resta assente.
 
 ## TEST
 
-- Nuovi T-gate-E..I (classe `TestReviewGateInputOggetto`, riusa gli helper senza ereditare per non far girare due volte A-D): oggetto+motore senza marcatore → 2; oggetto+motore+marcatore → 0; oggetto+solo doc → 0; oggetto non-commit → 0; JSON illeggibile con commit+motore → 2.
-- Test esistente modificato: `TestReviewGateFailClosed._run` ha un parametro opzionale `stdin` (default invariato). Motivo: passare l'input oggetto ai nuovi test. T-gate-A..D invariati e verdi.
-- Discriminanza: con l'hook VECCHIO cadono T-gate-E e T-gate-I (2 failed, 7 passed); col fix 9 passed. Il revisore l'ha riprodotto in modo indipendente.
-- Suite hook: **51 → 56 passed**. pytest totale (escluso test_unit_kernel.py ed e2e): **227 → 232 passed**. La suite del kernel non è toccata (nessuna modifica a gas.py/modules/).
-- Prova reale nell'app dopo il fix (l'hook gira dal working tree): stesso commit di prova → `PreToolUse:Bash hook error: ... BLOCCATO (gate review) ...`, nessun commit creato; riga di prova rimossa.
-- Effetto osservato subito dopo: il mio primo comando di commit di questa fetta (`touch .claude/.review_ok && git commit ...` nello stesso comando) è stato **BLOCCATO**, perché l'hook gira prima del comando, quando il marcatore non esiste ancora. Ho rifatto con il `touch` in un comando separato. Nella sessione C4b-1 quel comando unico era passato solo perché il gate era inerte.
+- Suite kernel: **552 → 558 PASS / 5 FAIL** (F-mac-1 invariati). Nuovi T76a-d, più un check nuovo in T75c.
+- pytest (escluso kernel/e2e): 232 passed.
+- **Misura indipendente** con un `sitecustomize` che conta gli urlopen verso api.telegram.org, e `TELEGRAM_BOT_TOKEN=finto TELEGRAM_ALLOWED_IDS=999` esportati:
+  - suite di main → **40** chiamate;
+  - suite corretta → **0**.
+- CI sul commit `9377b4b`: success (561+6 = 567 PASS, 0 FAIL su ubuntu; hook 56, voice 19, gate 74).
+- **Test esistente modificato:** T75c. Prima `set(payload) == {"chat_id","text"}`, ora `== {"chat_id","text","link_preview_options"}`, più un check sul valore `{"is_disabled": True}`. Motivo: R-c4b1-2. Il revisore lo giudica legittimo: l'uguaglianza resta esatta.
 
-## RISERVE (review #129)
+## RISERVE (review #130)
 
-- **R-gjq-1** (operativa): il matcher `git[[:space:]].*commit` ora blocca qualsiasi comando che contiene quel testo mentre c'è codice del motore in stage senza marcatore. Inoltre il marcatore va creato con un comando separato prima del commit.
-- **R-gjq-2** (copertura): i rami python/perl con input oggetto non sono testati in CI.
-- **R-gjq-3** (minore, pre-esistente): grep assente → `|| exit 0` (fail-open).
+- **R-erm-1** (minore): l'isolamento vale solo in `tests/test_unit_kernel.py`.
+- **R-erm-2** (cosmetica): la guardia copre solo urllib.
 
 ## ANOMALIE
 
-- Il gate inerte stesso è l'anomalia principale. È registrato in stato_progetto.md come F-gate-inerte (chiuso dalla PR #114).
-- `check_verdetto.py` (gate B di `fine_task_finale.sh`) è stato rosso al primo giro: il verdetto #129 citava la riga 46 del gate col solo nome del file, senza `.claude/hooks/`, e lo script scarta i path corti (falso positivo F-controlli-auto). Il verdetto non l'ho ritoccato. Per decisione dell'operatore ho chiesto al revisore una **riemissione** con i path completi, con il merito invariato. L'handoff §4 contiene la riemissione verbatim e una nota che la dichiara. Il commit dei report del primo giro (`b40365e`) era solo locale e non pushato: l'ho annullato e rifatto.
+- Il verdetto #130 citava `bot.py:135`/`:52` col nome corto e `gas.py:23`, un file fuori dal diff: `check_verdetto.py` li avrebbe scartati. Applicando il precedente scelto dall'operatore per la review #129, ho chiesto subito al revisore una riemissione: solo la forma delle citazioni, merito invariato. L'handoff §4 contiene la riemissione verbatim.
+- Nella sonda di parità il primo lancio è fallito per un apostrofo nel messaggio d'errore della riga 7 (errore di sintassi bash). L'ho corretto e rilanciato prima di qualunque confronto.

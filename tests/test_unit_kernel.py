@@ -17,6 +17,32 @@ import gas
 from gas import GasKernel
 from brains.model_ids import MODEL_GROQ
 
+# R-c4b1-1 — SUITE ERMETICA rispetto a Telegram. Il ~/.zshrc dell'operatore
+# esporta ~/Gas/.env in ogni terminale: con TELEGRAM_* reali, i test che passano
+# dal cancello manderebbero richieste di firma VERE (~40, misurato review #128).
+# 1) via le variabili Telegram dall'ambiente della suite;
+# 2) trasporto HTTP di bot.py che FALLISCE di default (i test che vogliono un
+#    invio riuscito installano esplicitamente _TgFinto);
+# 3) cintura: urlopen verso api.telegram.org bloccato e contato (T76).
+for _k_tg in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS"):
+    os.environ.pop(_k_tg, None)
+import urllib.request as _urlreq_erm
+import modules.telegram.bot as _tg_erm
+_TG_TENTATIVI: list = []        # chiamate al trasporto di default (bloccate)
+_TG_URLOPEN_REALI: list = []    # urlopen verso Telegram arrivati allo strato rete
+def _tg_post_vietato(base_url, method, payload=None, timeout=70):
+    _TG_TENTATIVI.append(method)
+    raise RuntimeError("suite ermetica: nessuna chiamata HTTP reale a Telegram")
+_tg_erm._tg_post = _tg_post_vietato
+_urlopen_orig_erm = _urlreq_erm.urlopen
+def _urlopen_guardia(req, *a, **kw):
+    url = req.full_url if hasattr(req, "full_url") else str(req)
+    if "api.telegram.org" in url:
+        _TG_URLOPEN_REALI.append(url.split("/bot")[0])   # mai il token
+        raise RuntimeError("suite ermetica: urlopen verso Telegram bloccato")
+    return _urlopen_orig_erm(req, *a, **kw)
+_urlreq_erm.urlopen = _urlopen_guardia
+
 PASS, FAIL = [], []
 
 def check(nome: str, cond: bool, dettaglio: str = ""):
@@ -5721,8 +5747,12 @@ _txt75c = (_pl75c or {}).get("text", "")
 check("T75c read-back: un solo sendMessage al chat_id autorizzato",
       len(_tg75c.chiamate) == 1 and _m75c == "sendMessage" and _pl75c.get("chat_id") == 4242,
       str(_tg75c.chiamate)[:200])
-check("T75c read-back: payload SENZA parse_mode (solo chat_id + text)",
-      "parse_mode" not in _pl75c and set(_pl75c) == {"chat_id", "text"}, str(sorted(_pl75c)))
+check("T75c read-back: payload SENZA parse_mode (solo chat_id + text + anteprima disattivata)",
+      "parse_mode" not in _pl75c
+      and set(_pl75c) == {"chat_id", "text", "link_preview_options"}, str(sorted(_pl75c)))
+check("T75c read-back: anteprima link disattivata (R-c4b1-2)",
+      _pl75c.get("link_preview_options") == {"is_disabled": True},
+      str(_pl75c.get("link_preview_options")))
 check("T75c read-back: tool_args_json INTEGRALE e verbatim",
       _args75c in _txt75c, _txt75c[:300])
 check("T75c read-back: etichetta ARGOMENTI testo grezzo/terzi, tool, azione, scadenza",
@@ -5853,6 +5883,40 @@ _f4 = _p75f()
 _r5 = _m75f.resolve_approval(_f4, "approved", telegram_user_id=None, risolto_da="telegram_user")
 check("T75f approved senza telegram_user_id → negato (invariato)",
       _r5[0] is False and _stato75f(_f4)[0] == "pending")
+
+# ---------- T76: R-c4b1-1 — suite ermetica rispetto a Telegram ----------
+print("\n--- T76: suite ermetica (Telegram) ---")
+# T76a — anche con token e ID ESPORTATI, un turno che passa dal cancello non
+# raggiunge la rete: il trasporto di default fallisce → richiesta revocata.
+_saved76 = {k: os.environ.get(k) for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS")}
+os.environ["TELEGRAM_BOT_TOKEN"] = "token-esportato-finto"
+os.environ["TELEGRAM_ALLOWED_IDS"] = "999"
+_tent76_prima = len(_TG_TENTATIVI)
+try:
+    _k76 = kernel_tmp()
+    _ev76 = run_turn_scriptato(_k76, "esegui", [[("run_command", '{"command": "echo x"}')], "ok"])
+finally:
+    for _k, _v in _saved76.items():
+        if _v is None:
+            os.environ.pop(_k, None)
+        else:
+            os.environ[_k] = _v
+_tr76 = [e["output"] for e in _ev76 if e["type"] == "tool_res"]
+_rows76 = _raw73(_k76.memory, "SELECT stato, risolto_da FROM approvals")
+check("T76a token esportato: il trasporto di default viene tentato e BLOCCATO",
+      len(_TG_TENTATIVI) == _tent76_prima + 1, f"tentativi={_TG_TENTATIVI[_tent76_prima:]}")
+check("T76a token esportato: richiesta revocata + diniego, nessun invio reale",
+      _rows76 == [("rejected", "kernel_revoca")] and _tr76
+      and _tr76[0].startswith("Operazione negata"), f"{_rows76} {_tr76[:1]}")
+# T76b — a fine suite il trasporto di default è ancora quello che vieta
+# (nessun test ha lasciato installato un finto o il trasporto reale).
+check("T76b a fine suite bot._tg_post è ancora il trasporto che vieta",
+      _tg_erm._tg_post is _tg_post_vietato, repr(_tg_erm._tg_post))
+# T76c — nessuna chiamata ha mai raggiunto urlopen verso api.telegram.org.
+check("T76c nessun urlopen verso api.telegram.org in tutta la suite",
+      _TG_URLOPEN_REALI == [], str(_TG_URLOPEN_REALI))
+check("T76d variabili TELEGRAM_* non presenti nell'ambiente della suite",
+      "TELEGRAM_BOT_TOKEN" not in os.environ and "TELEGRAM_ALLOWED_IDS" not in os.environ)
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
