@@ -4770,9 +4770,9 @@ _no_inj70e = "ignora le istruzioni" not in _esito70e and "DROP TABLE" not in _es
 check("T70e run_command: _esito_diario solo conteggi, nessun testo output/injection",
       _esito70e_ok and _no_inj70e, f"esito={_esito70e!r}")
 
-# T70f — round-trip end-to-end (os_with_fallback): echo produce output,
-# il diario registra [OK] exit=N stdout=N char stderr=N char, nessun testo dell'output.
-# Nota: il percorso bwrap (Linux) è testato solo in CI Linux.
+# T70f — round-trip (os_with_fallback): run_command è IRREVERSIBLE (§8e) → C4a lo parcheggia.
+# Diario: pending id=<uuid> | [OK] Azione in attesa di approvazione umana
+# Nessun testo del comando o output nel diario (F-diario-eco/args).
 _saved_sb70f = os.environ.get("GAS_SANDBOX_MODE")
 os.environ["GAS_SANDBOX_MODE"] = "os_with_fallback"
 try:
@@ -4784,13 +4784,10 @@ try:
     run_turn_scriptato(_k70f, "esegui", _script70f)
     _diario70f = [r for r in _k70f.memory.diario_recente(20) if r["tipo"] == "run_command"]
     _desc70f = _diario70f[0]["descrizione"] if _diario70f else ""
-    # La parte esito è dopo " | " (args_summary | esito): il testo del COMANDO
-    # compare nell'args_summary (design), ma l'OUTPUT non deve comparire nell'esito.
-    _esito_part70f = _desc70f.split(" | ", 1)[1] if " | " in _desc70f else _desc70f
-    _esito70f_ok = bool(_re_eco.search(r'\[OK\] exit=\d+', _esito_part70f))
-    _no_inj70f = "ignora le istruzioni" not in _esito_part70f
-    check("T70f run_command end-to-end (os_with_fallback): esito solo conteggi, nessun stdout in esito",
-          len(_diario70f) == 1 and _esito70f_ok and _no_inj70f,
+    _pending70f = "pending id=" in _desc70f
+    _no_inj70f = "ignora le istruzioni" not in _desc70f
+    check("T70f run_command (os_with_fallback): C4a parcheggiato, diario pending id=, no output/injection",
+          len(_diario70f) == 1 and _pending70f and _no_inj70f,
           f"desc={_desc70f!r}")
 finally:
     if _saved_sb70f is None:
@@ -4798,9 +4795,8 @@ finally:
     else:
         os.environ["GAS_SANDBOX_MODE"] = _saved_sb70f
 
-# T70g — run_command con os_strict: comportamento dipende dalla piattaforma.
-# macOS (bwrap assente): comando negato → [KO].
-# Linux (bwrap disponibile): comando gira → [OK] exit=...
+# T70g — run_command senza GAS_SANDBOX_MODE (default ""): IRREVERSIBLE → C4a parcheggia.
+# (os_strict era il vecchio comportamento di test; C4a supera la distinzione sandbox)
 _k70g = kernel_tmp()
 _script70g = [
     [("run_command", '{"command": "echo test"}')],
@@ -4809,14 +4805,9 @@ _script70g = [
 run_turn_scriptato(_k70g, "esegui", _script70g)
 _diario70g = [r for r in _k70g.memory.diario_recente(20) if r["tipo"] == "run_command"]
 _desc70g = _diario70g[0]["descrizione"] if _diario70g else ""
-if not _k70g.os_sandbox_available:
-    _ko70g = bool(_re_eco.search(r'\[KO\]', _desc70g))
-    check("T70g run_command negato (os_strict/mac): diario [KO]",
-          len(_diario70g) == 1 and _ko70g, f"desc={_desc70g!r}")
-else:
-    _ok70g = bool(_re_eco.search(r'\[OK\] exit=\d+', _desc70g))
-    check("T70g run_command con bwrap (Linux): diario [OK] exit=...",
-          len(_diario70g) == 1 and _ok70g, f"desc={_desc70g!r}")
+check("T70g run_command (default): C4a parcheggiato, diario pending id=",
+      len(_diario70g) == 1 and "pending id=" in _desc70g,
+      f"desc={_desc70g!r}")
 
 # T70h — read_file ramo errore (file inesistente): diario [KO], non '[OK] N caratteri'
 _k70h = kernel_tmp()
@@ -5322,6 +5313,240 @@ check("T73h WARNING nella scatola nera per ogni lettura negata",
 _ok73h = _m73h.enqueue_approval("send_email", {"to": "b@example.com"})
 check("T73h coda resta usabile: una riga sana accanto alle corrotte si approva",
       _ok73h is not None and _m73h.resolve_approval(_ok73h, "approved", telegram_user_id=7)[0] is True)
+
+# ---------- T73h-bis: R-c3-1b — expire_stale_approvals con ts_expiry non numerico ----------
+# Controprova: il test fallirebbe su store.py pre-fix perché la riga rimarrebbe
+# 'pending' (SQLite: TEXT > REAL, quindi 'ts_expiry <= now' non matcherebbe mai).
+_m73hb = _ms73()
+_now73hb = _time73.time()
+# Inserisce una riga con ts_expiry='mai' (TEXT, già scaduta per contratto).
+_id73hb = str(_uuid73.uuid4())
+_args73hb = '{"to": "hbtest@example.com"}'
+_raw73(_m73hb,
+       "INSERT INTO approvals (id, tool_name, tool_args_json, tool_args_hash, "
+       "azione_leggibile, stato, ts_created, ts_expiry) "
+       "VALUES (?, 'send_email', ?, ?, 'x', 'pending', ?, ?)",
+       (_id73hb, _args73hb, _hash73(_args73hb), _now73hb, "mai"))
+# Precondizione: ts_expiry è TEXT nel DB (non numerico).
+_typ73hb = _raw73(_m73hb, "SELECT typeof(ts_expiry) FROM approvals WHERE id = ?", (_id73hb,))
+check("T73h-bis precondizione: ts_expiry TEXT nel DB",
+      _typ73hb == [("text",)], str(_typ73hb))
+# Verifica che pre-fix la riga NON venga scaduta dalla logica `ts_expiry <= now`.
+_n73hb_basic = _raw73(_m73hb,
+    "SELECT COUNT(*) FROM approvals WHERE stato='pending' AND ts_expiry <= ?", (_now73hb + 1,))
+check("T73h-bis controprova: ts_expiry TEXT non matcha ts_expiry <= now (TEXT > REAL in SQLite)",
+      _n73hb_basic == [(0,)], str(_n73hb_basic))
+# Applica il fix e verifica che la riga venga marcata 'expired'.
+_logrec73hb: list = []
+class _H73hb(logging.Handler):
+    def emit(self, record):
+        _logrec73hb.append(record)
+_h73hb = _H73hb(level=logging.WARNING)
+logging.getLogger("modules.memory.store").addHandler(_h73hb)
+try:
+    _n73hb = _m73hb.expire_stale_approvals()
+finally:
+    logging.getLogger("modules.memory.store").removeHandler(_h73hb)
+check("T73h-bis expire_stale_approvals scade la riga con ts_expiry non numerico",
+      _n73hb == 1, f"n={_n73hb}")
+check("T73h-bis WARN emesso per ts_expiry non numerico",
+      any("non numerico" in r.getMessage() for r in _logrec73hb),
+      str([r.getMessage() for r in _logrec73hb]))
+# get_approval ritorna None: la riga è ancora corrotta (ts_expiry TEXT), fail-closed.
+# Verifica lo stato nel DB via SQL grezzo.
+_stato73hb = _raw73(_m73hb, "SELECT stato, risolto_da FROM approvals WHERE id = ?", (_id73hb,))
+check("T73h-bis riga scaduta nel DB (stato='expired', risolto_da='timeout') — via SQL",
+      _stato73hb == [("expired", "timeout")], str(_stato73hb))
+check("T73h-bis riga scaduta: non più approvabile (resolve_approval negato)",
+      _m73hb.resolve_approval(_id73hb, "approved", telegram_user_id=1)[0] is False)
+# Riga sana a fianco: expire torna 0 (già scaduta quella corrotta), la sana resta pending.
+_id73hb_sana = _m73hb.enqueue_approval("send_email", {"to": "sano@example.com"})
+_n73hb2 = _m73hb.expire_stale_approvals()
+check("T73h-bis riga sana non scaduta da expire (ts_expiry valido, non scaduto)",
+      _n73hb2 == 0 and _m73hb.get_approval(_id73hb_sana)["stato"] == "pending",
+      f"n={_n73hb2}")
+
+# ---------- T74: C4a — collegamento coda al loop ----------
+# Test REALI: SQLite vero, niente mock dello store. Suite T74a-g.
+from types import SimpleNamespace as _SN74
+
+def _k74() -> gas.GasKernel:
+    return kernel_tmp()
+
+# T74a — IRREVERSIBLE → tool NON eseguito, riga pending in DB, esito "in attesa"
+_k74a = _k74()
+_exec_calls_74a: list = []
+_orig_etc_74a = _k74a.execute_tool_call
+def _spy_74a(name, args):
+    _exec_calls_74a.append(name)
+    return _orig_etc_74a(name, args)
+_k74a.execute_tool_call = _spy_74a  # type: ignore[method-assign]
+_script74a = [
+    [("send_email", '{"to": "x@example.com", "subject": "s", "body": "b"}')],
+    "in attesa",
+]
+_ev74a = run_turn_scriptato(_k74a, "manda email", _script74a)
+_tr74a = [e for e in _ev74a if e["type"] == "tool_res"]
+_final74a = [e for e in _ev74a if e["type"] == "final"]
+_pend74a = _k74a.memory.get_pending_approvals() if _k74a.memory else []
+check("T74a IRREVERSIBLE → execute_tool_call NON chiamato",
+      "send_email" not in _exec_calls_74a, f"calls={_exec_calls_74a}")
+check("T74a IRREVERSIBLE → riga pending in DB",
+      len(_pend74a) == 1 and _pend74a[0]["tool_name"] == "send_email",
+      f"pending={[(r['tool_name'], r['stato']) for r in _pend74a]}")
+check("T74a IRREVERSIBLE → esito 'in attesa di approvazione umana'",
+      _tr74a and "in attesa di approvazione umana" in _tr74a[0]["output"],
+      f"out={_tr74a[0]['output'][:80] if _tr74a else 'NESSUNO'}")
+check("T74a IRREVERSIBLE → loop termina con risposta finale",
+      len(_final74a) == 1, f"final={len(_final74a)}")
+# Diario: la riga pending NON deve contenere gli argomenti (F-diario-eco/args).
+_diario74a = [r for r in _k74a.memory.diario_recente(10) if r["tipo"] == "send_email"]
+check("T74a diario: solo nome+id pending, nessun arg (F-diario-eco/args)",
+      _diario74a and "pending id=" in _diario74a[0]["descrizione"]
+      and "@example.com" not in _diario74a[0]["descrizione"],
+      f"desc={_diario74a[0]['descrizione'][:100] if _diario74a else 'ASSENTE'}")
+
+# T74b — UNCERTAIN + contaminata → come T74a
+# Contamina la finestra con un risultato di 'ricorda', poi chiama write_file.
+# write_file usa path RELATIVO alla root del kernel (un path assoluto sarebbe DENY).
+_k74b = _k74()
+_exec_calls_74b: list = []
+_orig_etc_74b = _k74b.execute_tool_call
+def _spy_74b(name, args):
+    _exec_calls_74b.append(name)
+    return _orig_etc_74b(name, args)
+_k74b.execute_tool_call = _spy_74b  # type: ignore[method-assign]
+_rel74b = "non_deve_esistere_c4a.txt"
+_abs74b = str(_k74b.root / _rel74b)
+_script74b = [
+    [("ricorda", '{"query": "test contaminazione"}')],         # iter 1: SAFE, contamina finestra
+    [("write_file", json.dumps({"relative_path": _rel74b, "content": "SCRITTO"}))],  # iter 2: UNCERTAIN+contaminata
+    "in attesa",
+]
+_ev74b = run_turn_scriptato(_k74b, "scrivi file", _script74b)
+_tr74b = [e for e in _ev74b if e["type"] == "tool_res"]
+_final74b = [e for e in _ev74b if e["type"] == "final"]
+_pend74b = _k74b.memory.get_pending_approvals() if _k74b.memory else []
+check("T74b UNCERTAIN+contaminata → write_file NON eseguita (file assente)",
+      not os.path.exists(_abs74b), f"abs={_abs74b} exists={os.path.exists(_abs74b)}")
+check("T74b UNCERTAIN+contaminata → riga pending in DB per write_file",
+      any(r["tool_name"] == "write_file" for r in _pend74b),
+      f"pending={[(r['tool_name'], r['stato']) for r in _pend74b]}")
+check("T74b UNCERTAIN+contaminata → esito 'in attesa di approvazione umana' per write_file",
+      any("in attesa di approvazione umana" in e["output"] for e in _tr74b),
+      f"tr={[e['output'][:60] for e in _tr74b]}")
+check("T74b loop termina con risposta finale",
+      len(_final74b) == 1, f"final={len(_final74b)}")
+check("T74b ricorda (SAFE) eseguita regolarmente (exec_calls contiene ricorda)",
+      "ricorda" in _exec_calls_74b, f"calls={_exec_calls_74b}")
+
+# T74c — UNCERTAIN pulita → eseguita come prima (regressione)
+# write_file con path relativo alla root del kernel (non contaminata).
+_k74c = _k74()
+_rel74c = "deve_esistere_c4a.txt"
+_abs74c = str(_k74c.root / _rel74c)
+_script74c = [
+    [("write_file", json.dumps({"relative_path": _rel74c, "content": "OK"}))],
+    "scritto",
+]
+_ev74c = run_turn_scriptato(_k74c, "scrivi file pulito", _script74c)
+_final74c = [e for e in _ev74c if e["type"] == "final"]
+check("T74c UNCERTAIN pulita → write_file eseguita (file creato)",
+      os.path.exists(_abs74c), f"abs={_abs74c}")
+check("T74c UNCERTAIN pulita → loop termina con risposta finale",
+      len(_final74c) == 1)
+check("T74c UNCERTAIN pulita → nessuna riga pending in DB",
+      (_k74c.memory.get_pending_approvals() if _k74c.memory else []) == [])
+
+# T74d — DENY invariato
+_k74d = _k74()
+_exec_calls_74d: list = []
+_orig_etc_74d = _k74d.execute_tool_call
+def _spy_74d(name, args):
+    _exec_calls_74d.append(name)
+    return _orig_etc_74d(name, args)
+_k74d.execute_tool_call = _spy_74d  # type: ignore[method-assign]
+_script74d = [
+    [("resolve_approval", '{"approval_id": "x", "stato": "approved"}')],
+    "negato",
+]
+_ev74d = run_turn_scriptato(_k74d, "risolvi approvazione", _script74d)
+_tr74d = [e for e in _ev74d if e["type"] == "tool_res"]
+check("T74d DENY invariato → execute_tool_call NON chiamato",
+      "resolve_approval" not in _exec_calls_74d, f"calls={_exec_calls_74d}")
+check("T74d DENY invariato → esito 'Operazione negata'",
+      _tr74d and "Operazione negata" in _tr74d[0]["output"],
+      f"out={_tr74d[0]['output'][:80] if _tr74d else 'NESSUNO'}")
+check("T74d DENY → nessuna riga pending in DB",
+      (_k74d.memory.get_pending_approvals() if _k74d.memory else []) == [])
+
+# T74e — enqueue che lancia → diniego, tool NON eseguito
+_k74e = _k74()
+_exec_calls_74e: list = []
+_orig_etc_74e = _k74e.execute_tool_call
+def _spy_74e(name, args):
+    _exec_calls_74e.append(name)
+    return _orig_etc_74e(name, args)
+_k74e.execute_tool_call = _spy_74e  # type: ignore[method-assign]
+# Monkeypatch enqueue_approval per farlo lanciare
+_orig_enqueue_74e = _k74e.memory.enqueue_approval
+def _raise_enqueue_74e(*a, **kw):
+    raise RuntimeError("enqueue simulato fallito")
+_k74e.memory.enqueue_approval = _raise_enqueue_74e  # type: ignore[method-assign]
+_script74e = [
+    [("send_email", '{"to": "x@example.com", "subject": "s", "body": "b"}')],
+    "negato",
+]
+_ev74e = run_turn_scriptato(_k74e, "manda email", _script74e)
+_tr74e = [e for e in _ev74e if e["type"] == "tool_res"]
+_k74e.memory.enqueue_approval = _orig_enqueue_74e  # ripristina
+check("T74e enqueue che lancia → diniego (tool NON eseguito)",
+      "send_email" not in _exec_calls_74e, f"calls={_exec_calls_74e}")
+check("T74e enqueue che lancia → esito 'Operazione negata'",
+      _tr74e and "Operazione negata" in _tr74e[0]["output"],
+      f"out={_tr74e[0]['output'][:80] if _tr74e else 'NESSUNO'}")
+
+# T74f — store non disponibile → diniego
+_k74f = _k74()
+_k74f.memory = None  # simula store assente
+_exec_calls_74f: list = []
+_orig_etc_74f = _k74f.execute_tool_call
+def _spy_74f(name, args):
+    _exec_calls_74f.append(name)
+    return _orig_etc_74f(name, args)
+_k74f.execute_tool_call = _spy_74f  # type: ignore[method-assign]
+_script74f = [
+    [("send_email", '{"to": "x@example.com", "subject": "s", "body": "b"}')],
+    "negato",
+]
+_ev74f = run_turn_scriptato(_k74f, "manda email", _script74f)
+_tr74f = [e for e in _ev74f if e["type"] == "tool_res"]
+check("T74f store non disponibile → diniego (tool NON eseguito)",
+      "send_email" not in _exec_calls_74f, f"calls={_exec_calls_74f}")
+check("T74f store non disponibile → esito 'Operazione negata'",
+      _tr74f and "Operazione negata" in _tr74f[0]["output"],
+      f"out={_tr74f[0]['output'][:80] if _tr74f else 'NESSUNO'}")
+
+# T74g — grep: nessun residuo dello stub C2 in gas.py
+import re as _re74g
+_src74g = Path(gas.__file__).read_text(encoding="utf-8")
+check("T74g nessun residuo del commento stub C2 in gas.py",
+      "C2 stub" not in _src74g and "GATE-C2-STUB" not in _src74g,
+      "trovato residuo stub C2")
+
+# ---------- FINDING F-c4a-dedup: dedup coda (misurazione, non correzione) ----------
+# Quante copie della stessa azione può accodare un modello che ripete la chiamata?
+# Scenario: stesso tool, stessi args, N chiamate nello stesso turno.
+_m_dedup = _ms73()
+_args_dedup = '{"to": "dedup@example.com", "subject": "s", "body": "b"}'
+_ids_dedup = [_m_dedup.enqueue_approval("send_email", _args_dedup) for _ in range(3)]
+_pend_dedup = _m_dedup.get_pending_approvals()
+# Misurazione: 3 chiamate identiche → 3 UUID distinti, 3 righe pending.
+check("F-c4a-dedup (misurazione): stessa azione 3x → 3 righe pending distinte (no dedup by design)",
+      len(_ids_dedup) == 3 and len(set(_ids_dedup)) == 3 and len(_pend_dedup) == 3,
+      f"ids={_ids_dedup} pending={len(_pend_dedup)}")
+# Il finding: in un turno con max 10 iterazioni, un modello che ripete lo stesso tool call
+# IRREVERSIBLE può creare fino a 10 righe pending identiche. Correzione: FUORI SCOPE C4a.
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
