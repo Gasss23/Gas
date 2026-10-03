@@ -1602,17 +1602,32 @@ class MemoryStore:
         """Marca 'expired' (risolto_da='timeout') ogni 'pending' oltre ts_expiry.
         Le righe restano per audit (§4d). Ritorna quante ne ha scadute; errore → 0
         (le pending scadute restano comunque non approvabili: resolve_approval e
-        get_pending_approvals ricontrollano ts_expiry)."""
+        get_pending_approvals ricontrollano ts_expiry).
+        R-c3-1b: scade anche le righe con ts_expiry non numerico (TEXT/BLOB) —
+        in SQLite TEXT > REAL, quindi `ts_expiry <= now` non le matcherebbe mai."""
         try:
             now = time.time()
             with self._connect() as con:
+                # R-c3-1b: righe corrotte con ts_expiry non numerico — scadute con WARN.
+                cur_bad = con.execute(
+                    "UPDATE approvals SET stato = 'expired', ts_resolved = ?, "
+                    "risolto_da = 'timeout' "
+                    "WHERE stato = 'pending' AND typeof(ts_expiry) NOT IN ('real', 'integer')",
+                    (now,),
+                )
+                n_bad = int(cur_bad.rowcount)
+                if n_bad:
+                    log.warning(
+                        "expire_stale_approvals: %d pending con ts_expiry non numerico — scadute",
+                        n_bad,
+                    )
                 cur = con.execute(
                     "UPDATE approvals SET stato = 'expired', ts_resolved = ?, "
                     "risolto_da = 'timeout' WHERE stato = 'pending' AND ts_expiry <= ?",
                     (now, now),
                 )
                 con.commit()
-                return int(cur.rowcount)
+                return int(cur.rowcount) + n_bad
         except (sqlite3.Error, OSError) as e:
             log.warning("expire_stale_approvals fallita (%s): %s", self.db_path, e)
             return 0

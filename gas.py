@@ -1939,29 +1939,59 @@ class GasKernel:
                             for tc in msg.tool_calls:
                                 # C2: gate check prima di eseguire.
                                 _gc = gate_classify(tc.function.name, tc.function.arguments)
+                                _gate_pending_id: Optional[str] = None
                                 if _gc == GateClass.DENY:
                                     logging.warning(f"[GATE] DENY: {tc.function.name}")
                                     out = "Operazione negata: azione non consentita in modalità autonoma."
                                 elif _gc == GateClass.IRREVERSIBLE or (
                                     _gc == GateClass.UNCERTAIN and _finestra_contaminata
                                 ):
-                                    # C2 stub: approvazione auto (coda reale in C3).
-                                    logging.warning(
-                                        f"[GATE-C2-STUB] {tc.function.name} → {_gc.value} "
-                                        f"(contaminato={_finestra_contaminata}) — approvazione stub"
-                                    )
-                                    out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                                    # C4a: parcheggia l'azione, NON la esegue (§4b, turno suddiviso).
+                                    try:
+                                        _gate_pending_id = (
+                                            self.memory.enqueue_approval(
+                                                tc.function.name,
+                                                tc.function.arguments,
+                                                turno_id=_turno_id,
+                                                azione_leggibile=f"Esegui {tc.function.name}",
+                                            )
+                                            if self.memory is not None
+                                            else None
+                                        )
+                                    except Exception as _eq:
+                                        logging.warning(
+                                            "[GATE] enqueue_approval eccezione (%s) — fail-closed, diniego",
+                                            _eq,
+                                        )
+                                        _gate_pending_id = None
+                                    if _gate_pending_id is None:
+                                        logging.warning(
+                                            "[GATE] FAIL-CLOSED %s → %s (contaminato=%s) "
+                                            "— store non disponibile, diniego",
+                                            tc.function.name, _gc.value, _finestra_contaminata,
+                                        )
+                                        out = ("Operazione negata: azione bloccata in attesa di "
+                                               "approvazione umana (store non disponibile).")
+                                    else:
+                                        logging.warning(
+                                            "[GATE-C4A] %s → %s (contaminato=%s) — parcheggiato id=%s",
+                                            tc.function.name, _gc.value, _finestra_contaminata,
+                                            _gate_pending_id,
+                                        )
+                                        out = (f"Azione in attesa di approvazione umana "
+                                               f"(ID: {_gate_pending_id}).")
                                 else:
                                     out = self.execute_tool_call(tc.function.name, tc.function.arguments)
-                                # Diario memoria (FASE 2 fetta 2a + fetta 1 apprendimento):
-                                # una riga per OGNI tool call, con fonte='kernel' e turno_id.
-                                # Fail-safe (§9): la memoria che non scrive NON ferma il turno.
+                                # Diario: per azioni pending solo nome+id (F-diario-eco/args, mai args).
+                                # Per tutti gli altri casi: riassunto args + esito.
                                 _esito_str = self._esito_diario(tc.function.name, out)
                                 _turno_tool_n += 1
                                 if _esito_str.startswith("[KO]"):
                                     _turno_tool_ko += 1
                                 self._diario_log(
                                     tc.function.name,
+                                    f"pending id={_gate_pending_id} | {_esito_str}"
+                                    if _gate_pending_id is not None else
                                     f"{self._riassumi_args(tc.function.name, tc.function.arguments)}"
                                     f" | {_esito_str}",
                                     fonte="kernel",
