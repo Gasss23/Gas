@@ -1,41 +1,16 @@
-# Diff sessione — feat/cancello-c4a — 2026-10-03
+# Diff sessione — 2026-10-03 — FETTA C4b-1 (feat/cancello-c4b1)
 
-## Sommario
+> Si riscrive a ogni sessione; la storia completa sta in git.
 
-Sessione C4a: R-c3-1b (fix expire_stale_approvals) + collegamento coda al loop.
-
-## git diff --stat (main → feat/cancello-c4a)
-
-```
-.claude/agents/memoria_revisore.md |   2 +
-gas.py                             |  48 +++++--
-modules/memory/store.py            |  19 ++-
-tests/test_unit_kernel.py          | 267 ++++++++++++++++++++++++++++++++++---
-4 files changed, 304 insertions(+), 32 deletions(-)
-```
-
-## File toccati e motivo
-
-### gas.py (+48, -7)
-- **Stub C2 sostituito** (riga ~1942): blocco `elif IRREVERSIBLE / UNCERTAIN+contaminated` non chiama più `execute_tool_call`. Invece chiama `enqueue_approval` con fail-closed a 3 livelli.
-- **Variabile `_gate_pending_id`** inizializzata a `None` prima del gate per il ternario diario.
-- **Diario**: branch pending scrive `pending id=<uuid>` senza args (F-diario-eco/args).
-- DENY e SAFE invariati.
-
-### modules/memory/store.py (+19, -4)
-- **`expire_stale_approvals`**: aggiunto primo UPDATE per `typeof(ts_expiry) NOT IN ('real','integer')` + WARN + conteggio sommato. Fix R-c3-1b.
-
-### tests/test_unit_kernel.py (+267, -25)
-- **T73h-bis** (7 check): R-c3-1b — INSERT grezzo con ts_expiry TEXT, controprova pre-fix, verifica via SQL grezzo.
-- **T74a-g** (29 check): C4a loop — IRREVERSIBLE, UNCERTAIN+contaminata, UNCERTAIN pulita, DENY, enqueue lancia, store=None, grep stub.
-- **F-c4a-dedup** (1 check): finding misurabile — 3 enqueue identici → 3 UUID distinti.
-- **T70f/T70g aggiornati** (-15, +8): run_command ora parcheggiato (IRREVERSIBLE), test aggiornati al nuovo comportamento.
-
-### .claude/agents/memoria_revisore.md (+2)
-- Entry review #127 aggiunta dal revisore (commit cce2211).
-
-## Risultati test
-
-- **python3 tests/test_unit_kernel.py**: 501 PASS, 5 FAIL (F-mac-1, invariati)
-- **pytest tests/ --ignore=tests/test_unit_kernel.py**: 227/227 PASS
-- Baseline pre-sessione: 472 PASS, 5 FAIL → delta +29 PASS
+| File | Cosa è cambiato e perché |
+|---|---|
+| `.claude/agents/revisore.md` | `model: opus` nel frontmatter (decisione operatore del 2026-10-01, mai applicata fino a oggi). |
+| `.claude/agents/memoria_revisore.md` | Riga #128 e lezione sulla non-ermeticità dei test quando un percorso acquista un effetto di rete. |
+| `gas.py` | Nuovo `_parcheggia_e_notifica`: accodamento con anti-doppioni/tetto, read-back Telegram, revoca + diniego se il read-back non parte; diario dei percorsi del cancello senza args. |
+| `modules/memory/store.py` | `accoda_approvazione` atomica (doppione/tetto), `revoca_approval` (solo rejected/kernel_revoca), `_approval_max_pending`, `_serializza_args`; R-c3-3/R-c3-4 in `resolve_approval`. |
+| `modules/telegram/bot.py` | `componi_read_back`, `invia_read_back` (via `_tg_post`, niente parse_mode, niente troncamento), `lunghezza_telegram` (UTF-16), `parse_allowed_ids` (riusato da run_bot). |
+| `tests/test_unit_kernel.py` | Finto trasporto `_TgFinto`; nuovi T75a-f (51 check); T70f/T70g/T72c/T74a/T74b con finto trasporto; T74e con patch su `accoda_approvazione`. |
+| `reports/stato_progetto.md` | Stato C4b-1, chiusura R-c3-3/R-c3-4, riserve R-c4b1-1..4, finding della verifica C4a. |
+| `reports/ultimo_report.md` | Report del task. |
+| `reports/handoff.md` | Dossier di fine sessione. |
+| `reports/diff_sessione.md` | Questo file. |
