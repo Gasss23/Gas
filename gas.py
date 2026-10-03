@@ -1309,6 +1309,44 @@ class GasKernel:
             logging.warning("[GATE-C4B] revoca di id=%s NON riuscita: %s", aid, msg)
         return f"Operazione negata: {motivo}. Approvazione revocata.", f"revocata id={aid}"
 
+    def _storia_esito_firma(self, approval_id: str, tool: str, args_json: str,
+                            notizia: str, out: Optional[str], eseguita: bool) -> None:
+        """C4b-3 (R-c4b2-1, design §4b passo 9): l'esito della firma entra nella
+        storia come blocco autonomo, visibile al modello dal turno successivo
+        (precedente: il riepilogo user+assistant di _compress_history_if_needed):
+          user      — notifica del kernel: tool, ID, decisione. Mai args né output;
+          assistant tool_call + tool — SOLO dopo il reclamo: chiamata con gli args
+                      SALVATI e output reale nel ruolo 'tool', così la
+                      contaminazione §3b si calcola come nel loop;
+          assistant — presa d'atto del kernel.
+        Inizia con 'user' → l'ancora di _get_window resta valida. Una sola volta
+        per ID. Nessuna chiamata LLM. FAIL-SAFE §9: errore → solo log."""
+        try:
+            tag = f"[NOTIFICA DEL KERNEL — esito firma umana, ID: {approval_id}]"
+            if any(m.get("role") == "user" and tag in (m.get("content") or "")
+                   for m in self.history):
+                return
+            blocco: List[Dict[str, Any]] = [{"role": "user", "content": (
+                f"{tag} Messaggio generato dal kernel, non scritto dall'operatore. "
+                f"Azione '{tool}': {notizia} Non richiedere di nuovo la stessa azione: "
+                f"questa richiesta è chiusa. Una nuova richiesta richiede una nuova firma.")}]
+            if out is not None:
+                tcid = "firma_" + approval_id.replace("-", "")
+                blocco.append({"role": "assistant", "tool_calls": [{
+                    "id": tcid, "type": "function",
+                    "function": {"name": tool, "arguments": args_json}}]})
+                blocco.append({"role": "tool", "content": out,
+                               "tool_call_id": tcid, "name": tool})
+            blocco.append({"role": "assistant", "content": (
+                f"Preso atto (kernel): azione '{tool}' ID {approval_id} — "
+                f"{'eseguita' if eseguita else 'NON eseguita'}.")})
+            # Tutto il blocco o niente: la storia non resta mai con un pezzo solo.
+            self.history.extend(blocco)
+            self._save_history()
+        except Exception as e:
+            logging.warning("[GATE-C4B] esito firma id=%s non registrato in storia: %s",
+                            approval_id, e)
+
     def applica_firma(self, approval_id: str) -> Dict[str, Any]:
         """C4b-2 — turno di sblocco (§4b passo 9). NON approva mai: la firma la
         registra il bridge Telegram (modules/telegram/bot.py, fuori dal loop); qui si
@@ -1318,10 +1356,14 @@ class GasKernel:
           esegue tool_name con gli args SALVATI (mai rigenerati dal modello);
         - 'rejected' → solo riga di diario, nessuna esecuzione;
         - qualunque altro caso → nessuna esecuzione.
+        C4b-3: rifiuto, firma non valida ed esito post-reclamo entrano anche nella
+        storia (_storia_esito_firma), così il modello li vede al turno dopo.
         Diario: 'approvata id=' / 'rifiutata id=' + esito; per i tool non fidati
         solo conteggi (F-diario-eco), mai args.
         Ritorna {"tool", "eseguita", "esito", "output"}; "eseguita" è True solo se
-        l'esito non è [KO] (R-c4b2-3). FAIL-CLOSED §9: mai eccezioni."""
+        l'esito non è [KO] (R-c4b2-3); per run_command solo se il comando è partito
+        davvero (segnale del kernel, R-c4b2-9/R-c4b3-1), mai dedotto dall'output.
+        FAIL-CLOSED §9: mai eccezioni."""
         res: Dict[str, Any] = {"tool": "", "eseguita": False, "esito": "", "output": ""}
         if self.memory is None:
             res["esito"] = "store non disponibile: azione non eseguita"
@@ -1337,6 +1379,9 @@ class GasKernel:
                 res["esito"] = "rifiutata dall'operatore: azione non eseguita"
                 self._diario_log(tool, f"rifiutata id={approval_id} | [KO] non eseguita",
                                  fonte="kernel", turno_id=str(uuid.uuid4()))
+                self._storia_esito_firma(approval_id, tool, args_json,
+                                         "l'operatore l'ha RIFIUTATA via Telegram; NON è stata eseguita.",
+                                         None, False)
                 return res
             if row["stato"] != "approved":
                 res["esito"] = f"stato '{row['stato']}': azione non eseguita"
@@ -1346,15 +1391,23 @@ class GasKernel:
                 logging.warning("[GATE-C4B] id=%s approvata da utente non autorizzato — non eseguita",
                                 approval_id)
                 res["esito"] = "firma non riconosciuta: azione non eseguita"
+                self._storia_esito_firma(approval_id, tool, args_json,
+                                         "firma non riconosciuta; NON è stata eseguita.",
+                                         None, False)
                 return res
             if not row["hash_ok"]:
                 logging.warning("[GATE-C4B] id=%s hash args NON integro — non eseguita", approval_id)
                 res["esito"] = "integrità argomenti violata: azione non eseguita"
+                self._storia_esito_firma(approval_id, tool, args_json,
+                                         "argomenti salvati non integri; NON è stata eseguita.",
+                                         None, False)
                 return res
             if not self.memory.reclama_esecuzione(approval_id):
                 res["esito"] = "già eseguita o non reclamabile: nessuna nuova esecuzione"
                 return res
             # Dal reclamo in poi l'azione NON si riesegue più, qualunque cosa accada.
+            # R-c4b3-1: nessun residuo di un run_command precedente.
+            self._run_command_meta = None
             if gate_classify(tool, args_json) == GateClass.DENY:
                 logging.warning("[GATE-C4B] id=%s %s → DENY al ricontrollo: non eseguita",
                                 approval_id, tool)
@@ -1363,8 +1416,30 @@ class GasKernel:
                 logging.warning("[GATE-C4B] id=%s %s approvata — esecuzione", approval_id, tool)
                 out = self.execute_tool_call(tool, args_json)
             esito = self._esito_diario(tool, out)
-            # R-c4b2-3: un diniego interno (sandbox, vetting) non è un'esecuzione.
-            res["eseguita"] = not esito.startswith("[KO]")
+            dry_run = False
+            if tool == "run_command":
+                # R-c4b3-1: l'esito viene dal segnale del kernel (_run_command_meta è
+                # valorizzato SOLO se il comando è partito davvero), mai dal testo
+                # dell'output, che è di terzi e potrebbe iniziare con "[DRY-RUN]" o
+                # "Operazione negata". Senza meta l'output è testo del kernel.
+                meta = self._run_command_meta
+                if meta is not None:
+                    esito = self._esito_diario(tool, "")  # "" non è negativo → conteggi da meta
+                dry_run = (meta is None and self.shell_mode == "dry_run"
+                           and (out or "").startswith("[DRY-RUN]"))
+                # R-c4b2-3/R-c4b2-9: diniego interno o anteprima dry-run ≠ esecuzione.
+                res["eseguita"] = meta is not None
+            else:
+                # Gli altri tool parcheggiabili restituiscono testo del kernel.
+                res["eseguita"] = not esito.startswith("[KO]")
+            if res["eseguita"]:
+                notizia = ("l'operatore l'ha APPROVATA via Telegram e il kernel l'ha eseguita "
+                           "con gli argomenti salvati. L'output è nel risultato del tool che segue.")
+            else:
+                notizia = ("l'operatore l'ha APPROVATA via Telegram ma NON è stata eseguita "
+                           f"({'modalità dry-run' if dry_run else 'diniego interno'}). "
+                           "Il dettaglio è nel risultato del tool che segue.")
+            self._storia_esito_firma(approval_id, tool, args_json, notizia, out, res["eseguita"])
             self.memory.registra_esito_esecuzione(approval_id, esito)
             self._diario_log(tool, f"approvata id={approval_id} | {esito}",
                              fonte="kernel", turno_id=str(uuid.uuid4()))
