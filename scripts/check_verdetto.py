@@ -7,14 +7,21 @@ che corrisponde a UN SOLO file a HEAD come suffisso di path. Nome corto
 ambiguo o file inesistente → citazione non verificabile (F-controlli-auto:
 prima ogni file di contesto era un falso positivo).
 
-Se il diff di sessione tocca il motore (gas.py, brains/, modules/, tests/):
+Le citazioni presenti nel §4 si verificano SEMPRE (V-2 verifica esterna PR #118:
+prima, una sessione fuori dal perimetro saltava anche questa verifica).
+
+Se il diff di sessione tocca il PERIMETRO DI REVIEW (.claude/perimetro_review.txt:
+motore + macchina di controllo, fonte unica condivisa con review_gate.sh):
 - l'esenzione "nessun diff motore" NON vale, qualunque testo ci sia nel §4
   (R-135-4: prima bastava che la frase comparisse, anche dentro un verdetto);
-- OGNI verdetto (blocco che inizia con una riga "VERDETTO:") deve citare almeno
-  MIN_CITAZIONI_DIFF `path:riga` di file del diff fuori da reports/ e dalla
-  memoria del revisore (R-135-1/R-135-2; regola di .claude/agents/revisore.md).
-  §4 senza alcuna riga "VERDETTO:" → l'intero §4 vale come un verdetto.
-Se il diff di sessione NON tocca il motore → non applicabile.
+- OGNI verdetto deve citare almeno MIN_CITAZIONI_DIFF `path:riga` di file del
+  diff fuori da reports/ e dalla memoria del revisore (R-135-1/R-135-2); se il
+  diff contiene codice, le citazioni devono essere di CODICE, non di .md/.txt
+  (R-136-5). Un verdetto inizia a ogni riga "VERDETTO: <esito>" e anche a ogni
+  riga che apre con un esito (`**Verdetto**: APPROVATO`, `Esito: BOCCIATO`,
+  `APPROVATO — …`): un verdetto scritto in un formato diverso non si fonde più
+  col precedente (R-136-2). §4 senza alcuna di queste righe → un solo verdetto.
+Perimetro assente o vuoto → exit 1 (fail-closed).
 
 NOTA IMPORTANTE: questo check prova solo che le citazioni sono verificabili,
 NON che il revisore abbia effettivamente letto il codice. Il finding
@@ -78,31 +85,83 @@ def _get_base(override: str | None, repo: Path) -> str | None:
 
 
 def _session_files(base: str, repo: Path) -> set[str]:
-    r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
+    # R-138-2: --no-renames (il path di origine di un rename conta) e -z (nomi grezzi).
+    r = _git(["git", "diff", "--name-only", "--no-renames", "-z", f"{base}..HEAD"], repo)
     if r.returncode != 0:
         return set()
-    return {l.strip() for l in r.stdout.splitlines() if l.strip()}
+    return {l for l in r.stdout.split("\0") if l.strip()}
 
 
 MIN_CITAZIONI_DIFF = 2
-_MOTORE_RE = re.compile(r"^(gas\.py|brains/|modules/|tests/)")
-_VERDETTO_RE = re.compile(r"^[ \t#*>]*VERDETTO\s*:", re.IGNORECASE | re.MULTILINE)
+PERIMETRO_FILE = Path(__file__).resolve().parent.parent / ".claude" / "perimetro_review.txt"
+_ESITI = r"(?:APPROVATO|BOCCIATO|RESPINTO|NULLO)"
+# R-138-3: apre un verdetto (a) la riga "VERDETTO:" del formato obbligatorio, (b) una
+# riga "Verdetto…/Esito…: <ESITO>" (anche "Verdetto finale", "Esito della review"),
+# (c) una riga che apre con l'esito IN MAIUSCOLO seguito da separatore o fine riga
+# ("APPROVATO — …"). Non aprono: voci di elenco ("- Esito: ok", "- verdetto nullo: «…»",
+# forma canonica per riportare un verdetto nullo), prosa ("Approvato il fix …"),
+# righe dentro i blocchi di codice.
+_VERDETTO_RE = re.compile(
+    r"^[ \t#>]*[*_]*\s*(?:(?i:VERDETTO)\s*[*_]*\s*:"
+    r"|(?i:verdetto|esito)[\w ]{0,20}?[*_ \t]*[:—–-][*_ \t]*(?i:" + _ESITI + r")"
+    r"|" + _ESITI + r"(?:[ \t]+CON[ \t]+RISERVE)?[*_]*[ \t]*(?:[—–:-]|$))",
+    re.MULTILINE,
+)
+_FENCE_RE = re.compile(r"^[ \t]*```.*?^[ \t]*```[ \t]*$", re.MULTILINE | re.DOTALL)
+_DOC_SUFFIX = {".md", ".txt"}
 
 
-def _tocca_motore(session: set[str]) -> bool:
-    return any(_MOTORE_RE.match(f) for f in session)
+_VOCI_CABLATE = [".claude/perimetro_review.txt", ".claude/hooks/"]
+
+
+def _voci(testo: str) -> list[str]:
+    voci = [r.split("#", 1)[0].strip() for r in testo.splitlines()]
+    return [v for v in voci if v]
+
+
+def _carica_perimetro(path: Path = PERIMETRO_FILE, repo: Path | None = None,
+                      base: str | None = None) -> list[str] | None:
+    """Voci del perimetro (stesso formato letto da review_gate.sh). R-138-1: unione
+    del file dello script, delle voci cablate e della versione alla BASE della
+    sessione (una PR non può togliersi dal perimetro da sola). None se il file
+    dello script è assente o vuoto (fail-closed)."""
+    try:
+        voci = _voci(path.read_text(encoding="utf-8"))
+    except OSError:
+        return None
+    if not voci:
+        return None
+    voci += _VOCI_CABLATE
+    if repo is not None and base:
+        r = _git(["git", "show", f"{base}:.claude/perimetro_review.txt"], repo)
+        if r.returncode == 0:
+            voci += _voci(r.stdout)
+    return voci
+
+
+def _nel_perimetro(f: str, perimetro: list[str]) -> bool:
+    return any(f.startswith(v) if v.endswith("/") else f == v for v in perimetro)
+
+
+def _contabile(path: str) -> bool:
+    """Elemento del codice revisionato: esclusi i report e la memoria del revisore."""
+    return not path.startswith("reports/") and path != ".claude/agents/memoria_revisore.md"
 
 
 def _conta_come_diff(path: str, session: set[str]) -> bool:
-    """Citazione valida come 'elemento del diff': file del diff di sessione,
-    esclusi i report e la memoria del revisore (non sono il codice revisionato)."""
-    return (path in session and not path.startswith("reports/")
-            and path != ".claude/agents/memoria_revisore.md")
+    """Citazione valida come 'elemento del diff'. Se il diff contiene codice
+    (non .md/.txt), contano solo le citazioni di codice (R-136-5)."""
+    if path not in session or not _contabile(path):
+        return False
+    ha_codice = any(_contabile(f) and Path(f).suffix.lower() not in _DOC_SUFFIX for f in session)
+    return not ha_codice or Path(path).suffix.lower() not in _DOC_SUFFIX
 
 
 def _blocchi_verdetto(sec4: str) -> list[str]:
-    """Un blocco per ogni riga 'VERDETTO:'; nessuna → tutto il §4 è un blocco."""
-    starts = [m.start() for m in _VERDETTO_RE.finditer(sec4)]
+    """Un blocco per ogni riga che apre un verdetto; nessuna → tutto il §4 è un blocco."""
+    # Le righe dentro i blocchi di codice non aprono verdetti (R-138-3).
+    mascherato = _FENCE_RE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), sec4)
+    starts = [m.start() for m in _VERDETTO_RE.finditer(mascherato)]
     if not starts:
         return [sec4]
     return [sec4[a:b] for a, b in zip(starts, starts[1:] + [len(sec4)])]
@@ -175,16 +234,20 @@ def main(argv: list[str]) -> int:
         print("check_verdetto: non applicabile (reports/handoff.md non nel diff di sessione).")
         return 0
 
+    perimetro = _carica_perimetro(repo=repo, base=base)
+    if perimetro is None:
+        print(f"check_verdetto: ERRORE — perimetro di review assente o vuoto ({PERIMETRO_FILE}): fail-closed.",
+              file=sys.stderr)
+        return 1
     # R-135-4: l'esenzione dipende dal diff REALE, non da una frase nel §4.
-    if not _tocca_motore(session):
-        print("check_verdetto: non applicabile (il diff di sessione non tocca il motore).")
-        return 0
+    nel_perimetro = any(_nel_perimetro(f, perimetro) for f in session)
 
     head = _head_files(repo)
     errors: list[str] = []
 
     # R-135-1/R-135-2: ogni verdetto cita almeno MIN_CITAZIONI_DIFF elementi del diff.
-    for i, blocco in enumerate(_blocchi_verdetto(sec4), 1):
+    # Fuori dal perimetro il minimo non si applica, ma le citazioni si verificano (V-2).
+    for i, blocco in enumerate(_blocchi_verdetto(sec4) if nel_perimetro else [], 1):
         nel_diff = set()
         for p, l in _REF_RE.findall(blocco):
             if not _is_valid_path(p):
@@ -224,7 +287,11 @@ def main(argv: list[str]) -> int:
             print(e, file=sys.stderr)
         return 1
 
-    print(f"check_verdetto: OK — {len(refs)} riferimento/i verificato/i.")
+    if not nel_perimetro and not refs:
+        print("check_verdetto: non applicabile (diff fuori dal perimetro di review, nessuna citazione).")
+        return 0
+    print(f"check_verdetto: OK — {len(refs)} riferimento/i verificato/i"
+          f"{'' if nel_perimetro else ' (diff fuori dal perimetro: minimo per verdetto non richiesto)'}.")
     print("NOTA: citazioni verificabili ≠ revisore ha letto il codice. Finding: MITIGATO.")
     return 0
 

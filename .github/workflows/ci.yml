@@ -100,6 +100,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_voice_server.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
 
+      - name: Run handoff/verdetto check suite (pytest, zero token LLM)
+        # R-138-4: i test di check_handoff/check_verdetto (gate A/B, ora required)
+        # girano anche in CI, non solo in locale.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_handoff_check.py -v 2>&1 | tee "$RUNNER_TEMP/handoff_check_output.txt"
+
       - name: Run gate suite (pytest, zero token LLM)
         if: always()
         run: |
@@ -196,8 +204,9 @@ jobs:
 
   handoff-check:
     # Verifica che §2 GIT DIFF --STAT di reports/handoff.md dichiari esattamente
-    # i file modificati in questa sessione. Job SEPARATO: non tocca unit-suite
-    # (il required check di main-lock). fetch-depth: 0 obbligatorio per git merge-base.
+    # i file modificati in questa sessione, e gate B (check_verdetto). Job SEPARATO
+    # da unit-suite; dal 2026-10-03 ENTRAMBI sono required in main-lock (V-3).
+    # fetch-depth: 0 obbligatorio per git merge-base.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (full history)

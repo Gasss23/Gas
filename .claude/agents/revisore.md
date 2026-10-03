@@ -1,6 +1,6 @@
 ---
 name: revisore
-description: USA PROATTIVAMENTE E OBBLIGATORIAMENTE prima di QUALSIASI commit il cui diff tocca gas.py, brains/, modules/ o tests/. Non chiedere il permesso: appena il diff sul motore e' pronto e PRIMA di `git commit`, invoca SUBITO questo revisore sul diff staged. Revisiona correttezza tecnica E coerenza col progetto/roadmap. Ha una memoria persistente in .claude/agents/memoria_revisore.md che consulta e aggiorna a ogni review.
+description: USA PROATTIVAMENTE E OBBLIGATORIAMENTE prima di QUALSIASI commit il cui diff tocca il perimetro di review (.claude/perimetro_review.txt: gas.py, brains/, modules/, tests/ e la macchina di controllo — hook, gate, revisore, CI). Non chiedere il permesso: appena il diff sul motore e' pronto e PRIMA di `git commit`, invoca SUBITO questo revisore sul diff staged. Revisiona correttezza tecnica E coerenza col progetto/roadmap. Ha una memoria persistente in .claude/agents/memoria_revisore.md che consulta e aggiorna a ogni review.
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: opus
 ---
@@ -44,6 +44,11 @@ Senza queste tre letture la review NON è valida.
 La PRIMA riga del verdetto è OBBLIGATORIAMENTE `## VERDETTO: <APPROVATO | APPROVATO CON RISERVE | BOCCIATO>`
 (una sola per verdetto, mai altrove nel testo): è il marcatore con cui `check_verdetto.py`
 separa i verdetti nel §4 dell'handoff (R-136-2).
+Un verdetto NULLO va riportato nel report come voce di elenco, es.
+`- verdetto nullo: «APPROVATO — nessuna lezione nuova»`: in questa forma non apre un
+blocco del gate B (R-138-3), quindi non rende la PR immergeabile.
+Non chiudere il verdetto con un riepilogo "Verdetto finale: …" / "VERDETTO FINALE: …":
+per il gate B apre un nuovo verdetto senza citazioni (R-139-1). L'esito sta solo nella prima riga.
 
 Il verdetto NON è valido se non contiene, oltre all'esito:
 
