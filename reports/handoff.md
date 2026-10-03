@@ -33,18 +33,19 @@
  .claude/agents/memoria_revisore.md |   6 +
  gas.py                             |  81 +++++++-
  reports/diff_sessione.md           |  14 +-
- reports/handoff.md                 | 374 +++++++++++++++++++++++--------------
+ reports/handoff.md                 | 379 +++++++++++++++++++++++--------------
  reports/stato_progetto.md          |  12 +-
- reports/ultimo_report.md           |  40 ++--
+ reports/ultimo_report.md           |  41 ++--
  scripts/check_verdetto.py          |  35 +++-
  tests/test_unit_handoff_check.py   |  57 ++++++
- tests/test_unit_kernel.py          | 260 ++++++++++++++++++++++++++
- 9 files changed, 705 insertions(+), 174 deletions(-)
+ tests/test_unit_kernel.py          | 260 +++++++++++++++++++++++++
+ 9 files changed, 711 insertions(+), 174 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8260bd2 docs(c4b3): fine-task — C4b-3 + fix gate B (review #133/#134/#135 APPROVATO CON RISERVE), handoff
 9951563 fix(check_verdetto): risolve citazioni di contesto e nomi corti univoci (F-controlli-auto) — review #135 APPROVATO CON RISERVE
 8273d10 chore(revisore): memoria review #135 — APPROVATO CON RISERVE
 af4b84d docs(c4b3): fine-task — C4b-3 esito della firma nel contesto del modello, handoff (review #133/#134 APPROVATO CON RISERVE)
@@ -53,7 +54,7 @@ af4b84d docs(c4b3): fine-task — C4b-3 esito della firma nel contesto del model
 c964d62 chore(revisore): memoria review #133 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `af4b84d` è il primo giro di fine-task: il gate B l'ha fermato prima del push, ed è stato superato da questo secondo giro.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `8260bd2` è il secondo giro (pushato; poi è stata trovata R-135-4, da cui questo terzo giro). `af4b84d` è il primo giro di fine-task: il gate B l'ha fermato prima del push, ed è stato superato da questo secondo giro.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -265,16 +266,17 @@ I 5 FAIL sono fuori scope: F-mac-1, bwrap assente su macOS, invariati rispetto a
 ## §6 STATO CI
 
 ```
+completed	success	docs(c4b3): fine-task — C4b-3 + fix gate B (review #133/#134/#135 APP…	CI	feat/cancello-c4b3	push	37142653736	1m10s	2026-10-03T18:01:19Z
 completed	success	feat(c4b3): esito della firma nel contesto del modello — review #133/…	CI	feat/cancello-c4b3	push	37142066635	57s	2026-10-03T17:51:47Z
 completed	success	Merge pull request #116 from Gasss23/feat/cancello-c4b2	CI	main	push	37140766609	1m33s	2026-10-03T17:30:34Z
-completed	success	docs(c4b2): fine-task — C4b-2 bottoni di firma + esecuzione post-appr…	CI	feat/cancello-c4b2	push	37140679398	57s	2026-10-03T17:29:15Z
 ```
 
 Mappatura commit→run:
 - `4065091` (motore): run **37142066635**, success. È la testa del push che conteneva anche `c964d62` e `626b44d`.
 - `626b44d` (memoria revisore): nessuna run su questo SHA. Era un commit intermedio dello stesso push e il suo contenuto è incluso nell'albero testato da 37142066635.
 - `c964d62` (memoria revisore): nessuna run su questo SHA, per lo stesso motivo.
-- `af4b84d`, `8273d10`, `9951563`: run non ancora disponibile alla scrittura dell'handoff (non ancora pushati).
+- `8260bd2` (secondo giro di fine-task): run **37142653736**, success. È la testa del push che conteneva anche `af4b84d`, `8273d10` e `9951563`.
+- `af4b84d`, `8273d10`, `9951563`: nessuna run su questi SHA. Erano commit intermedi dello stesso push e il loro contenuto è incluso nell'albero testato da 37142653736.
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -285,5 +287,6 @@ Mappatura commit→run:
 - **R-135-1** (verificata): un §4 che cita SOLO file di contesto passa il gate B.
 - **R-135-2** (preesistente, più grave): un §4 senza alcun `path:riga` passa il gate B ("nulla da verificare").
 - **R-135-3** (decisione umana): regola di revisore.md sulle citazioni fuori dal diff (§0.2).
+- **R-135-4** (2026-10-03, verificata in fine-task): la scorciatoia "nessun diff motore" di `check_verdetto.py` scatta su QUALSIASI occorrenza della frase nel §4. Il verdetto #135 incollato per intero la contiene (in R-135-2), quindi il gate B ha risposto "non applicabile" su un handoff con diff motore. Le 25 citazioni sono state verificate a mano senza la scorciatoia: rc=0. Correzione: l'esenzione deve valere solo se il §4 è ESATTAMENTE la dichiarazione, o meglio se il diff di sessione non tocca il motore.
 - Ancora aperte da C4b-2: R-c4b2-6, R-c4b2-7, R-c4b2-8, R-c4b2-10.
 - Anomalia di processo: il marcatore `.claude/.review_ok` è rimasto da C4b-2 (creato alle 19:26), quindi il gate deterministico era aperto a inizio sessione. Ora è rimosso.

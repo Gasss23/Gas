@@ -31,9 +31,10 @@ Branch `feat/cancello-c4b3` · PR #117 · commit motore `4065091` (review #133 +
 
 ## Riserve aperte
 
-R-c4b3-3, R-c4b3-4, R-c4b3-5 (nuove, minori); R-135-1, R-135-2, R-135-3 (gate B); più le R-c4b2-6/7/8/10 ancora aperte. Dettaglio in `reports/stato_progetto.md`.
+R-c4b3-3, R-c4b3-4, R-c4b3-5 (nuove, minori); R-135-1, R-135-2, R-135-3, R-135-4 (gate B); più le R-c4b2-6/7/8/10 ancora aperte. Dettaglio in `reports/stato_progetto.md`.
 
 ## Anomalie
 
 - All'inizio della sessione il marcatore `.claude/.review_ok` era già presente (creato alle 19:26, prima della review #133): era un residuo della sessione C4b-2. Il gate deterministico era quindi aperto. Il commit motore è comunque passato dal revisore (#133/#134). Ho rimosso il marcatore dopo il commit.
+- **R-135-4** (2026-10-03, verificata in fine-task): la scorciatoia "nessun diff motore" di `check_verdetto.py` scatta su QUALSIASI occorrenza della frase nel §4. Il verdetto #135 incollato per intero la contiene (in R-135-2), quindi il gate B ha risposto "non applicabile" su un handoff con diff motore. Le 25 citazioni sono state verificate a mano senza la scorciatoia: rc=0. Correzione: l'esenzione deve valere solo se il §4 è ESATTAMENTE la dichiarazione, o meglio se il diff di sessione non tocca il motore.
 - Il primo giro di fine-task (commit `af4b84d`, non pushato in quel momento) si è fermato sul gate B per il falso positivo F-controlli-auto. Il fine-task è stato rieseguito per intero dopo il fix `9951563`.
