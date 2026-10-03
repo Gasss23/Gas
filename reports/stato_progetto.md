@@ -1,10 +1,14 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-03** (fix/gate-review-jq — gate di review inerte su Mac, corretto: review #129 APPROVATO CON RISERVE)
+> Ultimo aggiornamento: **2026-10-03** (fix/c4b1-suite-ermetica — R-c4b1-1 + R-c4b1-2 chiuse: review #130 APPROVATO CON RISERVE; test di parità app/terminale)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
+
+**🔄 fix/c4b1-suite-ermetica (2026-10-03, review #130 APPROVATO CON RISERVE, PR #115)** — **R-c4b1-1 CHIUSA**: `tests/test_unit_kernel.py` toglie TELEGRAM_* dall'ambiente, usa un trasporto di default che fallisce e blocca urlopen verso api.telegram.org (T76a-d). Misura con TELEGRAM_* esportati: main 40 chiamate verso Telegram → 0. **R-c4b1-2 CHIUSA**: read-back con `link_preview_options.is_disabled` (T75c adeguato). Suite 552 → 558 PASS / 5 FAIL (F-mac-1); pytest 232. Da ora si può mettere il token Telegram in `.env` per il test reale di read-back.
+
+**🔍 Test di parità app ↔ terminale (2026-10-03, nessun commit)** — stessa macchina, PATH, strumenti, versioni, rete/auth, suite, gate (BLOCCATO in entrambi), subagent/skill/memoria. Differenze: (1) `~/.zshrc` riga 4 esporta `~/Gas/.env` in ogni zsh interattiva → da terminale le chiavi API ci sono, dall'app NO (e `gas.py` non legge `.env` da solo: Gas lanciato dall'agente nell'app gira senza chiavi); (2) modello: terminale Sonnet 4.6 da `.claude/settings.json`, app Opus 5.5; (3) strumenti MCP solo-app (browser, pannello terminale, iOS, ccd_*); (4) TERM/LANG. Modalità di merge scelta: **variante A** (l'agente lancia gasmerge, l'operatore digita il numero).
 
 **🔄 fix/gate-review-jq (2026-10-03, review #129 APPROVATO CON RISERVE, PR #114)** — **Il gate deterministico di review era INERTE** sul Mac: con jq-1.7.1-apple, `(.[0] // .)` su un oggetto JSON (la forma reale passata da Claude Code) va in errore → comando vuoto → `exit 0`. Misurato con una prova nell'app: commit di `gas.py` senza review PASSATO. Fix: jq `if type == "array" then .[0] else . end`; parse fallito → controllo "git commit" sul testo grezzo (fail-closed). T-gate-E..I con input oggetto (con l'hook vecchio cadono E e I). Prova ripetuta nell'app dopo il fix: commit **BLOCCATO**. Hook 51→56 passed, pytest 227→232. Il motore non è toccato.
 
@@ -94,8 +98,10 @@ Componenti attive:
 - 🟡 **R-finale-1** (2026-10-02): in `scripts/fine_task_finale.sh` `set -e` è attivo dopo il gate IP → da trattare nella fetta "controlli automatici".
 - ✅ **C3 + C4a coda approvazioni** (2026-10-02/03, review #126/#127): coda approvazioni PRONTA e COLLEGATA. `enqueue_approval` chiamato da `run_turn` per IRREVERSIBLE e UNCERTAIN+contaminata. **R-c3-1 CHIUSA** (review #126): tipi errati → diniego fail-closed. **R-c3-1b MITIGATA, non chiusa** (2026-10-03, commit `766c0ee`, review #127; riclassificata in C4b-1: la controprova è più debole del richiesto): `expire_stale_approvals` ora scade le pending con `ts_expiry` non numerico. Riserve ancora aperte: **R-c3-2** validare `timeout_secs`; ~~R-c3-3~~ **CHIUSA** (C4b-1, review #128); ~~R-c3-4~~ **CHIUSA** (C4b-1, review #128); **R-c3-5** (cosm.) `available`. **C4b-1 fatto** (read-back + anti-doppioni + tetto). **C4b-2 NON fatto**: bottoni, callback, esecuzione post-approvazione. Deploy autonomo vietato fino a C4b-2.
 - ✅ **R-c4a-1** (2026-10-03) — **sottostimata** in C4a: il limite non era 9 (più chiamate per messaggio e tra turni diversi, senza tetto). **Coperta in C4b-1** da anti-doppioni + tetto `GAS_APPROVAL_MAX_PENDING` (T75a/T75b).
-- 🟡 **R-c4b1-1** (2026-10-03, review #128, da chiudere PRIMA del deploy): suite non ermetica — con `TELEGRAM_BOT_TOKEN`/`TELEGRAM_ALLOWED_IDS` reali esportati, ~40 sendMessage reali partono dai test esistenti che passano dal cancello (T11/T12 run_command). Oggi innocuo (token assente in dev/CI). Fix: pop delle env TELEGRAM_* + `_tg_post` che fallisce di default in testa a test_unit_kernel.py.
-- 🟡 **R-c4b1-2** (2026-10-03, review #128, minore): anteprima link non disabilitata nel read-back (`link_preview_options`) — un URL di terzi negli args genera una card controllata da terzi nel messaggio di firma. Aggiornare anche T75c.
+- ✅ **R-c4b1-1 / R-c4b1-2** (review #128) — CHIUSE in PR #115 (review #130): suite ermetica rispetto a Telegram; anteprima link disattivata nel read-back.
+- 🟡 **R-erm-1** (2026-10-03, review #130, minore): l'isolamento da Telegram vale solo in `tests/test_unit_kernel.py`; altri file pytest/e2e e `python -c` da terminale con `.env` esportato non sono protetti se attraversano il cancello.
+- 🟡 **R-erm-2** (2026-10-03, review #130, cosmetica): la guardia di rete copre solo `urllib.request.urlopen`; un trasporto futuro (http.client/requests) non sarebbe intercettato.
+- 🟡 **F-env-app** (2026-10-03, test di parità): dall'app le chiavi di `.env` NON sono nell'ambiente (le esporta solo `~/.zshrc`), e `gas.py` non carica `.env` → test reali coi provider vanno fatti da terminale, o va deciso se Gas debba caricare `.env` da sé.
 - 🟡 **R-c4b1-3** (2026-10-03, review #128, minore): invio read-back sincrono in `run_turn`, timeout 15 s per ID → turno bloccato fino a 15 s × N se Telegram non risponde.
 - 🟡 **R-c4b1-4** (2026-10-03, review #128, minore, fail-closed): riga corrotta con `ts_expiry` TEXT conta nel tetto e nel doppione finché `expire_stale_approvals` non la scade (nessuno la chiama dal loop).
 - 🟡 **F-c4a-eco** (2026-10-03, verifica C4a): T70f/T70g riscritti in C4a — il controllo eco del diario per `run_command` nel giro completo non esiste più → da ripristinare in C4b-2 sul percorso post-approvazione.
