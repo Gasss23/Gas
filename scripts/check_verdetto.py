@@ -7,12 +7,22 @@ che corrisponde a UN SOLO file a HEAD come suffisso di path. Nome corto
 ambiguo o file inesistente → citazione non verificabile (F-controlli-auto:
 prima ogni file di contesto era un falso positivo).
 
+Se il diff di sessione tocca il motore (gas.py, brains/, modules/, tests/):
+- l'esenzione "nessun diff motore" NON vale, qualunque testo ci sia nel §4
+  (R-135-4: prima bastava che la frase comparisse, anche dentro un verdetto);
+- OGNI verdetto (blocco che inizia con una riga "VERDETTO:") deve citare almeno
+  MIN_CITAZIONI_DIFF `path:riga` di file del diff fuori da reports/ e dalla
+  memoria del revisore (R-135-1/R-135-2; regola di .claude/agents/revisore.md).
+  §4 senza alcuna riga "VERDETTO:" → l'intero §4 vale come un verdetto.
+Se il diff di sessione NON tocca il motore → non applicabile.
+
 NOTA IMPORTANTE: questo check prova solo che le citazioni sono verificabili,
 NON che il revisore abbia effettivamente letto il codice. Il finding
 R-verdetto-evidenza va marcato MITIGATO, NON CHIUSO.
 
 Exit 0: tutte le citazioni verificabili, oppure "non applicabile".
-Exit 1: almeno una citazione non verificabile.
+Exit 1: almeno una citazione non verificabile, oppure un verdetto con meno di
+MIN_CITAZIONI_DIFF citazioni di file del diff (diff di sessione col motore).
 """
 
 import re
@@ -74,6 +84,30 @@ def _session_files(base: str, repo: Path) -> set[str]:
     return {l.strip() for l in r.stdout.splitlines() if l.strip()}
 
 
+MIN_CITAZIONI_DIFF = 2
+_MOTORE_RE = re.compile(r"^(gas\.py|brains/|modules/|tests/)")
+_VERDETTO_RE = re.compile(r"^[ \t#*>]*VERDETTO\s*:", re.IGNORECASE | re.MULTILINE)
+
+
+def _tocca_motore(session: set[str]) -> bool:
+    return any(_MOTORE_RE.match(f) for f in session)
+
+
+def _conta_come_diff(path: str, session: set[str]) -> bool:
+    """Citazione valida come 'elemento del diff': file del diff di sessione,
+    esclusi i report e la memoria del revisore (non sono il codice revisionato)."""
+    return (path in session and not path.startswith("reports/")
+            and path != ".claude/agents/memoria_revisore.md")
+
+
+def _blocchi_verdetto(sec4: str) -> list[str]:
+    """Un blocco per ogni riga 'VERDETTO:'; nessuna → tutto il §4 è un blocco."""
+    starts = [m.start() for m in _VERDETTO_RE.finditer(sec4)]
+    if not starts:
+        return [sec4]
+    return [sec4[a:b] for a, b in zip(starts, starts[1:] + [len(sec4)])]
+
+
 def _head_files(repo: Path) -> set[str]:
     r = _git(["git", "-c", "core.quotePath=false", "ls-tree", "-r", "--name-only", "HEAD"], repo)
     if r.returncode != 0:
@@ -130,10 +164,6 @@ def main(argv: list[str]) -> int:
         print("check_verdetto: §4 non trovata in reports/handoff.md — non applicabile.")
         return 0
 
-    if re.search(r"nessun diff motore", sec4, re.IGNORECASE):
-        print("check_verdetto: non applicabile (§4 dichiara nessun diff motore).")
-        return 0
-
     base = _get_base(base_override, repo)
     if base is None:
         print("check_verdetto: git merge-base fallito — non applicabile.", file=sys.stderr)
@@ -145,14 +175,31 @@ def main(argv: list[str]) -> int:
         print("check_verdetto: non applicabile (reports/handoff.md non nel diff di sessione).")
         return 0
 
-    # Filtra i match: tieni solo quelli con estensione sorgente plausibile
-    refs = [(p, l) for p, l in _REF_RE.findall(sec4) if _is_valid_path(p)]
-    if not refs:
-        print("check_verdetto: nessun riferimento path:riga in §4 — OK (nulla da verificare).")
+    # R-135-4: l'esenzione dipende dal diff REALE, non da una frase nel §4.
+    if not _tocca_motore(session):
+        print("check_verdetto: non applicabile (il diff di sessione non tocca il motore).")
         return 0
 
     head = _head_files(repo)
     errors: list[str] = []
+
+    # R-135-1/R-135-2: ogni verdetto cita almeno MIN_CITAZIONI_DIFF elementi del diff.
+    for i, blocco in enumerate(_blocchi_verdetto(sec4), 1):
+        nel_diff = set()
+        for p, l in _REF_RE.findall(blocco):
+            if not _is_valid_path(p):
+                continue
+            resolved, _ = _resolve_path(p, session, head)
+            if resolved is not None and _conta_come_diff(resolved, session):
+                nel_diff.add((resolved, l))
+        if len(nel_diff) < MIN_CITAZIONI_DIFF:
+            errors.append(
+                f"  verdetto {i}: {len(nel_diff)} citazioni path:riga di file del diff "
+                f"(minimo {MIN_CITAZIONI_DIFF}) — verdetto senza evidenza verificabile"
+            )
+
+    # Filtra i match: tieni solo quelli con estensione sorgente plausibile
+    refs = [(p, l) for p, l in _REF_RE.findall(sec4) if _is_valid_path(p)]
     for path, lineno_str in refs:
         lineno = int(lineno_str)
         resolved, motivo = _resolve_path(path, session, head)

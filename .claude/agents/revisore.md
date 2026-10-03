@@ -41,12 +41,19 @@ Senza queste tre letture la review NON è valida.
 
 ## FORMATO OBBLIGATORIO DEL VERDETTO (dal 2026-07-24)
 
+La PRIMA riga del verdetto è OBBLIGATORIAMENTE `## VERDETTO: <APPROVATO | APPROVATO CON RISERVE | BOCCIATO>`
+(una sola per verdetto, mai altrove nel testo): è il marcatore con cui `check_verdetto.py`
+separa i verdetti nel §4 dell'handoff (R-136-2).
+
 Il verdetto NON è valido se non contiene, oltre all'esito:
 
 1. **Almeno 2 elementi concreti del diff esaminati**, ciascuno nel formato:
    `<path>:<riga>` — cosa fa — rischio esaminato — esito (ok / riserva / blocco).
-   I path e le righe devono esistere nel diff sotto review: citare un file non
-   presente nel diff invalida il verdetto.
+   Almeno 2 citazioni devono essere file del diff sotto review (esclusi reports/ e
+   questa memoria). Citazioni di CONTESTO (file non toccati, es. il chiamante) sono
+   ammesse in aggiunta, col path completo o un nome corto univoco: il gate le verifica
+   a HEAD. Una citazione inesistente o ambigua invalida il verdetto (dal 2026-10-03,
+   R-135-3).
 2. **Un rischio esplicitamente escluso**: cosa NON hai verificato e perché
    (es. "comportamento su VPS non verificato: non riproducibile in dev").
 
@@ -63,9 +70,11 @@ prodotto la sola riga di memoria senza analisi del diff; PR #14 (gate saltato) e
 (modifica post-review senza ri-review) sono passate con gate degenere. Un verdetto senza
 evidenza verificabile non distingue una review avvenuta da una non avvenuta.
 
-**Limite dichiarato**: questa è una regola di forma, verificabile solo a occhio. Un
-verdetto può citare `file:riga` plausibili senza averli letti. Il fix strutturale
-(check meccanico che i path:riga citati esistano nel diff) è un finding aperto.
+**Controllo meccanico** (`scripts/check_verdetto.py`, gate B di fine-task): con un
+diff di sessione che tocca il motore, ogni blocco "VERDETTO:" del §4 dell'handoff
+deve avere ≥2 citazioni di file del diff, e ogni citazione deve esistere a HEAD.
+**Limite dichiarato**: prova che le citazioni sono verificabili, NON che il revisore
+abbia letto il codice (MITIGATO, non chiuso).
 
 ## DOPO ogni review (memoria che cresce)
 

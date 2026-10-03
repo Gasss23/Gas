@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # PreToolUse hook (Bash) — gate di review DETERMINISTICO.
 # Blocca (exit 2) un `git commit` il cui diff STAGED tocca il motore
-# (gas.py, brains/, modules/, tests/) se manca il marcatore .claude/.review_ok.
+# (gas.py, brains/, modules/, tests/) se manca il marcatore .claude/.review_ok
+# o se il marcatore non contiene l'hash del diff staged attuale; blocca anche
+# se nel working tree ci sono modifiche al motore NON staged o non tracciate
+# (R-136-1: `commit -a`, pathspec o `add && commit` le farebbero entrare dopo
+# il controllo, che vede solo l'index del momento).
 # Costringe a far passare il diff dal subagent `revisore` prima del commit.
 #
 # Limiti dichiarati (best-effort, per design):
@@ -61,12 +65,39 @@ if [ "$GIT_RC" -ne 0 ]; then
   echo "BLOCCATO (gate review): 'git diff --cached' fallito (exit $GIT_RC) — impossibile verificare il diff motore, fail-closed." >&2
   exit 2
 fi
+
+# R-136-1: modifiche al motore fuori dall'index (non staged o non tracciate)
+# possono entrare nel commit DOPO questo controllo (`commit -a`, pathspec,
+# `add && commit`). Fail-closed: il commit si fa solo con il motore tutto in
+# stage (e revisionato) oppure tutto pulito.
+WT_OUT=$(git status --porcelain --untracked-files=all -- gas.py brains modules tests 2>/dev/null)
+WT_RC=$?
+if [ "$WT_RC" -ne 0 ]; then
+  echo "BLOCCATO (gate review): 'git status' fallito (exit $WT_RC) — fail-closed." >&2
+  exit 2
+fi
+if printf '%s\n' "$WT_OUT" | grep -qE '^(.[^ ]|\?\?) '; then
+  echo "BLOCCATO (gate review): ci sono modifiche al motore NON in stage (o file non tracciati) in gas.py/brains/modules/tests. Mettile in stage e falle revisionare, oppure mettile da parte (git stash), poi riprova." >&2
+  exit 2
+fi
 if ! printf '%s\n' "$DIFF_OUT" | grep -qE '^(gas\.py|brains/|modules/|tests/)'; then
   exit 0   # nessun diff motore verificato: commit doc/report consentito
 fi
 
-# Marcatore di review presente -> consentito (va creato DOPO verdetto del revisore)
-[ -f .claude/.review_ok ] && exit 0
+# Marcatore di review: contiene lo SHA-256 del diff staged revisionato (scritto da
+# scripts/segna_review_ok.sh DOPO il verdetto). Consentito SOLO se combacia col
+# diff staged attuale: un marcatore residuo di una sessione precedente, vuoto
+# (vecchio `touch`) o di un diff cambiato dopo la review NON apre il gate.
+if [ -f .claude/.review_ok ]; then
+  ATTESO=$(head -n 1 .claude/.review_ok | tr -d '[:space:]')
+  # Script accanto al repo dell'hook (non della cwd): vale anche nei test su repo temporanei.
+  ATTUALE=$(bash "$(dirname "$0")/../../scripts/hash_diff_staged.sh" 2>/dev/null)
+  if [ -n "$ATTESO" ] && [ -n "$ATTUALE" ] && [ "$ATTESO" = "$ATTUALE" ]; then
+    exit 0
+  fi
+  echo "BLOCCATO (gate review): .claude/.review_ok non corrisponde al diff staged (marcatore residuo, vuoto o diff cambiato dopo la review). Fai revisionare il diff attuale e rigenera il marcatore con: bash scripts/segna_review_ok.sh" >&2
+  exit 2
+fi
 
-echo "BLOCCATO (gate review): il diff staged tocca il motore (gas.py/brains/modules/tests) ma manca .claude/.review_ok. Fai revisionare il diff dal subagent 'revisore'; se APPROVATO crea il marcatore (touch .claude/.review_ok) e ricommitta, poi rimuovilo." >&2
+echo "BLOCCATO (gate review): il diff staged tocca il motore (gas.py/brains/modules/tests) ma manca .claude/.review_ok. Fai revisionare il diff dal subagent 'revisore'; se APPROVATO crea il marcatore con: bash scripts/segna_review_ok.sh — poi ricommitta." >&2
 exit 2
