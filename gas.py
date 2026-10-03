@@ -1287,7 +1287,7 @@ class GasKernel:
                 if _tg_bot.lunghezza_telegram(testo) > _tg_bot.TELEGRAM_MAX_CHARS:
                     motivo = "argomenti troppo grandi per un read-back integrale"
                 else:
-                    inviato, dettaglio = _tg_bot.invia_read_back(testo)
+                    inviato, dettaglio = _tg_bot.invia_read_back(testo, approval_id=aid)
                     if not inviato:
                         motivo = ("impossibile notificare la richiesta di firma "
                                   f"all'operatore ({dettaglio})")
@@ -1308,6 +1308,72 @@ class GasKernel:
             # comunque scade a ts_expiry (§4d). Segnalata nella scatola nera.
             logging.warning("[GATE-C4B] revoca di id=%s NON riuscita: %s", aid, msg)
         return f"Operazione negata: {motivo}. Approvazione revocata.", f"revocata id={aid}"
+
+    def applica_firma(self, approval_id: str) -> Dict[str, Any]:
+        """C4b-2 — turno di sblocco (§4b passo 9). NON approva mai: la firma la
+        registra il bridge Telegram (modules/telegram/bot.py, fuori dal loop); qui si
+        legge lo stato già deciso e si agisce. Non è un tool del modello.
+        - 'approved' da un utente in TELEGRAM_ALLOWED_IDS, hash integro, reclamo
+          riuscito (al massimo una esecuzione) e cancello non DENY all'esecuzione →
+          esegue tool_name con gli args SALVATI (mai rigenerati dal modello);
+        - 'rejected' → solo riga di diario, nessuna esecuzione;
+        - qualunque altro caso → nessuna esecuzione.
+        Diario: 'approvata id=' / 'rifiutata id=' + esito; per i tool non fidati
+        solo conteggi (F-diario-eco), mai args.
+        Ritorna {"tool", "eseguita", "esito", "output"}; "eseguita" è True solo se
+        l'esito non è [KO] (R-c4b2-3). FAIL-CLOSED §9: mai eccezioni."""
+        res: Dict[str, Any] = {"tool": "", "eseguita": False, "esito": "", "output": ""}
+        if self.memory is None:
+            res["esito"] = "store non disponibile: azione non eseguita"
+            return res
+        try:
+            row = self.memory.get_approval(approval_id)
+            if row is None:
+                res["esito"] = "richiesta non trovata o non valida: azione non eseguita"
+                return res
+            tool, args_json = row["tool_name"], row["tool_args_json"]
+            res["tool"] = tool
+            if row["stato"] == "rejected" and row["risolto_da"] == "telegram_user":
+                res["esito"] = "rifiutata dall'operatore: azione non eseguita"
+                self._diario_log(tool, f"rifiutata id={approval_id} | [KO] non eseguita",
+                                 fonte="kernel", turno_id=str(uuid.uuid4()))
+                return res
+            if row["stato"] != "approved":
+                res["esito"] = f"stato '{row['stato']}': azione non eseguita"
+                return res
+            allowed, _ = _tg_bot.parse_allowed_ids(os.environ.get("TELEGRAM_ALLOWED_IDS", ""))
+            if row["risolto_da"] != "telegram_user" or row["telegram_user_id"] not in allowed:
+                logging.warning("[GATE-C4B] id=%s approvata da utente non autorizzato — non eseguita",
+                                approval_id)
+                res["esito"] = "firma non riconosciuta: azione non eseguita"
+                return res
+            if not row["hash_ok"]:
+                logging.warning("[GATE-C4B] id=%s hash args NON integro — non eseguita", approval_id)
+                res["esito"] = "integrità argomenti violata: azione non eseguita"
+                return res
+            if not self.memory.reclama_esecuzione(approval_id):
+                res["esito"] = "già eseguita o non reclamabile: nessuna nuova esecuzione"
+                return res
+            # Dal reclamo in poi l'azione NON si riesegue più, qualunque cosa accada.
+            if gate_classify(tool, args_json) == GateClass.DENY:
+                logging.warning("[GATE-C4B] id=%s %s → DENY al ricontrollo: non eseguita",
+                                approval_id, tool)
+                out = "Operazione negata: azione non consentita (ricontrollo del cancello)."
+            else:
+                logging.warning("[GATE-C4B] id=%s %s approvata — esecuzione", approval_id, tool)
+                out = self.execute_tool_call(tool, args_json)
+            esito = self._esito_diario(tool, out)
+            # R-c4b2-3: un diniego interno (sandbox, vetting) non è un'esecuzione.
+            res["eseguita"] = not esito.startswith("[KO]")
+            self.memory.registra_esito_esecuzione(approval_id, esito)
+            self._diario_log(tool, f"approvata id={approval_id} | {esito}",
+                             fonte="kernel", turno_id=str(uuid.uuid4()))
+            res["esito"], res["output"] = esito, out
+            return res
+        except Exception as e:
+            logging.warning("[GATE-C4B] applica_firma id=%s eccezione: %s", approval_id, e)
+            res["esito"] = "errore interno: azione non eseguita o esito ignoto (vedi gas_debug.log)"
+            return res
 
     def _memoria_backup_auto(self) -> None:
         """Backup automatico THROTTLED del DB di memoria: backup LOCALE (anti

@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -36,6 +37,13 @@ _TELEGRAM_API = "https://api.telegram.org/bot"
 # Limite Telegram del testo di sendMessage, contato in unità UTF-16
 # (un'emoji fuori dal BMP vale 2). Read-back oltre il limite → niente invio.
 TELEGRAM_MAX_CHARS: int = 4096
+# C4b-2: callback_data dei bottoni di firma = "ok:<uuid>" / "no:<uuid>" (39 byte,
+# limite Telegram 64). Solo UUID canonico minuscolo, come lo genera la coda.
+# Da usare SOLO con fullmatch (R-c4b2-4: `$` accetterebbe un "\n" finale).
+_CALLBACK_RE = re.compile(
+    r"(ok|no):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})")
+# Quanta parte dell'output di un'azione approvata torna all'operatore (UTF-16).
+ESITO_OUTPUT_MAX: int = 1500
 
 
 # ─────────────────────────────────────────── infra HTTP ──
@@ -89,9 +97,9 @@ def parse_allowed_ids(raw: str) -> Tuple[Set[int], List[str]]:
     return allowed, scartati
 
 
-# ─────────────────────────────────── read-back approvazioni (C4b-1) ──
-# Solo INVIO: nessun bottone, nessuna callback (C4b-2). Testo semplice SENZA
-# parse_mode: Markdown/HTML nel testo di terzi potrebbe nascondere contenuto.
+# ─────────────────────────────────── read-back approvazioni (C4b-1/2) ──
+# Testo semplice SENZA parse_mode: Markdown/HTML nel testo di terzi potrebbe
+# nascondere contenuto. Bottoni Approva/Rifiuta dal C4b-2.
 
 def lunghezza_telegram(text: str) -> int:
     """Lunghezza come la conta Telegram (unità UTF-16)."""
@@ -110,13 +118,23 @@ def componi_read_back(approval: Dict[str, Any]) -> str:
         f"{approval['tool_args_json']}\n\n"
         f"ID approvazione: {approval['id']}\n"
         f"Scadenza: {scad}\n\n"
-        "Nessuna azione verrà eseguita senza firma. "
-        "I bottoni Approva/Rifiuta non sono ancora attivi."
+        "Nessuna azione verrà eseguita senza la tua firma: "
+        "usa i bottoni Approva / Rifiuta qui sotto."
     )
 
 
-def invia_read_back(text: str) -> Tuple[bool, str]:
-    """Invia `text` (senza parse_mode, senza anteprima link) a ogni ID in TELEGRAM_ALLOWED_IDS.
+def bottoni_firma(approval_id: str) -> Dict[str, Any]:
+    """Tastiera inline [✅ Approva] [❌ Rifiuta] per una richiesta (§4b passo 3)."""
+    return {"inline_keyboard": [[
+        {"text": "✅ Approva", "callback_data": f"ok:{approval_id}"},
+        {"text": "❌ Rifiuta", "callback_data": f"no:{approval_id}"},
+    ]]}
+
+
+def invia_read_back(text: str, approval_id: Optional[str] = None) -> Tuple[bool, str]:
+    """Invia `text` (senza parse_mode, senza anteprima link) con i bottoni di firma
+    di `approval_id` a ogni ID in TELEGRAM_ALLOWED_IDS. Senza un ID valido niente
+    invio: una richiesta senza bottoni non sarebbe firmabile (fail-closed).
     (True, '') se ALMENO un destinatario l'ha ricevuto (risposta ok=True);
     altrimenti (False, motivo). Mai troncamento: testo oltre TELEGRAM_MAX_CHARS
     → (False, ...) senza invio. Fail-safe §9: nessuna eccezione propagata."""
@@ -129,6 +147,8 @@ def invia_read_back(text: str) -> Tuple[bool, str]:
             return False, "TELEGRAM_ALLOWED_IDS mancante o senza ID validi"
         if lunghezza_telegram(text) > TELEGRAM_MAX_CHARS:
             return False, "testo oltre il limite Telegram"
+        if not isinstance(approval_id, str) or not _CALLBACK_RE.fullmatch(f"ok:{approval_id}"):
+            return False, "ID approvazione non valido"
         base_url = f"{_TELEGRAM_API}{token}"
         consegnati = 0
         for chat_id in sorted(allowed):
@@ -136,7 +156,8 @@ def invia_read_back(text: str) -> Tuple[bool, str]:
                             {"chat_id": chat_id, "text": text,
                              # R-c4b1-2: niente anteprima: un URL di terzi negli args
                              # non deve diventare una card nel messaggio di firma.
-                             "link_preview_options": {"is_disabled": True}},
+                             "link_preview_options": {"is_disabled": True},
+                             "reply_markup": bottoni_firma(approval_id)},
                             timeout=15)
             if isinstance(resp, dict) and resp.get("ok") is True:
                 consegnati += 1
@@ -207,8 +228,12 @@ def run_bot(root_dir: Optional[str] = None) -> int:
     offset = 0
     while True:
         try:
+            # allowed_updates esplicito: Telegram ricorda l'ultimo valore usato,
+            # senza callback_query i bottoni di firma resterebbero muti.
             resp = _tg_post(base_url, "getUpdates",
-                            {"offset": offset, "timeout": 60}, timeout=70)
+                            {"offset": offset, "timeout": 60,
+                             "allowed_updates": ["message", "edited_message",
+                                                 "callback_query"]}, timeout=70)
             if resp is None or not resp.get("ok"):
                 time.sleep(5)
                 continue
@@ -233,6 +258,10 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
     """Processa un singolo update Telegram. Fail-safe §9: qualunque eccezione
     viene catturata e loggata — il loop esterno NON deve mai crashare."""
     try:
+        cq = upd.get("callback_query")
+        if cq:
+            gestisci_callback(base_url, cq, allowed, kernel)
+            return
         msg = upd.get("message") or upd.get("edited_message")
         if not msg:
             return
@@ -271,3 +300,128 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
 
     except Exception as e:
         log.warning("_handle_update fallita: %s", e)
+
+
+# ─────────────────────────────────── firma via bottoni (C4b-2) ──
+
+def _tronca_utf16(text: str, max_units: int) -> str:
+    """Tronca `text` a `max_units` unità UTF-16 senza spezzare una coppia surrogata."""
+    if lunghezza_telegram(text) <= max_units:
+        return text
+    out, n = [], 0
+    for ch in text:
+        w = 2 if ord(ch) > 0xFFFF else 1
+        if n + w > max_units:
+            break
+        out.append(ch)
+        n += w
+    return "".join(out)
+
+
+def _id_intero(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def componi_esito_firma(azione: str, approval_id: str, risolta: bool, motivo: str,
+                        res: Optional[Dict[str, Any]]) -> str:
+    """Messaggio all'operatore dopo un click. Testo semplice; l'output di
+    un'azione eseguita è testo grezzo (può contenere testo di terzi), troncato."""
+    if not risolta:
+        return f"Nessuna modifica per la richiesta {approval_id}: {motivo}"
+    res = res or {}
+    if azione == "no":
+        return f"❌ Rifiutata: azione {res.get('tool') or ''} NON eseguita.\nID: {approval_id}"
+    if res.get("eseguita"):
+        testo = (f"✅ Approvata ed eseguita: {res.get('tool')}\nID: {approval_id}\n"
+                 f"Esito: {res.get('esito')}")
+    else:
+        testo = (f"⚠️ Firma registrata ma azione {res.get('tool') or ''} NON eseguita: "
+                 f"{res.get('esito') or 'motivo ignoto'}\nID: {approval_id}")
+    out = (res.get("output") or "").strip()
+    if out:
+        corto = _tronca_utf16(out, ESITO_OUTPUT_MAX)
+        nota = "" if corto == out else " — troncato"
+        testo += f"\n\nOUTPUT (testo grezzo, può contenere testo di terzi{nota}):\n{corto}"
+    return _tronca_utf16(testo, TELEGRAM_MAX_CHARS)
+
+
+def _riprova_orfana(memory: Any, kernel: Any, aid: str,
+                    motivo: str) -> Tuple[Optional[Dict[str, Any]], str]:
+    """R-c4b2-2: richiesta 'approved' ma MAI reclamata (crash tra firma ed
+    esecuzione). Nuovo click su Approva entro la scadenza → applica_firma (il
+    reclamo impedisce comunque una seconda esecuzione); oltre la scadenza →
+    nessuna esecuzione e messaggio esplicito. Altri casi → motivo invariato."""
+    try:
+        row = memory.get_approval(aid)
+        if row is None or row.get("stato") != "approved" or memory.get_esecuzione(aid):
+            return None, motivo
+        if time.time() < row["ts_expiry"]:
+            log.warning("callback: id=%s approvata ma mai eseguita — nuovo tentativo", aid)
+            return kernel.applica_firma(aid), motivo
+        return None, "approvata ma MAI eseguita, e ormai scaduta: non verrà eseguita."
+    except Exception as e:
+        log.warning("callback: verifica orfana id=%s eccezione: %s", aid, e)
+        return None, motivo
+
+
+def gestisci_callback(base_url: str, cq: Dict[str, Any], allowed: Set[int],
+                      kernel: Any) -> None:
+    """Click su [✅ Approva] / [❌ Rifiuta] (§4b passi 5-9, §4e).
+    - mittente (from.id) e chat del messaggio devono essere in TELEGRAM_ALLOWED_IDS,
+      altrimenti rifiuto SILENZIOSO (nessuna risposta);
+    - callback_data rigida "ok|no:<uuid>";
+    - la firma la registra QUESTO bridge (resolve_approval: una sola volta, mai
+      dopo la scadenza, hash verificato); poi il kernel applica lo stato deciso
+      (applica_firma: esegue gli args salvati al massimo una volta).
+    Fail-safe §9: nessuna eccezione propagata; errore → nessuna esecuzione."""
+    try:
+        uid = (cq.get("from") or {}).get("id")
+        if not _id_intero(uid) or uid not in allowed:
+            log.warning("callback da user_id %r non autorizzato — ignorata", uid)
+            return
+        msg = cq.get("message") or {}
+        chat_id = (msg.get("chat") or {}).get("id")
+        if chat_id is not None and (not _id_intero(chat_id) or chat_id not in allowed):
+            log.warning("callback da chat %r non autorizzata — ignorata", chat_id)
+            return
+        cq_id = cq.get("id")
+        m = _CALLBACK_RE.fullmatch(cq["data"]) if isinstance(cq.get("data"), str) else None
+        if not m:
+            _tg_post(base_url, "answerCallbackQuery",
+                     {"callback_query_id": cq_id, "text": "Richiesta non valida."}, timeout=15)
+            return
+        azione, aid = m.group(1), m.group(2)
+        stato = "approved" if azione == "ok" else "rejected"
+        # R-c4b2-5: risposta al click e via i bottoni PRIMA dell'esecuzione (che può
+        # durare fino a 60 s). Il vero blocco contro il doppio click resta il DB.
+        _tg_post(base_url, "answerCallbackQuery",
+                 {"callback_query_id": cq_id, "text": "Firma ricevuta."}, timeout=15)
+        if chat_id is not None and msg.get("message_id") is not None:
+            _tg_post(base_url, "editMessageReplyMarkup",
+                     {"chat_id": chat_id, "message_id": msg.get("message_id"),
+                      "reply_markup": {"inline_keyboard": []}}, timeout=15)
+
+        res: Optional[Dict[str, Any]] = None
+        memory = getattr(kernel, "memory", None)
+        if memory is None:
+            risolta, motivo = False, "memoria non disponibile"
+        else:
+            try:
+                risolta, motivo = memory.resolve_approval(aid, stato, telegram_user_id=uid,
+                                                          risolto_da="telegram_user")
+            except Exception as e:
+                log.warning("callback: resolve_approval id=%s eccezione: %s", aid, e)
+                risolta, motivo = False, "errore interno"
+        if risolta:
+            log.warning("callback: id=%s %s da user_id %d", aid, stato, uid)
+            res = kernel.applica_firma(aid)
+        elif azione == "ok" and memory is not None:
+            res, motivo = _riprova_orfana(memory, kernel, aid, motivo)
+
+        testo = componi_esito_firma(azione, aid, risolta or res is not None, motivo, res)
+        dest = chat_id if chat_id is not None else uid
+        _tg_post(base_url, "sendMessage",
+                 {"chat_id": dest, "text": testo,
+                  "link_preview_options": {"is_disabled": True}}, timeout=15)
+    except Exception as e:
+        log.warning("gestisci_callback fallita: %s", e)
