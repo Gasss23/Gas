@@ -1,28 +1,25 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-03 — FETTA C4b-1: notifica Telegram di read-back + anti-doppioni + tetto + R-c3-3/R-c3-4 (branch `feat/cancello-c4b1`)
+**Sessione:** 2026-10-03 — Fix gate di review inerte (jq 1.7 + input oggetto), branch `fix/gate-review-jq`
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #113 (https://github.com/Gasss23/Gas/pull/113). Merge vietato all'agente: lo fa l'operatore con gasmerge.
-2. Test manuale reale Telegram NON fatto: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_IDS` assenti sia in `.env` sia nell'ambiente. Per farlo vanno aggiunti a `.env`, MA prima va chiusa R-c4b1-1 (con il token esportato la suite manda circa 40 read-back reali).
+1. Merge della PR #114 (https://github.com/Gasss23/Gas/pull/114) con gasmerge.
+2. Opzionale: prova di controllo da terminale con `claude`: riga di commento in `gas.py`, stage, `git commit` senza marcatore → atteso "BLOCCATO (gate review)".
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **PASSO 0 — revisore su Opus**: `FATTA` — `model: opus` nel frontmatter, commit separato `b8bf2ef`, solo `.claude/agents/revisore.md`.
-- **PASSO 1 — sonda**: `FATTA` — nessun conflitto bloccante col design. Riferimenti: `reports/design_cancello.md:211` (§4b), `:259` (§4c), `:291` (§4e), `:298` (§4f); enqueue `gas.py:1952` e bot `modules/telegram/bot.py:40` sul codice di partenza `4284a9c` (dettaglio in ultimo_report.md).
-- **PASSO 2 — anti-doppioni + tetto**: `FATTA` — `accoda_approvazione` atomica, doppione → stesso ID, tetto `GAS_APPROVAL_MAX_PENDING` (default 5).
-- **PASSO 3 — read-back (solo invio)**: `FATTA` — niente parse_mode, args integrali, oltre 4096 / config mancante / invio fallito → revoca + diniego; diario senza args.
-- **PASSO 4 — R-c3-3 / R-c3-4**: `FATTA` — chiuse.
-- **Test a)–g)**: `FATTA` — T75a-f (51 check), T74a-g verdi.
-- **Test manuale reale Telegram**: `SALTATA — token e ID Telegram assenti in .env e nell'ambiente`.
-- **Bottoni/callback, esecuzione post-approvazione, worker di scadenza, tetto CRM C-d**: `DEFERITA — fuori scope per prompt (C4b-2 / C5 / C-d)`.
-
-C4b-1 fatto, C4b-2 (bottoni + esecuzione) NON fatto, deploy autonomo ancora vietato.
+- **Prova del gate nell'app (prima del fix)**: `FATTA` — commit di `gas.py` senza review PASSATO: gate inerte.
+- **Diagnosi**: `FATTA` — `.claude/hooks/review_gate.sh` con jq-1.7.1-apple: `(.[0] // .)` su input oggetto → errore → comando vuoto → exit 0. Riprodotto fuori dall'app.
+- **Fix parser + fail-closed su parse fallito**: `FATTA`.
+- **Test T-gate-E..I con input oggetto**: `FATTA` — con l'hook vecchio cadono E e I.
+- **Prova del gate nell'app (dopo il fix)**: `FATTA` — stesso commit BLOCCATO.
+- **Prova da terminale**: `SALTATA — superflua per la diagnosi (lo script si comporta allo stesso modo fuori dall'app); resta opzionale (§0 punto 2)`.
+- **R-c4b1-1 (suite non ermetica)**: `DEFERITA — prossima fetta`.
 
 ---
 
@@ -30,115 +27,126 @@ C4b-1 fatto, C4b-2 (bottoni + esecuzione) NON fatto, deploy autonomo ancora viet
 
 ```
  .claude/agents/memoria_revisore.md |   2 +
- .claude/agents/revisore.md         |   1 +
- gas.py                             | 120 +++++++++-----
- modules/memory/store.py            | 149 +++++++++++++++--
- modules/telegram/bot.py            |  91 +++++++++--
- reports/diff_sessione.md           |  57 ++-----
- reports/handoff.md                 | 161 ++++++------------
- reports/stato_progetto.md          |  17 +-
- reports/ultimo_report.md           | 130 +++++++++------
- tests/test_unit_kernel.py          | 324 +++++++++++++++++++++++++++++++++++--
- 10 files changed, 775 insertions(+), 277 deletions(-)
+ .claude/hooks/review_gate.sh       |  12 ++-
+ reports/diff_sessione.md           |  13 +--
+ reports/handoff.md                 | 188 +++++++++++++++++++------------------
+ reports/stato_progetto.md          |  10 +-
+ reports/ultimo_report.md           | 123 ++++++++----------------
+ tests/test_unit_hooks.py           |  65 ++++++++++++-
+ 7 files changed, 222 insertions(+), 191 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e3b8459 chore(revisore): memoria review #128 — APPROVATO CON RISERVE
-db964b2 feat(cancello-c4b1): read-back Telegram + anti-doppioni + tetto pending + R-c3-3/R-c3-4 — review #128 APPROVATO CON RISERVE
-b8bf2ef chore(revisore): model: opus nel frontmatter (decisione operatore 2026-10-01)
+620a732 docs(gate-review): fine-task fix gate inerte — report, handoff (§4 review #129 riemessa con path completi, APPROVATO CON RISERVE), stato aggiornato
+f7af312 chore(revisore): memoria review #129 — APPROVATO CON RISERVE
+b991a99 fix(gate-review): parser jq su input oggetto + fail-closed su parse fallito — review #129 APPROVATO CON RISERVE
 ```
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore `db964b2` — review #128 — verdetto INTEGRALE incollato:
+Commit `b991a99` (tocca `tests/` e il gate stesso) — review #129 — verdetto INTEGRALE incollato.
 
-## Verdetto review #128 — FETTA C4b-1 (feat/cancello-c4b1, diff STAGED, 4 file)
+Nota (dell'agente principale, fuori dal verdetto): questa è la **riemissione** del revisore, chiesta per decisione dell'operatore perché la prima versione citava la riga 46 del gate col solo nome del file (senza `.claude/hooks/`), che `check_verdetto.py` scarta (falso positivo F-controlli-auto). Il revisore ha cambiato solo i path delle citazioni; esito, elementi e riserve sono invariati. Il testo NON è stato ritoccato dall'agente principale.
+
+## VERDETTO REVISORE — review #129 — branch fix/gate-review-jq (diff staged: `.claude/hooks/review_gate.sh`, `tests/test_unit_hooks.py`)
 
 **ESITO: APPROVATO CON RISERVE**
 
-Letture fatte: CLAUDE.md (§5, §8, §9), reports/stato_progetto.md (Grep mirato su C4/cancello/R-c3), .claude/agents/memoria_revisore.md (ultime 40 righe, contatore a #127).
+Prima della review ho letto CLAUDE.md §5/§8/§9, `reports/stato_progetto.md` (con Grep mirato su gate e jq) e la coda di `.claude/agents/memoria_revisore.md` (in particolare la #80, fix fail-closed dello stesso hook). Nel diff non ci sono slicing della history né output di tool simulati, e il motore (gas.py, brains/, modules/) non viene toccato.
 
-### Conteggi riprodotti
-- `.venv/bin/python tests/test_unit_kernel.py`: **552 PASS / 5 FAIL**. I 5 FAIL sono T11c2, T11e, T12a, T12c, T12e (F-mac-1, bwrap su macOS), come dichiarato.
-- pytest (escluso test_unit_kernel.py ed e2e): **227 passed**.
+### Elementi del diff esaminati
 
-### Elementi del diff esaminati (file:riga)
-1. `gas.py:1261` — `_parcheggia_e_notifica` chiama `accoda_approvazione` dentro try/except. Le eccezioni portano a "errore" e quindi a un diniego fail-closed. `self.memory is None` porta a un diniego prima della chiamata. Rischio esaminato: eccezione del provider/store che arriva al loop (§9), oppure tool eseguito al cancello. **ok**: nessun ramo chiama `execute_tool_call`, e T74e/T74f restano verdi.
-2. `gas.py:1287` / `gas.py:1297` / `gas.py:1303` — controllo della lunghezza in unità UTF-16 prima dell'invio. Se il motivo non è vuoto, la richiesta viene revocata con `revoca_approval`, sempre dentro try. Se la revoca fallisce resta un WARN (scelta 6). Rischio esaminato: una pending di cui l'operatore non sa niente. **ok**: tutti i percorsi di fallimento (oltre 4096, token mancante, ID mancanti, eccezione, ok=False) portano a rejected/kernel_revoca, verificato da T75d/T75e. Il residuo della scelta 6 è accettabile perché la riga non è approvabile senza bottoni e scade.
-3. `modules/memory/store.py:1551` e `:1558` — la query del doppione viene PRIMA del COUNT del tetto, tutte e due dentro la stessa transazione `BEGIN IMMEDIATE`, con `now` letto dopo il lock. Rischio esaminato: race tra controllo e INSERT, oppure un doppione negato a tetto pieno. **ok**: è atomico. T75b ("doppione a tetto pieno → stesso ID") copre l'ordine.
-4. `modules/memory/store.py:1628` / `:1633` — R-c3-3: `approved` solo con `risolto_da="telegram_user"`. R-c3-4: `rejected` solo con un int o con None (bool escluso). Tutte e due le verifiche avvengono PRIMA della connessione, quindi senza scritture. **ok**: R-c3-3 e R-c3-4 sono CHIUSE, con T75f che verifica lo stato del DB invariato.
-5. `modules/memory/store.py:1686` — `revoca_approval`, un wrapper che può solo rifiutare. Ho fatto `grep resolve_approval gas.py` e non trova nulla, quindi l'invariante T73f resta vero senza modificarlo. **ok**: è la scelta 2, ed è giusta. Il kernel non ha alcun percorso che porti ad 'approved'.
-6. `modules/telegram/bot.py:118`–`:141` — `invia_read_back`. Il payload contiene solo `{chat_id, text}`, quindi niente parse_mode. Il messaggio è considerato riuscito se almeno un destinatario risponde ok=True. Il dettaglio delle eccezioni va solo nel log. **ok, ma con la riserva R-c4b1-2** (anteprima dei link).
-7. `tests/test_unit_kernel.py:4777` e seguenti — `_TgFinto` sostituisce SOLO `bot._tg_post` e salva e ripristina l'env. **ok**, ma vedi R-c4b1-1.
+1. `.claude/hooks/review_gate.sh:25`
+   - **Cosa fa:** l'espressione jq diventa `if type == "array" then .[0] else . end | .tool_input.command // empty`.
+   - **Rischio esaminato:** comportamento su ogni forma di input.
+   - **Prove (jq-1.7.1-apple, `/usr/bin/jq`):**
+     - oggetto e array: restituiscono il comando, rc 0;
+     - `null` e `[]`: output vuoto, rc 0, quindi exit 0. È corretto perché non c'è nessun comando;
+     - `"str"`, `["x"]`, `{"tool_input":"s"}` e JSON troncato: rc 5, quindi si passa al fallback.
+     - Ho riprodotto anche il bug: la vecchia espressione `(.[0] // .)` su un oggetto dà "Cannot index object with number", rc=5.
+   - **Esito:** ok.
+
+2. `.claude/hooks/review_gate.sh:35-42`
+   - **Cosa fa:** salva `PARSE_RC=$?` dopo la command substitution. Se il valore non è zero, `CMD="$INPUT"`.
+   - **Rischio esaminato:** `$?` potrebbe non riflettere il codice di `_parse_cmd`, e il fallback potrebbe bloccare per errore comandi che non sono commit.
+   - **Prove:**
+     - In un'assegnazione semplice `$?` è lo stato della substitution, cioè dell'ultimo comando della pipe (`_parse_cmd`), senza pipefail. Il trace `bash -x` mostra `PARSE_RC=0` su input valido, e T-gate-I (exit 2) dimostra che un valore diverso da zero viene catturato.
+     - Il fallback sul testo grezzo scatta solo se il parse fallisce. Con JSON valido, un comando `ls` la cui description contiene "git … commit" passa (rc 0). Con JSON troncato invece viene bloccato (rc 2). Il blocco succede solo con un JSON illeggibile, quindi va bene così.
+   - **Esito:** ok.
+
+3. Rami python/perl, `.claude/hooks/review_gate.sh:27-31`
+   - **Cosa fanno:** non sono cambiati e gestivano già sia l'oggetto sia l'array (`isinstance(d,list)` / `ref($d) eq "ARRAY"`).
+   - **Prova:** ho lanciato l'hook a mano con un PATH ridotto senza jq, quindi è girato il ramo python3:
+     - oggetto o array con commit: rc 2;
+     - JSON troncato con commit: rc 2 (fail-closed);
+     - `"str"`: rc 0;
+     - `ls`: rc 0.
+   - **Esito:** ok. Il ramo perl l'ho solo letto, non eseguito.
+
+4. `tests/test_unit_hooks.py:581-630`
+   - **Cosa fa:** aggiunge T-gate-E..I nella classe `TestReviewGateInputOggetto`, che prende in prestito gli helper senza ereditare. Il parametro `stdin` di `_run` (`tests/test_unit_hooks.py:519-527`) ha default `None`, quindi T-gate-A..D non cambiano.
+   - **Rischio esaminato:** test non discriminanti.
+   - **Prove:**
+     - Con il fix: `-k ReviewGate` dà 9 passed.
+     - Ho copiato la suite in scratch puntandola all'hook di HEAD (`git show HEAD:...`): falliscono esattamente T-gate-E (exit 0 invece di 2) e T-gate-I, con 7 passed. I test mordono.
+   - **Esito:** ok.
 
 ### Riserve
-- **R-c4b1-1 (da chiudere prima del deploy su VPS): la suite non è ermetica.** L'ho misurato con un sitecustomize che sostituisce `_tg_post` e con `TELEGRAM_BOT_TOKEN=REALE TELEGRAM_ALLOWED_IDS=999` nell'env. Durante la suite partono **40 sendMessage FUORI da `_TgFinto`**, tutti read-back di `run_command`, che vengono dai test esistenti T11/T12 e simili che passano dal cancello. In dev e in CI il token non c'è, quindi oggi è innocuo: questi test passano dal ramo di revoca. Ma se la suite gira dove il token è esportato (VPS/systemd o shell dello sviluppatore), l'operatore riceve 40 richieste di firma reali, con fino a 15 s di timeout ciascuna. Fix: in testa a test_unit_kernel.py, `os.environ.pop` di TELEGRAM_BOT_TOKEN e TELEGRAM_ALLOWED_IDS, più un `_tg_post` che fallisce di default.
-- **R-c4b1-2 (sicurezza del read-back, minore): l'anteprima dei link non è disabilitata.** Senza `link_preview_options={"is_disabled": true}` (o `disable_web_page_preview`), un URL di terzi dentro `tool_args_json` diventa una card con titolo, descrizione e immagine scelti da chi controlla l'URL. La card appare dentro il messaggio di firma. È lo stesso rischio che ha motivato il divieto di parse_mode: contenuto che altera la presentazione del read-back. Quando si chiude, va aggiornato anche T75c (`set(_pl75c) == {"chat_id","text"}`).
-- **R-c4b1-3 (osservabilità/latenza, minore):** l'invio è sincrono dentro run_turn, con `timeout=15` per ogni ID. Se Telegram non risponde, il turno resta bloccato fino a 15 s × N destinatari. Non è un crash, ma va tenuto presente per il bot h24.
-- **R-c4b1-4 (minore, fail-closed):** se una riga corrotta ha `ts_expiry` TEXT, `ts_expiry > ?` dà sempre vero (in SQLite un TEXT è maggiore di un REAL). La riga quindi conta nel tetto e partecipa al doppione finché `expire_stale_approvals` non la scade, e oggi nessuno la chiama dal loop. È raggiungibile solo con SQL grezzo e va nella direzione del diniego, quindi non blocca.
 
-### Giudizio sulle 8 scelte implementative
-1. Il metodo separato `accoda_approvazione` con `enqueue_approval` lasciato senza dedup è corretto. T73a e F-c4a-dedup restano invariati e misurano ancora la primitiva. Il doppione controllato prima del tetto è giusto.
-2. `revoca_approval` è preferibile a modificare T73f: l'invariante resta meccanico.
-3. Basta un destinatario: accettabile, ed è il comportamento coperto da T75e.
-4. Il conteggio UTF-16 con il confine 4096 incluso è corretto e testato (emoji = 2, 4096 ammesso, 4097 no).
-5. Non restituire il testo delle eccezioni al modello è giusto, e T75e verifica che il token non compaia mai nell'esito.
-6. Il residuo della revoca fallita è accettabile, dichiarato e loggato.
-7. `parse_allowed_ids` è un refactor equivalente: i WARN di run_bot restano.
-8. Il diario non contiene mai gli args su nessun ramo del cancello. Su gate-fail-closed è un miglioramento rispetto a prima.
+**R-gjq-1 (operativa, da tracciare):** ora che il gate funziona davvero, il matcher pre-esistente `git[[:space:]].*commit` (`.claude/hooks/review_gate.sh:46`) blocca *qualsiasi* comando Bash che contenga quel testo, quando c'è codice del motore staged e manca il marcatore. Non è una regressione di questo diff: prima il gate era inerte e il problema non si vedeva.
+- Misurato in questa review: due mie sonde (stringhe di test dentro `for`/`printf`) sono state bloccate dall'hook vero.
+- Conseguenza: durante una review con codice del motore staged, comandi innocui come `git log --grep commit` o heredoc che contengono quel testo verranno rifiutati.
+- Possibile soluzione: un matcher ancorato all'inizio del comando o di un segmento dopo `&&`, `;` o `|`.
 
-### Test esistenti modificati: adeguamento LEGITTIMO, non li indebolisce
-- **T70f, T70g, T72c, T74a, T74b** (es. `tests/test_unit_kernel.py:5002`, `:5429`): con `with _TgFinto():` lo store, la composizione e `invia_read_back` restano codice reale, e viene sostituito solo il trasporto HTTP. Le asserzioni sono invariate e continuano a verificare il percorso "pending". Senza il finto, la nuova semantica corretta è la revoca. Il wrapper riallinea il test al percorso che il test voleva coprire e non maschera nulla.
-- **T74e**: spostare il monkeypatch su `accoda_approvazione` è necessario, perché il kernel ora chiama quel metodo. Lasciarlo su `enqueue_approval` renderebbe il test vacuo. Le asserzioni sono invariate. Legittimo.
-- I nuovi test T75a-f sono discriminanti: verificano lo stato del DB, il numero di chiamate HTTP e il payload esatto. Non ho ripetuto le mutazioni già fatte dall'operatore. Leggendo il codice, T75f cadrebbe se si rimuovessero le verifiche di `:1628`/`:1633`, e T75b ("doppione a tetto pieno") cadrebbe se si invertisse l'ordine doppione/tetto.
+**R-gjq-2 (copertura):** i rami python e perl con input oggetto non hanno test. In CI gira il ramo jq, perché i runner GitHub hanno jq preinstallato. Il ramo python l'ho verificato solo a mano, il ramo perl solo leggendolo. Aggiungere un test che tolga jq dal PATH.
 
-### Rischio esplicitamente escluso
-- Non ho verificato il comportamento reale verso l'API Telegram (consegna effettiva, rendering del testo, conteggio della lunghezza lato server, anteprime): richiederebbe un token e una chat reali, che non sono disponibili in dev.
-- Non ho verificato la concorrenza reale tra due processi (bot e CLI) su `BEGIN IMMEDIATE`: in un solo processo non si riproduce. Per costruzione, l'atomicità è garantita dal lock RESERVED di SQLite.
+**R-gjq-3 (pre-esistente, minore):** se manca grep, `.claude/hooks/review_gate.sh:46` esce con `|| exit 0`, cioè lascia passare il commit (fail-open). Su questo sistema non è realistico. La cito per completezza.
 
-### Wall of Shame
-Nessuna violazione. Nessuno slicing della history: il diff non tocca `_get_window` o `_cap_window_chars`. Nessuna simulazione dell'output dei tool: `_TgFinto` è un finto trasporto HTTP nei test, non l'output di un tool dato al modello. Il cap di 10 iterazioni non è toccato.
+**Nota di processo:** il gate era inerte da quando jq è presente su questo Mac. I commit al motore fatti in quel periodo hanno avuto solo la barriera primaria (la regola di workflow), non quella deterministica dell'hook. Non ho verificato per quante sessioni.
+
+### Rischi esplicitamente esclusi
+
+- **Comportamento con jq 1.6 o con le versioni Linux del runner CI:** non verificato, qui c'è solo jq-1.7.1-apple. In jq `.[0]` su un oggetto è un errore da sempre, quindi il fix vale anche lì, ma non l'ho eseguito.
+- **Ramo perl:** non eseguito.
+- **Prova reale nell'app desktop:** è quella riportata da te, non l'ho ripetuta. Indirettamente però l'hook ha bloccato due miei comandi veri in questa sessione, quindi nell'harness è attivo.
+- **Conteggi 56 / 232 delle suite complete:** non li ho riprodotti, ho eseguito solo `-k ReviewGate`.
 
 ### Memoria
-Ho aggiunto la riga contatore #128 e una lezione datata in coda a `/Users/gas/Gas/.claude/agents/memoria_revisore.md`. Come da tua istruzione NON l'ho committata (non ho eseguito `scripts/commit_memoria_revisore.sh`): il commit spetta a te.
+
+Ho aggiunto la riga contatore #129 e una lezione datata in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`. Come da tua istruzione non l'ho committata e non ho lanciato `scripts/commit_memoria_revisore.sh`.
+
+Le sonde stanno nella scratchpad: `/private/tmp/claude-501/-Users-gas-Gas/623e64f2-11d3-464b-96df-44d9ce83a650/scratchpad/` (`probe.sh`, `old_gate.sh`, `t/test_old_gate.py`, repo `r/`). Nessun file del repo è stato modificato oltre alla memoria.
+
+Riemissione: solo path completi nelle citazioni, merito invariato.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Locale (macOS): **501 PASS / 5 FAIL → 552 PASS / 5 FAIL** (+51 = T75a-f). I 5 FAIL sono fuori scope e identici prima e dopo: F-mac-1 (bwrap assente su macOS).
+Nessuna modifica a gas.py, brains/ o modules/: la suite del kernel (`tests/test_unit_kernel.py`) non è toccata. Modificata solo la suite hook:
 
-```
-=== RIEPILOGO: 552 PASS, 5 FAIL ===
-  FAIL: T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-closed) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-  FAIL: T11e run_command fa scattare lo snapshot — refs 1 -> 1
-  FAIL: T12a comando in allowlist (wc) eseguito, output reale — Operazione negata: sandbox OS (bwrap + namespace) non dispon
-  FAIL: T12c pipe non interpretata (niente shell) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-  FAIL: T12e command substitution non eseguita (resta letterale) — Operazione negata: sandbox OS (bwrap + namespace) non disponibile e GA
-```
-
-pytest (escluso test_unit_kernel.py ed e2e): 227 passed prima e dopo.
-
-Test esistenti modificati (giudicati dal revisore "adeguamento LEGITTIMO, non li indebolisce"): T70f, T70g, T72c, T74a, T74b (aggiunto `with _TgFinto():`, asserzioni invariate); T74e (monkeypatch spostato su `accoda_approvazione`, asserzioni invariate).
+- `tests/test_unit_hooks.py`: **51 → 56 passed** (+5 = T-gate-E..I).
+- pytest totale (escluso test_unit_kernel.py ed e2e): **227 → 232 passed**.
+- Discriminanza: con l'hook vecchio `-k ReviewGate` → 2 failed (T-gate-E, T-gate-I), 7 passed; col fix → 9 passed.
+- Test esistente modificato: `TestReviewGateFailClosed._run` riceve un parametro opzionale `stdin` (default invariato); T-gate-A..D invariati e verdi.
 
 ## §6 STATO CI
 
 ```
-completed	success	chore(revisore): memoria review #128 — APPROVATO CON RISERVE	CI	feat/cancello-c4b1	push	37087223516	1m3s	2026-10-03T01:44:07Z
-completed	success	Merge pull request #112 from Gasss23/feat/cancello-c4a	CI	feat/cancello-c4b1	push	37086286553	52s	2026-10-03T01:29:28Z
-completed	success	Merge pull request #112 from Gasss23/feat/cancello-c4a	CI	main	push	37084935616	53s	2026-10-03T01:08:26Z
+in_progress		docs(gate-review): fine-task fix gate inerte — report, handoff (§4 re…	CI	fix/gate-review-jq	push	37088610625	14s	2026-10-03T02:06:14Z
+completed	success	chore(revisore): memoria review #129 — APPROVATO CON RISERVE	CI	fix/gate-review-jq	push	37088311909	1m25s	2026-10-03T02:01:32Z
+completed	success	Merge pull request #113 from Gasss23/feat/cancello-c4b1	CI	main	push	37087549992	52s	2026-10-03T01:49:21Z
 ```
 
 Mappatura commit → run:
-- `e3b8459` (testa del push) → run 37087223516, **success** (headSha `e3b845922287fe04092cbdc528ec6b73b044218f`). Log: `=== RIEPILOGO: 561 PASS, 0 FAIL ===` (ubuntu, bwrap attivo: smoke-test 2 BWRAP_OK); hook 51 passed, voice 19 passed, gate 74 passed.
-- `db964b2` → nessuna run su questo SHA (pushato insieme a `e3b8459`; il suo albero è incluso in quello testato).
-- `b8bf2ef` → nessuna run su questo SHA (pushato insieme a `e3b8459`).
+- `f7af312` (testa del push) → run su headSha `f7af31255ddffee2468c342229470f9fffbe3e9c`, **success**. Log: `=== RIEPILOGO: 561 PASS, 0 FAIL ===`; hook 56 passed; voice 19 passed; gate 74 passed.
+- `b991a99` → nessuna run su questo SHA (pushato insieme a `f7af312`; il suo albero è incluso in quello testato).
+- `620a732` (primo commit di fine-task, pushato) → run 37088610625 in corso (in_progress) alla scrittura dell'handoff: esito non ancora disponibile.
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-c4b1-1** (review #128, da chiudere prima del deploy e prima del token in `.env`): suite non ermetica. Con il token reale esportato partono circa 40 sendMessage reali dai test esistenti che passano dal cancello.
-- **R-c4b1-2** (minore): anteprima dei link non disabilitata nel read-back.
-- **R-c4b1-3** (minore): invio sincrono nel turno, 15 s × N ID nel caso peggiore.
-- **R-c4b1-4** (minore, fail-closed): una riga corrotta con ts_expiry TEXT conta nel tetto e nel doppione.
-- Finding registrati dalla verifica C4a: F-c4a-eco, R-c4a-1 sottostimata (ora coperta), handoff C4a §6 errato, R-c3-1b "mitigata", scrivi_rep.sh su main, messaggio SessionEnd "Auto-commit...", /agents rimosso (dettaglio in stato_progetto.md).
+- **R-gjq-1** (operativa): il matcher `git[[:space:]].*commit` blocca qualsiasi comando con quel testo mentre c'è codice del motore in stage senza marcatore. Inoltre il marcatore va creato con un comando separato prima del commit.
+- **R-gjq-2** (copertura): i rami python/perl con input oggetto non sono testati in CI.
+- **R-gjq-3** (minore, pre-esistente): grep assente → `|| exit 0`.
+- Ancora aperte dalla C4b-1: R-c4b1-1..4 (vedi stato_progetto.md).

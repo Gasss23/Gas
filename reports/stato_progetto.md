@@ -1,10 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-03** (feat/cancello-c4b1 — read-back Telegram + anti-doppioni + tetto + R-c3-3/R-c3-4: review #128 APPROVATO CON RISERVE)
+> Ultimo aggiornamento: **2026-10-03** (fix/gate-review-jq — gate di review inerte su Mac, corretto: review #129 APPROVATO CON RISERVE)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
+
+**🔄 fix/gate-review-jq (2026-10-03, review #129 APPROVATO CON RISERVE, PR #114)** — **Il gate deterministico di review era INERTE** sul Mac: con jq-1.7.1-apple, `(.[0] // .)` su un oggetto JSON (la forma reale passata da Claude Code) va in errore → comando vuoto → `exit 0`. Misurato con una prova nell'app: commit di `gas.py` senza review PASSATO. Fix: jq `if type == "array" then .[0] else . end`; parse fallito → controllo "git commit" sul testo grezzo (fail-closed). T-gate-E..I con input oggetto (con l'hook vecchio cadono E e I). Prova ripetuta nell'app dopo il fix: commit **BLOCCATO**. Hook 51→56 passed, pytest 227→232. Il motore non è toccato.
 
 **🔄 feat/cancello-c4b1 (2026-10-03, review #128 APPROVATO CON RISERVE)** — C4b-1: dopo l'accodamento il kernel invia il **read-back Telegram** (solo invio, nessun bottone) agli ID di `TELEGRAM_ALLOWED_IDS`: testo semplice SENZA parse_mode, `tool_args_json` integrale sotto "ARGOMENTI (testo grezzo, può contenere testo di terzi)", ID, scadenza. Oltre 4096 (UTF-16), token/ID mancanti o invio fallito → richiesta **revocata** (rejected/kernel_revoca) + diniego al modello. **Anti-doppioni** (pending non scaduta con stesso tool+hash → stesso ID, nessuna riga, nessun invio) e **tetto** `GAS_APPROVAL_MAX_PENDING` (default 5) in `accoda_approvazione` atomica. **R-c3-3 e R-c3-4 CHIUSE.** Diario dei percorsi al cancello senza args. Suite **552 PASS / 5 FAIL** (F-mac-1), prima 501/5; pytest 227/227. Test manuale reale Telegram: NON fatto (token e ID assenti in `.env`). **C4b-1 fatto, C4b-2 (bottoni + esecuzione) NON fatto, deploy autonomo ancora vietato.** Revisore ora su Opus (`model: opus`, commit `b8bf2ef`).
 
@@ -100,6 +102,10 @@ Componenti attive:
 - 🟡 **F-handoff-c4a** (2026-10-03): handoff C4a §6 errato — "branch non pushato" era falso; la CI gira su ubuntu, non macOS.
 - 🟡 **F-scrivi-rep-main** (2026-10-03): `scrivi_rep.sh` su main lascia `reports/ultima_risposta.md` modificato e non committato.
 - 🟡 **F-sessionend-msg** (2026-10-03, cosmetico): il messaggio dell'hook SessionEnd dice ancora "Auto-commit..." ma l'hook non committa più.
+- ✅ **F-gate-inerte** (2026-10-03, PR #114, review #129): il gate deterministico `review_gate.sh` lasciava passare tutti i commit quando jq è presente (jq 1.7 + input oggetto). Le review sono state fatte comunque per procedura (barriera primaria); mancava la rete di sicurezza. Da quando non è stato misurato (presumibilmente dalla migrazione al Mac, 2026-09-09).
+- 🟡 **R-gjq-1** (2026-10-03, review #129, operativa): ora che il gate funziona, il matcher `git[[:space:]].*commit` blocca QUALSIASI comando Bash che contiene quel testo mentre c'è codice del motore in stage senza marcatore (es. `git log --grep commit`). Inoltre il marcatore va creato con un comando SEPARATO prima del commit (l'hook gira prima del comando: `touch .review_ok && git commit` viene bloccato). Possibile fix: matcher ancorato all'inizio del comando o di un segmento.
+- 🟡 **R-gjq-2** (2026-10-03, review #129, copertura): i rami python/perl dell'hook con input oggetto non sono testati (in CI c'è sempre jq). Aggiungere un test che tolga jq dal PATH.
+- 🟡 **R-gjq-3** (2026-10-03, review #129, minore, pre-esistente): se manca grep, `review_gate.sh` esce con `|| exit 0` (fail-open).
 - ℹ️ **/agents rimosso da Claude Code** (2026-10-03): il controllo del revisore ora si fa chiedendo l'elenco dei subagent disponibili.
 - 🟡 **R-c4a-2** (2026-10-03, cosmetico): UUID duplicato nel diario per le azioni pending — la riga è `pending id=<uuid> | [OK] Azione in attesa di approvazione umana (ID: <uuid>)`. Nessun impatto funzionale.
 - ℹ️ **PR #109** (2026-10-03): superata da #110, da chiudere SENZA merge (la chiude l'operatore).
@@ -172,7 +178,7 @@ Componenti attive:
 | **modules/marketing/** | ELIMINATI 6 file (dead code). |
 | **gas.py** | `calcola()` (AST whitelist + anti-DoS), prompt hardening Fetta A, atomicità `.gas_history.json` (write-tmp-rename + quarantena), `gas version`, `gas duplicati`, `gas merge-contacts`. |
 | **Modello Groq** | Cambia da `llama-3.3-70b-versatile` (hardcoded) a `openai/gpt-oss-120b` (default in `model_ids.py`, env-overridabile). |
-| **Hook Claude** | `review_gate.sh` fail-closed, `scrivi_rep.sh` main-lock guard + push su branch, `session_end.sh` push-only. Solo dev-side, non impattano VPS. |
+| **Hook Claude** | `review_gate.sh` fail-closed (inerte su Mac fino al fix PR #114, 2026-10-03), `scrivi_rep.sh` main-lock guard + push su branch, `session_end.sh` push-only. Solo dev-side, non impattano VPS. |
 
 #### Nuove variabili d'ambiente
 

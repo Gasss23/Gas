@@ -19,7 +19,10 @@ INPUT=$(cat)
 # python3 puo' essere uno stub Microsoft Store che esiste ma exit != 0.
 _parse_cmd() {
   if command -v jq >/dev/null 2>&1; then
-    jq -r '(.[0] // .) | .tool_input.command // empty'
+    # NB: NON usare `(.[0] // .)`: su un oggetto `.[0]` e' un ERRORE (non null) e
+    # jq 1.7 non lo sopprime con `//` → parse fallito → gate inerte (fail-open,
+    # misurato 2026-10-03 su jq-1.7.1-apple con l'input oggetto di Claude Code).
+    jq -r 'if type == "array" then .[0] else . end | .tool_input.command // empty'
   elif python3 -c "import sys" >/dev/null 2>&1; then
     python3 -c "import json,sys; d=json.load(sys.stdin); o=d[0] if isinstance(d,list) else d; print(o.get('tool_input',{}).get('command',''))"
   elif python -c "import sys" >/dev/null 2>&1; then
@@ -30,6 +33,13 @@ _parse_cmd() {
 }
 
 CMD=$(printf '%s' "$INPUT" | _parse_cmd 2>/dev/null)
+PARSE_RC=$?
+if [ "$PARSE_RC" -ne 0 ]; then
+  # Parser fallito: non sappiamo se e' un commit. FAIL-CLOSED: il controllo
+  # "e' un git commit?" si fa sul testo GREZZO dell'input, cosi' un commit non
+  # sfugge al gate per un JSON inatteso (i comandi non-commit restano liberi).
+  CMD="$INPUT"
+fi
 [ -n "$CMD" ] || exit 0
 
 # Non e' un git commit -> non interferire
