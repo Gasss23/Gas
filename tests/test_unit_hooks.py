@@ -513,17 +513,18 @@ class TestReviewGateFailClosed:
     """
 
     def _stdin_commit(self) -> str:
-        """JSON stdin che simula un tool use 'git commit'."""
+        """JSON stdin che simula un tool use 'git commit' (forma array)."""
         return json.dumps([{"tool_input": {"command": "git commit -m 'test'"}}])
 
-    def _run(self, repo: Path, *, has_review_ok: bool = False) -> subprocess.CompletedProcess:
+    def _run(self, repo: Path, *, has_review_ok: bool = False,
+             stdin: "str | None" = None) -> subprocess.CompletedProcess:
         env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
         if has_review_ok:
             (repo / ".claude").mkdir(exist_ok=True)
             (repo / ".claude" / ".review_ok").touch()
         return subprocess.run(
             ["bash", str(REVIEW_GATE_HOOK)],
-            input=self._stdin_commit(),
+            input=self._stdin_commit() if stdin is None else stdin,
             env=env,
             capture_output=True,
             text=True,
@@ -570,6 +571,64 @@ class TestReviewGateFailClosed:
             f"Atteso exit 2 (fail-closed), got {result.returncode}; stderr={result.stderr!r}"
         )
         assert result.stderr.strip(), "Messaggio di errore atteso su stderr"
+
+
+# T-gate-E..I: input OGGETTO (la forma che Claude Code passa davvero all'hook).
+# Bug misurato 2026-10-03: con jq presente, `(.[0] // .)` su un oggetto va in
+# errore → comando vuoto → exit 0 → gate inerte. I test A-D usavano solo la forma
+# array, quindi la CI non lo vedeva.
+
+_STDIN_OBJ_COMMIT = json.dumps({"tool_name": "Bash",
+                                "tool_input": {"command": "git commit -m 'test'"}})
+
+
+class TestReviewGateInputOggetto:
+    # Solo gli helper (non l'ereditarieta': A-D girerebbero due volte).
+    _stdin_commit = TestReviewGateFailClosed._stdin_commit
+    _run = TestReviewGateFailClosed._run
+    _stage = TestReviewGateFailClosed._stage
+
+    def test_gate_e_oggetto_motor_no_review_blocks(self, tmp_path):
+        """T-gate-E: input oggetto + diff motore + .review_ok assente → BLOCCA."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        result = self._run(tmp_path, stdin=_STDIN_OBJ_COMMIT)
+        assert result.returncode == 2, (
+            f"Atteso exit 2 (blocco), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "BLOCCATO" in result.stderr
+
+    def test_gate_f_oggetto_motor_with_review_ok_passes(self, tmp_path):
+        """T-gate-F: input oggetto + diff motore + .review_ok → PASSA."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "modules/x.py")
+        result = self._run(tmp_path, has_review_ok=True, stdin=_STDIN_OBJ_COMMIT)
+        assert result.returncode == 0, result.stderr
+
+    def test_gate_g_oggetto_doc_only_passes(self, tmp_path):
+        """T-gate-G: input oggetto + solo doc staged → esente, PASSA."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "reports/foo.md")
+        result = self._run(tmp_path, stdin=_STDIN_OBJ_COMMIT)
+        assert result.returncode == 0, result.stderr
+
+    def test_gate_h_oggetto_non_commit_passes(self, tmp_path):
+        """T-gate-H: input oggetto, comando NON commit, diff motore staged → non interferisce."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        stdin = json.dumps({"tool_input": {"command": "git status"}})
+        result = self._run(tmp_path, stdin=stdin)
+        assert result.returncode == 0, result.stderr
+
+    def test_gate_i_json_illeggibile_con_commit_blocks(self, tmp_path):
+        """T-gate-I: JSON illeggibile che contiene un git commit + diff motore → FAIL-CLOSED."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "tests/t.py")
+        result = self._run(tmp_path, stdin='{"tool_input": {"command": "git commit -m x"')
+        assert result.returncode == 2, (
+            f"Atteso exit 2 (fail-closed), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
 
 # R2 — durabilità memoria revisore su interruzione
 # ────────────────────────────────────────────────────────────────────────────
