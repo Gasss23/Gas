@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Verifica che i riferimenti path:riga in §4 VERDETTO DEL REVISORE di
-reports/handoff.md siano verificabili: il path esiste nel diff di sessione
-e il numero di riga esiste nel file a HEAD.
+reports/handoff.md siano verificabili: il numero di riga esiste nel file a HEAD.
+Il path si risolve, in ordine: (1) file del diff di sessione; (2) file a HEAD
+citato per contesto (non toccato nella sessione); (3) nome corto ("bot.py")
+che corrisponde a UN SOLO file a HEAD come suffisso di path. Nome corto
+ambiguo o file inesistente → citazione non verificabile (F-controlli-auto:
+prima ogni file di contesto era un falso positivo).
 
 NOTA IMPORTANTE: questo check prova solo che le citazioni sono verificabili,
 NON che il revisore abbia effettivamente letto il codice. Il finding
@@ -70,6 +74,25 @@ def _session_files(base: str, repo: Path) -> set[str]:
     return {l.strip() for l in r.stdout.splitlines() if l.strip()}
 
 
+def _head_files(repo: Path) -> set[str]:
+    r = _git(["git", "-c", "core.quotePath=false", "ls-tree", "-r", "--name-only", "HEAD"], repo)
+    if r.returncode != 0:
+        return set()
+    return {l.strip() for l in r.stdout.splitlines() if l.strip()}
+
+
+def _resolve_path(path: str, session: set[str], head: set[str]) -> tuple[str | None, str]:
+    """Ritorna (path risolto, "") oppure (None, motivo)."""
+    if path in session or path in head:
+        return path, ""
+    cand = sorted(f for f in head if f.endswith("/" + path))
+    if len(cand) == 1:
+        return cand[0], ""
+    if cand:
+        return None, f"nome ambiguo a HEAD ({', '.join(cand[:3])})"
+    return None, "file non trovato a HEAD (né nel diff né come nome univoco)"
+
+
 def _line_count(path: str, repo: Path) -> int | None:
     r = _git(["git", "show", f"HEAD:{path}"], repo)
     if r.returncode != 0:
@@ -128,13 +151,15 @@ def main(argv: list[str]) -> int:
         print("check_verdetto: nessun riferimento path:riga in §4 — OK (nulla da verificare).")
         return 0
 
+    head = _head_files(repo)
     errors: list[str] = []
     for path, lineno_str in refs:
         lineno = int(lineno_str)
-        if path not in session:
-            errors.append(f"  {path}:{lineno} — path NON nel diff di sessione")
+        resolved, motivo = _resolve_path(path, session, head)
+        if resolved is None:
+            errors.append(f"  {path}:{lineno} — {motivo}")
             continue
-        nlines = _line_count(path, repo)
+        nlines = _line_count(resolved, repo)
         if nlines is None:
             errors.append(f"  {path}:{lineno} — file non trovato a HEAD")
         elif lineno > nlines:

@@ -369,6 +369,63 @@ class TestCheckVerdetto:
             f"Output NON deve contenere 'CHIUSO': {combined!r}"
         )
 
+    def _setup_with_context(self, work: Path, bare: Path, sec4: str) -> str:
+        """Come _setup_branch_with_handoff, ma su main ci sono già file di
+        CONTESTO (non toccati dal branch): modules/telegram/bot.py (4 righe) e
+        due util.py omonimi in cartelle diverse."""
+        _init_repo(work)
+        (work / "modules" / "telegram").mkdir(parents=True)
+        (work / "modules" / "telegram" / "bot.py").write_text("a\nb\nc\nd\n")
+        for d in ("pkg_a", "pkg_b"):
+            (work / d).mkdir()
+            (work / d / "util.py").write_text("x\n")
+        _commit_all(work, "contesto su main")
+        _fake_origin(work, bare)
+        _branch(work, "feature/test")
+        (work / "gas_fake.py").write_text("line1\nline2\nline3\n")
+        base = subprocess.run(
+            ["git", "merge-base", "origin/main", "HEAD"],
+            cwd=work, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        _write_handoff(work, " gas_fake.py | 3 +++\n reports/handoff.md | 40 ++++\n 2 files changed", sec4)
+        _commit_all(work, "engine + handoff")
+        return base
+
+    def test_context_file_full_path_exits_0(self, tmp_path):
+        """F-controlli-auto: file di contesto citato col path completo, non nel diff → OK."""
+        sec4 = "Approvato. Vedi gas_fake.py:2 e modules/telegram/bot.py:3."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 0, f"err={result.stderr!r}"
+
+    def test_context_short_name_unique_exits_0(self, tmp_path):
+        """Nome corto (bot.py) che corrisponde a un solo file a HEAD → OK."""
+        sec4 = "Approvato. bot.py:4 gira nello stesso thread."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 0, f"err={result.stderr!r}"
+
+    def test_context_short_name_line_out_of_range_exits_1(self, tmp_path):
+        """Nome corto risolto ma riga oltre la fine del file → exit 1."""
+        sec4 = "Approvato. bot.py:99."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "99" in result.stderr, result.stderr
+
+    def test_context_short_name_ambiguous_exits_1(self, tmp_path):
+        """Nome corto che corrisponde a più file a HEAD → non verificabile, exit 1."""
+        sec4 = "Approvato. util.py:1."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "ambiguo" in result.stderr, result.stderr
+
+    def test_context_missing_file_exits_1(self, tmp_path):
+        """File citato inesistente a HEAD (né nel diff né come nome) → exit 1."""
+        sec4 = "Approvato. Vedi fantasma.py:1."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "fantasma.py" in result.stderr, result.stderr
+
     def test_nonascii_filename_check_verdetto(self, tmp_path):
         """File con nome non-ASCII (caffè.txt) citato in §4 → exit 0.
 
