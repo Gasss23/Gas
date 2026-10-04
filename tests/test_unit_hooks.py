@@ -1,6 +1,7 @@
 """Tests per .claude/hooks/session_end.sh, scrivi_rep.sh, review_gate.sh e promemoria_end.sh."""
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -2000,6 +2001,91 @@ class TestFinaleScript:
         assert result.returncode == 1, (
             f"atteso exit 1 (path avvelenato), got {result.returncode}; stderr={result.stderr!r}"
         )
+        assert "IP trovato" in result.stderr, result.stderr
+
+    def _repo_finale_con_bytes(self, tmp_path: Path, data: bytes, branch: str) -> Path:
+        """Repo con origin, branch `branch` e un commit che aggiunge a.dat = data."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", branch], cwd=work, check=True, capture_output=True)
+        (work / "a.dat").write_bytes(data)
+        subprocess.run(["git", "add", "a.dat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "dati"], cwd=work, check=True, capture_output=True,
+                       env={**os.environ,
+                            "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+                            "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"})
+        return work
+
+    def _stub_git(self, tmp_path: Path, body: str) -> dict:
+        """Stub git in PATH: `body` gira prima di delegare al git reale ($REAL_GIT)."""
+        real_git = shutil.which("git") or "/usr/bin/git"
+        bin_dir = tmp_path / "gitbin"
+        bin_dir.mkdir()
+        stub = bin_dir / "git"
+        stub.write_text(f"#!/usr/bin/env bash\nREAL_GIT=\"{real_git}\"\n{body}\nexec \"$REAL_GIT\" \"$@\"\n")
+        stub.chmod(0o755)
+        return {"PATH": f"{bin_dir}:{os.environ['PATH']}"}
+
+    def test_finale_4f_riga_latin1_con_ip(self, tmp_path):
+        """R-149-1 (gemello di gasmerge): riga non UTF-8 con IP → STOP (LC_ALL=C su
+        git grep, sed e grep del filtro)."""
+        work = self._repo_finale_con_bytes(tmp_path, b"caf\xe9 10.0.0.1\n", "feat/4f")  # gasmerge-ip-ok
+        r = subprocess.run(["bash", str(FINE_TASK_FINALE)], cwd=work, capture_output=True,
+                           env={**os.environ, "CLAUDE_PROJECT_DIR": str(work)})
+        err = r.stderr.decode("utf-8", errors="replace")
+        assert r.returncode == 1, f"atteso exit 1 (latin1), got {r.returncode}; stderr={err!r}"
+        assert "IP trovato" in err, err
+
+    def test_finale_4g_errore_grep_allowlist_stop(self, tmp_path):
+        """R-149-1 (gemello di R-148-1): la git grep con --and fallisce → STOP, mai
+        "tutti allowlistati"."""
+        work = self._repo_finale_con_bytes(tmp_path, b"host 10.0.0.1\n", "feat/4g")  # gasmerge-ip-ok
+        env = self._stub_git(
+            tmp_path,
+            "if [ \"$1\" = grep ] && printf '%s\\n' \"$@\" | grep -qx -- '--and'; then exit 2; fi")
+        result = _run_finale(work, extra_env=env, cwd=work)
+        assert result.returncode == 1, result.stderr
+        assert "git grep (allowlist)" in result.stderr, result.stderr
+        assert "allowlistati" not in result.stderr, result.stderr
+
+    def test_finale_4h_tree_non_risolvibile_stop(self, tmp_path):
+        """R-149-1: rev-parse del tree di HEAD fallisce → STOP esplicito."""
+        work = self._repo_finale_con_bytes(tmp_path, b"x\n", "feat/4h")
+        env = self._stub_git(
+            tmp_path,
+            "if [ \"$1\" = rev-parse ] && printf '%s\\n' \"$@\" | grep -q '\\^{tree}'; then exit 1; fi")
+        result = _run_finale(work, extra_env=env, cwd=work)
+        assert result.returncode == 1, result.stderr
+        assert "tree di HEAD non risolvibile" in result.stderr, result.stderr
+        # Si ferma SUBITO: non arriva a una git grep su un tree vuoto.
+        assert "git grep uscito con codice" not in result.stderr, result.stderr
+
+    def test_finale_4i_tree_unico_fra_le_due_grep(self, tmp_path):
+        """R-148-2: se HEAD si sposta fra le due git grep (IP a un'altra riga), il gate
+        resta chiuso perché entrambe leggono lo stesso tree."""
+        work = self._repo_finale_con_bytes(tmp_path, b"host 10.0.0.1\n", "feat/4i")  # gasmerge-ip-ok
+        (work / "a.dat").write_bytes(b"\n\nhost 10.0.0.1\n")  # gasmerge-ip-ok
+        subprocess.run(["git", "commit", "-qam", "sposta"], cwd=work, check=True, capture_output=True,
+                       env={**os.environ,
+                            "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+                            "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"})
+        spostato = subprocess.run(["git", "rev-parse", "HEAD"], cwd=work, check=True,
+                                  capture_output=True, text=True).stdout.strip()
+        subprocess.run(["git", "reset", "-q", "--hard", "HEAD~1"], cwd=work, check=True,
+                       capture_output=True)
+        env = self._stub_git(
+            tmp_path,
+            "if [ \"$1\" = grep ] && ! printf '%s\\n' \"$@\" | grep -qx -- '--and'; then\n"
+            "  \"$REAL_GIT\" \"$@\"; rc=$?\n"
+            f"  \"$REAL_GIT\" update-ref HEAD {spostato}\n"
+            "  exit $rc\nfi")
+        result = _run_finale(work, extra_env=env, cwd=work)
+        assert result.returncode == 1, result.stderr
         assert "IP trovato" in result.stderr, result.stderr
 
     def test_finale_4e_file_binario_con_ip(self, tmp_path):
