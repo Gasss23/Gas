@@ -2106,6 +2106,27 @@ class TestFinaleScript:
         result = _run_finale(work, cwd=work)
         assert "tutti gli IP sono loopback (127.x.x.x) — OK" in result.stderr, result.stderr
 
+    def test_finale_4m_due_loopback_sulla_stessa_riga(self, tmp_path):
+        """V-2 verifica #125: due 127.x sulla stessa riga → esente (sed con flag g)."""
+        work = self._repo_finale_con_bytes(tmp_path, b"a 127.0.0.1 b 127.0.0.2\n", "feat/4m")
+        result = _run_finale(work, cwd=work)
+        assert "tutti gli IP sono loopback (127.x.x.x) — OK" in result.stderr, result.stderr
+
+    @pytest.mark.parametrize("dati", [
+        b"host 10.0.0.1 \n",               # spazio finale    # gasmerge-ip-ok
+        b"host 10.0.0.1\t\n",             # tab finale       # gasmerge-ip-ok
+        b"  host 10.0.0.1\n",              # spazio iniziale  # gasmerge-ip-ok
+        b"path a\\b host 10.0.0.1\n",     # backslash        # gasmerge-ip-ok
+        b"a 127.0.0.1 b 10.0.0.1\n",       # loopback + IP    # gasmerge-ip-ok
+    ])
+    def test_finale_4n_righe_difficili_bloccano(self, tmp_path, dati):
+        """R-153-1: spazi ai bordi, backslash o loopback+IP sulla stessa riga → STOP
+        prima del push (`IFS= read -r`, e si conserva la riga originale)."""
+        work = self._repo_finale_con_bytes(tmp_path, dati, "feat/4n")
+        result = _run_finale(work, cwd=work)
+        assert "IP trovato" in result.stderr, result.stderr
+        assert "=== Push ===" not in result.stderr, result.stderr
+
     def test_finale_4l_errore_filtro_allowlist_stop(self, tmp_path):
         """V-1(c) verifica #124: il filtro `grep -Fx` fallisce (rc 2) → STOP prima del
         push, mai "allowlistati"."""
