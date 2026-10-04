@@ -18,7 +18,7 @@ git fetch origin
 #    Stabile: non si sposta dopo i commit della sessione.
 BASE=$(git merge-base refs/remotes/origin/main HEAD)
 if [ -z "${BASE}" ]; then
-  echo "ERRORE: git merge-base origin/main HEAD fallito o ha restituito vuoto — /fine-task si FERMA."
+  echo "ERRORE: git merge-base refs/remotes/origin/main HEAD fallito o ha restituito vuoto — /fine-task si FERMA."
   exit 1
 fi
 echo "BASE=$BASE"

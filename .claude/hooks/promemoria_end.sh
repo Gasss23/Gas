@@ -42,7 +42,7 @@ BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 
 [[ "$BRANCH" == "main" ]] && exit 0
 
 # Calcola BASE senza rete (nessun git fetch)
-if ! BASE=$(git -C "$PROJECT_DIR" merge-base origin/main HEAD 2>/dev/null) || [[ -z "$BASE" ]]; then
+if ! BASE=$(git -C "$PROJECT_DIR" merge-base refs/remotes/origin/main HEAD 2>/dev/null) || [[ -z "$BASE" ]]; then
     printf '%s WARN promemoria_end: git merge-base fallito (origin/main non raggiungibile)\n' \
         "$(date -u +%FT%TZ)" >> "$LOG" 2>/dev/null || true
     exit 0
