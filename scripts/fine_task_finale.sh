@@ -64,7 +64,12 @@ fi
 # Step 1: loopback-only (per riga, via sed). Step 2: gasmerge-ip-ok allowlist.
 printf '=== Gate IP ===\n' >&2
 set +e
-IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' HEAD)
+# R-148-2/R-148-3: come gasmerge.sh — tree risolto una volta, -a e LC_ALL=C.
+if ! IP_TREE=$(git rev-parse --verify -q "HEAD^{tree}"); then
+  printf 'fine_task_finale: STOP — tree di HEAD non risolvibile — verifica IP NON eseguita\n' >&2
+  exit 1
+fi
+IP_MATCHES=$(LC_ALL=C git grep -a -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "$IP_TREE")
 IP_RC=$?
 set -e
 case "$IP_RC" in
@@ -76,8 +81,8 @@ case "$IP_RC" in
     # Una riga con loopback E un IP non-loopback non è esente.
     set +e
     NON_LOOPBACK=$(printf '%s\n' "$IP_MATCHES" | while IFS= read -r line; do
-      stripped=$(printf '%s\n' "$line" | sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
-      if printf '%s\n' "$stripped" | grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
+      stripped=$(printf '%s\n' "$line" | LC_ALL=C sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
+      if printf '%s\n' "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
         printf '%s\n' "$line"
       fi
     done)
@@ -85,9 +90,18 @@ case "$IP_RC" in
     if [[ -z "$NON_LOOPBACK" ]]; then
       printf 'Gate IP: tutti gli IP sono loopback (127.x.x.x) — OK\n' >&2
     else
-      # Step 2: filtra le righe con il marker di allowlist esplicito.
+      # Step 2: allowlist esplicita sul solo CONTENUTO (R-147-1, come gasmerge.sh):
+      # un path che contiene "gasmerge-ip-ok" non allowlista più le sue righe.
       set +e
-      RESIDUAL=$(printf '%s\n' "$NON_LOOPBACK" | grep -v 'gasmerge-ip-ok')
+      UNMARKED=$(LC_ALL=C git grep -a -nE -e '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' --and --not -e 'gasmerge-ip-ok' "$IP_TREE")
+      UNMARKED_RC=$?
+      set -e
+      case "$UNMARKED_RC" in
+        0|1) : ;;
+        *) printf 'fine_task_finale: STOP — git grep (allowlist) uscito con codice %d — gate IP non verificato\n' "$UNMARKED_RC" >&2; exit 1 ;;
+      esac
+      set +e
+      RESIDUAL=$(printf '%s\n' "$NON_LOOPBACK" | LC_ALL=C grep -Fx -f <(printf '%s\n' "$UNMARKED"))
       FILTER_RC=$?
       set -e
       case "$FILTER_RC" in

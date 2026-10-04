@@ -1,15 +1,13 @@
-# DIFF SESSIONE — 2026-10-04 — fix/gasmerge-perimetro-gitignore
+# DIFF SESSIONE — 2026-10-04 — fix/gate-ip-allowlist-ci-gasmerge
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `scripts/gasmerge.sh` | Gate IP su `refs/remotes/origin/$BRANCH` (verifica esterna #122 V-1). Il promemoria "FILE DI MOTORE" legge il perimetro di review (main ∪ branch), fail-safe se illeggibile; diff con `--no-renames` e `quotePath=false`; ref completi (V-1 #121, R-144-1, R-145-1). |
-| `scripts/check_landing.sh` | Check B su `refs/remotes/origin/${BRANCH}` (verifica esterna #122 V-2). |
-| `.claude/hooks/promemoria_end.sh` | merge-base su `refs/remotes/origin/main` (R-144-1). |
-| `.claude/commands/fine-task.md` | Messaggio d'errore col ref completo (R-144-1). |
-| `.gitignore` | `*.wav`, `*.mp3`, output dei client per estensione (V-2 #121, R-145-2). |
-| `tests/test_unit_gasmerge.py` | `TestPerimetroPromemoria` (7 test), `TestIPRefCompleto`; stub del diff robusto a `git -c`. |
-| `tests/test_unit_hooks.py` | Check B di check_landing con un tag `origin/main` omonimo. |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #145, #146 e #147. |
-| `reports/*` | Report di fine task; correzioni R-143-1/R-143-4; V-3, V-5 e R-147-1/2/3 tracciate. |
+| `scripts/gasmerge.sh` | Gate IP: tree risolto una volta, `git grep -a` con `LC_ALL=C`, allowlist sul solo contenuto (`--and --not`); promemoria con `git diff -z` (R-147-1, R-148-2/3, V-3 #122 bis). |
+| `scripts/fine_task_finale.sh` | Stesso gate IP di gasmerge.sh (R-147-1, R-148-2/3). |
+| `.github/workflows/ci.yml` | Step `pytest tests/test_unit_gasmerge.py` + riga nel summary (V-2 #122 bis, R-147-3). |
+| `tests/test_unit_gasmerge.py` | Branch/path avvelenati, errore della grep allowlist, binari, latin1, nome con apice, tag sul perimetro di main; stub gh con head_ref; `errors="replace"`. |
+| `tests/test_unit_hooks.py` | fine_task_finale: path avvelenato (4d), binario con IP (4e). |
+| `.claude/agents/memoria_revisore.md` | Memoria delle review #148 e #149. |
+| `reports/*` | Report di fine task; stato_progetto (R-147/R-148 chiuse, R-149-1, conteggio review). |
 
 La storia completa sta in git.

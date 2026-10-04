@@ -114,6 +114,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_gate.py -v 2>&1 | tee "$RUNNER_TEMP/gate_output.txt"
 
+      - name: Run gasmerge suite (pytest, zero token LLM)
+        # V-2 verifica esterna #122: i test di gasmerge.sh (gate di merge) giravano
+        # solo in locale; gh è uno stub, nessuna chiamata a GitHub.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_gasmerge.py -v 2>&1 | tee "$RUNNER_TEMP/gasmerge_output.txt"
+
       - name: Job summary (esito a colpo d'occhio)
         if: always()
         # Scrive nel JOB SUMMARY (pagina della run, niente zip/auth): esito bwrap +
@@ -157,6 +165,13 @@ jobs:
               echo "| Gate suite   | ${griep:-non disponibile} |"
             else
               echo "| Gate suite   | output non disponibile (la gate suite non è partita) |"
+            fi
+            mout="$RUNNER_TEMP/gasmerge_output.txt"
+            if [ -f "$mout" ]; then
+              mriep="$(grep -E '^=.*(passed|failed|error)' "$mout" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+              echo "| Gasmerge suite | ${mriep:-non disponibile} |"
+            else
+              echo "| Gasmerge suite | output non disponibile (la gasmerge suite non è partita) |"
             fi
             echo ""
             if [ -f "$out" ]; then

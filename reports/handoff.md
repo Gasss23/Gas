@@ -1,28 +1,28 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-04 — Promemoria di gasmerge dal perimetro, ref completi (anche gate IP), .gitignore audio, branch `fix/gasmerge-perimetro-gitignore`
+**Sessione:** 2026-10-04 — Gate IP: allowlist sul solo contenuto, tree unico, binari/non-UTF-8; gasmerge in CI, branch `fix/gate-ip-allowlist-ci-gasmerge`
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #122 (https://github.com/Gasss23/Gas/pull/122), dopo la verifica esterna di questo handoff. Variante A: l'agente lancia `gasmerge 122`, l'operatore conferma digitando `122`.
-2. R-147-1 (MEDIA, preesistente): un branch o un path che contiene `gasmerge-ip-ok` aggira il gate IP. Correggerlo in una micro-fetta PRIMA della V-B vera? (consigliato: sì)
-3. V-3 (verifica #121): vietare nel ruleset i tag `origin/*`? Oggi la difesa sono i ref completi negli script.
-4. V-5 (verifica #121): mettere `.gitignore`, `knowledge/` e `CLAUDE.md` nel perimetro di review?
-5. Prossima fetta PRIORITARIA, già decisa: V-B "vera" (bot di revisione su GitHub). L'operatore dovrà inserire una chiave API nei segreti di GitHub.
+1. Merge della PR #123 (https://github.com/Gasss23/Gas/pull/123), dopo la verifica esterna. Variante A: l'agente lancia `gasmerge 123`, l'operatore conferma digitando `123`.
+2. V-3 (verifica #121): vietare nel ruleset i tag `origin/*`? Oggi la difesa sono i ref completi negli script.
+3. V-5 (verifica #121, confermata dalla #122 bis): mettere `.gitignore`, `knowledge/` e `CLAUDE.md` nel perimetro di review?
+4. Prossima fetta PRIORITARIA, già decisa: V-B "vera" (bot di revisione su GitHub). L'operatore dovrà inserire una chiave API nei segreti di GitHub.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V-1 verifica #121 — gasmerge legge il perimetro di review**: `FATTA`.
-- **R-144-1 — ref abbreviati**: `FATTA` in due tempi. Dichiarata chiusa in `03e01f8`, ma la verifica esterna #122 (V-1/V-2) ha trovato il ref abbreviato nel gate IP (`gasmerge.sh:91`) e in `check_landing.sh:33`; chiusa davvero in `27f04b7` (review #147).
-- **V-2 verifica #121 — .gitignore audio e output dei client**: `FATTA`.
-- **R-145-1 / R-145-2**: `FATTA` (stessa fetta, review #146).
-- **Correzioni stato_progetto (R-143-4 PARZIALE, R-143-1 chiusa dopo il merge di #121)**: `FATTA`.
-- **Tracciamento V-3 / V-5 (verifica #121) e R-147-1/2/3**: `FATTA` (aperte).
-- **R-147-1 — allowlist IP sul prefisso di git grep**: `DEFERITA — preesistente, tocca anche fine_task_finale.sh; decisione operatore (§0.2)`.
+- **Merge PR #122**: `FATTA` (operatore, main `ee95197`).
+- **V-1 verifica #122 bis = R-147-1 — allowlist IP sul solo contenuto**: `FATTA` (gasmerge.sh e fine_task_finale.sh).
+- **V-2 verifica #122 bis = R-147-3 — test_unit_gasmerge.py in CI**: `FATTA`; corretta l'affermazione falsa dei report di #122 ("test non-ASCII verde in CI").
+- **V-3 verifica #122 bis — promemoria con `git diff -z`**: `FATTA`.
+- **V-4 verifica #122 bis — stato_progetto "116 review"**: `FATTA`.
+- **R-147-2 — mutation sopravvissute**: `FATTA` sul perimetro di main; `gasmerge.sh:42` (solo visualizzazione) senza test, dichiarato.
+- **R-148-1 / R-148-2 / R-148-3**: `FATTA` (stessa fetta, review #149).
+- **R-149-1 — 2 test gemelli per fine_task_finale.sh**: `DEFERITA — bassa, il codice è corretto; prossima occasione sul file`.
 - **V-B vera**: `DEFERITA — prossima fetta`.
 
 ---
@@ -30,235 +30,241 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- .claude/commands/fine-task.md      |   2 +-
- .claude/hooks/promemoria_end.sh    |   2 +-
- .gitignore                         |   9 +++++++++
- reports/diff_sessione.md           |  21 ++++++++++-----------
- reports/handoff.md                 | 354 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  43 +++++++++++++++++++++++++------------------
- scripts/check_landing.sh           |   2 +-
- scripts/gasmerge.sh                |  58 +++++++++++++++++++++++++++++++++++++++++-----------------
- tests/test_unit_gasmerge.py        | 127 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_hooks.py           |  22 ++++++++++++++++++++++
- 12 files changed, 439 insertions(+), 213 deletions(-)
+ .claude/agents/memoria_revisore.md |   5 +++++
+ .github/workflows/ci.yml           |  15 +++++++++++++++
+ reports/diff_sessione.md           |  18 ++++++++----------
+ reports/handoff.md                 | 357 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   8 +++++---
+ reports/ultimo_report.md           |  45 ++++++++++++++++++++-------------------------
+ scripts/fine_task_finale.sh        |  24 +++++++++++++++++++-----
+ scripts/gasmerge.sh                |  33 +++++++++++++++++++++++++++------
+ tests/test_unit_gasmerge.py        | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_hooks.py           |  45 +++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 417 insertions(+), 237 deletions(-)
 ```
 
-NB: i conteggi di righe sono quelli dello stage PRIMA di riempire §2/§3/§6 (handoff.md conta se stesso): il set di file è esatto, i conteggi no (verifica esterna #122, V-3 cosmetica).
+NB: i conteggi di righe sono quelli dello stage PRIMA di riempire §2/§3/§6 (handoff.md conta se stesso): il set di file è esatto, i conteggi no.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-27f04b7 fix(gasmerge): ref completo nel gate IP e in check_landing — verifica esterna #122 V-1/V-2, review #147 APPROVATO CON RISERVE
-6cbfe39 chore(revisore): memoria review #147 — APPROVATO CON RISERVE
-4e598e2 docs(gasmerge-perimetro): fine-task — promemoria dal perimetro, ref completi, .gitignore audio, handoff (review #145/#146)
-03e01f8 fix(gasmerge): promemoria dal perimetro di review, ref completi, .gitignore audio — review #145/#146 APPROVATO CON RISERVE
-2ffa88c chore(revisore): memoria review #146 — APPROVATO CON RISERVE
-30ba09f chore(revisore): memoria review #145 — APPROVATO CON RISERVE
+09d4005 fix(gate-ip): allowlist sul solo contenuto, tree unico, binari/non-UTF-8, gasmerge in CI — review #148/#149 APPROVATO CON RISERVE
+5a83017 chore(revisore): memoria review #149 — APPROVATO CON RISERVE
+fe005ee chore(revisore): memoria review #148 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `03e01f8`: la #145 sul diff iniziale e la #146 sul delta che chiude R-145-1 e R-145-2. Commit `27f04b7`: la #147. Tutte incollate per intero.
+Commit `09d4005`: la #148 sul diff iniziale e la #149 sul delta che chiude R-148-1/2/3. Entrambe incollate per intero.
 
-### Review 145
-
-## VERDETTO: APPROVATO CON RISERVE
-
-**Letture preliminari fatte:** CLAUDE.md (sez. 5, 8, 10), reports/stato_progetto.md (solo le voci R-144-1, R-143-4, V-1 e V-2) e .claude/agents/memoria_revisore.md (contatori #137–#144 e lezioni del 2026-10). Il Wall of Shame non c'entra con questo diff: non tocca codice Python del motore, né history né tool. Guardrail del motore (cap a 10 iterazioni, `_get_window`, cap sull'output) non toccati.
-
-**Riproduzioni**
-- test_unit_hooks + test_unit_gasmerge + test_unit_gate: **168 passed**, numero confermato.
-- Controprova sul gasmerge.sh di `refs/remotes/origin/main`: `-k TestPerimetroPromemoria` dà **3 failed, 1 passed**. Il test doc-only passa per costruzione, come dichiarato.
-
-**Elementi del diff esaminati**
-- `scripts/gasmerge.sh:153` — costruisce PERIM_VOCI come unione del perimetro di main, del perimetro del branch e delle voci `scripts/` e `.claude/`; poi toglie commenti e spazi, scarta le righe vuote e ordina con `sort -u`. Rischio esaminato: con `set -euo pipefail` (riga 2) un `grep -v` senza output darebbe rc 1 e farebbe uscire lo script. Non succede: il `printf` garantisce sempre almeno 2 righe, e i `git show … || true` dentro il gruppo neutralizzano il ref mancante — **ok**.
-- `scripts/gasmerge.sh:162` — doppio ciclo: una voce che finisce con `/` vale come prefisso, le altre come path esatto, e `"$v"` è quotato quindi niente glob. Se il perimetro è illeggibile su tutti e due i lati (PERIM_LETTO=0, righe 157-160), ogni file conta come motore. Rischio esaminato: falsi "doc-only". Sonde: tag `origin/main` puntato sul branch → promemoria corretto (P3); cancellazione di `gas_identity.md` → promemoria corretto (P4) — **ok**.
-- `scripts/gasmerge.sh:141` — `git diff --name-only` senza `--no-renames` e senza `core.quotePath=false`. Rischio: un file del perimetro rinominato o con nome non-ASCII sparisce dal confronto (lezione del 2026-10-04 in memoria). Le sonde lo confermano. **P1**: `git mv gas_identity.md docs/x.md` → "nessuno (doc-only)". **P2**: `clients/caffè.py` → "nessuno (doc-only)". Il problema c'era già con la vecchia regex, quindi non è una regressione; e lo script è un promemoria, non un gate (hook e check_handoff usano già `--no-renames -z`) — **riserva R-145-1**.
-- `.claude/hooks/promemoria_end.sh:45` — merge-base con il ref completo `refs/remotes/origin/main`. Rischio: rottura del ramo di fallback. È invariato: WARN nel log ed exit 0 — **ok**.
-- `.claude/commands/fine-task.md:21` — solo il testo del messaggio d'errore, allineato al ref completo. È la riserva estetica della #144, chiusa — **ok**.
-- `.gitignore:41` — `clients/**/*_output.*`. Rischio: il pattern prende anche i sorgenti. `git check-ignore -v --no-index` conferma che `clients/voice/tts_output.py` verrebbe ignorato. L'hook (`--untracked-files=all`) non vede i file ignorati, quindi un sorgente con quel nome sparirebbe senza avviso: non arriverebbe mai alla review né al repo. Nessun file tracciato è colpito oggi: l'unico `*_output.*` tracciato è `reports/e2e_k3bis_output.txt`, fuori da `clients/` — **riserva R-145-2**.
-- `tests/test_unit_gasmerge.py:337` — la fixture `_repo` costruisce un bare repo reale con perimetro opzionale su main e sul branch. I 4 test coprono: voce esatta, prefisso con quasi-omonimo `clientsX.md`, branch che restringe il perimetro, perimetro assente. Le asserzioni sono specifiche ("PERIMETRO DI REVIEW", "illeggibile", assenza di "doc-only") — **ok**.
-
-**Riserve**
-- **R-145-1** (media, c'era già prima di questa fetta). Fix verificato su una copia: `ENGINE_DIFF=$(git -c core.quotePath=false diff --no-renames --name-only "refs/remotes/origin/main...refs/remotes/origin/$BRANCH")`. Con questa modifica P1 e P2 elencano correttamente `gas_identity.md` e `clients/caffè.py`. Fa però fallire `test_git_diff_name_only_error_blocks`, perché lo stub `_make_stub_git_diff_name_only_fail` (tests/test_unit_gasmerge.py:119) controlla `$1 = diff`, e con `-c` davanti `$1` cambia. Va adeguato anche lo stub. Consiglio di chiuderla in questa stessa fetta: costa due flag e un test.
-- **R-145-2** (minore). Restringere `.gitignore:41` alle estensioni degli artefatti (es. `clients/**/*_output.wav`, `.mp3`, `.txt`, `.json`), oppure chiarire nel commento che i sorgenti `*_output.py` vanno aggiunti con `-f`. Nota a margine: `*.wav` globale ignorerebbe anche futuri fixture audio in `tests/`.
-
-**Rischi esplicitamente esclusi**
-- Esecuzione reale di `gasmerge` contro GitHub (gh vero, PR reale): non riprodotta. Uso solo gli stub gh dei test e i bare repo locali, perché lanciare lo script vero farebbe un fetch e un merge sul repo di produzione.
-- Nomi di file contenenti un a-capo: non provati. Il ciclo `read -r` riga per riga non li gestirebbe; è un caso marginale per un promemoria.
-- Comportamento con il perimetro presente ma vuoto (solo commenti) su main: non sondato. Restano attive solo `scripts/` e `.claude/`, scelta coerente con la "fonte unica".
-
-**Memoria:** riga #145 e una lezione nuova aggiunte e salvate nel repo con lo script dedicato: commit `30ba09f` su `/Users/gas/Gas/.claude/agents/memoria_revisore.md`.
-
-**File rilevanti**
-- `/Users/gas/Gas/scripts/gasmerge.sh`
-- `/Users/gas/Gas/.gitignore`
-- `/Users/gas/Gas/tests/test_unit_gasmerge.py`
-- `/Users/gas/Gas/.claude/hooks/promemoria_end.sh`
-- `/Users/gas/Gas/.claude/commands/fine-task.md`
-- Sonda: `/private/tmp/claude-501/-Users-gas-Gas/91091029-3df7-47ca-a712-d6baf2fbda65/scratchpad/sonda.py`
-
-### Review 146
+### Review 148
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #146 sul diff staged aggiornato del branch `fix/gasmerge-perimetro-gitignore`. R-145-1 e R-145-2 sono chiuse. Restano solo due riserve di poco conto, che non bloccano il commit.
+Review #148: diff staged di fix/gate-ip-allowlist-ci-gasmerge (base main ee95197, 5 file, +114/-6). Prima di cominciare ho letto CLAUDE.md (sez. 5), le righe su R-147 in reports/stato_progetto.md e la coda della memoria del revisore (lezioni #143-#147 su ref abbreviati, `| tr` che cambia l'exit code, marker cercato anche nel prefisso).
 
-**Esiti rifatti da me**
-- `test_unit_gasmerge` + `test_unit_hooks` + `test_unit_gate`: **170 passed**, coincide con il vostro 26 + 144.
-- Stessi test contro il `gasmerge.sh` di `refs/remotes/origin/main`, con `-k "Perimetro or DiffGuard"`: **5 failed, 2 passed**, come dichiarato. Passano il test doc-only e DiffGuard, ed è atteso.
-- Ho tolto un solo flag alla volta:
-  - senza `--no-renames` fallisce solo `test_rename_fuori_perimetro_resta_motore`;
-  - senza `core.quotePath=false` fallisce solo `test_nome_non_ascii_nel_perimetro`.
-  Ogni flag ha quindi un test suo che fallisce se lo si toglie.
-- Ho rilanciato le sonde della #145 sul diff nuovo:
-  - P1 (rename `gas_identity.md` → `docs/x.md`): ora mostra `gas_identity.md`;
-  - P2 (`clients/caffè.py`): ora mostra il nome in chiaro, non quotato;
-  - P3 (tag `origin/main` che punta al branch) e P4 (cancellazione): promemoria corretto.
+Wall of Shame: il diff non tocca la history né simula l'output dei tool. Cap delle iterazioni, `_get_window` e provider non sono toccati.
 
 **Elementi del diff esaminati**
-- `scripts/gasmerge.sh:144` — `git -c core.quotePath=false diff --no-renames --name-only "refs/remotes/origin/main...refs/remotes/origin/$BRANCH"`. Rischio esaminato: un file del perimetro rinominato verso fuori, o con nome non-ASCII, che sparisce dal promemoria. Ora compare anche il vecchio path e i nomi non sono più tra virgolette. Il ramo d'errore `DIFF_RC` è invariato — **ok**.
-- `tests/test_unit_gasmerge.py:119` — lo stub riconosce `diff` in qualunque posizione (`grep -qx 'diff'`) insieme a `--name-only`. Rischio esaminato: uno stub che non intercetta più la chiamata e lascia passare il test del ramo d'errore senza verificarlo davvero. `test_git_diff_name_only_error_blocks` resta verde, quindi lo stub intercetta il `git -c … diff`. `git diff --stat` (riga 42) e `git show` non lo attivano — **ok**.
-- `tests/test_unit_gasmerge.py:395` — rename test: `gas_identity.md` (20 righe identiche) viene committato su main, il branch lo integra e poi fa `git mv` puro. Rischio: che git non riconosca il rename e il test passi anche senza il fix. La copia è identica al 100%, quindi il rename scatta, e la mutation qui sopra lo conferma — **ok**.
-- `tests/test_unit_gasmerge.py:412` — `clients/caffè.py` con perimetro `clients/`. Rischio: differenze NFC/NFD tra macOS e Linux. In locale passa; il comportamento in CI Linux è indicato tra i rischi non verificati — **ok**.
-- `.gitignore:41` — ora `clients/**/*_output.{wav,mp3,txt,json}`, su righe separate. Rischio: sorgenti ignorati senza che l'hook se ne accorga. `git check-ignore -v --no-index`: `clients/voice/tts_output.py` **non** è più ignorato; `a_output.wav`, `a_output.json` e `c_output.txt` (anche annidato) sì — **ok**.
 
-**Riserve (di poco conto)**
-- Cosmetica: le righe `clients/**/*_output.wav` e `*_output.mp3` non servono, perché `*.wav` e `*.mp3` sono già ignorati ovunque.
-- Dichiarata: `*.wav` ignorato in tutto il repo è una scelta dell'operatore (V-2). Eventuali file audio di prova futuri in `tests/` andranno aggiunti con `git add -f`.
+- `scripts/gasmerge.sh:117` — calcola UNMARKED con `git grep -nE -e <RE> --and --not -e gasmerge-ip-ok` sul ref completo; se esce con codice 0 o 1 prosegue, altrimenti BLOCCO.
+  - Rischio esaminato: l'ordine di `--and --not` con -E, e se il marker venga cercato solo nel contenuto.
+  - Verifica: su git 2.55 reale `--not` lega più forte di `--and` e il controllo è per riga. Branch `fix/gasmerge-ip-ok` e path `docs/gasmerge-ip-ok.py` ora danno BLOCCO. Il marker scritto in maiuscolo non allowlista (BLOCCO).
+  - Esito: **ok**.
+- `scripts/gasmerge.sh:125` — RESIDUAL = righe di NON_LOOPBACK uguali a una riga di UNMARKED (`grep -Fx -f <(printf ...)`).
+  - Rischio esaminato: se il confronto esatto si può aggirare.
+  - Sonde fatte su gasmerge.sh reale con /usr/bin/grep (BSD), tutte BLOCCO: contenuto con backslash e `\c`, tab finali, CR finale, riga marcata e riga non marcata identiche nello stesso file, stesso contenuto in due file, collisione di prefisso (file `a` riga 1 `x:5:...` contro file `a:1:x` riga 5), file chiamato `-e`, caratteri `.*[]^$`.
+  - Quando UNMARKED è vuoto il pattern vuoto con -x non matcha nulla: il test che fa passare un IP marcato è verde.
+  - Una riga lunga più di 64k fa uscire BSD grep con "out of memory" e codice 2: il gate blocca lo stesso (falso blocco, ma sicuro).
+  - Le righe non possono sfuggire perché ognuna porta `path:numero di riga`, quindi è unica, e UNMARKED esce dallo stesso git grep con lo stesso formato. Una collisione aumenta i blocchi, non li riduce.
+  - Esito: **ok**, con riserva R-148-2.
+- `scripts/fine_task_finale.sh:91` e `:99` — stessa logica di gasmerge su HEAD, con STOP se il codice è 2 o più.
+  - Controprova: con la versione di main il test `finale_4` dà 1 failed (riprodotto). Ho rimesso il file com'era copiando il backup: diff contro l'index vuoto, bit di esecuzione conservato.
+  - Esito: **ok**, con riserva R-148-1.
+- `scripts/gasmerge.sh:158` — `git diff -z ... | tr '\0' '\n'`.
+  - Rischio esaminato (lezione #139): che `$?` restituisca l'exit code di `tr`.
+  - Verifica: `set -euo pipefail` è attivo dalla riga 2. La mutation `set +o pipefail` fa fallire 1 test, la mutation senza `-z` fa fallire `test_nome_con_apice_nel_perimetro`.
+  - Esito: **ok**.
+- `.github/workflows/ci.yml:117` — nuovo step `if: always()` con `pipefail` e `tee`, più la riga nel job summary (`:172`).
+  - Rischio esaminato: dipendenze su ubuntu e configurazione git dei test.
+  - Verifica: jq e GNU `timeout` sono di serie su ubuntu-latest. I test impostano user.email e user.name per ogni repo e fissano il branch iniziale con `symbolic-ref`, senza dipendere dal git globale. gh è uno stub, quindi nessuna rete. Su GNU grep `-x ''` matcha solo righe vuote. Il fallimento dello step fa diventare rosso il job.
+  - Esito: **ok**. Non l'ho visto girare, vedi i rischi esclusi.
+- `tests/test_unit_gasmerge.py:473` (TestIPAllowlistSoloContenuto), `:427`, `:434`; `tests/test_unit_hooks.py:1985`.
+  - Controprove riprodotte: col gasmerge.sh di main, 3 failed (due avvelenati e apice).
+  - Mutation su gasmerge.sh:170 (`origin/main:` abbreviato): 1 failed (test sul tag).
+  - Mutation "torna a `grep -v`": 2 failed. Mutation `-Fx` → `-F`: 2 failed.
+  - La stessa mutation su `:175` (cat-file) non fa fallire nulla, ma è equivalente in pratica: decide solo PERIM_LETTO, e nel caso peggiore conta più file come motore.
+  - Esito: **ok**.
+- pytest senza kernel ed e2e: **289 passed** (riprodotto). Suite gasmerge 32/32, test `finale` in hooks 8/8.
+
+**Riserve (da tracciare in stato_progetto.md)**
+
+- **R-148-1 (bassa)**: il ramo "codice 2 o più" del secondo git grep non ha test in nessuno dei due script. La mutation che toglie `exit 1` sopravvive (32/32 e 8/8 verdi). Se quel ramo regredisce, il gate si apre: UNMARKED vuoto porta a "Tutti gli IP sono allowlistati — OK". Serve un test con uno stub git che fallisce solo sulla chiamata con `--and`.
+- **R-148-2 (bassa)**: i due git grep girano separati sullo stesso ref simbolico (`refs/remotes/origin/$BRANCH`, oppure HEAD). Un fetch concorrente tra le due chiamate (per esempio l'auto-fetch di un IDE) sposta i numeri di riga. Le righe non combaciano più con -Fx e il gate passa in silenzio, ma solo per quella esecuzione. Due correzioni possibili:
+  - risolvere il tree una volta sola (`git rev-parse <ref>^{tree}`) e usarlo in entrambe le chiamate;
+  - più semplice: applicare il filtro loopback direttamente a UNMARKED ed eliminare il confronto.
+- **R-148-3 (media, PREESISTENTE: c'è già su main, non è una regressione di questo diff)**: il gate IP non vede due casi.
+  - File binari: git grep stampa "Binary file … matches", una riga senza IP che lo Step 1 scarta. La sonda `a.bin` con NUL e 8.8.8.8 dà "Tutti gli IP sono loopback — OK", sia col branch sia con main.  # gasmerge-ip-ok
+  - Righe con byte non UTF-8: la sonda latin1 dà "0 IP trovati — OK", sia col branch sia con main. Con `LC_ALL=C git grep` la riga viene trovata.
+  - Correzione suggerita: `git grep -a` più `LC_ALL=C` in tutte le chiamate del gate IP (gasmerge.sh e fine_task_finale.sh), con un test per caso.
+- Nota: il limite dichiarato "un prefisso con IP dà un falso blocco" resta sicuro, come previsto. Le righe sopra 64k ora bloccano con "errore nel filtro" invece che con l'elenco degli IP: blocca comunque, cambia solo il messaggio.
 
 **Rischi esplicitamente esclusi**
-- Non ho eseguito il test non-ASCII su Linux, dove gira la CI. Sono in dev su macOS con `precomposeunicode`. Python scrive NFC e git su Linux restituisce i byte tali e quali, quindi mi aspetto che passi, ma lo confermerà la run `unit-suite`.
-- Non ho eseguito `gasmerge` reale contro GitHub, per lo stesso motivo della #145: farebbe fetch e merge sul repo di produzione.
-- Non ho provato nomi di file che contengono un a-capo: il ciclo che li legge va riga per riga e non li gestirebbe. È un caso marginale per un promemoria.
 
-**Memoria:** ho aggiunto la riga #146, senza lezioni nuove, in `/Users/gas/Gas/.claude/agents/memoria_revisore.md` e l'ho committata (`2ffa88c`). La riga #145 era già in `30ba09f`.
+- **Run CI reale su ubuntu non verificata**: non posso pushare né avviare il workflow. La parte GNU grep e coreutils è solo ragionata, non eseguita (qui grep è BSD 2.6.0 e `timeout` è uno shim in ~/bin). L'agente principale deve controllare nell'handoff che lo step "Run gasmerge suite" sia verde e che la riga del summary sia popolata.
+- Comportamento di GNU grep con byte non UTF-8 nel pattern file non verificato: nessun GNU grep disponibile in locale.
+- `git diff --stat` a gasmerge.sh:42 (solo visualizzazione) resta senza test, come dichiarato dall'agente.
+- Il nome di file con a-capo nel promemoria resta escluso (limite dichiarato).
 
-**File rilevanti**
-- `/Users/gas/Gas/scripts/gasmerge.sh`
-- `/Users/gas/Gas/tests/test_unit_gasmerge.py`
-- `/Users/gas/Gas/.gitignore`
-- `/Users/gas/Gas/.claude/hooks/promemoria_end.sh`
-- `/Users/gas/Gas/.claude/commands/fine-task.md`
+**Memoria**: riga #148 e due lezioni nuove (gate grep provati con input binari e non UTF-8; confronto esatto tra due esecuzioni separate = TOCTOU) aggiunte in coda a `/Users/gas/Gas/.claude/agents/memoria_revisore.md`. Committate da sole con `scripts/commit_memoria_revisore.sh` (commit `fe005ee`); il diff staged sotto review è rimasto intatto nell'index.
 
-### Review 147 (commit `27f04b7`, dopo la verifica esterna #122)
+Sonde e mutation stanno in `/private/tmp/claude-501/-Users-gas-Gas/91091029-3df7-47ca-a712-d6baf2fbda65/scratchpad/`: `probe.py`, `sonda_main.sh`, `mutation.sh`, `controprova_finale.sh`, `longline.sh`.
+
+### Review 149
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #147: diff staged di fix/gasmerge-perimetro-gitignore (PR #122), 4 file, +54/−2. Letture obbligatorie fatte: CLAUDE.md §5/§8/§10, stato_progetto.md (lettura selettiva) e memoria_revisore.md (#141–#146).
+Review #149 sul diff staged aggiornato (5 file, +208/-13). R-148-2 e R-148-3 sono chiuse in entrambi gli script; R-148-1 è chiusa solo in gasmerge.sh. Resta una riserva bassa su fine_task_finale.sh: due delle correzioni non hanno un test che le protegga. Protocollo seguito come per la #148 (CLAUDE.md sez. 5, stato_progetto letto in modo mirato, memoria del revisore). Il diff non introduce slicing della history né output simulati dei tool. Cap delle iterazioni, `_get_window` e provider non sono toccati.
 
 **Elementi del diff esaminati**
-- `scripts/gasmerge.sh:91`: il gate IP ora esegue `git grep` su `refs/remotes/origin/$BRANCH`. Ho verificato il rischio di un tag omonimo `origin/<branch>` che dirotta la scansione su un albero pulito. Esito **ok**. Controprova: con il gasmerge.sh di HEAD, `TestIPRefCompleto` fallisce; con il fix passa.
-- `scripts/check_landing.sh:33`: ora fa `rev-parse "refs/remotes/origin/${BRANCH}"`. Ho verificato il rischio di un tag `origin/main` su un HEAD non pushato che maschera il Check B. Esito **ok**. Controprova: con il check_landing.sh di HEAD, `test_land_tag_omonimo_non_maschera_head_non_pushato` fallisce.
-- `tests/test_unit_gasmerge.py:418` (`test_tag_origin_main_non_dirotta_il_promemoria`): l'obiettivo è uccidere la mutation sulla riga 144. Ho riportato a mano la riga 144 a `"origin/main...origin/$BRANCH"` e il test fallisce. Esito **ok**.
-- `tests/test_unit_gasmerge.py:433` (`TestIPRefCompleto`): ho verificato il rischio di autoblocco del gate IP sul sorgente del test. Il marker `# gasmerge-ip-ok` sta sulla riga Python, mentre il file scritto nel repo temporaneo resta senza marker, quindi il test resta discriminante. Esito **ok**.
-- `tests/test_unit_hooks.py:1476`: il test asserisce solo `returncode == 1`, senza il messaggio `[B]`. Ho verificato se fosse comunque discriminante: lo è, perché con lo script di HEAD fallisce. Esito **ok**.
-- Contesto, `scripts/gasmerge.sh:114`: il filtro `grep -v 'gasmerge-ip-ok'` lavora sulla riga intera di `git grep`, prefisso `<ref>:<path>:` compreso. Esito **riserva** (R-147-1).
 
-**Sonda sui ref abbreviati nel perimetro (richiesta esplicita)**
-Ho cercato con grep `origin/`, `rev-parse`, `merge-base`, `git diff|log|show|grep|cat-file`, `@{u}` e i ref costruiti da variabili in scripts/, .claude/hooks/, .github/workflows/ e .claude/commands/fine-task.md. Nessun `origin/...` abbreviato viene ancora usato per risolvere un ref: restano solo commenti e messaggi (fine-task.md:12-27, promemoria_end.sh:46, session_end.sh:11, ci.yml:223-233, check_landing.sh:31/36/39). Tutte le risoluzioni usano `refs/remotes/origin/...`, `HEAD`, `@{u}` o `${BASE}`. Esito **ok**.
+- `scripts/gasmerge.sh:94` e `scripts/fine_task_finale.sh:68` — risolvono il tree una volta sola (`git rev-parse --verify -q "<ref>^{tree}"`, BLOCCO/STOP se fallisce). Le due git grep usano poi `"$IP_TREE"`.
+  - Rischio: TOCTOU tra le due git grep (R-148-2), ed errore di rev-parse.
+  - Il tree è fissato prima di entrambe le git grep, quindi un fetch concorrente non sposta più i numeri di riga.
+  - Ho tolto `exit 1` dal ramo di errore di rev-parse (mutation G9): la mutation sopravvive, ma il gate resta chiuso. Con IP_TREE vuoto la git grep esce con codice 128, si entra nel ramo `*)` e scatta BLOCCO.
+  - Il prefisso dell'output ora è lo SHA del tree. Nel messaggio cambia solo l'estetica, e branch o ref non compaiono più nel testo filtrato.
+  - Esito: **ok**.
+- `scripts/gasmerge.sh:124` e `:132`, `scripts/fine_task_finale.sh:96` e `:104` — `LC_ALL=C git grep -a` in tutte e quattro le git grep, `LC_ALL=C` anche su sed, `grep -qE` e `grep -Fx`.
+  - Rischio: un fail-open residuo su file binari o righe non UTF-8, e falsi blocchi sul repo reale.
+  - Ho fatto girare la logica nuova sul tree dell'index staged (`git write-tree`) e su origin/main: 55 e 50 match, 0 residui, rc 1. Nessun falso blocco, e nel repo non ci sono file binari.
+  - I byte NUL tolti da `$(...)` spariscono allo stesso modo in NON_LOOPBACK e in UNMARKED, quindi il confronto -Fx resta coerente.
+  - Esito: **ok**.
+- `tests/test_unit_gasmerge.py:505` (`test_errore_della_grep_allowlist_blocca`, stub git che fallisce solo con `--and`), `:525` (TestIPFileBinariENonUtf8) e `:140` (`errors="replace"` solo in `_run`).
+  - Mutation su gasmerge.sh, ognuna con 1 failed su 35:
+    - G1/G2: tolgo `-a` dalla prima o dalla seconda git grep;
+    - G3/G4: tolgo `LC_ALL=C` dalla prima o dalla seconda git grep;
+    - G5/G6/G7: tolgo `LC_ALL=C` da sed, da `grep -qE` o da `grep -Fx`;
+    - G8: tolgo `exit 1` dal ramo d'errore della allowlist.
+  - Esito: **ok**.
+- `tests/test_unit_hooks.py:2005` (`test_finale_4e_file_binario_con_ip`).
+  - Uccide F1 e F2 (tolgo `-a` dall'una o dall'altra git grep di fine_task_finale.sh).
+  - Esito: **riserva**, vedi R-149-1.
+- pytest senza kernel ed e2e: **293 passed** (riprodotto). fine_task_finale.sh rimesso com'era dopo le mutation in place: diff contro l'index vuoto.
 
-**Test**
-- pytest senza kernel e senza e2e: **284 passed**, riprodotto.
-- Script ripristinati dopo le mutation, verificato con `cmp`.
+**Riserva**
 
-**Riserve**
-- **R-147-1 (MEDIA, preesistente, non è una regressione).** Il filtro allowlist `scripts/gasmerge.sh:114` agisce anche sul prefisso `<ref>:<path>:` stampato da `git grep <tree>`. Il prefisso l'ho verificato a HEAD (`refs/remotes/origin/fix/gasmerge-perimetro-gitignore:clients/voice/...`). Ne segue che basta un branch come `fix/gasmerge-ip-ok`, o un file il cui path contiene `gasmerge-ip-ok`, perché ogni IP risulti allowlistato e il gate IP sia aggirato. Il caso del branch è dimostrato sul formato dell'output, non con un repo di prova (vedi sotto). Fix proposto: filtrare dentro `git grep` sul solo contenuto, cioè `-e <IP> --and --not -e gasmerge-ip-ok`, più un test con un branch dal nome "avvelenato".
-- **R-147-2 (minore).** Due mutation sopravvivono. Il ref abbreviato riportato a `gasmerge.sh:42` (diff --stat, solo visualizzazione) lascia verdi 28 test su 28. Lo stesso vale per `gasmerge.sh:156/:161` (il perimetro letto da main): un tag `origin/main` lì oggi non avrebbe un test che lo rileva.
-- **R-147-3 (minore).** `tests/test_unit_gasmerge.py` non gira in `.github/workflows/ci.yml`, come test_unit_gate.py (R-gate-3). I nuovi test proteggono quindi solo in locale.
-- **Cosmetica.** In `check_landing.sh:33` manca `--verify -q`. Con un ref assente, `rev-parse` stampa il nome stesso: verificato, `REMOTE_HEAD` diventa `[refs/remotes/origin/inesistente-xyz]`. Si finisce nel ramo "!=" invece che in "non esiste". Resta fail-closed (exit 1), ma il messaggio è sbagliato. Preesistente.
+- **R-149-1 (bassa)**: in `scripts/fine_task_finale.sh` sopravvivono due mutation:
+  - F3: tolgo `LC_ALL=C` dalla prima git grep. Manca un test con una riga latin1 per fine_task_finale. Proprio sul Mac dell'operatore la #148 aveva visto la riga latin1 sfuggire al gate.
+  - F4: tolgo `exit 1` dal ramo d'errore della allowlist. Manca il test con lo stub git che fallisce su `--and`. Se il ramo regredisce, il gate si apre.
+
+  Quindi R-148-1 e R-148-3 sono chiuse sul codice di entrambi gli script, ma il test che le protegge esiste solo su gasmerge.sh. Bastano due test gemelli in TestFinaleScript.
 
 **Rischi esplicitamente esclusi**
-- La sonda end-to-end su un repo temporaneo con branch `fix/gasmerge-ip-ok` non l'ho eseguita. Il hook `review_gate.sh` blocca qualunque comando Bash che contiene un commit, anche fuori dal progetto, e non l'ho aggirato. R-147-1 è dimostrata solo sul formato reale dell'output di `git grep` più il filtro `grep -v`.
-- Non ho verificato il comportamento sulla CI GitHub reale né su una VPS Linux: ho eseguito solo su macOS in locale.
-- Suite kernel non eseguita: il diff non tocca il motore. Per questo il round-trip agentico di §7 non si applica.
 
-**Memoria**
-- Aggiunta la riga #147 in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, con 2 lezioni:
-  - chiudere una classe di finding richiede un grep su tutte le risoluzioni di ref, più una mutation per ogni riga (le review #144-#146 avevano mancato `gasmerge.sh:91`);
-  - un marker di allowlist cercato sull'output di `git grep <tree>` matcha anche il prefisso `<ref>:<path>`.
-- Commit atomico `6cbfe39` (`chore(revisore): memoria review #147`). L'index del diff sotto review è intatto: 4 file staged.
+- Run CI su ubuntu non verificata, perché non posso pushare. Il comportamento di GNU grep e glibc su latin1 e NUL l'ho solo ragionato. Su Linux il test latin1 potrebbe passare anche senza `LC_ALL=C` (meno discriminante), ma resta verde. Bash 5 stampa "ignored null byte" su stderr, senza effetti.
+- Non ho misurato le prestazioni di `-a` su binari grandi: oggi il repo non ne ha.
 
-Tu ora: le riserve R-147-1/2/3 vanno tracciate in `/Users/gas/Gas/reports/stato_progetto.md`. Il marcatore `.review_ok` va rigenerato con `bash scripts/segna_review_ok.sh` prima del commit.
+**Memoria**: riga #149 e una lezione nuova (un fix replicato su uno script gemello va coperto da mutation in entrambi i file) aggiunte in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, commit `5a83017`. L'index sotto review è rimasto intatto.
+
+Le sonde stanno in `/private/tmp/claude-501/-Users-gas-Gas/91091029-3df7-47ca-a712-d6baf2fbda65/scratchpad/`: `mutation2.sh`, `realrepo.sh`, `realrepo_idx.sh`.
 
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py/brains/modules/. Modifiche a tests/ (`tests/test_unit_gasmerge.py`, `tests/test_unit_hooks.py`):
-- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e`: 275 → **284 passed** (+7 `TestPerimetroPromemoria`, +1 `TestIPRefCompleto`, +1 check_landing con tag).
-- Riepilogo reale: `284 passed in 66.85s (0:01:06)`.
-- Controprove: col gasmerge.sh di main, `-k "Perimetro or DiffGuard"` → `5 failed, 2 passed`; col gasmerge.sh di `4e598e2`, `-k tag` → `1 failed, 1 passed` (gate IP); col check_landing.sh di `4e598e2` → `1 failed`; riga 144 riportata a `origin/main...origin/$BRANCH` → `1 failed, 1 passed`.
+- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e`: 284 → **293 passed**.
+- Riepilogo reale: `293 passed in 73.97s (0:01:13)`.
+- Controprove: col gasmerge.sh di main `-k "avvelenato or apice"` → `3 failed`; `-k Binari` → `2 failed`; col fine_task_finale.sh dello stage precedente test_finale_4d / 4e → `1 failed` ciascuno; mutation "perimetro di main abbreviato" → `1 failed`; mutation "senza exit 1 nel ramo d'errore allowlist" → `1 failed`.
 - Kernel non rilanciato: non toccato.
 
 ## §6 STATO CI
 
 ```
-completed	success	docs(gasmerge-perimetro): fine-task — promemoria dal perimetro, ref c…	CI	fix/gasmerge-perimetro-gitignore	push	37210222546	1m13s	2026-10-04T14:41:56Z
-completed	failure	fix(gasmerge): promemoria dal perimetro di review, ref completi, .git…	CI	fix/gasmerge-perimetro-gitignore	push	37210021530	1m3s	2026-10-04T14:38:46Z
-completed	success	Merge pull request #121 from Gasss23/fix/gate-rename-perimetro-ci	CI	main	push	37206707321	1m4s	2026-10-04T13:44:41Z
-completed	success	docs(gate-rename): fine-task — correzione §6 (mappatura commit→run re…	CI	fix/gate-rename-perimetro-ci	push	37206249513	1m13s	2026-10-04T13:37:00Z
+completed	failure	fix(gate-ip): allowlist sul solo contenuto, tree unico, binari/non-UT…	CI	fix/gate-ip-allowlist-ci-gasmerge	push	37213618231	1m14s	2026-10-04T15:36:09Z
+completed	success	Merge pull request #122 from Gasss23/fix/gasmerge-perimetro-gitignore	CI	main	push	37212266646	1m5s	2026-10-04T15:14:43Z
+completed	success	docs(gasmerge-perimetro): fine-task bis — ref completo nel gate IP, v…	CI	fix/gasmerge-perimetro-gitignore	push	37211230456	1m13s	2026-10-04T14:58:16Z
 ```
 
 Mappatura commit→run:
-- `30ba09f`, `2ffa88c` (memoria #145/#146): nessuna run su questi SHA (pushati insieme a `03e01f8`).
-- `03e01f8` (fix): run `37210021530` — `unit-suite: success`, `handoff-check: failure` (`check_handoff: ERRORE — la sessione tocca il perimetro di review ma reports/handoff.md non è nel diff di sessione: handoff obbligatorio (V-A).`): atteso, l'handoff arrivava col commit successivo.
-- `4e598e2` (primo fine-task): run `37210222546` — success (unit-suite e handoff-check pass, confermato dalla verifica esterna).
-- `6cbfe39` (memoria #147): nessuna run su questo SHA (sarà pushato insieme a `27f04b7` e al fine-task).
-- `27f04b7` (fix gate IP / check_landing): nessuna run su questo SHA (stesso push del fine-task, la run testa solo il commit di testa).
+- `fe005ee`, `5a83017` (memoria #148/#149): nessuna run su questi SHA (pushati insieme a `09d4005`).
+- `09d4005` (fix): run `37213618231` — `unit-suite: success` (step "Run gasmerge suite": `35 passed in 4.52s` su ubuntu, quindi binario, latin1 e non-ASCII verificati anche su Linux), `handoff-check: failure` (`check_handoff: ERRORE — la sessione tocca il perimetro di review ma reports/handoff.md non è nel diff di sessione: handoff obbligatorio (V-A).`): atteso, l'handoff arriva col commit di fine-task.
 - Commit di fine-task (che contiene questo file): run non ancora disponibile alla scrittura dell'handoff. La copertura pre-merge resta a `gasmerge` (gh pr checks --watch).
 
 ## §7 RISERVE APERTE
 
-- **R-147-1 (MEDIA, preesistente)**: allowlist `gasmerge-ip-ok` applicata anche al prefisso `<ref>:<path>:` di `git grep` (gasmerge.sh e gate IP di fine_task_finale.sh) → decisione §0.2.
-- **R-147-2 (minore)**: mutation sopravvissute su `gasmerge.sh:42` e sul perimetro letto da main.
-- **R-147-3 (minore)**: `tests/test_unit_gasmerge.py` non gira in ci.yml.
-- Cosmetica #147: `check_landing.sh:33` senza `--verify -q` (messaggio sbagliato, resta fail-closed).
-- Minori #146: righe `clients/**/*_output.{wav,mp3}` ridondanti; fixture audio in tests/ con `git add -f`.
-- V-3 / V-5 verifica #121: aperte, decisione operatore (§0.3, §0.4).
-- R-143-2 (ci.yml dalla PR) e R-143-3 (stallo con falso blocco su main): invariate, R-143-2 → V-B vera.
+- **R-149-1 (bassa)**: in `fine_task_finale.sh` sopravvivono 2 mutation (senza `LC_ALL=C` sulla prima git grep; senza `exit 1` nel ramo d'errore della allowlist): mancano 2 test gemelli di quelli di gasmerge.
+- `gasmerge.sh:42` (diff --stat, solo visualizzazione) senza test sul ref completo.
+- Nome di file con a-capo nel promemoria: limite dichiarato.
+- V-3 / V-5 verifica #121: decisione operatore (§0.2, §0.3).
+- R-143-2 (ci.yml dalla PR) e R-143-3: invariate, R-143-2 → V-B vera.
 
-### Verdetto INTEGRALE della verifica esterna PR #122 (handoff `4e598e2`)
+### Verdetto INTEGRALE della verifica esterna bis PR #122 (handoff `7c4a0aa`)
 
-Unica aggiunta al testo: il marker `# gasmerge-ip-ok` sulla riga con l'IP di esempio, richiesto dal gate IP su reports/.
+Unica aggiunta al testo: il marker `# gasmerge-ip-ok` in fondo alle righe che contengono un IP di esempio, richiesto dal gate IP su reports/ (vale anche per i verdetti nel §4).
 
-VERIFICA ESTERNA PR #122 — APPROVATO CON RISERVE
+VERIFICA ESTERNA PR #122 (handoff pinnato 7c4a0aa) — APPROVATO CON RISERVE
 
-Metodo: clone usa-e-getta nella scratchpad a 4e598e2f7291d8bf307603620e14aaf8e5ec7954, più un secondo clone al merge-base b7421fd. Ho riletto il diff completo da base a HEAD, con il venv esistente del repo come interprete (Python 3.14). Ho rilanciato le suite, fatto controprove contro il gasmerge.sh di main e mutation singole, interrogato l'API GitHub e scritto una sonda su un repo git reale con bare remote e stub gh (probe_ip.py, nella scratchpad). Il repo reale non è stato toccato: `git status` mostra solo .agents/, .codex/ e AGENTS.md, già non tracciati prima dell'inizio.
+Metodo: clone usa-e-getta nella scratchpad, checkout di 7c4a0aac26d8d378d5390281cacab41cb3e2911e, merge-base con main b7421fd. Ho letto l'intero diff di scripts/, .claude/hooks, fine-task.md e .gitignore, più il diff di stato_progetto.md. Interprete: /Users/gas/Gas/.venv (Python 3.14.7).
+Cosa ho eseguito:
+- pytest (senza kernel e senza e2e) alla base e al commit.
+- Controprove con gasmerge.sh preso a b7421fd e a 4e598e2, tramite GASMERGE_SCRIPT.
+- Mutation singole su gasmerge.sh:144, :156/:161 e su check_landing.sh:33.
+- Sonde end-to-end su repo git reali con bare remote e stub gh (probe.py nella scratchpad), sul gasmerge.sh del commit.
+- API GitHub per ruleset, run e check della PR.
+- Il repo reale non è stato toccato: `git status` mostra solo .agents/, .codex/ e AGENTS.md, già non tracciati prima.
 
 CLAIM VERIFICATI
-- §2/§3 contro git reale: VERO, con scarto cosmetico. I 10 file e i 4 commit corrispondono al merge-base b7421fd. Lo --stat dell'handoff dà 274+/219- contro i 292+/215- reali, perché non conta il commit di fine-task 4e598e2 che contiene l'handoff stesso. Il §3 lo dichiara; il §2 no.
-- Test 275 -> 281: VERO. Base b7421fd: 275 passed. HEAD: 281 passed in 66.36s. Le tre suite hooks, gasmerge e gate: 170 passed, come dichiarato dalla review #146.
-- Controprova "5 failed, 2 passed": VERO. Con il gasmerge.sh di b7421fd sotto i test nuovi, `-k "Perimetro or DiffGuard"` dà 5 failed, 2 passed. Il test doc-only e DiffGuard passano per costruzione.
-- R-145-1 chiusa: VERO. Togliendo un flag alla volta, senza --no-renames fallisce solo test_rename_fuori_perimetro_resta_motore; senza core.quotePath=false fallisce solo test_nome_non_ascii_nel_perimetro.
-- V-1 (verifica #121) chiusa, promemoria dal perimetro: VERO. gas_identity.md, clients/ e le altre voci non coperte dalla vecchia regex ora compaiono. Un branch che restringe il perimetro non si declassa da solo: contano le voci di main più quelle del branch.
-- R-145-2 chiusa: VERO. Con file creati in clients/voice/sub/, tts_output.py e x_output.md risultano visibili come "??". *_output.{wav,mp3,txt,json} e x.wav sono ignorati. Nessun file tracciato è colpito da `git ls-files -ci --exclude-standard`.
-- CI sullo SHA 4e598e2: VERO. Run 37210222546: unit-suite pass (1m4s) e handoff-check pass. Il test non-ASCII, che il revisore non aveva potuto provare su Linux, passa in CI.
-- Run 37210021530 su 03e01f8 rossa per handoff-check: VERO. handoff-check fallita su quel run, come scritto nel §6. Non ho riletto il testo dell'errore dal log.
-- Check required nel ruleset main-lock: VERO. Sono unit-suite e handoff-check, con 0 approvazioni richieste, nessun bypass actor e policy strict. Il ruleset non ha regole sui tag: è il V-3 già dichiarato nell'handoff, confermato.
-- "R-144-1 CHIUSA, ref completi in gasmerge.sh": FALSO. Vedi V-1.
+- §2 (file toccati) contro git reale: VERO sul set. Sono 12 file, tutti quelli dichiarati. I conteggi di handoff.md non tornano: lo stat dichiara 354 righe, il reale è 366 (+204/-162 secondo la PR). Il disallineamento è dichiarato nel NB del §2, quindi V-4 cosmetica.
+- §3 (git log): VERO. I 6 commit elencati coincidono con quelli reali. Manca 7c4a0aa, che contiene l'handoff stesso: è dichiarato "per costruzione".
+- Test 275 → 284: VERO. Alla base (b7421fd) sono 275 passed in 59.8s. Al commit sono 284 passed in 67.8s.
+- Controprove "fallisce prima e passa dopo":
+  - Con il gasmerge.sh di b7421fd, `-k "Perimetro or DiffGuard or IPRef or tag"` dà 7 failed, 2 passed. Passano i due che passano per costruzione (doc-only e DiffGuard).
+  - Con il gasmerge.sh di 4e598e2 fallisce solo `TestIPRefCompleto` (1 failed, 27 passed). Il ref abbreviato alla riga 91 era quindi reale, e ora è chiuso.
+  - Con check_landing.sh:33 riportato a `origin/${BRANCH}` fallisce solo `test_land_tag_omonimo_non_maschera_head_non_pushato`.
+  - Con gasmerge.sh:144 riportato a `origin/main...origin/$BRANCH` fallisce solo `test_tag_origin_main_non_dirotta_il_promemoria`.
+- R-147-2: VERO, e la mutation sul perimetro letto da main è una mutation reale. Con `origin/main` abbreviato alle righe 156 e 161 restano 28 passed su 28. Anche la riga 42 è dichiarata sopravvissuta.
+- Sonda sul tag ambiguo: un tag `refs/remotes/origin/feat` creato sul main pulito dà solo un warning "ambiguous". Il gate IP scansiona comunque l'albero giusto e dà BLOCCO. Il ref completo regge.
+- Nessun ref abbreviato usato per risolvere: ho cercato con grep in scripts/, .claude/hooks, ci.yml e fine-task.md. Restano solo `@{u}` (fine_task_finale.sh:125, upstream configurato), testi di messaggi e commenti. VERO.
+- .gitignore (R-145-2): VERO. `clients/voice/sub/{a_output.json,b_output.txt,x.wav}` e `tests/f.wav` sono ignorati. `tts_output.py` e `c_output.md` restano visibili come `??`. `git ls-files -ci` è vuoto, quindi nessun file tracciato è colpito.
+- CI sullo SHA 7c4a0aa: VERO, run 37211230456 success. unit-suite pass in 1m10s, handoff-check pass in 6s. Il §6 dice "non ancora disponibile" per il commit finale, ma ora è verde (V-4).
+- Ruleset main-lock: VERO. Check required: unit-suite e handoff-check. Policy strict, 0 approvazioni, nessun bypass actor. Non c'è nessuna regola sui tag, come dichiarato in V-3 della #121.
+- R-147-3 (test_unit_gasmerge.py non gira in CI): VERO, e peggio di come è presentata (vedi V-2). Il ci.yml esegue solo hooks (71 passed), voice (19), handoff_check (40), gate (74) e il runner del kernel. Nel log della run ci sono 0 occorrenze di "test_unit_gasmerge".
 
 FINDING
-- V-1 (MEDIA) — il ref abbreviato resta in scripts/gasmerge.sh:91, nel gate IP.
-  - Lì c'è ancora `git grep -nE '<regex IP>' "origin/$BRANCH"`. Se esiste un tag `origin/<branch>`, git lo risolve prima del remote-tracking ref (refs/tags/ vince su refs/remotes/), e il gate scansiona l'albero sbagliato.
-  - Sonda probe_ip.py: il branch feat contiene HOST="8.8.8.8".  # gasmerge-ip-ok
-    - Senza tag, l'invariante dà "BLOCCO: trovati IP non allowlistati... origin/feat:x.py:1".
-    - Con un tag origin/feat che punta a main, pushato sul bare e riscaricato da `git fetch --prune origin`, dà "0 IP trovati — OK", con il warning "refname 'origin/feat' is ambiguous". Bypass dell'invariante IP.
-  - È la stessa classe di R-143-1 e R-144-1, che stato_progetto e handoff dichiarano chiuse. Il PR tocca le righe 42 e 141 ma non la 91.
-  - Perché nessuno se ne è accorto: una mutation che riporta a `origin/main...origin/$BRANCH` il diff della riga 144 lascia verdi tutti i 26 test di gasmerge. Nessun test copre la tesi "ref completi".
-  - Fix: "refs/remotes/origin/$BRANCH" alla riga 91, più un test con un tag omonimo che deve ancora produrre "BLOCCO". Va corretto anche stato_progetto ("R-144-1 CHIUSA").
-- V-2 (BASSA) — scripts/check_landing.sh:33 usa `git rev-parse "origin/${BRANCH}"`, ancora abbreviato. Un tag omonimo può falsare il confronto HEAD locale contro origin. Il file è nel perimetro e lo stesso fix da una riga vale qui.
-- V-3 (COSMETICA) — handoff §2 e §6. Lo --stat è disallineato di pochi punti rispetto al reale, come detto sopra. Il §6 dice "run non ancora disponibile" per il commit finale, ma ora è verde. Nulla di bloccante.
-- V-4 (BASSA, già dichiarata e confermata) — .gitignore resta fuori dal perimetro (V-5 della #121). clients/**/*_output.txt e *_output.json possono nascondere dati legittimi con quel nome, e *.wav globale ignora anche fixture audio future in tests/.
+- V-1 (MEDIA, già dichiarata come R-147-1: confermata, riprodotta, nessuna sopravvalutazione). Il filtro `grep -v 'gasmerge-ip-ok'` (gasmerge.sh:114) lavora anche sul prefisso `<ref>:<path>:` di `git grep`.
+  - Sonda con repo reale e `gasmerge.sh` del commit, file `x.py` con `HOST="8.8.8.8"` e nessun marker nel contenuto:  # gasmerge-ip-ok
+    - branch `fix/gasmerge-ip-ok` → "Tutti gli IP sono allowlistati (gasmerge-ip-ok) — OK";
+    - controllo con branch `feat` → "BLOCCO: trovati IP non allowlistati";
+    - file `docs/gasmerge-ip-ok.py` con lo stesso IP, su branch `feat` → "OK".
+  - Il bypass richiede solo di scegliere il nome del branch o del file, e il nome del branch lo sceglie chi apre la PR.
+  - Il fix proposto funziona: `git grep -nE -e <IP> --and --not -e gasmerge-ip-ok` ha escluso la riga marcata e tenuto quella con l'IP nudo, anche con un file dal nome avvelenato. Va aggiunto un test con nome avvelenato.
+  - Il gate IP duplicato in fine_task_finale.sh:90 ha la stessa debolezza sul path. Lì il ref è `HEAD`, quindi il branch non conta, ma il path sì.
+  - La PR non lo aggrava e non è una regressione. Ma il merge della PR lo lascia aperto, ed è un bypass del gate disciplinare dell'IP.
+- V-2 (MEDIA, nuovo) — il copertura-CI è sovrastimata e una prova ereditata è falsa.
+  - Il verdetto della verifica precedente (#122 su 4e598e2), incollato integrale nel §4 dell'handoff, afferma: "il test non-ASCII, che il revisore non aveva potuto provare su Linux, passa in CI". È FALSO. Quel test sta in tests/test_unit_gasmerge.py, che la CI non esegue (nessuna occorrenza nel log, e ci.yml non lo include).
+  - Di conseguenza il comportamento di gasmerge su Linux (NFC/NFD, quotePath) e tutti i 28 test di gasmerge non hanno alcuna copertura automatica. Gli 8 test nuovi di questa PR su gasmerge.sh proteggono solo la macchina locale. L'handoff non lo dice nel §6, e il §7 lo riduce a "R-147-3 minore".
+  - Fix: aggiungere uno step `pytest tests/test_unit_gasmerge.py` a ci.yml. Il file è nel perimetro, quindi serve review. Rimuovere o correggere la frase falsa sul test non-ASCII in CI.
+- V-3 (BASSA, nuovo) — la chiusura di R-145-1 è parziale: ci sono ancora nomi di file che sfuggono al promemoria.
+  - `git diff --name-only` senza `-z`, anche con `core.quotePath=false`, quota comunque i nomi che contengono doppio apice, tab, backslash o a-capo.
+  - Sonda: un file `clients/a"b.py`, o `clients/a<TAB>b.py`, o `clients/a\b.py` (un solo file nel diff, dentro `clients/`, che è nel perimetro) dà "FILE DI MOTORE: nessuno (doc-only)". Il confronto a prefisso fallisce perché il nome comincia con un doppio apice.
+  - Il difetto c'era già con la vecchia regex, ma la PR dichiara la classe chiusa. È solo un promemoria: review_gate.sh e check_handoff.py usano `-z` e catturano il caso.
+  - Fix: `git diff -z --name-only` con loop su NUL (`read -r -d ''`), come negli altri gate.
+- V-4 (COSMETICA) — conteggi del §2 per handoff.md (354 contro 366 reali), §6 "run non ancora disponibile" ormai superato (la run 37211230456 è verde). Anche stato_progetto riga 53 dice ancora "116 review completate", ma siamo alla #147 (preesistente).
+- V-5 (BASSA, già dichiarata come V-5 della #121 e confermata). .gitignore, knowledge/ e CLAUDE.md restano fuori dal perimetro. `*.wav`/`*.mp3` globali ignorano in silenzio anche fixture audio future in tests/ o clients/. `tests/f.wav` risulta ignorato dalla regola `.gitignore:39`. I file ignorati non sono visibili nemmeno all'hook.
 
 NON VERIFICATO
-- Esecuzione di gasmerge.sh contro il GitHub di produzione (PR e merge reali): non ho lanciato il merge. L'unica esecuzione dello script è quella su repo locali con stub gh della sonda. Non ho riletto l'errore di handoff-check nel log del run 37210021530.
-- Nomi di file con a-capo e NFD/NFC su macOS: non provati. La CI Linux passa il test non-ASCII.
-- I verdetti #145/#146 incollati nel §4: non ho modo di confrontarli con l'output originale del revisore. Sono coerenti con le righe in memoria_revisore.md, e ho riprodotto i numeri 168 e 170 dichiarati lì.
+- Esecuzione reale di gasmerge contro GitHub (fetch e merge veri): non lanciata, per non toccare produzione. Provato solo su repo locali con stub gh.
+- Comportamento su Linux (NFC/NFD, quotePath) del test non-ASCII: nessuna esecuzione su Linux, e la CI non lo copre (V-2).
+- Review #145/#146/#147 incollate nel §4: non ho l'output originale del revisore, quindi non posso confrontarle. Ho riprodotto i numeri 284 e 275, e ho controllato a mutation i test che i revisori dicono discriminanti. Non ho riesaminato i singoli passaggi.
+- Esito del run 37210021530 (handoff-check rosso su 03e01f8): non ho riletto il log. Il motivo dichiarato nel §6 è plausibile.
+- Nomi di file con a-capo: la sonda V-3 copre apice, tab e backslash. L'a-capo l'ho coperto solo per inferenza (stessa quotatura).
 
 RACCOMANDAZIONE
-Non fare altro lavoro prima di correggere la riga 91 di scripts/gasmerge.sh con il ref completo refs/remotes/origin/$BRANCH e di aggiungere un test con un tag omonimo. Allineare la riga 33 di scripts/check_landing.sh e stato_progetto, che ora dichiara chiusa una riserva ancora aperta. Il merge della PR #122 è accettabile solo se l'operatore accetta la riserva V-1 (nessuna perdita immediata, ma il bypass del gate IP è reale). Altrimenti correggere nello stesso branch, farlo rivedere e rilanciare la CI. Il resto del cambiamento (promemoria dal perimetro, flag --no-renames e quotePath, .gitignore) è provato e tiene.
+Il merge della PR #122 è accettabile: il perimetro letto da `.claude/perimetro_review.txt`, i ref completi (anche nel gate IP e in check_landing) e il .gitignore sono provati, 284 passed riprodotti, CI verde sullo SHA e ruleset come dichiarato. Prima della V-B vera, in una micro-fetta separata:
+1. chiudere V-1 (filtro dentro `git grep`, anche in fine_task_finale.sh, con test a nome avvelenato);
+2. chiudere V-2 (aggiungere test_unit_gasmerge.py a ci.yml, e togliere dalla storia dell'handoff la frase che dice che il test non-ASCII passa in CI);
+3. V-3 con `-z` nel promemoria.
+Gli altri punti (V-4, V-5) sono cosmetici o già in decisione dell'operatore.
 
-Esito: V-1 e V-2 corretti in `27f04b7` (review #147); V-3 cosmetica superata da questo handoff; V-4 = V-5 della #121, aperta.
+Esito: PR #122 mergiata (operatore); V-1, V-2, V-3 e la riga 53 di stato_progetto (V-4) chiusi in questa PR #123; V-5 resta decisione operatore.
