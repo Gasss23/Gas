@@ -616,6 +616,118 @@ class TestReviewGateFailClosed:
         result = self._run(tmp_path)
         assert result.returncode == 2, result.stderr
 
+    def test_gate_v1_gate_file_staged_blocks(self, tmp_path):
+        """T-gate-V1a: SOLO un file della macchina di controllo in stage (hook), senza
+        marcatore → BLOCCA: il gate protegge se stesso (V-1 verifica esterna PR #118)."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, ".claude/hooks/review_gate.sh", "exit 0\n")
+        result = self._run(tmp_path)
+        assert result.returncode == 2 and "perimetro" in result.stderr, result.stderr
+
+    def test_gate_v1_revisore_md_staged_blocks(self, tmp_path):
+        """T-gate-V1b: le regole del revisore sono nel perimetro → BLOCCA senza marcatore."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, ".claude/agents/revisore.md", "regole indebolite\n")
+        result = self._run(tmp_path)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_v1_unstaged_hash_script_blocks(self, tmp_path):
+        """T-gate-V1c: la sonda della verifica esterna. gas.py in stage con marcatore e
+        scripts/hash_diff_staged.sh modificato FUORI dallo stage → BLOCCA."""
+        _init_repo(tmp_path)
+        (tmp_path / "scripts").mkdir(exist_ok=True)
+        self._stage(tmp_path, "scripts/hash_diff_staged.sh", "originale\n")
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=tmp_path, check=True, capture_output=True)
+        self._stage(tmp_path, "gas.py")
+        (tmp_path / "scripts" / "hash_diff_staged.sh").write_text('printf "COSTANTE"\n')
+        result = self._run(tmp_path, has_review_ok=True)
+        assert result.returncode == 2 and "NON in stage" in result.stderr, result.stderr
+
+    def test_gate_v1_doc_outside_perimeter_passes(self, tmp_path):
+        """T-gate-V1d: file fuori dal perimetro (scripts/altro.sh, reports/) → esente."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "scripts/altro.sh", "echo\n")
+        self._stage(tmp_path, ".claude/settings.local.json", "{}\n")
+        result = self._run(tmp_path)
+        assert result.returncode == 0, result.stderr
+
+    def _repo_con_hook_proprio(self, tmp_path: Path) -> Path:
+        """Repo temporaneo con COPIA di hook, script dell'hash e perimetro committati:
+        così l'hook legge il perimetro di QUESTO repo (necessario per R-138-1)."""
+        _init_repo(tmp_path)
+        for rel in (".claude/hooks/review_gate.sh", "scripts/hash_diff_staged.sh",
+                    ".claude/perimetro_review.txt"):
+            dst = tmp_path / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text((REVIEW_GATE_HOOK.parent.parent.parent / rel).read_text())
+        (tmp_path / "gas.py").write_text("# v1\n")
+        subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=tmp_path, check=True, capture_output=True)
+        return tmp_path
+
+    def _run_hook_locale(self, repo: Path) -> subprocess.CompletedProcess:
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+        return subprocess.run(["bash", str(repo / ".claude/hooks/review_gate.sh")],
+                              input=self._stdin_commit(), env=env, capture_output=True, text=True)
+
+    def test_gate_r138_1_staged_perimeter_self_removal_blocks(self, tmp_path):
+        """R-138-1 (sonda P7): perimetro in stage che toglie sé stesso e gas.py, più gas.py
+        modificato in stage, senza marcatore → BLOCCA (le voci di HEAD contano)."""
+        repo = self._repo_con_hook_proprio(tmp_path)
+        (repo / ".claude/perimetro_review.txt").write_text("brains/\n")
+        (repo / "gas.py").write_text("# v2 non revisionata\n")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        result = self._run_hook_locale(repo)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_r138_1_unstaged_perimeter_tamper_blocks(self, tmp_path):
+        """R-138-1 (sonda P8): perimetro ridotto FUORI stage, gas.py in stage senza
+        marcatore → BLOCCA."""
+        repo = self._repo_con_hook_proprio(tmp_path)
+        (repo / "gas.py").write_text("# v2 non revisionata\n")
+        subprocess.run(["git", "add", "gas.py"], cwd=repo, check=True, capture_output=True)
+        (repo / ".claude/perimetro_review.txt").write_text("brains/\n")
+        result = self._run_hook_locale(repo)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_r138_2_rename_out_of_perimeter_blocks(self, tmp_path):
+        """R-138-2 (sonda P1): git mv gas.py → docs/gas.py senza marcatore → BLOCCA."""
+        repo = self._repo_con_hook_proprio(tmp_path)
+        (repo / "docs").mkdir()
+        subprocess.run(["git", "mv", "gas.py", "docs/gas.py"], cwd=repo, check=True, capture_output=True)
+        result = self._run_hook_locale(repo)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_r138_2_non_ascii_name_blocks(self, tmp_path):
+        """R-138-2 (sonda P2): modules/città.py in stage senza marcatore → BLOCCA."""
+        repo = self._repo_con_hook_proprio(tmp_path)
+        (repo / "modules").mkdir()
+        (repo / "modules" / "città.py").write_text("x\n")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        result = self._run_hook_locale(repo)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_r139_git_diff_failure_in_pipeline_blocks(self, tmp_path):
+        """R-139 (blocco della review #139): `git diff --cached` fallisce ma `git status`
+        riesce (git finto nel PATH) → il gate deve BLOCCARE: l'exit code di git non
+        deve perdersi nella pipeline con `tr`."""
+        _init_repo(tmp_path)
+        self._stage(tmp_path, "gas.py")
+        fake = tmp_path / "fakebin"
+        fake.mkdir()
+        real_git = subprocess.run(["bash", "-c", "command -v git"], capture_output=True,
+                                  text=True, check=True).stdout.strip()
+        (fake / "git").write_text(
+            "#!/usr/bin/env bash\n"
+            'for a in "$@"; do [ "$a" = "diff" ] && exit 128; done\n'
+            f'exec "{real_git}" "$@"\n')
+        (fake / "git").chmod(0o755)
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(tmp_path),
+               "PATH": f"{fake}:{os.environ['PATH']}"}
+        result = subprocess.run(["bash", str(REVIEW_GATE_HOOK)], input=self._stdin_commit(),
+                                env=env, capture_output=True, text=True)
+        assert result.returncode == 2 and "git diff --cached" in result.stderr, result.stderr
+
     def test_gate_d_git_failure_blocks(self, tmp_path):
         """T-gate-D: CLAUDE_PROJECT_DIR non è un git repo → git diff fallisce → FAIL-CLOSED (exit 2)."""
         # tmp_path esiste ma non ha .git: cd riesce, git diff fallisce → deve bloccare

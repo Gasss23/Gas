@@ -461,7 +461,132 @@ class TestCheckVerdetto:
                        "APPROVATO senza citazioni")
         _commit_all(work, "doc only")
         result = _run_check_verdetto(work, base)
-        assert result.returncode == 0 and "non tocca il motore" in result.stdout, result.stdout
+        assert result.returncode == 0 and "fuori dal perimetro" in result.stdout, result.stdout
+
+    def _setup_doc_session(self, work: Path, bare: Path, sec4: str, extra: "dict | None" = None) -> str:
+        """Sessione con file scelti (default: solo docs.md), handoff con §4 dato."""
+        _init_repo(work)
+        (work / "scripts").mkdir(exist_ok=True)
+        (work / "scripts" / "esistente.py").write_text("a\nb\nc\n")
+        _commit_all(work, "contesto")
+        _fake_origin(work, bare)
+        _branch(work, "feature/x")
+        base = subprocess.run(["git", "merge-base", "origin/main", "HEAD"], cwd=work,
+                              capture_output=True, text=True, check=True).stdout.strip()
+        files = extra or {"docs.md": "x\n"}
+        for rel, content in files.items():
+            (work / rel).parent.mkdir(parents=True, exist_ok=True)
+            (work / rel).write_text(content)
+        stat = "".join(f" {rel} | 1 +\n" for rel in files) + " reports/handoff.md | 40 ++++\n"
+        _write_handoff(work, stat, sec4)
+        _commit_all(work, "sessione")
+        return base
+
+    def test_v2_citations_verified_outside_perimeter(self, tmp_path):
+        """V-2: sessione fuori dal perimetro con citazioni inesistenti → exit 1 (prima: rc=0)."""
+        sec4 = "Vedi scripts/file_che_non_esiste.py:999 e scripts/esistente.py:99999."
+        base = self._setup_doc_session(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1, f"out={result.stdout!r} err={result.stderr!r}"
+        assert "file_che_non_esiste.py" in result.stderr and "99999" in result.stderr
+
+    def test_v2_valid_citations_outside_perimeter_exits_0(self, tmp_path):
+        """V-2: fuori dal perimetro, citazioni valide → OK senza minimo per verdetto."""
+        sec4 = "Vedi scripts/esistente.py:2."
+        base = self._setup_doc_session(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 0 and "fuori dal perimetro" in result.stdout, result.stdout
+
+    def test_v1_gate_file_session_requires_verdict(self, tmp_path):
+        """V-1: sessione che tocca SOLO un file del gate (scripts/check_verdetto.py) è nel
+        perimetro → verdetto senza citazioni → exit 1."""
+        sec4 = "APPROVATO — nessuna lezione nuova."
+        base = self._setup_doc_session(tmp_path / "work", tmp_path / "bare", sec4,
+                                       {"scripts/check_verdetto.py": "x = 1\ny = 2\n"})
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "minimo 2" in result.stderr, result.stderr
+
+    def test_v1_gate_file_session_with_citations_exits_0(self, tmp_path):
+        """V-1: stessa sessione, verdetto con 2 citazioni del file del gate → OK."""
+        sec4 = "## VERDETTO: APPROVATO\ncheck_verdetto.py:1 e scripts/check_verdetto.py:2 ok."
+        base = self._setup_doc_session(tmp_path / "work", tmp_path / "bare", sec4,
+                                       {"scripts/check_verdetto.py": "x = 1\ny = 2\n"})
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 0, result.stderr
+
+    def test_r136_2_markdown_variant_opens_new_verdict(self, tmp_path):
+        """R-136-2: un secondo verdetto scritto `**Verdetto**: APPROVATO` senza citazioni
+        non si fonde più col primo → exit 1."""
+        sec4 = ("## VERDETTO: APPROVATO\ngas_fake.py:1 e gas_fake.py:2 ok.\n"
+                "**Verdetto**: APPROVATO — nessuna lezione nuova.")
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "verdetto 2" in result.stderr, result.stderr
+
+    def test_r136_2_bare_esito_line_opens_new_verdict(self, tmp_path):
+        """R-136-2: riga che apre con l'esito (`APPROVATO — …`) dopo un verdetto pieno → exit 1."""
+        sec4 = ("## VERDETTO: APPROVATO\ngas_fake.py:1 e gas_fake.py:2 ok.\n"
+                "APPROVATO — nessuna lezione nuova.")
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "verdetto 2" in result.stderr, result.stderr
+
+    def test_r136_2_list_item_esito_does_not_split(self, tmp_path):
+        """Le righe di analisi `- Esito: **ok**` non aprono un verdetto (niente falsi positivi)."""
+        sec4 = ("## VERDETTO: APPROVATO\n1. gas_fake.py:1 — ok\n   - Esito: **ok**.\n"
+                "2. gas_fake.py:2 — ok\n   - Esito: **ok**.")
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 0, result.stderr
+
+    def test_r138_3_variants_open_and_prose_does_not(self, tmp_path):
+        """R-138-3: 'Verdetto finale: APPROVATO' e 'Esito della review: BOCCIATO' aprono un
+        verdetto; prosa ('Approvato il fix …'), voce di elenco 'verdetto nullo' e righe in
+        un blocco di codice NO."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cv", CHECK_VERDETTO)
+        cv = importlib.util.module_from_spec(spec); spec.loader.exec_module(cv)
+        apre = ["## VERDETTO: APPROVATO", "Verdetto finale: APPROVATO",
+                "Esito della review: BOCCIATO", "**Verdetto**: APPROVATO CON RISERVE",
+                "APPROVATO — nessuna lezione nuova", "**APPROVATO CON RISERVE**"]
+        non_apre = ["Approvato il fix precedente, ma resta un dubbio.",
+                    "- verdetto nullo: «APPROVATO — nessuna lezione nuova»",
+                    "   - Esito: **ok**.", "La review è APPROVATO? no"]
+        for riga in apre:
+            assert len(cv._blocchi_verdetto("intro\n" + riga + "\nx")) == 1 and \
+                cv._blocchi_verdetto("intro\n" + riga + "\nx")[0].lstrip().startswith(riga.lstrip()[:3]), riga
+        for riga in non_apre:
+            assert cv._blocchi_verdetto(riga + "\nx") == [riga + "\nx"], riga
+        fence = "## VERDETTO: APPROVATO\na.py:1\n```\nAPPROVATO — dentro il codice\n```\nb.py:2"
+        assert len(cv._blocchi_verdetto(fence)) == 1
+
+    def test_r138_2_rename_out_of_perimeter_counts_origin(self, tmp_path):
+        """R-138-2: rename modules/x.py → docs/x.py: il path di origine è nel diff di sessione
+        (prima --name-only mostrava solo la destinazione)."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cv", CHECK_VERDETTO)
+        cv = importlib.util.module_from_spec(spec); spec.loader.exec_module(cv)
+        work = tmp_path / "w"
+        _init_repo(work)
+        (work / "modules").mkdir()
+        (work / "modules" / "x.py").write_text("a\nb\nc\nd\ne\n")
+        (work / "modules" / "città.py").write_text("x\n")
+        base = _commit_all(work, "base")
+        (work / "docs").mkdir()
+        subprocess.run(["git", "mv", "modules/x.py", "docs/x.py"], cwd=work, check=True)
+        (work / "modules" / "città.py").write_text("y\n")
+        _commit_all(work, "rename")
+        files = cv._session_files(base, work)
+        assert "modules/x.py" in files and "docs/x.py" in files, files
+        assert "modules/città.py" in files, files
+
+    def test_r136_5_doc_citations_do_not_count_when_code_in_diff(self, tmp_path):
+        """R-136-5: diff con codice, verdetto che cita solo .md del diff → exit 1."""
+        sec4 = "## VERDETTO: APPROVATO\nnote.md:1 e note.md:2 ok."
+        base = self._setup_doc_session(tmp_path / "work", tmp_path / "bare", sec4,
+                                       {"modules/codice.py": "a\nb\n", "note.md": "x\ny\n"})
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "minimo 2" in result.stderr, result.stderr
 
     def test_nonascii_filename_check_verdetto(self, tmp_path):
         """File con nome non-ASCII (caffè.txt) citato in §4 → exit 0.

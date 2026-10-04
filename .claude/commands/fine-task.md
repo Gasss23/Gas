@@ -268,6 +268,24 @@ Esiti:
 
 ---
 
+## 4quater. Verifica esterna (fette che toccano il perimetro di review o la sicurezza)
+
+Lancia un agente NUOVO (contesto vergine a ogni verifica, mai riprendere uno precedente)
+con il tool Agent: `subagent_type: general-purpose`, `model: sonnet` (modello diverso
+dall'agente principale), in background, con ESATTAMENTE questo prompt, senza aggiunte né
+contesto:
+
+```
+Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>
+```
+
+Il protocollo vive in `.claude/verifica_esterna.md` (lo cambia solo l'operatore). Quando arriva
+il verdetto, riportalo all'operatore così com'è (integrale nel prossimo handoff), con i finding
+in sintesi in chat. Per le fette di sicurezza (cancello, firma, sandbox, gate) dire anche
+all'operatore di fare il secondo passaggio nella chat claude.ai con lo stesso URL.
+
+---
+
 ## 5. Stampa a terminale ESATTAMENTE (senza riassumere):
 
 1. Path del report: `reports/ultimo_report.md`

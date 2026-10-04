@@ -1,0 +1,26 @@
+# Perimetro di review: file e cartelle il cui cambiamento richiede il revisore.
+# Fonte UNICA, letta da .claude/hooks/review_gate.sh e scripts/check_verdetto.py.
+# Riga che finisce con "/" = cartella (prefisso); altrimenti path esatto. # = commento.
+# Il file stesso è nel perimetro: allargarlo o restringerlo passa dal revisore.
+#
+# Motore
+gas.py
+brains/
+modules/
+tests/
+# Macchina di controllo (V-1 verifica esterna PR #118: il gate deve proteggere se stesso)
+.claude/perimetro_review.txt
+.claude/hooks/
+.claude/settings.json
+.claude/agents/revisore.md
+.claude/verifica_esterna.md
+.claude/commands/fine-task.md
+.github/workflows/
+scripts/check_handoff.py
+scripts/check_verdetto.py
+scripts/check_landing.sh
+scripts/hash_diff_staged.sh
+scripts/segna_review_ok.sh
+scripts/fine_task_finale.sh
+scripts/commit_memoria_revisore.sh
+scripts/gasmerge.sh
