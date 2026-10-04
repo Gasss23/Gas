@@ -2,7 +2,13 @@
 """Verifica che §2 GIT DIFF --STAT di reports/handoff.md dichiari
 esattamente i file modificati in questa sessione (BASE..HEAD).
 
-Exit 0: set coerente, oppure "non applicabile" (main / diff vuoto / handoff non scritto).
+Exit 0: set coerente, oppure "non applicabile" (main / diff vuoto / handoff non scritto
+        in una sessione FUORI dal perimetro di review).
+Exit 1 SEMPRE (qualunque sessione): merge-base o git diff falliti, perimetro di review
+assente o vuoto, handoff nel diff ma file mancante, §2 mancante, set incoerente.
+Exit 1 in più se il diff tocca il perimetro (.claude/perimetro_review.txt): handoff non
+nel diff di sessione (V-A, verifica esterna PR #119) — il check required non si salta
+più non scrivendo l'handoff.
 Exit 1: set incoerente — handoff omette o aggiunge file rispetto al diff reale.
 """
 
@@ -10,6 +16,9 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_verdetto import _carica_perimetro, _nel_perimetro, _session_files  # noqa: E402
 
 ALLOWLIST = {
     "reports/ultima_risposta.md",
@@ -44,10 +53,11 @@ def _get_base(override: str | None, repo: Path) -> str | None:
     return r.stdout.strip()
 
 
-def _diff_names(base: str, repo: Path) -> set[str]:
+def _diff_names(base: str, repo: Path) -> set[str] | None:
+    """None se `git diff` fallisce (R-141-1: mai un insieme vuoto travestito da diff vuoto)."""
     r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
     if r.returncode != 0:
-        return set()
+        return None
     return {line.strip() for line in r.stdout.splitlines() if line.strip()}
 
 
@@ -93,18 +103,38 @@ def main(argv: list[str]) -> int:
 
     base = _get_base(base_override, repo)
     if base is None:
-        print("check_handoff: git merge-base fallito — check non applicabile.", file=sys.stderr)
-        return 0
+        # V-A: senza base non si può dire se la sessione tocca il perimetro → fail-closed.
+        print("check_handoff: ERRORE — git merge-base fallito: impossibile verificare (fail-closed).",
+              file=sys.stderr)
+        return 1
 
     all_changed = _diff_names(base, repo)
+    session = _session_files(base, repo)
+    if all_changed is None or session is None:
+        print(f"check_handoff: ERRORE — git diff {base}..HEAD fallito: impossibile verificare (fail-closed).",
+              file=sys.stderr)
+        return 1
 
     # Guard: diff vuoto
     if not all_changed:
         print("check_handoff: non applicabile (diff BASE..HEAD vuoto).")
         return 0
 
+    # V-A: la sessione tocca il perimetro di review? Allora l'handoff è obbligatorio.
+    perimetro = _carica_perimetro(repo=repo, base=base)
+    if perimetro is None:
+        print("check_handoff: ERRORE — perimetro di review assente o vuoto: fail-closed.",
+              file=sys.stderr)
+        return 1
+    nel_perimetro = any(_nel_perimetro(f, perimetro) for f in session)
+
     # Guard: handoff non scritto in questa sessione
     if "reports/handoff.md" not in all_changed:
+        if nel_perimetro:
+            print("check_handoff: ERRORE — la sessione tocca il perimetro di review ma "
+                  "reports/handoff.md non è nel diff di sessione: handoff obbligatorio (V-A).",
+                  file=sys.stderr)
+            return 1
         print("check_handoff: non applicabile (reports/handoff.md non nel diff di sessione).")
         return 0
 

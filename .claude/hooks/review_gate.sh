@@ -108,8 +108,6 @@ PERIM_RE="^($(IFS='|'; printf '%s' "${PERIM_RE_PARTS[*]}"))"
 # qui sotto esce ESPLICITAMENTE con l'exit code di git (PIPESTATUS[0]), non di `tr`.
 # R-138-2: --no-renames (un rename dal perimetro verso fuori mostra anche il path
 # di origine) e -z (nomi non-ASCII o con virgolette arrivano grezzi, non quotati).
-# R-139 (blocco): la pipeline con `tr` NON deve nascondere l'exit code di git —
-# il subshell esce con quello di git (PIPESTATUS[0]), non con quello di tr.
 DIFF_OUT=$(git diff --cached --name-only --no-renames -z 2>/dev/null | tr '\0' '\n'; exit "${PIPESTATUS[0]}")
 GIT_RC=$?
 if [ "$GIT_RC" -ne 0 ]; then

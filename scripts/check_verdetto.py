@@ -22,6 +22,8 @@ motore + macchina di controllo, fonte unica condivisa con review_gate.sh):
   `APPROVATO — …`): un verdetto scritto in un formato diverso non si fonde più
   col precedente (R-136-2). §4 senza alcuna di queste righe → un solo verdetto.
 Perimetro assente o vuoto → exit 1 (fail-closed).
+V-A (verifica esterna PR #119): con il perimetro toccato, handoff assente dal diff o dal
+disco, §4 non trovata o merge-base fallito sono ERRORI (exit 1), non "non applicabile".
 
 NOTA IMPORTANTE: questo check prova solo che le citazioni sono verificabili,
 NON che il revisore abbia effettivamente letto il codice. Il finding
@@ -84,11 +86,13 @@ def _get_base(override: str | None, repo: Path) -> str | None:
     return r.stdout.strip()
 
 
-def _session_files(base: str, repo: Path) -> set[str]:
+def _session_files(base: str, repo: Path) -> set[str] | None:
+    """File del diff di sessione. None se `git diff` fallisce (R-141-1: mai un insieme
+    vuoto che si travesta da "sessione vuota" → "non applicabile")."""
     # R-138-2: --no-renames (il path di origine di un rename conta) e -z (nomi grezzi).
     r = _git(["git", "diff", "--name-only", "--no-renames", "-z", f"{base}..HEAD"], repo)
     if r.returncode != 0:
-        return set()
+        return None
     return {l for l in r.stdout.split("\0") if l.strip()}
 
 
@@ -213,26 +217,17 @@ def main(argv: list[str]) -> int:
         print("check_verdetto: non applicabile (HEAD su main).")
         return 0
 
-    if not handoff.exists():
-        print("check_verdetto: reports/handoff.md non trovato — non applicabile.")
-        return 0
-
-    text = handoff.read_text(encoding="utf-8")
-    sec4 = _extract_section4(text)
-    if sec4 is None:
-        print("check_verdetto: §4 non trovata in reports/handoff.md — non applicabile.")
-        return 0
-
     base = _get_base(base_override, repo)
     if base is None:
-        print("check_verdetto: git merge-base fallito — non applicabile.", file=sys.stderr)
-        return 0
+        print("check_verdetto: ERRORE — git merge-base fallito: impossibile verificare (fail-closed).",
+              file=sys.stderr)
+        return 1
 
     session = _session_files(base, repo)
-
-    if "reports/handoff.md" not in session:
-        print("check_verdetto: non applicabile (reports/handoff.md non nel diff di sessione).")
-        return 0
+    if session is None:
+        print(f"check_verdetto: ERRORE — git diff {base}..HEAD fallito: impossibile verificare (fail-closed).",
+              file=sys.stderr)
+        return 1
 
     perimetro = _carica_perimetro(repo=repo, base=base)
     if perimetro is None:
@@ -241,6 +236,23 @@ def main(argv: list[str]) -> int:
         return 1
     # R-135-4: l'esenzione dipende dal diff REALE, non da una frase nel §4.
     nel_perimetro = any(_nel_perimetro(f, perimetro) for f in session)
+
+    # V-A: con il perimetro toccato l'handoff (e il suo §4) è obbligatorio.
+    def _manca(motivo: str) -> int:
+        if nel_perimetro:
+            print(f"check_verdetto: ERRORE — la sessione tocca il perimetro di review ma {motivo} (V-A).",
+                  file=sys.stderr)
+            return 1
+        print(f"check_verdetto: non applicabile ({motivo}).")
+        return 0
+
+    if "reports/handoff.md" not in session:
+        return _manca("reports/handoff.md non è nel diff di sessione")
+    if not handoff.exists():
+        return _manca("reports/handoff.md non esiste")
+    sec4 = _extract_section4(handoff.read_text(encoding="utf-8"))
+    if sec4 is None:
+        return _manca("§4 VERDETTO DEL REVISORE non trovata in reports/handoff.md")
 
     head = _head_files(repo)
     errors: list[str] = []
