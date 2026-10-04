@@ -1,34 +1,35 @@
-# ULTIMO REPORT — 2026-10-04 — Rami d'errore e loopback del gate IP coperti da test
+# ULTIMO REPORT — 2026-10-04 — Passata unica di mutation sul gate IP (66/66 uccise)
 
-Branch `test/gate-ip-rami-errore-loopback` · PR #125 · commit `24c8640` (solo test) · review #151 **APPROVATO CON RISERVE** + #152 **APPROVATO**
+Branch `test/gate-ip-passata-mutation` · PR #126 · commit `c2c2d3e` (solo test) · review #153 **APPROVATO CON RISERVE** + #154 **APPROVATO**
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #125 (variante A: `gasmerge 125`), dopo la verifica esterna.
+1. Merge della PR #126 (variante A: `gasmerge 126`), dopo la verifica esterna.
 2. V-3 (verifica #121): vietare nel ruleset i tag `origin/*`? (ancora aperta)
 3. V-5 (verifica #121): mettere `.gitignore`, `knowledge/` e `CLAUDE.md` nel perimetro di review? (ancora aperta)
-4. Poi la prossima fetta PRIORITARIA, già decisa: V-B "vera" (bot di revisione su GitHub).
+4. Poi la prossima fetta PRIORITARIA: V-B "vera" (bot di revisione su GitHub), condizione per il gasmerge completamente automatico (variante B).
 
 ## Esito per step
 
-- **Merge PR #124**: FATTO (`gasmerge 124`, confermato dall'operatore; main `dfb52a5`).
-- **V-1 verifica #124** (3 mutation superstiti nel gate IP di fine_task_finale.sh): FATTA. Test 4j (prima git grep rc 128 → STOP prima del push), 4k (riga con solo loopback esente), 4l (filtro allowlist rotto → STOP); gemello `TestIPErroreFiltro` in gasmerge.
-- **R-151-1** (review #151: `test_git_grep_error_blocks` non verificava che gasmerge si fermasse al gate): FATTA nella stessa fetta (review #152).
-- **V-4 verifica #124** (stato_progetto: frase confusa su R-149-1; "Gate test 65 PASS"): FATTA (riscritta; 74 PASS).
-- **V-5 verifica #124** (`_stub_git -> dict`): FATTA (`dict[str, str]`).
-- **V-2 verifica #124** (discriminazione del test latin1 su glibc): DEFERITA — non provabile in locale; da chiudere con la V-B o con un job CI di mutation.
-- **R-150-1** (ramo PUSH_EXIT morto): DEFERITA, invariata.
+- **Merge PR #125**: FATTO (`gasmerge 125`, confermato dall'operatore; main `eeaaf1b`).
+- **Passata unica di mutation sul gate IP** (richiesta dell'operatore): FATTA. Harness sistematico su `gasmerge.sh` e `fine_task_finale.sh`; esito finale 66/66 mutation uccise. Il revisore ha rilanciato in modo indipendente 28/28 con un proprio harness.
+- **V-1 verifica #125** (gasmerge: il ramo "IP non allowlistati" stampava BLOCCO ma un mutante arrivava fino al merge): FATTA, il test ora verifica l'arresto.
+- **V-2 verifica #125** (sed senza `g`: due loopback sulla stessa riga): FATTA in entrambi gli script.
+- **R-153-1** (MEDIA, preesistente; spazi ai bordi, backslash, riga mista loopback+IP): FATTA (review #154).
+- **R-153-2** (bassa: `mktemp` di gasmerge su BSD non randomizza il nome): DEFERITA, fail-closed.
+- **V-3 verifica #125** (latin1 su glibc): DEFERITA (CI di mutation o V-B).
+- **Gasmerge automatico (variante B)**: DEFERITO per decisione dell'operatore del 2026-10-04: richiede prima la V-B chiusa e i test di convalida.
 
 ## Test
 
-- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e`: 299 → **303 passed**.
-- Mutation uccise (1 failed ciascuna): fine_task_finale.sh (a) `*)` della prima grep → `9999)`, (b) loopback inefficace, (c) senza `exit 1` nel filtro; gasmerge.sh (c) e senza `exit 1` nel ramo `*)` della prima grep (R-151-1).
+- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e`: 303 → **314 passed**.
+- Mutation: prima passata 50/51 (l'unica sopravvissuta era equivalente); dopo i test della #153, passata estesa **66/66**.
 - Nessuno script modificato: diff solo in tests/.
 
 ## Riserve aperte
 
-- V-2 verifica #124 (latin1 su glibc), R-150-1: vedi sopra.
+- R-153-2, latin1 su glibc, R-150-1: vedi stato_progetto.
 
 ## Anomalie
 
-- Nessuna.
+- La prima esecuzione del revisore in parallelo ha dato falsi KILLED (collisione di `mktemp`, R-153-2): l'harness va lanciato solo in sequenza.

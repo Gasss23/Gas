@@ -1,10 +1,10 @@
-# DIFF SESSIONE — 2026-10-04 — test/gate-ip-rami-errore-loopback
+# DIFF SESSIONE — 2026-10-04 — test/gate-ip-passata-mutation
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `tests/test_unit_hooks.py` | fine_task_finale: prima git grep rc 128 (4j), solo loopback (4k), filtro allowlist rotto (4l); `_stub_git -> dict[str, str]` (V-1 / V-5 verifica #124). |
-| `tests/test_unit_gasmerge.py` | `TestIPErroreFiltro`; `test_git_grep_error_blocks` verifica l'arresto al gate (R-151-1). |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #151 e #152. |
-| `reports/*` | Report di fine task; stato_progetto (nuova voce, R-149-1 riscritta, gate test 74 PASS, conteggio review). |
+| `tests/test_unit_gasmerge.py` | Arresto nel ramo "IP non allowlistati" (V-1 #125); due loopback (V-2 #125); righe con spazi/tab/backslash (R-153-1). |
+| `tests/test_unit_hooks.py` | fine_task_finale: due loopback (4m); spazi/tab/backslash e loopback+IP (4n). |
+| `.claude/agents/memoria_revisore.md` | Memoria delle review #153 e #154. |
+| `reports/*` | Report di fine task; stato_progetto (passata 66/66, R-153-2, conteggio review). |
 
 La storia completa sta in git.
