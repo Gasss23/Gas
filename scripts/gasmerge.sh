@@ -88,7 +88,14 @@ echo "--- INVARIANTE IP ---"
 # (mai fail-open). Il marker va sulla riga sorgente dell'esempio, NON sui
 # file temporanei scritti dal test (così il guard li becca comunque).
 set +e
-IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "refs/remotes/origin/$BRANCH")
+# R-148-2: tree risolto UNA volta (le due git grep sotto vedono lo stesso albero
+# anche se un fetch concorrente sposta il ref). R-148-3: -a e LC_ALL=C, così file
+# binari e righe non UTF-8 non escono dal controllo.
+if ! IP_TREE=$(git rev-parse --verify -q "refs/remotes/origin/$BRANCH^{tree}"); then
+  echo "BLOCCO: tree di refs/remotes/origin/$BRANCH non risolvibile — verifica IP NON eseguita"
+  exit 1
+fi
+IP_MATCHES=$(LC_ALL=C git grep -a -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "$IP_TREE")
 IP_RC=$?
 set -e
 case "$IP_RC" in
@@ -100,8 +107,8 @@ case "$IP_RC" in
     # viene tenuta. Una riga con loopback E un IP non-loopback non è esente.
     set +e
     NON_LOOPBACK=$(echo "$IP_MATCHES" | while IFS= read -r line; do
-      stripped=$(echo "$line" | sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
-      if echo "$stripped" | grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
+      stripped=$(echo "$line" | LC_ALL=C sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
+      if echo "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
         echo "$line"
       fi
     done)
@@ -109,9 +116,20 @@ case "$IP_RC" in
     if [ -z "$NON_LOOPBACK" ]; then
       echo "Tutti gli IP sono loopback (127.x.x.x) — OK"
     else
-      # Step 2: filtra le righe che portano il marker di allowlist esplicito.
+      # Step 2: allowlist esplicita. R-147-1: il marker si cerca nel solo
+      # CONTENUTO della riga (`git grep --and --not`), non nell'output intero:
+      # il prefisso `<ref>:<path>:` di git grep conteneva branch e path, quindi
+      # un branch o un file chiamato "...gasmerge-ip-ok..." allowlistava tutto.
       set +e
-      RESIDUAL=$(echo "$NON_LOOPBACK" | grep -v 'gasmerge-ip-ok')
+      UNMARKED=$(LC_ALL=C git grep -a -nE -e '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' --and --not -e 'gasmerge-ip-ok' "$IP_TREE")
+      UNMARKED_RC=$?
+      set -e
+      case "$UNMARKED_RC" in
+        0|1) : ;;
+        *) echo "BLOCCO: git grep (allowlist) uscito con codice $UNMARKED_RC — gate IP non verificato"; exit 1 ;;
+      esac
+      set +e
+      RESIDUAL=$(printf '%s\n' "$NON_LOOPBACK" | LC_ALL=C grep -Fx -f <(printf '%s\n' "$UNMARKED"))
       FILTER_RC=$?
       set -e
       case "$FILTER_RC" in
@@ -141,7 +159,10 @@ set +e
 # R-145-1: --no-renames (un rename fuori dal perimetro mostra anche il vecchio
 # path) e quotePath=false (nomi non-ASCII non quotati) — stesso trattamento di
 # check_handoff/review_gate.
-ENGINE_DIFF=$(git -c core.quotePath=false diff --no-renames --name-only "refs/remotes/origin/main...refs/remotes/origin/$BRANCH")
+# V-3 verifica esterna #122: -z, perché anche con quotePath=false git quota i
+# nomi con apice, tab o backslash (e il confronto col perimetro falliva). I NUL
+# diventano a-capo: resta escluso solo un nome che contiene un a-capo.
+ENGINE_DIFF=$(git -c core.quotePath=false diff -z --no-renames --name-only "refs/remotes/origin/main...refs/remotes/origin/$BRANCH" | tr '\0' '\n')
 DIFF_RC=$?
 set -e
 if [ "$DIFF_RC" -ne 0 ]; then

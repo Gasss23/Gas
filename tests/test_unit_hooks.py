@@ -1982,6 +1982,51 @@ class TestFinaleScript:
             f"T-finale-4b: stderr deve contenere 'IP trovato', stderr={result.stderr!r}"
         )
 
+    def test_finale_4d_path_avvelenato_non_allowlista(self, tmp_path):
+        """R-147-1: un PATH che contiene "gasmerge-ip-ok" non allowlista le sue righe:
+        il marker vale solo nel contenuto della riga."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "feat/test-4d"],
+                       cwd=work, check=True, capture_output=True)
+        _make_git_commit_env(work, "docs/gasmerge-ip-ok.sh", "echo 10.0.0.1\n",  # gasmerge-ip-ok
+                             "chore: path avvelenato")
+        result = _run_finale(work, cwd=work)
+        assert result.returncode == 1, (
+            f"atteso exit 1 (path avvelenato), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "IP trovato" in result.stderr, result.stderr
+
+    def test_finale_4e_file_binario_con_ip(self, tmp_path):
+        """R-148-3: un IP dentro un file binario non sfugge al gate IP (git grep -a)."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "feat/test-4e"],
+                       cwd=work, check=True, capture_output=True)
+        (work / "a.bin").write_bytes(b"\x00\x01host 10.0.0.1\n")  # gasmerge-ip-ok
+        _make_git_commit_env(work, "x.txt", "x\n", "chore: binario con IP")
+        subprocess.run(["git", "add", "a.bin"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "--amend", "--no-edit"], cwd=work, check=True,
+                       capture_output=True,
+                       env={**os.environ,
+                            "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+                            "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"})
+        result = _run_finale(work, cwd=work)
+        assert result.returncode == 1, (
+            f"atteso exit 1 (IP in binario), got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "IP trovato" in result.stderr, result.stderr
+
     def test_finale_4c_ip_with_token_passes_gate(self, tmp_path):
         """T-finale-4c: IP con token gasmerge-ip-ok sulla stessa riga → Gate IP OK."""
         bare = tmp_path / "bare"

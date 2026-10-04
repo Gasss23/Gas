@@ -59,13 +59,14 @@ def _make_stub_gh(
     state: str = "OPEN",
     ci_rc: int = 0,
     checks_json: str = '[{"name":"unit-suite","bucket":"pass"}]',
+    head_ref: str = "feat",
 ) -> None:
     """Stub gh parametrico — risponde ai comandi usati da gasmerge."""
     stub = fake_bin / "gh"
     stub.write_text(f"""#!/usr/bin/env bash
 case "$*" in
   *"headRefName,title,state"*)
-    printf '{{"headRefName":"feat","title":"Test PR","state":"{state}"}}\\n' > "$GASPR_JSON"
+    printf '{{"headRefName":"{head_ref}","title":"Test PR","state":"{state}"}}\\n' > "$GASPR_JSON"
     exit 0 ;;
   *"--watch"*)
     exit {ci_rc} ;;
@@ -135,7 +136,8 @@ def _run(repo: Path, fake_bin: Path, args: list[str] | None = None) -> subproces
         "PATH": str(fake_bin) + ":" + os.environ.get("PATH", ""),
     }
     cmd = ["bash", str(GASMERGE)] + (args if args is not None else ["123"])
-    return subprocess.run(cmd, env=env, capture_output=True, text=True)
+    # errors="replace": il gate IP stampa le righe bloccate così come sono (anche non UTF-8).
+    return subprocess.run(cmd, env=env, capture_output=True, text=True, errors="replace")
 
 
 def _run_with_stdin(
@@ -423,6 +425,23 @@ class TestPerimetroPromemoria:
         sez = self._sezione(tmp_path, work)
         assert "gas_identity.md" in sez and "doc-only" not in sez, sez
 
+    def test_nome_con_apice_nel_perimetro(self, tmp_path):
+        """V-3 verifica esterna #122 bis: git quota i nomi con apice anche con
+        quotePath=false; con -z il nome resta grezzo e il prefisso clients/ combacia."""
+        work = self._repo(tmp_path, "clients/\n", {'clients/a"b.py': "x\n"})
+        sez = self._sezione(tmp_path, work)
+        assert 'clients/a"b.py' in sez and "doc-only" not in sez, sez
+
+    def test_tag_origin_main_non_dirotta_il_perimetro(self, tmp_path):
+        """R-147-2: il perimetro "di main" si legge da refs/remotes/origin/main. Un tag
+        "origin/main" sul branch (che restringe il perimetro) non lo declassa."""
+        work = self._repo(tmp_path, "gas_identity.md\n", {"gas_identity.md": "x\n"},
+                          perimetro_branch="gas.py\n")
+        subprocess.run(["git", "tag", "origin/main", "refs/remotes/origin/feat"], cwd=work,
+                       check=True, capture_output=True)
+        sez = self._sezione(tmp_path, work)
+        assert "gas_identity.md" in sez and "doc-only" not in sez, sez
+
     def test_perimetro_assente_ogni_file_e_motore(self, tmp_path):
         work = self._repo(tmp_path, None, {"docs/nota.md": "x\n"})
         sez = self._sezione(tmp_path, work)
@@ -450,6 +469,87 @@ class TestIPRefCompleto:
         result = _run(work, fake_bin)
         assert result.returncode != 0, result.stdout
         assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+
+
+class TestIPAllowlistSoloContenuto:
+    """R-147-1 (verifica esterna #122 bis, V-1): il marker gasmerge-ip-ok vale solo nel
+    CONTENUTO della riga, non nel prefisso `<ref>:<path>:` stampato da git grep."""
+
+    def _branch_con_ip(self, tmp_path: Path, branch: str, filename: str) -> Path:
+        work, _ = _setup_with_origin(tmp_path, branch=branch)
+        subprocess.run(["git", "checkout", branch], cwd=work, check=True, capture_output=True)
+        (work / filename).parent.mkdir(parents=True, exist_ok=True)
+        (work / filename).write_text('HOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "add", "-A"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "ip"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", branch], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        return work
+
+    def _assert_blocca(self, tmp_path: Path, work: Path, branch: str) -> None:
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin, head_ref=branch)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+
+    def test_branch_avvelenato_non_allowlista(self, tmp_path):
+        work = self._branch_con_ip(tmp_path, "fix/gasmerge-ip-ok", "x.py")
+        self._assert_blocca(tmp_path, work, "fix/gasmerge-ip-ok")
+
+    def test_path_avvelenato_non_allowlista(self, tmp_path):
+        work = self._branch_con_ip(tmp_path, "feat", "docs/gasmerge-ip-ok.py")
+        self._assert_blocca(tmp_path, work, "feat")
+
+    def test_errore_della_grep_allowlist_blocca(self, tmp_path):
+        """R-148-1: se la seconda git grep (quella con --and --not) fallisce, il gate
+        NON deve concludere "tutti allowlistati": BLOCCO fail-closed."""
+        work = self._branch_con_ip(tmp_path, "feat", "x.py")
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        real_git = shutil.which("git") or "/usr/bin/git"
+        stub = fake_bin / "git"
+        stub.write_text(f"""#!/usr/bin/env bash
+if [ "$1" = "grep" ] && printf '%s\\n' "$@" | grep -qx -- '--and'; then exit 2; fi
+exec "{real_git}" "$@"
+""")
+        stub.chmod(0o755)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: git grep (allowlist)" in result.stdout, result.stdout
+        assert "allowlistati (gasmerge-ip-ok) — OK" not in result.stdout, result.stdout
+
+
+class TestIPFileBinariENonUtf8:
+    """R-148-3: il gate IP vede anche file binari (-a) e righe non UTF-8 (LC_ALL=C)."""
+
+    def _branch_con_bytes(self, tmp_path: Path, data: bytes) -> Path:
+        work, _ = _setup_with_origin(tmp_path)
+        subprocess.run(["git", "checkout", "feat"], cwd=work, check=True, capture_output=True)
+        (work / "a.bin").write_bytes(data)
+        subprocess.run(["git", "add", "-A"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "bytes"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        return work
+
+    def _assert_blocca(self, tmp_path: Path, work: Path) -> None:
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+
+    def test_file_binario_con_ip(self, tmp_path):
+        work = self._branch_con_bytes(tmp_path, b"\x00\x01host 8.8.8.8\n")  # gasmerge-ip-ok
+        self._assert_blocca(tmp_path, work)
+
+    def test_riga_latin1_con_ip(self, tmp_path):
+        work = self._branch_con_bytes(tmp_path, b"caf\xe9 8.8.8.8\n")  # gasmerge-ip-ok
+        self._assert_blocca(tmp_path, work)
 
 
 # ---------------------------------------------------------------------------
