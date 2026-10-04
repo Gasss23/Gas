@@ -1,294 +1,198 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-04 — Il gate protegge se stesso + verifica esterna strutturata, branch `fix/gate-autoprotezione`
+**Sessione:** 2026-10-04 — V-A: handoff-check davvero vincolante, branch `fix/handoff-check-vincolante`
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #119 (https://github.com/Gasss23/Gas/pull/119), dopo aver letto la verifica esterna. Variante A: l'agente lancia `gasmerge 119`, l'operatore conferma digitando `119`.
-2. R-138-5: allargare il perimetro di review a `gas_identity.md`, `knowledge/sources.yaml`, `tools/ingest_knowledge.py`, `clients/voice/`, `requirements*.txt`?
+1. Merge della PR #120 (https://github.com/Gasss23/Gas/pull/120), dopo la verifica esterna. Variante A: l'agente lancia `gasmerge 120`, l'operatore conferma digitando `120`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-Questa fetta viene dalla verifica esterna della PR #118: la sessione Verificatore e la chat claude.ai hanno dato finding concordi.
-
-- **V-1 — il gate non proteggeva se stesso**: `FATTA` (perimetro di review unico).
-- **R-138-1 — il perimetro poteva togliersi da solo**: `FATTA` (unione di voci cablate, working tree, index e HEAD/base).
-- **V-2 — citazioni non verificate fuori perimetro**: `FATTA`.
-- **R-136-5 — bastavano citazioni di .md**: `FATTA`.
-- **R-138-2 — rename e nomi non-ASCII**: `FATTA`.
-- **R-138-4 — test del gate non in CI**: `FATTA`.
-- **R-138-6 — promemoria post-compact**: `FATTA`.
-- **V-3 — gate B non bloccante**: `FATTA` (`handoff-check` required nel ruleset, autorizzato dall'operatore).
-- **Blocco della review #139 — exit code di git perso nella pipeline**: `FATTA` (corretto prima del commit, con test).
-- **Verifica esterna strutturata**: `FATTA` (protocollo fisso più un agente nuovo a ogni verifica).
-- **R-136-2 / R-138-3 / R-139-1 — formati alternativi del verdetto**: `DEFERITA — mitigata` (regex più forma canonica; restano tabella e voce di elenco).
-- **R-138-5 — perimetro più largo**: `DEFERITA — decisione operatore (§0.2)`.
+- **V-A — handoff-check required ma saltabile (verifica esterna PR #119, ALTA)**: `FATTA`.
+- **R-141-1 — git diff fallito → insieme vuoto → "non applicabile"**: `FATTA`.
+- **Correzione V-3 nei report** (era "CHIUSA", in realtà MITIGATA): `FATTA`.
+- **Cosmetica #140 — commento duplicato nell'hook**: `FATTA`.
+- **V-B / V-C / V-D (verifica esterna PR #119)**: `DEFERITA — tracciate in stato_progetto`.
+- **Docstring check_handoff (cosmetica #142)**: `DEFERITA — riserva cosmetica`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 +
- .claude/agents/revisore.md         |   7 +-
- .claude/commands/fine-task.md      |  18 ++
- .claude/hooks/review_gate.sh       |  77 ++++++--
- .claude/perimetro_review.txt       |  26 +++
- .claude/settings.json              |   2 +-
- .claude/verifica_esterna.md        |  50 +++++
- .github/workflows/ci.yml           |  13 +-
- CLAUDE.md                          |   5 +-
- reports/diff_sessione.md           |  26 +--
- reports/handoff.md                 | 394 +++++++++++++++++++++----------------
+ .claude/agents/memoria_revisore.md |   3 +
+ .claude/hooks/review_gate.sh       |   2 -
+ reports/diff_sessione.md           |  21 +--
+ reports/handoff.md                 | 350 ++++++++++++++-----------------------
  reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           |  34 ++--
- scripts/check_verdetto.py          | 113 ++++++++---
- tests/test_unit_handoff_check.py   | 127 +++++++++++-
- tests/test_unit_hooks.py           | 112 +++++++++++
- 16 files changed, 776 insertions(+), 240 deletions(-)
+ reports/ultimo_report.md           |  32 ++--
+ scripts/check_handoff.py           |  40 ++++-
+ scripts/check_verdetto.py          |  48 +++--
+ tests/test_unit_handoff_check.py   |  66 +++++++
+ 9 files changed, 284 insertions(+), 284 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-112f8af fix(gate): il gate protegge se stesso + verifica esterna strutturata — review #138/#139/#140 APPROVATO CON RISERVE
-f33be38 chore(revisore): memoria review #140 — APPROVATO CON RISERVE
-59d8a75 chore(revisore): memoria review #139 — BOCCIATO
-72c9364 chore(revisore): memoria review #138 — APPROVATO CON RISERVE
+501ab76 fix(handoff-check): vincolante quando la sessione tocca il perimetro (V-A) — review #141/#142 APPROVATO CON RISERVE
+7649d6b chore(revisore): memoria review #142 — APPROVATO CON RISERVE
+c7b6139 chore(revisore): memoria review #141 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `112f8af`, tre verdetti in sequenza, tutti incollati per intero:
-- #138 sul primo diff;
-- #139 sul delta, BOCCIATO;
-- #140 sul fix del blocco.
+Commit `501ab76`: la #141 sul diff e la #142 sul delta che chiude R-141-1. Entrambe sono incollate per intero.
 
-Le righe di avviso aggiunte dall'harness al rientro del subagente non fanno parte dei verdetti e sono state omesse.
-
-### Review 138
+### Review 141
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #138, branch fix/gate-autoprotezione, diff staged (9 file, +315/−31). Ho letto CLAUDE.md (sez. 3, 5, 8, 10), lo stato del progetto (riserve R-136-x/R-137-x aperte) e la memoria del revisore, e ne ho applicato le lezioni #136 e #137. Dove la #137 lo richiede, le sonde sono state scritte in file.
-
-La fetta va nella direzione giusta e chiude davvero il caso V-1 *non avversario*: un commit di soli file del gate ora richiede la review. Chiude anche V-2 e R-136-5. Non chiude però l'auto-protezione dichiarata nel titolo: il perimetro, letto dal working tree, può togliere se stesso dalla lista. In più restano due by-pass preesistenti (rename, nomi quotati) che la domanda (a) chiedeva esplicitamente. Nessuno dei due indebolisce il gate rispetto a main: le misure sotto lo dimostrano, quindi non è un blocco. R-138-1 e R-138-2 vanno però chiuse prima di dichiarare "il gate protegge se stesso".
-
-### Misure riprodotte
-- pytest senza kernel: **259 passed** (riprodotto). Le suite toccate fanno 94 passed.
-- Mutation in un worktree usa-e-getta, poi rimosso; il repo reale non è stato toccato. Tutte e 5 uccise:
-  - H1: controllo del working tree solo sul motore → 1 test fallito (V1c);
-  - H2: controllo dello staged solo sul motore → 2 falliti (V1a/V1b);
-  - C1: regex vecchia → 2 falliti (r136_2);
-  - C2: R-136-5 disattivata → 1 fallito;
-  - C3: V-2 annullata → 2 falliti.
+**Review #141**: branch `fix/handoff-check-vincolante`, diff staged di 4 file. Ho fatto le tre letture obbligatorie: CLAUDE.md, `reports/stato_progetto.md` e `.claude/agents/memoria_revisore.md`.
 
 ### Elementi del diff esaminati
-1. `.claude/hooks/review_gate.sh:67` — legge il perimetro da `$(dirname $0)/../perimetro_review.txt`, cioè dal **working tree**. Rischio esaminato: il perimetro si esclude da solo. Esito: **riserva (R-138-1)**.
-   - Sonda P7: perimetro in stage che toglie sé stesso e `gas.py`, più `gas.py` modificato in stage, senza marcatore → **rc=0**.
-   - Sonda P8: perimetro manomesso **fuori stage** (ridotto a `brains/`), `gas.py` in stage senza marcatore → **rc=0**. La manomissione non entra mai in un commit, quindi nessuno la vede in un diff.
-   - Il caso che restringe il perimetro ma tiene la riga di sé stesso (P7b) → rc=2, corretto.
-   - L'header (righe 18-20) dichiara solo l'hook manomesso, non i dati del perimetro.
-2. `.claude/hooks/review_gate.sh:94` e `:115` — `git diff --cached --name-only` confrontato con la ERE del perimetro. Rischio esaminato: rename e nomi quotati. Esito: **riserva (R-138-2, preesistente)**.
-   - P1 `git mv modules/x.py docs/x.py` → name-only elenca solo `docs/x.py` → **rc=0**. Stesso esito per P1b `gas.py → docs/`.
-   - P2 `modules/città.py` e P2b `modules/a"b.py` arrivano come `"modules/citt\303\240.py"` → l'ancora `^` non li vede → **rc=0**.
-   - L'hook di HEAD dà rc=0 negli stessi casi: nessuna regressione, ma è proprio il punto (a).
-   - Fix: `git -c core.quotePath=false diff --cached --name-only --no-renames -z`. Stessa cosa in `_session_files` di check_verdetto.py:88.
-3. `.claude/hooks/review_gate.sh:105` — il controllo del working tree ora usa i pathspec del perimetro. Rischio esaminato: la sonda V1c del Verificatore e la cancellazione del perimetro. Esito: **ok**.
-   - P5 `git rm --cached perimetro_review.txt` → rc=2: la riga `??` blocca.
-   - P5 `git rm` → rc=2: perimetro assente, fail-closed.
-   - P3 `Modules/evil.py` su FS case-insensitive → l'index normalizza a `modules/` → rc=2.
-   - P4: un file del perimetro trasformato in symlink → rc=2.
-   - Residuo basso: una volta committato quel symlink, il suo target fuori dal perimetro (`docs/altro.sh`) si modifica senza review (P4b rc=0). Servono due passi e il primo passa dal revisore.
-4. `scripts/check_verdetto.py:97` — nuova `_VERDETTO_RE`. Rischio esaminato: falsi positivi e falsi negativi sui verdetti reali, punto (b). Esito: **riserva (R-138-3)**.
-   - Su **143 §4 storici distinti**, 29 cambiano numero di blocchi e **3** producono blocchi nuovi con meno di 2 citazioni: falsi positivi fail-closed. Esempi: `**APPROVATO**\n\n---`, e `> **APPROVATO CON RISERVE**` in testa a una citazione.
-   - Apre un verdetto anche su `Approvato il fix precedente, ma…` e su righe dentro i code fence.
-   - Resta **fail-open** su `Verdetto finale: APPROVATO`, `- **Verdetto**: APPROVATO`, `| VERDETTO | APPROVATO |`, `Esito della review: BOCCIATO`, `Review #139 — APPROVATO`. Quindi **R-136-2 resta MITIGATA, non CHIUSA**.
-   - Conflitto di processo: `.claude/agents/revisore.md:62` impone di riportare il verdetto nullo nel report. Il test `tests/test_unit_handoff_check.py:526` dimostra che una riga nuda `APPROVATO — …` diventa un blocco a 0 citazioni → exit 1. Ora che handoff-check è required (vedi sotto), la PR diventa immergeabile, a meno di ritoccare il verdetto: è la classe F-verdetto-ritoccato. Serve una forma canonica per riportare un nullo, per esempio una voce di elenco `- verdetto nullo: «…»`, che la regex non apre.
-5. `scripts/check_verdetto.py:131` — R-136-5: se nel diff c'è codice, contano solo le citazioni di codice. Rischio esaminato: falsi positivi da file non-doc sempre presenti nel diff (`.gas_history.json`). Esito: **ok**, perché `.gas_history.json` non è tracciato (`git ls-files`).
-6. `scripts/check_verdetto.py:223` — V-2: fuori dal perimetro il minimo per verdetto non si applica, ma le citazioni si verificano sempre (il ciclo a riga 239). Esito: **ok**. Mutation C3 uccisa da `tests/test_unit_handoff_check.py:485`.
-   - Riserva collegata a R-138-1: `PERIMETRO_FILE` (riga 95) è il perimetro **della PR stessa**. Una PR che si toglie dal perimetro rende gate B non applicabile anche in CI. Fix: unione con `git show <base>:.claude/perimetro_review.txt`.
-7. `tests/test_unit_hooks.py:634` (V1c) e `:646` (V1d) — mordono, H1 e H2 uccise. Esito: **ok**.
-   - Limite: tutti i test eseguono l'hook del repo reale contro repo temporanei. Non possono coprire P7/P8, perché lì l'hook e il perimetro letti sono quelli del repo reale. Per R-138-1 serve un test che copi hook e perimetro nel repo temporaneo, come ho fatto nelle sonde.
-8. `.claude/perimetro_review.txt:6-26` — copertura. Tutti gli script richiamati da hook, comandi, CI e revisore.md sono dentro: ho fatto un grep di `scripts/…` su settings.json, hooks, commands e workflows. Esito: **riserva minore (R-138-5)**.
-   - Restano fuori file che cambiano il comportamento runtime o di sicurezza: `gas_identity.md` (system prompt runtime, letto a gas.py:207), `knowledge/sources.yaml` (filtro K4), `tools/ingest_knowledge.py` (FTS e trigger K3-bis), `clients/voice/` (ha una suite CI dedicata), `requirements*.txt`.
-   - Erano fuori anche prima. Decidere se allargare il perimetro spetta all'operatore.
+- `scripts/check_handoff.py:103` — se il merge-base fallisce lo script esce con 1 (prima usciva con 0). Rischio esaminato: che il post-merge su main diventi rosso. Esito: **ok**. Sonde S1, S1b e S2, descritte sotto.
+- `scripts/check_handoff.py:116` — se la sessione tocca il perimetro e l'handoff non è nel diff, esce con 1. Il perimetro unisce file, voci cablate e versione alla base. Esito: **ok**. Il test `test_va_perimeter_session_without_handoff_fails_both` fallisce con gli script di main. Sonda S6: un rename di `gas.py` fuori dal perimetro, senza handoff, dà 1/1, perché `--no-renames` conta anche il path di origine.
+- `scripts/check_handoff.py:20` — importa `_carica_perimetro`, `_nel_perimetro` e `_session_files` da check_verdetto. Rischio (c): shadowing, import rotto, bytecode stantio. Esito: **ok**.
+  - Gli import della libreria standard sono già in cache prima di `sys.path.insert`.
+  - `scripts/` non contiene moduli con nomi della libreria standard.
+  - Un ImportError produce un traceback con rc=1, quindi fail-closed.
+  - `scripts/__pycache__/` è ignorato da `.gitignore:3`.
+  - python3 di sistema è la 3.14, compatibile con `str | None`.
+  - Il legame con funzioni private (`_`) è fragile ma visibile: un rinomina rompe l'import in modo rumoroso.
+- `scripts/check_verdetto.py:218` — l'ordine è invertito: base, sessione e perimetro vengono prima dei controlli sull'handoff; merge-base fallito dà 1. Esito: **ok**.
+- `scripts/check_verdetto.py:235` — `_manca()` dà 1 con il perimetro toccato in tre casi: handoff non nel diff, file inesistente, §4 non trovata. Esito: **ok**.
+  - Sonda S4 (handoff cancellato): 1/1.
+  - Sonda S5 (§4 col titolo giusto ma vuota): 1, per «0 citazioni».
+  - Il ramo "non esiste" di check_verdetto non ha un test proprio, ma nello stesso job lo copre già check_handoff (rc=1).
+- `scripts/check_handoff.py:56` + `scripts/check_verdetto.py:89` (`_diff_names`, `_session_files`) — se `git diff BASE..HEAD` fallisce, restituiscono `set()`. Esito: **riserva R-141-1**, dettagli sotto.
+- `.claude/hooks/review_gate.sh:111` — tolto solo il commento duplicato. La spiegazione di PIPESTATUS resta a riga 108 e il codice è invariato. Esito: **ok**: la suite hook passa.
+- `tests/test_unit_handoff_check.py:598`–`:634` — 4 test V-A nuovi. Esito: **ok**.
+  - Controprova riprodotta con gli script di main copiati nello scratchpad e `-k test_va`: 3 failed, 2 passed. I tre che falliscono sono perimetro senza handoff, §4 rinominata e merge-base.
+  - Il test doc-only tiene il caso inverso (un fail-closed indiscriminato verrebbe preso).
+
+### Misure riprodotte
+- `pytest tests/ --ignore=tests/test_unit_kernel.py`: **270 passed**.
+- `test_unit_handoff_check.py`: 35 passed.
+
+### Risposte alle domande
+**(a) CI.** Il workflow ha solo `on: push`.
+
+Post-merge su main, ho simulato due casi:
+- **S1**, HEAD detached sulla punta di origin/main dopo un merge che tocca `gas.py`: base = HEAD, risultato **0/0**.
+- **S1b**, branch locale `main`: **0/0** già dalla guardia "HEAD su main".
+
+Quindi il post-merge non diventa rosso in nessuno dei due modi in cui actions/checkout può lasciare il repo. **S2**, la race in cui origin/main va avanti tra il push e il `git fetch origin main`: HEAD è antenato, base = HEAD, risultato **0/0**.
+
+Push intermedio prima del fine-task: diventa rosso. **È accettabile, anzi corretto**: il check required si valuta sullo SHA di testa della PR, e il rosso intermedio dice il vero, cioè che il fine-task manca. I commit di scrivi-rep successivi restano verdi: l'handoff resta nel diff cumulativo e `ultima_risposta.md` è in ALLOWLIST.
+
+**(b) Altri percorsi verso "non applicabile" con il perimetro toccato.**
+- **R-141-1 (minore)**: con un `git diff BASE..HEAD` fallito, entrambi gli helper restituiscono `set()`.
+  - Sonda S3, base override di 40 caratteri esadecimali ma inesistente: **0/0**. check_handoff stampa «diff vuoto», check_verdetto «non applicabile».
+  - Controllo con la base corretta: 1/1.
+  - Oggi in CI non ci si arriva, perché non si passa un override e il merge-base fallisce prima. È però lo stesso schema fail-open che V-A chiude un passo sopra.
+  - Correzione: gli helper restituiscono `None` sull'errore e `main` esce con 1.
+- **Guardia `branch == "main"`**: in CI scatta solo sul push a main, che `main-lock` impedisce se non tramite merge. Non sfruttabile.
+- Il resto (§4 vuota, cancellata o rinominata, rename) chiude con 1, come da sonde.
+
+**(c) Import tra script.** Come sopra: nessun rischio bloccante. Un ImportError fa uscire lo script con rc=1, quindi blocca invece di lasciar passare. Il messaggio di STOP di `fine_task_finale.sh:48` («Correggi §2») in quel caso sarebbe fuorviante, ma è cosmetico.
 
 ### Riserve (da tracciare in stato_progetto.md)
-- **R-138-1 (media, nuova superficie)**: il perimetro data-driven si auto-esclude (P7 in stage, P8 fuori stage → rc=0; anche gate B legge il perimetro della PR).
-  - Fix nell'hook: unione delle voci di working tree, `git show :` (index) e `HEAD:`, più voci cablate (`.claude/perimetro_review.txt`, `.claude/hooks/`).
-  - Fix in check_verdetto: unione con il perimetro della base.
-  - Aggiungere test P7/P8 con hook e perimetro copiati nel repo temporaneo.
-  - Correggere l'header di review_gate.sh (righe 18-20).
-- **R-138-2 (media, preesistente, punto (a))**: rename motore → fuori perimetro e nomi non-ASCII o quotati passano (P1/P2 rc=0, anche con l'hook vecchio). Fix: `--no-renames` più `-c core.quotePath=false` / `-z`, nell'hook e in `_session_files`.
-- **R-138-3 (media, operativa)**: falsi positivi e negativi della regex, punto (b), e conflitto con revisore.md:62 sul verdetto nullo. R-136-2 resta MITIGATA.
-- **R-138-4 (minore, preesistente)**: `tests/test_unit_handoff_check.py` **non è eseguito in CI**. ci.yml esegue solo kernel, hooks, voice e gate. I test di V-2 e R-136-2 girano solo in locale, anche se il check che proteggono ora è required.
-- **R-138-5 (minore, decisione operatore)**: buchi del perimetro elencati al punto 8.
-- **R-138-6 (cosmetica)**: `.claude/settings.json:13`, il promemoria post-compact, dice ancora "gas.py/brains/modules/tests". Il file è nel perimetro ma non è stato aggiornato.
+- **R-141-1 (minore)**: fail-open quando `git diff` fallisce, descritto sopra.
+- **R-141-2 (strutturale, già implicita)**: la CI esegue la versione **della PR** di `check_*.py` e di `ci.yml`. Una PR che modifica questi file può neutralizzare `handoff-check` mantenendone il nome. Le barriere sono il gate locale (i file sono nel perimetro) e la verifica esterna, non la CI.
+- **Docstring (cosmetica)**: `scripts/check_handoff.py:5-11` lega "§2 mancante / file mancante" al perimetro, ma sono errori anche fuori perimetro (comportamento già presente prima). Inoltre ora "perimetro assente" dà 1 anche nelle sessioni doc-only con diff non vuoto, e non è documentato.
 
-### Su (c) V-3
-Risulta già chiuso a livello di ruleset. `gh api repos/Gasss23/Gas/rules/branches/main` restituisce `required_status_checks: unit-suite, handoff-check`. Nel working tree c'è anche una modifica **NON in stage** a `CLAUDE.md` (sezione Lucchetto main, "handoff-check required dal 2026-10-03, V-3") che **non fa parte del diff revisionato**: va messa in stage nel commit dei doc. È fuori dal perimetro, quindi non serve una review, ma va detta nell'handoff. Conseguenza: ogni falso positivo fail-closed di gate B (R-138-3) ora blocca il merge.
-
-### Rischi esplicitamente esclusi
-- **Esecuzione in CI reale (GitHub Actions) del nuovo check_verdetto**: non verificata, perché le sonde sono locali. Il caso checkout detached e `rev-parse` → "HEAD" è invariato rispetto a main.
-- **Comportamento di Claude Code con un hook mancante o rinominato** (per esempio `git mv` dell'hook → comando inesistente → errore non bloccante?): non verificato, non riproducibile senza toccare la configurazione reale. È nel limite dichiarato "l'hook gira dal working tree".
-- **`GIT_INDEX_FILE`** (R-137-3): non ri-sondato, è un limite dichiarato.
-- **Suite kernel** (`tests/test_unit_kernel.py`): non eseguita, il diff non tocca gas.py, brains/ o modules/.
+### Rischio escluso
+- **Comportamento reale di actions/checkout v4 sul runner**: non verificato. Non ho consultato i log delle run GitHub. Ho simulato in locale entrambe le forme possibili, detached e branch `main`, ed entrambe danno 0.
+- **Suite kernel `test_unit_kernel.py`**: non eseguita, perché il diff non tocca il motore runtime.
 
 ### Memoria
-Riga #138 e 2 lezioni aggiunte a `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, committate da sole con `scripts/commit_memoria_revisore.sh` → commit `72c9364`. Index intatto: i 9 file restano in stage. Il diff staged non cambia, quindi un eventuale marcatore resta valido.
+- Riga contatore #141 e una lezione nuova aggiunte in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`. La lezione: dopo un fail-closed, seguire gli helper che su errore restituiscono un insieme vuoto.
+- File salvato da solo con `scripts/commit_memoria_revisore.sh`: commit `c7b6139`. L'index della review è rimasto intatto (4 file staged).
 
-### File
-Sonde (scratchpad, fuori dal repo), in `/private/tmp/claude-501/-Users-gas-Gas/ae22c9c4-87ee-4a13-a7c3-81c489eb3034/scratchpad/`:
-- `sonde_gate.sh`
-- `sonde_gate2.sh`
-- `sonda_p5.sh`
-- `sonda_regex.py`
-- `mutazioni.sh`
+File rilevanti:
+- /Users/gas/Gas/scripts/check_handoff.py
+- /Users/gas/Gas/scripts/check_verdetto.py
+- /Users/gas/Gas/tests/test_unit_handoff_check.py
+- /Users/gas/Gas/.claude/hooks/review_gate.sh
+- /Users/gas/Gas/.github/workflows/ci.yml
+- Sonde: /private/tmp/claude-501/-Users-gas-Gas/ae22c9c4-87ee-4a13-a7c3-81c489eb3034/scratchpad/sonde141.py
 
-Codice:
-- `/Users/gas/Gas/.claude/hooks/review_gate.sh`
-- `/Users/gas/Gas/scripts/check_verdetto.py`
-- `/Users/gas/Gas/.claude/perimetro_review.txt`
-
-### Review 139
-
-## VERDETTO: BOCCIATO
-
-**Review #139** (delta dopo la #138), branch fix/gate-autoprotezione, diff staged di 11 file (+479/−39). Ho riletto CLAUDE.md §3/§5/§8, lo stato del progetto e la memoria del revisore, e ho applicato la lezione #80 (fail-closed di review_gate) e la #137 (sonde in file).
-
-Il diff è quasi tutto corretto: R-138-1, R-138-2, R-138-4 e R-138-6 risultano chiuse, con sonde e mutation. Il blocco è **uno solo**, si corregge con una riga ed è già verificato: il fix `-z` ha reintrodotto la regressione fail-open che la review #80 aveva chiuso, proprio nel gate che questa fetta deve irrobustire.
-
-### Motivo bloccante
-- **`.claude/hooks/review_gate.sh:112`**:
-  - **Cosa fa la riga:** `DIFF_OUT=$(git diff --cached --name-only --no-renames -z 2>/dev/null | tr '\0' '\n')`, poi `GIT_RC=$?` alla riga 113.
-  - **Rischio esaminato:** l'hook non ha `pipefail`, quindi `GIT_RC` è l'exit code di `tr`, non di git. Il commento alle righe 106-111 dice ancora il contrario: "catturato FUORI dalla pipeline".
-  - **Sonda** (`sonda_pipe.sh`): ho messo in PATH un git finto che fallisce solo su `--name-only`, mentre status e show restano reali; `gas.py` era in stage senza marcatore.
-  - **Esito della sonda:**
-    - hook di HEAD → **rc=2** ("git diff --cached fallito (exit 128)");
-    - hook nuovo → **rc=0**: il commit passa senza review.
-  - È una regressione misurata rispetto a main. T-gate-D resta verde solo perché, in "non è un repo", fallisce anche `git status`, cioè un'altra barriera.
-  - **Esito: blocco.**
-  - **Fix verificato** su una copia dell'hook con il suo perimetro, con la stessa sonda → rc=2 col messaggio corretto:
-    ```
-    DIFF_OUT=$(git diff --cached --name-only --no-renames -z 2>/dev/null | tr '\0' '\n'; exit "${PIPESTATUS[0]}")
-    ```
-  - Va aggiunto un test con un git finto in PATH che fallisce solo su `diff --cached --name-only`.
-
-### Elementi del diff esaminati (ok)
-1. **`.claude/hooks/review_gate.sh:100-102`** — perimetro come unione di voci cablate, working tree, index (`:`) e HEAD. Rischio esaminato: il perimetro che si auto-esclude (R-138-1). **Esito: ok.**
-   - P7 (perimetro in stage che toglie sé stesso e `gas.py`) → rc=2.
-   - P8 (perimetro ridotto fuori stage) → rc=2.
-   - P5 (`git rm` e `git rm --cached` del perimetro) → rc=2.
-   - Mutation: togliere solo le voci cablate (M4) o solo l'unione con HEAD/index (M3) → i test restano verdi. Le due difese sono ridondanti tra loro: la mutazione combinata (M5) è uccisa da `tests/test_unit_hooks.py:673` e `:683`. È difesa in profondità, non un difetto.
-2. **`.claude/hooks/review_gate.sh:123`** e **`scripts/check_verdetto.py:87`** — `--no-renames` e `-z`. Rischio esaminato: rename verso fuori dal perimetro e nomi quotati (R-138-2). **Esito: ok.**
-   - Sonde P1/P1b (`git mv` di `modules/` e di `gas.py` verso `docs/`) e P2/P2b (`modules/città.py`, `modules/a"b.py`) → tutte rc=2. Con la #138 erano rc=0.
-   - P3/P3b (case), P4 (symlink) e P6 (`git rm`) → rc=2.
-   - Mutation M1 (senza `--no-renames`), M2 (senza `-z`) e M6 (`_session_files` con i rename) → tutte uccise.
-   - Resta il residuo basso P4b: il target di un symlink già committato, se sta fuori dal perimetro, si modifica senza review (rc=0). Era già noto dalla #138.
-3. **`scripts/check_verdetto.py:122`** e **`:136`** — `_carica_perimetro` fa l'unione con le voci cablate e con `<base>:.claude/perimetro_review.txt`. Rischio esaminato: una PR che si toglie dal perimetro. **Esito: ok.** La voce cablata del perimetro basta già da sola, la base aggiunge profondità.
-4. **`scripts/check_verdetto.py:104`** e **`:110`** — nuova `_VERDETTO_RE` più il mascheramento dei code fence. Rischio esaminato: falsi positivi e negativi sui verdetti reali (R-138-3). **Esito: riserva (R-139-1).**
-   - Mutation M7 (fence non mascherato) uccisa.
-   - Handoff reali riprodotti con il nuovo check: 77b5edf/49f0c52 → OK con 12 riferimenti; c868bc0/712b7c0 → OK con 25.
-   - Ora aprono un verdetto: "Verdetto finale: APPROVATO", "Esito della review: BOCCIATO", "**Verdetto** — APPROVATO".
-   - Non aprono più: la prosa "Approvato il…", il fence e `- verdetto nullo: «…»`. Il conflitto della #138 con revisore.md è chiuso.
-   - Fail-closed: con il mascheramento dei fence, **8 §4 storici su 143** hanno più blocchi con meno di 2 citazioni. Sono tutti anteriori al formato obbligatorio (dal 2026-07-01 al 2026-09-29). Il caso tipico è un riepilogo finale "VERDETTO FINALE: APPROVATO" dopo un verdetto pieno: diventa un blocco a 0 citazioni.
-   - Fail-open residui: `- **Verdetto**: APPROVATO`, `| VERDETTO | APPROVATO |`, "Review #139 — APPROVATO", "**APPROVATO CON RISERVE.** La fix", "**APPROVATO** (review #100)".
-   - **R-136-2 resta MITIGATA.** Suggerimento: in revisore.md, vietare il riepilogo "Verdetto finale:" in coda.
-5. **`.github/workflows/ci.yml:103-109`** — la suite `test_unit_handoff_check.py` ora gira in CI (R-138-4). **Esito: ok.**
-6. **`.claude/settings.json:13`** — promemoria post-compact aggiornato al perimetro (R-138-6). **Esito: ok.**
-
-Doc (`fine-task.md` §4quater, `CLAUDE.md` E e lucchetto, `verifica_esterna.md`): coerenti fra loro. Il ruleset con `handoff-check` required l'avevo già verificato via gh API nella #138.
-
-### Misure riprodotte
-- pytest senza kernel: **265 passed**.
-- Sonde P1–P8 e mutation M1–M7: riprodotte come sopra, in worktree e repo usa-e-getta poi rimossi (`git worktree list` → solo il repo principale).
-
-### Rischi esplicitamente esclusi
-- **Run reale di GitHub Actions** con il nuovo step e con check_verdetto sul checkout della PR: non verificata, le sonde sono tutte locali.
-- **Trigger realistico del blocco** (git diff fallito con git status riuscito, per esempio un lock transitorio o un index parzialmente leggibile): non riprodotto, l'ho simulato con il git finto. Il motivo del blocco è la regressione misurata della proprietà fail-closed, non uno scenario d'attacco concreto.
-- **Suite kernel**: non eseguita, il diff non tocca gas.py, brains/ o modules/.
-- **R-138-5** (allargare il perimetro): è una decisione dell'operatore, non valutata.
-
-### Dopo il fix
-Basta una ri-review di delta: la riga 112 e il test con il git finto. Il resto è approvabile così com'è.
-
-### Memoria e repo
-- Riga #139 e una lezione aggiunte a `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, commit `59d8a75` (index intatto).
-- Nel working tree c'è `reports/stato_progetto.md` modificato e **non in stage**: non viene da me, segnalo solo che c'è.
-
-Sonde in `/private/tmp/claude-501/-Users-gas-Gas/ae22c9c4-87ee-4a13-a7c3-81c489eb3034/scratchpad/`: `sonda_pipe.sh`, `mutazioni139.sh`, `mutazioni139_m5.sh`, `sonda_regex2.py`, `handoff_reali.sh`.
-
-### Review 140
+### Review 142
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-**Review #140**, delta sul BOCCIATO della #139, branch fix/gate-autoprotezione: diff staged di 11 file (+507/−43; rispetto alla #139 il delta è circa +28/−4). Ho riletto CLAUDE.md §3/§5, lo stato del progetto e la memoria del revisore (lezioni #80 e #139). Il motivo del blocco #139 è chiuso: il fix è quello verificato, il test morde davvero e non ci sono regressioni.
+**Review #142**: delta sulla #141. Il fix chiude R-141-1: un `git diff` fallito ora dà exit 1 in entrambi gli script. Le riserve rimaste sono cosmetiche più R-141-2, che è strutturale. Diff staged di 4 file, l'index è rimasto intatto dopo il salvataggio della memoria. Letture obbligatorie già fatte nella #141.
 
 ### Elementi del diff esaminati
-1. **`.claude/hooks/review_gate.sh:113`**
-   - **Cosa fa la riga:** `DIFF_OUT=$(git diff --cached --name-only --no-renames -z 2>/dev/null | tr '\0' '\n'; exit "${PIPESTATUS[0]}")`.
-   - **Rischio esaminato:** l'exit code di git perso nella pipeline con `tr`, cioè il blocco della #139.
-   - **Esito: ok.**
-     - Sonda indipendente (`sonda_pipe.sh`, sull'hook in stage = working tree): ho usato un git finto che fallisce **solo** su `--name-only`, più stretto di quello del test, con status e show reali → **rc=2**, messaggio "'git diff --cached' fallito (exit 128)".
-     - L'hook di HEAD dà anche lui rc=2, quindi la regressione della #80 è annullata.
-2. **`tests/test_unit_hooks.py:710`**
-   - **Cosa fa:** `test_gate_r139_git_diff_failure_in_pipeline_blocks` mette in PATH un git finto che esce 128 su ogni `diff` e delega il resto al git reale; con gas.py in stage si aspetta rc=2 e "git diff --cached".
-   - **Rischio esaminato:** test decorativo.
-   - **Esito: ok, morde.** In un worktree usa-e-getta ho riportato la riga 113 alla versione della #139: il test passa da 1 passed a **1 failed**.
-   - Il git finto che fallisce su ogni `diff` è accettabile: il percorso verso lo script dell'hash (che usa `diff`) non viene raggiunto, perché il gate esce prima.
-3. **`.claude/agents/revisore.md`** (righe aggiunte nella sezione formato)
-   - **Cosa fa:** vieta il riepilogo "Verdetto finale: …" in coda (R-139-1).
-   - **Esito: ok, ma solo come mitigazione di processo.** La regex continua ad aprire un blocco su quella forma; la regola evita solo il falso positivo fail-closed.
+- `scripts/check_verdetto.py:89` — `_session_files` restituisce `None` se `git diff` fallisce, invece di un `set()`. Rischio: altri chiamanti che si aspettano un set. Esito: **ok**.
+  - Chiamanti: `scripts/check_verdetto.py:226`, `scripts/check_handoff.py:112` e il test a riga 579, che usa un diff valido.
+  - Nessun chiamante itera su `None`.
+- `scripts/check_verdetto.py:226` — se `session is None`, esce con 1 e stampa "git diff BASE..HEAD fallito". Esito: **ok**.
+  - Sonda S3, base inesistente di 40 caratteri esadecimali con perimetro toccato: ora **1/1** con "fallito" (nella #141 era 0/0).
+  - Controllo con la base corretta: 1/1 (V-A).
+- `scripts/check_handoff.py:111` — calcola `all_changed` e `session`; se uno dei due è `None`, esce con 1. `nel_perimetro` riusa `session` senza una seconda chiamata. Esito: **ok**, con una nota sulla mutation B più sotto.
+- `tests/test_unit_handoff_check.py:637` — `test_r141_1_git_diff_failure_fails_closed`, che verifica rc 1 e "fallito" in stderr per entrambi gli script. Esito: **ok**.
+  - **Mutation A** (`_session_files` torna a `set()`): il test fallisce, quindi è mordace.
+  - **Mutation B** (solo `_diff_names` torna a `set()`): sopravvive. Quel controllo è ridondante, non portante: i due `git diff` usano lo stesso intervallo `BASE..HEAD` e falliscono insieme. Non è un difetto.
+- `scripts/check_handoff.py:7` — docstring. Esito: **riserva cosmetica**.
+  - Mette "perimetro assente o vuoto" tra gli exit 1 "SEMPRE (qualunque sessione)". Ma con un diff vuoto lo script esce con 0 a riga 119, prima di caricare il perimetro.
+  - La riga 12 "Exit 1: set incoerente…" ripete quanto già detto a riga 8.
 
 ### Misure riprodotte
-- pytest senza kernel: **266 passed**.
-- `tests/test_unit_hooks.py`: **70 passed**.
-- Worktree di mutation rimosso: `git worktree list` mostra solo il repo principale.
+- `pytest tests/ --ignore=tests/test_unit_kernel.py`: **271 passed**.
+- Sonde post-merge rilanciate sul codice nuovo, nessuna regressione:
+  - S1, HEAD detached sulla punta di main: 0/0.
+  - S1b, branch `main`: 0/0.
+  - S2, race con origin/main più avanti: 0/0.
 
 ### Riserve (da tracciare in stato_progetto.md)
-- **R-139-1 (aperta, MITIGATA):** la regex degli esiti resta fail-open su `- **Verdetto**: APPROVATO`, tabelle `| VERDETTO | … |`, "Review #N — APPROVATO" e "**APPROVATO** (…)". Il vincolo vero resta la prima riga obbligatoria `## VERDETTO:`. **R-136-2 resta MITIGATA**, non chiusa.
-- **Cosmetica:** il commento di `review_gate.sh` alle righe 106-112 ripete due volte la stessa spiegazione su PIPESTATUS (il paragrafo "In una pipeline…" e quello "R-139 (blocco)…"). Se ne può togliere uno.
-- **R-138-5:** il perimetro non comprende gas_identity.md, knowledge/sources.yaml, tools/ e clients/voice/. Decide l'operatore; la riserva è invariata.
+- **Docstring** di `check_handoff.py:7-12`: imprecisione sul perimetro assente e riga duplicata. Cosmetica.
+- **R-141-2**, strutturale, resta aperta: la CI esegue la versione della PR di `check_*.py` e di `ci.yml`. Le barriere sono il gate locale e la verifica esterna.
 
-### Rischi esplicitamente esclusi
-- **Run reale di GitHub Actions** con il nuovo step `test_unit_handoff_check.py` e il test r139 su ubuntu (dove `command -v git` e il PATH sono diversi): non verificata, ho eseguito tutto in locale su macOS.
-- **Il resto del diff** (check_verdetto.py, perimetro, CI, doc) non l'ho ri-verificato riga per riga rispetto alla #139: il delta dichiarato e lo stat (+28/−4) toccano solo hook, test e revisore.md. Le sonde P1/P2/P7/P8 della #139 restano valide per l'hook, che è cambiato solo alla riga 113 e nei commenti.
-- **Suite kernel:** non eseguita, il diff non tocca gas.py, brains/ o modules/.
+### Rischio escluso
+- **Comportamento reale di actions/checkout v4 sul runner GitHub**: non verificato dai log delle run. Ho simulato in locale entrambe le forme possibili (HEAD detached e branch `main`), ed entrambe danno 0.
+- **Suite kernel**: non eseguita, perché il delta non tocca il motore runtime.
 
-### Memoria e repo
-- Riga #140 aggiunta a `/Users/gas/Gas/.claude/agents/memoria_revisore.md` ("nessuna lezione nuova"), commit `f33be38`. Lo script ha committato solo quel file: index intatto.
-- `reports/stato_progetto.md` resta non in stage (è tuo, come hai detto).
-- Sonde in `/private/tmp/claude-501/-Users-gas-Gas/ae22c9c4-87ee-4a13-a7c3-81c489eb3034/scratchpad/`: `mutazioni140.sh`, `sonda_pipe.sh`.
+### Memoria
+- Riga contatore **#142** aggiunta in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`. Nessuna lezione nuova: quella sui passi che su errore "degradano a vuoto" è già stata scritta nella #141.
+- File salvato da solo con `scripts/commit_memoria_revisore.sh`: commit **`7649d6b`**. Il salvataggio della #141 era `c7b6139`.
+
+File rilevanti:
+- /Users/gas/Gas/scripts/check_handoff.py
+- /Users/gas/Gas/scripts/check_verdetto.py
+- /Users/gas/Gas/tests/test_unit_handoff_check.py
+- /Users/gas/Gas/.claude/agents/memoria_revisore.md
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py, brains/ o modules/: la suite kernel non è stata rilanciata. Test toccati in tests/ (hook e gate): `pytest tests --ignore=tests/test_unit_kernel.py` **247 → 266 passed**, tutti verdi.
+Nessuna modifica a gas.py, brains/ o modules/: la suite kernel non è stata rilanciata. Test in tests/ (gate): `pytest tests --ignore=tests/test_unit_kernel.py` **266 → 271 passed**, tutti verdi.
 
 ## §6 STATO CI
 
 ```
-completed	success	fix(gate): il gate protegge se stesso + verifica esterna strutturata …	CI	fix/gate-autoprotezione	push	37158948397	1m4s	2026-10-03T22:35:10Z
-completed	success	Merge pull request #118 from Gasss23/fix/gate-b-verdetto	CI	main	push	37152670007	1m6s	2026-10-03T20:45:16Z
-completed	success	docs(gate-b): fine-task — gate B per-verdetto + marcatore legato al d…	CI	fix/gate-b-verdetto	push	37144827743	1m3s	2026-10-03T18:36:23Z
+completed	failure	fix(handoff-check): vincolante quando la sessione tocca il perimetro …	CI	fix/handoff-check-vincolante	push	37202038518	1m11s	2026-10-04T12:25:18Z
+completed	success	Merge pull request #119 from Gasss23/fix/gate-autoprotezione	CI	main	push	37201274295	1m11s	2026-10-04T12:11:50Z
+completed	success	docs(gate-auto): fine-task — il gate protegge se stesso + verifica es…	CI	fix/gate-autoprotezione	push	37159096561	1m2s	2026-10-03T22:37:56Z
 ```
 
 Mappatura commit→run:
-- `112f8af`: run **37158948397**, success. È la testa del push che conteneva anche `72c9364`, `59d8a75` e `f33be38` (memoria revisore).
-- `72c9364`, `59d8a75`, `f33be38`: nessuna run su questi SHA. Sono commit intermedi dello stesso push, inclusi nell'albero testato.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `501ab76` (codice V-A, pushato prima del fine-task): run **37202038518**. Esito `unit-suite: success`, `handoff-check: failure`. Il rosso è ATTESO: il push conteneva il codice nel perimetro ma non ancora l'handoff, e questa è la prova dal vivo di V-A.
+- `c7b6139`, `7649d6b` (memoria revisore): nessuna run su questi SHA. Sono commit intermedi dello stesso push, inclusi nell'albero testato da 37202038518.
+- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff. Deve tornare verde su entrambi i check.
 
 ## §7 RISERVE APERTE
 
-- **R-139-1 / R-136-2** (MITIGATE): restano fail-open i formati del verdetto `- **Verdetto**:`, tabella, "Review #N — APPROVATO" e "**APPROVATO** (…)".
-- **R-138-5** (decisione operatore): file runtime e di sicurezza fuori dal perimetro.
-- **Residuo P4b** (basso): il target di un symlink già committato fuori perimetro.
-- **R-136-3, R-137-1, R-137-2, R-137-3**: invariate.
-- Cosmetica: il commento sulla pipeline nell'hook è ripetuto due volte.
+- **R-141-2** (strutturale): la CI esegue la versione della PR dei check, quindi una PR può neutralizzarli. Barriere: il gate locale (i file sono nel perimetro) e la verifica esterna.
+- **V-B** (MEDIA): il gate B prova le citazioni, non che la review sia avvenuta.
+- **V-C** (MEDIA): l'hook non intercetta merge, cherry-pick e alias.
+- **V-D / R-138-5**: perimetro più largo (gas_identity.md).
+- **R-139-1**: formati alternativi del verdetto (mitigata).
+- Cosmetica: docstring di check_handoff (#142).
 - Da C4b-3: R-c4b3-3, R-c4b3-4, **R-c4b3-5** (prossima fetta motore).
