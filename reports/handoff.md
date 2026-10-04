@@ -34,26 +34,27 @@
  .github/workflows/ci.yml           |  23 +++++++++++++++++++----
  .gitignore                         |   2 ++
  reports/diff_sessione.md           |  18 +++++++++++-------
- reports/handoff.md                 | 321 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 326 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   8 ++++++--
  reports/ultimo_report.md           |  30 ++++++++++++++++++------------
  scripts/check_handoff.py           |  23 +++++++++++++++++++----
  scripts/check_verdetto.py          |   2 +-
  scripts/fine_task_finale.sh        |   2 +-
  tests/test_unit_handoff_check.py   |  58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 13 files changed, 320 insertions(+), 182 deletions(-)
+ 13 files changed, 323 insertions(+), 184 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1357b68 docs(gate-rename): fine-task — rename nel §2, perimetro piu' largo, check CI da main, handoff (review #143/#144)
 c287d5f chore(revisore): memoria review #144 — APPROVATO CON RISERVE
 13b7933 fix(gate): rename nel §2, perimetro piu' largo, check CI presi da main — review #143/#144 APPROVATO CON RISERVE
 067c83d chore(revisore): memoria review #144 — APPROVATO CON RISERVE
 f63bf47 chore(revisore): memoria review #143 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `1357b68` è il primo commit di fine-task, superato da questa correzione del §6.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -203,15 +204,15 @@ Nessuna modifica a gas.py, brains/ o modules/: la suite kernel non è stata rila
 ## §6 STATO CI
 
 ```
+completed	success	docs(gate-rename): fine-task — rename nel §2, perimetro piu' largo, c…	CI	fix/gate-rename-perimetro-ci	push	37206161421	1m8s	2026-10-04T13:35:28Z
 completed	failure	chore(revisore): memoria review #144 — APPROVATO CON RISERVE	CI	fix/gate-rename-perimetro-ci	push	37206057264	1m16s	2026-10-04T13:33:42Z
 completed	success	Merge pull request #120 from Gasss23/fix/handoff-check-vincolante	CI	main	push	37205287598	1m5s	2026-10-04T13:20:43Z
-completed	success	docs(handoff-check): fine-task — V-A handoff-check vincolante, handof…	CI	fix/handoff-check-vincolante	push	37202171862	1m4s	2026-10-04T12:27:33Z
 ```
 
-Mappatura commit→run:
-- `13b7933` (codice, pushato prima del fine-task, insieme a `f63bf47`): run sul push del branch. Esito atteso: `handoff-check` rosso (V-A, manca l'handoff), `unit-suite` verde.
-- `067c83d`, `c287d5f` (memoria revisore): inclusi nel push del fine-task.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff. Deve risultare verde su entrambi i check.
+Mappatura commit→run (corretta dopo la prima scrittura, che attribuiva per errore la run intermedia a `13b7933`):
+- `f63bf47`, `13b7933`, `067c83d`, `c287d5f`: un solo push con testa `c287d5f` (l'ultimo commit di memoria del revisore), run **37206057264**. Esito `unit-suite: success`, `handoff-check: failure`. Il rosso è ATTESO (V-A: perimetro toccato, handoff non ancora presente). Gli altri tre SHA non hanno una run propria: sono inclusi nell'albero testato.
+- `1357b68` (primo commit di fine-task): run **37206161421**, `unit-suite: success`, `handoff-check: success`.
+- Commit di correzione del §6 (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
