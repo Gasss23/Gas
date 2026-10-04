@@ -1,198 +1,221 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-04 — V-A: handoff-check davvero vincolante, branch `fix/handoff-check-vincolante`
+**Sessione:** 2026-10-04 — Rename nel §2, perimetro più largo, check CI presi da main, branch `fix/gate-rename-perimetro-ci`
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #120 (https://github.com/Gasss23/Gas/pull/120), dopo la verifica esterna. Variante A: l'agente lancia `gasmerge 120`, l'operatore conferma digitando `120`.
+1. Merge della PR #121 (https://github.com/Gasss23/Gas/pull/121), dopo la verifica esterna. Variante A: l'agente lancia `gasmerge 121`, l'operatore conferma digitando `121`.
+2. Prossima fetta PRIORITARIA, già decisa: V-B "vera", cioè revisione con identità separata su GitHub (bot + segreti). L'operatore dovrà inserire una chiave API nei segreti di GitHub.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V-A — handoff-check required ma saltabile (verifica esterna PR #119, ALTA)**: `FATTA`.
-- **R-141-1 — git diff fallito → insieme vuoto → "non applicabile"**: `FATTA`.
-- **Correzione V-3 nei report** (era "CHIUSA", in realtà MITIGATA): `FATTA`.
-- **Cosmetica #140 — commento duplicato nell'hook**: `FATTA`.
-- **V-B / V-C / V-D (verifica esterna PR #119)**: `DEFERITA — tracciate in stato_progetto`.
-- **Docstring check_handoff (cosmetica #142)**: `DEFERITA — riserva cosmetica`.
+- **V-3 — rename e §2 (verifica esterna PR #120)**: `FATTA`.
+- **V-2 — perimetro più largo (autorizzato dall'operatore)**: `FATTA`.
+- **R-141-2 — la CI eseguiva i check della PR**: `FATTA` come mitigazione (check presi da main; resta R-143-2).
+- **R-143-1 — tag "origin/main" che dirotta base e check**: `FATTA`.
+- **R-143-4 — .DS_Store**: `FATTA`.
+- **Nota b — stat troncato o quotato nel fine-task**: `FATTA`.
+- **V-1 della verifica #120 — formulazione di V-A**: `FATTA` (stato_progetto corretto).
+- **R-143-2 / R-143-3**: `DEFERITA — R-143-2 alla V-B vera; R-143-3 procedura da decidere`.
+- **R-144-1 — ref abbreviato in gasmerge.sh / promemoria_end.sh**: `DEFERITA — prossima fetta`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +
- .claude/hooks/review_gate.sh       |   2 -
- reports/diff_sessione.md           |  21 +--
- reports/handoff.md                 | 350 ++++++++++++++-----------------------
- reports/stato_progetto.md          |   6 +-
- reports/ultimo_report.md           |  32 ++--
- scripts/check_handoff.py           |  40 ++++-
- scripts/check_verdetto.py          |  48 +++--
- tests/test_unit_handoff_check.py   |  66 +++++++
- 9 files changed, 284 insertions(+), 284 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +++
+ .claude/commands/fine-task.md      |   4 ++--
+ .claude/perimetro_review.txt       |   8 ++++++++
+ .github/workflows/ci.yml           |  23 +++++++++++++++++++----
+ .gitignore                         |   2 ++
+ reports/diff_sessione.md           |  18 +++++++++++-------
+ reports/handoff.md                 | 321 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   8 ++++++--
+ reports/ultimo_report.md           |  30 ++++++++++++++++++------------
+ scripts/check_handoff.py           |  23 +++++++++++++++++++----
+ scripts/check_verdetto.py          |   2 +-
+ scripts/fine_task_finale.sh        |   2 +-
+ tests/test_unit_handoff_check.py   |  58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 13 files changed, 320 insertions(+), 182 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-501ab76 fix(handoff-check): vincolante quando la sessione tocca il perimetro (V-A) — review #141/#142 APPROVATO CON RISERVE
-7649d6b chore(revisore): memoria review #142 — APPROVATO CON RISERVE
-c7b6139 chore(revisore): memoria review #141 — APPROVATO CON RISERVE
+c287d5f chore(revisore): memoria review #144 — APPROVATO CON RISERVE
+13b7933 fix(gate): rename nel §2, perimetro piu' largo, check CI presi da main — review #143/#144 APPROVATO CON RISERVE
+067c83d chore(revisore): memoria review #144 — APPROVATO CON RISERVE
+f63bf47 chore(revisore): memoria review #143 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `501ab76`: la #141 sul diff e la #142 sul delta che chiude R-141-1. Entrambe sono incollate per intero.
+Commit `13b7933`: la #143 sul diff e la #144 sul delta che chiude R-143-1 e R-143-4. Entrambe sono incollate per intero.
 
-### Review 141
-
-## VERDETTO: APPROVATO CON RISERVE
-
-**Review #141**: branch `fix/handoff-check-vincolante`, diff staged di 4 file. Ho fatto le tre letture obbligatorie: CLAUDE.md, `reports/stato_progetto.md` e `.claude/agents/memoria_revisore.md`.
-
-### Elementi del diff esaminati
-- `scripts/check_handoff.py:103` — se il merge-base fallisce lo script esce con 1 (prima usciva con 0). Rischio esaminato: che il post-merge su main diventi rosso. Esito: **ok**. Sonde S1, S1b e S2, descritte sotto.
-- `scripts/check_handoff.py:116` — se la sessione tocca il perimetro e l'handoff non è nel diff, esce con 1. Il perimetro unisce file, voci cablate e versione alla base. Esito: **ok**. Il test `test_va_perimeter_session_without_handoff_fails_both` fallisce con gli script di main. Sonda S6: un rename di `gas.py` fuori dal perimetro, senza handoff, dà 1/1, perché `--no-renames` conta anche il path di origine.
-- `scripts/check_handoff.py:20` — importa `_carica_perimetro`, `_nel_perimetro` e `_session_files` da check_verdetto. Rischio (c): shadowing, import rotto, bytecode stantio. Esito: **ok**.
-  - Gli import della libreria standard sono già in cache prima di `sys.path.insert`.
-  - `scripts/` non contiene moduli con nomi della libreria standard.
-  - Un ImportError produce un traceback con rc=1, quindi fail-closed.
-  - `scripts/__pycache__/` è ignorato da `.gitignore:3`.
-  - python3 di sistema è la 3.14, compatibile con `str | None`.
-  - Il legame con funzioni private (`_`) è fragile ma visibile: un rinomina rompe l'import in modo rumoroso.
-- `scripts/check_verdetto.py:218` — l'ordine è invertito: base, sessione e perimetro vengono prima dei controlli sull'handoff; merge-base fallito dà 1. Esito: **ok**.
-- `scripts/check_verdetto.py:235` — `_manca()` dà 1 con il perimetro toccato in tre casi: handoff non nel diff, file inesistente, §4 non trovata. Esito: **ok**.
-  - Sonda S4 (handoff cancellato): 1/1.
-  - Sonda S5 (§4 col titolo giusto ma vuota): 1, per «0 citazioni».
-  - Il ramo "non esiste" di check_verdetto non ha un test proprio, ma nello stesso job lo copre già check_handoff (rc=1).
-- `scripts/check_handoff.py:56` + `scripts/check_verdetto.py:89` (`_diff_names`, `_session_files`) — se `git diff BASE..HEAD` fallisce, restituiscono `set()`. Esito: **riserva R-141-1**, dettagli sotto.
-- `.claude/hooks/review_gate.sh:111` — tolto solo il commento duplicato. La spiegazione di PIPESTATUS resta a riga 108 e il codice è invariato. Esito: **ok**: la suite hook passa.
-- `tests/test_unit_handoff_check.py:598`–`:634` — 4 test V-A nuovi. Esito: **ok**.
-  - Controprova riprodotta con gli script di main copiati nello scratchpad e `-k test_va`: 3 failed, 2 passed. I tre che falliscono sono perimetro senza handoff, §4 rinominata e merge-base.
-  - Il test doc-only tiene il caso inverso (un fail-closed indiscriminato verrebbe preso).
-
-### Misure riprodotte
-- `pytest tests/ --ignore=tests/test_unit_kernel.py`: **270 passed**.
-- `test_unit_handoff_check.py`: 35 passed.
-
-### Risposte alle domande
-**(a) CI.** Il workflow ha solo `on: push`.
-
-Post-merge su main, ho simulato due casi:
-- **S1**, HEAD detached sulla punta di origin/main dopo un merge che tocca `gas.py`: base = HEAD, risultato **0/0**.
-- **S1b**, branch locale `main`: **0/0** già dalla guardia "HEAD su main".
-
-Quindi il post-merge non diventa rosso in nessuno dei due modi in cui actions/checkout può lasciare il repo. **S2**, la race in cui origin/main va avanti tra il push e il `git fetch origin main`: HEAD è antenato, base = HEAD, risultato **0/0**.
-
-Push intermedio prima del fine-task: diventa rosso. **È accettabile, anzi corretto**: il check required si valuta sullo SHA di testa della PR, e il rosso intermedio dice il vero, cioè che il fine-task manca. I commit di scrivi-rep successivi restano verdi: l'handoff resta nel diff cumulativo e `ultima_risposta.md` è in ALLOWLIST.
-
-**(b) Altri percorsi verso "non applicabile" con il perimetro toccato.**
-- **R-141-1 (minore)**: con un `git diff BASE..HEAD` fallito, entrambi gli helper restituiscono `set()`.
-  - Sonda S3, base override di 40 caratteri esadecimali ma inesistente: **0/0**. check_handoff stampa «diff vuoto», check_verdetto «non applicabile».
-  - Controllo con la base corretta: 1/1.
-  - Oggi in CI non ci si arriva, perché non si passa un override e il merge-base fallisce prima. È però lo stesso schema fail-open che V-A chiude un passo sopra.
-  - Correzione: gli helper restituiscono `None` sull'errore e `main` esce con 1.
-- **Guardia `branch == "main"`**: in CI scatta solo sul push a main, che `main-lock` impedisce se non tramite merge. Non sfruttabile.
-- Il resto (§4 vuota, cancellata o rinominata, rename) chiude con 1, come da sonde.
-
-**(c) Import tra script.** Come sopra: nessun rischio bloccante. Un ImportError fa uscire lo script con rc=1, quindi blocca invece di lasciar passare. Il messaggio di STOP di `fine_task_finale.sh:48` («Correggi §2») in quel caso sarebbe fuorviante, ma è cosmetico.
-
-### Riserve (da tracciare in stato_progetto.md)
-- **R-141-1 (minore)**: fail-open quando `git diff` fallisce, descritto sopra.
-- **R-141-2 (strutturale, già implicita)**: la CI esegue la versione **della PR** di `check_*.py` e di `ci.yml`. Una PR che modifica questi file può neutralizzare `handoff-check` mantenendone il nome. Le barriere sono il gate locale (i file sono nel perimetro) e la verifica esterna, non la CI.
-- **Docstring (cosmetica)**: `scripts/check_handoff.py:5-11` lega "§2 mancante / file mancante" al perimetro, ma sono errori anche fuori perimetro (comportamento già presente prima). Inoltre ora "perimetro assente" dà 1 anche nelle sessioni doc-only con diff non vuoto, e non è documentato.
-
-### Rischio escluso
-- **Comportamento reale di actions/checkout v4 sul runner**: non verificato. Non ho consultato i log delle run GitHub. Ho simulato in locale entrambe le forme possibili, detached e branch `main`, ed entrambe danno 0.
-- **Suite kernel `test_unit_kernel.py`**: non eseguita, perché il diff non tocca il motore runtime.
-
-### Memoria
-- Riga contatore #141 e una lezione nuova aggiunte in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`. La lezione: dopo un fail-closed, seguire gli helper che su errore restituiscono un insieme vuoto.
-- File salvato da solo con `scripts/commit_memoria_revisore.sh`: commit `c7b6139`. L'index della review è rimasto intatto (4 file staged).
-
-File rilevanti:
-- /Users/gas/Gas/scripts/check_handoff.py
-- /Users/gas/Gas/scripts/check_verdetto.py
-- /Users/gas/Gas/tests/test_unit_handoff_check.py
-- /Users/gas/Gas/.claude/hooks/review_gate.sh
-- /Users/gas/Gas/.github/workflows/ci.yml
-- Sonde: /private/tmp/claude-501/-Users-gas-Gas/ae22c9c4-87ee-4a13-a7c3-81c489eb3034/scratchpad/sonde141.py
-
-### Review 142
+### Review 143
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-**Review #142**: delta sulla #141. Il fix chiude R-141-1: un `git diff` fallito ora dà exit 1 in entrambi gli script. Le riserve rimaste sono cosmetiche più R-141-2, che è strutturale. Diff staged di 4 file, l'index è rimasto intatto dopo il salvataggio della memoria. Letture obbligatorie già fatte nella #141.
+Review #143. Branch fix/gate-rename-perimetro-ci, diff staged di 4 file, base main 1db7d81. Prima della review ho letto CLAUDE.md, stato_progetto.md (sezione motore) e la memoria del revisore. Non ho trovato blocchi. C'è però un by-pass concreto del nuovo passo CI (R-143-1), che ho riprodotto e che si chiude con una riga: conviene correggerlo in questa stessa PR.
 
-### Elementi del diff esaminati
-- `scripts/check_verdetto.py:89` — `_session_files` restituisce `None` se `git diff` fallisce, invece di un `set()`. Rischio: altri chiamanti che si aspettano un set. Esito: **ok**.
-  - Chiamanti: `scripts/check_verdetto.py:226`, `scripts/check_handoff.py:112` e il test a riga 579, che usa un diff valido.
-  - Nessun chiamante itera su `None`.
-- `scripts/check_verdetto.py:226` — se `session is None`, esce con 1 e stampa "git diff BASE..HEAD fallito". Esito: **ok**.
-  - Sonda S3, base inesistente di 40 caratteri esadecimali con perimetro toccato: ora **1/1** con "fallito" (nella #141 era 0/0).
-  - Controllo con la base corretta: 1/1 (V-A).
-- `scripts/check_handoff.py:111` — calcola `all_changed` e `session`; se uno dei due è `None`, esce con 1. `nel_perimetro` riusa `session` senza una seconda chiamata. Esito: **ok**, con una nota sulla mutation B più sotto.
-- `tests/test_unit_handoff_check.py:637` — `test_r141_1_git_diff_failure_fails_closed`, che verifica rc 1 e "fallito" in stderr per entrambi gli script. Esito: **ok**.
-  - **Mutation A** (`_session_files` torna a `set()`): il test fallisce, quindi è mordace.
-  - **Mutation B** (solo `_diff_names` torna a `set()`): sopravvive. Quel controllo è ridondante, non portante: i due `git diff` usano lo stesso intervallo `BASE..HEAD` e falliscono insieme. Non è un difetto.
-- `scripts/check_handoff.py:7` — docstring. Esito: **riserva cosmetica**.
-  - Mette "perimetro assente o vuoto" tra gli exit 1 "SEMPRE (qualunque sessione)". Ma con un diff vuoto lo script esce con 0 a riga 119, prima di caricare il perimetro.
-  - La riga 12 "Exit 1: set incoerente…" ripete quanto già detto a riga 8.
+**Elementi del diff esaminati**
 
-### Misure riprodotte
-- `pytest tests/ --ignore=tests/test_unit_kernel.py`: **271 passed**.
-- Sonde post-merge rilanciate sul codice nuovo, nessuna regressione:
-  - S1, HEAD detached sulla punta di main: 0/0.
-  - S1b, branch `main`: 0/0.
-  - S2, race con origin/main più avanti: 0/0.
+- `scripts/check_handoff.py:60` — `_diff_names` ora usa `--no-renames -z`, come `_session_files`.
+  - Rischio esaminato: incoerenza tra l'insieme reale e l'insieme di sessione; nomi non ASCII; regressione di R-141-1 (git fallito trattato come diff vuoto).
+  - Il ramo `returncode != 0 → None` è intatto.
+  - Mutation "solo `_diff_names` senza `--no-renames`": la uccide `test_v3_rename_stat_pasted_honestly_passes`.
+  - Esito: **ok**.
+- `scripts/check_handoff.py:66-76` e `:104` — `_espandi_rename`, applicata a ogni riga di §2.
+  - Rischio esaminato: forme reali di `--stat` e possibile by-pass. Ho fatto una sonda su un repo usa-e-getta con l'output vero di git:
+    - `m.py => m2.py` con rename e modifica: ok;
+    - `y.py => new/y.py`: ok;
+    - `old/x.py => x.py`: ok;
+    - `.../ccc/{a => b}` troncato: mismatch;
+    - file chiamato `sp => ace.py` senza rename: diviso in `sp` e `ace.py`, mismatch;
+    - `"t\303\251.py" => …` quotato: mismatch.
+  - I tre mismatch sono falsi blocchi fail-closed, mai by-pass: il check resta un'uguaglianza esatta di insiemi, quindi un'espansione permissiva cambia solo il modo di scrivere l'insieme, non permette di omettere file.
+  - Il troncamento `...` e il quoting non ASCII esistevano già per qualsiasi path lungo o accentato: le espansioni nuove non li peggiorano.
+  - Mutation "solo `_espandi_rename → [path]`": uccisa.
+  - Esito: **ok**, con nota (b) sotto.
+- `.github/workflows/ci.yml:228-245` — i check vengono copiati da `origin/main` in `$RUNNER_TEMP/gate_main` ed eseguiti da lì.
+  - Ho verificato:
+    - `sys.path[0]` è la cartella dello script, quindi `from check_verdetto import` risolve sulla copia di main;
+    - `PERIMETRO_FILE` è la copia di main, in unione con la versione alla base, che è sempre main;
+    - `_get_repo` resta il checkout della PR, perché dipende dalla cwd;
+    - lo shell di default `bash -e` fa fallire il passo se `git show` fallisce.
+  - Rischio esaminato: risoluzione ambigua del ref.
+  - Esito: **riserva** R-143-1.
+- `.claude/perimetro_review.txt:30-34` — aggiunti `gas_identity.md`, `requirements*.txt`, `tools/`, `clients/`.
+  - Ho verificato:
+    - l'hook e il gate B usano lo stesso formato e lo stesso match per prefisso dalla radice;
+    - `.html`, `.txt` e `.md` sono in `_VALID_EXTENSIONS`, quindi una sessione che tocca solo `clients/` o solo `requirements.txt` può essere citata.
+  - Esito: **ok**, con riserva R-143-4.
+- `tests/test_unit_handoff_check.py:649`, `:673` e `:683` — i tre test nuovi.
+  - Con lo script di main al posto di quello nuovo: 2 failed (`-k v3`).
+  - Esito: **ok**.
 
-### Riserve (da tracciare in stato_progetto.md)
-- **Docstring** di `check_handoff.py:7-12`: imprecisione sul perimetro assente e riga duplicata. Cosmetica.
-- **R-141-2**, strutturale, resta aperta: la CI esegue la versione della PR di `check_*.py` e di `ci.yml`. Le barriere sono il gate locale e la verifica esterna.
+**Misure riprodotte**
+- `pytest tests/` senza `test_unit_kernel.py`: 274 passed.
+- `test_unit_handoff_check.py`: 39 passed.
+- Dopo controprova e mutation il working tree è tornato identico (nessun diff non staged).
 
-### Rischio escluso
-- **Comportamento reale di actions/checkout v4 sul runner GitHub**: non verificato dai log delle run. Ho simulato in locale entrambe le forme possibili (HEAD detached e branch `main`), ed entrambe danno 0.
-- **Suite kernel**: non eseguita, perché il delta non tocca il motore runtime.
+**Riserve**
 
-### Memoria
-- Riga contatore **#142** aggiunta in `/Users/gas/Gas/.claude/agents/memoria_revisore.md`. Nessuna lezione nuova: quella sui passi che su errore "degradano a vuoto" è già stata scritta nella #141.
-- File salvato da solo con `scripts/commit_memoria_revisore.sh`: commit **`7649d6b`**. Il salvataggio della #141 era `c7b6139`.
+- **R-143-1 (media, verificata — correggere prima del merge)**: `git show origin/main:…` usa un ref abbreviato.
+  - Git risolve `refs/tags/origin/main` PRIMA di `refs/remotes/origin/main` e dà solo un warning "refname is ambiguous".
+  - `actions/checkout` con `fetch-depth: 0` scarica anche i tag.
+  - Sonda (`scratchpad/sonda143b.sh`): un tag `origin/main` che punta a un commit sabotato → `git show origin/main:f.txt` stampa "SABOTATO"; `git show refs/remotes/origin/main:f.txt` stampa "buono".
+  - Quindi chi spinge un tag omonimo fa caricare alla CI check neutralizzati, senza toccare ci.yml.
+  - Fix: `refs/remotes/origin/main` nelle tre righe `git show`. Più robusto ancora: fare prima `git fetch origin main` e usare `FETCH_HEAD` o lo SHA risolto da `refs/remotes/`.
+  - `merge-base origin/main` dentro gli script ha la stessa ambiguità: è un problema preesistente, da tracciare.
+- **R-143-2 (residuo dichiarato, strutturale)**: ci.yml viene dalla PR, quindi una PR può rimuovere il passo. Il vettore è più semplice di R-143-1, per cui R-141-2 è MITIGATA, non chiusa.
+  - Candidato per chiuderla: un workflow `pull_request_target` dedicato a handoff-check. Usa la definizione di main e qui non eseguirebbe codice della PR: solo git più gli script di main, con `permissions: contents: read` e `persist-credentials: false`.
+  - In alternativa, le regole "required workflow" dei ruleset, se disponibili per un account personale (non verificato).
+  - Decisione umana.
+- **R-143-3 (bootstrapping, risposta ad a)**: in sé accettabile, perché i test pytest esercitano la versione nuova e un falso negativo di main vale solo fino al merge del fix. Due conseguenze vanno scritte in stato_progetto:
+  1. **Stallo.** Se main ha un falso BLOCCO, la PR che lo corregge viene bloccata dalla versione vecchia. Le uniche uscite sono modificare ci.yml (cioè proprio il residuo R-143-2) oppure sospendere il ruleset da admin. Serve una procedura dichiarata.
+  2. **Divergenza locale/CI.** Il gate locale di fine-task gira con lo script della PR, la CI con quello di main: un handoff può passare in locale e fallire in CI per una sessione. Questa PR non ha rename, quindi non ne soffre.
+- **R-143-4 (attrito, risposta a c)**: il controllo dell'hook sul working tree (R-136-1) blocca OGNI commit se nel perimetro c'è un file non tracciato e non ignorato. Il controllo viene eseguito prima del test "nulla del perimetro in stage".
+  - `.DS_Store` non è in `.gitignore` e non c'è un excludesfile globale: aprire `clients/voice` dal Finder blocca anche i commit dei soli report.
+  - Lo stesso vale per artefatti dei client vocali (audio, output delle sonde in `clients/voice/probe`).
+  - Rimedio: aggiungere `.DS_Store` e gli artefatti dei client a `.gitignore`.
+  - Oggi `clients/` e `tools/` sono puliti e non vedo altri falsi blocchi: le voci con `/` finale fanno match solo alla radice.
+- **Nota (b)**: rimangono falsi blocchi fail-closed per path troncati con `.../`, per nomi che contengono " => " e per nomi non ASCII quotati da `--stat`. La mitigazione è far generare §2 a fine-task con `git -c core.quotePath=false diff --cached --stat=400 …`: è un cambio a `.claude/commands/fine-task.md`, fuori da questo diff.
+- **Risposta a (d), by-pass residui**: ci.yml (R-143-2) e il tag omonimo (R-143-1). Escludo come vettori:
+  - textconv: `git show` di un blob non lo applica senza `--textconv`, e servirebbe comunque una config locale;
+  - l'ombreggiamento di moduli Python dalla cwd: quando si esegue uno script, la cwd non è in `sys.path`;
+  - PYTHONPATH e PATH: si modificano solo da ci.yml, quindi rientrano in R-143-2.
 
-File rilevanti:
-- /Users/gas/Gas/scripts/check_handoff.py
-- /Users/gas/Gas/scripts/check_verdetto.py
-- /Users/gas/Gas/tests/test_unit_handoff_check.py
-- /Users/gas/Gas/.claude/agents/memoria_revisore.md
+**Rischi esplicitamente esclusi (non verificati)**
+- Comportamento reale sul runner GitHub, in particolare che `actions/checkout@v4` con `fetch-depth: 0` scarichi davvero `refs/tags/*` e che nel `pull_request` il merge-base sia origin/main. Ho ragionato sulla documentazione e simulato in locale; la CI non è riproducibile in dev.
+- Se il ruleset `main-lock` protegga anche i tag: non ho accesso alle impostazioni GitHub.
+- Il comportamento di `review_gate.sh` con le nuove voci: l'ho letto (`.claude/hooks/review_gate.sh:72-128`) ma non ho fatto sonde dedicate. Il formato è condiviso e già coperto dalle suite precedenti.
+- Non ho eseguito la suite kernel: il diff non tocca gas.py, brains/ né modules/.
+
+**Memoria**: riga #143 e una lezione nuova (ref abbreviato ambiguo: i tag vincono sui remote) aggiunte a `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, committate con `commit_memoria_revisore.sh` → `f63bf47`. Il diff staged sotto review è rimasto intatto. Le righe con "git … commit" sono passate da file, per via del matcher del gate (R-gjq-1).
+
+File di sonda:
+- `/private/tmp/claude-501/-Users-gas-Gas/ae22c9c4-87ee-4a13-a7c3-81c489eb3034/scratchpad/sonda143.sh` (forme di `--stat`)
+- `/private/tmp/claude-501/-Users-gas-Gas/ae22c9c4-87ee-4a13-a7c3-81c489eb3034/scratchpad/sonda143b.sh` (tag `origin/main`)
+
+### Review 144
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #144: delta sulla #143. Branch fix/gate-rename-perimetro-ci, 8 file staged. R-143-1 e R-143-4 sono chiuse; la nota (b) è applicata. Non ci sono blocchi. Resta una riserva minore: il ref abbreviato sopravvive in due script che il diff non tocca.
+
+**Elementi del diff esaminati**
+
+- `.github/workflows/ci.yml:239-241` — i tre `git show` usano ora `refs/remotes/origin/main`.
+  - Rischio: il tag omonimo della sonda #143, che portava a caricare check sabotati.
+  - Col ref completo la sonda `sonda143b.sh` restituisce "buono".
+  - Il commento alla riga 232 lo spiega.
+  - Esito: **ok**, R-143-1 chiusa lato CI.
+- `scripts/check_handoff.py:50` e `scripts/check_verdetto.py:83` — `_get_base` usa `merge-base refs/remotes/origin/main HEAD`.
+  - Rischio: un tag `origin/main` sulla punta del branch fa risultare base = HEAD. La sessione appare vuota e il check risponde "non applicabile", cioè passa (fail-open).
+  - Ho riprodotto i test e tolto il fix da un solo script alla volta:
+    - ref abbreviato solo in check_handoff → `test_r143_1_tag_named_origin_main_does_not_hijack_base` FAILED;
+    - ref abbreviato solo in check_verdetto → lo stesso test FAILED, sull'assert `rv`.
+  - Il test asserisce rc=1 e "V-A" su entrambi gli script, quindi copre le due modifiche separatamente.
+  - Esito: **ok**.
+- `scripts/fine_task_finale.sh:133` — anche BASE usa il ref completo. Il comportamento resta invariato senza tag. Esito: **ok**.
+- `.claude/commands/fine-task.md:214` — §2 si genera con `git -c core.quotePath=false diff --cached --stat=400`.
+  - Rischio: i falsi blocchi della nota (b), cioè path troncati con `...` e nomi non ASCII tra virgolette.
+  - Coerente con `_diff_names` (`-z`, nomi grezzi).
+  - Esito: **ok**.
+- `.gitignore:35-36` — aggiunto `.DS_Store`. L'hook usa `git status` senza `--ignored`, quindi un `.DS_Store` ignorato non conta più come file non tracciato nel perimetro. Esito: **ok**, R-143-4 chiusa.
+- `tests/test_unit_handoff_check.py` — test R-143-1. Usa `_setup_session_senza_handoff` (riga 583) e un tag su HEAD. Esito: **ok**.
+
+**Misure riprodotte**
+- pytest senza la suite kernel: 275 passed.
+- Dopo le mutation il working tree è tornato identico.
+
+**Riserve**
+
+- **R-144-1 (minore, nuova)**: il ref abbreviato resta in file fuori dal diff.
+  - `scripts/gasmerge.sh:42` e `scripts/gasmerge.sh:141`, cioè `git diff "origin/main...origin/$BRANCH"`. In locale `git fetch` segue automaticamente i tag che puntano alla storia scaricata. Un tag `origin/main` sulla punta della PR farebbe quindi stampare all'operatore "nessuno (doc-only)" proprio sul promemoria di merge, che è una barriera umana.
+  - `.claude/hooks/promemoria_end.sh:45`: solo un promemoria.
+  - Fix: anche qui `refs/remotes/origin/main`. Va fatto in questa PR o tracciato.
+  - Cosmetico: il messaggio d'errore in `.claude/commands/fine-task.md:21` dice ancora "origin/main".
+- **R-143-2** (ci.yml arriva dalla PR) e **R-143-3** (procedura in caso di stallo/bootstrapping): restano aperte come dichiarato. La chiusura di R-143-2 è affidata alla prossima fetta, la verifica esterna con identità separata.
+- **Nota**: `.gitignore` non è nel perimetro. Una PR potrebbe ignorare file nuovi del perimetro e così nasconderli al controllo dell'hook sul working tree. Restano comunque fuori dal commit, salvo `add -f`, che li manda in stage dove l'hook li vede. Rischio basso, solo da tenere presente.
+
+**Rischi esplicitamente esclusi (non verificati)**
+- Che `actions/checkout@v4` più `git fetch origin main` valorizzino davvero `refs/remotes/origin/main` sul runner. Lo deduco dal fatto che il ref abbreviato funzionava prima e che non esisteva nessun tag omonimo, ma la CI non è riproducibile in dev.
+- Non ho eseguito la suite kernel e le suite hook: il delta non tocca gas.py, brains/, modules/ né `.claude/hooks/`.
+
+**Memoria**
+- Riga #144 aggiunta a `/Users/gas/Gas/.claude/agents/memoria_revisore.md`, nessuna lezione nuova, committata con `commit_memoria_revisore.sh` → `067c83d`.
+- Il numero di riga di ci.yml nella riga #144 (237-239) era sbagliato: l'ho corretto in 239-241 con un secondo commit, `c287d5f`.
+- Il diff staged sotto review è intatto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py, brains/ o modules/: la suite kernel non è stata rilanciata. Test in tests/ (gate): `pytest tests --ignore=tests/test_unit_kernel.py` **266 → 271 passed**, tutti verdi.
+Nessuna modifica a gas.py, brains/ o modules/: la suite kernel non è stata rilanciata. Test in tests/ (gate): `pytest tests --ignore=tests/test_unit_kernel.py` **271 → 275 passed**, tutti verdi.
 
 ## §6 STATO CI
 
 ```
-completed	failure	fix(handoff-check): vincolante quando la sessione tocca il perimetro …	CI	fix/handoff-check-vincolante	push	37202038518	1m11s	2026-10-04T12:25:18Z
-completed	success	Merge pull request #119 from Gasss23/fix/gate-autoprotezione	CI	main	push	37201274295	1m11s	2026-10-04T12:11:50Z
-completed	success	docs(gate-auto): fine-task — il gate protegge se stesso + verifica es…	CI	fix/gate-autoprotezione	push	37159096561	1m2s	2026-10-03T22:37:56Z
+completed	failure	chore(revisore): memoria review #144 — APPROVATO CON RISERVE	CI	fix/gate-rename-perimetro-ci	push	37206057264	1m16s	2026-10-04T13:33:42Z
+completed	success	Merge pull request #120 from Gasss23/fix/handoff-check-vincolante	CI	main	push	37205287598	1m5s	2026-10-04T13:20:43Z
+completed	success	docs(handoff-check): fine-task — V-A handoff-check vincolante, handof…	CI	fix/handoff-check-vincolante	push	37202171862	1m4s	2026-10-04T12:27:33Z
 ```
 
 Mappatura commit→run:
-- `501ab76` (codice V-A, pushato prima del fine-task): run **37202038518**. Esito `unit-suite: success`, `handoff-check: failure`. Il rosso è ATTESO: il push conteneva il codice nel perimetro ma non ancora l'handoff, e questa è la prova dal vivo di V-A.
-- `c7b6139`, `7649d6b` (memoria revisore): nessuna run su questi SHA. Sono commit intermedi dello stesso push, inclusi nell'albero testato da 37202038518.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff. Deve tornare verde su entrambi i check.
+- `13b7933` (codice, pushato prima del fine-task, insieme a `f63bf47`): run sul push del branch. Esito atteso: `handoff-check` rosso (V-A, manca l'handoff), `unit-suite` verde.
+- `067c83d`, `c287d5f` (memoria revisore): inclusi nel push del fine-task.
+- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff. Deve risultare verde su entrambi i check.
 
 ## §7 RISERVE APERTE
 
-- **R-141-2** (strutturale): la CI esegue la versione della PR dei check, quindi una PR può neutralizzarli. Barriere: il gate locale (i file sono nel perimetro) e la verifica esterna.
-- **V-B** (MEDIA): il gate B prova le citazioni, non che la review sia avvenuta.
-- **V-C** (MEDIA): l'hook non intercetta merge, cherry-pick e alias.
-- **V-D / R-138-5**: perimetro più largo (gas_identity.md).
-- **R-139-1**: formati alternativi del verdetto (mitigata).
-- Cosmetica: docstring di check_handoff (#142).
-- Da C4b-3: R-c4b3-3, R-c4b3-4, **R-c4b3-5** (prossima fetta motore).
+- **PRIORITÀ — V-B vera**: revisione con identità separata su GitHub. Chiude anche R-143-2. È la condizione per la variante B del merge.
+- **R-143-3**: procedura di stallo (falso blocco su main).
+- **R-144-1**: ref abbreviato in gasmerge.sh e promemoria_end.sh (prossima fetta).
+- **R-139-1, V-C**: invariate.
