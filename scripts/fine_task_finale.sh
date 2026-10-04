@@ -130,7 +130,7 @@ if [[ -z "$REMOTE" ]] || [[ "$LOCAL" != "$REMOTE" ]]; then
 fi
 
 # B2: stampa URL solo se handoff.md è stato rigenerato in questa sessione
-BASE=$(git merge-base origin/main HEAD 2>/dev/null || true)
+BASE=$(git merge-base refs/remotes/origin/main HEAD 2>/dev/null || true)
 if [[ -n "$BASE" ]] && git diff --quiet "${BASE}..HEAD" -- reports/handoff.md 2>/dev/null; then
     printf 'URL_HANDOFF: non disponibile — handoff.md non rigenerato in questa sessione\n'
     exit 0

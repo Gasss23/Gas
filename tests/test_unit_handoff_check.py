@@ -646,6 +646,64 @@ class TestCheckVerdetto:
         assert rh.returncode == 1 and "fallito" in rh.stderr, rh.stdout + rh.stderr
         assert rv.returncode == 1 and "fallito" in rv.stderr, rv.stdout + rv.stderr
 
+    def test_v3_rename_stat_pasted_honestly_passes(self, tmp_path):
+        """V-3 (verifica esterna PR #120): un rename nel diff con il §2 incollato da
+        `git diff --stat` (forma `{vecchio => nuovo}`) → check_handoff OK."""
+        work = tmp_path / "work"
+        _init_repo(work)
+        (work / "tests").mkdir()
+        (work / "tests" / "test_vecchio.py").write_text("a\n" * 30)
+        _commit_all(work, "base")
+        _fake_origin(work, tmp_path / "bare")
+        _branch(work, "feature/rename")
+        base = subprocess.run(["git", "merge-base", "origin/main", "HEAD"], cwd=work,
+                              capture_output=True, text=True, check=True).stdout.strip()
+        subprocess.run(["git", "mv", "tests/test_vecchio.py", "tests/test_nuovo.py"], cwd=work, check=True)
+        _write_handoff(work, "PLACEHOLDER", "## VERDETTO: APPROVATO\ntest_nuovo.py:1 e test_nuovo.py:2 ok.")
+        subprocess.run(["git", "add", "-A"], cwd=work, check=True)
+        stat = subprocess.run(["git", "diff", "--cached", "--stat", base], cwd=work,
+                              capture_output=True, text=True, check=True).stdout.rstrip("\n")
+        assert "=>" in stat, stat
+        h = work / "reports" / "handoff.md"
+        h.write_text(h.read_text().replace("PLACEHOLDER", stat))
+        _commit_all(work, "rename + handoff")
+        result = _run_check_handoff(work, base)
+        assert result.returncode == 0, result.stdout + result.stderr
+
+    def test_r143_1_tag_named_origin_main_does_not_hijack_base(self, tmp_path):
+        """R-143-1: un tag `origin/main` sulla punta del branch farebbe risultare
+        merge-base = HEAD (sessione vuota → non applicabile). Col ref completo
+        refs/remotes/origin/main la sessione resta quella vera → V-A scatta (exit 1)."""
+        work = tmp_path / "work"
+        self._setup_session_senza_handoff(work, tmp_path / "bare",
+                                          {".claude/hooks/review_gate.sh": "exit 0\n"})
+        subprocess.run(["git", "tag", "origin/main", "HEAD"], cwd=work, check=True, capture_output=True)
+        rh = _run_check_handoff(work)
+        rv = _run_check_verdetto(work)
+        assert rh.returncode == 1 and "V-A" in rh.stderr, rh.stdout + rh.stderr
+        assert rv.returncode == 1 and "V-A" in rv.stderr, rv.stdout + rv.stderr
+
+    def test_v3_espandi_rename_forms(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("ch", CHECK_HANDOFF)
+        ch = importlib.util.module_from_spec(spec); spec.loader.exec_module(ch)
+        assert ch._espandi_rename("tests/{a.py => b.py}") == ["tests/a.py", "tests/b.py"]
+        assert ch._espandi_rename("{old => new}/x.py") == ["old/x.py", "new/x.py"]
+        assert ch._espandi_rename("a/{ => sub}/x.py") == ["a/x.py", "a/sub/x.py"]
+        assert ch._espandi_rename("vecchio.md => nuovo.md") == ["vecchio.md", "nuovo.md"]
+        assert ch._espandi_rename("gas.py") == ["gas.py"]
+
+    def test_v2_new_perimeter_entries(self):
+        """V-2: gas_identity.md, requirements*.txt, tools/, clients/ sono nel perimetro."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cv", CHECK_VERDETTO)
+        cv = importlib.util.module_from_spec(spec); spec.loader.exec_module(cv)
+        per = cv._carica_perimetro()
+        for f in ("gas_identity.md", "requirements.txt", "requirements-dev.txt",
+                  "tools/ingest_knowledge.py", "clients/voice/x.py"):
+            assert cv._nel_perimetro(f, per), f
+        assert not cv._nel_perimetro("reports/x.md", per)
+
     def test_r136_5_doc_citations_do_not_count_when_code_in_diff(self, tmp_path):
         """R-136-5: diff con codice, verdetto che cita solo .md del diff → exit 1."""
         sec4 = "## VERDETTO: APPROVATO\nnote.md:1 e note.md:2 ok."

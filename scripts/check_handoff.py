@@ -47,7 +47,7 @@ def _current_branch(repo: Path) -> str:
 def _get_base(override: str | None, repo: Path) -> str | None:
     if override:
         return override.strip()
-    r = _git(["git", "merge-base", "origin/main", "HEAD"], repo)
+    r = _git(["git", "merge-base", "refs/remotes/origin/main", "HEAD"], repo)  # R-143-1: ref completo, un tag "origin/main" non vince
     if r.returncode != 0 or not r.stdout.strip():
         return None
     return r.stdout.strip()
@@ -55,10 +55,25 @@ def _get_base(override: str | None, repo: Path) -> str | None:
 
 def _diff_names(base: str, repo: Path) -> set[str] | None:
     """None se `git diff` fallisce (R-141-1: mai un insieme vuoto travestito da diff vuoto)."""
-    r = _git(["git", "-c", "core.quotePath=false", "diff", "--name-only", f"{base}..HEAD"], repo)
+    # V-3 (verifica esterna PR #120): --no-renames -z come _session_files — un rename
+    # conta come path di origine + path di destinazione, nomi grezzi.
+    r = _git(["git", "diff", "--name-only", "--no-renames", "-z", f"{base}..HEAD"], repo)
     if r.returncode != 0:
         return None
-    return {line.strip() for line in r.stdout.splitlines() if line.strip()}
+    return {p for p in r.stdout.split("\0") if p.strip()}
+
+
+def _espandi_rename(path: str) -> list[str]:
+    """`git diff --stat` stampa i rename come `dir/{vecchio => nuovo}/x` o
+    `vecchio => nuovo`: li espande nei due path completi (V-3), così un §2 incollato
+    onestamente combacia con il diff --no-renames."""
+    m = re.fullmatch(r"(.*)\{(.*) => (.*)\}(.*)", path)
+    if m:
+        pre, old, new, post = m.groups()
+        return [re.sub(r"/{2,}", "/", pre + x + post) for x in (old, new)]
+    if " => " in path:
+        return [x.strip() for x in path.split(" => ", 1)]
+    return [path]
 
 
 def _declared_set(handoff: Path) -> set[str] | None:
@@ -86,7 +101,7 @@ def _declared_set(handoff: Path) -> set[str] | None:
         if "|" in line:
             path = line.split("|")[0].strip()
             if path:
-                paths.add(path)
+                paths.update(_espandi_rename(path))
     return paths
 
 
