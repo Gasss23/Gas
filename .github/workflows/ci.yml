@@ -225,8 +225,23 @@ jobs:
         # deve essere esplicitamente presente come ref locale per merge-base.
         run: git fetch origin main
 
-      - name: Run check_handoff
-        run: python scripts/check_handoff.py
+      - name: Check presi da origin/main (R-141-2)
+        # La CI esegue i check nella versione di origin/main, NON in quella della PR:
+        # una PR che modifica scripts/check_*.py o il perimetro non può neutralizzare
+        # il proprio controllo. Il repo controllato resta il checkout della PR (cwd).
+        # R-143-1: ref COMPLETO refs/remotes/origin/main — col ref abbreviato un tag
+        # chiamato "origin/main" vincerebbe e farebbe caricare check sabotati.
+        # Residuo dichiarato: ci.yml stesso viene dalla PR (lo protegge il perimetro
+        # di review + la verifica esterna, non la CI).
+        run: |
+          G="$RUNNER_TEMP/gate_main"
+          mkdir -p "$G/scripts" "$G/.claude"
+          git show refs/remotes/origin/main:scripts/check_handoff.py > "$G/scripts/check_handoff.py"
+          git show refs/remotes/origin/main:scripts/check_verdetto.py > "$G/scripts/check_verdetto.py"
+          git show refs/remotes/origin/main:.claude/perimetro_review.txt > "$G/.claude/perimetro_review.txt"
 
-      - name: Run check_verdetto
-        run: python scripts/check_verdetto.py
+      - name: Run check_handoff (versione main)
+        run: python "$RUNNER_TEMP/gate_main/scripts/check_handoff.py"
+
+      - name: Run check_verdetto (versione main)
+        run: python "$RUNNER_TEMP/gate_main/scripts/check_verdetto.py"

@@ -32,3 +32,5 @@ local_cache/
 .gas_knowledge.db
 .gas_knowledge.db-wal
 .gas_knowledge.db-shm
+# R-143-4: file di sistema che, dentro il perimetro di review, bloccherebbero ogni commit
+.DS_Store

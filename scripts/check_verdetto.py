@@ -80,7 +80,7 @@ def _current_branch(repo: Path) -> str:
 def _get_base(override: str | None, repo: Path) -> str | None:
     if override:
         return override.strip()
-    r = _git(["git", "merge-base", "origin/main", "HEAD"], repo)
+    r = _git(["git", "merge-base", "refs/remotes/origin/main", "HEAD"], repo)  # R-143-1: ref completo, un tag "origin/main" non vince
     if r.returncode != 0 or not r.stdout.strip():
         return None
     return r.stdout.strip()

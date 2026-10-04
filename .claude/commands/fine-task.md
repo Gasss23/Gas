@@ -16,7 +16,7 @@ git fetch origin
 
 # 2. Calcola la base della sessione = punto di fork del branch corrente da origin/main.
 #    Stabile: non si sposta dopo i commit della sessione.
-BASE=$(git merge-base origin/main HEAD)
+BASE=$(git merge-base refs/remotes/origin/main HEAD)
 if [ -z "${BASE}" ]; then
   echo "ERRORE: git merge-base origin/main HEAD fallito o ha restituito vuoto — /fine-task si FERMA."
   exit 1
@@ -211,7 +211,7 @@ NON includere nel commit file del motore (gas.py, brains/, modules/, tests/) —
 Esegui ora, con i file di report già in stage:
 
 ```bash
-git diff --cached --stat ${BASE}     # ← va in §2 di handoff.md
+git -c core.quotePath=false diff --cached --stat=400 ${BASE}     # ← va in §2 di handoff.md (nomi grezzi, mai troncati: nota b review #143)
 git log --oneline ${BASE}..HEAD      # ← va in §3 di handoff.md
 gh run list -L 3                     # ← va in §6 di handoff.md (se gh disponibile; altrimenti "CI NON VERIFICATA (gh assente)")
 ```
