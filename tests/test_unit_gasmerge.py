@@ -522,6 +522,62 @@ exec "{real_git}" "$@"
         assert "allowlistati (gasmerge-ip-ok) — OK" not in result.stdout, result.stdout
 
 
+class TestIPTreeUnico:
+    """R-148-2 (verifica esterna #123, V-1): le due git grep leggono lo stesso tree; se il
+    ref si sposta fra l'una e l'altra (IP a un'altra riga) il gate resta chiuso."""
+
+    def test_ref_spostato_fra_le_due_grep_blocca(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        subprocess.run(["git", "checkout", "feat"], cwd=work, check=True, capture_output=True)
+        (work / "x.py").write_text('HOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "add", "x.py"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "ip"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        (work / "x.py").write_text('\n\nHOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "commit", "-qam", "sposta"], cwd=work, check=True, capture_output=True)
+        spostato = subprocess.run(["git", "rev-parse", "HEAD"], cwd=work, check=True,
+                                  capture_output=True, text=True).stdout.strip()
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        real_git = shutil.which("git") or "/usr/bin/git"
+        stub = fake_bin / "git"
+        stub.write_text(f"""#!/usr/bin/env bash
+if [ "$1" = "grep" ] && ! printf '%s\\n' "$@" | grep -qx -- '--and'; then
+  "{real_git}" "$@"; rc=$?
+  "{real_git}" update-ref refs/remotes/origin/feat {spostato}
+  exit $rc
+fi
+exec "{real_git}" "$@"
+""")
+        stub.chmod(0o755)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+
+
+class TestIPTreeNonRisolvibile:
+    """R-148-2 / G9 review #149: rev-parse del tree fallisce → BLOCCO subito."""
+
+    def test_tree_non_risolvibile_blocca_subito(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        real_git = shutil.which("git") or "/usr/bin/git"
+        stub = fake_bin / "git"
+        stub.write_text(f"""#!/usr/bin/env bash
+if [ "$1" = "rev-parse" ] && printf '%s\\n' "$@" | grep -q '\\^{{tree}}'; then exit 1; fi
+exec "{real_git}" "$@"
+""")
+        stub.chmod(0o755)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "non risolvibile" in result.stdout, result.stdout
+        assert "git grep uscito con codice" not in result.stdout, result.stdout
+
+
 class TestIPFileBinariENonUtf8:
     """R-148-3: il gate IP vede anche file binari (-a) e righe non UTF-8 (LC_ALL=C)."""
 
