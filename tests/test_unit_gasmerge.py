@@ -116,7 +116,7 @@ def _make_stub_git_diff_name_only_fail(fake_bin: Path, rc: int = 5) -> None:
     real_git = shutil.which("git") or "/usr/bin/git"
     stub = fake_bin / "git"
     stub.write_text(f"""#!/usr/bin/env bash
-if [ "$1" = "diff" ] && printf '%s\\n' "$@" | grep -q -- '--name-only'; then
+if printf '%s\\n' "$@" | grep -qx 'diff' && printf '%s\\n' "$@" | grep -q -- '--name-only'; then
   exit {rc}
 fi
 exec "{real_git}" "$@"
@@ -325,6 +325,131 @@ class TestDiffGuard:
         assert "nessuno (doc-only)" not in result.stdout, (
             f"'nessuno (doc-only)' non deve apparire quando git diff fallisce: {result.stdout!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# R-144-1 / V-1 verifica esterna PR #121 — promemoria dal perimetro di review
+# ---------------------------------------------------------------------------
+
+class TestPerimetroPromemoria:
+    """gasmerge legge .claude/perimetro_review.txt (main ∪ branch), non una regex propria."""
+
+    def _repo(self, tmp_path: Path, perimetro: str | None, files: dict[str, str],
+              perimetro_branch: str | None = None) -> Path:
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        work = tmp_path / "work"
+        _init_repo(work)
+        if perimetro is not None:
+            (work / ".claude").mkdir()
+            (work / ".claude" / "perimetro_review.txt").write_text(perimetro)
+            subprocess.run(["git", "add", "-A"], cwd=work, check=True, capture_output=True)
+            subprocess.run(["git", "commit", "-m", "perimetro"], cwd=work,
+                           check=True, capture_output=True)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "feat"], cwd=work, check=True, capture_output=True)
+        for name, content in files.items():
+            (work / name).parent.mkdir(parents=True, exist_ok=True)
+            (work / name).write_text(content)
+        if perimetro_branch is not None:
+            (work / ".claude").mkdir(exist_ok=True)
+            (work / ".claude" / "perimetro_review.txt").write_text(perimetro_branch)
+        subprocess.run(["git", "add", "-A"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "modifica"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        return work
+
+    def _sezione(self, tmp_path: Path, work: Path) -> str:
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        out = _run_with_stdin(work, fake_bin, stdin_data="\n").stdout
+        assert "--- FILE DI MOTORE ---" in out, out
+        return out.split("--- FILE DI MOTORE ---", 1)[1].split("--- PROVENIENZA SCRIPT ---", 1)[0]
+
+    def test_voce_esatta_del_perimetro_e_motore(self, tmp_path):
+        """gas_identity.md (fuori dalla vecchia regex) è nel perimetro → promemoria."""
+        work = self._repo(tmp_path, "gas.py\ngas_identity.md\nclients/\n",
+                          {"gas_identity.md": "x\n", "clients/voice/a.py": "y\n"})
+        sez = self._sezione(tmp_path, work)
+        assert "gas_identity.md" in sez and "clients/voice/a.py" in sez, sez
+        assert "PERIMETRO DI REVIEW" in sez and "doc-only" not in sez, sez
+
+    def test_fuori_perimetro_e_doc_only(self, tmp_path):
+        work = self._repo(tmp_path, "gas.py  # motore\nclients/\n",
+                          {"docs/nota.md": "x\n", "clientsX.md": "y\n"})
+        sez = self._sezione(tmp_path, work)
+        assert "nessuno (doc-only)" in sez, sez
+
+    def test_branch_che_restringe_non_si_declassa(self, tmp_path):
+        """Il branch toglie gas_identity.md dal perimetro: conta ancora la versione di main."""
+        work = self._repo(tmp_path, "gas_identity.md\n", {"gas_identity.md": "x\n"},
+                          perimetro_branch="gas.py\n")
+        sez = self._sezione(tmp_path, work)
+        assert "gas_identity.md" in sez and "doc-only" not in sez, sez
+
+    def test_rename_fuori_perimetro_resta_motore(self, tmp_path):
+        """R-145-1: git mv gas_identity.md → docs/x.md non diventa 'doc-only'."""
+        work = self._repo(tmp_path, "gas_identity.md\n", {"docs/altro.md": "z\n"})
+        (work / "gas_identity.md").write_text("a\n" * 20)
+        subprocess.run(["git", "add", "gas_identity.md"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "identity"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "merge", "-q", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "mv", "gas_identity.md", "docs/x.md"], cwd=work,
+                       check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "rename"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        sez = self._sezione(tmp_path, work)
+        assert "gas_identity.md" in sez and "doc-only" not in sez, sez
+
+    def test_nome_non_ascii_nel_perimetro(self, tmp_path):
+        """R-145-1: clients/caffè.py non viene quotato e resta nel perimetro."""
+        work = self._repo(tmp_path, "clients/\n", {"clients/caffè.py": "x\n"})
+        sez = self._sezione(tmp_path, work)
+        assert "clients/caffè.py" in sez and "doc-only" not in sez, sez
+
+    def test_tag_origin_main_non_dirotta_il_promemoria(self, tmp_path):
+        """R-144-1 (verifica esterna #122): un tag "origin/main" sul branch non svuota il diff."""
+        work = self._repo(tmp_path, "gas_identity.md\n", {"gas_identity.md": "x\n"})
+        subprocess.run(["git", "tag", "origin/main", "refs/remotes/origin/feat"], cwd=work,
+                       check=True, capture_output=True)
+        sez = self._sezione(tmp_path, work)
+        assert "gas_identity.md" in sez and "doc-only" not in sez, sez
+
+    def test_perimetro_assente_ogni_file_e_motore(self, tmp_path):
+        work = self._repo(tmp_path, None, {"docs/nota.md": "x\n"})
+        sez = self._sezione(tmp_path, work)
+        assert "illeggibile" in sez and "docs/nota.md" in sez, sez
+        assert "doc-only" not in sez, sez
+
+
+class TestIPRefCompleto:
+    """R-144-1 (verifica esterna #122, V-1): il gate IP scansiona refs/remotes/origin/<branch>."""
+
+    def test_tag_omonimo_del_branch_non_aggira_il_gate_ip(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        subprocess.run(["git", "checkout", "feat"], cwd=work, check=True, capture_output=True)
+        (work / "x.py").write_text('HOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "add", "x.py"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "ip"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        # Tag "origin/feat" sul main pulito: col ref abbreviato vincerebbe su refs/remotes/.
+        subprocess.run(["git", "tag", "origin/feat", "main"], cwd=work,
+                       check=True, capture_output=True)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
 
 
 # ---------------------------------------------------------------------------

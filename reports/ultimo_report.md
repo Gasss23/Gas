@@ -1,35 +1,42 @@
-# ULTIMO REPORT — 2026-10-04 — Rename nel §2, perimetro più largo, check CI presi da main
+# ULTIMO REPORT — 2026-10-04 — Promemoria di gasmerge dal perimetro, ref completi (anche gate IP), .gitignore audio
 
-Branch `fix/gate-rename-perimetro-ci` · PR #121 · commit `13b7933` · review #143 + #144 **APPROVATO CON RISERVE**
+Branch `fix/gasmerge-perimetro-gitignore` · PR #122 · commit `03e01f8` + `27f04b7` · review #145 + #146 + #147 **APPROVATO CON RISERVE** · verifica esterna #122 **APPROVATO CON RISERVE** (V-1/V-2 corretti in `27f04b7`)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #121 (variante A: `gasmerge 121`), dopo la verifica esterna.
-2. Prossima fetta PRIORITARIA, già decisa: V-B "vera", cioè revisione con identità separata su GitHub (bot + segreti). Servirà una chiave API di Claude da inserire nei segreti di GitHub: la inserisce l'operatore, l'agente non la vede mai.
+1. Merge della PR #122 (variante A: `gasmerge 122`), dopo la verifica esterna del nuovo handoff.
+2. R-147-1 (MEDIA, preesistente): un branch o un path che contiene `gasmerge-ip-ok` aggira il gate IP. Correggerlo in una micro-fetta PRIMA della V-B vera? (consigliato: sì, è piccola)
+3. V-3 (verifica #121): vietare nel ruleset i tag `origin/*`? Oggi la difesa sono i ref completi negli script.
+4. V-5 (verifica #121): mettere `.gitignore`, `knowledge/` e `CLAUDE.md` nel perimetro di review?
+5. Poi la prossima fetta PRIORITARIA, già decisa: V-B "vera" (bot di revisione su GitHub).
 
 ## Esito per step
 
-- **V-3** (un rename rendeva impossibile un §2 onesto): CHIUSA.
-- **V-2** (perimetro più largo: gas_identity.md, requirements*.txt, tools/, clients/): CHIUSA.
-- **R-141-2** (la CI eseguiva i check della PR stessa): MITIGATA. La CI ora usa i check di `main`. Resta R-143-2: ci.yml viene ancora dalla PR.
-- **R-143-1** (un tag "origin/main" poteva dirottare base e check): CHIUSA, con il ref completo in CI, negli script e nel fine-task.
-- **R-143-4** (.DS_Store bloccava i commit): CHIUSA.
-- **Nota b** (stat troncato o quotato): FATTA in fine-task.
-- **V-1 della verifica #120** (V-A sovrastimata): la formulazione in stato_progetto è CORRETTA. Copre l'omissione onesta, non l'aggiramento deliberato.
-- **Variante B del merge**: DECISA dall'operatore, ATTIVA solo dopo V-B vera + test di convalida.
-- **R-143-2 / R-143-3**: DEFERITE (R-143-2 viene chiusa dalla V-B vera).
+- **V-1 verifica #121** (gasmerge con regex propria): FATTA. Il promemoria legge `.claude/perimetro_review.txt` (main ∪ branch).
+- **R-144-1** (ref abbreviati): FATTA in due tempi. `03e01f8` l'aveva dichiarata chiusa, ma la verifica esterna #122 ha trovato il ref abbreviato nel gate IP (`gasmerge.sh:91`, aggirabile con un tag `origin/<branch>`) e in `check_landing.sh:33`. Chiusa davvero in `27f04b7`, con 3 test a tag omonimo.
+- **V-2 verifica #121** (R-143-4 parziale): FATTA. `.gitignore`: `*.wav`, `*.mp3`, `clients/**/*_output.{wav,mp3,txt,json}`.
+- **R-145-1 / R-145-2**: FATTE nella stessa fetta.
+- **Correzioni stato_progetto** (R-143-4 PARZIALE, R-143-1 chiusa dopo il merge di #121): FATTA.
+- **Tracciamento V-3 / V-5 (verifica #121) e R-147-1/2/3**: FATTA (stato_progetto, aperte).
+- **R-147-1**: DEFERITA — preesistente, tocca anche `fine_task_finale.sh`; decisione operatore (punto 2).
+- **V-B vera**: DEFERITA — prossima fetta.
 
 ## Test
 
-- `pytest tests --ignore=tests/test_unit_kernel.py`: 271 → **275 passed**.
-- Controprove: il test del rename fallisce con lo script di main; il test del tag fallisce con il ref abbreviato.
-- Simulazione della CI in un clone usa-e-getta: se una PR sabota i propri check, la versione presa da main la blocca comunque (rc=1).
+- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e`: 275 → **284 passed**.
+- Controprove: i nuovi test falliscono con lo script precedente (perimetro: 5 failed col gasmerge.sh di main; gate IP e check_landing: falliscono con gli script di `4e598e2`; la mutation della riga 144 col ref abbreviato è uccisa).
+- CI: `unit-suite` verde su Linux già su `03e01f8` e `4e598e2` (test non-ASCII compreso).
 - Kernel non rilanciato: la fetta non tocca gas.py, brains/ o modules/.
 
 ## Riserve aperte
 
-R-143-2, R-143-3, R-144-1 (ref abbreviato in gasmerge.sh: prossima fetta), V-B, V-C, R-139-1, R-141-2 (mitigata). Dettaglio in `reports/stato_progetto.md`.
+- R-147-1 (MEDIA): vedi decisione 2.
+- R-147-2 (minore): mutation sopravvissute su `gasmerge.sh:42` e sul perimetro letto da main.
+- R-147-3 (minore): `tests/test_unit_gasmerge.py` non gira in ci.yml.
+- Minori #146: righe `clients/**/*_output.{wav,mp3}` ridondanti; fixture audio in tests/ con `git add -f`.
 
 ## Anomalie
 
-- Il gate di review ha bloccato un mio commit temporaneo di simulazione: avevo modifiche al perimetro fuori stage. Comportamento corretto. La simulazione l'ho rifatta in un clone usa-e-getta.
+- Il primo fine-task (`4e598e2`) dichiarava R-144-1 chiusa: era falso (gate IP). L'ha scoperto la verifica esterna, non il revisore (#145/#146) né l'agente.
+- PR creata con `--title/--body` invece di `--fill` (non interattiva; numero da `gh`).
+- Nel primo commit, `segna_review_ok.sh` e `git commit` nello stesso comando: bloccato dal gate (corretto), rifatto in due comandi.

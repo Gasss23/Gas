@@ -39,7 +39,7 @@ echo "=== PR #$PR — $TITLE"
 echo "=== branch: $BRANCH"
 echo
 echo "--- FILE E DIFF ---"
-git diff --stat "origin/main...origin/$BRANCH"
+git diff --stat "refs/remotes/origin/main...refs/remotes/origin/$BRANCH"
 echo
 echo "--- CHECK CI ---"
 # `gh pr checks` da solo può uscire 0 anche con check ancora in corso: il
@@ -88,7 +88,7 @@ echo "--- INVARIANTE IP ---"
 # (mai fail-open). Il marker va sulla riga sorgente dell'esempio, NON sui
 # file temporanei scritti dal test (così il guard li becca comunque).
 set +e
-IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "origin/$BRANCH")
+IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "refs/remotes/origin/$BRANCH")
 IP_RC=$?
 set -e
 case "$IP_RC" in
@@ -138,27 +138,51 @@ echo "--- FILE DI MOTORE ---"
 # Separa le due operazioni: prima il diff (set -e ferma su errore git), poi il
 # grep con distinzione rc 0/1/altro — evita che un errore git sia silenzioso.
 set +e
-ENGINE_DIFF=$(git diff --name-only "origin/main...origin/$BRANCH")
+# R-145-1: --no-renames (un rename fuori dal perimetro mostra anche il vecchio
+# path) e quotePath=false (nomi non-ASCII non quotati) — stesso trattamento di
+# check_handoff/review_gate.
+ENGINE_DIFF=$(git -c core.quotePath=false diff --no-renames --name-only "refs/remotes/origin/main...refs/remotes/origin/$BRANCH")
 DIFF_RC=$?
 set -e
 if [ "$DIFF_RC" -ne 0 ]; then
   echo "BLOCCO: git diff uscito con codice $DIFF_RC — verifica file-motore NON eseguita"
   exit 1
 fi
-set +e
-ENGINE=$(echo "$ENGINE_DIFF" | grep -E '^(gas\.py|brains/|modules/|tests/|scripts/|\.claude/)')
-GREP_RC=$?
-set -e
-case "$GREP_RC" in
-  0)
-    echo "$ENGINE"
-    echo ">>> La PR tocca il MOTORE (o il gate di merge/hook stesso). Hai letto"
-    echo ">>> il verdetto INTEGRALE del revisore in reports/handoff.md e lo"
-    echo ">>> scope è quello che avevi deciso TU?"
-    ;;
-  1) echo "nessuno (doc-only)" ;;
-  *) echo "BLOCCO: grep file-motore uscito con codice $GREP_RC"; exit 1 ;;
-esac
+# R-144-1 / V-1 verifica esterna PR #121: le voci vengono dalla fonte unica
+# .claude/perimetro_review.txt, UNIONE della versione di main e di quella del
+# branch (un branch che restringe il perimetro non si declassa da solo), più
+# le cartelle storiche scripts/ e .claude/. Perimetro illeggibile su entrambi
+# i lati → ogni file conta come motore (fail-safe: il promemoria non tace).
+PERIM_VOCI=$( { git show "refs/remotes/origin/main:.claude/perimetro_review.txt" 2>/dev/null || true
+                git show "refs/remotes/origin/$BRANCH:.claude/perimetro_review.txt" 2>/dev/null || true
+                printf 'scripts/\n.claude/\n'; } \
+  | sed -e 's/#.*//' -e 's/[[:space:]]//g' | grep -v '^$' | sort -u)
+PERIM_LETTO=1
+git cat-file -e "refs/remotes/origin/main:.claude/perimetro_review.txt" 2>/dev/null \
+  || git cat-file -e "refs/remotes/origin/$BRANCH:.claude/perimetro_review.txt" 2>/dev/null \
+  || PERIM_LETTO=0
+ENGINE=""
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  if [ "$PERIM_LETTO" -eq 0 ]; then ENGINE+="$f"$'\n'; continue; fi
+  while IFS= read -r v; do
+    case "$v" in
+      */) [[ "$f" == "$v"* ]] && { ENGINE+="$f"$'\n'; break; } ;;
+      *)  [[ "$f" == "$v" ]] && { ENGINE+="$f"$'\n'; break; } ;;
+    esac
+  done <<< "$PERIM_VOCI"
+done <<< "$ENGINE_DIFF"
+if [ "$PERIM_LETTO" -eq 0 ]; then
+  echo "ATTENZIONE: .claude/perimetro_review.txt illeggibile su main e sul branch — ogni file conta come motore"
+fi
+if [ -n "$ENGINE" ]; then
+  printf '%s' "$ENGINE"
+  echo ">>> La PR tocca il PERIMETRO DI REVIEW (motore o macchina di controllo). Hai"
+  echo ">>> letto il verdetto INTEGRALE del revisore in reports/handoff.md e lo"
+  echo ">>> scope è quello che avevi deciso TU?"
+else
+  echo "nessuno (doc-only)"
+fi
 echo
 echo "--- PROVENIENZA SCRIPT ---"
 SELF_LOG=$(git log -1 --format='%h %ad' -- scripts/gasmerge.sh)

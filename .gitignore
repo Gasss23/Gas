@@ -34,3 +34,12 @@ local_cache/
 .gas_knowledge.db-shm
 # R-143-4: file di sistema che, dentro il perimetro di review, bloccherebbero ogni commit
 .DS_Store
+# V-2 verifica esterna PR #121 (R-143-4 completamento): audio e output dei client
+# vocali sono artefatti di prova, non sorgenti — dentro clients/ (perimetro) bloccherebbero i commit
+*.wav
+*.mp3
+# R-145-2: solo estensioni da artefatto — un sorgente *_output.py resta visibile al gate
+clients/**/*_output.wav
+clients/**/*_output.mp3
+clients/**/*_output.txt
+clients/**/*_output.json
