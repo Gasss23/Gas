@@ -580,6 +580,72 @@ class TestCheckVerdetto:
         assert "modules/x.py" in files and "docs/x.py" in files, files
         assert "modules/città.py" in files, files
 
+    def _setup_session_senza_handoff(self, work: Path, bare: Path, files: dict) -> str:
+        """Sessione che NON tocca reports/handoff.md (sonda 1 della verifica esterna #119)."""
+        _init_repo(work)
+        _write_handoff(work, " README.md | 1 +\n", "nessun diff motore, revisore non richiesto.")
+        _commit_all(work, "handoff vecchio su main")
+        _fake_origin(work, bare)
+        _branch(work, "feature/senza-handoff")
+        base = subprocess.run(["git", "merge-base", "origin/main", "HEAD"], cwd=work,
+                              capture_output=True, text=True, check=True).stdout.strip()
+        for rel, content in files.items():
+            (work / rel).parent.mkdir(parents=True, exist_ok=True)
+            (work / rel).write_text(content)
+        _commit_all(work, "sessione senza handoff")
+        return base
+
+    def test_va_perimeter_session_without_handoff_fails_both(self, tmp_path):
+        """V-A: la sessione tocca il perimetro (hook) e NON l'handoff → entrambi i check exit 1
+        (prima: 'non applicabile', rc=0, e il check required passava)."""
+        work = tmp_path / "work"
+        base = self._setup_session_senza_handoff(work, tmp_path / "bare",
+                                                 {".claude/hooks/review_gate.sh": "exit 0\n"})
+        rh = _run_check_handoff(work, base)
+        rv = _run_check_verdetto(work, base)
+        assert rh.returncode == 1 and "handoff obbligatorio" in rh.stderr, rh.stderr
+        assert rv.returncode == 1 and "V-A" in rv.stderr, rv.stderr
+
+    def test_va_doc_session_without_handoff_not_applicable(self, tmp_path):
+        """V-A: sessione fuori dal perimetro senza handoff → resta 'non applicabile' (rc=0)."""
+        work = tmp_path / "work"
+        base = self._setup_session_senza_handoff(work, tmp_path / "bare", {"docs.md": "x\n"})
+        assert _run_check_handoff(work, base).returncode == 0
+        assert _run_check_verdetto(work, base).returncode == 0
+
+    def test_va_section4_renamed_fails(self, tmp_path):
+        """V-A (sonda 2): §4 rinominata ('§4 NOTE') con diff nel perimetro → exit 1."""
+        work = tmp_path / "work"
+        sec4 = "## VERDETTO: APPROVATO\ngas_fake.py:1 e gas_fake.py:2 ok."
+        base = self._setup_with_context(work, tmp_path / "bare", sec4)
+        h = work / "reports" / "handoff.md"
+        h.write_text(h.read_text().replace("## §4 VERDETTO DEL REVISORE (per commit motore)", "## §4 NOTE"))
+        _commit_all(work, "rinomina §4")
+        result = _run_check_verdetto(work, base)
+        assert result.returncode == 1 and "§4" in result.stderr, result.stderr
+
+    def test_va_merge_base_failure_fails_closed(self, tmp_path):
+        """V-A: merge-base fallito (nessun origin/main) → entrambi exit 1, non 'non applicabile'."""
+        work = tmp_path / "work"
+        _init_repo(work)
+        _branch(work, "feature/no-origin")
+        (work / "gas.py").write_text("x\n")
+        _commit_all(work, "x")
+        assert _run_check_handoff(work).returncode == 1
+        assert _run_check_verdetto(work).returncode == 1
+
+    def test_r141_1_git_diff_failure_fails_closed(self, tmp_path):
+        """R-141-1: base inesistente (git diff fallisce) → entrambi exit 1, non 'diff vuoto'
+        / 'non applicabile' (prima: 0/0)."""
+        work = tmp_path / "work"
+        sec4 = "## VERDETTO: APPROVATO\ngas_fake.py:1 e gas_fake.py:2 ok."
+        self._setup_with_context(work, tmp_path / "bare", sec4)
+        fantasma = "0123456789abcdef0123456789abcdef01234567"
+        rh = _run_check_handoff(work, fantasma)
+        rv = _run_check_verdetto(work, fantasma)
+        assert rh.returncode == 1 and "fallito" in rh.stderr, rh.stdout + rh.stderr
+        assert rv.returncode == 1 and "fallito" in rv.stderr, rv.stdout + rv.stderr
+
     def test_r136_5_doc_citations_do_not_count_when_code_in_diff(self, tmp_path):
         """R-136-5: diff con codice, verdetto che cita solo .md del diff → exit 1."""
         sec4 = "## VERDETTO: APPROVATO\nnote.md:1 e note.md:2 ok."
