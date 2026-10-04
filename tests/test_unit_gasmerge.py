@@ -302,6 +302,9 @@ class TestIPGuard:
         assert "192.168.1.100" in result.stdout, (  # gasmerge-ip-ok
             f"Match IP deve essere stampato: {result.stdout!r}"
         )
+        # V-1 verifica #125: il ramo "IP non allowlistati" deve FERMARE gasmerge,
+        # non solo stampare BLOCCO (lezione #150: rc≠0 non basta).
+        assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -773,6 +776,33 @@ class TestLoopbackExemption:
         assert "loopback" in result.stdout, (
             f"Atteso messaggio loopback: stdout={result.stdout!r}"
         )
+
+    def test_due_loopback_sulla_stessa_riga_passa(self, tmp_path):
+        """V-2 verifica #125: due 127.x sulla stessa riga → esente (sed con flag g)."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, "a: 127.0.0.1 b: 127.0.0.2\n")
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP" not in result.stdout, result.stdout
+        assert "Tutti gli IP sono loopback" in result.stdout, result.stdout
+
+    @pytest.mark.parametrize("riga", [
+        "host: 8.8.8.8 \n",          # spazio finale    # gasmerge-ip-ok
+        "host: 8.8.8.8\t\n",        # tab finale       # gasmerge-ip-ok
+        "  host: 8.8.8.8\n",         # spazio iniziale  # gasmerge-ip-ok
+        "path a\\b host 8.8.8.8\n",  # backslash        # gasmerge-ip-ok
+    ])
+    def test_riga_con_spazi_o_backslash_blocca(self, tmp_path, riga):
+        """R-153-1: la riga confrontata con -Fx deve restare identica a quella di git grep
+        (`IFS= read -r`): spazi ai bordi o backslash non devono far passare l'IP."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, riga)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+        assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
 
     def test_loopback_127_0_0_53_passes(self, tmp_path):
         """Test 2: solo un loopback non-canonico nel branch → NON blocca."""
