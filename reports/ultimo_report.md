@@ -1,34 +1,33 @@
-# ULTIMO REPORT — 2026-10-04 — Test gemelli del gate IP in fine_task_finale e tree unico
+# ULTIMO REPORT — 2026-10-04 — Rami d'errore e loopback del gate IP coperti da test
 
-Branch `test/gate-ip-gemelli-tree-unico` · PR #124 · commit `7f03488` (solo test) · review #150 **APPROVATO CON RISERVE**
+Branch `test/gate-ip-rami-errore-loopback` · PR #125 · commit `24c8640` (solo test) · review #151 **APPROVATO CON RISERVE** + #152 **APPROVATO**
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #124 (variante A: `gasmerge 124`), dopo la verifica esterna.
+1. Merge della PR #125 (variante A: `gasmerge 125`), dopo la verifica esterna.
 2. V-3 (verifica #121): vietare nel ruleset i tag `origin/*`? (ancora aperta)
 3. V-5 (verifica #121): mettere `.gitignore`, `knowledge/` e `CLAUDE.md` nel perimetro di review? (ancora aperta)
 4. Poi la prossima fetta PRIORITARIA, già decisa: V-B "vera" (bot di revisione su GitHub).
 
 ## Esito per step
 
-- **Merge PR #123**: FATTO (`gasmerge 123`, confermato dall'operatore; main `b3c6de3`).
-- **V-2 verifica #123 = R-149-1** (in fine_task_finale.sh sopravvivevano 7 mutation su 11, non 2): FATTA. Test 4f (latin1), 4g (errore della grep allowlist), 4h (tree non risolvibile), 4i (HEAD spostato fra le grep): uccise tutte le 12 mutation del gate IP.
-- **V-1 verifica #123 = R-148-2 senza test**: FATTA. Ref spostato fra le due git grep → BLOCCO in gasmerge; G9 (tree non risolvibile) coperta anche in gasmerge.
-- **V-3 verifica #123** (limite UTF-16 del gate IP): FATTA, annotato in stato_progetto come limite noto.
-- **V-4 verifica #123** (stato_progetto: "gate suite non in ci.yml"): FATTA, nota corretta.
-- **R-150-1** (bassa, preesistente: ramo `PUSH_EXIT` morto in fine_task_finale.sh): DEFERITA, tracciata.
+- **Merge PR #124**: FATTO (`gasmerge 124`, confermato dall'operatore; main `dfb52a5`).
+- **V-1 verifica #124** (3 mutation superstiti nel gate IP di fine_task_finale.sh): FATTA. Test 4j (prima git grep rc 128 → STOP prima del push), 4k (riga con solo loopback esente), 4l (filtro allowlist rotto → STOP); gemello `TestIPErroreFiltro` in gasmerge.
+- **R-151-1** (review #151: `test_git_grep_error_blocks` non verificava che gasmerge si fermasse al gate): FATTA nella stessa fetta (review #152).
+- **V-4 verifica #124** (stato_progetto: frase confusa su R-149-1; "Gate test 65 PASS"): FATTA (riscritta; 74 PASS).
+- **V-5 verifica #124** (`_stub_git -> dict`): FATTA (`dict[str, str]`).
+- **V-2 verifica #124** (discriminazione del test latin1 su glibc): DEFERITA — non provabile in locale; da chiudere con la V-B o con un job CI di mutation.
+- **R-150-1** (ramo PUSH_EXIT morto): DEFERITA, invariata.
 
 ## Test
 
-- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e`: 293 → **299 passed** (riprodotto dal revisore; il mio 298 intermedio era stato contato prima del test G9).
-- Mutation su fine_task_finale.sh F1–F12: tutte uccise. Su gasmerge.sh: tree→ref (TOCTOU) e G9 uccise.
+- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e`: 299 → **303 passed**.
+- Mutation uccise (1 failed ciascuna): fine_task_finale.sh (a) `*)` della prima grep → `9999)`, (b) loopback inefficace, (c) senza `exit 1` nel filtro; gasmerge.sh (c) e senza `exit 1` nel ramo `*)` della prima grep (R-151-1).
 - Nessuno script modificato: diff solo in tests/.
 
 ## Riserve aperte
 
-- R-150-1 (bassa): vedi sopra.
-- Limite noto del gate IP: cieco a UTF-16 e a IP spezzati o codificati.
-- Possibile: su glibc il test latin1 potrebbe non discriminare LC_ALL=C (su macOS sì). Vedi §6 dell'handoff.
+- V-2 verifica #124 (latin1 su glibc), R-150-1: vedi sopra.
 
 ## Anomalie
 
