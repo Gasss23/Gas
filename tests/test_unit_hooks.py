@@ -1473,6 +1473,28 @@ class TestCheckLanding:
             f"T-land-3: atteso FAIL in stderr, stderr={result.stderr!r}"
         )
 
+    def test_land_tag_omonimo_non_maschera_head_non_pushato(self, tmp_path):
+        """R-144-1 (verifica esterna #122, V-2): un tag "origin/main" su HEAD non pushato
+        non fa passare il Check B: il confronto usa refs/remotes/origin/<branch>."""
+        work = tmp_path / "work"
+        work.mkdir()
+        bare = tmp_path / "origin.git"
+        _setup_repo_with_origin_and_files(work, bare)
+        (work / "nuovo.txt").write_text("x\n")
+        subprocess.run(["git", "add", "nuovo.txt"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "non pushato"], cwd=work, check=True, capture_output=True,
+            env={**os.environ,
+                 "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t.invalid",
+                 "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"},
+        )
+        subprocess.run(["git", "tag", "origin/main", "HEAD"], cwd=work,
+                       check=True, capture_output=True)
+        result = _run_check_landing(work, extra_env={"PATH": "/usr/bin:/bin"})
+        assert result.returncode == 1, (
+            f"atteso exit 1 (HEAD non pushato), got {result.returncode}; stderr={result.stderr!r}"
+        )
+
     def test_land_4_remote_absent_exit_1(self, tmp_path):
         """T-land-4: nessun remote per il branch → exit 1 (Check B bloccante)."""
         work = tmp_path / "work"

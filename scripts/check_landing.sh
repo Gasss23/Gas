@@ -30,7 +30,7 @@ done
 
 # ── CHECK B: HEAD pushato su origin/$BRANCH ──────────────────────────────────
 LOCAL_HEAD=$(git -C "$PROJECT_DIR" rev-parse HEAD 2>/dev/null || echo "")
-REMOTE_HEAD=$(git -C "$PROJECT_DIR" rev-parse "origin/${BRANCH}" 2>/dev/null || echo "")
+REMOTE_HEAD=$(git -C "$PROJECT_DIR" rev-parse "refs/remotes/origin/${BRANCH}" 2>/dev/null || echo "")
 
 if [[ -z "$REMOTE_HEAD" ]]; then
     echo "check_landing [B] FAIL: origin/${BRANCH} non esiste — effettua git push prima" >&2

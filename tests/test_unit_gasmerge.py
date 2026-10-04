@@ -415,11 +415,41 @@ class TestPerimetroPromemoria:
         sez = self._sezione(tmp_path, work)
         assert "clients/caffè.py" in sez and "doc-only" not in sez, sez
 
+    def test_tag_origin_main_non_dirotta_il_promemoria(self, tmp_path):
+        """R-144-1 (verifica esterna #122): un tag "origin/main" sul branch non svuota il diff."""
+        work = self._repo(tmp_path, "gas_identity.md\n", {"gas_identity.md": "x\n"})
+        subprocess.run(["git", "tag", "origin/main", "refs/remotes/origin/feat"], cwd=work,
+                       check=True, capture_output=True)
+        sez = self._sezione(tmp_path, work)
+        assert "gas_identity.md" in sez and "doc-only" not in sez, sez
+
     def test_perimetro_assente_ogni_file_e_motore(self, tmp_path):
         work = self._repo(tmp_path, None, {"docs/nota.md": "x\n"})
         sez = self._sezione(tmp_path, work)
         assert "illeggibile" in sez and "docs/nota.md" in sez, sez
         assert "doc-only" not in sez, sez
+
+
+class TestIPRefCompleto:
+    """R-144-1 (verifica esterna #122, V-1): il gate IP scansiona refs/remotes/origin/<branch>."""
+
+    def test_tag_omonimo_del_branch_non_aggira_il_gate_ip(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        subprocess.run(["git", "checkout", "feat"], cwd=work, check=True, capture_output=True)
+        (work / "x.py").write_text('HOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "add", "x.py"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "ip"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        # Tag "origin/feat" sul main pulito: col ref abbreviato vincerebbe su refs/remotes/.
+        subprocess.run(["git", "tag", "origin/feat", "main"], cwd=work,
+                       check=True, capture_output=True)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
 
 
 # ---------------------------------------------------------------------------

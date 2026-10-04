@@ -88,7 +88,7 @@ echo "--- INVARIANTE IP ---"
 # (mai fail-open). Il marker va sulla riga sorgente dell'esempio, NON sui
 # file temporanei scritti dal test (così il guard li becca comunque).
 set +e
-IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "origin/$BRANCH")
+IP_MATCHES=$(git grep -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "refs/remotes/origin/$BRANCH")
 IP_RC=$?
 set -e
 case "$IP_RC" in
