@@ -2021,7 +2021,7 @@ class TestFinaleScript:
                             "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t.invalid"})
         return work
 
-    def _stub_git(self, tmp_path: Path, body: str) -> dict:
+    def _stub_git(self, tmp_path: Path, body: str) -> dict[str, str]:
         """Stub git in PATH: `body` gira prima di delegare al git reale ($REAL_GIT)."""
         real_git = shutil.which("git") or "/usr/bin/git"
         bin_dir = tmp_path / "gitbin"
@@ -2087,6 +2087,43 @@ class TestFinaleScript:
         result = _run_finale(work, extra_env=env, cwd=work)
         assert result.returncode == 1, result.stderr
         assert "IP trovato" in result.stderr, result.stderr
+
+    def test_finale_4j_errore_prima_grep_stop(self, tmp_path):
+        """V-1(a) verifica #124: la PRIMA git grep (senza --and) esce con 128 → STOP
+        prima del push (ramo `*)` del gate IP)."""
+        work = self._repo_finale_con_bytes(tmp_path, b"x\n", "feat/4j")
+        env = self._stub_git(
+            tmp_path,
+            "if [ \"$1\" = grep ] && ! printf '%s\\n' \"$@\" | grep -qx -- '--and'; then exit 128; fi")
+        result = _run_finale(work, extra_env=env, cwd=work)
+        assert result.returncode == 1, result.stderr
+        assert "git grep uscito con codice 128" in result.stderr, result.stderr
+        assert "=== Push ===" not in result.stderr, result.stderr
+
+    def test_finale_4k_solo_loopback_passa(self, tmp_path):
+        """V-1(b) verifica #124: una riga con soli 127.x.x.x è esente dal gate IP."""
+        work = self._repo_finale_con_bytes(tmp_path, b"bind 127.0.0.1\n", "feat/4k")
+        result = _run_finale(work, cwd=work)
+        assert "tutti gli IP sono loopback (127.x.x.x) — OK" in result.stderr, result.stderr
+
+    def test_finale_4l_errore_filtro_allowlist_stop(self, tmp_path):
+        """V-1(c) verifica #124: il filtro `grep -Fx` fallisce (rc 2) → STOP prima del
+        push, mai "allowlistati"."""
+        work = self._repo_finale_con_bytes(tmp_path, b"host 10.0.0.1\n", "feat/4l")  # gasmerge-ip-ok
+        real_grep = shutil.which("grep") or "/usr/bin/grep"
+        bin_dir = tmp_path / "grepbin"
+        bin_dir.mkdir()
+        stub = bin_dir / "grep"
+        stub.write_text(
+            "#!/usr/bin/env bash\n"
+            "for a in \"$@\"; do [ \"$a\" = -Fx ] && exit 2; done\n"
+            f"exec \"{real_grep}\" \"$@\"\n")
+        stub.chmod(0o755)
+        result = _run_finale(work, extra_env={"PATH": f"{bin_dir}:{os.environ['PATH']}"}, cwd=work)
+        assert result.returncode == 1, result.stderr
+        assert "errore nel filtro allowlist (rc=2)" in result.stderr, result.stderr
+        assert "allowlistati" not in result.stderr, result.stderr
+        assert "=== Push ===" not in result.stderr, result.stderr
 
     def test_finale_4e_file_binario_con_ip(self, tmp_path):
         """R-148-3: un IP dentro un file binario non sfugge al gate IP (git grep -a)."""

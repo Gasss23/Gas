@@ -260,6 +260,8 @@ class TestIPGuard:
             f"Atteso exit non-zero con git grep rc=2, got 0; stdout={result.stdout!r}"
         )
         assert "BLOCCO" in result.stdout, f"Atteso BLOCCO: {result.stdout!r}"
+        # R-151-1: si ferma SUBITO al gate IP (non basta rc≠0: lezione #150).
+        assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
         assert "0 match OK" not in result.stdout, (
             f"'0 match OK' non deve apparire quando git grep fallisce: {result.stdout!r}"
         )
@@ -576,6 +578,34 @@ exec "{real_git}" "$@"
         assert result.returncode != 0, result.stdout
         assert "non risolvibile" in result.stdout, result.stdout
         assert "git grep uscito con codice" not in result.stdout, result.stdout
+
+
+class TestIPErroreFiltro:
+    """V-1(c) verifica #124: il filtro `grep -Fx` della allowlist fallisce → BLOCCO
+    subito, senza arrivare al promemoria né alla conferma."""
+
+    def test_errore_filtro_allowlist_blocca(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        subprocess.run(["git", "checkout", "feat"], cwd=work, check=True, capture_output=True)
+        (work / "x.py").write_text('HOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "add", "x.py"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "ip"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        real_grep = shutil.which("grep") or "/usr/bin/grep"
+        stub = fake_bin / "grep"
+        stub.write_text(
+            "#!/usr/bin/env bash\n"
+            "for a in \"$@\"; do [ \"$a\" = -Fx ] && exit 2; done\n"
+            f"exec \"{real_grep}\" \"$@\"\n")
+        stub.chmod(0o755)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: errore nel filtro allowlist (rc=2)" in result.stdout, result.stdout
+        assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
 
 
 class TestIPFileBinariENonUtf8:
