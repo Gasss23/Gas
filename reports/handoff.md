@@ -1,58 +1,51 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-05 — TradeGasFX, fluidità 3D
+**Sessione:** 2026-10-06 — TradeGasFX, oggetto 3D volumetrico
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Rivedere la preview v2 prima di qualsiasi pubblicazione; per il live servono sorgenti/accesso.
-2. Esempi di testimonianza fittizi: sostituire con esperienze autentiche e autorizzate.
-3. Verificare documenti e formulazione del servizio “fondo con garanzia” prima della pubblicazione.
-4. PR e CI non verificabili: GitHub CLI non autenticata/API non raggiungibile.
+1. Rivedere la preview aggiornata prima della pubblicazione; per modificare il live servono sorgenti o accesso al progetto.
+2. Sostituire le testimonianze d'esempio con esperienze autentiche e autorizzate.
+3. Verificare documenti e formulazione del servizio “fondo con garanzia”.
+4. PR e CI non verificabili dalla sessione: GitHub CLI non autenticata e API non raggiungibile.
 
-## §1 SCOPE & ESITO
+## §1 ESITO DELLA SONDA
 
-- Ispezionato il riferimento ADORA STUDIO fornito dall'utente, compreso il suo comportamento allo scroll; ripresi ritmo e composizione, senza copiarne asset o branding.
-- Preview standalone aggiornata: tre viste interpolate direttamente dalla posizione di scroll, rotazione ampliata, parallasse al puntatore e sfondo uniforme; tre capitoli di servizio, CTA WhatsApp mirate, layout mobile e riduzione del movimento.
-- Nomi e frasi sono esempi fittizi dichiarati. Nessun grafico o screenshot di trading.
-- La skill GAS contiene solo note sintetiche: ispezionare il riferimento, interpolare il movimento allo scroll ed evitare stacchi di sfondo.
-- Nessun uso di Claude. Sito live invariato per mancanza di sorgenti/accesso.
-- Preview e render 3D: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html` e PNG adiacenti.
-- La pagina non è stata renderizzata nel browser a causa del blocco sui file locali.
+- Disponibile solo la preview standalone; il progetto sorgente del sito live non è accessibile.
+- Aggiornato `tradegasfx-immersive-preview.html` con geometria WebGL effettiva: tre sfere, collegamenti, anelli inclinati, profondità tra nodi, prospettiva e illuminazione speculare. Rotazione completa in risposta allo scroll; puntatore per inclinazione, fallback senza WebGL e rispetto di `prefers-reduced-motion`.
+- Nessuna libreria esterna, nessun grafico/screenshot trading, copy di servizio invariato e CTA WhatsApp mantenute.
+- Nessun uso di Claude. Motore GAS invariato.
+- La preview aggiornata non è stata renderizzata nel browser; l'accesso a file locali resta bloccato.
 
-## §2 GIT DIFF --STAT (0221462 → working tree)
+## §2 GIT DIFF --STAT (b68d599 → working tree)
 
 ```
- .agents/skills/website-service-showcase/SKILL.md |  27 +++
- reports/diff_sessione.md                         |  13 +-
- reports/handoff.md                               | 239 +++--------------------
- reports/stato_progetto.md                        |   6 +-
- reports/ultimo_report.md                         |  43 ++--
- 5 files changed, 85 insertions(+), 243 deletions(-)
+ .agents/skills/website-service-showcase/SKILL.md |  2 +-
+ reports/diff_sessione.md                         | 14 +++---
+ reports/handoff.md                               | 59 +++++++++++-------------
+ reports/stato_progetto.md                        |  6 +--
+ reports/ultimo_report.md                         | 23 +++++-----
+ 5 files changed, 48 insertions(+), 56 deletions(-)
 ```
 
-## §3 GIT LOG --ONELINE (0221462..HEAD)
+## §3 GIT LOG --ONELINE (b68d599..HEAD)
 
 ```
-234dac7 docs(tradegasfx): aggiorna preview 3D cinematica
-bcfacaa docs(tradegasfx): aggiunge skill vetrina e aggiorna report
-56f41bc docs(tradegasfx): aggiorna esito push e CI
-4208987 docs(tradegasfx): report della preview servizi
+Nessun commit del task precede questo dossier; il commit che lo contiene segue la sua stesura.
 ```
 
-Il commit di report della sessione viene creato al termine di questo dossier.
+## §4 DELTA TEST DEL MOTORE
 
-## §4 VERDETTO DEL REVISORE
+Motore invariato. Nessun test automatico eseguito; la preview WebGL non è stata renderizzata nel browser.
 
-Nessuna modifica al perimetro motore; review non richiesta.
+## §5 VERDETTO DEL REVISORE
 
-## §5 DELTA TEST DEL MOTORE
-
-Motore invariato. Nessun test automatico eseguito; la preview web non è stata renderizzata nel browser.
+Nessun verdetto: modifica della sola skill e dei report, fuori dal perimetro di review. Revisore non invocato.
 
 ## §6 STATO CI
 
-`gh run list -L 3` non raggiunge `api.github.com`; `gh auth status` segnala il token predefinito non valido. `check_landing.sh` restituisce WARN e salta la verifica PR per gh non autenticato. Nessuna run CI verificabile per il commit di fine task.
+Nessuna nuova run CI verificabile. `gh` risultava non autenticato e l'API GitHub non raggiungibile; stato PR/CI non confermato.
 
 ## §7 RISERVE APERTE
 
-Sorgenti/accesso necessari per pubblicare. Verificare i documenti del fondo e rimpiazzare le testimonianze fittizie con contenuti reali e autorizzati. PR/CI non verificabili con lo stato attuale di GitHub CLI.
+Serve una revisione visiva della preview; per pubblicare sul live servono i sorgenti/accesso. Verificare i documenti del fondo e sostituire le testimonianze fittizie con contenuti reali autorizzati.

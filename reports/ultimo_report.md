@@ -1,22 +1,21 @@
-# ULTIMO REPORT — 2026-10-05 — TradeGasFX, fluidità 3D
+# ULTIMO REPORT — 2026-10-06 — TradeGasFX, oggetto 3D volumetrico
 
 ## Decisioni umane richieste
 
-1. Rivedere la nuova preview prima di qualsiasi pubblicazione live; per il sito live servono i sorgenti o l'accesso al progetto.
-2. Le tre frasi con nomi sono esempi fittizi dichiarati, non recensioni reali. Sostituirle con testimonianze autentiche e autorizzate prima della pubblicazione.
-3. Prima di pubblicare, verificare documenti e formulazione del servizio “fondo con garanzia”.
+1. Rivedere la nuova preview prima di qualsiasi pubblicazione; per modificare il sito live servono sorgenti o accesso al progetto.
+2. Le testimonianze con nomi sono esempi fittizi dichiarati: prima della pubblicazione, sostituirle con testimonianze autentiche e autorizzate.
+3. Verificare documenti e formulazione del servizio “fondo con garanzia” prima della pubblicazione.
 
 ## Esito
 
-- Ispezionato il riferimento ADORA STUDIO fornito dall'utente, inclusa la transizione 3D allo scroll. Ripresi ritmo, composizione cinematica e testi brevi, senza copiare branding o asset.
-- Creata una preview standalone: `tradegasfx-immersive-preview.html`, con scultura originale a tre nodi in tre viste interpolate direttamente dallo scroll, maggiore rotazione e risposta al puntatore. Sfondo uniforme tra i capitoli, layout mobile e rispetto di `prefers-reduced-motion`.
-- Servizi mantenuti essenziali: fondo con garanzia, trading matematico, copytrading e sala segnali. CTA WhatsApp con testo precompilato diverso per ciascun servizio e numero +39 348 992 1530.
-- Conservata una fascia ridotta con esempi di testimonianza marcati come fittizi; nessun dato finanziario, grafico o schermata MT5.
-- Aggiornata di poche righe la skill `.agents/skills/website-service-showcase/SKILL.md` per ricordare ispezione del riferimento, movimento interpolato al ritmo dello scroll e sfondi continui.
+- Sostituiti i render PNG ruotati con un modello WebGL generato nel browser: tre sfere solide, aste di collegamento e anelli toroidali inclinati, distribuiti su piani di profondità diversi. Shader con prospettiva, buffer di profondità, luce diffusa e riflessi speculari.
+- Il modello compie una rotazione completa lungo i tre capitoli; interpolazione smorzata per seguire lo scroll e inclinazione leggera al puntatore. Rispetta `prefers-reduced-motion` e usa un fallback se WebGL non è disponibile.
+- Nessuna libreria esterna; sfondo continuo, servizi essenziali e CTA WhatsApp restano nella vetrina.
+- Aggiornata con una sola indicazione sintetica la skill `.agents/skills/website-service-showcase/SKILL.md`: preferire geometria 3D reale con profondità e luce ai render statici ruotati.
 - Nessun uso di Claude. Nessuna modifica al sito live: sorgenti/accesso non disponibili.
-- Preview e tre PNG allegati si trovano in `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/`.
-- La pagina finale non è stata renderizzata nel browser: il blocco per file locali resta. Nessun test automatico eseguito.
+- Preview: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`.
+- La preview aggiornata non è stata renderizzata nel browser a causa del blocco all’apertura di file locali. Nessun test automatico eseguito.
 
 ## Anomalie
 
-`gh` non autenticato e API GitHub non raggiungibile; verifica di PR e CI non disponibile.
+Verifica di PR e CI non disponibile con GitHub CLI non autenticata e API non raggiungibile.
