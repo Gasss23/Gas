@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-05 — V-B vera, fetta B1: bot di verifica esterna su GitHub (identità separata) + chiusura V-1..V-6 della verifica esterna #130
+**Sessione:** 2026-10-05 — V-B vera, fetta B1: bot di verifica esterna su GitHub (identità separata) + chiusura delle due verifiche esterne #130
 
 ---
 
@@ -11,7 +11,8 @@
 3. **R-158-5**: il bot è di sola lettura e non esegue test. In variante B la verifica esterna locale §4quater resta obbligatoria accanto al bot? (consiglio: sì per le fette nel perimetro di review).
 4. Dopo il test di convalida (fetta B2): ruleset `main-lock` con 1 approvazione, "dismiss stale approvals", "require approval of the most recent push" (passi forniti al momento).
 5. **R-161-2**: con `scripts/` nella macchina del bot, la PR della fetta B2 (`gasmerge --auto`) non sarà mai approvata dal bot: il test di convalida dell'APPROVE automatico richiede una PR successiva fuori dalla macchina (es. una piccola fetta del motore).
-6. Ancora aperte da sessioni precedenti: R-155-3 (Codex e Claude Code nella stessa cartella), V-3 / V-5 della verifica #121.
+6. **Terza verifica esterna NON lanciata (scelta di dosaggio, da confermare)**: la seconda verifica (§9) ha trovato una sola MEDIA (V-1, Grep/Glob fuori cartella) e ha proposto e provato lei stessa la correzione (`Grep(./**)`/`Glob(./**)`), applicata in `c215635` con review #162 e mutation mirata 10/10. Le correzioni saranno ricontrollate dalla verifica della fetta B2. Se l'operatore vuole la terza verifica prima del merge, va lanciata ora.
+7. Ancora aperte da sessioni precedenti: R-155-3 (Codex e Claude Code nella stessa cartella), V-3 / V-5 della verifica #121.
 
 ---
 
@@ -20,7 +21,8 @@
 - **Fetta B1 — bot di verifica (workflow + `scripts/bot_esito.py` + test)**: `FATTA` — commit `5010cef`, review #158/#159/#160 APPROVATO CON RISERVE; 126 test nuovi; mutation 55/56 (1 equivalente).
 - **Riserve #158 e #159**: `FATTA` — tutte chiuse con test prima del commit, tranne R-158-5 (decisione umana, §0.3).
 - **Verifica esterna #130 (APPROVATO CON RISERVE, V-1/V-2 MEDIA)**: `FATTA` — V-1 (niente git fra gli strumenti), V-2 (credenziali su tutto il verdetto), V-3 (test permessi App e needs), V-4 (negazioni e gravità a parole, chiude anche R-160-2), V-5 (macchina del bot allargata, doc-only solo .md), V-6 (ordine del setup) chiuse prima del merge; commit `43f84fb`, review #161. Verdetto integrale in §8.
-- **Riserve BASSE aperte (R-160-1, R-161-1)**: `DEFERITA — fetta B2` (regola dell'operatore: le basse passano, si aggiustano dopo).
+- **Seconda verifica esterna #130 (APPROVATO CON RISERVE, V-1 MEDIA)**: `FATTA` — V-1 (Grep/Glob limitati a `./**` + scrub dell'ambiente: chiude anche R-160-1), V-3 (test sugli `if`, su `HEAD_ANALIZZATA` e sul ref del checkout), V-4 (nessun TypeError con `finding` non lista), V-5 (etichetta `verifica`: passo D del setup), V-6 (doc-only esclude `reports/setup_*` e `reports/design_*`) chiuse; commit `c215635`, review #162. Verdetto integrale in §9.
+- **Riserve BASSE aperte (V-2 della seconda verifica, R-161-1, R-162-1, R-162-2)**: `DEFERITA — fetta B2` (regola dell'operatore: le basse passano, si aggiustano dopo).
 - **Fetta B2 — `gasmerge --auto` + V-3 #127 + test di convalida**: `DEFERITA — richiede B1 su main e setup dell'operatore.`
 - **Ruleset**: `DEFERITA — dopo la convalida.`
 - **Residui V-2 #127 e V-2/V-3 #129**: `DEFERITA — decisione operatore (2026-10-05): solo V-3 #127, nella fetta B2.`
@@ -30,18 +32,18 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 ++++++
+ .claude/agents/memoria_revisore.md |  12 +++++++
  .claude/perimetro_review.txt       |   1 +
  .github/workflows/ci.yml           |  15 +++++++++
- .github/workflows/verifica-bot.yml | 244 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ .github/workflows/verifica-bot.yml | 248 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md           |  15 +++++----
- reports/handoff.md                 | 275 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------
- reports/setup_verifica_bot.md      |  52 ++++++++++++++++++++++++++++++
+ reports/handoff.md                 | 374 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------
+ reports/setup_verifica_bot.md      |  57 ++++++++++++++++++++++++++++++++
  reports/stato_progetto.md          |   4 +--
- reports/ultimo_report.md           |  41 ++++++++++--------------
- scripts/bot_esito.py               | 274 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_verifica_bot.py    | 622 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 11 files changed, 1416 insertions(+), 137 deletions(-)
+ reports/ultimo_report.md           |  44 +++++++++++--------------
+ scripts/bot_esito.py               | 278 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_verifica_bot.py    | 651 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 11 files changed, 1562 insertions(+), 137 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` approssimati per costruzione (il file conta se stesso).
@@ -49,6 +51,9 @@ NB: conteggi di `reports/handoff.md` approssimati per costruzione (il file conta
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c215635 fix(verifica-bot): chiude V-1, V-3, V-4, V-6 della seconda verifica esterna #130 — review #162
+17e49de chore(revisore): memoria review #162 — APPROVATO CON RISERVE
+8e11aa5 docs(verifica-bot): fine-task — correzioni verifica esterna #130 (V-1..V-6), handoff con review #161 e verdetto integrale
 43f84fb fix(verifica-bot): chiude V-1..V-5 della verifica esterna #130 — review #161
 cf68a2e chore(revisore): memoria review #161 — APPROVATO CON RISERVE
 7d6289c docs(verifica-bot): fine-task — V-B fetta B1, handoff (review #158/#159/#160), guida setup operatore
@@ -62,7 +67,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `5010cef` (workflow, script, test, ci, perimetro): review #158, #159, #160; commit `43f84fb` (correzioni della verifica esterna #130): review #161. Incollate per intero, nell'ordine. Il diff revisionato da #160 è quello committato (marcatore `segna_review_ok.sh` sullo stage revisionato).
+Commit `5010cef` (workflow, script, test, ci, perimetro): review #158, #159, #160; commit `43f84fb` (correzioni della verifica esterna #130): review #161; commit `c215635` (correzioni della seconda verifica): review #162. Incollate per intero, nell'ordine. Il diff revisionato da #160 è quello committato (marcatore `segna_review_ok.sh` sullo stage revisionato).
 Unica modifica al testo: le citazioni del sorgente della action ESTERNA `anthropics/claude-code-action` (file che non esiste in questo repo) sono riscritte da `file:riga` a `file riga N`, perché `check_verdetto.py` verifica ogni `file:riga` a HEAD.
 
 ### Review 158
@@ -183,21 +188,54 @@ Review #161: delta V-1..V-6 della verifica esterna sulla PR #130. Il diff staged
 
 **Memoria**: riga #161 e una lezione nuova sulle redirezioni con Bash(prefisso:*). Sono committate con `scripts/commit_memoria_revisore.sh` nel commit cf68a2e, che contiene solo la memoria; il diff staged è intatto (3 file, +141/-17).
 
+### Review 162
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #162. Diff staged nella worktree `/Users/gas/Gas/.claude/worktrees/gate-ip-ottetti`, branch `feat/verifica-bot` (controllato con `git branch --show-current`), rispetto a HEAD 8e11aa5. Tocca 3 file, con 41 righe aggiunte e 4 tolte. Prima della review ho letto CLAUDE.md, stato_progetto.md (solo le righe mirate) e la coda della mia memoria.
+
+**Il tuo dubbio sullo scrub: il "1" funziona, non viene annullato.** L'ho controllato sul sorgente dell'action pinnata (`action.yml@cab360f`, riga 301):
+`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: ${{ env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB || (inputs.allowed_non_write_users != '' && '1') || '' }}`
+L'espressione legge prima l'env che lo step eredita, quindi l'env del job. Lo conferma anche `docs/security.md` dello stesso commit: la disattivazione si fa "in your workflow or job `env:` block", cioè proprio dove hai messo la variabile. Il valore vuoto si usa solo se il job non la imposta. C'è di più: nel binario del CLI 2.1.289 (locale) la funzione di decisione è `Pe ??= en(e) || en(GITHUB_ACTIONS) && !Do(e)`. Vuol dire che dentro GitHub Actions lo scrub è già attivo di default, a meno di disattivarlo con 0/false/no/off. Il tuo "1" è quindi una difesa in più, utile se un CLI futuro cambiasse il default. Non è un'impostazione persa. Nella lista delle variabili ripulite ci sono `CLAUDE_CODE_OAUTH_TOKEN`, `ACTIONS_ID_TOKEN_*`, `ACTIONS_RUNTIME_*` e `OVERRIDE_GITHUB_TOKEN`. Non ci sono `GH_TOKEN` né `GITHUB_TOKEN`, quindi i 5 comandi gh continuano a funzionare. Con lo scrub attivo il CLI forza la modalità permessi "default" e chiede un allowedTools esplicito, che c'è già.
+
+**Elementi del diff esaminati**
+- `.github/workflows/verifica-bot.yml:107` — STRUMENTI ora è `Read(./**),Grep(./**),Glob(./**)` più 5 comandi `Bash(gh …:*)`. Rischio esaminato: restava qualche tool che legge file fuori dalla cartella (la lezione #160 sui tool come classe). Il test `test_lettura_limitata_alla_cartella` vieta i tool nudi e qualsiasi prefisso che non sia Read/Grep/Glob/Bash. La classe "tool che leggono file" è chiusa: git non c'è più dalla #161. Esito: ok.
+- `.github/workflows/verifica-bot.yml:94` — `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"` nell'env del job. Rischio esaminato: valore sovrascritto dallo step dell'action. Escluso, vedi sopra. Esito: ok, con la riserva R-162-1.
+- `scripts/bot_esito.py:196` — `elenco` usato solo se è una lista. Rischio esaminato: TypeError, quindi nessuna review pubblicata. Ho fatto una mutation (`elenco or []`): 2 test falliscono (finding=5 e finding=True), quindi viene presa. I casi `"x"` e `{"a":1}` non andavano in crash nemmeno prima, ma restano utili come casi da tenere fissi. Esito: ok.
+- `scripts/bot_esito.py:62` / `:91` — `DOC_DA_VERIFICARE` escluso dal percorso doc-only. Rischio esaminato: un setup o un design passa senza LLM. Ho tolto la clausola come mutation: 2 test falliscono, quindi viene presa. È fail-closed: un .md in più passa dall'LLM e non c'è falso APPROVE. Esito: ok.
+- `tests/test_unit_verifica_bot.py:619` — test con uguaglianza esatta sugli `if` di verifica (`:73`) ed esito (`:215`), sul `ref` del checkout di `./pr` e su `HEAD_ANALIZZATA`. Ho confrontato il testo dei test con il YAML (`grep if:`): corrispondono. Esito: ok.
+
+**Riproduzione**: `tests/test_unit_verifica_bot.py` dà 174 passed. Ho fatto 2 mutation mie e sono state prese entrambe. Il file è stato ripristinato dall'index (`cmp` uguale alla copia di backup) e lo stage è intatto.
+
+**Riserve**
+- R-162-1 (BASSA): bubblewrap e l'isolamento dei processi non sono attivi. Gli step che li installano partono solo se `allowed_non_write_users` non è vuoto. Resta solo lo scrub delle variabili d'ambiente. La barriera principale contro `/proc/self/environ` resta `Read/Grep/Glob(./**)`. Va scritto così nei report: niente sandbox PID.
+- R-162-2 (BASSA): `test_ambiente_dei_sottoprocessi_ripulito` controlla solo l'env del job, non l'espressione dell'action. Va bene finché il pin `cab360f` non cambia. Al prossimo aggiornamento del pin bisogna ricontrollare la riga 301 e il default del CLI.
+- Restano rimandate a B2, come hai dichiarato tu: V-2 e R-161-1.
+
+**Cosa non ho verificato**: che l'action installi davvero il CLI 2.1.289. Non ho trovato il pin della versione in `action.yml`: ho analizzato il binario locale 2.1.289 fidandomi della sonda del verificatore. Non ho verificato nemmeno il comportamento reale su runner GitHub (la variabile che passa dall'env del job all'env della composite action), perché in locale non si può riprodurre. Va confermato alla prima run vera del bot.
+
+Memoria aggiornata: riga #162 più una lezione, commit `17e49de` fatto con `scripts/commit_memoria_revisore.sh`. Il diff staged non è stato toccato.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a `gas.py`, `brains/`, `modules/`: suite kernel non rilanciata. Modificati `tests/` (nuovo `tests/test_unit_verifica_bot.py`) e la macchina di controllo. Suite di controllo (pytest locale: hooks, gate, handoff_check, gasmerge, verifica_bot): **273 → 437 passed** (`437 passed in 90.89s`), 0 FAIL. Nuova suite: 164 passed. Mutation su `scripts/bot_esito.py`: 73 mutation, 72 KILLED, 1 SURVIVED equivalente (`findall` su `sezione` contro `sezione.upper()`, identico con `re.I`).
+Nessuna modifica a `gas.py`, `brains/`, `modules/`: suite kernel non rilanciata. Modificati `tests/` (nuovo `tests/test_unit_verifica_bot.py`) e la macchina di controllo. Suite di controllo (pytest locale: hooks, gate, handoff_check, gasmerge, verifica_bot): **273 → 447 passed** (`447 passed in 89.33s`), 0 FAIL. Nuova suite: 174 passed. Mutation su `scripts/bot_esito.py`: 73 mutation, 72 KILLED, 1 SURVIVED equivalente (`findall` su `sezione` contro `sezione.upper()`, identico con `re.I`); mutation mirata sulle correzioni della seconda verifica (script + workflow): 10/10 KILLED.
 
 ## §6 STATO CI
 
 ```
-queued		fix(verifica-bot): chiude V-1..V-5 della verifica esterna #130 — revi…	CI	feat/verifica-bot	push	37364747687	12m0s	2026-10-05T19:38:49Z
+queued		fix(verifica-bot): chiude V-1, V-3, V-4, V-6 della seconda verifica e…	CI	feat/verifica-bot	push	37368299432	1m14s	2026-10-05T20:12:33Z
+completed	failure	docs(verifica-bot): fine-task — correzioni verifica esterna #130 (V-1…	CI	feat/verifica-bot	push	37366037273	15m3s	2026-10-05T19:51:00Z
+completed	failure	fix(verifica-bot): chiude V-1..V-5 della verifica esterna #130 — revi…	CI	feat/verifica-bot	push	37364747687	15m3s	2026-10-05T19:38:49Z
 completed	success	docs(verifica-bot): fine-task — V-B fetta B1, handoff (review #158/#1…	CI	feat/verifica-bot	push	37352488135	1m16s	2026-10-05T17:58:49Z
 completed	failure	feat(verifica-bot): bot di verifica esterna con identità separata (V-…	CI	feat/verifica-bot	push	37352159123	1m28s	2026-10-05T17:56:12Z
 
 Mappatura commit→run:
-- 43f84fb (testa del push delle correzioni, con cf68a2e): run 37364747687 — handoff-check success; unit-suite ANCORA IN CODA (queued) sui runner GitHub alla scrittura dell'handoff.
-- cf68a2e (memoria revisore #161): nessuna run su questo SHA (pushato insieme a 43f84fb, testato solo nell'albero di 43f84fb).
-- 7d6289c (fine-task precedente): run 37352488135 — success (unit-suite + handoff-check).
+- c215635 (testa dell'ultimo push, con 17e49de): run 37368299432 — QUEUED alla scrittura dell'handoff.
+- 17e49de (memoria revisore #162): nessuna run su questo SHA (pushato con c215635).
+- 8e11aa5 (fine-task precedente): run 37366037273 — unit-suite success; handoff-check CANCELLED dopo 15 min in coda (runner GitHub), nessun test fallito.
+- 43f84fb (con cf68a2e): run 37364747687 — handoff-check success; unit-suite CANCELLED dopo 15 min in coda, mai eseguito su questo SHA (stesso albero di codice di 8e11aa5, dove è verde).
+- cf68a2e: nessuna run su questo SHA (pushato con 43f84fb).
+- 7d6289c: run 37352488135 — success (unit-suite + handoff-check).
 - 5010cef: run 37352159123 — unit-suite success, handoff-check failure (handoff non ancora nel diff: atteso).
 - 39ea8a4, d37d875, 05a4494 (memoria revisore): nessuna run su questi SHA (testati nell'albero di 5010cef).
 - commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (copertura pre-merge: gasmerge, gh pr checks --watch).
@@ -205,16 +243,19 @@ Mappatura commit→run:
 
 ## §7 RISERVE APERTE
 
-- **R-160-1 (BASSA)**: letture fuori cartella via Grep/Glob senza limiti di path (`git` tolto in `43f84fb`); `contiene_segreti` solo su forme letterali → fetta B2.
+- **R-160-1**: CHIUSA in `c215635` (V-1 della seconda verifica: `Grep(./**)`/`Glob(./**)` + scrub). `contiene_segreti` resta solo sulle forme letterali (secondario).
+- **V-2 seconda verifica (BASSA)**: negazioni e gravità fuori vocabolario ("NON risulta APPROVATO", "CRITICAL", "blocker", spazi a larghezza zero) → fetta B2: decidere solo sul campo strutturato `gravita`.
+- **R-162-1 (BASSA)**: niente sandbox PID/bubblewrap nel job (solo con `allowed_non_write_users`): barriera principale `Read/Grep/Glob(./**)` + scrub dell'ambiente.
+- **R-162-2 (BASSA)**: lo scrub dipende dall'espressione dell'action al pin `cab360f`: ricontrollare ad ogni aggiornamento del pin.
 - **R-160-2**: CHIUSA in `43f84fb` (V-4 #130), salvo le forme di R-161-1.
 - **R-161-1 (BASSA)**: "NON-APPROVATO" / "NON È APPROVATO" sulla riga del verdetto col campo APPROVATO → APPROVE → fetta B2.
 - **R-161-2 (ROADMAP)**: la PR di B2 non sarà approvata dal bot (tocca `scripts/`); convalida dell'APPROVE con una PR fuori dalla macchina (§0.5).
-- **Redirezioni di shell** sotto `Bash(gh ...:*)` (es. `> "$GITHUB_ENV"`): non verificato se il parser dei permessi di Claude Code le nega → sonda nel runner nella fetta B2.
+- **Redirezioni di shell** sotto `Bash(gh ...:*)`: CHIUSA — provate dalla seconda verifica sul CLI 2.1.289 headless, tutte DENIED (§9).
 - **R-158-5 (DECISIONE UMANA)**: bot di sola lettura; §4quater locale obbligatoria in variante B? (§0.3).
 - Non verificato fino al primo run reale: environment ristretto a main concesso a `pull_request_target`, `structured_output` con token OAuth, attore dei push accettato dall'action, `Read(./**)` lato CLI.
 - Da sessioni precedenti: R-155-3, V-3 / V-5 #121, R-160-x a parte; V-3 #127 → fetta B2.
 
-## §8 VERIFICA ESTERNA #130 (verdetto integrale)
+## §8 VERIFICA ESTERNA #130 (prima, verdetto integrale)
 
 Agente nuovo (`general-purpose`, Sonnet) con il solo prompt `Applica .claude/verifica_esterna.md a: <URL_HANDOFF 7d6289c> <URL_PR #130>`. Esito riportato così com'è; le correzioni sono nel commit `43f84fb` (review #161).
 
@@ -256,4 +297,70 @@ RACCOMANDAZIONE
 2. Nella fetta B2 aggiungere V-3 (test sulle permission dell'App e sui `needs`), V-4 (negazioni e gravità minuscole) e valutare V-5 (`MACCHINA_BOT` e doc-only non-md).
 3. Aggiornare `reports/setup_verifica_bot.md` per V-6.
 4. R-158-5: per le fette nel perimetro di review tenere obbligatoria la verifica locale §4quater accanto al bot (il bot è di sola lettura e non applica "Prova, non leggere").
+```
+
+## §9 VERIFICA ESTERNA #130 (seconda, verdetto integrale)
+
+Agente nuovo (`general-purpose`, Sonnet) con il solo prompt `Applica .claude/verifica_esterna.md a: <URL_HANDOFF 8e11aa5> <URL_PR #130>`. Esito riportato così com'è; le correzioni sono nel commit `c215635` (review #162).
+
+```
+VERIFICA ESTERNA PR #130 — APPROVATO CON RISERVE
+(Il merge di #130 è innocuo adesso: il bot non ha segreti né environment (`environments` = 0), il ruleset non richiede approvazioni e la PR non ha l'etichetta. V-1 va chiuso PRIMA del setup che inserisce i segreti. Al momento della verifica `handoff-check` su 8e11aa5 era ancora queued, e il merge lo aspetta perché è required.)
+
+Metodo: clone usa-e-getta nella scratchpad, checkout di 8e11aa5 (pinnato dall'URL), merge-base con origin/main = f5fb9c1, clone separato alla base per il confronto dei test. Ho letto per intero `scripts/bot_esito.py`, `.github/workflows/verifica-bot.yml`, `reports/setup_verifica_bot.md` e l'handoff. Ho rilanciato `tests/test_unit_verifica_bot.py` e le 5 suite di controllo, sia alla base che al commit. Ho eseguito circa 80 sonde dirette su `decidi`/`componi_corpo` e 33 mutation mie su script e workflow. Ho controllato GitHub con `gh` (PR, run, job, ruleset, environments, permessi Actions, label, SHA delle action). Ho clonato `anthropics/claude-code-action` a cab360f. Ho provato i permessi del CLI headless `claude -p` versione 2.1.289, cioè quella pinnata dall'action (`base-action/action.yml` riga 150), con probe in una cartella della scratchpad (nessun segreto, nessun repo reale). Il repo reale non è stato toccato: `git status` della worktree è vuoto. In `/Users/gas/Gas` restano solo tre untracked preesistenti (`.agents/skills/source-command-fine-task/`, `.codex/`, `AGENTS.md`), che non sono miei.
+
+CLAIM VERIFICATI
+- §2 e §3 dell'handoff contro git reale: VERO nella sostanza.
+  - Gli 11 file coincidono e `check_handoff.py` locale dà "OK — 11 file dichiarati correttamente".
+  - `check_verdetto.py` dà "OK — 42 riferimento/i verificato/i".
+  - Il log reale ha 8 commit; l'ottavo è 8e11aa5, assente per costruzione e dichiarato.
+  - Le righe inserite sono +1443/-137 contro +1416/-137 dichiarate, e `handoff.md` è 302 righe contro 275. L'handoff dichiara l'approssimazione (COSMETICA).
+- §5 Delta test "273 → 437, nuova suite 164": VERO.
+  - Alla base (f5fb9c1), hooks+gate+handoff+gasmerge: 273 passed.
+  - A 8e11aa5, le stesse suite più verifica_bot: 437 passed in 97s.
+  - `tests/test_unit_verifica_bot.py` da sola: 164 passed.
+- CI su 8e11aa5 (run 37366037273): `unit-suite` SUCCESS. Gli step includono "Run verifica-bot suite" in success. `handoff-check` era QUEUED, quindi il check required non è ancora verde.
+- Run 37364747687 (43f84fb): l'handoff §6 la descrive con unit-suite "in coda". Ora quel job è CANCELLED (handoff-check success). Il commit del codice 43f84fb non ha mai avuto un `unit-suite` completato sul proprio SHA; è coperto dal verde su 8e11aa5, che ha lo stesso albero di codice più i soli report. Run 37352488135 (7d6289c) success e 37352159123 (5010cef) con handoff-check failure: coerenti con §6.
+- Ruleset `main-lock` (id 18805824): required `unit-suite` e `handoff-check` (integration_id 15368). `required_approving_review_count` 0, `dismiss_stale_reviews_on_push` false, `require_last_push_approval` false: coerente con "ruleset DEFERITA". `can_approve_pull_request_reviews=false`: VERO. Il repo è PUBBLICO. La PR è del proprietario, non da fork, non draft, senza label, senza review.
+- Pin delle action: VERO. `checkout@11d5960…` = v4 / v4.4.0. `create-github-app-token@bcd2ba4…` = v3 / v3.2.0. `claude-code-action@cab360f…`: il tag v1 (annotato) punta ancora a cab360f.
+- V-1 #130 (git tolto dagli strumenti): VERO. Il set Bash è esattamente 5 comandi `gh` di sola lettura (test sul set esatto). Mutation: aggiungere `git log`, `curl`, `WebFetch` o `Edit` a STRUMENTI → test rosso.
+- Redirezioni di shell sotto `Bash(prefisso:*)`, il punto "non verificato" di #130 e #161: PROVATO, NON è un buco. Con CLI 2.1.289 headless e `--allowedTools Bash(echo:*)` sono DENIED, e non si crea nessun file: `>`, `>>`, `&>`, `>|`, `1>`, `cmd; cmd > f`, `> /dev/stderr`, `$(… > f)` e backtick. Passa solo `2>&1`, che non scrive. Il parser è lo stesso per qualsiasi prefisso, quindi vale per `gh`.
+- Symlink dentro `./pr` verso l'esterno: Read e Grep sono bloccati ("symlink resolves outside allowed directories").
+- V-2 #130 (credenziali su tutto il verdetto): VERO per le forme letterali `sk-ant-`, `gh[pousr]_X`, `github_pat_`, `-----BEGIN`, in id e descrizione dei finding (sonda: COMMENT). Il limite è in V-1 sotto.
+- V-3 #130 (test su permessi dell'App e `needs`): VERO. Mutation `permission-pull-requests: write` → `permission-contents: write` (e l'aggiunta di contents), `needs: [smista, verifica]` → `[smista]` e PR write nel job verifica: uccise, 1 failed ciascuna.
+- V-4 #130 (negazioni, gravità a parole): VERO per "NON APPROVATO", "DISAPPROVATO", "V-1 — grave:", "[MEDIA]", "| MEDIA |", "- Alta -" → COMMENT. Residui in V-2 sotto.
+- V-5 #130: PARZIALE. `scripts/`, `.claude/hooks/`, perimetro, revisore, fine-task e i 5 test sono davvero in MACCHINA_BOT (mutation: `scripts/`, `hooks/`, perimetro, `CLAUDE.md` per nome → uccise). Il doc-only ora richiede `.md` (mutation uccisa), ma resta aperto il punto di V-6 sotto.
+- V-6 #130 (ordine del setup): VERO. `setup_verifica_bot.md` ha la nota con C1–C2 prima dei segreti.
+- Mutation mie che il test uccide: head check, BOCCIATO, APPROVATO CON RISERVE senza finding, doc-only, commit_id, `!= "false"` fail-open, file troncati dall'API, no `persist-credentials`, no owner/fork check, ref del checkout da branch, titolo in env, MACCHINA_BOT hard-coded, evento `pull_request_target` → `pull_request`.
+
+FINDING
+- V-1 (MEDIA) — R-160-1 non è BASSA: la lettura di file fuori cartella via Grep/Glob è reale e il filtro `_SEGRETO` è aggirabile.
+  - Sonda sul CLI 2.1.289 con `--allowedTools "Read(./**),Grep,Glob"` (la configurazione del workflow). Read di `/etc/hosts` è DENIED, ma `Grep pattern=GAS path=/Users/gas/Gas/CLAUDE.md output_mode=content` è PERMESSO e restituisce il contenuto della riga, `Grep` su `/etc/hosts` è PERMESSO e `Glob /etc/host*` e `Glob` su `/Users/gas/Gas` sono PERMESSI.
+  - Su un runner Linux lo stesso canale arriva a `/proc/self/environ`, cioè all'ambiente del processo che contiene `CLAUDE_CODE_OAUTH_TOKEN`. Questo NON l'ho provato su Linux. In più `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` (`action.yml` riga 301) è attivo solo con `allowed_non_write_users`, che il workflow non imposta.
+  - Il repo è pubblico e la review è pubblica. L'avversario di V-B è chi scrive la PR e quindi il contenuto che il bot legge. Il token dura a lungo e consuma la quota dell'operatore.
+  - `_SEGRETO` riconosce solo le forme letterali. Sonde con APPROVE (verdetto APPROVATO CON RISERVE, finding BASSA): `sk‑ant-…` con trattino Unicode U+2011, `s k-ant-`, `AKIA…`, `xoxb-…`, `eyJ….eyJ` (JWT), `sk-proj-…`, `glpat-…`, `Bearer …`. Anche un token in base64 o spezzato passa.
+  - Fix già provato localmente: `Grep(./**),Glob(./**)` al posto di `Grep,Glob` nudi. Con quella regola Grep e Glob su `/etc/hosts` e `/etc` sono DENIED mentre `./inside.txt` e le ricerche senza path restano permessi, e i symlink sono bloccati. In aggiunta, `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'` nell'env del job. Poi un test che pretenda `Grep(./**)` e `Glob(./**)` e vieti `Grep` e `Glob` nudi. Il handoff §7 e lo stato lo rimandano a B2 come BASSA: va chiuso prima del setup (prima di mettere il token).
+- V-2 (BASSA, dichiarata aperta) — R-161-1 confermata, con forme in più. Con il campo APPROVATO, la riga del verdetto produce APPROVE per "NON-APPROVATO", "NON È APPROVATO", "NON risulta APPROVATO", "NO APPROVATO", "NEGATO / APPROVATO", "non approvo: APPROVATO" e "APPROVATO (ma io lo boccerei)". `FINDING: V-1 (CRITICAL)`, `F-1 HIGH`, `V-1 — blocker` e `V-1 — importante:` passano come APPROVE, perché la gravità non è nelle parole riconosciute. Anche `V-1 (ME​DIA)` con spazio a larghezza zero passa. La decisione regge solo sul campo strutturato; il confronto col testo è una rete debole. Fix: lista di negazioni più ampia, oppure, più robusto, ignorare il testo e decidere solo sul campo `gravita` strutturato, con un controllo semplice di coerenza.
+- V-3 (BASSA, buchi di test) — tre mutation sopravvivono con 164/164 verdi. Le prime due decidono se il token dell'App, la chiave e il Claude con i segreti partono su PR che il filtro `smista` ha escluso (fork, autore estraneo, senza etichetta, draft).
+  - `esito`: `if: !cancelled() && needs.smista.result == 'success'` → `if: always()`.
+  - `verifica`: `if: needs.smista.outputs.solo_reports == 'false'` → `if: always()`.
+  - `HEAD_ANALIZZATA: ${{ needs.smista.outputs.head }}` → `${{ github.event.pull_request.head.sha }}`. Resta fail-closed salvo il caso limite A→B→A. Lo SHA verificato non è più quello a cui lega la review.
+  Il "mutation 72/73" dichiarato è un campione scelto dall'autore: non copre le condizioni `if`. Fix: test sul testo di `if` di `verifica` e `esito`, e su `HEAD_ANALIZZATA` (sola `needs.smista.outputs.head`).
+- V-4 (BASSA) — `componi_corpo` va in `TypeError` quando `finding` è un intero o un booleano. `decidi` risponde bene (COMMENT "verdetto strutturato incompleto"), poi `for f in verdetto.get("finding") or []` solleva eccezione: sonda con `finding: 5` e `finding: True`. Lo step `esito` fallisce e non pubblica nulla. Fail-closed, ma l'operatore non riceve feedback. Lo schema `--json-schema` lo rende improbabile. Fix: `finding if isinstance(finding, list) else []`.
+- V-5 (BASSA, operativa) — l'etichetta `verifica` non esiste nel repo (`gh label list`: bug, documentation, duplicate, enhancement, help wanted, good first issue, invalid, question, wontfix) e nessuno la crea né la applica: `setup_verifica_bot.md`, `fine-task.md`, `CLAUDE.md` e gli script `scripts/` non la menzionano come passo. Il workflow dice "l'agente la mette a fine fetta", ma non è cablato. Senza etichetta il bot non parte mai e la convalida di B2 non è raggiungibile. Fix: passo di setup per creare l'etichetta più un'istruzione in fine-task, oppure il bot parte anche su altro trigger.
+- V-6 (BASSA, chiusura sovrastimata) — il handoff dà V-5 #130 per "CHIUSA", ma il doc-only senza LLM ora esclude solo i non-`.md`. Ogni `reports/*.md` si approva senza verifica. Sono file che altri letti come istruzioni: `reports/setup_verifica_bot.md` (passi dell'operatore sui segreti e l'environment), `reports/design_cancello.md` (criteri del protocollo), roadmap, stato. Il revisore #158 l'ha registrato come scelta dell'operatore, ma il handoff dovrebbe dire "parziale". Fix proposto: escludere almeno `setup_verifica_bot.md` e `design_*.md`, oppure dichiarare esplicitamente che sono accettati.
+- COSMETICA — §2 dell'handoff approssimato (+1416 contro +1443 reali, `handoff.md` 275 contro 302, dichiarato). §6 descrive come "ancora in coda" una run che ora risulta cancellata. Il messaggio di pubblicazione del bot include `@menzioni` non filtrate (menzione libera nel `modello`).
+
+NON VERIFICATO
+- Esecuzione reale del workflow. `pull_request_target` gira solo dalla definizione su main, quindi la prima prova arriva dopo il merge e il setup: segreti dell'environment ristretto a main concessi a `pull_request_target`, `structured_output` col token OAuth, `checkHumanActor` sull'attore dell'etichetta, review dell'App valida come approvazione per il ruleset.
+- Comportamento reale su runner Linux di Grep su `/proc/self/environ` e se l'ambiente è davvero leggibile (V-1 è provato per percorsi fuori cartella su macOS, non per quel file).
+- I nomi dei modelli `claude-fable-5-1`, `claude-opus-5-5`, `claude-opus-4-8` e il loro accesso con il token dell'abbonamento. La cascata copre i modelli non validi, ma COMMENT e quota sprecata restano.
+- `actionlint` non eseguito. Le 73 mutation dichiarate dall'autore non rifatte per intero: ne ho fatte 33 mie (V-3 sopra ne è l'esito). La semantica di `concurrency` con job saltati e `!cancelled()` non riproducibile in locale.
+- Se `--setting-sources user` e il parsing di `claude_args` con le virgole + spazio di `STRUMENTI` (YAML `>-`) si comportano alla lettera sul runner: ho letto il sorgente dell'action, non eseguito l'action.
+
+RACCOMANDAZIONE
+1. Il merge di #130 è sicuro oggi: nessun segreto, nessuna approvazione richiesta, nessun environment. Aspetta che `handoff-check` diventi verde.
+2. Prima di fare il setup (cioè prima di inserire `CLAUDE_CODE_OAUTH_TOKEN`) chiudi V-1: `Grep(./**),Glob(./**)` più `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'` e un test che li pretenda. È una modifica di due righe, già provata sul CLI 2.1.289.
+3. Nella fetta B2 aggiungi: V-2 (negazioni, gravità in lingua diversa o vocabolario ampliato; meglio decidere sul campo strutturato), V-3 (test sulle condizioni `if` e su `HEAD_ANALIZZATA`), V-4, V-5 (creare l'etichetta e cablarla in fine-task) e decidere su V-6.
+4. Tieni la verifica locale §4quater accanto al bot per le fette del perimetro (R-158-5): il bot non esegue nulla e questa verifica lo conferma, perché V-1 e V-3 si trovano solo eseguendo.
 ```

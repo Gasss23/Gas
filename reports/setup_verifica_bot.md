@@ -39,13 +39,18 @@ PRIMA di inserire i segreti (C3–C5).
    file `.pem` (aprilo con TextEdit, copia tutto comprese le righe `-----BEGIN` / `-----END`).
 6. Cancella il `.pem` da Download (o spostalo nel tuo gestore di password).
 
-## D. Da NON cambiare
+## D. Etichetta `verifica` (la creo io)
+
+Dopo il tuo setup creo l'etichetta con `gh label create verifica` (l'agente la mette sulle PR
+a fine fetta: è il dosaggio della quota). Senza etichetta il bot non parte mai.
+
+## E. Da NON cambiare
 
 - Settings → Actions → General → **Allow GitHub Actions to create and approve pull requests** resta
   **SPENTO** (verificato 2026-10-05: `can_approve_pull_request_reviews=false`). Se fosse acceso, un
   workflow aggiunto da una PR potrebbe approvarsi da solo.
 
-## E. Dopo il test di convalida (te lo dico io quando)
+## F. Dopo il test di convalida (te lo dico io quando)
 
 Ruleset `main-lock`: approvazioni richieste 1, "Dismiss stale approvals" acceso,
 "Require approval of the most recent push" acceso. Ti darò i passi esatti in quel momento:
