@@ -2141,6 +2141,33 @@ class TestFinaleScript:
         assert "IP trovato" in result.stderr, result.stderr
         assert "=== Push ===" not in result.stderr, result.stderr
 
+    @pytest.mark.parametrize("dati", [
+        b"connect to 8.8.8.8.\n",              # punto di fine frase  # gasmerge-ip-ok
+        b"url 8.8.8.8.nip.io\n",               # <IP>.dominio         # gasmerge-ip-ok
+        b"host.8.8.8.8\n",                     # dominio.<IP>         # gasmerge-ip-ok
+        b".8.8.8.8\n",                         # punto a inizio riga  # gasmerge-ip-ok
+        b"a 127.0.0.1 b 8.8.8.8.\n",           # loopback + IP.       # gasmerge-ip-ok
+        b"a 127.0.0.1 b host.8.8.8.8\n",       # loopback + .IP       # gasmerge-ip-ok
+    ])
+    def test_finale_4p_ip_adiacente_a_un_punto_blocca(self, tmp_path, dati):
+        """R-155-1: un IP con un punto subito prima o subito dopo → STOP prima del push."""
+        work = self._repo_finale_con_bytes(tmp_path, dati, "feat/4p")
+        result = _run_finale(work, cwd=work)
+        assert "IP trovato" in result.stderr, result.stderr
+        assert "=== Push ===" not in result.stderr, result.stderr
+
+    @pytest.mark.parametrize("dati,atteso", [
+        (b"versione 1.2.3.4.5\n", "Gate IP: 0 IP trovati — OK"),
+        (b"bind 127.0.0.1 v1.2.3.4.5\n", "tutti gli IP sono loopback (127.x.x.x) — OK"),
+        (b"bind 127.0.0.1.\n", "tutti gli IP sono loopback (127.x.x.x) — OK"),
+    ])
+    def test_finale_4q_cinque_componenti_non_e_un_ip(self, tmp_path, dati, atteso):
+        """R-155-1: le ancore restano: "1.2.3.4.5" non è un IP."""
+        work = self._repo_finale_con_bytes(tmp_path, dati, "feat/4q")
+        result = _run_finale(work, cwd=work)
+        assert "IP trovato" not in result.stderr, result.stderr
+        assert atteso in result.stderr, result.stderr
+
     def test_finale_4l_errore_filtro_allowlist_stop(self, tmp_path):
         """V-1(c) verifica #124: il filtro `grep -Fx` fallisce (rc 2) → STOP prima del
         push, mai "allowlistati"."""

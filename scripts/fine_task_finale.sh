@@ -69,7 +69,8 @@ if ! IP_TREE=$(git rev-parse --verify -q "HEAD^{tree}"); then
   printf 'fine_task_finale: STOP — tree di HEAD non risolvibile — verifica IP NON eseguita\n' >&2
   exit 1
 fi
-IP_MATCHES=$(LC_ALL=C git grep -a -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "$IP_TREE")
+# R-155-1: come gasmerge.sh — IP adiacente a un punto incluso, "1.2.3.4.5" escluso.
+IP_MATCHES=$(LC_ALL=C git grep -a -nE '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)' "$IP_TREE")
 IP_RC=$?
 set -e
 case "$IP_RC" in
@@ -82,7 +83,7 @@ case "$IP_RC" in
     set +e
     NON_LOOPBACK=$(printf '%s\n' "$IP_MATCHES" | while IFS= read -r line; do
       stripped=$(printf '%s\n' "$line" | LC_ALL=C sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
-      if printf '%s\n' "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
+      if printf '%s\n' "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)'; then
         printf '%s\n' "$line"
       fi
     done)
@@ -93,7 +94,7 @@ case "$IP_RC" in
       # Step 2: allowlist esplicita sul solo CONTENUTO (R-147-1, come gasmerge.sh):
       # un path che contiene "gasmerge-ip-ok" non allowlista più le sue righe.
       set +e
-      UNMARKED=$(LC_ALL=C git grep -a -nE -e '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' --and --not -e 'gasmerge-ip-ok' "$IP_TREE")
+      UNMARKED=$(LC_ALL=C git grep -a -nE -e '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)' --and --not -e 'gasmerge-ip-ok' "$IP_TREE")
       UNMARKED_RC=$?
       set -e
       case "$UNMARKED_RC" in
