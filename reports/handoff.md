@@ -22,30 +22,34 @@
 ```
  .agents/skills/website-service-showcase/SKILL.md |  2 +-
  reports/diff_sessione.md                         | 14 +++---
- reports/handoff.md                               | 59 +++++++++++-------------
+ reports/handoff.md                               | 63 +++++++++++-------------
  reports/stato_progetto.md                        |  6 +--
  reports/ultimo_report.md                         | 23 +++++-----
- 5 files changed, 48 insertions(+), 56 deletions(-)
+ 5 files changed, 52 insertions(+), 56 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (b68d599..HEAD)
 
 ```
-Nessun commit del task precede questo dossier; il commit che lo contiene segue la sua stesura.
+dfe7a21 docs(tradegasfx): documenta preview WebGL 3D
 ```
 
-## §4 DELTA TEST DEL MOTORE
+Il commit che aggiorna questo dossier viene creato dopo la sua stesura.
+
+## §4 VERDETTO DEL REVISORE
+
+### Delta test del motore
 
 Motore invariato. Nessun test automatico eseguito; la preview WebGL non è stata renderizzata nel browser.
 
-## §5 VERDETTO DEL REVISORE
+### Verdetto integrale
 
-Nessun verdetto: modifica della sola skill e dei report, fuori dal perimetro di review. Revisore non invocato.
+Nessun verdetto: la modifica riguarda la sola skill e i report, fuori dal perimetro di review. Revisore non invocato.
 
-## §6 STATO CI
+## §5 STATO CI
 
 Nessuna nuova run CI verificabile. `gh` risultava non autenticato e l'API GitHub non raggiungibile; stato PR/CI non confermato.
 
-## §7 RISERVE APERTE
+## §6 RISERVE APERTE
 
 Serve una revisione visiva della preview; per pubblicare sul live servono i sorgenti/accesso. Verificare i documenti del fondo e sostituire le testimonianze fittizie con contenuti reali autorizzati.
