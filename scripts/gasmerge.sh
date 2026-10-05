@@ -24,7 +24,9 @@ PR="$1"
 jq --version >/dev/null 2>&1 || { echo "ERRORE: jq assente o non funzionante"; exit 1; }
 # GAS_REPO_DIR override per i test; default = prod (stesso pattern di session_end.sh).
 cd "${GAS_REPO_DIR:-$HOME/Gas}" || exit 1
-GASPR_JSON=$(mktemp /tmp/gaspr.XXXXXX.json)
+# R-153-2: le X in fondo al template (BSD mktemp non randomizza "XXXXXX.json": un file
+# rimasto da un'esecuzione interrotta bloccava ogni gasmerge successivo con "File exists").
+GASPR_JSON=$(mktemp "${TMPDIR:-/tmp}/gaspr.XXXXXX") || { echo "ERRORE: mktemp fallito"; exit 1; }
 export GASPR_JSON
 trap 'rm -f "$GASPR_JSON"' EXIT
 git fetch --prune origin >/dev/null

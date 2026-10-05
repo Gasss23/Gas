@@ -158,6 +158,62 @@ def _run_with_stdin(
     return subprocess.run(cmd, env=env, capture_output=True, text=True, input=stdin_data)
 
 
+class TestFileTemporaneo:
+    """R-153-2: il JSON della PR va in un file dal nome davvero casuale. Con le X non in
+    fondo al template BSD mktemp crea il nome letterale: un file rimasto da un'esecuzione
+    interrotta faceva uscire ogni gasmerge successivo con "File exists"."""
+
+    def test_nome_casuale_e_residuo_letterale_non_blocca(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        tmpd = tmp_path / "tmpd"
+        tmpd.mkdir()
+        (tmpd / "gaspr.XXXXXX.json").write_text("")  # residui col nome letterale
+        (tmpd / "gaspr.XXXXXX").write_text("")
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        log = tmp_path / "percorsi.log"
+        stub = fake_bin / "gh"
+        stub.write_text(f"""#!/usr/bin/env bash
+case "$*" in
+  *"headRefName,title,state"*)
+    printf '%s\\n' "$GASPR_JSON" >> "{log}"
+    printf '{{"headRefName":"feat","title":"T","state":"CLOSED"}}\\n' > "$GASPR_JSON"
+    exit 0 ;;
+  *) exit 0 ;;
+esac
+""")
+        stub.chmod(0o755)
+        env = {**os.environ, "GAS_REPO_DIR": str(work), "TMPDIR": str(tmpd),
+               "PATH": f"{fake_bin}:{os.environ['PATH']}"}
+        for _ in range(2):
+            r = subprocess.run(["bash", str(GASMERGE), "123"], env=env,
+                               capture_output=True, text=True)
+            assert "File exists" not in r.stdout + r.stderr, r.stderr
+            assert "BLOCCO: PR #123 è CLOSED" in r.stdout, r.stdout + r.stderr
+        percorsi = log.read_text().split()
+        assert len(percorsi) == 2 and percorsi[0] != percorsi[1], percorsi
+        for p in percorsi:
+            assert Path(p).parent == tmpd and "XXXXXX" not in Path(p).name, p
+            assert not Path(p).exists(), f"il trap EXIT doveva rimuovere {p}"
+
+    def test_mktemp_fallito_ferma_subito(self, tmp_path):
+        """mktemp fallito (TMPDIR inesistente) → errore esplicito, gh mai chiamato."""
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        chiamate = tmp_path / "gh.log"
+        stub = fake_bin / "gh"
+        stub.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{chiamate}"\nexit 0\n')
+        stub.chmod(0o755)
+        env = {**os.environ, "GAS_REPO_DIR": str(work), "TMPDIR": str(tmp_path / "manca"),
+               "PATH": f"{fake_bin}:{os.environ['PATH']}"}
+        r = subprocess.run(["bash", str(GASMERGE), "123"], env=env,
+                           capture_output=True, text=True)
+        assert r.returncode != 0, r.stdout
+        assert "ERRORE: mktemp fallito" in r.stdout, r.stdout + r.stderr
+        assert not chiamate.exists(), chiamate.read_text()
+
+
 # ---------------------------------------------------------------------------
 # Fetta 1c — validazione argomento PR
 # ---------------------------------------------------------------------------
@@ -855,6 +911,7 @@ class TestLoopbackExemption:
         ".8.8.8.8\n",                         # punto a inizio riga  # gasmerge-ip-ok
         "a 127.0.0.1 b 8.8.8.8.\n",           # loopback + IP.       # gasmerge-ip-ok
         "a 127.0.0.1 b host.8.8.8.8\n",       # loopback + .IP       # gasmerge-ip-ok
+        "8.8.8.8.nip.io\n",                   # inizio riga + .dom   # gasmerge-ip-ok
     ])
     def test_ip_adiacente_a_un_punto_blocca(self, tmp_path, riga):
         """R-155-1 (review #155, verifica esterna #127 V-1): un IP con un punto subito prima

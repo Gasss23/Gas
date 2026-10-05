@@ -2148,6 +2148,9 @@ class TestFinaleScript:
         b".8.8.8.8\n",                         # punto a inizio riga  # gasmerge-ip-ok
         b"a 127.0.0.1 b 8.8.8.8.\n",           # loopback + IP.       # gasmerge-ip-ok
         b"a 127.0.0.1 b host.8.8.8.8\n",       # loopback + .IP       # gasmerge-ip-ok
+        b"8.8.8.8\n",                          # inizio riga          # gasmerge-ip-ok
+        b"8.8.8.8.nip.io\n",                   # inizio riga + .dom   # gasmerge-ip-ok
+        b"8.8.8.8",                            # file senza newline   # gasmerge-ip-ok
     ])
     def test_finale_4p_ip_adiacente_a_un_punto_blocca(self, tmp_path, dati):
         """R-155-1: un IP con un punto subito prima o subito dopo → STOP prima del push."""
