@@ -122,6 +122,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_gasmerge.py -v 2>&1 | tee "$RUNNER_TEMP/gasmerge_output.txt"
 
+      - name: Run verifica-bot suite (pytest, zero token LLM)
+        # V-B vera: logica di approvazione del bot (scripts/bot_esito.py) e proprietà di
+        # sicurezza del workflow verifica-bot.yml; gh è uno stub, nessuna chiamata a GitHub.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_verifica_bot.py -v 2>&1 | tee "$RUNNER_TEMP/verifica_bot_output.txt"
+
       - name: Job summary (esito a colpo d'occhio)
         if: always()
         # Scrive nel JOB SUMMARY (pagina della run, niente zip/auth): esito bwrap +
@@ -172,6 +180,13 @@ jobs:
               echo "| Gasmerge suite | ${mriep:-non disponibile} |"
             else
               echo "| Gasmerge suite | output non disponibile (la gasmerge suite non è partita) |"
+            fi
+            bout="$RUNNER_TEMP/verifica_bot_output.txt"
+            if [ -f "$bout" ]; then
+              briep="$(grep -E '^=.*(passed|failed|error)' "$bout" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+              echo "| Verifica-bot suite | ${briep:-non disponibile} |"
+            else
+              echo "| Verifica-bot suite | output non disponibile (la suite non è partita) |"
             fi
             echo ""
             if [ -f "$out" ]; then
