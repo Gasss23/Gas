@@ -37,7 +37,6 @@ MAX_FILE_API = 3000
 # queste PR le mergia solo l'operatore. Riga con "/" finale = cartella.
 MACCHINA_BOT = (
     ".github/",
-    "scripts/bot_esito.py",
     ".claude/verifica_esterna.md",
     ".claude/settings.json",
     ".claude/settings.local.json",
@@ -46,6 +45,17 @@ MACCHINA_BOT = (
     ".claude/hooks/",
     ".mcp.json",
     ".claude.json",
+    # V-5 verifica esterna #130: la macchina che decide i merge (gate, gasmerge, perimetro,
+    # revisore, fine-task) e i test che la proteggono. Per queste PR decide l'operatore.
+    "scripts/",
+    ".claude/perimetro_review.txt",
+    ".claude/agents/revisore.md",
+    ".claude/commands/fine-task.md",
+    "tests/test_unit_verifica_bot.py",
+    "tests/test_unit_gasmerge.py",
+    "tests/test_unit_gate.py",
+    "tests/test_unit_hooks.py",
+    "tests/test_unit_handoff_check.py",
 )
 # Istruzioni per Claude in QUALSIASI cartella (un CLAUDE.md annidato diventa istruzioni).
 NOMI_MACCHINA_BOT = ("CLAUDE.md", "CLAUDE.local.md")
@@ -59,13 +69,23 @@ _RIGA_VERDETTO = re.compile(
     r"^\W*VERIFICA ESTERNA\b[^\n]*?(APPROVATO CON RISERVE|APPROVATO|BOCCIATO)", re.M | re.I)
 _FINDING_GRAVITA = re.compile(r"\b[A-Za-z]+-\d+\b[^\n(]*\(([^)\n]*)\)")
 _PAROLA_BLOCCANTE = re.compile(r"\b(ALTA|MEDIA)\b")
+# V-4 verifica esterna #130: "NON APPROVATO", "DISAPPROVATO", "non bocciato" sulla riga
+# del verdetto la rendono ambigua.
+_NEGAZIONE = re.compile(r"(\bNON\s+|DIS)(APPROVATO|BOCCIATO)", re.I)
+_RIGA_TITOLO = re.compile(r"^\W*VERIFICA ESTERNA\b[^\n]*$", re.M | re.I)
+# Riga di finding nel formato del protocollo ("V-1 ...") con una gravità bloccante scritta
+# in minuscolo o a parole ("V-1 — grave: ...", "V-2 — media — ...").
+_FINDING_GRAVE_A_PAROLE = re.compile(
+    r"^\W*V-\d+\b.*\b(alta|media|grave|gravi|critic[aoi]|critiche)\b", re.M | re.I)
 
 
 def solo_reports(files: list[str]) -> bool:
-    """True se OGNI path (compresi i vecchi nomi dei rename) sta sotto reports/."""
+    """True se OGNI path (compresi i vecchi nomi dei rename) è un .md sotto reports/
+    (V-5 #130: output di sonde .txt/.json non passano senza verifica)."""
     if not files or len(files) >= MAX_FILE_API:
         return False
-    return all(f.startswith("reports/") and ".." not in f.split("/") for f in files)
+    return all(f.startswith("reports/") and f.endswith(".md") and ".." not in f.split("/")
+               for f in files)
 
 
 def tocca_macchina_bot(files: list[str]) -> bool:
@@ -94,6 +114,8 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     ALTA/MEDIA maiuscola dopo FINDING ("V-1 — MEDIA — x")."""
     sezione = _dopo_finding(testo)
     trovate: set[str] = set(_PAROLA_BLOCCANTE.findall(sezione))
+    if _FINDING_GRAVE_A_PAROLE.search(sezione):
+        trovate.add("MEDIA")
     # R-159-3: tra parentesi conta la gravità che APRE la parentesi ("(alta)", "(MEDIA-BASSA)"),
     # non una parola qualsiasi ("(test saltati)", "(in media 3 ms)", "(parte multimediale)").
     for gruppo in _FINDING_GRAVITA.findall(sezione):
@@ -101,6 +123,16 @@ def _gravita_nel_testo(testo: str) -> set[str]:
         if m:
             trovate.add(m.group(1).upper())
     return trovate
+
+
+def contiene_segreti(verdetto: object) -> bool:
+    """V-2 #130: forme di credenziali in QUALSIASI campo del verdetto (testo, id e
+    descrizioni dei finding finiscono tutti nella review pubblica)."""
+    try:
+        grezzo = json.dumps(verdetto, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return True
+    return bool(_SEGRETO.search(grezzo))
 
 
 def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
@@ -124,8 +156,10 @@ def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
     if esito not in VERDETTI or not isinstance(testo, str) or not testo.strip() \
             or not isinstance(finding, list):
         return "COMMENT", "verdetto strutturato incompleto"
-    if _SEGRETO.search(testo):
-        return "COMMENT", "il testo del verdetto contiene forme di credenziali: non pubblicato"
+    if contiene_segreti(verdetto):
+        return "COMMENT", "il verdetto contiene forme di credenziali: non pubblicato"
+    if any(_NEGAZIONE.search(r) for r in _RIGA_TITOLO.findall(testo)):
+        return "COMMENT", "riga del verdetto con negazione (NON/DIS): verdetto ambiguo"
     righe = [r.upper() for r in _RIGA_VERDETTO.findall(testo)]
     if not righe or any(r != esito for r in righe):
         return "COMMENT", "il testo del verdetto non coincide con il campo verdetto"
@@ -153,7 +187,9 @@ def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
         righe.append(f"**Modello:** `{modello}`")
     if falliti:
         righe.append(f"**Cambio modello:** falliti prima `{falliti}` (cascata dichiarata)")
-    if isinstance(verdetto, dict):
+    if isinstance(verdetto, dict) and contiene_segreti(verdetto):
+        righe += ["", "[verdetto NON pubblicato: contiene forme di credenziali — V-2 #130]"]
+    elif isinstance(verdetto, dict):
         minori = [f for f in verdetto.get("finding") or []
                   if isinstance(f, dict) and f.get("gravita") in ("BASSA", "COSMETICA")]
         if evento == "APPROVE" and minori:
@@ -161,8 +197,6 @@ def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
             righe += [f"- {f.get('id', '?')} ({f.get('gravita')}): {f.get('descrizione', '')}"
                       for f in minori]
         testo = verdetto.get("testo")
-        if isinstance(testo, str) and _SEGRETO.search(testo):
-            testo = "[testo NON pubblicato: contiene forme di credenziali — R-159-2]"
         if isinstance(testo, str) and testo.strip():
             if len(testo) > MAX_TESTO:
                 testo = testo[:MAX_TESTO] + "\n…[TRONCATO: verdetto oltre il limite di GitHub]"

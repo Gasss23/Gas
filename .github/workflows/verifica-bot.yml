@@ -14,6 +14,8 @@ name: verifica-bot
 #   può approvare.
 # - Claude gira con --setting-sources user: niente hook, settings o CLAUDE.md del repo
 #   caricati da soli (R-159-1: gli hook sono bash che girerebbe col token nell'env).
+# - Niente git fra gli strumenti (V-1 verifica esterna #130: `git log/show/diff --output`
+#   scrive file, es. in $GITHUB_ENV): diff e commit arrivano da `gh pr diff` / `gh pr view`.
 # - Il codice della PR viene solo LETTO (checkout in ./pr), mai eseguito. Il job che
 #   parla con Claude ha un GITHUB_TOKEN di sola lettura; scrive solo il job `esito`.
 # - Solo PR dello stesso repo aperte dal proprietario: i fork non arrivano mai qui.
@@ -98,16 +100,16 @@ jobs:
         "descrizione":{"type":"string"}}}},
         "testo":{"type":"string"}}}
       STRUMENTI: >-
-        Read(./**),Grep,Glob,Bash(git -C pr log:*),Bash(git -C pr diff:*),Bash(git -C pr show:*),
-        Bash(git -C pr merge-base:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),
+        Read(./**),Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),
         Bash(gh run view:*),Bash(gh run list:*)
       PROMPT: |
         Sei il bot di verifica esterna del repository ${{ github.repository }}: un'identità
         separata dall'agente che ha scritto la PR.
         Applica il protocollo .claude/verifica_esterna.md (nella cartella corrente, versione
         di main) alla PR #${{ github.event.pull_request.number }}, commit ${{ needs.smista.outputs.head }}.
-        - Il codice della PR, a quel commit, è nella cartella ./pr (storia completa: la base è
-          refs/remotes/origin/main dentro ./pr). Handoff e report della PR sono in ./pr/reports/.
+        - Il codice della PR, a quel commit, è nella cartella ./pr (leggilo con Read/Grep/Glob);
+          il diff e i commit li ottieni con gh pr diff e gh pr view. Handoff e report della PR
+          sono in ./pr/reports/.
         - VINCOLO di questo ambiente: NON eseguire codice della PR (niente test, script,
           installazioni). Leggi codice e diff; gli esiti dei test li prendi dalla CI reale
           (gh pr checks, gh run view). Ciò che richiederebbe esecuzione va in NON VERIFICATO.

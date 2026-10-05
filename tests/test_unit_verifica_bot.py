@@ -147,6 +147,8 @@ class TestDecidi:
         "V-1 — MEDIA — x",                 # senza parentesi
         "F-1 (MEDIA) — x",                 # prefisso diverso da V-
         "- R-3 (media) — x",
+        "f-2 (alta) — x",                  # prefisso minuscolo
+        "Nota: resta un problema MEDIA nel gate",  # parola maiuscola senza formato
     ])
     def test_gravita_senza_formato_canonico(self, riga):
         testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n{riga}\nNON VERIFICATO: -"
@@ -164,11 +166,35 @@ class TestDecidi:
         evento, motivo = be.decidi(v, SHA, SHA)
         assert evento == "COMMENT" and "senza finding" in motivo
 
-    def test_parola_media_minuscola_non_blocca(self):
+    def test_parola_media_minuscola_fuori_dai_finding_non_blocca(self):
         testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
-                 "V-1 (BASSA) — in media 3 secondi\nNON VERIFICATO: -")
+                 "V-1 (BASSA) — x\nNON VERIFICATO: tempi in media 3 secondi")
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
         assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 — grave: un bypass totale del gate",       # V-4 verifica esterna #130
+        "V-2 — media — x",
+        "- V-3: criticità critica nel gate",
+        "V-4 (BASSA) — in media 3 secondi",              # prudenza: su una riga V-N vince il blocco
+    ])
+    def test_gravita_a_parole_su_riga_di_finding(self, riga):
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n{riga}\nNON VERIFICATO: -"
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    @pytest.mark.parametrize("riga", [
+        "VERIFICA ESTERNA #1 — NON APPROVATO",
+        "VERIFICA ESTERNA #1 — DISAPPROVATO",
+        "Verifica esterna #1: non  approvato",
+        "VERIFICA ESTERNA #1 — NON BOCCIATO, APPROVATO",
+        "VERIFICA ESTERNA #1 — APPROVATO (non bocciato)",
+    ])
+    def test_negazione_sulla_riga_del_verdetto(self, riga):
+        # V-4 verifica esterna #130: col campo APPROVATO davano APPROVE.
+        testo = f"{riga}\nFINDING: nessuno\nNON VERIFICATO: -"
+        evento, motivo = be.decidi(_verdetto("APPROVATO", [], testo), SHA, SHA)
+        assert evento == "COMMENT"
 
     # R-159-3: frasi innocue tra parentesi non sono gravità.
     @pytest.mark.parametrize("riga", [
@@ -195,6 +221,21 @@ class TestDecidi:
     def test_riga_verdetto_minuscola_concorde(self):
         testo = "Verifica esterna #1 — approvato\nFINDING: nessuno\nNON VERIFICATO: -"
         assert be.decidi(_verdetto("APPROVATO", [], testo), SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("segreto", [
+        "sk-ant-oat01-abcdef", "ghs_abc123", "ghp_Zz9", "github_pat_11AA", "-----BEGIN RSA PRIVATE KEY",
+    ])
+    def test_credenziali_nei_finding(self, segreto):
+        # V-2 verifica esterna #130: id e descrizione dei finding finiscono nella review.
+        for campo in ("id", "descrizione"):
+            f = _f("V-1", "BASSA")
+            f[campo] = f"x {segreto} y"
+            v = _verdetto("APPROVATO CON RISERVE", [_f("V-2", "BASSA")])
+            v["finding"].append(f)
+            evento, motivo = be.decidi(v, SHA, SHA)
+            assert evento == "COMMENT" and "credenziali" in motivo, campo
+            # Anche chiamato con APPROVE, il corpo non pubblica nulla del verdetto.
+            assert segreto not in be.componi_corpo("APPROVE", motivo, v, "m", ""), campo
 
     @pytest.mark.parametrize("segreto", [
         "sk-ant-oat01-abcdef", "ghs_abc123", "ghp_Zz9", "github_pat_11AA", "-----BEGIN RSA PRIVATE KEY",
@@ -239,6 +280,15 @@ class TestSoloReports:
         assert be.solo_reports(files)
 
     @pytest.mark.parametrize("files", [
+        ["reports/sonda_locale_suite.txt"],             # V-5 #130: solo .md
+        ["reports/a.md", "reports/e2e_output.json"],
+        ["reports/a.md.sh"],
+        ["reports/../gas.md"],
+    ])
+    def test_solo_md(self, files):
+        assert not be.solo_reports(files)
+
+    @pytest.mark.parametrize("files", [
         [],                                              # elenco vuoto/illeggibile
         ["reports/a.md", "gas.py"],
         ["reportsX/a.md"],
@@ -265,6 +315,17 @@ class TestMacchinaBot:
         ["docs/CLAUDE.md"],
         ["CLAUDE.local.md"],
         [".claude/hooks/review_gate.sh"],                # hook = bash arbitrario (R-159-1)
+        ["scripts/gasmerge.sh"],                         # macchina dei merge (V-5 #130)
+        ["scripts/check_verdetto.py"],
+        ["scripts/nuovo_script.sh"],
+        [".claude/perimetro_review.txt"],
+        [".claude/agents/revisore.md"],
+        [".claude/commands/fine-task.md"],
+        ["tests/test_unit_verifica_bot.py"],
+        ["tests/test_unit_gasmerge.py"],
+        ["tests/test_unit_gate.py"],
+        ["tests/test_unit_hooks.py"],
+        ["tests/test_unit_handoff_check.py"],
         [".mcp.json"],
         [".claude.json"],
         [],                                              # elenco illeggibile
@@ -275,10 +336,12 @@ class TestMacchinaBot:
 
     @pytest.mark.parametrize("files", [
         ["gas.py", "tests/test_unit_kernel.py"],
-        ["scripts/gasmerge.sh", ".claude/agents/memoria_revisore.md"],
+        ["gas.py", ".claude/agents/memoria_revisore.md"],
         ["reports/handoff.md"],
-        ["docs/NOTCLAUDE.md", "CLAUDE.md.bak", "scripts/bot_esito.py.bak", ".githubx/a"],
-        [".claude/agents/memoria_revisore.md", ".claude/commands/fine-task.md"],
+        ["docs/NOTCLAUDE.md", "CLAUDE.md.bak", "scriptsX/a.sh", ".githubx/a"],
+        [".claude/agents/memoria_revisore.md", ".claude/commands/altro.md"],
+        ["tests/test_unit_voice_tts.py", "modules/memory/db.py"],
+        [".mcp.json.bak", ".claude/settings.jsonc", ".claude/verifica_esterna.md.old"],
     ])
     def test_no(self, files):
         assert not be.tocca_macchina_bot(files)
@@ -404,6 +467,9 @@ class TestComandi:
         v = _verdetto(testo="VERIFICA ESTERNA #1 — APPROVATO\n" + "x" * 100000)
         assert be.componi_corpo("APPROVE", "m", v, "m", "").endswith("</details>")
 
+    def test_segreti_verdetto_non_serializzabile(self):
+        assert be.contiene_segreti({"x": object()})
+
     def test_corpo_troncato_con_riserve_lunghe(self):
         lunghe = [{"id": f"V-{i}", "gravita": "BASSA", "descrizione": "y" * 5000} for i in range(30)]
         v = _verdetto("APPROVATO CON RISERVE", lunghe)
@@ -424,6 +490,28 @@ def _on(wf):
 
 
 class TestWorkflow:
+    def test_permessi_esatti_del_token_app(self, wf):
+        # V-3 verifica esterna #130: solo pull-requests write, nessun permesso sul contenuto.
+        app = [s for s in wf["jobs"]["esito"]["steps"]
+               if "create-github-app-token" in s.get("uses", "")][0]
+        permessi = {k: v for k, v in app["with"].items() if k.startswith("permission-")}
+        assert permessi == {"permission-pull-requests": "write"}
+
+    def test_esito_dipende_dalla_verifica(self, wf):
+        assert set(wf["jobs"]["esito"]["needs"]) == {"smista", "verifica"}
+        assert wf["jobs"]["verifica"]["needs"] == "smista"
+
+    def test_niente_git_fra_gli_strumenti(self, wf):
+        # V-1 verifica esterna #130: `git log/show/diff --output=FILE` scrive file.
+        strumenti = wf["jobs"]["verifica"]["env"]["STRUMENTI"]
+        assert "Bash(git" not in strumenti and "git " not in strumenti
+
+    def test_solo_comandi_gh_in_lettura(self, wf):
+        strumenti = [t.strip() for t in wf["jobs"]["verifica"]["env"]["STRUMENTI"].split(",")]
+        bash = sorted(t for t in strumenti if t.startswith("Bash("))
+        assert bash == sorted(["Bash(gh pr view:*)", "Bash(gh pr diff:*)", "Bash(gh pr checks:*)",
+                               "Bash(gh run view:*)", "Bash(gh run list:*)"])
+
     def test_concurrency_solo_sui_job_che_lavorano(self, wf):
         # R-158-3: a livello di workflow cancellerebbe verifiche buone su eventi irrilevanti.
         assert "concurrency" not in wf
