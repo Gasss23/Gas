@@ -1,8 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-04** (test/gate-ip-passata-mutation — passata unica di mutation sul gate IP: 66/66 uccise; review #153/#154)
+> Ultimo aggiornamento: **2026-10-05** (sessione esterna TradeGasFX — preview servizi; motore Gas invariato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
+
+## Sessione esterna — TradeGasFX (2026-10-05)
+
+Nessuna modifica al motore Gas. Preparata una preview stand-alone della landing servizi in `~/.codex/visualizations/.../tradegasfx-preview.html`. La sostituzione live è differita in attesa dell'accesso Lovable o del repository; per rendere operativo il contatto servono email/WhatsApp/CRM. Lo storico interattivo resta in attesa di dati verificabili.
 
 ## Stato motore
 

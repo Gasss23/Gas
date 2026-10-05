@@ -1,10 +1,10 @@
-# DIFF SESSIONE — 2026-10-04 — test/gate-ip-passata-mutation
+# DIFF SESSIONE — 2026-10-05 — Preview servizi TradeGasFX
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `tests/test_unit_gasmerge.py` | Arresto nel ramo "IP non allowlistati" (V-1 #125); due loopback (V-2 #125); righe con spazi/tab/backslash (R-153-1). |
-| `tests/test_unit_hooks.py` | fine_task_finale: due loopback (4m); spazi/tab/backslash e loopback+IP (4n). |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #153 e #154. |
-| `reports/*` | Report di fine task; stato_progetto (passata 66/66, R-153-2, conteggio review). |
+| `reports/ultimo_report.md` | Esito della revisione del sito e delle fette completate, differite e saltate. |
+| `reports/stato_progetto.md` | Nota che la preview TradeGasFX è esterna al progetto Gas; nessuna modifica al motore. |
+| `reports/handoff.md` | Dossier autonomo con diff, commit, test, CI e decisioni richieste. |
+| `reports/diff_sessione.md` | Fotografia del diff di questa sessione. |
 
-La storia completa sta in git.
+La preview HTML è in `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-preview.html`, fuori dal repository Gas. Nessun file del motore è stato modificato in questa sessione.
