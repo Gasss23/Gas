@@ -1,42 +1,45 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-05 — gasmerge: mktemp casuale (R-153-2) + test IP a inizio riga nel finale (verifica #128 V-1)
+**Sessione:** 2026-10-05 — V-B vera, fetta B1: bot di verifica esterna su GitHub (identità separata)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #129 (https://github.com/Gasss23/Gas/pull/129).
-2. **R-155-3** (operativa): Codex e Claude Code nella stessa cartella `~/Gas`; nella worktree usata per questa fetta l'hook `review_gate.sh` non protegge (legge lo stage di `~/Gas`). Codex in una cartella sua, o hook consapevole delle worktree?
-3. Residui V-2 / V-3 della verifica esterna #127 (secondo fetch senza `--prune`; `HEAD_SHA` catturato dopo il gate IP): fissarli prima della variante B del merge?
-4. V-3 / V-5 della verifica #121: ancora aperte.
-5. Poi la fetta PRIORITARIA: V-B "vera" (bot di revisione su GitHub).
+1. Merge della PR #130 (https://github.com/Gasss23/Gas/pull/130).
+2. Setup del bot dopo il merge: `reports/setup_verifica_bot.md` (token dell'abbonamento, GitHub App dedicata, environment `verifica-bot` ristretto a main). Senza setup il bot non parte.
+3. **R-158-5**: il bot è di sola lettura e non esegue test. In variante B la verifica esterna locale §4quater resta obbligatoria accanto al bot? (consiglio: sì per le fette nel perimetro di review).
+4. Dopo il test di convalida (fetta B2): ruleset `main-lock` con 1 approvazione, "dismiss stale approvals", "require approval of the most recent push" (passi forniti al momento).
+5. Ancora aperte da sessioni precedenti: R-155-3 (Codex e Claude Code nella stessa cartella), V-3 / V-5 della verifica #121.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge PR #128**: `FATTA` — main `08a9d51`. Il primo lancio di `gasmerge 128` era uscito subito per R-153-2 (residuo `/tmp/gaspr.XXXXXX.json` lasciato da un processo ucciso); file vuoto rimosso, rilancio riuscito.
-- **R-153-2 — mktemp di gasmerge.sh**: `FATTA` — `mktemp "${TMPDIR:-/tmp}/gaspr.XXXXXX"` + guardia; `TestFileTemporaneo`.
-- **V-1 verifica #128 — `^` della testa non coperto nel finale**: `FATTA` — IP a inizio riga, inizio riga + `.dominio`, file senza newline in `test_finale_4p_*`.
-- **V-2 verifica #128 — formula "solo allargamenti"**: `FATTA` — stato_progetto corretto ("nei mutanti testati").
-- **V-4 / V-5 verifica #128** (cosmetiche: §6 superato, titolo PR): `FATTA` — handoff riscritto; PR #128 aveva già titolo e corpo con scope e rischi.
-- **Residui V-2 / V-3 verifica #127, latin1 su glibc, R-150-1**: `DEFERITA — decisione operatore / fuori scope.`
+- **Fetta B1 — bot di verifica (workflow + `scripts/bot_esito.py` + test)**: `FATTA` — commit `5010cef`, review #158/#159/#160 APPROVATO CON RISERVE; 126 test nuovi; mutation 55/56 (1 equivalente).
+- **Riserve #158 e #159**: `FATTA` — tutte chiuse con test prima del commit, tranne R-158-5 (decisione umana, §0.3).
+- **Riserve #160 (R-160-1, R-160-2, BASSE)**: `DEFERITA — fetta B2` (regola dell'operatore: le basse passano, si aggiustano dopo).
+- **Fetta B2 — `gasmerge --auto` + V-3 #127 + test di convalida**: `DEFERITA — richiede B1 su main e setup dell'operatore.`
+- **Ruleset**: `DEFERITA — dopo la convalida.`
+- **Residui V-2 #127 e V-2/V-3 #129**: `DEFERITA — decisione operatore (2026-10-05): solo V-3 #127, nella fetta B2.`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  13 ++++++-------
- reports/handoff.md                 | 210 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |   8 +++++---
- reports/ultimo_report.md           |  31 ++++++++++++++++---------------
- scripts/gasmerge.sh                |   4 +++-
- tests/test_unit_gasmerge.py        |  57 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_hooks.py           |   3 +++
- 8 files changed, 169 insertions(+), 158 deletions(-)
+ .claude/agents/memoria_revisore.md |   8 ++++++
+ .claude/perimetro_review.txt       |   1 +
+ .github/workflows/ci.yml           |  15 +++++++++++
+ .github/workflows/verifica-bot.yml | 242 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  15 ++++++-----
+ reports/handoff.md                 | 227 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------
+ reports/setup_verifica_bot.md      |  46 +++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   4 +--
+ reports/ultimo_report.md           |  39 +++++++++++----------------
+ scripts/bot_esito.py               | 240 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_verifica_bot.py    | 534 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 11 files changed, 1222 insertions(+), 149 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` approssimati per costruzione (il file conta se stesso).
@@ -44,124 +47,133 @@ NB: conteggi di `reports/handoff.md` approssimati per costruzione (il file conta
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-33f7f47 fix(gasmerge): mktemp con nome davvero casuale (R-153-2) + test IP a inizio riga nel finale (verifica #128 V-1) — review #157
-a0afeb4 chore(revisore): memoria review #157 — APPROVATO
+5010cef feat(verifica-bot): bot di verifica esterna con identità separata (V-B vera, fetta B1) — review #158/#159/#160
+39ea8a4 chore(revisore): memoria review #160 — APPROVATO CON RISERVE
+d37d875 chore(revisore): memoria review #159 — APPROVATO CON RISERVE
+05a4494 chore(revisore): memoria review #158 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit `33f7f47` (script + test): review #157, incollata per intero.
+Commit `5010cef` (workflow, script, test, ci, perimetro): review #158, #159, #160 incollate per intero, nell'ordine. Il diff revisionato da #160 è quello committato (marcatore `segna_review_ok.sh` sullo stage revisionato).
+Unica modifica al testo: le citazioni del sorgente della action ESTERNA `anthropics/claude-code-action` (file che non esiste in questo repo) sono riscritte da `file:riga` a `file riga N`, perché `check_verdetto.py` verifica ogni `file:riga` a HEAD.
 
-### Review 157
+### Review 158
 
-## VERDETTO: APPROVATO
+## VERDETTO: APPROVATO CON RISERVE
 
-Branch verificato: `fix/gate-ip-inizio-riga-mktemp` nella worktree /Users/gas/Gas/.claude/worktrees/gate-ip-ottetti. Prima della review ho letto CLAUDE.md (§5), stato_progetto.md (R-153-2, R-155-x) e la memoria. Nel diff non c'è slicing della history né simulazione di tool, e il motore non viene toccato.
+Review #158 — fetta B1 della "V-B vera" (bot di verifica con identità separata). Worktree `/Users/gas/Gas/.claude/worktrees/gate-ip-ottetti`, branch `feat/verifica-bot` (verificato, coincide col dichiarato), diff staged 5 file / +777.
 
-**Cosa ho controllato nel diff**
-- `scripts/gasmerge.sh:29`: ora `mktemp "${TMPDIR:-/tmp}/gaspr.XXXXXX"` ha le X in fondo al nome, quindi il nome è casuale anche su macOS (BSD). Se mktemp fallisce, lo script stampa "ERRORE: mktemp fallito" ed esce con 1 prima di `trap` e di `gh`.
-  - Rischi esaminati: con `TMPDIR` vuoto si ripiega su /tmp; il `trap` di :31 resta valido; nessun consumatore dipende dal suffisso `.json` (jq legge per path, :34-37).
-  - Ho cercato con grep tutti i `mktemp` in scripts/ e negli hook: questo è l'unico, quindi la classe è chiusa. Esito: ok.
-- `tests/test_unit_gasmerge.py:161` (`TestFileTemporaneo`): due esecuzioni con i residui `gaspr.XXXXXX.json` e `gaspr.XXXXXX` già presenti producono nomi diversi, dentro TMPDIR, poi rimossi. Con TMPDIR inesistente compare l'errore esplicito e `gh` non viene mai chiamato.
-  - Rischio esaminato: un test che passa anche sullo script vecchio. Controprova con `GASMERGE_SCRIPT` = gasmerge di HEAD: **2 failed**, cioè falliscono entrambi i test nuovi. Esito: ok.
-- `tests/test_unit_hooks.py:2151` (casi di `test_finale_4p_*`: IP a inizio riga, inizio riga + `.dominio`, file senza newline) e `tests/test_unit_gasmerge.py:914` (inizio riga + `.dominio`).
-  - Rischio esaminato: il `^` della testa delle regex 1 e 3 senza copertura (V-1 #128). I casi colpiscono proprio l'alternativa `^` e ogni riga porta il marker sulla sorgente. Esito: ok.
-- Contesto, `scripts/fine_task_finale.sh:86`: la mutation re2 noCaret è **equivalente, confermato**. La seconda regex lavora su righe che iniziano sempre con lo SHA del tree: 40 caratteri esadecimali senza punti, seguiti da `:`. Il sed del loopback richiede `127\.`, quindi non può modificare la colonna 0. Nessuna delle due `^` della regex 2 è raggiungibile, né in gasmerge (:113) né nel finale. Un IP a inizio contenuto è preceduto da `:`, che `[^0-9.]` copre già. Esito: ok. Si possono lasciare per simmetria con le regex 1 e 3.
+Letti: CLAUDE.md (sez. 5), reports/stato_progetto.md (V-B in priorità), la mia memoria. Eseguito `tests/test_unit_verifica_bot.py` con `/Users/gas/Gas/.venv`: **69 passed** (riprodotto). Scaricate da GitHub le tre action pinnate allo SHA esatto: `structured_output` e `client-id` esistono davvero; nel sorgente di claude-code-action (agent mode) la modalità "agent" parte anche su `labeled` e la PR non viene mai messa in checkout nella root.
 
-**Riprodotto**
-- 18 pytest mirati passati (FileTemporaneo, adiacente, 4p).
-- Scansione IP del tree staged con la regex nuova (allowlist + loopback): 0 residui.
-- Entrambi i file di test girano in CI (ci.yml:95 e :123), quindi anche GNU mktemp e GNU grep vengono provati lì.
+**Elementi del diff esaminati**
+- `.github/workflows/verifica-bot.yml:118` (checkout della PR in `./pr` a `needs.smista.outputs.head`) — rischio: "pwn request", cioè esecuzione di codice della PR con i segreti — **ok**: nessuno step `run` tocca `./pr`; gli strumenti concessi a Claude non includono esecuzione (niente python/bash/pytest/Edit/Write; verificato che l'action spezza `--allowedTools` sulle virgole e toglie gli spazi, quindi il YAML ripiegato funziona); i `.claude/settings.json` caricati sono quelli di main (hook che escono su branch `main`, nessun `permissions.allow`, `.claude/settings.json:6` nel contesto).
+- `.github/workflows/verifica-bot.yml:193` (job `esito`) — rischio: token di scrittura raggiungibile dal modello — **ok**: il token dell'App si crea solo qui, su un runner separato, con `permission-pull-requests: write` e nessun permesso sul contenuto (niente merge); verdetto passato come `env` (mai `${{ }}` nei run); `GITHUB_TOKEN` del job `verifica` in sola lettura. Espressioni corrette: `needs` è disponibile nell'`env` del job; `!cancelled()` fa partire `esito` anche con `verifica` saltato (doc-only); `steps.mN.outputs.structured_output == ''` fa scattare la cascata; output con delimitatore casuale.
+- `.github/workflows/verifica-bot.yml:38` (filtro `if` di `smista`) — rischio: fork / autore estraneo / etichetta — **ok**; i soli campi interpolati sono repository, numero e SHA (titolo/corpo/ref mai).
+- `.github/workflows/verifica-bot.yml:32` (`concurrency` con `cancel-in-progress` a livello di workflow) — rischio: cancellazione di run buone — **riserva R-158-3**.
+- `.github/workflows/verifica-bot.yml:93` (`Bash(gh api:*)`) — rischio: rete verso host esterni — **riserva R-158-4**.
+- `scripts/bot_esito.py:61` (`decidi`) — controllo della head e ramo doc-only prima di tutto; JSON rotto o campi mancanti → COMMENT — **ok, con riserva R-158-2** (sonde sotto).
+- `scripts/bot_esito.py:160` (`commit_id` legato allo SHA analizzato) — rischio: approvazione che resta valida dopo un push — **ok A CONDIZIONE** che il ruleset abbia "Dismiss stale approvals" (passo E di `reports/setup_verifica_bot.md`); senza, un APPROVE su H1 resta valido dopo il push di H2 senza etichetta.
+- `scripts/bot_esito.py:37` (`solo_reports`: vecchi nomi dei rename, `..`, 3000 file) — **ok**; la race fra lettura della head e lettura dei file è neutralizzata da `concurrency` (un push cancella la run) e dal ricontrollo della head in `esito`.
+- `scripts/bot_esito.py:134` (`cmd_smista`) — decide solo "doc-only sì/no", senza una classe di path sensibili — **riserva R-158-1**.
+- `tests/test_unit_verifica_bot.py:319` (`test_checkout_senza_credenziali`) — **nota**: nella root la proprietà è annullata dall'action stessa, che riscrive `.git/config` col `GITHUB_TOKEN` (`replaceCheckoutCredentials`); il token è in sola lettura, quindi innocuo, ma il test prova meno di quanto dice il nome.
+- `.github/workflows/ci.yml:125` (nuovo step della suite) — **ok**: `pyyaml` è in `requirements.txt`, `jq` è già sul runner.
 
-**Riserve**: nessuna.
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-158-1 (MEDIA — da chiudere PRIMA del passo E / variante B)**: il bot può approvare PR che toccano la propria macchina (`.github/workflows/**`, `scripts/bot_esito.py`, `.claude/verifica_esterna.md` che "lo cambia solo l'operatore"). Una PR che aggiunge un workflow `on: push` su main con `environment: verifica-bot` riceve, dopo il merge, la chiave dell'App; un'approvazione LLM sbagliata su questi path si autoalimenta. Fix: in `smista`, se un file (anche vecchio nome di un rename) cade in questa classe → COMMENT deterministico e merge all'operatore. Oggi non sfruttabile: il ruleset non richiede approvazioni.
+- **R-158-2 (BASSA)**: `decidi` approva con testo incoerente. Sonde riprodotte, tutte APPROVE: (a) preambolo "la VERIFICA ESTERNA precedente era APPROVATO" prima della riga vera "VERIFICA ESTERNA #1 — BOCCIATO", con campo APPROVATO (`_RIGA_VERDETTO` prende la prima occorrenza); (b) "V-1 — MEDIA — x" senza parentesi con JSON BASSA; (c) "F-1 (MEDIA)"; (d) "V-1 (MEDIA)" solo in RACCOMANDAZIONE; (e) "APPROVATO CON RISERVE" con `finding: []`. Fix: ancorare `^VERIFICA ESTERNA` con `re.M` e pretendere che tutte le occorrenze coincidano col campo; nella sezione FINDING qualsiasi `\b(ALTA|MEDIA)\b` → COMMENT; "CON RISERVE" con zero finding → COMMENT; ciascuno col suo test.
+- **R-158-3 (BASSA, fail-closed)**: la `concurrency` a livello di workflow cancella verifiche buone: ogni evento che non deve far partire il bot (altra etichetta aggiunta subito dopo `verifica`, es. `gh pr create --label x --label verifica`, o un `opened` senza etichette in ritardo) apre una run con job saltati che cancella la verifica in corso → nessuna review, quota sprecata. Fix: `concurrency` sui job `verifica`/`esito`.
+- **R-158-4 (BASSA)**: `Bash(gh api:*)` permette `--hostname <host esterno>`; l'action ripulisce l'env dei sottoprocessi solo con `allowed_non_write_users`; con `Read` senza limiti di path (`/proc/self/environ`) una prompt injection nella PR potrebbe esfiltrare `CLAUDE_CODE_OAUTH_TOKEN`. Non porta ad approvazioni (la chiave dell'App non è in quel job). Fix: togliere `gh api` (bastano `gh pr view/checks/diff`, `gh run view`).
+- **R-158-5 (DECISIONE UMANA — coerenza con `.claude/verifica_esterna.md`)**: il bot è di sola lettura, quindi non può applicare "Prova, non leggere" (niente test, niente mutation), e la soglia di approvazione ignora NON VERIFICATO: un APPROVE del bot è più debole della verifica §4quater locale. L'operatore deve decidere se in variante B la §4quater resta obbligatoria accanto al bot, e dove vengono importate in stato_progetto.md le riserve BASSE che oggi vivono solo nel corpo della review.
+- **Cosmetica**: `componi_corpo` non tronca le descrizioni dei finding minori; un corpo oltre 65536 caratteri fa fallire la POST (fail-closed, ma si perde un APPROVE).
 
-**Rischio escluso**
-- Non ho rilanciato lo sweep di mutation completo (142/12) né la suite intera da 344: mi fido dell'esito dichiarato, perché ho riprodotto le parti decisive (controprova sullo script di main, analisi di raggiungibilità di re2).
-- Il comportamento di GNU mktemp su ubuntu con TMPDIR inesistente non l'ho verificato in locale: lo coprirà la CI.
+Le 2 mutation dichiarate equivalenti lo sono davvero (`{}` → "verdetto strutturato incompleto"; testo di soli spazi senza riga VERIFICA ESTERNA). Le 24 mutation complessive non le ho rilanciate.
 
-**Memoria**: riga #157 aggiunta in coda a /Users/gas/Gas/.claude/worktrees/gate-ip-ottetti/.claude/agents/memoria_revisore.md, senza IP, nessuna lezione nuova. È committata con `a0afeb4 chore(revisore): memoria review #157 — APPROVATO`; l'index staged è intatto (3 file, +63/-1).
+**Rischi esplicitamente esclusi (NON verificati)**
+- Esecuzione reale del workflow: `pull_request_target` gira solo dalla definizione su main, quindi la prima prova reale arriva dopo il merge (convalida B2). Non verificato, perché richiede il repo configurato: che i segreti dell'environment ristretto a main siano concessi davvero a `pull_request_target` (che usa main come ref); che `checkHumanActor` dell'action accetti l'attore dei push; che `structured_output` venga popolato con `claude_code_oauth_token`.
+- actionlint non eseguito (non installato). Mutation non rilanciate.
+- Prompt injection riuscita (un LLM convinto ad approvare dal contenuto della PR) — rischio residuo intrinseco al design, che lo strato deterministico non può chiudere; R-158-1 ne limita il danno sui path più critici.
+- Doc-only approvate senza LLM: possono alterare reports/stato_progetto.md (finding "chiusi" senza prova). Scelta dichiarata dell'operatore (dosaggio), non contestata.
+
+**Memoria**: riga contatore #158 + 2 lezioni in `.claude/agents/memoria_revisore.md`, committate da sole (commit `05a4494`, `chore(revisore): memoria review #158`). Index del diff sotto review intatto (5 file, +777).
+
+### Review 159
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #159 — seconda review del diff STAGED (worktree `/Users/gas/Gas/.claude/worktrees/gate-ip-ottetti`, branch feat/verifica-bot). Letti prima: CLAUDE.md, reports/stato_progetto.md, memoria (riga #158).
+
+R-158-2, R-158-3, R-158-4 sono chiuse; R-158-1 è chiusa solo IN PARTE: mancano path della macchina del bot che il bot carica davvero a runtime (R-159-1). Con l'operatore che chiede sicurezza alta e una correzione di poche righe, consiglio di chiudere R-159-1 PRIMA del commit. Non blocco perché è una riserva della stessa classe di R-158-1 (MEDIA) e oggi l'approvazione del bot non decide nessun merge (variante A).
+
+**Elementi del diff esaminati**
+- `scripts/bot_esito.py:98` (macchina del bot → COMMENT prima di ogni altro controllo, anche doc-only e head) — rischio: ordine aggirabile — **ok**; mutation `.github/`→`.githubX/` dà 2 failed.
+- `scripts/bot_esito.py:192` (approva solo col valore esatto "false"; assente o strano = macchina del bot) — rischio: output di smista vuoto che lascia approvare — **ok**; mutation `!= "false"`→`== "true"` dà 4 failed.
+- `scripts/bot_esito.py:38` (elenco MACCHINA_BOT) — rischio: path del bot dimenticati — **riserva R-159-1**.
+- `scripts/bot_esito.py:51` (riga verdetto ancorata `^` + `re.M`, tutte le righe coincidenti) — **ok**; senza `^` 1 failed, senza `re.M` 2 failed; residuo R-159-4.
+- `scripts/bot_esito.py:90` (`if g in gruppo`, confronto per sottostringa) — rischio: falsi blocchi su testo innocuo — **riserva R-159-3**.
+- `.github/workflows/verifica-bot.yml:73`, `.github/workflows/verifica-bot.yml:205` (`concurrency` solo su verifica/esito; smista senza; un evento non qualificante salta tutti i job) — **ok**. Verificato il caso `opened`+`labeled` con la stessa head: la prima `esito` pubblica un COMMENT innocuo, l'APPROVE successivo prevale.
+- `.github/workflows/verifica-bot.yml:141` (e :156, :171): i claude_args non passano `--setting-sources` — **riserva R-159-1**.
+- `tests/test_unit_verifica_bot.py:239`: `docs/CLAUDE.md` esplicitamente fra i "non macchina del bot" — riserva R-159-1.
+- Contesto: `.claude/settings.json:36` (hook PreToolUse Bash → review_gate.sh), `.claude/hooks/session_end.sh:37` (`git push`).
+
+**Riprodotto da me**: 106 passed; mutation a campione 5/5 uccise (voce `.github/`, `!= "false"`, `re.M`, CON RISERVE senza finding, ancora `^`); `scripts/bot_esito.py` ripristinato e identico allo stage, index intatto (5 file, 956 righe).
+
+**Riserve**
+- **R-159-1 (MEDIA — R-158-1 non chiusa del tutto)**: clonata claude-code-action al commit pinnato (cab360f). In `base-action/src/parse-sdk-options.ts` riga 340 il default di `settingSources` è `["user","project","local"]` → il job verifica carica `.claude/settings.json` di main con TUTTI i suoi hook: review_gate.sh a ogni Bash, scrivi_rep.sh/promemoria_end.sh su Stop, session_end.sh (`git push`) su SessionEnd; review_gate.sh chiama `scripts/hash_diff_staged.sh`. Gli hook sono bash arbitrario, girano con `CLAUDE_CODE_OAUTH_TOKEN` nell'env, possono andare in rete e `--allowedTools` non li limita. Nessuno di questi file è in MACCHINA_BOT: una PR che modifica `.claude/hooks/review_gate.sh` non è "macchina del bot"; se l'LLM la approva, dopo il merge quel codice gira col token dell'abbonamento. Stessa classe di R-158-1. Secondo effetto: con le impostazioni di progetto attive Claude Code carica i CLAUDE.md annidati delle cartelle che legge sotto ./pr: un `modules/CLAUDE.md` aggiunto dalla PR diventa istruzioni del verificatore durante la verifica di quella stessa PR (`docs/CLAUDE.md` è proprio nel test_no). Fix: (1) `--setting-sources user` nei 3 claude_args (l'action lo supporta, righe 340-348): niente hook, settings o CLAUDE.md del repo nel bot; (2) per prudenza `.claude/hooks/` in MACCHINA_BOT; (3) test sul workflow che pretende `--setting-sources user` in ogni step dell'action; (4) togliere `docs/CLAUDE.md` dal test_no oppure match sul nome base `CLAUDE.md`/`CLAUDE.local.md` in qualsiasi cartella. Da NON fare: tutta `.claude/` in MACCHINA_BOT (`.claude/agents/memoria_revisore.md` cambia a ogni fine-task e bloccherebbe quasi tutte le PR).
+- **R-159-2 (BASSA-MEDIA)**: il repo è **PUBBLICO** (gh repo view). `Read` senza ambito permette `/proc/self/environ`; un'iniezione nel contenuto della PR può far finire il token OAuth nel campo `testo`, che `componi_corpo` pubblica nella review (pubblica anche quella). Fix: in `componi_corpo`/`decidi`, se il testo contiene `sk-ant-`, `ghs_`, `ghp_`, `-----BEGIN` → COMMENT senza testo; in aggiunta `Read(./**)` in STRUMENTI.
+- **R-159-3 (BASSA, fail-closed)**: sonde su `decidi` con verdetto APPROVATO e finding vuoti, finite in COMMENT: "CI-1 (test saltati su macOS)" (SALTATI contiene ALTA, anche minuscolo per via di `.upper()`); "SHA-256 (in media 3 ms)"; "PR-131 (parte multimediale)"; "UTF-8 (caratteri ad alta codifica)"; "FINDING: nessun finding ALTA/MEDIA." (la frase più naturale di un verdetto pulito); il segnaposto del protocollo ripetuto tale e quale. Stessa forma "(… mediante gh run view)", non sondata. Fix: `re.findall(r"\b(ALTA|MEDIA|BASSA|COSMETICA)\b", gruppo)` al posto di `g in gruppo`, con test su queste frasi; "nessun finding ALTA/MEDIA" resta un compromesso dichiarato (lo gestisce il prompt).
+- **R-159-4 (BASSA)**: passano ancora come APPROVE: la riga "Verifica esterna: BOCCIATO" minuscola (ignorata, `_RIGA_VERDETTO` senza `re.I`); "V-1 — media — x" minuscolo senza parentesi con JSON BASSA. È il residuo della scelta "solo maiuscole"; resta valido il campo strutturato. `re.I` sulla riga del verdetto costa poco.
+- R-158-5 resta una decisione umana (la porta l'agente principale).
+
+**Rischi esplicitamente esclusi**: comportamento reale su GitHub (run vere, caricamento effettivo degli hook nel runner, secret scanning di GitHub sul corpo della review, esito della concurrency su `cancelled()` dei job a valle) non riproducibile in locale; le conclusioni su settingSources vengono dalla lettura del sorgente dell'action pinnata, non da una run. Le 43 mutation dichiarate riprodotte solo a campione (5).
+
+Memoria aggiornata: riga #159 + 2 lezioni ("macchina del bot" da costruire dal runtime dell'agente; filtri a parola su testo italiano sempre con `\b`), committata da sola con `scripts/commit_memoria_revisore.sh` (commit d37d875). Index staged intatto.
+
+### Review 160
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Terza review, breve: solo le correzioni R-159-1..4 e i loro effetti collaterali, sul diff staged della worktree `/Users/gas/Gas/.claude/worktrees/gate-ip-ottetti` (branch feat/verifica-bot). Letti prima CLAUDE.md (già nel contesto), le righe di stato_progetto.md sul bot e la memoria fino a #159.
+
+**Elementi esaminati**
+- `.github/workflows/verifica-bot.yml:148`, `.github/workflows/verifica-bot.yml:164`, `.github/workflows/verifica-bot.yml:180` (`--setting-sources user` nei 3 `claude_args`) — rischio: l'action pinnata ignora il flag e torna al default — sorgente al commit cab360f: `base-action/src/parse-sdk-options.ts` riga 340 usa il flag se c'è, altrimenti `["user","project","local"]` — **ok**; il test `tests/test_unit_verifica_bot.py:503` lo pretende su tutti e 3 i passi.
+- `.github/workflows/verifica-bot.yml:101` (`Read(./**)`, il punto da verificare) — rischio: sintassi non valida o lettura bloccata su ./pr e ./CLAUDE.md. Lato action (sorgente verificato): le parentesi passano intatte grazie all'escape dei metacaratteri (`parse-sdk-options.ts` righe 28-55, nato proprio per il bug in cui `Bash(gh:*)` diventava `Bash`); split su virgola con trim (riga 232), l'a capo del `>-` non dà problemi; `cwd` non sovrascritto → resta la root di main, che contiene ./pr e ./CLAUDE.md. Lato Claude Code (documentazione, non eseguito): `./path` relativo alla cartella corrente, `**` glob in stile gitignore, la lettura dentro la cartella di lavoro è permessa anche senza regola. **ok**: il bot non resta cieco (confidenza alta lato action, media lato CLI).
+- `scripts/bot_esito.py:77` (`NOMI_MACCHINA_BOT` sul nome del file) — sonda: `docs/CLAUDE.md` → True, `pr/x/CLAUDE.local.md` → True, `docs/MYCLAUDE.md` → False, `.claude/agents/memoria_revisore.md` → False — **ok**.
+- `scripts/bot_esito.py:54` e `scripts/bot_esito.py:127` / `scripts/bot_esito.py:164` (`_SEGRETO` → COMMENT e testo non pubblicato) — **ok**, con il limite R-160-1.
+- `scripts/bot_esito.py:100` (tra parentesi conta solo la gravità che apre la parentesi) — sonda: `(Alta priorità)` → COMMENT ALTA; "(test saltati)" e "(in media 3 ms)" approvano (ci sono i test); `(riserva: media)` minuscolo approva: compromesso dichiarato, il campo `finding` strutturato resta quello che fa fede — **ok**.
+- `scripts/bot_esito.py:59` / `scripts/bot_esito.py:129` (R-159-4: `re.I` + confronto in maiuscolo; una riga ambigua → COMMENT, fallisce chiuso) — **ok**, con l'eccezione R-160-2.
+
+Test: **126 passed**, riprodotti. Mutation non rifatta (dosaggio dei costi): accetto il 55/56 dichiarato, sopravvissuto equivalente.
+
+**Riserve (BASSA, non bloccanti, da tracciare in stato_progetto.md)**
+- **R-160-1 (BASSA)**: `Read(./**)` limita solo Read, non la capacità di leggere file: `Grep` e `Glob` sono autorizzati senza restrizioni di percorso; `Bash(git -C pr diff:*)` permette `git -C pr diff --no-index /proc/self/environ /dev/null`. `_SEGRETO` riconosce solo le forme letterali: un segreto offuscato su richiesta di una prompt injection passerebbe. BASSA perché il bot parte solo su PR dello stesso repo aperte dal proprietario, con l'etichetta messa dall'agente. Fix possibile: `Grep(./**)`/`Glob(./**)` se la sintassi è supportata (non verificato) e niente `--no-index` nel prefisso git, oppure dichiararlo limite MITIGATO.
+- **R-160-2 (BASSA)**: con `"VERIFICA ESTERNA: NON APPROVATO"` nel testo e campo `APPROVATO` → **APPROVE** (sonda eseguita). La regex della riga non ha `\b` né controllo sulla negazione (anche "DISAPPROVATO"); il difetto c'era già prima di `re.I`. Il campo strutturato fa fede, ma il controllo di coerenza non coglie il caso. Fix: `\b` davanti all'esito + COMMENT se la riga contiene `NON APPROVATO`.
+
+**Cosa NON ho verificato**: il comportamento effettivo del CLI Claude Code con `Read(./**)` e le regole di percorso su Grep/Glob con autorizzazione senza restrizioni (binario chiuso, non riproducibile in dev: mi baso sulla documentazione; la prima run reale del workflow è la prova definitiva). Comportamento su GitHub (environment, ruleset, App) e mutation completa: fuori dal perimetro ridotto richiesto.
+
+Memoria aggiornata: riga #160 + una lezione ("restringere UN tool non restringe la capacità: chiudere la classe dei tool che leggono"). Commit 39ea8a4 (`chore(revisore): memoria review #160`). Diff staged non toccato.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py / brains / modules. Modificati `scripts/gasmerge.sh` e tests/.
-
-- `pytest tests --ignore=tests/test_unit_kernel.py --ignore=tests/e2e` (worktree, venv di `~/Gas`): 338 → **344 passed in 104.42s**.
-- Mutation in sequenza (harness `mut_sweep.py`): **142 KILLED, 12 SURVIVED**. Sopravvissute, tutte equivalenti: `re3_noPre`, `re3_noSuf`, `re3_preDotDig`, `re3_sufDotDig` (allargamenti della grep allowlist) e `re2_noCaret`, `re2_noCaret2` (`^` irraggiungibile nella grep -qE), in entrambi gli script. Uccise le nuove: `re1/re3_noCaret` e `noCaret2`, `re1/re2/re3_noEOL` e `noDotEOL` in entrambi gli script; `mktemp_suffisso`, `mktemp_noguard` (gasmerge).
-- Nota: un primo sweep è stato fermato dal limite di tempo del runner e ha lasciato `fine_task_finale.sh` mutato; ripristinato da HEAD e sweep del finale rilanciato a parte. Il diff della fetta non tocca quel file.
+Nessuna modifica a `gas.py`, `brains/`, `modules/`: suite kernel non rilanciata. Modificati `tests/` (nuovo `tests/test_unit_verifica_bot.py`) e la macchina di controllo. Suite di controllo (pytest locale: hooks, gate, handoff_check, gasmerge, verifica_bot): **273 → 399 passed** (`399 passed in 95.58s`), 0 FAIL. Nuova suite: 126 passed. Mutation su `scripts/bot_esito.py`: 56 mutation, 55 KILLED, 1 SURVIVED equivalente.
 
 ## §6 STATO CI
 
-Output di `gh run list -L 3` alla scrittura:
-
 ```
-in_progress		fix(gasmerge): mktemp con nome davvero casuale (R-153-2) + test IP a …	CI	fix/gate-ip-inizio-riga-mktemp	push	37339659414	13s	2026-10-05T16:17:16Z
-completed	success	docs(tradegasfx): aggiorna esito push e CI	CI	codex/tradegasfx-redesign	push	37337781975	1m21s	2026-10-05T16:03:12Z
-completed	success	Merge pull request #128 from Gasss23/fix/gate-ip-ip-adiacente-punto	CI	main	push	37317436530	1m15s	2026-10-05T13:31:15Z
-```
+completed	failure	feat(verifica-bot): bot di verifica esterna con identità separata (V-…	CI	feat/verifica-bot	push	37352159123	1m28s	2026-10-05T17:56:12Z
 
-Mappatura commit → run:
-- `33f7f47`: run 37339659414 (push di `a0afeb4` + `33f7f47`, testa l'albero di `33f7f47`), in corso alla scrittura. Atteso: unit-suite verde, handoff-check rosso (handoff non ancora nel diff a quel SHA).
-- `a0afeb4`: nessuna run su questo SHA (pushato insieme a `33f7f47`).
-- Commit di fine-task (contiene questo file): run non ancora disponibile alla scrittura dell'handoff.
+Mappatura commit→run:
+- 5010cef (testa del push precedente): run 37352159123 — unit-suite success, handoff-check failure (handoff non ancora nel diff: atteso, lo porta il commit di fine-task).
+- 39ea8a4, d37d875, 05a4494 (memoria revisore): nessuna run su questi SHA (pushati insieme a 5010cef, testati solo nell'albero di 5010cef).
+- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (copertura pre-merge: gasmerge, gh pr checks --watch).
+```
 
 ## §7 RISERVE APERTE
 
-- **R-155-3 (operativa)**: hook `review_gate.sh` inerte nelle worktree (legge lo stage di `CLAUDE_PROJECT_DIR`).
-- **Verifica #127 V-2 / V-3 (basse)**: secondo fetch di gasmerge senza test su `--prune`; `HEAD_SHA` catturato dopo il gate IP.
-- **Latin1 su glibc** non provato. **R-150-1 (bassa)**: ramo `PUSH_EXIT` morto.
-- Limite noto del gate IP: cieco a UTF-16 e a IP spezzati o codificati.
-- V-3 / V-5 verifica #121: decisione operatore. R-143-2 (ci.yml dalla PR) → V-B vera.
-
-### Verdetto INTEGRALE della verifica esterna PR #128 (handoff `e97d099`)
-
-Uniche aggiunte al testo: questa intestazione e il marker `# gasmerge-ip-ok` in fondo alle righe che contengono un IP di esempio.
-
-VERIFICA ESTERNA PR #128 — APPROVATO CON RISERVE
-
-Metodo: clone usa-e-getta nella scratchpad (`.../scratchpad/v128`), checkout di e97d09915a2a89cf6346d044f02df05716da650f. Coincide con headRefOid della PR (gh). Base 7ded2a4 (main). Altri due cloni: `v128base` a 7ded2a4 per il confronto prima/dopo, `v128mut` per le mutation. Ho eseguito:
-- `git diff --stat` e `git log` reali dalla base, e il diff integrale di scripts/, tests/ e memoria_revisore.
-- pytest (senza kernel e senza e2e, venv di /Users/gas/Gas) alla base e al commit pinnato, in sequenza.
-- Un fuzz mio (`fuzz.py`, 62706 stringhe con `grep -E` BSD, `LC_ALL=C`): regex nuova contro un oracolo indipendente scritto con lookaround Python.
-- Scansione dell'albero con regex nuova + strip del loopback + allowlist, su HEAD, origin/main e tutti i branch remoti.
-- Un MIO harness di mutation (`mut128.py`; NON il `mut_sweep.py` dell'agente), una mutation alla volta, solo in sequenza. Mutation sulla singola occorrenza di ognuna delle 3 regex per script, 9 tipi, 54 in tutto.
-- gh: run, job e ruleset.
-Nota di metodo: il primo lancio dell'harness è stato ucciso dal timeout del runner a metà del giro. Ha lasciato `v128mut/scripts/gasmerge.sh` mutato; l'ho ripristinato con `git checkout` e ho rilanciato le mutation mancanti. I risultati sotto vengono dalle run complete. Ho avuto problemi di sandbox con `git -C` relativi e `&&` concatenati, quindi ho usato comandi semplici e script in scratchpad.
-Stato finale: la worktree della sessione è pulita (HEAD e97d099) e le sonde sono nella scratchpad, non nel repo. `v128mut` pulito dopo il ripristino. Non ho toccato il checkout condiviso /Users/gas/Gas.
-
-CLAIM VERIFICATI
-- §2 `git diff --stat`: VERO. Gli stessi 9 file e le stesse righe nelle parti non-handoff. Il conteggio reale è 222+/155-; il dichiarato 208/162 è "approssimato per costruzione" (handoff.md 241 righe cambiate contro 234), come dichiarato.
-- §3 log: VERO. `afc36ca` e `d4806d1` coincidono; `e97d099` (fine-task) è escluso per costruzione, dichiarato.
-- Perimetro: VERO. scripts/ (2 file), tests/ (2 file), memoria_revisore e report. Nessun toccato di .github/, hook, gas.py, brains, modules, settings.json. Nessun gate indebolito sul piano del codice.
-- Test 320 → 338: VERO. Alla base 320 passed (96.7s), a e97d099 338 passed (102.9s). La differenza +18 coincide con i casi parametrizzati nuovi (6+3 per script).
-- Regex: VERO. Il fuzz, su 62706 stringhe con 218 positivi, ha 0 differenze rispetto all'oracolo. 0 regressioni rispetto alla regex vecchia: nessun caso che la vecchia bloccava e la nuova no. Quindi `<IP>.`, `<IP>.dominio`, `dominio.<IP>`, `.<IP>`, `<IP>..` bloccano; "1.2.3.4.5" e `1.<IP>` restano non-IP.  # gasmerge-ip-ok
-- Scansione del tree con regex nuova + strip loopback + allowlist: VERO. HEAD: 0 residui. origin/main: 1 residuo, la riga #155 di memoria_revisore, che questa PR redige. Quindi la redazione era necessaria, come dichiarato. Branch remoti: solo `fix/crm-idemp-diario` ha IP non marcati (runbook S1, IP in prosa). È preesistente e bloccava anche con la vecchia regex, perché l'IP è seguito da backtick o spazio.
-- CI reale sullo SHA e97d099 (run 37314295329): unit-suite success, handoff-check success. mergeStateStatus CLEAN.
-- CI su afc36ca (run 37314204594): unit-suite success, handoff-check failure. È l'esito atteso dal §6 (handoff non ancora nel diff a quel SHA). Il §6 ("in corso") è ora superato (cosmetico).
-- Ruleset `main-lock` (id 18805824) active. Required: unit-suite e handoff-check, policy strict. Coerente col §6.
-- R-156-1 (regex non provate su GNU grep): ORA CHIUSA DALLA CI. Il log della run su ubuntu mostra tutti i test nuovi PASSED: 6+3 in gasmerge (54 passed) e 4p/4q in hooks (99 passed). Quindi vale anche per GNU grep/git su glibc nei casi testati.
-- R-155-1 "CHIUSA", anche nella forma allargata `<IP>.dominio` / `dominio.<IP>` (V-1 #127): VERO, con prova prima/dopo. Alla base i casi punto finale, `<IP>.dominio`, `dominio.<IP>` non erano visti: la vecchia regex nel fuzz non li copre. Al commit pinnato bloccano, in entrambi gli script. Mutation che tornano all'ancora vecchia (tail_noDotAlt, head_noDotAlt) sono uccise dai nuovi test su tutte e 3 le regex di entrambi gli script.
-- Mutation di coda e testa (riprodotte): `tail_noDotEOL`, `tail_noDotAlt`, `tail_noEOL`, `head_noDotAlt`, `head_alt3_digitOK` (parte), `head_alt3_anyChar` (parte) sono tutte uccise nei punti rilevanti. Gasmerge: 18/21 uccise; finale: 20/27 (dettaglio nei finding).
-
-FINDING
-- V-1 (MEDIA-BASSA, preesistente ma in una regex riscritta da questa PR, test-gap con fail-open dimostrato). Il `^` della testa `(^|[^0-9.]|...)` non è coperto nel finale. Mutation: togliere `^` dalla prima alternativa nella prima regex di `fine_task_finale.sh` (IP_MATCHES, righe di git grep a livello contenuto) → `(...)` diventa `([^0-9.]|(^|[^0-9])\.)`. Le 338 pass, il mutante SOPRAVVIVE.
-  - Sonda riprodotta con le fixture del finale (`_repo_finale_con_bytes`) sul file `8.8.8.8\n`, `8.8.8.8` senza newline, `8.8.8.8.\n` e `8.8.8.8.nip.io\n`: tutti e 4 → "Gate IP: 0 IP trovati — OK" e il push parte. È un fail-open: un IP a inizio riga passa. Senza mutazione, gli stessi 4 casi bloccano.  # gasmerge-ip-ok
-  - Stessa famiglia sulle altre due regex del finale (la grep allowlist, `occ3`): il restringimento lì fa trattare la riga come allowlistata senza marker.
-  - In gasmerge la stessa mutation è uccisa su tutte e 3 le regex: il finale è meno coperto del gemello. I test 4o/4p del finale hanno IP preceduti da spazio o prefisso, mai IP a inizio riga puro.
-  - Il codice è corretto oggi; è un buco di test. Il `^` preesisteva. Va però detto che la matrice "120 KILLED / 8 SURVIVED fail-closed" non lo copre: la mutation "solo `^` tolto dalla testa" non è nella lista dichiarata.
-  - Fix proposto: un test nel finale con IP a inizio riga, ad esempio `b"8.8.8.8\n"` e `b"8.8.8.8.nip.io\n"` (marker sulla riga sorgente); uccide `^`-removal su R1 e R3.  # gasmerge-ip-ok
-- V-2 (BASSA). "8 SURVIVED sono solo allargamenti fail-closed" vale per la loro matrice, non in assoluto. Nella mia matrice sopravvivono anche mutation che NON sono allargamenti (V-1 sopra). Le altre sopravvissute sono davvero equivalenti o allargamenti: `head_alt3_noCaret` sulla regex applicata a righe con prefisso (il `^` è morto perché precede sempre `<tree>:path:n:`), `tail_dotAnyDigit` sulla grep allowlist (allarga), `head_alt3_anyChar` e `head_alt3_digitOK` sulla grep allowlist (allargano). Nessuna apre un bypass oltre a V-1.
-- V-3 (BASSA, informativa, preesistente). Dopo la PR un IP non marcato + punto di fine frase blocca (falso positivo accettato). Da ora ogni branch di altre sessioni con `<IP>.` in prosa non si mergia (ho trovato solo `fix/crm-idemp-diario`, che bloccava già). La nota è già nell'handoff e nel verdetto del revisore: non è un difetto.
-- V-4 (COSMETICA). §6 dell'handoff è superato: la run su e97d099 è ora verde. Il conteggio dello stat nel §2 differisce dal reale (dichiarato approssimato).
-- V-5 (COSMETICA). Il caso `.8.8.8.8\n` nei test del finale non uccide la mutation `^` in alt3 sulla regex con prefisso: è comunque equivalente. Il caso è però utile e uccide la mutation sulle altre due.  # gasmerge-ip-ok
-
-NON VERIFICATO
-- Il numero "120 KILLED / 8 SURVIVED" e il file `mut_sweep.py` dell'agente: sta nella scratchpad della sessione, non nel repo. Ho riprodotto solo con un harness mio un sottoinsieme (54 mutation sulle ancore). Non confronto riga per riga.
-- Il testo del verdetto del revisore #156 incollato nel §4 e il verdetto della verifica #127 nel §7: non c'è una fonte per confrontare. Le affermazioni sul diff sono coerenti col codice.
-- Ho provato GNU grep/git su glibc solo tramite i log della CI ubuntu (casi dei test nuovi). Non ho provato localmente altri casi (latin1, locale non C).
-- R-155-3 (hook `review_gate.sh` inerte nelle worktree), residui V-2/V-3 della #127 (fetch senza `--prune`, `HEAD_SHA` dopo il gate IP): dichiarati, non provati e fuori dal diff.
-- Stato del checkout condiviso /Users/gas/Gas: non toccato e non controllato.
-
-RACCOMANDAZIONE
-La PR #128 è mergiabile: i claim principali sono veri, CI verde sullo SHA, 0 regressioni nel fuzz, R-156-1 chiusa dalla CI ubuntu. Prima di altro lavoro sul gate IP (V-B vera, variante B del merge) fare una micro-fetta: aggiungere il test del finale per l'IP a inizio riga (V-1), e correggere nello stato la formula "solo allargamenti fail-closed" in "dei mutanti testati". Il merge della #128 può procedere con la variante A come previsto dall'operatore.
+- **R-160-1 (BASSA)**: letture fuori cartella via Grep/Glob/`git diff --no-index`; `_SEGRETO` solo su forme letterali → fetta B2.
+- **R-160-2 (BASSA)**: "VERIFICA ESTERNA: NON APPROVATO" col campo APPROVATO → APPROVE → fetta B2.
+- **R-158-5 (DECISIONE UMANA)**: bot di sola lettura; §4quater locale obbligatoria in variante B? (§0.3).
+- Non verificato fino al primo run reale: environment ristretto a main concesso a `pull_request_target`, `structured_output` con token OAuth, attore dei push accettato dall'action, `Read(./**)` lato CLI.
+- Da sessioni precedenti: R-155-3, V-3 / V-5 #121, R-160-x a parte; V-3 #127 → fetta B2.
