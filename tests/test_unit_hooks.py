@@ -2127,6 +2127,20 @@ class TestFinaleScript:
         assert "IP trovato" in result.stderr, result.stderr
         assert "=== Push ===" not in result.stderr, result.stderr
 
+    @pytest.mark.parametrize("dati", [
+        b"host 10.0.100.200\n",       # 3o e 4o ottetto a 3 cifre  # gasmerge-ip-ok
+        b"host 192.168.1.127\n",      # 4o ottetto a 3 cifre       # gasmerge-ip-ok
+        b"host 10.20.30.255\n",       # ottetti a 2 cifre, 4o a 3  # gasmerge-ip-ok
+        b"host 10.20.30.40\n",        # tutti a 2 cifre            # gasmerge-ip-ok
+    ])
+    def test_finale_4o_ottetti_a_piu_cifre_bloccano(self, tmp_path, dati):
+        """V-1 verifica #126: le tre regex del gate IP accettano ottetti fino a 3 cifre;
+        con `{1,3}`→`{1,2}` sul 3o/4o ottetto questi IP passerebbero fino al push."""
+        work = self._repo_finale_con_bytes(tmp_path, dati, "feat/4o")
+        result = _run_finale(work, cwd=work)
+        assert "IP trovato" in result.stderr, result.stderr
+        assert "=== Push ===" not in result.stderr, result.stderr
+
     def test_finale_4l_errore_filtro_allowlist_stop(self, tmp_path):
         """V-1(c) verifica #124: il filtro `grep -Fx` fallisce (rc 2) → STOP prima del
         push, mai "allowlistati"."""

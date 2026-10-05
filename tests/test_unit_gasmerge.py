@@ -60,8 +60,12 @@ def _make_stub_gh(
     ci_rc: int = 0,
     checks_json: str = '[{"name":"unit-suite","bucket":"pass"}]',
     head_ref: str = "feat",
+    on_watch: str = "",
 ) -> None:
-    """Stub gh parametrico — risponde ai comandi usati da gasmerge."""
+    """Stub gh parametrico — risponde ai comandi usati da gasmerge.
+
+    on_watch: comandi shell eseguiti durante l'attesa CI (`--watch`), prima dell'exit.
+    """
     stub = fake_bin / "gh"
     stub.write_text(f"""#!/usr/bin/env bash
 case "$*" in
@@ -69,6 +73,7 @@ case "$*" in
     printf '{{"headRefName":"{head_ref}","title":"Test PR","state":"{state}"}}\\n' > "$GASPR_JSON"
     exit 0 ;;
   *"--watch"*)
+    {on_watch}
     exit {ci_rc} ;;
   *"name,bucket"*)
     printf '%s\\n' '{checks_json}'
@@ -474,6 +479,45 @@ class TestIPRefCompleto:
         result = _run(work, fake_bin)
         assert result.returncode != 0, result.stdout
         assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+
+    def test_branch_locale_pulito_non_maschera_origin_con_ip(self, tmp_path):
+        """V-2 verifica #126: si mergia origin/<branch>, quindi il gate IP legge quel tree
+        e non refs/heads/<branch> (qui pulito, mentre origin contiene l'IP)."""
+        work, _ = _setup_with_origin(tmp_path)
+        subprocess.run(["git", "checkout", "feat"], cwd=work, check=True, capture_output=True)
+        (work / "x.py").write_text('HOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "add", "x.py"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "ip"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "feat"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "reset", "--hard", "HEAD~1"], cwd=work, check=True,
+                       capture_output=True)
+        subprocess.run(["git", "checkout", "main"], cwd=work, check=True, capture_output=True)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+        assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
+
+    def test_push_durante_attesa_ci_visto_dal_gate(self, tmp_path):
+        """V-3 verifica #126: un push al branch durante l'attesa CI deve arrivare al gate
+        IP (secondo `git fetch --prune` dopo il --watch), non lo stato del primo fetch."""
+        work, bare = _setup_with_origin(tmp_path)
+        altro = tmp_path / "altro"
+        subprocess.run(["git", "clone", "-q", "-b", "feat", str(bare), str(altro)],
+                       check=True, capture_output=True)
+        (altro / "x.py").write_text('HOST = "8.8.8.8"\n')  # gasmerge-ip-ok
+        subprocess.run(["git", "add", "x.py"], cwd=altro, check=True, capture_output=True)
+        subprocess.run(["git", "-c", "user.email=t@t.invalid", "-c", "user.name=T",
+                        "commit", "-m", "ip"], cwd=altro, check=True, capture_output=True)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin, on_watch=f'git -C "{altro}" push -q origin feat >/dev/null 2>&1')
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+        assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
 
 
 class TestIPAllowlistSoloContenuto:
