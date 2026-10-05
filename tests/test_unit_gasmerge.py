@@ -848,6 +848,40 @@ class TestLoopbackExemption:
         assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
         assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
 
+    @pytest.mark.parametrize("riga", [
+        "connect to 8.8.8.8.\n",              # punto di fine frase  # gasmerge-ip-ok
+        "url 8.8.8.8.nip.io\n",               # <IP>.dominio         # gasmerge-ip-ok
+        "host.8.8.8.8\n",                     # dominio.<IP>         # gasmerge-ip-ok
+        ".8.8.8.8\n",                         # punto a inizio riga  # gasmerge-ip-ok
+        "a 127.0.0.1 b 8.8.8.8.\n",           # loopback + IP.       # gasmerge-ip-ok
+        "a 127.0.0.1 b host.8.8.8.8\n",       # loopback + .IP       # gasmerge-ip-ok
+    ])
+    def test_ip_adiacente_a_un_punto_blocca(self, tmp_path, riga):
+        """R-155-1 (review #155, verifica esterna #127 V-1): un IP con un punto subito prima
+        o subito dopo (non seguito/preceduto da cifra) è un IP e va bloccato."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, riga)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+        assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
+
+    @pytest.mark.parametrize("riga,atteso", [
+        ("versione 1.2.3.4.5\n", "0 IP trovati — OK"),
+        ("bind 127.0.0.1 v1.2.3.4.5\n", "Tutti gli IP sono loopback"),
+        ("bind 127.0.0.1.\n", "Tutti gli IP sono loopback"),
+    ])
+    def test_cinque_componenti_non_e_un_ip(self, tmp_path, riga, atteso):
+        """R-155-1: le ancore restano: "1.2.3.4.5" non è un IP (punto adiacente a una cifra)."""
+        work, _ = self._make_repo_with_ip_file(tmp_path, riga)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert "BLOCCO: trovati IP" not in result.stdout, result.stdout
+        assert atteso in result.stdout, result.stdout
+
     def test_loopback_127_0_0_53_passes(self, tmp_path):
         """Test 2: solo un loopback non-canonico nel branch → NON blocca."""
         work, _ = self._make_repo_with_ip_file(tmp_path, "dns: 127.0.0.53\n")  # gasmerge-ip-ok

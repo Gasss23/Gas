@@ -95,7 +95,9 @@ if ! IP_TREE=$(git rev-parse --verify -q "refs/remotes/origin/$BRANCH^{tree}"); 
   echo "BLOCCO: tree di refs/remotes/origin/$BRANCH non risolvibile — verifica IP NON eseguita"
   exit 1
 fi
-IP_MATCHES=$(LC_ALL=C git grep -a -nE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' "$IP_TREE")
+# R-155-1: un IP adiacente a un punto (a fine frase, "<IP>.nip.io", "host.<IP>")
+# è un IP; "1.2.3.4.5" (punto seguito o preceduto da una cifra) no.
+IP_MATCHES=$(LC_ALL=C git grep -a -nE '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)' "$IP_TREE")
 IP_RC=$?
 set -e
 case "$IP_RC" in
@@ -108,7 +110,7 @@ case "$IP_RC" in
     set +e
     NON_LOOPBACK=$(echo "$IP_MATCHES" | while IFS= read -r line; do
       stripped=$(echo "$line" | LC_ALL=C sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
-      if echo "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)'; then
+      if echo "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)'; then
         echo "$line"
       fi
     done)
@@ -121,7 +123,7 @@ case "$IP_RC" in
       # il prefisso `<ref>:<path>:` di git grep conteneva branch e path, quindi
       # un branch o un file chiamato "...gasmerge-ip-ok..." allowlistava tutto.
       set +e
-      UNMARKED=$(LC_ALL=C git grep -a -nE -e '(^|[^0-9.])[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|$)' --and --not -e 'gasmerge-ip-ok' "$IP_TREE")
+      UNMARKED=$(LC_ALL=C git grep -a -nE -e '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)' --and --not -e 'gasmerge-ip-ok' "$IP_TREE")
       UNMARKED_RC=$?
       set -e
       case "$UNMARKED_RC" in
