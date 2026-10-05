@@ -19,4 +19,4 @@
 
 ## Anomalie
 
-La pagina pubblica attuale include affermazioni sui guadagni e sui risultati. La preview evita di ripeterle. “Fondo con garanzia” è mantenuto come nome del servizio, ma la portata della garanzia resta da verificare sulla documentazione prima della pubblicazione.
+La pagina pubblica attuale include affermazioni sui guadagni e sui risultati. La preview evita di ripeterle. “Fondo con garanzia” è mantenuto come nome del servizio, ma la portata della garanzia resta da verificare sulla documentazione prima della pubblicazione. Il commit dei report è stato pushato sul branch; la PR non è stata verificata o creata perché l'API GitHub non è raggiungibile e `gh auth status` indica un token non valido.

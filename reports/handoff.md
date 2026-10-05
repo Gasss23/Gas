@@ -10,7 +10,7 @@
 2. Indicare il canale da collegare al pulsante “Scrivimi”: email, WhatsApp o modulo CRM.
 3. Consegnare la documentazione del fondo e della garanzia prima di pubblicare dettagli.
 4. Inviare uno storico verificabile per attivare grafici e filtri.
-5. PR NON verificata/creata: post-push gate non completato.
+5. PR NON verificata/creata: gh pr list exit 1 — error connecting to api.github.com; check your internet connection or https://githubstatus.com.
 
 ## §1 SCOPE & ESITO FETTE
 
@@ -26,15 +26,16 @@
 
 ```
  reports/diff_sessione.md  |  12 +--
- reports/handoff.md        | 235 +++++++---------------------------------------
+ reports/handoff.md        | 236 ++++++++--------------------------------------
  reports/stato_progetto.md |   6 +-
  reports/ultimo_report.md  |  41 +++-----
- 4 files changed, 60 insertions(+), 234 deletions(-)
+ 4 files changed, 62 insertions(+), 233 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4208987 docs(tradegasfx): report della preview servizi
 ```
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
@@ -47,7 +48,7 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-Output reale di `gh run list -L 3`:
+Output reale di `gh run list -L 3` dopo il push:
 ```
 error connecting to api.github.com
 check your internet connection or https://githubstatus.com
@@ -63,7 +64,9 @@ github.com
   - To forget about this account, run: gh auth logout -h github.com -u Gasss23
 ```
 
-Mappatura commit→run: nessun commit di sessione prima del commit di fine-task; la CI sullo SHA finale non è verificabile al momento della scrittura.
+Mappatura commit→run:
+- `4208987 docs(tradegasfx): report della preview servizi` — nessuna run verificabile su questo SHA; `gh run list -L 3` ha restituito l'errore di connessione sopra.
+- Commit di aggiornamento del dossier, non ancora creato al momento della scrittura: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
