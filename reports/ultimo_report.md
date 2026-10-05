@@ -1,20 +1,22 @@
-# ULTIMO REPORT — 2026-10-05 — Vetrina TradeGasFX e skill riusabile GAS
+# ULTIMO REPORT — 2026-10-05 — TradeGasFX, revisione 3D
 
 ## Decisioni umane richieste
 
-1. Per aggiornare la pagina live, fornire accesso al progetto Lovable o ai sorgenti del sito.
-2. Prima della pubblicazione, sostituire gli esempi di testimonianza fittizi con esperienze autentiche e autorizzate.
+1. Rivedere la nuova preview prima di qualsiasi pubblicazione live; per il sito live servono i sorgenti o l'accesso al progetto.
+2. Le tre frasi con nomi sono esempi fittizi dichiarati, non recensioni reali. Sostituirle con testimonianze autentiche e autorizzate prima della pubblicazione.
+3. Prima di pubblicare, verificare documenti e formulazione del servizio “fondo con garanzia”.
 
-## Esito per fette
+## Esito
 
-- **Fetta 1 — Copy più essenziale**: FATTA. La pagina presenta i servizi in modo volutamente sintetico e indirizza a WhatsApp per condizioni e percentuali.
-- **Fetta 2 — Contatto WhatsApp**: FATTA. CTA collegate al numero fornito (+39 348 992 1530), con testo iniziale precompilato. Nessun messaggio è stato inviato.
-- **Fetta 3 — Effetto 3D allo scorrimento**: FATTA. Sfera decorativa 3D che ruota con lo scroll; supportata la preferenza “riduci animazioni”.
-- **Fetta 4 — Testimonianze**: FATTA come segnaposto trasparente. Tre profili e frasi sono marcati “ESEMPIO FITTIZIO”; non sono presentati come clienti reali.
-- **Fetta 5 — Skill GAS**: FATTA. Aggiunta una sola skill breve in .agents/skills/website-service-showcase/SKILL.md, con il flusso riutilizzabile per future vetrine web. Per la landing è stata consultata la skill marketing:content-creation; skill-creator è stata usata solo per strutturare la skill.
-- **Fetta 6 — Sito live**: DEFERITA — il workspace non contiene il progetto del sito e non è stato fornito accesso Lovable. Nessuna modifica live.
-- **Fetta 7 — Verifica visuale**: SALTATA — la policy del browser blocca l’apertura di file locali; revisione effettuata sul sorgente, senza test automatici.
+- Ispezionato il riferimento ADORA STUDIO fornito dall'utente, inclusa la transizione 3D allo scroll. Ripresi ritmo, composizione cinematica e testi brevi, senza copiare branding o asset.
+- Creata una nuova preview standalone: `tradegasfx-immersive-preview.html`, con scultura originale a tre nodi in tre viste, transizioni legate allo scroll, leggera risposta al puntatore, tre capitoli servizio, layout mobile e rispetto di `prefers-reduced-motion`.
+- Servizi mantenuti essenziali: fondo con garanzia, trading matematico, copytrading e sala segnali. CTA WhatsApp con testo precompilato diverso per ciascun servizio e numero +39 348 992 1530.
+- Conservata una fascia ridotta con esempi di testimonianza marcati come fittizi; nessun dato finanziario, grafico o schermata MT5.
+- Aggiornata di poche righe la skill `.agents/skills/website-service-showcase/SKILL.md` per ricordare ispezione dello scroll reference, un solo oggetto 3D pertinente e contenuti non richiesti da non aggiungere.
+- Nessun uso di Claude. Nessuna modifica al sito live: sorgenti/accesso non disponibili.
+- Preview e tre PNG allegati si trovano in `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/`.
+- La pagina finale non è stata renderizzata nel browser: il blocco per file locali resta. Nessun test automatico eseguito.
 
 ## Anomalie
 
-La PR del branch resta non verificata o non creata: gh pr list non riesce a raggiungere l’API GitHub e gh auth status segnala un token non valido. I report di questa sessione seguono il flusso documentale del repository; la preview è fuori dal repository Gas.
+`gh` non autenticato e API GitHub non raggiungibile; verifica di PR e CI non disponibile.

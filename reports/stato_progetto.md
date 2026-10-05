@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-05** (sessione esterna TradeGasFX — preview servizi; motore Gas invariato)
+> Ultimo aggiornamento: **2026-10-05** (sessione esterna TradeGasFX — preview cinematica; motore Gas invariato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Sessione esterna — TradeGasFX (2026-10-05)
 
-Nessuna modifica al motore Gas. La preview stand-alone di TradeGasFX è stata resa più essenziale, collegata a WhatsApp, arricchita con una sfera 3D legata allo scroll e con profili d'esempio esplicitamente fittizi. Aggiunta la skill riusabile .agents/skills/website-service-showcase/SKILL.md. La sostituzione live è differita in attesa dell'accesso Lovable o del repository; prima di pubblicare, i profili d'esempio vanno sostituiti con testimonianze autentiche e autorizzate.
+Nessuna modifica al motore Gas. La preview stand-alone TradeGasFX ora usa una scultura 3D a tre nodi, con viste e servizi che cambiano allo scroll, CTA WhatsApp e contenuti brevi; gli esempi di testimonianza sono dichiarati fittizi. La skill `.agents/skills/website-service-showcase/SKILL.md` contiene indicazioni sintetiche sull'ispezione di riferimenti e scene 3D a tappe. Il sito live non è stato modificato: mancano sorgenti/accesso. Prima della pubblicazione, verificare i documenti del fondo e sostituire gli esempi con testimonianze autentiche autorizzate.
 
 ## Stato motore
 

@@ -1,74 +1,57 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-05 — Vetrina TradeGasFX e skill GAS
-
----
+**Sessione:** 2026-10-05 — TradeGasFX, revisione cinematica
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Per modificare il sito live, fornire accesso al progetto Lovable o ai sorgenti.
-2. Prima della pubblicazione, sostituire i tre esempi fittizi con testimonianze autentiche e autorizzate.
-3. PR NON verificata/creata: gh pr list exit 1 — error connecting to api.github.com; check your internet connection or https://githubstatus.com.
+1. Rivedere la preview v2 prima di qualsiasi pubblicazione; per il live servono sorgenti/accesso.
+2. Esempi di testimonianza fittizi: sostituire con esperienze autentiche e autorizzate.
+3. Verificare documenti e formulazione del servizio “fondo con garanzia” prima della pubblicazione.
+4. PR e CI non verificabili: GitHub CLI non autenticata/API non raggiungibile.
 
-## §1 SCOPE & ESITO FETTE
+## §1 SCOPE & ESITO
 
-- **Fetta 1 — Copy essenziale**: FATTA. Hero e schede presentano i servizi in modo generico e rinviano a WhatsApp per spiegazioni, condizioni e percentuali.
-- **Fetta 2 — CTA WhatsApp**: FATTA. Link al numero fornito, con messaggio precompilato; nessun messaggio inviato.
-- **Fetta 3 — Elemento 3D**: FATTA nel sorgente. Sfera 3D ruotata in base allo scroll e disattivata quando è attiva la preferenza di movimento ridotto.
-- **Fetta 4 — Voci di esempio**: FATTA. Tre profili e citazioni sono etichettati “ESEMPIO FITTIZIO” e accompagnati dalla nota che non sono recensioni reali.
-- **Fetta 5 — Skill riusabile**: FATTA. Aggiunta .agents/skills/website-service-showcase/SKILL.md; compatta e generalizzata per future vetrine. Consultate marketing:content-creation e skill-creator (quest'ultimo solo per strutturare la skill).
-- **Fetta 6 — Pubblicazione live**: DEFERITA — sorgente/accesso Lovable assente; nessuna modifica pubblicata.
-- **Fetta 7 — Preview visuale**: SALTATA — il browser blocca il protocollo locale; sorgente aggiornato ma non renderizzato nel browser.
+- Ispezionato il riferimento ADORA STUDIO fornito dall'utente, compreso il suo comportamento allo scroll; ripresi ritmo e composizione, senza copiarne asset o branding.
+- Preview standalone aggiornata: scultura originale in tre viste, passaggi allo scroll, parallasse al puntatore, tre capitoli di servizio, CTA WhatsApp mirate, layout mobile e riduzione del movimento.
+- Nomi e frasi sono esempi fittizi dichiarati. Nessun grafico o screenshot di trading.
+- La skill GAS è stata ampliata con due indicazioni brevi: ispezionare la risposta allo scroll del riferimento e limitare la pagina ai contenuti richiesti.
+- Nessun uso di Claude. Sito live invariato per mancanza di sorgenti/accesso.
+- Preview e render 3D: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html` e PNG adiacenti.
+- La pagina non è stata renderizzata nel browser a causa del blocco sui file locali.
 
-## §2 GIT DIFF --STAT (sessione)
+## §2 GIT DIFF --STAT (0221462 → working tree)
 
 ```
  .agents/skills/website-service-showcase/SKILL.md |  27 +++
  reports/diff_sessione.md                         |  13 +-
- reports/handoff.md                               | 237 ++++-------------------
+ reports/handoff.md                               | 238 +++--------------------
  reports/stato_progetto.md                        |   6 +-
- reports/ultimo_report.md                         |  41 ++--
- 5 files changed, 90 insertions(+), 234 deletions(-)
+ reports/ultimo_report.md                         |  43 ++--
+ 5 files changed, 84 insertions(+), 243 deletions(-)
 ```
 
-## §3 GIT LOG --ONELINE (sessione)
+## §3 GIT LOG --ONELINE (0221462..HEAD)
 
 ```
+bcfacaa docs(tradegasfx): aggiunge skill vetrina e aggiorna report
 56f41bc docs(tradegasfx): aggiorna esito push e CI
 4208987 docs(tradegasfx): report della preview servizi
 ```
 
-## §4 VERDETTO DEL REVISORE (per commit motore)
+Il commit di report della sessione viene creato al termine di questo dossier.
 
-nessun diff motore, revisore non richiesto.
+## §4 VERDETTO DEL REVISORE
+
+Nessuna modifica al perimetro motore; review non richiesta.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/. Nessun test automatico eseguito; la verifica visuale è saltata per il blocco del protocollo file locale.
+Motore invariato. Nessun test automatico eseguito; la preview web non è stata renderizzata nel browser.
 
 ## §6 STATO CI
 
-Output reale di gh run list -L 3:
-```
-error connecting to api.github.com
-check your internet connection or https://githubstatus.com
-```
-
-Autenticazione gh auth status:
-```
-github.com
-  X Failed to log in to github.com account Gasss23 (default)
-  - Active account: true
-  - The token in default is invalid.
-  - To re-authenticate, run: gh auth login -h github.com
-  - To forget about this account, run: gh auth logout -h github.com -u Gasss23
-```
-
-Mappatura commit→run:
-- 4208987 docs(tradegasfx): report della preview servizi — nessuna run verificabile su questo SHA; l'API GitHub non è raggiungibile.
-- 56f41bc docs(tradegasfx): aggiorna esito push e CI — nessuna run verificabile su questo SHA; l'API GitHub non è raggiungibile.
-- Commit di fine-task corrente, non ancora creato al momento della scrittura: run non ancora disponibile alla scrittura dell'handoff.
+`gh run list -L 3` non raggiunge `api.github.com`; `gh auth status` segnala il token predefinito non valido. `check_landing.sh` restituisce WARN e salta la verifica PR per gh non autenticato. Nessuna run CI verificabile per il commit di fine task.
 
 ## §7 RISERVE APERTE
 
-Accesso al sorgente necessario per pubblicare. Le citazioni d'esempio vanno sostituite con recensioni autentiche autorizzate prima della pubblicazione. PR e CI non verificabili per errore di connessione all'API GitHub e token gh non valido.
+Sorgenti/accesso necessari per pubblicare. Verificare i documenti del fondo e rimpiazzare le testimonianze fittizie con contenuti reali e autorizzati. PR/CI non verificabili con lo stato attuale di GitHub CLI.
