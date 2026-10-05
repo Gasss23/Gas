@@ -1,10 +1,10 @@
-# DIFF SESSIONE — 2026-10-04 — test/gate-ip-passata-mutation
+# DIFF SESSIONE — 2026-10-05 — test/gate-ip-ottetti-ref-tree
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `tests/test_unit_gasmerge.py` | Arresto nel ramo "IP non allowlistati" (V-1 #125); due loopback (V-2 #125); righe con spazi/tab/backslash (R-153-1). |
-| `tests/test_unit_hooks.py` | fine_task_finale: due loopback (4m); spazi/tab/backslash e loopback+IP (4n). |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #153 e #154. |
-| `reports/*` | Report di fine task; stato_progetto (passata 66/66, R-153-2, conteggio review). |
+| `tests/test_unit_hooks.py` | fine_task_finale: test 4o con ottetti a 2-3 cifre (V-1 verifica #126). |
+| `tests/test_unit_gasmerge.py` | Stub gh con `on_watch`; test tree da origin vs branch locale (V-2 #126) e push durante l'attesa CI (V-3 #126). |
+| `.claude/agents/memoria_revisore.md` | Memoria della review #155. |
+| `reports/*` | Report di fine task; stato_progetto (V-1/V-2/V-3 #126 chiuse, R-155-1, R-155-3). |
 
 La storia completa sta in git.
