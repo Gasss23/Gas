@@ -4,6 +4,11 @@ Il bot è il workflow `.github/workflows/verifica-bot.yml`. Parte solo dopo il m
 e solo sulle PR con l'etichetta `verifica`. I segreti li inserisci TU: l'agente non li vede mai.
 Non incollare token o chiavi in chat.
 
+**Ordine importante (V-6 verifica esterna #130):** nessuna PR va etichettata `verifica` prima
+della fine del setup. Se il bot partisse prima, GitHub creerebbe l'environment `verifica-bot`
+SENZA la regola "solo main". Fai la sezione C1–C2 e controlla che la regola `main` sia attiva
+PRIMA di inserire i segreti (C3–C5).
+
 ## A. Token dell'abbonamento Claude (gratis, usa la tua quota)
 
 1. Apri Terminal.app ed esegui `claude setup-token`.
@@ -26,6 +31,7 @@ Non incollare token o chiavi in chat.
 ## C. Environment `verifica-bot` (segreti leggibili solo da main)
 
 1. Repo Gas → **Settings** → **Environments** → **New environment** → nome `verifica-bot` → **Configure environment**.
+   Se esiste già (creato da una run), aprilo e controlla comunque il passo 2.
 2. **Deployment branches and tags** → **Selected branches and tags** → **Add deployment branch or tag rule** → `main`.
 3. **Environment secrets** → **Add environment secret**: nome `CLAUDE_CODE_OAUTH_TOKEN`, valore = token del passo A2.
 4. **Environment variables** → **Add environment variable**: nome `GASBOT_CLIENT_ID`, valore = Client ID del passo B6.
