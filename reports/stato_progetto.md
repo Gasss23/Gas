@@ -6,7 +6,7 @@
 
 ## Sessione esterna — TradeGasFX (2026-10-05)
 
-Nessuna modifica al motore Gas. Preparata una preview stand-alone della landing servizi in `~/.codex/visualizations/.../tradegasfx-preview.html`. La sostituzione live è differita in attesa dell'accesso Lovable o del repository; per rendere operativo il contatto servono email/WhatsApp/CRM. Lo storico interattivo resta in attesa di dati verificabili.
+Nessuna modifica al motore Gas. La preview stand-alone di TradeGasFX è stata resa più essenziale, collegata a WhatsApp, arricchita con una sfera 3D legata allo scroll e con profili d'esempio esplicitamente fittizi. Aggiunta la skill riusabile .agents/skills/website-service-showcase/SKILL.md. La sostituzione live è differita in attesa dell'accesso Lovable o del repository; prima di pubblicare, i profili d'esempio vanno sostituiti con testimonianze autentiche e autorizzate.
 
 ## Stato motore
 
