@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-05** (sessione esterna TradeGasFX — preview cinematica; motore Gas invariato)
+> Ultimo aggiornamento: **2026-10-05** (sessione esterna TradeGasFX — fluidità preview 3D; motore Gas invariato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Sessione esterna — TradeGasFX (2026-10-05)
 
-Nessuna modifica al motore Gas. La preview stand-alone TradeGasFX ora usa una scultura 3D a tre nodi, con viste e servizi che cambiano allo scroll, CTA WhatsApp e contenuti brevi; gli esempi di testimonianza sono dichiarati fittizi. La skill `.agents/skills/website-service-showcase/SKILL.md` contiene indicazioni sintetiche sull'ispezione di riferimenti e scene 3D a tappe. Il sito live non è stato modificato: mancano sorgenti/accesso. Prima della pubblicazione, verificare i documenti del fondo e sostituire gli esempi con testimonianze autentiche autorizzate.
+Nessuna modifica al motore Gas. La preview standalone TradeGasFX usa una scultura 3D a tre nodi, con viste interpolate allo scroll, rotazione più ampia, sfondo uniforme, CTA WhatsApp e copy breve; gli esempi di testimonianza sono dichiarati fittizi. La skill `.agents/skills/website-service-showcase/SKILL.md` ricorda di evitare stacchi visivi e transizioni che rallentano lo scroll. Il sito live non è stato modificato: mancano sorgenti/accesso. Prima della pubblicazione, verificare i documenti del fondo e sostituire gli esempi con testimonianze autentiche autorizzate.
 
 ## Stato motore
 

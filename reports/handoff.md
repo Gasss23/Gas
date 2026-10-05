@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-05 — TradeGasFX, revisione cinematica
+**Sessione:** 2026-10-05 — TradeGasFX, fluidità 3D
 
 ## §0 DECISIONI UMANE RICHIESTE
 
@@ -12,9 +12,9 @@
 ## §1 SCOPE & ESITO
 
 - Ispezionato il riferimento ADORA STUDIO fornito dall'utente, compreso il suo comportamento allo scroll; ripresi ritmo e composizione, senza copiarne asset o branding.
-- Preview standalone aggiornata: scultura originale in tre viste, passaggi allo scroll, parallasse al puntatore, tre capitoli di servizio, CTA WhatsApp mirate, layout mobile e riduzione del movimento.
+- Preview standalone aggiornata: tre viste interpolate direttamente dalla posizione di scroll, rotazione ampliata, parallasse al puntatore e sfondo uniforme; tre capitoli di servizio, CTA WhatsApp mirate, layout mobile e riduzione del movimento.
 - Nomi e frasi sono esempi fittizi dichiarati. Nessun grafico o screenshot di trading.
-- La skill GAS è stata ampliata con due indicazioni brevi: ispezionare la risposta allo scroll del riferimento e limitare la pagina ai contenuti richiesti.
+- La skill GAS contiene solo note sintetiche: ispezionare il riferimento, interpolare il movimento allo scroll ed evitare stacchi di sfondo.
 - Nessun uso di Claude. Sito live invariato per mancanza di sorgenti/accesso.
 - Preview e render 3D: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html` e PNG adiacenti.
 - La pagina non è stata renderizzata nel browser a causa del blocco sui file locali.
@@ -24,15 +24,16 @@
 ```
  .agents/skills/website-service-showcase/SKILL.md |  27 +++
  reports/diff_sessione.md                         |  13 +-
- reports/handoff.md                               | 238 +++--------------------
+ reports/handoff.md                               | 239 +++--------------------
  reports/stato_progetto.md                        |   6 +-
  reports/ultimo_report.md                         |  43 ++--
- 5 files changed, 84 insertions(+), 243 deletions(-)
+ 5 files changed, 85 insertions(+), 243 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (0221462..HEAD)
 
 ```
+234dac7 docs(tradegasfx): aggiorna preview 3D cinematica
 bcfacaa docs(tradegasfx): aggiunge skill vetrina e aggiorna report
 56f41bc docs(tradegasfx): aggiorna esito push e CI
 4208987 docs(tradegasfx): report della preview servizi
