@@ -284,6 +284,8 @@ class TestSoloReports:
         ["reports/a.md", "reports/e2e_output.json"],
         ["reports/a.md.sh"],
         ["reports/../gas.md"],
+        ["reports/setup_verifica_bot.md"],              # V-6 #130 bis: istruzioni operative
+        ["reports/a.md", "reports/design_cancello.md"],
     ])
     def test_solo_md(self, files):
         assert not be.solo_reports(files)
@@ -467,6 +469,14 @@ class TestComandi:
         v = _verdetto(testo="VERIFICA ESTERNA #1 — APPROVATO\n" + "x" * 100000)
         assert be.componi_corpo("APPROVE", "m", v, "m", "").endswith("</details>")
 
+    @pytest.mark.parametrize("finding", [5, True, "x", None, {"a": 1}])
+    def test_corpo_con_finding_non_lista(self, finding):
+        # V-4 verifica esterna #130 bis: prima TypeError → nessuna review pubblicata.
+        v = {"verdetto": "APPROVATO", "finding": finding, "testo": "VERIFICA ESTERNA #1 — APPROVATO"}
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "COMMENT"
+        assert "VERIFICA ESTERNA #1" in be.componi_corpo("APPROVE", motivo, v, "m", "")
+
     def test_segreti_verdetto_non_serializzabile(self):
         assert be.contiene_segreti({"x": object()})
 
@@ -597,8 +607,27 @@ class TestWorkflow:
         assert all("--setting-sources user" in a for a in args)
 
     def test_lettura_limitata_alla_cartella(self, wf):
+        # V-1 verifica esterna #130 bis: Grep/Glob nudi leggevano fuori cartella.
         strumenti = [t.strip() for t in wf["jobs"]["verifica"]["env"]["STRUMENTI"].split(",")]
-        assert "Read(./**)" in strumenti and "Read" not in strumenti
+        for t in ("Read", "Grep", "Glob"):
+            assert f"{t}(./**)" in strumenti and t not in strumenti, t
+        assert not [x for x in strumenti if not x.startswith(("Read(", "Grep(", "Glob(", "Bash("))]
+
+    def test_ambiente_dei_sottoprocessi_ripulito(self, wf):
+        assert wf["jobs"]["verifica"]["env"]["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"] == "1"
+
+    def test_condizioni_dei_job(self, wf):
+        # V-3 verifica esterna #130 bis: un `if: always()` farebbe partire Claude e l'App
+        # anche su PR escluse da smista (fork, autore estraneo, senza etichetta, draft).
+        assert wf["jobs"]["verifica"]["if"] == "needs.smista.outputs.solo_reports == 'false'"
+        assert wf["jobs"]["esito"]["if"] == "${{ !cancelled() && needs.smista.result == 'success' }}"
+
+    def test_sha_verificato_e_quello_di_smista(self, wf):
+        # La review si lega allo SHA che il bot ha davvero letto (checkout di ./pr).
+        checkout_pr = [s for s in wf["jobs"]["verifica"]["steps"] if s.get("with", {}).get("path") == "pr"]
+        assert checkout_pr[0]["with"]["ref"] == "${{ needs.smista.outputs.head }}"
+        env = wf["jobs"]["esito"]["steps"][-1]["env"]
+        assert env["HEAD_ANALIZZATA"] == "${{ needs.smista.outputs.head }}"
 
     def test_cascata_modelli(self, wf):
         args = [s["with"]["claude_args"] for s in wf["jobs"]["verifica"]["steps"]

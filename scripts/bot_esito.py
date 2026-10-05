@@ -57,6 +57,9 @@ MACCHINA_BOT = (
     "tests/test_unit_hooks.py",
     "tests/test_unit_handoff_check.py",
 )
+# V-6 verifica esterna #130 bis: report che contengono istruzioni operative o criteri
+# (setup dei segreti, design dei gate) passano dalla verifica LLM anche se sono .md.
+DOC_DA_VERIFICARE = ("reports/setup_", "reports/design_")
 # Istruzioni per Claude in QUALSIASI cartella (un CLAUDE.md annidato diventa istruzioni).
 NOMI_MACCHINA_BOT = ("CLAUDE.md", "CLAUDE.local.md")
 # R-159-2: il repo è pubblico e la review anche. Un testo con forme di credenziali non si
@@ -85,7 +88,7 @@ def solo_reports(files: list[str]) -> bool:
     if not files or len(files) >= MAX_FILE_API:
         return False
     return all(f.startswith("reports/") and f.endswith(".md") and ".." not in f.split("/")
-               for f in files)
+               and not f.startswith(DOC_DA_VERIFICARE) for f in files)
 
 
 def tocca_macchina_bot(files: list[str]) -> bool:
@@ -190,7 +193,8 @@ def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
     if isinstance(verdetto, dict) and contiene_segreti(verdetto):
         righe += ["", "[verdetto NON pubblicato: contiene forme di credenziali — V-2 #130]"]
     elif isinstance(verdetto, dict):
-        minori = [f for f in verdetto.get("finding") or []
+        elenco = verdetto.get("finding")
+        minori = [f for f in (elenco if isinstance(elenco, list) else [])
                   if isinstance(f, dict) and f.get("gravita") in ("BASSA", "COSMETICA")]
         if evento == "APPROVE" and minori:
             righe += ["", "**Riserve minori da aggiustare dopo il merge:**"]

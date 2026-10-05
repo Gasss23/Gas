@@ -88,6 +88,10 @@ jobs:
       falliti: ${{ steps.raccogli.outputs.falliti }}
     env:
       GH_TOKEN: ${{ github.token }}
+      # V-1 verifica esterna #130 bis: Grep/Glob nudi leggevano fuori cartella (fino a
+      # /proc/self/environ col token): ora limitati a ./**; in più l'ambiente dei
+      # sottoprocessi di Claude viene ripulito dai segreti.
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
       SCHEMA: >-
         {"type":"object","additionalProperties":false,
         "required":["verdetto","finding","testo"],
@@ -100,7 +104,7 @@ jobs:
         "descrizione":{"type":"string"}}}},
         "testo":{"type":"string"}}}
       STRUMENTI: >-
-        Read(./**),Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),
+        Read(./**),Grep(./**),Glob(./**),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),
         Bash(gh run view:*),Bash(gh run list:*)
       PROMPT: |
         Sei il bot di verifica esterna del repository ${{ github.repository }}: un'identità
