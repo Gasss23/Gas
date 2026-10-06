@@ -437,7 +437,7 @@ def normalizza_chiave(chiave: Optional[str]) -> str:
 
 
 def normalizza_telefono(telefono: Optional[str]) -> str:
-    """Normalizzazione AGGRESSIVA di un numero di telefono con gate di plausibilità.
+    r"""Normalizzazione AGGRESSIVA di un numero di telefono con gate di plausibilità.
 
     Permette di confrontare due valori testuali (chiave/contatto di un lead) e
     riconoscere che rappresentano lo stesso numero fisico (dedup CRM). NON trasforma

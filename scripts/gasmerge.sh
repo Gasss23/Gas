@@ -110,7 +110,10 @@ case "$IP_RC" in
     # resta ancora un IPv4 quad-dotted, la riga originale non è loopback-only e
     # viene tenuta. Una riga con loopback E un IP non-loopback non è esente.
     set +e
-    NON_LOOPBACK=$(echo "$IP_MATCHES" | while IFS= read -r line; do
+    # V-2 #124/#125: anche `read` in C. In locale UTF-8 bash 5 legge un byte non UTF-8
+    # seguito dal newline come un carattere multibyte: il newline sparisce, l'ultima
+    # riga va persa e il suo IP passava come "loopback" (fail-open).
+    NON_LOOPBACK=$(echo "$IP_MATCHES" | while IFS= LC_ALL=C read -r line; do
       stripped=$(echo "$line" | LC_ALL=C sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
       if echo "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)'; then
         echo "$line"
@@ -187,10 +190,12 @@ git cat-file -e "refs/remotes/origin/main:.claude/perimetro_review.txt" 2>/dev/n
   || git cat-file -e "refs/remotes/origin/$BRANCH:.claude/perimetro_review.txt" 2>/dev/null \
   || PERIM_LETTO=0
 ENGINE=""
-while IFS= read -r f; do
+# R-167-1: anche qui `read` in C (stessa classe del gate IP: un path che finisce con un
+# byte non UTF-8 si mangerebbe il newline e il file di motore seguente).
+while IFS= LC_ALL=C read -r f; do
   [ -n "$f" ] || continue
   if [ "$PERIM_LETTO" -eq 0 ]; then ENGINE+="$f"$'\n'; continue; fi
-  while IFS= read -r v; do
+  while IFS= LC_ALL=C read -r v; do
     case "$v" in
       */) [[ "$f" == "$v"* ]] && { ENGINE+="$f"$'\n'; break; } ;;
       *)  [[ "$f" == "$v" ]] && { ENGINE+="$f"$'\n'; break; } ;;
