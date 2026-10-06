@@ -1723,6 +1723,20 @@ class TestPromemoriaCounter:
 #   T-finale-4: IP in reports/ → exit 1, nessun push
 
 
+def _locale_utf8() -> str | None:
+    """V-2 #124/#125: un locale UTF-8 disponibile (dove un byte non UTF-8 attaccato a un IP
+    lo nasconde a grep/git grep senza LC_ALL=C). None se il sistema non ne ha."""
+    try:
+        r = subprocess.run(["locale", "-a"], capture_output=True, text=True)
+    except OSError:
+        return None
+    disponibili = {l.strip().lower().replace("utf8", "utf-8") for l in r.stdout.splitlines()}
+    for loc in ("C.UTF-8", "en_US.UTF-8"):
+        if loc.lower() in disponibili:
+            return loc
+    return None
+
+
 def _run_finale(
     repo: Path,
     extra_env: dict | None = None,
@@ -2040,6 +2054,26 @@ class TestFinaleScript:
         err = r.stderr.decode("utf-8", errors="replace")
         assert r.returncode == 1, f"atteso exit 1 (latin1), got {r.returncode}; stderr={err!r}"
         assert "IP trovato" in err, err
+
+    @pytest.mark.parametrize("data", [
+        b"caf\xe910.0.0.1\n",           # gasmerge-ip-ok
+        b"10.0.0.1\xe9\n",              # gasmerge-ip-ok
+    ])
+    def test_finale_4f_bis_byte_attaccato_locale_utf8(self, tmp_path, monkeypatch, data):
+        """V-2 #124/#125 (discriminazione su glibc): in locale UTF-8 un byte non UTF-8
+        attaccato all'IP lo nasconde a git grep/grep; solo LC_ALL=C nel gate lo vede."""
+        loc = _locale_utf8()
+        if loc is None:
+            pytest.skip("nessun locale UTF-8 sul sistema")
+        monkeypatch.setenv("LC_ALL", loc)
+        work = self._repo_finale_con_bytes(tmp_path, data, "feat/4f-bis")
+        r = subprocess.run(["bash", str(FINE_TASK_FINALE)], cwd=work, capture_output=True,
+                           env={**os.environ, "CLAUDE_PROJECT_DIR": str(work)})
+        err = r.stderr.decode("utf-8", errors="replace")
+        assert r.returncode == 1, f"atteso exit 1, got {r.returncode}; stderr={err!r}"
+        assert "IP trovato" in err, err
+        # La riga bloccata va mostrata (grep -Fx in UTF-8 stamperebbe "binary file matches").
+        assert b"10.0.0.1" in r.stderr, err
 
     def test_finale_4g_errore_grep_allowlist_stop(self, tmp_path):
         """R-149-1 (gemello di R-148-1): la git grep con --and fallisce → STOP, mai

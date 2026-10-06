@@ -81,7 +81,10 @@ case "$IP_RC" in
     # resta ancora un IPv4 quad-dotted, la riga non è loopback-only.
     # Una riga con loopback E un IP non-loopback non è esente.
     set +e
-    NON_LOOPBACK=$(printf '%s\n' "$IP_MATCHES" | while IFS= read -r line; do
+    # V-2 #124/#125: anche `read` in C. In locale UTF-8 bash 5 legge un byte non UTF-8
+    # seguito dal newline come un carattere multibyte: il newline sparisce, l'ultima
+    # riga va persa e il suo IP passava come "loopback" (fail-open).
+    NON_LOOPBACK=$(printf '%s\n' "$IP_MATCHES" | while IFS= LC_ALL=C read -r line; do
       stripped=$(printf '%s\n' "$line" | LC_ALL=C sed -E 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}//g')
       if printf '%s\n' "$stripped" | LC_ALL=C grep -qE '(^|[^0-9.]|(^|[^0-9])\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9.]|\.([^0-9]|$)|$)'; then
         printf '%s\n' "$line"
