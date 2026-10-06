@@ -84,6 +84,9 @@ jobs:
         # suite → il verdetto verde/rosso non viene mai mascherato.
         env:
           PYTHONUTF8: "1"   # parità con l'esecuzione del progetto su Windows
+          # R-173-1: qui il sandbox OS DEVE esserci (smoke-test sopra). Senza questa
+          # variabile una sonda regredita a "False" darebbe verde (test in ripiego/SKIP).
+          GAS_TEST_SANDBOX_OS_ATTESO: "1"
         run: |
           set -o pipefail
           python tests/test_unit_kernel.py 2>&1 | tee "$RUNNER_TEMP/suite_output.txt"
