@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-06** (sessione esterna TradeGasFX — rifinitura modello 3D; motore Gas invariato)
+> Ultimo aggiornamento: **2026-10-06** (sessione esterna TradeGasFX — visibilità e fallback del modello 3D; motore Gas invariato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Sessione esterna — TradeGasFX (2026-10-06)
 
-Nessuna modifica al motore Gas. La preview standalone TradeGasFX riprende l'aspetto della scultura originale, ora ricostruita in WebGL con tre globi scuri luminosi e fasce dorate intrecciate, profondità e riflessi; conserva la rotazione fluida completa allo scroll. La skill `.agents/skills/website-service-showcase/SKILL.md` raccomanda geometria 3D reale invece di immagini statiche ruotate. Restano lo sfondo uniforme, le CTA WhatsApp e il copy breve; gli esempi di testimonianza sono dichiarati fittizi. Il sito live non è stato modificato: mancano sorgenti/accesso. Prima della pubblicazione, verificare i documenti del fondo e sostituire gli esempi con testimonianze autentiche autorizzate.
+Nessuna modifica al motore Gas. La preview standalone TradeGasFX riprende l'aspetto della scultura originale: tre globi scuri luminosi e fasce dorate intrecciate ricostruiti come mesh WebGL. Corretto il buffer dell'attributo materiale e aggiunto il controllo del primo frame; i render originali sfumano come fallback animato se WebGL non disegna. Restano rotazione allo scroll, sfondo uniforme, CTA WhatsApp e copy breve; gli esempi di testimonianza sono dichiarati fittizi. Il sito live non è stato modificato: mancano sorgenti/accesso. Prima della pubblicazione, verificare i documenti del fondo e sostituire gli esempi con testimonianze autentiche autorizzate. Preview non renderizzata nel browser.
 
 ## Stato motore
 

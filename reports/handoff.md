@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-06 — TradeGasFX, modello 3D rifinito
+**Sessione:** 2026-10-06 — TradeGasFX, oggetto 3D sempre visibile
 
 ## §0 DECISIONI UMANE RICHIESTE
 
@@ -11,26 +11,29 @@
 
 ## §1 ESITO DELLA SONDA
 
-- Ispezionati i render originali disponibili nella cartella della preview; ripresi la composizione a tre globi scuri e le fasce dorate intrecciate.
-- Ricostruita la scultura come mesh WebGL volumetriche: fasce curve a sezione piena, tre sfere scure lucide con inserti luminosi, profondità su più piani, prospettiva e riflessi. Nessuna immagine raster viene usata nel modello.
-- Conservata la rotazione fluida completa allo scroll; lievi inclinazioni al puntatore, `prefers-reduced-motion` e fallback senza WebGL.
+- Individuato un errore nell'attributo WebGL del materiale: un buffer scalare veniva letto come vettore a tre componenti, impedendo un disegno affidabile. Corretto il formato e aggiunto un controllo del primo frame basato sui pixel visibili.
+- Il modello WebGL mantiene la scultura di tre globi scuri e fasce dorate intrecciate. I render originali front/left/right sono ora visibili fin dal caricamento e sfumano tra loro con lo scroll e una rotazione lenta; se WebGL non produce un frame visibile, la canvas viene nascosta e resta la scultura animata di riserva.
+- Conservate rotazione fluida allo scroll, lieve inclinazione al puntatore e `prefers-reduced-motion`.
 - Nessuna libreria esterna. Nessun uso di Claude. Motore GAS e sito live invariati.
-- Preview aggiornata non renderizzata nel browser: l'accesso a file locali è bloccato.
+- Preview aggiornata non renderizzata nel browser: l'accesso a file locali è bloccato. Correzione verificata per ispezione del codice; nessun test automatico eseguito.
 
 ## §2 GIT DIFF --STAT (origin/main...HEAD; base 0221462)
 
 ```
- .agents/skills/website-service-showcase/SKILL.md |  27 +++
- reports/diff_sessione.md                         |  13 +-
- reports/handoff.md                               | 247 ++++-------------------
- reports/stato_progetto.md                        |   6 +-
- reports/ultimo_report.md                         |  42 ++--
- 5 files changed, 90 insertions(+), 245 deletions(-)
+.agents/skills/website-service-showcase/SKILL.md |  27 +++
+reports/diff_sessione.md                         |  13 +-
+reports/handoff.md                               | 248 ++++-------------------
+reports/stato_progetto.md                        |   6 +-
+reports/ultimo_report.md                         |  44 ++--
+5 files changed, 94 insertions(+), 244 deletions(-)
 ```
+
+`reports/ultima_risposta.md` è escluso da questo dossier perché è l'output autorizzato del workflow `scrivi rep` e il validatore lo tratta come allowlist.
 
 ## §3 GIT LOG --ONELINE (origin/main..HEAD)
 
 ```
+2b479d5 chore(scrivi-rep): ultima risposta salvata
 a0e544f docs(tradegasfx): rifinisce scultura WebGL
 d823e42 docs(tradegasfx): allinea formato handoff
 dfe7a21 docs(tradegasfx): documenta preview WebGL 3D
