@@ -1,15 +1,10 @@
-# DIFF SESSIONE — 2026-10-06 — feat/g3-agente-non-admin (G-3 fase 1)
+# DIFF SESSIONE — 2026-10-06 — fix/win-mic-test-import (F-mac-3)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `scripts/avviso_token_admin.sh` — nuovo: avviso se il token gh amministra il repo (mai blocco).
-- `scripts/gasmerge.sh` — path dell'avviso via `realpath` prima del `cd` (anche dal symlink); chiamata dopo il fetch.
-- `scripts/fine_task_finale.sh` — chiamata dell'avviso prima del push.
-- `.claude/perimetro_review.txt` — + `scripts/avviso_token_admin.sh`.
-- `tests/test_unit_gasmerge.py` — TestAvvisoTokenAdmin (esiti, gasmerge diretto e via symlink).
-- `tests/test_unit_hooks.py` — avviso G-3 in fine-task prima del push, senza bloccare.
-- `reports/setup_agente_non_admin.md` — nuovo: passi per il token fine-grained dell'agente.
-- `CLAUDE.md` — regola "agente non admin".
-- `reports/stato_progetto.md` — voce G-3.
-- `.claude/agents/memoria_revisore.md` — righe #186, #187.
+- `clients/voice/probe/conftest.py` — nuovo: esclude i probe manuali `win_*_test.py` dalla collection.
+- `tests/conftest.py` — nuovo: esclude lo script `test_unit_kernel.py` dalla collection.
+- `tests/test_unit_voice_server.py` — test strutturale: collection dell'intero repo rc 0/5.
+- `reports/stato_progetto.md` — F-mac-3 CHIUSA.
+- `.claude/agents/memoria_revisore.md` — righe #190, #191.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
