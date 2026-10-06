@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-06 — TradeGasFX, oggetto 3D sempre visibile
+**Sessione:** 2026-10-06 — TradeGasFX, scultura 3D e movimento laterale
 
 ## §0 DECISIONI UMANE RICHIESTE
 
@@ -11,20 +11,20 @@
 
 ## §1 ESITO DELLA SONDA
 
-- Individuato un errore nell'attributo WebGL del materiale: un buffer scalare veniva letto come vettore a tre componenti, impedendo un disegno affidabile. Corretto il formato e aggiunto un controllo del primo frame basato sui pixel visibili.
-- Il modello WebGL mantiene la scultura di tre globi scuri e fasce dorate intrecciate. I render originali front/left/right sono ora visibili fin dal caricamento e sfumano tra loro con lo scroll e una rotazione lenta; se WebGL non produce un frame visibile, la canvas viene nascosta e resta la scultura animata di riserva.
-- Conservate rotazione fluida allo scroll, lieve inclinazione al puntatore e `prefers-reduced-motion`.
+- Eliminato il crossfade tra tre viste statiche, che simulava male la rotazione. Se WebGL non è disponibile, resta una singola immagine originale senza fingere il movimento.
+- Rifinito lo shader WebGL con riflessi da studio, risposta metallica GGX, trasmissione/Fresnel per il vetro fumé e ghiere sui tre globi; stabilizzata la sezione delle fasce durante le curve.
+- Lo scroll guida la rotazione e una traiettoria laterale destra-centro-sinistra-ritorno; il bagliore segue la scultura. Rispetto di `prefers-reduced-motion` e percorrenza più corta sui dispositivi piccoli.
 - Nessuna libreria esterna. Nessun uso di Claude. Motore GAS e sito live invariati.
-- Preview aggiornata non renderizzata nel browser: l'accesso a file locali è bloccato. Correzione verificata per ispezione del codice; nessun test automatico eseguito.
+- Preview aggiornata non renderizzata: il browser blocca l'accesso alla pagina locale. Nessun test automatico eseguito. Blender è andato in crash nel backend Metal prima di produrre un render; nessun asset Blender è stato usato.
 
 ## §2 GIT DIFF --STAT (origin/main...HEAD; base 0221462)
 
 ```
 .agents/skills/website-service-showcase/SKILL.md |  27 +++
 reports/diff_sessione.md                         |  13 +-
-reports/handoff.md                               | 248 ++++-------------------
+reports/handoff.md                               | 249 ++++-------------------
 reports/stato_progetto.md                        |   6 +-
-reports/ultimo_report.md                         |  44 ++--
+reports/ultimo_report.md                         |  43 ++--
 5 files changed, 94 insertions(+), 244 deletions(-)
 ```
 
@@ -33,6 +33,7 @@ reports/ultimo_report.md                         |  44 ++--
 ## §3 GIT LOG --ONELINE (origin/main..HEAD)
 
 ```
+83366e8 docs(tradegasfx): ripristina visibilita oggetto 3D
 2b479d5 chore(scrivi-rep): ultima risposta salvata
 a0e544f docs(tradegasfx): rifinisce scultura WebGL
 d823e42 docs(tradegasfx): allinea formato handoff
@@ -62,4 +63,4 @@ Nessuna run CI verificabile per questa sessione. `gh` non è autenticato e l'API
 
 ## §6 RISERVE APERTE
 
-Serve una revisione visiva della preview. Per la pubblicazione live servono sorgenti/accesso; verificare i documenti del fondo e sostituire le testimonianze fittizie con contenuti reali autorizzati.
+Serve una revisione visiva della preview: il browser blocca l'apertura della pagina locale e Blender non ha prodotto un render. Per la pubblicazione live servono sorgenti/accesso; verificare i documenti del fondo e sostituire le testimonianze fittizie con contenuti reali autorizzati.
