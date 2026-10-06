@@ -2073,7 +2073,7 @@ class TestFinaleScript:
         assert r.returncode == 1, f"atteso exit 1, got {r.returncode}; stderr={err!r}"
         assert "IP trovato" in err, err
         # La riga bloccata va mostrata (grep -Fx in UTF-8 stamperebbe "binary file matches").
-        assert b"10.0.0.1" in r.stderr, err
+        assert b"10.0.0.1" in r.stderr, err  # gasmerge-ip-ok
 
     def test_finale_4g_errore_grep_allowlist_stop(self, tmp_path):
         """R-149-1 (gemello di R-148-1): la git grep con --and fallisce → STOP, mai

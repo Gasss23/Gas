@@ -786,7 +786,7 @@ class TestIPFileBinariENonUtf8:
         assert result.returncode != 0, result.stdout
         assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
         # La riga bloccata va mostrata (grep -Fx in UTF-8 stamperebbe "binary file matches").
-        assert "8.8.8.8" in result.stdout, result.stdout
+        assert "8.8.8.8" in result.stdout, result.stdout  # gasmerge-ip-ok
 
 
 # ---------------------------------------------------------------------------
