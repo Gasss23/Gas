@@ -17,6 +17,7 @@
 - **Test T-finale-5**: `FATTA` — fallisce sul codice vecchio, passa col fix.
 - **R-166-1 / R-166-2** (dalla review #166): `FATTA` nello stesso commit.
 - **Etichetta `verifica`**: `SALTATA — gh non autenticato e l'etichetta non esiste ancora`.
+- **Verifica esterna §4quater**: `FATTA` — #133 APPROVATO CON RISERVE (§8).
 
 ---
 
@@ -24,18 +25,19 @@
 
 ```
  .claude/agents/memoria_revisore.md |   3 +++
- reports/diff_sessione.md           |  19 +++++++------------
- reports/handoff.md                 | 362 +++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/diff_sessione.md           |  19 +++++++-----------
+ reports/handoff.md                 | 390 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  25 +++++++------------------
+ reports/ultimo_report.md           |  25 +++++++----------------
  scripts/fine_task_finale.sh        |   6 ++++--
- tests/test_unit_hooks.py           |  37 +++++++++++++++++++++++++++++++++++++
- 7 files changed, 112 insertions(+), 342 deletions(-)
+ tests/test_unit_hooks.py           |  37 ++++++++++++++++++++++++++++++++++
+ 7 files changed, 146 insertions(+), 336 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3e3ca97 docs(fine-task-push-exit): fine-task — report, handoff con verdetti #166/#168, diff sessione
 53c1f6d fix(fine-task): R-150-1 — push fallito esce dal suo ramo con messaggio ed exit 1 — review #166/#168
 cc49a01 chore(revisore): memoria review #168 — APPROVATO
 9345199 chore(revisore): memoria review #168 — APPROVATO
@@ -110,11 +112,50 @@ Nessuna modifica a gas.py/brains/modules. Test della macchina di controllo: `tes
 
 ## §6 STATO CI
 
-`gh` non autenticato (CI NON VERIFICATA con la CLI). Mappatura commit → run:
-- `f89a42b`, `9345199`, `cc49a01`, `53c1f6d`: pushati insieme, run CI sul push di `53c1f6d` — run non ancora disponibile alla scrittura dell'handoff.
-- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Stato letto col connettore GitHub (`actions_list`, `gh` non autenticato). Mappatura commit → run:
+- `f89a42b`, `9345199`, `cc49a01`, `53c1f6d`: pushati insieme → run 37440692564 (CI #659) su `53c1f6d`: **failure** — atteso, handoff non ancora rigenerato (handoff-check).
+- `3e3ca97` (primo fine-task): run 37440758192 (CI #660): **success**.
+- commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Push fallito per `fatal` (exit 128) su GitHub reale: coperto per costruzione, non testato (dalla #166/#168).
-- Nessun'altra.
+- Push fallito per `fatal` (exit 128) su GitHub reale: coperto per costruzione, non testato (#166/#168; V-3 della verifica esterna #133: fattibile con un remote inesistente).
+- Contatore delle review fra branch non mergiati (#163/#166/#167…): riallineare al merge (V-4 verifica esterna #133).
+
+## §8 VERIFICA ESTERNA #133 (verdetto integrale)
+
+Lanciata da questo agente con `Applica .claude/verifica_esterna.md a: <URL_HANDOFF di 3e3ca97> <URL_PR>` (agente nuovo, Sonnet). Esito: APPROVATO CON RISERVE, solo BASSE/COSMETICHE; nessuna correzione al codice. V-1/V-2 (handoff con stat e CI fotografati prima dell'ultimo commit) sono strutturali e qui aggiornati.
+
+VERIFICA ESTERNA PR #133 — APPROVATO CON RISERVE
+
+Metodo: clone usa-e-getta nella scratchpad, checkout di 3e3ca97 (commit pinnato dall'URL), merge-base con origin/main = e91ceb4. Ho eseguito:
+- `git diff --stat` e `git log` dalla base;
+- `pytest tests/test_unit_hooks.py` alla base e al commit;
+- due mutation sullo script, più lo script della base rimesso al posto del fix;
+- le API GitHub per il ruleset e per i check-run.
+
+`git status` del repo reale è vuoto.
+
+CLAIM VERIFICATI:
+- **Fix R-150-1, VERO.** In `scripts/fine_task_finale.sh` il diff è solo `PUSH_EXIT=0; git push || PUSH_EXIT=$?`. Con `set -e` attivo (riattivato dopo il gate IP) il ramo "ERRORE git push fallito"/exit 1 ora è raggiungibile. La guardia HEAD==@{u} e il gate IP sono invariati (letti nel diff e nel sorgente).
+- **Delta test, VERO.** `tests/test_unit_hooks.py` passa da 102 passed alla base a 103 passed al commit, riprodotti.
+- **T-finale-5 discrimina, VERO.** Con lo script della base fallisce sull'assert del messaggio, e con la mutation `|| PUSH_EXIT=0` fallisce anch'esso. Con il fix passa.
+- **Riserve R-166-1 e R-166-2 CHIUSE, VERO.**
+  - `stato_progetto.md` ora dice "1 se il remoto rifiuta, 128 per i fatal".
+  - La riga `"HEAD (" not in stderr` è presente nel test. Come dichiarato dal revisore, la mutation `exit 1` → `:` è coperta da questo assert. Quella mutation non l'ho rieseguita: la lettura del test non mostra falle.
+- **Perimetro, VERO.** `git diff --stat` reale: 7 file (memoria_revisore, diff_sessione, handoff, stato_progetto, ultimo_report, fine_task_finale.sh, test_unit_hooks.py). Il log reale ha i 5 commit dichiarati, 4 più quello di fine-task, come il handoff dice. Il fix non tocca motore né gate; `scripts/fine_task_finale.sh` e `tests/` sono nel perimetro di review e hanno i verdetti #166 e #168.
+- **CI, VERO.** Sullo SHA 3e3ca97 `handoff-check` è success e `unit-suite` è completed/success. `verifica`, `esito` e `smista` sono skipped. Il ruleset `main-lock` (attivo) richiede esattamente `unit-suite` e `handoff-check`.
+- **PR #133, VERO.** Stato open, head 3e3ca97, base main, 7 file cambiati.
+
+FINDING:
+- **V-1 (COSMETICA).** Il §2 del handoff riporta `reports/handoff.md | 362` e un totale di "112 insertions, 342 deletions". Il diff reale a 3e3ca97 è 372 righe per handoff.md e 122 insertions. La differenza dipende dal fatto che il file è autoreferenziale: la stat è presa prima dell'ultima riscrittura. Nessun impatto sostanziale. Fix: ricalcolare la stat dopo l'ultima modifica, oppure dichiarare l'approssimazione.
+- **V-2 (BASSA).** Nel §6 del handoff, "CI NON VERIFICATA" era vero alla scrittura. Ora la CI è verde, quindi la riserva sulla CI è chiusa a posteriori.
+- **V-3 (BASSA).** La riserva aperta nel §7 (push con `fatal`, exit 128) resta non testata, ma è coperta per costruzione: `|| PUSH_EXIT=$?` non dipende dal codice di uscita. Rischio basso. Un test dedicato è fattibile con un remote inesistente.
+- **V-4 (BASSA).** Il contatore del revisore salta la #167 e la #163 è rinumerata in #166. Il handoff e la memoria lo dichiarano, ma resta da riallineare con l'altro branch (la #163 è su feat/merge-automatico-z1xjx2). Il rischio è la collisione di numerazione con la PR #131, e il handoff lo segnala già.
+
+NON VERIFICATO:
+- Il push fallito per rete o auth (128) su GitHub reale: non riproducibile senza toccare il remoto.
+- L'etichetta `verifica` e il workflow `verifica-bot`: i job risultano skipped e non ho potuto esaminare perché.
+- L'ordine di merge e i conflitti con le altre PR notturne su `reports/`: dichiarati dal handoff, non provati.
+
+RACCOMANDAZIONE: la PR si può mergiare. Il fix è corretto, minimale, coperto da un test che discrimina, e i due check required sono verdi. Prima di altro lavoro: riallineare il contatore del revisore (#163/#166/#167) tra i branch, e, se serve, aggiungere un test per il caso 128.
