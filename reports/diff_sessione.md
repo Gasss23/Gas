@@ -1,14 +1,11 @@
-# DIFF SESSIONE — 2026-10-05 — feat/verifica-bot (V-B vera, fetta B1 + correzioni delle due verifiche esterne #130)
+# DIFF SESSIONE — 2026-10-06 — fix/gate-ip-read-locale
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `.github/workflows/verifica-bot.yml` | Nuovo: bot di verifica esterna con identità separata (pull_request_target, sola lettura, GitHub App, dosaggio quota). |
-| `scripts/bot_esito.py` | Nuovo: decisione deterministica di approvazione (soglia "niente ALTA/MEDIA", macchina del bot, doc-only, credenziali su tutto il verdetto, negazioni). |
-| `tests/test_unit_verifica_bot.py` | Nuovo: 174 test (logica, comandi con gh finto + jq reale, proprietà di sicurezza del workflow). |
-| `.github/workflows/ci.yml` | Step della nuova suite + riga nel job summary. |
-| `.claude/perimetro_review.txt` | `scripts/bot_esito.py` nel perimetro di review. |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #158, #159, #160, #161, #162. |
-| `reports/setup_verifica_bot.md` | Nuovo: passi numerati dell'operatore (token, App, environment) ordine del setup (V-6 #130) ed etichetta `verifica` (V-5 seconda verifica). |
-| `reports/*` | Report di fine task; stato_progetto (V-B fetta B1, riserve aperte). |
+> Si riscrive a ogni sessione; la storia completa sta in git.
 
-La storia completa sta in git.
+- `scripts/gasmerge.sh` — `IFS= LC_ALL=C read` nel filtro loopback del gate IP e nel ciclo ENGINE_DIFF (R-167-1).
+- `scripts/fine_task_finale.sh` — `IFS= LC_ALL=C read` nel filtro loopback del gate IP.
+- `tests/test_unit_gasmerge.py` — `_locale_utf8()`, test byte attaccato all'IP in locale UTF-8, test path non UTF-8 nel promemoria.
+- `tests/test_unit_hooks.py` — `_locale_utf8()`, test 4f-bis (byte attaccato all'IP in locale UTF-8).
+- `reports/stato_progetto.md` — residuo latin1 CHIUSO, bug e R-167-x annotati.
+- `.claude/agents/memoria_revisore.md` — righe #167 e #170.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
