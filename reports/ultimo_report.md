@@ -1,22 +1,16 @@
-# ULTIMO REPORT — 2026-10-06 — Gate IP: `read` in C (fail-open con byte non UTF-8) + discriminazione latin1 su glibc
+# ULTIMO REPORT — 2026-10-06 — R-150-1: push fallito in fine_task_finale.sh esce dal suo ramo
 
 ## Decisioni umane richieste
 
-1. Merge della PR #134 — **prioritario**: chiude due fail-open già presenti su main, il gate IP (privacy) e il gate di review (commit di un file del perimetro senza review), entrambi in locale UTF-8.
-2. Fetta di sicurezza: secondo passaggio indipendente nella chat claude.ai con l'URL dell'handoff (protocollo §4quater).
-3. Ordine di merge della notte: ogni PR riscrive i report canonici; dopo un merge le altre vanno riallineate a main (conflitto solo su `reports/` e `memoria_revisore.md`).
+1. Merge della PR di `fix/fine-task-push-exit` (numero nell'handoff §0). Rischio basso: tocca solo il ramo d'errore del push.
+2. Nota merge: questo branch riscrive i report canonici come tutte le PR della notte; dopo il merge di un'altra PR serve riportare main nel branch (conflitto solo su `reports/`).
 
 ## Esito per fette
 
-- **V-2 #124/#125 — discriminazione latin1 su glibc**: FATTA — provato su glibc 2.39 che il test esistente (`caf\xe9 <IP>`, separatore spazio) non uccideva la mutation su `LC_ALL=C git grep`; test nuovi col byte ATTACCATO all'IP e locale UTF-8 forzato la uccidono.
-- **Bug trovato — fail-open del gate IP**: FATTA — `while IFS= read -r` di bash 5.2 in locale UTF-8 perde l'ultima riga se finisce con un byte non UTF-8 → IP "loopback". Fix `IFS= LC_ALL=C read` in gasmerge.sh e fine_task_finale.sh.
-- **R-167-1** (stessa classe nel ciclo ENGINE_DIFF di gasmerge): FATTA. **R-167-2** (skip se manca `locale`): FATTA.
-- **Mutation**: FATTA — read, git grep ×2, grep -qE, grep -Fx uccise sotto C.UTF-8; `sed` equivalente; `read -r v` del perimetro equivalente in pratica.
-- **Review**: #167 APPROVATO CON RISERVE → #170 APPROVATO.
-- **macOS**: NON VERIFICATO — bash 3.2 di sistema probabilmente non colpito; bash 5 di homebrew sì (ragionamento del revisore).
-
-- **Verifica esterna #134**: FATTA — APPROVATO CON RISERVE; V-2 (`review_gate.sh:76`, stesso difetto: fail-open del gate di review, provato) e V-3 (locale esigito in CI) CHIUSE; R-177-1/R-177-2/R-178-1 chiuse. Review #177/#178 APPROVATO CON RISERVE → #179 APPROVATO. Suite 281 passed in C e C.UTF-8.
+- **R-150-1 (bassa, preesistente, review #150)**: FATTA — `PUSH_EXIT=0; git push || PUSH_EXIT=$?` in `scripts/fine_task_finale.sh`: con `set -e` riattivato dal gate IP, un push fallito ora stampa "ERRORE git push fallito" ed esce con 1 (prima: codice di git senza messaggio, ramo morto).
+- **Test T-finale-5**: FATTA — remoto bare con `pre-receive` che rifiuta → exit 1, messaggio, nessun URL, nessuna uscita dalla guardia @{u}. Fallisce sul codice vecchio (provato).
+- **Review**: #166 APPROVATO CON RISERVE (R-166-1 frase in stato_progetto, R-166-2 assert sulla guardia: entrambe CHIUSE) → #168 APPROVATO. La #166 era stata numerata #163 dal revisore (collisione con la #163 di B2, PR #131): rinumerata in memoria con nota.
 
 ## Anomalie
 
-- Nessuna. `gh` non autenticato: PR via connettore GitHub.
+- Nessuna. `gh` non autenticato nel container: PR via connettore GitHub.

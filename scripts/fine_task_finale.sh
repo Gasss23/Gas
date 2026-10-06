@@ -130,8 +130,10 @@ esac
 
 # Push
 printf '=== Push ===\n' >&2
-git push
-PUSH_EXIT=$?
+# R-150-1: `set -e` è di nuovo attivo qui (riattivato dal gate IP): senza `||` un push
+# fallito uscirebbe col codice di git, senza messaggio, e il ramo sotto sarebbe morto.
+PUSH_EXIT=0
+git push || PUSH_EXIT=$?
 if [[ $PUSH_EXIT -ne 0 ]]; then
     printf 'fine_task_finale: ERRORE git push fallito (exit %d).\n' "$PUSH_EXIT" >&2
     exit 1
