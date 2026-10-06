@@ -2,6 +2,7 @@
 
 | File | Cosa è cambiato e perché |
 |---|---|
+| .agents/skills/website-service-showcase/SKILL.md | Skill del branch: prescrive geometria WebGL reale con profondità e luce, rilevante per questa rifinitura. |
 | reports/ultimo_report.md | Esito e limiti della revisione grafica. |
 | reports/stato_progetto.md | Fotografia aggiornata; motore GAS invariato. |
 | reports/handoff.md | Dossier con diff, log, test, review e CI. |

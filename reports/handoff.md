@@ -17,21 +17,31 @@
 - Nessuna libreria esterna. Nessun uso di Claude. Motore GAS e sito live invariati.
 - Preview aggiornata non renderizzata nel browser: l'accesso a file locali è bloccato.
 
-## §2 GIT DIFF --STAT (d823e42 → working tree)
+## §2 GIT DIFF --STAT (origin/main...HEAD; base 0221462)
 
 ```
- reports/diff_sessione.md  |  7 +++----
- reports/handoff.md        | 47 ++++++++++++++++++++++-------------------------
- reports/stato_progetto.md |  4 ++--
- reports/ultimo_report.md  | 22 +++++++++++-----------
- 4 files changed, 38 insertions(+), 42 deletions(-)
+ .agents/skills/website-service-showcase/SKILL.md |  27 +++
+ reports/diff_sessione.md                         |  13 +-
+ reports/handoff.md                               | 247 ++++-------------------
+ reports/stato_progetto.md                        |   6 +-
+ reports/ultimo_report.md                         |  42 ++--
+ 5 files changed, 90 insertions(+), 245 deletions(-)
 ```
 
-## §3 GIT LOG --ONELINE (d823e42..HEAD)
+## §3 GIT LOG --ONELINE (origin/main..HEAD)
 
 ```
-Il commit che contiene il dossier viene creato dopo la sua stesura.
+a0e544f docs(tradegasfx): rifinisce scultura WebGL
+d823e42 docs(tradegasfx): allinea formato handoff
+dfe7a21 docs(tradegasfx): documenta preview WebGL 3D
+b68d599 docs(tradegasfx): rifinisce fluidita preview 3D
+234dac7 docs(tradegasfx): aggiorna preview 3D cinematica
+bcfacaa docs(tradegasfx): aggiunge skill vetrina e aggiorna report
+56f41bc docs(tradegasfx): aggiorna esito push e CI
+4208987 docs(tradegasfx): report della preview servizi
 ```
+
+Il commit che aggiorna questo dossier viene creato dopo la sua stesura.
 
 ## §4 VERDETTO DEL REVISORE
 
