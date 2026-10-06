@@ -40,6 +40,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4e5d6db docs(gate-ip-read-locale): fine-task bis — handoff con verdetto #172 e report redatto (gate IP)
 a167949 test(gate-ip): marcatore gasmerge-ip-ok sui due assert nuovi con IP — review #172
 f7c1208 chore(revisore): memoria review #172 — APPROVATO
 bd2aa79 docs(gate-ip-read-locale): fine-task — report, handoff con verdetti #167/#170, diff sessione
@@ -52,7 +53,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-latin/`) resi relativi alla radice del repo, perché il gate B li risolva.
+Verdetti INTEGRALI. Trasformazioni meccaniche, nient'altro: (1) i path assoluti del worktree (`/home/user/wt-latin/`) resi relativi alla radice del repo, perché il gate B li risolva; (2) sulle righe che citano un IP è stato aggiunto in coda il commento HTML `<!-- gasmerge-ip-ok -->`, perché il gate IP non fermi l'handoff.
 
 ### Review #167 — diff staged del fix
 
@@ -125,7 +126,7 @@ Review #172 del diff staged in `/home/user/wt-latin`: 2 file, 2 righe, solo comm
 
 **Elementi del diff esaminati**:
 - `tests/test_unit_gasmerge.py:789` — aggiunge `# gasmerge-ip-ok` in coda a `assert "8.8.8.8" in result.stdout`. Rischio esaminato: il marcatore potrebbe cambiare la semantica del test, oppure allowlistare più del necessario. Non succede: è un commento Python e vale solo per quella riga, perché il filtro `--and --not` della R-147-1 guarda il solo contenuto della riga. — ok
-- `tests/test_unit_hooks.py:2076` — stesso marcatore su `assert b"10.0.0.1" in r.stderr`. Stesso rischio, stesso esito. — ok
+- `tests/test_unit_hooks.py:2076` — stesso marcatore su `assert b"10.0.0.1" in r.stderr`. Stesso rischio, stesso esito. — ok <!-- gasmerge-ip-ok -->
 
 **Prove eseguite**:
 - Ho ricostruito il tree dell'index con `git write-tree` e ci ho passato la stessa `git grep` del gate (`LC_ALL=C`, `--and --not`), poi la rimozione dei 127.x. La regex esatta del gate non trova nessun IP non-loopback non marcato.
@@ -156,7 +157,7 @@ LC_ALL=C.UTF-8: pytest gasmerge+hooks+gate+handoff_check → 278 passed
 
 `gh` non autenticato (CI NON VERIFICATA con la CLI). Mappatura commit → run:
 - `3733a52`, `4b120b1`, `26af320`: pushati insieme, run CI sul push di `26af320` — esito non letto alla scrittura dell'handoff.
-- `4fe5540` (primo fine-task, mai pushato da solo: il gate IP l'ha fermato), `f7c1208`, commit dei marcatori: nessuna run propria, pushati insieme al commit di fine-task.
+- `bd2aa79` (primo fine-task, mai pushato da solo: il gate IP l'ha fermato), `f7c1208`, commit dei marcatori: nessuna run propria, pushati insieme al commit di fine-task.
 - commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
