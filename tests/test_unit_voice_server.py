@@ -348,3 +348,23 @@ def test_token_ok_empty_received():
 
 def test_token_ok_empty_expected():
     assert _token_ok("abc123", "") is False
+
+
+# ---------------------------------------------------------------------------
+# F-mac-3 / R-190-2: `pytest` lanciato senza target deve poter raccogliere il repo
+# ---------------------------------------------------------------------------
+
+def test_collection_dell_intero_repo_non_esplode():
+    """F-mac-3: probe manuali `clients/voice/probe/win_*_test.py` (sys.exit all'import se
+    mancano le dipendenze audio) e lo script `tests/test_unit_kernel.py` (suite + sys.exit
+    all'import) mandavano `pytest` senza target in INTERNALERROR (rc 3). Esclusi dai
+    conftest.py; questo test prende ogni nuovo file raccolto che esploda all'import.
+    Conta l'exit code, non l'ultima riga dell'output (R-190-1)."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    radice = Path(__file__).parent.parent
+    r = subprocess.run([sys.executable, "-m", "pytest", "--collect-only", "-q", "-p",
+                        "no:cacheprovider"], cwd=radice, capture_output=True, text=True,
+                       timeout=300)
+    assert r.returncode in (0, 5), (r.returncode, r.stdout[-2000:], r.stderr[-2000:])
