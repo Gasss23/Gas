@@ -30,7 +30,7 @@
  .claude/perimetro_review.txt       |   1 +
  CLAUDE.md                          |   1 +
  reports/diff_sessione.md           |  15 +++++++++++----
- reports/handoff.md                 | 262 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------
+ reports/handoff.md                 | 263 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------
  reports/setup_agente_non_admin.md  |  60 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/stato_progetto.md          |   2 ++
  reports/ultimo_report.md           |  17 ++++++++++-------
@@ -39,12 +39,13 @@
  scripts/gasmerge.sh                |   5 +++++
  tests/test_unit_gasmerge.py        |  91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_hooks.py           |  22 ++++++++++++++++++++++
- 13 files changed, 479 insertions(+), 52 deletions(-)
+ 13 files changed, 480 insertions(+), 52 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+89c9b64 docs(g3): fine-task bis — verifica esterna #138 integrale, verdetti #188/#189
 c70f5e9 fix(g3): niente falso OK su repo non visibile o non dell'operatore — review #188/#189
 56a179a chore(revisore): memoria review #189 — APPROVATO CON RISERVE
 2b92542 chore(revisore): memoria review #188 — APPROVATO CON RISERVE
@@ -58,7 +59,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-g3/`) resi relativi alla radice del repo, perché il gate B li risolva.
+Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-g3/`) resi relativi alla radice del repo, perché il gate B li risolva. In coda alla #188 c'è l'**Addendum #188**, scritto dal revisore stesso su richiesta (il gate B esigeva 2 citazioni di codice; il testo del verdetto non è stato toccato).
 
 ### Review #186 — diff staged iniziale (BOCCIATO)
 
@@ -173,6 +174,7 @@ Review #188: il fix chiude il caso "token che non vede il repo" (SSO, repo priva
 - Non ho accertato se Gasss23/Gas sia pubblico: la mia `curl` passa dal proxy, che potrebbe aggiungere le credenziali.
 
 Ho aggiunto alla memoria la riga #188 e la lezione «una sonda di visibilità non prova l'identità della risorsa». L'ho committata solo con lo script atomico (`2b92542`); il diff staged è intatto (3 file) e non l'ho committato. File: `.claude/agents/memoria_revisore.md`.
+Addendum #188 — Questi sono i numeri di riga a HEAD `89c9b64`, verificati con `git show HEAD:… | grep -n`. Nella #188 ho esaminato il controllo sul repo, che oggi è `scripts/avviso_token_admin.sh:33`; la #189 lo ha cambiato da `if gh api …` a `RUOLO=$(gh api "repos/{owner}/{repo}" --jq '.permissions.admin')`. Ho esaminato anche il test `tests/test_unit_gasmerge.py:1490` (`test_repo_non_visibile_non_e_ok`, 403/404 su tutto: nessun falso OK). La mutation che avevo provato nella #188 colpiva la riga che oggi è la `:33`.
 
 ### Review #189 — ri-review R-188-1/2
 
