@@ -1912,6 +1912,43 @@ class TestFinaleScript:
             f"T-finale-3b: URL deve contenere SHA lungo {sha!r}, stdout={result.stdout!r}"
         )
 
+    def test_finale_5_push_fallito_exit_1_con_messaggio(self, tmp_path):
+        """T-finale-5 (R-150-1): push rifiutato dal remoto → exit 1 documentato + messaggio,
+        non il codice grezzo di git (con `set -e` attivo il ramo del messaggio era morto)."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(bare)],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feat/test-push-ko"],
+            cwd=work, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push", "-u", "origin", "feat/test-push-ko"],
+            cwd=work, check=True, capture_output=True,
+        )
+        _make_git_commit_env(work, "foo.txt", "x\n", "feat: commit da pushare")
+        hook = bare / "hooks" / "pre-receive"
+        hook.write_text("#!/bin/sh\necho rifiutato >&2\nexit 1\n")
+        hook.chmod(0o755)
+
+        result = _run_finale(work, cwd=work)
+
+        assert result.returncode == 1, (
+            f"T-finale-5: atteso exit 1, got {result.returncode}; stderr={result.stderr!r}"
+        )
+        assert "git push fallito" in result.stderr, (
+            f"T-finale-5: atteso il messaggio del ramo di errore, stderr={result.stderr!r}"
+        )
+        # R-166-2: l'uscita è quella del ramo del push, non la guardia HEAD==@{u} dopo.
+        assert "HEAD (" not in result.stderr, result.stderr
+        assert "URL_HANDOFF" not in result.stdout
+
     def test_finale_4_ip_in_reports_exit_1_no_push(self, tmp_path):
         """T-finale-4: IP in reports/ (committed) → exit 1, nessun nuovo push."""
         bare = tmp_path / "bare"
