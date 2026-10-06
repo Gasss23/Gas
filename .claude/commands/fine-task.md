@@ -279,6 +279,17 @@ contesto:
 Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>
 ```
 
+In più, a fine fetta (PR già aperta, non draft), metti l'etichetta che fa partire il bot di
+verifica su GitHub (V-B, `.github/workflows/verifica-bot.yml`):
+
+```
+gh pr edit <N> --add-label verifica
+```
+
+L'etichetta NON la crea l'agente: la crea l'operatore a setup del bot finito
+(`reports/setup_verifica_bot.md` §D). Se non esiste ancora il comando fallisce: annotalo
+nell'handoff e prosegui, non crearla.
+
 Il protocollo vive in `.claude/verifica_esterna.md` (lo cambia solo l'operatore). Quando arriva
 il verdetto, riportalo all'operatore così com'è (integrale nel prossimo handoff), con i finding
 in sintesi in chat. Per le fette di sicurezza (cancello, firma, sandbox, gate) dire anche

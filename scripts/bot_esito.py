@@ -19,8 +19,10 @@ decide. Esiti (evento → conclusione del check):
                          quello SHA (G-2), un rilancio non lo ritira, serve un commit nuovo;
   RIPROVA   → cancelled  verifica non conclusa (head cambiata, verdetto assente, storico
                          del check illeggibile): nessun giudizio, si può rilanciare;
-  OPERATORE → neutral    macchina del bot: decide l'operatore (neutral non blocca il
-                         ruleset; `gasmerge --auto` vuole solo success).
+  OPERATORE → neutral    macchina del bot con un sì del bot: decide l'operatore (neutral
+                         non blocca il ruleset; `gasmerge --auto` vuole solo success).
+                         R-163-1: si valuta PRIMA il verdetto; solo un APPROVE della
+                         macchina del bot diventa OPERATORE, un NO resta NO.
 """
 from __future__ import annotations
 
@@ -112,6 +114,18 @@ def solo_reports(files: list[str]) -> bool:
     return all(f in LOG_DI_SESSIONE for f in files)
 
 
+def stato_elenco(files: list[str]) -> str:
+    """R-163-1: "ok" se l'elenco dei file è verificabile, "vuoto" (API illeggibile: si può
+    rilanciare) o "troncato" (oltre il limite dell'API: un rilancio non cambia nulla).
+    R-164-3: il conto include i vecchi nomi dei rename, quindi "troncato" può scattare
+    poco prima dei 3000 file reali: errore dal lato prudente (NO, mai un sì)."""
+    if not files:
+        return "vuoto"
+    if len(files) >= MAX_FILE_API:
+        return "troncato"
+    return "ok"
+
+
 def tocca_macchina_bot(files: list[str]) -> bool:
     """True se un path (anche vecchio nome di un rename) cade in MACCHINA_BOT. Elenco
     vuoto o troncato dall'API = non verificabile = sì (prudenza)."""
@@ -163,7 +177,8 @@ def con_storico(evento: str, motivo: str, precedenti: list[str] | None) -> tuple
     """G-2 verifica chat #130: un NO sullo stesso SHA resta NO. `precedenti` sono le
     conclusioni dei check `verifica-bot` già pubblicati dall'App su quello SHA (None =
     storico illeggibile: niente sì alla cieca)."""
-    if evento != "APPROVE":
+    # R-163-1: anche il sì sulla macchina del bot (OPERATORE) cede a un NO precedente.
+    if evento not in ("APPROVE", "OPERATORE"):
         return evento, motivo
     if precedenti is None:
         return "RIPROVA", "storico del check verifica-bot non leggibile: niente sì alla cieca"
@@ -184,11 +199,35 @@ def contiene_segreti(verdetto: object) -> bool:
 
 
 def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
-           doc_only: bool = False, macchina_bot: bool = False) -> tuple[str, str]:
-    """Ritorna (evento, motivo). evento ∈ CONCLUSIONE (vedi docstring del modulo)."""
-    if macchina_bot:
+           doc_only: bool = False, macchina_bot: bool | None = False,
+           elenco: str = "ok") -> tuple[str, str]:
+    """Ritorna (evento, motivo). evento ∈ CONCLUSIONE (vedi docstring del modulo).
+    macchina_bot None = informazione mancante; elenco = stato_elenco() dei file della PR.
+    R-163-1: "non verificabile" (elenco, macchina_bot mancante) non è mai neutral, e la
+    macchina del bot trasforma in OPERATORE solo un APPROVE."""
+    if not head_analizzata or not head_attuale:
+        return "RIPROVA", "head della PR non verificabile"
+    # R-164-1: un NO definitivo (troncato) solo sullo SHA ancora in testa alla PR.
+    if head_analizzata != head_attuale:
+        return "RIPROVA", (f"head cambiata durante la verifica ({head_analizzata[:12]} → "
+                           f"{head_attuale[:12]}): serve una nuova verifica")
+    if elenco == "troncato":
+        return "COMMENT", (f"elenco dei file troncato dall'API (≥{MAX_FILE_API}): PR non"
+                           " verificabile, va spezzata")
+    if elenco != "ok":
+        return "RIPROVA", "elenco dei file della PR non leggibile: serve una nuova verifica"
+    if macchina_bot is None:
+        return "RIPROVA", "non si sa se la PR tocca la macchina del bot: serve una nuova verifica"
+    evento, motivo = _decidi_verdetto(verdetto, head_analizzata, head_attuale, doc_only)
+    if macchina_bot and evento == "APPROVE":
         return "OPERATORE", ("la PR tocca la macchina del bot (workflow, decisione, protocollo):"
-                             " il merge lo decide l'operatore")
+                             f" il merge lo decide l'operatore ({motivo})")
+    return evento, motivo
+
+
+def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: str,
+                     doc_only: bool) -> tuple[str, str]:
+    """Il giudizio sul verdetto, senza la macchina del bot."""
     if not head_analizzata or not head_attuale:
         return "RIPROVA", "head della PR non verificabile"
     if head_analizzata != head_attuale:
@@ -235,7 +274,8 @@ def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
 ETICHETTE = {"APPROVE": "APPROVATA (check verifica-bot: success)",
              "COMMENT": "NON approvata (check verifica-bot: failure, definitivo su questo SHA)",
              "RIPROVA": "verifica NON conclusa (check verifica-bot: cancelled, si può rilanciare)",
-             "OPERATORE": "decide l'operatore (check verifica-bot: neutral)"}
+             "OPERATORE": "sì del bot sulla macchina del bot: decide l'operatore"
+                          " (check verifica-bot: neutral)"}
 
 
 def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
@@ -289,7 +329,8 @@ def cmd_smista() -> int:
                  "--jq", ".[] | .filename, (.previous_filename // empty)")
     files = [r for r in elenco.split("\n") if r]
     _output(head=head, solo_reports="true" if solo_reports(files) else "false",
-            macchina_bot="true" if tocca_macchina_bot(files) else "false")
+            macchina_bot="true" if tocca_macchina_bot(files) else "false",
+            elenco=stato_elenco(files))
     return 0
 
 
@@ -316,8 +357,9 @@ def cmd_esito() -> int:
     repo, pr = os.environ["REPO"], os.environ["PR"]
     head_analizzata = os.environ.get("HEAD_ANALIZZATA", "")
     doc_only = os.environ.get("SOLO_REPORTS") == "true"
-    # Prudenza: tutto ciò che non è esattamente "false" conta come macchina del bot.
-    macchina_bot = os.environ.get("MACCHINA_BOT") != "false"
+    # R-163-1: solo "true"/"false" esatti; tutto il resto = non verificabile (RIPROVA).
+    macchina_bot = {"true": True, "false": False}.get(os.environ.get("MACCHINA_BOT", ""))
+    elenco = os.environ.get("ELENCO_FILE", "")
     grezzo = os.environ.get("VERDETTO_JSON", "")
     try:
         verdetto = json.loads(grezzo) if grezzo.strip() else None
@@ -327,8 +369,9 @@ def cmd_esito() -> int:
         head_attuale = _gh("api", f"repos/{repo}/pulls/{pr}", "--jq", ".head.sha").strip()
     except subprocess.CalledProcessError:
         head_attuale = ""
-    evento, motivo = decidi(verdetto, head_analizzata, head_attuale, doc_only, macchina_bot)
-    if evento == "APPROVE":
+    evento, motivo = decidi(verdetto, head_analizzata, head_attuale, doc_only, macchina_bot,
+                            elenco)
+    if evento in ("APPROVE", "OPERATORE"):
         evento, motivo = con_storico(evento, motivo, _conclusioni_precedenti(
             repo, head_analizzata, os.environ.get("APP_SLUG", "")))
     corpo = componi_corpo(evento, motivo, verdetto, os.environ.get("MODELLO", ""),

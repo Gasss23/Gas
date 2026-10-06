@@ -152,7 +152,17 @@ class TestStorico:
     def test_storico_illeggibile_non_e_un_si(self):
         assert be.con_storico("APPROVE", "ok", None)[0] == "RIPROVA"
 
-    @pytest.mark.parametrize("evento", ["COMMENT", "RIPROVA", "OPERATORE"])
+    # R-163-1: anche il sì sulla macchina del bot cede a un NO precedente sullo SHA.
+    def test_operatore_dopo_un_no_resta_no(self):
+        assert be.con_storico("OPERATORE", "m", ["failure"])[0] == "COMMENT"
+
+    def test_operatore_storico_illeggibile(self):
+        assert be.con_storico("OPERATORE", "m", None)[0] == "RIPROVA"
+
+    def test_operatore_senza_no_resta_operatore(self):
+        assert be.con_storico("OPERATORE", "m", ["neutral"]) == ("OPERATORE", "m")
+
+    @pytest.mark.parametrize("evento", ["COMMENT", "RIPROVA"])
     def test_il_no_non_dipende_dallo_storico(self, evento):
         assert be.con_storico(evento, "m", ["success"]) == (evento, "m")
 
@@ -330,6 +340,59 @@ class TestStorico:
     def test_macchina_bot_vince_su_doc_only(self):
         assert be.decidi(None, SHA, SHA, doc_only=True, macchina_bot=True)[0] == "OPERATORE"
 
+    # R-163-1: prima il verdetto; solo un APPROVE della macchina del bot diventa OPERATORE.
+    def test_bocciato_sulla_macchina_resta_no(self):
+        assert be.decidi(_verdetto("BOCCIATO"), SHA, SHA, macchina_bot=True) == \
+            ("COMMENT", "verdetto BOCCIATO")
+
+    def test_media_sulla_macchina_resta_no(self):
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "MEDIA")])
+        assert be.decidi(v, SHA, SHA, macchina_bot=True)[0] == "COMMENT"
+
+    @pytest.mark.parametrize("verdetto", [None, "APPROVATO"])
+    def test_verifica_non_eseguita_sulla_macchina_si_riprova(self, verdetto):
+        assert be.decidi(verdetto, SHA, SHA, macchina_bot=True)[0] == "RIPROVA"
+
+    def test_head_cambiata_sulla_macchina_si_riprova(self):
+        assert be.decidi(_verdetto(), SHA, SHA2, macchina_bot=True)[0] == "RIPROVA"
+
+    def test_riserve_minori_sulla_macchina_all_operatore(self):
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")])
+        evento, motivo = be.decidi(v, SHA, SHA, macchina_bot=True)
+        assert evento == "OPERATORE" and "senza finding ALTA/MEDIA" in motivo
+
+    # R-163-1: "non verificabile" non è mai neutral.
+    @pytest.mark.parametrize("macchina", [True, False])
+    def test_elenco_troncato_e_un_no(self, macchina):
+        evento, motivo = be.decidi(_verdetto(), SHA, SHA, macchina_bot=macchina, elenco="troncato")
+        assert evento == "COMMENT" and "troncato" in motivo
+
+    @pytest.mark.parametrize("elenco", ["vuoto", "", "OK", "boh"])
+    @pytest.mark.parametrize("macchina", [True, False])
+    def test_elenco_non_leggibile_si_riprova(self, elenco, macchina):
+        evento, motivo = be.decidi(_verdetto(), SHA, SHA, macchina_bot=macchina, elenco=elenco)
+        assert evento == "RIPROVA" and "elenco" in motivo
+
+    def test_elenco_illeggibile_vince_su_doc_only(self):
+        assert be.decidi(None, SHA, SHA, doc_only=True, elenco="vuoto")[0] == "RIPROVA"
+
+    def test_macchina_bot_ignota_si_riprova(self):
+        evento, motivo = be.decidi(_verdetto(), SHA, SHA, macchina_bot=None)
+        assert evento == "RIPROVA" and "macchina del bot" in motivo
+
+    @pytest.mark.parametrize("analizzata,attuale", [("", SHA), (SHA, SHA2)])
+    def test_head_prima_di_elenco(self, analizzata, attuale):
+        # Senza head, o con la head cambiata (R-164-1), non c'è SHA su cui dire NO
+        # definitivo: RIPROVA anche con elenco troncato.
+        assert be.decidi(None, analizzata, attuale, elenco="troncato")[0] == "RIPROVA"
+
+    # R-163-4: gravità fuori formato con prefisso fuori da V/F/R/G (solo _APRE_GRAVE la vede).
+    @pytest.mark.parametrize("riga", ["C-1 (high) — x", "X-2 (grave) — x", "C-3 (severe) — x"])
+    def test_gravita_aperta_in_parentesi_con_prefisso_qualsiasi(self, riga):
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n{riga}\nNON VERIFICATO: -"
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
     def test_citazioni_passate_nei_claim_non_bloccano(self):
         testo = ("VERIFICA ESTERNA #130 — APPROVATO\n"
                  "CLAIM VERIFICATI: V-1 (MEDIA) della verifica #127 CHIUSA — VERO\n"
@@ -472,7 +535,8 @@ esac
 """)
     gh.chmod(0o755)
     env = dict(os.environ, PATH=f"{fake}:{os.environ['PATH']}", REPO="o/r", PR="7",
-               GITHUB_OUTPUT=str(tmp_path / "out"), MACCHINA_BOT="false", APP_SLUG=SLUG)
+               GITHUB_OUTPUT=str(tmp_path / "out"), MACCHINA_BOT="false", ELENCO_FILE="ok",
+               APP_SLUG=SLUG)
     return env
 
 
@@ -504,6 +568,17 @@ class TestComandi:
         assert _run("smista", env).returncode == 0
         out = (tmp_path / "out").read_text()
         assert f"head={SHA}" in out and "solo_reports=true" in out and "macchina_bot=false" in out
+        assert "elenco=ok" in out
+
+    def test_smista_elenco_vuoto(self, tmp_path):
+        env = _gh_finto(tmp_path, SHA, "")
+        assert _run("smista", env).returncode == 0
+        assert "elenco=vuoto" in (tmp_path / "out").read_text()
+
+    def test_smista_elenco_troncato(self, tmp_path):
+        env = _gh_finto(tmp_path, SHA, "gas.py\n" * be.MAX_FILE_API)
+        assert _run("smista", env).returncode == 0
+        assert "elenco=troncato" in (tmp_path / "out").read_text()
 
     def test_smista_rename_da_fuori(self, tmp_path):
         # Rename gas.py → reports/x.md: il vecchio nome conta.
@@ -516,9 +591,11 @@ class TestComandi:
         _run("smista", env)
         assert "macchina_bot=true" in (tmp_path / "out").read_text()
 
-    @pytest.mark.parametrize("valore", [None, "", "true", "False", "no"])
-    def test_esito_macchina_bot_prudente(self, tmp_path, valore):
-        # Solo "false" esatto lascia approvare: variabile assente o strana = macchina del bot.
+    @pytest.mark.parametrize("valore,attesa", [
+        (None, "cancelled"), ("", "cancelled"), ("False", "cancelled"), ("no", "cancelled"),
+        ("true", "neutral"), ("false", "success")])
+    def test_esito_macchina_bot_prudente(self, tmp_path, valore, attesa):
+        # R-163-1: solo "true"/"false" esatti; variabile assente o strana = non verificabile.
         env = _gh_finto(tmp_path, SHA)
         env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()))
         if valore is None:
@@ -526,7 +603,32 @@ class TestComandi:
         else:
             env["MACCHINA_BOT"] = valore
         assert _run("esito", env).returncode == 0
-        assert _conclusione(tmp_path) == "neutral"
+        assert _conclusione(tmp_path) == attesa
+
+    def test_esito_bocciato_sulla_macchina_e_failure(self, tmp_path):
+        env = _gh_finto(tmp_path, SHA)
+        env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto("BOCCIATO")),
+                   MACCHINA_BOT="true")
+        assert _run("esito", env).returncode == 0
+        assert _conclusione(tmp_path) == "failure"
+
+    def test_esito_macchina_dopo_un_no_resta_failure(self, tmp_path):
+        env = _gh_finto(tmp_path, SHA, precedenti=[(SLUG, "failure")])
+        env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()), MACCHINA_BOT="true")
+        assert _run("esito", env).returncode == 0
+        assert _conclusione(tmp_path) == "failure"
+
+    @pytest.mark.parametrize("elenco,attesa", [
+        (None, "cancelled"), ("vuoto", "cancelled"), ("troncato", "failure")])
+    def test_esito_elenco_non_verificabile(self, tmp_path, elenco, attesa):
+        env = _gh_finto(tmp_path, SHA)
+        env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()), MACCHINA_BOT="true")
+        if elenco is None:
+            env.pop("ELENCO_FILE")
+        else:
+            env["ELENCO_FILE"] = elenco
+        assert _run("esito", env).returncode == 0
+        assert _conclusione(tmp_path) == attesa
 
     def test_esito_approva_legato_allo_sha(self, tmp_path):
         env = _gh_finto(tmp_path, SHA)
@@ -690,6 +792,9 @@ class TestWorkflow:
     def test_macchina_bot_passata_a_esito(self, wf):
         env = wf["jobs"]["esito"]["steps"][-1]["env"]
         assert env["MACCHINA_BOT"] == "${{ needs.smista.outputs.macchina_bot }}"
+        # R-163-1: lo stato dell'elenco viaggia separato dalla macchina del bot.
+        assert env["ELENCO_FILE"] == "${{ needs.smista.outputs.elenco }}"
+        assert wf["jobs"]["smista"]["outputs"]["elenco"] == "${{ steps.smista.outputs.elenco }}"
 
     def test_trigger_solo_pull_request_target(self, wf):
         assert list(_on(wf)) == ["pull_request_target"]
@@ -777,7 +882,8 @@ class TestWorkflow:
     def test_condizioni_dei_job(self, wf):
         # V-3 verifica esterna #130 bis: un `if: always()` farebbe partire Claude e l'App
         # anche su PR escluse da smista (fork, autore estraneo, senza etichetta, draft).
-        assert wf["jobs"]["verifica"]["if"] == "needs.smista.outputs.solo_reports == 'false'"
+        assert wf["jobs"]["verifica"]["if"] == ("needs.smista.outputs.solo_reports == 'false'"
+                                                " && needs.smista.outputs.elenco == 'ok'")
         assert wf["jobs"]["esito"]["if"] == "${{ !cancelled() && needs.smista.result == 'success' }}"
 
     def test_sha_verificato_e_quello_di_smista(self, wf):

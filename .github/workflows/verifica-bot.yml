@@ -25,7 +25,8 @@ name: verifica-bot
 #
 # Dosaggio dei costi (abbonamento, quota condivisa con lo sviluppo):
 # - le PR che toccano la macchina del bot (MACCHINA_BOT in bot_esito.py) ricevono la
-#   verifica ma MAI il success: check neutral, il merge lo decide l'operatore (R-158-1);
+#   verifica ma MAI il success: un sì del bot diventa neutral e il merge lo decide
+#   l'operatore (R-158-1); un NO resta failure (R-163-1);
 # - parte SOLO con l'etichetta `verifica` (l'agente la mette a fine fetta) e a ogni push
 #   successivo sulla PR etichettata;
 # - una PR che tocca solo i log di sessione (lista bianca LOG_DI_SESSIONE, G-4) passa
@@ -58,6 +59,7 @@ jobs:
       head: ${{ steps.smista.outputs.head }}
       solo_reports: ${{ steps.smista.outputs.solo_reports }}
       macchina_bot: ${{ steps.smista.outputs.macchina_bot }}
+      elenco: ${{ steps.smista.outputs.elenco }}
     steps:
       - name: Checkout di main (script fidati)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -74,7 +76,9 @@ jobs:
 
   verifica:
     needs: smista
-    if: needs.smista.outputs.solo_reports == 'false'
+    # R-164-2: con l'elenco dei file vuoto o troncato il verdetto verrebbe scartato
+    # (esito cancelled/failure): niente LLM, niente quota spesa.
+    if: needs.smista.outputs.solo_reports == 'false' && needs.smista.outputs.elenco == 'ok'
     runs-on: ubuntu-latest
     environment: verifica-bot
     timeout-minutes: 45
@@ -250,6 +254,7 @@ jobs:
           HEAD_ANALIZZATA: ${{ needs.smista.outputs.head }}
           SOLO_REPORTS: ${{ needs.smista.outputs.solo_reports }}
           MACCHINA_BOT: ${{ needs.smista.outputs.macchina_bot }}
+          ELENCO_FILE: ${{ needs.smista.outputs.elenco }}
           VERDETTO_JSON: ${{ needs.verifica.outputs.verdetto }}
           MODELLO: ${{ needs.verifica.outputs.modello }}
           MODELLI_FALLITI: ${{ needs.verifica.outputs.falliti }}
