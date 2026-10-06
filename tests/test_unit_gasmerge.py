@@ -1472,8 +1472,26 @@ class TestAvvisoTokenAdmin:
 
     @pytest.mark.parametrize("codice", ["403", "404"])
     def test_token_senza_administration_ok(self, tmp_path, codice):
-        r = _run_avviso_g3(tmp_path, f"echo 'gh: Resource not accessible (HTTP {codice})' >&2; exit 1")
+        # /keys negato, ma il repo è visibile → il token non amministra.
+        r = _run_avviso_g3(tmp_path, 'case "$*" in *"/keys"*) '
+                           f"echo 'gh: Resource not accessible (HTTP {codice})' >&2; exit 1 ;; "
+                           '*) echo true; exit 0 ;; esac')
         assert r.returncode == 0 and "OK" in r.stderr and "AVVISO" not in r.stderr, r.stderr
+
+    def test_repo_visibile_ma_non_dell_operatore_non_e_ok(self, tmp_path):
+        """R-188-1: GH_REPO/remote verso un repo altrui pubblico: /keys 404, repo 200 con
+        permissions.admin false → niente OK."""
+        r = _run_avviso_g3(tmp_path, 'case "$*" in *"/keys"*) '
+                           "echo 'gh: Not Found (HTTP 404)' >&2; exit 1 ;; "
+                           '*) echo false; exit 0 ;; esac')
+        assert r.returncode == 0 and "non verificabili" in r.stderr and "OK" not in r.stderr, r.stderr
+
+    @pytest.mark.parametrize("codice", ["403", "404"])
+    def test_repo_non_visibile_non_e_ok(self, tmp_path, codice):
+        """V-1 verifica esterna #138: repo sbagliato (fork, GH_REPO) o blocco SSO → anche il
+        repo risponde errore: niente falso OK."""
+        r = _run_avviso_g3(tmp_path, f"echo 'gh: Not Found (HTTP {codice})' >&2; exit 1")
+        assert r.returncode == 0 and "non verificabili" in r.stderr and "OK" not in r.stderr, r.stderr
 
     @pytest.mark.parametrize("errore", ["error connecting to api.github.com",
                                         "gh: Server Error (HTTP 500)", "",

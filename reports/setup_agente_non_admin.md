@@ -49,7 +49,9 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
 **Cosa NON copre il controllo:** prova solo il permesso Administration. Che Workflows,
 Environments, Secrets e Variables siano davvero "No access" lo controlli tu alla creazione
 del token (passo A.4). Un token con Administration in sola lettura dà comunque l'avviso
-(errore dal lato prudente).
+(errore dal lato prudente). L'"OK" vale solo per il TUO repo: il controllo esige anche che il
+repo risolto da `gh` sia uno in cui il tuo utente ha ruolo admin (un token di un utente
+diverso, o un repo sbagliato, dà "non verificabile").
 
 ## D. Da NON fare
 
