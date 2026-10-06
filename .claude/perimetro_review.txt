@@ -25,6 +25,7 @@ scripts/fine_task_finale.sh
 scripts/commit_memoria_revisore.sh
 scripts/gasmerge.sh
 scripts/bot_esito.py
+scripts/avviso_token_admin.sh
 # Runtime e catena di fornitura (V-D / R-138-5 / V-2 verifiche esterne PR #119-#120,
 # autorizzato dall'operatore 2026-10-04): system prompt iniettato a ogni chiamata,
 # dipendenze installate in CI e in produzione, tool di ingest, client vocali.

@@ -1437,3 +1437,76 @@ class TestMergeAutomatico:
         fake_bin.mkdir()
         r = _run(work, fake_bin, args=args)
         assert r.returncode == 2 and "uso: gasmerge [--auto]" in r.stderr, r.stderr
+
+
+# ---------------------------------------------------------------------------
+# G-3 (agente non admin) — fase "solo avviso": scripts/avviso_token_admin.sh
+# ---------------------------------------------------------------------------
+
+AVVISO_G3 = GASMERGE.parent / "avviso_token_admin.sh"
+
+
+def _run_avviso_g3(tmp_path: Path, gh_body: str | None) -> subprocess.CompletedProcess:
+    """gh_body = corpo bash del gh finto (None = gh assente dal PATH)."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    for b in ("bash", "grep", "printf", "env"):
+        real = shutil.which(b)
+        if real:
+            (fake_bin / b).symlink_to(real)
+    if gh_body is not None:
+        (fake_bin / "gh").write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"$GH_LOG\"\n"
+                                     + gh_body + "\n")
+        (fake_bin / "gh").chmod(0o755)
+    env = {"PATH": str(fake_bin), "GH_LOG": str(tmp_path / "gh.log"), "HOME": str(tmp_path)}
+    return subprocess.run([shutil.which("bash"), str(AVVISO_G3)], env=env,
+                          capture_output=True, text=True, cwd=tmp_path)
+
+
+class TestAvvisoTokenAdmin:
+    def test_token_che_amministra_avvisa(self, tmp_path):
+        r = _run_avviso_g3(tmp_path, "exit 0")
+        assert r.returncode == 0 and "AVVISO G-3" in r.stderr and "AMMINISTRA" in r.stderr, r.stderr
+        # La sonda è l'endpoint che richiede Administration, non permissions.admin (ruolo).
+        assert "repos/{owner}/{repo}/keys" in (tmp_path / "gh.log").read_text()
+
+    @pytest.mark.parametrize("codice", ["403", "404"])
+    def test_token_senza_administration_ok(self, tmp_path, codice):
+        r = _run_avviso_g3(tmp_path, f"echo 'gh: Resource not accessible (HTTP {codice})' >&2; exit 1")
+        assert r.returncode == 0 and "OK" in r.stderr and "AVVISO" not in r.stderr, r.stderr
+
+    @pytest.mark.parametrize("errore", ["error connecting to api.github.com",
+                                        "gh: Server Error (HTTP 500)", "",
+                                        "gh: API rate limit exceeded for user (HTTP 403)"])
+    def test_errore_non_verificabile(self, tmp_path, errore):
+        r = _run_avviso_g3(tmp_path, f"echo '{errore}' >&2; exit 1")
+        assert r.returncode == 0 and "non verificabili" in r.stderr, r.stderr
+
+    def test_gh_assente(self, tmp_path):
+        r = _run_avviso_g3(tmp_path, None)
+        assert r.returncode == 0 and "gh assente" in r.stderr, r.stderr
+
+    def test_gasmerge_chiama_l_avviso_senza_bloccare(self, tmp_path):
+        """Solo avviso: con un token che amministra, gasmerge prosegue (qui fino al prompt)."""
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "gbin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)          # il ramo di default risponde 0 → "amministra"
+        r = _run_with_stdin(work, fake_bin, stdin_data="\n")
+        assert "AVVISO G-3" in r.stderr and "AMMINISTRA" in r.stderr, r.stderr
+        assert "=== PR #123" in r.stdout, r.stdout   # è andato avanti
+
+    def test_gasmerge_via_symlink_trova_l_avviso(self, tmp_path):
+        """R-186-1: l'uso reale è il symlink ~/bin/gasmerge; l'avviso va trovato lo stesso."""
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "gbin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        link_dir = tmp_path / "home_bin"
+        link_dir.mkdir()
+        (link_dir / "gasmerge").symlink_to(GASMERGE)
+        env = {**os.environ, "GAS_REPO_DIR": str(work),
+               "PATH": str(fake_bin) + ":" + os.environ.get("PATH", "")}
+        r = subprocess.run(["bash", str(link_dir / "gasmerge"), "123"], env=env, input="\n",
+                           capture_output=True, text=True, cwd=tmp_path)
+        assert "AMMINISTRA" in r.stderr and "assente" not in r.stderr, r.stderr

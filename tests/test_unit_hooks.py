@@ -1992,6 +1992,28 @@ class TestFinaleScript:
         assert "HEAD (" not in result.stderr, result.stderr
         assert "URL_HANDOFF" not in result.stdout
 
+    def test_finale_g3_avviso_token_admin_non_blocca(self, tmp_path):
+        """G-3 (solo avviso): con un gh il cui token amministra il repo, fine_task_finale
+        stampa l'avviso PRIMA del push e prosegue comunque (exit 0, URL stampato)."""
+        bare = tmp_path / "bare"
+        work = tmp_path / "work"
+        _init_repo(work)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)],
+                       cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "origin", "main"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "feat/g3"], cwd=work, check=True, capture_output=True)
+        subprocess.run(["git", "push", "-u", "origin", "feat/g3"], cwd=work, check=True,
+                       capture_output=True)
+        gh_bin = tmp_path / "ghbin"
+        gh_bin.mkdir()
+        (gh_bin / "gh").write_text("#!/usr/bin/env bash\nexit 0\n")
+        (gh_bin / "gh").chmod(0o755)
+        result = _run_finale(work, extra_env={"PATH": f"{gh_bin}:{os.environ['PATH']}"}, cwd=work)
+        assert result.returncode == 0, result.stderr
+        assert "AVVISO G-3" in result.stderr and "AMMINISTRA" in result.stderr, result.stderr
+        assert result.stderr.index("AVVISO G-3") < result.stderr.index("=== Push ===")
+
     def test_finale_4_ip_in_reports_exit_1_no_push(self, tmp_path):
         """T-finale-4: IP in reports/ (committed) → exit 1, nessun nuovo push."""
         bare = tmp_path / "bare"

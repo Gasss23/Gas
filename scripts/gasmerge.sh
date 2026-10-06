@@ -10,6 +10,9 @@ set -euo pipefail
 # prima di iniziare l'esecuzione, quindi un pull successivo non può più
 # corrompere la corsa in atto.
 main() {
+# G-3 / R-186-1: path dello script d'avviso risolto PRIMA del cd e seguendo i symlink
+# (`~/bin/gasmerge` è un symlink: BASH_SOURCE da solo puntava a ~/bin).
+G3="$(dirname "$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")")/avviso_token_admin.sh"
 # Fetta B2: `gasmerge --auto N` = merge senza prompt, SOLO se l'App di verifica (quella che
 # il ruleset di main richiede) ha pubblicato il check verifica-bot in success sulla head.
 AUTO=0
@@ -34,6 +37,8 @@ GASPR_JSON=$(mktemp "${TMPDIR:-/tmp}/gaspr.XXXXXX") || { echo "ERRORE: mktemp fa
 export GASPR_JSON
 trap 'rm -f "$GASPR_JSON"' EXIT
 git fetch --prune origin >/dev/null
+# G-3: avviso (mai blocco, per ora) se il token gh in uso amministra il repo.
+if [ -r "$G3" ]; then bash "$G3" || true; else echo "AVVISO G-3: $G3 assente — controllo saltato" >&2; fi
 
 gh pr view "$PR" --json headRefName,title,state > "$GASPR_JSON"
 BRANCH=$(jq -r .headRefName "$GASPR_JSON")
