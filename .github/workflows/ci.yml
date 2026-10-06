@@ -23,7 +23,12 @@ on: push
 jobs:
   unit-suite:
     runs-on: ubuntu-latest
-    # Nessun `env:` di provider e nessun blocco `secrets:` — di proposito.
+    env:
+      # V-3 verifica esterna #134: i test del gate IP/review in locale UTF-8 qui DEVONO
+      # girare (ubuntu ha C.UTF-8): se il locale mancasse, FAIL invece di SKIP silenzioso.
+      GAS_TEST_LOCALE_UTF8_ATTESO: "1"
+    # Nessuna variabile di provider (sopra solo un flag dei test) e nessun blocco
+    # `secrets:` — di proposito.
     steps:
       - name: Checkout
         uses: actions/checkout@v4

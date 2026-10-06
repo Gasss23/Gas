@@ -148,6 +148,18 @@ def _locale_utf8() -> str | None:
     return None
 
 
+def _esigi_locale_utf8() -> str:
+    """V-3 verifica esterna #134: dove il locale UTF-8 è garantito (CI,
+    GAS_TEST_LOCALE_UTF8_ATTESO=1) un locale mancante è un FAIL, non uno SKIP che
+    lascerebbe la CI verde senza aver provato nulla."""
+    loc = _locale_utf8()
+    if loc is None:
+        if os.environ.get("GAS_TEST_LOCALE_UTF8_ATTESO") == "1":
+            pytest.fail("locale UTF-8 atteso (GAS_TEST_LOCALE_UTF8_ATTESO=1) ma assente")
+        pytest.skip("nessun locale UTF-8 sul sistema")
+    return loc
+
+
 def _run(repo: Path, fake_bin: Path, args: list[str] | None = None) -> subprocess.CompletedProcess:
     env = {
         **os.environ,
@@ -464,9 +476,7 @@ class TestPerimetroPromemoria:
     def test_path_non_utf8_non_nasconde_il_motore(self, tmp_path, monkeypatch):
         """R-167-1: in locale UTF-8 un path che finisce con un byte non UTF-8 si mangiava
         il newline in `read` e il file di motore seguente spariva dal promemoria."""
-        loc = _locale_utf8()
-        if loc is None:
-            pytest.skip("nessun locale UTF-8 sul sistema")
+        loc = _esigi_locale_utf8()
         monkeypatch.setenv("LC_ALL", loc)
         # "a\udce9" = byte 0xE9 nel nome (surrogateescape del filesystem POSIX).
         work = self._repo(tmp_path, "gas.py\n", {"a\udce9": "x\n", "gas.py": "y\n"})
@@ -774,9 +784,7 @@ class TestIPFileBinariENonUtf8:
         """V-2 #125 (discriminazione su glibc): in locale UTF-8 un byte non UTF-8 ATTACCATO
         all'IP non è un separatore per git grep/grep e l'IP sparisce (fail-open). Solo
         LC_ALL=C nel gate lo vede: togliendolo questo test fallisce."""
-        loc = _locale_utf8()
-        if loc is None:
-            pytest.skip("nessun locale UTF-8 sul sistema")
+        loc = _esigi_locale_utf8()
         monkeypatch.setenv("LC_ALL", loc)
         work = self._branch_con_bytes(tmp_path, data)
         fake_bin = tmp_path / "bin"
