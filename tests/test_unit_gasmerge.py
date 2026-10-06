@@ -160,6 +160,20 @@ def _esigi_locale_utf8() -> str:
     return loc
 
 
+def _esigi_nomi_non_utf8(cartella: Path) -> None:
+    """Il filesystem accetta un nome di file con un byte non UTF-8? APFS (macOS) no:
+    rifiuta con EILSEQ e il test non potrebbe nemmeno creare il caso → SKIP. Dove il
+    caso è garantito (CI Linux, GAS_TEST_LOCALE_UTF8_ATTESO=1) un rifiuto è un FAIL."""
+    sonda = cartella / "sonda_nome_\udce9"
+    try:
+        sonda.write_text("x")
+    except (OSError, UnicodeEncodeError) as e:
+        if os.environ.get("GAS_TEST_LOCALE_UTF8_ATTESO") == "1":
+            pytest.fail(f"nomi di file non UTF-8 attesi ma rifiutati dal filesystem: {e}")
+        pytest.skip(f"il filesystem rifiuta nomi di file non UTF-8 (es. APFS): {e}")
+    sonda.unlink()
+
+
 def _run(repo: Path, fake_bin: Path, args: list[str] | None = None) -> subprocess.CompletedProcess:
     env = {
         **os.environ,
@@ -478,6 +492,7 @@ class TestPerimetroPromemoria:
         il newline in `read` e il file di motore seguente spariva dal promemoria."""
         loc = _esigi_locale_utf8()
         monkeypatch.setenv("LC_ALL", loc)
+        _esigi_nomi_non_utf8(tmp_path)
         # "a\udce9" = byte 0xE9 nel nome (surrogateescape del filesystem POSIX).
         work = self._repo(tmp_path, "gas.py\n", {"a\udce9": "x\n", "gas.py": "y\n"})
         sez = self._sezione(tmp_path, work)
