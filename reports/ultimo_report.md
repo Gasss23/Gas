@@ -1,4 +1,4 @@
-# ULTIMO REPORT — 2026-10-06 — TradeGasFX, ombre e resa 3D
+# ULTIMO REPORT — 2026-10-06 — TradeGasFX, layout alternato e animazione
 
 ## Decisioni umane richieste
 
@@ -8,12 +8,14 @@
 
 ## Esito
 
-- Mantenuti i tre globi e le fasce metalliche; la rotazione e il passaggio laterale restano guidati dallo scroll. Rimossa la rotazione simulata con viste statiche.
-- Aggiunta una shadow map WebGL che proietta sul fondale l'ombra aggiornata con la rotazione, con filtro PCF 3×3. Il codice prevede il fallback senza ombre se il dispositivo non supporta il framebuffer.
-- Conservati i riflessi da studio, lo shading metallico GGX e Fresnel/trasmissione per il vetro. La skill `.agents/skills/website-service-showcase/SKILL.md` ora ricorda di aggiungere un'ombra proiettata per dare profondità.
-- Nessun uso di Claude. Nessuna modifica al sito live e nessuna libreria esterna.
+- Alternata la posizione dei servizi: 01 a sinistra, 02 a destra, 03 a sinistra, mantenendo i testi.
+- Conservato il giro principale controllato dallo scroll. Aggiunto un movimento lento e indipendente a ciascuno dei tre globi, con lieve deriva, rotazione delle ghiere, pulsazione dei nuclei e riflesso dorato in movimento; ombre e riflessi seguono l'animazione. `prefers-reduced-motion` ferma il movimento.
+- Animazione realizzata sulla geometria WebGL già presente, così resta interattiva e sincronizzata allo scroll; nessun video o nuovo modello Blender.
+- Per un editor 3D visuale: Spline permette di incorporare scene web interattive. Higgsfield 3D Jutsu esporta GLB animati o MP4; il video non conserverebbe la rotazione sincronizzata allo scroll. Nessun account o servizio esterno usato.
+- Aggiornata in una sola frase la skill `.agents/skills/website-service-showcase/SKILL.md` con il principio di animare i componenti in modo discreto.
+- Nessun uso di Claude. Nessuna modifica al sito live e nessuna nuova dipendenza.
 - Preview: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`.
-- Verifica: controllo sintattico Node dello script inline superato. La preview locale non è stata renderizzata nel browser disponibile, quindi la nuova resa visiva non è verificata; nessun test automatico eseguito.
+- Verifica: controllo sintattico Node dello script inline superato. La preview locale non è stata renderizzata nel browser disponibile, quindi il risultato visivo dell'animazione va ancora rivisto; nessun test automatico eseguito.
 
 ## Limiti aperti
 

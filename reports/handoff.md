@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-06 — TradeGasFX, ombre e resa 3D
+**Sessione:** 2026-10-06 — TradeGasFX, layout alternato e animazione 3D
 
 ## §0 DECISIONI UMANE RICHIESTE
 
@@ -10,13 +10,14 @@
 
 ## §1 ESITO DELLA SONDA
 
-- Mantenuti i tre globi e le fasce metalliche della preview; rotazione e traiettoria laterale restano legate allo scroll.
-- Aggiunta una shadow map WebGL che proietta sul fondale un'ombra filtrata PCF 3×3 e aggiornata a ogni rotazione. Se framebuffer o shader dedicato non sono disponibili, la scena mantiene la rotazione senza ombre.
-- Restano riflessi da studio, shading metallico GGX e Fresnel/trasmissione del vetro fumé; nessuna immagine statica simula la rotazione.
-- Aggiornata con una sola frase la skill `website-service-showcase`, per ricordare l'uso di ombre proiettate.
-- Nessuna modifica al motore GAS o al sito live. Nessuna libreria esterna e nessun uso di Claude.
+- I servizi sono ora disposti sinistra-destra-sinistra, mantenendo i testi.
+- Conservato il giro principale controllato dallo scroll; i tre globi e le ghiere hanno una rotazione lenta indipendente, lieve deriva e respirazione. I nuclei pulsano e un riflesso dorato scorre sulle fasce; ombre e riflessi restano agganciati alla geometria animata.
+- `prefers-reduced-motion` ferma l'animazione. Nessuna libreria esterna; nessuna immagine statica simula il giro.
+- Aggiornata con una frase sintetica la skill `website-service-showcase`, per consigliare movimento indipendente discreto dei componenti 3D.
+- Nessuna modifica al motore GAS o al sito live; nessun uso di Claude e nessun account esterno usato.
+- Per un editor visuale, Spline offre il Viewer incorporabile; Higgsfield 3D Jutsu esporta GLB animati o MP4. Per questa preview è stata animata la geometria WebGL già presente per conservare la rotazione sincronizzata allo scroll.
 - Preview: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`.
-- Verifica: controllo sintattico Node dello script inline superato. La preview locale non è stata renderizzata nel browser disponibile; l'effetto visivo delle ombre resta da verificare. Nessun test automatico eseguito.
+- Verifica: controllo sintattico Node dello script inline superato. La preview locale non è stata renderizzata nel browser disponibile; il risultato visivo dell'animazione resta da rivedere. Nessun test automatico eseguito.
 
 ## §2 GIT DIFF --STAT (origin/main...HEAD; base 0221462)
 
@@ -25,10 +26,10 @@ Path set dichiarato al gate; il totale esclude la allowlist `reports/ultima_risp
 ```
 .agents/skills/website-service-showcase/SKILL.md |  27 +++
 reports/diff_sessione.md                         |  13 +-
-reports/handoff.md                               | 260 +++++------------------
+reports/handoff.md                               | 262 +++++------------------
 reports/stato_progetto.md                        |   6 +-
-reports/ultimo_report.md                         |  43 ++--
-5 files changed, 107 insertions(+), 242 deletions(-)
+reports/ultimo_report.md                         |  45 ++--
+5 files changed, 111 insertions(+), 242 deletions(-)
 ```
 
 Output completo effettivo di `git diff --stat 0221462..HEAD`, allowlist inclusa:
@@ -36,11 +37,11 @@ Output completo effettivo di `git diff --stat 0221462..HEAD`, allowlist inclusa:
 ```
 .agents/skills/website-service-showcase/SKILL.md |  27 +++
 reports/diff_sessione.md                         |  13 +-
-reports/handoff.md                               | 260 +++++------------------
+reports/handoff.md                               | 262 +++++------------------
 reports/stato_progetto.md                        |   6 +-
 reports/ultima_risposta.md                       |  12 +-
-reports/ultimo_report.md                         |  43 ++--
-6 files changed, 118 insertions(+), 243 deletions(-)
+reports/ultimo_report.md                         |  45 ++--
+6 files changed, 122 insertions(+), 243 deletions(-)
 ```
 
 `reports/ultima_risposta.md` appartiene al workflow autorizzato `scrivi rep`; il gate la rimuove dal confronto dei percorsi, ma l'output integrale sopra la include.
@@ -48,6 +49,7 @@ reports/ultimo_report.md                         |  43 ++--
 ## §3 GIT LOG --ONELINE (origin/main..HEAD)
 
 ```
+72d75ff docs(tradegasfx): documenta ombre 3D
 3b5e285 docs(tradegasfx): rifinisce resa 3D e movimento
 83366e8 docs(tradegasfx): ripristina visibilita oggetto 3D
 2b479d5 chore(scrivi-rep): ultima risposta salvata
