@@ -58,22 +58,27 @@ class TestDecidi:
     def test_bocciato(self):
         assert be.decidi(_verdetto("BOCCIATO"), SHA, SHA) == ("COMMENT", "verdetto BOCCIATO")
 
+    # Verifica non conclusa: nessun giudizio, si può rilanciare (non è un NO definitivo, G-2).
     def test_head_cambiata(self):
         evento, motivo = be.decidi(_verdetto(), SHA, SHA2)
-        assert evento == "COMMENT" and "head cambiata" in motivo
+        assert evento == "RIPROVA" and "head cambiata" in motivo
 
     @pytest.mark.parametrize("analizzata,attuale", [("", SHA), (SHA, ""), ("", "")])
     def test_head_vuota(self, analizzata, attuale):
-        assert be.decidi(_verdetto(), analizzata, attuale)[0] == "COMMENT"
+        assert be.decidi(_verdetto(), analizzata, attuale)[0] == "RIPROVA"
 
     def test_head_cambiata_blocca_anche_doc_only(self):
-        assert be.decidi(None, SHA, SHA2, doc_only=True)[0] == "COMMENT"
+        assert be.decidi(None, SHA, SHA2, doc_only=True)[0] == "RIPROVA"
 
     def test_doc_only_senza_verdetto(self):
         assert be.decidi(None, SHA, SHA, doc_only=True)[0] == "APPROVE"
 
+    @pytest.mark.parametrize("verdetto", [None, "APPROVATO", []])
+    def test_verifica_non_eseguita_si_riprova(self, verdetto):
+        assert be.decidi(verdetto, SHA, SHA)[0] == "RIPROVA"
+
     @pytest.mark.parametrize("verdetto", [
-        None, "APPROVATO", [], {},
+        {},
         {"verdetto": "APPROVATO", "finding": []},                       # testo mancante
         {"verdetto": "APPROVATO", "finding": [], "testo": "   "},        # testo vuoto
         {"verdetto": "APPROVATO", "testo": "VERIFICA ESTERNA — APPROVATO"},  # finding mancante
@@ -81,6 +86,75 @@ class TestDecidi:
     ])
     def test_verdetto_illeggibile(self, verdetto):
         assert be.decidi(verdetto, SHA, SHA)[0] == "COMMENT"
+
+    def test_eventi_tutti_mappati_a_una_conclusione(self):
+        assert be.CONCLUSIONE == {"APPROVE": "success", "COMMENT": "failure",
+                                  "RIPROVA": "cancelled", "OPERATORE": "neutral"}
+        assert set(be.ETICHETTE) == set(be.CONCLUSIONE)
+
+    # V-2 seconda verifica #130 + R-161-1: la riga del verdetto è nel formato esatto.
+    @pytest.mark.parametrize("riga", [
+        "VERIFICA ESTERNA #1 — NON-APPROVATO",
+        "VERIFICA ESTERNA #1 — NON È APPROVATO",
+        "VERIFICA ESTERNA #1 — NON risulta APPROVATO",
+        "VERIFICA ESTERNA #1 — NO APPROVATO",
+        "VERIFICA ESTERNA #1 — NEGATO / APPROVATO",
+        "VERIFICA ESTERNA #1 — non approvo: APPROVATO",
+        "VERIFICA ESTERNA #1 — APPROVATO (ma io lo boccerei)",
+        "VERIFICA ESTERNA — metodo seguito",
+    ])
+    def test_riga_verdetto_fuori_formato(self, riga):
+        testo = f"{riga}\nFINDING: nessuno\nNON VERIFICATO: -"
+        evento, motivo = be.decidi(_verdetto("APPROVATO", [], testo), SHA, SHA)
+        assert evento == "COMMENT" and ("formato" in motivo or "coincide" in motivo), motivo
+
+    @pytest.mark.parametrize("riga", [
+        "VERIFICA ESTERNA #130 — APPROVATO", "VERIFICA ESTERNA PR #7 — APPROVATO",
+        "VERIFICA ESTERNA 130 – APPROVATO.", "Verifica esterna: approvato",
+        "## VERIFICA ESTERNA #1 — APPROVATO", "> **VERIFICA ESTERNA #1 - APPROVATO**",
+    ])
+    def test_riga_verdetto_nel_formato(self, riga):
+        testo = f"{riga}\nFINDING: nessuno\nNON VERIFICATO: -"
+        assert be.decidi(_verdetto("APPROVATO", [], testo), SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (CRITICAL) — x", "F-1 HIGH — x", "V-1 — blocker", "V-1 — importante: x",
+        "G-2 (medium) — x", "R-3 — severe", "V-1 (Bloccante) — x", "Nota: resta un HIGH",
+    ])
+    def test_gravita_fuori_vocabolario(self, riga):
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n{riga}\nNON VERIFICATO: -"
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    @pytest.mark.parametrize("car", ["\u200b", "\u200d", "\u2060", "\ufeff", "\u202e"])
+    def test_caratteri_invisibili(self, car):
+        testo = f"VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\nV-1 (ME{car}DIA) — x"
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "COMMENT" and "invisibili" in motivo
+
+
+# ---------------------------------------------------------------------------
+# con_storico(): G-2 — un NO su uno SHA resta NO
+# ---------------------------------------------------------------------------
+
+class TestStorico:
+    @pytest.mark.parametrize("precedenti", [["failure"], ["success", "failure"],
+                                            ["failure", "success"], ["cancelled", "failure"]])
+    def test_no_precedente_resta_no(self, precedenti):
+        evento, motivo = be.con_storico("APPROVE", "ok", precedenti)
+        assert evento == "COMMENT" and "già detto NO" in motivo
+
+    @pytest.mark.parametrize("precedenti", [[], ["cancelled"], ["success"], ["neutral"]])
+    def test_senza_no_precedente_resta_si(self, precedenti):
+        assert be.con_storico("APPROVE", "ok", precedenti) == ("APPROVE", "ok")
+
+    def test_storico_illeggibile_non_e_un_si(self):
+        assert be.con_storico("APPROVE", "ok", None)[0] == "RIPROVA"
+
+    @pytest.mark.parametrize("evento", ["COMMENT", "RIPROVA", "OPERATORE"])
+    def test_il_no_non_dipende_dallo_storico(self, evento):
+        assert be.con_storico(evento, "m", ["success"]) == (evento, "m")
 
     def test_testo_incoerente_col_campo(self):
         v = _verdetto("APPROVATO", testo="VERIFICA ESTERNA #130 — BOCCIATO\nFINDING: nessuno")
@@ -251,10 +325,10 @@ class TestDecidi:
     # R-158-1: la macchina del bot non si approva mai, nemmeno con verdetto pulito.
     def test_macchina_bot_mai_approvata(self):
         evento, motivo = be.decidi(_verdetto(), SHA, SHA, macchina_bot=True)
-        assert evento == "COMMENT" and "operatore" in motivo
+        assert evento == "OPERATORE" and "operatore" in motivo
 
     def test_macchina_bot_vince_su_doc_only(self):
-        assert be.decidi(None, SHA, SHA, doc_only=True, macchina_bot=True)[0] == "COMMENT"
+        assert be.decidi(None, SHA, SHA, doc_only=True, macchina_bot=True)[0] == "OPERATORE"
 
     def test_citazioni_passate_nei_claim_non_bloccano(self):
         testo = ("VERIFICA ESTERNA #130 — APPROVATO\n"
@@ -274,10 +348,21 @@ class TestDecidi:
 class TestSoloReports:
     @pytest.mark.parametrize("files", [
         ["reports/ultimo_report.md"],
-        ["reports/handoff.md", "reports/stato_progetto.md"],
+        ["reports/handoff.md", "reports/diff_sessione.md", "reports/ultima_risposta.md"],
     ])
     def test_si(self, files):
         assert be.solo_reports(files)
+
+    @pytest.mark.parametrize("files", [
+        # G-4 verifica chat #130: lista BIANCA, criteri e stato passano dal bot.
+        ["reports/stato_progetto.md"],
+        ["reports/handoff.md", "reports/roadmap.md"],
+        ["reports/raccomandazioni_aperte.md"],
+        ["reports/handoff.md", "reports/ultimo_report.md", "reports/a.md"],
+        ["reports/handoff.md.bak"], ["reports/x/handoff.md"], ["./reports/handoff.md"],
+    ])
+    def test_lista_bianca(self, files):
+        assert not be.solo_reports(files)
 
     @pytest.mark.parametrize("files", [
         ["reports/sonda_locale_suite.txt"],             # V-5 #130: solo .md
@@ -330,6 +415,8 @@ class TestMacchinaBot:
         ["tests/test_unit_handoff_check.py"],
         [".mcp.json"],
         [".claude.json"],
+        [".gitattributes"],                              # G-5 #130: -diff nasconde file
+        ["modules/.gitattributes"],
         [],                                              # elenco illeggibile
         ["gas.py"] * be.MAX_FILE_API,                    # elenco troncato
     ])
@@ -344,6 +431,7 @@ class TestMacchinaBot:
         [".claude/agents/memoria_revisore.md", ".claude/commands/altro.md"],
         ["tests/test_unit_voice_tts.py", "modules/memory/db.py"],
         [".mcp.json.bak", ".claude/settings.jsonc", ".claude/verifica_esterna.md.old"],
+        [".gitattributes.bak", "docs/gitattributes"],
     ])
     def test_no(self, files):
         assert not be.tocca_macchina_bot(files)
@@ -353,9 +441,11 @@ class TestMacchinaBot:
 # Comandi con gh finto
 # ---------------------------------------------------------------------------
 
-def _gh_finto(tmp_path: Path, head: str, files_out: str = "", fail_head: bool = False) -> dict:
+def _gh_finto(tmp_path: Path, head: str, files_out: str = "", fail_head: bool = False,
+              precedenti: list | None = None, fail_storico: bool = False) -> dict:
     """gh finto. files_out: righe "nome" o "nuovo<-vecchio" (rename); la risposta
-    dell'API è un JSON vero e il filtro --jq dello script gira con jq reale."""
+    dell'API è un JSON vero e il filtro --jq dello script gira con jq reale.
+    precedenti: check run già presenti sullo SHA, come (slug dell'App, conclusione)."""
     fake = tmp_path / "bin"
     fake.mkdir()
     log = tmp_path / "gh.log"
@@ -364,11 +454,17 @@ def _gh_finto(tmp_path: Path, head: str, files_out: str = "", fail_head: bool = 
         nuovo, _, vecchio = r.partition("<-")
         voci.append({"filename": nuovo, **({"previous_filename": vecchio} if vecchio else {})})
     (tmp_path / "files.json").write_text(json.dumps(voci))
+    (tmp_path / "checks.json").write_text(json.dumps({"check_runs": [
+        {"app": {"slug": a}, "conclusion": c} for a, c in (precedenti or [])]}))
     gh = fake / "gh"
     gh.write_text(f"""#!/usr/bin/env bash
 printf '%s\\n' "$*" >> {log}
 case "$*" in
   *"/reviews"*) cat > {tmp_path}/review.json ;;
+  *"/commits/"*"/check-runs"*) {"exit 1" if fail_storico else ""}
+              for a in "$@"; do [ "$prev" = "--jq" ] && expr="$a"; prev="$a"; done
+              jq -r "$expr" {tmp_path}/checks.json ;;
+  *"/check-runs"*) cat > {tmp_path}/check.json ;;
   *"/files"*) for a in "$@"; do [ "$prev" = "--jq" ] && expr="$a"; prev="$a"; done
               jq -r "$expr" {tmp_path}/files.json ;;
   *) {"exit 1" if fail_head else f"echo {head}"} ;;
@@ -376,8 +472,21 @@ esac
 """)
     gh.chmod(0o755)
     env = dict(os.environ, PATH=f"{fake}:{os.environ['PATH']}", REPO="o/r", PR="7",
-               GITHUB_OUTPUT=str(tmp_path / "out"), MACCHINA_BOT="false")
+               GITHUB_OUTPUT=str(tmp_path / "out"), MACCHINA_BOT="false", APP_SLUG=SLUG)
     return env
+
+
+SLUG = "gas-verificatore"
+
+
+def _conclusione(tmp_path: Path) -> str:
+    """Conclusione del check run pubblicato; la review è sempre un COMMENTO."""
+    review = json.loads((tmp_path / "review.json").read_text())
+    assert review["event"] == "COMMENT" and review["commit_id"] == SHA
+    check = json.loads((tmp_path / "check.json").read_text())
+    assert check["name"] == "verifica-bot" and check["head_sha"] == SHA
+    assert check["status"] == "completed" and check["output"]["summary"] == review["body"]
+    return check["conclusion"]
 
 
 def _run(cmd, env):
@@ -391,7 +500,7 @@ class TestComandi:
         assert r.returncode == 2
 
     def test_smista_doc_only(self, tmp_path):
-        env = _gh_finto(tmp_path, SHA, "reports/a.md\nreports/b.md\n")
+        env = _gh_finto(tmp_path, SHA, "reports/handoff.md\nreports/ultimo_report.md\n")
         assert _run("smista", env).returncode == 0
         out = (tmp_path / "out").read_text()
         assert f"head={SHA}" in out and "solo_reports=true" in out and "macchina_bot=false" in out
@@ -416,50 +525,89 @@ class TestComandi:
             env.pop("MACCHINA_BOT")
         else:
             env["MACCHINA_BOT"] = valore
-        _run("esito", env)
-        assert json.loads((tmp_path / "review.json").read_text())["event"] == "COMMENT"
+        assert _run("esito", env).returncode == 0
+        assert _conclusione(tmp_path) == "neutral"
 
     def test_esito_approva_legato_allo_sha(self, tmp_path):
         env = _gh_finto(tmp_path, SHA)
         env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()),
                    MODELLO="claude-fable-5-1")
         assert _run("esito", env).returncode == 0
-        review = json.loads((tmp_path / "review.json").read_text())
-        assert review["event"] == "APPROVE" and review["commit_id"] == SHA
-        assert "claude-fable-5-1" in review["body"] and "VERIFICA ESTERNA #130" in review["body"]
+        assert _conclusione(tmp_path) == "success"
+        body = json.loads((tmp_path / "review.json").read_text())["body"]
+        assert "claude-fable-5-1" in body and "VERIFICA ESTERNA #130" in body
+        # Il check si pubblica PRIMA della review (G-1: il gate c'è anche se la review fallisce).
+        log = (tmp_path / "gh.log").read_text()
+        assert log.index("/check-runs --input") < log.index("/reviews")
 
     def test_esito_media_non_approva(self, tmp_path):
         env = _gh_finto(tmp_path, SHA)
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "MEDIA")])
         env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(v))
         _run("esito", env)
-        assert json.loads((tmp_path / "review.json").read_text())["event"] == "COMMENT"
+        assert _conclusione(tmp_path) == "failure"
 
     def test_esito_json_rotto(self, tmp_path):
         env = _gh_finto(tmp_path, SHA)
         env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON="{non json")
         _run("esito", env)
-        assert json.loads((tmp_path / "review.json").read_text())["event"] == "COMMENT"
+        assert _conclusione(tmp_path) == "cancelled"
 
     def test_esito_verifica_fallita_dichiara_cascata(self, tmp_path):
         env = _gh_finto(tmp_path, SHA)
         env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON="",
                    MODELLI_FALLITI="claude-fable-5-1, claude-opus-5-5, claude-opus-4-8")
         _run("esito", env)
-        review = json.loads((tmp_path / "review.json").read_text())
-        assert review["event"] == "COMMENT" and "claude-opus-4-8" in review["body"]
+        assert _conclusione(tmp_path) == "cancelled"
+        assert "claude-opus-4-8" in json.loads((tmp_path / "review.json").read_text())["body"]
 
     def test_esito_head_illeggibile(self, tmp_path):
         env = _gh_finto(tmp_path, SHA, fail_head=True)
         env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()))
         _run("esito", env)
-        assert json.loads((tmp_path / "review.json").read_text())["event"] == "COMMENT"
+        assert _conclusione(tmp_path) == "cancelled"
 
     def test_esito_doc_only(self, tmp_path):
         env = _gh_finto(tmp_path, SHA)
         env.update(HEAD_ANALIZZATA=SHA, SOLO_REPORTS="true")
         _run("esito", env)
-        assert json.loads((tmp_path / "review.json").read_text())["event"] == "APPROVE"
+        assert _conclusione(tmp_path) == "success"
+
+    # G-2: un NO precedente della NOSTRA App sullo stesso SHA non si ritira con un rilancio.
+    @pytest.mark.parametrize("doc_only", [False, True])
+    def test_esito_no_precedente_resta_no(self, tmp_path, doc_only):
+        env = _gh_finto(tmp_path, SHA, precedenti=[(SLUG, "failure")])
+        env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()),
+                   SOLO_REPORTS="true" if doc_only else "false")
+        _run("esito", env)
+        assert _conclusione(tmp_path) == "failure"
+        log = (tmp_path / "gh.log").read_text()
+        assert f"commits/{SHA}/check-runs?check_name=verifica-bot&filter=all" in log
+
+    def test_esito_no_di_un_altra_app_non_conta(self, tmp_path):
+        env = _gh_finto(tmp_path, SHA, precedenti=[("altra-app", "failure"), (SLUG, "cancelled")])
+        env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()))
+        _run("esito", env)
+        assert _conclusione(tmp_path) == "success"
+
+    def test_esito_storico_illeggibile(self, tmp_path):
+        env = _gh_finto(tmp_path, SHA, fail_storico=True)
+        env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()))
+        _run("esito", env)
+        assert _conclusione(tmp_path) == "cancelled"
+
+    @pytest.mark.parametrize("slug", ["", "Gas Bot", 'x") | .conclusion = ("success', "a" * 101])
+    def test_esito_slug_non_valido(self, tmp_path, slug):
+        env = _gh_finto(tmp_path, SHA)
+        env.update(HEAD_ANALIZZATA=SHA, VERDETTO_JSON=json.dumps(_verdetto()), APP_SLUG=slug)
+        _run("esito", env)
+        assert _conclusione(tmp_path) == "cancelled"
+
+    def test_esito_senza_sha_non_pubblica(self, tmp_path):
+        env = _gh_finto(tmp_path, SHA)
+        env.update(HEAD_ANALIZZATA="", VERDETTO_JSON=json.dumps(_verdetto()))
+        assert _run("esito", env).returncode == 1
+        assert not (tmp_path / "check.json").exists()
 
     def test_corpo_troncato_sotto_il_limite(self):
         v = _verdetto(testo="VERIFICA ESTERNA #1 — APPROVATO\n" + "x" * 100000)
@@ -501,11 +649,21 @@ def _on(wf):
 
 class TestWorkflow:
     def test_permessi_esatti_del_token_app(self, wf):
-        # V-3 verifica esterna #130: solo pull-requests write, nessun permesso sul contenuto.
+        # V-3 verifica esterna #130: nessun permesso sul contenuto. G-1: checks write per
+        # pubblicare il check verifica-bot, pull-requests write per la review di commento.
         app = [s for s in wf["jobs"]["esito"]["steps"]
                if "create-github-app-token" in s.get("uses", "")][0]
         permessi = {k: v for k, v in app["with"].items() if k.startswith("permission-")}
-        assert permessi == {"permission-pull-requests": "write"}
+        assert permessi == {"permission-pull-requests": "write", "permission-checks": "write"}
+
+    def test_slug_dell_app_passato_a_esito(self, wf):
+        # G-2: lo storico dei NO si legge solo sui check della NOSTRA App.
+        passi = wf["jobs"]["esito"]["steps"]
+        app = [s for s in passi if "create-github-app-token" in s.get("uses", "")][0]
+        assert passi[-1]["env"]["APP_SLUG"] == "${{ steps.%s.outputs.app-slug }}" % app["id"]
+
+    def test_prompt_fissa_il_formato_del_verdetto(self, wf):
+        assert "ESATTAMENTE \"VERIFICA ESTERNA #" in wf["jobs"]["verifica"]["env"]["PROMPT"]
 
     def test_esito_dipende_dalla_verifica(self, wf):
         assert set(wf["jobs"]["esito"]["needs"]) == {"smista", "verifica"}
