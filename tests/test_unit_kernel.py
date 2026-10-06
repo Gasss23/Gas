@@ -60,6 +60,16 @@ def kernel_tmp() -> GasKernel:
     os.environ["GAS_CWD"] = tmp
     return GasKernel(root_dir=tmp)
 
+def senza_sandbox_os_usa_fallback(k: GasKernel) -> GasKernel:
+    """F-mac-1: dove manca il sandbox OS (macOS, container senza namespace) i test che
+    verificano allowlist, no-shell e snapshot di run_command girano con la sandbox
+    applicativa (os_with_fallback) invece di fallire per os_strict. Con il sandbox OS
+    presente (CI Linux) non cambia nulla: restano in os_strict dentro bwrap. Il
+    fail-closed di os_strict senza sandbox resta provato da T13d."""
+    if not k.os_sandbox_available:
+        k.sandbox_mode = "os_with_fallback"
+    return k
+
 def git_out(root: str, *args: str) -> str:
     return subprocess.run(["git", "-C", root, *args], capture_output=True, text=True).stdout.strip()
 
@@ -282,7 +292,7 @@ check("T11b2 git restore riporta il file alla versione pre-modifica",
 # e comandi shell BLOCCATI, nessun file creato
 tmp_nogit = tempfile.mkdtemp(prefix="gas_test_nogit_")
 os.environ["GAS_CWD"] = tmp_nogit
-k_nogit = GasKernel(root_dir=tmp_nogit)
+k_nogit = senza_sandbox_os_usa_fallback(GasKernel(root_dir=tmp_nogit))
 out = k_nogit.execute_tool_call("write_file", {"relative_path": "vittima.txt", "content": "x"})
 check("T11c snapshot fallito -> write_file bloccata (fail-closed)",
       "Operazione negata" in out and "snapshot" in out and not (Path(tmp_nogit) / "vittima.txt").exists(),
@@ -297,7 +307,7 @@ check("T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-clo
       and not (Path(tmp_nogit) / "vittima2.txt").exists(), out[:70])
 
 # T11d: i file NON tracciati finiscono nello snapshot (trappola stash create)
-k = kernel_tmp()
+k = senza_sandbox_os_usa_fallback(kernel_tmp())
 root = os.environ["GAS_CWD"]
 (Path(root) / "non_tracciato.txt").write_text("mai committato", encoding="utf-8")
 k.execute_tool_call("write_file", {"relative_path": "altro.txt", "content": "y"})
@@ -339,7 +349,11 @@ check("T11g root annidata in repo esterno -> bloccata, nessun ref nel repo genit
 # ---------- T12: sandbox run_command (allowlist + no-shell + dry-run) ----------
 # Ogni asserzione è costruita per FALLIRE se la barriera corrispondente viene
 # tolta: sono test che "mordono", non decorativi.
-k = kernel_tmp()
+k = senza_sandbox_os_usa_fallback(kernel_tmp())
+# F-mac-1: il ripiego vale SOLO senza sandbox OS; dove c'è (CI) i T12 restano os_strict.
+check("T12-modo sandbox: os_strict se il sandbox OS c'è, os_with_fallback solo se manca",
+      k.sandbox_mode == ("os_strict" if k.os_sandbox_available else "os_with_fallback"),
+      f"available={k.os_sandbox_available} mode={k.sandbox_mode}")
 root = os.environ["GAS_CWD"]
 
 # T12a: comando in allowlist eseguito davvero (output reale, non simulato)
@@ -425,6 +439,12 @@ check("T12j GAS_SHELL_MODE non valido -> fallback su 'guarded'",
 # quindi non si potrebbe provare net/fs/mascheramento passando per run_command.
 # Ognuno fallisce se la barriera corrispondente viene tolta dal profilo.
 OS_SB = gas._probe_os_sandbox()[0]
+# R-173-1: dove il sandbox OS è atteso (CI, GAS_TEST_SANDBOX_OS_ATTESO=1) la sonda DEVE
+# trovarlo: altrimenti i test di run_command passerebbero in ripiego e i T13 in SKIP,
+# e una regressione della sonda resterebbe verde.
+if os.environ.get("GAS_TEST_SANDBOX_OS_ATTESO") == "1":
+    check("T13-atteso sandbox OS disponibile dove il workflow lo garantisce", OS_SB,
+          gas._probe_os_sandbox()[1])
 
 k = kernel_tmp()
 root = os.environ["GAS_CWD"]
@@ -6536,6 +6556,38 @@ check("T76c nessun urlopen verso api.telegram.org in tutta la suite",
       _TG_URLOPEN_REALI == [], str(_TG_URLOPEN_REALI))
 check("T76d variabili TELEGRAM_* non presenti nell'ambiente della suite",
       "TELEGRAM_BOT_TOKEN" not in os.environ and "TELEGRAM_ALLOWED_IDS" not in os.environ)
+
+# ---------- T79: F-mac-2 — sorgenti del motore senza escape invalidi ----------
+# Un "\+" o "\d" in una stringa non raw è SyntaxWarning (3.12+) e diventerà errore;
+# R-169-1: su 3.11 (la CI) lo stesso escape è DeprecationWarning → filtrati entrambi.
+# Ogni .py del motore deve compilare con questi warning trattati come errori.
+import warnings as _w79
+_root79 = Path(__file__).parent.parent
+# V-2 verifica esterna #135: tutti i .py tracciati (motore, scripts/, tools/, clients/,
+# tests/), non solo il motore. Senza git (copia nuda) ripiega sul motore.
+# R-174-1: anche git assente (OSError) ripiega; R-174-2: un file tracciato ma cancellato
+# dal disco (refactor a metà) si salta invece di interrompere la suite.
+try:
+    _ls79 = subprocess.run(["git", "-C", str(_root79), "ls-files", "-z", "*.py"],
+                           capture_output=True, text=True)
+    _da_git79 = [_root79 / f for f in _ls79.stdout.split("\0") if f] \
+        if _ls79.returncode == 0 else None
+except OSError:
+    _da_git79 = None
+_sorgenti79 = [f for f in _da_git79 if f.is_file()] if _da_git79 is not None \
+    else [_root79 / "gas.py"] + sorted((_root79 / "brains").rglob("*.py")) \
+    + sorted((_root79 / "modules").rglob("*.py"))
+_rotti79 = []
+for _f79 in _sorgenti79:
+    with _w79.catch_warnings():
+        _w79.simplefilter("error", SyntaxWarning)
+        _w79.simplefilter("error", DeprecationWarning)
+        try:
+            compile(_f79.read_text(encoding="utf-8"), str(_f79), "exec")
+        except (SyntaxError, SyntaxWarning, DeprecationWarning) as _e79:
+            _rotti79.append(f"{_f79.relative_to(_root79)}: {_e79}")
+check("T79a i .py del repo compilano senza escape invalidi (SyntaxWarning/DeprecationWarning, F-mac-2)",
+      len(_sorgenti79) > 10 and _rotti79 == [], f"{len(_sorgenti79)} file; {_rotti79}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
