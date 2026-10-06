@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-06** (sessione esterna TradeGasFX — materiali 3D e traiettoria laterale; motore Gas invariato)
+> Ultimo aggiornamento: **2026-10-06** (sessione esterna TradeGasFX — shadow map e profondità 3D; motore Gas invariato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Sessione esterna — TradeGasFX (2026-10-06)
 
-Nessuna modifica al motore Gas. La preview standalone TradeGasFX mantiene i tre globi e le fasce WebGL, con riflessi da studio, shading metallico e Fresnel sul vetro fumé. Rimossa la rotazione simulata a immagini: in assenza di WebGL resta un'unica vista statica. Lo scroll ruota la scultura e la sposta lateralmente attraverso il centro; il bagliore la segue. La skill del sito ora sconsiglia poche viste statiche e documenta materiali e traiettoria. Sito live invariato; preview non verificata nel browser. Gli esempi di testimonianza restano fittizi e i documenti del fondo vanno verificati prima della pubblicazione.
+Nessuna modifica al motore Gas. La preview standalone TradeGasFX mantiene i tre globi e le fasce WebGL, con riflessi da studio, shading metallico GGX, Fresnel sul vetro fumé e shadow map con filtro PCF sul fondale. Lo scroll ruota la scultura e la sposta lateralmente attraverso il centro; non usa crossfade tra viste statiche. La skill del sito aggiunge in forma sintetica l'indicazione di usare ombre proiettate per dare profondità. Sito live invariato; controllo sintattico dello script superato, ma preview non verificata nel browser. Testimonianze d'esempio e documenti del fondo richiedono verifica prima della pubblicazione.
 
 ## Stato motore
 
