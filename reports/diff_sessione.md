@@ -1,14 +1,14 @@
-# DIFF SESSIONE — 2026-10-05 — feat/verifica-bot (V-B vera, fetta B1 + correzioni delle due verifiche esterne #130)
+# DIFF SESSIONE — 2026-10-06 — V-B fetta B2 (feat/merge-automatico-z1xjx2)
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `.github/workflows/verifica-bot.yml` | Nuovo: bot di verifica esterna con identità separata (pull_request_target, sola lettura, GitHub App, dosaggio quota). |
-| `scripts/bot_esito.py` | Nuovo: decisione deterministica di approvazione (soglia "niente ALTA/MEDIA", macchina del bot, doc-only, credenziali su tutto il verdetto, negazioni). |
-| `tests/test_unit_verifica_bot.py` | Nuovo: 174 test (logica, comandi con gh finto + jq reale, proprietà di sicurezza del workflow). |
-| `.github/workflows/ci.yml` | Step della nuova suite + riga nel job summary. |
-| `.claude/perimetro_review.txt` | `scripts/bot_esito.py` nel perimetro di review. |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #158, #159, #160, #161, #162. |
-| `reports/setup_verifica_bot.md` | Nuovo: passi numerati dell'operatore (token, App, environment) ordine del setup (V-6 #130) ed etichetta `verifica` (V-5 seconda verifica). |
-| `reports/*` | Report di fine task; stato_progetto (V-B fetta B1, riserve aperte). |
+> Si riscrive a ogni sessione; la storia completa sta in git. Range: `merge-base(origin/main, HEAD)..HEAD` (include `e51db2e` della sessione locale precedente, stessa fetta).
 
-La storia completa sta in git.
+- `scripts/bot_esito.py` — check run `verifica-bot` dell'App (G-1), NO definitivo per SHA (G-2), lista bianca doc-only (G-4), `.gitattributes` (G-5), formato esatto del verdetto (R-161-1); R-163-1: prima il verdetto, solo APPROVE+macchina = OPERATORE, `stato_elenco` separato, "non verificabile" mai neutral; R-164-1 head prima del NO da elenco troncato.
+- `.github/workflows/verifica-bot.yml` — token App con checks write, APP_SLUG, formato nel prompt; output `elenco` → `ELENCO_FILE`; job verifica solo con elenco "ok" (R-164-2).
+- `scripts/gasmerge.sh` — HEAD_SHA legato al ref (V-3 #127); `--auto N` col check dell'App richiesto dal ruleset.
+- `tests/test_unit_verifica_bot.py` — test di G-1/G-2/G-4/G-5/R-161-1 e di R-163-1, R-163-4, R-164-1/2 (268 test).
+- `tests/test_unit_gasmerge.py` — test di `--auto` e V-3 #127 (85 test).
+- `.claude/commands/fine-task.md` — §4quater: `gh pr edit N --add-label verifica` a fine fetta, etichetta creata dall'operatore.
+- `.claude/agents/memoria_revisore.md` — righe #163, #164, #165 (commit del revisore).
+- `reports/setup_verifica_bot.md` — App con Checks R/W, §D etichetta dell'operatore, §F ruleset col check dell'App e significato di neutral, R-163-3.
+- `reports/stato_progetto.md` — header, B2, R-160-1 MITIGATA, R-163-2/R-164-3.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.

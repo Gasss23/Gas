@@ -1,27 +1,40 @@
-# ULTIMO REPORT — 2026-10-05 — V-B vera, fetta B1: bot di verifica esterna su GitHub (+ correzioni delle due verifiche esterne #130)
+# ULTIMO REPORT — 2026-10-06 — V-B fetta B2: check run verifica-bot dell'App, gasmerge --auto, chiusura R-163-1
+
+## Riepilogo per l'operatore (notte 2026-10-06)
+
+- **PR #131** (https://github.com/Gasss23/Gas/pull/131) — fetta B2 (check run `verifica-bot` dell'App, NO definitivo per SHA, `gasmerge --auto`, R-163-1/R-163-4 chiuse). Test: kernel 651 PASS / 0 FAIL, pytest 588 passed, mutation sui rami nuovi 12/12. Review #163 APPROVATO CON RISERVE → #164 APPROVATO CON RISERVE → #165 APPROVATO. **Consiglio merge: SÌ** (da te, manuale: tocca `scripts/`), poi setup del bot A–E + etichetta.
+- Lavori piccoli arretrati: vedi sotto (§Arretrati) — aggiornato a fine notte.
 
 ## Decisioni umane richieste
 
-1. Merge della PR #130 (https://github.com/Gasss23/Gas/pull/130) — variante A: `gasmerge 130`, digiti tu il numero.
-2. Setup del bot (dopo il merge): passi numerati in `reports/setup_verifica_bot.md` — token dell'abbonamento, GitHub App `gas-verificatore`, environment `verifica-bot`. Serve prima del test di convalida (fetta B2).
-3. **R-161-2**: con `scripts/` nella macchina del bot (V-5), la PR della fetta B2 (`gasmerge --auto`) il bot non la approverà mai; per provare un APPROVE automatico serve poi una PR fuori dalla macchina (es. una piccola fetta del motore).
-4. **Terza verifica esterna non lanciata** (dosaggio): la seconda ha trovato una sola MEDIA con correzione proposta e provata da lei, applicata e revisionata (#162). Se la vuoi prima del merge, dimmelo.
-5. **R-158-5**: il bot su GitHub è di sola lettura (non esegue test). In variante B la verifica esterna locale (§4quater, che i test li esegue) resta obbligatoria accanto al bot? Consiglio: sì, per le fette che toccano il perimetro di review.
+1. Merge della PR #131 (https://github.com/Gasss23/Gas/pull/131) — manuale (`gasmerge 131`): nessun merge né auto-merge fatto dall'agente.
+2. **R-163-2** (BASSA): il NO del bot è legato allo SHA, non al tree. Un commit nuovo con lo stesso contenuto (vuoto, rebase) riapre la verifica. Variante B = legare il NO al tree. Decidi tu se serve.
+3. **R-158-5** (aperta da B1): la verifica esterna locale §4quater resta obbligatoria accanto al bot? Consiglio: sì per le fette nel perimetro di review.
+4. Setup del bot (`reports/setup_verifica_bot.md`): l'App ora vuole anche **Checks → Read and write**; l'etichetta `verifica` la crei tu a setup finito (§D); §F = ruleset con check `verifica-bot` dell'App, NON "1 approvazione".
+5. **Verdetto integrale della review #163 non disponibile**: è stato dato nella sessione locale precedente e non è finito in un file committato; nell'handoff §4 c'è la riga della memoria del revisore (dichiarato, non sostituito).
 
 ## Esito per fette
 
-- **Fetta B1 — workflow `verifica-bot.yml` + `scripts/bot_esito.py` + test (126, poi 164)**: FATTA. Bot su `pull_request_target` (definizione da main), Claude in sola lettura con `--setting-sources user`, cascata Fable 5.1 → Opus 5.5 → Opus 4.8 col token dell'abbonamento, approvazione con GitHub App dedicata legata allo SHA verificato. Decisione deterministica: APPROVE solo senza finding ALTA/MEDIA; PR che toccano la macchina del bot mai approvate; PR solo `reports/` approvate senza LLM (dosaggio); parte solo con l'etichetta `verifica`.
-- **Riserve delle review #158/#159**: FATTA — R-158-1..4, cosmetica, R-159-1..4 chiuse con test prima del commit (soglia "sicurezza alta" dell'operatore).
-- **Verifica esterna #130 (APPROVATO CON RISERVE, 2 MEDIA)**: FATTA — V-1 (il bot poteva scrivere file via `git --output`: tolto git), V-2 (un token nei finding finiva nella review pubblica: controllo su tutto il verdetto), V-3, V-4 (chiude anche R-160-2), V-5 (macchina del bot allargata a scripts/ e alla macchina di controllo; doc-only solo .md), V-6 (ordine del setup) chiuse prima del merge; commit `43f84fb`, review #161; 164 test, mutation 72/73.
-- **Seconda verifica esterna #130 (APPROVATO CON RISERVE, 1 MEDIA)**: FATTA — V-1 (Grep/Glob leggevano fuori cartella: limitati a `./**` + scrub dell'ambiente), V-3, V-4, V-5 (etichetta nel setup), V-6 chiuse; commit `c215635`, review #162; 174 test, mutation mirata 10/10.
-- **Riserve BASSE aperte (V-2 seconda verifica, R-161-1, R-162-1, R-162-2)**: DEFERITA — fetta B2 (le basse passano ma si aggiustano dopo).
-- **Fetta B2 — `gasmerge --auto` + V-3 #127 + test di convalida**: DEFERITA — richiede B1 su main e il setup dell'operatore (la PR di B2 sarà la prima verificata dal bot).
-- **Ruleset (1 approvazione, dismiss stale, last push approval)**: DEFERITA — dopo il test di convalida, altrimenti bloccherebbe ogni merge.
-- **Verifica esterna §4quater**: FATTA due volte (handoff §8 e §9); la terza NON lanciata (vedi decisione 4).
+- **B2 primo commit `e51db2e`** (sessione locale): FATTA — G-1, G-2, G-4, G-5, R-161-1/V-2 seconda verifica, `gasmerge --auto`, V-3 #127; review #163 APPROVATO CON RISERVE.
+- **R-163-1 (MEDIA)**: FATTA — `decidi()` valuta prima il verdetto; solo un APPROVE sulla macchina del bot diventa OPERATORE/neutral; BOCCIATO/MEDIA restano failure. "Non verificabile" separato dalla macchina: output `elenco` di smista (ok/vuoto/troncato) → `ELENCO_FILE`; troncato → failure, vuoto/mancante → cancelled, `MACCHINA_BOT` non esatto → cancelled; `con_storico` vale anche per OPERATORE. Commit `a79cb07`.
+- **R-163-4 (BASSA)**: FATTA — test `C-1 (high)`, `X-2 (grave)`, `C-3 (severe)` → COMMENT (ramo `_APRE_GRAVE`).
+- **R-163-2**: DEFERITA — decisione umana (annotata in stato_progetto.md).
+- **R-163-3**: FATTA (dichiarata) — `gasmerge` manuale eredita il check del bot (setup §F).
+- **R-164-1 / R-164-2** (dalla review #164): FATTE nello stesso commit — head cambiata prima del NO da elenco troncato; job verifica solo con elenco "ok". **R-164-3**: dichiarata (docstring di `stato_elenco`).
+- **setup_verifica_bot.md**: FATTA — App PR R/W + Checks R/W + Contents read; §D etichetta creata dall'operatore; §F ruleset col check dell'App e significato di neutral.
+- **fine-task.md §4quater**: FATTA — `gh pr edit N --add-label verifica` a fine fetta (l'etichetta non la crea l'agente).
+- **stato_progetto.md**: FATTA — header #162/#163–#165, R-160-1 MITIGATA, B2. NB: il file è ~505 righe, non ~100: snellirlo (spostare storico in stato_storico.md) è una fetta a sé, non fatta stanotte.
+- **Mutation sui rami nuovi**: FATTA — 12/12 uccise (11 dall'agente + R-164-1; il revisore ne ha rifatte 5, tutte uccise).
+- **Etichetta `verifica` su PR #131**: SALTATA — `gh` non autenticato in questa sessione cloud e l'etichetta non esiste ancora (la crei tu).
+- **Verifica esterna §4quater**: vedi handoff (lanciata dopo il push del fine-task).
+- **G-3 (agente non admin)**: DEFERITA — fetta separata, per tua indicazione.
 
 ## Anomalie
 
-- Il workflow non può girare prima del merge (`pull_request_target` usa la definizione di main): nessuna run reale verificata; actionlint non installato.
-- Durante la prima sweep di mutation il mio harness si è fermato a metà lasciando `scripts/bot_esito.py` mutato (non in stage); ripristinato subito dal backup e confermato con `cmp`; harness rifatto con try/finally.
-- La CI di GitHub stasera ha runner in coda: due job sono stati cancellati dopo l'attesa (`unit-suite` su 43f84fb, `handoff-check` su 8e11aa5), nessun test fallito.
-- Il token dell'abbonamento consuma la stessa quota dello sviluppo: il dosaggio (etichetta, doc-only senza LLM, cascata solo su errore) è nel workflow.
+- `gh` CLI non autenticato nel container cloud: PR e stato CI letti/creati via connettore GitHub (MCP). `check_landing.sh` Check C skippato per gh assente.
+- Prima run CI sul commit `a79cb07`: `unit-suite` success, `handoff-check` failure (atteso: handoff non ancora rigenerato prima di questo fine-task).
+- Il container non aveva bwrap: installato (`apt-get install bubblewrap`) per eseguire la suite kernel come la CI.
+
+## Arretrati
+
+(aggiornato a fine notte)
