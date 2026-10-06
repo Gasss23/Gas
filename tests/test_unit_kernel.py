@@ -6543,7 +6543,19 @@ check("T76d variabili TELEGRAM_* non presenti nell'ambiente della suite",
 # Ogni .py del motore deve compilare con questi warning trattati come errori.
 import warnings as _w79
 _root79 = Path(__file__).parent.parent
-_sorgenti79 = [_root79 / "gas.py"] + sorted((_root79 / "brains").rglob("*.py")) \
+# V-2 verifica esterna #135: tutti i .py tracciati (motore, scripts/, tools/, clients/,
+# tests/), non solo il motore. Senza git (copia nuda) ripiega sul motore.
+# R-174-1: anche git assente (OSError) ripiega; R-174-2: un file tracciato ma cancellato
+# dal disco (refactor a metà) si salta invece di interrompere la suite.
+try:
+    _ls79 = subprocess.run(["git", "-C", str(_root79), "ls-files", "-z", "*.py"],
+                           capture_output=True, text=True)
+    _da_git79 = [_root79 / f for f in _ls79.stdout.split("\0") if f] \
+        if _ls79.returncode == 0 else None
+except OSError:
+    _da_git79 = None
+_sorgenti79 = [f for f in _da_git79 if f.is_file()] if _da_git79 is not None \
+    else [_root79 / "gas.py"] + sorted((_root79 / "brains").rglob("*.py")) \
     + sorted((_root79 / "modules").rglob("*.py"))
 _rotti79 = []
 for _f79 in _sorgenti79:
@@ -6554,7 +6566,7 @@ for _f79 in _sorgenti79:
             compile(_f79.read_text(encoding="utf-8"), str(_f79), "exec")
         except (SyntaxError, SyntaxWarning, DeprecationWarning) as _e79:
             _rotti79.append(f"{_f79.relative_to(_root79)}: {_e79}")
-check("T79a sorgenti del motore compilano senza SyntaxWarning (F-mac-2)",
+check("T79a i .py del repo compilano senza escape invalidi (SyntaxWarning/DeprecationWarning, F-mac-2)",
       len(_sorgenti79) > 10 and _rotti79 == [], f"{len(_sorgenti79)} file; {_rotti79}")
 
 # ---------- riepilogo ----------
