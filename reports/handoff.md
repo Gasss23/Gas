@@ -18,27 +18,31 @@
 - **R-167-1 / R-167-2**: `FATTA`.
 - **Verifica su macOS**: `SALTATA — nessun Mac nel container; ragionamento del revisore in §4`.
 - **Etichetta `verifica`**: `SALTATA — gh non autenticato e l'etichetta non esiste ancora`.
+- **Marcatori `gasmerge-ip-ok` sui due assert nuovi** (il gate IP di fine-task li ha fermati al primo giro): `FATTA` — review #172.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- reports/diff_sessione.md           |  21 +++++++++------------
- reports/handoff.md                 | 373 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ reports/diff_sessione.md           |  21 +++++++++-----------
+ reports/handoff.md                 | 383 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++--
  reports/ultimo_report.md           |  28 ++++++++++-----------------
  scripts/fine_task_finale.sh        |   5 ++++-
  scripts/gasmerge.sh                |  11 ++++++++---
- tests/test_unit_gasmerge.py        |  48 ++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_hooks.py           |  34 +++++++++++++++++++++++++++++++++
- 9 files changed, 184 insertions(+), 343 deletions(-)
+ tests/test_unit_gasmerge.py        |  48 +++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_hooks.py           |  34 ++++++++++++++++++++++++++++++++
+ 9 files changed, 203 insertions(+), 335 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a167949 test(gate-ip): marcatore gasmerge-ip-ok sui due assert nuovi con IP — review #172
+f7c1208 chore(revisore): memoria review #172 — APPROVATO
+bd2aa79 docs(gate-ip-read-locale): fine-task — report, handoff con verdetti #167/#170, diff sessione
 26af320 fix(gate-ip): read in C nel filtro loopback — un byte non UTF-8 attaccato all'IP lo faceva passare (fail-open) — review #167/#170
 4b120b1 chore(revisore): memoria review #170 — APPROVATO
 3733a52 chore(revisore): memoria review #167 — APPROVATO CON RISERVE
@@ -113,6 +117,30 @@ Ri-review #170 del diff staged aggiornato in `/home/user/wt-latin`. Ho controlla
 
 La riga contatore #170 è committata in `.claude/agents/memoria_revisore.md` (commit `4b120b1`). Il diff staged non l'ho committato.
 
+### Review #172 — marcatori gasmerge-ip-ok sui due assert nuovi
+
+## VERDETTO: APPROVATO
+
+Review #172 del diff staged in `/home/user/wt-latin`: 2 file, 2 righe, solo commenti.
+
+**Elementi del diff esaminati**:
+- `tests/test_unit_gasmerge.py:789` — aggiunge `# gasmerge-ip-ok` in coda a `assert "8.8.8.8" in result.stdout`. Rischio esaminato: il marcatore potrebbe cambiare la semantica del test, oppure allowlistare più del necessario. Non succede: è un commento Python e vale solo per quella riga, perché il filtro `--and --not` della R-147-1 guarda il solo contenuto della riga. — ok
+- `tests/test_unit_hooks.py:2076` — stesso marcatore su `assert b"10.0.0.1" in r.stderr`. Stesso rischio, stesso esito. — ok
+
+**Prove eseguite**:
+- Ho ricostruito il tree dell'index con `git write-tree` e ci ho passato la stessa `git grep` del gate (`LC_ALL=C`, `--and --not`), poi la rimozione dei 127.x. La regex esatta del gate non trova nessun IP non-loopback non marcato.
+  - La regex più larga che ho usato all'inizio segnalava 3 righe. Una è una riga di versioni in `reports/ultimo_report.md`, che con la regex esatta non dà nulla. Le altre due sono i casi `1.2.3.4.5` di `test_unit_gasmerge.py:977` e `test_unit_hooks.py:2198`: per progetto non sono IP, e quei test si aspettano proprio "tutti loopback".
+- Con i due marcatori, la PR #134 non dovrebbe più bloccare se stessa al gate.
+- Sui test interessati ho avuto 5 passed. I 7 dichiarati dall'agente non li ho contati.
+
+**Rischi esclusi**:
+- Non ho eseguito `bash scripts/fine_task_finale.sh` né `gasmerge.sh` per davvero, perché pushano o toccano GitHub. Ho replicato il gate a mano sul tree dell'index.
+- L'ordine dei commit locali e il push di 4fe5540 / bd2aa79 non li ho verificati.
+
+**Cosa ho trovato nel worktree**: `reports/ultimo_report.md` risulta modificato e non in staging. Non l'ho toccato io: in questa passata l'ho solo letto. Va controllato prima del commit.
+
+La riga contatore #172, con dentro una lezione, è committata in `.claude/agents/memoria_revisore.md` (commit `f7c1208`). Il diff staged non l'ho committato.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py/brains/modules. Test della macchina di controllo, eseguiti in questo container (Ubuntu glibc 2.39, bash 5.2.21, git 2.43):
@@ -127,7 +155,8 @@ LC_ALL=C.UTF-8: pytest gasmerge+hooks+gate+handoff_check → 278 passed
 ## §6 STATO CI
 
 `gh` non autenticato (CI NON VERIFICATA con la CLI). Mappatura commit → run:
-- `3733a52`, `4b120b1`, `26af320`: pushati insieme, run CI sul push di `26af320` — run non ancora disponibile alla scrittura dell'handoff.
+- `3733a52`, `4b120b1`, `26af320`: pushati insieme, run CI sul push di `26af320` — esito non letto alla scrittura dell'handoff.
+- `4fe5540` (primo fine-task, mai pushato da solo: il gate IP l'ha fermato), `f7c1208`, commit dei marcatori: nessuna run propria, pushati insieme al commit di fine-task.
 - commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

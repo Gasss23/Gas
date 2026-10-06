@@ -7,7 +7,7 @@
 
 ## Esito per fette
 
-- **V-2 #124/#125 — discriminazione latin1 su glibc**: FATTA — provato su glibc 2.39 che il test esistente (`caf\xe9 8.8.8.8`) non uccideva la mutation su `LC_ALL=C git grep`; test nuovi col byte ATTACCATO all'IP e locale UTF-8 forzato la uccidono.
+- **V-2 #124/#125 — discriminazione latin1 su glibc**: FATTA — provato su glibc 2.39 che il test esistente (`caf\xe9 <IP>`, separatore spazio) non uccideva la mutation su `LC_ALL=C git grep`; test nuovi col byte ATTACCATO all'IP e locale UTF-8 forzato la uccidono.
 - **Bug trovato — fail-open del gate IP**: FATTA — `while IFS= read -r` di bash 5.2 in locale UTF-8 perde l'ultima riga se finisce con un byte non UTF-8 → IP "loopback". Fix `IFS= LC_ALL=C read` in gasmerge.sh e fine_task_finale.sh.
 - **R-167-1** (stessa classe nel ciclo ENGINE_DIFF di gasmerge): FATTA. **R-167-2** (skip se manca `locale`): FATTA.
 - **Mutation**: FATTA — read, git grep ×2, grep -qE, grep -Fx uccise sotto C.UTF-8; `sed` equivalente; `read -r v` del perimetro equivalente in pratica.
