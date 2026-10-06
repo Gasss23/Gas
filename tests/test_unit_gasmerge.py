@@ -134,6 +134,32 @@ exec "{real_git}" "$@"
 # Runner principale
 # ---------------------------------------------------------------------------
 
+def _locale_utf8() -> str | None:
+    """V-2 #124/#125: un locale UTF-8 disponibile (dove un byte non UTF-8 attaccato a un IP
+    lo nasconde a grep/git grep senza LC_ALL=C). None se il sistema non ne ha."""
+    try:
+        r = subprocess.run(["locale", "-a"], capture_output=True, text=True)
+    except OSError:
+        return None
+    disponibili = {l.strip().lower().replace("utf8", "utf-8") for l in r.stdout.splitlines()}
+    for loc in ("C.UTF-8", "en_US.UTF-8"):
+        if loc.lower() in disponibili:
+            return loc
+    return None
+
+
+def _esigi_locale_utf8() -> str:
+    """V-3 verifica esterna #134: dove il locale UTF-8 è garantito (CI,
+    GAS_TEST_LOCALE_UTF8_ATTESO=1) un locale mancante è un FAIL, non uno SKIP che
+    lascerebbe la CI verde senza aver provato nulla."""
+    loc = _locale_utf8()
+    if loc is None:
+        if os.environ.get("GAS_TEST_LOCALE_UTF8_ATTESO") == "1":
+            pytest.fail("locale UTF-8 atteso (GAS_TEST_LOCALE_UTF8_ATTESO=1) ma assente")
+        pytest.skip("nessun locale UTF-8 sul sistema")
+    return loc
+
+
 def _run(repo: Path, fake_bin: Path, args: list[str] | None = None) -> subprocess.CompletedProcess:
     env = {
         **os.environ,
@@ -447,6 +473,16 @@ class TestPerimetroPromemoria:
         assert "gas_identity.md" in sez and "clients/voice/a.py" in sez, sez
         assert "PERIMETRO DI REVIEW" in sez and "doc-only" not in sez, sez
 
+    def test_path_non_utf8_non_nasconde_il_motore(self, tmp_path, monkeypatch):
+        """R-167-1: in locale UTF-8 un path che finisce con un byte non UTF-8 si mangiava
+        il newline in `read` e il file di motore seguente spariva dal promemoria."""
+        loc = _esigi_locale_utf8()
+        monkeypatch.setenv("LC_ALL", loc)
+        # "a\udce9" = byte 0xE9 nel nome (surrogateescape del filesystem POSIX).
+        work = self._repo(tmp_path, "gas.py\n", {"a\udce9": "x\n", "gas.py": "y\n"})
+        sez = self._sezione(tmp_path, work)
+        assert "\ngas.py\n" in sez and "doc-only" not in sez, repr(sez)
+
     def test_fuori_perimetro_e_doc_only(self, tmp_path):
         work = self._repo(tmp_path, "gas.py  # motore\nclients/\n",
                           {"docs/nota.md": "x\n", "clientsX.md": "y\n"})
@@ -739,6 +775,26 @@ class TestIPFileBinariENonUtf8:
     def test_riga_latin1_con_ip(self, tmp_path):
         work = self._branch_con_bytes(tmp_path, b"caf\xe9 8.8.8.8\n")  # gasmerge-ip-ok
         self._assert_blocca(tmp_path, work)
+
+    @pytest.mark.parametrize("data", [
+        b"caf\xe98.8.8.8\n",            # gasmerge-ip-ok
+        b"8.8.8.8\xe9\n",               # gasmerge-ip-ok
+    ])
+    def test_byte_latin1_attaccato_all_ip_in_locale_utf8(self, tmp_path, monkeypatch, data):
+        """V-2 #125 (discriminazione su glibc): in locale UTF-8 un byte non UTF-8 ATTACCATO
+        all'IP non è un separatore per git grep/grep e l'IP sparisce (fail-open). Solo
+        LC_ALL=C nel gate lo vede: togliendolo questo test fallisce."""
+        loc = _esigi_locale_utf8()
+        monkeypatch.setenv("LC_ALL", loc)
+        work = self._branch_con_bytes(tmp_path, data)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        _make_stub_gh(fake_bin)
+        result = _run(work, fake_bin)
+        assert result.returncode != 0, result.stdout
+        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+        # La riga bloccata va mostrata (grep -Fx in UTF-8 stamperebbe "binary file matches").
+        assert "8.8.8.8" in result.stdout, result.stdout  # gasmerge-ip-ok
 
 
 # ---------------------------------------------------------------------------

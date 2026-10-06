@@ -704,6 +704,32 @@ class TestCheckVerdetto:
             assert cv._nel_perimetro(f, per), f
         assert not cv._nel_perimetro("reports/x.md", per)
 
+    def test_r177_1_perimetro_non_utf8_fail_closed(self, tmp_path):
+        """R-177-1: un byte non UTF-8 nel perimetro → None (fail-closed), non un crash."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cv", CHECK_VERDETTO)
+        cv = importlib.util.module_from_spec(spec); spec.loader.exec_module(cv)
+        rotto = tmp_path / "perimetro_review.txt"
+        rotto.write_bytes(b"gas.py\nvoce\xe9\n")
+        assert cv._carica_perimetro(path=rotto) is None
+
+    def test_r178_1_perimetro_base_non_utf8_fail_closed(self, tmp_path):
+        """R-178-1: file dello script valido ma versione alla BASE non UTF-8 → None."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cv", CHECK_VERDETTO)
+        cv = importlib.util.module_from_spec(spec); spec.loader.exec_module(cv)
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+        (repo / ".claude").mkdir()
+        (repo / ".claude" / "perimetro_review.txt").write_bytes(b"gas.py\nvoce\xe9\n")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "-c", "user.name=T", "-c", "user.email=t@t.invalid",
+                        "commit", "-qm", "base"], cwd=repo, check=True, capture_output=True)
+        valido = tmp_path / "perimetro_valido.txt"
+        valido.write_text("gas.py\n")
+        assert cv._carica_perimetro(path=valido, repo=repo, base="HEAD") is None
+
     def test_r136_5_doc_citations_do_not_count_when_code_in_diff(self, tmp_path):
         """R-136-5: diff con codice, verdetto che cita solo .md del diff → exit 1."""
         sec4 = "## VERDETTO: APPROVATO\nnote.md:1 e note.md:2 ok."

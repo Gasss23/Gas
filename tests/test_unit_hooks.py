@@ -671,6 +671,23 @@ class TestReviewGateFailClosed:
         return subprocess.run(["bash", str(repo / ".claude/hooks/review_gate.sh")],
                               input=self._stdin_commit(), env=env, capture_output=True, text=True)
 
+    def test_gate_perimetro_byte_non_utf8_in_locale_utf8_blocca(self, tmp_path, monkeypatch):
+        """V-2 verifica esterna #134: in locale UTF-8 `read` di bash 5 si mangiava il newline
+        dopo un byte non UTF-8 e fondeva due voci del perimetro → la seconda spariva e un
+        file del perimetro passava senza marcatore (fail-open del gate di review)."""
+        loc = _esigi_locale_utf8()
+        repo = self._repo_con_hook_proprio(tmp_path)
+        (repo / ".claude/perimetro_review.txt").write_bytes(b"voce\xe9\nspeciale.txt\n")
+        (repo / "speciale.txt").write_text("v1\n")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "perimetro con byte non UTF-8"], cwd=repo,
+                       check=True, capture_output=True)
+        (repo / "speciale.txt").write_text("v2 non revisionata\n")
+        subprocess.run(["git", "add", "speciale.txt"], cwd=repo, check=True, capture_output=True)
+        monkeypatch.setenv("LC_ALL", loc)
+        result = self._run_hook_locale(repo)
+        assert result.returncode == 2, result.stderr
+
     def test_gate_r138_1_staged_perimeter_self_removal_blocks(self, tmp_path):
         """R-138-1 (sonda P7): perimetro in stage che toglie sé stesso e gas.py, più gas.py
         modificato in stage, senza marcatore → BLOCCA (le voci di HEAD contano)."""
@@ -1723,6 +1740,32 @@ class TestPromemoriaCounter:
 #   T-finale-4: IP in reports/ → exit 1, nessun push
 
 
+def _locale_utf8() -> str | None:
+    """V-2 #124/#125: un locale UTF-8 disponibile (dove un byte non UTF-8 attaccato a un IP
+    lo nasconde a grep/git grep senza LC_ALL=C). None se il sistema non ne ha."""
+    try:
+        r = subprocess.run(["locale", "-a"], capture_output=True, text=True)
+    except OSError:
+        return None
+    disponibili = {l.strip().lower().replace("utf8", "utf-8") for l in r.stdout.splitlines()}
+    for loc in ("C.UTF-8", "en_US.UTF-8"):
+        if loc.lower() in disponibili:
+            return loc
+    return None
+
+
+def _esigi_locale_utf8() -> str:
+    """V-3 verifica esterna #134: dove il locale UTF-8 è garantito (CI,
+    GAS_TEST_LOCALE_UTF8_ATTESO=1) un locale mancante è un FAIL, non uno SKIP che
+    lascerebbe la CI verde senza aver provato nulla."""
+    loc = _locale_utf8()
+    if loc is None:
+        if os.environ.get("GAS_TEST_LOCALE_UTF8_ATTESO") == "1":
+            pytest.fail("locale UTF-8 atteso (GAS_TEST_LOCALE_UTF8_ATTESO=1) ma assente")
+        pytest.skip("nessun locale UTF-8 sul sistema")
+    return loc
+
+
 def _run_finale(
     repo: Path,
     extra_env: dict | None = None,
@@ -2040,6 +2083,24 @@ class TestFinaleScript:
         err = r.stderr.decode("utf-8", errors="replace")
         assert r.returncode == 1, f"atteso exit 1 (latin1), got {r.returncode}; stderr={err!r}"
         assert "IP trovato" in err, err
+
+    @pytest.mark.parametrize("data", [
+        b"caf\xe910.0.0.1\n",           # gasmerge-ip-ok
+        b"10.0.0.1\xe9\n",              # gasmerge-ip-ok
+    ])
+    def test_finale_4f_bis_byte_attaccato_locale_utf8(self, tmp_path, monkeypatch, data):
+        """V-2 #124/#125 (discriminazione su glibc): in locale UTF-8 un byte non UTF-8
+        attaccato all'IP lo nasconde a git grep/grep; solo LC_ALL=C nel gate lo vede."""
+        loc = _esigi_locale_utf8()
+        monkeypatch.setenv("LC_ALL", loc)
+        work = self._repo_finale_con_bytes(tmp_path, data, "feat/4f-bis")
+        r = subprocess.run(["bash", str(FINE_TASK_FINALE)], cwd=work, capture_output=True,
+                           env={**os.environ, "CLAUDE_PROJECT_DIR": str(work)})
+        err = r.stderr.decode("utf-8", errors="replace")
+        assert r.returncode == 1, f"atteso exit 1, got {r.returncode}; stderr={err!r}"
+        assert "IP trovato" in err, err
+        # La riga bloccata va mostrata (grep -Fx in UTF-8 stamperebbe "binary file matches").
+        assert b"10.0.0.1" in r.stderr, err  # gasmerge-ip-ok
 
     def test_finale_4g_errore_grep_allowlist_stop(self, tmp_path):
         """R-149-1 (gemello di R-148-1): la git grep con --and fallisce → STOP, mai
