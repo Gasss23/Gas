@@ -18,6 +18,7 @@
 - **R-173-1 / R-173-2**: `FATTA`.
 - **Prova su macOS reale**: `SALTATA — nessun Mac nel container; assenza di bwrap simulata pre-impostando gas._OS_SANDBOX_CACHE`.
 - **Etichetta `verifica`**: `SALTATA — gh non autenticato e l'etichetta non esiste ancora`.
+- **Verifica esterna §4quater #136**: `FATTA` — APPROVATO CON RISERVE (§8), solo BASSE/COSMETICHE, nessuna correzione al codice.
 
 ---
 
@@ -26,17 +27,18 @@
 ```
  .claude/agents/memoria_revisore.md |   3 +++
  .github/workflows/ci.yml           |   3 +++
- reports/diff_sessione.md           |  19 +++++++-----------
- reports/handoff.md                 | 389 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/diff_sessione.md           |  19 ++++++-----------
+ reports/handoff.md                 | 417 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  29 +++++++++++----------------
- tests/test_unit_kernel.py          |  26 +++++++++++++++++++++---
- 7 files changed, 133 insertions(+), 338 deletions(-)
+ reports/ultimo_report.md           |  29 ++++++++++---------------
+ tests/test_unit_kernel.py          |  26 ++++++++++++++++++++---
+ 7 files changed, 173 insertions(+), 326 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2132f4b docs(kernel-skip-senza-bwrap): fine-task — report, handoff con verdetti #173/#175, diff sessione
 800bd7f test(kernel): F-mac-1 — senza sandbox OS i test di run_command girano in os_with_fallback, in CI il sandbox è esigito — review #173/#175
 7cfef00 chore(revisore): memoria review #175 — APPROVATO
 9ca25f2 chore(revisore): memoria review #173 — APPROVATO CON RISERVE
@@ -146,11 +148,62 @@ senza bwrap (simulato), con variabile           →  === RIEPILOGO: 648 PASS, 1 
 
 ## §6 STATO CI
 
-`gh` non autenticato (CI NON VERIFICATA con la CLI). Mappatura commit → run:
-- `9ca25f2`, `7cfef00`, `800bd7f`: pushati insieme, run CI sul push di `800bd7f` — esito non letto alla scrittura dell'handoff (atteso: handoff-check rosso, handoff non ancora rigenerato).
-- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Stato da connettore GitHub e dalla verifica esterna #136 (`gh` non autenticato qui). Mappatura commit → run:
+- `9ca25f2`, `7cfef00`, `800bd7f`: pushati insieme → run su `800bd7f`: unit-suite success, handoff-check failure (atteso, handoff non ancora rigenerato).
+- `2132f4b` (primo fine-task): unit-suite success, handoff-check success.
+- commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- macOS reale non provato.
-- Cosmetiche (#175): un valore della variabile diverso da "1" disattiva il check in silenzio; senza variabile T13-atteso non stampa una riga SKIP.
+- macOS reale non provato (conferma dell'operatore dopo il merge).
+- V-2 #136 (BASSA): T13-atteso scatta solo con la variabile esattamente "1"; un valore diverso lo spegne in silenzio.
+- V-3 #136 (BASSA, dichiarata): su macOS T11c2/T12* provano la sandbox applicativa, il fail-closed di os_strict resta su T13d.
+- V-5 #136 / #175 (cosmetiche): senza variabile T13-atteso non stampa SKIP.
+
+## §8 VERIFICA ESTERNA #136 (verdetto integrale)
+
+Lanciata con `Applica .claude/verifica_esterna.md a: <URL_HANDOFF di 2132f4b> <URL_PR>` (agente nuovo, Sonnet). Nessun finding sopra BASSA: nessuna correzione al codice; V-4 (stat fotografato prima dell'ultimo commit) è strutturale.
+
+VERIFICA ESTERNA PR #136 — APPROVATO CON RISERVE
+
+Metodo: ho clonato il repo in una scratchpad e fatto checkout di 2132f4b (base e91ceb4). Ho rilanciato `tests/test_unit_kernel.py` in quattro scenari più la base, usando un bwrap reale e un wrapper che forza `gas._OS_SANDBOX_CACHE=(False,..)`. Ho controllato diff, ruleset e check-run con l'API REST di gh. Il repo reale resta pulito.
+
+CLAIM VERIFICATI
+- §2 diff-stat: VERO nei 7 file e nel segno. Nei conteggi è obsoleto: l'handoff riporta 133+/338-, il reale è 142+/338- (tests +26/-3, handoff.md 398 righe toccate).
+- §3 git log: VERO. I tre commit citati ci sono, più il quarto, 2132f4b (fine-task), che l'handoff dichiara di non contenere.
+- Delta test, 4 scenari: tutti VERI.
+  - Con bwrap e variabile: 653 PASS / 0 FAIL.
+  - Con bwrap, senza variabile: 652 / 0.
+  - Senza bwrap simulato, senza variabile: 648 / 0, con SKIP di T13a/b/c/e.
+  - Senza bwrap simulato, con variabile: 648 / 1 FAIL, ed è T13-atteso.
+- Base senza bwrap: 642 PASS / 5 FAIL, come dichiarato (T11c2, T11e, T12a, T12c, T12e). Il fix risolve davvero il problema di partenza.
+- R-173-1 CHIUSA: VERO. La mutation "sonda a False" dava 648/0 (verde) senza la variabile e ora dà un FAIL con T13-atteso. L'asserzione usa la sonda del kernel mentre l'attesa viene dal workflow, quindi le due fonti sono indipendenti.
+- Il diff non tocca `gas.py`, `brains` né `modules`: VERO. Il runtime è invariato.
+- CI sullo SHA 2132f4b: `unit-suite` success e `handoff-check` success. `esito`, `verifica` e `smista` sono skipped. Il ruleset `main-lock` è attivo e richiede esattamente `unit-suite` e `handoff-check`.
+- §6 dell'handoff, run di 800bd7f: `unit-suite` success e `handoff-check` failure, come atteso.
+
+FINDING
+- V-1 (BASSA): in CI le due garanzie sul sandbox restano due sonde diverse.
+  - Lo smoke-test del workflow (`--unshare-all`, BWRAP_OK) e la sonda del kernel `_probe_os_sandbox` sono indipendenti.
+  - T13-atteso intercetta solo la regressione della sonda del kernel. Il caso opposto lo prende già il Gate sandbox del workflow.
+  - Non c'è un buco, ma ho verificato solo la prima direzione con la simulazione. Non è un blocco.
+- V-2 (BASSA): T13-atteso scatta solo se la variabile vale esattamente "1".
+  - Se un domani la variabile viene scritta "true" o "True" nel workflow, il check si disattiva in silenzio.
+  - Il revisore l'aveva già segnalato come cosmetico, ma sul lato CI è un controllo che sparisce senza errore.
+  - Fix proposto: accettare i valori truthy, oppure un check del workflow che fallisca se la variabile non è "1".
+- V-3 (BASSA): perdita di copertura del fail-closed di `os_strict` per T11c2 e T12a/c/e.
+  - Senza bwrap questi test girano ora in `os_with_fallback`, quindi su macOS non provano più `os_strict`.
+  - Il fail-closed è coperto solo da T13d, che forza `os_sandbox_available=False`.
+  - È una scelta dichiarata e ragionevole.
+- V-4 (COSMETICA): il diff-stat di §2 non coincide con quello reale (133 contro 142 inserzioni), perché è stato generato prima dell'ultimo commit. `handoff-check` passa comunque, perché confronta i nomi dei file.
+- V-5 (COSMETICA): senza variabile T13-atteso non stampa nessuna riga SKIP.
+
+NON VERIFICATO
+- I log della run CI sono illeggibili da qui (il download dei log restituisce un redirect a un blob esterno che il proxy blocca). Non ho potuto vedere con i miei occhi che T13-atteso risulti PASS su un runner reale e che la variabile arrivi al processo Python. Mi baso solo sul `success` dello step `unit-suite`, che con la variabile impostata implica T13-atteso PASS.
+- Il comportamento su macOS reale non è provato. L'assenza di bwrap è solo simulata con la cache, e sul Mac restano da vedere le differenze tra i comandi BSD, cioè `wc` con spazi iniziali e `grep`.
+- Non ho letto in dettaglio i contenuti di `reports/*` e della memoria del revisore (solo il diffstat).
+
+RACCOMANDAZIONE
+- Si può fare il merge. Prima o subito dopo, l'operatore deve confermare su un Mac reale che `python tests/test_unit_kernel.py` dia 0 FAIL, come già indicato in §0.
+- Valutare di irrigidire V-2 con un micro-task a basso costo.
+- Prima di unire altre PR della notte, riallineare i report canonici a main, come già dichiarato in §0.
