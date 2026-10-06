@@ -15,14 +15,17 @@ PRIMA di inserire i segreti (C3–C5).
 2. Accedi nel browser che si apre. Il terminale stampa un token che inizia con `sk-ant-oat`.
    Copialo e tienilo da parte per il passo C3.
 
-## B. GitHub App dedicata (l'identità che approva)
+## B. GitHub App dedicata (l'identità che pubblica il check `verifica-bot`)
 
 1. Su github.com: foto profilo → **Settings** → **Developer settings** → **GitHub Apps** → **New GitHub App**.
 2. **GitHub App name**: `gas-verificatore`. Se è già preso, scegli un altro nome e dimmelo.
    **Homepage URL**: `https://github.com/Gasss23/Gas`.
 3. **Webhook**: togli la spunta da **Active**.
-4. **Repository permissions**: **Pull requests → Read and write**, **Contents → Read-only**.
-   Non toccare nient'altro (Metadata in sola lettura è automatico).
+4. **Repository permissions** (B2, G-1 verifica chat #130): **Pull requests → Read and write**
+   (review COMMENT col verdetto), **Checks → Read and write** (il check run `verifica-bot`, che è
+   il sì/no del bot), **Contents → Read-only**. Non toccare nient'altro (Metadata in sola
+   lettura è automatico). Se l'App esiste già con i permessi vecchi: aggiungi **Checks → Read
+   and write** e poi accetta i nuovi permessi nella pagina dell'installazione.
 5. **Where can this GitHub App be installed?** → **Only on this account** → **Create GitHub App**.
 6. Nella pagina dell'App copia il **Client ID** (serve al passo C4).
 7. Scendi a **Private keys** → **Generate a private key**: si scarica un file `.pem`.
@@ -39,10 +42,12 @@ PRIMA di inserire i segreti (C3–C5).
    file `.pem` (aprilo con TextEdit, copia tutto comprese le righe `-----BEGIN` / `-----END`).
 6. Cancella il `.pem` da Download (o spostalo nel tuo gestore di password).
 
-## D. Etichetta `verifica` (la creo io)
+## D. Etichetta `verifica` (la crei TU, a setup finito)
 
-Dopo il tuo setup creo l'etichetta con `gh label create verifica` (l'agente la mette sulle PR
-a fine fetta: è il dosaggio della quota). Senza etichetta il bot non parte mai.
+L'etichetta la crei tu, SOLO dopo aver finito A–C (repo → Issues → Labels → New label →
+`verifica`, oppure `gh label create verifica`). L'agente non la crea: a fine fetta la mette
+sulla PR (`gh pr edit N --add-label verifica`, fine-task §4quater) ed è il dosaggio della
+quota. Finché l'etichetta non esiste quel comando fallisce e il bot non parte mai.
 
 ## E. Da NON cambiare
 
@@ -52,6 +57,22 @@ a fine fetta: è il dosaggio della quota). Senza etichetta il bot non parte mai.
 
 ## F. Dopo il test di convalida (te lo dico io quando)
 
-Ruleset `main-lock`: approvazioni richieste 1, "Dismiss stale approvals" acceso,
-"Require approval of the most recent push" acceso. Ti darò i passi esatti in quel momento:
-finché il bot non è provato, accenderli bloccherebbe ogni merge.
+Ruleset `main-lock` → **Require status checks to pass** → aggiungi il check **`verifica-bot`**
+scegliendo come sorgente l'App `gas-verificatore` (così il ruleset salva l'`integration_id`
+dell'App: un check omonimo pubblicato da Actions o da un'altra App non conta). NON serve
+"1 approvazione": il sì del bot è il check, non una review (G-1 #130; `gasmerge --auto`
+controlla proprio questo e si blocca se il ruleset non lo richiede).
+
+Cosa vuol dire ogni conclusione del check:
+- **success** — il bot ha detto sì: mergeabile, anche con `gasmerge --auto`;
+- **failure** — il bot ha detto NO: definitivo su quello SHA (G-2), serve un commit nuovo;
+- **cancelled** — verifica non conclusa (head cambiata, verdetto o elenco file illeggibile):
+  si rilancia;
+- **neutral** — la PR tocca la macchina del bot e il bot avrebbe detto sì: **decide
+  l'operatore** (neutral non blocca il ruleset, `gasmerge --auto` invece vuole success e si
+  ferma). Un NO sulla macchina del bot resta failure (R-163-1).
+
+`gasmerge` manuale ora aspetta i check della PR (`gh pr checks --watch`), quindi eredita
+anche `verifica-bot`: con il check richiesto, un failure del bot blocca anche il merge
+manuale (R-163-3, voluto). Finché il bot non è provato non aggiungerlo al ruleset:
+bloccherebbe ogni merge.

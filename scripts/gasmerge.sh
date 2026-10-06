@@ -10,13 +10,17 @@ set -euo pipefail
 # prima di iniziare l'esecuzione, quindi un pull successivo non può più
 # corrompere la corsa in atto.
 main() {
+# Fetta B2: `gasmerge --auto N` = merge senza prompt, SOLO se l'App di verifica (quella che
+# il ruleset di main richiede) ha pubblicato il check verifica-bot in success sulla head.
+AUTO=0
+if [ "${1:-}" = "--auto" ]; then AUTO=1; shift; fi
 # Validazione esplicita del parametro PR: messaggio su stderr, exit 2 (uso errato).
-if [ -z "${1:-}" ]; then
-  echo "uso: gasmerge <numero-PR>" >&2
+if [ -z "${1:-}" ] || [ -n "${2:-}" ]; then
+  echo "uso: gasmerge [--auto] <numero-PR>" >&2
   exit 2
 fi
 if ! printf '%s' "$1" | grep -qE '^[0-9]+$'; then
-  echo "uso: gasmerge <numero-PR>  (argomento non numerico: '$1')" >&2
+  echo "uso: gasmerge [--auto] <numero-PR>  (argomento non numerico: '$1')" >&2
   exit 2
 fi
 PR="$1"
@@ -36,12 +40,22 @@ BRANCH=$(jq -r .headRefName "$GASPR_JSON")
 TITLE=$(jq -r .title "$GASPR_JSON")
 STATE=$(jq -r .state "$GASPR_JSON")
 [ "$STATE" = "OPEN" ] || { echo "BLOCCO: PR #$PR è $STATE"; exit 1; }
+# V-3 verifica esterna #127: la head si cattura QUI, prima di ogni controllo, e i controlli
+# (IP, file di motore, check del bot) leggono QUEL commit, non un ref che può muoversi.
+# Il merge usa --match-head-commit sullo stesso SHA: si mergia esattamente ciò che si è visto.
+HEAD_SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
+[ -n "$HEAD_SHA" ] || { echo "BLOCCO: HEAD_SHA vuoto — head non verificabile"; exit 1; }
+REF_SHA=$(git rev-parse --verify -q "refs/remotes/origin/$BRANCH^{commit}" || true)
+if [ "$REF_SHA" != "$HEAD_SHA" ]; then
+  echo "BLOCCO: refs/remotes/origin/$BRANCH (${REF_SHA:-<assente>}) non coincide con la head della PR ($HEAD_SHA)"
+  exit 1
+fi
 
 echo "=== PR #$PR — $TITLE"
 echo "=== branch: $BRANCH"
 echo
 echo "--- FILE E DIFF ---"
-git diff --stat "refs/remotes/origin/main...refs/remotes/origin/$BRANCH"
+git diff --stat "refs/remotes/origin/main...$HEAD_SHA"
 echo
 echo "--- CHECK CI ---"
 # `gh pr checks` da solo può uscire 0 anche con check ancora in corso: il
@@ -76,9 +90,14 @@ if [ "$BAD_CHECKS" -ne 0 ]; then
 fi
 echo "Tutti i check verdi (pass/skipping)."
 
-# Secondo fetch dopo l'attesa CI (potenzialmente 900s): aggiorna i refs prima
-# dei controlli invariante, così IP e file-motore leggono lo stato attuale.
+# Secondo fetch dopo l'attesa CI (potenzialmente 900s): un push durante l'attesa
+# sposta il ref → la head vista dai check non è più quella catturata → BLOCCO.
 git fetch --prune origin >/dev/null
+REF_SHA=$(git rev-parse --verify -q "refs/remotes/origin/$BRANCH^{commit}" || true)
+if [ "$REF_SHA" != "$HEAD_SHA" ]; then
+  echo "BLOCCO: head cambiata durante l'attesa CI ($HEAD_SHA → ${REF_SHA:-<assente>}) — riavvia gasmerge"
+  exit 1
+fi
 
 echo
 echo "--- INVARIANTE IP ---"
@@ -93,8 +112,9 @@ set +e
 # R-148-2: tree risolto UNA volta (le due git grep sotto vedono lo stesso albero
 # anche se un fetch concorrente sposta il ref). R-148-3: -a e LC_ALL=C, così file
 # binari e righe non UTF-8 non escono dal controllo.
-if ! IP_TREE=$(git rev-parse --verify -q "refs/remotes/origin/$BRANCH^{tree}"); then
-  echo "BLOCCO: tree di refs/remotes/origin/$BRANCH non risolvibile — verifica IP NON eseguita"
+# V-3 #127: il tree è quello di HEAD_SHA (il commit che si mergerà).
+if ! IP_TREE=$(git rev-parse --verify -q "$HEAD_SHA^{tree}"); then
+  echo "BLOCCO: tree di $HEAD_SHA non risolvibile — verifica IP NON eseguita"
   exit 1
 fi
 # R-155-1: un IP adiacente a un punto (a fine frase, "<IP>.nip.io", "host.<IP>")
@@ -169,7 +189,7 @@ set +e
 # V-3 verifica esterna #122: -z, perché anche con quotePath=false git quota i
 # nomi con apice, tab o backslash (e il confronto col perimetro falliva). I NUL
 # diventano a-capo: resta escluso solo un nome che contiene un a-capo.
-ENGINE_DIFF=$(git -c core.quotePath=false diff -z --no-renames --name-only "refs/remotes/origin/main...refs/remotes/origin/$BRANCH" | tr '\0' '\n')
+ENGINE_DIFF=$(git -c core.quotePath=false diff -z --no-renames --name-only "refs/remotes/origin/main...$HEAD_SHA" | tr '\0' '\n')
 DIFF_RC=$?
 set -e
 if [ "$DIFF_RC" -ne 0 ]; then
@@ -182,12 +202,12 @@ fi
 # le cartelle storiche scripts/ e .claude/. Perimetro illeggibile su entrambi
 # i lati → ogni file conta come motore (fail-safe: il promemoria non tace).
 PERIM_VOCI=$( { git show "refs/remotes/origin/main:.claude/perimetro_review.txt" 2>/dev/null || true
-                git show "refs/remotes/origin/$BRANCH:.claude/perimetro_review.txt" 2>/dev/null || true
+                git show "$HEAD_SHA:.claude/perimetro_review.txt" 2>/dev/null || true
                 printf 'scripts/\n.claude/\n'; } \
   | sed -e 's/#.*//' -e 's/[[:space:]]//g' | grep -v '^$' | sort -u)
 PERIM_LETTO=1
 git cat-file -e "refs/remotes/origin/main:.claude/perimetro_review.txt" 2>/dev/null \
-  || git cat-file -e "refs/remotes/origin/$BRANCH:.claude/perimetro_review.txt" 2>/dev/null \
+  || git cat-file -e "$HEAD_SHA:.claude/perimetro_review.txt" 2>/dev/null \
   || PERIM_LETTO=0
 ENGINE=""
 # R-167-1: anche qui `read` in C (stessa classe del gate IP: un path che finisce con un
@@ -221,17 +241,56 @@ if [ -n "$(git status --porcelain scripts/gasmerge.sh)" ]; then
   echo "*** GASMERGE MODIFICATO E NON COMMITTATO ***"
 fi
 echo
-# Cattura HEAD_SHA DOPO tutti i controlli e PRIMA della stampa di conferma:
-# copre il TOCTOU tra i controlli (IP, engine, CI) e il merge. La ri-verifica
-# post-read (sotto) copre il residuo durante l'attesa umana al prompt.
-# Residuo dichiarato: tra IP/engine check e questa cattura esiste ancora un
-# micro-intervallo (provenienza script, echo), ma è sul percorso sincrono
-# PRIMA della pausa umana — ordine di grandezza milliseconds, non minuti.
-HEAD_SHA=$(gh pr view "$PR" --json headRefOid --jq '.headRefOid')
-[ -n "$HEAD_SHA" ] || { echo "BLOCCO: HEAD_SHA vuoto — head non verificabile"; exit 1; }
-echo "Lo scope è quello che avevi chiesto? Se sì digita $PR, altrimenti INVIO per annullare."
-read -r ANS
-[ "$ANS" = "$PR" ] || { echo "ANNULLATO"; exit 1; }
+if [ "$AUTO" -eq 1 ]; then
+  echo "--- VERIFICA-BOT (merge automatico) ---"
+  if [ -n "$(git status --porcelain scripts/gasmerge.sh)" ]; then
+    echo "BLOCCO: gasmerge modificato e non committato — niente merge automatico"; exit 1
+  fi
+  # G-1 verifica chat #130: il sì del bot è il check `verifica-bot` dell'App. Quale App lo
+  # dice SOLO il ruleset di main (integration_id del check richiesto): se il ruleset non lo
+  # richiede, il setup non è finito e il merge automatico non esiste.
+  set +e
+  RULES=$(gh api "repos/{owner}/{repo}/rules/branches/main")
+  RULES_RC=$?
+  BOT_ID=$(printf '%s' "$RULES" | jq -r '[.[] | select(.type == "required_status_checks")
+    | .parameters.required_status_checks[]? | select(.context == "verifica-bot")
+    | .integration_id // empty] | first // empty' 2>/dev/null)
+  set -e
+  if [ "$RULES_RC" -ne 0 ]; then
+    echo "BLOCCO: regole di main non leggibili (rc=$RULES_RC) — merge automatico annullato"; exit 1
+  fi
+  if ! printf '%s' "$BOT_ID" | grep -qE '^[0-9]+$'; then
+    echo "BLOCCO: il ruleset di main non richiede il check verifica-bot di un'App — merge automatico non disponibile (setup F)"
+    exit 1
+  fi
+  set +e
+  RUNS=$(gh api "repos/{owner}/{repo}/commits/$HEAD_SHA/check-runs?check_name=verifica-bot&filter=all&per_page=100")
+  RUNS_RC=$?
+  # G-2: un NO dell'App su questo SHA resta NO; altrimenti conta l'ULTIMO check dell'App.
+  ESITO_BOT=$(printf '%s' "$RUNS" | jq -r --argjson id "$BOT_ID" '
+    if (.total_count // 0) > (.check_runs | length) then "elenco troncato" else
+    [.check_runs[] | select(.app.id == $id)]
+    | if length == 0 then "nessun check"
+      elif any(.conclusion == "failure") then "NO"
+      else (sort_by(.id) | last
+            | if .status == "completed" then (.conclusion // "senza conclusione")
+              else "in corso" end) end end' 2>/dev/null)
+  ESITO_RC=$?
+  set -e
+  if [ "$RUNS_RC" -ne 0 ] || [ "$ESITO_RC" -ne 0 ]; then
+    echo "BLOCCO: check verifica-bot non leggibili (gh rc=$RUNS_RC, jq rc=$ESITO_RC) — merge automatico annullato"
+    exit 1
+  fi
+  case "$ESITO_BOT" in
+    success) echo "verifica-bot dell'App $BOT_ID: success su $HEAD_SHA — OK" ;;
+    NO) echo "BLOCCO: il bot ha detto NO su $HEAD_SHA (G-2): serve un commit nuovo"; exit 1 ;;
+    *) echo "BLOCCO: verifica-bot su $HEAD_SHA: $ESITO_BOT — il merge automatico vuole success"; exit 1 ;;
+  esac
+else
+  echo "Lo scope è quello che avevi chiesto? Se sì digita $PR, altrimenti INVIO per annullare."
+  read -r ANS
+  [ "$ANS" = "$PR" ] || { echo "ANNULLATO"; exit 1; }
+fi
 
 # Ri-verifica TOCTOU post-conferma: ri-fetch + ri-lettura head.
 # Blocca se la head è cambiata mentre attendevamo al prompt (finestra umana).
@@ -249,6 +308,7 @@ if [ "$NEW_HEAD" != "$HEAD_SHA" ]; then
   echo "BLOCCO: head cambiata durante la conferma ($HEAD_SHA → $NEW_HEAD) — riavvia gasmerge"
   exit 1
 fi
+[ "$AUTO" -eq 0 ] || echo "=== MERGE AUTOMATICO di #$PR su $HEAD_SHA"
 gh pr merge "$PR" --merge --delete-branch --match-head-commit "$HEAD_SHA"
 git checkout main && git pull --ff-only origin main
 git branch -d "$BRANCH" 2>/dev/null || true

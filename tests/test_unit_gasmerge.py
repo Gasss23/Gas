@@ -79,7 +79,7 @@ case "$*" in
     printf '%s\\n' '{checks_json}'
     exit 0 ;;
   *"headRefOid"*)
-    echo "abc1234def5678abc1234def5678abc1234de"
+    git rev-parse "refs/remotes/origin/{head_ref}"
     exit 0 ;;
   *"pr merge"*)
     exit 0 ;;
@@ -593,8 +593,10 @@ class TestIPRefCompleto:
         assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
 
     def test_push_durante_attesa_ci_visto_dal_gate(self, tmp_path):
-        """V-3 verifica #126: un push al branch durante l'attesa CI deve arrivare al gate
-        IP (secondo `git fetch --prune` dopo il --watch), non lo stato del primo fetch."""
+        """V-3 verifica #126 + V-3 #127: un push al branch durante l'attesa CI non passa.
+        Il secondo `git fetch --prune` lo vede, e il ref non coincide più con la head
+        catturata all'inizio (i check verdi erano di un altro commit): BLOCCO prima del
+        gate IP."""
         work, bare = _setup_with_origin(tmp_path)
         altro = tmp_path / "altro"
         subprocess.run(["git", "clone", "-q", "-b", "feat", str(bare), str(altro)],
@@ -608,7 +610,7 @@ class TestIPRefCompleto:
         _make_stub_gh(fake_bin, on_watch=f'git -C "{altro}" push -q origin feat >/dev/null 2>&1')
         result = _run(work, fake_bin)
         assert result.returncode != 0, result.stdout
-        assert "BLOCCO: trovati IP non allowlistati" in result.stdout, result.stdout
+        assert "BLOCCO: head cambiata durante l'attesa CI" in result.stdout, result.stdout
         assert "--- FILE DI MOTORE ---" not in result.stdout, result.stdout
 
 
@@ -1081,7 +1083,9 @@ class TestLoopbackExemption:
         )
 
 
-def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> None:
+def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str,
+                                  rules: str = "[]", runs: str = '{"check_runs":[]}',
+                                  rules_rc: int = 0, runs_rc: int = 0) -> None:
     """Stub gh: headRefOid sempre identico (head invariata), pr merge registra argomenti.
 
     Il merge_log viene scritto SOLO quando gh riceve 'pr merge': se il file non esiste
@@ -1090,8 +1094,15 @@ def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str) -> 
     """
     stub = fake_bin / "gh"
     merge_log_path = str(merge_log)
+    (fake_bin / "rules.json").write_text(rules)
+    (fake_bin / "runs.json").write_text(runs)
     stub.write_text(f"""#!/usr/bin/env bash
 case "$*" in
+  *"rules/branches/main"*)
+    cat "{fake_bin}/rules.json"; exit {rules_rc} ;;
+  *"/check-runs"*)
+    printf '%s\\n' "$*" >> "{fake_bin}/runs.log"
+    cat "{fake_bin}/runs.json"; exit {runs_rc} ;;
   *"headRefName,title,state"*)
     printf '{{"headRefName":"feat","title":"Test PR","state":"OPEN"}}\\n' > "$GASPR_JSON"
     exit 0 ;;
@@ -1142,7 +1153,7 @@ case "$*" in
   *"headRefOid"*)
     COUNT=$(cat "{counter_path}" 2>/dev/null || echo 0)
     if [ "$COUNT" = "0" ]; then
-      echo "aaa1111111111111111111111111111111111"
+      git rev-parse refs/remotes/origin/feat
       echo "1" > "{counter_path}"
     else
       echo "bbb2222222222222222222222222222222222"
@@ -1192,7 +1203,7 @@ case "$*" in
   *"headRefOid"*)
     COUNT=$(cat "{counter_path}" 2>/dev/null || echo 0)
     if [ "$COUNT" = "0" ]; then
-      echo "aaa1111111111111111111111111111111111"
+      git rev-parse refs/remotes/origin/feat
       echo "1" > "{counter_path}"
     else
       echo ""
@@ -1230,8 +1241,6 @@ class TestTOCTOUPositive:
     '--match-head-commit <SHA_atteso>' negli argomenti reali.
     """
 
-    _SHA = "abc1234def5678abc1234def5678abc1234de"
-
     def test_head_unchanged_merge_uses_match_head_commit(self, tmp_path):
         """HEAD invariata → gh pr merge include --match-head-commit <SHA_atteso>.
 
@@ -1240,6 +1249,7 @@ class TestTOCTOUPositive:
         che '--match-head-commit <SHA>' compaia come coppia nel log.
         """
         work, _ = _setup_with_origin(tmp_path)
+        self._SHA = _sha_feat(work)
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
         merge_log = tmp_path / "merge_args.log"
@@ -1260,3 +1270,155 @@ class TestTOCTOUPositive:
             f"'--match-head-commit {self._SHA}' NON trovato negli argomenti di pr merge. "
             f"Registrato: {recorded!r}"
         )
+
+
+def _sha_feat(work: Path) -> str:
+    return subprocess.run(["git", "rev-parse", "refs/remotes/origin/feat"], cwd=work,
+                          check=True, capture_output=True, text=True).stdout.strip()
+
+
+# ---------------------------------------------------------------------------
+# V-3 verifica esterna #127: la head si cattura all'inizio e deve essere il ref controllato
+# ---------------------------------------------------------------------------
+
+class TestHeadLegataAlRef:
+    def test_head_diversa_dal_ref_blocca_subito(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge.log"
+        _make_stub_gh_recording_merge(fake_bin, merge_log, "f" * 40)
+        r = _run_with_stdin(work, fake_bin, stdin_data="123\n")
+        assert r.returncode != 0
+        assert "non coincide con la head della PR" in r.stdout, r.stdout
+        assert "--- CHECK CI ---" not in r.stdout and not merge_log.exists()
+
+    def test_head_vuota_blocca_subito(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge.log"
+        _make_stub_gh_recording_merge(fake_bin, merge_log, "")
+        r = _run_with_stdin(work, fake_bin, stdin_data="123\n")
+        assert r.returncode != 0 and "HEAD_SHA vuoto" in r.stdout, r.stdout
+        assert "--- CHECK CI ---" not in r.stdout and not merge_log.exists()
+
+
+# ---------------------------------------------------------------------------
+# Fetta B2: gasmerge --auto — merge senza prompt solo col check verifica-bot dell'App
+# ---------------------------------------------------------------------------
+
+_APP = 42
+_REGOLE_OK = ('[{"type":"pull_request","parameters":{}},{"type":"required_status_checks",'
+              '"parameters":{"required_status_checks":[{"context":"unit-suite"},'
+              '{"context":"verifica-bot","integration_id":%d}]}}]' % _APP)
+
+
+def _runs(*voci) -> str:
+    """voci: (id, app_id, status, conclusion)."""
+    import json
+    elenco = [{"id": i, "app": {"id": a}, "status": st, "conclusion": c} for i, a, st, c in voci]
+    return json.dumps({"total_count": len(elenco), "check_runs": elenco})
+
+
+class TestMergeAutomatico:
+    def _auto(self, tmp_path, rules=_REGOLE_OK, runs=None, rules_rc=0, runs_rc=0,
+              args=None, stdin=""):
+        work, _ = _setup_with_origin(tmp_path)
+        sha = _sha_feat(work)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge.log"
+        if runs is None:
+            runs = _runs((1, _APP, "completed", "success"))
+        _make_stub_gh_recording_merge(fake_bin, merge_log, sha, rules, runs, rules_rc, runs_rc)
+        r = _run_with_stdin(work, fake_bin, args=args or ["--auto", "123"], stdin_data=stdin)
+        return r, merge_log, sha, fake_bin, work
+
+    def test_success_dell_app_mergia_senza_prompt(self, tmp_path):
+        r, merge_log, sha, fake_bin, _ = self._auto(tmp_path)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "digita" not in r.stdout and "MERGE AUTOMATICO" in r.stdout
+        assert f"--match-head-commit {sha}" in merge_log.read_text()
+        # Il check si legge sullo SHA catturato all'inizio (V-3 #127), con lo storico intero.
+        assert f"commits/{sha}/check-runs?check_name=verifica-bot&filter=all" in \
+            (fake_bin / "runs.log").read_text()
+
+    def test_senza_auto_il_prompt_resta(self, tmp_path):
+        r, merge_log, *_ = self._auto(tmp_path, args=["123"], stdin="\n")
+        assert r.returncode != 0 and "ANNULLATO" in r.stdout
+        assert not merge_log.exists() and "--- VERIFICA-BOT" not in r.stdout
+
+    @pytest.mark.parametrize("rules", [
+        "[]",
+        '[{"type":"required_status_checks","parameters":{"required_status_checks":'
+        '[{"context":"unit-suite"}]}}]',
+        # check richiesto ma da qualsiasi fonte: niente integration_id = niente App
+        '[{"type":"required_status_checks","parameters":{"required_status_checks":'
+        '[{"context":"verifica-bot"}]}}]',
+        '[{"type":"required_status_checks","parameters":{"required_status_checks":'
+        '[{"context":"verifica-bot","integration_id":"42; rm"}]}}]',
+        "non json",
+    ])
+    def test_ruleset_senza_check_dell_app_blocca(self, tmp_path, rules):
+        r, merge_log, *_ = self._auto(tmp_path, rules=rules)
+        assert r.returncode != 0 and "setup F" in r.stdout, r.stdout
+        assert not merge_log.exists()
+
+    def test_regole_illeggibili_bloccano(self, tmp_path):
+        r, merge_log, *_ = self._auto(tmp_path, rules_rc=1)
+        assert r.returncode != 0 and "regole di main non leggibili" in r.stdout, r.stdout
+        assert not merge_log.exists()
+
+    @pytest.mark.parametrize("runs,atteso", [
+        # G-2: un NO dell'App resta NO anche se un rilancio ha detto sì dopo.
+        (_runs((1, _APP, "completed", "failure"), (2, _APP, "completed", "success")), "ha detto NO"),
+        (_runs((2, _APP, "completed", "success"), (1, _APP, "completed", "failure")), "ha detto NO"),
+        (_runs(), "nessun check"),
+        # Un success di un'altra App (o di Actions) non conta.
+        (_runs((1, 7, "completed", "success")), "nessun check"),
+        (_runs((1, _APP, "completed", "neutral")), "neutral"),
+        (_runs((1, _APP, "completed", "cancelled")), "cancelled"),
+        (_runs((1, _APP, "completed", "success"), (2, _APP, "completed", "cancelled")), "cancelled"),
+        (_runs((1, _APP, "in_progress", None)), "in corso"),
+        ('{"total_count":101,"check_runs":[{"id":1,"app":{"id":42},"status":"completed",'
+         '"conclusion":"success"}]}', "elenco troncato"),
+        ("non json", "non leggibili"),
+    ])
+    def test_senza_success_dell_app_blocca(self, tmp_path, runs, atteso):
+        r, merge_log, *_ = self._auto(tmp_path, runs=runs)
+        assert r.returncode != 0 and "BLOCCO" in r.stdout and atteso in r.stdout, r.stdout
+        assert not merge_log.exists()
+
+    def test_ultimo_success_dopo_un_annullato_mergia(self, tmp_path):
+        runs = _runs((1, _APP, "completed", "cancelled"), (2, _APP, "completed", "success"))
+        r, merge_log, *_ = self._auto(tmp_path, runs=runs)
+        assert r.returncode == 0, r.stdout
+        assert merge_log.exists()
+
+    def test_check_illeggibili_bloccano(self, tmp_path):
+        r, merge_log, *_ = self._auto(tmp_path, runs_rc=1)
+        assert r.returncode != 0 and "non leggibili" in r.stdout, r.stdout
+        assert not merge_log.exists()
+
+    def test_gasmerge_locale_modificato_blocca(self, tmp_path):
+        work, _ = _setup_with_origin(tmp_path)
+        (work / "scripts").mkdir()
+        (work / "scripts" / "gasmerge.sh").write_text("# modificato, non committato\n")
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge.log"
+        _make_stub_gh_recording_merge(fake_bin, merge_log, _sha_feat(work), _REGOLE_OK,
+                                      _runs((1, _APP, "completed", "success")))
+        r = _run_with_stdin(work, fake_bin, args=["--auto", "123"])
+        assert r.returncode != 0 and "gasmerge modificato e non committato" in r.stdout, r.stdout
+        assert not merge_log.exists()
+
+    @pytest.mark.parametrize("args", [["--auto"], ["--auto", "x"], ["123", "456"],
+                                      ["--auto", "123", "x"], ["123", "--auto"]])
+    def test_uso_errato(self, tmp_path, args):
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        r = _run(work, fake_bin, args=args)
+        assert r.returncode == 2 and "uso: gasmerge [--auto]" in r.stderr, r.stderr

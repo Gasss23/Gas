@@ -1,17 +1,20 @@
 name: verifica-bot
 
 # V-B vera (decisione operatore 2026-10-04/05): verifica esterna con IDENTITÀ SEPARATA.
-# Un bot su GitHub applica .claude/verifica_esterna.md alla PR e la APPROVA (con una
-# GitHub App dedicata) solo se il verdetto non è BOCCIATO e non ha finding ALTA/MEDIA.
-# La decisione di approvare è di scripts/bot_esito.py, non del modello.
+# Un bot su GitHub applica .claude/verifica_esterna.md alla PR e pubblica, con una GitHub
+# App dedicata, il CHECK RUN `verifica-bot` sullo SHA verificato: success solo se il
+# verdetto non è BOCCIATO e non ha finding ALTA/MEDIA (G-1 verifica chat #130: il ruleset
+# di main richiede quel check con l'integration_id dell'App; un NO su uno SHA resta NO,
+# G-2). Il verdetto integrale va in una review COMMENT. La decisione è di
+# scripts/bot_esito.py, non del modello.
 #
 # Sicurezza:
 # - pull_request_target: la DEFINIZIONE di questo workflow e gli script vengono da main;
 #   una PR non può cambiare il proprio verificatore.
 # - Segreti (token Claude dell'abbonamento, chiave dell'App) nell'environment
 #   `verifica-bot`, con deployment ristretto a main: un workflow aggiunto da una PR non
-#   li legge. Le approvazioni di GitHub Actions restano DISATTIVATE nel repo: solo l'App
-#   può approvare.
+#   li legge. Il ruleset accetta il check `verifica-bot` SOLO dall'App (integration_id):
+#   un check omonimo pubblicato da Actions o da un'altra App non conta.
 # - Claude gira con --setting-sources user: niente hook, settings o CLAUDE.md del repo
 #   caricati da soli (R-159-1: gli hook sono bash che girerebbe col token nell'env).
 # - Niente git fra gli strumenti (V-1 verifica esterna #130: `git log/show/diff --output`
@@ -22,10 +25,12 @@ name: verifica-bot
 #
 # Dosaggio dei costi (abbonamento, quota condivisa con lo sviluppo):
 # - le PR che toccano la macchina del bot (MACCHINA_BOT in bot_esito.py) ricevono la
-#   verifica ma MAI l'approvazione: il merge lo decide l'operatore (R-158-1);
+#   verifica ma MAI il success: un sì del bot diventa neutral e il merge lo decide
+#   l'operatore (R-158-1); un NO resta failure (R-163-1);
 # - parte SOLO con l'etichetta `verifica` (l'agente la mette a fine fetta) e a ogni push
 #   successivo sulla PR etichettata;
-# - una PR che tocca solo reports/ si approva senza chiamare Claude;
+# - una PR che tocca solo i log di sessione (lista bianca LOG_DI_SESSIONE, G-4) passa
+#   senza chiamare Claude;
 # - cascata Fable 5.1 → Opus 5.5 → Opus 4.8 solo se il modello precedente fallisce.
 
 on:
@@ -54,6 +59,7 @@ jobs:
       head: ${{ steps.smista.outputs.head }}
       solo_reports: ${{ steps.smista.outputs.solo_reports }}
       macchina_bot: ${{ steps.smista.outputs.macchina_bot }}
+      elenco: ${{ steps.smista.outputs.elenco }}
     steps:
       - name: Checkout di main (script fidati)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -70,7 +76,9 @@ jobs:
 
   verifica:
     needs: smista
-    if: needs.smista.outputs.solo_reports == 'false'
+    # R-164-2: con l'elenco dei file vuoto o troncato il verdetto verrebbe scartato
+    # (esito cancelled/failure): niente LLM, niente quota spesa.
+    if: needs.smista.outputs.solo_reports == 'false' && needs.smista.outputs.elenco == 'ok'
     runs-on: ubuntu-latest
     environment: verifica-bot
     timeout-minutes: 45
@@ -126,6 +134,9 @@ jobs:
           sezione FINDING del testo scrivi la gravità tra parentesi: "V-1 (MEDIA) — ...".
           Dopo la riga "FINDING:" usa le parole ALTA e MEDIA (maiuscole) SOLO per la gravità
           di un finding reale: chi legge il testo le tratta come finding bloccanti.
+        - La riga del verdetto è ESATTAMENTE "VERIFICA ESTERNA #${{ github.event.pull_request.number }} — <ESITO>"
+          senza altre parole; nessun'altra riga inizia con "VERIFICA ESTERNA". Una riga fuori
+          formato vale come NO definitivo su questo commit.
     steps:
       - name: Checkout di main (protocollo fidato nella root)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -233,8 +244,9 @@ jobs:
           client-id: ${{ vars.GASBOT_CLIENT_ID }}
           private-key: ${{ secrets.GASBOT_APP_KEY }}
           permission-pull-requests: write
+          permission-checks: write
 
-      - name: Pubblica la review legata allo SHA verificato
+      - name: Pubblica il check verifica-bot e la review legati allo SHA verificato
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           REPO: ${{ github.repository }}
@@ -242,7 +254,9 @@ jobs:
           HEAD_ANALIZZATA: ${{ needs.smista.outputs.head }}
           SOLO_REPORTS: ${{ needs.smista.outputs.solo_reports }}
           MACCHINA_BOT: ${{ needs.smista.outputs.macchina_bot }}
+          ELENCO_FILE: ${{ needs.smista.outputs.elenco }}
           VERDETTO_JSON: ${{ needs.verifica.outputs.verdetto }}
           MODELLO: ${{ needs.verifica.outputs.modello }}
           MODELLI_FALLITI: ${{ needs.verifica.outputs.falliti }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
         run: python3 scripts/bot_esito.py esito

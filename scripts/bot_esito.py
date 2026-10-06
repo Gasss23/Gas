@@ -7,12 +7,22 @@ Due comandi, entrambi eseguiti dal workflow nella versione di MAIN (pull_request
             una PR che tocca SOLO reports/ si approva senza chiamare Claude; una PR che
             tocca la macchina del bot stesso non si approva MAI (merge all'operatore).
   esito   — legge il verdetto strutturato del bot, ricontrolla la head della PR e pubblica
-            una review LEGATA ALLO SHA verificato: APPROVE solo se il verdetto non è
-            BOCCIATO e non c'è nessun finding ALTA/MEDIA; altrimenti COMMENT (niente
-            approvazione = niente merge, l'agente aggiusta e ripusha).
+            il CHECK RUN `verifica-bot` dell'App sullo SHA verificato (G-1 verifica chat
+            #130: il ruleset richiede quel check, l'approvazione di un'App senza Contents
+            write non conterebbe): success solo se il verdetto non è BOCCIATO e non c'è
+            nessun finding ALTA/MEDIA; il verdetto integrale va anche in una review COMMENT.
 
 La decisione sta qui e non nel modello: il modello produce un verdetto, questo script
-decide se approvare. Ogni dubbio (JSON rotto, testo incoerente, head cambiata) = COMMENT.
+decide. Esiti (evento → conclusione del check):
+  APPROVE   → success    il sì del bot;
+  COMMENT   → failure    NO nel merito (anche testo ambiguo o incoerente): DEFINITIVO per
+                         quello SHA (G-2), un rilancio non lo ritira, serve un commit nuovo;
+  RIPROVA   → cancelled  verifica non conclusa (head cambiata, verdetto assente, storico
+                         del check illeggibile): nessun giudizio, si può rilanciare;
+  OPERATORE → neutral    macchina del bot con un sì del bot: decide l'operatore (neutral
+                         non blocca il ruleset; `gasmerge --auto` vuole solo success).
+                         R-163-1: si valuta PRIMA il verdetto; solo un APPROVE della
+                         macchina del bot diventa OPERATORE, un NO resta NO.
 """
 from __future__ import annotations
 
@@ -21,10 +31,14 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 
 VERDETTI = ("APPROVATO", "APPROVATO CON RISERVE", "BOCCIATO")
 GRAVITA_BLOCCANTI = ("ALTA", "MEDIA")
 GRAVITA = ("ALTA", "MEDIA", "BASSA", "COSMETICA")
+NOME_CHECK = "verifica-bot"
+CONCLUSIONE = {"APPROVE": "success", "COMMENT": "failure", "RIPROVA": "cancelled",
+               "OPERATORE": "neutral"}
 # Limite GitHub sul corpo di una review: 65536 caratteri. Margine per intestazione.
 MAX_TESTO = 60000
 MAX_CORPO = 65000
@@ -57,38 +71,59 @@ MACCHINA_BOT = (
     "tests/test_unit_hooks.py",
     "tests/test_unit_handoff_check.py",
 )
-# V-6 verifica esterna #130 bis: report che contengono istruzioni operative o criteri
-# (setup dei segreti, design dei gate) passano dalla verifica LLM anche se sono .md.
-DOC_DA_VERIFICARE = ("reports/setup_", "reports/design_")
-# Istruzioni per Claude in QUALSIASI cartella (un CLAUDE.md annidato diventa istruzioni).
-NOMI_MACCHINA_BOT = ("CLAUDE.md", "CLAUDE.local.md")
+# G-4 verifica chat #130: senza verifica LLM passano SOLO i log di sessione (lista
+# BIANCA). Stato, roadmap, raccomandazioni, setup e design contengono criteri e
+# istruzioni: passano dal bot anche se sono .md (assorbe V-6 #130 bis).
+LOG_DI_SESSIONE = ("reports/handoff.md", "reports/ultimo_report.md",
+                   "reports/diff_sessione.md", "reports/ultima_risposta.md")
+# Nomi base che contano in QUALSIASI cartella: un CLAUDE.md annidato diventa istruzioni;
+# G-5 #130: un .gitattributes può nascondere file dal diff (`-diff`, `linguist-generated`).
+NOMI_MACCHINA_BOT = ("CLAUDE.md", "CLAUDE.local.md", ".gitattributes")
 # R-159-2: il repo è pubblico e la review anche. Un testo con forme di credenziali non si
 # pubblica (prompt injection che fa leggere al bot il proprio ambiente).
 _SEGRETO = re.compile(r"sk-ant-|gh[pousr]_[A-Za-z0-9]|github_pat_|-----BEGIN")
 
 # R-158-2: la riga del verdetto è una riga che INIZIA con "VERIFICA ESTERNA" (un preambolo
 # che la cita a metà frase non conta); tutte le righe così devono dire la stessa cosa.
-_RIGA_VERDETTO = re.compile(
-    r"^\W*VERIFICA ESTERNA\b[^\n]*?(APPROVATO CON RISERVE|APPROVATO|BOCCIATO)", re.M | re.I)
-_FINDING_GRAVITA = re.compile(r"\b[A-Za-z]+-\d+\b[^\n(]*\(([^)\n]*)\)")
-_PAROLA_BLOCCANTE = re.compile(r"\b(ALTA|MEDIA)\b")
-# V-4 verifica esterna #130: "NON APPROVATO", "DISAPPROVATO", "non bocciato" sulla riga
-# del verdetto la rendono ambigua.
-_NEGAZIONE = re.compile(r"(\bNON\s+|DIS)(APPROVATO|BOCCIATO)", re.I)
+# V-2 seconda verifica #130 + R-161-1: ogni riga che inizia con "VERIFICA ESTERNA" deve
+# essere ESATTAMENTE nel formato del protocollo ("VERIFICA ESTERNA #N — ESITO", markdown a
+# parte). Una lista di negazioni non finisce mai ("NON-APPROVATO", "NON È APPROVATO",
+# "NEGATO / APPROVATO", "APPROVATO (ma io lo boccerei)"): fuori formato = COMMENT.
 _RIGA_TITOLO = re.compile(r"^\W*VERIFICA ESTERNA\b[^\n]*$", re.M | re.I)
-# Riga di finding nel formato del protocollo ("V-1 ...") con una gravità bloccante scritta
-# in minuscolo o a parole ("V-1 — grave: ...", "V-2 — media — ...").
+_TITOLO_CANONICO = re.compile(
+    r"VERIFICA ESTERNA(?:\s+(?:PR\s*)?#?\d+)?\s*[—–:-]\s*"
+    r"(APPROVATO CON RISERVE|APPROVATO|BOCCIATO)\.?", re.I)
+_FINDING_GRAVITA = re.compile(r"\b[A-Za-z]+-\d+\b[^\n(]*\(([^)\n]*)\)")
+# Gravità bloccanti, anche in inglese o a parole (V-2 seconda verifica #130: CRITICAL,
+# HIGH, blocker, importante passavano).
+_GRAVI = (r"alta|media|grave|gravi|critic\w*|high|medium|severe|severa|major|blocker"
+          r"|bloccant\w*|important\w*")
+_PAROLA_BLOCCANTE = re.compile(r"\b(ALTA|MEDIA|HIGH|MEDIUM|CRITICAL|CRITICA|BLOCKER|BLOCCANTE)\b")
+# Riga di finding nel formato del protocollo ("V-1 ...", anche F-/R-/G-) con una gravità
+# bloccante scritta in minuscolo o a parole ("V-1 — grave: ...", "F-1 HIGH").
 _FINDING_GRAVE_A_PAROLE = re.compile(
-    r"^\W*V-\d+\b.*\b(alta|media|grave|gravi|critic[aoi]|critiche)\b", re.M | re.I)
+    r"^\W*[VFRG]-\d+\b.*\b(" + _GRAVI + r")\b", re.M | re.I)
+_APRE_GRAVE = re.compile(r"\s*(" + _GRAVI + r")\b", re.I)
 
 
 def solo_reports(files: list[str]) -> bool:
-    """True se OGNI path (compresi i vecchi nomi dei rename) è un .md sotto reports/
-    (V-5 #130: output di sonde .txt/.json non passano senza verifica)."""
+    """True se OGNI path (compresi i vecchi nomi dei rename) è un log di sessione della
+    lista bianca LOG_DI_SESSIONE (G-4 #130). Tutto il resto passa dal bot."""
     if not files or len(files) >= MAX_FILE_API:
         return False
-    return all(f.startswith("reports/") and f.endswith(".md") and ".." not in f.split("/")
-               and not f.startswith(DOC_DA_VERIFICARE) for f in files)
+    return all(f in LOG_DI_SESSIONE for f in files)
+
+
+def stato_elenco(files: list[str]) -> str:
+    """R-163-1: "ok" se l'elenco dei file è verificabile, "vuoto" (API illeggibile: si può
+    rilanciare) o "troncato" (oltre il limite dell'API: un rilancio non cambia nulla).
+    R-164-3: il conto include i vecchi nomi dei rename, quindi "troncato" può scattare
+    poco prima dei 3000 file reali: errore dal lato prudente (NO, mai un sì)."""
+    if not files:
+        return "vuoto"
+    if len(files) >= MAX_FILE_API:
+        return "troncato"
+    return "ok"
 
 
 def tocca_macchina_bot(files: list[str]) -> bool:
@@ -116,7 +151,9 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     """Gravità citate nel testo libero: "V-1 (media)", "F-2 (MEDIA-BASSA)" e ogni parola
     ALTA/MEDIA maiuscola dopo FINDING ("V-1 — MEDIA — x")."""
     sezione = _dopo_finding(testo)
-    trovate: set[str] = set(_PAROLA_BLOCCANTE.findall(sezione))
+    # HIGH, CRITICAL, BLOCKER... contano come MEDIA (bloccanti) anche se fuori vocabolario.
+    trovate: set[str] = {p if p in GRAVITA_BLOCCANTI else "MEDIA"
+                         for p in _PAROLA_BLOCCANTE.findall(sezione)}
     if _FINDING_GRAVE_A_PAROLE.search(sezione):
         trovate.add("MEDIA")
     # R-159-3: tra parentesi conta la gravità che APRE la parentesi ("(alta)", "(MEDIA-BASSA)"),
@@ -125,7 +162,30 @@ def _gravita_nel_testo(testo: str) -> set[str]:
         m = re.match(r"\s*(ALTA|MEDIA|BASSA|COSMETICA)\b", gruppo, re.I)
         if m:
             trovate.add(m.group(1).upper())
+        elif _APRE_GRAVE.match(gruppo):
+            trovate.add("MEDIA")
     return trovate
+
+
+def _caratteri_invisibili(testo: str) -> bool:
+    """V-2 seconda verifica #130: "ME\u200bDIA" sfuggiva a ogni regex. Un carattere di
+    formato (categoria Unicode Cf: spazi a larghezza zero, controlli bidi) = ambiguo."""
+    return any(unicodedata.category(c) == "Cf" for c in testo)
+
+
+def con_storico(evento: str, motivo: str, precedenti: list[str] | None) -> tuple[str, str]:
+    """G-2 verifica chat #130: un NO sullo stesso SHA resta NO. `precedenti` sono le
+    conclusioni dei check `verifica-bot` già pubblicati dall'App su quello SHA (None =
+    storico illeggibile: niente sì alla cieca)."""
+    # R-163-1: anche il sì sulla macchina del bot (OPERATORE) cede a un NO precedente.
+    if evento not in ("APPROVE", "OPERATORE"):
+        return evento, motivo
+    if precedenti is None:
+        return "RIPROVA", "storico del check verifica-bot non leggibile: niente sì alla cieca"
+    if "failure" in precedenti:
+        return "COMMENT", ("su questo SHA il bot ha già detto NO: un rilancio non ritira il"
+                           " verdetto (G-2), serve un commit nuovo")
+    return evento, motivo
 
 
 def contiene_segreti(verdetto: object) -> bool:
@@ -139,20 +199,44 @@ def contiene_segreti(verdetto: object) -> bool:
 
 
 def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
-           doc_only: bool = False, macchina_bot: bool = False) -> tuple[str, str]:
-    """Ritorna (evento, motivo). evento ∈ {"APPROVE", "COMMENT"}."""
-    if macchina_bot:
-        return "COMMENT", ("la PR tocca la macchina del bot (workflow, decisione, protocollo):"
-                           " il merge lo decide l'operatore")
+           doc_only: bool = False, macchina_bot: bool | None = False,
+           elenco: str = "ok") -> tuple[str, str]:
+    """Ritorna (evento, motivo). evento ∈ CONCLUSIONE (vedi docstring del modulo).
+    macchina_bot None = informazione mancante; elenco = stato_elenco() dei file della PR.
+    R-163-1: "non verificabile" (elenco, macchina_bot mancante) non è mai neutral, e la
+    macchina del bot trasforma in OPERATORE solo un APPROVE."""
     if not head_analizzata or not head_attuale:
-        return "COMMENT", "head della PR non verificabile"
+        return "RIPROVA", "head della PR non verificabile"
+    # R-164-1: un NO definitivo (troncato) solo sullo SHA ancora in testa alla PR.
     if head_analizzata != head_attuale:
-        return "COMMENT", (f"head cambiata durante la verifica ({head_analizzata[:12]} → "
+        return "RIPROVA", (f"head cambiata durante la verifica ({head_analizzata[:12]} → "
+                           f"{head_attuale[:12]}): serve una nuova verifica")
+    if elenco == "troncato":
+        return "COMMENT", (f"elenco dei file troncato dall'API (≥{MAX_FILE_API}): PR non"
+                           " verificabile, va spezzata")
+    if elenco != "ok":
+        return "RIPROVA", "elenco dei file della PR non leggibile: serve una nuova verifica"
+    if macchina_bot is None:
+        return "RIPROVA", "non si sa se la PR tocca la macchina del bot: serve una nuova verifica"
+    evento, motivo = _decidi_verdetto(verdetto, head_analizzata, head_attuale, doc_only)
+    if macchina_bot and evento == "APPROVE":
+        return "OPERATORE", ("la PR tocca la macchina del bot (workflow, decisione, protocollo):"
+                             f" il merge lo decide l'operatore ({motivo})")
+    return evento, motivo
+
+
+def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: str,
+                     doc_only: bool) -> tuple[str, str]:
+    """Il giudizio sul verdetto, senza la macchina del bot."""
+    if not head_analizzata or not head_attuale:
+        return "RIPROVA", "head della PR non verificabile"
+    if head_analizzata != head_attuale:
+        return "RIPROVA", (f"head cambiata durante la verifica ({head_analizzata[:12]} → "
                            f"{head_attuale[:12]}): serve una nuova verifica")
     if doc_only:
-        return "APPROVE", "solo file in reports/: approvata senza verifica LLM (dosaggio)"
+        return "APPROVE", "solo log di sessione: approvata senza verifica LLM (dosaggio)"
     if not isinstance(verdetto, dict):
-        return "COMMENT", "verifica non eseguita o verdetto illeggibile"
+        return "RIPROVA", "verifica non eseguita o verdetto illeggibile"
     esito = verdetto.get("verdetto")
     testo = verdetto.get("testo")
     finding = verdetto.get("finding")
@@ -161,9 +245,14 @@ def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
         return "COMMENT", "verdetto strutturato incompleto"
     if contiene_segreti(verdetto):
         return "COMMENT", "il verdetto contiene forme di credenziali: non pubblicato"
-    if any(_NEGAZIONE.search(r) for r in _RIGA_TITOLO.findall(testo)):
-        return "COMMENT", "riga del verdetto con negazione (NON/DIS): verdetto ambiguo"
-    righe = [r.upper() for r in _RIGA_VERDETTO.findall(testo)]
+    if _caratteri_invisibili(testo):
+        return "COMMENT", "caratteri invisibili (Unicode Cf) nel testo: verdetto ambiguo"
+    righe = []
+    for riga in _RIGA_TITOLO.findall(testo):
+        m = _TITOLO_CANONICO.fullmatch(riga.strip().strip("*_>`# ").strip())
+        if not m:
+            return "COMMENT", "riga del verdetto fuori dal formato del protocollo: verdetto ambiguo"
+        righe.append(m.group(1).upper())
     if not righe or any(r != esito for r in righe):
         return "COMMENT", "il testo del verdetto non coincide con il campo verdetto"
     gravita_strutturate: set[str] = set()
@@ -182,10 +271,17 @@ def decidi(verdetto: dict | None, head_analizzata: str, head_attuale: str,
     return "APPROVE", f"verdetto {esito} senza finding ALTA/MEDIA"
 
 
+ETICHETTE = {"APPROVE": "APPROVATA (check verifica-bot: success)",
+             "COMMENT": "NON approvata (check verifica-bot: failure, definitivo su questo SHA)",
+             "RIPROVA": "verifica NON conclusa (check verifica-bot: cancelled, si può rilanciare)",
+             "OPERATORE": "sì del bot sulla macchina del bot: decide l'operatore"
+                          " (check verifica-bot: neutral)"}
+
+
 def componi_corpo(evento: str, motivo: str, verdetto: dict | None, modello: str,
                   falliti: str) -> str:
     righe = ["## 🤖 Verifica esterna automatica (V-B)", ""]
-    righe.append(f"**Esito:** {'APPROVATA' if evento == 'APPROVE' else 'NON approvata'} — {motivo}")
+    righe.append(f"**Esito:** {ETICHETTE.get(evento, 'NON approvata')} — {motivo}")
     if modello:
         righe.append(f"**Modello:** `{modello}`")
     if falliti:
@@ -233,16 +329,37 @@ def cmd_smista() -> int:
                  "--jq", ".[] | .filename, (.previous_filename // empty)")
     files = [r for r in elenco.split("\n") if r]
     _output(head=head, solo_reports="true" if solo_reports(files) else "false",
-            macchina_bot="true" if tocca_macchina_bot(files) else "false")
+            macchina_bot="true" if tocca_macchina_bot(files) else "false",
+            elenco=stato_elenco(files))
     return 0
+
+
+_SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,99}")
+
+
+def _conclusioni_precedenti(repo: str, sha: str, slug: str) -> list[str] | None:
+    """Conclusioni dei check `verifica-bot` già pubblicati dalla NOSTRA App su `sha`
+    (filter=all: anche quelli superati da un rilancio). None = non leggibile."""
+    if not _SLUG.fullmatch(slug) or not re.fullmatch(r"[0-9a-f]{40}", sha):
+        return None
+    try:
+        grezzo = _gh("api", "--paginate",
+                     f"repos/{repo}/commits/{sha}/check-runs"
+                     f"?check_name={NOME_CHECK}&filter=all&per_page=100",
+                     "--jq", f'.check_runs[] | select(.app.slug == "{slug}")'
+                             ' | (.conclusion // "")')
+    except subprocess.CalledProcessError:
+        return None
+    return [r for r in grezzo.split("\n") if r]
 
 
 def cmd_esito() -> int:
     repo, pr = os.environ["REPO"], os.environ["PR"]
     head_analizzata = os.environ.get("HEAD_ANALIZZATA", "")
     doc_only = os.environ.get("SOLO_REPORTS") == "true"
-    # Prudenza: tutto ciò che non è esattamente "false" conta come macchina del bot.
-    macchina_bot = os.environ.get("MACCHINA_BOT") != "false"
+    # R-163-1: solo "true"/"false" esatti; tutto il resto = non verificabile (RIPROVA).
+    macchina_bot = {"true": True, "false": False}.get(os.environ.get("MACCHINA_BOT", ""))
+    elenco = os.environ.get("ELENCO_FILE", "")
     grezzo = os.environ.get("VERDETTO_JSON", "")
     try:
         verdetto = json.loads(grezzo) if grezzo.strip() else None
@@ -252,17 +369,28 @@ def cmd_esito() -> int:
         head_attuale = _gh("api", f"repos/{repo}/pulls/{pr}", "--jq", ".head.sha").strip()
     except subprocess.CalledProcessError:
         head_attuale = ""
-    evento, motivo = decidi(verdetto, head_analizzata, head_attuale, doc_only, macchina_bot)
+    evento, motivo = decidi(verdetto, head_analizzata, head_attuale, doc_only, macchina_bot,
+                            elenco)
+    if evento in ("APPROVE", "OPERATORE"):
+        evento, motivo = con_storico(evento, motivo, _conclusioni_precedenti(
+            repo, head_analizzata, os.environ.get("APP_SLUG", "")))
     corpo = componi_corpo(evento, motivo, verdetto, os.environ.get("MODELLO", ""),
                           os.environ.get("MODELLI_FALLITI", ""))
-    richiesta = {"event": evento, "body": corpo}
-    if head_analizzata:
-        # La review resta legata al commit verificato: con "dismiss stale reviews" nel
-        # ruleset, un push successivo la invalida.
-        richiesta["commit_id"] = head_analizzata
+    if not head_analizzata:
+        print(f"nessuno SHA analizzato: check non pubblicabile ({motivo})", file=sys.stderr)
+        return 1
+    # G-1: il check run è il sì/no che il ruleset richiede; va pubblicato PRIMA della
+    # review (se la review fallisce, il gate è comunque al suo posto).
+    check = {"name": NOME_CHECK, "head_sha": head_analizzata, "status": "completed",
+             "conclusion": CONCLUSIONE[evento],
+             "output": {"title": ETICHETTE[evento][:200], "summary": corpo}}
+    _gh("api", "-X", "POST", f"repos/{repo}/check-runs", "--input", "-",
+        input_text=json.dumps(check))
+    # La review resta un COMMENTO legato al commit verificato (testo per l'operatore).
+    richiesta = {"event": "COMMENT", "body": corpo, "commit_id": head_analizzata}
     _gh("api", "-X", "POST", f"repos/{repo}/pulls/{pr}/reviews", "--input", "-",
         input_text=json.dumps(richiesta))
-    print(f"review {evento}: {motivo}")
+    print(f"check {NOME_CHECK} {CONCLUSIONE[evento]}: {motivo}")
     return 0
 
 
