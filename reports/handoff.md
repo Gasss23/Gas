@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #134 (https://github.com/Gasss23/Gas/pull/134) — prioritario (fail-open del gate IP su main). Numero e URL dall'output del connettore GitHub (`create_pull_request` → `{"id":"4756657361","url":"https://github.com/Gasss23/Gas/pull/134"}`): `gh` non è autenticato in questo container.
+1. Merge della PR #134 (https://github.com/Gasss23/Gas/pull/134) — prioritario: chiude DUE fail-open già su main (gate IP e gate di review, in locale UTF-8). Numero e URL dall'output del connettore GitHub (`create_pull_request` → `{"id":"4756657361","url":"https://github.com/Gasss23/Gas/pull/134"}`): `gh` non è autenticato in questo container.
 2. Ordine di merge della notte: i report canonici sono riscritti da ogni PR; dopo un merge le altre vanno riallineate a main.
 
 ---
@@ -19,27 +19,40 @@
 - **Verifica su macOS**: `SALTATA — nessun Mac nel container; ragionamento del revisore in §4`.
 - **Etichetta `verifica`**: `SALTATA — gh non autenticato e l'etichetta non esiste ancora`.
 - **Marcatori `gasmerge-ip-ok` sui due assert nuovi** (il gate IP di fine-task li ha fermati al primo giro): `FATTA` — review #172.
+- **Verifica esterna §4quater #134**: `FATTA` — APPROVATO CON RISERVE (§8).
+- **V-2 #134 — stesso difetto in `review_gate.sh:76` (fail-open del gate di review, provato: exit 0)**: `FATTA`.
+- **V-3 #134 — test locale-dipendenti saltabili in CI**: `FATTA` (`GAS_TEST_LOCALE_UTF8_ATTESO=1`).
+- **R-177-1 / R-177-2 / R-178-1**: `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- reports/diff_sessione.md           |  21 +++++++++-----------
- reports/handoff.md                 | 383 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |   8 +++++++
+ .claude/hooks/review_gate.sh       |   2 +-
+ .github/workflows/ci.yml           |   7 +++++-
+ reports/diff_sessione.md           |  25 ++++++++++----------
+ reports/handoff.md                 | 466 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  28 ++++++++++-----------------
- scripts/fine_task_finale.sh        |   5 ++++-
- scripts/gasmerge.sh                |  11 ++++++++---
- tests/test_unit_gasmerge.py        |  48 +++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_hooks.py           |  34 ++++++++++++++++++++++++++++++++
- 9 files changed, 203 insertions(+), 335 deletions(-)
+ reports/ultimo_report.md           |  31 ++++++++++--------------
+ scripts/check_verdetto.py          |  12 ++++++----
+ scripts/fine_task_finale.sh        |   5 +++-
+ scripts/gasmerge.sh                |  11 ++++++---
+ tests/test_unit_gasmerge.py        |  56 +++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_handoff_check.py   |  26 ++++++++++++++++++++
+ tests/test_unit_hooks.py           |  61 +++++++++++++++++++++++++++++++++++++++++++++++
+ 13 files changed, 392 insertions(+), 322 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f450766 fix(gate-review): read in C anche nel perimetro di review_gate.sh (fail-open), locale UTF-8 esigito in CI, check_verdetto fail-closed su perimetro non UTF-8 — review #177/#178/#179
+ccc2f27 chore(revisore): memoria review #179 — APPROVATO
+09cf060 chore(revisore): memoria review #178 — APPROVATO CON RISERVE
+f0bc429 chore(revisore): memoria review #177 — APPROVATO CON RISERVE
+3fc1e95 docs(gate-ip-read-locale): fine-task ter — marcatori IP sulle righe dei verdetti, hash del primo fine-task corretto
 4e5d6db docs(gate-ip-read-locale): fine-task bis — handoff con verdetto #172 e report redatto (gate IP)
 a167949 test(gate-ip): marcatore gasmerge-ip-ok sui due assert nuovi con IP — review #172
 f7c1208 chore(revisore): memoria review #172 — APPROVATO
@@ -142,25 +155,142 @@ Review #172 del diff staged in `/home/user/wt-latin`: 2 file, 2 righe, solo comm
 
 La riga contatore #172, con dentro una lezione, è committata in `.claude/agents/memoria_revisore.md` (commit `f7c1208`). Il diff staged non l'ho committato.
 
+### Review #177 — seguiti della verifica esterna #134
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #177 del diff staged in `/home/user/wt-latin`: 5 file, +50/−11. Nasce dalla verifica esterna della PR #134. Il fix chiude un fail-open reale del gate di review, e l'ho riprodotto.
+
+**Elementi del diff esaminati**:
+- `.claude/hooks/review_gate.sh:76` — in `_aggiungi_voci` ora c'è `while IFS= LC_ALL=C read -r riga || [ -n "$riga" ]`.
+  - Rischio: in locale UTF-8 una voce del perimetro che finisce con un byte non UTF-8 si fonde con la successiva. Lo `tr -d '[:space:]'` toglie il newline e resta `voce\xe9speciale.txt`, quindi la voce `speciale.txt` sparisce. Un file del perimetro poteva così essere committato senza review.
+  - Prova: ho tolto `LC_ALL=C` e il test nuovo fallisce; con il fix passa. Hook ripristinato, index invariato. — ok
+- `tests/test_unit_hooks.py:674` — `test_gate_perimetro_byte_non_utf8_in_locale_utf8_blocca`. Il perimetro `voce\xe9\nspeciale.txt` è identico in HEAD, index e working tree, quindi l'unione dei perimetri non maschera la fusione. Il test controlla exit 2. Rischio esaminato: il test deve discriminare. Lo fa: la mutation lo uccide. — ok
+- `tests/test_unit_hooks.py:1757` e `tests/test_unit_gasmerge.py:151` — `_esigi_locale_utf8()` fa fallire il test con `GAS_TEST_LOCALE_UTF8_ATTESO=1` e lo salta senza la variabile. La chiamata dalla classe a riga 674 alla funzione definita più in basso nel modulo funziona, perché il nome si risolve quando il test gira. Tutti e 4 i test che dipendono dal locale ora la usano. — ok
+- `.github/workflows/ci.yml:26` — la variabile `env` è a livello del job `unit-suite`. Non è un segreto né una variabile di provider. Subito dopo però c'è il commento "Nessun `env:` di provider…", che ora segue un blocco `env:`. — ok, riserva cosmetica R-177-2
+
+**Prove eseguite**: il test nuovo dà 1 passed con il fix e 1 failed con la mutation. Una grep su hooks e scripts trova un solo `read` senza `LC_ALL=C`: `scripts/gasmerge.sh:233` `read -r ANS`, che è interattivo e non ha bisogno del fix.
+
+**Riserve**:
+- **R-177-1 (BASSA, fail-closed)**: `scripts/check_verdetto.py:133` legge il perimetro con `read_text(encoding="utf-8")` e intercetta solo `OSError`. Un perimetro con un byte non UTF-8 solleva un `UnicodeDecodeError` non gestito. Il gate B andrebbe in crash invece di dare un messaggio controllato, ma senza far passare nulla. Basterebbe intercettare anche `UnicodeDecodeError` (oppure usare `errors="surrogateescape"`) e aggiungere un test.
+- **R-177-2 (cosmetica)**: riformulare il commento di `ci.yml` in "nessun env di provider né secrets".
+
+**Rischi esclusi**:
+- La suite completa da 279 test con la variabile, nei due locale: non l'ho rieseguita, mi baso sulla dichiarazione dell'agente.
+- La prova "senza `locale` nel PATH → fail/skip": non l'ho ripetuta.
+- Il conflitto di `ci.yml` con il branch `fix/kernel-skip-senza-bwrap`: non l'ho verificato. Hunk diversi, come dichiarato, ma vicini.
+- La prima run CI con la variabile attiva: non l'ho osservata.
+
+La riga contatore #177, con dentro una lezione, è committata in `.claude/agents/memoria_revisore.md` (commit `f0bc429`). Il diff staged non l'ho committato.
+
+### Review #178 — ri-review R-177-1/2
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ri-review #178 del diff staged in `/home/user/wt-latin`: 7 file, +69/−16. Nel delta rispetto alla #177, R-177-1 e R-177-2 sono chiuse. Resta una riserva bassa: il ramo della versione alla BASE funziona ma non ha un test.
+
+**Elementi del diff esaminati**:
+- `scripts/check_verdetto.py:135` — ora intercetta `except (OSError, UnicodeDecodeError): return None` sul perimetro letto dal file dello script. Rischio esaminato: prima un byte non UTF-8 mandava in crash il gate B. Ho rimesso `except OSError` e `test_r177_1_perimetro_non_utf8_fail_closed` fallisce, quindi la mutation è uccisa. File ripristinato e index invariato. — ok
+- `scripts/check_verdetto.py:141` — `try/except UnicodeDecodeError` attorno al `git show` della versione alla BASE. `_git` usa `text=True` senza `errors=`, quindi l'eccezione è reale. L'ho provato a mano in scratchpad: repo con perimetro `gas.py\nvoce\xe9` committato, chiamata con `base='HEAD'` → `None`. Il comportamento è corretto, ma questo ramo non ha un test. — riserva R-178-1
+- `scripts/check_verdetto.py:238` — il messaggio di errore ora dice "assente, vuoto o non UTF-8". È fail-closed: exit 1. — ok
+- `tests/test_unit_handoff_check.py:707` — il test carica il modulo e verifica che un perimetro con `voce\xe9` dia `None`. Discrimina: la mutation lo fa fallire. — ok
+- `.github/workflows/ci.yml:30` — commento riformulato. Coerente: nessuna variabile di provider, nessun `secrets:`. — ok (R-177-2 chiusa)
+
+**Prove eseguite**: `tests/test_unit_handoff_check.py` dà 41 passed.
+
+**Riserve**:
+- **R-178-1 (BASSA)**: aggiungere un test per il ramo BASE, con un repo dove il perimetro committato alla base contiene un byte non UTF-8 e l'atteso è `None`. Oggi togliere quel `try` non farebbe fallire nessun test.
+- **Nota (non bloccante)**: se il perimetro di main diventasse non UTF-8, il gate B bloccherebbe tutte le PR. È lo stesso tipo di stallo della R-143-3. Lo accetto perché il perimetro su main passa comunque dalla review.
+
+**Rischi esclusi**:
+- La suite da 280 test con `GAS_TEST_LOCALE_UTF8_ATTESO=1` nei due locale: non l'ho rieseguita, mi baso sulla dichiarazione dell'agente.
+- Il comportamento in CI: il job handoff-check esegue `check_verdetto.py` preso da `origin/main` (R-141-2), quindi la modifica conta in CI solo dopo il merge. Non verificabile prima.
+
+La riga contatore #178 è committata in `.claude/agents/memoria_revisore.md` (commit `09cf060`). Il diff staged non l'ho committato.
+
+### Review #179 — ri-review R-178-1
+
+## VERDETTO: APPROVATO
+
+Ri-review #179 del diff staged in `/home/user/wt-latin`. L'unico delta rispetto alla #178 è il test che chiude R-178-1, e ho verificato che discrimina.
+
+**Elementi del diff esaminati**:
+- `tests/test_unit_handoff_check.py:716` — `test_r178_1_perimetro_base_non_utf8_fail_closed`. Crea un repo git vero con il perimetro `gas.py\nvoce\xe9` committato, passa un file dello script valido e chiama `_carica_perimetro(path=valido, repo=repo, base="HEAD")`, che deve restituire `None`. Rischio esaminato: il test deve discriminare davvero il ramo BASE. Lo fa (vedi sotto). — ok
+- `scripts/check_verdetto.py:141` — il `try/except UnicodeDecodeError` attorno al `git show` della BASE. L'ho tolto con un replace esatto e il test fallisce (1 failed), quindi la mutation è uccisa. Con il file ripristinato, `test_unit_handoff_check.py` dà 42 passed e il working tree è pulito. — ok (R-178-1 chiusa)
+
+**Rischi esclusi**:
+- Il test presume che Python decodifichi l'output di `git show` in UTF-8. Su un sistema con codifica locale latin-1 non ci sarebbe nessun `UnicodeDecodeError`, e il test fallirebbe anche con il fix: un falso rosso, non un fail-open. Non l'ho provato. Sul runner ubuntu e con `LC_ALL=C` su Python 3.11 la codifica dovrebbe essere UTF-8 grazie alla coercion del locale C, ma non l'ho verificato.
+- La suite completa non l'ho rieseguita, solo il file handoff_check.
+
+La riga contatore #179 è committata in `.claude/agents/memoria_revisore.md` (commit `ccc2f27`). Quella riga dà la coercion UTF-8 come certa, ma io non l'ho verificata. Il diff staged non l'ho committato.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/brains/modules. Test della macchina di controllo, eseguiti in questo container (Ubuntu glibc 2.39, bash 5.2.21, git 2.43):
+Nessuna modifica a gas.py/brains/modules. Test della macchina di controllo, in questo container (Ubuntu glibc 2.39, bash 5.2.21, git 2.43), con `GAS_TEST_LOCALE_UTF8_ATTESO=1`:
 
 ```
-LC_ALL=C:       pytest gasmerge+hooks+gate+handoff_check → 278 passed
-LC_ALL=C.UTF-8: pytest gasmerge+hooks+gate+handoff_check → 278 passed
+LC_ALL=C:       pytest gasmerge+hooks+gate+handoff_check → 281 passed
+LC_ALL=C.UTF-8: pytest gasmerge+hooks+gate+handoff_check → 281 passed
 ```
 
-(origin/main: 273 nelle stesse suite; +5 test, di cui due parametrizzati.)
+(origin/main: 273 nelle stesse suite; +8 test.)
 
 ## §6 STATO CI
 
-`gh` non autenticato (CI NON VERIFICATA con la CLI). Mappatura commit → run:
-- `3733a52`, `4b120b1`, `26af320`: pushati insieme, run CI sul push di `26af320` — esito non letto alla scrittura dell'handoff.
-- `bd2aa79` (primo fine-task, mai pushato da solo: il gate IP l'ha fermato), `f7c1208`, commit dei marcatori: nessuna run propria, pushati insieme al commit di fine-task.
-- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Stato dal connettore GitHub e dalla verifica esterna #134 (`gh` non autenticato qui). Mappatura commit → run:
+- `3733a52`, `4b120b1`, `26af320`: pushati insieme → run 37441613564 (CI #661) su `26af320`: **failure** — atteso, handoff non ancora rigenerato.
+- `bd2aa79`, `f7c1208`, `a167949`, `3fc1e95` (fine-task bis/ter): pushati insieme → run 37441959792 (CI #664) su `3fc1e95`: **success** (unit-suite e handoff-check).
+- commit dei seguiti #177–#179 e di questo fine-task: pushati insieme, run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - macOS (bash 3.2 / bash 5 homebrew) non provato.
-- `review_gate.sh:76` ha un ciclo `read` simile ma legge il file del perimetro (protetto da review): non approfondito (dalla #167).
+- Nota #178: se il perimetro su main diventasse non UTF-8, il gate B bloccherebbe tutte le PR (stallo tipo R-143-3; accettato: il perimetro passa dalla review).
+- Rischio escluso #179: con codifica locale latin-1 il test R-178-1 darebbe un falso rosso (non un fail-open).
+- V-4 #134: la mutation sul `read -r v` annidato di gasmerge sopravvive (equivalente in pratica, dichiarato).
+
+## §8 VERIFICA ESTERNA #134 (verdetto integrale)
+
+Lanciata con `Applica .claude/verifica_esterna.md a: <URL_HANDOFF di 3fc1e95> <URL_PR>` (agente nuovo, Sonnet). V-2 e V-3 chiuse (review #177–#179); V-1 (stat/CI fotografati prima dell'ultimo commit) strutturale; V-4 dichiarata. Fetta di sicurezza: secondo passaggio consigliato all'operatore nella chat claude.ai.
+
+VERIFICA ESTERNA PR #134 — APPROVATO CON RISERVE
+
+**Metodo**
+- Ho lavorato su un clone usa-e-getta nella scratchpad, al commit pinnato 3fc1e95. Merge-base con main: e91ceb4.
+- Ho confrontato §2 e §3 dell'handoff con `git diff --stat` e `git log` reali.
+- Ho rieseguito le 4 suite toccate (gasmerge, hooks, gate, handoff_check) alla base e al commit, sia con `LC_ALL=C` sia con `LC_ALL=C.UTF-8`.
+- Ho rifatto le mutation sui due `read` del filtro loopback.
+- Ho letto i check CI reali e il ruleset via API REST di GitHub.
+- Il repo reale non è stato toccato: `git status` di /home/user/Gas è vuoto.
+
+**CLAIM VERIFICATI**
+- **VERO — §3 (git log).** `git log` da e91ceb4 mostra gli stessi 8 commit del log dell'handoff. Il commit di fine-task 3fc1e95 non è nel §3, e l'handoff lo dichiara.
+- **FALSO, minore — §2 (diff --stat).** L'handoff dà 203 inserzioni e un handoff.md di 383 righe. Il diff reale al commit pinnato è 218 inserzioni, 335 cancellazioni e handoff.md a 398 righe. Il §2 è stato scritto prima del commit "ter" ed è obsoleto. I 9 file elencati sono corretti.
+- **VERO — delta test.** La base e91ceb4 dà 273 passed con `LC_ALL=C.UTF-8`. Il commit pinnato dà 278 passed con `LC_ALL=C` e 278 con `LC_ALL=C.UTF-8`. Il delta di +5 coincide con quanto dichiarato.
+- **VERO — i nuovi test discriminano.**
+  - Ho tolto `LC_ALL=C` dal `read` in `gasmerge.sh`: fallisce `test_byte_latin1_attaccato_all_ip_in_locale_utf8[8.8.8.8\xe9\n]`. <!-- gasmerge-ip-ok -->
+  - Ho fatto lo stesso in `fine_task_finale.sh`: fallisce `test_finale_4f_bis_byte_attaccato_locale_utf8[10.0.0.1\xe9\n]`. <!-- gasmerge-ip-ok -->
+  - Dopo ogni mutation ho ripristinato il file.
+- **VERO — CI sullo SHA 3fc1e95.** `unit-suite` e `handoff-check` sono `success`. `esito`, `verifica` e `smista` sono `skipped`.
+- **VERO — check required nel ruleset `main-lock`.** Sono `unit-suite` e `handoff-check`, entrambi verdi sullo SHA.
+- **VERO — il fix non indebolisce nessun gate.** Il diff dei due script cambia solo `read` in `LC_ALL=C read` (3 occorrenze). Non ci sono altre modifiche logiche.
+- **VERO — i marcatori `gasmerge-ip-ok` nell'handoff.** Il file ne contiene 6, e l'handoff-check è verde.
+
+**FINDING**
+- **V-1 (BASSA) — §6 dell'handoff dichiara "CI NON VERIFICATA" e il §2 è obsoleto.** La CI sullo SHA era verde e leggibile. Il §2 va rigenerato dopo l'ultimo commit. Fix: rigenerare il §2 come ultima operazione, oppure dichiararlo "pre-ter".
+- **V-2 (BASSA) — resta un `read` senza `LC_ALL=C` nel perimetro.** In `.claude/hooks/review_gate.sh:76` c'è `while IFS= read -r riga || [ -n "$riga" ]`. Un byte non UTF-8 in fondo a una riga di `perimetro_review.txt` fonderebbe due voci e farebbe sparire una voce del perimetro, quindi un fail-open del gate di review. Il file è del repo e protetto dal revisore, e l'handoff lo elenca fra le riserve (§7), ma non è coperto da nessun test né da una voce tracciata. Fix: `LC_ALL=C read` più un test gemello.
+- **V-3 (BASSA) — il test dipende dal locale del runner.** I test di discriminazione vengono saltati (`pytest.skip`) se `locale -a` non elenca un locale UTF-8. Su questo container `C.utf8` esiste e i test girano. Non ho verificato che sul runner CI ubuntu girino davvero e non siano saltati: la CI è verde, ma "success" non dimostra l'esecuzione. Fix: asserire in CI che i test non siano `skipped`.
+- **V-4 (BASSA) — la mutation sul `read` annidato di `gasmerge.sh` sopravvive.** Il `read -r v` annidato ha `LC_ALL=C` ma nessun test lo discrimina. La riserva è dichiarata dal revisore (le voci del perimetro sono ASCII).
+
+**NON VERIFICATO**
+- macOS (bash 3.2 o bash 5 di homebrew): nessun Mac disponibile.
+- Esecuzione reale di `bash scripts/gasmerge.sh` e `fine_task_finale.sh` end-to-end: pushano o toccano GitHub. Ho coperto il comportamento solo con i test.
+- Non ho rifatto le mutation su `git grep` (x2), `grep -qE` e `grep -Fx`, né quelle del `read` esterno e annidato di `gasmerge.sh:193-198`. Ho rifatto solo le due mutation su `read` del filtro loopback.
+- Il merge senza conflitti con le altre PR della notte (#131 e simili).
+- `gh pr view` non funziona (GraphQL bloccato), quindi non ho letto lo stato di mergeability della PR.
+
+**RACCOMANDAZIONE**
+Il fix è corretto e dimostrato: chiude il fail-open reale del gate IP in locale UTF-8, i test discriminano e la CI è verde. Si può fare il merge. Prima di altro lavoro sul perimetro:
+1. Tracciare V-2 (`review_gate.sh:76`) in `stato_progetto.md` e chiuderlo con `LC_ALL=C` più un test.
+2. Rigenerare il §2 e correggere il §6 dell'handoff.
+3. Verificare nei log CI che i test locale-dipendenti non siano `skipped` (V-3).

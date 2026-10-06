@@ -2,8 +2,9 @@
 
 ## Decisioni umane richieste
 
-1. Merge della PR #134 — **prioritario**: chiude un fail-open del gate IP (privacy) già presente su main.
-2. Ordine di merge della notte: ogni PR riscrive i report canonici; dopo un merge le altre vanno riallineate a main (conflitto solo su `reports/` e `memoria_revisore.md`).
+1. Merge della PR #134 — **prioritario**: chiude due fail-open già presenti su main, il gate IP (privacy) e il gate di review (commit di un file del perimetro senza review), entrambi in locale UTF-8.
+2. Fetta di sicurezza: secondo passaggio indipendente nella chat claude.ai con l'URL dell'handoff (protocollo §4quater).
+3. Ordine di merge della notte: ogni PR riscrive i report canonici; dopo un merge le altre vanno riallineate a main (conflitto solo su `reports/` e `memoria_revisore.md`).
 
 ## Esito per fette
 
@@ -13,6 +14,8 @@
 - **Mutation**: FATTA — read, git grep ×2, grep -qE, grep -Fx uccise sotto C.UTF-8; `sed` equivalente; `read -r v` del perimetro equivalente in pratica.
 - **Review**: #167 APPROVATO CON RISERVE → #170 APPROVATO.
 - **macOS**: NON VERIFICATO — bash 3.2 di sistema probabilmente non colpito; bash 5 di homebrew sì (ragionamento del revisore).
+
+- **Verifica esterna #134**: FATTA — APPROVATO CON RISERVE; V-2 (`review_gate.sh:76`, stesso difetto: fail-open del gate di review, provato) e V-3 (locale esigito in CI) CHIUSE; R-177-1/R-177-2/R-178-1 chiuse. Review #177/#178 APPROVATO CON RISERVE → #179 APPROVATO. Suite 281 passed in C e C.UTF-8.
 
 ## Anomalie
 
