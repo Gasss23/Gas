@@ -13,7 +13,7 @@
 - **Test**: 608 passed in C e C.UTF-8 (gasmerge, hooks, gate, handoff_check, verifica_bot, voice_server).
 - **Prova con GitHub reale**: NON VERIFICATA — `gh` non autenticato nel container: la risposta 403/404 di un token senza Administration la verifica l'operatore (B3).
 - **G-3 fase 2 (blocco per `gasmerge --auto`)**: DEFERITA — decisione dell'operatore dopo l'uso del token.
-- **Verifica esterna §4quater**: vedi handoff.
+- **Verifica esterna §4quater #138**: FATTA — APPROVATO CON RISERVE; **V-1 (MEDIA)**: falso OK su 404/403 con repo non visibile o non dell'operatore → CHIUSA (OK solo con repo visibile e ruolo admin dell'utente) — review #188/#189 APPROVATO CON RISERVE (R-189-1 da provare al passo B3). Suite 611 passed in C e C.UTF-8.
 
 ## Anomalie
 
