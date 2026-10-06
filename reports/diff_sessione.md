@@ -1,14 +1,9 @@
-# DIFF SESSIONE — 2026-10-05 — feat/verifica-bot (V-B vera, fetta B1 + correzioni delle due verifiche esterne #130)
+# DIFF SESSIONE — 2026-10-06 — fix/fine-task-push-exit (R-150-1)
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `.github/workflows/verifica-bot.yml` | Nuovo: bot di verifica esterna con identità separata (pull_request_target, sola lettura, GitHub App, dosaggio quota). |
-| `scripts/bot_esito.py` | Nuovo: decisione deterministica di approvazione (soglia "niente ALTA/MEDIA", macchina del bot, doc-only, credenziali su tutto il verdetto, negazioni). |
-| `tests/test_unit_verifica_bot.py` | Nuovo: 174 test (logica, comandi con gh finto + jq reale, proprietà di sicurezza del workflow). |
-| `.github/workflows/ci.yml` | Step della nuova suite + riga nel job summary. |
-| `.claude/perimetro_review.txt` | `scripts/bot_esito.py` nel perimetro di review. |
-| `.claude/agents/memoria_revisore.md` | Memoria delle review #158, #159, #160, #161, #162. |
-| `reports/setup_verifica_bot.md` | Nuovo: passi numerati dell'operatore (token, App, environment) ordine del setup (V-6 #130) ed etichetta `verifica` (V-5 seconda verifica). |
-| `reports/*` | Report di fine task; stato_progetto (V-B fetta B1, riserve aperte). |
+> Si riscrive a ogni sessione; la storia completa sta in git.
 
-La storia completa sta in git.
+- `scripts/fine_task_finale.sh` — `git push || PUSH_EXIT=$?`: il ramo del push fallito non è più morto sotto `set -e` (R-150-1).
+- `tests/test_unit_hooks.py` — T-finale-5: push rifiutato → exit 1 + messaggio, niente URL, niente guardia @{u}.
+- `reports/stato_progetto.md` — R-150-1 CHIUSA, frase corretta (R-166-1).
+- `.claude/agents/memoria_revisore.md` — righe #166 (rinumerata da #163) e #168.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
