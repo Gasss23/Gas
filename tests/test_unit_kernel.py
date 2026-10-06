@@ -6537,6 +6537,26 @@ check("T76c nessun urlopen verso api.telegram.org in tutta la suite",
 check("T76d variabili TELEGRAM_* non presenti nell'ambiente della suite",
       "TELEGRAM_BOT_TOKEN" not in os.environ and "TELEGRAM_ALLOWED_IDS" not in os.environ)
 
+# ---------- T79: F-mac-2 — sorgenti del motore senza escape invalidi ----------
+# Un "\+" o "\d" in una stringa non raw è SyntaxWarning (3.12+) e diventerà errore;
+# R-169-1: su 3.11 (la CI) lo stesso escape è DeprecationWarning → filtrati entrambi.
+# Ogni .py del motore deve compilare con questi warning trattati come errori.
+import warnings as _w79
+_root79 = Path(__file__).parent.parent
+_sorgenti79 = [_root79 / "gas.py"] + sorted((_root79 / "brains").rglob("*.py")) \
+    + sorted((_root79 / "modules").rglob("*.py"))
+_rotti79 = []
+for _f79 in _sorgenti79:
+    with _w79.catch_warnings():
+        _w79.simplefilter("error", SyntaxWarning)
+        _w79.simplefilter("error", DeprecationWarning)
+        try:
+            compile(_f79.read_text(encoding="utf-8"), str(_f79), "exec")
+        except (SyntaxError, SyntaxWarning, DeprecationWarning) as _e79:
+            _rotti79.append(f"{_f79.relative_to(_root79)}: {_e79}")
+check("T79a sorgenti del motore compilano senza SyntaxWarning (F-mac-2)",
+      len(_sorgenti79) > 10 and _rotti79 == [], f"{len(_sorgenti79)} file; {_rotti79}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
