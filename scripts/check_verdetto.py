@@ -128,16 +128,20 @@ def _carica_perimetro(path: Path = PERIMETRO_FILE, repo: Path | None = None,
     """Voci del perimetro (stesso formato letto da review_gate.sh). R-138-1: unione
     del file dello script, delle voci cablate e della versione alla BASE della
     sessione (una PR non può togliersi dal perimetro da sola). None se il file
-    dello script è assente o vuoto (fail-closed)."""
+    dello script è assente, vuoto o non UTF-8 (fail-closed; R-177-1: prima un byte
+    non UTF-8 mandava in crash il gate B invece di fermarlo con un messaggio)."""
     try:
         voci = _voci(path.read_text(encoding="utf-8"))
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return None
     if not voci:
         return None
     voci += _VOCI_CABLATE
     if repo is not None and base:
-        r = _git(["git", "show", f"{base}:.claude/perimetro_review.txt"], repo)
+        try:
+            r = _git(["git", "show", f"{base}:.claude/perimetro_review.txt"], repo)
+        except UnicodeDecodeError:
+            return None
         if r.returncode == 0:
             voci += _voci(r.stdout)
     return voci
@@ -231,7 +235,7 @@ def main(argv: list[str]) -> int:
 
     perimetro = _carica_perimetro(repo=repo, base=base)
     if perimetro is None:
-        print(f"check_verdetto: ERRORE — perimetro di review assente o vuoto ({PERIMETRO_FILE}): fail-closed.",
+        print(f"check_verdetto: ERRORE — perimetro di review assente, vuoto o non UTF-8 ({PERIMETRO_FILE}): fail-closed.",
               file=sys.stderr)
         return 1
     # R-135-4: l'esenzione dipende dal diff REALE, non da una frase nel §4.

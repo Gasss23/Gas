@@ -9,6 +9,10 @@
 
 ## Changelog sessioni (cronologico)
 
+> **2026-09-12 (certificazione migrazione Win/WSL → Mac, PR #87 mai mergiata — archiviata il 2026-10-06):**
+> L1+L2+L3 PASS, zero crash, 14 voci di diario migrate intatte; rossi solo ambiente Mac (bwrap, gate IP con `\b`).
+> Dossier verbatim: `reports/cert_mac_2026-09-12.md`. F-mac-4 superato da R-155-1.
+
 > **2026-06-23 (CI — run auto-verificabile / job summary + gate sandbox — SOLO-WORKFLOW,
 > niente revisore):** chiusa la lacuna di osservabilità emersa verificando la run precedente
 > (`4f8d014`): l'esito bwrap e il conteggio PASS/FAIL/SKIP stavano SOLO nel log dietro auth
