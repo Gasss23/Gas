@@ -73,7 +73,7 @@ PERIM_PATHS=()
 PERIM_RE_PARTS=()
 _aggiungi_voci() {
   local riga esc
-  while IFS= read -r riga || [ -n "$riga" ]; do
+  while IFS= LC_ALL=C read -r riga || [ -n "$riga" ]; do
     riga="${riga%%#*}"
     riga="$(printf '%s' "$riga" | tr -d '[:space:]')"
     [ -n "$riga" ] || continue
