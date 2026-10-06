@@ -1,16 +1,19 @@
-# ULTIMO REPORT — 2026-10-06 — Test di R-167-1 su APFS: sonda del filesystem (SKIP sul Mac, FAIL in CI)
+# ULTIMO REPORT — 2026-10-06 — G-3: agente non admin, fase "solo avviso"
 
 ## Decisioni umane richieste
 
-1. Merge della PR #137 (https://github.com/Gasss23/Gas/pull/137) — rischio nullo, solo test.
-2. Dopo il merge, sul Mac: `python -m pytest tests/test_unit_gasmerge.py -k non_utf8 -rs` → atteso SKIPPED col motivo (APFS), non FAILED.
+1. Merge della PR #138 (https://github.com/Gasss23/Gas/pull/138) — manuale (tocca `scripts/`).
+2. Dopo il merge: creare il token fine-grained dell'agente (`reports/setup_agente_non_admin.md` A–B) e provarlo (B3: `bash scripts/avviso_token_admin.sh` → "non amministra il repo — OK").
+3. Poi decidere se l'avviso diventa **blocco** per `gasmerge --auto` (fase 2 di G-3).
 
 ## Esito per fette
 
-- **F-apfs** (sul Mac `test_path_non_utf8_non_nasconde_il_motore` falliva: APFS rifiuta nomi non UTF-8 con EILSEQ): FATTA — helper `_esigi_nomi_non_utf8`: rifiuto → SKIP col motivo; con `GAS_TEST_LOCALE_UTF8_ATTESO=1` (CI) → FAIL.
-- **Prove**: Linux passed; APFS simulato → SKIPPED; APFS simulato + variabile → FAILED; suite gasmerge 88 passed.
-- **Review**: #185 APPROVATO.
-- **Prova su macOS reale**: NON VERIFICATA (nessun Mac nel container cloud).
+- **G-3 fase 1 (solo avviso)**: FATTA — `scripts/avviso_token_admin.sh` (capacità del token via deploy key = Administration; mai blocco), chiamato da `gasmerge` (anche via symlink) e `fine_task_finale.sh`; setup del token; regola in CLAUDE.md.
+- **Review**: #186 BOCCIATO (R-186-1: via symlink `~/bin/gasmerge` l'avviso non partiva) → corretto con `realpath` + test via symlink → #187 APPROVATO CON RISERVE. R-186-2 (403 da rate limit = OK) CHIUSA; R-186-3, R-186-4 dichiarate; R-187-1 cosmetica.
+- **Test**: 608 passed in C e C.UTF-8 (gasmerge, hooks, gate, handoff_check, verifica_bot, voice_server).
+- **Prova con GitHub reale**: NON VERIFICATA — `gh` non autenticato nel container: la risposta 403/404 di un token senza Administration la verifica l'operatore (B3).
+- **G-3 fase 2 (blocco per `gasmerge --auto`)**: DEFERITA — decisione dell'operatore dopo l'uso del token.
+- **Verifica esterna §4quater #138**: FATTA — APPROVATO CON RISERVE; **V-1 (MEDIA)**: falso OK su 404/403 con repo non visibile o non dell'operatore → CHIUSA (OK solo con repo visibile e ruolo admin dell'utente) — review #188/#189 APPROVATO CON RISERVE (R-189-1 da provare al passo B3). Suite 611 passed in C e C.UTF-8.
 
 ## Anomalie
 

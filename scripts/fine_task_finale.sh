@@ -128,6 +128,13 @@ case "$IP_RC" in
     ;;
 esac
 
+# G-3: avviso (mai blocco, per ora) se il token gh in uso amministra il repo.
+if [[ -r "$SCRIPT_DIR/avviso_token_admin.sh" ]]; then
+    bash "$SCRIPT_DIR/avviso_token_admin.sh" || true
+else
+    printf 'AVVISO G-3: avviso_token_admin.sh assente — controllo saltato\n' >&2
+fi
+
 # Push
 printf '=== Push ===\n' >&2
 # R-150-1: `set -e` è di nuovo attivo qui (riattivato dal gate IP): senza `||` un push
