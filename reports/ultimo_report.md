@@ -1,19 +1,15 @@
-# ULTIMO REPORT — 2026-10-06 — G-3: agente non admin, fase "solo avviso"
+# ULTIMO REPORT — 2026-10-06 — F-mac-3: pytest senza target raccoglie l'intero repo
 
 ## Decisioni umane richieste
 
-1. Merge della PR #138 (https://github.com/Gasss23/Gas/pull/138) — manuale (tocca `scripts/`).
-2. Dopo il merge: creare il token fine-grained dell'agente (`reports/setup_agente_non_admin.md` A–B) e provarlo (B3: `bash scripts/avviso_token_admin.sh` → "non amministra il repo — OK").
-3. Poi decidere se l'avviso diventa **blocco** per `gasmerge --auto` (fase 2 di G-3).
+1. Merge della PR #139 (https://github.com/Gasss23/Gas/pull/139) — rischio basso, solo test/configurazione di pytest.
 
 ## Esito per fette
 
-- **G-3 fase 1 (solo avviso)**: FATTA — `scripts/avviso_token_admin.sh` (capacità del token via deploy key = Administration; mai blocco), chiamato da `gasmerge` (anche via symlink) e `fine_task_finale.sh`; setup del token; regola in CLAUDE.md.
-- **Review**: #186 BOCCIATO (R-186-1: via symlink `~/bin/gasmerge` l'avviso non partiva) → corretto con `realpath` + test via symlink → #187 APPROVATO CON RISERVE. R-186-2 (403 da rate limit = OK) CHIUSA; R-186-3, R-186-4 dichiarate; R-187-1 cosmetica.
-- **Test**: 608 passed in C e C.UTF-8 (gasmerge, hooks, gate, handoff_check, verifica_bot, voice_server).
-- **Prova con GitHub reale**: NON VERIFICATA — `gh` non autenticato nel container: la risposta 403/404 di un token senza Administration la verifica l'operatore (B3).
-- **G-3 fase 2 (blocco per `gasmerge --auto`)**: DEFERITA — decisione dell'operatore dopo l'uso del token.
-- **Verifica esterna §4quater #138**: FATTA — APPROVATO CON RISERVE; **V-1 (MEDIA)**: falso OK su 404/403 con repo non visibile o non dell'operatore → CHIUSA (OK solo con repo visibile e ruolo admin dell'utente) — review #188/#189 APPROVATO CON RISERVE (R-189-1 da provare al passo B3). Suite 611 passed in C e C.UTF-8.
+- **F-mac-3**: FATTA — i 4 probe `clients/voice/probe/win_*_test.py` (sys.exit all'import) e lo script `tests/test_unit_kernel.py` esclusi dalla collection con due `conftest.py`; test strutturale (collection dell'intero repo rc 0/5). Collection intera: rc 3 → rc 0 (663 test).
+- **Prove**: senza l'uno o l'altro conftest il test strutturale fallisce; suite CI 612 passed; kernel 653/0.
+- **Review**: #190 BOCCIATO (la prima versione sistemava solo `win_mic_test.py`) → #191 APPROVATO CON RISERVE (R-191-1 cosmetica).
+- **Prova su macOS/Windows**: NON VERIFICATA.
 
 ## Anomalie
 

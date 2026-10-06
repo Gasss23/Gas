@@ -1,293 +1,166 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-06 — G-3: agente non admin, fase "solo avviso" (sessione cloud)
+**Sessione:** 2026-10-06 — F-mac-3: pytest senza target raccoglie l'intero repo (sessione cloud)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #138 (https://github.com/Gasss23/Gas/pull/138). Numero e URL dall'output del connettore GitHub (`create_pull_request` → `{"id":"4761143817","url":"https://github.com/Gasss23/Gas/pull/138"}`): `gh` non è autenticato in questo container. Merge manuale (tocca `scripts/`).
-2. Creare e provare il token dell'agente (`reports/setup_agente_non_admin.md` A–B).
-3. Decidere se l'avviso diventa blocco per `gasmerge --auto` (fase 2).
+1. Merge della PR #139 (https://github.com/Gasss23/Gas/pull/139). Numero e URL dall'output del connettore GitHub (`create_pull_request` → `{"id":"4762287334","url":"https://github.com/Gasss23/Gas/pull/139"}`): `gh` non è autenticato in questo container.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **G-3 fase 1 (solo avviso)**: `FATTA`.
-- **R-186-1 / R-186-2**: `FATTA`; R-186-3, R-186-4 dichiarate.
-- **Prova con GitHub reale (token senza Administration → 403/404)**: `SALTATA — gh non autenticato nel container; passo B3 dell'operatore`.
-- **G-3 fase 2 (blocco)**: `DEFERITA — decisione dell'operatore`.
-- **Etichetta `verifica`**: `SALTATA — gh non autenticato e l'etichetta non esiste ancora`.
-- **Verifica esterna §4quater #138**: `FATTA` — APPROVATO CON RISERVE (§8). **V-1 (MEDIA, falso OK su repo non visibile/sbagliato)**: `FATTA` (review #188/#189). V-2 (è solo un avviso) = fase 1 voluta. V-3 cosmetica (stat).
+- **F-mac-3**: `FATTA`.
+- **Prova su macOS/Windows**: `SALTATA — nessun Mac/Windows nel container`.
+- **Verifica esterna §4quater**: `SALTATA — solo configurazione della collection di pytest e un test; nessun cambiamento al motore né ai gate (dosaggio: decide l'operatore se lanciarla)`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- .claude/perimetro_review.txt       |   1 +
- CLAUDE.md                          |   1 +
- reports/diff_sessione.md           |  15 +++++++++++----
- reports/handoff.md                 | 263 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------
- reports/setup_agente_non_admin.md  |  60 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  17 ++++++++++-------
- scripts/avviso_token_admin.sh      |  42 ++++++++++++++++++++++++++++++++++++++++++
- scripts/fine_task_finale.sh        |   7 +++++++
- scripts/gasmerge.sh                |   5 +++++
- tests/test_unit_gasmerge.py        |  91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_hooks.py           |  22 ++++++++++++++++++++++
- 13 files changed, 480 insertions(+), 52 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +++
+ clients/voice/probe/conftest.py    |   6 ++++++
+ reports/diff_sessione.md           |  17 ++++++-----------
+ reports/handoff.md                 | 332 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   2 +-
+ reports/ultimo_report.md           |  16 ++++++----------
+ tests/conftest.py                  |   6 ++++++
+ tests/test_unit_voice_server.py    |  20 ++++++++++++++++++++
+ 8 files changed, 145 insertions(+), 257 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-89c9b64 docs(g3): fine-task bis — verifica esterna #138 integrale, verdetti #188/#189
-c70f5e9 fix(g3): niente falso OK su repo non visibile o non dell'operatore — review #188/#189
-56a179a chore(revisore): memoria review #189 — APPROVATO CON RISERVE
-2b92542 chore(revisore): memoria review #188 — APPROVATO CON RISERVE
-3b35720 docs(g3): fine-task — report, handoff con verdetti #186/#187, diff sessione
-9540340 feat(g3): agente non admin, fase solo avviso — scripts/avviso_token_admin.sh in gasmerge e fine-task — review #186/#187
-e6784e6 chore(revisore): memoria review #187 — APPROVATO CON RISERVE
-73d93d8 chore(revisore): memoria review #186 — BOCCIATO
+bb81ae8 docs(f-mac-3): fine-task — report, handoff con verdetti #190/#191, diff sessione
+5f5a22a fix(test): F-mac-3 — pytest senza target raccoglie l'intero repo (probe Windows e script del kernel esclusi) — review #190/#191
+5d34e91 chore(revisore): memoria review #191 — APPROVATO CON RISERVE
+89f0e58 chore(revisore): memoria review #190 — BOCCIATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-g3/`) resi relativi alla radice del repo, perché il gate B li risolva. In coda alla #188 c'è l'**Addendum #188**, scritto dal revisore stesso su richiesta (il gate B esigeva 2 citazioni di codice; il testo del verdetto non è stato toccato).
+Verdetto INTEGRALE del diff committato. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-mic/`) resi relativi alla radice del repo. La review #190 (BOCCIATO) riguarda una versione precedente, MAI committata (modifica a `win_mic_test.py`, poi tolta): è riportata integrale in §8, fuori da §4 perché cita file che non sono nel diff.
 
-### Review #186 — diff staged iniziale (BOCCIATO)
-
-## VERDETTO: BOCCIATO
-
-**Motivo bloccante (R-186-1).** Il percorso reale di gasmerge non esegue mai il controllo. L'ho riprodotto.
-
-**Elementi del diff esaminati**
-
-- `scripts/gasmerge.sh:38` — `G3="$(dirname "${BASH_SOURCE[0]}")/avviso_token_admin.sh"`
-  - Rischio esaminato: risoluzione del path quando gasmerge viene lanciato tramite il symlink `~/bin/gasmerge`. Secondo la regola R10 di stato_progetto.md (riga 381) quel symlink è obbligatorio.
-  - Esito: **blocco**. Bash non risolve il symlink, quindi `BASH_SOURCE[0]` vale `~/bin/gasmerge` e lo script viene cercato in `~/bin/avviso_token_admin.sh`. Prova fatta: symlink in scratchpad + `GAS_REPO_DIR=/home/user/wt-g3`. Risultato: `AVVISO G-3: …/bin/avviso_token_admin.sh assente — controllo saltato`.
-  - Con `bash scripts/gasmerge.sh` invocato per path assoluto l'avviso invece compare. Con un path relativo funziona solo per caso, perché il `cd` della riga 30 avviene prima del `dirname`.
-  - Non c'è crash e l'avviso è visibile, quindi è fail-safe. Però la fetta, nel punto che conta (il merge), non fa nulla.
-  - `test_gasmerge_chiama_l_avviso_senza_bloccare` lancia gasmerge per path assoluto e quindi non vede il problema.
-  - Fix: `G3="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/avviso_token_admin.sh"`, come già fa `fine_task_finale.sh:19`, oppure `scripts/avviso_token_admin.sh` relativo al repo dopo il `cd`. In più serve un test che invochi gasmerge tramite symlink e ne esiga l'avviso.
-- `scripts/gasmerge.sh:39` — `bash "$G3" || true` sotto `set -euo pipefail`.
-  - Rischio esaminato: che l'avviso possa interrompere gasmerge.
-  - Esito: **ok**. `|| true` neutralizza qualsiasi exit code, il ramo "assente" fa solo un `echo`, e il gh figlio non legge lo stdin che serve al `read -r ANS` della conferma.
-- `scripts/avviso_token_admin.sh:17-18` — `ERR=$(gh api … --silent 2>&1 >/dev/null); RC=$?`
-  - Rischio esaminato: che venga catturato l'exit code sbagliato o che il corpo della risposta (le deploy key) finisca a terminale.
-  - Esito: **ok**. Con il solo `set -u`, `$?` è l'exit code di gh dentro l'assegnazione, e lo stdout va in `/dev/null`.
-- `scripts/avviso_token_admin.sh:24` — `grep -qE 'HTTP (403|404)'`
-  - Rischio esaminato: classificazione errata di un 403 che non riguarda i permessi.
-  - Esito: **riserva R-186-2 (BASSA)**. Un 403 da rate limit secondario (`API rate limit exceeded … (HTTP 403)`) con un token admin stampa "OK", cioè dà via libera quando non dovrebbe. Stessa cosa per un 404 da repo sbagliato (`GH_REPO` o remote di un fork). Oggi conta poco perché è solo un avviso, ma va chiuso prima di trasformarlo in blocco: per esempio distinguendo "Resource not accessible" o controllando il messaggio.
-- Scelta dell'endpoint (`repos/{owner}/{repo}/keys`): **ok**. Per i token fine-grained "List deploy keys" richiede Administration in lettura, e un PAT classic del proprietario con scope `repo` risponde 200, quindi giustamente avvisa. Il ragionamento su `permissions.admin` (che dà il ruolo dell'utente, non la capacità del token) è corretto.
-  - Falso positivo nella direzione sicura: un token con Administration **Read-only** avvisa anche se non può cambiare il ruleset.
-  - **R-186-3 (BASSA)**: la sonda verifica solo Administration. Le voci Workflows ed Environments su "No access", richieste da `reports/setup_agente_non_admin.md` §A.4, non vengono verificate, quindi il messaggio "non amministra il repo — OK" non le copre. Va dichiarato nel setup.
-- `scripts/fine_task_finale.sh:132-136` — chiamata dopo il gate IP e prima di `=== Push ===`, con `set -e` riattivato.
-  - Esito: **ok**. `SCRIPT_DIR` è risolto con `realpath "$0"`, quindi funziona anche via symlink, e `|| true` copre il `set -e`. Test `test_finale_g3_avviso_token_admin_non_blocca` eseguito: passa.
-- **R-186-4 (BASSA, dichiarata)**: `gh api` non ha un timeout proprio. In caso di rete bloccata, gasmerge e fine-task restano fermi sul controllo. È lo stesso rischio che hanno già `gh pr view` e `git push` subito dopo, quindi non aggiunge un modo di fallire nuovo.
-- Coerenza con CLAUDE.md: la regola "token senza Administration, nessun merge salvo `gasmerge --auto` col sì del bot o richiesta esplicita" va nella direzione di V-B e G-3. Lo script è stato aggiunto correttamente a `.claude/perimetro_review.txt`: il gate protegge anche se stesso.
-
-**Test eseguiti:** `TestAvvisoTokenAdmin` 8 passed, `-k g3` di hooks 1 passed. La suite completa da 606 l'ho presa per buona e non l'ho rieseguita.
-
-**Rischi esclusi:** non ho verificato che GitHub risponda davvero 403/404 a un token fine-grained senza Administration e 200 a uno admin, perché qui gh non è autenticato col token dell'operatore. Va provato al passo B3 del setup. Non ho nemmeno verificato `realpath` su macOS anteriori al 13, che servirebbe per il fix proposto: `fine_task_finale.sh` però lo usa già.
-
-**Per sbloccare:** correggere `gasmerge.sh:38` e aggiungere un test con gasmerge invocato tramite symlink, poi rifare la review (#187). R-186-2, R-186-3 e R-186-4 vanno tracciate in stato_progetto.md e non bloccano.
-
-Memoria aggiornata con la riga #186 e una lezione sugli script chiamati via symlink. L'ho committata da sola con lo script atomico (`73d93d8`), e il diff staged è rimasto intatto (9 file): `.claude/agents/memoria_revisore.md`.
-
-### Review #187 — ri-review dopo R-186-1/2
+### Review #191 — diff committato (`5f5a22a`)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Ri-review #187. Il motivo per cui avevo bocciato la #186 (R-186-1: il controllo non partiva mai quando gasmerge viene lanciato dal symlink `~/bin/gasmerge`) è risolto. Ho riprodotto il caso reale e ho controllato che il test nuovo fallisca col vecchio codice.
+Questa è la ri-review #191 del nuovo diff staged in /home/user/wt-mic. R-190-1 e R-190-2 sono chiuse: `pytest` lanciato senza target ora raccoglie l'intero repo con exit code 0. `win_mic_test.py` è identico a HEAD (`git diff HEAD` vuoto).
 
-**Punti del diff esaminati**
-
-- **`scripts/gasmerge.sh:15`**, il calcolo di `G3` all'inizio di `main()`, prima del `cd`, che segue i symlink con `realpath` (e ripiega sul path grezzo se `realpath` manca).
-  - Rischio esaminato: path sbagliato via symlink, e un crash per `set -euo pipefail` se `realpath` non c'è.
-  - Dentro una funzione, `BASH_SOURCE[0]` resta il file dello script, e il `|| printf` evita che uno stato diverso da zero faccia terminare la sostituzione.
-  - Riprova reale col symlink in scratchpad, `GAS_REPO_DIR=/home/user/wt-g3` e un gh finto che risponde 0: stampa «AVVISO G-3: il token gh in uso AMMINISTRA il repo…». Prima stampava «assente — controllo saltato».
+### Elementi del diff esaminati
+- **`clients/voice/probe/conftest.py:6`** — `collect_ignore_glob = ["win_*_test.py"]` toglie dalla collection i 4 probe manuali Windows.
+  - Rischio esaminato: che il glob lasci fuori un probe o escluda un test vero. In `git ls-files` gli unici `*_test.py`/`test_*.py` fuori da `tests/` sono i 4 `win_*_test.py`, quindi il glob li copre tutti e non tocca altro.
+  - Mutation: tolto questo conftest, il test strutturale fallisce (riprodotto).
   - Esito: **ok**.
-- **`tests/test_unit_gasmerge.py`, `test_gasmerge_via_symlink_trova_l_avviso`**.
-  - Rischio esaminato: un test che passa comunque, come quello della #186 che lanciava gasmerge per path assoluto.
-  - Ho rimesso via `sed` la vecchia riga `G3="$(dirname "${BASH_SOURCE[0]}")/…"`: il test **FALLISCE**. Poi ho ripristinato lo script: il file su disco è di nuovo identico allo staged (`git diff` vuoto).
+- **`tests/conftest.py:6`** — `collect_ignore = ["test_unit_kernel.py"]`.
+  - Rischio esaminato: che si perda la suite del kernel in CI. La CI (`ci.yml:97`) la lancia come script con `python tests/test_unit_kernel.py`, che non legge i conftest; gli altri passi passano i file per nome.
+  - Mutation: senza questo conftest la collection importa il file, esegue tutta la suite del kernel (17 s) e il test strutturale fallisce (riprodotto).
   - Esito: **ok**.
-- **`scripts/gasmerge.sh:41`**, `if [ -r "$G3" ]; then bash "$G3" || true; else …`.
-  - Rischio esaminato: un'interruzione di gasmerge sotto `set -e`.
-  - Esito: **ok**. `|| true` copre qualsiasi codice d'uscita, e il ramo "assente" fa solo un `echo`.
-- **`scripts/avviso_token_admin.sh:25`**, il ramo `rate limit` messo prima del ramo `HTTP (403|404)`.
-  - Rischio esaminato: un 403 da rate limit letto come "OK" (R-186-2).
-  - L'ordine è corretto e il caso `API rate limit exceeded … (HTTP 403)` è nel test parametrizzato.
-  - Esito: **ok**. R-186-2 è chiusa.
-- **`scripts/avviso_token_admin.sh:11-12`** e il setup (§«Cosa NON copre il controllo»).
-  - Rischio esaminato: le dichiarazioni di R-186-3 (si prova solo Administration) e R-186-4 (nessun timeout su `gh api`).
-  - Esito: **riserva dichiarata**, coerente nello script, nel setup e in stato_progetto.md.
+- **`tests/test_unit_voice_server.py:357-370`** — lancia in subprocess `python -m pytest --collect-only -q -p no:cacheprovider` dalla radice e accetta solo exit code 0 o 5.
+  - Rischi esaminati:
+    - Ricorsione: con `--collect-only` nessun test viene eseguito, quindi non c'è.
+    - Effetti collaterali: `git status` è invariato dopo la collection e `cacheprovider` è disattivato.
+    - Dipendenze mancanti in CI: `test_unit_voice_stt.py`, `test_unit_voice_tts.py` e `modules/voice/stt.py`/`tts.py` importano a livello di modulo solo la stdlib e `modules.voice`, che sono già coperti.
+    - Durata: circa 0,5 s, con timeout a 300 s.
+  - Conta l'exit code, non l'ultima riga dell'output: è la lezione di #190.
+  - `test_unit_voice_server.py`: 20 passed (pytest 9.1.1, la stessa versione pinnata in `requirements-dev.txt`).
+  - Esito: **ok** (vedi R-191-1).
+- **`reports/stato_progetto.md:171`** — la chiusura di F-mac-3 ora corrisponde ai fatti che ho riprodotto: collection intera con exit code 0. Esito: **ok**.
 
-`TestAvvisoTokenAdmin`: 10 passed.
+Wall of Shame: nessun file del kernel o dei provider toccato, nessuno slicing della history, nessuna simulazione di tool.
 
-**Riserve (non bloccanti, già tracciate)**
+### Riserve
+- **R-191-1 (cosmetica):** il test sulla collection dell'intero repo sta in `test_unit_voice_server.py`. Si capisce la scelta, perché è un file che la CI esegue, ma nome e posizione ingannano. Meglio spostarlo in un file dedicato più avanti, ricordandosi di aggiungerlo a `ci.yml`.
 
-- **R-186-3** (bassa): la sonda verifica solo Administration. Workflows ed Environments li controlla l'operatore quando crea il token.
-- **R-186-4** (bassa): `gh api` non ha un timeout proprio.
-- **R-187-1** (cosmetica): il ripiego quando manca `realpath` resta relativo se lo script è lanciato con un path relativo, e viene letto dopo il `cd`. Nel caso limite (niente `realpath` e lancio da fuori dal repo) compare un avviso «assente», non un crash. Accettabile.
+### Rischio escluso
+Non ho rieseguito le cifre complete date nel messaggio: i 612 passed della suite CI con `GAS_TEST_LOCALE_UTF8_ATTESO=1` e i 653 PASS di `python tests/test_unit_kernel.py`. Il diff non tocca codice del motore e lo script del kernel non legge i conftest. Ho riverificato solo `test_unit_voice_server.py` (20 passed), la collection intera (exit code 0) e le due mutation. Non ho verificato la collection su Windows o macOS.
 
-**Non verificato**
+La memoria ha la riga #191, committata da sola con `scripts/commit_memoria_revisore.sh` (5d34e91). Il diff staged è intatto e non l'ho committato.
 
-- Che GitHub risponda davvero 403/404 a un token fine-grained senza Administration, e 200 a uno admin: qui gh non è autenticato col token dell'operatore. Va provato al passo B3 del setup.
-- La suite completa da 608 test in C e C.UTF-8 non l'ho rieseguita, l'ho presa per buona. Ho eseguito solo la classe G-3 e la mutation.
-
-Ho aggiunto la riga #187 alla memoria e l'ho committata col solo script atomico (commit `e6784e6`). Il diff staged è intatto (9 file, nessun commit da parte mia). File: `.claude/agents/memoria_revisore.md`.
-
-### Review #188 — fix V-1 della verifica esterna #138
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #188: il fix chiude il caso "token che non vede il repo" (SSO, repo privato o inesistente). Resta scoperto un caso più stretto: un repo sbagliato ma visibile dà ancora "OK" (R-188-1). V-1 va quindi scritta come MITIGATA, non CHIUSA (R-188-2). Nessuna delle due blocca, perché in fase 1 lo script è solo un avviso.
-
-**Elementi del diff esaminati**
-
-- **`scripts/avviso_token_admin.sh:31`**, il secondo controllo `gh api "repos/{owner}/{repo}"` dentro il ramo 403/404 di `/keys`.
-  - Rischio esaminato: falso OK su 404/403 non legati ai permessi.
-  - Ho sostituito la condizione con `if true`: falliscono 2 test (riprodotto). Ho poi ripristinato il file, che è di nuovo identico allo staged.
-  - Il secondo `gh` gira sotto il solo `set -u`, con stdout e stderr scartati e dentro un `if`, quindi non può interrompere lo script. Resta `exit 0` in ogni ramo, e gasmerge/fine-task restano protetti dal `|| true` già visto nella #187.
-  - Esito: **riserva R-188-1 (MEDIA-BASSA)**. Il 200 prova solo che il repo è *visibile*, non che sia *il repo giusto*. Se `GH_REPO` o il remote puntano a un repo altrui ma pubblico, `/keys` risponde 404 e `repos/{o}/{r}` risponde 200, quindi esce "OK".
-  - L'ho riprodotto con un gh finto che nega solo `/keys`: stampa «G-3: il token gh in uso non amministra il repo — OK». Il caso SSO è chiuso, perché l'SSO nega anche l'endpoint del repo. Il caso "fork o repo sbagliato" citato nel commento invece no, se quel repo è pubblico.
-  - Fix proposto: esigere anche `.permissions.admin == true` sul repo, per esempio `gh api repos/{owner}/{repo} --jq .permissions.admin` uguale a `true`. Quel campo rispecchia il RUOLO dell'utente: inutile per misurare il token, ma serve proprio a dire "è il repo dell'operatore". Più un test con repo visibile e `admin:false` che non deve dare OK.
-- **`tests/test_unit_gasmerge.py`, `test_repo_non_visibile_non_e_ok` e il nuovo stub di `test_token_senza_administration_ok`** (negato solo `/keys`).
-  - Rischio esaminato: test che passano comunque, e il vecchio test "OK" diventato falso dopo il fix.
-  - Lo stub con `case "$*" in *"/keys"*` separa davvero le due chiamate, e la mutation qui sopra viene uccisa.
-  - `TestAvvisoTokenAdmin`: 12 passed.
-  - Esito: **ok**.
-- **`reports/stato_progetto.md:114`**, che scrive V-1 come «CHIUSA».
-  - Esito: **riserva R-188-2 (bassa)**. Per R-188-1 la parola giusta è «MITIGATA (resta il repo sbagliato ma visibile)», oppure CHIUSA solo dopo il fix con `permissions.admin`.
-
-**Cosa non ho verificato**
-
-- Le risposte reali di GitHub, cioè 404 contro 403 su `/keys` e 200 sul repo per un token fine-grained con Contents in lettura/scrittura: gh qui non è autenticato col token dell'operatore. Resta da fare al passo B3 del setup.
-- La suite da 610 test in C e C.UTF-8 non l'ho rieseguita: ho girato solo la classe G-3 e la mutation.
-- Non ho accertato se Gasss23/Gas sia pubblico: la mia `curl` passa dal proxy, che potrebbe aggiungere le credenziali.
-
-Ho aggiunto alla memoria la riga #188 e la lezione «una sonda di visibilità non prova l'identità della risorsa». L'ho committata solo con lo script atomico (`2b92542`); il diff staged è intatto (3 file) e non l'ho committato. File: `.claude/agents/memoria_revisore.md`.
-Addendum #188 — Questi sono i numeri di riga a HEAD `89c9b64`, verificati con `git show HEAD:… | grep -n`. Nella #188 ho esaminato il controllo sul repo, che oggi è `scripts/avviso_token_admin.sh:33`; la #189 lo ha cambiato da `if gh api …` a `RUOLO=$(gh api "repos/{owner}/{repo}" --jq '.permissions.admin')`. Ho esaminato anche il test `tests/test_unit_gasmerge.py:1490` (`test_repo_non_visibile_non_e_ok`, 403/404 su tutto: nessun falso OK). La mutation che avevo provato nella #188 colpiva la riga che oggi è la `:33`.
-
-### Review #189 — ri-review R-188-1/2
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Ri-review #189: R-188-1 e R-188-2 sono chiuse e la mutation che ho rilanciato viene uccisa. Resta una riserva senza blocco: non è provato che `permissions.admin` misuri il ruolo dell'utente anche con un token fine-grained (R-189-1).
-
-**Punti del diff esaminati**
-
-- **`scripts/avviso_token_admin.sh:33-34`**: dopo il 403/404 su `/keys`, l'"OK" esce solo se `gh api repos/{owner}/{repo} --jq '.permissions.admin'` stampa esattamente `true`.
-  - Rischio esaminato: falso OK su un repo sbagliato ma visibile, e un crash se il secondo `gh` fallisce.
-  - `|| RUOLO=""` gira sotto il solo `set -u`, quindi un fallimento non interrompe lo script; il confronto è stretto.
-  - Riprove:
-    - Mutation `[ -n "$RUOLO" ]`: **1 failed**. Poi ho ripristinato il file, che coincide con lo staged.
-    - Gh finto che restituisce `null` (campo assente): «non verificabili», nessun OK.
-  - Esito: **ok**. R-188-1 è chiusa.
-- **`tests/test_unit_gasmerge.py`, `test_repo_visibile_ma_non_dell_operatore_non_e_ok`**, più lo stub dell'OK che ora risponde `true`.
-  - Rischio esaminato: un test che non distingue i casi.
-  - È proprio lo scenario che avevo riprodotto nella #188: `/keys` 404 e repo 200 con `false`. `TestAvvisoTokenAdmin`: 13 passed.
-  - Esito: **ok**.
-- **`reports/setup_agente_non_admin.md`** e **`reports/stato_progetto.md`**: la nota "l'OK vale solo per il TUO repo" e V-1 dichiarata CHIUSA con la condizione completa.
-  - Esito: **ok**. R-188-2 è chiusa.
-
-**Riserve**
-
-- **R-189-1 (bassa, non verificata):** tutto poggia sul presupposto che con un token fine-grained `permissions.admin` misuri il ruolo dell'utente e non i permessi del token.
-  - Se invece misurasse il token, il token ristretto avrebbe `admin:false`. L'avviso darebbe allora sempre «non verificabile» e mai OK: un errore dal lato prudente, ma l'avviso diventerebbe inutile.
-  - Va provato al passo B3 del setup, che deve mostrare l'"OK" con il token `gas-agente`.
-- **R-189-2 (cosmetica):** il commento di testata (`scripts/avviso_token_admin.sh:9`) dice ancora "solo se il token VEDE il repo" e non nomina il ruolo admin.
-
-**Cosa non ho verificato:**
-- Le risposte reali di GitHub: gh qui non è autenticato col token dell'operatore.
-- La suite da 611 test in C e C.UTF-8: non l'ho rieseguita, ho girato solo la classe G-3 e la mutation.
-
-Ho aggiunto alla memoria la riga #189 e l'ho committata con lo script atomico (`56a179a`). Il diff staged (4 file) è intatto e non l'ho committato. File: `.claude/agents/memoria_revisore.md`
+File rilevanti:
+- clients/voice/probe/conftest.py
+- tests/conftest.py
+- tests/test_unit_voice_server.py
+- reports/stato_progetto.md
+- .claude/agents/memoria_revisore.md
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/brains/modules. Test della macchina di controllo, con `GAS_TEST_LOCALE_UTF8_ATTESO=1`:
+Nessuna modifica a gas.py/brains/modules.
 
 ```
-LC_ALL=C:       pytest gasmerge+hooks+gate+handoff_check+verifica_bot+voice_server → 611 passed
-LC_ALL=C.UTF-8: pytest gasmerge+hooks+gate+handoff_check+verifica_bot+voice_server → 611 passed
+python -m pytest --collect-only -q (radice)  → rc 0, 663 tests collected   (prima: rc 3, INTERNALERROR)
+GAS_TEST_LOCALE_UTF8_ATTESO=1 pytest (6 file CI) → 612 passed
+python tests/test_unit_kernel.py              → === RIEPILOGO: 653 PASS, 0 FAIL ===
 ```
-
-(+14 test G-3: 13 in TestAvvisoTokenAdmin, 1 in hooks.)
 
 ## §6 STATO CI
 
-Stato dal connettore GitHub e dalla verifica esterna #138 (`gh` non autenticato qui). Mappatura commit → run:
-- `73d93d8`, `e6784e6`, `9540340`: pushati insieme → run sul push di `9540340` (atteso handoff-check rosso, prima del fine-task).
-- `3b35720` (primo fine-task): run 37489696539: unit-suite success, handoff-check success.
-- `2b92542`, `56a179a`, commit del fix V-1 e di questo fine-task: pushati insieme, run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato (CI NON VERIFICATA con la CLI). Mappatura commit → run:
+- `89f0e58`, `5d34e91`, `5f5a22a`: pushati insieme, run CI sul push di `5f5a22a` — esito non letto alla scrittura dell'handoff (atteso handoff-check rosso, prima del fine-task).
+- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-189-1** (BASSA, non verificata): si presume che con un token fine-grained `permissions.admin` misuri il ruolo dell'utente; se misurasse il token, l'avviso direbbe sempre "non verificabile" (lato prudente). Da provare al passo B3.
-- **R-189-2** (cosmetica): il commento di testata dello script non nomina il controllo del ruolo.
-- **R-186-3**, **R-186-4** (BASSE, dichiarate). **R-187-1** (cosmetica).
-- V-2 #138: è solo un avviso finché l'operatore non decide la fase 2.
+- **R-191-1** (cosmetica): il test strutturale sta in `test_unit_voice_server.py`; spostarlo in un file dedicato (e aggiungerlo a ci.yml) più avanti.
+- Collection non verificata su macOS/Windows.
 
-## §8 VERIFICA ESTERNA #138 (verdetto integrale)
+## §8 REVIEW #190 (BOCCIATO) — versione mai committata, verdetto integrale
 
-Lanciata con `Applica .claude/verifica_esterna.md a: <URL_HANDOFF di 3b35720> <URL_PR>` (agente nuovo, Sonnet). V-1 MEDIA chiusa (review #188/#189); V-2 = fase 1 voluta; V-3 (stat fotografato prima dell'ultimo commit) strutturale; V-4 dichiarate.
+Diff valutato: lazy import in `clients/voice/probe/win_mic_test.py` + un test. Bocciato perché altri 3 probe e lo script del kernel rompevano comunque la collection; sostituito dalla soluzione con i conftest (review #191).
 
-VERIFICA ESTERNA PR #138 — APPROVATO CON RISERVE
+## VERDETTO: BOCCIATO
 
-**Metodo:**
-- Clone usa-e-getta nella scratchpad, checkout di 3b35720 (head della PR; coincide con lo SHA dell'URL).
-- Ho letto diff e script, e rieseguito le suite alla base 0e7dc4e e al commit.
-- Ho provato `avviso_token_admin.sh` con un `gh` finto su 8 esiti.
-- Ho letto check-run della PR e ruleset con `gh` e connettore GitHub.
-- Il repo reale `/home/user/Gas` ha `git status` vuoto.
+**Letture preliminari fatte:** CLAUDE.md (sez. 5, 8, 9 e 10), la voce F-mac-3 in `reports/stato_progetto.md:171`, la coda di `.claude/agents/memoria_revisore.md` (fino alla #189).
 
-**CLAIM VERIFICATI:**
-- **VERO** — Il diff reale dal merge-base (0e7dc4e) è 13 file, 4 commit (73d93d8, e6784e6, 9540340, 3b35720). I file coincidono con il §2 dell'handoff. Il commit di fine-task è escluso dal log del §3, come l'handoff dichiara.
-- **COSMETICO (V-3)** — Le cifre del §2 sono 325+/54- e `handoff.md` 142 righe. Lo stat reale con il commit pinnato è 340+/54- e 157 righe, perché l'handoff si riscrive nel commit di fine-task. Non c'è nessuna riga di nota che lo dica.
-- **VERO** — Test: 608 passed in `LC_ALL=C` e 608 passed in `LC_ALL=C.UTF-8`, con `GAS_TEST_LOCALE_UTF8_ATTESO=1`. Alla base sono 597 passed. Il delta è +11, come dichiarato. Ho usato le sei suite elencate nell'handoff.
-- **VERO** — CI sullo SHA pinnato: `unit-suite` success e `handoff-check` success (run 37489696539). Gli altri tre job (`smista`, `verifica`, `esito`) risultano skipped. Il ruleset `main-lock` è attivo e richiede `unit-suite` e `handoff-check`.
-- **VERO** — Il §6 dell'handoff dice "CI non verificata", ma la CI reale è verde sullo SHA. L'handoff sottostima, non sovrastima.
-- **VERO** — I rami dello script d'avviso si comportano come dichiarato. Con il gh finto:
-  - 0 → AVVISO "AMMINISTRA";
-  - 403 "Resource not accessible" → OK;
-  - 404 → OK;
-  - rate limit → "non verificabile";
-  - rc=4 (non autenticato) e 401 → "non verificabile";
-  - errore di rete → "non verificabile".
-  - Lo script esce sempre con 0.
-- **VERO** — Il diff di `gasmerge.sh` calcola `G3` con `realpath` prima del `cd`, quindi il symlink `~/bin/gasmerge` è coperto. La mutation che rimette il vecchio codice è riportata come uccisa dal test. Questo punto non l'ho rieseguito: è nel verdetto #187, ma le suite complete passano.
-- **VERO** — R-186-1 (symlink) e R-186-2 (rate limit) sono chiuse.
-  - R-186-2: il ramo `rate limit` precede `HTTP (403|404)`. Il caso "secondary rate limit" stampa "non verificabile".
-  - R-186-1: il symlink è coperto dal test `test_gasmerge_via_symlink_trova_l_avviso`, eseguito nella suite da 608.
-- **VERO** — `scripts/avviso_token_admin.sh` è aggiunto a `.claude/perimetro_review.txt`, quindi il gate copre anche il nuovo controllo.
+**Motivo del blocco (R-190-1).** La modifica a `win_mic_test.py` è corretta, ma `stato_progetto.md` dichiara F-mac-3 chiusa e non lo è. Il finding dice che `pytest` lanciato senza target si rompe durante la collection. Nel worktree, con il diff staged applicato:
+- `python -m pytest --collect-only -q` sull'intero repo esce con **rc=3** (INTERNALERROR).
+- `python -m pytest --collect-only clients/` esce anch'esso con rc=3: `INTERNALERROR> File ".../clients/voice/probe/win_playback_test.py", line 25 ... SystemExit: 1`.
 
-**FINDING:**
-- **V-1 (MEDIA) — Falso "OK" sul 404.** Ho riprodotto che un 404 con un token che non vede il repo stampa «non amministra il repo — OK».
-  - Il 404 vale sia per "token senza Administration" sia per "repo sbagliato" (remote di un fork o `GH_REPO` sbagliato).
-  - Altri 403 non legati ai permessi, per esempio il blocco SAML/SSO dell'organizzazione, ricadono nello stesso "OK".
-  - Il revisore #186 l'aveva notato (R-186-2 copriva anche il 404), ma la riserva è stata chiusa trattando solo il rate limit. Il 404 da repo sbagliato non è tracciato in nessuna riserva aperta del §7.
-  - Oggi è solo un avviso, quindi l'effetto è basso. Diventa una vera falla quando l'avviso si trasforma in blocco (fase 2). Il cambio di fase non deve avvenire senza prima chiudere questo punto.
-  - Fix proposto: accettare "OK" solo per il messaggio esatto dei permessi ("Resource not accessible by personal access token" / "Must have admin rights"). Per il 404, verificare prima che `gh api repos/{owner}/{repo}` risponda 200. Altrimenti stampare "non verificabile".
-- **V-2 (MEDIA, di progetto) — Il controllo è solo un avviso e non impedisce nulla.** Un token admin resta usabile dall'agente nello stesso container. L'intero G-3 si regge sull'operatore che crea e usa davvero il token senza Administration. Il fatto che l'handoff stesso lo dichiari "fase 1" mitiga. In questa sessione `gh` era autenticato e ha letto i ruleset del repo. Questo, da solo, non dimostra che sia un token admin né quale sia. Va comunque notato per il passo B3.
-- **V-3 (COSMETICA)** — Vedi sopra: lo stat del §2 non combacia con quello reale e manca la nota che lo spiega.
-- **V-4 (BASSA)** — Il ramo di ripiego senza `realpath` (R-187-1) e la mancanza di timeout su `gh api` (R-186-4) sono dichiarati e rimangono bassi. Non li ho riprodotti.
+La riga "no tests collected" che il brief cita come prova compare **dopo** "mainloop: caught unexpected SystemExit!". È l'ultima riga di un run fallito, non un esito pulito: conta l'exit code, non la coda dell'output.
 
-**NON VERIFICATO:**
-- La risposta reale di GitHub a un token fine-grained senza Administration (passo B3). Non avevo un token di quel tipo. Le risposte 403/404 le ho solo simulate con un gh finto.
-- Che l'endpoint `keys` richieda davvero Administration in lettura per tutti i tipi di token. Lo prendo dal ragionamento del revisore.
-- Il test via symlink e la mutation, che non ho rieseguito singolarmente. Li ho considerati coperti dalla suite verde.
-- `fine_task_finale.sh` end-to-end: ho visto solo il diff (chiamata prima di `=== Push ===`, con `|| true`) e i test passati.
-- Il contenuto di `reports/setup_agente_non_admin.md`: non l'ho letto riga per riga.
+`git ls-files` trova quattro file `*_test.py` fuori da `tests/`, tutti in `clients/voice/probe/`:
 
-**RACCOMANDAZIONE:**
-- La PR è mergeabile per una fase "solo avviso": CI verde, test coerenti con quanto dichiarato, nessun gate indebolito.
-- Prima della fase 2 (blocco per `gasmerge --auto`) chiudere V-1 e tracciarlo come riserva aperta nello stato del progetto.
-- Eseguire la prova B3 con un token reale senza Administration, e aggiungere il caso 404 da repo sbagliato ai test.
+| File | Problema | rc della sola collection |
+|---|---|---|
+| `win_playback_test.py:19-25` | `sys.exit(1)` all'import (sounddevice) | 3 |
+| `win_wakeword_test.py:26-37` | due `sys.exit(1)` all'import (sounddevice, openwakeword) | 3 |
+| `win_bridge_test.py:25-29` | `sys.exit(1)` all'import se manca requests | 5 qui (requests installato), latente altrove |
+| `win_mic_test.py` | sistemato da questo diff | 5 |
+
+### Elementi del diff esaminati
+- `clients/voice/probe/win_mic_test.py:22-35` — `sd`/`wav_write` valgono None a livello di modulo; `_carica_dipendenze()` li assegna con `global` e stesso messaggio + `sys.exit(1)`. Rischio guardato: nome globale non riassegnato, cioè NameError o chiamata su None in `list_devices`/`main`. L'assegnazione avviene dopo il try riuscito, e `sd` (righe 43, 67-81) e `wav_write` (riga 84) si usano solo dopo la chiamata. Esito: **ok**.
+- `clients/voice/probe/win_mic_test.py:63` — `_carica_dipendenze()` chiamata subito dopo `parse_args()`. Rischio guardato: cambia il comportamento da riga di comando. `--help` ora funziona anche senza dipendenze (miglioramento innocuo); senza dipendenze esce con lo stesso messaggio ed exit 1, riprodotto. Esito: **ok**. Nota cosmetica: manca una riga vuota prima di `DURATION` (riga 37, PEP 8 vuole 2 righe).
+- `tests/test_unit_voice_server.py:357-366` — carica il modulo via `importlib` con un nome isolato e verifica che non esca. Rischio guardato: test che passa anche senza il fix. Ho caricato la versione HEAD del file dallo scratchpad e ottengo `SystemExit 1`, quindi la mutation viene uccisa; 20 passed. La CI (`ci.yml:52-53,109`) non installa sounddevice né scipy, quindi lì il test ha senso. Esito: **ok**, con il limite R-190-2.
+- `reports/stato_progetto.md:171` — F-mac-3 segnata come CHIUSA. Rischio guardato: chiusura dichiarata ma non provata. Esito: **blocco** (R-190-1).
+
+### Riserve
+- **R-190-1 (bloccante):** F-mac-3 non è chiusa. Ci sono due strade:
+  - (a) applicare lo stesso pattern di caricamento lazy a `win_playback_test.py`, `win_wakeword_test.py` e `win_bridge_test.py`;
+  - (b) preferibile, perché ferma la classe di errore e non il singolo caso: un `clients/voice/probe/conftest.py` con `collect_ignore_glob = ["win_*_test.py"]`, oppure `python_files = test_*.py` nella configurazione pytest alla radice. Sono probe manuali, non test.
+
+  In alternativa si declassa la voce a "parziale" senza CHIUSA.
+- **R-190-2:** il test nuovo protegge solo `win_mic_test.py`. Serve un test strutturale che lanci `python -m pytest --collect-only -q` sul repo via subprocess e richieda rc in {0, 5}. Ogni nuovo `*_test.py` con exit all'import verrebbe preso.
+- **R-190-3 (cosmetica):** riga 37, 2 righe vuote prima delle costanti.
+
+Wall of Shame: il diff non tocca la history, `_get_window`, il cap a 10 iterazioni né i provider. Nessuno slicing e nessuna simulazione di tool.
+
+### Rischio escluso
+Non ho verificato lo script su Windows con sounddevice e scipy installati (registrazione reale): l'hardware audio non è riproducibile in dev. Dal codice letto il percorso felice è invariato, ma non l'ho eseguito.
+
+Memoria aggiornata con la riga #190 e una lezione (verificare tutti i file che combaciano col pattern; leggere l'exit code di pytest, non l'ultima riga). Committata da sola con `scripts/commit_memoria_revisore.sh` (89f0e58). Il diff staged è intatto e non l'ho committato.
+
+File rilevanti:
+- clients/voice/probe/win_mic_test.py
+- clients/voice/probe/win_playback_test.py
+- clients/voice/probe/win_wakeword_test.py
+- clients/voice/probe/win_bridge_test.py
+- tests/test_unit_voice_server.py
+- reports/stato_progetto.md
+- .claude/agents/memoria_revisore.md
