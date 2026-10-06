@@ -60,6 +60,16 @@ def kernel_tmp() -> GasKernel:
     os.environ["GAS_CWD"] = tmp
     return GasKernel(root_dir=tmp)
 
+def senza_sandbox_os_usa_fallback(k: GasKernel) -> GasKernel:
+    """F-mac-1: dove manca il sandbox OS (macOS, container senza namespace) i test che
+    verificano allowlist, no-shell e snapshot di run_command girano con la sandbox
+    applicativa (os_with_fallback) invece di fallire per os_strict. Con il sandbox OS
+    presente (CI Linux) non cambia nulla: restano in os_strict dentro bwrap. Il
+    fail-closed di os_strict senza sandbox resta provato da T13d."""
+    if not k.os_sandbox_available:
+        k.sandbox_mode = "os_with_fallback"
+    return k
+
 def git_out(root: str, *args: str) -> str:
     return subprocess.run(["git", "-C", root, *args], capture_output=True, text=True).stdout.strip()
 
@@ -282,7 +292,7 @@ check("T11b2 git restore riporta il file alla versione pre-modifica",
 # e comandi shell BLOCCATI, nessun file creato
 tmp_nogit = tempfile.mkdtemp(prefix="gas_test_nogit_")
 os.environ["GAS_CWD"] = tmp_nogit
-k_nogit = GasKernel(root_dir=tmp_nogit)
+k_nogit = senza_sandbox_os_usa_fallback(GasKernel(root_dir=tmp_nogit))
 out = k_nogit.execute_tool_call("write_file", {"relative_path": "vittima.txt", "content": "x"})
 check("T11c snapshot fallito -> write_file bloccata (fail-closed)",
       "Operazione negata" in out and "snapshot" in out and not (Path(tmp_nogit) / "vittima.txt").exists(),
@@ -297,7 +307,7 @@ check("T11c2 snapshot fallito -> run_command (comando lecito) bloccato (fail-clo
       and not (Path(tmp_nogit) / "vittima2.txt").exists(), out[:70])
 
 # T11d: i file NON tracciati finiscono nello snapshot (trappola stash create)
-k = kernel_tmp()
+k = senza_sandbox_os_usa_fallback(kernel_tmp())
 root = os.environ["GAS_CWD"]
 (Path(root) / "non_tracciato.txt").write_text("mai committato", encoding="utf-8")
 k.execute_tool_call("write_file", {"relative_path": "altro.txt", "content": "y"})
@@ -339,7 +349,11 @@ check("T11g root annidata in repo esterno -> bloccata, nessun ref nel repo genit
 # ---------- T12: sandbox run_command (allowlist + no-shell + dry-run) ----------
 # Ogni asserzione è costruita per FALLIRE se la barriera corrispondente viene
 # tolta: sono test che "mordono", non decorativi.
-k = kernel_tmp()
+k = senza_sandbox_os_usa_fallback(kernel_tmp())
+# F-mac-1: il ripiego vale SOLO senza sandbox OS; dove c'è (CI) i T12 restano os_strict.
+check("T12-modo sandbox: os_strict se il sandbox OS c'è, os_with_fallback solo se manca",
+      k.sandbox_mode == ("os_strict" if k.os_sandbox_available else "os_with_fallback"),
+      f"available={k.os_sandbox_available} mode={k.sandbox_mode}")
 root = os.environ["GAS_CWD"]
 
 # T12a: comando in allowlist eseguito davvero (output reale, non simulato)
@@ -425,6 +439,12 @@ check("T12j GAS_SHELL_MODE non valido -> fallback su 'guarded'",
 # quindi non si potrebbe provare net/fs/mascheramento passando per run_command.
 # Ognuno fallisce se la barriera corrispondente viene tolta dal profilo.
 OS_SB = gas._probe_os_sandbox()[0]
+# R-173-1: dove il sandbox OS è atteso (CI, GAS_TEST_SANDBOX_OS_ATTESO=1) la sonda DEVE
+# trovarlo: altrimenti i test di run_command passerebbero in ripiego e i T13 in SKIP,
+# e una regressione della sonda resterebbe verde.
+if os.environ.get("GAS_TEST_SANDBOX_OS_ATTESO") == "1":
+    check("T13-atteso sandbox OS disponibile dove il workflow lo garantisce", OS_SB,
+          gas._probe_os_sandbox()[1])
 
 k = kernel_tmp()
 root = os.environ["GAS_CWD"]

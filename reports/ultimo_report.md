@@ -1,17 +1,19 @@
-# ULTIMO REPORT — 2026-10-06 — F-mac-2: docstring raw in normalizza_telefono + guardia T79a
+# ULTIMO REPORT — 2026-10-06 — F-mac-1: test di run_command senza sandbox OS + sandbox esigito in CI
 
 ## Decisioni umane richieste
 
-1. Merge della PR #135 — rischio nullo (i byte eseguibili non cambiano: `ast.dump` identico).
-2. Ordine di merge della notte: ogni PR riscrive i report canonici; dopo un merge le altre vanno riallineate a main.
+1. Merge della PR #136 — consigliato: sul Mac la suite kernel passa da 5 FAIL "attesi" a 0.
+2. Dopo il merge, sul Mac: `python tests/test_unit_kernel.py` deve dare 0 FAIL (conferma su macOS reale, non provata qui).
+3. Ordine di merge della notte: ogni PR riscrive i report canonici; dopo un merge le altre vanno riallineate a main.
 
 ## Esito per fette
 
-- **F-mac-2**: FATTA — la docstring di `normalizza_telefono` (`modules/memory/store.py` righe 440-453, non `:204` come diceva il finding) aveva `\+`/`\d` in una stringa non raw: SyntaxWarning da 3.12 (Mac: 3.14). Ora `r"""`, testo identico.
-- **Guardia T79a**: FATTA — compila gas.py, brains/, modules/ con SyntaxWarning e DeprecationWarning come errori (R-169-1: su 3.11 della CI l'escape è DeprecationWarning, senza questo il test era vacuo in CI).
-- **Prove**: kernel 652 PASS / 0 FAIL su 3.11 (venv uv) e 3.13; sul codice vecchio T79a FAIL su entrambi.
-- **Review**: #169 APPROVATO CON RISERVE (R-169-1 MEDIA, R-169-2 cosmetica: chiuse) → #171 APPROVATO.
-- **Round-trip agentico (§7)**: coperto dalla suite kernel esistente (nessun byte eseguibile cambiato).
+- **F-mac-1**: FATTA — helper `senza_sandbox_os_usa_fallback`: senza sandbox OS T11c2/T11e/T12* girano in `os_with_fallback` (niente SKIP); con il sandbox restano `os_strict` (check T12-modo).
+- **R-173-1** (CI perdeva l'allarme su una sonda regredita): FATTA — `GAS_TEST_SANDBOX_OS_ATTESO=1` nello step della suite + check T13-atteso.
+- **R-173-2** (frase "devono essere SKIP" in stato): FATTA.
+- **Prove**: con bwrap 653/0; senza bwrap simulato 648/0 (prima 642/5); sonda regredita in CI → 1 FAIL voluto; mutation dell'helper uccise.
+- **Review**: #173 APPROVATO CON RISERVE → #175 APPROVATO.
+- **macOS reale**: NON VERIFICATO (simulato pre-impostando la cache della sonda).
 
 ## Anomalie
 
