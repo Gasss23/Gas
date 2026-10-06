@@ -1,16 +1,33 @@
-# ULTIMO REPORT — 2026-10-06 — F-mac-3: pytest senza target raccoglie l'intero repo
+# ULTIMO REPORT — 2026-10-06 — Punto di ripartenza dopo il /clear
 
-## Decisioni umane richieste
+## Riassunto
 
-1. Merge della PR #139 (https://github.com/Gasss23/Gas/pull/139) — rischio basso, solo test/configurazione di pytest.
+La giornata è chiusa: tutto il lavoro è su main (PR #131–#139 mergiate). Restano due setup
+che fa l'operatore su GitHub, da fare insieme nella prossima sessione.
 
-## Esito per fette
+## Cosa è stato fatto oggi (in ordine)
 
-- **F-mac-3**: FATTA — i 4 probe `clients/voice/probe/win_*_test.py` (sys.exit all'import) e lo script `tests/test_unit_kernel.py` esclusi dalla collection con due `conftest.py`; test strutturale (collection dell'intero repo rc 0/5). Collection intera: rc 3 → rc 0 (663 test).
-- **Prove**: senza l'uno o l'altro conftest il test strutturale fallisce; suite CI 612 passed; kernel 653/0.
-- **Review**: #190 BOCCIATO (la prima versione sistemava solo `win_mic_test.py`) → #191 APPROVATO CON RISERVE (R-191-1 cosmetica).
-- **Prova su macOS/Windows**: NON VERIFICATA.
+1. Bot di verifica, codice finito (#131) — il "sì" alle PR lo dà un secondo Claude, non l'agente. Attivo solo dopo il Setup 2.
+2. Due falle di sicurezza chiuse (#134) — gate IP e gate di review aggirabili con byte non UTF-8.
+3. Agente non admin, fase "avviso" (#138) — avvisa se l'agente usa una chiave che può amministrare il repo.
+4. Test rossi sul Mac sistemati (#135, #136, #137); pytest senza argomenti non va più in crash (#139).
+5. Piccole riparazioni e pulizia (#133, #132).
+6. Regola in CLAUDE.md: riepilogo semplice e liste numerate per l'operatore (questa PR).
 
-## Anomalie
+## Cosa NON ha fatto l'agente da solo
 
-- Nessuna. `gh` non autenticato: PR via connettore GitHub.
+- Nessuna impostazione GitHub toccata (token, App, environment, etichetta, ruleset).
+- Merge solo su richiesta esplicita dell'operatore.
+
+## Prossima sessione — da fare insieme, in ordine
+
+1. **Setup 1 — token dell'agente senza Administration** (`reports/setup_agente_non_admin.md`):
+   creare il token fine-grained `gas-agente`, avviare Claude Code con `GH_TOKEN`, provare
+   `bash scripts/avviso_token_admin.sh` → atteso "non amministra il repo — OK".
+2. **Setup 2 — bot di verifica** (`reports/setup_verifica_bot.md`): token Claude
+   (`claude setup-token`), GitHub App `gas-verificatore` (PR R/W, Checks R/W, Contents R),
+   environment `verifica-bot` solo su main con i segreti, etichetta `verifica`; poi PR di
+   prova; solo dopo, check `verifica-bot` obbligatorio nel ruleset (§F).
+3. Sul Mac: `python -m pytest` (collection senza errori) e test APFS SKIPPED.
+4. Pulizia: chiudere le PR vecchie #87 e #109.
+5. Dopo: decisione V-1 (neutral del bot), fase 2 di G-3 (avviso → blocco), V-2 #127, R-162-1/2.
