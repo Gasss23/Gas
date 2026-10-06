@@ -1,11 +1,8 @@
-# DIFF SESSIONE — 2026-10-06 — TradeGasFX, layout e animazione 3D
+# DIFF SESSIONE — 2026-10-06 — TradeGasFX, atmosfera e luci
 
-| File | Cosa è cambiato e perché |
-|---|---|
-| `.agents/skills/website-service-showcase/SKILL.md` | Consiglio breve: animare i componenti 3D con movimento discreto, lasciando il giro principale allo scroll. |
-| `reports/ultimo_report.md` | Esito, verifica, decisioni e limiti della nuova iterazione. |
-| `reports/stato_progetto.md` | Fotografia aggiornata; motore GAS invariato. |
-| `reports/handoff.md` | Dossier con diff, log, delta test, review e CI. |
-| `reports/diff_sessione.md` | Fotografia di questa sessione. |
+> Fotografia della sessione; lo storico completo resta in git.
 
-La preview standalone `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html` alterna i servizi sinistra-destra-sinistra e anima i tre componenti WebGL in modo indipendente, mantenendo il giro legato allo scroll. Lo script supera il controllo sintattico Node; la resa visiva non è verificabile nel browser disponibile. Il sito live non è stato modificato.
+- Preview standalone `tradegasfx-immersive-preview.html` — sfondo scuro continuo, luci ambientali calde/fredde e softbox animato più fluido; sito live invariato.
+- `.agents/skills/website-service-showcase/SKILL.md` — aggiunta una riga guida su luce sobria e fondale continuo.
+- `reports/ultimo_report.md`, `reports/stato_progetto.md`, `reports/diff_sessione.md`, `reports/handoff.md` — aggiornati per questa sessione.
+- Nessuna modifica al motore, nessun test automatico e nessuna verifica visiva nel browser.

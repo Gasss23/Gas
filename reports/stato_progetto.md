@@ -1,12 +1,12 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-06** (sessione esterna TradeGasFX — servizi alternati e animazione componenti 3D; motore Gas invariato)
+> Ultimo aggiornamento: **2026-10-06** (sessione esterna TradeGasFX — atmosfera continua e luci di studio; motore Gas invariato)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Sessione esterna — TradeGasFX (2026-10-06)
 
-Nessuna modifica al motore Gas. La preview standalone TradeGasFX dispone i servizi 01/02/03 sinistra-destra-sinistra; il movimento WebGL ha una lieve animazione indipendente dei tre globi e delle ghiere, pulsazione dei nuclei e riflessi mobili, oltre alla rotazione allo scroll e alla shadow map. La skill ricorda in forma sintetica di animare i componenti senza perdere il giro principale. Sito live invariato; controllo sintattico dello script superato, ma preview non verificata nel browser. Testimonianze d'esempio e documenti del fondo richiedono verifica prima della pubblicazione.
+Nessuna modifica al motore Gas. La preview standalone mantiene i servizi sinistra-destra-sinistra, la scultura WebGL con rotazione allo scroll e l'animazione delle tre sfere; il fondale ora è continuo, con luci calde/fredde, alone diffuso e softbox lento. La skill consiglia un'illuminazione d'ambiente sobria. Sito live invariato; preview non verificata visivamente nel browser. Testimonianze d'esempio e documenti del fondo richiedono verifica prima della pubblicazione.
 
 ## Stato motore
 
