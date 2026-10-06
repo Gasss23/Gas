@@ -1,16 +1,18 @@
-# ULTIMO REPORT — 2026-10-06 — R-150-1: push fallito in fine_task_finale.sh esce dal suo ramo
+# ULTIMO REPORT — 2026-10-06 — F-mac-2: docstring raw in normalizza_telefono + guardia T79a
 
 ## Decisioni umane richieste
 
-1. Merge della PR di `fix/fine-task-push-exit` (numero nell'handoff §0). Rischio basso: tocca solo il ramo d'errore del push.
-2. Nota merge: questo branch riscrive i report canonici come tutte le PR della notte; dopo il merge di un'altra PR serve riportare main nel branch (conflitto solo su `reports/`).
+1. Merge della PR #135 — rischio nullo (i byte eseguibili non cambiano: `ast.dump` identico).
+2. Ordine di merge della notte: ogni PR riscrive i report canonici; dopo un merge le altre vanno riallineate a main.
 
 ## Esito per fette
 
-- **R-150-1 (bassa, preesistente, review #150)**: FATTA — `PUSH_EXIT=0; git push || PUSH_EXIT=$?` in `scripts/fine_task_finale.sh`: con `set -e` riattivato dal gate IP, un push fallito ora stampa "ERRORE git push fallito" ed esce con 1 (prima: codice di git senza messaggio, ramo morto).
-- **Test T-finale-5**: FATTA — remoto bare con `pre-receive` che rifiuta → exit 1, messaggio, nessun URL, nessuna uscita dalla guardia @{u}. Fallisce sul codice vecchio (provato).
-- **Review**: #166 APPROVATO CON RISERVE (R-166-1 frase in stato_progetto, R-166-2 assert sulla guardia: entrambe CHIUSE) → #168 APPROVATO. La #166 era stata numerata #163 dal revisore (collisione con la #163 di B2, PR #131): rinumerata in memoria con nota.
+- **F-mac-2**: FATTA — la docstring di `normalizza_telefono` (`modules/memory/store.py` righe 440-453, non `:204` come diceva il finding) aveva `\+`/`\d` in una stringa non raw: SyntaxWarning da 3.12 (Mac: 3.14). Ora `r"""`, testo identico.
+- **Guardia T79a**: FATTA — compila gas.py, brains/, modules/ con SyntaxWarning e DeprecationWarning come errori (R-169-1: su 3.11 della CI l'escape è DeprecationWarning, senza questo il test era vacuo in CI).
+- **Prove**: kernel 652 PASS / 0 FAIL su 3.11 (venv uv) e 3.13; sul codice vecchio T79a FAIL su entrambi.
+- **Review**: #169 APPROVATO CON RISERVE (R-169-1 MEDIA, R-169-2 cosmetica: chiuse) → #171 APPROVATO.
+- **Round-trip agentico (§7)**: coperto dalla suite kernel esistente (nessun byte eseguibile cambiato).
 
 ## Anomalie
 
-- Nessuna. `gh` non autenticato nel container: PR via connettore GitHub.
+- Nessuna. `gh` non autenticato: PR via connettore GitHub.
