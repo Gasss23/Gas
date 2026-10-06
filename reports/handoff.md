@@ -24,17 +24,18 @@
  .claude/agents/memoria_revisore.md |   3 +++
  clients/voice/probe/conftest.py    |   6 ++++++
  reports/diff_sessione.md           |  17 ++++++-----------
- reports/handoff.md                 | 322 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 332 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
  reports/ultimo_report.md           |  16 ++++++----------
  tests/conftest.py                  |   6 ++++++
  tests/test_unit_voice_server.py    |  20 ++++++++++++++++++++
- 8 files changed, 139 insertions(+), 253 deletions(-)
+ 8 files changed, 145 insertions(+), 257 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bb81ae8 docs(f-mac-3): fine-task — report, handoff con verdetti #190/#191, diff sessione
 5f5a22a fix(test): F-mac-3 — pytest senza target raccoglie l'intero repo (probe Windows e script del kernel esclusi) — review #190/#191
 5d34e91 chore(revisore): memoria review #191 — APPROVATO CON RISERVE
 89f0e58 chore(revisore): memoria review #190 — BOCCIATO
@@ -44,61 +45,9 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-mic/`) resi relativi alla radice del repo, perché il gate B li risolva.
+Verdetto INTEGRALE del diff committato. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-mic/`) resi relativi alla radice del repo. La review #190 (BOCCIATO) riguarda una versione precedente, MAI committata (modifica a `win_mic_test.py`, poi tolta): è riportata integrale in §8, fuori da §4 perché cita file che non sono nel diff.
 
-### Review #190 — prima versione (BOCCIATO)
-
-## VERDETTO: BOCCIATO
-
-**Letture preliminari fatte:** CLAUDE.md (sez. 5, 8, 9 e 10), la voce F-mac-3 in `reports/stato_progetto.md:171`, la coda di `.claude/agents/memoria_revisore.md` (fino alla #189).
-
-**Motivo del blocco (R-190-1).** La modifica a `win_mic_test.py` è corretta, ma `stato_progetto.md` dichiara F-mac-3 chiusa e non lo è. Il finding dice che `pytest` lanciato senza target si rompe durante la collection. Nel worktree, con il diff staged applicato:
-- `python -m pytest --collect-only -q` sull'intero repo esce con **rc=3** (INTERNALERROR).
-- `python -m pytest --collect-only clients/` esce anch'esso con rc=3: `INTERNALERROR> File ".../clients/voice/probe/win_playback_test.py", line 25 ... SystemExit: 1`.
-
-La riga "no tests collected" che il brief cita come prova compare **dopo** "mainloop: caught unexpected SystemExit!". È l'ultima riga di un run fallito, non un esito pulito: conta l'exit code, non la coda dell'output.
-
-`git ls-files` trova quattro file `*_test.py` fuori da `tests/`, tutti in `clients/voice/probe/`:
-
-| File | Problema | rc della sola collection |
-|---|---|---|
-| `win_playback_test.py:19-25` | `sys.exit(1)` all'import (sounddevice) | 3 |
-| `win_wakeword_test.py:26-37` | due `sys.exit(1)` all'import (sounddevice, openwakeword) | 3 |
-| `win_bridge_test.py:25-29` | `sys.exit(1)` all'import se manca requests | 5 qui (requests installato), latente altrove |
-| `win_mic_test.py` | sistemato da questo diff | 5 |
-
-### Elementi del diff esaminati
-- `clients/voice/probe/win_mic_test.py:22-35` — `sd`/`wav_write` valgono None a livello di modulo; `_carica_dipendenze()` li assegna con `global` e stesso messaggio + `sys.exit(1)`. Rischio guardato: nome globale non riassegnato, cioè NameError o chiamata su None in `list_devices`/`main`. L'assegnazione avviene dopo il try riuscito, e `sd` (righe 43, 67-81) e `wav_write` (riga 84) si usano solo dopo la chiamata. Esito: **ok**.
-- `clients/voice/probe/win_mic_test.py:63` — `_carica_dipendenze()` chiamata subito dopo `parse_args()`. Rischio guardato: cambia il comportamento da riga di comando. `--help` ora funziona anche senza dipendenze (miglioramento innocuo); senza dipendenze esce con lo stesso messaggio ed exit 1, riprodotto. Esito: **ok**. Nota cosmetica: manca una riga vuota prima di `DURATION` (riga 37, PEP 8 vuole 2 righe).
-- `tests/test_unit_voice_server.py:357-366` — carica il modulo via `importlib` con un nome isolato e verifica che non esca. Rischio guardato: test che passa anche senza il fix. Ho caricato la versione HEAD del file dallo scratchpad e ottengo `SystemExit 1`, quindi la mutation viene uccisa; 20 passed. La CI (`ci.yml:52-53,109`) non installa sounddevice né scipy, quindi lì il test ha senso. Esito: **ok**, con il limite R-190-2.
-- `reports/stato_progetto.md:171` — F-mac-3 segnata come CHIUSA. Rischio guardato: chiusura dichiarata ma non provata. Esito: **blocco** (R-190-1).
-
-### Riserve
-- **R-190-1 (bloccante):** F-mac-3 non è chiusa. Ci sono due strade:
-  - (a) applicare lo stesso pattern di caricamento lazy a `win_playback_test.py`, `win_wakeword_test.py` e `win_bridge_test.py`;
-  - (b) preferibile, perché ferma la classe di errore e non il singolo caso: un `clients/voice/probe/conftest.py` con `collect_ignore_glob = ["win_*_test.py"]`, oppure `python_files = test_*.py` nella configurazione pytest alla radice. Sono probe manuali, non test.
-
-  In alternativa si declassa la voce a "parziale" senza CHIUSA.
-- **R-190-2:** il test nuovo protegge solo `win_mic_test.py`. Serve un test strutturale che lanci `python -m pytest --collect-only -q` sul repo via subprocess e richieda rc in {0, 5}. Ogni nuovo `*_test.py` con exit all'import verrebbe preso.
-- **R-190-3 (cosmetica):** riga 37, 2 righe vuote prima delle costanti.
-
-Wall of Shame: il diff non tocca la history, `_get_window`, il cap a 10 iterazioni né i provider. Nessuno slicing e nessuna simulazione di tool.
-
-### Rischio escluso
-Non ho verificato lo script su Windows con sounddevice e scipy installati (registrazione reale): l'hardware audio non è riproducibile in dev. Dal codice letto il percorso felice è invariato, ma non l'ho eseguito.
-
-Memoria aggiornata con la riga #190 e una lezione (verificare tutti i file che combaciano col pattern; leggere l'exit code di pytest, non l'ultima riga). Committata da sola con `scripts/commit_memoria_revisore.sh` (89f0e58). Il diff staged è intatto e non l'ho committato.
-
-File rilevanti:
-- clients/voice/probe/win_mic_test.py
-- clients/voice/probe/win_playback_test.py
-- clients/voice/probe/win_wakeword_test.py
-- clients/voice/probe/win_bridge_test.py
-- tests/test_unit_voice_server.py
-- reports/stato_progetto.md
-- .claude/agents/memoria_revisore.md
-
-### Review #191 — versione con i conftest
+### Review #191 — diff committato (`5f5a22a`)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -161,3 +110,57 @@ python tests/test_unit_kernel.py              → === RIEPILOGO: 653 PASS, 0 FAI
 
 - **R-191-1** (cosmetica): il test strutturale sta in `test_unit_voice_server.py`; spostarlo in un file dedicato (e aggiungerlo a ci.yml) più avanti.
 - Collection non verificata su macOS/Windows.
+
+## §8 REVIEW #190 (BOCCIATO) — versione mai committata, verdetto integrale
+
+Diff valutato: lazy import in `clients/voice/probe/win_mic_test.py` + un test. Bocciato perché altri 3 probe e lo script del kernel rompevano comunque la collection; sostituito dalla soluzione con i conftest (review #191).
+
+## VERDETTO: BOCCIATO
+
+**Letture preliminari fatte:** CLAUDE.md (sez. 5, 8, 9 e 10), la voce F-mac-3 in `reports/stato_progetto.md:171`, la coda di `.claude/agents/memoria_revisore.md` (fino alla #189).
+
+**Motivo del blocco (R-190-1).** La modifica a `win_mic_test.py` è corretta, ma `stato_progetto.md` dichiara F-mac-3 chiusa e non lo è. Il finding dice che `pytest` lanciato senza target si rompe durante la collection. Nel worktree, con il diff staged applicato:
+- `python -m pytest --collect-only -q` sull'intero repo esce con **rc=3** (INTERNALERROR).
+- `python -m pytest --collect-only clients/` esce anch'esso con rc=3: `INTERNALERROR> File ".../clients/voice/probe/win_playback_test.py", line 25 ... SystemExit: 1`.
+
+La riga "no tests collected" che il brief cita come prova compare **dopo** "mainloop: caught unexpected SystemExit!". È l'ultima riga di un run fallito, non un esito pulito: conta l'exit code, non la coda dell'output.
+
+`git ls-files` trova quattro file `*_test.py` fuori da `tests/`, tutti in `clients/voice/probe/`:
+
+| File | Problema | rc della sola collection |
+|---|---|---|
+| `win_playback_test.py:19-25` | `sys.exit(1)` all'import (sounddevice) | 3 |
+| `win_wakeword_test.py:26-37` | due `sys.exit(1)` all'import (sounddevice, openwakeword) | 3 |
+| `win_bridge_test.py:25-29` | `sys.exit(1)` all'import se manca requests | 5 qui (requests installato), latente altrove |
+| `win_mic_test.py` | sistemato da questo diff | 5 |
+
+### Elementi del diff esaminati
+- `clients/voice/probe/win_mic_test.py:22-35` — `sd`/`wav_write` valgono None a livello di modulo; `_carica_dipendenze()` li assegna con `global` e stesso messaggio + `sys.exit(1)`. Rischio guardato: nome globale non riassegnato, cioè NameError o chiamata su None in `list_devices`/`main`. L'assegnazione avviene dopo il try riuscito, e `sd` (righe 43, 67-81) e `wav_write` (riga 84) si usano solo dopo la chiamata. Esito: **ok**.
+- `clients/voice/probe/win_mic_test.py:63` — `_carica_dipendenze()` chiamata subito dopo `parse_args()`. Rischio guardato: cambia il comportamento da riga di comando. `--help` ora funziona anche senza dipendenze (miglioramento innocuo); senza dipendenze esce con lo stesso messaggio ed exit 1, riprodotto. Esito: **ok**. Nota cosmetica: manca una riga vuota prima di `DURATION` (riga 37, PEP 8 vuole 2 righe).
+- `tests/test_unit_voice_server.py:357-366` — carica il modulo via `importlib` con un nome isolato e verifica che non esca. Rischio guardato: test che passa anche senza il fix. Ho caricato la versione HEAD del file dallo scratchpad e ottengo `SystemExit 1`, quindi la mutation viene uccisa; 20 passed. La CI (`ci.yml:52-53,109`) non installa sounddevice né scipy, quindi lì il test ha senso. Esito: **ok**, con il limite R-190-2.
+- `reports/stato_progetto.md:171` — F-mac-3 segnata come CHIUSA. Rischio guardato: chiusura dichiarata ma non provata. Esito: **blocco** (R-190-1).
+
+### Riserve
+- **R-190-1 (bloccante):** F-mac-3 non è chiusa. Ci sono due strade:
+  - (a) applicare lo stesso pattern di caricamento lazy a `win_playback_test.py`, `win_wakeword_test.py` e `win_bridge_test.py`;
+  - (b) preferibile, perché ferma la classe di errore e non il singolo caso: un `clients/voice/probe/conftest.py` con `collect_ignore_glob = ["win_*_test.py"]`, oppure `python_files = test_*.py` nella configurazione pytest alla radice. Sono probe manuali, non test.
+
+  In alternativa si declassa la voce a "parziale" senza CHIUSA.
+- **R-190-2:** il test nuovo protegge solo `win_mic_test.py`. Serve un test strutturale che lanci `python -m pytest --collect-only -q` sul repo via subprocess e richieda rc in {0, 5}. Ogni nuovo `*_test.py` con exit all'import verrebbe preso.
+- **R-190-3 (cosmetica):** riga 37, 2 righe vuote prima delle costanti.
+
+Wall of Shame: il diff non tocca la history, `_get_window`, il cap a 10 iterazioni né i provider. Nessuno slicing e nessuna simulazione di tool.
+
+### Rischio escluso
+Non ho verificato lo script su Windows con sounddevice e scipy installati (registrazione reale): l'hardware audio non è riproducibile in dev. Dal codice letto il percorso felice è invariato, ma non l'ho eseguito.
+
+Memoria aggiornata con la riga #190 e una lezione (verificare tutti i file che combaciano col pattern; leggere l'exit code di pytest, non l'ultima riga). Committata da sola con `scripts/commit_memoria_revisore.sh` (89f0e58). Il diff staged è intatto e non l'ho committato.
+
+File rilevanti:
+- clients/voice/probe/win_mic_test.py
+- clients/voice/probe/win_playback_test.py
+- clients/voice/probe/win_wakeword_test.py
+- clients/voice/probe/win_bridge_test.py
+- tests/test_unit_voice_server.py
+- reports/stato_progetto.md
+- .claude/agents/memoria_revisore.md
