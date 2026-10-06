@@ -1,55 +1,52 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-06 — TradeGasFX, oggetto 3D volumetrico
+**Sessione:** 2026-10-06 — TradeGasFX, modello 3D rifinito
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Rivedere la preview aggiornata prima della pubblicazione; per modificare il live servono sorgenti o accesso al progetto.
-2. Sostituire le testimonianze d'esempio con esperienze autentiche e autorizzate.
-3. Verificare documenti e formulazione del servizio “fondo con garanzia”.
-4. PR e CI non verificabili dalla sessione: GitHub CLI non autenticata e API non raggiungibile.
+1. Rivedere la preview aggiornata prima di pubblicare; per il sito live servono sorgenti o accesso.
+2. Rimpiazzare gli esempi di testimonianza fittizi con esperienze autentiche e autorizzate.
+3. Verificare i documenti e la formulazione del servizio “fondo con garanzia”.
+4. Stato PR/CI non verificabile: GitHub CLI non autenticata e API non raggiungibile.
 
 ## §1 ESITO DELLA SONDA
 
-- Disponibile solo la preview standalone; il progetto sorgente del sito live non è accessibile.
-- Aggiornato `tradegasfx-immersive-preview.html` con geometria WebGL effettiva: tre sfere, collegamenti, anelli inclinati, profondità tra nodi, prospettiva e illuminazione speculare. Rotazione completa in risposta allo scroll; puntatore per inclinazione, fallback senza WebGL e rispetto di `prefers-reduced-motion`.
-- Nessuna libreria esterna, nessun grafico/screenshot trading, copy di servizio invariato e CTA WhatsApp mantenute.
-- Nessun uso di Claude. Motore GAS invariato.
-- La preview aggiornata non è stata renderizzata nel browser; l'accesso a file locali resta bloccato.
+- Ispezionati i render originali disponibili nella cartella della preview; ripresi la composizione a tre globi scuri e le fasce dorate intrecciate.
+- Ricostruita la scultura come mesh WebGL volumetriche: fasce curve a sezione piena, tre sfere scure lucide con inserti luminosi, profondità su più piani, prospettiva e riflessi. Nessuna immagine raster viene usata nel modello.
+- Conservata la rotazione fluida completa allo scroll; lievi inclinazioni al puntatore, `prefers-reduced-motion` e fallback senza WebGL.
+- Nessuna libreria esterna. Nessun uso di Claude. Motore GAS e sito live invariati.
+- Preview aggiornata non renderizzata nel browser: l'accesso a file locali è bloccato.
 
-## §2 GIT DIFF --STAT (b68d599 → working tree)
-
-```
- .agents/skills/website-service-showcase/SKILL.md |  2 +-
- reports/diff_sessione.md                         | 14 +++---
- reports/handoff.md                               | 63 +++++++++++-------------
- reports/stato_progetto.md                        |  6 +--
- reports/ultimo_report.md                         | 23 +++++-----
- 5 files changed, 52 insertions(+), 56 deletions(-)
-```
-
-## §3 GIT LOG --ONELINE (b68d599..HEAD)
+## §2 GIT DIFF --STAT (d823e42 → working tree)
 
 ```
-dfe7a21 docs(tradegasfx): documenta preview WebGL 3D
+ reports/diff_sessione.md  |  7 +++----
+ reports/handoff.md        | 47 ++++++++++++++++++++++-------------------------
+ reports/stato_progetto.md |  4 ++--
+ reports/ultimo_report.md  | 22 +++++++++++-----------
+ 4 files changed, 38 insertions(+), 42 deletions(-)
 ```
 
-Il commit che aggiorna questo dossier viene creato dopo la sua stesura.
+## §3 GIT LOG --ONELINE (d823e42..HEAD)
+
+```
+Il commit che contiene il dossier viene creato dopo la sua stesura.
+```
 
 ## §4 VERDETTO DEL REVISORE
 
 ### Delta test del motore
 
-Motore invariato. Nessun test automatico eseguito; la preview WebGL non è stata renderizzata nel browser.
+Motore invariato. Nessun test automatico eseguito; nessuna verifica visiva della preview nel browser.
 
 ### Verdetto integrale
 
-Nessun verdetto: la modifica riguarda la sola skill e i report, fuori dal perimetro di review. Revisore non invocato.
+Nessun verdetto: la modifica riguarda report e preview standalone, fuori dal perimetro di review. Revisore non invocato.
 
 ## §5 STATO CI
 
-Nessuna nuova run CI verificabile. `gh` risultava non autenticato e l'API GitHub non raggiungibile; stato PR/CI non confermato.
+Nessuna run CI verificabile per questa sessione. `gh` non è autenticato e l'API GitHub non è raggiungibile.
 
 ## §6 RISERVE APERTE
 
-Serve una revisione visiva della preview; per pubblicare sul live servono i sorgenti/accesso. Verificare i documenti del fondo e sostituire le testimonianze fittizie con contenuti reali autorizzati.
+Serve una revisione visiva della preview. Per la pubblicazione live servono sorgenti/accesso; verificare i documenti del fondo e sostituire le testimonianze fittizie con contenuti reali autorizzati.
