@@ -151,6 +151,31 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Prima prova reale del bot (PR #142, 2026-10-07): con CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1
+      # Claude Code esige bubblewrap e il runner non l'ha → "bubblewrap is required", nessun
+      # modello parte. Si installa bwrap (come ci.yml) invece di spegnere lo scrub dei segreti;
+      # se bwrap non riesce a creare il sandbox il job si FERMA (esito: verifica non conclusa)
+      # e nemmeno i modelli di riserva m2/m3 partono (R-192-1: legati a steps.sandbox).
+      - name: Sandbox per lo scrub dei segreti (bubblewrap)
+        id: sandbox
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          # ubuntu-24.04 restringe gli unprivileged userns via AppArmor: si rilassa sul runner
+          # effimero (come ci.yml), mai altrove.
+          if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          fi
+          if sysctl -n kernel.unprivileged_userns_clone >/dev/null 2>&1; then
+            sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          fi
+          if bwrap --unshare-all --ro-bind / / /bin/true >/dev/null 2>&1; then
+            echo "BWRAP_OK"
+          else
+            echo "BWRAP_FAIL: sandbox non disponibile, la verifica non parte" >&2
+            exit 1
+          fi
+
       - name: Verifica — Fable 5.1
         id: m1
         continue-on-error: true
@@ -168,7 +193,7 @@ jobs:
 
       - name: Verifica — Opus 5.5 (solo se Fable ha fallito)
         id: m2
-        if: ${{ !cancelled() && steps.m1.outputs.structured_output == '' }}
+        if: ${{ !cancelled() && steps.sandbox.outcome == 'success' && steps.m1.outputs.structured_output == '' }}
         continue-on-error: true
         uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea # v1
         with:
@@ -184,7 +209,7 @@ jobs:
 
       - name: Verifica — Opus 4.8 (ultima riserva)
         id: m3
-        if: ${{ !cancelled() && steps.m1.outputs.structured_output == '' && steps.m2.outputs.structured_output == '' }}
+        if: ${{ !cancelled() && steps.sandbox.outcome == 'success' && steps.m1.outputs.structured_output == '' && steps.m2.outputs.structured_output == '' }}
         continue-on-error: true
         uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea # v1
         with:
