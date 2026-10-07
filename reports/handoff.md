@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #149 (https://github.com/Gasss23/Gas/pull/149) — dopo CI verde su questo commit e sì del bot. L'etichetta `verifica` NON risulta applicata (POST REST alle label senza effetto): va messa a mano. [Aggiornamento: etichetta `verifica` applicata; il bot rigiudica `bec2238`.]
+1. Merge della PR #149 (https://github.com/Gasss23/Gas/pull/149) — dopo CI verde su questo commit e sì del bot. L'etichetta `verifica` NON risulta applicata (POST REST alle label senza effetto): va messa a mano. [Aggiornamento: etichetta `verifica` applicata; il bot rigiudica la testa del branch.]
 2. Prova con modello reale sul Mac (nel container non ci sono chiavi API): task breve → `python gas.py rifletti` → decidere le lezioni con `gas lezioni approva|rifiuta <id>`.
 3. Fetta 2 di FASE 2.6: quando riflettere in automatico (a `clear`, a fine sessione, ogni N turni) — ogni riflessione costa una chiamata LLM.
 4. R-200-2: CHIUSA nella PR #150 (mergiata su main), portata in questo branch col merge `bec2238` (review #204).
@@ -32,12 +32,12 @@ Nota: PR creata via API GitHub (MCP `create_pull_request`, risposta `{"id":"4775
  gas.py                             | 441 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
  modules/memory/store.py            |  23 +++++++++++++++++++
  reports/diff_sessione.md           |  16 ++++++++-----
- reports/handoff.md                 | 284 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------
+ reports/handoff.md                 | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------
  reports/roadmap.md                 |   7 +++++-
  reports/stato_progetto.md          |  14 ++++++++++--
  reports/ultimo_report.md           |  89 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  tests/test_unit_kernel.py          | 341 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 1106 insertions(+), 119 deletions(-)
+ 9 files changed, 1109 insertions(+), 118 deletions(-)
 ```
 
 NB: dopo il merge di main (`bec2238`) la base è il nuovo merge-base `3d56bbf`: il diff qui sopra è solo il lavoro di FASE 2.6 rispetto a main aggiornato (gate.py di #150 è già in main).
@@ -45,6 +45,8 @@ NB: dopo il merge di main (`bec2238`) la base è il nuovo merge-base `3d56bbf`: 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+65cc961 docs(fase-2.6): ultimo_report — righe R-200-2 superate allineate (chiusa in #150)
+adcf06e docs(fase-2.6): fine-task ter — report, handoff e diff sessione aggiornati dopo il merge di main (R-200-2 chiusa in #150)
 bec2238 Merge origin/main (PR #150, R-200-2) nella FASE 2.6 — review #204
 a01ccf0 docs(fase-2.6): fine-task bis — handoff con verdetti #201/#202 e verifica esterna integrale, report e riserve aggiornati
 30ca64e fix(fase-2.6): V-1 verifica esterna — recap non fidato dopo compressione o input esterni in tutta la cronologia — review #202
@@ -184,20 +186,21 @@ Suite kernel (`python tests/test_unit_kernel.py`, Linux container con bwrap): **
 
 ## §6 STATO CI
 
-Output reale (API REST, `actions/runs?branch=feat/merge-automatico-z1xjx2`, perché `gh run list` usa GraphQL bloccato nel cloud) alla scrittura:
+Output reale (API REST, `actions/runs?branch=feat/merge-automatico-z1xjx2`; `gh run list` usa GraphQL, bloccato nel cloud) alla scrittura:
 
 ```
+pending	null	verifica-bot	adcf06e	pull_request_target	37678260100	2026-10-07T19:56:21Z
+in_progress	null	CI	adcf06e	push	37678257027	2026-10-07T19:56:20Z
 in_progress	null	verifica-bot	bec2238	pull_request_target	37678126363	2026-10-07T19:55:16Z
 in_progress	null	CI	bec2238	push	37678124168	2026-10-07T19:55:15Z
 completed	success	verifica-bot	a01ccf0	pull_request_target	37656627007	2026-10-07T17:07:32Z
-completed	success	CI	a01ccf0	push	37656060818	2026-10-07T17:03:41Z
 ```
 
 Mappatura commit → run:
 - `a01ccf0`: CI 37656060818 success (unit-suite + handoff-check); verifica-bot 37656627007 → check `verifica-bot` failure (falso NO per R-200-2 citata nel testo, vedi commento sulla PR).
-- `bec2238` (merge di main): CI 37678124168 e verifica-bot 37678126363 in corso alla scrittura dell'handoff.
+- `bec2238`: run elencate sopra su quello SHA (superate dal push successivo: la verifica del bot su una head non più in testa finisce in RIPROVA).
+- `adcf06e`, `65cc961`: nessuna run propria su `65cc961`, che è stato pushato insieme a questo fine-task; le run di questo push testano solo la testa.
 - Commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
-- Commit intermedi `890cb51`…`30ca64e`: vedi mappatura precedente nel git log di questo file (nessuna run propria oltre a quelle già elencate).
 
 ## §7 RISERVE APERTE
 
