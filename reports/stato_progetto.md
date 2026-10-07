@@ -131,6 +131,8 @@ Componenti attive:
 
 ## Finding aperti (🟡 attivi)
 
+- ✅ **R-200-2 CHIUSA** (2026-10-07, fix/gate-run-command-untrusted, review #203): `run_command` aggiunto a `UNTRUSTED_INPUT_TOOLS` (`modules/gate/gate.py`): dopo un suo output i tool UNCERTAIN vanno in approvazione. T72d/T72e/T72f (round-trip os_strict), T78e invertito; kernel 658/0, senza fix 4 FAIL. **R-203-1** (ALTA, preesistente, cancello — fetta propria prima dell'autonomia): la compressione della cronologia (`gas.py:648-658`) copia fino a 300 caratteri di output dei tool in un messaggio user e cancella il messaggio tool → `_finestra_e_contaminata` torna False con testo di terzi ancora visibile (`reports/design_cancello.md:137` la tratta come decontaminazione). **R-203-2** (MEDIA, autonomia, decisione umana): in os_strict anche il secondo `run_command` e write_file/salva_contatto/imposta_stato_contatto vanno in approvazione finché l'output resta nella finestra.
+
 > Chiusi in `reports/stato_storico.md` e `reports/finding_archiviati.md`.
 
 - 🔵 **SONDA Autonomia #1 "studia/comprendi" (2026-09-21, branch sonda/autonomia-studia-cap1)**: sonda architetturale completata. Risultati: `.gas_vectors.db` NON esiste ancora; `source` nel VectorStore già generico (aperto a source futuri). Nessun percorso ingest esterno/RAG attivo. Piano a fette K0-K4 proposto in `reports/ultimo_report.md`. Decisioni umane richieste (§6 del report) prima di procedere all'implementazione. ZERO codice scritto.
