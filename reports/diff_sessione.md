@@ -2,7 +2,7 @@
 
 > Fotografia sintetica della sessione; lo storico completo resta in git.
 
-- Preview standalone — confronto di dieci siti finanziari e aggiunta del selettore che aggiorna entrambe le CTA con una bozza WhatsApp per il servizio scelto.
-- `.agents/skills/website-service-showcase/SKILL.md` — regola breve: bozza contestuale, invio sempre deciso dall'utente.
+- Preview standalone — dopo il feedback che la prima modifica era poco visibile, sostituito il selettore discreto con un pannello a tre righe nell’hero, leggibile e interattivo; le CTA preparano il messaggio WhatsApp in base al servizio.
+- Ricerca — confronto UX di dieci siti finanziari; applicati percorsi chiari e contatto diretto, senza importare promesse o metriche.
 - `reports/ultimo_report.md`, `reports/stato_progetto.md`, `reports/diff_sessione.md`, `reports/handoff.md` — aggiornati.
-- Nessuna modifica al sito live o al motore GAS; nessun test automatico; preview non verificata visivamente nel browser.
+- Nessuna modifica al sito live o al motore GAS; script inline verificato con `node --check`; nessun test automatico o verifica grafica nel browser.
