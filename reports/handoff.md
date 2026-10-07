@@ -1,21 +1,22 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-07 — Bot di verifica: bubblewrap prima di Claude (prima prova reale, PR #142)
+**Sessione:** 2026-10-07 — Bot di verifica: diagnosi dell'errore nascosto (seconda prova reale, PR #142)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #143 (https://github.com/Gasss23/Gas/pull/143). Numero e URL dall'output del connettore GitHub (`create_pull_request` → `{"id":"4770933069","url":"https://github.com/Gasss23/Gas/pull/143"}`). Tocca la macchina del bot: merge dell'operatore.
-2. Dopo il merge: rilanciare la verifica su #142.
+1. Merge della PR #144 (https://github.com/Gasss23/Gas/pull/144). Numero e URL dall'output del connettore GitHub (`create_pull_request` → `{"id":"4771343797","url":"https://github.com/Gasss23/Gas/pull/144"}`). Tocca la macchina del bot: merge dell'operatore.
+2. Dopo il merge: rilanciare la verifica su #142 e leggere la riga `DIAGNOSI:`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Prova reale del bot su #142**: `FATTA` — App OK, modelli non partiti (bubblewrap mancante).
-- **Fix bubblewrap + m2/m3 legati al sandbox**: `FATTA`.
-- **Verifica esterna §4quater**: `SALTATA — la prova reale è il rilancio del bot su #142 dopo il merge (decide l'operatore se lanciarla prima)`.
+- **Merge #143 (bubblewrap)**: `FATTA` su richiesta dell'operatore, CI verde.
+- **Seconda prova reale su #142**: `FATTA` x2 — bwrap OK, modelli fermi in ~0,2 s (is_error, costo 0), anche col token rigenerato.
+- **Step di diagnosi**: `FATTA` (PR #144).
+- **Verifica esterna §4quater**: `SALTATA — fetta di sola diagnosi; la prova reale è il rilancio su #142 dopo il merge (decide l'operatore se lanciarla prima)`.
 
 ---
 
@@ -23,123 +24,137 @@
 
 ```
  .claude/agents/memoria_revisore.md |   3 +++
- .github/workflows/verifica-bot.yml |  29 +++++++++++++++++++++++++++--
- reports/diff_sessione.md           |  11 +++++------
- reports/handoff.md                 | 192 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------
+ .github/workflows/verifica-bot.yml |  26 ++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  13 +++++--------
+ reports/handoff.md                 | 158 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  39 +++++++++++++++------------------------
- tests/test_unit_verifica_bot.py    |  20 ++++++++++++++++++++
- 7 files changed, 153 insertions(+), 143 deletions(-)
+ reports/ultimo_report.md           |  24 ++++++++++++------------
+ tests/test_unit_verifica_bot.py    |  16 ++++++++++++++++
+ 7 files changed, 146 insertions(+), 96 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-d73033f fix(verifica-bot): installa bubblewrap prima di Claude — lo scrub dei segreti lo esige — review #192/#193
-b2c92ad chore(revisore): memoria review #193 — APPROVATO CON RISERVE
-15670fd chore(revisore): memoria review #192 — APPROVATO CON RISERVE
+15224c2 fix(verifica-bot): diagnosi dell'errore nascosto quando nessun modello dà il verdetto — review #194/#195
+cd78aae chore(revisore): memoria review #195 — APPROVATO
+7345499 chore(revisore): memoria review #194 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-bwrap/`) resi relativi alla radice del repo.
+Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-diag/`) resi relativi alla radice del repo.
 
-### Review #192 — diff iniziale
-
-## VERDETTO: APPROVATO CON RISERVE
-
-**In breve:** la correzione va nella direzione giusta. Installa bubblewrap (il programma che isola i sottoprocessi) invece di spegnere la pulizia dei segreti, e ferma il job se l'isolamento non parte. Restano due problemi minori: se lo step fallisce, i modelli di riserva partono lo stesso, e il messaggio finale dà la colpa ai modelli invece che all'isolamento.
-
-**Elementi del diff esaminati**
-
-1. `.github/workflows/verifica-bot.yml:158` — nuovo step "Sandbox per lo scrub dei segreti (bubblewrap)", posto dopo i due checkout e prima di m1 (Fable 5.1).
-   - Rischi esaminati: ordine degli step, esecuzione di codice della PR, segreti presenti nello step.
-   - Esito: **ok**. Lo step non esegue nulla della PR. Nel suo ambiente c'è solo `GH_TOKEN` (il token di sola lettura del job). `CLAUDE_CODE_OAUTH_TOKEN` arriva soltanto nel `with:` di m1/m2/m3. Con la shell predefinita `bash -e`, anche un errore di `apt-get update` o `install` ferma lo step (blocco in caso di errore). Lo scrub resta `"1"` alla riga 102: la protezione non viene indebolita.
-
-2. `.github/workflows/verifica-bot.yml:164-165` — rilassa i sysctl degli user namespace (la restrizione che Ubuntu 24.04 applica via AppArmor), con lo stesso codice dello step "Enable OS sandbox" di `ci.yml`. Questo risponde alla tua domanda (2).
-   - Rischio esaminato: una superficie del kernel più ampia su un runner che ha segreti nell'environment.
-   - Esito: **ok**. Il runner è usa e getta. Gli unici processi locali sono Claude con Read/Grep/Glob limitati a `./**` e un Bash ristretto ai comandi `gh` di lettura. Il rilassamento è proprio ciò che serve per accendere l'isolamento che riduce il rischio. Non tocca la VPS né `GAS_SANDBOX_MODE`.
-
-3. `.github/workflows/verifica-bot.yml:170-175` — prova minima (`bwrap --unshare-all --ro-bind / / /bin/true`), poi `BWRAP_FAIL` e `exit 1`, senza continue-on-error. Questo risponde alle domande (1) e (3).
-   - Esito: **riserva R-192-1**.
-   - Domanda (3): `--unshare-all` crea tutti i tipi di namespace, quindi copre almeno quelli che servono a Claude Code. Le opzioni esatte di Claude Code (es. `--proc` in un nuovo namespace dei processi) non le ho verificate, quindi la prova è necessaria ma non dimostrata sufficiente. Lo dirà solo la run reale.
-   - Domanda (1), ho tracciato il percorso. Se lo step fallisce, m1 viene saltato (senza `if`, vale `success()`). m2 e m3 invece partono, perché un fallimento non è una cancellazione (`!cancelled()` resta vero). Poi `raccogli` scrive `falliti=claude-fable-5-1, claude-opus-5-5, claude-opus-4-8`. Il verdetto vuoto finisce in `decidi(None)`, che dà RIPROVA e quindi un check `cancelled`.
-   - L'esito resta sicuro: mai success, e nessuna quota spesa, perché Claude Code si ferma all'installazione. Ma:
-     - (a) il corpo della review dice "Cambio modello: falliti prima …" e dà la colpa ai modelli invece che all'isolamento: diagnosi fuorviante;
-     - (b) se una versione futura della CLI passasse da "rifiuto" ad "avviso", m2 lancerebbe il modello su un runner che il job stesso ha dichiarato senza isolamento.
-   - Correzione consigliata: dare un `id:` allo step e aggiungere `steps.<id>.outcome == 'success'` all'`if` di m2 e m3 (m1 è già protetto). In alternativa basta dichiararla.
-
-4. `tests/test_unit_verifica_bot.py:882` — `test_bubblewrap_installato_prima_di_claude`.
-   - Ho riprodotto la prova a mutazione: con `exit 1` cambiato in `true`, risultato 1 failed / 268 passed (il test se ne accorge). File ripristinato: diff non in staging vuoto, staging invariato. Suite intera: **269 passed** (riprodotto).
-   - Esito: **riserva R-192-2 (BASSA)**. Il test controlla che la stringa `"exit 1"` compaia nello step, non che compaia la prova minima `bwrap`. Togliere la prova lasciando un `exit 1` altrove passerebbe.
-
-5. Domanda (4), coerenza con R-162-1 (riserva della review #162: "bubblewrap e isolamento dei processi NON attivi"). La causa registrata era che l'installazione dentro l'action scatta solo con `allowed_non_write_users`. Ora bwrap lo installa il job e la CLI 2.1.289 lo esige con lo scrub attivo. Quindi R-162-1 è **probabilmente chiusa**, ma solo una run reale riuscita lo dimostra. Va annotata in `stato_progetto.md` come "da confermare dopo il rilancio su #142", non chiusa adesso.
-
-6. `reports/stato_progetto.md:112` — riga di stato coerente con il diff. **ok**.
-
-**Riserve**
-- **R-192-1 (BASSA):** se lo step dell'isolamento fallisce, m2 e m3 partono comunque e l'esito attribuisce il fallimento ai tre modelli. Correzione: legare m2 e m3 all'outcome dello step, oppure dichiararla.
-- **R-192-2 (BASSA):** il test non vincola la presenza della prova `bwrap` né l'id dello step.
-- **R-162-1:** da chiudere solo dopo la run reale.
-
-**Rischi esplicitamente esclusi**
-- Comportamento reale sul runner GitHub (installazione apt, sysctl effettivi, prova che passa e Claude Code che accetta il bwrap installato): non riproducibile in locale. Lo confermerà il rilancio della verifica su #142 dopo il merge.
-- Le opzioni esatte con cui la CLI 2.1.289 chiama bwrap: non lette nel sorgente della CLI.
-- Il bot non può verificare questa PR (tocca la sua stessa macchina, quindi esito neutral): il merge resta all'operatore.
-
-Riga contatore #192 e una lezione nuova scritte in `.claude/agents/memoria_revisore.md` e committate da sole (commit `15670fd`). Il diff in staging non è stato committato, come richiesto.
-
-### Review #193 — dopo R-192-1/2
+### Review #194 — diff iniziale
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-**In breve:** R-192-1 (i modelli di riserva partivano anche con l'isolamento rotto) è chiusa sulla parte che conta: senza bubblewrap ora non parte nessun modello. R-192-2 (test troppo debole) è chiusa. Resta un difetto minore: il messaggio finale dà ancora la colpa ai tre modelli quando il problema è l'isolamento.
+Review #194. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci V-B e bot in `reports/stato_progetto.md` e la memoria del revisore fino alla #193.
 
 **Elementi del diff esaminati**
 
-1. `.github/workflows/verifica-bot.yml:160` — `id: sandbox` sullo step che installa bubblewrap. Senza continue-on-error, l'outcome dello step è `failure` quando lui fallisce. **ok**
+1. `.github/workflows/verifica-bot.yml:255` — la condizione `if: ${{ !cancelled() && steps.raccogli.outputs.modello == '' }}`.
+   - Rischio: lo step parte quando non deve, oppure cambia l'esito.
+   - Esito: **ok**. "Raccogli il verdetto" (:226) lascia `modello` vuoto solo se S1, S2 e S3 sono tutti vuoti. Le uscite del job (:93-96) vengono solo da `raccogli`, che è già stato eseguito, quindi la diagnosi non può alterarle. Se `raccogli` viene saltato, anche `modello` è vuoto e la diagnosi parte lo stesso. Ma a quel punto non ci sono file e lo step stampa "assente": innocuo.
 
-2. `.github/workflows/verifica-bot.yml:196` e `:212` — l'`if` di m2 (Opus 5.5) e di m3 (Opus 4.8) ora include `steps.sandbox.outcome == 'success'`.
-   - Percorso con l'isolamento rotto: m1 viene saltato perché senza `if` vale `success()` implicito; m2 e m3 vengono saltati per la nuova condizione.
-   - Percorso normale: la condizione è vera, la cascata dei modelli non cambia.
-   - **ok**
+2. `.github/workflows/verifica-bot.yml:261-268` — `${FILE_M3:-${FILE_M2:-$FILE_M1}}`, il test `-f` e jq con fallback `|| echo`.
+   - Rischio: lo step si rompe, o perde segreti.
+   - Esito: **ok** sulla robustezza. Ho provato tre casi in locale:
+     - array vuoto: stampa `subtype=null is_error=null result=`;
+     - JSON che non è un array: jq dà errore e scatta il messaggio di fallback, rc 0 (anche con `bash -e`);
+     - nell'`env` dello step non c'è nessun `secrets.*`.
+   - Esito: **riserva** sul testo stampato, vedi R-194-1.
 
-3. `tests/test_unit_verifica_bot.py:894-899` — il test ora esige la prova minima `bwrap --unshare-all ...`, l'id `sandbox` e la condizione su m2 e m3.
-   - Suite: **269 passed** (riprodotto).
-   - Prove a mutazione riprodotte da me, oltre a quella su m2 fatta dall'agente:
-     - condizione tolta da **m3** (riga 212): 1 failed;
-     - id rinominato `sandbox` → `sbx`: 1 failed.
-   - File ripristinato ogni volta: diff non in staging vuoto, staging invariato. **ok**
-
-4. Contesto, file non toccato: `.github/workflows/verifica-bot.yml:226-238`, lo step "Raccogli il verdetto". Ha `if: !cancelled()` e gira anche quando l'isolamento fallisce. Con S1, S2 e S3 vuoti scrive `falliti="claude-fable-5-1, claude-opus-5-5, claude-opus-4-8"`. Il check finale resta `cancelled` ("verifica non conclusa", mai success), ma la review dell'App dice "Cambio modello: falliti prima …" quando non è partito nessun modello. **riserva**
+3. `tests/test_unit_verifica_bot.py:902` — `test_diagnosi_solo_result_e_dopo_i_modelli`.
+   - Cosa vincola: l'ordine dopo `raccogli`, la condizione esatta, il troncamento `.[0:400]`, l'assenza di `cat` e di `show_full_output`, nessun segreto nell'env.
+   - Esito: **ok**, 270 passed riprodotto.
 
 **Riserve**
-- **R-193-1 (BASSA, solo diagnosi):** "Raccogli il verdetto" non distingue "isolamento assente" da "tre modelli falliti". Correzione suggerita: passare `steps.sandbox.outcome` a `raccogli` e, se non è `success`, scrivere `falliti="sandbox bubblewrap non disponibile"`. Non blocca: l'esito resta sicuro.
-- **R-193-2 (COSMETICA):** nel test, il `for` su m2 e m3 passa senza controllare nulla se quegli id spariscono o cambiano. Basterebbe verificare che entrambi esistano.
-- **R-162-1:** l'annotazione "probabilmente chiusa, da confermare con il rilancio su #142" in `stato_progetto.md` è corretta.
 
-**Rischi esplicitamente esclusi**
-- Comportamento reale su GitHub Actions: valore effettivo di `steps.sandbox.outcome`, installazione apt, sysctl, Claude Code che accetta il bwrap installato. Non riproducibile in locale: lo confermerà il rilancio della verifica su #142 dopo il merge, che decide l'operatore.
-- Le opzioni esatte con cui la CLI 2.1.289 chiama bwrap: non lette nel sorgente.
+- **R-194-1 (BASSA, riprodotta): comandi di GitHub Actions nascosti nel campo `result`.**
+  - Cosa succede: `jq -r` stampa i ritorni a capo di `result` così come sono. Se il messaggio contiene una riga che comincia con `::error::...` o `::set-output name=x::y`, GitHub la esegue come comando del workflow. L'ho verificato in locale su un file con quel contenuto.
+  - Impatto limitato: lo step non ha `id`, le uscite del job vengono da `raccogli` e `set-env`/`add-path` sono disabilitati. Il danno possibile è un'annotazione falsa nel log o un `stop-commands`.
+  - Correzione: `(.result // "") | tostring | gsub("[\r\n]"; " ") | .[0:400]`, oppure `@json`.
 
-Riga contatore #193 scritta in `.claude/agents/memoria_revisore.md` e committata da sola (commit `b2c92ad`). Il diff in staging non è stato committato.
+- **R-194-2 (BASSA): la stampa salta il filtro credenziali.**
+  - Cosa succede: il repo è pubblico, e la diagnosi scrive `result` nel log senza passare dal controllo credenziali V-2/R-159-2 di `scripts/bot_esito.py:192` (citazione di contesto).
+  - Attenuanti: quando la CLI esce subito in errore, `result` è un suo messaggio, non testo del modello. Il token OAuth e il GITHUB_TOKEN vengono mascherati dal runner. Il testo è troncato a 400 caratteri.
+  - Rischio residuo: se un domani `result` contenesse testo del modello che ha letto la PR, una credenziale non registrata come segreto uscirebbe nel log. In alternativa si può stampare `result` solo con `is_error == true` e ripassarlo dal controllo di `bot_esito`.
+
+- **R-194-3 (COSM.):** viene diagnosticato solo l'ultimo modello partito, di norma m3. Se m1 (Fable) fallisce per un motivo diverso, ad esempio un modello non disponibile, quel motivo resta nascosto. Si possono stampare tutti e tre i file, ciascuno troncato.
+
+**Rischi esclusi esplicitamente**
+
+- Non ho verificato che l'action cab360f imposti davvero `execution_file` anche quando l'esecuzione finisce con `is_error`, né il formato reale del file: lo dichiara chi ha fatto la modifica, l'ho trovato in action.yml ma non è riproducibile in dev. Lo dirà solo la prossima run su #142.
+- Non ho verificato se `::set-output` via stdout sia ancora attivo sui runner di oggi: in ogni caso non ha effetto su uno step senza `id`.
+
+Nessun problema dalla sezione 5 di CLAUDE.md (né slicing della history né output dei tool simulati) e nessun guardrail del motore toccato. La modifica serve solo alla diagnosi e non cambia l'esito.
+
+La memoria è aggiornata con la riga #194 e una lezione nuova, già committata da sola (`7345499`) in `.claude/agents/memoria_revisore.md`. Il diff staged è rimasto intatto.
+
+File rilevanti:
+- `.github/workflows/verifica-bot.yml`
+- `tests/test_unit_verifica_bot.py`
+- `.claude/agents/memoria_revisore.md`
+
+### Review #195 — dopo R-194-1/2
+
+## VERDETTO: APPROVATO
+
+Review #195, di conferma sulle riserve della #194. Le correzioni funzionano: le ho provate eseguendo lo step vero, preso dal workflow.
+
+**Elementi del diff esaminati**
+
+1. `.github/workflows/verifica-bot.yml:270-271` — `result` viene stampato solo se `.is_error == true`, e i ritorni a capo diventano spazi (`gsub("[\\r\\n]"; " ")`) prima del taglio a 400 caratteri.
+   - Rischio: comandi del runner nascosti nel testo (R-194-1) e testo del modello che finisce nel log (R-194-2).
+   - Prova: ho estratto il `run` dal YAML con yaml.safe_load e l'ho eseguito con `bash -e`.
+   - Esito: **ok**. Il doppio backslash dentro il blocco YAML e gli apici singoli della shell arriva a jq come la regex `[\r\n]`, quindi funziona. Risultati:
+
+| Caso di prova | Uscita | rc |
+|---|---|---|
+| `"riga1\n::error::finto\r\nfine"` | una sola riga, `::error::` resta a metà riga e non viene eseguito | 0 |
+| `is_error:false` | `(non stampato: non è un errore)` | 0 |
+| `error_max_turns` senza `result` | `result=` vuoto | 0 |
+| array vuoto | `null`, non stampato | 0 |
+| JSON che non è un array | messaggio "illeggibile" | 0 |
+| file assente | "assente" | 0 |
+| solo `FILE_M1` impostato | ripiega correttamente su m1 | 0 |
+
+2. `.github/workflows/verifica-bot.yml:252-253` — il commento dichiara R-194-3: l'action scrive le tre esecuzioni sullo stesso file.
+   - Rischio: una diagnosi che sembra completa e non lo è.
+   - Esito: **ok**. La spiegazione regge: con un percorso fisso, un ciclo sui tre file stamperebbe tre volte m3. R-194-3 resta un limite dichiarato, non un difetto.
+
+3. `tests/test_unit_verifica_bot.py:913` — il test ora controlla anche la presenza di `gsub(` e di `.is_error == true`.
+   - Esito: **ok**, 270 passed riprodotto. Il controllo è testuale e non esegue lo step; per questo la prova vera l'ho fatta al punto 1.
+
+**Rischi esclusi esplicitamente**
+
+- Non ho verificato che il percorso del file fisso sia quello che dice il coordinatore (`_temp/claude-execution-output.json`): l'ho preso dal suo racconto del log della run, non dal codice dell'action.
+- Resta un rischio residuo: se `is_error` è vero ma `result` contiene testo del modello, quel testo esce nel log (troncato e mascherato per i segreti del job). Il caso osservato (uscita in circa 0,2 s, costo 0) è un errore della CLI. Lo vedrà solo la prossima run reale su #142.
+
+La memoria è aggiornata con la riga #195, già committata da sola (`cd78aae`). Il diff staged è rimasto intatto (2 file, +42).
+
+File rilevanti:
+- `.github/workflows/verifica-bot.yml`
+- `tests/test_unit_verifica_bot.py`
+- `.claude/agents/memoria_revisore.md`
 
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py/brains/modules.
 
 ```
-python -m pytest -q tests/test_unit_verifica_bot.py → 269 passed
+python -m pytest -q tests/test_unit_verifica_bot.py → 270 passed
 ```
 
 ## §6 STATO CI
 
-Run del bot su #142 (run 37603095039): smista success; verifica: claude-code-action fallito x3 ("bubblewrap is required for subprocess env scrubbing"); esito: review dell'App pubblicata, check cancelled. Run CI di questo branch: non ancora disponibile alla scrittura dell'handoff.
+Run del bot su #142 dopo #143 (run 37603998259 e 37607359375): smista success; sandbox success; m1/m2/m3 falliti ("--json-schema was provided but Claude did not return structured_output", result is_error, duration 245 ms, costo 0); esito: review dell'App, check cancelled. Run CI di questo branch: non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-193-1** (BASSA): con sandbox fallito la review dice "falliti i tre modelli".
-- **R-193-2** (cosmetica): il test non esige che m2/m3 esistano.
-- **R-162-1**: da confermare chiusa con il rilancio su #142.
+- **R-194-3** (cosmetica, dichiarata): si vede solo l'ultima esecuzione (file unico).
+- **R-193-1** (BASSA), **R-193-2** (cosmetica): aperte.
+- **R-162-1**: da confermare con un verdetto reale su #142.
