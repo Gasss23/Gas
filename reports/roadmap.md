@@ -154,7 +154,12 @@ Per memoria storica — design originale implementato:
 
 ---
 
-### 🧠 FASE 2.6 — Intelligenza Accumulata (Priorità Alta — da implementare)
+### 🧠 FASE 2.6 — Intelligenza Accumulata (Priorità Alta — fetta 1 in PR)
+
+**Stato (2026-10-07):**
+- 🔄 **Fetta 1 — riflessione su richiesta** (branch `feat/merge-automatico-z1xjx2`, review #199 BOCCIATO → #200 BOCCIATO → #201 APPROVATO CON RISERVE, commit `890cb51`): `gas rifletti` (CLI) / `rifletti` (REPL) → UNA chiamata LLM senza tool sulla trascrizione del task. A) recap nel diario (`tipo=recap`, fonte `modello`) e reiniettato come `<recap_dati>` nei turni dopo (solo se il task non conteneva input esterni non fidati; altrimenti `recap_non_fidato`, non iniettato). B) max 3 lezioni nel catalogo in stato `proposta`, autore `llm` — QUARANTENA: entrano nel prompt solo con `gas lezioni approva <id>`. Riga diario `tipo=apprendimento`. Env: `GAS_RECAP_CHARS`, `GAS_RECAP_PIN_CHARS` (0 = non iniettare).
+- ⏳ **Fetta 2 — trigger automatico** (DECISIONE OPERATORE): quando riflettere da soli (a `clear`, a fine sessione, ogni N turni?) — costa una chiamata LLM in più per task.
+- ⏳ **Fetta 3 — "task successiva correlata"**: oggi si inietta sempre l'ULTIMO recap fidato; scegliere il recap pertinente (FTS/semantico) e dargli una scadenza (R-199-3).
 
 Due ragionamenti autonomi di Gas alla fine di ogni task:
 
