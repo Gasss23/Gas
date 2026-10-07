@@ -892,6 +892,9 @@ class TestWorkflow:
         assert "apt-get install -y bubblewrap" in run and "exit 1" in run, run
         # R-192-2: la prova reale di bwrap deve esserci (non basta un exit 1 qualsiasi).
         assert "bwrap --unshare-all --ro-bind / / /bin/true" in run, run
+        # Terza prova reale #142: senza socat la Bash del bot non parte → verdetto alla cieca.
+        assert "apt-get install -y bubblewrap socat ripgrep" in run, run
+        assert "for dip in socat rg; do" in run and 'command -v "$dip"' in run, run
         assert "continue-on-error" not in passi[i_bwrap], passi[i_bwrap]
         # R-192-1: senza sandbox nemmeno i modelli di riserva partono.
         assert passi[i_bwrap].get("id") == "sandbox"

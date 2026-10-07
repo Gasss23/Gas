@@ -156,11 +156,21 @@ jobs:
       # modello parte. Si installa bwrap (come ci.yml) invece di spegnere lo scrub dei segreti;
       # se bwrap non riesce a creare il sandbox il job si FERMA (esito: verifica non conclusa)
       # e nemmeno i modelli di riserva m2/m3 partono (R-192-1: legati a steps.sandbox).
+      # Terza prova reale (#142): la Bash di Claude nel sandbox esige anche socat ("Sandbox
+      # dependencies not available: socat not installed"): senza, il bot non vede né diff né
+      # CI e dà un verdetto alla cieca (NO definitivo sullo SHA). Senza socat il job si ferma.
       - name: Sandbox per lo scrub dei segreti (bubblewrap)
         id: sandbox
         run: |
           sudo apt-get update
-          sudo apt-get install -y bubblewrap
+          sudo apt-get install -y bubblewrap socat ripgrep
+          # R-196-2: il sandbox di Claude Code su Linux esige bwrap + socat + rg.
+          for dip in socat rg; do
+            if ! command -v "$dip" >/dev/null 2>&1; then
+              echo "DIPENDENZA_FAIL: $dip assente, la Bash del bot non partirebbe" >&2
+              exit 1
+            fi
+          done
           # ubuntu-24.04 restringe gli unprivileged userns via AppArmor: si rilassa sul runner
           # effimero (come ci.yml), mai altrove.
           if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
