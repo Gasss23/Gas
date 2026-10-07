@@ -1,10 +1,6 @@
-# DIFF SESSIONE — 2026-10-06 — fix/win-mic-test-import (F-mac-3)
+# DIFF SESSIONE — 2026-10-07 — fix/verifica-bot-socat (PR #145)
 
-> Si riscrive a ogni sessione; la storia completa sta in git.
-
-- `clients/voice/probe/conftest.py` — nuovo: esclude i probe manuali `win_*_test.py` dalla collection.
-- `tests/conftest.py` — nuovo: esclude lo script `test_unit_kernel.py` dalla collection.
-- `tests/test_unit_voice_server.py` — test strutturale: collection dell'intero repo rc 0/5.
-- `reports/stato_progetto.md` — F-mac-3 CHIUSA.
-- `.claude/agents/memoria_revisore.md` — righe #190, #191.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+- `.github/workflows/verifica-bot.yml`: lo step `sandbox` installa `bubblewrap socat ripgrep` e si ferma (DIPENDENZA_FAIL) se socat o rg mancano. Perché: terza prova reale su #142, la Bash del bot non partiva ("socat not installed") e il bot ha giudicato alla cieca.
+- `tests/test_unit_verifica_bot.py`: test_bubblewrap_installato_prima_di_claude esteso (install con ripgrep, ciclo `command -v`). 270 passed.
+- `.claude/agents/memoria_revisore.md`: righe #196/#197.
+- `reports/`: stato_progetto (terza prova, R-196-1/3), ultimo_report, diff_sessione, handoff.
