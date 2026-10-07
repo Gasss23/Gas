@@ -30,7 +30,7 @@ def _verdetto(esito="APPROVATO", finding=None, testo=None):
         righe += [f"{f['id']} ({f['gravita']}) — {f['descrizione']}" for f in finding] or ["nessuno"]
         righe += ["NON VERIFICATO: test", "RACCOMANDAZIONE: merge"]
         testo = "\n".join(righe)
-    return {"verdetto": esito, "finding": finding, "testo": testo}
+    return {"strumenti_ok": True, "verdetto": esito, "finding": finding, "testo": testo}
 
 
 def _f(id_, gravita):
@@ -78,14 +78,37 @@ class TestDecidi:
         assert be.decidi(verdetto, SHA, SHA)[0] == "RIPROVA"
 
     @pytest.mark.parametrize("verdetto", [
-        {},
-        {"verdetto": "APPROVATO", "finding": []},                       # testo mancante
-        {"verdetto": "APPROVATO", "finding": [], "testo": "   "},        # testo vuoto
-        {"verdetto": "APPROVATO", "testo": "VERIFICA ESTERNA — APPROVATO"},  # finding mancante
-        {"verdetto": "OK", "finding": [], "testo": "VERIFICA ESTERNA — OK"},
+        {"strumenti_ok": True},
+        {"strumenti_ok": True, "verdetto": "APPROVATO", "finding": []},                       # testo mancante
+        {"strumenti_ok": True, "verdetto": "APPROVATO", "finding": [], "testo": "   "},        # testo vuoto
+        {"strumenti_ok": True, "verdetto": "APPROVATO", "testo": "VERIFICA ESTERNA — APPROVATO"},  # finding mancante
+        {"strumenti_ok": True, "verdetto": "OK", "finding": [], "testo": "VERIFICA ESTERNA — OK"},
     ])
     def test_verdetto_illeggibile(self, verdetto):
         assert be.decidi(verdetto, SHA, SHA)[0] == "COMMENT"
+
+    # R-196-1 (terza prova #142): senza diff e CI letti il verdetto è alla cieca → RIPROVA,
+    # mai un sì né un NO definitivo; campo assente o non booleano True = alla cieca.
+    @pytest.mark.parametrize("valore", [False, None, "true", 1, "si"])
+    @pytest.mark.parametrize("esito", ["APPROVATO", "BOCCIATO"])
+    def test_strumenti_non_ok_si_riprova(self, valore, esito):
+        v = _verdetto(esito)
+        v["strumenti_ok"] = valore
+        evento, motivo = be.decidi(v, SHA, SHA)
+        assert evento == "RIPROVA" and "alla cieca" in motivo
+
+    def test_strumenti_assente_si_riprova(self):
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "MEDIA")])
+        del v["strumenti_ok"]
+        assert be.decidi(v, SHA, SHA)[0] == "RIPROVA"
+
+    def test_strumenti_non_ok_su_macchina_bot_non_diventa_operatore(self):
+        v = _verdetto()
+        v["strumenti_ok"] = False
+        assert be.decidi(v, SHA, SHA, macchina_bot=True)[0] == "RIPROVA"
+
+    def test_strumenti_non_ok_non_tocca_il_doc_only(self):
+        assert be.decidi({"strumenti_ok": False}, SHA, SHA, doc_only=True)[0] == "APPROVE"
 
     def test_eventi_tutti_mappati_a_una_conclusione(self):
         assert be.CONCLUSIONE == {"APPROVE": "success", "COMMENT": "failure",
@@ -186,7 +209,7 @@ class TestStorico:
         assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
 
     def test_finding_non_dict(self):
-        v = {"verdetto": "APPROVATO CON RISERVE", "finding": ["V-1 MEDIA"],
+        v = {"strumenti_ok": True, "verdetto": "APPROVATO CON RISERVE", "finding": ["V-1 MEDIA"],
              "testo": "VERIFICA ESTERNA #130 — APPROVATO CON RISERVE"}
         assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
 
@@ -722,7 +745,7 @@ class TestComandi:
     @pytest.mark.parametrize("finding", [5, True, "x", None, {"a": 1}])
     def test_corpo_con_finding_non_lista(self, finding):
         # V-4 verifica esterna #130 bis: prima TypeError → nessuna review pubblicata.
-        v = {"verdetto": "APPROVATO", "finding": finding, "testo": "VERIFICA ESTERNA #1 — APPROVATO"}
+        v = {"strumenti_ok": True, "verdetto": "APPROVATO", "finding": finding, "testo": "VERIFICA ESTERNA #1 — APPROVATO"}
         evento, motivo = be.decidi(v, SHA, SHA)
         assert evento == "COMMENT"
         assert "VERIFICA ESTERNA #1" in be.componi_corpo("APPROVE", motivo, v, "m", "")
@@ -952,3 +975,8 @@ class TestWorkflow:
         assert tuple(schema["properties"]["verdetto"]["enum"]) == be.VERDETTI
         gravita = schema["properties"]["finding"]["items"]["properties"]["gravita"]["enum"]
         assert tuple(gravita) == be.GRAVITA
+        # R-196-1: il modello deve dichiarare se ha letto diff e CI (campo obbligatorio).
+        assert schema["properties"]["strumenti_ok"] == {"type": "boolean"}
+        assert "strumenti_ok" in schema["required"]
+        prompt = wf["jobs"]["verifica"]["env"]["PROMPT"]
+        assert '"strumenti_ok": true SOLO se' in prompt and "gh pr diff" in prompt
