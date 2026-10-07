@@ -1,24 +1,22 @@
-# ULTIMO REPORT — 2026-10-07 — Bot di verifica convalidato + niente verdetti alla cieca
+# ULTIMO REPORT — 2026-10-07 — Passo F: il sì del bot è obbligatorio
 
 ## Riassunto
 
-Dopo #145 il bot funziona davvero: sulla #142 ha letto diff e CI e ha detto sì, giustamente.
-#142 chiusa (era una prova). Questa PR (#146) chiude R-196-1: se il bot non riesce a leggere
-diff e CI, il check diventa "verifica non conclusa" invece di un giudizio alla cieca.
+Il bot di verifica è convalidato e ora è obbligatorio: nessuna PR entra in main senza il suo sì
+(oltre a test e handoff). Questa PR registra il passo F nei report ed è la prima a passare dal
+flusso completo (etichetta `verifica` → bot → merge).
 
 ## Cosa ho fatto
 
-1. Mergiata la PR #145 (socat + ripgrep) su richiesta, a CI verde.
-2. Aggiornata la #142 con main (conflitto su stato_progetto.md risolto tenendo tutto); il bot ha rigiudicato: verdetto corretto, check success — bot convalidato.
-3. Chiusa la #142 senza merge, su richiesta dell'operatore.
-4. Campo obbligatorio `strumenti_ok` nello schema e nel PROMPT; bot_esito.py dà RIPROVA se non è true — PR #146.
-5. Review #198 APPROVATO CON RISERVE (R-198-1 BASSA dichiarata, R-198-2 corretta in setup_verifica_bot.md).
+1. Mergiata la PR #146 (niente verdetti alla cieca) su richiesta, a CI verde.
+2. Guidato l'operatore nel passo F; verificato via API che il ruleset `main-lock` richiede `verifica-bot` dell'App gas-verificatore (ID 5214573), senza bypass.
+3. Aggiornati stato_progetto.md e questo report — questa PR.
 
 ## Cosa NON ho fatto da solo
 
-- Nessun merge della #146 (tocca la macchina del bot); nessuna regola di main toccata.
+- Nessuna impostazione GitHub toccata: il passo F l'ha fatto l'operatore.
 
 ## Cosa devi fare tu
 
-1. Mergiare la PR #146 (o dirmi "mergiala").
-2. Poi il passo F: rendere `verifica-bot` obbligatorio nelle regole di main (ti guido io).
+1. Niente di urgente. Se il bot si blocca e ferma tutti i merge, l'uscita d'emergenza è togliere `verifica-bot` dal ruleset (solo tu puoi).
+2. Prossima sessione: Setup 1 (token dell'agente senza Administration) e capire perché Fable 5.1 fallisce.
