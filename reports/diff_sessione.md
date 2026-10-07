@@ -9,3 +9,4 @@
 - `reports/stato_progetto.md` — voce della fetta + riserve R-202-1/2, R-199-3, R-200-2, F-args-pin (R-201-1/2 chiuse).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
 - `.claude/agents/memoria_revisore.md` — righe #199, #200, #201, #202 (commit del revisore).
+- Merge di origin/main (PR #150, R-200-2) — commit `bec2238`: `modules/gate/gate.py` (run_command in UNTRUSTED_INPUT_TOOLS) e test T72d/e/f, T78e arrivano da main; `reports/stato_progetto.md` R-200-2 CHIUSA, R-204-1/R-204-2; memoria revisore #203/#204; handoff §8 col verdetto #204.

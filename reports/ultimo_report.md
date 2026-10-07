@@ -1,4 +1,15 @@
-# ULTIMO REPORT — 2026-10-07 — FASE 2.6 fetta 1: Gas riflette a fine task
+# ULTIMO REPORT — 2026-10-07 — FASE 2.6 fetta 1 + merge di main (R-200-2 chiusa in #150)
+
+## Aggiornamento (sera 2026-10-07)
+
+Il bot aveva dato un falso NO alla #149 perché il suo testo citava R-200-2 (ALTA, vecchia).
+Su decisione dell'operatore R-200-2 è stata chiusa a parte (PR #150, mergiata col sì del bot);
+poi ho portato main dentro questa PR (commit bec2238, review #204 APPROVATO CON RISERVE,
+kernel 689 PASS / 0 FAIL). Ora il bot rigiudica la #149 sulla versione nuova.
+
+- **Merge di main (PR #150) in #149**: FATTA — conflitti solo su report (versione del branch) e memoria del revisore (unione).
+- **R-204-1** (BASSA, test): l'allowlist `_TOOL_OUTPUT_FIDATO` ora è coperta da meno test — tracciata.
+- **R-203-1** (compressione della cronologia che "lava" l'input esterno, cancello): aperta, fetta propria.
 
 ## Riassunto
 
@@ -11,14 +22,13 @@ riserve. Tutto è nella PR #149, non mergiata.
 ## DECISIONI UMANE RICHIESTE
 
 1. **Merge della PR #149** (https://github.com/Gasss23/Gas/pull/149) — dopo CI verde e sì del bot.
-   L'etichetta `verifica` per il bot NON risulta applicata (la chiamata API non l'ha messa): mettila a mano.
+   L'etichetta `verifica` ora è applicata; il bot rigiudica il commit bec2238.
 2. **Provarla con un modello vero** sul Mac (qui non ci sono chiavi API): fai un piccolo task, poi
    `python gas.py rifletti`, guarda il recap stampato e decidi le lezioni con
    `gas lezioni approva <id>` / `gas lezioni rifiuta <id>`.
 3. **Fetta 2 — quando riflettere da solo?** Oggi solo su comando. Opzioni: a ogni `clear`, a fine
    sessione, ogni N turni. Ogni riflessione costa una chiamata LLM in più.
-4. **R-200-2 (ALTA, vecchia, riguarda il cancello)**: dopo un `run_command cat` il cancello non
-   considera la conversazione "contaminata". Serve una fetta dedicata: decidi se farla subito.
+4. **R-200-2**: CHIUSA nella PR #150 (mergiata), portata qui col merge di main.
 
 ## Esito per fetta
 

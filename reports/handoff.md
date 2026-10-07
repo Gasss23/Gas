@@ -6,10 +6,10 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #149 (https://github.com/Gasss23/Gas/pull/149) — dopo CI verde su questo commit e sì del bot. L'etichetta `verifica` NON risulta applicata (POST REST alle label senza effetto): va messa a mano.
+1. Merge della PR #149 (https://github.com/Gasss23/Gas/pull/149) — dopo CI verde su questo commit e sì del bot. L'etichetta `verifica` NON risulta applicata (POST REST alle label senza effetto): va messa a mano. [Aggiornamento: etichetta `verifica` applicata; il bot rigiudica `bec2238`.]
 2. Prova con modello reale sul Mac (nel container non ci sono chiavi API): task breve → `python gas.py rifletti` → decidere le lezioni con `gas lezioni approva|rifiuta <id>`.
 3. Fetta 2 di FASE 2.6: quando riflettere in automatico (a `clear`, a fine sessione, ogni N turni) — ogni riflessione costa una chiamata LLM.
-4. R-200-2 (ALTA, preesistente, cancello): `run_command` non è in `UNTRUSTED_INPUT_TOOLS` — decidere se aprire subito la fetta dedicata.
+4. R-200-2: CHIUSA nella PR #150 (mergiata su main), portata in questo branch col merge `bec2238` (review #204).
 
 Nota: PR creata via API GitHub (MCP `create_pull_request`, risposta `{"id":"4775756010","url":"https://github.com/Gasss23/Gas/pull/149"}`) perché `gh pr list/create` nel cloud passa da GraphQL, bloccato (HTTP 403).
 
@@ -21,29 +21,32 @@ Nota: PR creata via API GitHub (MCP `create_pull_request`, risposta `{"id":"4775
 - **Fetta 2 — trigger automatico**: `DEFERITA — decisione operatore (costo token)`.
 - **Fetta 3 — recap della task correlata + scadenza (R-199-3)**: `DEFERITA — fuori scope della fetta 1`.
 - **E2E con modello reale**: `SALTATA — nessuna chiave API nel container cloud`.
+- **Merge di main (PR #150, R-200-2)**: `FATTA` — commit `bec2238`, review #204 APPROVATO CON RISERVE (verdetto integrale in §8), kernel 689 PASS / 0 FAIL.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 +
- gas.py                             | 441 +++++++++---
- modules/memory/store.py            |  23 +
- reports/diff_sessione.md           |  17 +-
- reports/handoff.md                 | 257 +++++--
- reports/roadmap.md                 |   7 +-
- reports/stato_progetto.md          |  11 +-
- reports/ultimo_report.md           |  84 ++-
- tests/test_unit_kernel.py          | 341 ++++++++
- 9 files changed, 1061 insertions(+), 128 deletions(-)
+ .claude/agents/memoria_revisore.md |  10 +++++++++
+ gas.py                             | 441 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
+ modules/memory/store.py            |  23 +++++++++++++++++++
+ reports/diff_sessione.md           |  16 ++++++++-----
+ reports/handoff.md                 | 284 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------
+ reports/roadmap.md                 |   7 +++++-
+ reports/stato_progetto.md          |  14 ++++++++++--
+ reports/ultimo_report.md           |  89 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ tests/test_unit_kernel.py          | 341 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 1106 insertions(+), 119 deletions(-)
 ```
 
-(Barre di `git diff --cached --stat=400` accorciate; i path sono l'output reale. Il conteggio di `reports/handoff.md` è approssimato per costruzione.)
+NB: dopo il merge di main (`bec2238`) la base è il nuovo merge-base `3d56bbf`: il diff qui sopra è solo il lavoro di FASE 2.6 rispetto a main aggiornato (gate.py di #150 è già in main).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bec2238 Merge origin/main (PR #150, R-200-2) nella FASE 2.6 — review #204
+a01ccf0 docs(fase-2.6): fine-task bis — handoff con verdetti #201/#202 e verifica esterna integrale, report e riserve aggiornati
 30ca64e fix(fase-2.6): V-1 verifica esterna — recap non fidato dopo compressione o input esterni in tutta la cronologia — review #202
 437274c chore(revisore): memoria review #202 — APPROVATO CON RISERVE
 258c8b6 docs(fase-2.6): fine-task — report, handoff con verdetto #201, diff sessione, roadmap e riserve
@@ -53,7 +56,7 @@ Nota: PR creata via API GitHub (MCP `create_pull_request`, risposta `{"id":"4775
 abd0346 chore(revisore): memoria review #199 — BOCCIATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -181,18 +184,20 @@ Suite kernel (`python tests/test_unit_kernel.py`, Linux container con bwrap): **
 
 ## §6 STATO CI
 
-Output reale di `gh run list --branch feat/merge-automatico-z1xjx2 -L 3` alla scrittura:
+Output reale (API REST, `actions/runs?branch=feat/merge-automatico-z1xjx2`, perché `gh run list` usa GraphQL bloccato nel cloud) alla scrittura:
 
 ```
-completed	startup_failure	feat(fase-2.6): riflessione di fine task — recap reiniettato + lezioni in quarantena	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	37655495494	8m55s	2026-10-07T16:52:53Z
-completed	failure	docs(fase-2.6): fine-task — report, handoff con verdetto #201, diff s…	CI	feat/merge-automatico-z1xjx2	push	37655492842	4m22s	2026-10-07T16:52:51Z
-completed	skipped	feat(fase-2.6): riflessione di fine task — recap reiniettato + lezioni in quarantena	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	37655331881	2s	2026-10-07T16:51:35Z
+in_progress	null	verifica-bot	bec2238	pull_request_target	37678126363	2026-10-07T19:55:16Z
+in_progress	null	CI	bec2238	push	37678124168	2026-10-07T19:55:15Z
+completed	success	verifica-bot	a01ccf0	pull_request_target	37656627007	2026-10-07T17:07:32Z
+completed	success	CI	a01ccf0	push	37656060818	2026-10-07T17:03:41Z
 ```
 
 Mappatura commit → run:
-- `890cb51` (+ `abd0346`, `218b734`, `6290557` pushati insieme): run CI 37655304376 — `unit-suite` success, `handoff-check` failure (atteso: l'handoff in quell'albero era della sessione precedente). Commit intermedi: nessuna run su quei SHA.
-- `258c8b6`: run CI 37655492842 — `unit-suite` failure SENZA step eseguiti: annotazione "The job was not started because it repeatedly failed to be acquired (5 attempts)" (guasto di assegnazione del runner GitHub, nessun test partito). Una ri-esecuzione richiesta via REST (`POST /actions/jobs/112909428903/rerun`) non risulta ripartita. verifica-bot 37655495494: `startup_failure`.
-- `437274c`, `30ca64e` e il commit di fine-task (questo file): run non ancora disponibile alla scrittura dell'handoff (pushati con questo fine-task).
+- `a01ccf0`: CI 37656060818 success (unit-suite + handoff-check); verifica-bot 37656627007 → check `verifica-bot` failure (falso NO per R-200-2 citata nel testo, vedi commento sulla PR).
+- `bec2238` (merge di main): CI 37678124168 e verifica-bot 37678126363 in corso alla scrittura dell'handoff.
+- Commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- Commit intermedi `890cb51`…`30ca64e`: vedi mappatura precedente nel git log di questo file (nessuna run propria oltre a quelle già elencate).
 
 ## §7 RISERVE APERTE
 
