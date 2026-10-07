@@ -13,7 +13,7 @@
 - Benchmark UX di dieci siti finanziari; ispirazione applicata: percorso esplicito, scelta semplice e CTA diretta.
 - Dopo il feedback dell’utente, il selettore inizialmente discreto è stato sostituito da un pannello a tre righe nella prima schermata. La scelta aggiorna i link WhatsApp con una bozza modificabile, mai inviata automaticamente.
 - Preview standalone: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`. Sito live e motore GAS invariati; nessun uso di Claude.
-- PR documentale [#141](https://github.com/Gasss23/Gas/pull/141) aperta; CI `unit-suite` e `handoff-check` verdi sul commit `039c300` (run `37599928829`).
+- PR documentale [#141](https://github.com/Gasss23/Gas/pull/141) aperta; CI `unit-suite` e `handoff-check` verdi sul commit `928bd07` (run `37600187412`).
 - Sintassi JS verificata con `node --check`; nessun test automatico o controllo visivo nel browser.
 
 ## §2 GIT DIFF --STAT (origin/main...HEAD; base 0221462)
@@ -23,10 +23,10 @@ Path modificati, esclusa l'allowlist `reports/ultima_risposta.md`:
 ```
  .agents/skills/website-service-showcase/SKILL.md |  27 +++
  reports/diff_sessione.md                         |  14 +-
- reports/handoff.md                               | 264 +++++------------------
+ reports/handoff.md                               | 265 +++++------------------
  reports/stato_progetto.md                        |   6 +-
  reports/ultimo_report.md                         |  42 +---
- 5 files changed, 107 insertions(+), 246 deletions(-)
+ 5 files changed, 108 insertions(+), 246 deletions(-)
 ```
 
 Diff completo effettivo, inclusa la allowlist:
@@ -34,11 +34,11 @@ Diff completo effettivo, inclusa la allowlist:
 ```
  .agents/skills/website-service-showcase/SKILL.md |  27 +++
  reports/diff_sessione.md                         |  14 +-
- reports/handoff.md                               | 264 +++++------------------
+ reports/handoff.md                               | 265 +++++------------------
  reports/stato_progetto.md                        |   6 +-
  reports/ultima_risposta.md                       |  12 +-
  reports/ultimo_report.md                         |  42 +---
- 6 files changed, 118 insertions(+), 247 deletions(-)
+ 6 files changed, 119 insertions(+), 247 deletions(-)
 ```
 
 `reports/ultima_risposta.md` appartiene al workflow autorizzato `scrivi rep` ed è escluso dal set dichiarato.
@@ -46,6 +46,7 @@ Diff completo effettivo, inclusa la allowlist:
 ## §3 GIT LOG --ONELINE (origin/main..HEAD)
 
 ```
+928bd07 docs(tradegasfx): registra esito CI finale
 039c300 docs(tradegasfx): registra PR e CI
 76ae932 docs(tradegasfx): rende evidente la scelta servizi
 6e815ff docs(tradegasfx): benchmark e scelta servizio WhatsApp
@@ -80,7 +81,7 @@ Nessun verdetto: il diff della sessione riguarda report, skill e preview standal
 
 ## §5 STATO CI
 
-Run `37599928829`, commit `039c30050f3204d3e6786d5c28c9c7dc99a7d8b8`: `unit-suite` SUCCESS e `handoff-check` SUCCESS. PR #141 aperta; il workflow `verifica-bot` è SKIPPED secondo i suoi filtri.
+Run `37600187412`, commit `928bd076df2ae994ae95d4e5cf140ba1a0f6b076`: `unit-suite` SUCCESS e `handoff-check` SUCCESS. PR #141 aperta; il workflow `verifica-bot` è SKIPPED secondo i suoi filtri.
 
 ## §6 RISERVE APERTE
 
