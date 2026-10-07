@@ -64,8 +64,10 @@ GATE_DENY_TOOLS: frozenset[str] = frozenset({"ssh", "modify_gate", "write_env"})
 
 # Tools whose output is untrusted external input (§3b): seeing any of their
 # results in the conversation window marks the window as contaminated.
+# R-200-2: run_command (cat/grep/head/tail/ls...) porta nella finestra contenuti di
+# file come read_file: dopo un suo output i tool UNCERTAIN vanno all'approvazione.
 UNTRUSTED_INPUT_TOOLS: frozenset[str] = frozenset({
-    "ricorda", "read_file", "browser_scrape", "fetch_email",
+    "ricorda", "read_file", "run_command", "browser_scrape", "fetch_email",
 })
 
 # Denylist path component prefixes — union of design §2b and §5.

@@ -252,3 +252,31 @@ VERIFICA ESTERNA PR #149 — BOCCIATO
 Non fare il merge prima di chiudere V-1. Il recap iniettato nel prompt di sistema ha un aggiramento deterministico che il revisore ha dichiarato chiuso. Poi aggiungere un test di round-trip che comprime la cronologia con un tool-output ostile e verifica `recap_non_fidato`, e riclassificare R-201-1 da MEDIA a ALTA. Rilanciare la CI e attendere `unit-suite`, `handoff-check` e `verifica-bot` verdi sul commit nuovo. Intanto `GAS_RECAP_PIN_CHARS=0` è l'unica mitigazione operativa.
 
 **Esito delle correzioni (agente principale):** V-1 CHIUSA dal commit `30ca64e` (review #202, test T80ad); V-4 CHIUSA (= R-201-2, recap stampato intero); V-2: CI sul nuovo commit di testa in §6; V-3: processo, annotato; V-5 = R-199-3 ancora aperta.
+
+## §8 MERGE DI MAIN (PR #150, R-200-2) — verdetto del revisore
+
+Merge di origin/main 3d56bbf nel branch: porta `run_command` in `UNTRUSTED_INPUT_TOOLS` (review #203). Conflitti solo su report e memoria del revisore (unione). Kernel dopo il merge: 689 PASS / 0 FAIL. Verdetto INTEGRALE (path assoluti resi relativi):
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #204: merge di origin/main 3d56bbf (PR #150) dentro PR #149 (FASE 2.6), sul diff staged.
+
+**Elementi del diff esaminati**
+
+1. `modules/gate/gate.py:70`: aggiunge `run_command` a `UNTRUSTED_INPUT_TOOLS`. Ho cercato un conflitto di significato con FASE 2.6 e non c'è. `rifletti` (gas.py:1849-1853, contesto) mette in OR tre controlli: la finestra §3b, l'allowlist `_TOOL_OUTPUT_FIDATO` applicata a tutta la cronologia, e il prefisso del riepilogo di compressione. `run_command` era già non fidato per l'allowlist, ora lo è anche per la finestra. È solo una ridondanza, non una contraddizione. I due insiemi non hanno elementi in comune: calcola, salva_contatto e imposta_stato_contatto non contaminano. Esito: **ok**.
+2. `tests/test_unit_kernel.py:5066-5133` (T72d/T72e/T72f) e `tests/test_unit_kernel.py:6467-6470` (T78e invertito): arrivano dal merge una sola volta, senza duplicati. Ho controllato se qualche test della 2.6 contava su `run_command` non contaminante: nessuno lo fa. T80aa e T80ad usano `run_command` e si aspettano già "non fidato", quindi restano coerenti. Esito: **ok**.
+3. `tests/test_unit_kernel.py:6860-6874` (T80aa): ho tolto su una copia la clausola dell'allowlist da `rifletti`. Risultato: 687 PASS, 2 FAIL, e i due test che falliscono sono solo T80ab e T80ae. T80aa ora passa lo stesso grazie al ramo finestra, quindi dopo il merge non protegge più dalla rimozione dell'allowlist. La copertura c'è ancora, ma con un margine più stretto. Esito: **riserva R-204-1**.
+4. `reports/stato_progetto.md:15` e `:143`: R-200-2 è riscritta correttamente come "CHIUSA in PR #150", e R-203-1/R-203-2 restano aperte. La voce R-203-1 cita però `gas.py:648-658`, mentre sul branch la compressione si trova a `gas.py:783`. Esito: **riserva R-204-2 (cosmetica)**.
+5. `.claude/agents/memoria_revisore.md`: l'unione è corretta. Le righe #199–#203 sono in ordine, senza buchi, senza duplicati e senza marcatori di conflitto. Esito: **ok**.
+
+**Riprodotto da me**: kernel 689 PASS / 0 FAIL, gate 74 passed (pytest). In nessun file del merge restano marcatori di conflitto.
+
+**Riserve**
+- **R-204-1 (BASSA, test)**: aggiungere un check di T80ab su `run_command` fuori dalla finestra (oppure un'asserzione che `_TOOL_OUTPUT_FIDATO` e `UNTRUSTED_INPUT_TOOLS` non abbiano elementi in comune). Così l'allowlist torna a essere protetta da più di due test.
+- **R-204-2 (COSMETICA)**: correggere il numero di riga di R-203-1 in stato_progetto.md e annotare una cosa. `_RIEPILOGO_COMPRESSIONE_PREFIX` (gas.py:484) è già il marcatore pronto per chiudere R-203-1 anche nel gate: oggi `_finestra_e_contaminata` (gas.py:1087) non lo guarda, quindi R-203-1 resta ALTA e aperta per il gate.
+
+**Cosa NON ho verificato**
+- I file reports/diff_sessione.md, handoff.md e ultimo_report.md, risolti con la versione del branch. Sono fuori dal perimetro di review e non cambiano il comportamento. Dovranno però contenere questo verdetto #204 nel §4 dell'handoff per il gate B.
+- Il comportamento reale in os_strict con bwrap su VPS: non si può riprodurre in questo ambiente di sviluppo.
+
+**Memoria**: ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga #204 e una lezione nuova: dopo un merge che allarga la contaminazione, rieseguire le mutation dei controlli in OR. Non ho fatto commit, come richiesto, ma ho rieseguito `git add` del file: lo staged è cambiato, quindi `scripts/segna_review_ok.sh` va lanciato su questo index aggiornato.
