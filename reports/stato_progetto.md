@@ -6,7 +6,7 @@
 
 ## Sessione esterna — TradeGasFX (2026-10-07)
 
-Nessuna modifica al motore Gas. Dopo il benchmark di Wise, Revolut, N26, Monzo, Wealthfront, Betterment, Vanguard, Fidelity, Charles Schwab e Robinhood, la preview usa un pannello a tre righe ben visibile nella prima schermata; ogni voce prepara una bozza WhatsApp modificabile. Modello 3D e layout sinistra-destra-sinistra conservati. Sito live invariato; preview non verificata visivamente nel browser. Testimonianze d'esempio e documenti del fondo richiedono verifica prima della pubblicazione.
+Nessuna modifica al motore Gas. Dopo il benchmark di Wise, Revolut, N26, Monzo, Wealthfront, Betterment, Vanguard, Fidelity, Charles Schwab e Robinhood, la preview usa un pannello a tre righe ben visibile nella prima schermata; ogni voce prepara una bozza WhatsApp modificabile. Modello 3D e layout sinistra-destra-sinistra conservati. Sito live invariato; preview non verificata visivamente nel browser. PR #141 aperta; CI sul commit `76ae932` verde. Testimonianze d'esempio e documenti del fondo richiedono verifica prima della pubblicazione.
 
 ## Stato motore
 
