@@ -4,12 +4,14 @@
 
 Gas ora sa "riflettere" a fine task: con `gas rifletti` scrive un riassunto denso di cosa ha
 fatto (che rilegge da solo al turno dopo) e propone fino a 3 lezioni, che però entrano nel suo
-cervello solo se le approvi tu. Il revisore l'ha bocciata due volte per buchi di sicurezza
-reali, ora chiusi; terzo giro approvato con riserve. Tutto è nella PR #149, non mergiata.
+cervello solo se le approvi tu. Il revisore l'ha bocciata due volte e la verifica esterna una
+volta, sempre per buchi di sicurezza reali, tutti chiusi; ultima review (#202) approvata con
+riserve. Tutto è nella PR #149, non mergiata.
 
 ## DECISIONI UMANE RICHIESTE
 
 1. **Merge della PR #149** (https://github.com/Gasss23/Gas/pull/149) — dopo CI verde e sì del bot.
+   L'etichetta `verifica` per il bot NON risulta applicata (la chiamata API non l'ha messa): mettila a mano.
 2. **Provarla con un modello vero** sul Mac (qui non ci sono chiavi API): fai un piccolo task, poi
    `python gas.py rifletti`, guarda il recap stampato e decidi le lezioni con
    `gas lezioni approva <id>` / `gas lezioni rifiuta <id>`.
@@ -20,8 +22,9 @@ reali, ora chiusi; terzo giro approvato con riserve. Tutto è nella PR #149, non
 
 ## Esito per fetta
 
-- **Fetta 1 — riflessione su richiesta (A recap + B lezioni)**: FATTA — commit `890cb51`, review
-  #199 BOCCIATO → #200 BOCCIATO → #201 APPROVATO CON RISERVE.
+- **Fetta 1 — riflessione su richiesta (A recap + B lezioni)**: FATTA — commit `890cb51` + `30ca64e`,
+  review #199 BOCCIATO → #200 BOCCIATO → #201 APPROVATO CON RISERVE → verifica esterna BOCCIATO
+  (V-1) → #202 APPROVATO CON RISERVE.
 - **Fetta 2 — trigger automatico**: DEFERITA — decisione dell'operatore (costo token).
 - **Fetta 3 — recap "della task correlata" + scadenza (R-199-3)**: DEFERITA — oggi si inietta sempre l'ultimo recap fidato.
 - **E2E con modello reale**: SALTATA — nessuna chiave API nel container cloud.
@@ -40,7 +43,11 @@ reali, ora chiusi; terzo giro approvato con riserve. Tutto è nella PR #149, non
 6. Correzione dopo #200: leggendo un file con `run_command cat` il recap risultava "fidato". Ora la
    fiducia è a lista chiusa: basta un output di tool non garantito e il recap non viene iniettato (PR #149).
 7. Il recap viene stampato all'operatore; si avvisa se ha risposto un provider di riserva (PR #149).
-8. Test: suite del kernel da 653 a 682 PASS, 0 FAIL (+29 test T80).
+8. Correzione dopo la verifica esterna (V-1): la compressione automatica della cronologia nascondeva
+   l'output dei tool in un messaggio "utente", e il recap tornava "fidato". Ora la fiducia si
+   controlla su tutta la cronologia e una cronologia compressa rende il recap non fidato. Prezzo:
+   dopo letture di file/comandi/compressione i recap tornano fidati solo dopo `clear` (PR #149).
+9. Test: suite del kernel da 653 a 684 PASS, 0 FAIL (+31 test T80).
 
 ## Cosa NON ho fatto da solo
 
@@ -50,9 +57,10 @@ reali, ora chiusi; terzo giro approvato con riserve. Tutto è nella PR #149, non
 
 ## Riserve aperte (dettaglio in reports/stato_progetto.md)
 
-- R-201-1 (MEDIA): un'istruzione letta da file e ripetuta per 20+ turni esce dalla finestra
-  controllata e può finire in un recap "fidato". Mitigazione: `GAS_RECAP_PIN_CHARS=0`.
-- R-201-2 (BASSA): a schermo il recap è troncato a 1500 caratteri, se ne iniettano fino a 4000.
+- R-202-1 (BASSA): note di un contatto scritte in una sessione "contaminata" sopravvivono a `clear`
+  e, se Gas le ripete, possono finire in un recap fidato.
+- R-202-2 (COSMETICA): il messaggio "recap non fidato" dovrebbe dire "fai `clear`".
+- R-201-1 e R-201-2: CHIUSE (review #202).
 - R-199-3 (BASSA): il recap non scade.
 - R-200-2 (ALTA, preesistente): `run_command` non conta come input non fidato per il cancello.
 - F-args-pin (BASSA, preesistente): gli argomenti delle tool call compaiono in `<memoria_dati>`.
@@ -62,3 +70,5 @@ reali, ora chiusi; terzo giro approvato con riserve. Tutto è nella PR #149, non
 - Gli hook di stop chiedevano `/fine-task` mentre la revisione era in corso: ho aspettato il
   verdetto (il gate di review vieta il commit del motore senza verdetto).
 - `gh` nel cloud non può usare GraphQL: PR creata via API GitHub (MCP).
+- CI sul commit `258c8b6`: `unit-suite` mai partito ("job not acquired", guasto GitHub, nessun
+  test eseguito); la ri-esecuzione via API non è ripartita. Il push di questo fine-task crea run nuove.
