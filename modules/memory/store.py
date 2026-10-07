@@ -932,6 +932,29 @@ class MemoryStore:
             log.warning("diario_recente fallita (%s): %s", self.db_path, e)
             return []
 
+    def ultimo_diario_per_tipo(self, tipo: str,
+                               fonte: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """L'evento PIÙ RECENTE del diario con quel `tipo` esatto (es. 'recap' della
+        riflessione di fine task, FASE 2.6) e, se data, con quella `fonte` esatta.
+        None se assente o in degrado."""
+        try:
+            with self._connect() as con:
+                if fonte is None:
+                    row = con.execute(
+                        "SELECT * FROM diario WHERE tipo = ? ORDER BY id DESC LIMIT 1",
+                        (tipo,),
+                    ).fetchone()
+                else:
+                    row = con.execute(
+                        "SELECT * FROM diario WHERE tipo = ? AND fonte = ? "
+                        "ORDER BY id DESC LIMIT 1",
+                        (tipo, fonte),
+                    ).fetchone()
+                return dict(row) if row is not None else None
+        except (sqlite3.Error, OSError) as e:
+            log.warning("ultimo_diario_per_tipo fallita (%s): %s", self.db_path, e)
+            return None
+
     def diario_tutto(self) -> List[Dict[str, Any]]:
         """TUTTE le voci del diario in ordine cronologico (id crescente), in SOLA
         LETTURA. Serve alla RICOSTRUZIONE dell'indice vettoriale (cache derivata,
