@@ -1,6 +1,6 @@
-# DIFF SESSIONE — 2026-10-07 — fix/verifica-bot-diagnosi (PR #144)
+# DIFF SESSIONE — 2026-10-07 — fix/verifica-bot-socat (PR #145)
 
-- `.github/workflows/verifica-bot.yml`: step "Diagnosi (solo se nessun modello ha dato il verdetto)" dopo "Raccogli il verdetto". Stampa subtype/is_error e, solo se is_error, il campo result su una riga e troncato a 400 caratteri. Perché: seconda prova reale su #142, i modelli escono subito con errore nascosto dall'action.
-- `tests/test_unit_verifica_bot.py`: test `test_diagnosi_solo_result_e_dopo_i_modelli` (ordine, condizione, troncamento, una riga, solo is_error, niente segreti nell'env). 270 passed.
-- `.claude/agents/memoria_revisore.md`: righe #194/#195 (commit del revisore).
-- `reports/`: stato_progetto (seconda prova), ultimo_report, diff_sessione, handoff.
+- `.github/workflows/verifica-bot.yml`: lo step `sandbox` installa `bubblewrap socat ripgrep` e si ferma (DIPENDENZA_FAIL) se socat o rg mancano. Perché: terza prova reale su #142, la Bash del bot non partiva ("socat not installed") e il bot ha giudicato alla cieca.
+- `tests/test_unit_verifica_bot.py`: test_bubblewrap_installato_prima_di_claude esteso (install con ripgrep, ciclo `command -v`). 270 passed.
+- `.claude/agents/memoria_revisore.md`: righe #196/#197.
+- `reports/`: stato_progetto (terza prova, R-196-1/3), ultimo_report, diff_sessione, handoff.
