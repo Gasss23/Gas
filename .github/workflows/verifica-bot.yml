@@ -246,6 +246,32 @@ jobs:
             echo "$delim"
           } >> "$GITHUB_OUTPUT"
 
+      # Seconda prova reale (PR #142, 2026-10-07): con bwrap a posto tutti e tre i modelli
+      # escono in ~0,2 s con is_error e costo 0, e l'action nasconde l'errore
+      # (show_full_output: false). Senza verdetto si stampa SOLO il campo "result" della riga
+      # finale dell'ultima esecuzione e SOLO se is_error (il messaggio d'errore di Claude
+      # Code), su una riga (R-194-1: niente comandi "::" del runner) e troncato: mai la
+      # trascrizione, mai testo del modello (R-194-2). L'action scrive le tre esecuzioni
+      # sullo stesso file, quindi si vede l'ultima (R-194-3). Non cambia l'esito.
+      - name: Diagnosi (solo se nessun modello ha dato il verdetto)
+        if: ${{ !cancelled() && steps.raccogli.outputs.modello == '' }}
+        env:
+          FILE_M3: ${{ steps.m3.outputs.execution_file }}
+          FILE_M2: ${{ steps.m2.outputs.execution_file }}
+          FILE_M1: ${{ steps.m1.outputs.execution_file }}
+        run: |
+          f="${FILE_M3:-${FILE_M2:-$FILE_M1}}"
+          if [ -z "$f" ] || [ ! -f "$f" ]; then
+            echo "DIAGNOSI: file di esecuzione assente"
+            exit 0
+          fi
+          jq -r '[.[] | select(.type == "result")] | last
+                 | "DIAGNOSI: subtype=\(.subtype) is_error=\(.is_error) result="
+                   + (if .is_error == true
+                      then ((.result // "") | tostring | gsub("[\\r\\n]"; " ") | .[0:400])
+                      else "(non stampato: non è un errore)" end)' \
+            "$f" || echo "DIAGNOSI: file di esecuzione illeggibile"
+
   esito:
     needs: [smista, verifica]
     if: ${{ !cancelled() && needs.smista.result == 'success' }}

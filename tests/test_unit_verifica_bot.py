@@ -899,6 +899,22 @@ class TestWorkflow:
             if p.get("id") in ("m2", "m3"):
                 assert "steps.sandbox.outcome == 'success'" in p["if"], p["if"]
 
+    def test_diagnosi_solo_result_e_dopo_i_modelli(self, wf):
+        """Seconda prova reale #142: errore nascosto dall'action. La diagnosi stampa solo il
+        campo result (troncato), viene dopo il raccogli e parte solo senza verdetto."""
+        passi = wf["jobs"]["verifica"]["steps"]
+        i_racc = next(i for i, p in enumerate(passi) if p.get("id") == "raccogli")
+        i_diag = next(i for i, p in enumerate(passi) if "DIAGNOSI" in p.get("run", ""))
+        assert i_diag > i_racc
+        diag = passi[i_diag]
+        assert diag["if"] == "${{ !cancelled() && steps.raccogli.outputs.modello == '' }}"
+        assert ".result" in diag["run"] and ".[0:400]" in diag["run"], diag["run"]
+        # R-194-1/2: una sola riga, e solo se is_error.
+        assert "gsub(" in diag["run"] and ".is_error == true" in diag["run"], diag["run"]
+        # Mai la trascrizione intera né i segreti nell'ambiente dello step.
+        assert "cat " not in diag["run"] and "show_full_output" not in str(passi)
+        assert not any("secrets." in str(v) for v in diag.get("env", {}).values())
+
     def test_condizioni_dei_job(self, wf):
         # V-3 verifica esterna #130 bis: un `if: always()` farebbe partire Claude e l'App
         # anche su PR escluse da smista (fork, autore estraneo, senza etichetta, draft).

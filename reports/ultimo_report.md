@@ -1,24 +1,24 @@
-# ULTIMO REPORT — 2026-10-07 — Bot di verifica: bubblewrap prima di Claude
+# ULTIMO REPORT — 2026-10-07 — Bot di verifica: diagnosi dell'errore nascosto
 
 ## Riassunto
 
-Il setup del bot fatto dall'operatore funziona (l'App ha risposto sulla PR di prova #142), ma
-Claude non partiva: lo scrub dei segreti esige bubblewrap, assente sul runner. Questa PR lo
-installa prima dei modelli. Dopo il merge si rilancia la prova su #142.
+Dopo il merge di #143 la sandbox del bot funziona, ma Claude si ferma ancora in un quarto di
+secondo su tutti e tre i modelli, anche col token rigenerato. L'action nasconde il motivo:
+questa PR (#144) aggiunge uno step che stampa solo il messaggio d'errore, per capire la causa.
 
 ## Cosa ho fatto
 
-1. PR di prova #142 con etichetta `verifica` — per provare il bot dopo il setup.
-2. Letto i log del job — errore "bubblewrap is required for subprocess env scrubbing".
-3. Step `sandbox` in verifica-bot.yml (install + prova + exit 1) e m2/m3 legati al suo esito — PR #143.
-4. Review #192 → #193 APPROVATO CON RISERVE (R-193-1 diagnosi, R-193-2 cosmetica).
+1. Mergiata la PR #143 (bubblewrap) su richiesta dell'operatore, a CI verde.
+2. Rilanciato il bot su #142 due volte (prima e dopo il token nuovo) — stesso errore: is_error, costo 0.
+3. Step "Diagnosi" in verifica-bot.yml: stampa il campo result solo se è un errore, su una riga, troncato — PR #144.
+4. Review #194 APPROVATO CON RISERVE (R-194-1/2 corrette, R-194-3 dichiarata) → #195 APPROVATO.
 
 ## Cosa NON ho fatto da solo
 
-- Nessun segreto o impostazione toccati; nessun merge.
+- Nessun merge della #144 (tocca la macchina del bot); nessun segreto toccato.
+- Non ho acceso `show_full_output` (stamperebbe tutta la trascrizione nel log pubblico).
 
 ## Cosa devi fare tu
 
-1. Mergiare la PR #143 (tocca la macchina del bot: decide l'operatore).
-2. Poi dirmi di rilanciare la prova su #142 (togliere e rimettere l'etichetta `verifica`).
-3. Se il bot dà il suo verdetto: attivare il check obbligatorio `verifica-bot` nel ruleset (§F del setup).
+1. Mergiare la PR #144 (o dirmi "mergiala").
+2. Poi rilancio io la prova su #142 e ti dico cosa dice la riga `DIAGNOSI:`.
