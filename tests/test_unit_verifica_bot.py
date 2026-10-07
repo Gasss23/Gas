@@ -879,6 +879,26 @@ class TestWorkflow:
     def test_ambiente_dei_sottoprocessi_ripulito(self, wf):
         assert wf["jobs"]["verifica"]["env"]["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"] == "1"
 
+    def test_bubblewrap_installato_prima_di_claude(self, wf):
+        """Prova reale PR #142: lo scrub (=1) esige bubblewrap. Lo step che lo installa deve
+        venire PRIMA del primo modello e fermare il job se il sandbox non parte."""
+        passi = wf["jobs"]["verifica"]["steps"]
+        nomi = [p.get("name", "") for p in passi]
+        i_bwrap = next(i for i, p in enumerate(passi) if "bubblewrap" in p.get("run", ""))
+        i_claude = next(i for i, p in enumerate(passi)
+                        if "claude-code-action" in p.get("uses", ""))
+        assert i_bwrap < i_claude, nomi
+        run = passi[i_bwrap]["run"]
+        assert "apt-get install -y bubblewrap" in run and "exit 1" in run, run
+        # R-192-2: la prova reale di bwrap deve esserci (non basta un exit 1 qualsiasi).
+        assert "bwrap --unshare-all --ro-bind / / /bin/true" in run, run
+        assert "continue-on-error" not in passi[i_bwrap], passi[i_bwrap]
+        # R-192-1: senza sandbox nemmeno i modelli di riserva partono.
+        assert passi[i_bwrap].get("id") == "sandbox"
+        for p in passi:
+            if p.get("id") in ("m2", "m3"):
+                assert "steps.sandbox.outcome == 'success'" in p["if"], p["if"]
+
     def test_condizioni_dei_job(self, wf):
         # V-3 verifica esterna #130 bis: un `if: always()` farebbe partire Claude e l'App
         # anche su PR escluse da smista (fork, autore estraneo, senza etichetta, draft).
