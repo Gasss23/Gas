@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-06 — TradeGasFX, atmosfera e luci
+**Sessione:** 2026-10-07 — TradeGasFX, benchmark e contatto guidato
 
 ## §0 DECISIONI UMANE RICHIESTE
 
@@ -10,22 +10,22 @@
 
 ## §1 ESITO DELLA SONDA
 
-- Fondale scuro uniforme dietro tutte le sezioni, senza tinte solide separate, con luci ambientali calde/fredde, alone diffuso dietro la scultura e un softbox lento.
-- Movimento del softbox spostato su `transform` e opacità; il modello WebGL, la rotazione principale allo scroll e l'animazione delle tre sfere restano invariati. I servizi restano sinistra-destra-sinistra.
-- Skill `website-service-showcase` aggiornata con una breve regola su fondale continuo e luce sobria.
-- Preview standalone: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`. Sito live invariato; nessun uso di Claude.
-- Nessun test automatico né verifica visiva nel browser in questa sessione.
+- Benchmark di dieci siti finanziari: percorsi semplici, microcopy chiaro, segnali di fiducia verificabili, dichiarazioni/rischi accanto alle promesse e CTA dirette.
+- Nella chiusura della preview, il visitatore seleziona uno dei tre servizi e entrambe le CTA WhatsApp ricevono una bozza pertinente, modificabile prima dell'invio. Nessun dato è raccolto e nessun messaggio è inviato automaticamente.
+- Skill `website-service-showcase` aggiornata con una riga concisa per riutilizzare il pattern.
+- Preview standalone: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`. Sito live e motore GAS invariati; nessun uso di Claude.
+- Sintassi JS controllata; nessun test automatico o controllo visivo nel browser.
 
 ## §2 GIT DIFF --STAT (origin/main...HEAD; base 0221462)
 
-Path modificati in sessione, esclusa l'allowlist `reports/ultima_risposta.md`:
+Path modificati, esclusa l'allowlist `reports/ultima_risposta.md`:
 
 ```
  .agents/skills/website-service-showcase/SKILL.md |  27 +++
  reports/diff_sessione.md                         |  14 +-
- reports/handoff.md                               | 260 +++++------------------
+ reports/handoff.md                               | 261 +++++------------------
  reports/stato_progetto.md                        |   6 +-
- reports/ultimo_report.md                         |  42 +---
+ reports/ultimo_report.md                         |  41 +---
  5 files changed, 103 insertions(+), 246 deletions(-)
 ```
 
@@ -34,18 +34,19 @@ Diff completo effettivo, inclusa la allowlist:
 ```
  .agents/skills/website-service-showcase/SKILL.md |  27 +++
  reports/diff_sessione.md                         |  14 +-
- reports/handoff.md                               | 260 +++++------------------
+ reports/handoff.md                               | 261 +++++------------------
  reports/stato_progetto.md                        |   6 +-
  reports/ultima_risposta.md                       |  12 +-
- reports/ultimo_report.md                         |  42 +---
+ reports/ultimo_report.md                         |  41 +---
  6 files changed, 114 insertions(+), 247 deletions(-)
 ```
 
-`reports/ultima_risposta.md` è escluso dal set dichiarato perché appartiene al workflow autorizzato `scrivi rep`.
+`reports/ultima_risposta.md` appartiene al workflow autorizzato `scrivi rep` ed è escluso dal set dichiarato.
 
 ## §3 GIT LOG --ONELINE (origin/main..HEAD)
 
 ```
+778035a docs(tradegasfx): atmosfera continua e luci
 e923815 docs(tradegasfx): aggiorna layout e animazione 3D
 72d75ff docs(tradegasfx): documenta ombre 3D
 3b5e285 docs(tradegasfx): rifinisce resa 3D e movimento
@@ -68,7 +69,7 @@ Il commit che contiene questo handoff viene creato dopo la sua stesura.
 
 ### Delta test del motore
 
-Motore Gas invariato; nessun test automatico eseguito. Modifiche visive CSS-only sulla preview standalone; il browser non è stato usato per la verifica visiva.
+Motore Gas invariato; nessun test automatico eseguito. Sintassi dello script inline controllata con `node --check`; il browser non è stato usato per il controllo visivo.
 
 ### Verdetto integrale
 
@@ -76,8 +77,8 @@ Nessun verdetto: il diff della sessione riguarda report, skill e preview standal
 
 ## §5 STATO CI
 
-CI non verificata per questa sessione. Il commit contiene solo documentazione e una skill; la preview standalone è fuori dal repository.
+CI non verificata in questa sessione: la CLI GitHub non ha potuto connettersi all'API. Lo stato del commit non è dichiarato verde.
 
 ## §6 RISERVE APERTE
 
-Rivedere visivamente la preview aggiornata prima di pubblicarla. Sostituire le testimonianze d'esempio con esperienze autentiche autorizzate e verificare le condizioni del fondo con garanzia.
+Rivedere graficamente e interattivamente la preview prima di pubblicarla. Sostituire le testimonianze d'esempio con esperienze autentiche autorizzate e verificare le condizioni del fondo con garanzia.

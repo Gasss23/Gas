@@ -1,15 +1,14 @@
-# ULTIMO REPORT — 2026-10-06 — TradeGasFX, atmosfera e luci
+# ULTIMO REPORT — 2026-10-07 — TradeGasFX, benchmark e contatto guidato
 
 ## Esito
 
-- Rifinito lo sfondo della preview con un fondale scuro continuo; rimosse le tinte solide separate che creavano stacchi tra sezioni.
-- Aggiunti livelli di luce calda e fredda, un alone diffuso dietro la scultura e un softbox animato con movimento lento. I livelli restano leggeri e non alterano i colori dei testi.
-- Il softbox ora si sposta con `transform` e opacità. Restano invariati modello WebGL, rotazione legata allo scroll, animazione delle tre sfere e ordine dei servizi sinistra-destra-sinistra.
-- Aggiunto alla skill GAS un suggerimento breve per fondali continui e luce d’ambiente controllata.
-- Preview standalone aggiornata: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`. Il sito live non è stato modificato. Nessun uso di Claude.
+- Confrontati dieci siti ufficiali: Wise, Revolut, N26, Monzo, Wealthfront, Betterment, Vanguard, Fidelity, Charles Schwab e Robinhood. Il pattern utile è orientare la persona con percorsi brevi, spiegazioni comprensibili, segnali di fiducia verificabili e una CTA diretta.
+- Aggiunto alla chiusura della preview il selettore dei tre servizi. La scelta aggiorna entrambe le CTA WhatsApp con una bozza contestuale, rivedibile e modificabile; nessun messaggio parte da solo e nessun dato viene raccolto.
+- Aggiornata la skill GAS con una riga riutilizzabile sul precompilare il messaggio del servizio scelto.
+- Preview standalone: `/Users/gas/.codex/visualizations/2026/10/04/01a10831-3402-73f0-99fd-af978a026433/tradegasfx-immersive-preview.html`. Modello 3D, rotazione e disposizione servizi sinistra-destra-sinistra invariati; sito live non modificato. Nessun uso di Claude.
 
 ## Verifica e limiti
 
-- Nessun test automatico eseguito. Nessuna modifica JavaScript in questa sessione.
-- Non è stata eseguita una verifica visiva nel browser; la resa effettiva delle nuove luci va ancora vista nella preview.
-- Prima della pubblicazione, sostituire gli esempi fittizi con testimonianze reali autorizzate e verificare documenti e formulazione del servizio “fondo con garanzia”.
+- Sintassi dello script inline controllata con Node; nessun test automatico eseguito.
+- La preview non è stata resa nel browser, quindi resa grafica e interazione vanno ancora riviste visivamente.
+- Prima di pubblicare, sostituire le testimonianze d'esempio con esperienze autentiche autorizzate e verificare le condizioni del fondo con garanzia.
