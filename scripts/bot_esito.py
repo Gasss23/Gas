@@ -18,7 +18,8 @@ decide. Esiti (evento → conclusione del check):
   COMMENT   → failure    NO nel merito (anche testo ambiguo o incoerente): DEFINITIVO per
                          quello SHA (G-2), un rilancio non lo ritira, serve un commit nuovo;
   RIPROVA   → cancelled  verifica non conclusa (head cambiata, verdetto assente, storico
-                         del check illeggibile): nessun giudizio, si può rilanciare;
+                         del check illeggibile, strumenti_ok non true — R-196-1): nessun
+                         giudizio, si può rilanciare;
   OPERATORE → neutral    macchina del bot con un sì del bot: decide l'operatore (neutral
                          non blocca il ruleset; `gasmerge --auto` vuole solo success).
                          R-163-1: si valuta PRIMA il verdetto; solo un APPROVE della
@@ -237,6 +238,11 @@ def _decidi_verdetto(verdetto: dict | None, head_analizzata: str, head_attuale: 
         return "APPROVE", "solo log di sessione: approvata senza verifica LLM (dosaggio)"
     if not isinstance(verdetto, dict):
         return "RIPROVA", "verifica non eseguita o verdetto illeggibile"
+    # R-196-1: un verdetto dato senza aver letto diff e CI (Bash/gh rotti, terza prova #142)
+    # non è un giudizio: né sì né NO definitivo. Campo assente o non True = alla cieca.
+    if verdetto.get("strumenti_ok") is not True:
+        return "RIPROVA", ("il bot non ha potuto leggere diff e CI della PR (strumenti non"
+                           " disponibili): verifica non conclusa, nessun giudizio alla cieca")
     esito = verdetto.get("verdetto")
     testo = verdetto.get("testo")
     finding = verdetto.get("finding")

@@ -66,7 +66,8 @@ controlla proprio questo e si blocca se il ruleset non lo richiede).
 Cosa vuol dire ogni conclusione del check:
 - **success** — il bot ha detto sì: mergeabile, anche con `gasmerge --auto`;
 - **failure** — il bot ha detto NO: definitivo su quello SHA (G-2), serve un commit nuovo;
-- **cancelled** — verifica non conclusa (head cambiata, verdetto o elenco file illeggibile):
+- **cancelled** — verifica non conclusa (head cambiata, verdetto o elenco file illeggibile,
+  bot che non è riuscito a leggere diff e CI — R-196-1):
   si rilancia;
 - **neutral** — la PR tocca la macchina del bot e il bot avrebbe detto sì: **decide
   l'operatore** (neutral non blocca il ruleset, `gasmerge --auto` invece vuole success e si

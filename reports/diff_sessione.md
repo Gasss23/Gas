@@ -1,6 +1,8 @@
-# DIFF SESSIONE — 2026-10-07 — fix/verifica-bot-socat (PR #145)
+# DIFF SESSIONE — 2026-10-07 — fix/verifica-bot-strumenti (PR #146)
 
-- `.github/workflows/verifica-bot.yml`: lo step `sandbox` installa `bubblewrap socat ripgrep` e si ferma (DIPENDENZA_FAIL) se socat o rg mancano. Perché: terza prova reale su #142, la Bash del bot non partiva ("socat not installed") e il bot ha giudicato alla cieca.
-- `tests/test_unit_verifica_bot.py`: test_bubblewrap_installato_prima_di_claude esteso (install con ripgrep, ciclo `command -v`). 270 passed.
-- `.claude/agents/memoria_revisore.md`: righe #196/#197.
-- `reports/`: stato_progetto (terza prova, R-196-1/3), ultimo_report, diff_sessione, handoff.
+- `.github/workflows/verifica-bot.yml`: schema con campo obbligatorio `strumenti_ok` (boolean); PROMPT: true solo se letti gh pr diff e gh pr checks. Perché: R-196-1, verdetto alla cieca nella terza prova su #142.
+- `scripts/bot_esito.py`: `_decidi_verdetto` dà RIPROVA se `strumenti_ok` non è esattamente true; docstring aggiornata.
+- `tests/test_unit_verifica_bot.py`: fixture con strumenti_ok; nuovi test (valori non true, assente, macchina bot, doc-only, schema e prompt). 283 passed.
+- `reports/setup_verifica_bot.md`: nuovo caso di `cancelled` (R-198-2).
+- `.claude/agents/memoria_revisore.md`: riga #198.
+- `reports/`: stato_progetto (quarta prova, bot convalidato, R-196-1 chiusa), ultimo_report, diff_sessione, handoff.
