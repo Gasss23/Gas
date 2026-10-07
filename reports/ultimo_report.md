@@ -22,7 +22,7 @@ riserve. Tutto è nella PR #149, non mergiata.
 ## DECISIONI UMANE RICHIESTE
 
 1. **Merge della PR #149** (https://github.com/Gasss23/Gas/pull/149) — dopo CI verde e sì del bot.
-   L'etichetta `verifica` ora è applicata; il bot rigiudica il commit bec2238.
+   L'etichetta `verifica` ora è applicata; il bot rigiudica la testa del branch.
 2. **Provarla con un modello vero** sul Mac (qui non ci sono chiavi API): fai un piccolo task, poi
    `python gas.py rifletti`, guarda il recap stampato e decidi le lezioni con
    `gas lezioni approva <id>` / `gas lezioni rifiuta <id>`.
@@ -63,7 +63,7 @@ riserve. Tutto è nella PR #149, non mergiata.
 
 - Nessun merge, nessuna impostazione GitHub toccata.
 - Nessuna prova con modello reale (mancano le chiavi qui).
-- R-200-2 (cancello) non toccata: cambia la sicurezza del cancello, merita una fetta sua.
+- R-200-2 (cancello) non toccata in questa PR: chiusa a parte nella PR #150 e portata qui col merge di main.
 
 ## Riserve aperte (dettaglio in reports/stato_progetto.md)
 
@@ -72,7 +72,7 @@ riserve. Tutto è nella PR #149, non mergiata.
 - R-202-2 (COSMETICA): il messaggio "recap non fidato" dovrebbe dire "fai `clear`".
 - R-201-1 e R-201-2: CHIUSE (review #202).
 - R-199-3 (BASSA): il recap non scade.
-- R-200-2 (ALTA, preesistente): `run_command` non conta come input non fidato per il cancello.
+- R-200-2: CHIUSA (PR #150). R-203-1 (cancello, compressione della cronologia) e R-204-1 (BASSA, test): aperte.
 - F-args-pin (BASSA, preesistente): gli argomenti delle tool call compaiono in `<memoria_dati>`.
 
 ## Anomalie
