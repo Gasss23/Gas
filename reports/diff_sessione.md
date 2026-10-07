@@ -1,8 +1,6 @@
-# DIFF SESSIONE — 2026-10-07 — fix/verifica-bot-strumenti (PR #146)
+# DIFF SESSIONE — 2026-10-07 — fix/gate-run-command-untrusted (R-200-2)
 
-- `.github/workflows/verifica-bot.yml`: schema con campo obbligatorio `strumenti_ok` (boolean); PROMPT: true solo se letti gh pr diff e gh pr checks. Perché: R-196-1, verdetto alla cieca nella terza prova su #142.
-- `scripts/bot_esito.py`: `_decidi_verdetto` dà RIPROVA se `strumenti_ok` non è esattamente true; docstring aggiornata.
-- `tests/test_unit_verifica_bot.py`: fixture con strumenti_ok; nuovi test (valori non true, assente, macchina bot, doc-only, schema e prompt). 283 passed.
-- `reports/setup_verifica_bot.md`: nuovo caso di `cancelled` (R-198-2).
-- `.claude/agents/memoria_revisore.md`: riga #198.
-- `reports/`: stato_progetto (quarta prova, bot convalidato, R-196-1 chiusa), ultimo_report, diff_sessione, handoff.
+- `modules/gate/gate.py`: `run_command` in `UNTRUSTED_INPUT_TOOLS`. Perché: R-200-2, dopo un output di run_command i tool UNCERTAIN non andavano in approvazione.
+- `tests/test_unit_kernel.py`: T72d, T72e, T72f (round-trip os_strict con controprova), T78e invertito. Kernel 658 PASS / 0 FAIL.
+- `.claude/agents/memoria_revisore.md`: riga #203.
+- `reports/`: stato_progetto (R-200-2 chiusa, R-203-1/2), ultimo_report, diff_sessione, handoff.

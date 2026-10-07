@@ -5063,6 +5063,9 @@ check("T72d UNTRUSTED_INPUT_TOOLS contiene 'ricorda'",
       "ricorda" in _UIT72, f"tools={_UIT72}")
 check("T72d UNTRUSTED_INPUT_TOOLS contiene 'read_file'",
       "read_file" in _UIT72, f"tools={_UIT72}")
+# R-200-2: run_command porta contenuti di file nella finestra come read_file.
+check("T72d UNTRUSTED_INPUT_TOOLS contiene 'run_command' (R-200-2)",
+      "run_command" in _UIT72, f"tools={_UIT72}")
 
 # T72e — _finestra_e_contaminata: test diretto del metodo puro (R-c2-3)
 from gas import GasKernel as _GK72e
@@ -5087,10 +5090,47 @@ check("T72e finestra con ricorda → contaminata",
       _GK72e._finestra_e_contaminata(_dirty_window_ricorda))
 check("T72e finestra con read_file → contaminata",
       _GK72e._finestra_e_contaminata(_dirty_window_read))
+check("T72e finestra con run_command (es. cat) → contaminata (R-200-2)",
+      _GK72e._finestra_e_contaminata(
+          [{"role": "tool", "name": "run_command", "content": "contenuto di un file"}]))
 check("T72e finestra con calcola (non contaminante) → non contaminata",
       not _GK72e._finestra_e_contaminata(_dirty_window_calcola))
 check("T72e finestra vuota → non contaminata",
       not _GK72e._finestra_e_contaminata([]))
+
+# T72f — R-200-2 round-trip agentico: run_command (output di file) e poi write_file
+# (UNCERTAIN) nello stesso turno → write_file promossa, NON eseguita al volo; senza il
+# run_command prima la stessa write_file passa. Il loop arriva comunque alla risposta.
+def _turno72f(con_run_command: bool):
+    _k = kernel_tmp()
+    _s = ([[("run_command", '{"command": "ls"}')]] if con_run_command else []) + [
+        [("write_file", '{"relative_path": "r200.txt", "content": "ciao"}')],
+        "fine",
+    ]
+    _prev = os.environ.get("GAS_SANDBOX_MODE")
+    os.environ["GAS_SANDBOX_MODE"] = "os_strict"  # run_command UNCERTAIN (§8e): il caso del buco
+    try:
+        with _TgFinto():
+            _ev = run_turn_scriptato(_k, "elenca e scrivi", _s)
+    finally:
+        if _prev is None:
+            os.environ.pop("GAS_SANDBOX_MODE", None)
+        else:
+            os.environ["GAS_SANDBOX_MODE"] = _prev
+    return _k, _ev
+_k72f, _ev72f = _turno72f(True)
+_k72f0, _ev72f0 = _turno72f(False)
+_tr72f = [e for e in _ev72f if e["type"] == "tool_res"]
+_tr72f0 = [e for e in _ev72f0 if e["type"] == "tool_res"]
+check("T72f run_command eseguito (os_strict), poi write_file in attesa di approvazione (R-200-2)",
+      len(_tr72f) == 2 and "attesa di approvazione" in _tr72f[1]["output"]
+      and not (Path(_k72f.root) / "r200.txt").exists(),
+      f"out={[e['output'][:60] for e in _tr72f]}")
+check("T72f controprova: senza run_command la stessa write_file viene eseguita",
+      len(_tr72f0) == 1 and (Path(_k72f0.root) / "r200.txt").exists(),
+      f"out={[e['output'][:60] for e in _tr72f0]}")
+check("T72f il loop arriva alla risposta finale in entrambi i casi",
+      [e["type"] for e in _ev72f][-1] == "final" and [e["type"] for e in _ev72f0][-1] == "final")
 
 # ---------- T73: C3 — coda approvazioni SQLite (design_cancello §4a/§C3) ----------
 # Test REALI: DB SQLite vero in una dir temporanea, nessun mock della coda.
@@ -6424,8 +6464,10 @@ try:
     check("T78e read_file approvato: output nel ruolo tool → finestra contaminata (§3b)",
           _r78e["eseguita"] and _k78e._finestra_e_contaminata(_k78e._get_window()),
           str(_r78e)[:150])
-    check("T78e run_command approvato: la finestra NON risulta contaminata (come nel loop)",
-          not _k78._finestra_e_contaminata(_k78._get_window()))
+    # R-200-2: prima il test fissava il buco ("NON contaminata, come nel loop"); ora
+    # l'output di run_command (cat/grep...) contamina, nel loop e nella firma.
+    check("T78e run_command approvato: la finestra risulta contaminata (R-200-2)",
+          _k78._finestra_e_contaminata(_k78._get_window()))
 
     # T78f — DENY al ricontrollo → tool msg col diniego, presa d'atto 'NON eseguita'
     _k78f = kernel_tmp()

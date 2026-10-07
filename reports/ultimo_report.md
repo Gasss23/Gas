@@ -1,28 +1,25 @@
-# ULTIMO REPORT — 2026-10-07 — Punto di ripartenza: bot di verifica attivo e obbligatorio
+# ULTIMO REPORT — 2026-10-07 — R-200-2: run_command conta come input esterno
 
 ## Riassunto
 
-Il bot di verifica funziona ed è obbligatorio: nessuna PR entra in main senza test, handoff e il
-suo sì. Oggi: 5 correzioni al bot (#143–#146), prova reale riuscita, passo F fatto, primo merge
-col sì del bot (#147). Tutto è su main.
+Chiuso un buco del cancello: dopo un `run_command` (es. `cat`, `ls`) Gas poteva scrivere file
+o cambiare contatti senza chiedere conferma, perché quel tool non era nella lista degli input
+esterni. Ora lo è. Prima di sbloccare la #149, come deciso dall'operatore.
 
-## Cosa è stato fatto oggi (in ordine)
+## Cosa ho fatto
 
-1. Bubblewrap prima di Claude (#143) — senza, Claude non partiva.
-2. Diagnosi dell'errore nascosto (#144) — ha mostrato il token Claude spezzato su due righe (corretto dall'operatore).
-3. socat + ripgrep nel sandbox (#145) — senza, la Bash del bot non partiva e giudicava alla cieca.
-4. Niente verdetti alla cieca (#146) — se il bot non legge diff e CI, "verifica non conclusa" (R-196-1).
-5. Passo F (operatore): `verifica-bot` dell'App gas-verificatore (ID 5214573) obbligatorio nel ruleset; registrato in #147, mergiata col sì del bot.
-6. #142 (PR di prova) chiusa senza merge.
+1. Trovato il punto: `UNTRUSTED_INPUT_TOOLS` in `modules/gate/gate.py` non conteneva `run_command`.
+2. Aggiunto `run_command` alla lista — una riga.
+3. Test: T72d/T72e, prova di giro completo T72f (sandbox os_strict: `ls` poi scrittura → in attesa di conferma, file non creato); T78e invertito (fissava il buco).
+4. Prova: kernel 658 PASS / 0 FAIL; senza la correzione 4 FAIL e il file viene scritto senza conferma.
+5. Review #203 APPROVATO CON RISERVE (R-203-1 ALTA preesistente sulla compressione, R-203-2 meno autonomia) — PR di questa fetta.
 
-## Cosa NON ha fatto l'agente da solo
+## Cosa NON ho fatto da solo
 
-- Nessun segreto o regola toccati. Merge di #143–#146 su richiesta dell'operatore; #147 col sì del bot.
+- R-203-1 non corretta: è un buco diverso (la compressione della cronologia "lava" l'input esterno), va fatta come fetta propria.
+- Nessun merge senza il sì del bot.
 
-## Prossima sessione — in ordine
+## Cosa devi fare tu
 
-1. **Setup 1** — token dell'agente senza Administration (`reports/setup_agente_non_admin.md`).
-2. **Fable 5.1 fallisce sempre** nel bot (risponde Opus 5.5): capirne il motivo.
-3. **`gasmerge` nelle sessioni cloud**: usa GraphQL (`gh pr checks`), bloccato nel cloud; oggi i controlli di `--auto` fatti a mano via REST.
-4. Note del bot su #147: l'handoff in main è della sessione #146 (§0 superato); `stato_progetto.md` è a ~517 righe (CLAUDE.md §11 chiede ~100: spostare lo storico in `stato_storico.md`).
-5. Riserve aperte: R-198-1 (strumenti_ok autodichiarato), R-194-3, R-193-1/2, R-162-2; chiudere le PR vecchie #87 e #109.
+1. Niente subito: se il bot dice sì, faccio il merge e poi aggiorno la #149 da main.
+2. Decidere più avanti R-203-2: dopo un `run_command` in sandbox, le azioni successive devono chiedere conferma? (oggi sì).
