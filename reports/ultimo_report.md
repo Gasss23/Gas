@@ -1,33 +1,24 @@
-# ULTIMO REPORT — 2026-10-06 — Punto di ripartenza dopo il /clear
+# ULTIMO REPORT — 2026-10-07 — Bot di verifica: bubblewrap prima di Claude
 
 ## Riassunto
 
-La giornata è chiusa: tutto il lavoro è su main (PR #131–#139 mergiate). Restano due setup
-che fa l'operatore su GitHub, da fare insieme nella prossima sessione.
+Il setup del bot fatto dall'operatore funziona (l'App ha risposto sulla PR di prova #142), ma
+Claude non partiva: lo scrub dei segreti esige bubblewrap, assente sul runner. Questa PR lo
+installa prima dei modelli. Dopo il merge si rilancia la prova su #142.
 
-## Cosa è stato fatto oggi (in ordine)
+## Cosa ho fatto
 
-1. Bot di verifica, codice finito (#131) — il "sì" alle PR lo dà un secondo Claude, non l'agente. Attivo solo dopo il Setup 2.
-2. Due falle di sicurezza chiuse (#134) — gate IP e gate di review aggirabili con byte non UTF-8.
-3. Agente non admin, fase "avviso" (#138) — avvisa se l'agente usa una chiave che può amministrare il repo.
-4. Test rossi sul Mac sistemati (#135, #136, #137); pytest senza argomenti non va più in crash (#139).
-5. Piccole riparazioni e pulizia (#133, #132).
-6. Regola in CLAUDE.md: riepilogo semplice e liste numerate per l'operatore (questa PR).
+1. PR di prova #142 con etichetta `verifica` — per provare il bot dopo il setup.
+2. Letto i log del job — errore "bubblewrap is required for subprocess env scrubbing".
+3. Step `sandbox` in verifica-bot.yml (install + prova + exit 1) e m2/m3 legati al suo esito — PR #143.
+4. Review #192 → #193 APPROVATO CON RISERVE (R-193-1 diagnosi, R-193-2 cosmetica).
 
-## Cosa NON ha fatto l'agente da solo
+## Cosa NON ho fatto da solo
 
-- Nessuna impostazione GitHub toccata (token, App, environment, etichetta, ruleset).
-- Merge solo su richiesta esplicita dell'operatore.
+- Nessun segreto o impostazione toccati; nessun merge.
 
-## Prossima sessione — da fare insieme, in ordine
+## Cosa devi fare tu
 
-1. **Setup 1 — token dell'agente senza Administration** (`reports/setup_agente_non_admin.md`):
-   creare il token fine-grained `gas-agente`, avviare Claude Code con `GH_TOKEN`, provare
-   `bash scripts/avviso_token_admin.sh` → atteso "non amministra il repo — OK".
-2. **Setup 2 — bot di verifica** (`reports/setup_verifica_bot.md`): token Claude
-   (`claude setup-token`), GitHub App `gas-verificatore` (PR R/W, Checks R/W, Contents R),
-   environment `verifica-bot` solo su main con i segreti, etichetta `verifica`; poi PR di
-   prova; solo dopo, check `verifica-bot` obbligatorio nel ruleset (§F).
-3. Sul Mac: `python -m pytest` (collection senza errori) e test APFS SKIPPED.
-4. Pulizia: chiudere le PR vecchie #87 e #109.
-5. Dopo: decisione V-1 (neutral del bot), fase 2 di G-3 (avviso → blocco), V-2 #127, R-162-1/2.
+1. Mergiare la PR #143 (tocca la macchina del bot: decide l'operatore).
+2. Poi dirmi di rilanciare la prova su #142 (togliere e rimettere l'etichetta `verifica`).
+3. Se il bot dà il suo verdetto: attivare il check obbligatorio `verifica-bot` nel ruleset (§F del setup).
