@@ -1,25 +1,33 @@
-# ULTIMO REPORT — 2026-10-08 — Seconda prova di `gas rifletti` sul Mac registrata
+# ULTIMO REPORT — 2026-10-08 — FASE 4.5 fetta 1: `gas notte`, il giro autonomo di Gas
 
 ## Riassunto
 
-Seconda prova di `gas rifletti` sul Mac: Gemini ha risposto bene al primo colpo, quindi lo scarto di
-stamattina è intermittente. Il Mac però era su un commit staccato e `git pull` non ha aggiornato il codice:
-il nuovo log diagnostico lì non era ancora attivo. Solo documenti, nessun codice.
+Nuovo comando `python3 gas.py notte`: Gas esegue da solo i compiti scritti in `~/.gas_notte.yaml`,
+uno alla volta e ognuno da zero, e lascia il riepilogo in `~/Gas/.gas_notte/ultimo_giro.md`.
+Sul Mac lo avvia di notte launchd (template pronto). Le azioni rischiose restano in attesa della
+firma su Telegram. Oggi Gas di notte NON sviluppa codice: non può toccare il proprio motore.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Sul Mac: `cd ~/Gas && git checkout main && git pull` (atteso `0ad9c74` o successivo con `git log --oneline -1`).
-2. Decidere le lezioni proposte #4, #5, #6 (parere dell'agente: approva 6 e 5, rifiuta 4).
-3. Firma in attesa `fab385e4…` (`salva_contatto test@prova.it`, contatto di prova): decidere col bot Telegram avviato (`python3 gas.py telegram`).
+1. Merge della PR di questa sessione (tocca motore e CI): numero nel report di chat.
+2. Sul Mac, dopo il merge: seguire `reports/setup_notte.md` (catalogo + timer launchd, 5 passi).
+3. Ancora aperte dalla sessione precedente: lezioni #4, #5, #6 (parere agente: approva 6 e 5,
+   rifiuta 4); firma in attesa `fab385e4…` col bot Telegram avviato.
 
 ## Esito
 
-- **Seconda prova `gas rifletti` sul Mac**: FATTA (operatore) — provider gemini-flash, nessuno scarto; recap salvato nel diario (#32) come NON fidato (la finestra conteneva output di tool non garantiti); 3 lezioni proposte (#4–#6).
-- **Riga di `grep` trovata**: è quella delle 11:54 (prima prova, formato vecchio senza motivo): nessuno scarto nuovo.
-- **Diagnosi della causa dello scarto di Gemini**: DEFERITA — anomalia intermittente; serve il Mac su `main` aggiornato e il prossimo scarto.
-- `reports/stato_progetto.md`: FATTA — voce 9 aggiornata.
+- **Fetta 1 FASE 4.5 — comando `gas notte`**: FATTA — `modules/notte/notte.py`, `notte_cmd` in
+  `gas.py`, 20 test (`tests/test_unit_notte.py`), passo CI; review #220 APPROVATO CON RISERVE.
+- **Template launchd + catalogo di esempio + guida**: FATTA — `scripts/notte/`, `reports/setup_notte.md`.
+- **Suite kernel**: 707 PASS, 0 FAIL (invariata, nessun test rotto).
+- **Riepilogo su Telegram al mattino**: DEFERITA — fetta 2 (per ora riepilogo su file + diario).
+- **Orari per singolo compito**: DEFERITA — l'orario lo dà il timer di sistema (un giro a notte).
+- **Riserve R-220-1..4 (BASSE)**: DEFERITE — elencate in `reports/stato_progetto.md` voce 6;
+  la frase sulla cronologia in `reports/setup_notte.md` è già corretta (R-220-1, parte doc).
+- **Prova reale sul Mac (launchd)**: DEFERITA — non riproducibile qui (Linux); la fa l'operatore.
 
 ## Anomalie
 
-- Il Mac era su HEAD staccato: `git pull` ha solo scaricato, senza aggiornare il codice in uso.
-- Nei comandi dati all'operatore mancava `cd Gas` (errore dell'agente, segnalato dall'operatore).
+- `gh` in questo ambiente non è autenticato: PR e CI gestite con gli strumenti GitHub della sessione.
+- Il primo tentativo di commit è stato bloccato dal gate perché il marcatore di review era creato
+  nello stesso comando: rifatto in due passi (comportamento corretto del gate).

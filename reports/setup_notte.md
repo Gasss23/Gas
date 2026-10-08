@@ -4,6 +4,10 @@ Cosa fa: ogni notte alle 03:00 il Mac lancia `python3 gas.py notte`. Gas legge
 `~/.gas_notte.yaml`, esegue i compiti uno alla volta (ognuno da zero) e scrive il
 riepilogo in `~/Gas/.gas_notte/ultimo_giro.md`. Nel diario va una riga per compito.
 
+Ogni compito ha una cronologia sua (`.gas_notte/storia_<nome>.json`), separata dalla
+tua conversazione. Eccezione: se approvi su Telegram un'azione parcheggiata di notte,
+l'esito viene scritto nella conversazione del bot/operatore (riserva R-220-1).
+
 Cosa NON fa da solo: le azioni rischiose (scrivere un file dopo aver letto contenuti
 esterni, comandi in modalità non protetta, invii) vengono parcheggiate e chieste in
 firma su Telegram. Gas non può modificare il proprio motore (gas.py, brains/, modules/)
