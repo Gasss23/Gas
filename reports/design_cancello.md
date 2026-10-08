@@ -134,7 +134,7 @@ Il file `gate_config.py` (o il modulo equivalente) non deve essere leggibile via
 
 ### 3a. Definizione di "turno contaminato"
 
-**Contaminazione per-finestra, non per-turno.** Il turno corrente è contaminato se nella finestra inviata al provider (`_get_window()`) è presente il tool result di almeno un tool contaminante. Il turno torna pulito solo quando quel result esce dalla finestra per scorrimento o per compressione della storia — non al turno successivo (un tool result può rimanere in finestra per molti turni).
+**Contaminazione per-finestra, non per-turno.** Il turno corrente è contaminato se nella finestra inviata al provider (`_get_window()`) è presente il tool result di almeno un tool contaminante. Il turno torna pulito solo quando quel result esce dalla finestra per scorrimento — non al turno successivo (un tool result può rimanere in finestra per molti turni). La compressione della storia NON decontamina (R-203-1, review #208): il testo dei tool finisce nel riepilogo (role user) e la prima riga del riepilogo, scritta dal kernel, porta `[CONTIENE INPUT ESTERNO]` o `[SOLO INTERNO]`; un riepilogo nella finestra che non si dichiara `[SOLO INTERNO]` (anche uno vecchio senza marcatore) rende il turno contaminato.
 
 Un tool result è contaminante se proviene da:
 
