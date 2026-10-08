@@ -395,5 +395,17 @@ def test_write_prefissi_solo_primo_livello(path):
     assert _wf(path) == GateClass.UNCERTAIN
 
 
+@pytest.mark.parametrize("path", [
+    "CLAUDE.local.md", "claude.local.md", "tests/CLAUDE.md", "dati/claude.md",
+    "reports/CLAUDE.local.md", "dati/sotto/AGENTS.md", "AGENTS.md",
+    "AGENTS.override.md", "dati/agents.override.md",
+    "\uff23\uff2c\uff21\uff35\uff24\uff25.md",          # CLAUDE.md fullwidth (NFKC)
+    "dati/\uff23\uff2c\uff21\uff35\uff24\uff25.local.md",
+])
+def test_write_istruzioni_agenti_a_ogni_livello_deny(path):
+    """Verifica-bot #160 V-1: file d'istruzioni degli agenti a qualunque profondità."""
+    assert _wf(path) == GateClass.DENY
+
+
 def test_read_claude_md_resta_consentita():
     assert gate_classify("read_file", {"relative_path": "CLAUDE.md"}) == GateClass.SAFE

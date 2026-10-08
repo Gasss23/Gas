@@ -112,6 +112,15 @@ _DENY_WRITE_TOP_PREFIXES: tuple[str, ...] = (
     "scripts", "claude.md", ".mcp", "gas_identity", "requirements",
 )
 
+# Verifica-bot PR #160 (V-1, d3a593d): file d'istruzioni caricati dagli agenti di
+# sviluppo a QUALSIASI livello (CLAUDE.local.md all'avvio, i CLAUDE.md delle
+# sottocartelle quando ci si lavora, AGENTS.md). Confronto esatto su ogni pezzo del
+# percorso dopo NFKC+casefold (_normalize_path): "dati/claude.md.txt" resta fuori.
+_DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
+    "claude.md", "claude.local.md", "agents.md",
+    "agents.override.md",  # R-224-1: Codex lo carica con precedenza su AGENTS.md
+})
+
 
 def _normalize_path(p: str) -> str:
     """Normalize a path string for denylist comparison.
@@ -170,6 +179,8 @@ def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | N
         return GateClass.DENY
     if write and PurePosixPath(norm).parts[:1] and \
             PurePosixPath(norm).parts[0].startswith(_DENY_WRITE_TOP_PREFIXES):
+        return GateClass.DENY
+    if write and any(p in _DENY_WRITE_ANY_PART_NAMES for p in PurePosixPath(norm).parts):
         return GateClass.DENY
     return None
 

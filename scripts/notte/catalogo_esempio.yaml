@@ -10,6 +10,7 @@ compiti:
       Fammi un elenco breve: chi è fermo da più tempo e cosa conviene fare domani.
   - nome: salute_sistema
     prompt: >-
-      Esegui il comando 'git status' e dimmi in tre righe se ci sono file
-      modificati non salvati nella cartella di Gas.
+      Esegui il comando 'ls -la' e dimmi in tre righe quali file nella cartella
+      di Gas sono stati modificati più di recente (git non è tra i comandi
+      consentiti a Gas).
     attivo: false
