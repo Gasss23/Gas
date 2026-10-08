@@ -511,16 +511,24 @@ _RIFLESSIONE_PROMPT = (
 # Anteprima della risposta scartata nel log della riflessione (diagnosi, es. Gemini
 # scartato sul Mac 2026-10-08): abbastanza per vedere la forma, mai la risposta intera.
 RIFLESSIONE_LOG_ANTEPRIMA_CHARS = 300
+# Coda della risposta scartata (V-2 verifica bot PR #155): un JSON monco o con testo
+# dopo l'oggetto si rompe IN FONDO, fuori dal prefisso.
+RIFLESSIONE_LOG_CODA_CHARS = 150
 
 
-def _anteprima_log(testo: Any, cap: int = RIFLESSIONE_LOG_ANTEPRIMA_CHARS) -> str:
-    """Prefisso troncato di una risposta grezza, in repr (una riga sola nel log:
-    a-capo e caratteri di controllo restano visibili come escape). PURA."""
+def _anteprima_log(testo: Any, cap: int = RIFLESSIONE_LOG_ANTEPRIMA_CHARS,
+                   coda: int = RIFLESSIONE_LOG_CODA_CHARS) -> str:
+    """Inizio e fine di una risposta grezza, in repr (una riga sola nel log:
+    a-capo e caratteri di controllo restano visibili come escape), con il conteggio
+    dei caratteri omessi in mezzo. Mai più di cap+coda caratteri di testo. PURA."""
     if not isinstance(testo, str):
         return repr(testo)
-    if len(testo) <= cap:
+    cap, coda = max(cap, 0), max(coda, 0)
+    if len(testo) <= cap + coda:
         return repr(testo)
-    return f"{testo[:cap]!r}…[+{len(testo) - cap} caratteri]"
+    omessi = len(testo) - cap - coda
+    # testo[len-coda:], NON testo[-coda:]: con coda=0 il secondo darebbe tutta la stringa.
+    return f"{testo[:cap]!r}…[+{omessi} caratteri]…{testo[len(testo) - coda:]!r}"
 
 
 def _analizza_riflessione(testo: Optional[str]) -> Tuple[Optional[Tuple[str, List[str]]], str]:

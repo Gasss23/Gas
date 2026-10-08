@@ -6835,7 +6835,7 @@ try:
           and "finish_reason=" in _scarto80l[0], str(_logrec80l)[:400])
     # T80l3 — risposta tagliata (finish_reason='length', JSON monco e lungo): nel log
     # finiscono finish_reason, lunghezza vera e anteprima TRONCATA, mai la risposta intera
-    _monca80 = '{"recap": "' + "z" * 2000
+    _monca80 = '{"recap": "' + "z" * 2000 + " CODA-MONCA"
     def _tagliata80(messages, tools):
         msg = SimpleNamespace(content=_monca80, tool_calls=None)
         return SimpleNamespace(choices=[SimpleNamespace(message=msg, finish_reason="length")],
@@ -6852,7 +6852,8 @@ try:
           _e80l3["ok"] and _e80l3["provider"] == "groq" and len(_scarto80l3) == 1
           and "finish_reason='length'" in _scarto80l3[0] and "mai chiuso" in _scarto80l3[0]
           and f"lunghezza={len(_monca80)}" in _scarto80l3[0]
-          and f"…[+{len(_monca80) - gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS} caratteri]" in _scarto80l3[0]
+          and f"…[+{len(_monca80) - gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS - gas.RIFLESSIONE_LOG_CODA_CHARS} caratteri]…" in _scarto80l3[0]
+          and "CODA-MONCA'" in _scarto80l3[0]
           and "z" * 400 not in _scarto80l3[0], str(_logrec80l)[:400])
 
     # T80m — tutti i provider falliscono: nessun crash, nessuna scrittura
@@ -7061,11 +7062,18 @@ try:
           and "recap mancante" in _analizza_riflessione('{"recap": ""}')[1]
           and "lezioni non è una lista" in _analizza_riflessione('{"recap": "a", "lezioni": 5}')[1]
           and _analizza_riflessione('{"recap": "a"}') == (("a", []), ""))
-    _lunga80 = "x" * 1000
-    check("T80u3 _anteprima_log: repr su una riga, troncata al cap con conteggio",
+    _cap80 = gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS
+    _coda80 = gas.RIFLESSIONE_LOG_CODA_CHARS
+    _lunga80 = "x" * 1000 + "FINE"
+    _ant80 = _anteprima_log(_lunga80)
+    check("T80u3 _anteprima_log: repr su una riga, inizio + coda con conteggio degli omessi",
           _anteprima_log("a\nb") == "'a\\nb'" and _anteprima_log(None) == "None"
-          and _anteprima_log(_lunga80).endswith(f"…[+{1000 - gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS} caratteri]")
-          and len(_anteprima_log(_lunga80)) < gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS + 40)
+          and _anteprima_log("y" * (_cap80 + _coda80)) == repr("y" * (_cap80 + _coda80))
+          and f"…[+{len(_lunga80) - _cap80 - _coda80} caratteri]…" in _ant80
+          and _ant80.endswith("FINE'") and _ant80.startswith("'x")
+          and len(_ant80) < _cap80 + _coda80 + 40
+          and _anteprima_log(_lunga80, cap=10, coda=0) == f"{'x' * 10!r}…[+{len(_lunga80) - 10} caratteri]…''"
+          and len(_anteprima_log(_lunga80, cap=-5, coda=-5)) < 40)
     check("T80v cascata unica: 'complesso' parte da gemini-flash, gratuiti in coda",
           [c[0] for c in _cascata_provider("complesso")] == ["gemini-flash", "groq", "openrouter", "ollama"]
           and [c[0] for c in _cascata_provider("semplice")][:3] == ["gemini-flash-lite", "gemini-flash", "groq"])
