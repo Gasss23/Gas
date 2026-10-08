@@ -1,28 +1,33 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-08 — FASE 4.5 fetta 1: `gas notte`, giro autonomo dei compiti dal catalogo
+**Sessione:** 2026-10-08 — FASE 4.5 fetta 1: `gas notte` + cancello rinforzato (catena di avvio fuori sandbox)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #160 (https://github.com/Gasss23/Gas/pull/160). Tocca motore e CI. Numero e URL presi dalla risposta di GitHub alla creazione: `gh` qui non è autenticato, quindi la PR è stata creata con lo strumento GitHub della sessione.
-2. Dopo il merge, sul Mac: seguire `reports/setup_notte.md` (catalogo `~/.gas_notte.yaml` e timer launchd, 5 passi).
-3. Ancora aperte dalla sessione precedente:
-   - decidere le lezioni #4, #5, #6 (parere dell'agente: approva 6 e 5, rifiuta 4);
-   - decidere la firma in attesa `fab385e4…` con il bot Telegram avviato.
+1. Merge della PR #160 (https://github.com/Gasss23/Gas/pull/160). Numero e URL vengono dalla risposta di GitHub alla creazione della PR: in questo ambiente `gh` non è autenticato e la PR è stata creata con lo strumento GitHub della sessione. L'operatore ha chiesto di fare il merge senza chiedere conferma se tutto è positivo. Condizioni da soddisfare sul nuovo head:
+   - `verifica-bot` success;
+   - `unit-suite` e `handoff-check` verdi.
+2. Dopo il merge, sul Mac: seguire `reports/setup_notte.md` (catalogo, tetto di spesa, timer launchd).
+3. R-222-4, da sapere: Gas non può più fare alcune cose. Se serve un comportamento diverso, la decisione è dell'operatore.
+   - Non può scrivere:
+     - file di codice o shell (`.py`, `.sh`, …);
+     - `scripts/`, `CLAUDE.md`, `gas_identity.md`, `requirements*`.
+   - Non può leggere `.gas_notte/`.
+4. Ancora aperte da prima:
+   - lezioni #4, #5, #6: parere dell'agente, approvare la 6 e la 5 e rifiutare la 4;
+   - firma in attesa `fab385e4…`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 FASE 4.5 — comando `gas notte`**: `FATTA`
-  - modulo `modules/notte/`, comando `notte_cmd` in `gas.py`;
-  - 20 test e passo CI;
-  - review #220 APPROVATO CON RISERVE.
-- **Template launchd, catalogo di esempio e guida**: `FATTA` — `scripts/notte/`, `reports/setup_notte.md`.
+- **Fetta 1 FASE 4.5 — comando `gas notte`**: `FATTA` — `2a2ed0d`, review #220.
+- **Correzioni della verifica esterna #160 (V-1 MEDIA tetto di spesa, V-2 riepilogo, V-3 test del lock)**: `FATTA` — `d0cfc17`, review #221.
+- **Correzione del bot di verifica #160 (V-1 MEDIA: catena di avvio scrivibile e poi eseguita fuori dalla sandbox)**: `FATTA` — `d0cfc17`, review #222 e #223. Il cancello nega `write_file` su `venv`, `.git`, `.gas_notte`, sui file di codice e di shell e sui file sensibili al primo livello.
 - **Riepilogo su Telegram al mattino**: `DEFERITA` — rimandato alla fetta 2.
-- **Orari per singolo compito**: `DEFERITA` — per ora c'è un solo giro a notte, avviato dal timer di sistema.
+- **Tetto di tempo (R-220-3)**: `DEFERITA` — rimandato alla fetta 2.
 - **Prova reale con launchd sul Mac**: `DEFERITA` — non si può riprodurre su Linux; la fa l'operatore.
 
 ---
@@ -30,26 +35,33 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   2 ++
+ .claude/agents/memoria_revisore.md  |   8 ++++++++
  .github/workflows/ci.yml            |   8 ++++++++
  .gitignore                          |   2 ++
  gas.py                              |   9 +++++++++
+ modules/gate/gate.py                |  34 ++++++++++++++++++++++++++++++--
  modules/notte/__init__.py           |   4 ++++
- modules/notte/notte.py              | 243 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md            |  19 +++++++++++--------
- reports/handoff.md                  |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
- reports/setup_notte.md              |  42 ++++++++++++++++++++++++++++++++++++++++++
+ modules/notte/notte.py              | 279 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md            |  20 +++++++++++--------
+ reports/handoff.md                  | 268 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ reports/setup_notte.md              |  44 ++++++++++++++++++++++++++++++++++++++++++
  reports/stato_progetto.md           |   4 ++--
- reports/ultimo_report.md            |  34 +++++++++++++++++++++-------------
+ reports/ultimo_report.md            |  36 +++++++++++++++++++++-------------
  scripts/notte/catalogo_esempio.yaml |  15 +++++++++++++++
- scripts/notte/com.gas.notte.plist   |  27 +++++++++++++++++++++++++++
- tests/test_unit_notte.py            | 282 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 14 files changed, 744 insertions(+), 39 deletions(-)
+ scripts/notte/com.gas.notte.plist   |  27 ++++++++++++++++++++++++++
+ tests/test_unit_gate.py             |  56 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py            | 379 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 16 files changed, 1152 insertions(+), 41 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d0cfc17 fix(fase-4.5): chiude V-1/V-2/V-3 verifica esterna, V-1 bot e R-221/R-222 su gas notte
+c1f093c chore(revisore): memoria review #223 — APPROVATO CON RISERVE
+c052d7c chore(revisore): memoria review #222 — APPROVATO CON RISERVE
+1ece5c4 chore(revisore): memoria review #221 — APPROVATO CON RISERVE
+680dafb docs(fase-4.5): report fine-task — gas notte fetta 1 (PR #160)
 2a2ed0d feat(fase-4.5): gas notte — giro autonomo dei compiti dal catalogo (fetta 1)
 365e27d chore(revisore): memoria review #220 — APPROVATO CON RISERVE
 ```
@@ -93,37 +105,208 @@ Risultati riprodotti da me: `test_unit_notte.py` 20 passed; `tests/test_unit_ker
 
 Ho aggiunto in memoria la riga #220 e la lezione: l'isolamento di un'esecuzione autonoma va seguito anche lungo il percorso della firma, cioè chi esegue l'azione approvata e in quale cronologia scrive l'esito. Le ho committate col commit `365e27d`, che contiene solo quel file; il diff staged sotto review è rimasto com'era.
 
+---
+
+Commit `d0cfc17` — review #221 (prima parte del diff: V-1/V-2/V-3 della verifica esterna), verdetto integrale del revisore:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+In breve: le tre correzioni della verifica esterna funzionano. La correzione del tetto di spesa (V-1), però, porta con sé una regressione nell'exit code che conviene chiudere in questa stessa PR, prima del merge. Ci sono poi tre riserve minori sui test e sul conteggio.
+
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9), `reports/stato_progetto.md` (le parti su notte e R-220) e la mia memoria (dalla #195 alla #220). Il diff non contiene slicing della storia né output dei tool simulati. `run_turn`, il tetto di 10 iterazioni e `_get_window` non sono toccati.
+
+**Elementi del diff esaminati**
+
+1. `modules/notte/notte.py:239` — se `_env_budget() <= 0.0` imposta `GAS_DAILY_TOKEN_BUDGET="1.0"` solo per questo processo e scrive un avviso.
+   - **Rischio:** che il valore non arrivi davvero al limite di spesa del kernel, oppure che `_env_budget` interpreti l'env in modo diverso da `_env_float` (`gas.py:435`).
+   - **Esito:** ok. Assente, "0", "nan", "abc", "inf" e valori negativi portano tutti a 1.0. Un valore valido messo dall'operatore viene rispettato. Il kernel lo rilegge a ogni turno (`gas.py:2491`), quindi il valore impostato dal giro conta. `test_budget_esaurito_ferma_il_compito` lo prova con il kernel vero.
+   - **Riserva:** vedi R-221-1.
+2. `modules/notte/notte.py:265` (contesto non toccato, ma ora raggiunto dal nuovo avviso) — `return 1 if avvisi else 0`.
+   - **Rischio:** che un avviso solo informativo cambi l'exit code.
+   - **Esito:** riserva, R-221-1.
+3. `modules/notte/notte.py:153-155` — conta le azioni negate (output che inizia con `"Operazione negata"`) e quelle in attesa (output che contiene `"in attesa di approvazione umana"`).
+   - **Rischio:** falsi positivi e rami non coperti dai test.
+   - **Esito:** riserva, R-221-3 e R-221-4.
+4. `modules/notte/notte.py:190` — riga di conteggio per compito e frase finale corretta.
+   - **Esito:** ok. La frase non promette più la firma quando la richiesta è stata revocata, e `test_unit_notte.py:228` controlla "negate: 1".
+5. `tests/test_unit_notte.py:319` — test V-3: tiene un `LOCK_SH | LOCK_NB` sul file di lock e si aspetta exit 2.
+   - **Esito:** ok. Con `LOCK_SH` al posto di `LOCK_EX` il secondo lock condiviso verrebbe concesso e il test fallirebbe.
+6. `tests/test_unit_notte.py:231` — `test_budget_notte_di_default`.
+   - **Esito:** ok sul comportamento, riserva sulla pulizia dell'ambiente (R-221-2).
+
+**Riproduzioni**
+- `test_unit_notte.py`: 23 passed.
+- `tests/test_unit_kernel.py`: 707 PASS, 0 FAIL.
+- `pytest tests/` completo: 716 passed.
+- `notte.py` ripristinato dopo la mutation e identico allo staged.
+
+**Finding**
+
+- **R-221-1 (MEDIA, regressione introdotta da questo diff).** L'avviso del budget va nella lista `avvisi`, e la riga 265 la usa per decidere l'exit code.
+  - **Effetto:** con un catalogo vuoto, o con tutti i compiti disattivati, e senza budget nel `.env`, il giro esce con 1 invece che con 0. Riprodotto: RC 1 senza budget, RC 0 con budget.
+  - **Perché conta:** contraddice il docstring di `esegui_notte` ("0 ... o nessuno attivo"), e il timer notturno segnerebbe l'unità come fallita ogni notte.
+  - **Fix:** mettere l'avviso del budget in una lista separata, oppure calcolare l'exit code solo sugli avvisi del catalogo. Aggiungere un test: catalogo vuoto senza budget → 0.
+- **R-221-2 (BASSA, test).** `monkeypatch.delenv(..., raising=False)` su una variabile assente non registra nulla. Il `GAS_DAILY_TOKEN_BUDGET=1.0` impostato da `esegui_notte` resta quindi attivo nei test successivi dello stesso processo. Una sonda lo ha mostrato ("LEAK: 1.0"). Oggi è innocuo (716 passed), ma resta una fonte di test instabili: nella fixture `_ermetico` serve `setenv` seguito da `delenv`, oppure una pulizia esplicita alla fine.
+- **R-221-3 (BASSA, test).** La mutation che spegne il ramo "in attesa" (riga 155) sopravvive: 23 passed. Tutti i test girano senza Telegram, quindi ogni azione parcheggiata viene revocata e il ramo "in attesa" non viene mai provato. Il diff dichiara 4 mutation colte, ma questo ramo non è coperto.
+- **R-221-4 (BASSA).** Alla riga 155 il controllo `_IN_ATTESA in out` è una ricerca di sottostringa anche sull'output di `read_file`/`run_command`, che è testo non fidato.
+  - Un file che contiene la frase gonfia il conteggio "in attesa della tua firma" nel riepilogo.
+  - Inoltre "Azione già in attesa ..." (`gas.py:1512`) conta due volte lo stesso ID.
+  - **Fix:** usare `startswith` su `"Azione in attesa di approvazione umana"` (`gas.py:1540`) ed escludere il caso "già".
+
+**Rischi non verificati**
+- Il comportamento reale con Telegram configurato (firma vera, conteggio "in attesa" lungo il percorso del bot): non è riproducibile in dev senza token. Per questo è anche una lacuna di test (R-221-3).
+- Il comportamento sotto systemd/launchd sulla VPS: ho dedotto l'impatto di R-221-1 dall'exit code, non l'ho provato su un timer reale.
+- `reports/setup_notte.md` (passo 2b) l'ho solo letto: coerente col codice.
+
+**Altro**
+- Nel worktree ci sono modifiche NON staged a `modules/gate/gate.py` e `tests/test_unit_gate.py`. Sono fuori da questa review: se finiscono in staging, serve una review a parte.
+- Memoria aggiornata in `/home/user/Gas/.claude/agents/memoria_revisore.md` (riga #221 più una lezione nuova), commit `1ece5c4`.
+
+---
+
+Commit `d0cfc17` — review #222 (gate + chiusura R-221), verdetto integrale del revisore:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+La fix fa quello che promette: chiude la catena venv / `.py` nella root segnalata dal bot (V-1) e chiude le riserve R-221-1..4. Restano scrivibili altri file che vengono eseguiti fuori dalla sandbox (gli script `.sh`, R-222-1, gravità MEDIA). Il problema esisteva già prima e questo diff non lo peggiora, ma ricade nella stessa minaccia di V-1.
+
+Letture fatte: CLAUDE.md sez. 5, `reports/stato_progetto.md` (solo le parti che servivano), memoria #202–#221.
+
+**Prove rifatte da me:** gate + notte 129 passed, kernel 707 PASS / 0 FAIL, `tests/` 748 passed. Ho provato quattro mutazioni del codice e i test le colgono tutte:
+- exit code calcolato di nuovo da `avvisi` → 1 test fallisce;
+- conteggio "in attesa" per sottostringa invece che per prefisso → 1 fallisce;
+- `rstrip("/. ")` tolto → 1 fallisce;
+- `".git"` tolto dai prefissi → 3 falliscono.
+
+Ho ripristinato i file e controllato che `git diff` sia vuoto.
+
+### Elementi del diff esaminati
+- `modules/gate/gate.py:92-95`: aggiunge `venv`, `.venv`, `.git`, `.gas_notte` ai prefissi vietati.
+  - Rischio: rompere `run_command`, perché il controllo per sottostringa a :234 usa gli stessi prefissi.
+  - Ho provato in os_strict: `git status`, `git log --oneline`, `git -C . diff`, `ls -la`, `grep -rn prevent .` restano UNCERTAIN. `cat .github/workflows/ci.yml` diventa DENY, ed è voluto.
+  - Esito: **ok**.
+- `modules/gate/gate.py:102` / `:158`: il controllo sui suffissi si applica solo a `write_file`, sul percorso già normalizzato (NFKC, normpath, minuscole) più `rstrip("/. ")`.
+  - Rischio: aggirare il blocco. Ho provato `yaml.PY`, `yaml．py` (punto fullwidth), `yaml.py/.`, `yaml.py ` + NBSP / U+3000, `a/../yaml.py`, `sitecustomize.py`, `__pycache__/*.pyc`, `*.cpython-311-darwin.so`: tutti DENY.
+  - `yaml.py\t`, uno spazio invisibile (ZWSP) dentro `venv` e la `у` cirillica passano, ma creano un file DIVERSO, che Python non importa: innocui.
+  - Una cartella `openai/` senza `__init__` è solo un namespace package e non oscura il pacchetto installato in site-packages.
+  - Gas non può creare symlink: `write_file` scrive solo contenuto e `run_command` vede la root in sola lettura (`--ro-bind`, gas.py:1344).
+  - Esito: **ok**.
+- `gas.py:1652` (contesto): `applica_firma` riclassifica col cancello PRIMA di `execute_tool_call`. La tua premessa ("dopo la firma si passa solo da `_safe_path`") non è corretta: il nuovo DENY vale anche per le azioni già in attesa di firma create prima della fix. Esito: **ok**.
+- `modules/notte/notte.py:239` / `:266`: `catalogo_ko` dipende solo dagli avvisi del catalogo. L'avviso sul budget è aggiunto dopo e non cambia più l'exit code. Il test `tests/test_unit_notte.py:344` lo copre. R-221-1 **chiusa**.
+- `tests/test_unit_notte.py:33-34`: `setenv` seguito da `delenv`. Ho seguito l'ordine in cui pytest annulla le modifiche: prima rimette "0", poi cancella la variabile. Il budget che il giro imposta viene quindi ripulito. R-221-2 **chiusa**.
+- `modules/notte/notte.py:155`: conteggio per prefisso. "Azione già in attesa" non viene contato. R-221-3 e R-221-4 **chiuse**, ma con la riserva R-222-2.
+
+### Riserve
+- **R-222-1 (MEDIA, c'era già prima, stessa minaccia di V-1).** Gli script `.sh` sono scrivibili a finestra pulita (UNCERTAIN, eseguiti senza firma) e poi girano fuori dalla sandbox:
+  - `scripts/hash_diff_staged.sh` lo lancia l'hook `review_gate` di Claude Code: è proprio l'hash del cancello di review;
+  - `scripts/gasmerge.sh` gira tramite il symlink in `~/bin/gasmerge`, col token gh dell'operatore;
+  - lo stesso vale per `scripts/fine_task_finale.sh`.
+
+  L'ho verificato: `write_file scripts/gasmerge.sh` → UNCERTAIN. Fix: aggiungere `.sh`, `.zsh`, `.bash`, `.command` a `_DENY_WRITE_SUFFIXES`, oppure `scripts` a `_DENY_PREFIXES`. Stessi casi ma con testo invece di codice: `CLAUDE.md` e `.mcp.json` (letti dall'agente di sviluppo, che ha la shell), `gas_identity.md` (finisce nel prompt di sistema), `requirements.txt` (pip). Tutti oggi UNCERTAIN.
+- **R-222-2 (BASSA).** Il commento a `modules/notte/notte.py:155` ("mai testo di file/comandi") è falso.
+  - `read_file` restituisce il contenuto grezzo del file (gas.py:2401), `run_command` lo stdout grezzo (gas.py:2376).
+  - Un file che INIZIA con "Azione in attesa di approvazione umana" (o con "Operazione negata") gonfia quindi i conteggi del riepilogo.
+  - Il test a :352 mette la frase solo in mezzo alla riga, non all'inizio, quindi non copre il caso.
+  - Effetto limitato a un numero nel riepilogo. Fix: un segnale dal kernel invece del testo, oppure correggere il commento.
+- **R-222-3 (BASSA).** `_IN_ATTESA` (`modules/notte/notte.py:58`) ricopia a mano la stringa di gas.py:1540, e nessun test usa il kernel reale. Se il testo in gas.py cambia, il conteggio scende a 0 senza alcun errore. Il test con lo stub uccide la mutazione ma non lega le due stringhe.
+- **R-222-4 (BASSA, autonomia: da dire all'operatore).**
+  - Gas non può più scrivere nessun file `.py`, nemmeno su richiesta esplicita: il DENY non si può firmare, e il ricontrollo a gas.py:1652 lo nega anche dopo una firma.
+  - Gas non può più leggere `.gas_notte/ultimo_giro.md`, quindi non sa rispondere a "cosa hai fatto stanotte?". Stesso discorso per `.github/` e `.gitignore`.
+
+### Cosa NON ho verificato
+- Il comportamento reale su macOS/APFS (plist launchd, `source venv/bin/activate` sotto zsh): non riproducibile in questo ambiente Linux. Ho ragionato su come Python cerca i moduli, senza un run su Mac.
+- Che non esistano symlink nella root del Mac dell'operatore: qui non ce ne sono (`find -type l` vuoto). Un symlink già presente che punta dentro `venv/` passerebbe il controllo lessicale del cancello, e `_safe_path` (gas.py:1139) non elenca `venv`.
+- Il ramo Telegram configurato con un kernel reale (R-221-3 è chiusa solo con lo stub).
+
+La memoria è aggiornata: riga contatore #222 più una lezione, committata come c052d7c in `/home/user/Gas/.claude/agents/memoria_revisore.md`. Il diff in stage è rimasto intatto (5 file).
+
+---
+
+Commit `d0cfc17` — review #223 (diff finale: chiusura R-222), verdetto integrale del revisore:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Le riserve R-222-1, R-222-2 e R-222-3 risultano chiuse e l'ho verificato direttamente. R-222-4 è una scelta accettata, che va comunicata all'operatore. Restano due riserve BASSE, nessuna bloccante.
+
+Letture preliminari fatte: CLAUDE.md (sez. 5, 6, 8), le voci di `reports/stato_progetto.md` cercate con Grep, `.claude/agents/memoria_revisore.md` fino alla #222.
+
+**Elementi del diff esaminati**
+
+1. `modules/gate/gate.py:171` — Il controllo sul primo livello del percorso (`_DENY_WRITE_TOP_PREFIXES`) guarda solo il primo pezzo del percorso già normalizzato (NFKC, normpath, maiuscole ridotte) e scatta solo in scrittura.
+   - Rischio esaminato: aggiramento con `./`, maiuscole, `../`, pezzi vuoti.
+   - Sonde DENY: `./scripts/x`, `././scripts/x`, `a/../scripts/x`, `dati/./../scripts/x`, `scripts//x`, `scripts/./x`, `SCRIPTS/x`, `ｓcripts/x` (lettera a larghezza piena), `scripts\x`, `x/../CLAUDE.md`, `CLAUDE.MD`, `claude.md ` e `claude.md.`, `.MCP.JSON`, `REQUIREMENTS.txt`, `requirements.in`.
+   - `dati/scripts/x` resta UNCERTAIN, come previsto.
+   - Percorsi `.`, `./` e `''`: l'elenco dei pezzi è vuoto, la guardia `parts[:1]` evita l'IndexError e il risultato è UNCERTAIN (la scrittura su una cartella fallisce più avanti nel kernel).
+   - **ok**
+2. `modules/gate/gate.py:105` — Aggiunte le estensioni `.sh`, `.zsh`, `.bash`, `.command` ai file non scrivibili, controllate su `norm.rstrip("/. ")`.
+   - Rischio esaminato: varianti del suffisso.
+   - `x.SH`, `x.sh/` e `a.command ` danno DENY; `x.sh.txt` resta UNCERTAIN, ed è corretto.
+   - Mutation riprodotte su una copia: senza il controllo di primo livello 7 test falliscono, senza le estensioni di shell ne falliscono 4.
+   - **ok**
+3. `modules/gate/gate.py:112` — Il controllo è di sola scrittura: CLAUDE.md, `scripts/` e `requirements` restano leggibili (sez. 6). Il test `tests/test_unit_gate.py:394` copre i casi annidati.
+   - **ok**
+4. `modules/notte/notte.py:156` — Il commento ora dichiara il limite noto (un file o un output che inizia con la stessa frase gonfia il conteggio) invece della frase falsa di prima.
+   - **ok**
+5. `tests/test_unit_notte.py:374` — Il test controlla che le frasi contate dal giro notturno compaiano davvero nel codice del kernel (`inspect.getsource(gas.GasKernel)`).
+   - Mutation riprodotta: cambiando la frase in `gas.py` il test fallisce.
+   - **ok**
+
+**Prove riprodotte:** gate + notte 147 passed; `pytest tests/` 766 passed. La suite kernel (707/0) non l'ho rieseguita a parte: il diff non tocca `gas.py`.
+
+**Riserve (BASSE, da tracciare in stato_progetto.md)**
+
+- **R-223-1 (BASSA)** — `reports/` resta scrivibile da Gas a finestra pulita (`reports/stato_progetto.md` ha dato UNCERTAIN). Quei file sono letti per obbligo dal revisore (stato_progetto.md) e dal bot di verifica (handoff). È lo stesso tipo di rischio chiuso per CLAUDE.md: testo che diventa istruzioni per agenti con privilegi. Da valutare un DENY in scrittura su `reports`, oppure dichiararlo come rischio accettato.
+- **R-223-2 (BASSA, difesa in profondità)** — Il nuovo divieto di scrittura è solo testuale, dentro il cancello, e non è ripetuto in `_safe_path` (gas.py:1184), che lavora sul percorso reale dopo aver seguito i link. Un collegamento simbolico nella root lo aggirerebbe. Oggi non è sfruttabile: la sandbox monta la root in sola lettura (gas.py:1344), write_file non crea collegamenti e nella root non ce ne sono.
+
+**Rischio escluso:** non ho verificato il comportamento su macOS con launchd (filesystem che non distingue le maiuscole, normalizzazione NFD), perché non è riproducibile in questo container. Il casefold del cancello copre il caso maiuscole, ma non l'ho provato su un filesystem reale di quel tipo. Non ho controllato nemmeno i file di configurazione di pytest (`pytest.ini`, `setup.cfg`, oggi UNCERTAIN): senza un `.py` scrivibile non ho trovato un modo di eseguire codice.
+
+**Memoria:** riga #223 più una lezione nuova, committate con `scripts/commit_memoria_revisore.sh` (commit `c1f093c`). Il diff staged è rimasto intatto (5 file).
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Suite kernel (`python tests/test_unit_kernel.py`): 707 PASS prima, 707 PASS dopo. Nessun test kernel aggiunto e nessuno rotto. Output reale: `=== RIEPILOGO: 707 PASS, 0 FAIL ===`.
-- Nuova suite `tests/test_unit_notte.py`: da 0 a 20 test. Output reale: `20 passed in 1.91s`.
-- Mutation provate a mano, tutte colte:
-  - rimozione del reset della cronologia: 1 FAIL;
-  - disattivazione del controllo "catalogo dentro la root": 2 FAIL;
-  - testo della risposta inserito nella riga di diario: 1 FAIL.
-- Una mutation (lock condiviso al posto di esclusivo) è risultata equivalente nel test.
+- **Suite kernel** (`python tests/test_unit_kernel.py`): 707 PASS prima e dopo. Output reale: `=== RIEPILOGO: 707 PASS, 0 FAIL ===`.
+- **Suite notte** (`tests/test_unit_notte.py`): 0 → 26 test.
+- **Suite cancello** (`tests/test_unit_gate.py`): 104 → 121 test.
+- **Insieme notte + cancello**: `147 passed`.
+- **`python -m pytest tests/`**: output reale `766 passed in 108.07s`.
+- **Mutation colte**:
+  - reset della cronologia;
+  - catalogo dentro la root;
+  - testo nel diario;
+  - lock condiviso;
+  - tetto di spesa di default;
+  - conteggio delle azioni negate e in attesa;
+  - exit code;
+  - controllo `isfinite`.
 
 ## §6 STATO CI
 
-`gh` non è autenticato (`Failed to log in to github.com using token (GH_TOKEN)`), quindi le run sono state lette con lo strumento GitHub Actions della sessione.
+`gh` non è autenticato (`Failed to log in to github.com using token (GH_TOKEN)`): le run sono state lette con lo strumento GitHub Actions della sessione.
 
-| Commit | Run CI | Stato alla scrittura dell'handoff |
+| Commit | Run CI | Stato |
 |---|---|---|
-| `2a2ed0d` (feat, testa del push) | CI run 37800758579 (#765), evento push | in_progress |
-| `365e27d` (memoria del revisore) | nessuna run su questo SHA | pushato insieme a `2a2ed0d`: è testato solo come parte dell'albero di `2a2ed0d` |
+| `2a2ed0d` | CI run 37800758579 (#765), push | handoff-check failure (atteso: l'handoff arriva col commit di fine-task, come riportato anche dal bot) |
+| `365e27d` | nessuna run su questo SHA | pushato insieme a `2a2ed0d` |
+| `680dafb` | CI run 37800887986 | success (unit-suite, handoff-check) — check `verifica-bot`: **failure (BOCCIATO, V-1 MEDIA)**, corretto in `d0cfc17` |
+| `1ece5c4`, `c052d7c`, `c1f093c` | nessuna run su questi SHA | pushati insieme a `d0cfc17` |
+| `d0cfc17` | CI run 37803770301 (#767), push; verifica-bot run 37803772906 | in_progress alla scrittura dell'handoff |
 | commit di fine-task che contiene questo file | — | run non ancora disponibile alla scrittura dell'handoff |
-
-Run precedente sul branch: `5d759ff`, CI run 37798972499 → success. Quel commit è della sessione precedente.
 
 ## §7 RISERVE APERTE
 
-Nuove, dalla review #220, tutte BASSE e tracciate in `reports/stato_progetto.md` alla voce 6:
+**Aperte, tutte BASSE** (tracciate in `reports/stato_progetto.md`, voce 6):
+- R-220-2 — l'`__init__` del kernel legge `.gas_history.json`.
+- R-220-3 — nessun tetto di tempo.
+- R-223-1 — Gas può ancora scrivere in `reports/`, che il revisore e il bot leggono.
+- R-223-2 — il divieto di scrittura è solo testuale e non è ripetuto in `_safe_path`. Oggi non è sfruttabile.
 
-- **R-220-1** — l'esito di un'azione firmata finisce nella cronologia dell'operatore.
-  - Già corretto: `reports/setup_notte.md`.
-  - Da correggere: il docstring di `notte.py`.
-- **R-220-2** — `__init__` del kernel legge comunque `.gas_history.json`.
-- **R-220-3** — nessun tetto di tempo, né per singolo compito né per l'intero giro.
-- **R-220-4** — `.gas_notte/` non è tra i prefissi vietati dal cancello.
+**Chiuse in questa sessione:**
+- R-220-1 e R-220-4;
+- R-221-1..4;
+- R-222-1..3;
+- V-1, V-2, V-3 della verifica esterna;
+- V-1 del bot di verifica.
 
-Restano aperti dalle sessioni precedenti (non sono riserve): lo scarto intermittente di Gemini su `rifletti` e il bottone Rifiuta di Telegram (voce 9).
+**Scelta accettata:** R-222-4.

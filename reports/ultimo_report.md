@@ -1,33 +1,35 @@
-# ULTIMO REPORT — 2026-10-08 — FASE 4.5 fetta 1: `gas notte`, il giro autonomo di Gas
+# ULTIMO REPORT — 2026-10-08 — FASE 4.5 fetta 1: `gas notte` + cancello rinforzato
 
 ## Riassunto
 
 Nuovo comando `python3 gas.py notte`: Gas esegue da solo i compiti scritti in `~/.gas_notte.yaml`,
-uno alla volta e ognuno da zero, e lascia il riepilogo in `~/Gas/.gas_notte/ultimo_giro.md`.
-Sul Mac lo avvia di notte launchd (template pronto). Le azioni rischiose restano in attesa della
-firma su Telegram. Oggi Gas di notte NON sviluppa codice: non può toccare il proprio motore.
+ognuno da zero, con riepilogo in `~/Gas/.gas_notte/ultimo_giro.md` e tetto di spesa di default.
+Il bot di verifica ha trovato un buco reale (Gas poteva scrivere codice che il giro notturno avrebbe
+eseguito fuori sandbox): chiuso nel cancello. Oggi Gas di notte NON sviluppa codice.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (tocca motore e CI): numero nel report di chat.
-2. Sul Mac, dopo il merge: seguire `reports/setup_notte.md` (catalogo + timer launchd, 5 passi).
-3. Ancora aperte dalla sessione precedente: lezioni #4, #5, #6 (parere agente: approva 6 e 5,
-   rifiuta 4); firma in attesa `fab385e4…` col bot Telegram avviato.
+1. PR #160: merge quando il bot di verifica dà success sul nuovo commit (la sessione lo fa da sola
+   se tutto è positivo, su richiesta dell'operatore).
+2. Sul Mac, dopo il merge: seguire `reports/setup_notte.md` (catalogo, tetto di spesa, timer launchd).
+3. Da sapere (R-222-4): Gas non può più scrivere file `.py`/`.sh`, né `scripts/`, `CLAUDE.md`,
+   `gas_identity.md`, `requirements*`; non può leggere `.gas_notte/`. Se serve diversamente, decidilo tu.
+4. Ancora aperte da prima: lezioni #4, #5, #6 (parere: approva 6 e 5, rifiuta 4); firma `fab385e4…`.
 
 ## Esito
 
-- **Fetta 1 FASE 4.5 — comando `gas notte`**: FATTA — `modules/notte/notte.py`, `notte_cmd` in
-  `gas.py`, 20 test (`tests/test_unit_notte.py`), passo CI; review #220 APPROVATO CON RISERVE.
-- **Template launchd + catalogo di esempio + guida**: FATTA — `scripts/notte/`, `reports/setup_notte.md`.
-- **Suite kernel**: 707 PASS, 0 FAIL (invariata, nessun test rotto).
-- **Riepilogo su Telegram al mattino**: DEFERITA — fetta 2 (per ora riepilogo su file + diario).
-- **Orari per singolo compito**: DEFERITA — l'orario lo dà il timer di sistema (un giro a notte).
-- **Riserve R-220-1..4 (BASSE)**: DEFERITE — elencate in `reports/stato_progetto.md` voce 6;
-  la frase sulla cronologia in `reports/setup_notte.md` è già corretta (R-220-1, parte doc).
-- **Prova reale sul Mac (launchd)**: DEFERITA — non riproducibile qui (Linux); la fa l'operatore.
+- **Fetta 1 FASE 4.5 — comando `gas notte`**: FATTA — `modules/notte/`, `notte_cmd` in `gas.py`; review #220.
+- **Correzioni verifica esterna #160 (V-1 MEDIA budget, V-2, V-3)**: FATTA — `d0cfc17`; review #221.
+- **Correzione bot di verifica #160 (V-1 MEDIA catena di avvio fuori sandbox)**: FATTA — cancello
+  `modules/gate/gate.py`; review #222 e #223 (chiusa anche R-222-1 MEDIA, script `.sh` e file di primo livello).
+- **Test**: notte 26, gate 121 (147 insieme), kernel 707 PASS 0 FAIL, `pytest tests/` 766 passed.
+- **Template launchd + catalogo + guida**: FATTA — `scripts/notte/`, `reports/setup_notte.md`.
+- **Riepilogo su Telegram al mattino**: DEFERITA — fetta 2.
+- **Tetto di tempo per compito/giro (R-220-3)**: DEFERITA — fetta 2.
+- **R-220-2, R-223-1, R-223-2 (BASSE)**: DEFERITE — in `reports/stato_progetto.md` voce 6.
+- **Prova reale sul Mac (launchd)**: DEFERITA — non riproducibile qui; la fa l'operatore.
 
 ## Anomalie
 
-- `gh` in questo ambiente non è autenticato: PR e CI gestite con gli strumenti GitHub della sessione.
-- Il primo tentativo di commit è stato bloccato dal gate perché il marcatore di review era creato
-  nello stesso comando: rifatto in due passi (comportamento corretto del gate).
+- `gh` non autenticato in questo ambiente: PR e CI lette con gli strumenti GitHub della sessione.
+- Il bot di verifica ha BOCCIATO il commit `680dafb` (V-1 MEDIA): motivo reale, corretto in `d0cfc17`.
