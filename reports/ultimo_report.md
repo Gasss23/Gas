@@ -1,22 +1,41 @@
-# ULTIMO REPORT — 2026-10-08 — Prova di `gas rifletti` sul Mac: esito registrato
+# ULTIMO REPORT — 2026-10-08 — `rifletti` logga la risposta scartata
 
 ## Riassunto
 
-La prova sul Mac di FASE 2.6 (riflessione di fine task) è riuscita: `gas rifletti` ha proposto
-3 lezioni e l'operatore le ha decise a mano. Sono emersi due problemi piccoli, registrati in
-`reports/stato_progetto.md` (Prossimi passi, voce 9) per una prossima sessione. Solo documenti, nessun codice.
+Quando `gas rifletti` scarta la risposta di un provider (come Gemini sul Mac), adesso
+`gas_debug.log` dice PERCHÉ: motivo preciso, `finish_reason`, lunghezza, e inizio (300
+caratteri) + fine (150) della risposta grezza. Il comportamento della riflessione è invariato. PR #155.
 
 ## DECISIONI UMANE RICHIESTE
 
-Nessuna nuova. Il bottone "Rifiuta" su Telegram va riprovato con il bot in ascolto (`python3 gas.py telegram`).
+1. Merge della PR #155 (https://github.com/Gasss23/Gas/pull/155), dopo CI verde sull'ultimo commit.
+2. Sul Mac, dopo il merge: rilanciare `gas rifletti` e leggere in `gas_debug.log` la riga
+   `riflessione: gemini-flash … risposta non valida …` per sapere perché Gemini viene scartato.
 
 ## Esito
 
-- **Prova `gas rifletti` sul Mac**: FATTA (operatore). 3 lezioni proposte; `gas lezioni lista`: #2 `approvata`, #1 e #3 `rifiutata` (decise 2026-10-08). I comandi `approva 2` / `rifiuta 1|3` rilanciati dopo hanno dato "transizione non ammessa": le lezioni erano già state decise, comportamento corretto dello store.
-- **Gemini non letto su `rifletti`**: DEFERITA — risposta scartata da `_parse_riflessione`, Groq ha preso il posto. Causa ignota: i recinti sono già tollerati e il log non contiene né la risposta grezza né il motivo dello scarto. Prima serve una piccola modifica di codice che li registri (V-1 della verifica bot su PR #154, corretta in questa PR).
-- **Bottone "Rifiuta" su Telegram senza effetto** (firma `fab385e4-…`, `salva_contatto test@prova.it`): DEFERITA — ipotesi: il bot `python3 gas.py telegram` non era in ascolto, quindi la pressione non è arrivata a nessuno (`gestisci_callback`, `modules/telegram/bot.py`). Da riprovare col bot avviato; se resta, bug da aprire.
-- `reports/stato_progetto.md`: FATTA — aggiunta la voce 9 in "Prossimi passi".
+- **Log della risposta scartata in `rifletti`** (`gas.py`, commit `c2919cb`): FATTA — funzione pura
+  `_analizza_riflessione` (stessa logica del parser + motivo dello scarto); `_parse_riflessione`
+  resta wrapper invariato; `_anteprima_log` (repr su una riga). Warning di scarto con motivo,
+  `finish_reason`, lunghezza, anteprima.
+- **Motivi di scarto precisi** (commit `aead68d`): FATTA — V-1 della verifica esterna / V-3 del bot:
+  "risposta non testuale (<tipo>)" separato da "risposta vuota"; "JSON aperto ma mai chiuso
+  (manca '}': risposta tagliata?)" separato da "nessun oggetto JSON (manca '{')".
+- **Coda della risposta nel log** (commit `f88667d`): FATTA — V-2 del bot: anteprima = primi 300 +
+  ultimi 150 caratteri (`RIFLESSIONE_LOG_CODA_CHARS`) con il conteggio degli omessi; casi
+  `cap/coda <= 0` protetti (R-213-1).
+- **Test** (`tests/test_unit_kernel.py`): FATTA — T80l2, T80l3, T80u2, T80u3. Suite kernel: 703 PASS, 0 FAIL.
+- **Revisore**: #210 APPROVATO CON RISERVE (R-210-1 chiusa), #211 APPROVATO, #212 APPROVATO,
+  #213 APPROVATO CON RISERVE (R-213-1 chiusa), #214 APPROVATO.
+- **Verifica esterna** (agente nuovo) e **bot di verifica** sul commit `74fe43e`: APPROVATO CON RISERVE;
+  riserve di codice corrette in questa PR (vedi sopra), riserve sull'handoff corrette in questo handoff.
+- **Diagnosi vera di Gemini**: DEFERITA — richiede una run sul Mac con chiave reale.
+- **Bottone "Rifiuta" Telegram**: DEFERITA — invariato, vedi `reports/stato_progetto.md` voce 9.
+- **CLAUDE.md vs ruleset** (V-2 verifica esterna: i check required di main sono tre, c'è anche
+  `verifica-bot`): DEFERITA — modifica a CLAUDE.md da decidere con l'operatore.
 
 ## Anomalie
 
-Nessuna nel repo. Le due sopra sono anomalie runtime sul Mac, non ancora diagnosticate.
+- La run CI 37765996199 sul commit motore `c2919cb` è ROSSA solo nel job `handoff-check`: è strutturale,
+  perché l'handoff di quel commit è arrivato solo nel commit di fine-task successivo `74fe43e`
+  (CI 37766139998 verde).

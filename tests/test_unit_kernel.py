@@ -6684,7 +6684,8 @@ check("T76d variabili TELEGRAM_* non presenti nell'ambiente della suite",
 
 # ---------- T80: FASE 2.6 — riflessione di fine task (recap + lezioni in quarantena) ----------
 print("\n--- T80: riflessione di fine task (FASE 2.6) ---")
-from gas import _RECAP_DATI_OPEN, _RECAP_DATI_CLOSE, _parse_riflessione, _cascata_provider
+from gas import (_RECAP_DATI_OPEN, _RECAP_DATI_CLOSE, _parse_riflessione, _cascata_provider,
+                 _analizza_riflessione, _anteprima_log)
 
 class _Rif80:
     """Client finto: per ogni modello una risposta (stringa = content, Exception = errore).
@@ -6813,10 +6814,47 @@ try:
     # T80l — JSON non valido dal primo provider → fallback al successivo (Groq)
     _setup80({_FLASH80: "Ecco il recap: tutto bene!", _GROQ80: _RISP_OK80})
     _k80l = _k80_con_storia()
-    _e80l = _k80l.rifletti()
+    _logrec80l: list = []
+    class _H80l(logging.Handler):
+        def emit(self, record):
+            _logrec80l.append(record.getMessage())
+    _h80l = _H80l(level=logging.WARNING)
+    logging.getLogger().addHandler(_h80l)
+    try:
+        _e80l = _k80l.rifletti()
+    finally:
+        logging.getLogger().removeHandler(_h80l)
     check("T80l risposta non JSON → provider successivo (groq) produce la riflessione",
           _e80l["ok"] and _e80l["provider"] == "groq" and _e80l["provider_atteso"] == "gemini-flash"
           and [c[0] for c in _Rif80.chiamate] == [_FLASH80, _GROQ80], f"{_e80l}")
+    # T80l2 — la risposta scartata finisce nel log: motivo + anteprima grezza
+    _scarto80l = [m for m in _logrec80l if "risposta non valida" in m]
+    check("T80l2 risposta scartata loggata con motivo, finish_reason e anteprima",
+          len(_scarto80l) == 1 and "nessun oggetto JSON" in _scarto80l[0]
+          and "'Ecco il recap: tutto bene!'" in _scarto80l[0]
+          and "finish_reason=" in _scarto80l[0], str(_logrec80l)[:400])
+    # T80l3 — risposta tagliata (finish_reason='length', JSON monco e lungo): nel log
+    # finiscono finish_reason, lunghezza vera e anteprima TRONCATA, mai la risposta intera
+    _monca80 = '{"recap": "' + "z" * 2000 + " CODA-MONCA"
+    def _tagliata80(messages, tools):
+        msg = SimpleNamespace(content=_monca80, tool_calls=None)
+        return SimpleNamespace(choices=[SimpleNamespace(message=msg, finish_reason="length")],
+                               usage=None)
+    _setup80({_FLASH80: _tagliata80, _GROQ80: _RISP_OK80})
+    _logrec80l.clear()
+    logging.getLogger().addHandler(_h80l)
+    try:
+        _e80l3 = _k80_con_storia().rifletti()
+    finally:
+        logging.getLogger().removeHandler(_h80l)
+    _scarto80l3 = [m for m in _logrec80l if "risposta non valida" in m]
+    check("T80l3 risposta tagliata: finish_reason='length', lunghezza vera, anteprima troncata",
+          _e80l3["ok"] and _e80l3["provider"] == "groq" and len(_scarto80l3) == 1
+          and "finish_reason='length'" in _scarto80l3[0] and "mai chiuso" in _scarto80l3[0]
+          and f"lunghezza={len(_monca80)}" in _scarto80l3[0]
+          and f"…[+{len(_monca80) - gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS - gas.RIFLESSIONE_LOG_CODA_CHARS} caratteri]…" in _scarto80l3[0]
+          and "CODA-MONCA'" in _scarto80l3[0]
+          and "z" * 400 not in _scarto80l3[0], str(_logrec80l)[:400])
 
     # T80m — tutti i provider falliscono: nessun crash, nessuna scrittura
     _setup80({_FLASH80: RuntimeError("500 boom"), _GROQ80: '{"lezioni": ["x"]}'})
@@ -7012,6 +7050,30 @@ try:
           and _parse_riflessione('[1,2]') is None
           and _parse_riflessione('{"recap": "a", "lezioni": "una sola"}') == ("a", ["una sola"])
           and _parse_riflessione('ok {"recap": " a ", "lezioni": [1, "", "b"]} fine') == ("a", ["b"]))
+    # T80u2 — motivo dello scarto e anteprima per il log diagnostico
+    check("T80u2 _analizza_riflessione: un motivo distinto per ogni scarto, '' se valida",
+          _analizza_riflessione(None)[1] == "risposta vuota"
+          and _analizza_riflessione("   ")[1] == "risposta vuota"
+          and "nessun oggetto JSON" in _analizza_riflessione("niente json")[1]
+          and "non testuale (int)" in _analizza_riflessione(5)[1]
+          and "non testuale (list)" in _analizza_riflessione([])[1]
+          and "mai chiuso" in _analizza_riflessione('{"recap": "tagl')[1]
+          and "non decodificabile" in _analizza_riflessione('{"recap": "a",}')[1]
+          and "recap mancante" in _analizza_riflessione('{"recap": ""}')[1]
+          and "lezioni non è una lista" in _analizza_riflessione('{"recap": "a", "lezioni": 5}')[1]
+          and _analizza_riflessione('{"recap": "a"}') == (("a", []), ""))
+    _cap80 = gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS
+    _coda80 = gas.RIFLESSIONE_LOG_CODA_CHARS
+    _lunga80 = "x" * 1000 + "FINE"
+    _ant80 = _anteprima_log(_lunga80)
+    check("T80u3 _anteprima_log: repr su una riga, inizio + coda con conteggio degli omessi",
+          _anteprima_log("a\nb") == "'a\\nb'" and _anteprima_log(None) == "None"
+          and _anteprima_log("y" * (_cap80 + _coda80)) == repr("y" * (_cap80 + _coda80))
+          and f"…[+{len(_lunga80) - _cap80 - _coda80} caratteri]…" in _ant80
+          and _ant80.endswith("FINE'") and _ant80.startswith("'x")
+          and len(_ant80) < _cap80 + _coda80 + 40
+          and _anteprima_log(_lunga80, cap=10, coda=0) == f"{'x' * 10!r}…[+{len(_lunga80) - 10} caratteri]…''"
+          and len(_anteprima_log(_lunga80, cap=-5, coda=-5)) < 40)
     check("T80v cascata unica: 'complesso' parte da gemini-flash, gratuiti in coda",
           [c[0] for c in _cascata_provider("complesso")] == ["gemini-flash", "groq", "openrouter", "ollama"]
           and [c[0] for c in _cascata_provider("semplice")][:3] == ["gemini-flash-lite", "gemini-flash", "groq"])
