@@ -1,25 +1,22 @@
-# ULTIMO REPORT — 2026-10-08 — R-203-1: la compressione non "lava" più l'input esterno
+# ULTIMO REPORT — 2026-10-08 — Prova di `gas rifletti` sul Mac: esito registrato
 
 ## Riassunto
 
-Chiuso l'ultimo buco grave noto del cancello: quando Gas comprimeva una conversazione lunga,
-il testo letto da file o comandi finiva nel riassunto come se l'avesse scritto l'operatore, e il
-cancello non lo vedeva più come esterno. Ora la prima riga del riassunto lo dichiara e il
-cancello la legge; nel dubbio considera il riassunto esterno.
+La prova sul Mac di FASE 2.6 (riflessione di fine task) è riuscita: `gas rifletti` ha proposto
+3 lezioni e l'operatore le ha decise a mano. Sono emersi due problemi piccoli, registrati in
+`reports/stato_progetto.md` (Prossimi passi, voce 9) per una prossima sessione. Solo documenti, nessun codice.
 
-## Cosa ho fatto
+## DECISIONI UMANE RICHIESTE
 
-1. `gas.py`: la compressione marca la prima riga del riepilogo `[CONTIENE INPUT ESTERNO]` o `[SOLO INTERNO]` (si propaga alle compressioni successive; un tool senza nome conta come esterno).
-2. `gas.py`: `_finestra_e_contaminata` considera contaminato ogni riepilogo che non si dichiara `[SOLO INTERNO]` (anche quelli vecchi).
-3. Test T72g: marcatori, propagazione, falsi marcatori, round-trip (scrittura in attesa di conferma dopo un riassunto esterno, eseguita dopo uno interno). Kernel 699 PASS / 0 FAIL.
-4. `reports/design_cancello.md` §3a corretto.
-5. Review #208 APPROVATO CON RISERVE (R-208-1/2 chiuse nella stessa PR) → #209 APPROVATO.
+Nessuna nuova. Il bottone "Rifiuta" su Telegram va riprovato con il bot in ascolto (`python3 gas.py telegram`).
 
-## Cosa NON ho fatto da solo
+## Esito
 
-- Prova di `gas rifletti` con un modello vero: qui non ci sono chiavi API → la fa l'operatore sul Mac.
+- **Prova `gas rifletti` sul Mac**: FATTA (operatore). 3 lezioni proposte; `gas lezioni lista`: #2 `approvata`, #1 e #3 `rifiutata` (decise 2026-10-08). I comandi `approva 2` / `rifiuta 1|3` rilanciati dopo hanno dato "transizione non ammessa": le lezioni erano già state decise, comportamento corretto dello store.
+- **Gemini non letto su `rifletti`**: DEFERITA — risposta scartata come JSON non valido, Groq ha preso il posto. Serve l'output grezzo da `gas_debug.log`.
+- **Bottone "Rifiuta" su Telegram senza effetto** (firma `fab385e4-…`, `salva_contatto test@prova.it`): DEFERITA — ipotesi: il bot `python3 gas.py telegram` non era in ascolto, quindi la pressione non è arrivata a nessuno (`gestisci_callback`, `modules/telegram/bot.py`). Da riprovare col bot avviato; se resta, bug da aprire.
+- `reports/stato_progetto.md`: FATTA — aggiunta la voce 9 in "Prossimi passi".
 
-## Cosa devi fare tu
+## Anomalie
 
-1. Niente per questa PR: se il bot dice sì la mergio.
-2. Sul Mac: `git checkout main && git pull`, un piccolo task, `python gas.py rifletti`, poi `python gas.py lezioni approva|rifiuta <id>`; mandami l'output.
+Nessuna nel repo. Le due sopra sono anomalie runtime sul Mac, non ancora diagnosticate.

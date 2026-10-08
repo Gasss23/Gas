@@ -356,6 +356,9 @@ Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 6. **FASE 4.5 — Task scheduler autonomo** ("Direttore"): catalogo YAML task autonomi. NB: con VPS perso, va implementato **IN LOCALE sul Mac** (launchd/cron, non systemd). Primo mattone dell'orchestratore.
 7. **FASE 5 — 🔴 RESET (2026-09-14)**: VPS Hetzner perso per mancato pagamento. S1/S1b non più validi. Da rifare da ZERO su server nuovo. **RIMANDATO** per scelta operatore. Vedere §Trasversali OBBLIGATORI in roadmap.md prima del prossimo deploy.
 8. **Riserve review #38** (non bloccanti): R-tel-budget-perf (scan JSONL crescente), R-tel-tool_res (cosmetic).
+9. **Prova FASE 2.6 sul Mac (2026-10-08, operatore)** — `gas rifletti` FUNZIONA: 3 lezioni proposte, decise a mano (#2 approvata, #1 e #3 rifiutate; `gas lezioni lista` confermato). Aperti da questa prova:
+   - 🟡 **Gemini su `rifletti`**: risposta scartata come JSON non valido (ipotesi: testo/recinti attorno al JSON), il paracadute Groq ha preso il posto. Da diagnosticare con l'output grezzo in `gas_debug.log`.
+   - 🟡 **Bottone "Rifiuta" su Telegram senza effetto** sulla firma in attesa `fab385e4-…` (`salva_contatto test@prova.it`). Ipotesi principale: i bottoni li gestisce SOLO il bot in ascolto (`python3 gas.py telegram`, `gestisci_callback` in `modules/telegram/bot.py`); se il bot non gira la pressione non arriva a nessuno. Prima verifica: avviare il bot e ripremere. Se il problema resta, è un bug da aprire.
 
 ### PARK — registrati, nessun impegno
 - Retention del diario (archiviazione/export, MAI DELETE — quando il volume lo richiederà).
