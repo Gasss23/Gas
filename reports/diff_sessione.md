@@ -1,9 +1,8 @@
-# DIFF SESSIONE — 2026-10-08 — CLAUDE.md con i 3 check required (PR #158)
+# DIFF SESSIONE — 2026-10-08 — seconda prova di `gas rifletti` sul Mac (solo documenti)
 
-File toccati (rispetto a main `0bfa667`):
+File toccati (rispetto a main `0ad9c74`):
 
-- `CLAUDE.md` — lucchetto main: i 3 check required reali del ruleset `main-lock` (prima ne elencava 2).
-- `reports/stato_progetto.md` — voce 9: PR #158 da decidere, riserve basse residue di #157.
+- `reports/stato_progetto.md` — voce 9: Gemini ok alla seconda prova (anomalia intermittente), Mac su HEAD staccato, lezioni #4–#6 da decidere.
 - `reports/ultimo_report.md` — report di questo task.
 - `reports/handoff.md` — dossier di fine sessione.
 - `reports/diff_sessione.md` — questo file.
