@@ -13,7 +13,8 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — registrare l'esito della prova FASE 2.6 sul Mac**: `FATTA` — voce 9 in `reports/stato_progetto.md`.
-- **Diagnosi Gemini/`rifletti`**: `DEFERITA` — serve l'output grezzo da `gas_debug.log` del Mac.
+- **Fetta 2 — correggere la diagnosi Gemini dopo V-1 del bot**: `FATTA` — tolta l'ipotesi dei recinti (già tollerati), annotato che il log non ha la risposta grezza.
+- **Diagnosi Gemini/`rifletti`**: `DEFERITA` — serve prima una piccola modifica di codice che registri risposta troncata e motivo dello scarto.
 - **Diagnosi bottone Rifiuta Telegram**: `DEFERITA` — prima riprova col bot in ascolto.
 
 ---
@@ -22,16 +23,16 @@
 
 ```
  reports/diff_sessione.md  |  15 +++++++++------
- reports/handoff.md        | 134 +++++++++++---------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md        | 136 +++++++++++++---------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md |   3 +++
  reports/ultimo_report.md  |  29 +++++++++++++----------------
- 4 files changed, 36 insertions(+), 145 deletions(-)
+ 4 files changed, 38 insertions(+), 145 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-
+39ddac4 docs(fase-2.6): esito prova gas rifletti sul Mac + due anomalie aperte
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
@@ -48,8 +49,9 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-run non ancora disponibile alla scrittura dell'handoff (commit di fine-task unico della sessione; la run parte al push).
+Commit 39ddac4: run 37761434898 — unit-suite success, handoff-check success; verifica-bot success (APPROVATO CON RISERVE, V-1 BASSA, corretta nel commit successivo).
+Commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova riserva di review. Aperti (non riserve): Gemini non letto su `rifletti`; bottone Rifiuta Telegram senza effetto — vedi `reports/stato_progetto.md` voce 9.
+V-1 (BASSA, verifica bot #154): diagnosi Gemini contraddiceva il codice — CHIUSA in questa PR. Aperti (non riserve): Gemini non letto su `rifletti` (serve logging), bottone Rifiuta Telegram — vedi `reports/stato_progetto.md` voce 9.
