@@ -148,10 +148,19 @@ def _dopo_finding(testo: str) -> str:
     return testo[m.end():] if m else testo
 
 
+# R-161-1 (PR #149, due falsi NO): una riserva GIÀ registrata nel repo, citata col suo id
+# di revisione e la gravità tra parentesi ("R-203-1 (ALTA, preesistente)"), non è un
+# finding di questa PR. Si toglie SOLO la parentesi della citazione e l'id resta (#205
+# B-1: con l'id le regex delle righe di finding vedono ancora il resto della riga);
+# niente parentesi annidate (#205 B-2: "R-1-1 (x, V-2 (ALTA))" resta intera e blocca).
+_RISERVA_REGISTRATA = re.compile(r"\b(R-\d+-\d+)\b\s*\([^()\n]*\)")
+
+
 def _gravita_nel_testo(testo: str) -> set[str]:
     """Gravità citate nel testo libero: "V-1 (media)", "F-2 (MEDIA-BASSA)" e ogni parola
-    ALTA/MEDIA maiuscola dopo FINDING ("V-1 — MEDIA — x")."""
-    sezione = _dopo_finding(testo)
+    ALTA/MEDIA maiuscola dopo FINDING ("V-1 — MEDIA — x"). Le citazioni di riserve già
+    registrate ("R-203-1 (ALTA, ...)") non contano (R-161-1)."""
+    sezione = _RISERVA_REGISTRATA.sub(r"\1", _dopo_finding(testo))
     # HIGH, CRITICAL, BLOCKER... contano come MEDIA (bloccanti) anche se fuori vocabolario.
     trovate: set[str] = {p if p in GRAVITA_BLOCCANTI else "MEDIA"
                          for p in _PAROLA_BLOCCANTE.findall(sezione)}

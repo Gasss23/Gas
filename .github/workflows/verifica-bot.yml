@@ -139,6 +139,9 @@ jobs:
           sezione FINDING del testo scrivi la gravità tra parentesi: "V-1 (MEDIA) — ...".
           Dopo la riga "FINDING:" usa le parole ALTA e MEDIA (maiuscole) SOLO per la gravità
           di un finding reale: chi legge il testo le tratta come finding bloccanti.
+        - Un problema GIÀ registrato nel repo (riserva con id tipo R-203-1) che NON nasce da
+          questa PR citalo solo col suo id e la gravità tra parentesi, "R-203-1 (ALTA,
+          preesistente)": non è un finding V-, non va nel campo "finding" e non blocca.
         - La riga del verdetto è ESATTAMENTE "VERIFICA ESTERNA #${{ github.event.pull_request.number }} — <ESITO>"
           senza altre parole; nessun'altra riga inizia con "VERIFICA ESTERNA". Una riga fuori
           formato vale come NO definitivo su questo commit.

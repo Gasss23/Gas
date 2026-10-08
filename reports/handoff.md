@@ -288,3 +288,39 @@ Review #204: merge di origin/main 3d56bbf (PR #150) dentro PR #149 (FASE 2.6), s
 - Il comportamento reale in os_strict con bwrap su VPS: non si può riprodurre in questo ambiente di sviluppo.
 
 **Memoria**: ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga #204 e una lezione nuova: dopo un merge che allarga la contaminazione, rieseguire le mutation dei controlli in OR. Non ho fatto commit, come richiesto, ma ho rieseguito `git add` del file: lo staged è cambiato, quindi `scripts/segna_review_ok.sh` va lanciato su questo index aggiornato.
+
+## §9 SECONDO MERGE DI MAIN (PR #151, R-161-1) — verdetto del revisore
+
+Merge di origin/main 0cf37d4: porta la correzione del parser del bot (le riserve già registrate citate nel verdetto non bloccano). Conflitti solo su report e memoria del revisore. Prove: bot+gate 371 passed, kernel 689 PASS / 0 FAIL. Verdetto INTEGRALE (path assoluti resi relativi):
+
+## VERDETTO: APPROVATO
+
+Review #207: merge di origin/main `0cf37d4` (PR #151, R-161-1) dentro la PR #149 (FASE 2.6), branch `feat/merge-automatico-z1xjx2`. La risoluzione dei conflitti è corretta, i test passano e la 2.6 non interagisce con la macchina del bot.
+
+**Letture obbligatorie fatte:** CLAUDE.md (sez. 1, 5, 8, 10), le voci interessate di `reports/stato_progetto.md`, e `.claude/agents/memoria_revisore.md` con le lezioni #199–#206. Dalla lezione #180 viene il confronto con entrambi i genitori del merge.
+
+**Elementi del diff esaminati**
+
+1. `scripts/bot_esito.py:156` — `_RISERVA_REGISTRATA = re.compile(r"\b(R-\d+-\d+)\b\s*\([^()\n]*\)")`, applicata a `:163` per togliere solo la parentesi e lasciare l'id della riserva.
+   - Rischio: che il merge abbia portato una versione diversa da quella approvata in #206.
+   - Prova: `git diff --cached MERGE_HEAD` non elenca né questo file né il workflow né il test, quindi sono identici a main.
+   - Rischio di interazione con la 2.6: provato col testo reale del verdetto su #149. `_gravita_nel_testo("FINDING:\nR-203-1 (ALTA, gate e compressione) …")` restituisce `set()`. È l'effetto voluto: la PR #149 non prende più un NO definitivo falso. — **ok**
+2. `.github/workflows/verifica-bot.yml:142-144` — nuova clausola del prompt per citare le riserve preesistenti.
+   - Rischio: che le modifiche della 2.6 alterino la decisione del bot o portino la PR #149 dentro MACCHINA_BOT.
+   - Prova: `tocca_macchina_bot()` sui 9 file che restano diversi da main (gas.py, modules/memory/store.py, tests/test_unit_kernel.py, 5 file di reports/, memoria) dà `False`. Nessuno di questi file è nell'elenco a `scripts/bot_esito.py:53-73`. Dopo il merge la PR #149 non tocca più `scripts/` né `.github/`, quindi il bot può approvarla. — **ok**
+3. `reports/stato_progetto.md:146` (riga R-161-1 CHIUSA di main) e `:148` (riga R-200-2 del branch).
+   - Rischio: risoluzione sbagliata o riga doppia.
+   - Prova: rispetto a main cambia solo la riga R-200-2, che ora cita `gas.py:783` e `:484`. Ho controllato nell'index che quelle righe contengano davvero l'uso del prefisso di compressione e la definizione di `_RIEPILOGO_COMPRESSIONE_PREFIX`. Non ci sono marcatori di conflitto. — **ok**
+4. `.claude/agents/memoria_revisore.md` (contesto) — l'unione #199–#204 (dal branch) e #205/#206 (da main) è corretta. Rispetto a HEAD ci sono solo #205, la sua lezione e #206; rispetto a main solo le 10 righe #199–#204. Nessun numero duplicato, nessun marcatore. — **ok**
+
+**Interazioni tra FASE 2.6 e la macchina del bot:** non ce ne sono a livello di codice. `gas.py`, `store.py` e `test_unit_kernel.py` non importano e non toccano `bot_esito.py`, MACCHINA_BOT o il parser. L'unico punto di contatto è voluto: con R-161-1 il bot smette di bocciare la PR #149 per la citazione della riserva R-203-1 (ALTA, preesistente).
+
+**Prove riprodotte:** prima ho verificato che i file su disco coincidono con quelli in staging.
+- Le suite di bot, gate, gasmerge, hook e controllo dell'handoff danno **621 passed**. Sono più file dei 371 dichiarati, perché ho incluso anche `test_unit_hooks.py`.
+- Il kernel (`tests/test_unit_kernel.py`, lanciato da /tmp) dà **689 PASS, 0 FAIL**, compresi T80 e T79a.
+
+**Cosa NON ho verificato**
+- La run reale del bot su #149 dopo il push (che dia APPROVE e non COMMENT): dipende da GitHub Actions e dal modello, non si riproduce in locale. Ho provato solo il parser sul testo del verdetto.
+- La CI su Python 3.11: ho eseguito solo con l'interprete locale.
+
+**Da fare per l'agente principale:** ho aggiunto la riga `#207` in coda a `.claude/agents/memoria_revisore.md` senza committare, come richiesto. Questa riga ora è una modifica non in staging sopra la versione unita: va fatto `git add .claude/agents/memoria_revisore.md` prima di concludere il merge.

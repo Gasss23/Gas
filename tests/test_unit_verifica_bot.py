@@ -426,6 +426,48 @@ class TestStorico:
         testo = "VERIFICA ESTERNA #130 — APPROVATO\nV-1 (MEDIA) — qualcosa"
         assert be.decidi(_verdetto("APPROVATO", [], testo), SHA, SHA)[0] == "COMMENT"
 
+    # R-161-1 (PR #149, due falsi NO reali): una riserva GIÀ registrata citata col suo id
+    # R-<n>-<n> e la gravità tra parentesi non è un finding di questa PR.
+    @pytest.mark.parametrize("riga", [
+        "- Riserve già tracciate: R-203-1 (ALTA, preesistente, fuori da questa PR), R-204-1.",
+        "RACCOMANDAZIONE: resta prioritaria R-200-2 (ALTA, preesistente): run_command fuori set.",
+        "- R-202-1 (MEDIA, già in stato_progetto.md) e R-199-3 (BASSA).",
+    ])
+    def test_citazione_di_riserva_registrata_non_blocca(self, riga):
+        testo = ("VERIFICA ESTERNA #149 — APPROVATO CON RISERVE\nFINDING:\n"
+                 f"V-1 (BASSA) — x\n{riga}\nNON VERIFICATO: -\nRACCOMANDAZIONE: merge")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    # Il resto della difesa resta intatto: si toglie SOLO "R-<n>-<n> (...)".
+    @pytest.mark.parametrize("riga", [
+        "V-1 (ALTA) — bug di questa PR",                      # finding del bot
+        "R-203-1 (BASSA) ma questa PR introduce un bug ALTA",  # parola fuori dalla citazione
+        "R-203-1 ALTA senza parentesi",                        # non è la forma della citazione
+        "R-7 (ALTA) — x",                                      # non è un id di riserva R-n-n
+        "R-203-1 (BASSA), V-2 (MEDIA) — x",                    # finding sulla stessa riga
+        # #205 B-1: gravità minuscole/inglesi/a parole dopo la citazione restano viste.
+        "R-203-1 (BASSA) questa PR introduce un bug grave",
+        "R-203-1 (BASSA) ma x è high",
+        "R-203-1 (BASSA) — critico",
+        "R-203-1 (BASSA) e poi x (alta) in questa PR",
+        # #205 B-2: parentesi annidate non nascondono un finding V- dentro la citazione.
+        "R-203-1 (BASSA, vedi anche V-2 (ALTA) nuovo bug)",
+    ])
+    def test_gravita_della_pr_blocca_anche_accanto_a_una_riserva(self, riga):
+        testo = ("VERIFICA ESTERNA #149 — APPROVATO CON RISERVE\nFINDING:\n"
+                 f"{riga}\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-9", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
+    def test_riserva_registrata_nel_json_resta_bloccante(self):
+        # Se il modello mette la riserva nel campo strutturato con gravità ALTA, il campo
+        # vince: la nuova regola tocca solo il testo libero.
+        testo = ("VERIFICA ESTERNA #149 — APPROVATO CON RISERVE\nFINDING:\n"
+                 "R-203-1 (ALTA, preesistente)\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("R-203-1", "ALTA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
 
 # ---------------------------------------------------------------------------
 # solo_reports(): il dosaggio non deve diventare una scorciatoia
@@ -980,3 +1022,5 @@ class TestWorkflow:
         assert "strumenti_ok" in schema["required"]
         prompt = wf["jobs"]["verifica"]["env"]["PROMPT"]
         assert '"strumenti_ok": true SOLO se' in prompt and "gh pr diff" in prompt
+        # R-161-1: le riserve già registrate si citano come "R-203-1 (ALTA, preesistente)".
+        assert '"R-203-1 (ALTA,' in prompt and "non blocca" in prompt

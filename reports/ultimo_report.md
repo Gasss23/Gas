@@ -1,5 +1,9 @@
 # ULTIMO REPORT — 2026-10-07 — FASE 2.6 fetta 1 + merge di main (R-200-2 chiusa in #150)
 
+## Aggiornamento (mattina 2026-10-08)
+
+Il bot aveva dato un secondo falso NO (citava R-203-1 (ALTA, preesistente)). Corretta la regola del bot (PR #151, mergiata su richiesta dell'operatore) e portata qui col merge di main (review #207 APPROVATO). Ora il bot rigiudica la #149 con la regola nuova.
+
 ## Aggiornamento (sera 2026-10-07)
 
 Il bot aveva dato un falso NO alla #149 perché il suo testo citava R-200-2 (ALTA, vecchia).
