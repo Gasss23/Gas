@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- FASE 4.5 — giro notturno di Gas sul Mac (launchd). Istruzioni: reports/setup_notte.md
+     Sostituisci TUO_UTENTE col tuo nome utente del Mac. Orario: 03:00. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gas.notte</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>cd "$HOME/Gas" &amp;&amp; set -a &amp;&amp; source ./.env &amp;&amp; set +a &amp;&amp; { [ -f venv/bin/activate ] &amp;&amp; source venv/bin/activate; true; } &amp;&amp; python3 gas.py notte</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/TUO_UTENTE/Gas/.gas_notte/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/TUO_UTENTE/Gas/.gas_notte/launchd.log</string>
+</dict>
+</plist>
