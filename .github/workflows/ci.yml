@@ -130,6 +130,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_gasmerge.py -v 2>&1 | tee "$RUNNER_TEMP/gasmerge_output.txt"
 
+      - name: Run notte suite (pytest, zero token LLM)
+        # FASE 4.5 fetta 1: giro autonomo `gas notte` (catalogo, isolamento della
+        # cronologia, cancello, lock); client API finto, Telegram bloccato.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_notte.py -v 2>&1 | tee "$RUNNER_TEMP/notte_output.txt"
+
       - name: Run verifica-bot suite (pytest, zero token LLM)
         # V-B vera: logica di approvazione del bot (scripts/bot_esito.py) e proprietà di
         # sicurezza del workflow verifica-bot.yml; gh è uno stub, nessuna chiamata a GitHub.

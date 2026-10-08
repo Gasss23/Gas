@@ -341,3 +341,71 @@ class TestNFKC:
     def test_fullwidth_gas_memory_read_deny(self):
         fullwidth_path = "．gas_memory．db"
         assert _rf(fullwidth_path) == GateClass.DENY
+
+
+# ---------------------------------------------------------------------------
+# Verifica-bot PR #160 (V-1) + R-220-4: catena di avvio fuori dalla sandbox
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("path", [
+    "venv/bin/activate", "venv/bin/python3", ".venv/bin/activate",
+    "venv/lib/python3.13/site-packages/x.pth",
+    ".git/config", ".git/hooks/pre-commit", ".github/workflows/ci.yml",
+    ".gas_notte/ultimo_giro.md", ".gas_notte/launchd.log", "./.gas_notte/lock",
+    "VENV/bin/activate", "sub/../venv/bin/activate",
+])
+def test_write_catena_di_avvio_deny(path):
+    assert _wf(path) == GateClass.DENY
+
+
+@pytest.mark.parametrize("path", [
+    "yaml.py", "openai.py", "openai/__init__.py", "dati/x.PY", "x.pyc", "x.pyw",
+    "evil.pth", "lib.so", "lib.dylib", "x.py/", "x.py.",
+])
+def test_write_file_di_codice_deny(path):
+    assert _wf(path) == GateClass.DENY
+
+
+@pytest.mark.parametrize("path", ["note.md", "dati/lead.csv", "copy.txt", "py.txt", "x.pyx.md"])
+def test_write_file_non_codice_resta_uncertain(path):
+    assert _wf(path) == GateClass.UNCERTAIN
+
+
+def test_read_file_py_resta_consentita():
+    assert gate_classify("read_file", {"relative_path": "README.py"}) == GateClass.SAFE
+
+
+def test_read_file_venv_e_gas_notte_deny():
+    assert gate_classify("read_file", {"relative_path": "venv/bin/activate"}) == GateClass.DENY
+    assert gate_classify("read_file", {"relative_path": ".gas_notte/ultimo_giro.md"}) == GateClass.DENY
+
+
+@pytest.mark.parametrize("path", [
+    "scripts/gasmerge.sh", "scripts/hash_diff_staged.sh", "x.sh", "dati/y.ZSH", "a.bash",
+    "b.command", "scripts/nuovo.txt", "CLAUDE.md", "./claude.md", ".mcp.json",
+    "gas_identity.md", "requirements.txt", "requirements-dev.txt",
+])
+def test_write_file_eseguiti_fuori_sandbox_deny(path):
+    """R-222-1: script e file letti/eseguiti con privilegi fuori dalla sandbox."""
+    assert _wf(path) == GateClass.DENY
+
+
+@pytest.mark.parametrize("path", ["note/requirements_cliente.txt", "dati/claude.md.txt", "shell.txt"])
+def test_write_prefissi_solo_primo_livello(path):
+    assert _wf(path) == GateClass.UNCERTAIN
+
+
+@pytest.mark.parametrize("path", [
+    "CLAUDE.local.md", "claude.local.md", "tests/CLAUDE.md", "dati/claude.md",
+    "reports/CLAUDE.local.md", "dati/sotto/AGENTS.md", "AGENTS.md",
+    "AGENTS.override.md", "dati/agents.override.md",
+    "\uff23\uff2c\uff21\uff35\uff24\uff25.md",          # CLAUDE.md fullwidth (NFKC)
+    "dati/\uff23\uff2c\uff21\uff35\uff24\uff25.local.md",
+])
+def test_write_istruzioni_agenti_a_ogni_livello_deny(path):
+    """Verifica-bot #160 V-1: file d'istruzioni degli agenti a qualunque profondità."""
+    assert _wf(path) == GateClass.DENY
+
+
+def test_read_claude_md_resta_consentita():
+    assert gate_classify("read_file", {"relative_path": "CLAUDE.md"}) == GateClass.SAFE

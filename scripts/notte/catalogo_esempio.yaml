@@ -1,0 +1,16 @@
+# Catalogo dei compiti notturni di Gas (FASE 4.5). Copialo FUORI dalla cartella Gas:
+#   cp ~/Gas/scripts/notte/catalogo_esempio.yaml ~/.gas_notte.yaml
+# Gas rifiuta un catalogo dentro la sua cartella (potrebbe riscriverselo da solo).
+# Ogni compito parte da zero (cronologia vuota), max 10 compiti per giro.
+# Le azioni rischiose NON partono da sole: aspettano la tua firma su Telegram.
+compiti:
+  - nome: punto_lead
+    prompt: >-
+      Usa ricorda per rivedere i lead attivi e le loro prossime azioni.
+      Fammi un elenco breve: chi è fermo da più tempo e cosa conviene fare domani.
+  - nome: salute_sistema
+    prompt: >-
+      Esegui il comando 'ls -la' e dimmi in tre righe quali file nella cartella
+      di Gas sono stati modificati più di recente (git non è tra i comandi
+      consentiti a Gas).
+    attivo: false
