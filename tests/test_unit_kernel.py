@@ -6850,7 +6850,7 @@ try:
     _scarto80l3 = [m for m in _logrec80l if "risposta non valida" in m]
     check("T80l3 risposta tagliata: finish_reason='length', lunghezza vera, anteprima troncata",
           _e80l3["ok"] and _e80l3["provider"] == "groq" and len(_scarto80l3) == 1
-          and "finish_reason='length'" in _scarto80l3[0]
+          and "finish_reason='length'" in _scarto80l3[0] and "mai chiuso" in _scarto80l3[0]
           and f"lunghezza={len(_monca80)}" in _scarto80l3[0]
           and f"…[+{len(_monca80) - gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS} caratteri]" in _scarto80l3[0]
           and "z" * 400 not in _scarto80l3[0], str(_logrec80l)[:400])
@@ -7054,6 +7054,9 @@ try:
           _analizza_riflessione(None)[1] == "risposta vuota"
           and _analizza_riflessione("   ")[1] == "risposta vuota"
           and "nessun oggetto JSON" in _analizza_riflessione("niente json")[1]
+          and "non testuale (int)" in _analizza_riflessione(5)[1]
+          and "non testuale (list)" in _analizza_riflessione([])[1]
+          and "mai chiuso" in _analizza_riflessione('{"recap": "tagl')[1]
           and "non decodificabile" in _analizza_riflessione('{"recap": "a",}')[1]
           and "recap mancante" in _analizza_riflessione('{"recap": ""}')[1]
           and "lezioni non è una lista" in _analizza_riflessione('{"recap": "a", "lezioni": 5}')[1]

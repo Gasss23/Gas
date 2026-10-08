@@ -526,12 +526,17 @@ def _anteprima_log(testo: Any, cap: int = RIFLESSIONE_LOG_ANTEPRIMA_CHARS) -> st
 def _analizza_riflessione(testo: Optional[str]) -> Tuple[Optional[Tuple[str, List[str]]], str]:
     """Come _parse_riflessione, ma restituisce anche il MOTIVO dello scarto ("" se
     valida), per il log diagnostico. PURA."""
-    if not isinstance(testo, str) or not testo.strip():
+    if not isinstance(testo, str):
+        return None, ("risposta vuota" if testo is None
+                      else f"risposta non testuale ({type(testo).__name__})")
+    if not testo.strip():
         return None, "risposta vuota"
     t = testo.strip()
     i, j = t.find("{"), t.rfind("}")
-    if i < 0 or j <= i:
-        return None, "nessun oggetto JSON (manca la coppia { })"
+    if i < 0:
+        return None, "nessun oggetto JSON (manca '{')"
+    if j <= i:
+        return None, "JSON aperto ma mai chiuso (manca '}': risposta tagliata?)"
     try:
         data = json.loads(t[i:j + 1])
     except (ValueError, TypeError) as e:
