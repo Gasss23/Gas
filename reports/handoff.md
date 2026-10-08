@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #161 (https://github.com/Gasss23/Gas/pull/161): tocca `CLAUDE.md`, il bot darà `neutral`, decide l'operatore.
+1. PR #161 (https://github.com/Gasss23/Gas/pull/161): l'operatore ha detto "mergia"; l'agente la mergia quando i check riportano sul nuovo head.
 2. Sul Mac: `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md`.
 3. Ancora aperte: lezioni #4, #5, #6; firma `fab385e4…`.
 
@@ -17,6 +17,7 @@
 - **Fetta 1 — regola di merge autonomo in `CLAUDE.md`** (`623215c`): `FATTA`.
 - **Registrazione del merge di #160 e delle riserve basse nuove**: `FATTA` — `reports/stato_progetto.md` voce 6.
 - **Fetta 2 — V-1 del bot su #161: verdetto testuale, non solo success** (`0ae4fe7`): `FATTA`.
+- **Fetta 3 — eccezione per le PR solo-log di sessione (scelta (b) dell'operatore)** (`4f5f492`): `FATTA`.
 - **Applicazione automatica della regola in `bot_esito.py`/`gasmerge.sh`**: `DEFERITA` — macchina del bot, fetta dedicata con revisore.
 - **Correzione delle riserve basse (file di configurazione scrivibili)**: `DEFERITA` — fetta dedicata.
 
@@ -26,16 +27,18 @@
 
 ```
  CLAUDE.md                 |   2 +-
- reports/diff_sessione.md  |  21 +++++++++-----------
- reports/handoff.md        | 401 +++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/diff_sessione.md  |  21 +++++++++----------
+ reports/handoff.md        | 406 ++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md |   2 +-
- reports/ultimo_report.md  |  41 +++++++++++++-------------------------
- 5 files changed, 48 insertions(+), 419 deletions(-)
+ reports/ultimo_report.md  |  43 +++++++++++++++------------------------
+ 5 files changed, 55 insertions(+), 419 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4f5f492 docs(claude-md): PR solo-log di sessione mergiabili dall'agente con CI verde (scelta operatore)
+c305102 docs(claude-md): report fine-task — V-1/V-2 bot #161 (PR #161)
 0ae4fe7 docs(claude-md): la regola di merge guarda il verdetto testuale, non solo il success (V-1 bot #161)
 6fd7042 docs(claude-md): report fine-task — regola di merge autonomo (PR #161)
 623215c docs(claude-md): regola di merge autonomo — solo APPROVATO senza riserve, il resto all'operatore
@@ -55,12 +58,14 @@ Nessuna modifica a gas.py/tests/.
 
 - `623215c`: check suite completata (pushato prima del fine-task).
 - `6fd7042`: CI run 37836965036 (handoff-check success); `verifica-bot` **failure** (V-1 MEDIA), corretta in `0ae4fe7`.
-- `0ae4fe7`: nessuna run propria (pushato insieme al commit di fine-task).
+- `0ae4fe7`, `c305102`: CI 37837368752 success (unit-suite, handoff-check); `verifica-bot` **neutral** (APPROVATO CON RISERVE, solo BASSE/COSMETICHE).
+- `4f5f492` e commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 - Commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 - `verifica-bot`: per regola darà al massimo `neutral` (la PR tocca `CLAUDE.md`).
 
 ## §7 RISERVE APERTE
 
+- Bot #161 su `c305102`: V-1 (BASSA) `fine-task.md` dice ancora "NON mergiare" — da allineare in una fetta col revisore (macchina di controllo); V-2 (BASSA) PR solo-log — RISOLTA con la scelta (b) (`4f5f492`); V-3 (COSMETICA) stat dell'handoff — per costruzione non coincide sulla riga di `handoff.md` (la CI confronta solo i path).
 - Bot #161 V-1 (MEDIA): testo CHIUSO (`0ae4fe7`); l'applicazione automatica in `bot_esito.py`/`gasmerge.sh` resta aperta (macchina del bot).
 - Verifica esterna #160 (BASSE): file di configurazione degli strumenti scrivibili da Gas; conteggio "104" nell'handoff #160 — `reports/stato_progetto.md` voce 6.
 - Già aperte: R-220-2, R-220-3, R-223-1, R-223-2, R-224-2.
