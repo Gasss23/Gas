@@ -26,8 +26,12 @@ def _ermetico(monkeypatch):
     def _vietato(*a, **kw):
         raise RuntimeError("test ermetico: niente HTTP verso Telegram")
     monkeypatch.setattr(_tg, "_tg_post", _vietato)
-    for k in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL", "GAS_DAILY_TOKEN_BUDGET"):
+    for k in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
         monkeypatch.delenv(k, raising=False)
+    # R-221-2: setenv registra il valore originale, così il budget che esegui_notte
+    # imposta nel processo viene ripulito a fine test (delenv su assente non lo fa).
+    monkeypatch.setenv("GAS_DAILY_TOKEN_BUDGET", "0")
+    monkeypatch.delenv("GAS_DAILY_TOKEN_BUDGET")
     monkeypatch.setenv("GEMINI_API_KEY", "dummy-for-test")
     monkeypatch.setenv("GAS_SANDBOX_MODE", "os_with_fallback")
 
@@ -223,6 +227,48 @@ def test_irreversibile_parcheggiato_non_eseguito(monkeypatch, dirs):
     assert not (root / "out.txt").exists()
     storia = (root / ".gas_notte" / "storia_a.json").read_text()
     assert "Operazione negata" in storia
+    # V-2 verifica esterna #160: il riepilogo conta le azioni negate
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "negate: 1 · in attesa della tua firma su Telegram: 0" in riep
+
+
+def test_budget_notte_di_default(monkeypatch, dirs):
+    """V-1 verifica esterna #160: senza GAS_DAILY_TOKEN_BUDGET il giro non resta
+    senza tetto di spesa; un valore dell'operatore viene rispettato."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt):
+            visti.append(os.environ.get("GAS_DAILY_TOKEN_BUDGET"))
+            yield {"type": "final", "content": "ok"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    for valore, atteso in ((None, notte.BUDGET_NOTTE_DEFAULT_USD), ("0", notte.BUDGET_NOTTE_DEFAULT_USD),
+                           ("nan", notte.BUDGET_NOTTE_DEFAULT_USD), ("abc", notte.BUDGET_NOTTE_DEFAULT_USD),
+                           ("5", "5")):
+        if valore is None:
+            monkeypatch.delenv("GAS_DAILY_TOKEN_BUDGET", raising=False)
+        else:
+            monkeypatch.setenv("GAS_DAILY_TOKEN_BUDGET", valore)
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
+        assert visti[-1] == atteso, (valore, visti[-1])
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "tetto di spesa" not in riep  # ultimo giro: budget dell'operatore, nessun avviso
+
+
+def test_budget_esaurito_ferma_il_compito(monkeypatch, dirs):
+    """Il tetto impostato dal giro arriva davvero a run_turn: spesa oltre il tetto → KO."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    monkeypatch.setattr(gas.GasKernel, "_daily_cost_usd", lambda self: 99.0)
+    rc = _giro(monkeypatch, root, cat, _Script({"p": ["non deve arrivare"]}))
+    assert rc == 1
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "Budget giornaliero esaurito" in riep and "tetto di spesa" in riep
 
 
 def test_compito_che_fallisce_non_ferma_il_giro(dirs):
@@ -273,6 +319,19 @@ def test_un_solo_giro_alla_volta(dirs):
                             kernel_factory=lambda r: pytest.fail("non deve partire")) == 2
 
 
+@pytest.mark.skipif(notte.fcntl is None, reason="lock non disponibile su Windows")
+def test_lock_esclusivo_anche_contro_lock_condiviso(dirs):
+    """V-3 verifica esterna #160: il giro chiede un lock ESCLUSIVO (un LOCK_SH lo blocca)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    with open(nd / "lock", "w") as f:
+        notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_SH | notte.fcntl.LOCK_NB)
+        assert esegui_notte(str(root), catalogo=cat,
+                            kernel_factory=lambda r: pytest.fail("non deve partire")) == 2
+
+
 def test_cli_notte(monkeypatch):
     chiamate = []
     monkeypatch.setattr(gas, "notte_cmd", lambda: chiamate.append(1) or 0)
@@ -280,3 +339,41 @@ def test_cli_notte(monkeypatch):
     with pytest.raises(SystemExit) as e:
         gas.main()
     assert e.value.code == 0 and chiamate == [1]
+
+
+def test_nessun_compito_attivo_senza_budget_esce_0(dirs):
+    """R-221-1: l'avviso sul budget è informativo, non cambia l'exit code."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n    attivo: false\n")
+    assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: None) == 0
+    assert "tetto di spesa" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+
+def test_conteggio_in_attesa_solo_per_prefisso(dirs):
+    """R-221-3/R-221-4: conta l'esito del cancello, non la frase dentro un file letto;
+    'Azione già in attesa' (doppione) non conta due volte."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+
+    class _K:
+        def run_turn(self, prompt):
+            yield {"type": "tool_res", "output": "Azione in attesa di approvazione umana (ID: x)."}
+            yield {"type": "tool_res", "output": "Azione già in attesa di approvazione umana (ID: x). "}
+            yield {"type": "tool_res", "output": "testo del file: Azione in attesa di approvazione umana"}
+            yield {"type": "tool_res", "output": "Operazione negata: no"}
+            yield {"type": "final", "content": "ok"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "negate: 1 · in attesa della tua firma su Telegram: 1" in riep
+
+
+def test_frasi_del_cancello_legate_al_kernel():
+    """R-222-3: le frasi contate nel riepilogo sono quelle che il kernel produce davvero."""
+    import inspect
+    src = inspect.getsource(gas.GasKernel)
+    assert f'"{notte._IN_ATTESA} (ID: ' in src
+    assert f'"{notte._NEGATA}: ' in src

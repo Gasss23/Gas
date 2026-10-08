@@ -19,6 +19,8 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
 1. Aggiorna il codice: `cd ~/Gas && git checkout main && git pull`
 2. Catalogo: `cp ~/Gas/scripts/notte/catalogo_esempio.yaml ~/.gas_notte.yaml`
    e modifica i compiti a piacere (`nano ~/.gas_notte.yaml`).
+2b. Tetto di spesa: nel `.env` metti `GAS_DAILY_TOKEN_BUDGET=1.0` (dollari in 24 ore, scegli tu
+   il valore). Se manca, il giro notturno usa comunque 1.0 e lo segnala nel riepilogo.
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```

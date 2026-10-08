@@ -10,12 +10,19 @@ Invarianti di sicurezza:
   write_file è confinato alla root, quindi Gas non può riscriversi da solo i
   compiti notturni. Un catalogo dentro la root viene rifiutato.
 - Ogni compito parte con una cronologia VUOTA e propria
-  (.gas_notte/storia_<nome>.json): non legge né sporca la conversazione
-  dell'operatore (.gas_history.json), e un compito non contamina il successivo.
+  (.gas_notte/storia_<nome>.json): la conversazione dell'operatore
+  (.gas_history.json) non entra nella finestra e non viene scritta dal giro, e
+  un compito non contamina il successivo. Eccezione (R-220-1): l'esito di
+  un'azione parcheggiata e poi firmata su Telegram lo scrive il kernel del bot
+  nella conversazione dell'operatore.
 - Il cancello resta quello di sempre: le azioni irreversibili (o incerte dopo
-  input non fidato) vengono parcheggiate e chieste in firma su Telegram, mai
-  eseguite da sole. Il tetto di 10 iterazioni e il budget giornaliero valgono
-  anche qui (sono dentro run_turn).
+  input non fidato) vengono parcheggiate e chieste in firma su Telegram (senza
+  Telegram configurato la richiesta è revocata), mai eseguite da sole. Il tetto
+  di 10 iterazioni vale anche qui (è dentro run_turn).
+- Tetto di spesa (V-1 verifica esterna #160): il budget di run_turn è attivo
+  solo con GAS_DAILY_TOKEN_BUDGET > 0, e di default è spento. Senza nessuno
+  davanti non deve esserlo: se la variabile manca o vale 0, il giro la imposta
+  per il SOLO processo notturno a BUDGET_NOTTE_DEFAULT_USD.
 - Nel diario va SOLO una riga di metadati per compito (nome, esito, numero di
   tool, durata), MAI il testo della risposta: il diario finisce nel prompt di
   sistema tramite il pin di memoria, e la risposta del modello non è fidata.
@@ -27,6 +34,7 @@ Invarianti di sicurezza:
 from __future__ import annotations
 
 import logging
+import math
 import os
 import re
 import time
@@ -44,7 +52,10 @@ RIEPILOGO = "ultimo_giro.md"
 MAX_COMPITI = 10          # compiti eseguiti per giro, oltre si ignorano (avviso)
 MAX_PROMPT_CHARS = 4000   # prompt di un compito
 MAX_RISPOSTA_CHARS = 3000  # risposta riportata nel riepilogo, per compito
+BUDGET_NOTTE_DEFAULT_USD = "1.0"  # tetto di spesa 24h se l'operatore non ne ha messo uno
 _NOME_RE = re.compile(r"[a-z0-9_-]{1,40}")
+_NEGATA = "Operazione negata"
+_IN_ATTESA = "Azione in attesa di approvazione umana"  # gas.py _parcheggia_e_notifica
 
 
 def catalogo_default() -> Path:
@@ -129,7 +140,7 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path) -> Di
     Mai eccezioni: un errore diventa esito 'ko'."""
     nome = compito["nome"]
     esito: Dict[str, Any] = {"nome": nome, "esito": "ko", "tool": 0,
-                             "risposta": "", "errore": ""}
+                             "risposta": "", "errore": "", "negate": 0, "in_attesa": 0}
     t0 = time.monotonic()
     try:
         kernel.history = []
@@ -138,6 +149,13 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path) -> Di
             tipo = ev.get("type") if isinstance(ev, dict) else None
             if tipo == "tool_res":
                 esito["tool"] += 1
+                out = str(ev.get("output", ""))
+                if out.startswith(_NEGATA):
+                    esito["negate"] += 1
+                elif out.startswith(_IN_ATTESA):
+                    # Prefisso dell'esito del cancello. Limite dichiarato (R-222-2): un
+                    # file/stdout che INIZIA con la stessa frase gonfia solo il conteggio.
+                    esito["in_attesa"] += 1
             elif tipo == "final":
                 esito["esito"] = "ok"
                 esito["risposta"] = str(ev.get("content", ""))
@@ -170,6 +188,9 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
     for e in esiti:
         righe += [f"## {e['nome']} — {e['esito'].upper()} "
                   f"({e['tool']} tool, {e.get('durata', 0)}s)", ""]
+        if e.get("negate") or e.get("in_attesa"):
+            righe += [f"Azioni bloccate dal cancello o negate: {e.get('negate', 0)} · "
+                      f"in attesa della tua firma su Telegram: {e.get('in_attesa', 0)}", ""]
         if e["errore"]:
             righe += [f"Errore: {e['errore']}", ""]
         if e["risposta"]:
@@ -177,9 +198,19 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
             if len(testo) > MAX_RISPOSTA_CHARS:
                 testo = testo[:MAX_RISPOSTA_CHARS] + "\n…[troncato]"
             righe += ["Risposta (testo del modello, NON verificato):", "", testo, ""]
-    righe.append("Azioni rischiose: NON eseguite da sole — se ce ne sono, "
-                 "aspettano la tua firma su Telegram (`python3 gas.py telegram`).")
+    righe.append("Azioni rischiose: mai eseguite da sole. Quelle «in attesa» aspettano la "
+                 "tua firma su Telegram (`python3 gas.py telegram`); quelle negate non "
+                 "sono state eseguite.")
     return "\n".join(righe) + "\n"
+
+
+def _env_budget() -> float:
+    """GAS_DAILY_TOKEN_BUDGET come float; assente o non valido → 0.0 (spento)."""
+    try:
+        v = float(os.environ.get("GAS_DAILY_TOKEN_BUDGET", "").strip() or 0.0)
+    except ValueError:
+        return 0.0
+    return v if math.isfinite(v) else 0.0
 
 
 def _scrivi_atomico(path: Path, testo: str) -> None:
@@ -207,6 +238,11 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 return 2
         inizio = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
         compiti, avvisi = carica_catalogo(catalogo, root)
+        catalogo_ko = bool(avvisi) and not compiti  # solo il catalogo decide l'exit code
+        if _env_budget() <= 0.0:
+            os.environ["GAS_DAILY_TOKEN_BUDGET"] = BUDGET_NOTTE_DEFAULT_USD
+            avvisi.append(f"GAS_DAILY_TOKEN_BUDGET non impostato: tetto di spesa del giro "
+                          f"= {BUDGET_NOTTE_DEFAULT_USD} USD/24h (impostalo nel .env)")
         for a in avvisi:
             logging.warning("notte: %s", a)
         if kernel_factory is None:
@@ -229,7 +265,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             logging.warning("notte: riepilogo non scritto: %s", e)
         print(testo)
         if not compiti:
-            return 1 if avvisi else 0
+            return 1 if catalogo_ko else 0
         return 0 if all(e["esito"] == "ok" for e in esiti) else 1
     except Exception as e:
         logging.warning("notte: giro interrotto: %s", e)

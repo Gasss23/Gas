@@ -85,6 +85,31 @@ _DENY_PREFIXES: tuple[str, ...] = (
     "modules",
     ".claude",
     "gate_config",
+    # Verifica-bot PR #160 (V-1): catena di avvio eseguita FUORI dalla sandbox
+    # (giro notturno launchd, git dello snapshot, hook di git). Una scrittura qui
+    # diventerebbe codice eseguito senza cancello al giro/avvio successivo.
+    # ".git" copre anche .github/ (CI), .gitattributes, .gitignore.
+    "venv",
+    ".venv",
+    ".git",
+    ".gas_notte",   # R-220-4: stato del giro notturno (riepilogo, storie, lock, log)
+)
+
+# Verifica-bot PR #160 (V-1): estensioni che Python carica/esegue all'avvio di
+# `python3 gas.py` (sys.path[0] = root: un yaml.py o openai.py nella root oscura il
+# modulo vero; un .pth in site-packages esegue codice). write_file verso questi file
+# è DENY ovunque nella root; la lettura resta consentita.
+_DENY_WRITE_SUFFIXES: tuple[str, ...] = (
+    ".py", ".pyc", ".pyw", ".pth", ".so", ".dylib",
+    # R-222-1: script di shell eseguiti fuori sandbox (hook, gasmerge, fine-task, launchd)
+    ".sh", ".zsh", ".bash", ".command",
+)
+
+# R-222-1: file di PRIMO livello letti/eseguiti fuori dalla sandbox con privilegi
+# (agente di sviluppo con shell, prompt di sistema, pip, script dell'operatore).
+# Solo scrittura: Gas li legge on-demand (es. CLAUDE.md, sez. 6).
+_DENY_WRITE_TOP_PREFIXES: tuple[str, ...] = (
+    "scripts", "claude.md", ".mcp", "gas_identity", "requirements",
 )
 
 
@@ -126,7 +151,7 @@ def _in_denylist(normalized: str) -> bool:
     return False
 
 
-def _check_path_arg(args: dict[str, Any]) -> "GateClass | None":
+def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | None":
     """Validate the 'relative_path' key in args for read_file / write_file.
 
     Returns DENY if missing, wrong type, absolute, traversal, or in denylist.
@@ -140,6 +165,11 @@ def _check_path_arg(args: dict[str, Any]) -> "GateClass | None":
     except ValueError:
         return GateClass.DENY
     if _in_denylist(norm):
+        return GateClass.DENY
+    if write and norm.rstrip("/. ").endswith(_DENY_WRITE_SUFFIXES):
+        return GateClass.DENY
+    if write and PurePosixPath(norm).parts[:1] and \
+            PurePosixPath(norm).parts[0].startswith(_DENY_WRITE_TOP_PREFIXES):
         return GateClass.DENY
     return None
 
@@ -189,7 +219,7 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
 
         # Rule 3 — path-sensitive tools.
         if tool_name in ("read_file", "write_file"):
-            result = _check_path_arg(parsed)
+            result = _check_path_arg(parsed, write=(tool_name == "write_file"))
             if result is not None:
                 return result
             # Path is clean → fall through to allowlist lookup.
