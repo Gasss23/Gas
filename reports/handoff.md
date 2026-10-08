@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #160 (https://github.com/Gasss23/Gas/pull/160). Numero e URL vengono dalla risposta di GitHub alla creazione della PR: in questo ambiente `gh` non è autenticato e la PR è stata creata con lo strumento GitHub della sessione. L'operatore ha chiesto di fare il merge senza chiedere conferma se tutto è positivo. Condizioni da soddisfare sul nuovo head:
+1. Merge della PR #160 (https://github.com/Gasss23/Gas/pull/160). Numero e URL vengono dalla risposta di GitHub alla creazione della PR: in questo ambiente `gh` non è autenticato e la PR è stata creata con lo strumento GitHub della sessione. L'operatore ha chiesto di fare il merge senza chiedere conferma se tutto è positivo. Condizioni da soddisfare sul nuovo head (il bot aveva BOCCIATO `d3a593d`, V-1 corretta in `c120bda`):
    - `verifica-bot` success;
    - `unit-suite` e `handoff-check` verdi.
 2. Dopo il merge, sul Mac: seguire `reports/setup_notte.md` (catalogo, tetto di spesa, timer launchd).
@@ -26,6 +26,8 @@
 - **Fetta 1 FASE 4.5 — comando `gas notte`**: `FATTA` — `2a2ed0d`, review #220.
 - **Correzioni della verifica esterna #160 (V-1 MEDIA tetto di spesa, V-2 riepilogo, V-3 test del lock)**: `FATTA` — `d0cfc17`, review #221.
 - **Correzione del bot di verifica #160 (V-1 MEDIA: catena di avvio scrivibile e poi eseguita fuori dalla sandbox)**: `FATTA` — `d0cfc17`, review #222 e #223. Il cancello nega `write_file` su `venv`, `.git`, `.gas_notte`, sui file di codice e di shell e sui file sensibili al primo livello.
+- **Correzione bot di verifica #160 su `d3a593d` (V-1 MEDIA: CLAUDE.local.md, CLAUDE.md nelle sottocartelle, AGENTS.md scrivibili)**: `FATTA` — `c120bda`, review #224 e #225. Anche V-2 (esempio con `git` non consentito) corretta; V-3 (conteggio kernel 707 locale vs 709 in CI) dichiarata in §5.
+- **Allineamento a main** (`bcf2d5c`): merge di `origin/main` (solo il commit di merge della #159, nessun file cambiato).
 - **Riepilogo su Telegram al mattino**: `DEFERITA` — rimandato alla fetta 2.
 - **Tetto di tempo (R-220-3)**: `DEFERITA` — rimandato alla fetta 2.
 - **Prova reale con launchd sul Mac**: `DEFERITA` — non si può riprodurre su Linux; la fa l'operatore.
@@ -35,28 +37,33 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   8 ++++++++
+ .claude/agents/memoria_revisore.md  |  11 +++++++++++
  .github/workflows/ci.yml            |   8 ++++++++
  .gitignore                          |   2 ++
  gas.py                              |   9 +++++++++
- modules/gate/gate.py                |  34 ++++++++++++++++++++++++++++++--
+ modules/gate/gate.py                |  45 +++++++++++++++++++++++++++++++++++++++++--
  modules/notte/__init__.py           |   4 ++++
  modules/notte/notte.py              | 279 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md            |  20 +++++++++++--------
- reports/handoff.md                  | 268 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ reports/handoff.md                  | 378 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
  reports/setup_notte.md              |  44 ++++++++++++++++++++++++++++++++++++++++++
  reports/stato_progetto.md           |   4 ++--
- reports/ultimo_report.md            |  36 +++++++++++++++++++++-------------
- scripts/notte/catalogo_esempio.yaml |  15 +++++++++++++++
+ reports/ultimo_report.md            |  40 +++++++++++++++++++++++++-------------
+ scripts/notte/catalogo_esempio.yaml |  16 +++++++++++++++
  scripts/notte/com.gas.notte.plist   |  27 ++++++++++++++++++++++++++
- tests/test_unit_gate.py             |  56 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_gate.py             |  68 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_notte.py            | 379 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 16 files changed, 1152 insertions(+), 41 deletions(-)
+ 16 files changed, 1293 insertions(+), 41 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bcf2d5c Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+c120bda fix(fase-4.5): cancello — file d'istruzioni degli agenti non scrivibili a ogni livello (V-1 bot #160)
+39b1ba6 chore(revisore): memoria review #225 — APPROVATO
+bfe71a7 chore(revisore): memoria review #224 — APPROVATO CON RISERVE
+d3a593d docs(fase-4.5): report fine-task — gas notte + cancello rinforzato (PR #160)
 d0cfc17 fix(fase-4.5): chiude V-1/V-2/V-3 verifica esterna, V-1 bot e R-221/R-222 su gas notte
 c1f093c chore(revisore): memoria review #223 — APPROVATO CON RISERVE
 c052d7c chore(revisore): memoria review #222 — APPROVATO CON RISERVE
@@ -262,15 +269,107 @@ Letture preliminari fatte: CLAUDE.md (sez. 5, 6, 8), le voci di `reports/stato_p
 
 **Memoria:** riga #223 più una lezione nuova, committate con `scripts/commit_memoria_revisore.sh` (commit `c1f093c`). Il diff staged è rimasto intatto (5 file).
 
+
+Commit motore `c120bda` (V-1 del bot su `d3a593d`: file d'istruzioni degli agenti scrivibili sotto il primo livello). Due passaggi, verdetti integrali:
+
+### Review #224
+
+## VERDETTO: APPROVATO CON RISERVE
+
+In breve: la correzione chiude V-1 (dal primo livello a qualsiasi profondità del percorso), non blocca percorsi legittimi e lascia libera la lettura di CLAUDE.md. Restano due riserve basse, nessuna bloccante.
+
+Letture fatte: CLAUDE.md (§5, §8, §9), reports/stato_progetto.md letto a pezzi con Grep, memoria del revisore (ultime review #204–#223, comprese le lezioni #222/#223 sui file d'istruzioni per gli agenti).
+
+**Elementi del diff esaminati**
+
+1. `modules/gate/gate.py:119` — `_DENY_WRITE_ANY_PART_NAMES = {"claude.md","claude.local.md","agents.md"}`.
+   - Rischio esaminato: nomi messi in modo da non coincidere più con l'uscita di `_normalize_path` (NFKC + normpath + casefold).
+   - Esito: **ok**. I nomi sono già minuscoli e in forma normale, e il confronto è esatto, non per prefisso.
+
+2. `modules/gate/gate.py:182` — se l'operazione è una scrittura e un qualsiasi pezzo del percorso normalizzato è uno di quei nomi, il risultato è DENY.
+   - Rischi esaminati: falsi DENY, la lettura di CLAUDE.md bloccata per sbaglio, aggiramenti.
+   - Sonde (write → read):
+
+     | Percorso | Scrittura | Lettura |
+     |---|---|---|
+     | `tests/CLAUDE.md` | DENY | SAFE |
+     | `tests/CLAUDE.md/.` | DENY | SAFE |
+     | `x/../tests/CLAUDE.md` | DENY | SAFE |
+     | `Claude.Local.MD` | DENY | SAFE |
+     | `dati/agents.md/x.txt` (cartella con quel nome) | DENY | SAFE |
+     | `dati/claude.md.txt` | UNCERTAIN | SAFE |
+     | `dati/note_claude.md` | UNCERTAIN | SAFE |
+
+   - Nessun falso DENY realistico: blocca solo un pezzo del percorso che si chiama esattamente così. La regola vale solo in scrittura, quindi la lettura resta SAFE.
+   - Esito: **ok**.
+
+3. `tests/test_unit_gate.py:398-406` — test parametrico con 9 casi.
+   - Ho rifatto la mutation (regola spenta → 8 FAIL), poi ho ripristinato il file. Il 9° caso è coperto dal prefisso di primo livello, come dichiarato.
+   - Esito: **ok**.
+
+4. `scripts/notte/catalogo_esempio.yaml:13` — `git status` sostituito con `ls -la`, con una nota che spiega che git non è tra i comandi consentiti.
+   - Il compito resta `attivo: false`.
+   - Esito: **ok**.
+
+**Riproduzioni**
+- gate + notte: 156 passed.
+- `pytest tests/`: 775 passed.
+- Il primo giro completo dopo la mutation dava 8 FAIL. Era un artefatto mio, non del codice: la mutation lascia il file della stessa dimensione e l'ho ripristinato nello stesso secondo, quindi Python ha riusato il `.pyc` del mutante. Ho cancellato `__pycache__`, rieseguito, e ho ottenuto 775 passed. Lezione registrata in memoria.
+
+**Riserve**
+- **R-224-1 (BASSA):** `AGENTS.override.md` resta UNCERTAIN, cioè scrivibile quando la finestra non contiene input esterno. Codex lo carica come istruzioni con precedenza su AGENTS.md, e l'operatore usa Codex nella stessa cartella (R-155-3). Basta aggiungere `"agents.override.md"` al frozenset. GEMINI.md e `.cursorrules` li considero fuori scope: quegli agenti non sono in uso. `.github/copilot-instructions.md` è già coperto dal prefisso `.git`, e `.claude/` a qualunque profondità è già coperto da `_in_denylist`.
+- **R-224-2 (COSMETICA):** `tests/CLAUDE.md ` (spazio finale) e `tests/CLAUDE.md.` restano UNCERTAIN. Il controllo sui suffissi usa `rstrip`, quello sui nomi no. Su Linux e APFS sono file diversi, che Claude Code non carica: innocuo.
+
+**Rischio escluso:** non ho rieseguito la suite del kernel (707 PASS). Il diff non tocca `gas.py` e cambia solo come `gate_classify` classifica `write_file`, che la suite in `tests/` copre. Non ho verificato neanche il comportamento di macOS con nomi in forma NFD sul Mac dell'operatore: non è riproducibile in questo ambiente.
+
+La riga #224 e la lezione sono in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate da sole in bfe71a7. Il diff in stage è intatto: 3 file, +24/−2.
+
+### Review #225
+
+## VERDETTO: APPROVATO
+
+In breve: R-224-1 è chiusa. `AGENTS.override.md` ora non è più scrivibile a qualsiasi livello del percorso, la lettura resta consentita e i test riprodotti passano tutti.
+
+Letture fatte: CLAUDE.md §5, stato_progetto.md letto a pezzi con Grep, memoria del revisore (#224 compresa).
+
+**Elementi del diff esaminati**
+
+1. `modules/gate/gate.py:121` — `"agents.override.md"` aggiunto a `_DENY_WRITE_ANY_PART_NAMES`, con commento R-224-1.
+   - Rischi esaminati: falsi DENY, la lettura bloccata per sbaglio, il nome scritto in una forma che non coincide con il percorso normalizzato.
+   - Esito: **ok**. Il nome è minuscolo e già normalizzato; il confronto è esatto su ogni pezzo e vale solo in scrittura (`:182` invariato).
+
+   | Percorso | Scrittura | Lettura |
+   |---|---|---|
+   | `AGENTS.override.md` | DENY | SAFE |
+   | `dati/agents.override.md` | DENY | SAFE |
+   | `dati/agents.override.md.txt` | UNCERTAIN | SAFE |
+
+2. `tests/test_unit_gate.py:398-403` — due casi in più nel test parametrico (`AGENTS.override.md`, `dati/agents.override.md`).
+   - Rischio esaminato: test vacuo, cioè che passa anche senza la regola.
+   - Esito: **ok**. Ho tolto il nome dal frozenset e i 2 casi falliscono. Ho poi ripristinato il file (`git diff` vuoto) e cancellato `__pycache__`.
+
+3. `scripts/notte/catalogo_esempio.yaml:13` — invariato rispetto alla #224 (`ls -la`): **ok**.
+
+**Riproduzioni**: rieseguite con `PYTHONDONTWRITEBYTECODE=1` per non ricadere nel problema del `.pyc` vecchio della #224.
+- gate + notte: 158 passed.
+- `pytest tests/`: 777 passed (775 + 2 casi nuovi).
+
+**Riserve**: nessuna nuova. R-224-2 (spazio o punto finale nel nome) resta cosmetica e lasciata di proposito.
+
+**Rischio escluso:** non ho rieseguito la suite del kernel (707 PASS). `gas.py` non è toccato e il cambio riguarda solo come il cancello classifica `write_file`, che la suite in `tests/` copre. Non ho verificato neanche se la versione di Codex usata dall'operatore legga davvero `AGENTS.override.md`: mi baso sulla documentazione, perché qui non è riproducibile.
+
+La riga #225 è in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da sola in 39b1ba6. Il diff in stage è intatto: 3 file, +26/−2.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
 - **Suite kernel** (`python tests/test_unit_kernel.py`): 707 PASS prima e dopo. Output reale: `=== RIEPILOGO: 707 PASS, 0 FAIL ===`.
 - **Suite notte** (`tests/test_unit_notte.py`): 0 → 26 test.
-- **Suite cancello** (`tests/test_unit_gate.py`): 104 → 121 test.
-- **Insieme notte + cancello**: `147 passed`.
-- **`python -m pytest tests/`**: output reale `766 passed in 108.07s`.
+- **Suite cancello** (`tests/test_unit_gate.py`): 104 → 132 test (121 + 11 casi di `c120bda`).
+- **Insieme notte + cancello**: `158 passed`.
+- **`python -m pytest tests/`**: 777 passed (dichiarato dal revisore #225; in questa sessione 775 prima degli ultimi 2 casi).
+- **V-3 bot**: la suite kernel dà 707 PASS in locale e 709 PASS in CI (stesso file, stesso SHA): scarto fisso di 2 già noto su main, causa non indagata.
 - **Mutation colte**:
   - reset della cronologia;
   - catalogo dentro la root;
@@ -291,7 +390,9 @@ Letture preliminari fatte: CLAUDE.md (sez. 5, 6, 8), le voci di `reports/stato_p
 | `365e27d` | nessuna run su questo SHA | pushato insieme a `2a2ed0d` |
 | `680dafb` | CI run 37800887986 | success (unit-suite, handoff-check) — check `verifica-bot`: **failure (BOCCIATO, V-1 MEDIA)**, corretto in `d0cfc17` |
 | `1ece5c4`, `c052d7c`, `c1f093c` | nessuna run su questi SHA | pushati insieme a `d0cfc17` |
-| `d0cfc17` | CI run 37803770301 (#767), push; verifica-bot run 37803772906 | in_progress alla scrittura dell'handoff |
+| `d0cfc17` | CI run 37803770301 (#767), push; verifica-bot run 37803772906 | (letta nella sessione precedente; superata da `d3a593d`) |
+| `d3a593d` | CI run 37803950160 | success (unit-suite, handoff-check); `verifica-bot`: primo tentativo cancelled, secondo tentativo (run 37803954238) **failure (BOCCIATO, V-1 MEDIA)**, corretto in `c120bda` |
+| `bfe71a7`, `39b1ba6`, `c120bda`, `bcf2d5c` | nessuna run propria | pushati insieme al commit di fine-task |
 | commit di fine-task che contiene questo file | — | run non ancora disponibile alla scrittura dell'handoff |
 
 ## §7 RISERVE APERTE
@@ -302,7 +403,10 @@ Letture preliminari fatte: CLAUDE.md (sez. 5, 6, 8), le voci di `reports/stato_p
 - R-223-1 — Gas può ancora scrivere in `reports/`, che il revisore e il bot leggono.
 - R-223-2 — il divieto di scrittura è solo testuale e non è ripetuto in `_safe_path`. Oggi non è sfruttabile.
 
+**Aperta, COSMETICA:** R-224-2 — `tests/CLAUDE.md ` (spazio o punto finale) resta UNCERTAIN; innocuo.
+
 **Chiuse in questa sessione:**
+- V-1 e V-2 del bot su `d3a593d`; R-224-1;
 - R-220-1 e R-220-4;
 - R-221-1..4;
 - R-222-1..3;
