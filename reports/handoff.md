@@ -1,108 +1,149 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-07 — R-200-2: run_command conta come input esterno nel cancello
+**Sessione:** 2026-10-08 — Bot di verifica: le riserve già registrate citate nel verdetto non bloccano (R-161-1)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. PR di questa fetta: merge se il bot dà success (gasmerge --auto equivalente), altrimenti decide l'operatore.
-2. R-203-1 (ALTA, preesistente): compressione della cronologia che decontamina — fetta propria del cancello prima dell'autonomia.
-3. R-203-2 (decisione umana): dopo un run_command in sandbox, le azioni successive restano in approvazione?
+1. Merge della PR di questa fetta (tocca la macchina del bot: il bot darà neutral, decide l'operatore).
+2. Dopo il merge: aggiornare la PR #149 da main perché il bot la rigiudichi.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **R-200-2**: `FATTA` (run_command in UNTRUSTED_INPUT_TOOLS + T72d/e/f, T78e invertito).
-- **R-203-1**: `NON FATTA — fetta propria`.
-- **Verifica esterna §4quater**: `SALTATA — la verifica esterna la fa il bot V-B sulla PR (etichetta verifica)`.
+- **Correzione falsi NO (R-161-1)**: `FATTA`.
+- **R-205-1 / R-205-2**: `DEFERITE — riserve BASSE registrate`.
+- **Verifica esterna §4quater**: `SALTATA — la fa il bot V-B (etichetta verifica); tocca la macchina del bot, merge all'operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- modules/gate/gate.py               |   4 +++-
- reports/diff_sessione.md           |  12 +++++-------
- reports/handoff.md                 | 132 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |   3 +++
+ .github/workflows/verifica-bot.yml |   3 +++
+ reports/diff_sessione.md           |  11 ++++++-----
+ reports/handoff.md                 | 168 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  35 ++++++++++++++++-------------------
- tests/test_unit_kernel.py          |  46 ++++++++++++++++++++++++++++++++++++++++++++--
- 7 files changed, 133 insertions(+), 100 deletions(-)
+ reports/ultimo_report.md           |  27 ++++++++++++++-------------
+ scripts/bot_esito.py               |  13 +++++++++++--
+ tests/test_unit_verifica_bot.py    |  44 ++++++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 184 insertions(+), 87 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-697c770 fix(gate): run_command contamina la finestra come read_file — R-200-2 — review #203
+6ed792f fix(verifica-bot): le riserve già registrate citate nel verdetto non bloccano — R-161-1 — review #205/#206
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Verdetto INTEGRALE. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-r200/`) resi relativi alla radice del repo.
+Verdetti INTEGRALI. Unica trasformazione meccanica: i path assoluti del worktree (`/home/user/wt-bot161/`) resi relativi alla radice del repo.
 
-### Review #203 — diff R-200-2
+### Review #205 — prima versione (BOCCIATO)
 
-## VERDETTO: APPROVATO CON RISERVE
+## VERDETTO: BOCCIATO
 
-**In breve:** la correzione funziona e chiude R-200-2. Ho rifatto io le prove: la suite del kernel dà 658 PASS. Ho poi tolto `run_command` dalla lista dei tool che contaminano: falliscono esattamente 4 controlli (T72d, T72e, T72f, T78e). Ho rimesso il file com'era. Il cambio di T78e è corretto. Ci sono due riserve, nessuna blocca il commit. La più importante è un buco preesistente nella compressione della cronologia (R-203-1).
+La modifica va nella direzione giusta e funziona sui due casi reali della PR #149 (rifatto da me: entrambi i testi salvati danno ora {BASSA, COSMETICA}). Ma la frase su cui si regge, "tutto il resto della riga conta ancora", è vera solo per ALTA e MEDIA scritte in maiuscolo, cioè l'unico caso che i test provano. Ho trovato tre peggioramenti rispetto a HEAD, tutti rifatti con il vecchio `bot_esito.py` (da `git show HEAD:`) affiancato al nuovo. I 292 test passano.
 
 **Elementi del diff esaminati**
 
-1. `modules/gate/gate.py:70` — aggiunge `"run_command"` a `UNTRUSTED_INPUT_TOOLS`.
-   - Rischio esaminato: la finestra resta "pulita" anche quando contiene contenuti di file letti con cat/grep/head/tail/ls.
-   - Anche l'output di `ls` è testo che un terzo può manipolare: un nome di file può contenere un'istruzione nascosta. Quindi è giusto includere tutto il comando, non solo cat/grep.
-   - Gli output di errore (comando rifiutato, sandbox assente, dry-run) contano anch'essi come contaminanti. È prudente: nel dubbio si blocca, mai il contrario.
-   - Esito: **ok**.
+1. `scripts/bot_esito.py:162` — sostituisce la citazione della riserva con la parola `"R-riserva"` prima di cercare le gravità.
+   - **Rischio:** la sostituzione modifica anche le righe lette dalle altre due regex. `_FINDING_GRAVE_A_PAROLE` (`scripts/bot_esito.py:105`) e `_FINDING_GRAVITA` (`:97`) cercano un id con numero (`[VFRG]-\d+` e `[A-Za-z]+-\d+`). "R-riserva" non ha numero, quindi quelle regex non vedono più la riga.
+   - **Esito: blocco.** Righe che prima davano {MEDIA, BASSA} e ora danno un insieme vuoto:
+     - `R-203-1 (BASSA) questa PR introduce un bug grave`
+     - `R-203-1 (BASSA) ma x è high`
+     - `R-203-1 (BASSA) — critico`
+     - `R-203-1 (BASSA) e poi x (alta) in questa PR`
+   - Il test `tests/test_unit_verifica_bot.py:445` usa "ALTA" maiuscolo, che viene preso da `_PAROLA_BLOCCANTE` e non da queste regex: per questo non se ne accorge.
 
-2. `tests/test_unit_kernel.py` T72f (verso :5103-5133) — giro agentico completo con `GAS_SANDBOX_MODE=os_strict`.
-   - Il ricalcolo della contaminazione a ogni iterazione (`gas.py:2119`) fa sì che la `write_file` dell'iterazione 2 veda l'output del `run_command` dell'iterazione 1.
-   - Il test controlla tre cose: il file NON viene creato, la controprova senza `ls` lo crea, il ciclo arriva alla risposta finale.
-   - Con la mutazione l'output era `['reports\n', 'Successo: File r200.txt aggiornato.']`, cioè il buco riprodotto in modo concreto.
-   - Esito: **ok**.
+2. `scripts/bot_esito.py:155` — la regex `_RISERVA_REGISTRATA = r"\bR-\d+-\d+\b\s*\([^)\n]*\)"`.
+   - **Rischio:** con parentesi una dentro l'altra, la regex mangia anche il contenuto della seconda.
+   - **Esito: blocco.** `R-203-1 (BASSA, vedi anche V-2 (ALTA) nuovo bug)` dà {} (prima dava {ALTA, MEDIA, BASSA}). Un finding V- vero, scritto dentro la parentesi di una riserva, sparisce. Ho provato `[^()\n]*` e il caso torna {ALTA, MEDIA, BASSA}.
 
-3. `tests/test_unit_kernel.py` T78e (verso :6467-6470) — il controllo invertito.
-   - Ho verificato che la finestra di `_k78` contiene SOLO il `run_command` firmato (`tests/test_unit_kernel.py:6390`) e il `calcola` di T78b. Il controllo prova davvero `run_command`, non un `read_file` capitato lì per caso.
-   - Il vecchio controllo ("NON contaminata, come nel loop") era il buco messo per iscritto nei test. Invertirlo è legittimo.
-   - Esito: **ok**.
+3. `.github/workflows/verifica-bot.yml:142-144` — nuova regola nel prompt del bot (la "R-203-1 (ALTA, preesistente)").
+   - **Rischio:** il prompt e il codice potrebbero non coincidere.
+   - **Esito: ok.** La forma richiesta dal prompt è quella tolta dalla regex. Riserva sotto: la regex non chiede la parola "preesistente" che il prompt invece impone.
 
-4. Contesto: `gas.py:938-944` `_finestra_e_contaminata`, `gas.py:545-551` elenco dei tool.
-   - `write_file` restituisce solo una conferma; `salva_contatto` e `imposta_stato_contatto` restituiscono ciò che il modello ha appena scritto; `calcola` dà numeri.
-   - Nessun altro tool di oggi porta dentro input esterno.
-   - Esito: **ok**.
+4. `tests/test_unit_verifica_bot.py:441-462` — 5 casi che devono restare COMMENT, più il caso del campo strutturato.
+   - **Esito: riserva.** Mancano proprio i casi che fanno fallire il codice: parole minuscole o inglesi fuori dalla parentesi, gravità tra parentesi dopo la citazione, parentesi annidate. Il test sul campo strutturato è giusto: il campo vince sul testo.
 
-**Riserve (da tracciare in `stato_progetto.md`)**
+**Correzioni richieste (bloccanti)**
+- **B-1:** usare un segnaposto con il numero, ad esempio `"R-0"`, così le regex `:97` e `:105` vedono ancora la riga. In alternativa, togliere solo il contenuto della parentesi e lasciare l'id.
+- **B-2:** cambiare `[^)\n]*` in `[^()\n]*`.
+- **B-3:** aggiungere ai casi COMMENT le quattro righe del punto 1 e quella del punto 2. Poi rifare la prova di mutazione (cioè rompere apposta il fix e controllare che i test falliscano) su ciascuna delle due correzioni.
 
-- **R-203-1 (ALTA, preesistente, riguarda il cancello)** — `gas.py:648-658`.
-  - Quando la cronologia viene compressa, l'output dei tool (anche `read_file`, `run_command`, `ricorda`) viene copiato come `"[tool] content[:300]"` dentro un messaggio con **ruolo user**.
-  - Il messaggio originale del tool sparisce, quindi `_finestra_e_contaminata` torna False. Ma fino a 300 caratteri di testo di terzi restano visibili al modello, e per di più con l'autorità di un messaggio dell'utente.
-  - `reports/design_cancello.md:137` tratta la compressione come una decontaminazione: è sbagliato.
-  - Possibili correzioni: escludere gli output dei tool contaminanti dal riassunto, oppure considerare contaminato un riassunto che li contiene.
-  - Non blocca questa PR: il buco c'era già prima e non nasce da questo diff. Va però aperto come fetta del cancello prima che Gas lavori in autonomia.
+**Riserve (non bloccanti, da registrare)**
+- **R-205-1 (BASSA), forma ostile.** Oggi qualunque `R-n-n (...)` sparisce dal controllo sul testo, compreso un problema nuovo descritto tutto dentro la parentesi, per esempio `R-203-1 (ALTA, preesistente: questa PR toglie il controllo)`. Quanto si indebolisce la difesa secondaria: un contenuto ostile che riesce a far scrivere al modello un problema reale in quella forma riesce anche a farlo togliere dal campo "finding". Quindi la difesa principale cade comunque, e il margine perso è piccolo ma reale. Consiglio di esigere `preesistente` dentro la parentesi: costa poco, coincide con il prompt, ed evita che un finding del bot chiamato "R-…" per abitudine venga cancellato per sbaglio. Il commento a `:103-104` ammette infatti anche id R- per i finding.
+- **R-205-2 (BASSA), controllo contro il repo.** Limitare la regola agli id presenti in `reports/stato_progetto.md` di main non lo consiglio come requisito. Un id esistente si può riusare (R-203-1 è pubblico), e il job dell'esito dovrebbe leggere un file di main in più. Il guadagno contro un attacco è circa zero; serve solo contro id inventati per errore.
 
-- **R-203-2 (MEDIA, autonomia)** — in modalità `os_strict` lo stesso `run_command` è UNCERTAIN.
-  - Ora anche il **secondo** `run_command` della finestra va in approvazione. Un'esplorazione tipo `ls` e poi `cat` non è più autonoma, e lo stesso vale per `write_file`, `salva_contatto` e `imposta_stato_contatto` finché l'output resta nella finestra (anche per più turni).
-  - È coerente con il comportamento già in vigore per `read_file`, quindi è accettabile.
-  - Va però detto all'operatore. In futuro si può decidere se un `run_command` in sandbox (sola lettura, senza rete) debba andare in approvazione anche con la finestra contaminata: è una decisione umana.
+**Cosa NON ho verificato**
+- Il comportamento del modello reale nel workflow con il nuovo prompt: non lo posso riprodurre qui (serve una run di `verifica-bot` con il token del bot). Ho verificato solo la logica deterministica di `bot_esito.py` e i due testi salvati.
+- La PR tocca la macchina del bot, quindi il bot darà neutral e il merge resta all'operatore.
 
-**Rischi NON verificati**
-- Non ho verificato come si comporta su un VPS reale con bwrap in esecuzione per più turni, né il click di approvazione reale su Telegram: non si possono riprodurre in sviluppo. T72f regge anche senza bwrap, perché anche un errore conta come contaminante.
-- Non ho rieseguito la suite verifica_bot (283): i file che il diff tocca non la riguardano.
-- Il pin di memoria (`_memoria_pin`) inietta testo di terzi nel messaggio di sistema. Non l'ho rivalutato: è già tracciato come fetta C-pin (`design_cancello.md:150`).
+La riga contatore #205 e una lezione nuova sono state aggiunte a `.claude/agents/memoria_revisore.md`, senza commit come richiesto. La numerazione salta #204 perché quella sta sul branch della PR #149.
 
-**Memoria del revisore**
-Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga contatore #203 più una lezione: ogni trasformazione della cronologia che sposta del contenuto (compressione, riassunti) può far perdere traccia della sua provenienza. Come richiesto, il file NON è committato. I file staged (`modules/gate/gate.py`, `tests/test_unit_kernel.py`) non sono stati modificati.
+File rilevanti:
+- `scripts/bot_esito.py`
+- `tests/test_unit_verifica_bot.py`
+- `.github/workflows/verifica-bot.yml`
+- `.claude/agents/memoria_revisore.md`
+
+### Review #206 — dopo B-1/B-2/B-3
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Le tre correzioni bloccanti di #205 sono a posto e le ho ricontrollate da me sul diff staged in `/home/user/wt-bot161`. I due verdetti reali della PR #149 danno ancora solo {BASSA, COSMETICA}: i due falsi NO non si ripetono.
+
+**Elementi del diff esaminati**
+
+1. `scripts/bot_esito.py:156` — la regex ora è `\b(R-\d+-\d+)\b\s*\([^()\n]*\)`: tiene l'id e non accetta parentesi una dentro l'altra.
+   - **Rischio:** il problema di #205, cioè parentesi annidate che nascondono un finding V-.
+   - **Esito: ok.** `R-203-1 (BASSA, vedi anche V-2 (ALTA) nuovo bug)` dà {ALTA, MEDIA, BASSA}. Rotto apposta (rimesso `[^)\n]*`) → 1 test fallisce. Ripristinato.
+
+2. `scripts/bot_esito.py:163` — `sub(r"\1", ...)` toglie solo la parentesi e lascia l'id.
+   - **Rischio:** il problema di #205, cioè le altre regex che non vedono più il resto della riga perché manca l'id.
+   - **Esito: ok.** Le quattro righe di #205 tornano bloccanti: "grave" e "high" danno {MEDIA}, "critico" dà {MEDIA}, "(alta)" dà {ALTA, MEDIA}. Restano senza effetto, come previsto:
+     - più citazioni sulla stessa riga;
+     - `R-203-1(ALTA)` senza spazio;
+     - `R-203-1 (ALTA, gate e compressione): resta prioritaria`.
+   - Una seconda parentesi dopo la citazione conta ancora: `R-203-1 (ALTA) (MEDIA)` dà {MEDIA}. Rotto apposta (rimesso "R-riserva") → 4 test falliscono. Ripristinato. Il codice nel worktree è identico a quello staged.
+
+3. `tests/test_unit_verifica_bot.py:451-455` — nuovi casi che devono restare COMMENT: inglese, minuscolo, "critico", parentesi annidate.
+   - **Esito: ok.** Ora coprono ogni ramo del controllo, non più solo la parola maiuscola. Risultato: 297 passed.
+
+**Riserve (da registrare in stato_progetto.md)**
+- **R-205-1 (BASSA), resta aperta.** Una descrizione messa tutta dentro la parentesi di una riserva sparisce dal controllo sul testo, ad esempio `R-1-1 (ALTA, questa PR toglie il controllo)`. Contro questo caso resta solo il campo strutturato.
+  - Accetto la motivazione per non chiedere la parola "preesistente": il secondo verdetto reale di #149 scrive "(ALTA, gate e compressione)" senza quella parola, quindi resterebbe un falso NO.
+  - Il margine perso è piccolo: un contenuto ostile che riesce a far scrivere il problema in quella forma riesce anche a farlo togliere dal campo "finding".
+- **R-205-2 (BASSA), dichiarata.** Non si controlla che l'id esista davvero nel repo. Il vantaggio contro un attacco è quasi nullo, perché un id vero come R-203-1 è pubblico e si può riusare.
+
+**Cosa NON ho verificato**
+- Come si comporta il modello reale con il nuovo prompt nella run di `verifica-bot`: non si può riprodurre qui. Ho verificato solo la logica di `bot_esito.py`, sui testi salvati e su casi costruiti a mano.
+
+**Note**
+- La PR tocca la macchina del bot: il bot darà neutral e il merge spetta all'operatore.
+- La riga contatore #206 è in `.claude/agents/memoria_revisore.md`, sotto la #205 e la sua lezione, senza commit come richiesto.
+
+File rilevanti:
+- `scripts/bot_esito.py`
+- `tests/test_unit_verifica_bot.py`
+- `.github/workflows/verifica-bot.yml`
+- `.claude/agents/memoria_revisore.md`
 
 ## §5 DELTA TEST DEL MOTORE
 
+Nessuna modifica a gas.py/brains/modules.
+
 ```
-python tests/test_unit_kernel.py → 658 PASS, 0 FAIL (main locale 655)
-senza il fix (run_command tolto dal set) → 654 PASS, 4 FAIL (T72d, T72e, T72f, T78e)
-python -m pytest tests/test_unit_gate.py tests/test_unit_verifica_bot.py → 357 passed
+python -m pytest -q tests/test_unit_verifica_bot.py → 297 passed
+mutation B-1 (segnaposto senza numero) → 4 failed; mutation B-2 (parentesi annidate) → 1 failed
+verdetti reali #149 (check run 112915110196, 112989655083) → _gravita_nel_testo = {BASSA, COSMETICA}
 ```
 
 ## §6 STATO CI
@@ -111,5 +152,6 @@ Run CI di questo branch: non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-203-1** (ALTA, preesistente): compressione della cronologia decontamina.
-- **R-203-2** (MEDIA, decisione umana): autonomia ridotta dopo run_command.
+- **R-205-1** (BASSA): un problema descritto tutto dentro la parentesi di una citazione R-n-n sfugge al controllo sul testo.
+- **R-205-2** (BASSA): l'id della riserva non è verificato contro il repo.
+- **R-203-1**: aperta (cancello, compressione).
