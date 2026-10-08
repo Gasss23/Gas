@@ -16,6 +16,8 @@
 
 - **Fetta 1 — regola di merge autonomo in `CLAUDE.md`** (`623215c`): `FATTA`.
 - **Registrazione del merge di #160 e delle riserve basse nuove**: `FATTA` — `reports/stato_progetto.md` voce 6.
+- **Fetta 2 — V-1 del bot su #161: verdetto testuale, non solo success** (`0ae4fe7`): `FATTA`.
+- **Applicazione automatica della regola in `bot_esito.py`/`gasmerge.sh`**: `DEFERITA` — macchina del bot, fetta dedicata con revisore.
 - **Correzione delle riserve basse (file di configurazione scrivibili)**: `DEFERITA` — fetta dedicata.
 
 ---
@@ -25,15 +27,17 @@
 ```
  CLAUDE.md                 |   2 +-
  reports/diff_sessione.md  |  21 +++++++++-----------
- reports/handoff.md        | 394 +++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md        | 401 +++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md |   2 +-
- reports/ultimo_report.md  |  39 ++++++++++++-------------------------
- 5 files changed, 39 insertions(+), 419 deletions(-)
+ reports/ultimo_report.md  |  41 +++++++++++++-------------------------
+ 5 files changed, 48 insertions(+), 419 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0ae4fe7 docs(claude-md): la regola di merge guarda il verdetto testuale, non solo il success (V-1 bot #161)
+6fd7042 docs(claude-md): report fine-task — regola di merge autonomo (PR #161)
 623215c docs(claude-md): regola di merge autonomo — solo APPROVATO senza riserve, il resto all'operatore
 ```
 
@@ -49,11 +53,14 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-- `623215c`: run CI del suo push, non ancora disponibile alla scrittura dell'handoff.
+- `623215c`: check suite completata (pushato prima del fine-task).
+- `6fd7042`: CI run 37836965036 (handoff-check success); `verifica-bot` **failure** (V-1 MEDIA), corretta in `0ae4fe7`.
+- `0ae4fe7`: nessuna run propria (pushato insieme al commit di fine-task).
 - Commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 - `verifica-bot`: per regola darà al massimo `neutral` (la PR tocca `CLAUDE.md`).
 
 ## §7 RISERVE APERTE
 
+- Bot #161 V-1 (MEDIA): testo CHIUSO (`0ae4fe7`); l'applicazione automatica in `bot_esito.py`/`gasmerge.sh` resta aperta (macchina del bot).
 - Verifica esterna #160 (BASSE): file di configurazione degli strumenti scrivibili da Gas; conteggio "104" nell'handoff #160 — `reports/stato_progetto.md` voce 6.
 - Già aperte: R-220-2, R-220-3, R-223-1, R-223-2, R-224-2.

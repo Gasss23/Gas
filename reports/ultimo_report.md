@@ -16,6 +16,8 @@ riserve, con CI verde e senza conflitti; tutto il resto aspetta l'operatore. Scr
 
 - **PR #160 (`gas notte` + cancello)**: MERGIATA (`588ad86`) su istruzione dell'operatore ("mergia senza chiedermi se tutto è positivo"); bot APPROVATO CON RISERVE (neutral), verifica esterna APPROVATO CON RISERVE, CI verde su main.
 - **Regola di merge autonomo in `CLAUDE.md`** (`623215c`): FATTA — PR #161, in attesa dell'operatore.
+- **V-1 del bot su #161 (MEDIA)**: FATTA (`0ae4fe7`) — la regola ora dice che va letto il verdetto testuale: il check `verifica-bot` success arriva anche con "APPROVATO CON RISERVE" (riserve basse), e `gasmerge --auto` guarda solo il success. Applicazione automatica (bot/gasmerge che distinguono) DEFERITA: tocca la macchina del bot, serve una fetta con il revisore.
+- **V-2 del bot su #161 (BASSA, stat dell'handoff)**: FATTA — stat rigenerata come ultimo passo.
 - **Riserve basse della verifica esterna #160** (file di configurazione degli strumenti scrivibili da Gas; conteggio "104" nell'handoff #160): DEFERITE — in `reports/stato_progetto.md` voce 6.
 - **Problema del Mac (`main` occupato da un worktree)**: FATTA — comando alternativo dato all'operatore, annotato in `stato_progetto.md`.
 
