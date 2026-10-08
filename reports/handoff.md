@@ -28,23 +28,25 @@ Nota: PR creata via API GitHub (MCP `create_pull_request`, risposta `{"id":"4775
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 +++++++++
+ .claude/agents/memoria_revisore.md |  11 +++++++++
  gas.py                             | 441 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
  modules/memory/store.py            |  23 +++++++++++++++++++
- reports/diff_sessione.md           |  16 ++++++++-----
- reports/handoff.md                 | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------
+ reports/diff_sessione.md           |  18 ++++++++++-----
+ reports/handoff.md                 | 351 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------
  reports/roadmap.md                 |   7 +++++-
  reports/stato_progetto.md          |  14 ++++++++++--
- reports/ultimo_report.md           |  89 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ reports/ultimo_report.md           |  94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  tests/test_unit_kernel.py          | 341 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 1109 insertions(+), 118 deletions(-)
+ 9 files changed, 1146 insertions(+), 154 deletions(-)
 ```
 
-NB: dopo il merge di main (`bec2238`) la base è il nuovo merge-base `3d56bbf`: il diff qui sopra è solo il lavoro di FASE 2.6 rispetto a main aggiornato (gate.py di #150 è già in main).
+NB: dopo il merge di main la base è il merge-base `0cf37d4`: il diff è solo il lavoro di FASE 2.6 rispetto a main aggiornato.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+65e6522 Merge origin/main (PR #151, R-161-1) nella FASE 2.6 — review #207
+9b20f82 docs(fase-2.6): fine-task quater — handoff §2/§3/§6 rigenerati sull'ultima testa
 65cc961 docs(fase-2.6): ultimo_report — righe R-200-2 superate allineate (chiusa in #150)
 adcf06e docs(fase-2.6): fine-task ter — report, handoff e diff sessione aggiornati dopo il merge di main (R-200-2 chiusa in #150)
 bec2238 Merge origin/main (PR #150, R-200-2) nella FASE 2.6 — review #204
