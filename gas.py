@@ -525,25 +525,24 @@ def _anteprima_log(testo: Any, cap: int = RIFLESSIONE_LOG_ANTEPRIMA_CHARS,
     preceduto dal tipo — V-1 verifica bot PR #155). Un repr che solleva (es.
     RecursionError su strutture annidate all'estremo) non esce: c'è un ripiego. PURA."""
     prefisso = ""
-    fmt = repr
     if testo is not None and not isinstance(testo, str):
         prefisso = f"<{type(testo).__name__}> "
         try:
             # str.__str__: str ESATTA anche se __repr__ restituisce una sottoclasse di str
-            # che ridefinisce isprintable/slicing (R-216-1).
+            # che ridefinisce slicing o __repr__ (R-216-1).
             testo = str.__str__(repr(testo))
         except Exception as e:  # RecursionError, __repr__ difettoso: mai un'eccezione dal log
             return f"{prefisso}(repr non disponibile: {type(e).__name__})"
-        if testo.isprintable():
-            fmt = str  # repr già su una riga e stampabile: niente secondo repr (leggibilità)
+        # Sempre un secondo repr, anche se il primo è stampabile: tra apici, il testo del
+        # modello non si confonde con la sintassi della riga di log (V-1 bot #157).
     elif not isinstance(testo, str):
         return repr(testo)
     cap, coda = max(cap, 0), max(coda, 0)
     if len(testo) <= cap + coda:
-        return prefisso + fmt(testo)
+        return prefisso + repr(testo)
     omessi = len(testo) - cap - coda
     # testo[len-coda:], NON testo[-coda:]: con coda=0 il secondo darebbe tutta la stringa.
-    return f"{prefisso}{fmt(testo[:cap])}…[+{omessi} caratteri]…{fmt(testo[len(testo) - coda:])}"
+    return f"{prefisso}{testo[:cap]!r}…[+{omessi} caratteri]…{testo[len(testo) - coda:]!r}"
 
 
 def _lunghezza_log(testo: Any) -> str:

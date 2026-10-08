@@ -7113,29 +7113,34 @@ try:
     _parti80 = [{"type": "text", "text": "w" * 3000}]
     _antp80 = _anteprima_log(_parti80)
     check("T80u4 risposta non testuale: anteprima col tipo e limitata, lunghezza n/d",
-          _antp80.startswith("<list> [{'type': 'text'") and "caratteri]…" in _antp80
+          _antp80.startswith("<list> \"[{'type': 'text'") and "caratteri]…" in _antp80
           and len(_antp80) < _cap80 + _coda80 + 60
-          and _anteprima_log(7) == "<int> 7"
+          and _anteprima_log(7) == "<int> '7'"
           and gas._lunghezza_log(_parti80) == "n/d (list)" and gas._lunghezza_log(None) == "0"
           and gas._lunghezza_log("abc") == "3", _antp80[:120])
-    # T80u5 — casi estremi: repr che solleva, JSON annidato oltre la ricorsione, repr non
-    # stampabile → secondo repr (una riga sola)
+    # T80u5 — casi estremi: repr che solleva, JSON annidato oltre la ricorsione, repr che
+    # restituisce una sottoclasse di str ostile; secondo repr sempre (una riga sola)
     class _ReprRotto80:
         def __repr__(self):
             raise RuntimeError("rotto")
     class _StrBugiarda80(str):
-        def isprintable(self):
-            return True
+        # Sottoclasse ostile: repr e slicing ridefiniti per far passare un a-capo nel log.
+        # Protetta solo da str.__str__ in _anteprima_log (R-216-1/R-218-1).
+        def __repr__(self):
+            return "X\nY"
+        def __getitem__(self, k):
+            return _StrBugiarda80(str.__getitem__(self, k))
     class _ReprBugiardo80:
         def __repr__(self):
             return _StrBugiarda80("a\nb")
     _strano80 = type("Strano80", (), {"__repr__": lambda self: "a\nb"})()
-    check("T80u5 anteprima/parser robusti su repr che solleva, ricorsione, repr multiriga",
+    check("T80u5 anteprima/parser robusti su repr che solleva, ricorsione, repr multiriga;"
+          " secondo repr sempre (testo del modello tra apici)",
           _anteprima_log(_ReprRotto80()) == "<_ReprRotto80> (repr non disponibile: RuntimeError)"
           and _analizza_riflessione('{"a":' * 100000 + '1' + '}' * 100000)
           == (None, "JSON annidato oltre il limite di ricorsione")
           and _anteprima_log(_strano80) == "<Strano80> 'a\\nb'"
-          and _anteprima_log({"a": "\n"}) == "<dict> {'a': '\\n'}"
+          and _anteprima_log({"a": "\n"}) == "<dict> \"{'a': '\\\\n'}\""
           and "\n" not in _anteprima_log(_ReprBugiardo80()))
     check("T80v cascata unica: 'complesso' parte da gemini-flash, gratuiti in coda",
           [c[0] for c in _cascata_provider("complesso")] == ["gemini-flash", "groq", "openrouter", "ollama"]
