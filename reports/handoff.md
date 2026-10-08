@@ -1,239 +1,196 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-08 — follow-up #155: riserve del bot sul log di `rifletti` (PR #156, impilata su #155)
+**Sessione:** 2026-10-08 — log di `rifletti` robusto ai casi estremi (PR #157); CLAUDE.md spostato in PR separata
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #155 (https://github.com/Gasss23/Gas/pull/155), POI della PR #156 (https://github.com/Gasss23/Gas/pull/156). #156 è impilata su #155: dopo il merge di #155 questo handoff va rigenerato (diff ridotto al solo `ad7b87e`).
-2. Decidere se allineare CLAUDE.md al ruleset `main-lock`, che ha TRE check required (`unit-suite`, `handoff-check`, `verifica-bot`).
-3. Dopo i merge, sul Mac: `gas rifletti` e leggere in `gas_debug.log` la riga `riflessione: gemini-flash … risposta non valida …`.
+1. Merge della PR #157 (https://github.com/Gasss23/Gas/pull/157): autorizzato in sessione all'agente a verifiche verdi (bot `verifica-bot` success incluso).
+2. Merge della PR separata su `CLAUDE.md` (3 check required): la decide l'operatore, il bot la marca "neutral" per regola (macchina del bot).
+3. Sul Mac: `git pull`, `gas rifletti`, e leggere in `gas_debug.log` la riga `riflessione: gemini-flash … risposta non valida …`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — V-1 bot: anteprima limitata anche per content non testuale** (`ad7b87e`): `FATTA`.
-- **Fetta 2 — V-2 bot: anteprima marcata `[NON FIDATA]`** (`ad7b87e`): `FATTA`.
-- **Fetta 3 — V-3 bot: `lunghezza` `n/d (<tipo>)`, motivo "mai chiuso" esatto** (`ad7b87e`): `FATTA`.
-- **V-3 bot — scarto 703/705 locale vs CI**: `SALTATA` — non è un difetto del codice; causa non indagata.
-- **Test**: `FATTA` — T80l2 esteso, T80l4, T80u4.
-- Commit di #155 inclusi nel branch (`5cea4c7`…`dc71fbd`): già descritti nell'handoff di #155; i loro verdetti restano sotto in §4.
+- **Fetta 1 — RecursionError nel parser** (`2be60b8`): `FATTA`.
+- **Fetta 2 — ripiego se `__repr__` solleva** (`2be60b8`): `FATTA`.
+- **Fetta 3 — errore del provider marcato `errore[NON FIDATO]=`** (`2be60b8`): `FATTA`.
+- **Fetta 4 — singolo repr se stampabile**: `TOLTA` in `652b498` (V-1 bot #157: ambiguità nella riga di log); secondo repr sempre.
+- **Fetta 5 — str esatta (R-216-1) con test non vacuo (R-218-1)** (`2be60b8`, `652b498`): `FATTA`.
+- **Fetta 6 — CLAUDE.md con i 3 check required**: `SPOSTATA` — `93aca3a` revertito da `45b036d`, va in PR separata.
+- **Prova `gas rifletti` sul Mac**: `SALTATA` — non eseguibile da questo ambiente.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- gas.py                             | 100 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------
- reports/diff_sessione.md           |   9 ++++++---
- reports/handoff.md                 | 209 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ gas.py                             |  21 +++++++++++++++++----
+ reports/diff_sessione.md           |  14 ++++++++------
+ reports/handoff.md                 | 224 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  28 ++++++++++++++++++----------
- tests/test_unit_kernel.py          |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 7 files changed, 400 insertions(+), 54 deletions(-)
+ reports/ultimo_report.md           |  40 ++++++++++++++++++++++------------------
+ tests/test_unit_kernel.py          |  39 +++++++++++++++++++++++++++++++++++++--
+ 7 files changed, 178 insertions(+), 168 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-ad7b87e fix(fase-2.6): log dello scarto in rifletti — riserve del bot su #155
-6ebb906 chore(revisore): memoria review #215 — APPROVATO
-dc71fbd docs(fase-2.6): report fine-task — motivi precisi e coda nel log di rifletti (PR #155)
-f88667d feat(fase-2.6): anteprima della risposta scartata con inizio + coda
-a3587e7 chore(revisore): memoria review #214 — APPROVATO
-6cd97da chore(revisore): memoria review #213 — APPROVATO CON RISERVE
-aead68d fix(fase-2.6): motivi di scarto in rifletti precisi (non testuale, JSON mai chiuso)
-b235025 chore(revisore): memoria review #212 — APPROVATO
-74fe43e docs(fase-2.6): report fine-task — log della risposta scartata in rifletti (PR #155)
-c2919cb feat(fase-2.6): rifletti logga la risposta scartata (motivo, finish_reason, anteprima)
-758c513 chore(revisore): memoria review #211 — APPROVATO
-5cea4c7 chore(revisore): memoria review #210 — APPROVATO CON RISERVE
+652b498 fix(fase-2.6): anteprima sempre col secondo repr (V-1 bot #157), test R-216-1 non vacuo
+316732c chore(revisore): memoria review #219 — APPROVATO
+1498b03 chore(revisore): memoria review #218 — APPROVATO CON RISERVE
+45b036d Revert "docs(claude-md): lucchetto main con i TRE check required (verifica-bot incluso)"
+926b448 docs(fase-2.6): report fine-task — casi estremi del log di rifletti + CLAUDE.md (PR #157)
+93aca3a docs(claude-md): lucchetto main con i TRE check required (verifica-bot incluso)
+2be60b8 fix(fase-2.6): log di rifletti robusto ai casi estremi (riserve facoltative #156)
+27fff35 chore(revisore): memoria review #217 — APPROVATO
+2a37921 chore(revisore): memoria review #216 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore `c2919cb`. Due passaggi del revisore sullo stesso diff di `gas.py` (il secondo dopo l'aggiunta di T80l3). Verdetti integrali:
+Commit motore `2be60b8`. Due passaggi, verdetti integrali:
 
-### Review #210
+### Review #216
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Prima della review ho letto CLAUDE.md §5, §8 e §9, la voce 9 di "Prossimi passi" in `reports/stato_progetto.md` (cercata con Grep) e la mia memoria.
+La modifica si può committare. C'è una sola riserva, bassa e oggi non raggiungibile: una sottoclasse di `str` può aggirare il controllo `isprintable()`. Ho letto prima CLAUDE.md §5, la sezione voce 9 / FASE 2.6 di `reports/stato_progetto.md` e la mia memoria fino alla review #215.
 
 **Elementi del diff esaminati**
 
-1. `gas.py:526`: `_analizza_riflessione` ripete i rami del vecchio parser uno per uno. Ogni `return None` diventa `(None, motivo)` e il caso valido diventa `((recap, lezioni), "")`. Il ciclo che pulisce le lezioni è invariato. `_parse_riflessione` (`gas.py:562`) è un wrapper che restituisce `[0]`. Rischio esaminato: un comportamento diverso del parser. Esito: **ok**. Il parser si comporta come prima, e T80u (casi del vecchio parser) passa senza modifiche. L'unica differenza è che il `except` ora cattura l'eccezione come `e`, e il messaggio di JSONDecodeError contiene solo la posizione, non il testo.
-2. `gas.py:1919-1931`: la nuova warning in `rifletti()` sta ancora dentro il `try` del provider, seguita da `_log_tokens(... fallthrough, KO)` e da `continue`. `scelta = response.choices[0]` c'era già prima, ed è protetto dallo stesso `except Exception`. `len(grezza)` è protetto da `isinstance`, quindi `content=None` dà lunghezza 0 e anteprima `None`. Rischio esaminato: un'eccezione dentro il logging che faccia saltare il passaggio al provider successivo (§9). Esito: **ok**. L'ordine dei provider, il ciclo e il break non sono toccati.
-3. `gas.py:515`, `_anteprima_log`: usa `repr` su una riga sola, così gli a-capo nella risposta non spezzano la riga del log e non si possono iniettare righe finte. Il testo è troncato a 300 caratteri, con il conteggio di quelli rimasti. Rischio esaminato: un'esposizione di dati. Esito: **ok**. L'anteprima finisce in `gas_debug.log`, che è in `.gitignore` (riga 9), resta locale e ruota a 5MB×3 (`gas.py:37`). Al massimo 300 caratteri di output del modello: per un log diagnostico locale è accettabile e non serve altro.
-4. `tests/test_unit_kernel.py:6817-6835`: T80l2 cattura i messaggi di log con un handler sul logger root, e lo stacca nel `finally`. Ho rifatto una prova rimuovendo `{motivo}` dal messaggio: T80l2 fallisce, poi ho ripristinato il file (working tree pulito). Esito: **riserva** (vedi R-210-1).
+1. `gas.py:571` — `except RecursionError` attorno a `json.loads` in `_analizza_riflessione`. Il rischio era che un JSON annidato all'estremo sollevasse un'eccezione fuori dalla funzione pura. Su una copia ho tolto il ramo e la suite si è fermata in T80u5 con un `RecursionError` non catturato, quindi il ramo serve davvero e il test lo copre. Il type hint ora è `Any`, coerente col ramo che gestisce i non-str. — **ok**
+2. `gas.py:535` — `fmt = str` solo se il repr del non-str è `isprintable()`. Ho verificato che questo basti a garantire una riga sola: ho controllato tutto Unicode e nessun carattere stampabile fa andare a capo secondo `splitlines()`. U+2028, U+2029, U+0085 e `\x1c` risultano non stampabili, quindi passano dal secondo repr (`"['\\u2028']"`). Per gli oggetti normali la garanzia regge. — **ok**, con la riserva R-216-1 sotto
+3. `gas.py:1977` — il ramo `except` del provider ora logga `errore[NON FIDATO]=_anteprima_log(str(e))`. Il rischio era un nuovo punto che solleva dentro l'`except`. `str(e)` veniva già chiamato prima (nell'f-string e in `_classify_provider_error`), e `_anteprima_log` su un `str` non solleva. Nessun nuovo punto di crash, §9 integro. Su una copia ho rimesso `{e}`: T80m2 fallisce. — **ok**
+4. `gas.py:525-531` — ripiego `(repr non disponibile: <Eccezione>)` quando un `__repr__` solleva. Copre anche `TypeError` (un `__repr__` che restituisce un non-str). Il ramo è coperto da T80u5. — **ok**
+5. `tests/test_unit_kernel.py:6883-6896` (T80m2) — l'handler del log è rimosso nel `finally`. Il test controlla davvero il marcatore, che non ci siano a-capo e il limite di lunghezza (niente 400 `e` di fila). — **ok**
 
 **Riserve**
-- **R-210-1 (BASSA, test)**: T80l2 controlla solo che compaia la sottostringa `"finish_reason="`, e il client finto restituisce sempre `None`. Nessun test copre il caso `finish_reason='length'` (risposta tagliata), che è proprio l'ipotesi da verificare su Gemini. Nessun test controlla nemmeno l'anteprima troncata dentro il messaggio di log reale. T80u3 copre il troncamento, ma solo sulla funzione pura. Da tracciare in `stato_progetto.md`, non blocca il commit.
 
-**Wall of Shame**: nessun taglio diretto della cronologia, nessuna simulazione dell'output dei tool. `_get_window`, il limite di 10 iterazioni e il limite di output non sono toccati.
+- **R-216-1 (BASSA, oggi non raggiungibile)**: se un `__repr__` restituisce una sottoclasse di `str` che sovrascrive `isprintable()` facendogli dire `True`, `fmt=str` lascia passare un `\n` nel log. L'ho provato: si ottiene `'<O> a\nb'`. Per arrivarci serve codice, non dati di rete: le risposte dei provider sono oggetti degli SDK. La correzione è una riga: `str.isprintable(testo)`, oppure `testo = str(testo)` prima del controllo.
 
-**Verifiche**: ho rieseguito la suite del kernel, 702 PASS e 0 FAIL, compresi T80l2, T80u2 e T80u3.
+**Verifiche**
 
-**Rischio esplicitamente escluso**: non ho verificato cosa risponde davvero Gemini 2.5 Flash a `rifletti` sul Mac, né se 300 caratteri bastano a capire perché viene scartato. Non è riproducibile qui senza la chiave e senza la cronologia dell'operatore. Se il problema sta alla fine della risposta (JSON troncato), l'anteprima mostra solo l'inizio: la diagnosi si affida a motivo, `finish_reason` e lunghezza.
+- Suite kernel riprodotta: 707 PASS, 0 FAIL.
 
-Ho aggiunto la riga contatore #210 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata a parte con `5cea4c7`. Il diff staged del motore non è stato toccato.
+**Rischio escluso**: non ho verificato il comportamento con una risposta reale di Gemini o Groq (nessuna chiave nel container) né la rotazione reale di `gas_debug.log` su Mac o VPS. Ho controllato solo la forma della riga di log nei test e nelle prove di mutazione.
 
-### Review #211
+Ho scritto la riga contatore #216 e una lezione nuova in `/home/user/Gas/.claude/agents/memoria_revisore.md`. Il file è committato da solo (commit `2a37921`) tramite `scripts/commit_memoria_revisore.sh`. La lezione: un controllo di forma su un valore prodotto da `__repr__`/`__str__` va fatto col metodo della classe base, non con quello dell'oggetto.
 
-## VERDETTO: APPROVATO
+File rilevanti: `/home/user/Gas/gas.py`, `/home/user/Gas/tests/test_unit_kernel.py`, `/home/user/Gas/.claude/agents/memoria_revisore.md`.
 
-Il diff staged è cambiato solo in `tests/`: la parte di `gas.py` è la stessa della review #210 (67 righe modificate, stessi rami). La riserva R-210-1 è chiusa.
-
-**Elementi del diff esaminati**
-
-1. `tests/test_unit_kernel.py:6837-6858` (T80l3): un client finto, sostituito tramite `callable(r)` in `_Rif80.create`, restituisce `finish_reason="length"` e un JSON tagliato a metà di 2011 caratteri (`{"recap": "zzz…`). Il test controlla quattro cose: il valore `finish_reason='length'`, `lunghezza=2011`, il suffisso `…[+1711 caratteri]` e l'assenza di 400 `z` di fila; poi controlla il fallback su groq. Rischio esaminato: un test vuoto, che passa comunque. Esito: **ok**. Ho fatto una prova togliendo il troncamento da `_anteprima_log` (`gas.py:515`): falliscono sia T80l3 sia T80u3. Poi ho ripristinato il file e il working tree è pulito.
-2. `gas.py:1919-1931`: il logging dello scarto in `rifletti()` è invariato rispetto alla #210. È ancora dentro il `try` del provider, e la cascata e il fallback §9 non sono toccati. Esito: **ok**.
-3. `tests/test_unit_kernel.py` (riuso di `_h80l`): il test svuota `_logrec80l` e stacca l'handler nel `finally`, quindi non resta un handler appeso al logger root che sporchi i test successivi. Esito: **ok**.
-
-Ho rieseguito la suite del kernel: 703 PASS, 0 FAIL.
-
-**Nota cosmetica (non è una riserva)**: quando il JSON è tagliato, il motivo scritto nel log è "nessun oggetto JSON (manca la coppia { })", anche se la `{` c'è. Insieme a `finish_reason='length'` e alla lunghezza la diagnosi resta comunque chiara.
-
-**Rischio esplicitamente escluso**: non ho verificato con Gemini reale sul Mac che il nuovo log riveli davvero la causa dello scarto, perché qui mancano la chiave e la cronologia dell'operatore. La conferma verrà dalla prossima prova di `gas rifletti`.
-
-Ho aggiunto la riga contatore #211 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata a parte con `758c513`. Il diff staged non è stato toccato.
-
-Commit motore `aead68d` (fix V-1 verifica esterna). Verdetto integrale:
-
-### Review #212
+### Review #217
 
 ## VERDETTO: APPROVATO
 
-Il fix chiude il finding V-1 della verifica esterna (motivi di scarto fuorvianti) e la mia nota cosmetica della #211. L'esito del parser non cambia: cambia solo il testo del motivo scritto nel log.
+R-216-1 è chiusa: la correzione regge anche nel caso peggiore che ho provato e il nuovo test la protegge. Il resto del diff staged è lo stesso della review #216, che resta valida.
 
 **Elementi del diff esaminati**
 
-1. `gas.py:527-530`: un input che non è una stringa ora ha un ramo separato. `None` resta "risposta vuota", mentre un numero o una lista danno "risposta non testuale (&lt;tipo&gt;)". Il caso della stringa fatta di soli spazi, che dà "risposta vuota", rimane com'era. Rischio esaminato: un input che prima veniva scartato e ora passa, o il contrario. Esito: **ok**. Tutti e due i rami restituiscono `None`, quindi `_parse_riflessione` si comporta come prima e T80u passa senza modifiche.
-2. `gas.py:533-536`: il vecchio controllo `i &lt; 0 or j &lt;= i` diventa due controlli. Senza `{` il motivo è "nessun oggetto JSON (manca '{')". Con la `{` ma senza `}` dopo, il motivo è "JSON aperto ma mai chiuso (manca '}': risposta tagliata?)". L'insieme dei casi scartati è identico a prima. Rischio esaminato: un test che passa comunque anche se il codice è sbagliato. Esito: **ok**. Ho fatto una prova riportando il ramo "mai chiuso" al vecchio messaggio: falliscono T80u2 e T80l3. Poi ho ripristinato il file e il working tree è pulito.
-3. `tests/test_unit_kernel.py`, T80u2 e T80l3: T80u2 ora copre i casi `5`, `[]` e `'{"recap": "tagl'`. T80l3 controlla che nel log reale compaia "mai chiuso" insieme a `finish_reason='length'`. Esito: **ok**.
+1. `gas.py:534` — ora c'è `testo = str.__str__(repr(testo))`, che dà sempre una `str` esatta. Il rischio era che una sottoclasse di `str`, restituita da `__repr__`, superasse il controllo `isprintable()` portando un a-capo nel log. L'ho provato con una sottoclasse che ridefinisce insieme `isprintable` (sempre vero), `__str__` (`'X'`) e `__len__` (solleva). Il risultato è `"<O> 'a\\nb'"`: nessun a-capo, nessuna eccezione. La chiamata sta dentro il `try` del ripiego, quindi resta la garanzia che il log non sollevi mai. — **ok**
+2. `tests/test_unit_kernel.py:7129` — nuovo caso `_ReprBugiardo80` in T80u5. Il rischio era un test che non prova nulla (vacuo). Ho rimesso `repr(testo)` su una copia e T80u5 fallisce (706 PASS, 1 FAIL), quindi il test regge. — **ok**
+3. `gas.py:571` e `gas.py:1977` — `except RecursionError` e `errore[NON FIDATO]=` sono invariati rispetto alla #216. Gli esiti restano quelli di allora (ok, §9 integro).
 
-Ho rieseguito la suite del kernel: 703 PASS, 0 FAIL. La cascata dei provider, il fallback §9, `_get_window` e i limiti non sono toccati. Nessun antipattern del Wall of Shame.
+**Verifiche**
 
-**Nota (non è una riserva)**: un testo come "a } b {", con la `}` prima della `{`, finisce nel motivo "mai chiuso". Il messaggio è impreciso ma innocuo, perché nel log ci sono comunque l'anteprima e la lunghezza.
+- Suite kernel riprodotta: 707 PASS, 0 FAIL.
 
-**Rischio esplicitamente escluso**: anche qui non ho verificato il comportamento con Gemini reale sul Mac, perché non è riproducibile in sviluppo.
+**Rischio escluso**: anche qui non ho verificato il comportamento con una risposta reale di Gemini o Groq (nessuna chiave nel container) né la rotazione reale di `gas_debug.log` su Mac o VPS.
 
-Ho aggiunto la riga contatore #212 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata a parte con `b235025`. Il diff staged non è stato toccato.
+Ho scritto la riga contatore #217 ("nessuna lezione nuova") in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da sola nel commit `27fff35`.
 
-Commit motore `f88667d` (V-2 bot: coda nell'anteprima). Due passaggi, verdetti integrali:
+File rilevanti: `/home/user/Gas/gas.py`, `/home/user/Gas/tests/test_unit_kernel.py`, `/home/user/Gas/.claude/agents/memoria_revisore.md`.
 
-### Review #213
+Commit motore `652b498` (V-1 del bot su #157 + R-218-1). Due passaggi, verdetti integrali:
+
+### Review #218
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Il fix chiude il finding V-2 del bot: ora il log mostra anche la fine della risposta scartata, cioè il punto dove un JSON tagliato si rompe. C'è un difetto ai casi limite che oggi non si può verificare in pratica (R-213-1).
+La correzione V-1 è giusta, ma il test di R-216-1 non la protegge più. Tornare sempre al doppio repr chiude il problema segnalato dal bot. La difesa `str.__str__` serve ancora. Però il caso di test `_StrBugiarda80` ora non prova niente: se si toglie la difesa, la suite resta verde. Non blocca il commit, ma va sistemato.
 
 **Elementi del diff esaminati**
 
-1. `gas.py:519-529`, `_anteprima_log`: mostra i primi 300 caratteri, poi `…[+N caratteri]…`, poi gli ultimi 150 (`RIFLESSIONE_LOG_CODA_CHARS`, `gas.py:516`). Una risposta fino a 450 caratteri viene mostrata intera. Il conto dei caratteri omessi è giusto: `len - cap - coda`, e T80u3 controlla esattamente la soglia dei 450. Rischio esaminato: troncamento sbagliato o anteprima senza limite. Esito: **riserva** (vedi R-213-1).
-2. `gas.py:1941`: l'unico chiamante usa i valori di default, e la costante non si può cambiare da variabile d'ambiente. Il punto del log resta dentro il `try` del provider, quindi il fallback §9 non è toccato. Esito: **ok**.
-3. `tests/test_unit_kernel.py`, T80u3 e T80l3: T80u3 controlla l'inizio `'x`, la coda `FINE'`, la soglia esatta e la lunghezza limitata. T80l3 controlla che la coda `CODA-MONCA'` compaia nel log reale. Il controllo "mai 400 `z` di fila" regge, perché inizio e coda sono separati dal marcatore. Ho fatto una prova togliendo la coda dall'anteprima: falliscono T80u3 e T80l3. Poi ho ripristinato il file e il working tree è pulito. Esito: **ok**.
+1. `gas.py:535-545`: ho tolto `fmt = str` e messo sempre il secondo repr, sia sull'anteprima intera sia sulle fette di inizio e di fine. Il rischio era quello del bot: senza apici, una fetta che parte a metà di una stringa interna permette al testo del modello di imitare la sintassi della riga di log. Con il doppio repr le fette stanno sempre tra apici e restano su una riga, come già prima della #156. — **ok**
+2. `gas.py:534`: `str.__str__(repr(testo))` resta, e il commento ora dice "slicing o __repr__". Ho controllato se serve ancora. Sì: senza questa riga, una sottoclasse di `str` che ridefinisce `__repr__` e `__getitem__` fa arrivare `X\nY` nel log. L'ho provato sul codice mutato: l'output finisce con `'[+550 caratteri]…X\nY'`. Con la riga al suo posto quel caso è chiuso. — **ok**
+3. `tests/test_unit_kernel.py:7126` (`_StrBugiarda80`): ridefinisce solo `isprintable`, che il codice non chiama più. Su una copia ho tolto `str.__str__` e la suite resta 707 PASS, 0 FAIL, quindi il test non distingue più il codice giusto da quello mutato. — **riserva**
+4. `tests/test_unit_kernel.py:7116-7140`: le attese di T80u4 e T80u5 sono tornate al doppio repr (`<int> '7'`, `<dict> "{'a': '\\n'}"`). Corrispondono alla nuova logica. — **ok**
 
-Ho rieseguito la suite del kernel: 703 PASS, 0 FAIL. Nessun antipattern del Wall of Shame: è un troncamento di una stringa di log, non della cronologia.
+**Riserve**
 
-**Riserva**
-- **R-213-1 (BASSA)**: con `coda=0`, `testo[-0:]` restituisce TUTTA la stringa, non una stringa vuota. L'ho provato: una risposta di 1000 caratteri dà un'anteprima di 1322. Questo contraddice il docstring ("mai più di cap+coda") e il principio "mai la risposta intera". Oggi non succede, perché nessun chiamante passa `coda=0`. Correzione suggerita: `testo[len(testo) - coda:]`, oppure un controllo su `coda &lt;= 0`, più un caso di test. Da tracciare in `stato_progetto.md`.
+- **R-218-1 (BASSA, test)**: far ridefinire a `_StrBugiarda80` anche `__repr__` (che restituisce del testo con un a-capo) e `__getitem__`, così il test fallisce se qualcuno toglie la difesa `str.__str__`.
+- **Cosmetica**: il commento sopra T80u5, "repr non stampabile → secondo repr", è superato: il secondo repr ora si applica sempre.
 
-**Rischio esplicitamente escluso**: non ho verificato con Gemini reale sul Mac che inizio e coda bastino a trovare la causa dello scarto, perché non è riproducibile in sviluppo. Non ho verificato neanche valori negativi di `cap`, perché non ci sono chiamanti che li passano.
+**Verifiche**
 
-Ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #213 e una lezione nuova: con `n` uguale a 0, `s[-n:]` restituisce la stringa intera. È tutto committato a parte con `6cd97da`; il diff staged non è stato toccato.
+- Suite kernel riprodotta: 707 PASS, 0 FAIL.
 
-### Review #214
+**Rischio escluso**: non ho verificato il comportamento con una risposta reale di Gemini o Groq (nessuna chiave nel container). Non ho rivisto nemmeno il revert di CLAUDE.md (45b036d): è già committato e non fa parte del diff staged.
+
+Ho scritto la riga contatore #218 e una lezione nuova in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da sola nel commit `1498b03`. La lezione: quando una correzione toglie il ramo che un test esercitava, bisogna rifare la prova di mutazione della difesa che resta, perché il test può restare verde senza provare più niente.
+
+File rilevanti: `/home/user/Gas/gas.py`, `/home/user/Gas/tests/test_unit_kernel.py`, `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+
+### Review #219
 
 ## VERDETTO: APPROVATO
 
-R-213-1 è chiusa: con `coda=0` l'anteprima non contiene più la risposta intera. Il diff staged è quello della #213 più questo fix.
+R-218-1 è chiusa e il diff si può committare: il test torna a proteggere la difesa `str.__str__` e la suite è verde.
 
 **Elementi del diff esaminati**
 
-1. `gas.py:526`: `cap, coda = max(cap, 0), max(coda, 0)`. Con valori negativi non si possono più ottenere fette strane della stringa. L'ho provato: `cap=-5, coda=-5` su 30 caratteri dà `''…[+30 caratteri]…''`, e `''` dà `''`. Rischio esaminato: un'anteprima senza limite in un caso limite. Esito: **ok**.
-2. `gas.py:531`: la coda ora è `testo[len(testo) - coda:]` invece di `testo[-coda:]`, con un commento che spiega perché. L'ho provato: `coda=0` dà una coda vuota `''`, e 1000 caratteri con `cap=0, coda=0` danno un'anteprima di 23 caratteri. Prima del fix ne dava 1322. Esito: **ok**.
-3. `tests/test_unit_kernel.py`, T80u3: il test controlla l'uscita esatta con `cap=10, coda=0` e una lunghezza limitata con valori negativi. Ho fatto una prova rimettendo `testo[-coda:]`: fallisce T80u3. Poi ho ripristinato il file e il working tree è pulito. Esito: **ok**.
+1. `tests/test_unit_kernel.py:7126`: `_StrBugiarda80` ora ridefinisce `__repr__` (restituisce `"X\nY"`) e `__getitem__` (restituisce sempre la sottoclasse). Ho controllato che il test non sia più vacuo. Ho rifatto io la mutazione su una copia: con `testo = repr(testo)` al posto di `str.__str__(repr(testo))`, T80u5 fallisce (706 PASS, 1 FAIL). Ho poi ripristinato il codice. Confermo la prova del coordinatore. — **ok**
+2. `gas.py:534-545`: identico alla review #218. Il secondo repr si applica sempre, quindi le fette di inizio e fine stanno tra apici e il testo del modello non può imitare la sintassi della riga di log. La difesa `str.__str__` resta e ora ha un test che la protegge. — **ok**
+3. `tests/test_unit_kernel.py:7121-7122`: il commento sopra T80u5 ora descrive il comportamento attuale ("secondo repr sempre"); quello superato è stato tolto. — **ok**
 
-Ho rieseguito la suite del kernel: 703 PASS, 0 FAIL, compresi T80u3 e T80l3. La cascata dei provider, il fallback §9, `_get_window` e i limiti non sono toccati.
+**Verifiche**
 
-**Rischio esplicitamente escluso**: non ho verificato il comportamento con Gemini reale sul Mac, perché non è riproducibile in sviluppo. Non ho verificato neanche input non interi per `cap` e `coda`: i type hint dicono `int` e l'unico chiamante (`gas.py:1941`) usa i valori di default.
+- Suite kernel riprodotta: 707 PASS, 0 FAIL.
 
-Ho aggiunto la riga contatore #214 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata a parte con `a3587e7`. Il diff staged non è stato toccato.
+**Rischio escluso**: non ho verificato il comportamento con una risposta reale di Gemini o Groq (nessuna chiave nel container), né la rotazione reale di `gas_debug.log` su Mac o VPS.
 
-Commit motore `ad7b87e` (PR #156, riserve del bot su #155). Verdetto integrale:
+Ho scritto la riga contatore #219 ("nessuna lezione nuova") in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da sola nel commit `316732c`.
 
-### Review #215
-
-## VERDETTO: APPROVATO
-
-Il diff sistema le 3 riserve basse del bot di verifica sulla PR #155. Ho rieseguito i test: 705 superati, 0 falliti. Ho provato i casi limite che mi avevi chiesto e ho fatto una prova di sabotaggio sul codice (mutation): i test nuovi se ne accorgono.
-
-**Elementi del diff esaminati**
-
-1. `gas.py:519` — `_anteprima_log`: un valore che non è testo (non-str) ora passa per `repr`, poi la stessa logica inizio+coda lo tronca. Davanti mette il prefisso `<tipo> `. Se il valore è None, il risultato resta `'None'`.
-   - Rischio esaminato: che il log vada su più righe, o che resti senza limite.
-   - Prove fatte: una lista con dentro `\n`, `\r` e `\x1b[31m` ripetuti 500 volte. Il risultato è su una sola riga (`'\n' in ...` → False) e si ferma a circa 470 caratteri. Bytes da 800 caratteri → 629, limitato. `{'a':1}` → `<dict> "{'a': 1}"`.
-   - Esito: ok.
-
-2. `gas.py:540` — `_lunghezza_log`: restituisce la lunghezza se c'è testo, `"0"` se è None, `"n/d (<tipo>)"` negli altri casi. Rischio esaminato: che indichi ancora uno 0 fuorviante. Esito: ok (bytes → `n/d (bytes)`).
-
-3. `gas.py:1952-1959` — `logging.warning` con `lunghezza=_lunghezza_log(...)` e `anteprima[NON FIDATA]=...`, dentro il `try` del provider (il "rung" della cascata).
-   - Rischio esaminato: che un'eccezione rompa la cascata di fallback (regola §9).
-   - Prova fatta: un oggetto con `__repr__` che solleva fa sollevare `_anteprima_log`. Siccome la chiamata sta dentro il `try`, l'errore finisce nell'`except Exception`, che lo registra nel log ("provider fallito") e passa al provider successivo. Nessun crash.
-   - Esito: ok. Con l'SDK OpenAI il campo content è str, None o una lista, quindi questo caso in pratica non si presenta.
-
-4. `gas.py:561` — il motivo "mai chiuso" ora dice "nessuna '}' dopo la prima '{'". Provato con `'a } b {'`: il testo del motivo ora è esatto. Esito: ok. Questo chiude anche la nota cosmetica della review #212.
-
-5. `tests/test_unit_kernel.py` T80l4 e T80u4 — T80l4 passa per il vero `rifletti()` con content in forma di lista lunga 3000: verifica il fallback su groq, il log limitato (< 1000 caratteri, nessuna sequenza di 400 `q`) e il marcatore. T80u4 testa le funzioni pure.
-   - Prova di sabotaggio: ho fatto tornare il `repr` intero per i valori non testuali. Risultato: T80l4 e T80u4 FALLISCONO (703 superati, 2 falliti). Poi ho ripristinato il file: il working tree è pulito e lo stage non è cambiato.
-   - Esito: ok.
-
-**Il marcatore NON FIDATA basta?** Sì, per quello che deve fare. Ho controllato chi legge `gas_debug.log`: lo usa solo `doctor` (`gas.py:2707-2712`), che guarda la dimensione del file. Nessun codice rimanda il log al modello. Se Gas lo legge con `read_file`, quello strumento conta già come input esterno e marca la finestra come contaminata. Inoltre il `repr` trasforma in sequenze visibili i caratteri di controllo, ANSI e bidi, quindi né la console né il file possono essere manipolati con caratteri nascosti.
-
-**Note cosmetiche, non vincolanti e senza bisogno di tracciarle**
-- Per i valori non testuali, `[+N caratteri]` conta i caratteri del `repr`, non quelli del contenuto originale.
-- Il ramo `except` (`gas.py:1964`) scrive `str(e)` senza il marcatore NON FIDATA. Il testo di un'eccezione del provider in teoria potrebbe ripetere contenuto preso da fuori.
-
-**Cosa NON ho verificato**
-- Come appare il log su stderr in un vero terminale macOS o sulla VPS: non è riproducibile qui. Mi sono basato sul fatto che il `repr` produce solo ASCII o caratteri stampabili.
-- Il comportamento con risposte vere di Gemini o Groq che restituiscono content in forma di lista: non ho chiavi API in questo ambiente, quindi ho simulato le risposte con degli stub.
-
-Ho aggiunto la riga del contatore #215 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata da sola (commit `6ebb906`). Il diff in stage è rimasto intatto.
+File rilevanti: `/home/user/Gas/gas.py`, `/home/user/Gas/tests/test_unit_kernel.py`, `/home/user/Gas/.claude/agents/memoria_revisore.md`.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Main `3ab900a`: 699 PASS, 0 FAIL in locale. Head di #155 (`dc71fbd`): 703 PASS, 0 FAIL. Questo branch (`ad7b87e`): 2 check nuovi (T80l4, T80u4), T80l2 esteso.
+Main `282a6ce`: 705 PASS, 0 FAIL in locale. Dopo: 2 check nuovi (T80m2, T80u5); T80u4 aggiornato e poi riportato al doppio repr.
 
 ```
-=== RIEPILOGO: 705 PASS, 0 FAIL ===
+=== RIEPILOGO: 707 PASS, 0 FAIL ===
 ```
 
-Nessun FAIL fuori scope. In CI lo stesso file conta 2 check in più che in locale (già su main); causa non indagata.
+Mutazione verificata: con `testo = repr(testo)` al posto di `str.__str__(repr(testo))` T80u5 fallisce (706 PASS, 1 FAIL). Nessun FAIL fuori scope. In CI il conteggio è più alto di 2 (già noto, causa non indagata).
 
 ## §6 STATO CI
 
-Run lette con `gh api` REST (GraphQL dà 403 in questa sessione):
+Run lette con `gh api` REST:
 
 ```
-37785584338 verifica-bot ad7b87e completed skipped
-37785542738 CI ad7b87e in_progress null
+37792692976 verifica-bot 926b448 completed success
+37792684879 verifica-bot 926b448 completed skipped
+37792680754 CI 926b448 completed success
+37792556560 verifica-bot 93aca3a completed skipped
 ```
 
 Mappatura commit → run:
-- `5cea4c7`…`dc71fbd` (commit di #155): testati sul branch di #155. CI `dc71fbd` 37767149489 `success`; verifica-bot `success` su `dc71fbd` (vedi handoff di #155).
-- `6ebb906`: nessuna run propria (pushato insieme ad `ad7b87e`).
-- `ad7b87e` (motore): CI 37785542738 `in_progress` alla scrittura dell'handoff; ci si aspetta `handoff-check` rosso per struttura (l'handoff arriva nel commit successivo). verifica-bot 37785584338 `skipped` (etichetta `verifica` non ancora messa).
+- `2a37921`, `27fff35`, `2be60b8`: nessuna run propria (pushati con `93aca3a`). `93aca3a`: CI della push precedente; verifica-bot `skipped`.
+- `926b448` (fine-task precedente): CI 37792680754 `success`; workflow verifica-bot 37792692976 `success`, ma il check `verifica-bot` dell'App era **neutral** (la PR toccava `CLAUDE.md`, macchina del bot).
+- `45b036d`, `1498b03`, `316732c`, `652b498`: non ancora pushati alla scrittura dell'handoff; nessuna run propria (verranno pushati insieme al commit di fine-task).
 - Commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Riserve del bot su #155 (V-1, V-2, V-3): CHIUSE in questa PR, tranne lo scarto 703/705 (non un difetto, non indagato).
-- Review #215: due note cosmetiche non vincolanti (`[+N caratteri]` conta il repr per i non-testuali; il ramo `except` del provider logga `str(e)` senza marcatore NON FIDATA).
-- CLAUDE.md elenca 2 check required, il ruleset 3: APERTA, decisione dell'operatore (§0 punto 2).
+- R-216-1, R-218-1: CHIUSE in questa PR.
+- V-1 bot #157 (ambiguità del singolo repr): CHIUSA (`652b498`).
+- Verifica esterna #157 V-1 (`BaseException` da un `__repr__` non catturata): lasciata — prassi Python, non raggiungibile con gli SDK.
+- Costo in tempo del `repr` di oggetti enormi: lasciato — non raggiungibile con gli SDK reali.
+- CLAUDE.md elenca 2 check required, il ruleset 3: APERTA, PR separata decisa dall'operatore.
 - Aperti (non riserve): diagnosi reale di Gemini su `rifletti`, bottone Rifiuta Telegram — `reports/stato_progetto.md` voce 9.

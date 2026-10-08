@@ -6880,9 +6880,20 @@ try:
           str(_logrec80l)[:400])
 
     # T80m — tutti i provider falliscono: nessun crash, nessuna scrittura
-    _setup80({_FLASH80: RuntimeError("500 boom"), _GROQ80: '{"lezioni": ["x"]}'})
+    _setup80({_FLASH80: RuntimeError("500 boom\nRIGA FINTA " + "e" * 2000),
+              _GROQ80: '{"lezioni": ["x"]}'})
     _k80m = _k80_con_storia()
-    _e80m = _k80m.rifletti()
+    _logrec80l.clear()
+    logging.getLogger().addHandler(_h80l)
+    try:
+        _e80m = _k80m.rifletti()
+    finally:
+        logging.getLogger().removeHandler(_h80l)
+    # T80m2 — l'errore del provider nel log: marcato NON FIDATO, su una riga, limitato
+    _err80m = [m for m in _logrec80l if "gemini-flash" in m and "fallito" in m]
+    check("T80m2 errore del provider: errore[NON FIDATO]=, una riga, limitato",
+          len(_err80m) == 1 and "errore[NON FIDATO]='500 boom\\nRIGA FINTA" in _err80m[0]
+          and "\n" not in _err80m[0] and "e" * 400 not in _err80m[0], str(_logrec80l)[:400])
     check("T80m cascata esausta → ok False, niente recap né lezioni né diario apprendimento",
           not _e80m["ok"] and _e80m["errore"] and _k80m.memory.ultimo_diario_per_tipo("recap") is None
           and _k80m.memory.lista_lezioni() == []
@@ -7107,6 +7118,30 @@ try:
           and _anteprima_log(7) == "<int> '7'"
           and gas._lunghezza_log(_parti80) == "n/d (list)" and gas._lunghezza_log(None) == "0"
           and gas._lunghezza_log("abc") == "3", _antp80[:120])
+    # T80u5 — casi estremi: repr che solleva, JSON annidato oltre la ricorsione, repr che
+    # restituisce una sottoclasse di str ostile; secondo repr sempre (una riga sola)
+    class _ReprRotto80:
+        def __repr__(self):
+            raise RuntimeError("rotto")
+    class _StrBugiarda80(str):
+        # Sottoclasse ostile: repr e slicing ridefiniti per far passare un a-capo nel log.
+        # Protetta solo da str.__str__ in _anteprima_log (R-216-1/R-218-1).
+        def __repr__(self):
+            return "X\nY"
+        def __getitem__(self, k):
+            return _StrBugiarda80(str.__getitem__(self, k))
+    class _ReprBugiardo80:
+        def __repr__(self):
+            return _StrBugiarda80("a\nb")
+    _strano80 = type("Strano80", (), {"__repr__": lambda self: "a\nb"})()
+    check("T80u5 anteprima/parser robusti su repr che solleva, ricorsione, repr multiriga;"
+          " secondo repr sempre (testo del modello tra apici)",
+          _anteprima_log(_ReprRotto80()) == "<_ReprRotto80> (repr non disponibile: RuntimeError)"
+          and _analizza_riflessione('{"a":' * 100000 + '1' + '}' * 100000)
+          == (None, "JSON annidato oltre il limite di ricorsione")
+          and _anteprima_log(_strano80) == "<Strano80> 'a\\nb'"
+          and _anteprima_log({"a": "\n"}) == "<dict> \"{'a': '\\\\n'}\""
+          and "\n" not in _anteprima_log(_ReprBugiardo80()))
     check("T80v cascata unica: 'complesso' parte da gemini-flash, gratuiti in coda",
           [c[0] for c in _cascata_provider("complesso")] == ["gemini-flash", "groq", "openrouter", "ollama"]
           and [c[0] for c in _cascata_provider("semplice")][:3] == ["gemini-flash-lite", "gemini-flash", "groq"])

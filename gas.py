@@ -522,11 +522,19 @@ def _anteprima_log(testo: Any, cap: int = RIFLESSIONE_LOG_ANTEPRIMA_CHARS,
     a-capo e caratteri di controllo restano visibili come escape), con il conteggio
     dei caratteri omessi in mezzo. Mai più di cap+coda caratteri di testo, anche per
     una risposta non testuale (lista di parti, oggetto: si tronca il suo repr,
-    preceduto dal tipo — V-1 verifica bot PR #155). PURA."""
+    preceduto dal tipo — V-1 verifica bot PR #155). Un repr che solleva (es.
+    RecursionError su strutture annidate all'estremo) non esce: c'è un ripiego. PURA."""
     prefisso = ""
     if testo is not None and not isinstance(testo, str):
         prefisso = f"<{type(testo).__name__}> "
-        testo = repr(testo)
+        try:
+            # str.__str__: str ESATTA anche se __repr__ restituisce una sottoclasse di str
+            # che ridefinisce slicing o __repr__ (R-216-1).
+            testo = str.__str__(repr(testo))
+        except Exception as e:  # RecursionError, __repr__ difettoso: mai un'eccezione dal log
+            return f"{prefisso}(repr non disponibile: {type(e).__name__})"
+        # Sempre un secondo repr, anche se il primo è stampabile: tra apici, il testo del
+        # modello non si confonde con la sintassi della riga di log (V-1 bot #157).
     elif not isinstance(testo, str):
         return repr(testo)
     cap, coda = max(cap, 0), max(coda, 0)
@@ -545,7 +553,7 @@ def _lunghezza_log(testo: Any) -> str:
     return "0" if testo is None else f"n/d ({type(testo).__name__})"
 
 
-def _analizza_riflessione(testo: Optional[str]) -> Tuple[Optional[Tuple[str, List[str]]], str]:
+def _analizza_riflessione(testo: Any) -> Tuple[Optional[Tuple[str, List[str]]], str]:
     """Come _parse_riflessione, ma restituisce anche il MOTIVO dello scarto ("" se
     valida), per il log diagnostico. PURA."""
     if not isinstance(testo, str):
@@ -561,6 +569,8 @@ def _analizza_riflessione(testo: Optional[str]) -> Tuple[Optional[Tuple[str, Lis
         return None, "JSON aperto ma mai chiuso (nessuna '}' dopo la prima '{': risposta tagliata?)"
     try:
         data = json.loads(t[i:j + 1])
+    except RecursionError:
+        return None, "JSON annidato oltre il limite di ricorsione"
     except (ValueError, TypeError) as e:
         return None, f"JSON non decodificabile: {e}"
     if not isinstance(data, dict):
@@ -1962,7 +1972,10 @@ class GasKernel:
                     esito["provider"] = name
                     break
                 except Exception as e:
-                    logging.warning(f"riflessione: provider {name} ({model}) fallito: {e}")
+                    # Il testo dell'errore può riecheggiare contenuti esterni: limitato e
+                    # marcato come l'anteprima delle risposte scartate (V-4 verifica esterna #156).
+                    logging.warning(f"riflessione: provider {name} ({model}) fallito: "
+                                    f"errore[NON FIDATO]={_anteprima_log(str(e))}")
                     _lvl, _ = _classify_provider_error(
                         getattr(e, "status_code", None), str(e), name not in _FREE_RUNG_NAMES)
                     self._log_tokens(name, model, 0, 0, event="fallthrough", reason=_lvl)

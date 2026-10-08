@@ -1,30 +1,34 @@
-# ULTIMO REPORT — 2026-10-08 — Follow-up #155: riserve del bot sul log di `rifletti` (PR #156)
+# ULTIMO REPORT — 2026-10-08 — Log di `rifletti` robusto ai casi estremi (PR #157)
 
 ## Riassunto
 
-Chiuse le 3 riserve BASSE del bot di verifica su PR #155. L'anteprima della risposta
-scartata ora resta limitata anche quando il provider restituisce qualcosa che non è testo,
-è marcata NON FIDATA, e la lunghezza non dice più "0" a vuoto. PR #156, impilata su #155.
+Chiuse in autonomia (richiesta dell'operatore) le riserve facoltative rimaste dopo #155/#156: il log di
+`rifletti` non può più sollevare né andare a capo nei casi estremi, e anche l'errore di un provider è
+marcato NON FIDATO. La modifica a `CLAUDE.md` è stata tolta da questa PR: tocca la "macchina del bot",
+quindi va in una PR separata che decide l'operatore.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Mergiare PRIMA la PR #155 (https://github.com/Gasss23/Gas/pull/155), POI la PR #156
-   (https://github.com/Gasss23/Gas/pull/156). Dopo il merge di #155 il report di #156 va
-   rigenerato (lo faccio io: il diff di #156 si riduce al solo commit `ad7b87e`).
-2. Decidere se allineare CLAUDE.md ai 3 check required del ruleset `main-lock` (aperto da #155).
-3. Dopo i merge, sul Mac: `gas rifletti` e mandare la riga `riflessione: … risposta non valida` di `gas_debug.log`.
+1. Merge della PR separata su `CLAUDE.md` (3 check required del ruleset `main-lock`): la apre l'agente,
+   la decide l'operatore (il bot la marca "neutral" per regola).
+2. Sul Mac (non eseguibile da qui): `git pull`, `gas rifletti`, e mandare la riga
+   `riflessione: gemini-flash … risposta non valida …` di `gas_debug.log`.
 
 ## Esito
 
-- **V-1 bot — anteprima senza limite per content non testuale** (`gas.py`, `ad7b87e`): FATTA — il `repr`
-  viene troncato con la stessa logica inizio+coda e preceduto dal tipo (`<list> …`).
-- **V-2 bot — anteprima di output non fidato in log e stderr**: FATTA — marcatore `anteprima[NON FIDATA]=`.
-- **V-3 bot — `lunghezza=0` fuorviante, motivo "mai chiuso" impreciso**: FATTA — `_lunghezza_log`
-  (`n/d (<tipo>)`); motivo "nessuna '}' dopo la prima '{'".
-- **V-3 bot — scarto 703/705 locale vs CI**: SALTATA — non è un difetto del codice; causa non indagata.
-- **Test**: FATTA — T80l2 esteso, T80l4, T80u4. Suite kernel: 705 PASS, 0 FAIL.
-- **Revisore**: #215 APPROVATO (due note cosmetiche non vincolanti).
+- **RecursionError su JSON annidato all'estremo** (`gas.py`, `2be60b8`): FATTA — motivo dedicato.
+- **`__repr__` che solleva su content non testuale**: FATTA — ripiego `<tipo> (repr non disponibile: …)`.
+- **Errore del provider nel log senza marcatore**: FATTA — `errore[NON FIDATO]=…`, limitato, una riga.
+- **Singolo repr "per leggibilità"**: TOLTO (`652b498`) — V-1 del bot su #157: senza apici il testo del
+  modello poteva imitare la sintassi della riga di log. Resta sempre il secondo repr.
+- **`str` esatta dal repr (R-216-1)**: FATTA — e ora protetta da un test non vacuo (R-218-1, mutazione verificata).
+- **Type hint `_analizza_riflessione`**: FATTA — `Any`.
+- **CLAUDE.md con i 3 check required**: SPOSTATA — revertita qui (`45b036d`), PR separata.
+- **Test**: FATTA — T80m2, T80u5 nuovi, T80u4 aggiornato. Suite kernel: 707 PASS, 0 FAIL.
+- **Revisore**: #216 APPROVATO CON RISERVE, #217 APPROVATO, #218 APPROVATO CON RISERVE, #219 APPROVATO.
+- **Prova `gas rifletti` sul Mac**: SALTATA — non eseguibile da questo ambiente.
 
 ## Anomalie
 
-- PR #156 è impilata su #155: finché #155 non è mergiata, diff e handoff includono anche i commit di #155.
+- Il bot su `926b448` ha dato "neutral" (non verde) perché la PR toccava `CLAUDE.md`: comportamento
+  voluto (R-158-1), gestito separando la modifica.
