@@ -1,25 +1,26 @@
-# ULTIMO REPORT — 2026-10-07 — R-200-2: run_command conta come input esterno
+# ULTIMO REPORT — 2026-10-08 — Bot di verifica: niente più falsi NO per riserve già note
 
 ## Riassunto
 
-Chiuso un buco del cancello: dopo un `run_command` (es. `cat`, `ls`) Gas poteva scrivere file
-o cambiare contatti senza chiedere conferma, perché quel tool non era nella lista degli input
-esterni. Ora lo è. Prima di sbloccare la #149, come deciso dall'operatore.
+Il bot dava un NO definitivo a PR buone quando nel testo citava un problema grave già noto
+del progetto (es. "R-203-1 (ALTA, preesistente)"): è successo due volte alla #149. Ora quelle
+citazioni non bloccano più; i problemi veri della PR continuano a bloccare. PR di questa fetta
+da mergiare (tocca il bot: decide l'operatore), poi si rilancia il bot sulla #149.
 
 ## Cosa ho fatto
 
-1. Trovato il punto: `UNTRUSTED_INPUT_TOOLS` in `modules/gate/gate.py` non conteneva `run_command`.
-2. Aggiunto `run_command` alla lista — una riga.
-3. Test: T72d/T72e, prova di giro completo T72f (sandbox os_strict: `ls` poi scrittura → in attesa di conferma, file non creato); T78e invertito (fissava il buco).
-4. Prova: kernel 658 PASS / 0 FAIL; senza la correzione 4 FAIL e il file viene scritto senza conferma.
-5. Review #203 APPROVATO CON RISERVE (R-203-1 ALTA preesistente sulla compressione, R-203-2 meno autonomia) — PR di questa fetta.
+1. Trovata la causa: `_gravita_nel_testo` contava ogni ALTA/MEDIA dopo "FINDING:", anche nelle citazioni di riserve vecchie (riserva R-161-1).
+2. Correzione mirata in `scripts/bot_esito.py`: dalle citazioni `R-<n>-<n> (...)` si toglie solo la parentesi; tutto il resto conta ancora.
+3. Prompt del bot: le riserve vecchie si citano come "R-203-1 (ALTA, preesistente)", mai come finding.
+4. Test: 297 passed; i due verdetti reali della #149 ora danno solo BASSA/COSMETICA (quindi sì).
+5. Review #205 BOCCIATO (la prima versione nascondeva gravità scritte a parole e dentro parentesi annidate) → corretta → #206 APPROVATO CON RISERVE.
 
 ## Cosa NON ho fatto da solo
 
-- R-203-1 non corretta: è un buco diverso (la compressione della cronologia "lava" l'input esterno), va fatta come fetta propria.
-- Nessun merge senza il sì del bot.
+- Nessun merge: la PR tocca il bot, il bot dirà "decide l'operatore".
+- R-205-1 / R-205-2 (basse) solo registrate.
 
 ## Cosa devi fare tu
 
-1. Niente subito: se il bot dice sì, faccio il merge e poi aggiorno la #149 da main.
-2. Decidere più avanti R-203-2: dopo un `run_command` in sandbox, le azioni successive devono chiedere conferma? (oggi sì).
+1. Mergiare la PR di questa fetta (o dirmi "mergiala").
+2. Poi io aggiorno la #149 con main: il bot la rigiudica e, se dice sì, la mergio.
