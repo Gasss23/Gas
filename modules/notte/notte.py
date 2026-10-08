@@ -27,6 +27,15 @@ Invarianti di sicurezza:
   tool, durata), MAI il testo della risposta: il diario finisce nel prompt di
   sistema tramite il pin di memoria, e la risposta del modello non è fidata.
   Il testo va nel riepilogo .gas_notte/ultimo_giro.md, che legge l'operatore.
+- Tetto di tempo (R-220-3): ogni compito ha un tetto (GAS_NOTTE_MAX_SEC_COMPITO,
+  default 900s) e il giro intero un altro (GAS_NOTTE_MAX_SEC_GIRO, default
+  7200s). Il controllo è COOPERATIVO: avviene tra un evento e l'altro di
+  run_turn (il generatore viene chiuso, esito 'ko' per tempo) e prima di ogni
+  compito (quelli rimasti vengono saltati con avviso). Una singola chiamata
+  appesa non si interrompe da qui: la limita il timeout HTTP dei provider
+  (GasKernel.PROVIDER_TIMEOUT_SEC) e quello dei comandi. Il tetto NON è duro
+  (R-226-2): tra due eventi possono passare fino a provider x 3 tentativi x
+  timeout (~30 min nel caso peggiore), quindi compito e giro possono sforare.
 - Un solo giro alla volta (lock su file). Un compito che fallisce viene
   registrato e si passa al successivo; il giro non solleva mai eccezioni (§9).
 """
@@ -53,6 +62,9 @@ MAX_COMPITI = 10          # compiti eseguiti per giro, oltre si ignorano (avviso
 MAX_PROMPT_CHARS = 4000   # prompt di un compito
 MAX_RISPOSTA_CHARS = 3000  # risposta riportata nel riepilogo, per compito
 BUDGET_NOTTE_DEFAULT_USD = "1.0"  # tetto di spesa 24h se l'operatore non ne ha messo uno
+MAX_SEC_COMPITO_DEFAULT = 900    # tetto di tempo per compito (env GAS_NOTTE_MAX_SEC_COMPITO)
+MAX_SEC_GIRO_DEFAULT = 7200      # tetto di tempo del giro (env GAS_NOTTE_MAX_SEC_GIRO)
+MIN_SEC = 30                     # sotto questo valore l'env viene alzato
 _NOME_RE = re.compile(r"[a-z0-9_-]{1,40}")
 _NEGATA = "Operazione negata"
 _IN_ATTESA = "Azione in attesa di approvazione umana"  # gas.py _parcheggia_e_notifica
@@ -135,17 +147,33 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
     return compiti, avvisi
 
 
-def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path) -> Dict[str, Any]:
+def _env_secondi(nome: str, default: int) -> int:
+    """Intero da env, FAIL-SAFE: assente/non valido → default; sotto MIN_SEC → MIN_SEC."""
+    raw = os.environ.get(nome, "").strip()
+    if not raw:
+        return default
+    try:
+        return max(MIN_SEC, int(raw))
+    except ValueError:
+        logging.warning("notte: %s=%r non è un intero valido, uso %d", nome, raw, default)
+        return default
+
+
+def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
+                    max_sec: float = MAX_SEC_COMPITO_DEFAULT) -> Dict[str, Any]:
     """Esegue UN compito su un kernel nuovo, con cronologia vuota e propria.
-    Mai eccezioni: un errore diventa esito 'ko'."""
+    Oltre max_sec (controllo tra un evento e l'altro) il turno viene chiuso ed
+    esito='ko'. Mai eccezioni: un errore diventa esito 'ko'."""
     nome = compito["nome"]
     esito: Dict[str, Any] = {"nome": nome, "esito": "ko", "tool": 0,
                              "risposta": "", "errore": "", "negate": 0, "in_attesa": 0}
     t0 = time.monotonic()
+    gen = None
     try:
         kernel.history = []
         kernel.db_path = notte_dir / f"storia_{nome}.json"
-        for ev in kernel.run_turn(compito["prompt"]):
+        gen = kernel.run_turn(compito["prompt"])
+        for ev in gen:
             tipo = ev.get("type") if isinstance(ev, dict) else None
             if tipo == "tool_res":
                 esito["tool"] += 1
@@ -161,10 +189,22 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path) -> Di
                 esito["risposta"] = str(ev.get("content", ""))
             elif tipo == "error":
                 esito["errore"] = str(ev.get("content", ""))
+            if tipo not in ("final", "error") and time.monotonic() - t0 > max_sec:
+                logging.warning("notte: compito %s oltre il tetto di %ss, interrotto",
+                                nome, int(max_sec))
+                esito["errore"] = (f"tempo scaduto: oltre {int(max_sec)}s, "
+                                   "compito interrotto")
+                break
     except Exception as e:
         logging.warning("notte: compito %s fallito: %s", nome, e)
         esito["esito"] = "ko"
         esito["errore"] = f"eccezione {type(e).__name__} (dettagli in gas_debug.log)"
+    finally:
+        if gen is not None and hasattr(gen, "close"):
+            try:
+                gen.close()  # GeneratorExit dentro run_turn: i suoi finally girano
+            except Exception as e:
+                logging.warning("notte: chiusura turno %s: %s", nome, e)
     esito["durata"] = round(time.monotonic() - t0, 1)
     try:
         kernel._diario_log(
@@ -222,7 +262,8 @@ def _scrivi_atomico(path: Path, testo: str) -> None:
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
                  kernel_factory: Optional[Callable[[str], Any]] = None) -> int:
     """Un giro completo. Exit code: 0 tutti i compiti ok (o nessuno attivo),
-    1 almeno un compito ko o catalogo non valido, 2 un altro giro è in corso."""
+    1 almeno un compito ko, saltato per tempo o catalogo non valido, 2 un altro
+    giro è in corso."""
     root = Path(root_dir or os.getcwd()).resolve()
     catalogo = (catalogo or catalogo_default()).expanduser()
     notte_dir = root / NOTTE_DIR
@@ -248,8 +289,20 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         if kernel_factory is None:
             from gas import GasKernel
             kernel_factory = lambda r: GasKernel(root_dir=r)  # noqa: E731
+        max_compito = _env_secondi("GAS_NOTTE_MAX_SEC_COMPITO", MAX_SEC_COMPITO_DEFAULT)
+        max_giro = _env_secondi("GAS_NOTTE_MAX_SEC_GIRO", MAX_SEC_GIRO_DEFAULT)
+        t_giro = time.monotonic()
+        tempo_finito = False
         esiti: List[Dict[str, Any]] = []
-        for c in compiti:
+        for i, c in enumerate(compiti):
+            resta = max_giro - (time.monotonic() - t_giro)
+            if resta <= 0:
+                saltati = [x["nome"] for x in compiti[i:]]
+                avvisi.append(f"tetto di tempo del giro ({max_giro}s) raggiunto: "
+                              f"saltati {len(saltati)} compiti ({', '.join(saltati)})")
+                logging.warning("notte: %s", avvisi[-1])
+                tempo_finito = True
+                break
             try:
                 kernel = kernel_factory(str(root))
             except Exception as e:
@@ -257,7 +310,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 esiti.append({"nome": c["nome"], "esito": "ko", "tool": 0, "durata": 0,
                               "risposta": "", "errore": "kernel non avviato (gas_debug.log)"})
                 continue
-            esiti.append(_esegui_compito(kernel, c, notte_dir))
+            esiti.append(_esegui_compito(kernel, c, notte_dir, min(max_compito, resta)))
         testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi)
         try:
             _scrivi_atomico(notte_dir / RIEPILOGO, testo)
@@ -266,6 +319,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         print(testo)
         if not compiti:
             return 1 if catalogo_ko else 0
+        if tempo_finito:
+            return 1
         return 0 if all(e["esito"] == "ok" for e in esiti) else 1
     except Exception as e:
         logging.warning("notte: giro interrotto: %s", e)

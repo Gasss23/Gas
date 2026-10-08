@@ -21,6 +21,13 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
    e modifica i compiti a piacere (`nano ~/.gas_notte.yaml`).
 2b. Tetto di spesa: nel `.env` metti `GAS_DAILY_TOKEN_BUDGET=1.0` (dollari in 24 ore, scegli tu
    il valore). Se manca, il giro notturno usa comunque 1.0 e lo segnala nel riepilogo.
+2c. Tetti di tempo (opzionali, già attivi di default): `GAS_NOTTE_MAX_SEC_COMPITO=900`
+   (15 minuti per compito) e `GAS_NOTTE_MAX_SEC_GIRO=7200` (2 ore per tutto il giro); i
+   compiti rimasti oltre il tetto del giro vengono saltati e segnalati nel riepilogo.
+   Ogni chiamata a un provider ha un timeout di 120s (`GAS_PROVIDER_TIMEOUT_SEC`; Ollama
+   locale 600s, `GAS_OLLAMA_TIMEOUT_SEC`). I tetti NON sono duri: si controllano tra un
+   passo e l'altro, e nel caso peggiore (tutti i provider appesi, con i 3 tentativi
+   dell'SDK) un compito può sforare di circa 30 minuti.
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```
@@ -40,5 +47,5 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
 
 ## Exit code di `gas notte`
 
-0 = tutti i compiti ok (o nessuno attivo) · 1 = almeno un compito KO o catalogo non
-valido · 2 = un altro giro era già in corso.
+0 = tutti i compiti ok (o nessuno attivo) · 1 = almeno un compito KO, compiti saltati
+per tempo o catalogo non valido · 2 = un altro giro era già in corso.
