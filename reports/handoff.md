@@ -1,45 +1,47 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-08 — `rifletti` logga la risposta scartata (motivo, finish_reason, inizio + coda)
+**Sessione:** 2026-10-08 — follow-up #155: riserve del bot sul log di `rifletti` (PR #156, impilata su #155)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #155 (https://github.com/Gasss23/Gas/pull/155).
-2. Dopo il merge, sul Mac: rilanciare `gas rifletti` e leggere in `gas_debug.log` la riga `riflessione: gemini-flash … risposta non valida …` (motivo, finish_reason, inizio e coda della risposta).
-3. Decidere se allineare CLAUDE.md al ruleset `main-lock`, che ha TRE check required (`unit-suite`, `handoff-check`, `verifica-bot`) e non due (V-2 verifica esterna).
+1. Merge della PR #155 (https://github.com/Gasss23/Gas/pull/155), POI della PR #156 (https://github.com/Gasss23/Gas/pull/156). #156 è impilata su #155: dopo il merge di #155 questo handoff va rigenerato (diff ridotto al solo `ad7b87e`).
+2. Decidere se allineare CLAUDE.md al ruleset `main-lock`, che ha TRE check required (`unit-suite`, `handoff-check`, `verifica-bot`).
+3. Dopo i merge, sul Mac: `gas rifletti` e leggere in `gas_debug.log` la riga `riflessione: gemini-flash … risposta non valida …`.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — log della risposta scartata in `rifletti`** (`c2919cb`): `FATTA` — `_analizza_riflessione` + `_anteprima_log`; warning con motivo, finish_reason, lunghezza, anteprima.
-- **Fetta 2 — motivi di scarto precisi** (`aead68d`): `FATTA` — V-1 verifica esterna / V-3 bot.
-- **Fetta 3 — coda della risposta nel log** (`f88667d`): `FATTA` — V-2 bot; casi `cap/coda <= 0` protetti (R-213-1).
-- **Fetta 4 — test**: `FATTA` — T80l2, T80l3, T80u2, T80u3.
-- **Diagnosi reale di Gemini**: `DEFERITA` — serve una run sul Mac con chiave vera.
-- **Bottone Rifiuta Telegram**: `DEFERITA` — invariato (stato_progetto voce 9).
-- **CLAUDE.md vs ruleset (3 check required)**: `DEFERITA` — decisione dell'operatore (§0 punto 3).
+- **Fetta 1 — V-1 bot: anteprima limitata anche per content non testuale** (`ad7b87e`): `FATTA`.
+- **Fetta 2 — V-2 bot: anteprima marcata `[NON FIDATA]`** (`ad7b87e`): `FATTA`.
+- **Fetta 3 — V-3 bot: `lunghezza` `n/d (<tipo>)`, motivo "mai chiuso" esatto** (`ad7b87e`): `FATTA`.
+- **V-3 bot — scarto 703/705 locale vs CI**: `SALTATA` — non è un difetto del codice; causa non indagata.
+- **Test**: `FATTA` — T80l2 esteso, T80l4, T80u4.
+- Commit di #155 inclusi nel branch (`5cea4c7`…`dc71fbd`): già descritti nell'handoff di #155; i loro verdetti restano sotto in §4.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- gas.py                             |  84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------
+ .claude/agents/memoria_revisore.md |   7 +++++++
+ gas.py                             | 100 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------
  reports/diff_sessione.md           |   9 ++++++---
- reports/handoff.md                 | 173 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ reports/handoff.md                 | 209 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  39 +++++++++++++++++++++++++++++----------
- tests/test_unit_kernel.py          |  66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 7 files changed, 325 insertions(+), 54 deletions(-)
+ reports/ultimo_report.md           |  28 ++++++++++++++++++----------
+ tests/test_unit_kernel.py          |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 7 files changed, 400 insertions(+), 54 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ad7b87e fix(fase-2.6): log dello scarto in rifletti — riserve del bot su #155
+6ebb906 chore(revisore): memoria review #215 — APPROVATO
+dc71fbd docs(fase-2.6): report fine-task — motivi precisi e coda nel log di rifletti (PR #155)
 f88667d feat(fase-2.6): anteprima della risposta scartata con inizio + coda
 a3587e7 chore(revisore): memoria review #214 — APPROVATO
 6cd97da chore(revisore): memoria review #213 — APPROVATO CON RISERVE
@@ -164,40 +166,74 @@ Ho rieseguito la suite del kernel: 703 PASS, 0 FAIL, compresi T80u3 e T80l3. La 
 
 Ho aggiunto la riga contatore #214 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata a parte con `a3587e7`. Il diff staged non è stato toccato.
 
+Commit motore `ad7b87e` (PR #156, riserve del bot su #155). Verdetto integrale:
+
+### Review #215
+
+## VERDETTO: APPROVATO
+
+Il diff sistema le 3 riserve basse del bot di verifica sulla PR #155. Ho rieseguito i test: 705 superati, 0 falliti. Ho provato i casi limite che mi avevi chiesto e ho fatto una prova di sabotaggio sul codice (mutation): i test nuovi se ne accorgono.
+
+**Elementi del diff esaminati**
+
+1. `gas.py:519` — `_anteprima_log`: un valore che non è testo (non-str) ora passa per `repr`, poi la stessa logica inizio+coda lo tronca. Davanti mette il prefisso `<tipo> `. Se il valore è None, il risultato resta `'None'`.
+   - Rischio esaminato: che il log vada su più righe, o che resti senza limite.
+   - Prove fatte: una lista con dentro `\n`, `\r` e `\x1b[31m` ripetuti 500 volte. Il risultato è su una sola riga (`'\n' in ...` → False) e si ferma a circa 470 caratteri. Bytes da 800 caratteri → 629, limitato. `{'a':1}` → `<dict> "{'a': 1}"`.
+   - Esito: ok.
+
+2. `gas.py:540` — `_lunghezza_log`: restituisce la lunghezza se c'è testo, `"0"` se è None, `"n/d (<tipo>)"` negli altri casi. Rischio esaminato: che indichi ancora uno 0 fuorviante. Esito: ok (bytes → `n/d (bytes)`).
+
+3. `gas.py:1952-1959` — `logging.warning` con `lunghezza=_lunghezza_log(...)` e `anteprima[NON FIDATA]=...`, dentro il `try` del provider (il "rung" della cascata).
+   - Rischio esaminato: che un'eccezione rompa la cascata di fallback (regola §9).
+   - Prova fatta: un oggetto con `__repr__` che solleva fa sollevare `_anteprima_log`. Siccome la chiamata sta dentro il `try`, l'errore finisce nell'`except Exception`, che lo registra nel log ("provider fallito") e passa al provider successivo. Nessun crash.
+   - Esito: ok. Con l'SDK OpenAI il campo content è str, None o una lista, quindi questo caso in pratica non si presenta.
+
+4. `gas.py:561` — il motivo "mai chiuso" ora dice "nessuna '}' dopo la prima '{'". Provato con `'a } b {'`: il testo del motivo ora è esatto. Esito: ok. Questo chiude anche la nota cosmetica della review #212.
+
+5. `tests/test_unit_kernel.py` T80l4 e T80u4 — T80l4 passa per il vero `rifletti()` con content in forma di lista lunga 3000: verifica il fallback su groq, il log limitato (< 1000 caratteri, nessuna sequenza di 400 `q`) e il marcatore. T80u4 testa le funzioni pure.
+   - Prova di sabotaggio: ho fatto tornare il `repr` intero per i valori non testuali. Risultato: T80l4 e T80u4 FALLISCONO (703 superati, 2 falliti). Poi ho ripristinato il file: il working tree è pulito e lo stage non è cambiato.
+   - Esito: ok.
+
+**Il marcatore NON FIDATA basta?** Sì, per quello che deve fare. Ho controllato chi legge `gas_debug.log`: lo usa solo `doctor` (`gas.py:2707-2712`), che guarda la dimensione del file. Nessun codice rimanda il log al modello. Se Gas lo legge con `read_file`, quello strumento conta già come input esterno e marca la finestra come contaminata. Inoltre il `repr` trasforma in sequenze visibili i caratteri di controllo, ANSI e bidi, quindi né la console né il file possono essere manipolati con caratteri nascosti.
+
+**Note cosmetiche, non vincolanti e senza bisogno di tracciarle**
+- Per i valori non testuali, `[+N caratteri]` conta i caratteri del `repr`, non quelli del contenuto originale.
+- Il ramo `except` (`gas.py:1964`) scrive `str(e)` senza il marcatore NON FIDATA. Il testo di un'eccezione del provider in teoria potrebbe ripetere contenuto preso da fuori.
+
+**Cosa NON ho verificato**
+- Come appare il log su stderr in un vero terminale macOS o sulla VPS: non è riproducibile qui. Mi sono basato sul fatto che il `repr` produce solo ASCII o caratteri stampabili.
+- Il comportamento con risposte vere di Gemini o Groq che restituiscono content in forma di lista: non ho chiavi API in questo ambiente, quindi ho simulato le risposte con degli stub.
+
+Ho aggiunto la riga del contatore #215 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata da sola (commit `6ebb906`). Il diff in stage è rimasto intatto.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Prima (main `3ab900a`): T80 senza T80l2/T80l3/T80u2/T80u3. Dopo: 4 check nuovi, tutti PASS (T80u2/T80u3 estesi nei commit `aead68d` e `f88667d`, senza nuovi check).
+Main `3ab900a`: 699 PASS, 0 FAIL in locale. Head di #155 (`dc71fbd`): 703 PASS, 0 FAIL. Questo branch (`ad7b87e`): 2 check nuovi (T80l4, T80u4), T80l2 esteso.
 
 ```
-=== RIEPILOGO: 703 PASS, 0 FAIL ===
+=== RIEPILOGO: 705 PASS, 0 FAIL ===
 ```
 
-In locale la suite dà 703; in CI su `74fe43e` lo stesso file dà 705 PASS, 0 FAIL (main `3ab900a`: 701/0). Il delta di +4 è identico; lo scarto fisso di 2 tra locale e CI c'era già su main (causa non indagata in questa sessione). Nessun FAIL fuori scope.
+Nessun FAIL fuori scope. In CI lo stesso file conta 2 check in più che in locale (già su main); causa non indagata.
 
 ## §6 STATO CI
 
-Run lette con `gh api` REST (`gh run list` usa GraphQL, che dà 403 in questa sessione):
+Run lette con `gh api` REST (GraphQL dà 403 in questa sessione):
 
 ```
-37766158124 verifica-bot 74fe43e completed success
-37766143106 verifica-bot 74fe43e completed skipped
-37766139998 CI 74fe43e completed success
-37766018812 verifica-bot c2919cb completed skipped
-37765996199 CI c2919cb completed failure
+37785584338 verifica-bot ad7b87e completed skipped
+37785542738 CI ad7b87e in_progress null
 ```
 
 Mappatura commit → run:
-- `5cea4c7`, `758c513`: nessuna run propria (pushati insieme a `c2919cb`).
-- `c2919cb` (motore): CI 37765996199 — `failure`. `unit-suite` verde; ROSSO solo `handoff-check`, per struttura: il commit motore è stato pushato prima del commit di fine-task che porta l'handoff (V-1 bot).
-- `74fe43e` (fine-task precedente): CI 37766139998 `success`; verifica-bot 37766158124 `success` (APPROVATO CON RISERVE, riserve gestite in questa sessione).
-- `b235025`, `aead68d`, `6cd97da`, `a3587e7`: nessuna run propria (pushati insieme a `f88667d`).
-- `f88667d` (motore): run non ancora disponibile alla scrittura dell'handoff; ci si aspetta di nuovo `handoff-check` rosso, per la stessa ragione strutturale.
+- `5cea4c7`…`dc71fbd` (commit di #155): testati sul branch di #155. CI `dc71fbd` 37767149489 `success`; verifica-bot `success` su `dc71fbd` (vedi handoff di #155).
+- `6ebb906`: nessuna run propria (pushato insieme ad `ad7b87e`).
+- `ad7b87e` (motore): CI 37785542738 `in_progress` alla scrittura dell'handoff; ci si aspetta `handoff-check` rosso per struttura (l'handoff arriva nel commit successivo). verifica-bot 37785584338 `skipped` (etichetta `verifica` non ancora messa).
 - Commit di questo fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-210-1, R-213-1: CHIUSE in questa PR.
-- Verifica esterna V-1 / bot V-3 (motivi fuorvianti): CHIUSE (`aead68d`). Bot V-2 (coda): CHIUSA (`f88667d`). Bot V-1 (§6 obsoleto) e V-4 / verifica esterna V-3 (§2 auto-referenziale): gestite in questo handoff; il conteggio delle righe di `handoff.md` in §2 resta approssimato per costruzione (la CI confronta solo i path).
-- Verifica esterna V-2 (CLAUDE.md elenca 2 check required, il ruleset ne ha 3): APERTA, decisione dell'operatore (§0 punto 3).
-- Verifica esterna V-4 (anteprima di output del modello in `gas_debug.log`): accettata; il log è locale, in .gitignore, ruotato, e l'anteprima ha un tetto (300+150).
+- Riserve del bot su #155 (V-1, V-2, V-3): CHIUSE in questa PR, tranne lo scarto 703/705 (non un difetto, non indagato).
+- Review #215: due note cosmetiche non vincolanti (`[+N caratteri]` conta il repr per i non-testuali; il ramo `except` del provider logga `str(e)` senza marcatore NON FIDATA).
+- CLAUDE.md elenca 2 check required, il ruleset 3: APERTA, decisione dell'operatore (§0 punto 2).
 - Aperti (non riserve): diagnosi reale di Gemini su `rifletti`, bottone Rifiuta Telegram — `reports/stato_progetto.md` voce 9.

@@ -6831,7 +6831,8 @@ try:
     _scarto80l = [m for m in _logrec80l if "risposta non valida" in m]
     check("T80l2 risposta scartata loggata con motivo, finish_reason e anteprima",
           len(_scarto80l) == 1 and "nessun oggetto JSON" in _scarto80l[0]
-          and "'Ecco il recap: tutto bene!'" in _scarto80l[0]
+          and "anteprima[NON FIDATA]='Ecco il recap: tutto bene!'" in _scarto80l[0]
+          and "lunghezza=26;" in _scarto80l[0]
           and "finish_reason=" in _scarto80l[0], str(_logrec80l)[:400])
     # T80l3 — risposta tagliata (finish_reason='length', JSON monco e lungo): nel log
     # finiscono finish_reason, lunghezza vera e anteprima TRONCATA, mai la risposta intera
@@ -6855,6 +6856,28 @@ try:
           and f"…[+{len(_monca80) - gas.RIFLESSIONE_LOG_ANTEPRIMA_CHARS - gas.RIFLESSIONE_LOG_CODA_CHARS} caratteri]…" in _scarto80l3[0]
           and "CODA-MONCA'" in _scarto80l3[0]
           and "z" * 400 not in _scarto80l3[0], str(_logrec80l)[:400])
+
+    # T80l4 — content NON testuale e lungo dal provider: log limitato, tipo dichiarato,
+    # anteprima marcata NON FIDATA, fallback al successivo
+    def _parti80l4(messages, tools):
+        msg = SimpleNamespace(content=[{"type": "text", "text": "q" * 3000}], tool_calls=None)
+        return SimpleNamespace(choices=[SimpleNamespace(message=msg, finish_reason="stop")],
+                               usage=None)
+    _setup80({_FLASH80: _parti80l4, _GROQ80: _RISP_OK80})
+    _logrec80l.clear()
+    logging.getLogger().addHandler(_h80l)
+    try:
+        _e80l4 = _k80_con_storia().rifletti()
+    finally:
+        logging.getLogger().removeHandler(_h80l)
+    _scarto80l4 = [m for m in _logrec80l if "risposta non valida" in m]
+    check("T80l4 content non testuale: motivo, lunghezza n/d, anteprima <list> limitata e NON FIDATA",
+          _e80l4["ok"] and _e80l4["provider"] == "groq" and len(_scarto80l4) == 1
+          and "risposta non testuale (list)" in _scarto80l4[0]
+          and "lunghezza=n/d (list);" in _scarto80l4[0]
+          and "anteprima[NON FIDATA]=<list> " in _scarto80l4[0]
+          and "q" * 400 not in _scarto80l4[0] and len(_scarto80l4[0]) < 1000,
+          str(_logrec80l)[:400])
 
     # T80m — tutti i provider falliscono: nessun crash, nessuna scrittura
     _setup80({_FLASH80: RuntimeError("500 boom"), _GROQ80: '{"lezioni": ["x"]}'})
@@ -7074,6 +7097,16 @@ try:
           and len(_ant80) < _cap80 + _coda80 + 40
           and _anteprima_log(_lunga80, cap=10, coda=0) == f"{'x' * 10!r}…[+{len(_lunga80) - 10} caratteri]…''"
           and len(_anteprima_log(_lunga80, cap=-5, coda=-5)) < 40)
+    # T80u4 — risposta NON testuale (es. lista di parti): anteprima limitata col tipo,
+    # lunghezza mai uno 0 fuorviante (V-1/V-3 verifica bot PR #155)
+    _parti80 = [{"type": "text", "text": "w" * 3000}]
+    _antp80 = _anteprima_log(_parti80)
+    check("T80u4 risposta non testuale: anteprima col tipo e limitata, lunghezza n/d",
+          _antp80.startswith("<list> \"[{'type': 'text'") and "caratteri]…" in _antp80
+          and len(_antp80) < _cap80 + _coda80 + 60
+          and _anteprima_log(7) == "<int> '7'"
+          and gas._lunghezza_log(_parti80) == "n/d (list)" and gas._lunghezza_log(None) == "0"
+          and gas._lunghezza_log("abc") == "3", _antp80[:120])
     check("T80v cascata unica: 'complesso' parte da gemini-flash, gratuiti in coda",
           [c[0] for c in _cascata_provider("complesso")] == ["gemini-flash", "groq", "openrouter", "ollama"]
           and [c[0] for c in _cascata_provider("semplice")][:3] == ["gemini-flash-lite", "gemini-flash", "groq"])

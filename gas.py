@@ -520,15 +520,29 @@ def _anteprima_log(testo: Any, cap: int = RIFLESSIONE_LOG_ANTEPRIMA_CHARS,
                    coda: int = RIFLESSIONE_LOG_CODA_CHARS) -> str:
     """Inizio e fine di una risposta grezza, in repr (una riga sola nel log:
     a-capo e caratteri di controllo restano visibili come escape), con il conteggio
-    dei caratteri omessi in mezzo. Mai più di cap+coda caratteri di testo. PURA."""
-    if not isinstance(testo, str):
+    dei caratteri omessi in mezzo. Mai più di cap+coda caratteri di testo, anche per
+    una risposta non testuale (lista di parti, oggetto: si tronca il suo repr,
+    preceduto dal tipo — V-1 verifica bot PR #155). PURA."""
+    prefisso = ""
+    if testo is not None and not isinstance(testo, str):
+        prefisso = f"<{type(testo).__name__}> "
+        testo = repr(testo)
+    elif not isinstance(testo, str):
         return repr(testo)
     cap, coda = max(cap, 0), max(coda, 0)
     if len(testo) <= cap + coda:
-        return repr(testo)
+        return prefisso + repr(testo)
     omessi = len(testo) - cap - coda
     # testo[len-coda:], NON testo[-coda:]: con coda=0 il secondo darebbe tutta la stringa.
-    return f"{testo[:cap]!r}…[+{omessi} caratteri]…{testo[len(testo) - coda:]!r}"
+    return f"{prefisso}{testo[:cap]!r}…[+{omessi} caratteri]…{testo[len(testo) - coda:]!r}"
+
+
+def _lunghezza_log(testo: Any) -> str:
+    """Lunghezza di una risposta grezza per il log: i caratteri se è testo, altrimenti
+    il tipo ('n/d (list)'), mai uno 0 fuorviante (V-3 verifica bot PR #155). PURA."""
+    if isinstance(testo, str):
+        return str(len(testo))
+    return "0" if testo is None else f"n/d ({type(testo).__name__})"
 
 
 def _analizza_riflessione(testo: Optional[str]) -> Tuple[Optional[Tuple[str, List[str]]], str]:
@@ -544,7 +558,7 @@ def _analizza_riflessione(testo: Optional[str]) -> Tuple[Optional[Tuple[str, Lis
     if i < 0:
         return None, "nessun oggetto JSON (manca '{')"
     if j <= i:
-        return None, "JSON aperto ma mai chiuso (manca '}': risposta tagliata?)"
+        return None, "JSON aperto ma mai chiuso (nessuna '}' dopo la prima '{': risposta tagliata?)"
     try:
         data = json.loads(t[i:j + 1])
     except (ValueError, TypeError) as e:
@@ -1934,13 +1948,15 @@ class GasKernel:
                     parsed, motivo = _analizza_riflessione(grezza)
                     if parsed is None:
                         # Diagnosi: motivo dello scarto, finish_reason (es. 'length' =
-                        # risposta tagliata) e prefisso troncato della risposta grezza.
+                        # risposta tagliata) e inizio+coda della risposta grezza. L'anteprima
+                        # è output del modello su una finestra che può contenere input
+                        # esterno: marcata NON FIDATA per chi legge il log (V-2 bot #155).
                         logging.warning(
                             f"riflessione: {name} ({model}) risposta non valida "
                             f"(atteso JSON con recap): {motivo}; "
                             f"finish_reason={getattr(scelta, 'finish_reason', None)!r}; "
-                            f"lunghezza={len(grezza) if isinstance(grezza, str) else 0}; "
-                            f"anteprima={_anteprima_log(grezza)} — provider successivo")
+                            f"lunghezza={_lunghezza_log(grezza)}; "
+                            f"anteprima[NON FIDATA]={_anteprima_log(grezza)} — provider successivo")
                         self._log_tokens(name, model, 0, 0, event="fallthrough", reason="KO")
                         continue
                     esito["provider"] = name
