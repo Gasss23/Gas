@@ -693,6 +693,8 @@ class GasKernel:
         self.MEMORY_PIN_EVENTS = _env_int("GAS_MEMORY_PIN_EVENTS", GasKernel.MEMORY_PIN_EVENTS, min_val=0)
         self.MEMORY_PIN_SCAN = _env_int("GAS_MEMORY_PIN_SCAN", GasKernel.MEMORY_PIN_SCAN, min_val=10)
         self.WINDOW_CHAR_CAP = _env_int("GAS_WINDOW_CHAR_CAP", GasKernel.WINDOW_CHAR_CAP, min_val=1000)
+        self.PROVIDER_TIMEOUT_SEC = _env_int("GAS_PROVIDER_TIMEOUT_SEC", GasKernel.PROVIDER_TIMEOUT_SEC, min_val=5)
+        self.OLLAMA_TIMEOUT_SEC = _env_int("GAS_OLLAMA_TIMEOUT_SEC", GasKernel.OLLAMA_TIMEOUT_SEC, min_val=5)
         self.RECAP_MAX_CHARS = _env_int("GAS_RECAP_CHARS", GasKernel.RECAP_MAX_CHARS, min_val=200)
         self.RECAP_PIN_CHAR_CAP = _env_int("GAS_RECAP_PIN_CHARS", GasKernel.RECAP_PIN_CHAR_CAP, min_val=0)
         self.MEMORY_BACKUP_EVERY_SEC = _env_int("GAS_MEMORY_BACKUP_EVERY_SEC", GasKernel.MEMORY_BACKUP_EVERY_SEC, min_val=0)
@@ -998,6 +1000,17 @@ class GasKernel:
     # 84 KB → ~24k token → Groq 413). 24000 caratteri ≈ 6-7k token, soglia di
     # sicurezza con margine ampio sotto i limiti dei provider.
     WINDOW_CHAR_CAP = 24000
+
+    # Timeout (secondi) di UNA richiesta HTTP ai provider del turno e di
+    # rifletti (override GAS_PROVIDER_TIMEOUT_SEC, min 5). Senza, l'SDK OpenAI
+    # aspetta fino a 600s per tentativo (x3 coi retry): una chiamata appesa
+    # bloccherebbe per ore il giro notturno senza nessuno davanti. Scaduto il
+    # timeout l'SDK solleva, e l'except del rung passa al brain successivo (§9).
+    PROVIDER_TIMEOUT_SEC = 120
+    # Ollama locale (CPU, prompt lunghi) resta al default dell'SDK: un tetto
+    # stretto farebbe scadere sempre il pavimento offline (R-226-1).
+    # Override GAS_OLLAMA_TIMEOUT_SEC, min 5.
+    OLLAMA_TIMEOUT_SEC = 600
 
     # --- Iniezione memoria always-on (lato lettura, fetta 2b) ---
     # Il blocco-memoria vive NEL messaggio system (fuori dalla finestra), quindi
@@ -1886,6 +1899,10 @@ class GasKernel:
         corpo = _sanitize_memory_text("\n".join(righe))
         return "<trascrizione_dati>\n" + corpo + "\n</trascrizione_dati>"
 
+    def _timeout_provider(self, name: str) -> int:
+        """Timeout HTTP del rung: Ollama locale ha il suo (R-226-1)."""
+        return self.OLLAMA_TIMEOUT_SEC if name == "ollama" else self.PROVIDER_TIMEOUT_SEC
+
     def rifletti(self) -> Dict[str, Any]:
         """Riflessione di fine task (FASE 2.6, fetta 1). UNA chiamata LLM senza tool
         sulla trascrizione del task (finestra da _get_window), lungo la stessa cascata
@@ -1946,7 +1963,8 @@ class GasKernel:
                 if esito["provider_atteso"] is None:
                     esito["provider_atteso"] = name  # primo rung disponibile (§8)
                 try:
-                    client = OpenAI(base_url=url, api_key=os.environ.get(env))
+                    client = OpenAI(base_url=url, api_key=os.environ.get(env),
+                                    timeout=self._timeout_provider(name))
                     response = client.chat.completions.create(model=model, messages=messaggi)
                     usage = getattr(response, "usage", None)
                     if usage:
@@ -2517,7 +2535,8 @@ class GasKernel:
                                     f"dichiarato, turno potenzialmente tool-blind")
                 payload: List[Dict[str, Any]] = []
                 try:
-                    client = OpenAI(base_url=url, api_key=os.environ.get(env))
+                    client = OpenAI(base_url=url, api_key=os.environ.get(env),
+                                    timeout=self._timeout_provider(name))
                     for _ in range(10):  # max 10 iterazioni agentic loop
                         # C2: calcola contaminazione dalla finestra PRIMA di inviare
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la

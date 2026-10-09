@@ -61,7 +61,7 @@ class _Script:
         script_obj = self
 
         class _FakeOpenAI:
-            def __init__(self, base_url=None, api_key=None):
+            def __init__(self, base_url=None, api_key=None, timeout=None):
                 self.chat = SimpleNamespace(completions=self)
                 self._i = 0
 
@@ -377,3 +377,130 @@ def test_frasi_del_cancello_legate_al_kernel():
     src = inspect.getsource(gas.GasKernel)
     assert f'"{notte._IN_ATTESA} (ID: ' in src
     assert f'"{notte._NEGATA}: ' in src
+
+
+# ── tetto di tempo (R-220-3) ────────────────────────────────────────────────
+
+class _Orologio:
+    """time.monotonic finto: avanza solo quando lo dice il test."""
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+
+def test_compito_oltre_il_tetto_interrotto(monkeypatch, dirs):
+    """Un compito che continua a girare oltre il tetto viene chiuso (generatore
+    chiuso, i suoi finally girano), esito KO, e il giro passa al successivo."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  "compiti:\n  - nome: lento\n    prompt: p\n  - nome: buono\n    prompt: q\n")
+    orologio = _Orologio()
+    monkeypatch.setattr(notte.time, "monotonic", orologio)
+    monkeypatch.setenv("GAS_NOTTE_MAX_SEC_COMPITO", "60")
+    chiuso = []
+
+    class _K:
+        def run_turn(self, prompt):
+            try:
+                if prompt == "q":
+                    yield {"type": "final", "content": "fatto"}
+                    return
+                for _ in range(100):
+                    orologio.t += 25
+                    yield {"type": "tool_res", "output": "x"}
+                yield {"type": "final", "content": "non deve arrivare"}
+            finally:
+                chiuso.append(prompt)
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    rc = esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
+    assert rc == 1
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "## lento — KO (3 tool" in riep and "tempo scaduto: oltre 60s" in riep
+    assert "non deve arrivare" not in riep
+    assert "## buono — OK" in riep
+    assert "p" in chiuso  # il turno interrotto è stato chiuso, non abbandonato
+
+
+def test_tetto_del_giro_salta_i_compiti_rimasti(monkeypatch, dirs):
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n" + "".join(
+        f"  - nome: c{i}\n    prompt: p{i}\n" for i in range(4)))
+    orologio = _Orologio()
+    monkeypatch.setattr(notte.time, "monotonic", orologio)
+    monkeypatch.setenv("GAS_NOTTE_MAX_SEC_GIRO", "100")
+    eseguiti = []
+
+    class _K:
+        def run_turn(self, prompt):
+            eseguiti.append(prompt)
+            orologio.t += 60
+            yield {"type": "final", "content": "ok"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    rc = esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
+    assert eseguiti == ["p0", "p1"]
+    assert rc == 1  # compiti saltati: il giro non è "tutto ok"
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "tetto di tempo del giro (100s) raggiunto: saltati 2 compiti (c2, c3)" in riep
+
+
+def test_tetto_compito_limitato_dal_tempo_rimasto_del_giro(monkeypatch, dirs):
+    """Il compito non può sforare il giro: il suo tetto è min(compito, rimasto)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    orologio = _Orologio()
+    monkeypatch.setattr(notte.time, "monotonic", orologio)
+    monkeypatch.setenv("GAS_NOTTE_MAX_SEC_GIRO", "50")
+
+    class _K:
+        def run_turn(self, prompt):
+            for _ in range(10):
+                orologio.t += 20
+                yield {"type": "tool_res", "output": "x"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K()) == 1
+    assert "tempo scaduto: oltre 50s" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+
+@pytest.mark.parametrize("valore,atteso", [
+    (None, notte.MAX_SEC_COMPITO_DEFAULT), ("", notte.MAX_SEC_COMPITO_DEFAULT),
+    ("abc", notte.MAX_SEC_COMPITO_DEFAULT), ("5", notte.MIN_SEC), ("300", 300)])
+def test_env_secondi(monkeypatch, valore, atteso):
+    if valore is None:
+        monkeypatch.delenv("GAS_NOTTE_MAX_SEC_COMPITO", raising=False)
+    else:
+        monkeypatch.setenv("GAS_NOTTE_MAX_SEC_COMPITO", valore)
+    assert notte._env_secondi("GAS_NOTTE_MAX_SEC_COMPITO",
+                              notte.MAX_SEC_COMPITO_DEFAULT) == atteso
+
+
+def test_errore_dopo_il_tetto_conserva_il_messaggio_vero(monkeypatch, dirs):
+    """R-226-3: un 'error' arrivato oltre il tetto non viene sovrascritto da
+    'tempo scaduto'."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    orologio = _Orologio()
+    monkeypatch.setattr(notte.time, "monotonic", orologio)
+    monkeypatch.setenv("GAS_NOTTE_MAX_SEC_COMPITO", "60")
+
+    class _K:
+        def run_turn(self, prompt):
+            orologio.t += 500
+            yield {"type": "error", "content": "Pipeline esausta."}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K()) == 1
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "Errore: Pipeline esausta." in riep and "tempo scaduto" not in riep
