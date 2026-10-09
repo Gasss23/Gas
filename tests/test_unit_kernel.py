@@ -7273,6 +7273,29 @@ check("T81f R-228-1: GAS_PROVIDER_MAX_RETRIES=0 arriva al client di run_turn",
 check("T81g R-229-1: GAS_PROVIDER_MAX_RETRIES=0 arriva al client di rifletti",
       _rt_rifl81 != [] and all(r == 0 for r in _rt_rifl81), f"retries visti: {_rt_rifl81}")
 
+# T81h (R-227-1): con solo Ollama configurato, run_turn passa davvero dal rung
+# "ollama" e costruisce il client col SUO timeout (600s), non con quello remoto.
+_seen81h: list = []
+class _FakeOpenAI81h:
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
+        _seen81h.append((base_url, timeout, max_retries))
+        self.chat = SimpleNamespace(completions=_FakeCompletions81())
+_chiavi81h = ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
+              "GAS_OLLAMA_TIMEOUT_SEC", "GAS_PROVIDER_MAX_RETRIES")
+_salvate81h = {k: os.environ.pop(k, None) for k in _chiavi81h}
+os.environ["GAS_OLLAMA_URL"] = "http://ollama.test/v1"
+gas.OpenAI = _FakeOpenAI81h
+try:
+    list(kernel_tmp().run_turn("ciao ollama"))
+finally:
+    gas.OpenAI = _vero_openai
+    for _k, _v in _salvate81h.items():
+        os.environ.pop(_k, None)
+        if _v is not None:
+            os.environ[_k] = _v
+check("T81h R-227-1: run_turn sul rung Ollama usa il timeout di Ollama (600s)",
+      _seen81h == [("http://ollama.test/v1", 600, 1)], f"client visti: {_seen81h}")
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

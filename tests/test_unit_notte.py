@@ -426,6 +426,40 @@ def test_compito_oltre_il_tetto_interrotto(monkeypatch, dirs):
     assert "p" in chiuso  # il turno interrotto è stato chiuso, non abbandonato
 
 
+def test_tetto_chiude_il_run_turn_reale_con_turno_fine_ko(monkeypatch, dirs):
+    """R-226-4: col kernel VERO (non un finto run_turn) il tetto chiude il generatore
+    a metà loop agentico; il finally di run_turn scrive turno_fine con esito=ko."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lento\n    prompt: p\n")
+    orologio = _Orologio()
+    monkeypatch.setattr(notte.time, "monotonic", orologio)
+    monkeypatch.setenv("GAS_NOTTE_MAX_SEC_COMPITO", "60")
+    chiamate = []
+
+    class _FakeOpenAI:
+        def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
+            self.chat = SimpleNamespace(completions=self)
+
+        def create(self, model=None, messages=None, tools=None, tool_choice=None):
+            chiamate.append(1)
+            orologio.t += 25  # ogni giro del modello "costa" 25s
+            msg = SimpleNamespace(content=None, tool_calls=[SimpleNamespace(
+                id=f"c{len(chiamate)}",
+                function=SimpleNamespace(name="calcola", arguments='{"expr": "1+1"}'))])
+            return SimpleNamespace(choices=[SimpleNamespace(message=msg)], usage=None)
+
+    monkeypatch.setattr(gas, "OpenAI", _FakeOpenAI)
+    rc = esegui_notte(str(root), catalogo=cat,
+                      kernel_factory=lambda r: gas.GasKernel(root_dir=r))
+    assert rc == 1
+    assert 2 <= len(chiamate) < 10  # interrotto prima del cap di 10 iterazioni
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "## lento — KO" in riep and "tempo scaduto: oltre 60s" in riep
+    k = gas.GasKernel(root_dir=str(root))
+    fine = [e for e in k.memory.diario_recente(200) if e.get("tipo") == "turno_fine"]
+    assert len(fine) == 1 and fine[0]["descrizione"].startswith("esito=ko ;")
+
+
 def test_tetto_del_giro_salta_i_compiti_rimasti(monkeypatch, dirs):
     root, fuori = dirs
     cat = _scrivi(fuori / "c.yaml", "compiti:\n" + "".join(
