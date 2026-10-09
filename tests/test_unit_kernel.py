@@ -7202,6 +7202,10 @@ class _FakeOpenAI81:
         self.chat = SimpleNamespace(completions=_FakeCompletions81())
 _env81 = os.environ.pop("GAS_PROVIDER_TIMEOUT_SEC", None)
 _rtenv81 = os.environ.pop("GAS_PROVIDER_MAX_RETRIES", None)
+# Ermeticità (oss. review #232): altri rung o un timeout Ollama nell'ambiente
+# cambierebbero i client visti da T81b e il valore letto da T81d.
+_iso81 = {k: os.environ.pop(k, None) for k in
+          ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL", "GAS_OLLAMA_TIMEOUT_SEC")}
 _gem81 = os.environ.get("GEMINI_API_KEY")
 os.environ["GEMINI_API_KEY"] = "dummy-for-test"
 gas.OpenAI = _FakeOpenAI81
@@ -7237,7 +7241,14 @@ try:
                      {"role": "assistant", "content": "fatto, 1200 euro"}]
     _k81r.rifletti()
     _rt_rifl81 = list(_retries81)
+    _k81o = kernel_tmp()
+    _t81d = (_k81o._timeout_provider("ollama"), _k81o._timeout_provider("gemini-flash"),
+             _k81o._timeout_provider("openrouter"))
 finally:
+    for _k, _v in _iso81.items():
+        os.environ.pop(_k, None)
+        if _v is not None:
+            os.environ[_k] = _v
     if _rtenv81 is None:
         os.environ.pop("GAS_PROVIDER_MAX_RETRIES", None)
     else:
@@ -7255,11 +7266,8 @@ check("T81a run_turn costruisce il client col timeout del kernel (default 120s)"
       f"timeout visti: {_turn81}")
 check("T81b rifletti costruisce il client col timeout del kernel",
       _rifl81 != [] and all(t == 120 for t in _rifl81), f"timeout visti: {_rifl81}")
-_k81o = kernel_tmp()
 check("T81d R-226-1: Ollama locale ha il suo timeout (600s), gli altri rung 120s",
-      (_k81o._timeout_provider("ollama"), _k81o._timeout_provider("gemini-flash"),
-       _k81o._timeout_provider("openrouter")) == (600, 120, 120),
-      f"{(_k81o._timeout_provider('ollama'), _k81o._timeout_provider('gemini-flash'))}")
+      _t81d == (600, 120, 120), f"{_t81d}")
 check("T81c GAS_PROVIDER_TIMEOUT_SEC: override, minimo 5, valore sporco → default",
       (_env_ok81, _env_min81, _env_bad81) == (45, 5, 120),
       f"{(_env_ok81, _env_min81, _env_bad81)}")
