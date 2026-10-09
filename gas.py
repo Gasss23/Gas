@@ -1004,7 +1004,8 @@ class GasKernel:
 
     # Timeout (secondi) di UNA richiesta HTTP ai provider del turno e di
     # rifletti (override GAS_PROVIDER_TIMEOUT_SEC, min 5). Senza, l'SDK OpenAI
-    # aspetta fino a 600s per tentativo (x3 coi retry): una chiamata appesa
+    # aspetta fino a 600s per tentativo (x3 coi retry di default dell'SDK; qui
+    # x2, vedi PROVIDER_MAX_RETRIES): una chiamata appesa
     # bloccherebbe per ore il giro notturno senza nessuno davanti. Scaduto il
     # timeout l'SDK solleva, e l'except del rung passa al brain successivo (§9).
     PROVIDER_TIMEOUT_SEC = 120

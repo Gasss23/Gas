@@ -7231,6 +7231,12 @@ try:
     _retries81.clear()
     list(kernel_tmp().run_turn("ciao retries"))
     _rt_client81 = list(_retries81)
+    _retries81.clear()  # R-229-1: stesso controllo su rifletti
+    _k81r = kernel_tmp()
+    _k81r.history = [{"role": "user", "content": "fai il preventivo"},
+                     {"role": "assistant", "content": "fatto, 1200 euro"}]
+    _k81r.rifletti()
+    _rt_rifl81 = list(_retries81)
 finally:
     if _rtenv81 is None:
         os.environ.pop("GAS_PROVIDER_MAX_RETRIES", None)
@@ -7264,6 +7270,8 @@ check("T81e V-2 bot #162: run_turn e rifletti con 1 solo tentativo extra dell'SD
       f"retries visti: {_rt_def81}; env: {(_rt_ok81, _rt_min81, _rt_bad81)}")
 check("T81f R-228-1: GAS_PROVIDER_MAX_RETRIES=0 arriva al client di run_turn",
       _rt_client81 == [0], f"retries visti: {_rt_client81}")
+check("T81g R-229-1: GAS_PROVIDER_MAX_RETRIES=0 arriva al client di rifletti",
+      _rt_rifl81 != [] and all(r == 0 for r in _rt_rifl81), f"retries visti: {_rt_rifl81}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

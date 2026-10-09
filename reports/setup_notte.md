@@ -28,7 +28,8 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
    locale 600s, `GAS_OLLAMA_TIMEOUT_SEC`). I tetti NON sono duri: si controllano tra un
    passo e l'altro, e nel caso peggiore (tutti i provider appesi, 2 tentativi per
    provider — `GAS_PROVIDER_MAX_RETRIES=1` — Ollama compreso) un compito può sforare
-   di circa 36 minuti.
+   di circa 36 minuti (ordine di grandezza: un'attesa chiesta dal provider (Retry-After,
+   es. su un 429) aggiunge fino a 60s per ritentativo).
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```
