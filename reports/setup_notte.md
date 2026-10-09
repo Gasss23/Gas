@@ -26,8 +26,9 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
    compiti rimasti oltre il tetto del giro vengono saltati e segnalati nel riepilogo.
    Ogni chiamata a un provider ha un timeout di 120s (`GAS_PROVIDER_TIMEOUT_SEC`; Ollama
    locale 600s, `GAS_OLLAMA_TIMEOUT_SEC`). I tetti NON sono duri: si controllano tra un
-   passo e l'altro, e nel caso peggiore (tutti i provider appesi, con i 3 tentativi
-   dell'SDK, Ollama compreso) un compito può sforare di circa 55 minuti.
+   passo e l'altro, e nel caso peggiore (tutti i provider appesi, 2 tentativi per
+   provider — `GAS_PROVIDER_MAX_RETRIES=1` — Ollama compreso) un compito può sforare
+   di circa 36 minuti.
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```
