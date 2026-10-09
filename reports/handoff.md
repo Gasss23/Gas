@@ -18,6 +18,7 @@
 - **Fetta 1 — R-226-4, tetto col kernel vero** (`tests/test_unit_notte.py`): `FATTA`.
 - **Fetta 2 — R-227-1, rung Ollama in run_turn** (`tests/test_unit_kernel.py` T81h): `FATTA`.
 - **Fetta 3 — `.gitignore` `gas_debug.log.*`**: `FATTA`.
+- **Fetta 4 — V-1 bot #164** (ordine `turno_fine` < riga `notte`, chiusura esplicita): `FATTA` in `ef7b28e`. **V-2 bot #164** (numeri locali/CI): `FATTA` in questo handoff (§5).
 - **T81b/T81d non ermetici** (osservazione review #232): `DEFERITA` — preesistente, fuori scope.
 - **V-4 verifica esterna #163**: `DEFERITA` — cosmetica. **V-2 bot #163**: `DEFERITA` — decisione operatore (§0 punto 2).
 
@@ -26,15 +27,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
+ .claude/agents/memoria_revisore.md |   2 ++
  .gitignore                         |   1 +
  reports/diff_sessione.md           |  14 ++++++--------
- reports/handoff.md                 | 241 ++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 248 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  32 ++++++++++++--------------------
+ reports/ultimo_report.md           |  35 +++++++++++++++++------------------
  tests/test_unit_kernel.py          |  23 +++++++++++++++++++++++
- tests/test_unit_notte.py           |  34 ++++++++++++++++++++++++++++++++++
- 8 files changed, 124 insertions(+), 224 deletions(-)
+ tests/test_unit_notte.py           |  39 +++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 151 insertions(+), 213 deletions(-)
 ```
 
 Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`, ed eventualmente `reports/ultimo_report.md`) sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -42,6 +43,9 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`,
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ef7b28e test(notte): turno_fine scritto prima della riga notte (chiusura esplicita, V-1 bot #164)
+0602881 chore(revisore): memoria review #233 — APPROVATO
+7743b07 docs(fine-task): report PR #164 (test R-226-4, R-227-1)
 308114e test(notte,kernel): run_turn reale chiuso dal tetto + rung Ollama in run_turn (R-226-4, R-227-1)
 09b45bb chore(revisore): memoria review #232 — APPROVATO
 ```
@@ -78,9 +82,27 @@ Ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la voce 6 di `reports/stato_progetto.md`
 
 (Unica modifica dell'agente al testo: il path assoluto della memoria è stato scritto relativo; `&lt;` reso come `<`.)
 
+### Review #233 (diff staged di ef7b28e, V-1 bot #164)
+
+VERDETTO: APPROVATO
+
+Il test ora riesce a distinguere la chiusura esplicita del generatore da quella fatta dal garbage collector. L'ordine degli id è garantito, quindi l'asserzione non è fragile.
+
+**Elementi del diff esaminati**
+
+1. `tests/test_unit_notte.py:459-461`: legge una sola volta il diario e lo filtra in due liste, `turno_fine` e `notte`. Ho controllato che la colonna `id` sia davvero presente nelle righe restituite. Lo è: `diario_recente` esegue `SELECT * FROM diario ORDER BY id DESC` (`modules/memory/store.py:928`). Esito ok.
+2. `tests/test_unit_notte.py:465`: controlla che ci sia esattamente una riga `notte` e che `fine[0]["id"] < riga_notte[0]["id"]`. Ho verificato se l'ordine degli id è garantito. Lo è: `modules/memory/store.py:101` dichiara `id INTEGER PRIMARY KEY AUTOINCREMENT`. Con AUTOINCREMENT SQLite assegna id sempre crescenti e non riusa mai quelli già usati, nemmeno dopo una cancellazione. Il diario poi non cancella mai righe (si aggiunge solo in coda). Con un semplice rowid basterebbe comunque, perché nessuno cancella. Esito ok.
+3. Contesto, `modules/notte/notte.py:207-220`: dopo il `finally` la riga `notte` viene scritta in modo sincrono. Ho verificato che la tua mutation (`gen.close()` sostituito con `pass`) venga scoperta ogni volta e non solo per caso. Viene scoperta sempre: la variabile locale `gen` tiene vivo il generatore fino al `return` di `_esegui_compito`. Il garbage collector quindi può chiuderlo, e scrivere `turno_fine`, solo dopo `_diario_log("notte", …)`. Il risultato non dipende dai tempi né dal momento in cui gira il GC. Esito ok.
+
+Ho rilanciato la suite: `tests/test_unit_notte.py` dà 36 passed.
+
+**Rischio escluso:** non ho ripetuto la tua mutation (`gen.close()` → `pass`). Il tuo risultato (FAIL con `5 < 4`) è coerente con l'analisi del ciclo di vita del generatore fatta sopra. Non ho verificato su VPS, ma il test è deterministico e non dipende dall'ambiente.
+
+**Memoria:** ho aggiunto la riga #233 in `.claude/agents/memoria_revisore.md`, committata con `scripts/commit_memoria_revisore.sh` (commit `0602881`). Il diff staged è rimasto intatto (solo `tests/test_unit_notte.py`, +6/-1). Ora va creato il marcatore della review con `bash scripts/segna_review_ok.sh` prima del commit.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 714 → 715 PASS (T81h nuovo), 0 FAIL. Notte 35 → 36 test. `pytest tests/` 786 → 787 passed. Righe reali:
+Kernel 714 → 715 PASS in locale (T81h nuovo), 0 FAIL; in CI 716 → 717 (V-2 bot #164: in CI girano 2 test del profilo sandbox che in locale sono [SKIP]). Notte 35 → 36 test. `pytest tests/` 786 → 787 passed. Dopo `ef7b28e`: notte 36 passed. Righe reali:
 
 ```
 [PASS] T81h R-227-1: run_turn sul rung Ollama usa il timeout di Ollama (600s) — client visti: [('http://ollama.test/v1', 600, 1)]
@@ -91,14 +113,17 @@ Kernel 714 → 715 PASS (T81h nuovo), 0 FAIL. Notte 35 → 36 test. `pytest test
 Mutation dell'agente:
 - tetto disattivato in `modules/notte/notte.py` → `assert 2 <= len(chiamate) < 10` FAIL (`assert 20 < 10`);
 - `_timeout_provider` fisso a `PROVIDER_TIMEOUT_SEC` → `[FAIL] T81h … client visti: [('http://ollama.test/v1', 120, 1)]`.
-Entrambe ripristinate con copia, `git diff --quiet` pulito.
+- `gen.close()` → `pass` in `modules/notte/notte.py` (dopo `ef7b28e`) → `AssertionError: assert (1 == 1 and 5 < 4)`.
+Tutte ripristinate con copia, `git diff --quiet` pulito.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container; PR #164 appena aperta.
+`gh` non autenticato nel container: stato dai check della PR #164 e dai verdetti delle verifiche.
 
-- `308114e`, `09b45bb`: pushati insieme; run non ancora disponibile alla scrittura dell'handoff (`09b45bb` non avrà una run propria: è testato solo come parte dell'albero di `308114e`).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `308114e`: handoff-check failure (handoff della sessione precedente, per costruzione del fine-task), dato della verifica del bot.
+- `7743b07` (primo fine-task): run 37922529818 — `unit-suite` success, `handoff-check` success; `verifica-bot` success (verdetto testuale APPROVATO CON RISERVE: V-1, V-2 chiuse qui).
+- `09b45bb`, `0602881`: nessuna run su questo SHA (pushati con altri, testati solo come parte dell'albero della testa).
+- `ef7b28e` e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
