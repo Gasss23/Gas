@@ -45,3 +45,4 @@ clients/**/*_output.wav
 clients/**/*_output.mp3
 clients/**/*_output.txt
 clients/**/*_output.json
+gas_debug.log.*
