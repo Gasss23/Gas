@@ -456,8 +456,13 @@ def test_tetto_chiude_il_run_turn_reale_con_turno_fine_ko(monkeypatch, dirs):
     riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
     assert "## lento — KO" in riep and "tempo scaduto: oltre 60s" in riep
     k = gas.GasKernel(root_dir=str(root))
-    fine = [e for e in k.memory.diario_recente(200) if e.get("tipo") == "turno_fine"]
+    diario = k.memory.diario_recente(200)
+    fine = [e for e in diario if e.get("tipo") == "turno_fine"]
+    riga_notte = [e for e in diario if e.get("tipo") == "notte"]
     assert len(fine) == 1 and fine[0]["descrizione"].startswith("esito=ko ;")
+    # V-1 bot #164: la chiusura è ESPLICITA (gen.close() nel finally), non lasciata al
+    # garbage collector: turno_fine viene scritto PRIMA della riga 'notte' del compito.
+    assert len(riga_notte) == 1 and fine[0]["id"] < riga_notte[0]["id"]
 
 
 def test_tetto_del_giro_salta_i_compiti_rimasti(monkeypatch, dirs):
