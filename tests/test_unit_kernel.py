@@ -160,7 +160,7 @@ class FakeCompletions:
         return fake_response(self._n)
 
 class FakeOpenAI:
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         self.chat = SimpleNamespace(completions=FakeCompletions(chiamate))
 
 _vero_openai = gas.OpenAI
@@ -213,7 +213,7 @@ class FakeCompletions2(FakeCompletions):
         chiamate2[model] = chiamate2.get(model, 0) + 1
         return fake_response(1)
 class FakeOpenAI2:
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         self.chat = SimpleNamespace(completions=FakeCompletions2(chiamate2))
 gas.OpenAI = FakeOpenAI2
 _or_key = os.environ.get("OPENROUTER_API_KEY")
@@ -889,7 +889,7 @@ def run_turn_scriptato(k, prompt, script):
         os.environ.pop(kk, None)
     os.environ["GEMINI_API_KEY"] = "dummy-for-test"
     class _FakeOpenAI:
-        def __init__(self, base_url=None, api_key=None, timeout=None):
+        def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
             self.chat = SimpleNamespace(completions=ScriptedCompletions(script))
     _orig = gas.OpenAI
     gas.OpenAI = _FakeOpenAI
@@ -1040,7 +1040,7 @@ def run_turn_recording(k, prompt):
         os.environ.pop(kk, None)
     os.environ["GEMINI_API_KEY"] = "dummy-for-test"
     class _FO:
-        def __init__(self, base_url=None, api_key=None, timeout=None):
+        def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
             self.chat = SimpleNamespace(completions=RecordingCompletions())
     _orig = gas.OpenAI; gas.OpenAI = _FO
     try:
@@ -2726,7 +2726,7 @@ class _FakeCompletions40:
     def create(self, model=None, **kwargs):
         raise _Fake402Error40("402 Payment Required")
 class _FakeOpenAI40:
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         self.chat = SimpleNamespace(completions=_FakeCompletions40())
 _env_save40 = {k: os.environ.pop(k, None)
                for k in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
@@ -3888,7 +3888,7 @@ check("T64c tool_ko=1 nella descrizione",
 _k64d = kernel_tmp()
 _orig_oai64d = gas.OpenAI
 class _FakeOAI64d:
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         class _CC:
             def create(self, **kw):
                 raise RuntimeError("provider simulato KO — T64d")
@@ -3925,7 +3925,7 @@ for _kk64e in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
 os.environ["GEMINI_API_KEY"] = "dummy-t64e"
 _orig64e = gas.OpenAI
 class _FakeOAI64e:
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         self.chat = SimpleNamespace(completions=ScriptedCompletions(_script_64e))
 gas.OpenAI = _FakeOAI64e
 try:
@@ -4077,7 +4077,7 @@ def _run_con_fallback(script_rung1, script_rung2=None):
     os.environ.pop("GAS_OLLAMA_URL", None)
 
     class _FakeOpenAI66:
-        def __init__(self, base_url=None, api_key=None, timeout=None):
+        def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
             self._base_url = base_url or ""
             self.chat = SimpleNamespace(completions=self)
         def create(self, model=None, messages=None, tools=None, tool_choice=None):
@@ -4611,7 +4611,7 @@ os.environ["GEMINI_API_KEY"] = "dummy-for-test"
 _orig_oai69h = gas.OpenAI
 
 class _FakeOAI69h:
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         self.chat = _SN(completions=_ScriptedCompletions69h())
 
 gas.OpenAI = _FakeOAI69h
@@ -6413,7 +6413,7 @@ class _CompletionsSpia78(ScriptedCompletions):
 def _turno_spia78(k, prompt, script):
     _CompletionsSpia78.visti = []
     class _FakeOpenAI78:
-        def __init__(self, base_url=None, api_key=None, timeout=None):
+        def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
             self.chat = SimpleNamespace(completions=_CompletionsSpia78(script))
     saved = {kk: os.environ.get(kk) for kk in
              ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
@@ -6692,7 +6692,7 @@ class _Rif80:
     Registra le chiamate (modello, messages, tools) per le asserzioni."""
     chiamate: list = []
     risposte: dict = {}
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         self.chat = SimpleNamespace(completions=self)
     def create(self, model=None, messages=None, tools=None, tool_choice=None):
         _Rif80.chiamate.append((model, messages, tools))
@@ -7189,16 +7189,19 @@ check("T79a i .py del repo compilano senza escape invalidi (SyntaxWarning/Deprec
 # Senza timeout l'SDK OpenAI aspetta fino a 600s per tentativo: una chiamata appesa
 # blocca per ore il giro notturno. Il client va costruito col tetto del kernel.
 _timeout81: list = []
+_retries81: list = []
 class _FakeCompletions81:
     def create(self, model=None, messages=None, tools=None, tool_choice=None, **kw):
         msg = SimpleNamespace(content="ok", tool_calls=None)
         return SimpleNamespace(choices=[SimpleNamespace(message=msg, finish_reason="stop")],
                                usage=None)
 class _FakeOpenAI81:
-    def __init__(self, base_url=None, api_key=None, timeout=None):
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
         _timeout81.append(timeout)
+        _retries81.append(max_retries)
         self.chat = SimpleNamespace(completions=_FakeCompletions81())
 _env81 = os.environ.pop("GAS_PROVIDER_TIMEOUT_SEC", None)
+_rtenv81 = os.environ.pop("GAS_PROVIDER_MAX_RETRIES", None)
 _gem81 = os.environ.get("GEMINI_API_KEY")
 os.environ["GEMINI_API_KEY"] = "dummy-for-test"
 gas.OpenAI = _FakeOpenAI81
@@ -7217,7 +7220,28 @@ try:
     _env_min81 = kernel_tmp().PROVIDER_TIMEOUT_SEC
     os.environ["GAS_PROVIDER_TIMEOUT_SEC"] = "abc"
     _env_bad81 = kernel_tmp().PROVIDER_TIMEOUT_SEC
+    _rt_def81 = list(_retries81)
+    os.environ["GAS_PROVIDER_MAX_RETRIES"] = "0"
+    _rt_ok81 = kernel_tmp().PROVIDER_MAX_RETRIES
+    os.environ["GAS_PROVIDER_MAX_RETRIES"] = "-3"
+    _rt_min81 = kernel_tmp().PROVIDER_MAX_RETRIES
+    os.environ["GAS_PROVIDER_MAX_RETRIES"] = "xyz"
+    _rt_bad81 = kernel_tmp().PROVIDER_MAX_RETRIES
+    os.environ["GAS_PROVIDER_MAX_RETRIES"] = "0"  # R-228-1: l'override arriva al client
+    _retries81.clear()
+    list(kernel_tmp().run_turn("ciao retries"))
+    _rt_client81 = list(_retries81)
+    _retries81.clear()  # R-229-1: stesso controllo su rifletti
+    _k81r = kernel_tmp()
+    _k81r.history = [{"role": "user", "content": "fai il preventivo"},
+                     {"role": "assistant", "content": "fatto, 1200 euro"}]
+    _k81r.rifletti()
+    _rt_rifl81 = list(_retries81)
 finally:
+    if _rtenv81 is None:
+        os.environ.pop("GAS_PROVIDER_MAX_RETRIES", None)
+    else:
+        os.environ["GAS_PROVIDER_MAX_RETRIES"] = _rtenv81
     gas.OpenAI = _vero_openai
     os.environ.pop("GAS_PROVIDER_TIMEOUT_SEC", None)
     if _env81 is not None:
@@ -7239,6 +7263,15 @@ check("T81d R-226-1: Ollama locale ha il suo timeout (600s), gli altri rung 120s
 check("T81c GAS_PROVIDER_TIMEOUT_SEC: override, minimo 5, valore sporco → default",
       (_env_ok81, _env_min81, _env_bad81) == (45, 5, 120),
       f"{(_env_ok81, _env_min81, _env_bad81)}")
+check("T81e V-2 bot #162: run_turn e rifletti con 1 solo tentativo extra dell'SDK; "
+      "GAS_PROVIDER_MAX_RETRIES override, minimo 0, sporco → default",
+      _rt_def81 != [] and all(r == GasKernel.PROVIDER_MAX_RETRIES == 1 for r in _rt_def81)
+      and (_rt_ok81, _rt_min81, _rt_bad81) == (0, 0, 1),
+      f"retries visti: {_rt_def81}; env: {(_rt_ok81, _rt_min81, _rt_bad81)}")
+check("T81f R-228-1: GAS_PROVIDER_MAX_RETRIES=0 arriva al client di run_turn",
+      _rt_client81 == [0], f"retries visti: {_rt_client81}")
+check("T81g R-229-1: GAS_PROVIDER_MAX_RETRIES=0 arriva al client di rifletti",
+      _rt_rifl81 != [] and all(r == 0 for r in _rt_rifl81), f"retries visti: {_rt_rifl81}")
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

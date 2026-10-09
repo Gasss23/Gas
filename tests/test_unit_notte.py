@@ -61,7 +61,7 @@ class _Script:
         script_obj = self
 
         class _FakeOpenAI:
-            def __init__(self, base_url=None, api_key=None, timeout=None):
+            def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
                 self.chat = SimpleNamespace(completions=self)
                 self._i = 0
 

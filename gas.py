@@ -695,6 +695,7 @@ class GasKernel:
         self.WINDOW_CHAR_CAP = _env_int("GAS_WINDOW_CHAR_CAP", GasKernel.WINDOW_CHAR_CAP, min_val=1000)
         self.PROVIDER_TIMEOUT_SEC = _env_int("GAS_PROVIDER_TIMEOUT_SEC", GasKernel.PROVIDER_TIMEOUT_SEC, min_val=5)
         self.OLLAMA_TIMEOUT_SEC = _env_int("GAS_OLLAMA_TIMEOUT_SEC", GasKernel.OLLAMA_TIMEOUT_SEC, min_val=5)
+        self.PROVIDER_MAX_RETRIES = _env_int("GAS_PROVIDER_MAX_RETRIES", GasKernel.PROVIDER_MAX_RETRIES, min_val=0)
         self.RECAP_MAX_CHARS = _env_int("GAS_RECAP_CHARS", GasKernel.RECAP_MAX_CHARS, min_val=200)
         self.RECAP_PIN_CHAR_CAP = _env_int("GAS_RECAP_PIN_CHARS", GasKernel.RECAP_PIN_CHAR_CAP, min_val=0)
         self.MEMORY_BACKUP_EVERY_SEC = _env_int("GAS_MEMORY_BACKUP_EVERY_SEC", GasKernel.MEMORY_BACKUP_EVERY_SEC, min_val=0)
@@ -1003,7 +1004,8 @@ class GasKernel:
 
     # Timeout (secondi) di UNA richiesta HTTP ai provider del turno e di
     # rifletti (override GAS_PROVIDER_TIMEOUT_SEC, min 5). Senza, l'SDK OpenAI
-    # aspetta fino a 600s per tentativo (x3 coi retry): una chiamata appesa
+    # aspetta fino a 600s per tentativo (x3 coi retry di default dell'SDK; qui
+    # x2, vedi PROVIDER_MAX_RETRIES): una chiamata appesa
     # bloccherebbe per ore il giro notturno senza nessuno davanti. Scaduto il
     # timeout l'SDK solleva, e l'except del rung passa al brain successivo (§9).
     PROVIDER_TIMEOUT_SEC = 120
@@ -1011,6 +1013,12 @@ class GasKernel:
     # stretto farebbe scadere sempre il pavimento offline (R-226-1).
     # Override GAS_OLLAMA_TIMEOUT_SEC, min 5.
     OLLAMA_TIMEOUT_SEC = 600
+    # Tentativi EXTRA dell'SDK per richiesta (default SDK 2 = 3 tentativi). Con
+    # 2 extra una risposta lenta oltre il timeout costa 3 attese (~6 min a 120s)
+    # prima del fallback, anche di giorno (V-2 bot #162): 1 extra assorbe ancora
+    # un 429/5xx transitorio, poi decide la cascata (§9).
+    # Override GAS_PROVIDER_MAX_RETRIES, min 0.
+    PROVIDER_MAX_RETRIES = 1
 
     # --- Iniezione memoria always-on (lato lettura, fetta 2b) ---
     # Il blocco-memoria vive NEL messaggio system (fuori dalla finestra), quindi
@@ -1964,7 +1972,8 @@ class GasKernel:
                     esito["provider_atteso"] = name  # primo rung disponibile (§8)
                 try:
                     client = OpenAI(base_url=url, api_key=os.environ.get(env),
-                                    timeout=self._timeout_provider(name))
+                                    timeout=self._timeout_provider(name),
+                                    max_retries=self.PROVIDER_MAX_RETRIES)
                     response = client.chat.completions.create(model=model, messages=messaggi)
                     usage = getattr(response, "usage", None)
                     if usage:
@@ -2536,7 +2545,8 @@ class GasKernel:
                 payload: List[Dict[str, Any]] = []
                 try:
                     client = OpenAI(base_url=url, api_key=os.environ.get(env),
-                                    timeout=self._timeout_provider(name))
+                                    timeout=self._timeout_provider(name),
+                                    max_retries=self.PROVIDER_MAX_RETRIES)
                     for _ in range(10):  # max 10 iterazioni agentic loop
                         # C2: calcola contaminazione dalla finestra PRIMA di inviare
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la

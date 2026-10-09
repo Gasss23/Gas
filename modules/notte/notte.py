@@ -34,8 +34,13 @@ Invarianti di sicurezza:
   compito (quelli rimasti vengono saltati con avviso). Una singola chiamata
   appesa non si interrompe da qui: la limita il timeout HTTP dei provider
   (GasKernel.PROVIDER_TIMEOUT_SEC) e quello dei comandi. Il tetto NON è duro
-  (R-226-2): tra due eventi possono passare fino a provider x 3 tentativi x
-  timeout (~30 min nel caso peggiore), quindi compito e giro possono sforare.
+  (R-226-2): tra due eventi possono passare fino a (1 + PROVIDER_MAX_RETRIES)
+  tentativi x timeout per ogni rung della cascata: 4 rung remoti x 2 x 120s +
+  Ollama 2 x 600s = ~36 min nel caso peggiore (R-227-2, V-1 bot #162), più
+  l'eventuale attesa chiesta dal provider con Retry-After su una risposta
+  ritentata (429, 5xx...; max 60s per ritentativo); il
+  timeout HTTP vale per fase di rete, non per l'intera risposta, quindi è un
+  ordine di grandezza, non un limite. Compito e giro possono sforare.
 - Un solo giro alla volta (lock su file). Un compito che fallisce viene
   registrato e si passa al successivo; il giro non solleva mai eccezioni (§9).
 """
