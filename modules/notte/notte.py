@@ -41,7 +41,9 @@ Invarianti di sicurezza:
   ritentata (429, 5xx...; max 60s per ritentativo); il
   timeout HTTP vale per fase di rete, non per l'intera risposta, quindi è un
   ordine di grandezza, non un limite. Compito e giro possono sforare.
-- Riepilogo su Telegram (fetta 2): a fine giro, se Telegram è configurato
+- Riepilogo su Telegram (fetta 2): a fine giro (anche se il giro si è
+  interrotto per un errore: testo fisso col solo tipo d'eccezione) e a lock
+  già rilasciato, se Telegram è configurato
   (TELEGRAM_BOT_TOKEN + TELEGRAM_ALLOWED_IDS) e GAS_NOTTE_TELEGRAM non vale
   "0", parte un messaggio breve per l'operatore. Contiene SOLO metadati
   (compito, esito, tool, durata, negate/in attesa, avvisi del giro), MAI il
@@ -260,12 +262,17 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
 
 
 def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
-                               avvisi: List[str]) -> str:
+                               avvisi: List[str], solo_conteggi: bool = False) -> str:
     """Riepilogo breve del giro per Telegram: solo metadati, mai la risposta del
-    modello né il testo degli errori (non fidati)."""
+    modello né il testo degli errori (non fidati). Con `solo_conteggi` (testo
+    completo oltre il limite di Telegram) restano i soli conteggi."""
     ok = sum(1 for e in esiti if e["esito"] == "ok")
     righe = [f"Gas — giro notturno del {inizio}",
              f"Compiti eseguiti: {len(esiti)} · ok: {ok} · ko: {len(esiti) - ok}", ""]
+    if solo_conteggi:
+        return "\n".join(righe + [
+            f"Avvisi: {len(avvisi)} (dettaglio troppo lungo per Telegram)",
+            f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"])
     for e in esiti:
         segno = "OK" if e["esito"] == "ok" else "KO"
         riga = f"{segno} {e['nome']} ({e['tool']} tool, {e.get('durata', 0)}s)"
@@ -290,14 +297,26 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
     return "\n".join(righe)
 
 
-def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[str]) -> None:
+def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[str],
+                       interrotto: Optional[str] = None) -> None:
     """Compone e invia il riepilogo del mattino. Mai eccezioni: anche un errore nel
-    comporre il messaggio è solo loggato e non cambia l'esito del giro (R-238-2)."""
+    comporre il messaggio è solo loggato e non cambia l'esito del giro (R-238-2).
+    `interrotto` = nome del tipo d'eccezione se il giro si è fermato prima della
+    fine: parte un testo fisso, così il silenzio non si confonde con «Telegram
+    spento» (V-1 bot #169)."""
     if os.environ.get("GAS_NOTTE_TELEGRAM", "").strip() == "0":
         return
     try:
-        from modules.telegram.bot import invia_notifica
-        inviato, motivo = invia_notifica(componi_messaggio_telegram(inizio, esiti, avvisi))
+        from modules.telegram.bot import TELEGRAM_MAX_CHARS, invia_notifica, lunghezza_telegram
+        if interrotto is not None:
+            testo = (f"Gas — giro notturno del {inizio} INTERROTTO: {interrotto}. "
+                     "Dettagli in gas_debug.log.")
+        else:
+            testo = componi_messaggio_telegram(inizio, esiti, avvisi)
+        if interrotto is None and lunghezza_telegram(testo) > TELEGRAM_MAX_CHARS:
+            # V-1 verifica esterna #169: meglio i soli conteggi che nessun messaggio.
+            testo = componi_messaggio_telegram(inizio, esiti, avvisi, solo_conteggi=True)
+        inviato, motivo = invia_notifica(testo)
     except Exception as e:
         logging.warning("notte: riepilogo Telegram non inviato: %s", type(e).__name__)
         return
@@ -329,6 +348,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
     catalogo = (catalogo or catalogo_default()).expanduser()
     notte_dir = root / NOTTE_DIR
     lock_f = None
+    da_notificare: Optional[Tuple[Any, ...]] = None
     try:
         notte_dir.mkdir(parents=True, exist_ok=True)
         if fcntl is not None:
@@ -378,7 +398,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         except Exception as e:
             logging.warning("notte: riepilogo non scritto: %s", e)
         print(testo)
-        _notifica_telegram(inizio, esiti, avvisi)
+        da_notificare = (inizio, esiti, avvisi)  # inviato a lock rilasciato (V-2 #169)
         if not compiti:
             return 1 if catalogo_ko else 0
         if tempo_finito:
@@ -387,6 +407,9 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
     except Exception as e:
         logging.warning("notte: giro interrotto: %s", e)
         print(f"Giro notturno interrotto: {type(e).__name__} (dettagli in gas_debug.log)")
+        # Solo il nome del tipo: il messaggio dell'eccezione può contenere testo non fidato.
+        da_notificare = (datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M"),
+                         [], [], type(e).__name__)
         return 1
     finally:
         if lock_f is not None:
@@ -394,3 +417,5 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 lock_f.close()
             except Exception:
                 pass
+        if da_notificare is not None:
+            _notifica_telegram(*da_notificare)

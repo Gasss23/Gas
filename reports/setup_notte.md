@@ -35,6 +35,8 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
    compito, esito, tool usati, durata, azioni negate o in attesa della tua firma, più gli avvisi del giro.
    NON contiene le risposte del modello (non verificate): quelle restano in `.gas_notte/ultimo_giro.md`.
    Per spegnerlo: `GAS_NOTTE_TELEGRAM=0` nel `.env`. Se l'invio fallisce il giro finisce lo stesso.
+   Se il giro si interrompe per un errore ti arriva comunque una riga «INTERROTTO» (dettagli in
+   `gas_debug.log`); se il riepilogo è troppo lungo per Telegram ti arrivano i soli conteggi.
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```
