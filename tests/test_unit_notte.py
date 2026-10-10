@@ -620,10 +620,14 @@ def test_riepilogo_telegram_fallito_non_cambia_il_giro(monkeypatch, dirs):
     assert len(inviati) == 2
     assert "## a — OK" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
 
+    esplosioni = []
+
     def _esplode(*a, **kw):
+        esplosioni.append(1)
         raise RuntimeError("boom")
     monkeypatch.setattr(_tg, "invia_notifica", _esplode)
     assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert esplosioni == [1]  # V-2 bot #169: il ramo di invio è stato davvero raggiunto
 
 
 def test_riepilogo_telegram_senza_configurazione(dirs, monkeypatch):
@@ -646,10 +650,14 @@ def test_riepilogo_telegram_errore_nel_comporre_non_cambia_il_giro(monkeypatch, 
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
     _telegram_finto(monkeypatch)
 
+    rotture = []
+
     def _rotto(*a, **kw):
+        rotture.append(1)
         raise KeyError("x")
     monkeypatch.setattr(notte, "componi_messaggio_telegram", _rotto)
     assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert rotture == [1]  # V-2 bot #169
 
 
 def test_messaggio_telegram_avvisi_capati():
@@ -670,3 +678,57 @@ def test_invia_notifica_regole(monkeypatch):
     assert _tg.invia_notifica("ciao")[0] is False
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN")
     assert _tg.invia_notifica("ciao") == (False, "TELEGRAM_BOT_TOKEN mancante")
+
+
+def test_riepilogo_telegram_troppo_lungo_manda_i_conteggi(monkeypatch, dirs):
+    """V-1 verifica esterna #169: oltre il limite di Telegram parte una versione
+    minima con i soli conteggi, invece di nessun messaggio."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+    monkeypatch.setattr(_tg, "TELEGRAM_MAX_CHARS", 230)  # ridotto ~195, completo ~278
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert len(inviati) == 2
+    testo = inviati[0][1]["text"]
+    assert "Compiti eseguiti: 1 · ok: 1 · ko: 0" in testo
+    assert "Avvisi: 1 (dettaglio troppo lungo per Telegram)" in testo  # avviso del budget
+    assert "OK a (" not in testo
+
+
+def test_riepilogo_telegram_inviato_a_lock_rilasciato(monkeypatch, dirs):
+    """V-2 verifica esterna #169: durante l'invio il lock del giro è già libero,
+    un Telegram lento non blocca un altro giro."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    liberi = []
+
+    def _post(base_url, method, payload=None, timeout=70):
+        with open(root / ".gas_notte" / "lock", "w") as f:
+            try:
+                notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_EX | notte.fcntl.LOCK_NB)
+                liberi.append(True)
+            except OSError:
+                liberi.append(False)
+        return {"ok": True}
+
+    _telegram_finto(monkeypatch)
+    monkeypatch.setattr(_tg, "_tg_post", _post)
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert liberi == [True, True]
+
+
+def test_riepilogo_telegram_anche_se_il_giro_si_interrompe(monkeypatch, dirs):
+    """V-1 bot #169: un giro interrotto da un errore manda comunque un testo fisso
+    col solo tipo d'eccezione (mai il messaggio, che può contenere testo non fidato)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+
+    def _rotto(*a, **kw):
+        raise ValueError("DETTAGLIO-NON-FIDATO http://x.test")
+    monkeypatch.setattr(notte, "carica_catalogo", _rotto)
+    assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: None) == 1
+    assert len(inviati) == 2
+    testo = inviati[0][1]["text"]
+    assert "INTERROTTO: ValueError" in testo and "gas_debug.log" in testo
+    assert "DETTAGLIO-NON-FIDATO" not in testo and "x.test" not in testo
