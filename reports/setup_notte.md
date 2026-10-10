@@ -59,4 +59,6 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
 ## Exit code di `gas notte`
 
 0 = tutti i compiti ok (o nessuno attivo) · 1 = almeno un compito KO, compiti saltati
-per tempo o catalogo non valido · 2 = un altro giro era già in corso.
+per tempo, catalogo non valido o giro interrotto da un errore (anche un lock che non si
+può prendere per un motivo diverso dal giro in corso, es. disco di rete) · 2 = un altro
+giro era già in corso.

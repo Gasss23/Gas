@@ -695,6 +695,7 @@ def test_riepilogo_telegram_troppo_lungo_manda_i_conteggi(monkeypatch, dirs):
     assert "OK a (" not in testo
 
 
+@pytest.mark.skipif(notte.fcntl is None, reason="lock non disponibile su Windows")
 def test_riepilogo_telegram_inviato_a_lock_rilasciato(monkeypatch, dirs):
     """V-2 verifica esterna #169: durante l'invio il lock del giro è già libero,
     un Telegram lento non blocca un altro giro."""
@@ -734,6 +735,7 @@ def test_riepilogo_telegram_anche_se_il_giro_si_interrompe(monkeypatch, dirs):
     assert "DETTAGLIO-NON-FIDATO" not in testo and "x.test" not in testo
 
 
+@pytest.mark.skipif(notte.fcntl is None, reason="lock non disponibile su Windows")
 def test_riepilogo_telegram_con_un_altro_giro_in_corso(monkeypatch, dirs):
     """V-1 bot #170: col lock già preso il giro esce con 2 e manda un testo fisso
     «NON avviato», così un giro appeso non lascia muti i successivi."""
@@ -752,6 +754,7 @@ def test_riepilogo_telegram_con_un_altro_giro_in_corso(monkeypatch, dirs):
     assert not (nd / "ultimo_giro.md").exists()
 
 
+@pytest.mark.skipif(notte.fcntl is None, reason="lock non disponibile su Windows")
 def test_giro_occupato_lascia_traccia_nel_log(caplog, dirs):
     """R-243-1: il messaggio rimanda a gas_debug.log, quindi la mancata partenza
     deve esserci scritta."""
@@ -765,3 +768,28 @@ def test_giro_occupato_lascia_traccia_nel_log(caplog, dirs):
             assert esegui_notte(str(root), catalogo=cat,
                                 kernel_factory=lambda r: pytest.fail("no")) == 2
     assert "giro NON avviato, lock occupato" in caplog.text
+
+
+@pytest.mark.skipif(notte.fcntl is None, reason="lock non disponibile su Windows")
+def test_lock_fallito_per_altro_motivo_non_dice_giro_in_corso(monkeypatch, dirs):
+    """V-2 bot #171: un flock che fallisce per un motivo diverso dal lock occupato
+    (es. ENOLCK su un disco di rete) non deve dire «un altro giro è in corso»."""
+    import errno
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+
+    class _FcntlRotto:
+        LOCK_EX = notte.fcntl.LOCK_EX
+        LOCK_NB = notte.fcntl.LOCK_NB
+
+        @staticmethod
+        def flock(fd, op):
+            raise OSError(errno.ENOLCK, "No locks available")
+    monkeypatch.setattr(notte, "fcntl", _FcntlRotto)
+    assert esegui_notte(str(root), catalogo=cat,
+                        kernel_factory=lambda r: pytest.fail("non deve partire")) == 1
+    assert len(inviati) == 2
+    testo = inviati[0][1]["text"]
+    assert "INTERROTTO alle " in testo and ": OSError." in testo
+    assert "un altro giro" not in testo
