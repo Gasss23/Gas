@@ -7295,10 +7295,13 @@ class _FakeOpenAI81h:
         self.chat = SimpleNamespace(completions=_FakeCompletions81())
 _chiavi81h = ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
               "GAS_OLLAMA_TIMEOUT_SEC", "GAS_PROVIDER_MAX_RETRIES")
-_salvate81h = {k: os.environ.pop(k, None) for k in _chiavi81h}
-os.environ["GAS_OLLAMA_URL"] = "http://ollama.test/v1"
-gas.OpenAI = _FakeOpenAI81h
+# Come in T81: prima del try si legge soltanto, le modifiche stanno dentro il try.
+_salvate81h = {k: os.environ.get(k) for k in _chiavi81h}
 try:
+    for _k in _chiavi81h:
+        os.environ.pop(_k, None)
+    os.environ["GAS_OLLAMA_URL"] = "http://ollama.test/v1"
+    gas.OpenAI = _FakeOpenAI81h
     list(kernel_tmp().run_turn("ciao ollama"))
 finally:
     gas.OpenAI = _vero_openai
