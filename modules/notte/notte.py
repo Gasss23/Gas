@@ -42,8 +42,9 @@ Invarianti di sicurezza:
   timeout HTTP vale per fase di rete, non per l'intera risposta, quindi è un
   ordine di grandezza, non un limite. Compito e giro possono sforare.
 - Riepilogo su Telegram (fetta 2): a fine giro (anche se il giro si è
-  interrotto per un errore: testo fisso col solo tipo d'eccezione) e a lock
-  già rilasciato, se Telegram è configurato
+  interrotto per un errore: testo fisso col solo tipo d'eccezione, o se un altro
+  giro tiene ancora il lock: testo fisso «NON avviato») e a lock già
+  rilasciato, se Telegram è configurato
   (TELEGRAM_BOT_TOKEN + TELEGRAM_ALLOWED_IDS) e GAS_NOTTE_TELEGRAM non vale
   "0", parte un messaggio breve per l'operatore. Contiene SOLO metadati
   (compito, esito, tool, durata, negate/in attesa, avvisi del giro), MAI il
@@ -80,6 +81,7 @@ BUDGET_NOTTE_DEFAULT_USD = "1.0"  # tetto di spesa 24h se l'operatore non ne ha 
 MAX_SEC_COMPITO_DEFAULT = 900    # tetto di tempo per compito (env GAS_NOTTE_MAX_SEC_COMPITO)
 MAX_SEC_GIRO_DEFAULT = 7200      # tetto di tempo del giro (env GAS_NOTTE_MAX_SEC_GIRO)
 MIN_SEC = 30                     # sotto questo valore l'env viene alzato
+GIRO_OCCUPATO = "giro_occupato"  # valore di `interrotto` quando il lock è già preso
 MAX_AVVISI_TELEGRAM = 5          # avvisi riportati nel messaggio del mattino
 MAX_AVVISO_CHARS = 200           # lunghezza di ciascun avviso nel messaggio
 _NOME_RE = re.compile(r"[a-z0-9_-]{1,40}")
@@ -309,8 +311,15 @@ def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[st
     try:
         from modules.telegram.bot import TELEGRAM_MAX_CHARS, invia_notifica, lunghezza_telegram
         if interrotto is not None:
-            testo = (f"Gas — giro notturno del {inizio} INTERROTTO: {interrotto}. "
-                     "Dettagli in gas_debug.log.")
+            if interrotto == GIRO_OCCUPATO:
+                # V-1 bot #170: il silenzio col lock occupato non è distinguibile da
+                # «Telegram spento»; un giro appeso lascerebbe muti anche i successivi.
+                testo = (f"Gas — giro notturno NON avviato alle {inizio}: un altro giro "
+                         "è ancora in corso. Se succede più notti di fila, controlla "
+                         "gas_debug.log.")
+            else:
+                testo = (f"Gas — giro notturno INTERROTTO alle {inizio}: {interrotto}. "
+                         "Dettagli in gas_debug.log.")
         else:
             testo = componi_messaggio_telegram(inizio, esiti, avvisi)
         if interrotto is None and lunghezza_telegram(testo) > TELEGRAM_MAX_CHARS:
@@ -322,6 +331,10 @@ def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[st
         return
     if not inviato:
         logging.warning("notte: riepilogo Telegram non inviato: %s", motivo)
+
+
+def _ora_locale() -> str:
+    return datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
 
 
 def _env_budget() -> float:
@@ -357,8 +370,10 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             except OSError:
                 print("Un altro giro notturno è già in corso: esco.")
+                logging.warning("notte: giro NON avviato, lock occupato da un altro giro")
+                da_notificare = (_ora_locale(), [], [], GIRO_OCCUPATO)
                 return 2
-        inizio = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+        inizio = _ora_locale()
         compiti, avvisi = carica_catalogo(catalogo, root)
         catalogo_ko = bool(avvisi) and not compiti  # solo il catalogo decide l'exit code
         if _env_budget() <= 0.0:
@@ -408,7 +423,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         logging.warning("notte: giro interrotto: %s", e)
         print(f"Giro notturno interrotto: {type(e).__name__} (dettagli in gas_debug.log)")
         # Solo il nome del tipo: il messaggio dell'eccezione può contenere testo non fidato.
-        da_notificare = (datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M"),
+        da_notificare = (_ora_locale(),
                          [], [], type(e).__name__)
         return 1
     finally:
