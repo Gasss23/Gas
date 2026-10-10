@@ -730,5 +730,38 @@ def test_riepilogo_telegram_anche_se_il_giro_si_interrompe(monkeypatch, dirs):
     assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: None) == 1
     assert len(inviati) == 2
     testo = inviati[0][1]["text"]
-    assert "INTERROTTO: ValueError" in testo and "gas_debug.log" in testo
+    assert "INTERROTTO alle " in testo and ": ValueError." in testo and "gas_debug.log" in testo
     assert "DETTAGLIO-NON-FIDATO" not in testo and "x.test" not in testo
+
+
+def test_riepilogo_telegram_con_un_altro_giro_in_corso(monkeypatch, dirs):
+    """V-1 bot #170: col lock già preso il giro esce con 2 e manda un testo fisso
+    «NON avviato», così un giro appeso non lascia muti i successivi."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    with open(nd / "lock", "w") as f:
+        notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_EX | notte.fcntl.LOCK_NB)
+        assert esegui_notte(str(root), catalogo=cat,
+                            kernel_factory=lambda r: pytest.fail("non deve partire")) == 2
+    assert len(inviati) == 2
+    testo = inviati[0][1]["text"]
+    assert "NON avviato" in testo and "un altro giro è ancora in corso" in testo
+    assert not (nd / "ultimo_giro.md").exists()
+
+
+def test_giro_occupato_lascia_traccia_nel_log(caplog, dirs):
+    """R-243-1: il messaggio rimanda a gas_debug.log, quindi la mancata partenza
+    deve esserci scritta."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    nd = root / ".gas_notte"
+    nd.mkdir()
+    with open(nd / "lock", "w") as f:
+        notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_EX | notte.fcntl.LOCK_NB)
+        with caplog.at_level("WARNING"):
+            assert esegui_notte(str(root), catalogo=cat,
+                                kernel_factory=lambda r: pytest.fail("no")) == 2
+    assert "giro NON avviato, lock occupato" in caplog.text
