@@ -7204,12 +7204,16 @@ _env81 = os.environ.pop("GAS_PROVIDER_TIMEOUT_SEC", None)
 _rtenv81 = os.environ.pop("GAS_PROVIDER_MAX_RETRIES", None)
 # Ermeticità (oss. review #232): altri rung o un timeout Ollama nell'ambiente
 # cambierebbero i client visti da T81b e il valore letto da T81d.
-_iso81 = {k: os.environ.pop(k, None) for k in
+# Qui si legge soltanto: la rimozione avviene DENTRO il try, così il finally
+# ripristina comunque (V-1 verifica esterna #165).
+_iso81 = {k: os.environ.get(k) for k in
           ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL", "GAS_OLLAMA_TIMEOUT_SEC")}
 _gem81 = os.environ.get("GEMINI_API_KEY")
 os.environ["GEMINI_API_KEY"] = "dummy-for-test"
 gas.OpenAI = _FakeOpenAI81
 try:
+    for _k in _iso81:
+        os.environ.pop(_k, None)
     _k81 = kernel_tmp()
     list(_k81.run_turn("ciao timeout"))
     _turn81 = list(_timeout81)
