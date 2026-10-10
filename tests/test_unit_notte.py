@@ -28,7 +28,9 @@ def _ermetico(monkeypatch):
     monkeypatch.setattr(_tg, "_tg_post", _vietato)
     for k in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
               # V-2 bot #164: i tetti di tempo dell'ambiente cambierebbero i messaggi attesi
-              "GAS_NOTTE_MAX_SEC_COMPITO", "GAS_NOTTE_MAX_SEC_GIRO"):
+              "GAS_NOTTE_MAX_SEC_COMPITO", "GAS_NOTTE_MAX_SEC_GIRO",
+              # R-238-1: "0" nell'ambiente spegnerebbe il riepilogo su Telegram
+              "GAS_NOTTE_TELEGRAM"):
         monkeypatch.delenv(k, raising=False)
     # R-221-2: setenv registra il valore originale, così il budget che esegui_notte
     # imposta nel processo viene ripulito a fine test (delenv su assente non lo fa).
@@ -545,3 +547,126 @@ def test_errore_dopo_il_tetto_conserva_il_messaggio_vero(monkeypatch, dirs):
     assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K()) == 1
     riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
     assert "Errore: Pipeline esausta." in riep and "tempo scaduto" not in riep
+
+
+# ── riepilogo del mattino su Telegram (FASE 4.5 fetta 2) ────────────────────
+
+def _telegram_finto(monkeypatch, risposta=None):
+    """Configura Telegram con due ID e cattura le chiamate a _tg_post."""
+    inviati = []
+
+    def _post(base_url, method, payload=None, timeout=70):
+        inviati.append((method, payload))
+        return {"ok": True} if risposta is None else risposta
+
+    monkeypatch.setattr(_tg, "_tg_post", _post)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:finto")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "111,222")
+    return inviati
+
+
+def test_riepilogo_telegram_solo_metadati(monkeypatch, dirs):
+    """A fine giro parte un messaggio per ogni ID autorizzato, con i soli metadati:
+    la risposta del modello (non fidata, qui con un link) NON va sul telefono."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  "compiti:\n  - nome: buono\n    prompt: p\n  - nome: rotto\n    prompt: q\n")
+    inviati = _telegram_finto(monkeypatch)
+
+    class _K:
+        def run_turn(self, prompt):
+            if prompt == "p":
+                yield {"type": "tool_res", "output": "Operazione negata: no"}
+                yield {"type": "final", "content": "CLICCA http://phishing.test SEGRETO"}
+            else:
+                yield {"type": "error", "content": "ERRORE-DEL-PROVIDER http://x.test"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K()) == 1
+    assert [m for m, _ in inviati] == ["sendMessage", "sendMessage"]
+    assert sorted(p["chat_id"] for _, p in inviati) == [111, 222]
+    p = inviati[0][1]
+    assert "parse_mode" not in p and "reply_markup" not in p
+    assert p["link_preview_options"] == {"is_disabled": True}
+    testo = p["text"]
+    assert "Compiti eseguiti: 2 · ok: 1 · ko: 1" in testo
+    assert "OK buono (1 tool" in testo and "negate: 1" in testo
+    assert "KO rotto (0 tool" in testo and "errore (vedi riepilogo)" in testo
+    assert "SEGRETO" not in testo and "phishing" not in testo
+    assert "ERRORE-DEL-PROVIDER" not in testo and "x.test" not in testo
+    assert ".gas_notte/ultimo_giro.md" in testo
+    # il riepilogo completo su file resta com'era
+    assert "SEGRETO" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+
+def test_riepilogo_telegram_spento(monkeypatch, dirs):
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+    monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "0")
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert inviati == []
+
+
+def test_riepilogo_telegram_fallito_non_cambia_il_giro(monkeypatch, dirs):
+    """Telegram giù (risposta non ok) o un errore nell'invio: il giro finisce
+    come sempre, exit code e riepilogo su file invariati."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch, risposta={"ok": False})
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert len(inviati) == 2
+    assert "## a — OK" in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+    def _esplode(*a, **kw):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(_tg, "invia_notifica", _esplode)
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+
+
+def test_riepilogo_telegram_senza_configurazione(dirs, monkeypatch):
+    """Senza token, o senza ID autorizzati, il giro non tenta nessun invio
+    (R-238-3: si contano le chiamate, l'eccezione della fixture verrebbe assorbita)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    chiamate = []
+    monkeypatch.setattr(_tg, "_tg_post", lambda *a, **kw: chiamate.append(a) or {"ok": True})
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:finto")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "")
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert chiamate == []
+
+
+def test_riepilogo_telegram_errore_nel_comporre_non_cambia_il_giro(monkeypatch, dirs):
+    """R-238-2: anche un errore nel comporre il messaggio resta dentro il fail-safe."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    _telegram_finto(monkeypatch)
+
+    def _rotto(*a, **kw):
+        raise KeyError("x")
+    monkeypatch.setattr(notte, "componi_messaggio_telegram", _rotto)
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+
+
+def test_messaggio_telegram_avvisi_capati():
+    avvisi = [f"avviso {i} " + "x" * 300 for i in range(8)]
+    testo = notte.componi_messaggio_telegram("2026-10-10 03:00", [], avvisi)
+    assert "Avvisi: 8" in testo and "…e altri 3" in testo
+    assert max(len(r) for r in testo.splitlines()) <= notte.MAX_AVVISO_CHARS + 3
+    assert _tg.lunghezza_telegram(testo) < _tg.TELEGRAM_MAX_CHARS
+
+
+def test_invia_notifica_regole(monkeypatch):
+    inviati = _telegram_finto(monkeypatch)
+    assert _tg.invia_notifica("ciao") == (True, "")
+    assert len(inviati) == 2
+    assert _tg.invia_notifica("x" * (_tg.TELEGRAM_MAX_CHARS + 1)) == (
+        False, "testo oltre il limite Telegram")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "abc")
+    assert _tg.invia_notifica("ciao")[0] is False
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN")
+    assert _tg.invia_notifica("ciao") == (False, "TELEGRAM_BOT_TOKEN mancante")

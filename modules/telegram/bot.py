@@ -173,6 +173,42 @@ def invia_read_back(text: str, approval_id: Optional[str] = None) -> Tuple[bool,
         return False, "errore di invio"
 
 
+def invia_notifica(text: str) -> Tuple[bool, str]:
+    """Messaggio solo informativo (niente bottoni, niente parse_mode, niente
+    anteprima dei link) a ogni ID in TELEGRAM_ALLOWED_IDS. Usato dal giro
+    notturno per il riepilogo del mattino (FASE 4.5 fetta 2). Stesse regole di
+    invia_read_back: (True, '') se almeno un destinatario l'ha ricevuto,
+    altrimenti (False, motivo); oltre TELEGRAM_MAX_CHARS niente invio.
+    Fail-safe §9: nessuna eccezione propagata."""
+    try:
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        if not token:
+            return False, "TELEGRAM_BOT_TOKEN mancante"
+        allowed, _ = parse_allowed_ids(os.environ.get("TELEGRAM_ALLOWED_IDS", ""))
+        if not allowed:
+            return False, "TELEGRAM_ALLOWED_IDS mancante o senza ID validi"
+        if lunghezza_telegram(text) > TELEGRAM_MAX_CHARS:
+            return False, "testo oltre il limite Telegram"
+        base_url = f"{_TELEGRAM_API}{token}"
+        consegnati = 0
+        for chat_id in sorted(allowed):
+            resp = _tg_post(base_url, "sendMessage",
+                            {"chat_id": chat_id, "text": text,
+                             "link_preview_options": {"is_disabled": True}},
+                            timeout=15)
+            if isinstance(resp, dict) and resp.get("ok") is True:
+                consegnati += 1
+            else:
+                log.warning("notifica: invio a chat_id %d fallito", chat_id)
+        if consegnati == 0:
+            return False, "invio fallito verso tutti i destinatari"
+        return True, ""
+    except Exception as e:
+        # Come in invia_read_back: il dettaglio può contenere l'URL con il token.
+        log.warning("notifica: errore di invio: %s", e)
+        return False, "errore di invio"
+
+
 # ─────────────────────────────────────────── entry point ──
 
 def run_bot(root_dir: Optional[str] = None) -> int:

@@ -30,6 +30,11 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
    provider — `GAS_PROVIDER_MAX_RETRIES=1` — Ollama compreso) un compito può sforare
    di circa 36 minuti (ordine di grandezza: un'attesa chiesta dal provider (Retry-After,
    es. su un 429) aggiunge fino a 60s per ritentativo).
+2d. Riepilogo del mattino su Telegram (attivo da solo se nel `.env` ci sono già `TELEGRAM_BOT_TOKEN` e
+   `TELEGRAM_ALLOWED_IDS`, gli stessi del bot): a fine giro ti arriva un messaggio breve con, per ogni
+   compito, esito, tool usati, durata, azioni negate o in attesa della tua firma, più gli avvisi del giro.
+   NON contiene le risposte del modello (non verificate): quelle restano in `.gas_notte/ultimo_giro.md`.
+   Per spegnerlo: `GAS_NOTTE_TELEGRAM=0` nel `.env`. Se l'invio fallisce il giro finisce lo stesso.
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```
