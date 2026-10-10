@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-09 — merge #164 + test ermetici (PR #165)
+**Sessione:** 2026-10-10 — merge #165 + note minori (PR #166)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #165 (https://github.com/Gasss23/Gas/pull/165). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/165"}`): `gh` nel container non è autenticato. Merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
+1. Merge della PR #166 (https://github.com/Gasss23/Gas/pull/166). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/166"}`): `gh` nel container non è autenticato. Merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
 2. V-2 bot #163: gate B e riferimenti esterni nei verdetti del revisore (macchina di controllo, decide l'operatore).
 3. Sul Mac (se non già fatto): `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md`.
 
@@ -14,9 +14,10 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge di #164**: `FATTA` — su richiesta esplicita dell'operatore, merge commit `82702af` (= BASE di questa sessione).
-- **Fetta 1 — T81 ermetico**: `FATTA`.
-- **Fetta 2 — fixture della notte senza tetti dall'ambiente**: `FATTA`.
+- **Merge di #165**: `FATTA` — su richiesta esplicita dell'operatore, merge commit `037369e` (= BASE di questa sessione).
+- **Fetta 1 — V-1 verifica esterna #165** (rimozione dentro il `try`): `FATTA`.
+- **Fetta 2 — V-1/V-2 bot #165** (testo di `stato_progetto.md`): `FATTA`.
+- **V-2/V-3 verifica esterna #165** (conti e §6 dell'handoff di #165): `SALTATA` — handoff già mergiato; §6 scritto prima della CI per costruzione.
 - **V-4 verifica esterna #163**: `DEFERITA` — cosmetica.
 
 ---
@@ -25,13 +26,12 @@
 
 ```
  .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  11 +++++------
- reports/handoff.md                 | 129 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------
+ reports/diff_sessione.md           |   9 ++++-----
+ reports/handoff.md                 | 112 ++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  27 +++++++++------------------
- tests/test_unit_kernel.py          |  16 ++++++++++++----
- tests/test_unit_notte.py           |   4 +++-
- 7 files changed, 90 insertions(+), 100 deletions(-)
+ reports/ultimo_report.md           |  15 ++++++++-------
+ tests/test_unit_kernel.py          |   6 +++++-
+ 6 files changed, 61 insertions(+), 84 deletions(-)
 ```
 
 Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`) sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -39,87 +39,65 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`)
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-9119db0 test: T81 e test della notte ermetici rispetto all'ambiente (oss. review #232, V-2 bot #164)
-4a08f82 chore(revisore): memoria review #234 — APPROVATO
+11aa5a0 test(kernel): T81 rimuove le variabili dentro il try (V-1 verifica esterna #165)
+0fde763 chore(revisore): memoria review #235 — APPROVATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE
 
-### Review #234 (diff staged di 9119db0)
+### Review #235 (diff staged di 11aa5a0)
 
 VERDETTO: APPROVATO
 
-In sintesi: la modifica tocca solo i test e chiude davvero il problema dei test che dipendevano dalle variabili d'ambiente. L'ho verificata con ambiente pulito e con ambiente ostile, e dopo la suite l'ambiente torna identico a prima, comprese le chiavi che all'inizio erano assenti.
+Il fix funziona: il test T81 rimette sempre a posto le 4 variabili d'ambiente, anche se qualcosa va storto nel mezzo. Ho rilanciato la suite del kernel: 715 passati e 0 falliti, sia in ambiente pulito sia in ambiente ostile.
+
+Prima di revisionare ho letto CLAUDE.md (sezione 5), la voce 6 di stato_progetto e le lezioni sulla memoria che riguardano ermeticità e ripristino nel `finally`.
 
 **Elementi del diff esaminati**
+1. `tests/test_unit_kernel.py:7209`: `_iso81` ora legge soltanto i valori (`os.environ.get`) prima del `try`.
+   - Rischio esaminato: un'eccezione tra la rimozione delle chiavi e il `try` lasciava le chiavi rimosse senza ripristino. Ora prima del `try` restano solo `os.environ.get`, l'assegnazione di `GEMINI_API_KEY` e `gas.OpenAI = ...`, nessuno dei quali tocca le 4 chiavi isolate. La finestra scoperta è chiusa.
+   - Esito: ok.
+2. `tests/test_unit_kernel.py:7215`: le 4 chiavi vengono rimosse come prima istruzione dentro il `try`. Il `finally` (righe 7252-7255) toglie ogni chiave e la rimette solo se il valore salvato non è `None`.
+   - Rischio esaminato: che il ripristino confonda chiave assente e chiave presente.
+     - Chiave presente: viene rimessa col valore originale, perché è stato letto prima della rimozione.
+     - Chiave assente: `get` dà `None`, quindi la chiave resta assente.
+     - Chiave presente ma vuota (`""`): `get` dà `""`, che non è `None`, quindi viene rimessa. È il caso della lezione #60 sul valore vuoto, qui gestito correttamente.
+     - Rimozione a metà ciclo: se un'eccezione arriva mentre le chiavi vengono tolte, il `finally` lavora su tutte le chiavi, quindi va bene anche così.
+   - Esito: ok.
+3. `reports/stato_progetto.md:356` (voce 6): solo testo. «aperta in PR #164», V-1 del bot su #164 superata dal merge, #165 mergiata (`037369e`). È coerente con quanto descritto.
+   - Esito: ok. Resta valida la nota già aperta V-4 della verifica esterna #163: la voce 6 è troppo lunga e andrebbe spostata nello storico. Non è introdotta da questo diff.
 
-1. `tests/test_unit_kernel.py:7207`
-   - **Cosa fa:** `_iso81` toglie GROQ_API_KEY, OPENROUTER_API_KEY, GAS_OLLAMA_URL e GAS_OLLAMA_TIMEOUT_SEC prima del `try`, insieme ai pop già presenti di GAS_PROVIDER_TIMEOUT_SEC e GAS_PROVIDER_MAX_RETRIES.
-   - **Rischio:** che resti fuori qualche variabile letta dal codice usato in T81. Ho controllato in gas.py. La cascata (`_cascata_provider`, gas.py:636-648) legge solo GEMINI/GROQ/OPENROUTER/GAS_OLLAMA_URL. I timeout vengono letti a gas.py:696-698 e passano per `_timeout_provider` (gas.py:1910). Tutte queste variabili ora sono isolate.
-   - **Esito:** ok.
+**Verifiche eseguite**
+- Suite del kernel in ambiente pulito: 715 passati, 0 falliti.
+- Suite del kernel con `GAS_OLLAMA_TIMEOUT_SEC=5 GROQ_API_KEY=x GAS_OLLAMA_URL=http://altro/v1` impostate: 715 passati, 0 falliti.
+- Nessuna storia dei messaggi tagliata a mano e nessun output di tool simulato. Il diff è solo nei test e non tocca i limiti del motore (cap a 10 iterazioni, cap a 8k di output, `_get_window`).
 
-2. `tests/test_unit_kernel.py:7247`
-   - **Cosa fa:** il `finally` ripristina le chiavi: le toglie sempre e le rimette solo se all'inizio c'erano.
-   - **Rischio:** una chiave assente che resta impostata, o una presente che si perde.
-   - **Prova:** ho fatto girare tutta la suite kernel con runpy e confrontato `os.environ` prima e dopo, su 7 chiavi. Risultato `SAME` sia in ambiente pulito sia con `GAS_OLLAMA_TIMEOUT_SEC=5 GROQ_API_KEY=x GAS_OLLAMA_URL=http://altro/v1`.
-   - **Esito:** ok.
+**Rischio escluso**
+- Non ho verificato con un'eccezione inserita apposta tra la rimozione e il resto del `try`. Il percorso col `finally` si legge chiaramente nel codice, e la stessa forma di ripristino era già stata confrontata a runtime nella review #234 (variabili d'ambiente identiche prima e dopo).
+- Non ho verificato la CI remota, che non è eseguibile da qui.
 
-3. `tests/test_unit_kernel.py:7244`
-   - **Cosa fa:** il calcolo di `_t81d` è spostato dentro il `try`, dove l'ambiente è già isolato; la `check` sotto confronta soltanto la tupla.
-   - **Rischio:** che il valore venga ancora calcolato fuori dall'isolamento, cioè lo stesso difetto di prima.
-   - **Prova:** suite kernel 715 PASS / 0 FAIL in ambiente pulito, e 715/0 in ambiente ostile con in più `OPENROUTER_API_KEY=y GAS_PROVIDER_TIMEOUT_SEC=33 GAS_PROVIDER_MAX_RETRIES=4`.
-   - **Esito:** ok.
-
-4. `tests/test_unit_kernel.py:7288` (T81h, contesto)
-   - **Cosa fa:** salva e toglie da sé le sue 6 chiavi (`_chiavi81h`), poi imposta solo GAS_OLLAMA_URL.
-   - **Rischio:** che T81h dipenda dall'ordine di esecuzione rispetto al blocco T81.
-   - **Esito:** ok. Non dipende da quello che lascia il blocco prima e ripristina da sé quello che tocca.
-
-5. `tests/test_unit_notte.py:29`
-   - **Cosa fa:** la fixture `_ermetico` ora toglie anche GAS_NOTTE_MAX_SEC_COMPITO e GAS_NOTTE_MAX_SEC_GIRO. `monkeypatch.delenv(raising=False)` le rimette da sé a fine test.
-   - **Rischio:** che il codice della notte (modules/notte/notte.py:297-298) legga i tetti di tempo dall'ambiente.
-   - **Prova:** 36 passed con `GAS_NOTTE_MAX_SEC_GIRO=30 GAS_NOTTE_MAX_SEC_COMPITO=5`.
-   - **Esito:** ok.
-
-6. `reports/stato_progetto.md:356`
-   - **Cosa fa:** la nota "T81b/T81d non ermetici" è barrata come chiusa e c'è "PR #164 MERGIATA (`82702af`)".
-   - **Esito:** ok. È rimasto un "PR #164." in coda alla riga su V-2 bot #163, ora un po' ambiguo. È solo cosmetico, non lo metto come riserva.
-
-**Wall of Shame (gli errori vietati da CLAUDE.md sez. 5):** il diff non taglia la cronologia a mano e non simula l'output degli strumenti. I fake `_FakeOpenAI81` sostituiscono il client HTTP, non i tool.
-
-**Altri test T81 che leggono variabili non isolate:** in T81 non ne restano. GAS_DAILY_TOKEN_BUDGET non è isolato in T81, ma lavora su un kernel temporaneo con spesa 0, quindi può impedire la creazione del client solo se vale 0 o meno, e quel valore lo disattiva. Non serve intervenire.
-
-**Cosa NON ho verificato:**
-- La suite pytest completa (787) non l'ho rilanciata. Ho fatto girare solo la suite kernel e test_unit_notte.py, che sono gli unici due file di test toccati. Il 787 resta un dato tuo.
-- Non ho verificato l'isolamento di GAS_NOTTE_CATALOGO nella fixture: è fuori dal perimetro del diff e i test che lo usano lo impostano e lo tolgono da soli (righe 154-156).
-
-Memoria aggiornata con la riga #234, committata da sola con `bash scripts/commit_memoria_revisore.sh` (commit `4a08f82`). Il file è `.claude/agents/memoria_revisore.md`.
+**Memoria**
+- Riga contatore #235 aggiunta in `.claude/agents/memoria_revisore.md` e committata da sola (`0fde763`).
+- Il diff staged è intatto: 2 file, +6/-2.
 
 (Unica modifica dell'agente al testo: il path assoluto della memoria scritto relativo.)
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessun test nuovo: solo isolamento. Kernel 715 PASS, 0 FAIL in locale (pulito e ostile); notte 36 passed (anche con i tetti nell'ambiente); `pytest tests/` 787 passed.
+Nessun test nuovo: solo spostamento della rimozione delle variabili dentro il `try`. Kernel 715 PASS, 0 FAIL in locale, sia pulito sia con `GAS_OLLAMA_TIMEOUT_SEC=5 GROQ_API_KEY=x GAS_OLLAMA_URL=http://altro/v1`:
 
 ```
---- test di main, ambiente ostile
-=== RIEPILOGO: 713 PASS, 2 FAIL ===
-  FAIL: T81b rifletti costruisce il client col timeout del kernel — timeout visti: [120, 120, 5]
-  FAIL: T81d R-226-1: Ollama locale ha il suo timeout (600s), gli altri rung 120s — (5, 120)
-2 failed, 34 passed   (notte di main con GAS_NOTTE_MAX_SEC_GIRO=30)
---- con questa PR, stesso ambiente ostile
 === RIEPILOGO: 715 PASS, 0 FAIL ===
-36 passed in 2.00s
-787 passed in 96.66s (0:01:36)
+=== RIEPILOGO: 715 PASS, 0 FAIL ===
 ```
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container; PR #165 appena aperta.
+`gh` non autenticato nel container; PR #166 appena aperta.
 
-- `4a08f82`, `9119db0`: pushati insieme; run non ancora disponibile alla scrittura dell'handoff (`4a08f82` non avrà una run propria).
+- `0fde763`, `11aa5a0`: pushati insieme; run non ancora disponibile alla scrittura dell'handoff (`0fde763` non avrà una run propria).
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

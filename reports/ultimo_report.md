@@ -1,22 +1,23 @@
-# Report di fine task — 2026-10-09 — merge #164 + test ermetici (PR #165)
+# Report di fine task — 2026-10-10 — merge #165 + note minori (PR #166)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #165 (https://github.com/Gasss23/Gas/pull/165): solo test. Per la regola di merge autonomo l'agente la mergia da solo SOLO se il verdetto testuale del bot sull'head è `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
+1. Merge della PR #166 (https://github.com/Gasss23/Gas/pull/166): solo test e report. Per la regola di merge autonomo l'agente la mergia da solo SOLO se il verdetto testuale del bot sull'head è `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
 2. V-2 bot #163 (ancora aperta): il gate B (`scripts/check_verdetto.py`) rifiuta i riferimenti `path:riga` a file fuori dal repo e spinge a riscrivere i verdetti del revisore. Cambiarlo tocca la macchina di controllo: decisione dell'operatore.
 3. Sul Mac (se non già fatto): `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md`.
 
 ## Esito per fetta
 
-- **Merge di #164** (test R-226-4 / R-227-1): `FATTA` — su richiesta esplicita dell'operatore, merge commit `82702af`.
-- **T81 ermetico** (`tests/test_unit_kernel.py`, osservazione review #232): `FATTA` — isola GROQ/OPENROUTER/GAS_OLLAMA_URL/GAS_OLLAMA_TIMEOUT_SEC, T81d calcolato dentro l'isolamento. Prima, in ambiente ostile: T81b `[120, 120, 5]`, T81d `(5, 120)` → FAIL; ora 715/0 anche ostile.
-- **Test della notte ermetici sui tetti** (`tests/test_unit_notte.py`, V-2 bot #164): `FATTA` — la fixture toglie `GAS_NOTTE_MAX_SEC_COMPITO/GIRO`. Prima, con `GIRO=30`, 2 test fallivano; ora 36 passed.
-- Test: kernel 715 PASS in locale (invariato, solo isolamento), `pytest tests/` 787 passed.
+- **Merge di #165** (test ermetici): `FATTA` — su richiesta esplicita dell'operatore, merge commit `037369e`.
+- **V-1 verifica esterna #165** (rimozione delle variabili fuori dal `try`): `FATTA` — `_iso81` legge soltanto, la rimozione è la prima istruzione del `try`. Kernel 715/0 in locale, pulito e ostile.
+- **V-1 bot #165** (frammento «PR #164.» in `stato_progetto.md`): `FATTA` — reso esplicito.
+- **V-2 bot #165** (V-1 bot #164 non tracciata): `FATTA` — registrata in `stato_progetto.md` come superata dal merge di #164.
+- **V-2 / V-3 verifica esterna #165** (conto 2 contro 3 test della notte falliti a base; §6 dell'handoff scritto prima della CI): `SALTATA` — riguardano l'handoff di #165, già mergiato; per costruzione il §6 è sempre scritto prima della run.
 - **V-4 verifica esterna #163** (voce 6 di `stato_progetto.md` troppo lunga): `DEFERITA` — cosmetica.
 
 ## Revisore
 
-Review #234: APPROVATO (nessuna riserva). Verdetto integrale in `reports/handoff.md` §4.
+Review #235: APPROVATO (nessuna riserva). Verdetto integrale in `reports/handoff.md` §4.
 
 ## Anomalie
 
