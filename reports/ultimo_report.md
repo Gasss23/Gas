@@ -1,24 +1,27 @@
-# Report di fine task — 2026-10-10 — merge #168 + FASE 4.5 fetta 2: riepilogo notturno su Telegram (PR #169)
+# Report di fine task — 2026-10-10 — merge #169 + seguito del riepilogo notturno su Telegram (PR #170)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #169 (https://github.com/Gasss23/Gas/pull/169). Tocca il motore (`modules/notte`, `modules/telegram`) e un canale verso il telefono dell'operatore: merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore. Fetta di sicurezza: secondo passaggio indipendente nella chat claude.ai con lo stesso URL dell'handoff.
-2. V-2 bot #163 (ancora aperta): il gate B (`scripts/check_verdetto.py`) rifiuta i riferimenti `path:riga` a file fuori dal repo. Macchina di controllo: decisione dell'operatore.
-3. Sul Mac: `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md` (ora con il §2d sul riepilogo Telegram). Al primo giro reale controllare che il messaggio arrivi.
+1. Merge della PR #170 (https://github.com/Gasss23/Gas/pull/170). Tocca il motore (`modules/notte`): merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore. Fetta che tocca un canale verso il telefono: secondo passaggio nella chat claude.ai con lo stesso URL dell'handoff.
+2. V-2 bot #163 (ancora aperta): gate B e riferimenti `path:riga` esterni nei verdetti del revisore. Macchina di controllo: decisione dell'operatore.
+3. Sul Mac: `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md`; al primo giro controllare che il messaggio arrivi.
 
 ## Esito per fetta
 
-- **Merge di #168** (T81h): `FATTA` — su richiesta esplicita dell'operatore, merge commit `c3f6c69`.
-- **Schema «ambiente modificato prima del `try`» negli altri test di `test_unit_kernel.py`**: `SALTATA — scelta dell'operatore («ok proposta»)` — il file è uno script e si ferma al primo errore non gestito: un ambiente sporco non può toccare i test successivi. Registrato in `stato_progetto.md`.
-- **Fetta 2 della FASE 4.5 — riepilogo del giro su Telegram**: `FATTA` — `invia_notifica` in `modules/telegram/bot.py`; `componi_messaggio_telegram` + `_notifica_telegram` in `modules/notte/notte.py`; solo metadati, spegnibile con `GAS_NOTTE_TELEGRAM=0`, fail-safe.
-- **R-238-1/2/3** (riserve della review #238): `FATTA` — fixture ermetica su `GAS_NOTTE_TELEGRAM`, composizione dentro il fail-safe, test «senza configurazione» che conta le chiamate.
-- **Test**: `FATTA` — 7 test nuovi (notte 36 → 43), mutation verificate; pytest 787 → 794 passed; kernel 715/0 in locale (invariato).
-- **Doc operatore** (`reports/setup_notte.md` §2d): `FATTA`.
-- **Prova con un token Telegram reale**: `DEFERITA` — non disponibile nel container; la farà l'operatore al primo giro sul Mac.
+- **Merge di #169** (riepilogo notturno su Telegram): `FATTA` — su richiesta esplicita dell'operatore, dopo il check `verifica-bot`; merge commit `7755fbf`.
+- **V-1 bot #169 — messaggio anche a giro interrotto**: `FATTA` — testo fisso col solo nome del tipo d'eccezione.
+- **V-1 verifica esterna #169 — messaggio troppo lungo**: `FATTA` — versione con i soli conteggi (`solo_conteggi=True`).
+- **V-2 verifica esterna #169 — invio a lock rilasciato**: `FATTA` — invio nel `finally` dopo il rilascio del lock.
+- **V-2 bot #169 — test che non provavano il ramo di invio**: `FATTA` — contatori `== [1]`.
+- **R-240-1** (`.replace` fragile) e **R-241-1** (commento): `FATTA`.
+- **Test**: `FATTA` — notte 43 → 46; pytest 794 → 797 passed. Mutation verificate.
+- **Doc operatore** (`setup_notte.md` §2d): `FATTA`.
+- **Messaggio col lock occupato**: `SALTATA — scelta` — il giro in corso manda il suo; due messaggi sarebbero rumore.
+- **Prova con token reale**: `DEFERITA` — non disponibile nel container.
 
 ## Revisore
 
-Review #238 APPROVATO CON RISERVE (R-238-1/2/3, chiuse nella stessa fetta). Review #239 APPROVATO. Verdetti integrali in `reports/handoff.md` §4.
+Review #240 APPROVATO CON RISERVE (R-240-1 chiusa); #241 APPROVATO CON RISERVE (R-241-1 chiusa); #242 APPROVATO. Verdetti integrali in `reports/handoff.md` §4.
 
 ## Anomalie
 
