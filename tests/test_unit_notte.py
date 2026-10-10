@@ -26,7 +26,9 @@ def _ermetico(monkeypatch):
     def _vietato(*a, **kw):
         raise RuntimeError("test ermetico: niente HTTP verso Telegram")
     monkeypatch.setattr(_tg, "_tg_post", _vietato)
-    for k in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+    for k in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
+              # V-2 bot #164: i tetti di tempo dell'ambiente cambierebbero i messaggi attesi
+              "GAS_NOTTE_MAX_SEC_COMPITO", "GAS_NOTTE_MAX_SEC_GIRO"):
         monkeypatch.delenv(k, raising=False)
     # R-221-2: setenv registra il valore originale, così il budget che esegui_notte
     # imposta nel processo viene ripulito a fine test (delenv su assente non lo fa).
