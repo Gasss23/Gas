@@ -58,6 +58,7 @@ Invarianti di sicurezza:
 
 from __future__ import annotations
 
+import errno
 import logging
 import math
 import os
@@ -304,8 +305,9 @@ def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[st
     """Compone e invia il riepilogo del mattino. Mai eccezioni: anche un errore nel
     comporre il messaggio è solo loggato e non cambia l'esito del giro (R-238-2).
     `interrotto` = nome del tipo d'eccezione se il giro si è fermato prima della
-    fine: parte un testo fisso, così il silenzio non si confonde con «Telegram
-    spento» (V-1 bot #169)."""
+    fine, oppure GIRO_OCCUPATO se non è partito per il lock già preso: in entrambi
+    i casi parte un testo fisso, così il silenzio non si confonde con «Telegram
+    spento» (V-1 bot #169, V-1 bot #170)."""
     if os.environ.get("GAS_NOTTE_TELEGRAM", "").strip() == "0":
         return
     try:
@@ -355,8 +357,10 @@ def _scrivi_atomico(path: Path, testo: str) -> None:
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
                  kernel_factory: Optional[Callable[[str], Any]] = None) -> int:
     """Un giro completo. Exit code: 0 tutti i compiti ok (o nessuno attivo),
-    1 almeno un compito ko, saltato per tempo o catalogo non valido, 2 un altro
-    giro è in corso."""
+    1 almeno un compito ko, saltato per tempo, catalogo non valido o giro
+    interrotto da un errore (anche un lock che fallisce per un motivo diverso dal
+    lock occupato), 2 un altro giro è in corso. A fine giro, a lock rilasciato,
+    parte il messaggio Telegram: riepilogo, «INTERROTTO alle …» o «NON avviato»."""
     root = Path(root_dir or os.getcwd()).resolve()
     catalogo = (catalogo or catalogo_default()).expanduser()
     notte_dir = root / NOTTE_DIR
@@ -368,7 +372,11 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             lock_f = open(notte_dir / "lock", "w")
             try:
                 fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
+            except OSError as e:
+                # V-2 bot #171: «un altro giro in corso» solo se il lock è davvero
+                # occupato; ENOLCK/EINVAL (fs senza flock) vanno come giro interrotto.
+                if e.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
+                    raise
                 print("Un altro giro notturno è già in corso: esco.")
                 logging.warning("notte: giro NON avviato, lock occupato da un altro giro")
                 da_notificare = (_ora_locale(), [], [], GIRO_OCCUPATO)
