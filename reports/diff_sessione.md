@@ -1,10 +1,9 @@
-# Diff della sessione — 2026-10-10 — «NON avviato» solo col lock davvero occupato (PR #172)
+# Diff della sessione — 2026-10-10 — test del lock senza fcntl e archivio verifiche esterne (PR #173)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/notte/notte.py` — flock: «NON avviato» solo con EAGAIN/EWOULDBLOCK, altri errori rilanciati (giro interrotto); docstring aggiornate.
-- `tests/test_unit_notte.py` — skipif Windows su 3 test del lock; 1 test nuovo (ENOLCK).
-- `reports/setup_notte.md` — exit code aggiornati.
-- `reports/stato_progetto.md` — #171 mergiata, seguito in PR #172.
-- `.claude/agents/memoria_revisore.md` — riga review #245 (commit del revisore).
+- `tests/test_unit_notte.py` — test del lock fallito con `fcntl` tutto finto (costanti letterali), skipif tolto.
+- `reports/verifiche_esterne.md` — nuovo: archivio dei verdetti integrali della verifica esterna (#171, #172).
+- `reports/stato_progetto.md` — #172 mergiata, seguito in PR #173.
+- `.claude/agents/memoria_revisore.md` — riga review #246 (commit del revisore).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.

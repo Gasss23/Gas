@@ -1,25 +1,24 @@
-# Report di fine task — 2026-10-10 — merge #171 + «NON avviato» solo col lock davvero occupato (PR #172)
+# Report di fine task — 2026-10-10 — merge #172 + test del lock senza fcntl e archivio verifiche esterne (PR #173)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #172 (https://github.com/Gasss23/Gas/pull/172). Tocca il motore (`modules/notte`): merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
-2. V-2 bot #163 (ancora aperta): gate B e riferimenti `path:riga` esterni nei verdetti del revisore. Macchina di controllo: decisione dell'operatore.
-3. Sul Mac: `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md`; al primo giro controllare che il messaggio arrivi.
+1. Merge della PR #173 (https://github.com/Gasss23/Gas/pull/173). Tocca `tests/`: merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
+2. Roadmap non aggiornata: in `reports/roadmap.md` «ORDINE OPERATORE» la voce 2 («GAS risponde SEMPRE in italiano», segnata PROSSIMO IMMEDIATO) risulta già fatta nel codice (`gas_identity.md:1`, `gas.py:74`), e anche F1 «R-crm-diario-rr» (`PRAGMA recursive_triggers = ON` in `modules/memory/store.py:527`). La sezione è «vincolante, non alterare senza istruzione esplicita»: serve il sì dell'operatore per segnarle FATTE. Voce successiva = auto-apprendimento: lavoro grande, da progettare insieme prima di iniziare.
+3. V-2 bot #163 (ancora aperta): gate B e riferimenti `path:riga` esterni nei verdetti del revisore. Macchina di controllo: decisione dell'operatore.
+4. V-2 verifica esterna #172 (proposta): su un disco senza flock il giro si ferma ogni notte invece di partire senza lock. Proposta dell'agente: lasciare così (Mac con disco locale; senza lock due giri possono sovrapporsi).
+5. Sul Mac: `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md`; al primo giro controllare che il messaggio arrivi.
 
 ## Esito per fetta
 
-- **Merge di #171**: `FATTA` — su richiesta esplicita dell'operatore, merge commit `698c050`.
-- **V-2 bot #171 — messaggio falso «un altro giro in corso» se flock fallisce per altro motivo**: `FATTA` — il ramo «NON avviato» (exit 2) scatta solo con errno EAGAIN/EWOULDBLOCK; ogni altro OSError va come giro interrotto (exit 1, «INTERROTTO alle …: OSError.»).
-- **V-1 bot #171 — test del lock su Windows**: `FATTA` — `skipif(notte.fcntl is None)` sui 3 test che usano flock senza guard.
-- **V-3 bot #171 + V-1 verifica esterna #171 — docstring**: `FATTA` — `_notifica_telegram` ed `esegui_notte`.
-- **Test**: `FATTA` — 1 nuovo (fcntl finto con ENOLCK); notte 48 → 49; pytest 799 → 800 passed. Mutation verificata.
-- **Doc operatore** (`setup_notte.md`, exit code): `FATTA`.
-- **V-2/V-3 verifica esterna #171** (messaggio anche per lanci manuali; costante e nomi d'eccezione nello stesso campo): `SALTATA` — innocue, già valutate dal revisore (#243).
-- **Prova su disco reale senza flock e su Windows**: `DEFERITA` — non riproducibile nel container.
+- **Merge di #172**: `FATTA` — su richiesta esplicita dell'operatore, merge commit `183e606`.
+- **V-2 bot #172 — test del lock fallito saltato dove manca fcntl**: `FATTA` — `fcntl` tutto finto con costanti letterali, skipif tolto; simulazione senza `fcntl`: il test passa.
+- **V-1 bot #172 — riserve della verifica esterna non provabili dal repo**: `FATTA` — nuovo `reports/verifiche_esterne.md` con i verdetti integrali su #171 e #172 e l'esito delle loro riserve.
+- **Test**: `FATTA` — notte 49 passed (invariato), pytest 800 passed.
+- **Aggiornamento roadmap**: `SALTATA` — sezione vincolante, serve il sì dell'operatore (decisione 2).
 
 ## Revisore
 
-Review #245 APPROVATO. Verdetto integrale in `reports/handoff.md` §4.
+Review #246 APPROVATO. Verdetto integrale in `reports/handoff.md` §4.
 
 ## Anomalie
 
