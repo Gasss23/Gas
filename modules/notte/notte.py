@@ -41,6 +41,14 @@ Invarianti di sicurezza:
   ritentata (429, 5xx...; max 60s per ritentativo); il
   timeout HTTP vale per fase di rete, non per l'intera risposta, quindi è un
   ordine di grandezza, non un limite. Compito e giro possono sforare.
+- Riepilogo su Telegram (fetta 2): a fine giro, se Telegram è configurato
+  (TELEGRAM_BOT_TOKEN + TELEGRAM_ALLOWED_IDS) e GAS_NOTTE_TELEGRAM non vale
+  "0", parte un messaggio breve per l'operatore. Contiene SOLO metadati
+  (compito, esito, tool, durata, negate/in attesa, avvisi del giro), MAI il
+  testo della risposta né il messaggio d'errore: non sono fidati (un link o
+  un'istruzione del modello finirebbe sul telefono come se l'avesse scritta
+  Gas). Il testo resta in .gas_notte/ultimo_giro.md. Un invio fallito viene
+  solo loggato: non cambia l'exit code del giro.
 - Un solo giro alla volta (lock su file). Un compito che fallisce viene
   registrato e si passa al successivo; il giro non solleva mai eccezioni (§9).
 """
@@ -70,6 +78,8 @@ BUDGET_NOTTE_DEFAULT_USD = "1.0"  # tetto di spesa 24h se l'operatore non ne ha 
 MAX_SEC_COMPITO_DEFAULT = 900    # tetto di tempo per compito (env GAS_NOTTE_MAX_SEC_COMPITO)
 MAX_SEC_GIRO_DEFAULT = 7200      # tetto di tempo del giro (env GAS_NOTTE_MAX_SEC_GIRO)
 MIN_SEC = 30                     # sotto questo valore l'env viene alzato
+MAX_AVVISI_TELEGRAM = 5          # avvisi riportati nel messaggio del mattino
+MAX_AVVISO_CHARS = 200           # lunghezza di ciascun avviso nel messaggio
 _NOME_RE = re.compile(r"[a-z0-9_-]{1,40}")
 _NEGATA = "Operazione negata"
 _IN_ATTESA = "Azione in attesa di approvazione umana"  # gas.py _parcheggia_e_notifica
@@ -249,6 +259,52 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
     return "\n".join(righe) + "\n"
 
 
+def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
+                               avvisi: List[str]) -> str:
+    """Riepilogo breve del giro per Telegram: solo metadati, mai la risposta del
+    modello né il testo degli errori (non fidati)."""
+    ok = sum(1 for e in esiti if e["esito"] == "ok")
+    righe = [f"Gas — giro notturno del {inizio}",
+             f"Compiti eseguiti: {len(esiti)} · ok: {ok} · ko: {len(esiti) - ok}", ""]
+    for e in esiti:
+        segno = "OK" if e["esito"] == "ok" else "KO"
+        riga = f"{segno} {e['nome']} ({e['tool']} tool, {e.get('durata', 0)}s)"
+        note = []
+        if e.get("negate"):
+            note.append(f"negate: {e['negate']}")
+        if e.get("in_attesa"):
+            note.append(f"in attesa della tua firma: {e['in_attesa']}")
+        if e.get("errore"):
+            note.append("errore (vedi riepilogo)")
+        if note:
+            riga += " — " + ", ".join(note)
+        righe.append(riga)
+    if avvisi:
+        righe += ["", f"Avvisi: {len(avvisi)}"]
+        for a in avvisi[:MAX_AVVISI_TELEGRAM]:
+            a = a if len(a) <= MAX_AVVISO_CHARS else a[:MAX_AVVISO_CHARS] + "…"
+            righe.append(f"- {a}")
+        if len(avvisi) > MAX_AVVISI_TELEGRAM:
+            righe.append(f"- …e altri {len(avvisi) - MAX_AVVISI_TELEGRAM}")
+    righe += ["", f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"]
+    return "\n".join(righe)
+
+
+def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[str]) -> None:
+    """Compone e invia il riepilogo del mattino. Mai eccezioni: anche un errore nel
+    comporre il messaggio è solo loggato e non cambia l'esito del giro (R-238-2)."""
+    if os.environ.get("GAS_NOTTE_TELEGRAM", "").strip() == "0":
+        return
+    try:
+        from modules.telegram.bot import invia_notifica
+        inviato, motivo = invia_notifica(componi_messaggio_telegram(inizio, esiti, avvisi))
+    except Exception as e:
+        logging.warning("notte: riepilogo Telegram non inviato: %s", type(e).__name__)
+        return
+    if not inviato:
+        logging.warning("notte: riepilogo Telegram non inviato: %s", motivo)
+
+
 def _env_budget() -> float:
     """GAS_DAILY_TOKEN_BUDGET come float; assente o non valido → 0.0 (spento)."""
     try:
@@ -322,6 +378,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         except Exception as e:
             logging.warning("notte: riepilogo non scritto: %s", e)
         print(testo)
+        _notifica_telegram(inizio, esiti, avvisi)
         if not compiti:
             return 1 if catalogo_ko else 0
         if tempo_finito:
