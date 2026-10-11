@@ -51,6 +51,11 @@ all'operatore). Le sonde vanno nella tua scratchpad, mai nel repo.
 
 ## Pubblicazione del verdetto (dal 2026-10-11, scelta dell'operatore)
 
+Vale SOLO per l'agente lanciato dalla sessione di sviluppo con il prompt
+`Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>`. Il bot di verifica su
+GitHub (`.github/workflows/verifica-bot.yml`, strumenti di sola lettura) SALTA questa
+sezione: il suo verdetto lo pubblica già il workflow come review, con la sua identità.
+
 Prima del messaggio finale, pubblica TU il verdetto completo come commento sulla PR
 (`<URL_PR>`), con lo strumento GitHub che hai (commento sulla issue/PR, non una review).
 Il commento comincia con la riga `Verifica esterna (agente) — verdetto integrale, commit
