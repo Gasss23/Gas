@@ -16,6 +16,7 @@
 
 - **Merge della PR #181**: FATTA su richiesta esplicita dell'operatore («mergia la PR 181 quando è verde»): unit-suite e handoff-check success, verifica-bot neutral (APPROVATO CON RISERVE, solo note BASSE), `mergeable_state: clean`. Merge commit `bc604ae`.
 - **Fetta — note basse #181** (V-1/V-2 di verifica-bot #181; V-1/V-2 della verifica esterna #181, commento https://github.com/Gasss23/Gas/pull/181#issuecomment-6110131014): FATTA. Commit `744ed4a`. Review #274 → #275 → #276 APPROVATO CON RISERVE.
+- **Fetta — finding bassi di verifica-bot #182 (V-1 test) e verifica esterna #182 (V-1 numeri, V-2 `prod.envbak`; commento https://github.com/Gasss23/Gas/pull/182#issuecomment-6110282507)**: FATTA. Commit `a6502d5`. Review #277 APPROVATO CON RISERVE.
 - **R-274-2** (falsi positivi con `--` in grep/diff): DEFERITA, direzione sicura.
 
 ---
@@ -23,22 +24,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
+ .claude/agents/memoria_revisore.md |   6 ++++++
  gas.py                             |  25 ++++++++++++++++++++++++-
- modules/gate/gate.py               |  18 +++++++++++++++++-
+ modules/gate/gate.py               |  20 +++++++++++++++++++-
  reports/design_cancello.md         |   2 +-
  reports/diff_sessione.md           |  16 ++++++++--------
- reports/handoff.md                 | 314 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |   7 ++++++-
- reports/ultimo_report.md           |  23 ++++++++++-------------
- tests/test_unit_gate.py            |  20 ++++++++++++++++++++
- tests/test_unit_kernel.py          |  18 ++++++++++++++++++
- 10 files changed, 192 insertions(+), 256 deletions(-)
+ reports/handoff.md                 | 363 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   8 +++++++-
+ reports/ultimo_report.md           |  24 +++++++++++-------------
+ tests/test_unit_gate.py            |  21 +++++++++++++++++++++
+ tests/test_unit_kernel.py          |  23 +++++++++++++++++++++++
+ 10 files changed, 259 insertions(+), 249 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a6502d5 fix(cancello): finding bassi #182 — copie .env*, test T83m più severo
+0254533 chore(revisore): memoria review #277 — APPROVATO CON RISERVE
+0e8463e docs(fine-task): report, stato e handoff PR #182 (note basse #181, review #274–#276)
 744ed4a fix(cancello): note basse #181 — `--` in run_command, date posizionale, file *.env
 53650be chore(revisore): memoria review #276 — APPROVATO CON RISERVE
 f39d5f4 chore(revisore): memoria review #275 — APPROVATO CON RISERVE
@@ -49,7 +53,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Tre verdetti, incollati integralmente nell'ordine.
+Quattro verdetti, incollati integralmente nell'ordine.
 
 ### Review #274
 
@@ -165,6 +169,53 @@ File rilevanti:
 - /home/user/Gas/tests/test_unit_gate.py
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #277 (finding bassi di verifica-bot e verifica esterna #182, commit `a6502d5`)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Le due correzioni chiudono i finding segnalati: le copie del `.env` con nomi come `prod.envbak` ora sono illeggibili, e il test T83m fallisce se il link simbolico non si crea. Restano una riserva bassa e due note cosmetiche. Nessuna blocca il commit.
+
+**Elementi del diff esaminati**
+
+- **`modules/gate/gate.py:254` — la nuova regola sui nomi dei segreti.**
+  - Cosa fa: `_SEGRETO_RE = re.compile(r"\.env(?!ironment|elope|oy)")` considera segreto `.env` seguito da qualunque cosa, tranne tre parole note: environment, envelope, envoy.
+  - Rischi esaminati: copie del segreto ancora leggibili, e nomi innocui bloccati per errore.
+  - Prova fatta solo con `lettura_consentita`, senza eseguire nulla:
+    - **Negati:** `prod.envbak`, `prod.envi`, `prod.env copy`. Negato anche un carattere invisibile in mezzo (`prod.env​ironment`), perché interrompe la parola esclusa.
+    - **Negati per errore, dalla parte sicura:** `x.envs.py` e `os.environ.md` (environ non è nell'elenco delle parole escluse).
+    - **Restano leggibili:** `x.environment.py`, `prod.ENVIRONMENT` (il nome viene portato in minuscolo), `a.envelope.md`, `envoy.py`, `env.txt`.
+  - Esito: **riserva** (R-277-1).
+- **`tests/test_unit_kernel.py:7675` — il test T83m.**
+  - Cosa fa: se il link simbolico `-x` non si crea, il test ora fallisce invece di passare provando solo `date`. Ho riprodotto il PASS del prerequisito.
+  - Casi aggiunti: `wc -- -x`, `file -- -x`, e `nota2.txt`, un link simbolico verso `modules/prod.env`.
+  - `cat nota2.txt` e `grep TOK nota2.txt` sono negati dal controllo sul percorso vero dietro il link: è proprio la nuova regola. Il controllo sulla parola `.env` nel testo del comando non interviene qui, perché `.env` non compare nel comando.
+  - Si chiama solo `_vet_command`: nessun comando viene eseguito, `date` compreso.
+  - Esito: ok.
+- **`tests/test_unit_gate.py:551` — i test del gate.** Aggiunti `prod.envbak`, `prod.envold`, `prod.envcopy` tra i nomi da negare. Riprodotto: 283 passed. Esito: ok.
+- **Contesto, file non toccato: `modules/gate/gate.py:384`.** La parola `.env` nel testo del comando continua a negare run_command anche per `prod.environment`.
+
+**Riserve**
+
+- **R-277-1 (BASSA):** l'elenco delle parole escluse funziona come una lista di nomi permessi. Un file di segreti chiamato `prod.environment` o `x.envoy` resta leggibile con `read_file`. Con run_command invece no, grazie al controllo su `.env` nel testo del comando. È il compromesso dichiarato: senza escludere quelle parole, `environment.py` e simili diventerebbero illeggibili.
+- **R-277-2 (COSMETICA):**
+  - La descrizione di `_nome_da_segreto` in `modules/gate/gate.py:257` dice ancora «NON seguito da una lettera», ma ora la regola è «seguito da qualunque cosa tranne environment, envelope, envoy».
+  - In `tests/test_unit_kernel.py:7677` la creazione del link `nota2.txt` non è protetta. Su un filesystem senza link simbolici il blocco T83 si interrompe e finisce nell'`except` di `tests/test_unit_kernel.py:7707`. Il fallimento resta visibile, ma i controlli T83l e T83h successivi non girano più.
+
+**Esiti riprodotti:** gate 283 passed; kernel 763 PASS, 0 FAIL. Non ho rilanciato la suite pytest completa (971): ho eseguito solo il file del gate.
+
+**Rischi esclusi esplicitamente**
+- Nessun comando `date` eseguito.
+- Le versioni BSD dei comandi (Mac) non sono verificate.
+- Non ho controllato i numeri dei test nei report: il coordinatore li corregge nel commit di fine task, fuori da questo diff.
+
+Memoria aggiornata con la riga #277 e committata in `0254533`.
+
+File rilevanti:
+- /home/user/Gas/modules/gate/gate.py
+- /home/user/Gas/tests/test_unit_gate.py
+- /home/user/Gas/tests/test_unit_kernel.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Suite kernel: prima (main `bc604ae`) `=== RIEPILOGO: 760 PASS, 0 FAIL ===` → dopo:
@@ -173,19 +224,21 @@ File rilevanti:
 === RIEPILOGO: 762 PASS, 0 FAIL ===
 ```
 
-- pytest: `962 passed in 109.54s` (prima 947).
+- pytest: `971 passed in 111.82s` dopo `a6502d5` (prima 947; il «962» scritto in precedenza era stantio: dopo la review #276 erano 968 — V-1 verifica esterna #182). Kernel dopo `a6502d5`: `=== RIEPILOGO: 763 PASS, 0 FAIL ===`. In CI il kernel conta +2 per l'ambiente (es. 764 su `0e8463e`).
 
 Nessun FAIL fuori scope.
 
 ## §6 STATO CI
 
-`gh run list -L 3`: CI NON VERIFICATA via `gh` (nel container `gh` non è autenticato). La PR #182 è appena stata aperta sul push di `744ed4a`; esito non ancora letto alla scrittura.
-
-Mappatura commit→run:
-- `744ed4a` (testa del primo push, insieme a `53707e2`, `f39d5f4`, `53650be`): run non ancora disponibile alla scrittura dell'handoff.
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+`gh run list -L 3`: CI NON VERIFICATA via `gh` (non autenticato). Strumento GitHub collegato:
+- `744ed4a`: run 38148718765 — handoff-check failure (atteso: conteneva l'handoff precedente).
+- `0e8463e` (fine-task): run 38148808668 — unit-suite success (kernel «764 PASS, 0 FAIL»), handoff-check success; verifica-bot **neutral** (APPROVATO CON RISERVE, solo finding BASSI).
+- `53707e2`, `f39d5f4`, `53650be`: nessuna run su questo SHA (pushati con `744ed4a`).
+- `0254533`, `a6502d5` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-274-2** (BASSA, falsi positivi): in grep/diff i token che iniziano con `-` dopo `--` sono rifiutati anche se legittimi.
+- **R-277-1** (BASSA): `prod.environment`/`x.envoy` restano leggibili con read_file (compromesso per environment.py); run_command li nega.
+- **R-277-2** (COSMETICA): docstring di `_nome_da_segreto` ancora «non seguito da una lettera»; symlink `nota2.txt` nel test non protetto.
 - R-273-1/R-273-2 (dalla PR #181): elenco di opzioni vietate per file/wc/date; varianti BSD non provate.

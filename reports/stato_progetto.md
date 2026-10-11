@@ -6,7 +6,8 @@
 
 ## Stato motore
 
-**🔄 feat/merge-automatico-z1xjx2 → PR #182 (2026-10-11) — note basse #181** (PR #181 MERGIATA su richiesta dell'operatore, `bc604ae`): dopo `--` ogni token di run_command è un operando; `date` solo con `+formato` o `-d`; `.env` non seguito da lettera illeggibile ovunque (`_SEGRETO_RE`). Review #274 → #275 → #276 APPROVATO CON RISERVE. Kernel 760 → 762, pytest 962.
+**🔄 feat/merge-automatico-z1xjx2 → PR #182 (2026-10-11) — note basse #181** (PR #181 MERGIATA su richiesta dell'operatore, `bc604ae`): dopo `--` ogni token di run_command è un operando; `date` solo con `+formato` o `-d`; `.env` non seguito da lettera illeggibile ovunque (`_SEGRETO_RE`). Review #274 → #275 → #276 → #277 APPROVATO CON RISERVE (finding bassi del bot e della verifica esterna #182 chiusi: test T83m più severo, `prod.envbak` illeggibile). Kernel 760 → 763, pytest 971.
+- 🟡 **R-277-1** (BASSA): `prod.environment`/`x.envoy` leggibili con read_file (compromesso). **R-277-2** (COSMETICA): docstring di `_nome_da_segreto`; symlink nel test non protetto.
 Riserve aperte:
 - 🟡 **R-274-2** (BASSA, falsi positivi): in grep/diff i token che iniziano con `-` dopo `--` sono rifiutati anche se legittimi.
 - 💡 **Proposta all'operatore**: sostituire i binari di `run_command` con poche funzioni di sola lettura scritte in Gas (cerca, conta, righe X–Y): ogni giro di review sulle opzioni di grep/date/uniq/file ha trovato una variante nuova; una lista di comandi di sistema non si chiude mai del tutto.
