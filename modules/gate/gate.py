@@ -249,14 +249,16 @@ LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI = 1, 2, 3
 _LETTURA_NEGATA: tuple[str, ...] = _LIVELLO3_PREFISSI
 
 
-_SEGRETO_RE = re.compile(r"\.env(?![a-z])")  # R-275-1: lookahead negativo
+# R-275-1 + V-2 verifica esterna #182: `.env` seguito da QUALSIASI cosa è un segreto,
+# salvo le parole note che iniziano così (environment, envelope, envoy).
+_SEGRETO_RE = re.compile(r"\.env(?!ironment|elope|oy)")
 
 
 def _nome_da_segreto(normalized: str) -> bool:
     """V-2 verifica esterna #181 + R-274-1 + R-275-1: un pezzo del percorso con `.env`
     NON seguito da una lettera (prod.env, prod.env.local, prod.env~, «prod.env copy»,
-    prod.env(1), prod.env1) è un file di segreti anche dentro cartelle leggibili;
-    `x.environment.py`, `a.envelope.md` no (il percorso è già casefold).
+    prod.env(1), prod.env1, prod.envbak) è un file di segreti anche dentro cartelle
+    leggibili; `x.environment.py`, `a.envelope.md`, `envoy.py` no (percorso casefold).
     Punti/spazi finali tolti."""
     return any(_SEGRETO_RE.search(p.rstrip(". ")) for p in PurePosixPath(normalized).parts)
 

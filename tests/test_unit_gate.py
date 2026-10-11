@@ -548,7 +548,8 @@ def test_r263_1_read_back_rende_visibili_spazi_e_selettori():
                                   "modules/prod.env_old", "modules/prod.env-vecchio",
                                   "modules/prod.env copy", "modules/prod.env(1)",
                                   "modules/prod.env1", "modules/prod.env#", "modules/prod.env,bak",
-                                  "modules/PROD.ENV COPY"])
+                                  "modules/PROD.ENV COPY", "modules/prod.envbak",
+                                  "modules/prod.envold", "modules/prod.envcopy"])
 def test_v2_181_file_che_finiscono_in_env_illeggibili(path):
     """V-2 verifica esterna #181: anche dentro cartelle leggibili."""
     from modules.gate.gate import lettura_consentita

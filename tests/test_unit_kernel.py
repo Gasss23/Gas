@@ -7671,11 +7671,16 @@ try:
         _sym83m = True
     except OSError:
         _sym83m = False
+    # V-1 bot #182: senza il symlink il check NON deve passare provando solo date.
+    check("T83m symlink '-x' creato (prerequisito dei casi con `--`)", _sym83m)
+    (_r83 / "modules" / "prod.env").write_text("TOK=abc\n", encoding="utf-8")
+    os.symlink("modules/prod.env", str(_r83 / "nota2.txt"))
     _v83m = {c: _k83._vet_command(c, _r83) for c in (
-        (["cat -- -x", "head -- -x", "tail -n 1 -- -x", "grep SEGRETO -- -x",
-          "grep -n -- SEGRETO -x", "grep -A 1 -- SEGRETO -x"] if _sym83m else [])
-        + ["date 010100002020", "date 0101", "date -u 010100002020", "date -- 0101"])}
-    check("T83m `--` con nome che inizia per '-' e date posizionale → negati al controllo",
+        ["cat -- -x", "head -- -x", "tail -n 1 -- -x", "wc -- -x", "file -- -x",
+         "grep SEGRETO -- -x", "grep -n -- SEGRETO -x", "grep -A 1 -- SEGRETO -x",
+         "cat nota2.txt", "grep TOK nota2.txt",
+         "date 010100002020", "date 0101", "date -u 010100002020", "date -- 0101"])}
+    check("T83m `--`, symlink verso modules/prod.env e date posizionale → negati al controllo",
           all(argv is None for argv, _ in _v83m.values()),
           str({k: v[1] for k, v in _v83m.items() if v[0] is not None})[:300])
     _ok83m = [_k83._vet_command(c, _r83)[0] is not None for c in (
