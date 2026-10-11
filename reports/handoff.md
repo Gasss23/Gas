@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-11 — merge #177 + decisioni dell'operatore 2a, 3, 4C (PR #178)
+**Sessione:** 2026-10-11 — merge #177 + decisioni dell'operatore 2a, 3, 4C (PR #178, con correzione dopo il bot)
 
 ---
 
@@ -19,6 +19,7 @@
 - **Fetta 1 — 4C (Opus 5.5 per primo nel bot)**: `FATTA`.
 - **Fetta 2 — 2a (verdetto della verifica esterna sulla PR)**: `FATTA`.
 - **Fetta 3 — 3 (roadmap)**: `FATTA`.
+- **Fetta 4 — V-1 bot #178 (pubblicazione solo per l'agente di sessione)**: `FATTA`.
 - **Punti 5 e 1A**: `DEFERITA` — in attesa dell'operatore.
 - **Note basse del bot su #177**: `DEFERITA` — prossima fetta motore.
 
@@ -27,19 +28,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   4 ++++
  .claude/commands/fine-task.md      |   8 +++++---
- .claude/verifica_esterna.md        |  15 +++++++++++++++
+ .claude/verifica_esterna.md        |  20 ++++++++++++++++++++
  .github/workflows/verifica-bot.yml |  24 +++++++++++++-----------
  CLAUDE.md                          |   2 +-
  reports/diff_sessione.md           |  17 ++++++++++-------
- reports/handoff.md                 | 145 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------
+ reports/handoff.md                 | 173 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------
  reports/roadmap.md                 |   6 +++---
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  25 +++++++++++++++----------
+ reports/ultimo_report.md           |  28 ++++++++++++++++++----------
  reports/verifiche_esterne.md       |  99 ---------------------------------------------------------------------------------------------------
  tests/test_unit_verifica_bot.py    |   3 ++-
- 12 files changed, 160 insertions(+), 191 deletions(-)
+ 12 files changed, 195 insertions(+), 193 deletions(-)
 ```
 
 Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`) sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -47,12 +48,15 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`)
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5ab30b3 fix(controllo): la pubblicazione del verdetto vale solo per l'agente di sessione, non per il bot
+475a84f chore(revisore): memoria review #257 — APPROVATO
+f61d789 docs(fine-task): report PR #178 (decisioni dell'operatore 2a, 3, 4C)
 0c21c6a chore(controllo): bot di verifica con Opus 5.5 per primo; verdetto della verifica esterna pubblicato sulla PR; roadmap aggiornata
 1308eaa chore(revisore): memoria review #256 — APPROVATO
 f67a5ea chore(revisore): memoria review #255 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `f61d789` è il commit di fine-task del primo giro.
 
 ## §4 VERDETTO DEL REVISORE
 
@@ -131,7 +135,29 @@ Ho riletto tutto il diff staged (8 file, 42 righe aggiunte e 119 tolte) e rilanc
 
 **Memoria:** ho aggiunto la riga #256 in `.claude/agents/memoria_revisore.md` e l'ho committata come `1308eaa`, solo quel file. Il diff staged è rimasto intatto.
 
-(Modifiche dell'agente al testo dei verdetti: path assoluti della memoria scritti relativi; elenco «File rilevanti» finale omesso.)
+### Review #257 (delta V-1 bot #178, diff di 5ab30b3)
+
+## VERDETTO: APPROVATO
+
+Ho letto le tre fonti obbligatorie: CLAUDE.md (in contesto), `reports/stato_progetto.md` (cercando le parti che servivano) e la coda di `.claude/agents/memoria_revisore.md` (ultima voce: #256).
+
+**Cosa ho controllato nel diff** (5 righe aggiunte a un solo file):
+
+1. `.claude/verifica_esterna.md:54` — limita la sezione «Pubblicazione del verdetto» all'agente lanciato dalla sessione di sviluppo con il prompt `Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>`. Rischio esaminato: che il bot possa scambiarsi per quell'agente. Il prompt che il bot riceve davvero (`.github/workflows/verifica-bot.yml:123`) è «Applica il protocollo .claude/verifica_esterna.md … alla PR #N, commit …»: non ha la forma «a: <URL_HANDOFF> <URL_PR>» e si apre con «Sei il bot di verifica esterna». Il prompt di sessione in `.claude/commands/fine-task.md:279` coincide invece carattere per carattere con quello citato. La distinzione è quindi univoca, e il testo nomina anche il file del workflow. — ok
+2. `.claude/verifica_esterna.md:56` — dice che il bot salta la sezione perché il workflow pubblica già il suo verdetto come review. Rischio esaminato: che sia una giustificazione di comodo. È coerente con i fatti: gli strumenti del bot (`verifica-bot.yml`, voce `STRUMENTI`) sono Read/Grep/Glob più `gh pr view`, `gh pr diff`, `gh pr checks`, `gh run view` e `gh run list`, quindi non può commentare. Senza questa esclusione, dopo il merge ogni giro del bot avrebbe tentato una scrittura impossibile e anteposto «COMMENTO NON PUBBLICATO» al verdetto. È esattamente la V-1 (il primo finding del bot sulla PR #178), che così è chiusa. — ok
+3. `.claude/verifica_esterna.md:59-71` (righe non toccate, stesso file) — il ripiego «COMMENTO NON PUBBLICATO» e la copia dichiarata restano invariati per l'agente di sessione. Rischio esaminato: perdere il ripiego introdotto con R-255-2. Non si perde. — ok
+4. Contesto: `scripts/bot_esito.py:93` e `:256-282` — il gate del bot legge `verdetto`, `finding` e `testo` dalla risposta strutturata, più la riga di titolo `_RIGA_TITOLO`. Il testo del protocollo non finisce mai nel verdetto, quindi le righe aggiunte non toccano né lo schema né la regex. Con l'esclusione, poi, il bot non produce più la riga «COMMENTO NON PUBBLICATO» davanti al verdetto. — ok
+5. Contesto: su main (`63e9fec`) la sezione «Pubblicazione» non esiste ancora (cercata con grep, nessun risultato). Il bot legge il protocollo da main, quindi il suo giro sulla PR #178 non ne è toccato; l'esclusione vale dal merge in poi, cioè proprio quando serve. — ok
+
+Il file è nel perimetro di review (`.claude/perimetro_review.txt:16`), quindi questa review era dovuta. I guardrail del motore (`_get_window`, il tetto di 10 iterazioni, la gestione degli errori dei provider) non vengono toccati.
+
+**Cosa NON ho verificato**:
+- Il comportamento reale di un giro del bot dopo il merge: richiede GitHub Actions con la GitHub App e non si riproduce in locale. La garanzia viene dalla lettura del testo e dalla lista degli strumenti, non da un'esecuzione.
+- Non ho eseguito la suite di test: il diff tocca solo un protocollo in prosa che nessun test né script analizza.
+
+**Memoria**: ho aggiunto la riga #257 in `.claude/agents/memoria_revisore.md`, senza lezioni nuove, e l'ho committata da sola nel commit `475a84f`. Il diff in stage (`.claude/verifica_esterna.md`) è rimasto intatto.
+
+(Modifiche dell'agente al testo dei verdetti #255/#256/#257: path assoluti della memoria scritti relativi; elenco «File rilevanti» finale omesso.)
 
 ## §5 DELTA TEST DEL MOTORE
 
@@ -143,13 +169,14 @@ Motore non toccato. Suite del bot di verifica 297 passed (invariata nel numero, 
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container; PR #178 appena aperta.
+`gh` non autenticato nel container; stato letto con lo strumento GitHub collegato.
 
 Per costruzione i commit intermedi sono ROSSI su `handoff-check`: fa fede la run sul commit di fine-task.
 
-- `f67a5ea`, `1308eaa`, `0c21c6a`: pushati insieme; run su `0c21c6a` attesa rossa su `handoff-check` per costruzione (gli altri non hanno una run propria).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
-- La PR tocca la macchina del bot: `verifica-bot` darà al massimo `neutral` (merge all'operatore).
+- `f67a5ea`, `1308eaa`, `0c21c6a`: pushati insieme; run su `0c21c6a` rossa su `handoff-check` per costruzione.
+- `f61d789` (fine-task del primo giro): `unit-suite` success, `handoff-check` success; `verifica-bot` neutral (macchina del bot), con V-1 corretta in questo giro.
+- `475a84f`, `5ab30b3`: pushati insieme al commit di fine-task di questo giro; nessuna run propria.
+- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

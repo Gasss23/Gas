@@ -1,4 +1,4 @@
-# Report di fine task — 2026-10-11 — merge #177 + decisioni dell'operatore 2a, 3, 4C (PR #178)
+# Report di fine task — 2026-10-11 — merge #177 + decisioni dell'operatore 2a, 3, 4C (PR #178, con correzione dopo il bot)
 
 ## DECISIONI UMANE RICHIESTE
 
@@ -14,13 +14,16 @@
 - **2a — verdetto della verifica esterna pubblicato dall'agente sulla PR**: `FATTA` — `.claude/verifica_esterna.md` (limite e ripiego dichiarati), `fine-task.md` §4quater, `CLAUDE.md`; archivio `reports/verifiche_esterne.md` eliminato.
 - **3 — roadmap**: `FATTA` — italiano, F1, F6 segnati FATTI dopo verifica nel codice.
 - **Decisioni registrate** in `stato_progetto.md`: `FATTA`.
+- **V-1 bot #178 — il bot avrebbe tentato di pubblicare un commento senza permessi**: `FATTA` — la sezione «Pubblicazione del verdetto» vale solo per l'agente lanciato dalla sessione; il bot la salta (review #257 APPROVATO).
+- **Prima prova della pubblicazione**: `FATTA` — l'agente di verifica esterna ha pubblicato da sé il verdetto su #178 (https://github.com/Gasss23/Gas/pull/178#issuecomment-6108921390).
+- **V-2 verifica esterna #178 — dove sta la prova dei verdetti #173-#177**: `FATTA` — dichiarato in `stato_progetto.md` che non sono provabili per intero.
 - **6a**: `FATTA` (nessun codice) — resta il comportamento attuale; annotato da riverificare sul VPS (systemd timer).
 - **Punto 5 e punto 1A**: `DEFERITA` — in attesa della risposta dell'operatore.
 - **Note basse del bot su #177** (`.gas_history.json.*` in `.gitignore`, riga lunga in `notte.py`): `DEFERITA` — prossima fetta motore.
 
 ## Revisore
 
-Review #255 APPROVATO CON RISERVE (R-255-1/2/3 chiuse nella stessa PR); #256 APPROVATO. Verdetti integrali in `reports/handoff.md` §4.
+Review #255 APPROVATO CON RISERVE (R-255-1/2/3 chiuse nella stessa PR); #256 APPROVATO; #257 APPROVATO (V-1 bot #178). Verdetti integrali in `reports/handoff.md` §4.
 
 ## Anomalie
 
