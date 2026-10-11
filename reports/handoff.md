@@ -27,9 +27,10 @@
  .claude/settings.json              |   2 +-
  CLAUDE.md                          |   4 ++--
  reports/diff_sessione.md           |  18 +++++++-----------
- reports/handoff.md                 | 234 +++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 236 +++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   4 ++--
  reports/ultimo_report.md           |  20 ++++++--------------
- 7 files changed, 67 insertions(+), 245 deletions(-)
+ 8 files changed, 71 insertions(+), 247 deletions(-)
 ```
 
 Nota: i conteggi di righe di `reports/handoff.md` sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -37,6 +38,8 @@ Nota: i conteggi di righe di `reports/handoff.md` sono approssimati per costruzi
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fd2831a docs: note del bot su #183 (stato_progetto, compromesso sull'URL dichiarato, punto (3) allineato)
+23ffb1f docs(fine-task): handoff PR #183 aggiornato (#281 riemesso, V-1/V-2 bot)
 3f6919a docs(claude-md): brevità — verdetti dei verificatori sempre riportati (esito + ALTA/MEDIA); punto (1) allineato al (4)
 39583c8 docs(fine-task): report PR #183 (brevità + niente stampa di report/URL)
 bee4fa5 docs(controllo): niente stampa di report e URL_HANDOFF all'operatore
@@ -84,11 +87,13 @@ Nessuna modifica a gas.py/brains/modules/tests: solo testo di regole.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container.
+Mappatura commit → run (dati reali letti da GitHub dal bot e dalla verifica esterna):
 
-- `427395d`: run rossa su `handoff-check` per costruzione.
-- `5368776` (fine-task del primo giro): verifica-bot annullato per cambio di head.
-- Commit successivi pushati insieme al commit di fine-task di questo giro; run non ancora disponibile alla scrittura dell'handoff.
+- `427395d`: CI success (run 38154724399); verifica-bot annullato (cambio di head).
+- `5368776` (fine-task del primo giro): CI success (run 38154772076); verifica-bot BOCCIATO (V-1 MEDIA, V-2), corretto in `3f6919a`.
+- `bee4fa5`, `2af5949`, `42963b0`, `0e4b5ec`, `a76c9c8`, `3f6919a`, `39583c8`: nessuna run propria (pushati insieme).
+- `23ffb1f`: CI success (run 38155091111); verifica-bot failure per «finding MEDIA» benché il verdetto testuale sia APPROVATO CON RISERVE con soli finding BASSA/COSMETICA (V-1/V-2/V-3 corretti in questo commit).
+- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
