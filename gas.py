@@ -3384,7 +3384,9 @@ class GasKernel:
                                 # FETTA 1 PR B: run_command non offerto (allowlist vuota) →
                                 # diniego secco, mai una richiesta di firma per un comando
                                 # che il kernel negherebbe comunque.
-                                if tc.function.name == "run_command" and not self.SHELL_ALLOWLIST:
+                                _run_command_spento = (tc.function.name == "run_command"
+                                                       and not self.SHELL_ALLOWLIST)
+                                if _run_command_spento:
                                     _gc = GateClass.DENY
                                 # Review #262: un nome "libero" che risolve (symlink) a un
                                 # file delicato va alla firma di livello 2 come il file vero.
@@ -3395,6 +3397,10 @@ class GasKernel:
                                 if _gc == GateClass.DENY:
                                     logging.warning(f"[GATE] DENY: {tc.function.name}")
                                     out = "Operazione negata: azione non consentita in modalità autonoma."
+                                    if _run_command_spento:  # V-3 bot #185: indica gli strumenti
+                                        out = ("Operazione negata: Gas non ha comandi di sistema. "
+                                               "Usa elenca_cartella, leggi_righe, cerca_testo, "
+                                               "conta_file o data_ora.")
                                 elif _gc == GateClass.IRREVERSIBLE or (
                                     _gc == GateClass.UNCERTAIN and _finestra_contaminata
                                 ):
@@ -3567,6 +3573,11 @@ def doctor(root_dir: Optional[str] = None) -> int:
     sb_mode = _parse_mode("GAS_SANDBOX_MODE", ("os_strict", "os_with_fallback"), "os_strict")
     if avail:
         check("Sandbox OS", "bwrap+namespace", "OK", f"{detail} (mode={sb_mode})")
+    elif not GasKernel.SHELL_ALLOWLIST:
+        # R-286-1: run_command non è offerto al modello (allowlist vuota, FETTA 1
+        # PR B): senza bwrap non c'è nulla da bloccare, niente falso FAIL.
+        check("Sandbox OS", "bwrap+namespace", "OK",
+              f"{detail} — non usato: run_command non offerto (allowlist vuota)")
     else:
         check("Sandbox OS", "bwrap+namespace",
               "FAIL" if sb_mode == "os_strict" else "WARN",

@@ -8042,12 +8042,39 @@ try:
                 [("run_command", '{"command": "ls"}')], "ok"])
         _o85 = [e["output"] for e in _ev85 if e["type"] == "tool_res"]
         check("T85d run_command inventato dal modello → negato, nessuna firma su Telegram",
-              _o85 == ["Operazione negata: azione non consentita in modalità autonoma."]
+              len(_o85) == 1 and _o85[0].startswith("Operazione negata: Gas non ha comandi di sistema")
+              and "elenca_cartella" in _o85[0]
               and len(_tg85.chiamate) == 0, str(_o85))
         _o85e = [_k85.execute_tool_call("run_command", _js84.dumps({"command": c}))
                  for c in ("ls", "cat note.md", "echo ciao", "date")]
         check("T85e anche chiamato direttamente, ogni binario è negato dal recinto",
               all(o.startswith("Operazione negata: comando") for o in _o85e), str(_o85e)[:200])
+        import io as _io85, contextlib as _cl85
+        _buf85 = _io85.StringIO()
+        _sv85 = os.environ.get("GAS_SANDBOX_MODE")
+        os.environ["GAS_SANDBOX_MODE"] = "os_strict"
+        _sonda85 = gas._probe_os_sandbox
+        gas._probe_os_sandbox = lambda force=False: (False, "bwrap assente (finto, T85h)")
+        try:
+            with _cl85.redirect_stdout(_buf85):
+                gas.doctor(str(_r85))
+        finally:
+            gas._probe_os_sandbox = _sonda85
+            if _sv85 is None:
+                os.environ.pop("GAS_SANDBOX_MODE", None)
+            else:
+                os.environ["GAS_SANDBOX_MODE"] = _sv85
+        _sb85 = [l for l in _buf85.getvalue().splitlines() if "Sandbox OS" in l]
+        check("T85h R-286-1: doctor non dà FAIL sulla sandbox OS se run_command non è offerto",
+              len(_sb85) == 1 and "FAIL" not in _sb85[0] and "non usato" in _sb85[0], str(_sb85))
+        # R-286-2: un run_command parcheggiato prima della PR B e firmato dopo → negato
+        with _TgFinto():
+            _es85, _id85 = _k85.memory.accoda_approvazione("run_command", {"command": "ls"})
+            _ok85, _ = _k85.memory.resolve_approval(_id85, "approved", telegram_user_id=4242)
+            _r85 = _k85.applica_firma(_id85)
+        check("T85i R-286-2: run_command firmato dopo la PR B → negato dal recinto, non eseguito",
+              _es85 == "nuova" and _ok85 and _r85.get("eseguita") is not True
+              and "Operazione negata" in str(_r85), str(_r85)[:300])
         check("T85f il codice del recinto resta (vetting e bwrap)",
               callable(getattr(_k85, "_vet_command", None)) and callable(getattr(_k85, "_bwrap_prefix", None)))
     finally:
