@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-11 — merge #174 + cartelle di editor/agenti e altre config non scrivibili da Gas (PR #175)
+**Sessione:** 2026-10-11 — merge #174 + cartelle di editor/agenti e altre config non scrivibili da Gas (PR #175, secondo giro dopo la bocciatura del bot)
 
 ---
 
@@ -19,20 +19,24 @@
 - **Fetta 1 — R-247-2 + V-1 verifica esterna #174**: `FATTA`.
 - **R-249-1**: `FATTA` nella stessa PR.
 - **R-249-2 e nomi scoperti**: `DEFERITA` — dichiarati in `stato_progetto.md`, decisione dell'operatore.
+- **Secondo giro — V-1 MEDIA del bot su #175** (la «V-1 bot #174», punti/spazi finali per pezzo del percorso, era stata attribuita per errore come chiusa): `FATTA` — `p.rstrip(". ")` su ogni pezzo; attribuzioni corrette in `stato_progetto.md`.
+- **V-2 bot #175 + V-1 agente di verifica esterna #175**: `FATTA` — `.pdbrc`, `.pylintrc`, `pylintrc`, `.husky`, `.npmrc`, `.windsurf`, `.zed`.
+- **R-251-1** (alias Windows): `DEFERITA` — dichiarata in `stato_progetto.md` (Windows non è piattaforma di Gas).
+- **Archivio dei verdetti #173/#174 in `reports/verifiche_esterne.md`** (chiesto dal bot su #175): `SALTATA` — in attesa della scelta (a)/(b) dell'operatore sull'archivio.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/gate/gate.py               |   9 +++++++++
+ .claude/agents/memoria_revisore.md |   5 +++++
+ modules/gate/gate.py               |  17 ++++++++++++++++-
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 133 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------
+ reports/handoff.md                 | 199 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  27 +++++++++++++--------------
- tests/test_unit_gate.py            |   8 ++++++++
- 7 files changed, 110 insertions(+), 82 deletions(-)
+ reports/ultimo_report.md           |  32 ++++++++++++++++++--------------
+ tests/test_unit_gate.py            |  12 ++++++++++++
+ 7 files changed, 192 insertions(+), 85 deletions(-)
 ```
 
 Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`) sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -40,12 +44,15 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`)
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2fce28a fix(gate): punti/spazi finali tolti da ogni pezzo del percorso; .pdbrc, .pylintrc, .husky, .npmrc, .windsurf, .zed
+46d8cd4 chore(revisore): memoria review #251 — APPROVATO CON RISERVE
+0513cfd docs(fine-task): report PR #175 (cartelle di editor/agenti e altre config non scrivibili)
 4934af2 fix(gate): cartelle di editor/agenti e altre config di sviluppo non scrivibili da Gas
 30ef31d chore(revisore): memoria review #250 — APPROVATO
 5b6ff04 chore(revisore): memoria review #249 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `0513cfd` è il commit di fine-task del primo giro.
 
 ## §4 VERDETTO DEL REVISORE
 
@@ -117,30 +124,90 @@ Wall of Shame: nessuno slicing della history, nessun output di tool simulato. Il
 
 Memoria aggiornata con la riga #250 e committata da sola (commit `30ef31d`). Il diff staged è rimasto intatto.
 
-(Modifiche dell'agente al testo dei verdetti: path assoluti scritti relativi; elenco «File rilevanti» finale omesso in entrambi. R-249-2 e i nomi scoperti sono scritti in `reports/stato_progetto.md` in questo commit di fine-task.)
+(Modifiche dell'agente al testo dei verdetti #249/#250/#251: path assoluti scritti relativi; elenco «File rilevanti» finale omesso. R-249-2 e i nomi scoperti sono scritti in `reports/stato_progetto.md` in questo commit di fine-task.)
+
+### Review #251 (delta del secondo giro, diff di 2fce28a)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Il diff staged (`git diff --cached`, 2 file, +11/-1) chiude il problema segnalato dal bot. Le prove che ho fatto non mostrano falsi positivi e nessuna regressione.
+
+**Letture obbligatorie fatte:** CLAUDE.md (sez. 5, 8, 9, 10), `reports/stato_progetto.md` (voce 6, letta con Grep), coda di `.claude/agents/memoria_revisore.md`.
+
+**Elementi del diff esaminati**
+
+1. `modules/gate/gate.py:206` — `p.rstrip(". ") in _DENY_WRITE_ANY_PART_NAMES` su ogni pezzo del percorso, solo in scrittura.
+   - **Rischio esaminato:** falsi positivi, e un pezzo che diventa vuoto dopo il rstrip.
+   - **Prove sul codice reale:**
+     - Diventano DENY in scrittura e restano consentiti in lettura: `pytest.ini.`, `Makefile.`, `tests/pyproject.toml `, `.vscode./tasks.json`, `dati/.vscode /x`, `Dockerfile.`, `dati/makefile...`.
+     - Anche `pytest.ini` seguito da uno spazio non separabile (U+00A0) o da uno spazio ideografico (U+3000) diventa DENY: la normalizzazione Unicode (NFKC) li trasforma in spazi normali prima del rstrip.
+     - `...`, `dati/...`, `dati/... /x`, `. .`, `dati/. ./x` danno un pezzo vuoto: la stringa vuota non è nel frozenset, quindi restano UNCERTAIN. Nessun falso positivo e nessuna eccezione.
+     - Restano UNCERTAIN, giustamente: `dati/makefile.bak`, `dati/.husky.txt`, `dati/pylintrc.d/x`, `pytest.ini` con spazio iniziale o con tab finale (Windows toglie solo punti e spazi finali).
+     - Restano UNCERTAIN come prima le 4 prove dell'agente: `note.txt`, `dati/a..b/x.md`, `dati/..note.md`, `dati/progetto.ini`.
+   - **Mutation:** su una copia in scratch ho tolto il rstrip → 6 test FAIL, esattamente i 6 casi nuovi.
+   - **Esito:** ok.
+
+2. `modules/gate/gate.py:201-202` e `:166-181` (contesto, non toccati) — `_DENY_WRITE_TOP_PREFIXES` e `_in_denylist` confrontano con `startswith`.
+   - **Rischio esaminato:** serve lo stesso rstrip anche lì?
+   - **Risposta:** no. Un suffisso di punti o spazi non può impedire un `startswith` che altrimenti passerebbe. Verificato: `scripts./x`, `claude.md. `, `CLAUDE.md .` erano già DENY, e `.gas_memory.db.` è DENY anche in lettura.
+   - **Esito:** ok.
+
+3. `modules/gate/gate.py:142` — nomi nuovi `.pdbrc`, `.pylintrc`, `pylintrc`, `.husky`, `.npmrc`, `.windsurf`, `.zed`.
+   - **Rischio esaminato:** collisione con nomi legittimi di `dati/`. Il confronto è esatto per pezzo, quindi `dati/.husky.txt` passa.
+   - **Esito:** ok.
+
+4. `tests/test_unit_gate.py:422-425` — 13 casi nuovi nella lista parametrica di `test_write_config_strumenti_sviluppo_deny`.
+   - **Rischio esaminato:** test che non mordono. Con la mutation falliscono i 6 casi del rstrip; per i 7 nomi nuovi vale il dato dell'agente (13 FAIL con il `gate.py` di HEAD).
+   - **Esito:** ok.
+
+**Numeri dei test che ho riprodotto:** 191 passed sul cancello, 859 passed su `tests/`, kernel 715 PASS / 0 FAIL (lanciati con `PYTHONDONTWRITEBYTECODE=1`).
+
+**Coerenza col progetto:** nessun Wall of Shame (nessuno slicing della history, nessuna simulazione dei tool). Il cancello resta fail-closed e i guardrail non sono toccati. La modifica va nella direzione della riserva FASE 4.5.
+
+**Riserva**
+
+- **R-251-1 (BASSA):** il commento a `gate.py:204-205` giustifica la modifica con "su Windows sono lo stesso file". Però altri due alias Windows dello stesso file restano UNCERTAIN:
+  - `pytest.ini::$DATA` (stream alternativo di NTFS);
+  - `PYTEST~1.INI` (nome corto 8.3).
+
+  Due strade: coprirli, oppure dichiarare in `stato_progetto.md` che Windows non è una piattaforma su cui gira Gas (oggi VPS Linux e Mac). Non blocca: su Linux e APFS questi nomi sono file diversi e innocui.
+
+**Rischi esplicitamente esclusi**
+
+- **Su Windows non ho eseguito niente:** gli alias li ho ricavati da come NTFS gestisce i nomi, non li ho riprodotti (dev Linux).
+- **Kernel 717 in CI non verificato:** ho visto solo i 715 in locale. Lo scarto di 2 dichiarato (test del profilo sandbox saltati in locale) lo prendo dal testo di `stato_progetto.md`.
+- **`reports/stato_progetto.md` non revisionato:** è nel working tree, non staged, e fuori dal perimetro di review. L'ho solo letto: cita già la review #251, cioè questa.
+
+**Memoria aggiornata:** riga contatore #251 più una lezione (gli alias Windows vanno elencati tutti), committata con `scripts/commit_memoria_revisore.sh` → commit `46d8cd4`. L'index del motore staged è rimasto intatto.
+
 
 ## §5 DELTA TEST DEL MOTORE
 
-Gate 154 → 178 passed; `pytest tests/` 822 → 846 passed (+24 casi del gate); kernel 715 PASS / 0 FAIL.
+Gate 154 → 191 passed; `pytest tests/` 822 → 859 passed (+37 casi del gate); kernel 715 PASS / 0 FAIL in locale (717 in CI: 2 test del profilo sandbox saltati in locale).
 
 ```
-178 passed in 0.23s
-846 passed in 113.43s (0:01:53)
+191 passed in 0.23s
+859 passed in 115.35s (0:01:55)
 === RIEPILOGO: 715 PASS, 0 FAIL ===
 ```
 
-Mutation: con il `gate.py` della base e i test nuovi (prima del delta R-249-1) → `17 failed, 157 passed`.
+Mutation: primo giro, `gate.py` della base + test nuovi → `17 failed, 157 passed`; secondo giro, `gate.py` di `0513cfd` + test nuovi → `13 failed, 178 passed` (revisore #251: tolto il rstrip → 6 FAIL, i 6 casi nuovi).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container; PR #175 appena aperta.
+`gh` non autenticato nel container; stato letto con lo strumento GitHub collegato.
 
-Per costruzione i commit intermedi (pushati prima del commit di fine-task) sono ROSSI su `handoff-check`: l'handoff della sessione arriva solo col commit di fine-task. Fa fede la run sul commit di fine-task.
+Per costruzione i commit intermedi sono ROSSI su `handoff-check`: fa fede la run sul commit di fine-task.
 
-- `5b6ff04`, `30ef31d`, `4934af2`: pushati insieme; run su `4934af2` attesa rossa su `handoff-check` per costruzione (gli altri non hanno una run propria).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `5b6ff04`, `30ef31d`, `4934af2`: pushati insieme; run su `4934af2` rossa su `handoff-check` per costruzione.
+- `0513cfd` (fine-task del primo giro): `unit-suite` success, `handoff-check` success, `verifica-bot` **failure** (V-1 MEDIA, corretta in questo giro).
+- `46d8cd4`, `2fce28a`: pushati insieme al commit di fine-task di questo giro; nessuna run propria sui due intermedi.
+- Commit di fine-task di questo giro: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
+
+- **R-251-1 (BASSA, dichiarata)**: alias Windows (`::$DATA`, nomi 8.3) restano UNCERTAIN.
+- **Archivio verdetti #173/#174**: in attesa della scelta (a)/(b) dell'operatore.
 
 - **R-249-2 (BASSA, scelta dichiarata)**: DENY netto anche in `dati/` per `package.json`/`Dockerfile`/`.vscode/`.
 - **R-223-2 (divieto per nomi)**: scoperti p.es. `Containerfile`, `compose.yaml`, `.pre-commit-hooks.yaml`.
