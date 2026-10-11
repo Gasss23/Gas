@@ -14,7 +14,8 @@ Invarianti di sicurezza:
   (.gas_history.json) non entra nella finestra e non viene scritta dal giro, e
   un compito non contamina il successivo. I kernel del giro nascono con
   carica_storia=False (R-220-2, V-1 bot #176): la conversazione non viene
-  nemmeno letta (né messa in quarantena se corrotta) né copiata negli snapshot. Eccezione (R-220-1): l'esito di
+  nemmeno letta (né messa in quarantena se corrotta) né copiata negli snapshot.
+  Eccezione (R-220-1): l'esito di
   un'azione parcheggiata e poi firmata su Telegram lo scrive il kernel del bot
   nella conversazione dell'operatore.
 - Il cancello resta quello di sempre: le azioni irreversibili (o incerte dopo
@@ -145,7 +146,8 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
             continue
         nome, prompt, attivo = v.get("nome"), v.get("prompt"), v.get("attivo", True)
         if not isinstance(nome, str) or not _NOME_RE.fullmatch(nome):
-            avvisi.append(f"voce {i}: nome mancante o non valido (solo a-z 0-9 _ -, max 40), saltata")
+            avvisi.append(f"voce {i}: nome mancante o non valido "
+                          "(solo a-z 0-9 _ -, max 40), saltata")
             continue
         if nome in visti:
             avvisi.append(f"voce {i}: nome '{nome}' duplicato, saltata")

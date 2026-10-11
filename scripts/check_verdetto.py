@@ -39,7 +39,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-_REF_RE = re.compile(r"([\w./\-]+\.\w+):(\d+)")
+# V-2 verifica esterna #179: niente cattura subito dopo un "\" o una lettera di unità
+# ("C:\x\gas.py:4" non diventa la citazione "gas.py:4" di un file del repo). R-264:
+# il lookbehind contiene TUTTA la classe del token, così non si riparte a metà
+# ("D:x/gas.py:5", "C:\x\a.gas.py:4" → nessuna cattura).
+_REF_RE = re.compile(r"(?<![\\\w:./\-])([\w./\-]+\.\w+):(\d+)")
 
 # Estensioni sorgente attese nei path citati dal revisore.
 # I TLD (.com, .io, .org ...) non sono in questa lista — filtro per escludere

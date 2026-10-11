@@ -124,6 +124,11 @@ def componi_read_back(approval: Dict[str, Any]) -> str:
     )
 
 
+# R-263-1: riempitivi Hangul (categoria Lo) che si vedono come spazio vuoto.
+_INVISIBILI_EXTRA = frozenset({0x115F, 0x1160, 0x3164, 0xFFA0,
+                                0x034F, 0x2800})  # R-264-2: CGJ, braille vuoto
+
+
 def rendi_visibili(testo: str) -> str:
     """Caratteri invisibili o di controllo (\\r, BOM, larghezza zero, bidi, separatori
     di riga Unicode, C0/C1) resi come <U+XXXX>; \\n e \\t restano (review #262:
@@ -132,7 +137,10 @@ def rendi_visibili(testo: str) -> str:
     for ch in testo:
         if ch in "\n\t":
             out.append(ch)
-        elif unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp", "Co", "Cs", "Cn"):
+        elif (unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp", "Co", "Cs", "Cn")
+              or (unicodedata.category(ch) == "Zs" and ch != " ")  # R-263-1: NBSP & c.
+              or ord(ch) in _INVISIBILI_EXTRA
+              or 0xFE00 <= ord(ch) <= 0xFE0F or 0xE0100 <= ord(ch) <= 0xE01EF):
             out.append(f"<U+{ord(ch):04X}>")
         else:
             out.append(ch)

@@ -510,3 +510,13 @@ def test_lettura_invariata_dallo_schema():
     assert gate_classify("read_file", {"relative_path": "gas.py"}) == GateClass.DENY
     assert gate_classify("read_file", {"relative_path": "modules/gate/gate.py"}) == GateClass.DENY
     assert gate_classify("read_file", {"relative_path": "note.md"}) == GateClass.SAFE
+
+
+def test_r263_1_read_back_rende_visibili_spazi_e_selettori():
+    """R-263-1: NBSP, selettori di variante e riempitivi Hangul non restano invisibili
+    nel messaggio di firma; spazio normale, lettere accentate ed emoji restano."""
+    from modules.telegram.bot import rendi_visibili
+    assert rendi_visibili("a\xa0b️c\U000e0100dㅤe") == \
+        "a<U+00A0>b<U+FE0F>c<U+E0100>d<U+3164>e"
+    assert rendi_visibili("città ok 🙂\tx\n") == "città ok 🙂\tx\n"
+    assert rendi_visibili("a\u034fb\u2800c") == "a<U+034F>b<U+2800>c"  # R-264-2

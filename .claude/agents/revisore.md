@@ -57,8 +57,7 @@ Il verdetto NON è valido se non contiene, oltre all'esito:
    Almeno 2 citazioni devono essere file del diff sotto review (esclusi reports/ e
    questa memoria). Citazioni di CONTESTO (file non toccati, es. il chiamante) sono
    ammesse in aggiunta, col path completo (il gate accetta anche un nome corto univoco,
-   ma usa il path completo): il gate le verifica
-   a HEAD. Una citazione inesistente o ambigua invalida il verdetto (dal 2026-10-03,
+   ma usa il path completo) e il gate le verifica a HEAD. Una citazione inesistente o ambigua invalida il verdetto (dal 2026-10-03,
    R-135-3).
    **Forma delle citazioni (decisione dell'operatore 2026-10-11, V-2 bot #163)**: ogni
    citazione è `<path relativo alla radice del repo>:<riga>`, sempre col percorso
