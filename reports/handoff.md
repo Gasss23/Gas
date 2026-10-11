@@ -1,39 +1,39 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-10 — merge #172 + test del lock senza fcntl e archivio verifiche esterne (PR #173)
+**Sessione:** 2026-10-11 — merge #173 + config degli strumenti di sviluppo non scrivibili da Gas (PR #174)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #173 (https://github.com/Gasss23/Gas/pull/173). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/173"}`): `gh` nel container non è autenticato. Merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
-2. Roadmap «ORDINE OPERATORE»: voce 2 (italiano) e F1 R-crm-diario-rr risultano già fatte nel codice; sezione vincolante, serve il sì dell'operatore per segnarle FATTE. Voce successiva (auto-apprendimento) da progettare insieme.
-3. V-2 bot #163: gate B e riferimenti esterni nei verdetti del revisore (macchina di controllo, decide l'operatore).
-4. V-2 verifica esterna #172: giro fermo su disco senza flock vs partenza senza lock (proposta: lasciare così).
-5. Sul Mac: `cd ~/Gas && git fetch origin && git switch --detach origin/main`, poi `reports/setup_notte.md`.
+1. Merge della PR #174 (https://github.com/Gasss23/Gas/pull/174). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/174"}`): `gh` nel container non è autenticato. Fetta di SICUREZZA (cancello): secondo passaggio nella chat claude.ai con lo stesso URL. Merge autonomo dell'agente solo con verdetto testuale del bot `APPROVATO` senza finding V-x; altrimenti decide l'operatore.
+2. Archivio verifiche esterne (V-1/V-2 bot #173): scelta (a) verdetto pubblicato dall'agente di verifica sulla PR, oppure (b) aggancio a `fine-task.md`.
+3. Roadmap «ORDINE OPERATORE»: voce 2 e F1 già fatte nel codice, serve il sì per segnarle FATTE.
+4. Costo del bot di verifica (`claude-fable-5-1` a ogni PR con etichetta `verifica`).
+5. Aperte da prima: V-2 bot #163, V-2 verifica esterna #172, prova sul Mac.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge di #172**: `FATTA` — su richiesta esplicita dell'operatore, merge commit `183e606` (= BASE di questa sessione).
-- **Fetta 1 — test del lock fallito anche senza fcntl** (V-2 bot #172): `FATTA`.
-- **Fetta 2 — archivio verdetti verifica esterna** (V-1 bot #172): `FATTA` — `reports/verifiche_esterne.md`.
-- **Aggiornamento roadmap**: `SALTATA` — sezione vincolante, decisione dell'operatore (§0.2).
+- **Merge di #173**: `FATTA` — su richiesta esplicita dell'operatore, merge commit `29e966d` (= BASE di questa sessione).
+- **Fetta 1 — config degli strumenti di sviluppo non scrivibili** (riserva BASSA FASE 4.5): `FATTA`.
+- **R-247-1**: `FATTA` nella stessa PR.
+- **R-247-2**: `DEFERITA` — residuo BASSO dichiarato in `stato_progetto.md`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  11 +++++------
- reports/handoff.md                 | 104 +++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------
+ .claude/agents/memoria_revisore.md |   3 +++
+ modules/gate/gate.py               |   9 +++++++++
+ reports/diff_sessione.md           |  10 +++++-----
+ reports/handoff.md                 | 121 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  25 ++++++++++++-------------
- reports/verifiche_esterne.md       |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_notte.py           |   9 +++++----
- 7 files changed, 168 insertions(+), 83 deletions(-)
+ reports/ultimo_report.md           |  26 ++++++++++++++------------
+ tests/test_unit_gate.py            |  24 ++++++++++++++++++++++++
+ 7 files changed, 122 insertions(+), 73 deletions(-)
 ```
 
 Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`) sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -41,74 +41,92 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`)
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-a39a515 test(notte): test del lock fallito eseguibile anche senza fcntl (V-2 bot #172)
-448f67e chore(revisore): memoria review #246 — APPROVATO
+98ce6e9 fix(gate): file di configurazione degli strumenti di sviluppo non scrivibili da Gas
+614cd69 chore(revisore): memoria review #248 — APPROVATO
+34625ba chore(revisore): memoria review #247 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE
 
-### Review #246 (diff staged di a39a515)
+### Review #247 (prima versione del diff di 98ce6e9)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), `reports/stato_progetto.md` (riga 356, la voce 6 della FASE 4.5) e la coda di `.claude/agents/memoria_revisore.md` (fino alla #246). Ho esaminato il diff staged (2 file, +31 righe; sha256 del diff `459b94a0…`). Il diff non contiene slicing della history né simulazione di output dei tool, e non tocca provider né guardrail del ciclo.
+
+**Elementi del diff esaminati**
+
+1. `modules/gate/gate.py:128` — aggiunge a `_DENY_WRITE_ANY_PART_NAMES` i nomi `pytest.ini`, `pyproject.toml`, `setup.cfg` e `tox.ini`, confrontati esattamente con ogni pezzo del percorso dopo NFKC+casefold. Rischio esaminato: varianti di scrittura e falsi positivi. Ho provato a mano: `PYTEST.INI`, `tests/./pytest.ini`, `tests//pytest.ini`, `tests/pyproject.toml` e `dati/Makefile` vanno tutti a DENY; `pyproject.toml.` e `tests/pytest.ini ` (con spazio finale) restano UNCERTAIN, ma su Linux sono file diversi che pytest non carica. — **ok**
+2. `modules/gate/gate.py:122` e `:129` — aggiunge `gemini.md`, `.cursorrules`, `makefile` e `gnumakefile`. Il controllo vale solo in scrittura (`write`, riga 191), quindi la lettura resta come prima. — **ok**
+3. `tests/test_unit_gate.py:416` — test del divieto su più livelli, con un caso a caratteri fullwidth (larghi). `:425` controlla che i nomi simili restino UNCERTAIN. `:429` controlla che `read_file` resti SAFE. Rischio esaminato: test che non verificano davvero il divieto. Il committente dichiara 132 test verdi senza la modifica e 151 con; io ho eseguito solo la suite con la modifica: 151 passed. — **ok**
+4. Contesto: `gas.py:2594` — una scrittura UNCERTAIN viene parcheggiata solo se la finestra di conversazione è "contaminata"; altrimenti passa senza conferma. Quindi ogni nome che resta UNCERTAIN è scrivibile davvero. — serve a valutare la riserva 1.
+
+**Riserve**
+
+- **R-247-1 (MEDIA, da chiudere prima di dichiarare chiusa la riserva della FASE 4.5).** La versione di pytest installata (9.1.1) carica la configurazione da `tests/` anche con i nomi **`.pytest.ini`**, **`pytest.toml`** e **`.pytest.toml`**. L'ho provato in una cartella temporanea: un `addopts = --co` messo in `tests/<nome>` è stato applicato in tutti e tre i casi ("1 test collected", test non eseguito). Il gate oggi risponde UNCERTAIN su `tests/.pytest.ini`, `tests/pytest.toml` e `.pytest.toml`. Quindi Gas può fare la stessa iniezione di opzioni che la modifica vuole impedire, solo con un nome diverso. La correzione costa poco: aggiungere i tre nomi al frozenset e ai casi di test di `:416`, poi ri-review. Senza questa aggiunta la riserva va lasciata aperta e ristretta a questi nomi, non dichiarata chiusa.
+- **R-247-2 (BASSA, da scrivere in stato_progetto).** Restano scoperti:
+  - `.vscode/tasks.json`: i task con `runOn: folderOpen` partono all'apertura della cartella, se l'operatore usa VS Code;
+  - `.cursor/rules/`, `.gemini/` e altri file di istruzioni per agenti dentro cartelle;
+  - `.pre-commit-config.yaml`: i hook in `.git/` sono già vietati, quindi conta solo se pre-commit viene installato;
+  - `package.json` e `.editorconfig`: oggi innocui, perché nel progetto non c'è Node.
+
+  Questa lista per nomi resta un divieto solo sui nomi dei file, come R-223-2: non copre un nuovo strumento che legge un file con un altro nome.
+
+**Cosa NON ho verificato**
+
+- Non ho rieseguito pytest completo (819) né `tests/test_unit_kernel.py` (715/0): mi fido dei numeri dichiarati, perché il diff non tocca `gas.py` né il kernel.
+- Non ho provato la modifica su Windows o macOS, dove i nomi con punto o spazio finale si comportano in altro modo: non è riproducibile qui, e su Linux quei nomi sono file distinti.
+- Non ho verificato se `run_command` (dentro la sandbox bwrap) può scrivere gli stessi file: è un'altra superficie, fuori da questo diff.
+
+Memoria aggiornata (riga #247 più una lezione) e committata da sola con `34625ba`. Il diff staged non è stato toccato.
+
+### Review #248 (delta R-247-1, diff finale di 98ce6e9)
 
 ## VERDETTO: APPROVATO
 
-Ho letto le fonti obbligatorie: CLAUDE.md, la parte di `reports/stato_progetto.md` che riguarda FASE 4.5 e la PR #172, e la coda di `.claude/agents/memoria_revisore.md` (review #242–#245). Il diff staged tocca un solo file, `tests/test_unit_notte.py`, con 5 righe aggiunte e 4 tolte.
+La riserva R-247-1 è chiusa: i tre nomi di configurazione che pytest 9 accetta in più adesso vanno a DENY in scrittura. Ho ri-revisionato il diff staged completo (2 file, +33 righe, sha256 `fb548c62…`); rispetto alla review #247 cambiano solo questi tre nomi e i rispettivi casi di test.
 
-**Cosa ho controllato:**
+**Elementi del diff esaminati**
 
-1. `tests/test_unit_notte.py:773` — Lo `skipif(notte.fcntl is None)` è stato tolto dal test sul lock fallito per un motivo diverso dal lock occupato.
-   - Rischio controllato: che il test si rompa su Windows nel momento in cui viene raccolto o eseguito. Prima falliva perché leggeva `notte.fcntl.LOCK_EX` quando `notte.fcntl` vale `None`.
-   - Ora il test non legge più il vero `fcntl` da nessuna parte. Lo sostituisce con `monkeypatch.setattr(notte, "fcntl", _FcntlRotto)` prima di chiamare `esegui_notte`, quindi sotto il test il controllo `fcntl is not None` è vero anche su Windows.
-   - Esito: ok.
+1. `modules/gate/gate.py:129` — aggiunge `.pytest.ini`, `pytest.toml` e `.pytest.toml` a `_DENY_WRITE_ANY_PART_NAMES`, cioè proprio i nomi che pytest 9.1.1 carica da `tests/` (lo avevo provato nella review #247). Rischio esaminato: varianti di scrittura e lettura. Ho provato a mano: `tests/.pytest.ini`, `tests/pytest.toml`, `.pytest.toml` e `.PYTEST.TOML` danno DENY in `write_file` e SAFE in `read_file`; `dati/pytest.toml.txt` resta UNCERTAIN, quindi niente falsi positivi. — **ok**
+2. `tests/test_unit_gate.py:413` — aggiunge i casi `tests/.pytest.ini`, `tests/pytest.toml` e `.pytest.toml` alla lista di `test_write_config_strumenti_sviluppo_deny` (`:417`). Rischio esaminato: test che passano anche senza la modifica. Ho tolto la riga 129 su una copia in una cartella temporanea: risultato **3 failed**, 151 passed. Il repo vero non è stato toccato (diff staged invariato). — **ok**
+3. Il resto del diff è uguale a quello della review #247 (righe 122-128 e 130 di `gate.py`, test a `:425` e `:429`). Suite del gate: **154 passed** riprodotti.
 
-2. `tests/test_unit_notte.py:783-784` — Le costanti finte ora sono letterali: `LOCK_EX = 2` e `LOCK_NB = 4`.
-   - Rischio controllato: che il loro valore cambi il percorso del codice.
-   - In `modules/notte/notte.py:374` le costanti servono solo come argomento di `flock`, che nel test è finto e solleva sempre `OSError(ENOLCK)`. Il ramo si decide a `:378` confrontando `e.errno` con `EAGAIN`/`EWOULDBLOCK`, dove le costanti non entrano.
-   - Ho anche verificato che `errno.ENOLCK` esiste in Python (37 su Linux) ed è definito anche nella libreria C standard di Windows, quindi il test non dipende da una costante solo Linux.
-   - Esito: ok.
+**Cosa NON ho verificato**
 
-3. `modules/notte/notte.py:371-383` (contesto, file non toccato) — Il blocco del lock.
-   - Rischio controllato: che sotto il finto `fcntl` la chiamata `open(notte_dir / "lock", "w")` abbia effetti diversi su Windows. Apre un file normale nella cartella temporanea del test, quindi nessun problema.
-   - Il caso di errore resta quello coperto dalla review #245: si va al blocco `except` esterno, uscita 1, messaggio «INTERROTTO … OSError.».
-   - Esito: ok.
+- Non ho rieseguito pytest completo né `tests/test_unit_kernel.py`: il delta tocca solo `gate.py` e il suo test.
+- Comportamento su Windows e macOS non verificato: non riproducibile qui.
+- R-247-2 (cartelle e file come `.vscode/`, `.cursor/`, `.gemini/`, `.pre-commit-config.yaml`, `package.json`) resta un residuo BASSO noto. Il committente dice che lo scrive in `stato_progetto.md`, ma non posso controllarlo in questa review perché quella modifica non è nel diff staged.
 
-**Guardrail del progetto:** il diff non tocca il motore. Non ci sono tagli diretti della cronologia né output dei tool simulati: il finto `fcntl` è uno stub di test per una libreria di sistema, non simula tool del modello. I tetti di 10 iterazioni e di 8k di output e `_get_window()` non sono toccati. Il test ora gira su più sistemi, quindi la copertura aumenta e non diminuisce.
+Memoria aggiornata con la riga #248 e committata da sola con `614cd69`.
 
-**Riproduzione:** `PYTHONDONTWRITEBYTECODE=1 python -m pytest -q tests/test_unit_notte.py` dà 49 passed, come dichiarato.
-
-**Cosa NON ho verificato:**
-- Non ho eseguito il test su un Windows reale, perché in questo ambiente non c'è; il ragionamento si basa sulla lettura del codice e sul fatto che `ENOLCK` esiste nella libreria C di Windows.
-- Non ho rifatto la simulazione senza `fcntl` (con `__import__` che fallisce) dichiarata dall'agente: me ne fido, perché la lettura del codice porta allo stesso risultato.
-- Il file `reports/verifiche_esterne.md` non era in staging e resta fuori da questa review, come indicato.
-
-**Memoria:** ho aggiunto la riga `#246 — 2026-10-10 — APPROVATO — … nessuna lezione nuova` in `.claude/agents/memoria_revisore.md` e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit `448f67e`).
-
-(Modifiche dell'agente al testo del verdetto: path assoluto della memoria scritto relativo; elenco «File rilevanti» finale omesso.)
+(Modifiche dell'agente al testo dei verdetti: elenco «File rilevanti» finale omesso in entrambi. R-247-2 è scritta in `reports/stato_progetto.md` in questo commit di fine-task.)
 
 ## §5 DELTA TEST DEL MOTORE
 
-Notte 49 → 49 passed (stesso test, ora eseguibile anche senza `fcntl`); `pytest tests/` 800 → 800 passed; kernel non toccato.
+Gate 132 → 154 passed; `pytest tests/` 800 → 822 passed (+22 casi del gate; 819 prima del delta R-247-1); kernel 715 PASS / 0 FAIL.
 
 ```
-49 passed in 1.24s
-800 passed in 96.22s (0:01:36)
+154 passed in 0.18s
+822 passed in 104.40s (0:01:44)
+=== RIEPILOGO: 715 PASS, 0 FAIL ===
 ```
 
-Simulazione senza `fcntl` (import di `fcntl` che solleva ImportError, `pytest -k lock`): `1 passed, 2 skipped` — il test nuovo gira, i due con lock reale sono saltati.
+Mutation: senza la modifica a `gate.py` i nuovi casi falliscono (gate 132 passed col file di test della base; revisore #248: tolta la riga dei tre nomi → 3 failed).
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container; PR #173 appena aperta.
+`gh` non autenticato nel container; PR #174 appena aperta.
 
 Per costruzione i commit intermedi (pushati prima del commit di fine-task) sono ROSSI su `handoff-check`: l'handoff della sessione arriva solo col commit di fine-task. Fa fede la run sul commit di fine-task.
 
-- `448f67e`, `a39a515`: pushati insieme; run su `a39a515` attesa rossa su `handoff-check` per costruzione (`448f67e` non ha una run propria).
+- `34625ba`, `614cd69`, `98ce6e9`: pushati insieme; run su `98ce6e9` attesa rossa su `handoff-check` per costruzione (gli altri non hanno una run propria).
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **V-2 bot #163 (processo, decisione operatore)**: gate B e riferimenti esterni nei verdetti del revisore.
-- **V-2 verifica esterna #172 (proposta all'operatore)**: giro fermo su disco senza flock.
-- **Da provare sul Mac**: invio reale con token e ID veri; timer che parte con un giro ancora in corso.
-- **Non riproducibili in dev**: disco reale senza flock (ENOLCK), esecuzione su Windows reale.
+- **R-247-2 (BASSA)**: `.vscode/tasks.json`, `.cursor/`, `.gemini/`, `.pre-commit-config.yaml`, `package.json` scrivibili; divieto per nomi.
+- **Non verificato**: `run_command` dentro la sandbox bwrap verso gli stessi file (superficie separata).
+- **V-2 bot #163**, **V-2 verifica esterna #172**, prova sul Mac: decisioni dell'operatore.
