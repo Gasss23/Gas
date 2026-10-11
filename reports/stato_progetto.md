@@ -1,10 +1,15 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-11** (PR #181: Gas legge il codice, review #269–#273) — prima: **2026-10-11** (`.env` caricato da Gas, schema a 3 livelli del cancello, note basse; review #260–#265) — prima: **2026-10-08** (R-220-3 tetti di tempo di `gas notte`, review #226/#227 APPROVATO CON RISERVE) — prima: **2026-10-08** (FASE 4.5 fetta 1 `gas notte`, review #220 APPROVATO CON RISERVE) — precedente: **2026-10-07** (feat/merge-automatico-z1xjx2 — FASE 2.6 fetta 1: riflessione di fine task; review #199 BOCCIATO, #200 BOCCIATO, #201 APPROVATO CON RISERVE, verifica esterna BOCCIATO (V-1), #202 APPROVATO CON RISERVE)
+> Ultimo aggiornamento: **2026-10-11** (PR #182: note basse #181, review #274–#276) — prima: **2026-10-11** (PR #181: Gas legge il codice, review #269–#273) — prima: **2026-10-11** (`.env` caricato da Gas, schema a 3 livelli del cancello, note basse; review #260–#265) — prima: **2026-10-08** (R-220-3 tetti di tempo di `gas notte`, review #226/#227 APPROVATO CON RISERVE) — prima: **2026-10-08** (FASE 4.5 fetta 1 `gas notte`, review #220 APPROVATO CON RISERVE) — precedente: **2026-10-07** (feat/merge-automatico-z1xjx2 — FASE 2.6 fetta 1: riflessione di fine task; review #199 BOCCIATO, #200 BOCCIATO, #201 APPROVATO CON RISERVE, verifica esterna BOCCIATO (V-1), #202 APPROVATO CON RISERVE)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
+
+**🔄 feat/merge-automatico-z1xjx2 → PR #182 (2026-10-11) — note basse #181** (PR #181 MERGIATA su richiesta dell'operatore, `bc604ae`): dopo `--` ogni token di run_command è un operando; `date` solo con `+formato` o `-d`; `.env` non seguito da lettera illeggibile ovunque (`_SEGRETO_RE`). Review #274 → #275 → #276 APPROVATO CON RISERVE. Kernel 760 → 762, pytest 962.
+Riserve aperte:
+- 🟡 **R-274-2** (BASSA, falsi positivi): in grep/diff i token che iniziano con `-` dopo `--` sono rifiutati anche se legittimi.
+- 💡 **Proposta all'operatore**: sostituire i binari di `run_command` con poche funzioni di sola lettura scritte in Gas (cerca, conta, righe X–Y): ogni giro di review sulle opzioni di grep/date/uniq/file ha trovato una variante nuova; una lista di comandi di sistema non si chiude mai del tutto.
 
 **🔄 feat/merge-automatico-z1xjx2 → PR #181 (2026-10-11) — Gas legge il codice, lo modifica solo con firma** (decisione operatore: «Gas può leggere i file ma non toccarli»; codice resta livello 2, NON livello 3 nonostante il consiglio del secondo passaggio claude.ai). Lettura aperta su `gas.py`/`brains/`/`modules/` (`_LETTURA_NEGATA` = livello 3); all'esecuzione ricontrollo del file VERO (symlink, hard link) in `read_file` e `run_command`; `grep`/`diff` su cartelle negati, opzioni di grep/diff ad allowlist, opzioni di `file`/`wc`/`date` che leggono/scrivono file negate anche abbreviate, `uniq` con un solo file. Review #269 → #270/#271/#272 BOCCIATO (tre buchi veri: grep -r senza percorso e file da opzioni; `uniq IN OUT` sovrascriveva il codice senza bwrap — esisteva già su scripts/, CLAUDE.md prima di questa PR, lo conferma il secondo passaggio claude.ai; opzioni abbreviate) → #273 APPROVATO CON RISERVE. Kernel 746 → 760 PASS, pytest 947.
 Riserve aperte:
