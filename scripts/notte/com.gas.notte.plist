@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- FASE 4.5 — giro notturno di Gas sul Mac (launchd). Istruzioni: reports/setup_notte.md
-     Sostituisci TUO_UTENTE col tuo nome utente del Mac. Orario: 03:00. -->
+     Sostituisci TUO_UTENTE col tuo nome utente del Mac. Orario: 03:00.
+     Il .env lo carica gas.py da sé all'avvio (2026-10-11): niente `source` qui.
+     Venv: prima .venv (quello del Mac), poi venv. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
@@ -10,7 +12,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-c</string>
-    <string>cd "$HOME/Gas" &amp;&amp; set -a &amp;&amp; source ./.env &amp;&amp; set +a &amp;&amp; { [ -f venv/bin/activate ] &amp;&amp; source venv/bin/activate; true; } &amp;&amp; python3 gas.py notte</string>
+    <string>cd "$HOME/Gas" &amp;&amp; { for v in .venv venv; do [ -f "$v/bin/activate" ] &amp;&amp; source "$v/bin/activate" &amp;&amp; break; done; true; } &amp;&amp; python3 gas.py notte</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>

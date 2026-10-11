@@ -456,6 +456,62 @@ def _env_flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "on", "yes", "si")
 
 
+_DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# R-260-1: `"valore" # commento` come in zsh; dentro le virgolette il # è testo.
+_DOTENV_VIRGOLETTE = re.compile(r"""(['"])(.*?)\1(?:\s+#.*)?""")
+
+
+def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
+    """Carica il `.env` accanto a gas.py in os.environ all'avvio della CLI (prova reale
+    sul Mac 2026-10-11: launchd non legge il profilo della shell, quindi tetto di spesa,
+    chiavi e Telegram del giro notturno arrivavano solo se esportati a mano).
+    Regole: NON sovrascrive variabili già presenti (shell, plist, systemd vincono);
+    righe `CHIAVE=valore` o `export CHIAVE=valore`, `#` a inizio riga = commento,
+    virgolette '…' o "…" tolte (anche se seguite da ` # commento`), su un valore senza
+    virgolette un ` #` apre un commento.
+    Nessuna espansione di $VAR. FAIL-SAFE §9: file assente → nulla, illeggibile o riga
+    malformata → warning (mai il valore) e si prosegue. `GAS_NO_DOTENV=1` lo spegne
+    (suite pytest: niente chiavi reali dell'operatore nei test).
+    I processi di run_command non le vedono comunque (`_sanitized_subprocess_env`).
+    Ritorna i NOMI delle variabili caricate."""
+    if _env_flag("GAS_NO_DOTENV"):
+        return []
+    p = path if path is not None else Path(__file__).resolve().parent / ".env"
+    try:
+        testo = p.read_text(encoding="utf-8-sig")  # R-260-2: BOM di alcuni editor
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        logging.warning(f".env non leggibile ({type(e).__name__}): variabili non caricate")
+        return []
+    caricate: List[str] = []
+    for n, riga in enumerate(testo.splitlines(), 1):
+        riga = riga.strip()
+        if not riga or riga.startswith("#"):
+            continue
+        if riga.startswith("export "):
+            riga = riga[len("export "):].lstrip()
+        chiave, sep, valore = riga.partition("=")
+        chiave = chiave.strip()
+        if not sep or not _DOTENV_CHIAVE.fullmatch(chiave):
+            logging.warning(f".env riga {n}: formato non valido, ignorata")
+            continue
+        valore = valore.strip()
+        tra_virgolette = _DOTENV_VIRGOLETTE.fullmatch(valore)
+        if tra_virgolette:
+            valore = tra_virgolette.group(2)
+        elif valore[:1] in ("'", '"'):
+            logging.warning(f".env riga {n} ({chiave}): virgolette non chiuse, ignorata")
+            continue
+        else:
+            valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
+        if chiave in os.environ:
+            continue
+        os.environ[chiave] = valore
+        caricate.append(chiave)
+    return caricate
+
+
 # --- FASE 2.6 — Riflessione di fine task (Intelligenza Accumulata, fetta 1) ---
 # Una chiamata LLM SENZA tool, su richiesta (CLI `gas rifletti` / comando REPL
 # `rifletti`), sulla trascrizione del task appena svolto. Due domande fisse:
@@ -3624,6 +3680,7 @@ def notte_cmd(root_dir: Optional[str] = None) -> int:
 
 def main():
     import sys
+    _carica_dotenv()  # PRIMA di ogni comando: anche doctor, notte e telegram la vedono
     if len(sys.argv) > 1 and sys.argv[1] == "version":
         sys.exit(version_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "doctor":

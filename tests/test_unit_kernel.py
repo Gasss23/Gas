@@ -24,6 +24,7 @@ from brains.model_ids import MODEL_GROQ
 # 2) trasporto HTTP di bot.py che FALLISCE di default (i test che vogliono un
 #    invio riuscito installano esplicitamente _TgFinto);
 # 3) cintura: urlopen verso api.telegram.org bloccato e contato (T76).
+os.environ["GAS_NO_DOTENV"] = "1"  # prova reale 2026-10-11: main() carica il .env
 for _k_tg in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_IDS"):
     os.environ.pop(_k_tg, None)
 import urllib.request as _urlreq_erm
