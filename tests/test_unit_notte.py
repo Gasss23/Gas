@@ -770,18 +770,19 @@ def test_giro_occupato_lascia_traccia_nel_log(caplog, dirs):
     assert "giro NON avviato, lock occupato" in caplog.text
 
 
-@pytest.mark.skipif(notte.fcntl is None, reason="lock non disponibile su Windows")
 def test_lock_fallito_per_altro_motivo_non_dice_giro_in_corso(monkeypatch, dirs):
     """V-2 bot #171: un flock che fallisce per un motivo diverso dal lock occupato
-    (es. ENOLCK su un disco di rete) non deve dire «un altro giro è in corso»."""
+    (es. ENOLCK su un disco di rete) non deve dire «un altro giro è in corso».
+    fcntl è tutto finto (costanti letterali), quindi il test gira anche dove
+    fcntl manca (V-2 bot #172)."""
     import errno
     root, fuori = dirs
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
     inviati = _telegram_finto(monkeypatch)
 
     class _FcntlRotto:
-        LOCK_EX = notte.fcntl.LOCK_EX
-        LOCK_NB = notte.fcntl.LOCK_NB
+        LOCK_EX = 2
+        LOCK_NB = 4
 
         @staticmethod
         def flock(fd, op):
