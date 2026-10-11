@@ -26,10 +26,10 @@
  .claude/agents/memoria_revisore.md |   3 +++
  .claude/agents/revisore.md         |   9 ++++++++-
  reports/diff_sessione.md           |  14 ++++----------
- reports/handoff.md                 | 170 ++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 170 ++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
  reports/ultimo_report.md           |  28 ++++++++++------------------
- 6 files changed, 80 insertions(+), 146 deletions(-)
+ 6 files changed, 78 insertions(+), 148 deletions(-)
 ```
 
 Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`) sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -37,49 +37,46 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`)
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+33e707d docs(fine-task): handoff PR #179
 9aad6b3 docs(fine-task): report PR #179 (citazioni del revisore col percorso completo)
 7a98660 chore(revisore): citazioni sempre col percorso completo (decisione 5c dell'operatore)
 044db39 chore(revisore): memoria review #259 — APPROVATO
 b64cefe chore(revisore): memoria review #258 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `9aad6b3` è un commit di fine-task fermato dal gate A (handoff non incluso per un errore di scrittura dell'agente), superato da questo.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `9aad6b3` è un commit di fine-task fermato dal gate A (handoff non incluso per un errore di scrittura dell'agente), superato da questo; `33e707d` è un secondo commit di fine-task fermato dal gate B (sonde nel verdetto #258), superato da questo.
 
 ## §4 VERDETTO DEL REVISORE
 
-### Review #258 (prima versione del diff di 7a98660)
+### Review #258 (prima versione del diff di 7a98660) — riemissione con le sonde scritte a parole
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Ho letto le tre fonti obbligatorie, nell'ordine previsto: CLAUDE.md alla sezione 5, reports/stato_progetto.md (solo le parti che servivano, cercate con grep) e la coda di .claude/agents/memoria_revisore.md. Il diff staged è di un solo file, `.claude/agents/revisore.md`, con 6 righe aggiunte.
+Riemetto il verdetto #258 con lo stesso esito e gli stessi contenuti. Cambia solo il modo in cui sono scritte le due sonde dei percorsi rifiutati: ora sono descritte a parole, senza la forma percorso:numero, come prescrive la regola nuova per i file fuori dal repo. Ho letto le tre fonti obbligatorie, nell'ordine previsto: CLAUDE.md alla sezione 5, reports/stato_progetto.md (solo le parti che servivano, cercate con grep) e la coda di .claude/agents/memoria_revisore.md. Il diff staged esaminato era di un solo file, `.claude/agents/revisore.md`, con 6 righe aggiunte.
 
 **Elementi del diff esaminati**
 
-- `.claude/agents/revisore.md:62` — introduce la regola «ogni citazione è `<path relativo alla radice del repo>:<riga>`, sempre col percorso completo». Rischio esaminato: che la regola prometta qualcosa che il gate non fa. Ho controllato contro `scripts/check_verdetto.py:42`. `_REF_RE` (`([\w./\-]+\.\w+):(\d+)`) cattura solo citazioni con path ed estensione, e `scripts/check_verdetto.py:185` (`_resolve_path`) accetta il path del diff, quello a HEAD o un nome corto univoco. Il gate quindi è più permissivo della regola (accetta anche i nomi corti), mai più severo: un revisore che segue la regola non viene mai respinto. Esito: ok.
-- `.claude/agents/revisore.md:64` — dice che un intervallo vale come la sua prima riga. Ho provato la regex: `.claude/agents/revisore.md:59-71` produce `('.claude/agents/revisore.md', '59')`, e il controllo di esistenza della riga usa 59. Esito: ok.
+- `.claude/agents/revisore.md:62` — introduce la regola «ogni citazione è `<path relativo alla radice del repo>:<riga>`, sempre col percorso completo». Rischio esaminato: che la regola prometta qualcosa che il gate non fa. Ho controllato contro `scripts/check_verdetto.py:42`. `_REF_RE` cattura solo citazioni con path ed estensione, e `scripts/check_verdetto.py:185` (`_resolve_path`) accetta il path del diff, quello a HEAD o un nome corto univoco. Il gate quindi è più permissivo della regola, mai più severo: un revisore che segue la regola non viene mai respinto. Esito: ok.
+- `.claude/agents/revisore.md:64` — dice che un intervallo vale come la sua prima riga. Ho provato la regex: la citazione del file revisore.md sulle righe da 59 a 71 viene letta come path più riga 59, e il controllo di esistenza della riga usa 59. Esito: ok.
 - `.claude/agents/revisore.md:65` — dice che le forme abbreviate e i percorsi assoluti o esterni «il gate B non le conta (o le rifiuta)». Le ho provate una per una:
   - `:56` e `riga 56` non vengono catturati, quindi non contano.
-  - `/home/user/Gas/gas.py:10` e `../x/y.py:3` vengono catturati. Però `_resolve_path` non li trova né nel diff né a HEAD, e il controllo con `endswith("/"+path)` fallisce. Risultato: errore «file non trovato a HEAD», cioè il verdetto viene rifiutato.
+  - Ho provato due sonde: il percorso assoluto di gas.py dentro la cartella di lavoro, con riga 10, e un percorso relativo che sale di una cartella verso x/y.py, con riga 3. La regex le cattura entrambe. Però `_resolve_path` non le trova né nel diff né a HEAD, e il controllo per suffisso fallisce. Risultato: errore «file non trovato a HEAD», cioè il verdetto viene rifiutato.
 
-  Il testo «non le conta (o le rifiuta)» descrive bene i due casi. Il conteggio in `scripts/check_verdetto.py:273` si fa per coppia (path, riga) già risolta, quindi due citazioni dello stesso file su righe diverse contano due volte, come prima. Esito: ok.
-- `.claude/agents/revisore.md:67` — dice che un file fuori dal repo va nominato a parole, senza `:riga`. È coerente con la regex: senza `:\d+` la citazione non viene catturata, quindi non viene né verificata né rifiutata. Esito: ok.
-- **Il gate si indebolisce?** No. Cambia solo il prompt del revisore. `scripts/check_verdetto.py`, `.claude/perimetro_review.txt`, gli hook e la CI non sono toccati, e il minimo di 2 citazioni del diff resta. Per il revisore la regola è più severa, per il gate non cambia niente. La modifica va nella direzione «robustezza > potenza»: elimina i verdetti che l'agente doveva riscrivere (V-2 bot #163) e le citazioni «:56» non contate nella review #257.
+  Il testo «non le conta (o le rifiuta)» descrive bene i due casi. Il conteggio in `scripts/check_verdetto.py:273` si fa per coppia (path, riga) già risolta. Esito: ok.
+- `.claude/agents/revisore.md:67` — dice che un file fuori dal repo va nominato a parole, senza `:riga`. È coerente con la regex: senza i due punti seguiti da un numero la citazione non viene catturata, quindi non viene né verificata né rifiutata. Esito: ok. (Questa riemissione ne è la prova pratica: le mie sonde scritte in quella forma avevano fatto fallire il gate.)
+- **Il gate si indebolisce?** No. Cambia solo il prompt del revisore. `scripts/check_verdetto.py`, il perimetro, gli hook e la CI non sono toccati, e il minimo di 2 citazioni del diff resta. Per il revisore la regola è più severa, per il gate non cambia niente. La modifica chiude V-2 bot #163 (i verdetti che l'agente doveva riscrivere) e l'intoppo della review #257 (le citazioni «:56» non contate).
 
-**Riserve (entrambe COSMETICHE, non bloccanti)**
+**Riserve (entrambe COSMETICHE, non bloccanti; tutte e due chiuse poi nella review #259)**
 
-- **R-258-1** — `.claude/agents/revisore.md:59` dice ancora che le citazioni di contesto vanno «col path completo o un nome corto univoco». Questo contraddice la regola nuova, tre righe più sotto, «sempre col percorso completo ogni volta». Il gate accetta davvero i nomi corti, quindi non c'è un falso blocco, ma il revisore legge due regole diverse. Correzione: togliere «o un nome corto univoco», oppure scrivere «(il gate accetta anche un nome corto univoco, ma usa il path completo)».
-- **R-258-2** — `.claude/agents/revisore.md:64`: l'esempio dell'intervallo è scritto «`:59-71`», cioè senza path, proprio nella forma che la frase dopo vieta. Meglio `<path>:59-71`.
+- **R-258-1** — `.claude/agents/revisore.md:59` diceva ancora che le citazioni di contesto vanno «col path completo o un nome corto univoco». Questo contraddiceva la regola nuova, «sempre col percorso completo ogni volta».
+- **R-258-2** — l'esempio dell'intervallo era scritto senza path, proprio nella forma che la frase dopo vieta. Meglio `<path>:59-71`.
 
 **Cosa NON ho verificato**
 
-- Non ho eseguito `scripts/check_verdetto.py` per intero su un handoff reale con la forma nuova. Il §4 della sessione non esiste ancora e la modifica non tocca lo script. Ho provato la regex e letto la logica di risoluzione e conteggio, non il giro completo.
-- Non ho verificato come si comporta il bot di verifica (`verifica-bot.yml`) con il prompt nuovo. Il bot non usa `revisore.md` come istruzioni, e questo non si riproduce in locale.
+- Non ho eseguito `scripts/check_verdetto.py` per intero su un handoff reale con la forma nuova. Al momento della review il §4 della sessione non esisteva ancora. Ho provato la regex e letto la logica di risoluzione e conteggio, non il giro completo.
+- Non ho verificato come si comporta il bot di verifica con il prompt nuovo: il bot non usa questo file come istruzioni, e questo non si riproduce in locale.
 
-**Memoria**
-
-Ho aggiunto in coda a `.claude/agents/memoria_revisore.md` la riga #258 e una lezione: quando una regola nuova restringe una precedente nello stesso paragrafo, va allineata anche la frase vecchia. L'ho committata con `scripts/commit_memoria_revisore.sh` (commit `b64cefe`, solo quel file; il diff staged sotto review non è stato toccato).
-
-Il commit del diff è consentito. Le riserve R-258-1 e R-258-2 vanno chiuse in questa stessa fetta, ma solo con una nuova review, oppure tracciate in `reports/stato_progetto.md`.
+Come mi hai chiesto, per questa riemissione non ho toccato la memoria. La riga #258 resta quella già committata in `.claude/agents/memoria_revisore.md`.
 
 ### Review #259 (delta R-258-1/2, diff finale di 7a98660)
 
@@ -110,7 +107,7 @@ Ho aggiunto la riga #259 in coda a `.claude/agents/memoria_revisore.md` («nessu
 
 Il commit del diff è consentito.
 
-(Modifiche dell'agente al testo dei verdetti: `&lt;`/`&gt;` riportati a `<`/`>`; path assoluti della memoria scritti relativi; elenco «File» finale omesso.)
+(Modifiche dell'agente al testo dei verdetti: `&lt;`/`&gt;` riportati a `<`/`>`; path assoluti della memoria scritti relativi; elenco «File» finale omesso. Il #258 è stato riemesso dal revisore perché due sonde scritte come `percorso:numero` venivano lette dal gate B come citazioni vere.)
 
 ## §5 DELTA TEST DEL MOTORE
 
