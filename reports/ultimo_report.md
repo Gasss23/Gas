@@ -3,8 +3,8 @@
 ## DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #179 (https://github.com/Gasss23/Gas/pull/179). Tocca le istruzioni del revisore (macchina di controllo): il merge lo decide l'operatore.
-2. Punto 1A precisato dall'operatore («cartelle tutte, i file delicati chiedono la mia conferma finale con pro e contro»): confermare lo schema a 3 livelli proposto in chat — libero / firma su Telegram con diff reale + pro e contro (codice, `scripts/`, config, `CLAUDE.md`, `gas_identity.md`, `requirements`) / mai, nemmeno con firma (`.env`, `.git`, `modules/gate/`, `.claude/`, memoria e cronologia, `.gas_notte/`). Nessun codice prima della conferma.
-3. Prova sul Mac: mancano il catalogo (`~/.gas_notte.yaml`) e `GAS_DAILY_TOKEN_BUDGET` nel `.env`; serve l'esito del secondo `python3 gas.py notte` e se il messaggio Telegram arriva.
+2. ~~Punto 1A~~ APPROVATO dall'operatore in chat («schema 3 livelli ok»): prossima fetta motore. Testo originale della richiesta: punto 1A precisato dall'operatore («cartelle tutte, i file delicati chiedono la mia conferma finale con pro e contro»): confermare lo schema a 3 livelli proposto in chat — libero / firma su Telegram con diff reale + pro e contro (codice, `scripts/`, config, `CLAUDE.md`, `gas_identity.md`, `requirements`) / mai, nemmeno con firma (`.env`, `.git`, `modules/gate/`, `.claude/`, memoria e cronologia, `.gas_notte/`). Nessun codice prima della conferma.
+3. Prova sul Mac: secondo giro OK (1 compito, 1 tool); `GAS_DAILY_TOKEN_BUDGET` nel `.env` NON letto (Gas non carica `.env`); confermare se il messaggio Telegram è arrivato. Dettagli in `stato_progetto.md`.
 
 ## Esito per fetta
 
