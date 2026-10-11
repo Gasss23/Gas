@@ -8,7 +8,7 @@
 
 1. Merge della PR #180 (https://github.com/Gasss23/Gas/pull/180). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"id":"4819380155","url":"https://github.com/Gasss23/Gas/pull/180"}`): `gh` nel container non è autenticato («Failed to log in to github.com using token (GH_TOKEN)»). Tocca la macchina di controllo (gate B, fine-task, revisore.md): il merge lo decide l'operatore.
 2. Fetta di sicurezza (cancello a 3 livelli): secondo passaggio indipendente nella chat claude.ai con l'URL di questo handoff.
-3. Messaggio Telegram del giro notturno: nel messaggio dell'operatore la scelta «[è arrivato / non è arrivato]» è rimasta in bianco → NON confermato.
+3. Messaggio Telegram del giro notturno: NON arrivato (confermato dall'operatore). Causa più probabile: `.env` non caricato → token assente (risolto in questa PR). Dopo il merge, sul Mac: rifare `python3 gas.py notte` e guardare la riga «Riepilogo Telegram …» a schermo.
 4. Sul Mac: `git pull` e (facoltativo) ricopiare il plist (`reports/setup_notte.md` passo 4).
 5. Decidere se il codice che APPLICA il cancello (`gas.py`, `modules/telegram/bot.py`, `modules/memory/`, `brains/`) e i gate di sviluppo restano al livello 2 (una firma basta per modificarli) o passano al livello 3 (mai) — V-2 bot / V-1 verifica esterna #180.
 6. Limite dichiarato di 1A: decidere se Gas può LEGGERE `gas.py`/`brains/`/`modules/` (oggi vietato), altrimenti il livello 2 serve davvero solo per file piccoli/nuovi, script e config.
@@ -21,6 +21,7 @@
 - **Fetta 2 — schema a 3 livelli del cancello (1A)**: FATTA (commit `3e031f2`, review #262 BOCCIATO → #263 APPROVATO CON RISERVE).
 - **Fetta 3 — note basse (V-1/V-2/V-3 #179, F-verdetto-ritoccato, note bot #177, R-263-1)**: FATTA (commit `0480996`, review #264 BOCCIATO → #265 APPROVATO).
 - **Fetta 4 — finding di verifica-bot #180 (failure, MEDIA) e verifica esterna #180 (APPROVATO CON RISERVE, commento https://github.com/Gasss23/Gas/pull/180#issuecomment-6109591609)**: FATTA (commit `4ad0d46`, review #266 APPROVATO). Test dotenv in CI (bot V-1), hard link negati (verifica esterna V-4), caratteri invisibili (V-2), docstring (bot V-3), limite «codice del cancello = livello 2» dichiarato (bot V-2 / verifica esterna V-1). Non fatti: V-3 verifica esterna (processo, già dichiarato in §4b/§7), V-5 (cosmetica: `Esito:gas.py:5` non più catturato).
+- **Fetta 5 — messaggio Telegram non arrivato + V-6 della seconda verifica esterna #180 (commento https://github.com/Gasss23/Gas/pull/180#issuecomment-6109707394)**: FATTA (commit `19b1a53`, review #267 APPROVATO CON RISERVE → #268 APPROVATO). Il giro notturno scrive a schermo/`launchd.log` se il riepilogo Telegram è partito e, se no, perché; un nome di file con a-capo non può più falsare il messaggio di firma.
 - **E2E con Telegram reale**: SALTATA — nessun token/chiave nel container.
 
 ---
@@ -28,34 +29,39 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 ++++++++
- .claude/agents/revisore.md         |   3 +--
+ .claude/agents/memoria_revisore.md |  13 +++++++++
+ .claude/agents/revisore.md         |   3 +-
  .claude/commands/fine-task.md      |   2 ++
- .github/workflows/ci.yml           |  15 ++++++++++++
+ .github/workflows/ci.yml           |  15 ++++++++++
  .gitignore                         |   1 +
- gas.py                             | 250 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/gate/gate.py               |  79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- modules/notte/notte.py             |   6 +++--
- modules/telegram/bot.py            |  65 +++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/design_cancello.md         |  43 ++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  28 +++++++++++++++++-----
- reports/handoff.md                 | 455 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------
- reports/setup_notte.md             |   3 +++
- reports/stato_progetto.md          |  17 ++++++++++----
- reports/ultimo_report.md           |  31 +++++++++++++++----------
- scripts/check_verdetto.py          |   6 ++++-
- scripts/notte/com.gas.notte.plist  |   6 +++--
+ gas.py                             | 256 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ modules/gate/gate.py               |  79 +++++++++++++++++++++++++++++++++++++++++++++++++---
+ modules/notte/notte.py             |  23 +++++++++++++--
+ modules/telegram/bot.py            |  67 ++++++++++++++++++++++++++++++++++++++++++++
+ reports/design_cancello.md         |  43 ++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  29 +++++++++++++++----
+ reports/handoff.md                 | 548 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------
+ reports/setup_notte.md             |   7 +++++
+ reports/stato_progetto.md          |  18 ++++++++----
+ reports/ultimo_report.md           |  32 +++++++++++++--------
+ scripts/check_verdetto.py          |   6 +++-
+ scripts/notte/com.gas.notte.plist  |   6 ++--
  tests/conftest.py                  |   5 ++++
- tests/test_unit_dotenv.py          | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_gate.py            |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- tests/test_unit_handoff_check.py   |  23 ++++++++++++++++++
- tests/test_unit_kernel.py          | 258 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- 22 files changed, 1399 insertions(+), 130 deletions(-)
+ tests/test_unit_dotenv.py          | 124 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_gate.py            |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ tests/test_unit_handoff_check.py   |  23 +++++++++++++++
+ tests/test_unit_kernel.py          | 274 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ tests/test_unit_notte.py           |  41 +++++++++++++++++++++++++--
+ 23 files changed, 1582 insertions(+), 132 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+19b1a53 fix(pr180): esito del riepilogo Telegram a schermo; nomi con a-capo nella firma
+af95f6b chore(revisore): memoria review #268 — APPROVATO
+4dcc40d chore(revisore): memoria review #267 — APPROVATO CON RISERVE
+55a341d docs(fine-task): handoff PR #180 aggiornato (fetta 4: finding bot e verifica esterna, review #266)
 4ad0d46 fix(pr180): test dotenv in CI, hard link negati, limiti del cancello dichiarati
 e74e2fe chore(revisore): memoria review #266 — APPROVATO
 0f97ba7 docs(fine-task): report, stato e handoff PR #180 (.env, cancello a 3 livelli, note basse)
@@ -74,7 +80,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Sette verdetti, incollati integralmente nell'ordine (#264 e #265 nella versione RIEMESSA dal revisore, originali in §4b). Unica trasformazione: nelle notifiche di #263 e #265 i caratteri `<` e `>` erano arrivati come entità HTML (`&lt;`, `&gt;`) e qui sono riportati come caratteri.
+Nove verdetti, incollati integralmente nell'ordine (#264 e #265 nella versione RIEMESSA dal revisore, originali in §4b). Unica trasformazione: nelle notifiche di #263, #265, #266 e #268 i caratteri `<` e `>` erano arrivati come entità HTML (`&lt;`, `&gt;`) e qui sono riportati come caratteri.
 
 ### Review #260 (fetta 1, commit `c6a2998`)
 
@@ -362,6 +368,86 @@ File rilevanti:
 - /home/user/Gas/reports/design_cancello.md
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #267 (fetta 5, esito Telegram a schermo — commit `19b1a53`)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #267 del diff staged sul branch feat/merge-automatico-z1xjx2 (PR #180). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (parti rilevanti) e .claude/agents/memoria_revisore.md.
+
+**Parti del diff esaminate**
+
+1. `modules/notte/notte.py:337` — nel ramo `except` di `_notifica_telegram` stampa «Riepilogo Telegram NON inviato: errore <Tipo>».
+   - Rischio: che a schermo esca il messaggio dell'eccezione, che può contenere testo non fidato.
+   - Esito: **ok**. Viene stampato solo `type(e).__name__`, come già fa il ramo del giro interrotto (`modules/notte/notte.py:445`). Il test lo verifica: la stringa "segreto-xyz" non compare nell'output.
+
+2. `modules/notte/notte.py:345` — stampa il `motivo` restituito da `invia_notifica`.
+   - Rischio: che a schermo finiscano token, ID o il testo del messaggio.
+   - Esito: **ok**. Tutti i `return` di `modules/telegram/bot.py:251` (fino alla riga 274) restituiscono testi fissi: «TELEGRAM_BOT_TOKEN mancante», «…IDS mancante o senza ID validi», «testo oltre il limite», «invio fallito verso tutti i destinatari», «errore di invio». Nessuna stringa contiene valori presi da fuori.
+
+3. `modules/notte/notte.py:457` (contesto) — `_notifica_telegram` è chiamata nel `finally`, dopo `lock_f.close()`.
+   - Rischio: che la stampa avvenga col lock ancora preso, che manchi nei rami del giro occupato o interrotto, o che cambi l'exit code.
+   - Esito: **ok**. La chiamata avviene a lock rilasciato. I rami del giro occupato (riga 394) e del giro interrotto (riga 447) passano entrambi da qui. Il valore di ritorno (0, 1 o 2) è deciso prima e il `print` non lo tocca.
+
+4. `modules/notte/notte.py:345` — riserva **R-267-1 (BASSA)**.
+   - I tre `print` nuovi (righe 337, 345 e 347) stanno fuori da qualsiasi try. Se stdout è chiuso, oppure arriva un errore di pipe rotta (EPIPE) o di disco pieno, l'eccezione esce dal `finally` di `esegui_giro` e prende il posto del `return`: il programma si chiude con un errore invece che con l'exit code.
+   - Questo va contro il contratto «Mai eccezioni» scritto nella docstring di `_notifica_telegram`.
+   - Il rischio esiste già con i `print` alle righe 392 e 445, e sotto launchd lo stdout è un file, quindi la probabilità è bassa. Correzione consigliata: mettere i `print` dentro un `try/except Exception: pass`.
+
+5. `tests/test_unit_notte.py:633` — il nuovo `test_riepilogo_telegram_esito_a_schermo` copre tre casi: inviato, `ok: False` e eccezione con messaggio segreto. In più `test_riepilogo_telegram_senza_configurazione` verifica la scritta «TELEGRAM_BOT_TOKEN mancante».
+   - Rischio: che il test non arrivi davvero al ramo da provare, perché `invia_notifica` viene importata dentro la funzione.
+   - Esito: **ok**. L'import avviene al momento della chiamata, quindi la sostituzione fatta nel test sull'attributo del modulo funziona. Ho rilanciato i test: 56 passed.
+   - Nota minore: nessun test verifica che il token finto "123:finto" non compaia a schermo. Il codice lo garantisce, ma il test non lo prova.
+
+6. `reports/setup_notte.md:46` — la documentazione del controllo rapido con `grep "Riepilogo Telegram"`.
+   - Esito: **ok**. Il testo corrisponde a quello stampato.
+
+**Cose che non ho verificato**
+- Il comportamento reale sotto launchd sul Mac: non ho controllato che lo stdout finisca davvero in `.gas_notte/launchd.log`, né che il messaggio arrivi dopo la correzione di `_carica_dotenv`. Non si può riprodurre in questo ambiente Linux.
+- Il caso EPIPE della R-267-1 l'ho ricavato leggendo il codice, non l'ho riprodotto.
+- I guardrail del motore (cap di 10 iterazioni, `_get_window`) non sono toccati da questo diff. Nel diff non c'è slicing della history né output dei tool simulati.
+
+**Memoria aggiornata**: ho aggiunto la riga #267 e una lezione in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata come `4dcc40d`.
+
+### Review #268 (fetta 5, ri-review: R-267-1 + V-6 seconda verifica esterna — commit `19b1a53`)
+
+## VERDETTO: APPROVATO
+
+Ri-review #268 del diff staged completo (PR #180). La riserva R-267-1 è chiusa e la correzione della V-6 tiene: ho riprodotto il test che la verifica e un mutation test conferma che il blocco serve davvero.
+
+**Parti del diff esaminate**
+
+1. `modules/notte/notte.py:307` — `_stampa_sicura` mette il `print(..., flush=True)` dentro un `try/except Exception`. La usano tutte e tre le stampe nuove di `_notifica_telegram`.
+   - Rischio: un errore nella stampa chiamata dal `finally` di `esegui_giro` prende il posto dell'exit code.
+   - Esito: **ok**. R-267-1 chiusa. Il nuovo `test_stampa_dell_esito_non_cambia_l_exit_code` fa fallire il print con un errore di pipe rotta (BrokenPipeError) e il giro chiude con 0. Che il test fallisca senza la correzione lo dichiara il coordinatore: io non l'ho rifatto.
+
+2. `modules/notte/notte.py:345` — il motivo stampato resta un testo fisso di `modules/telegram/bot.py` e dalle eccezioni esce solo il nome del tipo.
+   - Rischio: token, ID o testo non fidato a schermo.
+   - Esito: **ok**. Ora il test controlla anche che il token finto "123:finto" non compaia a schermo. I test di notte passano: 57 passed.
+
+3. `modules/telegram/bot.py:133` — `rendi_visibili(testo, a_capo=False)`: con questa opzione anche a-capo e tabulazioni diventano `<U+000A>`/`<U+0009>`. Il comportamento normale non cambia, quindi diff e pro/contro mantengono i loro a-capo.
+   - Rischio: rifiutare nomi di file legittimi, oppure cambiare il comportamento negli altri punti dove la funzione è usata.
+   - Esito: **ok**. Ho provato `gas.py`, `città/è.py`, `modules/x.py` e un nome NFD con accento combinante (`e` + U+0301): nessuno viene alterato. Viene alterato solo il nome con la tabulazione, com'è giusto.
+
+4. `modules/telegram/bot.py:172` — nel messaggio di firma, il nome chiesto e il file reale passano da `a_capo=False`.
+   - Rischio: un nome che aggiunge righe finte al messaggio, tipo «DIFF REALE…» o «ID approvazione».
+   - Esito: **ok**. Il test T82n (secondo controllo) verifica che il nome resti su una riga e che «ID approvazione:» compaia una sola volta.
+
+5. `gas.py:1612` — `_diff_unificato` rende visibili gli a-capo nel nome usato nelle intestazioni `a/…` e `b/…`.
+   - Rischio: un percorso risolto pulito solo in apparenza, per esempio un collegamento simbolico (symlink) che punta a un nome con a-capo, quando il controllo al punto 6 guarda solo `rel`.
+   - Esito: **ok**. Il percorso risolto passa da qui e anche da `_file_reale` al punto 4, quindi è coperto due volte. Rendere visibile due volte è innocuo: `<U+000A>` contiene solo caratteri visibili.
+
+6. `gas.py:1659` — `_prepara_firma_codice` nega la firma se `rel` contiene caratteri che andrebbero resi visibili. Il controllo avviene prima della risoluzione del percorso e dentro il `try`, che in caso di errore nega (fail-closed).
+   - Esito: **ok**. Ho fatto un mutation test (`if False:` al posto del controllo): il kernel dà 745 PASS e 1 FAIL, e fallisce proprio T82n, perché la richiesta finisce in coda di approvazione invece di essere negata. Ho poi ripristinato gas.py e verificato che non ha modifiche non staged. Suite completa del kernel: 746 PASS, 0 FAIL.
+
+**Cose che non ho verificato**
+- Come Telegram mostra davvero `<U+000A>` nel client mobile: non si può provare senza il bot reale.
+- La suite pytest completa da 947 test non l'ho rilanciata. Ho rilanciato solo notte (57) e kernel (746/0), cioè i test che toccano il diff.
+- Il comportamento sotto launchd sul Mac resta non verificato, come nella #267.
+
+Nel diff non c'è slicing della history, non c'è output dei tool simulato e il limite di 10 iterazioni non è toccato.
+
+**Memoria del revisore**: ho aggiunto le righe #267 (commit `4dcc40d`) e #268 (commit `af95f6b`) in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+
 ## §4b VERDETTI ORIGINALI #264 E #265 (fuori dal §4, dichiarato)
 
 Testi originali integrali, conservati per trasparenza. Stanno FUORI dal §4 perché contengono esempi di regex in forma `path:riga` (file inesistenti) che il gate B legge come citazioni: dentro il §4 il gate resta rosso anche coi riemessi accanto. NB: la regola nuova di `.claude/commands/fine-task.md` dice «accanto all'originale nel §4»; qui non è applicabile alla lettera → da precisare (vedi §7). Il verdetto #264 originale cita la riga 44 di check_verdetto.py, oggi 46. Unica differenza di forma: la prima riga «## VERDETTO: …» è resa in grassetto per non aprire un blocco verdetto del gate.
@@ -431,6 +517,8 @@ Riga contatore #265 aggiunta a `/home/user/Gas/.claude/agents/memoria_revisore.m
 
 Dopo la fetta 4 (commit `4ad0d46`): `=== RIEPILOGO: 744 PASS, 0 FAIL ===`; pytest `945 passed in 113.21s`.
 
+Dopo la fetta 5 (commit `19b1a53`): `=== RIEPILOGO: 746 PASS, 0 FAIL ===`; pytest `947 passed in 111.05s`.
+
 Nessun FAIL fuori scope.
 
 ## §6 STATO CI
@@ -443,11 +531,17 @@ Nessun FAIL fuori scope.
 Mappatura commit→run:
 - `0480996`: run 38143041291. `faf1d1e`, `5764c4e`, `c6a2998`, `477ff0c`, `1ee779b`, `3e031f2`, `755c5a1`, `31517ed`: nessuna run su questo SHA (pushati insieme a `0480996`).
 - `0f97ba7`: run 38143334144 (CI) + verifica-bot.
-- `e74e2fe`, `4ad0d46` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `e74e2fe`, `4ad0d46`: nessuna run su questo SHA (pushati insieme a `55a341d`).
+- `55a341d` (fine-task): run 38144207393 — `unit-suite` success, `handoff-check` success (dalla review del bot); `verifica-bot` **neutral** (APPROVATO CON RISERVE senza finding ALTA/MEDIA; PR sulla macchina del bot → decide l'operatore).
+- `4dcc40d`, `af95f6b`, `19b1a53` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-260-3** (BASSA, doc): sul VPS un `.env` vecchio accanto a gas.py ora riempie le variabili mancanti in `.env.prod`. Tracciata in `reports/stato_progetto.md`.
+- **V-1 bot su `55a341d`** (BASSA): per i file di livello 2 il modello riceve messaggi diversi («identico», «impossibile preparare», «troppo grande») senza che l'operatore veda nulla: un piccolo oracolo sul contenuto del codice che non può leggere.
+- **V-2 bot su `55a341d`** (BASSA): `rendi_visibili` resta una lista; mancano ad es. U+180B–U+180F (selettori mongoli). Meglio una regola per classe (Default_Ignorable).
+- **V-7/V-8 seconda verifica esterna #180** (COSMETICA/BASSA): `export<TAB>` nel `.env` scartato; test voice_stt/voice_tts non in CI (preesistente).
+- R-267-1 e V-6 seconda verifica esterna: CHIUSE.
 - **V-3 verifica esterna #180** (BASSA, processo): originali #264/#265 in §4b, non validati dal gate; regola fine-task da precisare.
 - **V-5 verifica esterna #180** (COSMETICA): il lookbehind scarta anche citazioni attaccate a `:`.
 - **Limiti dichiarati 1A** (riserve 4-5 della #262; hard link ora negati): lettura del codice vietata (livello 2 utile solo su file piccoli/nuovi, script, config), Windows fuori dal modello di minaccia, hard link preesistenti non coperti. In `reports/design_cancello.md` §5b.
