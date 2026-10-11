@@ -42,6 +42,7 @@ Nota: i conteggi di righe di `reports/handoff.md` sono approssimati per costruzi
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2241589 docs(fine-task): report PR #184 aggiornati (V-1 bot corretto, review #284-#285)
 00d5d08 fix(lettura): finding V-1/V-4/V-5 bot e verifica esterna #184, R-284-1
 3dfd06c docs(fine-task): report PR #184 (strumenti nativi di sola lettura, review #282-#283)
 1615e32 feat(lettura): strumenti nativi di sola lettura (FETTA 1, PR A)
@@ -124,53 +125,54 @@ Review #283: ho rivisto solo le correzioni alle riserve della #282, sul diff sta
 
 ### Review #284 (primo diff di 00d5d08, correzioni V-1/V-4/V-5 di bot e verifica esterna)
 
+(Riemesso dal revisore su richiesta, per il gate B: stesso esito e contenuto; l'esempio della riga finta scritto senza la forma nome:numero, citazioni ricalcolate sul diff finale.)
+
 ## VERDETTO: APPROVATO CON RISERVE
 
 Review #284 sul diff staged della PR #184 (gas.py e tests/test_unit_kernel.py), dopo il BOCCIATO del bot e della verifica esterna. Le correzioni V-1, V-4 e V-5 funzionano. Restano 2 riserve basse e una nota cosmetica. Ho rilanciato la suite del kernel: 797 PASS, 0 FAIL. pytest non l'ho rilanciato.
 
 **Elementi del diff esaminati**
-- `gas.py:1926` (V-1): nella visita delle cartelle, le cartelle vere oltre la profondità massima vengono contate in `stato["profonde"]`. Rischio esaminato: contare anche cartelle protette o symlink. Esito: ok. Il conteggio avviene solo dopo il controllo di lettura e solo per cartelle vere. Una cartella vuota al limite viene dichiarata incompleta lo stesso: è un falso allarme, non un silenzio.
-- `gas.py:2106` (V-1): cerca_testo dichiara «RICERCA INCOMPLETA: N cartelle oltre la profondità massima». Esito: ok, provato. Con `a/b/c/d/x.txt`, la ricerca dalla root dice «1 cartelle oltre la profondità massima (3) non visitate»; cercando da `a/b` il file viene trovato.
-- `gas.py:2001`: elenca_cartella dice «N sottocartelle non aperte». Esito: ok.
-- `gas.py:1976` e `gas.py:2068` (V-4): in elenca_cartella e cerca_testo i nomi passano da `rendi_visibili(a_capo=False)`. Rischio esaminato: un nome che inventa righe finte. Esito: ok, provato. Il file `evil\nfake.txt:1: alfa FALSO` esce come `evil<U+000A>fake…` e la cartella `strano
-x` come `strano<U+2028>x/`.
-- `gas.py:1942` (V-5): il dispatcher nega gli argomenti che non sono un dizionario, come fa il gate. Esito: ok. `elenca_cartella "[1,2]"` e `data_ora "[]"` danno «Operazione negata: argomenti non validi.» e il diario li registra come KO. Il chiamante (`gas.py:3214`) ora passa gli argomenti senza convertirli.
+- `gas.py:1931` (V-1): nella visita delle cartelle, le cartelle vere oltre la profondità massima vengono contate in `stato["profonde"]`. Rischio esaminato: contare anche cartelle protette o symlink. Esito: ok. Il conteggio avviene solo dopo il controllo di lettura e solo per cartelle vere. Una cartella vuota al limite viene dichiarata incompleta lo stesso: è un falso allarme, non un silenzio.
+- `gas.py:2110` (V-1): cerca_testo dichiara «RICERCA INCOMPLETA: N cartelle oltre la profondità massima». Esito: ok, provato. Con il file a/b/c/d/x.txt, la ricerca dalla root dice «1 cartelle oltre la profondità massima (3) non visitate»; cercando dalla cartella a/b il file viene trovato.
+- `gas.py:2004`: elenca_cartella dice «N sottocartelle non aperte». Esito: ok.
+- `gas.py:1979` e `gas.py:2071` (V-4): in elenca_cartella e cerca_testo i nomi passano da `rendi_visibili(a_capo=False)`. Rischio esaminato: un nome che inventa righe finte. Esito: ok, provato. Un file il cui nome contiene un a-capo seguito da «fake.txt, riga 1, alfa FALSO» esce con l'a-capo reso `<U+000A>`; la cartella `strano
+x` esce come `strano<U+2028>x/`.
+- `gas.py:1945` (V-5): il dispatcher nega gli argomenti che non sono un dizionario, come fa il gate. Esito: ok. elenca_cartella con argomenti `[1,2]` e data_ora con `[]` danno «Operazione negata: argomenti non validi.» e il diario li registra come KO. Il chiamante (`gas.py:3217`) ora passa gli argomenti senza convertirli.
 - `tests/test_unit_kernel.py:7831` (T84f V-1) e `tests/test_unit_kernel.py:7914` (T84g V-4): i test coprono le due correzioni. Esito: ok.
 
 **Riserve**
-- **R-284-1 (BASSA)**: le intestazioni non passano da `rendi_visibili`. Succede in leggi_righe («[rel, righe …]»), conta_file («rel: …») ed elenca_cartella («Cartella 'rel'»). Il percorso mostrato è quello risolto, quindi un symlink dal nome normale può portare a un nome con a-capo o U+2028. Provato: leggi_righe su `ok/k.txt` mostra `[strano
-x/k.txt, …]` senza renderlo visibile. È lo stesso difetto V-4, ma nelle intestazioni.
-- **R-284-2 (BASSA)**: il contenuto della riga trovata da cerca_testo non viene reso visibile. Un U+2028 dentro il file imita una riga finta «fake.txt:9: alfa» dopo quella vera. Provato. È contenuto già non fidato, come per read_file (lo strumento è in UNTRUSTED_INPUT_TOOLS), quindi non blocca.
-- **Cosmetica**: con la profondità di default 1, elenca_cartella dice sempre «N sottocartelle non aperte» quando ci sono sottocartelle. È corretto ma rumoroso.
+- **R-284-1 (BASSA)**: le intestazioni non passano da `rendi_visibili`. Succede in leggi_righe («[rel, righe …]»), conta_file (percorso seguito dai conteggi) ed elenca_cartella («Cartella 'rel'»). Il percorso mostrato è quello risolto, quindi un symlink dal nome normale può portare a un nome con a-capo o U+2028. Provato: leggi_righe su ok/k.txt mostra il nome strano
+x/k.txt senza renderlo visibile. È lo stesso difetto V-4, ma nelle intestazioni.
+- **R-284-2 (BASSA)**: il contenuto della riga trovata da cerca_testo non viene reso visibile. Un U+2028 dentro il file imita, dopo quella vera, una riga finta che sembra un risultato di «fake.txt, riga 9». Provato. È contenuto già non fidato, come per read_file (lo strumento è in UNTRUSTED_INPUT_TOOLS), quindi non blocca.
+- **Cosmetica**: con la profondità di default (un livello), elenca_cartella dice sempre «N sottocartelle non aperte» quando ci sono sottocartelle. È corretto ma rumoroso.
 
 **Rischi esplicitamente esclusi**
 - Non ho verificato come il modello interpreta U+2028 nella finestra: dipende dal tokenizer di ciascun provider.
 - V-2, V-3 e la parte "" di V-5 riguardano solo i testi dei report: non li ho rivisti, come indicato.
 
-**Memoria**
-- Ho aggiunto la riga #284 e una lezione nuova in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
-- Come chiesto, il file NON è committato: resta modificato nel working tree.
+**Memoria**: riga #284 e una lezione nuova in .claude/agents/memoria_revisore.md, non committate.
 
 ### Review #285 (diff finale di 00d5d08, correzione R-284-1)
+
+(Riemesso dal revisore su richiesta, per il gate B: stesso esito e contenuto; l'esempio della riga finta scritto senza la forma nome:numero, citazioni ricalcolate sul diff finale.)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
 Review #285: R-284-1 è chiusa. Restano aperte, già registrate, R-284-2 (BASSA) e la nota cosmetica. Ho rilanciato la suite del kernel: 797 PASS, 0 FAIL.
 
 **Elementi del diff esaminati**
-- `gas.py:1850`: `_rel_root` ora restituisce il percorso con a-capo e caratteri di controllo resi visibili. Rischio esaminato: che il percorso trasformato finisca nei controlli di sicurezza. Esito: ok. `_rel_root` serve solo a mostrare i percorsi; i controlli usano `_file_rel_root` (`gas.py:1827`), che non cambia.
-- `gas.py:2037` (leggi_righe), `gas.py:2136` (conta_file), `gas.py:1997` (elenca_cartella) e `gas.py:2071` (cerca_testo, senza più il doppio wrap): rischio esaminato, un nome che inventa righe nelle intestazioni. Esito: ok. L'ho provato con un symlink `ok` verso la cartella `strano
-x`: tutti e 4 i tool mostrano `strano<U+2028>x/…`.
+- `gas.py:1850`: `_rel_root` ora restituisce il percorso con a-capo e caratteri di controllo resi visibili. Rischio esaminato: che il percorso trasformato finisca nei controlli di sicurezza. Esito: ok. `_rel_root` (definita a `gas.py:1847`) serve solo a mostrare i percorsi; i controlli usano `_file_rel_root` (`gas.py:1827`), che non cambia.
+- `gas.py:2037` (leggi_righe), `gas.py:2136` (conta_file), `gas.py:1997` (elenca_cartella) e `gas.py:2071` (cerca_testo, senza più il doppio wrap): rischio esaminato, un nome che inventa righe nelle intestazioni. Esito: ok. L'ho provato con un symlink ok verso la cartella strano
+x: tutti e 4 i tool mostrano `strano<U+2028>x/…`.
 - `tests/test_unit_kernel.py:7924`: T84g ora copre anche leggi_righe e conta_file. Esito: ok.
 
 **Riserve ancora aperte**
-- **R-284-2 (BASSA)**: il contenuto della riga trovata da cerca_testo non viene reso visibile. Nel mio test la riga mostra ancora `riga alfa
-fake.txt:9: alfa`, cioè una finta riga «fake.txt:9:».
-- **Cosmetica**: con la profondità di default 1, elenca_cartella dice sempre «N sottocartelle non aperte».
+- **R-284-2 (BASSA)**: il contenuto della riga trovata da cerca_testo non viene reso visibile. Nel mio test la riga mostra ancora, dopo «riga alfa», un U+2028 seguito da una finta riga che sembra un risultato di «fake.txt, riga 9».
+- **Cosmetica**: con la profondità di default (un livello), elenca_cartella dice sempre «N sottocartelle non aperte».
 
 **Rischio escluso**: pytest (971) non l'ho rilanciato; ho rilanciato solo la suite del kernel.
 
-**Memoria**: ho aggiunto la riga #285 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, senza lezioni nuove. Come chiesto, il file NON è committato.
+**Memoria**: riga #285 in .claude/agents/memoria_revisore.md, senza lezioni nuove, non committata.
 
 ## §5 DELTA TEST DEL MOTORE
 
