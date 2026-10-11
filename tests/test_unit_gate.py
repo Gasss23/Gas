@@ -561,3 +561,27 @@ def test_v2_181_file_che_finiscono_in_env_illeggibili(path):
                                   "modules/x.environment.py", "dati/a.envelope.md"])
 def test_v2_181_nomi_simili_restano_leggibili(path):
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
+
+
+@pytest.mark.parametrize("path", ["id_rsa", "dati/id_ed25519", "dati/id_ecdsa.pub", "id_rsa.", "id_rsa_vecchia",
+                                  ".ssh/config", "dati/.ssh/authorized_keys", "chiavi/server.pem",
+                                  "dati/X.KEY", "a.p12", "b.pfx", "c.ppk", "d.jks", "e.keystore",
+                                  "f.kdbx", "x.pem~", "x.key.bak", "server.pem.old", "y.pfx1", "secrets.yaml", "dati/secret.json", "dati/secrets",
+                                  "config/credentials.json", ".aws/credentials", ".netrc",
+                                  ".pgpass", ".pypirc", ".htpasswd", ".gnupg/pubring.kbx"])
+def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
+    """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
+    from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
+    assert gate_classify("read_file", {"relative_path": path}) == GateClass.DENY
+    assert not lettura_consentita(path)
+    assert livello_scrittura(path) == LIVELLO_MAI
+
+
+@pytest.mark.parametrize("path", ["secretary.md", "dati/keys.md", "note/keyboard.txt",
+                                  "dati/secret_sauce.md", "credentials_guide.md", "dati/key.txt",
+                                  "sshconfig.md", "dati/pemberton.txt", "dati/rsa_id.md",
+                                  "dati/x.keyboard", "dati/a.keys.md", "dati/b.pemmican"])
+def test_nomi_simili_a_chiavi_restano_leggibili(path):
+    from modules.gate.gate import lettura_consentita
+    assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
+    assert lettura_consentita(path)
