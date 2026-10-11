@@ -7,8 +7,10 @@ import os
 import re
 import json
 import shlex
+import stat
 import logging
 import subprocess
+import time as _time
 import uuid
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
@@ -68,8 +70,8 @@ def _sanitize_memory_text(text: str) -> str:
 
 _GAS_SYSTEM_PROMPT_BASE = (
     "REGOLE TASSATIVE:\n"
-    "- Hai 7 tool nativi: read_file, write_file, run_command, calcola, ricorda, "
-    "salva_contatto, imposta_stato_contatto. "
+    "- Hai 12 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
+    "data_ora, write_file, run_command, calcola, ricorda, salva_contatto, imposta_stato_contatto. "
     "Invocali davvero e aspetta il risultato reale: non inventare, descrivere o simulare mai l'output.\n"
     "- Se un tool fallisce o viene negato dal kernel, DICHIARA esplicitamente che non puoi eseguire "
     "quell'operazione. Non simulare né inventare mai un output alternativo, qualunque sia il contesto.\n"
@@ -77,7 +79,9 @@ _GAS_SYSTEM_PROMPT_BASE = (
     "- LINGUA: Rispondi SEMPRE in italiano, dal primo messaggio, anche se l'utente scrive in un'altra lingua. Sii conciso e diretto.\n"
     "- Per CALCOLI ARITMETICI usa SEMPRE calcola() (es. calcola('7*8'), calcola('math.sqrt(144)')). "
     "Non calcolare mai a mente né stimare: invoca il tool e usa il risultato restituito.\n"
-    "- Per CONTEGGI E MISURE SU FILE usa run_command (es. wc -l file, grep -c pattern file). "
+    "- Per ELENCARE cartelle, LEGGERE file a pezzi, CERCARE testo e CONTARE righe/parole/caratteri "
+    "usa elenca_cartella, leggi_righe, cerca_testo e conta_file (funzioni interne di Gas, "
+    "sola lettura); per data e ora usa data_ora. Preferiscili sempre a run_command. "
     "run_command è confinato: esegue SOLO comandi di sola lettura da una allowlist "
     "(ls, cat, head, tail, grep, wc, cut, diff...), SENZA shell. "
     "Pipe (|), redirezioni (>), concatenazioni (;, &&), command substitution "
@@ -538,7 +542,8 @@ _TIPO_TOOL_RISERVATO = "tool_nome_riservato"
 # file arbitrari), read_file, ricorda, tool sconosciuti o futuri — rende il recap
 # 'recap_non_fidato', quindi NON reiniettato. Più severo di UNTRUSTED_INPUT_TOOLS.
 _TOOL_OUTPUT_FIDATO: frozenset = frozenset({"calcola", "salva_contatto",
-                                            "imposta_stato_contatto"})
+                                            "imposta_stato_contatto",
+                                            "data_ora"})  # solo l'orologio del kernel
 # Intestazione del riepilogo della compressione (FASE 2.5): il riepilogo piega anche
 # output di tool dentro un messaggio role 'user', quindi per la riflessione è NON
 # fidato per costruzione (V-1 verifica esterna PR #149).
@@ -811,10 +816,24 @@ class GasKernel:
             "GAS_KNOWLEDGE_MAX_RESULTS", GasKernel.KNOWLEDGE_MAX_RESULTS, min_val=1)
         self.KNOWLEDGE_MAX_CHARS = _env_int(
             "GAS_KNOWLEDGE_MAX_CHARS", GasKernel.KNOWLEDGE_MAX_CHARS, min_val=100)
+        # Tetti degli strumenti nativi di lettura (FETTA 1 PR A), ri-tarabili da env.
+        self.LETTURA_MAX_PROFONDITA = _env_int(
+            "GAS_LETTURA_MAX_PROFONDITA", GasKernel.LETTURA_MAX_PROFONDITA, min_val=1)
+        self.LETTURA_MAX_FILE = _env_int("GAS_LETTURA_MAX_FILE", GasKernel.LETTURA_MAX_FILE, min_val=1)
+        self.LETTURA_MAX_BYTES = _env_int("GAS_LETTURA_MAX_BYTES", GasKernel.LETTURA_MAX_BYTES, min_val=1)
+        self.LETTURA_MAX_SECONDI = _env_float(
+            "GAS_LETTURA_MAX_SECONDI", GasKernel.LETTURA_MAX_SECONDI, min_val=0.1, max_val=60.0)
+        self.LETTURA_MAX_RISULTATI = _env_int(
+            "GAS_LETTURA_MAX_RISULTATI", GasKernel.LETTURA_MAX_RISULTATI, min_val=1)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive un file (percorso relativo alla root di Gas, contenuto INTERO). File normali: scrittura diretta. File DELICATI (codice: gas.py, brains/, modules/, qualsiasi .py o script di shell, scripts/, config degli strumenti, CLAUDE.md, gas_identity.md, requirements): la modifica NON viene applicata subito ma va alla firma dell'operatore su Telegram con il diff reale, e servono gli argomenti 'pro' e 'contro'. Alcuni file non si scrivono MAI, nemmeno con firma (.env, .git, .claude, modules/gate, memoria e cronologia).", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "pro": {"type": "string", "description": "Solo per i file delicati: perché conviene la modifica."}, "contro": {"type": "string", "description": "Solo per i file delicati: rischi e possibili effetti collaterali."}}, "required": ["relative_path", "content"]}}},
-            {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
+            {"type": "function", "function": {"name": "read_file", "description": "Legge un file di testo intero. Per i file grandi usa leggi_righe.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
+            {"type": "function", "function": {"name": "elenca_cartella", "description": "Elenca il contenuto di una cartella del progetto: per ogni voce tipo (file/cartella/link), dimensione in byte, data di modifica e nome. Sola lettura, funzione interna di Gas (niente comandi di sistema). I file protetti non compaiono.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string", "description": "cartella relativa alla root di Gas (default '.')"}, "profondita": {"type": "integer", "description": "livelli di sottocartelle da mostrare (default 1, massimo 3)"}}, "required": []}}},
+            {"type": "function", "function": {"name": "leggi_righe", "description": "Legge le righe da 'da' ad 'a' (comprese, numerate da 1) di un file di testo. Usalo per leggere a pezzi i file troppo grandi per read_file. Sola lettura.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "da": {"type": "integer", "description": "prima riga (da 1)"}, "a": {"type": "integer", "description": "ultima riga (compresa)"}}, "required": ["relative_path", "da", "a"]}}},
+            {"type": "function", "function": {"name": "cerca_testo", "description": "Cerca un testo LETTERALE (non espressioni regolari) in un file o in tutti i file di testo di una cartella; restituisce percorso, numero di riga e riga. Sola lettura.", "parameters": {"type": "object", "properties": {"testo": {"type": "string", "description": "testo esatto da cercare"}, "relative_path": {"type": "string", "description": "file o cartella relativi alla root di Gas (default '.')"}, "ignora_maiuscole": {"type": "boolean", "description": "true = non distingue maiuscole e minuscole (default false)"}}, "required": ["testo"]}}},
+            {"type": "function", "function": {"name": "conta_file", "description": "Conta righe, parole e caratteri di un file di testo. Sola lettura.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
+            {"type": "function", "function": {"name": "data_ora", "description": "Restituisce data, ora e fuso orario attuali.", "parameters": {"type": "object", "properties": {}, "required": []}}},
             {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate, le schede dei lead/contatti e la knowledge base di nozioni apprese. Usalo per ricordare cosa è già successo con un lead, cosa hai già fatto in passato, o per cercare conoscenze deliberatamente acquisite. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare nel diario e nella knowledge base; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
             {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
@@ -1105,7 +1124,9 @@ class GasKernel:
     # FASE 2.6: recap e apprendimenti NON entrano in "Ultime azioni": il recap ha il
     # suo blocco dedicato (<recap_dati>), le lezioni proposte NON sono approvate.
     DIARIO_NOISE_TIPI = frozenset({"read_file", "run_command", "ricorda", "turno_fine",
-                                   "recap", "recap_non_fidato", "apprendimento"})
+                                   "recap", "recap_non_fidato", "apprendimento",
+                                   "elenca_cartella", "leggi_righe", "cerca_testo",
+                                   "conta_file", "data_ora"})
 
     # --- Riflessione di fine task (FASE 2.6, fetta 1) ---
     # Override via env (risolti in __init__): GAS_RECAP_CHARS / GAS_RECAP_PIN_CHARS
@@ -1214,8 +1235,8 @@ class GasKernel:
             out[:self.TOOL_OUTPUT_CAP]
             + f"\n\n[OUTPUT TRONCATO: erano {len(out)} caratteri totali, mostrati "
             f"i primi {self.TOOL_OUTPUT_CAP}. Se serve il resto, leggi il file "
-            "a pezzi (es. head/tail/sed -n) o usa run_command con grep/wc per "
-            "estrarre solo ciò che serve.]"
+            "a pezzi con leggi_righe (da/a) oppure estrai solo ciò che serve con "
+            "cerca_testo o conta_file.]"
         )
 
     # Prefissi di file di sistema che il modello non può mai leggere o scrivere
@@ -1254,7 +1275,7 @@ class GasKernel:
                     return True
         return False
 
-    def _safe_path(self, cwd: Path, relative_path: str) -> Optional[Path]:
+    def _safe_path(self, cwd: Path, relative_path: str, avvisa: bool = True) -> Optional[Path]:
         # R-nw-1: (a) resolve strict=False, (b) confinamento prima della denylist,
         # (c) casefold su ogni componente del path risolto, (d) fail-closed.
         try:
@@ -1262,16 +1283,18 @@ class GasKernel:
             root_resolved = self.root.resolve(strict=False)
             # (b) Confinamento: il path risolto deve stare dentro la root.
             if not path.is_relative_to(root_resolved):
-                logging.warning(
-                    f"Path traversal bloccato: {relative_path!r} risolve fuori root ({path})")
+                if avvisa:
+                    logging.warning(f"Path traversal bloccato: {relative_path!r} "
+                                    f"risolve fuori root ({path})")
                 return None
             # (c) Denylist SOLO DOPO il confinamento, sui componenti RELATIVI alla root
             # (R-c2-1: non sui componenti assoluti — la root stessa potrebbe contenere
             # stringhe come "gas_history" nel suo percorso di sistema).
             for part in path.relative_to(root_resolved).parts:
                 if self._deny_part(part, self._SAFE_PATH_DENY_PREFIXES):
-                    logging.warning(
-                        f"Path negato per denylist (casefold): {relative_path!r} → parte {part!r}")
+                    if avvisa:
+                        logging.warning(f"Path negato per denylist (casefold): "
+                                        f"{relative_path!r} → parte {part!r}")
                     return None
             return path
         except Exception as _e:
@@ -1649,8 +1672,15 @@ class GasKernel:
             return str(args)[:120]
         if name == "run_command":
             return f"command={str(args.get('command', ''))[:160]!r}"
-        if name in ("write_file", "read_file"):
-            return f"path={str(args.get('relative_path', ''))[:160]!r}"
+        if name in ("write_file", "read_file", "elenca_cartella", "conta_file"):
+            return f"path={str(args.get('relative_path', '.'))[:160]!r}"
+        if name == "leggi_righe":
+            return (f"path={str(args.get('relative_path', ''))[:160]!r} "
+                    f"da={str(args.get('da', ''))[:12]!r} a={str(args.get('a', ''))[:12]!r}")
+        if name == "cerca_testo":
+            # F-diario-eco: il testo cercato può venire da input non fidato → solo lunghezza.
+            return (f"path={str(args.get('relative_path', '.'))[:160]!r} "
+                    f"testo={len(str(args.get('testo', '')))} caratteri")
         if name == "salva_contatto":
             return f"contatto chiave={str(args.get('chiave', ''))[:80]!r}"
         if name == "imposta_stato_contatto":
@@ -1691,6 +1721,11 @@ class GasKernel:
             m = re.search(r'erano (\d+) caratteri totali', out)
             n_chars = int(m.group(1)) if m else len(out)
             return f"[OK] {n_chars} caratteri letti"
+        if name in self._TOOL_LETTURA_NATIVI:
+            # Solo conteggi preparati dal tool, mai testo dell'output (F-diario-eco).
+            if negativo:
+                return "[KO]"
+            return f"[OK] {getattr(self, '_lettura_meta', None) or 'eseguito'}"
         if name == "run_command":
             if negativo:
                 return "[KO]"
@@ -1747,13 +1782,359 @@ class GasKernel:
     _FIRMA_CODICE_RISERVATE = frozenset({_FIRMA_CODICE_BASE, _FIRMA_CODICE_FILE})
     _FIRMA_PRO_CONTRO_MAX = 600  # caratteri ciascuno: niente pareti di testo (review #262)
 
-    def _file_rel_root(self, cwd: Path, relative_path: str) -> Optional[Tuple[Path, str]]:
+    def _file_rel_root(self, cwd: Path, relative_path: str,
+                       avvisa: bool = True) -> Optional[Tuple[Path, str]]:
         """Percorso risolto (symlink compresi) e la sua forma relativa alla root, su
         cui si ricalcola il livello: il nome scritto dal modello non basta."""
-        path = self._safe_path(cwd, relative_path)
+        path = self._safe_path(cwd, relative_path, avvisa)
         if path is None:
             return None
         return path, path.relative_to(self.root.resolve(strict=False)).as_posix()
+
+    # --- Strumenti nativi di sola lettura (FETTA 1 PR A, 2026-10-11) ---
+    # Gas elenca, legge a pezzi, cerca e conta con funzioni proprie, in-process: niente
+    # subprocess né shell. Ogni percorso passa da _risolvi_lettura, lo STESSO controllo
+    # di read_file (un solo punto). Tetti per le cartelle: profondità, numero di voci,
+    # byte letti, tempo (env GAS_LETTURA_MAX_*). Ogni errore → diniego, mai eccezioni.
+    _TOOL_LETTURA_NATIVI: frozenset = frozenset({
+        "elenca_cartella", "leggi_righe", "cerca_testo", "conta_file", "data_ora"})
+    LETTURA_MAX_PROFONDITA = 3        # livelli di sottocartelle visitati al massimo
+    LETTURA_MAX_FILE = 500            # voci visitate al massimo per chiamata
+    LETTURA_MAX_BYTES = 5_000_000     # byte letti al massimo per chiamata
+    LETTURA_MAX_SECONDI = 5.0         # tempo massimo per chiamata
+    LETTURA_MAX_RISULTATI = 200       # corrispondenze massime di cerca_testo
+    _CERCA_MAX_TESTO = 500            # lunghezza massima del testo cercato
+    _RIGA_MAX_CHARS = 300             # tetto di ogni riga mostrata da cerca_testo
+    _GIORNI = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
+
+    class _NonTesto(Exception):
+        """File binario (byte NUL) o non UTF-8."""
+
+    class _TettoByte(Exception):
+        """Superato il tetto di byte letti."""
+
+    class _NonRegolare(Exception):
+        """Non è un file normale (FIFO, dispositivo...): R-282-2."""
+
+    def _risolvi_lettura(self, cwd: Path, relative_path: Any,
+                         avvisa: bool = True) -> Tuple[Optional[Path], str]:
+        """UNICO controllo dei percorsi in lettura (read_file e strumenti nativi).
+        (path, "") se si può leggere, altrimenti (None, messaggio di diniego). Il gate
+        guarda il NOME; qui si ricontrolla il file VERO: confinamento nella root e
+        denylist di sistema (_safe_path), livello 3 e nomi da segreto sul percorso
+        RISOLTO (symlink), hard link (R-269-2). avvisa=False: niente WARNING per ogni
+        voce protetta incontrata in una visita di cartella (R-282-4)."""
+        risolto = (self._file_rel_root(cwd, relative_path, avvisa)
+                   if isinstance(relative_path, str) else None)
+        if risolto is None:
+            return None, (f"Operazione negata: il percorso '{relative_path}' "
+                          "esce dalla root di Gas. Usa solo percorsi relativi "
+                          "interni al progetto.")
+        path, rel_root = risolto
+        # Lettura del codice aperta (operatore 2026-10-11): un symlink con nome
+        # innocuo non legge .env, .git, .claude o la memoria.
+        if not lettura_consentita(rel_root):
+            if avvisa:
+                logging.warning("lettura negata sul percorso risolto: %r", rel_root)
+            return None, "Operazione negata: questo file non si può leggere."
+        # R-269-2: un hard link preesistente porterebbe un file protetto
+        # sotto un nome leggibile (il percorso risolto non lo rivela).
+        if path.is_file() and path.stat().st_nlink > 1:
+            return None, ("Operazione negata: il file ha altri collegamenti (hard link), "
+                          "non si sa quale file verrebbe letto.")
+        return path, ""
+
+    def _rel_root(self, path: Path) -> str:
+        """Percorso relativo alla root DA MOSTRARE: caratteri di controllo e a-capo resi
+        visibili, così un nome non forgia righe nell'output (V-4 #184, R-284-1)."""
+        return _tg_bot.rendi_visibili(
+            path.relative_to(self.root.resolve(strict=False)).as_posix(), a_capo=False)
+
+    def _righe_testo(self, path: Path, budget: List[int]) -> Generator[str, None, None]:
+        """Righe decodificate (con il loro a-capo) di un file di testo UTF-8, lette in
+        binario a pezzi limitati: `budget[0]` sono i byte ancora leggibili e viene
+        scalato. Solleva _NonTesto (byte NUL o UTF-8 non valido), _TettoByte o
+        _NonRegolare. R-282-2: apertura NON bloccante e controllo sul descrittore
+        aperto, così una FIFO messa al posto del file dopo i controlli non blocca."""
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise GasKernel._NonRegolare()
+            f = os.fdopen(fd, "rb")
+        except BaseException:
+            os.close(fd)
+            raise
+        with f:
+            while True:
+                pezzo = f.readline(budget[0] + 1)
+                if not pezzo:
+                    return
+                if len(pezzo) > budget[0]:
+                    raise GasKernel._TettoByte()
+                budget[0] -= len(pezzo)
+                if b"\x00" in pezzo:
+                    raise GasKernel._NonTesto()
+                try:
+                    yield pezzo.decode("utf-8")
+                except UnicodeDecodeError:
+                    raise GasKernel._NonTesto() from None
+
+    def _visita_cartella(self, base: Path, profondita: int, stato: Dict[str, Any]
+                         ) -> Generator[Tuple[Path, os.DirEntry, int], None, None]:
+        """Visita limitata di una cartella: produce (percorso leggibile, voce, livello).
+        Ogni voce passa da _risolvi_lettura; quelle negate si saltano (contate in
+        stato['omessi']) senza aprirle. Si scende solo nelle cartelle VERE (non nei
+        symlink) e fino a `profondita`. Tetti: stato['tetto'] dice quale è scattato."""
+        scadenza = stato["inizio"] + self.LETTURA_MAX_SECONDI
+        pila: List[Tuple[Path, int]] = [(base, 1)]
+        while pila:
+            cartella, livello = pila.pop()
+            # R-282-3: si leggono al massimo le voci ancora permesse dal tetto, con
+            # controllo del tempo, poi si ordinano (output stabile).
+            voci: List[os.DirEntry] = []
+            resto = self.LETTURA_MAX_FILE - stato["visitati"] + 1
+            try:
+                with os.scandir(cartella) as it:
+                    for v in it:
+                        voci.append(v)
+                        if len(voci) >= resto or _time.monotonic() > scadenza:
+                            break
+            except OSError:
+                stato["omessi"] += 1
+                continue
+            voci.sort(key=lambda v: v.name)
+            for voce in voci:
+                if stato["visitati"] >= self.LETTURA_MAX_FILE:
+                    stato["tetto"] = f"numero di voci ({self.LETTURA_MAX_FILE})"
+                    return
+                if _time.monotonic() > scadenza:
+                    stato["tetto"] = f"tempo ({self.LETTURA_MAX_SECONDI:g} s)"
+                    return
+                stato["visitati"] += 1
+                try:
+                    rel = Path(voce.path).relative_to(self.root.resolve(strict=False)).as_posix()
+                    path, _ = self._risolvi_lettura(self.root, rel, avvisa=False)
+                except Exception:
+                    path = None
+                if path is None:
+                    stato["omessi"] += 1
+                    continue
+                yield path, voce, livello
+                try:
+                    vera_cartella = voce.is_dir(follow_symlinks=False)
+                except OSError:
+                    vera_cartella = False
+                if vera_cartella and livello < profondita:
+                    pila.append((path, livello + 1))
+                elif vera_cartella:
+                    # V-1 bot #184: cartella oltre la profondità, contata e dichiarata.
+                    stato["profonde"] = stato.get("profonde", 0) + 1
+
+    @staticmethod
+    def _intero(v: Any) -> Optional[int]:
+        if isinstance(v, bool):
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _esegui_lettura_nativa(self, name: str, args: Dict[str, Any], cwd: Path) -> str:
+        """Dispatcher dei 5 strumenti nativi. FAIL-SAFE §9: ogni errore → diniego."""
+        try:
+            if not isinstance(args, dict):  # V-5 verifica esterna #184: come il gate
+                return "Operazione negata: argomenti non validi."
+            if name == "data_ora":
+                ora = datetime.now().astimezone()
+                self._lettura_meta = "data e ora lette"
+                return (f"{self._GIORNI[ora.weekday()]} {ora:%d/%m/%Y %H:%M:%S} "
+                        f"{ora.tzname() or ''} (UTC{ora:%z}); in UTC "
+                        f"{ora.astimezone(timezone.utc):%Y-%m-%d %H:%M:%S}")
+            rel_arg = args.get("relative_path", "." if name in ("elenca_cartella", "cerca_testo") else None)
+            path, diniego = self._risolvi_lettura(cwd, rel_arg)
+            if path is None:
+                return diniego
+            if name == "elenca_cartella":
+                return self._elenca_cartella(path, args)
+            if name == "leggi_righe":
+                return self._leggi_righe(path, args)
+            if name == "cerca_testo":
+                return self._cerca_testo(path, args)
+            return self._conta_file(path)
+        except Exception as e:
+            logging.warning("%s fallito: %s", name, type(e).__name__)
+            return f"Operazione negata: {name} non riuscito ({type(e).__name__})."
+
+    def _elenca_cartella(self, path: Path, args: Dict[str, Any]) -> str:
+        if not path.is_dir():
+            return ("Operazione negata: non è una cartella (per un file usa leggi_righe "
+                    "o conta_file).")
+        prof = self._intero(args.get("profondita", 1)) or 1
+        prof = max(1, min(prof, self.LETTURA_MAX_PROFONDITA))
+        stato: Dict[str, Any] = {"inizio": _time.monotonic(), "visitati": 0, "omessi": 0,
+                                 "tetto": None}
+        voci: List[Tuple[str, str]] = []
+        for vero, voce, _liv in self._visita_cartella(path, prof, stato):
+            # V-4 verifica esterna #184: un nome con a-capo/tab non forgia righe.
+            nome = _tg_bot.rendi_visibili(Path(os.path.relpath(voce.path, path)).as_posix(),
+                                          a_capo=False)
+            if voce.is_symlink():
+                tipo = "link"
+            elif voce.is_dir(follow_symlinks=False):
+                tipo, nome = "cartella", nome + "/"
+            elif voce.is_file(follow_symlinks=False):
+                tipo = "file"
+            else:
+                tipo = "speciale"  # FIFO, dispositivo, socket
+            try:
+                st = vero.stat()
+                misura = str(st.st_size)
+                quando = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+            except OSError:  # es. link rotto
+                misura, quando = "?", "?"
+            voci.append((nome, f"{tipo}\t{misura}\t{quando}\t{nome}"))
+        righe = [r for _n, r in sorted(voci)]
+        rel = self._rel_root(path)
+        testa = f"Cartella '{rel}': {len(righe)} voci (tipo, byte, modificato, nome)"
+        if stato["omessi"]:
+            testa += f"; {stato['omessi']} voci protette o illeggibili omesse"
+        if stato["tetto"]:
+            testa += f"; ELENCO INCOMPLETO: raggiunto il tetto di {stato['tetto']}"
+        if stato.get("profonde"):
+            testa += (f"; {stato['profonde']} sottocartelle non aperte (profondità {prof}: "
+                      "elencale a parte)")
+        self._lettura_meta = f"{len(righe)} voci elencate"
+        if not righe:
+            return testa + "\nCartella vuota (o solo voci protette)."
+        return testa + "\n" + "\n".join(righe)
+
+    def _leggi_righe(self, path: Path, args: Dict[str, Any]) -> str:
+        if not path.is_file():
+            return "Operazione negata: non è un file (per una cartella usa elenca_cartella)."
+        da, a = self._intero(args.get("da")), self._intero(args.get("a"))
+        if da is None or a is None or da < 1 or a < da:
+            return ("Operazione negata: indica 'da' e 'a' come numeri interi con "
+                    "1 <= da <= a.")
+        budget = [self.LETTURA_MAX_BYTES]
+        scelte: List[str] = []
+        n = 0
+        try:
+            for riga in self._righe_testo(path, budget):
+                n += 1
+                if n >= da:
+                    scelte.append(f"{n}| {riga.rstrip(chr(10)).rstrip(chr(13))}")
+                if n >= a:
+                    break
+        except GasKernel._NonTesto:
+            return "Operazione negata: il file non è testo UTF-8 (binario o altra codifica)."
+        except GasKernel._NonRegolare:
+            return "Operazione negata: non è un file normale."
+        except GasKernel._TettoByte:
+            if not scelte:
+                return (f"Operazione negata: superato il tetto di lettura "
+                        f"({self.LETTURA_MAX_BYTES} byte) prima della riga {da}.")
+            scelte.append(f"[LETTURA INTERROTTA: tetto di {self.LETTURA_MAX_BYTES} byte]")
+        rel = self._rel_root(path)
+        self._lettura_meta = f"{len(scelte)} righe lette"
+        if not scelte:
+            return f"Il file '{rel}' ha solo {n} righe: nessuna riga da {da} a {a}."
+        fine = "" if n >= a else f" (il file finisce alla riga {n})"
+        return f"[{rel}, righe {da}-{min(a, n)}{fine}]\n" + "\n".join(scelte)
+
+    def _cerca_testo(self, path: Path, args: Dict[str, Any]) -> str:
+        testo = args.get("testo")
+        if not isinstance(testo, str) or not testo or len(testo) > self._CERCA_MAX_TESTO:
+            return (f"Operazione negata: 'testo' deve essere una stringa non vuota "
+                    f"(massimo {self._CERCA_MAX_TESTO} caratteri).")
+        if "\n" in testo:
+            return "Operazione negata: il testo cercato deve stare su una riga."
+        ignora = args.get("ignora_maiuscole") is True
+        ago = testo.casefold() if ignora else testo
+        stato: Dict[str, Any] = {"inizio": _time.monotonic(), "visitati": 0, "omessi": 0,
+                                 "tetto": None}
+        if path.is_dir():
+            file = (v for v, voce, _l in self._visita_cartella(path, self.LETTURA_MAX_PROFONDITA, stato)
+                    if not voce.is_symlink() and v.is_file())
+        elif path.is_file():
+            file = iter([path])
+        elif path.exists():
+            return "Operazione negata: non è un file normale né una cartella."
+        else:
+            return "Operazione negata: il percorso non esiste."
+        budget = [self.LETTURA_MAX_BYTES]
+        trovati: List[str] = []
+        letti = saltati = grandi = 0
+        scadenza = stato["inizio"] + self.LETTURA_MAX_SECONDI
+        for f in file:
+            if stato["tetto"]:
+                break
+            rel = self._rel_root(f)
+            try:
+                # R-282-1: un file più grande del budget residuo si salta (contato) e
+                # la ricerca prosegue: un log grande non deve fermare tutto.
+                if f.stat().st_size > budget[0]:
+                    grandi += 1
+                    continue
+            except OSError:
+                saltati += 1
+                continue
+            letti += 1
+            try:
+                for n, riga in enumerate(self._righe_testo(f, budget), 1):
+                    r = riga.rstrip("\r\n")
+                    if ago in (r.casefold() if ignora else r):
+                        if len(trovati) >= self.LETTURA_MAX_RISULTATI:
+                            stato["tetto"] = f"risultati ({self.LETTURA_MAX_RISULTATI})"
+                            break
+                        trovati.append(f"{rel}:{n}: {r[:self._RIGA_MAX_CHARS]}")
+                    if _time.monotonic() > scadenza:
+                        stato["tetto"] = f"tempo ({self.LETTURA_MAX_SECONDI:g} s)"
+                        break
+            except (GasKernel._NonTesto, GasKernel._NonRegolare):
+                saltati += 1
+            except GasKernel._TettoByte:
+                stato["tetto"] = f"byte letti ({self.LETTURA_MAX_BYTES})"
+            except OSError:
+                saltati += 1
+        testa = f"{len(trovati)} righe trovate in {letti} file"
+        if saltati:
+            testa += f"; {saltati} file non di testo saltati"
+        if grandi:
+            testa += (f"; {grandi} file oltre il tetto di byte saltati "
+                      "(usa leggi_righe su quei file)")
+        if stato["omessi"]:
+            testa += f"; {stato['omessi']} voci protette o illeggibili saltate"
+        if stato["tetto"]:
+            testa += f"; RICERCA INCOMPLETA: raggiunto il tetto di {stato['tetto']}"
+        if stato.get("profonde"):
+            testa += (f"; RICERCA INCOMPLETA: {stato['profonde']} cartelle oltre la profondità "
+                      f"massima ({self.LETTURA_MAX_PROFONDITA}) non visitate: cerca dentro di loro")
+        self._lettura_meta = f"{len(trovati)} righe trovate in {letti} file"
+        return testa + ("\n" + "\n".join(trovati) if trovati else "")
+
+    def _conta_file(self, path: Path) -> str:
+        if not path.is_file():
+            return "Operazione negata: non è un file (per una cartella usa elenca_cartella)."
+        if path.stat().st_size > self.LETTURA_MAX_BYTES:
+            return (f"Operazione negata: file oltre il tetto di lettura "
+                    f"({self.LETTURA_MAX_BYTES} byte, GAS_LETTURA_MAX_BYTES).")
+        budget = [self.LETTURA_MAX_BYTES]
+        righe = parole = caratteri = 0
+        try:
+            for riga in self._righe_testo(path, budget):
+                righe += 1
+                parole += len(riga.split())
+                caratteri += len(riga)
+        except GasKernel._NonTesto:
+            return "Operazione negata: il file non è testo UTF-8 (binario o altra codifica)."
+        except GasKernel._NonRegolare:
+            return "Operazione negata: non è un file normale."
+        except GasKernel._TettoByte:
+            return (f"Operazione negata: file oltre il tetto di lettura "
+                    f"({self.LETTURA_MAX_BYTES} byte, GAS_LETTURA_MAX_BYTES).")
+        self._lettura_meta = "conteggio di 1 file"
+        return (f"{self._rel_root(path)}: {righe} righe, {parole} parole, "
+                f"{caratteri} caratteri ({self.LETTURA_MAX_BYTES - budget[0]} byte)")
 
     @staticmethod
     def _base_file(path: Path) -> Tuple[str, str]:
@@ -2827,24 +3208,13 @@ class GasKernel:
                 path.write_text(args["content"], encoding="utf-8")
                 out = f"Successo: File {args['relative_path']} aggiornato."
             elif name == "read_file":
-                risolto = self._file_rel_root(cwd, args["relative_path"])
-                if risolto is None:
-                    return (f"Operazione negata: il percorso '{args['relative_path']}' "
-                            "esce dalla root di Gas. Usa solo percorsi relativi "
-                            "interni al progetto.")
-                path, rel_root = risolto
-                # Lettura del codice aperta (operatore 2026-10-11): il gate guarda il
-                # NOME; qui si ricontrolla il file VERO, così un symlink con nome
-                # innocuo non legge .env, .git, .claude o la memoria.
-                if not lettura_consentita(rel_root):
-                    logging.warning("read_file negato sul percorso risolto: %r", rel_root)
-                    return "Operazione negata: questo file non si può leggere."
-                # R-269-2: un hard link preesistente porterebbe un file protetto
-                # sotto un nome leggibile (il percorso risolto non lo rivela).
-                if path.is_file() and path.stat().st_nlink > 1:
-                    return ("Operazione negata: il file ha altri collegamenti (hard link), "
-                            "non si sa quale file verrebbe letto.")
+                path, diniego = self._risolvi_lettura(cwd, args["relative_path"])
+                if path is None:
+                    return diniego
                 out = path.read_text(encoding="utf-8")
+            elif name in self._TOOL_LETTURA_NATIVI:
+                self._lettura_meta = None
+                out = self._esegui_lettura_nativa(name, args, cwd)
             elif name == "ricorda":
                 # Lettura della memoria di lungo periodo. SOLA LETTURA, in-process
                 # (codice fidato): non tocca il filesystem né la rete, non passa
