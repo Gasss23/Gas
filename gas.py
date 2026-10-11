@@ -652,11 +652,13 @@ def _cascata_provider(compito: str) -> List[Tuple[str, str, Optional[str], str]]
 
 
 class GasKernel:
-    def __init__(self, root_dir: Optional[str] = None):
+    def __init__(self, root_dir: Optional[str] = None, carica_storia: bool = True):
         self.root: Path = Path(root_dir or os.getcwd()).resolve()
         self.db_path: Path = self.root / ".gas_history.json"
         self.system_prompt: str = _build_system_prompt(self.root)
-        self.history: List[Dict[str, Any]] = self._load_history()
+        # carica_storia=False (giro notturno, R-220-2): la conversazione dell'operatore
+        # non viene né letta né, se corrotta, rinominata in quarantena.
+        self.history: List[Dict[str, Any]] = self._load_history() if carica_storia else []
         # Modalità del sandbox run_command: 'guarded' (default, vetting +
         # esecuzione senza shell) oppure 'dry_run' (anteprima fedele: fa il
         # vetting ma non esegue nulla — collaudo e kill-switch). Un valore non
@@ -3613,7 +3615,8 @@ def notte_cmd(root_dir: Optional[str] = None) -> int:
     """CLI `gas notte` (FASE 4.5 fetta 1): un giro autonomo dei compiti del catalogo
     (~/.gas_notte.yaml o env GAS_NOTTE_CATALOGO). Lo lancia il timer di sistema."""
     from modules.notte import esegui_notte
-    return esegui_notte(root_dir, kernel_factory=lambda r: GasKernel(root_dir=r))
+    # R-220-2: il compito non legge né mette in quarantena la conversazione dell'operatore.
+    return esegui_notte(root_dir, kernel_factory=lambda r: GasKernel(root_dir=r, carica_storia=False))
 
 
 def main():
