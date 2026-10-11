@@ -48,6 +48,7 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`)
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ba77d93 docs(fine-task): report PR #178 secondo giro (pubblicazione solo per l'agente di sessione)
 5ab30b3 fix(controllo): la pubblicazione del verdetto vale solo per l'agente di sessione, non per il bot
 475a84f chore(revisore): memoria review #257 — APPROVATO
 f61d789 docs(fine-task): report PR #178 (decisioni dell'operatore 2a, 3, 4C)
@@ -56,7 +57,7 @@ f61d789 docs(fine-task): report PR #178 (decisioni dell'operatore 2a, 3, 4C)
 f67a5ea chore(revisore): memoria review #255 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `f61d789` è il commit di fine-task del primo giro.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `f61d789` è il commit di fine-task del primo giro; `ba77d93` è un commit di fine-task fermato dal gate B (non pushato da solo) e superato da questo.
 
 ## §4 VERDETTO DEL REVISORE
 
@@ -135,18 +136,20 @@ Ho riletto tutto il diff staged (8 file, 42 righe aggiunte e 119 tolte) e rilanc
 
 **Memoria:** ho aggiunto la riga #256 in `.claude/agents/memoria_revisore.md` e l'ho committata come `1308eaa`, solo quel file. Il diff staged è rimasto intatto.
 
-### Review #257 (delta V-1 bot #178, diff di 5ab30b3)
+### Review #257 (delta V-1 bot #178, diff di 5ab30b3) — riemissione con riferimenti completi
 
 ## VERDETTO: APPROVATO
+
+Questa è una riemissione del verdetto della review #257: stesso esito e stessi contenuti. Ogni riferimento a un file ora ha il percorso completo e una sola riga, senza intervalli. La memoria non va aggiornata: la riga #257 è già nel commit `475a84f`.
 
 Ho letto le tre fonti obbligatorie: CLAUDE.md (in contesto), `reports/stato_progetto.md` (cercando le parti che servivano) e la coda di `.claude/agents/memoria_revisore.md` (ultima voce: #256).
 
 **Cosa ho controllato nel diff** (5 righe aggiunte a un solo file):
 
 1. `.claude/verifica_esterna.md:54` — limita la sezione «Pubblicazione del verdetto» all'agente lanciato dalla sessione di sviluppo con il prompt `Applica .claude/verifica_esterna.md a: <URL_HANDOFF> <URL_PR>`. Rischio esaminato: che il bot possa scambiarsi per quell'agente. Il prompt che il bot riceve davvero (`.github/workflows/verifica-bot.yml:123`) è «Applica il protocollo .claude/verifica_esterna.md … alla PR #N, commit …»: non ha la forma «a: <URL_HANDOFF> <URL_PR>» e si apre con «Sei il bot di verifica esterna». Il prompt di sessione in `.claude/commands/fine-task.md:279` coincide invece carattere per carattere con quello citato. La distinzione è quindi univoca, e il testo nomina anche il file del workflow. — ok
-2. `.claude/verifica_esterna.md:56` — dice che il bot salta la sezione perché il workflow pubblica già il suo verdetto come review. Rischio esaminato: che sia una giustificazione di comodo. È coerente con i fatti: gli strumenti del bot (`verifica-bot.yml`, voce `STRUMENTI`) sono Read/Grep/Glob più `gh pr view`, `gh pr diff`, `gh pr checks`, `gh run view` e `gh run list`, quindi non può commentare. Senza questa esclusione, dopo il merge ogni giro del bot avrebbe tentato una scrittura impossibile e anteposto «COMMENTO NON PUBBLICATO» al verdetto. È esattamente la V-1 (il primo finding del bot sulla PR #178), che così è chiusa. — ok
-3. `.claude/verifica_esterna.md:59-71` (righe non toccate, stesso file) — il ripiego «COMMENTO NON PUBBLICATO» e la copia dichiarata restano invariati per l'agente di sessione. Rischio esaminato: perdere il ripiego introdotto con R-255-2. Non si perde. — ok
-4. Contesto: `scripts/bot_esito.py:93` e `:256-282` — il gate del bot legge `verdetto`, `finding` e `testo` dalla risposta strutturata, più la riga di titolo `_RIGA_TITOLO`. Il testo del protocollo non finisce mai nel verdetto, quindi le righe aggiunte non toccano né lo schema né la regex. Con l'esclusione, poi, il bot non produce più la riga «COMMENTO NON PUBBLICATO» davanti al verdetto. — ok
+2. `.claude/verifica_esterna.md:56` — dice che il bot salta la sezione perché il workflow pubblica già il suo verdetto come review. Rischio esaminato: che sia una giustificazione di comodo. È coerente con i fatti: gli strumenti del bot (`.github/workflows/verifica-bot.yml:118`, voce `STRUMENTI`) sono Read/Grep/Glob più `gh pr view`, `gh pr diff`, `gh pr checks`, `gh run view` e `gh run list`, quindi non può commentare. Senza questa esclusione, dopo il merge ogni giro del bot avrebbe tentato una scrittura impossibile e anteposto «COMMENTO NON PUBBLICATO» al verdetto. È esattamente la V-1 (il primo finding del bot sulla PR #178), che così è chiusa. — ok
+3. `.claude/verifica_esterna.md:68` (riga non toccata, stesso file) — il ripiego «COMMENTO NON PUBBLICATO» e la copia dichiarata dall'agente principale restano invariati per l'agente di sessione. Rischio esaminato: perdere il ripiego introdotto con R-255-2. Non si perde. — ok
+4. Contesto: `scripts/bot_esito.py:93` (regex `_RIGA_TITOLO`) e `scripts/bot_esito.py:256` (lettura del campo `testo`) — il gate del bot lavora sulla risposta strutturata (`verdetto`, `finding`, `testo`) e sulla riga di titolo. Il testo del protocollo non finisce mai nel verdetto, quindi le righe aggiunte non toccano né lo schema né la regex. — ok
 5. Contesto: su main (`63e9fec`) la sezione «Pubblicazione» non esiste ancora (cercata con grep, nessun risultato). Il bot legge il protocollo da main, quindi il suo giro sulla PR #178 non ne è toccato; l'esclusione vale dal merge in poi, cioè proprio quando serve. — ok
 
 Il file è nel perimetro di review (`.claude/perimetro_review.txt:16`), quindi questa review era dovuta. I guardrail del motore (`_get_window`, il tetto di 10 iterazioni, la gestione degli errori dei provider) non vengono toccati.
@@ -155,9 +158,7 @@ Il file è nel perimetro di review (`.claude/perimetro_review.txt:16`), quindi q
 - Il comportamento reale di un giro del bot dopo il merge: richiede GitHub Actions con la GitHub App e non si riproduce in locale. La garanzia viene dalla lettura del testo e dalla lista degli strumenti, non da un'esecuzione.
 - Non ho eseguito la suite di test: il diff tocca solo un protocollo in prosa che nessun test né script analizza.
 
-**Memoria**: ho aggiunto la riga #257 in `.claude/agents/memoria_revisore.md`, senza lezioni nuove, e l'ho committata da sola nel commit `475a84f`. Il diff in stage (`.claude/verifica_esterna.md`) è rimasto intatto.
-
-(Modifiche dell'agente al testo dei verdetti #255/#256/#257: path assoluti della memoria scritti relativi; elenco «File rilevanti» finale omesso.)
+(Modifiche dell'agente al testo dei verdetti #255/#256/#257: path assoluti della memoria scritti relativi; elenco «File rilevanti» finale omesso; `&lt;`/`&gt;` della riemissione #257 riportati a `<`/`>`. Il #257 è stato riemesso dal revisore con riferimenti completi perché il gate B non contava le forme abbreviate «:56».)
 
 ## §5 DELTA TEST DEL MOTORE
 
