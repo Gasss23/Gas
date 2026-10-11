@@ -240,6 +240,8 @@ bash scripts/fine_task_finale.sh
 
 Lo script esegue nell'ordine: gate A (check_handoff), gate B (check_verdetto), gate IP (nessun IP in reports/), push del branch (MAI main), guardia HEAD==@{u}, stampa `URL_HANDOFF`. Se qualsiasi gate è rosso → exit 1 + messaggio chiaro, nessun push.
 
+**Gate B rosso su un verdetto (F-verdetto-ritoccato)**: MAI ritoccare il testo del verdetto per farlo passare (niente frasi aggiunte, citazioni corrette a mano o righe tolte). Richiama il revisore chiedendogli di RIEMETTERE il verdetto con le citazioni nella forma del gate (stesso esito, path completo) e incolla il verdetto riemesso, dichiarandolo come tale nel §4 accanto all'originale.
+
 ### CI post-push (step manuale)
 
 ```bash

@@ -20,6 +20,9 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
 1. Aggiorna il codice: `cd ~/Gas && git checkout main && git pull`
 2. Catalogo: `cp ~/Gas/scripts/notte/catalogo_esempio.yaml ~/.gas_notte.yaml`
    e modifica i compiti a piacere (`nano ~/.gas_notte.yaml`).
+2a. Il file `.env`: Gas lo legge da solo all'avvio (quello nella cartella `~/Gas`, dal 2026-10-11),
+   anche quando parte dal timer notturno, che NON legge il profilo della shell. Una variabile già
+   esportata nella shell ha la precedenza sul file.
 2b. Tetto di spesa: nel `.env` metti `GAS_DAILY_TOKEN_BUDGET=1.0` (dollari in 24 ore, scegli tu
    il valore). Se manca, il giro notturno usa comunque 1.0 e lo segnala nel riepilogo.
 2c. Tetti di tempo (opzionali, già attivi di default): `GAS_NOTTE_MAX_SEC_COMPITO=900`
@@ -40,6 +43,10 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
    `gas_debug.log`); se il riepilogo è troppo lungo per Telegram ti arrivano i soli conteggi; se il
    timer parte mentre un giro precedente è ancora in corso ti arriva «NON avviato»: se succede più
    notti di fila, un giro è rimasto appeso (controlla `gas_debug.log`).
+   Se il messaggio NON arriva: a fine giro Gas scrive a schermo (e quindi in
+   `.gas_notte/launchd.log`) «Riepilogo Telegram inviato.» oppure «Riepilogo Telegram NON
+   inviato: <motivo>» (es. `TELEGRAM_BOT_TOKEN mancante`). Controllo rapido:
+   `grep "Riepilogo Telegram" ~/Gas/.gas_notte/launchd.log ~/Gas/gas_debug.log | tail -3`.
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```

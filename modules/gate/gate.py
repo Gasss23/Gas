@@ -15,7 +15,10 @@ Key invariants:
   NFKC (not NFC) required: FULLWIDTH characters (U+FF0E ．, U+FF0F ／) are
   not reduced to ASCII equivalents by NFC but are by NFKC.
 - Path denylist: any path whose normalized form (or any component) starts
-  with a denied prefix → DENY for both read_file and write_file.
+  with a denied prefix → DENY for read_file.
+- write_file: schema a 3 livelli (livello_scrittura, decisione operatore 1A del
+  2026-10-11): 3 = mai → DENY; 2 = codice → IRREVERSIBLE (firma con diff reale e
+  pro e contro); 1 = libero → UNCERTAIN.
   Same check for each token of run_command args (conservative).
 - run_command sandbox rule (§8e): UNCERTAIN only when
   GAS_SANDBOX_MODE == "os_strict"; IRREVERSIBLE otherwise.
@@ -182,10 +185,12 @@ def _in_denylist(normalized: str) -> bool:
 
 
 def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | None":
-    """Validate the 'relative_path' key in args for read_file / write_file.
+    """Validate the 'relative_path' key in args for read_file.
 
     Returns DENY if missing, wrong type, absolute, traversal, or in denylist.
     Returns None if the path is clean (caller continues to allowlist lookup).
+    write=True (vecchio divieto unico di scrittura) non è più usato da
+    gate_classify: write_file passa da livello_scrittura (schema a 3 livelli).
     """
     raw = args.get("relative_path")
     if raw is None or not isinstance(raw, str):
@@ -207,6 +212,64 @@ def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | N
                      for p in PurePosixPath(norm).parts):
         return GateClass.DENY
     return None
+
+
+# --- Schema a 3 livelli per write_file (decisione operatore 1A, 2026-10-11) ---
+# Livello 3 — MAI, nemmeno con firma: segreti, git/CI, il cancello stesso, la
+# macchina di controllo dell'agente di sviluppo, memoria/cronologia/stato del giro,
+# ambienti Python. Confronto per prefisso su OGNI pezzo del percorso (come
+# _in_denylist), più il percorso del cancello.
+_LIVELLO3_PREFISSI: tuple[str, ...] = (
+    ".env", ".git", ".claude",
+    ".gas_memory", ".gas_history", ".gas_knowledge", ".gas_vectors", ".gas_tokens",
+    ".gas_notte", "gate_config", "venv", ".venv",
+)
+# Il cancello: "modules/gate" come prefisso (copre anche modules/gate.py e simili).
+_LIVELLO3_CANCELLO: tuple[str, str] = ("modules", "gate")
+
+# Livello 2 — FIRMA su Telegram con diff reale + pro e contro: il codice e ciò che
+# viene eseguito o caricato fuori dalla sandbox. È ESATTAMENTE il vecchio insieme
+# negato in scrittura meno il livello 3: nessun file diventa più libero di "firma".
+_LIVELLO2_PREFISSI: tuple[str, ...] = ("gas.py", "brains", "modules")
+
+LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI = 1, 2, 3
+
+
+def livello_scrittura(relative_path: Any) -> int:
+    """Livello di write_file per un percorso relativo alla root di Gas.
+
+    1 = libero (snapshot preventivo, cancello solo se la finestra è contaminata);
+    2 = firma umana su Telegram con diff reale generato dal kernel + pro e contro;
+    3 = mai. Percorso non stringa, assoluto, con traversal o non normalizzabile → 3.
+    Mai eccezioni (fail-closed su 3)."""
+    try:
+        if not isinstance(relative_path, str) or not relative_path.strip():
+            return LIVELLO_MAI
+        norm = _normalize_path(relative_path)
+        parts = PurePosixPath(norm).parts
+        if not parts or norm in (".", ""):
+            return LIVELLO_MAI
+        # Punti/spazi finali tolti da ogni pezzo (V-1 bot #174: su Windows
+        # "gate." e "gate" sono la stessa cartella).
+        puliti = tuple(p.rstrip(". ") for p in parts)
+        for part in parts + puliti:
+            if part.startswith(_LIVELLO3_PREFISSI):
+                return LIVELLO_MAI
+        if len(puliti) >= 2 and puliti[0] == _LIVELLO3_CANCELLO[0] and \
+                puliti[1].startswith(_LIVELLO3_CANCELLO[1]):
+            return LIVELLO_MAI
+        for part in parts + puliti:
+            if part.startswith(_LIVELLO2_PREFISSI):
+                return LIVELLO_FIRMA
+        if norm.rstrip("/. ").endswith(_DENY_WRITE_SUFFIXES):
+            return LIVELLO_FIRMA
+        if parts[0].startswith(_DENY_WRITE_TOP_PREFIXES):
+            return LIVELLO_FIRMA
+        if any(p in _DENY_WRITE_ANY_PART_NAMES for p in puliti):
+            return LIVELLO_FIRMA
+        return LIVELLO_LIBERO
+    except Exception:
+        return LIVELLO_MAI
 
 
 def _parse_args(args: Any) -> "dict[str, Any] | None":
@@ -253,8 +316,16 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
             return GateClass.DENY
 
         # Rule 3 — path-sensitive tools.
-        if tool_name in ("read_file", "write_file"):
-            result = _check_path_arg(parsed, write=(tool_name == "write_file"))
+        if tool_name == "write_file":
+            # Schema a 3 livelli (1A): mai → DENY, codice → firma (IRREVERSIBLE:
+            # sempre al cancello), il resto → UNCERTAIN come prima.
+            livello = livello_scrittura(parsed.get("relative_path"))
+            if livello == LIVELLO_MAI:
+                return GateClass.DENY
+            if livello == LIVELLO_FIRMA:
+                return GateClass.IRREVERSIBLE
+        elif tool_name == "read_file":
+            result = _check_path_arg(parsed)
             if result is not None:
                 return result
             # Path is clean → fall through to allowlist lookup.

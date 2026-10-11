@@ -390,6 +390,29 @@ class TestCheckVerdetto:
         result = _run_check_verdetto(tmp_path / "work", base)
         assert result.returncode == 0, f"err={result.stderr!r}"
 
+    def test_v2_179_percorso_windows_non_conta_come_citazione(self, tmp_path):
+        """V-2 verifica esterna #179: C:\\x\\gas_fake.py:2 non è la citazione gas_fake.py:2
+        di un file del repo → resta 1 sola citazione del diff → exit 1."""
+        sec4 = "Approvato. gas_fake.py:1 e C:\\x\\gas_fake.py:2."
+        base = self._setup_with_context(tmp_path / "work", tmp_path / "bare", sec4)
+        result = _run_check_verdetto(tmp_path / "work", base)
+        assert result.returncode == 1 and "1 citazioni" in result.stderr, result.stderr
+
+    def test_v2_179_regex_ignora_percorsi_windows(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cv", CHECK_VERDETTO)
+        cv = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cv)
+        assert cv._REF_RE.findall("C:\\x\\gas.py:4 e D:gas.py:5") == []
+        # R-264: forme miste che col primo lookbehind ripartivano a metà del token
+        for misto in ("D:x/gas.py:5", "C:\\x\\a.gas.py:4", "C:\\x\\y/gas.py:4",
+                      "C:\\x\\modules/telegram/bot.py:4"):
+            assert cv._REF_RE.findall(misto) == [], misto
+        assert cv._REF_RE.findall("gas.py:59-71, x.gas.py:3, ../gas.py:4") == [
+            ("gas.py", "59"), ("x.gas.py", "3"), ("../gas.py", "4")]
+        assert cv._REF_RE.findall("`gas.py:4`, (modules/a.py:7) e **b.md:1**") == [
+            ("gas.py", "4"), ("modules/a.py", "7"), ("b.md", "1")]
+
     def test_context_short_name_line_out_of_range_exits_1(self, tmp_path):
         """Nome corto risolto ma riga oltre la fine del file → exit 1."""
         sec4 = "Approvato. gas_fake.py:1, gas_fake.py:2, bot.py:99."

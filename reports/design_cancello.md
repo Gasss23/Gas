@@ -322,6 +322,49 @@ Questi file non devono essere leggibili con `read_file` dalla root di GAS (o dev
 
 ---
 
+### 5b. Schema a 3 livelli di `write_file` (decisione operatore 1A, 2026-10-11)
+
+Precisazione dell'operatore: «Gas scrive ovunque, ma i file delicati chiedono la mia
+conferma finale con pro e contro». Implementato in `modules/gate/gate.py`
+(`livello_scrittura`) e nel kernel (`_prepara_firma_codice`, `execute_tool_call(firmata=)`).
+
+| Livello | Quali file | Cosa succede |
+|---|---|---|
+| 1 libero | tutto il resto (note, dati, report…) | scrittura diretta con snapshot; al cancello solo se la finestra è contaminata (come prima) |
+| 2 firma | codice e ciò che gira fuori sandbox: `gas.py`, `brains/`, `modules/` (tranne il cancello), ogni `.py`/script di shell, `scripts/`, config degli strumenti, `CLAUDE.md`/`AGENTS.md`…, `gas_identity.md`, `requirements*` | SEMPRE al cancello. Il modello deve dare `pro` e `contro` (altrimenti diniego). Il kernel fotografa il file (sha256 = `_base_sha256`, dentro gli argomenti firmati), genera il **diff reale** e lo manda su Telegram con pro e contro (testo del modello, marcato non verificato). Dopo la firma scrive solo se il file ha ancora la stessa impronta. Chiavi extra negli argomenti → diniego; diff oltre 4096 caratteri → revoca («dividi la modifica») |
+| 3 mai | `.env*`, `.git*` (anche `.github/`), `.claude/`, `modules/gate/`, memoria/cronologia/knowledge/vettori/token, `.gas_notte/`, `venv/`, `.venv/`, `gate_config` | DENY, anche con firma |
+
+Il livello 2 è esattamente il vecchio divieto di scrittura meno il livello 3: nessun
+file è diventato più libero di «firma». All'esecuzione il livello si ricalcola sul
+percorso RISOLTO (un symlink con nome innocuo verso un file delicato non passa).
+La lettura (`read_file`, `run_command`) NON cambia.
+
+Dopo la review #262 (BOCCIATO, symlink + finestra contaminata): il livello 2 si
+decide anche sul percorso RISOLTO già al parcheggio (un nome «libero» che punta a un
+file delicato va alla firma completa); le chiavi `_base_sha256` e `_file_reale` le
+scrive solo il kernel (in un write_file di livello 1 → diniego); all'esecuzione
+firmata si scrive solo se il file risolto è quello mostrato (`_file_reale`) e ha la
+stessa impronta. Il messaggio mostra prima il file vero e il diff, poi pro e contro
+(max 600 caratteri ciascuno, righe rientrate con «│ » perché non imitino le
+intestazioni); caratteri invisibili (\r, BOM, larghezza zero, bidi) resi `<U+XXXX>`.
+
+Limiti dichiarati: (1) `read_file` resta vietata su `gas.py`, `brains/`, `modules/`
+(non era nella decisione 1A): il modello riscrive file che non può leggere, e su file
+grandi il diff supera i 4096 caratteri di Telegram → oggi il livello 2 serve davvero
+per file piccoli/nuovi, script e config; aprire la lettura del codice è una decisione
+dell'operatore. (2) Windows è fuori dal modello di minaccia (separatori `\`, a-capo
+del modo testo). (3) Hard link: dalla verifica esterna #180 (V-4) write_file nega
+qualsiasi file con più di un collegamento. `rendi_visibili` resta una lista di
+caratteri noti: gli omoglifi (lettere che sembrano altre) non sono rilevabili. (4) V-2 bot #180: il livello 3 protegge solo `modules/gate/` e
+`.claude/`; il codice che APPLICA cancello e firma (`gas.py`: loop, `execute_tool_call`,
+`applica_firma`; `modules/telegram/bot.py`; `modules/memory/` con coda e hash) e i gate
+di sviluppo (`scripts/check_verdetto.py`, `scripts/check_handoff.py`,
+`scripts/fine_task_finale.sh`, `CLAUDE.md`) sono di livello 2, cioè modificabili con UNA
+firma. Oggi il rischio è frenato dalla lettura negata del codice e dal limite di 4096
+caratteri del diff; portarli al livello 3 è una decisione dell'operatore. Lo stesso
+vale per `brains/` e `modules/__init__.py` (V-1 verifica esterna #180): l'unica barriera
+sul codice del cancello è l'occhio dell'operatore sul diff.
+
 ## 6. Piano a fette e test di accettazione
 
 ### Fetta F-diario-eco — Fix eco diario (PRIMA di C1)

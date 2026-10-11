@@ -5,6 +5,7 @@ __pycache__/
 logs/
 *.bak
 .gas_history.json
+.gas_history.json.*
 gas_history.json
 gas_debug.log
 test_sandbox/

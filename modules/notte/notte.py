@@ -14,7 +14,8 @@ Invarianti di sicurezza:
   (.gas_history.json) non entra nella finestra e non viene scritta dal giro, e
   un compito non contamina il successivo. I kernel del giro nascono con
   carica_storia=False (R-220-2, V-1 bot #176): la conversazione non viene
-  nemmeno letta (né messa in quarantena se corrotta) né copiata negli snapshot. Eccezione (R-220-1): l'esito di
+  nemmeno letta (né messa in quarantena se corrotta) né copiata negli snapshot.
+  Eccezione (R-220-1): l'esito di
   un'azione parcheggiata e poi firmata su Telegram lo scrive il kernel del bot
   nella conversazione dell'operatore.
 - Il cancello resta quello di sempre: le azioni irreversibili (o incerte dopo
@@ -145,7 +146,8 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
             continue
         nome, prompt, attivo = v.get("nome"), v.get("prompt"), v.get("attivo", True)
         if not isinstance(nome, str) or not _NOME_RE.fullmatch(nome):
-            avvisi.append(f"voce {i}: nome mancante o non valido (solo a-z 0-9 _ -, max 40), saltata")
+            avvisi.append(f"voce {i}: nome mancante o non valido "
+                          "(solo a-z 0-9 _ -, max 40), saltata")
             continue
         if nome in visti:
             avvisi.append(f"voce {i}: nome '{nome}' duplicato, saltata")
@@ -302,6 +304,15 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
     return "\n".join(righe)
 
 
+def _stampa_sicura(testo: str) -> None:
+    """R-267-1: print che non solleva mai (stdout chiuso, pipe rotta, disco pieno):
+    chiamata dal `finally` del giro, un'eccezione qui sostituirebbe l'exit code."""
+    try:
+        print(testo, flush=True)
+    except Exception:
+        pass
+
+
 def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[str],
                        interrotto: Optional[str] = None) -> None:
     """Compone e invia il riepilogo del mattino. Mai eccezioni: anche un errore nel
@@ -332,9 +343,17 @@ def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[st
         inviato, motivo = invia_notifica(testo)
     except Exception as e:
         logging.warning("notte: riepilogo Telegram non inviato: %s", type(e).__name__)
+        _stampa_sicura(f"Riepilogo Telegram NON inviato: errore {type(e).__name__} "
+                       "(dettagli in gas_debug.log)")
         return
+    # Prova reale 2026-10-11: il messaggio non è arrivato e il motivo stava solo in
+    # gas_debug.log. Ora si vede a schermo e nel log del timer (launchd.log).
+    # `motivo` è un testo fisso di bot.py (mai token né ID).
     if not inviato:
         logging.warning("notte: riepilogo Telegram non inviato: %s", motivo)
+        _stampa_sicura(f"Riepilogo Telegram NON inviato: {motivo}")
+    else:
+        _stampa_sicura("Riepilogo Telegram inviato.")
 
 
 def _ora_locale() -> str:
