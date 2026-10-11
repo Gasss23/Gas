@@ -10,6 +10,9 @@
 - ✅ **R-nw-2** (COSMETICA, review #117): il controllo per sottostringa sul comando intero di run_command poteva negare per errore cartelle come `brains_backup/` — CHIUSA: run_command non è più offerto (T85b/T85d); si riapre se un binario torna nella lista.
 Review #286 APPROVATO CON RISERVE:
 - ✅ **R-286-1** (BASSA): falso FAIL del `doctor` senza bwrap — CHIUSA in `1d19bba`: con lista vuota OK «non usato» (T85h con sonda finta, review #287/#288).
+- 🟡 **Bot #185 (2° giro, APPROVATO CON RISERVE, neutral)**: V-1 (COSMETICA) corpo della PR non aggiornato (797→806, review #287/#288); V-2 (COSMETICA) in T85 `_r85`/`_id85` riusati con due significati.
+- 🟡 **Verifica esterna #185 (2° giro, APPROVATO CON RISERVE)**: V-1 (BASSA) `tools_schema` filtrato solo in `__init__` (cambiare SHELL_ALLOWLIST dopo la costruzione non aggiorna lo schema; nessun codice lo fa); V-2 (BASSA) `modules/gate/gate.py` e il commento dei test bwrap in `ci.yml` citano run_command come tool vivo; V-3 (COSMETICA) §6 dell'handoff superato dalle run nuove.
+- ⛔ **Merge di #185 FERMO**: dopo 2 giri il bot resta APPROVATO CON RISERVE (neutral: tocca `scripts/`); la condizione d) dell'operatore chiede il verdetto testuale APPROVATO → decide l'operatore (ogni giro trova note cosmetiche nuove).
 - ✅ **R-286-2** (BASSA): `applica_firma` su un run_command parcheggiato prima della PR B — CHIUSA: T85i (negato dal recinto, non eseguito).
 - ✅ **Bot #185 / verifica esterna #185** (APPROVATO CON RISERVE, neutral): V-1 README (sezione run_command marcata «non offerto dal 2026-10-11»), V-2 avviso in `setup_notte.md` per le copie locali del catalogo con comandi di sistema, V-3 messaggio di diniego che indica gli strumenti nativi — tutti corretti in `1d19bba` + doc.
 Riserve aperte dai verificatori di #184 (secondo giro, tutte BASSE/COSMETICHE):
