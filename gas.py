@@ -475,7 +475,9 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
     Nessuna espansione di $VAR. FAIL-SAFE §9: file assente → nulla, illeggibile o riga
     malformata → warning (mai il valore) e si prosegue. `GAS_NO_DOTENV=1` lo spegne
     (suite pytest: niente chiavi reali dell'operatore nei test).
-    I processi di run_command non le vedono comunque (`_sanitized_subprocess_env`).
+    I processi di run_command non ricevono quelle con nomi da segreto (KEY, TOKEN,
+    SECRET, PASSWORD...: `_sanitized_subprocess_env`); le altre sì (es.
+    TELEGRAM_ALLOWED_IDS) — come già succedeva con le variabili esportate dalla shell.
     Ritorna i NOMI delle variabili caricate."""
     if _env_flag("GAS_NO_DOTENV"):
         return []
@@ -2605,6 +2607,16 @@ class GasKernel:
                             "esce dalla root di Gas o è un file di sistema protetto. "
                             "Usa solo percorsi relativi interni al progetto.")
                 path, rel_root = risolto
+                # V-4 verifica esterna #180: un hard link preesistente porterebbe un file
+                # delicato sotto un nome "libero" (il percorso risolto non lo rivela).
+                try:
+                    _hard_link = path.is_file() and path.stat().st_nlink > 1
+                except OSError:
+                    _hard_link = True
+                if _hard_link:
+                    logging.warning("[GATE-1A] write_file su file con hard link: %r", rel_root)
+                    return ("Operazione negata: il file ha altri collegamenti (hard link), "
+                            "non si sa quale file verrebbe modificato.")
                 # 1A: livello ricalcolato sul percorso RISOLTO (un symlink non porta
                 # un file delicato al livello 1, né un file "mai" al livello 2).
                 livello = livello_scrittura(rel_root)

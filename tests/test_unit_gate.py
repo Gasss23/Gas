@@ -520,3 +520,5 @@ def test_r263_1_read_back_rende_visibili_spazi_e_selettori():
         "a<U+00A0>b<U+FE0F>c<U+E0100>d<U+3164>e"
     assert rendi_visibili("città ok 🙂\tx\n") == "città ok 🙂\tx\n"
     assert rendi_visibili("a\u034fb\u2800c") == "a<U+034F>b<U+2800>c"  # R-264-2
+    assert rendi_visibili("\u17b4\u17b5\u0338\ufffc") == \
+        "<U+17B4><U+17B5><U+0338><U+FFFC>"  # V-2 verifica esterna #180

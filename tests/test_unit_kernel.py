@@ -7518,6 +7518,24 @@ try:
     check("T82l pro oltre 600 caratteri → negato senza troncare",
           len(_out82(_ev82l)) == 2 and "entro 600" in _out82(_ev82l)[1], str(_out82(_ev82l))[:200])
 
+    # T82m — V-4 verifica esterna #180: hard link preesistente → write_file negato
+    _hl_dst82 = Path(_k82.root) / "alias.md"
+    try:
+        os.link(str(_f82), str(_hl_dst82))
+        _ok82m = True
+    except OSError:
+        _ok82m = False
+    if _ok82m:
+        _prima82m = _f82.read_text()
+        with _TgFinto():
+            _ev82m = run_turn_scriptato(_k82, "x", [[("write_file", _wf82("alias.md", "pwn\n"))], "ok"])
+        check("T82m hard link verso file delicato con nome libero → negato, file intatto",
+              any("hard link" in o for o in _out82(_ev82m)) and _f82.read_text() == _prima82m,
+              str(_out82(_ev82m))[:200])
+        _hl_dst82.unlink()
+    else:
+        skip("T82m hard link", "hard link non creabile su questo filesystem")
+
     # T82j — livello 1 invariato: scrittura diretta con finestra pulita
     with _TgFinto() as _tg82j:
         _ev82j = run_turn_scriptato(_k82, "x", [[("write_file", _wf82("note/a.md", "ciao\n"))], "ok"])

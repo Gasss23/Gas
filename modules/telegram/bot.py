@@ -126,7 +126,8 @@ def componi_read_back(approval: Dict[str, Any]) -> str:
 
 # R-263-1: riempitivi Hangul (categoria Lo) che si vedono come spazio vuoto.
 _INVISIBILI_EXTRA = frozenset({0x115F, 0x1160, 0x3164, 0xFFA0,
-                                0x034F, 0x2800})  # R-264-2: CGJ, braille vuoto
+                                0x034F, 0x2800,  # R-264-2: CGJ, braille vuoto
+                                0x17B4, 0x17B5, 0x0338, 0xFFFC})  # V-2 verifica esterna #180
 
 
 def rendi_visibili(testo: str) -> str:

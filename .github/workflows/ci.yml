@@ -146,6 +146,14 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_verifica_bot.py -v 2>&1 | tee "$RUNNER_TEMP/verifica_bot_output.txt"
 
+      - name: Run dotenv suite (pytest, zero token LLM)
+        # Prova reale sul Mac 2026-10-11: Gas carica da sé il .env (tetto di spesa del
+        # giro notturno). V-1 bot #180: senza questo step una regressione resterebbe verde.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_dotenv.py -v 2>&1 | tee "$RUNNER_TEMP/dotenv_output.txt"
+
       - name: Job summary (esito a colpo d'occhio)
         if: always()
         # Scrive nel JOB SUMMARY (pagina della run, niente zip/auth): esito bwrap +
@@ -203,6 +211,13 @@ jobs:
               echo "| Verifica-bot suite | ${briep:-non disponibile} |"
             else
               echo "| Verifica-bot suite | output non disponibile (la suite non è partita) |"
+            fi
+            dout="$RUNNER_TEMP/dotenv_output.txt"
+            if [ -f "$dout" ]; then
+              driep="$(grep -E '^=.*(passed|failed|error)' "$dout" | tail -1 | sed -E 's/=+//g; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+              echo "| Dotenv suite | ${driep:-non disponibile} |"
+            else
+              echo "| Dotenv suite | output non disponibile (la suite non è partita) |"
             fi
             echo ""
             if [ -f "$out" ]; then

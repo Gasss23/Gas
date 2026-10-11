@@ -353,8 +353,17 @@ Limiti dichiarati: (1) `read_file` resta vietata su `gas.py`, `brains/`, `module
 grandi il diff supera i 4096 caratteri di Telegram → oggi il livello 2 serve davvero
 per file piccoli/nuovi, script e config; aprire la lettura del codice è una decisione
 dell'operatore. (2) Windows è fuori dal modello di minaccia (separatori `\`, a-capo
-del modo testo). (3) Hard link preesistenti verso file delicati non coperti (Gas non
-può crearli).
+del modo testo). (3) Hard link: dalla verifica esterna #180 (V-4) write_file nega
+qualsiasi file con più di un collegamento. `rendi_visibili` resta una lista di
+caratteri noti: gli omoglifi (lettere che sembrano altre) non sono rilevabili. (4) V-2 bot #180: il livello 3 protegge solo `modules/gate/` e
+`.claude/`; il codice che APPLICA cancello e firma (`gas.py`: loop, `execute_tool_call`,
+`applica_firma`; `modules/telegram/bot.py`; `modules/memory/` con coda e hash) e i gate
+di sviluppo (`scripts/check_verdetto.py`, `scripts/check_handoff.py`,
+`scripts/fine_task_finale.sh`, `CLAUDE.md`) sono di livello 2, cioè modificabili con UNA
+firma. Oggi il rischio è frenato dalla lettura negata del codice e dal limite di 4096
+caratteri del diff; portarli al livello 3 è una decisione dell'operatore. Lo stesso
+vale per `brains/` e `modules/__init__.py` (V-1 verifica esterna #180): l'unica barriera
+sul codice del cancello è l'occhio dell'operatore sul diff.
 
 ## 6. Piano a fette e test di accettazione
 
