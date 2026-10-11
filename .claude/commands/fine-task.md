@@ -148,7 +148,7 @@ Tutte le fette devono comparire qui — incluse quelle saltate.
 <output GREZZO di `git log --oneline ${BASE}..HEAD` — righe con hash e messaggi, nessuna modifica>
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -297,27 +297,20 @@ Il protocollo vive in `.claude/verifica_esterna.md` (lo cambia solo l'operatore)
 sulla PR: quella è la fonte provabile (non più un archivio in `reports/`). Quando arriva il
 verdetto, riportalo all'operatore con i finding in sintesi in chat; se una fetta dichiara
 chiusa una riserva «verifica esterna #N», il riferimento è quel commento sulla PR #N. Per le fette di sicurezza (cancello, firma, sandbox, gate) dire anche
-all'operatore di fare il secondo passaggio nella chat claude.ai con lo stesso URL.
+all'operatore di fare il secondo passaggio nella chat claude.ai col link della PR.
 
 ---
 
-## 5. Stampa a terminale ESATTAMENTE (senza riassumere):
+## 5. In chat: solo il riepilogo breve (aggiornato 2026-10-11, richiesta dell'operatore)
 
-1. Path del report: `reports/ultimo_report.md`
-2. Hash del commit (output di `git rev-parse HEAD`)
-3. Contenuto integrale di `reports/ultimo_report.md`
-
-4. URL dell'handoff — lo script `fine_task_finale.sh` lo stampa già come `URL_HANDOFF: ...`.
-   Riportalo qui (output verbatim dello script).
-
-   **Motivo**: l'URL pinnato allo SHA è il file — il cat integrale è ridondante e introduce
-   rischio di discrepanza tra ciò che si incolla e ciò che è committato.
-   Se `fine_task_finale.sh` non è stato eseguito (sessione senza handoff rigenerato),
-   scrivi esattamente: `"handoff.md non rigenerato in questa sessione — URL non disponibile."`
-
-   **Vincoli (invarianti)**:
-   - L'URL deve essere quello stampato da `fine_task_finale.sh` (SHA lungo di HEAD al momento del push).
-   - Non inventare MAI un URL.
+NON stampare path, hash, cat di `reports/ultimo_report.md` né la riga `URL_HANDOFF`: li
+controllano i gate e la verifica esterna in automatico. In chat scrivi solo il riepilogo
+breve di CLAUDE.md («cosa ho fatto» / «cosa devi fare tu»). L'URL stampato da
+`fine_task_finale.sh` serve solo all'agente per lanciare la verifica esterna (§4quater):
+deve essere quello reale dello script, mai inventato.
+L'URL lo usa SOLO l'agente: non va mai stampato all'operatore (decisione dell'operatore
+2026-10-11). Per il secondo passaggio nella chat claude.ai sulle fette di sicurezza
+(§4quater) all'operatore basta il link della PR.
 
 ---
 
