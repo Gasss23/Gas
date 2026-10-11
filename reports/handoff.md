@@ -15,6 +15,7 @@
 - **Merge di #182**: `FATTA` — merge commit `0c789c0` (= BASE di questa sessione).
 - **Fetta 1 — regola di brevità in CLAUDE.md**: `FATTA`.
 - **Fetta 2 — niente stampa di report/URL all'operatore**: `FATTA`.
+- **V-1 (MEDIA) e V-2 bot #183**: `FATTA` — verdetti dei verificatori sempre riportati (esito + ALTA/MEDIA); punto (1) allineato al (4).
 
 ---
 
@@ -26,9 +27,9 @@
  .claude/settings.json              |   2 +-
  CLAUDE.md                          |   4 ++--
  reports/diff_sessione.md           |  18 +++++++-----------
- reports/handoff.md                 | 232 ++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/ultimo_report.md           |  19 +++++--------------
- 7 files changed, 63 insertions(+), 246 deletions(-)
+ reports/handoff.md                 | 234 +++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/ultimo_report.md           |  20 ++++++--------------
+ 7 files changed, 67 insertions(+), 245 deletions(-)
 ```
 
 Nota: i conteggi di righe di `reports/handoff.md` sono approssimati per costruzione. Il set di file è esatto; la CI confronta solo i path.
@@ -36,6 +37,8 @@ Nota: i conteggi di righe di `reports/handoff.md` sono approssimati per costruzi
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3f6919a docs(claude-md): brevità — verdetti dei verificatori sempre riportati (esito + ALTA/MEDIA); punto (1) allineato al (4)
+39583c8 docs(fine-task): report PR #183 (brevità + niente stampa di report/URL)
 bee4fa5 docs(controllo): niente stampa di report e URL_HANDOFF all'operatore
 2af5949 chore(revisore): memoria review #281 — APPROVATO
 42963b0 chore(revisore): memoria review #280 — APPROVATO
@@ -49,28 +52,31 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE
 
-### Review #281 (diff finale di questo commit)
+### Review #281 (diff di bee4fa5) — riemissione con due citazioni di settings.json
 
 ## VERDETTO: APPROVATO
+
+Il verdetto è lo stesso della #281. Ho aggiunto una seconda citazione di `.claude/settings.json`, come richiesto dal gate B.
 
 Ho letto CLAUDE.md (sezioni 3, 5, 8 e 10), le riserve aperte in `reports/stato_progetto.md` e la mia memoria (review #278–#280).
 
 Elementi del diff esaminati:
 
-- `CLAUDE.md:16` — la regola di reporting non chiede più di stampare path, hash, il testo completo del report né `URL_HANDOFF`. Resta il divieto di dare a voce un riassunto diverso dai file. Rischio esaminato: contraddizione con il punto (3) dello «Stile verso l'operatore» alla riga 17. Quel punto ora dice «l'unica cosa da scrivere in chat», quindi le due regole sono coerenti. Rispetto a R-279-1: la regola non ha più eccezioni, quindi non c'è nulla da richiamare. La riserva è decaduta e non va tracciata. — ok
-- `.claude/commands/fine-task.md:300` — per le fette di sicurezza, il secondo passaggio in claude.ai usa ora il link della PR invece di «lo stesso URL». Rischio esaminato: un flusso dell'operatore che dipenda ancora dall'URL dell'handoff. Ho cercato residui di «stesso URL» e «Stampa a terminale» in `.claude`, `scripts` e CLAUDE.md: non ne ho trovati. — ok
-- `.claude/commands/fine-task.md:306` — il §5 vieta la stampa all'operatore. L'URL resta per l'uso dell'agente nel prompt della verifica esterna (`.claude/commands/fine-task.md:281`) e deve essere quello reale prodotto dallo script, mai inventato. Rischio esaminato: un URL inventato nel prompt della verifica. Il vincolo «mai inventato» è mantenuto. — ok. Nota cosmetica, che non traccio: le righe 308-313 dicono due volte che l'URL serve solo all'agente.
-- `.claude/settings.json:13` — il messaggio ricaricato dopo la compattazione del contesto è allineato: solo il riepilogo breve, niente testo completo del report né `URL_HANDOFF`. Rischio esaminato: JSON non valido, che romperebbe tutti gli hook. Ho controllato con `json.load`: il file è valido. L'apostrofo di «l'handoff» è stato tolto apposta («l handoff») per non chiudere la stringa tra apici singoli di `echo`. — ok
-- Contesto: `scripts/fine_task_finale.sh:168` stampa ancora `URL_HANDOFF`, ma quell'output lo legge solo l'agente. Nessun gate legge ciò che compare a schermo all'operatore: il gate A (check_handoff), il gate B (check_verdetto) e il gate IP lavorano sui file. Nessun gate dipende quindi dalla stampa. — ok
-- `.claude/commands/fine-task.md:151` — la nota sull'hash del commit rimanda ora al `git log` del branch, invece di «stampato al passo 5», che con questa modifica sarebbe diventato falso. — ok
+- `.claude/settings.json:13` — l'hook che si riattiva dopo la compattazione del contesto ora dice: solo il riepilogo breve, niente testo completo del report né `URL_HANDOFF`. Rischio esaminato: JSON non valido, che romperebbe tutti gli hook. Il controllo con `json.load` passa. L'apostrofo di «l'handoff» è stato tolto apposta per non chiudere la stringa di `echo`, che è tra apici singoli. — ok
+- `.claude/settings.json:9` — la condizione di attivazione (`"matcher": "compact"`) del blocco SessionStart che contiene l'hook. Rischio esaminato: la modifica alla riga 13 potrebbe aver spostato il comando fuori dal blocco giusto, così l'hook non partirebbe più dopo la compattazione. Ho letto le righe 1-20 del file in staging: la condizione è invariata e il comando resta dentro `hooks[0]` dello stesso blocco (riga 12 `"type": "command"`). — ok
+- `CLAUDE.md:16` — la regola di reporting non chiede più di stampare path, hash, il testo completo del report né `URL_HANDOFF`. Resta il divieto di dare a voce un riassunto diverso dai file. È coerente con il punto (3) dello «Stile verso l'operatore» alla riga 17. Rispetto a R-279-1: la regola non ha più eccezioni, quindi non c'è nulla da richiamare. La riserva è decaduta e non va tracciata. — ok
+- `.claude/commands/fine-task.md:300` — per le fette di sicurezza, il secondo passaggio in claude.ai usa il link della PR. Ho cercato residui di «stesso URL» e «Stampa a terminale» in `.claude`, `scripts` e CLAUDE.md: non ne ho trovati. — ok
+- `.claude/commands/fine-task.md:306` — il §5 vieta la stampa all'operatore. L'URL resta per l'uso dell'agente nel prompt della verifica esterna (`.claude/commands/fine-task.md:281`) e deve essere quello reale dello script, mai inventato. — ok. Nota cosmetica, che non traccio: le righe 308-313 dicono due volte la stessa cosa.
+- `.claude/commands/fine-task.md:151` — la nota sull'hash del commit rimanda al `git log` del branch: chiude l'affermazione, ormai falsa, «stampato al passo 5». — ok
+- Contesto: `scripts/fine_task_finale.sh:168` stampa ancora `URL_HANDOFF`, ma quell'output lo legge solo l'agente. Il gate A, il gate B e il gate IP lavorano sui file, non su ciò che compare a schermo: nessun gate dipende dalla stampa. — ok
 
-Limite accettato (già notato nella #280): il link della PR non è legato a uno SHA preciso. Tra la verifica esterna e il secondo passaggio in claude.ai la PR può ricevere nuovi commit. È una scelta dell'operatore, quindi non la tratto come riserva.
+Limite accettato: il link della PR non è legato a uno SHA preciso. È una scelta dell'operatore, quindi non la tratto come riserva.
 
 Rischio escluso: non ho provato un vero giro `/fine-task` con la verifica esterna, cioè che il sotto-agente riceva davvero l'URL e che l'operatore non lo veda. Non si può riprodurre dentro una review. Ho controllato solo il testo delle istruzioni e il codice dei gate. Il diff non tocca il motore (gas.py, brains/, modules/), quindi i test non erano necessari e non li ho eseguiti.
 
-Memoria aggiornata con la riga #281 in `.claude/agents/memoria_revisore.md`, committata come `2af5949`. La memoria conteneva già una riga #280 su questa stessa PR: ho usato il numero successivo. Il diff staged non è stato toccato.
+Come richiesto, non ho aggiornato la memoria: la riga #281 è già committata come `2af5949` in `.claude/agents/memoria_revisore.md`.
 
-(Le review #278, #279 e #280 sulle versioni intermedie dello stesso diff hanno avuto esito APPROVATO CON RISERVE / APPROVATO; le riserve R-278-1/2 e R-279-1 sono chiuse o decadute come detto sopra. Modifiche dell'agente al testo: path assoluto della memoria scritto relativo; elenco «File rilevanti» omesso.)
+(Le review #278-#280 sulle versioni intermedie: riserve chiuse o decadute. Il commit 3f6919a tocca solo `CLAUDE.md`, fuori dal perimetro di review: corregge V-1 MEDIA e V-2 del bot su #183 — verdetti dei verificatori sempre riportati con esito e finding ALTA/MEDIA; punto (1) allineato al (4).)
 
 ## §5 DELTA TEST DEL MOTORE
 
