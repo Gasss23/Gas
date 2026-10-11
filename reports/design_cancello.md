@@ -354,7 +354,7 @@ APERTA dall'operatore il 2026-10-11 («Gas può leggere i file ma non toccarli»
 livello 3 (`_LETTURA_NEGATA`). Il gate guarda i NOMI; all'esecuzione si ricontrolla il
 file VERO (review #269, R-269-1/2): symlink verso il livello 3 e file con hard link
 negati sia in `read_file` sia negli argomenti di `run_command`, e `grep`/`diff` su una
-cartella negati (la ricerca ricorsiva passerebbe da `.env`, `.git`, memoria).
+cartella negati (la ricerca ricorsiva passerebbe da `.env`, `.git`, memoria). Dopo `--` ogni token è un operando (V-1 bot #181); `date` accetta come operando solo un formato `+…` (V-2 bot #181: `date MMDDhhmm` cambia l'orologio). Anche un file che FINISCE in `.env` (es. `modules/prod.env`) è illeggibile (V-2 verifica esterna #181).
 Resta il limite di 4096 caratteri del diff su Telegram: modifiche piccole. (2) Windows è fuori dal modello di minaccia (separatori `\`, a-capo
 del modo testo). (3) Hard link: dalla verifica esterna #180 (V-4) write_file nega
 qualsiasi file con più di un collegamento. `rendi_visibili` resta una lista di

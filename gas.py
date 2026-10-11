@@ -1528,6 +1528,23 @@ class GasKernel:
         """Allowlist delle opzioni di grep/diff (review #270) e divieto delle
         opzioni che leggono file per gli altri binari. Ritorna il motivo del
         diniego o None. `--` (fine opzioni) è ammesso."""
+        if binario == "date":
+            # V-2 bot #181: `date MMDDhhmm[[CC]YY][.ss]` (operando posizionale) imposta
+            # l'orologio come -s. Ammessi solo il formato `+…` e il valore di -d/--date.
+            valore_atteso, dopo_fine = False, False
+            for a in args:
+                if valore_atteso:
+                    valore_atteso = False
+                    continue
+                if a == "--" and not dopo_fine:
+                    dopo_fine = True
+                    continue
+                if not dopo_fine and a in ("-d", "--date"):
+                    valore_atteso = True
+                    continue
+                if (dopo_fine or not a.startswith("-")) and not a.startswith("+"):
+                    return ("Operazione negata: date con un operando che non è un formato "
+                            "'+…' potrebbe cambiare l'orologio. (fail-closed)")
         if binario == "uniq":
             dopo_fine, posizionali = False, 0
             for a in args:
@@ -1587,8 +1604,14 @@ class GasKernel:
                 a.startswith("--regexp") or (a.startswith("-") and not a.startswith("--")
                                              and "e" in a[1:])
                 for a in args)
+            fine_opzioni = False
             for a in args:
-                if a.startswith("-"):
+                # V-1 bot #181: dopo `--` ogni token è un operando, anche se inizia
+                # con '-' (es. `cat -- -x` con -x symlink verso .env).
+                if a == "--" and not fine_opzioni:
+                    fine_opzioni = True
+                    continue
+                if a.startswith("-") and not fine_opzioni:
                     continue
                 if salta_pattern:
                     salta_pattern = False

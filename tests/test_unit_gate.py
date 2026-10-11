@@ -540,3 +540,24 @@ def test_r263_1_read_back_rende_visibili_spazi_e_selettori():
     assert rendi_visibili("a\u034fb\u2800c") == "a<U+034F>b<U+2800>c"  # R-264-2
     assert rendi_visibili("\u17b4\u17b5\u0338\ufffc") == \
         "<U+17B4><U+17B5><U+0338><U+FFFC>"  # V-2 verifica esterna #180
+
+
+@pytest.mark.parametrize("path", ["modules/prod.env", "brains/x.ENV", "dati/chiavi.env",
+                                  "modules/prod.env.", "prod.env", "modules/prod.env.local",
+                                  "modules/prod.env.bak", "modules/prod.env~",
+                                  "modules/prod.env_old", "modules/prod.env-vecchio",
+                                  "modules/prod.env copy", "modules/prod.env(1)",
+                                  "modules/prod.env1", "modules/prod.env#", "modules/prod.env,bak",
+                                  "modules/PROD.ENV COPY", "modules/prod.envbak",
+                                  "modules/prod.envold", "modules/prod.envcopy"])
+def test_v2_181_file_che_finiscono_in_env_illeggibili(path):
+    """V-2 verifica esterna #181: anche dentro cartelle leggibili."""
+    from modules.gate.gate import lettura_consentita
+    assert gate_classify("read_file", {"relative_path": path}) == GateClass.DENY
+    assert not lettura_consentita(path)
+
+
+@pytest.mark.parametrize("path", ["modules/envoy.py", "dati/env.txt", "brains/router.py",
+                                  "modules/x.environment.py", "dati/a.envelope.md"])
+def test_v2_181_nomi_simili_restano_leggibili(path):
+    assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
