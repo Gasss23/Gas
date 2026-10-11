@@ -15,6 +15,11 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import gas
 from gas import GasKernel
+# FETTA 1 PR B (2026-10-11): in produzione SHELL_ALLOWLIST è VUOTA (run_command non
+# offerto al modello). I test del recinto (vetting, bwrap, snapshot) restano e lo provano
+# con la lista storica _SHELL_ALLOWLIST_RECINTO; T85 prova la configurazione reale.
+_SHELL_ALLOWLIST_PRODUZIONE = GasKernel.SHELL_ALLOWLIST
+GasKernel.SHELL_ALLOWLIST = GasKernel._SHELL_ALLOWLIST_RECINTO
 from brains.model_ids import MODEL_GROQ
 
 # R-c4b1-1 — SUITE ERMETICA rispetto a Telegram. Il ~/.zshrc dell'operatore
@@ -8006,13 +8011,52 @@ try:
 
     # T84m — schema e prompt dichiarano i tool nuovi
     _nomi84 = [t["function"]["name"] for t in _k84.tools_schema]
-    check("T84m tools_schema contiene i 5 tool e run_command resta (PR A non toglie nulla)",
+    check("T84m tools_schema contiene i 5 tool (run_command presente solo con la lista del recinto dei test)",
           all(t in _nomi84 for t in _NATIVI84 + ("data_ora", "run_command")), str(_nomi84))
     check("T84m prompt di sistema elenca i tool nuovi",
           all(t in gas._GAS_SYSTEM_PROMPT_BASE for t in _NATIVI84 + ("data_ora",)))
 except Exception as _e84:
     import traceback as _tb84
     check("T84 blocco senza eccezioni", False, repr(_e84) + _tb84.format_exc()[-400:])
+
+# ---------- T85: run_command fuori dalla mano del modello (FETTA 1 PR B) ----------
+print("\n--- T85: nessun binario offerto al modello ---")
+try:
+    check("T85a in produzione SHELL_ALLOWLIST è vuota", _SHELL_ALLOWLIST_PRODUZIONE == frozenset())
+    GasKernel.SHELL_ALLOWLIST = _SHELL_ALLOWLIST_PRODUZIONE
+    try:
+        _k85 = kernel_tmp()
+        senza_sandbox_os_usa_fallback(_k85)
+        _r85 = Path(_k85.root)
+        (_r85 / "note.md").write_text("ciao\n", encoding="utf-8")
+        _n85 = [t["function"]["name"] for t in _k85.tools_schema]
+        check("T85b run_command non è nello schema; gli strumenti nativi sì",
+              "run_command" not in _n85 and all(x in _n85 for x in (
+                  "elenca_cartella", "leggi_righe", "cerca_testo", "conta_file", "data_ora")), str(_n85))
+        _id85 = Path(__file__).resolve().parents[1].joinpath("gas_identity.md").read_text()
+        check("T85c prompt di sistema e gas_identity.md non offrono run_command né echo",
+              "run_command" not in gas._GAS_SYSTEM_PROMPT_BASE and "run_command" not in _id85
+              and "echo" not in gas._GAS_SYSTEM_PROMPT_BASE)
+        with _TgFinto() as _tg85:
+            _ev85 = run_turn_scriptato(_k85, "elenca", [
+                [("run_command", '{"command": "ls"}')], "ok"])
+        _o85 = [e["output"] for e in _ev85 if e["type"] == "tool_res"]
+        check("T85d run_command inventato dal modello → negato, nessuna firma su Telegram",
+              _o85 == ["Operazione negata: azione non consentita in modalità autonoma."]
+              and len(_tg85.chiamate) == 0, str(_o85))
+        _o85e = [_k85.execute_tool_call("run_command", _js84.dumps({"command": c}))
+                 for c in ("ls", "cat note.md", "echo ciao", "date")]
+        check("T85e anche chiamato direttamente, ogni binario è negato dal recinto",
+              all(o.startswith("Operazione negata: comando") for o in _o85e), str(_o85e)[:200])
+        check("T85f il codice del recinto resta (vetting e bwrap)",
+              callable(getattr(_k85, "_vet_command", None)) and callable(getattr(_k85, "_bwrap_prefix", None)))
+    finally:
+        GasKernel.SHELL_ALLOWLIST = GasKernel._SHELL_ALLOWLIST_RECINTO
+    _cat85 = Path(__file__).resolve().parents[1].joinpath("scripts", "notte", "catalogo_esempio.yaml").read_text()
+    check("T85g catalogo notturno d'esempio senza comandi di sistema (ls)",
+          "'ls" not in _cat85 and "elenca_cartella" in _cat85)
+except Exception as _e85:
+    check("T85 blocco senza eccezioni", False, repr(_e85))
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

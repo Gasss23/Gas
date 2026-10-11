@@ -10,7 +10,6 @@ compiti:
       Fammi un elenco breve: chi è fermo da più tempo e cosa conviene fare domani.
   - nome: salute_sistema
     prompt: >-
-      Esegui il comando 'ls -la' e dimmi in tre righe quali file nella cartella
-      di Gas sono stati modificati più di recente (git non è tra i comandi
-      consentiti a Gas).
+      Usa elenca_cartella sulla cartella di Gas e dimmi in tre righe quali file
+      sono stati modificati più di recente (Gas non ha comandi di sistema né git).
     attivo: false
