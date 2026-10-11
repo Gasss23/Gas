@@ -23,7 +23,7 @@ Tutte reggono, con due note:
 
 1. **Gradino «forte» solo su richiesta esplicita** — regge. Nota: oggi `_cascata_provider` ha solo 'semplice'/'complesso'; serve un terzo valore ('forte') scelto SOLO da campo del catalogo o da opzione di riga di comando, mai da `classifica_compito`.
 2. **Chiave nel `.env` con nome proprio** — regge. Proposta: `GAS_CLAUDE_API_KEY`. Viene già tolta all'ambiente di `run_command` (`_sanitized_subprocess_env` scarta ogni variabile con `KEY` nel nome: da provare con un test); va aggiunta al `doctor` (solo «presente/assente», mai il valore).
-3. **Tetto di spesa giornaliero dedicato e controllo prima di OGNI chiamata** — regge. Oggi `GAS_DAILY_TOKEN_BUDGET` si controlla solo a inizio turno (riserva F2). Serve: (a) prezzo Claude in `_PROVIDER_PRICE_PER_MTok`; (b) `GAS_CLAUDE_BUDGET_USD_GIORNO`; (c) controllo dentro il ciclo `for _ in range(10)`, PRIMA di `create`. In più, rete esterna: **workspace dedicato con limite di spesa** nella Console (decisione dell'operatore).
+3. **Tetto di spesa giornaliero dedicato e controllo prima di OGNI chiamata** — regge. Oggi `GAS_DAILY_TOKEN_BUDGET` si controlla solo a inizio turno (riserva F2 di `reports/roadmap.md`, «budget non ricontrollato dentro il turno»; non è il finding F2 già chiuso in stato_progetto). Serve: (a) prezzo Claude in `_PROVIDER_PRICE_PER_MTok`; (b) `GAS_CLAUDE_BUDGET_USD_GIORNO`; (c) controllo dentro il ciclo `for _ in range(10)`, PRIMA di `create`. In più, rete esterna: **workspace dedicato con limite di spesa** nella Console (decisione dell'operatore).
 4. **Crediti finiti o errore → cascata gratuita, dichiarata** — regge: l'errore «credit balance too low» è un errore del provider come gli altri (§9). Va solo classificato come QUOTA nel doctor e dichiarato all'utente (Model Awareness, §8).
 5. **Modelli in `brains/model_ids.py`, sovrascrivibili da env** — regge: `MODEL_CLAUDE_FORTE = os.environ.get("GAS_MODEL_CLAUDE_FORTE", "claude-sonnet-5-5")`.
 
@@ -35,7 +35,8 @@ Tutte reggono, con due note:
 
 - Cascata: `gas.py::_cascata_provider(compito)` restituisce tuple `(nome, env_chiave, base_url, modello)`; `run_turn` crea `OpenAI(base_url=url, api_key=os.environ.get(env))` e chiama `chat.completions.create(model, messages, tools=self.tools_schema, tool_choice="auto")`. Un rung Claude entra come tupla `("claude-forte", "GAS_CLAUDE_API_KEY", "https://api.anthropic.com/v1/", MODEL_CLAUDE_FORTE)` IN TESTA solo per compito='forte', seguita dalla cascata gratuita normale.
 - Formato dei tool: `tools_schema` è già in formato OpenAI `{"type":"function","function":{...}}`, supportato senza modifiche dal livello compatibile.
-- Costi: `_log_tokens` + `_daily_cost_usd` leggono `_PROVIDER_PRICE_PER_MTok[provider]`: basta aggiungere il prezzo del rung.
+- Costi: `_log_tokens` + `_daily_cost_usd` leggono `_PROVIDER_PRICE_PER_MTok[provider]`: serve il prezzo del rung, e il test T38a (che conta 5 provider) va aggiornato. Per il tetto dedicato (Fetta 3) `_daily_cost_usd` deve poter filtrare per provider: oggi somma tutto.
+- Altri punti da toccare nella Fetta 2: `TOOL_CAPABLE_MODELS` (senza il modello Claude `run_turn` scrive a ogni giro l'avviso «tool-blind»); la lista dei provider del `doctor` è scritta a mano e non deriva da `_cascata_provider`; il ping del doctor verso Claude è una chiamata a pagamento (minima, `max_tokens=1`) a ogni esecuzione: farlo solo se la chiave c'è e dichiararlo.
 - Notte: `modules/notte/notte.py` legge il catalogo YAML; il campo `cervello: forte` va validato come gli altri campi (valore ignoto → avviso, compito saltato).
 
 ## 4. Fette proposte (ognuna con test, revisore, verifica esterna)
@@ -47,7 +48,7 @@ Tutte reggono, con due note:
 
 ## 5. Rischi
 
-- **Spesa:** il ciclo agentico fa fino a 10 chiamate per turno; Opus 5.5 con 20k token in entrata costa ~0,08 $ a chiamata → ~0,8 $ a turno. Tetto giornaliero + limite del workspace sono necessari.
+- **Spesa:** il ciclo agentico fa fino a 10 chiamate per turno e la storia cresce a ogni iterazione. Stima prudente su Opus 5.5 (4 $/M in entrata, 20 $/M in uscita): da 20k a 40k token in entrata e ~1k in uscita per chiamata → 0,10–0,18 $ a chiamata, **fino a ~1,5–2 $ a turno pieno**; Sonnet 5.5 circa la metà. Tetto giornaliero + limite del workspace sono necessari.
 - **Livello compatibile non da produzione:** possibili differenze silenziose (campi ignorati). Mitigazione: test reali con piccola spesa prima di attivarlo di notte.
 - **Dati:** il codice e la rubrica lead escono verso Anthropic (come oggi verso Gemini/Groq). Niente Fable/Mythos (30 giorni di conservazione).
 - **Collegamento crediti irreversibile in autonomia:** l'organizzazione Console scelta resta quella (si cambia solo col supporto).
