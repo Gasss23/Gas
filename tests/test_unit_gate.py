@@ -183,10 +183,11 @@ class TestReadFileDenylist:
         assert _rf(".env.prod") == GateClass.DENY
 
     def test_gas_py(self):
-        assert _rf("gas.py") == GateClass.DENY
+        # Operatore 2026-10-11: Gas legge il codice (non lo tocca senza firma).
+        assert _rf("gas.py") == GateClass.SAFE
 
     def test_modules_gate_gate(self):
-        assert _rf("modules/gate/gate.py") == GateClass.DENY
+        assert _rf("modules/gate/gate.py") == GateClass.SAFE
 
     def test_claude_agents_revisore(self):
         assert _rf(".claude/agents/revisore.md") == GateClass.DENY
@@ -287,9 +288,10 @@ class TestRunCommand:
         monkeypatch.setenv("GAS_SANDBOX_MODE", "os_strict")
         assert gate_classify("run_command", {"command": "ls .gas_memory.db"}) == GateClass.DENY
 
-    def test_modules_token_deny(self, monkeypatch):
+    def test_modules_token_lettura_consentita(self, monkeypatch):
+        # Operatore 2026-10-11: lettura del codice aperta; resta la regola §8e.
         monkeypatch.delenv("GAS_SANDBOX_MODE", raising=False)
-        assert gate_classify("run_command", {"command": "ls modules/"}) == GateClass.DENY
+        assert gate_classify("run_command", {"command": "ls modules/"}) == GateClass.IRREVERSIBLE
 
     def test_env_sandbox_restored(self, monkeypatch):
         # Monkeypatch must not leak state between tests (pytest guarantees this)
@@ -315,9 +317,9 @@ class TestRunCommand:
         monkeypatch.setenv("GAS_SANDBOX_MODE", "os_strict")
         assert gate_classify("run_command", {"command": "wc -l .GAS_MEMORY.db"}) == GateClass.DENY
 
-    def test_dotslash_modules_deny(self, monkeypatch):
-        monkeypatch.delenv("GAS_SANDBOX_MODE", raising=False)
-        assert gate_classify("run_command", {"command": "cat ./modules/gate/gate.py"}) == GateClass.DENY
+    def test_dotslash_modules_lettura_consentita(self, monkeypatch):
+        monkeypatch.setenv("GAS_SANDBOX_MODE", "os_strict")
+        assert gate_classify("run_command", {"command": "cat ./modules/gate/gate.py"}) == GateClass.UNCERTAIN
 
     def test_normal_command_not_denied(self, monkeypatch):
         monkeypatch.delenv("GAS_SANDBOX_MODE", raising=False)
@@ -505,11 +507,27 @@ def test_livello_mai_eccezioni(monkeypatch):
     assert livello_scrittura("note.md") == LIVELLO_MAI
 
 
-def test_lettura_invariata_dallo_schema():
-    """Lo schema riguarda solo la scrittura: la lettura del motore resta negata."""
-    assert gate_classify("read_file", {"relative_path": "gas.py"}) == GateClass.DENY
-    assert gate_classify("read_file", {"relative_path": "modules/gate/gate.py"}) == GateClass.DENY
-    assert gate_classify("read_file", {"relative_path": "note.md"}) == GateClass.SAFE
+def test_lettura_del_codice_aperta_il_livello_3_resta_illeggibile(monkeypatch):
+    """Operatore 2026-10-11: Gas legge gas.py, brains/, modules/ (scrittura solo con
+    firma). I file «mai» restano illeggibili, con read_file e con run_command."""
+    from modules.gate.gate import lettura_consentita
+    for p in ("gas.py", "brains/router.py", "modules/memory/store.py",
+              "modules/gate/gate.py", "Modules/GATE/gate.py", "note.md"):
+        assert gate_classify("read_file", {"relative_path": p}) == GateClass.SAFE, p
+        assert lettura_consentita(p), p
+    for p in (".env", ".env.prod", ".git/config", ".github/workflows/ci.yml",
+              ".claude/settings.json", ".gas_memory.db", ".gas_history.json",
+              ".gas_notte/ultimo_giro.md", "venv/bin/activate", "dati/.env",
+              "\uff0eenv", "/etc/passwd", "../x", None):
+        assert gate_classify("read_file", {"relative_path": p}) == GateClass.DENY, p
+        assert not lettura_consentita(p), p
+    assert not lettura_consentita("") and not lettura_consentita("  ")
+    monkeypatch.setenv("GAS_SANDBOX_MODE", "os_strict")
+    assert gate_classify("run_command", {"command": "head -n 50 gas.py"}) == GateClass.UNCERTAIN
+    assert gate_classify("run_command", {"command": "grep -n def brains/router.py"}) == GateClass.UNCERTAIN
+    for c in ("cat .env", "grep x .git/config", "cat .claude/settings.json",
+              "head .gas_memory.db", "grep --file=.env x note.md"):
+        assert gate_classify("run_command", {"command": c}) == GateClass.DENY, c
 
 
 def test_r263_1_read_back_rende_visibili_spazi_e_selettori():

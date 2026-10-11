@@ -22,7 +22,7 @@ from brains.model_ids import (
     GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
-from modules.gate.gate import livello_scrittura, LIVELLO_FIRMA, LIVELLO_MAI
+from modules.gate.gate import livello_scrittura, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
 from modules.telegram import bot as _tg_bot
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
@@ -1467,7 +1467,152 @@ class GasKernel:
                     f"Operazione negata: l'argomento '{token}' risolve fuori "
                     "dalla root di Gas. run_command può toccare solo percorsi "
                     "interni al progetto. (fail-closed)")
+        motivo = self._vet_letture(binario, argv[1:], cwd)
+        if motivo:
+            return None, motivo
         return argv, None
+
+    # R-269-1: comandi che, puntati su una CARTELLA, ne leggono il contenuto dei file
+    # (grep -r, diff -r e diff fra cartelle). Su una cartella → diniego: passerebbero
+    # anche da .env, .git, .claude e dalla memoria, che il gate vede solo per nome.
+    _LEGGONO_CARTELLE = frozenset({"grep", "diff"})
+    # Review #270 (BOCCIATO): grep -r senza percorso cerca da sé nella cartella
+    # corrente; --file=, --from-file=, -f in un gruppo aprono file come VALORE di
+    # un'opzione. Per grep e diff si ammettono SOLO opzioni note e innocue
+    # (allowlist): niente ricorsione (-r -R -d), niente file da opzioni (-f -X
+    # --file --from-file --to-file --exclude-from). Tutto il resto → diniego.
+    _OPZIONI_CORTE_OK = {
+        "grep": frozenset("nciwvFEoHhlLsqxABCme0123456789"),
+        "diff": frozenset("uqiwbBEyatcpU0123456789"),
+    }
+    _OPZIONI_LUNGHE_OK = {
+        "grep": frozenset({
+            "--line-number", "--count", "--ignore-case", "--invert-match",
+            "--word-regexp", "--line-regexp", "--fixed-strings", "--extended-regexp",
+            "--only-matching", "--files-with-matches", "--files-without-match",
+            "--with-filename", "--no-filename", "--no-messages", "--quiet", "--silent",
+            "--max-count", "--context", "--after-context", "--before-context",
+            "--regexp", "--color", "--colour",
+        }),
+        "diff": frozenset({
+            "--unified", "--brief", "--ignore-case", "--ignore-all-space",
+            "--ignore-space-change", "--ignore-blank-lines", "--side-by-side",
+            "--normal", "--text", "--context", "--report-identical-files",
+        }),
+    }
+
+    # Altri binari dell'allowlist con opzioni che APRONO un file passato come valore
+    # (e ne stampano il contenuto, anche solo nei messaggi d'errore): vietate.
+    _OPZIONI_FILE_VIETATE = {
+        "file": (frozenset("fm"), ("--files-from", "--magic-file")),
+        "wc": (frozenset(), ("--files0-from",)),
+        "date": (frozenset("frs"), ("--file", "--reference", "--set")),  # -s: cambia l'ora
+    }
+    # Review #271 (BOCCIATO): binari dell'allowlist con un argomento di OUTPUT. Con la
+    # lettura del codice aperta i nomi gas.py/modules non sono più negati dal gate, e
+    # senza bwrap «uniq in gas.py» sovrascriveva il codice (anche il cancello).
+    # uniq: al massimo UN file (il secondo è l'output); file -C/--compile scrive magic.mgc.
+    _OPZIONI_SCRIVONO = {"file": (frozenset("C"), ("--compile",))}
+
+    @staticmethod
+    def _lunga_vietata(a: str, lunghe: Tuple[str, ...]) -> bool:
+        """Review #272: getopt accetta i nomi lunghi ABBREVIATI (--se = --set,
+        --compil = --compile). Vietata se il nome prima di `=` è l'inizio di un nome
+        vietato (o coincide). `--` da solo non è un'opzione."""
+        if not a.startswith("--") or a == "--":
+            return False
+        nome = a.split("=", 1)[0]
+        return any(v.startswith(nome) for v in lunghe)
+
+    def _vet_opzioni(self, binario: str, args: List[str]) -> Optional[str]:
+        """Allowlist delle opzioni di grep/diff (review #270) e divieto delle
+        opzioni che leggono file per gli altri binari. Ritorna il motivo del
+        diniego o None. `--` (fine opzioni) è ammesso."""
+        if binario == "uniq":
+            dopo_fine, posizionali = False, 0
+            for a in args:
+                if a == "--" and not dopo_fine:
+                    dopo_fine = True
+                elif dopo_fine or not a.startswith("-") or a == "-":
+                    posizionali += 1
+            if posizionali > 1:
+                return ("Operazione negata: uniq con due file scriverebbe sul secondo. "
+                        "Indica un solo file. (fail-closed)")
+        if binario in self._OPZIONI_SCRIVONO:
+            corte, lunghe = self._OPZIONI_SCRIVONO[binario]
+            for a in args:
+                if self._lunga_vietata(a, lunghe) or (
+                        a.startswith("-") and not a.startswith("--") and set(a[1:]) & corte):
+                    return (f"Operazione negata: opzione '{a}' di {binario} scrive un file. "
+                            "(fail-closed)")
+        if binario in self._OPZIONI_FILE_VIETATE:
+            corte, lunghe = self._OPZIONI_FILE_VIETATE[binario]
+            for a in args:
+                if self._lunga_vietata(a, lunghe) or (
+                        a.startswith("-") and not a.startswith("--") and set(a[1:]) & corte):
+                    return (f"Operazione negata: opzione '{a}' di {binario} legge un file "
+                            "passato come valore. (fail-closed)")
+            return None
+        if binario not in self._OPZIONI_CORTE_OK:
+            return None
+        for a in args:
+            if not a.startswith("-") or a in ("-", "--"):
+                continue
+            if a.startswith("--"):
+                if a.split("=", 1)[0] not in self._OPZIONI_LUNGHE_OK[binario]:
+                    return (f"Operazione negata: opzione '{a}' di {binario} non ammessa "
+                            "(ammesse solo opzioni senza ricorsione né file da opzioni). "
+                            "(fail-closed)")
+            elif not set(a[1:]) <= self._OPZIONI_CORTE_OK[binario]:
+                return (f"Operazione negata: opzione '{a}' di {binario} non ammessa "
+                        "(niente -r/-R/-d/-f/-X: ricorsione o file letti da opzioni). "
+                        "(fail-closed)")
+        return None
+
+    def _vet_letture(self, binario: str, args: List[str], cwd: Path) -> Optional[str]:
+        """R-269-1/R-269-2: il gate controlla i NOMI; qui si controllano i file VERI
+        dietro gli argomenti che esistono. Nega: (a) symlink verso un file del
+        livello 3 (lettura_consentita sul percorso risolto); (b) file con hard link;
+        (c) grep/diff su una cartella. Per grep il primo argomento non-flag è il
+        pattern (salvo -e/-f), non un percorso. Ritorna il motivo o None.
+        FAIL-CLOSED: un'eccezione nega."""
+        try:
+            motivo = self._vet_opzioni(binario, args)
+            if motivo:
+                return motivo
+            root = self.root.resolve(strict=False)
+            # Il pattern di grep è il primo argomento non-flag, salvo -e/--regexp
+            # (anche dentro un gruppo, es. -ie): allora tutti i non-flag sono percorsi.
+            salta_pattern = binario == "grep" and not any(
+                a.startswith("--regexp") or (a.startswith("-") and not a.startswith("--")
+                                             and "e" in a[1:])
+                for a in args)
+            for a in args:
+                if a.startswith("-"):
+                    continue
+                if salta_pattern:
+                    salta_pattern = False
+                    continue
+                path = (cwd / os.path.expanduser(a)).resolve(strict=False)
+                if not path.exists():
+                    continue
+                rel = path.relative_to(root).as_posix() if path != root else "."
+                if rel != "." and not lettura_consentita(rel):
+                    logging.warning("run_command negato: %r risolve a un file illeggibile", a)
+                    return (f"Operazione negata: '{a}' porta a un file che non si può "
+                            "leggere. (fail-closed)")
+                if path.is_dir() and binario in self._LEGGONO_CARTELLE:
+                    return (f"Operazione negata: '{binario}' su una cartella ('{a}') "
+                            "leggerebbe anche file protetti. Indica i file uno per uno. "
+                            "(fail-closed)")
+                if path.is_file() and path.stat().st_nlink > 1:
+                    return (f"Operazione negata: '{a}' ha altri collegamenti (hard link). "
+                            "(fail-closed)")
+            return None
+        except Exception as e:
+            logging.warning("run_command: controllo letture fallito (%s) — diniego",
+                            type(e).__name__)
+            return "Operazione negata: controllo dei file da leggere fallito. (fail-closed)"
 
     @staticmethod
     def _riassumi_args(name: str, args_str: Any) -> str:
@@ -2659,11 +2804,23 @@ class GasKernel:
                 path.write_text(args["content"], encoding="utf-8")
                 out = f"Successo: File {args['relative_path']} aggiornato."
             elif name == "read_file":
-                path = self._safe_path(cwd, args["relative_path"])
-                if path is None:
+                risolto = self._file_rel_root(cwd, args["relative_path"])
+                if risolto is None:
                     return (f"Operazione negata: il percorso '{args['relative_path']}' "
                             "esce dalla root di Gas. Usa solo percorsi relativi "
                             "interni al progetto.")
+                path, rel_root = risolto
+                # Lettura del codice aperta (operatore 2026-10-11): il gate guarda il
+                # NOME; qui si ricontrolla il file VERO, così un symlink con nome
+                # innocuo non legge .env, .git, .claude o la memoria.
+                if not lettura_consentita(rel_root):
+                    logging.warning("read_file negato sul percorso risolto: %r", rel_root)
+                    return "Operazione negata: questo file non si può leggere."
+                # R-269-2: un hard link preesistente porterebbe un file protetto
+                # sotto un nome leggibile (il percorso risolto non lo rivela).
+                if path.is_file() and path.stat().st_nlink > 1:
+                    return ("Operazione negata: il file ha altri collegamenti (hard link), "
+                            "non si sa quale file verrebbe letto.")
                 out = path.read_text(encoding="utf-8")
             elif name == "ricorda":
                 # Lettura della memoria di lungo periodo. SOLA LETTURA, in-process
