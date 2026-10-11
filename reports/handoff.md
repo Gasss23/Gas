@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #185 (https://github.com/Gasss23/Gas/pull/185). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/185"}`): `gh` nel container non è autenticato. Merge autonomo autorizzato dall'operatore in chat (2026-10-11, condizioni a–e; la prova è la conversazione); tocca `scripts/`, quindi serve il verdetto testuale APPROVATO del bot.
+1. Merge della PR #185 (https://github.com/Gasss23/Gas/pull/185). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/185"}`): `gh` nel container non è autenticato. **FERMO all'operatore**: dopo 2 giri il bot dà APPROVATO CON RISERVE (neutral, tocca `scripts/`), non il verdetto testuale APPROVATO richiesto dalla condizione d) dell'autorizzazione dell'operatore. Nessun finding ALTA/MEDIA; CI verde.
 2. Chiavi private/file di credenziali leggibili e cercabili: nomi da segreto o compromesso (V-1 verifica esterna #184, 2° giro).
 3. FETTA 4: `claude/roadmap_completa.md` non leggibile, allegato non arrivato.
 
@@ -30,9 +30,9 @@
  gas.py                              |  42 ++++++++++++++++++++++++++++++++----------
  gas_identity.md                     |   3 +--
  reports/diff_sessione.md            |  16 +++++++++-------
- reports/handoff.md                  | 210 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                  | 220 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------
  reports/setup_notte.md              |  16 ++++++++++++----
- reports/stato_progetto.md           |  25 ++++++++++++++++++-------
+ reports/stato_progetto.md           |  28 +++++++++++++++++++++-------
  reports/ultimo_report.md            |  25 ++++++++++---------------
  scripts/notte/catalogo_esempio.yaml |   5 ++---
  tests/test_unit_kernel.py           |  73 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
@@ -44,6 +44,8 @@ Nota: i conteggi di righe di `reports/handoff.md` sono approssimati per costruzi
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c9f3f9c docs(stato): note del secondo giro su #185, merge all'operatore
+ec701ec docs(fine-task): report PR #185 aggiornati (note di bot e verifica esterna, review #287-#288)
 1d19bba fix(recinto): note di bot e verifica esterna #185 (messaggio, doctor, test firma)
 94a9a90 docs(fine-task): report PR #185 (nessun binario offerto al modello, review #286)
 aec9c6c feat(recinto): nessun binario offerto al modello (FETTA 1, PR B)
@@ -145,18 +147,20 @@ Kernel 797 → 806 PASS (T85a–i); pytest 971 passed.
 ## §6 STATO CI
 
 ```
+completed	success	feat(recinto): nessun binario offerto al modello (FETTA 1, PR B)	verifica-bot	feat/via-binari-run-command	pull_request_target	38166016472	2m57s	2026-10-11T18:57:59Z
+completed	success	docs(fine-task): report PR #185 aggiornati (note di bot e verifica es…	CI	feat/via-binari-run-command	push	38166015352	1m42s	2026-10-11T18:57:58Z
 completed	success	feat(recinto): nessun binario offerto al modello (FETTA 1, PR B)	verifica-bot	feat/via-binari-run-command	pull_request_target	38164927800	2m26s	2026-10-11T18:42:18Z
 completed	skipped	feat(recinto): nessun binario offerto al modello (FETTA 1, PR B)	verifica-bot	feat/via-binari-run-command	pull_request_target	38164924546	1s	2026-10-11T18:42:16Z
-completed	success	docs(fine-task): report PR #185 (nessun binario offerto al modello, r…	CI	feat/via-binari-run-command	push	38164922948	1m36s	2026-10-11T18:42:14Z
-completed	skipped	feat(recinto): nessun binario offerto al modello (FETTA 1, PR B)	verifica-bot	feat/via-binari-run-command	pull_request_target	38164870475	10s	2026-10-11T18:41:28Z
 ```
 
 Mappatura commit→run:
-- `94a9a90` (testa del primo push): CI success (unit-suite, handoff-check); verifica-bot neutral (APPROVATO CON RISERVE, tocca `scripts/`).
-- `aec9c6c`: nessuna run su questo SHA (pushato insieme a `94a9a90`).
-- `1d19bba` e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `ec701ec` (testa del secondo push): CI success (unit-suite, handoff-check); verifica-bot neutral (APPROVATO CON RISERVE).
+- `94a9a90` (testa del primo push): CI success; verifica-bot neutral.
+- `aec9c6c`, `1d19bba`: nessuna run propria (pushati insieme alle teste sopra).
+- commit di fine-task attuale: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Bot #185 (2° giro): V-1/V-2 COSMETICHE. Verifica esterna #185 (2° giro): V-1/V-2 BASSE, V-3 COSMETICA (vedi stato_progetto).
 - Note dei verificatori di #184 (2° giro): V-1 bot (esito del diario dal prefisso), V-1 verifica esterna (credenziali cercabili, decisione dell'operatore), cosmetiche.
 - R-284-2, R-283-1, R-283-2, R-277-1 (BASSE) e cosmetiche R-283-3/#284.
