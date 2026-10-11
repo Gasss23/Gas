@@ -10,10 +10,13 @@ non la copia nelle fotografie di sicurezza (snapshot). Eccezione: se approvi su 
 l'esito viene scritto nella conversazione del bot/operatore (riserva R-220-1).
 
 Cosa NON fa da solo: le azioni rischiose (scrivere un file dopo aver letto contenuti
-esterni, comandi in modalità non protetta, invii) vengono parcheggiate e chieste in
-firma su Telegram. Gas non può modificare il proprio motore (gas.py, brains/, modules/)
-né il catalogo (sta fuori dalla sua cartella). Quindi oggi **non** fa lavoro di
-sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
+esterni, modificare il codice, invii) vengono parcheggiate e chieste in
+firma su Telegram. Gas può LEGGERE il proprio motore; modificarlo (gas.py, brains/,
+modules/, script, config) solo con la tua firma su Telegram (diff reale + pro e contro,
+dal 2026-10-11); alcuni file mai (.env, .git, .claude, modules/gate, memoria). Il catalogo
+sta fuori dalla sua cartella e non lo tocca. Non ha comandi di sistema né shell (dal
+2026-10-11): elenca, legge, cerca e conta con strumenti propri (elenca_cartella,
+leggi_righe, cerca_testo, conta_file, data_ora).
 
 ## Passi (una volta sola)
 
