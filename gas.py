@@ -1845,7 +1845,10 @@ class GasKernel:
         return path, ""
 
     def _rel_root(self, path: Path) -> str:
-        return path.relative_to(self.root.resolve(strict=False)).as_posix()
+        """Percorso relativo alla root DA MOSTRARE: caratteri di controllo e a-capo resi
+        visibili, così un nome non forgia righe nell'output (V-4 #184, R-284-1)."""
+        return _tg_bot.rendi_visibili(
+            path.relative_to(self.root.resolve(strict=False)).as_posix(), a_capo=False)
 
     def _righe_testo(self, path: Path, budget: List[int]) -> Generator[str, None, None]:
         """Righe decodificate (con il loro a-capo) di un file di testo UTF-8, lette in
@@ -1923,6 +1926,9 @@ class GasKernel:
                     vera_cartella = False
                 if vera_cartella and livello < profondita:
                     pila.append((path, livello + 1))
+                elif vera_cartella:
+                    # V-1 bot #184: cartella oltre la profondità, contata e dichiarata.
+                    stato["profonde"] = stato.get("profonde", 0) + 1
 
     @staticmethod
     def _intero(v: Any) -> Optional[int]:
@@ -1936,6 +1942,8 @@ class GasKernel:
     def _esegui_lettura_nativa(self, name: str, args: Dict[str, Any], cwd: Path) -> str:
         """Dispatcher dei 5 strumenti nativi. FAIL-SAFE §9: ogni errore → diniego."""
         try:
+            if not isinstance(args, dict):  # V-5 verifica esterna #184: come il gate
+                return "Operazione negata: argomenti non validi."
             if name == "data_ora":
                 ora = datetime.now().astimezone()
                 self._lettura_meta = "data e ora lette"
@@ -1967,7 +1975,9 @@ class GasKernel:
                                  "tetto": None}
         voci: List[Tuple[str, str]] = []
         for vero, voce, _liv in self._visita_cartella(path, prof, stato):
-            nome = Path(os.path.relpath(voce.path, path)).as_posix()
+            # V-4 verifica esterna #184: un nome con a-capo/tab non forgia righe.
+            nome = _tg_bot.rendi_visibili(Path(os.path.relpath(voce.path, path)).as_posix(),
+                                          a_capo=False)
             if voce.is_symlink():
                 tipo = "link"
             elif voce.is_dir(follow_symlinks=False):
@@ -1990,6 +2000,9 @@ class GasKernel:
             testa += f"; {stato['omessi']} voci protette o illeggibili omesse"
         if stato["tetto"]:
             testa += f"; ELENCO INCOMPLETO: raggiunto il tetto di {stato['tetto']}"
+        if stato.get("profonde"):
+            testa += (f"; {stato['profonde']} sottocartelle non aperte (profondità {prof}: "
+                      "elencale a parte)")
         self._lettura_meta = f"{len(righe)} voci elencate"
         if not righe:
             return testa + "\nCartella vuota (o solo voci protette)."
@@ -2093,6 +2106,9 @@ class GasKernel:
             testa += f"; {stato['omessi']} voci protette o illeggibili saltate"
         if stato["tetto"]:
             testa += f"; RICERCA INCOMPLETA: raggiunto il tetto di {stato['tetto']}"
+        if stato.get("profonde"):
+            testa += (f"; RICERCA INCOMPLETA: {stato['profonde']} cartelle oltre la profondità "
+                      f"massima ({self.LETTURA_MAX_PROFONDITA}) non visitate: cerca dentro di loro")
         self._lettura_meta = f"{len(trovati)} righe trovate in {letti} file"
         return testa + ("\n" + "\n".join(trovati) if trovati else "")
 
@@ -3198,7 +3214,7 @@ class GasKernel:
                 out = path.read_text(encoding="utf-8")
             elif name in self._TOOL_LETTURA_NATIVI:
                 self._lettura_meta = None
-                out = self._esegui_lettura_nativa(name, args if isinstance(args, dict) else {}, cwd)
+                out = self._esegui_lettura_nativa(name, args, cwd)
             elif name == "ricorda":
                 # Lettura della memoria di lungo periodo. SOLA LETTURA, in-process
                 # (codice fidato): non tocca il filesystem né la rete, non passa

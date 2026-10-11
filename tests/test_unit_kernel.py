@@ -7825,8 +7825,18 @@ try:
 
     # T84f — tetti: profondità, numero di voci, byte, tempo, risultati
     _el84f = _k84.execute_tool_call("elenca_cartella", '{"relative_path": "docs", "profondita": 99}')
-    check("T84f profondità massima (3): deeper/ mostrata, il suo contenuto no",
-          "sub/deep/deeper/" in _el84f and "c.txt" not in _el84f, _el84f[:300])
+    check("T84f profondità massima (3): deeper/ mostrata, il suo contenuto no, dichiarato",
+          "sub/deep/deeper/" in _el84f and "c.txt" not in _el84f
+          and "1 sottocartelle non aperte (profondità 3" in _el84f, _el84f[:300])
+    # V-1 bot #184: cerca_testo non tace i file oltre la profondità massima
+    _cp84 = _k84.execute_tool_call("cerca_testo", '{"testo": "profondo", "relative_path": "docs"}')
+    _cp84b = _k84.execute_tool_call("cerca_testo",
+                                    '{"testo": "profondo", "relative_path": "docs/sub/deep"}')
+    check("T84f V-1 bot #184: cerca_testo dichiara le cartelle oltre la profondità, "
+          "e le trova cercando più in basso",
+          _cp84.startswith("0 righe trovate") and "RICERCA INCOMPLETA: 1 cartelle oltre" in _cp84
+          and "docs/sub/deep/deeper/c.txt:1: alfa profondo" in _cp84b
+          and "RICERCA INCOMPLETA" not in _cp84b, _cp84 + " || " + _cp84b)
     _k84.LETTURA_MAX_FILE = 2
     _o = _k84.execute_tool_call("elenca_cartella", '{"relative_path": "docs", "profondita": 3}')
     check("T84f tetto sul numero di voci dichiarato", "ELENCO INCOMPLETO" in _o
@@ -7846,7 +7856,7 @@ try:
     _o = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "docs"}')
     check("T84f R-282-1 file oltre il budget saltato, la ricerca prosegue negli altri",
           "docs/sub/b.txt:1: due alfa" in _o and "1 file oltre il tetto di byte saltati" in _o
-          and "0grande" not in _o and "RICERCA INCOMPLETA" not in _o, _o[:300])
+          and "0grande" not in _o and "tetto di byte letti" not in _o, _o[:300])
     _k84.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
     _k84.LETTURA_MAX_SECONDI = 0.0
     _o = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "docs"}')
@@ -7901,6 +7911,26 @@ try:
     else:
         skip("T84g FIFO", "mkfifo non disponibile")
 
+    # T84g — V-4 verifica esterna #184: nomi con a-capo/tab non forgiano righe
+    try:
+        (_r84 / "nomi").mkdir()
+        (_r84 / "nomi" / "nl\nforgiata\tfile").write_text("alfa\n", encoding="utf-8")
+        _on = _k84.execute_tool_call("elenca_cartella", '{"relative_path": "nomi"}')
+        _onc = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "nomi"}')
+        _onl = (_k84.execute_tool_call("leggi_righe", _js84.dumps(
+                    {"relative_path": "nomi/nl\nforgiata\tfile", "da": 1, "a": 1})),
+                _k84.execute_tool_call("conta_file", _js84.dumps(
+                    {"relative_path": "nomi/nl\nforgiata\tfile"})))
+        check("T84g V-4 #184 + R-284-1: nome con a-capo e tab reso visibile in elenco, "
+              "ricerca e intestazioni",
+              len(_on.splitlines()) == 2 and "nl<U+000A>forgiata<U+0009>file" in _on
+              and len(_onc.splitlines()) == 2 and "nl<U+000A>forgiata<U+0009>file:1: alfa" in _onc
+              and _onl[0].splitlines()[0].startswith("[nomi/nl<U+000A>forgiata<U+0009>file, righe")
+              and len(_onl[1].splitlines()) == 1 and "nl<U+000A>forgiata" in _onl[1],
+              _on + " || " + _onc + " || " + str(_onl))
+    except OSError:
+        skip("T84g nomi con a-capo", "nome non creabile su questo filesystem")
+
     # T84h — argomenti sbagliati: diniego, mai eccezioni (fail-safe §9)
     _bad84 = [("leggi_righe", {"relative_path": "note.md", "da": 0, "a": 1}),
               ("leggi_righe", {"relative_path": "note.md", "da": 3, "a": 2}),
@@ -7912,7 +7942,8 @@ try:
               ("cerca_testo", {"testo": "a\nb"}),
               ("cerca_testo", {"testo": "x" * 501}),
               ("cerca_testo", {"testo": "x", "relative_path": "manca.txt"}),
-              ("conta_file", {"relative_path": 5})]
+              ("conta_file", {"relative_path": 5}),
+              ("elenca_cartella", ["."])]  # V-5 #184: argomenti non oggetto
     _ob = [_k84.execute_tool_call(t, _js84.dumps(a)) for t, a in _bad84]
     check("T84h argomenti sbagliati → 'Operazione negata', nessuna eccezione",
           all(o.startswith("Operazione negata") for o in _ob), str(_ob)[:400])
