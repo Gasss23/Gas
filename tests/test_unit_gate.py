@@ -412,6 +412,13 @@ def test_write_istruzioni_agenti_a_ogni_livello_deny(path):
     "setup.cfg", "tox.ini", "Makefile", "makefile", "dati/GNUmakefile",
     "GEMINI.md", "dati/gemini.md", ".cursorrules", "dati/.cursorrules",
     "tests/.pytest.ini", "tests/pytest.toml", ".pytest.toml",  # R-247-1
+    ".vscode/tasks.json", "dati/.vscode/settings.json", ".cursor/rules/x.mdc",
+    ".gemini/settings.json", ".idea/workspace.xml", ".devcontainer/devcontainer.json",
+    ".pre-commit-config.yaml", ".coveragerc", "mypy.ini", "tests/.mypy.ini", ".flake8",
+    "uv.toml", "tests/pytest.cfg", "justfile", "Dockerfile", ".python-version",
+    "package.json",  # R-247-2, V-1 verifica esterna #174
+    ".devcontainer.json", "dati/.devcontainer.json", "gas.code-workspace",
+    "dati/x.CODE-WORKSPACE",  # R-249-1
     "\uff30\uff59\uff50\uff52\uff4f\uff4a\uff45\uff43\uff54.toml",  # pyproject fullwidth (NFKC)
 ])
 def test_write_config_strumenti_sviluppo_deny(path):
@@ -422,6 +429,7 @@ def test_write_config_strumenti_sviluppo_deny(path):
 
 @pytest.mark.parametrize("path", [
     "dati/pyproject.toml.txt", "note/makefile_appunti.md", "setup.cfg.bak", "gemini.txt",
+    "dati/vscode_note.md", "dati/dockerfile_esempio.txt", "package.json.bak",
 ])
 def test_write_config_strumenti_nomi_simili_restano_uncertain(path):
     assert _wf(path) == GateClass.UNCERTAIN

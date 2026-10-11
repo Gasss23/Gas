@@ -103,6 +103,7 @@ _DENY_WRITE_SUFFIXES: tuple[str, ...] = (
     ".py", ".pyc", ".pyw", ".pth", ".so", ".dylib",
     # R-222-1: script di shell eseguiti fuori sandbox (hook, gasmerge, fine-task, launchd)
     ".sh", ".zsh", ".bash", ".command",
+    ".code-workspace",  # R-249-1: workspace di VS Code, può contenere task eseguiti
 )
 
 # R-222-1: file di PRIMO livello letti/eseguiti fuori dalla sandbox con privilegi
@@ -128,6 +129,14 @@ _DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
     "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini",
     ".pytest.ini", "pytest.toml", ".pytest.toml",  # R-247-1: pytest 9 li carica tutti
     "makefile", "gnumakefile",
+    # R-247-2 + V-1 verifica esterna #174: cartelle di editor/agenti che eseguono o
+    # caricano istruzioni all'apertura (il confronto vale anche sulle cartelle, quindi
+    # tutto .vscode/… è vietato), più la config di altri strumenti di sviluppo. Resta
+    # un divieto per nomi (R-223-2): uno strumento nuovo con un altro file non è coperto.
+    ".vscode", ".cursor", ".gemini", ".idea", ".devcontainer",
+    ".devcontainer.json",  # R-249-1: forma a file singolo della cartella sopra
+    ".pre-commit-config.yaml", ".coveragerc", "mypy.ini", ".mypy.ini", ".flake8",
+    "uv.toml", "pytest.cfg", "justfile", "dockerfile", ".python-version", "package.json",
 })
 
 
