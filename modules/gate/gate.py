@@ -49,6 +49,14 @@ class GateClass(Enum):
 # run_command entry is overridden by §8e logic inside gate_classify.
 GATE_ALLOWLIST: dict[str, GateClass] = {
     "read_file":              GateClass.SAFE,
+    # Strumenti nativi di sola lettura (FETTA 1, PR A, 2026-10-11): in-process, niente
+    # subprocess né shell, stesso controllo dei percorsi di read_file. SAFE in ogni
+    # modalità del recinto (funzionano anche senza bwrap).
+    "elenca_cartella":        GateClass.SAFE,
+    "leggi_righe":            GateClass.SAFE,
+    "cerca_testo":            GateClass.SAFE,
+    "conta_file":             GateClass.SAFE,
+    "data_ora":               GateClass.SAFE,
     "calcola":                GateClass.SAFE,
     "ricorda":                GateClass.SAFE,
     "notify_telegram":        GateClass.SAFE,
@@ -73,7 +81,16 @@ GATE_DENY_TOOLS: frozenset[str] = frozenset({"ssh", "modify_gate", "write_env"})
 # file come read_file: dopo un suo output i tool UNCERTAIN vanno all'approvazione.
 UNTRUSTED_INPUT_TOOLS: frozenset[str] = frozenset({
     "ricorda", "read_file", "run_command", "browser_scrape", "fetch_email",
+    # FETTA 1 PR A: portano nella finestra contenuti e nomi di file come read_file.
+    "elenca_cartella", "leggi_righe", "cerca_testo", "conta_file",
 })
+
+# Tool che leggono un percorso: stesso controllo per NOME di read_file (_check_path_arg).
+# elenca_cartella/cerca_testo senza percorso lavorano sulla root (".").
+TOOL_LETTURA_PERCORSO: frozenset[str] = frozenset({
+    "read_file", "elenca_cartella", "leggi_righe", "cerca_testo", "conta_file",
+})
+_TOOL_PERCORSO_DEFAULT_ROOT: frozenset[str] = frozenset({"elenca_cartella", "cerca_testo"})
 
 # Denylist path component prefixes — union of design §2b and §5.
 # All entries are casefold; no trailing slashes (comparison uses startswith).
@@ -332,7 +349,7 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
     Rules applied in order:
     1. Invalid tool_name (not str / empty) or unparsable args → DENY.
     2. tool_name in GATE_DENY_TOOLS or not in GATE_ALLOWLIST → DENY.
-    3. read_file / write_file: normalize 'relative_path'; absolute/traversal/
+    3. read_file (e i tool di TOOL_LETTURA_PERCORSO) / write_file: normalize 'relative_path'; absolute/traversal/
        denylist match → DENY.
     4. run_command: check each command token against denylist → DENY on match;
        then apply §8e: UNCERTAIN if GAS_SANDBOX_MODE == 'os_strict', else
@@ -364,7 +381,9 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
                 return GateClass.DENY
             if livello == LIVELLO_FIRMA:
                 return GateClass.IRREVERSIBLE
-        elif tool_name == "read_file":
+        elif tool_name in TOOL_LETTURA_PERCORSO:
+            if tool_name in _TOOL_PERCORSO_DEFAULT_ROOT and "relative_path" not in parsed:
+                parsed = {**parsed, "relative_path": "."}
             result = _check_path_arg(parsed)
             if result is not None:
                 return result

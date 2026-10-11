@@ -7707,6 +7707,282 @@ try:
 except Exception as _e83:
     check("T83 blocco senza eccezioni", False, repr(_e83))
 
+# ---------- T84: strumenti nativi di sola lettura (FETTA 1 PR A, 2026-10-11) ----------
+# elenca_cartella, leggi_righe, cerca_testo, conta_file, data_ora: in-process, stesso
+# controllo dei percorsi di read_file (_risolvi_lettura), tetti, diario a soli conteggi.
+print("\n--- T84: strumenti nativi di sola lettura ---")
+import json as _js84
+from modules.gate.gate import (gate_classify as _gc84, GateClass as _GC84,
+                               UNTRUSTED_INPUT_TOOLS as _UIT84, lettura_consentita as _lc84)
+_NATIVI84 = ("elenca_cartella", "leggi_righe", "cerca_testo", "conta_file")
+try:
+    _k84 = kernel_tmp()
+    _r84 = Path(_k84.root)
+    (_r84 / "note.md").write_text("alfa\nBeta gamma\nalfa beta\n", encoding="utf-8")
+    (_r84 / "docs" / "sub" / "deep" / "deeper").mkdir(parents=True)
+    (_r84 / "docs" / "a.txt").write_text("uno ALFA\n", encoding="utf-8")
+    (_r84 / "docs" / "sub" / "b.txt").write_text("due alfa\n", encoding="utf-8")
+    (_r84 / "docs" / "sub" / "deep" / "deeper" / "c.txt").write_text("alfa profondo\n", encoding="utf-8")
+    (_r84 / "vuota").mkdir()
+    (_r84 / ".env").write_text("SEGRETO=xyz84\n", encoding="utf-8")
+    (_r84 / "prod.env").write_text("alfa xyz84\n", encoding="utf-8")
+    (_r84 / ".gas_notte").mkdir()
+    (_r84 / ".gas_notte" / "log.txt").write_text("alfa xyz84\n", encoding="utf-8")
+    (_r84 / ".gas_memory.bak").write_bytes(b"alfa xyz84\n")
+    (_r84 / ".git" / "alfa.txt").write_text("alfa xyz84\n", encoding="utf-8")
+    (_r84 / "modules" / "gate").mkdir(parents=True)
+    (_r84 / "modules" / "gate" / "gate.py").write_text("CANCELLO = 1\n", encoding="utf-8")
+    (_r84 / "bin.dat").write_bytes(b"alfa\x00\x01\x02\n")
+    (_r84 / "latin.txt").write_bytes("alfa caff\xe8\n".encode("latin-1"))
+    (_r84 / "prod.environment").write_text("alfa ambiente\n", encoding="utf-8")
+
+    # T84a — round-trip agentico per ogni tool: il loop prosegue fino alla risposta finale
+    _casi84 = [
+        ("elenca_cartella", {"relative_path": "."}, lambda o: "note.md" in o and "docs/" in o),
+        ("leggi_righe", {"relative_path": "note.md", "da": 2, "a": 3},
+         lambda o: "2| Beta gamma" in o and "3| alfa beta" in o and "1| alfa" not in o),
+        ("cerca_testo", {"testo": "alfa", "relative_path": "note.md"},
+         lambda o: "note.md:1: alfa" in o and "note.md:3: alfa beta" in o),
+        ("conta_file", {"relative_path": "note.md"},
+         lambda o: "3 righe, 5 parole, 26 caratteri" in o),
+        ("data_ora", {}, lambda o: "UTC" in o and str(datetime.now().year) in o),
+    ]
+    from datetime import datetime
+    for _nome84, _args84, _ok84 in _casi84:
+        _ev = run_turn_scriptato(_k84, "usa lo strumento", [
+            [(_nome84, _js84.dumps(_args84))], "fatto"])
+        _tr = [e["output"] for e in _ev if e["type"] == "tool_res"]
+        _fin = [e for e in _ev if e["type"] == "final"]
+        check(f"T84a round-trip {_nome84}: tool eseguito e risposta finale dopo la tool call",
+              len(_tr) == 1 and _ok84(_tr[0]) and len(_fin) == 1 and _fin[0]["content"] == "fatto",
+              str(_tr)[:200])
+
+    # T84b — percorsi vietati: negati al cancello (nome) E all'esecuzione (file vero)
+    _vietati84 = [".env", "prod.env", ".git/alfa.txt", ".gas_memory.bak", ".gas_memory.db", ".gas_notte/log.txt",
+                  "../fuori.txt", "/etc/passwd", ".ENV", "PROD.ENV", "．env",
+                  "docs/../.env", ".gas_notte"]
+    _neg84 = {}
+    for _t in _NATIVI84:
+        for _p in _vietati84:
+            _a = {"relative_path": _p, "da": 1, "a": 1, "testo": "alfa"}
+            _neg84[(_t, _p, "gate")] = _gc84(_t, _a) == _GC84.DENY
+            _o = _k84.execute_tool_call(_t, _js84.dumps(_a))
+            _neg84[(_t, _p, "kernel")] = _o.startswith("Operazione negata") and "xyz84" not in _o
+    check("T84b percorsi vietati (.env, prod.env, .git, .gas_memory, .gas_notte, traversal, "
+          "assoluti, maiuscole, Unicode) negati al cancello e all'esecuzione",
+          all(_neg84.values()), str([k for k, v in _neg84.items() if not v])[:300])
+
+    # T84c — symlink e hard link verso .env: negati sul file vero (come read_file)
+    try:
+        os.symlink(".env", str(_r84 / "innocuo.txt"))
+        _sl84 = True
+    except OSError:
+        _sl84 = False
+    try:
+        os.link(str(_r84 / ".env"), str(_r84 / "copia.txt"))
+        _hl84 = True
+    except OSError:
+        _hl84 = False
+    _link84 = [n for n, ok in (("innocuo.txt", _sl84), ("copia.txt", _hl84)) if ok]
+    if _link84:
+        _o84c = [_k84.execute_tool_call(t, _js84.dumps({"relative_path": n, "da": 1, "a": 1,
+                                                         "testo": "SEGRETO"}))
+                 for t in _NATIVI84 for n in _link84]
+        check("T84c symlink e hard link verso .env → negati, nessun segreto",
+              all(o.startswith("Operazione negata") and "xyz84" not in o for o in _o84c),
+              str(_o84c)[:300])
+    else:
+        skip("T84c link", "symlink e hard link non creabili su questo filesystem")
+
+    # T84d — cartelle: i file protetti non compaiono e il loro contenuto non esce
+    _el84 = _k84.execute_tool_call("elenca_cartella", '{"relative_path": ".", "profondita": 3}')
+    _ce84 = _k84.execute_tool_call("cerca_testo", '{"testo": "xyz84"}')
+    _ce84b = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa"}')
+    check("T84d elenca_cartella omette .env, .git, memoria, .gas_notte, link protetti",
+          not any(r.split("\t")[-1].rstrip("/") in (".env", ".git", ".gas_memory.bak", ".gas_notte",
+                                                     "copia.txt", "innocuo.txt", "prod.env")
+                  for r in _el84.splitlines()[1:])
+          and "xyz84" not in _el84
+          and "voci protette o illeggibili omesse" in _el84 and "docs/sub/" in _el84, _el84[:400])
+    check("T84d cerca_testo su tutta la root non legge i file protetti",
+          "xyz84" not in _ce84 and _ce84.startswith("0 righe trovate")
+          and "xyz84" not in _ce84b and "note.md:1: alfa" in _ce84b
+          and "docs/a.txt" not in _ce84b, (_ce84 + " || " + _ce84b)[:400])
+    _ci84 = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "docs", '
+                                                  '"ignora_maiuscole": true}')
+    check("T84d cerca_testo ignora_maiuscole trova ALFA, con numero di riga",
+          "docs/a.txt:1: uno ALFA" in _ci84 and "docs/sub/b.txt:1: due alfa" in _ci84, _ci84[:300])
+
+    # T84e — modules/gate/gate.py: si legge come con read_file (decisione operatore 2026-10-11)
+    _rf84 = _k84.execute_tool_call("read_file", '{"relative_path": "modules/gate/gate.py"}')
+    _lr84 = _k84.execute_tool_call("leggi_righe", '{"relative_path": "modules/gate/gate.py", "da": 1, "a": 1}')
+    check("T84e modules/gate leggibile come read_file (stesso esito), ma scrittura livello 3",
+          _rf84 == "CANCELLO = 1\n" and "1| CANCELLO = 1" in _lr84
+          and all(_gc84(t, {"relative_path": "modules/gate/gate.py", "da": 1, "a": 1,
+                            "testo": "x"}) == _GC84.SAFE for t in _NATIVI84)
+          and _gc84("write_file", {"relative_path": "modules/gate/gate.py", "content": "x"})
+          == _GC84.DENY, _lr84[:100])
+
+    # T84f — tetti: profondità, numero di voci, byte, tempo, risultati
+    _el84f = _k84.execute_tool_call("elenca_cartella", '{"relative_path": "docs", "profondita": 99}')
+    check("T84f profondità massima (3): deeper/ mostrata, il suo contenuto no",
+          "sub/deep/deeper/" in _el84f and "c.txt" not in _el84f, _el84f[:300])
+    _k84.LETTURA_MAX_FILE = 2
+    _o = _k84.execute_tool_call("elenca_cartella", '{"relative_path": "docs", "profondita": 3}')
+    check("T84f tetto sul numero di voci dichiarato", "ELENCO INCOMPLETO" in _o
+          and "numero di voci (2)" in _o, _o[:200])
+    _k84.LETTURA_MAX_FILE = GasKernel.LETTURA_MAX_FILE
+    _k84.LETTURA_MAX_BYTES = 10
+    _o = (_k84.execute_tool_call("conta_file", '{"relative_path": "note.md"}'),
+          _k84.execute_tool_call("leggi_righe", '{"relative_path": "note.md", "da": 3, "a": 3}'),
+          _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "note.md"}'))
+    check("T84f tetto di byte: conta/leggi negati, cerca salta il file troppo grande",
+          _o[0].startswith("Operazione negata") and _o[1].startswith("Operazione negata")
+          and _o[2].startswith("0 righe trovate in 0 file")
+          and "1 file oltre il tetto di byte saltati" in _o[2], str(_o)[:300])
+    # R-282-1: un file grande non ferma la ricerca negli altri file
+    (_r84 / "docs" / "0grande.txt").write_text("alfa " * 40, encoding="utf-8")
+    _k84.LETTURA_MAX_BYTES = 20
+    _o = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "docs"}')
+    check("T84f R-282-1 file oltre il budget saltato, la ricerca prosegue negli altri",
+          "docs/sub/b.txt:1: due alfa" in _o and "1 file oltre il tetto di byte saltati" in _o
+          and "0grande" not in _o and "RICERCA INCOMPLETA" not in _o, _o[:300])
+    _k84.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
+    _k84.LETTURA_MAX_SECONDI = 0.0
+    _o = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "docs"}')
+    check("T84f tetto di tempo dichiarato", "tempo (0 s)" in _o, _o[:200])
+    _k84.LETTURA_MAX_SECONDI = GasKernel.LETTURA_MAX_SECONDI
+    _k84.LETTURA_MAX_RISULTATI = 1
+    _o = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "note.md"}')
+    check("T84f tetto sui risultati", _o.startswith("1 righe trovate") and "risultati (1)" in _o, _o[:200])
+    _k84.LETTURA_MAX_RISULTATI = GasKernel.LETTURA_MAX_RISULTATI
+    _old_env = {v: os.environ.get(v) for v in ("GAS_LETTURA_MAX_FILE", "GAS_LETTURA_MAX_SECONDI")}
+    os.environ["GAS_LETTURA_MAX_FILE"] = "7"
+    os.environ["GAS_LETTURA_MAX_SECONDI"] = "2.5"
+    _k84env = GasKernel(root_dir=tempfile.mkdtemp(prefix="gas_t84f_"))
+    for _v, _x in _old_env.items():
+        if _x is None:
+            os.environ.pop(_v, None)
+        else:
+            os.environ[_v] = _x
+    check("T84f tetti configurabili da variabile d'ambiente",
+          _k84env.LETTURA_MAX_FILE == 7 and _k84env.LETTURA_MAX_SECONDI == 2.5)
+
+    # T84g — file binari e non UTF-8, cartella vuota
+    _o = [_k84.execute_tool_call(t, _js84.dumps({"relative_path": f, "da": 1, "a": 1}))
+          for t in ("leggi_righe", "conta_file") for f in ("bin.dat", "latin.txt")]
+    _oc = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "bin.dat"}')
+    check("T84g binari e non UTF-8: negati con messaggio, cerca li salta",
+          all(o.startswith("Operazione negata: il file non è testo") for o in _o)
+          and "1 file non di testo saltati" in _oc, str(_o)[:200] + _oc[:100])
+    _ov = _k84.execute_tool_call("elenca_cartella", '{"relative_path": "vuota"}')
+    _ovc = _k84.execute_tool_call("cerca_testo", '{"testo": "x", "relative_path": "vuota"}')
+    check("T84g cartella vuota: elenco vuoto dichiarato, ricerca a zero",
+          "Cartella vuota" in _ov and _ovc.startswith("0 righe trovate in 0 file"), _ov + _ovc)
+
+    # T84g — R-282-2: FIFO (file speciale) mai aperta in modo bloccante
+    if hasattr(os, "mkfifo"):
+        (_r84 / "speciali").mkdir()
+        os.mkfifo(str(_r84 / "speciali" / "tubo"))
+        _of = [_k84.execute_tool_call(t, _js84.dumps({"relative_path": "speciali/tubo", "da": 1,
+                                                       "a": 1, "testo": "x"}))
+               for t in ("leggi_righe", "conta_file", "cerca_testo")]
+        _ofe = _k84.execute_tool_call("elenca_cartella", '{"relative_path": "speciali"}')
+        _ofc = _k84.execute_tool_call("cerca_testo", '{"testo": "x", "relative_path": "speciali"}')
+        _ofd = []
+        try:
+            _ofd.append(next(_k84._righe_testo(_r84 / "speciali" / "tubo", [100])))
+        except GasKernel._NonRegolare:
+            _ofd.append("non regolare")
+        check("T84g FIFO: negata senza blocchi, elencata come 'speciale', saltata nella ricerca",
+              all(o.startswith("Operazione negata") for o in _of) and "speciale\t" in _ofe
+              and _ofc.startswith("0 righe trovate in 0 file") and _ofd == ["non regolare"],
+              str(_of) + _ofe + _ofc)
+    else:
+        skip("T84g FIFO", "mkfifo non disponibile")
+
+    # T84h — argomenti sbagliati: diniego, mai eccezioni (fail-safe §9)
+    _bad84 = [("leggi_righe", {"relative_path": "note.md", "da": 0, "a": 1}),
+              ("leggi_righe", {"relative_path": "note.md", "da": 3, "a": 2}),
+              ("leggi_righe", {"relative_path": "note.md", "da": "x", "a": 2}),
+              ("leggi_righe", {"relative_path": "docs", "da": 1, "a": 2}),
+              ("conta_file", {"relative_path": "docs"}),
+              ("elenca_cartella", {"relative_path": "note.md"}),
+              ("cerca_testo", {"testo": ""}),
+              ("cerca_testo", {"testo": "a\nb"}),
+              ("cerca_testo", {"testo": "x" * 501}),
+              ("cerca_testo", {"testo": "x", "relative_path": "manca.txt"}),
+              ("conta_file", {"relative_path": 5})]
+    _ob = [_k84.execute_tool_call(t, _js84.dumps(a)) for t, a in _bad84]
+    check("T84h argomenti sbagliati → 'Operazione negata', nessuna eccezione",
+          all(o.startswith("Operazione negata") for o in _ob), str(_ob)[:400])
+    _o = _k84.execute_tool_call("leggi_righe", '{"relative_path": "note.md", "da": 10, "a": 12}')
+    check("T84h oltre la fine del file: dichiarato", "ha solo 3 righe" in _o, _o)
+
+    # T84i — cancello: SAFE in ogni modalità del recinto, fiducia degli output
+    _modi84 = {}
+    _sv = os.environ.get("GAS_SANDBOX_MODE")
+    for _m in ("os_strict", "os_with_fallback", "app_only", ""):
+        os.environ["GAS_SANDBOX_MODE"] = _m
+        _modi84[_m] = all(_gc84(t, {"relative_path": "note.md", "da": 1, "a": 1, "testo": "x"})
+                          == _GC84.SAFE for t in _NATIVI84 + ("data_ora",))
+    if _sv is None:
+        os.environ.pop("GAS_SANDBOX_MODE", None)
+    else:
+        os.environ["GAS_SANDBOX_MODE"] = _sv
+    check("T84i i 5 tool sono SAFE in ogni modalità del recinto", all(_modi84.values()), str(_modi84))
+    check("T84i elenca/cerca senza percorso = root (SAFE)",
+          _gc84("elenca_cartella", {}) == _GC84.SAFE and _gc84("cerca_testo", {"testo": "x"}) == _GC84.SAFE)
+    check("T84i i 4 tool di lettura sono input NON fidato; data_ora no",
+          all(t in _UIT84 and t not in gas._TOOL_OUTPUT_FIDATO for t in _NATIVI84)
+          and "data_ora" not in _UIT84 and "data_ora" in gas._TOOL_OUTPUT_FIDATO)
+    with _TgFinto():
+        _ev84 = run_turn_scriptato(_k84, "cerca e scrivi", [
+            [("cerca_testo", '{"testo": "alfa", "relative_path": "note.md"}')],
+            [("write_file", '{"relative_path": "nuovo.txt", "content": "x"}')], "ok"])
+    _tr84 = [e["output"] for e in _ev84 if e["type"] == "tool_res"]
+    check("T84i dopo cerca_testo la finestra è contaminata: write_file va al cancello",
+          len(_tr84) == 2 and _tr84[1].startswith("Azione in attesa di approvazione umana")
+          and not (_r84 / "nuovo.txt").exists(), str(_tr84)[:200])
+
+    # T84j — diario: solo conteggi, mai contenuto né testo cercato (F-diario-eco)
+    (_r84 / "diario.txt").write_text("PAROLA_DIARIO84 qui\n", encoding="utf-8")
+    run_turn_scriptato(_k84, "leggi", [
+        [("cerca_testo", '{"testo": "PAROLA_DIARIO84", "relative_path": "diario.txt"}'),
+         ("leggi_righe", '{"relative_path": "diario.txt", "da": 1, "a": 1}'),
+         ("elenca_cartella", '{"relative_path": "."}'),
+         ("conta_file", '{"relative_path": "diario.txt"}')], "fine"])
+    _d84 = [r["descrizione"] for r in _k84.memory.diario_recente(30) if r["tipo"] in _NATIVI84]
+    check("T84j diario dei tool nativi: solo conteggi, mai contenuto o testo cercato",
+          len(_d84) >= 4 and all("PAROLA_DIARIO84" not in d for d in _d84)
+          and any("1 righe trovate in 1 file" in d for d in _d84)
+          and any("1 righe lette" in d for d in _d84), str(_d84)[:400])
+
+    # T84k — troncamento: indica leggi_righe, non più `sed -n` (F4 delle fondamenta)
+    (_r84 / "grande.txt").write_text("riga\n" * 3000, encoding="utf-8")
+    _og = _k84.execute_tool_call("read_file", '{"relative_path": "grande.txt"}')
+    check("T84k messaggio di troncamento indica leggi_righe, non sed -n",
+          "OUTPUT TRONCATO" in _og and "leggi_righe" in _og and "sed -n" not in _og, _og[-200:])
+
+    # T84l — R-277-1: `prod.environment` resta leggibile (compromesso registrato); i tool
+    # nuovi hanno lo stesso esito di read_file (un solo punto di controllo).
+    _o277 = (_k84.execute_tool_call("read_file", '{"relative_path": "prod.environment"}'),
+             _k84.execute_tool_call("leggi_righe", '{"relative_path": "prod.environment", "da": 1, "a": 1}'))
+    check("T84l R-277-1: prod.environment leggibile da read_file e leggi_righe (stesso esito, "
+          "compromesso ancora aperto)",
+          _lc84("prod.environment") and _o277[0] == "alfa ambiente\n" and "1| alfa ambiente" in _o277[1],
+          str(_o277)[:200])
+
+    # T84m — schema e prompt dichiarano i tool nuovi
+    _nomi84 = [t["function"]["name"] for t in _k84.tools_schema]
+    check("T84m tools_schema contiene i 5 tool e run_command resta (PR A non toglie nulla)",
+          all(t in _nomi84 for t in _NATIVI84 + ("data_ora", "run_command")), str(_nomi84))
+    check("T84m prompt di sistema elenca i tool nuovi",
+          all(t in gas._GAS_SYSTEM_PROMPT_BASE for t in _NATIVI84 + ("data_ora",)))
+except Exception as _e84:
+    import traceback as _tb84
+    check("T84 blocco senza eccezioni", False, repr(_e84) + _tb84.format_exc()[-400:])
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
