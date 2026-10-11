@@ -15,7 +15,8 @@ Key invariants:
   NFKC (not NFC) required: FULLWIDTH characters (U+FF0E ．, U+FF0F ／) are
   not reduced to ASCII equivalents by NFC but are by NFKC.
 - Path denylist: any path whose normalized form (or any component) starts
-  with a denied prefix → DENY for read_file.
+  with a denied prefix → DENY for read_file (dal 2026-10-11 solo i prefissi
+  del livello 3: gas.py, brains/, modules/ si possono LEGGERE).
 - write_file: schema a 3 livelli (livello_scrittura, decisione operatore 1A del
   2026-10-11): 3 = mai → DENY; 2 = codice → IRREVERSIBLE (firma con diff reale e
   pro e contro); 1 = libero → UNCERTAIN.
@@ -166,10 +167,14 @@ def _normalize_path(p: str) -> str:
     return p.casefold()
 
 
-def _in_denylist(normalized: str) -> bool:
-    """Return True if the normalized path (or any of its components) is denied."""
+def _in_denylist(normalized: str, prefissi: "tuple[str, ...] | None" = None) -> bool:
+    """Return True if the normalized path (or any of its components) is denied.
+    `prefissi` None = _DENY_PREFIXES; la LETTURA usa _LETTURA_NEGATA (operatore
+    2026-10-11: Gas legge gas.py, brains/, modules/ ma non li tocca senza firma)."""
+    if prefissi is None:
+        prefissi = _DENY_PREFIXES
     # Check full path starts with any denied prefix.
-    for prefix in _DENY_PREFIXES:
+    for prefix in prefissi:
         if normalized.startswith(prefix):
             return True
     # Check individual path components.
@@ -178,7 +183,7 @@ def _in_denylist(normalized: str) -> bool:
     except Exception:
         return True  # Fail-closed on unparsable path.
     for part in parts:
-        for prefix in _DENY_PREFIXES:
+        for prefix in prefissi:
             if part.startswith(prefix):
                 return True
     return False
@@ -199,7 +204,7 @@ def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | N
         norm = _normalize_path(raw)
     except ValueError:
         return GateClass.DENY
-    if _in_denylist(norm):
+    if _in_denylist(norm, None if write else _LETTURA_NEGATA):
         return GateClass.DENY
     if write and norm.rstrip("/. ").endswith(_DENY_WRITE_SUFFIXES):
         return GateClass.DENY
@@ -233,6 +238,23 @@ _LIVELLO3_CANCELLO: tuple[str, str] = ("modules", "gate")
 _LIVELLO2_PREFISSI: tuple[str, ...] = ("gas.py", "brains", "modules")
 
 LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI = 1, 2, 3
+
+# Lettura (decisione operatore 2026-10-11, «Gas può leggere i file ma non toccarli»):
+# read_file e run_command possono leggere gas.py, brains/, modules/ (livello 2 in
+# scrittura). Restano illeggibili SOLO i file del livello 3: segreti, git/CI,
+# .claude, memoria/cronologia/stato, venv.
+_LETTURA_NEGATA: tuple[str, ...] = _LIVELLO3_PREFISSI
+
+
+def lettura_consentita(relative_path: Any) -> bool:
+    """True se read_file può leggere il percorso (relativo alla root). Usata anche
+    dal kernel sul percorso RISOLTO (symlink). Mai eccezioni: errore → False."""
+    try:
+        if not isinstance(relative_path, str) or not relative_path.strip():
+            return False
+        return not _in_denylist(_normalize_path(relative_path), _LETTURA_NEGATA)
+    except Exception:
+        return False
 
 
 def livello_scrittura(relative_path: Any) -> int:
@@ -345,13 +367,13 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
                 except ValueError:
                     # Absolute path or traversal as a command argument → DENY.
                     return GateClass.DENY
-                if _in_denylist(norm):
+                if _in_denylist(norm, _LETTURA_NEGATA):
                     return GateClass.DENY
             # Belt-and-suspenders: whole-command substring check (NFKC + casefold).
             # Catches --flag=.env.prod and -f.env patterns where the token itself
             # is not a normalizable path but embeds a denied name as a value.
             cmd_norm = unicodedata.normalize("NFKC", command).casefold()
-            for prefix in _DENY_PREFIXES:
+            for prefix in _LETTURA_NEGATA:  # run_command è in sola lettura (allowlist)
                 if prefix in cmd_norm:
                     return GateClass.DENY
             # All checks clean → apply §8e sandbox mode rule.

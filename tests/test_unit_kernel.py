@@ -7568,6 +7568,122 @@ try:
 except Exception as _e82:
     check("T82 blocco senza eccezioni", False, repr(_e82))
 
+# ---------- T83: lettura del codice aperta (operatore 2026-10-11) ----------
+# «Gas può leggere gas.py, brains/, modules/ ma non toccarli senza la mia firma».
+print("\n--- T83: lettura del codice aperta, scrittura solo con firma ---")
+import json as _js83
+try:
+    _k83 = kernel_tmp()
+    _r83 = Path(_k83.root)
+    (_r83 / "brains").mkdir()
+    (_r83 / "brains" / "router.py").write_text("ROTTA = 1\n", encoding="utf-8")
+    (_r83 / ".env").write_text("SEGRETO=xyz\n", encoding="utf-8")
+    _ok83 = True
+    try:
+        os.symlink(".env", str(_r83 / "innocuo.txt"))
+    except OSError:
+        _ok83 = False
+    with _TgFinto() as _tg83:
+        _ev83 = run_turn_scriptato(_k83, "leggi e correggi", [
+            [("read_file", '{"relative_path": "brains/router.py"}')],
+            [("write_file", _js83.dumps({"relative_path": "brains/router.py",
+                                         "content": "ROTTA = 2\n", "pro": "p", "contro": "c"}))],
+            "in attesa"])
+    _o83 = [e["output"] for e in _ev83 if e["type"] == "tool_res"]
+    check("T83a read_file legge il codice (brains/router.py)",
+          len(_o83) == 2 and _o83[0] == "ROTTA = 1\n", str(_o83)[:200])
+    check("T83b dopo la lettura, la modifica del codice va alla firma (file intatto)",
+          len(_o83) == 2 and _o83[1].startswith("Azione in attesa di approvazione umana")
+          and (_r83 / "brains" / "router.py").read_text() == "ROTTA = 1\n"
+          and len(_tg83.chiamate) == 1, str(_o83)[:200])
+    check("T83c .env resta illeggibile anche chiamando direttamente l'esecuzione",
+          _k83.execute_tool_call("read_file", '{"relative_path": ".env"}')
+          == "Operazione negata: questo file non si può leggere.")
+    if _ok83:
+        _o83d = _k83.execute_tool_call("read_file", '{"relative_path": "innocuo.txt"}')
+        check("T83d symlink con nome innocuo verso .env → negato sul percorso risolto",
+              _o83d == "Operazione negata: questo file non si può leggere." and "xyz" not in _o83d,
+              _o83d[:120])
+    else:
+        skip("T83d symlink", "symlink non creabile su questo filesystem")
+    # T83e — R-269-1/2: run_command non legge il livello 3 per vie indirette
+    senza_sandbox_os_usa_fallback(_k83)
+    _o83e = {c: _k83.execute_tool_call("run_command", _js83.dumps({"command": c}))
+             for c in ("grep -r SEGRETO .", "grep SEGRETO -r brains", "diff -r brains .",
+                       "cat innocuo.txt" if _ok83 else "cat .env")}
+    check("T83e grep/diff su cartelle e symlink verso .env → negati, nessun segreto",
+          all(o.startswith("Operazione negata") and "xyz" not in o for o in _o83e.values()),
+          str(_o83e)[:300])
+    # Review #270: ricorsione senza percorso, file da opzioni (=, separati, in gruppo)
+    (_r83 / "note.md").write_text("ciao\n", encoding="utf-8")
+    _forme83 = ["grep -r SEGRETO", "grep -rn SEGRETO", "grep -R xyz", "grep -iR xyz",
+                "grep -d recurse SEGRETO", "grep --directories=recurse xyz",
+                "grep --recursive xyz", "grep --dereference-recursive xyz",
+                "grep -o --file=.env note.md", "grep -f .env note.md",
+                "grep -if innocuo.txt note.md", "grep --exclude-from=x note.md",
+                "diff --from-file=innocuo.txt note.md", "diff note.md --to-file=innocuo.txt",
+                "diff -r brains note.md", "diff -X innocuo.txt note.md note.md",
+                "file -f innocuo.txt", "file --files-from=innocuo.txt", "file -bf innocuo.txt",
+                "wc --files0-from=innocuo.txt", "date -f innocuo.txt", "date --file=innocuo.txt"]
+    _o83r = {c: _k83.execute_tool_call("run_command", _js83.dumps({"command": c})) for c in _forme83}
+    check("T83i review #270: ricorsione e file da opzioni → negati, mai SEGRETO/xyz",
+          all(o.startswith("Operazione negata") and "xyz" not in o and "SEGRETO=" not in o
+              for o in _o83r.values()),
+          str({k: v[:60] for k, v in _o83r.items() if not v.startswith("Operazione negata")})[:300])
+    _o83j = [_k83.execute_tool_call("run_command", _js83.dumps({"command": c})) for c in (
+        "grep -n -A 1 ROTTA brains/router.py", "grep -ie rotta brains/router.py",
+        "grep --count --ignore-case rotta brains/router.py", "diff -u note.md brains/router.py")]
+    check("T83j opzioni innocue di grep/diff restano permesse",
+          not any(o.startswith("Operazione negata") for o in _o83j), str(_o83j)[:300])
+    # Review #271: binari con argomento di OUTPUT, SENZA bwrap (caso del Mac)
+    (_r83 / "gas.py").write_text("KERNEL\n", encoding="utf-8")
+    (_r83 / "modules" / "gate").mkdir(parents=True)
+    (_r83 / "modules" / "gate" / "gate.py").write_text("ORIGINALE\n", encoding="utf-8")
+    _sb83 = (_k83.os_sandbox_available, _k83.sandbox_mode)
+    _k83.os_sandbox_available, _k83.sandbox_mode = False, "os_with_fallback"
+    _o83k = {c: _k83.execute_tool_call("run_command", _js83.dumps({"command": c})) for c in (
+        "uniq note.md gas.py", "uniq note.md modules/gate/gate.py", "uniq -c note.md gas.py",
+        "uniq -- note.md gas.py", "file -C -m note.md", "file --compile note.md",
+        "date -s 2000-01-01", "date --set=2000-01-01")}
+    _o83k2 = _k83.execute_tool_call("run_command", '{"command": "uniq -c note.md"}')
+    _k83.os_sandbox_available, _k83.sandbox_mode = _sb83
+    check("T83k senza bwrap: uniq/file -C/date -s negati, gas.py e il cancello intatti",
+          all(o.startswith("Operazione negata") for o in _o83k.values())
+          and (_r83 / "gas.py").read_text() == "KERNEL\n"
+          and (_r83 / "modules" / "gate" / "gate.py").read_text() == "ORIGINALE\n"
+          and not (_r83 / "magic.mgc").exists() and not (_r83 / "note.md.mgc").exists(),
+          str({k: v[:50] for k, v in _o83k.items()})[:300])
+    check("T83k uniq con UN solo file resta permesso", "ciao" in _o83k2, _o83k2[:100])
+    # Review #272: nomi lunghi ABBREVIATI. Solo il controllo (_vet_command), MAI
+    # l'esecuzione: date --set cambierebbe davvero l'orologio della macchina.
+    _ab83 = {c: _k83._vet_command(c, _r83) for c in (
+        "file --compil", "file --comp=x", "date --se=2020-01-01", "date --s=2020-01-01",
+        "file --magic=innocuo.txt note.md", "file --files=innocuo.txt",
+        "wc --files0=innocuo.txt", "date --fil=innocuo.txt", "date --ref=innocuo.txt")}
+    check("T83l opzioni lunghe abbreviate di file/wc/date → negate al controllo",
+          all(argv is None and (m or "").startswith("Operazione negata")
+              for argv, m in _ab83.values()),
+          str({k: v[1] for k, v in _ab83.items() if v[0] is not None})[:300])
+    _ok83l = [_k83._vet_command(c, _r83)[0] is not None for c in (
+        "wc --lines note.md", "date --utc", "file --brief note.md", "date --iso-8601")]
+    check("T83l opzioni lunghe innocue restano permesse", all(_ok83l), str(_ok83l))
+    _o83f = _k83.execute_tool_call("run_command", '{"command": "grep -n ROTTA brains/router.py"}')
+    check("T83f grep su un FILE di codice funziona (pattern non scambiato per percorso)",
+          "ROTTA" in _o83f and not _o83f.startswith("Operazione negata"), _o83f[:150])
+    _o83g = _k83.execute_tool_call("run_command", '{"command": "grep -c brains brains/router.py"}')
+    check("T83g pattern uguale al nome di una cartella non viene negato",
+          not _o83g.startswith("Operazione negata"), _o83g[:150])
+    try:
+        os.link(str(_r83 / ".env"), str(_r83 / "copia.txt"))
+        _o83h = (_k83.execute_tool_call("read_file", '{"relative_path": "copia.txt"}'),
+                 _k83.execute_tool_call("run_command", '{"command": "cat copia.txt"}'))
+        check("T83h hard link verso .env → negato in read_file e run_command",
+              all(o.startswith("Operazione negata") and "xyz" not in o for o in _o83h), str(_o83h)[:200])
+    except OSError:
+        skip("T83h hard link", "hard link non creabile su questo filesystem")
+except Exception as _e83:
+    check("T83 blocco senza eccezioni", False, repr(_e83))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

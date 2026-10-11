@@ -348,11 +348,14 @@ stessa impronta. Il messaggio mostra prima il file vero e il diff, poi pro e con
 (max 600 caratteri ciascuno, righe rientrate con «│ » perché non imitino le
 intestazioni); caratteri invisibili (\r, BOM, larghezza zero, bidi) resi `<U+XXXX>`.
 
-Limiti dichiarati: (1) `read_file` resta vietata su `gas.py`, `brains/`, `modules/`
-(non era nella decisione 1A): il modello riscrive file che non può leggere, e su file
-grandi il diff supera i 4096 caratteri di Telegram → oggi il livello 2 serve davvero
-per file piccoli/nuovi, script e config; aprire la lettura del codice è una decisione
-dell'operatore. (2) Windows è fuori dal modello di minaccia (separatori `\`, a-capo
+Limiti dichiarati: (1) ~~`read_file` vietata su `gas.py`, `brains/`, `modules/`~~
+APERTA dall'operatore il 2026-10-11 («Gas può leggere i file ma non toccarli»):
+`read_file` e `run_command` leggono il codice; restano illeggibili solo i file del
+livello 3 (`_LETTURA_NEGATA`). Il gate guarda i NOMI; all'esecuzione si ricontrolla il
+file VERO (review #269, R-269-1/2): symlink verso il livello 3 e file con hard link
+negati sia in `read_file` sia negli argomenti di `run_command`, e `grep`/`diff` su una
+cartella negati (la ricerca ricorsiva passerebbe da `.env`, `.git`, memoria).
+Resta il limite di 4096 caratteri del diff su Telegram: modifiche piccole. (2) Windows è fuori dal modello di minaccia (separatori `\`, a-capo
 del modo testo). (3) Hard link: dalla verifica esterna #180 (V-4) write_file nega
 qualsiasi file con più di un collegamento. `rendi_visibili` resta una lista di
 caratteri noti: gli omoglifi (lettere che sembrano altre) non sono rilevabili. (4) V-2 bot #180: il livello 3 protegge solo `modules/gate/` e
@@ -360,8 +363,9 @@ caratteri noti: gli omoglifi (lettere che sembrano altre) non sono rilevabili. (
 `applica_firma`; `modules/telegram/bot.py`; `modules/memory/` con coda e hash) e i gate
 di sviluppo (`scripts/check_verdetto.py`, `scripts/check_handoff.py`,
 `scripts/fine_task_finale.sh`, `CLAUDE.md`) sono di livello 2, cioè modificabili con UNA
-firma. Oggi il rischio è frenato dalla lettura negata del codice e dal limite di 4096
-caratteri del diff; portarli al livello 3 è una decisione dell'operatore. Lo stesso
+firma. DECISIONE OPERATORE 2026-10-11: restano al livello 2 (con firma). Con la
+lettura del codice aperta l'unica barriera è l'operatore sul diff (più il limite di
+4096 caratteri). Lo stesso
 vale per `brains/` e `modules/__init__.py` (V-1 verifica esterna #180): l'unica barriera
 sul codice del cancello è l'occhio dell'operatore sul diff.
 
