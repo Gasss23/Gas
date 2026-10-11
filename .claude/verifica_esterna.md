@@ -48,3 +48,18 @@ RACCOMANDAZIONE: <cosa fare prima di altro lavoro>
 
 Il tuo messaggio finale È il verdetto COMPLETO nel formato sopra (verrà riportato integrale
 all'operatore). Le sonde vanno nella tua scratchpad, mai nel repo.
+
+## Pubblicazione del verdetto (dal 2026-10-11, scelta dell'operatore)
+
+Prima del messaggio finale, pubblica TU il verdetto completo come commento sulla PR
+(`<URL_PR>`), con lo strumento GitHub che hai (commento sulla issue/PR, non una review).
+Il commento comincia con la riga `Verifica esterna (agente) — verdetto integrale, commit
+<SHA pinnato>` e poi il verdetto in un blocco di codice, identico al tuo messaggio finale.
+È l'unica scrittura consentita: non modifichi file, branch, etichette né altri commenti.
+Così la prova del verdetto sta sulla PR, pubblicata da te, e non dipende da un file che
+l'agente principale ricopia. Limite dichiarato: il commento esce con la stessa identità
+GitHub dell'operatore; le modifiche restano nella cronologia di GitHub, ma una
+cancellazione seguita da una nuova pubblicazione non lascia traccia. Se non riesci a
+pubblicarlo, scrivi in testa al messaggio finale `COMMENTO NON PUBBLICATO: <motivo>`:
+in quel caso l'agente principale pubblica sulla PR il verdetto ricevuto, dichiarando in
+testa che è una sua copia, e lo incolla anche nell'handoff della fetta successiva.

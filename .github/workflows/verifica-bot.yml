@@ -31,7 +31,9 @@ name: verifica-bot
 #   successivo sulla PR etichettata;
 # - una PR che tocca solo i log di sessione (lista bianca LOG_DI_SESSIONE, G-4) passa
 #   senza chiamare Claude;
-# - cascata Fable 5.1 → Opus 5.5 → Opus 4.8 solo se il modello precedente fallisce.
+# - cascata Opus 5.5 → Opus 4.8 → Fable 5.1 solo se il modello precedente fallisce
+#   (scelta dell'operatore 2026-10-11: Fable ultima riserva, per non consumare il
+#   suo limite settimanale a ogni PR).
 
 on:
   pull_request_target:
@@ -194,24 +196,8 @@ jobs:
             exit 1
           fi
 
-      - name: Verifica — Fable 5.1
+      - name: Verifica — Opus 5.5
         id: m1
-        continue-on-error: true
-        uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea # v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
-          prompt: ${{ env.PROMPT }}
-          claude_args: >-
-            --model claude-fable-5-1
-            --max-turns 60
-            --setting-sources user
-            --allowedTools "${{ env.STRUMENTI }}"
-            --json-schema '${{ env.SCHEMA }}'
-
-      - name: Verifica — Opus 5.5 (solo se Fable ha fallito)
-        id: m2
-        if: ${{ !cancelled() && steps.sandbox.outcome == 'success' && steps.m1.outputs.structured_output == '' }}
         continue-on-error: true
         uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea # v1
         with:
@@ -225,7 +211,23 @@ jobs:
             --allowedTools "${{ env.STRUMENTI }}"
             --json-schema '${{ env.SCHEMA }}'
 
-      - name: Verifica — Opus 4.8 (ultima riserva)
+      - name: Verifica — Opus 4.8 (solo se Opus 5.5 ha fallito)
+        id: m2
+        if: ${{ !cancelled() && steps.sandbox.outcome == 'success' && steps.m1.outputs.structured_output == '' }}
+        continue-on-error: true
+        uses: anthropics/claude-code-action@cab360f6565aa35a51d6ce9e43f1f4287c0a32ea # v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: ${{ env.PROMPT }}
+          claude_args: >-
+            --model claude-opus-4-8
+            --max-turns 60
+            --setting-sources user
+            --allowedTools "${{ env.STRUMENTI }}"
+            --json-schema '${{ env.SCHEMA }}'
+
+      - name: Verifica — Fable 5.1 (ultima riserva)
         id: m3
         if: ${{ !cancelled() && steps.sandbox.outcome == 'success' && steps.m1.outputs.structured_output == '' && steps.m2.outputs.structured_output == '' }}
         continue-on-error: true
@@ -235,7 +237,7 @@ jobs:
           github_token: ${{ github.token }}
           prompt: ${{ env.PROMPT }}
           claude_args: >-
-            --model claude-opus-4-8
+            --model claude-fable-5-1
             --max-turns 60
             --setting-sources user
             --allowedTools "${{ env.STRUMENTI }}"
@@ -250,10 +252,10 @@ jobs:
           S3: ${{ steps.m3.outputs.structured_output }}
         run: |
           falliti=""; modello=""; verdetto=""
-          if [ -n "$S1" ]; then modello=claude-fable-5-1; verdetto="$S1"
-          elif [ -n "$S2" ]; then modello=claude-opus-5-5; falliti=claude-fable-5-1; verdetto="$S2"
-          elif [ -n "$S3" ]; then modello=claude-opus-4-8; falliti="claude-fable-5-1, claude-opus-5-5"; verdetto="$S3"
-          else falliti="claude-fable-5-1, claude-opus-5-5, claude-opus-4-8"
+          if [ -n "$S1" ]; then modello=claude-opus-5-5; verdetto="$S1"
+          elif [ -n "$S2" ]; then modello=claude-opus-4-8; falliti=claude-opus-5-5; verdetto="$S2"
+          elif [ -n "$S3" ]; then modello=claude-fable-5-1; falliti="claude-opus-5-5, claude-opus-4-8"; verdetto="$S3"
+          else falliti="claude-opus-5-5, claude-opus-4-8, claude-fable-5-1"
           fi
           delim="EOF_$(openssl rand -hex 16)"
           {

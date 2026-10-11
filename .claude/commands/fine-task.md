@@ -290,9 +290,11 @@ L'etichetta NON la crea l'agente: la crea l'operatore a setup del bot finito
 (`reports/setup_verifica_bot.md` §D). Se non esiste ancora il comando fallisce: annotalo
 nell'handoff e prosegui, non crearla.
 
-Il protocollo vive in `.claude/verifica_esterna.md` (lo cambia solo l'operatore). Quando arriva
-il verdetto, riportalo all'operatore così com'è (integrale nel prossimo handoff), con i finding
-in sintesi in chat. Per le fette di sicurezza (cancello, firma, sandbox, gate) dire anche
+Il protocollo vive in `.claude/verifica_esterna.md` (lo cambia solo l'operatore). Dal
+2026-10-11 è l'agente di verifica a pubblicare il proprio verdetto integrale come commento
+sulla PR: quella è la fonte provabile (non più un archivio in `reports/`). Quando arriva il
+verdetto, riportalo all'operatore con i finding in sintesi in chat; se una fetta dichiara
+chiusa una riserva «verifica esterna #N», il riferimento è quel commento sulla PR #N. Per le fette di sicurezza (cancello, firma, sandbox, gate) dire anche
 all'operatore di fare il secondo passaggio nella chat claude.ai con lo stesso URL.
 
 ---
