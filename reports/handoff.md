@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #179 (https://github.com/Gasss23/Gas/pull/179). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/179"}`): `gh` nel container non è autenticato. Tocca la macchina di controllo: il merge lo decide l'operatore.
-2. Punto 1A: conferma dello schema a 3 livelli proposto in chat.
+2. Punto 1A: schema a 3 livelli APPROVATO dall'operatore (prossima fetta motore).
 3. Prova sul Mac: esito del secondo `python3 gas.py notte` (dopo catalogo e budget) e messaggio Telegram.
 
 ---
@@ -37,6 +37,8 @@ Nota: i conteggi di righe dei report scritti dopo lo stat (`reports/handoff.md`)
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d628281 docs(stato): esito della prova reale sul Mac e schema 1A approvato dall'operatore
+259b68e docs(fine-task): handoff PR #179 col verdetto #258 riemesso (sonde a parole)
 33e707d docs(fine-task): handoff PR #179
 9aad6b3 docs(fine-task): report PR #179 (citazioni del revisore col percorso completo)
 7a98660 chore(revisore): citazioni sempre col percorso completo (decisione 5c dell'operatore)
