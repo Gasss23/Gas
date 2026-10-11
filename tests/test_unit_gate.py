@@ -407,5 +407,29 @@ def test_write_istruzioni_agenti_a_ogni_livello_deny(path):
     assert _wf(path) == GateClass.DENY
 
 
+@pytest.mark.parametrize("path", [
+    "pytest.ini", "tests/pytest.ini", "pyproject.toml", "dati/pyproject.toml",
+    "setup.cfg", "tox.ini", "Makefile", "makefile", "dati/GNUmakefile",
+    "GEMINI.md", "dati/gemini.md", ".cursorrules", "dati/.cursorrules",
+    "tests/.pytest.ini", "tests/pytest.toml", ".pytest.toml",  # R-247-1
+    "\uff30\uff59\uff50\uff52\uff4f\uff4a\uff45\uff43\uff54.toml",  # pyproject fullwidth (NFKC)
+])
+def test_write_config_strumenti_sviluppo_deny(path):
+    """Riserva aperta FASE 4.5: file di configurazione degli strumenti di sviluppo
+    (pytest, build, make, istruzioni Gemini/Cursor) a qualunque profondità."""
+    assert _wf(path) == GateClass.DENY
+
+
+@pytest.mark.parametrize("path", [
+    "dati/pyproject.toml.txt", "note/makefile_appunti.md", "setup.cfg.bak", "gemini.txt",
+])
+def test_write_config_strumenti_nomi_simili_restano_uncertain(path):
+    assert _wf(path) == GateClass.UNCERTAIN
+
+
+def test_read_config_strumenti_resta_consentita():
+    assert gate_classify("read_file", {"relative_path": "pyproject.toml"}) == GateClass.SAFE
+
+
 def test_read_claude_md_resta_consentita():
     assert gate_classify("read_file", {"relative_path": "CLAUDE.md"}) == GateClass.SAFE

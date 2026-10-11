@@ -119,6 +119,15 @@ _DENY_WRITE_TOP_PREFIXES: tuple[str, ...] = (
 _DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
     "claude.md", "claude.local.md", "agents.md",
     "agents.override.md",  # R-224-1: Codex lo carica con precedenza su AGENTS.md
+    "gemini.md", ".cursorrules",  # istruzioni di Gemini CLI e Cursor
+    # Configurazione degli strumenti di sviluppo (riserva aperta FASE 4.5): pytest
+    # cerca l'ini anche nelle cartelle dei test lanciati (tests/pytest.ini vince
+    # sulla root), quindi il divieto vale a ogni livello, non solo in cima.
+    # addopts/plugin lì dentro diventano codice eseguito dall'agente di sviluppo e
+    # dalla CI fuori dalla sandbox. conftest.py/noxfile.py: già coperti da ".py".
+    "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini",
+    ".pytest.ini", "pytest.toml", ".pytest.toml",  # R-247-1: pytest 9 li carica tutti
+    "makefile", "gnumakefile",
 })
 
 
