@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-11 — FETTA 1 PR A: strumenti nativi di sola lettura (PR #184)
+**Sessione:** 2026-10-11 — FETTA 1 PR A: strumenti nativi di sola lettura (PR #184), secondo giro dopo il BOCCIATO del bot
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #184 (https://github.com/Gasss23/Gas/pull/184). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/184"}`): `gh` nel container non è autenticato. L'operatore ha autorizzato il merge autonomo della FETTA 1 alle condizioni a)–e) del comando del 2026-10-11.
+1. Merge della PR #184 (https://github.com/Gasss23/Gas/pull/184). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"url":"https://github.com/Gasss23/Gas/pull/184"}`): `gh` nel container non è autenticato. Autorizzazione al merge autonomo della FETTA 1 data dall'operatore in chat il 2026-10-11 (condizioni a–e): non è nel repo, la prova è la conversazione della sessione.
 2. FETTA 4: `claude/roadmap_completa.md` non leggibile da questa sessione, allegato non arrivato: incollarne il testo in chat.
 
 ---
@@ -14,8 +14,8 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Passo 0 — sola lettura**: `FATTA` — nessuna PR aperta, main `ea4a368`.
-- **FETTA 1 PR A — strumenti nativi di sola lettura**: `FATTA` — `elenca_cartella`, `leggi_righe`, `cerca_testo`, `conta_file`, `data_ora`; review #282 → #283 APPROVATO CON RISERVE.
-- **FETTA 1 PR B — riduzione di run_command**: `DEFERITA` — parte dopo il merge della PR A.
+- **FETTA 1 PR A — strumenti nativi di sola lettura**: `FATTA` — review #282 → #283; bot e verifica esterna BOCCIATO sul primo SHA (V-1 MEDIA); correzioni in `00d5d08`, review #284 → #285 APPROVATO CON RISERVE.
+- **FETTA 1 PR B — riduzione di run_command**: `DEFERITA` — dopo il merge della PR A.
 - **FETTA 2 — prova del turno di notte**: `DEFERITA` — dopo la FETTA 1.
 - **FETTA 3 — proposta cervello forte**: `DEFERITA` — PR a parte.
 - **FETTA 4 — roadmap nel repo**: `SALTATA — documento non leggibile`.
@@ -25,15 +25,15 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- gas.py                             | 422 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------
+ .claude/agents/memoria_revisore.md |   7 ++++++
+ gas.py                             | 438 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------
  gas_identity.md                    |   9 ++++++--
- modules/gate/gate.py               |  23 ++++++++++++++++++--
- reports/diff_sessione.md           |  12 ++++++-----
- reports/handoff.md                 | 200 ++++++++++----------
- reports/stato_progetto.md          |   9 +++++++-
- reports/ultimo_report.md           |  20 +++++++++++------
- tests/test_unit_kernel.py          | 276 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/gate/gate.py               |  23 +++++++++++++++++--
+ reports/diff_sessione.md           |  12 +++++-----
+ reports/handoff.md                 | 167 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------
+ reports/stato_progetto.md          |  13 ++++++++++-
+ reports/ultimo_report.md           |  22 ++++++++++++------
+ tests/test_unit_kernel.py          | 307 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  9 files changed (conteggi approssimati per reports/handoff.md)
 ```
 
@@ -42,6 +42,8 @@ Nota: i conteggi di righe di `reports/handoff.md` sono approssimati per costruzi
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+00d5d08 fix(lettura): finding V-1/V-4/V-5 bot e verifica esterna #184, R-284-1
+3dfd06c docs(fine-task): report PR #184 (strumenti nativi di sola lettura, review #282-#283)
 1615e32 feat(lettura): strumenti nativi di sola lettura (FETTA 1, PR A)
 f29b888 chore(revisore): memoria review #282 — APPROVATO CON RISERVE
 ```
@@ -49,6 +51,8 @@ f29b888 chore(revisore): memoria review #282 — APPROVATO CON RISERVE
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE
+
+Nota (V-2 verifica esterna #184): le frasi «il file NON è committato» nei verdetti erano vere quando sono state scritte; la memoria del revisore viene poi committata nel commit di fine-task (es. `3dfd06c` per #283). Il testo dei verdetti resta integrale e non ritoccato.
 
 ### Review #282 (primo diff di 1615e32)
 
@@ -118,34 +122,88 @@ Review #283: ho rivisto solo le correzioni alle riserve della #282, sul diff sta
 - Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #283 e una lezione nuova: quando un fix protegge il percorso nuovo, controllare anche il percorso vecchio gemello (qui read_file).
 - Come chiesto, il file NON è committato: resta modificato nel working tree.
 
+### Review #284 (primo diff di 00d5d08, correzioni V-1/V-4/V-5 di bot e verifica esterna)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #284 sul diff staged della PR #184 (gas.py e tests/test_unit_kernel.py), dopo il BOCCIATO del bot e della verifica esterna. Le correzioni V-1, V-4 e V-5 funzionano. Restano 2 riserve basse e una nota cosmetica. Ho rilanciato la suite del kernel: 797 PASS, 0 FAIL. pytest non l'ho rilanciato.
+
+**Elementi del diff esaminati**
+- `gas.py:1926` (V-1): nella visita delle cartelle, le cartelle vere oltre la profondità massima vengono contate in `stato["profonde"]`. Rischio esaminato: contare anche cartelle protette o symlink. Esito: ok. Il conteggio avviene solo dopo il controllo di lettura e solo per cartelle vere. Una cartella vuota al limite viene dichiarata incompleta lo stesso: è un falso allarme, non un silenzio.
+- `gas.py:2106` (V-1): cerca_testo dichiara «RICERCA INCOMPLETA: N cartelle oltre la profondità massima». Esito: ok, provato. Con `a/b/c/d/x.txt`, la ricerca dalla root dice «1 cartelle oltre la profondità massima (3) non visitate»; cercando da `a/b` il file viene trovato.
+- `gas.py:2001`: elenca_cartella dice «N sottocartelle non aperte». Esito: ok.
+- `gas.py:1976` e `gas.py:2068` (V-4): in elenca_cartella e cerca_testo i nomi passano da `rendi_visibili(a_capo=False)`. Rischio esaminato: un nome che inventa righe finte. Esito: ok, provato. Il file `evil\nfake.txt:1: alfa FALSO` esce come `evil<U+000A>fake…` e la cartella `strano
+x` come `strano<U+2028>x/`.
+- `gas.py:1942` (V-5): il dispatcher nega gli argomenti che non sono un dizionario, come fa il gate. Esito: ok. `elenca_cartella "[1,2]"` e `data_ora "[]"` danno «Operazione negata: argomenti non validi.» e il diario li registra come KO. Il chiamante (`gas.py:3214`) ora passa gli argomenti senza convertirli.
+- `tests/test_unit_kernel.py:7831` (T84f V-1) e `tests/test_unit_kernel.py:7914` (T84g V-4): i test coprono le due correzioni. Esito: ok.
+
+**Riserve**
+- **R-284-1 (BASSA)**: le intestazioni non passano da `rendi_visibili`. Succede in leggi_righe («[rel, righe …]»), conta_file («rel: …») ed elenca_cartella («Cartella 'rel'»). Il percorso mostrato è quello risolto, quindi un symlink dal nome normale può portare a un nome con a-capo o U+2028. Provato: leggi_righe su `ok/k.txt` mostra `[strano
+x/k.txt, …]` senza renderlo visibile. È lo stesso difetto V-4, ma nelle intestazioni.
+- **R-284-2 (BASSA)**: il contenuto della riga trovata da cerca_testo non viene reso visibile. Un U+2028 dentro il file imita una riga finta «fake.txt:9: alfa» dopo quella vera. Provato. È contenuto già non fidato, come per read_file (lo strumento è in UNTRUSTED_INPUT_TOOLS), quindi non blocca.
+- **Cosmetica**: con la profondità di default 1, elenca_cartella dice sempre «N sottocartelle non aperte» quando ci sono sottocartelle. È corretto ma rumoroso.
+
+**Rischi esplicitamente esclusi**
+- Non ho verificato come il modello interpreta U+2028 nella finestra: dipende dal tokenizer di ciascun provider.
+- V-2, V-3 e la parte "" di V-5 riguardano solo i testi dei report: non li ho rivisti, come indicato.
+
+**Memoria**
+- Ho aggiunto la riga #284 e una lezione nuova in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- Come chiesto, il file NON è committato: resta modificato nel working tree.
+
+### Review #285 (diff finale di 00d5d08, correzione R-284-1)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #285: R-284-1 è chiusa. Restano aperte, già registrate, R-284-2 (BASSA) e la nota cosmetica. Ho rilanciato la suite del kernel: 797 PASS, 0 FAIL.
+
+**Elementi del diff esaminati**
+- `gas.py:1850`: `_rel_root` ora restituisce il percorso con a-capo e caratteri di controllo resi visibili. Rischio esaminato: che il percorso trasformato finisca nei controlli di sicurezza. Esito: ok. `_rel_root` serve solo a mostrare i percorsi; i controlli usano `_file_rel_root` (`gas.py:1827`), che non cambia.
+- `gas.py:2037` (leggi_righe), `gas.py:2136` (conta_file), `gas.py:1997` (elenca_cartella) e `gas.py:2071` (cerca_testo, senza più il doppio wrap): rischio esaminato, un nome che inventa righe nelle intestazioni. Esito: ok. L'ho provato con un symlink `ok` verso la cartella `strano
+x`: tutti e 4 i tool mostrano `strano<U+2028>x/…`.
+- `tests/test_unit_kernel.py:7924`: T84g ora copre anche leggi_righe e conta_file. Esito: ok.
+
+**Riserve ancora aperte**
+- **R-284-2 (BASSA)**: il contenuto della riga trovata da cerca_testo non viene reso visibile. Nel mio test la riga mostra ancora `riga alfa
+fake.txt:9: alfa`, cioè una finta riga «fake.txt:9:».
+- **Cosmetica**: con la profondità di default 1, elenca_cartella dice sempre «N sottocartelle non aperte».
+
+**Rischio escluso**: pytest (971) non l'ho rilanciato; ho rilanciato solo la suite del kernel.
+
+**Memoria**: ho aggiunto la riga #285 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, senza lezioni nuove. Come chiesto, il file NON è committato.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 763 → 795 PASS (T84, 32 check nuovi); pytest 971 passed (invariato: nessun test pytest nuovo).
+Kernel 763 → 797 PASS (T84, 34 check nuovi); pytest 971 passed (nessun test pytest nuovo). La CI conta 765 → 797+ per differenze d'ambiente (verifica esterna #184).
 
 ```
-=== RIEPILOGO: 795 PASS, 0 FAIL ===
+=== RIEPILOGO: 797 PASS, 0 FAIL ===
 ```
 
 ```
-971 passed in 113.35s (0:01:53)
+971 passed in 117.35s (0:01:57)
 ```
 
 ## §6 STATO CI
 
 ```
+completed	success	feat(lettura): strumenti nativi di sola lettura (FETTA 1, PR A)	verifica-bot	feat/strumenti-lettura-nativi	pull_request_target	38162811892	3m45s	2026-10-11T18:12:04Z
+completed	skipped	feat(lettura): strumenti nativi di sola lettura (FETTA 1, PR A)	verifica-bot	feat/strumenti-lettura-nativi	pull_request_target	38162803562	11s	2026-10-11T18:11:57Z
+completed	success	docs(fine-task): report PR #184 (strumenti nativi di sola lettura, re…	CI	feat/strumenti-lettura-nativi	push	38162802071	1m59s	2026-10-11T18:11:56Z
 completed	skipped	feat(lettura): strumenti nativi di sola lettura (FETTA 1, PR A)	verifica-bot	feat/strumenti-lettura-nativi	pull_request_target	38162706684	1s	2026-10-11T18:10:33Z
-in_progress		feat(lettura): strumenti nativi di sola lettura (FETTA 1, PR A)	CI	feat/strumenti-lettura-nativi	push	38162691707	41s	2026-10-11T18:10:21Z
-completed	success	Merge pull request #183 from Gasss23/feat/merge-automatico-z1xjx2	CI	feat/merge-automatico-z1xjx2	push	38155598288	1m38s	2026-10-11T16:28:21Z
 ```
 
 Mappatura commit→run:
-- `1615e32` (testa al primo push): run CI `38162691707` (in corso alla scrittura dell'handoff); `verifica-bot` `38162706684` skipped (etichetta `verifica` non ancora messa).
-- `f29b888`: nessuna run su questo SHA (pushato insieme a `1615e32`, che è la testa testata).
-- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `3dfd06c` (testa del secondo push): CI `38162802071` success; verifica-bot `38162811892` (check `verifica-bot` failure: verdetto BOCCIATO).
+- `1615e32`: CI `38162691707` (primo push).
+- `f29b888`: nessuna run su questo SHA (pushato insieme a `1615e32`).
+- `00d5d08` e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- R-284-2 (BASSA): contenuto delle righe di `cerca_testo` non reso visibile.
 - R-283-1 (BASSA): `cerca_testo` non nomina i file saltati perché troppo grandi.
 - R-283-2 (BASSA, preesistente): `read_file` su una FIFO si blocca.
-- R-283-3 (COSMETICA): oltre il tetto di voci, sottoinsieme in ordine del disco.
-- R-277-1 (BASSA, aperta): `prod.environment` leggibile da read_file e dai tool nuovi (T84l).
+- R-283-3 e nota #284 (COSMETICHE).
+- V-5 parte "" (COSMETICA).
+- R-277-1 (BASSA, aperta): `prod.environment` leggibile (T84l).
