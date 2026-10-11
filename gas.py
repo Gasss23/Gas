@@ -1609,6 +1609,7 @@ class GasKernel:
         """Diff unificato generato dal kernel (mai dal modello), 2 righe di contesto.
         Caratteri invisibili (\\r, BOM, larghezza zero, bidi, controlli) resi come
         <U+XXXX> (_tg_bot.rendi_visibili): due righe diverse non sembrano uguali."""
+        rel = _tg_bot.rendi_visibili(rel, a_capo=False)  # V-6 #180: nome su una riga
         righe = difflib.unified_diff(GasKernel._righe_n(vecchio), GasKernel._righe_n(nuovo),
                                      fromfile=f"a/{rel}", tofile=f"b/{rel}", n=2)
         return "".join(_tg_bot.rendi_visibili(r[:-1] if r.endswith("\n") else r)
@@ -1653,6 +1654,11 @@ class GasKernel:
             rel, content = args.get("relative_path"), args.get("content")
             if not isinstance(rel, str) or not isinstance(content, str):
                 return None, "argomenti non validi"
+            # V-6 verifica esterna #180: un nome con a-capo o caratteri invisibili
+            # potrebbe imitare righe del messaggio di firma → niente firma.
+            if _tg_bot.rendi_visibili(rel, a_capo=False) != rel:
+                return None, ("il percorso contiene a-capo o caratteri invisibili: "
+                              "usa un nome di file normale")
             pro, contro = args.get("pro"), args.get("contro")
             if not (isinstance(pro, str) and pro.strip()
                     and isinstance(contro, str) and contro.strip()):

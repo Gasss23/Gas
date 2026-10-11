@@ -630,14 +630,51 @@ def test_riepilogo_telegram_fallito_non_cambia_il_giro(monkeypatch, dirs):
     assert esplosioni == [1]  # V-2 bot #169: il ramo di invio è stato davvero raggiunto
 
 
-def test_riepilogo_telegram_senza_configurazione(dirs, monkeypatch):
+def test_riepilogo_telegram_esito_a_schermo(monkeypatch, dirs, capsys):
+    """Prova reale 2026-10-11: inviato / non inviato / errore si vedono a schermo."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    _telegram_finto(monkeypatch)
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    _out = capsys.readouterr().out
+    assert "Riepilogo Telegram inviato." in _out and "123:finto" not in _out
+    _telegram_finto(monkeypatch, risposta={"ok": False})
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert ("Riepilogo Telegram NON inviato: invio fallito verso tutti i destinatari"
+            in capsys.readouterr().out)
+    monkeypatch.setattr(_tg, "invia_notifica",
+                        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("segreto-xyz")))
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    out = capsys.readouterr().out
+    assert "Riepilogo Telegram NON inviato: errore RuntimeError" in out and "segreto-xyz" not in out
+
+
+def test_stampa_dell_esito_non_cambia_l_exit_code(monkeypatch, dirs):
+    """R-267-1: se lo stdout è inservibile, il giro chiude comunque col suo exit code."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    _telegram_finto(monkeypatch)
+    import builtins
+    vero_print = builtins.print
+
+    def _print(*a, **kw):
+        if a and str(a[0]).startswith("Riepilogo Telegram"):
+            raise BrokenPipeError("stdout chiuso")
+        return vero_print(*a, **kw)
+    monkeypatch.setattr(builtins, "print", _print)
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+
+
+def test_riepilogo_telegram_senza_configurazione(dirs, monkeypatch, capsys):
     """Senza token, o senza ID autorizzati, il giro non tenta nessun invio
-    (R-238-3: si contano le chiamate, l'eccezione della fixture verrebbe assorbita)."""
+    (R-238-3: si contano le chiamate, l'eccezione della fixture verrebbe assorbita).
+    Prova reale 2026-10-11: il motivo si vede a schermo, non solo in gas_debug.log."""
     root, fuori = dirs
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
     chiamate = []
     monkeypatch.setattr(_tg, "_tg_post", lambda *a, **kw: chiamate.append(a) or {"ok": True})
     assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    assert "Riepilogo Telegram NON inviato: TELEGRAM_BOT_TOKEN mancante" in capsys.readouterr().out
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:finto")
     monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "")
     assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0

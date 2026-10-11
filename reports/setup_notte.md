@@ -43,6 +43,10 @@ sviluppo sul codice: fa compiti di lettura, memoria, lead, resoconti.
    `gas_debug.log`); se il riepilogo è troppo lungo per Telegram ti arrivano i soli conteggi; se il
    timer parte mentre un giro precedente è ancora in corso ti arriva «NON avviato»: se succede più
    notti di fila, un giro è rimasto appeso (controlla `gas_debug.log`).
+   Se il messaggio NON arriva: a fine giro Gas scrive a schermo (e quindi in
+   `.gas_notte/launchd.log`) «Riepilogo Telegram inviato.» oppure «Riepilogo Telegram NON
+   inviato: <motivo>» (es. `TELEGRAM_BOT_TOKEN mancante`). Controllo rapido:
+   `grep "Riepilogo Telegram" ~/Gas/.gas_notte/launchd.log ~/Gas/gas_debug.log | tail -3`.
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```

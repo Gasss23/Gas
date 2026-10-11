@@ -130,13 +130,15 @@ _INVISIBILI_EXTRA = frozenset({0x115F, 0x1160, 0x3164, 0xFFA0,
                                 0x17B4, 0x17B5, 0x0338, 0xFFFC})  # V-2 verifica esterna #180
 
 
-def rendi_visibili(testo: str) -> str:
+def rendi_visibili(testo: str, a_capo: bool = True) -> str:
     """Caratteri invisibili o di controllo (\\r, BOM, larghezza zero, bidi, separatori
     di riga Unicode, C0/C1) resi come <U+XXXX>; \\n e \\t restano (review #262:
-    righe diverse non devono sembrare uguali, un nome non deve falsare il messaggio)."""
+    righe diverse non devono sembrare uguali, un nome non deve falsare il messaggio).
+    a_capo=False (V-6 verifica esterna #180, per i NOMI di file): anche \\n e \\t
+    diventano <U+000A>/<U+0009>, così un nome non può aggiungere righe al messaggio."""
     out = []
     for ch in testo:
-        if ch in "\n\t":
+        if ch in "\n\t" and a_capo:
             out.append(ch)
         elif (unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp", "Co", "Cs", "Cn")
               or (unicodedata.category(ch) == "Zs" and ch != " ")  # R-263-1: NBSP & c.
@@ -167,8 +169,8 @@ def componi_read_back_codice(approval: Dict[str, Any], diff: str) -> str:
     base = str(args.get("_base_sha256", ""))
     stato_base = ("file NUOVO (oggi non esiste)" if base == "assente"
                   else f"modifica del file attuale (impronta {base[:12]}…)")
-    nome = rendi_visibili(str(args["relative_path"]))
-    reale = rendi_visibili(str(args.get("_file_reale", "")))
+    nome = rendi_visibili(str(args["relative_path"]), a_capo=False)
+    reale = rendi_visibili(str(args.get("_file_reale", "")), a_capo=False)
     via = f" (chiesto come «{nome}»)" if nome != reale else ""
     return (
         "GAS chiede la tua firma — FILE DELICATO (codice/configurazione)\n\n"
