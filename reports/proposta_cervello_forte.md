@@ -35,7 +35,7 @@ Tutte reggono, con due note:
 
 - Cascata: `gas.py::_cascata_provider(compito)` restituisce tuple `(nome, env_chiave, base_url, modello)`; `run_turn` crea `OpenAI(base_url=url, api_key=os.environ.get(env))` e chiama `chat.completions.create(model, messages, tools=self.tools_schema, tool_choice="auto")`. Un rung Claude entra come tupla `("claude-forte", "GAS_CLAUDE_API_KEY", "https://api.anthropic.com/v1/", MODEL_CLAUDE_FORTE)` IN TESTA solo per compito='forte', seguita dalla cascata gratuita normale.
 - Formato dei tool: `tools_schema` è già in formato OpenAI `{"type":"function","function":{...}}`, supportato senza modifiche dal livello compatibile.
-- Costi: `_log_tokens` + `_daily_cost_usd` leggono `_PROVIDER_PRICE_PER_MTok[provider]`: serve il prezzo del rung, e il test T38a (che conta 5 provider) va aggiornato. Per il tetto dedicato (Fetta 3) `_daily_cost_usd` deve poter filtrare per provider: oggi somma tutto.
+- Costi: `_log_tokens` + `_daily_cost_usd` leggono `_PROVIDER_PRICE_PER_MTok[provider]`: serve il prezzo del rung, e il test T38a (controllo di sottoinsieme, non si rompe) può essere esteso al nuovo provider. Per il tetto dedicato (Fetta 3) `_daily_cost_usd` deve poter filtrare per provider: oggi somma tutto.
 - Altri punti da toccare nella Fetta 2: `TOOL_CAPABLE_MODELS` (senza il modello Claude `run_turn` scrive a ogni giro l'avviso «tool-blind»); la lista dei provider del `doctor` è scritta a mano e non deriva da `_cascata_provider`; il ping del doctor verso Claude è una chiamata a pagamento (minima, `max_tokens=1`) a ogni esecuzione: farlo solo se la chiave c'è e dichiararlo.
 - Notte: `modules/notte/notte.py` legge il catalogo YAML; il campo `cervello: forte` va validato come gli altri campi (valore ignoto → avviso, compito saltato).
 
