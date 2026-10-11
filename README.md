@@ -3,7 +3,7 @@ il mio assistente personale gas
 
 ## ⏪ Macchina del tempo — ripristino snapshot (SOLO umano)
 
-Prima di ogni `write_file` e di ogni `run_command`, il kernel fotografa il repo
+Prima di ogni `write_file` (e di ogni `run_command`, oggi non offerto al modello), il kernel fotografa il repo
 (file tracciati **e** non tracciati, inclusa `.gas_history.json`) in un commit
 fuori-branch sotto `refs/gas/snapshots/`. Il ripristino **non è un tool di Gas**:
 si fa a mano, con git. Indice leggibile in `reports/snapshots.log`.
@@ -26,6 +26,11 @@ non sono inclusi negli snapshot. Retention: il kernel conserva gli ultimi 100
 snapshot e pota automaticamente i più vecchi.
 
 ## 🔒 Sandbox di `run_command` (no-shell + allowlist)
+
+> **Dal 2026-10-11 `run_command` NON è offerto al modello**: la allowlist è vuota e
+> Gas elenca, legge, cerca e conta con strumenti propri (`elenca_cartella`,
+> `leggi_righe`, `cerca_testo`, `conta_file`, `data_ora`). Questa sezione descrive il
+> recinto, tenuto (con i suoi test) per un uso futuro.
 
 `run_command` **non** usa una shell. Ogni comando passa per un vetting
 fail-closed e viene eseguito con `shell=False`, in tre barriere:

@@ -18,6 +18,11 @@ sta fuori dalla sua cartella e non lo tocca. Non ha comandi di sistema né shell
 2026-10-11): elenca, legge, cerca e conta con strumenti propri (elenca_cartella,
 leggi_righe, cerca_testo, conta_file, data_ora).
 
+> **Avviso (2026-10-11)**: se la tua copia `~/.gas_notte.yaml` ha compiti che chiedono comandi
+> di sistema (es. «Esegui il comando 'ls -la'» in `salute_sistema`), aggiornala: ora vengono
+> negati sempre e il resoconto resterebbe vuoto. Usa gli strumenti di Gas, come nel nuovo
+> `scripts/notte/catalogo_esempio.yaml` (es. «Usa elenca_cartella…»).
+
 ## Passi (una volta sola)
 
 1. Aggiorna il codice: `cd ~/Gas && git checkout main && git pull`

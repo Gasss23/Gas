@@ -9,7 +9,7 @@
 ## Esito per fetta
 
 - **FETTA 1 PR A**: `FATTA` — PR #184 mergiata in autonomia (`5725131`): bot APPROVATO CON RISERVE senza ALTA/MEDIA, verifica esterna (2° giro) APPROVATO CON RISERVE, CI verde. Primo giro: BOCCIATO (V-1 MEDIA) corretto.
-- **FETTA 1 PR B — run_command fuori dalla mano del modello**: `FATTA` — PR #185. `SHELL_ALLOWLIST` vuota, `run_command` fuori dallo schema e negato nel loop; recinto e suoi test restano. Review #286 APPROVATO CON RISERVE. Kernel 797 → 804, pytest 971. Chiusi con evidenza: R-273-1, R-273-2, R-274-2, R-nw-2, F6, parte `sed -n` di F4.
+- **FETTA 1 PR B — run_command fuori dalla mano del modello**: `FATTA` — PR #185. `SHELL_ALLOWLIST` vuota, `run_command` fuori dallo schema e negato nel loop; recinto e suoi test restano. Review #286 APPROVATO CON RISERVE; bot e verifica esterna APPROVATO CON RISERVE (neutral) → note corrette in `1d19bba` (review #287, #288 APPROVATO). Kernel 797 → 806, pytest 971. Chiusi con evidenza: R-273-1, R-273-2, R-274-2, R-nw-2, F6, parte `sed -n` di F4.
 - **FETTA 2 — prova del turno di notte**: `DEFERITA` — dopo il merge della PR B.
 - **FETTA 3 — proposta cervello forte**: `DEFERITA` — bozza pronta.
 - **FETTA 4 — roadmap nel repo**: `SALTATA — documento non leggibile`.
