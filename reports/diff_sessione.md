@@ -12,12 +12,13 @@
 | `scripts/notte/com.gas.notte.plist` | niente `source .env`, venv `.venv` poi `venv` (fetta 1) |
 | `.claude/commands/fine-task.md` | regola F-verdetto-ritoccato: verdetto riemesso, mai ritoccato |
 | `.claude/agents/revisore.md` | frase spezzata (V-3 #179) |
-| `.claude/agents/memoria_revisore.md` | righe #260–#265 del revisore |
+| `.claude/agents/memoria_revisore.md` | righe #260–#266 del revisore |
 | `.gitignore` | `.gas_history.json.*` (note bot #177) |
 | `tests/conftest.py`, `tests/test_unit_dotenv.py` | suite senza `.env` reale; 10 test del caricamento |
 | `tests/test_unit_gate.py` | attese livello 2 (DENY→IRREVERSIBLE), test dei 3 livelli, R-263-1/R-264-2 |
 | `tests/test_unit_kernel.py` | `GAS_NO_DOTENV`, spie col kwarg `firmata`, blocco T82 |
 | `tests/test_unit_handoff_check.py` | test V-2 #179 / R-264 sul gate B |
-| `reports/design_cancello.md` | §5b schema a 3 livelli e limiti dichiarati |
+| `.github/workflows/ci.yml` | step dei test del `.env` + riga nel riepilogo (bot V-1 #180) |
+| `reports/design_cancello.md` | §5b schema a 3 livelli e limiti dichiarati (anche codice del cancello firmabile) |
 | `reports/setup_notte.md` | §2a: il `.env` lo legge Gas |
 | `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` | report di fine task |

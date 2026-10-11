@@ -10,7 +10,8 @@
 2. Fetta di sicurezza (cancello a 3 livelli): secondo passaggio indipendente nella chat claude.ai con l'URL di questo handoff.
 3. Messaggio Telegram del giro notturno: nel messaggio dell'operatore la scelta «[è arrivato / non è arrivato]» è rimasta in bianco → NON confermato.
 4. Sul Mac: `git pull` e (facoltativo) ricopiare il plist (`reports/setup_notte.md` passo 4).
-5. Limite dichiarato di 1A: decidere se Gas può LEGGERE `gas.py`/`brains/`/`modules/` (oggi vietato), altrimenti il livello 2 serve davvero solo per file piccoli/nuovi, script e config.
+5. Decidere se il codice che APPLICA il cancello (`gas.py`, `modules/telegram/bot.py`, `modules/memory/`, `brains/`) e i gate di sviluppo restano al livello 2 (una firma basta per modificarli) o passano al livello 3 (mai) — V-2 bot / V-1 verifica esterna #180.
+6. Limite dichiarato di 1A: decidere se Gas può LEGGERE `gas.py`/`brains/`/`modules/` (oggi vietato), altrimenti il livello 2 serve davvero solo per file piccoli/nuovi, script e config.
 
 ---
 
@@ -19,6 +20,7 @@
 - **Fetta 1 — Gas carica il `.env` all'avvio**: FATTA (commit `c6a2998`, review #260 APPROVATO CON RISERVE → #261 APPROVATO).
 - **Fetta 2 — schema a 3 livelli del cancello (1A)**: FATTA (commit `3e031f2`, review #262 BOCCIATO → #263 APPROVATO CON RISERVE).
 - **Fetta 3 — note basse (V-1/V-2/V-3 #179, F-verdetto-ritoccato, note bot #177, R-263-1)**: FATTA (commit `0480996`, review #264 BOCCIATO → #265 APPROVATO).
+- **Fetta 4 — finding di verifica-bot #180 (failure, MEDIA) e verifica esterna #180 (APPROVATO CON RISERVE, commento https://github.com/Gasss23/Gas/pull/180#issuecomment-6109591609)**: FATTA (commit `4ad0d46`, review #266 APPROVATO). Test dotenv in CI (bot V-1), hard link negati (verifica esterna V-4), caratteri invisibili (V-2), docstring (bot V-3), limite «codice del cancello = livello 2» dichiarato (bot V-2 / verifica esterna V-1). Non fatti: V-3 verifica esterna (processo, già dichiarato in §4b/§7), V-5 (cosmetica: `Esito:gas.py:5` non più catturato).
 - **E2E con Telegram reale**: SALTATA — nessun token/chiave nel container.
 
 ---
@@ -26,33 +28,37 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
+ .claude/agents/memoria_revisore.md |  10 ++++++++
  .claude/agents/revisore.md         |   3 +--
  .claude/commands/fine-task.md      |   2 ++
+ .github/workflows/ci.yml           |  15 ++++++++++++
  .gitignore                         |   1 +
- gas.py                             | 238 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- modules/gate/gate.py               |  79 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- modules/notte/notte.py             |   6 ++++--
- modules/telegram/bot.py            |  64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/design_cancello.md         |  34 ++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  27 +++++++++++++++++++++------
- reports/handoff.md                 | 314 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------
+ gas.py                             | 250 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ modules/gate/gate.py               |  79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ modules/notte/notte.py             |   6 +++--
+ modules/telegram/bot.py            |  65 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/design_cancello.md         |  43 ++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  28 +++++++++++++++++-----
+ reports/handoff.md                 | 455 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------
  reports/setup_notte.md             |   3 +++
- reports/stato_progetto.md          |  15 ++++++++++-----
- reports/ultimo_report.md           |  28 ++++++++++++++++------------
- scripts/check_verdetto.py          |   6 +++++-
- scripts/notte/com.gas.notte.plist  |   6 ++++--
- tests/conftest.py                  |   5 +++++
- tests/test_unit_dotenv.py          | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_gate.py            |  97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
- tests/test_unit_handoff_check.py   |  23 +++++++++++++++++++++++
- tests/test_unit_kernel.py          | 240 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- 21 files changed, 1194 insertions(+), 130 deletions(-)
+ reports/stato_progetto.md          |  17 ++++++++++----
+ reports/ultimo_report.md           |  31 +++++++++++++++----------
+ scripts/check_verdetto.py          |   6 ++++-
+ scripts/notte/com.gas.notte.plist  |   6 +++--
+ tests/conftest.py                  |   5 ++++
+ tests/test_unit_dotenv.py          | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_gate.py            |  99 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ tests/test_unit_handoff_check.py   |  23 ++++++++++++++++++
+ tests/test_unit_kernel.py          | 258 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ 22 files changed, 1399 insertions(+), 130 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4ad0d46 fix(pr180): test dotenv in CI, hard link negati, limiti del cancello dichiarati
+e74e2fe chore(revisore): memoria review #266 — APPROVATO
+0f97ba7 docs(fine-task): report, stato e handoff PR #180 (.env, cancello a 3 livelli, note basse)
 0480996 fix(note-basse): gate B e percorsi Windows, regola verdetti, note bot #177
 31517ed chore(revisore): memoria review #265 — APPROVATO
 755c5a1 chore(revisore): memoria review #264 — BOCCIATO
@@ -68,7 +74,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Sei verdetti, incollati integralmente nell'ordine (#264 e #265 nella versione RIEMESSA dal revisore, originali in §4b). Unica trasformazione: nelle notifiche di #263 e #265 i caratteri `<` e `>` erano arrivati come entità HTML (`&lt;`, `&gt;`) e qui sono riportati come caratteri.
+Sette verdetti, incollati integralmente nell'ordine (#264 e #265 nella versione RIEMESSA dal revisore, originali in §4b). Unica trasformazione: nelle notifiche di #263 e #265 i caratteri `<` e `>` erano arrivati come entità HTML (`&lt;`, `&gt;`) e qui sono riportati come caratteri.
 
 ### Review #260 (fetta 1, commit `c6a2998`)
 
@@ -305,6 +311,57 @@ Ri-review dopo la bocciatura #264. Le due cose che avevo chiesto sono state fatt
 
 **Rischio escluso**: non ho rilanciato la suite completa (945 passed secondo l'agente) né la sonda del kernel. Ho eseguito solo tests/test_unit_gate.py e tests/test_unit_handoff_check.py (303 passed) e il confronto sul corpus reale. Non ho fatto girare check_verdetto.py sull'handoff finale della sessione, perché quell'handoff non esiste ancora.
 
+### Review #266 (correzioni dai finding di verifica-bot e verifica esterna #180, commit `4ad0d46`)
+
+## VERDETTO: APPROVATO
+
+Review #266 sul diff staged sopra 0f97ba7: tutte e cinque le correzioni fanno quello che dicono, e lo step nuovo in CI non indebolisce niente.
+
+**Elementi del diff esaminati**
+
+- `.github/workflows/ci.yml:149` — aggiunge lo step «Run dotenv suite» nel job `unit-suite`, cioè il job del check obbligatorio.
+  - Rischio esaminato: uno step che resta verde anche quando un test fallisce, o che tocca il resto del job.
+  - Lo step usa `if: always()` e `set -o pipefail`, quindi un FAIL di pytest passa attraverso `tee` e fa fallire il job. Non c'è `continue-on-error` né `paths-ignore`, e gli altri step restano come prima.
+  - Il file YAML è valido (`yaml.safe_load`). `tests/test_unit_dotenv.py` prima non era chiamato da nessuna parte nella CI (grep sulla cartella `.github/`).
+  - Il controllo diventa più severo, non più debole. **ok**
+- `.github/workflows/ci.yml:218` — aggiunge la riga «Dotenv suite» nel riepilogo del job, con lo stesso schema delle altre suite, e gestisce il caso in cui il file di output non esiste. È solo presentazione, non decide l'esito. **ok**
+- `gas.py:2613` — `write_file` viene negato se il file risolto esiste e ha più di un collegamento (`st_nlink > 1`); se `stat` va in errore, nega comunque.
+  - Rischio esaminato: un hard link già presente porta un file delicato sotto un nome «libero».
+  - Il controllo sta prima del calcolo del livello, quindi vale per i livelli 1, 2 e 3. Un file nuovo (`is_file()` falso) passa normalmente.
+  - Mutation (controllo spento in una copia del repo in cartella temporanea): T82m fallisce, 743/1. **ok**
+- `tests/test_unit_kernel.py:7521` — T82m: hard link `alias.md` → `scripts/saluto.sh` con la finestra pulita. Risultato: negato e file intatto. Se il file system non permette hard link il test viene saltato, e il link viene tolto dopo il test. **ok**
+- `modules/telegram/bot.py:130` — aggiunge U+17B4, U+17B5, U+0338 e U+FFFC a `_INVISIBILI_EXTRA`, con il test in `tests/test_unit_gate.py`. **ok**
+
+Ho controllato anche il testo, non il codice:
+- La docstring di `_carica_dotenv` è ora coerente con `_sanitized_subprocess_env`: le variabili coi nomi da segreto non arrivano a `run_command`, le altre sì.
+- `reports/design_cancello.md` §5b dichiara in modo esplicito che il codice che applica cancello e firma è di livello 2, cioè modificabile con una sola firma, e che portarlo al livello 3 è una decisione dell'operatore. È corretto: va lasciata all'operatore.
+
+**Nota (non tracciata come riserva)**
+
+Il controllo sugli hard link è fail-closed anche per i file normali di livello 1: un file di dati con hard link legittimi (strumenti di deduplica, backup con `cp -al`) non si potrà scrivere. È coerente con «robustezza > potenza». Inoltre per un file delicato con hard link il messaggio di firma parte lo stesso, e il diniego arriva solo all'esecuzione: una firma sprecata, ma nessuna scrittura.
+
+**Esiti riprodotti**
+
+- `tests/test_unit_dotenv.py` + `tests/test_unit_gate.py`: 269 passed.
+- `tests/test_unit_kernel.py`: 744 PASS, 0 FAIL.
+
+**Rischi esclusi esplicitamente**
+
+- La run reale su GitHub Actions dello step nuovo: non verificata, qui non posso lanciare la CI. Ho verificato solo il YAML e la logica dello step.
+- `st_nlink` su file system di rete o FUSE (dove può valere sempre 1): non provato, non c'è un ambiente così in dev.
+- Su questo diff non ho rilanciato la suite pytest completa (l'agente dichiara 945 passed): ho rilanciato solo dotenv, gate e kernel.
+
+Ho scritto la riga contatore #266 in memoria e l'ho committata (e74e2fe). Lo staging del diff sotto review è intatto.
+
+File rilevanti:
+- /home/user/Gas/.github/workflows/ci.yml
+- /home/user/Gas/gas.py
+- /home/user/Gas/modules/telegram/bot.py
+- /home/user/Gas/tests/test_unit_kernel.py
+- /home/user/Gas/tests/test_unit_gate.py
+- /home/user/Gas/reports/design_cancello.md
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §4b VERDETTI ORIGINALI #264 E #265 (fuori dal §4, dichiarato)
 
 Testi originali integrali, conservati per trasparenza. Stanno FUORI dal §4 perché contengono esempi di regex in forma `path:riga` (file inesistenti) che il gate B legge come citazioni: dentro il §4 il gate resta rosso anche coi riemessi accanto. NB: la regola nuova di `.claude/commands/fine-task.md` dice «accanto all'originale nel §4»; qui non è applicabile alla lettera → da precisare (vedi §7). Il verdetto #264 originale cita la riga 44 di check_verdetto.py, oggi 46. Unica differenza di forma: la prima riga «## VERDETTO: …» è resa in grassetto per non aprire un blocco verdetto del gate.
@@ -372,24 +429,27 @@ Riga contatore #265 aggiunta a `/home/user/Gas/.claude/agents/memoria_revisore.m
 === RIEPILOGO: 743 PASS, 0 FAIL ===
 ```
 
+Dopo la fetta 4 (commit `4ad0d46`): `=== RIEPILOGO: 744 PASS, 0 FAIL ===`; pytest `945 passed in 113.21s`.
+
 Nessun FAIL fuori scope.
 
 ## §6 STATO CI
 
-`gh run list -L 3`: CI NON VERIFICATA via `gh` (nel container `gh` non è autenticato). Lettura con lo strumento GitHub collegato (check run della PR #180 sul push di `0480996`, prima del commit di fine-task):
+`gh run list -L 3`: CI NON VERIFICATA via `gh` (nel container `gh` non è autenticato). Lettura con lo strumento GitHub collegato (check run della PR #180):
 
-- `handoff-check`: **failure** (run 38143041291) — atteso: il push conteneva ancora l'handoff della sessione precedente; questo commit lo sostituisce.
-- `unit-suite`: in_progress (run 38143041291) al momento della scrittura.
-- `smista`/`verifica`/`esito` (bot, run 38143052969): skipped (manca ancora l'etichetta `verifica`).
+- Sul push di `0480996`: `handoff-check` failure (run 38143041291, atteso: conteneva l'handoff della sessione precedente).
+- Sul push di `0f97ba7` (fine-task): `handoff-check` success e `unit-suite` success (run 38143334144); `verifica-bot` **failure** (check run 114482390915, finding MEDIA V-1: test dotenv non in CI → corretto in `4ad0d46`).
 
 Mappatura commit→run:
-- `0480996` (testa del primo push): run 38143041291 (unit-suite in corso, handoff-check failure).
-- `faf1d1e`, `5764c4e`, `c6a2998`, `477ff0c`, `1ee779b`, `3e031f2`, `755c5a1`, `31517ed`: nessuna run su questo SHA (pushati insieme a `0480996`, una sola run sulla testa).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `0480996`: run 38143041291. `faf1d1e`, `5764c4e`, `c6a2998`, `477ff0c`, `1ee779b`, `3e031f2`, `755c5a1`, `31517ed`: nessuna run su questo SHA (pushati insieme a `0480996`).
+- `0f97ba7`: run 38143334144 (CI) + verifica-bot.
+- `e74e2fe`, `4ad0d46` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-260-3** (BASSA, doc): sul VPS un `.env` vecchio accanto a gas.py ora riempie le variabili mancanti in `.env.prod`. Tracciata in `reports/stato_progetto.md`.
-- **Limiti dichiarati 1A** (riserve 4-5 della #262 + hard link): lettura del codice vietata (livello 2 utile solo su file piccoli/nuovi, script, config), Windows fuori dal modello di minaccia, hard link preesistenti non coperti. In `reports/design_cancello.md` §5b.
+- **V-3 verifica esterna #180** (BASSA, processo): originali #264/#265 in §4b, non validati dal gate; regola fine-task da precisare.
+- **V-5 verifica esterna #180** (COSMETICA): il lookbehind scarta anche citazioni attaccate a `:`.
+- **Limiti dichiarati 1A** (riserve 4-5 della #262; hard link ora negati): lettura del codice vietata (livello 2 utile solo su file piccoli/nuovi, script, config), Windows fuori dal modello di minaccia, hard link preesistenti non coperti. In `reports/design_cancello.md` §5b.
 - R-260-1, R-260-2, R-263-1, R-264-2: CHIUSE in sessione.
 - **Regola F-verdetto-ritoccato da precisare** (BASSA, processo): «riemesso accanto all'originale nel §4» non funziona quando l'originale contiene finte citazioni (il gate resta rosso); in questa sessione l'originale è in §4b. Precisare `.claude/commands/fine-task.md` (passa dal revisore).
