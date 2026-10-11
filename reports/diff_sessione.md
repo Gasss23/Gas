@@ -1,11 +1,14 @@
-# Diff della sessione — 2026-10-11 — conversazione dell'operatore fuori dagli snapshot notturni (PR #177)
+# Diff della sessione — 2026-10-11 — decisioni dell'operatore 2a, 3, 4C (PR #178)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py` — `self.carica_storia` salvato; `_snapshot` fotografa `.gas_history.json` solo se il kernel la carica.
-- `modules/notte/notte.py` — docstring delle invarianti aggiornata.
-- `reports/setup_notte.md` — una riga sul nuovo comportamento.
-- `tests/test_unit_notte.py` — `_giro` con `carica_storia=False`; 3 test nuovi.
-- `reports/stato_progetto.md` — #176 mergiata, seguito in PR #177.
-- `.claude/agents/memoria_revisore.md` — riga review #254 (commit del revisore).
+- `.github/workflows/verifica-bot.yml` — cascata del bot Opus 5.5 → Opus 4.8 → Fable 5.1.
+- `tests/test_unit_verifica_bot.py` — test della cascata aggiornato.
+- `.claude/verifica_esterna.md` — sezione «Pubblicazione del verdetto» (commento sulla PR, limite e ripiego; vale solo per l'agente di sessione, il bot la salta).
+- `.claude/commands/fine-task.md` — §4quater allineato.
+- `CLAUDE.md` — istituzione E allineata.
+- `reports/verifiche_esterne.md` — eliminato (sostituito dai commenti sulla PR).
+- `reports/roadmap.md` — italiano, F1, F6 segnati FATTI.
+- `reports/stato_progetto.md` — decisioni dell'operatore del 2026-10-11; rimando all'archivio nella storia git.
+- `.claude/agents/memoria_revisore.md` — righe review #255, #256 e #257 (commit del revisore).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.

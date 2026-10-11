@@ -1001,7 +1001,8 @@ class TestWorkflow:
         args = [s["with"]["claude_args"] for s in wf["jobs"]["verifica"]["steps"]
                 if "claude-code-action" in s.get("uses", "")]
         modelli = [a.split("--model ", 1)[1].split()[0] for a in args]
-        assert modelli == ["claude-fable-5-1", "claude-opus-5-5", "claude-opus-4-8"]
+        # Scelta dell'operatore 2026-10-11: Opus 5.5 per primo, Fable ultima riserva.
+        assert modelli == ["claude-opus-5-5", "claude-opus-4-8", "claude-fable-5-1"]
         assert all("--json-schema" in a and "--allowedTools" in a for a in args)
 
     def test_strumenti_senza_scrittura(self, wf):

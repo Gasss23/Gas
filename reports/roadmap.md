@@ -35,7 +35,7 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 > Priorità vincolante decisa dall'operatore. Non alterare senza istruzione esplicita.
 
 1. ✅ **Voce 4b** — client browser HTML5 (PR #90, 2026-09-15). FATTO.
-2. 🔵 **GAS risponde SEMPRE in italiano** — fetta motore piccola: lingua di risposta obbligatoria indipendente dalla lingua di input. **PROSSIMO IMMEDIATO**.
+2. ✅ **GAS risponde SEMPRE in italiano** — FATTO (2026-09-21: regola in `_GAS_SYSTEM_PROMPT_BASE` e in cima a `gas_identity.md`, test T63a-d, review #100). Segnato FATTO il 2026-10-11 su conferma dell'operatore.
 3. **Auto-apprendimento / auto-sviluppo** — GAS diventa progressivamente più intelligente senza input umani (converge con FASE 2.6 e "Jarvis cognitivo").
 4. **Motore marketing (FASE 4)** — tra gli ultimi. Non prima del cervello.
 5. **VPS** — rimandato a tempo indeterminato per scelta operatore. Prima il cervello, poi un server potente blindato dal giorno 1.
@@ -78,8 +78,8 @@ Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), com
 
 Audit integrale a occhi freschi di kernel, memoria, vettori, sandbox, snapshot, cascata, bridge Telegram (~3.8k righe). Verdetto: fondamenta SOLIDE, nessuna riscrittura giustificata. Finding (dettaglio in stato_progetto.md):
 
-1. 🔴 **F1 = R-crm-diario-rr, PROVATO** — `INSERT OR REPLACE` riscrive una riga del diario aggirando i trigger di immutabilità (dimostrato su DB di test); `PRAGMA recursive_triggers=ON` in `MemoryStore._connect()` chiude il buco (dimostrato). T19f copre solo UPDATE/DELETE: il varco non è testato. **PROSSIMA FETTA MOTORE**: fix 1 riga + test che pretende ABORT su INSERT OR REPLACE.
-2. 🟡 **F6 — atomicità `.gas_history.json`** — `_save_history` scrive senza tmp+rename (viola §4) e `_load_history` ingoia la corruzione senza warning → amnesia conversazionale SILENZIOSA dopo un kill a metà scrittura. Fetta piccola dopo F1: write-tmp + `os.replace` + warning e quarantena `.corrupt` in load.
+1. ✅ FATTO (verificato 2026-10-11: `PRAGMA recursive_triggers = ON` in `modules/memory/store.py`) — **F1 = R-crm-diario-rr, PROVATO** — `INSERT OR REPLACE` riscrive una riga del diario aggirando i trigger di immutabilità (dimostrato su DB di test); `PRAGMA recursive_triggers=ON` in `MemoryStore._connect()` chiude il buco (dimostrato). T19f copre solo UPDATE/DELETE: il varco non è testato. (Era: fix 1 riga + test che pretende ABORT su INSERT OR REPLACE.)
+2. ✅ FATTO (verificato 2026-10-11: `_save_history` scrive su file temporaneo + `os.replace`, `_load_history` mette in quarantena `.corrupt.*` con warning) — **F6 — atomicità `.gas_history.json`** — `_save_history` scrive senza tmp+rename (viola §4) e `_load_history` ingoia la corruzione senza warning → amnesia conversazionale SILENZIOSA dopo un kill a metà scrittura. (Era: fetta piccola dopo F1:) write-tmp + `os.replace` + warning e quarantena `.corrupt` in load.
 3. 🟡 **F2 — budget kill-switch non ricontrollato dentro il turno** — check solo a inizio `run_turn`: worst-case ~20-30 chiamate oltre soglia in un singolo turno (~$0.045 su gemini-flash). Inerte sul free tier. **GATED**: prerequisito del primo rung runtime a pagamento (Claude API), non prima.
 4. ✅ **F3 — pulizia file morti** — ESEGUITA in questa PR: 17 file rimossi (junk root, brain legacy con slicing §5, self_improve/, modules/marketing/ vuoto), `brains/router.py` ridotto al solo `classifica_compito`. Suite verificata a delta zero pre/post.
 5. 🟢 **F4 — messaggi `_cap_tool_output` suggeriscono `sed -n`** non in allowlist — cosmetico, accodabile a una futura fetta motore.
