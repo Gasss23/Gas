@@ -1,9 +1,11 @@
-# Diff della sessione — 2026-10-11 — regola di brevità (PR #183)
+# Diff della sessione — 2026-10-11 — strumenti nativi di sola lettura (PR #184)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `CLAUDE.md` — regola (4) «brevità obbligatoria»; regola di reporting senza stampa di report/URL.
-- `.claude/commands/fine-task.md` — §5 «in chat solo il riepilogo»; §4quater col link della PR.
-- `.claude/settings.json` — testo dell'hook post-compact allineato.
-- `.claude/agents/memoria_revisore.md` — righe review #278-#281.
+- `gas.py` — 5 tool nativi (`elenca_cartella`, `leggi_righe`, `cerca_testo`, `conta_file`, `data_ora`), controllo unico `_risolvi_lettura` (usato anche da read_file), tetti `GAS_LETTURA_MAX_*`, diario a soli conteggi, prompt di sistema e messaggio di troncamento aggiornati.
+- `modules/gate/gate.py` — i 5 tool SAFE; i 4 di lettura in `UNTRUSTED_INPUT_TOOLS`; stesso controllo per nome di read_file (`TOOL_LETTURA_PERCORSO`).
+- `gas_identity.md` — elenco dei 12 tool.
+- `tests/test_unit_kernel.py` — T84 (round-trip, percorsi vietati, link, tetti, binari, FIFO, R-277-1).
+- `.claude/agents/memoria_revisore.md` — righe review #282 e #283.
+- `reports/stato_progetto.md` — PR #184 e riserve R-283-x.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
