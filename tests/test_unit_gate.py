@@ -131,7 +131,8 @@ class TestWriteFileDenylist:
         assert _wf(".env.prod") == GateClass.DENY
 
     def test_gas_py(self):
-        assert _wf("gas.py") == GateClass.DENY
+        # Schema a 3 livelli (1A): codice → firma, non più divieto assoluto.
+        assert _wf("gas.py") == GateClass.IRREVERSIBLE
 
     def test_modules_gate_gate(self):
         assert _wf("modules/gate/gate.py") == GateClass.DENY
@@ -149,7 +150,7 @@ class TestWriteFileDenylist:
         assert _wf(".gas_history.json") == GateClass.DENY
 
     def test_brains_model_ids(self):
-        assert _wf("brains/model_ids.py") == GateClass.DENY
+        assert _wf("brains/model_ids.py") == GateClass.IRREVERSIBLE
 
     def test_gate_config(self):
         assert _wf("gate_config.py") == GateClass.DENY
@@ -362,8 +363,8 @@ def test_write_catena_di_avvio_deny(path):
     "yaml.py", "openai.py", "openai/__init__.py", "dati/x.PY", "x.pyc", "x.pyw",
     "evil.pth", "lib.so", "lib.dylib", "x.py/", "x.py.",
 ])
-def test_write_file_di_codice_deny(path):
-    assert _wf(path) == GateClass.DENY
+def test_write_file_di_codice_firma(path):
+    assert _wf(path) == GateClass.IRREVERSIBLE
 
 
 @pytest.mark.parametrize("path", ["note.md", "dati/lead.csv", "copy.txt", "py.txt", "x.pyx.md"])
@@ -385,9 +386,10 @@ def test_read_file_venv_e_gas_notte_deny():
     "b.command", "scripts/nuovo.txt", "CLAUDE.md", "./claude.md", ".mcp.json",
     "gas_identity.md", "requirements.txt", "requirements-dev.txt",
 ])
-def test_write_file_eseguiti_fuori_sandbox_deny(path):
-    """R-222-1: script e file letti/eseguiti con privilegi fuori dalla sandbox."""
-    assert _wf(path) == GateClass.DENY
+def test_write_file_eseguiti_fuori_sandbox_firma(path):
+    """R-222-1: script e file letti/eseguiti con privilegi fuori dalla sandbox
+    (schema 1A: livello 2, firma con diff reale)."""
+    assert _wf(path) == GateClass.IRREVERSIBLE
 
 
 @pytest.mark.parametrize("path", ["note/requirements_cliente.txt", "dati/claude.md.txt", "shell.txt"])
@@ -402,9 +404,9 @@ def test_write_prefissi_solo_primo_livello(path):
     "\uff23\uff2c\uff21\uff35\uff24\uff25.md",          # CLAUDE.md fullwidth (NFKC)
     "dati/\uff23\uff2c\uff21\uff35\uff24\uff25.local.md",
 ])
-def test_write_istruzioni_agenti_a_ogni_livello_deny(path):
+def test_write_istruzioni_agenti_a_ogni_livello_firma(path):
     """Verifica-bot #160 V-1: file d'istruzioni degli agenti a qualunque profondità."""
-    assert _wf(path) == GateClass.DENY
+    assert _wf(path) == GateClass.IRREVERSIBLE
 
 
 @pytest.mark.parametrize("path", [
@@ -425,10 +427,10 @@ def test_write_istruzioni_agenti_a_ogni_livello_deny(path):
     ".windsurf/rules/x", ".zed/settings.json",  # V-2 bot #175, verifica esterna #175
     "\uff30\uff59\uff50\uff52\uff4f\uff4a\uff45\uff43\uff54.toml",  # pyproject fullwidth (NFKC)
 ])
-def test_write_config_strumenti_sviluppo_deny(path):
+def test_write_config_strumenti_sviluppo_firma(path):
     """Riserva aperta FASE 4.5: file di configurazione degli strumenti di sviluppo
     (pytest, build, make, istruzioni Gemini/Cursor) a qualunque profondità."""
-    assert _wf(path) == GateClass.DENY
+    assert _wf(path) == GateClass.IRREVERSIBLE
 
 
 @pytest.mark.parametrize("path", [
@@ -445,3 +447,66 @@ def test_read_config_strumenti_resta_consentita():
 
 def test_read_claude_md_resta_consentita():
     assert gate_classify("read_file", {"relative_path": "CLAUDE.md"}) == GateClass.SAFE
+
+
+# ---------------------------------------------------------------------------
+# Schema a 3 livelli di write_file (decisione operatore 1A, 2026-10-11)
+# ---------------------------------------------------------------------------
+from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI
+
+
+@pytest.mark.parametrize("path", [
+    ".env", ".env.prod", "dati/.env", ".envrc", ".git/config", ".github/workflows/ci.yml",
+    ".gitignore", ".claude/settings.json", "dati/.claude/x", ".gas_memory.db",
+    ".gas_history.json", ".gas_notte/ultimo_giro.md", ".gas_knowledge.db",
+    ".gas_vectors.db", ".gas_tokens.jsonl", "gate_config.yaml", "venv/bin/activate",
+    ".venv/lib/x.pth",
+    "modules/gate/gate.py", "modules/gate/__init__.py", "modules/gate/nuovo.md",
+    "modules/gate", "Modules/GATE/gate.py", "modules/./gate/gate.py",
+    "modules/x/../gate/gate.py", "modules/gate./gate.py", "modules/gate /gate.py",
+    "modules/gate.py", "modules/gate_bis/x.py",
+    "\uff4d\uff4f\uff44\uff55\uff4c\uff45\uff53/gate/gate.py",  # fullwidth (NFKC)
+    "./.env", "\uff0eenv", "x/../.git/hooks/pre-commit",
+])
+def test_livello3_mai_nemmeno_con_firma(path):
+    assert livello_scrittura(path) == LIVELLO_MAI
+    assert _wf(path) == GateClass.DENY
+
+
+@pytest.mark.parametrize("path", [
+    "gas.py", "brains/router.py", "modules/memory/store.py", "modules/notte/notte.py",
+    "modules/telegram/bot.py", "modules/nuovo/x.md", "dati/x.py", "scripts/gasmerge.sh",
+    "scripts/notte/catalogo_esempio.yaml", "CLAUDE.md", "dati/claude.md", "gas_identity.md",
+    "requirements.txt", "requirements-dev.txt", "pytest.ini", ".vscode/tasks.json",
+    "tests/test_x.py", "dati/brainstorming.md",  # prefisso "brains": prudente
+])
+def test_livello2_firma(path):
+    assert livello_scrittura(path) == LIVELLO_FIRMA
+    assert _wf(path) == GateClass.IRREVERSIBLE
+
+
+@pytest.mark.parametrize("path", [
+    "note.md", "reports/nota.md", "dati/lead.csv", "knowledge/x.md", "dati/gate/x.md",
+    "x/modules_note.txt.bak/../note.md",
+])
+def test_livello1_libero(path):
+    assert livello_scrittura(path) == LIVELLO_LIBERO
+    assert _wf(path) == GateClass.UNCERTAIN
+
+
+@pytest.mark.parametrize("path", [None, 3, "", "  ", "/etc/passwd", "../fuori", "..", "."])
+def test_livello_percorsi_invalidi_fail_closed(path):
+    assert livello_scrittura(path) == LIVELLO_MAI
+
+
+def test_livello_mai_eccezioni(monkeypatch):
+    import modules.gate.gate as g
+    monkeypatch.setattr(g, "_normalize_path", lambda p: (_ for _ in ()).throw(RuntimeError()))
+    assert livello_scrittura("note.md") == LIVELLO_MAI
+
+
+def test_lettura_invariata_dallo_schema():
+    """Lo schema riguarda solo la scrittura: la lettura del motore resta negata."""
+    assert gate_classify("read_file", {"relative_path": "gas.py"}) == GateClass.DENY
+    assert gate_classify("read_file", {"relative_path": "modules/gate/gate.py"}) == GateClass.DENY
+    assert gate_classify("read_file", {"relative_path": "note.md"}) == GateClass.SAFE

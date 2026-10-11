@@ -26,6 +26,7 @@ import logging
 import os
 import re
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -119,6 +120,61 @@ def componi_read_back(approval: Dict[str, Any]) -> str:
         f"ID approvazione: {approval['id']}\n"
         f"Scadenza: {scad}\n\n"
         "Nessuna azione verrà eseguita senza la tua firma: "
+        "usa i bottoni Approva / Rifiuta qui sotto."
+    )
+
+
+def rendi_visibili(testo: str) -> str:
+    """Caratteri invisibili o di controllo (\\r, BOM, larghezza zero, bidi, separatori
+    di riga Unicode, C0/C1) resi come <U+XXXX>; \\n e \\t restano (review #262:
+    righe diverse non devono sembrare uguali, un nome non deve falsare il messaggio)."""
+    out = []
+    for ch in testo:
+        if ch in "\n\t":
+            out.append(ch)
+        elif unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp", "Co", "Cs", "Cn"):
+            out.append(f"<U+{ord(ch):04X}>")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _blocco_modello(testo: str) -> str:
+    """Testo del modello rientrato con "│ " su ogni riga: non può imitare le
+    intestazioni del messaggio (review #262), invisibili resi visibili."""
+    return "\n".join("│ " + r for r in rendi_visibili(testo).split("\n"))
+
+
+def componi_read_back_codice(approval: Dict[str, Any], diff: str) -> str:
+    """Read-back di un write_file di LIVELLO 2 (schema 1A: file delicato). Al posto
+    del contenuto integrale mostra il DIFF REALE generato dal kernel rispetto al file
+    attuale, la cui impronta (base) e il percorso RISOLTO sono negli argomenti firmati:
+    se il file cambia prima dell'esecuzione la scrittura viene rifiutata, quindi il
+    diff è esattamente ciò che verrà applicato. Ordine (review #262): prima il file
+    vero e il diff, poi pro e contro (testo del modello, rientrato, non verificato).
+    Tutti gli argomenti ammessi sono mostrati (il kernel rifiuta chiavi extra)."""
+    args = json.loads(approval["tool_args_json"])
+    scad = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime(approval["ts_expiry"]))
+    base = str(args.get("_base_sha256", ""))
+    stato_base = ("file NUOVO (oggi non esiste)" if base == "assente"
+                  else f"modifica del file attuale (impronta {base[:12]}…)")
+    nome = rendi_visibili(str(args["relative_path"]))
+    reale = rendi_visibili(str(args.get("_file_reale", "")))
+    via = f" (chiesto come «{nome}»)" if nome != reale else ""
+    return (
+        "GAS chiede la tua firma — FILE DELICATO (codice/configurazione)\n\n"
+        f"File: {reale}{via}\n"
+        f"Tipo: {stato_base}. Se il file cambia prima della firma, la modifica NON "
+        "viene applicata.\n\n"
+        "DIFF REALE (calcolato da Gas sul file, righe - tolte, + aggiunte):\n"
+        f"{diff}\n"
+        "PRO (scritti dal modello, non verificati):\n"
+        f"{_blocco_modello(str(args['pro']))}\n\n"
+        "CONTRO (scritti dal modello, non verificati):\n"
+        f"{_blocco_modello(str(args['contro']))}\n\n"
+        f"ID approvazione: {approval['id']}\n"
+        f"Scadenza: {scad}\n\n"
+        "Nessuna modifica verrà applicata senza la tua firma: "
         "usa i bottoni Approva / Rifiuta qui sotto."
     )
 

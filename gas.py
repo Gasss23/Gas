@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import ast
+import difflib
+import hashlib
 import math as _math_module
 import os
 import re
@@ -20,6 +22,7 @@ from brains.model_ids import (
     GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
+from modules.gate.gate import livello_scrittura, LIVELLO_FIRMA, LIVELLO_MAI
 from modules.telegram import bot as _tg_bot
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
@@ -808,7 +811,7 @@ class GasKernel:
             "GAS_KNOWLEDGE_MAX_CHARS", GasKernel.KNOWLEDGE_MAX_CHARS, min_val=100)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
-            {"type": "function", "function": {"name": "write_file", "description": "Scrive file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}}},
+            {"type": "function", "function": {"name": "write_file", "description": "Scrive un file (percorso relativo alla root di Gas, contenuto INTERO). File normali: scrittura diretta. File DELICATI (codice: gas.py, brains/, modules/, qualsiasi .py o script di shell, scripts/, config degli strumenti, CLAUDE.md, gas_identity.md, requirements): la modifica NON viene applicata subito ma va alla firma dell'operatore su Telegram con il diff reale, e servono gli argomenti 'pro' e 'contro'. Alcuni file non si scrivono MAI, nemmeno con firma (.env, .git, .claude, modules/gate, memoria e cronologia).", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "pro": {"type": "string", "description": "Solo per i file delicati: perché conviene la modifica."}, "contro": {"type": "string", "description": "Solo per i file delicati: rischi e possibili effetti collaterali."}}, "required": ["relative_path", "content"]}}},
             {"type": "function", "function": {"name": "read_file", "description": "Legge file.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate, le schede dei lead/contatti e la knowledge base di nozioni apprese. Usalo per ricordare cosa è già successo con un lead, cosa hai già fatto in passato, o per cercare conoscenze deliberatamente acquisite. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare nel diario e nella knowledge base; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
@@ -1566,6 +1569,115 @@ class GasKernel:
     _NEGATO_STORE = ("Operazione negata: azione bloccata in attesa di "
                      "approvazione umana (store non disponibile).")
 
+    # Schema a 3 livelli (1A): argomenti ammessi per un write_file di livello 2. Il
+    # read-back li mostra TUTTI (content come diff reale), quindi niente chiavi extra.
+    _FIRMA_CODICE_CHIAVI = frozenset({"relative_path", "content", "pro", "contro"})
+    _FIRMA_CODICE_BASE = "_base_sha256"  # aggiunto dal kernel, mai dal modello
+    _FIRMA_CODICE_FILE = "_file_reale"   # percorso RISOLTO firmato (review #262)
+    _FIRMA_CODICE_RISERVATE = frozenset({_FIRMA_CODICE_BASE, _FIRMA_CODICE_FILE})
+    _FIRMA_PRO_CONTRO_MAX = 600  # caratteri ciascuno: niente pareti di testo (review #262)
+
+    def _file_rel_root(self, cwd: Path, relative_path: str) -> Optional[Tuple[Path, str]]:
+        """Percorso risolto (symlink compresi) e la sua forma relativa alla root, su
+        cui si ricalcola il livello: il nome scritto dal modello non basta."""
+        path = self._safe_path(cwd, relative_path)
+        if path is None:
+            return None
+        return path, path.relative_to(self.root.resolve(strict=False)).as_posix()
+
+    @staticmethod
+    def _base_file(path: Path) -> Tuple[str, str]:
+        """(sha256 dei byte, testo) del file attuale; ("assente", "") se non esiste.
+        Solleva se non è un file regolare o non è UTF-8 (chi chiama: fail-closed)."""
+        if not path.exists() and not path.is_symlink():
+            return "assente", ""
+        if not path.is_file():
+            raise ValueError("non è un file regolare")
+        dati = path.read_bytes()
+        return hashlib.sha256(dati).hexdigest(), dati.decode("utf-8")
+
+    @staticmethod
+    def _righe_n(testo: str) -> List[str]:
+        """Righe spezzate SOLO su \\n (splitlines spezza anche su \\r, \\u2028...:
+        il diff non sarebbe più quello dei byte scritti — review #262)."""
+        return re.findall(r"[^\n]*\n|[^\n]+\Z", testo)
+
+    @staticmethod
+    def _diff_unificato(vecchio: str, nuovo: str, rel: str) -> str:
+        """Diff unificato generato dal kernel (mai dal modello), 2 righe di contesto.
+        Caratteri invisibili (\\r, BOM, larghezza zero, bidi, controlli) resi come
+        <U+XXXX> (_tg_bot.rendi_visibili): due righe diverse non sembrano uguali."""
+        righe = difflib.unified_diff(GasKernel._righe_n(vecchio), GasKernel._righe_n(nuovo),
+                                     fromfile=f"a/{rel}", tofile=f"b/{rel}", n=2)
+        return "".join(_tg_bot.rendi_visibili(r[:-1] if r.endswith("\n") else r)
+                       + ("\n" if r.endswith("\n") else "\n\\ Senza a-capo finale\n")
+                       for r in righe)
+
+    def _write_livello2(self, tool_args: Any) -> bool:
+        """Review #262: livello 2 se lo è il NOME scritto dal modello OPPURE il file
+        vero dietro un eventuale symlink (stesso calcolo dell'esecuzione)."""
+        if gate_classify("write_file", tool_args) == GateClass.IRREVERSIBLE:
+            return True
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
+            risolto = self._file_rel_root(cwd, args["relative_path"])
+            return risolto is not None and livello_scrittura(risolto[1]) == LIVELLO_FIRMA
+        except Exception:
+            return False  # il gate a valle (execute) resta fail-closed
+
+    def _ha_chiavi_riservate(self, tool_args: Any) -> bool:
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            return not isinstance(args, dict) or bool(set(args) & self._FIRMA_CODICE_RISERVATE)
+        except Exception:
+            return True
+
+    def _prepara_firma_codice(self, tool_args: Any) -> Tuple[Optional[str], str]:
+        """Livello 2 (1A): valida gli argomenti, fotografa il file attuale e genera il
+        diff reale. Ritorna (args JSON con _base_sha256, diff) oppure (None, motivo).
+        La base (sha256 del file al momento della richiesta) entra negli argomenti,
+        quindi è coperta dall'hash della coda: all'esecuzione, se il file è cambiato,
+        la scrittura si rifiuta (il diff firmato non sarebbe più quello vero).
+        FAIL-CLOSED: qualunque eccezione → (None, motivo)."""
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            if not isinstance(args, dict):
+                return None, "argomenti non validi"
+            extra = sorted(set(args) - self._FIRMA_CODICE_CHIAVI - self._FIRMA_CODICE_RISERVATE)
+            if extra:
+                return None, ("argomenti non previsti per un file delicato: "
+                              + ", ".join(str(k)[:40] for k in extra[:5]))
+            rel, content = args.get("relative_path"), args.get("content")
+            if not isinstance(rel, str) or not isinstance(content, str):
+                return None, "argomenti non validi"
+            pro, contro = args.get("pro"), args.get("contro")
+            if not (isinstance(pro, str) and pro.strip()
+                    and isinstance(contro, str) and contro.strip()):
+                return None, ("per un file delicato (codice, script, configurazione) servono "
+                              "gli argomenti 'pro' e 'contro': spiega all'operatore perché "
+                              "conviene la modifica e quali rischi ha, poi richiedila")
+            if max(len(pro), len(contro)) > self._FIRMA_PRO_CONTRO_MAX:
+                return None, (f"'pro' e 'contro' devono stare entro {self._FIRMA_PRO_CONTRO_MAX} "
+                              "caratteri ciascuno (non si tronca: accorciali)")
+            cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
+            risolto = self._file_rel_root(cwd, rel)
+            if risolto is None or livello_scrittura(risolto[1]) == LIVELLO_MAI:
+                return None, "percorso non consentito"
+            base, vecchio = self._base_file(risolto[0])
+            # Diff e read-back sul percorso RISOLTO: l'operatore firma il file vero.
+            diff = self._diff_unificato(vecchio, content, risolto[1])
+            if not diff:
+                return None, "il contenuto è identico al file attuale: niente da firmare"
+            return json.dumps({"relative_path": rel, "content": content, "pro": pro,
+                               "contro": contro, self._FIRMA_CODICE_BASE: base,
+                               self._FIRMA_CODICE_FILE: risolto[1]},
+                              ensure_ascii=False), diff
+        except Exception as e:
+            logging.warning("[GATE-1A] preparazione firma fallita (%s) — diniego",
+                            type(e).__name__)
+            return None, "impossibile preparare la richiesta di firma per questo file"
+
     def _parcheggia_e_notifica(self, tool_name: str, tool_args: str,
                                turno_id: Optional[str]) -> Tuple[str, str]:
         """C4a/C4b-1: parcheggia un'azione IRREVERSIBLE (o UNCERTAIN+contaminata)
@@ -1580,10 +1692,25 @@ class GasKernel:
         if self.memory is None:
             logging.warning("[GATE] FAIL-CLOSED %s — store non disponibile, diniego", tool_name)
             return self._NEGATO_STORE, "gate-fail-closed"
+        # 1A livello 2: write_file IRREVERSIBLE = file delicato → firma con diff reale.
+        diff_firma: Optional[str] = None
+        azione = f"Esegui {tool_name}"
+        if tool_name == "write_file" and self._write_livello2(tool_args):
+            tool_args_firma, diff_o_motivo = self._prepara_firma_codice(tool_args)
+            if tool_args_firma is None:
+                return f"Operazione negata: {diff_o_motivo}.", "firma-codice-negata"
+            tool_args, diff_firma = tool_args_firma, diff_o_motivo
+            azione = "Modifica un file delicato (livello 2)"
+        elif tool_name == "write_file" and self._ha_chiavi_riservate(tool_args):
+            # Review #262: impronta/percorso firmati li scrive SOLO il kernel; in un
+            # parcheggio di livello 1 verrebbero creduti all'esecuzione firmata.
+            logging.warning("[GATE-1A] write_file con chiavi riservate al kernel — diniego")
+            return ("Operazione negata: argomenti riservati al kernel "
+                    "(_base_sha256, _file_reale)."), "firma-codice-negata"
         try:
             esito, aid = self.memory.accoda_approvazione(
                 tool_name, tool_args, turno_id=turno_id,
-                azione_leggibile=f"Esegui {tool_name}",
+                azione_leggibile=azione,
             )
         except Exception as e:
             logging.warning("[GATE] accoda_approvazione eccezione (%s) — fail-closed, diniego", e)
@@ -1606,9 +1733,13 @@ class GasKernel:
             if row is None or not row.get("hash_ok") or row.get("stato") != "pending":
                 motivo = "richiesta non rileggibile dalla coda"
             else:
-                testo = _tg_bot.componi_read_back(row)
+                testo = (_tg_bot.componi_read_back_codice(row, diff_firma)
+                         if diff_firma is not None else _tg_bot.componi_read_back(row))
                 if _tg_bot.lunghezza_telegram(testo) > _tg_bot.TELEGRAM_MAX_CHARS:
-                    motivo = "argomenti troppo grandi per un read-back integrale"
+                    motivo = ("modifica troppo grande per la firma su Telegram: "
+                              "dividila in modifiche più piccole"
+                              if diff_firma is not None else
+                              "argomenti troppo grandi per un read-back integrale")
                 else:
                     inviato, dettaglio = _tg_bot.invia_read_back(testo, approval_id=aid)
                     if not inviato:
@@ -1737,7 +1868,7 @@ class GasKernel:
                 out = "Operazione negata: azione non consentita (ricontrollo del cancello)."
             else:
                 logging.warning("[GATE-C4B] id=%s %s approvata — esecuzione", approval_id, tool)
-                out = self.execute_tool_call(tool, args_json)
+                out = self.execute_tool_call(tool, args_json, firmata=True)
             esito = self._esito_diario(tool, out)
             dry_run = False
             if tool == "run_command":
@@ -2402,7 +2533,9 @@ class GasKernel:
         return (f"Successo: lead '{da}' unito in '{verso}' "
                 f"(lead canonico id={cid}). La storia è stata preservata.")
 
-    def execute_tool_call(self, name: str, args_str: Any) -> str:
+    def execute_tool_call(self, name: str, args_str: Any, firmata: bool = False) -> str:
+        """Esegue un tool. `firmata=True` SOLO da applica_firma (firma umana valida):
+        abilita write_file di livello 2 (1A), mai il livello 3."""
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
@@ -2466,11 +2599,38 @@ class GasKernel:
                 # Guardrail: denylist + confinamento ora in _safe_path (R-nw-1).
                 # _safe_path restituisce None se il path esce dalla root, se è
                 # un file di sistema protetto, o se la risoluzione fallisce.
-                path = self._safe_path(cwd, args["relative_path"])
-                if path is None:
+                risolto = self._file_rel_root(cwd, args["relative_path"])
+                if risolto is None:
                     return (f"Operazione negata: il percorso '{args['relative_path']}' "
                             "esce dalla root di Gas o è un file di sistema protetto. "
                             "Usa solo percorsi relativi interni al progetto.")
+                path, rel_root = risolto
+                # 1A: livello ricalcolato sul percorso RISOLTO (un symlink non porta
+                # un file delicato al livello 1, né un file "mai" al livello 2).
+                livello = livello_scrittura(rel_root)
+                if livello == LIVELLO_MAI:
+                    logging.warning("[GATE-1A] write_file livello 3 all'esecuzione: %r", rel_root)
+                    return "Operazione negata: questo file non si scrive mai, nemmeno con firma."
+                if livello == LIVELLO_FIRMA:
+                    if not firmata:
+                        logging.warning("[GATE-1A] write_file livello 2 senza firma: %r", rel_root)
+                        return ("Operazione negata: file delicato, serve la firma "
+                                "dell'operatore (richiedila con 'pro' e 'contro').")
+                    # Review #262: si scrive solo il file mostrato nella firma.
+                    if args.get(self._FIRMA_CODICE_FILE) != rel_root:
+                        logging.warning("[GATE-1A] %r non è il file firmato — diniego", rel_root)
+                        return ("Operazione negata: il file da scrivere non è quello mostrato "
+                                "nella richiesta di firma. File non scritto: rifai la richiesta.")
+                    base_attesa = args.get(self._FIRMA_CODICE_BASE)
+                    try:
+                        base_attuale, _ = self._base_file(path)
+                    except Exception:
+                        base_attuale = None
+                    if not isinstance(base_attesa, str) or base_attuale != base_attesa:
+                        logging.warning("[GATE-1A] %r cambiato dopo la richiesta di firma", rel_root)
+                        return ("Operazione negata: il file è cambiato dopo la richiesta di "
+                                "firma, il diff firmato non è più quello vero. File non scritto: "
+                                "rifai la richiesta.")
                 # Snapshot preventivo DOPO la validazione del path: fotografa
                 # lo stato prima di sovrascrivere
                 if self._snapshot("write_file", args["relative_path"]) is None:
@@ -2647,6 +2807,11 @@ class GasKernel:
                             for tc in msg.tool_calls:
                                 # C2: gate check prima di eseguire.
                                 _gc = gate_classify(tc.function.name, tc.function.arguments)
+                                # Review #262: un nome "libero" che risolve (symlink) a un
+                                # file delicato va alla firma di livello 2 come il file vero.
+                                if (_gc == GateClass.UNCERTAIN and tc.function.name == "write_file"
+                                        and self._write_livello2(tc.function.arguments)):
+                                    _gc = GateClass.IRREVERSIBLE
                                 _gate_diario: Optional[str] = None  # azioni al cancello: diario senza args
                                 if _gc == GateClass.DENY:
                                     logging.warning(f"[GATE] DENY: {tc.function.name}")
