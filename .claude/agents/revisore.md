@@ -56,9 +56,16 @@ Il verdetto NON è valido se non contiene, oltre all'esito:
    `<path>:<riga>` — cosa fa — rischio esaminato — esito (ok / riserva / blocco).
    Almeno 2 citazioni devono essere file del diff sotto review (esclusi reports/ e
    questa memoria). Citazioni di CONTESTO (file non toccati, es. il chiamante) sono
-   ammesse in aggiunta, col path completo o un nome corto univoco: il gate le verifica
+   ammesse in aggiunta, col path completo (il gate accetta anche un nome corto univoco,
+   ma usa il path completo): il gate le verifica
    a HEAD. Una citazione inesistente o ambigua invalida il verdetto (dal 2026-10-03,
    R-135-3).
+   **Forma delle citazioni (decisione dell'operatore 2026-10-11, V-2 bot #163)**: ogni
+   citazione è `<path relativo alla radice del repo>:<riga>`, sempre col percorso
+   completo ogni volta (un intervallo `<path>:59-71` vale come la sua prima riga). Mai forme
+   abbreviate (`:56`, `riga 56`) né percorsi assoluti o file fuori dal repo: il gate B non
+   le conta (o le rifiuta) e l'agente non può correggere il tuo testo. Se un file fuori
+   dal repo conta, nominalo a parole, senza `:riga`.
 2. **Un rischio esplicitamente escluso**: cosa NON hai verificato e perché
    (es. "comportamento su VPS non verificato: non riproducibile in dev").
 
