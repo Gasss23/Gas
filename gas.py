@@ -659,6 +659,9 @@ class GasKernel:
         # carica_storia=False (giro notturno, R-220-2): la conversazione dell'operatore
         # non viene né letta né, se corrotta, rinominata in quarantena.
         self.history: List[Dict[str, Any]] = self._load_history() if carica_storia else []
+        # V-1 bot #176: un kernel senza storia non fotografa nemmeno la conversazione
+        # dell'operatore negli snapshot (non la tocca, quindi non c'è nulla da proteggere).
+        self.carica_storia: bool = carica_storia
         # Modalità del sandbox run_command: 'guarded' (default, vetting +
         # esecuzione senza shell) oppure 'dry_run' (anteprima fedele: fa il
         # vetting ma non esegue nulla — collaudo e kill-switch). Un valore non
@@ -1262,7 +1265,7 @@ class GasKernel:
                 raise RuntimeError(f"la root {self.root} non è la radice di un repo git (toplevel: {toplevel})")
             git("add", "-A")  # a differenza di stash create, prende anche i non tracciati
             # La memoria di Gas è gitignorata ma va protetta quanto il codice
-            if (self.root / ".gas_history.json").exists():
+            if self.carica_storia and (self.root / ".gas_history.json").exists():
                 git("add", "-f", "--", ".gas_history.json")
             tree = git("write-tree")
             head = subprocess.run(["git", "-C", str(self.root), "rev-parse", "--verify", "-q", "HEAD"],
