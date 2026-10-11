@@ -794,3 +794,47 @@ def test_lock_fallito_per_altro_motivo_non_dice_giro_in_corso(monkeypatch, dirs)
     testo = inviati[0][1]["text"]
     assert "INTERROTTO alle " in testo and ": OSError." in testo
     assert "un altro giro" not in testo
+
+
+def test_kernel_senza_storia_non_tocca_la_conversazione(tmp_path):
+    """R-220-2: con carica_storia=False la conversazione dell'operatore non viene
+    letta né, se corrotta, rinominata in quarantena."""
+    storia = tmp_path / ".gas_history.json"
+    storia.write_text("{non json", encoding="utf-8")
+    k = gas.GasKernel(root_dir=str(tmp_path), carica_storia=False)
+    assert k.history == []
+    assert storia.read_text(encoding="utf-8") == "{non json"
+    assert not list(tmp_path.glob(".gas_history.json.corrupt.*"))
+
+
+def test_giro_crea_i_kernel_senza_storia(monkeypatch, dirs):
+    """R-220-2: la fabbrica di default del giro chiede kernel senza storia."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    visti = []
+
+    def _finto(**kw):
+        visti.append(kw)
+        raise RuntimeError("basta così")
+    monkeypatch.setattr(gas, "GasKernel", _finto)
+    assert esegui_notte(str(root), catalogo=cat) == 1
+    assert visti == [{"root_dir": str(root), "carica_storia": False}]
+
+
+def test_gas_notte_reale_non_tocca_la_conversazione(monkeypatch, tmp_path):
+    """R-220-2 (review #252): il percorso di produzione è `gas notte` → notte_cmd,
+    che passa una sua fabbrica: con storia corrotta, il kernel che crea non la
+    rinomina in quarantena."""
+    import modules.notte as pacchetto_notte
+    storia = tmp_path / ".gas_history.json"
+    storia.write_text("{non json", encoding="utf-8")
+    prese = []
+
+    def _finto(root_dir, kernel_factory=None):
+        prese.append(kernel_factory(root_dir))
+        return 0
+    monkeypatch.setattr(pacchetto_notte, "esegui_notte", _finto)
+    assert gas.notte_cmd(str(tmp_path)) == 0
+    assert prese and prese[0].history == []
+    assert storia.read_text(encoding="utf-8") == "{non json"
+    assert not list(tmp_path.glob(".gas_history.json.corrupt.*"))

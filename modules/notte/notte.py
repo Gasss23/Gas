@@ -392,7 +392,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             logging.warning("notte: %s", a)
         if kernel_factory is None:
             from gas import GasKernel
-            kernel_factory = lambda r: GasKernel(root_dir=r)  # noqa: E731
+            # R-220-2: il compito non tocca la conversazione dell'operatore.
+            kernel_factory = lambda r: GasKernel(root_dir=r, carica_storia=False)  # noqa: E731
         max_compito = _env_secondi("GAS_NOTTE_MAX_SEC_COMPITO", MAX_SEC_COMPITO_DEFAULT)
         max_giro = _env_secondi("GAS_NOTTE_MAX_SEC_GIRO", MAX_SEC_GIRO_DEFAULT)
         t_giro = time.monotonic()
