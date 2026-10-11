@@ -137,6 +137,9 @@ _DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
     ".devcontainer.json",  # R-249-1: forma a file singolo della cartella sopra
     ".pre-commit-config.yaml", ".coveragerc", "mypy.ini", ".mypy.ini", ".flake8",
     "uv.toml", "pytest.cfg", "justfile", "dockerfile", ".python-version", "package.json",
+    # V-2 bot #175: pdb e pylint eseguono codice dalla config; V-1 verifica esterna
+    # (agente) #175: hook git di husky, npm, altri editor/agenti.
+    ".pdbrc", ".pylintrc", "pylintrc", ".husky", ".npmrc", ".windsurf", ".zed",
 })
 
 
@@ -198,7 +201,10 @@ def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | N
     if write and PurePosixPath(norm).parts[:1] and \
             PurePosixPath(norm).parts[0].startswith(_DENY_WRITE_TOP_PREFIXES):
         return GateClass.DENY
-    if write and any(p in _DENY_WRITE_ANY_PART_NAMES for p in PurePosixPath(norm).parts):
+    # V-1 bot #174: punti/spazi finali tolti da OGNI pezzo, non solo dalla fine del
+    # percorso ("pytest.ini.", ".vscode./tasks.json"): su Windows sono lo stesso file.
+    if write and any(p.rstrip(". ") in _DENY_WRITE_ANY_PART_NAMES
+                     for p in PurePosixPath(norm).parts):
         return GateClass.DENY
     return None
 

@@ -419,6 +419,10 @@ def test_write_istruzioni_agenti_a_ogni_livello_deny(path):
     "package.json",  # R-247-2, V-1 verifica esterna #174
     ".devcontainer.json", "dati/.devcontainer.json", "gas.code-workspace",
     "dati/x.CODE-WORKSPACE",  # R-249-1
+    "pytest.ini.", "Makefile.", "tests/pyproject.toml ", ".vscode./tasks.json",
+    "dati/.vscode /x", "Dockerfile.",  # V-1 bot #174: punti/spazi finali per pezzo
+    ".pdbrc", "tests/.pylintrc", "pylintrc", ".husky/pre-commit", ".npmrc",
+    ".windsurf/rules/x", ".zed/settings.json",  # V-2 bot #175, verifica esterna #175
     "\uff30\uff59\uff50\uff52\uff4f\uff4a\uff45\uff43\uff54.toml",  # pyproject fullwidth (NFKC)
 ])
 def test_write_config_strumenti_sviluppo_deny(path):
