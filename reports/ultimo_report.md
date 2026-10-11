@@ -1,24 +1,19 @@
-# Report di fine task — 2026-10-11 — FETTA 1 PR A: strumenti nativi di sola lettura (PR #184)
+# Report di fine task — 2026-10-11 — FETTA 1 PR B: nessun binario offerto al modello (PR #185)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Secondo passaggio nella chat di strategia (non blocca il merge): https://github.com/Gasss23/Gas/pull/184
-2. FETTA 4: il documento `claude/roadmap_completa.md` non è leggibile da questa sessione e l'allegato annunciato non è arrivato (nessun file `roadmap_completa*` nel container). Serve incollarne il testo in chat.
+1. Secondo passaggio nella chat di strategia (non blocca il merge): https://github.com/Gasss23/Gas/pull/184 e https://github.com/Gasss23/Gas/pull/185
+2. Chiavi private e file di credenziali (`id_rsa`, `*.pem`, `secrets.*`, `credentials*`): oggi leggibili e, dalla PR #184, anche cercabili. Aggiungerli ai nomi da segreto oppure registrare il compromesso accanto a R-277-1?
+3. FETTA 4: `claude/roadmap_completa.md` non leggibile da questa sessione, allegato non arrivato: incollarne il testo in chat.
 
 ## Esito per fetta
 
-- **Passo 0 — sola lettura**: `FATTA` — main allineato (`ea4a368`), nessuna PR aperta, nessuna PR su gas.py/modules/gate.
-- **FETTA 1 PR A — strumenti nativi di sola lettura**: `FATTA` — PR #184. Nomi: `elenca_cartella`, `leggi_righe`, `cerca_testo`, `conta_file`, `data_ora`. Review #282 → #283 APPROVATO CON RISERVE. Bot e verifica esterna sul primo SHA: BOCCIATO (V-1 MEDIA: profondità di cerca_testo taciuta) → corretto con V-4/V-5 nel commit `00d5d08`, review #284 → #285 APPROVATO CON RISERVE. Riserve aperte in stato_progetto. Kernel 763 → 797 PASS, pytest 971.
-  - R-277-1: test T84l → `prod.environment` resta leggibile (read_file e leggi_righe, stesso esito): compromesso ancora aperto.
-  - `modules/gate`: leggibile come read_file (correzione dell'operatore al comando, 2026-10-11).
-- **FETTA 1 PR B**: `DEFERITA` — parte dopo il merge della PR A.
-- **FETTA 2 — prova del turno di notte**: `DEFERITA` — dopo la FETTA 1.
-- **FETTA 3 — proposta cervello forte**: `DEFERITA` — bozza pronta, PR a parte.
-- **FETTA 4 — roadmap nel repo**: `SALTATA — documento non leggibile` (vedi decisioni).
+- **FETTA 1 PR A**: `FATTA` — PR #184 mergiata in autonomia (`5725131`): bot APPROVATO CON RISERVE senza ALTA/MEDIA, verifica esterna (2° giro) APPROVATO CON RISERVE, CI verde. Primo giro: BOCCIATO (V-1 MEDIA) corretto.
+- **FETTA 1 PR B — run_command fuori dalla mano del modello**: `FATTA` — PR #185. `SHELL_ALLOWLIST` vuota, `run_command` fuori dallo schema e negato nel loop; recinto e suoi test restano. Review #286 APPROVATO CON RISERVE; bot e verifica esterna APPROVATO CON RISERVE (neutral) → note corrette in `1d19bba` (review #287, #288 APPROVATO). Kernel 797 → 806, pytest 971. Chiusi con evidenza: R-273-1, R-273-2, R-274-2, R-nw-2, F6, parte `sed -n` di F4.
+- **FETTA 2 — prova del turno di notte**: `DEFERITA` — dopo il merge della PR B.
+- **FETTA 3 — proposta cervello forte**: `DEFERITA` — bozza pronta.
+- **FETTA 4 — roadmap nel repo**: `SALTATA — documento non leggibile`.
 
 ## Anomalie
 
-- Primo giro: bot di verifica e verifica esterna BOCCIATO (V-1 MEDIA). Corretto al primo giro di correzione.
-
-- Il revisore alla review #282 ha committato da solo la propria memoria (`f29b888`) sul ramo della PR: incluso nella PR.
-- `gh` nel container non è autenticato: PR creata con lo strumento GitHub collegato.
+Nessuna.

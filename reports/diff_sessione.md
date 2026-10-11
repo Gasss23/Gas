@@ -1,11 +1,13 @@
-# Diff della sessione — 2026-10-11 — strumenti nativi di sola lettura (PR #184)
+# Diff della sessione — 2026-10-11 — nessun binario offerto al modello (PR #185)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py` — 5 tool nativi (`elenca_cartella`, `leggi_righe`, `cerca_testo`, `conta_file`, `data_ora`), controllo unico `_risolvi_lettura` (usato anche da read_file), tetti `GAS_LETTURA_MAX_*`, diario a soli conteggi, prompt di sistema e messaggio di troncamento aggiornati.
-- `modules/gate/gate.py` — i 5 tool SAFE; i 4 di lettura in `UNTRUSTED_INPUT_TOOLS`; stesso controllo per nome di read_file (`TOOL_LETTURA_PERCORSO`).
-- `gas_identity.md` — elenco dei 12 tool.
-- `tests/test_unit_kernel.py` — T84 (round-trip, percorsi vietati, link, tetti, profondità dichiarata, nomi con a-capo, binari, FIFO, R-277-1).
-- `.claude/agents/memoria_revisore.md` — righe review #282–#285.
-- `reports/stato_progetto.md` — PR #184 e riserve R-283-x.
+- `gas.py` — `SHELL_ALLOWLIST` vuota (lista storica in `_SHELL_ALLOWLIST_RECINTO`, solo test); `run_command` fuori dallo schema e negato nel loop con messaggio che indica gli strumenti nativi; doctor senza falso FAIL; prompt di sistema senza comandi di sistema.
+- `gas_identity.md` — 11 tool, nessun comando di sistema.
+- `scripts/notte/catalogo_esempio.yaml` — `salute_sistema` usa `elenca_cartella`.
+- `tests/test_unit_kernel.py` — lista del recinto per i test; T85 sulla configurazione reale.
+- `reports/setup_notte.md` — Gas modifica il motore solo con firma; niente comandi di sistema; avviso per le copie locali del catalogo.
+- `README.md` — sezione run_command marcata «non offerto al modello dal 2026-10-11».
+- `reports/stato_progetto.md` — PR B, riserve chiuse con evidenza, note dei verificatori di #184, R-286-x.
+- `.claude/agents/memoria_revisore.md` — righe review #286–#288.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
