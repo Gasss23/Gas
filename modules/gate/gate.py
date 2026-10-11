@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import unicodedata
 from enum import Enum
@@ -206,6 +207,8 @@ def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | N
         return GateClass.DENY
     if _in_denylist(norm, None if write else _LETTURA_NEGATA):
         return GateClass.DENY
+    if not write and _nome_da_segreto(norm):
+        return GateClass.DENY
     if write and norm.rstrip("/. ").endswith(_DENY_WRITE_SUFFIXES):
         return GateClass.DENY
     if write and PurePosixPath(norm).parts[:1] and \
@@ -246,13 +249,26 @@ LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI = 1, 2, 3
 _LETTURA_NEGATA: tuple[str, ...] = _LIVELLO3_PREFISSI
 
 
+_SEGRETO_RE = re.compile(r"\.env(?![a-z])")  # R-275-1: lookahead negativo
+
+
+def _nome_da_segreto(normalized: str) -> bool:
+    """V-2 verifica esterna #181 + R-274-1 + R-275-1: un pezzo del percorso con `.env`
+    NON seguito da una lettera (prod.env, prod.env.local, prod.env~, «prod.env copy»,
+    prod.env(1), prod.env1) è un file di segreti anche dentro cartelle leggibili;
+    `x.environment.py`, `a.envelope.md` no (il percorso è già casefold).
+    Punti/spazi finali tolti."""
+    return any(_SEGRETO_RE.search(p.rstrip(". ")) for p in PurePosixPath(normalized).parts)
+
+
 def lettura_consentita(relative_path: Any) -> bool:
     """True se read_file può leggere il percorso (relativo alla root). Usata anche
     dal kernel sul percorso RISOLTO (symlink). Mai eccezioni: errore → False."""
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return False
-        return not _in_denylist(_normalize_path(relative_path), _LETTURA_NEGATA)
+        norm = _normalize_path(relative_path)
+        return not (_in_denylist(norm, _LETTURA_NEGATA) or _nome_da_segreto(norm))
     except Exception:
         return False
 

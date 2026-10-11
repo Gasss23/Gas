@@ -7664,6 +7664,24 @@ try:
           all(argv is None and (m or "").startswith("Operazione negata")
               for argv, m in _ab83.values()),
           str({k: v[1] for k, v in _ab83.items() if v[0] is not None})[:300])
+    # V-1/V-2 bot #181: `--` seguito da un nome che inizia con '-'; date posizionale.
+    # Solo il controllo, mai l'esecuzione (date cambierebbe l'orologio).
+    try:
+        os.symlink(".env", str(_r83 / "-x"))
+        _sym83m = True
+    except OSError:
+        _sym83m = False
+    _v83m = {c: _k83._vet_command(c, _r83) for c in (
+        (["cat -- -x", "head -- -x", "tail -n 1 -- -x", "grep SEGRETO -- -x",
+          "grep -n -- SEGRETO -x", "grep -A 1 -- SEGRETO -x"] if _sym83m else [])
+        + ["date 010100002020", "date 0101", "date -u 010100002020", "date -- 0101"])}
+    check("T83m `--` con nome che inizia per '-' e date posizionale → negati al controllo",
+          all(argv is None for argv, _ in _v83m.values()),
+          str({k: v[1] for k, v in _v83m.items() if v[0] is not None})[:300])
+    _ok83m = [_k83._vet_command(c, _r83)[0] is not None for c in (
+        "date +%Y", "date -u +%H:%M", "date -d tomorrow", "date --date tomorrow +%F",
+        "cat -- note.md")]
+    check("T83m forme legittime di date e `--` restano permesse", all(_ok83m), str(_ok83m))
     _ok83l = [_k83._vet_command(c, _r83)[0] is not None for c in (
         "wc --lines note.md", "date --utc", "file --brief note.md", "date --iso-8601")]
     check("T83l opzioni lunghe innocue restano permesse", all(_ok83l), str(_ok83l))
