@@ -5,7 +5,8 @@ Cosa fa: ogni notte alle 03:00 il Mac lancia `python3 gas.py notte`. Gas legge
 riepilogo in `~/Gas/.gas_notte/ultimo_giro.md`. Nel diario va una riga per compito.
 
 Ogni compito ha una cronologia sua (`.gas_notte/storia_<nome>.json`), separata dalla
-tua conversazione. Eccezione: se approvi su Telegram un'azione parcheggiata di notte,
+tua conversazione: il giro non legge `.gas_history.json`, non la sposta se è rovinata e
+non la copia nelle fotografie di sicurezza (snapshot). Eccezione: se approvi su Telegram un'azione parcheggiata di notte,
 l'esito viene scritto nella conversazione del bot/operatore (riserva R-220-1).
 
 Cosa NON fa da solo: le azioni rischiose (scrivere un file dopo aver letto contenuti

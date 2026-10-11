@@ -164,7 +164,7 @@ def test_catalogo_default_da_env(monkeypatch, tmp_path):
 def _giro(monkeypatch, root, cat, script):
     monkeypatch.setattr(gas, "OpenAI", script.fabbrica())
     return esegui_notte(str(root), catalogo=cat,
-                        kernel_factory=lambda r: gas.GasKernel(root_dir=r))
+                        kernel_factory=lambda r: gas.GasKernel(root_dir=r, carica_storia=False))
 
 
 def test_round_trip_agentico_e_isolamento(monkeypatch, dirs):
@@ -838,3 +838,38 @@ def test_gas_notte_reale_non_tocca_la_conversazione(monkeypatch, tmp_path):
     assert prese and prese[0].history == []
     assert storia.read_text(encoding="utf-8") == "{non json"
     assert not list(tmp_path.glob(".gas_history.json.corrupt.*"))
+
+
+def test_giro_completo_con_storia_corrotta(monkeypatch, dirs):
+    """V-1 verifica esterna #176: un giro intero (kernel vero, provider finto) con
+    la conversazione dell'operatore corrotta finisce OK e non la tocca."""
+    root, fuori = dirs
+    storia = root / ".gas_history.json"
+    storia.write_text("{non json", encoding="utf-8")
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    assert _giro(monkeypatch, root, cat, _Script({"p": [
+        [("calcola", json.dumps({"expr": "2+2"}))], "4"]})) == 0
+    assert storia.read_text(encoding="utf-8") == "{non json"
+    assert not list(root.glob(".gas_history.json.corrupt.*"))
+
+
+def _repo_git(root: Path) -> None:
+    import subprocess
+    for args in (["init", "-q"], ["config", "user.email", "t@t"], ["config", "user.name", "t"]):
+        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+
+
+@pytest.mark.parametrize("carica, presente", [(True, True), (False, False)])
+def test_snapshot_e_conversazione_operatore(tmp_path, carica, presente):
+    """V-1 bot #176: lo snapshot fotografa la conversazione dell'operatore solo nei
+    kernel che la caricano; nel giro notturno (carica_storia=False) resta fuori."""
+    import subprocess
+    _repo_git(tmp_path)
+    (tmp_path / ".gitignore").write_text(".gas_history.json\n.gas_memory*\n", encoding="utf-8")
+    (tmp_path / ".gas_history.json").write_text("[]", encoding="utf-8")
+    k = gas.GasKernel(root_dir=str(tmp_path), carica_storia=carica)
+    sha = k._snapshot("test", "x")
+    assert sha
+    files = subprocess.run(["git", "-C", str(tmp_path), "ls-tree", "-r", "--name-only", sha],
+                           capture_output=True, text=True, check=True).stdout.split()
+    assert (".gas_history.json" in files) is presente

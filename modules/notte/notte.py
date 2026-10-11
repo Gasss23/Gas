@@ -12,7 +12,9 @@ Invarianti di sicurezza:
 - Ogni compito parte con una cronologia VUOTA e propria
   (.gas_notte/storia_<nome>.json): la conversazione dell'operatore
   (.gas_history.json) non entra nella finestra e non viene scritta dal giro, e
-  un compito non contamina il successivo. Eccezione (R-220-1): l'esito di
+  un compito non contamina il successivo. I kernel del giro nascono con
+  carica_storia=False (R-220-2, V-1 bot #176): la conversazione non viene
+  nemmeno letta (né messa in quarantena se corrotta) né copiata negli snapshot. Eccezione (R-220-1): l'esito di
   un'azione parcheggiata e poi firmata su Telegram lo scrive il kernel del bot
   nella conversazione dell'operatore.
 - Il cancello resta quello di sempre: le azioni irreversibili (o incerte dopo
