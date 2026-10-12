@@ -1,10 +1,34 @@
-# Diff della sessione — 2026-10-12 — FETTA 1 cervello forte
+# DIFF DI SESSIONE — 2026-10-12
 
-> Si riscrive a ogni sessione; la storia completa sta in git.
+> Fotografia dell'ULTIMA sessione. Si riscrive ogni volta; la storia completa sta in git.
 
-- `gas.py` — `_budget_superato()`; budget ricontrollato prima di ogni chiamata del ciclo agentico (anche retry Gemini 400, con stop dichiarato) e di ogni rung della riflessione (prima del controllo della chiave); `turno_fine` con « ; motivo=budget»; rung fermati prima della create non «tentati» (chiude F2).
-- `tests/test_unit_kernel.py` — T88a–j, T88c2: stop a metà turno, storia coerente, controprove, riflessione, retry, diario.
-- `.claude/agents/memoria_revisore.md` — memoria delle review #293–#296 (commit del revisore).
-- `reports/stato_progetto.md` — FETTA 1, riserve R-293/R-294/R-295, note bot e verifica esterna #191, #185 mergiata.
-- `reports/roadmap.md` — F2 chiusa, scelta R-293-2 dichiarata.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
+Sessione in due parti: (1) un **check** su richiesta dell'operatore delle PR #184 e #185 (nessuna
+modifica al repo: cloni usa-e-getta nella scratchpad); (2) una **fetta di codice** nata da un
+difetto trovato durante quel check.
+
+## Parte 1 — check delle PR #184/#185 (nessun file toccato)
+
+Esito riassunto, con le prove riprodotte: entrambe le PR erano **già mergiate**; il punto
+«credenziali illeggibili» del brief dell'operatore era **già in produzione** (PR #188,
+`_CHIAVE_PRIVATA_RE` in `modules/gate/gate.py`); il punto «budget di byte di `cerca_testo`» è
+**reale e aperto** (riprodotto: con un `gas_debug.log` da 4,5 MB la ricerca dalla root non trova
+`modules/gate/gate.py`); ed è emerso un **FAIL non dichiarato in nessun handoff** (T80u5), che è
+diventato la parte 2.
+
+## Parte 2 — fetta T80u5, ramo `fix/test-t80u5-portabile`
+
+| File | Cosa è cambiato e perché |
+|---|---|
+| `gas.py` | `_RIFLESSIONE_MAX_PROFONDITA = 50` + `_troppo_annidato()` (pura): l'annidamento del JSON della riflessione si controlla **prima** di `json.loads`, così il rifiuto non dipende più dalla versione di Python. L'`except RecursionError` resta come rete, con messaggio distinto. |
+| `tests/test_unit_kernel.py` | T80u5 aggiornata al messaggio nuovo; **T80u6** (confine 50/51, parentesi in stringa e dopo escape, JSON legittimo, uscita anticipata su 1,2 MB); **T80u7** (la rete `except RecursionError` è viva e distinta). |
+| `reports/ultimo_report.md` | Report del task: misure reali, riserve del revisore, tre proposte non implementate. |
+| `reports/stato_progetto.md` | Voce della fetta + esiti del check delle PR #184/#185 (merge di #184 fuori dalla regola di merge autonomo). |
+| `reports/handoff.md` | Dossier di fine sessione riscritto. |
+| `.claude/agents/memoria_revisore.md` | Righe #297/#298 aggiunte dal subagent `revisore` (committate dal suo script). |
+
+**Motore toccato**: solo `_analizza_riflessione` e le sue due funzioni nuove. Nessun altro percorso
+del kernel cambia; nessuna firma pubblica rimossa.
+
+**Numeri reali**: kernel **818 PASS/1 FAIL → 821 PASS/0 FAIL** (`.venv`, Python 3.14.7);
+`pytest` **1031 passed, 1 skipped** prima e dopo. Non verificato su 3.11/3.12 (non installati):
+la prova è la CI pinnata 3.11.
