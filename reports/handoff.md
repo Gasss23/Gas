@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR — numero e URL compilati al passo 4bis dopo il push (solo da `gh`).
+1. Merge della PR #193 (https://github.com/Gasss23/Gas/pull/193).
 2. **R-297-3 (BASSA, APERTA di proposito): il salto dei log è incondizionato sulla dimensione.** Anche un `gas_debug.log` da 50 KB, che sta largamente in ogni tetto, non viene più cercato in una ricerca su cartella, mentre CLAUDE.md sez. 3 fa dell'ispezione del log un'attività di prima classe. Il brief chiedeva esplicitamente di saltare i log, quindi la scelta non è stata cambiata dall'agente. Mitigazioni presenti: salto dichiarato in intestazione con l'istruzione su come cercarci dentro; log cercabili indicandoli per nome; il salto protegge anche il tetto dei RISULTATI. L'alternativa «salta solo i log oltre il tetto per file» è stata provata e perde quella protezione — e la prova vale **proprio per l'alternativa condizionata** perché il log del test (5000 righe, ≈85 KB) sta SOTTO il tetto per file: verrebbe letto e il tetto dei risultati si esaurirebbe allo stesso modo. Se l'operatore preferisce l'altro compromesso, è una riga.
 3. **Buchi residui della denylist credenziali**: NON implementati (vincolo del brief: `modules/gate/` è già in main con la PR #188). Verificati uno per uno con `lettura_consentita()`, tutti LEGGIBILI oggi: `token_cache.json` (la regex vuole il punto subito dopo `token`; `token.json` e `tokens.json` sono bloccati), `kubeconfig`, `mywallet.dat`, `.vault-token`, `.dockercfg`, `_netrc`, `clientsecret.json`, `*.gpg`, `*.asc`. Vanno in una fetta loro, di sicurezza.
 4. **Nota di processo**: la PR #184 è stata mergiata in autonomia con verdetto del bot `APPROVATO CON RISERVE`, quindi **fuori dalla regola di merge autonomo** di CLAUDE.md (merge da soli solo su `APPROVATO` secco senza alcun finding V-x). La voce esistente di `feat/via-binari-run-command` in `reports/stato_progetto.md` registra quel merge come «autorizzato dall'operatore»: le due letture non coincidono, sono state scritte entrambe nel file invece di sovrascrivere il record, e la ricostruzione la decide l'operatore.
@@ -28,16 +28,18 @@
  .claude/agents/memoria_revisore.md |  13 +++++++++++++
  gas.py                             | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
  reports/diff_sessione.md           |  37 +++++++++++++++++++++++++++++--------
- reports/handoff.md                 | 350 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 355 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |  30 +++++++++++++++++++++++++++---
  reports/ultimo_report.md           | 164 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
  tests/test_unit_kernel.py          | 172 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- 7 files changed, 698 insertions(+), 183 deletions(-)
+ 7 files changed, 704 insertions(+), 182 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a5ec398 docs(fine-task): §0 dell'handoff con numero e URL reali della PR #193
+c16a789 docs(fine-task): verdetto #297 riemesso in forma di gate, #300, R-300-1
 25ce6e6 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
 b892800 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
 775fdb8 docs(fine-task): report, handoff, stato e diff — cerca_testo budget onesto
@@ -47,7 +49,7 @@ be36ce8 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
 e606313 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `b892800` e `25ce6e6` sono due commit di memoria del revisore per la stessa review #300, scritti in due passaggi (verificato: entrambi toccano SOLO `.claude/agents/memoria_revisore.md`). `775fdb8` è il primo commit di report di questa sessione, poi superato da quello di fine-task: contiene il testo ORIGINALE del verdetto #297 prima della riemissione in forma di gate (vedi §4).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; il suo hash e' nel `git log` del branch dopo il push. `b892800` e `25ce6e6` sono due commit di memoria del revisore per la stessa review #300, scritti in due passaggi (verificato: toccano SOLO `.claude/agents/memoria_revisore.md`). `775fdb8` conserva il testo ORIGINALE del verdetto #297 prima della riemissione in forma di gate (vedi §4).
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
