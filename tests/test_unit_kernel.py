@@ -8262,6 +8262,54 @@ try:
         _tf88f = _k88f.memory.ultimo_diario_per_tipo("turno_fine") if _k88f.memory else None
         check("T88g retry saltato per budget: turno_fine con motivo=budget",
               _tf88f is not None and _tf88f["descrizione"].endswith(" ; motivo=budget"), str(_tf88f))
+        # T88h — V-2 bot #191 (2° giro): un rung fermato dal budget prima di qualunque
+        # create non risulta «tentato». Rung 1 cade con un 500 (nessun costo loggato),
+        # il budget scatta prima della prima create del rung 2.
+        class _Err500_88(Exception):
+            status_code = 500
+
+        class _Client88h(_Client88):
+            def create(self, model=None, **kw):
+                _Client88.chiamate.append(model)
+                raise _Err500_88("Error code: 500 - guasto")
+
+        _seq88h = iter([None, None, (2.0, 1.0)])
+        _k88h = kernel_tmp()
+        _k88h._budget_superato = lambda: next(_seq88h, (2.0, 1.0))
+        gas.OpenAI = _Client88h
+        _Client88.chiamate = []
+        try:
+            _ev88h = list(_k88h.run_turn("che ore sono"))
+        finally:
+            gas.OpenAI = _Client88
+        _tf88h = _k88h.memory.ultimo_diario_per_tipo("turno_fine") if _k88h.memory else None
+        check("T88h rung fermato dal budget prima della create: non è tra i tentati",
+              len(_Client88.chiamate) == 1 and _tf88h is not None
+              and " ; tentati=gemini-flash-lite ; " in _tf88h["descrizione"]
+              and _tf88h["descrizione"].endswith(" ; motivo=budget")
+              and any(e["type"] == "error" and e["content"].startswith("Budget giornaliero esaurito a metà turno")
+                      for e in _ev88h),
+              f"chiamate={_Client88.chiamate} diario={_tf88h}")
+        # T88i — V-1 bot #191 (2° giro): Gemini ULTIMO rung con chiave (solo GEMINI_API_KEY,
+        # compito semplice: flash-lite poi flash) e budget che scatta prima del retry del
+        # 400 sull'ultimo → errore di budget, MAI «Pipeline esausta … HTTP 400» (R-295-1).
+        os.environ.pop("GROQ_API_KEY", None)
+        _seq88i = iter([None, None, None, None, (2.0, 1.0)])
+        _k88i = kernel_tmp()
+        _k88i._budget_superato = lambda: next(_seq88i, (2.0, 1.0))
+        gas.OpenAI = _Client88f
+        _Client88.chiamate = []
+        try:
+            _ev88i = list(_k88i.run_turn("che ore sono"))
+        finally:
+            gas.OpenAI = _Client88
+            os.environ["GROQ_API_KEY"] = "finta-88"
+        _er88i = [e["content"] for e in _ev88i if e["type"] == "error"]
+        _tf88i = _k88i.memory.ultimo_diario_per_tipo("turno_fine") if _k88i.memory else None
+        check("T88i Gemini ultimo rung, budget prima del retry: errore di budget, non pipeline esausta",
+              len(_er88i) == 1 and _er88i[0].startswith("Budget giornaliero esaurito a metà turno")
+              and _tf88i is not None and _tf88i["descrizione"].endswith(" ; motivo=budget"),
+              f"chiamate={_Client88.chiamate} errori={_er88i} diario={_tf88i}")
         # T88d — riflessione: il primo rung risponde non-JSON (consuma token), il
         # secondo NON viene chiamato perché il budget è ricontrollato prima.
         os.environ["GAS_DAILY_TOKEN_BUDGET"] = "0.01"
@@ -8275,6 +8323,19 @@ try:
               len(_Client88.chiamate) == 1 and not _e88d["ok"]
               and str(_e88d["errore"]).startswith("budget giornaliero esaurito"),
               f"chiamate={_Client88.chiamate} esito={_e88d}")
+        # T88j — V-2 verifica esterna #191: budget superato e nessuna chiave → la
+        # riflessione dice «budget esaurito» (non «nessun provider»), zero chiamate.
+        for _k88j in ("GEMINI_API_KEY", "GROQ_API_KEY"):
+            os.environ.pop(_k88j, None)
+        _Client88.chiamate = []
+        _k88j = kernel_tmp()
+        _k88j.history = [{"role": "user", "content": "ciao"},
+                         {"role": "assistant", "content": "ciao a te"}]
+        _k88j._budget_superato = lambda: (2.0, 1.0)
+        _e88j = _k88j.rifletti()
+        check("T88j riflessione senza chiavi e budget superato: errore di budget, zero chiamate",
+              not _Client88.chiamate and str(_e88j["errore"]).startswith("budget giornaliero esaurito"),
+              f"chiamate={_Client88.chiamate} esito={_e88j}")
     finally:
         gas.OpenAI = _vo88
         _Client88.risposta = "tool"

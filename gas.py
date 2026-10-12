@@ -2726,15 +2726,17 @@ class GasKernel:
             ]
             parsed: Optional[Tuple[str, List[str]]] = None
             for name, env, url, model in _cascata_provider("complesso"):
-                if not os.environ.get(env):
-                    continue
                 # FETTA 1: budget ricontrollato prima di OGNI chiamata (anche dopo un
-                # provider fallito che ha già consumato token).
+                # provider fallito che ha già consumato token). Prima del controllo
+                # della chiave (V-2 verifica esterna #191): budget superato e nessuna
+                # chiave → «budget esaurito», come prima della fetta.
                 _sup = self._budget_superato()
                 if _sup is not None:
                     esito["errore"] = (f"budget giornaliero esaurito: ${_sup[0]:.4f} spesi "
                                        f"(limite ${_sup[1]:.2f} USD)")
                     return esito
+                if not os.environ.get(env):
+                    continue
                 if esito["provider_atteso"] is None:
                     esito["provider_atteso"] = name  # primo rung disponibile (§8)
                 try:
@@ -3291,6 +3293,13 @@ class GasKernel:
             )
             self._diario_log("turno_fine", descr, fonte="kernel", turno_id=_turno_id)
 
+        def _errore_budget_meta_turno(sup: Tuple[float, float]) -> Dict[str, Any]:
+            return {"type": "error",
+                    "content": (f"Budget giornaliero esaurito a metà turno: "
+                                f"${sup[0]:.4f} spesi (limite ${sup[1]:.2f} USD). "
+                                "Il turno si è fermato prima della chiamata successiva. "
+                                "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
+
         try:
             # Compressione automatica cronologia (FASE 2.5): no-op se sotto soglia.
             # Zero token LLM. Fail-safe §9: eccezioni → history invariata, turno OK.
@@ -3350,6 +3359,7 @@ class GasKernel:
                 # Fetta B: traccia tutti i provider TENTATI (non solo l'ultimo);
                 # _turno_provider viene settato solo se la risposta è prodotta.
                 _turno_tentati.append(name)
+                _chiamato_rung = False  # V-2 bot #191 (2° giro): rung mai chiamato → non «tentato»
                 # Osservabilità (sez.9): se il brain selezionato monta un modello che
                 # NON dichiara function calling, il turno sarebbe tool-blind (read_file/
                 # write_file persi). Solo log nella scatola nera: NON si forza lo skip,
@@ -3377,14 +3387,13 @@ class GasKernel:
                         _sup = self._budget_superato()
                         if _sup is not None:
                             _turno_budget = True
+                            if not _chiamato_rung:
+                                _turno_tentati.pop()
                             logging.warning("budget giornaliero superato a metà turno "
                                             f"(${_sup[0]:.4f} / ${_sup[1]:.2f}): turno fermato")
-                            yield {"type": "error",
-                                   "content": (f"Budget giornaliero esaurito a metà turno: "
-                                               f"${_sup[0]:.4f} spesi (limite ${_sup[1]:.2f} USD). "
-                                               "Il turno si è fermato prima della chiamata successiva. "
-                                               "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
+                            yield _errore_budget_meta_turno(_sup)
                             return
+                        _chiamato_rung = True
                         try:
                             response = client.chat.completions.create(
                                 model=model, messages=payload,
@@ -3397,13 +3406,15 @@ class GasKernel:
                             if not (name.startswith("gemini") and "400" in str(e)[:120]):
                                 raise
                             # V-1 bot #191: anche il retry è una create, quindi passa dal
-                            # budget. Superato → si rilancia il 400: il provider cade
-                            # come oggi e il controllo prima della create dell'iterazione
-                            # (o di inizio turno al prossimo) ferma il resto.
-                            if self._budget_superato() is not None:
+                            # budget. Superato → stop dichiarato come prima della create
+                            # (V-1 bot #191, 2° giro: niente «Pipeline esausta … HTTP 400»
+                            # che contraddirebbe il motivo=budget del diario).
+                            _sup = self._budget_superato()
+                            if _sup is not None:
                                 _turno_budget = True  # R-294-1: diario anche se era l'ultimo rung
                                 logging.warning(f"retry Gemini 400 ({name}): saltato, budget superato")
-                                raise
+                                yield _errore_budget_meta_turno(_sup)
+                                return
                             try:
                                 response = client.chat.completions.create(
                                     model=model, messages=payload,
