@@ -8161,6 +8161,92 @@ try:
 except Exception as _e87:
     check("T87 blocco senza eccezioni", False, repr(_e87))
 
+# ---------- T88: budget ricontrollato prima di OGNI chiamata (FETTA 1, F2) ----------
+print("\n--- T88: budget dentro il turno ---")
+try:
+    _ch88 = ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
+             "GAS_DAILY_TOKEN_BUDGET")
+    _sv88 = {k: os.environ.get(k) for k in _ch88}
+    for _k88 in _ch88:
+        os.environ.pop(_k88, None)
+    os.environ["GROQ_API_KEY"] = "finta-88"
+    os.environ["GEMINI_API_KEY"] = "finta-88"
+
+    class _Client88:
+        """Ogni chiamata consuma 10M token in entrata (≥ 1 $ su qualunque rung a
+        pagamento): dopo la prima il budget di 0,01 $ è superato."""
+        chiamate: list = []
+        risposta = "tool"
+
+        def __init__(self, *a, **kw):
+            self.chat = self
+            self.completions = self
+
+        def create(self, model=None, **kw):
+            _Client88.chiamate.append(model)
+            usage = SimpleNamespace(prompt_tokens=10_000_000, completion_tokens=0)
+            if _Client88.risposta == "tool":
+                tc = SimpleNamespace(id=f"b88_{len(_Client88.chiamate)}", function=SimpleNamespace(
+                    name="data_ora", arguments="{}"))
+                msg = SimpleNamespace(content=None, tool_calls=[tc])
+            else:
+                msg = SimpleNamespace(content="non è JSON", tool_calls=None)
+            return SimpleNamespace(choices=[SimpleNamespace(message=msg, finish_reason="stop")],
+                                   usage=usage)
+
+    _vo88 = gas.OpenAI
+    gas.OpenAI = _Client88
+    try:
+        # T88a — budget sotto soglia a inizio turno, superato dopo la prima chiamata:
+        # il turno si ferma PRIMA della seconda, dichiarato, senza fallback.
+        os.environ["GAS_DAILY_TOKEN_BUDGET"] = "0.01"
+        _Client88.chiamate = []
+        _k88 = kernel_tmp()
+        _ev88 = list(_k88.run_turn("che ore sono"))
+        _er88 = [e["content"] for e in _ev88 if e["type"] == "error"]
+        check("T88a budget superato a metà turno → una sola chiamata, errore dichiarato",
+              len(_Client88.chiamate) == 1 and len(_er88) == 1
+              and _er88[0].startswith("Budget giornaliero esaurito a metà turno")
+              and "0.01" in _er88[0]
+              and not any(e["type"] == "final" for e in _ev88),
+              f"chiamate={_Client88.chiamate} eventi={_ev88}")
+        # T88b — il tool della prima risposta è stato eseguito e salvato: la storia
+        # finisce con il tool result (nessuna sequenza tool troncata a metà).
+        check("T88b storia coerente: ultimo messaggio = tool result della prima chiamata",
+              bool(_k88.history) and _k88.history[-1].get("role") == "tool"
+              and _k88.history[-1].get("tool_call_id") == "b88_1",
+              str(_k88.history[-2:]))
+        # T88c — controllo: senza budget il ciclo continua oltre la prima chiamata
+        # (morde se il controllo nel ciclo fermasse sempre).
+        os.environ.pop("GAS_DAILY_TOKEN_BUDGET", None)
+        _Client88.chiamate = []
+        list(kernel_tmp().run_turn("che ore sono"))
+        check("T88c senza budget il ciclo prosegue (10 iterazioni per rung)",
+              len(_Client88.chiamate) > 1, f"chiamate={len(_Client88.chiamate)}")
+        # T88d — riflessione: il primo rung risponde non-JSON (consuma token), il
+        # secondo NON viene chiamato perché il budget è ricontrollato prima.
+        os.environ["GAS_DAILY_TOKEN_BUDGET"] = "0.01"
+        _Client88.chiamate = []
+        _Client88.risposta = "testo"
+        _k88d = kernel_tmp()
+        _k88d.history = [{"role": "user", "content": "ciao"},
+                         {"role": "assistant", "content": "ciao a te"}]
+        _e88d = _k88d.rifletti()
+        check("T88d riflessione: budget ricontrollato prima del rung successivo",
+              len(_Client88.chiamate) == 1 and not _e88d["ok"]
+              and str(_e88d["errore"]).startswith("budget giornaliero esaurito"),
+              f"chiamate={_Client88.chiamate} esito={_e88d}")
+    finally:
+        gas.OpenAI = _vo88
+        _Client88.risposta = "tool"
+        for _k88, _v88 in _sv88.items():
+            if _v88 is None:
+                os.environ.pop(_k88, None)
+            else:
+                os.environ[_k88] = _v88
+except Exception as _e88:
+    check("T88 blocco senza eccezioni", False, repr(_e88))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

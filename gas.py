@@ -1028,6 +1028,18 @@ class GasKernel:
             logging.warning("_daily_cost_usd fallita (%s) — budget non applicato", e)
             return 0.0
 
+    def _budget_superato(self) -> Optional[Tuple[float, float]]:
+        """(speso, limite) se GAS_DAILY_TOKEN_BUDGET (USD) è impostato e già
+        raggiunto, altrimenti None. Punto unico del kill-switch: si chiama PRIMA di
+        ogni chiamata a pagamento (FETTA 1 cervello forte, chiude la riserva F2 di
+        roadmap.md: prima il controllo era solo a inizio turno). Fail-safe §9:
+        _daily_cost_usd non solleva mai (log illeggibile → 0.0, il turno prosegue)."""
+        limite = _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
+        if limite <= 0.0:
+            return None
+        speso = self._daily_cost_usd()
+        return (speso, limite) if speso >= limite else None
+
     def _add_to_history(self, role: str, content: Optional[str] = None, tool_calls: Optional[List[Any]] = None, tool_call_id: Optional[str] = None, name: Optional[str] = None):
         """Costruisce un dizionario puro, evitando oggetti complessi."""
         entry = {"role": role}
@@ -2707,13 +2719,6 @@ class GasKernel:
                     and str(m.get("content") or "").startswith(_RIEPILOGO_COMPRESSIONE_PREFIX))
                 for m in self.history)
             esito["contaminata"] = contaminata
-            _budget = _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
-            if _budget > 0.0:
-                _spent = self._daily_cost_usd()
-                if _spent >= _budget:
-                    esito["errore"] = (f"budget giornaliero esaurito: ${_spent:.4f} spesi "
-                                       f"(limite ${_budget:.2f} USD)")
-                    return esito
             messaggi = [
                 {"role": "system", "content": _RIFLESSIONE_PROMPT.format(
                     recap_max=self.RECAP_MAX_CHARS, max_lezioni=self.RIFLESSIONE_MAX_LEZIONI)},
@@ -2723,6 +2728,13 @@ class GasKernel:
             for name, env, url, model in _cascata_provider("complesso"):
                 if not os.environ.get(env):
                     continue
+                # FETTA 1: budget ricontrollato prima di OGNI chiamata (anche dopo un
+                # provider fallito che ha già consumato token).
+                _sup = self._budget_superato()
+                if _sup is not None:
+                    esito["errore"] = (f"budget giornaliero esaurito: ${_sup[0]:.4f} spesi "
+                                       f"(limite ${_sup[1]:.2f} USD)")
+                    return esito
                 if esito["provider_atteso"] is None:
                     esito["provider_atteso"] = name  # primo rung disponibile (§8)
                 try:
@@ -3310,15 +3322,14 @@ class GasKernel:
             # Budget giornaliero kill-switch (§11, GAS_DAILY_TOKEN_BUDGET in USD):
             # se configurato, somma i costi 24h dal log locale e blocca se superato.
             # Fail-safe §9: errore nella lettura → 0.0, il turno PROSEGUE comunque.
-            _budget = _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
-            if _budget > 0.0:
-                _spent = self._daily_cost_usd()
-                if _spent >= _budget:
-                    yield {"type": "error",
-                           "content": (f"Budget giornaliero esaurito: ${_spent:.4f} spesi "
-                                       f"(limite ${_budget:.2f} USD). "
-                                       "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
-                    return
+            # FETTA 1: lo stesso controllo si ripete prima di OGNI chiamata del ciclo.
+            _sup = self._budget_superato()
+            if _sup is not None:
+                yield {"type": "error",
+                       "content": (f"Budget giornaliero esaurito: ${_sup[0]:.4f} spesi "
+                                   f"(limite ${_sup[1]:.2f} USD). "
+                                   "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
+                return
 
             # Cascata dei provider (punto unico, condiviso con la riflessione di fine
             # task FASE 2.6): vedi _cascata_provider.
@@ -3355,6 +3366,21 @@ class GasKernel:
                         _window = self._get_window()
                         _finestra_contaminata = self._finestra_e_contaminata(_window)
                         payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin}] + _window
+                        # FETTA 1 (chiude F2): budget ricontrollato prima di OGNI chiamata,
+                        # non solo a inizio turno. Superato a metà turno → il turno si
+                        # ferma DICHIARATO (niente fallback: il tetto vale per tutti i
+                        # rung). La storia è già salvata dopo i tool result; il turno
+                        # successivo riparte da un user (_get_window).
+                        _sup = self._budget_superato()
+                        if _sup is not None:
+                            logging.warning("budget giornaliero superato a metà turno "
+                                            f"(${_sup[0]:.4f} / ${_sup[1]:.2f}): turno fermato")
+                            yield {"type": "error",
+                                   "content": (f"Budget giornaliero esaurito a metà turno: "
+                                               f"${_sup[0]:.4f} spesi (limite ${_sup[1]:.2f} USD). "
+                                               "Il turno si è fermato prima della chiamata successiva. "
+                                               "Riprova domani o aumenta GAS_DAILY_TOKEN_BUDGET.")}
+                            return
                         try:
                             response = client.chat.completions.create(
                                 model=model, messages=payload,
