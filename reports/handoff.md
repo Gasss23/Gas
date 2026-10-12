@@ -31,18 +31,19 @@
 
 ```
  .claude/agents/memoria_revisore.md |  39 +++++++++++++++++++++++++++
- gas.py                             | 190 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ gas.py                             | 190 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  reports/diff_sessione.md           |  39 +++++++++++++++++++++------
- reports/handoff.md                 | 516 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |  95 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/ultimo_report.md           | 208 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- tests/test_unit_kernel.py          | 321 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- 7 files changed, 1219 insertions(+), 189 deletions(-)
+ reports/handoff.md                 | 528 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  98 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/ultimo_report.md           | 208 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ tests/test_unit_kernel.py          | 321 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 7 files changed, 1234 insertions(+), 189 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+dcf4cbf docs(fine-task): unione dei due fix di V-1, R-308-1, autore ignoto dei push
 7c03a6d Merge dei due fix paralleli di V-1 in feat/cerca-testo-budget-onesto (review #308/#309)
 9e20872 docs(fine-task): V-1 della verifica esterna chiusa, review #301/#302, matrice del merge
 9e273e0 fix(cerca_testo): rotazioni del log cercabili per nome (V-1 verifica esterna #193)
@@ -461,6 +462,7 @@ GitHub Actions crea una run per *push*, non per commit: ogni push genera UNA run
 - ⚠️ **R-299-1** (COSMETICA) — chiusa nel CODICE (`_ferma_enum` registra `enum_prima` al momento della marcatura: via l'ultimo confronto fra testi) ma **NON coperta da test**, e dichiarata tale: la mutazione che rimette il confronto fra testi sopravvive (830/1 invariati). Il solo caso in cui i due differiscono richiede un tempo che scada a METÀ lavoro; prova a mano a 0.03 s su 41 file.
 - ✅ **V-1 #193** (MEDIA) CHIUSA — rotazioni reali del log di nuovo cercabili per nome; tetto legato al `maxBytes` dell'handler. V-3 e V-4 chiuse, V-2 (mio errore di processo sullo SHA orfanato) corretta.
 - ⚠️ **R-gate-matcher-1** (BASSA, NUOVA, confermata in modo indipendente dall'altra sessione) — il matcher dell'hook blocca comandi che non committano ma il cui testo contiene la sequenza. Capitato a entrambe; nel suo caso **il gate le ha impedito di ispezionare se stesso** con un `grep`. Vedi §0 punto 5 e `stato_progetto.md`.
+- 🔴 **R-gate-worktree-1 — ESTESO anche al Stop hook `promemoria_end.sh`**: anche quello valuta `$CLAUDE_PROJECT_DIR` (il checkout principale), quindi in una sessione in worktree giudica la freschezza dell'handoff di un'ALTRA sessione. Misurato: `/fine-task` completato per intero (gate verdi, push, `check_landing` OK) e l'hook bloccava ancora, cinque volte; il suo contatore «massimo 3 blocchi» sta nel git-dir del checkout principale e viene azzerato da ogni commit altrui che tocchi `reports/handoff.md`, quindi il limite non si raggiunge e il blocco diventa perpetuo. Dettagli e correzione in `reports/stato_progetto.md`.
 - 🔴 **R-gate-worktree-1** (ALTA, concordata da entrambe le sessioni — l'altra ha ritirato il suo MEDIA, NUOVA, fuori scope) — il gate di review deterministico è inerte in una sessione in worktree, e viceversa può bloccare i commit di un'altra sessione. **Confermata in modo indipendente** dalla sessione della PR #192 con due prove proprie. I commit del motore di questa PR sono passati per indice pulito, non per approvazione del gate. Vedi §0 punto 5.
 - ⚠️ **Collisione dei numeri di review con la PR #192** — vedi §0 punto 5: da risolvere al merge, non rinumerata qui di proposito.
 - ⚠️ **R-300-2** (COSMETICA) — typo nel docstring di `_ferma_enum` in `gas.py` («La visita si fermata per un tetto suo», manca «è»). NON corretto in questa fetta su indicazione del revisore: il motore è già committato e `hash_diff_staged.sh` hasha tutto il diff, quindi un commento costerebbe un giro di review intero. Prossima fetta che tocca `_cerca_testo`.
