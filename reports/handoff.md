@@ -6,12 +6,13 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR del cancello (tocca `modules/gate/`): secondo la regola di CLAUDE.md (verdetto testuale del bot APPROVATO senza finding, altrimenti decide l'operatore).
+1. Nessuna: l'operatore ha già chiesto il merge della PR #188 dopo la correzione delle varianti.
 
 ---
 
 ## §1 SCOPE & ESITO
 
+- **Varianti dei nomi** (scelta dell'operatore «chiudi le varianti e poi mergia», finding BASSI di bot e verifica esterna #188): `FATTO` — copie, prefissi/suffissi, `.kube`, `.docker`, `.npmrc`, service-account, token(s).json, wallet.dat. Review #291.
 - **Chiavi private e credenziali vietate**: `FATTO` — decisione dell'operatore («sì, vietale»). `_CHIAVE_PRIVATA_RE` in `_nome_da_segreto`; `livello_scrittura` → 3 per i nomi da segreto.
 
 ---
@@ -19,20 +20,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/gate/gate.py               |  25 ++++++++++++++++++++++++-
+ .claude/agents/memoria_revisore.md |   5 +++++
+ modules/gate/gate.py               |  28 +++++++++++++++++++++++++++-
  reports/diff_sessione.md           |   8 +++++---
- reports/handoff.md                 | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
+ reports/handoff.md                 | 150 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
  reports/stato_progetto.md          |   2 +-
  reports/ultimo_report.md           |  15 ++++++---------
- tests/test_unit_gate.py            |  24 ++++++++++++++++++++++++
+ tests/test_unit_gate.py            |  34 +++++++++++++++++++++++++++++++++-
  tests/test_unit_kernel.py          |  35 +++++++++++++++++++++++++++++++++++
- 8 files changed, 178 insertions(+), 36 deletions(-)
+ 8 files changed, 240 insertions(+), 37 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bcde62f fix(cancello): varianti dei nomi di credenziali (V-1/V-2 bot e verifica esterna #188)
+8337f55 chore(revisore): memoria review #291 — APPROVATO CON RISERVE
+a0614e7 docs(fine-task): report e handoff — chiavi private e credenziali vietate
 17df75b feat(cancello): chiavi private e credenziali illeggibili e mai scritte (V-1 verifica esterna #184)
 df1ff26 chore(revisore): memoria review #290 — APPROVATO
 a51e73d chore(revisore): memoria review #289 — APPROVATO CON RISERVE
@@ -111,14 +115,50 @@ Rivisto il diff staged attuale, delta compreso (3 file, +83/-1). La correzione c
 
 **Memoria:** aggiunta la riga #290 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata con lo script (df1ff26). Nessuna lezione nuova.
 
+### Review #291 (varianti: V-1/V-2 bot e verifica esterna #188)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Prima della review ho letto CLAUDE.md, le voci R-289 di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md. Nel diff staged non c'è slicing della history, nessun output di tool simulato e nessun cambio ai limiti fissi (10 iterazioni, 8k di output, `_get_window`). Le due funzioni di controllo restano "fail-closed": in caso di errore negano invece di lasciar passare.
+
+**Elementi esaminati**
+1. `modules/gate/gate.py:283`: `_CHIAVE_PRIVATA_RE` ora usa come bordo «niente lettera prima e dopo» (`(?<![a-z])…(?![a-z])`) per chiavi ssh, secret(s), credential(s), service-account, token(s) con estensione json, txt o yaml, e wallet.dat.
+   - Rischio: falsi negativi sulle copie e sui nomi con prefisso o suffisso; falsi positivi su nomi innocui.
+   - Prove dirette (lettura / livello di scrittura):
+     - `backup_id_rsa`, `token.json.bak`, `access_token.json`, `Token.JSON`, `Secret.TXT`: negati in lettura, livello 3 in scrittura.
+     - `valid_rsa`, `idx_rsa`, `tokenizer.json`, `secretary.md`: leggibili.
+   - Esito: ok.
+2. `modules/gate/gate.py:287`: i dotfile sono ancorati a `^` con `(?![a-z])`, e si aggiungono kube, docker e npmrc.
+   - Rischio: colpire file di progetto legittimi.
+   - Prove: `.dockerignore` resta leggibile (livello 1) e `Dockerfile` resta a livello 2. `.Docker/config.json`, `x/.npmrc~` e `.NPMRC` sono negati (il percorso viene portato in minuscolo da `_normalize_path` prima del controllo). `.aws-sam/x` e `.ssh-agent` sono bloccati per eccesso, accettabile.
+   - Esito: ok.
+3. `modules/gate/gate.py:302` (contesto, `_nome_da_segreto`): il controllo per pezzo di percorso, con punti e spazi finali tolti, è invariato. Su tutti i file di `git ls-files` → HIT [] (nessun file del repo colpito).
+   - Esito: ok.
+4. `tests/test_unit_gate.py:428`: `.npmrc` è tolto dai casi che richiedono firma (livello 2) perché ora è livello 3. Il test `tests/test_unit_gate.py:569` lo copre come illeggibile e mai scrivibile.
+   - Rischio: un test tolto per far passare la suite.
+   - Esito: ok, il caso è spostato e non perso.
+5. `tests/test_unit_gate.py:588`: i casi «nomi simili restano leggibili» perdono `credentials_guide.md` e `secret_sauce.md`, ora bloccati per eccesso come previsto da R-289-2, e guadagnano valid_rsa, tokenizer.py, tokens.md e kubectl.md.
+   - Esito: ok.
+
+Ho rieseguito `pytest tests/test_unit_gate.py`: 344 passed.
+
+**Riserve**
+- R-291-1 (BASSA): `kubeconfig` senza punto iniziale (es. `dati/KUBECONFIG` → leggibile, livello 1) e `mywallet.dat` (una lettera prima di «wallet») restano leggibili. È lo stesso limite dichiarato del divieto per nomi (R-223-2). Va tracciata in stato_progetto.md, oppure chiusa aggiungendo `kubeconfig` all'elenco se l'operatore lo vuole.
+
+**Rischio escluso**
+- La suite kernel (810 PASS / 0 FAIL dichiarati) non l'ho rieseguita: ho rieseguito solo la suite del gate. Il diff non tocca gas.py, ma il kernel richiama `lettura_consentita` sul percorso risolto dei symlink, e quel percorso non l'ho provato end-to-end.
+- Non ho verificato i nomi con lettere non ASCII (es. «é» prima di «secret»): il bordo `[a-z]` è solo ASCII e potrebbe bloccare per eccesso. Non è un rischio di fuga.
+
+Memoria aggiornata (riga #291 più una lezione) e committata con lo script: commit 8337f55.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 806 → 810 PASS / 0 FAIL in locale (T86a–d). pytest: `tests/test_unit_gate.py` +2 test parametrici (34 casi), 324 passed.
+Kernel 806 → 810 PASS / 0 FAIL in locale (T86a–d). pytest completo 1032 passed (`tests/test_unit_gate.py` 344).
 
 ## §6 STATO CI
 
-Run non ancora disponibile alla scrittura dell'handoff (primo push della sessione con questo commit).
+`a0614e7`: unit-suite e handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, tocca la memoria del revisore). Run del commit di questa correzione non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-R-289-2 (COSMETICA, accettata): blocco per eccesso su file innocui (`secret.py`, `secrets/`, `note.key.md`). Divieto per nomi (R-223-2): un file di segreti con nome qualsiasi non è coperto.
+R-289-2 (COSMETICA, accettata): blocco per eccesso su nomi innocui (`secret.py`, `credentials_guide.md`, `note.key.md`). R-291-1 (BASSA): `kubeconfig` senza punto e `mywallet.dat` leggibili. Divieto per nomi (R-223-2).
