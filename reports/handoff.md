@@ -25,19 +25,21 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  15 ++++++++++++++
- gas.py                             | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
- reports/diff_sessione.md           |  39 ++++++++++++++++++++++++++++--------
- reports/handoff.md                 | 387 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |  31 ++++++++++++++++++++++++++---
- reports/ultimo_report.md           | 166 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
- tests/test_unit_kernel.py          | 190 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- 7 files changed, 770 insertions(+), 184 deletions(-)
+ .claude/agents/memoria_revisore.md |  18 ++++++++++++
+ gas.py                             | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ reports/diff_sessione.md           |  51 +++++++++++++++++-----------------
+ reports/handoff.md                 | 547 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  33 +++++++++++++++++++---
+ reports/ultimo_report.md           | 242 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------
+ tests/test_unit_kernel.py          | 190 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 7 files changed, 830 insertions(+), 377 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0b68d2b Merge main (PR #192) in feat/cerca-testo-budget-onesto — review #302
+2a8524f docs(fine-task): handoff e report dopo il fix V-1 MEDIA del bot #193 (review #301)
 c026bdb fix(cerca_testo): le rotazioni del log indicate per nome restano cercabili (V-1 MEDIA bot #193)
 1032816 chore(revisore): memoria review #301 — APPROVATO CON RISERVE
 58ff4ec docs(fine-task): §0 dell'handoff con numero e URL reali della PR #193
@@ -259,6 +261,34 @@ Riserve da tracciare in `reports/stato_progetto.md`: R-301-1 (BASSA), R-301-2 (C
 
 Memoria aggiornata (riga #301 + una lezione su `max(tetto_env, costante)`) e committata da sola con lo script: commit `1032816`. Il diff staged del motore non è stato toccato.
 
+### Giro 6 — review #302 (merge di main con la PR #192 nel ramo)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #302: diff staged del merge di `origin/main` (PR #192) nel ramo `feat/cerca-testo-budget-onesto` (PR #193).
+
+**Codice esaminato**
+- `gas.py:627` — `_troppo_annidato` arriva da main. Rischio controllato: l'unione automatica poteva duplicarla o alterarla. `git diff MERGE_HEAD -- gas.py` non tocca nessuna riga della riflessione, quindi è identica a main. Esito: ok.
+- `gas.py:672` — il controllo del tetto prima di `json.loads` arriva da main insieme alla rete `except RecursionError`. Rischio controllato: interferenze con la PR #193. Non c'è stato condiviso: `_analizza_riflessione` è pura, e il patch globale di `json.loads` in T80u7 non tocca `cerca_testo`, che non usa json. Esito: ok.
+- `gas.py:1881` e `gas.py:2165` — `_LOG_KERNEL_RE` e il budget dedicato ai log del kernel restano quelli della review #301. Rischio controllato: che il merge li abbia persi o mescolati. Il diff contro HEAD tocca solo la riflessione. Esito: ok.
+- `tests/test_unit_kernel.py:7152` — T80u6 e T80u7 compaiono una volta sola, e l'import di `_troppo_annidato` è stato aggiunto senza duplicati. Esito: ok.
+- `.claude/agents/memoria_revisore.md` e `reports/stato_progetto.md` — ho confrontato con `comm` le righe del merge con HEAD e con MERGE_HEAD. Dal lato di main manca solo l'intestazione di stato_progetto, sostituita come previsto, più le righe che il nostro ramo ha già modificato (la voce della PR #184 e R-283-1). Dal nostro lato non si perde nessuna riga. Esito: ok.
+- Ho rifatto girare le suite sull'albero unito: kernel 837 PASS, 0 FAIL; pytest 1032 passed.
+
+**Riserve**
+- R-302-1 (COSMETICA): `reports/stato_progetto.md`, riga 46 (blocco importato da main), dice ancora che R-282-1 e R-283-1 sono «confermate APERTE». Le righe 13 e 14 dello stesso file le danno CHIUSE da questo ramo. Basta una riga che dica «chiuse dalla PR #193».
+- R-302-2 (COSMETICA): nello stesso file, il blocco di main inserito alla riga 32 non ha una riga vuota prima e si attacca all'elenco precedente.
+
+**Rischio escluso**
+Non ho verificato il comportamento su Python 3.11 e 3.12: qui c'è solo 3.13.16. Per quelle versioni fa fede la CI, fissata su 3.11.
+
+**Memoria**
+- Ho aggiunto la riga `#302` e una lezione nuova in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- `scripts/commit_memoria_revisore.sh` NON ha potuto committarla. Errore: «fatal: cannot do a partial commit during a merge». Lo script ha scritto un warning in `gas_debug.log` ed è uscito con exit 0. Non ho forzato.
+- La modifica alla memoria è nel working tree ma NON in stage (stato `MM`). Mettila in stage tu prima di eseguire `segna_review_ok.sh`, che va lanciato per ultimo: anche solo mettere in stage la memoria cambia l'hash del diff staged.
+
+Commit del merge consentito: sì. Le due riserve sono solo cosmetiche, da correggere nei report o da annotare in `stato_progetto.md`.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Suite kernel (`python tests/test_unit_kernel.py`, girata come script: `tests/conftest.py` la esclude dalla collection di pytest, come fa la CI):
@@ -318,6 +348,8 @@ Nessuna di queste run riguarda questa sessione: sono tutte del branch `fix/test-
 GitHub Actions crea una run per *push*, non per commit: il push di questa sessione genera UNA run che testa SOLO l'albero del commit di testa. Tutti i commit elencati sopra come «nessuna run» non sono mai stati testati individualmente, anche se il loro contenuto è incluso nell'albero testato dalla run di testa. La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
 
 ## §7 RISERVE APERTE
+
+- R-302-1 e R-302-2 (COSMETICHE): corrette nel commit del merge (`reports/stato_progetto.md`). Merge di main: kernel 837 PASS / 0 FAIL, pytest 1032 passed.
 
 - **R-301-1** (BASSA): per un log indicato per nome `max()` scavalca un `GAS_LETTURA_MAX_BYTES` abbassato dall'operatore. **R-301-2** (COSMETICA): commento fuori posto nel nuovo caso T84n. R-300-2 CHIUSA.
 
