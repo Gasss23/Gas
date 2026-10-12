@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #193 (https://github.com/Gasss23/Gas/pull/193).
+1. Merge della PR #193 (https://github.com/Gasss23/Gas/pull/193): l'operatore ha chiesto di finirla («finisci», con i test verdi). V-1 MEDIA del bot (rotazioni del log non cercabili per nome) corretta in `c026bdb`, review #301.
 2. **R-297-3 (BASSA, APERTA di proposito): il salto dei log è incondizionato sulla dimensione.** Anche un `gas_debug.log` da 50 KB, che sta largamente in ogni tetto, non viene più cercato in una ricerca su cartella, mentre CLAUDE.md sez. 3 fa dell'ispezione del log un'attività di prima classe. Il brief chiedeva esplicitamente di saltare i log, quindi la scelta non è stata cambiata dall'agente. Mitigazioni presenti: salto dichiarato in intestazione con l'istruzione su come cercarci dentro; log cercabili indicandoli per nome; il salto protegge anche il tetto dei RISULTATI. L'alternativa «salta solo i log oltre il tetto per file» è stata provata e perde quella protezione — e la prova vale **proprio per l'alternativa condizionata** perché il log del test (5000 righe, ≈85 KB) sta SOTTO il tetto per file: verrebbe letto e il tetto dei risultati si esaurirebbe allo stesso modo. Se l'operatore preferisce l'altro compromesso, è una riga.
 3. **Buchi residui della denylist credenziali**: NON implementati (vincolo del brief: `modules/gate/` è già in main con la PR #188). Verificati uno per uno con `lettura_consentita()`, tutti LEGGIBILI oggi: `token_cache.json` (la regex vuole il punto subito dopo `token`; `token.json` e `tokens.json` sono bloccati), `kubeconfig`, `mywallet.dat`, `.vault-token`, `.dockercfg`, `_netrc`, `clientsecret.json`, `*.gpg`, `*.asc`. Vanno in una fetta loro, di sicurezza.
 4. **Nota di processo**: la PR #184 è stata mergiata in autonomia con verdetto del bot `APPROVATO CON RISERVE`, quindi **fuori dalla regola di merge autonomo** di CLAUDE.md (merge da soli solo su `APPROVATO` secco senza alcun finding V-x). La voce esistente di `feat/via-binari-run-command` in `reports/stato_progetto.md` registra quel merge come «autorizzato dall'operatore»: le due letture non coincidono, sono state scritte entrambe nel file invece di sovrascrivere il record, e la ricostruzione la decide l'operatore.
@@ -25,19 +25,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  13 +++++++++++++
- gas.py                             | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
- reports/diff_sessione.md           |  37 +++++++++++++++++++++++++++++--------
- reports/handoff.md                 | 355 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |  30 +++++++++++++++++++++++++++---
- reports/ultimo_report.md           | 164 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
- tests/test_unit_kernel.py          | 172 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- 7 files changed, 704 insertions(+), 182 deletions(-)
+ .claude/agents/memoria_revisore.md |  15 ++++++++++++++
+ gas.py                             | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ reports/diff_sessione.md           |  39 ++++++++++++++++++++++++++++--------
+ reports/handoff.md                 | 387 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  31 ++++++++++++++++++++++++++---
+ reports/ultimo_report.md           | 166 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ tests/test_unit_kernel.py          | 190 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ 7 files changed, 770 insertions(+), 184 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c026bdb fix(cerca_testo): le rotazioni del log indicate per nome restano cercabili (V-1 MEDIA bot #193)
+1032816 chore(revisore): memoria review #301 — APPROVATO CON RISERVE
+58ff4ec docs(fine-task): §0 dell'handoff con numero e URL reali della PR #193
 a5ec398 docs(fine-task): §0 dell'handoff con numero e URL reali della PR #193
 c16a789 docs(fine-task): verdetto #297 riemesso in forma di gate, #300, R-300-1
 25ce6e6 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
@@ -231,6 +234,31 @@ Il commit di questo diff è autorizzato da **#299** («Commit consentito: sì»)
 
 Un **quarto giro** è stato lanciato per diligenza (non perché il gate lo richiedesse) sul diff finale. Il suo verdetto, quando arriva, va riportato all'operatore; se solleva qualcosa di sostanziale, la correzione comporta un nuovo commit e quindi la riesecuzione INTEGRALE di `/fine-task` (gate post-fine-task). Riserva nota e già dichiarata, misurata da me e NON coperta da test: **R-299-1** — la mutazione che rimette il confronto fra testi SOPRAVVIVE (830 PASS / 1 FAIL invariati), perché il solo caso in cui i due comportamenti differiscono richiede un tempo che scada a METÀ lavoro e un orologio nella suite la renderebbe instabile; la prova resta quella a mano (41 file, `LETTURA_MAX_SECONDI=0.03`).
 
+### Giro 5 — review #301 (dopo il bot #193: V-1 MEDIA rotazioni del log)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #301. Diff staged su `feat/cerca-testo-budget-onesto` (PR #193): `gas.py`, `tests/test_unit_kernel.py`. Letture obbligatorie fatte: CLAUDE.md (sez. 1, 4, 5, 8, 9), `reports/stato_progetto.md` (righe di T84n e R-300-2) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `gas.py:38`: nuova costante `_LOG_MAX_BYTES = 5*1024*1024`, che ora usa anche il RotatingFileHandler (`gas.py:43`). Ho controllato se cambia la rotazione: no, il valore è identico a prima e la fonte del numero ora è una sola. Esito: ok.
+- `gas.py:2120`: il budget sale a `max(LETTURA_MAX_BYTES, _LOG_MAX_BYTES)` solo se il percorso indicato è un file (non una cartella) e il nome è un log del kernel (`fullmatch`). Ho controllato se il budget si allarga anche altrove: no. Nella ricerca su cartella i log restano saltati (`gas.py:2144`), e un file normale resta a 5.000.000 byte. La lettura avviene a righe con `readline(budget+1)` e il tetto di tempo resta attivo, quindi i 242.880 byte in più non creano rischi di memoria o di crash. Esito: ok per il caso di default. Riserva **R-301-1** (BASSA): `max()` scavalca un `GAS_LETTURA_MAX_BYTES` abbassato dall'operatore. L'ho provato eseguendo il codice: con env=1000, un `gas_debug.log.2` da circa 15 KB viene letto tutto, mentre un `a.txt` identico viene saltato con «oltre il tetto di 1000 byte». Per i log la manopola dell'operatore non vale più. Correzione possibile: alzare il tetto solo se l'env è al default, oppure aggiungere solo la differenza (`LETTURA_MAX_BYTES + _LOG_MAX_BYTES - GasKernel.LETTURA_MAX_BYTES`).
+- `gas.py:2133`: per un file indicato per nome, `tetto_file` ora vale `budget_tot`. Ho controllato se il confronto `st_size > tetto_file` resta coerente con il budget: sì, i due valori coincidono, quindi una rotazione di dimensione reale non finisce più tra i «grandi». Esito: ok.
+- `gas.py:2174`: il messaggio «byte letti (…)» ora riporta `budget_tot`. Ho controllato se il numero è vero: sì. Però lo attribuisce ancora a `GAS_LETTURA_MAX_BYTES`, e per un log il valore non viene da lì (fa parte di R-301-1). Esito: riserva cosmetica, collegata a R-301-1.
+- `tests/test_unit_kernel.py:8184`: caso T84n nuovo. Ho controllato se la rotazione è davvero oltre 5.000.000 e sotto 5 MiB: il ciclo si ferma a ≥5.100.000 con blocchi da circa 104 KB, quindi il file resta sotto 5.242.880. Il test verifica il risultato in fondo al file, l'assenza di «oltre il tetto» e il controcaso con `grande.txt` saltato. Esito: ok. Non ho ripetuto la mutazione dichiarata dall'autore: l'asserzione `"oltre il tetto" not in _oR` la coprirebbe, ma non l'ho eseguita.
+- `tests/test_unit_kernel.py:8181`: il commento «un file grande NON log resta capato» sta sulla riga che in realtà ripulisce la rotazione. Riserva **R-301-2** (COSMETICA).
+- `gas.py:1966`: typo R-300-2 corretto («si è fermata»). Esito: ok, R-300-2 chiusa.
+
+**Wall of Shame e guardrail**: nessuno slicing della history, nessuna simulazione di output dei tool. Cap delle 10 iterazioni, cap degli 8k e `_get_window` non toccati. Nessuna nuova eccezione non gestita: `_TettoByte` e `OSError` restano intercettate.
+
+**Esecuzione**: `python3 tests/test_unit_kernel.py` → **835 PASS, 0 FAIL**, riprodotto. Nessun commit del perimetro ha una data anteriore a questo verdetto: il diff è ancora staged e l'ultimo commit è quello della mia memoria.
+
+**Rischio escluso**: non ho rilanciato pytest (1032 passed è un dato dell'autore, non mio). Non ho verificato il caso di un singolo record di log più grande di 5 MiB, che il RotatingFileHandler scrive comunque in un file nuovo e oltre `maxBytes`: in quel caso il budget si esaurisce e il messaggio dice «letto solo in parte», quindi resta onesto, ma l'ho valutato solo leggendo il codice. Non ho verificato il comportamento su VPS.
+
+Riserve da tracciare in `reports/stato_progetto.md`: R-301-1 (BASSA), R-301-2 (COSMETICA). Nessuna delle due blocca il commit. Correggerle adesso cambierebbe il diff staged e richiederebbe un nuovo giro di review.
+
+Memoria aggiornata (riga #301 + una lezione su `max(tetto_env, costante)`) e committata da sola con lo script: commit `1032816`. Il diff staged del motore non è stato toccato.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Suite kernel (`python tests/test_unit_kernel.py`, girata come script: `tests/conftest.py` la esclude dalla collection di pytest, come fa la CI):
@@ -290,6 +318,8 @@ Nessuna di queste run riguarda questa sessione: sono tutte del branch `fix/test-
 GitHub Actions crea una run per *push*, non per commit: il push di questa sessione genera UNA run che testa SOLO l'albero del commit di testa. Tutti i commit elencati sopra come «nessuna run» non sono mai stati testati individualmente, anche se il loro contenuto è incluso nell'albero testato dalla run di testa. La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
 
 ## §7 RISERVE APERTE
+
+- **R-301-1** (BASSA): per un log indicato per nome `max()` scavalca un `GAS_LETTURA_MAX_BYTES` abbassato dall'operatore. **R-301-2** (COSMETICA): commento fuori posto nel nuovo caso T84n. R-300-2 CHIUSA.
 
 - 🟡 **R-297-3** (BASSA, compromesso DICHIARATO) — il salto dei log è incondizionato sulla dimensione: anche un `gas_debug.log` da 50 KB non viene più cercato in una ricerca su cartella. Mitigazioni e prova dell'alternativa in §0 punto 2. Decide l'operatore.
 - 🟡 **R-291-1 + bot #188 (2° giro)** (BASSE, PREESISTENTI, non toccate in questa fetta) — buchi residui della denylist credenziali, verificati uno per uno: `token_cache.json`, `kubeconfig`, `mywallet.dat`, `.vault-token`, `.dockercfg`, `_netrc`, `clientsecret.json`, `*.gpg`, `*.asc`. Solo PROPOSTI (§0 punto 3), fetta di sicurezza a sé.
