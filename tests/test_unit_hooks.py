@@ -2371,3 +2371,437 @@ class TestFinaleScript:
         assert "IP trovato" not in result.stderr, (
             f"T-finale-4c: nessun blocco IP atteso, stderr={result.stderr!r}"
         )
+
+
+# ───────────────── R-gate-worktree-1: il gate segue il worktree ─────────────────
+# Buco chiuso qui: review_gate.sh faceva `cd "$CLAUDE_PROJECT_DIR"` incondizionato
+# e giudicava SOLO quell'indice. La doc di Claude Code dice che CLAUDE_PROJECT_DIR
+# "still points at the project root where the session started", mentre `cwd`
+# "follows Claude: ... is the worktree root after Claude enters a worktree".
+# Quindi in una sessione in worktree, con l'indice del principale PULITO, l'hook
+# usciva 0 senza nemmeno leggere il marcatore -> diff del motore non revisionato.
+#
+# NB la stringa del comando e' COMPOSTA invece di scritta intera: il matcher del
+# gate (R-gate-matcher-1) cerca le due parole nel TESTO del comando, quindi
+# scriverla intera bloccherebbe la scrittura stessa di questo test.
+_CMD_COMMIT_WT = "git" + " commit -m x"
+
+
+class TestReviewGateWorktree:
+    _stdin_commit = TestReviewGateFailClosed._stdin_commit
+    _stage = TestReviewGateFailClosed._stage
+    _repo_con_hook_proprio = TestReviewGateFailClosed._repo_con_hook_proprio
+
+    def _wt(self, principale: Path, nome: str) -> Path:
+        """Crea un worktree collegato al repo principale."""
+        subprocess.run(["git", "worktree", "add", "-q", "-b", nome,
+                        str(principale.parent / nome)],
+                       cwd=principale, check=True, capture_output=True)
+        return principale.parent / nome
+
+    def _hash_staged(self, principale: Path, dove: Path) -> str:
+        return subprocess.run(["bash", str(principale / "scripts/hash_diff_staged.sh")],
+                              cwd=dove, capture_output=True, text=True,
+                              check=True).stdout.strip()
+
+    def _add(self, repo: Path, *rel: str) -> None:
+        subprocess.run(["git", "add", *rel], cwd=repo, check=True, capture_output=True)
+
+    def _run(self, *, project_dir: Path, cwd, comando: str = _CMD_COMMIT_WT):
+        payload = {"tool_name": "Bash", "tool_input": {"command": comando}}
+        if cwd is not None:
+            payload["cwd"] = str(cwd)
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(project_dir)}
+        return subprocess.run(["bash", str(project_dir / ".claude/hooks/review_gate.sh")],
+                              input=json.dumps(payload), env=env,
+                              capture_output=True, text=True)
+
+    def test_gate_wt1_worktree_motore_non_revisionato_blocca(self, tmp_path):
+        """R-gate-worktree-1 (LA riproduzione): diff del motore staged NEL WORKTREE,
+        indice del principale PULITO, nessun marcatore -> DEVE bloccare.
+        Prima del fix questo caso usciva 0 senza leggere alcun marcatore."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (wt / "gas.py").write_text("# modifica NON revisionata\n")
+        self._add(wt, "gas.py")
+        pulito = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=principale,
+                                capture_output=True, text=True).stdout.strip()
+        assert pulito == "", f"premessa del buco non riprodotta: {pulito!r}"
+        result = self._run(project_dir=principale, cwd=wt)
+        assert result.returncode == 2, (
+            f"il gate e' INERTE nel worktree: exit {result.returncode}; stderr={result.stderr!r}")
+        assert "BLOCCATO" in result.stderr and str(wt) in result.stderr
+
+    def test_gate_wt2_worktree_con_marcatore_proprio_passa(self, tmp_path):
+        """Il marcatore che conta e' quello DEL WORKTREE: con quello giusto si passa
+        (prima l'hook leggeva solo .claude/.review_ok del principale)."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (wt / "gas.py").write_text("# modifica revisionata\n")
+        self._add(wt, "gas.py")
+        (wt / ".claude").mkdir(parents=True, exist_ok=True)
+        (wt / ".claude/.review_ok").write_text(self._hash_staged(principale, wt) + "\n")
+        result = self._run(project_dir=principale, cwd=wt)
+        assert result.returncode == 0, result.stderr
+
+    def test_gate_wt3_marcatore_del_principale_non_vale_per_il_worktree(self, tmp_path):
+        """Un marcatore valido nel PRINCIPALE non deve aprire il gate per un diff
+        staged nel WORKTREE: i due indici sono diversi."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (wt / "gas.py").write_text("# non revisionata\n")
+        self._add(wt, "gas.py")
+        (principale / ".claude").mkdir(parents=True, exist_ok=True)
+        (principale / ".claude/.review_ok").write_text(
+            self._hash_staged(principale, principale) + "\n")
+        result = self._run(project_dir=principale, cwd=wt)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt4_senza_cwd_spazza_i_worktree(self, tmp_path):
+        """Se `cwd` manca (versione di Claude Code che non lo manda) il gate NON si fida
+        del solo principale: spazza tutti i worktree registrati e blocca."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (wt / "gas.py").write_text("# non revisionata\n")
+        self._add(wt, "gas.py")
+        result = self._run(project_dir=principale, cwd=None)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt5_comando_che_cambia_directory_spazza(self, tmp_path):
+        """Un comando con `cd` puo' committare in un ALTRO checkout: la directory reale
+        non e' nel payload, quindi il gate spazza tutti i worktree anche se `cwd`
+        indica un checkout pulito."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (wt / "gas.py").write_text("# non revisionata\n")
+        self._add(wt, "gas.py")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="cd " + str(wt) + " && " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt6_cwd_non_git_fail_closed(self, tmp_path):
+        """`cwd` che non e' un repo git -> non si sa dove avviene il commit -> fail-closed."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        fuori = tmp_path / "fuori"
+        fuori.mkdir()
+        result = self._run(project_dir=principale, cwd=fuori)
+        assert result.returncode == 2 and "fail-closed" in result.stderr, result.stderr
+
+    def test_gate_wt7_spazzata_con_tutti_i_checkout_puliti_passa(self, tmp_path):
+        """R-299-5: la stesura precedente passava per il motivo SBAGLIATO — senza `cd` nel
+        comando il worktree non veniva mai ispezionato, quindi il test restava verde anche
+        col worktree sporco. Ora si forza la SPAZZATA (cwd assente) e si prova il ramo che
+        conta: tutti i checkout puliti nel perimetro → si passa."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (principale / "reports").mkdir(exist_ok=True)
+        (principale / "reports/x.md").write_text("doc\n")
+        self._add(principale, "reports/x.md")
+        assert subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=wt,
+                              capture_output=True, text=True).stdout.strip() == ""
+        result = self._run(project_dir=principale, cwd=None)
+        assert result.returncode == 0, result.stderr
+
+    def test_gate_wt8_cd_assoluto_alla_propria_radice_non_eredita_lo_sporco_altrui(self, tmp_path):
+        """Raffinamento: `cd <radice-propria> && <commit>` e' la forma piu' comune dei comandi
+        dell'agente. Deve risolvere SOLO quel checkout e NON ereditare lo stato di lavoro in
+        corso di un ALTRO worktree, altrimenti ogni sessione resta ostaggio delle altre.
+        Qui il worktree vicino ha un diff del motore staged con marcatore assente."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        altro = self._wt(principale, "altra-fetta")
+        (altro / "gas.py").write_text("# lavoro in corso di un'ALTRA sessione\n")
+        self._add(altro, "gas.py")
+        # nel principale si committano solo report: fuori dal perimetro
+        (principale / "reports").mkdir(exist_ok=True)
+        (principale / "reports/x.md").write_text("doc\n")
+        self._add(principale, "reports/x.md")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="cd " + str(principale) + " && " + _CMD_COMMIT_WT)
+        assert result.returncode == 0, (
+            f"falso positivo: lo sporco di {altro} blocca un commit di soli report "
+            f"nel principale; stderr={result.stderr!r}")
+
+    def test_gate_wt9_cd_relativo_non_risolvibile_spazza(self, tmp_path):
+        """Un `cd` RELATIVO non si risolve dal payload (dipende dalla directory di
+        partenza del comando): il gate torna conservativo e spazza tutti i worktree."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        altro = self._wt(principale, "altra-fetta")
+        (altro / "gas.py").write_text("# non revisionata\n")
+        self._add(altro, "gas.py")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="cd ../altra-fetta && " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt10_cd_con_variabile_spazza(self, tmp_path):
+        """Un bersaglio con variabile o sostituzione non e' letterale: spazzata."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        altro = self._wt(principale, "altra-fetta")
+        (altro / "gas.py").write_text("# non revisionata\n")
+        self._add(altro, "gas.py")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="cd $TARGET && " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt11_git_dir_via_env_spazza(self, tmp_path):
+        """GIT_DIR / GIT_WORK_TREE spostano il repo senza nessun `cd`: spazzata."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        altro = self._wt(principale, "altra-fetta")
+        (altro / "gas.py").write_text("# non revisionata\n")
+        self._add(altro, "gas.py")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="GIT_WORK_TREE=" + str(altro) + " " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt12_doppio_C_non_sfugge(self, tmp_path):
+        """R-299-1 (fail-open REALE trovato dal revisore): `-C <pulito> -C <sporco>`.
+        git applica l'ULTIMO -C, ma il match legato a `git` contava un solo costrutto
+        (1/1 → nessuna spazzata) e l'hook usciva 0. Ora ogni `-C` viene matchato."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        sporco = self._wt(principale, "sporca")
+        (sporco / "gas.py").write_text("# non revisionata\n")
+        self._add(sporco, "gas.py")
+        comando = ("git -C " + str(principale) + " -C " + str(sporco) + " " +
+                   _CMD_COMMIT_WT.split(" ", 1)[1])
+        result = self._run(project_dir=principale, cwd=principale, comando="git " + comando)
+        assert result.returncode == 2, (
+            f"il secondo -C e' sfuggito: exit {result.returncode}; stderr={result.stderr!r}")
+
+    def test_gate_wt13_cd_dentro_una_stringa_viene_visto(self, tmp_path):
+        """R-299-2: `bash -c "cd <sporco> && <commit>"`. Prima il prefisso del match non
+        ammetteva gli apici, quindi quel `cd` era INVISIBILE e l'hook usciva 0."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        sporco = self._wt(principale, "sporca")
+        (sporco / "gas.py").write_text("# non revisionata\n")
+        self._add(sporco, "gas.py")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='bash -c "cd ' + str(sporco) + ' && ' + _CMD_COMMIT_WT + '"')
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt14_principale_sporco_non_blocca_il_worktree(self, tmp_path):
+        """R-299-3 (l'altra meta' del difetto): sessione che lavora NEL WORKTREE con solo
+        report in stage; il PRINCIPALE ha un diff del motore in stage senza marcatore.
+        Non deve bloccare: il commit non avviene nel principale. Prima (e nella prima
+        stesura di questa fetta) il principale era sempre nell'insieme e bloccava."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (principale / "gas.py").write_text("# lavoro in corso nel principale\n")
+        self._add(principale, "gas.py")
+        (wt / "reports").mkdir(exist_ok=True)
+        (wt / "reports/x.md").write_text("doc\n")
+        self._add(wt, "reports/x.md")
+        result = self._run(project_dir=principale, cwd=wt)
+        assert result.returncode == 0, (
+            f"lo sporco del principale blocca ancora il worktree; stderr={result.stderr!r}")
+
+    def test_gate_wt15_worktree_prunable_non_e_un_vicolo_cieco(self, tmp_path):
+        """R-299-4: un worktree con la directory rimossa (prunable) non puo' ospitare
+        scritture. Nella spazzata va SALTATO, altrimenti ogni comando esce 2 con «cd
+        fallito» e nessuna review puo' sbloccarlo (solo `git worktree prune`)."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        morto = self._wt(principale, "morta")
+        shutil.rmtree(morto)
+        (principale / "reports").mkdir(exist_ok=True)
+        (principale / "reports/x.md").write_text("doc\n")
+        self._add(principale, "reports/x.md")
+        result = self._run(project_dir=principale, cwd=None)  # cwd assente → spazzata
+        assert result.returncode == 0, (
+            f"worktree prunable = vicolo cieco; stderr={result.stderr!r}")
+
+    # ── Bersagli QUOTATI: la lacuna di copertura che ha fatto passare un fail-open ──
+    # Il giro #300 ha BOCCIATO il diff perche' la classe del bersaglio escludeva gli
+    # apici: un bersaglio che INIZIA con un apice non aveva nessun carattere da
+    # consumare, quindi il costrutto non veniva nemmeno TROVATO (N_TROVATI=0 → nessun
+    # dubbio → nessuna spazzata). Sei forme comuni passavano. Nessun test le copriva:
+    # tutti usavano il bersaglio nudo, e 122/122 era verde con il buco dentro.
+
+    def _wt_sporco(self, tmp_path):
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        sporco = self._wt(principale, "sporca")
+        (sporco / "gas.py").write_text("# non revisionata\n")
+        self._add(sporco, "gas.py")
+        return principale, sporco
+
+    def test_gate_wt16_cd_bersaglio_tra_doppi_apici(self, tmp_path):
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='cd "' + str(sporco) + '" && ' + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt17_cd_bersaglio_tra_apici_singoli(self, tmp_path):
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="cd '" + str(sporco) + "' && " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt18_cd_relativo_quotato_spazza(self, tmp_path):
+        """`cd "../sporca"`: il commento dell'hook dichiarava che un percorso relativo
+        fa scattare la spazzata — era FALSO per la forma quotata (misurato dal revisore)."""
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='cd "../sporca" && ' + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt19_dash_C_quotato(self, tmp_path):
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='git -C "' + str(sporco) + '" ' +
+                                   _CMD_COMMIT_WT.split(" ", 1)[1])
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt20_work_tree_quotato(self, tmp_path):
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='git --work-tree="' + str(sporco) + '" ' +
+                                   _CMD_COMMIT_WT.split(" ", 1)[1])
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt21_pushd_quotato(self, tmp_path):
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='pushd "' + str(sporco) + '" && ' + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt22_radice_propria_quotata_non_spazza(self, tmp_path):
+        """L'altra meta' della correzione: `cd "<radice-propria>"` deve RISOLVERSI, non
+        far spazzare, altrimenti quotare il proprio percorso fa ereditare lo stato di
+        lavoro in corso degli altri checkout. E' il motivo per cui gli apici si togliono
+        nello stadio di risoluzione invece di essere esclusi dal match."""
+        principale, sporco = self._wt_sporco(tmp_path)
+        (principale / "reports").mkdir(exist_ok=True)
+        (principale / "reports/x.md").write_text("doc\n")
+        self._add(principale, "reports/x.md")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='cd "' + str(principale) + '" && ' + _CMD_COMMIT_WT)
+        assert result.returncode == 0, (
+            f"la forma quotata della propria radice spazza invece di risolversi; "
+            f"stderr={result.stderr!r}")
+
+    def test_gate_wt23_apice_spaiato_e_fail_closed(self, tmp_path):
+        """Un apice spaiato tronca il bersaglio → `_radice` fallisce → spazzata."""
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='cd "' + str(sporco) + ' && ' + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    # ── Bersaglio quotato CON SPAZIO: il fail-open del 3° giro (BOCCIATO) ──
+    # La classe del match si ferma sullo spazio, quindi `cd "/path con spazi"` arriva
+    # TRONCATO a `"/path`. Togliere gli apici a prescindere lo rendeva `/path`, cioe'
+    # assoluto e letterale: il costrutto veniva contato come RISOLTO e validato su un
+    # percorso DIVERSO da quello vero → nessuna spazzata → fail-open.
+    # Il caso PEGGIORE, ed e' quello provato qui, e' quando il troncone e' a sua volta
+    # un repo: allora `_radice` riesce e il dubbio svanisce del tutto. Basta un nome
+    # ordinario come «<radice> copia», «<radice> 2», «<radice> (backup)».
+    # Regola adottata: si normalizza solo una coppia di apici ai BORDI; ogni residuo
+    # di apice e' un dubbio.
+
+    def _wt_con_nome_dir(self, principale: Path, dirname: str, branch: str) -> Path:
+        """Worktree la cui DIRECTORY ha un nome arbitrario (anche con spazi), con un
+        nome di ramo valido: `git worktree add -b "con spazi"` sarebbe rifiutato."""
+        wt = principale.parent / dirname
+        subprocess.run(["git", "worktree", "add", "-q", "-b", branch, str(wt)],
+                       cwd=principale, check=True, capture_output=True)
+        return wt
+
+    def _sporco_con_spazio(self, tmp_path):
+        """Worktree sporco il cui troncone sullo spazio e' ESATTAMENTE la radice del
+        principale, che E' un repo git."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        sporco = self._wt_con_nome_dir(principale, "main copia", "copia")
+        (sporco / "gas.py").write_text("# non revisionata\n")
+        self._add(sporco, "gas.py")
+        assert str(sporco) == str(principale) + " copia"
+        return principale, sporco
+
+    def test_gate_wt24_bersaglio_quotato_con_spazio_spazza(self, tmp_path):
+        """Il troncone sullo spazio e' un repo valido, quindi la normalizzazione cieca
+        lo faceva passare per bersaglio buono e il bersaglio VERO non veniva ispezionato."""
+        principale, sporco = self._sporco_con_spazio(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='cd "' + str(sporco) + '" && ' + _CMD_COMMIT_WT)
+        assert result.returncode == 2, (
+            f"bersaglio troncato validato come buono: exit {result.returncode}; "
+            f"stderr={result.stderr!r}")
+
+    def test_gate_wt25_dash_C_quotato_con_spazio_spazza(self, tmp_path):
+        """Stessa forma su `-C`, dove il bersaglio non ha nemmeno un `&&` a delimitarlo."""
+        principale, sporco = self._sporco_con_spazio(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='git -C "' + str(sporco) + '" ' +
+                                   _CMD_COMMIT_WT.split(" ", 1)[1])
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt26_apice_residuo_nel_bersaglio_spazza(self, tmp_path):
+        """Qualunque apice che non sia una coppia ai bordi e' un residuo, quindi dubbio.
+        Costo accettato e dichiarato: anche forme che la shell risolverebbe (un apice in
+        mezzo) fanno spazzare — direzione sicura, non si inseguono euristiche."""
+        principale, sporco = self._sporco_con_spazio(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='cd ' + str(principale) + '"x && ' + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt27_coppia_di_apici_resta_risolvibile(self, tmp_path):
+        """Controprova: la correzione non deve rompere il merito di R-299-2. Una coppia
+        COMPLETA di apici sulla propria radice si risolve ancora, senza spazzare e quindi
+        senza ereditare lo sporco di un altro checkout."""
+        principale, sporco = self._sporco_con_spazio(tmp_path)
+        (principale / "reports").mkdir(exist_ok=True)
+        (principale / "reports/x.md").write_text("doc\n")
+        self._add(principale, "reports/x.md")
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="cd '" + str(principale) + "' && " + _CMD_COMMIT_WT)
+        assert result.returncode == 0, result.stderr
+
+    # ── Lucchetti sui limiti ACCETTATI (R-302-1, R-302-2) ──
+    # Un limite-comportamento senza test non e' un limite: e' una dichiarazione che la
+    # prossima modifica puo' smentire in silenzio. Questi due pinnano la DIREZIONE
+    # (fail-closed) dei falsi positivi accettati, non la loro desiderabilita'.
+
+    def test_gate_wt28_dash_C_non_di_git_spazza_lucchetto(self, tmp_path):
+        """R-302-1 — IL test che protegge dal riaprire il fail-open del 1° giro.
+        `-C` e' matchato a OGNI occorrenza, senza verificare che appartenga a git: qui
+        `-C HEAD` e' un'opzione vera di git (riusa un messaggio) e il bersaglio `HEAD`
+        non e' un percorso, quindi resta un dubbio e si spazza.
+        Se qualcuno «ottimizzasse» restringendo il match a `git -C`, questo test
+        diventerebbe ROSSO — ed e' esattamente l'ottimizzazione che rimetterebbe in piedi
+        il doppio `-C` (`-C <pulito> -C <sporco>`, vedi wt12)."""
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando=_CMD_COMMIT_WT.replace(" -m x", "") + " -C HEAD")
+        assert result.returncode == 2, (
+            f"il falso positivo accettato su `-C` non c'e' piu': exit {result.returncode}. "
+            f"Se e' stato restringendo il match a `git -C`, il doppio -C e' tornato "
+            f"aperto; stderr={result.stderr!r}")
+
+    def test_gate_wt29_grep_con_dash_C_spazza_lucchetto(self, tmp_path):
+        """R-302-1, seconda forma: `-C` di un comando che non e' git affatto."""
+        principale, sporco = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="grep -C 3 x f && " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt30_falso_positivo_del_matcher_resta_fail_closed(self, tmp_path):
+        """R-302-2 — pinna la DIREZIONE del falso positivo del matcher (R-gjq-1/R-137-2):
+        un comando che NON scrive, ma la cui prosa contiene le due parole che il matcher
+        cerca, viene trattato come se scrivesse. Oggi e' fail-CLOSED, cioe' il costo e'
+        un fastidio. La fetta che chiudera' R-gjq-1 ha come rischio principale
+        CAPOVOLGERE questa direzione: se questo test diventa verde con un exit 0, il
+        gate ha smesso di controllare invece di aver smesso di dare fastidio."""
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        (principale / "gas.py").write_text("# motore non revisionato\n")
+        self._add(principale, "gas.py")
+        # comando di sola lettura: nessuna scrittura, solo la prosa che il matcher cerca
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='grep -n "' + _CMD_COMMIT_WT + '" README.md')
+        assert result.returncode == 2, (
+            f"la direzione del falso positivo si e' capovolta (atteso fail-closed): "
+            f"exit {result.returncode}; stderr={result.stderr!r}")
+
+    def test_gate_wt31_work_tree_quotato_con_spazio_spazza(self, tmp_path):
+        """Suggerito dal revisore: stessa classe di wt24 ma con un estrattore diverso
+        (`#--work-tree=` applicato PRIMA della normalizzazione degli apici). Il 3° giro
+        lasciava passare anche questa forma e i miei quattro test non la coprivano."""
+        principale, sporco = self._sporco_con_spazio(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando='git --work-tree="' + str(sporco) + '" ' +
+                                   _CMD_COMMIT_WT.split(" ", 1)[1])
+        assert result.returncode == 2, result.stderr
