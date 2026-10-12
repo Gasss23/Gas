@@ -8216,6 +8216,11 @@ try:
               bool(_k88.history) and _k88.history[-1].get("role") == "tool"
               and _k88.history[-1].get("tool_call_id") == "b88_1",
               str(_k88.history[-2:]))
+        # T88e — V-2 bot #191: il diario distingue lo stop per budget da un guasto.
+        _tf88 = _k88.memory.ultimo_diario_per_tipo("turno_fine") if _k88.memory else None
+        check("T88e turno_fine con motivo=budget dopo lo stop a metà turno",
+              _tf88 is not None and "esito=ko" in _tf88["descrizione"]
+              and _tf88["descrizione"].endswith(" ; motivo=budget"), str(_tf88))
         # T88c — controllo: senza budget il ciclo continua oltre la prima chiamata
         # (morde se il controllo nel ciclo fermasse sempre).
         os.environ.pop("GAS_DAILY_TOKEN_BUDGET", None)
@@ -8223,6 +8228,40 @@ try:
         list(kernel_tmp().run_turn("che ore sono"))
         check("T88c senza budget il ciclo prosegue (10 iterazioni per rung)",
               len(_Client88.chiamate) > 1, f"chiamate={len(_Client88.chiamate)}")
+        # T88c2 — controprova di T88e: un turno senza stop per budget non ha il motivo.
+        _k88c2 = kernel_tmp()
+        _Client88.chiamate = []
+        list(_k88c2.run_turn("che ore sono"))
+        _tf88c2 = _k88c2.memory.ultimo_diario_per_tipo("turno_fine") if _k88c2.memory else None
+        check("T88c2 turno senza budget: turno_fine senza motivo=budget",
+              _tf88c2 is not None and "motivo=budget" not in _tf88c2["descrizione"], str(_tf88c2))
+        # T88f — V-1 bot #191: il retry del Gemini 400 passa dal budget. Budget che
+        # scatta proprio prima del retry → niente seconda create, turno fermato.
+        class _Err400_88(Exception):
+            status_code = 400
+
+        class _Client88f(_Client88):
+            def create(self, model=None, **kw):
+                _Client88.chiamate.append(model)
+                raise _Err400_88("Error code: 400 - transitorio")
+
+        _seq88f = iter([None, None, (2.0, 1.0)])
+        _k88f = kernel_tmp()
+        _k88f._budget_superato = lambda: next(_seq88f, (2.0, 1.0))
+        gas.OpenAI = _Client88f
+        _Client88.chiamate = []
+        try:
+            _ev88f = list(_k88f.run_turn("che ore sono"))
+        finally:
+            gas.OpenAI = _Client88  # R-294-2
+        _er88f = [e["content"] for e in _ev88f if e["type"] == "error"]
+        check("T88f retry Gemini 400 saltato col budget superato: una sola create, stop dichiarato",
+              len(_Client88.chiamate) == 1 and len(_er88f) == 1
+              and _er88f[0].startswith("Budget giornaliero esaurito a metà turno"),
+              f"chiamate={_Client88.chiamate} errori={_er88f}")
+        _tf88f = _k88f.memory.ultimo_diario_per_tipo("turno_fine") if _k88f.memory else None
+        check("T88g retry saltato per budget: turno_fine con motivo=budget",
+              _tf88f is not None and _tf88f["descrizione"].endswith(" ; motivo=budget"), str(_tf88f))
         # T88d — riflessione: il primo rung risponde non-JSON (consuma token), il
         # secondo NON viene chiamato perché il budget è ricontrollato prima.
         os.environ["GAS_DAILY_TOKEN_BUDGET"] = "0.01"

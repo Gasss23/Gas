@@ -3270,6 +3270,7 @@ class GasKernel:
         _turno_final = False
         _turno_fine_scritto = False
         _turno_classe = "semplice"  # aggiornato da classifica_compito (vedi sotto)
+        _turno_budget = False  # V-2 bot #191: turno fermato dal budget giornaliero
 
         def _chiudi_turno() -> None:
             nonlocal _turno_fine_scritto
@@ -3286,6 +3287,7 @@ class GasKernel:
                 f"esito={esito} ; tool={_turno_tool_n} ; "
                 f"tool_ko={_turno_tool_ko} ; provider={_turno_provider} ; "
                 f"tentati={tentati_str} ; classe={_turno_classe}"
+                + (" ; motivo=budget" if _turno_budget else "")
             )
             self._diario_log("turno_fine", descr, fonte="kernel", turno_id=_turno_id)
 
@@ -3325,6 +3327,7 @@ class GasKernel:
             # FETTA 1: lo stesso controllo si ripete prima di OGNI chiamata del ciclo.
             _sup = self._budget_superato()
             if _sup is not None:
+                _turno_budget = True
                 yield {"type": "error",
                        "content": (f"Budget giornaliero esaurito: ${_sup[0]:.4f} spesi "
                                    f"(limite ${_sup[1]:.2f} USD). "
@@ -3373,6 +3376,7 @@ class GasKernel:
                         # successivo riparte da un user (_get_window).
                         _sup = self._budget_superato()
                         if _sup is not None:
+                            _turno_budget = True
                             logging.warning("budget giornaliero superato a metà turno "
                                             f"(${_sup[0]:.4f} / ${_sup[1]:.2f}): turno fermato")
                             yield {"type": "error",
@@ -3391,6 +3395,14 @@ class GasKernel:
                             # 2026-06-10: stesso payload accettato 5/5 al replay):
                             # UN solo retry con payload identico, poi fallback
                             if not (name.startswith("gemini") and "400" in str(e)[:120]):
+                                raise
+                            # V-1 bot #191: anche il retry è una create, quindi passa dal
+                            # budget. Superato → si rilancia il 400: il provider cade
+                            # come oggi e il controllo prima della create dell'iterazione
+                            # (o di inizio turno al prossimo) ferma il resto.
+                            if self._budget_superato() is not None:
+                                _turno_budget = True  # R-294-1: diario anche se era l'ultimo rung
+                                logging.warning(f"retry Gemini 400 ({name}): saltato, budget superato")
                                 raise
                             try:
                                 response = client.chat.completions.create(
