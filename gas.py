@@ -3325,8 +3325,14 @@ class GasKernel:
             providers = _cascata_provider(compito)
             _free_names = _FREE_RUNG_NAMES  # {"openrouter", "ollama"}
 
+            # Motivi per provider, per un «Pipeline esausta» che dice PERCHÉ (operatore
+            # 2026-10-12). Solo nome, variabile d'ambiente ed esito classificato: mai il
+            # testo grezzo dell'errore (potrebbe riportare dati della richiesta).
+            _motivi: List[str] = []
             for name, env, url, model in providers:
-                if not os.environ.get(env): continue
+                if not os.environ.get(env):
+                    _motivi.append(f"{name}: {env} non impostata")
+                    continue
                 # Fetta B: traccia tutti i provider TENTATI (non solo l'ultimo);
                 # _turno_provider viene settato solo se la risposta è prodotta.
                 _turno_tentati.append(name)
@@ -3440,7 +3446,10 @@ class GasKernel:
                             yield {"type": "final", "content": msg.content}
                             return
                         else:
+                            _motivi.append(f"{name}: risposta vuota")
                             break  # risposta vuota inattesa
+                    else:
+                        _motivi.append(f"{name}: 10 iterazioni senza risposta finale")
                 except Exception as e:
                     if name.startswith("gemini") and "400" in str(e)[:120]:
                         # Diagnosi 400: sequenza dei role della finestra inviata,
@@ -3457,8 +3466,15 @@ class GasKernel:
                         getattr(e, "status_code", None), str(e), name not in _free_names)
                     self._log_tokens(name, model, 0, 0,
                                      event="fallthrough", reason=_ft_level)
+                    _sc = getattr(e, "status_code", None)
+                    _motivi.append(f"{name}: {_ft_level}"
+                                   + (f" (HTTP {_sc})" if isinstance(_sc, int) else
+                                      f" ({type(e).__name__})"))
                     continue
-            yield {"type": "error", "content": "Pipeline esausta."}
+            _dettaglio = "; ".join(_motivi) if _motivi else "nessun provider in cascata"
+            logging.warning(f"Pipeline esausta: {_dettaglio}")
+            yield {"type": "error",
+                   "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
             _chiudi_turno()
 

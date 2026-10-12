@@ -204,9 +204,10 @@ errori = [e for e in eventi if e["type"] == "error"]
 check("T9a ogni provider cappato a 10 iterazioni",
       all(n == 10 for n in chiamate.values()) and len(chiamate) == 3,
       f"chiamate per modello: {chiamate}")
-check("T9b loop infinito assorbito senza crash, pipeline esausta dichiarata",
-      len(errori) == 1 and errori[0]["content"] == "Pipeline esausta.",
-      f"tool_res={len(tool_res)} errori={len(errori)}")
+check("T9b loop infinito assorbito senza crash, pipeline esausta dichiarata col motivo",
+      len(errori) == 1 and errori[0]["content"].startswith("Pipeline esausta:")
+      and errori[0]["content"].count("10 iterazioni senza risposta finale") == 3,
+      f"tool_res={len(tool_res)} errori={errori}")
 check("T9c storia salvata su disco nella root temporanea",
       k.db_path.exists() and k.db_path.stat().st_size > 0)
 
@@ -8119,6 +8120,46 @@ try:
           not (_r86 / "dati" / "nuovo.pem").exists(), _w86[:200])
 except Exception as _e86:
     check("T86 blocco senza eccezioni", False, repr(_e86))
+
+# ---------- T87: «Pipeline esausta» dice perché (operatore 2026-10-12) ----------
+print("\n--- T87: motivo della pipeline esausta ---")
+try:
+    _sv87 = {k: os.environ.get(k) for k in ("GEMINI_API_KEY", "GROQ_API_KEY",
+                                            "OPENROUTER_API_KEY", "GAS_OLLAMA_URL")}
+    for _k87 in _sv87:
+        os.environ.pop(_k87, None)
+    os.environ["GROQ_API_KEY"] = "finta-87"
+
+    class _Err429(Exception):
+        status_code = 429
+
+    class _Client87:
+        def __init__(self, *a, **kw):
+            self.chat = self
+            self.completions = self
+
+        def create(self, **kw):
+            raise _Err429("Error code: 429 - segreto-nel-testo-87")
+
+    _vo87 = gas.OpenAI
+    gas.OpenAI = _Client87
+    try:
+        _ev87 = list(kernel_tmp().run_turn("ciao"))
+    finally:
+        gas.OpenAI = _vo87
+        for _k87, _v87 in _sv87.items():
+            if _v87 is None:
+                os.environ.pop(_k87, None)
+            else:
+                os.environ[_k87] = _v87
+    _er87 = [e["content"] for e in _ev87 if e["type"] == "error"]
+    check("T87a errore unico che nomina chiave assente e quota, senza il testo grezzo dell'errore",
+          len(_er87) == 1 and _er87[0].startswith("Pipeline esausta: nessun cervello ha risposto.")
+          and "gemini-flash: GEMINI_API_KEY non impostata" in _er87[0]
+          and "groq: QUOTA (HTTP 429)" in _er87[0]
+          and "segreto-nel-testo-87" not in _er87[0], str(_er87))
+except Exception as _e87:
+    check("T87 blocco senza eccezioni", False, repr(_e87))
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

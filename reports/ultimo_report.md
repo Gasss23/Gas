@@ -1,14 +1,14 @@
-# Report di fine task — 2026-10-11 — chiavi private e credenziali vietate
+# Report di fine task — 2026-10-12 — «Pipeline esausta» dice perché
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Nessuna: l'operatore ha già chiesto il merge della PR #188 dopo la correzione delle varianti.
+1. Merge della PR (tocca `gas.py`): secondo la regola di CLAUDE.md (verdetto testuale del bot APPROVATO senza finding, altrimenti decide l'operatore).
 
 ## Esito
 
-- **Chiavi private e credenziali**: `FATTO` — illeggibili per tutti gli strumenti di lettura (read_file, leggi_righe, conta_file, cerca_testo, elenca_cartella) e livello 3 (mai) in scrittura. Chiude V-1 verifica esterna #184 (2° giro). Revisore #289 APPROVATO CON RISERVE (R-289-1 corretta), #290 APPROVATO; varianti dei nomi (finding BASSI di bot e verifica esterna #188, scelta dell'operatore «chiudi le varianti e poi mergia») chiuse, #291 APPROVATO CON RISERVE (R-291-1 BASSA: `kubeconfig`, `mywallet.dat`). Kernel 810 PASS / 0 FAIL; pytest completo 1032 passed.
-- Già fatto prima in sessione: merge #185, #187 (sostituisce #186).
+- **Messaggio «Pipeline esausta»**: `FATTO` — ora elenca per ogni cervello il motivo (variabile non impostata, quota/HTTP, risposta vuota, 10 iterazioni senza risposta finale), mai il testo grezzo dell'errore. Revisore #292 APPROVATO CON RISERVE (R-292-1 BASSA: rami «risposta vuota» ed eccezione senza status non testati; R-292-2 COSMETICA: Gemini ripetuto due volte). Kernel 811 PASS / 0 FAIL, pytest 1032 passed.
+- Giro di notte di prova (cloud, copia usa-e-getta): nessun crash, compiti KO per assenza di chiavi API (atteso). Giro sul Mac dell'operatore: 1 compito OK.
 
 ## Anomalie
 
-- Nessuna. Compromesso accettato R-289-2: file innocui come `secret.py` o `note.key.md` sono bloccati per eccesso.
+- Sul Mac `git pull` non ha aggiornato: il repo è su un HEAD staccato («Attualmente non sei su un branch»), quindi il giro sul Mac ha usato codice vecchio.
