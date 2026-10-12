@@ -616,10 +616,18 @@ def _lunghezza_log(testo: Any) -> str:
 
 # Profondita' massima di annidamento accettata nel JSON della riflessione. Una
 # riflessione legittima e' profonda 2 ({"recap": ..., "lezioni": [...]}): il tetto e'
-# larghissimo di proposito. Serve a rendere il rifiuto DETERMINISTICO su ogni versione
-# di Python: fino a 3.12 `json.loads` solleva RecursionError sulle strutture estreme,
-# da 3.14 le parsa (misurato su 3.14.7) costruendo 100k dict annidati prima di
-# scartarle per "recap mancante" — stesso esito, motivo diverso e lavoro inutile.
+# larghissimo di proposito. Serve a rendere il rifiuto DETERMINISTICO, perche' senza di
+# esso dipende dalla MACCHINA, non solo dalla versione: sulle versioni precedenti
+# `json.loads` solleva RecursionError sulle strutture estreme (non misurato qui); su
+# questa macchina (misura del 2026-10-12, macOS arm64, Python 3.14.7) ne parsa 116k
+# livelli costruendo (inutilmente) altrettanti dict annidati, poi scartati per "recap
+# mancante", e a 117k solleva RecursionError: il confine cade fra quei due valori
+# ADIACENTI, 3 ripetizioni per punto (R-300-1).
+# Quella soglia NON e' un numero stabile: `json` IGNORA sys.getrecursionlimit() (provato
+# nei due sensi: con limite 50 mille livelli passano, con limite 5_000_000 duecentomila
+# no) e segue invece lo stack C del thread (con threading.stack_size a 512 MB passano
+# 200k livelli; a 1 MB falliscono anche 50k). Da qui il tetto esplicito, controllato
+# PRIMA del parser: misura corretta dopo V-1 della verifica esterna #192.
 _RIFLESSIONE_MAX_PROFONDITA = 50
 
 
