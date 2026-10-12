@@ -220,6 +220,34 @@ Verdetti nulli di questo giro: nessuno.
 cresciute»), insieme alla citazione `review_gate.sh:59` (avevo scritto :58) e alla separazione fra
 ciò che ho misurato io e ciò che poggia sul report dell'altra sessione su R-gate-worktree-1.
 
+### Review #311 (merge di main con la PR #193 nel ramo)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Letture obbligatorie fatte: CLAUDE.md, reports/stato_progetto.md (in modo mirato) e .claude/agents/memoria_revisore.md.
+
+**Cosa ho controllato**
+- `gas.py:623` — è il blocco di commento della PR #195, sopra la costante. Rischio controllato: che l'unione automatica abbia perso o duplicato codice di #193, o rovinato il commento. Esito **ok**. Ho confrontato l'indice con MERGE_HEAD (cioè `origin/main` ceb9d90). Su `gas.py` l'unica differenza è proprio quel commento (righe 623-636). È identico byte per byte al diff fra il merge-base af394bc e HEAD. Il codice di #193 (`cerca_testo`, `LETTURA_MAX_BYTES_PER_FILE` in `gas.py:882`, `_LOG_KERNEL_RE`) è arrivato senza modifiche.
+- `gas.py:637` — `_RIFLESSIONE_MAX_PROFONDITA = 50`, usata da `_troppo_annidato` in `gas.py:640` e dal messaggio in `gas.py:687`. Rischio controllato: un'unione che sposta la costante o la guardia. Esito **ok**: valore e punti d'uso sono intatti.
+- `tests/test_unit_kernel.py:7128` — T80u5, con `_troppo_annidato` in `tests/test_unit_kernel.py:7165`. Rischio controllato: un test perso o duplicato nell'unione. Esito **ok**: il file nell'indice è identico a quello di MERGE_HEAD (diff vuoto), e il ramo non lo toccava.
+- Marcatori di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`): zero, in `gas.py`, nei test, nella memoria e in `reports/*.md`. Non ci sono voci ancora non risolte (`git ls-files -u` vuoto).
+- `.claude/agents/memoria_revisore.md`: ho preso le righe aggiunte da ciascun lato dopo il merge-base e le ho cercate nell'indice. Non ne manca nessuna, l'ordine è quello chiesto (prima main, poi il ramo).
+- Gli altri report non compaiono nel diff staged, quindi l'indice contiene la versione del ramo. Coerente con la scelta dichiarata.
+
+**Riserve**
+- **R-311-1 (BASSA)** — `reports/stato_progetto.md`: è caduto il paragrafo R-gate-worktree-1 (gravità MEDIA) che il ramo aveva nell'intestazione, riga 9 di HEAD. È un doppione di quello di main (gravità ALTA, riga 60 nell'indice), e il ramo stesso diceva «contarlo una volta sola». Quindi toglierlo è corretto. Con lui però spariscono due cose che il testo di main non dice:
+  - il limite della prova: non è stato misurato che `CLAUDE_PROJECT_DIR` valga il checkout principale anche in un worktree;
+  - il rimando all'uso di `CLAUDE_PROJECT_DIR` alla riga 25 di `.claude/hooks/review_gate.sh`.
+  Proposta: aggiungere una riga al paragrafo di main. Non blocca il merge.
+- **R-311-2 (COSMETICA)** — il contatore della memoria contiene numeri doppi: #297 e #301, nati da due sessioni parallele (#297 era già doppio su main) e non in ordine (…#310, poi #299-#301). Non l'ho rinumerato: è storia. La mia riga usa #311, cioè il massimo più uno.
+- **Nota (non è una riserva)** — l'intestazione «Ultimo aggiornamento» di stato_progetto.md (quella di main, come da scelta) non nomina il merge della #195. Da aggiornare a fine task.
+
+**Rischio escluso**
+Non ho rieseguito le suite: mi fido dei vostri 843 PASS / 0 FAIL del kernel e dei 1032 di pytest. Visto che `gas.py` e i test nell'indice coincidono con main a meno di un commento, il rischio residuo è basso. Non ho verificato nemmeno il comportamento in CI e sul VPS.
+
+**Memoria**
+Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore `#311 — 2026-10-12 — APPROVATO CON RISERVE — …` e una lezione: per controllare un merge si confronta l'indice con MERGE_HEAD e si cercano le righe perse con `comm`. **Non ho committato** (non ho lanciato `commit_memoria_revisore.sh`, perché il merge è in corso). Il file è modificato nella cartella di lavoro: va messo in stage prima di `segna_review_ok.sh`.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Il commit di motore di questo giro (`3f59b6e`) cambia **solo un blocco di commento**: nessun delta
