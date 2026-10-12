@@ -16,6 +16,8 @@
 
 ---
 
+**🔴 PRIMA DI TUTTO — qualcuno ha pushato su questo branch e non si sa chi.** Il mio push e' stato rifiutato: il remoto era avanti con `c026bdb`, `2a8524f`, `0b68d2b`, `93b57de`, non miei, firmati `Claude Opus 5.5` con trailer `session_01FgYcG4uNEqggobeJsbmE93` (lo stesso id nei corpi delle PR #184/#185). La sessione dell'altro worktree ha escluso di esserne l'autore con prove proprie (reflog senza traccia del ramo, SHA assenti dal reflog locale condiviso, firma di un modello diverso) e ha dichiarato che non pushera' mai su questo ramo. Ipotesi non verificabile dall'interno: **questa stessa sessione continuata altrove** (cloud/web). **Serve che l'operatore dica se ha una sessione viva altrove su questo ramo**: finche' esiste, puo' sovrascrivere l'unione. Nessun force da parte mia; stato pre-merge nel branch `backup/mio-locale-9e20872`. Il merge fatto e' l'UNIONE delle due implementazioni (loro V-1 + R-300-2 + R-301-4, mio V-3 + V-4 + quattro test): **838 PASS, 0 FAIL**, perche' il merge porta anche il fix di main che rende portabile T80u5.
+
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta unica — `cerca_testo` su cartella: il budget di byte non deve mentire**: `FATTA`
@@ -28,37 +30,50 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  21 +++++++++++++++++
- gas.py                             | 142 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
- reports/diff_sessione.md           |  37 +++++++++++++++++++++++-------
- reports/handoff.md                 | 454 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |  64 ++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/ultimo_report.md           | 194 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
- tests/test_unit_kernel.py          | 226 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 7 files changed, 955 insertions(+), 183 deletions(-)
+ .claude/agents/memoria_revisore.md |  39 +++++++++++++++++++++++++++
+ gas.py                             | 190 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ reports/diff_sessione.md           |  39 +++++++++++++++++++++------
+ reports/handoff.md                 | 516 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  95 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/ultimo_report.md           | 208 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ tests/test_unit_kernel.py          | 321 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 7 files changed, 1219 insertions(+), 189 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-8a690da docs(fine-task): V-1 della verifica esterna chiusa, review #301/#302, matrice del merge
+7c03a6d Merge dei due fix paralleli di V-1 in feat/cerca-testo-budget-onesto (review #308/#309)
+9e20872 docs(fine-task): V-1 della verifica esterna chiusa, review #301/#302, matrice del merge
 9e273e0 fix(cerca_testo): rotazioni del log cercabili per nome (V-1 verifica esterna #193)
 b29493b chore(revisore): memoria review #307 — APPROVATO
 ac508c5 chore(revisore): memoria review #302 — APPROVATO
 2be3a51 chore(revisore): memoria review #301 — APPROVATO CON RISERVE
 c72e0ce chore(revisore): memoria review #301 — APPROVATO CON RISERVE
+93b57de docs(fine-task): handoff con la review #302 del merge di main
+0b68d2b Merge main (PR #192) in feat/cerca-testo-budget-onesto — review #302
+2a8524f docs(fine-task): handoff e report dopo il fix V-1 MEDIA del bot #193 (review #301)
+c026bdb fix(cerca_testo): le rotazioni del log indicate per nome restano cercabili (V-1 MEDIA bot #193)
+1032816 chore(revisore): memoria review #301 — APPROVATO CON RISERVE
+af394bc Merge pull request #192 from Gasss23/fix/test-t80u5-portabile
 58ff4ec docs(fine-task): §0 dell'handoff con numero e URL reali della PR #193
 c16a789 docs(fine-task): verdetto #297 riemesso in forma di gate, #300, R-300-1
 25ce6e6 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
 b892800 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
 775fdb8 docs(fine-task): report, handoff, stato e diff — cerca_testo budget onesto
+a6fa2fd docs(fine-task): §0 dell'handoff con numero e URL reali della PR #192
 d238610 fix(cerca_testo): il budget di byte non mente piu' (R-282-1, R-283-1)
+7fd062b docs(fine-task): report, handoff, stato e diff — T80u5 tetto di annidamento deterministico (review #297/#298) + check PR #184/#185
+c298d59 fix(riflessione): tetto di annidamento deterministico, non più legato alla versione di Python
+4017ee5 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
+6f6f370 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
 08c9af6 chore(revisore): memoria review #299 — APPROVATO CON RISERVE
+06636d5 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 be36ce8 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
 e606313 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; il suo hash è nel log del branch dopo il push. I commit `chore(revisore)` sono della memoria del revisore e toccano SOLO `.claude/agents/memoria_revisore.md` (verificato): sono sette perché i giri di review sono stati sei più la rinumerazione finale, e due coppie portano lo stesso numero perché il revisore ha scritto in due passaggi. I numeri #297–#302 di quei messaggi sono quelli della copia locale della memoria **prima** della rinumerazione a #302–#307 (vedi §0): i messaggi dei commit non si riscrivono, la corrispondenza è dichiarata. `775fdb8` conserva il testo ORIGINALE del verdetto #297 prima della riemissione in forma di gate (vedi §4).
+**Da leggere con attenzione, perché questo log NON è solo mio.** Il commit di fine-task che contiene questo file non compare qui, per costruzione. I commit `c026bdb`, `2a8524f`, `0b68d2b`, `93b57de` e `1032816` **non sono miei**: sono dell'autore ignoto che ha pushato su questo branch (firma Opus 5.5, trailer `session_01FgYcG4uNEqggobeJsbmE93`), e `7c03a6d` è il merge con cui li ho integrati senza force (vedi §0). La linea `af394bc`…`c298d59` arriva da main con il merge della PR #192 (sessione «riflessione»): è da lì che viene `_troppo_annidato`, che nel diff di questa sessione **sembra codice nuovo della fetta e non lo è** — era già revisionato e mergiato altrove, e qui non è stato revisionato nel merito; è ciò che rende verde T80u5. I commit `chore(revisore)` toccano SOLO `.claude/agents/memoria_revisore.md`. I numeri #297–#302 nei loro messaggi sono quelli della copia locale **prima** della rinumerazione a #302–#307: i messaggi non si riscrivono, la corrispondenza è dichiarata nel §0. `775fdb8` conserva il testo ORIGINALE del verdetto #297 prima della riemissione in forma di gate (vedi §4).
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -412,29 +427,27 @@ Mutazioni eseguite e poi ripristinate (`git diff` verificato pulito dopo ognuna)
 
 ## §6 STATO CI
 
-Esito REALE di `gh pr checks 193` sul commit `93b57de` (head pushato al momento della scrittura):
+All'ultima misura reale (`gh pr checks 193`) sull'head **precedente** `93b57de`, cioè quello dell'autore ignoto, prima del merge:
 
 ```
-verifica-bot	fail	0	https://github.com/Gasss23/Gas
-esito	pass	10s	https://github.com/Gasss23/Gas/actions/runs/38280433461/job/114917287083
-smista	pass	7s	https://github.com/Gasss23/Gas/actions/runs/38280433461/job/114916131828
-unit-suite	pass	1m45s	https://github.com/Gasss23/Gas/actions/runs/38280430985/job/114916121181
-verifica	pass	2m50s	https://github.com/Gasss23/Gas/actions/runs/38280433461/job/114916192130
-handoff-check	pending	9s	https://github.com/Gasss23/Gas/actions/runs/38280430985/job/114916120901
+verifica-bot	fail	0
+esito	pass	10s
+smista	pass	7s
+unit-suite	pass	1m45s
+verifica	pass	2m50s
+handoff-check	pending	9s
 ```
 
-**I due check required dei gate A/B sono verdi**: `unit-suite` pass (1m45s) e `handoff-check` pending→in corso sullo stesso push (era pass sul push precedente). **`verifica-bot` è `fail`**, e questo è atteso e corretto: è il verdetto del bot sul head `93b57de`, cioè **prima** del fix di V-1. Il fix è nel commit `9e273e0` di questo push, quindi il bot va rieseguito sul head nuovo; **il suo esito va letto sulla PR, non qui**, e finché resta `fail` il ruleset `main-lock` tiene la PR non immergeabile — che è il comportamento voluto.
-
-**Dato rilevante**: `unit-suite` passa in CI, che pinna **Python 3.11**. Conferma che T80u5 — l'unico FAIL locale — dipende dal `.venv` a Python 3.14.7 e non dal codice di questa fetta.
+**`verifica-bot` era `fail` su quell'head**, e il ruleset `main-lock` lo richiede, quindi la PR non è immergeabile finché non rigira. Il diff che il bot ha bocciato **non è più quello**: il merge `7c03a6d` chiude V-1 (con il margine di R-308-1, che il fix dell'autore ignoto non aveva) oltre a V-3 e V-4. Il bot va rieseguito sull'head nuovo e la verifica esterna va rilanciata: **il suo esito va letto sulla PR, non qui**.
 
 **Mappatura commit→run di QUESTA sessione:**
 
 - `e606313`, `d238610`, `be36ce8`, `08c9af6`, `775fdb8`, `b892800`, `25ce6e6`, `c16a789` — **nessuna run su questi SHA**: commit intermedi, mai pushati da soli.
 - `58ff4ec` (primo push) — run `38278359321`: `unit-suite` e `handoff-check` **pass**.
-- `93b57de` (secondo push, con i commit di memoria del revisore) — run `38280430985` e `38280433461`: `unit-suite` **pass**, `handoff-check` **pending** alla scrittura, `verifica-bot` **fail** (stato pre-fix di V-1).
-- `c72e0ce`, `2be3a51`, `ac508c5`, `b29493b`, `9e273e0` e il commit di fine-task — **run non ancora disponibile alla scrittura dell'handoff**: sono il push successivo a questa scrittura.
+- `93b57de` (head dell'autore ignoto) — run `38280430985`/`38280433461`: `unit-suite` **pass**, `handoff-check` **pending** alla misura, `verifica-bot` **fail**.
+- `c72e0ce`, `2be3a51`, `ac508c5`, `b29493b`, `9e273e0`, `9e20872`, `7c03a6d` e il commit di fine-task — **run non ancora disponibile alla scrittura dell'handoff**: sono il push che segue questa scrittura.
 
-GitHub Actions crea una run per *push*, non per commit: ogni push genera UNA run che testa SOLO l'albero del commit di testa. I commit elencati come «nessuna run» non sono mai stati testati individualmente, anche se il loro contenuto è incluso nell'albero testato dalla run di testa. La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
+GitHub Actions crea una run per *push*, non per commit: ogni push genera UNA run che testa SOLO l'albero del commit di testa. I commit elencati come «nessuna run» non sono mai stati testati individualmente. La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
 
 ## §7 RISERVE APERTE
 

@@ -112,6 +112,18 @@ Quarto giro (lanciato per diligenza, non perché il gate lo richiedesse): **revi
 
 ---
 
+## MERGE E REVIEW #308
+
+  - **Review #308 (risoluzione del merge): APPROVATO CON RISERVE**, e ha ribaltato un presupposto che avevo adottato **contro me stesso**.
+    - ✅ **R-308-1 (BASSA, chiusa subito)** — **una rotazione PUO' superare `maxBytes`**, quindi il tetto esatto `max(LETTURA_MAX_BYTES, _LOG_MAX_BYTES)` e' bucato e V-1 si riaprirebbe con lo stesso sintomo. Causa nello stdlib: `RotatingFileHandler.shouldRollover` fa `pos = self.stream.tell()` e poi `if pos + len(msg) >= self.maxBytes`, cioe' somma **byte** (la posizione) e **caratteri** (`len(msg)`); con record multibyte la soglia viene scavalcata senza che la rotazione scatti. **Riprodotto da me prima di crederci**: handler a `maxBytes=1000`, 700 byte di record ASCII piu' un record di 200 caratteri accentati (401 byte in UTF-8) → file da **1101 byte**. Gas logga in italiano con accenti e interpola percorsi e repr, quindi la finestra e' reale. **Chiusa** con `_LOG_SFORO_MAX = 1 MiB` accanto a `_LOG_MAX_BYTES` e budget dedicato `max(LETTURA_MAX_BYTES, _LOG_MAX_BYTES + _LOG_SFORO_MAX)`; corretti i **due commenti FALSI** che dicevano «un file di rotazione non la supera mai» (uno in `gas.py` dell'altra sessione, uno nel mio test); test nuovo con una rotazione da **5.400.022 byte**, sopra la soglia, cercabile per nome. Mutazione «tetto esatto senza margine» → **838 PASS, 1 FAIL**: il margine e' portante.
+      ⚠️ **Da registrare su di me**: avevo messo il margine con la motivazione SBAGLIATA (credevo che l'handler ruotasse dopo la scrittura che sfora); il revisore l'aveva accettata **dichiarando di non averla misurata**; poi, vedendo il fix parallelo dell'altra sessione senza margine, ho **tolto il margine** adottando a mia volta un presupposto non misurato («non lo supera mai») e l'ho scritto nei report come correzione di un mio errore. Due volte di fila ho trattato il comportamento dell'handler come deducibile dalla documentazione invece di leggerne il codice. **Il margine era giusto per un motivo che nessuno dei tre aveva verificato.** Lezione: quando un tetto dipende dal comportamento di una libreria, il numero si prende dal CODICE della libreria, non dalla sua documentazione ne' dal ragionamento di chi lo scrive.
+    - ⚠️ **R-308-2 (BASSA, APERTA)** — la memoria del revisore resta con il duplicato **#297** (due review diverse: il tetto di annidamento T80u5 di main e `cerca_testo`) e con un riferimento che non punta piu': la riga `#303` dice «ri-review #302» mentre #302 e' ora la review di un'altra sessione. Il revisore **ha confermato la scelta di non rinumerare una terza volta** e l'ha fatta sua: la PR #195 rivendica #299–#301 e questo ramo usa gia' #301/#302, quindi qualunque numero potrebbe collidere di nuovo. Serve **un passaggio autorevole dell'operatore sul ramo di integrazione**.
+    - ℹ️ **R-308-3 (COSMETICA, scelta dichiarata)** — con l'adozione della base dell'altra sessione si **perde la manopola `GAS_LETTURA_MAX_BYTES_LOG`** e `backupCount=3` torna letterale nell'handler. Il revisore la giudica preferibile e condivido: un valore DERIVATO dalla soglia di rotazione non puo' divergere da essa, e la divergenza era la causa stessa di V-1; una manopola env sul solo lato lettore ricreerebbe il problema. Registrata come **riduzione deliberata di configurabilita'**, non lasciata implicita.
+    - ✅ **R-308-4 (COSMETICA)** chiusa: il test della rotazione asserisce ora la finestra esplicita `LETTURA_MAX_BYTES < taglia < _LOG_MAX_BYTES + _LOG_SFORO_MAX` invece del solo «sopra il budget normale».
+    - ℹ️ Dichiarato dal revisore: **`_troppo_annidato` non e' stato revisionato nel merito** — arriva da main (PR #192), gia' revisionato e mergiato dall'altra sessione; nel diff del commit di merge compare e a prima vista sembra codice nuovo di questa fetta, ma non lo e'. E' cio' che rende verde T80u5.
+
+---
+
 ## TEST
 
 Numeri REALI misurati con il `.venv` del progetto (Python 3.14.7), non stimati:
@@ -119,7 +131,7 @@ Numeri REALI misurati con il `.venv` del progetto (Python 3.14.7), non stimati:
 | | kernel | pytest |
 |---|---|---|
 | main `f6396ba` (baseline, misurata da me in un worktree temporaneo) | **818 PASS, 1 FAIL** | — |
-| questo ramo | **834 PASS, 1 FAIL** | **1031 passed, 1 skipped** |
+| questo ramo | **839 PASS, 0 FAIL** | **1031 passed, 1 skipped** |
 
 L'unico FAIL è **T80u5, PREESISTENTE e fuori scope**: col `.venv` del progetto (Python 3.14.7) un JSON annidato 100k viene parsato invece di sollevare `RecursionError`. È presente identico su main `f6396ba`. La CI pinna Python 3.11 ed è verde. Non l'ho toccato.
 
