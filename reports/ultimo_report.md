@@ -105,7 +105,7 @@ limite 5.000.000 → 200k no) e segue invece **lo stack C del thread** (`threadi
 il comportamento dipende dalla **macchina**, non solo dalla versione di Python: la giustificazione
 del tetto regge sul meccanismo, non sul numero.
 
-Suite invariata dal cambio di commento: kernel **821 PASS, 0 FAIL**.
+Suite invariata dal cambio di commento: kernel **821 PASS, 0 FAIL** (base `af394bc`). Dopo il merge di main con la PR #193 (base **`ceb9d90`**, review #311): kernel **843 PASS / 0 FAIL**, pytest **1032 passed**.
 
 **Riserve ancora aperte** per decisione dell'operatore (solo V-1 prima del merge): **V-2/R-298-3**
 (se la rete `except RecursionError` sparisse, la suite morirebbe senza riga RIEPILOGO: CI rossa,
@@ -148,7 +148,7 @@ eseguibile ancora bit-identico a HEAD.
 
 ## Finding NUOVO fuori scope: il gate di review è inerte nei worktree
 
-**R-gate-worktree-1** (MEDIA, nome condiviso con la sessione sorella — **contarlo una volta sola**).
+**R-gate-worktree-1** (ALTA come in `reports/stato_progetto.md`; fix proposto nella PR #196, aperta), nome condiviso con la sessione sorella — **contarlo una volta sola**).
 `.claude/hooks/review_gate.sh:59` fa `cd "$CLAUDE_PROJECT_DIR"` incondizionato, e quello resta il
 checkout principale: in una sessione che gira in un **worktree** l'hook ispeziona l'indice sbagliato.
 Se l'indice del principale è pulito, `review_gate.sh:133` fa `exit 0` **senza nemmeno leggere il

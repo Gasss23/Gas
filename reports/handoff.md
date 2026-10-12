@@ -14,7 +14,7 @@
    `{"number":195,"url":"https://github.com/Gasss23/Gas/pull/195"}`.
 2. **Merge della PR #195**: finché il verdetto del bot non è `APPROVATO` secco senza finding, per la
    regola di merge autonomo di CLAUDE.md **decide l'operatore**.
-3. **R-gate-worktree-1** (ALTA come in `reports/stato_progetto.md`, §7; ora chiusa dalla PR #196): il gate deterministico di review è inerte nelle sessioni che
+3. **R-gate-worktree-1** (ALTA come in `reports/stato_progetto.md`, §7; fix proposto nella PR #196, APERTA, non in main): il gate deterministico di review è inerte nelle sessioni che
    girano in un worktree. Decidere se diventa una fetta: l'hook è nel perimetro di review.
 4. **`F-ci-una-sola-versione`**: decidere se la CI deve provare più di una versione di Python. Oggi
    pinna solo 3.11, ed è il motivo per cui il FAIL di T80u5 su 3.14 è vissuto invisibile.
@@ -27,7 +27,7 @@
 
 - **Fetta T80u5 — tetto di annidamento deterministico**: `FATTA E GIÀ IN MAIN` — commit `c298d59`,
   entrato con il merge della PR #192 (`af394bc`). Fuori dal diff di questa sessione (la base si è
-  spostata ad `a6fa2fd`), quindi non compare in §2/§3.
+  spostata ad `a6fa2fd`, poi ad `af394bc` e infine a **`ceb9d90`**), quindi non compare in §2/§3.
 - **Correzione di V-1 della verifica esterna** (richiesta esplicita dell'operatore «correggi V-1
   prima del merge»): `FATTA MA NON ANCORA IN MAIN` — commit `3f59b6e`, solo il blocco di commento
   sopra il tetto. Review #299, #300 APPROVATO CON RISERVE; **#301 APPROVATO**. Il merge della PR #192
@@ -45,10 +45,10 @@
  .claude/agents/memoria_revisore.md |  12 +++++
  gas.py                             |  16 +++++--
  reports/diff_sessione.md           |  55 ++++++++++++++---------
- reports/handoff.md                 | 872 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 871 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   9 +++-
  reports/ultimo_report.md           | 405 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------
- 6 files changed, 607 insertions(+), 762 deletions(-)
+ 6 files changed, 606 insertions(+), 762 deletions(-)
 ```
 
 `git -c core.quotePath=false diff --cached --stat=400 ceb9d90` (base dopo il merge di main con la PR #193; V-1 bot #195), con i report già in stage. Il **set di
@@ -319,11 +319,10 @@ sbagliata.
   applicata).
 - `a414edc`: **CI 38280732605 — success**, `unit-suite` e `handoff-check` success; **check
   `verifica-bot` FAILURE** (causa in §7, V-2: bug della regex del bot, non un difetto di questa PR).
-- `a18243e` (merge di `main` nel branch, per togliere BEHIND) e il commit di fine-task di questo
-  giro: **run non ancora disponibili alla scrittura dell'handoff**.
+- `51b57dc`: CI 38281889989 success. `0888948` (dopo il merge di main, `433d614`): CI 38323585645 success.
+- `74a2698`: CI in corso alla scrittura; `verifica-bot` failure con verdetto testuale APPROVATO CON RISERVE (V-1 MEDIA: «chiusa dalla PR #196» falso → corretto in questo commit).
 
-Stato PR #195 al momento della scrittura: `mergeable=MERGEABLE`, `mergeStateStatus=BEHIND` — lo stato
-BEHIND è risolto da `a18243e`, non ancora pushato quando questo blocco è stato scritto.
+Stato PR #195: `mergeable=MERGEABLE`, `mergeStateStatus=BLOCKED` (in attesa del check required `verifica-bot`).
 
 ## §7 RISERVE APERTE
 
