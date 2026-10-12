@@ -11,7 +11,7 @@
 3. **Buchi residui della denylist credenziali**: NON implementati (vincolo del brief: `modules/gate/` è già in main con la PR #188). Verificati uno per uno con `lettura_consentita()`, tutti LEGGIBILI oggi: `token_cache.json` (la regex vuole il punto subito dopo `token`; `token.json` e `tokens.json` sono bloccati), `kubeconfig`, `mywallet.dat`, `.vault-token`, `.dockercfg`, `_netrc`, `clientsecret.json`, `*.gpg`, `*.asc`. Vanno in una fetta loro, di sicurezza.
 4. **Verifica esterna #193: APPROVATO CON RISERVE** (verdetto integrale nel commento `#issuecomment-6128519908` della PR). **V-1 (MEDIA) era un difetto vero ed e' CHIUSA**: la promessa «i log restano cercabili per nome» era falsa per le rotazioni reali (`maxBytes` dell'handler = 5.242.880 > `LETTURA_MAX_BYTES` = 5.000.000), quindi una rotazione veniva saltata e, siccome la cartella la salta per nome, restava irraggiungibile — requisito (a) del brief mancato. Chiusa legando il tetto al `maxBytes` dell'handler con costanti condivise, piu' test su una rotazione REALE da 5.400.025 byte e invariante anti-deriva. V-3 (BASSA, cifre Unicode nella regex) chiusa; V-4 (COSMETICA) chiusa in parte; V-2 (BASSA) era colpa mia di processo (uno SHA orfanato da un `--amend` citato nel §3) ed e' corretta. Dettagli in `reports/stato_progetto.md`.
 5. 🔴 **R-gate-worktree-1 (ALTA, NUOVA, fuori scope): in una sessione in worktree il gate di review deterministico è INERTE.** `review_gate.sh` valuta solo `CLAUDE_PROJECT_DIR` (il checkout principale), non il worktree da cui parte il commit: se l'indice di quel checkout è pulito l'hook esce 0 **senza leggere il marcatore**, quindi un worktree può committare un diff del motore mai revisionato. Misurato: il marcatore scritto nel worktree (`4392d368…`) non è mai stato consultato, l'hook legge quello del checkout principale (`08db3144…`). Il commit `d238610` è passato per indice pulito, non per verifica: a proteggerlo c'è stata la barriera PRIMARIA (revisore invocato, quattro giri). Rovescio: col checkout principale che ha un file del perimetro staged e marcatore stale, l'hook blocca i commit di un'ALTRA sessione, anche di soli `reports/`. Non corretta qui (`.claude/hooks/` è nel perimetro: fetta propria + review). Dettagli e direzione in `reports/stato_progetto.md`.
-6. **COLLISIONE DEI NUMERI DI REVIEW con la PR #192 — da risolvere al merge.** `origin/main` arriva a #296; il branch della PR #192 usa #297/#298; questo usa #297–#300 (verificato da me). Non ho rinumerato: la #192 non è ancora mergiata, e i numeri sono già nei commit pushati, nel corpo della PR e in ~13 identificativi di finding. **La PR #192 è GIÀ MERGIATA** (`af394bc`): `origin/main` contiene #297/#298 (review diverse dalle mie) e la PR #195 porta già #299–#301. Le mie sei righe sono state **rinumerate dal revisore sul proprio file** (`b29493b`), #297→#302 … #302→#307, senza toccare nessun identificativo di finding (gli `R-29x-y` restano come emessi, perché citati nei commit già pushati). **Matrice del merge, misurata lato per lato** (exit code, non output): `origin/main` + head **pushato** (`93b57de`) → **exit 0, pulito** (è ciò che valuta GitHub: PR `MERGEABLE`); `origin/main` + head **locale** (`b29493b`) → **exit 1, 5 conflitti** (memoria del revisore più i quattro report di sessione), perché main è avanzato col merge della #192, che ha portato sia #297/#298 sia i propri report. Quindi il conflitto compare **appena pusho i commit restanti**. Risoluzione: **unione pura in coda** sulla memoria (prima il blocco di main, poi #302–#307), senza ri-generare né riordinare nulla; per i quattro report di sessione valgono i miei, perché per convenzione (CLAUDE.md sez. 3) si riscrivono a ogni sessione e la storia completa resta in git. ❌ Ho sbagliato **due volte** questa previsione prima di misurarla bene: prima «pulito, duplicati silenziosi» (leggevo il blob con i marcatori, perché `merge-tree` stampa l'OID anche quando fallisce, e cercavo «CONFLICT» su un versionatore che stampa «CONFLITTO»), poi «conflitto sempre» senza distinguere head pushato da locale. Dettagli e regola in `reports/stato_progetto.md`.
+6. **COLLISIONE DEI NUMERI DI REVIEW — NON risolta, serve un tuo passaggio.** Stato REALE a HEAD, verificato: nella memoria del revisore **`#297` numera ancora DUE review diverse** (il tetto di annidamento T80u5 che arriva da main e il primo giro di `cerca_testo`), e la riga `#303` cita «ri-review #302» mentre #302 è ora la review di un'altra sessione: il riferimento non risolve. La rinumerazione #297→#302 … #302→#307 **è stata applicata alle mie righe**, ma non elimina il duplicato, perché il numero #297 è usato anche dal blocco arrivato da main. In §0 avevo scritto che la collisione era sistemata: **era falso**, ed è il finding V-3 (BASSA) della verifica esterna al 3º giro. Inoltre `merge-tree` di questo head conferma conflitto su `.claude/agents/memoria_revisore.md` **sia con la PR #195 sia con la #196** (il dossier nominava solo la #195). **Chi mergia per secondo risolve il conflitto in memoria con un'unione pura in coda**, e la numerazione univoca la decidi tu: io ho smesso di rinumerare dopo due giri su un bersaglio in movimento, e il revisore ha confermato la scelta.
 7. **Nota di processo**: la PR #184 è stata mergiata in autonomia con verdetto del bot `APPROVATO CON RISERVE`, quindi **fuori dalla regola di merge autonomo** di CLAUDE.md (merge da soli solo su `APPROVATO` secco senza alcun finding V-x). La voce esistente di `feat/via-binari-run-command` in `reports/stato_progetto.md` registra quel merge come «autorizzato dall'operatore»: le due letture non coincidono, sono state scritte entrambe nel file invece di sovrascrivere il record, e la ricostruzione la decide l'operatore.
 
 ---
@@ -29,14 +29,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  36 ++++++++++++++++++++
- gas.py                             | 159 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
- reports/diff_sessione.md           |  51 ++++++++++++++---------------
- reports/handoff.md                 | 641 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |  95 ++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/ultimo_report.md           | 305 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------
- tests/test_unit_kernel.py          | 276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- 7 files changed, 1188 insertions(+), 375 deletions(-)
+ .claude/agents/memoria_revisore.md |  36 +++++++++++++++++
+ gas.py                             | 159 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ reports/diff_sessione.md           |  51 ++++++++++++------------
+ reports/handoff.md                 | 758 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  95 +++++++++++++++++++++++++++++++++++++++++++--
+ reports/ultimo_report.md           | 305 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
+ tests/test_unit_kernel.py          | 276 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 7 files changed, 1302 insertions(+), 378 deletions(-)
 ```
 
 **Base = `af394bccc7d2`, il merge-base VERO ricalcolato adesso.** Non `f6396ba`: quella era la base di partenza della sessione, e il merge di `origin/main` l'ha spostata. I blocchi di questo dossier calcolati sulla base vecchia erano falsi (V-1 della verifica esterna, 2º giro) — il gate A confronta solo i PATH, non i conteggi, quindi non se ne accorge.
@@ -44,6 +44,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bd3770f docs(fine-task): V-3 chiusa, V-1 (numeri) corretta, base ricalcolata
 b20720a fix(cerca_testo): solo i log del kernel VERI, quelli nella root (V-3 verifica esterna #193)
 49c6027 chore(revisore): memoria review #310 — APPROVATO
 7e4609b docs(fine-task): R-gate-worktree-1 esteso al Stop hook promemoria_end.sh
@@ -75,7 +76,7 @@ e606313 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Sei giri sullo stesso lavoro: dopo ogni giro le riserve sono state corrette e il diff è cambiato, quindi è stato richiesto un verdetto nuovo. I primi cinque APPROVATO CON RISERVE, il sesto (#302, soli test) **APPROVATO** secco, che chiude la fetta. Verdetti INTEGRALI, incollati, in ordine. NB: i numeri dei giri sono quelli della copia della memoria di questo worktree e vengono rinumerati #302–#307 prima del merge (vedi §0): gli identificativi dei finding `R-29x-y` restano invece come emessi, perché citati nei commit già pushati.
+**Nove giri** sullo stesso lavoro: dopo ogni giro le riserve sono state corrette e il diff è cambiato, quindi è stato richiesto un verdetto nuovo. #297–#301 e #308 APPROVATO CON RISERVE; #302, #309 e **#310 APPROVATO** secco. **Il verdetto che copre il codice che si mergia è #310**, non #302: dopo #302 (che era il merge di main) il motore è cambiato ancora tre volte — risoluzione del merge (#308), margine di sforo (#309), solo-root (#310, commit `b20720a`). Che qui mancassero i verdetti #308/#309/#310 era il finding **V-1 (MEDIA)** della verifica esterna al 3º giro: il Gate B passa perché controlla le citazioni dei verdetti PRESENTI, non che coprano l'ultimo diff del motore. Corretto: sono incollati integrali qui sotto. Verdetti INTEGRALI, incollati, in ordine. NB: i numeri dei giri sono quelli della copia della memoria di questo worktree e vengono rinumerati #302–#307 prima del merge (vedi §0): gli identificativi dei finding `R-29x-y` restano invece come emessi, perché citati nei commit già pushati.
 
 ### Giro 1 — review #297 (verdetto RIEMESSO nella forma del gate)
 
@@ -291,7 +292,7 @@ Riga `#301 — 2026-10-12 — APPROVATO CON RISERVE — …` in coda a `.claude/
 
 Commit consentito: sì. Consiglio però di chiudere R-301-1 e R-301-2 **adesso** con un unico ritocco ai soli test (una riga ciascuno) e di rimandarmelo: è un diff di test minuscolo e la review è breve. Se preferisci committare così, vanno tracciate entrambe come riserve aperte in `reports/stato_progetto.md`, con scritto che la riga `gas.py:2147` del fix di V-1 non è coperta e con il numero della mutazione.
 
-### Giro 6 — review #302 (rinumerata #307) — verdetto finale
+### Giro 6 — review #302 (rinumerata #307)
 
 ## VERDETTO: APPROVATO
 
@@ -330,13 +331,126 @@ Riga `#302 — 2026-10-12 — APPROVATO — …` in coda a `.claude/agents/memor
 
 Commit consentito: sì, e per quanto mi riguarda la fetta è chiusa.
 
+### Giro 7 — review #308 (risoluzione del merge)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #308 — **risoluzione di merge**, non una tua modifica: branch `feat/cerca-testo-budget-onesto`, `HEAD` 9e20872 (tuo lato, salvato anche in `backup/mio-locale-9e20872`), `MERGE_HEAD` 93b57de (altra sessione), base 58ff4ec, merge ancora APERTO e in stage. Letti prima CLAUDE.md (sez. 3/4/5/9), `reports/stato_progetto.md` e la mia memoria.
+
+La risoluzione è corretta e non perde nulla di sostanziale: l'ho verificata guardando il diff nelle DUE direzioni, non solo in una. Hai fatto bene a prendere la loro base. Ma **il presupposto nuovo su cui l'hai accettata è a sua volta sbagliato**, e questa volta l'ho misurato io: una rotazione *può* superare `maxBytes`, quindi il loro limite esatto è bucato e il tuo margine serviva (per un motivo diverso da quello che avevi scritto).
+
+### Elementi esaminati
+
+1. `gas.py:2162`-`gas.py:2167` (loro V-1: `budget_tot` e il suo uso come `tetto_file`) — rischio esaminato: la risoluzione ha perso qualcosa di uno dei due lati? Diff nelle due direzioni: **stage vs MERGE_HEAD** contiene esattamente e solo V-3 e V-4 (nient'altro); **stage vs HEAD** mostra che del tuo lato cadono `LETTURA_MAX_BYTES_LOG`, l'env `GAS_LETTURA_MAX_BYTES_LOG` e `_GAS_LOG_BACKUP`, e che arriva da main `_troppo_annidato`. Nessun riferimento morto: grep di quei tre nomi su `gas.py` e `tests/` → zero. **Esito: ok, niente perso per sbaglio.**
+2. `gas.py:1878` (V-3 riapplicato, regex con `[0-9]`) e `gas.py:2202` + `gas.py:2222` (V-4 riapplicato, `resto_prima` e `quanto`) — rischio esaminato: riapplicati a metà sulla loro base? No: `quanto` è integrato col loro `budget_tot` nel messaggio di `gas.py:2223`, e `resto_prima` è l'unica nuova variabile, letta solo lì. Mutazioni: annullando V-4 → 1 FAIL (il test mostra «letto solo in parte» dove deve dire «non letto»); annullando V-3 → 1 FAIL. **Esito: ok, entrambi interi e provati.**
+3. `tests/test_unit_kernel.py:8229`-`tests/test_unit_kernel.py:8239` (la rotazione di prova ridimensionata a 5.238.026 byte, ago in coda) — rischio esaminato (la tua domanda): i miei test mordono sulla LORO implementazione? Sì. Mutazione «togli il budget dedicato al log» → **836 PASS, 2 FAIL**: fallisce il mio test dell'ago in coda («0 righe trovate in 0 file; 1 file oltre il tetto di 5000000 byte della chiamata saltati») **e** il loro. La prova di R-301-1 regge sulla nuova taglia. **Esito: ok.**
+4. `tests/test_unit_kernel.py:8242` (invariante anti-deriva riscritta sulle loro costanti) — rischio esaminato: pinna ancora la cosa giusta? Sì (`_LOG_MAX_BYTES` uguale a 5 MiB e sopra `LETTURA_MAX_BYTES`), ed è ciò che impedisce la deriva silenziosa. **Esito: ok, con la riserva 4.**
+5. `.claude/agents/memoria_revisore.md` (unione) — rischio esaminato: un giudizio perso dietro la parola «duplicato»? No, verificato per TESTO e non per numero: la tua riga #302 scartata è **identica carattere per carattere** alla loro #297 (`grep -xF`), stessa review. Confronto incrociato dei due lati: nessuna altra riga contatore di nessuno dei due lati manca dallo stage, se non quelle presenti sotto un altro numero. **Esito: unione corretta, con la riserva 2.**
+6. `reports/handoff.md` — rischio esaminato: sezioni duplicate o marcatori rimasti. §0-§7 una volta ciascuna, **8 verdetti** nel §4, e **zero marcatori di conflitto** in TUTTI i sette file in stage, non solo in questo. **Esito: ok.**
+
+### Numeri riprodotti da me (venv del progetto)
+- Suite kernel sul risultato del merge: **838 PASS, 0 FAIL** — confermo anche il motivo: il T80u5 che ci siamo trascinati tutta la sessione cade col `_troppo_annidato` che arriva da main. `pytest -q`: **1031 passed, 1 skipped**.
+- Mutazioni: budget dedicato via → 2 FAIL; V-4 via → 1 FAIL; V-3 via → 1 FAIL. Dopo ciascuna ho ripristinato `gas.py` verificando con `diff` che tornasse identico.
+
+### Riserve
+
+1. **R-308-1 (BASSA, ma chiudila ora: è un token) — il limite `max(LETTURA_MAX_BYTES, _LOG_MAX_BYTES)` è esatto solo in CARATTERI, e una rotazione reale può superare `maxBytes`.** Ho letto `shouldRollover` nello stdlib in uso (3.14.7): ruota quando `self.stream.tell() + len(msg) >= self.maxBytes`, cioè confronta una posizione in **byte** con una lunghezza in **caratteri**. Con record multibyte il file scavalca la soglia senza che la rotazione scatti. **Misurato**, non dedotto: handler con `maxBytes=1000`, sette record ASCII fino a 700 byte, poi un record di 200 caratteri accentati (401 byte) → il file arriva a 1101 byte e solo il record successivo fa ruotare, lasciando una rotazione da **1101 byte con maxBytes=1000**. Tradotto sul nostro caso: una `gas_debug.log.N` può pesare 5.242.880 più il surplus byte-caratteri dell'ultimo record, e allora `st_size > tetto_file` la fa saltare di nuovo — **V-1 riaperta**, con lo stesso sintomo. Gas logga in italiano con accenti e interpola percorsi e repr, quindi la finestra non è teorica. Conseguenze: (a) serve un margine — il tuo `+1 MiB` copriva esattamente questo, quindi **non era sbagliato il margine, era sbagliata la motivazione**; (b) il commento di `gas.py:2162` e quello del test a `tests/test_unit_kernel.py:8228` che dicono «un file di rotazione non la supera mai» sono **falsi** e vanno corretti. Nota su di me: in #306 avevo accettato il tuo ragionamento *dichiarando di non averlo misurato*; la misura ora dice che il presupposto era sbagliato in entrambe le direzioni.
+2. **R-308-2 (BASSA) — la memoria resta con un duplicato e un riferimento che punta altrove.** Nello stage `#297` numera **due review diverse** e la mia riga `#303` dice «ri-review #302» mentre `#302` ora è la review di un'altra sessione. **Confermo la tua scelta di non rinumerare una terza volta**: serve un passaggio autorevole dell'operatore sul ramo di integrazione.
+3. **R-308-3 (COSMETICA) — persa la manopola `GAS_LETTURA_MAX_BYTES_LOG`.** La giudico **accettabile e anzi preferibile**: un valore DERIVATO dalla soglia di rotazione non può divergere da essa, e la divergenza è la causa stessa di V-1. Va però scritto nel report come riduzione deliberata di configurabilità.
+4. **R-308-4 (COSMETICA) — il test della rotazione sta 4.854 byte sotto il tetto** e asserisce solo di stare *sopra* `LETTURA_MAX_BYTES`: aggiungere `and _szL < gas._LOG_MAX_BYTES` rende la finestra esplicita.
+
+### Rischio esplicitamente escluso (non verificato)
+- **`_troppo_annidato` non revisionato nel merito**: arriva da main (PR #192); nel diff del commit di merge sembrerà codice nuovo di questa fetta.
+- **Soglia reale della rotazione in produzione non osservata**: misura con handler di prova a `maxBytes=1000`.
+- `python gas.py doctor` **non eseguito**; **VPS non verificato**.
+
+### Memoria aggiornata — richiede un'azione tua
+Riga `#308` scritta in coda a `.claude/agents/memoria_revisore.md`. `commit_memoria_revisore.sh` **non ha potuto committare**, correttamente: con `MERGE_HEAD` aperto git rifiuta il commit parziale. Quindi: `git add .claude/agents/memoria_revisore.md` prima di chiudere il merge.
+
+Commit del merge consentito: sì. Prima però chiuderei R-308-1.
+
+### Giro 8 — review #309 (margine di sforo)
+
+## VERDETTO: APPROVATO
+
+Review #309 — giro breve sul diff staged (merge ancora aperto, `MERGE_HEAD` 93b57de). Il delta rispetto a #308 è esattamente il margine, i due commenti corretti e i test: niente altro si è mosso in `gas.py`.
+
+R-308-1 e R-308-4 sono chiuse bene, e il margine non è «generoso per prudenza»: è **portante e provato**.
+
+### Elementi esaminati
+
+1. `gas.py:43` — `_LOG_SFORO_MAX = 1024 * 1024`. Rischio esaminato (la tua domanda): crea un'altra coppia di numeri da tenere allineati a mano? **No**: grep su `gas.py` → due occorrenze, la definizione e **un solo** uso, a `gas.py:2179`. Il valore resta derivato dalla soglia dell'handler, quindi non c'è nulla che possa divergere: è un margine *sopra* una fonte unica. **Esito: ok.**
+2. `gas.py:2179` — `budget_tot = max(LETTURA_MAX_BYTES, _LOG_MAX_BYTES + _LOG_SFORO_MAX)`. Rischio esaminato: il margine è portante o decorativo? Mutazione «tetto esatto senza margine» → **838 PASS, 1 FAIL**, fallisce il test dello sforo («5400022 byte -> 0 righe trovate in 0 file»). Inoltre il margine è protetto **da un test vero e non solo dall'invariante `> 0`**: il file di prova pesa 5.400.022 byte, quindi qualunque riduzione sotto ~157 KB fa fallire lo stesso test. Nessun guardrail indebolito: la ricerca su CARTELLA resta a `LETTURA_MAX_BYTES`, il tetto per file e quello di tempo sono intatti, e leggere 5,4 MB costa ~0,09 s contro i 5 s del tetto. **Esito: ok.**
+3. `gas.py:43`-`gas.py:47` e il commento di `gas.py:2166`-`gas.py:2176` — rischio esaminato: i due commenti corretti dicono il vero? **Sì.** Spiegano che `shouldRollover` somma `tell()` in byte e `len(msg)` in caratteri, e citano la misura (1101 byte con `maxBytes=1000`) che ho rifatto io. Una precisazione: il limite esatto dello sforo è il **surplus** byte-caratteri dell'ultimo record, mentre i commenti dicono «lo sforo in byte dell'ultimo record» — è una sovrastima, quindi conservativa.
+4. `tests/test_unit_kernel.py:8260` — il test nuovo dello sforo. Rischio esaminato: dipende dall'ordine di `scandir`? **No**, per costruzione: il file è indicato per nome, quindi `_cerca_testo` prende il ramo `iter([path])` e `_visita_cartella` non viene mai chiamata. **Esito: ok.**
+5. `tests/test_unit_kernel.py:8238` e `tests/test_unit_kernel.py:8244` — finestra esplicita della taglia (R-308-4 chiusa) e invariante estesa con `_LOG_SFORO_MAX > 0`. Verificato: **dopo** la riga 8255 non c'è nessuna ricerca su CARTELLA, quindi il nuovo `gas_debug.log.3` non altera i «N log del kernel non cercati» asseriti prima. **Esito: ok.**
+
+### Numeri riprodotti da me
+- Suite kernel: **839 PASS, 0 FAIL**. `pytest -q`: **1031 passed, 1 skipped**.
+- Mutazione «tetto esatto» → 838 PASS, 1 FAIL. Dopo la mutazione ho ripristinato `gas.py` verificando con `diff` che tornasse identico.
+
+### Sulla tua nota su di te
+La registro perché è la cosa più utile di questo giro: tre agenti di fila hanno trattato il comportamento di `RotatingFileHandler` come deducibile, e il numero giusto è uscito solo leggendone il codice. Nota che la prima volta il margine era *giusto con la motivazione sbagliata*: è la situazione più pericolosa, perché una motivazione sbagliata invita il prossimo a rimuovere la cosa giusta — ed è esattamente quello che è successo.
+
+### Riserve: nessuna nuova. Restano aperte R-308-2, R-308-3, R-297-3, R-301-3.
+
+### Rischio esplicitamente escluso (non verificato)
+- **`_troppo_annidato`** arriva da main e nel diff sembrerà codice nuovo di questa fetta.
+- **Sforo su record reali non osservato**; **record di log più grandi di 1 MiB** non cercati; `doctor` non eseguito; **VPS non verificato**.
+
+### Memoria — serve di nuovo un `git add` tuo
+Riga `#309` scritta in coda alla memoria; `commit_memoria_revisore.sh` non ha potuto committare per il commit parziale vietato con `MERGE_HEAD` presente.
+
+Via libera a chiudere il merge e a pushare subito. Dopo il push, rilancia la verifica esterna sull'head nuovo.
+
+### Giro 9 — review #310 (solo i log nella root) — verdetto finale sul codice
+
+## VERDETTO: APPROVATO
+
+Review #310 — ultimo giro su `feat/cerca-testo-budget-onesto` (merge chiuso in 7c03a6d, diff staged = solo `gas.py` e `tests/test_unit_kernel.py`). Il delta rispetto a #309 è esattamente l'helper nuovo e i due call site.
+
+**Hai ragione tu e il mio giudizio di #306 era sbagliato.** Lo scrivo per primo perché è il punto: l'invariante che difendevo — «l'insieme dei file trattati come log deve essere lo STESSO nei due rami, altrimenti torna l'asimmetria di V-1» — è giusta, e il tuo helper la rispetta. Ma l'insieme che avevo scelto era quello sbagliato: «chi si chiama come il log, a qualunque profondità» misattribuisce al kernel i file dell'utente, ed è un difetto vero. Il `RotatingFileHandler` scrive nella CWD e tutto il progetto assume già CWD == root (il `doctor` guarda `root / "gas_debug.log"`, `gas.py:3793`), quindi «genitore == root» è l'insieme che la realtà definisce. Avevo confuso l'invariante con l'insieme che avevo sotto gli occhi.
+
+### Elementi esaminati
+
+1. `gas.py:1934` — `_e_log_kernel(self, path) -> bool`: nome da `_LOG_KERNEL_RE` **e** `path.parent.resolve(strict=False) == self.root.resolve(strict=False)`. Rischio esaminato: l'helper è usato in tutti i posti dove prima c'era il match sul nome? Sì: grep di `_LOG_KERNEL_RE` → **solo** la definizione a `gas.py:1886` e l'uso dentro l'helper a `gas.py:1943`; i due rami chiamano l'helper a `gas.py:2194` (per nome) e `gas.py:2218` (su cartella). Una regola, un posto. **Esito: ok.**
+2. `gas.py:1943`-`gas.py:1948` — il `resolve()` sul genitore. Il `path` arriva sempre da `_risolvi_lettura`, che lo risolve, quindi il `resolve()` sul genitore è un no-op difensivo; sul lato root normalizza anche il caso in cui la root sia raggiunta via symlink. Provato con una sonda a 6 casi: (a) log vero nella root per nome → letto intero; (b) omonimo in sottocartella per nome → solo budget normale, saltato e **NOMINATO**; (c) ricerca dalla root → «1 log del kernel non cercati» per quello vero e l'omonimo nominato fra i «file oltre il tetto per file», cioè **il tetto per file fa da rete e il budget non si prosciuga in silenzio**; (d) ricerca nella sottocartella → idem; (e) symlink nella root che punta all'omonimo in sotto → **non** trattato da log; (f) symlink in sotto che punta al log vero → trattato da log. Governa sempre il percorso RISOLTO. **Esito: ok.**
+3. `gas.py:1947` — `except OSError: return False`. **È il verso giusto, confermo**: in caso di dubbio il file non è un log, quindi viene cercato (e se grande viene saltato e nominato dal tetto per file); il contrario userebbe l'errore per etichettare come «kernel» un file dell'utente. Il prezzo è minuscolo e dichiarabile: nel ramo per-nome un errore farebbe perdere il tetto dedicato a una rotazione vera; con `strict=False` un `OSError` lì è praticamente irraggiungibile. §9 rispettato.
+4. `tests/test_unit_kernel.py:8295` — il test nuovo asserisce sia che il file **si trova** sia che «log del kernel» **non compare**, cioè sia la ricerca sia la non-misattribuzione. Deterministico. Mutazione `return True` (il comportamento che avevo approvato io) → **839 PASS, 1 FAIL**. **Esito: ok.**
+
+### Numeri riprodotti da me
+- Suite kernel sul diff staged: **840 PASS, 0 FAIL**. Mutazione dell'helper → 839/1.
+- **La tua correzione di V-1 sulla base l'ho verificata di persona**: `git merge-base HEAD origin/main` → **af394bc**, e la suite in un worktree temporaneo su af394bc dà **821 PASS, 0 FAIL**.
+
+### Da correggere nei report prima del push
+1. **I casi T84n sono 19, non 18**: il numero è andato stale di nuovo *dentro lo stesso giro*. I conteggi dichiarati si ricalcolano **dopo** l'ultima modifica.
+2. **Un worktree temporaneo è ancora registrato** (`scratchpad/base2` su af394bc): rimuovilo.
+
+### Le tue tre riserve, con la mia opinione
+- **V-2**: l'osservazione è corretta, lo sforo non ha tetto teorico. Oggi il margine è **portante** e sfondarlo richiede un record multibyte da oltre 1 MiB, che sarebbe un bug suo. Per un limite *dimostrato* servirebbe capare la lunghezza del record a monte. Priorità bassa.
+- **V-4**: d'accordo, ed è appena diventata più visibile: nella mia sonda l'omonimo grande in sottocartella finisce esattamente in quel messaggio. Il fix onesto è una riga di testo. In cima alla prossima fetta.
+- **V-5**: d'accordo a tenerla aperta. Sui due test quasi uguali: **non unificarli a scatola chiusa** — provano cose diverse; se li unisci, unisci le *fixture*, non le asserzioni.
+
+### Rischio esplicitamente escluso (non verificato)
+- **Residuo dichiarato**: se Gas venisse avviato da una sottocartella, il log vero finirebbe fuori dalla root e tornerebbe «file dell'utente». Mitigato dal tetto per file che lo nomina. La chiusura vera sarebbe derivare la cartella da `handler.baseFilename`. **Non provato avviando Gas da una sottocartella.**
+- **`_troppo_annidato`** non revisionato nel merito; **sforo su record reali** non osservato; `doctor` non eseguito; **VPS non verificato**; `pytest` non rieseguito in questo giro.
+
+### Memoria aggiornata
+Riga `#310` in coda alla memoria. Commit: `49c6027 chore(revisore): memoria review #310`.
+
+Puoi committare e pushare. Dopo il push rilancia la verifica esterna sull'head nuovo, e correggi i due numeri dei report prima di generarli, non dopo.
+
 ### Base dell'autorizzazione al commit, e giro 4
 
 Il commit di questo diff è autorizzato da **#299** («Commit consentito: sì»), applicate le correzioni che il verdetto stesso prescriveva o permetteva: R-299-3 (solo `reports/`, fuori perimetro), la riga di commento di R-299-2 più il test che mancava sul ramo 3, e l'opzionale R-299-1. Il diff staged differisce da quello di #299 **solo** per quelle correzioni.
 
 Un **quarto giro** è stato lanciato per diligenza (non perché il gate lo richiedesse) sul diff finale. Il suo verdetto, quando arriva, va riportato all'operatore; se solleva qualcosa di sostanziale, la correzione comporta un nuovo commit e quindi la riesecuzione INTEGRALE di `/fine-task` (gate post-fine-task). Riserva nota e già dichiarata, misurata da me e NON coperta da test: **R-299-1** — la mutazione che rimette il confronto fra testi SOPRAVVIVE (830 PASS / 1 FAIL invariati), perché il solo caso in cui i due comportamenti differiscono richiede un tempo che scada a METÀ lavoro e un orologio nella suite la renderebbe instabile; la prova resta quella a mano (41 file, `LETTURA_MAX_SECONDI=0.03`).
 
-### Giro 5 — review #301 (dopo il bot #193: V-1 MEDIA rotazioni del log)
+### Verdetti del revisore dell'ALTRO autore, arrivati col merge — suoi #301 e #302
+
+I due verdetti che seguono **non sono miei**: sono del revisore della sessione che ha pushato su questo branch da fuori (vedi §0), e sono entrati nel dossier con il merge `7c03a6d`. Li lascio integrali perché coprono il suo fix di V-1, che è la base che ho adottato. I numeri #301/#302 sono quelli della SUA copia della memoria e **collidono** coi miei omonimi: i miei stanno ai Giri 5 e 6 qui sopra, rinumerati #306 e #307.
+
+#### Suo giro A — sua review #301 (dopo il bot #193: V-1 MEDIA rotazioni del log)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -361,7 +475,7 @@ Riserve da tracciare in `reports/stato_progetto.md`: R-301-1 (BASSA), R-301-2 (C
 
 Memoria aggiornata (riga #301 + una lezione su `max(tetto_env, costante)`) e committata da sola con lo script: commit `1032816`. Il diff staged del motore non è stato toccato.
 
-### Giro 6 — review #302 (merge di main con la PR #192 nel ramo)
+#### Suo giro B — sua review #302 (merge di main con la PR #192 nel ramo)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -394,12 +508,12 @@ Commit del merge consentito: sì. Le due riserve sono solo cosmetiche, da correg
 Suite kernel (`python tests/test_unit_kernel.py`, girata come script: `tests/conftest.py` la esclude dalla collection di pytest, come fa la CI). **Base = merge-base VERO della sessione, `af394bc`** (non `f6396ba`: il merge di main l'ha spostato — vedi V-1 nel §0):
 
 - base `af394bc`, misurata in un worktree temporaneo: **821 PASS, 0 FAIL**
-- HEAD: **839 PASS, 0 FAIL**
+- HEAD: **840 PASS, 0 FAIL**
 
 Blocco RIEPILOGO reale di HEAD:
 
 ```
-=== RIEPILOGO: 839 PASS, 0 FAIL ===
+=== RIEPILOGO: 840 PASS, 0 FAIL ===
 ```
 
 Blocco RIEPILOGO reale della base `af394bc`:
@@ -410,7 +524,7 @@ Blocco RIEPILOGO reale della base `af394bc`:
 
 **Nessun FAIL fuori scope da dichiarare**: T80u5, che ho trascinato per tutta la sessione come «preesistente», non esiste piu' alla base reale perche' la PR #192 lo ha reso portabile. Il numero 818/1 che compare nella storia di questo dossier e' quello di `f6396ba`, la base di PARTENZA della sessione, non quella di integrazione.
 
-pytest: **1031 passed, 1 skipped**. Casi T84n: **18** (contati con `grep -c 'check("T84n'`).
+pytest: **1031 passed, 1 skipped**. Casi T84n: **19** (contati con `grep -c 'check("T84n'` DOPO l'ultimo commit del motore — V-2 della verifica al 3º giro: due volte avevo dichiarato un numero misurato PRIMA dell'ultima modifica).
 
 Mutazioni eseguite e ripristinate, per provare che i test mordono: bug originale ripristinato → 6 FAIL nuovi; guard «vince il primo tetto» → 3; flag `enum_fermata` → 3; metà del fix di V-1 (`budget` non alzato) → 2; distinzione «non letto» → 1; regex `[0-9]` → 1; **margine `_LOG_SFORO_MAX` azzerato → 1** (il test della rotazione che sfora la soglia). Una sola mutazione e' SOPRAVVISSUTA e l'ho dichiarata: `enum_prima` → confronto fra testi (R-299-1).
 
