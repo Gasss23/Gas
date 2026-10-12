@@ -8170,6 +8170,24 @@ try:
           "chiamata», non «byte per file»",
           "oltre il tetto di 10 byte della chiamata saltati (molti/a.txt)" in _oL8, _oL8[:200])
 
+    # V-1 bot #193: una rotazione di dimensione REALE (oltre i 5.000.000 byte del budget
+    # della chiamata, fino ai 5 MiB di rotazione) indicata per nome resta cercabile.
+    with (_rL / "gas_debug.log.1").open("w", encoding="utf-8") as _fR:
+        while (_rL / "gas_debug.log.1").stat().st_size < 5_100_000:
+            _fR.write("INFO riga di log innocua, nulla di interessante qui\n" * 2000)
+            _fR.flush()
+        _fR.write("alfaR in fondo alla rotazione\n")
+    _oR = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaR", "relative_path": "gas_debug.log.1"}')
+    (_rL / "gas_debug.log.1").write_text("alfaZ\n" * 10, encoding="utf-8")   # un file grande NON log resta capato
+    (_rL / "grande.txt").write_bytes(b"x" * 5_100_000)
+    _oR2 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaR", "relative_path": "grande.txt"}')
+    check("T84n V-1 bot #193: una rotazione da 5,1 MB indicata per nome e' cercata fino in fondo; "
+          "un file normale oltre il budget resta saltato",
+          "gas_debug.log.1:" in _oR and "alfaR in fondo alla rotazione" in _oR
+          and "oltre il tetto" not in _oR
+          and "oltre il tetto di 5000000 byte della chiamata saltati (grande.txt)" in _oR2,
+          (_oR[:200] + " || " + _oR2[:200]))
+
     # T84m — schema e prompt dichiarano i tool nuovi
     _nomi84 = [t["function"]["name"] for t in _k84.tools_schema]
     check("T84m tools_schema contiene i 5 tool (run_command presente solo con la lista del recinto dei test)",

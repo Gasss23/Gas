@@ -35,11 +35,12 @@ GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
 # (es. gas.snapshot) scrivono righe informative nella scatola nera.
 _console_handler = logging.StreamHandler()
 _console_handler.setLevel(logging.WARNING)
+_LOG_MAX_BYTES = 5 * 1024 * 1024  # dimensione di rotazione di gas_debug.log (cerca_testo la usa)
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        RotatingFileHandler("gas_debug.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"),
+        RotatingFileHandler("gas_debug.log", maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8"),
         _console_handler,
     ],
 )
@@ -1962,7 +1963,7 @@ class GasKernel:
 
     @classmethod
     def _ferma_enum(cls, stato: Dict[str, Any], motivo: str) -> None:
-        """La visita si fermata per un tetto suo: si marca la FONTE (`enum_fermata`) e se
+        """La visita si è fermata per un tetto suo: si marca la FONTE (`enum_fermata`) e se
         e' arrivata PRIMA (`enum_prima`). R-298-1/R-299-1: registrare l'evento invece di
         dedurlo dal TESTO del motivo, perche' due tetti con la stessa etichetta (il
         TEMPO, che le due funzioni formattano identico e la cui scadenza e' condivisa)
@@ -2112,7 +2113,13 @@ class GasKernel:
             return "Operazione negata: non è un file normale né una cartella."
         else:
             return "Operazione negata: il percorso non esiste."
-        budget = [self.LETTURA_MAX_BYTES]
+        # V-1 bot #193: un log del kernel INDICATO per nome (anche una rotazione) arriva
+        # fino a _LOG_MAX_BYTES (5 MiB) > LETTURA_MAX_BYTES (5 MB): senza questo tetto
+        # dedicato la promessa «indicane uno in relative_path» non varrebbe per 3 log su 4.
+        budget_tot = self.LETTURA_MAX_BYTES
+        if not su_cartella and self._LOG_KERNEL_RE.fullmatch(path.name):
+            budget_tot = max(self.LETTURA_MAX_BYTES, _LOG_MAX_BYTES)
+        budget = [budget_tot]
         trovati: List[str] = []
         letti = saltati = grandi = log_saltati = non_letti = 0
         nomi_grandi: List[str] = []
@@ -2123,7 +2130,7 @@ class GasKernel:
         # ricerca interrotta senza dirlo). Su un file INDICATO per nome non si stringe
         # nulla: resta il solo budget della chiamata, come prima.
         tetto_file = (min(self.LETTURA_MAX_BYTES_PER_FILE, self.LETTURA_MAX_BYTES)
-                      if su_cartella else self.LETTURA_MAX_BYTES)
+                      if su_cartella else budget_tot)
         scadenza = stato["inizio"] + self.LETTURA_MAX_SECONDI
         for f in file:
             if stato["tetto"]:
@@ -2164,7 +2171,7 @@ class GasKernel:
                 # "budget di byte esaurito" NON è "file troppo grande": messaggi distinti.
                 # Qui il budget COMPLESSIVO della chiamata è finito e questo file è stato
                 # letto solo in parte; i file rimanenti li conta `non_letti`.
-                self._segna_tetto(stato, f"byte letti ({self.LETTURA_MAX_BYTES}, budget "
+                self._segna_tetto(stato, f"byte letti ({budget_tot}, budget "
                                          f"complessivo della chiamata, GAS_LETTURA_MAX_BYTES): "
                                          f"{rel} letto solo in parte")
             except OSError:
