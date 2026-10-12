@@ -6,8 +6,9 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #191 (https://github.com/Gasss23/Gas/pull/191), secondo la regola di merge di CLAUDE.md (verdetto testuale del bot + CI verde).
-2. Cervello forte, Fette 2–4: da discutere con l'operatore prima di qualunque codice.
+1. Merge della PR #191 (https://github.com/Gasss23/Gas/pull/191): verdetti APPROVATO CON RISERVE con sole BASSE/COSMETICHE → per la regola di CLAUDE.md decide l'operatore.
+2. Check `verifica-bot` in failure (run sullo SHA e9d1058) con verdetto testuale APPROVATO CON RISERVE senza ALTA/MEDIA: probabile falso positivo di `scripts/bot_esito.py` (macchina del bot: decide l'operatore).
+3. Cervello forte, Fette 2–4: da discutere con l'operatore prima di qualunque codice.
 
 NB: `gh` nel container non è autenticato (GH_TOKEN rifiutato); numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request` (`{"url":"https://github.com/Gasss23/Gas/pull/191"}`).
 
@@ -16,7 +17,8 @@ NB: `gh` nel container non è autenticato (GH_TOKEN rifiutato); numero e URL del
 ## §1 SCOPE & ESITO FETTE
 
 - **Merge PR #185**: `SALTATA — già mergiata dall'operatore il 2026-10-11 (20:56)`.
-- **Fetta 1 — budget ricontrollato prima di ogni chiamata**: `FATTA` — `_budget_superato()` a inizio turno, prima di ogni `create` del ciclo agentico e prima di ogni rung di `rifletti()`. Test T88a–d.
+- **Fetta 1 — budget ricontrollato prima di ogni chiamata**: `FATTA` — `_budget_superato()` a inizio turno, prima di ogni `create` del ciclo agentico (anche il retry del Gemini 400) e prima di ogni rung di `rifletti()`; `turno_fine` con « ; motivo=budget». Test T88a–g, T88c2.
+- **Fix dai verificatori della PR #191** (bot V-1/V-2, revisore R-294-1/R-294-2): `FATTA`.
 - **Fette 2–4 cervello forte**: `DEFERITA — l'operatore vuole discuterle prima`.
 
 ---
@@ -24,20 +26,24 @@ NB: `gh` nel container non è autenticato (GH_TOKEN rifiutato); numero e URL del
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- gas.py                             | 58 ++++++++++++++++++++++++++++++++++++++++++----------------
- reports/diff_sessione.md           |  8 ++++++--
- reports/handoff.md                 | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
- reports/roadmap.md                 |  2 +-
- reports/stato_progetto.md          | 11 ++++++++---
- reports/ultimo_report.md           | 14 ++++++++++----
- tests/test_unit_kernel.py          | 86 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 8 files changed, 222 insertions(+), 43 deletions(-)
+ .claude/agents/memoria_revisore.md |   4 ++++
+ gas.py                             |  70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
+ reports/diff_sessione.md           |   8 ++++++--
+ reports/handoff.md                 | 157 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ reports/roadmap.md                 |   2 +-
+ reports/stato_progetto.md          |  15 ++++++++++++---
+ reports/ultimo_report.md           |  17 +++++++++++++----
+ tests/test_unit_kernel.py          | 125 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 355 insertions(+), 43 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bfe0531 fix(budget): retry Gemini 400 sotto budget e motivo=budget nel diario (bot #191 V-1/V-2)
+617ccf7 chore(revisore): memoria review #295 — APPROVATO CON RISERVE
+d5be7de chore(revisore): memoria review #294 — APPROVATO CON RISERVE
+e9d1058 docs(fine-task): report, handoff, stato e roadmap — FETTA 1 budget (PR #191)
 8a50aae feat(budget): ricontrollo del budget prima di ogni chiamata (FETTA 1 cervello forte, chiude F2)
 2bf657e chore(revisore): memoria review #293 — APPROVATO CON RISERVE
 ```
@@ -82,30 +88,92 @@ Ho aggiunto la riga #293 e una lezione nuova in /home/user/Gas/.claude/agents/me
 
 Nota dell'agente: R-293-3 corretta prima del commit (commento «≥ 1 $»); il marcatore di review è stato rigenerato sul diff con la correzione.
 
+Verdetto integrale del revisore per il commit `bfe0531` (review #294, sul primo diff dei fix del bot), incollato:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho fatto le tre letture obbligatorie: CLAUDE.md (sez. 5), reports/stato_progetto.md (letto con Grep su budget/FETTA 1) e la mia memoria (ultima review #293). Il diff staged tocca 2 file, +45 righe. La suite kernel l'ho rieseguita io: **818 PASS / 0 FAIL**. T88e, T88c2 e T88f passano.
+
+Elementi del diff esaminati:
+- `gas.py:3403` — prima del retry singolo del Gemini 400 adesso si chiama `_budget_superato()`. Se il budget è superato, si scrive un warning nel log e si rilancia l'eccezione originale. Rischi esaminati:
+  - Il 400 rilanciato poteva sfuggire al ciclo: no, finisce nello stesso `except` di provider di oggi (§9 rispettato).
+  - Il rung successivo poteva partire lo stesso: no, il controllo prima della create dell'iterazione 0 (`gas.py:3377`) ferma il turno con l'errore dichiarato.
+  - Il percorso senza budget poteva cambiare: no, `_budget_superato` restituisce None senza leggere il log, quindi è invariato.
+  - Esito: ok.
+- `gas.py:3290` — `_chiudi_turno` aggiunge « ; motivo=budget» quando `_turno_budget` è vero. Rischi esaminati:
+  - La closure legge il valore al momento della chiamata, nel `finally`, e non serve `nonlocal` perché la variabile si legge soltanto: ok.
+  - Il flag viene alzato su tutti e due gli stop (`gas.py:3330` inizio turno, `gas.py:3379` metà turno), sempre prima del `return`: ok.
+  - Nessuno legge `turno_fine` scomponendolo: ho cercato con grep `classe=`, `tentati=` e `split(" ; ")` in gas.py, modules e scripts, zero risultati. Il suffisso in coda non rompe niente: ok.
+- `gas.py:3273` — il flag è inizializzato a False insieme agli altri contatori del turno, prima della definizione della closure — ok.
+- `tests/test_unit_kernel.py:8255` — T88f usa la sequenza None (inizio turno), None (iterazione 0), superato (retry). Se tolgo il controllo sul retry, la sequenza produrrebbe 2 create e il test cadrebbe sulla condizione `len(chiamate)==1`, quindi il test morde. Verifica anche un solo evento di errore, cioè nessun doppio messaggio — ok.
+- `tests/test_unit_kernel.py:8219` e `tests/test_unit_kernel.py:8231` — T88e e T88c2 sono una coppia prova/controprova. Un flag sempre vero farebbe cadere T88c2, un flag mai alzato farebbe cadere T88e — ok.
+
+Finding:
+1. **R-294-1 (BASSA)** — Il retry saltato (`gas.py:3403`) ferma il turno con lo stop dichiarato solo se dopo c'è un rung che arriva al ciclo. Se il rung Gemini è l'ultimo che parte (gli altri sono saltati per chiave mancante o per la classificazione), il turno chiude con «Pipeline esausta» e il motivo «400». `_turno_budget` resta False, quindi niente motivo=budget né nel diario né nel messaggio. Il caso è raro e non rompe nulla, ma la diagnosi esce imprecisa. Come rimedio basterebbe alzare `_turno_budget = True` anche nel ramo del retry saltato. Senza test.
+2. **R-294-2 (COSMETICA)** — `tests/test_unit_kernel.py:8252`: T88f rimette a posto `gas.OpenAI = _Client88` fuori da un try/finally. Se `run_turn` lanciasse un'eccezione, i test successivi girerebbero col client finto che fa sempre 400.
+
+Rischio escluso: non ho verificato il comportamento con un vero 400 di Gemini e un budget reale sul log JSONL. Il ramo l'ho provato solo col doppio finto e l'override di `_budget_superato` (T88f): non è riproducibile in dev senza chiavi e senza spesa.
+
+Memoria: ho aggiunto la riga #294 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit d5be7de). Nessuna lezione nuova oltre ai finding.
+
+Riserve da tracciare in reports/stato_progetto.md: R-294-1 e R-294-2.
+
+Verdetto integrale del revisore per il commit `bfe0531` (review #295, ri-review con R-294-1/R-294-2 corrette: è il diff effettivamente committato), incollato:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #295: ri-review della PR #191 sul diff staged (gas.py +12, tests/test_unit_kernel.py +39). Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md che riguarda la PR e la mia memoria (.claude/agents/memoria_revisore.md, fino alla #294).
+
+**Elementi del diff esaminati**
+1. `gas.py:3404` — nel retry del Gemini 400 saltato per budget, `_turno_budget = True` viene messo prima del `raise`. Rischio esaminato: il flag potrebbe non arrivare alla chiusura del turno, cioè al diario, perché viene assegnato dentro l'`except` di un generatore. Esito **ok**: l'assegnazione sta nel corpo di `run_turn` (`gas.py:3263`), non in una funzione annidata. Quindi `_chiudi_turno` (`gas.py:3275`) la legge per closure senza bisogno di `nonlocal`. Il budget non torna indietro durante il turno, quindi il flag non può essere falso. Se Gemini è l'ultimo rung, il turno chiude con «Pipeline esausta» e `motivo=budget`: R-294-1 è chiusa per lettura del codice.
+2. `gas.py:3290` — aggiunge « ; motivo=budget» a `turno_fine` solo se il flag è vero. Rischio esaminato: falsi positivi su turni senza stop per budget. Esito **ok**: T88c2 lo prova (turno_fine senza motivo, riprodotto).
+3. `gas.py:3330` e `gas.py:3379` — il flag viene alzato anche negli altri due punti di stop (inizio turno e metà turno), prima di `yield`/`return`. Esito **ok**: T88e passa e mostra `esito=ko … ; motivo=budget`.
+4. `tests/test_unit_kernel.py:8256` — il ripristino di `gas.OpenAI = _Client88` è ora nel `finally`. Rischio esaminato: un'eccezione dentro `run_turn` lascerebbe il client finto attivo e contaminerebbe i test successivi. Esito **ok**: R-294-2 è chiusa.
+5. `tests/test_unit_kernel.py:8263` — T88g controlla che `turno_fine` finisca con `motivo=budget` dopo il retry saltato. Esito **riserva** (vedi R-295-1): nello scenario il rung successivo (gemini-flash) alza comunque il flag dalla riga 3379, quindi T88g resterebbe verde anche senza la riga 3404. Copre il percorso dall'inizio alla fine, ma non morde il fix specifico. L'autore lo ha dichiarato onestamente.
+
+**Riserve**
+- **R-295-1 (BASSA)**: nessun test con Gemini ultimo rung che riesce a partire, cioè con gli altri rung senza chiave. È l'unico scenario in cui la riga `gas.py:3404` fa la differenza. Da tracciare in stato_progetto.md.
+
+**Verifiche eseguite**
+- Kernel riprodotto: **819 PASS / 0 FAIL**. T88a, T88b, T88c, T88c2, T88d, T88e, T88f e T88g tutti PASS.
+- Wall of Shame: nessuno slicing della storia e nessuna simulazione di output dei tool nel diff.
+- Guardrail: cap di 10 iterazioni e `_get_window` non toccati. Fail-safe §9 rispettato: il `raise` resta dentro il try del provider, quindi si passa al rung successivo.
+
+**Rischio escluso**: non ho fatto la mutation (togliere la riga 3404 e rilanciare la suite) né provato davvero lo scenario «Gemini ultimo rung». Il comportamento del caso R-294-1 è verificato per lettura del codice, non eseguito. Comportamento su VPS e con provider reali non verificato: non riproducibile in dev.
+
+**Memoria**: aggiunta la riga #295 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con 617ccf7 tramite scripts/commit_memoria_revisore.sh. Il diff staged del motore non è stato toccato. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 811 → 815 PASS (+4: T88a–d), 0 FAIL. pytest: `1032 passed in 122.09s (0:02:02)`.
+Kernel (locale) 811 → 819 PASS (+8: T88a–g, T88c2), 0 FAIL. Base 811 riverificata in una copia di lavoro al commit 89a51f3. In CI i numeri assoluti sono +2 (main 89a51f3: 813; e9d1058: 817), stesso delta. pytest locale: `1032 passed in 122.09s (0:02:02)` (eseguito prima dei fix del bot; dopo i fix rieseguita solo la suite kernel).
 
 ```
-=== RIEPILOGO: 815 PASS, 0 FAIL ===
+=== RIEPILOGO: 819 PASS, 0 FAIL ===
 ```
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container: stato letto con lo strumento GitHub MCP (`actions_list`, branch feat/merge-automatico-z1xjx2):
+`gh` non autenticato nel container: stato letto con lo strumento GitHub MCP (`actions_list`) e dai verdetti dei verificatori:
 
 ```
-CI           run 886  push               8a50aae  in_progress
-verifica-bot run 203  pull_request_target 8a50aae  completed/skipped (manca l'etichetta verifica)
+CI           run 886  push               8a50aae  completed (handoff-check failure: commit intermedio prima del fine-task)
+verifica-bot run 203  pull_request_target 8a50aae  completed/skipped (etichetta verifica non ancora messa)
+CI           run 38244165640  push        e9d1058  completed/success (unit-suite ✓ kernel 817/0, handoff-check ✓)
+verifica-bot check 114794946156          e9d1058  completed/failure (verdetto testuale APPROVATO CON RISERVE, vedi §0.2)
 CI           run 885  push               89a51f3  completed/success
 ```
 
 Mappatura commit→run:
-- `8a50aae` (feat budget): CI run 886, in corso alla scrittura dell'handoff.
-- `2bf657e` (memoria revisore): nessuna run su questo SHA (pushato insieme a 8a50aae; il suo albero è incluso in quello testato da run 886).
+- `8a50aae`: CI run 886 (handoff-check rosso, atteso prima del fine-task).
+- `2bf657e`: nessuna run su questo SHA (pushato insieme a 8a50aae).
+- `e9d1058`: CI run 38244165640, success.
+- `d5be7de`, `617ccf7`, `bfe0531`: run non ancora disponibile alla scrittura dell'handoff (non ancora pushati).
 - commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-293-1 (BASSA): rilettura del log costi a ogni iterazione con budget impostato.
-- R-293-2 (BASSA, scelta dichiarata): lo stop a metà turno ferma anche i rung gratuiti.
+- R-293-1 (BASSA): rilettura del log costi a ogni chiamata con budget impostato (cache prima della Fetta 2).
+- R-293-2 (BASSA, scelta dichiarata in roadmap): lo stop ferma anche i rung gratuiti.
+- R-295-1 (BASSA): nessun test con Gemini ultimo rung.
+- Verifica esterna #191 V-4 (COSMETICA): «a metà turno» anche all'iterazione 0 del rung successivo.
+- Bot #191 V-3 / verifica esterna #191 V-1 (COSMETICHE): numeri dell'handoff superati dai fatti.
