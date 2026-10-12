@@ -1,218 +1,298 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-12 — FETTA 1 cervello forte: budget ricontrollato prima di ogni chiamata (chiude F2)
+**Sessione:** 2026-10-12 — check delle PR #184/#185 + fetta T80u5 (il tetto di annidamento non dipende più dalla versione di Python)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #191 (https://github.com/Gasss23/Gas/pull/191): verdetti APPROVATO CON RISERVE con sole BASSE/COSMETICHE → per la regola di CLAUDE.md decide l'operatore.
-2. Al 1° giro il check `verifica-bot` è stato failure (SHA e9d1058) con verdetto testuale APPROVATO CON RISERVE senza ALTA/MEDIA: probabile falso positivo di `scripts/bot_esito.py` (macchina del bot: decide l'operatore). Al 2° giro (SHA 599e301): success.
-3. Cervello forte, Fette 2–4: da discutere con l'operatore prima di qualunque codice.
-
-NB: `gh` nel container non è autenticato (GH_TOKEN rifiutato); numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request` (`{"url":"https://github.com/Gasss23/Gas/pull/191"}`).
-
----
+1. **Merge della PR #192** (https://github.com/Gasss23/Gas/pull/192) — numero e URL dall'output reale
+   di `gh pr view --json number,url`: `{"number":192,"url":"https://github.com/Gasss23/Gas/pull/192"}`.
+   Il verdetto del bot non è ancora noto: finché non è `APPROVATO` secco senza finding, per la regola
+   di merge autonomo di CLAUDE.md **decide l'operatore**. Etichetta `verifica` applicata.
+   Stato al momento della scrittura (`ccd_pr get_status`): `MERGEABLE`, `mergeStateStatus: BLOCKED`,
+   check 1 passing / 0 failing / 2 pending / 2 skipped.
+2. **Conflitto di merge annunciato** (conseguenza, non errore): la sessione sorella
+   `cerca_testo: il budget di byte non deve mentire` lavora sullo stesso `tests/test_unit_kernel.py`
+   e sullo stesso `.claude/agents/memoria_revisore.md` in un altro worktree. Il **secondo** dei due
+   merge avrà un conflitto da risolvere a mano. Decide l'operatore quale ramo mergiare prima.
+3. **PR #184 è stata mergiata fuori dalla regola di merge autonomo** (bot `APPROVATO CON RISERVE`,
+   non `APPROVATO` secco). L'handoff di #184 dichiarava un'autorizzazione esplicita dell'operatore
+   in chat del 2026-10-11, che è l'eccezione prevista: annotato qui su richiesta dell'operatore.
+4. **`F-ci-una-sola-versione`**: decidere se la CI deve provare più di una versione di Python. Oggi
+   pinna solo 3.11, e per questo il FAIL di T80u5 su 3.14 è vissuto invisibile fino a una run locale.
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge PR #185**: `SALTATA — già mergiata dall'operatore il 2026-10-11 (20:56)`.
-- **Fetta 1 — budget ricontrollato prima di ogni chiamata**: `FATTA` — `_budget_superato()` a inizio turno, prima di ogni `create` del ciclo agentico (anche il retry del Gemini 400) e prima di ogni rung di `rifletti()`; `turno_fine` con « ; motivo=budget». Test T88a–j, T88c2.
-- **Fix dai verificatori della PR #191** (bot V-1/V-2 di due giri, verifica esterna V-2, revisore R-294-1/R-294-2/R-295-1): `FATTA`.
-- **Fette 2–4 cervello forte**: `DEFERITA — l'operatore vuole discuterle prima`.
+- **Check delle PR #184 e #185** (richiesto dall'operatore): `FATTO` — su cloni usa-e-getta nella
+  scratchpad, repo reale non toccato. Esiti provati:
+  - entrambe le PR erano **già mergiate** (2026-10-11); tutti i check verdi sui due SHA pinnati
+    (#184 `verifica-bot` success, #185 `neutral` perché tocca `scripts/`): dichiarato correttamente
+    nei rispettivi handoff;
+  - il punto «credenziali illeggibili» del brief dell'operatore era **già in produzione** (PR #188,
+    `_CHIAVE_PRIVATA_RE` in `modules/gate/gate.py`): rifarlo sarebbe stato lavoro duplicato;
+  - il punto «budget di byte di `cerca_testo`» è **reale e aperto**, riprodotto: con un
+    `gas_debug.log` da 4,5 MB, `cerca_testo "def gate_classify"` dalla root dà «0 righe trovate in 13
+    file; 64 file oltre il tetto di byte saltati» e NON trova `modules/gate/gate.py`; togliendo il
+    log lo trova (77 file). Causa: lo skip per-file confronta col budget RESIDUO;
+  - **buco nuovo nella denylist credenziali**, non tracciato altrove: `token*.json` con suffisso
+    (`token_cache.json` è leggibile, la regex vuole il punto subito dopo `token`).
+- **Fetta T80u5 — tetto di annidamento deterministico**: `FATTA` — commit `c298d59`, review #297 e
+  #298 APPROVATO CON RISERVE, tutte le riserve bloccanti o fattuali chiuse prima del commit.
+- **Fetta «budget di byte di `cerca_testo`»**: `DEFERITA — affidata alla sessione sorella`
+  (`cerca_testo: il budget di byte non deve mentire`), che al momento attende il proprio revisore.
+- **Punto 2 del brief dell'operatore (credenziali illeggibili)**: `SALTATA — già in main con la PR
+  #188`; i buchi residui sono proposti, non implementati (§7).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- gas.py                             |  81 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
- reports/diff_sessione.md           |   8 ++++++--
- reports/handoff.md                 | 198 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
- reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |  16 +++++++++++++---
- reports/ultimo_report.md           |  17 +++++++++++++----
- tests/test_unit_kernel.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 8 files changed, 470 insertions(+), 43 deletions(-)
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ gas.py                             |  47 ++++++++++++++++++++++++++++++++++++++++++-
+ reports/diff_sessione.md           |  40 ++++++++++++++++++++++++++++--------
+ reports/handoff.md                 | 397 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------
+ reports/stato_progetto.md          |  18 ++++++++++++++++-
+ reports/ultimo_report.md           |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ tests/test_unit_kernel.py          |  56 ++++++++++++++++++++++++++++++++++++++++++++++++---
+ 7 files changed, 459 insertions(+), 195 deletions(-)
 ```
+
+Generato con `git -c core.quotePath=false diff --cached --stat=400 f6396ba` con i report già in stage.
+Il **set di file** (7 path) è esatto. I conteggi di riga di `reports/handoff.md` sono approssimati per
+costruzione: il file conta se stesso, e questa stessa riscrittura di §2/§3/§6 ne cambia il totale.
+La CI confronta solo i path.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-6cc7b10 fix(budget): stop di budget dichiarato anche sul retry Gemini, tentati onesti, rifletti (verificatori #191, 2° giro)
-599e301 docs(fine-task): report e handoff aggiornati dopo i fix del bot #191
-bfe0531 fix(budget): retry Gemini 400 sotto budget e motivo=budget nel diario (bot #191 V-1/V-2)
-617ccf7 chore(revisore): memoria review #295 — APPROVATO CON RISERVE
-d5be7de chore(revisore): memoria review #294 — APPROVATO CON RISERVE
-e9d1058 docs(fine-task): report, handoff, stato e roadmap — FETTA 1 budget (PR #191)
-8a50aae feat(budget): ricontrollo del budget prima di ogni chiamata (FETTA 1 cervello forte, chiude F2)
-2bf657e chore(revisore): memoria review #293 — APPROVATO CON RISERVE
+c298d59 fix(riflessione): tetto di annidamento deterministico, non più legato alla versione di Python
+4017ee5 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
+6f6f370 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
+06636d5 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: `4017ee5` e `6f6f370` hanno lo **stesso messaggio** perché lo script del revisore
+(`scripts/commit_memoria_revisore.sh`) è stato eseguito due volte nel giro #298. Riportati verbatim,
+non accorpati. Il commit di fine-task che contiene questo file non compare qui, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Verdetto integrale del revisore per il commit `8a50aae` (gas.py, tests/test_unit_kernel.py), incollato:
+Commit motore della sessione: **`c298d59`** (`gas.py` + `tests/test_unit_kernel.py`).
 
-## VERDETTO: APPROVATO CON RISERVE
+La fetta ha avuto **due giri** di review. Il giro **#297** (APPROVATO CON RISERVE) riguardava un diff
+poi **superato**: le sue quattro riserve R-297-1..4 sono state chiuse e il suo testo cita righe non
+più valide, quindi NON è il verdetto di gate e non è incollato qui (sintesi in §7). Il verdetto di
+gate, emesso sul diff effettivamente committato, è il **#298**, incollato INTEGRALE:
 
-Review #293. Ho esaminato il diff staged (gas.py, tests/test_unit_kernel.py) e ho rieseguito in locale tests/test_unit_kernel.py: 815 PASS / 0 FAIL, T88a–d verdi.
+```
+VERDETTO: APPROVATO CON RISERVE
 
-**Cosa ho controllato nel diff**
-- `gas.py:1031` — nuovo `_budget_superato()`, punto unico del controllo sul budget. Rischio: leggere il log anche quando il budget non è impostato, oppure far nascere un crash. Esito: ok. Con il limite a 0 o non impostato restituisce None prima di chiamare `_daily_cost_usd`, che a sua volta non solleva mai eccezioni (gas.py:1026). Gli import Optional/Tuple sono già presenti (gas.py:18).
-- `gas.py:3374` — controllo prima di ogni `chat.completions.create` del ciclo agentico. Rischio: fermare il turno lasciando la storia rotta (una richiesta di tool senza la sua risposta) o senza chiudere il turno. Esito: ok.
-  - Il controllo arriva dopo il `_save_history()` dei risultati dei tool (gas.py:3465), quindi la storia finisce con l'ultima risposta del tool (T88b lo verifica).
-  - Il `return` dentro il generatore passa dal `finally: _chiudi_turno()` (gas.py:3504).
-  - Il ciclo da 10 iterazioni resta com'era, e `_get_window()` resta l'unica fonte della finestra.
-  - Nessun taglio diretto della storia e nessuna simulazione di tool.
-- `gas.py:3326` — controllo a inizio turno ora fatto tramite l'helper. Rischio: cambiare il comportamento esistente. Esito: ok, messaggio e `return` identici a prima.
-- `gas.py:2733` — `rifletti()` ricontrolla il budget prima di ogni provider della cascata. Rischio: cambiare `provider_atteso` quando il budget è già superato all'inizio. Esito: ok. Il controllo sta prima dell'assegnazione, quindi resta None come prima; se il budget scatta prima del secondo provider, vale il primo, ed è corretto.
-- `tests/test_unit_kernel.py:8164` — T88a–d. Rischio: test che passano anche senza il controllo nuovo. Esito: ok.
-  - T88a pretende una sola chiamata; senza il controllo nel ciclo ce ne sarebbero 2 o più.
-  - T88c fa da controprova (30 chiamate quando il budget non è impostato).
-  - T88d copre il rung successivo nella riflessione.
-  - Ogni test usa una cartella temporanea nuova, quindi il log costi non passa da un test all'altro. Le variabili d'ambiente e `gas.OpenAI` vengono ripristinati nel `finally`.
+Secondo giro (review #298, memoria aggiornata e committata: 4017ee5). Letture obbligatorie rifatte
+prima del giro: CLAUDE.md (sez. 5/8/9), reports/stato_progetto.md, .claude/agents/memoria_revisore.md
+(ultima riga #297, mia del giro precedente).
 
-**Riserve (numerate)**
-1. R-293-1 (BASSA, prestazioni) — `gas.py:1031`: quando il budget è impostato, `_daily_cost_usd` rilegge tutto il log JSONL dei costi a ogni iterazione. Sono fino a circa 30 letture per turno (10 iterazioni × 3 provider), più una lettura doppia all'iterazione 0, perché ripete il controllo di inizio turno. Peggiora la riserva già aperta R-tel-budget-perf (log che cresce). Senza budget impostato non costa nulla.
-2. R-293-2 (BASSA, da dichiarare) — `gas.py:3374`: lo stop a metà turno blocca anche i provider gratuiti (openrouter/ollama, che costano 0). È coerente con il controllo di inizio turno, ma va scritto in roadmap/stato come scelta voluta.
-3. R-293-3 (COSMETICA) — `tests/test_unit_kernel.py:8176`: il commento di `_Client88` dice «≥ 1,5 $» per chiamata, ma su flash-lite il test misura 1,00 $. Il test non cambia esito.
+Le quattro riserve sono CHIUSE, tutte con evidenza misurata. Le tre riserve nuove sono COSMETICHE e
+non bloccano il commit; una sola ti consiglio di correggerla prima (un numero falso in un commento),
+cosi' non serve un terzo giro.
 
-**Cosa NON ho verificato**
-- Il comportamento con un provider vero e un log costi di dimensione reale (VPS, mesi di righe): non è riproducibile in dev. Il costo di R-293-1 è stimato, non misurato.
-- La semantica del retry singolo del Gemini 400: è fuori dal diff, e ritentare la stessa chiamata senza un nuovo controllo mi sembra accettabile.
-- Non ho verificato che `reports/roadmap.md` chiuda davvero la riserva F2: è un aggiornamento dei report, a carico dell'agente.
+Elementi del diff esaminati
 
-**Memoria**
-Ho aggiunto la riga #293 e una lezione nuova in /home/user/Gas/.claude/agents/memoria_revisore.md. Commit atomico fatto: 2bf657e. Il diff staged del motore è intatto.
+1. tests/test_unit_kernel.py:7163 — _chiuso80 = '{"a":'*200000 + '1' + '}'*200000, cronometro sulla
+   CHIAMATA a _troppo_annidato e non sulla costruzione. Rischi esaminati: (a) soglia fragile,
+   (b) peso di memoria. Esito: ok, R-297-1 chiusa. Misurato: 20 chiamate consecutive, min 0,0060 ms
+   / max 0,0095 ms contro la soglia di 50 ms -> margine ~5000x; il loop non allocca (iterare una str
+   ASCII riusa i caratteri in cache) quindi non e' esposto a pause del GC: non e' fragile su un
+   runner lento. Memoria: len(_chiuso80) = 1.200.001 caratteri e, verificato, testo.strip() e lo
+   slice completo t[0:len(t)] restituiscono lo stesso oggetto (is -> True), quindi
+   _analizza_riflessione(_chiuso80) non fa copie: ~1,2 MB in tutto, trascurabile nella suite. Il
+   test ora dimostra davvero l'uscita anticipata (dt=0.008ms motivo='JSON annidato oltre il limite
+   (50 livelli)' nel PASS) e non cade piu' su j <= i.
 
-Nota dell'agente: R-293-3 corretta prima del commit (commento «≥ 1 $»); il marcatore di review è stato rigenerato sul diff con la correzione.
+2. tests/test_unit_kernel.py:7189 (T80u7) — sostituzione di gas.json.loads con una funzione che
+   solleva RecursionError, try/finally, tre asserzioni (messaggio distinto, ripristino con is,
+   riflessione normale dopo). Rischi esaminati: (a) colpisce il json giusto, (b) puo' sporcare i
+   test successivi. Esito: ok, R-297-2 chiusa, con una nota. Colpisce quello giusto: verificato che
+   gas.json is sys.modules["json"] -> True, quindi la funzione globale json usata da
+   _analizza_riflessione e' esattamente quella patchata (provato a mano: con il patch attivo
+   _analizza_riflessione('{"recap": "ok"}') -> (None, 'JSON annidato oltre il limite di ricorsione')).
+   Non sporca i successivi: finally + asserzione is + rilettura valida nello stesso check. La nota e'
+   che per lo stesso motivo il patch e' globale al processo (vedi R-298-2).
 
-Verdetto integrale del revisore per il commit `bfe0531` (review #294, sul primo diff dei fix del bot), incollato:
+3. gas.py:627 — docstring con PRECONDIZIONE str (e chi la garantisce) e claim di costo esatto
+   (O(limite) solo sul degenere annidato, O(len) sulla stringa lunga e piatta). Rischio esaminato:
+   claim ancora piu' larga della realta'. Esito: ok, R-297-3 e R-297-4 chiuse — il testo ora coincide
+   con quello che ho misurato nel giro #297 (0,10 s su 5 M caratteri dentro una stringa). Corretto
+   anche il commento stale di T80u5 («oltre il tetto»). Codice di _troppo_annidato e
+   _analizza_riflessione invariati rispetto al diff che avevo gia' verificato riga per riga sugli
+   input ostili: non ho rifatto quella batteria, solo le mutazioni.
 
-## VERDETTO: APPROVATO CON RISERVE
+Mutazioni rifatte (6, eseguite e ripristinate; gas.py verificato identico a fine giro)
 
-Ho fatto le tre letture obbligatorie: CLAUDE.md (sez. 5), reports/stato_progetto.md (letto con Grep su budget/FETTA 1) e la mia memoria (ultima review #293). Il diff staged tocca 2 file, +45 righe. La suite kernel l'ho rieseguita io: **818 PASS / 0 FAIL**. T88e, T88c2 e T88f passano.
+  _troppo_annidato -> return False in testa          : T80u5 + T80u6 FAIL (819/2)
+  ingresso in stringa ignorato (if False)            : T80u6 FAIL (820/1)
+  confine profondita > limite -> >=                  : T80u6 FAIL (820/1), il confine a 50 morde
+  controllo del tetto disattivato (if False and ...)  : T80u5 + T80u6 FAIL (819/2)
+  rete except RecursionError rimossa                 : traceback RecursionError, exit 1, nessuna
+                                                       riga RIEPILOGO (vedi R-298-3)
+  messaggio della rete reso identico a quello del tetto : T80u7 FAIL (820/1)
 
-Elementi del diff esaminati:
-- `gas.py:3403` — prima del retry singolo del Gemini 400 adesso si chiama `_budget_superato()`. Se il budget è superato, si scrive un warning nel log e si rilancia l'eccezione originale. Rischi esaminati:
-  - Il 400 rilanciato poteva sfuggire al ciclo: no, finisce nello stesso `except` di provider di oggi (§9 rispettato).
-  - Il rung successivo poteva partire lo stesso: no, il controllo prima della create dell'iterazione 0 (`gas.py:3377`) ferma il turno con l'errore dichiarato.
-  - Il percorso senza budget poteva cambiare: no, `_budget_superato` restituisce None senza leggere il log, quindi è invariato.
-  - Esito: ok.
-- `gas.py:3290` — `_chiudi_turno` aggiunge « ; motivo=budget» quando `_turno_budget` è vero. Rischi esaminati:
-  - La closure legge il valore al momento della chiamata, nel `finally`, e non serve `nonlocal` perché la variabile si legge soltanto: ok.
-  - Il flag viene alzato su tutti e due gli stop (`gas.py:3330` inizio turno, `gas.py:3379` metà turno), sempre prima del `return`: ok.
-  - Nessuno legge `turno_fine` scomponendolo: ho cercato con grep `classe=`, `tentati=` e `split(" ; ")` in gas.py, modules e scripts, zero risultati. Il suffisso in coda non rompe niente: ok.
-- `gas.py:3273` — il flag è inizializzato a False insieme agli altri contatori del turno, prima della definizione della closure — ok.
-- `tests/test_unit_kernel.py:8255` — T88f usa la sequenza None (inizio turno), None (iterazione 0), superato (retry). Se tolgo il controllo sul retry, la sequenza produrrebbe 2 create e il test cadrebbe sulla condizione `len(chiamate)==1`, quindi il test morde. Verifica anche un solo evento di errore, cioè nessun doppio messaggio — ok.
-- `tests/test_unit_kernel.py:8219` e `tests/test_unit_kernel.py:8231` — T88e e T88c2 sono una coppia prova/controprova. Un flag sempre vero farebbe cadere T88c2, un flag mai alzato farebbe cadere T88e — ok.
+Suite pulita riprodotta: kernel 821 PASS / 0 FAIL, pytest 1031 passed, 1 skipped (148 s).
 
-Finding:
-1. **R-294-1 (BASSA)** — Il retry saltato (`gas.py:3403`) ferma il turno con lo stop dichiarato solo se dopo c'è un rung che arriva al ciclo. Se il rung Gemini è l'ultimo che parte (gli altri sono saltati per chiave mancante o per la classificazione), il turno chiude con «Pipeline esausta» e il motivo «400». `_turno_budget` resta False, quindi niente motivo=budget né nel diario né nel messaggio. Il caso è raro e non rompe nulla, ma la diagnosi esce imprecisa. Come rimedio basterebbe alzare `_turno_budget = True` anche nel ramo del retry saltato. Senza test.
-2. **R-294-2 (COSMETICA)** — `tests/test_unit_kernel.py:8252`: T88f rimette a posto `gas.OpenAI = _Client88` fuori da un try/finally. Se `run_turn` lanciasse un'eccezione, i test successivi girerebbero col client finto che fa sempre 400.
+Riserve nuove — tutte COSMETICHE, nessuna bloccante
 
-Rischio escluso: non ho verificato il comportamento con un vero 400 di Gemini e un budget reale sul log JSONL. Il ramo l'ho provato solo col doppio finto e l'override di `_budget_superato` (T88f): non è riproducibile in dev senza chiavi e senza spesa.
+- R-298-1 (COSMETICA, ti consiglio di correggerla ora) — tests/test_unit_kernel.py:7180: il commento
+  dice «su 2,2 MB di input», ma _chiuso80 e' 1.200.001 caratteri ~ 1,2 MB ('{"a":' sono 5 caratteri:
+  5x200.000 + 1 + 200.000). E' una misura falsa in un commento, cioe' la cosa di cui questo progetto
+  e' piu' severo: una riga da cambiare.
+- R-298-2 (COSMETICA) — tests/test_unit_kernel.py:7189: gas.json.loads = ... non e' un patch locale:
+  gas.json E' il modulo stdlib (gas.json is sys.modules["json"] -> True, e da un import indipendente
+  json.loads is boom -> True), quindi per la durata della finestra ogni json.loads del processo e'
+  falsificato. Qui e' innocuo (finestra di una sola chiamata sincrona, suite a thread singolo,
+  finally + asserzione is), ma la forma pulita e' sostituire il nome nel namespace di gas
+  (gas.json = finto) o usare unittest.mock.patch.object.
+- R-298-3 (COSMETICA) — tests/test_unit_kernel.py:7190: se un domani la rete viene cancellata, la
+  RecursionError esce dal try/finally del blocco T80 e uccide lo script: exit 1 e traceback (quindi
+  la CI diventa rossa, il guasto non e' silenzioso), ma nessuna riga RIEPILOGO e T80u7 non compare
+  come [FAIL], e tutti i check successivi non girano. Catturare BaseException in _rete80 lo
+  trasformerebbe in un FAIL leggibile. Stessa famiglia della lezione del 2026-10-11 su T83.
 
-Memoria: ho aggiunto la riga #294 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit d5be7de). Nessuna lezione nuova oltre ai finding.
+La tua domanda su R-297-3: precondizione documentata o isinstance interno?
 
-Riserve da tracciare in reports/stato_progetto.md: R-294-1 e R-294-2.
+Tieni la precondizione documentata, come hai fatto. Un isinstance interno dovrebbe decidere cosa
+ritornare, e per un guardiano l'unico default plausibile (return False) sarebbe fail-open: un input
+non-str salterebbe il tetto e finirebbe in json.loads, che solleva TypeError raccolta da gas.py:674
+-> «JSON non decodificabile». Oggi innocuo, ma un cancello non deve avere un default permissivo, e un
+TypeError rumoroso su una precondizione violata e' preferibile a un False silenzioso. Con un solo
+chiamante che garantisce il tipo (isinstance a gas.py:655), documentare e' la scelta giusta. Se un
+giorno aggiungi un secondo chiamante, la decisione va rivista in quel momento.
 
-Verdetto integrale del revisore per il commit `bfe0531` (review #295, ri-review con R-294-1/R-294-2 corrette: è il diff effettivamente committato), incollato:
+Rischio escluso esplicitamente
 
-## VERDETTO: APPROVATO CON RISERVE
+Python 3.11/3.12 non verificato in locale: su questa macchina esiste solo .venv (3.14.7), nessun
+altro interprete installato. Tutto cio' che riguarda il ramo RecursionError «vero» su <=3.12 resta
+non riprodotto e la prova e' solo la CI unit-suite pinnata 3.11 — con l'aggiunta che adesso T80u7
+copre quel ramo su ogni versione per iniezione, che e' esattamente il punto di R-297-2. Non ho
+inoltre ri-verificato in questo giro la batteria di input ostili su _troppo_annidato (codice identico
+al giro #297, dove l'ho misurata) ne' toccato nulla con provider reali o sul VPS.
 
-Review #295: ri-review della PR #191 sul diff staged (gas.py +12, tests/test_unit_kernel.py +39). Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md che riguarda la PR e la mia memoria (.claude/agents/memoria_revisore.md, fino alla #294).
+Nota di procedura
 
-**Elementi del diff esaminati**
-1. `gas.py:3404` — nel retry del Gemini 400 saltato per budget, `_turno_budget = True` viene messo prima del `raise`. Rischio esaminato: il flag potrebbe non arrivare alla chiusura del turno, cioè al diario, perché viene assegnato dentro l'`except` di un generatore. Esito **ok**: l'assegnazione sta nel corpo di `run_turn` (`gas.py:3263`), non in una funzione annidata. Quindi `_chiudi_turno` (`gas.py:3275`) la legge per closure senza bisogno di `nonlocal`. Il budget non torna indietro durante il turno, quindi il flag non può essere falso. Se Gemini è l'ultimo rung, il turno chiude con «Pipeline esausta» e `motivo=budget`: R-294-1 è chiusa per lettura del codice.
-2. `gas.py:3290` — aggiunge « ; motivo=budget» a `turno_fine` solo se il flag è vero. Rischio esaminato: falsi positivi su turni senza stop per budget. Esito **ok**: T88c2 lo prova (turno_fine senza motivo, riprodotto).
-3. `gas.py:3330` e `gas.py:3379` — il flag viene alzato anche negli altri due punti di stop (inizio turno e metà turno), prima di `yield`/`return`. Esito **ok**: T88e passa e mostra `esito=ko … ; motivo=budget`.
-4. `tests/test_unit_kernel.py:8256` — il ripristino di `gas.OpenAI = _Client88` è ora nel `finally`. Rischio esaminato: un'eccezione dentro `run_turn` lascerebbe il client finto attivo e contaminerebbe i test successivi. Esito **ok**: R-294-2 è chiusa.
-5. `tests/test_unit_kernel.py:8263` — T88g controlla che `turno_fine` finisca con `motivo=budget` dopo il retry saltato. Esito **riserva** (vedi R-295-1): nello scenario il rung successivo (gemini-flash) alza comunque il flag dalla riga 3379, quindi T88g resterebbe verde anche senza la riga 3404. Copre il percorso dall'inizio alla fine, ma non morde il fix specifico. L'autore lo ha dichiarato onestamente.
+Index intatto: restano staged solo gas.py e tests/test_unit_kernel.py; i reports/ modificati sono
+tuoi e non staged. Prima del commit ricalcola il marcatore con bash scripts/segna_review_ok.sh (se
+correggi R-298-1 il diff cambia: rifai il marcatore dopo la correzione — e' una riga di commento in
+un test, non serve un terzo giro di review).
 
-**Riserve**
-- **R-295-1 (BASSA)**: nessun test con Gemini ultimo rung che riesce a partire, cioè con gli altri rung senza chiave. È l'unico scenario in cui la riga `gas.py:3404` fa la differenza. Da tracciare in stato_progetto.md.
+Memoria: riga #298 in .claude/agents/memoria_revisore.md + 2 lezioni nuove (come si giudica una
+soglia di tempo in un test; modulo.sottomodulo.funzione = finto non e' un patch locale),
+commit 4017ee5.
+```
 
-**Verifiche eseguite**
-- Kernel riprodotto: **819 PASS / 0 FAIL**. T88a, T88b, T88c, T88c2, T88d, T88e, T88f e T88g tutti PASS.
-- Wall of Shame: nessuno slicing della storia e nessuna simulazione di output dei tool nel diff.
-- Guardrail: cap di 10 iterazioni e `_get_window` non toccati. Fail-safe §9 rispettato: il `raise` resta dentro il try del provider, quindi si passa al rung successivo.
-
-**Rischio escluso**: non ho fatto la mutation (togliere la riga 3404 e rilanciare la suite) né provato davvero lo scenario «Gemini ultimo rung». Il comportamento del caso R-294-1 è verificato per lettura del codice, non eseguito. Comportamento su VPS e con provider reali non verificato: non riproducibile in dev.
-
-**Memoria**: aggiunta la riga #295 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con 617ccf7 tramite scripts/commit_memoria_revisore.sh. Il diff staged del motore non è stato toccato. Nessuna lezione nuova.
-
-Verdetto integrale del revisore per il commit `6cc7b10` (review #296, correzioni del 2° giro dei verificatori), incollato:
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #296, PR #191 (FETTA 1 budget, correzioni del 2° giro dei verificatori). Letture fatte prima della review: CLAUDE.md, reports/stato_progetto.md (righe R-293/R-295) e memoria_revisore.md (#293–#295). Kernel rieseguito: 822 PASS / 0 FAIL.
-
-**Elementi esaminati**
-1. gas.py:3409 — retry del 400 Gemini con budget superato: ora c'è `yield _errore_budget_meta_turno(_sup)` + `return` al posto del `raise`. Rischi controllati:
-   - un `yield` dentro un `except` di un generatore: il `finally` con `_chiudi_turno` gira comunque, anche se il generatore viene chiuso;
-   - `_turno_budget` resta True, quindi il diario scrive motivo=budget;
-   - nessun «Pipeline esausta … HTTP 400» quando Gemini è l'ultimo rung.
-
-   Esito: ok. Chiude R-295-1 (coperto da T88i; l'autore dichiara che la mutazione fa fallire il test, io non l'ho ripetuta).
-2. gas.py:3362 e gas.py:3390 — `_chiamato_rung` riparte da False a ogni rung e diventa True subito prima della prima create. Il pop si fa solo se il rung non ha mai chiamato. Rischio controllato: un pop che toglie il rung sbagliato. Non succede: l'unico append è subito prima, quindi l'ultimo elemento è sempre questo rung. Un rung che ha già fatto una create e viene fermato a un'iterazione successiva resta tra i tentati, come deve. Esito: ok. **Mutazione verificata da me**: con `pop()` sostituito da `pass`, T88h FALLISCE (821/1). File poi ripristinato, working tree pulito.
-3. gas.py:3296 — closure `_errore_budget_meta_turno`: testo identico al precedente, type hint presenti. Esito: ok.
-4. gas.py:2729 — in `rifletti()` il controllo del budget torna prima del controllo della chiave. Con budget superato e nessuna chiave l'errore torna «budget esaurito»; `provider_atteso` non cambia. Esito: ok (T88j PASS).
-5. tests/test_unit_kernel.py:8265 (T88h), tests/test_unit_kernel.py:8295 (T88i), tests/test_unit_kernel.py:8326 (T88j) — `gas.OpenAI` e `GROQ_API_KEY` vengono ripristinati in `finally`. T88j toglie GEMINI/GROQ senza rimetterle, ma lo stesso blocco è già seguito dal `finally` di ripristino generale. Esito: ok.
-
-**Wall of Shame**: nessuno slicing diretto della history, nessuna simulazione dell'output dei tool. Il cap di 10 iterazioni e `_get_window()` non sono toccati.
-
-**Riserve**
-- R-296-1 (COSMETICA): in `rifletti()` il budget ora si controlla anche per i rung senza chiave, quindi ci sono letture del log in più. Si somma a R-293-1, impatto trascurabile.
-
-**Rischi esclusi**
-- Comportamento con provider reali (Gemini che risponde 400 vero) non verificato: non riproducibile in dev senza consumare quota. Coperto solo dai mock T88f–i.
-- La mutazione di T88j (ripristinare il vecchio ordine) non l'ho rieseguita. Verificata per lettura: con l'ordine vecchio il caso senza chiavi salta tutti i rung senza mai controllare il budget, quindi l'errore non sarebbe «budget esaurito».
-
-**Memoria**
-- Riga #296 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md.
-- `bash scripts/commit_memoria_revisore.sh` NON è partito: l'hook review_gate.sh ha bloccato il comando perché `.claude/.review_ok` non corrisponde al diff staged.
-- Cosa deve fare l'agente principale: dopo `bash scripts/segna_review_ok.sh`, lanciare lui lo script di commit della memoria, oppure includere il file nel commit di fine task.
-
-Nota dell'agente: la memoria #296 è inclusa nel commit di fine task. Mutazione di T88i eseguita dall'agente: rimettendo il `raise` nel retry, T88i FALLISCE (821 PASS / 1 FAIL).
+**R-298-1 è stata corretta prima del commit** (il commento a `tests/test_unit_kernel.py:7180` ora dice
+«1,2 MB di input (1.200.001 caratteri)»), marcatore di review rigenerato dopo la correzione e suite
+rilanciata: 821 PASS / 0 FAIL. R-298-2 e R-298-3 restano aperte come COSMETICHE (§7).
 
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel (locale) 811 → 822 PASS (+11: T88a–j, T88c2), 0 FAIL. Base 811 riverificata in una copia di lavoro al commit 89a51f3. In CI i numeri assoluti sono +2 (main 89a51f3: 813; 599e301: 821 con 819 locali). pytest locale: `1032 passed in 122.09s (0:02:02)` (eseguito prima dei fix dei verificatori; dopo i fix rieseguita solo la suite kernel).
+Base della sessione (`f6396ba`), eseguita sul clone usa-e-getta con il `.venv` del progetto
+(**Python 3.14.7**):
 
 ```
-=== RIEPILOGO: 822 PASS, 0 FAIL ===
+=== RIEPILOGO: 818 PASS, 1 FAIL ===
+  FAIL: T80u5 anteprima/parser robusti su repr che solleva, ricorsione, repr multiriga; secondo repr sempre (testo del modello tra apici)
 ```
+
+Con il diff di questa fetta:
+
+```
+[PASS] T80u5 anteprima/parser robusti su repr che solleva, ricorsione, repr multiriga; secondo repr sempre (testo del modello tra apici)
+[PASS] T80u6 tetto di annidamento deterministico: in-stringa e escape non contano, confine esatto, uscita immediata sull'input degenere — dt=0.007ms motivo='JSON annidato oltre il limite (50 livelli)'
+[PASS] T80u7 rete except RecursionError viva e con messaggio distinto dal tetto — rete=(None, 'JSON annidato oltre il limite di ricorsione')
+=== RIEPILOGO: 821 PASS, 0 FAIL ===
+```
+
+`pytest -q`: **1031 passed, 1 skipped** sia alla base sia dopo (nessuna regressione).
+
+Mutazione eseguita da me (oltre a quelle del revisore), per provare che i test mordono: `return False`
+in testa a `_troppo_annidato` → `819 PASS, 2 FAIL` (T80u5 e T80u6). `gas.py` ripristinato dall'index.
+
+**FAIL fuori scope**: nessuno. Il FAIL alla base (T80u5) è **esattamente** l'oggetto di questa fetta
+ed è chiuso.
+
+**NON VERIFICATO**: il comportamento su Python **3.11/3.12** — non sono installati su questa
+macchina (`python3.11/3.12/3.13` assenti, `.venv` = 3.14.7). La prova sarà la CI, pinnata 3.11
+(`.github/workflows/ci.yml:44`). Il tetto short-circuita prima del parser, quindi l'esito non può
+dipendere dalla versione del parser, ma questo è un ragionamento, non una misura.
 
 ## §6 STATO CI
 
-`gh` non autenticato nel container: stato letto con lo strumento GitHub MCP (`actions_list`) e dai verdetti dei verificatori:
+`gh run list -L 3` (output reale, al momento della scrittura — **prima** del push di questo branch):
 
 ```
-CI           run 886          push  8a50aae  completed (handoff-check failure: commit intermedio prima del fine-task)
-CI           run 38244165640  push  e9d1058  completed/success (unit-suite ✓ kernel 817/0, handoff-check ✓)
-verifica-bot check 114794946156     e9d1058  completed/failure (verdetto testuale APPROVATO CON RISERVE)
-CI           run 38245198595  push  599e301  completed/success (unit-suite ✓ kernel 821/0, handoff-check ✓)
-verifica-bot run 38245204326        599e301  completed/success (APPROVATO CON RISERVE senza ALTA/MEDIA)
-CI           run 885          push  89a51f3  completed/success
+completed	success	Merge pull request #191 from Gasss23/feat/merge-automatico-z1xjx2	CI	feat/merge-automatico-z1xjx2	push	38258382161	1m40s	2026-10-12T13:49:14Z
+completed	success	Merge pull request #191 from Gasss23/feat/merge-automatico-z1xjx2	CI	main	push	38258328218	1m32s	2026-10-12T13:48:47Z
+completed	success	feat(budget): budget ricontrollato prima di ogni chiamata (FETTA 1 cervello forte, chiude F2)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	38246062974	3m35s	2026-10-12T11:58:16Z
 ```
 
-Mappatura commit→run:
-- `8a50aae`: CI run 886 (handoff-check rosso, atteso prima del fine-task).
-- `2bf657e`: nessuna run su questo SHA (pushato insieme a 8a50aae).
-- `e9d1058`: CI run 38244165640, success.
-- `d5be7de`, `617ccf7`, `bfe0531`: nessuna run su questi SHA (pushati insieme a 599e301).
-- `599e301`: CI run 38245198595, success.
-- `6cc7b10`: run non ancora disponibile alla scrittura dell'handoff.
-- commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Le tre run elencate appartengono al branch `feat/merge-automatico-z1xjx2` e a `main`: **nessuna** è
+di questa sessione. Sono riportate perché il flusso chiede l'output reale del comando.
+
+**Mappatura commit→run di questa sessione** (obbligatoria, nessuna formula collettiva):
+
+- `06636d5` (memoria revisore #297): **nessuna run su questo SHA** — commit intermedio, mai testato
+  da solo; il suo contenuto entra nell'albero di `c298d59`.
+- `6f6f370` (memoria revisore #298, 1ª esecuzione): **nessuna run su questo SHA** — idem.
+- `4017ee5` (memoria revisore #298, 2ª esecuzione): **nessuna run su questo SHA** — idem.
+- `c298d59` (motore, testa del branch al momento del push): **run non ancora disponibile alla
+  scrittura dell'handoff**. GitHub Actions crea una run per *push*, non per commit: la run del push
+  testerà l'albero di questo commit (o del commit di fine-task, se è lui la testa).
+- commit di fine-task (contiene questo file): **run non ancora disponibile alla scrittura
+  dell'handoff** — per costruzione il suo hash non è noto mentre lo scrivo.
+
+L'esito reale della run va aggiornato qui dopo il push (`gh run watch`). La copertura pre-merge è
+garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
 
 ## §7 RISERVE APERTE
 
-- R-293-1 (BASSA): rilettura del log costi a ogni chiamata con budget impostato (cache prima della Fetta 2).
-- R-293-2 (BASSA, scelta dichiarata in roadmap): lo stop ferma anche i rung gratuiti.
-- R-296-1 (COSMETICA): letture del log in più in `rifletti()` per i rung senza chiave.
-- Verifica esterna #191 V-4 (COSMETICA): «a metà turno» anche all'iterazione 0 del rung successivo.
-- Note cosmetiche sui numeri dell'handoff (il file si conta da solo).
+**Di questa fetta — CHIUSE prima del commit** (elencate per tracciabilità):
+
+- ✅ R-297-1 (BASSA) CHIUSA — input degenere ora CHIUSO (200k livelli, 1,2 MB), si cronometra la
+  chiamata e non la costruzione della stringa: misurato **0,007 ms** con il motivo del tetto.
+- ✅ R-297-2 (BASSA) CHIUSA — **T80u7** esercita la rete `except RecursionError` con un monkeypatch
+  di `gas.json.loads`, e asserisce che il messaggio resti distinto da quello del tetto.
+- ✅ R-297-3 (BASSA) CHIUSA — precondizione `str` dichiarata nella docstring di `_troppo_annidato`,
+  con il chiamante che la garantisce. Scelta dichiarata: nessun `isinstance` interno.
+- ✅ R-297-4 (COSMETICA) CHIUSA — claim sul costo reso esatto, commento stale di T80u5 corretto.
+- ✅ R-298-1 (COSMETICA) CHIUSA — un commento dichiarava «2,2 MB» per un input di **1.200.001
+  caratteri**: misura falsa in un commento, corretta nel test e in tutti i report.
+
+**Di questa fetta — APERTE (COSMETICHE, non bloccanti):**
+
+- 🟡 **R-298-2** (COSMETICA) — `tests/test_unit_kernel.py:7189`: `gas.json.loads = ...` non è un patch
+  locale (`gas.json is sys.modules["json"]`), quindi per la durata della finestra ogni `json.loads`
+  del processo è falsificato. Innocuo qui (una sola chiamata sincrona, `finally` + asserzione `is`),
+  ma la forma pulita è `gas.json = finto` oppure `unittest.mock.patch.object`.
+- 🟡 **R-298-3** (COSMETICA) — `tests/test_unit_kernel.py:7190`: se la rete `except RecursionError`
+  venisse cancellata, l'eccezione uscirebbe dal `try/finally` del blocco T80 e ucciderebbe lo script
+  (exit 1 e traceback: CI rossa, guasto NON silenzioso) ma senza riga RIEPILOGO e senza che T80u7
+  compaia come FAIL. Catturare `BaseException` lo renderebbe un FAIL leggibile.
+
+**Finding nuovi emersi in questa sessione, NON implementati:**
+
+- 🟡 **F-ci-una-sola-versione** (BASSA, nuovo): la CI prova **una sola** versione di Python (3.11),
+  quindi una divergenza come quella di T80u5 resta invisibile fino a quando qualcuno lancia la suite
+  in locale. Il commento a `.github/workflows/ci.yml:44` («venv WSL è 3.12.3») è **stale**: il
+  `.venv` di questa macchina è 3.14.7. Proposta: matrice `3.11` + la versione del venv dell'operatore.
+- 🟡 **F-token-suffisso** (BASSA, nuovo, dal check della PR #184): `token*.json` con suffisso NON è
+  coperto da `_CHIAVE_PRIVATA_RE` — `token_cache.json` è leggibile perché la regex vuole il punto
+  subito dopo `token`. `tokenizer.py` resta correttamente leggibile.
+- 🟡 **R-297-4-bis** (COSMETICA, segnalata dal revisore, fuori dal diff): `rifletti()` chiama
+  `create` senza `max_tokens` (`gas.py:2786`), quindi la lunghezza della risposta grezza dipende dal
+  default del provider.
+- 🟡 **R-282-1 / R-283-1** (dal check): il budget di byte di `cerca_testo` mente — in carico alla
+  sessione sorella, non a questa fetta.
+- 🟡 **R-291-1 e bot #188 (2° giro)** (BASSE, preesistenti): `kubeconfig` senza punto, `mywallet.dat`,
+  `.vault-token`, `.dockercfg`, `_netrc`, `clientsecret.json`, `*.gpg/*.asc`, `.config/gh/hosts.yml`
+  restano leggibili.
+- 🟡 **R-277-1** (BASSA, preesistente): `prod.environment` resta leggibile (compromesso dichiarato).

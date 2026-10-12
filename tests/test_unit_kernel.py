@@ -6692,7 +6692,7 @@ check("T76d variabili TELEGRAM_* non presenti nell'ambiente della suite",
 # ---------- T80: FASE 2.6 — riflessione di fine task (recap + lezioni in quarantena) ----------
 print("\n--- T80: riflessione di fine task (FASE 2.6) ---")
 from gas import (_RECAP_DATI_OPEN, _RECAP_DATI_CLOSE, _parse_riflessione, _cascata_provider,
-                 _analizza_riflessione, _anteprima_log)
+                 _analizza_riflessione, _anteprima_log, _troppo_annidato)
 
 class _Rif80:
     """Client finto: per ogni modello una risposta (stringa = content, Exception = errore).
@@ -7125,7 +7125,7 @@ try:
           and _anteprima_log(7) == "<int> '7'"
           and gas._lunghezza_log(_parti80) == "n/d (list)" and gas._lunghezza_log(None) == "0"
           and gas._lunghezza_log("abc") == "3", _antp80[:120])
-    # T80u5 — casi estremi: repr che solleva, JSON annidato oltre la ricorsione, repr che
+    # T80u5 — casi estremi: repr che solleva, JSON annidato oltre il tetto, repr che
     # restituisce una sottoclasse di str ostile; secondo repr sempre (una riga sola)
     class _ReprRotto80:
         def __repr__(self):
@@ -7145,10 +7145,60 @@ try:
           " secondo repr sempre (testo del modello tra apici)",
           _anteprima_log(_ReprRotto80()) == "<_ReprRotto80> (repr non disponibile: RuntimeError)"
           and _analizza_riflessione('{"a":' * 100000 + '1' + '}' * 100000)
-          == (None, "JSON annidato oltre il limite di ricorsione")
+          == (None, "JSON annidato oltre il limite (50 livelli)")
           and _anteprima_log(_strano80) == "<Strano80> 'a\\nb'"
           and _anteprima_log({"a": "\n"}) == "<dict> \"{'a': '\\\\n'}\""
           and "\n" not in _anteprima_log(_ReprBugiardo80()))
+    # T80u6 — il tetto di annidamento e' DETERMINISTICO (non dipende dalla versione
+    # di Python: su 3.11/3.12 json.loads solleva RecursionError, su 3.14 parsa tutto).
+    # Conta solo le parentesi fuori dalle stringhe e non scarta il JSON legittimo.
+    _ok80 = '{"recap": "fatto", "lezioni": ["una", "due"]}'
+    _instringa80 = '{"recap": "' + "{[" * 500 + '", "lezioni": []}'
+    _limite80 = '{"a":' * 50 + '1' + '}' * 50          # esattamente al tetto: passa
+    _oltre80 = '{"a":' * 51 + '1' + '}' * 51           # un livello oltre: rifiutato
+    _escape80 = '{"recap": "virgoletta \\" e poi ' + "{" * 200 + '", "lezioni": []}'
+    # R-297-1: input degenere CHIUSO (con la coda di '}'), altrimenti scatta `j <= i`
+    # e `_troppo_annidato` non viene mai interrogata: il test misurerebbe il ramo
+    # sbagliato. Si cronometra la CHIAMATA, non la costruzione della stringa.
+    _chiuso80 = '{"a":' * 200000 + '1' + '}' * 200000
+    _t0_80 = _time.monotonic()
+    _degenere80 = _troppo_annidato(_chiuso80)
+    _dt80 = _time.monotonic() - _t0_80
+    _motivo80 = _analizza_riflessione(_chiuso80)
+    check("T80u6 tetto di annidamento deterministico: in-stringa e escape non contano,"
+          " confine esatto, uscita immediata sull'input degenere",
+          _analizza_riflessione(_ok80) == (("fatto", ["una", "due"]), "")
+          and _troppo_annidato(_ok80) is False
+          and _troppo_annidato(_instringa80) is False
+          and _troppo_annidato(_escape80) is False
+          and _troppo_annidato(_limite80) is False
+          and _troppo_annidato(_oltre80) is True
+          # il JSON legittimo resta accettato anche passando dal parser completo
+          and _analizza_riflessione(_instringa80)[0] is not None
+          and _analizza_riflessione(_oltre80)
+          == (None, "JSON annidato oltre il limite (50 livelli)")
+          # 200k livelli CHIUSI: il tetto esce al 51esimo '{', non a fine stringa,
+          # quindi su 1,2 MB di input (1.200.001 caratteri) costa microsecondi (R-297-1)
+          and _degenere80 is True and _dt80 < 0.05
+          and _motivo80 == (None, "JSON annidato oltre il limite (50 livelli)"),
+          f"dt={_dt80 * 1000:.3f}ms motivo={_motivo80[1]!r}")
+    # R-297-2: la rete `except RecursionError` resterebbe senza test (su 3.14 e'
+    # irraggiungibile per annidamento, perche' il tetto scatta prima). La si esercita
+    # forzando json.loads a sollevare: il messaggio DEVE restare distinto da quello
+    # del tetto, altrimenti la prossima pulizia cancella la rete senza accorgersene.
+    _json_orig80 = gas.json.loads
+    def _loads_ricorsivo80(*a, **k):
+        raise RecursionError("profondita")
+    try:
+        gas.json.loads = _loads_ricorsivo80
+        _rete80 = _analizza_riflessione('{"recap": "ok"}')
+    finally:
+        gas.json.loads = _json_orig80
+    check("T80u7 rete except RecursionError viva e con messaggio distinto dal tetto",
+          _rete80 == (None, "JSON annidato oltre il limite di ricorsione")
+          and gas.json.loads is _json_orig80
+          and _analizza_riflessione('{"recap": "ok"}') == (("ok", []), ""),
+          f"rete={_rete80!r}")
     check("T80v cascata unica: 'complesso' parte da gemini-flash, gratuiti in coda",
           [c[0] for c in _cascata_provider("complesso")] == ["gemini-flash", "groq", "openrouter", "ollama"]
           and [c[0] for c in _cascata_provider("semplice")][:3] == ["gemini-flash-lite", "gemini-flash", "groq"])

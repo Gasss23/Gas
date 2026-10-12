@@ -614,6 +614,45 @@ def _lunghezza_log(testo: Any) -> str:
     return "0" if testo is None else f"n/d ({type(testo).__name__})"
 
 
+# Profondita' massima di annidamento accettata nel JSON della riflessione. Una
+# riflessione legittima e' profonda 2 ({"recap": ..., "lezioni": [...]}): il tetto e'
+# larghissimo di proposito. Serve a rendere il rifiuto DETERMINISTICO su ogni versione
+# di Python: fino a 3.12 `json.loads` solleva RecursionError sulle strutture estreme,
+# da 3.14 le parsa (misurato su 3.14.7) costruendo 100k dict annidati prima di
+# scartarle per "recap mancante" — stesso esito, motivo diverso e lavoro inutile.
+_RIFLESSIONE_MAX_PROFONDITA = 50
+
+
+def _troppo_annidato(testo: str, limite: int = _RIFLESSIONE_MAX_PROFONDITA) -> bool:
+    """True se `testo` annida '{'/'[' oltre `limite`. PURA. Conta solo le parentesi
+    FUORI dalle stringhe JSON: una stringa che contiene '{' non annida nulla.
+    PRECONDIZIONE: `testo` e' una str (su altri tipi solleva TypeError, R-297-3);
+    l'unico chiamante la garantisce con l'isinstance in _analizza_riflessione.
+    Esce al primo sforamento: su un input degenere ANNIDATO costa O(limite), non
+    O(len). Su una stringa JSON lunghissima ma piatta la scansione e' completa
+    (R-297-4): li' il costo e' O(len), come quello di json.loads che segue."""
+    profondita = 0
+    in_stringa = escape = False
+    for c in testo:
+        if in_stringa:
+            if escape:
+                escape = False
+            elif c == "\\":
+                escape = True
+            elif c == '"':
+                in_stringa = False
+            continue
+        if c == '"':
+            in_stringa = True
+        elif c in "{[":
+            profondita += 1
+            if profondita > limite:
+                return True
+        elif c in "}]":
+            profondita -= 1
+    return False
+
+
 def _analizza_riflessione(testo: Any) -> Tuple[Optional[Tuple[str, List[str]]], str]:
     """Come _parse_riflessione, ma restituisce anche il MOTIVO dello scarto ("" se
     valida), per il log diagnostico. PURA."""
@@ -628,9 +667,15 @@ def _analizza_riflessione(testo: Any) -> Tuple[Optional[Tuple[str, List[str]]], 
         return None, "nessun oggetto JSON (manca '{')"
     if j <= i:
         return None, "JSON aperto ma mai chiuso (nessuna '}' dopo la prima '{': risposta tagliata?)"
+    grezzo = t[i:j + 1]
+    if _troppo_annidato(grezzo):
+        return None, ("JSON annidato oltre il limite "
+                      f"({_RIFLESSIONE_MAX_PROFONDITA} livelli)")
     try:
-        data = json.loads(t[i:j + 1])
+        data = json.loads(grezzo)
     except RecursionError:
+        # Rete di sicurezza: col tetto sopra l'annidamento non ci arriva piu', ma una
+        # ricorsione da altra fonte non deve far uscire una funzione PURA.
         return None, "JSON annidato oltre il limite di ricorsione"
     except (ValueError, TypeError) as e:
         return None, f"JSON non decodificabile: {e}"
