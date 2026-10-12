@@ -19,7 +19,7 @@ diventato la parte 2.
 
 | File | Cosa è cambiato e perché |
 |---|---|
-| `gas.py` | `_RIFLESSIONE_MAX_PROFONDITA = 50` + `_troppo_annidato()` (pura): l'annidamento del JSON della riflessione si controlla **prima** di `json.loads`, così il rifiuto non dipende più dalla versione di Python. L'`except RecursionError` resta come rete, con messaggio distinto. |
+| `gas.py` | (2 giri) `_RIFLESSIONE_MAX_PROFONDITA = 50` + `_troppo_annidato()` (pura): l'annidamento del JSON della riflessione si controlla **prima** di `json.loads`, così il rifiuto non dipende più dalla versione di Python. L'`except RecursionError` resta come rete, con messaggio distinto. |
 | `tests/test_unit_kernel.py` | T80u5 aggiornata al messaggio nuovo; **T80u6** (confine 50/51, parentesi in stringa e dopo escape, JSON legittimo, uscita anticipata su 1,2 MB); **T80u7** (la rete `except RecursionError` è viva e distinta). |
 | `reports/ultimo_report.md` | Report del task: misure reali, riserve del revisore, tre proposte non implementate. |
 | `reports/stato_progetto.md` | Voce della fetta + esiti del check delle PR #184/#185 (merge di #184 fuori dalla regola di merge autonomo). |
@@ -32,3 +32,11 @@ del kernel cambia; nessuna firma pubblica rimossa.
 **Numeri reali**: kernel **818 PASS/1 FAIL → 821 PASS/0 FAIL** (`.venv`, Python 3.14.7);
 `pytest` **1031 passed, 1 skipped** prima e dopo. Non verificato su 3.11/3.12 (non installati):
 la prova è la CI pinnata 3.11.
+
+## Secondo giro (V-1 della verifica esterna, su richiesta dell'operatore)
+
+Solo il **commento** sopra `_RIFLESSIONE_MAX_PROFONDITA` in `gas.py`: nessun codice eseguibile
+toccato (il revisore lo ha provato meccanicamente confrontando i token non-COMMENT con HEAD).
+Corretta una misura falsa che avevo scritto io, togliendo dal sorgente anche la **citazione**
+della frase sbagliata (R-299-1: Gas legge il proprio codice, quindi una claim falsa tra parentesi
+è ripescabile senza la riga che la nega). Review #299 → #300.
