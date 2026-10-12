@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #191 (https://github.com/Gasss23/Gas/pull/191): verdetti APPROVATO CON RISERVE con sole BASSE/COSMETICHE → per la regola di CLAUDE.md decide l'operatore.
-2. Check `verifica-bot` in failure (run sullo SHA e9d1058) con verdetto testuale APPROVATO CON RISERVE senza ALTA/MEDIA: probabile falso positivo di `scripts/bot_esito.py` (macchina del bot: decide l'operatore).
+2. Al 1° giro il check `verifica-bot` è stato failure (SHA e9d1058) con verdetto testuale APPROVATO CON RISERVE senza ALTA/MEDIA: probabile falso positivo di `scripts/bot_esito.py` (macchina del bot: decide l'operatore). Al 2° giro (SHA 599e301): success.
 3. Cervello forte, Fette 2–4: da discutere con l'operatore prima di qualunque codice.
 
 NB: `gh` nel container non è autenticato (GH_TOKEN rifiutato); numero e URL della PR vengono dalla risposta reale dello strumento GitHub MCP `create_pull_request` (`{"url":"https://github.com/Gasss23/Gas/pull/191"}`).
@@ -17,8 +17,8 @@ NB: `gh` nel container non è autenticato (GH_TOKEN rifiutato); numero e URL del
 ## §1 SCOPE & ESITO FETTE
 
 - **Merge PR #185**: `SALTATA — già mergiata dall'operatore il 2026-10-11 (20:56)`.
-- **Fetta 1 — budget ricontrollato prima di ogni chiamata**: `FATTA` — `_budget_superato()` a inizio turno, prima di ogni `create` del ciclo agentico (anche il retry del Gemini 400) e prima di ogni rung di `rifletti()`; `turno_fine` con « ; motivo=budget». Test T88a–g, T88c2.
-- **Fix dai verificatori della PR #191** (bot V-1/V-2, revisore R-294-1/R-294-2): `FATTA`.
+- **Fetta 1 — budget ricontrollato prima di ogni chiamata**: `FATTA` — `_budget_superato()` a inizio turno, prima di ogni `create` del ciclo agentico (anche il retry del Gemini 400) e prima di ogni rung di `rifletti()`; `turno_fine` con « ; motivo=budget». Test T88a–j, T88c2.
+- **Fix dai verificatori della PR #191** (bot V-1/V-2 di due giri, verifica esterna V-2, revisore R-294-1/R-294-2/R-295-1): `FATTA`.
 - **Fette 2–4 cervello forte**: `DEFERITA — l'operatore vuole discuterle prima`.
 
 ---
@@ -26,20 +26,22 @@ NB: `gh` nel container non è autenticato (GH_TOKEN rifiutato); numero e URL del
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- gas.py                             |  70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
+ .claude/agents/memoria_revisore.md |   5 +++++
+ gas.py                             |  81 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
  reports/diff_sessione.md           |   8 ++++++--
- reports/handoff.md                 | 157 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ reports/handoff.md                 | 198 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
  reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |  15 ++++++++++++---
+ reports/stato_progetto.md          |  16 +++++++++++++---
  reports/ultimo_report.md           |  17 +++++++++++++----
- tests/test_unit_kernel.py          | 125 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 8 files changed, 355 insertions(+), 43 deletions(-)
+ tests/test_unit_kernel.py          | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 470 insertions(+), 43 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6cc7b10 fix(budget): stop di budget dichiarato anche sul retry Gemini, tentati onesti, rifletti (verificatori #191, 2° giro)
+599e301 docs(fine-task): report e handoff aggiornati dopo i fix del bot #191
 bfe0531 fix(budget): retry Gemini 400 sotto budget e motivo=budget nel diario (bot #191 V-1/V-2)
 617ccf7 chore(revisore): memoria review #295 — APPROVATO CON RISERVE
 d5be7de chore(revisore): memoria review #294 — APPROVATO CON RISERVE
@@ -143,12 +145,46 @@ Review #295: ri-review della PR #191 sul diff staged (gas.py +12, tests/test_uni
 
 **Memoria**: aggiunta la riga #295 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con 617ccf7 tramite scripts/commit_memoria_revisore.sh. Il diff staged del motore non è stato toccato. Nessuna lezione nuova.
 
+Verdetto integrale del revisore per il commit `6cc7b10` (review #296, correzioni del 2° giro dei verificatori), incollato:
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #296, PR #191 (FETTA 1 budget, correzioni del 2° giro dei verificatori). Letture fatte prima della review: CLAUDE.md, reports/stato_progetto.md (righe R-293/R-295) e memoria_revisore.md (#293–#295). Kernel rieseguito: 822 PASS / 0 FAIL.
+
+**Elementi esaminati**
+1. gas.py:3409 — retry del 400 Gemini con budget superato: ora c'è `yield _errore_budget_meta_turno(_sup)` + `return` al posto del `raise`. Rischi controllati:
+   - un `yield` dentro un `except` di un generatore: il `finally` con `_chiudi_turno` gira comunque, anche se il generatore viene chiuso;
+   - `_turno_budget` resta True, quindi il diario scrive motivo=budget;
+   - nessun «Pipeline esausta … HTTP 400» quando Gemini è l'ultimo rung.
+
+   Esito: ok. Chiude R-295-1 (coperto da T88i; l'autore dichiara che la mutazione fa fallire il test, io non l'ho ripetuta).
+2. gas.py:3362 e gas.py:3390 — `_chiamato_rung` riparte da False a ogni rung e diventa True subito prima della prima create. Il pop si fa solo se il rung non ha mai chiamato. Rischio controllato: un pop che toglie il rung sbagliato. Non succede: l'unico append è subito prima, quindi l'ultimo elemento è sempre questo rung. Un rung che ha già fatto una create e viene fermato a un'iterazione successiva resta tra i tentati, come deve. Esito: ok. **Mutazione verificata da me**: con `pop()` sostituito da `pass`, T88h FALLISCE (821/1). File poi ripristinato, working tree pulito.
+3. gas.py:3296 — closure `_errore_budget_meta_turno`: testo identico al precedente, type hint presenti. Esito: ok.
+4. gas.py:2729 — in `rifletti()` il controllo del budget torna prima del controllo della chiave. Con budget superato e nessuna chiave l'errore torna «budget esaurito»; `provider_atteso` non cambia. Esito: ok (T88j PASS).
+5. tests/test_unit_kernel.py:8265 (T88h), tests/test_unit_kernel.py:8295 (T88i), tests/test_unit_kernel.py:8326 (T88j) — `gas.OpenAI` e `GROQ_API_KEY` vengono ripristinati in `finally`. T88j toglie GEMINI/GROQ senza rimetterle, ma lo stesso blocco è già seguito dal `finally` di ripristino generale. Esito: ok.
+
+**Wall of Shame**: nessuno slicing diretto della history, nessuna simulazione dell'output dei tool. Il cap di 10 iterazioni e `_get_window()` non sono toccati.
+
+**Riserve**
+- R-296-1 (COSMETICA): in `rifletti()` il budget ora si controlla anche per i rung senza chiave, quindi ci sono letture del log in più. Si somma a R-293-1, impatto trascurabile.
+
+**Rischi esclusi**
+- Comportamento con provider reali (Gemini che risponde 400 vero) non verificato: non riproducibile in dev senza consumare quota. Coperto solo dai mock T88f–i.
+- La mutazione di T88j (ripristinare il vecchio ordine) non l'ho rieseguita. Verificata per lettura: con l'ordine vecchio il caso senza chiavi salta tutti i rung senza mai controllare il budget, quindi l'errore non sarebbe «budget esaurito».
+
+**Memoria**
+- Riga #296 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md.
+- `bash scripts/commit_memoria_revisore.sh` NON è partito: l'hook review_gate.sh ha bloccato il comando perché `.claude/.review_ok` non corrisponde al diff staged.
+- Cosa deve fare l'agente principale: dopo `bash scripts/segna_review_ok.sh`, lanciare lui lo script di commit della memoria, oppure includere il file nel commit di fine task.
+
+Nota dell'agente: la memoria #296 è inclusa nel commit di fine task. Mutazione di T88i eseguita dall'agente: rimettendo il `raise` nel retry, T88i FALLISCE (821 PASS / 1 FAIL).
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel (locale) 811 → 819 PASS (+8: T88a–g, T88c2), 0 FAIL. Base 811 riverificata in una copia di lavoro al commit 89a51f3. In CI i numeri assoluti sono +2 (main 89a51f3: 813; e9d1058: 817), stesso delta. pytest locale: `1032 passed in 122.09s (0:02:02)` (eseguito prima dei fix del bot; dopo i fix rieseguita solo la suite kernel).
+Kernel (locale) 811 → 822 PASS (+11: T88a–j, T88c2), 0 FAIL. Base 811 riverificata in una copia di lavoro al commit 89a51f3. In CI i numeri assoluti sono +2 (main 89a51f3: 813; 599e301: 821 con 819 locali). pytest locale: `1032 passed in 122.09s (0:02:02)` (eseguito prima dei fix dei verificatori; dopo i fix rieseguita solo la suite kernel).
 
 ```
-=== RIEPILOGO: 819 PASS, 0 FAIL ===
+=== RIEPILOGO: 822 PASS, 0 FAIL ===
 ```
 
 ## §6 STATO CI
@@ -156,24 +192,27 @@ Kernel (locale) 811 → 819 PASS (+8: T88a–g, T88c2), 0 FAIL. Base 811 riverif
 `gh` non autenticato nel container: stato letto con lo strumento GitHub MCP (`actions_list`) e dai verdetti dei verificatori:
 
 ```
-CI           run 886  push               8a50aae  completed (handoff-check failure: commit intermedio prima del fine-task)
-verifica-bot run 203  pull_request_target 8a50aae  completed/skipped (etichetta verifica non ancora messa)
-CI           run 38244165640  push        e9d1058  completed/success (unit-suite ✓ kernel 817/0, handoff-check ✓)
-verifica-bot check 114794946156          e9d1058  completed/failure (verdetto testuale APPROVATO CON RISERVE, vedi §0.2)
-CI           run 885  push               89a51f3  completed/success
+CI           run 886          push  8a50aae  completed (handoff-check failure: commit intermedio prima del fine-task)
+CI           run 38244165640  push  e9d1058  completed/success (unit-suite ✓ kernel 817/0, handoff-check ✓)
+verifica-bot check 114794946156     e9d1058  completed/failure (verdetto testuale APPROVATO CON RISERVE)
+CI           run 38245198595  push  599e301  completed/success (unit-suite ✓ kernel 821/0, handoff-check ✓)
+verifica-bot run 38245204326        599e301  completed/success (APPROVATO CON RISERVE senza ALTA/MEDIA)
+CI           run 885          push  89a51f3  completed/success
 ```
 
 Mappatura commit→run:
 - `8a50aae`: CI run 886 (handoff-check rosso, atteso prima del fine-task).
 - `2bf657e`: nessuna run su questo SHA (pushato insieme a 8a50aae).
 - `e9d1058`: CI run 38244165640, success.
-- `d5be7de`, `617ccf7`, `bfe0531`: run non ancora disponibile alla scrittura dell'handoff (non ancora pushati).
+- `d5be7de`, `617ccf7`, `bfe0531`: nessuna run su questi SHA (pushati insieme a 599e301).
+- `599e301`: CI run 38245198595, success.
+- `6cc7b10`: run non ancora disponibile alla scrittura dell'handoff.
 - commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-293-1 (BASSA): rilettura del log costi a ogni chiamata con budget impostato (cache prima della Fetta 2).
 - R-293-2 (BASSA, scelta dichiarata in roadmap): lo stop ferma anche i rung gratuiti.
-- R-295-1 (BASSA): nessun test con Gemini ultimo rung.
+- R-296-1 (COSMETICA): letture del log in più in `rifletti()` per i rung senza chiave.
 - Verifica esterna #191 V-4 (COSMETICA): «a metà turno» anche all'iterazione 0 del rung successivo.
-- Bot #191 V-3 / verifica esterna #191 V-1 (COSMETICHE): numeri dell'handoff superati dai fatti.
+- Note cosmetiche sui numeri dell'handoff (il file si conta da solo).
