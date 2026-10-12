@@ -1,8 +1,6 @@
-# Diff della sessione — 2026-10-12 — messaggio «Pipeline esausta» col motivo
+# Diff della sessione — 2026-10-12 — stato del progetto prima del clear
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py` — `run_turn`: per ogni provider scartato registra il motivo (variabile non impostata, quota/HTTP, risposta vuota, 10 iterazioni senza risposta finale) e lo mette nell'errore finale e nel log. Perché: richiesta dell'operatore dopo il giro di notte di prova («Pipeline esausta» non diceva perché).
-- `tests/test_unit_kernel.py` — T9b aggiornato, T87 nuovo.
-- `.claude/agents/memoria_revisore.md` — review #292.
-- `reports/` — report di fine task, stato del progetto.
+- `reports/stato_progetto.md` — note bot/verifica esterna #189, decisioni aperte (cervello forte, risparmio limiti, Mac su HEAD staccato).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
