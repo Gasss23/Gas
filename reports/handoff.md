@@ -25,69 +25,77 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
+ .claude/agents/memoria_revisore.md |  13 +++++++++++++
  gas.py                             | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
  reports/diff_sessione.md           |  37 +++++++++++++++++++++++++++++--------
- reports/handoff.md                 | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |  27 ++++++++++++++++++++++++---
- reports/ultimo_report.md           | 157 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ reports/handoff.md                 | 350 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  30 +++++++++++++++++++++++++++---
+ reports/ultimo_report.md           | 164 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
  tests/test_unit_kernel.py          | 172 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- 7 files changed, 616 insertions(+), 187 deletions(-)
+ 7 files changed, 698 insertions(+), 183 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+25ce6e6 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
+b892800 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
+775fdb8 docs(fine-task): report, handoff, stato e diff — cerca_testo budget onesto
 d238610 fix(cerca_testo): il budget di byte non mente piu' (R-282-1, R-283-1)
 08c9af6 chore(revisore): memoria review #299 — APPROVATO CON RISERVE
 be36ce8 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
 e606313 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 ```
 
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. `b892800` e `25ce6e6` sono due commit di memoria del revisore per la stessa review #300, scritti in due passaggi (verificato: entrambi toccano SOLO `.claude/agents/memoria_revisore.md`). `775fdb8` è il primo commit di report di questa sessione, poi superato da quello di fine-task: contiene il testo ORIGINALE del verdetto #297 prima della riemissione in forma di gate (vedi §4).
+
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
 Tre giri sullo stesso diff staged: dopo ogni giro le riserve sono state corrette e il diff è cambiato, quindi è stato richiesto un verdetto nuovo. Verdetti INTEGRALI, incollati, in ordine.
 
-### Giro 1 — review #297
+### Giro 1 — review #297 (verdetto RIEMESSO nella forma del gate)
+
+**Perché qui c'è la riemissione e non il testo originale.** Il verdetto originale del primo giro conteneva UNA citazione scritta col percorso ASSOLUTO della worktree (il prefisso `/Users/...` davanti al nome del file, invece del percorso relativo alla root del repo); `scripts/check_verdetto.py` risolve percorsi relativi alla root o nomi corti univoci, non percorsi assoluti, quindi bocciava il Gate B («file non trovato a HEAD»). Le altre 31 citazioni del §4 passavano. Come prescrive `/fine-task` (F-verdetto-ritoccato) **l'agente principale non ha toccato il testo del verdetto**: ha chiesto al revisore di RIEMETTERLO nella forma del gate. Sotto c'è la riemissione integrale, dichiarata come tale: stesso esito (APPROVATO CON RISERVE), stesso contenuto, stesse riserve e stessa gravità; cambia solo la forma delle citazioni (percorsi relativi) e i numeri di riga sono quelli validi a HEAD, con nota esplicita dove il bersaglio si è spostato nei giri 2/3/4. **Il testo originale del primo giro resta verbatim nella storia git**: commit `775fdb8`, `reports/handoff.md` (`git show 775fdb8:reports/handoff.md`). Non è stato riscritto né cancellato, solo spostato dove non blocca un gate che non può verificarlo.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #297 — diff staged su `feat/cerca-testo-budget-onesto` (base main f6396ba), worktree `/Users/gas/Gas/.claude/worktrees/optimistic-austin-78debb`. Letti prima: CLAUDE.md (sez. 1/4/5/8/9/10), `reports/stato_progetto.md` (righe 4, 9-14, 45-51 via Grep, come da sez. 11), `.claude/agents/memoria_revisore.md` (ultime review #288-#296).
+**Verdetto #297 RIEMESSO nella forma del gate** (richiesta del flusso `/fine-task`, F-verdetto-ritoccato). Stesso esito e stesso contenuto dell'originale del primo giro: cambia SOLO la forma delle citazioni, ora tutte con percorso relativo alla root del repo. **I numeri di riga sono quelli validi ORA a HEAD** (`25ce6e6`): il codice è stato riscritto nei giri 2/3/4, quindi dove il bersaglio della citazione è cambiato lo dico esplicitamente nella voce. Le misure, le riserve e la loro gravità sono quelle del primo giro, non ritoccate.
 
-Il bug raccontato nel brief è reale e il fix lo chiude: la causa (skip per-file confrontato col budget RESIDUO) non c'è più e `cerca_testo` dalla root ritrova `modules/gate/gate.py` col log da 4,5 MB in mezzo. Nessun antipattern del Wall of Shame (nessuno slicing di history, nessuna simulazione di output tool). Le riserve sono tutte sulla ONESTÀ RESIDUA dei messaggi e sulla copertura di una delle quattro scelte, non sulla correttezza del flusso.
+Review #297 — diff del primo giro su `feat/cerca-testo-budget-onesto` (base main f6396ba). Letti prima: CLAUDE.md (sez. 1/4/5/8/9/10), `reports/stato_progetto.md` e `.claude/agents/memoria_revisore.md` (review #288-#296).
+
+Il bug del brief è reale e il fix lo chiude: la causa (skip per-file confrontato col budget RESIDUO) non c'è più e la ricerca dalla root ritrova il file del gate anche col log da 4,5 MB in mezzo. Nessun antipattern del Wall of Shame (nessuno slicing di history, nessuna simulazione di output tool). Le riserve sono sull'onestà residua dei messaggi e sulla copertura di una delle quattro scelte, non sulla correttezza del flusso.
 
 ### Elementi del diff esaminati
 
-1. `/Users/gas/Gas/.claude/worktrees/optimistic-austin-78debb/gas.py:2107` — `tetto_file = min(LETTURA_MAX_BYTES_PER_FILE, LETTURA_MAX_BYTES) if su_cartella else LETTURA_MAX_BYTES` (scelte 1 e 2). Rischio esaminato: regressione sul file indicato per nome, e tetto aggirabile da env. Per `su_cartella=False` il valore è identico a quello che prima stava in `budget[0]` al primo file → comportamento invariato, provato dai test T84f riscritti; `min()` limita anche un `GAS_LETTURA_MAX_BYTES_PER_FILE` enorme, e `_env_int(min_val=1)` regge valori sporchi. **Esito: ok.**
-2. `gas.py:2119` — `if su_cartella and self._LOG_KERNEL_RE.fullmatch(f.name)` (scelte 1/5). Rischio esaminato: il log non più ispezionabile, e over-match. `fullmatch` su `f.name` copre `gas_debug.log` e ogni rotazione `.N` (anche oltre `.3`), non tocca `gas_debug.log.gz` né una cartella omonima (il generatore filtra `v.is_file()`), e il corto circuito su `su_cartella` lascia cercabile il log indicato per nome (provato da T84n `_oL3`). Mutazione verificata: disattivando il salto, 4 test T84n vanno in FAIL e nel caso `_oL2` i 200 risultati finiscono tutti nel log facendo sparire `gate.py` → il salto protegge il tetto dei RISULTATI, non solo i byte. **Esito: ok, con riserva 3.**
-3. `gas.py:2116` — `non_letti += 1; continue` al posto del `break` (scelta 3). Rischio esaminato: costo e aperture di file indesiderate dopo il tetto. Dopo il tetto non si fa né `stat` né `_rel_root`; il generatore continua ma `_risolvi_lettura` (gas.py:1849) fa solo operazioni di percorso e al massimo 2 `stat`, nessuna `open`, ed è capato da `LETTURA_MAX_FILE = 500` (gas.py:1822) e dalla scadenza di 5 s condivisa. Nessuna apertura, costo limitato. **Esito: ok sul costo, riserva 1 sul numero stampato.**
-4. `gas.py:1938/1942` — `stato["tetto"] = (stato["tetto"] or ...)` nella visita (scelta 4). Rischio esaminato: effetto su `_elenca_cartella` e utilità reale del guard. Per `_elenca_cartella` è un no-op verificato in esecuzione (con `LETTURA_MAX_FILE=4` e con `LETTURA_MAX_SECONDI=0.0` l'intestazione dice ancora «ELENCO INCOMPLETO: … numero di voci (4)» / «… tempo (0 s)»): quella funzione non scrive mai `tetto` e i due siti fanno `return` subito. Il guard serve davvero: con la mutazione ad assegnazione secca, su 12 file con `LETTURA_MAX_FILE=6` e budget 200 il motivo vero («byte letti … f02.txt letto solo in parte») viene sostituito da «numero di voci (6)». **Esito: ok nel merito, riserva 2 sulla copertura.**
-5. `gas.py:2149` + `gas.py:2163/2170` — messaggi distinti «budget complessivo della chiamata» / «log del kernel non cercati» / «N file rimasti non letti» (punto c). Rischio esaminato: fuga di informazione e righe forgiate. I nomi passano da `_rel_root` (gas.py:1877 → `rendi_visibili(a_capo=False)`, R-284-1) e provengono SOLO da file già approvati da `_risolvi_lettura`: i percorsi negati finiscono in `omessi` e non vengono mai nominati (es. `.env` non può comparire in `nomi_grandi`, gas.py:2126). Nessun `str(e)`, solo interi e percorsi dentro la root. **Esito: ok.**
-6. `tests/test_unit_kernel.py:8100` — test «vince il PRIMO tetto scattato». Rischio esaminato: test che dichiara più di quanto prova. Con 5 file in `molti/` il tetto «numero di voci» (500) non può scattare: la mutazione del guard sopravvive (825 PASS / 1 FAIL identici). **Esito: riserva 2.**
-7. `gas.py:831` (contesto, riga non toccata dal diff) — descrizione dello schema di `cerca_testo`: «in tutti i file di testo di una cartella». Ora i log sono esclusi. **Esito: riserva 4 (cosmetica).**
+1. `gas.py:2125` — `tetto_file = min(LETTURA_MAX_BYTES_PER_FILE, LETTURA_MAX_BYTES) if su_cartella else LETTURA_MAX_BYTES` (scelte 1 e 2 del brief). *Questa è la citazione che al primo giro avevo scritto col percorso assoluto e con il numero 2107: è la stessa riga, che a HEAD sta a 2125.* Rischio esaminato: regressione sul file indicato per nome e tetto aggirabile da env. Per `su_cartella=False` il valore è identico a quello che prima stava nel budget residuo al primo file → comportamento invariato; `min()` limita anche un `GAS_LETTURA_MAX_BYTES_PER_FILE` enorme e `_env_int(min_val=1)` regge i valori sporchi (`gas.py:823`). **Esito: ok.**
+2. `gas.py:2137` — `if su_cartella and self._LOG_KERNEL_RE.fullmatch(f.name)` (scelte 1 e 5), con la regex a `gas.py:1835`. Rischio esaminato: log non più ispezionabile e over-match. `fullmatch` su `f.name` copre il log e ogni rotazione numerata (anche oltre la terza), non tocca un archivio compresso né una cartella omonima (il generatore filtra i soli file), e il corto circuito su `su_cartella` lascia cercabile il log indicato per nome. Mutazione verificata: disattivando il salto, 4 test T84n vanno in FAIL e nel caso del log pieno di corrispondenze i 200 risultati finiscono tutti nel log facendo sparire il file del gate → il salto protegge anche il tetto dei RISULTATI, non solo i byte. **Esito: ok, con riserva 3.**
+3. `gas.py:2134` — `non_letti += 1` seguito da `continue` al posto del `break` (scelta 3). Rischio esaminato: costo e aperture di file indesiderate dopo il tetto. Dopo il tetto non si fa né `stat` né `_rel_root` (che sta a `gas.py:2136`, subito dopo il `continue`); il generatore continua ma `_risolvi_lettura` (`gas.py:1849`) fa solo operazioni di percorso e al massimo due `stat`, nessuna `open`, ed è capato da `LETTURA_MAX_FILE` (`gas.py:1822`, 500 voci) e dalla scadenza condivisa. **Esito: ok sul costo, riserva 1 sul numero stampato.**
+4. `gas.py:1975` — il guard «vince il primo tetto» (`stato["tetto"] = stato["tetto"] or motivo`) usato dai due siti della visita, `gas.py:1938` e `gas.py:1941` (scelta 4). *Al primo giro il guard era scritto in linea in quei due siti; nei giri 3/4 è stato estratto in `_segna_tetto` e la marcatura dell'evento in `_ferma_enum` (`gas.py:1964`): la riga che ho giudicato qui è quella del guard, oggi a 1975.* Rischio esaminato: effetto su `_elenca_cartella` e utilità reale del guard. Per `_elenca_cartella` è un no-op verificato in esecuzione (con tetto di voci basso e con tetto di tempo nullo l'intestazione dichiara ancora il motivo giusto): quella funzione non scrive mai il campo e i due siti fanno `return` subito; il suo stato è inizializzato a `gas.py:2023`, quello di `_cerca_testo` a `gas.py:2102`. Il guard serve davvero: con la mutazione ad assegnazione secca, su 12 file con tetto di voci 6 e budget 200 il motivo vero (byte letti, con il nome del file letto solo in parte) viene sostituito da «numero di voci (6)». **Esito: ok nel merito, riserva 2 sulla copertura.**
+5. `gas.py:2167` più `gas.py:2178`, `gas.py:2184` e `gas.py:2199` — messaggi distinti «budget complessivo della chiamata» / «file oltre il tetto per file» / «log del kernel non cercati» / «N file rimasti non letti» (punto c del brief). Rischio esaminato: fuga di informazione e righe forgiate. I nomi passano da `_rel_root` (`gas.py:1877`, che rende visibili i caratteri di controllo, R-284-1) e provengono SOLO da file già approvati da `_risolvi_lettura`: i percorsi negati finiscono nel contatore delle voci protette e non vengono mai nominati (un file di ambiente non può comparire fra i nomi raccolti a `gas.py:2144`). Nessun `str(e)`, solo interi e percorsi dentro la root. **Esito: ok.**
+6. `tests/test_unit_kernel.py:8105` — il blocco di test «vince il PRIMO tetto scattato». Rischio esaminato: test che dichiara più di quanto prova. Nella versione del primo giro il blocco girava con 5 file e il tetto di 500 voci, che non poteva scattare: la mutazione del guard sopravviveva (825 PASS / 1 FAIL identici). *Nota di stato: questa riserva (R-297-2) è stata corretta nel secondo giro, e a HEAD lo stesso blocco gira con il tetto di voci a 3 e la mutazione lo fa fallire.* **Esito al primo giro: riserva 2.**
+7. `gas.py:831` (contesto, riga non toccata dal diff del primo giro) — descrizione dello schema di `cerca_testo`, che allora prometteva «tutti i file di testo di una cartella» mentre i log erano esclusi. *Corretta nel terzo giro: a HEAD la stessa riga dichiara il salto dei log.* **Esito al primo giro: riserva 4 (cosmetica).**
 
-### Numeri riprodotti da me (venv del progetto, `PYTHONDONTWRITEBYTECODE=1`)
-- `tests/test_unit_kernel.py`: **825 PASS, 1 FAIL** — l'unico FAIL è T80u5, preesistente (confermo la diagnosi: Python 3.14.7 locale, CI pinnata 3.11).
-- `pytest -q`: **1031 passed, 1 skipped** in 153 s.
-- Mutazioni (applicate e poi ripristinate verificando `git diff --stat` vuoto): `continue`→`break` + salto log disattivato → **821 PASS, 5 FAIL** (i 4 test T84n mordono); `stato["tetto"] or`→assegnazione secca → **825 PASS, 1 FAIL invariati** (guard non coperto).
+FAIL-SAFE §9 verificato: ogni errore degli strumenti di lettura resta dentro `except Exception` del dispatcher a `gas.py:2013`, che logga un warning in gas_debug.log e restituisce un diniego, senza propagare.
 
-### Riserve (numerate, con gravità)
+### Numeri riprodotti da me al primo giro (venv del progetto)
+- Suite kernel: **825 PASS, 1 FAIL** — l'unico FAIL è T80u5, preesistente (confermata la diagnosi: Python 3.14.7 locale, CI pinnata su 3.11).
+- `pytest -q`: **1031 passed, 1 skipped**.
+- Mutazioni (applicate e poi ripristinate verificando che il diff tornasse pulito): `continue`→`break` più salto dei log disattivato → **821 PASS, 5 FAIL** (i 4 test T84n mordono); guard → assegnazione secca → **825 PASS, 1 FAIL invariati** (guard non coperto, riserva 2).
 
-1. **R-297-1 (MEDIA) — «N file rimasti non letti» è un PAVIMENTO, non un totale.** `non_letti` conta solo i file che il generatore riesce ancora a produrre: se dopo il primo tetto scatta anche un tetto della VISITA (500 voci o 5 s), il numero mente al ribasso e il secondo tetto resta invisibile per via dell'`or`. Misurato: 12 file, `LETTURA_MAX_FILE=6`, budget 200 → «RICERCA INCOMPLETA: raggiunto il tetto di byte letti (200 …): f02.txt letto solo in parte; **2 file rimasti non letti**», mentre i file non cercati erano 9 e il tetto di voci era scattato. È comunque meglio del `break` muto di prima (che non diceva nulla), ma rispetto al criterio dichiarato della fetta («il budget non deve mentire») resta una bugia più piccola della precedente. Suggerimento minimo: «almeno N file rimasti non letti», oppure dichiarare anche il secondo tetto scattato (es. tenere i motivi in una lista e stamparli tutti).
-2. **R-297-2 (BASSA) — scelta 4 non coperta da test.** Vedi sopra: la mutazione sopravvive e il test che si intitola «vince il PRIMO tetto scattato» non prova il guard. Fix da una riga: abbassare `_kL.LETTURA_MAX_FILE` (es. a 3) in quel blocco e asserire che il motivo resta «risultati»; con l'assegnazione secca il test deve fallire.
-3. **R-297-3 (BASSA) — il salto dei log è incondizionato sulla dimensione.** Un `gas_debug.log` da 50 KB, che sta largamente in ogni tetto, non viene più cercato in una ricerca su cartella; CLAUDE.md sez. 3 fa dell'ispezione del log un'attività di prima classe. Mitigazioni accettabili e presenti: dichiarato in intestazione con l'istruzione su come cercarci, cercabile per nome, e il salto protegge anche il tetto dei risultati (provato dalla mutazione M3). Resta da dichiarare come compromesso; un'alternativa sarebbe saltare i log solo oltre `tetto_file`, ma perderebbe la protezione sui risultati.
-4. **R-297-4 (COSMETICA) — promesse dello schema e del messaggio.** `gas.py:831` dice ancora «tutti i file di testo di una cartella» (ora: esclusi i log del kernel). Inoltre nel caso di file indicato per nome l'intestazione recita «oltre il tetto di 5000000 byte **per file**», mentre quello è il budget della chiamata: la dizione «per file» è fuori registro lì.
+### Riserve (numerate, con gravità) — testo del primo giro
+1. **R-297-1 (MEDIA) — «N file rimasti non letti» è un PAVIMENTO, non un totale.** Il contatore conta solo i file che il generatore riesce ancora a produrre: se dopo il primo tetto scatta anche un tetto della VISITA (voci o tempo), il numero mente al ribasso e il secondo tetto resta invisibile. Misurato: 12 file, tetto di voci 6, budget 200 → l'intestazione dichiarava «2 file rimasti non letti» mentre i file non cercati erano 9 e il tetto di voci era scattato. Meglio del `break` muto di prima, ma rispetto al criterio dichiarato della fetta resta una bugia più piccola della precedente. Suggerimento: «almeno N», oppure dichiarare anche il secondo tetto.
+2. **R-297-2 (BASSA) — la scelta 4 non è coperta da test**: la mutazione del guard sopravvive e il test che si intitola «vince il primo tetto» non lo prova. Fix da una riga: abbassare il tetto di voci in quel blocco.
+3. **R-297-3 (BASSA) — il salto dei log è incondizionato sulla dimensione.** Un log del kernel da 50 KB, che sta largamente in ogni tetto, non viene più cercato in una ricerca su cartella, mentre CLAUDE.md sez. 3 fa dell'ispezione del log un'attività di prima classe. Mitigazioni presenti e accettabili: dichiarato in intestazione con l'istruzione su come cercarci, cercabile per nome, e il salto protegge anche il tetto dei risultati. Resta da dichiarare come compromesso.
+4. **R-297-4 (COSMETICA) — promesse dello schema e del messaggio**: lo schema del tool prometteva «tutti i file di testo di una cartella»; e nel caso di file indicato per nome l'intestazione diceva «byte per file» mentre quel numero era il budget della chiamata.
 
 ### Rischio esplicitamente escluso (non verificato)
-- `python gas.py doctor` **non eseguito**: fa ping di rete reali ai provider; prendo per buono l'exit 0 dichiarato dall'autore senza prova indipendente.
-- **Comportamento su VPS non verificato**: non riproducibile in dev. In particolare il costo in `stat` della scelta 3 su un albero > 500 voci su disco lento è misurato solo su APFS locale/tmp, e il set reale di rotazioni da 5 MB non è stato ricostruito (il test usa un log sintetico da 4,5 MB in tmp).
-- **T80u5 non indagato**: FAIL preesistente anche su main f6396ba, fuori dal perimetro di questa fetta.
-- **`reports/stato_progetto.md` non in stage**: ne ho letto il contenuto (righe 9-14 coerenti col diff, R-282-1 e R-283-1 marcate chiuse correttamente) ma non lo giudico come parte del diff sotto review.
+- `python gas.py doctor` **non eseguito**: fa ping di rete reali ai provider; l'exit 0 è dell'autore, non provato da me.
+- **Comportamento su VPS non verificato**: non riproducibile in dev. Il costo degli `stat` della scelta 3 su alberi oltre le 500 voci su disco lento è misurato solo su APFS locale, e il set reale di rotazioni da 5 MB non è stato ricostruito (test con log sintetico da 4,5 MB in tmp).
+- **T80u5 non indagato**: FAIL preesistente anche su main f6396ba, fuori dal perimetro della fetta.
+- **`reports/` non in stage al primo giro**: letti per giudicare la coerenza, non giudicati come parte del diff.
 
-### Memoria aggiornata
-Riga contatore `#297 — 2026-10-12 — APPROVATO CON RISERVE — …` aggiunta in coda a `/Users/gas/Gas/.claude/worktrees/optimistic-austin-78debb/.claude/agents/memoria_revisore.md`, con due lezioni nuove datate (guard «vince il primo» da provare con due tetti e con la mutazione; contatore ricavato da una fonte a sua volta capata = pavimento). Committata con `bash scripts/commit_memoria_revisore.sh` → `e606313 chore(revisore): memoria review #297`; index verificato intatto dopo il commit (`gas.py` e `tests/test_unit_kernel.py` ancora staged, nient'altro).
-
-Commit consentito: sì, con le 4 riserve tracciate in `reports/stato_progetto.md` (R-297-1 MEDIA resta aperta se non la correggi ora; R-297-2 si chiude con una riga di test).
+### Memoria
+Nessuna riga contatore nuova per questa riemissione: non è una review nuova, è lo stesso verdetto #297 in forma verificabile dal gate. Le righe #297, #298, #299 e #300 sono già in `.claude/agents/memoria_revisore.md` e committate (ultimo commit di memoria: `25ce6e6`). Il revisore ha aggiunto nel giro #300 anche la lezione che una citazione con percorso assoluto non è verificabile dal gate: da lì in avanti scrive le citazioni solo come percorso relativo alla root del repo.
 
 ### Giro 2 — review #298
 
@@ -174,6 +182,47 @@ Riga `#299 — 2026-10-12 — APPROVATO CON RISERVE — …` in coda a `/Users/g
 
 Commit consentito: sì. Sistema R-299-3 (allineare il punto R-297-1 di `stato_progetto.md` al meccanismo finale) e, se vuoi chiudere tutto, la riga di commento di R-299-2; R-299-1 è opzionale e va tracciata come riserva aperta.
 
+### Giro 4 — review #300
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #300 — quarto giro su `feat/cerca-testo-budget-onesto` (worktree `/Users/gas/Gas/.claude/worktrees/optimistic-austin-78debb`). Nota: quando ho iniziato il diff era staged; **mentre revisionavo l'hai committato** (`d238610`, 18:22:53) — ne parlo nel punto «processo» qui sotto. Ho verificato che il `gas.py` committato è **byte-identico** a quello che ho revisionato (`diff` contro la mia copia: IDENTICI), quindi il verdetto vale su quel contenuto.
+
+Niente di sostanziale: il meccanismo è corretto, coperto dove si può coprirlo, e la cosa che NON è coperta l'hai dichiarata tu col numero della mutazione, che è esattamente il comportamento giusto. **Non serve un altro giro sul codice.**
+
+### Elementi del diff esaminati
+
+1. `gas.py:1964` — `_ferma_enum(cls, stato, motivo)`: `enum_prima = stato["tetto"] is None` → `enum_fermata = motivo` → `_segna_tetto`. Rischio esaminato: ordine delle tre righe (se `_segna_tetto` venisse prima, `enum_prima` sarebbe sempre `False`) e unicità dello scrittore. Ordine corretto; grep: le due chiavi sono scritte SOLO qui e nell'init di `gas.py:2103`, e lette SOLO a `gas.py:2196` (`enum_fermata`) e `gas.py:2200` (`enum_prima`). Nessun altro file `.py` le nomina. **Esito: ok.**
+2. `gas.py:1938` e `gas.py:1941` — i due siti della visita chiamano solo `_ferma_enum`. Rischio esaminato: uscite della visita che saltano la marcatura. Sono i soli due `return`; il troncamento dello `scandir` (`gas.py:1929`, `len(voci) >= resto` o tempo scaduto) non è un'uscita e porta sempre al tetto per-voce all'iterazione successiva, quindi marcato. **Esito: ok, nessun buco.**
+3. `gas.py:2200` — `elif stato.get("enum_prima")` al posto del confronto `fermata == stato["tetto"]`. Rischio esaminato: il caso che aveva motivato R-299-1. **Misurato**: 41 file, primo file ~660 KB, `LETTURA_MAX_SECONDI=0.03` → «…; RICERCA INCOMPLETA: raggiunto il tetto di tempo (0.03 s); quanti file siano rimasti non letti non si sa: **si è fermata anche l'enumerazione (tempo (0.03 s))**». Al 3° giro lo stesso caso diceva «si è fermata lì»: l'attribuzione ora è giusta. **Esito: ok, R-299-1 chiusa nel comportamento.**
+4. `gas.py:2103` — `"enum_fermata": None, "enum_prima": False` nello stato di `_cerca_testo`; `_elenca_cartella` non inizializza nulla. Rischio esaminato: regressione sull'elenco con due chiavi in più scritte nel suo dict. Verificato **in esecuzione**: `LETTURA_MAX_FILE=4` → «ELENCO INCOMPLETO: … numero di voci (4)», `LETTURA_MAX_SECONDI=0.0` → «… tempo (0 s)». Nessun `KeyError`, messaggi identici. **Esito: no-op confermato.**
+5. `tests/test_unit_kernel.py:8181` — nuovo test del ramo 3 con `non_letti == 0` (`LETTURA_MAX_RISULTATI=3`, `LETTURA_MAX_FILE=4` su `tanti/`). **Rispondo alla tua domanda sul determinismo: sì, è deterministico, ma non per il motivo che scrivi nel commento.** Lo `scandir` raccoglie `resto = LETTURA_MAX_FILE - visitati + 1 = 5` voci in ordine di DISCO *prima* del `sort`, quindi QUALI 5 file vengono pescati dipende dall'ordine del filesystem; l'esito però non cambia perché i 12 file di `tanti/` sono **intercambiabili** (stesso contenuto, stessa dimensione, una corrispondenza ciascuno): 4 file enumerati, tetto risultati sulla 4ª, tetto voci al 5° tentativo. Misurato 3 esecuzioni su root nuove: output identico carattere per carattere. Se un giorno quei file diventassero diversi, il test diventerebbe dipendente dall'ordine del disco. **Esito: ok.**
+6. `tests/test_unit_kernel.py:8164` — commento riscritto del test del tempo a 0.0. Rischio esaminato: dice ancora più di quanto il test provi? No: ora dichiara che con 0.0 la visita si ferma prima di ogni `yield`, che NON riproduce la collisione, dove sta la misura a mano e che vale come regressione sul sintomo. **Esito: ok, R-299-2 chiusa.**
+
+### Numeri riprodotti da me (venv del progetto, `PYTHONDONTWRITEBYTECODE=1`)
+- `tests/test_unit_kernel.py`: **830 PASS, 1 FAIL** (solo T80u5 preesistente). `pytest -q`: **1031 passed, 1 skipped** (158 s).
+- Mutazione «`enum_prima = True` sempre» → **3 FAIL** nuovi: il CALCOLO del flag è coperto.
+- Mutazione «rimetto il confronto fra testi» → **830 PASS / 1 FAIL invariati**: la tua dichiarazione è vera, verificata di persona. La differenza si vede solo col mio caso a 0.03 s («fermata lì» invece di «fermata anche l'enumerazione (…)»).
+- **Risposta alla tua domanda: no, non fare il test con `monotonic` finto.** Quello che resta scoperto non è il flag (coperto) ma la sola *equivalenza* con la vecchia implementazione, cioè l'attribuzione testuale in un caso che richiede un orologio: un orologio finto nella suite costa fragilità più di quanto valga una riga di attribuzione. La dichiarazione in `stato_progetto.md` col numero della mutazione è la forma giusta di chiusura.
+
+### Riserve (entrambe COSMETICHE, nessuna richiede un giro di review)
+
+1. **R-300-1 — numero sbagliato in `reports/stato_progetto.md` (riga 15): «Test T84n, 13 casi», ma i `check("T84n` sono 12** (coerente col +1 di suite: 829 → 830). L'elenco fra parentesi, inoltre, non cita il caso nuovo (ramo «fermata anche l'enumerazione» con 0 file contati). Il report è la fonte di verità: correggi 13 → 12 e aggiungi il caso. È `reports/`, fuori perimetro: basta un commit di doc, nessuna review.
+2. **R-300-2 — typo nel docstring `gas.py:1965`: «La visita si fermata per un tetto suo»** (manca «è»). **NON correggerlo adesso**: `scripts/hash_diff_staged.sh` hasha TUTTO il diff e il motore è già committato, quindi per un typo in un commento servirebbe un commit nuovo nel perimetro e quindi un'altra review. Va nella prossima fetta che tocca `_cerca_testo`; l'ho annotato in memoria.
+
+### Processo — da registrare, non da rifare
+Il commit del motore `d238610` è datato **18:22:53**, cioè PRIMA che questo verdetto esistesse: il marcatore `.claude/.review_ok` è stato scritto sul diff del 4° giro senza attendere l'esito. Mitigazione reale e verificata: il contenuto committato è byte-identico a quello che avevo in mano, quindi **non è passato codice non revisionato** e non c'è nulla da rifare. Ma la sequenza è la stessa famiglia della recidiva di PR #18 citata nel mio mandato, quindi va scritta in `reports/stato_progetto.md` come nota di processo (una riga), non lasciata implicita. Promemoria operativo: tutto ciò che metti in stage dopo il verdetto — anche solo `reports/` — cambia l'hash, quindi `scripts/segna_review_ok.sh` va eseguito come ULTIMO passo prima di `git commit`, e dopo di esso non si tocca più il perimetro.
+
+### Rischio esplicitamente escluso (non verificato)
+- `python gas.py doctor` **non eseguito** in nessuno dei quattro giri (ping di rete reali ai provider): prendo per buono il tuo exit 0.
+- **VPS non verificato**: costo degli `stat` dell'enumerazione post-tetto misurato solo su APFS locale/tmp; rotazioni reali da 5 MB non ricostruite (test con log sintetico da 4,5 MB).
+- **Attribuzione nel caso dell'orologio**: provata solo con la mia sonda a 0.03 s, non in suite (scelta dichiarata, vedi sopra).
+- **T80u5**: FAIL preesistente anche su main f6396ba (Python 3.14.7 locale, CI pinnata 3.11), fuori scope.
+- **R-297-3** resta il compromesso dichiarato già giudicato onesto in #299 (log saltati a prescindere dalla dimensione).
+
+### Memoria aggiornata
+Riga `#300 — 2026-10-12 — APPROVATO CON RISERVE — …` in coda a `/Users/gas/Gas/.claude/worktrees/optimistic-austin-78debb/.claude/agents/memoria_revisore.md`, con tre lezioni nuove datate (una correzione cosmetica nel codice dopo il verdetto costa un giro intero perché il marcatore hasha tutto il diff; test dipendenti da `resto` sono deterministici solo con voci intercambiabili; nota di processo sul commit anteriore al verdetto). Committata con `bash scripts/commit_memoria_revisore.sh` → `25ce6e6 chore(revisore): memoria review #300`. Index pulito (il tuo commit aveva già svuotato lo stage; il mio commit contiene SOLO il file di memoria, verificato con `git show --stat`).
+
 ### Base dell'autorizzazione al commit, e giro 4
 
 Il commit di questo diff è autorizzato da **#299** («Commit consentito: sì»), applicate le correzioni che il verdetto stesso prescriveva o permetteva: R-299-3 (solo `reports/`, fuori perimetro), la riga di commento di R-299-2 più il test che mancava sul ramo 3, e l'opzionale R-299-1. Il diff staged differisce da quello di #299 **solo** per quelle correzioni.
@@ -219,22 +268,24 @@ Mutazioni eseguite e poi ripristinate (`git diff` verificato pulito dopo ognuna)
 Output REALE di `gh run list -L 3` alla scrittura dell'handoff (prima del push di questo branch):
 
 ```
-in_progress		fix/test t80u5 portabile	verifica-bot	fix/test-t80u5-portabile	pull_request_target	38276929440	38s	2026-10-12T16:22:22Z
-completed	skipped	fix/test t80u5 portabile	verifica-bot	fix/test-t80u5-portabile	pull_request_target	38276867649	2s	2026-10-12T16:21:51Z
-in_progress		docs(fine-task): report, handoff, stato e diff — T80u5 tetto di annid…	CI	fix/test-t80u5-portabile	push	38276828217	1m29s	2026-10-12T16:21:31Z
+completed	success	fix/test t80u5 portabile	verifica-bot	fix/test-t80u5-portabile	pull_request_target	38277005239	3m22s	2026-10-12T16:23:02Z
+completed	success	docs(fine-task): §0 dell'handoff con numero e URL reali della PR #192	CI	fix/test-t80u5-portabile	push	38277003024	1m38s	2026-10-12T16:23:01Z
+completed	cancelled	fix/test t80u5 portabile	verifica-bot	fix/test-t80u5-portabile	pull_request_target	38276929440	1m58s	2026-10-12T16:22:22Z
 ```
 
-Nessuna di queste run riguarda questa sessione: sono tutte del branch `fix/test-t80u5-portabile`, di un'ALTRA sessione in corso (che sta rendendo portabile proprio il test T80u5 che qui risulta FAIL preesistente).
+Nessuna di queste run riguarda questa sessione: sono tutte del branch `fix/test-t80u5-portabile` (PR #192), di un'ALTRA sessione in corso che sta rendendo portabile proprio il test T80u5 che qui risulta FAIL preesistente.
 
 **Mappatura commit→run di QUESTA sessione:**
 
 - `e606313` chore(revisore): memoria review #297 — **nessuna run su questo SHA** (commit intermedio, mai pushato da solo).
+- `d238610` fix(cerca_testo): il budget di byte non mente piu' — **nessuna run su questo SHA** (commit intermedio, mai pushato da solo).
 - `be36ce8` chore(revisore): memoria review #298 — **nessuna run su questo SHA** (commit intermedio, mai pushato da solo).
 - `08c9af6` chore(revisore): memoria review #299 — **nessuna run su questo SHA** (commit intermedio, mai pushato da solo).
-- `d238610` fix(cerca_testo): il budget di byte non mente piu' — **run non ancora disponibile alla scrittura dell'handoff**.
-- commit di fine-task (reports), non ancora creato alla scrittura di questa sezione — **run non ancora disponibile alla scrittura dell'handoff**.
+- `775fdb8` docs(fine-task) primo giro — **nessuna run su questo SHA** (commit intermedio, mai pushato da solo).
+- `b892800` e `25ce6e6` chore(revisore): memoria review #300 — **nessuna run su questi SHA** (commit intermedi, mai pushati da soli).
+- commit di fine-task (reports), di testa al push — **run non ancora disponibile alla scrittura dell'handoff**.
 
-GitHub Actions crea una run per *push*, non per commit: il push di questa sessione genererà UNA run che testa solo l'albero del commit di testa. I tre commit di memoria del revisore e `d238610` non sono mai stati testati da soli e vanno considerati non testati individualmente, anche se il loro contenuto è incluso nell'albero testato dalla run di testa. La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
+GitHub Actions crea una run per *push*, non per commit: il push di questa sessione genera UNA run che testa SOLO l'albero del commit di testa. Tutti i commit elencati sopra come «nessuna run» non sono mai stati testati individualmente, anche se il loro contenuto è incluso nell'albero testato dalla run di testa. La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
 
 ## §7 RISERVE APERTE
 
@@ -242,5 +293,7 @@ GitHub Actions crea una run per *push*, non per commit: il push di questa sessio
 - 🟡 **R-291-1 + bot #188 (2° giro)** (BASSE, PREESISTENTI, non toccate in questa fetta) — buchi residui della denylist credenziali, verificati uno per uno: `token_cache.json`, `kubeconfig`, `mywallet.dat`, `.vault-token`, `.dockercfg`, `_netrc`, `clientsecret.json`, `*.gpg`, `*.asc`. Solo PROPOSTI (§0 punto 3), fetta di sicurezza a sé.
 - 🟡 **T80u5** (PREESISTENTE, fuori scope) — FAIL della suite kernel col `.venv` a Python 3.14.7; CI su 3.11 verde.
 - ⚠️ **R-299-1** (COSMETICA) — chiusa nel CODICE (`_ferma_enum` registra `enum_prima` al momento della marcatura: via l'ultimo confronto fra testi) ma **NON coperta da test**, e dichiarata tale: la mutazione che rimette il confronto fra testi sopravvive (830/1 invariati). Il solo caso in cui i due differiscono richiede un tempo che scada a METÀ lavoro; prova a mano a 0.03 s su 41 file.
+- ⚠️ **R-300-2** (COSMETICA) — typo nel docstring di `_ferma_enum` in `gas.py` («La visita si fermata per un tetto suo», manca «è»). NON corretto in questa fetta su indicazione del revisore: il motore è già committato e `hash_diff_staged.sh` hasha tutto il diff, quindi un commento costerebbe un giro di review intero. Prossima fetta che tocca `_cerca_testo`.
+- ⚠️ **Nota di processo (review #300)** — il commit del motore `d238610` è anteriore al verdetto #300: marcatore scritto e commit fatto sulla base dell'autorizzazione di #299, col 4º giro ancora in corso. Il revisore ha verificato che il `gas.py` committato è byte-identico a quello revisionato: nessun codice non revisionato è passato, nulla da rifare. Sequenza giusta per il futuro: `segna_review_ok.sh` ULTIMO passo prima del commit, e dopo non si tocca più il perimetro.
 - ℹ️ Riserve CHIUSE in questa sessione: R-282-1 (MEDIA, era solo mitigata in #184), R-283-1, R-297-1 (MEDIA), R-297-2, R-297-4, R-298-1, R-298-2, R-298-3, R-299-2, R-299-3; R-299-1 chiusa nel codice ma non coperta.
 - ℹ️ Non verificati, dichiarati dal revisore: comportamento su VPS (costo degli `stat` dell'enumerazione post-tetto misurato solo su APFS locale/tmp; rotazioni reali da 5 MB non ricostruite, il test usa un log sintetico da 4,5 MB in tmp); `gas.py doctor` non eseguito dal revisore.

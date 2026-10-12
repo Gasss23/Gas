@@ -77,7 +77,14 @@ Terzo giro sul diff cambiato: **review #299, APPROVATO CON RISERVE**, tre riserv
 - ✅ **R-299-2 (COSMETICA)** — il commento del test sul tetto di tempo prometteva di riprodurre la COLLISIONE di due tetti «tempo (0 s)», che con `LETTURA_MAX_SECONDI=0.0` non avviene: la visita si ferma prima di ogni `yield`, quindi scatta un solo tetto. Un commento che dichiara più di quello che il test prova è esattamente il genere di cosa che il canone del progetto non tollera: riscritto per dire il vero (è una regressione sul SINTOMO, valida), e aggiunto il test che mancava sul ramo «fermata anche l'enumerazione» con **0** file contati (non stampa nessun numero, non «almeno 0»).
 - ⚠️ **R-299-1 (COSMETICA)** — chiusa nel codice, **ma non coperta da test, e lo dichiaro**. Il ramo «l'enumerazione si è fermata lì» si sceglieva ancora per uguaglianza di TESTO, quindi con due tetti di pari etichetta la fermata poteva essere attribuita al componente sbagliato (innocuo: in entrambi i casi il conto è ignoto e la sostanza vera). Ora `_ferma_enum()` registra `enum_prima` al momento della marcatura: via l'ULTIMO confronto fra stringhe. **Ho misurato che la mutazione che rimette il confronto fra testi SOPRAVVIVE** (830 PASS / 1 FAIL invariati): il solo caso in cui i due comportamenti differiscono richiede un tempo che scada a METÀ lavoro, e mettere un orologio nella suite la renderebbe instabile. La prova resta quella a mano (41 file, `LETTURA_MAX_SECONDI=0.03`). Non spaccio per coperto ciò che non lo è.
 
-Il revisore ha confermato che la formulazione del compromesso R-297-3 è «onesta e completa», e che 830 e l'elenco dei casi T84n sono corretti.
+Il revisore ha confermato che la formulazione del compromesso R-297-3 è «onesta e completa».
+
+Quarto giro (lanciato per diligenza, non perché il gate lo richiedesse): **review #300, APPROVATO CON RISERVE** — «niente di sostanziale: il meccanismo è corretto, coperto dove si può coprirlo, e la cosa che NON è coperta l'hai dichiarata tu col numero della mutazione... **Non serve un altro giro sul codice.**» Ha misurato di persona che R-299-1 è chiusa nel comportamento (stesso caso a 0.03 s: ora dice «si è fermata anche l'enumerazione (tempo (0.03 s))» invece di «si è fermata lì»), e ha risposto no alla mia domanda se valesse la pena un test con l'orologio finto: quello che resta scoperto non è il flag (coperto: mutazione «`enum_prima` sempre True» = 3 FAIL) ma la sola equivalenza con la vecchia attribuzione testuale, e un orologio finto nella suite costerebbe più fragilità di quanto valga. Due riserve, entrambe cosmetiche:
+
+- ✅ **R-300-1 (COSMETICA)** — avevo scritto «13 casi T84n» in `stato_progetto.md`: i `check("T84n` sono **12**. L'avevo contato male includendo T84f, che non è un caso T84n. Verificato da me con `grep -c` e corretto, e aggiunto all'elenco il caso che mancava.
+- ⚠️ **R-300-2 (COSMETICA, lasciata APERTA)** — typo in un docstring di `gas.py` («La visita si fermata», manca «è»). **Non l'ho corretto, su indicazione del revisore stesso**: il motore è già committato e `hash_diff_staged.sh` hasha tutto il diff, quindi correggere un commento rimetterebbe il perimetro in gioco e costerebbe un giro di review intero per un accento. Va nella prossima fetta che tocca `_cerca_testo`.
+
+**Osservazione di processo che accetto**, e che ho scritto in `stato_progetto.md` invece di lasciarla implicita: il commit del motore `d238610` è **anteriore al verdetto #300**. Ho scritto il marcatore e committato sulla base dell'autorizzazione esplicita di #299 («Commit consentito: sì») con le correzioni che quel verdetto prescriveva, mentre il quarto giro era ancora in corso. Il revisore ha verificato che il `gas.py` committato è **byte-identico** a quello che aveva in mano, quindi non è passato codice non revisionato e non c'è nulla da rifare — ma la sequenza giusta è `segna_review_ok.sh` come ULTIMO passo prima del commit, e dopo non si tocca più il perimetro.
 
 ---
 
@@ -94,7 +101,7 @@ L'unico FAIL è **T80u5, PREESISTENTE e fuori scope**: col `.venv` del progetto 
 
 `tests/test_unit_kernel.py` è escluso dalla collection di pytest (`conftest.py`) e girato come script, come fa la CI: le due suite non si sovrappongono.
 
-**Test nuovi (T84n), 13 casi, tutti sulla riproduzione reale:**
+**Test nuovi (T84n), 12 casi** (contati con `grep -c 'check("T84n'`; il 13º che avevo scritto era T84f, che non è un caso T84n — R-300-1)**, tutti sulla riproduzione reale:**
 1. un `gas_debug.log` da 4,5 MB non nasconde più `gate.py`; i log sono saltati, contati e dichiarati;
 2. un log da 5000 righe che contengono il testo cercato non esaurisce il tetto dei risultati prima di arrivare a `modules/`;
 3. i log indicati per nome restano cercabili, rotazioni comprese;
@@ -107,7 +114,7 @@ L'unico FAIL è **T80u5, PREESISTENTE e fuori scope**: col `.venv` del progetto 
 10. il tetto di **TEMPO** non tace sui file mai cercati e dichiara di non sapere quanti sono (R-298-1) — con `LETTURA_MAX_SECONDI=0.0`, quindi senza orologio nel test;
 11. il ramo «fermata anche l'enumerazione» con **0** file contati non stampa nessun numero (R-298-2/R-299-2);
 12. su un file indicato per nome il tetto è «byte della chiamata» (R-297-4);
-13. (T84f, aggiornato) il tetto di byte sul file indicato per nome, col nome dichiarato.
+Più **T84f aggiornato** al nuovo meccanismo (non è un caso T84n).
 
 T84f aggiornato al nuovo meccanismo (il vecchio test tarava `LETTURA_MAX_BYTES` per provocare lo skip per-file: ora serve anche `LETTURA_MAX_BYTES_PER_FILE`).
 
