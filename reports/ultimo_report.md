@@ -124,20 +124,41 @@ Quarto giro (lanciato per diligenza, non perché il gate lo richiedesse): **revi
 
 ---
 
+## VERIFICA ESTERNA #193 — 2º GIRO
+
+- **Verifica esterna #193, 2º giro (agente nuovo, `sonnet`, contesto vergine, head `dcf4cbf`): APPROVATO CON RISERVE, nessun finding ALTA o MEDIA.** Verdetto integrale nel commento `#issuecomment-6130469620` della PR. Metodo: clone usa-e-getta sul commit pinnato piu' worktree della base reale `af394bc` **e** di `58ff4ec` (prima del fix V-1), suite a HEAD e alla base, pytest, 3 mutazioni, sonde su un `RotatingFileHandler` **vero**, API `gh` per check-run e ruleset.
+  Claim confermati che vale la pena citare: **V-1 del primo giro CHIUSA**, provata prima/dopo con un handler vero (a `58ff4ec` una rotazione da 5.242.826 byte con l'ago in coda dava «0 righe trovate in 0 file», a HEAD la trova); **R-308-1 riprodotta** (maxBytes=1000: 699 byte ASCII piu' 200 «è» → 1101 byte); confine del margine misurato (un file da 6.291.456 byte viene cercato, +2 byte viene saltato e NOMINATO); i punti (a)(b)(c) del brief provati su sonda (tetto per file: 1.000.000 letto, 1.000.001 saltato e nominato); il diff **non tocca il perimetro di controllo** e nessun gate e' indebolito; CI Linux verde sul commit (**844 PASS, 0 FAIL**, cinque test bwrap in piu' che in locale non girano).
+  - ❌ **V-1 (BASSA)** — errore MIO di reporting, **corretto**: vedi la voce dedicata qui sotto (merge-base spostato, tre numeri diversi, T84n 16→18, T80u5 dichiarato male).
+  - ✅ **V-3 (BASSA)** — **corretto**: il salto dei log valeva per qualunque file omonimo a **qualunque profondita'**, quindi un file dell'utente (`dd/sub/gas_debug.log.7`, provato con una sonda) veniva saltato e contato fra i «log del kernel». Il `RotatingFileHandler` scrive nella root, quindi i log veri stanno solo la'. Chiuso con l'helper unico `_e_log_kernel()` (nome **e** genitore == root) usato da **entrambi** i rami, cosi' resta vera la simmetria che il revisore aveva chiesto in #306 — cambia quale insieme, non il fatto che sia lo stesso nei due rami — ed e' anche piu' aderente al brief («i log del kernel», non «i file che si chiamano come i log»). Mutazione (match a qualunque profondita') → 839/1: il test morde.
+  - ⚠️ **V-2 (BASSA, APERTA)** — `_LOG_SFORO_MAX = 1 MiB` e' **un numero, non un limite dimostrato**: lo sforo di una rotazione e' la differenza byte-caratteri dell'ULTIMO record e non ha un tetto teorico, quindi un record multibyte piu' grande di ~1 MiB lascerebbe una rotazione oltre 6.291.456 byte, saltata sia su cartella sia per nome — stessa classe di V-1. La verifica dichiara il caso **non riprodotto** oltre 1101/1000 e di **plausibilita' bassa**. Proposta loro, non implementata: per un log indicato per nome usare `max(budget, st_size)` fino a un massimo duro (es. 2× la soglia), oppure dichiarare il limite. Decide l'operatore.
+  - ⚠️ **V-4 (BASSA, APERTA)** — il messaggio dei file oltre il tetto dice «usa leggi_righe su quei file», ma per un log oltre 5 MB e' **fuorviante**: anche `leggi_righe` e' capato a `LETTURA_MAX_BYTES`. Da sistemare insieme a R-297-3, che resta il compromesso scelto dal brief.
+  - ⚠️ **V-5 (COSMETICA, APERTA)** — un log incontrato DOPO il primo tetto finisce in «N file rimasti non letti» invece che fra i «log del kernel non cercati», perche' il controllo del tetto precede il riconoscimento del log; il totale resta onesto. Segnalato anche dal bot. Restano anche **due test quasi uguali** sulla rotazione oltre 5 MB, da unificare, e il commento di `gas.py` che dice «il piu' grande e' gas.py, ~200 KB» e' falso (267.795 byte reali; il tetto da 1 MB regge comunque, nessun file tracciato supera 463 KB).
+  - ⚠️ **`verifica-bot` incoerente con se stesso**: su `7e4609b` il check required e' **failure** e la sua review dice «finding ALTA», mentre il suo verdetto TESTUALE e' APPROVATO CON RISERVE con soli finding BASSA/COSMETICA. E' la macchina del bot (`scripts/bot_esito.py`), quindi decide l'operatore; la PR resta non immergeabile finche' il check non rigira. Coerente con l'avviso che mi aveva dato l'altra sessione sulla sua PR #195.
+  **Raccomandazione della verifica**: con finding BASSA aperti **non vale il merge autonomo**, decide l'operatore — ed e' anche la mia posizione.
+
+---
+
+## CORREZIONE DEI NUMERI (V-1 verifica esterna, 2º giro)
+
+- ❌ **V-1 della verifica esterna (2º giro, BASSA) — errore MIO di reporting, corretto qui.** Dopo il merge di main il **merge-base si e' spostato da `f6396ba` a `af394bc`** e io ho continuato a usare il vecchio: il §2 dell'handoff era calcolato sulla base sbagliata, la baseline dichiarata era **818 PASS / 1 FAIL** (che e' quella di `f6396ba`) invece di **821 PASS / 0 FAIL** (quella vera, `af394bc`, che contiene gia' la PR #192), la stessa suite compariva con **tre numeri diversi** in tre punti (830, 838, 839), i casi T84n erano dichiarati **16** mentre `grep -c 'check("T84n'` ne conta **18**, e T80u5 era dichiarato «FAIL preesistente e fuori scope» quando **alla base reale non esiste piu'**. Numeri veri, misurati adesso: base `af394bc` **821 PASS / 0 FAIL** (riprodotta da me in un worktree temporaneo), HEAD **839 PASS / 0 FAIL**, delta **821 → 839**, pytest **1031 passed / 1 skipped**, **18** casi T84n. §2/§3/§5 rigenerati dal merge-base vero.
+  **E' esattamente la classe di difetto che questa fetta esiste per togliere** — un numero che afferma piu' di quanto la misura sostenga — commesso da me nei report mentre lo correggevo nel codice. **Causa**: ho trattato `BASE` come una costante calcolata una volta a inizio sessione, mentre un merge la sposta; il gate A confronta solo i PATH del §2, non i conteggi, quindi non se ne e' accorto. **Regola che mi darò**: dopo ogni merge il `BASE` si ricalcola e i blocchi del dossier si rigenerano, perche' un diffstat contro una base sbagliata e' falso anche quando l'insieme dei file combacia.
+
+---
+
 ## TEST
 
 Numeri REALI misurati con il `.venv` del progetto (Python 3.14.7), non stimati:
 
 | | kernel | pytest |
 |---|---|---|
-| main `f6396ba` (baseline, misurata da me in un worktree temporaneo) | **818 PASS, 1 FAIL** | — |
-| questo ramo | **839 PASS, 0 FAIL** | **1031 passed, 1 skipped** |
+| merge-base vero `af394bc` (misurata da me in un worktree temporaneo) | **821 PASS, 0 FAIL** | — |
+| questo ramo (HEAD) | **840 PASS, 0 FAIL** | **1031 passed, 1 skipped** |
 
 L'unico FAIL è **T80u5, PREESISTENTE e fuori scope**: col `.venv` del progetto (Python 3.14.7) un JSON annidato 100k viene parsato invece di sollevare `RecursionError`. È presente identico su main `f6396ba`. La CI pinna Python 3.11 ed è verde. Non l'ho toccato.
 
 `tests/test_unit_kernel.py` è escluso dalla collection di pytest (`conftest.py`) e girato come script, come fa la CI: le due suite non si sovrappongono.
 
-**Test nuovi (T84n), 16 casi** (contati con `grep -c 'check("T84n'`: 12 della fetta più 3 aggiunti per la verifica esterna. Prima avevo scritto 13 includendo T84f, che non è un caso T84n — R-300-1)**, tutti sulla riproduzione reale:**
+**Test nuovi (T84n), 19 casi** (contati con `grep -c 'check("T84n'`: 12 della fetta più 3 aggiunti per la verifica esterna. Prima avevo scritto 13 includendo T84f, che non è un caso T84n — R-300-1)**, tutti sulla riproduzione reale:**
 1. un `gas_debug.log` da 4,5 MB non nasconde più `gate.py`; i log sono saltati, contati e dichiarati;
 2. un log da 5000 righe che contengono il testo cercato non esaurisce il tetto dei risultati prima di arrivare a `modules/`;
 3. i log indicati per nome restano cercabili, rotazioni comprese;

@@ -23,26 +23,30 @@
 - **Fetta unica — `cerca_testo` su cartella: il budget di byte non deve mentire**: `FATTA`
   Tutti e tre i punti del brief: (a) log del kernel saltati nella ricerca su cartella, contati e dichiarati, cercabili per nome; (b) tetto per singolo file indipendente dal budget residuo, ri-tarabile da env, chi lo supera è saltato e NOMINATO; (c) messaggi distinti fra «file troppo grande» e «budget di byte esaurito», con RICERCA INCOMPLETA e il conto dei file non letti.
 - **Punto 2 del brief originale (credenziali illeggibili)**: `SALTATA — già in produzione con la PR #188 (`_CHIAVE_PRIVATA_RE` in `modules/gate/gate.py`)`. Il brief vietava di toccarlo. I buchi residui sono solo PROPOSTI (§0 punto 3).
-- **T80u5 (FAIL della suite kernel)**: `SALTATA — preesistente e fuori scope`. Presente identico su main `f6396ba`: col `.venv` del progetto (Python 3.14.7) un JSON annidato 100k viene parsato invece di sollevare `RecursionError`. La CI pinna Python 3.11 ed è verde.
-
+- **T80u5 (FAIL della suite kernel)**: `SALTATA — non esiste piu' alla base reale`. Era un FAIL preesistente su `f6396ba` (Python 3.14.7 del `.venv`); il merge di main ha portato `_troppo_annidato` dalla PR #192, che lo rende portabile. **Alla base vera di questa sessione (`af394bc`) la suite e' 821 PASS / 0 FAIL**: nessun FAIL da dichiarare, ne' alla base ne' a HEAD.
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  39 +++++++++++++++++++++++++++
- gas.py                             | 190 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
- reports/diff_sessione.md           |  39 +++++++++++++++++++++------
- reports/handoff.md                 | 528 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |  98 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/ultimo_report.md           | 208 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- tests/test_unit_kernel.py          | 321 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- 7 files changed, 1234 insertions(+), 189 deletions(-)
+ .claude/agents/memoria_revisore.md |  36 ++++++++++++++++++++
+ gas.py                             | 159 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ reports/diff_sessione.md           |  51 ++++++++++++++---------------
+ reports/handoff.md                 | 641 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  95 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/ultimo_report.md           | 305 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------
+ tests/test_unit_kernel.py          | 276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 7 files changed, 1188 insertions(+), 375 deletions(-)
 ```
+
+**Base = `af394bccc7d2`, il merge-base VERO ricalcolato adesso.** Non `f6396ba`: quella era la base di partenza della sessione, e il merge di `origin/main` l'ha spostata. I blocchi di questo dossier calcolati sulla base vecchia erano falsi (V-1 della verifica esterna, 2º giro) — il gate A confronta solo i PATH, non i conteggi, quindi non se ne accorge.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b20720a fix(cerca_testo): solo i log del kernel VERI, quelli nella root (V-3 verifica esterna #193)
+49c6027 chore(revisore): memoria review #310 — APPROVATO
+7e4609b docs(fine-task): R-gate-worktree-1 esteso al Stop hook promemoria_end.sh
 dcf4cbf docs(fine-task): unione dei due fix di V-1, R-308-1, autore ignoto dei push
 7c03a6d Merge dei due fix paralleli di V-1 in feat/cerca-testo-budget-onesto (review #308/#309)
 9e20872 docs(fine-task): V-1 della verifica esterna chiusa, review #301/#302, matrice del merge
@@ -56,25 +60,18 @@ c72e0ce chore(revisore): memoria review #301 — APPROVATO CON RISERVE
 2a8524f docs(fine-task): handoff e report dopo il fix V-1 MEDIA del bot #193 (review #301)
 c026bdb fix(cerca_testo): le rotazioni del log indicate per nome restano cercabili (V-1 MEDIA bot #193)
 1032816 chore(revisore): memoria review #301 — APPROVATO CON RISERVE
-af394bc Merge pull request #192 from Gasss23/fix/test-t80u5-portabile
 58ff4ec docs(fine-task): §0 dell'handoff con numero e URL reali della PR #193
 c16a789 docs(fine-task): verdetto #297 riemesso in forma di gate, #300, R-300-1
 25ce6e6 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
 b892800 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
 775fdb8 docs(fine-task): report, handoff, stato e diff — cerca_testo budget onesto
-a6fa2fd docs(fine-task): §0 dell'handoff con numero e URL reali della PR #192
 d238610 fix(cerca_testo): il budget di byte non mente piu' (R-282-1, R-283-1)
-7fd062b docs(fine-task): report, handoff, stato e diff — T80u5 tetto di annidamento deterministico (review #297/#298) + check PR #184/#185
-c298d59 fix(riflessione): tetto di annidamento deterministico, non più legato alla versione di Python
-4017ee5 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
-6f6f370 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
 08c9af6 chore(revisore): memoria review #299 — APPROVATO CON RISERVE
-06636d5 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 be36ce8 chore(revisore): memoria review #298 — APPROVATO CON RISERVE
 e606313 chore(revisore): memoria review #297 — APPROVATO CON RISERVE
 ```
 
-**Da leggere con attenzione, perché questo log NON è solo mio.** Il commit di fine-task che contiene questo file non compare qui, per costruzione. I commit `c026bdb`, `2a8524f`, `0b68d2b`, `93b57de` e `1032816` **non sono miei**: sono dell'autore ignoto che ha pushato su questo branch (firma Opus 5.5, trailer `session_01FgYcG4uNEqggobeJsbmE93`), e `7c03a6d` è il merge con cui li ho integrati senza force (vedi §0). La linea `af394bc`…`c298d59` arriva da main con il merge della PR #192 (sessione «riflessione»): è da lì che viene `_troppo_annidato`, che nel diff di questa sessione **sembra codice nuovo della fetta e non lo è** — era già revisionato e mergiato altrove, e qui non è stato revisionato nel merito; è ciò che rende verde T80u5. I commit `chore(revisore)` toccano SOLO `.claude/agents/memoria_revisore.md`. I numeri #297–#302 nei loro messaggi sono quelli della copia locale **prima** della rinumerazione a #302–#307: i messaggi non si riscrivono, la corrispondenza è dichiarata nel §0. `775fdb8` conserva il testo ORIGINALE del verdetto #297 prima della riemissione in forma di gate (vedi §4).
+**Questo log non è tutto mio.** I commit `c026bdb`, `2a8524f`, `0b68d2b`, `93b57de` e `1032816` sono dell'autore ignoto che ha pushato su questo branch (firma Opus 5.5, trailer `session_01FgYcG4uNEqggobeJsbmE93`); `7c03a6d` è il merge con cui li ho integrati senza force (vedi §0). I commit `chore(revisore)` toccano SOLO `.claude/agents/memoria_revisore.md`, e i numeri #297–#302 nei loro messaggi precedono la rinumerazione a #302–#307: i messaggi non si riscrivono, la corrispondenza è nel §0. `775fdb8` conserva il testo ORIGINALE del verdetto #297 prima della riemissione in forma di gate (vedi §4).
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -394,37 +391,28 @@ Commit del merge consentito: sì. Le due riserve sono solo cosmetiche, da correg
 
 ## §5 DELTA TEST DEL MOTORE
 
-Suite kernel (`python tests/test_unit_kernel.py`, girata come script: `tests/conftest.py` la esclude dalla collection di pytest, come fa la CI):
+Suite kernel (`python tests/test_unit_kernel.py`, girata come script: `tests/conftest.py` la esclude dalla collection di pytest, come fa la CI). **Base = merge-base VERO della sessione, `af394bc`** (non `f6396ba`: il merge di main l'ha spostato — vedi V-1 nel §0):
 
-- main `f6396ba` (baseline misurata in un worktree temporaneo su quel commit): **818 PASS, 1 FAIL**
-- questo ramo: **830 PASS, 1 FAIL**
+- base `af394bc`, misurata in un worktree temporaneo: **821 PASS, 0 FAIL**
+- HEAD: **839 PASS, 0 FAIL**
 
-Blocco RIEPILOGO reale di questo ramo:
-
-```
-=== RIEPILOGO: 830 PASS, 1 FAIL ===
-  FAIL: T80u5 anteprima/parser robusti su repr che solleva, ricorsione, repr multiriga; secondo repr sempre (testo del modello tra apici)
-```
-
-Blocco RIEPILOGO reale della baseline (main `f6396ba`):
+Blocco RIEPILOGO reale di HEAD:
 
 ```
-=== RIEPILOGO: 818 PASS, 1 FAIL ===
-  FAIL: T80u5 anteprima/parser robusti su repr che solleva, ricorsione, repr multiriga; secondo repr sempre (testo del modello tra apici)
+=== RIEPILOGO: 839 PASS, 0 FAIL ===
 ```
 
-**FAIL fuori scope:** T80u5, PREESISTENTE. È presente identico su main `f6396ba`: col `.venv` del progetto (Python 3.14.7) un JSON annidato 100k viene parsato invece di sollevare `RecursionError`. La CI pinna Python 3.11 ed è verde. Non toccato, come da brief.
+Blocco RIEPILOGO reale della base `af394bc`:
 
-pytest: **1031 passed, 1 skipped** (145 s). Identico alla baseline: la sessione non tocca i file raccolti da pytest.
+```
+=== RIEPILOGO: 821 PASS, 0 FAIL ===
+```
 
-Mutazioni eseguite e poi ripristinate (`git diff` verificato pulito dopo ognuna), per provare che i test mordono:
+**Nessun FAIL fuori scope da dichiarare**: T80u5, che ho trascinato per tutta la sessione come «preesistente», non esiste piu' alla base reale perche' la PR #192 lo ha reso portabile. Il numero 818/1 che compare nella storia di questo dossier e' quello di `f6396ba`, la base di PARTENZA della sessione, non quella di integrazione.
 
-- tetto per file → `budget[0]` + salto dei log disattivato (= bug originale): **822 PASS, 7 FAIL** (6 nuovi);
-- guard «vince il primo tetto» → assegnazione secca: **3 FAIL** nuovi;
-- flag `enum_fermata` mai marcato (= bug R-298-1): **3 FAIL** nuovi;
-- `enum_prima` → confronto fra testi (= R-299-1): **nessun FAIL, mutazione SOPRAVVISSUTA** (dichiarata, non coperta).
+pytest: **1031 passed, 1 skipped**. Casi T84n: **18** (contati con `grep -c 'check("T84n'`).
 
-`python gas.py doctor`: exit 0 (i 5 FAIL sono chiavi API e `.env` assenti nel worktree, attesi; il revisore ha dichiarato di non averlo eseguito perché fa ping di rete reali).
+Mutazioni eseguite e ripristinate, per provare che i test mordono: bug originale ripristinato → 6 FAIL nuovi; guard «vince il primo tetto» → 3; flag `enum_fermata` → 3; metà del fix di V-1 (`budget` non alzato) → 2; distinzione «non letto» → 1; regex `[0-9]` → 1; **margine `_LOG_SFORO_MAX` azzerato → 1** (il test della rotazione che sfora la soglia). Una sola mutazione e' SOPRAVVISSUTA e l'ho dichiarata: `enum_prima` → confronto fra testi (R-299-1).
 
 ## §6 STATO CI
 
