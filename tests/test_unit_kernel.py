@@ -7855,15 +7855,20 @@ try:
     check("T84f tetto di byte: conta/leggi negati, cerca salta il file troppo grande",
           _o[0].startswith("Operazione negata") and _o[1].startswith("Operazione negata")
           and _o[2].startswith("0 righe trovate in 0 file")
-          and "1 file oltre il tetto di byte saltati" in _o[2], str(_o)[:300])
-    # R-282-1: un file grande non ferma la ricerca negli altri file
+          and "1 file oltre il tetto di 10 byte della chiamata saltati (note.md)" in _o[2],
+          str(_o)[:300])
+    # R-282-1: un file grande non ferma la ricerca negli altri file. Il tetto per file
+    # e' INDIPENDENTE dal budget residuo (R-282-1 chiusa): qui si abbassano entrambi.
     (_r84 / "docs" / "0grande.txt").write_text("alfa " * 40, encoding="utf-8")
-    _k84.LETTURA_MAX_BYTES = 20
+    _k84.LETTURA_MAX_BYTES = 2000
+    _k84.LETTURA_MAX_BYTES_PER_FILE = 20
     _o = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "docs"}')
-    check("T84f R-282-1 file oltre il budget saltato, la ricerca prosegue negli altri",
-          "docs/sub/b.txt:1: due alfa" in _o and "1 file oltre il tetto di byte saltati" in _o
-          and "0grande" not in _o and "tetto di byte letti" not in _o, _o[:300])
+    check("T84f R-282-1 file oltre il tetto per file saltato e NOMINATO, la ricerca prosegue",
+          "docs/sub/b.txt:1: due alfa" in _o
+          and "1 file oltre il tetto di 20 byte per file saltati (docs/0grande.txt)" in _o
+          and "docs/0grande.txt:" not in _o and "tetto di byte letti" not in _o, _o[:300])
     _k84.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
+    _k84.LETTURA_MAX_BYTES_PER_FILE = GasKernel.LETTURA_MAX_BYTES_PER_FILE
     _k84.LETTURA_MAX_SECONDI = 0.0
     _o = _k84.execute_tool_call("cerca_testo", '{"testo": "alfa", "relative_path": "docs"}')
     check("T84f tetto di tempo dichiarato", "tempo (0 s)" in _o, _o[:200])
@@ -8009,6 +8014,161 @@ try:
           "compromesso ancora aperto)",
           _lc84("prod.environment") and _o277[0] == "alfa ambiente\n" and "1| alfa ambiente" in _o277[1],
           str(_o277)[:200])
+
+    # T84n — R-282-1/R-283-1: il budget di byte di `cerca_testo` non deve MENTIRE.
+    # Riproduzione misurata su main f6396ba: in una root col repo piu' un gas_debug.log
+    # da 4,5 MB, `cerca_testo "def gate_classify"` dalla root dava «0 righe trovate in 13
+    # file; 64 file oltre il tetto di byte saltati» e NON trovava modules/gate/gate.py
+    # (togliendo il log lo trovava). Causa: lo skip per-file confrontava st_size col
+    # budget RESIDUO, quindi il log da 4,5 MB stava sotto il tetto da 5 MB, veniva letto
+    # intero, prosciugava il budget e i file successivi venivano tutti saltati in
+    # silenzio, dichiarati "oltre il tetto di byte" (falso).
+    _kL = kernel_tmp()
+    _rL = Path(_kL.root)
+    (_rL / "modules" / "gate").mkdir(parents=True)
+    (_rL / "modules" / "gate" / "gate.py").write_text(
+        "def gate_classify(tool_name, args):\n    return 1\n", encoding="utf-8")
+    # il log del kernel: 4,5 MB, alfabeticamente PRIMA di modules/ (ordine della visita)
+    with (_rL / "gas_debug.log").open("w", encoding="utf-8") as _fL:
+        while (_rL / "gas_debug.log").stat().st_size < 4_500_000:
+            _fL.write("INFO riga di log innocua, nulla di interessante qui\n" * 2000)
+            _fL.flush()
+    _oL = _kL.execute_tool_call("cerca_testo", '{"testo": "def gate_classify"}')
+    check("T84n R-282-1: un gas_debug.log da 4,5 MB non nasconde piu' gate.py; i log del "
+          "kernel sono saltati nella ricerca su cartella, contati e dichiarati",
+          "modules/gate/gate.py:1: def gate_classify" in _oL
+          and "1 log del kernel (gas_debug.log) non cercati" in _oL
+          and "oltre il tetto di" not in _oL, _oL[:300])
+
+    # Il tetto dei risultati non si esaurisce piu' nel log prima di arrivare a modules/.
+    (_rL / "gas_debug.log").write_text("alfaL riga di log\n" * 5000, encoding="utf-8")
+    (_rL / "modules" / "gate" / "gate.py").write_text("alfaL nel motore\n", encoding="utf-8")
+    _oL2 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL"}')
+    check("T84n R-282-1: un log da 5000 righe che contengono il testo cercato non esaurisce "
+          "il tetto dei risultati prima di modules/",
+          "modules/gate/gate.py:1: alfaL nel motore" in _oL2
+          and "tetto di risultati" not in _oL2, _oL2[:300])
+
+    # I log restano cercabili se INDICATI per nome (anche le rotazioni .1/.2/.3), e per
+    # loro non vale il tetto per file: li si cerca entro il solo budget della chiamata.
+    (_rL / "gas_debug.log.2").write_text("alfaL nella rotazione\n", encoding="utf-8")
+    _oL3 = (_kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "gas_debug.log"}'),
+            _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "gas_debug.log.2"}'))
+    check("T84n i log del kernel indicati per nome restano cercabili (anche le rotazioni)",
+          "gas_debug.log:1: alfaL riga di log" in _oL3[0]
+          and "gas_debug.log.2:1: alfaL nella rotazione" in _oL3[1], str(_oL3)[:200])
+    # ...e la rotazione nella ricerca su CARTELLA e' saltata come il log principale
+    _oL4 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL"}')
+    check("T84n anche le rotazioni .1/.2/.3 sono saltate nella ricerca su cartella",
+          "2 log del kernel (gas_debug.log) non cercati" in _oL4
+          and "gas_debug.log" not in _oL4.split(";")[0], _oL4[:200])
+
+    # R-283-1 + (c): «file troppo grande» NON e' «budget di byte esaurito». Qui ogni file
+    # sta sotto il tetto per file, ma insieme sforano il budget: l'intestazione deve dire
+    # RICERCA INCOMPLETA e QUANTI file non ha letto (prima il loop faceva `break` e i
+    # file rimanenti non venivano mai contati).
+    (_rL / "molti").mkdir()
+    for _nL in "abcde":
+        (_rL / "molti" / f"{_nL}.txt").write_text("alfaL " + "y" * 74 + "\n", encoding="utf-8")
+    _kL.LETTURA_MAX_BYTES = 200           # budget complessivo: bastano ~2 file e mezzo
+    _kL.LETTURA_MAX_BYTES_PER_FILE = 100  # ogni file ci sta: nessuno e' "troppo grande"
+    _oL5 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "molti"}')
+    _kL.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
+    _kL.LETTURA_MAX_BYTES_PER_FILE = GasKernel.LETTURA_MAX_BYTES_PER_FILE
+    check("T84n (c) budget esaurito: messaggio distinto da «file troppo grande», RICERCA "
+          "INCOMPLETA e conto dei file non letti",
+          "RICERCA INCOMPLETA" in _oL5 and "tetto di byte letti (200, budget complessivo" in _oL5
+          and "2 file rimasti non letti" in _oL5
+          and "byte per file saltati" not in _oL5, _oL5[:300])
+
+    # Il tetto per file e' ri-tarabile da env, come gli altri GAS_LETTURA_MAX_*.
+    os.environ["GAS_LETTURA_MAX_BYTES_PER_FILE"] = "777"
+    try:
+        _kE = GasKernel(root_dir=_kL.root)
+        check("T84n GAS_LETTURA_MAX_BYTES_PER_FILE ri-tara il tetto per file",
+              _kE.LETTURA_MAX_BYTES_PER_FILE == 777
+              and GasKernel.LETTURA_MAX_BYTES_PER_FILE == 1_000_000,
+              str(_kE.LETTURA_MAX_BYTES_PER_FILE))
+    finally:
+        del os.environ["GAS_LETTURA_MAX_BYTES_PER_FILE"]
+
+    # R-297-2: il primo tetto scattato vince. Perche' la prova MORDA, il tetto della
+    # VISITA deve poter scattare davvero (con 5 file e il tetto di 500 voci non scattava
+    # e la mutazione del guard sopravviveva): qui `LETTURA_MAX_FILE` e' 3.
+    # R-297-1: scattato un SECONDO tetto, «N file rimasti non letti» e' un pavimento,
+    # non un totale, e l'intestazione deve dirlo insieme al secondo tetto.
+    _kL.LETTURA_MAX_RISULTATI = 1
+    _kL.LETTURA_MAX_FILE = 3
+    _oL6 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "molti"}')
+    _kL.LETTURA_MAX_RISULTATI = GasKernel.LETTURA_MAX_RISULTATI
+    _kL.LETTURA_MAX_FILE = GasKernel.LETTURA_MAX_FILE
+    check("T84n R-297-2 vince il PRIMO tetto scattato anche se la visita ne fa scattare un "
+          "altro: il motivo resta «risultati», non «numero di voci»",
+          "RICERCA INCOMPLETA: raggiunto il tetto di risultati (1)" in _oL6, _oL6[:300])
+    check("T84n R-297-1/R-298-1 fermatasi anche l'enumerazione, il conto NON e' spacciato "
+          "per totale e il secondo tetto non resta invisibile",
+          "quanti file siano rimasti non letti non si sa: si è fermata anche "
+          "l'enumerazione (numero di voci (3)), almeno 1" in _oL6, _oL6[:300])
+
+    # R-297-1 di nuovo, sul caso misurato dal revisore: budget esaurito E tetto di voci.
+    # Senza il pavimento l'intestazione dichiarava 2 file non letti su 9 davvero non
+    # cercati, e del tetto di voci non diceva nulla.
+    (_rL / "tanti").mkdir()
+    for _iL in range(12):
+        (_rL / "tanti" / f"f{_iL:02d}.txt").write_text("alfaL " + "y" * 74 + "\n", encoding="utf-8")
+    _kL.LETTURA_MAX_BYTES = 200
+    _kL.LETTURA_MAX_BYTES_PER_FILE = 100
+    _kL.LETTURA_MAX_FILE = 6
+    _oL7 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "tanti"}')
+    _kL.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
+    _kL.LETTURA_MAX_BYTES_PER_FILE = GasKernel.LETTURA_MAX_BYTES_PER_FILE
+    _kL.LETTURA_MAX_FILE = GasKernel.LETTURA_MAX_FILE
+    check("T84n R-297-1 budget esaurito + tetto di voci: motivo vero = byte letti, conto "
+          "non spacciato per totale (numero PINNATO), secondo tetto dichiarato",
+          "raggiunto il tetto di byte letti (200, budget complessivo" in _oL7
+          and "si è fermata anche l'enumerazione (numero di voci (6)), almeno 3" in _oL7,
+          _oL7[:300])
+
+    # R-298-1/R-299-2: col tetto di TEMPO a 0.0 la scadenza e' gia' passata, quindi la
+    # visita si ferma PRIMA di ogni `yield`: nessun file enumerato, scatta un solo tetto
+    # (il suo) e il conto dei file non letti non si puo' dare. Questo test NON riproduce
+    # la collisione di due tetti con la stessa etichetta (per quella serve un tempo che
+    # scada a META' lavoro, e un orologio nella suite la renderebbe instabile: il caso a
+    # 0.03 s su 41 file e' stato misurato a mano, vedi reports/ultimo_report.md). E'
+    # una regressione sul SINTOMO: col codice del 2o giro questo stesso scenario TACEVA
+    # sui file mai cercati, perche' `non_letti` era 0 e il registro testuale vuoto.
+    _kL.LETTURA_MAX_SECONDI = 0.0
+    _oL9 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "tanti"}')
+    _kL.LETTURA_MAX_SECONDI = GasKernel.LETTURA_MAX_SECONDI
+    check("T84n R-298-1 tetto di TEMPO: l'intestazione non tace sui file mai cercati, "
+          "dichiara di non sapere quanti sono",
+          "RICERCA INCOMPLETA: raggiunto il tetto di tempo (0 s)" in _oL9
+          and "quanti file siano rimasti non letti non si sa: l'enumerazione si è "
+              "fermata lì" in _oL9, _oL9[:300])
+
+    # R-299-2: ramo «fermata anche l'enumerazione» con `non_letti == 0` (il primo tetto
+    # scatta sull'ULTIMO file enumerato). Qui NON si stampa nessun numero: «almeno 0»
+    # era vero ma assurdo da leggere (R-298-2). Deterministico: 4 voci, il tetto dei
+    # risultati scatta sulla 4a, quello della visita al 5o tentativo.
+    _kL.LETTURA_MAX_RISULTATI = 3
+    _kL.LETTURA_MAX_FILE = 4
+    _oLa = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "tanti"}')
+    _kL.LETTURA_MAX_RISULTATI = GasKernel.LETTURA_MAX_RISULTATI
+    _kL.LETTURA_MAX_FILE = GasKernel.LETTURA_MAX_FILE
+    check("T84n R-298-2/R-299-2 ramo «fermata anche l'enumerazione» con 0 file contati: "
+          "nessun numero stampato, non «almeno 0»",
+          "RICERCA INCOMPLETA: raggiunto il tetto di risultati (3); quanti file siano "
+          "rimasti non letti non si sa: si è fermata anche l'enumerazione "
+          "(numero di voci (4))" in _oLa and "almeno" not in _oLa, _oLa[:300])
+
+    # R-297-4: su un file INDICATO per nome il numero e' il budget della chiamata, non un
+    # tetto "per file": l'intestazione lo dice cosi'.
+    _kL.LETTURA_MAX_BYTES = 10
+    _oL8 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "molti/a.txt"}')
+    _kL.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
+    check("T84n R-297-4 su un file indicato per nome il tetto e' dichiarato «byte della "
+          "chiamata», non «byte per file»",
+          "oltre il tetto di 10 byte della chiamata saltati (molti/a.txt)" in _oL8, _oL8[:200])
 
     # T84m — schema e prompt dichiarano i tool nuovi
     _nomi84 = [t["function"]["name"] for t in _k84.tools_schema]
