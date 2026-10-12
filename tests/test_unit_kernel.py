@@ -8085,6 +8085,41 @@ try:
 except Exception as _e85:
     check("T85 blocco senza eccezioni", False, repr(_e85))
 
+# ---------- T86: chiavi private e credenziali illeggibili (operatore 2026-10-11) ----------
+print("\n--- T86: chiavi private e credenziali ---")
+try:
+    _k86 = kernel_tmp()
+    _r86 = Path(_k86.root)
+    (_r86 / ".ssh").mkdir()
+    (_r86 / ".ssh" / "config").write_text("Host x86\n", encoding="utf-8")
+    (_r86 / "id_rsa").write_text("CHIAVE86 privata\n", encoding="utf-8")
+    (_r86 / "dati").mkdir()
+    (_r86 / "dati" / "server.pem").write_text("CHIAVE86 pem\n", encoding="utf-8")
+    (_r86 / "dati" / "secrets.yaml").write_text("CHIAVE86: x\n", encoding="utf-8")
+    (_r86 / "dati" / "credentials.json").write_text('{"CHIAVE86": 1}\n', encoding="utf-8")
+    (_r86 / "dati" / "secretary.md").write_text("CHIAVE86 segretaria\n", encoding="utf-8")
+    _ev86 = run_turn_scriptato(_k86, "leggi la chiave", [
+        [("read_file", '{"relative_path": "id_rsa"}')], "fatto"])
+    _o86 = [e["output"] for e in _ev86 if e["type"] == "tool_res"]
+    _f86 = [e for e in _ev86 if e["type"] == "final"]
+    check("T86a round-trip: read_file su id_rsa negato, il loop arriva alla risposta finale",
+          len(_o86) == 1 and "CHIAVE86" not in _o86[0] and len(_f86) == 1, str(_o86)[:200])
+    _vie86 = ["id_rsa", "dati/server.pem", "dati/secrets.yaml", "dati/credentials.json", ".ssh/config"]
+    _ol86 = [_k86.execute_tool_call(t, _js84.dumps({"relative_path": v}))
+             for v in _vie86 for t in ("read_file", "conta_file")]
+    check("T86b read_file e conta_file negati su chiavi, certificati, secrets, credentials, .ssh",
+          all("CHIAVE86" not in o and "x86" not in o for o in _ol86), str(_ol86)[:300])
+    _ce86 = _k86.execute_tool_call("cerca_testo", '{"testo": "CHIAVE86"}')
+    check("T86c cerca_testo su tutta la root trova solo il file innocuo (secretary.md)",
+          "secretary.md" in _ce86 and all(n not in _ce86 for n in
+                                          ("id_rsa", "server.pem", "secrets.yaml", "credentials.json")),
+          _ce86[:300])
+    _w86 = _k86.execute_tool_call("write_file", '{"relative_path": "dati/nuovo.pem", "content": "x"}')
+    check("T86d write_file verso un nome da segreto → negato (livello 3)",
+          not (_r86 / "dati" / "nuovo.pem").exists(), _w86[:200])
+except Exception as _e86:
+    check("T86 blocco senza eccezioni", False, repr(_e86))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

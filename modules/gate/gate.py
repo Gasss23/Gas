@@ -271,13 +271,37 @@ _LETTURA_NEGATA: tuple[str, ...] = _LIVELLO3_PREFISSI
 _SEGRETO_RE = re.compile(r"\.env(?!ironment|elope|oy)")
 
 
+# Decisione operatore 2026-10-11 («vietale»): chiavi private e file di credenziali
+# illeggibili ovunque nella root (prima Gas li leggeva e cerca_testo li trovava).
+# Confronto su OGNI pezzo del percorso (casefold, punti/spazi finali tolti).
+# Divieto per nomi (come R-223-2): un file di segreti con un nome qualsiasi non è coperto.
+_CHIAVE_PRIVATA_RE = re.compile(
+    # Varianti (bot e verifica esterna #188, V-1/V-2): copie (~, .bak, .old) e nomi
+    # con prefisso/suffisso (backup_id_rsa, my_credentials.json, secrets_prod.yaml).
+    # Bordo = niente lettera prima/dopo: secretary.md, keyboard, valid_rsa restano fuori;
+    # credentials_guide.md e secret_sauce.md sono bloccati per eccesso (R-289-2).
+    r"(?<![a-z])(id_(rsa|dsa|ecdsa|ed25519)"   # chiavi ssh, anche backup_id_rsa
+    r"|secrets?|credentials?"                  # secrets.yaml, my_credentials.json
+    r"|service[-_]?account|tokens?\.(json|txt|ya?ml)|wallet\.dat"
+    r")(?![a-z])"
+    r"|^\.(ssh|gnupg|aws|kube|docker|netrc|pgpass|pypirc|htpasswd|npmrc)(?![a-z])"
+    # chiavi/certificati/portachiavi, anche copie (x.pem~, x.key.bak: R-289-1)
+    r"|\.(pem|key|p12|pfx|ppk|jks|keystore|kdbx)(?![a-z])"
+)
+
+
 def _nome_da_segreto(normalized: str) -> bool:
     """V-2 verifica esterna #181 + R-274-1 + R-275-1: un pezzo del percorso con `.env`
     NON seguito da una lettera (prod.env, prod.env.local, prod.env~, «prod.env copy»,
     prod.env(1), prod.env1, prod.envbak) è un file di segreti anche dentro cartelle
     leggibili; `x.environment.py`, `a.envelope.md`, `envoy.py` no (percorso casefold).
+    Lo stesso per chiavi private e credenziali (_CHIAVE_PRIVATA_RE).
     Punti/spazi finali tolti."""
-    return any(_SEGRETO_RE.search(p.rstrip(". ")) for p in PurePosixPath(normalized).parts)
+    for p in PurePosixPath(normalized).parts:
+        pulito = p.rstrip(". ")
+        if _SEGRETO_RE.search(pulito) or _CHIAVE_PRIVATA_RE.search(pulito):
+            return True
+    return False
 
 
 def lettura_consentita(relative_path: Any) -> bool:
@@ -314,6 +338,8 @@ def livello_scrittura(relative_path: Any) -> int:
                 return LIVELLO_MAI
         if len(puliti) >= 2 and puliti[0] == _LIVELLO3_CANCELLO[0] and \
                 puliti[1].startswith(_LIVELLO3_CANCELLO[1]):
+            return LIVELLO_MAI
+        if _nome_da_segreto(norm):  # segreti illeggibili: mai scritti né sovrascritti
             return LIVELLO_MAI
         for part in parts + puliti:
             if part.startswith(_LIVELLO2_PREFISSI):
