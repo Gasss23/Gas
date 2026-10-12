@@ -1931,6 +1931,22 @@ class GasKernel:
         return _tg_bot.rendi_visibili(
             path.relative_to(self.root.resolve(strict=False)).as_posix(), a_capo=False)
 
+    def _e_log_kernel(self, path: Path) -> bool:
+        """True se `path` e' un log del kernel VERO: nome da `_LOG_KERNEL_RE` **e** nella
+        ROOT. V-3 verifica esterna #193: prima bastava il nome, a qualunque profondita',
+        quindi un file dell'utente chiamato `sottocart/gas_debug.log.7` veniva saltato
+        nella ricerca su cartella e contato fra i «log del kernel» — una misattribuzione.
+        Il `RotatingFileHandler` scrive nella root, quindi solo la' stanno i log veri. La
+        regola e' la stessa nei due rami (salto su cartella e tetto dedicato per nome),
+        cosi' l'insieme dei file trattati come log coincide e non torna l'asimmetria che
+        aveva causato V-1."""
+        if not self._LOG_KERNEL_RE.fullmatch(path.name):
+            return False
+        try:
+            return path.parent.resolve(strict=False) == self.root.resolve(strict=False)
+        except OSError:
+            return False
+
     def _righe_testo(self, path: Path, budget: List[int]) -> Generator[str, None, None]:
         """Righe decodificate (con il loro a-capo) di un file di testo UTF-8, lette in
         binario a pezzi limitati: `budget[0]` sono i byte ancora leggibili e viene
@@ -2175,7 +2191,7 @@ class GasKernel:
         # italiano con accenti e interpola percorsi e repr, quindi il caso e' reale, non
         # teorico: il margine copre lo sforo in byte dell'ultimo record scritto.
         budget_tot = self.LETTURA_MAX_BYTES
-        if not su_cartella and self._LOG_KERNEL_RE.fullmatch(path.name):
+        if not su_cartella and self._e_log_kernel(path):
             budget_tot = max(self.LETTURA_MAX_BYTES, _LOG_MAX_BYTES + _LOG_SFORO_MAX)
         budget = [budget_tot]
         trovati: List[str] = []
@@ -2199,7 +2215,7 @@ class GasKernel:
                 non_letti += 1
                 continue
             rel = self._rel_root(f)
-            if su_cartella and self._LOG_KERNEL_RE.fullmatch(f.name):
+            if su_cartella and self._e_log_kernel(f):
                 log_saltati += 1
                 continue
             try:

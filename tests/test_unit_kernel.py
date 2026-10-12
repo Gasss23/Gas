@@ -8286,6 +8286,17 @@ try:
           "non letto" in _oLc and "letto solo in parte" not in _oLc
           and "RICERCA INCOMPLETA" in _oLc, _oLc[:300])
 
+    # V-3 #193 (2o giro): il salto vale solo per i log del kernel VERI, quelli nella
+    # ROOT. Un file dell'utente chiamato come il log ma in sottocartella NON e' un log
+    # del kernel e va cercato: prima veniva saltato e contato fra i «log del kernel».
+    (_rL / "docsL").mkdir()
+    (_rL / "docsL" / "gas_debug.log.7").write_text("alfaL nel log dell'utente\n", encoding="utf-8")
+    _oLu = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "docsL"}')
+    check("T84n V-3 #193 un omonimo del log in SOTTOCARTELLA e' un file dell'utente, non "
+          "un log del kernel: si cerca e non si conta fra i log saltati",
+          "docsL/gas_debug.log.7:1: alfaL nel log dell'utente" in _oLu
+          and "log del kernel" not in _oLu, _oLu[:250])
+
     # R-297-4: su un file INDICATO per nome il numero e' il budget della chiamata, non un
     # tetto "per file": l'intestazione lo dice cosi'.
     _kL.LETTURA_MAX_BYTES = 10
