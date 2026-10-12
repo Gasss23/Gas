@@ -40,3 +40,5 @@ toccato (il revisore lo ha provato meccanicamente confrontando i token non-COMME
 Corretta una misura falsa che avevo scritto io, togliendo dal sorgente anche la **citazione**
 della frase sbagliata (R-299-1: Gas legge il proprio codice, quindi una claim falsa tra parentesi
 è ripescabile senza la riga che la nega). Review #299 → #300.
+
+- Aggiornamento dopo il merge di main (PR #193): review #301 (APPROVATO) e #311 (merge, APPROVATO CON RISERVE). `_troppo_annidato`, T80u6 e T80u7 sono già in main (PR #192): il diff di questa PR su `gas.py` è SOLO il blocco di commento sopra `_RIFLESSIONE_MAX_PROFONDITA`.

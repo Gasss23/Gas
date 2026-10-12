@@ -14,7 +14,7 @@
    `{"number":195,"url":"https://github.com/Gasss23/Gas/pull/195"}`.
 2. **Merge della PR #195**: finché il verdetto del bot non è `APPROVATO` secco senza finding, per la
    regola di merge autonomo di CLAUDE.md **decide l'operatore**.
-3. **R-gate-worktree-1** (MEDIA, §7): il gate deterministico di review è inerte nelle sessioni che
+3. **R-gate-worktree-1** (ALTA come in `reports/stato_progetto.md`, §7; ora chiusa dalla PR #196): il gate deterministico di review è inerte nelle sessioni che
    girano in un worktree. Decidere se diventa una fetta: l'hook è nel perimetro di review.
 4. **`F-ci-una-sola-versione`**: decidere se la CI deve provare più di una versione di Python. Oggi
    pinna solo 3.11, ed è il motivo per cui il FAIL di T80u5 su 3.14 è vissuto invisibile.
@@ -42,16 +42,16 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 ++++++++
- gas.py                             |  16 +++++++++---
- reports/diff_sessione.md           |  10 +++++++-
- reports/handoff.md                 | 490 +++++++++++++++++++++++++++++++++++++++-------------------
- reports/stato_progetto.md          |  12 ++++++++-
- reports/ultimo_report.md           | 100 ++++++++++++++++++++++++++++++++++++++
- 6 files changed, 431 insertions(+), 207 deletions(-)
+ .claude/agents/memoria_revisore.md |  12 +++++
+ gas.py                             |  16 +++++--
+ reports/diff_sessione.md           |  55 ++++++++++++++---------
+ reports/handoff.md                 | 872 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   9 +++-
+ reports/ultimo_report.md           | 405 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------
+ 6 files changed, 607 insertions(+), 762 deletions(-)
 ```
 
-`git -c core.quotePath=false diff --cached --stat=400 af394bc`, con i report già in stage. Il **set di
+`git -c core.quotePath=false diff --cached --stat=400 ceb9d90` (base dopo il merge di main con la PR #193; V-1 bot #195), con i report già in stage. Il **set di
 6 path** è esatto; la CI confronta solo i path.
 
 **Circolarità dichiarata (correzione di V-3 della verifica esterna #195)**: i conteggi di riga di
@@ -71,6 +71,9 @@ respinto come incoerente (fantasma `tests/test_unit_kernel.py`).
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0888948 docs(fine-task): handoff con la review #311 del merge di main
+433d614 Merge main (PR #193) in fix/test-t80u5-portabile — review #311
+51b57dc docs(fine-task): V-1 e V-3 della verifica esterna #195 corretti; main integrato (BEHIND)
 a18243e Merge remote-tracking branch 'origin/main' into fix/test-t80u5-portabile
 a414edc docs(fine-task): §0 con numero e URL reali della PR #195
 181cff6 docs(fine-task): report e handoff dopo la correzione di V-1 (review #299-#301) e R-gate-worktree-1
@@ -80,7 +83,7 @@ a414edc docs(fine-task): §0 con numero e URL reali della PR #195
 035c2d8 chore(revisore): memoria review #299 — APPROVATO CON RISERVE
 ```
 
-`git log --oneline af394bc..HEAD`. **Correzione di V-3 della verifica esterna #195**: la stesura
+`git log --oneline ceb9d90..HEAD` (aggiornato dopo il merge di main con la PR #193: la BASE si è spostata una TERZA volta, ad **`ceb9d90`**; V-1 bot #195). Testo precedente: **Correzione di V-3 della verifica esterna #195**: la stesura
 precedente di questo blocco elencava `696a37e`, un hash che **non esiste** — era il fine-task di un
 giro poi riscritto con `--amend`, e l'handoff pinnato dichiarava «viene riscritto» ma lasciava
 comunque dentro l'hash morto invece di quello reale. Gli hash qui sopra sono verificati con
@@ -250,6 +253,8 @@ Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la rig
 
 ## §5 DELTA TEST DEL MOTORE
 
+**Dopo il merge di main (PR #193, commit `433d614`)**: kernel **843 PASS / 0 FAIL**, pytest **1032 passed** (review #311). I numeri sotto sono quelli prima del merge.
+
 Il commit di motore di questo giro (`3f59b6e`) cambia **solo un blocco di commento**: nessun delta
 atteso, e nessuno misurato.
 
@@ -275,6 +280,8 @@ thread principale e lì sarà un altro numero — irrilevante per la correttezza
 motivo per cui il tetto esplicito esiste.
 
 ## §6 STATO CI
+
+**Dopo il merge di main**: `0888948` → unit-suite success, handoff-check success; verifica-bot failure con verdetto testuale APPROVATO CON RISERVE (V-1/V-2 BASSE, V-3 COSMETICA, corrette nel commit successivo). Le righe sotto sono le run precedenti.
 
 `gh api .../commits/a414edc/check-runs` — i **check pubblicati**, che sono il segnale che conta:
 
@@ -358,7 +365,7 @@ BEHIND è risolto da `a18243e`, non ancora pushato quando questo blocco è stato
 
 **Finding NUOVO fuori scope, nome condiviso con la sessione sorella — CONTARLO UNA VOLTA SOLA:**
 
-- 🔴 **R-gate-worktree-1** (MEDIA): in una sessione che gira in un **worktree** il gate
+- 🔴 **R-gate-worktree-1** (ALTA, come in `reports/stato_progetto.md`; il confine della prova: che `CLAUDE_PROJECT_DIR` valga il checkout principale anche dentro un worktree non è misurato): in una sessione che gira in un **worktree** il gate
   deterministico di review è **inerte**. `.claude/hooks/review_gate.sh:59` fa
   `cd "$CLAUDE_PROJECT_DIR"` incondizionato e `review_gate.sh:133` fa `exit 0` appena il diff staged
   di *quel* checkout non intercetta il perimetro, **senza mai leggere il marcatore**; ogni worktree
@@ -376,7 +383,7 @@ BEHIND è risolto da `a18243e`, non ancora pushato quando questo blocco è stato
   gravità delle riserve **già registrate** solo se l'id è **numerico**. L'id `R-gate-worktree-1` non
   combacia, quindi la sua gravità fra parentesi viene contata come finding NUOVO e l'esito calcolato
   diventa «finding MEDIA». Riprodotto dal verificatore: con `R-298-1 (MEDIA, preesistente)` l'esito
-  è `{'BASSA'}`, con `R-gate-worktree-1 (MEDIA, preesistente)` è `{'MEDIA','BASSA'}`. **Non
+  è `{'BASSA'}`, con `R-gate-worktree-1 (ALTA, preesistente)` è `{'MEDIA','BASSA'}`. **Non
   aggiro il bug riformulando il testo del report**: sarebbe la stessa cosa che ritoccare un verdetto
   per far passare un gate. Serve la decisione dell'operatore o una fetta su `scripts/bot_esito.py`
   (perimetro protetto: accettare anche id non numerici, con test).
