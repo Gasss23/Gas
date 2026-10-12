@@ -8161,6 +8161,60 @@ try:
           "rimasti non letti non si sa: si è fermata anche l'enumerazione "
           "(numero di voci (4))" in _oLa and "almeno" not in _oLa, _oLa[:300])
 
+    # V-1 verifica esterna #193 (MEDIA): un log del kernel INDICATO PER NOME deve restare
+    # cercabile. Le rotazioni REALI pesano quanto il maxBytes del RotatingFileHandler
+    # (5.242.880) piu' l'ultimo record, cioe' SOPRA `LETTURA_MAX_BYTES` (5.000.000): col
+    # tetto della chiamata venivano saltate («0 righe trovate in 0 file») e, siccome la
+    # ricerca su cartella le salta per nome, restavano IRRAGGIUNGIBILI. Qui la dimensione
+    # e' quella vera, non ridotta: e' il punto del finding.
+    # R-301-1: l'ago sta in CODA al file, non in testa. Col fix il file si legge INTERO;
+    # con l'ago in testa il test passava anche togliendo `budget = [tetto_file]`, cioe'
+    # metà del fix di V-1 restava non provata (mutazione sopravvissuta). L'asserzione su
+    # «RICERCA INCOMPLETA» chiude anche l'altra metà: senza l'alzata del budget la
+    # lettura si fermerebbe al tetto della chiamata prima di arrivare all'ago.
+    (_rL / "gas_debug.log.1").write_text(
+        "riempimento di log innocuo\n" * 200_000 + "alfaL ultima riga del log\n", encoding="utf-8")
+    _szL = (_rL / "gas_debug.log.1").stat().st_size
+    _oLb = _kL.execute_tool_call("cerca_testo",
+                                 '{"testo": "alfaL", "relative_path": "gas_debug.log.1"}')
+    check("T84n V-1 #193 una rotazione REALE del log (oltre LETTURA_MAX_BYTES) indicata per "
+          "nome si legge INTERA: l'ago in coda si trova e la ricerca non e' incompleta",
+          _szL > GasKernel.LETTURA_MAX_BYTES
+          and "alfaL ultima riga del log" in _oLb
+          and "oltre il tetto" not in _oLb and "RICERCA INCOMPLETA" not in _oLb,
+          f"{_szL} byte -> {_oLb.splitlines()[0][:160]}")
+    # Invariante anti-deriva: il tetto per il log indicato per nome deve stare SOPRA la
+    # soglia di rotazione dell'handler, altrimenti il finding si riapre in silenzio.
+    check("T84n V-1 #193 il tetto del log e' legato al maxBytes dell'handler e lo supera",
+          GasKernel.LETTURA_MAX_BYTES_LOG > gas._GAS_LOG_MAX_BYTES
+          and GasKernel.LETTURA_MAX_BYTES_LOG >= GasKernel.LETTURA_MAX_BYTES
+          and gas._GAS_LOG_MAX_BYTES == 5 * 1024 * 1024,
+          f"log={GasKernel.LETTURA_MAX_BYTES_LOG} handler={gas._GAS_LOG_MAX_BYTES}")
+
+    # V-3 #193 (BASSA): `\d` combaciava anche con le cifre Unicode, quindi
+    # «gas_debug.log.<cifra araba>» veniva saltato e contato come log del kernel.
+    check("T84n V-3 #193 solo le rotazioni con cifre ASCII sono log del kernel",
+          GasKernel._LOG_KERNEL_RE.fullmatch("gas_debug.log.12") is not None
+          and GasKernel._LOG_KERNEL_RE.fullmatch("gas_debug.log") is not None
+          and GasKernel._LOG_KERNEL_RE.fullmatch("gas_debug.log.\u0663") is None
+          and GasKernel._LOG_KERNEL_RE.fullmatch("gas_debug.log.gz") is None,
+          "regex log del kernel")
+
+    # R-301-2 / V-4 #193: «non letto» non e' «letto solo in parte». Col budget esaurito
+    # esattamente a zero su quel file non si legge NIENTE (`_righe_testo` solleva
+    # `_TettoByte` PRIMA di scalare il budget), e dirlo «letto solo in parte» sarebbe
+    # falso. Deterministico: 5 file da 81 byte, budget 162 -> i primi due si leggono, il
+    # terzo no. `molti/` e' gia' popolata sopra.
+    _kL.LETTURA_MAX_BYTES = 162
+    _kL.LETTURA_MAX_BYTES_PER_FILE = 100
+    _oLc = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaL", "relative_path": "molti"}')
+    _kL.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
+    _kL.LETTURA_MAX_BYTES_PER_FILE = GasKernel.LETTURA_MAX_BYTES_PER_FILE
+    check("T84n V-4 #193 col budget esaurito a zero su quel file l'intestazione dice "
+          "«non letto», non «letto solo in parte»",
+          "non letto" in _oLc and "letto solo in parte" not in _oLc
+          and "RICERCA INCOMPLETA" in _oLc, _oLc[:300])
+
     # R-297-4: su un file INDICATO per nome il numero e' il budget della chiamata, non un
     # tetto "per file": l'intestazione lo dice cosi'.
     _kL.LETTURA_MAX_BYTES = 10

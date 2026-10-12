@@ -35,11 +35,18 @@ GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
 # (es. gas.snapshot) scrivono righe informative nella scatola nera.
 _console_handler = logging.StreamHandler()
 _console_handler.setLevel(logging.WARNING)
+# Tetti del log del kernel: UNICA fonte sia per il RotatingFileHandler sia per il tetto
+# di lettura di `cerca_testo` su un log indicato per nome (V-1 verifica esterna #193:
+# erano scollegati, e una rotazione reale superava il tetto di lettura).
+_GAS_LOG_MAX_BYTES = 5 * 1024 * 1024   # 5.242.880: soglia di rotazione
+_GAS_LOG_BACKUP = 3                    # gas_debug.log.1/.2/.3
+
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        RotatingFileHandler("gas_debug.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"),
+        RotatingFileHandler("gas_debug.log", maxBytes=_GAS_LOG_MAX_BYTES,
+                            backupCount=_GAS_LOG_BACKUP, encoding="utf-8"),
         _console_handler,
     ],
 )
@@ -822,6 +829,8 @@ class GasKernel:
             "GAS_LETTURA_MAX_RISULTATI", GasKernel.LETTURA_MAX_RISULTATI, min_val=1)
         self.LETTURA_MAX_BYTES_PER_FILE = _env_int(
             "GAS_LETTURA_MAX_BYTES_PER_FILE", GasKernel.LETTURA_MAX_BYTES_PER_FILE, min_val=1)
+        self.LETTURA_MAX_BYTES_LOG = _env_int(
+            "GAS_LETTURA_MAX_BYTES_LOG", GasKernel.LETTURA_MAX_BYTES_LOG, min_val=1)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive un file (percorso relativo alla root di Gas, contenuto INTERO). File normali: scrittura diretta. File DELICATI (codice: gas.py, brains/, modules/, qualsiasi .py o script di shell, scripts/, config degli strumenti, CLAUDE.md, gas_identity.md, requirements): la modifica NON viene applicata subito ma va alla firma dell'operatore su Telegram con il diff reale, e servono gli argomenti 'pro' e 'contro'. Alcuni file non si scrivono MAI, nemmeno con firma (.env, .git, .claude, modules/gate, memoria e cronologia).", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "pro": {"type": "string", "description": "Solo per i file delicati: perché conviene la modifica."}, "contro": {"type": "string", "description": "Solo per i file delicati: rischi e possibili effetti collaterali."}}, "required": ["relative_path", "content"]}}},
@@ -1828,11 +1837,18 @@ class GasKernel:
     # nessun singolo file puo' prosciugare il budget da solo, e i sorgenti del progetto
     # (il piu' grande e' gas.py, ~200 KB) ci stanno tutti dentro con larghezza.
     LETTURA_MAX_BYTES_PER_FILE = 1_000_000
+    # V-1 verifica esterna #193: un log del kernel INDICATO PER NOME deve restare
+    # cercabile (requisito del brief). Le rotazioni reali pesano quanto `_GAS_LOG_MAX_BYTES`
+    # piu' l'ultimo record scritto, quindi SOPRA `LETTURA_MAX_BYTES`: col tetto della
+    # chiamata venivano saltate («0 righe trovate in 0 file») e, siccome la ricerca su
+    # cartella le salta per nome, restavano irraggiungibili. Margine di 1 MiB per il
+    # record che fa sforare la soglia.
+    LETTURA_MAX_BYTES_LOG = _GAS_LOG_MAX_BYTES + 1024 * 1024
     # R-282-1: i log del kernel (RotatingFileHandler: gas_debug.log + .1/.2/.3, fino a
     # 5 MB ciascuno) divorerebbero da soli il budget della ricerca su cartella. Li si
     # salta LI', contati e dichiarati; indicati per nome in relative_path restano
     # cercabili (e per loro non vale il tetto per file).
-    _LOG_KERNEL_RE = re.compile(r"gas_debug\.log(\.\d+)?")
+    _LOG_KERNEL_RE = re.compile(r"gas_debug\.log(\.[0-9]+)?")  # V-3 #193: non \d (cifre Unicode)
     _CERCA_MAX_TESTO = 500            # lunghezza massima del testo cercato
     _RIGA_MAX_CHARS = 300             # tetto di ogni riga mostrata da cerca_testo
     _GIORNI = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
@@ -2124,6 +2140,11 @@ class GasKernel:
         # nulla: resta il solo budget della chiamata, come prima.
         tetto_file = (min(self.LETTURA_MAX_BYTES_PER_FILE, self.LETTURA_MAX_BYTES)
                       if su_cartella else self.LETTURA_MAX_BYTES)
+        # V-1 #193: il log del kernel indicato per nome si legge fin oltre la soglia di
+        # rotazione, altrimenti la promessa «indicalo in relative_path» e' falsa.
+        if not su_cartella and self._LOG_KERNEL_RE.fullmatch(path.name):
+            tetto_file = max(tetto_file, self.LETTURA_MAX_BYTES_LOG)
+            budget = [tetto_file]
         scadenza = stato["inizio"] + self.LETTURA_MAX_SECONDI
         for f in file:
             if stato["tetto"]:
@@ -2147,6 +2168,7 @@ class GasKernel:
                 saltati += 1
                 continue
             letti += 1
+            resto_prima = budget[0]
             try:
                 for n, riga in enumerate(self._righe_testo(f, budget), 1):
                     r = riga.rstrip("\r\n")
@@ -2164,9 +2186,12 @@ class GasKernel:
                 # "budget di byte esaurito" NON è "file troppo grande": messaggi distinti.
                 # Qui il budget COMPLESSIVO della chiamata è finito e questo file è stato
                 # letto solo in parte; i file rimanenti li conta `non_letti`.
+                # V-4 #193: col budget esaurito esattamente a zero di quel file non si
+                # legge NIENTE, e dire «letto solo in parte» sarebbe falso.
+                quanto = "letto solo in parte" if budget[0] < resto_prima else "non letto"
                 self._segna_tetto(stato, f"byte letti ({self.LETTURA_MAX_BYTES}, budget "
                                          f"complessivo della chiamata, GAS_LETTURA_MAX_BYTES): "
-                                         f"{rel} letto solo in parte")
+                                         f"{rel} {quanto}")
             except OSError:
                 saltati += 1
         testa = f"{len(trovati)} righe trovate in {letti} file"
