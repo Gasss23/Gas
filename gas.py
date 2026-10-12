@@ -35,11 +35,17 @@ GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
 # (es. gas.snapshot) scrivono righe informative nella scatola nera.
 _console_handler = logging.StreamHandler()
 _console_handler.setLevel(logging.WARNING)
+_LOG_MAX_BYTES = 5 * 1024 * 1024  # soglia di rotazione di gas_debug.log (cerca_testo la usa)
+# R-308-1: margine per lo sforo della soglia. `shouldRollover` somma byte (`tell()`) e
+# CARATTERI (`len(msg)`), quindi un record multibyte puo' far superare la soglia prima
+# che la rotazione scatti: una rotazione pesa fino a _LOG_MAX_BYTES + lo sforo in byte
+# dell'ultimo record. 1 MiB e' largo per qualunque record di log plausibile.
+_LOG_SFORO_MAX = 1024 * 1024
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        RotatingFileHandler("gas_debug.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"),
+        RotatingFileHandler("gas_debug.log", maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8"),
         _console_handler,
     ],
 )
@@ -865,13 +871,15 @@ class GasKernel:
             "GAS_LETTURA_MAX_SECONDI", GasKernel.LETTURA_MAX_SECONDI, min_val=0.1, max_val=60.0)
         self.LETTURA_MAX_RISULTATI = _env_int(
             "GAS_LETTURA_MAX_RISULTATI", GasKernel.LETTURA_MAX_RISULTATI, min_val=1)
+        self.LETTURA_MAX_BYTES_PER_FILE = _env_int(
+            "GAS_LETTURA_MAX_BYTES_PER_FILE", GasKernel.LETTURA_MAX_BYTES_PER_FILE, min_val=1)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive un file (percorso relativo alla root di Gas, contenuto INTERO). File normali: scrittura diretta. File DELICATI (codice: gas.py, brains/, modules/, qualsiasi .py o script di shell, scripts/, config degli strumenti, CLAUDE.md, gas_identity.md, requirements): la modifica NON viene applicata subito ma va alla firma dell'operatore su Telegram con il diff reale, e servono gli argomenti 'pro' e 'contro'. Alcuni file non si scrivono MAI, nemmeno con firma (.env, .git, .claude, modules/gate, memoria e cronologia).", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "pro": {"type": "string", "description": "Solo per i file delicati: perché conviene la modifica."}, "contro": {"type": "string", "description": "Solo per i file delicati: rischi e possibili effetti collaterali."}}, "required": ["relative_path", "content"]}}},
             {"type": "function", "function": {"name": "read_file", "description": "Legge un file di testo intero. Per i file grandi usa leggi_righe.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "elenca_cartella", "description": "Elenca il contenuto di una cartella del progetto: per ogni voce tipo (file/cartella/link), dimensione in byte, data di modifica e nome. Sola lettura, funzione interna di Gas (niente comandi di sistema). I file protetti non compaiono.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string", "description": "cartella relativa alla root di Gas (default '.')"}, "profondita": {"type": "integer", "description": "livelli di sottocartelle da mostrare (default 1, massimo 3)"}}, "required": []}}},
             {"type": "function", "function": {"name": "leggi_righe", "description": "Legge le righe da 'da' ad 'a' (comprese, numerate da 1) di un file di testo. Usalo per leggere a pezzi i file troppo grandi per read_file. Sola lettura.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "da": {"type": "integer", "description": "prima riga (da 1)"}, "a": {"type": "integer", "description": "ultima riga (compresa)"}}, "required": ["relative_path", "da", "a"]}}},
-            {"type": "function", "function": {"name": "cerca_testo", "description": "Cerca un testo LETTERALE (non espressioni regolari) in un file o in tutti i file di testo di una cartella; restituisce percorso, numero di riga e riga. Sola lettura.", "parameters": {"type": "object", "properties": {"testo": {"type": "string", "description": "testo esatto da cercare"}, "relative_path": {"type": "string", "description": "file o cartella relativi alla root di Gas (default '.')"}, "ignora_maiuscole": {"type": "boolean", "description": "true = non distingue maiuscole e minuscole (default false)"}}, "required": ["testo"]}}},
+            {"type": "function", "function": {"name": "cerca_testo", "description": "Cerca un testo LETTERALE (non espressioni regolari) in un file o nei file di testo di una cartella; restituisce percorso, numero di riga e riga. Nella ricerca su cartella i log del kernel (gas_debug.log e le sue rotazioni) sono saltati e dichiarati: per cercare dentro uno di essi indicalo in relative_path. Sola lettura.", "parameters": {"type": "object", "properties": {"testo": {"type": "string", "description": "testo esatto da cercare"}, "relative_path": {"type": "string", "description": "file o cartella relativi alla root di Gas (default '.')"}, "ignora_maiuscole": {"type": "boolean", "description": "true = non distingue maiuscole e minuscole (default false)"}}, "required": ["testo"]}}},
             {"type": "function", "function": {"name": "conta_file", "description": "Conta righe, parole e caratteri di un file di testo. Sola lettura.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "data_ora", "description": "Restituisce data, ora e fuso orario attuali.", "parameters": {"type": "object", "properties": {}, "required": []}}},
             {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate, le schede dei lead/contatti e la knowledge base di nozioni apprese. Usalo per ricordare cosa è già successo con un lead, cosa hai già fatto in passato, o per cercare conoscenze deliberatamente acquisite. Non scrive nulla.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare nel diario e nella knowledge base; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
@@ -1866,6 +1874,16 @@ class GasKernel:
     LETTURA_MAX_BYTES = 5_000_000     # byte letti al massimo per chiamata
     LETTURA_MAX_SECONDI = 5.0         # tempo massimo per chiamata
     LETTURA_MAX_RISULTATI = 200       # corrispondenze massime di cerca_testo
+    # R-282-1: byte massimi letti da UN SOLO file nella ricerca su cartella, tetto
+    # INDIPENDENTE dal budget residuo della chiamata. Vale 1/5 di LETTURA_MAX_BYTES:
+    # nessun singolo file puo' prosciugare il budget da solo, e i sorgenti del progetto
+    # (il piu' grande e' gas.py, ~200 KB) ci stanno tutti dentro con larghezza.
+    LETTURA_MAX_BYTES_PER_FILE = 1_000_000
+    # R-282-1: i log del kernel (RotatingFileHandler: gas_debug.log + .1/.2/.3, fino a
+    # 5 MB ciascuno) divorerebbero da soli il budget della ricerca su cartella. Li si
+    # salta LI', contati e dichiarati; indicati per nome in relative_path restano
+    # cercabili (e per loro non vale il tetto per file).
+    _LOG_KERNEL_RE = re.compile(r"gas_debug\.log(\.[0-9]+)?")  # V-3 #193: non \d (cifre Unicode)
     _CERCA_MAX_TESTO = 500            # lunghezza massima del testo cercato
     _RIGA_MAX_CHARS = 300             # tetto di ogni riga mostrata da cerca_testo
     _GIORNI = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
@@ -1912,6 +1930,22 @@ class GasKernel:
         visibili, così un nome non forgia righe nell'output (V-4 #184, R-284-1)."""
         return _tg_bot.rendi_visibili(
             path.relative_to(self.root.resolve(strict=False)).as_posix(), a_capo=False)
+
+    def _e_log_kernel(self, path: Path) -> bool:
+        """True se `path` e' un log del kernel VERO: nome da `_LOG_KERNEL_RE` **e** nella
+        ROOT. V-3 verifica esterna #193: prima bastava il nome, a qualunque profondita',
+        quindi un file dell'utente chiamato `sottocart/gas_debug.log.7` veniva saltato
+        nella ricerca su cartella e contato fra i «log del kernel» — una misattribuzione.
+        Il `RotatingFileHandler` scrive nella root, quindi solo la' stanno i log veri. La
+        regola e' la stessa nei due rami (salto su cartella e tetto dedicato per nome),
+        cosi' l'insieme dei file trattati come log coincide e non torna l'asimmetria che
+        aveva causato V-1."""
+        if not self._LOG_KERNEL_RE.fullmatch(path.name):
+            return False
+        try:
+            return path.parent.resolve(strict=False) == self.root.resolve(strict=False)
+        except OSError:
+            return False
 
     def _righe_testo(self, path: Path, budget: List[int]) -> Generator[str, None, None]:
         """Righe decodificate (con il loro a-capo) di un file di testo UTF-8, lette in
@@ -1968,10 +2002,10 @@ class GasKernel:
             voci.sort(key=lambda v: v.name)
             for voce in voci:
                 if stato["visitati"] >= self.LETTURA_MAX_FILE:
-                    stato["tetto"] = f"numero di voci ({self.LETTURA_MAX_FILE})"
+                    self._ferma_enum(stato, f"numero di voci ({self.LETTURA_MAX_FILE})")
                     return
                 if _time.monotonic() > scadenza:
-                    stato["tetto"] = f"tempo ({self.LETTURA_MAX_SECONDI:g} s)"
+                    self._ferma_enum(stato, f"tempo ({self.LETTURA_MAX_SECONDI:g} s)")
                     return
                 stato["visitati"] += 1
                 try:
@@ -1992,6 +2026,25 @@ class GasKernel:
                 elif vera_cartella:
                     # V-1 bot #184: cartella oltre la profondità, contata e dichiarata.
                     stato["profonde"] = stato.get("profonde", 0) + 1
+
+    @classmethod
+    def _ferma_enum(cls, stato: Dict[str, Any], motivo: str) -> None:
+        """La visita si è fermata per un tetto suo: si marca la FONTE (`enum_fermata`) e se
+        e' arrivata PRIMA (`enum_prima`). R-298-1/R-299-1: registrare l'evento invece di
+        dedurlo dal TESTO del motivo, perche' due tetti con la stessa etichetta (il
+        TEMPO, che le due funzioni formattano identico e la cui scadenza e' condivisa)
+        si annullavano a vicenda o attribuivano la fermata al componente sbagliato."""
+        stato["enum_prima"] = stato["tetto"] is None
+        stato["enum_fermata"] = motivo
+        cls._segna_tetto(stato, motivo)
+
+    @staticmethod
+    def _segna_tetto(stato: Dict[str, Any], motivo: str) -> None:
+        """Registra il tetto scattato: vince il PRIMO, che e' il motivo vero della
+        fermata. Serve perche' `cerca_testo`, dopo il primo tetto, continua a ENUMERARE
+        per contare i file non letti, e la visita non deve sovrascrivere quel motivo col
+        proprio (R-297-1)."""
+        stato["tetto"] = stato["tetto"] or motivo
 
     @staticmethod
     def _intero(v: Any) -> Optional[int]:
@@ -2114,8 +2167,10 @@ class GasKernel:
         ignora = args.get("ignora_maiuscole") is True
         ago = testo.casefold() if ignora else testo
         stato: Dict[str, Any] = {"inizio": _time.monotonic(), "visitati": 0, "omessi": 0,
-                                 "tetto": None}
-        if path.is_dir():
+                                 "tetto": None, "enum_fermata": None,
+                                 "enum_prima": False}
+        su_cartella = path.is_dir()
+        if su_cartella:
             file = (v for v, voce, _l in self._visita_cartella(path, self.LETTURA_MAX_PROFONDITA, stato)
                     if not voce.is_symlink() and v.is_file())
         elif path.is_file():
@@ -2124,55 +2179,123 @@ class GasKernel:
             return "Operazione negata: non è un file normale né una cartella."
         else:
             return "Operazione negata: il percorso non esiste."
-        budget = [self.LETTURA_MAX_BYTES]
+        # V-1 bot #193: un log del kernel INDICATO per nome (anche una rotazione) pesa piu'
+        # di LETTURA_MAX_BYTES (5 MB): senza un tetto dedicato la promessa «indicane uno in
+        # relative_path» non varrebbe per 3 log su 4.
+        # R-308-1: il tetto NON puo' essere _LOG_MAX_BYTES esatto, perche' una rotazione
+        # puo' SUPERARE la soglia. `RotatingFileHandler.shouldRollover` confronta
+        # `stream.tell()` (posizione in BYTE) con `len(msg)` (lunghezza in CARATTERI):
+        # con record multibyte la soglia viene scavalcata senza che la rotazione scatti.
+        # Misurato con un handler a maxBytes=1000: 700 byte di record ASCII piu' un record
+        # di 200 caratteri accentati (401 byte) lasciano un file da 1101 byte. Gas logga in
+        # italiano con accenti e interpola percorsi e repr, quindi il caso e' reale, non
+        # teorico: il margine copre lo sforo in byte dell'ultimo record scritto.
+        budget_tot = self.LETTURA_MAX_BYTES
+        if not su_cartella and self._e_log_kernel(path):
+            budget_tot = max(self.LETTURA_MAX_BYTES, _LOG_MAX_BYTES + _LOG_SFORO_MAX)
+        budget = [budget_tot]
         trovati: List[str] = []
-        letti = saltati = grandi = 0
+        letti = saltati = grandi = log_saltati = non_letti = 0
+        nomi_grandi: List[str] = []
+        # R-282-1: nella ricerca su CARTELLA il tetto per file è indipendente dal budget
+        # residuo (prima si confrontava st_size col residuo: un file da 4,5 MB stava
+        # sotto il tetto da 5 MB, veniva letto intero e prosciugava il budget, e tutti i
+        # file successivi finivano contati come "oltre il tetto di byte" — falso — con la
+        # ricerca interrotta senza dirlo). Su un file INDICATO per nome non si stringe
+        # nulla: resta il solo budget della chiamata, come prima.
+        tetto_file = (min(self.LETTURA_MAX_BYTES_PER_FILE, self.LETTURA_MAX_BYTES)
+                      if su_cartella else budget_tot)
         scadenza = stato["inizio"] + self.LETTURA_MAX_SECONDI
         for f in file:
             if stato["tetto"]:
-                break
+                # R-283-1: esaurito un tetto i file rimanenti non si leggono ma si
+                # CONTANO (qui si itera soltanto, nessuna apertura): prima si usciva con
+                # `break` e il resto della cartella spariva senza che l'intestazione lo
+                # dicesse. Così "budget esaurito" può dire QUANTI file non ha letto.
+                non_letti += 1
+                continue
             rel = self._rel_root(f)
+            if su_cartella and self._e_log_kernel(f):
+                log_saltati += 1
+                continue
             try:
-                # R-282-1: un file più grande del budget residuo si salta (contato) e
-                # la ricerca prosegue: un log grande non deve fermare tutto.
-                if f.stat().st_size > budget[0]:
+                if f.stat().st_size > tetto_file:
                     grandi += 1
+                    if len(nomi_grandi) < 5:   # R-283-1: saltati e NOMINATI
+                        nomi_grandi.append(rel)
                     continue
             except OSError:
                 saltati += 1
                 continue
             letti += 1
+            resto_prima = budget[0]
             try:
                 for n, riga in enumerate(self._righe_testo(f, budget), 1):
                     r = riga.rstrip("\r\n")
                     if ago in (r.casefold() if ignora else r):
                         if len(trovati) >= self.LETTURA_MAX_RISULTATI:
-                            stato["tetto"] = f"risultati ({self.LETTURA_MAX_RISULTATI})"
+                            self._segna_tetto(stato, f"risultati ({self.LETTURA_MAX_RISULTATI})")
                             break
                         trovati.append(f"{rel}:{n}: {r[:self._RIGA_MAX_CHARS]}")
                     if _time.monotonic() > scadenza:
-                        stato["tetto"] = f"tempo ({self.LETTURA_MAX_SECONDI:g} s)"
+                        self._segna_tetto(stato, f"tempo ({self.LETTURA_MAX_SECONDI:g} s)")
                         break
             except (GasKernel._NonTesto, GasKernel._NonRegolare):
                 saltati += 1
             except GasKernel._TettoByte:
-                stato["tetto"] = f"byte letti ({self.LETTURA_MAX_BYTES})"
+                # "budget di byte esaurito" NON è "file troppo grande": messaggi distinti.
+                # Qui il budget COMPLESSIVO della chiamata è finito e questo file è stato
+                # letto solo in parte; i file rimanenti li conta `non_letti`.
+                # V-4 #193: col budget esaurito esattamente a zero di quel file non si
+                # legge NIENTE, e dire «letto solo in parte» sarebbe falso.
+                quanto = "letto solo in parte" if budget[0] < resto_prima else "non letto"
+                self._segna_tetto(stato, f"byte letti ({budget_tot}, budget "
+                                         f"complessivo della chiamata, GAS_LETTURA_MAX_BYTES): "
+                                         f"{rel} {quanto}")
             except OSError:
                 saltati += 1
         testa = f"{len(trovati)} righe trovate in {letti} file"
         if saltati:
             testa += f"; {saltati} file non di testo saltati"
         if grandi:
-            testa += (f"; {grandi} file oltre il tetto di byte saltati "
-                      "(usa leggi_righe su quei file)")
+            # R-297-4: "per file" solo dove il tetto E' per file; su un file indicato per
+            # nome quel numero e' il budget della chiamata, e va detto cosi'.
+            quale = "byte per file" if su_cartella else "byte della chiamata"
+            testa += (f"; {grandi} file oltre il tetto di {tetto_file} {quale} "
+                      f"saltati ({', '.join(nomi_grandi)}"
+                      f"{', ...' if grandi > len(nomi_grandi) else ''}"
+                      "): usa leggi_righe su quei file")
+        if log_saltati:
+            testa += (f"; {log_saltati} log del kernel (gas_debug.log) non cercati: "
+                      "indicane uno in relative_path per cercarci dentro")
         if stato["omessi"]:
             testa += f"; {stato['omessi']} voci protette o illeggibili saltate"
         if stato["tetto"]:
             testa += f"; RICERCA INCOMPLETA: raggiunto il tetto di {stato['tetto']}"
+            # R-297-1/R-298-1: `non_letti` li conta il generatore, che e' capato a sua
+            # volta. Il conto e' ESATTO solo se l'enumerazione e' arrivata in fondo; se
+            # si e' fermata anche lei non si sa quanti file non siano stati cercati (col
+            # tetto di TEMPO `non_letti` e' 0 per costruzione, perche' il generatore
+            # controlla la scadenza prima di ogni `yield`). Si dichiara l'ignoranza
+            # invece di stampare un pavimento spacciato per totale.
+            fermata = stato.get("enum_fermata")
+            if not fermata:
+                if non_letti:
+                    testa += f"; {non_letti} file rimasti non letti"
+            elif stato.get("enum_prima"):   # R-299-1: l'evento, non il testo
+                testa += ("; quanti file siano rimasti non letti non si sa: "
+                          "l'enumerazione si è fermata lì")
+            else:
+                testa += ("; quanti file siano rimasti non letti non si sa: si è fermata "
+                          f"anche l'enumerazione ({fermata})")
+                if non_letti:
+                    testa += f", almeno {non_letti}"
         if stato.get("profonde"):
             testa += (f"; RICERCA INCOMPLETA: {stato['profonde']} cartelle oltre la profondità "
                       f"massima ({self.LETTURA_MAX_PROFONDITA}) non visitate: cerca dentro di loro")
-        self._lettura_meta = f"{len(trovati)} righe trovate in {letti} file"
+        self._lettura_meta = (f"{len(trovati)} righe trovate in {letti} file"
+                              + (" (ricerca incompleta)"
+                                 if stato["tetto"] or stato.get("profonde") else ""))
         return testa + ("\n" + "\n".join(trovati) if trovati else "")
 
     def _conta_file(self, path: Path) -> str:
