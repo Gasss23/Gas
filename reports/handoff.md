@@ -176,6 +176,43 @@ come tua misura, non come mia.
 review per una questione di impaginazione. Dichiarato qui e da chiudere alla prossima fetta che tocca
 quel file, come suggerito dal revisore stesso.
 
+### Review #311 (merge di main con la PR #193 nel ramo)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Il codice è a posto. Va però corretta una risoluzione di un report prima di chiudere il merge (riserva R-311-1).
+
+**Cosa ho controllato nel diff**
+
+- `gas.py:38` — è il codice della PR #193 (soglia `_LOG_MAX_BYTES` e margine `_LOG_SFORO_MAX` usati da `cerca_testo`). Ho controllato se il merge avesse introdotto differenze rispetto a quanto già revisionato e mergiato. Il file staged è identico a `MERGE_HEAD`: `git diff --cached MERGE_HEAD -- gas.py` è vuoto. Esito: ok.
+- `gas.py:2162` — è la validazione del testo cercato in `cerca_testo`, con il tetto `_CERCA_MAX_TESTO` definito a `gas.py:1887`. Rischio esaminato: una regressione dovuta all'unione automatica. Il codice coincide con main, quindi niente da segnalare. Esito: ok.
+- `tests/test_unit_kernel.py` — è identico a `MERGE_HEAD`. Non ho rieseguito i 843 test del kernel: ho preso il numero che mi hai dato. Esito: ok.
+- `.claude/hooks/review_gate.sh:53` e `tests/test_unit_hooks.py:2759` — file della PR #196. Ho controllato che il merge non li avesse toccati: sono identici a HEAD. Ho rilanciato `tests/test_unit_hooks.py` e ho ottenuto 138 passed. Anche `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono identici a HEAD, come dichiarato. Esito: ok.
+- `.claude/agents/memoria_revisore.md` — l'unione è esatta. Entrambi i lati aggiungono solo righe in coda, e il file staged è riga per riga: la base comune, poi le 36 righe di main, poi le 15 del ramo. Non restano marcatori di conflitto. Esito: ok.
+- `reports/stato_progetto.md` — **riserva R-311-1 (MEDIA, documentale)**. Avevi dichiarato «intestazione di main, sezioni di entrambi». In realtà il file staged è IDENTICO a main: `git diff --cached MERGE_HEAD -- reports/stato_progetto.md` è vuoto. Mancano 23 righe del ramo, cioè l'intera sezione «R-gate-worktree-1 CHIUSA», che contiene:
+  - le chiusure R-299-1…6, R-302-x e R-303-x;
+  - **R-301-2 (BASSA, ancora aperta)**, che così non sarebbe più registrata da nessuna parte;
+  - l'avviso sulla collisione di numerazione;
+  - R-282-1/R-283-1 riprodotte;
+  - l'indicazione per la fetta R-gjq-1.
+
+  Dopo il merge, la riga 60 di main direbbe ancora «R-gate-worktree-1 (ALTA, NUOVA…) — il gate è INERTE», cioè uno stato falso. **Prima del commit di merge** vanno rimesse le sezioni del ramo, e la voce della riga 60 va segnata come chiusa o tolta. È un file fuori dal perimetro di review, quindi non serve un'altra review: basta correggerlo prima di committare.
+
+**Nota sulla numerazione (BASSA, già nota):** nella memoria ci sono numeri doppi (#297, #301, #302, #303, #304) per la collisione tra sessioni già segnalata. L'ultima riga fisica è #304 del ramo, ma il massimo numerico è #310 (di main). Per questo ho usato **#311**.
+
+**Cosa non ho verificato**
+
+- Non ho rieseguito le suite complete: kernel 843 PASS e pytest 1063 passed restano dati tuoi. Ho rilanciato solo i test degli hook. Il codice motore staged però coincide byte per byte con versioni già revisionate (#306–#310 per main, #299–#304 per il ramo).
+- Il comportamento dell'hook con un payload reale di Claude Code in un worktree non è verificato: è un limite già dichiarato della fetta e non si riproduce con i test sintetici.
+
+**Memoria del revisore**
+
+Ho aggiunto la riga contatore `#311 — 2026-10-12 — APPROVATO CON RISERVE — …` e una lezione in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. La lezione: una risoluzione «entrambe le parti» va verificata con `git diff --cached MERGE_HEAD`/`HEAD`, e dopo un merge il contatore è il massimo numerico, non l'ultima riga.
+
+**Non l'ho committata e non l'ho messa in staging**: oggi il file risulta `MM` (staged più modifica nel working tree). Fai `git add .claude/agents/memoria_revisore.md` prima di concludere il merge.
+
+> Nota dell'agente: R-311-1 corretta prima del commit di merge `024854e` — sezione del ramo ripristinata in `reports/stato_progetto.md` e la vecchia voce R-gate-worktree-1 marcata CHIUSA.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Il diff **non tocca il motore** (`gas.py`, `brains/`, `modules/`): tocca la macchina di controllo
