@@ -6,9 +6,12 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. **Merge della PR** — numero e URL inseriti al passo 4bis dall'output reale di `gh` (vedi sotto,
-   dopo il push). Il verdetto del bot su questa PR non è ancora noto: finché non è `APPROVATO`
-   secco senza finding, per la regola di merge autonomo di CLAUDE.md **decide l'operatore**.
+1. **Merge della PR #192** (https://github.com/Gasss23/Gas/pull/192) — numero e URL dall'output reale
+   di `gh pr view --json number,url`: `{"number":192,"url":"https://github.com/Gasss23/Gas/pull/192"}`.
+   Il verdetto del bot non è ancora noto: finché non è `APPROVATO` secco senza finding, per la regola
+   di merge autonomo di CLAUDE.md **decide l'operatore**. Etichetta `verifica` applicata.
+   Stato al momento della scrittura (`ccd_pr get_status`): `MERGEABLE`, `mergeStateStatus: BLOCKED`,
+   check 1 passing / 0 failing / 2 pending / 2 skipped.
 2. **Conflitto di merge annunciato** (conseguenza, non errore): la sessione sorella
    `cerca_testo: il budget di byte non deve mentire` lavora sullo stesso `tests/test_unit_kernel.py`
    e sullo stesso `.claude/agents/memoria_revisore.md` in un altro worktree. Il **secondo** dei due
