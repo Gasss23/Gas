@@ -95,7 +95,10 @@ stesso**, tutte chiuse nel giro successivo:
   arm64, Python 3.14.7».
 
 **Misure riprodotte da me, non prese dal revisore** (una delle sue era larga): la soglia non è fra
-100k e 120k ma **fra 115k e 118k** — 110k e 115k PARSED, 118k e 120k `RecursionError`. Confermato
+100k e 120k ma **fra 116k e 117k**, su valori ADIACENTI e con 3 ripetizioni per punto (griglia da
+1000: 114k/115k/116k PARSED, 117k/118k `RecursionError`). La prima stesura di questa riga diceva «fra
+115k e 118k», che è **non adiacente** e quindi della stessa classe di difetto che la fetta chiude:
+trovata da V-1 della verifica esterna #195 e corretta qui. Confermato
 nei due sensi che `json` **ignora** `sys.getrecursionlimit()` (limite 50 → 1000 livelli passano;
 limite 5.000.000 → 200k no) e segue invece **lo stack C del thread** (`threading.stack_size` a
 512 MB → 200k livelli passano; a 1 MB → falliscono anche 50k). È la prova che senza tetto esplicito

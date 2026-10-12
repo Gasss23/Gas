@@ -42,38 +42,51 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 ++++++++++
- gas.py                             |  16 ++++++++++++----
- reports/diff_sessione.md           |  10 +++++++++-
- reports/handoff.md                 | 345 ++++++++++++++++++++++++++++++++++++++++++-----------------
- reports/stato_progetto.md          |  12 +++++++++++-
- reports/ultimo_report.md           |  97 +++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 342 insertions(+), 148 deletions(-)
+ .claude/agents/memoria_revisore.md |  10 ++++++++
+ gas.py                             |  16 +++++++++---
+ reports/diff_sessione.md           |  10 +++++++-
+ reports/handoff.md                 | 490 +++++++++++++++++++++++++++++++++++++++-------------------
+ reports/stato_progetto.md          |  12 ++++++++-
+ reports/ultimo_report.md           | 100 ++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 431 insertions(+), 207 deletions(-)
 ```
 
-**La BASE di questa sessione si è SPOSTATA durante il lavoro**, e questo blocco è calcolato sulla
-base nuova: `git -c core.quotePath=false diff --cached --stat=400 a6fa2fd`. Motivo: il merge della PR
-#192 ha portato in `main` i commit fino ad `a6fa2fd`, quindi
-`git merge-base refs/remotes/origin/main HEAD` non è più `f6396ba` ma **`a6fa2fd`**. Di conseguenza
-`gas.py` qui conta **16 righe** (solo il commento di `3f59b6e`) e `tests/test_unit_kernel.py` **non
-compare più**: i test T80u6/T80u7 sono già in main. Un §2 calcolato sulla base vecchia dichiarava 7
-file e `check_handoff` lo ha correttamente respinto come incoerente (file fantasma
-`tests/test_unit_kernel.py`). Il set di 6 path qui sopra è quello reale.
+`git -c core.quotePath=false diff --cached --stat=400 af394bc`, con i report già in stage. Il **set di
+6 path** è esatto; la CI confronta solo i path.
+
+**Circolarità dichiarata (correzione di V-3 della verifica esterna #195)**: i conteggi di riga di
+`reports/handoff.md` sono **inevitabilmente superati** nel momento in cui vengono scritti, perché il
+file conta se stesso e questa stessa frase lo allunga. La stesura precedente dichiarava 342/148
+mentre il reale era 382/208, **senza dire che il numero era circolare**: la verifica esterna l'ha
+giustamente contato come imprecisione. I numeri qui sopra sono l'output reale al momento del calcolo
+e cambieranno di nuovo con il commit che li contiene; gli unici dati non circolari di questo blocco
+sono i **path** e i conteggi dei file **diversi** da `handoff.md`.
+
+**La BASE si è spostata DUE volte durante la sessione**: `f6396ba` → `a6fa2fd` (merge della PR #192
+da parte dell'operatore, a lavoro in corso) → **`af394bc`** (merge di `main` nel branch per togliere
+lo stato BEHIND). Per questo `tests/test_unit_kernel.py` non compare: i test T80u6/T80u7 sono già in
+main. Un §2 calcolato sulla base vecchia dichiarava 7 file e `check_handoff` l'ha correttamente
+respinto come incoerente (fantasma `tests/test_unit_kernel.py`).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-696a37e docs(fine-task): report e handoff dopo la correzione di V-1 (review #299-#301) e R-gate-worktree-1
+a18243e Merge remote-tracking branch 'origin/main' into fix/test-t80u5-portabile
+a414edc docs(fine-task): §0 con numero e URL reali della PR #195
+181cff6 docs(fine-task): report e handoff dopo la correzione di V-1 (review #299-#301) e R-gate-worktree-1
 3f59b6e fix(riflessione): la misura nel commento del tetto non sovrastima più (V-1 verifica esterna #192)
 8f040f0 chore(revisore): memoria review #301 — APPROVATO
 675a574 chore(revisore): memoria review #300 — APPROVATO CON RISERVE
 035c2d8 chore(revisore): memoria review #299 — APPROVATO CON RISERVE
 ```
 
-`git log --oneline a6fa2fd..HEAD`. Il commit `696a37e` è il fine-task del giro precedente e viene
-riscritto (amend) da questo stesso giro, quindi il suo hash cambierà: l'hash finale sta nel log del
-branch dopo il push. I commit della prima parte della sessione (`06636d5`, `6f6f370`, `4017ee5`,
-`c298d59`, `7fd062b`, `a6fa2fd`) sono **in main** e fuori da questo range per costruzione.
+`git log --oneline af394bc..HEAD`. **Correzione di V-3 della verifica esterna #195**: la stesura
+precedente di questo blocco elencava `696a37e`, un hash che **non esiste** — era il fine-task di un
+giro poi riscritto con `--amend`, e l'handoff pinnato dichiarava «viene riscritto» ma lasciava
+comunque dentro l'hash morto invece di quello reale. Gli hash qui sopra sono verificati con
+`git log`. La BASE si è spostata una seconda volta (da `a6fa2fd` ad **`af394bc`**) perché la PR #192
+è stata mergiata e poi ho integrato `main` nel branch per togliere lo stato BEHIND: `a18243e` è
+quel merge. I commit della prima parte della sessione sono in main e fuori da questo range.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
@@ -235,29 +248,47 @@ motivo per cui il tetto esplicito esiste.
 
 ## §6 STATO CI
 
-`gh run list --branch fix/test-t80u5-portabile` (reale, mappato per SHA):
+`gh api .../commits/a414edc/check-runs` — i **check pubblicati**, che sono il segnale che conta:
 
 ```
-38277005239 a6fa2fd verifica-bot pull_request_target -> success
-38277003024 a6fa2fd CI           push                -> success
-38276929440 7fd062b verifica-bot pull_request_target -> cancelled
-38276867649 7fd062b verifica-bot pull_request_target -> skipped
-38276828217 7fd062b CI           push                -> success
+verifica-bot: failure   (2026-10-12T16:58:04Z)
+esito:        success
+verifica:     success
+smista:       success
+unit-suite:   success
+handoff-check: success
 ```
+
+`gh run list --branch fix/test-t80u5-portabile`:
+
+```
+38280753292 a414edc verifica-bot -> success
+38280735867 a414edc verifica-bot -> skipped
+38280732605 a414edc CI           -> success
+38280709686 181cff6 verifica-bot -> skipped
+38280662279 181cff6 CI           -> success
+```
+
+**Trappola da non ripetere, e in cui sono caduto io**: la *run* del workflow `verifica-bot` su
+`a414edc` è **success**, ma il **check-run pubblicato** con lo stesso nome è **failure**. Sono due
+segnali diversi e solo il secondo è required nel ruleset `main-lock`. Leggere `gh run list` e
+concludere «verde» è un errore: la verifica esterna #195 aveva ragione e la mia prima lettura era
+sbagliata.
 
 **Mappatura commit→run OBBLIGATORIA** (una run per *push*, non per commit):
 
-- `035c2d8`, `675a574`, `8f040f0`, `3f59b6e`, `696a37e`: **nessuna run su questi SHA alla scrittura
-  dell'handoff** — non ancora pushati. `3f59b6e` è il commit di motore di questo giro.
-- `a6fa2fd` e `7fd062b`: run elencate sopra, tutte success per CI; **appartengono alla parte della
-  sessione già mergiata in main** con la PR #192, non a questo giro.
-- Il commit di fine-task che contiene questo file: **run non ancora disponibile alla scrittura
-  dell'handoff** (il suo hash non è noto mentre lo scrivo).
+- `035c2d8`, `675a574`, `8f040f0`, `3f59b6e`: **nessuna run su questi SHA** — entrati nel push di
+  `181cff6`, la cui run ha testato solo l'albero della testa. Il commit di motore `3f59b6e` non è
+  quindi mai stato testato da solo.
+- `181cff6`: **CI 38280662279 — success**; `verifica-bot` **skipped** (l'etichetta non era ancora
+  applicata).
+- `a414edc`: **CI 38280732605 — success**, `unit-suite` e `handoff-check` success; **check
+  `verifica-bot` FAILURE** (causa in §7, V-2: bug della regex del bot, non un difetto di questa PR).
+- `a18243e` (merge di `main` nel branch, per togliere BEHIND) e il commit di fine-task di questo
+  giro: **run non ancora disponibili alla scrittura dell'handoff**.
 
-Avvertenza: i tre check required del ruleset `main-lock` (`unit-suite`, `handoff-check`,
-`verifica-bot`) erano verdi su `a6fa2fd`, cioè sul contenuto **già mergiato**, e **non** sul commit
-di questo giro. La copertura pre-merge della PR nuova è garantita da `gasmerge`
-(`gh pr checks --watch`), non da questo campo.
+Stato PR #195 al momento della scrittura: `mergeable=MERGEABLE`, `mergeStateStatus=BEHIND` — lo stato
+BEHIND è risolto da `a18243e`, non ancora pushato quando questo blocco è stato scritto.
 
 ## §7 RISERVE APERTE
 
@@ -311,13 +342,37 @@ di questo giro. La copertura pre-merge della PR nuova è garantita da `gasmerge`
   indice pulito, **non** per approvazione del gate; i commit di questa PR sì, perché questa sessione
   lavora nel principale. CLAUDE.md §3 dice che il gate deve proteggere se stesso: qui non lo fa.
   **Non corretto**: l'hook è nel perimetro e richiede fetta propria, review e verifica esterna.
-- ⚠️ **Collisione dei numeri di review con la sessione sorella**: `origin/main` arriva a #296, questo
-  ramo usa **#297–#301**, il ramo della sorella **#297–#300**. Non rinumerato di proposito: i numeri
+- 🟡 **V-2 verifica esterna #195** (BASSA, **blocca il merge**): il check **required** `verifica-bot`
+  è `failure` su `a414edc` per un **bug del bot**, non per un difetto di questa PR.
+  `scripts/bot_esito.py` usa `_RISERVA_REGISTRATA = r"\b(R-\d+-\d+)\b\s*\([^()\n]*\)"`: scarta la
+  gravità delle riserve **già registrate** solo se l'id è **numerico**. L'id `R-gate-worktree-1` non
+  combacia, quindi la sua gravità fra parentesi viene contata come finding NUOVO e l'esito calcolato
+  diventa «finding MEDIA». Riprodotto dal verificatore: con `R-298-1 (MEDIA, preesistente)` l'esito
+  è `{'BASSA'}`, con `R-gate-worktree-1 (MEDIA, preesistente)` è `{'MEDIA','BASSA'}`. **Non
+  aggiro il bug riformulando il testo del report**: sarebbe la stessa cosa che ritoccare un verdetto
+  per far passare un gate. Serve la decisione dell'operatore o una fetta su `scripts/bot_esito.py`
+  (perimetro protetto: accettare anche id non numerici, con test).
+- ⚠️ **Collisione dei numeri di review con la sessione sorella**: `main` contiene **già #297–#298**
+  (arrivate con la PR #192); questa PR aggiunge **#299–#301**; il ramo della sorella usa #297–#300.
+  Correzione di V-3: la stesura precedente diceva «origin/main arriva a #296», superata dal merge.
+  Non rinumerato di proposito: i numeri
   sono già in messaggi di commit pushati e riscriverli dentro i verdetti sarebbe ritoccare il testo
   del revisore (F-verdetto-ritoccato). Piano concordato fra le due sessioni: **chi mergia secondo
   rinumera le proprie righe** (le sue vanno spostate di **+5**, o rinumerate da #302, se entra prima
   questa PR) e il conflitto su `.claude/agents/memoria_revisore.md` si risolve **appendendo entrambe
-  le serie**, non scegliendone una.
+  le serie**, non scegliendone una. Piano aggiornato e concordato con la sessione sorella: le sue
+  righe contatore si rinumerano **ripartendo da #302** (non uno scostamento calcolato), e i miei giri
+  sono finiti a #301, quindi la sua base è stabile.
+- 🟡 **V-3 verifica esterna #195** (COSMETICA, parte residua): il commento in `gas.py` dice
+  «ADIACENTI» senza dichiarare la **griglia** (1000 livelli), quindi «adiacenti» resta ambiguo — la
+  griglia è ora dichiarata nei report ma non nel codice. **Non corretto**: sarebbe un sesto giro di
+  review per una parentesi. Da chiudere nella prossima fetta che tocca quel blocco.
+- 🟡 **R-gate-matcher-1** (BASSA, nome condiviso con la sessione sorella — **contarlo una volta
+  sola**): `review_gate.sh:57` decide «è un commit?» con `grep -Eq 'git[[:space:]].*commit'` sul
+  **testo** del comando, quindi blocca comandi che non committano nulla ma che citano quelle parole.
+  Confermato da me con due casi: un `git log … ; echo "… (committed) …"` di sola lettura, e un
+  `grep -n "git commit\|…" review_gate.sh` con cui stavo **leggendo l'hook stesso** — il gate ha
+  impedito la propria ispezione. Effetto perverso: spinge a riformulare le frasi per poter scrivere.
 
 **Finding nuovi emersi in questa sessione, NON implementati:**
 
