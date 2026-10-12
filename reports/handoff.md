@@ -23,9 +23,10 @@
    **Perché conta**: quell'agente e l'altra sessione hanno corretto **lo stesso finding in due modi
    diversi** e nessuna delle due versioni è completa; finché non si sa chi pusha, l'unione può essere
    sovrascritta.
-2. **Merge di questa PR** — numero e URL vanno inseriti al passo 4bis dall'output reale di `gh`,
-   dopo il push. Finché il verdetto del bot non è `APPROVATO` secco senza finding, **decide
-   l'operatore** (regola di merge autonomo, CLAUDE.md).
+2. **Merge della PR #196** (https://github.com/Gasss23/Gas/pull/196) — numero e URL dall'output reale
+   di `gh pr view --json number,url`: `{"number":196,"url":"https://github.com/Gasss23/Gas/pull/196"}`.
+   Finché il verdetto del bot non è `APPROVATO` secco senza finding, **decide l'operatore** (regola di
+   merge autonomo, CLAUDE.md). Etichetta `verifica` applicata.
 3. **ORDINE DI MERGE — misurato, non previsto** (`git merge-tree`, letto sull'**exit code**):
 
    | merge | esito |
