@@ -276,13 +276,16 @@ _SEGRETO_RE = re.compile(r"\.env(?!ironment|elope|oy)")
 # Confronto su OGNI pezzo del percorso (casefold, punti/spazi finali tolti).
 # Divieto per nomi (come R-223-2): un file di segreti con un nome qualsiasi non è coperto.
 _CHIAVE_PRIVATA_RE = re.compile(
-    r"^(id_(rsa|dsa|ecdsa|ed25519)(_sk)?"     # chiavi ssh (anche copie: id_rsa.bak, .pub)
-    r"|secrets?(\.|$)"                        # secrets.yaml, secret.json, secrets
-    r"|credentials?(\.|$)"                    # credentials.json, .aws/credentials
-    r"|\.(ssh|gnupg|aws|netrc|pgpass|pypirc|htpasswd)$"
-    r")"
-    # chiavi/certificati/portachiavi, anche copie (x.pem~, x.key.bak: R-289-1);
-    # niente lettera dopo il suffisso, come _SEGRETO_RE (x.keyboard resta fuori)
+    # Varianti (bot e verifica esterna #188, V-1/V-2): copie (~, .bak, .old) e nomi
+    # con prefisso/suffisso (backup_id_rsa, my_credentials.json, secrets_prod.yaml).
+    # Bordo = niente lettera prima/dopo: secretary.md, keyboard, valid_rsa restano fuori;
+    # credentials_guide.md e secret_sauce.md sono bloccati per eccesso (R-289-2).
+    r"(?<![a-z])(id_(rsa|dsa|ecdsa|ed25519)"   # chiavi ssh, anche backup_id_rsa
+    r"|secrets?|credentials?"                  # secrets.yaml, my_credentials.json
+    r"|service[-_]?account|tokens?\.(json|txt|ya?ml)|wallet\.dat"
+    r")(?![a-z])"
+    r"|^\.(ssh|gnupg|aws|kube|docker|netrc|pgpass|pypirc|htpasswd|npmrc)(?![a-z])"
+    # chiavi/certificati/portachiavi, anche copie (x.pem~, x.key.bak: R-289-1)
     r"|\.(pem|key|p12|pfx|ppk|jks|keystore|kdbx)(?![a-z])"
 )
 

@@ -425,7 +425,7 @@ def test_write_istruzioni_agenti_a_ogni_livello_firma(path):
     "dati/x.CODE-WORKSPACE",  # R-249-1
     "pytest.ini.", "Makefile.", "tests/pyproject.toml ", ".vscode./tasks.json",
     "dati/.vscode /x", "Dockerfile.",  # V-1 bot #174: punti/spazi finali per pezzo
-    ".pdbrc", "tests/.pylintrc", "pylintrc", ".husky/pre-commit", ".npmrc",
+    ".pdbrc", "tests/.pylintrc", "pylintrc", ".husky/pre-commit",  # .npmrc: ora segreto (livello 3)
     ".windsurf/rules/x", ".zed/settings.json",  # V-2 bot #175, verifica esterna #175
     "\uff30\uff59\uff50\uff52\uff4f\uff4a\uff45\uff43\uff54.toml",  # pyproject fullwidth (NFKC)
 ])
@@ -566,7 +566,14 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
 @pytest.mark.parametrize("path", ["id_rsa", "dati/id_ed25519", "dati/id_ecdsa.pub", "id_rsa.", "id_rsa_vecchia",
                                   ".ssh/config", "dati/.ssh/authorized_keys", "chiavi/server.pem",
                                   "dati/X.KEY", "a.p12", "b.pfx", "c.ppk", "d.jks", "e.keystore",
-                                  "f.kdbx", "x.pem~", "x.key.bak", "server.pem.old", "y.pfx1", "secrets.yaml", "dati/secret.json", "dati/secrets",
+                                  "f.kdbx", "x.pem~", "x.key.bak", "server.pem.old", "y.pfx1", "secrets.yaml",
+                                  # varianti (bot e verifica esterna #188)
+                                  ".netrc~", ".netrc.bak", ".pgpass.old", ".htpasswd.bak",
+                                  ".pypirc~", "secrets~", "backup_id_rsa", "old.id_ed25519",
+                                  "credentials_prod.json", "secrets_prod.yaml", ".kube/config",
+                                  ".docker/config.json", "service-account.json", "token.json",
+                                  "my_credentials.json", "wallet.dat", ".npmrc",
+                                  "credentials_guide.md", "dati/secret_sauce.md", "dati/secret.json", "dati/secrets",
                                   "config/credentials.json", ".aws/credentials", ".netrc",
                                   ".pgpass", ".pypirc", ".htpasswd", ".gnupg/pubring.kbx"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
@@ -578,9 +585,10 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
 
 
 @pytest.mark.parametrize("path", ["secretary.md", "dati/keys.md", "note/keyboard.txt",
-                                  "dati/secret_sauce.md", "credentials_guide.md", "dati/key.txt",
+                                  "dati/key.txt",
                                   "sshconfig.md", "dati/pemberton.txt", "dati/rsa_id.md",
-                                  "dati/x.keyboard", "dati/a.keys.md", "dati/b.pemmican"])
+                                  "dati/x.keyboard", "dati/a.keys.md", "dati/b.pemmican",
+                                  "dati/valid_rsa.md", "tokenizer.py", "dati/tokens.md", "kubectl.md"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
