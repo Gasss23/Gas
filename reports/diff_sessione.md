@@ -29,3 +29,5 @@
 - Punto 2 del brief originale (credenziali illeggibili): già in main con la PR #188, non toccato.
 - Buchi residui della denylist credenziali: solo PROPOSTI in `reports/ultimo_report.md`, non implementati (`modules/gate/` è fetta di sicurezza).
 - T80u5: FAIL preesistente su main, non mio, non toccato.
+
+- Aggiornamento: `gas.py` — `_LOG_MAX_BYTES` (fonte unica anche per il RotatingFileHandler) e budget dedicato per un log del kernel indicato per nome (V-1 MEDIA bot #193); `tests/test_unit_kernel.py` — caso T84n con rotazione reale.

@@ -6,6 +6,8 @@
 
 ---
 
+> **Aggiornamento 2026-10-12 (sessione che finisce la PR)**: V-1 MEDIA del bot #193 (rotazioni `gas_debug.log.N` indicate per nome non cercabili oltre 5.000.000 byte) corretta in `c026bdb` con budget dedicato ai log del kernel indicati per nome; test T84n con rotazione reale da 5,1 MB; typo R-300-2 corretto. Review #301 APPROVATO CON RISERVE (R-301-1 BASSA, R-301-2 COSMETICA). Kernel 835 PASS / 0 FAIL, pytest 1032 passed.
+
 ## DECISIONI UMANE RICHIESTE
 
 1. **Merge della PR** (numero e URL in `reports/handoff.md` §0). NON l'ho mergiata: la regola di merge autonomo di CLAUDE.md ammette il merge da soli solo su `APPROVATO` secco senza alcun finding V-x. Qualsiasi altro verdetto aspetta te.

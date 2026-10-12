@@ -6692,7 +6692,7 @@ check("T76d variabili TELEGRAM_* non presenti nell'ambiente della suite",
 # ---------- T80: FASE 2.6 — riflessione di fine task (recap + lezioni in quarantena) ----------
 print("\n--- T80: riflessione di fine task (FASE 2.6) ---")
 from gas import (_RECAP_DATI_OPEN, _RECAP_DATI_CLOSE, _parse_riflessione, _cascata_provider,
-                 _analizza_riflessione, _anteprima_log)
+                 _analizza_riflessione, _anteprima_log, _troppo_annidato)
 
 class _Rif80:
     """Client finto: per ogni modello una risposta (stringa = content, Exception = errore).
@@ -7125,7 +7125,7 @@ try:
           and _anteprima_log(7) == "<int> '7'"
           and gas._lunghezza_log(_parti80) == "n/d (list)" and gas._lunghezza_log(None) == "0"
           and gas._lunghezza_log("abc") == "3", _antp80[:120])
-    # T80u5 — casi estremi: repr che solleva, JSON annidato oltre la ricorsione, repr che
+    # T80u5 — casi estremi: repr che solleva, JSON annidato oltre il tetto, repr che
     # restituisce una sottoclasse di str ostile; secondo repr sempre (una riga sola)
     class _ReprRotto80:
         def __repr__(self):
@@ -7145,10 +7145,60 @@ try:
           " secondo repr sempre (testo del modello tra apici)",
           _anteprima_log(_ReprRotto80()) == "<_ReprRotto80> (repr non disponibile: RuntimeError)"
           and _analizza_riflessione('{"a":' * 100000 + '1' + '}' * 100000)
-          == (None, "JSON annidato oltre il limite di ricorsione")
+          == (None, "JSON annidato oltre il limite (50 livelli)")
           and _anteprima_log(_strano80) == "<Strano80> 'a\\nb'"
           and _anteprima_log({"a": "\n"}) == "<dict> \"{'a': '\\\\n'}\""
           and "\n" not in _anteprima_log(_ReprBugiardo80()))
+    # T80u6 — il tetto di annidamento e' DETERMINISTICO (non dipende dalla versione
+    # di Python: su 3.11/3.12 json.loads solleva RecursionError, su 3.14 parsa tutto).
+    # Conta solo le parentesi fuori dalle stringhe e non scarta il JSON legittimo.
+    _ok80 = '{"recap": "fatto", "lezioni": ["una", "due"]}'
+    _instringa80 = '{"recap": "' + "{[" * 500 + '", "lezioni": []}'
+    _limite80 = '{"a":' * 50 + '1' + '}' * 50          # esattamente al tetto: passa
+    _oltre80 = '{"a":' * 51 + '1' + '}' * 51           # un livello oltre: rifiutato
+    _escape80 = '{"recap": "virgoletta \\" e poi ' + "{" * 200 + '", "lezioni": []}'
+    # R-297-1: input degenere CHIUSO (con la coda di '}'), altrimenti scatta `j <= i`
+    # e `_troppo_annidato` non viene mai interrogata: il test misurerebbe il ramo
+    # sbagliato. Si cronometra la CHIAMATA, non la costruzione della stringa.
+    _chiuso80 = '{"a":' * 200000 + '1' + '}' * 200000
+    _t0_80 = _time.monotonic()
+    _degenere80 = _troppo_annidato(_chiuso80)
+    _dt80 = _time.monotonic() - _t0_80
+    _motivo80 = _analizza_riflessione(_chiuso80)
+    check("T80u6 tetto di annidamento deterministico: in-stringa e escape non contano,"
+          " confine esatto, uscita immediata sull'input degenere",
+          _analizza_riflessione(_ok80) == (("fatto", ["una", "due"]), "")
+          and _troppo_annidato(_ok80) is False
+          and _troppo_annidato(_instringa80) is False
+          and _troppo_annidato(_escape80) is False
+          and _troppo_annidato(_limite80) is False
+          and _troppo_annidato(_oltre80) is True
+          # il JSON legittimo resta accettato anche passando dal parser completo
+          and _analizza_riflessione(_instringa80)[0] is not None
+          and _analizza_riflessione(_oltre80)
+          == (None, "JSON annidato oltre il limite (50 livelli)")
+          # 200k livelli CHIUSI: il tetto esce al 51esimo '{', non a fine stringa,
+          # quindi su 1,2 MB di input (1.200.001 caratteri) costa microsecondi (R-297-1)
+          and _degenere80 is True and _dt80 < 0.05
+          and _motivo80 == (None, "JSON annidato oltre il limite (50 livelli)"),
+          f"dt={_dt80 * 1000:.3f}ms motivo={_motivo80[1]!r}")
+    # R-297-2: la rete `except RecursionError` resterebbe senza test (su 3.14 e'
+    # irraggiungibile per annidamento, perche' il tetto scatta prima). La si esercita
+    # forzando json.loads a sollevare: il messaggio DEVE restare distinto da quello
+    # del tetto, altrimenti la prossima pulizia cancella la rete senza accorgersene.
+    _json_orig80 = gas.json.loads
+    def _loads_ricorsivo80(*a, **k):
+        raise RecursionError("profondita")
+    try:
+        gas.json.loads = _loads_ricorsivo80
+        _rete80 = _analizza_riflessione('{"recap": "ok"}')
+    finally:
+        gas.json.loads = _json_orig80
+    check("T80u7 rete except RecursionError viva e con messaggio distinto dal tetto",
+          _rete80 == (None, "JSON annidato oltre il limite di ricorsione")
+          and gas.json.loads is _json_orig80
+          and _analizza_riflessione('{"recap": "ok"}') == (("ok", []), ""),
+          f"rete={_rete80!r}")
     check("T80v cascata unica: 'complesso' parte da gemini-flash, gratuiti in coda",
           [c[0] for c in _cascata_provider("complesso")] == ["gemini-flash", "groq", "openrouter", "ollama"]
           and [c[0] for c in _cascata_provider("semplice")][:3] == ["gemini-flash-lite", "gemini-flash", "groq"])
@@ -8172,24 +8222,45 @@ try:
     # metà del fix di V-1 restava non provata (mutazione sopravvissuta). L'asserzione su
     # «RICERCA INCOMPLETA» chiude anche l'altra metà: senza l'alzata del budget la
     # lettura si fermerebbe al tetto della chiamata prima di arrivare all'ago.
+    # Taglia REALISTICA: sopra LETTURA_MAX_BYTES (5.000.000), quindi senza il tetto
+    # dedicato verrebbe saltata. R-308-1: NON e' vero che una rotazione non superi mai la
+    # soglia dell'handler — `shouldRollover` somma byte (`tell()`) e CARATTERI
+    # (`len(msg)`), quindi un record multibyte la fa scavalcare (misurato: 1101 byte con
+    # maxBytes=1000). Per questo il tetto del log ha un margine, e questa taglia sta
+    # dentro la finestra [LETTURA_MAX_BYTES, _LOG_MAX_BYTES + _LOG_SFORO_MAX].
     (_rL / "gas_debug.log.1").write_text(
-        "riempimento di log innocuo\n" * 200_000 + "alfaL ultima riga del log\n", encoding="utf-8")
+        "riempimento di log innocuo\n" * 194_000 + "alfaL ultima riga del log\n", encoding="utf-8")
     _szL = (_rL / "gas_debug.log.1").stat().st_size
     _oLb = _kL.execute_tool_call("cerca_testo",
                                  '{"testo": "alfaL", "relative_path": "gas_debug.log.1"}')
     check("T84n V-1 #193 una rotazione REALE del log (oltre LETTURA_MAX_BYTES) indicata per "
           "nome si legge INTERA: l'ago in coda si trova e la ricerca non e' incompleta",
-          _szL > GasKernel.LETTURA_MAX_BYTES
+          GasKernel.LETTURA_MAX_BYTES < _szL < gas._LOG_MAX_BYTES + gas._LOG_SFORO_MAX
           and "alfaL ultima riga del log" in _oLb
           and "oltre il tetto" not in _oLb and "RICERCA INCOMPLETA" not in _oLb,
           f"{_szL} byte -> {_oLb.splitlines()[0][:160]}")
     # Invariante anti-deriva: il tetto per il log indicato per nome deve stare SOPRA la
     # soglia di rotazione dell'handler, altrimenti il finding si riapre in silenzio.
-    check("T84n V-1 #193 il tetto del log e' legato al maxBytes dell'handler e lo supera",
-          GasKernel.LETTURA_MAX_BYTES_LOG > gas._GAS_LOG_MAX_BYTES
-          and GasKernel.LETTURA_MAX_BYTES_LOG >= GasKernel.LETTURA_MAX_BYTES
-          and gas._GAS_LOG_MAX_BYTES == 5 * 1024 * 1024,
-          f"log={GasKernel.LETTURA_MAX_BYTES_LOG} handler={gas._GAS_LOG_MAX_BYTES}")
+    check("T84n V-1 #193 + R-308-1 il budget dedicato al log e' legato alla soglia "
+          "dell'handler, la supera di un margine e sta sopra il budget normale",
+          gas._LOG_MAX_BYTES == 5 * 1024 * 1024
+          and gas._LOG_MAX_BYTES > GasKernel.LETTURA_MAX_BYTES
+          and gas._LOG_SFORO_MAX > 0,
+          f"soglia={gas._LOG_MAX_BYTES} sforo={gas._LOG_SFORO_MAX} "
+          f"normale={GasKernel.LETTURA_MAX_BYTES}")
+
+    # R-308-1: una rotazione che SFORA la soglia (possibile per il confronto
+    # byte/caratteri in `shouldRollover`) resta cercabile per nome. Col tetto esatto
+    # verrebbe saltata di nuovo: e' V-1 che si riapre.
+    (_rL / "gas_debug.log.3").write_text(
+        "riempimento\n" * 450_000 + "alfaL oltre la soglia\n", encoding="utf-8")
+    _szS = (_rL / "gas_debug.log.3").stat().st_size
+    _oLs = _kL.execute_tool_call("cerca_testo",
+                                 '{"testo": "alfaL", "relative_path": "gas_debug.log.3"}')
+    check("T84n R-308-1 una rotazione che SFORA la soglia dell'handler resta cercabile "
+          "per nome (il tetto esatto riaprirebbe V-1)",
+          _szS > gas._LOG_MAX_BYTES and "alfaL oltre la soglia" in _oLs
+          and "oltre il tetto" not in _oLs, f"{_szS} byte -> {_oLs.splitlines()[0][:140]}")
 
     # V-3 #193 (BASSA): `\d` combaciava anche con le cifre Unicode, quindi
     # «gas_debug.log.<cifra araba>» veniva saltato e contato come log del kernel.
@@ -8223,6 +8294,24 @@ try:
     check("T84n R-297-4 su un file indicato per nome il tetto e' dichiarato «byte della "
           "chiamata», non «byte per file»",
           "oltre il tetto di 10 byte della chiamata saltati (molti/a.txt)" in _oL8, _oL8[:200])
+
+    # V-1 bot #193: una rotazione di dimensione REALE (oltre i 5.000.000 byte del budget
+    # della chiamata, fino ai 5 MiB di rotazione) indicata per nome resta cercabile.
+    with (_rL / "gas_debug.log.1").open("w", encoding="utf-8") as _fR:
+        while (_rL / "gas_debug.log.1").stat().st_size < 5_100_000:
+            _fR.write("INFO riga di log innocua, nulla di interessante qui\n" * 2000)
+            _fR.flush()
+        _fR.write("alfaR in fondo alla rotazione\n")
+    _oR = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaR", "relative_path": "gas_debug.log.1"}')
+    (_rL / "gas_debug.log.1").write_text("alfaZ\n" * 10, encoding="utf-8")   # un file grande NON log resta capato
+    (_rL / "grande.txt").write_bytes(b"x" * 5_100_000)
+    _oR2 = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaR", "relative_path": "grande.txt"}')
+    check("T84n V-1 bot #193: una rotazione da 5,1 MB indicata per nome e' cercata fino in fondo; "
+          "un file normale oltre il budget resta saltato",
+          "gas_debug.log.1:" in _oR and "alfaR in fondo alla rotazione" in _oR
+          and "oltre il tetto" not in _oR
+          and "oltre il tetto di 5000000 byte della chiamata saltati (grande.txt)" in _oR2,
+          (_oR[:200] + " || " + _oR2[:200]))
 
     # T84m — schema e prompt dichiarano i tool nuovi
     _nomi84 = [t["function"]["name"] for t in _k84.tools_schema]

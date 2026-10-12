@@ -35,18 +35,17 @@ GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
 # (es. gas.snapshot) scrivono righe informative nella scatola nera.
 _console_handler = logging.StreamHandler()
 _console_handler.setLevel(logging.WARNING)
-# Tetti del log del kernel: UNICA fonte sia per il RotatingFileHandler sia per il tetto
-# di lettura di `cerca_testo` su un log indicato per nome (V-1 verifica esterna #193:
-# erano scollegati, e una rotazione reale superava il tetto di lettura).
-_GAS_LOG_MAX_BYTES = 5 * 1024 * 1024   # 5.242.880: soglia di rotazione
-_GAS_LOG_BACKUP = 3                    # gas_debug.log.1/.2/.3
-
+_LOG_MAX_BYTES = 5 * 1024 * 1024  # soglia di rotazione di gas_debug.log (cerca_testo la usa)
+# R-308-1: margine per lo sforo della soglia. `shouldRollover` somma byte (`tell()`) e
+# CARATTERI (`len(msg)`), quindi un record multibyte puo' far superare la soglia prima
+# che la rotazione scatti: una rotazione pesa fino a _LOG_MAX_BYTES + lo sforo in byte
+# dell'ultimo record. 1 MiB e' largo per qualunque record di log plausibile.
+_LOG_SFORO_MAX = 1024 * 1024
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        RotatingFileHandler("gas_debug.log", maxBytes=_GAS_LOG_MAX_BYTES,
-                            backupCount=_GAS_LOG_BACKUP, encoding="utf-8"),
+        RotatingFileHandler("gas_debug.log", maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8"),
         _console_handler,
     ],
 )
@@ -621,6 +620,45 @@ def _lunghezza_log(testo: Any) -> str:
     return "0" if testo is None else f"n/d ({type(testo).__name__})"
 
 
+# Profondita' massima di annidamento accettata nel JSON della riflessione. Una
+# riflessione legittima e' profonda 2 ({"recap": ..., "lezioni": [...]}): il tetto e'
+# larghissimo di proposito. Serve a rendere il rifiuto DETERMINISTICO su ogni versione
+# di Python: fino a 3.12 `json.loads` solleva RecursionError sulle strutture estreme,
+# da 3.14 le parsa (misurato su 3.14.7) costruendo 100k dict annidati prima di
+# scartarle per "recap mancante" — stesso esito, motivo diverso e lavoro inutile.
+_RIFLESSIONE_MAX_PROFONDITA = 50
+
+
+def _troppo_annidato(testo: str, limite: int = _RIFLESSIONE_MAX_PROFONDITA) -> bool:
+    """True se `testo` annida '{'/'[' oltre `limite`. PURA. Conta solo le parentesi
+    FUORI dalle stringhe JSON: una stringa che contiene '{' non annida nulla.
+    PRECONDIZIONE: `testo` e' una str (su altri tipi solleva TypeError, R-297-3);
+    l'unico chiamante la garantisce con l'isinstance in _analizza_riflessione.
+    Esce al primo sforamento: su un input degenere ANNIDATO costa O(limite), non
+    O(len). Su una stringa JSON lunghissima ma piatta la scansione e' completa
+    (R-297-4): li' il costo e' O(len), come quello di json.loads che segue."""
+    profondita = 0
+    in_stringa = escape = False
+    for c in testo:
+        if in_stringa:
+            if escape:
+                escape = False
+            elif c == "\\":
+                escape = True
+            elif c == '"':
+                in_stringa = False
+            continue
+        if c == '"':
+            in_stringa = True
+        elif c in "{[":
+            profondita += 1
+            if profondita > limite:
+                return True
+        elif c in "}]":
+            profondita -= 1
+    return False
+
+
 def _analizza_riflessione(testo: Any) -> Tuple[Optional[Tuple[str, List[str]]], str]:
     """Come _parse_riflessione, ma restituisce anche il MOTIVO dello scarto ("" se
     valida), per il log diagnostico. PURA."""
@@ -635,9 +673,15 @@ def _analizza_riflessione(testo: Any) -> Tuple[Optional[Tuple[str, List[str]]], 
         return None, "nessun oggetto JSON (manca '{')"
     if j <= i:
         return None, "JSON aperto ma mai chiuso (nessuna '}' dopo la prima '{': risposta tagliata?)"
+    grezzo = t[i:j + 1]
+    if _troppo_annidato(grezzo):
+        return None, ("JSON annidato oltre il limite "
+                      f"({_RIFLESSIONE_MAX_PROFONDITA} livelli)")
     try:
-        data = json.loads(t[i:j + 1])
+        data = json.loads(grezzo)
     except RecursionError:
+        # Rete di sicurezza: col tetto sopra l'annidamento non ci arriva piu', ma una
+        # ricorsione da altra fonte non deve far uscire una funzione PURA.
         return None, "JSON annidato oltre il limite di ricorsione"
     except (ValueError, TypeError) as e:
         return None, f"JSON non decodificabile: {e}"
@@ -829,8 +873,6 @@ class GasKernel:
             "GAS_LETTURA_MAX_RISULTATI", GasKernel.LETTURA_MAX_RISULTATI, min_val=1)
         self.LETTURA_MAX_BYTES_PER_FILE = _env_int(
             "GAS_LETTURA_MAX_BYTES_PER_FILE", GasKernel.LETTURA_MAX_BYTES_PER_FILE, min_val=1)
-        self.LETTURA_MAX_BYTES_LOG = _env_int(
-            "GAS_LETTURA_MAX_BYTES_LOG", GasKernel.LETTURA_MAX_BYTES_LOG, min_val=1)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
             {"type": "function", "function": {"name": "write_file", "description": "Scrive un file (percorso relativo alla root di Gas, contenuto INTERO). File normali: scrittura diretta. File DELICATI (codice: gas.py, brains/, modules/, qualsiasi .py o script di shell, scripts/, config degli strumenti, CLAUDE.md, gas_identity.md, requirements): la modifica NON viene applicata subito ma va alla firma dell'operatore su Telegram con il diff reale, e servono gli argomenti 'pro' e 'contro'. Alcuni file non si scrivono MAI, nemmeno con firma (.env, .git, .claude, modules/gate, memoria e cronologia).", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "pro": {"type": "string", "description": "Solo per i file delicati: perché conviene la modifica."}, "contro": {"type": "string", "description": "Solo per i file delicati: rischi e possibili effetti collaterali."}}, "required": ["relative_path", "content"]}}},
@@ -1837,13 +1879,6 @@ class GasKernel:
     # nessun singolo file puo' prosciugare il budget da solo, e i sorgenti del progetto
     # (il piu' grande e' gas.py, ~200 KB) ci stanno tutti dentro con larghezza.
     LETTURA_MAX_BYTES_PER_FILE = 1_000_000
-    # V-1 verifica esterna #193: un log del kernel INDICATO PER NOME deve restare
-    # cercabile (requisito del brief). Le rotazioni reali pesano quanto `_GAS_LOG_MAX_BYTES`
-    # piu' l'ultimo record scritto, quindi SOPRA `LETTURA_MAX_BYTES`: col tetto della
-    # chiamata venivano saltate («0 righe trovate in 0 file») e, siccome la ricerca su
-    # cartella le salta per nome, restavano irraggiungibili. Margine di 1 MiB per il
-    # record che fa sforare la soglia.
-    LETTURA_MAX_BYTES_LOG = _GAS_LOG_MAX_BYTES + 1024 * 1024
     # R-282-1: i log del kernel (RotatingFileHandler: gas_debug.log + .1/.2/.3, fino a
     # 5 MB ciascuno) divorerebbero da soli il budget della ricerca su cartella. Li si
     # salta LI', contati e dichiarati; indicati per nome in relative_path restano
@@ -1978,7 +2013,7 @@ class GasKernel:
 
     @classmethod
     def _ferma_enum(cls, stato: Dict[str, Any], motivo: str) -> None:
-        """La visita si fermata per un tetto suo: si marca la FONTE (`enum_fermata`) e se
+        """La visita si è fermata per un tetto suo: si marca la FONTE (`enum_fermata`) e se
         e' arrivata PRIMA (`enum_prima`). R-298-1/R-299-1: registrare l'evento invece di
         dedurlo dal TESTO del motivo, perche' due tetti con la stessa etichetta (il
         TEMPO, che le due funzioni formattano identico e la cui scadenza e' condivisa)
@@ -2128,7 +2163,21 @@ class GasKernel:
             return "Operazione negata: non è un file normale né una cartella."
         else:
             return "Operazione negata: il percorso non esiste."
-        budget = [self.LETTURA_MAX_BYTES]
+        # V-1 bot #193: un log del kernel INDICATO per nome (anche una rotazione) pesa piu'
+        # di LETTURA_MAX_BYTES (5 MB): senza un tetto dedicato la promessa «indicane uno in
+        # relative_path» non varrebbe per 3 log su 4.
+        # R-308-1: il tetto NON puo' essere _LOG_MAX_BYTES esatto, perche' una rotazione
+        # puo' SUPERARE la soglia. `RotatingFileHandler.shouldRollover` confronta
+        # `stream.tell()` (posizione in BYTE) con `len(msg)` (lunghezza in CARATTERI):
+        # con record multibyte la soglia viene scavalcata senza che la rotazione scatti.
+        # Misurato con un handler a maxBytes=1000: 700 byte di record ASCII piu' un record
+        # di 200 caratteri accentati (401 byte) lasciano un file da 1101 byte. Gas logga in
+        # italiano con accenti e interpola percorsi e repr, quindi il caso e' reale, non
+        # teorico: il margine copre lo sforo in byte dell'ultimo record scritto.
+        budget_tot = self.LETTURA_MAX_BYTES
+        if not su_cartella and self._LOG_KERNEL_RE.fullmatch(path.name):
+            budget_tot = max(self.LETTURA_MAX_BYTES, _LOG_MAX_BYTES + _LOG_SFORO_MAX)
+        budget = [budget_tot]
         trovati: List[str] = []
         letti = saltati = grandi = log_saltati = non_letti = 0
         nomi_grandi: List[str] = []
@@ -2139,12 +2188,7 @@ class GasKernel:
         # ricerca interrotta senza dirlo). Su un file INDICATO per nome non si stringe
         # nulla: resta il solo budget della chiamata, come prima.
         tetto_file = (min(self.LETTURA_MAX_BYTES_PER_FILE, self.LETTURA_MAX_BYTES)
-                      if su_cartella else self.LETTURA_MAX_BYTES)
-        # V-1 #193: il log del kernel indicato per nome si legge fin oltre la soglia di
-        # rotazione, altrimenti la promessa «indicalo in relative_path» e' falsa.
-        if not su_cartella and self._LOG_KERNEL_RE.fullmatch(path.name):
-            tetto_file = max(tetto_file, self.LETTURA_MAX_BYTES_LOG)
-            budget = [tetto_file]
+                      if su_cartella else budget_tot)
         scadenza = stato["inizio"] + self.LETTURA_MAX_SECONDI
         for f in file:
             if stato["tetto"]:
@@ -2189,7 +2233,7 @@ class GasKernel:
                 # V-4 #193: col budget esaurito esattamente a zero di quel file non si
                 # legge NIENTE, e dire «letto solo in parte» sarebbe falso.
                 quanto = "letto solo in parte" if budget[0] < resto_prima else "non letto"
-                self._segna_tetto(stato, f"byte letti ({self.LETTURA_MAX_BYTES}, budget "
+                self._segna_tetto(stato, f"byte letti ({budget_tot}, budget "
                                          f"complessivo della chiamata, GAS_LETTURA_MAX_BYTES): "
                                          f"{rel} {quanto}")
             except OSError:
