@@ -9,9 +9,10 @@
 1. **La PR #192 è stata mergiata (`af394bc`, da `Gasss23` alle 16:39 del 2026-10-12) MENTRE questa
    sessione stava eseguendo la correzione di V-1 richiesta dall'operatore.** Conseguenza di fatto, non
    un'opinione: il commit `3f59b6e` che corregge V-1 **NON è in `main`** (`git branch -r --contains
-   3f59b6e` → vuoto). Serve quindi una **PR nuova** per farlo atterrare. Il numero e l'URL vengono
-   inseriti qui al passo 4bis dall'output reale di `gh`.
-2. **Merge della PR nuova**: finché il verdetto del bot non è `APPROVATO` secco senza finding, per la
+   3f59b6e` → vuoto). È stata quindi aperta la **PR #195** (https://github.com/Gasss23/Gas/pull/195),
+   numero e URL dall'output reale di `gh pr view --json number,url`:
+   `{"number":195,"url":"https://github.com/Gasss23/Gas/pull/195"}`.
+2. **Merge della PR #195**: finché il verdetto del bot non è `APPROVATO` secco senza finding, per la
    regola di merge autonomo di CLAUDE.md **decide l'operatore**.
 3. **R-gate-worktree-1** (MEDIA, §7): il gate deterministico di review è inerte nelle sessioni che
    girano in un worktree. Decidere se diventa una fetta: l'hook è nel perimetro di review.
