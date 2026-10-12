@@ -32,11 +32,11 @@
  .claude/agents/memoria_revisore.md |  36 +++++++++++++++++
  gas.py                             | 159 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  reports/diff_sessione.md           |  51 ++++++++++++------------
- reports/handoff.md                 | 758 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 764 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |  95 +++++++++++++++++++++++++++++++++++++++++++--
- reports/ultimo_report.md           | 305 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
- tests/test_unit_kernel.py          | 276 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 7 files changed, 1302 insertions(+), 378 deletions(-)
+ reports/ultimo_report.md           | 305 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
+ tests/test_unit_kernel.py          | 276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 7 files changed, 1308 insertions(+), 378 deletions(-)
 ```
 
 **Base = `af394bccc7d2`, il merge-base VERO ricalcolato adesso.** Non `f6396ba`: quella era la base di partenza della sessione, e il merge di `origin/main` l'ha spostata. I blocchi di questo dossier calcolati sulla base vecchia erano falsi (V-1 della verifica esterna, 2º giro) — il gate A confronta solo i PATH, non i conteggi, quindi non se ne accorge.
@@ -44,6 +44,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+524bc75 docs(fine-task): verdetti #308/#309/#310 integrali nel §4 (V-1 MEDIA verifica esterna)
 bd3770f docs(fine-task): V-3 chiusa, V-1 (numeri) corretta, base ricalcolata
 b20720a fix(cerca_testo): solo i log del kernel VERI, quelli nella root (V-3 verifica esterna #193)
 49c6027 chore(revisore): memoria review #310 — APPROVATO
@@ -530,25 +531,30 @@ Mutazioni eseguite e ripristinate, per provare che i test mordono: bug originale
 
 ## §6 STATO CI
 
-All'ultima misura reale (`gh pr checks 193`) sull'head **precedente** `93b57de`, cioè quello dell'autore ignoto, prima del merge:
+Esito REALE di `gh pr checks 193` sull'head ATTUALE `524bc75`, al momento della scrittura:
 
 ```
-verifica-bot	fail	0
-esito	pass	10s
-smista	pass	7s
-unit-suite	pass	1m45s
-verifica	pass	2m50s
-handoff-check	pending	9s
+verifica	pending	0
+smista	pass	5s
+unit-suite	pending	0
+handoff-check	pass	7s
 ```
 
-**`verifica-bot` era `fail` su quell'head**, e il ruleset `main-lock` lo richiede, quindi la PR non è immergeabile finché non rigira. Il diff che il bot ha bocciato **non è più quello**: il merge `7c03a6d` chiude V-1 (con il margine di R-308-1, che il fix dell'autore ignoto non aveva) oltre a V-3 e V-4. Il bot va rieseguito sull'head nuovo e la verifica esterna va rilanciata: **il suo esito va letto sulla PR, non qui**.
+**Lettura onesta di questo campo.** `handoff-check` e `smista` sono **pass**; `unit-suite` e `verifica` erano ancora **pending** quando ho scritto, quindi il loro esito **va letto sulla PR, non qui**. `verifica-bot` è un check *required* dal ruleset `main-lock` e sui due head precedenti era **failure**, con una incoerenza già segnalata: la sua review diceva «finding ALTA» mentre il suo verdetto TESTUALE era APPROVATO CON RISERVE con soli finding BASSA/COSMETICA. La PR resta non immergeabile finché quel check non riporta success (o neutral): `mergeable=MERGEABLE` ma `mergeStateStatus=BLOCKED`.
+
+❌ **Correzione di una mia affermazione**: nel messaggio del commit precedente ho scritto che il finding V-4 della verifica esterna era corretto, ma avevo rigenerato solo §2/§3 e **lasciato questo §6 fermo all'head dell'autore ignoto** (`93b57de`). Il finding diceva esattamente anche questo. Corretto qui; e la causa è la stessa delle altre due volte: ho dichiarato fatto un allineamento prima di averlo verificato su tutti i punti che il finding elencava.
+
+**Dato rilevante dalle run precedenti**: `unit-suite` passa in CI, che pinna **Python 3.11**, con **844 PASS, 0 FAIL** (cinque test bwrap in più che in locale non girano). In locale, su Python 3.14.7, la stessa suite dà **840 PASS, 0 FAIL**.
 
 **Mappatura commit→run di QUESTA sessione:**
 
-- `e606313`, `d238610`, `be36ce8`, `08c9af6`, `775fdb8`, `b892800`, `25ce6e6`, `c16a789` — **nessuna run su questi SHA**: commit intermedi, mai pushati da soli.
-- `58ff4ec` (primo push) — run `38278359321`: `unit-suite` e `handoff-check` **pass**.
-- `93b57de` (head dell'autore ignoto) — run `38280430985`/`38280433461`: `unit-suite` **pass**, `handoff-check` **pending** alla misura, `verifica-bot` **fail**.
-- `c72e0ce`, `2be3a51`, `ac508c5`, `b29493b`, `9e273e0`, `9e20872`, `7c03a6d` e il commit di fine-task — **run non ancora disponibile alla scrittura dell'handoff**: sono il push che segue questa scrittura.
+- `e606313`, `d238610`, `be36ce8`, `08c9af6`, `775fdb8`, `b892800`, `25ce6e6`, `c16a789`, `c72e0ce`, `2be3a51`, `ac508c5`, `b29493b`, `9e273e0`, `9e20872`, `7c03a6d`, `49c6027`, `b20720a` — **nessuna run su questi SHA**: commit intermedi, mai pushati da soli.
+- `58ff4ec` (1º push) — run `38278359321`: `unit-suite` e `handoff-check` **pass**.
+- `93b57de` (head dell'autore ignoto) — run `38280430985`/`38280433461`: `unit-suite` **pass**, `verifica-bot` **fail**.
+- `dcf4cbf` (push dell'unione) — `unit-suite`, `handoff-check`, `smista` **success** (verificato dalla verifica esterna via API).
+- `7e4609b`, `bd3770f` — run generate dai rispettivi push; `verifica-bot` **failure** su `7e4609b`.
+- `524bc75` (head attuale) — run `38295917374`/`38295921269`: vedi la tabella qui sopra.
+- commit di fine-task di questo giro — **run non ancora disponibile alla scrittura dell'handoff**.
 
 GitHub Actions crea una run per *push*, non per commit: ogni push genera UNA run che testa SOLO l'albero del commit di testa. I commit elencati come «nessuna run» non sono mai stati testati individualmente. La copertura pre-merge è garantita da `gasmerge` (`gh pr checks --watch`), non da questo campo.
 
