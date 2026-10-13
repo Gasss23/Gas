@@ -47,3 +47,6 @@ clients/**/*_output.mp3
 clients/**/*_output.txt
 clients/**/*_output.json
 gas_debug.log.*
+
+# E1: copia divergente del canone per altri agenti, solo locale (decisione operatore 2026-10-13)
+AGENTS.md

@@ -3,33 +3,49 @@
 # exit 0 in TUTTI i percorsi (fail-open: mai intrappolare la sessione).
 # Blocco: {"decision":"block","reason":"..."} su stdout.
 # Contatore: blocca al massimo 3 volte PER SESSIONE (session_id da payload stdin).
-#   Formato file: "<session_id>:<count>" — reset automatico se session_id cambia.
-#   File: $GIT_DIR/promemoria_block_count (R4: path worktree-safe via git rev-parse --git-dir).
+#   Formato file: una riga "<session_id>:<count>" PER SESSIONE (A1: due sessioni
+#   che si alternano non si azzerano più a vicenda il contatore).
+#   File: $GIT_DIR/promemoria_block_count, nel git-dir DEL WORKTREE del turno
+#   (A1: `git rev-parse --git-dir` in un worktree dà .git/worktrees/<nome>).
+# Repo controllato (A1): quello del `cwd` del payload (il turno in corso, segue i
+#   worktree, come review_gate.sh); fallback su CLAUDE_PROJECT_DIR, poi sulla dir dello script.
 #   Al 4° tentativo → fail-open con WARNING su stderr E su gas_debug.log.
 # Anti-loop: se stop_hook_active==true nel payload stdin → exit 0 silenzioso.
-
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-}"
-if [[ -z "$PROJECT_DIR" ]]; then
-    PROJECT_DIR=$(git -C "$(cd "$(dirname "$0")" && pwd)" rev-parse --show-toplevel 2>/dev/null) || exit 0
-fi
-
-LOG="${PROJECT_DIR}/gas_debug.log"
 
 # Legge payload hook da stdin; fail-open se non parsabile
 INPUT=$(cat)
 
-# Estrai stop_hook_active e session_id in un unico parse Python
+# Estrai stop_hook_active, session_id e cwd in un unico parse Python
 _PARSED=$(printf '%s' "$INPUT" | python3 -c \
     "import json,sys
 d=json.load(sys.stdin)
 active = '1' if d.get('stop_hook_active') else '0'
-sid = d.get('session_id', '')
 print(active)
-print(sid)" \
+print(str(d.get('session_id', '')).replace(chr(10), ' '))
+print(str(d.get('cwd', '')).replace(chr(10), ' '))" \
     2>/dev/null)
 
-_SHA=$(printf '%s' "$_PARSED" | head -1)
-SESSION_ID=$(printf '%s' "$_PARSED" | tail -1)
+_SHA=$(printf '%s\n' "$_PARSED" | sed -n 1p)
+SESSION_ID=$(printf '%s\n' "$_PARSED" | sed -n 2p)
+PAYLOAD_CWD=$(printf '%s\n' "$_PARSED" | sed -n 3p)
+
+# Radice git di una directory ("" se non e' un repo o la dir non esiste).
+_radice() {
+    [[ -n "$1" && -d "$1" ]] || return 1
+    git -C "$1" rev-parse --show-toplevel 2>/dev/null
+}
+
+# A1: il repo del turno in corso (cwd del payload) prima di CLAUDE_PROJECT_DIR,
+# che punta sempre al checkout principale anche quando si lavora in un worktree.
+PROJECT_DIR=$(_radice "$PAYLOAD_CWD") || PROJECT_DIR=""
+# Come prima di A1: CLAUDE_PROJECT_DIR impostato ma non repo → exit 0; la dir dello
+# script si usa SOLO se CLAUDE_PROJECT_DIR manca.
+if [[ -z "$PROJECT_DIR" && -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
+    PROJECT_DIR=$(_radice "$CLAUDE_PROJECT_DIR") || exit 0
+fi
+[[ -z "$PROJECT_DIR" ]] && { PROJECT_DIR=$(_radice "$(cd "$(dirname "$0")" && pwd)") || exit 0; }
+
+LOG="${PROJECT_DIR}/gas_debug.log"
 
 # Fallback regex se python3 non riesce
 if [[ -z "$_SHA" ]]; then
@@ -69,25 +85,37 @@ GIT_DIR_PATH=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "${
 [[ "$GIT_DIR_PATH" != /* ]] && GIT_DIR_PATH="${PROJECT_DIR}/${GIT_DIR_PATH}"
 COUNTER_FILE="${GIT_DIR_PATH}/promemoria_block_count"
 
+# Righe del contatore delle ALTRE sessioni (A1: si conservano, non si sovrascrivono).
+# Il session_id passa per ENVIRON, non `awk -v`: -v interpreta i backslash e la riga
+# della sessione non si ritroverebbe più (R-314-1).
+_altre_sessioni() {
+    [[ -f "$COUNTER_FILE" ]] || return 0
+    SID="$SESSION_ID" awk 'BEGIN { sid = ENVIRON["SID"] } length($0) > 0 && substr($0, 1, length(sid) + 1) != sid ":"' \
+        "$COUNTER_FILE" 2>/dev/null
+}
+
 if [[ "${HANDOFF_IN_LAST}" -ge 1 ]]; then
-    # Handoff fresco → azzera il contatore
-    rm -f "$COUNTER_FILE" 2>/dev/null || true
+    # Handoff fresco → azzera il contatore DI QUESTA sessione
+    ALTRE=$(_altre_sessioni)
+    if [[ -n "$ALTRE" ]]; then
+        printf '%s\n' "$ALTRE" > "$COUNTER_FILE" 2>/dev/null || true
+    else
+        rm -f "$COUNTER_FILE" 2>/dev/null || true
+    fi
     exit 0
 fi
 
-# Handoff NON fresco → contatore per sessione (B1)
+# Handoff NON fresco → contatore per sessione (B1, A1: una riga per session_id)
 COUNT=0
 if [[ -f "$COUNTER_FILE" ]]; then
-    STORED=$(cat "$COUNTER_FILE" 2>/dev/null || echo ":")
-    STORED_SID=$(printf '%s' "$STORED" | cut -d':' -f1)
-    STORED_COUNT=$(printf '%s' "$STORED" | cut -d':' -f2-)
-    if [[ "$STORED_SID" == "$SESSION_ID" ]] && [[ "${STORED_COUNT}" =~ ^[0-9]+$ ]]; then
-        COUNT=$STORED_COUNT
-    fi
-    # session_id diverso → COUNT resta 0 (reset implicito)
+    STORED_COUNT=$(SID="$SESSION_ID" awk 'BEGIN { sid = ENVIRON["SID"] } substr($0, 1, length(sid) + 1) == sid ":" { print substr($0, length(sid) + 2); exit }' \
+        "$COUNTER_FILE" 2>/dev/null)
+    [[ "${STORED_COUNT}" =~ ^[0-9]+$ ]] && COUNT=$STORED_COUNT
 fi
 COUNT=$((COUNT + 1))
-printf '%s:%s' "$SESSION_ID" "$COUNT" > "$COUNTER_FILE" 2>/dev/null || true
+ALTRE=$(_altre_sessioni)
+{ [[ -n "$ALTRE" ]] && printf '%s\n' "$ALTRE"; printf '%s:%s\n' "$SESSION_ID" "$COUNT"; } \
+    > "$COUNTER_FILE" 2>/dev/null || true
 
 if [[ $COUNT -le 3 ]]; then
     printf '{"decision":"block","reason":"Esegui /fine-task ORA: è obbligatorio, non è un suggerimento."}\n'

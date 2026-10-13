@@ -575,7 +575,17 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "my_credentials.json", "wallet.dat", ".npmrc",
                                   "credentials_guide.md", "dati/secret_sauce.md", "dati/secret.json", "dati/secrets",
                                   "config/credentials.json", ".aws/credentials", ".netrc",
-                                  ".pgpass", ".pypirc", ".htpasswd", ".gnupg/pubring.kbx"])
+                                  ".pgpass", ".pypirc", ".htpasswd", ".gnupg/pubring.kbx",
+                                  # D1: i nove buchi di R-291-1 / bot #188, più varianti
+                                  "token_cache.json", "dati/tokens-prod.yaml", "kubeconfig",
+                                  "dati/kubeconfig.yaml", "mywallet.dat", "backup-wallet.dat",
+                                  ".vault-token", ".dockercfg", "_netrc", "_netrc.bak",
+                                  "clientsecret.json", "dati/client_secrets.json",
+                                  "chiave.gpg", "dati/pubkey.asc", "x.asc.bak",
+                                  # R-324-1/3: token.pickle (OAuth Google), cache MSAL, .pgp,
+                                  # pezzo di percorso oltre 255 caratteri
+                                  "token.pickle", "msal_token_cache.bin", "token_cache.db",
+                                  "chiave.pgp", "token_" * 50 + "x"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -588,7 +598,10 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   "dati/key.txt",
                                   "sshconfig.md", "dati/pemberton.txt", "dati/rsa_id.md",
                                   "dati/x.keyboard", "dati/a.keys.md", "dati/b.pemmican",
-                                  "dati/valid_rsa.md", "tokenizer.py", "dati/tokens.md", "kubectl.md"])
+                                  "dati/valid_rsa.md", "tokenizer.py", "dati/tokens.md", "kubectl.md",
+                                  # D1: nomi simili ai nuovi divieti restano leggibili
+                                  "tokenizer.json", "dati/ascii.txt", "dati/x.ascx.md",
+                                  "dati/gpgme.md", "wallets.md", "netrc_guida.md"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE

@@ -460,6 +460,71 @@ class TestStorico:
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-9", "BASSA")], testo)
         assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
 
+    # B1: falsi rossi REALI di verifica-bot. Estratti testuali dei verdetti pubblicati
+    # (FINDING e coda), con i finding strutturati tutti BASSA/COSMETICA.
+    def test_b1_196_alta_nella_raccomandazione_non_blocca(self):
+        # PR #196, head 1761eb5: check failure per «ALTA» nella prosa della RACCOMANDAZIONE.
+        testo = (
+            "VERIFICA ESTERNA #196 — APPROVATO CON RISERVE\nMetodo: lettura statica.\n"
+            "CLAIM VERIFICATI:\n- «Motore non toccato»: VERO.\nFINDING:\n"
+            "- V-1 (BASSA) — Alcune forme di cambio directory non vengono riconosciute.\n"
+            "- V-2 (BASSA) — Claim strutturale sovrastimato.\n"
+            "- V-3 (BASSA) — Un worktree creato nello stesso comando.\n"
+            "- V-4 (BASSA) — Con `cwd` fuori da un repo git, ogni comando esce 2.\n"
+            "Riserve già registrate richiamate, non nate da questa PR come finding V-: R-300-1 "
+            "(dichiarata nella PR, cwd che non segue il cd della shell persistente), R-137-3 "
+            "(GIT_INDEX_FILE, preesistente).\n\nNON VERIFICATO:\n- Esecuzione locale.\n\n"
+            "RACCOMANDAZIONE: il merge è accettabile: il fix chiude il fail-open ALTA documentato "
+            "senza indebolire il gate, e la CI reale è verde (138/138 sulla hook suite).")
+        v = _verdetto("APPROVATO CON RISERVE", [_f(f"V-{i}", "BASSA") for i in range(1, 5)], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("riga", [
+        # PR #193, head 7e4609b: in coda alla sezione FINDING.
+        "Problemi già registrati, che non nascono da questa PR: R-gate-worktree-1 (ALTA, "
+        "preesistente). L'handoff riconosce che i commit del motore sono passati dal gate.",
+        # PR #193, head bd3770f: nell'elenco delle riserve dichiarate.
+        "Preesistenti, non nate dal codice di questa PR: R-gate-worktree-1 (ALTA, preesistente), "
+        "R-291-1 (BASSA, preesistente).",
+    ])
+    def test_b1_193_riserva_con_id_alfabetico_non_blocca(self, riga):
+        testo = ("VERIFICA ESTERNA #193 — APPROVATO CON RISERVE\nFINDING:\n"
+                 "V-1 (BASSA) — Descrizione PR e handoff non aggiornati.\n"
+                 "V-2 (COSMETICA) — gas.py:1880, commento.\n"
+                 f"{riga}\nNON VERIFICATO:\n- niente\nRACCOMANDAZIONE: decide l'operatore.")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA"), _f("V-2", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    # B1, il verso del fail-safe NON si allenta: ogni forma da finding continua a bloccare.
+    @pytest.mark.parametrize("testo", [
+        # parola maiuscola nuda DENTRO FINDING: blocca come prima
+        "FINDING:\nV-1 (BASSA) — x\nNota: resta un problema ALTA nel gate\nNON VERIFICATO: -",
+        # id + gravità nella coda: blocca
+        "FINDING:\nV-1 (BASSA) — x\nNON VERIFICATO: -\nRACCOMANDAZIONE: chiudere V-2 (ALTA)",
+        # riga di finding a parole nella coda: blocca
+        "FINDING:\nV-1 (BASSA) — x\nRACCOMANDAZIONE:\nV-3 — grave: bypass",
+        # intestazione minuscola: non taglia, la parola nuda resta vista
+        "FINDING:\nV-1 (BASSA) — x\nRaccomandazione: fail-open ALTA ancora aperto",
+        # senza sezione FINDING: tutto il testo conta
+        "V-1 (BASSA) — x\nRACCOMANDAZIONE: un bug ALTA",
+        # id alfabetico ma gravità FUORI dalla parentesi della citazione
+        "FINDING:\nR-gate-worktree-1 (BASSA) ma questa PR introduce un bug ALTA",
+        # id senza cifra finale: non è una riserva registrata
+        "FINDING:\nR-gate (ALTA) — x",
+        # R-316-1: punto elenco che comincia con NON VERIFICATO dentro FINDING
+        "FINDING:\n- NON VERIFICATO il test Y\n- Bypass del gate, gravità ALTA",
+        # R-316-1: dopo la coda ricompare un FINDING
+        "FINDING: vedi sotto\nRACCOMANDAZIONE: niente\nFINDING:\n- ALTA bypass",
+        # R-316-2: id alfabetico, gravità a parole minuscole sulla stessa riga
+        "FINDING:\nR-gate-worktree-1 (ALTA, preesistente) — questa PR lo rende grave",
+        # R-316-3: finding V- travestito da riserva
+        "FINDING:\nR-V-1 (ALTA) bypass",
+    ])
+    def test_b1_forme_da_finding_restano_bloccanti(self, testo):
+        testo = "VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\n" + testo
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
     def test_riserva_registrata_nel_json_resta_bloccante(self):
         # Se il modello mette la riserva nel campo strutturato con gravità ALTA, il campo
         # vince: la nuova regola tocca solo il testo libero.

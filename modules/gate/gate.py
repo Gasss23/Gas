@@ -282,11 +282,19 @@ _CHIAVE_PRIVATA_RE = re.compile(
     # credentials_guide.md e secret_sauce.md sono bloccati per eccesso (R-289-2).
     r"(?<![a-z])(id_(rsa|dsa|ecdsa|ed25519)"   # chiavi ssh, anche backup_id_rsa
     r"|secrets?|credentials?"                  # secrets.yaml, my_credentials.json
-    r"|service[-_]?account|tokens?\.(json|txt|ya?ml)|wallet\.dat"
+    # D1 (R-291-1, bot #188): token_cache.json / tokens-prod.yaml (separatore dopo
+    # token, così tokenizer.json resta fuori), kubeconfig, clientsecret.json.
+    r"|service[-_]?account|tokens?([-_][a-z0-9_-]*)?\.(json|txt|ya?ml|pickle|bin|db)"
+    r"|kubeconfig|client[-_]?secrets?"
     r")(?![a-z])"
-    r"|^\.(ssh|gnupg|aws|kube|docker|netrc|pgpass|pypirc|htpasswd|npmrc)(?![a-z])"
-    # chiavi/certificati/portachiavi, anche copie (x.pem~, x.key.bak: R-289-1)
-    r"|\.(pem|key|p12|pfx|ppk|jks|keystore|kdbx)(?![a-z])"
+    # D1: wallet.dat anche con prefisso (mywallet.dat, backup-wallet.dat)
+    r"|wallet\.dat(?![a-z])"
+    # D1: .dockercfg, .vault-token, _netrc (nome Windows di .netrc)
+    r"|^\.(ssh|gnupg|aws|kube|docker|dockercfg|vault-token|netrc|pgpass|pypirc|htpasswd|npmrc)(?![a-z])"
+    r"|^_netrc(?![a-z])"
+    # chiavi/certificati/portachiavi, anche copie (x.pem~, x.key.bak: R-289-1);
+    # D1: chiavi GPG/PGP (.gpg binarie, .asc armored)
+    r"|\.(pem|key|p12|pfx|ppk|jks|keystore|kdbx|gpg|pgp|asc)(?![a-z])"
 )
 
 
@@ -299,6 +307,10 @@ def _nome_da_segreto(normalized: str) -> bool:
     Punti/spazi finali tolti."""
     for p in PurePosixPath(normalized).parts:
         pulito = p.rstrip(". ")
+        # R-324-3: un pezzo oltre 255 caratteri non è un nome di file reale; negarlo
+        # subito tiene lineare il costo della regex (fail-closed).
+        if len(pulito) > 255:
+            return True
         if _SEGRETO_RE.search(pulito) or _CHIAVE_PRIVATA_RE.search(pulito):
             return True
     return False

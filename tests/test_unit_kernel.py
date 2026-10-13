@@ -7905,7 +7905,11 @@ try:
     check("T84f tetto di byte: conta/leggi negati, cerca salta il file troppo grande",
           _o[0].startswith("Operazione negata") and _o[1].startswith("Operazione negata")
           and _o[2].startswith("0 righe trovate in 0 file")
-          and "1 file oltre il tetto di 10 byte della chiamata saltati (note.md)" in _o[2],
+          and "1 file oltre il tetto di 10 byte della chiamata saltati (note.md)" in _o[2]
+          # C1 (V-4 #193): niente più «usa leggi_righe su quei file», che non arriva oltre
+          # LETTURA_MAX_BYTES: si dice fin dove arriva.
+          and "leggi_righe con un intervallo di righe arriva solo alle righe nei primi "
+              "10 byte" in _o[2] and "usa leggi_righe su quei file" not in _o[2],
           str(_o)[:300])
     # R-282-1: un file grande non ferma la ricerca negli altri file. Il tetto per file
     # e' INDIPENDENTE dal budget residuo (R-282-1 chiusa): qui si abbassano entrambi.
@@ -7916,6 +7920,7 @@ try:
     check("T84f R-282-1 file oltre il tetto per file saltato e NOMINATO, la ricerca prosegue",
           "docs/sub/b.txt:1: due alfa" in _o
           and "1 file oltre il tetto di 20 byte per file saltati (docs/0grande.txt)" in _o
+          and "indicane uno in relative_path per cercarci dentro (solo se non supera" in _o
           and "docs/0grande.txt:" not in _o and "tetto di byte letti" not in _o, _o[:300])
     _k84.LETTURA_MAX_BYTES = GasKernel.LETTURA_MAX_BYTES
     _k84.LETTURA_MAX_BYTES_PER_FILE = GasKernel.LETTURA_MAX_BYTES_PER_FILE
@@ -8285,6 +8290,25 @@ try:
           "«non letto», non «letto solo in parte»",
           "non letto" in _oLc and "letto solo in parte" not in _oLc
           and "RICERCA INCOMPLETA" in _oLc, _oLc[:300])
+    # C2 (R-301-3): il file «non letto» non entra fra i letti. 5 file da 81 byte, budget
+    # 162: letti davvero 2; prima l'intestazione diceva «in 3 file».
+    check("T84n C2 il file «non letto» non è contato fra i file letti",
+          " righe trovate in 2 file" in _oLc, _oLc[:200])
+    # C2: un file non di testo è «saltato», non anche «letto» (prima contava in entrambi).
+    (_rL / "misti").mkdir()
+    (_rL / "misti" / "a.txt").write_text("alfaM\n", encoding="utf-8")
+    (_rL / "misti" / "b.bin").write_bytes(b"\xff\xfe\x00alfaM")
+    _oLm = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaM", "relative_path": "misti"}')
+    check("T84n C2 file non di testo saltato e non contato fra i letti",
+          _oLm.startswith("1 righe trovate in 1 file; 1 file non di testo saltati"), _oLm[:200])
+    # R-326-1: righe valide e poi un byte NUL: le righe trovate restano e il file conta
+    # fra i letti (e fra i non di testo saltati), non «2 righe trovate in 0 file».
+    (_rL / "misti2").mkdir()
+    (_rL / "misti2" / "x.txt").write_bytes(b"alfaZ uno\nalfaZ due\n\x00coda\n")
+    (_rL / "misti2" / "vuoto.txt").write_bytes(b"")
+    _oLz = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaZ", "relative_path": "misti2"}')
+    check("T84n R-326-1 file con testo poi byte NUL: righe contate nel suo file",
+          _oLz.startswith("2 righe trovate in 2 file; 1 file non di testo saltati"), _oLz[:200])
 
     # V-3 #193 (2o giro): il salto vale solo per i log del kernel VERI, quelli nella
     # ROOT. Un file dell'utente chiamato come il log ma in sottocartella NON e' un log

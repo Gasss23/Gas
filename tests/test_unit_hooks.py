@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -1078,14 +1079,18 @@ def _init_bare_origin(work: Path, bare: Path) -> None:
 
 def _run_promemoria(
     repo: Path, *, stop_hook_active: bool = False, extra_env: dict | None = None,
-    session_id: str = "",
+    session_id: str = "", cwd: Path | None = None,
 ) -> subprocess.CompletedProcess:
     """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test.
 
     Passa il payload JSON Stop hook su stdin (simula il runtime Claude Code).
+    `cwd`, se dato, finisce nel payload (il checkout del turno in corso, A1).
     """
-    payload = json.dumps({"stop_hook_active": stop_hook_active, "transcript_path": "",
-                          "session_id": session_id})
+    dati = {"stop_hook_active": stop_hook_active, "transcript_path": "",
+            "session_id": session_id}
+    if cwd is not None:
+        dati["cwd"] = str(cwd)
+    payload = json.dumps(dati)
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
     if extra_env:
         env.update(extra_env)
@@ -2860,3 +2865,246 @@ class TestReviewGateWorktree:
                                comando="cd " + str(esca) + " && " + _CMD_COMMIT_WT)
             assert result.returncode == 2, (nome, result.stderr)
 
+
+# ─── TestPromemoriaWorktree (A1) ──────────────────────────────────────────────
+#
+# promemoria_end.sh deve giudicare il checkout del turno in corso (`cwd` del
+# payload), non il principale di CLAUDE_PROJECT_DIR, e tenere il contatore nel
+# git-dir DEL WORKTREE con una riga per session_id.
+
+
+class TestPromemoriaWorktree:
+    """T-prom-wt — A1: hook cieco al worktree e contatore che si azzera a vicenda."""
+
+    def _setup(self, tmp_path: Path, *, handoff_principale: bool, handoff_worktree: bool):
+        """Principale su un feature branch + worktree su un altro, ognuno con un commit."""
+        main_co = tmp_path / "principale"
+        main_co.mkdir()
+        _init_repo(main_co)
+        _init_bare_origin(main_co, tmp_path / "origin.git")
+        wt = tmp_path / "wt"
+        subprocess.run(
+            ["git", "worktree", "add", "-q", "-b", "feat/wt", str(wt)],
+            cwd=main_co, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "checkout", "-q", "-b", "feat/principale"],
+            cwd=main_co, check=True, capture_output=True,
+        )
+        for repo, fresco in ((main_co, handoff_principale), (wt, handoff_worktree)):
+            rel = "reports/handoff.md" if fresco else "some_file.txt"
+            _make_git_commit(repo, rel, f"{repo.name}\n", "feat: commit di sessione")
+        return main_co, wt
+
+    @staticmethod
+    def _git_dir(repo: Path) -> Path:
+        out = subprocess.run(
+            ["git", "rev-parse", "--absolute-git-dir"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        return Path(out)
+
+    def test_prom_wt_1_worktree_fresco_principale_stantio_non_blocca(self, tmp_path):
+        """T-prom-wt-1: handoff fresco nel worktree del turno → nessun blocco.
+
+        Prima del fix l'hook guardava il principale (handoff stantio) e bloccava.
+        """
+        main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=True)
+        result = _run_promemoria(main_co, session_id="s1", cwd=wt)
+        assert result.returncode == 0
+        assert not _is_blocked(result), f"T-prom-wt-1: blocco inatteso, stdout={result.stdout!r}"
+
+    def test_prom_wt_2_worktree_stantio_principale_fresco_blocca(self, tmp_path):
+        """T-prom-wt-2: handoff stantio nel worktree del turno → blocca, contatore nel worktree.
+
+        Prima del fix il principale (handoff fresco) faceva chiudere il turno.
+        """
+        main_co, wt = self._setup(tmp_path, handoff_principale=True, handoff_worktree=False)
+        result = _run_promemoria(main_co, session_id="s1", cwd=wt)
+        assert result.returncode == 0
+        assert _is_blocked(result), f"T-prom-wt-2: atteso blocco, stdout={result.stdout!r}"
+        wt_counter = self._git_dir(wt) / "promemoria_block_count"
+        assert wt_counter.read_text().strip() == "s1:1"
+        assert not (self._git_dir(main_co) / "promemoria_block_count").exists(), (
+            "T-prom-wt-2: il contatore non deve finire nel git-dir del principale"
+        )
+
+    def test_prom_wt_3_cwd_non_repo_ricade_su_project_dir(self, tmp_path):
+        """T-prom-wt-3: cwd fuori da un repo → fallback su CLAUDE_PROJECT_DIR (stantio, blocca)."""
+        main_co, _wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=True)
+        fuori = tmp_path / "non_repo"
+        fuori.mkdir()
+        result = _run_promemoria(main_co, session_id="s1", cwd=fuori)
+        assert result.returncode == 0
+        assert _is_blocked(result), f"T-prom-wt-3: atteso blocco, stdout={result.stdout!r}"
+
+    def test_prom_wt_4_due_sessioni_alternate_non_si_azzerano(self, tmp_path):
+        """T-prom-wt-4: sessioni A e B alternate sullo stesso checkout.
+
+        Prima del fix il file conservava un solo session_id: ogni turno dell'altra
+        sessione azzerava il conto e il limite «3 blocchi poi fail-open» non scattava mai.
+        """
+        main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=False)
+        esiti_a = []
+        for _ in range(4):
+            esiti_a.append(_is_blocked(_run_promemoria(wt, session_id="sess-A", cwd=wt)))
+            _run_promemoria(wt, session_id="sess-B", cwd=wt)
+        assert esiti_a == [True, True, True, False], f"T-prom-wt-4: esiti A {esiti_a}"
+        righe = sorted((self._git_dir(wt) / "promemoria_block_count").read_text().split())
+        assert righe == ["sess-A:4", "sess-B:4"], f"T-prom-wt-4: contatore {righe}"
+
+    def test_prom_wt_5_handoff_fresco_azzera_solo_la_propria_sessione(self, tmp_path):
+        """T-prom-wt-5: l'handoff fresco toglie la riga della sessione corrente, non le altre."""
+        main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=False)
+        _run_promemoria(wt, session_id="sess-A", cwd=wt)
+        _run_promemoria(wt, session_id="sess-B", cwd=wt)
+        _make_git_commit(wt, "reports/handoff.md", "fresco\n", "docs: handoff")
+        result = _run_promemoria(wt, session_id="sess-A", cwd=wt)
+        assert not _is_blocked(result)
+        righe = (self._git_dir(wt) / "promemoria_block_count").read_text().split()
+        assert righe == ["sess-B:1"], f"T-prom-wt-5: contatore {righe}"
+
+    def test_prom_wt_6_session_id_con_backslash_conta(self, tmp_path):
+        """T-prom-wt-6 (R-314-1): un backslash nel session_id non ferma il conto.
+
+        Con `awk -v` la riga della sessione non si ritrovava: conto fermo a 1, blocco perpetuo.
+        """
+        _main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=False)
+        sid = "a\\tb"
+        esiti = [_is_blocked(_run_promemoria(wt, session_id=sid, cwd=wt)) for _ in range(4)]
+        assert esiti == [True, True, True, False], f"T-prom-wt-6: esiti {esiti}"
+        righe = (self._git_dir(wt) / "promemoria_block_count").read_text().split()
+        assert righe == [f"{sid}:4"], f"T-prom-wt-6: contatore {righe}"
+
+
+# ─── TestGateMatcher (A2, R-gate-matcher-1) ───────────────────────────────────
+#
+# review_gate.sh riconosceva il commit con grep sul testo libero: bloccava prosa,
+# letture e il grep sull'hook stesso. L'helper .claude/hooks/gate_matcher.py toglie solo
+# le stringhe/heredoc inerti; nel dubbio resta il testo grezzo (fail-closed).
+
+sys.path.insert(0, str(REVIEW_GATE_HOOK.parent))
+import gate_matcher as _ec  # noqa: E402
+
+_G, _C = "git", "commit"  # spezzati: il testo di questo file non deve sembrare un commit
+
+
+class TestGateMatcher:
+    """T-match — A2: falsi positivi reali tolti, nessun commit vero lasciato passare."""
+
+    # I tre inneschi misurati in stato_progetto.md (A2), più varianti inerti.
+    NON_COMMIT = [
+        f'{_G} log --oneline -3 ; echo "=== diff vs main ({_C}ted) ==="',
+        f"grep -n '{_G} {_C}\\|{_G}[[:space:]].*{_C}' .claude/hooks/review_gate.sh",
+        f"cat > reports/x.md <<'EOF'\nPoi si fa {_G} add e {_G} {_C}.\nEOF\n",
+        f'echo "usa {_G} {_C} -m" > /dev/null',
+        f"cat <<-'FINE'\n\t{_G} {_C} nel testo\n\tFINE\n",
+    ]
+
+    # Ogni forma che esegue (o può eseguire) un commit resta un commit.
+    COMMIT = [
+        f"{_G} {_C} -m x",
+        f'cd /x && {_G} {_C} -m "y"',
+        f'echo "x" && {_G} {_C} -m "z"',
+        f'echo "{_G} {_C} -m x" | bash',
+        f'bash -c "{_G} {_C} -m x"',
+        f'eval "{_G} {_C}"',
+        f'echo "$({_G} {_C} -m x)"',
+        f'echo "`{_G} {_C} -m x`"',
+        f'A="{_G} {_C}"; $A',
+        f'{_G} -c alias.ci="{_C}" ci',
+        f"cat <<EOF | sh\n{_G} {_C} -m x\nEOF\n",
+        f"python3 - <<'EOF'\nimport os; os.system('{_G} {_C}')\nEOF\n",
+        f"echo 'apice non chiuso {_G} {_C}",
+        f"echo ciao\n{_G} {_C} -m x",
+        f"sudo {_G} {_C}",
+        f"xargs {_G} {_C}",
+        f"cat <<'EOF'\n{_G} {_C}\nEOF\n{_G} {_C} -m x",
+        f"cat <<'EOF'\n{_G} {_C}\n",                      # heredoc non chiuso
+        f"\\{_G} {_C}",
+        f"echo x \\\n&& {_G} {_C}",
+        f"sed -n 1p f && {_G} {_C}",
+        f"awk 'BEGIN{{system(\"{_G} {_C}\")}}'",
+        f"find . -exec {_G} {_C} \\;",
+        f"echo $'{_G} {_C}'",
+        # R-318-1: git riconfigurato nello stesso comando (alias, fsmonitor, -c, env)
+        f"cat >> .git/config <<'EOF'\n[alias]\n  zz = !{_G} {_C} -qm x\nEOF\n{_G} zz",
+        f"printf '[alias]\\n zz = !{_G} {_C} -qm x\\n' >> .git/config && {_G} zz",
+        f"cat >> .git/config <<'EOF'\n[core]\n  fsmonitor = {_G} {_C} -qm x\nEOF\n{_G} status",
+        f"echo '{_G} {_C}' && {_G} -c core.fsmonitor=x status",
+        f"echo '{_G} {_C}' && {_G} --no-pager log",
+        f"GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=x GIT_CONFIG_VALUE_0='{_G} {_C}' {_G} status",
+        f"echo '{_G} {_C}' ; {_G} \\\n{_C} -m x",
+        # R-318-2: comandi che eseguono programmi tramite opzioni, o scrivono file
+        f"printf '#!/bin/sh\\n{_G} {_C} -qm x\\n' > p.sh && rg --pre ./p.sh x p.sh",
+        f"echo '{_G} {_C}' | sort --compress-program=./p.sh",
+        f"echo '{_G} {_C}' | tee x.sh",
+        # R-319-1: commenti di bash che il parser scambierebbe per apici o heredoc
+        f"echo x #'\n{_G} {_C} --allow-empty -qm z\n#'",
+        f'echo x #"\n{_G} {_C} --allow-empty -qm z\n#"',
+        f"echo x # <<EOF\n{_G} {_C} -qm z\nEOF\n",
+        # delimitatore di heredoc con apici a meta': bash e il parser divergono
+        f"cat <<E'O'F\n{_G} {_C}\nEOF\n",
+        # printf -v cambia PATH per il git che segue
+        f"printf -v PATH '%s' /tmp/x; echo '{_G} {_C}'; {_G} status",
+        # R-320-1: printf con -v fra apici + ${x@P} (esegue senza $( )
+        f"printf \"-v\" x '\\x24({_G} {_C} --allow-empty -qm a)'; echo ${{x@P}}",
+        f"printf \\-v x '\\x24({_G} {_C} -qm a)'; echo ${{x@P}}",
+        f"echo '{_G} {_C}' \"${{x@P}}\"",
+        f"echo $[1] '{_G} {_C}'",
+        f"cat <<EOF\n${{x@P}} {_G} {_C}\nEOF\n",
+        # R-320-2: commento dopo una redirezione
+        f"echo x >#'\n{_G} {_C} -qm z\n#'",
+        # R-321-1: test -v / [ -v rivalutano l'indice dopo la quote removal
+        f"test -v a[\\$\\('{_G} {_C} --allow-empty -qm a'\\)]",
+        f"[ -v a[\\$\\('{_G} {_C} -qm a'\\)] ]",
+        f"echo '{_G} {_C}' && jq -n 1",
+        f"echo '{_G} {_C}' *",
+    ]
+
+    @pytest.mark.parametrize("cmd", NON_COMMIT)
+    def test_match_non_commit(self, cmd):
+        assert not _ec.e_commit(cmd), f"falso positivo: {cmd!r} -> {_ec.scheletro(cmd)!r}"
+
+    @pytest.mark.parametrize("cmd", COMMIT)
+    def test_match_commit(self, cmd):
+        assert _ec.e_commit(cmd), f"commit non riconosciuto: {cmd!r} -> {_ec.scheletro(cmd)!r}"
+
+    @staticmethod
+    def _hook(repo: Path, cmd: str, hook: Path = REVIEW_GATE_HOOK, extra_env=None):
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+        if extra_env:
+            env.update(extra_env)
+        stdin = json.dumps({"tool_input": {"command": cmd}, "cwd": str(repo)})
+        return subprocess.run(["bash", str(hook)], input=stdin, env=env,
+                              capture_output=True, text=True)
+
+    def _repo_con_perimetro_sporco(self, tmp_path: Path) -> Path:
+        """Repo con gas.py staged e nessun marcatore: un commit vero va bloccato."""
+        _init_repo(tmp_path)
+        (tmp_path / "gas.py").write_text("# x\n")
+        subprocess.run(["git", "add", "gas.py"], cwd=tmp_path, check=True, capture_output=True)
+        return tmp_path
+
+    @pytest.mark.parametrize("cmd", NON_COMMIT[:3])
+    def test_match_hook_non_commit_passa(self, tmp_path, cmd):
+        """T-match-hook-1: i tre inneschi reali non vengono più bloccati dal gate."""
+        repo = self._repo_con_perimetro_sporco(tmp_path)
+        r = self._hook(repo, cmd)
+        assert r.returncode == 0, r.stderr
+
+    # NB `"git" commit` / `g"it" commit` sfuggono gia' al grep grezzo su main (buco
+    # preesistente, tracciato): l'helper non allarga, quindi non sono qui.
+    @pytest.mark.parametrize("cmd", [COMMIT[0], COMMIT[3], COMMIT[6], COMMIT[10]])
+    def test_match_hook_commit_blocca(self, tmp_path, cmd):
+        """T-match-hook-2: un commit vero (anche via interprete/heredoc) resta bloccato."""
+        repo = self._repo_con_perimetro_sporco(tmp_path)
+        r = self._hook(repo, cmd)
+        assert r.returncode == 2, (cmd, r.stderr)
+
+    def test_match_hook_python_rotto_fail_closed(self, tmp_path):
+        """T-match-hook-3: python3 che fallisce → l'helper non dice «non commit» → blocca."""
+        repo = self._repo_con_perimetro_sporco(tmp_path)
+        r = self._hook(repo, self.NON_COMMIT[0],
+                       extra_env={"PATH": _make_broken_python3_path(tmp_path)})
+        assert r.returncode == 2, r.stderr

@@ -129,6 +129,12 @@ fi
 
 # Non e' un git commit -> non interferire
 printf '%s' "$CMD" | grep -Eq 'git[[:space:]].*commit' || exit 0
+# A2 (R-gate-matcher-1, alias di R-gjq-1/R-137-2): il testo grezzo contiene il pattern,
+# ma puo' essere prosa (stringhe, heredoc). gate_matcher.py toglie SOLO cio' che di sicuro non si esegue e solo se
+# ogni comando e' noto e inerte. Exit 3 = di sicuro non e' un commit; ogni altro esito
+# (python assente, errore, file mancante) = commit: FAIL-CLOSED come prima.
+printf '%s' "$CMD" | python3 -I "$(dirname "$0")/gate_matcher.py" >/dev/null 2>&1
+[ $? -eq 3 ] && exit 0
 
 # cwd: il checkout dove la sessione sta davvero lavorando (segue i worktree).
 # Un parse fallito o un valore vuoto NON e' fatale: fa scattare la spazzata.
