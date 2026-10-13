@@ -33,24 +33,22 @@
 
 ```
  reports/diff_sessione.md  |  59 +++++++++++++-------------------------------------
- reports/handoff.md        | 438 +++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md | 145 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md  | 204 ++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------
- 4 files changed, 273 insertions(+), 573 deletions(-)
+ reports/handoff.md        | 439 ++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ reports/ultimo_report.md  | 204 ++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------
+ 4 files changed, 288 insertions(+), 574 deletions(-)
 ```
 
-Base = `a9fd74de346e`, il merge-base con `origin/main` ricalcolato adesso (`a9fd74d`, dopo il merge di #193,
-#195 e #196).
+Base = `a9fd74de346e`, il merge-base con `origin/main`.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-0aa208d docs(fine-task): §0 dell'handoff con numero e URL reali della PR #197
+f274792 docs(fine-task): §0 dell'handoff con numero e URL reali della PR #197
 54675e0 docs: raccolta dei problemi aperti dalla fetta cerca_testo, da chiudere in una sessione
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; il suo hash
-e' nel log del branch dopo il push.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. **V-1 del bot su #197**: nella versione precedente il §3 citava uno SHA orfanato da un `--amend`, lo stesso errore gia' registrato come V-2 della #193. Qui i blocchi sono generati e committati UNA volta, senza amend successivi, proprio per non ripeterlo una terza volta.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
