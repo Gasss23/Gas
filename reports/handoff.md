@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR — numero e URL compilati al passo 4bis dopo il push (solo da `gh`).
+1. Merge della PR #197 (https://github.com/Gasss23/Gas/pull/197).
 2. **Non mergio io**: `reports/stato_progetto.md` non e' nella lista bianca `LOG_DI_SESSIONE` di
    `scripts/bot_esito.py`, quindi questa PR non ricade nell'eccezione di merge autonomo per i soli log di
    sessione.
@@ -33,10 +33,10 @@
 
 ```
  reports/diff_sessione.md  |  59 +++++++++++++-------------------------------------
- reports/handoff.md        | 437 +++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md | 145 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/handoff.md        | 438 +++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md | 145 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/ultimo_report.md  | 204 ++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------
- 4 files changed, 272 insertions(+), 573 deletions(-)
+ 4 files changed, 273 insertions(+), 573 deletions(-)
 ```
 
 Base = `a9fd74de346e`, il merge-base con `origin/main` ricalcolato adesso (`a9fd74d`, dopo il merge di #193,
@@ -45,7 +45,8 @@ Base = `a9fd74de346e`, il merge-base con `origin/main` ricalcolato adesso (`a9fd
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit: il commit di fine-task e' quello che contiene questo file)
+0aa208d docs(fine-task): §0 dell'handoff con numero e URL reali della PR #197
+54675e0 docs: raccolta dei problemi aperti dalla fetta cerca_testo, da chiudere in una sessione
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; il suo hash
