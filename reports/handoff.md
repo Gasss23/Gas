@@ -21,6 +21,7 @@
 - **Merge PR #196**: `FATTA` — CI verde, verifica-bot neutral, nessuna ALTA/MEDIA.
 - **Merge PR #198**: `FATTA` — richiesta operatore; CI verde, verifica-bot neutral, verifica esterna APPROVATO CON RISERVE (solo BASSE/COSMETICHE).
 - **Riserve verifica esterna #198 in stato_progetto**: `FATTA` — commit di soli doc, fuori perimetro.
+- **Note della verifica bot su #199 (V-1 BASSA, V-2 COSMETICA)**: `FATTA` — registrate le riserve della review del bot su #198 (R-bot198-1..3) e dati id stabili R-ve198-1..4 alle riserve dell'agente.
 - **Merge PR #199**: `FATTA dopo questo handoff` — a CI/bot verdi.
 - **C3 / C5a / C5c**: `DEFERITA` — fetta a sé (C3) e sconsigliate dal revisore (C5a/C5c).
 
@@ -30,15 +31,16 @@
 
 ```
  reports/diff_sessione.md  |  24 ++++++------------------
- reports/handoff.md        | 285 +++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md |   1 +
- reports/ultimo_report.md  |  54 ++++++++++++------------------------------------------
- 4 files changed, 40 insertions(+), 324 deletions(-)
+ reports/handoff.md        | 289 +++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md |   2 ++
+ reports/ultimo_report.md  |  55 +++++++++++++------------------------------------------
+ 4 files changed, 46 insertions(+), 324 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9f85333 docs(fine-task): report e handoff — merge #198 e riserve verifica esterna (PR #199)
 e967117 docs(stato): riserve della verifica esterna PR #198 (V-2, V-4 nuove)
 ```
 
@@ -57,9 +59,12 @@ Nessuna modifica a gas.py/tests/.
 `gh` non disponibile in questa sessione cloud: stato letto dai check-run della PR #199 via MCP GitHub.
 
 - `e967117` (docs(stato)): run 38474591379 — `unit-suite` success, `handoff-check` success.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `9f85333` (docs(fine-task)): run 38485806981 — `handoff-check` success, `unit-suite` in corso alla scrittura.
+- Commit successivi (riserve bot #198 e questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Verifica esterna PR #198 (https://github.com/Gasss23/Gas/pull/198#issuecomment-6155503614): V-1 BASSA (= R-161-1 esteso), V-2 BASSA (prosa dopo «RACCOMANDAZIONE:» non conta), V-3 BASSA (= R-322-2, `--output` nei git ammessi), V-4 COSMETICA (`echo "git commit" >&2` bloccato, verso sicuro).
+- Verifica esterna PR #198 (https://github.com/Gasss23/Gas/pull/198#issuecomment-6155503614): R-ve198-1 BASSA (= R-161-1 esteso), R-ve198-2 BASSA (prosa dopo «RACCOMANDAZIONE:» non conta), R-ve198-3 BASSA (= R-322-2, `--output` nei git ammessi), R-ve198-4 COSMETICA (`echo "git commit" >&2` bloccato, verso sicuro).
+- Review del bot su PR #198: R-bot198-1 BASSA (`promemoria_end.sh` e repo del `cwd`), R-bot198-2 COSMETICA (docstring `gate_matcher.py`), R-bot198-3 COSMETICA (doppio conteggio in `cerca_testo`).
+- Verifica bot su #199 (prima run, annullata per cambio di head): V-1 BASSA e V-2 COSMETICA, chiuse in questo giro.
 - Riserve precedenti invariate in `reports/stato_progetto.md`.

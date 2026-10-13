@@ -12,6 +12,7 @@
 - **Merge PR #196** — FATTA (richiesta operatore; CI verde, bot neutral, nessuna ALTA/MEDIA).
 - **Merge PR #198** — FATTA (richiesta operatore «mergia 198»; CI verde, bot neutral, verifica esterna APPROVATO CON RISERVE senza ALTA/MEDIA).
 - **Riserve della verifica esterna #198 in `reports/stato_progetto.md`** — FATTA (V-2 e V-4 nuove; V-1 = R-161-1 esteso, V-3 = R-322-2). PR #199.
+- **Note della verifica bot su #199** — FATTA (riserve della review del bot su #198 registrate come R-bot198-1..3; id stabili R-ve198-1..4).
 - **Merge PR #199** — in corso, appena CI e bot sono verdi (richiesta operatore).
 - **C3, C5a, C5c** — DEFERITE (fette a sé / sconsigliate dal revisore, vedi stato_progetto).
 
