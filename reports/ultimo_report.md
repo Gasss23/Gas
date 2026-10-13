@@ -1,183 +1,156 @@
-# ULTIMO REPORT — T80u5: il tetto di annidamento non dipende più dalla versione di Python
+# ULTIMO REPORT — R-gate-worktree-1: il gate di review non è più inerte nei worktree
 
-> Task del 2026-10-12, su richiesta dell'operatore («intanto apri una PR per sistemare T80u5»).
-> Ramo: **`fix/test-t80u5-portabile`** (da `origin/main` = `f6396ba`).
+> Task del 2026-10-12, su richiesta dell'operatore («fai pure una fetta per il gate worktree»).
+> Ramo: **`fix/gate-worktree`** (da `origin/main` = `af394bc`).
+> Fetta di **sicurezza**: tocca la macchina di controllo del progetto.
 
-## Il problema, misurato
+## DECISIONI UMANE RICHIESTE
 
-Un check della sessione ha rilevato che sulla **main** la suite del kernel dà **818 PASS e 1 FAIL**
-(`T80u5`) usando il `.venv` del progetto, che su questa macchina è **Python 3.14.7**.
-La CI non lo vedeva perché pinna **Python 3.11** (`.github/workflows/ci.yml:44`, dove il commento
-«venv WSL è 3.12.3» è stale rispetto a questa macchina).
+1. **Ordine di merge e rinumerazione delle review.** Questo ramo parte da `main` (che arriva a
+   **#298**) e il revisore ha quindi preso **#299/#300**; ma la **PR #195**, non ancora mergiata, usa
+   già **#299–#301**. Due serie identiche, create da me. Si risolve rinumerando le righe contatore di
+   questo ramo **dopo** il merge della #195 (ripartendo dal primo numero libero), e risolvendo il
+   conflitto su `.claude/agents/memoria_revisore.md` **appendendo** entrambe le serie.
+2. **Secondo passaggio nella chat claude.ai** col link della PR: è una fetta di sicurezza
+   (CLAUDE.md, istituzione E).
+3. **La PR #195 resta bloccata da un bug del bot**, non da un suo difetto: `scripts/bot_esito.py`
+   scarta la gravità delle riserve registrate solo se l'id è **numerico**, e `R-gate-worktree-1` non
+   combacia. Decide l'operatore, oppure serve una fetta sulla macchina del bot.
 
-`T80u5` asseriva che un JSON annidato 100.000 livelli venisse scartato con il motivo
-«JSON annidato oltre il limite di ricorsione». Quell'esito dipendeva dal fatto che `json.loads`
-sollevasse `RecursionError`. Misurato su 3.14.7: `json.loads` **parsa senza errore** annidamenti
-da 200 fino a 100.000 livelli, quindi:
+## Il difetto (R-gate-worktree-1, gravità ALTA)
 
-1. l'`except RecursionError` era **codice morto** su 3.14;
-2. `_analizza_riflessione` costruiva **100k dict annidati** (misurati dal revisore: 1,2 MB di input
-   → **18,4 MB di picco**, 36 ms) per poi buttarli e scartare l'input con un motivo **falso**
-   («recap mancante» invece di «annidato»);
-3. il motivo nel `gas_debug.log` **cambiava con la versione di Python**, su un input che arriva
-   dal modello.
+`.claude/hooks/review_gate.sh` faceva `cd "$CLAUDE_PROJECT_DIR"` **incondizionato** e giudicava
+**solo** quell'indice. La documentazione di Claude Code dice che `CLAUDE_PROJECT_DIR` «still points at
+the project root where the session started», mentre il campo `cwd` del payload «follows Claude: … is
+the worktree root after Claude enters a worktree».
 
-## Cosa ho cambiato
+Conseguenze, entrambe misurate:
 
-- **`gas.py`**: `_RIFLESSIONE_MAX_PROFONDITA = 50` e la funzione pura `_troppo_annidato()`, che conta
-  l'annidamento di `{`/`[` **solo fuori dalle stringhe JSON** (gestisce l'escape `\`) ed **esce al
-  primo sforamento**. `_analizza_riflessione` controlla il tetto **prima** di `json.loads` e scarta
-  con «JSON annidato oltre il limite (50 livelli)». L'`except RecursionError` **resta** come rete di
-  sicurezza, con il suo messaggio distinto.
-- **`tests/test_unit_kernel.py`**: `T80u5` aggiornata al messaggio nuovo; **T80u6** (confine esatto
-  50 vs 51, parentesi dentro le stringhe e dopo un escape non contano, JSON legittimo ancora
-  accettato, uscita anticipata su 1,2 MB di input annidato); **T80u7** (la rete `except
-  RecursionError` è viva e il suo messaggio resta distinto da quello del tetto).
+- **Falso negativo (il buco grave)**: in una sessione che lavora in un **worktree**, se l'indice del
+  checkout principale era pulito il `grep` sul perimetro non matchava e l'hook faceva `exit 0`
+  **senza nemmeno aprire il marcatore**. Un diff di `gas.py`/`modules/`/`tests/` **mai revisionato**
+  poteva entrare. Ogni worktree ha inoltre un **proprio** `.claude/.review_ok` che non veniva mai
+  consultato.
+- **Falso positivo**: un diff staged nel principale bloccava i commit delle **altre** sessioni nei
+  worktree, anche di soli `reports/`. Osservato dal vivo durante questa sessione.
 
-Il tetto è una **costante di modulo, non configurabile da env di proposito**: una riflessione
-legittima è profonda 2, il margine è 25x, e un `GAS_...=0` renderebbe `_troppo_annidato` sempre vera,
-cioè **ogni** riflessione rifiutata e la cascata a 4 rung bruciata a ogni turno (verificato dal
-revisore con `limite=0/-1/-100`).
+Gravità: inizialmente l'avevo valutata MEDIA, poi **rivista ad ALTA** accogliendo l'argomento della
+sessione sorella — «inerte in un worktree» non è tra i limiti dichiarati dell'hook, i worktree sono
+la configurazione normale del progetto, e una rete che fallisce **in silenzio** è peggio di una
+assente, perché chi la vede verde si crede coperto.
+
+## Cosa fa il fix
+
+L'hook costruisce l'insieme dei checkout da controllare e applica a **ognuno** il controllo completo
+(perimetro, diff staged, working tree, marcatore **proprio**), in subshell:
+
+1. la radice git di **`cwd`** — il checkout dove la sessione lavora davvero;
+2. i bersagli **assoluti e letterali** di `cd`/`pushd`/`-C`/`--work-tree=`/`--git-dir=` estratti dal
+   comando (ogni occorrenza, anche dentro gli apici);
+3. **tutti** i worktree registrati, quando `cwd` manca o quando esiste un costrutto che cambia
+   directory che **non si risolve** (percorso relativo, variabile, glob, `popd`, `GIT_DIR=`,
+   `GIT_WORK_TREE=`, forme con spazio);
+4. la radice di `CLAUDE_PROJECT_DIR` **solo se `cwd` è sconosciuto** — vedi R-299-3.
 
 ## Numeri REALI
 
-| Misura | Base (`f6396ba`) | Dopo |
+| Misura | Prima | Dopo |
 |---|---|---|
-| Suite kernel (`.venv`, Python 3.14.7) | **818 PASS, 1 FAIL** (T80u5) | **821 PASS, 0 FAIL** |
-| `pytest -q` | 1031 passed, 1 skipped | **1031 passed, 1 skipped** |
+| `tests/test_unit_hooks.py` | 107 | **138** (31 nella classe `TestReviewGateWorktree`) |
+| `pytest -q` (tutto) | 1031 | **1062 passed, 1 skipped** |
+| Suite kernel | 821 PASS, 0 FAIL | **821 PASS, 0 FAIL** (il diff non tocca il motore) |
 
-Sonda con `sys.setrecursionlimit(80)`: il tetto scatta prima di `json.loads`, nessuna eccezione
-sfugge, messaggio identico.
+**Prova che i test mordono**, non solo che passano:
 
-**NON VERIFICATO**: il comportamento su **Python 3.11/3.12**. Su questa macchina esiste solo il
-`.venv` (3.14.7) e non ho installato altri interpreti. La prova è la **CI** (`unit-suite`, pinnata
-3.11). Il tetto però short-circuita prima del parser, quindi l'esito non può dipendere dal parser.
+- contro l'hook di `main` (pre-fix): **8 dei 15** test nuovi FALLISCONO, e `test_gate_wt1` — la
+  riproduzione — restituisce **`exit 0` dove serve `2`**: esattamente l'inerzia;
+- contro la versione del **primo giro** di questa fetta: FALLISCONO tutti e quattro i test aggiunti
+  nel secondo giro (`wt12`–`wt15`);
+- mutazione «spazza sempre» (`SPAZZA=1`): FALLISCE solo `wt8`, quindi il raffinamento è sorvegliato;
+- mutazione «conteggi ignorati»: FALLISCONO `wt9` e `wt10`.
 
-## Review
+## Cinque giri di review, due BOCCIATI: la parte riutilizzabile
 
-Review **#297 APPROVATO CON RISERVE** → quattro riserve, **tutte corrette prima del commit**:
+La fetta ha richiesto **cinque** giri e due dei verdetti sono stati **BOCCIATO**. Vale la pena
+scrivere perche', non per cronaca ma perche' il motivo e' trasferibile.
 
-- **R-297-1** (BASSA) — difetto reale del mio test: l'input degenere `'{"a":'*2000000 + '1'` **non
-  arrivava mai** al tetto (senza `}` finale scattava `j <= i`), e il cronometro misurava la
-  costruzione della stringa. **CHIUSA**: input ora CHIUSO (200k livelli, 1,2 MB), si cronometra la
-  chiamata, misurato **0,007 ms** con il motivo del tetto.
-- **R-297-2** (BASSA) — la rete `except RecursionError` restava senza nessun test e sopravviveva solo
-  grazie a un commento. **CHIUSA**: T80u7 la esercita forzando `json.loads` a sollevare.
-- **R-297-3** (BASSA) — `_troppo_annidato` solleva `TypeError` su input non-`str` ed è documentata
-  «PURA». **CHIUSA**: precondizione dichiarata nella docstring, con il chiamante che la garantisce.
-- **R-297-4** (COSMETICA) — claim sul costo imprecisa e commento stale di T80u5. **CHIUSA**.
+- **#300 BOCCIATO**: chiudendo le riserve del primo giro avevo escluso gli apici dalla classe del
+  **bersaglio**. Un percorso quotato non aveva piu' nessun carattere da consumare, quindi il
+  costrutto non veniva nemmeno **trovato**: sei forme comuni passavano. Suite **122 su 122 verde**.
+- **#301 BOCCIATO**: togliendo gli apici a prescindere, un bersaglio quotato **con uno spazio**
+  arrivava **troncato** e la normalizzazione lo rendeva «assoluto e letterale». Se il troncone e' a
+  sua volta un repo — basta un nome come `<radice> copia` — il dubbio svaniva e il bersaglio vero
+  non veniva mai ispezionato. Suite **130 su 130 verde**.
+- **#302 APPROVATO CON RISERVE**: regola «coppia di apici ai **bordi** + ogni residuo e' dubbio».
 
-Il revisore ha verificato che i test **mordono**, con due mutazioni su `gas.py`: `return False` in
-testa a `_troppo_annidato` → 2 FAIL; ingresso in stringa ignorato → 1 FAIL.
+**Il filo comune dei due BOCCIATI non e' il codice, e' la forma della dimostrazione.** Nei primi tre
+giri difendevo il matcher **elencando le forme coperte**; ogni volta ne restava fuori una, e ogni
+volta la suite era verde col buco dentro. L'argomento che ha chiuso la questione e' invece
+**strutturale**: dopo «coppia ai bordi + rifiuto dei residui», il bersaglio sopravvissuto non
+contiene spazi, ne' `;&|)`, ne' apici, ne' `$`, backtick, glob o `~` — e' quindi **una sola parola di
+shell senza espansioni**, e per costruzione coincide con cio' che userebbe la shell. Un troncamento
+richiederebbe un carattere escluso dalla classe, che adesso **impedisce** la risoluzione invece di
+sopravvivere alla normalizzazione.
 
-## Secondo giro: verifica esterna #192 e correzione di V-1 (richiesta dell'operatore)
+**Regola che ne esce**: se la dimostrazione di una regola di normalizzazione deve elencare i casi,
+quella regola e' un'euristica e prima o poi fabbrica un bersaglio valido. E un corollario sui test:
+una forma nuova va provata **anche** nella sua variante con lo **spazio**, perche' e' lo spazio che
+tronca.
 
-La verifica esterna della PR #192 ha dato **APPROVATO CON RISERVE** con cinque finding tutti
-BASSA/COSMETICA, nessun gate indebolito e **nessun bypass del tetto** trovato con una batteria
-avversaria. Ha riprodotto in autonomia i numeri dichiarati (818/1 FAIL alla base, 821/0 dopo,
-pytest 1031) e la mutazione che fa mordere i test.
+**Altra regola, sulle righe di «limiti dichiarati»**: sono affermazioni da **provare** come il
+codice. In questa fetta **tre** limiti dichiarati si sono rivelati falsi alla misura («il relativo fa
+spazzare», «l'apice spaiato fa spazzare», «con spazi resta non risolvibile»). Ora i limiti-
+comportamento hanno un test; i limiti-non-promessa (alias, heredoc, `GIT_INDEX_FILE`, eval) sono
+dichiarati come tali, perche' pretenderne un test avrebbe prodotto la quarta dichiarazione falsa.
 
-**V-1 (BASSA) era un errore mio e l'operatore ha chiesto di correggerlo prima del merge**: il
-commento sopra `_RIFLESSIONE_MAX_PROFONDITA` diceva «da 3.14 `json.loads` le parsa», ma a 200k
-livelli solleva `RecursionError` anche su 3.14.7. Misura falsa scritta da me, la classe di difetto
-di cui questo progetto è più severo.
+## Riserve del revisore, tutte chiuse
 
-La correzione ha prodotto la review **#299 APPROVATO CON RISERVE**, con tre riserve **nel fix
-stesso**, tutte chiuse nel giro successivo:
+Review **#299 APPROVATO CON RISERVE** con tre MEDIE, **due delle quali falle del meccanismo nuovo**
+(non regressioni: l'hook di `main` esce 0 negli stessi casi):
 
-- **R-299-1** (BASSA, l'osservazione più importante): il mio commento **citava verbatim la claim
-  falsa** dentro `gas.py`. Da PR #181/#184 Gas legge il proprio sorgente con gli strumenti nativi,
-  quindi quella frase è testo **ripescabile senza la riga che la nega**. CHIUSA: nel sorgente resta
-  solo il puntatore alla verifica, e un grep conferma che non c'è più traccia della frase falsa.
-- **R-299-2** (COSMETICA): «fino a 3.12» era una claim ereditata e non misurata, e 3.13 non era
-  citata. CHIUSA: «sulle versioni precedenti … (non misurato qui)».
-- **R-299-3** (COSMETICA): i numeri non avevano ancoraggio. CHIUSA: «misura del 2026-10-12, macOS
-  arm64, Python 3.14.7».
+- ✅ **R-299-1** (MEDIA, **fail-open reale introdotto da me**): `-C` era matchato solo attaccato a
+  `git`, quindi `git -C <pulito> -C <sporco>` contava **1/1** → nessun dubbio → `exit 0`, mentre git
+  applica l'**ultimo** `-C`. CHIUSA: `-C` si matcha a ogni occorrenza. Test `wt12`.
+- ✅ **R-299-2** (MEDIA): un `cd` dentro una stringa (`bash -c "cd /altro && …"`) non veniva nemmeno
+  **trovato**, perché il prefisso del match non ammetteva gli apici. CHIUSA **invece che dichiarata**:
+  gli apici sono nella classe del prefisso. Test `wt13`. Il limite residuo è riscritto onesto: il gate
+  non promette di intercettare ogni commit altrove, promette di non lasciar passare un checkout che
+  ha **ispezionato**.
+- ✅ **R-299-3** (MEDIA): il commento raccontava anche l'altra metà del difetto e poi dichiarava di
+  controllare «ogni checkout candidato», ma quella metà non era chiusa. CHIUSA cambiando il progetto:
+  con `cwd` noto il principale **non entra più** nell'insieme. Test `wt14`.
+- ✅ **R-299-4** (BASSA): un worktree **prunable** (directory rimossa) rendeva ogni comando un vicolo
+  cieco sbloccabile solo con `git worktree prune`. CHIUSA: nella spazzata si salta; il fail-closed
+  resta pieno per i bersagli **nominati**. Test `wt15`.
+- ✅ **R-299-5** (BASSA): `wt7` passava per il motivo **sbagliato** (senza `cd` il worktree non veniva
+  mai ispezionato, quindi restava verde anche col worktree sporco). CHIUSA: ora forza la spazzata.
+- ✅ **R-299-6** (COSMETICA, tre punti): via l'`export` inutile, campo passato per **argv** anche ai
+  rami python, e `if ! WT_LIST=$(…)` al posto del `$?` non atomico.
 
-**Misure riprodotte da me, non prese dal revisore** (una delle sue era larga): la soglia non è fra
-100k e 120k ma **fra 116k e 117k**, su valori ADIACENTI e con 3 ripetizioni per punto (griglia da
-1000: 114k/115k/116k PARSED, 117k/118k `RecursionError`). La prima stesura di questa riga diceva «fra
-115k e 118k», che è **non adiacente** e quindi della stessa classe di difetto che la fetta chiude:
-trovata da V-1 della verifica esterna #195 e corretta qui. Confermato
-nei due sensi che `json` **ignora** `sys.getrecursionlimit()` (limite 50 → 1000 livelli passano;
-limite 5.000.000 → 200k no) e segue invece **lo stack C del thread** (`threading.stack_size` a
-512 MB → 200k livelli passano; a 1 MB → falliscono anche 50k). È la prova che senza tetto esplicito
-il comportamento dipende dalla **macchina**, non solo dalla versione di Python: la giustificazione
-del tetto regge sul meccanismo, non sul numero.
+## Scelta di progetto da sorvegliare
 
-Suite invariata dal cambio di commento: kernel **821 PASS, 0 FAIL** (base `af394bc`). Dopo il merge di main con la PR #193 (base **`ceb9d90`**, review #311): kernel **843 PASS / 0 FAIL**, pytest **1032 passed**.
+La chiusura di **R-299-3** rompe la proprietà di **sovrainsieme** su cui il revisore si era appoggiato
+per non bocciare il primo giro: con `cwd` noto e dentro un worktree, il principale non è più
+ispezionato. Il mio argomento è che non è perdita di copertura ma correzione del **bersaglio** — il
+gate deve giudicare il checkout dove il commit avviene. È la scelta su cui ho chiesto al revisore di
+essere più duro.
 
-**Riserve ancora aperte** per decisione dell'operatore (solo V-1 prima del merge): **V-2/R-298-3**
-(se la rete `except RecursionError` sparisse, la suite morirebbe senza riga RIEPILOGO: CI rossa,
-quindi non silenzioso, ma illeggibile) e **V-3/R-298-2** (`gas.json.loads` falsifica il `json.loads`
-di tutto il processo per la durata della finestra; innocuo oggi).
+## Igiene dei nomi (correzione a me stesso)
 
-## Terzo e quarto giro: la stessa classe di difetto, altre due volte
+**`R-gate-matcher-1` non è un finding nuovo**: è un **terzo nome** per `R-gjq-1` e `R-137-2`, già
+registrate in `reports/stato_progetto.md`. Va usato un rimando, non un id nuovo. Il difetto (il
+matcher decide «è un commit?» con un `grep` sul **testo** del comando) **non** è corretto qui, su
+indicazione del revisore e con il suo argomento: è l'unica modifica che potrebbe trasformare un
+fastidio **fail-closed** in un **fail-open**, e metterla nello stesso diff che allarga l'insieme dei
+checkout renderebbe impossibile attribuire un eventuale buco. Misura utile per la fetta dedicata: ha
+bloccato **cinque** comandi innocui durante questa fetta (tre al revisore, due a me, uno dei quali
+mentre **leggevo l'hook stesso**).
 
-Correggere V-1 ha prodotto **altri due** finding della stessa famiglia nel fix stesso. Entrambi
-legittimi, entrambi chiusi.
+## NON VERIFICATO
 
-- **R-299-1** (review #299, BASSA): il commento nuovo **citava verbatim** la frase falsa appena
-  corretta. Da PR #181/#184 Gas legge il proprio sorgente con gli strumenti nativi, quindi quella
-  citazione è testo **ripescabile senza la riga che la nega**. Chiusa: nel codice resta solo il
-  puntatore, e un `grep` conferma zero tracce. È l'osservazione più utile dell'intera fetta.
-- **R-300-1** (review #300, BASSA): avevo scritto «solleva RecursionError **solo** a 118k». Le due
-  affermazioni letterali erano vere, ma «solo» implica che prima di 118k non si fallisca, e **117k
-  fallisce già**: la mia griglia di misura era troppo larga. Chiusa: rimisurato con valori
-  **adiacenti** e 3 ripetizioni per punto (114k/115k/116k PARSED, 117k/118k RecursionError), il
-  confine cade fra 116k e 117k. Il revisore ha dichiarato larga anche la propria stima precedente.
-
-Lezione di metodo, registrata nella memoria del revisore: **una claim di confine è provata solo se
-pass e fail sono ADIACENTI nella griglia misurata e la coppia regge su più ripetizioni.** Campionare
-115k e 120k e scrivere «fallisce solo a 118k» lascia dentro un «solo» falso.
-
-Il revisore ha inoltre provato **meccanicamente** che si tratta di un cambio di solo commento,
-confrontando i token non-COMMENT con HEAD (29593 token, stesso sha del flusso), e ha verificato che i
-due test che leggono il sorgente come testo (T74g, T79a) non siano scalfiti — controllo che va fatto
-e non assunto, perché un commento può far cadere un grep-test.
-
-- **R-301-1** (review #301, COSMETICA): avevo affermato che il blocco di commento «non è cresciuto»
-  malgrado le correzioni. **Falso, e misurato**: le righe di commento sono andate **4 (HEAD) → 11
-  (#299) → 13 (#300) → 14 (#301)**. Comprimere un inciso non compensa due righe di correzione
-  aggiunte. È la stessa classe di claim non misurata che questa fetta stava correggendo — stavolta in
-  un report, non nel codice, cioè in un file che legge anche il verificatore esterno. Corretta qui.
-
-Review **#301 APPROVATO** (secco, nessuna riserva bloccante): confine 116k/117k riprodotto in un
-processo nuovo, `grep` di controllo a zero occorrenze delle frasi false dei giri precedenti, e codice
-eseguibile ancora bit-identico a HEAD.
-
-## Finding NUOVO fuori scope: il gate di review è inerte nei worktree
-
-**R-gate-worktree-1** (ALTA come in `reports/stato_progetto.md`; fix proposto nella PR #196, aperta), nome condiviso con la sessione sorella — **contarlo una volta sola**).
-`.claude/hooks/review_gate.sh:59` fa `cd "$CLAUDE_PROJECT_DIR"` incondizionato, e quello resta il
-checkout principale: in una sessione che gira in un **worktree** l'hook ispeziona l'indice sbagliato.
-Se l'indice del principale è pulito, `review_gate.sh:133` fa `exit 0` **senza nemmeno leggere il
-marcatore**, quindi un worktree può committare un diff di `gas.py`/`modules/`/`tests/` mai
-revisionato.
-
-**Confini della prova** (distinzione necessaria, è il tema di questa fetta): ho **misurato io** la
-struttura dell'hook (il percorso di `exit 0` prima di ogni lettura del marcatore) e l'esistenza di un
-`.claude/.review_ok` **per-worktree** mai consultato, con date diverse. **NON ho misurato** che
-`CLAUDE_PROJECT_DIR` valga il checkout principale anche dentro una sessione in worktree: questa
-sessione gira nel principale, quindi quel pezzo poggia sul report della sessione sorella e sul
-sintomo osservato (il mio `gas.py` in stage che blocca i suoi commit, spiegabile solo così). Il
-revisore al giro #301 ha confermato la struttura e ha dichiarato a sua volta di non aver verificato
-quel valore. Chi chiude il finding deve misurarlo da dentro un worktree.
-
-Conseguenza dichiarata: il commit del motore della PR #193 è passato **per indice pulito, non per
-approvazione del gate**; l'ha protetto la barriera PRIMARIA (invocazione reale del revisore). I
-commit della PR #192 **sono** stati protetti, perché questa sessione lavora nel checkout principale.
-CLAUDE.md §3 dice che il gate deve proteggere se stesso: qui non lo fa. **NON corretto qui** — l'hook
-è nel perimetro di review e richiede fetta propria, review e verifica esterna.
-
-## Proposte NON implementate (fuori perimetro di questa fetta)
-
-1. **`ci.yml:44`**: il commento sulla versione del venv è stale (dice 3.12.3, questa macchina ha
-   3.14.7). Soprattutto: **la CI prova una sola versione di Python**, quindi una divergenza come
-   questa resta invisibile. Proposta: matrice `3.11` + la versione del venv dell'operatore.
-2. **Buchi residui della denylist credenziali** (dal check delle PR #184/#185, non toccati qui):
-   `token*.json` con suffisso — `token_cache.json` è leggibile perché la regex vuole il punto subito
-   dopo `token` — più i già tracciati `kubeconfig` senza punto, `mywallet.dat`, `.vault-token`,
-   `.dockercfg`, `_netrc`, `clientsecret.json`, `*.gpg/*.asc`.
-3. **`rifletti()` chiama `create` senza `max_tokens`** (`gas.py:2786`, nota del revisore R-297-4):
-   la lunghezza della risposta grezza dipende dal default del provider.
+- Il comportamento con un payload **reale** di Claude Code: i test usano payload sintetici, quindi la
+  forma effettiva di `cwd` (assoluto? normalizzato dai symlink? presente in questa versione?) non è
+  provata, né il caso di una versione che lo omette in sessione vera.
+- **Linux/CI e Windows/WSL**: tutto misurato su macOS con bash 3.2 di sistema.
+- Fail-open **preesistenti** non introdotti da questo diff e non chiusi qui: `grep` assente →
+  `|| exit 0` (`R-gjq-3`), `INPUT` vuoto → `exit 0`, `PERIM_RE` non valida → `exit 0`.
