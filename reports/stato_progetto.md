@@ -1,7 +1,7 @@
 # STATO PROGETTO GAS
 
 > Fotografia viva dello stato. Aggiornata a fine di ogni task.
-> Ultimo aggiornamento: **2026-10-12** (PR #195: commento del tetto di annidamento con la misura e le sue condizioni, review #299–#301, merge di main #311) — prima: **2026-10-12** (PR #193 finita: rotazioni del log cercabili per nome, review #301; merge di main con PR #192 T80u5) — prima: **2026-10-12** (`cerca_testo`: il budget di byte non mente piu' — log del kernel saltati, tetto per file, messaggi distinti; chiude R-282-1 e R-283-1) — prima: **2026-10-12** (FETTA 1 cervello forte: budget ricontrollato prima di ogni chiamata, chiude F2, review #293) — prima: **2026-10-11** (PR B FETTA 1: run_command fuori dalla mano del modello) — prima: **2026-10-11** (PR #184: strumenti nativi di sola lettura, FETTA 1 PR A, review #282–#285) — prima: **2026-10-11** (PR #183: regole di risposta all'operatore, review #278–#281) — prima: **2026-10-11** (PR #182: note basse #181, review #274–#276) — prima: **2026-10-11** (PR #181: Gas legge il codice, review #269–#273) — prima: **2026-10-11** (`.env` caricato da Gas, schema a 3 livelli del cancello, note basse; review #260–#265) — prima: **2026-10-08** (R-220-3 tetti di tempo di `gas notte`, review #226/#227 APPROVATO CON RISERVE) — prima: **2026-10-08** (FASE 4.5 fetta 1 `gas notte`, review #220 APPROVATO CON RISERVE) — precedente: **2026-10-07** (feat/merge-automatico-z1xjx2 — FASE 2.6 fetta 1: riflessione di fine task; review #199 BOCCIATO, #200 BOCCIATO, #201 APPROVATO CON RISERVE, verifica esterna BOCCIATO (V-1), #202 APPROVATO CON RISERVE)
+> Ultimo aggiornamento: **2026-10-13** (raccolta dei problemi aperti dalla fetta `cerca_testo`, PR #197) — prima: **2026-10-12** (PR #195: commento del tetto di annidamento con la misura e le sue condizioni, review #299–#301, merge di main #311) — prima: **2026-10-12** (PR #193 finita: rotazioni del log cercabili per nome, review #301; merge di main con PR #192 T80u5) — prima: **2026-10-12** (`cerca_testo`: il budget di byte non mente piu' — log del kernel saltati, tetto per file, messaggi distinti; chiude R-282-1 e R-283-1) — prima: **2026-10-12** (FETTA 1 cervello forte: budget ricontrollato prima di ogni chiamata, chiude F2, review #293) — prima: **2026-10-11** (PR B FETTA 1: run_command fuori dalla mano del modello) — prima: **2026-10-11** (PR #184: strumenti nativi di sola lettura, FETTA 1 PR A, review #282–#285) — prima: **2026-10-11** (PR #183: regole di risposta all'operatore, review #278–#281) — prima: **2026-10-11** (PR #182: note basse #181, review #274–#276) — prima: **2026-10-11** (PR #181: Gas legge il codice, review #269–#273) — prima: **2026-10-11** (`.env` caricato da Gas, schema a 3 livelli del cancello, note basse; review #260–#265) — prima: **2026-10-08** (R-220-3 tetti di tempo di `gas notte`, review #226/#227 APPROVATO CON RISERVE) — prima: **2026-10-08** (FASE 4.5 fetta 1 `gas notte`, review #220 APPROVATO CON RISERVE) — precedente: **2026-10-07** (feat/merge-automatico-z1xjx2 — FASE 2.6 fetta 1: riflessione di fine task; review #199 BOCCIATO, #200 BOCCIATO, #201 APPROVATO CON RISERVE, verifica esterna BOCCIATO (V-1), #202 APPROVATO CON RISERVE)
 > Storico sessioni, dettaglio componenti, finding chiusi: `reports/stato_storico.md`
 
 ## Stato motore
@@ -326,6 +326,164 @@ Componenti attive:
 1. `gemini-2.5-flash-lite` → 2. `gemini-2.5-flash` → 3. `groq/openai/gpt-oss-120b`
    → 4. `openrouter` free (`meta-llama/llama-3.3-70b-instruct:free`)
    → 5. `ollama` offline (`qwen2.5:7b-instruct`, solo se `GAS_OLLAMA_URL` settata)
+
+## Problemi aperti dalla fetta `cerca_testo` (PR #193) — da chiudere in UNA sessione
+
+> Raccolti su richiesta dell'operatore (2026-10-13) per essere risolti in un'unica sessione.
+> **Stato VERIFICATO su `origin/main` `a9fd74d`** (dopo il merge di #193, #195, #196): per ogni voce
+> ho ricontrollato sul codice di main se fosse ancora aperta, invece di ricopiare la lista.
+> Base sana da cui partire: kernel **840 PASS / 0 FAIL**, pytest **1067 passed, 1 skipped** (misurati
+> da me su un worktree di `origin/main`).
+>
+> ⚠️ **Nota di igiene, segnalata dal bot su #197 e che condivido**: queste 145 righe entrano nell'ATTIVO, e il file arriva a ~870 righe contro il «~100 righe» che CLAUDE.md sez. 11 chiede. Appena questi problemi sono chiusi, questa sezione va spostata in `reports/stato_storico.md` o in `reports/roadmap.md`, non lasciata qui. Non l'ho spostata subito perché serve adesso, in un posto che la prossima sessione legge per primo.
+
+### A. Macchina di controllo (hook) — `.claude/hooks/` è nel PERIMETRO: serve review + verifica esterna
+
+- 🔴 **A1 — `promemoria_end.sh` è cieco al worktree (ALTA).** È la METÀ NON CORRETTA di `R-gate-worktree-1`:
+  la #196 ha chiuso `review_gate.sh`, ma il Stop hook usa ancora `PROJECT_DIR="${CLAUDE_PROJECT_DIR:-}"`
+  (riga 11 su main) e quindi calcola `BASE..HEAD`, conta i commit di sessione e verifica la freschezza
+  di `reports/handoff.md` **nel checkout principale**, non nel worktree da cui si lavora.
+  *Misurato in sessione*: `/fine-task` completato per intero (gate A/B/IP verdi, push fatto,
+  `check_landing` OK) e l'hook bloccava ancora, **cinque volte**, giudicando l'handoff di un'ALTRA
+  sessione. Al contrario, non protegge il worktree: se là l'handoff è fresco, il turno chiude anche
+  senza aver scritto niente.
+  *Aggravante, col meccanismo CORRETTO* (correzione del bot su #197, verificata da me): il contatore
+  «massimo 3 blocchi poi fail-open» sta nel git-dir del principale e **conserva un solo `session_id`**, quindi
+  due sessioni che lo scrivono a turno si azzerano a vicenda e il limite non si raggiunge mai: il blocco
+  diventa di fatto perpetuo (in sessione l'ho ricevuto cinque volte).
+  ⚠️ *Mio errore, corretto*: avevo scritto che l'azzeramento viene dal `rm -f` provocato da un commit altrui
+  che tocca l'handoff. **Sbagliato**: quel `rm -f` sta dentro il ramo `HANDOFF_IN_LAST >= 1`, dove l'hook
+  **esce 0 senza bloccare**, quindi non può essere la causa. La conclusione regge, il meccanismo no.
+  *Fatto quando, esteso*: oltre a ricavare il repo dal turno in corso, il contatore va tenuto nel git-dir
+  **del worktree** e azzerato **per `session_id`**, non sovrascritto da un id diverso.
+  *Fatto quando*: l'hook ricava il repo dal turno in corso (come ora fa `review_gate.sh`: `_radice()` +
+  `--show-toplevel`/`--git-common-dir`) e il contatore sta nel git-dir **del worktree**; test in
+  `tests/test_unit_hooks.py` che riproducano il caso «worktree con handoff fresco, principale con
+  handoff stantio» e viceversa.
+
+- 🟡 **A2 — `R-gate-matcher-1`: il gate blocca comandi che NON committano (BASSA).** `review_gate.sh`
+  decide «è un commit?» con `grep -Eq 'git[[:space:]].*commit'` sul TESTO del comando (riga 131 su main).
+  Qualunque comando la cui prosa contenga quei due termini sulla stessa riga viene bloccato.
+  *Sei occorrenze misurate fra due sessioni, su tre inneschi diversi*: (1) la scrittura di un paragrafo
+  di report che citava la sequenza — ho dovuto spostare il testo in uno script per poterlo scrivere;
+  (2) un comando di SOLA LETTURA `git log … ; echo "=== diff vs main (committed) ==="`, dove basta la
+  parola «committed» dopo un `git `; (3) un `grep` con cui l'altra sessione stava **leggendo l'hook
+  stesso**, cioè il gate le ha impedito di ispezionarsi.
+  *Perché conta*: spinge a contorcere la prosa per compiacere il gate, che è il contrario del suo scopo,
+  e rende più difficile diagnosticarlo.
+  *Fatto quando*: il riconoscimento non si basa sul testo libero (per esempio si ignora ciò che sta
+  dentro heredoc/stringhe, o si riconosce il comando come primo token), con test che includano i tre
+  inneschi qui sopra. Attenzione: il matcher è dichiaratamente «best-effort» e **fail-closed**; non
+  allentarlo senza il sì dell'operatore.
+
+### B. Macchina del bot di verifica — `scripts/bot_esito.py`, nel PERIMETRO; CLAUDE.md: «decide l'operatore»
+
+- 🔴 **B1 — `verifica-bot` dà falsi rossi su un check *required* (ALTA come impatto).** Il parser ricava
+  la gravità dal testo libero del verdetto e conta come bloccante una parola che non qualifica un finding.
+  *Provato su due PR*: sulla **#196** il verdetto era APPROVATO CON RISERVE con quattro finding **tutti
+  BASSA** e il check era rosso perché «ALTA» compariva una sola volta, **nella frase in cui il bot lodava
+  il fix** (conteggi misurati dall'altra sessione: ALTA 2, di cui una è la riga di esito del bot stesso;
+  MEDIA 0; BASSA 4). Sulla **#193** (questa fetta) check `failure` e review che diceva «finding ALTA»
+  mentre il verdetto testuale era APPROVATO CON RISERVE con sole BASSA/COSMETICA.
+  *Secondo innesco, con la regex GIUSTA* (correzione del bot su #197, verificata da me): l'esclusione delle
+  riserve «già registrate» non la fa `_FINDING_GRAVITA` ma **`_RISERVA_REGISTRATA`**
+  (`scripts/bot_esito.py:156`), che riconosce **solo** la forma `R-<numero>-<numero>`. Quindi un id con parti
+  alfabetiche come `R-gate-worktree-1` **NON viene escluso**, anche se finisce con una cifra, e citarlo in un
+  verdetto con la gravità fra parentesi lo fa contare come finding nuovo.
+  ⚠️ *Qui correggo una mia conclusione precedente*: avevo scritto che i miei identificativi «finiscono tutti
+  con `-<cifra>` e quindi combaciano, il rischio non dovrebbe toccarmi». **Era falso**: avevo guardato
+  `_FINDING_GRAVITA` invece di `_RISERVA_REGISTRATA`. Il falso rosso riguarda eccome gli id di questa lista.
+  *Punti di partenza*: `_FINDING_GRAVITA`, `_PAROLA_BLOCCANTE`, `GRAVITA_BLOCCANTI`, `_gravita_nel_testo()`.
+  *Fatto quando*: test in `tests/test_unit_verifica_bot.py` che riproducono i due casi reali e che
+  FALLISCONO senza il fix. **Il verso del fail-safe (oggi: nel dubbio blocca) non si allenta senza il sì
+  esplicito dell'operatore**: un parser più permissivo potrebbe far passare un ALTA vero.
+  *Già proposto come fetta a sé* (card «Falso rosso di verifica-bot», 2026-10-13).
+
+### C. `cerca_testo` — residui della fetta, tutti in `gas.py` (PERIMETRO: review + verifica esterna)
+
+- 🟡 **C1 — `R-297-3` + `V-4`: il salto dei log non dipende dalla dimensione, e il consiglio che dà è
+  irrealizzabile (BASSA, DECISIONE DELL'OPERATORE).** Nella ricerca su cartella un `gas_debug.log` da
+  50 KB, che sta largamente in ogni tetto, non viene più cercato. Il brief chiedeva il salto, quindi la
+  scelta non è stata cambiata. L'alternativa «salta solo i log oltre il tetto per file» è stata **provata
+  e perde qualcosa**: senza il salto incondizionato un log le cui righe contengono il testo cercato si
+  mangia il tetto dei 200 RISULTATI e il file bersaglio sparisce, pur col budget di byte intatto (la prova
+  vale per l'alternativa condizionata perché il log del test, ~85 KB, sta SOTTO il tetto per file).
+  *Legato (V-4)*: il messaggio dei file oltre il tetto dice «usa `leggi_righe` su quei file», ma per un log
+  oltre 5 MB è **fuorviante**, perché anche `leggi_righe` è capato a `LETTURA_MAX_BYTES`. Il fix onesto è
+  una riga di testo: per quei file dire che serve un intervallo di righe. Il revisore lo metterebbe in
+  cima a questa fetta.
+
+- 🟡 **C2 — `R-301-3`: `letti` conta anche il file dichiarato «non letto» (semantica, non cosmetica).**
+  L'intestazione può dire «2 righe trovate in **3** file» e poi «`x.txt` non letto»: i file davvero letti
+  erano 2. È il tema stesso della fetta (un numero che non corrisponde). **Non è «una riga»**, e il
+  revisore ha corretto me su questo: spostare `letti += 1` dopo la lettura cambierebbe il conto anche per
+  il file letto **a metà**, che invece va contato fra i letti; la correzione giusta è incrementare `letti`
+  solo se qualcosa è stato consumato, cioè riusare `resto_prima` anche nel percorso normale — quindi si
+  toccano il caso che funziona e il suo test. Su main `letti += 1` compare **una** volta sola (`gas.py:2238`); avevo scritto due perché avevo contato anche l'inizializzazione a `gas.py:2206` (correzione del bot su #197, verificata).
+
+- 🟡 **C3 — `V-2`: `_LOG_SFORO_MAX` è un numero, non un limite dimostrato (BASSA).** Lo sforo di una
+  rotazione è la differenza byte-caratteri dell'ULTIMO record e **non ha un tetto teorico**, quindi un
+  record multibyte più grande di 1 MiB lascerebbe una rotazione oltre `_LOG_MAX_BYTES + _LOG_SFORO_MAX`:
+  saltata sia su cartella sia per nome, cioè la stessa classe di V-1. La verifica esterna lo dichiara
+  **non riprodotto** oltre il caso 1101/1000 e di **plausibilità bassa**. Due strade: `max(budget, st_size)`
+  fino a un massimo duro (es. 2× la soglia), oppure — meglio secondo il revisore — capare la lunghezza del
+  record a monte, così il margine diventa una conseguenza e non una scommessa.
+
+- 🟡 **C4 — `V-5`: «solo nella root» assume `cwd == root` (BASSA, non provata raggiungibile).** Il
+  `RotatingFileHandler` apre un percorso **relativo** (`"gas_debug.log"`, quindi la cwd) mentre
+  `GasKernel.root` può essere un `root_dir` esplicito diverso (`esegui_notte(root_dir, …)` crea il kernel
+  così). In quel caso il log vero non sta nella root, `_e_log_kernel()` non lo riconosce e finisce nel tetto
+  per file da 1 MB: **saltato e NOMINATO**, quindi nessuna menzogna silenziosa, solo l'etichetta «log del
+  kernel» mancante. In produzione `cwd == root` (default `os.getcwd()`) e `doctor` fa la stessa assunzione.
+  La chiusura vera sarebbe derivare la cartella del log da `handler.baseFilename` invece di assumerla: una
+  riga, ma accoppia il kernel agli interni di `logging` — decisione da prendere, non da fare di slancio.
+
+- ⚪ **C5 — cosmetiche minori, verificate su main.** (a) Un log incontrato **dopo** il primo tetto è contato
+  in «N file rimasti non letti» e non fra i «log del kernel non cercati», perché il controllo del tetto
+  precede il riconoscimento: il totale resta onesto, l'attribuzione è approssimata; il revisore consiglia
+  di **non** spostare il riconoscimento, perché cambierebbe la semantica dei contatori per un caso che
+  nessuno osserva. (b) Il commento di `gas.py` dice «il più grande è `gas.py`, ~200 KB»: **falso**, misura
+  **269.343 byte** su `a9fd74d` (avevo scritto 267.795: misura di un albero precedente, corretta dal bot su #197); il tetto da 1 MB regge comunque. (c) Due test
+  quasi uguali sulla rotazione oltre 5 MB: **non unificare le asserzioni** (provano cose diverse: finestra
+  della taglia + ago in coda + ricerca non incompleta l'uno, sforo oltre la soglia l'altro) — al massimo
+  unificare le *fixture*.
+- ℹ️ **Già chiuse dal merge, non rifarle**: `R-300-2` (il typo nel docstring di `_ferma_enum`) e `R-301-4`
+  (il messaggio del budget citava `LETTURA_MAX_BYTES` invece del budget vero) sono state corrette
+  dall'altro autore e sono su main. `R-299-1` è chiusa nel codice ma **non coperta da test** (dichiarato:
+  la mutazione che rimette il confronto fra testi sopravvive, perché il caso che differisce richiede un
+  orologio che scade a metà lavoro).
+
+### D. Sicurezza — `modules/gate/` è una FETTA A SÉ: review + verifica esterna + secondo passaggio su claude.ai
+
+- 🔴 **D1 — nove buchi della denylist credenziali, tutti ancora LEGGIBILI su `a9fd74d`** (verificati uno per
+  uno con `lettura_consentita()`, non riferiti): `token_cache.json` (la regex vuole il punto subito dopo
+  `token`, quindi `token.json` e `tokens.json` sono bloccati ma il suffisso no), `kubeconfig` (senza punto),
+  `mywallet.dat` (`wallet.dat` è bloccato, col prefisso no), `.vault-token`, `.dockercfg`, `_netrc`
+  (`.netrc` è bloccato), `clientsecret.json`, `*.gpg`, `*.asc`. Vengono da `R-291-1` e dal bot #188 (2º giro).
+
+### E. Igiene e processo — non codice
+
+- 🟡 **E1 — `AGENTS.md` in root: copia divergente del canone, non tracciata e NON in `.gitignore`.**
+  12.284 byte, dice «Codex NON è un rung runtime: è il dev-agent (Codex)» dove CLAUDE.md dice Claude.
+  Un `git add -A` distratto la porterebbe nel repo. Verificato: non tracciata su main, `check-ignore` → no.
+  Decidere se ignorarla o tracciarla deliberatamente; una riga in entrambi i casi.
+- 🟡 **E2 — numeri di review duplicati nella memoria del revisore: OTTO.** `#297`, `#299`–`#304`, `#311`.
+  Nascono da tre sessioni parallele partite dalla stessa base con copie separate di
+  `.claude/agents/memoria_revisore.md`. Il merge per **unione** ha funzionato (nessuna lezione persa,
+  aritmetica verificata dall'altra sessione), e nel file c'è una NOTA DI MERGE che spiega la duplicazione,
+  ma la numerazione univoca **la decide l'operatore**: io ho smesso di rinumerare dopo due giri su un
+  bersaglio in movimento, e il revisore ha confermato la scelta. Lezione già scritta: il numero si prende
+  dal ramo di INTEGRAZIONE al momento del commit, non dalla propria copia.
+- 🟡 **E3 — il token `gh` in uso AMMINISTRA il repo.** Avviso G-3 stampato da ogni esecuzione dei gate
+  (`scripts/avviso_token_admin.sh`): va sostituito con quello senza Administration, vedi
+  `reports/setup_agente_non_admin.md`.
+- ℹ️ **E4 — quattro commit di autore ignoto sono entrati nella PR #193.** Firma `Co-Authored-By: Claude
+  Opus 5.5`, trailer `session_01FgYcG4uNEqggobeJsbmE93` (lo stesso nei corpi di #184/#185), creati **fuori
+  da questa macchina**: la sessione dell'altro worktree ha escluso di esserne l'autore con prove proprie
+  (reflog senza traccia del ramo, SHA assenti dal reflog locale condiviso, firma di un modello diverso).
+  Integrati con un merge non distruttivo; il contenuto è stato revisionato (#308/#309/#310) e la loro
+  implementazione di V-1 era migliore della mia. **Resta da chiarire con l'operatore se ha una sessione
+  viva altrove**: non è un problema di codice, è di sapere chi scrive sul repo.
 
 ## Finding aperti (🟡 attivi)
 
