@@ -1078,14 +1078,18 @@ def _init_bare_origin(work: Path, bare: Path) -> None:
 
 def _run_promemoria(
     repo: Path, *, stop_hook_active: bool = False, extra_env: dict | None = None,
-    session_id: str = "",
+    session_id: str = "", cwd: Path | None = None,
 ) -> subprocess.CompletedProcess:
     """Esegue promemoria_end.sh con CLAUDE_PROJECT_DIR puntato al repo di test.
 
     Passa il payload JSON Stop hook su stdin (simula il runtime Claude Code).
+    `cwd`, se dato, finisce nel payload (il checkout del turno in corso, A1).
     """
-    payload = json.dumps({"stop_hook_active": stop_hook_active, "transcript_path": "",
-                          "session_id": session_id})
+    dati = {"stop_hook_active": stop_hook_active, "transcript_path": "",
+            "session_id": session_id}
+    if cwd is not None:
+        dati["cwd"] = str(cwd)
+    payload = json.dumps(dati)
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
     if extra_env:
         env.update(extra_env)
@@ -2860,3 +2864,113 @@ class TestReviewGateWorktree:
                                comando="cd " + str(esca) + " && " + _CMD_COMMIT_WT)
             assert result.returncode == 2, (nome, result.stderr)
 
+
+# ─── TestPromemoriaWorktree (A1) ──────────────────────────────────────────────
+#
+# promemoria_end.sh deve giudicare il checkout del turno in corso (`cwd` del
+# payload), non il principale di CLAUDE_PROJECT_DIR, e tenere il contatore nel
+# git-dir DEL WORKTREE con una riga per session_id.
+
+
+class TestPromemoriaWorktree:
+    """T-prom-wt — A1: hook cieco al worktree e contatore che si azzera a vicenda."""
+
+    def _setup(self, tmp_path: Path, *, handoff_principale: bool, handoff_worktree: bool):
+        """Principale su un feature branch + worktree su un altro, ognuno con un commit."""
+        main_co = tmp_path / "principale"
+        main_co.mkdir()
+        _init_repo(main_co)
+        _init_bare_origin(main_co, tmp_path / "origin.git")
+        wt = tmp_path / "wt"
+        subprocess.run(
+            ["git", "worktree", "add", "-q", "-b", "feat/wt", str(wt)],
+            cwd=main_co, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "checkout", "-q", "-b", "feat/principale"],
+            cwd=main_co, check=True, capture_output=True,
+        )
+        for repo, fresco in ((main_co, handoff_principale), (wt, handoff_worktree)):
+            rel = "reports/handoff.md" if fresco else "some_file.txt"
+            _make_git_commit(repo, rel, f"{repo.name}\n", "feat: commit di sessione")
+        return main_co, wt
+
+    @staticmethod
+    def _git_dir(repo: Path) -> Path:
+        out = subprocess.run(
+            ["git", "rev-parse", "--absolute-git-dir"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        return Path(out)
+
+    def test_prom_wt_1_worktree_fresco_principale_stantio_non_blocca(self, tmp_path):
+        """T-prom-wt-1: handoff fresco nel worktree del turno → nessun blocco.
+
+        Prima del fix l'hook guardava il principale (handoff stantio) e bloccava.
+        """
+        main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=True)
+        result = _run_promemoria(main_co, session_id="s1", cwd=wt)
+        assert result.returncode == 0
+        assert not _is_blocked(result), f"T-prom-wt-1: blocco inatteso, stdout={result.stdout!r}"
+
+    def test_prom_wt_2_worktree_stantio_principale_fresco_blocca(self, tmp_path):
+        """T-prom-wt-2: handoff stantio nel worktree del turno → blocca, contatore nel worktree.
+
+        Prima del fix il principale (handoff fresco) faceva chiudere il turno.
+        """
+        main_co, wt = self._setup(tmp_path, handoff_principale=True, handoff_worktree=False)
+        result = _run_promemoria(main_co, session_id="s1", cwd=wt)
+        assert result.returncode == 0
+        assert _is_blocked(result), f"T-prom-wt-2: atteso blocco, stdout={result.stdout!r}"
+        wt_counter = self._git_dir(wt) / "promemoria_block_count"
+        assert wt_counter.read_text().strip() == "s1:1"
+        assert not (self._git_dir(main_co) / "promemoria_block_count").exists(), (
+            "T-prom-wt-2: il contatore non deve finire nel git-dir del principale"
+        )
+
+    def test_prom_wt_3_cwd_non_repo_ricade_su_project_dir(self, tmp_path):
+        """T-prom-wt-3: cwd fuori da un repo → fallback su CLAUDE_PROJECT_DIR (stantio, blocca)."""
+        main_co, _wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=True)
+        fuori = tmp_path / "non_repo"
+        fuori.mkdir()
+        result = _run_promemoria(main_co, session_id="s1", cwd=fuori)
+        assert result.returncode == 0
+        assert _is_blocked(result), f"T-prom-wt-3: atteso blocco, stdout={result.stdout!r}"
+
+    def test_prom_wt_4_due_sessioni_alternate_non_si_azzerano(self, tmp_path):
+        """T-prom-wt-4: sessioni A e B alternate sullo stesso checkout.
+
+        Prima del fix il file conservava un solo session_id: ogni turno dell'altra
+        sessione azzerava il conto e il limite «3 blocchi poi fail-open» non scattava mai.
+        """
+        main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=False)
+        esiti_a = []
+        for _ in range(4):
+            esiti_a.append(_is_blocked(_run_promemoria(wt, session_id="sess-A", cwd=wt)))
+            _run_promemoria(wt, session_id="sess-B", cwd=wt)
+        assert esiti_a == [True, True, True, False], f"T-prom-wt-4: esiti A {esiti_a}"
+        righe = sorted((self._git_dir(wt) / "promemoria_block_count").read_text().split())
+        assert righe == ["sess-A:4", "sess-B:4"], f"T-prom-wt-4: contatore {righe}"
+
+    def test_prom_wt_5_handoff_fresco_azzera_solo_la_propria_sessione(self, tmp_path):
+        """T-prom-wt-5: l'handoff fresco toglie la riga della sessione corrente, non le altre."""
+        main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=False)
+        _run_promemoria(wt, session_id="sess-A", cwd=wt)
+        _run_promemoria(wt, session_id="sess-B", cwd=wt)
+        _make_git_commit(wt, "reports/handoff.md", "fresco\n", "docs: handoff")
+        result = _run_promemoria(wt, session_id="sess-A", cwd=wt)
+        assert not _is_blocked(result)
+        righe = (self._git_dir(wt) / "promemoria_block_count").read_text().split()
+        assert righe == ["sess-B:1"], f"T-prom-wt-5: contatore {righe}"
+
+    def test_prom_wt_6_session_id_con_backslash_conta(self, tmp_path):
+        """T-prom-wt-6 (R-314-1): un backslash nel session_id non ferma il conto.
+
+        Con `awk -v` la riga della sessione non si ritrovava: conto fermo a 1, blocco perpetuo.
+        """
+        _main_co, wt = self._setup(tmp_path, handoff_principale=False, handoff_worktree=False)
+        sid = "a\\tb"
+        esiti = [_is_blocked(_run_promemoria(wt, session_id=sid, cwd=wt)) for _ in range(4)]
+        assert esiti == [True, True, True, False], f"T-prom-wt-6: esiti {esiti}"
+        righe = (self._git_dir(wt) / "promemoria_block_count").read_text().split()
+        assert righe == [f"{sid}:4"], f"T-prom-wt-6: contatore {righe}"
