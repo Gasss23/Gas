@@ -103,7 +103,8 @@ _PAROLA_BLOCCANTE = re.compile(r"\b(ALTA|MEDIA|HIGH|MEDIUM|CRITICAL|CRITICA|BLOC
 # Riga di finding nel formato del protocollo ("V-1 ...", anche F-/R-/G-) con una gravità
 # bloccante scritta in minuscolo o a parole ("V-1 — grave: ...", "F-1 HIGH").
 _FINDING_GRAVE_A_PAROLE = re.compile(
-    r"^\W*[VFRG]-\d+\b.*\b(" + _GRAVI + r")\b", re.M | re.I)
+    # R-316-2: anche gli id alfabetici esentati da _RISERVA_REGISTRATA ("R-gate-wt-1").
+    r"^\W*[VFRG]-(?:[A-Za-z0-9]+-)*\d+\b.*\b(" + _GRAVI + r")\b", re.M | re.I)
 _APRE_GRAVE = re.compile(r"\s*(" + _GRAVI + r")\b", re.I)
 
 
@@ -153,7 +154,18 @@ def _dopo_finding(testo: str) -> str:
 # finding di questa PR. Si toglie SOLO la parentesi della citazione e l'id resta (#205
 # B-1: con l'id le regex delle righe di finding vedono ancora il resto della riga);
 # niente parentesi annidate (#205 B-2: "R-1-1 (x, V-2 (ALTA))" resta intera e blocca).
-_RISERVA_REGISTRATA = re.compile(r"\b(R-\d+-\d+)\b\s*\([^()\n]*\)")
+# B1 (falso rosso su #193): anche gli id con parti alfabetiche ("R-gate-worktree-1 (ALTA,
+# preesistente)"), purché inizino con R- e finiscano con -<cifre>; "R-7" resta fuori.
+# R-316-3: un primo segmento V/F/G ("R-V-1 (ALTA)") e' un finding travestito, non conta.
+_RISERVA_REGISTRATA = re.compile(
+    r"\b(R-(?![VFGvfg]-)[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*-\d+)\b\s*\([^()\n]*\)")
+# B1 (falso rosso su #196: "il fix chiude il fail-open ALTA documentato" nella
+# RACCOMANDAZIONE): dopo NON VERIFICATO/RACCOMANDAZIONE una parola maiuscola nuda nella
+# prosa non è un finding. Lì contano solo le forme da finding (id + gravità tra parentesi,
+# righe V-/F-/R-/G-); dentro FINDING resta tutto come prima (nel dubbio blocca).
+# R-316-1: solo un'INTESTAZIONE ("NON VERIFICATO:", "**RACCOMANDAZIONE**:"), non un punto
+# elenco che comincia con quelle parole; e niente taglio se dopo ricompare un FINDING.
+_CODA_NON_FINDING = re.compile(r"^[*_#> ]*(?:NON VERIFICATO|RACCOMANDAZIONE)[*_ ]*:", re.M)
 
 
 def _gravita_nel_testo(testo: str) -> set[str]:
@@ -161,9 +173,14 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     ALTA/MEDIA maiuscola dopo FINDING ("V-1 — MEDIA — x"). Le citazioni di riserve già
     registrate ("R-203-1 (ALTA, ...)") non contano (R-161-1)."""
     sezione = _RISERVA_REGISTRATA.sub(r"\1", _dopo_finding(testo))
+    # Senza sezione FINDING non si sa dove finiscono i finding: tutto il testo conta.
+    coda = _CODA_NON_FINDING.search(sezione) if re.search(r"^\W*FINDING:", testo, re.M) else None
+    if coda and re.search(r"^\W*FINDING", sezione[coda.start():], re.M):
+        coda = None
+    finding = sezione[:coda.start()] if coda else sezione
     # HIGH, CRITICAL, BLOCKER... contano come MEDIA (bloccanti) anche se fuori vocabolario.
     trovate: set[str] = {p if p in GRAVITA_BLOCCANTI else "MEDIA"
-                         for p in _PAROLA_BLOCCANTE.findall(sezione)}
+                         for p in _PAROLA_BLOCCANTE.findall(finding)}
     if _FINDING_GRAVE_A_PAROLE.search(sezione):
         trovate.add("MEDIA")
     # R-159-3: tra parentesi conta la gravità che APRE la parentesi ("(alta)", "(MEDIA-BASSA)"),
