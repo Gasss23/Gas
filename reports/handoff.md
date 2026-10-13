@@ -78,14 +78,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  15 +++++++++++
- .claude/hooks/review_gate.sh       | 405 ++++++++++++++++++++++++++++++++++-----------
- reports/diff_sessione.md           |  70 ++++++++++++++++++------------
- reports/handoff.md                 | 501 +++++++++++++++++++++++++++++++++++-------------------
- reports/stato_progetto.md          |  20 +++++++++++++
- reports/ultimo_report.md           | 231 +++++++++++++++++++++++++++++++---------
- tests/test_unit_hooks.py           | 434 +++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 1227 insertions(+), 449 deletions(-)
+ .claude/agents/memoria_revisore.md |  21 +++++++++++
+ .claude/hooks/review_gate.sh       | 416 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------
+ reports/diff_sessione.md           |  80 +++++++++++++++++++++-------------------
+ reports/handoff.md                 | 718 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |  23 +++++++++++-
+ reports/ultimo_report.md           | 331 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------
+ tests/test_unit_hooks.py           | 489 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 1409 insertions(+), 669 deletions(-)
 ```
 
 `git -c core.quotePath=false diff --cached --stat=400 af394bc`, con i report in stage. Il **set di 7
@@ -96,6 +96,11 @@ sono i path e i conteggi dei file diversi da `handoff.md`.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6a2c5fa fix(gate): V-1/V-2 bot #196 + R-312-1, merge di main (review #312, #313)
+1761eb5 docs(fine-task): handoff con la review #311 del merge di main
+024854e Merge main (PR #193) in fix/gate-worktree — review #311
+ca5130a docs(fine-task): §0 con numero e URL reali della PR #196
+2b1e739 docs(fine-task): report e handoff della fetta R-gate-worktree-1 (sei giri, due BOCCIATI)
 9b836c6 fix(gate): il gate di review segue il worktree, non piu' solo CLAUDE_PROJECT_DIR (R-gate-worktree-1)
 7774ec5 chore(revisore): memoria review #304 — APPROVATO
 634f126 chore(revisore): memoria review #303 — APPROVATO CON RISERVE
@@ -213,7 +218,71 @@ Ho aggiunto la riga contatore `#311 — 2026-10-12 — APPROVATO CON RISERVE —
 
 > Nota dell'agente: R-311-1 corretta prima del commit di merge `024854e` — sezione del ramo ripristinata in `reports/stato_progetto.md` e la vecchia voce R-gate-worktree-1 marcata CHIUSA.
 
+### Review #312 (V-1/V-2 bot #196 + merge di main)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Il diff è un miglioramento netto e non indebolisce il gate. La correzione V-1 però chiude solo i casi segnalati dal bot, non tutta la famiglia: restano forme equivalenti che passano con exit 0 (R-312-1 e R-312-2 qui sotto).
+
+**Elementi del diff esaminati**
+- `.claude/hooks/review_gate.sh:195` — nuova spazzata per `\cd`/`\pushd`, `"cd"`/`'cd'` e `--chdir`.
+  - Rischi esaminati: escaping dentro `grep -Eq`, eccezioni di grep, falsi negativi.
+  - L'escaping è corretto: dentro gli apici singoli `\\` è un backslash letterale, e la concatenazione `"'"'"'` produce la classe `["']`.
+  - Il pattern è statico e valido, quindi grep non può uscire con errore 2 (che lascerebbe SPAZZA=0). Il pattern comincia con `\\`, quindi `--chdir` non viene letto come opzione.
+  - Provato con input UTF-8 non valido (`\xff\xfe \cd /x`): esce 0, cioè trova la forma.
+  - I falsi positivi (`'cd'` o `--chdir` nel messaggio di commit) vanno nella direzione sicura.
+  - Esito: **riserva** (R-312-1, R-312-2).
+- `.claude/hooks/review_gate.sh:247` — case `*'\'*|*'['*|*'{'*`.
+  - Rischio esaminato: quoting dentro il case. Gli apici singoli rendono letterali `\`, `[` e `{`. `bash -n` passa.
+  - wt35 dimostra che il backslash viene riconosciuto davvero.
+  - Esito: **ok**.
+- `tests/test_unit_hooks.py:2816` (wt32) fino a `tests/test_unit_hooks.py:2839` (wt35).
+  - Ho riprodotto la mutazione: con l'hook di HEAD i 4 test FALLISCONO, con il nuovo la suite fa 142 passed. L'hook nel working tree è stato ripristinato e coincide con l'indice.
+  - Esito: **ok**.
+- `gas.py`: il file staged è identico a MERGE_HEAD (`git diff --cached MERGE_HEAD` non lo elenca). Rispetto a HEAD, `memoria_revisore.md` contiene solo aggiunte. Esito: **ok**.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-312-1 (MEDIA, fail-open residuo nella stessa famiglia di V-1)**: `env -C<wt> git commit …`, con l'opzione corta attaccata e senza spazio, esce **0**, e lo stesso vale per `env -iC<wt> …`. Ho verificato che la shell le accetta (`env -C/tmp pwd` stampa `/tmp`). È la forma corta di `--chdir`, che lo stato dichiara chiusa. Correzione semplice: aggiungere alla spazzata di `.claude/hooks/review_gate.sh:195` un'alternativa come `(^|[[:space:]])-[[:alpha:]]*C[^[:space:]]`, che ha falsi positivi nella direzione sicura, più un test wt36. Consiglio di farlo in questa PR, prima di scrivere «V-1 CHIUSA».
+- **R-312-2 (BASSA)**: anche il nome del comando costruito a pezzi esce **0**: `c''d <wt>`, `cd'' <wt>`, `c""d <wt>`, `c\d <wt>`, `x=cd; $x <wt>`. Tutte forme che la shell esegue come `cd` (verificato). Inseguirle per elenco non finisce mai. Vanno nominate tra i limiti-NON-PROMESSA (specie (b)) intorno a `.claude/hooks/review_gate.sh:47`, e in stato_progetto la formula «V-1 CHIUSA» va limitata alle forme davvero sondate.
+- **R-312-3 (COSMETICA)**: per la shell `fett{a}` senza virgola non è brace expansion: è proprio il percorso letterale. Rifiutarlo è prudenza (direzione sicura), ma il docstring di wt35 dice che `{` «cambia la parola», e per questo caso non è vero.
+
+**Rischio escluso**: non ho verificato il comportamento reale del tool Bash di Claude Code, cioè se la sua shell persistente abbia `extglob` attivo o alias su `cd`. Non si riproduce da qui: se `extglob` fosse attivo, anche `@(`, `+(` e `!(` cambierebbero la parola e oggi non sono nel case. Non ho nemmeno rieseguito pytest completo né la suite kernel: mi fido dei numeri dichiarati (1067 passed, 843 PASS), perché il diff del motore è solo un commento già revisionato in #299–#301.
+
+**Riga contatore**: ho scritto **#312** (massimo numerico 311 + 1) più una lezione in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, **senza committare**: il file risulta `MM`, quindi la riga va aggiunta allo stage prima del commit di merge.
+
+### Review #313 (ri-review dopo R-312-1/2/3)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Le tre riserve del giro precedente (#312) sono chiuse e ho rifatto io le misure. Resta una sola nota BASSA, che c'era già prima di questo diff (R-313-1). Nessun blocco.
+
+**Elementi del diff esaminati**
+- `.claude/hooks/review_gate.sh:201`: nuova spazzata `(^|[[:space:]])-[[:alpha:]]*C[^[:space:]]` (R-312-1). Esito: **ok**.
+  - Rischi controllati: escaping, falsi negativi, errori di grep. Il pattern è statico e valido, e i falsi positivi (per esempio `grep -C3`, `-mCiao`) vanno nella direzione sicura.
+  - Mutazione riprodotta: tolta quella sola riga, wt36 FALLISCE; con la riga la suite degli hook fa 143 passed. `bash -n` passa. Ho ripristinato l'hook nel working tree e coincide con l'indice.
+  - Sonde mie che escono 2 come devono: `env -C"<wt>"`, `env -vC<wt>`, `env -u X -C<wt>`.
+- `tests/test_unit_hooks.py:2838` (wt36): copre `env -C<wt>` e `env -iC<wt>` col worktree sporco e chiede exit 2. Esito: **ok**.
+- `tests/test_unit_hooks.py:2847` (wt35): il docstring ora dice che `{` senza virgola non è brace expansion e che il rifiuto è solo prudenza (R-312-3). Esito: **ok**.
+- `.claude/hooks/review_gate.sh:54`: R-312-2 nominata tra i limiti che il gate non promette (specie (b)): nome del comando costruito a pezzi ed `extglob`. In `reports/stato_progetto.md` la formula è diventata «V-1 CHIUSA per le forme sondate». Esito: **ok**.
+
+**Riserva**
+- **R-313-1 (BASSA, c'era già prima di questo diff)**: un `-C` scritto tra apici o con backslash esce **0** col worktree sporco.
+  - Forme misurate: `env "-C<wt>" …`, `env '-C' <wt> …`, `git '-C' <wt> commit …`, `git \-C <wt> commit …`. Ho verificato che la shell le esegue (`env '-C/tmp' pwd` stampa `/tmp`).
+  - Causa: sia la nuova spazzata sia il matcher dei bersagli di `-C` accettano prima di `-C` solo uno spazio.
+  - Due rimedi possibili:
+    - allargare il prefisso a `(^|[[:space:]"'\\])` in entrambi i punti, con un test;
+    - oppure nominare «opzione costruita a pezzi» nel limite di `.claude/hooks/review_gate.sh:54`, che oggi parla solo del NOME del comando.
+  - Non blocca, perché questo diff non rende nulla peggio di prima.
+
+**Rischio escluso**: non ho rieseguito pytest completo né la suite del kernel. Mi fido dei numeri dichiarati, perché nel diff `gas.py` cambia solo nel commento di #195 già revisionato. Non ho verificato nemmeno il comportamento reale della shell persistente di Claude Code (alias, `extglob`): da qui non si riproduce.
+
+**Nota di metodo**: due mie sonde scritte come comando Bash sono state BLOCCATE dal gate di questo repo, perché il loro testo conteneva le parole del commit (il falso positivo noto R-gate-matcher-1). Ho scritto le sonde con Write e la riga in memoria con Edit.
+
+**Riga contatore**: ho aggiunto **#313** e una lezione in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, **senza committare**. Il file ora risulta `MM`: va rimesso in stage prima del commit di merge.
+
 ## §5 DELTA TEST DEL MOTORE
+
+**Dopo V-1/V-2 bot #196, R-312-1 e il merge di main (PR #195)**: hook 143 passed (wt32–wt36 nuovi, falliscono sull'hook precedente), pytest 1067 passed, kernel 843 PASS / 0 FAIL. Base del ramo: `a7b9021`.
 
 Il diff **non tocca il motore** (`gas.py`, `brains/`, `modules/`): tocca la macchina di controllo
 (`.claude/hooks/review_gate.sh`) e i suoi test.
