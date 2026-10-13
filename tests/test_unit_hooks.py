@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -2974,3 +2975,136 @@ class TestPromemoriaWorktree:
         assert esiti == [True, True, True, False], f"T-prom-wt-6: esiti {esiti}"
         righe = (self._git_dir(wt) / "promemoria_block_count").read_text().split()
         assert righe == [f"{sid}:4"], f"T-prom-wt-6: contatore {righe}"
+
+
+# ─── TestGateMatcher (A2, R-gate-matcher-1) ───────────────────────────────────
+#
+# review_gate.sh riconosceva il commit con grep sul testo libero: bloccava prosa,
+# letture e il grep sull'hook stesso. L'helper .claude/hooks/gate_matcher.py toglie solo
+# le stringhe/heredoc inerti; nel dubbio resta il testo grezzo (fail-closed).
+
+sys.path.insert(0, str(REVIEW_GATE_HOOK.parent))
+import gate_matcher as _ec  # noqa: E402
+
+_G, _C = "git", "commit"  # spezzati: il testo di questo file non deve sembrare un commit
+
+
+class TestGateMatcher:
+    """T-match — A2: falsi positivi reali tolti, nessun commit vero lasciato passare."""
+
+    # I tre inneschi misurati in stato_progetto.md (A2), più varianti inerti.
+    NON_COMMIT = [
+        f'{_G} log --oneline -3 ; echo "=== diff vs main ({_C}ted) ==="',
+        f"grep -n '{_G} {_C}\\|{_G}[[:space:]].*{_C}' .claude/hooks/review_gate.sh",
+        f"cat > reports/x.md <<'EOF'\nPoi si fa {_G} add e {_G} {_C}.\nEOF\n",
+        f'echo "usa {_G} {_C} -m" > /dev/null',
+        f"cat <<-'FINE'\n\t{_G} {_C} nel testo\n\tFINE\n",
+    ]
+
+    # Ogni forma che esegue (o può eseguire) un commit resta un commit.
+    COMMIT = [
+        f"{_G} {_C} -m x",
+        f'cd /x && {_G} {_C} -m "y"',
+        f'echo "x" && {_G} {_C} -m "z"',
+        f'echo "{_G} {_C} -m x" | bash',
+        f'bash -c "{_G} {_C} -m x"',
+        f'eval "{_G} {_C}"',
+        f'echo "$({_G} {_C} -m x)"',
+        f'echo "`{_G} {_C} -m x`"',
+        f'A="{_G} {_C}"; $A',
+        f'{_G} -c alias.ci="{_C}" ci',
+        f"cat <<EOF | sh\n{_G} {_C} -m x\nEOF\n",
+        f"python3 - <<'EOF'\nimport os; os.system('{_G} {_C}')\nEOF\n",
+        f"echo 'apice non chiuso {_G} {_C}",
+        f"echo ciao\n{_G} {_C} -m x",
+        f"sudo {_G} {_C}",
+        f"xargs {_G} {_C}",
+        f"cat <<'EOF'\n{_G} {_C}\nEOF\n{_G} {_C} -m x",
+        f"cat <<'EOF'\n{_G} {_C}\n",                      # heredoc non chiuso
+        f"\\{_G} {_C}",
+        f"echo x \\\n&& {_G} {_C}",
+        f"sed -n 1p f && {_G} {_C}",
+        f"awk 'BEGIN{{system(\"{_G} {_C}\")}}'",
+        f"find . -exec {_G} {_C} \\;",
+        f"echo $'{_G} {_C}'",
+        # R-318-1: git riconfigurato nello stesso comando (alias, fsmonitor, -c, env)
+        f"cat >> .git/config <<'EOF'\n[alias]\n  zz = !{_G} {_C} -qm x\nEOF\n{_G} zz",
+        f"printf '[alias]\\n zz = !{_G} {_C} -qm x\\n' >> .git/config && {_G} zz",
+        f"cat >> .git/config <<'EOF'\n[core]\n  fsmonitor = {_G} {_C} -qm x\nEOF\n{_G} status",
+        f"echo '{_G} {_C}' && {_G} -c core.fsmonitor=x status",
+        f"echo '{_G} {_C}' && {_G} --no-pager log",
+        f"GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=x GIT_CONFIG_VALUE_0='{_G} {_C}' {_G} status",
+        f"echo '{_G} {_C}' ; {_G} \\\n{_C} -m x",
+        # R-318-2: comandi che eseguono programmi tramite opzioni, o scrivono file
+        f"printf '#!/bin/sh\\n{_G} {_C} -qm x\\n' > p.sh && rg --pre ./p.sh x p.sh",
+        f"echo '{_G} {_C}' | sort --compress-program=./p.sh",
+        f"echo '{_G} {_C}' | tee x.sh",
+        # R-319-1: commenti di bash che il parser scambierebbe per apici o heredoc
+        f"echo x #'\n{_G} {_C} --allow-empty -qm z\n#'",
+        f'echo x #"\n{_G} {_C} --allow-empty -qm z\n#"',
+        f"echo x # <<EOF\n{_G} {_C} -qm z\nEOF\n",
+        # delimitatore di heredoc con apici a meta': bash e il parser divergono
+        f"cat <<E'O'F\n{_G} {_C}\nEOF\n",
+        # printf -v cambia PATH per il git che segue
+        f"printf -v PATH '%s' /tmp/x; echo '{_G} {_C}'; {_G} status",
+        # R-320-1: printf con -v fra apici + ${x@P} (esegue senza $( )
+        f"printf \"-v\" x '\\x24({_G} {_C} --allow-empty -qm a)'; echo ${{x@P}}",
+        f"printf \\-v x '\\x24({_G} {_C} -qm a)'; echo ${{x@P}}",
+        f"echo '{_G} {_C}' \"${{x@P}}\"",
+        f"echo $[1] '{_G} {_C}'",
+        f"cat <<EOF\n${{x@P}} {_G} {_C}\nEOF\n",
+        # R-320-2: commento dopo una redirezione
+        f"echo x >#'\n{_G} {_C} -qm z\n#'",
+        # R-321-1: test -v / [ -v rivalutano l'indice dopo la quote removal
+        f"test -v a[\\$\\('{_G} {_C} --allow-empty -qm a'\\)]",
+        f"[ -v a[\\$\\('{_G} {_C} -qm a'\\)] ]",
+        f"echo '{_G} {_C}' && jq -n 1",
+        f"echo '{_G} {_C}' *",
+    ]
+
+    @pytest.mark.parametrize("cmd", NON_COMMIT)
+    def test_match_non_commit(self, cmd):
+        assert not _ec.e_commit(cmd), f"falso positivo: {cmd!r} -> {_ec.scheletro(cmd)!r}"
+
+    @pytest.mark.parametrize("cmd", COMMIT)
+    def test_match_commit(self, cmd):
+        assert _ec.e_commit(cmd), f"commit non riconosciuto: {cmd!r} -> {_ec.scheletro(cmd)!r}"
+
+    @staticmethod
+    def _hook(repo: Path, cmd: str, hook: Path = REVIEW_GATE_HOOK, extra_env=None):
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+        if extra_env:
+            env.update(extra_env)
+        stdin = json.dumps({"tool_input": {"command": cmd}, "cwd": str(repo)})
+        return subprocess.run(["bash", str(hook)], input=stdin, env=env,
+                              capture_output=True, text=True)
+
+    def _repo_con_perimetro_sporco(self, tmp_path: Path) -> Path:
+        """Repo con gas.py staged e nessun marcatore: un commit vero va bloccato."""
+        _init_repo(tmp_path)
+        (tmp_path / "gas.py").write_text("# x\n")
+        subprocess.run(["git", "add", "gas.py"], cwd=tmp_path, check=True, capture_output=True)
+        return tmp_path
+
+    @pytest.mark.parametrize("cmd", NON_COMMIT[:3])
+    def test_match_hook_non_commit_passa(self, tmp_path, cmd):
+        """T-match-hook-1: i tre inneschi reali non vengono più bloccati dal gate."""
+        repo = self._repo_con_perimetro_sporco(tmp_path)
+        r = self._hook(repo, cmd)
+        assert r.returncode == 0, r.stderr
+
+    # NB `"git" commit` / `g"it" commit` sfuggono gia' al grep grezzo su main (buco
+    # preesistente, tracciato): l'helper non allarga, quindi non sono qui.
+    @pytest.mark.parametrize("cmd", [COMMIT[0], COMMIT[3], COMMIT[6], COMMIT[10]])
+    def test_match_hook_commit_blocca(self, tmp_path, cmd):
+        """T-match-hook-2: un commit vero (anche via interprete/heredoc) resta bloccato."""
+        repo = self._repo_con_perimetro_sporco(tmp_path)
+        r = self._hook(repo, cmd)
+        assert r.returncode == 2, (cmd, r.stderr)
+
+    def test_match_hook_python_rotto_fail_closed(self, tmp_path):
+        """T-match-hook-3: python3 che fallisce → l'helper non dice «non commit» → blocca."""
+        repo = self._repo_con_perimetro_sporco(tmp_path)
+        r = self._hook(repo, self.NON_COMMIT[0],
+                       extra_env={"PATH": _make_broken_python3_path(tmp_path)})
+        assert r.returncode == 2, r.stderr
