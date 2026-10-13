@@ -51,7 +51,9 @@
 #    apici) e un bersaglio quotato viene risolto (gli apici si togliono nello stadio
 #    di risoluzione). Un bersaglio NON risolvibile — relativo, con variabile, glob,
 #    con spazi, apice spaiato O INTERNO — fa scattare la spazzata. Forme piu' esotiche (eval,
-#    percorso costruito a pezzi) possono non essere viste affatto: il gate NON
+#    percorso costruito a pezzi, NOME del comando costruito a pezzi — R-312-2:
+#    `c''d`, `cd''`, `c""d`, `c\d`, `x=cd; $x` — o `extglob` attivo nella shell)
+#    possono non essere viste affatto: il gate NON
 #    promette di intercettare ogni scrittura in un altro checkout, promette di non
 #    lasciar passare un checkout che ha ISPEZIONATO.
 #  - R-300-1 (specie (b) nella parte che il gate non sa, specie (a) nella mitigazione,
@@ -190,6 +192,13 @@ SPAZZA=0
 
 # Forme che non si risolvono per costruzione → spazzata diretta.
 printf '%s' "$CMD" | grep -Eq '(^|[;&|(){}[:space:]])popd([[:space:]]|$)|GIT_DIR=|GIT_WORK_TREE=|--work-tree[[:space:]]|--git-dir[[:space:]]' && SPAZZA=1
+# V-1 bot #196: forme di cambio directory che il matcher dei bersagli non vede
+# (`\cd`, `"cd"`/`'cd'`, `env --chdir=`/`--chdir `) → spazzata diretta.
+printf '%s' "$CMD" | grep -Eq '\\(cd|pushd)([^[:alnum:]_]|$)|["'"'"'](cd|pushd)["'"'"']|--chdir' && SPAZZA=1
+# R-312-1: forma corta attaccata di --chdir (`env -C<dir>`, `env -iC<dir>`): un -C
+# seguito subito da altro testo non e' un bersaglio risolvibile → spazzata. I falsi
+# positivi (opzioni di altri comandi) vanno nella direzione sicura.
+printf '%s' "$CMD" | grep -Eq '(^|[[:space:]])-[[:alpha:]]*C[^[:space:]]' && SPAZZA=1
 
 # Costrutti con un bersaglio esplicito: ne conto le occorrenze e ne risolvo i
 # percorsi. Se anche uno solo non si risolve, spazzo (conteggi diversi = dubbio).
@@ -239,7 +248,9 @@ if [ -n "$TROVATI" ]; then
       *) continue ;;
     esac
     case "$bersaglio" in
-      *'$'*|*'`'*|*'*'*|*'?'*|*'~'*) continue ;;
+      # V-2 bot #196: anche `\\`, `[`, `{` cambiano la parola per la shell (escape,
+      # glob, brace): il letterale non e' il percorso vero, quindi e' un dubbio.
+      *'$'*|*'`'*|*'*'*|*'?'*|*'~'*|*'\'*|*'['*|*'{'*) continue ;;
     esac
     radice_b=$(_radice "$bersaglio") || radice_b=""
     [ -n "$radice_b" ] || continue

@@ -2805,3 +2805,58 @@ class TestReviewGateWorktree:
                            comando='git --work-tree="' + str(sporco) + '" ' +
                                    _CMD_COMMIT_WT.split(" ", 1)[1])
         assert result.returncode == 2, result.stderr
+
+    def _wt_sporco(self, tmp_path):
+        principale = self._repo_con_hook_proprio(tmp_path / "main")
+        wt = self._wt(principale, "fetta")
+        (wt / "gas.py").write_text("# non revisionata\n")
+        self._add(wt, "gas.py")
+        return principale, wt
+
+    def test_gate_wt32_cd_con_backslash_spazza(self, tmp_path):
+        """V-1 bot #196: `\\cd <wt>` (alias saltato) cambia directory come `cd`, ma il
+        matcher dei bersagli non lo vedeva: N_TROVATI=0, nessuna spazzata, exit 0."""
+        principale, wt = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="\\cd " + str(wt) + " && " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt33_cd_quotato_come_parola_spazza(self, tmp_path):
+        """V-1 bot #196: `"cd" <wt>` e `'cd' <wt>` sono lo stesso comando per la shell."""
+        principale, wt = self._wt_sporco(tmp_path)
+        for cmd in ('"cd" ', "'cd' "):
+            result = self._run(project_dir=principale, cwd=principale,
+                               comando=cmd + str(wt) + " && " + _CMD_COMMIT_WT)
+            assert result.returncode == 2, (cmd, result.stderr)
+
+    def test_gate_wt34_env_chdir_spazza(self, tmp_path):
+        """V-1 bot #196: `env --chdir=<wt> <commit>` committa nel worktree."""
+        principale, wt = self._wt_sporco(tmp_path)
+        result = self._run(project_dir=principale, cwd=principale,
+                           comando="env --chdir=" + str(wt) + " " + _CMD_COMMIT_WT)
+        assert result.returncode == 2, result.stderr
+
+    def test_gate_wt36_env_C_attaccato_spazza(self, tmp_path):
+        """R-312-1: la forma corta attaccata di --chdir (`env -C<wt>`, `env -iC<wt>`)
+        non era vista da nessun matcher: exit 0 col worktree sporco."""
+        principale, wt = self._wt_sporco(tmp_path)
+        for pref in ("env -C", "env -iC"):
+            result = self._run(project_dir=principale, cwd=principale,
+                               comando=pref + str(wt) + " " + _CMD_COMMIT_WT)
+            assert result.returncode == 2, (pref, result.stderr)
+
+    def test_gate_wt35_bersaglio_con_glob_o_escape_non_si_risolve_letterale(self, tmp_path):
+        """V-2 bot #196: `cd <dir>/fett[a]` per la shell e' `fetta` (glob), ma il
+        letterale `fett[a]` puo' esistere ed essere un repo PULITO: risolverlo faceva
+        controllare il checkout sbagliato (exit 0). Ora `[`, `\\` sono dubbio (glob,
+        escape) e `{` per prudenza (senza virgola non e' brace expansion, R-312-3),
+        quindi spazzata, e il worktree sporco blocca."""
+        principale, wt = self._wt_sporco(tmp_path)
+        for nome in ("fett[a]", "fett\\a", "fett{a}"):
+            esca = wt.parent / nome
+            esca.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=esca, check=True, capture_output=True)
+            result = self._run(project_dir=principale, cwd=principale,
+                               comando="cd " + str(esca) + " && " + _CMD_COMMIT_WT)
+            assert result.returncode == 2, (nome, result.stderr)
+
