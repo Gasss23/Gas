@@ -1885,7 +1885,8 @@ class GasKernel:
     # R-282-1: byte massimi letti da UN SOLO file nella ricerca su cartella, tetto
     # INDIPENDENTE dal budget residuo della chiamata. Vale 1/5 di LETTURA_MAX_BYTES:
     # nessun singolo file puo' prosciugare il budget da solo, e i sorgenti del progetto
-    # (il piu' grande e' gas.py, ~200 KB) ci stanno tutti dentro con larghezza.
+    # (C5: misurati 2026-10-13, gas.py ~270 KB, tests/test_unit_kernel.py ~465 KB)
+    # ci stanno tutti dentro.
     LETTURA_MAX_BYTES_PER_FILE = 1_000_000
     # R-282-1: i log del kernel (RotatingFileHandler: gas_debug.log + .1/.2/.3, fino a
     # 5 MB ciascuno) divorerebbero da soli il budget della ricerca su cartella. Li si
@@ -2235,8 +2236,11 @@ class GasKernel:
             except OSError:
                 saltati += 1
                 continue
-            letti += 1
+            # C2 (R-301-3): `letti` conta solo i file da cui si è davvero letto (anche in
+            # parte, o vuoti fino in fondo); un file «non letto» per budget esaurito, o
+            # non di testo, non è un file letto.
             resto_prima = budget[0]
+            trovati_prima = len(trovati)
             try:
                 for n, riga in enumerate(self._righe_testo(f, budget), 1):
                     r = riga.rstrip("\r\n")
@@ -2248,8 +2252,13 @@ class GasKernel:
                     if _time.monotonic() > scadenza:
                         self._segna_tetto(stato, f"tempo ({self.LETTURA_MAX_SECONDI:g} s)")
                         break
+                letti += 1
             except (GasKernel._NonTesto, GasKernel._NonRegolare):
                 saltati += 1
+                # R-326-1: righe valide prima del byte non di testo sono già nei
+                # risultati: quel file è stato letto (in parte), va contato.
+                if len(trovati) > trovati_prima:
+                    letti += 1
             except GasKernel._TettoByte:
                 # "budget di byte esaurito" NON è "file troppo grande": messaggi distinti.
                 # Qui il budget COMPLESSIVO della chiamata è finito e questo file è stato
@@ -2257,6 +2266,8 @@ class GasKernel:
                 # V-4 #193: col budget esaurito esattamente a zero di quel file non si
                 # legge NIENTE, e dire «letto solo in parte» sarebbe falso.
                 quanto = "letto solo in parte" if budget[0] < resto_prima else "non letto"
+                if budget[0] < resto_prima:
+                    letti += 1
                 self._segna_tetto(stato, f"byte letti ({budget_tot}, budget "
                                          f"complessivo della chiamata, GAS_LETTURA_MAX_BYTES): "
                                          f"{rel} {quanto}")
@@ -2271,8 +2282,20 @@ class GasKernel:
             quale = "byte per file" if su_cartella else "byte della chiamata"
             testa += (f"; {grandi} file oltre il tetto di {tetto_file} {quale} "
                       f"saltati ({', '.join(nomi_grandi)}"
-                      f"{', ...' if grandi > len(nomi_grandi) else ''}"
-                      "): usa leggi_righe su quei file")
+                      f"{', ...' if grandi > len(nomi_grandi) else ''}")
+            # C1 (V-4 #193): «usa leggi_righe» era fuorviante: anche leggi_righe legge dal
+            # principio e si ferma a LETTURA_MAX_BYTES, quindi oltre quel punto nessun
+            # tool arriva. Si dice cosa si può fare davvero.
+            if su_cartella:
+                # R-326-2: per nome si cerca solo un file entro il budget; leggi_righe
+                # arriva alle righe nei primi N byte di qualunque file.
+                testa += ("): indicane uno in relative_path per cercarci dentro (solo se non "
+                          f"supera {self.LETTURA_MAX_BYTES} byte), o leggi un intervallo di "
+                          "righe con leggi_righe (solo le righe nei primi "
+                          f"{self.LETTURA_MAX_BYTES} byte)")
+            else:
+                testa += ("): leggi_righe con un intervallo di righe arriva solo alle righe "
+                          f"nei primi {self.LETTURA_MAX_BYTES} byte del file")
         if log_saltati:
             testa += (f"; {log_saltati} log del kernel (gas_debug.log) non cercati: "
                       "indicane uno in relative_path per cercarci dentro")
