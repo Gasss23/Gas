@@ -1,16 +1,19 @@
-# ULTIMO REPORT — 2026-10-14 — Riserve finali della PR #207
+# ULTIMO REPORT — 2026-10-14 — D5: copie di cartelle e file di chiavi
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (solo `reports/`).
-2. Sostituire sul Mac l'alias `gasclaude` con la versione fail-safe (comando fornito in chat).
-3. Incollare l'esito del secondo passaggio claude.ai sulla PR #204.
+1. Merge della PR di questa fetta (tocca il cancello: il bot darà neutral → decide l'operatore).
+2. Fetta di sicurezza: secondo passaggio claude.ai col link della PR (facoltativo, D5 nasce già da quello su #204).
 
 ## Esito
 
-- **Riserve del bot su #207 (testa finale)** — FATTA: R-bot207-1 (BASSA, ambiente ostile) e una cosmetica registrate in `reports/stato_progetto.md`.
-- **Bot #208** — APPROVATO CON RISERVE: V-1 (BASSA, report incoerenti su chi ha mergiato la #207) corretta.
-- **PR #207** — mergiata dall'agente su richiesta dell'operatore («mergia 207»).
+- **Copie con altri nomi** (MEDIA del secondo passaggio claude.ai su #204) — FATTA: «keys copy/», «keys (1)/», keys.backup/, keys_old/, keys2/, old_keys/, tokens copy/ trattate come keys/ in lettura e scrittura; stesso per passwd/, shadow/, .config/gh.
+- **Tetto dei 255 caratteri prima di ogni regex** — FATTA.
+- **Backslash su Windows** (BASSA) — SALTATA: Gas gira su Linux/Mac; tracciata.
+- **Cartelle innocue key/, token/, shadow/ bloccate** (BASSA) — SALTATA: nessuna nel repo oggi; tracciata per FASE 4.
+- **Misura su file reali** — nessun cambio di esito rispetto a origin/main (180 voci).
+- **Test** — tests/test_unit_gate.py 590 passed (con il gate di main 20 failed); pytest tests/ 1406 passed.
+- **Review** — #343 APPROVATO (cosmetica: tetto 255 ora doppio).
 
 ## Anomalie
 
