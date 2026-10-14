@@ -1543,6 +1543,40 @@ class TestAvvisoTokenAdmin:
                            capture_output=True, text=True, cwd=tmp_path)
         assert r.returncode == atteso, r.stderr
 
+    def test_blocco_non_si_apre_con_ok_nell_ambiente(self, tmp_path):
+        """Bot #207 V-1: OK=1 esportato non deve far passare un token che amministra."""
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        for b in ("bash", "grep", "printf", "env"):
+            real = shutil.which(b)
+            if real:
+                (fake_bin / b).symlink_to(real)
+        (fake_bin / "gh").write_text("#!/usr/bin/env bash\nexit 0\n")
+        (fake_bin / "gh").chmod(0o755)
+        r = subprocess.run([shutil.which("bash"), str(AVVISO_G3), "--blocco"],
+                           env={"PATH": str(fake_bin), "HOME": str(tmp_path), "OK": "1"},
+                           capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode == 1 and "AMMINISTRA" in r.stderr, r.stderr
+
+    def test_gasmerge_auto_blocca_se_manca_lo_script(self, tmp_path):
+        """Bot #207 V-3: --auto senza avviso_token_admin.sh accanto a gasmerge → BLOCCO."""
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge.log"
+        _make_stub_gh_recording_merge(fake_bin, merge_log, _sha_feat(work), _REGOLE_OK,
+                                      _runs((1, _APP, "completed", "success")))
+        solo = tmp_path / "solo"
+        solo.mkdir()
+        shutil.copy(GASMERGE, solo / "gasmerge.sh")       # senza avviso_token_admin.sh
+        env = {**os.environ, "GAS_REPO_DIR": str(work),
+               "PATH": str(fake_bin) + ":" + os.environ.get("PATH", "")}
+        r = subprocess.run(["bash", str(solo / "gasmerge.sh"), "--auto", "123"], env=env,
+                           input="", capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode != 0 and "BLOCCO: G-3" in r.stdout and "assente" in r.stdout, \
+            r.stdout + r.stderr
+        assert not merge_log.exists()
+
     def test_blocco_gh_assente_esce_1(self, tmp_path):
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
