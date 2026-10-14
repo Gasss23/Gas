@@ -1,14 +1,13 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-14 — Riserve finali della PR #207
+**Sessione:** 2026-10-14 — `gasclaude` fail-safe sul Mac
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #208 (https://github.com/Gasss23/Gas/pull/208), solo `reports/`.
-2. Sostituire sul Mac l'alias `gasclaude` con la versione fail-safe.
-3. Incollare l'esito del secondo passaggio claude.ai sulla PR #204.
+1. Merge della PR #209 (https://github.com/Gasss23/Gas/pull/209): tocca `CLAUDE.md`, decide l'operatore.
+2. Incollare l'esito del secondo passaggio claude.ai sulla PR #204.
 
 (`gh` non disponibile nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
@@ -16,19 +15,21 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Riserve del bot su #207**: `FATTA` — R-bot207-1 e una cosmetica in `reports/stato_progetto.md`.
-- **Bot #208 V-1** (BASSA, chi ha mergiato la #207): `FATTA` — allineato: l'agente, su richiesta esplicita dell'operatore.
+- **`gasclaude` fail-safe sul Mac**: `FATTA` dall'operatore (si apre).
+- **Registrazione nel repo**: `FATTA` — CLAUDE.md, setup, stato.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |   8 ++------
- reports/handoff.md        | 148 +++++++++++++---------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md |   4 ++--
- reports/ultimo_report.md  |  22 ++++++++--------------
- 4 files changed, 25 insertions(+), 157 deletions(-)
+ CLAUDE.md                         |  2 +-
+ reports/diff_sessione.md          |  5 +++--
+ reports/handoff.md                | 25 +++++++++----------------
+ reports/setup_agente_non_admin.md |  2 +-
+ reports/stato_progetto.md         |  4 ++--
+ reports/ultimo_report.md          | 13 ++++++-------
+ 6 files changed, 22 insertions(+), 29 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -36,8 +37,7 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-5c6c5a4 docs(fine-task): report e handoff — riserve #207 (PR #208)
-0439511 docs(stato): riserve finali del bot su #207
+ee37b9d docs: gasclaude fail-safe sul Mac (si ferma se manca il token)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
@@ -54,10 +54,9 @@ Nessuna modifica a gas.py/tests/.
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
-- `5c6c5a4`: bot APPROVATO CON RISERVE (success), V-1 corretta qui.
-- Commit `docs(stato): riserve finali del bot su #207`: run della PR #208 all'apertura; esito non riportato qui.
+- Commit `docs: gasclaude fail-safe sul Mac`: run della PR #209 all'apertura; esito non riportato qui.
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-bot207-1 (BASSA) e le precedenti in `reports/stato_progetto.md`.
+- Nessuna nuova. Le precedenti in `reports/stato_progetto.md`.
