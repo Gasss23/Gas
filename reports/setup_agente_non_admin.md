@@ -19,7 +19,7 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
 4. **Repository permissions** — SOLO queste:
    - **Contents** → Read and write (push dei branch)
    - **Pull requests** → Read and write (aprire PR, etichetta `verifica`)
-   - **Checks** → Read-only, **Actions** → Read-only, **Commit statuses** → Read-only (stato CI)
+   - **Actions** → Read-only, **Commit statuses** → Read-only (stato CI). «Checks» non è offerto da GitHub per i token fine-grained (verificato il 2026-10-14): non serve cercarlo
    - Metadata → Read-only (automatico)
    - **Administration: No access** · **Workflows: No access** · **Environments: No access** ·
      **Secrets: No access** · **Variables: No access**
