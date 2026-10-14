@@ -1,15 +1,17 @@
-# ULTIMO REPORT — 2026-10-14 — D4: cartelle di chiavi mai scrivibili (gate)
+# ULTIMO REPORT — 2026-10-14 — Chiusura sessione: stato del token G-3 e riserve di #204
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #204 (tocca il cancello: il bot darà riserve o neutral → decide l'operatore).
-2. Fetta di sicurezza: secondo passaggio nella chat claude.ai col link della PR #204.
+1. Merge della PR #205 (solo `reports/`, nessun codice).
+2. G-3: collegare il token `gas-agente` a Claude Code sul Mac (guida in `reports/setup_agente_non_admin.md`), nella prossima chat.
 
 ## Esito
 
-- **R-bot202-2** — FATTA: in `livello_scrittura` MAI se un pezzo intermedio del percorso è keys/, tokens/, passwd/, shadow/ (anche copie -, ~, .bak, .old). La lettura resta come in D3 (keys/readme.md, shadow/readme.md leggibili).
-- **Commento fuori posto di `_COPIA_GH_RE`** (cosmetica, bot #202) — FATTA.
-- **R-bot202-1** (`kubeconfig` senza bordo) — SALTATA: fuori dalla richiesta, resta riserva.
-- **Misura su file reali** — nessun cambio di esito rispetto a origin/main (180 voci).
-- **Test** — tests/test_unit_gate.py 565 passed (con il gate di main 8 failed); pytest tests/ 1371 passed.
-- **Review** — #338 APPROVATO.
+- **Riserve di #204** (verifica esterna e bot) — FATTA: R-ve204-1 (BASSA, copie di cartella fuori lista ancora scrivibili) e una cosmetica tracciate in `reports/stato_progetto.md`.
+- **Stato G-3** — FATTA (solo tracciamento): sul Mac `scripts/avviso_token_admin.sh` stampa ancora «AMMINISTRA»; registrato in stato_progetto come prossimo passo.
+- **Collegamento del token** — DEFERITA — lo fa l'operatore nella prossima chat (messaggio di ripresa fornito in chat).
+- **Discussione della roadmap** — DEFERITA — dopo il token, nella prossima chat.
+
+## Anomalie
+
+- Nessuna.
