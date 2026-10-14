@@ -616,7 +616,15 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   ".yarnrc.yml", ".sentryclirc", "client.ovpn", "wg0.conf",
                                   # R-329-1: nomi scritti da persone, con lo spazio
                                   "Seed Phrase.txt", "recovery phrase.txt", "ssh key", "deploy key",
-                                  "access token", "api token", "private key", "gh token"])
+                                  "access token", "api token", "private key", "gh token",
+                                  # D3: altri fornitori senza estensione, separatore ripetuto,
+                                  # copie e liste di password, cartella della CLI GitHub
+                                  "bot_token", "auth_token", "telegram_token", "slack_token",
+                                  "mistral_key", "cohere_key", "oauth_token", "api  key", "api__key",
+                                  "seed  phrase", "mnemonic.json", "passwords_backup.txt",
+                                  "password_list.txt", "password-prod.csv", "passwords copy.txt",
+                                  "password (1).txt", "password_2024.txt", ".config/gh/hosts.yml",
+                                  ".config/gh", "dati/keys", "x/shadow-"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -636,7 +644,11 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   "keyboard.md", "keynote.md", "monkey.py", "passwordless.md",
                                   "session_notes.md", "seed_data.csv", "auth_flow.md",
                                   "dati/tokenizer.model", ".azure-pipelines/ci.yml",
-                                  "dati/sessions.md", "dati/password_reset.md", "a private keynote.md"])
+                                  "dati/sessions.md", "dati/password_reset.md", "a private keynote.md",
+                                  # D3: il nome intero vale solo per l'ultimo pezzo (R-bot201-3)
+                                  "keys/prod.txt", "shadow/readme.md", "tokens/note.md",
+                                  "author_key.md", ".config/ghostty/config", ".config/gh_notes.md",
+                                  "password_policy.md"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE

@@ -288,21 +288,26 @@ _CHIAVE_PRIVATA_RE = re.compile(
     r"|client[-_]?secrets?"
     # D2 (secondo passaggio claude.ai #198): chiavi API e token con nome parlante,
     # anche senza estensione e con lo spazio («Seed Phrase.txt», R-329-1); key.txt / prod_keys.yaml (il bordo copre il prefisso_).
-    r"|api[-_ ]?(key|token)s?|(access|refresh)[-_ ]?tokens?"
-    r"|(gh|github|hf|openai|anthropic|gemini|groq)[-_ ]?(token|key)s?"
+    # D3: separatore ripetibile (`api  key`, `api__key`: R-ve201-2) e altri fornitori
+    # senza estensione (bot_token, telegram_token, slack_token, mistral_key: R-329-2).
+    r"|api[-_ ]*(key|token)s?|(access|refresh)[-_ ]*tokens?"
+    r"|(gh|github|hf|openai|anthropic|gemini|groq|mistral|cohere|slack|telegram|bot|o?auth)"
+    r"[-_ ]*(token|key)s?"
     r"|keys?\.(txt|json|ya?ml)"
-    r"|private[-_ ]?keys?|privkeys?|(ssh|deploy)[-_ ]?keys?|rsa_keys?"
+    r"|private[-_ ]*keys?|privkeys?|(ssh|deploy)[-_ ]*keys?|rsa_keys?"
     # D2: sessioni del browser (Playwright storage_state), OAuth, cookie
     r"|cookies?\.(json|txt|sqlite)|(storage|auth)_state\.json|oauth2?\.json|sessions?\.json"
     # D2: portafogli e frasi di recupero (seed_data.csv resta fuori)
-    r"|keystore\.json|(seed|mnemonic)\.txt|(seed|recovery)[-_ ]?phrase"
-    r"|passwords?(\.[a-z0-9]+)*~?$|wg[0-9]+\.conf"  # passwordless.md resta fuori
+    r"|keystore\.json|(seed|mnemonic)\.(txt|json)|(seed|recovery)[-_ ]*phrase"
+    # D3 (R-ve201-1, R-bot201-1): anche le copie e le liste (passwords_backup.txt,
+    # password_list.txt, password-prod.csv, «passwords copy.txt», «password (1).txt»,
+    # password_2024.txt); passwordless.md e password_reset.md restano fuori.
+    r"|passwords?([-_ ]+(backup|bak|old|new|copy|list|prod|dev|[0-9]+)| ?\([0-9]+\))*"
+    r"(\.[a-z0-9]+)*~?$"
+    r"|wg[0-9]+\.conf"
     r")(?![a-z])"
     # D1/D2: anche con prefisso (mywallet.dat, mykubeconfig, kubeconfigs)
     r"|wallet\.(dat|json|txt)(?![a-z])|kubeconfig"
-    # Nome intero del pezzo (+ copie ~ .bak .old e il «-» di /etc/shadow-):
-    # tokens.md, keys.md e session_notes.md restano leggibili.
-    r"|^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$"
     # D1: .dockercfg, .vault-token, _netrc (nome Windows di .netrc); D2: .azure, .auth
     # e le config con credenziali (BASSA): .terraformrc .boto .s3cfg .my.cnf .yarnrc
     r"|^\.(ssh|gnupg|aws|kube|docker|dockercfg|vault-token|netrc|pgpass|pypirc|htpasswd|npmrc"
@@ -317,6 +322,16 @@ _CHIAVE_PRIVATA_RE = re.compile(
 )
 
 
+# Nome intero dell'ULTIMO pezzo (+ copie ~ .bak .old e il «-» di /etc/shadow-):
+# tokens.md, keys.md e session_notes.md restano leggibili. D3 (R-bot201-3): solo
+# l'ultimo pezzo, così una cartella keys/ o shadow/ non rende illeggibile il contenuto.
+_NOME_INTERO_RE = re.compile(r"^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$")
+
+# D3 (R-329-2): file di credenziali riconoscibili solo dal percorso, non dal nome:
+# la cartella della CLI GitHub (.config/gh/hosts.yml contiene il token).
+_PERCORSO_SEGRETO_RE = re.compile(r"(?:^|/)\.config/gh(?:/|$)")
+
+
 def _nome_da_segreto(normalized: str) -> bool:
     """V-2 verifica esterna #181 + R-274-1 + R-275-1: un pezzo del percorso con `.env`
     NON seguito da una lettera (prod.env, prod.env.local, prod.env~, «prod.env copy»,
@@ -324,7 +339,12 @@ def _nome_da_segreto(normalized: str) -> bool:
     leggibili; `x.environment.py`, `a.envelope.md`, `envoy.py` no (percorso casefold).
     Lo stesso per chiavi private e credenziali (_CHIAVE_PRIVATA_RE).
     Punti/spazi finali tolti."""
-    for p in PurePosixPath(normalized).parts:
+    parti = PurePosixPath(normalized).parts
+    if parti and _NOME_INTERO_RE.search(parti[-1].rstrip(". ")):
+        return True
+    if _PERCORSO_SEGRETO_RE.search(normalized):
+        return True
+    for p in parti:
         pulito = p.rstrip(". ")
         # R-324-3: un pezzo oltre 255 caratteri non è un nome di file reale; negarlo
         # subito tiene lineare il costo della regex (fail-closed).
