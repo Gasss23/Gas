@@ -334,9 +334,11 @@ _NOME_INTERO_RE = re.compile(r"^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$
 # (keys/openai, tokens/github, keys/prod.toml, keys/telegram.py con TOKEN = "...")
 # tranne la documentazione (bot #202 su aec8d83 V-1): keys/readme.md resta leggibile.
 # Bot #202 (sullo SHA 9f5446b) V-1: anche le copie della cartella (keys.bak/, keys~/).
-_COPIA_GH_RE = re.compile(r"^gh(-|~|\.bak|\.old)?$")
 _NOME_CARTELLA_CHIAVI_RE = re.compile(r"^(tokens?|keys?)(-|~|\.bak|\.old)?$")
 _DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst)$")
+
+# La cartella della CLI GitHub e le sue copie (bot #202 su c2a62d2 V-1: gh.bak/, gh~/).
+_COPIA_GH_RE = re.compile(r"^gh(-|~|\.bak|\.old)?$")
 
 
 def _nome_da_segreto(normalized: str) -> bool:
@@ -404,6 +406,10 @@ def livello_scrittura(relative_path: Any) -> int:
                 puliti[1].startswith(_LIVELLO3_CANCELLO[1]):
             return LIVELLO_MAI
         if _nome_da_segreto(norm):  # segreti illeggibili: mai scritti né sovrascritti
+            return LIVELLO_MAI
+        # R-bot202-2: dentro keys/, tokens/, passwd/, shadow/ (e copie) MAI in scrittura,
+        # come su main prima di D3; la lettura della documentazione resta aperta.
+        if any(_NOME_INTERO_RE.search(p) for p in puliti[:-1]):
             return LIVELLO_MAI
         for part in parts + puliti:
             if part.startswith(_LIVELLO2_PREFISSI):
