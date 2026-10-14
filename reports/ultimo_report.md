@@ -17,4 +17,5 @@
 - **Test** — tests/test_unit_gate.py 520 passed dopo V-1 (514 prima; con il gate di main 22 failed); pytest tests/ 1320 passed.
 - **Review** — #331 APPROVATO CON RISERVE: R-331-1 (BASSA) eccesso su password_new.md, password_dev.md, slack_tokens_docs.md, accodata a R-329-3.
 - **Verifica esterna #202** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA ([commento](https://github.com/Gasss23/Gas/pull/202#issuecomment-6167193706)). V-1 (bot.token, telegram.token col punto) chiusa in fetta: review #332 APPROVATO CON RISERVE (R-332-1 BASSA, eccesso su auth.keys.md, bot.token.md). V-2 (suffissi password fuori lista) e V-3 (solo macOS/Windows) tracciate in stato_progetto.md.
+- **Bot #202** (sullo SHA f6b3ed9) — APPROVATO CON RISERVE, tre BASSE tutte chiuse in fetta: fornitori usati da Gas (openrouter, elevenlabs, voice, claude e altri); in keys/ e tokens/ negato tutto tranne .md/.rst/.py; `.config/gh` confrontato sui pezzi puliti. Review #333 APPROVATO CON RISERVE (R-333-1 chiusa, R-333-2 BASSA eccessi), #334 APPROVATO. Test gate 540 passed, pytest tests/ 1346 passed.
 - **Riserve di #200** (bot e verifica esterna) — tracciate in stato_progetto.md come promesso.

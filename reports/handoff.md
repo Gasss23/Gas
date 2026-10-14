@@ -20,6 +20,7 @@
 - **Password con suffisso di copia/lista** (R-ve201-1, R-bot201-1): `FATTA`.
 - **Separatore ripetibile** (R-ve201-2) e mnemonic.json: `FATTA`.
 - **Verifica esterna #202 V-1** (fornitori col punto: bot.token): `FATTA` — review #332.
+- **Bot #202 V-1/V-2/V-3** (fornitori usati da Gas; tutto negato in keys/ e tokens/ tranne .md/.rst/.py; `.config/gh` sui pezzi puliti): `FATTA` — review #333 e #334 (R-333-1 chiusa).
 - **Nome intero solo sull'ultimo pezzo** (R-bot201-3): `FATTA`.
 - **R-bot201-2** (composti incollati senza separatore): `SALTATA` — limite del bordo sinistro, resta riserva.
 
@@ -28,19 +29,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- modules/gate/gate.py               |  38 +++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/gate/gate.py               |  50 ++++++++++++++++++++++++++++++++++++++++----------
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 207 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           | 132 ++++++++++++++----------------------------------------------------------------------------------------------------------------------
- tests/test_unit_gate.py            |  17 +++++++++++++++--
- 7 files changed, 152 insertions(+), 260 deletions(-)
+ reports/ultimo_report.md           | 133 +++++++++++++++----------------------------------------------------------------------------------------------------------------------
+ tests/test_unit_gate.py            |  25 +++++++++++++++++++++++--
+ 7 files changed, 253 insertions(+), 261 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b99d826 fix(gate): note del bot su #202 — fornitori usati da Gas, cartelle keys/ e tokens/, .config/gh sui pezzi puliti
+659392e chore(revisore): memoria review #334 — APPROVATO
+c855da4 chore(revisore): memoria review #333 — APPROVATO CON RISERVE
+2da725a docs(fine-task): report e handoff — D3 + V-1 #202
 36f7542 fix(gate): fornitori di token anche col punto (bot.token, telegram.token)
 d1dbd89 chore(revisore): memoria review #332 — APPROVATO CON RISERVE
 f6b3ed9 docs(fine-task): report e handoff — D3 (PR #202)
@@ -124,22 +129,100 @@ Rischio escluso: non ho rieseguito `tests/test_unit_gate.py` (520 passed dichiar
 
 Memoria aggiornata: riga #332 aggiunta e committata con `bash scripts/commit_memoria_revisore.sh` (nessun errore).
 
+### Review #333 (diff poi committato come b99d826, prima di R-333-1) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho letto CLAUDE.md, la memoria del revisore e il diff staged (gate.py + test_unit_gate.py). Non ho riletto per intero stato_progetto.md: ho fatto solo un grep delle sezioni. Ho riprodotto la suite e scritto una sonda (`/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/sonda.py`) con 40 nomi e 4 misure di costo. Memoria aggiornata con la riga #333 (massimo precedente #332) e committata con `commit_memoria_revisore.sh`.
+
+Elementi del diff esaminati:
+- `modules/gate/gate.py:297` — aggiunge openrouter, elevenlabs, voice, claude, discord, gitlab, npm, pypi, huggingface al ramo dei fornitori. Rischio: falsi positivi.
+  - Esito: ok.
+  - Il ramo richiede `(token|key)s?` subito dopo il fornitore.
+  - Restano leggibili: `modules/voice/tts.py`, `modules/voice/__init__.py`, `voice_keyboard.md`, `npm_tokenizer.py`, `npm-debug.log`, `package-lock.json`.
+  - Negati: `voice_key_notes.md`, `claude_key.md`, `discord_key_docs.md`, `pypi_token.txt`, `voicekey.txt`, `.npmrc`.
+  - `voice_key_notes.md` e `claude_key.md` sono eccessi. Vedi R-333-2.
+- `modules/gate/gate.py:333-334` e `:348-350` — regola «cartella keys/tokens + ultimo pezzo senza estensione o .txt/.json/.yml». Rischio: riapertura di keys/openai, tokens/github, keys/prod.txt.
+  - Esito: ok per i casi segnalati dal bot.
+  - Negati: `keys/openai`, `Keys/OpenAI`, `keys./openai`, `keys /openai`, `keys/sub/x`, `keys/x.yaml`, `key/x.json`, `tokens/a.TXT`.
+  - Leggibili, come voluto: `keys/readme.md`, `keys/setup.py`, `keys/__init__.py`, `keys/sub/x.md`.
+  - Costo: `^[^.]+$` è lineare. Un pezzo da 1 MB costa 5–10 ms. Su 255 caratteri costa 0,03 ms. Il tetto 255 resta prima di `_SEGRETO_RE` e `_CHIAVE_PRIVATA_RE`.
+- `modules/gate/gate.py:348,357` — `.config/gh` ora confrontato sui pezzi puliti con `rstrip(". ")`, e `_PERCORSO_SEGRETO_RE` eliminata. Rischio: bypass con punti o spazi.
+  - Esito: ok.
+  - Negati: `.config./gh/hosts.yml`, `.config/gh /hosts.yml`, `a/.config/gh`, `/.config//gh/x`.
+  - Leggibili: `.config/ghostty/c`, `.config/gh_notes.md`.
+  - `.config/. /gh` resta leggibile, ma è una directory diversa da `.config/gh`, quindi non è un bypass.
+- `tests/test_unit_gate.py:625-635` e `:654-660` — nuovi casi negati e leggibili. Rischio: test che non mordono.
+  - Esito: ok.
+  - 538 passed riprodotti.
+  - Il passaggio `keys/prod.txt` da leggibile a negato è coerente col V-2.
+  - I nuovi leggibili `voiceover.md`, `claudette.md` e `keys/setup.py` coprono i falsi positivi dei nuovi fornitori.
+  - Non ho rifatto la mutazione dei test.
+
+Riserve, entrambe BASSE e tracciabili:
+- R-333-1: la regola di keys/ e tokens/ usa una lista chiusa di estensioni, quindi restano leggibili `keys/prod.toml`, `keys/prod.ini`, `keys/a.cfg`, `keys/a.csv`, `keys/a.json5` e `tokens/a.conf` (verificati). Proposta: invertire la logica, cioè negare tutto in keys/ e tokens/ tranne una lista bianca di estensioni di documentazione (.md, .py, .rst).
+- R-333-2: eccessi che non toccano segreti, sulla stessa linea di R-329-3. Sono `keys/Makefile`, `tokens/LICENSE`, `keys/readme` (senza estensione), `voice_key_notes.md`, `claude_key.md`. Accettabile per fail-closed.
+
+Rischio escluso:
+- Non ho confrontato i 180 percorsi di `git ls-files` più albero di lavoro con origin/main. Mi fido della misura dichiarata. Ho guardato solo i file voice/claude/npm tracciati (`clients/voice/*`, `.claudeignore`, `.claude/*`) e nessuno corrisponde al ramo con `(token|key)`.
+- I backslash di Windows non sono trattati. L'autore lo dichiara e il server gira su Linux.
+- Non ho eseguito la suite completa del repo, solo `tests/test_unit_gate.py`.
+- Il comportamento su VPS non è verificato.
+
+File rilevanti:
+- /home/user/Gas/modules/gate/gate.py
+- /home/user/Gas/tests/test_unit_gate.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #334 (commit b99d826, dopo R-333-1) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Secondo giro sul diff staged aggiornato (R-333-1). Ho riletto il diff e rilanciato la suite e una sonda. Riga #334 aggiunta in `.claude/agents/memoria_revisore.md` e committata con `commit_memoria_revisore.sh`. Il diff del motore non è stato committato.
+
+Elementi del diff esaminati:
+- `modules/gate/gate.py:337` — `_DOC_IN_CARTELLA_CHIAVI_RE = \.(md|rst|py)$` sostituisce la lista chiusa delle estensioni vietate con una lista bianca. Rischio: un'estensione non prevista restava leggibile dentro keys/ e tokens/.
+  - Esito: ok.
+  - Ora sono negati `keys/prod.toml`, `tokens/a.conf`, `keys/a.json5`, `keys/Makefile`, `keys/x.md.bak` e `keys/x.py~`.
+  - Il backup `.bak` non passa la lista bianca perché il pattern è ancorato a fine nome.
+- `modules/gate/gate.py:351` — `not _DOC_IN_CARTELLA_CHIAVI_RE.search(puliti[-1])` e almeno un pezzo intermedio uguale a `keys?` o `tokens?`. Rischio: falsi positivi su cartelle di codice.
+  - Esito: ok.
+  - Restano leggibili `keys/readme.md`, `keys/setup.py`, `modules/keys/__init__.py`, `src/keys/utils.py` e `tokens.py` (il file `tokens.py` non è in una cartella).
+  - Il caso `keys` da solo è negato dalla regola del nome intero.
+  - Con `len(puliti) > 1` la regola riguarda solo i file dentro la cartella, non il nome del percorso stesso.
+  - Il costo non cambia: la nuova regex è ancorata e gira sul pezzo già pulito.
+- `tests/test_unit_gate.py` (casi aggiunti nelle liste dei negati e dei leggibili) — la suite dà 540 passed riprodotti. Non ho rifatto la mutazione dei test.
+
+Riserve residue (accettate, BASSE):
+- `keys/x.py`, `keys/x.md` e `keys/.md` sono leggibili per scelta, perché sono documenti o codice. Un file con un segreto salvato con quelle estensioni (es. `keys/segreto.md`) passerebbe. Il rischio è basso perché le altre regole per nome continuano ad applicarsi.
+- `keys/x.PY` è leggibile (corrisponde al pattern ignorando le maiuscole). Il rischio è lo stesso.
+- Eccessi: `keys/Makefile`, `tokens/LICENSE`, `keys/readme` senza estensione. È la linea già tracciata come R-333-2.
+
+Rischio escluso:
+- Non ho rieseguito il confronto dei 180 percorsi contro origin/main; mi fido della misura dichiarata (nessun cambio di esito).
+- Non ho eseguito la suite completa del repo, solo `tests/test_unit_gate.py`.
+- Il comportamento su VPS non è verificato.
+
+File: /home/user/Gas/modules/gate/gate.py, /home/user/Gas/tests/test_unit_gate.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gate.py: 486 → 514 passed (D3) → 520 passed (V-1 #202). Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
+tests/test_unit_gate.py: 486 → 514 passed (D3) → 520 passed (V-1 #202) → 540 passed (bot #202 V-1/V-2/V-3, R-333-1). Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
 
-pytest `tests/`: `1320 passed in 227.96s (0:03:47)`.
+pytest `tests/`: `1346 passed in 176.83s (0:02:56)` (dopo le note del bot su #202).
 
 ## §6 STATO CI
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `f6b3ed9`: run della PR #202 partite prima del fix V-1; esito non riportato qui (superato dalla testa nuova).
-- `40ef097`, `e72350f`, `d1dbd89`, `36f7542`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
+- `2da725a`: run della PR #202 partite prima delle note del bot; il bot ha annullato la verifica (testa cambiata).
+- `40ef097`, `e72350f`, `d1dbd89`, `36f7542`, `c855da4`, `659392e`, `b99d826`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-331-1 (BASSA), accodata a R-329-3 in `reports/stato_progetto.md`.
 - R-bot201-2 (BASSA) resta aperta.
+- R-333-2 (BASSA, eccessi: keys/Makefile, voice_key_notes.md) e la scelta di lasciare leggibili .md/.rst/.py in keys/ (review #334).
 - R-332-1 (BASSA), R-ve202-2 (BASSA), R-ve202-3 (BASSA, solo macOS/Windows) in `reports/stato_progetto.md`.
