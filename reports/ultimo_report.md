@@ -3,7 +3,8 @@
 ## DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #205 (solo `reports/`, nessun codice).
-2. G-3: collegare il token `gas-agente` a Claude Code sul Mac (guida in `reports/setup_agente_non_admin.md`), nella prossima chat.
+2. Fetta di sicurezza D4 (#204): secondo passaggio nella chat claude.ai col link della PR #204 (ancora da fare).
+3. G-3: collegare il token `gas-agente` a Claude Code sul Mac (guida in `reports/setup_agente_non_admin.md`), nella prossima chat.
 
 ## Esito
 

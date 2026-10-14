@@ -7,7 +7,8 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #205 (https://github.com/Gasss23/Gas/pull/205).
-2. G-3: collegare il token `gas-agente` a Claude Code sul Mac, nella prossima chat.
+2. Fetta di sicurezza D4 (#204): secondo passaggio nella chat claude.ai col link della PR #204 (ancora da fare).
+3. G-3: collegare il token `gas-agente` a Claude Code sul Mac, nella prossima chat.
 
 (`gh` non disponibile nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
@@ -31,6 +32,8 @@
  reports/ultimo_report.md  | 20 +++++++++++---------
  4 files changed, 29 insertions(+), 58 deletions(-)
 ```
+
+NB: lo stat è preso prima del commit che contiene questo file, quindi le righe di handoff.md non sono quelle finali.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
