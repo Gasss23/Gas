@@ -27,17 +27,17 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |   5 +++++
  CLAUDE.md                          |   2 +-
  reports/diff_sessione.md           |  10 ++++++----
- reports/handoff.md                 | 129 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
+ reports/handoff.md                 | 152 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
  reports/setup_agente_non_admin.md  |   8 ++++----
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  28 +++++++++++++---------------
+ reports/ultimo_report.md           |  29 ++++++++++++++---------------
  scripts/avviso_token_admin.sh      |  19 ++++++++++++++++---
  scripts/gasmerge.sh                |  10 ++++++++--
  tests/test_unit_gasmerge.py        |  98 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 10 files changed, 241 insertions(+), 71 deletions(-)
+ 10 files changed, 266 insertions(+), 71 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -45,6 +45,9 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d80da9e fix(g3): messaggio di BLOCCO non attribuisce sempre la causa al token
+53915cd chore(revisore): memoria review #342 — APPROVATO
+6ac6415 docs(fine-task): report e handoff — verifica esterna #207
 08cfd3c fix(g3): argomento sconosciuto di avviso_token_admin.sh → exit 2
 ada22dc chore(revisore): memoria review #341 — APPROVATO
 d62eb75 docs(fine-task): report e handoff — bot #207 (58632e1)
@@ -129,11 +132,32 @@ Rischio escluso: non ho eseguito `fine_task_finale.sh` né `gasmerge --auto` end
 
 Memoria: aggiunta la riga #341 (il massimo esistente era #340) e committata con `scripts/commit_memoria_revisore.sh`. Nessuna lezione nuova.
 
+### Review #342 (commit successivo a 53915cd, messaggio di BLOCCO) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Il diff staged è una sola riga, cioè il testo del messaggio di blocco. Non cambia la logica.
+
+Elementi del diff esaminati:
+- `scripts/gasmerge.sh:45` — il messaggio del ramo `bash "$G3" --blocco || {…; exit 1; }` ora dice «token gh non verificato o che amministra il repo (vedi l'avviso sopra; per il token sbagliato: avvia Claude Code con gasclaude)».
+  - Rischio esaminato: che il testo nuovo cambi il comportamento o nasconda la causa. Il `|| { …; exit 1; }` e il fail-closed (exit 1) sono identici a prima.
+  - «Vedi l'avviso sopra» è corretto: `scripts/avviso_token_admin.sh` stampa su stderr l'avviso della causa (gh assente, rate limit, repo non visibile, amministra) prima di uscire con 1.
+  - Esito: ok. La riga 44, con lo script assente, resta intatta.
+- `tests/test_unit_gasmerge.py:1610` (contesto, non nel diff) — `test_gasmerge_auto_blocca_col_token_admin` cerca solo la sottostringa «BLOCCO: G-3», che il messaggio nuovo conserva. Esito: ok.
+- `tests/test_unit_gasmerge.py:1576` (contesto) — il test sullo script assente cerca «BLOCCO: G-3» e «assente», e questo è il messaggio della riga 44, non toccata. Esito: ok.
+- `scripts/avviso_token_admin.sh:21` (contesto) — con `--blocco` il rifiuto parte da `esci` (exit 1) per gh assente, rate limit, non verificabile o admin. La riga 45 copre quindi tutti questi casi, e il messaggio nuovo non attribuisce più sempre la causa al token sbagliato. Chiude V-4 (COSMETICA) del bot #207 e della verifica esterna. Esito: ok.
+
+Il diff non tocca CLAUDE.md sez. 5 (`_get_window`, tool simulation), i guardrail del motore né i provider, quindi non c'è nulla da verificare lì.
+
+Rischio escluso: non ho rieseguito `pytest`. Mi fido delle misure che mi hai dato (111 passed in `test_unit_gasmerge.py`, 1381 su `tests/`). Non ho riprodotto nemmeno i 9 failed con gli script di origin/main. Il confronto è solo statico: la sottostringa cercata dai test è presente nel messaggio nuovo.
+
+Memoria aggiornata con la riga #342 e committata con `scripts/commit_memoria_revisore.sh`. Il massimo numerico precedente era 341.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gasmerge.py: 101 → 106 passed → 108 passed → 111 passed (verifica esterna #207 V-2) (bot #207 V-1/V-3; il test di OK nell'ambiente fallisce con lo script precedente). Mutazione: con gli script di origin/main `4 failed, 102 passed`.
+tests/test_unit_gasmerge.py: 101 → 111 passed (sulla testa di codice finale). Mutazione: con gli script di origin/main `9 failed, 102 passed`.
 
-pytest `tests/`: `1376 passed in 190.89s (0:03:10)`.
+pytest `tests/`: `1381 passed in 172.29s (0:02:52)` (sulla testa di codice finale).
 
 ## §6 STATO CI
 
@@ -142,13 +166,15 @@ pytest `tests/`: `1376 passed in 190.89s (0:03:10)`.
 - `989fa0c`, `0996de7`, `17f40c3`: nessuna run su questi SHA (pushati prima dell'apertura della PR #207).
 - `a0f39b7` (fine-task precedente): run della PR #207 partita; esito non riportato qui (superato dalla testa nuova).
 - `58632e1`: unit-suite e handoff-check sulla PR #207; bot NON approvata (V-1 MEDIA, corretta qui).
-- `d62eb75`: run della PR #207 partita; esito non riportato qui (superato dalla testa nuova).
-- `a9df945`, `b031722`, `1e9d44f`, `ada22dc` e il fix V-2: nessuna run su questi SHA (pushati insieme al commit di fine-task).
+- `6ac6415`: run della PR #207 partita; esito non riportato qui (superato dalla testa nuova).
+- `d62eb75`: unit-suite in corso alla verifica del bot; bot APPROVATO CON RISERVE (neutral), note V-1 (numeri dei test) e V-2 (messaggio) chiuse qui.
+- `d62eb75` (dettaglio): run della PR #207 partita; esito non riportato qui (superato dalla testa nuova).
+- `a9df945`, `b031722`, `1e9d44f`, `ada22dc` il fix V-2, `53915cd` e il fix del messaggio: nessuna run su questi SHA (pushati insieme al commit di fine-task).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - Nessuna riserva dalle review #340/#341.
-- Verifica esterna #207 V-3 (BASSA): il blocco copre solo `gasmerge --auto`, non `gh pr merge` diretto; V-4 (COSMETICA) = nota della #339.
+- Verifica esterna #207 V-3 (BASSA): il blocco copre solo `gasmerge --auto`, non `gh pr merge` diretto; V-4 (COSMETICA) = nota della #339, CHIUSA (review #342).
 - Nota minore della review #339: il messaggio di BLOCCO cita `gasclaude` anche quando la causa è rete o rate limit.
 - Alias `gasclaude` non fail-safe se il file del token manca (bot #206 V-1), da cambiare sul Mac.
