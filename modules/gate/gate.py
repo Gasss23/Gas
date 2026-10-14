@@ -328,17 +328,31 @@ _CHIAVE_PRIVATA_RE = re.compile(
 # Nome intero dell'ULTIMO pezzo (+ copie ~ .bak .old e il «-» di /etc/shadow-):
 # tokens.md, keys.md e session_notes.md restano leggibili. D3 (R-bot201-3): solo
 # l'ultimo pezzo, così una cartella keys/ o shadow/ non rende illeggibile il contenuto.
-_NOME_INTERO_RE = re.compile(r"^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$")
+# D5 (secondo passaggio claude.ai su #204, MEDIA): le copie di una cartella o di un file
+# di chiavi hanno molti nomi oltre a ~ .bak .old: «keys copy» (Finder), «keys (1)»,
+# keys.backup, keys_old, keys2, old_keys. Stessa lista delle copie delle password (D3).
+# Gruppi atomici e quantificatore possessivo: niente backtracking esponenziale.
+_COPIA_SUFFISSI = (r"(?>[-_ .]+(?:copy|copia|backup|bak|old|orig|new|[0-9]+)"
+                   r"| ?\([0-9]+\)|~|-)*+")
+_COPIA_PREFISSO = r"(?:(?:old|backup|bak|copy|copia)[-_ ]+)?"
+
+
+def _nome_con_copie(nomi: str) -> re.Pattern[str]:
+    """Nome intero del pezzo (nomi = alternativa regex) con prefissi e suffissi di copia."""
+    return re.compile(rf"^{_COPIA_PREFISSO}(?:{nomi})[0-9]*+{_COPIA_SUFFISSI}$")
+
+
+_NOME_INTERO_RE = _nome_con_copie(r"tokens?|keys?|passwd|shadow")
 
 # Bot #202 V-2 + R-333-1: dentro una cartella keys/ o tokens/ è negato tutto
 # (keys/openai, tokens/github, keys/prod.toml, keys/telegram.py con TOKEN = "...")
 # tranne la documentazione (bot #202 su aec8d83 V-1): keys/readme.md resta leggibile.
 # Bot #202 (sullo SHA 9f5446b) V-1: anche le copie della cartella (keys.bak/, keys~/).
-_NOME_CARTELLA_CHIAVI_RE = re.compile(r"^(tokens?|keys?)(-|~|\.bak|\.old)?$")
+_NOME_CARTELLA_CHIAVI_RE = _nome_con_copie(r"tokens?|keys?")
 _DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst)$")
 
 # La cartella della CLI GitHub e le sue copie (bot #202 su c2a62d2 V-1: gh.bak/, gh~/).
-_COPIA_GH_RE = re.compile(r"^gh(-|~|\.bak|\.old)?$")
+_COPIA_GH_RE = _nome_con_copie(r"gh")
 
 
 def _nome_da_segreto(normalized: str) -> bool:
@@ -350,6 +364,10 @@ def _nome_da_segreto(normalized: str) -> bool:
     Punti/spazi finali tolti."""
     parti = PurePosixPath(normalized).parts
     puliti = [p.rstrip(". ") for p in parti]
+    # R-324-3 (anticipato da D5): un pezzo oltre 255 caratteri non è un nome reale;
+    # negarlo PRIMA di ogni regex tiene limitato il costo di tutte (fail-closed).
+    if any(len(p) > 255 for p in puliti):
+        return True
     if puliti and _NOME_INTERO_RE.search(puliti[-1]):
         return True
     if (len(puliti) > 1 and not _DOC_IN_CARTELLA_CHIAVI_RE.search(puliti[-1])
