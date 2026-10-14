@@ -27,7 +27,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-X2
+ .claude/agents/memoria_revisore.md |  2 ++
+ modules/gate/gate.py               | 27 ++++++++++++++++++++++++---
+ reports/diff_sessione.md           |  8 +++++---
+ reports/handoff.md                 | 84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
+ reports/stato_progetto.md          |  3 ++-
+ reports/ultimo_report.md           | 22 +++++++++++++++-------
+ tests/test_unit_gate.py            | 21 ++++++++++++++++++---
+ 7 files changed, 128 insertions(+), 39 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -35,7 +42,13 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-X3
+d05cadf Merge origin/main in feat/gate-d5-copie-cartelle (conflitti sui report dopo #209)
+854347b docs(fine-task): report e handoff — bot e verifica esterna #210
+4816117 fix(gate): parole di copia uguali in prefisso e suffisso, cifre attaccate (bot #210)
+9f255ba chore(revisore): memoria review #344 — APPROVATO
+31ffae0 docs(fine-task): report e handoff — D5 (PR #210)
+0b03da5 feat(gate): D5 — copie di cartelle e file di chiavi con qualsiasi nome comune
+590eaaa chore(revisore): memoria review #343 — APPROVATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
