@@ -20,6 +20,7 @@
 - **Token salvato e verificato sul Mac**: `FATTA` — `avviso_token_admin.sh` → «non amministra il repo — OK».
 - **Alias `gasclaude`**: `FATTA`.
 - **G-3 in stato_progetto.md**: `FATTA`.
+- **Prevenzione dell'errore** (gasclaude negato): `FATTA` — regole in CLAUDE.md, setup aggiornato.
 - **Fase 2 (avviso → blocco)**: `DEFERITA` — decisione dell'operatore.
 
 ---
@@ -27,11 +28,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  6 +++---
- reports/handoff.md        | 40 ++++++++++++++++------------------------
- reports/stato_progetto.md |  4 ++--
- reports/ultimo_report.md  | 21 +++++++++++----------
- 4 files changed, 32 insertions(+), 39 deletions(-)
+ CLAUDE.md                         |  2 ++
+ reports/diff_sessione.md          |  8 +++++---
+ reports/handoff.md                | 42 ++++++++++++++++++------------------------
+ reports/setup_agente_non_admin.md |  2 +-
+ reports/stato_progetto.md         |  4 ++--
+ reports/ultimo_report.md          | 22 ++++++++++++----------
+ 6 files changed, 40 insertions(+), 40 deletions(-)
 ```
 
 NB: il conteggio di righe di `reports/handoff.md` è preso prima del proprio commit, quindi non è quello finale.
@@ -39,6 +42,8 @@ NB: il conteggio di righe di `reports/handoff.md` è preso prima del proprio com
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f0aabbf docs(claude-md): avvio con gasclaude obbligatorio; mai negare fatti sul Mac senza verifica
+e7ab76b docs(fine-task): report e handoff — G-3 (PR #206)
 0c01cfa docs(stato): G-3 fatto — token dell'agente senza Administration, alias gasclaude
 ```
 
@@ -56,7 +61,8 @@ Nessuna modifica a gas.py/tests/.
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
-- Commit `docs(stato): G-3 fatto`: nessuna run su questo SHA (pushato prima dell'apertura della PR).
+- `e7ab76b`: run della PR #206 partita; esito non riportato qui (superato dalla testa nuova).
+- Commit `docs(claude-md)` e `docs(stato): G-3 fatto`: nessuna run su questo SHA (pushato prima dell'apertura della PR).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
