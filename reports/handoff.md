@@ -28,14 +28,14 @@
  .claude/agents/memoria_revisore.md |  1 +
  CLAUDE.md                          |  2 +-
  reports/diff_sessione.md           | 10 ++++++----
- reports/handoff.md                 | 75 ++++++++++++++++++++++++++++++++++++---------------------------------------
+ reports/handoff.md                 | 76 +++++++++++++++++++++++++++++++++++++---------------------------------------
  reports/setup_agente_non_admin.md  |  6 +++---
  reports/stato_progetto.md          |  4 ++--
  reports/ultimo_report.md           | 26 +++++++++++---------------
  scripts/avviso_token_admin.sh      | 13 ++++++++++---
  scripts/gasmerge.sh                | 10 ++++++++--
  tests/test_unit_gasmerge.py        | 56 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 10 files changed, 133 insertions(+), 70 deletions(-)
+ 10 files changed, 134 insertions(+), 70 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -43,6 +43,7 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a0f39b7 docs(fine-task): report e handoff — G-3 fase 2 (PR #207)
 17f40c3 docs: G-3 fase 2 fatta (CLAUDE.md, setup, stato)
 0996de7 feat(g3): fase 2 — gasmerge --auto blocca se il token non è quello dell'agente verificato
 989fa0c chore(revisore): memoria review #339 — APPROVATO
@@ -75,7 +76,7 @@ Memoria aggiornata: riga #339 aggiunta a `/home/user/Gas/.claude/agents/memoria_
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gasmerge.py: 100 → 106 passed. Mutazione: con gli script di origin/main `4 failed, 102 passed`.
+tests/test_unit_gasmerge.py: 101 → 106 passed. Mutazione: con gli script di origin/main `4 failed, 102 passed`.
 
 pytest `tests/`: `1376 passed in 190.89s (0:03:10)`.
 
@@ -84,6 +85,7 @@ pytest `tests/`: `1376 passed in 190.89s (0:03:10)`.
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `989fa0c`, `0996de7`, `17f40c3`: nessuna run su questi SHA (pushati prima dell'apertura della PR #207).
+- `a0f39b7` (fine-task precedente): run della PR #207 partita; esito non riportato qui (superato dalla testa nuova).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
