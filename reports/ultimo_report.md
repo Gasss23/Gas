@@ -1,19 +1,24 @@
-# ULTIMO REPORT — 2026-10-14 — PR #205: conflitto con main e finding del bot
+# ULTIMO REPORT — 2026-10-14 — G-3: token dell'agente collegato
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #205 (solo `reports/`): la mergia l'agente da solo SOLO se il bot dà `APPROVATO` senza finding sul nuovo head; altrimenti decide l'operatore.
-2. Fetta di sicurezza D4 (#204): secondo passaggio nella chat claude.ai col link della PR #204 (ancora da fare).
-3. G-3: collegare il token `gas-agente` a Claude Code sul Mac (guida passo passo in corso in chat).
+1. Merge della PR #206: tocca `reports/` E `CLAUDE.md` (due regole nuove obbligatorie: avvio con `gasclaude`; fatti sul Mac da verificare, mai negare). CLAUDE.md è macchina del bot → merge dell'operatore.
+2. G-3 fase 2: decidere se l'avviso del token admin diventa un blocco per `gasmerge --auto`.
+3. Secondo passaggio claude.ai sulla PR #204 (D4), ancora da fare.
 
 ## Esito
 
-- **Controllo di mergiabilità di #205** — FATTA: non mergiabile (conflitto con main dopo #203; `verifica-bot` failure, verdetto APPROVATO CON RISERVE con V-1 MEDIA). CI `unit-suite`/`handoff-check` verdi.
-- **Merge di main in #205** — FATTA: conflitti solo nei log di sessione, tenuta la versione del branch.
-- **Finding del bot su #205** — FATTA: V-1 (MEDIA) secondo passaggio claude.ai di D4 rimesso tra le decisioni umane e nella riga D4 di stato_progetto; V-2 (BASSA) cosmetica V-2 della verifica esterna #204 aggiunta alla riga D4; V-3 (COSMETICA) NB in §2 dell'handoff.
-- **G-3 (token dell'agente)** — DEFERITA — in corso con l'operatore, passo 1 (controllo del token su GitHub) chiesto in chat.
-- **Discussione della roadmap** — DEFERITA — dopo il token.
+- **Controllo del token su GitHub** — FATTA: `gas-agente` esiste, scade 2027-01-04, nessun Administration; «Checks» non è offerto da GitHub per i token fine-grained.
+- **Token salvato sul Mac** — FATTA: `~/.config/gas/agente_token` presente dal 2026-10-06.
+- **Verifica** — FATTA: con `GH_TOKEN=$(cat ~/.config/gas/agente_token)` lo script `avviso_token_admin.sh` stampa «non amministra il repo — OK».
+- **Avvio di Claude Code col token** — FATTA: alias `gasclaude` in `~/.zshrc` (l'operatore conferma che si apre).
+- **G-3 segnato fatto in stato_progetto.md** — FATTA.
+- **Prevenzione dell'errore segnalato dall'operatore** — FATTA: un agente aveva negato che `gasclaude` e il token esistessero, perché il repo non li registrava. Ora CLAUDE.md impone (1) avvio sempre con `gasclaude`, anche quando è l'agente ad aprire la sessione, (2) mai negare fatti sul Mac senza far lanciare un comando di verifica, (3) scrivere subito nel repo ogni configurazione fatta sul Mac. `reports/setup_agente_non_admin.md` dice che il token è salvato dal 2026-10-06 e in uso con `gasclaude` dal 2026-10-14.
+- **Bot #206** (sulla testa e7ab76b, verifica annullata per testa cambiata ma verdetto pubblicato: APPROVATO CON RISERVE) — V-1 (BASSA, la guida chiedeva ancora «Checks») e V-3 (COSMETICA, icona di G-3) corrette; V-2 (COSMETICA, ripartizione +/- di §2) coperta dalla NB.
+- **Bot #206 sulla testa eb8c411** — NON approvata (V-1 MEDIA: descrizione della PR e report dicevano «solo `reports/`» ma la PR tocca CLAUDE.md) → corretti descrizione e report; V-2 (BASSA, «in uso dal 2026-10-06» → «salvato dal 06, in uso dal 14») e V-3 (BASSA, §6 dell'handoff) corrette.
+- **Bot #206 sulla testa e45ac2c** — APPROVATO CON RISERVE (neutral), nessuna ALTA/MEDIA: V-1 (BASSA, date del token in due report), V-2 (COSMETICA, «Prossimo» superato in G-3) e V-3 (COSMETICA, regole spostate in §3 di CLAUDE.md) corrette su richiesta dell'operatore.
+- **Fase 2 (avviso → blocco)** — DEFERITA — decisione dell'operatore.
 
 ## Anomalie
 
-- `gh` nella sessione cloud non è autenticato: stato PR/CI letto via MCP GitHub.
+- Nessuna.

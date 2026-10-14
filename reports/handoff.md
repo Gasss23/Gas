@@ -1,47 +1,58 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-14 — PR #205: conflitto con main e finding del bot
+**Sessione:** 2026-10-14 — G-3: token dell'agente collegato
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #205 (https://github.com/Gasss23/Gas/pull/205) — l'agente la mergia da solo solo con verdetto `APPROVATO` senza finding sul nuovo head.
-2. Fetta di sicurezza D4 (#204): secondo passaggio nella chat claude.ai col link della PR #204 (ancora da fare).
-3. G-3: collegare il token `gas-agente` a Claude Code sul Mac (in corso, passo passo in chat).
+1. Merge della PR #206 (https://github.com/Gasss23/Gas/pull/206): tocca `reports/` e `CLAUDE.md` (regole nuove), macchina del bot → decide l'operatore.
+2. G-3 fase 2: decidere se l'avviso del token admin diventa un blocco per `gasmerge --auto`.
+3. Secondo passaggio claude.ai sulla PR #204 (D4), ancora da fare.
 
-(`gh` non autenticato nella sessione cloud: numero/URL della PR presi da `pull_request_read` via MCP GitHub.)
+(`gh` non disponibile nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Controllo di mergiabilità di #205**: `FATTA` — conflitto con main e `verifica-bot` failure (V-1 MEDIA); CI verde.
-- **Merge di main in #205**: `FATTA` — conflitti solo nei log di sessione.
-- **Finding del bot su #205 (V-1 MEDIA, V-2 BASSA, V-3 COSMETICA)**: `FATTA`.
-- **G-3 (token dell'agente)**: `DEFERITA` — in corso con l'operatore.
-- **Roadmap**: `DEFERITA` — dopo il token.
+- **Controllo del token su GitHub**: `FATTA` — nessun Administration; «Checks» non offerto per i token fine-grained.
+- **Token salvato e verificato sul Mac**: `FATTA` — `avviso_token_admin.sh` → «non amministra il repo — OK».
+- **Alias `gasclaude`**: `FATTA`.
+- **G-3 in stato_progetto.md**: `FATTA`.
+- **Prevenzione dell'errore** (gasclaude negato): `FATTA` — regole in CLAUDE.md, setup aggiornato.
+- **Bot #206 V-1/V-3** (guida con «Checks», icona di G-3): `FATTA`.
+- **Bot #206 su eb8c411 V-1 (MEDIA)/V-2/V-3**: `FATTA` — perimetro corretto (CLAUDE.md dichiarato), «salvato dal 06, in uso dal 14», §6 corretto.
+- **Bot #206 su e45ac2c V-1/V-2/V-3**: `FATTA` — date del token, «Prossimo» di G-3, regole spostate in §3 di CLAUDE.md.
+- **Fase 2 (avviso → blocco)**: `DEFERITA` — decisione dell'operatore.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  6 +++---
- reports/handoff.md        | 46 ++++++++++++++++++++--------------------------
- reports/stato_progetto.md |  4 ++--
- reports/ultimo_report.md  | 18 ++++++++++--------
- 4 files changed, 35 insertions(+), 39 deletions(-)
+ CLAUDE.md                         |  3 +++
+ reports/diff_sessione.md          |  8 +++++---
+ reports/handoff.md                | 50 ++++++++++++++++++++++++++------------------------
+ reports/setup_agente_non_admin.md |  4 ++--
+ reports/stato_progetto.md         |  4 ++--
+ reports/ultimo_report.md          | 25 +++++++++++++++----------
+ 6 files changed, 53 insertions(+), 41 deletions(-)
 ```
 
-NB: lo stat è preso prima di riscrivere questo file, quindi le righe di handoff.md non sono quelle finali.
+NB: conteggi e ripartizione +/- di `reports/handoff.md` (e quindi dei totali) sono presi prima del proprio commit, quindi non sono quelli finali.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-86b8373 docs(stato): merge di main e finding del bot su #205 (secondo passaggio D4, cosmetiche)
-7c7b21c docs(fine-task): report e handoff — chiusura sessione (PR #205)
-f85af79 docs(stato): riserve di #204 e stato del token G-3 a fine sessione
+7eac5b1 docs: note del bot su #206 (e45ac2c) — date del token, Prossimo di G-3, regole in §3
+e45ac2c docs(fine-task): perimetro di #206 dichiarato (CLAUDE.md), note del bot su eb8c411
+eb8c411 docs(fine-task): report e handoff — note del bot su #206
+126b3d0 docs(setup): Checks non offerto per i token fine-grained; G-3 fase 1
+e2355f1 docs(fine-task): report e handoff — G-3 e prevenzione (PR #206)
+f0aabbf docs(claude-md): avvio con gasclaude obbligatorio; mai negare fatti sul Mac senza verifica
+e7ab76b docs(fine-task): report e handoff — G-3 (PR #206)
+0c01cfa docs(stato): G-3 fatto — token dell'agente senza Administration, alias gasclaude
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
@@ -56,13 +67,17 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente): `gh` non autenticato nella sessione cloud; stato letto dai check-run della PR via MCP GitHub.
+`gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
-- `f85af79`: nessuna run su questo SHA (pushato insieme a 7c7b21c).
-- `7c7b21c`: unit-suite success, handoff-check success (run 38583221217); verifica-bot failure (V-1 MEDIA).
-- `86b8373`: run non ancora disponibile alla scrittura dell'handoff.
+- `e45ac2c`: handoff-check success, unit-suite in corso alla scrittura; bot APPROVATO CON RISERVE (neutral).
+- Commit `docs: note del bot su #206`: nessuna run su questo SHA (pushato insieme al commit di fine-task successivo).
+- `eb8c411`: unit-suite/handoff-check sulla PR; bot NON approvata (V-1 MEDIA, corretta qui).
+- `e2355f1`: run della PR #206 partita; esito non riportato qui (superato dalla testa nuova).
+- `e7ab76b`: run della PR #206 partita; esito non riportato qui (superato dalla testa nuova).
+- `0c01cfa` (docs(stato)): run della PR #206 all'apertura (check suite completata alle 15:57 UTC); esito di dettaglio non riportato qui.
+- `f0aabbf` (docs(claude-md)) e `126b3d0` (docs(setup)): nessuna run su questi SHA (pushati insieme al commit di fine-task successivo).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-ve204-1 (BASSA) e le precedenti in `reports/stato_progetto.md`. Finding del bot su #205 (V-1/V-2/V-3) chiusi in 86b8373.
+- Nessuna nuova. Le precedenti in `reports/stato_progetto.md`.

@@ -19,7 +19,7 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
 4. **Repository permissions** — SOLO queste:
    - **Contents** → Read and write (push dei branch)
    - **Pull requests** → Read and write (aprire PR, etichetta `verifica`)
-   - **Checks** → Read-only, **Actions** → Read-only, **Commit statuses** → Read-only (stato CI)
+   - **Actions** → Read-only, **Commit statuses** → Read-only (stato CI). «Checks» non è offerto da GitHub per i token fine-grained (verificato il 2026-10-14): non serve cercarlo
    - Metadata → Read-only (automatico)
    - **Administration: No access** · **Workflows: No access** · **Environments: No access** ·
      **Secrets: No access** · **Variables: No access**
@@ -29,7 +29,7 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
 
 1. Salva il token fuori dal repo, es. nel Portachiavi o in `~/.config/gas/agente_token`
    con `chmod 600`.
-2. Avvia Claude Code per Gas con quel token per `gh`, es.:
+2. **Salvato dal 2026-10-06** in `~/.config/gas/agente_token`, **in uso dal 2026-10-14** con l'alias `gasclaude` in `~/.zshrc` (`cd ~/Gas && GH_TOKEN=$(cat ~/.config/gas/agente_token) claude`). Avvia Claude Code per Gas con quel token per `gh`, es.:
    `GH_TOKEN=$(cat ~/.config/gas/agente_token) claude`
    (`GH_TOKEN` ha la precedenza sul login di `gh`; il tuo login personale resta intatto
    per quando lavori tu.)
