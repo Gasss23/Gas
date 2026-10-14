@@ -23,6 +23,7 @@
 - **Bot #202 V-1/V-2/V-3** (fornitori usati da Gas; tutto negato in keys/ e tokens/ tranne .md/.rst/.py; `.config/gh` sui pezzi puliti): `FATTA` — review #333 e #334 (R-333-1 chiusa).
 - **Bot #202 sullo SHA 9f5446b V-1** (copie della cartella keys.bak/) e `daily_token`: `FATTA` — review #335. V-2 (report non allineati) corretta nei report.
 - **Bot #202 sullo SHA aec8d83 V-1** (keys/telegram.py leggibile): `FATTA` — tolto .py dalla deroga, review #336. V-2 (stato_progetto non allineato) corretta.
+- **Bot #202 sullo SHA c2a62d2 V-1** (copie di .config/gh): `FATTA` — review #337.
 - **Nome intero solo sull'ultimo pezzo** (R-bot201-3): `FATTA`.
 - **R-bot201-2** (composti incollati senza separatore): `SALTATA` — limite del bordo sinistro, resta riserva.
 
@@ -31,19 +32,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- modules/gate/gate.py               |  51 +++++++++++++++++++++++++++++++++++++++++----------
+ .claude/agents/memoria_revisore.md |   7 +++++++
+ modules/gate/gate.py               |  53 +++++++++++++++++++++++++++++++++++++++++----------
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 343 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 372 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           | 135 +++++++++++++++++----------------------------------------------------------------------------------------------------------------------
- tests/test_unit_gate.py            |  28 ++++++++++++++++++++++++++--
- 7 files changed, 318 insertions(+), 261 deletions(-)
+ reports/ultimo_report.md           | 136 ++++++++++++++++++-----------------------------------------------------------------------------------------------------------------
+ tests/test_unit_gate.py            |  29 ++++++++++++++++++++++++++--
+ 7 files changed, 352 insertions(+), 261 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1ab03fe fix(gate): copie della cartella .config/gh (gh.bak/, gh~/)
+0f1ce87 chore(revisore): memoria review #337 — APPROVATO CON RISERVE
+c2a62d2 docs(fine-task): report e handoff — note del bot su #202 (aec8d83)
 03195ad fix(gate): in keys/ e tokens/ leggibile solo la documentazione (.md/.rst)
 bdea9cb chore(revisore): memoria review #336 — APPROVATO CON RISERVE
 aec8d83 docs(fine-task): report e handoff — note del bot su #202 (9f5446b)
@@ -265,9 +269,35 @@ Elementi del diff esaminati:
 
 **Memoria**: riga #336 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md`. Lo script `bash scripts/commit_memoria_revisore.sh` è uscito senza errori. Non ho committato altro.
 
+### Review #337 (commit 1ab03fe, bot #202 V-1 sullo SHA c2a62d2) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho letto CLAUDE.md, stato_progetto.md (solo con Grep, a norma della sez. 11) e la memoria del revisore. Il diff staged è piccolo e coerente con la linea del gate D3 (fail-closed sulle credenziali).
+
+Elementi del diff esaminati:
+- `modules/gate/gate.py:337` — introduce `_COPIA_GH_RE = ^gh(-|~|\.bak|\.old)?$`, con gli stessi suffissi di `_NOME_INTERO_RE` e `_NOME_CARTELLA_CHIAVI_RE`. Rischio: eccesso di negazione o regex fragile. La regex è ancorata, quindi `ghostty` e `gh_notes.md` non la attivano. Esito: ok.
+- `modules/gate/gate.py:359` — il confronto `b == "gh"` diventa `_COPIA_GH_RE.search(b)` sul pezzo subito dopo `.config`. I pezzi sono già puliti con `rstrip(". ")` (righe 349-350), quindi i casi `.config./gh` e `gh /` restano coperti. Rischio: regressione sui casi già chiusi e costo della regex. Esito: ok. Con un pezzo da 255 caratteri il costo misurato è 0,03 ms.
+- `tests/test_unit_gate.py:637-638` — tre nuovi negati: `.config/gh.bak/hosts.yml`, `.config/gh~/hosts.yml`, `.config/gh.old/hosts.yml`. Rischio: test che non pinna il comportamento. I tre percorsi sono quelli della riserva V-1 del bot. I leggibili `ghostty` e `gh_notes.md` restano nei test esistenti. Esito: ok.
+
+Sonda eseguita (non committata, nello scratchpad) su `lettura_consentita`:
+- Negati: `.config/gh.bak/`, `gh~/`, `gh-/`, `gh.old/`, `GH.bak/` (maiuscole), `gh/` e il file `.config/gh.bak`.
+- Leggibili: `.config/ghostty/config`, `.config/gh_notes.md`, `.config/gh.md`.
+- Suite del gate: 552 passed, riprodotti da me.
+
+Riserve:
+- R-337-1 (BASSA): restano leggibili `.config/gh.orig/hosts.yml`, `.config/gh_old/hosts.yml` e `.config/gh.bak.bak/hosts.yml`. È la stessa lista chiusa di suffissi già accettata per `keys.orig/` e `keys_old/` (memoria #335), quindi non è una regressione.
+- Cosmetico: il commento a riga 336 ("Bot #202 sullo SHA 9f5446b … copie della cartella keys.bak/") ora precede `_COPIA_GH_RE`, che riguarda `gh`. È un commento fuori posto, non un bug.
+
+Non verificato:
+- Le "180 voci reali" citate nel contesto: non le ho rieseguite, mi fido della dichiarazione.
+- Il comportamento su VPS e con symlink: la sonda lavora solo sul percorso testuale, non sul filesystem.
+
+Memoria aggiornata con la riga #337 (il massimo precedente era #336) e `commit_memoria_revisore.sh` eseguito. Non ho committato altro.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gate.py: 486 → 514 passed (D3) → 520 passed (V-1 #202) → 540 passed (bot #202 V-1/V-2/V-3, R-333-1) → 547 passed (copie keys.bak/, daily_token) → 549 passed (tolto .py dalla deroga in keys/). Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
+tests/test_unit_gate.py: 486 → 514 passed (D3) → 520 passed (V-1 #202) → 540 passed (bot #202 V-1/V-2/V-3, R-333-1) → 547 passed (copie keys.bak/, daily_token) → 549 passed (tolto .py dalla deroga in keys/) → 552 passed (copie di .config/gh). Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
 
 pytest `tests/`: `1346 passed in 176.83s (0:02:56)` (dopo le note del bot su #202).
 
@@ -276,16 +306,18 @@ pytest `tests/`: `1346 passed in 176.83s (0:02:56)` (dopo le note del bot su #20
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `f6b3ed9`: run della PR #202 partite prima del fix V-1; esito non riportato qui (superato dalla testa nuova).
+- `c2a62d2`: unit-suite e handoff-check success, gate 549 passed (dal verdetto del bot); bot APPROVATO CON RISERVE (neutral).
 - `aec8d83`: unit-suite e handoff-check success (dal verdetto del bot); bot APPROVATO CON RISERVE (neutral).
 - `9f5446b`: run della PR #202 con verdetto del bot APPROVATO CON RISERVE (neutral); unit-suite non riportata qui.
 - `2da725a`: run della PR #202 partite prima delle note del bot; il bot ha annullato la verifica (testa cambiata).
-- `40ef097`, `e72350f`, `d1dbd89`, `36f7542`, `c855da4`, `659392e`, `b99d826`, `5ff74fa`, `6473f5b`, `bdea9cb`, `03195ad`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
+- `40ef097`, `e72350f`, `d1dbd89`, `36f7542`, `c855da4`, `659392e`, `b99d826`, `5ff74fa`, `6473f5b`, `bdea9cb`, `03195ad`, `0f1ce87`, `1ab03fe`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-331-1 (BASSA), accodata a R-329-3 in `reports/stato_progetto.md`.
 - R-bot201-2 (BASSA) resta aperta.
+- R-337-1 (BASSA, copie gh.orig/, gh_old/) e commento fuori posto (COSMETICA).
 - R-336-1 (BASSA, codice in cartelle keys/ negato).
 - R-333-2 (BASSA, eccessi: keys/Makefile, voice_key_notes.md) e la scelta di lasciare leggibili .md/.rst/.py in keys/ (review #334).
 - R-332-1 (BASSA), R-ve202-2 (BASSA), R-ve202-3 (BASSA, solo macOS/Windows) in `reports/stato_progetto.md`.
