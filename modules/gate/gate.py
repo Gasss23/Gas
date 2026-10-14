@@ -294,7 +294,7 @@ _CHIAVE_PRIVATA_RE = re.compile(
     # Bot #202 V-1: anche i fornitori che Gas usa (openrouter, elevenlabs, voice, claude)
     # e altri comuni (discord, gitlab, npm, pypi, huggingface).
     r"|(gh|github|hf|openai|anthropic|gemini|groq|mistral|cohere|slack|telegram|bot|o?auth"
-    r"|openrouter|elevenlabs|voice|claude|discord|gitlab|npm|pypi|huggingface)"
+    r"|openrouter|elevenlabs|voice|daily|claude|discord|gitlab|npm|pypi|huggingface)"
     r"[-_. ]*(token|key)s?"  # verifica esterna #202 V-1: anche bot.token, telegram.token
     r"|keys?\.(txt|json|ya?ml)"
     r"|private[-_ ]*keys?|privkeys?|(ssh|deploy)[-_ ]*keys?|rsa_keys?"
@@ -333,7 +333,8 @@ _NOME_INTERO_RE = re.compile(r"^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$
 # Bot #202 V-2 + R-333-1: dentro una cartella keys/ o tokens/ è negato tutto
 # (keys/openai, tokens/github, keys/prod.toml) tranne documentazione e codice:
 # keys/readme.md, keys/setup.py restano leggibili.
-_NOME_CARTELLA_CHIAVI_RE = re.compile(r"^(tokens?|keys?)$")
+# Bot #202 (sullo SHA 9f5446b) V-1: anche le copie della cartella (keys.bak/, keys~/).
+_NOME_CARTELLA_CHIAVI_RE = re.compile(r"^(tokens?|keys?)(-|~|\.bak|\.old)?$")
 _DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst|py)$")
 
 
