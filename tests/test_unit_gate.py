@@ -643,7 +643,10 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "keys.orig/a", "keys copy 2/a", "keys.bak.bak/a",
                                   "Keys Copy/x.yml", ".config/gh copy/hosts.yml",
                                   ".config/gh.orig/hosts.yml", "keys copy", "shadow copy",
-                                  "passwd.old", "tokens (2)"])
+                                  "passwd.old", "tokens (2)",
+                                  # bot #210 V-1: prefissi new/orig, cifre dopo la parola di copia
+                                  "new_keys/a", "orig_keys/a", "keys.bak1/a", "keys_old2/a",
+                                  "keys copy2/a", "keys_v2/a", "keys.prev/a", "keys.save/a"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI

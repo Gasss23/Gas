@@ -330,11 +330,14 @@ _CHIAVE_PRIVATA_RE = re.compile(
 # l'ultimo pezzo, così una cartella keys/ o shadow/ non rende illeggibile il contenuto.
 # D5 (secondo passaggio claude.ai su #204, MEDIA): le copie di una cartella o di un file
 # di chiavi hanno molti nomi oltre a ~ .bak .old: «keys copy» (Finder), «keys (1)»,
-# keys.backup, keys_old, keys2, old_keys. Stessa lista delle copie delle password (D3).
-# Gruppi atomici e quantificatore possessivo: niente backtracking esponenziale.
-_COPIA_SUFFISSI = (r"(?>[-_ .]+(?:copy|copia|backup|bak|old|orig|new|[0-9]+)"
+# keys.backup, keys_old, keys2, old_keys, keys.bak1. Lista CHIUSA di parole di copia,
+# uguale per prefisso e suffisso (bot #210 V-1); diversa dalla lista delle password (D3),
+# che ha anche list/prod/dev. Gruppi atomici e quantificatore possessivo: niente
+# backtracking esponenziale.
+_PAROLE_COPIA = r"(?:copy|copia|backup|bak|old|orig|new|prev|save)[0-9]*+"
+_COPIA_SUFFISSI = (rf"(?>[-_ .]+(?:{_PAROLE_COPIA}|v?[0-9]+)"
                    r"| ?\([0-9]+\)|~|-)*+")
-_COPIA_PREFISSO = r"(?:(?:old|backup|bak|copy|copia)[-_ ]+)?"
+_COPIA_PREFISSO = rf"(?:{_PAROLE_COPIA}[-_ ]+)?"
 
 
 def _nome_con_copie(nomi: str) -> re.Pattern[str]:
