@@ -41,7 +41,7 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
 
 - `scripts/avviso_token_admin.sh` prova la capacità reale del token sull'endpoint delle deploy
   key (richiede Administration): 200 → avviso, 403/404 → OK, altro → "non verificabile".
-  Non blocca mai.
+  Senza argomenti non blocca mai; con `--blocco` esce 1 salvo l'OK verificato.
 - Lo chiamano `gasmerge` (all'avvio) e `fine_task_finale.sh` (prima del push).
 - Fase 2 (FATTA 2026-10-14): `gasmerge --auto` chiama lo script con `--blocco` e si ferma salvo l'OK
   verificato. Altrove resta un avviso.
