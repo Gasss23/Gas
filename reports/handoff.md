@@ -17,6 +17,8 @@
 
 - **Copie di cartella con altri nomi** (MEDIA claude.ai #204): `FATTA`.
 - **Tetto 255 prima delle regex**: `FATTA`.
+- **Bot #210 V-1/V-2**: `FATTA` — review #344.
+- **Verifica esterna #210 V-1/V-2** (lista chiusa, coerenza): `SALTATA` — tracciate come R-ve210-1/2.
 - **Backslash su Windows** (BASSA): `SALTATA` — Gas gira su Linux/Mac; tracciata.
 - **Cartelle innocue key/, token/, shadow/** (BASSA): `SALTATA` — nessuna nel repo; tracciata.
 
@@ -25,14 +27,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  1 +
- modules/gate/gate.py               | 24 +++++++++++++++++++++---
+ .claude/agents/memoria_revisore.md |  2 ++
+ modules/gate/gate.py               | 27 ++++++++++++++++++++++++---
  reports/diff_sessione.md           |  7 +++++--
- reports/handoff.md                 | 50 ++++++++++++++++++++++++++++++++------------------
+ reports/handoff.md                 | 77 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
  reports/stato_progetto.md          |  3 ++-
- reports/ultimo_report.md           | 17 ++++++++++-------
- tests/test_unit_gate.py            | 18 +++++++++++++++---
- 7 files changed, 86 insertions(+), 34 deletions(-)
+ reports/ultimo_report.md           | 19 ++++++++++++-------
+ tests/test_unit_gate.py            | 21 ++++++++++++++++++---
+ 7 files changed, 122 insertions(+), 34 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -40,6 +42,9 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4816117 fix(gate): parole di copia uguali in prefisso e suffisso, cifre attaccate (bot #210)
+9f255ba chore(revisore): memoria review #344 — APPROVATO
+31ffae0 docs(fine-task): report e handoff — D5 (PR #210)
 0b03da5 feat(gate): D5 — copie di cartelle e file di chiavi con qualsiasi nome comune
 590eaaa chore(revisore): memoria review #343 — APPROVATO
 ```
@@ -67,9 +72,32 @@ Rischio escluso, non verificato:
 
 Memoria aggiornata con la riga #343 (il massimo precedente era #342).
 
+### Review #344 (fix bot #210) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Ho letto CLAUDE.md, la memoria del revisore e lo stato del progetto. Ho riprodotto la suite del gate: 598 passed.
+
+Elementi del diff esaminati:
+- `modules/gate/gate.py:337` — `_PAROLE_COPIA` è una lista chiusa (copy, copia, backup, bak, old, orig, new, prev, save) con `[0-9]*+` possessivo. Rischio: backtracking e cifre attaccate alla parola. Esito: ok. Il possessivo non lascia nulla da riprovare e non c'è nidificazione di quantificatori ambigui.
+- `modules/gate/gate.py:338` — i suffissi usano `_PAROLE_COPIA` oppure `v?[0-9]+` dentro `(?>...)*+`. Rischio: ReDoS e falsi positivi. Esito: ok. Su input ostili da 205-256 caratteri il tempo è ≤0,07 ms. L'unica eccezione è `keys` seguito da 250 trattini, che ha richiesto 1,7 ms: è lineare, non esponenziale.
+- `modules/gate/gate.py:340` — il prefisso ora usa la stessa lista e richiede un separatore. Rischio: falsi positivi nuovi. Esito: ok. `oldkeys/`, `newkeys/`, `savekeys/`, `previous_keys/`, `saved_keys/` e `keys_new_item/` restano leggibili.
+- `tests/test_unit_gate.py:646` — otto nuovi casi negati: `new_keys`, `orig_keys`, `keys.bak1`, `keys_old2`, `keys copy2`, `keys_v2`, `keys.prev`, `keys.save`. Rischio: copertura. Esito: ok. Tutti negati anche nella mia sonda.
+- `modules/gate/gate.py:333` — commento corretto: lista chiusa, diversa da D3. Chiude la V-2 del bot. Esito: ok.
+
+Sonda mia, con uno script scritto con Write:
+- Negati come atteso (16): anche `keys.v2`, `keys-old-2`, `prev keys`, `save2_keys`, `tokens.bak2`, `shadow.orig3`, `passwd.new1` e `keys_copy2_v3`.
+- Liberi come atteso (16): `keys.d`, `oldkeys`, `newkeys`, `savekeys`, `keys_vault`, `keynote copy.md`, `keys.save.md`, `dati/keys_list.md`, `keys_final`, `keys.vx`, `keys_v`, `tokens.md`, `keys.md`.
+
+Non verificato: i 183 percorsi reali confrontati con origin/main. Mi fido della tua misura, non l'ho rieseguita. Non ho nemmeno provato Python 3.13: la sintassi possessiva/atomica è la stessa già approvata in #343.
+
+Guardrail (cap 10 iterazioni, `_get_window`, tool simulati): non toccati dal diff. Il comportamento resta fail-closed.
+
+Memoria aggiornata: riga #344 (massimo precedente #343) e commit eseguito con `commit_memoria_revisore.sh`.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gate.py: 565 → 590 passed. Mutazione: con `modules/gate/gate.py` di origin/main `20 failed, 570 passed`.
+tests/test_unit_gate.py: 565 → 590 → 598 passed (bot #210). Mutazione: con `modules/gate/gate.py` di origin/main `20 failed, 570 passed`.
 
 pytest `tests/`: `1406 passed in 180.35s (0:03:00)`.
 
@@ -77,9 +105,11 @@ pytest `tests/`: `1406 passed in 180.35s (0:03:00)`.
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
+- `31ffae0`: unit-suite e handoff-check success, verifica-bot neutral (bot APPROVATO CON RISERVE).
+- `9f255ba` e il fix del bot: nessuna run su questi SHA (pushati col fine-task).
 - Commit `chore(revisore): memoria review #343` e `feat(gate): D5`: nessuna run su questi SHA (pushati prima dell'apertura della PR #210).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-claude204-2 (BASSA, backslash su Windows), R-claude204-3 (BASSA, cartelle innocue key/token/shadow), cosmetica review #343 (tetto 255 doppio): in `reports/stato_progetto.md`.
+- R-claude204-2 (BASSA, backslash su Windows), R-claude204-3 (BASSA, cartelle innocue key/token/shadow), cosmetica review #343 (tetto 255 doppio), R-ve210-1/2 (BASSA): in `reports/stato_progetto.md`.
