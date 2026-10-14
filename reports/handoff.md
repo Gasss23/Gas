@@ -21,6 +21,7 @@
 - **Separatore ripetibile** (R-ve201-2) e mnemonic.json: `FATTA`.
 - **Verifica esterna #202 V-1** (fornitori col punto: bot.token): `FATTA` — review #332.
 - **Bot #202 V-1/V-2/V-3** (fornitori usati da Gas; tutto negato in keys/ e tokens/ tranne .md/.rst/.py; `.config/gh` sui pezzi puliti): `FATTA` — review #333 e #334 (R-333-1 chiusa).
+- **Bot #202 sullo SHA 9f5446b V-1** (copie della cartella keys.bak/) e `daily_token`: `FATTA` — review #335. V-2 (report non allineati) corretta nei report.
 - **Nome intero solo sull'ultimo pezzo** (R-bot201-3): `FATTA`.
 - **R-bot201-2** (composti incollati senza separatore): `SALTATA` — limite del bordo sinistro, resta riserva.
 
@@ -29,19 +30,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/gate/gate.py               |  50 ++++++++++++++++++++++++++++++++++++++++----------
+ .claude/agents/memoria_revisore.md |   5 +++++
+ modules/gate/gate.py               |  51 +++++++++++++++++++++++++++++++++++++++++----------
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 312 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           | 133 +++++++++++++++----------------------------------------------------------------------------------------------------------------------
- tests/test_unit_gate.py            |  25 +++++++++++++++++++++++--
- 7 files changed, 253 insertions(+), 261 deletions(-)
+ reports/ultimo_report.md           | 134 ++++++++++++++++----------------------------------------------------------------------------------------------------------------------
+ tests/test_unit_gate.py            |  27 +++++++++++++++++++++++++--
+ 7 files changed, 284 insertions(+), 261 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6473f5b fix(gate): copie della cartella keys/tokens (keys.bak/) e daily_token
+5ff74fa chore(revisore): memoria review #335 — APPROVATO
+9f5446b docs(fine-task): report e handoff — note del bot su #202
 b99d826 fix(gate): note del bot su #202 — fornitori usati da Gas, cartelle keys/ e tokens/, .config/gh sui pezzi puliti
 659392e chore(revisore): memoria review #334 — APPROVATO
 c855da4 chore(revisore): memoria review #333 — APPROVATO CON RISERVE
@@ -205,9 +209,33 @@ Rischio escluso:
 
 File: /home/user/Gas/modules/gate/gate.py, /home/user/Gas/tests/test_unit_gate.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #335 (commit 6473f5b, bot #202 V-1 sullo SHA 9f5446b + daily_token) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Ho letto CLAUDE.md, la memoria del revisore (ultima riga #334) e le sezioni di stato_progetto.md. Il diff staged tocca solo modules/gate/gate.py e tests/test_unit_gate.py, senza slicing della history, tool simulati o guardrail indeboliti.
+
+Elementi esaminati:
+- `modules/gate/gate.py:337` — `_NOME_CARTELLA_CHIAVI_RE` diventa `^(tokens?|keys?)(-|~|\.bak|\.old)?$`. Rischio esaminato: le copie della cartella (V-1 del bot) tornano negate e nessun nome legittimo viene bloccato. Esito: ok. Il suffisso è identico a `_NOME_INTERO_RE` (`modules/gate/gate.py:331`), quindi file e cartella sono coerenti. Il confronto avviene sui pezzi già puliti da punti e spazi finali (`modules/gate/gate.py:349`).
+- `modules/gate/gate.py:297` — `daily` aggiunto ai fornitori, seguito da `[-_. ]*(token|key)s?` e dal bordo `(?![a-z])` (`modules/gate/gate.py:311`), con `(?<![a-z])` davanti. Rischio esaminato: falsi positivi sui nomi che contengono "daily". Esito: ok. `daily/notes.md` e `modules/daily_report.py` restano leggibili. `dailytokenizer.md` resta leggibile grazie al bordo `(?![a-z])` (test aggiunto, 547 passed). `daily_key.md`, `dailytoken.md` e `daily-tokens.json` sono negati, in linea con voice, bot e gli altri fornitori.
+- `tests/test_unit_gate.py:632-636` — negati nuovi: keys.bak/openai, keys.old/prod.txt, keys~/github, tokens-/a.conf, daily_token. Esito: ok.
+- `tests/test_unit_gate.py:658-662` — leggibili nuovi: dailytokenizer.md, keys.bak/readme.md. Esito: ok. Il secondo conferma che la deroga per documentazione e codice vale anche nelle copie della cartella.
+
+Misure che ho riprodotto:
+- La suite del gate dà 547 passed.
+- Ho provato 13 percorsi a mano. Sono leggibili: keys.bak/a.py, keys~/readme.md, daily/notes.md, modules/daily_report.py, keys.bak.d/x. Sono negati: keys.old/, key-/x.txt, tokens.old/x, keys.bak/sub/y e KEYS.BAK/x (maiuscolo, per il casefold).
+
+Non riapre nulla: la regex della cartella è un sovrainsieme stretto della precedente, quindi i nomi negati prima lo restano, e `daily` aggiunge solo nomi negati.
+
+Rischio escluso: non ho rieseguito il confronto sulle 180 voci reali contro origin/main, mi fido della misura che mi hai riportato. Il comportamento su VPS non è verificato.
+
+Nota di non-regressione, non è una riserva: copie con altri suffissi (`keys.orig/`, `keys_old/`, `keys.backup/`) non sono coperte, ma sono leggibili anche su main. Si possono valutare in una fetta successiva.
+
+Memoria aggiornata con la riga #335 (massimo esistente 334, più 1). Ho lanciato `scripts/commit_memoria_revisore.sh` e non ha stampato nulla. Non ho controllato l'esito del commit: non ho eseguito `git log` o `git status` dopo.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gate.py: 486 → 514 passed (D3) → 520 passed (V-1 #202) → 540 passed (bot #202 V-1/V-2/V-3, R-333-1). Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
+tests/test_unit_gate.py: 486 → 514 passed (D3) → 520 passed (V-1 #202) → 540 passed (bot #202 V-1/V-2/V-3, R-333-1) → 547 passed (copie keys.bak/, daily_token). Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
 
 pytest `tests/`: `1346 passed in 176.83s (0:02:56)` (dopo le note del bot su #202).
 
@@ -216,8 +244,9 @@ pytest `tests/`: `1346 passed in 176.83s (0:02:56)` (dopo le note del bot su #20
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `f6b3ed9`: run della PR #202 partite prima del fix V-1; esito non riportato qui (superato dalla testa nuova).
+- `9f5446b`: run della PR #202 con verdetto del bot APPROVATO CON RISERVE (neutral); unit-suite non riportata qui.
 - `2da725a`: run della PR #202 partite prima delle note del bot; il bot ha annullato la verifica (testa cambiata).
-- `40ef097`, `e72350f`, `d1dbd89`, `36f7542`, `c855da4`, `659392e`, `b99d826`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
+- `40ef097`, `e72350f`, `d1dbd89`, `36f7542`, `c855da4`, `659392e`, `b99d826`, `5ff74fa`, `6473f5b`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
