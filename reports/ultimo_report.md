@@ -13,6 +13,7 @@
 - **Doc** — FATTA: CLAUDE.md (regola G-3), `reports/setup_agente_non_admin.md`, `reports/stato_progetto.md`.
 - **Review** — #339 APPROVATO; #340 APPROVATO (correzione del bot).
 - **Bot #207 su 58632e1** — NON approvata, V-1 (MEDIA): `OK` non inizializzata, un `OK=1` nell'ambiente apriva il blocco → corretta con test; V-2 (BASSA, doc incoerenti) e V-3 (BASSA, test con lo script assente) corrette. Test gasmerge 108 passed.
+- **Verifica esterna #207** ([commento](https://github.com/Gasss23/Gas/pull/207#issuecomment-6173200160)) — APPROVATO CON RISERVE: V-1 MEDIA (la stessa del bot) già chiusa; V-2 (BASSA, un argomento sbagliato passava in silenzio) chiusa con exit 2, review #341 APPROVATO, test gasmerge 111 passed; V-3 (BASSA, il blocco vale solo per `gasmerge --auto`) e V-4 (COSMETICA) tracciate.
 - **PR #206** — mergiata dall'agente su richiesta dell'operatore («mergia 206 quando è verde»).
 - **Alias `gasclaude` fail-safe** — DEFERITA — è sul Mac: lo cambia l'operatore col comando fornito.
 
