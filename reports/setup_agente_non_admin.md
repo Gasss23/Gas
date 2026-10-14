@@ -29,8 +29,8 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
 
 1. Salva il token fuori dal repo, es. nel Portachiavi o in `~/.config/gas/agente_token`
    con `chmod 600`.
-2. **Salvato dal 2026-10-06** in `~/.config/gas/agente_token`, **in uso dal 2026-10-14** con `gasclaude`, funzione in `~/.zshrc` che si ferma se il file del token manca. Avvia Claude Code per Gas con quel token per `gh`, es.:
-   `GH_TOKEN=$(cat ~/.config/gas/agente_token) claude`
+2. **Salvato dal 2026-10-06** in `~/.config/gas/agente_token`, **in uso dal 2026-10-14** con `gasclaude`, funzione in `~/.zshrc` che si ferma se il file del token manca o è vuoto. Avvia Claude Code per Gas SOLO con `gasclaude` (non con
+   `GH_TOKEN=$(cat …) claude` a mano: se il file manca partirebbe col token admin).
    (`GH_TOKEN` ha la precedenza sul login di `gh`; il tuo login personale resta intatto
    per quando lavori tu.)
 3. Controllo: nel repo, `bash scripts/avviso_token_admin.sh` deve stampare
