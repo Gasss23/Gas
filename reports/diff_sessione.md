@@ -4,5 +4,5 @@
 
 - `reports/stato_progetto.md` — G-3 segnato fatto (token `gas-agente` collegato, alias `gasclaude`), testata aggiornata.
 - `CLAUDE.md` — avvio obbligatorio con `gasclaude`; regola sui fatti del Mac (verificare, mai negare; registrare subito).
-- `reports/setup_agente_non_admin.md` — token in uso dal 2026-10-06, alias `gasclaude`.
+- `reports/setup_agente_non_admin.md` — token in uso dal 2026-10-06, alias `gasclaude`; tolto «Checks» dai permessi (non offerto per i token fine-grained).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.

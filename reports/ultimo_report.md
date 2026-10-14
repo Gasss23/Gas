@@ -14,6 +14,7 @@
 - **Avvio di Claude Code col token** — FATTA: alias `gasclaude` in `~/.zshrc` (l'operatore conferma che si apre).
 - **G-3 segnato fatto in stato_progetto.md** — FATTA.
 - **Prevenzione dell'errore segnalato dall'operatore** — FATTA: un agente aveva negato che `gasclaude` e il token esistessero, perché il repo non li registrava. Ora CLAUDE.md impone (1) avvio sempre con `gasclaude`, anche quando è l'agente ad aprire la sessione, (2) mai negare fatti sul Mac senza far lanciare un comando di verifica, (3) scrivere subito nel repo ogni configurazione fatta sul Mac. `reports/setup_agente_non_admin.md` dice che il token è in uso dal 2026-10-06.
+- **Bot #206** (sulla testa e7ab76b, verifica annullata per testa cambiata ma verdetto pubblicato: APPROVATO CON RISERVE) — V-1 (BASSA, la guida chiedeva ancora «Checks») e V-3 (COSMETICA, icona di G-3) corrette; V-2 (COSMETICA, ripartizione +/- di §2) coperta dalla NB.
 - **Fase 2 (avviso → blocco)** — DEFERITA — decisione dell'operatore.
 
 ## Anomalie
