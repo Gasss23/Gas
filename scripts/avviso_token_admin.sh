@@ -17,7 +17,12 @@
 set -u
 BLOCCO=0
 OK=0   # bot #207 V-1: mai ereditata dall'ambiente (OK=1 esportato non deve aprire il blocco)
-if [ "${1:-}" = "--blocco" ]; then BLOCCO=1; fi
+# Verifica esterna #207 V-2: argomento sconosciuto o in più → errore (exit 2), mai ignorato.
+case "$#:${1:-}" in
+  0:) ;;
+  1:--blocco) BLOCCO=1 ;;
+  *) echo "uso: avviso_token_admin.sh [--blocco]" >&2; exit 2 ;;
+esac
 esci() { if [ "$BLOCCO" = 1 ] && [ "$OK" != 1 ]; then exit 1; fi; exit 0; }
 if ! command -v gh >/dev/null 2>&1; then
   echo "AVVISO G-3: gh assente — permessi del token non verificabili" >&2

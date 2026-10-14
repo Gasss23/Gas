@@ -1577,6 +1577,14 @@ class TestAvvisoTokenAdmin:
             r.stdout + r.stderr
         assert not merge_log.exists()
 
+    @pytest.mark.parametrize("args", [["--Blocco"], ["x", "--blocco"], ["--blocco", "x"]])
+    def test_argomento_sconosciuto_esce_2(self, tmp_path, args):
+        """Verifica esterna #207 V-2: un refuso nel flag non passa in silenzio."""
+        r = subprocess.run([shutil.which("bash"), str(AVVISO_G3), *args],
+                           env={"PATH": "/nonexistent", "HOME": str(tmp_path)},
+                           capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode == 2 and "uso:" in r.stderr, r.stderr
+
     def test_blocco_gh_assente_esce_1(self, tmp_path):
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
