@@ -666,3 +666,21 @@ def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
     assert lettura_consentita(path)
+
+
+@pytest.mark.parametrize("path", ["keys/readme.md", "keys/notes.rst", "tokens/note.md",
+                                  "passwd/x.txt", "shadow/readme.md", "keys.bak/readme.md",
+                                  "a/shadow-/b.md", "x/Keys/y.md"])
+def test_cartelle_di_chiavi_leggibili_ma_mai_scritte(path):
+    """R-bot202-2: dentro keys/, tokens/, passwd/, shadow/ la documentazione si legge
+    ma non si scrive mai (come su main prima di D3)."""
+    from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
+    assert lettura_consentita(path)
+    assert livello_scrittura(path) == LIVELLO_MAI
+
+
+@pytest.mark.parametrize("path", ["keyboard/x.md", "monkeys/x.md", "dati/tokens.md",
+                                  "shadowing/x.md", "note/keys.md"])
+def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
+    from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO
+    assert livello_scrittura(path) == LIVELLO_LIBERO
