@@ -29,7 +29,7 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
 
 1. Salva il token fuori dal repo, es. nel Portachiavi o in `~/.config/gas/agente_token`
    con `chmod 600`.
-2. **In uso dal 2026-10-06** (token in `~/.config/gas/agente_token`); dal 2026-10-14 l'avvio è l'alias `gasclaude` in `~/.zshrc` (`cd ~/Gas && GH_TOKEN=$(cat ~/.config/gas/agente_token) claude`). Avvia Claude Code per Gas con quel token per `gh`, es.:
+2. **Salvato dal 2026-10-06** in `~/.config/gas/agente_token`, **in uso dal 2026-10-14** con l'alias `gasclaude` in `~/.zshrc` (`cd ~/Gas && GH_TOKEN=$(cat ~/.config/gas/agente_token) claude`). Avvia Claude Code per Gas con quel token per `gh`, es.:
    `GH_TOKEN=$(cat ~/.config/gas/agente_token) claude`
    (`GH_TOKEN` ha la precedenza sul login di `gh`; il tuo login personale resta intatto
    per quando lavori tu.)
