@@ -1100,7 +1100,8 @@ class TestLoopbackExemption:
 
 def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str,
                                   rules: str = "[]", runs: str = '{"check_runs":[]}',
-                                  rules_rc: int = 0, runs_rc: int = 0) -> None:
+                                  rules_rc: int = 0, runs_rc: int = 0,
+                                  token_admin: bool = False) -> None:
     """Stub gh: headRefOid sempre identico (head invariata), pr merge registra argomenti.
 
     Il merge_log viene scritto SOLO quando gh riceve 'pr merge': se il file non esiste
@@ -1111,8 +1112,15 @@ def _make_stub_gh_recording_merge(fake_bin: Path, merge_log: Path, sha: str,
     merge_log_path = str(merge_log)
     (fake_bin / "rules.json").write_text(rules)
     (fake_bin / "runs.json").write_text(runs)
+    # G-3 fase 2: /keys risponde 200 se il token amministra, 404 se è quello dell'agente
+    # (con ruolo admin dell'utente sul repo → OK verificato).
+    keys = "exit 0" if token_admin else "echo 'gh: Not Found (HTTP 404)' >&2; exit 1"
     stub.write_text(f"""#!/usr/bin/env bash
 case "$*" in
+  *"/keys"*)
+    {keys} ;;
+  *"permissions.admin"*)
+    echo true; exit 0 ;;
   *"rules/branches/main"*)
     cat "{fake_bin}/rules.json"; exit {rules_rc} ;;
   *"/check-runs"*)
@@ -1513,6 +1521,94 @@ class TestAvvisoTokenAdmin:
         r = _run_with_stdin(work, fake_bin, stdin_data="\n")
         assert "AVVISO G-3" in r.stderr and "AMMINISTRA" in r.stderr, r.stderr
         assert "=== PR #123" in r.stdout, r.stdout   # è andato avanti
+
+    @pytest.mark.parametrize("gh_body,atteso", [
+        ("exit 0", 1),                                                   # amministra
+        ("echo 'gh: Server Error (HTTP 500)' >&2; exit 1", 1),           # non verificabile
+        ('case "$*" in *"/keys"*) echo \'gh: Not Found (HTTP 404)\' >&2; exit 1 ;; '
+         '*) echo true; exit 0 ;; esac', 0),                             # OK verificato
+    ])
+    def test_blocco_esce_1_tranne_ok(self, tmp_path, gh_body, atteso):
+        """G-3 fase 2: con --blocco esce 0 SOLO sull'OK verificato."""
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        for b in ("bash", "grep", "printf", "env"):
+            real = shutil.which(b)
+            if real:
+                (fake_bin / b).symlink_to(real)
+        (fake_bin / "gh").write_text("#!/usr/bin/env bash\n" + gh_body + "\n")
+        (fake_bin / "gh").chmod(0o755)
+        r = subprocess.run([shutil.which("bash"), str(AVVISO_G3), "--blocco"],
+                           env={"PATH": str(fake_bin), "HOME": str(tmp_path)},
+                           capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode == atteso, r.stderr
+
+    def test_blocco_non_si_apre_con_ok_nell_ambiente(self, tmp_path):
+        """Bot #207 V-1: OK=1 esportato non deve far passare un token che amministra."""
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        for b in ("bash", "grep", "printf", "env"):
+            real = shutil.which(b)
+            if real:
+                (fake_bin / b).symlink_to(real)
+        (fake_bin / "gh").write_text("#!/usr/bin/env bash\nexit 0\n")
+        (fake_bin / "gh").chmod(0o755)
+        r = subprocess.run([shutil.which("bash"), str(AVVISO_G3), "--blocco"],
+                           env={"PATH": str(fake_bin), "HOME": str(tmp_path), "OK": "1"},
+                           capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode == 1 and "AMMINISTRA" in r.stderr, r.stderr
+
+    def test_gasmerge_auto_blocca_se_manca_lo_script(self, tmp_path):
+        """Bot #207 V-3: --auto senza avviso_token_admin.sh accanto a gasmerge → BLOCCO."""
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge.log"
+        _make_stub_gh_recording_merge(fake_bin, merge_log, _sha_feat(work), _REGOLE_OK,
+                                      _runs((1, _APP, "completed", "success")))
+        solo = tmp_path / "solo"
+        solo.mkdir()
+        shutil.copy(GASMERGE, solo / "gasmerge.sh")       # senza avviso_token_admin.sh
+        env = {**os.environ, "GAS_REPO_DIR": str(work),
+               "PATH": str(fake_bin) + ":" + os.environ.get("PATH", "")}
+        r = subprocess.run(["bash", str(solo / "gasmerge.sh"), "--auto", "123"], env=env,
+                           input="", capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode != 0 and "BLOCCO: G-3" in r.stdout and "assente" in r.stdout, \
+            r.stdout + r.stderr
+        assert not merge_log.exists()
+
+    @pytest.mark.parametrize("args", [["--Blocco"], ["x", "--blocco"], ["--blocco", "x"]])
+    def test_argomento_sconosciuto_esce_2(self, tmp_path, args):
+        """Verifica esterna #207 V-2: un refuso nel flag non passa in silenzio."""
+        r = subprocess.run([shutil.which("bash"), str(AVVISO_G3), *args],
+                           env={"PATH": "/nonexistent", "HOME": str(tmp_path)},
+                           capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode == 2 and "uso:" in r.stderr, r.stderr
+
+    def test_blocco_gh_assente_esce_1(self, tmp_path):
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        for b in ("bash", "grep", "printf", "env"):
+            real = shutil.which(b)
+            if real:
+                (fake_bin / b).symlink_to(real)
+        r = subprocess.run([shutil.which("bash"), str(AVVISO_G3), "--blocco"],
+                           env={"PATH": str(fake_bin), "HOME": str(tmp_path)},
+                           capture_output=True, text=True, cwd=tmp_path)
+        assert r.returncode == 1 and "gh assente" in r.stderr, r.stderr
+
+    def test_gasmerge_auto_blocca_col_token_admin(self, tmp_path):
+        """G-3 fase 2 (decisione operatore 2026-10-14): --auto col token che amministra → BLOCCO,
+        nessun merge, anche se il bot è success."""
+        work, _ = _setup_with_origin(tmp_path)
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        merge_log = tmp_path / "merge.log"
+        _make_stub_gh_recording_merge(fake_bin, merge_log, _sha_feat(work), _REGOLE_OK,
+                                      _runs((1, _APP, "completed", "success")), token_admin=True)
+        r = _run_with_stdin(work, fake_bin, args=["--auto", "123"])
+        assert r.returncode != 0 and "BLOCCO: G-3" in r.stdout, r.stdout + r.stderr
+        assert not merge_log.exists()
 
     def test_gasmerge_via_symlink_trova_l_avviso(self, tmp_path):
         """R-186-1: l'uso reale è il symlink ~/bin/gasmerge; l'avviso va trovato lo stesso."""

@@ -1,24 +1,23 @@
-# ULTIMO REPORT — 2026-10-14 — G-3: token dell'agente collegato
+# ULTIMO REPORT — 2026-10-14 — G-3 fase 2: blocco del merge automatico col token sbagliato
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #206: tocca `reports/` E `CLAUDE.md` (due regole nuove obbligatorie: avvio con `gasclaude`; fatti sul Mac da verificare, mai negare). CLAUDE.md è macchina del bot → merge dell'operatore.
-2. G-3 fase 2: decidere se l'avviso del token admin diventa un blocco per `gasmerge --auto`.
-3. Secondo passaggio claude.ai sulla PR #204 (D4), ancora da fare.
+1. Merge della PR #207 (tocca la macchina di controllo: decide l'operatore).
+2. Sostituire l'alias `gasclaude` con la versione che si ferma se il file del token manca (comando fornito in chat; bot #206 V-1).
 
 ## Esito
 
-- **Controllo del token su GitHub** — FATTA: `gas-agente` esiste, scade 2027-01-04, nessun Administration; «Checks» non è offerto da GitHub per i token fine-grained.
-- **Token salvato sul Mac** — FATTA: `~/.config/gas/agente_token` presente dal 2026-10-06.
-- **Verifica** — FATTA: con `GH_TOKEN=$(cat ~/.config/gas/agente_token)` lo script `avviso_token_admin.sh` stampa «non amministra il repo — OK».
-- **Avvio di Claude Code col token** — FATTA: alias `gasclaude` in `~/.zshrc` (l'operatore conferma che si apre).
-- **G-3 segnato fatto in stato_progetto.md** — FATTA.
-- **Prevenzione dell'errore segnalato dall'operatore** — FATTA: un agente aveva negato che `gasclaude` e il token esistessero, perché il repo non li registrava. Ora CLAUDE.md impone (1) avvio sempre con `gasclaude`, anche quando è l'agente ad aprire la sessione, (2) mai negare fatti sul Mac senza far lanciare un comando di verifica, (3) scrivere subito nel repo ogni configurazione fatta sul Mac. `reports/setup_agente_non_admin.md` dice che il token è salvato dal 2026-10-06 e in uso con `gasclaude` dal 2026-10-14.
-- **Bot #206** (sulla testa e7ab76b, verifica annullata per testa cambiata ma verdetto pubblicato: APPROVATO CON RISERVE) — V-1 (BASSA, la guida chiedeva ancora «Checks») e V-3 (COSMETICA, icona di G-3) corrette; V-2 (COSMETICA, ripartizione +/- di §2) coperta dalla NB.
-- **Bot #206 sulla testa eb8c411** — NON approvata (V-1 MEDIA: descrizione della PR e report dicevano «solo `reports/`» ma la PR tocca CLAUDE.md) → corretti descrizione e report; V-2 (BASSA, «in uso dal 2026-10-06» → «salvato dal 06, in uso dal 14») e V-3 (BASSA, §6 dell'handoff) corrette.
-- **Bot #206 sulla testa e45ac2c** — APPROVATO CON RISERVE (neutral), nessuna ALTA/MEDIA: V-1 (BASSA, date del token in due report), V-2 (COSMETICA, «Prossimo» superato in G-3) e V-3 (COSMETICA, regole spostate in §3 di CLAUDE.md) corrette su richiesta dell'operatore.
-- **Fase 2 (avviso → blocco)** — DEFERITA — decisione dell'operatore.
+- **`avviso_token_admin.sh --blocco`** — FATTA: exit 1 salvo l'OK verificato; senza flag resta solo avviso.
+- **`gasmerge --auto`** — FATTA: chiama `--blocco`; script assente o esito ≠ 0 → «BLOCCO: G-3», nessun merge.
+- **Test** — sulla testa finale: test_unit_gasmerge.py 111 passed (9 falliscono con gli script di main); pytest tests/ 1381 passed.
+- **Doc** — FATTA: CLAUDE.md (regola G-3), `reports/setup_agente_non_admin.md`, `reports/stato_progetto.md`.
+- **Review** — #339 APPROVATO; #340 APPROVATO (correzione del bot).
+- **Bot #207 su 58632e1** — NON approvata, V-1 (MEDIA): `OK` non inizializzata, un `OK=1` nell'ambiente apriva il blocco → corretta con test; V-2 (BASSA, doc incoerenti) e V-3 (BASSA, test con lo script assente) corrette. Test gasmerge 108 passed.
+- **Verifica esterna #207** ([commento](https://github.com/Gasss23/Gas/pull/207#issuecomment-6173200160)) — APPROVATO CON RISERVE: V-1 MEDIA (la stessa del bot) già chiusa; V-2 (BASSA, un argomento sbagliato passava in silenzio) chiusa con exit 2, review #341 APPROVATO, test gasmerge 111 passed; V-3 (BASSA, il blocco vale solo per `gasmerge --auto`) e V-4 (COSMETICA) tracciate.
+- **PR #206** — mergiata dall'agente su richiesta dell'operatore («mergia 206 quando è verde»).
+- **Bot #207 su d62eb75** — APPROVATO CON RISERVE (neutral): V-1 (BASSA, numeri dei test non aggiornati) e V-2 (COSMETICA, messaggio di BLOCCO) chiuse; review #342 APPROVATO.
+- **Alias `gasclaude` fail-safe** — DEFERITA — è sul Mac: lo cambia l'operatore col comando fornito.
 
 ## Anomalie
 
-- Nessuna.
+- `gh` nella sessione cloud non è autenticato: stato PR/CI letto via MCP GitHub. Un primo `create_pull_request` ha risposto 500; il secondo tentativo ha creato la #207.

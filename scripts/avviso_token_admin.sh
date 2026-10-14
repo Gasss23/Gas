@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# G-3 (agente non admin) — fase "solo avviso": NON blocca mai (exit 0 sempre).
+# G-3 (agente non admin). Senza argomenti: "solo avviso", NON blocca mai (exit 0 sempre).
+# Fase 2 (decisione operatore 2026-10-14, «sì blocco»): con `--blocco` esce 1 in tutti i
+# casi tranne l'OK verificato (token che amministra, non verificabile, gh assente → 1).
+# La usa `gasmerge --auto`: il merge automatico si ferma se il token non è quello giusto.
 #
 # L'agente deve lavorare con un token gh che NON può amministrare il repo (ruleset,
 # workflow, environment, impostazioni). `permissions.admin` dell'API riflette il RUOLO
@@ -12,9 +15,18 @@
 # verificati da qui. R-186-4: nessun timeout proprio su `gh api` (come i gh/git che seguono).
 # Va eseguito dentro il repo (gh risolve {owner}/{repo} dal remote).
 set -u
+BLOCCO=0
+OK=0   # bot #207 V-1: mai ereditata dall'ambiente (OK=1 esportato non deve aprire il blocco)
+# Verifica esterna #207 V-2: argomento sconosciuto o in più → errore (exit 2), mai ignorato.
+case "$#:${1:-}" in
+  0:) ;;
+  1:--blocco) BLOCCO=1 ;;
+  *) echo "uso: avviso_token_admin.sh [--blocco]" >&2; exit 2 ;;
+esac
+esci() { if [ "$BLOCCO" = 1 ] && [ "$OK" != 1 ]; then exit 1; fi; exit 0; }
 if ! command -v gh >/dev/null 2>&1; then
   echo "AVVISO G-3: gh assente — permessi del token non verificabili" >&2
-  exit 0
+  esci
 fi
 ERR=$(gh api "repos/{owner}/{repo}/keys" --silent 2>&1 >/dev/null)
 RC=$?
@@ -33,10 +45,11 @@ elif printf '%s' "$ERR" | grep -qE 'HTTP (403|404)'; then
   RUOLO=$(gh api "repos/{owner}/{repo}" --jq '.permissions.admin' 2>/dev/null) || RUOLO=""
   if [ "$RUOLO" = "true" ]; then
     echo "G-3: il token gh in uso non amministra il repo — OK" >&2
+    OK=1
   else
     echo "AVVISO G-3: permessi del token non verificabili (repo non visibile o non dell'operatore)" >&2
   fi
 else
   echo "AVVISO G-3: permessi del token non verificabili (gh rc=$RC)" >&2
 fi
-exit 0
+esci
