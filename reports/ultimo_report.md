@@ -14,6 +14,7 @@
 - **Nome intero solo sull'ultimo pezzo** — FATTA (R-bot201-3): keys/prod.txt, shadow/readme.md, tokens/note.md tornano leggibili; .ssh/ e secrets/ restano negati.
 - **R-bot201-2** (composti incollati, myapikey.txt) — SALTATA: limite del bordo sinistro, resta riserva aperta.
 - **Misura su file reali** — nessun cambio di esito rispetto a origin/main (179 voci fra `git ls-files` e albero di lavoro).
-- **Test** — tests/test_unit_gate.py 514 passed (con il gate di main 22 failed); pytest tests/ 1320 passed.
+- **Test** — tests/test_unit_gate.py 520 passed dopo V-1 (514 prima; con il gate di main 22 failed); pytest tests/ 1320 passed.
 - **Review** — #331 APPROVATO CON RISERVE: R-331-1 (BASSA) eccesso su password_new.md, password_dev.md, slack_tokens_docs.md, accodata a R-329-3.
+- **Verifica esterna #202** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA ([commento](https://github.com/Gasss23/Gas/pull/202#issuecomment-6167193706)). V-1 (bot.token, telegram.token col punto) chiusa in fetta: review #332 APPROVATO CON RISERVE (R-332-1 BASSA, eccesso su auth.keys.md, bot.token.md). V-2 (suffissi password fuori lista) e V-3 (solo macOS/Windows) tracciate in stato_progetto.md.
 - **Riserve di #200** (bot e verifica esterna) — tracciate in stato_progetto.md come promesso.

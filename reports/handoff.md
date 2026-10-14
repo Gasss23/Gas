@@ -19,6 +19,7 @@
 - **`.config/gh`**: `FATTA`.
 - **Password con suffisso di copia/lista** (R-ve201-1, R-bot201-1): `FATTA`.
 - **Separatore ripetibile** (R-ve201-2) e mnemonic.json: `FATTA`.
+- **Verifica esterna #202 V-1** (fornitori col punto: bot.token): `FATTA` — review #332.
 - **Nome intero solo sull'ultimo pezzo** (R-bot201-3): `FATTA`.
 - **R-bot201-2** (composti incollati senza separatore): `SALTATA` — limite del bordo sinistro, resta riserva.
 
@@ -27,19 +28,22 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
+ .claude/agents/memoria_revisore.md |   2 ++
  modules/gate/gate.py               |  38 +++++++++++++++++++++++++++++---------
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 180 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 207 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           | 131 +++++++++++++----------------------------------------------------------------------------------------------------------------------
- tests/test_unit_gate.py            |  16 ++++++++++++++--
- 7 files changed, 121 insertions(+), 261 deletions(-)
+ reports/ultimo_report.md           | 132 ++++++++++++++----------------------------------------------------------------------------------------------------------------------
+ tests/test_unit_gate.py            |  17 +++++++++++++++--
+ 7 files changed, 152 insertions(+), 260 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+36f7542 fix(gate): fornitori di token anche col punto (bot.token, telegram.token)
+d1dbd89 chore(revisore): memoria review #332 — APPROVATO CON RISERVE
+f6b3ed9 docs(fine-task): report e handoff — D3 (PR #202)
 e72350f feat(gate): D3 — altri nomi di credenziali, copie di password, .config/gh
 40ef097 chore(revisore): memoria review #331 — APPROVATO CON RISERVE
 ```
@@ -94,9 +98,35 @@ Review #331 del diff staged D3 (modules/gate/gate.py + tests/test_unit_gate.py).
 
 La riga #331 è in memoria_revisore.md. Ho eseguito scripts/commit_memoria_revisore.sh, che non ha stampato nulla. Non ho verificato che il commit della memoria sia avvenuto.
 
+### Review #332 (commit 36f7542, verifica esterna #202 V-1) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho letto CLAUDE.md, la memoria del revisore (ultimo contatore #331) e il diff staged. Ho misurato con una sonda scritta con Write, perché il hook blocca i comandi Bash con le parole del commit. Questa review è la #332.
+
+Elementi del diff esaminati:
+- `modules/gate/gate.py:294` — il separatore dei fornitori diventa `[-_. ]*`, solo nel ramo gh|github|hf|openai|anthropic|gemini|groq|mistral|cohere|slack|telegram|bot|o?auth. Rischio esaminato: i nomi con il punto restano leggibili. Esito: ok.
+  - Sulla sonda `telegram.token`, `bot.token`, `slack.token`, `gh.token`, `hf.key`, `oauth.key` e `o.auth.key` sono negati.
+  - `robot.token.md`, `gh.keyboard.md` e `bot.keyring` restano leggibili: il bordo prima del nome e la coda `(token|key)s?` reggono.
+  - Il punto è confinato al ramo dei fornitori. Il ramo `api[-_ ]*` e gli altri non cambiano, quindi `api.token` resta leggibile (già tracciato come R-329-2).
+- `modules/gate/gate.py:294`, costo: nel caso peggiore (255 caratteri, tetto prima della regex) ho misurato 125-142 µs per chiamata, con `"bot"+"."*250` e `"gh"+". "*120`. Il costo è lineare per il separatore ripetuto e limitato dal tetto. Esito: ok.
+- `tests/test_unit_gate.py:627` — quattro negati nuovi, nella parametrizzazione di `test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte`. Rischio esaminato: i test non mordono la regressione. Esito: ok. Esercitano esattamente i casi della V-1, e i quattro nomi con punto prima passavano.
+- `tests/test_unit_gate.py:652` — `robot.token.md` e `gh.keyboard.md` come leggibili in `test_nomi_simili_a_chiavi_restano_leggibili`. Esito: ok. Coprono i due falsi positivi più ovvi del nuovo separatore.
+
+Riserva (BASSA):
+- R-332-1: il punto ora separa nome ed estensione, quindi nuovi falsi positivi plausibili. La sonda li dà tutti negati: `auth.keys.md`, `auth.token.md`, `bot.key.md`, `bot.token.py`, `bot.tokens.md`, `slack.token.example`, `abot.key`, `cobot.key`.
+  - È la stessa linea di R-329-3 e R-331-1 (eccesso su documentazione): la lista nera è volutamente prudente. La traccio come accettata, in stato_progetto.
+  - Non è un blocco: la direzione è sicura e non tocca i guardrail.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione dei tool. Non ci sono provider né eccezioni nel diff.
+
+Rischio escluso: non ho rieseguito `tests/test_unit_gate.py` (520 passed dichiarati). Non ho rifatto il confronto sulle 180 voci di `git ls-files` e albero di lavoro contro origin/main (dichiarato senza cambi di esito). Su macOS e Windows non ho verificato nulla, come già tracciato in V-3. La V-2 (lista chiusa dei suffissi password) non è nel diff.
+
+Memoria aggiornata: riga #332 aggiunta e committata con `bash scripts/commit_memoria_revisore.sh` (nessun errore).
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gate.py: 486 → 514 passed. Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
+tests/test_unit_gate.py: 486 → 514 passed (D3) → 520 passed (V-1 #202). Mutazione: con `modules/gate/gate.py` di origin/main i test della fetta danno `22 failed, 492 passed`.
 
 pytest `tests/`: `1320 passed in 227.96s (0:03:47)`.
 
@@ -104,10 +134,12 @@ pytest `tests/`: `1320 passed in 227.96s (0:03:47)`.
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
-- `40ef097`, `e72350f`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
+- `f6b3ed9`: run della PR #202 partite prima del fix V-1; esito non riportato qui (superato dalla testa nuova).
+- `40ef097`, `e72350f`, `d1dbd89`, `36f7542`: nessuna run su questi SHA (pushati prima dell'apertura della PR; la run della PR testa la testa).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-331-1 (BASSA), accodata a R-329-3 in `reports/stato_progetto.md`.
 - R-bot201-2 (BASSA) resta aperta.
+- R-332-1 (BASSA), R-ve202-2 (BASSA), R-ve202-3 (BASSA, solo macOS/Windows) in `reports/stato_progetto.md`.
