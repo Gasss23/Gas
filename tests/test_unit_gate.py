@@ -585,7 +585,38 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   # R-324-1/3: token.pickle (OAuth Google), cache MSAL, .pgp,
                                   # pezzo di percorso oltre 255 caratteri
                                   "token.pickle", "msal_token_cache.bin", "token_cache.db",
-                                  "chiave.pgp", "token_" * 50 + "x"])
+                                  "chiave.pgp", "token_" * 50 + "x",
+                                  # D2 (secondo passaggio claude.ai #198): chiavi API e token
+                                  "api_key", "apikey", "api-keys.json", "api_token", "my_api_key.txt",
+                                  "access_token", "refresh_token", "gh_token", "github_token",
+                                  "hf_token", "openai_key", "openai-api-key", "anthropic_key.txt",
+                                  "anthropic-key", "gemini_key", "groq_token", "groq_api_key.txt",
+                                  "keys.txt", "key.json", "keys.yaml", "key.yml", "dati/key.txt",
+                                  "prod_key.txt", "my_keys.json", "service_keys.yml",
+                                  "token", "tokens", "key", "keys", "token~", "key.bak",
+                                  ".azure", ".azure/accessTokens.json", "accesstokens.json",
+                                  "mykubeconfig", "kubeconfigs",
+                                  "password", "passwords", "passwords.txt", "password.md",
+                                  "my_passwords.csv", "passwords.txt.bak", "passwd", "shadow",
+                                  "passwd-", "shadow.bak",
+                                  "cookies.json", "cookie.txt", "cookies.sqlite",
+                                  "cookies.sqlite-journal", "storage_state.json", "auth_state.json",
+                                  "oauth.json", "oauth2.json", ".auth", ".auth/user.json",
+                                  "sessions.json", "session.json", "user_session.json",
+                                  "gas.session", "anon.session-journal",
+                                  "wallet.json", "wallet.txt", "mywallet.json", "keystore.json",
+                                  "seed.txt", "mnemonic.txt", "seed_phrase", "seedphrase.txt",
+                                  "recovery-phrase.txt", "recovery_phrase",
+                                  "private_key", "private_keys", "privkey", "ssh_key", "ssh-key.txt",
+                                  "sshkey", "deploy_key", "deploy-key", "deploy_keys", "id-rsa",
+                                  "id-ed25519", "rsa_key", "ssh_host_rsa_key", "AuthKey_ABC.p8",
+                                  # D2 BASSA: config con credenziali, stato Terraform, VPN
+                                  ".terraformrc", "terraform.tfstate", "terraform.tfstate.backup",
+                                  "prod.tfvars", ".boto", ".s3cfg", ".my.cnf", ".yarnrc",
+                                  ".yarnrc.yml", ".sentryclirc", "client.ovpn", "wg0.conf",
+                                  # R-329-1: nomi scritti da persone, con lo spazio
+                                  "Seed Phrase.txt", "recovery phrase.txt", "ssh key", "deploy key",
+                                  "access token", "api token", "private key", "gh token"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -595,13 +626,17 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
 
 
 @pytest.mark.parametrize("path", ["secretary.md", "dati/keys.md", "note/keyboard.txt",
-                                  "dati/key.txt",
                                   "sshconfig.md", "dati/pemberton.txt", "dati/rsa_id.md",
                                   "dati/x.keyboard", "dati/a.keys.md", "dati/b.pemmican",
                                   "dati/valid_rsa.md", "tokenizer.py", "dati/tokens.md", "kubectl.md",
                                   # D1: nomi simili ai nuovi divieti restano leggibili
                                   "tokenizer.json", "dati/ascii.txt", "dati/x.ascx.md",
-                                  "dati/gpgme.md", "wallets.md", "netrc_guida.md"])
+                                  "dati/gpgme.md", "wallets.md", "netrc_guida.md",
+                                  # D2: falsi positivi da evitare
+                                  "keyboard.md", "keynote.md", "monkey.py", "passwordless.md",
+                                  "session_notes.md", "seed_data.csv", "auth_flow.md",
+                                  "dati/tokenizer.model", ".azure-pipelines/ci.yml",
+                                  "dati/sessions.md", "dati/password_reset.md", "a private keynote.md"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE

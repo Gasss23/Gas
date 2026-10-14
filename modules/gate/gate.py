@@ -280,21 +280,40 @@ _CHIAVE_PRIVATA_RE = re.compile(
     # con prefisso/suffisso (backup_id_rsa, my_credentials.json, secrets_prod.yaml).
     # Bordo = niente lettera prima/dopo: secretary.md, keyboard, valid_rsa restano fuori;
     # credentials_guide.md e secret_sauce.md sono bloccati per eccesso (R-289-2).
-    r"(?<![a-z])(id_(rsa|dsa|ecdsa|ed25519)"   # chiavi ssh, anche backup_id_rsa
+    r"(?<![a-z])(id[-_](rsa|dsa|ecdsa|ed25519)"  # chiavi ssh, anche backup_id_rsa, id-rsa
     r"|secrets?|credentials?"                  # secrets.yaml, my_credentials.json
     # D1 (R-291-1, bot #188): token_cache.json / tokens-prod.yaml (separatore dopo
-    # token, così tokenizer.json resta fuori), kubeconfig, clientsecret.json.
+    # token, così tokenizer.json resta fuori), clientsecret.json.
     r"|service[-_]?account|tokens?([-_][a-z0-9_-]*)?\.(json|txt|ya?ml|pickle|bin|db)"
-    r"|kubeconfig|client[-_]?secrets?"
+    r"|client[-_]?secrets?"
+    # D2 (secondo passaggio claude.ai #198): chiavi API e token con nome parlante,
+    # anche senza estensione e con lo spazio («Seed Phrase.txt», R-329-1); key.txt / prod_keys.yaml (il bordo copre il prefisso_).
+    r"|api[-_ ]?(key|token)s?|(access|refresh)[-_ ]?tokens?"
+    r"|(gh|github|hf|openai|anthropic|gemini|groq)[-_ ]?(token|key)s?"
+    r"|keys?\.(txt|json|ya?ml)"
+    r"|private[-_ ]?keys?|privkeys?|(ssh|deploy)[-_ ]?keys?|rsa_keys?"
+    # D2: sessioni del browser (Playwright storage_state), OAuth, cookie
+    r"|cookies?\.(json|txt|sqlite)|(storage|auth)_state\.json|oauth2?\.json|sessions?\.json"
+    # D2: portafogli e frasi di recupero (seed_data.csv resta fuori)
+    r"|keystore\.json|(seed|mnemonic)\.txt|(seed|recovery)[-_ ]?phrase"
+    r"|passwords?(\.[a-z0-9]+)*~?$|wg[0-9]+\.conf"  # passwordless.md resta fuori
     r")(?![a-z])"
-    # D1: wallet.dat anche con prefisso (mywallet.dat, backup-wallet.dat)
-    r"|wallet\.dat(?![a-z])"
-    # D1: .dockercfg, .vault-token, _netrc (nome Windows di .netrc)
-    r"|^\.(ssh|gnupg|aws|kube|docker|dockercfg|vault-token|netrc|pgpass|pypirc|htpasswd|npmrc)(?![a-z])"
+    # D1/D2: anche con prefisso (mywallet.dat, mykubeconfig, kubeconfigs)
+    r"|wallet\.(dat|json|txt)(?![a-z])|kubeconfig"
+    # Nome intero del pezzo (+ copie ~ .bak .old e il «-» di /etc/shadow-):
+    # tokens.md, keys.md e session_notes.md restano leggibili.
+    r"|^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$"
+    # D1: .dockercfg, .vault-token, _netrc (nome Windows di .netrc); D2: .azure, .auth
+    # e le config con credenziali (BASSA): .terraformrc .boto .s3cfg .my.cnf .yarnrc
+    r"|^\.(ssh|gnupg|aws|kube|docker|dockercfg|vault-token|netrc|pgpass|pypirc|htpasswd|npmrc"
+    r"|auth|terraformrc|boto|s3cfg|my\.cnf|yarnrc|sentryclirc)(?![a-z])"
+    r"|^\.azure(?![a-z-])"                     # .azure-pipelines (CI) resta fuori
     r"|^_netrc(?![a-z])"
     # chiavi/certificati/portachiavi, anche copie (x.pem~, x.key.bak: R-289-1);
-    # D1: chiavi GPG/PGP (.gpg binarie, .asc armored)
-    r"|\.(pem|key|p12|pfx|ppk|jks|keystore|kdbx|gpg|pgp|asc)(?![a-z])"
+    # D1: chiavi GPG/PGP (.gpg binarie, .asc armored); D2: .p8 (chiavi Apple/Snowflake),
+    # sessioni Telethon/Pyrogram (.session, .session-journal), stato e variabili
+    # Terraform, profili VPN.
+    r"|\.(pem|key|p12|pfx|ppk|jks|keystore|kdbx|gpg|pgp|asc|p8|session|tfstate|tfvars|ovpn)(?![a-z])"
 )
 
 
