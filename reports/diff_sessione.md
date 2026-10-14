@@ -1,10 +1,6 @@
-# DIFF SESSIONE — 2026-10-14 (G-3 fase 2)
+# DIFF SESSIONE — 2026-10-14 (riserve #207)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `scripts/avviso_token_admin.sh` — flag `--blocco` (exit 1 salvo OK verificato); `OK` inizializzata (bot #207 V-1); argomento sconosciuto → exit 2.
-- `scripts/gasmerge.sh` — con `--auto` il controllo del token è un blocco; messaggio di BLOCCO preciso.
-- `tests/test_unit_gasmerge.py` — stub col token dell'agente verificato; test del blocco.
-- `.claude/agents/memoria_revisore.md` — righe delle review #339–#342.
-- `CLAUDE.md`, `reports/setup_agente_non_admin.md`, `reports/stato_progetto.md` — G-3 fase 2 fatta.
+- `reports/stato_progetto.md` — riserve finali del bot su #207 (R-bot207-1, una cosmetica).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
