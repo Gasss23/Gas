@@ -42,7 +42,7 @@ git fetch --prune origin >/dev/null
 # verificato (anche gh assente, non verificabile o script mancante bloccano).
 if [ "$AUTO" = 1 ]; then
   if [ ! -r "$G3" ]; then echo "BLOCCO: G-3 — $G3 assente, merge automatico annullato"; exit 1; fi
-  bash "$G3" --blocco || { echo "BLOCCO: G-3 — il token gh in uso non è quello dell'agente verificato (avvia Claude Code con gasclaude) — merge automatico annullato"; exit 1; }
+  bash "$G3" --blocco || { echo "BLOCCO: G-3 — token gh non verificato o che amministra il repo (vedi l'avviso sopra; per il token sbagliato: avvia Claude Code con gasclaude) — merge automatico annullato"; exit 1; }
 elif [ -r "$G3" ]; then bash "$G3" || true
 else echo "AVVISO G-3: $G3 assente — controllo saltato" >&2; fi
 
