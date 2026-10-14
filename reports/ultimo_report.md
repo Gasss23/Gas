@@ -9,6 +9,7 @@
 ## Esito
 
 - **Riserve del bot su #207 (testa finale)** — FATTA: R-bot207-1 (BASSA, ambiente ostile) e una cosmetica registrate in `reports/stato_progetto.md`.
+- **Bot #208** — APPROVATO CON RISERVE: V-1 (BASSA, report incoerenti su chi ha mergiato la #207) corretta.
 - **PR #207** — mergiata dall'agente su richiesta dell'operatore («mergia 207»).
 
 ## Anomalie
