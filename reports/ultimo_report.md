@@ -17,6 +17,9 @@
 - **Bot #210** — APPROVATO CON RISERVE (neutral): V-1 (BASSA, new_keys/, keys.bak1/ ecc.) e V-2 (COSMETICA, commento) chiuse; test gate 598 passed.
 - **Verifica esterna #210** ([commento](https://github.com/Gasss23/Gas/pull/210#issuecomment-6180789038)) — APPROVATO CON RISERVE, nessuna regressione, test rieseguiti (1406 passed): V-1 (BASSA, la lista delle copie resta chiusa: «Copy of keys/», keys.zip…) e V-2 (BASSA, regole non del tutto coerenti) tracciate; V-3 cosmetica.
 
+- **Bot #210 sulla testa finale** — APPROVATO CON RISERVE (neutral): due BASSE tracciate (costo quadratico limitato dal tetto 255; §6 dell'handoff incompleto, corretto).
+- **Conflitto con main dopo il merge della #209** — FATTA: risolto tenendo entrambe le testate in stato_progetto.
+
 ## Anomalie
 
 - `gh` nella sessione cloud non è autenticato: stato PR/CI letto via MCP GitHub.

@@ -27,14 +27,7 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- modules/gate/gate.py               | 27 ++++++++++++++++++++++++---
- reports/diff_sessione.md           |  7 +++++--
- reports/handoff.md                 | 77 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
- reports/stato_progetto.md          |  3 ++-
- reports/ultimo_report.md           | 19 ++++++++++++-------
- tests/test_unit_gate.py            | 21 ++++++++++++++++++---
- 7 files changed, 122 insertions(+), 34 deletions(-)
+X2
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -42,11 +35,7 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-4816117 fix(gate): parole di copia uguali in prefisso e suffisso, cifre attaccate (bot #210)
-9f255ba chore(revisore): memoria review #344 — APPROVATO
-31ffae0 docs(fine-task): report e handoff — D5 (PR #210)
-0b03da5 feat(gate): D5 — copie di cartelle e file di chiavi con qualsiasi nome comune
-590eaaa chore(revisore): memoria review #343 — APPROVATO
+X3
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
@@ -105,6 +94,9 @@ pytest `tests/`: `1406 passed in 180.35s (0:03:00)`.
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
+- `0b03da5`: run 38654132272 failure (handoff-check rosso atteso: il commit di codice precede quello dei report), unit-suite success.
+- `854347b`: unit-suite e handoff-check success; bot APPROVATO CON RISERVE (neutral).
+- Merge di main (dopo #209) per risolvere i conflitti sui report: nessuna run al momento della scrittura.
 - `31ffae0`: unit-suite e handoff-check success, verifica-bot neutral (bot APPROVATO CON RISERVE).
 - `9f255ba` e il fix del bot: nessuna run su questi SHA (pushati col fine-task).
 - Commit `chore(revisore): memoria review #343` e `feat(gate): D5`: nessuna run su questi SHA (pushati prima dell'apertura della PR #210).
@@ -112,4 +104,4 @@ pytest `tests/`: `1406 passed in 180.35s (0:03:00)`.
 
 ## §7 RISERVE APERTE
 
-- R-claude204-2 (BASSA, backslash su Windows), R-claude204-3 (BASSA, cartelle innocue key/token/shadow), cosmetica review #343 (tetto 255 doppio), R-ve210-1/2 (BASSA): in `reports/stato_progetto.md`.
+- R-claude204-2 (BASSA, backslash su Windows), R-claude204-3 (BASSA, cartelle innocue key/token/shadow), cosmetica review #343 (tetto 255 doppio), R-ve210-1/2 (BASSA), R-bot210-2 (BASSA, costo quadratico limitato): in `reports/stato_progetto.md`.
