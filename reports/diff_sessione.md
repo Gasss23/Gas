@@ -1,8 +1,9 @@
-# DIFF SESSIONE — 2026-10-13 (PR #199)
+# DIFF SESSIONE — 2026-10-14 (C4)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `reports/stato_progetto.md` — registrate le riserve della verifica esterna PR #198 (V-2 BASSA e V-4 COSMETICA nuove, V-1/V-3 ricondotte a R-161-1 esteso e R-322-2), con id stabili R-ve198-N; aggiunte le riserve della review del bot su #198 (R-bot198-1..3).
-- `reports/ultimo_report.md` — report del task (merge #196/#198, stato, PR #199).
-- `reports/handoff.md` — dossier di fine sessione.
-- `reports/diff_sessione.md` — questo file.
+- `gas.py` — `_e_log_kernel`: oltre alla root vale la cartella di `baseFilename` dei RotatingFileHandler che scrivono `gas_debug.log` (C4, cwd ≠ root).
+- `tests/test_unit_kernel.py` — test T84n C4 e `import logging.handlers`.
+- `.claude/agents/memoria_revisore.md` — riga della review #328.
+- `reports/stato_progetto.md` — C4 segnata FATTA; righe delle riserve riordinate (nota V-4 del bot su #199).
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.

@@ -338,7 +338,7 @@ Componenti attive:
 - ✅ **B1 FATTA** — `scripts/bot_esito.py`: gravità nuda nella prosa dopo «NON VERIFICATO:»/«RACCOMANDAZIONE:» non conta; riserve con id alfabetico riconosciute (review #316/#317). Macchina del bot: **merge deciso dall'operatore**.
 - ✅ **C1 FATTA** (solo testo, decisione operatore: il salto dei log resta), **C2 FATTA**, **C5b FATTA** (review #326/#327).
 - ⏸ **C3 DEFERITA** — limitare la lunghezza del record di log a monte: proposta come fetta a sé (cambia la scrittura del log).
-- ⏸ **C4 DEFERITA** — decisione dell'operatore (accoppiare `_e_log_kernel` a `handler.baseFilename`).
+- ✅ **C4 FATTA** (decisione operatore 2026-10-14) — `_e_log_kernel` riconosce il log anche nella cartella vera di `baseFilename` dei RotatingFileHandler (cwd ≠ root); test T84n C4, review #328 APPROVATO.
 - ⏸ **C5a, C5c NON FATTE** — su consiglio del revisore (cambierebbero la semantica dei contatori / unificherebbero test che provano cose diverse).
 - ✅ **D1 FATTA** — nove buchi della denylist chiusi + token.pickle/.bin/.db, *.pgp, pezzi di percorso > 255 caratteri (review #324/#325). **Fetta di sicurezza: secondo passaggio su claude.ai a carico dell'operatore.**
 - ✅ **E1 FATTA** — `AGENTS.md` in `.gitignore` (decisione operatore).
@@ -356,9 +356,9 @@ Componenti attive:
 - **R-322-2** (BASSA, preesistente): GIT_LETTURA non è di sola lettura in senso stretto (`--output=`, `git grep -O`); gli argomenti di git non vengono mai tolti, quindi nessuna regressione.
 - **R-gate-matcher-2** (BASSA, preesistente): `"git" commit` / `g"it" commit` sfuggono al grep grezzo del gate già su main.
 - **R-324-1** (BASSA, parziale): varianti per nome ancora leggibili: kube_config, kube-config.yaml, mykubeconfig, .vault_token, docker_config.json, wallet_backup.dat, token.cache.json, tokencache.json, access_token.
+- **R-324-2** (BASSA): blocco in eccesso su nomi plausibili (token_usage.json, max_tokens_config.yaml, tokens.bin, token_counts.db, kubeconfig_tutorial.md, README.asc.md), stessa linea di R-289-2.
 - **Verifica esterna PR #198** (APPROVATO CON RISERVE, [commento](https://github.com/Gasss23/Gas/pull/198#issuecomment-6155503614)): **R-ve198-1** (BASSA) = R-161-1 esteso, fix proposto: esentare solo id presenti in stato_progetto/stato_storico. **R-ve198-2** (BASSA, nuova): dopo «RACCOMANDAZIONE:»/«NON VERIFICATO:» una ALTA/MEDIA solo in prosa non conta più (compromesso voluto di B1). **R-ve198-3** (BASSA) = R-322-2, fix: vietare `--output`/`-O`/`--ext-diff` nei git ammessi. **R-ve198-4** (COSMETICA): `echo "git commit" >&2` resta bloccato (verso sicuro). Mergiata dall'operatore il 2026-10-13.
 - **Review del bot su PR #198** (sullo SHA finale b5d406a, APPROVATO CON RISERVE; segnalate dalla verifica di #199): **R-bot198-1** (BASSA): `promemoria_end.sh` prende come repo del turno qualunque repo git che contiene il `cwd` del payload; fix: confrontare `--git-common-dir` con quello di `CLAUDE_PROJECT_DIR`. **R-bot198-2** (COSMETICA): docstring di `gate_matcher.py` impreciso sui corpi heredoc non quotati. **R-bot198-3** (COSMETICA): in `cerca_testo` doppio conteggio letti / non di testo.
-- **R-324-2** (BASSA): blocco in eccesso su nomi plausibili (token_usage.json, max_tokens_config.yaml, tokens.bin, token_counts.db, kubeconfig_tutorial.md, README.asc.md), stessa linea di R-289-2.
 
 ## Finding aperti (🟡 attivi)
 
