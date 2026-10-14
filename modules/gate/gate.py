@@ -292,7 +292,7 @@ _CHIAVE_PRIVATA_RE = re.compile(
     # senza estensione (bot_token, telegram_token, slack_token, mistral_key: R-329-2).
     r"|api[-_ ]*(key|token)s?|(access|refresh)[-_ ]*tokens?"
     r"|(gh|github|hf|openai|anthropic|gemini|groq|mistral|cohere|slack|telegram|bot|o?auth)"
-    r"[-_ ]*(token|key)s?"
+    r"[-_. ]*(token|key)s?"  # verifica esterna #202 V-1: anche bot.token, telegram.token
     r"|keys?\.(txt|json|ya?ml)"
     r"|private[-_ ]*keys?|privkeys?|(ssh|deploy)[-_ ]*keys?|rsa_keys?"
     # D2: sessioni del browser (Playwright storage_state), OAuth, cookie

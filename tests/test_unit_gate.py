@@ -624,7 +624,8 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "seed  phrase", "mnemonic.json", "passwords_backup.txt",
                                   "password_list.txt", "password-prod.csv", "passwords copy.txt",
                                   "password (1).txt", "password_2024.txt", ".config/gh/hosts.yml",
-                                  ".config/gh", "dati/keys", "x/shadow-"])
+                                  ".config/gh", "dati/keys", "x/shadow-",
+                                  "telegram.token", "bot.token", "slack.token", "gh.token"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -648,7 +649,7 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   # D3: il nome intero vale solo per l'ultimo pezzo (R-bot201-3)
                                   "keys/prod.txt", "shadow/readme.md", "tokens/note.md",
                                   "author_key.md", ".config/ghostty/config", ".config/gh_notes.md",
-                                  "password_policy.md"])
+                                  "password_policy.md", "robot.token.md", "gh.keyboard.md"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
