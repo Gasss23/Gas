@@ -4,7 +4,7 @@
 
 1. Merge della PR di questa fetta (tocca il cancello: il bot darà riserve o neutral → decide l'operatore).
 2. Fetta di sicurezza: secondo passaggio nella chat claude.ai col link della PR.
-3. Decidere se aprire la fetta D3 proposta qui sotto (nomi ancora leggibili).
+3. Decidere se aprire la fetta D3 (deve includere anche `password` con suffisso o copia — R-ve201-1/R-bot201-1 — e il ramo del nome intero limitato all'ultimo pezzo — R-bot201-3) proposta qui sotto (nomi ancora leggibili).
 
 ## Esito
 
@@ -16,6 +16,8 @@
 - **Test** — pytest tests/test_unit_gate.py 486 passed (era 477 prima di R-329-1); suite completa `tests/` 1291 passed, 1 skipped. Con la regex di main i test nuovi falliscono (97 fail, misurato dal revisore; 8 fail per i casi con lo spazio).
 - **Costo regex** — quadratica ma limitata dal tetto dei 255 caratteri per pezzo: caso peggiore misurato dal revisore 144 µs per pezzo (la mia stima iniziale di 35 µs era sbagliata, R-329-4).
 - **Review** — #329 APPROVATO CON RISERVE (R-329-1 chiusa), #330 APPROVATO CON RISERVE.
+- **Verifica esterna (agente)** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA ([commento](https://github.com/Gasss23/Gas/pull/201#issuecomment-6164793654)): tabella ricalcolata riga per riga senza discrepanze, 19 mutazioni tutte uccise; riserve BASSE R-ve201-1..3 e COSMETICA R-ve201-4.
+- **Bot di verifica** — APPROVATO CON RISERVE, check `verifica-bot` neutral (decide l'operatore); riserve BASSE R-bot201-1/2 e COSMETICA R-bot201-3. Tutte tracciate in stato_progetto.md.
 
 ## Tabella nome → esito prima/dopo
 

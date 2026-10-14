@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #201 (https://github.com/Gasss23/Gas/pull/201).
-2. Fetta di sicurezza (cancello): secondo passaggio nella chat claude.ai col link della PR #201.
+2. Fetta di sicurezza (cancello): secondo passaggio nella chat claude.ai col link della PR #201. Verifica esterna (agente) e bot: APPROVATO CON RISERVE senza ALTA/MEDIA; il check `verifica-bot` è neutral, quindi il merge lo decide l'operatore.
 3. Decidere se aprire la fetta D3 (nomi ancora leggibili, proposta in `reports/ultimo_report.md`).
 
 ---
@@ -28,16 +28,17 @@
  .claude/agents/memoria_revisore.md |   3 +++
  modules/gate/gate.py               |  37 ++++++++++++++++++++++++++++---------
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 147 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
- reports/stato_progetto.md          |   6 +++++-
- reports/ultimo_report.md           | 121 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ reports/handoff.md                 | 159 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------
+ reports/stato_progetto.md          |   8 +++++++-
+ reports/ultimo_report.md           | 123 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  tests/test_unit_gate.py            |  41 ++++++++++++++++++++++++++++++++++++++---
- 7 files changed, 300 insertions(+), 65 deletions(-)
+ 7 files changed, 317 insertions(+), 64 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bc7c799 docs(fine-task): report e handoff — fetta D2 nomi di credenziali (PR #201)
 21cc202 feat(gate): D2 — nomi di credenziali vietati in lettura e scrittura
 e67ef2a chore(revisore): memoria review #330 — APPROVATO CON RISERVE
 28a4abb chore(revisore): memoria review #329 — APPROVATO CON RISERVE
@@ -154,15 +155,16 @@ Suite completa `tests/` (sul diff finale, prima del commit 21cc202):
 ## §6 STATO CI
 
 ```
-completed	skipped	feat(gate): D2 — nomi di credenziali vietati in lettura e scrittura	verifica-bot	feat/gate-d2-credenziali	pull_request_target	38538513805	1s	2026-10-14T08:54:51Z
-in_progress		feat(gate): D2 — nomi di credenziali vietati in lettura e scrittura	CI	feat/gate-d2-credenziali	push	38538493822	1m1s	2026-10-14T08:54:40Z
-completed	success	Merge pull request #200 from Gasss23/feat/merge-automatico-z1xjx2	CI	feat/merge-automatico-z1xjx2	push	38491091300	2m20s	2026-10-14T00:35:59Z
+completed	success	feat(gate): D2 — nomi di credenziali vietati in lettura e scrittura	verifica-bot	feat/gate-d2-credenziali	pull_request_target	38538660297	3m20s	2026-10-14T08:56:02Z
+completed	skipped	feat(gate): D2 — nomi di credenziali vietati in lettura e scrittura	verifica-bot	feat/gate-d2-credenziali	pull_request_target	38538646925	10s	2026-10-14T08:55:56Z
+completed	success	docs(fine-task): report e handoff — fetta D2 nomi di credenziali (PR …	CI	feat/gate-d2-credenziali	push	38538643894	2m20s	2026-10-14T08:55:54Z
 ```
 
 Mappatura commit→run:
-- `21cc202` (testa del push del branch): run CI 38538493822 in corso alla scrittura dell'handoff (esito non ancora disponibile); verifica-bot 38538513805 skipped (manca l'etichetta `verifica`).
-- `e67ef2a`, `28a4abb`: nessuna run su questi SHA (pushati insieme a 21cc202; la run testa solo l'albero della testa).
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `bc7c799` (fine-task precedente, testa del secondo push): run CI 38538643894 **success** (unit-suite, handoff-check); verifica-bot 38538660297 success come workflow, check `verifica-bot` **neutral** (APPROVATO CON RISERVE sulla macchina del bot → decide l'operatore).
+- `21cc202` (testa del primo push): run CI 38538493822 **failure** su handoff-check («handoff.md non nel diff di sessione»: atteso, il commit di codice è stato pushato prima di quello dei report; R-ve201-4).
+- `e67ef2a`, `28a4abb`: nessuna run su questi SHA (pushati insieme a 21cc202).
+- Commit di fine-task attuale (riserve di verifica esterna e bot): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -170,3 +172,4 @@ Mappatura commit→run:
 - **R-329-3** (BASSA): blocco in eccesso anche in scrittura su nomi plausibili (api_key_rotation.md, terraform.tfvars.example, notes.session.md, …).
 - **R-329-4** (COSMETICA): regex quadratica ma limitata (144 µs caso peggiore per pezzo), non lineare.
 - Tutte tracciate in `reports/stato_progetto.md`; riserve precedenti invariate.
+- **Verifica esterna #201** ([commento](https://github.com/Gasss23/Gas/pull/201#issuecomment-6164793654)): R-ve201-1/2/3 (BASSE), R-ve201-4 (COSMETICA). **Bot #201**: R-bot201-1/2 (BASSE), R-bot201-3 (COSMETICA). Tracciate in `reports/stato_progetto.md`.
