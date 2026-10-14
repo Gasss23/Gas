@@ -1,17 +1,19 @@
-# ULTIMO REPORT — 2026-10-14 — riserva R-gate-nomi-1 (nomi BASSI dopo D3)
+# ULTIMO REPORT — 2026-10-14 — PR #205: conflitto con main e finding del bot
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (solo `reports/`): se il bot non dà un APPROVATO pulito, decide l'operatore.
+1. Merge della PR #205 (solo `reports/`): la mergia l'agente da solo SOLO se il bot dà `APPROVATO` senza finding sul nuovo head; altrimenti decide l'operatore.
+2. Fetta di sicurezza D4 (#204): secondo passaggio nella chat claude.ai col link della PR #204 (ancora da fare).
+3. G-3: collegare il token `gas-agente` a Claude Code sul Mac (guida passo passo in corso in chat).
 
 ## Esito
 
-- **Controllo D3** — FATTA. D3 è già in main (PR #202). Sonda sul cancello di main (7ed2d18): chiusi bot/auth/telegram/slack token, `.config/gh/hosts.yml`, password con suffisso o copia, separatore ripetuto; restano leggibili i residui già tracciati in R-329-2 / R-bot201-2.
-- **Riserva R-gate-nomi-1** — FATTA (decisione operatore: solo riserva, nessuna fetta per questi nomi). In `reports/stato_progetto.md`: `.bash_history`, `.zsh_history`, `.mylogin.cnf`, `login.keychain-db`, `gshadow`, `htpasswd` senza punto, `.jceks`, `.bks`, `putty.reg`, `.kdb` restano leggibili.
-- **Note del bot su #203** — FATTA: V-1 (BASSA) nomi aggiunti alla riserva e lista dichiarata non esaustiva; V-2 (COSMETICA) riga spostata dopo il blocco R-329, id `R-gate-nomi-1` tenuto (riserva nata da decisione dell'operatore, non da una review).
-- **Fetta per questi nomi** — SALTATA — l'operatore ha scelto solo la riserva (la D4 mergiata in #204 riguarda la scrittura in keys/, tokens/, passwd/, shadow/).
+- **Controllo di mergiabilità di #205** — FATTA: non mergiabile (conflitto con main dopo #203; `verifica-bot` failure, verdetto APPROVATO CON RISERVE con V-1 MEDIA). CI `unit-suite`/`handoff-check` verdi.
+- **Merge di main in #205** — FATTA: conflitti solo nei log di sessione, tenuta la versione del branch.
+- **Finding del bot su #205** — FATTA: V-1 (MEDIA) secondo passaggio claude.ai di D4 rimesso tra le decisioni umane e nella riga D4 di stato_progetto; V-2 (BASSA) cosmetica V-2 della verifica esterna #204 aggiunta alla riga D4; V-3 (COSMETICA) NB in §2 dell'handoff.
+- **G-3 (token dell'agente)** — DEFERITA — in corso con l'operatore, passo 1 (controllo del token su GitHub) chiesto in chat.
+- **Discussione della roadmap** — DEFERITA — dopo il token.
 
 ## Anomalie
 
-- PR #203 in conflitto dopo il merge di #204 in main: il merge di main nel branch era bloccato dal gate di review (il diff in stage conteneva `gate.py` di #204), quindi rebase dei 3 commit di soli report su main e push con `--force-with-lease`.
-- Note COSMETICHE del bot sul secondo passaggio #203: §6 dell'handoff riscritto con gli esiti reali; la riserva ora dice che la misura è una sonda manuale non registrata.
+- `gh` nella sessione cloud non è autenticato: stato PR/CI letto via MCP GitHub.
