@@ -37,14 +37,14 @@ ruleset e le impostazioni**, cioè di togliersi il freno da solo.
    `G-3: il token gh in uso non amministra il repo — OK`.
    Con il tuo token stampa invece `AVVISO G-3: ... AMMINISTRA ...`.
 
-## C. Cosa fa il codice (fase "solo avviso")
+## C. Cosa fa il codice (fase 2 dal 2026-10-14: blocco per `gasmerge --auto`)
 
 - `scripts/avviso_token_admin.sh` prova la capacità reale del token sull'endpoint delle deploy
   key (richiede Administration): 200 → avviso, 403/404 → OK, altro → "non verificabile".
   Non blocca mai.
 - Lo chiamano `gasmerge` (all'avvio) e `fine_task_finale.sh` (prima del push).
-- Fase successiva (decisione tua, quando il token A–B è in uso): trasformare l'avviso in un
-  blocco per `gasmerge --auto`.
+- Fase 2 (FATTA 2026-10-14): `gasmerge --auto` chiama lo script con `--blocco` e si ferma salvo l'OK
+  verificato. Altrove resta un avviso.
 
 **Cosa NON copre il controllo:** prova solo il permesso Administration. Che Workflows,
 Environments, Secrets e Variables siano davvero "No access" lo controlli tu alla creazione
