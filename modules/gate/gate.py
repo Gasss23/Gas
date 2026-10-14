@@ -331,11 +331,11 @@ _CHIAVE_PRIVATA_RE = re.compile(
 _NOME_INTERO_RE = re.compile(r"^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$")
 
 # Bot #202 V-2 + R-333-1: dentro una cartella keys/ o tokens/ è negato tutto
-# (keys/openai, tokens/github, keys/prod.toml) tranne documentazione e codice:
-# keys/readme.md, keys/setup.py restano leggibili.
+# (keys/openai, tokens/github, keys/prod.toml, keys/telegram.py con TOKEN = "...")
+# tranne la documentazione (bot #202 su aec8d83 V-1): keys/readme.md resta leggibile.
 # Bot #202 (sullo SHA 9f5446b) V-1: anche le copie della cartella (keys.bak/, keys~/).
 _NOME_CARTELLA_CHIAVI_RE = re.compile(r"^(tokens?|keys?)(-|~|\.bak|\.old)?$")
-_DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst|py)$")
+_DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst)$")
 
 
 def _nome_da_segreto(normalized: str) -> bool:

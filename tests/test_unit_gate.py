@@ -633,7 +633,8 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "huggingface_token", "keys/openai", "tokens/github",
                                   "keys/prod.txt", "x/keys/groq.json", "keys/prod.toml", "tokens/a.conf", ".config./gh/hosts.yml",
                                   ".config/gh /hosts.yml", "keys.bak/openai", "keys.old/prod.txt",
-                                  "keys~/github", "tokens-/a.conf", "daily_token"])
+                                  "keys~/github", "tokens-/a.conf", "daily_token", "keys/setup.py",
+                                  "keys/telegram.py"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -658,7 +659,7 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   "keys/readme.md", "shadow/readme.md", "tokens/note.md",
                                   "author_key.md", ".config/ghostty/config", ".config/gh_notes.md",
                                   "password_policy.md", "robot.token.md", "gh.keyboard.md",
-                                  "voiceover.md", "claudette.md", "keys/setup.py",
+                                  "voiceover.md", "claudette.md", "keys/notes.rst",
                                   "dailytokenizer.md", "keys.bak/readme.md"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
