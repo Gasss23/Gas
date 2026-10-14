@@ -625,7 +625,14 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "password_list.txt", "password-prod.csv", "passwords copy.txt",
                                   "password (1).txt", "password_2024.txt", ".config/gh/hosts.yml",
                                   ".config/gh", "dati/keys", "x/shadow-",
-                                  "telegram.token", "bot.token", "slack.token", "gh.token"])
+                                  "telegram.token", "bot.token", "slack.token", "gh.token",
+                                  # bot #202: fornitori usati da Gas, file dentro keys/ e
+                                  # tokens/, .config/gh con punti o spazi finali
+                                  "openrouter_key", "elevenlabs_key", "voice_token", "claude_key",
+                                  "discord_token", "gitlab_token", "npm_token", "pypi_token",
+                                  "huggingface_token", "keys/openai", "tokens/github",
+                                  "keys/prod.txt", "x/keys/groq.json", "keys/prod.toml", "tokens/a.conf", ".config./gh/hosts.yml",
+                                  ".config/gh /hosts.yml"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -647,9 +654,10 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   "dati/tokenizer.model", ".azure-pipelines/ci.yml",
                                   "dati/sessions.md", "dati/password_reset.md", "a private keynote.md",
                                   # D3: il nome intero vale solo per l'ultimo pezzo (R-bot201-3)
-                                  "keys/prod.txt", "shadow/readme.md", "tokens/note.md",
+                                  "keys/readme.md", "shadow/readme.md", "tokens/note.md",
                                   "author_key.md", ".config/ghostty/config", ".config/gh_notes.md",
-                                  "password_policy.md", "robot.token.md", "gh.keyboard.md"])
+                                  "password_policy.md", "robot.token.md", "gh.keyboard.md",
+                                  "voiceover.md", "claudette.md", "keys/setup.py"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE

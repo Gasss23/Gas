@@ -291,7 +291,10 @@ _CHIAVE_PRIVATA_RE = re.compile(
     # D3: separatore ripetibile (`api  key`, `api__key`: R-ve201-2) e altri fornitori
     # senza estensione (bot_token, telegram_token, slack_token, mistral_key: R-329-2).
     r"|api[-_ ]*(key|token)s?|(access|refresh)[-_ ]*tokens?"
-    r"|(gh|github|hf|openai|anthropic|gemini|groq|mistral|cohere|slack|telegram|bot|o?auth)"
+    # Bot #202 V-1: anche i fornitori che Gas usa (openrouter, elevenlabs, voice, claude)
+    # e altri comuni (discord, gitlab, npm, pypi, huggingface).
+    r"|(gh|github|hf|openai|anthropic|gemini|groq|mistral|cohere|slack|telegram|bot|o?auth"
+    r"|openrouter|elevenlabs|voice|claude|discord|gitlab|npm|pypi|huggingface)"
     r"[-_. ]*(token|key)s?"  # verifica esterna #202 V-1: anche bot.token, telegram.token
     r"|keys?\.(txt|json|ya?ml)"
     r"|private[-_ ]*keys?|privkeys?|(ssh|deploy)[-_ ]*keys?|rsa_keys?"
@@ -327,9 +330,11 @@ _CHIAVE_PRIVATA_RE = re.compile(
 # l'ultimo pezzo, così una cartella keys/ o shadow/ non rende illeggibile il contenuto.
 _NOME_INTERO_RE = re.compile(r"^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$")
 
-# D3 (R-329-2): file di credenziali riconoscibili solo dal percorso, non dal nome:
-# la cartella della CLI GitHub (.config/gh/hosts.yml contiene il token).
-_PERCORSO_SEGRETO_RE = re.compile(r"(?:^|/)\.config/gh(?:/|$)")
+# Bot #202 V-2 + R-333-1: dentro una cartella keys/ o tokens/ è negato tutto
+# (keys/openai, tokens/github, keys/prod.toml) tranne documentazione e codice:
+# keys/readme.md, keys/setup.py restano leggibili.
+_NOME_CARTELLA_CHIAVI_RE = re.compile(r"^(tokens?|keys?)$")
+_DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst|py)$")
 
 
 def _nome_da_segreto(normalized: str) -> bool:
@@ -340,12 +345,17 @@ def _nome_da_segreto(normalized: str) -> bool:
     Lo stesso per chiavi private e credenziali (_CHIAVE_PRIVATA_RE).
     Punti/spazi finali tolti."""
     parti = PurePosixPath(normalized).parts
-    if parti and _NOME_INTERO_RE.search(parti[-1].rstrip(". ")):
+    puliti = [p.rstrip(". ") for p in parti]
+    if puliti and _NOME_INTERO_RE.search(puliti[-1]):
         return True
-    if _PERCORSO_SEGRETO_RE.search(normalized):
+    if (len(puliti) > 1 and not _DOC_IN_CARTELLA_CHIAVI_RE.search(puliti[-1])
+            and any(_NOME_CARTELLA_CHIAVI_RE.search(c) for c in puliti[:-1])):
         return True
-    for p in parti:
-        pulito = p.rstrip(". ")
+    # D3 (R-329-2): la cartella della CLI GitHub (.config/gh/hosts.yml contiene il
+    # token), confrontata sui pezzi puliti (bot #202 V-3: «.config./gh», «gh /»).
+    if any(a == ".config" and b == "gh" for a, b in zip(puliti, puliti[1:])):
+        return True
+    for pulito in puliti:
         # R-324-3: un pezzo oltre 255 caratteri non è un nome di file reale; negarlo
         # subito tiene lineare il costo della regex (fail-closed).
         if len(pulito) > 255:
