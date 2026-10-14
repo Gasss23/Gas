@@ -334,6 +334,7 @@ _NOME_INTERO_RE = re.compile(r"^(tokens?|keys?|passwd|shadow)(-|~|\.bak|\.old)?$
 # (keys/openai, tokens/github, keys/prod.toml, keys/telegram.py con TOKEN = "...")
 # tranne la documentazione (bot #202 su aec8d83 V-1): keys/readme.md resta leggibile.
 # Bot #202 (sullo SHA 9f5446b) V-1: anche le copie della cartella (keys.bak/, keys~/).
+_COPIA_GH_RE = re.compile(r"^gh(-|~|\.bak|\.old)?$")
 _NOME_CARTELLA_CHIAVI_RE = re.compile(r"^(tokens?|keys?)(-|~|\.bak|\.old)?$")
 _DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst)$")
 
@@ -354,7 +355,8 @@ def _nome_da_segreto(normalized: str) -> bool:
         return True
     # D3 (R-329-2): la cartella della CLI GitHub (.config/gh/hosts.yml contiene il
     # token), confrontata sui pezzi puliti (bot #202 V-3: «.config./gh», «gh /»).
-    if any(a == ".config" and b == "gh" for a, b in zip(puliti, puliti[1:])):
+    # Bot #202 su c2a62d2 V-1: anche le copie (gh.bak/, gh~/, gh-/, gh.old/).
+    if any(a == ".config" and _COPIA_GH_RE.search(b) for a, b in zip(puliti, puliti[1:])):
         return True
     for pulito in puliti:
         # R-324-3: un pezzo oltre 255 caratteri non è un nome di file reale; negarlo

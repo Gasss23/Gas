@@ -634,7 +634,8 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "keys/prod.txt", "x/keys/groq.json", "keys/prod.toml", "tokens/a.conf", ".config./gh/hosts.yml",
                                   ".config/gh /hosts.yml", "keys.bak/openai", "keys.old/prod.txt",
                                   "keys~/github", "tokens-/a.conf", "daily_token", "keys/setup.py",
-                                  "keys/telegram.py"])
+                                  "keys/telegram.py", ".config/gh.bak/hosts.yml",
+                                  ".config/gh~/hosts.yml", ".config/gh.old/hosts.yml"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
