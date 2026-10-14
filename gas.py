@@ -1948,12 +1948,25 @@ class GasKernel:
         Il `RotatingFileHandler` scrive nella root, quindi solo la' stanno i log veri. La
         regola e' la stessa nei due rami (salto su cartella e tetto dedicato per nome),
         cosi' l'insieme dei file trattati come log coincide e non torna l'asimmetria che
-        aveva causato V-1."""
+        aveva causato V-1.
+        C4 (decisione operatore 2026-10-14): il `RotatingFileHandler` apre un percorso
+        RELATIVO alla cwd, che puo' non coincidere con la root (`esegui_notte(root_dir)`):
+        oltre alla root vale la cartella VERA del log, letta da `baseFilename` dei
+        RotatingFileHandler del logger radice che scrivono un file `gas_debug.log`."""
         if not self._LOG_KERNEL_RE.fullmatch(path.name):
             return False
         try:
-            return path.parent.resolve(strict=False) == self.root.resolve(strict=False)
-        except OSError:
+            cartella = path.parent.resolve(strict=False)
+            if cartella == self.root.resolve(strict=False):
+                return True
+            for h in logging.getLogger().handlers:
+                base = getattr(h, "baseFilename", None)
+                if (isinstance(h, RotatingFileHandler) and isinstance(base, str)
+                        and os.path.basename(base) == "gas_debug.log"
+                        and Path(base).parent.resolve(strict=False) == cartella):
+                    return True
+            return False
+        except (OSError, RuntimeError, ValueError):
             return False
 
     def _righe_testo(self, path: Path, budget: List[int]) -> Generator[str, None, None]:

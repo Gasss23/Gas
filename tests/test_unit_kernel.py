@@ -5226,6 +5226,7 @@ check("T72g controprova: dopo compressione solo interna write_file eseguita",
 # Test REALI: DB SQLite vero in una dir temporanea, nessun mock della coda.
 import hashlib as _hl73
 import logging
+import logging.handlers
 import sqlite3 as _sq73
 import time as _time73
 import uuid as _uuid73
@@ -8320,6 +8321,29 @@ try:
           "un log del kernel: si cerca e non si conta fra i log saltati",
           "docsL/gas_debug.log.7:1: alfaL nel log dell'utente" in _oLu
           and "log del kernel" not in _oLu, _oLu[:250])
+
+    # C4 (decisione operatore 2026-10-14): se il RotatingFileHandler scrive in una cartella
+    # diversa dalla root (cwd != root), quella cartella e' la casa VERA del log: li' il
+    # gas_debug.log e' un log del kernel (saltato e dichiarato); altrove resta dell'utente.
+    (_rL / "cwdC4").mkdir()
+    (_rL / "cwdC4" / "gas_debug.log").write_text("alfaC4 nel log vero\n", encoding="utf-8")
+    (_rL / "altroC4").mkdir()
+    (_rL / "altroC4" / "gas_debug.log").write_text("alfaC4 omonimo dell'utente\n", encoding="utf-8")
+    _hC4 = logging.handlers.RotatingFileHandler(str(_rL / "cwdC4" / "gas_debug.log"), delay=True)
+    logging.getLogger().addHandler(_hC4)
+    try:
+        _oC4a = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaC4", "relative_path": "cwdC4"}')
+        _oC4b = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaC4", "relative_path": "altroC4"}')
+    finally:
+        logging.getLogger().removeHandler(_hC4)
+        _hC4.close()
+    _oC4c = _kL.execute_tool_call("cerca_testo", '{"testo": "alfaC4", "relative_path": "cwdC4"}')
+    check("T84n C4 il log nella cartella vera del RotatingFileHandler e' del kernel (saltato e "
+          "dichiarato); l'omonimo altrove e, senza handler, la stessa cartella restano dell'utente",
+          "log del kernel" in _oC4a and "alfaC4 nel log vero" not in _oC4a
+          and "alfaC4 omonimo dell'utente" in _oC4b and "log del kernel" not in _oC4b
+          and "alfaC4 nel log vero" in _oC4c,
+          (_oC4a[:150] + " || " + _oC4b[:150] + " || " + _oC4c[:150]))
 
     # R-297-4: su un file INDICATO per nome il numero e' il budget della chiamata, non un
     # tetto "per file": l'intestazione lo dice cosi'.
