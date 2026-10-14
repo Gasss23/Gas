@@ -23,6 +23,7 @@
 - **Prevenzione dell'errore** (gasclaude negato): `FATTA` — regole in CLAUDE.md, setup aggiornato.
 - **Bot #206 V-1/V-3** (guida con «Checks», icona di G-3): `FATTA`.
 - **Bot #206 su eb8c411 V-1 (MEDIA)/V-2/V-3**: `FATTA` — perimetro corretto (CLAUDE.md dichiarato), «salvato dal 06, in uso dal 14», §6 corretto.
+- **Bot #206 su e45ac2c V-1/V-2/V-3**: `FATTA` — date del token, «Prossimo» di G-3, regole spostate in §3 di CLAUDE.md.
 - **Fase 2 (avviso → blocco)**: `DEFERITA` — decisione dell'operatore.
 
 ---
@@ -30,13 +31,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- CLAUDE.md                         |  2 ++
+ CLAUDE.md                         |  3 +++
  reports/diff_sessione.md          |  8 +++++---
- reports/handoff.md                | 47 +++++++++++++++++++++++------------------------
+ reports/handoff.md                | 50 ++++++++++++++++++++++++++------------------------
  reports/setup_agente_non_admin.md |  4 ++--
  reports/stato_progetto.md         |  4 ++--
- reports/ultimo_report.md          | 24 ++++++++++++++----------
- 6 files changed, 48 insertions(+), 41 deletions(-)
+ reports/ultimo_report.md          | 25 +++++++++++++++----------
+ 6 files changed, 53 insertions(+), 41 deletions(-)
 ```
 
 NB: conteggi e ripartizione +/- di `reports/handoff.md` (e quindi dei totali) sono presi prima del proprio commit, quindi non sono quelli finali.
@@ -44,6 +45,8 @@ NB: conteggi e ripartizione +/- di `reports/handoff.md` (e quindi dei totali) so
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7eac5b1 docs: note del bot su #206 (e45ac2c) — date del token, Prossimo di G-3, regole in §3
+e45ac2c docs(fine-task): perimetro di #206 dichiarato (CLAUDE.md), note del bot su eb8c411
 eb8c411 docs(fine-task): report e handoff — note del bot su #206
 126b3d0 docs(setup): Checks non offerto per i token fine-grained; G-3 fase 1
 e2355f1 docs(fine-task): report e handoff — G-3 e prevenzione (PR #206)
@@ -66,6 +69,8 @@ Nessuna modifica a gas.py/tests/.
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
+- `e45ac2c`: handoff-check success, unit-suite in corso alla scrittura; bot APPROVATO CON RISERVE (neutral).
+- Commit `docs: note del bot su #206`: nessuna run su questo SHA (pushato insieme al commit di fine-task successivo).
 - `eb8c411`: unit-suite/handoff-check sulla PR; bot NON approvata (V-1 MEDIA, corretta qui).
 - `e2355f1`: run della PR #206 partita; esito non riportato qui (superato dalla testa nuova).
 - `e7ab76b`: run della PR #206 partita; esito non riportato qui (superato dalla testa nuova).
