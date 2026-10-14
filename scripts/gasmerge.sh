@@ -37,8 +37,14 @@ GASPR_JSON=$(mktemp "${TMPDIR:-/tmp}/gaspr.XXXXXX") || { echo "ERRORE: mktemp fa
 export GASPR_JSON
 trap 'rm -f "$GASPR_JSON"' EXIT
 git fetch --prune origin >/dev/null
-# G-3: avviso (mai blocco, per ora) se il token gh in uso amministra il repo.
-if [ -r "$G3" ]; then bash "$G3" || true; else echo "AVVISO G-3: $G3 assente — controllo saltato" >&2; fi
+# G-3: avviso se il token gh in uso amministra il repo. Fase 2 (decisione operatore
+# 2026-10-14): con --auto è un BLOCCO — il merge automatico parte solo col token giusto
+# verificato (anche gh assente, non verificabile o script mancante bloccano).
+if [ "$AUTO" = 1 ]; then
+  if [ ! -r "$G3" ]; then echo "BLOCCO: G-3 — $G3 assente, merge automatico annullato"; exit 1; fi
+  bash "$G3" --blocco || { echo "BLOCCO: G-3 — il token gh in uso non è quello dell'agente verificato (avvia Claude Code con gasclaude) — merge automatico annullato"; exit 1; }
+elif [ -r "$G3" ]; then bash "$G3" || true
+else echo "AVVISO G-3: $G3 assente — controllo saltato" >&2; fi
 
 gh pr view "$PR" --json headRefName,title,state > "$GASPR_JSON"
 BRANCH=$(jq -r .headRefName "$GASPR_JSON")
