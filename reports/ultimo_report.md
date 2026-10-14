@@ -11,7 +11,8 @@
 - **`gasmerge --auto`** — FATTA: chiama `--blocco`; script assente o esito ≠ 0 → «BLOCCO: G-3», nessun merge.
 - **Test** — test_unit_gasmerge.py 106 passed (4 falliscono con gli script di main); pytest tests/ 1376 passed.
 - **Doc** — FATTA: CLAUDE.md (regola G-3), `reports/setup_agente_non_admin.md`, `reports/stato_progetto.md`.
-- **Review** — #339 APPROVATO.
+- **Review** — #339 APPROVATO; #340 APPROVATO (correzione del bot).
+- **Bot #207 su 58632e1** — NON approvata, V-1 (MEDIA): `OK` non inizializzata, un `OK=1` nell'ambiente apriva il blocco → corretta con test; V-2 (BASSA, doc incoerenti) e V-3 (BASSA, test con lo script assente) corrette. Test gasmerge 108 passed.
 - **PR #206** — mergiata dall'agente su richiesta dell'operatore («mergia 206 quando è verde»).
 - **Alias `gasclaude` fail-safe** — DEFERITA — è sul Mac: lo cambia l'operatore col comando fornito.
 

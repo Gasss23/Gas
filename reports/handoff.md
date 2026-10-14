@@ -18,6 +18,7 @@
 - **`--blocco` in avviso_token_admin.sh**: `FATTA`.
 - **`gasmerge --auto` blocca**: `FATTA`.
 - **Doc (CLAUDE.md, setup, stato)**: `FATTA`.
+- **Bot #207 su 58632e1 V-1 (MEDIA)**: `FATTA` — `OK` inizializzata, test con OK=1 nell'ambiente; V-2 (doc) e V-3 (test script assente) `FATTA`.
 - **Alias fail-safe**: `DEFERITA` — sul Mac, lo fa l'operatore.
 
 ---
@@ -25,17 +26,17 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  1 +
- CLAUDE.md                          |  2 +-
- reports/diff_sessione.md           | 10 ++++++----
- reports/handoff.md                 | 76 +++++++++++++++++++++++++++++++++++++---------------------------------------
- reports/setup_agente_non_admin.md  |  6 +++---
- reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 26 +++++++++++---------------
- scripts/avviso_token_admin.sh      | 13 ++++++++++---
- scripts/gasmerge.sh                | 10 ++++++++--
- tests/test_unit_gasmerge.py        | 56 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 10 files changed, 134 insertions(+), 70 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +++
+ CLAUDE.md                          |   2 +-
+ reports/diff_sessione.md           |  10 ++++++----
+ reports/handoff.md                 | 108 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
+ reports/setup_agente_non_admin.md  |   8 ++++----
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  27 ++++++++++++---------------
+ scripts/avviso_token_admin.sh      |  14 +++++++++++---
+ scripts/gasmerge.sh                |  10 ++++++++--
+ tests/test_unit_gasmerge.py        |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 10 files changed, 205 insertions(+), 71 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -43,6 +44,10 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1e9d44f docs: G-3 fase 2 allineata in CLAUDE.md, setup e stato (bot #207 V-2)
+b031722 fix(g3): OK inizializzata — una variabile d'ambiente non apre più il blocco
+a9df945 chore(revisore): memoria review #340 — APPROVATO
+58632e1 docs(fine-task): conteggio test corretto nell'handoff (PR #207)
 a0f39b7 docs(fine-task): report e handoff — G-3 fase 2 (PR #207)
 17f40c3 docs: G-3 fase 2 fatta (CLAUDE.md, setup, stato)
 0996de7 feat(g3): fase 2 — gasmerge --auto blocca se il token non è quello dell'agente verificato
@@ -74,9 +79,37 @@ Note minori, non bloccanti. Il messaggio di BLOCCO suggerisce «avvia con gascla
 
 Memoria aggiornata: riga #339 aggiunta a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata con `scripts/commit_memoria_revisore.sh`.
 
+### Review #340 (commit b031722, bot #207 V-1/V-3) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Elementi del diff esaminati:
+- `scripts/avviso_token_admin.sh:19` — `OK=0` inizializzata in testa, accanto a `BLOCCO=0`. Rischio esaminato: un `OK=1` esportato nell'ambiente apriva `--blocco`. Esito: ok, chiuso.
+- `scripts/avviso_token_admin.sh:21` — `esci` ora legge `$OK` senza default. Rischio esaminato: con `set -u` la variabile deve esistere, e ora esiste. Esito: ok.
+- `scripts/avviso_token_admin.sh:43` — l'unico punto che pone `OK=1`, raggiunto solo con `RUOLO=true` dopo un 403/404. Esito: ok, unico percorso verso l'exit 0 in modalità blocco.
+- `tests/test_unit_gasmerge.py:1546` — OK=1 nell'ambiente, `gh` finto che risponde 0 su /keys, atteso exit 1 e "AMMINISTRA" su stderr. Esito: ok. Il test copre proprio la regressione e, per quanto mi hai riferito, fallisce con lo script di HEAD.
+- `tests/test_unit_gasmerge.py:1561` — `gasmerge --auto` con `avviso_token_admin.sh` assente: atteso exit diverso da 0, "BLOCCO: G-3 … assente" e nessun merge registrato. Esito: ok. Corrisponde al controllo in `scripts/gasmerge.sh:44`.
+- Contesto: `scripts/gasmerge.sh:44-45` blocca sia se lo script manca sia se `--blocco` esce con codice diverso da 0. Esito: ok.
+
+Altre variabili ereditabili, esaminate staticamente:
+- `BLOCCO` è assegnata a riga 18 prima di ogni uso.
+- `ERR` e `RC` sono assegnate alle righe 26-27 prima di ogni lettura.
+- `RUOLO` è assegnata a riga 40, con fallback `|| RUOLO=""`, prima del test.
+- Nessuna di queste può quindi essere influenzata dall'ambiente.
+
+Fail-closed: confermato. Con `--blocco` si esce 0 solo se `OK=1`, e `OK` diventa 1 soltanto a riga 43. Gli altri casi escono 1: gh assente, token che amministra, rate limit, repo non verificabile, rc anomalo, 403/404 senza ruolo admin.
+
+Misure: ho rieseguito la classe `TestAvvisoTokenAdmin` più il test `manca_lo_script`, 20 passed. Non ho rieseguito tutti i 108 test del file.
+
+Rischio escluso, non verificato:
+- Un ambiente ostile con funzioni bash esportate (`BASH_FUNC_gh%%`), `BASH_ENV` o `GH_REPO`. Chi controlla l'ambiente del processo ha già il controllo completo, quindi nessuno script di questo tipo può difendersi da solo. Il caso del repo sbagliato (`GH_REPO`) è già coperto dal controllo del ruolo a riga 40.
+- Il comportamento con un `gh` e un token reali: non riproducibile in dev.
+
+Memoria: registrata la riga #340 e la lezione sulla #339 (`${OK:-0}` non protegge da una variabile ereditata; i flag che aprono il blocco vanno inizializzati in testa e testati con la variabile nell'ambiente). La memoria è committata con `scripts/commit_memoria_revisore.sh`.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gasmerge.py: 101 → 106 passed. Mutazione: con gli script di origin/main `4 failed, 102 passed`.
+tests/test_unit_gasmerge.py: 101 → 106 passed → 108 passed (bot #207 V-1/V-3; il test di OK nell'ambiente fallisce con lo script precedente). Mutazione: con gli script di origin/main `4 failed, 102 passed`.
 
 pytest `tests/`: `1376 passed in 190.89s (0:03:10)`.
 
@@ -86,9 +119,12 @@ pytest `tests/`: `1376 passed in 190.89s (0:03:10)`.
 
 - `989fa0c`, `0996de7`, `17f40c3`: nessuna run su questi SHA (pushati prima dell'apertura della PR #207).
 - `a0f39b7` (fine-task precedente): run della PR #207 partita; esito non riportato qui (superato dalla testa nuova).
+- `58632e1`: unit-suite e handoff-check sulla PR #207; bot NON approvata (V-1 MEDIA, corretta qui).
+- `a9df945`, `b031722`, `1e9d44f`: nessuna run su questi SHA (pushati insieme al commit di fine-task).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- Nessuna riserva dalla review #340.
 - Nota minore della review #339: il messaggio di BLOCCO cita `gasclaude` anche quando la causa è rete o rate limit.
 - Alias `gasclaude` non fail-safe se il file del token manca (bot #206 V-1), da cambiare sul Mac.
