@@ -8809,6 +8809,77 @@ try:
 except Exception as _e89:
     check("T89 blocco senza eccezioni", False, repr(_e89))
 
+# ---------- T90: recap pertinente e con scadenza (FASE 2.6 fetta 3, R-199-3) ----------
+from datetime import datetime as _dt90, timedelta as _td90, timezone as _tz90
+_sv90 = {k_: os.environ.get(k_) for k_ in _ENV80 + ("GAS_RECAP_MAX_GIORNI",)}
+_vo90 = gas.OpenAI
+def _recap90(k_, testo, giorni_fa=0, tipo="recap", fonte="modello"):
+    ts = (_dt90.now(_tz90.utc) - _td90(days=giorni_fa)).isoformat()
+    with k_.memory._connect() as con_:
+        con_.execute("INSERT INTO diario (ts, tipo, descrizione, fonte) VALUES (?, ?, ?, ?)",
+                     (ts, tipo, testo, fonte))
+        con_.commit()
+try:
+    try:
+        os.environ.pop("GAS_RECAP_MAX_GIORNI", None)
+        _k90 = kernel_tmp()
+        _recap90(_k90, "Preventivo Rossi: calcolato 1200 euro, da inviare.", giorni_fa=2)
+        _recap90(_k90, "Campagna email Bianchi: bozza pronta.", giorni_fa=1)
+        _p90a = _k90._recap_pin("aggiorna il preventivo di Rossi")
+        check("T90a sceglie il recap PERTINENTE, non il più recente",
+              "Preventivo Rossi" in _p90a and "Bianchi" not in _p90a, _p90a)
+        _p90b = _k90._recap_pin("riprendiamo")
+        check("T90b nessuna parola in comune: il più recente",
+              "Bianchi" in _p90b and "Rossi" not in _p90b, _p90b)
+        check("T90c senza messaggio (default): il più recente", "Bianchi" in _k90._recap_pin())
+        _p90c2 = _k90._recap_pin("questo preventivo")
+        check("T90c2 R-348-1: una sola parola in comune non basta, resta il più recente",
+              "Bianchi" in _p90c2 and "Rossi" not in _p90c2, _p90c2)
+        _recap90(_k90, "Campagna email Bianchi: inviata ai primi 10.", giorni_fa=0)
+        _p90d = _k90._recap_pin("campagna email per Bianchi")
+        check("T90d a pari pertinenza vince il più recente",
+              "inviata ai primi 10" in _p90d and "bozza pronta" not in _p90d, _p90d)
+
+        _k90e = kernel_tmp()
+        _recap90(_k90e, "Preventivo Rossi vecchio.", giorni_fa=10)
+        check("T90e recap più vecchio di GAS_RECAP_MAX_GIORNI (7): nessun recap",
+              _k90e._recap_pin("preventivo Rossi") == "")
+        _recap90(_k90e, "Campagna Bianchi recente.", giorni_fa=1)
+        _p90f = _k90e._recap_pin("preventivo Rossi")
+        check("T90f scaduto pertinente escluso, resta il recente non pertinente",
+              "Bianchi" in _p90f and "vecchio" not in _p90f, _p90f)
+        os.environ["GAS_RECAP_MAX_GIORNI"] = "30"
+        _k90g = kernel_tmp()
+        _recap90(_k90g, "Preventivo Rossi vecchio.", giorni_fa=10)
+        check("T90g GAS_RECAP_MAX_GIORNI=30: il recap di 10 giorni torna valido",
+              "vecchio" in _k90g._recap_pin("preventivo Rossi"))
+        os.environ.pop("GAS_RECAP_MAX_GIORNI", None)
+
+        _k90h = kernel_tmp()
+        _recap90(_k90h, "Campagna Bianchi.", giorni_fa=1)
+        _recap90(_k90h, "Preventivo Rossi notte.", tipo="recap_notte")
+        _recap90(_k90h, "Preventivo Rossi non fidato.", tipo="recap_non_fidato")
+        _recap90(_k90h, "Preventivo Rossi dal kernel.", fonte="kernel")
+        _p90h = _k90h._recap_pin("preventivo Rossi")
+        check("T90h mai recap_notte, recap_non_fidato o fonte diversa da 'modello'",
+              "Bianchi" in _p90h and "Rossi" not in _p90h, _p90h)
+
+        # T90i — run_turn passa il messaggio dell'utente alla scelta del recap
+        _setup80({gas.GEMINI_FLASH_LITE_MODEL: "ciao"})
+        list(_k90.run_turn("preventivo Rossi?"))
+        _sys90 = _Rif80.chiamate[0][1][0]["content"]
+        check("T90i run_turn inietta il recap pertinente al messaggio",
+              "calcolato 1200 euro" in _sys90 and "Bianchi" not in _sys90, _sys90[-400:])
+    finally:
+        gas.OpenAI = _vo90
+        for _k90x, _v90 in _sv90.items():
+            if _v90 is None:
+                os.environ.pop(_k90x, None)
+            else:
+                os.environ[_k90x] = _v90
+except Exception as _e90:
+    check("T90 blocco senza eccezioni", False, repr(_e90))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

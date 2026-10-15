@@ -12,7 +12,7 @@ import logging
 import subprocess
 import time as _time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Dict, Any, Generator, Optional, Tuple
@@ -771,6 +771,17 @@ def _cascata_provider(compito: str) -> List[Tuple[str, str, Optional[str], str]]
     ] + free_rungs
 
 
+def _parole_recap(testo: Any) -> set:
+    """Parole (minuscole, almeno 4 caratteri: niente articoli e preposizioni) usate
+    per misurare la pertinenza di un recap al messaggio dell'utente (fetta 3)."""
+    return {w for w in re.findall(r"\w+", str(testo or "").lower()) if len(w) >= 4}
+
+
+# R-348-1: una sola parola in comune (anche «questo», «della») non basta a dire
+# che un recap più vecchio è pertinente: ne servono almeno RECAP_MIN_PAROLE.
+RECAP_MIN_PAROLE = 2
+
+
 class GasKernel:
     def __init__(self, root_dir: Optional[str] = None, carica_storia: bool = True):
         self.root: Path = Path(root_dir or os.getcwd()).resolve()
@@ -823,6 +834,7 @@ class GasKernel:
         self.PROVIDER_MAX_RETRIES = _env_int("GAS_PROVIDER_MAX_RETRIES", GasKernel.PROVIDER_MAX_RETRIES, min_val=0)
         self.RECAP_MAX_CHARS = _env_int("GAS_RECAP_CHARS", GasKernel.RECAP_MAX_CHARS, min_val=200)
         self.RECAP_PIN_CHAR_CAP = _env_int("GAS_RECAP_PIN_CHARS", GasKernel.RECAP_PIN_CHAR_CAP, min_val=0)
+        self.RECAP_MAX_GIORNI = _env_int("GAS_RECAP_MAX_GIORNI", GasKernel.RECAP_MAX_GIORNI, min_val=1)
         self.MEMORY_BACKUP_EVERY_SEC = _env_int("GAS_MEMORY_BACKUP_EVERY_SEC", GasKernel.MEMORY_BACKUP_EVERY_SEC, min_val=0)
         # Backup off-site: dir esterna configurabile (vuota = OFF, default).
         _raw_offsite = os.environ.get("GAS_MEMORY_BACKUP_OFFSITE_DIR", "").strip()
@@ -1202,12 +1214,17 @@ class GasKernel:
 
     # --- Riflessione di fine task (FASE 2.6, fetta 1) ---
     # Override via env (risolti in __init__): GAS_RECAP_CHARS / GAS_RECAP_PIN_CHARS
-    # (0 = recap NON iniettato nel prompt).
+    # (0 = recap NON iniettato nel prompt) / GAS_RECAP_MAX_GIORNI (fetta 3).
     RECAP_MAX_CHARS = 4000          # tetto del recap salvato nel diario
     RECAP_PIN_CHAR_CAP = 4000       # tetto del blocco <recap_dati> nel system
     RIFLESSIONE_WINDOW_N = 40       # messaggi di storia esaminati (via _get_window)
     RIFLESSIONE_MSG_CHARS = 1500    # tetto per messaggio nella trascrizione
     RIFLESSIONE_MAX_LEZIONI = 3     # lezioni proposte al massimo per riflessione
+    # Fetta 3: il recap iniettato è il più PERTINENTE al messaggio dell'utente tra i
+    # recap fidati non scaduti (env GAS_RECAP_MAX_GIORNI); a pari pertinenza, o se
+    # nessuno è pertinente, il più recente. Scaduti tutti → nessun recap (R-199-3).
+    RECAP_MAX_GIORNI = 7            # età massima di un recap iniettabile
+    RECAP_CANDIDATI = 30            # recap recenti esaminati per la pertinenza
 
     # --- Backup automatico della memoria (anti auto-corruzione, §10 FASE 2) ---
     # Il DB di memoria è il dato più prezioso e meno rimpiazzabile: un backup
@@ -2838,21 +2855,36 @@ class GasKernel:
             logging.warning(f"_lezioni_pin fallito: {e}")
             return ""
 
-    def _recap_pin(self) -> str:
-        """Blocco <recap_dati> (FASE 2.6) da appendere al system prompt: l'ULTIMO recap
+    def _recap_pin(self, user_prompt: str = "") -> str:
+        """Blocco <recap_dati> (FASE 2.6) da appendere al system prompt: un recap
         fidato (diario tipo 'recap' con fonte 'modello', scritto solo da rifletti();
-        mai 'recap_non_fidato'), sanitizzato e capato a
-        RECAP_PIN_CHAR_CAP. Come gli altri pin vive nel messaggio system, FUORI dalla
-        finestra (_get_window/_cap_window_chars intatti), calcolato una volta per turno.
+        mai 'recap_non_fidato' né 'recap_notte'), sanitizzato e capato a
+        RECAP_PIN_CHAR_CAP. Fetta 3: tra i recap degli ultimi RECAP_MAX_GIORNI giorni
+        sceglie quello che condivide più parole con `user_prompt`, almeno
+        RECAP_MIN_PAROLE (a parità, o sotto la soglia, il più recente); più vecchi →
+        nessun recap (R-199-3).
+        Come gli altri pin vive nel messaggio system, FUORI dalla finestra
+        (_get_window/_cap_window_chars intatti), calcolato una volta per turno.
         Fail-safe (§9): memoria assente, nessun recap, cap 0 o errore → ""."""
         if self.memory is None or self.RECAP_PIN_CHAR_CAP <= 0:
             return ""
         try:
             # Doppia difesa (R-199-1): tipo 'recap' E fonte 'modello' — le tool call
             # scrivono con fonte 'kernel', quindi non possono mai produrre un recap.
-            e = self.memory.ultimo_diario_per_tipo("recap", fonte="modello")
-            if not e:
+            dal = (datetime.now(timezone.utc)
+                   - timedelta(days=self.RECAP_MAX_GIORNI)).isoformat()
+            candidati = self.memory.diario_per_tipo_dal(
+                "recap", "modello", dal, self.RECAP_CANDIDATI)
+            if not candidati:
                 return ""
+            parole = _parole_recap(user_prompt)
+            # Dal più recente: vince solo chi supera strettamente (a pari punti resta il
+            # più recente) e con almeno RECAP_MIN_PAROLE in comune (R-348-1).
+            e, punti = candidati[0], RECAP_MIN_PAROLE - 1
+            for c in candidati:
+                p = len(parole & _parole_recap(c.get("descrizione")))
+                if p > punti:
+                    e, punti = c, p
             testo = _sanitize_memory_text(str(e.get("descrizione") or "")).strip()
             if not testo:
                 return ""
@@ -3533,7 +3565,7 @@ class GasKernel:
             # "" se la memoria è assente/degradata.
             mem_pin = self._memoria_pin()
             lezioni_pin = self._lezioni_pin()
-            recap_pin = self._recap_pin()  # FASE 2.6: ultimo recap fidato, come DATO
+            recap_pin = self._recap_pin(user_prompt)  # FASE 2.6: recap fidato pertinente, come DATO
 
             # Backup automatico THROTTLED del DB di memoria (anti auto-corruzione):
             # una volta per turno valuta se è ora di una copia coerente; il throttling
