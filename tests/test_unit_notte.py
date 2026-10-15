@@ -32,6 +32,9 @@ def _ermetico(monkeypatch):
               # R-238-1: "0" nell'ambiente spegnerebbe il riepilogo su Telegram
               "GAS_NOTTE_TELEGRAM"):
         monkeypatch.delenv(k, raising=False)
+    # FASE 2.6 fetta 2: spenta nei test esistenti (il client finto non sa riflettere);
+    # i test della riflessione la riaccendono.
+    monkeypatch.setenv("GAS_RIFLESSIONE_AUTO", "0")
     # R-221-2: setenv registra il valore originale, così il budget che esegui_notte
     # imposta nel processo viene ripulito a fine test (delenv su assente non lo fa).
     monkeypatch.setenv("GAS_DAILY_TOKEN_BUDGET", "0")
@@ -910,3 +913,140 @@ def test_snapshot_e_conversazione_operatore(tmp_path, carica, presente):
     files = subprocess.run(["git", "-C", str(tmp_path), "ls-tree", "-r", "--name-only", sha],
                            capture_output=True, text=True, check=True).stdout.split()
     assert (".gas_history.json" in files) is presente
+
+
+# ---------- FASE 2.6 fetta 2: riflessione automatica a fine compito ----------
+
+_RIFL_JSON = json.dumps({"recap": "Obiettivo: contare. Stato: fatto, 42.",
+                         "lezioni": ["LEZIONE-SEGRETA uno", "LEZIONE-SEGRETA due"]})
+
+
+class _ClientRifl:
+    """Client finto: risponde al compito e, se il system è quello della riflessione,
+    con un JSON di riflessione. Conta le chiamate di riflessione."""
+    riflessioni = 0
+
+    def __init__(self, base_url=None, api_key=None, timeout=None, max_retries=None):
+        self.chat = SimpleNamespace(completions=self)
+
+    def create(self, model=None, messages=None, tools=None, tool_choice=None):
+        if "Cosa abbiamo imparato" in str(messages[0].get("content")):
+            _ClientRifl.riflessioni += 1
+            testo = _RIFL_JSON
+        else:
+            testo = "42"
+        msg = SimpleNamespace(content=testo, tool_calls=None)
+        return SimpleNamespace(choices=[SimpleNamespace(message=msg, finish_reason="stop")],
+                               usage=None)
+
+
+def test_riflessione_a_fine_compito(monkeypatch, dirs):
+    """Lezioni in quarantena, recap 'recap_notte' mai iniettato, solo il NUMERO di
+    lezioni nel riepilogo e su Telegram (mai il testo del modello)."""
+    root, fuori = dirs
+    monkeypatch.delenv("GAS_RIFLESSIONE_AUTO")
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: conta\n    prompt: quanto fa 6*7\n")
+    _ClientRifl.riflessioni = 0
+    monkeypatch.setattr(gas, "OpenAI", _ClientRifl)
+    rc = esegui_notte(str(root), catalogo=cat,
+                      kernel_factory=lambda r: gas.GasKernel(root_dir=r, carica_storia=False))
+    assert rc == 0 and _ClientRifl.riflessioni == 1
+    k = gas.GasKernel(root_dir=str(root), carica_storia=False)
+    lezioni = k.memory.lista_lezioni()
+    assert len(lezioni) == 2 and all(l["stato"] == "proposta" and l["autore"] == "llm"
+                                     for l in lezioni)
+    assert k.memory.ultimo_diario_per_tipo("recap") is None
+    assert k.memory.ultimo_diario_per_tipo("recap_notte") is not None
+    assert k._recap_pin() == ""
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "Riflessione: 2 lezioni proposte" in riep and "LEZIONE-SEGRETA" not in riep
+    esiti = [{"nome": "conta", "esito": "ok", "tool": 0, "durata": 1, "errore": "",
+              "riflessione": {"ok": True, "lezioni": 2}}]
+    tg = notte.componi_messaggio_telegram("ora", esiti, [])
+    assert "lezioni proposte: 2" in tg and "Lezioni da approvare: 2" in tg
+    assert "LEZIONE-SEGRETA" not in tg
+
+
+def test_riflessione_spenta_da_env(monkeypatch, dirs):
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: conta\n    prompt: quanto fa 6*7\n")
+    _ClientRifl.riflessioni = 0
+    monkeypatch.setattr(gas, "OpenAI", _ClientRifl)
+    rc = esegui_notte(str(root), catalogo=cat,
+                      kernel_factory=lambda r: gas.GasKernel(root_dir=r, carica_storia=False))
+    assert rc == 0 and _ClientRifl.riflessioni == 0
+    assert "Riflessione" not in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+
+def test_riflessione_fallita_non_cambia_il_giro(monkeypatch, dirs):
+    """rifletti che solleva o fallisce: compito resta OK, exit 0, avviso nel riepilogo
+    e su Telegram; il motivo resta solo nel log."""
+    root, fuori = dirs
+    monkeypatch.delenv("GAS_RIFLESSIONE_AUTO")
+    cat = _scrivi(fuori / "c.yaml",
+                  "compiti:\n  - nome: a\n    prompt: p\n  - nome: b\n    prompt: q\n")
+    chiamate = []
+
+    class _K:
+        def __init__(self, rompi):
+            self.rompi, self.history = rompi, []
+
+        def run_turn(self, prompt):
+            self.history = [{"role": "user", "content": prompt}]
+            yield {"type": "final", "content": "ok"}
+
+        def rifletti(self, **kw):
+            chiamate.append(kw)
+            if self.rompi:
+                raise RuntimeError("boom")
+            return {"ok": False, "errore": "nessun provider"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    fatti = iter([_K(True), _K(False)])
+    rc = esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: next(fatti))
+    assert rc == 0
+    assert chiamate == [{"iniettabile": False}, {"iniettabile": False}]
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert riep.count("Riflessione non riuscita") == 2 and "boom" not in riep
+    esiti = [{"nome": "a", "esito": "ok", "tool": 0, "durata": 1, "errore": "",
+              "riflessione": {"ok": False, "lezioni": 0}}]
+    tg = notte.componi_messaggio_telegram("ora", esiti, [])
+    assert "riflessione non riuscita" in tg and "Lezioni da approvare" not in tg
+
+
+def test_niente_riflessione_su_compito_scaduto_o_vuoto(monkeypatch, tmp_path):
+    monkeypatch.delenv("GAS_RIFLESSIONE_AUTO")
+    chiamate = []
+
+    class _K:
+        def __init__(self, eventi, storia):
+            self.eventi, self.storia = eventi, storia
+
+        def run_turn(self, prompt):
+            self.history = list(self.storia)
+            yield from self.eventi
+
+        def rifletti(self, **kw):
+            chiamate.append(kw)
+            return {"ok": True, "lezioni": []}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    storia = [{"role": "user", "content": "p"}]
+    # oltre il tetto di tempo (max_sec=0): il compito è interrotto, niente riflessione
+    e = notte._esegui_compito(_K([{"type": "tool_res", "output": "x"},
+                                  {"type": "final", "content": "ok"}], storia),
+                              {"nome": "a", "prompt": "p"}, tmp_path, max_sec=0)
+    assert "tempo scaduto" in e["errore"] and "riflessione" not in e and chiamate == []
+    # cronologia vuota: niente su cui riflettere
+    e = notte._esegui_compito(_K([{"type": "final", "content": "ok"}], []),
+                              {"nome": "b", "prompt": "p"}, tmp_path, max_sec=900)
+    assert "riflessione" not in e and chiamate == []
+    # caso normale: una riflessione, non iniettabile
+    e = notte._esegui_compito(_K([{"type": "final", "content": "ok"}], storia),
+                              {"nome": "c", "prompt": "p"}, tmp_path, max_sec=900)
+    assert e["riflessione"] == {"ok": True, "lezioni": 0}
+    assert chiamate == [{"iniettabile": False}]

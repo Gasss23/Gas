@@ -534,8 +534,8 @@ _NESSUN_APPRENDIMENTO = "nessun nuovo apprendimento permanente"
 # tipo il NOME del tool scelto dal modello (anche se il cancello lo nega), quindi un
 # modello manipolato potrebbe scrivere una riga 'recap' e farla reiniettare come
 # recap fidato. I nomi riservati vengono rimappati su _TIPO_TOOL_RISERVATO.
-_TIPI_DIARIO_KERNEL: frozenset = frozenset({"recap", "recap_non_fidato", "apprendimento",
-                                            "turno_fine"})
+_TIPI_DIARIO_KERNEL: frozenset = frozenset({"recap", "recap_non_fidato", "recap_notte",
+                                            "apprendimento", "turno_fine"})
 _TIPO_TOOL_RISERVATO = "tool_nome_riservato"
 # R-200-1: per la riflessione la fiducia è FAIL-CLOSED. Una finestra è "fidata" solo
 # se OGNI output di tool che contiene viene da questa allowlist (output prodotto dal
@@ -1196,8 +1196,8 @@ class GasKernel:
     # FASE 2.6: recap e apprendimenti NON entrano in "Ultime azioni": il recap ha il
     # suo blocco dedicato (<recap_dati>), le lezioni proposte NON sono approvate.
     DIARIO_NOISE_TIPI = frozenset({"read_file", "run_command", "ricorda", "turno_fine",
-                                   "recap", "recap_non_fidato", "apprendimento",
-                                   "elenca_cartella", "leggi_righe", "cerca_testo",
+                                   "recap", "recap_non_fidato", "recap_notte",
+                                   "apprendimento", "elenca_cartella", "leggi_righe", "cerca_testo",
                                    "conta_file", "data_ora"})
 
     # --- Riflessione di fine task (FASE 2.6, fetta 1) ---
@@ -2890,7 +2890,7 @@ class GasKernel:
         """Timeout HTTP del rung: Ollama locale ha il suo (R-226-1)."""
         return self.OLLAMA_TIMEOUT_SEC if name == "ollama" else self.PROVIDER_TIMEOUT_SEC
 
-    def rifletti(self) -> Dict[str, Any]:
+    def rifletti(self, iniettabile: bool = True) -> Dict[str, Any]:
         """Riflessione di fine task (FASE 2.6, fetta 1). UNA chiamata LLM senza tool
         sulla trascrizione del task (finestra da _get_window), lungo la stessa cascata
         di run_turn (classe 'complesso'); risposta JSON non valida → provider successivo.
@@ -2898,6 +2898,9 @@ class GasKernel:
           - il recap nel diario (append-only, fonte 'modello'): tipo 'recap' se la
             finestra è pulita, 'recap_non_fidato' se contiene output di tool non fidati
             (§3b) — solo il primo viene reiniettato nel prompt (_recap_pin);
+            con iniettabile=False (giro notturno, fetta 2: nessuno davanti, e il testo
+            del modello non deve finire nel prompt di sistema) un recap fidato diventa
+            'recap_notte', consultabile con 'ricorda' ma MAI reiniettato;
           - max RIFLESSIONE_MAX_LEZIONI lezioni nel catalogo in stato 'proposta', autore
             'llm' (duplicati e testi non validi scartati, MAI troncati): entrano nel
             prompt solo dopo l'approvazione umana (`gas lezioni approva <id>`);
@@ -2993,7 +2996,8 @@ class GasKernel:
                 return esito
             recap, lezioni = parsed
             recap = _tronca_righe(recap, self.RECAP_MAX_CHARS, "…[recap troncato]")
-            tipo = "recap_non_fidato" if contaminata else "recap"
+            tipo = ("recap_non_fidato" if contaminata
+                    else "recap" if iniettabile else "recap_notte")
             rid = self.memory.append_diario(tipo, recap, fonte="modello")
             if rid is None:
                 esito["errore"] = "recap non scritto: diario non disponibile"
@@ -4694,6 +4698,27 @@ def _stampa_riflessione(esito: Dict[str, Any]) -> None:
         print(f"  (scartata: {motivo} — {testo[:80]})")
 
 
+def _clear_con_riflessione(kernel: "GasKernel") -> None:
+    """REPL `clear` (FASE 2.6 fetta 2, decisione operatore 2026-10-15): prima di
+    pulire, riflessione automatica sul task appena chiuso (spegnibile con
+    GAS_RIFLESSIONE_AUTO=0). Riuscita o no, la cronologia viene pulita lo stesso:
+    `clear` è un comando dell'operatore e la riflessione non lo blocca mai (§9).
+    Ctrl-C durante la riflessione (che può durare minuti) la salta e pulisce lo
+    stesso, invece di far uscire dal REPL con la cronologia intatta (R-345-2)."""
+    try:
+        from modules.notte.notte import riflessione_auto_attiva
+        if kernel.history and riflessione_auto_attiva():
+            print("Rifletto sul task prima di pulire… (Ctrl-C per saltare)")
+            _stampa_riflessione(kernel.rifletti())
+    except KeyboardInterrupt:
+        print("\n✗ Riflessione saltata (Ctrl-C).")
+    except Exception as e:  # rifletti non solleva; cintura per import e stampa
+        logging.warning(f"clear: riflessione automatica fallita: {e}")
+        print("✗ Riflessione non eseguita (dettagli in gas_debug.log).")
+    kernel.clear_history()
+    print("✓ Cronologia pulita.")
+
+
 def rifletti_cmd(root_dir: Optional[str] = None) -> int:
     """CLI `gas rifletti` (FASE 2.6): riflessione di fine task sull'ultima parte della
     cronologia. Exit 0 se la riflessione è stata salvata, 1 altrimenti."""
@@ -4764,9 +4789,8 @@ def main():
             prompt = input("Gas❯ ").strip()
             if not prompt: continue
             if prompt == "exit": break
-            if prompt == "clear": 
-                kernel.clear_history()
-                print("✓ Cronologia pulita.")
+            if prompt == "clear":
+                _clear_con_riflessione(kernel)
                 continue
             if prompt == "rifletti":
                 _stampa_riflessione(kernel.rifletti())

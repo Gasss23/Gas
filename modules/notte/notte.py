@@ -44,6 +44,10 @@ Invarianti di sicurezza:
   ritentata (429, 5xx...; max 60s per ritentativo); il
   timeout HTTP vale per fase di rete, non per l'intera risposta, quindi è un
   ordine di grandezza, non un limite. Compito e giro possono sforare.
+  La riflessione di fine compito (fetta 2.6/2) parte solo se il compito è
+  rimasto sotto il suo tetto, ma il suo tempo NON entra nella «durata» né nel
+  tetto per compito: conta solo in quello del giro, che può sforare di una
+  cascata intera (stesso caso peggiore non duro, R-345-1).
 - Riepilogo su Telegram (fetta 2): a fine giro (anche se il giro si è
   interrotto per un errore: testo fisso col solo tipo d'eccezione, o se un altro
   giro tiene ancora il lock: testo fisso «NON avviato») e a lock già
@@ -55,6 +59,15 @@ Invarianti di sicurezza:
   un'istruzione del modello finirebbe sul telefono come se l'avesse scritta
   Gas). Il testo resta in .gas_notte/ultimo_giro.md. Un invio fallito viene
   solo loggato: non cambia l'exit code del giro.
+- Riflessione automatica (FASE 2.6 fetta 2, decisione operatore 2026-10-15): a
+  fine di ogni compito (non scaduto per tempo, cronologia non vuota) il kernel
+  del compito esegue rifletti(iniettabile=False): le lezioni vanno in
+  QUARANTENA (entrano nel prompt solo con `gas lezioni approva <id>`) e il recap
+  diventa 'recap_notte', MAI reiniettato nel prompt di sistema (stesso motivo
+  della risposta: testo del modello senza nessuno davanti). Una chiamata LLM in
+  più per compito, sotto lo stesso tetto di spesa; spegnibile con
+  GAS_RIFLESSIONE_AUTO=0. Nel riepilogo e su Telegram va SOLO il numero di
+  lezioni proposte, mai il loro testo.
 - Un solo giro alla volta (lock su file). Un compito che fallisce viene
   registrato e si passa al successivo; il giro non solleva mai eccezioni (§9).
 """
@@ -183,6 +196,27 @@ def _env_secondi(nome: str, default: int) -> int:
         return default
 
 
+def riflessione_auto_attiva() -> bool:
+    """FASE 2.6 fetta 2: riflessione automatica (fine compito notturno e `clear`
+    nel REPL). Accesa di default; la spegne SOLO GAS_RIFLESSIONE_AUTO=0."""
+    return os.environ.get("GAS_RIFLESSIONE_AUTO", "").strip() != "0"
+
+
+def _rifletti_compito(kernel: Any, nome: str) -> Dict[str, Any]:
+    """Riflessione di fine compito: ritorna solo metadati (ok, numero di lezioni
+    proposte). Mai eccezioni (§9); il motivo di un fallimento va nel log."""
+    try:
+        r = kernel.rifletti(iniettabile=False)
+        if not isinstance(r, dict) or not r.get("ok"):
+            errore = r.get("errore") if isinstance(r, dict) else type(r).__name__
+            logging.warning("notte: riflessione di %s non eseguita: %s", nome, errore)
+            return {"ok": False, "lezioni": 0}
+        return {"ok": True, "lezioni": len(r.get("lezioni") or [])}
+    except Exception as e:
+        logging.warning("notte: riflessione di %s fallita: %s", nome, e)
+        return {"ok": False, "lezioni": 0}
+
+
 def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
                     max_sec: float = MAX_SEC_COMPITO_DEFAULT) -> Dict[str, Any]:
     """Esegue UN compito su un kernel nuovo, con cronologia vuota e propria.
@@ -193,6 +227,7 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
                              "risposta": "", "errore": "", "negate": 0, "in_attesa": 0}
     t0 = time.monotonic()
     gen = None
+    scaduto = False
     try:
         kernel.history = []
         kernel.db_path = notte_dir / f"storia_{nome}.json"
@@ -218,6 +253,7 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
                                 nome, int(max_sec))
                 esito["errore"] = (f"tempo scaduto: oltre {int(max_sec)}s, "
                                    "compito interrotto")
+                scaduto = True
                 break
     except Exception as e:
         logging.warning("notte: compito %s fallito: %s", nome, e)
@@ -230,6 +266,9 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
             except Exception as e:
                 logging.warning("notte: chiusura turno %s: %s", nome, e)
     esito["durata"] = round(time.monotonic() - t0, 1)
+    if (not scaduto and time.monotonic() - t0 < max_sec and riflessione_auto_attiva()
+            and getattr(kernel, "history", None)):
+        esito["riflessione"] = _rifletti_compito(kernel, nome)
     try:
         kernel._diario_log(
             "notte",
@@ -257,6 +296,11 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
                       f"in attesa della tua firma su Telegram: {e.get('in_attesa', 0)}", ""]
         if e["errore"]:
             righe += [f"Errore: {e['errore']}", ""]
+        rif = e.get("riflessione")
+        if rif:
+            righe += [(f"Riflessione: {rif['lezioni']} lezioni proposte, in attesa del tuo sì "
+                       f"(`python3 gas.py lezioni lista`)") if rif["ok"]
+                      else "Riflessione non riuscita (dettagli in gas_debug.log)", ""]
         if e["risposta"]:
             testo = e["risposta"]
             if len(testo) > MAX_RISPOSTA_CHARS:
@@ -290,6 +334,11 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
             note.append(f"in attesa della tua firma: {e['in_attesa']}")
         if e.get("errore"):
             note.append("errore (vedi riepilogo)")
+        rif = e.get("riflessione")
+        if rif and rif["ok"] and rif["lezioni"]:
+            note.append(f"lezioni proposte: {rif['lezioni']}")
+        elif rif and not rif["ok"]:
+            note.append("riflessione non riuscita")
         if note:
             riga += " — " + ", ".join(note)
         righe.append(riga)
@@ -300,6 +349,10 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
             righe.append(f"- {a}")
         if len(avvisi) > MAX_AVVISI_TELEGRAM:
             righe.append(f"- …e altri {len(avvisi) - MAX_AVVISI_TELEGRAM}")
+    lezioni = sum(e["riflessione"]["lezioni"] for e in esiti
+                  if e.get("riflessione") and e["riflessione"]["ok"])
+    if lezioni:
+        righe += ["", f"Lezioni da approvare: {lezioni} — python3 gas.py lezioni lista"]
     righe += ["", f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"]
     return "\n".join(righe)
 
