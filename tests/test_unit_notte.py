@@ -1045,8 +1045,24 @@ def test_niente_riflessione_su_compito_scaduto_o_vuoto(monkeypatch, tmp_path):
     e = notte._esegui_compito(_K([{"type": "final", "content": "ok"}], []),
                               {"nome": "b", "prompt": "p"}, tmp_path, max_sec=900)
     assert "riflessione" not in e and chiamate == []
+    # V-1 bot #211: compito KO (evento error, es. tutti i provider falliti) → niente
+    # seconda cascata di riflessione
+    e = notte._esegui_compito(_K([{"type": "error", "content": "Pipeline esausta"}], storia),
+                              {"nome": "d", "prompt": "p"}, tmp_path, max_sec=900)
+    assert e["esito"] == "ko" and "riflessione" not in e and chiamate == []
     # caso normale: una riflessione, non iniettabile
     e = notte._esegui_compito(_K([{"type": "final", "content": "ok"}], storia),
                               {"nome": "c", "prompt": "p"}, tmp_path, max_sec=900)
     assert e["riflessione"] == {"ok": True, "lezioni": 0}
     assert chiamate == [{"iniettabile": False}]
+
+
+def test_riepilogo_riflessione_senza_lezioni(tmp_path):
+    """V-3 bot #211: zero lezioni → «nessuna lezione nuova», mai «0 … in attesa del tuo sì»."""
+    base = {"esito": "ok", "tool": 0, "durata": 1, "errore": "", "risposta": ""}
+    esiti = [dict(base, nome="a", riflessione={"ok": True, "lezioni": 0}),
+             dict(base, nome="b", riflessione={"ok": True, "lezioni": 2})]
+    riep = notte._componi_riepilogo("ora", tmp_path / "c.yaml", esiti, [])
+    assert "Riflessione: nessuna lezione nuova" in riep
+    assert "0 lezioni" not in riep
+    assert "Riflessione: 2 lezioni proposte, in attesa del tuo sì" in riep

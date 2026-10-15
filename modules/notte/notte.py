@@ -60,7 +60,9 @@ Invarianti di sicurezza:
   Gas). Il testo resta in .gas_notte/ultimo_giro.md. Un invio fallito viene
   solo loggato: non cambia l'exit code del giro.
 - Riflessione automatica (FASE 2.6 fetta 2, decisione operatore 2026-10-15): a
-  fine di ogni compito (non scaduto per tempo, cronologia non vuota) il kernel
+  fine di ogni compito RIUSCITO (esito ok: niente seconda cascata quando i
+  provider stanno già fallendo, V-1 bot #211; non scaduto per tempo,
+  cronologia non vuota) il kernel
   del compito esegue rifletti(iniettabile=False): le lezioni vanno in
   QUARANTENA (entrano nel prompt solo con `gas lezioni approva <id>`) e il recap
   diventa 'recap_notte', MAI reiniettato nel prompt di sistema (stesso motivo
@@ -266,8 +268,8 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
             except Exception as e:
                 logging.warning("notte: chiusura turno %s: %s", nome, e)
     esito["durata"] = round(time.monotonic() - t0, 1)
-    if (not scaduto and time.monotonic() - t0 < max_sec and riflessione_auto_attiva()
-            and getattr(kernel, "history", None)):
+    if (esito["esito"] == "ok" and not scaduto and time.monotonic() - t0 < max_sec
+            and riflessione_auto_attiva() and getattr(kernel, "history", None)):
         esito["riflessione"] = _rifletti_compito(kernel, nome)
     try:
         kernel._diario_log(
@@ -298,9 +300,14 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
             righe += [f"Errore: {e['errore']}", ""]
         rif = e.get("riflessione")
         if rif:
-            righe += [(f"Riflessione: {rif['lezioni']} lezioni proposte, in attesa del tuo sì "
-                       f"(`python3 gas.py lezioni lista`)") if rif["ok"]
-                      else "Riflessione non riuscita (dettagli in gas_debug.log)", ""]
+            if not rif["ok"]:
+                testo_rif = "Riflessione non riuscita (dettagli in gas_debug.log)"
+            elif rif["lezioni"]:
+                testo_rif = (f"Riflessione: {rif['lezioni']} lezioni proposte, in attesa del "
+                             f"tuo sì (`python3 gas.py lezioni lista`)")
+            else:  # V-3 bot #211: niente «0 lezioni … in attesa del tuo sì»
+                testo_rif = "Riflessione: nessuna lezione nuova"
+            righe += [testo_rif, ""]
         if e["risposta"]:
             testo = e["risposta"]
             if len(testo) > MAX_RISPOSTA_CHARS:
