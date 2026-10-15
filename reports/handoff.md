@@ -16,6 +16,7 @@
 
 - **Recap pertinente al messaggio**: `FATTA`.
 - **Scadenza del recap (R-199-3)**: `FATTA`.
+- **Seguito bot #213 (V-1 più recente tra i pertinenti, V-2 intestazione) e verifica esterna #213 (V-1 formato ts)**: `FATTA` — review #350.
 - **Riga lunga in setup_notte.md (cosmetica bot #212)**: `FATTA`.
 - **Prova con conversazioni reali**: `DEFERITA` — nessun DB né chiave nel container.
 
@@ -24,17 +25,17 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- gas.py                             |  52 ++++++++++++++++++++++++++++++++++++++++++----------
+ .claude/agents/memoria_revisore.md |   3 +++
+ gas.py                             |  55 ++++++++++++++++++++++++++++++++++++++++++++-----------
  modules/memory/store.py            |  17 +++++++++++++++++
  reports/diff_sessione.md           |  13 +++++++------
- reports/handoff.md                 | 121 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------
+ reports/handoff.md                 | 152 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------
  reports/roadmap.md                 |   2 +-
  reports/setup_notte.md             |   5 +++--
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  17 ++++++++---------
- tests/test_unit_kernel.py          |  71 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 10 files changed, 227 insertions(+), 77 deletions(-)
+ reports/ultimo_report.md           |  19 ++++++++++---------
+ tests/test_unit_kernel.py          |  89 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 10 files changed, 279 insertions(+), 80 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -42,6 +43,9 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1574821 fix(recap): tra i recap pertinenti vince il più recente; intestazione «RECAP PERTINENTE» (bot #213)
+9918f22 chore(revisore): memoria review #350 — APPROVATO CON RISERVE
+d6cc594 docs(fine-task): report e handoff — FASE 2.6 fetta 3 (PR #213)
 0e8e29b feat(recap): ricordo giusto — recap pertinente al messaggio e con scadenza (FASE 2.6 fetta 3)
 f7494b6 chore(revisore): memoria review #349 — APPROVATO
 5014973 chore(revisore): memoria review #348 — APPROVATO CON RISERVE
@@ -121,19 +125,47 @@ File:
 - /home/user/Gas/tests/test_unit_kernel.py
 - /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #350 (seguito bot #213 e verifica esterna #213) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho letto prima, come richiesto, CLAUDE.md (sez. 5, 8 e 9), le voci di reports/stato_progetto.md su R-199-3 e PR #213, e la coda di .claude/agents/memoria_revisore.md (#346–#349).
+
+**Cosa ho controllato nel diff**
+1. `gas.py:2886` — `_recap_pin` ora usa `next(...)` sul primo candidato con almeno `RECAP_MIN_PAROLE` parole in comune, altrimenti prende `candidati[0]`. Ho verificato che "primo" vuol dire davvero "più recente": `modules/memory/store.py:967` ordina per `id DESC` (contesto, file non toccato). Il filtro sulla scadenza e quello sulla fonte 'modello' restano a monte. Fail-safe intatto: lista vuota → "", e il try/except è invariato. Non c'è slicing della history e `_get_window` non è toccato. **ok**
+2. `gas.py:2894` — l'intestazione del blocco ora è «# RECAP PERTINENTE ({ts})». Ho controllato che questo testo non compaia nel system prompt (REGOLA), così `_BLOCCO80` non può dare falsi positivi. **ok**
+3. `tests/test_unit_kernel.py:8835` — T90c3 riproduce il caso del bot: recap vecchio con più parole in comune contro recap nuovo con 2 parole in comune. Prova di mutazione: ho rimesso il vecchio criterio "vince chi ha più parole" → 869 PASS e 1 FAIL, ed è proprio T90c3. Poi ho ripristinato `gas.py`: il diff staged non è cambiato. **ok**
+4. `tests/test_unit_kernel.py:8875` — T90j verifica che il ts scritto da `append_diario` sia ISO, con fuso orario e finisca con '+00:00'. È coerente con `modules/memory/store.py:388` (`_now_iso`, contesto). Così si blocca il formato da cui dipende il confronto tra stringhe della scadenza. **ok**
+5. `tests/test_unit_kernel.py:7011` — T80x controlla ancora `"RECAP DEL TASK" not in`. Ora è vacuo: quel testo non esiste più da nessuna parte. **riserva cosmetica**
+
+**Riserve**
+- **R-350-1 (COSMETICA)**: in `tests/test_unit_kernel.py:7011` sostituire «RECAP DEL TASK» con «RECAP PERTINENTE». La sostituzione è sicura perché il testo non compare nel system prompt. In alternativa si può togliere quella metà della condizione, che è già coperta da `_BLOCCO80`. Non blocca il commit: va tracciata in stato_progetto.md oppure sistemata in questa stessa fetta.
+
+**Prove riprodotte**: kernel 870 PASS / 0 FAIL.
+
+**Rischi esclusi**
+- La scelta tra recap con conversazioni reali non è verificata. Preferire il più recente tra quelli pertinenti è una scelta di semantica che segue V-1 del bot. Resta il caso già dichiarato in R-199-3: due parole comuni generiche possono rendere "pertinente" un recap meno adatto.
+- Non ho rilanciato `pytest tests/` per intero (1419): mi fido del dato dell'agente, perché il diff tocca solo `gas.py` e il file di test del kernel.
+- Il caso limite del confronto tra stringhe quando il ts non ha microsecondi (`isoformat` senza frazione) cade solo sul confine dello stesso secondo, su una finestra di 7 giorni. È trascurabile e non l'ho testato.
+
+**Memoria**: ho aggiunto la riga #350 a /home/user/Gas/.claude/agents/memoria_revisore.md, con questa lezione: quando si rinomina un marcatore testuale, cercare con grep anche le asserzioni «not in» col vecchio testo. L'ho committata con `scripts/commit_memoria_revisore.sh` (commit 9918f22, solo quel file). Il diff staged sotto review è rimasto intatto.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 858 → 868 PASS, 0 FAIL (T90a–i, T90c2). Blocco reale: `=== RIEPILOGO: 868 PASS, 0 FAIL ===`.
-pytest `tests/`: `1419 passed in 179.12s (0:02:59)` (prima della correzione R-348-1).
+tests/test_unit_kernel.py in locale: 858 → 870 PASS, 0 FAIL (T90a–j, T90c2, T90c3). Blocco reale: `=== RIEPILOGO: 870 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (860 su main 2592b61, test del profilo sandbox saltati in locale; V-3 bot #213).
+pytest `tests/`: `1419 passed in 174.59s (0:02:54)` (dopo il seguito del bot, prima di T90j che è nel file script del kernel).
 
 ## §6 STATO CI
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
-- `5014973`, `f7494b6`, `0e8e29b`: pushati insieme prima dell'apertura della PR #213; run non ancora disponibile alla scrittura dell'handoff.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `5014973`, `f7494b6`, `0e8e29b`: pushati insieme prima dell'apertura della PR #213; nessuna run su questi SHA singolarmente.
+- `d6cc594` (primo fine-task): handoff-check success; unit-suite e verifica-bot in corso alla verifica esterna; bot APPROVATO CON RISERVE (V-1 BASSA, V-2/V-3 COSMETICHE).
+- `9918f22`, commit del seguito bot #213 e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Qualità della scelta su conversazioni reali non verificata (due parole comuni possono ancora vincere).
+- R-350-1 (COSMETICA): asserzione vacua in T80.
+- R-ve213-3 (COSMETICA): effetto sulla cache dei prompt non misurato.
+- Qualità della scelta su conversazioni reali non verificata (due parole comuni possono ancora rendere pertinente un recap).
 - Già tracciate: R-345-3, R-bot210-3, R-bot211-2, R-ve211-1, R-ve211-2.
