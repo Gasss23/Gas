@@ -1,13 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-14 — D5: copie di cartelle e file di chiavi
+**Sessione:** 2026-10-15 — FASE 2.6 fetta 2: riflessione automatica a fine compito notturno e a `clear`
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #210 (https://github.com/Gasss23/Gas/pull/210): tocca il cancello, decide l'operatore.
-2. Secondo passaggio claude.ai facoltativo (D5 nasce già da quello su #204).
+1. Merge della PR #211 (https://github.com/Gasss23/Gas/pull/211).
 
 (`gh` non disponibile nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
@@ -15,26 +14,29 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Copie di cartella con altri nomi** (MEDIA claude.ai #204): `FATTA`.
-- **Tetto 255 prima delle regex**: `FATTA`.
-- **Bot #210 V-1/V-2**: `FATTA` — review #344.
-- **Verifica esterna #210 V-1/V-2** (lista chiusa, coerenza): `SALTATA` — tracciate come R-ve210-1/2.
-- **Backslash su Windows** (BASSA): `SALTATA` — Gas gira su Linux/Mac; tracciata.
-- **Cartelle innocue key/, token/, shadow/** (BASSA): `SALTATA` — nessuna nel repo; tracciata.
+- **Riflessione a fine compito notturno**: `FATTA` — `rifletti(iniettabile=False)`, lezioni in quarantena, recap `recap_notte` mai reiniettato, solo il numero delle lezioni su riepilogo/Telegram.
+- **Riflessione a `clear`**: `FATTA` — Ctrl-C la salta, pulisce sempre.
+- **Spegnimento `GAS_RIFLESSIONE_AUTO=0`**: `FATTA`.
+- **Nota bassa bot #210 (`old.keys/`)**: `FATTA` come registrazione (R-bot210-3), codice fuori scope.
+- **Prova con provider reali**: `DEFERITA` — nessuna chiave nel container; alla prossima notte sul Mac.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- modules/gate/gate.py               | 27 ++++++++++++++++++++++++---
- reports/diff_sessione.md           |  8 +++++---
- reports/handoff.md                 | 84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
- reports/stato_progetto.md          |  3 ++-
- reports/ultimo_report.md           | 22 +++++++++++++++-------
- tests/test_unit_gate.py            | 21 ++++++++++++++++++---
- 7 files changed, 128 insertions(+), 39 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +++
+ gas.py                             |  42 +++++++++++++++++++++++++++++++++---------
+ modules/notte/notte.py             |  53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  15 ++++++++++-----
+ reports/handoff.md                 | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------
+ reports/roadmap.md                 |   2 +-
+ reports/setup_notte.md             |   6 ++++++
+ reports/stato_progetto.md          |   6 ++++--
+ reports/ultimo_report.md           |  31 +++++++++++++++----------------
+ tests/test_unit_kernel.py          | 100 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py           | 140 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 11 files changed, 418 insertions(+), 95 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -42,79 +44,81 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-d05cadf Merge origin/main in feat/gate-d5-copie-cartelle (conflitti sui report dopo #209)
-854347b docs(fine-task): report e handoff — bot e verifica esterna #210
-4816117 fix(gate): parole di copia uguali in prefisso e suffisso, cifre attaccate (bot #210)
-9f255ba chore(revisore): memoria review #344 — APPROVATO
-31ffae0 docs(fine-task): report e handoff — D5 (PR #210)
-0b03da5 feat(gate): D5 — copie di cartelle e file di chiavi con qualsiasi nome comune
-590eaaa chore(revisore): memoria review #343 — APPROVATO
+13b03cc feat(rifletti): riflessione automatica a fine compito notturno e a `clear` (FASE 2.6 fetta 2)
+e528d4b chore(revisore): memoria review #346 — APPROVATO CON RISERVE
+5cd7107 chore(revisore): memoria review #345 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #343 (commit D5) — verdetto integrale
+### Review #345 — verdetto integrale
 
-## VERDETTO: APPROVATO
+## VERDETTO: APPROVATO CON RISERVE
 
-Ho letto CLAUDE.md, le sezioni di reports/stato_progetto.md (solo i titoli, con Grep) e la memoria del revisore. Ho esaminato il diff staged e ho scritto sonde con Write, eseguite sia su Python 3.11.17 (versione minima del progetto, usata dalla CI) sia su 3.13.
+Ho letto CLAUDE.md (sez. 5, 8 e 9), le sezioni di reports/stato_progetto.md che riguardano la FASE 2.6 e la mia memoria (lezioni #199–#213 su rifletti e recap). Il diff staged non contiene slicing della cronologia né output di tool simulati. Il tetto di 10 iterazioni, `_get_window` e il tetto di spesa restano come prima: rifletti ricontrolla il budget prima di ogni rung.
 
-Elementi del diff esaminati:
-- `modules/gate/gate.py:331-345` — `_COPIA_SUFFISSI` e `_nome_con_copie` usano un gruppo atomico `(?>…)*+` con quantificatore possessivo. Rischio esaminato: backtracking esponenziale e supporto del `re` alla versione minima. Il codice compila e gira su 3.11.17 (le costruzioni atomiche esistono dalla 3.11, e la CI usa 3.11). Con 8 input ostili da circa 255 caratteri (`keys` seguito da ` copy` ripetuto, `(1)`, `-_`, spazi, `.1`, cifre, `old-` ripetuto) ogni ricerca dura al massimo 0,03 ms. Esito: ok.
-- `modules/gate/gate.py:367-369` — il tetto dei 255 caratteri viene controllato prima di tutte le regex. Rischio esaminato: cambio di esito per un pezzo lungo in ultima posizione. Non cambia nulla, perché il ciclo a `modules/gate/gate.py:383` negava già ogni pezzo con più di 255 caratteri. Sulla nuova versione sia `keys` + 300 spazi sia `a/` + 300 `z` danno True. Esito: ok. Riserva cosmetica: ora ci sono due controlli identici, e quello del ciclo (`modules/gate/gate.py:383`) è codice morto. Si può togliere in una fetta successiva.
-- `modules/gate/gate.py:331-345` (falsi positivi) — risultati della sonda. Restano liberi: `keys.d/x`, `oldkeys/x`, `keynote copy.md`, `key-value/x`, `keys.md`, `tokens.md`, `keys-2024.md`, `keys_`, `keys1.md`. Sono bloccate le varianti volute: `keys copy`, `keys (1)`, `keys 2`, `backup keys`, `copy_tokens (3)~`, `keys.new`, `passwd.bak.old`, `shadow2`. Esito: ok. Nota: `keys.json`, `keys.txt` e `keys.env` risultano bloccati. Non è un effetto di D5 (nessun suffisso di D5 vi corrisponde): dipende da regole preesistenti che non ho tracciato.
-- `tests/test_unit_gate.py:635-646` e `tests/test_unit_gate.py:679-697` — nuovi casi: copie negate (lettura e scrittura), cartelle copia con documentazione leggibili ma mai scrivibili, e nomi simili che restano scrivibili. I casi coprono sia i blocchi sia i falsi positivi. Esito: ok. `pytest tests/test_unit_gate.py` dà 590 passed, come dichiarato.
+**Test che ho rilanciato io:** tests/test_unit_kernel.py 857 PASS e 0 FAIL (T89a–j tutti PASS); tests/test_unit_notte.py 61 passed.
 
-Rischio escluso, non verificato:
-- Non ho rieseguito il confronto sulle 180 voci reali contro origin/main: mi fido della misura dichiarata, ma non l'ho riprodotta.
-- Non ho eseguito `pytest tests/` completo (1406 passed dichiarati). Su Python 3.11 non c'è pytest installato, quindi la suite gate l'ho eseguita solo su 3.13. Su 3.11 ho verificato solo che il modulo compili e che le sonde diano gli stessi risultati.
-- Non ho verificato il comportamento su VPS.
+**Elementi del diff esaminati:**
+- gas.py:3000 — con iniettabile=False un recap fidato diventa 'recap_notte'. Se la cronologia è contaminata resta 'recap_non_fidato', anche di notte. Rischio esaminato: un recap notturno che finisce nel prompt. `_recap_pin` (gas.py:2853) pesca solo il tipo 'recap' con fonte 'modello', e T89a lo verifica (pin vuoto). Esito: ok.
+- gas.py:537 — 'recap_notte' aggiunto a `_TIPI_DIARIO_KERNEL`. Rischio esaminato: una tool call inventata col nome "recap_notte" che scrive una riga falsa nel diario (la linea R-199-1). Il nome viene rimappato su `_TIPO_TOOL_RISERVATO`. Esito: ok.
+- gas.py:1199 — 'recap_notte' aggiunto a `DIARIO_NOISE_TIPI`. Il filtro è applicato a gas.py:2794 prima del tetto degli eventi, quindi il testo del modello non entra in «Ultime azioni» del pin di memoria. Esito: ok.
+- gas.py:4701 — `_clear_con_riflessione`: riflette solo se la cronologia non è vuota e la riflessione automatica è accesa; un'eccezione viene loggata e la pulizia avviene comunque (T89i, T89j). Esito: riserva R-345-2.
+- modules/notte/notte.py:265 — la riflessione parte solo se il compito non è scaduto, è sotto `max_sec` e ha una cronologia. Ha il suo try/except in `_rifletti_compito` (modules/notte/notte.py:201): un fallimento non cambia l'esito del compito né l'exit code del giro. Esito: ok. Sul tempo: riserva R-345-1.
+- modules/notte/notte.py:295 e modules/notte/notte.py:333 — riepilogo e Telegram riportano solo numeri e messaggi fissi; il test controlla che «LEZIONE-SEGRETA» non compaia. L'invariante «testo del modello mai su Telegram» resta intatta. Esito: ok.
+- tests/test_unit_notte.py:36 — la fixture `_ermetico` imposta GAS_RIFLESSIONE_AUTO=0. I test nuovi la riaccendono con delenv, e monkeypatch ripristina il valore a fine test. Esito: ok.
 
-Memoria aggiornata con la riga #343 (il massimo precedente era #342).
+**Risposte ai tuoi tre punti:**
+1. Sì, è corretto non iniettare il recap notturno. Di notte nessuno legge il recap prima che entri nel prompt di sistema, e notte.py vieta già di mettere la risposta del modello nel diario per lo stesso motivo. Il recap resta consultabile con `ricorda`, che è in UNTRUSTED_INPUT_TOOLS: chi lo legge contamina la finestra, quindi il taint si propaga. Le lezioni restano comunque in quarantena (T89b).
+2. Sì, va bene, ma va scritto (R-345-1). È una sola chiamata, con il budget ricontrollato. Però non conta nella «durata» e può sforare il tetto del giro di una cascata intera, con lo stesso caso peggiore «non duro» di R-226-2 (circa 36 minuti). Il docstring del tetto di tempo in notte.py va aggiornato.
+3. Sì, è accettabile. La fiducia è valutata fail-closed su tutta la cronologia: un compito KO con input esterno dà 'recap_non_fidato', e le lezioni passano comunque dal tuo sì. Se il compito è KO per budget esaurito, rifletti si ferma da sola sul controllo del budget e il riepilogo dice «Riflessione non riuscita». Riflettere sui fallimenti è anche la parte più utile.
 
-### Review #344 (fix bot #210) — verdetto integrale
+**Riserve (da tracciare in stato_progetto.md):**
+- R-345-1 BASSA: il tempo della riflessione è fuori dalla «durata» e dal tetto per compito, e può sforare il tetto del giro di una chiamata in cascata. Oggi non è documentato nel docstring del tetto di tempo.
+- R-345-2 BASSA: prima `clear` era istantaneo, ora può durare minuti. Un Ctrl-C durante la riflessione fa uscire dal REPL (gas.py:4800, `except KeyboardInterrupt: break`) senza pulire la cronologia. Inoltre l'import di `modules.notte.notte` sta fuori dal try: oggi il rischio è teorico, ma va messo dentro la cintura.
+- R-345-3 COSMETICA: «Lezioni da approvare: N» su Telegram conta solo le proposte di quel giro, non tutte quelle in attesa.
 
-## VERDETTO: APPROVATO
+**Rischio escluso:** non ho verificato il comportamento con provider reali e tempi reali (latenza della riflessione sul Mac o su VPS, JSON vero dei modelli free). In questo ambiente non si può riprodurre: ho verificato solo con client finti.
 
-Ho letto CLAUDE.md, la memoria del revisore e lo stato del progetto. Ho riprodotto la suite del gate: 598 passed.
+Memoria aggiornata: riga #345 più una lezione (Ctrl-C e passaggi aggiunti prima del try quando un comando istantaneo diventa una chiamata LLM). È committata (5cd7107) in /home/user/Gas/.claude/agents/memoria_revisore.md.
 
-Elementi del diff esaminati:
-- `modules/gate/gate.py:337` — `_PAROLE_COPIA` è una lista chiusa (copy, copia, backup, bak, old, orig, new, prev, save) con `[0-9]*+` possessivo. Rischio: backtracking e cifre attaccate alla parola. Esito: ok. Il possessivo non lascia nulla da riprovare e non c'è nidificazione di quantificatori ambigui.
-- `modules/gate/gate.py:338` — i suffissi usano `_PAROLE_COPIA` oppure `v?[0-9]+` dentro `(?>...)*+`. Rischio: ReDoS e falsi positivi. Esito: ok. Su input ostili da 205-256 caratteri il tempo è ≤0,07 ms. L'unica eccezione è `keys` seguito da 250 trattini, che ha richiesto 1,7 ms: è lineare, non esponenziale.
-- `modules/gate/gate.py:340` — il prefisso ora usa la stessa lista e richiede un separatore. Rischio: falsi positivi nuovi. Esito: ok. `oldkeys/`, `newkeys/`, `savekeys/`, `previous_keys/`, `saved_keys/` e `keys_new_item/` restano leggibili.
-- `tests/test_unit_gate.py:646` — otto nuovi casi negati: `new_keys`, `orig_keys`, `keys.bak1`, `keys_old2`, `keys copy2`, `keys_v2`, `keys.prev`, `keys.save`. Rischio: copertura. Esito: ok. Tutti negati anche nella mia sonda.
-- `modules/gate/gate.py:333` — commento corretto: lista chiusa, diversa da D3. Chiude la V-2 del bot. Esito: ok.
+### Review #346 (ri-review dopo R-345-1/2) — verdetto integrale
 
-Sonda mia, con uno script scritto con Write:
-- Negati come atteso (16): anche `keys.v2`, `keys-old-2`, `prev keys`, `save2_keys`, `tokens.bak2`, `shadow.orig3`, `passwd.new1` e `keys_copy2_v3`.
-- Liberi come atteso (16): `keys.d`, `oldkeys`, `newkeys`, `savekeys`, `keys_vault`, `keynote copy.md`, `keys.save.md`, `dati/keys_list.md`, `keys_final`, `keys.vx`, `keys_v`, `tokens.md`, `keys.md`.
+## VERDETTO: APPROVATO CON RISERVE
 
-Non verificato: i 183 percorsi reali confrontati con origin/main. Mi fido della tua misura, non l'ho rieseguita. Non ho nemmeno provato Python 3.13: la sintassi possessiva/atomica è la stessa già approvata in #343.
+Ri-review del diff staged completo dopo le correzioni a R-345-1 e R-345-2. Il resto del diff non è cambiato rispetto alla #345: nessuno slicing della cronologia, nessun output di tool simulato, guardrail invariati.
 
-Guardrail (cap 10 iterazioni, `_get_window`, tool simulati): non toccati dal diff. Il comportamento resta fail-closed.
+**Test che ho rilanciato io:** tests/test_unit_kernel.py 858 PASS e 0 FAIL (compreso T89k); tests/test_unit_notte.py 61 passed.
 
-Memoria aggiornata: riga #344 (massimo precedente #343) e commit eseguito con `commit_memoria_revisore.sh`.
+**Elementi del diff esaminati:**
+- gas.py:4708 — l'import di `riflessione_auto_attiva` ora sta dentro il try. Rischio esaminato: un errore di import che fa crashare il REPL prima della pulizia. Ora lo cattura `except Exception`, che lo logga in gas_debug.log, e poi `clear_history` viene eseguita. Esito: ok.
+- gas.py:4713 — `except KeyboardInterrupt` stampa «Riflessione saltata» e la pulizia avviene comunque; l'interruzione non arriva al `break` del ciclo principale. Rischio esaminato: un Ctrl-C a metà riflessione, dopo il recap e prima delle lezioni. Lascerebbe un recap senza lezioni, che è uno stato coerente: il diario è append-only e le lezioni sono solo proposte. Un secondo Ctrl-C durante `clear_history` esce dal REPL come prima. Esito: ok.
+- tests/test_unit_kernel.py:8791 — T89k: un rifletti che solleva KeyboardInterrupt porta a cronologia pulita, al messaggio di riflessione saltata e a nessuna propagazione. Il test morde: senza l'except, KeyboardInterrupt non è sottoclasse di Exception e uscirebbe dal blocco T89. Esito: ok.
+- modules/notte/notte.py:47 — il docstring del tetto di tempo ora dice che la riflessione resta fuori dalla «durata» e dal tetto per compito e che il giro può sforare di una cascata (R-345-1). Corrisponde al codice di modules/notte/notte.py:265. Esito: ok.
+
+**Riserve:** R-345-1 e R-345-2 sono chiuse. Resta R-345-3 COSMETICA, già tracciata: «Lezioni da approvare: N» conta solo le proposte del giro.
+
+**Rischio escluso:** non ho provato un Ctrl-C reale dentro una chiamata HTTP del client OpenAI. Il test simula l'interruzione con un rifletti finto, e non ho verificato se l'SDK la rilancia come KeyboardInterrupt o la incapsula. In questo ambiente non si riproduce in modo deterministico. Se la incapsulasse, il ramo `except Exception` pulisce comunque.
+
+Memoria aggiornata: riga #346, nessuna lezione nuova. È committata (e528d4b) in /home/user/Gas/.claude/agents/memoria_revisore.md.
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_gate.py: 565 → 590 → 598 passed (bot #210). Mutazione: con `modules/gate/gate.py` di origin/main `20 failed, 570 passed`.
-
-pytest `tests/`: `1406 passed in 180.35s (0:03:00)`.
+tests/test_unit_kernel.py: 847 → 858 PASS, 0 FAIL (T89a–k nuovi). Blocco reale: `=== RIEPILOGO: 858 PASS, 0 FAIL ===`.
+tests/test_unit_notte.py: 57 → 61 passed.
+pytest `tests/`: `1418 passed in 186.65s (0:03:06)` (prima delle correzioni R-345, che aggiungono T89k).
 
 ## §6 STATO CI
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
-- `0b03da5`: run 38654132272 failure (handoff-check rosso atteso: il commit di codice precede quello dei report), unit-suite success.
-- `854347b`: unit-suite e handoff-check success; bot APPROVATO CON RISERVE (neutral).
-- Merge di main (dopo #209) per risolvere i conflitti sui report: nessuna run al momento della scrittura.
-- `31ffae0`: unit-suite e handoff-check success, verifica-bot neutral (bot APPROVATO CON RISERVE).
-- `9f255ba` e il fix del bot: nessuna run su questi SHA (pushati col fine-task).
-- Commit `chore(revisore): memoria review #343` e `feat(gate): D5`: nessuna run su questi SHA (pushati prima dell'apertura della PR #210).
+- `5cd7107`, `e528d4b`, `13b03cc`: pushati insieme prima dell'apertura della PR #211; run non ancora disponibile alla scrittura dell'handoff.
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-claude204-2 (BASSA, backslash su Windows), R-claude204-3 (BASSA, cartelle innocue key/token/shadow), cosmetica review #343 (tetto 255 doppio), R-ve210-1/2 (BASSA), R-bot210-2 (BASSA, costo quadratico limitato): in `reports/stato_progetto.md`.
+- R-345-3 (COSMETICA): «Lezioni da approvare: N» conta solo le proposte del giro.
+- R-bot210-3 (BASSA): prefisso di copia senza il punto (`old.keys/` libero).
+- Prova con provider reali da fare sul Mac.
