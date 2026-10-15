@@ -1,19 +1,17 @@
-# ULTIMO REPORT — 2026-10-15 — FASE 2.6 fetta 3: il ricordo giusto
+# ULTIMO REPORT — 2026-10-15 — Note rimaste su #213
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #213 (https://github.com/Gasss23/Gas/pull/213): tocca il motore, decide il verdetto del bot secondo la regola di merge.
+1. Merge della PR #214 (https://github.com/Gasss23/Gas/pull/214): tocca il motore, decide il verdetto del bot secondo la regola di merge.
 
 ## Esito
 
-- **Recap pertinente al messaggio** — FATTA: tra i recap fidati sceglie quello con più parole in comune (almeno 2); altrimenti il più recente.
-- **Scadenza del recap** (R-199-3) — FATTA: oltre `GAS_RECAP_MAX_GIORNI` giorni (default 7) il recap non viene più iniettato.
-- **Seguito bot #213** — FATTA: tra i recap pertinenti vince il più recente (V-1 BASSA), intestazione «RECAP PERTINENTE» (V-2 cosmetica); test sul formato del ts (V-1 verifica esterna). Review #350 APPROVATO CON RISERVE (R-350-1 cosmetica tracciata).
-- **Riga lunga in setup_notte.md** (cosmetica bot #212) — FATTA.
-- **Test** — kernel 870 PASS in locale (T90a–j, T90c2, T90c3; la CI ne conta 2 in più, test del profilo sandbox); mutazioni mordono; pytest tests/ 1419 passed dopo il seguito del bot.
-- **Review** — #348 APPROVATO CON RISERVE (R-348-1 chiusa nella stessa PR), #349 APPROVATO, #350 APPROVATO CON RISERVE.
-- **Bot #213** — APPROVATO CON RISERVE: V-1, V-2 chiuse; V-3 (numeri di test nel dossier contro la CI) corretta qui. **Verifica esterna #213** — APPROVATO CON RISERVE: V-1 chiusa col test T90j, V-2 già dichiarata, V-3 tracciata (R-ve213-3).
-- **Prova con conversazioni reali** — DEFERITA: nessun DB né chiave nel container.
+- **PR #213 mergiata** (richiesta dell'operatore, CI verde) — FATTA (`5dd2026`).
+- **V-3 bot #213: ts del diario a larghezza fissa** — FATTA: microsecondi sempre presenti in `_now_iso` e nel limite della scadenza dei recap; righe vecchie non migrate (diario immutabile, errore <1 s).
+- **R-350-1: T80x vacuo** — FATTA: cerca «RECAP PERTINENTE».
+- **V-1 bot/verifica esterna #213: frasi vecchie in stato e roadmap** — FATTA.
+- **Test** — kernel 870 PASS (T90j più stretto); pytest tests/ 1419 passed; mutazione su `_now_iso` → T90j fallisce.
+- **Review** — #351 APPROVATO CON RISERVE: R-351-1 (COSMETICA, larghezza di `dal` senza test) tracciata; R-351-2 (stato da aggiornare) FATTA.
 
 ## Anomalie
 
