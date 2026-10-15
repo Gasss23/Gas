@@ -55,8 +55,9 @@ leggi_righe, cerca_testo, conta_file, data_ora).
    `.gas_notte/launchd.log`) «Riepilogo Telegram inviato.» oppure «Riepilogo Telegram NON
    inviato: <motivo>» (es. `TELEGRAM_BOT_TOKEN mancante`). Controllo rapido:
    `grep "Riepilogo Telegram" ~/Gas/.gas_notte/launchd.log ~/Gas/gas_debug.log | tail -3`.
-   **Riflessione automatica** (dal 2026-10-15): a fine di ogni compito RIUSCITO Gas riflette da solo (i compiti KO non vengono riflessi: niente riga «Riflessione:» per loro, non è un guasto)
-   (una chiamata in più, sotto lo stesso tetto di spesa) e propone fino a 3 lezioni. Il messaggio
+   **Riflessione automatica** (dal 2026-10-15): a fine di ogni compito RIUSCITO Gas riflette
+   da solo (una chiamata in più, sotto lo stesso tetto di spesa) e propone fino a 3 lezioni.
+   I compiti KO non vengono riflessi: niente riga «Riflessione:» per loro, non è un guasto. Il messaggio
    del mattino dice solo QUANTE («Lezioni da approvare: N»): leggile con `python3 gas.py lezioni lista`
    e decidi con `python3 gas.py lezioni approva <id>` / `rifiuta <id>`. Senza il tuo sì non entrano
    nel prompt. Lo stesso succede quando scrivi `clear` in Gas. Per spegnerla: `GAS_RIFLESSIONE_AUTO=0`

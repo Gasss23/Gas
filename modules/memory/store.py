@@ -955,6 +955,23 @@ class MemoryStore:
             log.warning("ultimo_diario_per_tipo fallita (%s): %s", self.db_path, e)
             return None
 
+    def diario_per_tipo_dal(self, tipo: str, fonte: str, dal_ts: str,
+                            n: int = 30) -> List[Dict[str, Any]]:
+        """Gli ultimi `n` eventi con quel `tipo` e quella `fonte` esatti e ts >= `dal_ts`
+        (ISO UTC, ordinabile come stringa), dal più recente. Serve a scegliere il
+        recap pertinente non scaduto (FASE 2.6 fetta 3). SOLA LETTURA; [] in degrado."""
+        try:
+            with self._connect() as con:
+                cur = con.execute(
+                    "SELECT * FROM diario WHERE tipo = ? AND fonte = ? AND ts >= ? "
+                    "ORDER BY id DESC LIMIT ?",
+                    (tipo, fonte, str(dal_ts), int(n)),
+                )
+                return self._rows(cur)
+        except (sqlite3.Error, OSError, TypeError, ValueError) as e:
+            log.warning("diario_per_tipo_dal fallita (%s): %s", self.db_path, e)
+            return []
+
     def diario_tutto(self) -> List[Dict[str, Any]]:
         """TUTTE le voci del diario in ordine cronologico (id crescente), in SOLA
         LETTURA. Serve alla RICOSTRUZIONE dell'indice vettoriale (cache derivata,
