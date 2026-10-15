@@ -18,6 +18,7 @@
 - **V-3 bot #213 (ts a larghezza fissa)**: `FATTA`.
 - **R-350-1 (T80x vacuo)**: `FATTA`.
 - **V-1 bot/verifica esterna #213 (frasi vecchie)**: `FATTA`.
+- **Promemoria per la prossima sessione (prova sul Mac)**: `FATTA` — in stato_progetto.
 
 ---
 
@@ -28,12 +29,12 @@
  gas.py                             |   4 ++--
  modules/memory/store.py            |  10 +++++++++-
  reports/diff_sessione.md           |  13 ++++++-------
- reports/handoff.md                 | 154 ++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 157 +++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  18 ++++++++----------
+ reports/stato_progetto.md          |  11 +++++++++--
+ reports/ultimo_report.md           |  20 ++++++++++----------
  tests/test_unit_kernel.py          |  10 ++++++++--
- 9 files changed, 73 insertions(+), 143 deletions(-)
+ 9 files changed, 85 insertions(+), 143 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -41,6 +42,7 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+a08ea06 docs(fine-task): report e handoff — note rimaste su #213 (PR #214)
 bb12791 fix(diario): ts a larghezza fissa coi microsecondi; T80x non più vacuo (note #213)
 8439b8b chore(revisore): memoria review #351 — APPROVATO CON RISERVE
 ```
@@ -91,9 +93,11 @@ pytest `tests/`: `1419 passed in 184.14s (0:03:04)`.
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `8439b8b`, `bb12791`: pushati insieme prima dell'apertura della PR #214; run non ancora disponibile alla scrittura dell'handoff.
+- `a08ea06` (primo fine-task): CI verde (unit-suite, handoff-check), verifica-bot success (bot APPROVATO CON RISERVE, V-1/V-2 COSMETICHE); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/214#issuecomment-6195417823)).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-351-1 (COSMETICA): larghezza del limite `dal` non coperta da un test.
+- R-351-1 (COSMETICA): larghezza del limite `dal` non coperta da un test; rimedio indicato dal bot #214 (V-2): riusare `_now_iso_da` in `_recap_pin`.
+- V-1 bot #214 (COSMETICA): la frase della review #351 «nessun altro isoformat()» vale solo per gas.py e modules/ (tools/ingest_knowledge.py ne ha due, su un altro DB).
 - Già tracciate: R-ve213-3, R-345-3, R-bot210-3, R-bot211-2, R-ve211-1, R-ve211-2.

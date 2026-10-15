@@ -13,6 +13,8 @@
 - **Test** — kernel 870 PASS (T90j più stretto); pytest tests/ 1419 passed; mutazione su `_now_iso` → T90j fallisce.
 - **Review** — #351 APPROVATO CON RISERVE: R-351-1 (COSMETICA, larghezza di `dal` senza test) tracciata; R-351-2 (stato da aggiornare) FATTA.
 
+- **Promemoria per la prossima sessione** — FATTA: in `reports/stato_progetto.md` (inizio di «Prossimi passi») la lista di cosa verificare con l'operatore dopo la prova sul Mac (Mac aggiornato a `5dd2026`).
+
 ## Anomalie
 
 - `gh` nella sessione cloud non è autenticato: stato PR/CI letto via MCP GitHub.
