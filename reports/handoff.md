@@ -18,6 +18,7 @@
 - **V-1 bot #211 (riflessione solo su compiti riusciti)**: `FATTA`.
 - **V-3 bot #211 (0 lezioni)**: `FATTA`.
 - **Riserve basse registrate** (R-bot211-2, R-ve211-1, R-ve211-2): `FATTA`.
+- **V-1 bot #212 (guida e stato dicevano «ogni compito»)**: `FATTA` — `reports/setup_notte.md` e `reports/stato_progetto.md` ora dicono «compito RIUSCITO».
 
 ---
 
@@ -26,12 +27,13 @@
 ```
  .claude/agents/memoria_revisore.md |   1 +
  modules/notte/notte.py             |  19 +++++++++++++------
- reports/diff_sessione.md           |  15 +++++----------
- reports/handoff.md                 | 108 ++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------
+ reports/diff_sessione.md           |  16 ++++++----------
+ reports/handoff.md                 | 110 ++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------
+ reports/setup_notte.md             |   2 +-
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  24 +++++++++---------------
+ reports/ultimo_report.md           |  25 ++++++++++---------------
  tests/test_unit_notte.py           |  16 ++++++++++++++++
- 7 files changed, 82 insertions(+), 105 deletions(-)
+ 8 files changed, 87 insertions(+), 106 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -39,6 +41,7 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d70223c docs(fine-task): report e handoff — note del bot su #211 (PR #212)
 fd2652d fix(notte): riflessione solo sui compiti riusciti, «nessuna lezione nuova» con 0 lezioni (bot #211)
 4950673 chore(revisore): memoria review #347 — APPROVATO
 ```
@@ -86,6 +89,7 @@ tests/test_unit_notte.py: 61 → 62 passed (`62 passed in 2.59s`). gas.py non to
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `4950673`, `fd2652d`: pushati insieme prima dell'apertura della PR #212; run non ancora disponibile alla scrittura dell'handoff.
+- `d70223c` (primo fine-task): unit-suite in corso e handoff-check success al momento della verifica esterna; verifica-bot success (bot APPROVATO CON RISERVE, V-1 BASSA doc).
 - Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE

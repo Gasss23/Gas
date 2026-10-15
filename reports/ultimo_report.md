@@ -10,6 +10,7 @@
 - **V-1 bot #211: riflessione notturna solo sui compiti riusciti** — FATTA: niente seconda cascata quando il compito è KO.
 - **V-3 bot #211: «nessuna lezione nuova» con 0 lezioni** — FATTA.
 - **Riserve basse registrate** (R-bot211-2, R-ve211-1, R-ve211-2) — FATTA in stato_progetto.
+- **V-1 bot #212** (BASSA, doc: la guida diceva «ogni compito») — FATTA: `reports/setup_notte.md` e `reports/stato_progetto.md` dicono «compito RIUSCITO».
 - **Test** — tests/test_unit_notte.py 62 passed; due mutazioni, ognuna fa fallire un test.
 - **Review** — #347 APPROVATO.
 
