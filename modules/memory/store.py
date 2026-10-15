@@ -383,9 +383,17 @@ def default_db_path(root: Union[str, Path]) -> Path:
     return Path(root) / DEFAULT_DB_FILENAME
 
 
+def _now_iso_da(momento: datetime) -> str:
+    """ISO8601 UTC a larghezza fissa: i microsecondi ci sono SEMPRE, anche quando
+    valgono 0 (isoformat() li ometterebbe), così il confronto come stringhe dei ts
+    (es. la scadenza dei recap, FASE 2.6 fetta 3) segue l'ordine cronologico
+    (V-3 bot #213)."""
+    return momento.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+
 def _now_iso() -> str:
     """Timestamp ISO8601 in UTC (ordinabile lessicograficamente)."""
-    return datetime.now(timezone.utc).isoformat()
+    return _now_iso_da(datetime.now(timezone.utc))
 
 
 class ChiaveNormCollisione(Exception):

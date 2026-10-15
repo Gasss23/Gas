@@ -159,7 +159,7 @@ Per memoria storica — design originale implementato:
 **Stato (2026-10-07):**
 - 🔄 **Fetta 1 — riflessione su richiesta** (branch `feat/merge-automatico-z1xjx2`, review #199 BOCCIATO → #200 BOCCIATO → #201 APPROVATO CON RISERVE → verifica esterna BOCCIATO V-1 → #202 APPROVATO CON RISERVE, commit `890cb51` + `30ca64e`): `gas rifletti` (CLI) / `rifletti` (REPL) → UNA chiamata LLM senza tool sulla trascrizione del task. A) recap nel diario (`tipo=recap`, fonte `modello`) e reiniettato come `<recap_dati>` nei turni dopo (solo se la cronologia non contiene input esterni non fidati né compressioni; altrimenti `recap_non_fidato`, non iniettato — si torna fidati con `clear`). B) max 3 lezioni nel catalogo in stato `proposta`, autore `llm` — QUARANTENA: entrano nel prompt solo con `gas lezioni approva <id>`. Riga diario `tipo=apprendimento`. Env: `GAS_RECAP_CHARS`, `GAS_RECAP_PIN_CHARS` (0 = non iniettare).
 - ✅ **Fetta 2 — trigger automatico** (decisione operatore 2026-10-15: a fine compito notturno e a `clear`; PR #211, review #345/#346): una chiamata LLM in più per compito; recap notturno `recap_notte` mai reiniettato, lezioni sempre in quarantena; spegnibile con `GAS_RIFLESSIONE_AUTO=0`.
-- ✅ **Fetta 3 — "task successiva correlata"** (PR #213, review #348/#349): recap fidato più pertinente al messaggio (parole in comune, almeno 2), scadenza `GAS_RECAP_MAX_GIORNI` (default 7); chiude R-199-3.
+- ✅ **Fetta 3 — "task successiva correlata"** (PR #213, review #348/#349): il più recente tra i recap fidati con almeno 2 parole in comune col messaggio (altrimenti il più recente), scadenza `GAS_RECAP_MAX_GIORNI` (default 7); chiude R-199-3.
 
 Due ragionamenti autonomi di Gas alla fine di ogni task:
 
