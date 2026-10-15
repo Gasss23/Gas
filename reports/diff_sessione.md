@@ -1,14 +1,9 @@
-# DIFF SESSIONE — 2026-10-15 (FASE 2.6 fetta 2)
+# DIFF SESSIONE — 2026-10-15 (note del bot su #211)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py`:
-  - `rifletti(iniettabile)`: nuovo tipo `recap_notte`, mai reiniettato;
-  - `_clear_con_riflessione`: riflessione prima di `clear`, Ctrl-C la salta.
-- `modules/notte/notte.py` — `riflessione_auto_attiva`, `_rifletti_compito`, riflessione a fine compito, numero di lezioni nel riepilogo e su Telegram.
-- `tests/test_unit_kernel.py` — T89a–k.
-- `tests/test_unit_notte.py` — 4 test della riflessione notturna; la riflessione è spenta nei test esistenti.
-- `reports/setup_notte.md` — come leggere e approvare le lezioni del mattino, come spegnere la riflessione.
-- `reports/stato_progetto.md`, `reports/roadmap.md` — fetta 2 fatta, R-345-3, R-bot210-3.
-- `.claude/agents/memoria_revisore.md` — righe #345 e #346.
+- `modules/notte/notte.py` — riflessione solo se il compito è riuscito (V-1 bot #211); riepilogo «nessuna lezione nuova» con 0 lezioni (V-3 bot #211); docstring.
+- `tests/test_unit_notte.py` — caso KO senza riflessione; test del riepilogo con 0 lezioni.
+- `.claude/agents/memoria_revisore.md` — riga della review #347.
+- `reports/stato_progetto.md` — #211 mergiata, riserve basse R-bot211-2, R-ve211-1, R-ve211-2.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
