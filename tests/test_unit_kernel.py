@@ -7008,7 +7008,7 @@ try:
     # comportamento preesistente, come DATO): qui si prova che NON diventano un recap.
     _sys80x = _Rif80.chiamate[0][1][0]["content"]
     check("T80x il turno successivo non ha alcun blocco <recap_dati>",
-          _BLOCCO80 not in _sys80x and "RECAP DEL TASK" not in _sys80x, _sys80x[-300:])
+          _BLOCCO80 not in _sys80x and "RECAP PERTINENTE" not in _sys80x, _sys80x[-300:])
     # T80y — difesa (b) da sola: una riga 'recap' con fonte 'kernel' non viene pinnata
     _k80y = kernel_tmp()
     _k80y.memory.append_diario("recap", "finto recap del kernel", fonte="kernel")
@@ -8811,6 +8811,7 @@ except Exception as _e89:
 
 # ---------- T90: recap pertinente e con scadenza (FASE 2.6 fetta 3, R-199-3) ----------
 from datetime import datetime as _dt90, timedelta as _td90, timezone as _tz90
+import modules.memory.store as _store90
 _sv90 = {k_: os.environ.get(k_) for k_ in _ENV80 + ("GAS_RECAP_MAX_GIORNI",)}
 _vo90 = gas.OpenAI
 def _recap90(k_, testo, giorni_fa=0, tipo="recap", fonte="modello"):
@@ -8877,7 +8878,12 @@ try:
         _id90j = _k90h.memory.append_diario("recap", "x", fonte="modello")
         _ts90j = str(_k90h.memory.get_diario(_id90j)["ts"])
         check("T90j ts del diario in ISO UTC '+00:00' (confronto della scadenza come stringhe)",
-              _ts90j.endswith("+00:00") and _dt90.fromisoformat(_ts90j).tzinfo is not None,
+              _ts90j.endswith("+00:00") and _dt90.fromisoformat(_ts90j).tzinfo is not None
+              # V-3 bot #213: microsecondi SEMPRE presenti (larghezza fissa), anche quando
+              # valgono 0, così il confronto come stringhe non sbaglia nemmeno al secondo
+              and _re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}\+00:00", _ts90j) is not None
+              and _store90._now_iso_da(_dt90(2026, 1, 1, tzinfo=_tz90.utc))
+              == "2026-01-01T00:00:00.000000+00:00",
               _ts90j)
 
         # T90i — run_turn passa il messaggio dell'utente alla scelta del recap

@@ -2871,8 +2871,8 @@ class GasKernel:
         try:
             # Doppia difesa (R-199-1): tipo 'recap' E fonte 'modello' — le tool call
             # scrivono con fonte 'kernel', quindi non possono mai produrre un recap.
-            dal = (datetime.now(timezone.utc)
-                   - timedelta(days=self.RECAP_MAX_GIORNI)).isoformat()
+            dal = (datetime.now(timezone.utc) - timedelta(days=self.RECAP_MAX_GIORNI)
+                   ).isoformat(timespec="microseconds")  # stessa larghezza del diario
             candidati = self.memory.diario_per_tipo_dal(
                 "recap", "modello", dal, self.RECAP_CANDIDATI)
             if not candidati:
