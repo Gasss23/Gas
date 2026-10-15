@@ -8709,6 +8709,106 @@ try:
 except Exception as _e88:
     check("T88 blocco senza eccezioni", False, repr(_e88))
 
+# ---------- T89: riflessione automatica (FASE 2.6 fetta 2, operatore 2026-10-15) ----------
+import io as _io89, contextlib as _ctx89
+_sv89 = {k_: os.environ.get(k_) for k_ in _ENV80 + ("GAS_RIFLESSIONE_AUTO",)}
+_vo89 = gas.OpenAI
+try:
+    try:
+        os.environ.pop("GAS_RIFLESSIONE_AUTO", None)
+        # T89a — giro notturno: recap fidato salvato come 'recap_notte', MAI reiniettato
+        _setup80({_FLASH80: _RISP_OK80})
+        _k89a = _k80_con_storia()
+        _e89a = _k89a.rifletti(iniettabile=False)
+        _lez89a = _k89a.memory.lista_lezioni()
+        check("T89a iniettabile=False: recap 'recap_notte', nessun recap iniettabile, pin vuoto",
+              _e89a["ok"] and _e89a["recap_tipo"] == "recap_notte"
+              and _k89a.memory.ultimo_diario_per_tipo("recap") is None
+              and _k89a.memory.ultimo_diario_per_tipo("recap_notte") is not None
+              and _k89a._recap_pin() == "", f"{_e89a}")
+        check("T89b iniettabile=False: lezioni comunque in QUARANTENA (proposta, autore llm)",
+              len(_lez89a) == 2 and all(l["stato"] == "proposta" and l["autore"] == "llm"
+                                        for l in _lez89a), f"{_lez89a}")
+        _setup80({_FLASH80: _RISP_OK80})
+        _e89c = _k80_con_storia(contaminata=True).rifletti(iniettabile=False)
+        check("T89c iniettabile=False su cronologia contaminata: resta 'recap_non_fidato'",
+              _e89c["ok"] and _e89c["recap_tipo"] == "recap_non_fidato", f"{_e89c}")
+        check("T89d 'recap_notte' riservato al kernel e fuori da 'Ultime azioni'",
+              "recap_notte" in gas._TIPI_DIARIO_KERNEL
+              and "recap_notte" in GasKernel.DIARIO_NOISE_TIPI)
+
+        # T89e — `clear` nel REPL: riflette PRIMA di pulire (recap iniettabile)
+        _setup80({_FLASH80: _RISP_OK80})
+        _k89e = _k80_con_storia()
+        _buf89 = _io89.StringIO()
+        with _ctx89.redirect_stdout(_buf89):
+            gas._clear_con_riflessione(_k89e)
+        check("T89e clear: una riflessione sulla cronologia, poi cronologia pulita",
+              len(_Rif80.chiamate) == 1 and _k89e.history == []
+              and _k89e.memory.ultimo_diario_per_tipo("recap") is not None
+              and "Riflessione fatta" in _buf89.getvalue()
+              and "Cronologia pulita" in _buf89.getvalue(), _buf89.getvalue())
+
+        # T89f — spenta con GAS_RIFLESSIONE_AUTO=0: zero chiamate, pulisce lo stesso
+        os.environ["GAS_RIFLESSIONE_AUTO"] = "0"
+        _setup80({_FLASH80: _RISP_OK80})
+        _k89f = _k80_con_storia()
+        with _ctx89.redirect_stdout(_io89.StringIO()):
+            gas._clear_con_riflessione(_k89f)
+        check("T89f GAS_RIFLESSIONE_AUTO=0: clear senza riflessione",
+              not _Rif80.chiamate and _k89f.history == [])
+        os.environ["GAS_RIFLESSIONE_AUTO"] = " 1 "
+        from modules.notte.notte import riflessione_auto_attiva as _attiva89
+        check("T89g solo '0' spegne la riflessione automatica", _attiva89())
+        os.environ.pop("GAS_RIFLESSIONE_AUTO", None)
+
+        # T89h — cronologia vuota: niente riflessione (nessuna chiamata)
+        _setup80({_FLASH80: _RISP_OK80})
+        _k89h = kernel_tmp()
+        with _ctx89.redirect_stdout(_io89.StringIO()):
+            gas._clear_con_riflessione(_k89h)
+        check("T89h clear su cronologia vuota: nessuna chiamata", not _Rif80.chiamate)
+
+        # T89i — riflessione fallita (nessun provider valido): la cronologia si pulisce
+        _setup80({_FLASH80: "non json", _GROQ80: "non json"})
+        _k89i = _k80_con_storia()
+        _buf89i = _io89.StringIO()
+        with _ctx89.redirect_stdout(_buf89i):
+            gas._clear_con_riflessione(_k89i)
+        check("T89i riflessione fallita: clear pulisce comunque e lo dice",
+              _k89i.history == [] and "Riflessione non eseguita" in _buf89i.getvalue()
+              and "Cronologia pulita" in _buf89i.getvalue(), _buf89i.getvalue())
+
+        # T89j — eccezione durante la riflessione (cintura): clear non si rompe
+        _k89j = _k80_con_storia()
+        def _boom89(**kw):
+            raise RuntimeError("boom89")
+        _k89j.rifletti = _boom89
+        with _ctx89.redirect_stdout(_io89.StringIO()):
+            gas._clear_con_riflessione(_k89j)
+        check("T89j eccezione in rifletti: clear pulisce comunque", _k89j.history == [])
+
+        # T89k — R-345-2: Ctrl-C durante la riflessione la salta e pulisce, senza propagare
+        _k89k = _k80_con_storia()
+        def _ctrlc89(**kw):
+            raise KeyboardInterrupt
+        _k89k.rifletti = _ctrlc89
+        _buf89k = _io89.StringIO()
+        with _ctx89.redirect_stdout(_buf89k):
+            gas._clear_con_riflessione(_k89k)
+        check("T89k Ctrl-C in riflessione: saltata, cronologia pulita, nessuna propagazione",
+              _k89k.history == [] and "Riflessione saltata" in _buf89k.getvalue()
+              and "Cronologia pulita" in _buf89k.getvalue(), _buf89k.getvalue())
+    finally:
+        gas.OpenAI = _vo89
+        for _k89, _v89 in _sv89.items():
+            if _v89 is None:
+                os.environ.pop(_k89, None)
+            else:
+                os.environ[_k89] = _v89
+except Exception as _e89:
+    check("T89 blocco senza eccezioni", False, repr(_e89))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

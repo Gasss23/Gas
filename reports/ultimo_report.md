@@ -1,25 +1,24 @@
-# ULTIMO REPORT — 2026-10-14 — D5: copie di cartelle e file di chiavi
+# ULTIMO REPORT — 2026-10-15 — FASE 2.6 fetta 2: riflessione automatica
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta (tocca il cancello: il bot darà neutral → decide l'operatore).
-2. Fetta di sicurezza: secondo passaggio claude.ai col link della PR (facoltativo, D5 nasce già da quello su #204).
+1. Merge della PR #211 (https://github.com/Gasss23/Gas/pull/211). Il motore è cambiato: decide il verdetto del bot secondo la regola di merge.
 
 ## Esito
 
-- **Copie con altri nomi** (MEDIA del secondo passaggio claude.ai su #204) — FATTA: «keys copy/», «keys (1)/», keys.backup/, keys_old/, keys2/, old_keys/, tokens copy/ trattate come keys/ in lettura e scrittura; stesso per passwd/, shadow/, .config/gh.
-- **Tetto dei 255 caratteri prima di ogni regex** — FATTA.
-- **Backslash su Windows** (BASSA) — SALTATA: Gas gira su Linux/Mac; tracciata.
-- **Cartelle innocue key/, token/, shadow/ bloccate** (BASSA) — SALTATA: nessuna nel repo oggi; tracciata per FASE 4.
-- **Misura su file reali** — nessun cambio di esito rispetto a origin/main (180 voci).
-- **Test** — tests/test_unit_gate.py 590 passed alla prima versione (con il gate di main 20 failed), 598 dopo la nota del bot; pytest tests/ 1406 passed.
-- **Review** — #343 APPROVATO (cosmetica: tetto 255 ora doppio); #344 APPROVATO.
-- **Bot #210** — APPROVATO CON RISERVE (neutral): V-1 (BASSA, new_keys/, keys.bak1/ ecc.) e V-2 (COSMETICA, commento) chiuse; test gate 598 passed.
-- **Verifica esterna #210** ([commento](https://github.com/Gasss23/Gas/pull/210#issuecomment-6180789038)) — APPROVATO CON RISERVE, nessuna regressione, test rieseguiti (1406 passed): V-1 (BASSA, la lista delle copie resta chiusa: «Copy of keys/», keys.zip…) e V-2 (BASSA, regole non del tutto coerenti) tracciate; V-3 cosmetica.
-
-- **Bot #210 sulla testa finale** — APPROVATO CON RISERVE (neutral): due BASSE tracciate (costo quadratico limitato dal tetto 255; §6 dell'handoff incompleto, corretto).
-- **Conflitto con main dopo il merge della #209** — FATTA: risolto tenendo entrambe le testate in stato_progetto.
+- **Riflessione a fine compito notturno** — FATTA: dopo ogni compito, se il compito non è scaduto per tempo e la cronologia non è vuota, parte `rifletti(iniettabile=False)`. Le lezioni vanno in quarantena. Il recap fidato diventa `recap_notte`, che non viene mai reiniettato. Riepilogo e Telegram riportano solo il numero di lezioni.
+- **Riflessione a `clear`** — FATTA: il REPL riflette prima di pulire. Ctrl-C salta la riflessione, la cronologia viene pulita in ogni caso.
+- **Spegnimento** — FATTO: `GAS_RIFLESSIONE_AUTO=0`. Documentato in `reports/setup_notte.md`.
+- **Test**:
+  - kernel 858 PASS (T89a–k);
+  - notte 61 passed;
+  - `pytest tests/` 1418 passed (eseguito prima delle correzioni R-345, che toccano solo `_clear_con_riflessione`, il docstring e T89k).
+- **Review**:
+  - #345 APPROVATO CON RISERVE: R-345-1 e R-345-2 chiuse nella stessa PR;
+  - #346 APPROVATO CON RISERVE: resta R-345-3, cosmetica.
+- **Nota bassa del bot #210** (`old.keys/` non coperto) — REGISTRATA in stato_progetto come R-bot210-3. Il codice non è stato toccato perché è fuori dallo scope di questa fetta.
+- **Prova con provider reali** — DEFERITA: nel container non ci sono chiavi. Va fatta alla prossima notte sul Mac.
 
 ## Anomalie
 
-- `gh` nella sessione cloud non è autenticato: stato PR/CI letto via MCP GitHub.
+- `gh` nella sessione cloud non è autenticato: lo stato di PR e CI è stato letto via MCP GitHub.
