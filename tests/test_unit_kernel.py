@@ -6749,7 +6749,7 @@ _RISP_OK80 = json.dumps({
 _FLASH80 = gas.GEMINI_FLASH_MODEL
 # Il tag compare anche nella REGOLA del system prompt: il blocco vero si riconosce
 # dall'apertura a inizio riga seguita dall'intestazione.
-_BLOCCO80 = _RECAP_DATI_OPEN + "\n# RECAP DEL TASK PRECEDENTE"
+_BLOCCO80 = _RECAP_DATI_OPEN + "\n# RECAP PERTINENTE"
 _GROQ80 = gas.GROQ_MODEL
 try:
     # T80a — riflessione riuscita: recap fidato nel diario, lezioni proposte autore llm
@@ -8832,6 +8832,14 @@ try:
         check("T90b nessuna parola in comune: il più recente",
               "Bianchi" in _p90b and "Rossi" not in _p90b, _p90b)
         check("T90c senza messaggio (default): il più recente", "Bianchi" in _k90._recap_pin())
+        # T90c3 — V-1 bot #213: un recap più nuovo e ancora pertinente vince su uno più
+        # vecchio con PIÙ parole in comune (niente «da inviare» dopo «inviato»)
+        _k90c3 = kernel_tmp()
+        _recap90(_k90c3, "Preventivo Rossi: calcolato 1200 euro, da inviare.", giorni_fa=3)
+        _recap90(_k90c3, "Preventivo Rossi inviato al cliente.", giorni_fa=1)
+        _p90c3 = _k90c3._recap_pin("invia il preventivo Rossi da 1200 euro")
+        check("T90c3 tra i pertinenti vince il più recente, non il più ricco di parole",
+              "inviato al cliente" in _p90c3 and "da inviare" not in _p90c3, _p90c3)
         _p90c2 = _k90._recap_pin("questo preventivo")
         check("T90c2 R-348-1: una sola parola in comune non basta, resta il più recente",
               "Bianchi" in _p90c2 and "Rossi" not in _p90c2, _p90c2)
@@ -8863,6 +8871,14 @@ try:
         _p90h = _k90h._recap_pin("preventivo Rossi")
         check("T90h mai recap_notte, recap_non_fidato o fonte diversa da 'modello'",
               "Bianchi" in _p90h and "Rossi" not in _p90h, _p90h)
+
+        # T90j — V-1 verifica esterna #213: la scadenza confronta i ts come stringhe,
+        # quindi il diario deve scriverli SEMPRE in ISO UTC con '+00:00'
+        _id90j = _k90h.memory.append_diario("recap", "x", fonte="modello")
+        _ts90j = str(_k90h.memory.get_diario(_id90j)["ts"])
+        check("T90j ts del diario in ISO UTC '+00:00' (confronto della scadenza come stringhe)",
+              _ts90j.endswith("+00:00") and _dt90.fromisoformat(_ts90j).tzinfo is not None,
+              _ts90j)
 
         # T90i — run_turn passa il messaggio dell'utente alla scelta del recap
         _setup80({gas.GEMINI_FLASH_LITE_MODEL: "ciao"})
