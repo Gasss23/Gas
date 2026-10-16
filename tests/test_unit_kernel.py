@@ -8991,7 +8991,9 @@ try:
         check("T92a system prompt: cultura generale con le proprie conoscenze, ricorda solo per "
               "le cose dell'utente",
               "rispondi con le tue conoscenze" in gas._GAS_SYSTEM_PROMPT_BASE
-              and "Usa ricorda SOLO per le cose" in gas._GAS_SYSTEM_PROMPT_BASE
+              and "Usa ricorda per le cose dell'utente" in gas._GAS_SYSTEM_PROMPT_BASE
+              # V-2 bot #216: le conoscenze caricate dall'operatore si consultano prima
+              and "conoscenze che l'operatore ha caricato" in gas._GAS_SYSTEM_PROMPT_BASE
               and "non viene dalla memoria" in gas._GAS_SYSTEM_PROMPT_BASE
               # R-355-1: il ripiego vale solo per la cultura generale, mai per i dati dell'utente
               and "non inventare MAI" in gas._GAS_SYSTEM_PROMPT_BASE
@@ -9000,7 +9002,7 @@ try:
         _desc92 = [t["function"]["description"] for t in _k92.tools_schema
                    if t["function"]["name"] == "ricorda"][0]
         check("T92b la descrizione di ricorda esclude la cultura generale",
-              "NON serve per domande di cultura generale" in _desc92, _desc92)
+              "Per la cultura generale non è obbligatorio" in _desc92, _desc92)
 
         # T92c — knowledge base assente: niente WARNING (a schermo), una riga INFO nel log
         import sqlite3 as _sq92
@@ -9028,11 +9030,19 @@ try:
             _k92m.knowledge_db_path = _kdb92
             _r92 = _k92m._knowledge_search("fotosintesi", 3)
             _c92_prima = _cons92.getvalue()
+            # (2b) query troppo corta: solo nel log (V-3 bot #216)
+            _r92q = _k92m._knowledge_search("ok", 3)
+            _c92_prima = _cons92.getvalue()
             # (3) altro errore → resta WARNING
             def _finto92b(*a, **kw):
                 raise _sq92.OperationalError("database is locked")
             _sq92.connect = _finto92b
             _r92b = _k92m._knowledge_search("fotosintesi", 3)
+            # (4) DB rotto: knowledge_fts c'è ma manca knowledge → WARNING (V-3 bot #216)
+            def _finto92c(*a, **kw):
+                raise _sq92.OperationalError("no such table: knowledge")
+            _sq92.connect = _finto92c
+            _r92c = _k92m._knowledge_search("fotosintesi", 3)
         finally:
             _sq92.connect = _orig_conn92
             _root92.removeHandler(_h92)
@@ -9045,6 +9055,9 @@ try:
               f"console={_c92_prima!r} file={_f92!r}")
         check("T92d altri errori della knowledge restano WARNING (visibili)",
               _r92b == "" and "database is locked" in _c92, _c92)
+        check("T92d2 query troppo corta: solo nel log; DB rotto (manca knowledge): WARNING",
+              _r92q == "" and "nessun token" in _f92 and "nessun token" not in _c92
+              and _r92c == "" and "no such table: knowledge)" in _c92, f"console={_c92!r}")
 
         # T92e — V-1 bot #215: una 'proposta' non fidata non fa scartare una lezione legittima
         _k92e = _k80_con_storia()
@@ -9060,6 +9073,24 @@ try:
         check("T92e proposta non fidata non fa da metro: la lezione simile ma legittima entra",
               [l["testo"] for l in _e92e["lezioni"]] == [_L9e] and not _e92e["scartate"],
               f"{_e92e}")
+        # V-1 bot #216: anche una RIFIUTATA non fidata non fa da metro
+        _k92r = _k80_con_storia()
+        _idr92, _ = _k92r.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1:non_fidato"],
+                                                  autore="llm")
+        _k92r.memory.rifiuta_lezione(_idr92)
+        _setup80({_FLASH80: json.dumps({"recap": "r92r", "lezioni": [_L9e]})})
+        _e92r = _k92r.rifletti()
+        check("T92e2 rifiutata non fidata non fa da metro: la lezione simile ma legittima entra",
+              [l["testo"] for l in _e92r["lezioni"]] == [_L9e], f"{_e92r}")
+        # ...e una APPROVATA non fidata sì (l'operatore l'ha fatta sua)
+        _k92a = _k80_con_storia()
+        _ida92, _ = _k92a.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1:non_fidato"],
+                                                  autore="llm")
+        _k92a.memory.approva_lezione(_ida92)
+        _setup80({_FLASH80: json.dumps({"recap": "r92a", "lezioni": [_L9e]})})
+        _e92a = _k92a.rifletti()
+        check("T92e3 approvata (anche se nata non fidata) fa da metro: la simile è scartata",
+              not _e92a["lezioni"], f"{_e92a}")
         # ...ma una proposta FIDATA sì (il metro resta per le fidate)
         _k92f = _k80_con_storia()
         _k92f.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1"], autore="llm")
