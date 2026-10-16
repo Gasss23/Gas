@@ -19,22 +19,23 @@
 - **Avviso knowledge_fts solo nel log**: `FATTA`.
 - **V-1 bot/verifica #215 (metro anti-doppioni)**: `FATTA`.
 - **V-2 bot #215 (now_iso_da pubblico)**: `FATTA`.
+- **Note bot #216 V-1/V-2/V-3 e verifica esterna #216 V-1/V-2**: `FATTA` — review #357.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- gas.py                             |  36 +++++++++++++++++++++++++++++-------
+ .claude/agents/memoria_revisore.md |   3 +++
+ gas.py                             |  48 ++++++++++++++++++++++++++++++++++++++----------
  modules/memory/__init__.py         |   2 ++
  modules/memory/store.py            |   4 ++++
  reports/diff_sessione.md           |  11 ++++++-----
- reports/handoff.md                 | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 156 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  22 ++++++++++------------
- tests/test_unit_kernel.py          | 116 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 9 files changed, 218 insertions(+), 125 deletions(-)
+ reports/ultimo_report.md           |  23 +++++++++++------------
+ tests/test_unit_kernel.py          | 147 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 9 files changed, 277 insertions(+), 121 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -42,6 +43,9 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9693680 fix(risposte): note bot e verifica esterna #216 — metro anti-doppioni, knowledge base, log
+3984436 chore(revisore): memoria review #357 — APPROVATO
+b70e466 docs(fine-task): report e handoff — cultura generale e knowledge base solo nel log (PR #216)
 0f55399 feat(risposte): cultura generale con le proprie conoscenze; base di conoscenza assente solo nel log
 018abaa chore(revisore): memoria review #356 — APPROVATO
 0b5c899 chore(revisore): memoria review #355 — APPROVATO CON RISERVE
@@ -114,17 +118,40 @@ Riferimento: il verdetto precedente #355 (APPROVATO CON RISERVE, R-355-1 BASSA, 
 
 File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/modules/memory/store.py, /home/user/Gas/modules/memory/__init__.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #357 (note bot e verifica esterna #216) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Il diff staged su feat/merge-automatico-z1xjx2 (gas.py e tests/test_unit_kernel.py) chiude le tre riserve del bot #216, che coincidono con le due della verifica esterna #216.
+
+Elementi del diff esaminati:
+- gas.py:3117 — nel metro anti-doppioni di `_lezione_simile` una lezione con `:non_fidato` conta solo se è `approvata`. Le altre (proposte, rifiutate, ritirate) senza `:non_fidato` restano nel metro. Rischio esaminato: una rifiutata non fidata che fa scartare lezioni legittime; una ritirata non fidata che esce dal metro. Esito: ok. Uscire dal metro è coerente: dopo il ritiro quel testo non è più fidato, e i doppioni esatti usano ancora tutto il catalogo (`esistenti` costruito su `tutte`). Prova: se riammetto la rifiutata nel metro, T92e2 FALLISCE (tests/test_unit_kernel.py:9083). T92e3 (tests/test_unit_kernel.py:9092) conferma che un'approvata nata non fidata fa ancora da metro.
+- gas.py:3350 — il ramo INFO scatta solo con «no such table: knowledge_fts». Rischio esaminato: il messaggio reale di SQLite potrebbe essere diverso (prefisso `main.`, ordine delle tabelle). Esito: ok. Ho verificato con sqlite3 la stessa query JOIN: DB vuoto → «no such table: knowledge_fts»; c'è solo `knowledge` → «knowledge_fts»; c'è solo `knowledge_fts` → «no such table: knowledge». Quindi un DB rotto resta WARNING. Prova: se rimetto il match generico «no such table», T92d2 FALLISCE (tests/test_unit_kernel.py:9058).
+- gas.py:3312 — una query senza token di almeno 3 caratteri ora scrive INFO su `_knowledge_log` invece di un warning. Rischio esaminato: perdere un segnale di guasto. Esito: ok. Non è un guasto, la funzione ritorna comunque `''` (fail-safe §9) e T92d2 controlla che la riga finisca nel file di log e non sulla console.
+- gas.py:101 — la regola sulla cultura generale non dice più «senza tool». Ora dice di usare ricorda anche per le conoscenze caricate dall'operatore e di consultarle prima. «Non inventare MAI» e «in memoria non risulta» sulle cose dell'utente restano (chiusura R-355-1 intatta). Rischio esaminato: tornare a spingere il modello a inventare sui lead. Esito: ok. La descrizione di ricorda (gas.py:959) è allineata; T92a e T92b sono aggiornati.
+
+Antipattern: niente slicing della history, niente output dei tool simulati. `_get_window`, il tetto di 10 iterazioni e il tetto di 8k caratteri non sono toccati. Ho rieseguito tests/test_unit_kernel.py: 890 PASS, 0 FAIL. Le mutazioni le ho fatte su una copia nello scratchpad, il working tree è intatto.
+
+Nota cosmetica, non è una riserva: per un'altra review di processo, se è il caso, riguardare `_c92_prima` in tests/test_unit_kernel.py, che viene riassegnato dopo la query corta. T92c (tests/test_unit_kernel.py:9054) ora controlla la console dopo due chiamate e non più dopo una sola. È innocuo, anzi più severo.
+
+Rischio escluso: non ho verificato l'effetto reale della nuova regola sul comportamento dei modelli runtime (Gemini, Groq ecc.), cioè se ora consultano davvero ricorda prima sulle conoscenze caricate. Il test prova solo il testo del prompt; il comportamento si può verificare solo con un LLM vivo, non in dev.
+
+Non ho eseguito `pytest tests/` (1419 passed è un dato dichiarato dall'agente): ho riprodotto solo la suite kernel.
+
+Memoria: ho aggiunto la riga #357 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata (3984436, «chore(revisore): memoria review #357 — APPROVATO»). Lezione nuova: un match sul testo di un errore SQLite va reso preciso fino al nome della tabella e verificato coi messaggi reali, non a memoria.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 879 → 887 PASS, 0 FAIL (T92a–h; T69-fts-d aggiornato: ora si aspetta la riga INFO). Blocco reale: `=== RIEPILOGO: 887 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1419 passed in 179.99s (0:02:59)` (prima della correzione R-355-1, che tocca solo il testo del prompt e T92a/T69-fts-d).
+tests/test_unit_kernel.py in locale: 879 → 890 PASS, 0 FAIL (T92a–h, T92d2, T92e2, T92e3; T69-fts-d aggiornato: ora si aspetta la riga INFO). Blocco reale: `=== RIEPILOGO: 890 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+pytest `tests/`: `1419 passed in 177.77s (0:02:57)` (sul codice finale, prima del commit).
 
 ## §6 STATO CI
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `0b5c899`, `018abaa`, `0f55399`: pushati insieme prima dell'apertura della PR #216; nessuna run su questi SHA singolarmente.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `b70e466` (primo fine-task): unit-suite, handoff-check e verifica-bot success (bot APPROVATO CON RISERVE, nessuna ALTA/MEDIA); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/216#issuecomment-6217839029)).
+- `3984436`, commit delle note #216 e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

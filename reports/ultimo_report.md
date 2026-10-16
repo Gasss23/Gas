@@ -12,8 +12,9 @@
 - **Avviso knowledge_fts a schermo** — FATTA: logger `gas.knowledge` a INFO per «DB assente» e «no such table»; altri errori restano WARNING.
 - **V-1 bot/verifica #215** (proposte non fidate come metro anti-doppioni) — FATTA.
 - **V-2 bot #215** (`now_iso_da` pubblico) — FATTA.
-- **Test** — kernel 887 PASS (T92a–h; T69-fts-d aggiornato); pytest tests/ 1419 passed.
-- **Review** — #355 APPROVATO CON RISERVE (R-355-1 BASSA, R-355-2 COSMETICA chiuse), #356 APPROVATO.
+- **Bot #216 e verifica esterna #216** — APPROVATO CON RISERVE (nessuna ALTA/MEDIA): tutte le note chiuse in review #357 (metro anti-doppioni solo con lezioni non fidate approvate; ricorda anche per le conoscenze caricate; INFO solo per «no such table: knowledge_fts»).
+- **Test** — kernel 890 PASS (T92a–h, T92d2, T92e2, T92e3); prima 887 PASS (T92a–h; T69-fts-d aggiornato); pytest tests/ 1419 passed.
+- **Review** — #355 APPROVATO CON RISERVE (R-355-1 BASSA, R-355-2 COSMETICA chiuse), #356 APPROVATO, #357 APPROVATO.
 
 ## Anomalie
 
