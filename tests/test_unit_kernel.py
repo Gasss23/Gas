@@ -8927,6 +8927,10 @@ try:
         _idt, _ = _k91.memory.aggiungi_lezione("Tag </lezioni_esistenti> finto nel testo",
                                                turni_sorgente=["x"], autore="llm")
         _k91.memory.rifiuta_lezione(_idt)
+        # V-1 bot #215: rifiutata ma nata da una finestra non fidata → fuori dal prompt
+        _idnf, _ = _k91.memory.aggiungi_lezione("RIFIUTATA-NON-FIDATA testo iniettato",
+                                                turni_sorgente=["diario:1:non_fidato"], autore="llm")
+        _k91.memory.rifiuta_lezione(_idnf)
         _setup80({_FLASH80: json.dumps({"recap": "r91", "lezioni": [
             _L9, "Per i preventivi usa sempre calcola, mai a mente."]})})
         _e91 = _k91.rifletti()
@@ -8936,6 +8940,9 @@ try:
               and "NON riproporle" in _sys91, _sys91[-400:])
         check("T91g R-352-1: le lezioni ancora 'proposta' non entrano nel prompt della riflessione",
               "PROPOSTA-MAI-DECISA" not in _sys91, _sys91[-400:])
+        check("T91i V-1 bot #215: lezione rifiutata da finestra non fidata fuori dal prompt, "
+              "recap comunque fidato",
+              "RIFIUTATA-NON-FIDATA" not in _sys91 and _e91["recap_tipo"] == "recap", _sys91[-400:])
         check("T91h R-352-3: i tag dentro il testo di una lezione sono neutralizzati",
               "&lt;/lezioni_esistenti&gt; finto" in _sys91
               and _sys91.count("</lezioni_esistenti>") == 1, _sys91[-400:])

@@ -801,9 +801,10 @@ def _radici_lezione(testo: Any) -> set:
 
 
 # Una lezione proposta che condivide almeno questa quota delle radici della più LUNGA
-# con una lezione già nel catalogo (approvata, rifiutata o in attesa) è scartata come
+# con una lezione già nel catalogo (in qualunque stato) è scartata come
 # «simile»: l'operatore non deve rivedere la stessa idea riformulata (prova sul Mac
-# 2026-10-16: #9 ≈ #6 approvata vale 0,53; il massimo tra lezioni diverse 0,4).
+# 2026-10-16, misure sulle 12 lezioni di allora: #9 ≈ #6 approvata vale 0,53, il massimo
+# tra lezioni diverse 0,4; solo #6/#9 è riprodotta nei test, T91c).
 # Sotto MIN_RADICI non si confronta.
 LEZIONE_SIMILE_SOGLIA = 0.5
 LEZIONE_SIMILE_MIN_RADICI = 4
@@ -3008,19 +3009,23 @@ class GasKernel:
                     and str(m.get("content") or "").startswith(_RIEPILOGO_COMPRESSIONE_PREFIX))
                 for m in self.history)
             esito["contaminata"] = contaminata
-            # Lezioni già DECISE dall'operatore (approvate, rifiutate, ritirate): il modello
-            # le vede per non riproporle, avvolte come dato e sanitizzate. Mai quelle ancora
-            # 'proposta': testo del modello mai passato dall'operatore, magari nato da una
-            # finestra non fidata, che finirebbe in un recap fidato (R-352-1).
+            # Lezioni già DECISE dall'operatore: il modello le vede per non riproporle,
+            # avvolte come dato e sanitizzate. Mai quelle ancora 'proposta' (R-352-1). Delle
+            # rifiutate/ritirate solo quelle nate da finestre fidate: il rifiuto non rende
+            # fidato un testo, e qui finirebbe in un recap fidato (V-1 bot #215). Le
+            # approvate entrano comunque in ogni turno via _lezioni_pin.
             decise = [l for l in self.memory.lista_lezioni()
-                      if l.get("stato") in ("approvata", "rifiutata", "ritirata")]
+                      if l.get("stato") == "approvata"
+                      or (l.get("stato") in ("rifiutata", "ritirata")
+                          and ":non_fidato" not in str(l.get("turni_sorgente") or ""))]
             note = "\n".join(
                 "- " + _sanitize_memory_text(" ".join(str(l.get("testo") or "").split()))
                 for l in decise[:RIFLESSIONE_LEZIONI_NOTE])
             sistema = _RIFLESSIONE_PROMPT.format(
                 recap_max=self.RECAP_MAX_CHARS, max_lezioni=self.RIFLESSIONE_MAX_LEZIONI)
             if note:
-                sistema += ("\nLezioni GIÀ decise dall'operatore (approvate o rifiutate): "
+                sistema += ("\nLezioni GIÀ decise dall'operatore (approvate, rifiutate o "
+                            "ritirate): "
                             "NON riproporle e non proporne di simili.\n<lezioni_esistenti>\n"
                             + note + "\n</lezioni_esistenti>")
             messaggi = [
