@@ -1,10 +1,9 @@
-# DIFF SESSIONE — 2026-10-15 (note rimaste su #213)
+# DIFF SESSIONE — 2026-10-16 (recap pertinente, lezioni non ripetute)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/memory/store.py` — `_now_iso_da`: ts ISO UTC sempre coi microsecondi (V-3 bot #213).
-- `gas.py` — limite della scadenza dei recap con la stessa larghezza.
-- `tests/test_unit_kernel.py` — T80x cerca «RECAP PERTINENTE» (R-350-1); T90j richiede il formato a larghezza fissa.
-- `reports/stato_progetto.md`, `reports/roadmap.md` — regola del recap descritta com'è; #213 mergiata; R-351-1; promemoria «da verificare» per la prossima sessione (prova sul Mac).
-- `.claude/agents/memoria_revisore.md` — riga della review #351.
+- `gas.py` — regola `<recap_dati>` (solo se pertinente, il «da fare» non è una richiesta); `_lezione_simile`, `_radici_lezione`, `_RADICI_VUOTE`; lezioni decise nel prompt della riflessione (rifiutate/ritirate solo se da finestre fidate); `dal` da `_now_iso_da`.
+- `tests/test_unit_kernel.py` — T91a–i; helper `_recap90` con `_now_iso_da`.
+- `reports/stato_progetto.md` — esito della prova sul Mac, difetti visti.
+- `.claude/agents/memoria_revisore.md` — righe #352, #353 e #354.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
