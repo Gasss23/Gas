@@ -4707,7 +4707,7 @@ _conn_d.close()
 _k69fts_d.knowledge_db_path = _kdb69fts_d
 _buf69fts_d = _io69fts.StringIO()
 _h69fts_d = _log69fts.StreamHandler(_buf69fts_d)
-_h69fts_d.setLevel(_log69fts.WARNING)
+_h69fts_d.setLevel(_log69fts.DEBUG)  # prova Mac 2026-10-16: ora è INFO (solo nel log)
 _log69fts.getLogger().addHandler(_h69fts_d)
 try:
     _r69fts_d = _k69fts_d._knowledge_search("codice segreto", 5)
@@ -4717,8 +4717,8 @@ finally:
 check("T69-fts-d FTS table assente → '' senza crash",
       _r69fts_d == '',
       f"result={_r69fts_d!r}")
-check("T69-fts-d FTS table assente → warning loggato",
-      "FTS5" in _warn69fts_d or "knowledge_fts" in _warn69fts_d or "knowledge" in _warn69fts_d.lower(),
+check("T69-fts-d FTS table assente → riga nel log (INFO di gas.knowledge)",
+      "knowledge base assente" in _warn69fts_d and "knowledge_fts" in _warn69fts_d,
       f"warn={_warn69fts_d[:200]!r}")
 
 # T69-fts-e — FTS5 tokenizzata trova chunk via parole chiave (non substring esatta)
@@ -8815,7 +8815,7 @@ import modules.memory.store as _store90
 _sv90 = {k_: os.environ.get(k_) for k_ in _ENV80 + ("GAS_RECAP_MAX_GIORNI",)}
 _vo90 = gas.OpenAI
 def _recap90(k_, testo, giorni_fa=0, tipo="recap", fonte="modello"):
-    ts = _store90._now_iso_da(_dt90.now(_tz90.utc) - _td90(days=giorni_fa))
+    ts = _store90.now_iso_da(_dt90.now(_tz90.utc) - _td90(days=giorni_fa))
     with k_.memory._connect() as con_:
         con_.execute("INSERT INTO diario (ts, tipo, descrizione, fonte) VALUES (?, ?, ?, ?)",
                      (ts, tipo, testo, fonte))
@@ -8882,7 +8882,7 @@ try:
               # V-3 bot #213: microsecondi SEMPRE presenti (larghezza fissa), anche quando
               # valgono 0, così il confronto come stringhe non sbaglia nemmeno al secondo
               and _re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}\+00:00", _ts90j) is not None
-              and _store90._now_iso_da(_dt90(2026, 1, 1, tzinfo=_tz90.utc))
+              and _store90.now_iso_da(_dt90(2026, 1, 1, tzinfo=_tz90.utc))
               == "2026-01-01T00:00:00.000000+00:00",
               _ts90j)
 
@@ -8981,6 +8981,159 @@ try:
                 os.environ[_k91x] = _v91
 except Exception as _e91x:
     check("T91 blocco senza eccezioni", False, repr(_e91x))
+
+# ---------- T92: cultura generale, knowledge base assente, metro anti-doppioni (prova Mac 2026-10-16) ----------
+import logging as _lg92, io as _io92
+_sv92 = {k_: os.environ.get(k_) for k_ in _ENV80}
+_vo92 = gas.OpenAI
+try:
+    try:
+        check("T92a system prompt: cultura generale con le proprie conoscenze, ricorda solo per "
+              "le cose dell'utente",
+              "rispondi con le tue conoscenze" in gas._GAS_SYSTEM_PROMPT_BASE
+              and "Usa ricorda per le cose dell'utente" in gas._GAS_SYSTEM_PROMPT_BASE
+              # V-2 bot #216: le conoscenze caricate dall'operatore si consultano prima
+              and "conoscenze che l'operatore ha caricato" in gas._GAS_SYSTEM_PROMPT_BASE
+              and "non viene dalla memoria" in gas._GAS_SYSTEM_PROMPT_BASE
+              # R-355-1: il ripiego vale solo per la cultura generale, mai per i dati dell'utente
+              and "non inventare MAI" in gas._GAS_SYSTEM_PROMPT_BASE
+              and "in memoria non risulta" in gas._GAS_SYSTEM_PROMPT_BASE)
+        _k92 = kernel_tmp()
+        _desc92 = [t["function"]["description"] for t in _k92.tools_schema
+                   if t["function"]["name"] == "ricorda"][0]
+        check("T92b la descrizione di ricorda esclude la cultura generale",
+              "Per la cultura generale non è obbligatorio" in _desc92, _desc92)
+
+        # T92c — knowledge base assente: niente WARNING (a schermo), una riga INFO nel log
+        import sqlite3 as _sq92
+        _cons92 = _io92.StringIO()
+        _h92 = _lg92.StreamHandler(_cons92)
+        _h92.setLevel(_lg92.WARNING)
+        _file92 = _io92.StringIO()
+        _hf92 = _lg92.StreamHandler(_file92)
+        _hf92.setLevel(_lg92.DEBUG)
+        _root92 = _lg92.getLogger()
+        _root92.addHandler(_h92)
+        _root92.addHandler(_hf92)
+        _orig_conn92 = _sq92.connect
+        try:
+            # (1) file del DB assente
+            _k92.knowledge_db_path = _k92.root / "nessun_knowledge.db"
+            _r92a = _k92._knowledge_search("fotosintesi", 3)
+            # (2) DB presente ma senza tabella FTS (il caso del Mac), fonti attive
+            _k92m, _, _kdb92 = _make_knowledge_root()
+            _cd92 = _sq92.connect(str(_kdb92))
+            _cd92.execute("DROP TRIGGER IF EXISTS knowledge_fts_ai")
+            _cd92.execute("DROP TABLE IF EXISTS knowledge_fts")
+            _cd92.commit()
+            _cd92.close()
+            _k92m.knowledge_db_path = _kdb92
+            _r92 = _k92m._knowledge_search("fotosintesi", 3)
+            _c92_prima = _cons92.getvalue()
+            # (2a) DB presente ma sources.yaml assente: solo nel log (V-1 bot #216)
+            (_k92m.root / "knowledge" / "sources.yaml").rename(
+                _k92m.root / "knowledge" / "sources.yaml.via")
+            _r92s = _k92m._knowledge_search("fotosintesi", 3)
+            (_k92m.root / "knowledge" / "sources.yaml.via").rename(
+                _k92m.root / "knowledge" / "sources.yaml")
+            # (2b) query troppo corta: solo nel log (V-3 bot #216)
+            _r92q = _k92m._knowledge_search("ok", 3)
+            _c92_prima = _cons92.getvalue()
+            # (3) altro errore → resta WARNING
+            def _finto92b(*a, **kw):
+                raise _sq92.OperationalError("database is locked")
+            _sq92.connect = _finto92b
+            _r92b = _k92m._knowledge_search("fotosintesi", 3)
+            # (4) DB rotto: knowledge_fts c'è ma manca knowledge → WARNING (V-3 bot #216)
+            def _finto92c(*a, **kw):
+                raise _sq92.OperationalError("no such table: knowledge")
+            _sq92.connect = _finto92c
+            _r92c = _k92m._knowledge_search("fotosintesi", 3)
+        finally:
+            _sq92.connect = _orig_conn92
+            _root92.removeHandler(_h92)
+            _root92.removeHandler(_hf92)
+        _c92 = _cons92.getvalue()
+        _f92 = _file92.getvalue()
+        check("T92c knowledge base assente o senza FTS: nessun avviso a schermo, INFO nel log",
+              _r92a == "" and _r92 == "" and _c92_prima == ""
+              and "knowledge DB assente" in _f92 and "knowledge base assente" in _f92,
+              f"console={_c92_prima!r} file={_f92!r}")
+        check("T92d altri errori della knowledge restano WARNING (visibili)",
+              _r92b == "" and "database is locked" in _c92, _c92)
+        check("T92d2 query troppo corta: solo nel log; DB rotto (manca knowledge): WARNING",
+              _r92q == "" and "nessun token" in _f92 and "nessun token" not in _c92
+              and _r92c == "" and "no such table: knowledge)" in _c92, f"console={_c92!r}")
+        check("T92d3 sources.yaml assente: solo nel log, niente avviso a schermo",
+              _r92s == "" and "sources.yaml assente" in _f92 and "sources.yaml" not in _c92,
+              f"console={_c92!r}")
+
+        # T92e — V-1 bot #215: una 'proposta' non fidata non fa scartare una lezione legittima
+        _k92e = _k80_con_storia()
+        _L6e = ("È cruciale riportare chiaramente quando un'azione richiede un'approvazione "
+                "esterna, indicando lo stato di attesa e l'ID dell'operazione per una gestione "
+                "efficace del flusso di lavoro.")
+        _L9e = ("Riconoscere e riportare chiaramente le azioni in attesa di approvazione umana "
+                "(con relativo ID) è cruciale per la gestione del workflow e la tracciabilità "
+                "delle operazioni.")
+        _k92e.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1:non_fidato"], autore="llm")
+        _setup80({_FLASH80: json.dumps({"recap": "r92e", "lezioni": [_L9e]})})
+        _e92e = _k92e.rifletti()
+        check("T92e proposta non fidata non fa da metro: la lezione simile ma legittima entra",
+              [l["testo"] for l in _e92e["lezioni"]] == [_L9e] and not _e92e["scartate"],
+              f"{_e92e}")
+        # V-1 bot #216: anche una RIFIUTATA non fidata non fa da metro
+        _k92r = _k80_con_storia()
+        _idr92, _ = _k92r.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1:non_fidato"],
+                                                  autore="llm")
+        _k92r.memory.rifiuta_lezione(_idr92)
+        _setup80({_FLASH80: json.dumps({"recap": "r92r", "lezioni": [_L9e]})})
+        _e92r = _k92r.rifletti()
+        check("T92e2 rifiutata non fidata non fa da metro: la lezione simile ma legittima entra",
+              [l["testo"] for l in _e92r["lezioni"]] == [_L9e], f"{_e92r}")
+        # ...e una APPROVATA non fidata sì (l'operatore l'ha fatta sua)
+        _k92a = _k80_con_storia()
+        _ida92, _ = _k92a.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1:non_fidato"],
+                                                  autore="llm")
+        _k92a.memory.approva_lezione(_ida92)
+        _setup80({_FLASH80: json.dumps({"recap": "r92a", "lezioni": [_L9e]})})
+        _e92a = _k92a.rifletti()
+        check("T92e3 approvata (anche se nata non fidata) fa da metro: la simile è scartata",
+              not _e92a["lezioni"], f"{_e92a}")
+        # V-2 bot #216: in una finestra NON fidata, una proposta appena creata non fa da
+        # metro per la successiva dello stesso lotto (stessa regola del catalogo)
+        _k92l = _k80_con_storia(contaminata=True)
+        _setup80({_FLASH80: json.dumps({"recap": "r92l", "lezioni": [_L6e, _L9e]})})
+        _e92l = _k92l.rifletti()
+        check("T92e4 lotto non fidato: la proposta appena creata non fa da metro",
+              len(_e92l["lezioni"]) == 2 and _e92l["contaminata"], f"{_e92l}")
+        # ...ma una proposta FIDATA sì (il metro resta per le fidate)
+        _k92f = _k80_con_storia()
+        _k92f.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1"], autore="llm")
+        _setup80({_FLASH80: json.dumps({"recap": "r92f", "lezioni": [_L9e]})})
+        _e92f = _k92f.rifletti()
+        check("T92f proposta fidata resta metro: la simile è scartata",
+              not _e92f["lezioni"] and any(m.startswith("simile") for _, m in _e92f["scartate"]),
+              f"{_e92f}")
+        # doppione ESATTO di una proposta non fidata: scartato comunque
+        _k92g = _k80_con_storia()
+        _k92g.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1:non_fidato"], autore="llm")
+        _setup80({_FLASH80: json.dumps({"recap": "r92g", "lezioni": [_L6e]})})
+        _e92g = _k92g.rifletti()
+        check("T92g doppione esatto di qualunque lezione: scartato",
+              not _e92g["lezioni"] and _e92g["scartate"][0][1] == "già presente nel catalogo",
+              f"{_e92g}")
+        check("T92h now_iso_da pubblico da modules.memory",
+              __import__("modules.memory", fromlist=["x"]).now_iso_da is _store90._now_iso_da)
+    finally:
+        gas.OpenAI = _vo92
+        for _k92x, _v92 in _sv92.items():
+            if _v92 is None:
+                os.environ.pop(_k92x, None)
+            else:
+                os.environ[_k92x] = _v92
+except Exception as _e92x:
+    check("T92 blocco senza eccezioni", False, repr(_e92x))
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

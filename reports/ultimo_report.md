@@ -1,21 +1,21 @@
-# ULTIMO REPORT — 2026-10-16 — Prova sul Mac e fetta «recap pertinente, lezioni non ripetute»
+# ULTIMO REPORT — 2026-10-16 — Cultura generale e knowledge base solo nel log
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #215 (https://github.com/Gasss23/Gas/pull/215): tocca il motore, decide il verdetto del bot secondo la regola di merge.
+1. Merge della PR #216 (https://github.com/Gasss23/Gas/pull/216). L'operatore l'ha già autorizzato se CI e test sono verdi.
 
 ## Esito
 
-- **PR #214 mergiata** (richiesta dell'operatore) — FATTA (`d0c7283`).
-- **Prova FASE 2.6 sul Mac** — FATTA dall'operatore: riflessione a `clear` e Ctrl-C ok; recap fidato ripreso. Esito in stato_progetto.
-- **Recap usato solo se pertinente** — FATTA: regola di `<recap_dati>` nel system prompt.
-- **Niente lezioni quasi uguali** — FATTA: lezioni già decise nel prompt della riflessione (mai le `proposta`, R-352-1) + `_lezione_simile`.
-- **Note rimaste da #214** (R-351-1, V-2 bot #214) — FATTA.
-- **Bot #215 BOCCIATO (V-1 MEDIA)** — FATTA: le lezioni rifiutate nate da finestre non fidate non entrano più nel prompt della riflessione (review #354 APPROVATO, T91i).
-- **Verifica esterna #215** — APPROVATO CON RISERVE: V-2 = V-1 del bot (chiusa), V-1 BASSA (somiglianza per parole, non per senso) tracciata come R-ve215-1.
-- **Test** — kernel 879 PASS (T91a–i); pytest tests/ 1419 passed (prima delle correzioni R-352).
-- **Review** — #352 APPROVATO CON RISERVE (R-352-1 MEDIA, R-352-2, R-352-3 chiuse), #353 APPROVATO, #354 APPROVATO.
-- **Avviso knowledge_fts e risposta «win rate»** — SALTATA: fuori scope, registrati in stato_progetto.
+- **PR #215 mergiata** (CI verde, ok dell'operatore) — FATTA (`1a979a8`).
+- **Seconda prova sul Mac** — FATTA dall'operatore: fette 2–3 verificate dal vivo (vedi stato_progetto).
+- **Cultura generale con le proprie conoscenze; sui dati dell'utente mai inventare** — FATTA (regola nel prompt + descrizione di `ricorda`).
+- **Avviso knowledge_fts a schermo** — FATTA: logger `gas.knowledge` a INFO per «DB assente» e «no such table»; altri errori restano WARNING.
+- **V-1 bot/verifica #215** (proposte non fidate come metro anti-doppioni) — FATTA.
+- **V-2 bot #215** (`now_iso_da` pubblico) — FATTA.
+- **Bot #216 e verifica esterna #216** — APPROVATO CON RISERVE (nessuna ALTA/MEDIA): tutte le note chiuse in review #357 (metro anti-doppioni solo con lezioni non fidate approvate; ricorda anche per le conoscenze caricate; INFO solo per «no such table: knowledge_fts»).
+- **Secondo giro bot/verifica esterna #216** — FATTA: sources.yaml assente solo nel log (V-1), metro nel lotto solo se fidato (V-2), corpo della PR aggiornato (V-3); review #358 APPROVATO.
+- **Test** — kernel 892 PASS (T92a–h, T92d2, T92d3, T92e2, T92e3, T92e4); prima 887 PASS (T92a–h; T69-fts-d aggiornato); pytest tests/ 1419 passed.
+- **Review** — #355 APPROVATO CON RISERVE (R-355-1 BASSA, R-355-2 COSMETICA chiuse), #356 APPROVATO, #357 APPROVATO, #358 APPROVATO.
 
 ## Anomalie
 
