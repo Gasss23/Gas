@@ -1,19 +1,19 @@
-# ULTIMO REPORT — 2026-10-15 — Note rimaste su #213
+# ULTIMO REPORT — 2026-10-16 — Prova sul Mac e fetta «recap pertinente, lezioni non ripetute»
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #214 (https://github.com/Gasss23/Gas/pull/214): tocca il motore, decide il verdetto del bot secondo la regola di merge.
+1. Merge della PR #215 (https://github.com/Gasss23/Gas/pull/215): tocca il motore, decide il verdetto del bot secondo la regola di merge.
 
 ## Esito
 
-- **PR #213 mergiata** (richiesta dell'operatore, CI verde) — FATTA (`5dd2026`).
-- **V-3 bot #213: ts del diario a larghezza fissa** — FATTA: microsecondi sempre presenti in `_now_iso` e nel limite della scadenza dei recap; righe vecchie non migrate (diario immutabile, errore <1 s).
-- **R-350-1: T80x vacuo** — FATTA: cerca «RECAP PERTINENTE».
-- **V-1 bot/verifica esterna #213: frasi vecchie in stato e roadmap** — FATTA.
-- **Test** — kernel 870 PASS (T90j più stretto); pytest tests/ 1419 passed; mutazione su `_now_iso` → T90j fallisce.
-- **Review** — #351 APPROVATO CON RISERVE: R-351-1 (COSMETICA, larghezza di `dal` senza test) tracciata; R-351-2 (stato da aggiornare) FATTA.
-
-- **Promemoria per la prossima sessione** — FATTA: in `reports/stato_progetto.md` (inizio di «Prossimi passi») la lista di cosa verificare con l'operatore dopo la prova sul Mac (Mac aggiornato a `5dd2026`).
+- **PR #214 mergiata** (richiesta dell'operatore) — FATTA (`d0c7283`).
+- **Prova FASE 2.6 sul Mac** — FATTA dall'operatore: riflessione a `clear` e Ctrl-C ok; recap fidato ripreso. Esito in stato_progetto.
+- **Recap usato solo se pertinente** — FATTA: regola di `<recap_dati>` nel system prompt.
+- **Niente lezioni quasi uguali** — FATTA: lezioni già decise nel prompt della riflessione (mai le `proposta`, R-352-1) + `_lezione_simile`.
+- **Note rimaste da #214** (R-351-1, V-2 bot #214) — FATTA.
+- **Test** — kernel 878 PASS (T91a–h); pytest tests/ 1419 passed (prima delle correzioni R-352).
+- **Review** — #352 APPROVATO CON RISERVE (R-352-1 MEDIA, R-352-2, R-352-3 chiuse), #353 APPROVATO.
+- **Avviso knowledge_fts e risposta «win rate»** — SALTATA: fuori scope, registrati in stato_progetto.
 
 ## Anomalie
 
