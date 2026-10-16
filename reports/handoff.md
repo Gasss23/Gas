@@ -20,22 +20,23 @@
 - **V-1 bot/verifica #215 (metro anti-doppioni)**: `FATTA`.
 - **V-2 bot #215 (now_iso_da pubblico)**: `FATTA`.
 - **Note bot #216 V-1/V-2/V-3 e verifica esterna #216 V-1/V-2**: `FATTA` — review #357.
+- **Secondo giro #216 (V-1 sources.yaml, V-2 metro nel lotto, V-3 corpo PR)**: `FATTA` — review #358.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- gas.py                             |  48 ++++++++++++++++++++++++++++++++++++++----------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ gas.py                             |  57 ++++++++++++++++++++++++++++++++++++++++++++++-----------
  modules/memory/__init__.py         |   2 ++
  modules/memory/store.py            |   4 ++++
  reports/diff_sessione.md           |  11 ++++++-----
- reports/handoff.md                 | 156 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------
+ reports/handoff.md                 | 199 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  23 +++++++++++------------
- tests/test_unit_kernel.py          | 147 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 9 files changed, 277 insertions(+), 121 deletions(-)
+ reports/ultimo_report.md           |  24 ++++++++++++------------
+ tests/test_unit_kernel.py          | 163 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 9 files changed, 346 insertions(+), 122 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -43,6 +44,9 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d117708 fix(risposte): sources.yaml assente solo nel log; metro anti-doppioni coerente nel lotto (bot #216)
+6eee21c chore(revisore): memoria review #358 — APPROVATO
+c17ca73 docs(fine-task): report e handoff — note bot e verifica esterna #216
 9693680 fix(risposte): note bot e verifica esterna #216 — metro anti-doppioni, knowledge base, log
 3984436 chore(revisore): memoria review #357 — APPROVATO
 b70e466 docs(fine-task): report e handoff — cultura generale e knowledge base solo nel log (PR #216)
@@ -140,10 +144,50 @@ Non ho eseguito `pytest tests/` (1419 passed è un dato dichiarato dall'agente):
 
 Memoria: ho aggiunto la riga #357 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata (3984436, «chore(revisore): memoria review #357 — APPROVATO»). Lezione nuova: un match sul testo di un errore SQLite va reso preciso fino al nome della tabella e verificato coi messaggi reali, non a memoria.
 
+### Review #358 (secondo giro note #216) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+Diff staged esaminato: 2 file, +24 −1. SHA-256 di `git diff --cached`: edfd6a945e8fae3471e2187a308f368354c50147910f985c5f6e56182a2dda42.
+
+**Elementi del diff esaminati**
+- `gas.py:3327`: in `_knowledge_search` il ramo `except FileNotFoundError` scrive una riga INFO su `_knowledge_log` (gas.knowledge) e restituisce "". Rischi esaminati:
+  - Quest'eccezione potrebbe nascondere guasti veri: no. Cattura solo il file o la cartella `knowledge/` assenti. `IsADirectoryError`, `PermissionError` e gli errori di YAML non sono `FileNotFoundError`, quindi finiscono nel ramo WARNING generico (`gas.py:3331`).
+  - L'ordine degli `except` è corretto e il comportamento resta fail-safe (§9): restituisce sempre "" e non crasha mai.
+  - Esito: ok.
+- `gas.py:3143`: nella riflessione, `catalogo.append` della lezione appena creata avviene solo `if not contaminata`. Rischi esaminati:
+  - Coerenza con il filtro del catalogo (`gas.py:3117`): una proposta non fidata non fa da metro, e qui vale la stessa regola.
+  - I doppioni esatti restano bloccati, perché `esistenti.add` è ancora incondizionato.
+  - Il tetto `RIFLESSIONE_MAX_LEZIONI` limita la crescita dei quasi-doppioni in una finestra ostile, che comunque richiedono l'approvazione umana.
+  - Esito: ok. Il trade-off (possibili quasi-doppioni in coda contro un input ostile che fa scartare una lezione legittima) è quello giusto.
+- `tests/test_unit_kernel.py:9033`: T92d3 rinomina `sources.yaml` e poi lo ripristina. Controlla che la riga sia nel log e non in console, anche dentro T92c, perché `_c92_prima` viene ricalcolato dopo il passo (2b). Esito: ok, con una nota cosmetica: il ripristino non sta in un `finally`, ma `_knowledge_search` non solleva eccezioni.
+- `tests/test_unit_kernel.py:9103`: T92e4 usa una finestra contaminata con `_L6e` e `_L9e` e si aspetta che entrino entrambe. Esito: ok.
+- Contesto: `gas.py:57`: il logger gas.knowledge è a livello INFO e propaga al root, quindi la console (a WARNING) non mostra la riga. Esito: ok.
+
+**Verifica eseguita**
+- Kernel: 892 PASS, 0 FAIL, riprodotti.
+- Mutazioni:
+  - Tolto `if not contaminata` (sempre append): fallisce solo T92e4.
+  - Tolto il ramo `FileNotFoundError`: falliscono T92c e T92d3.
+- Ho ripristinato `gas.py` dopo le mutazioni: il working tree è uguale all'index.
+- Wall of Shame: nessuno slicing della history e nessuna simulazione di tool. `_get_window`, il cap di 10 iterazioni e il cap di output non sono toccati.
+
+**Note cosmetiche (non riserve)**
+- Nessun test prova che un `sources.yaml` malformato resti WARNING.
+- Il rename/ripristino in T92d3 non è in un `finally`.
+
+**Rischi esclusi**
+- Non ho rieseguito `pytest tests/` completo (1419 passed dichiarato dall'agente): il diff tocca solo `gas.py` e la suite kernel, che ho riprodotto per intero.
+- Non ho verificato il comportamento sul Mac o sul VPS con un `sources.yaml` reale assente: non è riproducibile in dev oltre il test.
+- Non ho verificato V-3 (il corpo della PR), che è fuori dal diff.
+- Ho accettato V-4 (`gas_identity.md` invariato) sulla parola dell'agente: il file non è nel diff.
+
+**Memoria**: aggiunta la riga #358 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola con `scripts/commit_memoria_revisore.sh` (commit 6eee21c). Il diff staged è rimasto intatto. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 879 → 890 PASS, 0 FAIL (T92a–h, T92d2, T92e2, T92e3; T69-fts-d aggiornato: ora si aspetta la riga INFO). Blocco reale: `=== RIEPILOGO: 890 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1419 passed in 177.77s (0:02:57)` (sul codice finale, prima del commit).
+tests/test_unit_kernel.py in locale: 879 → 892 PASS, 0 FAIL (T92a–h, T92d2, T92d3, T92e2, T92e3, T92e4; T69-fts-d aggiornato: ora si aspetta la riga INFO). Blocco reale: `=== RIEPILOGO: 892 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+pytest `tests/`: `1419 passed in 177.60s (0:02:57)` (sul codice finale, prima del commit).
 
 ## §6 STATO CI
 
@@ -151,9 +195,11 @@ pytest `tests/`: `1419 passed in 177.77s (0:02:57)` (sul codice finale, prima de
 
 - `0b5c899`, `018abaa`, `0f55399`: pushati insieme prima dell'apertura della PR #216; nessuna run su questi SHA singolarmente.
 - `b70e466` (primo fine-task): unit-suite, handoff-check e verifica-bot success (bot APPROVATO CON RISERVE, nessuna ALTA/MEDIA); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/216#issuecomment-6217839029)).
-- `3984436`, commit delle note #216 e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `3984436`, commit delle note #216, `c17ca73` (secondo fine-task): CI verde, bot APPROVATO CON RISERVE (V-1 BASSA, V-2/V-3 COSMETICHE); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/216#issuecomment-6218056959)).
+- `6eee21c`, commit del secondo giro e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- COSMETICHE #358: nessun test per sources.yaml malformato; rename in T92d3 senza finally.
 - Effetto reale del nuovo prompt sui modelli non verificato: da riprovare sul Mac (fotosintesi; lead inesistente → «in memoria non risulta»).
 - Già tracciate: R-ve215-1 (somiglianza per parole), COSMETICHE #353/#354, R-345-3, R-bot210-3, R-bot211-2, R-ve211-1/2, R-ve213-3.
