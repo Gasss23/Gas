@@ -9030,6 +9030,12 @@ try:
             _k92m.knowledge_db_path = _kdb92
             _r92 = _k92m._knowledge_search("fotosintesi", 3)
             _c92_prima = _cons92.getvalue()
+            # (2a) DB presente ma sources.yaml assente: solo nel log (V-1 bot #216)
+            (_k92m.root / "knowledge" / "sources.yaml").rename(
+                _k92m.root / "knowledge" / "sources.yaml.via")
+            _r92s = _k92m._knowledge_search("fotosintesi", 3)
+            (_k92m.root / "knowledge" / "sources.yaml.via").rename(
+                _k92m.root / "knowledge" / "sources.yaml")
             # (2b) query troppo corta: solo nel log (V-3 bot #216)
             _r92q = _k92m._knowledge_search("ok", 3)
             _c92_prima = _cons92.getvalue()
@@ -9058,6 +9064,9 @@ try:
         check("T92d2 query troppo corta: solo nel log; DB rotto (manca knowledge): WARNING",
               _r92q == "" and "nessun token" in _f92 and "nessun token" not in _c92
               and _r92c == "" and "no such table: knowledge)" in _c92, f"console={_c92!r}")
+        check("T92d3 sources.yaml assente: solo nel log, niente avviso a schermo",
+              _r92s == "" and "sources.yaml assente" in _f92 and "sources.yaml" not in _c92,
+              f"console={_c92!r}")
 
         # T92e — V-1 bot #215: una 'proposta' non fidata non fa scartare una lezione legittima
         _k92e = _k80_con_storia()
@@ -9091,6 +9100,13 @@ try:
         _e92a = _k92a.rifletti()
         check("T92e3 approvata (anche se nata non fidata) fa da metro: la simile è scartata",
               not _e92a["lezioni"], f"{_e92a}")
+        # V-2 bot #216: in una finestra NON fidata, una proposta appena creata non fa da
+        # metro per la successiva dello stesso lotto (stessa regola del catalogo)
+        _k92l = _k80_con_storia(contaminata=True)
+        _setup80({_FLASH80: json.dumps({"recap": "r92l", "lezioni": [_L6e, _L9e]})})
+        _e92l = _k92l.rifletti()
+        check("T92e4 lotto non fidato: la proposta appena creata non fa da metro",
+              len(_e92l["lezioni"]) == 2 and _e92l["contaminata"], f"{_e92l}")
         # ...ma una proposta FIDATA sì (il metro resta per le fidate)
         _k92f = _k80_con_storia()
         _k92f.memory.aggiungi_lezione(_L6e, turni_sorgente=["diario:1"], autore="llm")

@@ -3138,7 +3138,10 @@ class GasKernel:
                     esito["scartate"].append((lezione, err))
                     continue
                 esistenti.add(lezione.casefold())
-                catalogo.append({"id": lid, "testo": lezione})
+                # Fa da metro per il resto del lotto solo se fidata: stessa regola del
+                # catalogo (una proposta non fidata non è metro, V-2 bot #216).
+                if not contaminata:
+                    catalogo.append({"id": lid, "testo": lezione})
                 esito["lezioni"].append({"id": lid, "testo": lezione})
                 self._diario_log(
                     "apprendimento",
@@ -3321,6 +3324,10 @@ class GasKernel:
                 s["nome"] for s in _catalog.get("sources", [])
                 if s.get("attiva", False) and s.get("nome")
             }
+        except FileNotFoundError as _e:
+            # Fonti mai configurate: stato atteso, solo nel log (V-1 bot #216).
+            _knowledge_log.info("sources.yaml assente (%s) — knowledge saltata", _e)
+            return ""
         except Exception as _e:
             logging.warning("sources.yaml non leggibile (%s) — knowledge saltata", _e)
             return ""
