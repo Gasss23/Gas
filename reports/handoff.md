@@ -18,6 +18,7 @@
 - **Recap usato solo se pertinente**: `FATTA`.
 - **Niente lezioni quasi uguali**: `FATTA`.
 - **Note rimaste da #214 (R-351-1, V-2 bot)**: `FATTA`.
+- **Bot #215 BOCCIATO, V-1 MEDIA (rifiutate non fidate nel prompt)**: `FATTA` — review #354.
 - **Avviso knowledge_fts / risposta «win rate»**: `SALTATA` — fuori scope, registrati.
 
 ---
@@ -25,14 +26,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- gas.py                             |  75 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ gas.py                             |  80 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  reports/diff_sessione.md           |  11 +++++------
- reports/handoff.md                 | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------
+ reports/handoff.md                 | 148 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  20 ++++++++++----------
- tests/test_unit_kernel.py          |  75 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 7 files changed, 233 insertions(+), 74 deletions(-)
+ reports/ultimo_report.md           |  22 ++++++++++++----------
+ tests/test_unit_kernel.py          |  82 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 7 files changed, 276 insertions(+), 75 deletions(-)
 ```
 
 NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
@@ -40,6 +41,9 @@ NB: conteggi di `reports/handoff.md` (e totali) presi prima del proprio commit.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+41ca88a fix(riflessione): lezioni rifiutate da finestre non fidate fuori dal prompt (V-1 bot #215)
+34e588f chore(revisore): memoria review #354 — APPROVATO
+097c288 docs(fine-task): report e handoff — recap pertinente e lezioni non ripetute (PR #215)
 c1bae19 feat(riflessione): recap usato solo se pertinente; niente lezioni quasi uguali (prova Mac 2026-10-16)
 0693018 chore(revisore): memoria review #353 — APPROVATO
 5616bfa chore(revisore): memoria review #352 — APPROVATO CON RISERVE
@@ -114,9 +118,32 @@ Ri-review del diff staged completo: le tre riserve della #352 sono chiuse. Ho ri
 
 File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #354 (fix V-1 bot #215) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+**Letture obbligatorie fatte**: CLAUDE.md (sezione 5, e sezioni 6 e 8), reports/stato_progetto.md (la parte che serviva), .claude/agents/memoria_revisore.md (le ultime voci, #350–#353, e la lezione del 2026-10-16 sugli stati delle lezioni).
+
+**Elementi del diff esaminati**
+- `gas.py:3017` — il filtro `decise` passa le `approvata` sempre. Passa le `rifiutata`/`ritirata` solo se `":non_fidato"` non compare in `str(turni_sorgente)`. Rischio esaminato: che il marcatore abbia altre forme, o che `turni_sorgente` arrivi come lista o come JSON e sfugga al controllo. Il marcatore si scrive in un solo punto, `gas.py:3116` (`diario:{rid}:non_fidato`). `str()` lo trova sia nella lista sia nella stringa JSON. Il cap `decise[:RIFLESSIONE_LEZIONI_NOTE]` si applica dopo il filtro, quindi le lezioni non fidate non tolgono posto a quelle fidate. Esito: ok.
+- `gas.py:3017` — perché le approvate non fidate restano nel blocco. Rischio esaminato: che anche loro riciclino fiducia. Non lo fanno: il «sì» dell'operatore le rende fidate, e infatti entrano già in ogni turno tramite `_lezioni_pin`. Il «no» invece non rende fidato un testo. La distinzione è giusta. Esito: ok.
+- `gas.py:804` — il commento della soglia ora dice «in qualunque stato» e da dove vengono le misure (T91c). Rischio esaminato: che il commento dica qualcosa di diverso dal codice. Non succede: `_lezione_simile` confronta con tutto il catalogo. Esito: ok.
+- `tests/test_unit_kernel.py:8943` — T91i controlla che la lezione rifiutata con `diario:1:non_fidato` resti fuori dal prompt e che il recap sia di tipo `recap`. Ho riprodotto la suite: **879 PASS, 0 FAIL**. Ho poi tolto la condizione sulla provenienza (mutazione): fallisce **solo T91i** (878/1). Il codice originale è stato ripristinato, `git diff` senza modifiche fuori dallo staging. Esito: ok.
+- Wall of Shame (gli errori vietati dalla sezione 5): nessuno slicing della history, nessuna simulazione di tool. `_get_window` e il cap delle iterazioni non sono toccati.
+
+**Nota cosmetica (non è una riserva)**: il ramo `ritirata` con provenienza `:non_fidato` non ha un test dedicato. Se si toglie `"ritirata"` dalla tupla non fallisce nulla.
+
+**Risposta alla tua domanda**: sì, mi sta bene. È "robustezza > potenza": perdere un po' di aiuto contro le ripetizioni costa poco. Il riciclo di fiducia è un buco di sicurezza (vedi R-200-1/R-201-1). Contro i doppioni restano due reti meccaniche: il confronto esatto con `esistenti` e `_lezione_simile`. Nessuna delle due mette testo nel prompt. Il costo peggiore è che l'operatore riveda una lezione già rifiutata con parole diverse, sotto la soglia di somiglianza. È un fastidio, non un rischio. Se sul Mac il rumore diventa troppo, la strada giusta è passare al modello solo un riassunto meccanico (per esempio le radici) delle rifiutate non fidate, mai il loro testo.
+
+**Cosa non ho verificato**: il comportamento sul database reale del Mac, cioè quante lezioni rifiutate non fidate vengono riproposte e se `_lezione_simile` basta a fermarle. Non si può riprodurre in dev: il database del Mac non è nel repo. Non ho rieseguito le altre suite oltre a quella del kernel.
+
+**Memoria**: aggiunta la riga #354 (APPROVATO) con la lezione: un filtro di fiducia deve guardare la provenienza oltre allo stato. Committata con `scripts/commit_memoria_revisore.sh` (commit 34e588f), lo staging del diff è rimasto intatto.
+
+File: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 870 → 878 PASS, 0 FAIL (T91a–h). Blocco reale: `=== RIEPILOGO: 878 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+tests/test_unit_kernel.py in locale: 870 → 879 PASS, 0 FAIL (T91a–i). Blocco reale: `=== RIEPILOGO: 879 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
 pytest `tests/`: `1419 passed in 174.58s (0:02:54)` (prima delle correzioni R-352).
 
 ## §6 STATO CI
@@ -124,10 +151,13 @@ pytest `tests/`: `1419 passed in 174.58s (0:02:54)` (prima delle correzioni R-35
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `5616bfa`, `0693018`, `c1bae19`: pushati insieme prima dell'apertura della PR #215; nessuna run su questi SHA singolarmente.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `097c288` (primo fine-task): handoff-check success; bot BOCCIATO (V-1 MEDIA, definitivo su quello SHA); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/215#issuecomment-6213316242)).
+- `34e588f`, commit del fix V-1 e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - COSMETICA #353: nessun test distingue il denominatore min/max di `_lezione_simile`; margine stretto #6/#9 (0,53 con soglia 0,5).
 - COSMETICA #352: `_now_iso_da` importato come nome privato da gas.py.
+- R-ve215-1 (BASSA): somiglianza per parole, non per senso.
+- COSMETICA #354: ramo `ritirata` non fidata senza test dedicato.
 - Avviso knowledge_fts a schermo sul Mac; risposta «win rate» povera (non corretti, registrati).
