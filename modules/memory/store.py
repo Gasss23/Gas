@@ -391,6 +391,10 @@ def _now_iso_da(momento: datetime) -> str:
     return momento.astimezone(timezone.utc).isoformat(timespec="microseconds")
 
 
+# Nome pubblico per chi usa il formato del diario da fuori (V-2 bot #215).
+now_iso_da = _now_iso_da
+
+
 def _now_iso() -> str:
     """Timestamp ISO8601 in UTC (ordinabile lessicograficamente)."""
     return _now_iso_da(datetime.now(timezone.utc))
