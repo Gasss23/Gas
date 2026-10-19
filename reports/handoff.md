@@ -237,6 +237,7 @@ tests/test_unit_gate.py: 606 → 627 passed (prefisso col punto, prefissi ripetu
 
 - V-2 bot #217 (COSMETICA): lo stat del §2 è preso prima del commit di fine-task che contiene questo handoff (limite noto del flusso).
 - Terzo giro su 7bb03c6 (dichiarate, BASSE): R-bot217-1 (nessun kernel partito → lezioni vecchie non contate), R-ve217-1 («copia di .config/», «copy of .config/» liberi).
+- Bot su a8ddda2: R-bot217-2 (BASSA, verso sicuro) copie di `config` senza punto negate, commento da allineare.
 - Nuove registrate (BASSE/COSMETICHE, dall'ultimo giro di #216): R-bot216-1, R-bot216-2, R-ve216-2, posizione di `_knowledge_log`.
 - Da vedere al primo giro notturno vero: righe «Riflessione:» e «Lezioni da approvare: N» su Telegram.
 - Già tracciate: R-ve215-1, COSMETICHE #353/#354, R-bot211-2, R-ve211-1/2, R-ve213-3.
