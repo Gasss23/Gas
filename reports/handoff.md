@@ -22,24 +22,25 @@
 - **Test più robusti (T92d3 finally, T92d4, T91d)**: `FATTA`.
 - **Ispezione branch vecchi**: `FATTA` — solo rapporto, niente cancellato.
 - **Roadmap in una pagina**: `FATTA`.
+- **V-1 verifica esterna #217 (prefissi di copia ripetuti, separatori iniziali)**: `FATTA` — review #361/#362.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- modules/gate/gate.py               |   2 +-
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/gate/gate.py               |   4 +++-
  modules/notte/notte.py             |  39 +++++++++++++++++++++++++++++++--------
  reports/diff_sessione.md           |  15 +++++++++------
- reports/handoff.md                 | 204 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 242 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------
  reports/roadmap_sintesi.md         |  25 +++++++++++++++++++++++++
  reports/stato_progetto.md          |  15 +++++----------
- reports/ultimo_report.md           |  25 +++++++++++++------------
- tests/test_unit_gate.py            |  12 ++++++++----
+ reports/ultimo_report.md           |  26 ++++++++++++++------------
+ tests/test_unit_gate.py            |  16 ++++++++++++----
  tests/test_unit_kernel.py          |  36 ++++++++++++++++++++++++++++--------
  tests/test_unit_notte.py           |  56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 11 files changed, 236 insertions(+), 195 deletions(-)
+ 11 files changed, 302 insertions(+), 176 deletions(-)
 ```
 
 ---
@@ -47,6 +48,10 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5d90626 fix(gate): prefissi di copia ripetuti e separatori iniziali (V-1 verifica esterna #217)
+df0bb27 chore(revisore): memoria review #362 — APPROVATO
+776a3f4 chore(revisore): memoria review #361 — APPROVATO CON RISERVE
+ec644b8 docs(fine-task): report, handoff e roadmap in una pagina — fetta di pulizia #217
 44fc4ae fix(pulizia): lezioni in attesa tutte su Telegram, prefisso di copia col punto, test più robusti
 9db0883 chore(revisore): memoria review #360 — APPROVATO
 ef9456f chore(revisore): memoria review #359 — APPROVATO CON RISERVE
@@ -108,23 +113,98 @@ Review n. 360: è la ri-review della #359 sul diff staged aggiornato. Nessuna ri
 Nessuna lezione nuova.
 ```
 
+### Review #361
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #361. Diff staged su feat/merge-automatico-z1xjx2 (PR #217): 2 file, +9/-3.
+
+Ho letto prima CLAUDE.md (sez. 5, 8, 10), le voci gate/V-1 in reports/stato_progetto.md e .claude/agents/memoria_revisore.md (le ultime voci, fino alla #360).
+
+Elementi del diff esaminati:
+- `modules/gate/gate.py:342`: `_COPIA_PREFISSO = rf"\.?(?:{_PAROLE_COPIA}[-_ .]+)*+"`. Ora i prefissi di copia si possono ripetere e il punto iniziale è opzionale.
+  - Rischio di ReDoS (blocco della regex su input costruiti apposta): escluso. Il gruppo esterno è possessivo, le parole di copia hanno già `[0-9]*+` e ogni giro richiede almeno un separatore, quindi non c'è backtracking annidato. Ho provato 7 input avversari fino a 255 caratteri (`old.`×60, `copy_`×50+`keyz`, `. `×120+`keys!`, lunghe serie di separatori): ognuno sotto 1e-5 s. Oltre 255 caratteri il pezzo viene negato prima di arrivare alla regex.
+  - Rischio di un falso negativo dovuto al possessivo: escluso. Nessun nome bersaglio (`tokens/keys/passwd/shadow/gh`) comincia con una parola di copia o con un separatore, quindi il prefisso non può mangiarsi il nome.
+  - Esito: ok.
+- `tests/test_unit_gate.py:651`: 6 nuovi casi negati (`old.old.keys/a`, `old_old_keys/a`, `copy_old.keys/a`, `.old.keys/a`, `.keys/a`, `.tokens/x`).
+  - Rischio: test che passano anche col fix tolto. Ho fatto due mutazioni: col vecchio prefisso `(?:…)?` falliscono 6 test, senza `\.?` ne falliscono 3. Il file è stato ripristinato e il diff non staged è vuoto.
+  - Esito: ok.
+- `tests/test_unit_gate.py:682`: 3 nuovi casi leggibili (`.keyboard.md`, `old.old.keynote.md`, `.tokenizer.json`).
+  - Rischio: falsi positivi. Ho sondato anche altri nomi e restano leggibili: `news_keys/a`, `old_keyring/a`, `new.tokens.py`, `dati/.keys.md`, `notes/.keyboard`, `a/.keys/readme.md` (la documentazione dentro una cartella di chiavi resta leggibile), `oldkeys/a`.
+  - Esito: ok.
+- Contesto: `modules/gate/gate.py:347` `_nome_con_copie` usa il prefisso per tre regex (ultimo pezzo, cartella di chiavi, `.config/gh`).
+  - Effetti collaterali: `.config/.gh/hosts.yml`, `.passwd` e `.shadow` come ultimo pezzo ora sono negati. Sono più restrittivi e innocui.
+  - Esito: ok.
+
+Numeri riprodotti da me: test del cancello 615 passed; `pytest tests` completo 1438 passed in 147 s.
+
+Il punto iniziale è coerente: `.keys/` e `.tokens/` sono il modo normale di nascondere una cartella di chiavi, quindi negarli rientra nello stesso criterio di D5 (copie di cartelle e file di chiavi). L'ultimo pezzo non perde il punto iniziale, perché `rstrip(". ")` toglie solo punti e spazi finali.
+
+Riserve:
+- **R-361-1 (BASSA)**: `..keys/a` e `._keys/a` restano LEGGIBILI (verificato: `lettura_consentita` → True). Il motivo: c'è un solo `\.?` e il `_` subito dopo il punto non è preceduto da una parola di copia. Possibili rimedi:
+  - `[-_ .]*` all'inizio al posto di `\.?` (è sempre possessivo, quindi resta lineare), con 2 test;
+  - oppure dichiarare il limite.
+  
+  `._x` sono i file AppleDouble di macOS: contengono solo metadati, quindi il rischio reale è basso. Va tracciata in stato_progetto.md.
+
+Rischio escluso: non ho verificato il comportamento del cancello sul percorso RISOLTO dei symlink nel kernel (`gas.py`), né la suite kernel `tests/test_unit_kernel.py` come script a sé. Il diff non tocca `gas.py` e le funzioni pubbliche (`lettura_consentita`, `livello_scrittura`) mantengono la stessa firma. Non ho verificato nemmeno il comportamento su Mac/VPS, dove i nomi possono differire per normalizzazione Unicode (NFD).
+
+Memoria aggiornata: ho aggiunto la riga #361 con la lezione «quando si rende ripetibile un prefisso, sondare anche le forme degeneri del separatore iniziale (`..x`, `._x`)». È committata con `scripts/commit_memoria_revisore.sh` (commit 776a3f4), file /home/user/Gas/.claude/agents/memoria_revisore.md.
+
+File rilevanti: /home/user/Gas/modules/gate/gate.py, /home/user/Gas/tests/test_unit_gate.py
+```
+
+### Review #362
+
+```
+## VERDETTO: APPROVATO
+
+Review #362, ri-review della #361 sul diff staged aggiornato (PR #217). R-361-1 è chiusa.
+
+Elementi del diff esaminati:
+- `modules/gate/gate.py:342` — `_COPIA_PREFISSO = rf"[-_ .]*+(?:{_PAROLE_COPIA}[-_ .]+)*+"`: ora accetta una serie qualsiasi di separatori iniziali.
+  - ReDoS: escluso. I due quantificatori sono possessivi e la parola di copia non comincia con un separatore, quindi non ci sono modi ambigui di dividere la stringa. 4 input avversari fino a 255 caratteri (serie `-_ .`, punti con `old`, underscore con `copy`, `. ` con `keys!`) restano sotto 1e-5 s.
+  - Falso negativo dovuto al possessivo: escluso. Nessun nome bersaglio comincia con un separatore.
+  - Esito: ok.
+- `tests/test_unit_gate.py:654` — aggiunti i casi negati `..keys/a` e `._keys/a`.
+  - Mutazione: rimettendo il `\.?` della #361 falliscono 2 test, quindi i casi nuovi servono davvero. File ripristinato, diff non staged vuoto.
+  - Esito: ok.
+- `tests/test_unit_gate.py:682` — casi leggibili invariati rispetto alla #361.
+  - Falsi positivi, sondati a mano. Restano leggibili: `_keyboard.md`, `..keynote.md`, `._readme.md`, `._keys.md`, `news_keys/a`, `old_keyring/a`, `.keyboard.md`, `a/..keys/readme.md`. Sono negati, ed è corretto: `_keys/a`, `-keys/a`, `._old_.keys/a`, `x/_tokens`.
+  - Esito: ok.
+- Contesto: `modules/gate/gate.py:347` — `_nome_con_copie` applica lo stesso prefisso a ultimo pezzo, cartella di chiavi e `.config/gh`. Su `.config/` l'effetto è più restrittivo (fail-closed), quindi innocuo. Esito: ok.
+
+Numeri riprodotti da me: gate 617 passed; `pytest tests` 1440 passed.
+
+Nota COSMETICA, non bloccante: i tre nomi che dichiari leggibili (`_keyboard.md`, `..keynote.md`, `._readme.md`) li ho verificati solo a mano. Non sono tra i parametri di `test_nomi_simili_a_chiavi_restano_leggibili`, quindi un test non li protegge.
+
+Rischio escluso: non ho verificato la normalizzazione Unicode dei nomi su Mac (NFD) né il percorso del cancello sui symlink risolti in `gas.py`. Il diff non tocca `gas.py` e le firme pubbliche restano uguali.
+
+Memoria: riga #362 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (df0bb27).
+
+File rilevanti: /home/user/Gas/modules/gate/gate.py, /home/user/Gas/tests/test_unit_gate.py
+```
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
 tests/test_unit_kernel.py in locale: 892 → 893 PASS, 0 FAIL (T92d4 nuovo; T91d e T92d3 rafforzati). Blocco reale: `=== RIEPILOGO: 893 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
 pytest `tests/`: `1428 passed in 186.81s (0:03:06)` (prima della fix R-359-1, che aggiunge 1 test notte: notte 64 passed).
-tests/test_unit_gate.py: 606 passed (4 falliscono senza la modifica del prefisso).
+tests/test_unit_gate.py: 606 → 617 passed (prefisso col punto, poi prefissi ripetuti e separatori iniziali). pytest `tests/` sul codice finale: 1440 passed (riprodotto dal revisore #362).
 
 ## §6 STATO CI
 
 `gh` non disponibile nella sessione cloud: lo stato CI si legge dai check-run della PR via MCP GitHub.
 
 - `44fc4ae` (commit della fetta, PR #217 aperta su questo SHA): run in corso all'apertura.
-- Commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff.
+- `ec644b8` (primo fine-task): unit-suite, handoff-check, smista success; verifica-bot in corso (annullata dal push successivo). Verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/217#issuecomment-6257011328)): V-1 BASSA chiusa in `5d90626`, V-2 BASSA (CI finale non provata dall'handoff) e V-3 COSMETICA (prova sul Mac non riproducibile) dichiarate.
+- `5d90626` e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff. Il merge aspetta unit-suite e verifica-bot verdi su questo SHA.
 
 ## §7 RISERVE APERTE
 
+- COSMETICA #362: `_keyboard.md`, `..keynote.md`, `._readme.md` leggibili verificati a mano, non nei test.
 - Nuove registrate (BASSE/COSMETICHE, dall'ultimo giro di #216): R-bot216-1, R-bot216-2, R-ve216-2, posizione di `_knowledge_log`.
 - Da vedere al primo giro notturno vero: righe «Riflessione:» e «Lezioni da approvare: N» su Telegram.
 - Già tracciate: R-ve215-1, COSMETICHE #353/#354, R-bot211-2, R-ve211-1/2, R-ve213-3.

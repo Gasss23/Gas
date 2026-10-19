@@ -16,7 +16,8 @@
 - **Ispezione branch vecchi** — FATTA (vedi decisione 2).
 - **Roadmap in una pagina** — FATTA (`reports/roadmap_sintesi.md`).
 - **Test** — kernel 893 PASS 0 FAIL; pytest tests/ 1428 passed (prima della fix R-359-1); notte 64 passed; gate 606 passed.
-- **Review** — #359 APPROVATO CON RISERVE (R-359-1 BASSA chiusa, cosmetica chiusa), #360 APPROVATO.
+- **Verifica esterna #217** ([commento](https://github.com/Gasss23/Gas/pull/217#issuecomment-6257011328)) — APPROVATO CON RISERVE: V-1 BASSA (prefissi di copia ripetuti, `old.old.keys/`, `.old.keys/`) CHIUSA; V-2 BASSA (§6 dell'handoff senza CI finale: il merge aspetta unit-suite e verifica-bot verdi) dichiarata; V-3 COSMETICA (terza prova sul Mac non riproducibile in cloud) dichiarata.
+- **Review** — #359 APPROVATO CON RISERVE (R-359-1 BASSA chiusa, cosmetica chiusa), #360 APPROVATO; #361 APPROVATO CON RISERVE (R-361-1 BASSA `..keys/`, `._keys/` chiusa), #362 APPROVATO. Gate 617 passed, pytest tests/ 1440 passed (dal revisore #362).
 
 ## Anomalie
 
