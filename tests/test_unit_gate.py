@@ -648,7 +648,10 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "new_keys/a", "orig_keys/a", "keys.bak1/a", "keys_old2/a",
                                   "keys copy2/a", "keys_v2/a", "keys.prev/a", "keys.save/a",
                                   # R-bot210-3: prefisso col punto
-                                  "old.keys/a", "backup.keys/a", "copy.tokens/x"])
+                                  "old.keys/a", "backup.keys/a", "copy.tokens/x",
+                                  # V-1 verifica esterna #217: prefissi ripetuti, punto iniziale
+                                  "old.old.keys/a", "old_old_keys/a", "copy_old.keys/a",
+                                  ".old.keys/a", ".keys/a", ".tokens/x", "..keys/a", "._keys/a"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -676,7 +679,8 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   "voiceover.md", "claudette.md", "keys/notes.rst",
                                   "dailytokenizer.md", "keys.bak/readme.md",
                                   # R-bot210-3: il prefisso col punto non crea falsi positivi
-                                  "old.keyboard.md", "dati/old.keys.md", "new.tokenizer.json"])
+                                  "old.keyboard.md", "dati/old.keys.md", "new.tokenizer.json",
+                                  ".keyboard.md", "old.old.keynote.md", ".tokenizer.json"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
