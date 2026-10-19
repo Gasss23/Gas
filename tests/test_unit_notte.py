@@ -1092,6 +1092,12 @@ def test_telegram_conta_tutte_le_lezioni_in_attesa(monkeypatch, dirs):
     assert "Lezioni da approvare: 4 —" in tg
     assert "Lezioni da approvare" not in notte.componi_messaggio_telegram(
         "ora", esiti, [], lezioni_in_attesa=0)
+    # V-1 bot #217: anche nei soli conteggi resta il numero delle lezioni
+    corto = notte.componi_messaggio_telegram("ora", esiti, [], solo_conteggi=True,
+                                             lezioni_in_attesa=4)
+    assert "Lezioni da approvare: 4 —" in corto and "OK a (" not in corto
+    assert "Lezioni da approvare" not in notte.componi_messaggio_telegram(
+        "ora", esiti, [], solo_conteggi=True, lezioni_in_attesa=0)
     # R-359-1: memoria che dà 0 (DB rotto: lista_lezioni → []) ma 2 proposte stanotte
     esiti2 = [dict(esiti[0], riflessione={"ok": True, "lezioni": 2})]
     assert "Lezioni da approvare: 2 —" in notte.componi_messaggio_telegram(

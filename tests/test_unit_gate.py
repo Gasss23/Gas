@@ -651,7 +651,11 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "old.keys/a", "backup.keys/a", "copy.tokens/x",
                                   # V-1 verifica esterna #217: prefissi ripetuti, punto iniziale
                                   "old.old.keys/a", "old_old_keys/a", "copy_old.keys/a",
-                                  ".old.keys/a", ".keys/a", ".tokens/x", "..keys/a", "._keys/a"])
+                                  ".old.keys/a", ".keys/a", ".tokens/x", "..keys/a", "._keys/a",
+                                  # V-1 verifica esterna #217 su fdf001c: copie di .config
+                                  "old.config/gh/hosts.yml", "home/old.config/gh/hosts.yml",
+                                  "x/.old.config/gh/hosts.yml", ".config.bak/gh/hosts.yml",
+                                  ".config copy/gh.old/hosts.yml"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -680,7 +684,11 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   "dailytokenizer.md", "keys.bak/readme.md",
                                   # R-bot210-3: il prefisso col punto non crea falsi positivi
                                   "old.keyboard.md", "dati/old.keys.md", "new.tokenizer.json",
-                                  ".keyboard.md", "old.old.keynote.md", ".tokenizer.json"])
+                                  ".keyboard.md", "old.old.keynote.md", ".tokenizer.json",
+                                  # #362 COSMETICA: separatori iniziali senza nome protetto
+                                  "_keyboard.md", "..keynote.md", "._readme.md",
+                                  # «config» nudo non è la cartella della CLI GitHub
+                                  "config/gh/readme.md", ".configs/gh/x.md"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE

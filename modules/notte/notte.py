@@ -330,10 +330,18 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
     ok = sum(1 for e in esiti if e["esito"] == "ok")
     righe = [f"Gas — giro notturno del {inizio}",
              f"Compiti eseguiti: {len(esiti)} · ok: {ok} · ko: {len(esiti) - ok}", ""]
+    nuove = sum(e["riflessione"]["lezioni"] for e in esiti
+                if e.get("riflessione") and e["riflessione"]["ok"])
+    # R-359-1: lista_lezioni dà [] anche a DB rotto: mai meno di quelle di stanotte.
+    lezioni = nuove if lezioni_in_attesa is None else max(nuove, lezioni_in_attesa)
+    di_cui = f" (di cui {nuove} di stanotte)" if 0 < nuove < lezioni else ""
+    riga_lezioni = (["", f"Lezioni da approvare: {lezioni}{di_cui} — python3 gas.py lezioni lista"]
+                    if lezioni else [])
     if solo_conteggi:
+        # V-1 bot #217: anche nei soli conteggi resta il numero delle lezioni.
         return "\n".join(righe + [
-            f"Avvisi: {len(avvisi)} (dettaglio troppo lungo per Telegram)",
-            f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"])
+            f"Avvisi: {len(avvisi)} (dettaglio troppo lungo per Telegram)"] + riga_lezioni + [
+            "", f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"])
     for e in esiti:
         segno = "OK" if e["esito"] == "ok" else "KO"
         riga = f"{segno} {e['nome']} ({e['tool']} tool, {e.get('durata', 0)}s)"
@@ -359,13 +367,7 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
             righe.append(f"- {a}")
         if len(avvisi) > MAX_AVVISI_TELEGRAM:
             righe.append(f"- …e altri {len(avvisi) - MAX_AVVISI_TELEGRAM}")
-    nuove = sum(e["riflessione"]["lezioni"] for e in esiti
-                if e.get("riflessione") and e["riflessione"]["ok"])
-    # R-359-1: lista_lezioni dà [] anche a DB rotto: mai meno di quelle di stanotte.
-    lezioni = nuove if lezioni_in_attesa is None else max(nuove, lezioni_in_attesa)
-    if lezioni:
-        di_cui = f" (di cui {nuove} di stanotte)" if 0 < nuove < lezioni else ""
-        righe += ["", f"Lezioni da approvare: {lezioni}{di_cui} — python3 gas.py lezioni lista"]
+    righe += riga_lezioni
     righe += ["", f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"]
     return "\n".join(righe)
 
@@ -420,7 +422,8 @@ def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[st
                                                lezioni_in_attesa=lezioni_in_attesa)
         if interrotto is None and lunghezza_telegram(testo) > TELEGRAM_MAX_CHARS:
             # V-1 verifica esterna #169: meglio i soli conteggi che nessun messaggio.
-            testo = componi_messaggio_telegram(inizio, esiti, avvisi, solo_conteggi=True)
+            testo = componi_messaggio_telegram(inizio, esiti, avvisi, solo_conteggi=True,
+                                               lezioni_in_attesa=lezioni_in_attesa)
         inviato, motivo = invia_notifica(testo)
     except Exception as e:
         logging.warning("notte: riepilogo Telegram non inviato: %s", type(e).__name__)

@@ -9083,8 +9083,9 @@ try:
               and _r92c == "" and "no such table: knowledge)" in _c92, f"console={_c92!r}")
         check("T92d3 sources.yaml assente: solo nel log, niente avviso a schermo",
               _r92s == "" and "sources.yaml assente" in _f92
-              and "sources.yaml assente" not in _c92 and _src92.exists(),
-              f"console={_c92!r}")
+              # V-3 bot #217: console catturata prima del caso malformato (2c)
+              and "sources.yaml" not in _c92_prima and _src92.exists(),
+              f"console={_c92_prima!r}")
         check("T92d4 sources.yaml malformato: resta WARNING (visibile)",
               _r92y == "" and "sources.yaml non leggibile" in _c92, f"console={_c92!r}")
 
