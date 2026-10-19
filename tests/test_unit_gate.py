@@ -646,7 +646,9 @@ def test_v2_181_nomi_simili_restano_leggibili(path):
                                   "passwd.old", "tokens (2)",
                                   # bot #210 V-1: prefissi new/orig, cifre dopo la parola di copia
                                   "new_keys/a", "orig_keys/a", "keys.bak1/a", "keys_old2/a",
-                                  "keys copy2/a", "keys_v2/a", "keys.prev/a", "keys.save/a"])
+                                  "keys copy2/a", "keys_v2/a", "keys.prev/a", "keys.save/a",
+                                  # R-bot210-3: prefisso col punto
+                                  "old.keys/a", "backup.keys/a", "copy.tokens/x"])
 def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
     """Decisione operatore 2026-10-11: chiavi e credenziali vietate (lettura e scrittura)."""
     from modules.gate.gate import lettura_consentita, livello_scrittura, LIVELLO_MAI
@@ -672,7 +674,9 @@ def test_chiavi_private_e_credenziali_illeggibili_e_mai_scritte(path):
                                   "author_key.md", ".config/ghostty/config", ".config/gh_notes.md",
                                   "password_policy.md", "robot.token.md", "gh.keyboard.md",
                                   "voiceover.md", "claudette.md", "keys/notes.rst",
-                                  "dailytokenizer.md", "keys.bak/readme.md"])
+                                  "dailytokenizer.md", "keys.bak/readme.md",
+                                  # R-bot210-3: il prefisso col punto non crea falsi positivi
+                                  "old.keyboard.md", "dati/old.keys.md", "new.tokenizer.json"])
 def test_nomi_simili_a_chiavi_restano_leggibili(path):
     from modules.gate.gate import lettura_consentita
     assert gate_classify("read_file", {"relative_path": path}) == GateClass.SAFE
@@ -680,7 +684,7 @@ def test_nomi_simili_a_chiavi_restano_leggibili(path):
 
 
 @pytest.mark.parametrize("path", ["keys copy/readme.md", "shadow_old/a.md", "passwd (1)/x.md",
-                                  "old_keys/readme.md",
+                                  "old_keys/readme.md", "old.keys/readme.md",
                                   "keys/readme.md", "keys/notes.rst", "tokens/note.md",
                                   "passwd/x.txt", "shadow/readme.md", "keys.bak/readme.md",
                                   "a/shadow-/b.md", "x/Keys/y.md"])
@@ -693,7 +697,7 @@ def test_cartelle_di_chiavi_leggibili_ma_mai_scritte(path):
 
 
 @pytest.mark.parametrize("path", ["keys.d/x.md", "oldkeys/x.md", "keynote copy.md",
-                                  "dati/keys_list.md",
+                                  "dati/keys_list.md", "old.keyboard/x.md",
                                   "keyboard/x.md", "monkeys/x.md", "dati/tokens.md",
                                   "shadowing/x.md", "note/keys.md"])
 def test_cartelle_simili_a_chiavi_restano_scrivibili(path):

@@ -337,7 +337,7 @@ _CHIAVE_PRIVATA_RE = re.compile(
 _PAROLE_COPIA = r"(?:copy|copia|backup|bak|old|orig|new|prev|save)[0-9]*+"
 _COPIA_SUFFISSI = (rf"(?>[-_ .]+(?:{_PAROLE_COPIA}|v?[0-9]+)"
                    r"| ?\([0-9]+\)|~|-)*+")
-_COPIA_PREFISSO = rf"(?:{_PAROLE_COPIA}[-_ ]+)?"
+_COPIA_PREFISSO = rf"(?:{_PAROLE_COPIA}[-_ .]+)?"   # R-bot210-3: anche old.keys/
 
 
 def _nome_con_copie(nomi: str) -> re.Pattern[str]:

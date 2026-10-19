@@ -8958,7 +8958,16 @@ try:
                   "Quando l utente chiede una email, scrivila sempre in italiano formale",
                   [{"id": 1, "testo": "Chiedi sempre conferma all utente prima di inviare "
                                       "una email a un cliente"}]) is None
-              and gas._lezione_simile("ok breve", [{"id": 6, "testo": "ok breve"}]) is None)
+              and gas._lezione_simile("ok breve", [{"id": 6, "testo": "ok breve"}]) is None
+              # la quota si misura sulla lezione più LUNGA: una corta tutta contenuta
+              # in una lunga (4 radici su 10) non è «simile»
+              and gas._lezione_simile(
+                  "preventivi fatture clienti scadenze",
+                  [{"id": 7, "testo": "preventivi fatture clienti scadenze magazzino "
+                                      "ordini fornitori spedizioni listini sconti"}]) is None
+              and gas._lezione_simile(
+                  "preventivi fatture clienti scadenze magazzino",
+                  [{"id": 8, "testo": "preventivi fatture clienti scadenze ordini"}]) == 8)
         # T91e — due lezioni simili nella STESSA riflessione: la seconda è scartata
         _k91e = _k80_con_storia()
         _setup80({_FLASH80: json.dumps({"recap": "r91e", "lezioni": [_L6, _L9]})})
@@ -9029,16 +9038,24 @@ try:
             _cd92.close()
             _k92m.knowledge_db_path = _kdb92
             _r92 = _k92m._knowledge_search("fotosintesi", 3)
-            _c92_prima = _cons92.getvalue()
             # (2a) DB presente ma sources.yaml assente: solo nel log (V-1 bot #216)
-            (_k92m.root / "knowledge" / "sources.yaml").rename(
-                _k92m.root / "knowledge" / "sources.yaml.via")
-            _r92s = _k92m._knowledge_search("fotosintesi", 3)
-            (_k92m.root / "knowledge" / "sources.yaml.via").rename(
-                _k92m.root / "knowledge" / "sources.yaml")
+            _src92 = _k92m.root / "knowledge" / "sources.yaml"
+            _via92 = _k92m.root / "knowledge" / "sources.yaml.via"
+            _src92.rename(_via92)
+            try:
+                _r92s = _k92m._knowledge_search("fotosintesi", 3)
+            finally:
+                _via92.rename(_src92)
             # (2b) query troppo corta: solo nel log (V-3 bot #216)
             _r92q = _k92m._knowledge_search("ok", 3)
             _c92_prima = _cons92.getvalue()
+            # (2c) sources.yaml malformato: resta WARNING (va sistemato a mano)
+            _yaml92 = _src92.read_text(encoding="utf-8")
+            _src92.write_text("fonti: [non chiusa\n  - : :\n", encoding="utf-8")
+            try:
+                _r92y = _k92m._knowledge_search("fotosintesi", 3)
+            finally:
+                _src92.write_text(_yaml92, encoding="utf-8")
             # (3) altro errore → resta WARNING
             def _finto92b(*a, **kw):
                 raise _sq92.OperationalError("database is locked")
@@ -9065,8 +9082,11 @@ try:
               _r92q == "" and "nessun token" in _f92 and "nessun token" not in _c92
               and _r92c == "" and "no such table: knowledge)" in _c92, f"console={_c92!r}")
         check("T92d3 sources.yaml assente: solo nel log, niente avviso a schermo",
-              _r92s == "" and "sources.yaml assente" in _f92 and "sources.yaml" not in _c92,
+              _r92s == "" and "sources.yaml assente" in _f92
+              and "sources.yaml assente" not in _c92 and _src92.exists(),
               f"console={_c92!r}")
+        check("T92d4 sources.yaml malformato: resta WARNING (visibile)",
+              _r92y == "" and "sources.yaml non leggibile" in _c92, f"console={_c92!r}")
 
         # T92e — V-1 bot #215: una 'proposta' non fidata non fa scartare una lezione legittima
         _k92e = _k80_con_storia()
