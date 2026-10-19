@@ -18,6 +18,7 @@
 
 - **Regola «documenti di progetto: fonte unica = il repo» in CLAUDE.md**: `FATTA` — PR #219.
 - **Aggiornamento della roadmap con le decisioni del 19 ott**: `BLOCCATA` — il file sorgente sta solo nel progetto claude.ai (nessuno strumento per leggerlo da questa sessione).
+- **Note bot #219 (V-2 riga in stato, V-3 quale roadmap fa fede)**: `FATTA`.
 - **Regola delle risposte brevi**: già presente in CLAUDE.md (§3, punto 4), non duplicata.
 
 ---
@@ -25,11 +26,12 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- CLAUDE.md                |  1 +
- reports/diff_sessione.md |  6 +++---
- reports/handoff.md       | 23 +++++++++++------------
- reports/ultimo_report.md | 18 ++++++++----------
- 4 files changed, 23 insertions(+), 25 deletions(-)
+ CLAUDE.md                 |  1 +
+ reports/diff_sessione.md  |  7 ++++---
+ reports/handoff.md        | 24 ++++++++++++------------
+ reports/stato_progetto.md |  2 ++
+ reports/ultimo_report.md  | 20 ++++++++++----------
+ 5 files changed, 29 insertions(+), 25 deletions(-)
 ```
 
 ---
@@ -37,6 +39,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0d8eacc docs: dopo l'import fa fede la copia nel repo; decisioni del 19 ott in stato (note bot #219)
+da050aa docs(fine-task): report e handoff — regola fonte unica = repo (#219)
 cb0a937 docs(CLAUDE.md): documenti di progetto, fonte unica = il repo (decisione operatore 2026-10-19)
 ```
 
