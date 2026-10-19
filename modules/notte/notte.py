@@ -320,17 +320,28 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
 
 
 def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
-                               avvisi: List[str], solo_conteggi: bool = False) -> str:
+                               avvisi: List[str], solo_conteggi: bool = False,
+                               lezioni_in_attesa: Optional[int] = None) -> str:
     """Riepilogo breve del giro per Telegram: solo metadati, mai la risposta del
     modello né il testo degli errori (non fidati). Con `solo_conteggi` (testo
-    completo oltre il limite di Telegram) restano i soli conteggi."""
+    completo oltre il limite di Telegram) restano i soli conteggi.
+    `lezioni_in_attesa` = TUTTE le lezioni ancora da decidere (anche di giri o clear
+    precedenti, R-345-3); None se non contate → solo quelle proposte stanotte."""
     ok = sum(1 for e in esiti if e["esito"] == "ok")
     righe = [f"Gas — giro notturno del {inizio}",
              f"Compiti eseguiti: {len(esiti)} · ok: {ok} · ko: {len(esiti) - ok}", ""]
+    nuove = sum(e["riflessione"]["lezioni"] for e in esiti
+                if e.get("riflessione") and e["riflessione"]["ok"])
+    # R-359-1: lista_lezioni dà [] anche a DB rotto: mai meno di quelle di stanotte.
+    lezioni = nuove if lezioni_in_attesa is None else max(nuove, lezioni_in_attesa)
+    di_cui = f" (di cui {nuove} di stanotte)" if 0 < nuove < lezioni else ""
+    riga_lezioni = (["", f"Lezioni da approvare: {lezioni}{di_cui} — python3 gas.py lezioni lista"]
+                    if lezioni else [])
     if solo_conteggi:
+        # V-1 bot #217: anche nei soli conteggi resta il numero delle lezioni.
         return "\n".join(righe + [
-            f"Avvisi: {len(avvisi)} (dettaglio troppo lungo per Telegram)",
-            f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"])
+            f"Avvisi: {len(avvisi)} (dettaglio troppo lungo per Telegram)"] + riga_lezioni + [
+            "", f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"])
     for e in esiti:
         segno = "OK" if e["esito"] == "ok" else "KO"
         riga = f"{segno} {e['nome']} ({e['tool']} tool, {e.get('durata', 0)}s)"
@@ -356,10 +367,7 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
             righe.append(f"- {a}")
         if len(avvisi) > MAX_AVVISI_TELEGRAM:
             righe.append(f"- …e altri {len(avvisi) - MAX_AVVISI_TELEGRAM}")
-    lezioni = sum(e["riflessione"]["lezioni"] for e in esiti
-                  if e.get("riflessione") and e["riflessione"]["ok"])
-    if lezioni:
-        righe += ["", f"Lezioni da approvare: {lezioni} — python3 gas.py lezioni lista"]
+    righe += riga_lezioni
     righe += ["", f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"]
     return "\n".join(righe)
 
@@ -373,8 +381,22 @@ def _stampa_sicura(testo: str) -> None:
         pass
 
 
+def _lezioni_in_attesa(kernel: Any) -> Optional[int]:
+    """R-345-3: quante lezioni aspettano ancora il sì dell'operatore. Mai eccezioni:
+    kernel o memoria assenti/rotti → None (il messaggio conta solo quelle di stanotte)."""
+    try:
+        mem = getattr(kernel, "memory", None)
+        if mem is None:
+            return None
+        return len(mem.lista_lezioni("proposta"))
+    except Exception as e:
+        logging.warning("notte: lezioni in attesa non contate: %s", e)
+        return None
+
+
 def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[str],
-                       interrotto: Optional[str] = None) -> None:
+                       interrotto: Optional[str] = None,
+                       lezioni_in_attesa: Optional[int] = None) -> None:
     """Compone e invia il riepilogo del mattino. Mai eccezioni: anche un errore nel
     comporre il messaggio è solo loggato e non cambia l'esito del giro (R-238-2).
     `interrotto` = nome del tipo d'eccezione se il giro si è fermato prima della
@@ -396,10 +418,12 @@ def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[st
                 testo = (f"Gas — giro notturno INTERROTTO alle {inizio}: {interrotto}. "
                          "Dettagli in gas_debug.log.")
         else:
-            testo = componi_messaggio_telegram(inizio, esiti, avvisi)
+            testo = componi_messaggio_telegram(inizio, esiti, avvisi,
+                                               lezioni_in_attesa=lezioni_in_attesa)
         if interrotto is None and lunghezza_telegram(testo) > TELEGRAM_MAX_CHARS:
             # V-1 verifica esterna #169: meglio i soli conteggi che nessun messaggio.
-            testo = componi_messaggio_telegram(inizio, esiti, avvisi, solo_conteggi=True)
+            testo = componi_messaggio_telegram(inizio, esiti, avvisi, solo_conteggi=True,
+                                               lezioni_in_attesa=lezioni_in_attesa)
         inviato, motivo = invia_notifica(testo)
     except Exception as e:
         logging.warning("notte: riepilogo Telegram non inviato: %s", type(e).__name__)
@@ -480,6 +504,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         t_giro = time.monotonic()
         tempo_finito = False
         esiti: List[Dict[str, Any]] = []
+        kernel: Any = None
         for i, c in enumerate(compiti):
             resta = max_giro - (time.monotonic() - t_giro)
             if resta <= 0:
@@ -503,7 +528,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         except Exception as e:
             logging.warning("notte: riepilogo non scritto: %s", e)
         print(testo)
-        da_notificare = (inizio, esiti, avvisi)  # inviato a lock rilasciato (V-2 #169)
+        # inviato a lock rilasciato (V-2 #169)
+        da_notificare = (inizio, esiti, avvisi, None, _lezioni_in_attesa(kernel))
         if not compiti:
             return 1 if catalogo_ko else 0
         if tempo_finito:

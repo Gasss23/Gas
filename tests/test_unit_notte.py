@@ -1066,3 +1066,65 @@ def test_riepilogo_riflessione_senza_lezioni(tmp_path):
     assert "Riflessione: nessuna lezione nuova" in riep
     assert "0 lezioni" not in riep
     assert "Riflessione: 2 lezioni proposte, in attesa del tuo sì" in riep
+
+
+def test_telegram_conta_tutte_le_lezioni_in_attesa(monkeypatch, dirs):
+    """R-345-3: «Lezioni da approvare» conta anche quelle rimaste da giri o clear
+    precedenti, non solo quelle di stanotte; senza memoria si torna al conteggio
+    di stanotte, mai un'eccezione."""
+    root, fuori = dirs
+    monkeypatch.delenv("GAS_RIFLESSIONE_AUTO")
+    k = gas.GasKernel(root_dir=str(root), carica_storia=False)
+    k.memory.aggiungi_lezione("vecchia lezione in attesa", autore="llm")
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: conta\n    prompt: quanto fa 6*7\n")
+    monkeypatch.setattr(gas, "OpenAI", _ClientRifl)
+    inviati = []
+    import modules.telegram.bot as bot
+    monkeypatch.setattr(bot, "invia_notifica", lambda t: (inviati.append(t), (True, ""))[1])
+    monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "1")
+    rc = esegui_notte(str(root), catalogo=cat,
+                      kernel_factory=lambda r: gas.GasKernel(root_dir=r, carica_storia=False))
+    assert rc == 0 and len(inviati) == 1
+    assert "Lezioni da approvare: 3 (di cui 2 di stanotte)" in inviati[0]
+    esiti = [{"nome": "a", "esito": "ok", "tool": 0, "durata": 1, "errore": "",
+              "riflessione": {"ok": True, "lezioni": 0}}]
+    tg = notte.componi_messaggio_telegram("ora", esiti, [], lezioni_in_attesa=4)
+    assert "Lezioni da approvare: 4 —" in tg
+    assert "Lezioni da approvare" not in notte.componi_messaggio_telegram(
+        "ora", esiti, [], lezioni_in_attesa=0)
+    # V-1 bot #217: anche nei soli conteggi resta il numero delle lezioni
+    corto = notte.componi_messaggio_telegram("ora", esiti, [], solo_conteggi=True,
+                                             lezioni_in_attesa=4)
+    assert "Lezioni da approvare: 4 —" in corto and "OK a (" not in corto
+    assert "Lezioni da approvare" not in notte.componi_messaggio_telegram(
+        "ora", esiti, [], solo_conteggi=True, lezioni_in_attesa=0)
+    # R-359-1: memoria che dà 0 (DB rotto: lista_lezioni → []) ma 2 proposte stanotte
+    esiti2 = [dict(esiti[0], riflessione={"ok": True, "lezioni": 2})]
+    assert "Lezioni da approvare: 2 —" in notte.componi_messaggio_telegram(
+        "ora", esiti2, [], lezioni_in_attesa=0)
+
+    class _MemRotta:
+        def lista_lezioni(self, stato=None):
+            raise RuntimeError("db rotto")
+
+    assert notte._lezioni_in_attesa(SimpleNamespace(memory=_MemRotta())) is None
+    assert notte._lezioni_in_attesa(SimpleNamespace(memory=None)) is None
+    assert notte._lezioni_in_attesa(None) is None
+
+
+def test_telegram_solo_lezioni_vecchie(monkeypatch, dirs):
+    """R-359 COSMETICA: riflessione spenta stanotte, una lezione vecchia in attesa →
+    la riga c'è, senza «di cui»."""
+    root, fuori = dirs
+    k = gas.GasKernel(root_dir=str(root), carica_storia=False)
+    k.memory.aggiungi_lezione("vecchia lezione in attesa", autore="llm")
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: conta\n    prompt: quanto fa 6*7\n")
+    monkeypatch.setattr(gas, "OpenAI", _ClientRifl)
+    inviati = []
+    import modules.telegram.bot as bot
+    monkeypatch.setattr(bot, "invia_notifica", lambda t: (inviati.append(t), (True, ""))[1])
+    monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "1")
+    rc = esegui_notte(str(root), catalogo=cat,
+                      kernel_factory=lambda r: gas.GasKernel(root_dir=r, carica_storia=False))
+    assert rc == 0 and len(inviati) == 1
+    assert "Lezioni da approvare: 1 —" in inviati[0] and "di cui" not in inviati[0]

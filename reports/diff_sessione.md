@@ -1,10 +1,13 @@
-# DIFF SESSIONE — 2026-10-16 (cultura generale, knowledge base solo nel log)
+# DIFF SESSIONE — 2026-10-19 (fetta di pulizia, PR #217)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py` — regola cultura generale / dati dell'utente nel system prompt e nella descrizione di `ricorda`; logger `gas.knowledge` a INFO; metro anti-doppioni: lezioni non fidate solo se approvate; INFO solo per «no such table: knowledge_fts», query corte e sources.yaml assente; metro nel lotto solo se fidato; import di `now_iso_da`.
-- `modules/memory/store.py`, `modules/memory/__init__.py` — `now_iso_da` pubblico.
-- `tests/test_unit_kernel.py` — T92a–h, T92d2, T92d3, T92e2, T92e3, T92e4; T69-fts-d aggiornato; helper con `now_iso_da`.
-- `reports/stato_progetto.md` — esito della seconda prova sul Mac.
-- `.claude/agents/memoria_revisore.md` — righe #355–#358.
+- `modules/gate/gate.py` — `_COPIA_PREFISSO` accetta anche il punto (R-bot210-3), prefissi ripetuti e separatori iniziali (V-1 verifica esterna #217, R-361-1); copie di `.config` (`_COPIA_CONFIG_RE`).
+- `modules/notte/notte.py` — `_lezioni_in_attesa(kernel)`; «Lezioni da approvare» con tutte le lezioni in attesa, `max` con quelle del giro (R-345-3, R-359-1); riga anche nei soli conteggi (V-1 bot #217).
+- `tests/test_unit_gate.py` — casi `old.keys/`, `backup.keys/`, `copy.tokens/`, `old.old.keys/`, `.keys/`, `..keys/`, `._keys/` e falsi positivi.
+- `tests/test_unit_notte.py` — `test_telegram_conta_tutte_le_lezioni_in_attesa`, `test_telegram_solo_lezioni_vecchie`.
+- `tests/test_unit_kernel.py` — T92d3 nel `finally`, T92d4, T91d denominatore; tolta un'assegnazione morta.
+- `reports/stato_progetto.md` — terza prova sul Mac, note di #216, R-345-3 e R-bot210-3 chiuse.
+- `reports/roadmap_sintesi.md` — nuova: roadmap in una pagina.
+- `.claude/agents/memoria_revisore.md` — righe #359–#363.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.

@@ -337,7 +337,9 @@ _CHIAVE_PRIVATA_RE = re.compile(
 _PAROLE_COPIA = r"(?:copy|copia|backup|bak|old|orig|new|prev|save)[0-9]*+"
 _COPIA_SUFFISSI = (rf"(?>[-_ .]+(?:{_PAROLE_COPIA}|v?[0-9]+)"
                    r"| ?\([0-9]+\)|~|-)*+")
-_COPIA_PREFISSO = rf"(?:{_PAROLE_COPIA}[-_ ]+)?"
+# R-bot210-3: anche old.keys/; V-1 verifica esterna #217: prefissi ripetuti
+# (old.old.keys/, copy_old.keys/) e separatori iniziali (.keys/, ..keys/, ._keys/; R-361-1).
+_COPIA_PREFISSO = rf"[-_ .]*+(?:{_PAROLE_COPIA}[-_ .]+)*+"
 
 
 def _nome_con_copie(nomi: str) -> re.Pattern[str]:
@@ -356,6 +358,10 @@ _DOC_IN_CARTELLA_CHIAVI_RE = re.compile(r"\.(md|rst)$")
 
 # La cartella della CLI GitHub e le sue copie (bot #202 su c2a62d2 V-1: gh.bak/, gh~/).
 _COPIA_GH_RE = _nome_con_copie(r"gh")
+# V-1 verifica esterna #217 (su fdf001c): anche le copie del genitore (old.config/gh,
+# .old.config/gh). Il nome è senza punto perché il prefisso mangia i separatori
+# iniziali; «config» nudo resta fuori (non è la cartella della CLI).
+_COPIA_CONFIG_RE = _nome_con_copie(r"config")
 
 
 def _nome_da_segreto(normalized: str) -> bool:
@@ -379,7 +385,8 @@ def _nome_da_segreto(normalized: str) -> bool:
     # D3 (R-329-2): la cartella della CLI GitHub (.config/gh/hosts.yml contiene il
     # token), confrontata sui pezzi puliti (bot #202 V-3: «.config./gh», «gh /»).
     # Bot #202 su c2a62d2 V-1: anche le copie (gh.bak/, gh~/, gh-/, gh.old/).
-    if any(a == ".config" and _COPIA_GH_RE.search(b) for a, b in zip(puliti, puliti[1:])):
+    if any(a != "config" and _COPIA_CONFIG_RE.search(a) and _COPIA_GH_RE.search(b)
+           for a, b in zip(puliti, puliti[1:])):
         return True
     for pulito in puliti:
         # R-324-3: un pezzo oltre 255 caratteri non è un nome di file reale; negarlo
