@@ -17,7 +17,8 @@
 - **Roadmap in una pagina** — FATTA (`reports/roadmap_sintesi.md`).
 - **Test** — kernel 893 PASS 0 FAIL; pytest tests/ 1428 passed (prima della fix R-359-1); notte 64 passed; gate 606 passed.
 - **Verifica esterna #217** ([commento](https://github.com/Gasss23/Gas/pull/217#issuecomment-6257011328)) — APPROVATO CON RISERVE: V-1 BASSA (prefissi di copia ripetuti, `old.old.keys/`, `.old.keys/`) CHIUSA; V-2 BASSA (§6 dell'handoff senza CI finale: il merge aspetta unit-suite e verifica-bot verdi) dichiarata; V-3 COSMETICA (terza prova sul Mac non riproducibile in cloud) dichiarata.
-- **Review** — #359 APPROVATO CON RISERVE (R-359-1 BASSA chiusa, cosmetica chiusa), #360 APPROVATO; #361 APPROVATO CON RISERVE (R-361-1 BASSA `..keys/`, `._keys/` chiusa), #362 APPROVATO. Gate 617 passed, pytest tests/ 1440 passed (dal revisore #362).
+- **Secondo giro su `fdf001c`** — bot APPROVATO CON RISERVE (check neutral: tocca la macchina del bot, decide l'operatore), verifica esterna ([commento](https://github.com/Gasss23/Gas/pull/217#issuecomment-6257150782)) APPROVATO CON RISERVE; nessuna ALTA/MEDIA. Chiuse in review #363: copie di `.config` (V-1 verifica), riga lezioni anche nei soli conteggi (V-1 bot), T92d3 (V-3 bot), nomi leggibili nei test (V-2 verifica). V-2 bot (stat dell'handoff prima dell'ultimo commit) limite noto.
+- **Review** — #359 APPROVATO CON RISERVE (R-359-1 BASSA chiusa, cosmetica chiusa), #360 APPROVATO; #361 APPROVATO CON RISERVE (R-361-1 BASSA `..keys/`, `._keys/` chiusa), #362 APPROVATO. #363 APPROVATO. Gate+notte 691 passed, kernel 893 PASS, pytest tests/ 1450 passed.
 
 ## Anomalie
 

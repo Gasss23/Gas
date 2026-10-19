@@ -23,24 +23,25 @@
 - **Ispezione branch vecchi**: `FATTA` — solo rapporto, niente cancellato.
 - **Roadmap in una pagina**: `FATTA`.
 - **V-1 verifica esterna #217 (prefissi di copia ripetuti, separatori iniziali)**: `FATTA` — review #361/#362.
+- **Secondo giro su fdf001c (copie di .config, riga lezioni nei soli conteggi, T92d3, nomi leggibili)**: `FATTA` — review #363.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/gate/gate.py               |   4 +++-
- modules/notte/notte.py             |  39 +++++++++++++++++++++++++++++++--------
+ .claude/agents/memoria_revisore.md |   5 +++++
+ modules/gate/gate.py               |  11 +++++++++--
+ modules/notte/notte.py             |  50 ++++++++++++++++++++++++++++++++++++++------------
  reports/diff_sessione.md           |  15 +++++++++------
- reports/handoff.md                 | 242 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 264 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------
  reports/roadmap_sintesi.md         |  25 +++++++++++++++++++++++++
  reports/stato_progetto.md          |  15 +++++----------
- reports/ultimo_report.md           |  26 ++++++++++++++------------
- tests/test_unit_gate.py            |  16 ++++++++++++----
- tests/test_unit_kernel.py          |  36 ++++++++++++++++++++++++++++--------
- tests/test_unit_notte.py           |  56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 11 files changed, 302 insertions(+), 176 deletions(-)
+ reports/ultimo_report.md           |  27 +++++++++++++++------------
+ tests/test_unit_gate.py            |  24 ++++++++++++++++++++----
+ tests/test_unit_kernel.py          |  39 ++++++++++++++++++++++++++++++---------
+ tests/test_unit_notte.py           |  62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 11 files changed, 358 insertions(+), 179 deletions(-)
 ```
 
 ---
@@ -48,6 +49,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+227d5c8 fix(pulizia): copie di .config, riga lezioni anche nei soli conteggi (note bot e verifica #217)
+79fff6c chore(revisore): memoria review #363 — APPROVATO
+fdf001c docs(fine-task): report e handoff — V-1 verifica esterna #217
 5d90626 fix(gate): prefissi di copia ripetuti e separatori iniziali (V-1 verifica esterna #217)
 df0bb27 chore(revisore): memoria review #362 — APPROVATO
 776a3f4 chore(revisore): memoria review #361 — APPROVATO CON RISERVE
@@ -188,11 +192,37 @@ File rilevanti: /home/user/Gas/modules/gate/gate.py, /home/user/Gas/tests/test_u
 
 ---
 
+### Review #363
+
+```
+## VERDETTO: APPROVATO
+
+Review #363, ri-review del diff staged su feat/merge-automatico-z1xjx2 (PR #217, head fdf001c). Ho fatto le letture obbligatorie (CLAUDE.md sez. 5, stato_progetto per la PR #217, memoria fino alla #362).
+
+**Parti del diff esaminate**
+- `modules/gate/gate.py:388` — la regola D3 ora riconosce anche le copie della cartella genitore (`old.config`, `.old.config`, `.config.bak`, `.config copy`) prima di `gh`. La cartella `config` senza punto resta esclusa. Rischio esaminato: falsi positivi e input pesanti per la regex. Sonde: `config.bak/gh`, `_config/gh` e `config2/gh` vengono negati, cioè bloccati per prudenza; va bene. `myconfig/gh`, `nconfig/gh`, `.configs/gh/x.md` e `.config/ghost/x` restano leggibili. Il controllo è ancorato con `^…$`. 4 input avversari fino a 255 caratteri restano sotto 5e-6 s. Mutazioni: tornando alla vecchia condizione `a == ".config"` falliscono 5 test; togliendo `a != "config"` fallisce 1 test. — ok
+- `modules/gate/gate.py:364` — nuova `_COPIA_CONFIG_RE = _nome_con_copie(r"config")`. Rischio esaminato: il punto nel nome. Senza punto è corretto, perché il prefisso possessivo `[-_ .]*+` assorbe già il punto iniziale. — ok
+- `modules/notte/notte.py:338` — la riga «Lezioni da approvare» viene calcolata prima del ramo `solo_conteggi` e compare in entrambe le versioni del messaggio. Il `max(nuove, lezioni_in_attesa)` di R-359-1 resta invariato. Rischio esaminato: la versione corta deve restare sotto il limite di Telegram. Si allunga di circa 70 caratteri; il test esistente col limite a 230 passa. Mutazione: togliendo `riga_lezioni` dai soli conteggi fallisce 1 test di notte. — ok
+- `modules/notte/notte.py:425` — `_notifica_telegram` passa `lezioni_in_attesa` anche al messaggio corto di ripiego. Resta dentro il try/except che logga in gas_debug.log, quindi il comportamento senza crash non cambia. — ok
+- `tests/test_unit_kernel.py:9087` — T92d3 ora controlla «sources.yaml» per intero su `_c92_prima`. Ho verificato in `tests/test_unit_kernel.py:9051` che `_c92_prima` viene catturata dopo il caso 2a (file assente) e prima del 2c (file malformato): l'ordine è corretto. — ok
+- `tests/test_unit_gate.py:655` e `tests/test_unit_gate.py:688` — aggiunti 5 casi negati e 5 leggibili (chiusa anche la COSMETICA della #362). — ok
+
+**Riprodotti**: gate+notte 691 passed, kernel 893 PASS / 0 FAIL, pytest tests/ 1450 passed. Coincidono con i numeri del coordinatore. Dopo le mutazioni il working tree è stato ripristinato (`git diff` vuoto) e lo staged è intatto (5 file, +38/-15).
+
+**Wall of Shame**: nessuno slicing della history, nessuna simulazione di output dei tool, guardrail (10 iterazioni, 8k, `_get_window`) non toccati.
+
+**Rischio escluso**: non ho verificato la consegna reale su Telegram del messaggio corto con la riga lezioni. Serve il bot e un giro notturno reale, non riproducibile in dev; la lunghezza è coperta solo dal test col limite ridotto.
+
+**Note BASSE/COSMETICHE**: nessuna.
+
+Memoria aggiornata con la riga #363 e committata da `scripts/commit_memoria_revisore.sh` (commit 79fff6c, solo `/home/user/Gas/.claude/agents/memoria_revisore.md`). Puoi procedere con `bash scripts/segna_review_ok.sh` e il commit.
+```
+
 ## §5 DELTA TEST DEL MOTORE
 
 tests/test_unit_kernel.py in locale: 892 → 893 PASS, 0 FAIL (T92d4 nuovo; T91d e T92d3 rafforzati). Blocco reale: `=== RIEPILOGO: 893 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
 pytest `tests/`: `1428 passed in 186.81s (0:03:06)` (prima della fix R-359-1, che aggiunge 1 test notte: notte 64 passed).
-tests/test_unit_gate.py: 606 → 617 passed (prefisso col punto, poi prefissi ripetuti e separatori iniziali). pytest `tests/` sul codice finale: 1440 passed (riprodotto dal revisore #362).
+tests/test_unit_gate.py: 606 → 627 passed (prefisso col punto, prefissi ripetuti, separatori iniziali, copie di .config); gate+notte 691 passed. pytest `tests/` sul codice finale: `1450 passed in 147.73s (0:02:27)`.
 
 ## §6 STATO CI
 
@@ -200,11 +230,12 @@ tests/test_unit_gate.py: 606 → 617 passed (prefisso col punto, poi prefissi ri
 
 - `44fc4ae` (commit della fetta, PR #217 aperta su questo SHA): run in corso all'apertura.
 - `ec644b8` (primo fine-task): unit-suite, handoff-check, smista success; verifica-bot in corso (annullata dal push successivo). Verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/217#issuecomment-6257011328)): V-1 BASSA chiusa in `5d90626`, V-2 BASSA (CI finale non provata dall'handoff) e V-3 COSMETICA (prova sul Mac non riproducibile) dichiarate.
-- `5d90626` e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff. Il merge aspetta unit-suite e verifica-bot verdi su questo SHA.
+- `fdf001c` (secondo fine-task): unit-suite, handoff-check, smista success; verifica-bot neutral (bot APPROVATO CON RISERVE, la PR tocca la macchina del bot: decide l'operatore); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/217#issuecomment-6257150782)). Note chiuse nel commit successivo (review #363).
+- Commit delle note e commit di fine-task (questo handoff): run non ancora disponibile alla scrittura dell'handoff. Il merge aspetta unit-suite e verifica-bot su questo SHA.
 
 ## §7 RISERVE APERTE
 
-- COSMETICA #362: `_keyboard.md`, `..keynote.md`, `._readme.md` leggibili verificati a mano, non nei test.
+- V-2 bot #217 (COSMETICA): lo stat del §2 è preso prima del commit di fine-task che contiene questo handoff (limite noto del flusso).
 - Nuove registrate (BASSE/COSMETICHE, dall'ultimo giro di #216): R-bot216-1, R-bot216-2, R-ve216-2, posizione di `_knowledge_log`.
 - Da vedere al primo giro notturno vero: righe «Riflessione:» e «Lezioni da approvare: N» su Telegram.
 - Già tracciate: R-ve215-1, COSMETICHE #353/#354, R-bot211-2, R-ve211-1/2, R-ve213-3.
