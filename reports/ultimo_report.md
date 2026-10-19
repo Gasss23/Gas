@@ -1,19 +1,19 @@
-# ULTIMO REPORT — 2026-10-19 — Chiusura fetta di pulizia (PR #217 mergiata)
+# ULTIMO REPORT — 2026-10-19 — Regola «fonte unica = il repo» (PR #219)
 
 ## DECISIONI UMANE RICHIESTE
 
-1. **PROSSIMA SESSIONE — parti da qui:** discussione della roadmap con l'operatore (traccia in `reports/roadmap_sintesi.md`). Decisioni da prendere:
-   - cervello forte (Claude via API): modello (proposta Sonnet 5.5) e tetto giornaliero (proposta 2 $). Prima l'operatore prepara la Console, §6 di `reports/proposta_cervello_forte.md`;
-   - dopo FASE 2.6: marketing (FASE 4), un giro notturno più utile o il VPS, più la scelta tra Gas in Python e Make come orchestratore;
-   - divieti di scrittura per nome (R-223-2) contro la scrittura solo in cartelle permesse.
+1. Merge della PR #219 (https://github.com/Gasss23/Gas/pull/219): tocca `CLAUDE.md`; l'agente la mergia solo con APPROVATO pulito del bot.
+2. Incollare il testo di `claude/roadmap_completa.md` (solo nel progetto claude.ai): serve per aggiornare `reports/roadmap.md` con le decisioni del 19 ott.
+3. Collegare il repo GitHub al progetto Gas su claude.ai (`reports/`, `CLAUDE.md`).
 
 ## Esito
 
-- **PR #217 mergiata** su richiesta dell'operatore (`e4edf7d`). Prima del merge: CI verde, bot e verifica esterna APPROVATO CON RISERVE, nessuna nota ALTA/MEDIA.
-- **Mac aggiornato** a main `e4edf7d` (`git pull` dell'operatore, 2026-10-19).
-- **Branch `fix/crm-idemp-diario` cancellato** dall'operatore dal Mac (dalla sessione cloud non si può cancellare).
-- **Riserve BASSE aperte** dalla #217 (dettaglio in stato_progetto): R-bot217-1, R-bot217-2, R-ve217-1.
+- **Regola in CLAUDE.md** (§3): roadmap, decisioni e note di strategia vivono nel repo; il progetto claude.ai le legge da GitHub; un documento che sta solo nel progetto non va ricostruito a memoria — FATTA (PR #219, ramo `feat/merge-automatico-z1xjx2`).
+- **Regola delle risposte brevi** — già presente in CLAUDE.md (§3, punto 4): non duplicata.
+- **Aggiornamento della roadmap** — BLOCCATO: il file sorgente non è leggibile da questa sessione (nessuno strumento Projects/`project_read`; cercato su disco, nel repo e in tutti i rami: assente).
+
+- **Bot #219** — APPROVATO CON RISERVE (neutral: tocca CLAUDE.md, decide l'operatore), nessuna ALTA/MEDIA: V-3 (quale roadmap fa fede dopo l'import) e V-2 (riga in stato_progetto) chiuse; V-1 (stat dell'handoff prima dell'ultimo commit) limite noto del flusso.
 
 ## Anomalie
 
-- La sessione cloud non può cancellare branch remoti: lo fa l'operatore dal Mac o dal browser.
+- La sessione cloud non legge i documenti dei progetti claude.ai: è il motivo della nuova regola.
