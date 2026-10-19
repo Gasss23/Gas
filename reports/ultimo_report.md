@@ -12,6 +12,8 @@
 - **Regola delle risposte brevi** — già presente in CLAUDE.md (§3, punto 4): non duplicata.
 - **Aggiornamento della roadmap** — BLOCCATO: il file sorgente non è leggibile da questa sessione (nessuno strumento Projects/`project_read`; cercato su disco, nel repo e in tutti i rami: assente).
 
+- **Bot #219** — APPROVATO CON RISERVE (neutral: tocca CLAUDE.md, decide l'operatore), nessuna ALTA/MEDIA: V-3 (quale roadmap fa fede dopo l'import) e V-2 (riga in stato_progetto) chiuse; V-1 (stat dell'handoff prima dell'ultimo commit) limite noto del flusso.
+
 ## Anomalie
 
 - La sessione cloud non legge i documenti dei progetti claude.ai: è il motivo della nuova regola.
