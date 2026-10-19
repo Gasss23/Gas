@@ -1,12 +1,14 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-19 — Chiusura della #217 e punto di partenza per la discussione della roadmap
+**Sessione:** 2026-10-19 — Regola in CLAUDE.md: documenti di progetto, fonte unica = il repo (PR #219)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Prossima sessione: discussione della roadmap con l'operatore (traccia in `reports/roadmap_sintesi.md`, decisioni elencate in `reports/ultimo_report.md`).
+1. Merge della PR #219 (https://github.com/Gasss23/Gas/pull/219): tocca `CLAUDE.md`, l'agente la mergia solo con APPROVATO pulito del bot.
+2. Testo di `claude/roadmap_completa.md` (sta solo nel progetto claude.ai, invisibile all'agente): incollarlo per l'aggiornamento della roadmap con le decisioni del 19 ott.
+3. Collegare il repo GitHub al progetto Gas su claude.ai (`reports/`, `CLAUDE.md`).
 
 (`gh` non disponibile nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
@@ -14,19 +16,20 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge della PR #217** (richiesta dell'operatore): `FATTA` — `e4edf7d`.
-- **Branch `fix/crm-idemp-diario` cancellato**: `FATTA` dall'operatore dal Mac (dalla sessione cloud il push di cancellazione è rifiutato).
-- **Report di chiusura**: `FATTA` — PR #218, solo log di sessione.
+- **Regola «documenti di progetto: fonte unica = il repo» in CLAUDE.md**: `FATTA` — PR #219.
+- **Aggiornamento della roadmap con le decisioni del 19 ott**: `BLOCCATA` — il file sorgente sta solo nel progetto claude.ai (nessuno strumento per leggerlo da questa sessione).
+- **Regola delle risposte brevi**: già presente in CLAUDE.md (§3, punto 4), non duplicata.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md |  13 +++----------
- reports/handoff.md       | 210 +++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/ultimo_report.md |  28 ++++++++++------------------
- 3 files changed, 24 insertions(+), 227 deletions(-)
+ CLAUDE.md                |  1 +
+ reports/diff_sessione.md |  6 +++---
+ reports/handoff.md       | 23 +++++++++++------------
+ reports/ultimo_report.md | 18 ++++++++----------
+ 4 files changed, 23 insertions(+), 25 deletions(-)
 ```
 
 ---
@@ -34,14 +37,14 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-8a21ae3 docs(report): chiusura #217 e punto di partenza della prossima sessione (roadmap)
+cb0a937 docs(CLAUDE.md): documenti di progetto, fonte unica = il repo (decisione operatore 2026-10-19)
 ```
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun commit motore in questa sessione: solo log di sessione (`reports/`), fuori dal perimetro di review. I verdetti integrali della #217 (review #359–#363) stanno nell'handoff di `e4edf7d`.
+Nessun commit motore: solo `CLAUDE.md` e `reports/` (fuori dal perimetro di review).
 
 ---
 
@@ -51,7 +54,7 @@ Nessuna modifica al motore: delta zero. Ultimo dato su main `e4edf7d`: kernel 89
 
 ## §6 STATO CI
 
-- PR #218 (`8a21ae3`): verifica-bot success (solo log di sessione), handoff-check success, unit-suite in corso alla scrittura. Il commit di questo handoff fa ripartire la CI.
+- PR #219 (`cb0a937`): run in corso all'apertura; il commit di questo handoff la fa ripartire.
 
 ## §7 RISERVE APERTE
 
