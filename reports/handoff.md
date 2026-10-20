@@ -1,20 +1,24 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-20 (dopo il merge di #228) — avviso sui file nuovi delicati, fonti di studio solo dentro knowledge/
+**Sessione:** 2026-10-20 — Voce, fetta 1: test di trascrizione e sintesi in CI (chat Voce)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR: l'agente mergia da solo solo con un APPROVATO pulito del bot (CLAUDE.md §10); altrimenti decide l'operatore.
-2. Togliere dal progetto claude.ai le copie di `briefing_architettura_voce.md` e `recinto_autonomia.md` (l'agente non vi ha accesso).
+1. Merge della PR #229 (https://github.com/Gasss23/Gas/pull/229): tocca `.github/workflows/ci.yml` (macchina del bot) → `verifica-bot` neutral, il merge lo decide l'operatore. Deciso dall'operatore in chat il 2026-10-20 («ok merge 229»): merge automatico attivato dopo il merge di main nel ramo (`5b90d69`, review #388).
+2. Etichetta `verifica` sulla PR #229: presente.
+
+(`gh` non autenticato nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **R-223-2 (avviso sui file nuovi delicati)**: `FATTA` — review #386 BOCCIATO → #387 APPROVATO CON RISERVE.
-- **V-1 bot #228 (fonti solo dentro knowledge/)**: `FATTA` — review #387.
+- **Fetta 1 — test stt/tts nei test automatici**: `FATTA` — `ci.yml` lancia anche `test_unit_voice_stt.py` e `test_unit_voice_tts.py` (52 test, servizi finti). Modifica a `ci.yml` autorizzata dall'operatore in sessione.
+- **Fetta 2 — token a scadenza e limite richieste**: `DEFERITA` — dopo il merge della fetta 1.
+- **Fetta 3 — timer due secondi e frase di attesa**: `DEFERITA` — dopo la fetta 2.
+- **Fetta 4 — revisione del client nel browser**: `DEFERITA` — dopo la fetta 3.
 
 ---
 
@@ -22,19 +26,12 @@
 
 ```
  .claude/agents/memoria_revisore.md |   2 ++
- .github/workflows/ci.yml           |   7 +++++++
- gas.py                             |  43 +++++++++++++++++++++++++++++++++++++++++--
- modules/gate/gate.py               |  40 ++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  17 ++++++++---------
- reports/handoff.md                 | 127 +++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------
- reports/roadmap.md                 |   4 ++--
- reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  11 +++++------
- tests/test_unit_gate.py            |  17 +++++++++++++++++
- tests/test_unit_ingest_fonti.py    |  42 ++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          |  38 ++++++++++++++++++++++++++++++++++++++
- tools/ingest_knowledge.py          |   9 +++++++++
- 13 files changed, 266 insertions(+), 93 deletions(-)
+ .github/workflows/ci.yml           |   6 ++++--
+ reports/diff_sessione.md           |  19 ++++++++++---------
+ reports/handoff.md                 | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   6 ++++--
+ reports/ultimo_report.md           |  35 +++++++++++++++++++++++++++--------
+ 6 files changed, 156 insertions(+), 101 deletions(-)
 ```
 
 ---
@@ -42,90 +39,123 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-ed77da1 docs(roadmap): R-223-2 e fonti dentro knowledge/ segnate fatte
-2112cb4 docs(fine-task): report e handoff — R-223-2 e fonti solo dentro knowledge/
-1ea5346 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
-ec83cf7 Merge remote-tracking branch 'origin/feat/merge-automatico-z1xjx2' into feat/merge-automatico-z1xjx2
-2074c27 feat(avvisi): avviso per i file nuovi che sembrano delicati (R-223-2); fonti di studio solo dentro knowledge/
-83b68e6 chore(revisore): memoria review #387 — APPROVATO CON RISERVE
-f1754e3 chore(revisore): memoria review #386 — BOCCIATO
+cf64653 docs(fine-task): handoff e report — merge di main nella PR #229, review #388
+5b90d69 Merge origin/main (#227, #228) in claude/peaceful-lovelace-0w2b7q
+1aa2921 docs(fine-task): correzioni della verifica esterna #229 (voice suite 20 → 72)
+7515eae docs(fine-task): correzioni V-1/V-2 del bot #229 (voice suite 72 test, frase del report)
+c1e2f33 docs(fine-task): report e handoff — voce fetta 1, test stt/tts in CI (chat Voce)
+312a0e9 ci(voce): la voice suite lancia anche i test di trascrizione e sintesi (R8)
+83dd041 chore(revisore): memoria review #384 — APPROVATO CON RISERVE
 ```
+
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #386
-
-## VERDETTO: BOCCIATO
-
-Ho letto le tre fonti obbligatorie: CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (le voci su R-223-2 e la decisione 12 del 19-20 ottobre) e la mia memoria (lezione #382 sul limite Telegram).
-
-Elementi del diff esaminati:
-1. `modules/gate/gate.py:516`: `sembra_delicato` classifica il nome del file (minuscolo grazie al casefold di `_normalize_path`). Se qualcosa va storto restituisce True, e il test `test_sembra_delicato` passa (18 casi, riprodotto). Rischio esaminato: falsi positivi su documenti normali. Sondato: `dati/cronologia.md`, `dati/sessione_marketing.md`, `dati/credito_clienti.csv` e `dati/monkey.md` danno tutti True, perché le parole «cron», «session», «cred» e «key» vengono cercate come pezzi dentro il nome. Esito: **riserva R-386-2 BASSA**. La regola dell'operatore dice che i documenti normali passano in silenzio. Proposta: confrontare le parole del nome divise su `_`, `-`, `.` e spazio, oppure fare il controllo per nome solo sulle estensioni che non sono documenti.
-2. `gas.py:2643`: `_invia_avvisi_file` manda un solo messaggio con al massimo 10 percorsi, ognuno tagliato a 200 caratteri con `tronca_visibile`, ma il testo intero non ha un tetto di lunghezza. Rischio esaminato: il caso peggiore contro i 4096 caratteri di Telegram (è la lezione #382). Sondato: 10 percorsi `.json` di livello 1 con cartelle di emoji (975 byte, livello 1 confermato da `livello_scrittura`). Ogni emoji vale 2 unità per Telegram, quindi 200 caratteri diventano 400 unità; il totale fa 4098 unità. `invia_notifica` (`modules/telegram/bot.py:271`) rifiuta il messaggio intero e resta solo un warning nel log. Così chi scrive i file (anche un modello manipolato da un testo letto) può spegnere proprio l'avviso pensato per lui. Esito: **BLOCCO R-386-1 MEDIA**, lo stesso difetto di R-382-1. Correzione: riusare il ciclo di riduzione di `_invia_avvisi_lead` (`gas.py:2634`): togliere percorsi finché `lunghezza_telegram` sta sotto `TELEGRAM_MAX_CHARS` e contare quelli tolti. In alternativa un helper comune. Serve un test con percorsi di emoji.
-3. `gas.py:3793`: `_nuovo` viene calcolato prima della scrittura e il controllo sta in un try/except separato dopo `write_text`. Rischio esaminato: che l'avviso cambi l'esito della scrittura (§9), o che un file esistente o di livello 2 o 3 venga segnalato. Esito: ok. `.py` e `.sh` sono già di livello 2 e restano fuori, come previsto.
-4. `gas.py:3845` e `gas.py:4125`: la lista viene azzerata a inizio turno e svuotata nel finally, dopo l'avviso dei lead. Rischio esaminato: avvisi che passano da un turno all'altro, eccezioni nel finally. Esito: ok, il metodo non lancia eccezioni.
-5. `tests/test_unit_kernel.py:5967`: T74b5 R-223-2 copre file nuovo, file esistente, documento e lista svuotata. Esito: ok, ma manca il caso della lunghezza (vedi punto 2).
-
-Nessuna violazione del Wall of Shame: niente slicing della history, `_get_window` non è toccata, il tetto delle 10 iterazioni resta, nessuna simulazione dei tool.
-
-Rischi esclusi:
-- Suite kernel completa e `pytest tests/` non rieseguiti da me: mi baso sui numeri dichiarati (946/0 e 715) più i 18 casi nuovi che ho riprodotto.
-- Nessun test di mutazione.
-- I file creati da `run_command` (shell) non fanno scattare l'avviso. È fuori dall'ambito della fetta, che parla solo di `write_file`, ma va dichiarato come limite.
-- Invio reale su Telegram non verificato: in sviluppo non c'è un token vero.
-
-Memoria: aggiunta la riga #386 in /home/user/Gas/.claude/agents/memoria_revisore.md con la lezione «ogni nuovo messaggio accorpato va ricontrollato contro i 4096 caratteri di Telegram; `tronca_visibile` a n caratteri vale fino a 2n unità». Lanciato `scripts/commit_memoria_revisore.sh`: è terminato senza output, quindi non ho la conferma esplicita che il commit sia avvenuto.
-
-### Review #387
+Review #384 (chat Voce), sul commit `312a0e9` — verdetto integrale:
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Ho rivisto di nuovo il diff staged che avevo bocciato nella review #386. Le tre correzioni funzionano e i test le coprono; resta una sola riserva BASSA (R-387-1, sotto).
-
-**Letture fatte prima della review**: CLAUDE.md (sez. 5, 8, 9), `reports/stato_progetto.md` (voci R-223-2 e R-386), coda di `.claude/agents/memoria_revisore.md` (#382–#386, compresa la lezione sul limite di 4096 unità di Telegram per i messaggi accorpati).
+Review #384 (chat Voce). Diff staged: solo `.github/workflows/ci.yml`, +4 −2. Prima della review ho letto CLAUDE.md (sez. 5, 8, 10), le voci voce di reports/stato_progetto.md, la memoria del revisore e le regole di lavoro parallelo prese da origin/feat/merge-automatico-z1xjx2.
 
 **Elementi del diff esaminati**
-- `gas.py:2662` — ciclo che riduce `k` finché `lunghezza_telegram(_componi(k))` sta sotto `TELEGRAM_MAX_CHARS`, come per i lead. Rischio esaminato: testo esterno che spegne l'avviso (R-386-1). **Esito: ok.** Con il loop spento (mutazione in un worktree temporaneo, ora rimosso) T74b5 R-386-1 fallisce; col codice staged passa con 1 messaggio da 1986 caratteri. Con `k=0` restano l'intestazione e «… e altri N». Tutto è dentro un try/except che fa solo warning, come chiede il §9.
-- `gas.py:3795` — `_nuovo = not path.exists()` calcolato prima della scrittura; l'aggiunta alla lista avviene solo con `livello == LIVELLO_LIBERO`, dentro un try a parte. Rischio esaminato: l'avviso cambia l'esito della scrittura, o usa variabili fuori portata. **Esito: ok.** `livello` e `rel_root` sono quelli già ricalcolati sul percorso risolto (`gas.py:3765`, `gas.py:3752`). La lista si azzera a inizio turno e nel `finally` (`gas.py:4133`).
-- `modules/gate/gate.py:530` — `sembra_delicato` ora confronta parole intere con `_NOMI_DELICATI`. Rischio esaminato: falsi allarmi su documenti normali (R-386-2). **Esito: riserva BASSA (R-387-1).** I quattro documenti citati ora tornano False. Però le parole si cercano solo prima del PRIMO punto: `nome.split(".")[0]` taglia via il resto, quindi il `.` nella regex non serve e il commento dice il falso. Ho sondato:
-  - `x.secret.md`, `id_rsa.txt`, `accesstoken.md` → False;
-  - `.fish` (livello 1) non è segnalato.
+1. `.github/workflows/ci.yml:111` — la voice suite ora gira in un solo `python -m pytest` su server + stt + tts. Ho controllato tre rischi:
+   - rete reale e chiavi;
+   - interferenze tra i file nello stesso processo;
+   - flakiness.
 
-  È un avviso solo informativo e non tocca il cancello, quindi non blocca. `.sh` e `.py` non c'entrano: sono già di livello 2.
-- `tools/ingest_knowledge.py:153` — `abs_path.resolve().relative_to((REPO_ROOT/"knowledge").resolve())`. Rischio esaminato: fonti fuori da knowledge/ via «..», symlink o percorso assoluto (V-1 bot #228). **Esito: ok.** I 4 casi da rifiutare falliscono col controllo spento e passano col codice staged; il caso accettato passa. Anche `REPO_ROOT / "/etc/hostname"` (assoluto) viene rifiutato. L'unica fonte di `knowledge/sources.yaml` (`knowledge/test_source.txt`) resta valida.
-- `.github/workflows/ci.yml:157` — nuovo step `if: always()` con pipefail. Rischio esaminato: test nuovo che la CI non lancia mai. **Esito: ok.** Il YAML è valido e non c'è nessun `paths-ignore`.
-- `tests/test_unit_ingest_fonti.py:31` — test parametrico; il fixture fa monkeypatch di `REPO_ROOT` su tmp_path. **Esito: ok.**
+   Esito: **ok**. Ho bloccato la rete con un sitecustomize (connect e DNS verso host non locali sollevano errore) e ottenuto 72 passed in 3 ordini diversi (server/stt/tts, tts/stt/server, stt/server/tts). Ho rifatto la prova sia senza GROQ_API_KEY/ELEVENLABS_API_KEY sia con chiavi finte presenti, e ho lanciato stt+tts 3 volte di fila: sempre 52/52.
+   - Nessun test modifica `os.environ` a livello globale: si usano solo `patch.dict` e `monkeypatch`.
+   - Ogni test ha un server proprio su porta 0 (`tests/test_unit_voice_stt.py:53`, `tests/test_unit_voice_tts.py:52`) con shutdown nel teardown.
+   - Ogni server usa una sottoclasse `_H` locale, quindi `kernel` e `token` non si sporcano tra un file e l'altro.
+   - I tempi di 0,5 s nel teardown sono l'intervallo di attesa di `serve_forever`, non timeout.
+   - Dopo le esecuzioni il working tree è pulito.
+2. `.github/workflows/ci.yml:190` (contesto, non toccato) — il riepilogo «Voice suite» legge `voice_output.txt`. Rischio: che con tre file la riga si rompa. Esito: **ok**. Ho simulato il flusso (tee + grep + sed) sull'output combinato: viene fuori «72 passed in 17.39s», con 52 righe stt/tts nel `-v`. La lista FAILED (`.github/workflows/ci.yml:238`) e il codice di uscita con pipefail (rc=0) funzionano. Una sola chiamata a pytest produce una sola riga di riepilogo.
+3. `.github/workflows/ci.yml:105` — cambia il nome dello step. Rischio: qualcosa che lo cerca per nome. Esito: **ok**. Il grep su scripts/, tests/, .github/, .claude/ non trova riferimenti al vecchio nome. Il check obbligatorio del ruleset è il job `unit-suite`, non lo step. Il riepilogo usa il nome del file, non quello dello step.
+4. `.github/workflows/ci.yml:106` — il commento dice «sempre servizi finti iniettati». Esito: **riserva cosmetica (R-384-2)**: è impreciso. I test 503/400 senza patch (per esempio quelli di `tests/test_unit_voice_tts.py:181` e `tests/test_unit_voice_stt.py:312`) non iniettano nulla. Reggono perché il server esce prima della chiamata (`modules/voice/server.py:177`, `modules/voice/server.py:204`, `modules/voice/server.py:208`). Se quell'ordine cambiasse, in CI partirebbe una chiamata vera con chiave finta e il test fallirebbe (nessun segreto esposto). Oggi la rete non viene mai raggiunta.
 
-**Wall of Shame**: nel diff non c'è slicing della storia né simulazione dell'output dei tool. Il tetto di 10 iterazioni e `_get_window` non sono toccati.
+**Riserve**
+- **R-384-1 BASSA** — `tests/test_unit_voice_stt.py:67` usa `urllib.request.urlopen` verso 127.0.0.1, come già faceva `tests/test_unit_voice_server.py:71`. urllib segue `http_proxy` anche per il localhost. Prova: con `http_proxy` finto e senza `no_proxy` ottengo 24 FAIL su stt+server. Sui runner GitHub non c'è proxy, quindi la CI non è toccata. Il difetto c'era già; questa modifica porta in CI altri test dello stesso tipo. Rimedio (area Voce): `urllib.request.build_opener(urllib.request.ProxyHandler({}))` oppure `http.client` diretto, come già fa tts.
+- **R-384-2 COSMETICA** — il commento di `.github/workflows/ci.yml:106`, vedi punto 4.
 
-**Esiti riprodotti**: kernel 947 PASS / 0 FAIL; gate (`test_sembra_delicato`) + ingest 34 passed; YAML ok. Con la mutazione il kernel dà 945/2: T74b5 R-386-1 e T74b6 R-382-1, perché la stessa sostituzione ha spento anche il loop dei lead. Entrambi i FAIL sono mirati.
+**Note (non riserve)**
+- `ci.yml` rientra nella macchina del bot (`bot_esito.tocca_macchina_bot` dà True): `verifica-bot` riporterà neutral e il merge lo decide l'operatore.
+- Ci sono due dati vecchi fuori dal diff, da sistemare con l'aggiornamento di stato:
+  - `reports/stato_progetto.md:268` riporta ancora «Voice suite: 24 PASS»;
+  - la docstring di `tests/test_unit_gate.py:7` dice che in CI gira solo voice_server (fuori dall'area Voce).
 
-**Riserva da tracciare in `reports/stato_progetto.md`**
-- **R-387-1 (BASSA)**: in `sembra_delicato` le parole delicate si cercano solo prima del primo punto del nome. Correzione proposta: `re.split` su tutto il nome senza l'ultima estensione. Valutare `.fish` tra le estensioni delicate.
+**Cosa non ho verificato**
+- Non ho visto una run CI reale su ubuntu-latest con Python 3.11 (locale ho python3 di sistema), quindi non ho escluso differenze di versione. Le dipendenze di stt/tts sono solo stdlib + pytest, quindi il rischio è basso; la conferma arriverà dalla prima run della PR.
+- Non ho misurato la flakiness sotto il carico di un runner condiviso: in locale ho fatto solo 3+3 esecuzioni.
 
-**Rischi esplicitamente esclusi**
-- Invio reale su Telegram: non l'ho verificato; ho usato solo `_TgFinto`, quindi l'invio vero lo vedrà l'operatore.
-- Esecuzione dello step nuovo sulla CI di GitHub: non verificata, posso solo validare il YAML in locale.
-- Suite pytest completa da 1558: non rilanciata, ho eseguito solo le parti toccate.
-- Symlink nei test di ingest su Windows: non verificato, Windows non è una piattaforma di Gas.
+Riga contatore scritta in `/home/user/Gas/.claude/agents/memoria_revisore.md` come «#384 (chat Voce)» e committata (83dd041, solo quel file). Il diff staged di ci.yml è rimasto intatto nell'index.
 
-**Memoria**: ho aggiunto la riga #387 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato errori. Nessuna lezione nuova.
+### Review #388 — merge di origin/main nel ramo della PR #229 (verdetto integrale, incollato)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #388: merge di origin/main (e6e69b5, PR #227/#228) nel ramo `claude/peaceful-lovelace-0w2b7q` (HEAD 1aa2921, PR #229 della chat Voce). Prima della review ho letto CLAUDE.md (sez. 5, 8, 10), `reports/stato_progetto.md` (solo le righe 593 e 599 e il diff contro main), `reports/lavoro_parallelo.md` (regole 3-4) e la mia memoria.
+
+**Cosa ho controllato nel diff**
+1. `.github/workflows/ci.yml:105` — lo step della voce della PR (server + stt + tts, nome «Run voice suite»). Rischio esaminato: che la risoluzione del merge abbia perso o alterato la modifica della PR. `git diff --cached origin/main -- .github/workflows/ci.yml` mostra SOLO la modifica della PR (+4 −2). Esito: ok.
+2. `.github/workflows/ci.yml:159` — lo step «Ingest delle fonti di studio» arrivato da main (#228). Rischio: che il ci.yml della PR abbia cancellato lo step di main. `git diff --cached 1aa2921` mostra SOLO questo blocco di +7 righe, uguale al delta di main dalla merge-base 9b8526b (cambia solo l'offset dell'hunk). Il ci.yml risultante è quindi quello della PR più lo step ingest di main, e non soltanto quello della PR: è il risultato giusto. YAML valido. Esito: ok.
+3. `.claude/agents/memoria_revisore.md:624` — la riga «#384 (chat Voce)» dopo #384–#387 di main. Rischio: una riga persa o alterata. Contro origin/main la differenza è solo +1 riga, identica byte per byte a quella di HEAD. Esito: riserva (vedi R-388-1 e la lezione).
+4. `reports/stato_progetto.md:599` — riga «Voce — fetta 1», fusa da sola insieme a «Stato motore» (24 PASS → 72 test). `reports/stato_progetto.md:593` (main) usa lo stesso id R-384-1 con un altro significato. Esito: riserva R-388-1.
+5. Perimetro (gas.py, modules/, tests/, scripts/, .claude/, tools/, knowledge/, brains/): `git diff --cached origin/main --stat` riporta solo ci.yml e la riga di memoria. Tutto il resto è identico a main. Esito: ok.
+6. `reports/diff_sessione.md`, `reports/handoff.md`, `reports/ultimo_report.md`: nessuna differenza contro HEAD, quindi la parte della PR (--ours) è confermata. Nessun marcatore di conflitto nei 14 file del merge. Il working tree coincide con l'indice. Ho eseguito voce + ingest sull'albero fuso: 77 passed (72 + 5).
+
+**Riserve**
+- **R-388-1 BASSA — due significati per #384 e R-384-1.**
+  - Su main, la review #384 riguarda la chiusura di R-383-1 e R-384-1 è COSMETICA (taglio del tool_name senza test), in `reports/stato_progetto.md:593`.
+  - Nella chat Voce, R-384-1 è BASSA (urllib verso 127.0.0.1 segue `http_proxy`), in `reports/stato_progetto.md:599` e nel §4 dell'handoff della PR.
+  - La regola 4 di `reports/lavoro_parallelo.md` qualifica i numeri delle review ma non gli id dei finding.
+  - Proposta, senza rinumerare nulla:
+    - (a) in stato_progetto riga 593 scrivere «review #384 (chat Motore)» e «R-384-1 (chat Motore)»; in riga 599 scrivere «R-384-1 (chat Voce)» e «R-384-2 (chat Voce)»;
+    - (b) estendere la regola 4 di lavoro_parallelo.md: «anche gli id dei finding R-N-k portano il suffisso della chat quando il numero collide»;
+    - (c) NON toccare il §4 dell'handoff, che è il verdetto integrale e non si riscrive. Il suffisso nella riga 599 basta a disambiguare il rimando dell'handoff («riga Voce — fetta 1»);
+    - (d) le prossime review ripartono da #388 (massimo del file + 1).
+- **R-388-2 COSMETICA — citazioni spostate nell'handoff.** Le citazioni `ci.yml:190` e `ci.yml:238` del §4 dell'handoff della PR ora puntano 7 righe sopra il contenuto citato, perché lo step ingest di main sposta il summary (:190 → :197, :238 → :245). Il gate B verifica solo che la riga esista e passa; il testo integrale non va toccato.
+
+**Cosa NON ho verificato (rischio escluso)**
+- La suite kernel e la pytest completa sull'albero fuso. Il perimetro è identico a origin/main, già revisionato e verde in CI. L'unico file diverso, ci.yml, l'ho verificato con le suite che lancia (voce + ingest).
+- L'esito reale della CI e del check verifica-bot sul commit di merge: non è riproducibile prima del push.
+- La resa del job summary in CI: lo step ingest di main non compare nel summary, ma è una scelta di #228 e non riguarda questo merge.
+
+**Memoria**
+- Ho scritto la riga contatore #388 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, con questa lezione: con chat parallele il numero si prende dal MASSIMO del file, non dall'ultima riga. Prima della mia riga, l'ultima era «#384 (chat Voce)»: chi incrementava dall'ultima riga avrebbe creato un altro #385.
+- La riga è nel working tree e NON è nello staging.
+- NON ho eseguito `scripts/commit_memoria_revisore.sh`, per due motivi: lo hai chiesto tu, e durante un merge in corso `git commit -o` fallisce comunque («partial commit during a merge»).
+- Cosa devi fare tu: `git add .claude/agents/memoria_revisore.md` PRIMA di `bash scripts/segna_review_ok.sh`, così l'hash del marcatore copre anche questa riga; poi il commit del merge.
+
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 944 → 947 PASS, 0 FAIL. Blocco reale: `=== RIEPILOGO: 947 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1558 passed in 184.08s (0:03:04)` (+24 gate, +5 ingest).
+Nessuna modifica a gas.py né ai file di test: cambia solo cosa lancia la CI. Voice suite in CI: 20 → 72 test (20 server + 28 stt + 24 tts). Riepilogo locale reale (rete bloccata, senza chiavi, `test_collection_dell_intero_repo_non_esplode` escluso perché in locale mancava `openai`; poi installato e passato a parte):
+
+```
+71 passed, 1 deselected in 17.24s
+```
 
 ## §6 STATO CI
 
-- Run sui commit di questo handoff: non ancora disponibile alla scrittura dell'handoff. §2/§3 non possono contenere il commit dell'handoff stesso.
+- `83dd041`: nessuna run su questo SHA (pushato insieme a `312a0e9`).
+- `312a0e9`: run CI 39494111201 — unit-suite success; handoff-check failure (atteso: l'handoff di quel commit era ancora quello della sessione precedente).
+- `c1e2f33`: run CI 39494258815 — unit-suite success (step «Run voice suite» success), handoff-check success. Bot `gas-verificatore`: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca `ci.yml`, macchina del bot).
+- `7515eae` (correzioni V-1/V-2 del bot): run non ancora disponibile alla scrittura dell'handoff.
+- `1aa2921` (correzioni della verifica esterna #229): run CI 39495199446 — unit-suite success, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, nessuna ALTA/MEDIA). Merge rifiutato da GitHub per conflitto con main (#227/#228 mergiate nel frattempo).
+- `5b90d69` (merge di origin/main, review #388): run non ancora disponibile alla scrittura dell'handoff.
+- `cf64653` (fine-task del merge): bot `gas-verificatore` BOCCIATO (V-1 MEDIA: disambiguazione e R-388-1/2 dichiarate ma assenti da `stato_progetto.md`; V-2 BASSA etichetta in `ultimo_report.md`; V-3 COSMETICA §2 — non riprodotta, il §2 elenca 6 file). V-1 e V-2 corrette nel commit successivo.
+- Commit di correzione con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-387-1 (BASSA): in `sembra_delicato` le parole delicate si cercano solo prima del primo punto; `.fish` non segnalato.
-- Limite dichiarato: i file creati da `run_command` non fanno scattare l'avviso.
-- R-384-1 (COSMETICA), R-380-1/2, R-378-1, R-379-1, R-ve224-2 e quelle di #222: vedi stato_progetto.md.
+- Review #388 (merge di main): R-388-1 BASSA (numero #384 e id R-384-1 usati da due chat; disambiguati in `reports/stato_progetto.md` con «chat Motore»/«chat Voce»; regola 4 di `reports/lavoro_parallelo.md` da estendere agli id dei finding), R-388-2 COSMETICA (citazioni `ci.yml:190`/`:238` del verdetto #384 spostate di 7 righe).
+- Le altre riserve aperte del progetto sono in `reports/stato_progetto.md`.
+
+- R-384-1 BASSA, R-384-2 COSMETICA: dettaglio in §4 e in `reports/stato_progetto.md` (riga «Voce — fetta 1»).
+- Bot #229: V-1 BASSA («Voice suite: 24 PASS» vecchio in `stato_progetto.md`) e V-2 COSMETICA (frase «72/72» di `ultimo_report.md` non allineata a §5): CHIUSE in questo commit.
+- Verifica esterna #229 (commento sulla PR): APPROVATO CON RISERVE. V-1 BASSA («24 → 72» in §5, il reale è 20 → 72) e V-2 BASSA (riga «Stato motore» di `stato_progetto.md`): CHIUSE in questo commit. V-3 COSMETICA (conteggi del §2 presi prima del commit di fine-task): limite noto del flusso, come R-bot221-2. V-4 COSMETICA (docstring di `tests/test_unit_gate.py`, fuori area Voce): richiesta alla chat Motore in `ultimo_report.md`.
