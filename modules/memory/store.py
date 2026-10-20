@@ -1963,7 +1963,10 @@ class MemoryStore:
         R-c3-1b: scade anche le righe con ts_expiry non numerico (TEXT/BLOB) — in
         SQLite TEXT > REAL, quindi `ts_expiry <= now` non le matcherebbe mai.
         Errore → [] (le pending scadute restano comunque non approvabili:
-        resolve_approval e get_pending_approvals ricontrollano ts_expiry)."""
+        resolve_approval e get_pending_approvals ricontrollano ts_expiry).
+        R-381-1: in degrado (store non disponibile) → [] senza toccare il DB."""
+        if not self.available:
+            return []
         try:
             now = time.time()
             with self._connect() as con:

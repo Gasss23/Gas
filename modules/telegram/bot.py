@@ -367,7 +367,7 @@ def run_bot(root_dir: Optional[str] = None) -> int:
 
     # ── Long-polling loop ───────────────────────────────────
     offset = 0
-    ultimo_controllo_scadute = 0.0
+    ultimo_controllo_scadute = float("-inf")  # R-381-2: primo controllo subito
     while True:
         try:
             # C5: al massimo una volta al minuto chiude le firme scadute e avvisa.

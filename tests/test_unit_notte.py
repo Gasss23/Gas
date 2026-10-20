@@ -1224,3 +1224,10 @@ def test_bot_controlla_le_firme_scadute(monkeypatch, tmp_path):
                         lambda root_dir=None: SimpleNamespace(memory="MEM"))
     assert _tg.run_bot(str(tmp_path)) == 0
     assert chiamate == ["MEM"]
+
+
+def test_firme_scadute_non_crea_il_db(dirs):
+    """R-381-3: senza .gas_memory.db il controllo delle firme non lo crea."""
+    root, _ = dirs
+    assert notte._chiudi_firme_scadute(root) == 0
+    assert not (root / ".gas_memory.db").exists()

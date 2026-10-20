@@ -2564,36 +2564,84 @@ class GasKernel:
             logging.warning("[GATE] lettura del lead prima della modifica fallita: %s", e)
             return None
 
-    def _avvisa_lead_dopo_lettura(self, prima: Optional[Dict[str, Any]]) -> None:
+    MAX_AVVISI_LEAD_TURNO = 10
+
+    def _avvisa_lead_dopo_lettura(self, prima: Optional[Dict[str, Any]]) -> Optional[str]:
         """R-ve222-4 (seconda parte, decisione operatore 2026-10-20): dopo una lettura
         la rubrica resta libera, ma se un lead ESISTENTE cambia recapito o viene
         chiuso (esce dal pin) l'operatore riceve un avviso su Telegram, solo
-        informativo. Valori resi visibili su una riga e troncati. Mai eccezioni (§9):
-        invio fallito → warning nella scatola nera, il turno prosegue."""
+        informativo. Qui si compone il blocco del lead (None se nulla da dire); l'invio
+        è UNO per turno (_invia_avvisi_lead, V-1 bot #225). Valori resi visibili su una
+        riga e troncati. Mai eccezioni (§9)."""
         try:
             if prima is None or self.memory is None:
-                return
+                return None
             dopo = self.memory.get_contatto(int(prima["id"]))
             if dopo is None:
-                return
+                return None
 
             def _v(x: Any) -> str:
                 t = _tg_bot.rendi_visibili(str(x or "—"), a_capo=False)
-                return t if len(t) <= 200 else t[:200] + "…"
+                if len(t) <= 200:
+                    return t
+                t = t[:200]
+                # V-2 bot #225 / R-382-2: non spezzare a metà una sequenza «<U+XXXX>»
+                # (anche quando nel taglio restano solo «<» o «<U»).
+                k = t.rfind("<")
+                if k != -1 and ">" not in t[k:]:
+                    t = t[:k]
+                return t + "…"
 
             righe = []
-            if (prima.get("contatto") or "") != (dopo.get("contatto") or ""):
-                righe.append(f"Recapito cambiato: {_v(prima.get('contatto'))} → "
-                             f"{_v(dopo.get('contatto'))}")
+            vecchio, nuovo = prima.get("contatto") or "", dopo.get("contatto") or ""
+            if vecchio != nuovo:
+                a, b = _v(vecchio), _v(nuovo)
+                if a == b:  # V-2 bot #225: diversi solo oltre il taglio
+                    a, b = f"{a} ({len(vecchio)} caratteri)", f"{b} ({len(nuovo)} caratteri)"
+                righe.append(f"Recapito cambiato: {a} → {b}")
             if dopo.get("stato") in STATI_CHIUSI and prima.get("stato") not in STATI_CHIUSI:
                 righe.append(f"Lead chiuso: {_v(prima.get('stato'))} → {_v(dopo.get('stato'))}")
             if not righe:
+                return None
+            return f"Lead: {_v(dopo.get('chiave'))}\n" + "\n".join(righe)
+        except Exception as e:
+            logging.warning("[GATE] avviso lead dopo una lettura fallito: %s", e)
+            return None
+
+    # V-1 bot #225 (2° giro): lead NUOVI creati in un turno contaminato da questa soglia
+    # in su → riga nell'avviso: possono spingere fuori dal pin i lead veri senza
+    # modificarli. Sotto la soglia nessun rumore (creare lead da un testo letto è
+    # proprio il lavoro normale di Gas).
+    SOGLIA_LEAD_NUOVI_AVVISO = 5
+
+    def _invia_avvisi_lead(self, blocchi: List[str], nuovi: int = 0) -> None:
+        """V-1 bot #225: UN solo messaggio Telegram a fine turno con i lead modificati
+        dopo una lettura (al massimo MAX_AVVISI_LEAD_TURNO e, R-382-1, quanti ne stanno
+        sotto il limite di Telegram: gli altri contati, così un testo letto non può
+        spegnere l'avviso gonfiandolo) più, oltre la soglia, il numero di lead nuovi.
+        Mai eccezioni (§9): invio fallito → warning, il turno è già chiuso."""
+        try:
+            nuovi_riga = (f"Lead nuovi creati dopo la lettura: {nuovi} (possono spingere "
+                          f"fuori dal promemoria i lead veri)."
+                          if nuovi >= self.SOGLIA_LEAD_NUOVI_AVVISO else "")
+            if not blocchi and not nuovi_riga:
                 return
-            testo = ("⚠️ Gas ha modificato un lead dopo aver letto un testo esterno\n"
-                     f"Lead: {_v(dopo.get('chiave'))}\n" + "\n".join(righe) +
-                     "\nSe non ti torna, controlla la scheda: il lead è segnato "
-                     "«non fidato» (gas fida-contatto).")
-            inviato, motivo = _tg_bot.invia_notifica(testo)
+            testa = "⚠️ Gas ha modificato lead dopo aver letto un testo esterno"
+            coda = ("Se non ti torna, controlla le schede: i lead sono segnati "
+                    "«non fidati» (gas fida-contatto).")
+
+            def _componi(k: int) -> str:
+                parti = [testa] + blocchi[:k]
+                if len(blocchi) > k:
+                    parti.append(f"… e altri {len(blocchi) - k} lead modificati.")
+                if nuovi_riga:
+                    parti.append(nuovi_riga)
+                return "\n\n".join(parti + [coda])
+
+            k = min(len(blocchi), self.MAX_AVVISI_LEAD_TURNO)
+            while k > 0 and _tg_bot.lunghezza_telegram(_componi(k)) > _tg_bot.TELEGRAM_MAX_CHARS:
+                k -= 1
+            inviato, motivo = _tg_bot.invia_notifica(_componi(k))
             if not inviato:
                 logging.warning("[GATE] avviso lead dopo una lettura non inviato: %s", motivo)
         except Exception as e:
@@ -3772,6 +3820,8 @@ class GasKernel:
         _turno_fine_scritto = False
         _turno_classe = "semplice"  # aggiornato da classifica_compito (vedi sotto)
         _turno_budget = False  # V-2 bot #191: turno fermato dal budget giornaliero
+        _avvisi_lead: List[str] = []  # V-1 bot #225: un solo avviso Telegram a fine turno
+        _lead_nuovi = 0  # V-1 bot #225 (2° giro): lead creati dopo una lettura
 
         def _chiudi_turno() -> None:
             nonlocal _turno_fine_scritto
@@ -3981,7 +4031,12 @@ class GasKernel:
                                     # resta segnato: chi lo rivede nel pin è contaminato.
                                     if _lead_contaminato:
                                         self._marca_contatto_non_fidato(tc.function.arguments)
-                                        self._avvisa_lead_dopo_lettura(_prima)
+                                        _blocco = self._avvisa_lead_dopo_lettura(_prima)
+                                        if _blocco:
+                                            _avvisi_lead.append(_blocco)
+                                        elif (_prima is None and self._lead_prima(
+                                                tc.function.arguments) is not None):
+                                            _lead_nuovi += 1
                                 # Diario: per azioni al cancello solo nome+id (F-diario-eco/args, mai args).
                                 # Per tutti gli altri casi: riassunto args + esito.
                                 _esito_str = self._esito_diario(tc.function.name, out)
@@ -4045,6 +4100,7 @@ class GasKernel:
                    "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
             _chiudi_turno()
+            self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)
 
 def doctor(root_dir: Optional[str] = None) -> int:
     """Auto-diagnosi di Gas: check di integrità senza consumare token LLM

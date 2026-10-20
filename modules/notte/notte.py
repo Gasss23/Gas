@@ -402,6 +402,9 @@ def _chiudi_firme_scadute(root: Path) -> int:
     posto di un messaggio a parte. Mai eccezioni (§9): errore → 0."""
     try:
         from modules.memory import MemoryStore, default_db_path
+        # R-381-3: come gas doctor, niente DB creato come effetto collaterale.
+        if not default_db_path(root).exists():
+            return 0
         mem = MemoryStore(default_db_path(root))
         if not mem.available:
             return 0
