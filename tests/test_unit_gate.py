@@ -481,6 +481,9 @@ def test_livello3_mai_nemmeno_con_firma(path):
     "scripts/notte/catalogo_esempio.yaml", "CLAUDE.md", "dati/claude.md", "gas_identity.md",
     "requirements.txt", "requirements-dev.txt", "pytest.ini", ".vscode/tasks.json",
     "tests/test_x.py", "dati/brainstorming.md",  # prefisso "brains": prudente
+    # roadmap 5.3: catalogo delle fonti di studio e file delle fonti alla firma
+    "knowledge/sources.yaml", "knowledge/x.md", "Knowledge/Sources.YAML",
+    "knowledge./sources.yaml", "knowledge_old/sources.yaml", "./knowledge/test_source.txt",
 ])
 def test_livello2_firma(path):
     assert livello_scrittura(path) == LIVELLO_FIRMA
@@ -488,7 +491,7 @@ def test_livello2_firma(path):
 
 
 @pytest.mark.parametrize("path", [
-    "note.md", "reports/nota.md", "dati/lead.csv", "knowledge/x.md", "dati/gate/x.md",
+    "note.md", "reports/nota.md", "dati/lead.csv", "dati/knowledge.md", "dati/gate/x.md",
     "x/modules_note.txt.bak/../note.md",
 ])
 def test_livello1_libero(path):
@@ -790,3 +793,20 @@ def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
 def test_libero_dopo_lettura(tool, args, atteso):
     from modules.gate.gate import libero_dopo_lettura
     assert libero_dopo_lettura(tool, args) is atteso
+
+
+@pytest.mark.parametrize("path, atteso", [
+    ("dati/a.md", False), ("dati/note.txt", False), ("lead.csv", False), ("dati/agenda.md", False),
+    ("dati/x.json", True), ("dati/X.YAML", True), ("dati/run.html", True), ("dati/a.js", True),
+    ("dati/api_key.txt", True), ("dati/Password.md", True), ("dati/config.md", True),
+    ("dati/.npmrc", True), ("dati/Makefile", True), ("dati/report", True), ("dati/a.pem", True),
+    ("dati/x.json.", True), (None, True), ("", True),
+    # R-386-2: parole intere, niente falsi allarmi sui documenti
+    ("dati/cronologia.md", False), ("dati/sessione_marketing.md", False),
+    ("dati/credito_clienti.csv", False), ("dati/monkey.md", False),
+    ("dati/my-secret.md", True), ("dati/aws keys.txt", True),
+])
+def test_sembra_delicato(path, atteso):
+    """R-223-2: avviso solo informativo per i file nuovi che sembrano delicati."""
+    from modules.gate.gate import sembra_delicato
+    assert sembra_delicato(path) is atteso

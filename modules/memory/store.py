@@ -1980,7 +1980,7 @@ class MemoryStore:
                             if not isinstance(r["ts_expiry"], (int, float)))
                 if n_bad:
                     log.warning(
-                        "expire_stale_approvals: %d pending con ts_expiry non numerico — scadute",
+                        "scadi_approvazioni: %d pending con ts_expiry non numerico — scadute",
                         n_bad,
                     )
                 con.executemany(
@@ -1990,7 +1990,7 @@ class MemoryStore:
                 con.commit()
                 return righe
         except (sqlite3.Error, OSError) as e:
-            log.warning("expire_stale_approvals fallita (%s): %s", self.db_path, e)
+            log.warning("scadi_approvazioni fallita (%s): %s", self.db_path, e)
             return []
 
     def expire_stale_approvals(self) -> int:

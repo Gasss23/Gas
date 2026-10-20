@@ -5956,6 +5956,52 @@ check("T74b5 R-377-1 tool inventato «contatto_fidato» → tipo di diario rimap
       and not any(e.get("tipo", "").casefold() == "contatto_fidato"
                   for e in _k74f.memory.diario_recente(10)),
       str([e.get("tipo") for e in _k74f.memory.diario_recente(10)]))
+# Roadmap 5.3: il catalogo delle fonti di studio va alla firma anche senza letture
+_k74s = _k74()
+with _TgFinto():
+    run_turn_scriptato(_k74s, "x", [
+        [("write_file", json.dumps({"relative_path": "knowledge/sources.yaml",
+                                    "content": "sources: []"}))], "ok"])
+check("T74b5 roadmap 5.3: knowledge/sources.yaml mai scritto senza firma",
+      not (_k74s.root / "knowledge" / "sources.yaml").exists())
+# R-223-2: file NUOVI di livello 1 che sembrano delicati → un avviso a fine turno;
+# documenti normali e file già esistenti → nessun avviso
+_k74t = _k74()
+(_k74t.root / "dati").mkdir()
+(_k74t.root / "dati" / "vecchio.json").write_text("{}", encoding="utf-8")
+with _TgFinto() as _tg74t:
+    run_turn_scriptato(_k74t, "x", [
+        [("write_file", json.dumps({"relative_path": "dati/nuovo.json", "content": "{}"})),
+         ("write_file", json.dumps({"relative_path": "dati/cron_giro.txt", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "dati/note.md", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "dati/vecchio.json", "content": "[]"}))],
+        "ok"])
+_av74t = [p.get("text", "") for m, p in _tg74t.chiamate
+          if m == "sendMessage" and "sembrano delicati" in p.get("text", "")]
+check("T74b5 R-223-2 file nuovi delicati → un avviso; documenti e file esistenti no",
+      len(_av74t) == 1 and "dati/nuovo.json" in _av74t[0] and "dati/cron_giro.txt" in _av74t[0]
+      and "note.md" not in _av74t[0] and "vecchio.json" not in _av74t[0]
+      and (_k74t.root / "dati" / "nuovo.json").exists() and _k74t._file_delicati_turno == [],
+      str(_av74t)[:300])
+# R-386-1: percorsi lunghi (emoji = 2 unità Telegram) → l'avviso parte comunque
+_k74v = _k74()
+with _TgFinto() as _tg74v:
+    run_turn_scriptato(_k74v, "x", [
+        [("write_file", json.dumps({"relative_path": "dati/" + ("😀" * 60 + "/") * 4
+                                    + f"{_i}.json", "content": "{}"})) for _i in range(10)],
+        "ok"])
+_av74v = [p.get("text", "") for m, p in _tg74v.chiamate
+          if m == "sendMessage" and "sembrano delicati" in p.get("text", "")]
+check("T74b5 R-386-1 avviso file delicati sotto il limite Telegram anche con nomi lunghi",
+      len(_av74v) == 1
+      and _tgbot_c4b.lunghezza_telegram(_av74v[0]) <= _tgbot_c4b.TELEGRAM_MAX_CHARS
+      and "… e altri" in _av74v[0], str([len(t) for t in _av74v]))
+_k74u = _k74()
+with _TgFinto() as _tg74u:
+    run_turn_scriptato(_k74u, "x", [
+        [("write_file", json.dumps({"relative_path": "dati/a.md", "content": "x"}))], "ok"])
+check("T74b5 R-223-2 solo documenti normali → nessun avviso",
+      not any("sembrano delicati" in p.get("text", "") for m, p in _tg74u.chiamate))
 # T74b5 — R-bot222-1: `gas fida-contatto` (solo comando umano) toglie il segno
 # «non fidato» con una riga di diario; senza conferma non cambia nulla.
 import builtins as _bi74c
@@ -6078,6 +6124,22 @@ for _n74m in (197, 198, 199):  # R-382-2: il taglio cade a 3, 2 e 1 carattere de
     _ok74m.append(_b74m is not None and ("x" * _n74m + "…") in _b74m)
 check("T74b6 V-2 bot #225 / R-382-2: il taglio non spezza una sequenza <U+XXXX>",
       _ok74m == [True, True, True], str(_ok74m))
+# R-383-1: un «<» letterale all'inizio non cancella il resto del valore mostrato
+_t74p = _tgbot_c4b.tronca_visibile("<" + "z" * 250, 200)
+_t74q = _tgbot_c4b.tronca_visibile("mail@x.it<" + "B" * 250, 200)
+check("T74b6 R-383-1 un «<» letterale non nasconde il valore",
+      _t74p == "<" + "z" * 199 + "…" and _t74q.startswith("mail@x.it<BBB") and len(_t74q) == 201,
+      repr(_t74p[:20]) + repr(_t74q[:20]))
+# V-2 verifica esterna #226: avviso firme scadute senza «<U+…» spezzati
+import re as _re74r
+_ok74r = []
+for _n74r in range(110, 121):  # il taglio a 120 cade in ogni punto della sequenza
+    _t74r = _tgbot_c4b.componi_avviso_scadute(
+        [{"id": "y" * 36, "tool_name": "t", "azione_leggibile": "a" * _n74r + "\u202e" * 3}])
+    _riga74r = _t74r.splitlines()[1]
+    _ok74r.append(_re74r.search(r"<(?![^<>]*>)", _riga74r) is None)
+check("T74b6 V-2 VE #226 avviso firme scadute: nessuna sequenza <U+ spezzata",
+      all(_ok74r), str(_ok74r))
 # R-382-1: blocchi lunghi → il messaggio parte comunque (meno blocchi, gli altri contati)
 _k74n = _k74()
 (_k74n.root / "fonte.txt").write_text("x", encoding="utf-8")
