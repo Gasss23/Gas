@@ -20,34 +20,35 @@
 - **Autonomia dopo una lettura (R1, supera C-d e R-203-2)**: `FATTA` — review #367 BOCCIATO → #368 → #369 APPROVATO.
 - **V-1 verifica esterna #222 (solo documenti liberi)**: `FATTA` — review #370.
 - **V-1 bot #222 (contaminazione dalla memoria)**: `FATTA` — review #371 BOCCIATO → #372 APPROVATO CON RISERVE.
+- **V-1 seconda verifica esterna #222 (chiamate parallele)**: `FATTA` — review #373 APPROVATO CON RISERVE.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
+ .claude/agents/memoria_revisore.md |  10 +++++++++
  .claude/commands/fine-task.md      |   2 +-
  CLAUDE.md                          |   4 ++--
- README.md                          |  11 +++++++++++
- gas.py                             | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ README.md                          |  11 ++++++++++
+ gas.py                             | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
  gas_identity.md                    |   2 +-
- modules/gate/gate.py               |  46 ++++++++++++++++++++++++++++++++++++++++++++
+ modules/gate/gate.py               |  46 ++++++++++++++++++++++++++++++++++++++++
  modules/memory/__init__.py         |   2 ++
- modules/memory/store.py            |  57 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
- modules/notte/notte.py             |  13 +++++++++++++
+ modules/memory/store.py            |  57 +++++++++++++++++++++++++++++++++++++++++++++++--
+ modules/notte/notte.py             |  13 ++++++++++++
  reports/design_cancello.md         |   2 +-
- reports/diff_sessione.md           |  10 ++++++++--
- reports/handoff.md                 | 380 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
- reports/roadmap.md                 |  23 +++++++++++-----------
- reports/roadmap_sintesi.md         |  25 ------------------------
- reports/setup_notte.md             |  12 +++++++++---
+ reports/diff_sessione.md           |  10 +++++++--
+ reports/handoff.md                 | 417 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ reports/roadmap.md                 |  23 ++++++++++----------
+ reports/roadmap_sintesi.md         |  25 ----------------------
+ reports/setup_notte.md             |  14 +++++++++---
  reports/stato_progetto.md          |   6 +++---
- reports/ultimo_report.md           |  68 +++++++++++-----------------------------------------------------
- tests/test_unit_gate.py            |  52 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          | 204 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- tests/test_unit_notte.py           |  58 +++++++++++++++++++++++++++++++++++++++++++++++++++----
- 21 files changed, 944 insertions(+), 144 deletions(-)
+ reports/ultimo_report.md           |  69 +++++++++++------------------------------------------------
+ tests/test_unit_gate.py            |  52 +++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ tests/test_unit_notte.py           |  58 ++++++++++++++++++++++++++++++++++++++++++++++----
+ 21 files changed, 1004 insertions(+), 144 deletions(-)
 ```
 
 ---
@@ -55,6 +56,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+af619ea fix(cancello): chiamate parallele contaminate dalla lettura nella stessa risposta (V-1 verifica esterna #222)
+64614b3 chore(revisore): memoria review #373 — APPROVATO CON RISERVE
+9f6761c docs(fine-task): report e handoff — note di bot e verifica esterna #222
 66c52c8 fix(cancello): la contaminazione non si ricicla dalla memoria (V-1 bot #222)
 3791357 chore(revisore): memoria review #372 — APPROVATO CON RISERVE
 09df232 chore(revisore): memoria review #371 — BOCCIATO
@@ -423,22 +427,58 @@ Review #372 (ri-review della #371): PR #222, ramo feat/merge-automatico-z1xjx2, 
 Memoria: riga #372 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (3791357). La riga #371 era stata scritta nel turno precedente e lanciata con lo stesso script; non ho controllato che sia finita in un commit.
 ```
 
+### Review #373
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #373: diff staged su feat/merge-automatico-z1xjx2 (PR #222), fetta di sicurezza, V-1 MEDIA della seconda verifica esterna #222.
+
+Prima della review ho letto CLAUDE.md (sezione 5, Wall of Shame), lo stato del progetto (la riga del §(3) toccata dal diff) e la mia memoria (lezioni fino alla #372).
+
+**Elementi del diff esaminati**
+- `gas.py:3930` — subito dopo `_add_to_history("tool", …)`, se lo strumento è in `UNTRUSTED_INPUT_TOOLS` imposta `_finestra_contaminata = True`.
+  - Rischio esaminato: coerenza con il calcolo a inizio iterazione (`gas.py:3811`) e con `_finestra_e_contaminata` (`gas.py:1422`). Quella funzione decide in base al NOME dello strumento, anche quando la lettura è stata negata, quindi il fix è fail-closed allo stesso modo.
+  - Ordine nel ciclo: la segnatura del contatto (`gas.py:3908`) e il prefisso «[NON FIDATO]» del diario (`gas.py:3919`) vengono letti prima dell'aggiornamento. Così la riga di diario della lettura stessa resta senza segno, ed è corretto perché i suoi argomenti sono stati scelti a finestra pulita. Tutte le chiamate successive del batch invece vedono il flag.
+  - Il flag vale solo dentro l'iterazione: alla successiva viene ricalcolato dalla finestra, che contiene già il risultato dello strumento. Nessuno stato si perde.
+  - Non c'è slicing della history e nessun output degli strumenti viene simulato.
+  - Esito: ok.
+- `tests/test_unit_kernel.py:5804` — T74b4 «batch parallelo»: read_file, salva_contatto e write_file `reports/p.md` nella stessa risposta. Verifica `non_fidato == 1` e che il file non esista (va alla firma). Esito: ok.
+- Riprodotto: kernel 911 PASS / 0 FAIL.
+- Mutazione (blocco del fix rimosso): 910 PASS / 1 FAIL, proprio «T74b4 batch parallelo». Poi ho ripristinato gas.py e il working tree coincide con l'index.
+- Contesto: `modules/gate/gate.py:82` — l'elenco `UNTRUSTED_INPUT_TOOLS` contiene ricorda, read_file, run_command, browser_scrape, fetch_email e i 4 strumenti della FETTA 1. Esito: ok.
+- `reports/design_cancello.md:47` — il §1c è allineato al codice (solo .md/.txt/.csv, file non nascosti e non ignorati da git, contaminazione estesa alle chiamate successive e al pin). Esito: ok.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-373-1 BASSA**: in una risposta con chiamate parallele, gli argomenti di TUTTE le chiamate sono generati dal modello prima che esista qualunque output del batch. Il caso della V-1 quindi non era sfruttabile in senso stretto (gli argomenti di salva_contatto e write_file non possono dipendere dal contenuto di fonte.txt letto nello stesso batch). Il fix resta giusto come difesa in profondità fail-closed, ma ha un costo di attrito: un batch legittimo [read_file, salva_contatto] a turno pulito segna il contatto `non_fidato` in modo permanente (vedi R-bot222-1, il segno non si toglie), e da lì ogni turno successivo con quel lead attivo è contaminato. Va dichiarato in stato come scelta consapevole, non come vulnerabilità chiusa.
+- **R-373-2 COSMETICA**: il test riusa l'etichetta «T74b4» già usata da altri check vicini. Un ID distinto (es. T74b8) renderebbe più leggibili i FAIL.
+
+**Rischi esplicitamente esclusi**
+- pytest tests/ (1497 passed dichiarati) NON rieseguito: il diff tocca solo gas.py nel motore e il test di regressione è nella suite kernel, che ho rieseguito.
+- Comportamento con provider reali che restituiscono davvero tool_calls paralleli (Gemini/Groq) non verificato: in dev non è riproducibile senza chiamate API; il test usa un run_turn scriptato.
+- setup_notte.md e stato_progetto.md controllati solo sul testo, nessuna verifica meccanica.
+
+Memoria aggiornata (riga #373 più una lezione) e committata: 64614b3. File: /home/user/Gas/.claude/agents/memoria_revisore.md
+```
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 893 → 910 PASS, 0 FAIL (T74b2, T74b3, T74b4; T72f/T72g/T74b/T84i spostati su `reports/`). Blocco reale: `=== RIEPILOGO: 910 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1497 passed in 179.26s (0:02:59)` (+5 notte, +42 gate).
+tests/test_unit_kernel.py in locale: 893 → 911 PASS, 0 FAIL (T74b2, T74b3, T74b4; T72f/T72g/T74b/T84i spostati su `reports/`). Blocco reale: `=== RIEPILOGO: 911 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+pytest `tests/`: `1497 passed in 192.03s (0:03:12)` (+5 notte, +42 gate).
 
 ## §6 STATO CI
 
 - `cc89588` (PR #222 aperta): unit-suite e handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA chiusa in `66c52c8`); verifica esterna APPROVATO CON RISERVE (V-1 MEDIA chiusa in `8e09a78`).
-- Commit successivi e questo handoff: run non ancora disponibile alla scrittura dell'handoff.
+- `9f6761c`: unit-suite e handoff-check success; verifica-bot neutral (bot APPROVATO CON RISERVE, solo BASSE); verifica esterna APPROVATO CON RISERVE (V-1 MEDIA chiusa nel commit successivo).
+- Commit del fix e questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-366-1 (BASSA, dichiarata in setup_notte.md): una richiesta notturna occupa fino a 24 h uno dei 5 posti in attesa.
 - R-367-2 (BASSA): iniezione persistente via rubrica, ora contenuta (il pin non fidato contamina il turno); con gli invii (FASE 4) la firma dovrà mostrare l'indirizzo letto dal DB.
 - R-370-2 (BASSA): un .csv libero può contenere formule iniettate.
+- R-bot222-1 (BASSA): il segno «non fidato» su un contatto non si toglie mai. R-bot222-2 (BASSA): segno in transazione separata. R-ve222-2 (BASSA): il segno del diario scade col pin. R-373-1 (BASSA), R-373-2 (COSMETICA).
 - R-372-1 (BASSA): il segno di sessione si perde se il processo riparte senza `clear`. R-372-2 (COSMETICA).
 - Già tracciate: R-bot217-1, R-bot217-2, R-ve217-1.
