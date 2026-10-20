@@ -31,24 +31,24 @@
  .claude/commands/fine-task.md      |   2 +-
  CLAUDE.md                          |   4 ++--
  README.md                          |  11 ++++++++++
- gas.py                             | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ gas.py                             | 107 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
  gas_identity.md                    |   2 +-
- modules/gate/gate.py               |  46 ++++++++++++++++++++++++++++++++++++++++
+ modules/gate/gate.py               |  46 +++++++++++++++++++++++++++++++++++++++
  modules/memory/__init__.py         |   2 ++
  modules/memory/store.py            |  57 +++++++++++++++++++++++++++++++++++++++++++++++--
  modules/notte/notte.py             |  13 ++++++++++++
  reports/design_cancello.md         |   2 +-
- reports/diff_sessione.md           |  10 +++++++--
- reports/handoff.md                 | 417 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ reports/diff_sessione.md           |  12 +++++++----
+ reports/handoff.md                 | 420 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
  reports/roadmap.md                 |  23 ++++++++++----------
  reports/roadmap_sintesi.md         |  25 ----------------------
  reports/setup_notte.md             |  14 +++++++++---
  reports/stato_progetto.md          |   6 +++---
- reports/ultimo_report.md           |  69 +++++++++++------------------------------------------------
+ reports/ultimo_report.md           |  21 ++++++++++--------
  tests/test_unit_gate.py            |  52 +++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ tests/test_unit_kernel.py          | 218 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
  tests/test_unit_notte.py           |  58 ++++++++++++++++++++++++++++++++++++++++++++++----
- 21 files changed, 1004 insertions(+), 144 deletions(-)
+ 21 files changed, 1005 insertions(+), 100 deletions(-)
 ```
 
 ---
@@ -56,6 +56,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+27a0ab4 Merge origin/main (#221) in feat/merge-automatico-z1xjx2
+ee5eaf9 docs(fine-task): report e handoff — secondo giro #222
 af619ea fix(cancello): chiamate parallele contaminate dalla lettura nella stessa risposta (V-1 verifica esterna #222)
 64614b3 chore(revisore): memoria review #373 — APPROVATO CON RISERVE
 9f6761c docs(fine-task): report e handoff — note di bot e verifica esterna #222
@@ -472,7 +474,8 @@ pytest `tests/`: `1497 passed in 192.03s (0:03:12)` (+5 notte, +42 gate).
 
 - `cc89588` (PR #222 aperta): unit-suite e handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA chiusa in `66c52c8`); verifica esterna APPROVATO CON RISERVE (V-1 MEDIA chiusa in `8e09a78`).
 - `9f6761c`: unit-suite e handoff-check success; verifica-bot neutral (bot APPROVATO CON RISERVE, solo BASSE); verifica esterna APPROVATO CON RISERVE (V-1 MEDIA chiusa nel commit successivo).
-- Commit del fix e questo handoff: run non ancora disponibile alla scrittura dell'handoff.
+- `ee5eaf9`: unit-suite, handoff-check, smista success; verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE); verifica esterna APPROVATO CON RISERVE (nessuna ALTA/MEDIA).
+- Merge di origin/main (#221) e questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
