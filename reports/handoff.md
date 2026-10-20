@@ -27,13 +27,14 @@
  modules/gate/gate.py               |  40 ++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md           |  17 ++++++++---------
  reports/handoff.md                 | 127 +++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------
+ reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   2 ++
  reports/ultimo_report.md           |  11 +++++------
  tests/test_unit_gate.py            |  17 +++++++++++++++++
  tests/test_unit_ingest_fonti.py    |  42 ++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          |  38 ++++++++++++++++++++++++++++++++++++++
  tools/ingest_knowledge.py          |   9 +++++++++
- 12 files changed, 264 insertions(+), 91 deletions(-)
+ 13 files changed, 266 insertions(+), 93 deletions(-)
 ```
 
 ---
@@ -41,6 +42,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ed77da1 docs(roadmap): R-223-2 e fonti dentro knowledge/ segnate fatte
+2112cb4 docs(fine-task): report e handoff — R-223-2 e fonti solo dentro knowledge/
 1ea5346 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
 ec83cf7 Merge remote-tracking branch 'origin/feat/merge-automatico-z1xjx2' into feat/merge-automatico-z1xjx2
 2074c27 feat(avvisi): avviso per i file nuovi che sembrano delicati (R-223-2); fonti di studio solo dentro knowledge/
