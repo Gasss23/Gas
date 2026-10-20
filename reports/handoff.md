@@ -24,17 +24,19 @@
 ```
  .claude/agents/memoria_revisore.md |   2 ++
  gas.py                             |  14 +++-----------
+ knowledge/sources.yaml             |   2 ++
  modules/gate/gate.py               |   8 ++++++++
  modules/memory/store.py            |   4 ++--
  modules/telegram/bot.py            |  18 ++++++++++++++++--
  reports/diff_sessione.md           |  15 ++++++++-------
  reports/handoff.md                 | 182 +++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------
  reports/lavoro_parallelo.md        |  26 ++++++++++++++++++++++++++
+ reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   2 ++
  reports/ultimo_report.md           |  14 +++++++-------
  tests/test_unit_gate.py            |   5 ++++-
  tests/test_unit_kernel.py          |  24 ++++++++++++++++++++++++
- 12 files changed, 153 insertions(+), 161 deletions(-)
+ 14 files changed, 156 insertions(+), 162 deletions(-)
 ```
 
 ---
@@ -42,6 +44,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+9278c68 docs: roadmap 5.3 chiusa; vincolo delle fonti dentro knowledge/ nel catalogo (V-1/V-2 bot #228)
+2c5186c docs(fine-task): handoff aggiornato con la verifica esterna #228
 abbc82e docs(lavoro_parallelo): le cartelle non assegnate si chiedono all'operatore (V-4 verifica esterna #228)
 3b95676 docs(fine-task): handoff con il diff completo
 f4f730e docs(fine-task): report e handoff — knowledge/ alla firma; regole del lavoro in parallelo
@@ -120,7 +124,7 @@ pytest `tests/`: `1529 passed in 182.37s (0:03:02)` (+6 gate).
 
 ## §6 STATO CI
 
-- `3b95676`: handoff-check success; verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/228#issuecomment-6300729328)), nessuna ALTA/MEDIA; V-4 (cartelle non assegnate in lavoro_parallelo.md) corretta nel commit successivo.
+- `3b95676`: handoff-check success; verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/228#issuecomment-6300729328)), nessuna ALTA/MEDIA; V-4 (cartelle non assegnate in lavoro_parallelo.md) corretta nel commit successivo. Bot su 3b95676 (verifica interrotta per cambio di testa) APPROVATO CON RISERVE: V-1 roadmap 5.3 da segnare chiusa e V-2 fonti fuori da knowledge/ — corrette (roadmap e vincolo nel catalogo).
 - Commit di questo handoff: run non ancora disponibile. §2/§3 non possono contenere il commit dell'handoff stesso.
 
 ## §7 RISERVE APERTE
