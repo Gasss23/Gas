@@ -329,9 +329,9 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 - Il documento del cancello si contraddice in tre punti con il codice di oggi: da riallineare.
 
 ### 5.3 Giro notturno e scritture
-- ✅ **Catalogo delle fonti di studio alla firma** (20 ottobre, PR #228): ogni scrittura in `knowledge/` (catalogo e file delle fonti) chiede la firma. Vincolo: le fonti di tipo file devono stare dentro `knowledge/`, altrimenti restano scrivibili da Gas (nota bot #228; da far rifiutare all'ingest).
+- ✅ **Catalogo delle fonti di studio alla firma** (20 ottobre, PR #228): ogni scrittura in `knowledge/` (catalogo e file delle fonti) chiede la firma. Le fonti di tipo file fuori da `knowledge/` vengono rifiutate dall'ingest (nota bot #228, chiusa).
 - R-223-1 (bassa): la cartella `reports/` è scrivibile da Gas, e quei testi li leggono revisore e bot.
-- R-223-2 (deciso il 19 ottobre): si tiene la lista dei file vietati, decisa insieme a Gas-operatore. In più: ⏳ segnalazione **solo** quando nasce un file nuovo che sembra delicato (chiavi, configurazioni, script); i documenti normali passano in silenzio.
+- R-223-2 (deciso il 19 ottobre): si tiene la lista dei file vietati, decisa insieme a Gas-operatore. In più: ✅ segnalazione **solo** quando nasce un file nuovo che sembra delicato (chiavi, configurazioni, script); i documenti normali passano in silenzio (nel codice dal 20 ottobre, PR dopo #228).
 - R-224-2 (cosmetica): nome del compito con spazio o punto finale.
 - R-251-1 (bassa): nomi alternativi dello stesso file su Windows, che non usiamo.
 - R-222-2: esito dedotto dall'inizio del testo (vedi R7).
