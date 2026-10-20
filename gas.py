@@ -81,6 +81,12 @@ def _sanitize_memory_text(text: str) -> str:
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f]', '', text)
 
 
+def _campo_pin(text: Any) -> str:
+    """Campo del pin su UNA riga (verifica esterna #222 V-2): un a-capo nel nome o
+    nella prossima azione di un lead non deve creare una riga finta nel blocco."""
+    return " ".join(_sanitize_memory_text(str(text)).split())
+
+
 _GAS_SYSTEM_PROMPT_BASE = (
     "REGOLE TASSATIVE:\n"
     "- Hai 11 tool nativi: read_file, elenca_cartella, leggi_righe, cerca_testo, conta_file, "
@@ -2530,10 +2536,14 @@ class GasKernel:
         imposta_stato_contatto in un turno contaminato. Mai eccezioni (§9)."""
         try:
             args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
-            chiave = args.get("chiave") if isinstance(args, dict) else None
-            if self.memory is not None and isinstance(chiave, str) and chiave.strip():
-                if not self.memory.marca_contatto_non_fidato(chiave):
-                    logging.warning("[GATE] contatto non segnato come non fidato")
+            # Stessa coercizione dell'esecuzione (_salva_contatto/_imposta_stato_contatto):
+            # una chiave non stringa (es. intera) salva il contatto, quindi va segnata.
+            chiave = str(args.get("chiave") or "").strip() if isinstance(args, dict) else ""
+            if self.memory is None or not chiave:
+                logging.warning("[GATE] contatto non segnato come non fidato: "
+                                "memoria assente o chiave vuota")
+            elif not self.memory.marca_contatto_non_fidato(chiave):
+                logging.warning("[GATE] contatto non segnato come non fidato")
         except Exception as e:
             logging.warning("[GATE] marca_contatto_non_fidato fallita: %s", e)
 
@@ -2917,10 +2927,10 @@ class GasKernel:
             if attivi:
                 righe.append("## Lead attivi")
                 for c in attivi:
-                    nome = _sanitize_memory_text(c.get("nome") or c.get("chiave") or "?")
-                    pa = (f" → prossima: {_sanitize_memory_text(c['prossima_azione'])}"
+                    nome = _campo_pin(c.get("nome") or c.get("chiave") or "?")
+                    pa = (f" → prossima: {_campo_pin(c['prossima_azione'])}"
                           if c.get("prossima_azione") else "")
-                    ult = (f" (ultimo: {_sanitize_memory_text(str(c['ultimo_contatto'])[:10])})"
+                    ult = (f" (ultimo: {_campo_pin(str(c['ultimo_contatto'])[:10])})"
                            if c.get("ultimo_contatto") else "")
                     righe.append(f"- {nome} [{c.get('stato')}]{pa}{ult}")
             # eventi recenti, escluso il rumore di lettura. Si scandisce una
@@ -2944,8 +2954,8 @@ class GasKernel:
                         desc = _DIARIO_NON_FIDATO + "(dettagli omessi: azione dopo una lettura)"
                         tipo = "azione"
                     righe.append(
-                        f"- [{_sanitize_memory_text(tipo)}] "
-                        f"{_sanitize_memory_text(desc)}"
+                        f"- [{_campo_pin(tipo)}] "
+                        f"{_campo_pin(desc)}"
                     )
             if not righe:
                 return ""
