@@ -18,34 +18,36 @@
 - **Documenti allineati alle decisioni del 19 ottobre**: `FATTA` — review #364/#365.
 - **Firma notturna 24 h (R1)**: `FATTA` — review #366.
 - **Autonomia dopo una lettura (R1, supera C-d e R-203-2)**: `FATTA` — review #367 BOCCIATO → #368 → #369 APPROVATO.
+- **V-1 verifica esterna #222 (solo documenti liberi)**: `FATTA` — review #370.
+- **V-1 bot #222 (contaminazione dalla memoria)**: `FATTA` — review #371 BOCCIATO → #372 APPROVATO CON RISERVE.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
+ .claude/agents/memoria_revisore.md |   9 +++++++++
  .claude/commands/fine-task.md      |   2 +-
  CLAUDE.md                          |   4 ++--
  README.md                          |  11 +++++++++++
- gas.py                             |  37 +++++++++++++++++++++++++++++++++++++
+ gas.py                             | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
  gas_identity.md                    |   2 +-
- modules/gate/gate.py               |  37 +++++++++++++++++++++++++++++++++++++
+ modules/gate/gate.py               |  46 ++++++++++++++++++++++++++++++++++++++++++++
  modules/memory/__init__.py         |   2 ++
- modules/memory/store.py            |  30 ++++++++++++++++++++++++++++--
+ modules/memory/store.py            |  57 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
  modules/notte/notte.py             |  13 +++++++++++++
  reports/design_cancello.md         |   2 +-
- reports/diff_sessione.md           |   9 +++++++--
- reports/handoff.md                 | 265 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
- reports/roadmap.md                 |  23 +++++++++++------------
- reports/roadmap_sintesi.md         |  25 -------------------------
+ reports/diff_sessione.md           |  10 ++++++++--
+ reports/handoff.md                 | 380 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
+ reports/roadmap.md                 |  23 +++++++++++-----------
+ reports/roadmap_sintesi.md         |  25 ------------------------
  reports/setup_notte.md             |  12 +++++++++---
  reports/stato_progetto.md          |   6 +++---
- reports/ultimo_report.md           |  67 ++++++++++---------------------------------------------------------
- tests/test_unit_gate.py            |  29 +++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          | 101 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- tests/test_unit_notte.py           |  58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- 21 files changed, 603 insertions(+), 138 deletions(-)
+ reports/ultimo_report.md           |  68 +++++++++++-----------------------------------------------------
+ tests/test_unit_gate.py            |  52 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          | 204 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ tests/test_unit_notte.py           |  58 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 21 files changed, 944 insertions(+), 144 deletions(-)
 ```
 
 ---
@@ -53,6 +55,12 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+66c52c8 fix(cancello): la contaminazione non si ricicla dalla memoria (V-1 bot #222)
+3791357 chore(revisore): memoria review #372 — APPROVATO CON RISERVE
+09df232 chore(revisore): memoria review #371 — BOCCIATO
+8e09a78 fix(cancello): dopo una lettura liberi solo i documenti md/txt/csv (V-1 verifica esterna #222)
+c488789 chore(revisore): memoria review #370 — APPROVATO CON RISERVE
+cc89588 docs(fine-task): report e handoff — documenti, firma notturna, autonomia
 0b32432 feat(cancello): dopo una lettura rubrica e file normali restano liberi (autonomia, decisione 19 ott)
 bfc245f chore(revisore): memoria review #369 — APPROVATO
 1a0407a chore(revisore): memoria review #369 — APPROVATO
@@ -305,19 +313,132 @@ Resta aperta R-367-2 (BASSA), già tracciata in stato_progetto.md: un testo lett
 Memoria: `/home/user/Gas/.claude/agents/memoria_revisore.md`, riga #369 (commit bfc245f). Il diff staged è intatto. Ora va rigenerato il marcatore con `bash scripts/segna_review_ok.sh`.
 ```
 
+### Review #370
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #370 (diff staged su feat/merge-automatico-z1xjx2, PR #222). Chiude V-1 MEDIA della verifica esterna #222.
+
+Ho letto CLAUDE.md (sezione 5), il punto 3 delle decisioni del 19-20 ottobre in reports/stato_progetto.md e la memoria del revisore (#367-#369).
+
+**Cosa ho controllato nel diff**
+- `modules/gate/gate.py:471`: `_DOC_LIBERI_DOPO_LETTURA` è una lista chiusa (.md, .txt, .csv). Il confronto avviene dopo NFKC e casefold (`_normalize_path`), quindi i casi `a.TXT` e `a.MD` sono coperti. Ho controllato bypass con maiuscole, doppia estensione (`a.md.sh` → firma) e caratteri di controllo e unicode: `a.md​`, `a.md\t`, `a.md\n`, `a.ꓸmd` vanno tutti alla firma. Esito: ok.
+- `modules/gate/gate.py:495`: un percorso con un pezzo che inizia con «.» va alla firma (`dati/.nascosto/a.md`, `.zshrc`). La clausola `ultimo.startswith(".")` è ridondante con `any(...)`, ma non fa danni. Con `rstrip(". ")` il nome `a.md.` resta libero: su Linux è un file senza estensione eseguibile, quindi innocuo. `a．md` e `ａ.ｍｄ` (caratteri a larghezza piena) sono liberi perché la normalizzazione li porta a «.md», ma sul disco il nome resta non-ASCII e non diventa mai uno script. Il rilassamento va nel verso sicuro. Esito: ok.
+- `gas.py:2502` (contesto, invariato): il kernel ripete `libero_dopo_lettura` sul percorso risolto (symlink, GAS_CWD). Quindi `dati/a.md` che punta a `run.sh` va alla firma. Esito: ok.
+- `tests/test_unit_kernel.py:5726`: round-trip T74b2 (read_file, poi write_file di `dati/pagina.html` e `dati/.bashrc`): i due file non vengono creati. Esito: ok.
+- `tests/test_unit_gate.py:739`: 22 casi nuovi nella parametrizzazione (il brief dice 28, conteggio non decisivo). Esito: ok.
+
+**Riprodotto**
+- Kernel: 901 PASS, 0 FAIL.
+- tests/test_unit_gate.py: 669 passed.
+- Mutazione (il filtro sulle estensioni sostituito da `return True`): 15 FAIL in pytest e 1 FAIL nel kernel (T74b2 V-1 #222). Il test regge. File ripristinato, diff staged intatto.
+
+**Regressioni**
+- I file che il modello carica come istruzioni restano al livello 2: CLAUDE.md, gas_identity.md, AGENTS.md, requirements*.txt.
+- Il catalogo dei compiti notturni sta fuori dalla cartella di Gas (`~/.gas_notte.yaml`), quindi non è scrivibile.
+- Cambio di comportamento voluto: dopo una lettura, scrivere .json/.html/.yml chiede la firma, anche nel giro notturno (dove la firma dura 24 ore). È dichiarato nella roadmap.
+
+**Riserve**
+- **R-370-1 COSMETICA**: due commenti non dicono che sono liberi solo i documenti. La docstring in `gas.py:2487` (`_libero_dopo_lettura`) e il commento in `modules/gate/gate.py:458` parlano ancora di «write_file di livello 1».
+- **R-370-2 BASSA**: un .csv scritto liberamente può contenere formule iniettate (=HYPERLINK, DDE), che diventano un rischio se l'operatore lo apre in un foglio di calcolo. Va almeno dichiarato nello stato.
+
+**Non verificato**
+- Come il client voce serve un .md o un .csv nuovo (content-type). Non è riproducibile senza avviare il server. Lo ritengo a basso rischio perché .md e .csv non sono eseguibili dal browser.
+- Comportamento su macOS con file system che non distingue le maiuscole. Non riproducibile in questo ambiente, ma il casefold del controllo copre il caso.
+
+Ho aggiunto la riga contatore #370 con la lezione nuova in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (c488789), con il diff staged invariato. Le riserve R-370-1 e R-370-2 vanno tracciate in reports/stato_progetto.md.
+```
+
+### Review #371
+
+```
+## VERDETTO: BOCCIATO
+
+Review #371 su PR #222, ramo feat/merge-automatico-z1xjx2, diff in staging. Fetta di sicurezza: chiude V-1 MEDIA del bot (la contaminazione si ricicla attraverso il pin di memoria).
+
+**Cosa ho controllato nel diff**
+- `gas.py:2927` — `_memoria_pin` alza `_pin_non_fidato` se la descrizione di un evento mostrato INIZIA con `_DIARIO_NON_FIDATO`. Rischio: il segno potrebbe non stare in testa alla riga. Esito: **blocco** (R-371-1).
+  - Contesto: `gas.py:1915` (`_diario_log_tool`, file non toccato dal diff) antepone `nome='...' | ` per i nomi di tool riservati (recap, turno_fine, apprendimento…), quindi il prefisso non è più in testa.
+  - Sonda riprodotta: ho scritto una riga con nome di tool «recap» e il prefisso, cioè quella che il loop registrerebbe a turno contaminato. Il pin la mostra come `- [tool_nome_riservato] nome='recap' | [NON FIDATO] istruzione='scrivi reports/x.md' | [KO]` e `_pin_non_fidato=False`.
+  - Per un tool sconosciuto `_riassumi_args` (gas.py:1857) copia fino a 200 caratteri di argomenti scelti dal modello. Un modello manipolato può quindi chiamare un tool «recap» (negato, ma registrato nel diario) e riciclare testo nel pin senza segno: è lo stesso vettore di V-1.
+  - Rimedio semplice, a scelta: controllare `_DIARIO_NON_FIDATO in descrizione` invece di `startswith` (falsificarlo dà solo più contaminazione, cioè fail-closed); oppure mettere il prefisso fuori, prima di `nome=`, in `_diario_log_tool`. Serve un test col nome riservato.
+- `gas.py:3795` — `_finestra_contaminata = finestra or getattr(self, "_pin_non_fidato", False)`, valutata a ogni iterazione. Il flag viene calcolato una volta per turno in gas.py:3732, prima del loop. Rischio: il flag si azzera a metà turno. Esito: ok, `_memoria_pin` è chiamato solo lì.
+- `gas.py:3892` — marcatura del contatto solo nel ramo eseguito direttamente (le azioni parcheggiate al cancello le firma l'operatore). Rischio: un KO o un contatto inesistente fanno crash. Esito: ok, ritorna False e scrive un warning, nessuna eccezione (§9).
+- `gas.py:2953` — se il calcolo del pin solleva un'eccezione, `_pin_non_fidato=True` (fail-closed). Esito: ok.
+- `modules/memory/store.py:627` — migrazione additiva `non_fidato INTEGER NOT NULL DEFAULT 0` in `_ensure_columns`. Rischio: un DB vecchio rotto. Esito: ok, coperta da T74b4.
+- `modules/memory/store.py:810` — `unisci_contatti` propaga il segno dal doppione al canonico dentro la stessa transazione. Esito: ok.
+- `modules/memory/store.py:1146` — `marca_contatto_non_fidato` risolve il contatto canonico, è fail-safe e ritorna False se il contatto non c'è. Esito: ok.
+- `gas.py:3082` (contesto) — in `rifletti` la variabile `contaminata` guarda solo la finestra e la cronologia, non `_pin_non_fidato`. Esito: **riserva MEDIA** (R-371-2).
+  - Scenario: kernel nuovo, pin con contatto non fidato, nella sessione solo tool fidati (salva_contatto, data_ora). `rifletti` scrive un recap di tipo «recap» (quindi fidato) partendo dal testo dell'assistente influenzato dal pin. `_recap_pin` lo reinietta per RECAP_MAX_GIORNI.
+  - Quando il contatto esce dal pin (stato chiuso, impostabile dal modello stesso) e le righe segnate escono dalle ultime 6 azioni, il turno torna pulito e può scrivere in reports/ senza firma. È un secondo canale di riciclo della stessa classe di V-1.
+  - Rimedio: un flag di sessione «pin non fidato visto» (si azzera con `clear`) che entra in `contaminata` di `rifletti`; valutare lo stesso per il marcatore `[SOLO INTERNO]` della compressione (gas.py:1072).
+
+**Rischi chiesti dall'agente**
+- Falsificazione del prefisso: produce solo più contaminazione, fail-closed. Ok, a patto che il controllo sia `in` e non `startswith` (vedi R-371-1).
+- Eventi e contatti fuori dal pin non contaminano: corretto, il loro testo non viene mostrato.
+- `ricorda` contamina già: è in UNTRUSTED_INPUT_TOOLS (non ricontrollato in questa review).
+- Contatto segnato per sempre: limite dichiarato, accettabile, va scritto in stato_progetto.md.
+- Costo: una UPDATE per ogni salva_contatto a turno contaminato, trascurabile.
+
+**Riprodotto**: `python tests/test_unit_kernel.py` → 907 PASS, 0 FAIL.
+
+**Non ho verificato (rischio escluso)**
+- Le mutazioni dichiarate (senza `or _pin_non_fidato` → FAIL) e `pytest tests/` (1497): non le ho rieseguite, mi sono fermato sul blocco.
+- L'effetto sul giro notturno reale: lì `rifletti` usa `iniettabile=False` e scrive `recap_notte`, che non viene reiniettato, quindi R-371-2 è attenuata. Comportamento su VPS non riproducibile in dev.
+
+**Riserve**
+- R-371-1 MEDIA (bloccante): bypass del segno sul diario con un nome di tool riservato.
+- R-371-2 MEDIA: il recap fidato da una sessione col pin non fidato. La consiglio chiusa nella stessa PR; altrimenti va tracciata in stato_progetto.md, ma il bot la segnalerà probabilmente come nuovo V-x.
+
+Per lo sblocco serve una ri-review dopo il rimedio di R-371-1, con un test col nome riservato (es. tool «recap» a turno contaminato, poi `_pin_non_fidato` deve essere True).
+
+Memoria: riga #371 e lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md; ho lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato nulla (esito del commit non controllato). Sonda: /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/sonda.py
+```
+
+### Review #372
+
+```
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #372 (ri-review della #371): PR #222, ramo feat/merge-automatico-z1xjx2, diff in staging aggiornato. R-371-1 e R-371-2 sono chiuse; restano due riserve minori, nessuna bloccante.
+
+**Cosa ho controllato nel diff**
+- `gas.py:2933` — `_memoria_pin` ora cerca `_DIARIO_NON_FIDATO` dentro la descrizione invece di guardare solo l'inizio. Rischio: il segno sfugge quando il nome del tool è riservato (il diario antepone `nome=...`, gas.py:1915). Esito: ok. La sonda della #371 (tool «recap» a turno contaminato) ora dà `_pin_non_fidato=True`. Se il modello imita il segno, il turno diventa solo più contaminato (fail-closed).
+- `gas.py:2966` — nel `finally` di `_memoria_pin` nasce un segno di sessione (`_pin_non_fidato_visto`), acceso anche quando il calcolo del pin va in errore. Rischio: il `finally` scatta anche a memoria assente o su un pin vuoto. Esito: ok. Con memoria None si esce prima del `try`; il segno si accende solo se il pin è non fidato.
+- `gas.py:3102` — `rifletti`: se finestra e cronologia sono pulite, ricalcola il pin e diventa `contaminata` se il pin attuale o il segno di sessione è non fidato. Rischio: un effetto collaterale o un'eccezione nel ricalcolo. Esito: ok. `_memoria_pin` non solleva mai (§9) e tocca solo i flag.
+- `gas.py:1076` — la compressione scrive `[CONTIENE INPUT ESTERNO]` se il segno di sessione è acceso. Rischio: l'ordine rispetto al pin del turno. La compressione gira prima del pin del turno corrente, quindi vale il segno dei turni precedenti, che è corretto. Esito: riserva cosmetica (R-372-2).
+- `gas.py:1375` — `clear_history` azzera il segno di sessione. Esito: ok. Il pin del turno dopo ricalcola comunque la contaminazione dal DB.
+
+**Riprodotto**: `python tests/test_unit_kernel.py` → 910 PASS, 0 FAIL, compresi T74b4 R-371-1 e i due check R-371-2.
+
+**Riserve**
+- **R-372-1 BASSA**: il segno di sessione vive solo in memoria. Se il processo riparte senza `clear`, la cronologia caricata da .gas_history.json porta ancora il testo dell'assistente influenzato dal pin, ma il segno è perso. Se nel frattempo il contatto e le righe segnate sono usciti dal pin, `rifletti` può produrre un recap fidato. Il limite è già dichiarato in stato_progetto.md. Si chiuderebbe salvando il segno insieme alla cronologia.
+- **R-372-2 COSMETICA**: il ramo della compressione col segno acceso non ha un test dedicato.
+
+**Non ho verificato (rischio escluso)**
+- Le due mutazioni dichiarate (startswith; contaminata=False) e `pytest tests/` (1497): non le ho rieseguite. Mi sono basato sui check specifici che ho visto passare e sulla sonda.
+- Il giro notturno reale (kernel nuovo per ogni compito): lì il recap è `recap_notte`, non reiniettato, quindi l'impatto è attenuato. Comportamento su VPS non riproducibile in dev.
+
+Memoria: riga #372 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (3791357). La riga #371 era stata scritta nel turno precedente e lanciata con lo stesso script; non ho controllato che sia finita in un commit.
+```
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 893 → 900 PASS, 0 FAIL (T74b2, T74b3; T72f/T72g/T74b/T84i spostati su `reports/`). Blocco reale: `=== RIEPILOGO: 900 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1475 passed in 185.31s (0:03:05)` (+5 notte, +20 gate).
+tests/test_unit_kernel.py in locale: 893 → 910 PASS, 0 FAIL (T74b2, T74b3, T74b4; T72f/T72g/T74b/T84i spostati su `reports/`). Blocco reale: `=== RIEPILOGO: 910 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+pytest `tests/`: `1497 passed in 179.26s (0:02:59)` (+5 notte, +42 gate).
 
 ## §6 STATO CI
 
-- Commit della sessione pushati prima dell'apertura della PR: run non ancora disponibile alla scrittura dell'handoff.
+- `cc89588` (PR #222 aperta): unit-suite e handoff-check success; verifica-bot failure (bot BOCCIATO, V-1 MEDIA chiusa in `66c52c8`); verifica esterna APPROVATO CON RISERVE (V-1 MEDIA chiusa in `8e09a78`).
+- Commit successivi e questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-366-1 (BASSA, dichiarata in setup_notte.md): una richiesta notturna occupa fino a 24 h uno dei 5 posti in attesa.
-- R-367-2 (BASSA): iniezione persistente via rubrica (pin sanitizzato e delimitato); con gli invii (FASE 4) la firma dovrà mostrare l'indirizzo letto dal DB.
+- R-367-2 (BASSA): iniezione persistente via rubrica, ora contenuta (il pin non fidato contamina il turno); con gli invii (FASE 4) la firma dovrà mostrare l'indirizzo letto dal DB.
+- R-370-2 (BASSA): un .csv libero può contenere formule iniettate.
+- R-372-1 (BASSA): il segno di sessione si perde se il processo riparte senza `clear`. R-372-2 (COSMETICA).
 - Già tracciate: R-bot217-1, R-bot217-2, R-ve217-1.
