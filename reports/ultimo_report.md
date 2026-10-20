@@ -8,6 +8,7 @@
 ## Esito
 
 - **Fetta 1 — test stt/tts nei test automatici**: `FATTA`. In `.github/workflows/ci.yml` lo step della voice suite lancia anche `tests/test_unit_voice_stt.py` e `tests/test_unit_voice_tts.py` (52 test, Groq ed ElevenLabs finti). Toccare `ci.yml` (fuori dall'area Voce) è stato autorizzato dall'operatore in sessione. Prove: 52/52 con la rete vera bloccata e senza chiavi; 71 passed, 1 deselected le tre suite insieme (il test di raccolta del repo, escluso perché in locale mancava `openai`, passato a parte); 72 in un solo processo li ha ottenuti il revisore #384 e la CI li conferma (step verde).
+- Bot #229 e verifica esterna #229: APPROVATO CON RISERVE, nessun finding ALTA/MEDIA; corretti i numeri della voice suite (20 → 72, non 24 → 72).
 - Review #384 (chat Voce): APPROVATO CON RISERVE — R-384-1 BASSA (urllib verso 127.0.0.1 segue `http_proxy`), R-384-2 COSMETICA (commento di ci.yml impreciso). Tracciate in `reports/stato_progetto.md`.
 - **Fetta 2 — token a scadenza e limite richieste**: `DEFERITA` — parte dopo il merge della fetta 1 (una PR per fetta).
 - **Fetta 3 — timer due secondi e frase di attesa**: `DEFERITA` — dopo la fetta 2.

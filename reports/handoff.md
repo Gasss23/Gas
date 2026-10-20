@@ -28,10 +28,10 @@
  .claude/agents/memoria_revisore.md |  1 +
  .github/workflows/ci.yml           |  6 ++++--
  reports/diff_sessione.md           | 12 ++++++++----
- reports/handoff.md                 | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ reports/handoff.md                 | 87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
  reports/stato_progetto.md          |  4 +++-
- reports/ultimo_report.md           | 23 +++++++++++++++--------
- 6 files changed, 98 insertions(+), 32 deletions(-)
+ reports/ultimo_report.md           | 24 ++++++++++++++++--------
+ 6 files changed, 102 insertions(+), 32 deletions(-)
 ```
 
 ---
@@ -39,6 +39,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7515eae docs(fine-task): correzioni V-1/V-2 del bot #229 (voice suite 72 test, frase del report)
 c1e2f33 docs(fine-task): report e handoff — voce fetta 1, test stt/tts in CI (chat Voce)
 312a0e9 ci(voce): la voice suite lancia anche i test di trascrizione e sintesi (R8)
 83dd041 chore(revisore): memoria review #384 — APPROVATO CON RISERVE
@@ -92,7 +93,7 @@ Riga contatore scritta in `/home/user/Gas/.claude/agents/memoria_revisore.md` co
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py né ai file di test: cambia solo cosa lancia la CI. Voice suite in CI: 24 → 72 test (server + stt + tts). Riepilogo locale reale (rete bloccata, senza chiavi, `test_collection_dell_intero_repo_non_esplode` escluso perché in locale mancava `openai`; poi installato e passato a parte):
+Nessuna modifica a gas.py né ai file di test: cambia solo cosa lancia la CI. Voice suite in CI: 20 → 72 test (20 server + 28 stt + 24 tts). Riepilogo locale reale (rete bloccata, senza chiavi, `test_collection_dell_intero_repo_non_esplode` escluso perché in locale mancava `openai`; poi installato e passato a parte):
 
 ```
 71 passed, 1 deselected in 17.24s
@@ -103,9 +104,11 @@ Nessuna modifica a gas.py né ai file di test: cambia solo cosa lancia la CI. Vo
 - `83dd041`: nessuna run su questo SHA (pushato insieme a `312a0e9`).
 - `312a0e9`: run CI 39494111201 — unit-suite success; handoff-check failure (atteso: l'handoff di quel commit era ancora quello della sessione precedente).
 - `c1e2f33`: run CI 39494258815 — unit-suite success (step «Run voice suite» success), handoff-check success. Bot `gas-verificatore`: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca `ci.yml`, macchina del bot).
-- Commit di fine-task con questo handoff (correzioni V-1/V-2 del bot): run non ancora disponibile alla scrittura dell'handoff.
+- `7515eae` (correzioni V-1/V-2 del bot): run non ancora disponibile alla scrittura dell'handoff.
+- Commit di fine-task con questo handoff (correzioni della verifica esterna #229): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-384-1 BASSA, R-384-2 COSMETICA: dettaglio in §4 e in `reports/stato_progetto.md` (riga «Voce — fetta 1»).
 - Bot #229: V-1 BASSA («Voice suite: 24 PASS» vecchio in `stato_progetto.md`) e V-2 COSMETICA (frase «72/72» di `ultimo_report.md` non allineata a §5): CHIUSE in questo commit.
+- Verifica esterna #229 (commento sulla PR): APPROVATO CON RISERVE. V-1 BASSA («24 → 72» in §5, il reale è 20 → 72) e V-2 BASSA (riga «Stato motore» di `stato_progetto.md`): CHIUSE in questo commit. V-3 COSMETICA (conteggi del §2 presi prima del commit di fine-task): limite noto del flusso, come R-bot221-2. V-4 COSMETICA (docstring di `tests/test_unit_gate.py`, fuori area Voce): richiesta alla chat Motore in `ultimo_report.md`.
