@@ -6078,6 +6078,22 @@ for _n74m in (197, 198, 199):  # R-382-2: il taglio cade a 3, 2 e 1 carattere de
     _ok74m.append(_b74m is not None and ("x" * _n74m + "…") in _b74m)
 check("T74b6 V-2 bot #225 / R-382-2: il taglio non spezza una sequenza <U+XXXX>",
       _ok74m == [True, True, True], str(_ok74m))
+# R-383-1: un «<» letterale all'inizio non cancella il resto del valore mostrato
+_t74p = _tgbot_c4b.tronca_visibile("<" + "z" * 250, 200)
+_t74q = _tgbot_c4b.tronca_visibile("mail@x.it<" + "B" * 250, 200)
+check("T74b6 R-383-1 un «<» letterale non nasconde il valore",
+      _t74p == "<" + "z" * 199 + "…" and _t74q.startswith("mail@x.it<BBB") and len(_t74q) == 201,
+      repr(_t74p[:20]) + repr(_t74q[:20]))
+# V-2 verifica esterna #226: avviso firme scadute senza «<U+…» spezzati
+import re as _re74r
+_ok74r = []
+for _n74r in range(110, 121):  # il taglio a 120 cade in ogni punto della sequenza
+    _t74r = _tgbot_c4b.componi_avviso_scadute(
+        [{"id": "y" * 36, "tool_name": "t", "azione_leggibile": "a" * _n74r + "\u202e" * 3}])
+    _riga74r = _t74r.splitlines()[1]
+    _ok74r.append(_re74r.search(r"<(?![^<>]*>)", _riga74r) is None)
+check("T74b6 V-2 VE #226 avviso firme scadute: nessuna sequenza <U+ spezzata",
+      all(_ok74r), str(_ok74r))
 # R-382-1: blocchi lunghi → il messaggio parte comunque (meno blocchi, gli altri contati)
 _k74n = _k74()
 (_k74n.root / "fonte.txt").write_text("x", encoding="utf-8")

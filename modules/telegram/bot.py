@@ -150,6 +150,20 @@ def rendi_visibili(testo: str, a_capo: bool = True) -> str:
     return "".join(out)
 
 
+def tronca_visibile(testo: Any, n: int) -> str:
+    """rendi_visibili su una riga e taglio a `n` caratteri con «…», senza spezzare
+    una sequenza «<U+XXXX>» (al massimo 10 caratteri): il «<» si cerca SOLO in coda
+    (R-383-1: un «<» letterale prima non deve cancellare il resto del valore)."""
+    t = rendi_visibili(str(testo), a_capo=False)
+    if len(t) <= n:
+        return t
+    t = t[:n]
+    k = t.rfind("<", max(0, len(t) - 10))
+    if k != -1 and ">" not in t[k:]:
+        t = t[:k]
+    return t + "…"
+
+
 def _blocco_modello(testo: str) -> str:
     """Testo del modello rientrato con "│ " su ogni riga: non può imitare le
     intestazioni del messaggio (review #262), invisibili resi visibili."""
@@ -286,8 +300,8 @@ def componi_avviso_scadute(righe: List[Dict[str, Any]]) -> str:
     testo = [f"⌛ {len(righe)} richiesta/e di firma scaduta/e senza risposta: "
              "NON eseguite. Se servono, Gas deve richiederle."]
     for r in righe[:MAX_SCADUTE_ELENCATE]:
-        azione = rendi_visibili(str(r.get("azione_leggibile") or ""), a_capo=False)[:120]
-        tool = rendi_visibili(str(r.get("tool_name") or ""), a_capo=False)[:60]
+        azione = tronca_visibile(r.get("azione_leggibile") or "", 120)
+        tool = tronca_visibile(r.get("tool_name") or "", 60)
         testo.append(f"- {azione} ({tool}) — ID {str(r.get('id') or '')[:8]}")
     if len(righe) > MAX_SCADUTE_ELENCATE:
         testo.append(f"… e altre {len(righe) - MAX_SCADUTE_ELENCATE}.")
