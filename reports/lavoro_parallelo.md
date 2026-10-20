@@ -10,6 +10,8 @@
 | **Motore** | `gas.py`, `modules/gate/`, `modules/memory/`, `modules/notte/`, `modules/telegram/`, `brains/`, i loro test | `modules/voice/`, `clients/voice/`, `tests/test_unit_voice_*` |
 | **Voce** | `modules/voice/`, `clients/voice/`, `tests/test_unit_voice_*`, `reports/briefing_architettura_voce.md` | `gas.py`, `modules/gate/`, `modules/memory/`, `modules/notte/`, `modules/telegram/`, `brains/` |
 
+**Tutto il resto** (`tools/`, `scripts/`, `.claude/`, `knowledge/`, `CLAUDE.md`, CI): nessuna delle due chat lo tocca senza chiedere prima all'operatore, che lo assegna a una sola chat.
+
 Se alla chat Voce serve una modifica nella zona del Motore (per esempio un aggancio in `gas.py` o nel cancello per le firme a voce), **non la fa**: la scrive in fondo al suo `reports/ultimo_report.md` sotto «RICHIESTE ALLA CHAT MOTORE», e l'operatore la passa all'altra chat.
 
 ## Regole comuni
