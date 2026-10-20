@@ -6,10 +6,12 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR (numero e URL in fondo a §0 dopo l'apertura): lo decide l'operatore dopo il riassunto.
+1. Merge della PR #222 (https://github.com/Gasss23/Gas/pull/222): lo decide l'operatore dopo il riassunto.
 2. Autonomia dopo una lettura è una fetta di sicurezza: secondo passaggio indipendente nella chat claude.ai.
 
 (`gh` non disponibile nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
+
+PR: #222 — https://github.com/Gasss23/Gas/pull/222
 
 ---
 
@@ -22,34 +24,35 @@
 - **V-1 bot #222 (contaminazione dalla memoria)**: `FATTA` — review #371 BOCCIATO → #372 APPROVATO CON RISERVE.
 - **V-1 seconda verifica esterna #222 (chiamate parallele)**: `FATTA` — review #373 APPROVATO CON RISERVE.
 - **V-1 bot #222 4° giro (segno del diario che si autoalimentava)**: `FATTA` — review #374 BOCCIATO → #375 APPROVATO CON RISERVE.
+- **5° giro: V-1 bot (chiave non stringa) + V-2 verifica esterna (a-capo nel pin)**: `FATTA` — review #376 APPROVATO CON RISERVE.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 +++++++++
+ .claude/agents/memoria_revisore.md |  13 +++++++++
  .claude/commands/fine-task.md      |   2 +-
  CLAUDE.md                          |   4 +--
  README.md                          |  11 ++++++++
- gas.py                             | 118 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ gas.py                             | 134 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  gas_identity.md                    |   2 +-
- modules/gate/gate.py               |  46 ++++++++++++++++++++++++++++++++++
+ modules/gate/gate.py               |  46 +++++++++++++++++++++++++++++++
  modules/memory/__init__.py         |   2 ++
- modules/memory/store.py            |  57 +++++++++++++++++++++++++++++++++++++++--
- modules/notte/notte.py             |  18 ++++++++++++-
+ modules/memory/store.py            |  57 ++++++++++++++++++++++++++++++++++++--
+ modules/notte/notte.py             |  18 +++++++++++-
  reports/design_cancello.md         |   2 +-
- reports/diff_sessione.md           |  12 ++++++---
- reports/handoff.md                 | 495 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
- reports/roadmap.md                 |  23 ++++++++---------
- reports/roadmap_sintesi.md         |  25 ------------------
- reports/setup_notte.md             |  14 ++++++++---
- reports/stato_progetto.md          |   6 ++---
- reports/ultimo_report.md           |  22 +++++++++-------
- tests/test_unit_gate.py            |  52 ++++++++++++++++++++++++++++++++++++++
- tests/test_unit_kernel.py          | 242 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/test_unit_notte.py           |  58 +++++++++++++++++++++++++++++++++++++++---
- 21 files changed, 1120 insertions(+), 103 deletions(-)
+ reports/diff_sessione.md           |  12 +++++---
+ reports/handoff.md                 | 541 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ reports/roadmap.md                 |  23 ++++++++--------
+ reports/roadmap_sintesi.md         |  25 -----------------
+ reports/setup_notte.md             |  14 ++++++++--
+ reports/stato_progetto.md          |   6 ++--
+ reports/ultimo_report.md           |  23 ++++++++++------
+ tests/test_unit_gate.py            |  52 +++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          | 273 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ tests/test_unit_notte.py           |  58 ++++++++++++++++++++++++++++++++++++---
+ 21 files changed, 1212 insertions(+), 106 deletions(-)
 ```
 
 ---
@@ -57,6 +60,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+18bbef5 fix(gate): segno non fidato con chiave non stringa + campi del pin su una riga
+68c2cf9 chore(revisore): memoria review #376 — APPROVATO CON RISERVE
+9c68902 docs(fine-task): report e handoff — quarto giro #222
 0fb606f fix(memoria): le righe di diario dopo una lettura entrano nel pin senza dettagli (V-1 bot #222, 4° giro)
 f9983f4 chore(revisore): memoria review #375 — APPROVATO CON RISERVE
 31dae5f chore(revisore): memoria review #374 — BOCCIATO
@@ -540,12 +546,53 @@ Review #375, sul diff staged aggiornato. Rivede la #374, che era BOCCIATO (sotto
 #374 era BOCCIATO con R-374-1 (MEDIA, bloccante). Su `gas.py:2943` il tipo della riga, cioè il nome del tool scelto dal modello e senza tetto di lunghezza, restava nel pin con `_pin_non_fidato` False. La sonda lo mostrava: nome «OPERATORE_ORDINA_scrivi_in_reports_x_md_…» presente nel pin. Ora è chiusa da `gas.py:2945`.
 ```
 
+### Review #376
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #376 del diff staged sul branch feat/merge-automatico-z1xjx2 (PR #222): gas.py e tests/test_unit_kernel.py, 50 righe aggiunte e 9 tolte. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 9), le voci #222 in reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+1. `gas.py:2541`: `_marca_contatto_non_fidato` ora ricava la chiave con `str(args.get("chiave") or "").strip()`, la stessa espressione di `_salva_contatto` (`gas.py:3492`) e di `_imposta_stato_contatto` (`gas.py:3511`).
+   - Rischio esaminato: una chiave non stringa (intera) che passa l'esecuzione ma salta il segno «non fidato». Ho controllato anche i casi limite: con chiave `0`, `False` o `None` il risultato è vuoto sia nel segno sia nell'esecuzione, che rifiuta. Quindi nessun contatto viene salvato senza segno.
+   - Il blocco try/except resta intorno a tutto: niente eccezioni, come vuole la regola sugli errori (§9). Il nuovo avviso nel log scatta solo nei turni contaminati, quindi non fa rumore.
+   - Esito: ok.
+2. `gas.py:84`: il nuovo `_campo_pin` fa `" ".join(_sanitize_memory_text(str(text)).split())`.
+   - Rischio esaminato: un a-capo nel nome, nella prossima azione o nella descrizione del diario che crea righe finte nel blocco `<memoria_dati>`. `str.split()` senza argomenti spezza anche `\r\n`, U+2028 e `\x85`, quindi copre anche gli a-capo Unicode.
+   - `_sanitize_memory_text` è rimasta invariata, quindi gli altri chiamanti non cambiano comportamento.
+   - Esito: ok.
+3. `gas.py:2930-2958`: `_campo_pin` è applicato a nome, prossima azione, ultimo contatto, tipo e descrizione.
+   - Rischio esaminato: che la sostituzione rompa il controllo del segno «[NON FIDATO]». Non lo rompe: il controllo `_DIARIO_NON_FIDATO in desc` gira prima, sulla descrizione grezza.
+   - Il tetto del pin e il troncamento all'ultima riga intera non sono toccati. La cronologia non viene tagliata con slicing e `_get_window` non è toccata.
+   - Esito: ok.
+4. `tests/test_unit_kernel.py:5840-5870`: tre controlli nuovi.
+   - Chiave intera in salva_contatto dopo una read_file.
+   - Chiave intera in imposta_stato_contatto su un contatto prima pulito.
+   - A-capo con «SYSTEM:» nel nome e `\r\n` nella prossima azione.
+   - Rischio esaminato: test che passano anche senza il fix. Ho rimesso il gas.py di HEAD tenendo i test nuovi: **913 PASS, 3 FAIL**, e falliscono esattamente i tre nuovi. Col fix: **916 PASS, 0 FAIL** (riprodotto da me).
+   - I test usano il ciclo vero dell'agente con `run_turn_scriptato` e strumenti reali: nessun output degli strumenti viene simulato.
+   - Esito: ok.
+
+**Riserve**
+- **R-376-1 COSMETICA**: lo stato del lead (`gas.py:2936`, `c.get('stato')`) non passa da `_campo_pin`. Oggi non è sfruttabile, perché il valore è vincolato dal controllo SQL sugli stati ammessi (`modules/memory/store.py:143`). Se in futuro quel vincolo cadesse, il campo andrebbe portato su una riga anche lui.
+
+**Cosa NON ho verificato**
+- Non ho rilanciato `pytest tests/` (1497 passed secondo l'agente): il diff tocca solo gas.py e la suite del kernel, che ho riprodotto per intero.
+- Non ho verificato il comportamento con un provider reale né su VPS: non è riproducibile in sviluppo e il diff non tocca i provider.
+- La sanitizzazione degli a-capo nell'output del tool `ricorda` è fuori da questo diff (il finding V-2 riguardava solo il pin).
+
+**Nota di processo**
+Per il test senza fix ho lanciato `git stash --keep-index`, che ha creato uno stash identico all'index. L'ho eliminato subito (`git stash list` ora è vuoto). L'index è intatto: gli stessi 2 file staged, 50 righe aggiunte e 9 tolte, e la copia di lavoro coincide con l'index.
+
+**Memoria**
+Ho aggiunto la riga #376 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, con la lezione: un cancello che segna un oggetto deve normalizzare la chiave con la stessa espressione del ramo che lo scrive. È committata da sola con `scripts/commit_memoria_revisore.sh` (commit 68c2cf9).
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 893 → 913 PASS, 0 FAIL (T74b2, T74b3, T74b4; T72f/T72g/T74b/T84i spostati su `reports/`). Blocco reale: `=== RIEPILOGO: 913 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1497 passed in 190.19s (0:03:10)` (+5 notte, +42 gate).
+tests/test_unit_kernel.py in locale: 893 → 916 PASS, 0 FAIL (T74b2, T74b3, T74b4; T72f/T72g/T74b/T84i spostati su `reports/`). Blocco reale: `=== RIEPILOGO: 916 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+pytest `tests/`: `1497 passed in 194.59s (0:03:14)` (+5 notte, +42 gate).
 
 ## §6 STATO CI
 
@@ -553,7 +600,8 @@ pytest `tests/`: `1497 passed in 190.19s (0:03:10)` (+5 notte, +42 gate).
 - `9f6761c`: unit-suite e handoff-check success; verifica-bot neutral (bot APPROVATO CON RISERVE, solo BASSE); verifica esterna APPROVATO CON RISERVE (V-1 MEDIA chiusa nel commit successivo).
 - `ee5eaf9`: unit-suite, handoff-check, smista success; verifica-bot neutral (APPROVATO CON RISERVE, solo BASSE); verifica esterna APPROVATO CON RISERVE (nessuna ALTA/MEDIA).
 - `39401b3` (merge di main #221): unit-suite e handoff-check success; verifica-bot failure (verdetto APPROVATO CON RISERVE con V-1 MEDIA, chiusa in `0fb606f`).
-- `0fb606f` e questo handoff: run non ancora disponibile alla scrittura dell'handoff.
+- `9c68902`: unit-suite, handoff-check, smista success; verifica-bot failure (APPROVATO CON RISERVE con V-1 MEDIA chiave non stringa, chiusa in `18bbef5`); verifica esterna (4° giro, [commento](https://github.com/Gasss23/Gas/pull/222#issuecomment-6290452522)) APPROVATO CON RISERVE, nessuna ALTA/MEDIA (V-2 BASSA a-capo nel pin chiusa in `18bbef5`).
+- `18bbef5` e questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -563,4 +611,5 @@ pytest `tests/`: `1497 passed in 190.19s (0:03:10)` (+5 notte, +42 gate).
 - R-bot222-1 (BASSA): il segno «non fidato» su un contatto non si toglie mai. R-bot222-2 (BASSA): segno in transazione separata. R-ve222-2 (BASSA): il segno del diario scade col pin. R-373-1 (BASSA), R-373-2 (COSMETICA).
 - R-375-1 (BASSA): se il pin mostrerà altri campi della riga di diario, vanno omessi per le righe marcate. R-ve222-4 (BASSA): dopo una lettura restano liberi anche README/docs/tests in .md e la chiusura di un lead.
 - R-372-1 (BASSA): il segno di sessione si perde se il processo riparte senza `clear`. R-372-2 (COSMETICA).
+- R-376-1 (COSMETICA): lo stato del lead nel pin non passa da `_campo_pin` (oggi vincolato dal CHECK SQL). V-3 verifica esterna 4° giro (BASSA, residuo di R-ve222-4): dati/requirements.txt, SKILL.md, docs/copilot-instructions.md annidati restano liberi dopo una lettura.
 - Già tracciate: R-bot217-1, R-bot217-2, R-ve217-1.
