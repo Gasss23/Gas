@@ -27,11 +27,11 @@
 ```
  .claude/agents/memoria_revisore.md |   2 ++
  .github/workflows/ci.yml           |   6 ++++--
- reports/diff_sessione.md           |  18 +++++++++---------
- reports/handoff.md                 | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  34 ++++++++++++++++++++++++++--------
- 6 files changed, 151 insertions(+), 101 deletions(-)
+ reports/diff_sessione.md           |  19 ++++++++++---------
+ reports/handoff.md                 | 189 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   6 ++++--
+ reports/ultimo_report.md           |  35 +++++++++++++++++++++++++++--------
+ 6 files changed, 156 insertions(+), 101 deletions(-)
 ```
 
 ---
@@ -39,6 +39,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+cf64653 docs(fine-task): handoff e report — merge di main nella PR #229, review #388
 5b90d69 Merge origin/main (#227, #228) in claude/peaceful-lovelace-0w2b7q
 1aa2921 docs(fine-task): correzioni della verifica esterna #229 (voice suite 20 → 72)
 7515eae docs(fine-task): correzioni V-1/V-2 del bot #229 (voice suite 72 test, frase del report)
@@ -147,7 +148,8 @@ Nessuna modifica a gas.py né ai file di test: cambia solo cosa lancia la CI. Vo
 - `7515eae` (correzioni V-1/V-2 del bot): run non ancora disponibile alla scrittura dell'handoff.
 - `1aa2921` (correzioni della verifica esterna #229): run CI 39495199446 — unit-suite success, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, nessuna ALTA/MEDIA). Merge rifiutato da GitHub per conflitto con main (#227/#228 mergiate nel frattempo).
 - `5b90d69` (merge di origin/main, review #388): run non ancora disponibile alla scrittura dell'handoff.
-- Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
+- `cf64653` (fine-task del merge): bot `gas-verificatore` BOCCIATO (V-1 MEDIA: disambiguazione e R-388-1/2 dichiarate ma assenti da `stato_progetto.md`; V-2 BASSA etichetta in `ultimo_report.md`; V-3 COSMETICA §2 — non riprodotta, il §2 elenca 6 file). V-1 e V-2 corrette nel commit successivo.
+- Commit di correzione con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

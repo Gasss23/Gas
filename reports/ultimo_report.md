@@ -3,7 +3,7 @@
 ## DECISIONI UMANE RICHIESTE
 
 1. Ok al merge della PR #229 (https://github.com/Gasss23/Gas/pull/229): tocca `ci.yml`, quindi `verifica-bot` darà neutral e il merge lo decidi tu.
-2. Etichetta `verifica` sulla PR #229 (l'agente non ha `gh` autenticato in questa sessione cloud).
+2. Etichetta `verifica` sulla PR #229: presente (messa dall'agente con lo strumento GitHub della sessione).
 
 ## Esito
 
@@ -29,4 +29,5 @@
 - **Merge di origin/main (#227, #228) nel ramo**: `FATTA` — commit `5b90d69`; conflitti solo nei log di sessione (tenuti quelli della PR) e in `memoria_revisore.md` (voci di main #384–#387 + voce «#384 (chat Voce)»). Review #388 APPROVATO CON RISERVE (R-388-1 BASSA, R-388-2 COSMETICA), voce e ingest 77 passed sull'albero fuso.
 - **Collisione #384 / R-384-1 tra chat Motore e chat Voce**: `FATTA` la disambiguazione in `reports/stato_progetto.md`; `DEFERITA` l'estensione della regola 4 di `reports/lavoro_parallelo.md` agli id dei finding (decisione/fetta a parte).
 - **Merge della PR #229**: deciso dall'operatore in chat («ok merge 229»); merge automatico attivato, parte a check verdi.
+- **Bot #229 su `cf64653`: BOCCIATO** (V-1 MEDIA): i report dicevano fatta la disambiguazione e registrate R-388-1/2 in `stato_progetto.md`, ma la modifica non era mai stata scritta (il comando che la conteneva era stato fermato dal gate di review e non era stato rieseguito). CORRETTO nel commit successivo: suffissi «chat Motore»/«chat Voce» e voci R-388-1/R-388-2 ora in `reports/stato_progetto.md`. V-2 BASSA (etichetta) CORRETTA qui sopra. V-3 COSMETICA (riga di `memoria_revisore.md` mancante nel §2): non riprodotta, il §2 elenca 6 file compresa quella riga.
 
