@@ -14,7 +14,9 @@ esterni, modificare il codice, invii) vengono parcheggiate e chieste in
 firma su Telegram. Le richieste nate di notte scadono dopo 24 ore (dal 2026-10-20;
 `GAS_APPROVAL_TIMEOUT_NOTTE_SECS` nel `.env` per cambiarlo), quelle di giorno dopo 30
 minuti (`GAS_APPROVAL_TIMEOUT_SECS`). Per eseguire un'azione firmata deve essere acceso
-il bot (`python3 gas.py telegram`). Gas può LEGGERE il proprio motore; modificarlo (gas.py, brains/,
+il bot (`python3 gas.py telegram`). Da sapere: le richieste in attesa sono al massimo 5
+(`GAS_APPROVAL_MAX_PENDING`); una richiesta notturna occupa un posto fino a 24 ore, quindi
+se non la decidi può bloccare le richieste nuove del giorno. Gas può LEGGERE il proprio motore; modificarlo (gas.py, brains/,
 modules/, script, config) solo con la tua firma su Telegram (diff reale + pro e contro,
 dal 2026-10-11); alcuni file mai (.env, .git, .claude, modules/gate, memoria). Il catalogo
 sta fuori dalla sua cartella e non lo tocca. Non ha comandi di sistema né shell (dal
