@@ -28,10 +28,10 @@
  .claude/agents/memoria_revisore.md |  1 +
  .github/workflows/ci.yml           |  6 ++++--
  reports/diff_sessione.md           | 12 ++++++++----
- reports/handoff.md                 | 73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
- reports/stato_progetto.md          |  2 ++
+ reports/handoff.md                 | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------
+ reports/stato_progetto.md          |  4 +++-
  reports/ultimo_report.md           | 23 +++++++++++++++--------
- 6 files changed, 87 insertions(+), 30 deletions(-)
+ 6 files changed, 98 insertions(+), 32 deletions(-)
 ```
 
 ---
@@ -39,6 +39,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c1e2f33 docs(fine-task): report e handoff — voce fetta 1, test stt/tts in CI (chat Voce)
 312a0e9 ci(voce): la voice suite lancia anche i test di trascrizione e sintesi (R8)
 83dd041 chore(revisore): memoria review #384 — APPROVATO CON RISERVE
 ```
@@ -99,10 +100,12 @@ Nessuna modifica a gas.py né ai file di test: cambia solo cosa lancia la CI. Vo
 
 ## §6 STATO CI
 
-- `83dd041`: nessuna run su questo SHA (pushato insieme a `312a0e9`; il suo albero è incluso in quello testato da `312a0e9`).
-- `312a0e9`: run CI 39494111201 (https://github.com/Gasss23/Gas/actions/runs/39494111201) — in corso alla scrittura dell'handoff; `verifica-bot` 39494131462 skipped (manca l'etichetta `verifica`).
-- Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
+- `83dd041`: nessuna run su questo SHA (pushato insieme a `312a0e9`).
+- `312a0e9`: run CI 39494111201 — unit-suite success; handoff-check failure (atteso: l'handoff di quel commit era ancora quello della sessione precedente).
+- `c1e2f33`: run CI 39494258815 — unit-suite success (step «Run voice suite» success), handoff-check success. Bot `gas-verificatore`: APPROVATO CON RISERVE, check verifica-bot neutral (la PR tocca `ci.yml`, macchina del bot).
+- Commit di fine-task con questo handoff (correzioni V-1/V-2 del bot): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-384-1 BASSA, R-384-2 COSMETICA: dettaglio in §4 e in `reports/stato_progetto.md` (riga «Voce — fetta 1»).
+- Bot #229: V-1 BASSA («Voice suite: 24 PASS» vecchio in `stato_progetto.md`) e V-2 COSMETICA (frase «72/72» di `ultimo_report.md` non allineata a §5): CHIUSE in questo commit.
