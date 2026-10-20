@@ -465,6 +465,10 @@ _LIBERI_DOPO_LETTURA: frozenset[str] = frozenset({
     "salva_contatto", "imposta_stato_contatto", "write_file",
 })
 _FIRMA_DOPO_LETTURA_TOP: tuple[str, ...] = ("reports", "knowledge")
+# V-1 verifica esterna #222 (MEDIA): dopo una lettura sono liberi SOLO i documenti
+# (lista chiusa di estensioni). Script, pagine web, file di avvio (.bashrc, .plist,
+# .service), configurazioni (yml/toml/json) e file nascosti restano alla firma.
+_DOC_LIBERI_DOPO_LETTURA: tuple[str, ...] = (".md", ".txt", ".csv")
 
 
 def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
@@ -485,7 +489,12 @@ def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
             return False
         parts = PurePosixPath(_normalize_path(rel)).parts
         primo = parts[0].strip(". ") if parts else ""
-        return bool(primo) and not primo.startswith(_FIRMA_DOPO_LETTURA_TOP)
+        if not primo or primo.startswith(_FIRMA_DOPO_LETTURA_TOP):
+            return False
+        ultimo = parts[-1]
+        if ultimo.startswith(".") or any(p.startswith(".") for p in parts):
+            return False
+        return ultimo.rstrip(". ").endswith(_DOC_LIBERI_DOPO_LETTURA)
     except Exception:
         return False
 
