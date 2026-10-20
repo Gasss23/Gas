@@ -1128,3 +1128,52 @@ def test_telegram_solo_lezioni_vecchie(monkeypatch, dirs):
                       kernel_factory=lambda r: gas.GasKernel(root_dir=r, carica_storia=False))
     assert rc == 0 and len(inviati) == 1
     assert "Lezioni da approvare: 1 —" in inviati[0] and "di cui" not in inviati[0]
+
+
+@pytest.mark.parametrize("env, attesa", [(None, 86400), ("3600", 3600), ("0", 86400),
+                                         ("abc", 86400)])
+def test_firma_notturna_dura_24_ore(monkeypatch, dirs, env, attesa):
+    """Decisione operatore 2026-10-19 (roadmap R1): una richiesta nata di notte scade
+    dopo 24 ore (GAS_APPROVAL_TIMEOUT_NOTTE_SECS), non dopo i 30 minuti del giorno."""
+    root, fuori = dirs
+    if env is None:
+        monkeypatch.delenv("GAS_APPROVAL_TIMEOUT_NOTTE_SECS", raising=False)
+    else:
+        monkeypatch.setenv("GAS_APPROVAL_TIMEOUT_NOTTE_SECS", env)
+    _telegram_finto(monkeypatch)
+    (root / "in.txt").write_text("x", encoding="utf-8")
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    script = _Script({"p": [[("read_file", json.dumps({"relative_path": "in.txt"}))],
+                            [("write_file", json.dumps({"relative_path": "out.txt",
+                                                        "content": "y"}))],
+                            "fatto"]})
+    _giro(monkeypatch, root, cat, script)
+    k = gas.GasKernel(root_dir=str(root), carica_storia=False)
+    pending = k.memory.get_pending_approvals()
+    assert len(pending) == 1 and not (root / "out.txt").exists()
+    durata = pending[0]["ts_expiry"] - pending[0]["ts_created"]
+    assert abs(durata - attesa) < 1
+    # di giorno (kernel normale) resta il default di 30 minuti
+    assert k.approval_timeout_secs is None
+
+
+def test_scadenza_firma_valori_non_validi(tmp_path, monkeypatch):
+    """timeout_secs non valido (0, negativo, bool, stringa) → default di giorno."""
+    monkeypatch.delenv("GAS_APPROVAL_TIMEOUT_SECS", raising=False)
+    from modules.memory import MemoryStore
+    m = MemoryStore(tmp_path / "m.db")
+    for i, t in enumerate((None, 0, -5, True, "86400")):
+        esito, aid = m.accoda_approvazione("send_email", {"to": f"x{i}@y.z"}, timeout_secs=t)
+        assert esito == "nuova"
+        r = m.get_approval(aid)
+        assert abs((r["ts_expiry"] - r["ts_created"]) - 1800) < 1
+    esito, aid = m.accoda_approvazione("send_email", {"to": "z@y.z"}, timeout_secs=86400,
+                                       max_pending=10)
+    r = m.get_approval(aid)
+    assert abs((r["ts_expiry"] - r["ts_created"]) - 86400) < 1
+
+    class _Rotto:
+        def __setattr__(self, k, v):
+            raise RuntimeError("no")
+
+    notte._firma_notturna(_Rotto())  # mai eccezioni

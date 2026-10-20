@@ -127,7 +127,7 @@ Tu hai aggiunto: queste prove ci avvicinano molto, ma il finito pieno è autonom
 - Tetto di spesa: 1 dollaro in 24 ore se non ne metti un altro. Il conto usa i prezzi di listino anche per i modelli gratuiti, quindi può scattare senza spesa vera.
 - Ogni compito parte da zero, senza ricordare la conversazione con te.
 - L'elenco dei compiti sta fuori dalla sua cartella: non può aggiungersene da solo.
-- Le azioni rischiose aspettano la tua firma. **La firma scade dopo 30 minuti**, quindi di notte scade prima che tu ti svegli. Massimo 5 richieste in attesa. Deciso il 19 ottobre (⏳ da mettere nel codice): 24 ore per le richieste del giro notturno.
+- Le azioni rischiose aspettano la tua firma. **La firma di giorno scade dopo 30 minuti**. Massimo 5 richieste in attesa. Dal 20 ottobre le richieste del giro notturno durano 24 ore.
 - Dopo aver letto qualcosa (un file, la memoria), anche salvare un contatto chiede la firma. I compiti di sola lettura arrivano in fondo. Deciso il 19 ottobre (⏳ da mettere nel codice): il reversibile interno a Gas diventa libero (principio al capitolo 0).
 - Non può leggere la cartella del giro notturno: non sa dirti cosa ha fatto stanotte.
 - Il cervello è gratuito: va bene per riassunti e rubrica, non per lavori difficili.
@@ -150,7 +150,7 @@ Tu hai aggiunto: queste prove ci avvicinano molto, ma il finito pieno è autonom
 Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su un server finché i bottoni di firma non sono provati con un click vero.
 - ⏳ 👤 Riprovare il messaggio del mattino su Telegram (l'11 ottobre non è arrivato; la correzione è su `main`).
 - ⏳ 👤 Provare i bottoni Approva e Rifiuta con un click vero, col bot acceso (`python3 gas.py telegram`). Il "Rifiuta" non aveva fatto nulla: se resta così è un bug.
-- ⏳ **Durata della firma** (decisa il 19 ottobre): 24 ore per le richieste del giro notturno; di giorno restano 30 minuti. Si cambia dal file delle chiavi.
+- ✅ **Durata della firma** (decisa il 19 ottobre, nel codice dal 20 ottobre): 24 ore per le richieste del giro notturno (`GAS_APPROVAL_TIMEOUT_NOTTE_SECS`); di giorno restano 30 minuti (`GAS_APPROVAL_TIMEOUT_SECS`). Si cambia dal file delle chiavi.
 - ⏳ **Autonomia dopo una lettura** (decisa il 19 ottobre, supera C-d e R-203-2): tutto ciò che è reversibile e interno a Gas è libero, anche dopo una lettura. La firma resta solo per codice madre, sicurezza, azioni verso l'esterno (mail, messaggi, post, social, moduli) e azioni irreversibili o delicate. Da mettere nel codice.
 - ⏳ Scadenza delle firme (fetta C5): chiamarla dal giro, mostrarla in `gas doctor`, avvisare "approvazione scaduta".
 - ⏳ 👤 Archivio della conoscenza mai creato sul Mac (avviso `knowledge_fts`).

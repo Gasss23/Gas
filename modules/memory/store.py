@@ -81,6 +81,9 @@ STATI_APPROVAL: Tuple[str, ...] = ("pending", "approved", "rejected", "expired")
 RISOLTO_DA_APPROVAL: Tuple[str, ...] = ("telegram_user", "timeout", "kernel_revoca")
 # Timeout di default (§4d / §8c, DECISO 2026-09-29): 30 minuti. Override via env.
 DEFAULT_APPROVAL_TIMEOUT_SECS: int = 1800
+# Decisione operatore 2026-10-19 (roadmap R1): le richieste nate nel giro notturno
+# scadono dopo 24 ore, così la firma arriva al risveglio. Override via env.
+DEFAULT_APPROVAL_TIMEOUT_NOTTE_SECS: int = 86400
 # Tetto delle richieste 'pending' NON scadute (C4b-1): oltre, il kernel nega
 # invece di accodare (anti-spam Telegram, §4f). Override via env.
 DEFAULT_APPROVAL_MAX_PENDING: int = 5
@@ -301,6 +304,23 @@ def _approval_timeout_secs() -> int:
     log.warning("GAS_APPROVAL_TIMEOUT_SECS non valido (%r) — uso default %d",
                 raw, DEFAULT_APPROVAL_TIMEOUT_SECS)
     return DEFAULT_APPROVAL_TIMEOUT_SECS
+
+
+def approval_timeout_notte_secs() -> int:
+    """Timeout delle firme del giro notturno da env GAS_APPROVAL_TIMEOUT_NOTTE_SECS
+    (default 86400). Valore non numerico o <= 0 → WARN + default (fail-safe §9)."""
+    raw = os.environ.get("GAS_APPROVAL_TIMEOUT_NOTTE_SECS")
+    if raw is None:
+        return DEFAULT_APPROVAL_TIMEOUT_NOTTE_SECS
+    try:
+        val = int(raw)
+        if val > 0:
+            return val
+    except ValueError:
+        pass
+    log.warning("GAS_APPROVAL_TIMEOUT_NOTTE_SECS non valido (%r) — uso default %d",
+                raw, DEFAULT_APPROVAL_TIMEOUT_NOTTE_SECS)
+    return DEFAULT_APPROVAL_TIMEOUT_NOTTE_SECS
 
 
 def _approval_max_pending() -> int:
@@ -1607,6 +1627,7 @@ class MemoryStore:
         turno_id: Optional[str] = None,
         azione_leggibile: Optional[str] = None,
         max_pending: Optional[int] = None,
+        timeout_secs: Optional[int] = None,
     ) -> Tuple[str, Optional[str]]:
         """Accodamento usato dal loop (C4b-1): anti-doppioni + tetto, ATOMICO
         (BEGIN IMMEDIATE: controlli e INSERT nella stessa transazione).
@@ -1619,7 +1640,9 @@ class MemoryStore:
         - ("errore", None): store/argomenti non validi o errore DB → fail-closed.
         Il doppione si controlla PRIMA del tetto: ripetere un'azione già in coda
         non è una richiesta nuova. `enqueue_approval` resta la primitiva C3
-        senza dedup (firma per-azione, §8d)."""
+        senza dedup (firma per-azione, §8d).
+        `timeout_secs` (giro notturno: 24 ore) sostituisce il default di env; un
+        valore non intero o <= 0 ricade sul default (fail-safe)."""
         if not self.available:
             log.warning("accoda_approvazione: memoria non disponibile — azione NON accodata")
             return "errore", None
@@ -1631,6 +1654,9 @@ class MemoryStore:
             return "errore", None
         if max_pending is None:
             max_pending = _approval_max_pending()
+        if (not isinstance(timeout_secs, int) or isinstance(timeout_secs, bool)
+                or timeout_secs <= 0):
+            timeout_secs = _approval_timeout_secs()
         args_hash = hash_args(args_json)
         try:
             with self._connect() as con:
@@ -1661,7 +1687,7 @@ class MemoryStore:
                     "VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
                     (approval_id, turno_id, tool_name, args_json, args_hash,
                      azione_leggibile or f"Esegui {tool_name}", now,
-                     now + _approval_timeout_secs()),
+                     now + timeout_secs),
                 )
                 con.commit()
                 return "nuova", approval_id

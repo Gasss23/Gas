@@ -847,6 +847,9 @@ class GasKernel:
         # V-1 bot #176: un kernel senza storia non fotografa nemmeno la conversazione
         # dell'operatore negli snapshot (non la tocca, quindi non c'è nulla da proteggere).
         self.carica_storia: bool = carica_storia
+        # Scadenza delle firme chieste da questo kernel: None = default di env (30 min);
+        # il giro notturno la porta a 24 ore (decisione operatore 2026-10-19).
+        self.approval_timeout_secs: Optional[int] = None
         # Modalità del sandbox run_command: 'guarded' (default, vetting +
         # esecuzione senza shell) oppure 'dry_run' (anteprima fedele: fa il
         # vetting ma non esegue nulla — collaudo e kill-switch). Un valore non
@@ -2570,6 +2573,7 @@ class GasKernel:
             esito, aid = self.memory.accoda_approvazione(
                 tool_name, tool_args, turno_id=turno_id,
                 azione_leggibile=azione,
+                timeout_secs=getattr(self, "approval_timeout_secs", None),
             )
         except Exception as e:
             logging.warning("[GATE] accoda_approvazione eccezione (%s) — fail-closed, diniego", e)

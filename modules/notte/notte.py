@@ -381,6 +381,18 @@ def _stampa_sicura(testo: str) -> None:
         pass
 
 
+def _firma_notturna(kernel: Any) -> None:
+    """Decisione operatore 2026-10-19: le firme chieste di notte scadono dopo 24 ore
+    (env GAS_APPROVAL_TIMEOUT_NOTTE_SECS), non dopo 30 minuti. Mai eccezioni: un
+    kernel che non accetta l'attributo resta col default di giorno (più corto, quindi
+    più prudente)."""
+    try:
+        from modules.memory import approval_timeout_notte_secs
+        kernel.approval_timeout_secs = approval_timeout_notte_secs()
+    except Exception as e:
+        logging.warning("notte: scadenza notturna delle firme non impostata: %s", e)
+
+
 def _lezioni_in_attesa(kernel: Any) -> Optional[int]:
     """R-345-3: quante lezioni aspettano ancora il sì dell'operatore. Mai eccezioni:
     kernel o memoria assenti/rotti → None (il messaggio conta solo quelle di stanotte)."""
@@ -516,6 +528,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 break
             try:
                 kernel = kernel_factory(str(root))
+                _firma_notturna(kernel)
             except Exception as e:
                 logging.warning("notte: kernel non creato per %s: %s", c["nome"], e)
                 esiti.append({"nome": c["nome"], "esito": "ko", "tool": 0, "durata": 0,
