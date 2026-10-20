@@ -5107,11 +5107,13 @@ check("T72e finestra vuota → non contaminata",
 
 # T72f — R-200-2 round-trip agentico: run_command (output di file) e poi write_file
 # (UNCERTAIN) nello stesso turno → write_file promossa, NON eseguita al volo; senza il
+# (dal 2026-10-19 la scrittura libera dopo una lettura vale fuori da reports/ e knowledge/:
+# qui il bersaglio è reports/, che resta alla firma)
 # run_command prima la stessa write_file passa. Il loop arriva comunque alla risposta.
 def _turno72f(con_run_command: bool):
     _k = kernel_tmp()
     _s = ([[("run_command", '{"command": "ls"}')]] if con_run_command else []) + [
-        [("write_file", '{"relative_path": "r200.txt", "content": "ciao"}')],
+        [("write_file", '{"relative_path": "reports/r200.md", "content": "ciao"}')],
         "fine",
     ]
     _prev = os.environ.get("GAS_SANDBOX_MODE")
@@ -5131,10 +5133,10 @@ _tr72f = [e for e in _ev72f if e["type"] == "tool_res"]
 _tr72f0 = [e for e in _ev72f0 if e["type"] == "tool_res"]
 check("T72f run_command eseguito (os_strict), poi write_file in attesa di approvazione (R-200-2)",
       len(_tr72f) == 2 and "attesa di approvazione" in _tr72f[1]["output"]
-      and not (Path(_k72f.root) / "r200.txt").exists(),
+      and not (Path(_k72f.root) / "reports" / "r200.md").exists(),
       f"out={[e['output'][:60] for e in _tr72f]}")
 check("T72f controprova: senza run_command la stessa write_file viene eseguita",
-      len(_tr72f0) == 1 and (Path(_k72f0.root) / "r200.txt").exists(),
+      len(_tr72f0) == 1 and (Path(_k72f0.root) / "reports" / "r200.md").exists(),
       f"out={[e['output'][:60] for e in _tr72f0]}")
 check("T72f il loop arriva alla risposta finale in entrambi i casi",
       [e["type"] for e in _ev72f][-1] == "final" and [e["type"] for e in _ev72f0][-1] == "final")
@@ -5210,7 +5212,7 @@ def _turno72g(k):
     k.history = k.history[:2]  # parte recente corta: il riepilogo entra nella finestra
     with _TgFinto():
         _ev = run_turn_scriptato(k, "scrivi", [
-            [("write_file", '{"relative_path": "r203.txt", "content": "x"}')], "fine"])
+            [("write_file", '{"relative_path": "reports/r203.md", "content": "x"}')], "fine"])
     return [e for e in _ev if e["type"] == "tool_res"], _ev
 _tr72g, _ev72g = _turno72g(_compresso72g("read_file")[0])
 _k72gb = _compresso72g("calcola")[0]
@@ -5219,7 +5221,7 @@ check("T72g round-trip: dopo compressione con input esterno write_file in attesa
       len(_tr72g) == 1 and "attesa di approvazione" in _tr72g[0]["output"]
       and _ev72g[-1]["type"] == "final", str([e["output"][:50] for e in _tr72g]))
 check("T72g controprova: dopo compressione solo interna write_file eseguita",
-      len(_tr72g0) == 1 and (Path(_k72gb.root) / "r203.txt").exists()
+      len(_tr72g0) == 1 and (Path(_k72gb.root) / "reports" / "r203.md").exists()
       and _ev72g0[-1]["type"] == "final", str([e["output"][:50] for e in _tr72g0]))
 
 # ---------- T73: C3 — coda approvazioni SQLite (design_cancello §4a/§C3) ----------
@@ -5634,7 +5636,7 @@ def _spy_74b(name, args, **_kw):
     _exec_calls_74b.append(name)
     return _orig_etc_74b(name, args)
 _k74b.execute_tool_call = _spy_74b  # type: ignore[method-assign]
-_rel74b = "non_deve_esistere_c4a.txt"
+_rel74b = "reports/non_deve_esistere_c4a.md"  # reports/: firma anche dopo il 19 ott
 _abs74b = str(_k74b.root / _rel74b)
 _script74b = [
     [("ricorda", '{"query": "test contaminazione"}')],         # iter 1: SAFE, contamina finestra
@@ -5676,6 +5678,89 @@ check("T74c UNCERTAIN pulita → loop termina con risposta finale",
       len(_final74c) == 1)
 check("T74c UNCERTAIN pulita → nessuna riga pending in DB",
       (_k74c.memory.get_pending_approvals() if _k74c.memory else []) == [])
+
+# T74b2 — decisione operatore 2026-10-19 (autonomia): dopo una lettura restano liberi la
+# rubrica e write_file di livello 1 fuori da reports/ e knowledge/; il resto va alla firma.
+_k74b2 = _k74()
+(_k74b2.root / "fonte.txt").write_text("testo di terzi", encoding="utf-8")
+with _TgFinto() as _tg74b2:
+    _ev74b2 = run_turn_scriptato(_k74b2, "leggi e lavora", [
+        [("read_file", '{"relative_path": "fonte.txt"}')],
+        [("salva_contatto", json.dumps({"chiave": "mario@x.it", "nome": "Mario"})),
+         ("imposta_stato_contatto", json.dumps({"chiave": "mario@x.it", "stato": "contattato"})),
+         ("write_file", json.dumps({"relative_path": "dati/appunti.md", "content": "ok"})),
+         ("write_file", json.dumps({"relative_path": "knowledge/sources.yaml", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "Reports_old/x.md", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "brains/x.py", "content": "x = 1"}))],
+        "fatto"])
+_tr74b2 = [e["output"] for e in _ev74b2 if e["type"] == "tool_res"]
+_ct74b2 = _k74b2.memory.get_contatto_per_chiave("mario@x.it") if _k74b2.memory else None
+check("T74b2 dopo una lettura rubrica e file di livello 1 sono liberi (eseguiti)",
+      len(_tr74b2) == 7 and (_k74b2.root / "dati" / "appunti.md").exists()
+      and _ct74b2 is not None and _ct74b2.get("stato") == "contattato"
+      and not any("attesa" in o for o in _tr74b2[1:4]), str(_tr74b2)[:400])
+check("T74b2 dopo una lettura knowledge/, reports/ (anche copie) e codice restano alla firma",
+      not (_k74b2.root / "knowledge" / "sources.yaml").exists()
+      and not (_k74b2.root / "Reports_old" / "x.md").exists()
+      and not (_k74b2.root / "brains" / "x.py").exists()
+      and all("Operazione negata" in o or "attesa" in o for o in _tr74b2[4:]), str(_tr74b2[4:])[:400])
+check("T74b2 il loop arriva alla risposta finale", _ev74b2[-1]["type"] == "final")
+# R-367-1: un file ignorato da git non entra nella foto di sicurezza → dopo una lettura
+# sovrascriverlo resta alla firma (es. la scatola nera gas_debug.log).
+(_k74b2.root / ".gitignore").write_text("gas_debug.log\nlogs/\n*.bak\n", encoding="utf-8")
+(_k74b2.root / "gas_debug.log").write_text("SCATOLA NERA\n", encoding="utf-8")
+with _TgFinto():
+    _ev74b2i = run_turn_scriptato(_k74b2, "x", [
+        [("read_file", '{"relative_path": "fonte.txt"}')],
+        [("write_file", json.dumps({"relative_path": "gas_debug.log", "content": "cancellato"})),
+         ("write_file", json.dumps({"relative_path": "logs/a.txt", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "dati/c.bak", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "dati/libero2.md", "content": "x"}))],
+        "ok"])
+# R-368-1: un nome che inizia con «:» non diventa un pathspec magico di git
+(_k74b2.root / ".gitignore").write_text(":*\n", encoding="utf-8")
+_m74b2 = _k74b2._libero_dopo_lettura("write_file", json.dumps({"relative_path": ":x.md", "content": "x"}))
+(_k74b2.root / ".gitignore").write_text("gas_debug.log\nlogs/\n*.bak\n", encoding="utf-8")
+check("T74b2 R-368-1 nome «:x.md» ignorato da «:*» → alla firma", _m74b2 is False)
+_tr74b2i = [e["output"] for e in _ev74b2i if e["type"] == "tool_res"]
+check("T74b2 R-367-1 dopo una lettura i file ignorati da git restano alla firma",
+      (_k74b2.root / "gas_debug.log").read_text() == "SCATOLA NERA\n"
+      and not (_k74b2.root / "logs" / "a.txt").exists()
+      and not (_k74b2.root / "dati" / "c.bak").exists()
+      and (_k74b2.root / "dati" / "libero2.md").exists(), str(_tr74b2i)[:400])
+# T74b3 — il controllo vale sul file VERO: cartella di lavoro e symlink verso reports/
+_k74b3 = _k74()
+(_k74b3.root / "fonte.txt").write_text("testo di terzi", encoding="utf-8")
+(_k74b3.root / "reports").mkdir(exist_ok=True)
+(_k74b3.root / "dati").mkdir(exist_ok=True)
+try:
+    os.symlink(str(_k74b3.root / "reports" / "vero.md"), str(_k74b3.root / "dati" / "link.md"))
+    _ok74b3 = True
+except OSError:
+    _ok74b3 = False
+_cwd74b3 = os.environ.get("GAS_CWD")
+os.environ["GAS_CWD"] = str(_k74b3.root / "reports")
+try:
+    with _TgFinto():
+        _ev74b3 = run_turn_scriptato(_k74b3, "x", [
+            [("read_file", '{"relative_path": "../fonte.txt"}')],
+            [("write_file", json.dumps({"relative_path": "via_cwd.md", "content": "x"}))], "ok"])
+finally:
+    if _cwd74b3 is None:
+        os.environ.pop("GAS_CWD", None)
+    else:
+        os.environ["GAS_CWD"] = _cwd74b3
+check("T74b3 dopo una lettura, cartella di lavoro dentro reports/ → resta alla firma",
+      not (_k74b3.root / "reports" / "via_cwd.md").exists())
+if _ok74b3:
+    with _TgFinto():
+        run_turn_scriptato(_k74b3, "x", [
+            [("read_file", '{"relative_path": "fonte.txt"}')],
+            [("write_file", json.dumps({"relative_path": "dati/link.md", "content": "x"}))], "ok"])
+    check("T74b3 dopo una lettura, symlink verso reports/ → resta alla firma",
+          not (_k74b3.root / "reports" / "vero.md").exists())
+else:
+    skip("T74b3 symlink", "symlink non creabile su questo filesystem")
 
 # T74d — DENY invariato
 _k74d = _k74()
@@ -8037,11 +8122,11 @@ try:
     with _TgFinto():
         _ev84 = run_turn_scriptato(_k84, "cerca e scrivi", [
             [("cerca_testo", '{"testo": "alfa", "relative_path": "note.md"}')],
-            [("write_file", '{"relative_path": "nuovo.txt", "content": "x"}')], "ok"])
+            [("write_file", '{"relative_path": "reports/nuovo.md", "content": "x"}')], "ok"])
     _tr84 = [e["output"] for e in _ev84 if e["type"] == "tool_res"]
     check("T84i dopo cerca_testo la finestra è contaminata: write_file va al cancello",
           len(_tr84) == 2 and _tr84[1].startswith("Azione in attesa di approvazione umana")
-          and not (_r84 / "nuovo.txt").exists(), str(_tr84)[:200])
+          and not (_r84 / "reports" / "nuovo.md").exists(), str(_tr84)[:200])
 
     # T84j — diario: solo conteggi, mai contenuto né testo cercato (F-diario-eco)
     (_r84 / "diario.txt").write_text("PAROLA_DIARIO84 qui\n", encoding="utf-8")

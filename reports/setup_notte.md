@@ -9,9 +9,10 @@ tua conversazione: il giro non legge `.gas_history.json`, non la sposta se è ro
 non la copia nelle fotografie di sicurezza (snapshot). Eccezione: se approvi su Telegram un'azione parcheggiata di notte,
 l'esito viene scritto nella conversazione del bot/operatore (riserva R-220-1).
 
-Cosa NON fa da solo: le azioni rischiose (scrivere un file dopo aver letto contenuti
-esterni, modificare il codice, invii) vengono parcheggiate e chieste in
-firma su Telegram. Le richieste nate di notte scadono dopo 24 ore (dal 2026-10-20;
+Cosa NON fa da solo: le azioni rischiose (modificare il codice, scrivere in `reports/` o
+`knowledge/` dopo aver letto contenuti esterni, invii) vengono parcheggiate e chieste in
+firma su Telegram. Dal 2026-10-20 la rubrica e i file normali restano liberi anche dopo
+una lettura (decisione dell'operatore del 2026-10-19). Le richieste nate di notte scadono dopo 24 ore (dal 2026-10-20;
 `GAS_APPROVAL_TIMEOUT_NOTTE_SECS` nel `.env` per cambiarlo), quelle di giorno dopo 30
 minuti (`GAS_APPROVAL_TIMEOUT_SECS`). Per eseguire un'azione firmata deve essere acceso
 il bot (`python3 gas.py telegram`). Da sapere: le richieste in attesa sono al massimo 5

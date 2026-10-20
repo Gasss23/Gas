@@ -128,7 +128,7 @@ Tu hai aggiunto: queste prove ci avvicinano molto, ma il finito pieno è autonom
 - Ogni compito parte da zero, senza ricordare la conversazione con te.
 - L'elenco dei compiti sta fuori dalla sua cartella: non può aggiungersene da solo.
 - Le azioni rischiose aspettano la tua firma. **La firma di giorno scade dopo 30 minuti**. Massimo 5 richieste in attesa. Dal 20 ottobre le richieste del giro notturno durano 24 ore.
-- Dopo aver letto qualcosa (un file, la memoria), anche salvare un contatto chiede la firma. I compiti di sola lettura arrivano in fondo. Deciso il 19 ottobre (⏳ da mettere nel codice): il reversibile interno a Gas diventa libero (principio al capitolo 0).
+- Dal 20 ottobre, dopo aver letto qualcosa (un file, la memoria) restano liberi la rubrica e la scrittura dei file normali; restano alla firma `reports/`, `knowledge/`, il codice e tutto ciò che esce verso il mondo (principio al capitolo 0).
 - Non può leggere la cartella del giro notturno: non sa dirti cosa ha fatto stanotte.
 - Il cervello è gratuito: va bene per riassunti e rubrica, non per lavori difficili.
 - Parte solo se il Mac è acceso alle 03:00 (se dorme, parte al risveglio).
@@ -151,7 +151,7 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 - ⏳ 👤 Riprovare il messaggio del mattino su Telegram (l'11 ottobre non è arrivato; la correzione è su `main`).
 - ⏳ 👤 Provare i bottoni Approva e Rifiuta con un click vero, col bot acceso (`python3 gas.py telegram`). Il "Rifiuta" non aveva fatto nulla: se resta così è un bug.
 - ✅ **Durata della firma** (decisa il 19 ottobre, nel codice dal 20 ottobre): 24 ore per le richieste del giro notturno (`GAS_APPROVAL_TIMEOUT_NOTTE_SECS`); di giorno restano 30 minuti (`GAS_APPROVAL_TIMEOUT_SECS`). Si cambia dal file delle chiavi.
-- ⏳ **Autonomia dopo una lettura** (decisa il 19 ottobre, supera C-d e R-203-2): tutto ciò che è reversibile e interno a Gas è libero, anche dopo una lettura. La firma resta solo per codice madre, sicurezza, azioni verso l'esterno (mail, messaggi, post, social, moduli) e azioni irreversibili o delicate. Da mettere nel codice.
+- ✅ **Autonomia dopo una lettura** (decisa il 19 ottobre, nel codice dal 20 ottobre; supera C-d e R-203-2): dopo una lettura restano liberi la rubrica (`salva_contatto`, `imposta_stato_contatto`) e `write_file` sui file normali (livello 1, con foto di sicurezza). Restano alla firma: codice madre (livello 2), azioni verso l'esterno e irreversibili, e — come «sicurezza» — `reports/` (la leggono revisore e bot) e `knowledge/` (catalogo delle fonti di studio), e i file ignorati da git (non entrano nella foto di sicurezza, es. `gas_debug.log`). Il controllo vale anche sul file vero (cartella di lavoro, symlink).
 - ⏳ Scadenza delle firme (fetta C5): chiamarla dal giro, mostrarla in `gas doctor`, avvisare "approvazione scaduta".
 - ⏳ 👤 Archivio della conoscenza mai creato sul Mac (avviso `knowledge_fts`).
 - ⏳ 👤 Riallineare il Mac a `main` e installare il timer (`reports/setup_notte.md`). Sul Mac `main` è occupato da una seconda copia di lavoro: si usa `git fetch origin && git switch --detach origin/main`.
@@ -312,7 +312,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 ### 5.2 Cancello e firme
 - V-1 esterna / V-2 bot #180: il codice che applica cancello e firma (bot, memoria, script dei controlli, `CLAUDE.md`) **resta livello 2** (deciso il 19 ottobre), ma con: doppia verifica obbligatoria bot + chat, firma **solo coi bottoni** (mai a voce) e **mai di notte**. ⏳ Da mettere nel codice.
 - Note basse su #180: finta riga di intestazione dentro il diff della firma; caratteri invisibili gestiti in parte per classe e in parte a elenco; messaggi diversi al modello senza avviso a te; un diff oltre 4096 caratteri non passa su Telegram; caratteri sosia non rilevabili; "una PR per scopo" saltata.
-- ✅ R-203-2 e C-d superate dal principio dell'autonomia del 19 ottobre (capitolo 0); ⏳ da mettere nel codice. `stato_progetto.md` e `CLAUDE.md` allineati il 20 ottobre.
+- ✅ R-203-2 e C-d superate dal principio dell'autonomia del 19 ottobre (capitolo 0), nel codice dal 20 ottobre (vedi R1). `stato_progetto.md` e `CLAUDE.md` allineati il 20 ottobre.
 - C5 non fatta: scadenza delle approvazioni (vedi R1). C6 non fatta: bottone Modifica e firme a gruppi. C-pin non fatta.
 - R-c3-1b (mitigata), R-c3-2 (validare la durata), R-c3-5 (cosmetica).
 - R-c4b1-3: invio del messaggio di firma che blocca il turno fino a 15 secondi per destinatario.

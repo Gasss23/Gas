@@ -44,7 +44,7 @@
 ### 1c. Chiarimento sulla distinzione tra classi
 
 - **reversibile-sicuro**: GAS esegue autonomamente, nessuna approvazione.
-- **reversibile-incerto**: GAS esegue autonomamente nel caso normale; in turno contaminato (§3) scala a firma umana (con l'eccezione C-d per le scritture CRM).
+- **reversibile-incerto**: GAS esegue autonomamente nel caso normale; in turno contaminato (§3) scala a firma umana (con l'eccezione C-d per le scritture CRM). **Superato il 2026-10-19 (decisione dell'operatore, nel codice dal 2026-10-20, `libero_dopo_lettura`):** in turno contaminato restano liberi la rubrica e `write_file` di livello 1 fuori da `reports/` e `knowledge/`; C-d (tetto di 5 scritture CRM) non esiste più.
 - **irreversibile**: firma umana **sempre**, anche fuori da turni contaminati. La "reversibilità tecnica" (si può rollbackare il DB) non conta — conta l'**impatto esterno**: un'email inviata non si cancella dalla posta del destinatario.
 - **denylist**: blocco assoluto, non scalabile a nessun livello di approvazione. Non è una categoria "super-irreversibile" — è fuori dal perimetro di GAS per definizione, e una firma umana non la sblocca.
 

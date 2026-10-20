@@ -221,17 +221,18 @@ def test_diario_solo_metadati(monkeypatch, dirs):
 
 
 def test_irreversibile_parcheggiato_non_eseguito(monkeypatch, dirs):
-    """Senza nessuno davanti il cancello resta: write_file dopo read_file (finestra
-    contaminata) non scrive; senza Telegram la richiesta è revocata."""
+    """Senza nessuno davanti il cancello resta: write_file in reports/ dopo read_file
+    (finestra contaminata; dal 2026-10-19 reports/ resta alla firma anche dopo una
+    lettura) non scrive; senza Telegram la richiesta è revocata."""
     root, fuori = dirs
     (root / "in.txt").write_text("x", encoding="utf-8")
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
     script = _Script({"p": [[("read_file", json.dumps({"relative_path": "in.txt"}))],
-                            [("write_file", json.dumps({"relative_path": "out.txt",
+                            [("write_file", json.dumps({"relative_path": "reports/out.md",
                                                         "content": "y"}))],
                             "fatto"]})
     _giro(monkeypatch, root, cat, script)
-    assert not (root / "out.txt").exists()
+    assert not (root / "reports" / "out.md").exists()
     storia = (root / ".gas_notte" / "storia_a.json").read_text()
     assert "Operazione negata" in storia
     # V-2 verifica esterna #160: il riepilogo conta le azioni negate
@@ -1144,13 +1145,13 @@ def test_firma_notturna_dura_24_ore(monkeypatch, dirs, env, attesa):
     (root / "in.txt").write_text("x", encoding="utf-8")
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
     script = _Script({"p": [[("read_file", json.dumps({"relative_path": "in.txt"}))],
-                            [("write_file", json.dumps({"relative_path": "out.txt",
+                            [("write_file", json.dumps({"relative_path": "reports/out.md",
                                                         "content": "y"}))],
                             "fatto"]})
     _giro(monkeypatch, root, cat, script)
     k = gas.GasKernel(root_dir=str(root), carica_storia=False)
     pending = k.memory.get_pending_approvals()
-    assert len(pending) == 1 and not (root / "out.txt").exists()
+    assert len(pending) == 1 and not (root / "reports" / "out.md").exists()
     durata = pending[0]["ts_expiry"] - pending[0]["ts_created"]
     assert abs(durata - attesa) < 1
     # di giorno (kernel normale) resta il default di 30 minuti

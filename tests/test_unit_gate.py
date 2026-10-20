@@ -715,3 +715,32 @@ def test_cartelle_di_chiavi_leggibili_ma_mai_scritte(path):
 def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
     from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO
     assert livello_scrittura(path) == LIVELLO_LIBERO
+
+
+@pytest.mark.parametrize("tool, args, atteso", [
+    # decisione operatore 2026-10-19: rubrica e livello 1 liberi dopo una lettura
+    ("salva_contatto", {"chiave": "a@b.it"}, True),
+    ("imposta_stato_contatto", {"chiave": "a@b.it", "stato": "x"}, True),
+    ("write_file", {"relative_path": "dati/a.md", "content": "x"}, True),
+    ("write_file", '{"relative_path": "note.txt", "content": "x"}', True),
+    # restano alla firma: sicurezza del processo, codice, segreti, esterno, args rotti
+    ("write_file", {"relative_path": "reports/a.md"}, False),
+    ("write_file", {"relative_path": "./Reports/a.md"}, False),
+    ("write_file", {"relative_path": "reports_old/a.md"}, False),
+    ("write_file", {"relative_path": "reports./a.md"}, False),
+    ("write_file", {"relative_path": "knowledge/sources.yaml"}, False),
+    ("write_file", {"relative_path": "KNOWLEDGE.bak/x"}, False),
+    ("write_file", {"relative_path": "gas.py"}, False),
+    ("write_file", {"relative_path": "scripts/a.sh"}, False),
+    ("write_file", {"relative_path": ".env"}, False),
+    ("write_file", {"relative_path": "../fuori.md"}, False),
+    ("write_file", {"content": "senza percorso"}, False),
+    ("write_file", "non json", False),
+    ("send_email", {"to": "a@b.it"}, False),
+    ("run_command", {"command": "ls"}, False),
+    ("browser_scrape", {"url": "x"}, False),
+    (None, None, False),
+])
+def test_libero_dopo_lettura(tool, args, atteso):
+    from modules.gate.gate import libero_dopo_lettura
+    assert libero_dopo_lettura(tool, args) is atteso

@@ -26,6 +26,7 @@ from brains.model_ids import (
 )
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
+from modules.gate.gate import libero_dopo_lettura
 from modules.telegram import bot as _tg_bot
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
@@ -2483,6 +2484,36 @@ class GasKernel:
         except Exception:
             return False  # il gate a valle (execute) resta fail-closed
 
+    def _libero_dopo_lettura(self, tool_name: str, tool_args: Any) -> bool:
+        """Decisione operatore 2026-10-19: a finestra contaminata restano liberi la
+        rubrica e write_file di livello 1 fuori da reports/ e knowledge/. Per
+        write_file il controllo vale sia sul NOME sia sul file vero (cartella di
+        lavoro GAS_CWD, symlink): stesso calcolo dell'esecuzione. Nel dubbio False."""
+        if not libero_dopo_lettura(tool_name, tool_args):
+            return False
+        if tool_name != "write_file":
+            return True
+        if self._ha_chiavi_riservate(tool_args):
+            return False  # review #262: il cancello le nega, mai eseguirle libere
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
+            risolto = self._file_rel_root(cwd, args["relative_path"])
+            if risolto is None or not libero_dopo_lettura(
+                    "write_file", {"relative_path": risolto[1]}):
+                return False
+            # R-367-1: un file ignorato da git (gas_debug.log, logs/, *.bak…) non entra
+            # nella foto di sicurezza, quindi sovrascriverlo è irreversibile → firma.
+            # Esito 1 = non ignorato; 0 = ignorato; qualunque altro esito o errore → firma.
+            # R-368-1: «./» davanti, così un nome che inizia con «:» non diventa un
+            # pathspec magico (check-ignore non accetta GIT_LITERAL_PATHSPECS).
+            ign = subprocess.run(["git", "-C", str(self.root), "check-ignore", "-q",
+                                  "--no-index", "--", "./" + risolto[1]],
+                                 capture_output=True, timeout=10)
+            return ign.returncode == 1
+        except Exception:
+            return False
+
     def _ha_chiavi_riservate(self, tool_args: Any) -> bool:
         try:
             args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
@@ -3812,6 +3843,8 @@ class GasKernel:
                                                "conta_file o data_ora.")
                                 elif _gc == GateClass.IRREVERSIBLE or (
                                     _gc == GateClass.UNCERTAIN and _finestra_contaminata
+                                    and not self._libero_dopo_lettura(
+                                        tc.function.name, tc.function.arguments)
                                 ):
                                     # C4a/C4b-1: parcheggia + read-back, NON esegue (§4b, turno suddiviso).
                                     logging.warning(
