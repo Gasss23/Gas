@@ -456,8 +456,8 @@ def livello_scrittura(relative_path: Any) -> int:
 # Decisione operatore 2026-10-19 (autonomia; supera C-d e R-203-2): «dentro Gas
 # autonomia piena; tutto ciò che esce verso il mondo aspetta la firma». Dopo una
 # lettura (finestra contaminata) restano liberi gli strumenti reversibili e interni:
-# la rubrica (mutabile, ogni modifica tracciata nel diario) e write_file di livello 1
-# (foto di sicurezza prima di scrivere). Tutto il resto resta al cancello: livello 2
+# la rubrica (mutabile, ogni modifica tracciata nel diario) e write_file dei soli
+# documenti md/txt/csv di livello 1 (foto di sicurezza prima di scrivere). Tutto il resto resta al cancello: livello 2
 # (codice madre), azioni verso l'esterno, irreversibili, e le cartelle che toccano la
 # sicurezza del processo: reports/ (la leggono revisore e bot) e knowledge/ (catalogo
 # delle fonti di studio). Prefisso del primo pezzo: anche copie come reports_old/.

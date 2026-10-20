@@ -621,6 +621,13 @@ class MemoryStore:
                 "ALTER TABLE contatti ADD COLUMN merged_into "
                 "INTEGER REFERENCES contatti(id)"
             )
+        # V-1 bot #222: non_fidato = 1 se il contatto è stato scritto in un turno che
+        # aveva letto testo di terzi. Il pin che lo mostra rende il turno contaminato
+        # (la contaminazione non si «ricicla» attraverso la rubrica). Additiva, DEFAULT 0.
+        if "non_fidato" not in cols:
+            con.execute(
+                "ALTER TABLE contatti ADD COLUMN non_fidato INTEGER NOT NULL DEFAULT 0"
+            )
         # L'indice si crea QUI, dopo che la colonna esiste di sicuro (sia su DB
         # fresco sia migrato): non può precedere l'ALTER. IF NOT EXISTS → idempotente.
         con.execute(
@@ -800,6 +807,10 @@ class MemoryStore:
                 if da_id == canonico_id:
                     return canonico_id  # già lo stesso lead: no-op idempotente
                 now = _now_iso()
+                # V-1 bot #222: un doppione non fidato rende non fidato il canonico.
+                if da.get("non_fidato"):
+                    con.execute("UPDATE contatti SET non_fidato = 1 WHERE id = ?",
+                                (canonico_id,))
                 # 1) completa l'anagrafica del canonico dai campi del doppione
                 con.execute(
                     "UPDATE contatti SET "
@@ -1131,6 +1142,22 @@ class MemoryStore:
         except (sqlite3.Error, OSError) as e:
             log.warning("get_contatto_per_chiave fallita (%s): %s", self.db_path, e)
             return None
+
+    def marca_contatto_non_fidato(self, chiave: str) -> bool:
+        """V-1 bot #222: segna il lead (canonico) come scritto da un turno che aveva
+        letto testo di terzi. Il segno non si toglie da sé. True se segnato; False se
+        il contatto non esiste o in degrado (§9)."""
+        try:
+            with self._connect() as con:
+                c = self._risolvi_canonico(con, normalizza_chiave(chiave))
+                if c is None:
+                    return False
+                con.execute("UPDATE contatti SET non_fidato = 1 WHERE id = ?", (int(c["id"]),))
+                con.commit()
+                return True
+        except (sqlite3.Error, OSError, TypeError, ValueError) as e:
+            log.warning("marca_contatto_non_fidato fallita (%s): %s", self.db_path, e)
+            return False
 
     def lista_contatti(self, filtro_stato: Optional[str] = None
                       ) -> List[Dict[str, Any]]:
