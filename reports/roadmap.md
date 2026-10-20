@@ -312,7 +312,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 ### 5.2 Cancello e firme
 - V-1 esterna / V-2 bot #180: il codice che applica cancello e firma (bot, memoria, script dei controlli, `CLAUDE.md`) **resta livello 2** (deciso il 19 ottobre), ma con: doppia verifica obbligatoria bot + chat, firma **solo coi bottoni** (mai a voce) e **mai di notte**. ⏳ Da mettere nel codice.
 - Note basse su #180: finta riga di intestazione dentro il diff della firma; caratteri invisibili gestiti in parte per classe e in parte a elenco; messaggi diversi al modello senza avviso a te; un diff oltre 4096 caratteri non passa su Telegram; caratteri sosia non rilevabili; "una PR per scopo" saltata.
-- ✅ R-203-2 e C-d superate dal principio dell'autonomia del 19 ottobre (capitolo 0); ⏳ da mettere nel codice.
+- ✅ R-203-2 e C-d superate dal principio dell'autonomia del 19 ottobre (capitolo 0); ⏳ da mettere nel codice. Nota: `stato_progetto.md` e `CLAUDE.md` non registrano ancora le decisioni del 19 ottobre (proposte all'operatore nel report della PR #220): finché non sono allineati, per queste voci fa fede questa roadmap.
 - C5 non fatta: scadenza delle approvazioni (vedi R1). C6 non fatta: bottone Modifica e firme a gruppi. C-pin non fatta.
 - R-c3-1b (mitigata), R-c3-2 (validare la durata), R-c3-5 (cosmetica).
 - R-c4b1-3: invio del messaggio di firma che blocca il turno fino a 15 secondi per destinatario.

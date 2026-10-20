@@ -24,10 +24,10 @@
 
 ```
  reports/diff_sessione.md |   5 +--
- reports/handoff.md       |  32 +++++----------
+ reports/handoff.md       |  33 ++++++---------
  reports/roadmap.md       | 830 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------
- reports/ultimo_report.md |  62 +++++++++++++++++++++++-----
- 4 files changed, 629 insertions(+), 300 deletions(-)
+ reports/ultimo_report.md |  67 +++++++++++++++++++++++++-----
+ 4 files changed, 635 insertions(+), 300 deletions(-)
 ```
 
 ---
@@ -35,6 +35,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3e62106 docs(fine-task): report e handoff — roadmap del 19 ottobre (#220)
 98e7d57 docs(roadmap): roadmap completa aggiornata con le decisioni del 19 ottobre
 ```
 
@@ -52,7 +53,8 @@ Nessuna modifica al motore: delta zero.
 
 ## §6 STATO CI
 
-- PR #220 (`98e7d57`): run in corso all'apertura; il commit di questo handoff la fa ripartire.
+- `3e62106`: unit-suite, handoff-check, smista success; verifica-bot failure (verdetto testuale APPROVATO CON RISERVE con soli finding BASSA/COSMETICA; dettaglio in ultimo_report).
+- Commit delle note e di questo handoff: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 

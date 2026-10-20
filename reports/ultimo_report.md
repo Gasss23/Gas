@@ -56,6 +56,11 @@ Fonte: la roadmap completa dell'11 ottobre (allegato dell'operatore), salvata co
 5. `reports/roadmap_sintesi.md` (pagina del 19 ottobre) è superata dalla roadmap nuova: cancellarla.
 6. `README.md` e `gas_identity.md` citano la cascata vecchia (già in §5.9).
 
+## Bot di verifica #220
+
+- Esito su `3e62106`: check `failure`, ma il verdetto testuale è APPROVATO CON RISERVE con soli finding BASSA/COSMETICA (V-1 stato_progetto e CLAUDE.md non allineati, V-2 CLAUDE.md §2 superato da R2, V-3 stat dell'handoff). Il «failure» viene probabilmente dalla parola «MEDIA» citata dentro V-1 (gravità della vecchia R-203-2), già noto in §5.7 della roadmap.
+- V-1/V-2: nota aggiunta in roadmap §5.2 (finché stato_progetto e CLAUDE.md non sono allineati fa fede la roadmap); l'allineamento resta proposta all'operatore. V-3: limite noto del flusso.
+
 ## Anomalie
 
 - Il file sorgente stava solo nel progetto claude.ai: è arrivato come allegato al secondo tentativo.
