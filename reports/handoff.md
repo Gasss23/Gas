@@ -20,18 +20,17 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- .github/workflows/ci.yml           |   6 ++++--
+ .claude/agents/memoria_revisore.md |   4 +++-
  gas.py                             |   4 +++-
  modules/gate/gate.py               |  23 ++++++++++++++++++++---
  modules/telegram/bot.py            |  14 ++++++++++++++
- reports/diff_sessione.md           |  15 +++++++--------
- reports/handoff.md                 | 102 +++++++++++++++++++++++-------------------------------------------------------------------------------
- reports/stato_progetto.md          |   8 ++++++--
- reports/ultimo_report.md           |   9 ++++-----
+ reports/diff_sessione.md           |  18 ++++++++----------
+ reports/handoff.md                 | 136 +++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   2 ++
+ reports/ultimo_report.md           |  34 +++++++---------------------------
  tests/test_unit_gate.py            |   6 ++++++
  tests/test_unit_kernel.py          |  27 +++++++++++++++++++++++++--
- 11 files changed, 116 insertions(+), 102 deletions(-)
+ 10 files changed, 113 insertions(+), 155 deletions(-)
 ```
 
 ---
@@ -39,6 +38,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8cd30bc Merge origin/main (#229, chat Voce) in feat/merge-automatico-z1xjx2
 d0df835 fix(avvisi): file delicati riconosciuti su tutto il nome e nome del file sempre visibile (R-387-1, V-1 bot #230)
 e36b46c chore(revisore): memoria review #388 — APPROVATO CON RISERVE
 ```
