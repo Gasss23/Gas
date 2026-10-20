@@ -1159,6 +1159,30 @@ class MemoryStore:
             log.warning("marca_contatto_non_fidato fallita (%s): %s", self.db_path, e)
             return False
 
+    def togli_segno_non_fidato(self, chiave: str) -> Optional[str]:
+        """R-bot222-1: l'operatore (solo comando umano, MAI tool dell'agente) dichiara
+        fidato un lead segnato «non fidato». Nella STESSA transazione scrive una riga
+        di diario 'contatto_fidato' (traccia di chi e quando). Ritorna la chiave
+        canonica, oppure None se il contatto non esiste o in degrado (§9)."""
+        try:
+            with self._connect() as con:
+                c = self._risolvi_canonico(con, normalizza_chiave(chiave))
+                if c is None:
+                    return None
+                cid = int(c["id"])
+                con.execute(
+                    "INSERT INTO diario (ts, tipo, descrizione, contatto_id) "
+                    "VALUES (?, ?, ?, ?)",
+                    (_now_iso(), "contatto_fidato",
+                     f"Operatore: tolto il segno «non fidato» dal lead id={cid}", cid),
+                )
+                con.execute("UPDATE contatti SET non_fidato = 0 WHERE id = ?", (cid,))
+                con.commit()
+                return str(c["chiave"])
+        except (sqlite3.Error, OSError, TypeError, ValueError) as e:
+            log.warning("togli_segno_non_fidato fallita (%s): %s", self.db_path, e)
+            return None
+
     def lista_contatti(self, filtro_stato: Optional[str] = None
                       ) -> List[Dict[str, Any]]:
         """Elenco contatti VIVI, opzionalmente filtrato per stato (es. solo gli

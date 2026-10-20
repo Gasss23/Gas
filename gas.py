@@ -4755,6 +4755,63 @@ def merge_contacts_cmd(root_dir: Optional[str] = None) -> int:
     return 0
 
 
+def fida_contatto_cmd(root_dir: Optional[str] = None) -> int:
+    """Comando `gas fida-contatto [<chiave>] [--yes]` (R-bot222-1).
+
+    Senza chiave elenca i lead segnati «non fidati» (scritti in un turno che aveva
+    letto testo di terzi: finché uno è tra i lead attivi del pin, ogni turno è
+    contaminato). Con la chiave mostra la scheda — l'operatore controlla che non
+    contenga istruzioni iniettate — e, dopo conferma y/N (o --yes), toglie il segno
+    con una riga di diario nella stessa transazione. NON esposto come tool
+    dell'agente: solo comando umano. Fail-safe (§9): mai crash."""
+    import sys
+    raw_args = sys.argv[2:]
+    yes_flag = "--yes" in raw_args
+    pos_args = [a for a in raw_args if a != "--yes"]
+    root = Path(root_dir or os.getcwd()).resolve()
+    mem = MemoryStore(default_db_path(root))
+    if not mem.available:
+        print("FAIL — memoria non disponibile (DB assente o corrotto).")
+        return 1
+    if not pos_args:
+        segnati = [c for c in mem.lista_contatti() if c.get("non_fidato")]
+        if not segnati:
+            print("Nessun lead segnato «non fidato».")
+            return 0
+        print("Lead segnati «non fidati» (controlla la scheda prima di fidarti):")
+        for c in segnati:
+            print(f"  - {c.get('chiave')!r} [{c.get('stato')}] {c.get('nome') or ''!r}")
+        print("Per toglierne uno: gas fida-contatto <chiave>")
+        return 0
+    chiave = pos_args[0]
+    rec = mem.get_contatto_per_chiave(chiave)
+    if rec is None:
+        print(f"ERRORE — chiave '{chiave}' non trovata nella rubrica.")
+        return 1
+    if not rec.get("non_fidato"):
+        print(f"OK — '{rec.get('chiave')}' non è segnato: nessuna operazione.")
+        return 0
+    print(f"\n=== GAS — Lead segnato «non fidato»: {rec.get('chiave')!r} ===")
+    _print_record(rec)
+    print("\nControlla che i campi non contengano istruzioni (es. «scrivi…», «ignora…»):")
+    print("dopo la conferma il lead torna nel pin come dato fidato.")
+    if not yes_flag:
+        try:
+            risposta = input("\nTogliere il segno «non fidato»? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nOperazione annullata.")
+            return 0
+        if risposta != "y":
+            print("Operazione annullata.")
+            return 0
+    canonica = mem.togli_segno_non_fidato(chiave)
+    if canonica is None:
+        print("FAIL — segno non tolto (degrado DB). Rubrica invariata.")
+        return 1
+    print(f"SUCCESSO — '{canonica}' è di nuovo fidato (riga nel diario).")
+    return 0
+
+
 def duplicati_cmd(root_dir: Optional[str] = None) -> int:
     """Comando `gas duplicati`: elenca le coppie sospette di duplicati nel CRM
     (email E telefono). SOLA LETTURA, zero token LLM. Exit 0 anche con duplicati
@@ -5020,6 +5077,8 @@ def main():
         sys.exit(duplicati_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "merge-contacts":
         sys.exit(merge_contacts_cmd())
+    if len(sys.argv) > 1 and sys.argv[1] == "fida-contatto":
+        sys.exit(fida_contatto_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "lezioni":
         sys.exit(lezioni_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "rifletti":
