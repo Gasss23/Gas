@@ -25,8 +25,8 @@ from brains.model_ids import (
     GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
-from modules.gate.gate import livello_scrittura, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
-from modules.gate.gate import libero_dopo_lettura
+from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
+from modules.gate.gate import libero_dopo_lettura, sembra_delicato
 from modules.telegram import bot as _tg_bot
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
@@ -864,6 +864,7 @@ class GasKernel:
         # Scadenza delle firme chieste da questo kernel: None = default di env (30 min);
         # il giro notturno la porta a 24 ore (decisione operatore 2026-10-19).
         self.approval_timeout_secs: Optional[int] = None
+        self._file_delicati_turno: List[str] = []  # R-223-2, svuotata a fine turno
         # V-1 bot #222: il pin di questo turno mostra dati non fidati (_memoria_pin).
         self._pin_non_fidato: bool = False
         # R-371-2: la sessione ha visto un pin non fidato (si azzera con `clear`).
@@ -2639,6 +2640,34 @@ class GasKernel:
         except Exception as e:
             logging.warning("[GATE] avviso lead dopo una lettura fallito: %s", e)
 
+    def _invia_avvisi_file(self, percorsi: List[str]) -> None:
+        """R-223-2: UN solo avviso Telegram a fine turno con i file NUOVI di livello 1
+        che sembrano delicati (sembra_delicato). Solo informativo: i file sono già
+        scritti, con foto di sicurezza. Al massimo MAX_AVVISI_LEAD_TURNO percorsi, gli
+        altri contati. Mai eccezioni (§9): invio fallito → warning."""
+        try:
+            if not percorsi:
+                return
+            testa = ("📄 Gas ha creato file nuovi che sembrano delicati (configurazioni, "
+                     "script, chiavi). Non sono bloccati: controllali se non te li aspettavi.")
+
+            def _componi(k: int) -> str:
+                righe = [testa] + [f"- {_tg_bot.tronca_visibile(p, 200)}" for p in percorsi[:k]]
+                if len(percorsi) > k:
+                    righe.append(f"… e altri {len(percorsi) - k}.")
+                return "\n".join(righe)
+
+            # R-386-1: come per i lead (R-382-1), il messaggio resta sotto il limite di
+            # Telegram, così nomi lunghi non possono spegnere l'avviso.
+            k = min(len(percorsi), self.MAX_AVVISI_LEAD_TURNO)
+            while k > 0 and _tg_bot.lunghezza_telegram(_componi(k)) > _tg_bot.TELEGRAM_MAX_CHARS:
+                k -= 1
+            inviato, motivo = _tg_bot.invia_notifica(_componi(k))
+            if not inviato:
+                logging.warning("[GATE] avviso file delicati non inviato: %s", motivo)
+        except Exception as e:
+            logging.warning("[GATE] avviso file delicati fallito: %s", e)
+
     def _ha_chiavi_riservate(self, tool_args: Any) -> bool:
         try:
             args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
@@ -3763,9 +3792,16 @@ class GasKernel:
                     return ("Operazione negata: snapshot preventivo fallito, "
                             "file non scritto (fail-closed). Dettagli in "
                             "gas_debug.log.")
+                _nuovo = not path.exists()
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(args["content"], encoding="utf-8")
                 out = f"Successo: File {args['relative_path']} aggiornato."
+                # R-223-2: file NUOVO libero che sembra delicato → avviso a fine turno.
+                try:
+                    if _nuovo and livello == LIVELLO_LIBERO and sembra_delicato(rel_root):
+                        self._file_delicati_turno.append(rel_root)
+                except Exception as e:  # §9: l'avviso non cambia l'esito della scrittura
+                    logging.warning("[GATE] controllo file delicato fallito: %s", e)
             elif name == "read_file":
                 path, diniego = self._risolvi_lettura(cwd, args["relative_path"])
                 if path is None:
@@ -3814,6 +3850,7 @@ class GasKernel:
         _turno_budget = False  # V-2 bot #191: turno fermato dal budget giornaliero
         _avvisi_lead: List[str] = []  # V-1 bot #225: un solo avviso Telegram a fine turno
         _lead_nuovi = 0  # V-1 bot #225 (2° giro): lead creati dopo una lettura
+        self._file_delicati_turno = []  # R-223-2: file nuovi delicati, avviso a fine turno
 
         def _chiudi_turno() -> None:
             nonlocal _turno_fine_scritto
@@ -4093,6 +4130,8 @@ class GasKernel:
         finally:
             _chiudi_turno()
             self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)
+            self._invia_avvisi_file(self._file_delicati_turno)
+            self._file_delicati_turno = []
 
 def doctor(root_dir: Optional[str] = None) -> int:
     """Auto-diagnosi di Gas: check di integrità senza consumare token LLM

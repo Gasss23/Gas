@@ -493,6 +493,46 @@ _FIRMA_DOPO_LETTURA_NOMI: tuple[str, ...] = (
 _DOC_LIBERI_DOPO_LETTURA: tuple[str, ...] = (".md", ".txt", ".csv")
 
 
+# R-223-2 (decisione operatore 2026-10-19): la lista dei file vietati resta; in più un
+# AVVISO (solo informativo, nessun blocco) quando Gas crea un file NUOVO di livello 1
+# che sembra delicato: configurazioni, script/pagine eseguibili, chiavi e certificati,
+# nomi da credenziali. I documenti normali (md, txt, csv…) passano in silenzio.
+_ESTENSIONI_DELICATE: tuple[str, ...] = (
+    ".json", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf", ".config", ".properties",
+    ".plist", ".service", ".timer", ".socket", ".desktop", ".crontab", ".cron",
+    ".js", ".mjs", ".cjs", ".ts", ".rb", ".pl", ".php", ".lua", ".ps1", ".psm1",
+    ".bat", ".cmd", ".vbs", ".applescript", ".scpt", ".html", ".htm", ".xhtml", ".svg",
+    ".xml", ".jar", ".exe", ".dll", ".app",
+    ".key", ".pem", ".crt", ".cer", ".der", ".p12", ".pfx", ".jks", ".asc", ".gpg",
+    ".pub", ".kdbx", ".ovpn",
+)
+_NOMI_DELICATI: frozenset[str] = frozenset({
+    "key", "keys", "apikey", "token", "tokens", "secret", "secrets", "password",
+    "passwords", "passwd", "credential", "credentials", "creds", "auth", "cookie",
+    "cookies", "session", "config", "settings", "cron", "crontab", "launch",
+    "autostart", "makefile", "dockerfile", "procfile",
+})
+
+
+def sembra_delicato(relative_path: Any) -> bool:
+    """R-223-2: True se il NOME del file (percorso relativo alla root) fa pensare a
+    configurazione, codice eseguibile, chiavi o credenziali. Solo per l'avviso
+    informativo: non decide nulla sul cancello. Mai eccezioni: errore → True
+    (meglio un avviso in più)."""
+    try:
+        if not isinstance(relative_path, str) or not relative_path.strip():
+            return True
+        nome = PurePosixPath(_normalize_path(relative_path)).name.rstrip(". ")
+        if nome.startswith(".") or "." not in nome or nome.endswith(_ESTENSIONI_DELICATE):
+            return True  # file nascosti (rc, dotfile), senza estensione, config/script
+        # R-386-2: parole intere del nome (divise su _ - . e spazi), non pezzi:
+        # «cronologia.md», «sessione_marketing.md», «monkey.md» restano documenti.
+        parole = [w for w in re.split(r"[_\-.\s]+", nome.split(".")[0]) if w]
+        return any(w in _NOMI_DELICATI for w in parole)
+    except Exception:
+        return True
+
+
 def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
     """True se un'azione reversibile (UNCERTAIN) resta libera anche a finestra
     contaminata. Guarda solo il NOME scritto dal modello: il kernel ripete il

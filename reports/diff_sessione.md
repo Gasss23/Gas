@@ -1,12 +1,11 @@
-# DIFF SESSIONE — 2026-10-20 (dopo #226: catalogo delle fonti alla firma, taglio degli avvisi)
+# DIFF SESSIONE — 2026-10-20 (dopo #228: avviso sui file nuovi delicati, fonti solo dentro knowledge/)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/telegram/bot.py` — `tronca_visibile`, usata da `componi_avviso_scadute`.
-- `gas.py` — avviso lead usa `tronca_visibile`; commento di doctor.
-- `modules/gate/gate.py` — `_LIVELLO2_TOP`: `knowledge/` alla firma.
-- `modules/memory/store.py` — nomi nei log di `scadi_approvazioni`.
-- `tests/test_unit_kernel.py`, `tests/test_unit_gate.py` — test nuovi.
-- `.claude/agents/memoria_revisore.md` — righe #384–#385.
-- `reports/lavoro_parallelo.md` — nuovo: regole per due chat in parallelo.
-- `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.
+- `modules/gate/gate.py` — `sembra_delicato` (solo per l'avviso, non decide il cancello).
+- `gas.py` — file nuovi delicati raccolti nel turno, `_invia_avvisi_file` a fine turno.
+- `tools/ingest_knowledge.py` — fonti di tipo file solo dentro `knowledge/`.
+- `.github/workflows/ci.yml` — step per `tests/test_unit_ingest_fonti.py`.
+- `tests/test_unit_kernel.py`, `tests/test_unit_gate.py`, `tests/test_unit_ingest_fonti.py` — test.
+- `.claude/agents/memoria_revisore.md` — righe #386–#387.
+- `reports/stato_progetto.md`, `reports/roadmap.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.

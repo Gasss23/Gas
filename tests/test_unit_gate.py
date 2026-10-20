@@ -793,3 +793,20 @@ def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
 def test_libero_dopo_lettura(tool, args, atteso):
     from modules.gate.gate import libero_dopo_lettura
     assert libero_dopo_lettura(tool, args) is atteso
+
+
+@pytest.mark.parametrize("path, atteso", [
+    ("dati/a.md", False), ("dati/note.txt", False), ("lead.csv", False), ("dati/agenda.md", False),
+    ("dati/x.json", True), ("dati/X.YAML", True), ("dati/run.html", True), ("dati/a.js", True),
+    ("dati/api_key.txt", True), ("dati/Password.md", True), ("dati/config.md", True),
+    ("dati/.npmrc", True), ("dati/Makefile", True), ("dati/report", True), ("dati/a.pem", True),
+    ("dati/x.json.", True), (None, True), ("", True),
+    # R-386-2: parole intere, niente falsi allarmi sui documenti
+    ("dati/cronologia.md", False), ("dati/sessione_marketing.md", False),
+    ("dati/credito_clienti.csv", False), ("dati/monkey.md", False),
+    ("dati/my-secret.md", True), ("dati/aws keys.txt", True),
+])
+def test_sembra_delicato(path, atteso):
+    """R-223-2: avviso solo informativo per i file nuovi che sembrano delicati."""
+    from modules.gate.gate import sembra_delicato
+    assert sembra_delicato(path) is atteso

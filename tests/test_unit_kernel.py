@@ -5964,6 +5964,44 @@ with _TgFinto():
                                     "content": "sources: []"}))], "ok"])
 check("T74b5 roadmap 5.3: knowledge/sources.yaml mai scritto senza firma",
       not (_k74s.root / "knowledge" / "sources.yaml").exists())
+# R-223-2: file NUOVI di livello 1 che sembrano delicati → un avviso a fine turno;
+# documenti normali e file già esistenti → nessun avviso
+_k74t = _k74()
+(_k74t.root / "dati").mkdir()
+(_k74t.root / "dati" / "vecchio.json").write_text("{}", encoding="utf-8")
+with _TgFinto() as _tg74t:
+    run_turn_scriptato(_k74t, "x", [
+        [("write_file", json.dumps({"relative_path": "dati/nuovo.json", "content": "{}"})),
+         ("write_file", json.dumps({"relative_path": "dati/cron_giro.txt", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "dati/note.md", "content": "x"})),
+         ("write_file", json.dumps({"relative_path": "dati/vecchio.json", "content": "[]"}))],
+        "ok"])
+_av74t = [p.get("text", "") for m, p in _tg74t.chiamate
+          if m == "sendMessage" and "sembrano delicati" in p.get("text", "")]
+check("T74b5 R-223-2 file nuovi delicati → un avviso; documenti e file esistenti no",
+      len(_av74t) == 1 and "dati/nuovo.json" in _av74t[0] and "dati/cron_giro.txt" in _av74t[0]
+      and "note.md" not in _av74t[0] and "vecchio.json" not in _av74t[0]
+      and (_k74t.root / "dati" / "nuovo.json").exists() and _k74t._file_delicati_turno == [],
+      str(_av74t)[:300])
+# R-386-1: percorsi lunghi (emoji = 2 unità Telegram) → l'avviso parte comunque
+_k74v = _k74()
+with _TgFinto() as _tg74v:
+    run_turn_scriptato(_k74v, "x", [
+        [("write_file", json.dumps({"relative_path": "dati/" + ("😀" * 60 + "/") * 4
+                                    + f"{_i}.json", "content": "{}"})) for _i in range(10)],
+        "ok"])
+_av74v = [p.get("text", "") for m, p in _tg74v.chiamate
+          if m == "sendMessage" and "sembrano delicati" in p.get("text", "")]
+check("T74b5 R-386-1 avviso file delicati sotto il limite Telegram anche con nomi lunghi",
+      len(_av74v) == 1
+      and _tgbot_c4b.lunghezza_telegram(_av74v[0]) <= _tgbot_c4b.TELEGRAM_MAX_CHARS
+      and "… e altri" in _av74v[0], str([len(t) for t in _av74v]))
+_k74u = _k74()
+with _TgFinto() as _tg74u:
+    run_turn_scriptato(_k74u, "x", [
+        [("write_file", json.dumps({"relative_path": "dati/a.md", "content": "x"}))], "ok"])
+check("T74b5 R-223-2 solo documenti normali → nessun avviso",
+      not any("sembrano delicati" in p.get("text", "") for m, p in _tg74u.chiamate))
 # T74b5 — R-bot222-1: `gas fida-contatto` (solo comando umano) toglie il segno
 # «non fidato» con una riga di diario; senza conferma non cambia nulla.
 import builtins as _bi74c

@@ -154,6 +154,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_dotenv.py -v 2>&1 | tee "$RUNNER_TEMP/dotenv_output.txt"
 
+      - name: Ingest delle fonti di studio (solo dentro knowledge/)
+        # V-1 bot #228: le fonti di tipo file fuori da knowledge/ vanno rifiutate.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_ingest_fonti.py -v 2>&1 | tee "$RUNNER_TEMP/ingest_output.txt"
+
       - name: Job summary (esito a colpo d'occhio)
         if: always()
         # Scrive nel JOB SUMMARY (pagina della run, niente zip/auth): esito bwrap +

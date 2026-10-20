@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-20 (dopo il merge di #226) — catalogo delle fonti alla firma, taglio degli avvisi, lavoro in parallelo
+**Sessione:** 2026-10-20 (dopo il merge di #228) — avviso sui file nuovi delicati, fonti di studio solo dentro knowledge/
 
 ---
 
@@ -13,9 +13,8 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **R-383-1 (taglio dei valori negli avvisi)**: `FATTA` — review #384 APPROVATO CON RISERVE.
-- **Roadmap 5.3 (knowledge/ alla firma) + cosmetiche bot #226**: `FATTA` — review #385 APPROVATO.
-- **Regole del lavoro in parallelo** (`reports/lavoro_parallelo.md`): `FATTA` (solo documento).
+- **R-223-2 (avviso sui file nuovi delicati)**: `FATTA` — review #386 BOCCIATO → #387 APPROVATO CON RISERVE.
+- **V-1 bot #228 (fonti solo dentro knowledge/)**: `FATTA` — review #387.
 
 ---
 
@@ -23,20 +22,19 @@
 
 ```
  .claude/agents/memoria_revisore.md |   2 ++
- gas.py                             |  14 +++-----------
- knowledge/sources.yaml             |   2 ++
- modules/gate/gate.py               |   8 ++++++++
- modules/memory/store.py            |   4 ++--
- modules/telegram/bot.py            |  18 ++++++++++++++++--
- reports/diff_sessione.md           |  15 ++++++++-------
- reports/handoff.md                 | 182 +++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------
- reports/lavoro_parallelo.md        |  26 ++++++++++++++++++++++++++
- reports/roadmap.md                 |   2 +-
+ .github/workflows/ci.yml           |   7 +++++++
+ gas.py                             |  43 +++++++++++++++++++++++++++++++++++++++++--
+ modules/gate/gate.py               |  40 ++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  17 ++++++++---------
+ reports/handoff.md                 | 127 +++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------
+ reports/roadmap.md                 |   4 ++--
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  14 +++++++-------
- tests/test_unit_gate.py            |   5 ++++-
- tests/test_unit_kernel.py          |  24 ++++++++++++++++++++++++
- 14 files changed, 156 insertions(+), 162 deletions(-)
+ reports/ultimo_report.md           |  11 +++++------
+ tests/test_unit_gate.py            |  17 +++++++++++++++++
+ tests/test_unit_ingest_fonti.py    |  42 ++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          |  38 ++++++++++++++++++++++++++++++++++++++
+ tools/ingest_knowledge.py          |   9 +++++++++
+ 13 files changed, 266 insertions(+), 93 deletions(-)
 ```
 
 ---
@@ -44,90 +42,90 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-9278c68 docs: roadmap 5.3 chiusa; vincolo delle fonti dentro knowledge/ nel catalogo (V-1/V-2 bot #228)
-2c5186c docs(fine-task): handoff aggiornato con la verifica esterna #228
-abbc82e docs(lavoro_parallelo): le cartelle non assegnate si chiedono all'operatore (V-4 verifica esterna #228)
-3b95676 docs(fine-task): handoff con il diff completo
-f4f730e docs(fine-task): report e handoff — knowledge/ alla firma; regole del lavoro in parallelo
-48764e0 feat(cancello): il catalogo delle fonti di studio (knowledge/) va alla firma (roadmap 5.3)
-f2308de chore(revisore): memoria review #385 — APPROVATO
-6e8b0ff Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
-71074ca fix(avvisi): taglio dei valori che non nasconde il testo dopo un «<» (R-383-1)
-8dc72d5 chore(revisore): memoria review #384 — APPROVATO CON RISERVE
+ed77da1 docs(roadmap): R-223-2 e fonti dentro knowledge/ segnate fatte
+2112cb4 docs(fine-task): report e handoff — R-223-2 e fonti solo dentro knowledge/
+1ea5346 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+ec83cf7 Merge remote-tracking branch 'origin/feat/merge-automatico-z1xjx2' into feat/merge-automatico-z1xjx2
+2074c27 feat(avvisi): avviso per i file nuovi che sembrano delicati (R-223-2); fonti di studio solo dentro knowledge/
+83b68e6 chore(revisore): memoria review #387 — APPROVATO CON RISERVE
+f1754e3 chore(revisore): memoria review #386 — BOCCIATO
 ```
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #384
+### Review #386
+
+## VERDETTO: BOCCIATO
+
+Ho letto le tre fonti obbligatorie: CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (le voci su R-223-2 e la decisione 12 del 19-20 ottobre) e la mia memoria (lezione #382 sul limite Telegram).
+
+Elementi del diff esaminati:
+1. `modules/gate/gate.py:516`: `sembra_delicato` classifica il nome del file (minuscolo grazie al casefold di `_normalize_path`). Se qualcosa va storto restituisce True, e il test `test_sembra_delicato` passa (18 casi, riprodotto). Rischio esaminato: falsi positivi su documenti normali. Sondato: `dati/cronologia.md`, `dati/sessione_marketing.md`, `dati/credito_clienti.csv` e `dati/monkey.md` danno tutti True, perché le parole «cron», «session», «cred» e «key» vengono cercate come pezzi dentro il nome. Esito: **riserva R-386-2 BASSA**. La regola dell'operatore dice che i documenti normali passano in silenzio. Proposta: confrontare le parole del nome divise su `_`, `-`, `.` e spazio, oppure fare il controllo per nome solo sulle estensioni che non sono documenti.
+2. `gas.py:2643`: `_invia_avvisi_file` manda un solo messaggio con al massimo 10 percorsi, ognuno tagliato a 200 caratteri con `tronca_visibile`, ma il testo intero non ha un tetto di lunghezza. Rischio esaminato: il caso peggiore contro i 4096 caratteri di Telegram (è la lezione #382). Sondato: 10 percorsi `.json` di livello 1 con cartelle di emoji (975 byte, livello 1 confermato da `livello_scrittura`). Ogni emoji vale 2 unità per Telegram, quindi 200 caratteri diventano 400 unità; il totale fa 4098 unità. `invia_notifica` (`modules/telegram/bot.py:271`) rifiuta il messaggio intero e resta solo un warning nel log. Così chi scrive i file (anche un modello manipolato da un testo letto) può spegnere proprio l'avviso pensato per lui. Esito: **BLOCCO R-386-1 MEDIA**, lo stesso difetto di R-382-1. Correzione: riusare il ciclo di riduzione di `_invia_avvisi_lead` (`gas.py:2634`): togliere percorsi finché `lunghezza_telegram` sta sotto `TELEGRAM_MAX_CHARS` e contare quelli tolti. In alternativa un helper comune. Serve un test con percorsi di emoji.
+3. `gas.py:3793`: `_nuovo` viene calcolato prima della scrittura e il controllo sta in un try/except separato dopo `write_text`. Rischio esaminato: che l'avviso cambi l'esito della scrittura (§9), o che un file esistente o di livello 2 o 3 venga segnalato. Esito: ok. `.py` e `.sh` sono già di livello 2 e restano fuori, come previsto.
+4. `gas.py:3845` e `gas.py:4125`: la lista viene azzerata a inizio turno e svuotata nel finally, dopo l'avviso dei lead. Rischio esaminato: avvisi che passano da un turno all'altro, eccezioni nel finally. Esito: ok, il metodo non lancia eccezioni.
+5. `tests/test_unit_kernel.py:5967`: T74b5 R-223-2 copre file nuovo, file esistente, documento e lista svuotata. Esito: ok, ma manca il caso della lunghezza (vedi punto 2).
+
+Nessuna violazione del Wall of Shame: niente slicing della history, `_get_window` non è toccata, il tetto delle 10 iterazioni resta, nessuna simulazione dei tool.
+
+Rischi esclusi:
+- Suite kernel completa e `pytest tests/` non rieseguiti da me: mi baso sui numeri dichiarati (946/0 e 715) più i 18 casi nuovi che ho riprodotto.
+- Nessun test di mutazione.
+- I file creati da `run_command` (shell) non fanno scattare l'avviso. È fuori dall'ambito della fetta, che parla solo di `write_file`, ma va dichiarato come limite.
+- Invio reale su Telegram non verificato: in sviluppo non c'è un token vero.
+
+Memoria: aggiunta la riga #386 in /home/user/Gas/.claude/agents/memoria_revisore.md con la lezione «ogni nuovo messaggio accorpato va ricontrollato contro i 4096 caratteri di Telegram; `tronca_visibile` a n caratteri vale fino a 2n unità». Lanciato `scripts/commit_memoria_revisore.sh`: è terminato senza output, quindi non ho la conferma esplicita che il commit sia avvenuto.
+
+### Review #387
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #384. Diff STAGED su feat/merge-automatico-z1xjx2 (PR #226): gas.py, modules/telegram/bot.py, tests/test_unit_kernel.py. Ho letto prima CLAUDE.md (sezioni 5, 8, 9), reports/stato_progetto.md (riga 591, R-383-1) e la memoria del revisore (#381-#383).
+Ho rivisto di nuovo il diff staged che avevo bocciato nella review #386. Le tre correzioni funzionano e i test le coprono; resta una sola riserva BASSA (R-387-1, sotto).
+
+**Letture fatte prima della review**: CLAUDE.md (sez. 5, 8, 9), `reports/stato_progetto.md` (voci R-223-2 e R-386), coda di `.claude/agents/memoria_revisore.md` (#382–#386, compresa la lezione sul limite di 4096 unità di Telegram per i messaggi accorpati).
 
 **Elementi del diff esaminati**
-- `modules/telegram/bot.py:153`: nuova `tronca_visibile(testo, n)`. Fa `rendi_visibili` su una riga, taglia a n e aggiunge «…».
-  - Rischio esaminato: una sequenza spezzata, oppure un «<» letterale che cancella il valore.
-  - Il «<» si cerca solo negli ultimi 10 caratteri (riga 161). La sequenza più lunga che `rendi_visibili` può produrre è «<U+10FFFF>», 10 caratteri (categorie Cn/Co fino a 0x10FFFF), quindi una parte spezzata ne ha al massimo 9 e la finestra la copre sempre.
-  - Sonda eseguita: caratteri U+202E, U+10FFFF, U+E01EF e U+0000, ciascuno in 30 posizioni, con n = 10, 60, 120 e 200. Risultato: 0 sequenze spezzate, lunghezza sempre al massimo n+1.
-  - Un «<» letterale in tutte le posizioni da 0 a 204 fa perdere al massimo 9 caratteri: il valore resta visibile. Per questi casi il codice non può più alzare eccezioni.
-  - Esito: ok.
-- `gas.py:2585`: `_v` dell'avviso lead ora delega a `tronca_visibile(x or "—", 200)`. Comportamento uguale a prima (prima `str(x or "—")`, ora lo `str()` lo fa la funzione nuova). Rischio esaminato: regressione su R-382-2 e R-383-1. Esito: ok.
-- `modules/telegram/bot.py:303`: `componi_avviso_scadute` passa da tagli grezzi `[:120]`/`[:60]` a `tronca_visibile`. Rischio esaminato: un messaggio più lungo di prima (al massimo un carattere in più per campo, il «…»), trascurabile rispetto al limite di 4096 con al massimo `MAX_SCADUTE_ELENCATE` righe. Esito: ok.
-- `tests/test_unit_kernel.py:6084`: test R-383-1 («<» all'inizio e in mezzo).
-- `tests/test_unit_kernel.py:6095`: test V-2 VE #226 (taglio a 120 in ogni punto della sequenza).
-  - Mutazioni in un worktree separato, rimosso dopo l'uso; nessun git stash.
-  - (a) Ripristinato `rfind("<")` su tutto il taglio: fallisce solo il test R-383-1.
-  - (b) Ripristinato il taglio grezzo `[:120]` sull'azione: fallisce solo il test V-2. La lista mostra 9 posizioni su 11 rotte.
-  - Esito: ok.
+- `gas.py:2662` — ciclo che riduce `k` finché `lunghezza_telegram(_componi(k))` sta sotto `TELEGRAM_MAX_CHARS`, come per i lead. Rischio esaminato: testo esterno che spegne l'avviso (R-386-1). **Esito: ok.** Con il loop spento (mutazione in un worktree temporaneo, ora rimosso) T74b5 R-386-1 fallisce; col codice staged passa con 1 messaggio da 1986 caratteri. Con `k=0` restano l'intestazione e «… e altri N». Tutto è dentro un try/except che fa solo warning, come chiede il §9.
+- `gas.py:3795` — `_nuovo = not path.exists()` calcolato prima della scrittura; l'aggiunta alla lista avviene solo con `livello == LIVELLO_LIBERO`, dentro un try a parte. Rischio esaminato: l'avviso cambia l'esito della scrittura, o usa variabili fuori portata. **Esito: ok.** `livello` e `rel_root` sono quelli già ricalcolati sul percorso risolto (`gas.py:3765`, `gas.py:3752`). La lista si azzera a inizio turno e nel `finally` (`gas.py:4133`).
+- `modules/gate/gate.py:530` — `sembra_delicato` ora confronta parole intere con `_NOMI_DELICATI`. Rischio esaminato: falsi allarmi su documenti normali (R-386-2). **Esito: riserva BASSA (R-387-1).** I quattro documenti citati ora tornano False. Però le parole si cercano solo prima del PRIMO punto: `nome.split(".")[0]` taglia via il resto, quindi il `.` nella regex non serve e il commento dice il falso. Ho sondato:
+  - `x.secret.md`, `id_rsa.txt`, `accesstoken.md` → False;
+  - `.fish` (livello 1) non è segnalato.
 
-**Riprodotto**: kernel 943 PASS 0 FAIL; `pytest tests/` 1523 passed. Nessuna violazione della sezione 5 di CLAUDE.md: nessuno slicing della history, nessuna simulazione di tool. Le funzioni sono pure, senza I/O.
+  È un avviso solo informativo e non tocca il cancello, quindi non blocca. `.sh` e `.py` non c'entrano: sono già di livello 2.
+- `tools/ingest_knowledge.py:153` — `abs_path.resolve().relative_to((REPO_ROOT/"knowledge").resolve())`. Rischio esaminato: fonti fuori da knowledge/ via «..», symlink o percorso assoluto (V-1 bot #228). **Esito: ok.** I 4 casi da rifiutare falliscono col controllo spento e passano col codice staged; il caso accettato passa. Anche `REPO_ROOT / "/etc/hostname"` (assoluto) viene rifiutato. L'unica fonte di `knowledge/sources.yaml` (`knowledge/test_source.txt`) resta valida.
+- `.github/workflows/ci.yml:157` — nuovo step `if: always()` con pipefail. Rischio esaminato: test nuovo che la CI non lancia mai. **Esito: ok.** Il YAML è valido e non c'è nessun `paths-ignore`.
+- `tests/test_unit_ingest_fonti.py:31` — test parametrico; il fixture fa monkeypatch di `REPO_ROOT` su tmp_path. **Esito: ok.**
 
-**Riserve**
-- R-384-1 COSMETICA: nessun test dedicato per il taglio del `tool_name` a 60 (`modules/telegram/bot.py:304`). Il codice è lo stesso già coperto, quindi il rischio è minimo.
+**Wall of Shame**: nel diff non c'è slicing della storia né simulazione dell'output dei tool. Il tetto di 10 iterazioni e `_get_window` non sono toccati.
 
-**Rischio escluso**: non ho verificato la resa reale su Telegram (come il client mostra «<U+…>» e «…»), perché in ambiente di sviluppo non c'è un bot attivo. Non ho controllato nemmeno i chiamanti di `rendi_visibili` fuori dal diff, perché non sono cambiati.
+**Esiti riprodotti**: kernel 947 PASS / 0 FAIL; gate (`test_sembra_delicato`) + ingest 34 passed; YAML ok. Con la mutazione il kernel dà 945/2: T74b5 R-386-1 e T74b6 R-382-1, perché la stessa sostituzione ha spento anche il loop dei lead. Entrambi i FAIL sono mirati.
 
-**Memoria**: aggiunta la riga #384 (APPROVATO CON RISERVE, nessuna lezione nuova) in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola con lo script (commit 8dc72d5). Il diff staged sotto review resta intatto. R-383-1 e V-2 VE #226 si possono considerare chiuse; R-384-1 va tracciata in /home/user/Gas/reports/stato_progetto.md.
+**Riserva da tracciare in `reports/stato_progetto.md`**
+- **R-387-1 (BASSA)**: in `sembra_delicato` le parole delicate si cercano solo prima del primo punto del nome. Correzione proposta: `re.split` su tutto il nome senza l'ultima estensione. Valutare `.fish` tra le estensioni delicate.
 
-### Review #385
+**Rischi esplicitamente esclusi**
+- Invio reale su Telegram: non l'ho verificato; ho usato solo `_TgFinto`, quindi l'invio vero lo vedrà l'operatore.
+- Esecuzione dello step nuovo sulla CI di GitHub: non verificata, posso solo validare il YAML in locale.
+- Suite pytest completa da 1558: non rilanciata, ho eseguito solo le parti toccate.
+- Symlink nei test di ingest su Windows: non verificato, Windows non è una piattaforma di Gas.
 
-## VERDETTO: APPROVATO
-
-Ho letto CLAUDE.md, la parte di reports/stato_progetto.md che serve e la memoria del revisore. Ho esaminato il diff staged: 5 file, +23 e -4 righe.
-
-**Elementi del diff esaminati**
-- `modules/gate/gate.py:455`: ogni percorso il cui primo pezzo (pulito) inizia con «knowledge» ora richiede la firma. Volevo capire se si può aggirare. Ho provato a mano sette varianti, tutte finite alla firma (livello 2): `knowledge\sources.yaml` (barra rovesciata), `KNOWLEDGE /x`, `./knowledge`, `knowledge` da solo, `x/../knowledge/sources.yaml`, `Knowledge%2fsources.yaml` e la «k» a larghezza piena. Il controllo sta dopo quelli di livello 3, quindi non rende più libero nessun percorso che prima era «mai». I collegamenti simbolici sono coperti: l'esecuzione rivaluta il file vero (`gas.py:3736`). — ok
-- `modules/gate/gate.py:264`: nuova costante `_LIVELLO2_TOP`, con commento motivato e tipi dichiarati. Vale solo per il primo pezzo, quindi `dati/knowledge/x.md` resta libero (livello 1, sondato): è voluto e coerente con la roadmap 5.3. — ok
-- `tests/test_unit_gate.py:485`: sei casi nuovi alla firma. Il caso «knowledge/x.md», che prima era libero, ora è alla firma e al suo posto tra i liberi c'è `dati/knowledge.md`. È un cambio di comportamento voluto, non un test indebolito. Rilanciati: 697 passed. — ok
-- `tests/test_unit_kernel.py:5960`: test di round-trip agentico. `write_file knowledge/sources.yaml` senza letture non scrive il file. Il test distingue il vecchio comportamento: prima la cartella knowledge era libera, quindi il file sarebbe stato scritto. Rilanciato: 944 PASS, 0 FAIL, e il caso «roadmap 5.3» è PASS. — ok
-- `modules/memory/store.py:1983` e `modules/memory/store.py:1993`: cambia solo il testo dei log (`scadi_approvazioni`), la logica resta uguale e l'errore resta intercettato e loggato con ritorno `[]`. — ok
-- `gas.py:4358`: solo il commento passa da «12.» a «11b.». — ok
-- Contesto: in `gas.py:1628` la cartella del progetto è montata in sola lettura nella sandbox di `run_command`. Quindi `knowledge/` non si può scrivere nemmeno da shell. — ok
-
-**Coerenza col progetto:** chiude il punto 5.3 della roadmap («da chiudere presto»). Rafforza il guardrail, non lo indebolisce. Non tocca i guardrail su cronologia (`_get_window`), limite di 10 iterazioni e tetto di output, né la gestione degli errori dei provider. Nessun taglio diretto della cronologia e nessun output di tool simulato.
-
-**Rischi esclusi esplicitamente**
-- Non ho fatto la prova di mutazione del test kernel, cioè ripristinare temporaneamente il livello 1 e vederlo fallire: il divieto di `git stash` e le modifiche staged la rendevano invasiva. Mi baso sul ragionamento: il vecchio test del gate metteva knowledge tra i liberi.
-- Non ho verificato se il database `.gas_knowledge.db`, che non sta nella cartella `knowledge/`, sia scrivibile da Gas tramite una pipeline di ingest. È fuori dal perimetro di questo diff.
-- Non ho verificato il comportamento sulla VPS: non è riproducibile in sviluppo.
-
-**Memoria:** riga contatore #385 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola (commit f2308de, «chore(revisore): memoria review #385 — APPROVATO»). Il diff staged è rimasto intatto (5 file). Nessuna lezione nuova.
+**Memoria**: ho aggiunto la riga #387 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato errori. Nessuna lezione nuova.
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 941 → 944 PASS, 0 FAIL. Blocco reale: `=== RIEPILOGO: 944 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1529 passed in 182.37s (0:03:02)` (+6 gate).
+tests/test_unit_kernel.py in locale: 944 → 947 PASS, 0 FAIL. Blocco reale: `=== RIEPILOGO: 947 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+pytest `tests/`: `1558 passed in 184.08s (0:03:04)` (+24 gate, +5 ingest).
 
 ## §6 STATO CI
 
-- `3b95676`: handoff-check success; verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/228#issuecomment-6300729328)), nessuna ALTA/MEDIA; V-4 (cartelle non assegnate in lavoro_parallelo.md) corretta nel commit successivo. Bot su 3b95676 (verifica interrotta per cambio di testa) APPROVATO CON RISERVE: V-1 roadmap 5.3 da segnare chiusa e V-2 fonti fuori da knowledge/ — corrette (roadmap e vincolo nel catalogo).
-- Commit di questo handoff: run non ancora disponibile. §2/§3 non possono contenere il commit dell'handoff stesso.
+- Run sui commit di questo handoff: non ancora disponibile alla scrittura dell'handoff. §2/§3 non possono contenere il commit dell'handoff stesso.
 
 ## §7 RISERVE APERTE
 
-- R-384-1 (COSMETICA): nessun test dedicato al taglio del tool_name a 60 negli avvisi delle firme scadute.
-- Da #226: R-381-x chiuse; da #225: R-380-1, R-380-2; da #224: R-378-1, R-379-1, R-ve224-2; da #222: vedi stato_progetto.md.
+- R-387-1 (BASSA): in `sembra_delicato` le parole delicate si cercano solo prima del primo punto; `.fish` non segnalato.
+- Limite dichiarato: i file creati da `run_command` non fanno scattare l'avviso.
+- R-384-1 (COSMETICA), R-380-1/2, R-378-1, R-379-1, R-ve224-2 e quelle di #222: vedi stato_progetto.md.

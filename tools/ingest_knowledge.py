@@ -147,6 +147,15 @@ def ingest_file_source(conn: sqlite3.Connection, source: dict) -> dict[str, int 
     chunk_chars: int = int(source.get("chunk_chars", DEFAULT_CHUNK_CHARS))
 
     abs_path = REPO_ROOT / uri
+    # V-1 bot #228: le fonti di tipo file stanno SOLO dentro knowledge/, l'unica
+    # cartella protetta dalla firma (gate.py, _LIVELLO2_TOP). Fuori, o risalendo con
+    # «..» o un symlink, Gas potrebbe riscrivere la fonte: fonte rifiutata.
+    cartella = (REPO_ROOT / "knowledge").resolve()
+    try:
+        abs_path.resolve().relative_to(cartella)
+    except (ValueError, OSError):
+        log.error("[%s] uri fuori da knowledge/: %s — fonte rifiutata", nome, uri)
+        return {"source": nome, "error": "uri fuori da knowledge/", "ingested": 0, "skipped": 0}
     if not abs_path.exists():
         log.error("[%s] file non trovato: %s", nome, abs_path)
         return {"source": nome, "error": "file not found", "ingested": 0, "skipped": 0}
