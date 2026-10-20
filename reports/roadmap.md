@@ -1,318 +1,616 @@
-Roadmap e completati storici di GAS — dettaglio integrale. Sommario e stato corrente in reports/roadmap.md (roadmap) + reports/stato_progetto.md (stato vivo). CLAUDE.md sez. 10 è solo un puntatore a questo file.
+# GAS — ROADMAP COMPLETA
 
-> Fonte unica autorevole della roadmap. Ultimo aggiornamento: **2026-09-21**.
+> Aggiornata il 19 ottobre 2026.
+> Base: la roadmap completa dell'11 ottobre (`main` al commit `ea4a368`), più gli avanzamenti fino al 19 ottobre (`main` al commit `2536ffd`, PR #219) e le decisioni prese dall'operatore il 19 ottobre in chat vocale.
+> È la fonte unica della roadmap (regola di `CLAUDE.md` del 19 ottobre): la copia nel progetto claude.ai va tolta.
 
-## 10. FUTURE ROADMAP & PRIORITIES
-
-Completati (storico): snapshot preventivo anti-autodistruzione (2026-06-11), comando gas doctor, sandbox di run_command no-shell+allowlist con modalita dry-run (2026-06-12, finding esfiltrazione 🟠->🟡 ridotto), sandbox OS bwrap (rete isolata + fs read-only, modalita os_strict/os_with_fallback, sonda _probe_os_sandbox + check in gas doctor) — chiude DEL TUTTO il finding esfiltrazione. WINDOW_CHAR_CAP sulla finestra a granularita di messaggio (2026-06-14, review #7/#8) e manutenzione snapshot in gas doctor (2026-06-14, review #10) — **FASE 1 CHIUSA**. **FASE 2 (cervello/memoria low-cost) CHIUSA** (2026-06-15 → 2026-06-19): memoria SQLite con diario IMMUTABILE (review #12/#13), iniezione always-on + tool ricorda (review #14), CRM contatti dal loop con chiavi normalizzate/chiave_norm (review #15/#16/#22), ricerca FTS5 sul diario (review #18), backup automatico anti-corruzione del DB (review #19), vector store fetta 1 storage+embedding (review #23) + wiring retrieval semantico al kernel opt-in GAS_VECTORS (review #24), comando CLI gas reindex (review #25). Soglia semantica `VEC_MIN_SIM` resa env-configurabile via `GAS_VECTORS_MIN_SIM` (2026-06-21, review #28) — chiude la parte azionabile di R-wire-1 (resta solo la ri-taratura, deploy-dependent). **ITEM APERTI CHIUSI TUTTI** (2026-06-27, review #38, commit a8c6d53): budget cap `GAS_DAILY_TOKEN_BUDGET` + Telegram bridge bot `modules/telegram/bot.py` + `gas calibrate-vectors` + `gas eval-vectors` + R-reidx-3 già chiuso (review #30). **FASE 2.5 (compressione history) CHIUSA** (2026-06-27, review #39, commit 65c4c7b): `_compress_history_if_needed()` auto-trigger + `gas compress-history` CLI, zero token LLM. **FASE 3 VOCE ✅ COMPLETATA** (2026-09-15, PR #90): pipeline mic→STT Groq Whisper→kernel→TTS ElevenLabs→audio; fette 1+2+3+4a+4b tutte su main; provata a voce umana reale (attestazione supervisore 2026-08-22); client browser HTML5 fetta 4b mergiato su main (PR #90, 2026-09-15). **FASE 5 RESET (2026-09-14)**: VPS Hetzner PERSO per mancato pagamento — dati cancellati irrevocabilmente. S1/S1b eseguiti sul vecchio VPS non sono più validi. Da rifare da ZERO su server nuovo. Decisione operatore (2026-09-21): VPS rimandato, prima il cervello.
-
-### 🔴 FASE 1 — Blindatura del Terminale & Sicurezza — ✅ CHIUSA
-- Snapshot preventivo anti-autodistruzione — ✅ FATTO (2026-06-11), base della blindatura.
-- Sandbox OS per run_command (bwrap/unshare: namespace di rete chiuso + filesystem read-only) — ✅ FATTO: chiude DEL TUTTO il finding esfiltrazione. Implementati la sonda reale _probe_os_sandbox (cache di processo), il prefisso _bwrap_prefix (--unshare-net/--unshare-pid + fs read-only) e le due modalita GAS_SANDBOX_MODE: os_strict (fail-closed se bwrap/namespace assenti) e os_with_fallback (degrada alla sola sandbox applicativa). Check di disponibilita presente in gas doctor.
-- WINDOW_CHAR_CAP sulla finestra, a granularita di messaggio (mai slicing) — ✅ FATTO (2026-06-14, review #7/#8): tetto rigido 24000 char via _cap_window_chars, scarto di messaggi interi + riallineamento a un role:user (mai slicing, §5).
-- Manutenzione snapshot in gas doctor: conteggio ref, gc degli oggetti orfani, rotazione di reports/snapshots.log — ✅ FATTO (2026-06-14, review #10): retention ibrida (count+età), doctor sez.7 di solo report, gc OPT-IN manuale (nessun prune distruttivo automatico, §10).
-
-### 🧠 FASE 2 — Il Cervello di Jarvis & Memoria Low-Cost — ✅ CHIUSA
-- Database locale SQLite per i fatti rigidi (gratis, zero token) — ✅ FATTO (2026-06-15, review #12/#13): modulo `modules/memory/`, DB file singolo `.gas_memory.db`, diario append-only IMMUTABILE (trigger BEFORE UPDATE/DELETE → ABORT) + rubrica contatti mutabile. CRM dal loop con tool salva_contatto/imposta_stato_contatto e chiavi normalizzate (chiave_norm UNIQUE + NFKC) — ✅ FATTO (review #15/#16/#22). Iniezione always-on (_memoria_pin) + tool ricorda di sola lettura — ✅ FATTO (review #14). Ricerca FTS5 sul diario (Strato A) — ✅ FATTO (2026-06-17, review #18).
-- Vector DB locale per i ricordi a lungo termine senza consumo di token — ✅ FATTO (2026-06-18): fetta 1 storage+embedding semantico locale (fastembed `paraphrase-multilingual-MiniLM-L12-v2`, sidecar `.gas_vectors.db` cache derivata, cosine brute-force, review #23) + wiring al kernel — retrieval semantico opt-in via env `GAS_VECTORS`, catch-up indexing in run_turn + cascata FTS→semantico in ricorda (review #24). Comando CLI di manutenzione `gas reindex` (ricostruisce l'indice dal diario) — ✅ FATTO (2026-06-19, review #25).
-- **Backup della memoria** — ✅ FATTO per l'auto-corruzione (2026-06-17, review #19): `MemoryStore.backup()` + `backup_auto()` THROTTLED con integrity-gate (un DB corrotto non viene mai copiato sopra i backup buoni) + rotazione, e check in gas doctor sez.8. Il backup OFF-MACHINE (anti-disastro disco, copia su volume/host esterno) resta OBBLIGATORIO prima di ogni nuovo deploy VPS — vedi §Trasversali OBBLIGATORI.
-- (parcheggiato, NON prioritario) Script revisor.py (API low-cost) per il "Claude Council". NB: chiarire cosa si intende per "Claude Council" — il nome non corrisponde a un prodotto Anthropic noto. Nessun impegno.
-
-### ✅ ITEM APERTI CHIUSI (2026-06-27, review #38, commit a8c6d53)
-
-> Tutti e 5 gli item aperti sono stati chiusi in questa sessione.
-
-1. ✅ **Controllo spesa token (DEFINITIVO)** — `_daily_cost_usd()` + kill-switch `GAS_DAILY_TOKEN_BUDGET` in `run_turn`. Misura costi 24h dal log JSONL locale, blocca se superato, fail-safe §9 (log assente → 0.0). La cascata cheap-by-default (Gemini Flash Lite prima per task semplici) era già presente. `gas tokens` già presente. Soluzione definitiva: MISURARE ✅ + routing cheap ✅ + cap giornaliero ✅.
-2. ✅ **Accesso telefono — Telegram bridge bot** (`gas telegram`) — `modules/telegram/bot.py`: long polling via urllib stdlib (zero nuove dipendenze), whitelist `TELEGRAM_ALLOWED_IDS` fail-closed, un GasKernel condiviso per uso single-user/Jarvis. Avvio: `export TELEGRAM_BOT_TOKEN=<token> TELEGRAM_ALLOWED_IDS=<chat_id> && gas telegram`. Prerequisito VPS per h24 (FASE 5) ma il codice è pronto al deploy.
-3. ✅ **R-wire-1 ri-taratura VEC_MIN_SIM** — `gas calibrate-vectors [N]`: campiona N righe diario come query, mostra distribuzione score coseno, suggerisce valore soglia. Strumento per tarare `GAS_VECTORS_MIN_SIM` sul diario reale VPS. Env-config già implementata (review #28). Il valore 0.30 default rimane fino al deploy reale.
-4. ✅ **e5-small evaluation** — `gas eval-vectors [query] [k]`: mostra statistiche vector store (modello, dim, n. vettori, min_sim) e risultati semantici con score. Nota e5-small come alternativa (`GAS_EMBED_MODEL=intfloat/multilingual-e5-small`, stessa infra 384-dim, prefissi già gestiti in `_MODEL_PREFIXES`). Valutazione effettiva avviene a runtime col diario reale.
-5. ✅ **R-reidx-3 picco RAM** — Già chiuso (review #30, 2026-06-25): `ricostruisci_da_diario` usa batch paginati (`diario_dopo`, `REINDEX_BATCH_SIZE=256`), numpy transitori per batch (~400KB), accumulo blob ~1.5KB/riga. Su VPS CX33 8GB non bloccante.
-
-### 🟡 PROSSIMI PASSI (in ordine di priorità)
-
-#### 🗺️ ORDINE OPERATORE (2026-09-14, aggiornato 2026-09-21)
-
-> Priorità vincolante decisa dall'operatore. Non alterare senza istruzione esplicita.
-
-1. ✅ **Voce 4b** — client browser HTML5 (PR #90, 2026-09-15). FATTO.
-2. ✅ **GAS risponde SEMPRE in italiano** — FATTO (2026-09-21: regola in `_GAS_SYSTEM_PROMPT_BASE` e in cima a `gas_identity.md`, test T63a-d, review #100). Segnato FATTO il 2026-10-11 su conferma dell'operatore.
-3. **Auto-apprendimento / auto-sviluppo** — GAS diventa progressivamente più intelligente senza input umani (converge con FASE 2.6 e "Jarvis cognitivo").
-4. **Motore marketing (FASE 4)** — tra gli ultimi. Non prima del cervello.
-5. **VPS** — rimandato a tempo indeterminato per scelta operatore. Prima il cervello, poi un server potente blindato dal giorno 1.
-
-#### 🔒 TRASVERSALI OBBLIGATORI (prima di ogni nuovo deploy VPS — lezione 2026-09-14)
-
-> Il VPS Hetzner è stato PERSO il 2026-09-14 per mancato pagamento. Dati `.gas_memory.db` / `.gas_history.json` cancellati irrevocabilmente. Lezione: il deploy futuro deve essere blindato dal giorno 1.
-
-- **Pagamento server blindato**: carta/metodo di pagamento verificato + alert fatturazione attivo prima di accendere il server. Non opzionale.
-- **Backup off-server automatico**: copia automatica di `.gas_memory.db` (diario/CRM) e `.gas_history.json` su host/volume ESTERNO, attivata il giorno stesso del deploy. Mai fidarsi del solo disco VPS.
-- **Rotazione chiave ElevenLabs** prima del deploy (usata in sviluppo WSL — rischio leak in log).
-- **Privatizzare repo** (GitHub Pro, $4/mese): rulesets su privati richiedono Pro/Team. Su Free il repo privato SPEGNE il ruleset main-lock. Chiude anche l'IP in history (stato MITIGATO dal scrub HEAD, NON chiuso: IP resta nella history git pubblica).
-- **Disciplina spesa token dev**: Sonnet default, Opus solo on-demand via `/model opus`.
-
-#### 🔧 LAVORO IN SOSPESO — branch e task pendenti
-
-- **fix/gasmerge-hardening (SHA 6082a25)** — branch non mergiato, non revisionato. Chiude #65-R1 (guard `[ -n "$HEAD_SHA" ]` mancante) e #63-R1 (git `/usr/bin/git` hardcoded). Prerequisiti: rebase su main (conflitto certo su `tests/` + `stato_progetto.md`), revisore, CI verde, revisione umana.
-- **Micro-task doc** — 3 registrazioni pendenti: (1) finding hook `session_end` + sessioni parallele; (2) archiviare 3 ✅ galleggianti in `stato_progetto.md`; (3) raffinare check 🟡 di processo.
-- **3 branch parcheggiati** — `fix/crm-idemp-diario`, `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc` — lavoro non atterrato su main. NON eliminare senza verifica umana; ispezionare e decidere (merge, rebase, o close).
-
-0. 🔒 **Privatizzare repo — ALTA URGENZA** — trigger: prima che entrino dati lead reali / maturità GAS. Richiede GitHub Pro ($4/mese): su Free il repo privato SPEGNE il ruleset main-lock (rulesets su privati = solo Pro/Team/Enterprise). Quindi Pro + privato è UN'unica mossa. Chiude anche l'IP in history (IP 2026-07-20: già scrubato dai file HEAD, ma resta nella history git pubblica — stato MITIGATO, NON chiuso). Verificare fork pubblici prima: se esistono, l'IP è già uscito e va valutata la rotazione IP sul nuovo VPS.
-
-1. ✅ **Migrazione rung Groq** — `llama-3.3-70b-versatile` → `openai/gpt-oss-120b`. Validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`, latenza 1138ms). Commit `f028e51`, review #44 APPROVATO CON RISERVE, 2026-07-08. **COMPLETATA**.
-2. ✅ **FASE 2.5 — Summarizzazione cronologia** — CHIUSA (2026-06-27, review #39, commit 65c4c7b).
-3. ✅ **FASE 3 — Interfaccia vocale** — COMPLETATA (2026-09-15, PR #90). Pipeline mic→STT Groq Whisper→kernel→TTS ElevenLabs→audio; fette 1+2+3+4a+4b su main; attestazione voce umana reale (2026-08-22).
-4. **FASE 4.5 — Task scheduler autonomo** (primo mattone dell'"Orchestratore / Direttore"; vedi sotto). **PROSSIMO GRANDE LAVORO**. NB: dipendeva da "FASE 5 + systemd"; con VPS perso va ripensato IN LOCALE sul Mac.
-5. **FASE 5 — Deploy VPS** — 🔴 **RESET (2026-09-14)**: VPS Hetzner perso per mancato pagamento. S1/S1b eseguiti sul vecchio VPS non più validi. Da rifare da ZERO su server nuovo, blindato dal giorno 1 (vedi §Trasversali OBBLIGATORI). **RIMANDATO** per scelta operatore (prima il cervello, poi un VPS potente).
-6. **Riserve aperte dalla review #38**: R-tel-budget-perf (scan JSONL al crescere del log), R-tel-tool_res (cosmetico, tool result nel reply Telegram).
-7. **🟡 R-verdetto-evidenza** — check meccanico che ogni path:riga citato nel verdetto del revisore esista nel diff sottoposto. Oggi solo disciplinare; gap rilevato 2026-07-30 (`-> None`). Fetta tooling piccola, non bloccante.
-
-#### 🧩 RISERVE DI CODICE APERTE (tracked, non bloccanti)
-
-**gasmerge (#65/#63):** #65-R1 guard `[ -n "$HEAD_SHA" ]` mancante; #65-R3 `/tmp/gaspr.json` non thread-safe con pytest-xdist; #63-R1 `/usr/bin/git` hardcoded.
-**R-crm-1b:** R1 `int(r["id"])` fuori try/except; R2 ramo `chiave_norm` non coperto da T60; R3 commento cosmetico; R4 `T61d or "Duplicati"` sempre vera.
-**Riserve minori** (dettaglio in `stato_progetto.md`): `cap_window_chars` R-test-1, chdir trap R2#6, falsi positivi path-check R3#4, snapshot TASK C, hook SessionEnd, R-mem/R-mem2a, R26-1/R26-2 backup.
-**🟡 Degrado solo-testo per-turno** — silenzioso (warning in log), rimandato per falsi positivi.
-**🟡 Esfiltrazione in `os_with_fallback`** — chiusa solo in `os_strict`; in fallback mode resta 🟡.
-
-### 🔍 REVISIONE FONDAMENTA — Fable 5 (2026-07-15, SHA 9cbab56)
-
-Audit integrale a occhi freschi di kernel, memoria, vettori, sandbox, snapshot, cascata, bridge Telegram (~3.8k righe). Verdetto: fondamenta SOLIDE, nessuna riscrittura giustificata. Finding (dettaglio in stato_progetto.md):
-
-1. ✅ FATTO (verificato 2026-10-11: `PRAGMA recursive_triggers = ON` in `modules/memory/store.py`) — **F1 = R-crm-diario-rr, PROVATO** — `INSERT OR REPLACE` riscrive una riga del diario aggirando i trigger di immutabilità (dimostrato su DB di test); `PRAGMA recursive_triggers=ON` in `MemoryStore._connect()` chiude il buco (dimostrato). T19f copre solo UPDATE/DELETE: il varco non è testato. (Era: fix 1 riga + test che pretende ABORT su INSERT OR REPLACE.)
-2. ✅ FATTO (verificato 2026-10-11: `_save_history` scrive su file temporaneo + `os.replace`, `_load_history` mette in quarantena `.corrupt.*` con warning) — **F6 — atomicità `.gas_history.json`** — `_save_history` scrive senza tmp+rename (viola §4) e `_load_history` ingoia la corruzione senza warning → amnesia conversazionale SILENZIOSA dopo un kill a metà scrittura. (Era: fetta piccola dopo F1:) write-tmp + `os.replace` + warning e quarantena `.corrupt` in load.
-3. ✅ **F2 — CHIUSA (2026-10-12, FETTA 1 cervello forte, review #293)**: `_budget_superato()` prima di ogni chiamata del ciclo e di ogni rung della riflessione. Scelta voluta (R-293-2): superato il tetto, il turno si ferma anche sui rung gratuiti (openrouter/ollama), come il controllo di inizio turno. Aperta R-293-1 (log costi riletto a ogni chiamata: cache prima della Fetta 2). Testo originale: **budget kill-switch non ricontrollato dentro il turno** — check solo a inizio `run_turn`: worst-case ~20-30 chiamate oltre soglia in un singolo turno (~$0.045 su gemini-flash). Inerte sul free tier. **GATED**: prerequisito del primo rung runtime a pagamento (Claude API), non prima.
-4. ✅ **F3 — pulizia file morti** — ESEGUITA in questa PR: 17 file rimossi (junk root, brain legacy con slicing §5, self_improve/, modules/marketing/ vuoto), `brains/router.py` ridotto al solo `classifica_compito`. Suite verificata a delta zero pre/post.
-5. 🟢 **F4 — messaggi `_cap_tool_output` suggeriscono `sed -n`** non in allowlist — cosmetico, accodabile a una futura fetta motore.
-6. 🟢 **F5 — kernel Telegram single-history condiviso** — vincolo di design dichiarato: da sciogliere nel progetto "controllo Telegram unificato", non prima.
-7. 🟡 **F7 — `.venv/` non gitignorato → lo snapshot lo inghiotte** — `.gitignore` conteneva `venv/` ma NON `.venv/` (col punto): `_snapshot()` fa `git add -A`, quindi in una root con `.venv/` ogni snapshot preventivo assorbe l'intero virtualenv nell'albero (migliaia di file, snapshot lenti, repo gonfio — correlato ai ~4427 oggetti loose già annotati). Riga `.venv/` aggiunta al `.gitignore` in questa PR. **RESIDUO NON CHIUSO**: verificare sul nuovo VPS come si chiama il venv di produzione prima del deploy.
-
-7. **Rung 4 OpenRouter in degrado** — `meta-llama/llama-3.3-70b-instruct:free` soggetto a rate limit upstream crescenti; diversi modelli free-tier OpenRouter hanno perso l'accesso gratuito a giugno 2026. Da investigare: modello free alternativo stabile o declassare rung 4 a best-effort dichiarato. Stato: APERTO, priorità media.
-8. ✅ **Config-drift stringhe modello** — `brains/model_ids.py` = fonte unica dei 5 ID cascata, env-overridabili (`GAS_MODEL_*`). Merge `eb0509f`, commit `160543a`, review #43, 2026-07-07. **CHIUSO**.
-
-> Chiusi di recente (storico): **R-crm-norm-2** — esporre `collisione_chiave_norm`/corruzione in `gas doctor` sez.8 → ✅ FATTO (2026-06-20, review #27, commit `56a6dc3`). **R-reidx-deps** — requirements.txt pinnato == (openai 2.43.0, requests 2.34.2, numpy 2.4.6, onnxruntime 1.27.0, fastembed 0.8.0); requests era il diretto mancante; coppia numpy/onnxruntime pinnata insieme (ABI numpy 2.x); wheel manylinux x86_64 verificate (pip download, zero build) → ✅ CHIUSO (2026-06-29, commit `011f0e6`). **R-vec-3** → 🟡 RIDOTTO (2026-06-29): wheel x86_64 confermate; resta import+embedding a runtime sul nuovo VPS (FASE 5).
-
-### Deprecazioni provider
-
-- ✅ 2026-07-08 — Groq llama-3.3-70b-versatile → openai/gpt-oss-120b: **COMPLETATA**. Commit `f028e51`, review #44 APPROVATO CON RISERVE, validazione live OK (STATUS 200, tool_calls parsate, `reasoning_effort: "low"`). R-groq-slash e R-groq-dup CHIUSI. $0.15/$0.60 per MTok.
-- ⚠️ 2026-07-17 — Groq qwen/qwen3-32b in pensione (solo 10 gg dalla scoperta — non usato in GAS; annotato per memoria).
-
-### 🧭 DECISIONI CASCATA PROVIDER — registrate 2026-07-07 (decisioni umane)
-
-**a) ~~DECISO~~ -> SCARTATO/NO-GO — Cerebras `zai-glm-4.7` come rung-4** (sonda live 2026-07-13). Cap contesto free tier = 8192 token (doc ufficiale dichiara 64k, falsa) + coda free satura (429 queue_exceeded). Entrambi bloccanti per paracadute h24. Dettaglio integrale in `reports/stato_progetto.md` § Cerebras zai-glm-4.7 free — SCARTATO come rung-4 (2026-07-13).
-
-**b) CANDIDATO — Rung Mistral API** (tier free "Experiment", ~1B token/mese da fonte terza, limiti esatti da leggere in Admin Console). Fetta SEPARATA, solo DOPO che il rung Cerebras è wired e validato. Stessi gate: sonda limiti reali + round-trip tool-call.
-
-**TRIGGER DATI** (vale per TUTTA la cascata, evento non data): prima che dati di persone reali (lead veri) entrino in diario/CRM → rivedere la policy dati di tutti i provider free (i tier gratuiti possono usare i prompt per training, Gemini e Mistral inclusi) e decidere upgrade a tier no-training.
-
-**c) DECISIONI REGISTRATE 2026-07-07:**
-- (i) NO all'espansione della cascata oltre ~6 rung (latenza fallthrough, superficie manutenzione, esaurimento correlato, qualità tool-calling imprevedibile, ToS/dati).
-- (ii) NO GitHub Models come rung runtime: tier dichiaratamente di prototipazione (~50 req/giorno high-tier, cap 8K in/4K out, concorrenza 2) + token GitHub sul VPS coabitato col bot trading = superficie credenziali inaccettabile; uso consentito solo come playground dev per confronto modelli.
-- (iii) OpenRouter sblocco $10 (50→1000 req/giorno) valutato e RINVIATO ("non ora, GAS non è pronto") — reversibile, azione da console, zero codice.
-- (iv) Rung premium futuro = Claude API budget-cappata via GAS_DAILY_TOKEN_BUDGET (Haiku 4.5 $1/$5 MTok riferimento 2026-07-07), distinto da Claude Code che resta SOLO agente di sviluppo.
-
-### 🌉 Ponte GAS↔Claude Code human-gated (Telegram) — NUOVO ITEM (2026-07-07)
-
-Prerequisito: FASE 5 stabile. Nessun impegno di data.
-
-Flusso: GAS genera una proposta come FILE strutturato (titolo,
-motivazione, scope, file stimati) → notifica Telegram con ID univoco →
-approvazione umana esplicita `/approva <id>` da chat whitelistata →
-listener lato DEV (PC/WSL, MAI sul VPS) preleva la proposta approvata e
-la passa a Claude Code con gli STOP gate standard → branch, mai main →
-report canonico → review umana.
-Vincoli di sicurezza (non negoziabili):
-1. Direzione della fiducia: il VPS non ottiene MAI credenziali del PC
-   dev. Il listener dev fa PULL delle proposte; niente viene mai pushato
-   dal VPS verso il PC. No SSH VPS→PC.
-2. Bot Telegram SEPARATO dal bot runtime GAS (token e chat diversi):
-   compromettere il bot runtime non deve aprire il canale di comando dev.
-3. Comandi whitelistati: solo `/approva <id>` e `/rifiuta <id>`. MAI
-   testo libero inoltrato a Claude Code — il testo libero è la
-   superficie RCE.
-4. Approvazione informata: la proposta è un file leggibile prima di
-   approvare, non un riassunto.
-5. ID monouso + scadenza (es. 24h) contro replay.
-6. Rate limit proposte (es. max 3/giorno): GAS non può spammare il
-   budget dev.
-7. Due budget: Claude Code resta su Sonnet default con cap per proposta;
-   budget dev e runtime mai confusi.
-8. Audit nel diario: ogni proposta e decisione loggata (la memoria non
-   deve mentire).
-Aperto da risolvere in fase di design: il ponte funziona solo a PC
-acceso; alternativa coda persistente + Claude Code cloud ha confini duri
-già accertati (no bwrap nel cloud, push solo su branch di sessione).
-
-### ✅ FASE 2.5 — Summarizzazione Cronologia — CHIUSA (2026-06-27, review #39, commit 65c4c7b)
-
-`_compress_history_if_needed()` auto-trigger in `run_turn`; `gas compress-history` CLI. Env: `GAS_HISTORY_MAX_MSGS` (default 100), `GAS_HISTORY_KEEP_MSGS` (default 20). Zero token LLM. Test T54 copre il caso degenere no-user (R-comp-1, review #40, commit cde4d94).
-
-Per memoria storica — design originale implementato:
-- **Trigger:** quando la storia supera N messaggi, Gas condensa la parte più vecchia in un "blocco riassunto" testuale.
-- **Destinazione:** il riassunto finisce nel system prompt + una riga nel diario (recuperabile via FTS/semantico). Il file `.gas_history.json` si resetta alla finestra recente.
-- **Fail-safe §9:** se la summarizzazione fallisce, storia tronca via `_get_window()` — niente crash, degrado silenzioso.
-- **Modello preferito:** Gemini Flash (context lungo, basso costo); Claude solo in fallback.
+**Simboli:** ✅ fatto · 🔄 in corso · ⏳ da fare · 🔒 bloccato da altro · 👤 tocca a te · 🅿️ parcheggiato · ❌ scartato.
+Le sigle tra parentesi (es. R-203-2) servono solo a ritrovare la voce nei file.
 
 ---
 
-### 🧠 FASE 2.6 — Intelligenza Accumulata (Priorità Alta — fetta 1 in PR)
+## 0. In una pagina
 
-**Stato (2026-10-07):**
-- 🔄 **Fetta 1 — riflessione su richiesta** (branch `feat/merge-automatico-z1xjx2`, review #199 BOCCIATO → #200 BOCCIATO → #201 APPROVATO CON RISERVE → verifica esterna BOCCIATO V-1 → #202 APPROVATO CON RISERVE, commit `890cb51` + `30ca64e`): `gas rifletti` (CLI) / `rifletti` (REPL) → UNA chiamata LLM senza tool sulla trascrizione del task. A) recap nel diario (`tipo=recap`, fonte `modello`) e reiniettato come `<recap_dati>` nei turni dopo (solo se la cronologia non contiene input esterni non fidati né compressioni; altrimenti `recap_non_fidato`, non iniettato — si torna fidati con `clear`). B) max 3 lezioni nel catalogo in stato `proposta`, autore `llm` — QUARANTENA: entrano nel prompt solo con `gas lezioni approva <id>`. Riga diario `tipo=apprendimento`. Env: `GAS_RECAP_CHARS`, `GAS_RECAP_PIN_CHARS` (0 = non iniettare).
-- ✅ **Fetta 2 — trigger automatico** (decisione operatore 2026-10-15: a fine compito notturno e a `clear`; PR #211, review #345/#346): una chiamata LLM in più per compito; recap notturno `recap_notte` mai reiniettato, lezioni sempre in quarantena; spegnibile con `GAS_RIFLESSIONE_AUTO=0`.
-- ✅ **Fetta 3 — "task successiva correlata"** (PR #213, review #348/#349): il più recente tra i recap fidati con almeno 2 parole in comune col messaggio (altrimenti il più recente), scadenza `GAS_RECAP_MAX_GIORNI` (default 7); chiude R-199-3.
+**Dove vogliamo arrivare.** Gas fa da solo lavori complessi, giorno e notte, e chiede la tua firma solo per le azioni delicate. Gli parli a voce da ovunque.
 
-Due ragionamenti autonomi di Gas alla fine di ogni task:
+**Dove siamo.** Il motore è solido: memoria, voce in locale, cancello con firma su Telegram, giro notturno, lezioni, riflessione automatica, controlli automatici sul codice. Gas legge, cerca e conta con strumenti suoi (niente più comandi di sistema). Però non ha ancora mani verso il mondo (niente web, niente mail), ha un cervello gratuito e debole, e gira solo se il Mac è acceso.
 
-**A) Compressione critica del contesto (target 10.000 token)**
-Al termine di ogni task Gas risponde a: *"Se domani dovessimo riprendere avendo solo 10.000 token di contesto, quali informazioni sono assolutamente indispensabili per continuare senza perdere qualità?"*
-- Output: recap denso e noise-free archiviato nel diario + iniettabile come contesto critico nella task successiva correlata.
-- Obiettivo: ridurre il consumo di token e accelerare l'avvio delle task future.
-- Convergenza con FASE 2.5 (`_compress_history_if_needed`): la compressione della storia gestisce il volume; questo modulo distilla il **valore** da portare avanti — sono due cose distinte.
+**Le rocce grosse, in ordine.**
 
-**B) Knowledge Base permanente (apprendimento accumulato)**
-Al termine di ogni task Gas risponde a: *"Cosa abbiamo imparato? Errori, decisioni, best practice, pattern e regole emerse — quali dovrebbero diventare conoscenza permanente?"*
-- Se non c'è nessun apprendimento rilevante, Gas risponde: "Nessun nuovo apprendimento permanente."
-- Output: voce nel diario con tag `tipo=apprendimento` + sezione recuperabile via FTS/semantico.
-- Obiettivo: Gas diventa progressivamente più intelligente task dopo task, senza accumulare rumore.
-- Dipendenze: FASE 2 (diario SQLite) ✅ + store separato o partizione rigida dal namespace lead (coerente col caveat Jarvis cognitivo § "la memoria non deve mentire").
+| # | Roccia | Stato |
+|---|---|---|
+| R0 | Chiudere la classe "comandi di sistema" | ✅ fatto (11-13 ott) |
+| R1 | Giro notturno provato dal vero | ⏳ |
+| R2 | Cervello forte: Claude con l'abbonamento Max 5x di Gas | 🔄 fetta 1 fatta (12 ott) |
+| R3 | Turno di notte dello sviluppo (in cloud, sull'abbonamento) | ⏳ |
+| R4 | Protezioni di base: backup cifrato, repo chiuso agli estranei | ⏳ 👤 |
+| R5 | Server sempre acceso (Netcup) | ⏳ 👤 |
+| R6 | Le mani: web, mail, social, notifiche (missioni M1 e M2) | ⏳ |
+| R7 | Direttore v2: compiti lunghi che riprendono dopo un crash (M3) | ⏳ |
+| R8 | Voce "Jarvis" sempre disponibile (M5) | ⏳ 🔒 R5 |
+| R9 | Imparare da solo | 🔄 riflessione automatica fatta |
+| R10 | Aggiustarsi e programmarsi da solo, dentro il recinto | ⏳ 🔒 R5 |
+| R11 | Motore marketing | ⏳ tra gli ultimi |
+| R12 | Controllo del PC | 🅿️ |
+| R13 | Secondo cervello personale | 🅿️ 🔒 R5 |
 
----
+**L'ordine è confermato** (19 ottobre): queste rocce, in quest'ordine, con il server anticipato a R5. Supera l'ordine scritto del 14 e 21 settembre (server rimandato).
 
-### 🎙️ FASE 3 — Interfaccia Vocale Ibrida — ✅ COMPLETATA (2026-09-15, PR #90)
+**Principio dell'autonomia (19 ottobre).** "Dentro Gas autonomia piena; tutto ciò che esce verso il mondo aspetta la firma." Tutto ciò che è reversibile e interno a Gas è libero, anche dopo una lettura. La firma resta solo per: (a) codice madre, (b) sicurezza, (c) azioni verso l'esterno (mail, messaggi, post, social, moduli), (d) azioni irreversibili o delicate. Supera la regola C-d e la decisione R-203-2.
 
-**Pipeline vocale completata:** mic→STT Groq Whisper→kernel GAS→TTS ElevenLabs→MP3 audio.
-
-**Fette su main:**
-- ✅ **Fetta 1** — endpoint HTTP `POST /voice`, bearer auth, kernel singleton, fail-safe §9 (2026-08-13, PR #62+#63, review #76+#77).
-- ✅ **Fetta 2** — STT server-side Groq Whisper: `modules/voice/stt.py` + routing audio (2026-08-20, review #88).
-- ✅ **Fetta 3** — TTS output ElevenLabs: `modules/voice/tts.py` + risposta MP3 (2026-08-20, review #89).
-- ✅ **Fetta 4a** — client vocale di prova WSL+ffmpeg: `clients/voice/probe_client_4a.py`, pipeline mic→WAV→POST→MP3→playback (2026-08-21, review #91). ⭐ ATTESTATO DAL SUPERVISORE (2026-08-22): giro completo voce umana reale superato su WSL.
-- ✅ **Fetta 4b** — client browser HTML5: `clients/voice/browser_server.py` (proxy stdlib :9000→:8765) + `clients/voice/browser_client.html` (getUserMedia→POST→play MP3) (2026-09-15, PR #90).
-
-**Vision originale (raggiunta):** Gas non è un chatbot — è un collaboratore intelligente. L'utente avvia in voce, continua in testo e torna alla voce senza perdere il contesto.
-
-**Funzionalità aperte (post-FASE 3, non impegnate):**
-- Adattamento intelligente della profondità (~20s target per risposta standard).
-- Interruzione intelligente mid-risposta con comandi naturali.
-- ElevenLabs voce personalizzata (basata sulla voce del fondatore).
-- Modalità ibrida voce+testo trasparente.
-
-### 📈 FASE 4 — Moduli di Business (Tra gli ultimi — ordine operatore 2026-09-21)
-- Modulo Meta Ads e automazione della lead generation.
-- Algoritmi di persuasione locali per il copy e i DM di marketing.
-
-> **Blueprint FASE 4 parcheggiato**: `reports/roadmap_da_valutare.md` — dettaglio operativo completo (funnel lead + GAS WEB SCOUT AI + automazioni Make/Airtable/HubSpot). Da valutare SOLO a completamento della roadmap principale; nessun item va in sviluppo prima di quella revisione.
->
-> ℹ️ **Origine (B1)**: il file è arrivato tramite commit "2 idee" (PR #49, 2026-07-27) — etichetta fuorviante (il commit conteneva in realtà 2 documenti distinti: questo blueprint operativo di 169 righe + un singolo bullet in "💡 Idee da valutare"). L'etichetta è poco descrittiva, il contenuto è autonomo e strutturato.
->
-> ⚠️ **Caveat GDPR (B2)**: i dati lead su Make/HubSpot/Airtable sono privacy-sensitive. Provider senza no-training-tier **ESCLUSI dal CRM** — vincolo già nei canonici ("TRIGGER DATI" in roadmap.md § Decisioni Cascata Provider). Il blueprint presuppone tier no-training o equivalente per tutti i provider che toccano dati di persone reali.
->
-> 🔀 **Biforcazione architetturale APERTA (B3)**: il blueprint adotta Make (no-code) come orchestratore principale; GAS è un agente Python. La scelta tra *GAS-motore-Python orchestra tutto* e *Make no-code + GAS come agente specializzato* è una decisione di architettura **NON PRESA** — da decidere prima di sviluppare qualsiasi fetta FASE 4. Non trattarla come scelta già fatta.
-
-### 🤖 FASE 4.5 — Task Scheduler Autonomo ("Direttore" / Orchestratore) — PROSSIMO GRANDE LAVORO
-
-Senza questa fase GAS risponde ma non *agisce* di notte. Primo mattone dell'orchestratore.
-
-> ⚠️ **Ripensamento architetturale (2026-09-21)**: dipendeva da "FASE 5 + systemd". Con VPS perso, va implementato **IN LOCALE sul Mac** (launchd o loop autonomo, non systemd). La logica del catalogo YAML resta valida; il runtime cambia.
-
-- **Catalogo task autonomi:** lista configurabile di intenzioni che Gas esegue su schedule (es. "rassegna stampa lead dal diario", "follow-up DM scaduti da CRM", "report giornaliero token + stato contatti"). Il catalogo è un file YAML/JSON (non codice hard-coded) — l'utente può aggiungere task senza toccare il motore.
-- **Loop scheduler:** su Mac: launchd plist o cron locale; su VPS futuro: systemd timer. A orari configurabili istanzia `GasKernel`, esegue il task dalla lista, salva il risultato nel diario, chiude. Ogni run è atomico e indipendente — un fallimento non blocca il prossimo.
-- **Fail-safe §9:** se un task crasha, il loop lo logga in `gas_debug.log`, salta al prossimo, NON va in loop infinito (cap 10 iterazioni già presente).
-- **Convergenza col bridge Telegram (item #2):** il bot può triggerare task dal telefono + ricevere l'output — stessa infrastruttura.
-- **Dipendenze:** FASE 2.5 (storia non infinita) ✅ + runtime locale (Mac) o FASE 5 futuro per h24.
+**Regola dei modelli (19 ottobre).** I lavori importanti e tutti quelli con dati di clienti passano solo dai modelli forti (Claude). Se Claude non è disponibile aspettano in coda finché i limiti ripartono: non passano mai ai modelli gratuiti. Ai modelli deboli o gratuiti vanno solo i lavori semplici senza dati personali (riassunti, rubrica). L'etichetta "importante" la dà una regola fissa o Gas-operatore quando assegna il compito, mai il modello.
 
 ---
 
-### 🔴 FASE 5 — Autonomia Totale & VPS — RESET (2026-09-14)
+## 1. La destinazione
 
-> **VPS Hetzner PERSO il 2026-09-14** per mancato pagamento. Dati `.gas_memory.db`, `.gas_history.json`, `.env.prod` cancellati irrevocabilmente dal provider. S1/S1b eseguiti sul vecchio VPS (2026-07-04) non sono più validi. **Tutto da rifare da ZERO su server nuovo.**
->
-> **Decisione operatore (2026-09-21): VPS RIMANDATO.** Prima il cervello (FASE 2.6 + auto-apprendimento + GAS in italiano), poi un VPS potente, blindato dal giorno 1.
+"Finito" vuol dire che Gas supera da solo queste prove (approvate da te il 28-29 settembre):
 
-**Quando si riprenderà, i prerequisiti NON NEGOZIABILI sono (lezione VPS perso):**
-- Pagamento verificato + alert fatturazione attivo il giorno 1.
-- Backup off-server automatico attivo il giorno 1 (`.gas_memory.db` + `.gas_history.json` su host esterno).
-- 2FA Hetzner attivo con recovery code OFFLINE.
-- Deploy da ZERO: creare nuovo utente runtime non-root, nuova unit systemd, nuove chiavi API ruotate.
+- **M1 — lavoro autonomo:** "trova 10 potenziali clienti di tipo X e salvali in rubrica con la fonte". Zero domande.
+- **M2 — cancello:** "scrivi e manda una mail a 3 di loro". Le bozze le fa da solo, per l'invio chiede la firma.
+- **M3 — resistenza:** un compito lungo interrotto a metà (crash, provider giù, riavvio). Riprende e finisce.
+- **M4 — attacco:** durante una missione legge un testo malevolo. Non lo esegue e non scavalca il cancello.
+- **M5 — voce h24:** gli parli da ovunque e lui lavora sul server.
 
-**Obiettivi invariati per il deploy futuro:**
-- VPS h24 con trigger temporali (launchd/systemd) per Jarvis notturno.
-- Backup OFF-MACHINE della memoria (anti-disastro disco).
-- `gas telegram` come daemon.
-- Taratura `VEC_MIN_SIM` col diario reale (`gas calibrate-vectors`).
-- Process management + self-healing: systemd `Restart=always` + watchdog Telegram.
-- **🔴 Bot trading su VPS dedicato PRIMA dei fondi reali** — standing security gate: chiavi exchange + AI che esegue codice sulla stessa box = superficie di esfiltrazione. Non è "un giorno", è una precondizione.
+Tu hai aggiunto: queste prove ci avvicinano molto, ma il finito pieno è autonomia altissima più voce praticamente sempre disponibile.
 
-### 💡 Idee da valutare (NON prioritarie)
+**Principi che non si toccano.**
+- Robustezza prima della potenza, zero crash.
+- "La memoria non deve mentire."
+- Le operazioni irreversibili stanno fuori dalla mano del modello.
+- Quando un controllo fallisce, si chiude (non si lascia passare).
+- Due budget mai confusi: sviluppo e funzionamento di Gas.
+- Mai simulare il risultato di uno strumento.
+- Mai tagliare la cronologia a fette grezze.
+- Ogni modifica al motore vuole una prova vera del giro completo.
+- In prova si approva tutto a mano; poi si allenta solo sul reversibile.
 
-- **Telegram dual-control: GAS + Claude Code insieme** — Il bot `gas telegram` esiste già (FASE 2, item #2). Il passo successivo è espandere il bridge in modo che dal telefono si possano inviare comandi sia a GAS runtime (già funzionante) sia a Claude Code (sessione di sviluppo): es. "controlla CI", "scrivi feature X", "dimmi lo stato del progetto". I due agenti si coordinano: GAS risponde sullo stato runtime, Claude Code agisce sul codice. Architettura da definire (webhook condiviso vs. due bot distinti vs. un orchestratore GAS che inltra a CC). Prerequisito: VPS h24 (FASE 5) per tenere tutto sempre attivo. Dipende da bridge Claude Code → canale Telegram (da esplorare: Claude Code CLI in background su VPS con stdin/stdout rediretto al bot).
+---
 
-- **Video learning — GAS studia e apprende da video** — Capacità di "leggere" un video (YouTube URL o file locale): trascrizione automatica (Whisper STT già in roadmap FASE 3, o API Gemini multimodale che accetta video direttamente), estrazione di concetti chiave, salvataggio compresso nel diario SQLite (memoria long-term FASE 2). GAS può poi rispondere a domande basandosi sui video studiati via FTS/semantico. Use case: studiare webinar di marketing, tutorial tecnici, content dei competitor. Da valutare: Gemini 1.5/2.0 con context video nativo vs. pipeline Whisper + LLM testuale (tradeoff costo/qualità). Convergenza naturale con FASE 3 (Whisper già completato ✅) e FASE 2 (memoria già presente).
+## 2. Cosa c'è già
 
-- Valutare utilizzo o integrazione openclaw (agente IA esterno). NB: prima verificare licenza, dipendenze, qualità e superficie di sicurezza; mai copia-incolla nel motore. Idea parcheggiata, nessun impegno.
+### Motore
+- ✅ **FASE 1 — sicurezza del terminale** (giugno): foto di sicurezza prima di ogni scrittura, blocco dei percorsi fuori cartella, comandi senza shell, modalità di prova a secco, recinto di sistema (bwrap) con rete chiusa, tetto alla finestra di conversazione, `gas doctor`.
+- ✅ **FASE 2 — memoria** (giugno): diario che non si può riscrivere, rubrica contatti, ricerca per parole, ricerca per significato (spenta se non la accendi), backup automatico, comandi `reindex`, `backup`, `tokens`, `duplicati`, tetto di spesa giornaliero.
+- ✅ **Bot Telegram** per parlare con Gas dal telefono (`gas telegram`, 27 giugno).
+- ✅ **FASE 2.5 — compressione della cronologia** (27 giugno).
+- ✅ **Revisione delle fondamenta** (15 luglio): verdetto "solide"; chiusi il buco del diario riscrivibile e il salvataggio non sicuro della cronologia; tolti 17 file morti.
+- ✅ **Cascata dei modelli**: Gemini flash-lite → Gemini flash → Groq → OpenRouter gratuito → Ollama. Nomi dei modelli in un file solo. (Ollama è rimosso dal piano dal 19 ottobre: oggi è ancora nel codice.)
+- ✅ **Gas risponde sempre in italiano** (21 settembre).
+- ✅ **Calcolatrice obbligatoria** per i conti (1 settembre).
 
-- **Automazione totale di Gas sulla macchina locale (co-work autonomo, orario schedulato)** — Task semplice: aprire un BRIEFING dedicato per trovare un metodo/soluzione (app, sito, servizio — la forma non conta) che permetta a Gas di controllare la macchina locale in autonomia, partendo da solo a un orario prestabilito della giornata, ma SEMPRE e SOLO col consenso esplicito dell'utente e con le dovute protezioni dai rischi (azioni irreversibili, superficie di controllo macchina). Converge con FASE 4.5 (Task Scheduler Autonomo) e con i vincoli di sicurezza già registrati per Claude Dispatch (HITL, "chiedi prima di agire", computer-use OFF di default): qui il salto in più è il controllo diretto della macchina locale da parte di Gas stesso, non solo del filesystem del repo. Nessuna soluzione decisa: da esplorare e decidere insieme dopo il briefing.
+### Voce
+- ✅ **FASE 3 — giro vocale completo** (15 settembre, PR #90): microfono → trascrizione Groq → Gas → voce ElevenLabs. Endpoint con token, client di prova, client nel browser. Provata con voce vera il 22 agosto. Tetto alla lunghezza del testo da leggere.
+- ✅ Token della voce rigenerato il 15 settembre.
 
-### 🗣️ DA DISCUTERE (delta da roadmap alternativa — da valutare se/quando fare)
-- **`gas --brain <name>`** — flag CLI esplicito per scegliere il brain sul singolo comando (es. `gas --brain gemini "analizza log"`), con ruoli distinti: Claude = Architetto (strategia/approvazione), Gemini = Memoria (contesti fino a 1-2M token), DeepSeek = Operaio (alta frequenza, basso costo). Oggi la cascata è automatica; questo aggiunge controllo umano diretto.
-- **DeepSeek V4 Flash come operaio di default** — alternativa/complemento a Groq per task ad alta frequenza ($0.14 input / $0.28 output per M token + context caching aggressivo). Da valutare rispetto a Groq già integrato: se vale la complessità di un provider in più.
-- **"Il Consiglio" — dettaglio implementativo** (espansione della voce già parcheggiata): invocazione automatica dopo N fallimenti di test consecutivi (blocco loop cieco per risparmiare token); sotto-agenti specializzati low-cost (Contrarian del Cloud, First-Principles Thinker, L'Esecutore) che dibattono su DeepSeek V4 Flash; sintesi del log passata a Claude (The Chairman) per verdetto e patch finale. Da discutere: N soglia, costo del consiglio vs costo del loop cieco, integrazione col revisore.
-- **`revisore.md` modulare** — scomposizione del profilo del revisore in micro-profili caricati dinamicamente da Gas a seconda del task (es. "review sicurezza", "review CRM", "review memoria"). Obiettivo: abbattere i token fissi iniettati a ogni chiamata. Da valutare impatto reale vs complessità di gestione.
-- **Notifiche push sullo smartphone** per monitorare i deploy e i run sul VPS (es. alert se Gas crasha, se la CI diventa rossa, se un job notturno finisce). Da valutare insieme al bridge bot Telegram (già in item #2) — potrebbero essere la stessa cosa.
-- **Accesso dev tooling da telefono — Claude Dispatch (candidato).** Soluzione candidata: Claude Dispatch (funzione ufficiale Anthropic in Cowork/Claude Code, lanciata 2026-03-17): pairing QR telefono↔desktop, thread persistente, i task di sviluppo partono come sessioni Claude Code che ereditano CLAUDE.md. Stato: ✅ CHIUSO (2026-07-15) — sonda Remote Control (`/rc`) su Giulia/WSL verificata live — sessione locale raggiunta da telefono, lettura file reale del repo confermata. Nessun bridge custom necessario. Vincolo: PC acceso e app desktop aperta. Regole di sicurezza vincolanti: modalità 'chiedi prima di agire', accesso SOLO alla cartella repo, computer use OFF, mai pre-autorizzare azioni (il PC dev detiene la chiave SSH della VPS di produzione).
-- **Controllo Telegram unificato (ridimensionato).** SUPERATO PER METÀ da Dispatch: il canale tu→Claude Code da telefono lo copre Dispatch (ufficiale, niente bridge custom = niente superficie RCE da costruire e mantenere). Resta valido SOLO il canale GAS→Claude Code human-gated (la VPS propone, l'umano approva via /approva): Dispatch non lo copre — la spec di sicurezza è l'item "🌉 Ponte GAS↔Claude Code human-gated (Telegram)" sopra (listener pull-only, ID monouso 24h, whitelist comandi, max 3 proposte/giorno, audit log). Trade-off accettato: GAS si comanda da Telegram, lo sviluppo dall'app Claude. NB: ridimensiona anche l'idea "Telegram dual-control" in 💡 Idee da valutare (il canale telefono→CC lo coprirebbe Dispatch).
-- **Secondo account GitHub (machine user)** — con main-lock a 1 approvazione l'agente non può chiudere la PR da solo (GitHub vieta auto-approvazione). Da valutare insieme alla privatizzazione repo (item #0 PROSSIMI PASSI).
-- **Trailer `Co-Authored-By`** — convenzione per distinguere commit agente/mano nel `git log` (filterable). Non impegnata; da decidere se e come standardizzare.
+### Autonomia
+- ✅ **Studiare** (settembre): conoscenza in un archivio separato, solo da fonti approvate, con sei protezioni contro i testi malevoli. Attacco di prova respinto.
+- ✅ **Quaderno delle lezioni** (28 settembre, PR #101): le lezioni entrano nel comportamento solo se le approvi tu.
+- ✅ **Riflessione a fine lavoro** (7 ottobre): `gas rifletti` scrive un riassunto e propone al massimo 3 lezioni in quarantena.
+- ✅ **Cancello** (1-3 ottobre): ogni azione è libera, da firmare, o vietata. Coda delle firme, messaggio su Telegram con l'azione esatta, bottoni Approva e Rifiuta, esecuzione una sola volta.
+- ✅ **Scrittura a 3 livelli** (11 ottobre): file normali liberi; codice solo con la tua firma e il diff vero davanti; segreti, memoria e cancello mai.
+- ✅ **Gas legge il proprio codice** ma non lo tocca senza firma (11 ottobre, PR #181).
+- ✅ **Giro notturno, fetta 1 e 2** (8-10 ottobre): `gas notte` esegue un elenco di compiti, con tetti di tempo e di spesa, e manda il riepilogo su Telegram.
+- ✅ **Gas carica da sé il file delle chiavi** (11 ottobre).
+- ✅ **Strumenti suoi per leggere, cercare e contare** (11-13 ottobre, R0): `elenca_cartella`, `leggi_righe`, `cerca_testo`, `conta_file`, `data_ora`. I comandi di sistema non sono più nella mano del modello.
+- ✅ **Tetto di spesa ricontrollato prima di ogni chiamata** (12 ottobre, R2 fetta 1).
+- ✅ **Riflessione automatica** a fine compito notturno e a `clear`, e **ripartenza dal riassunto pertinente** con scadenza (15-16 ottobre, PR #211, #213, #215, #216). Provate sul Mac.
 
-### 🧬 Secondo cervello personale — "Jarvis cognitivo" (MOLTO IMPORTANTE, NON prioritario)
+### Controlli sul lavoro di sviluppo
+- ✅ Revisore obbligatorio prima di ogni modifica al motore, con cancello automatico. Revisore sempre sul modello più forte, sessione di lavoro su quello leggero.
+- ✅ `main` chiuso a chiave: si entra solo con PR e tre controlli verdi.
+- ✅ Test automatici a ogni push: 895 controlli del motore più 1450 test degli altri gruppi (19 ottobre).
+- ✅ Dossier di fine lavoro e due controlli automatici sul dossier.
+- ✅ Verifica esterna con un agente nuovo a ogni giro (3 ottobre). Per le fette di sicurezza, secondo controllo nella chat di strategia.
+- ✅ **Bot di verifica con identità separata** (6-7 ottobre): giudica ogni PR. Quattro prove dal vero; valida la quarta.
+- ✅ Merge autonomo dell'agente solo col sì pulito del bot (regola dell'8 ottobre). Eccezione: le PR di soli registri di sessione, con test verdi.
+- ✅ **Agente senza poteri di amministratore sul repo** (G-3, 14 ottobre): token ristretto `gas-agente` (scade il 4 gennaio 2027), avvio con `gasclaude`; `gasmerge --auto` si ferma se il token non è quello verificato.
+- ✅ `gasmerge`, il comando di merge con i suoi controlli. Le sue riserve di luglio sono chiuse.
+- ✅ Risposte brevi obbligatorie e niente stampa dei report a schermo (11 ottobre).
 
-Posizione: DOPO FASE 3 (voce) ✅ + deploy VPS h24. Senza VPS h24 non vive. Prima si chiude la roadmap principale.
+### Macchine
+- ✅ Passaggio da Windows al MacBook, certificato (12 settembre).
+- ✅ Comando dello sviluppo dal telefono (15 luglio). Regole che restano: "chiedi prima di agire", accesso solo alla cartella del repo, controllo del PC spento, mai permessi dati in anticipo; funziona solo a computer acceso.
+- ❌ Server Hetzner **perso** il 14 settembre per mancato pagamento. Oggi non esiste nessun server.
 
-Obiettivo — MISTO, entrambe le parti richieste esplicitamente da Gas:
-1. Magazzino personale — cattura/organizza/recupera conoscenze, note, decisioni,
-   ragionamenti, video DI GAS (non i lead).
-2. Clone cognitivo — l'agente ragiona nello stile e con le priorità di Gas,
-   condizionato sulle sue memorie.
+---
 
-Già COSTRUITO (substrato FASE 2): memoria SQLite (diario + contatti) + FTS5 +
-vector store semantico + `_memoria_pin` always-on + tool `ricorda`. È il substrato
-del magazzino, oggi puntato solo su CRM/lead. Il motore c'è; mancano sorgente
-personale, segmentazione, iniezione d'identità.
+## 3. Cosa può e non può fare Gas oggi
 
-NUOVO (da costruire): ingestione del corpus personale (note/decisioni/video/
-ragionamenti) — converge con *video learning* (ingest→trascrizione→memoria) e
-*FASE 3 voce* ✅ (interfaccia a mani libere): non è una deviazione, è la sintesi di
-pezzi già in roadmap sotto la bandiera "Jarvis personale". Più segmentazione
-memoria e iniezione stile/identità nel system prompt.
+**Strumenti del modello (11):** leggere un file, leggere un pezzo scelto di un file, scrivere un file, elencare una cartella, cercare un testo, contare file, data e ora, cercare in memoria, salvare un contatto, cambiare lo stato di un contatto, fare un calcolo. Nessun comando di sistema.
 
-FRAMING ONESTO — NON oversell (registrato apposta): un LLM può imitare lo STILE
-di Gas (esempi + prompt identità) e RECUPERARE/APPLICARE le sue conoscenze. NON
-ragiona col giudizio di Gas: produce output plausibili condizionati sui suoi dati.
-"Cervello che ragiona come me" = (memoria di Gas) + (stile iniettato) + (modello
-che ragiona bene). Assistente ottimo informato da Gas, non clone fedele della sua
-testa. Chi promette "pensa come te" vende fumo.
+**Non può:** andare sul web, mandare mail o messaggi, usare git, aprire PR, toccare la propria memoria o il cancello. Per modificare un file deve riscriverlo intero.
 
-CAVEAT VINCOLANTI (non negoziabili):
-- Segmentazione — "la memoria non deve mentire": le conoscenze personali NON
-  stanno nello stesso namespace dei lead. Regole diverse: nota personale =
-  mutabile/revisionabile; diario = immutabile append-only. Mescolarli rompe
-  entrambi i modelli → store separato o partizione rigida, MAI tutto in
-  `.gas_memory.db` alla rinfusa.
-- Privacy / TRIGGER DATI ×2: il corpus personale è il dato più sensibile mai
-  inserito. Il trigger dati già registrato (rivedere la policy di training dei
-  provider free prima dei dati reali) qui vale doppio: sapere personale che passa
-  da tier gratuiti che si allenano sui prompt = esposizione reale. Probabile
-  requisito: tier no-training o solo-locale (Ollama) per il corpus personale.
-- RAM/VPS: indice vettoriale personale che cresce + reindex pesa su box stretta
-  (8GB, no-swap mitigato 2GB, coabita col bot trading). Scala e volume da
-  dimensionare.
-- Confine autonomia: "risponde col contesto di Gas" = sicuro. "Agisce come Gas"
-  (manda messaggi, decide a suo nome) = superficie di fiducia separata →
-  human-gated, coerente con "le operazioni irreversibili non stanno in mano al
-  modello".
+**Limiti del giro notturno.**
+- Massimo 10 compiti per giro, 15 minuti l'uno, 2 ore in tutto. I tetti di tempo non sono duri: nel caso peggiore sfora di circa 36 minuti.
+- Massimo 10 passi di ragionamento per ogni modello della cascata.
+- Tetto di spesa: 1 dollaro in 24 ore se non ne metti un altro. Il conto usa i prezzi di listino anche per i modelli gratuiti, quindi può scattare senza spesa vera.
+- Ogni compito parte da zero, senza ricordare la conversazione con te.
+- L'elenco dei compiti sta fuori dalla sua cartella: non può aggiungersene da solo.
+- Le azioni rischiose aspettano la tua firma. **La firma scade dopo 30 minuti**, quindi di notte scade prima che tu ti svegli. Massimo 5 richieste in attesa. Deciso il 19 ottobre (⏳ da mettere nel codice): 24 ore per le richieste del giro notturno.
+- Dopo aver letto qualcosa (un file, la memoria), anche salvare un contatto chiede la firma. I compiti di sola lettura arrivano in fondo. Deciso il 19 ottobre (⏳ da mettere nel codice): il reversibile interno a Gas diventa libero (principio al capitolo 0).
+- Non può leggere la cartella del giro notturno: non sa dirti cosa ha fatto stanotte.
+- Il cervello è gratuito: va bene per riassunti e rubrica, non per lavori difficili.
+- Parte solo se il Mac è acceso alle 03:00 (se dorme, parte al risveglio).
+- Per eseguire un'azione firmata deve essere acceso anche il bot Telegram.
 
-Dipendenze: FASE 2 (memoria, fatta) + video learning + FASE 3 voce ✅ + FASE 5 VPS h24.
+---
 
-### 🅿️ PARK (parcheggiati — nessun impegno, da rivalutare al momento giusto)
-- **Mirage (strukto-ai/mirage) — VFS unificato per AI agents**: valutare a FASE 4 (integrazioni marketing multi-servizio) come alternativa a N SDK separati. Progetto nato 2026-05-06, ~3.3k stelle a luglio 2026, open source, SDK Python in-process (shell bash custom, no subshell host, vede solo i mount). Condizioni vincolanti se mai adottato: mount READ-ONLY + allowlist risorse, MAI write verso cloud in autopilot, incompatibile con coabitazione bot trading (superficie esfiltrazione). Fonte: reel + verifica web 2026-07-08.
-- **Claude Cowork**: agente desktop per knowledge work (file locali, report, slide). Non tocca il motore (che passa da Claude Code + revisore + hook). Rivalutare a FASE 4 per materiale marketing e pipeline video-ingestion locale (trascrizione→analisi→nota markdown).
+## 4. Le rocce grosse, una per una
+
+### R0 — Chiudere la classe "comandi di sistema" ✅ (11-13 ottobre)
+**Perché.** Da #269 a #277 quasi ogni revisione ha trovato un nuovo modo di abusare di `grep`, `date`, `uniq`, `file`. Una lista di comandi di sistema non si chiude mai.
+**Cosa.** Gas legge (anche un pezzo scelto di un file lungo), cerca, conta ed elenca con funzioni sue scritte in Python. I comandi di sistema escono dalla sua mano.
+**Chiude:** R-273-1, R-273-2, R-274-2, R-nw-2 (nomi di file innocui rifiutati), la trappola della cartella di lavoro sul server, la firma inutile sul Mac, il messaggio che suggerisce un comando vietato (F4 delle fondamenta), `echo` nella lista (F6 del prompt), il rischio di fuga di dati nella modalità senza recinto.
+**Guadagno in più.** Funziona anche sul Mac. Gas può leggere i file lunghi.
+**Fatto:** strumenti nativi (PR #184, 11 ottobre), comandi di sistema tolti dalla mano del modello (11 ottobre), budget onesto di `cerca_testo` e chiusure della lista #197 (12-13 ottobre).
+**Resta:** R-277-1 (file con nomi tipo `prod.environment` leggibili): provato che resta leggibile anche dagli strumenti nuovi, compromesso aperto.
+
+### R1 — Giro notturno provato dal vero ⏳
+Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su un server finché i bottoni di firma non sono provati con un click vero.
+- ⏳ 👤 Riprovare il messaggio del mattino su Telegram (l'11 ottobre non è arrivato; la correzione è su `main`).
+- ⏳ 👤 Provare i bottoni Approva e Rifiuta con un click vero, col bot acceso (`python3 gas.py telegram`). Il "Rifiuta" non aveva fatto nulla: se resta così è un bug.
+- ⏳ **Durata della firma** (decisa il 19 ottobre): 24 ore per le richieste del giro notturno; di giorno restano 30 minuti. Si cambia dal file delle chiavi.
+- ⏳ **Autonomia dopo una lettura** (decisa il 19 ottobre, supera C-d e R-203-2): tutto ciò che è reversibile e interno a Gas è libero, anche dopo una lettura. La firma resta solo per codice madre, sicurezza, azioni verso l'esterno (mail, messaggi, post, social, moduli) e azioni irreversibili o delicate. Da mettere nel codice.
+- ⏳ Scadenza delle firme (fetta C5): chiamarla dal giro, mostrarla in `gas doctor`, avvisare "approvazione scaduta".
+- ⏳ 👤 Archivio della conoscenza mai creato sul Mac (avviso `knowledge_fts`).
+- ⏳ 👤 Riallineare il Mac a `main` e installare il timer (`reports/setup_notte.md`). Sul Mac `main` è occupato da una seconda copia di lavoro: si usa `git fetch origin && git switch --detach origin/main`.
+- ⏳ Riempire l'elenco dei compiti con lavori veri: punto sui lead, contatti fermi, resoconto di spesa e stato.
+- ⏳ Lanciare un compito o un giro da Telegram (previsto nella FASE 4.5, mai fatto).
+- La prova si fa a mano e di giorno. Per le notti vere serve R5.
+
+### R2 — Cervello forte: Claude con l'abbonamento 🔄
+**Riscritto il 19 ottobre.** Gas usa Claude con l'abbonamento **Max 5x di Gas**, tramite `claude -p` / Agent SDK, nei limiti del piano.
+- ⚠️ Le regole Anthropic sull'uso dell'abbonamento sono cambiate più volte nel 2026: **riverificare sulla pagina ufficiale prima di costruire**.
+- ✅ Fetta 1 (12 ottobre): tetto di spesa ricontrollato prima di ogni chiamata, non solo a inizio compito (chiude F2).
+- ⏳ **Budget di Gas:** al massimo il 20% del limite **settimanale** al giorno, misurato **solo sul consumo di Gas**. Il consumo di sviluppo (Gas-operatore con Claude Code) non conta e non blocca Gas.
+- ⏳ Di notte nessun freno sulla finestra delle 5 ore.
+- ⏳ **Da chiarire:** il freno di giorno all'80% della finestra delle 5 ore (in conflitto con "conta solo il consumo di Gas").
+- ⏳ Al tetto: i lavori semplici passano ai modelli gratuiti, quelli importanti aspettano (regola dei modelli, capitolo 0). Parte la riflessione R9: analizza cosa ha fatto Gas, se era utile e come farlo con meno token, e propone lezioni in quarantena (le approva Gas-operatore).
+- ❌ Crediti API da 100 dollari: **non usati per ora** (riserva a crediti rifiutata il 19 ottobre).
+- ⏳ **Dubbio aperto:** come legge Gas il limite residuo? Forse deve contare da solo il proprio consumo. Da verificare in costruzione.
+- Riapre la decisione "Claude Code sul server di produzione" (capitolo 11): da ridecidere con R2 e R5.
+- Cambia la regola di `CLAUDE.md` "Claude non è un gradino di Gas": proposta all'operatore, non ancora applicata.
+
+### R3 — Turno di notte dello sviluppo ⏳
+**Cos'è.** Un'attività programmata di Claude Code in cloud ("routine"): parte da sola, lavora sul repo, apre una PR. È inclusa nell'abbonamento (Pro 5 al giorno, Max 15), conta nei limiti d'uso, non dipende dal Mac.
+- ⏳ Prima notte di prova: un compito solo documentale, nessun merge.
+- ⏳ Poi una riserva piccola del motore per notte, dalla lista del capitolo 5.
+- ⏳ Coda dei lavori notturni in un file del repo, riempita da te e da me.
+- **Costruisce Claude Code in cloud**, non Gas col cervello gratuito.
+- **Niente connettori** (Gmail e gli altri) nelle routine notturne, per ora. Si riapre più avanti.
+- **Nessun merge di notte.** Al mattino un report breve per ogni PR, poche righe: cosa ha fatto, perché, cosa migliora, quali rischi. Gas-operatore controlla e decide il merge. Per ora il merge è sempre al mattino.
+- **Priorità della notte:** prima si chiudono i lavori aperti della roadmap (riserve, cose a metà, parte tecnica). Se avanzano tempo e limiti, si prosegue con i lavori successivi. Le idee nuove vengono dopo.
+- **Divisione 80/20:** di giorno il 20% importante (Gas-operatore + Claude), di notte il resto tecnico.
+- **Ultimi giri entro le 05:00**, così alle 10 la finestra delle 5 ore è già ripartita. Va bene consumare i limiti di notte, ma il limite settimanale va tenuto d'occhio nelle prime settimane.
+- ⏳ Lavori già destinati al turno di notte: regola di merge nel codice e allineamento di `fine-task.md` ("non mergiare"); il lavoro tecnico di R7.
+- ⚠️ Una routine lavora senza chiedere permessi. Prima di accenderla vanno fatte le protezioni gratuite di R4 (issue disattivate, interazioni limitate, l'agente legge solo il codice e la sua coda).
+- Limiti del cloud: lì Gas non gira (niente chiavi dei modelli, niente recinto), quindi le prove del recinto valgono solo nei test automatici. Il cloud scrive solo su un ramo suo e non può cancellare rami. Il comando `gh` non è autenticato: si usano gli strumenti GitHub della sessione.
+- Più avanti: Gas stesso scrive le proposte in coda (vedi "Ponte" in R10).
+
+### R4 — Protezioni di base ⏳ 👤
+- ⏳ 👤 **Backup cifrato su iCloud Drive** (deciso il 19 ottobre) di: memoria (`.gas_memory.db`: diario e rubrica), file delle chiavi (`.env`) e cronologia delle conversazioni (`.gas_history.json`). Password della cifratura nel gestore di password. Mai chiavi in chiaro. Il comando di copia esterna esiste già da giugno.
+- 🅿️ **Repo privato + GitHub Pro: rimandato** (19 ottobre). Intanto, gratis e **prima di accendere R3**:
+  - ⏳ 👤 issue disattivate;
+  - ⏳ 👤 interazioni limitate ai collaboratori (da rinnovare ogni 6 mesi);
+  - ⏳ l'agente notturno legge solo il codice e la sua coda, mai issue o commenti di altri.
+- ⏳ 👤 Verificare che il token Telegram esposto il 5 luglio non sia quello in uso oggi.
+- ⏳ 👤 Chiave ElevenLabs: un documento la dà sostituita il 26 agosto, il repo dice ancora "da ruotare". Controllare sul pannello; per il server, chiave nuova in ogni caso.
+- ⏳ 👤 Vecchio PC: dismetterlo dopo aver salvato le chiavi `.ssh` e gli altri progetti, e aver controllato che non restino segreti nelle impostazioni del terminale.
+- ⏳ **Revisione esterna** (aggiorna la decisione del 24 settembre): durante lo sviluppo, doppia verifica bot + chat di strategia solo dove c'è un dubbio vero. Una persona fisica controlla prima dei dati di clienti veri (Gas-operatore ha già qualcuno in mente).
+
+### R5 — Server sempre acceso ⏳ 👤
+Tutto da zero. Lista completa al capitolo 8.
+- 👤 **Netcup** (KVM, x86), circa 8 GB di RAM per partire, "nei prossimi giorni" (deciso il 19 ottobre). Prezzo da verificare all'acquisto.
+- 👤 Prima dell'acquisto: metodo di pagamento valido + avviso di fatturazione + accesso a due fattori con il codice di recupero su carta.
+- ⏳ Messa in sicurezza dal primo giorno, backup automatico fuori dal server.
+- ⏳ Gas su Telegram sempre acceso, giro notturno col timer di Linux, riavvio automatico, allarme se cade.
+- ⏳ Tarature sui dati veri (ricerca per significato, memoria RAM).
+- Ollama non va sul server: rimosso dal piano (capitolo 5.6).
+
+### R6 — Le mani: web, mail, social, notifiche ⏳
+**Ordine (19 ottobre):** web → mail → social → notifiche Telegram.
+- ⏳ Leggere il web in un ambiente chiuso (browser senza schermo), per cercare clienti e leggere siti. Ogni testo letto è "non fidato".
+- ⏳ Mail: leggere, preparare bozze, inviare **solo con firma**.
+- ⏳ Messaggi diretti, post pubblici sui social e invio di moduli: sempre con firma.
+- ⏳ Notifica su Telegram come strumento di Gas.
+- ⏳ **Allarme urgente sul telefono** (nuovo, 19 ottobre): **solo gratuito** (es. ntfy a priorità massima, che suona anche in silenzioso). Twilio scartato perché a pagamento. 👤 Motivi dell'allarme e tetto al giorno: da decidere insieme.
+- ⏳ Le prove M1, M2 e M4 scritte come test veri nel repo.
+- ⏳ Bottone "Modifica" e firme a gruppi (fetta C6 del cancello).
+- ⏳ **Regole fisse** (disegno della memoria di giugno, mai costruito): chi non contattare, tono, canali, cosa vendi. 👤 Le scrive Gas-operatore.
+- ⏳ Dati di persone vere: valgono la regola dei modelli del capitolo 0 (solo modelli forti) e il GDPR (capitolo 6).
+- ⏳ Pulizie collegate: gli argomenti degli strumenti finiscono nel diario e nel promemoria anche quando contengono testo di terzi (F-diario-args, F-args-pin, fetta "C-pin"). La correzione del diario di settembre vale solo in avanti: il testo di terzi già scritto resta.
+
+### R7 — Direttore v2: compiti lunghi ⏳
+Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decisione da prendere: tutto lavoro tecnico, adatto al turno di notte (R3).
+- ⏳ Piano scritto del compito, progressi salvati, ripresa dopo un'interruzione (M3).
+- ⏳ **Lista dei lavori ricorrenti con stato** (fatto, in sospeso, fallito, da non ritentare): disegno di giugno, mai costruito.
+- ⏳ Tetti di tempo duri.
+- ⏳ Tre stati per un comando o un'azione: non partita, finita, partita con esito incerto (R-c4b3-5, R-c4b3-3).
+- ⏳ Due processi che scrivono la stessa cronologia (R-c4b3-4; nota 6b della review #38).
+- ⏳ L'esito di un compito notturno è dedotto dall'inizio del testo: un file che comincia con "Operazione negata" falsa i conteggi (R-222-2).
+- 🅿️ Un file di stato con roadmap attiva e compiti del giorno (idea "Scratchpad" del Blueprint: si valuta solo a roadmap finita).
+
+### R8 — Voce "Jarvis" ⏳ 🔒 R5
+Pezzi decisi a luglio-agosto e mai costruiti.
+- ⏳ Parola di attivazione "Hey Gas" sul dispositivo (openWakeWord; prima il modello pronto, poi la parola nostra).
+- ⏳ Finestra di ascolto di circa 12 secondi dopo la risposta, senza ripetere la parola.
+- ⏳ "Due secondi o ci sto ragionando": timer nel client e frase di attesa già pronta.
+- ⏳ **Firme a voce** (19 ottobre): Gas rilegge l'azione esatta, poi le parole "Procedi" / "Annulla" (da rivedere in sviluppo). Sicurezza, codice madre e azioni irreversibili: **solo coi bottoni**.
+- ⏳ 👤 **Voce da scegliere all'ascolto** tra: Piper italiano (gratis, in locale); modello "Jarvis" per Piper (inglese, **solo uso privato**, mai coi clienti); clone della voce di Gas-operatore (es. Chatterbox, in locale, file custodito come una chiave). Niente imitazioni di persone famose verso l'esterno. ElevenLabs a pagamento: non scelto, si resta sul gratis.
+- ⏳ Server voce esposto in modo sicuro: connessione cifrata, token che scadono, limite di richieste.
+- ⏳ 👤 Tetto di consumo per trascrizione e voce, con risposta in solo testo se la quota finisce (non discussa 19 ott).
+- ⏳ Dispositivo dedicato sempre acceso per il microfono (mini-PC o simile); telefono come microfono.
+- ⏳ Fuori casa: voce via Telegram.
+- ✅ **Deciso il 19 ottobre** (chiude la domanda del 22 agosto): la voce è il fronte principale (dialoghi rapidi, decisioni, poi Gas lavora dietro). Telegram resta per i bottoni di firma, i report del mattino e quando sei fuori casa.
+- 🅿️ Interruzione mentre parla, profondità adattiva (circa 20 secondi), voce e testo mescolati.
+- ⏳ Canale Gas → supervisore per i dubbi tecnici (deciso il 27 agosto, mai costruito): raro e con tetto; "rispondere non è autorizzare"; le domande di Gas sono dati, mai comandi.
+- Da sapere: oggi l'audio va a Groq e il testo a ElevenLabs.
+- ✅ Chiuse come superate (19 ottobre): indirizzo del client che cambia a ogni riavvio (D1-ter), variabili sovrascritte e scelta del dispositivo audio (D2-audio), sonda F0 mai verificata, errore non gestito nel client di prova (R-client4a-1).
+- Due test della voce (trascrizione e sintesi) non girano nei test automatici. Il client nel browser è entrato senza revisione.
+
+### R9 — Imparare da solo 🔄
+- ✅ Riflessione a comando e lezioni in quarantena.
+- ✅ **Riflessione automatica** (fetta 2, decisa il 15 ottobre): a fine compito notturno riuscito e a ogni `clear` (PR #211, #212). Provata sul Mac.
+- ✅ **Riassunto pertinente con scadenza** (fetta 3, R-199-3 chiusa, PR #213); usato solo se pertinente, niente lezioni quasi uguali (PR #215, #216). Provato sul Mac (15-16 ottobre).
+- Limite dichiarato: dopo una lettura o una compressione i riassunti restano "non fidati" e non vengono riusati fino a `clear`.
+- ⏳ 👤 Lezioni #4, #5, #6 da rivedere a testo, dopo questa verifica (parere dell'agente: approva 6 e 5, rifiuta 4).
+- ⏳ Riflessione al tetto del budget (R2): analizza cosa ha fatto Gas, se era utile e come farlo con meno token.
+- ⏳ Fonti vere nel catalogo della conoscenza (oggi c'è solo una fonte di prova), fonti da indirizzo web, studio programmato.
+- ⏳ **Studiare dai video** (disegno di giugno; nessuna decisione il 19 ottobre): YouTube → trascrizione, più i fotogrammi → concetti, dichiarando i dubbi → memoria. Instagram escluso. La parte di rete in un componente isolato. Primo passo: prototipo fuori dal motore. Tre bracci in ordine di rischio: conoscenza; poi istruzioni, con diff e ripristino; poi codice. Rapporto al mattino e approvazione voce per voce.
+- ⏳ Collegare un errore alla sua soluzione; "confidenza" sui fatti salvati; valore precedente quando un contatto cambia (R1, R4 e nota della sonda del 23 settembre).
+- ⏳ Gemini che ogni tanto scarta la riflessione: alla prossima, leggere il motivo nel registro.
+- ⏳ Piccole: R-202-1, R-202-2, R-204-1, errore possibile nel ramo d'eccezione di `rifletti`. Prova col modello vero mai fatta nell'ambiente di sviluppo.
+- 🅿️ Dal Blueprint: "tabù" dopo un tuo veto, riflessione notturna sui registri.
+
+### R10 — Aggiustarsi e programmarsi da solo ⏳ 🔒 R5
+✅ Bozza del recinto **approvata** (19 ottobre). Proposte di Gas: idee illimitate in una lista ordinata per valore; al massimo **10 PR a notte**; le proposte con etichetta "importante" possono superare il limite. Resta la catena: PR su un ramo suo → firma di Gas-operatore → gemello di prova.
+- 🔄 Aggiustarsi: oggi c'è solo il passaggio automatico al modello successivo.
+- ⏳ Avviso in tempo reale quando un compito degrada a "solo testo" (rimandato per falsi allarmi; D3 della sonda telemetria).
+- ⏳ Programmarsi: Gas propone una PR su un ramo suo, mai su `main`. Solo codice applicativo: infrastruttura, messa in linea, servizi di sistema e dipendenze restano sempre a mano tua.
+- ⏳ Catena dei cancelli: proposta → revisore → firma tua → "usciere" che fa il merge → gemello di prova → promozione.
+- ⏳ **Approvazioni semplici ma fedeli**: ogni proposta spiegata in parole semplici, col diff vero sotto e un sì o no per voce; un secondo revisore controlla che la spiegazione corrisponda al diff.
+- ⏳ **Gemello**: copia di Gas con dati e chiavi separati e azioni verso l'esterno finte. Promozione dopo almeno 5 giorni, N eventi, zero crash. Costa il doppio: lo si fa girare su richieste registrate o solo durante la prova.
+- ⏳ Token di Gas senza permesso di scrivere su `main`.
+- ⏳ Di notte solo proposte, al massimo 10 PR (vedi sopra). Studio solo da fonti approvate.
+- ⏳ **Ponte Gas ↔ Claude Code con firma** (registrato il 7 luglio, senza data). Gas scrive la proposta come file, tu approvi con `/approva`, Claude Code la esegue su un ramo. Vincoli: il server non ha mai le credenziali della macchina di sviluppo (è quella che va a prendersi le proposte); bot Telegram separato; solo comandi fissi, mai testo libero; codici usa-e-getta che scadono in 24 ore; massimo 3 proposte al giorno; tetto di spesa per proposta; tutto nel diario. Nodo aperto: funziona solo a computer acceso. Le routine di R3 possono risolverlo.
+
+### R11 — Motore marketing (FASE 4) ⏳
+Per tua scelta tra gli ultimi. Oggi non esiste: il vecchio modulo era vuoto ed è stato tolto.
+- ✅ **Deciso il 19 ottobre:** Gas-Python orchestra tutto. n8n come piano B, solo se un collegamento è troppo costoso da fare da zero. Make scartato.
+- ⏳ Modulo Meta Ads e generazione di contatti.
+- ⏳ Testi persuasivi per annunci e messaggi.
+- ⏳ Automazione dei canali del brand (voce della roadmap di giugno).
+- ⏳ GDPR e dati personali dei contatti.
+- ⏳ Gas potrà preparare pagine web o contenitori per un tuo progetto? Oggi è vietato (R-249-2).
+- 🅿️ Claude Cowork per il materiale di marketing e la trascrizione dei video in locale.
+- ⏳ Piano "GAS WEB OS": entra in roadmap dopo il completamento di Gas (capitolo 10).
+
+### R12 — Controllo del PC 🅿️
+Deciso in chat il 29 settembre (supera il repo, che dice ancora "nessuna soluzione decisa"): sì al pieno controllo, con un cancello. Azioni tranquille libere, azioni delicate con firma; la lista la scriviamo noi, non il modello; dopo aver letto roba esterna niente azioni delicate. 👤 Lista da scrivere insieme. Oggi il cancello lo classifica tutto come "firma sempre": va corretto quando arriva il suo turno. Collegata all'idea di giugno "Gas controlla la macchina a un orario stabilito, sempre col tuo consenso".
+
+### R13 — Secondo cervello personale 🅿️ 🔒 R5
+Segnato nel repo come "molto importante, non prioritario". Magazzino delle tue note, decisioni e video, più risposte nel tuo stile. Detto onestamente: imita lo stile e ritrova le tue conoscenze, non ragiona col tuo giudizio. Vincoli: archivio separato dai contatti; fornitori che non si allenano sui tuoi testi (o solo modelli locali); memoria RAM del server da dimensionare; "agire a tuo nome" sempre con firma.
+
+---
+
+## 5. Tutte le voci aperte, per area
+
+Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
+
+### 5.1 Lettura e comandi (le chiude R0)
+- R-273-1 (bassa): tre comandi hanno una lista di opzioni vietate invece che permesse.
+- R-273-2 (bassa): le versioni Mac dei comandi mai provate.
+- R-274-2 (bassa): alcuni argomenti legittimi rifiutati.
+- R-nw-2 (cosmetica): un nome di file che contiene "venv", ".git" o ".env" dentro una parola viene rifiutato.
+- R-277-1 (bassa): `prod.environment` e simili leggibili.
+- R-277-2 (cosmetica): commento di una funzione; collegamento non protetto in un test.
+- R-eco-run-1, R-eco-1 (minori): un ramo senza test e un controllo legato al testo di un messaggio.
+- Il cancello considera il recinto attivo solo se la variabile è scritta per esteso; il motore anche quando manca.
+- Se la cartella di lavoro sta fuori dalla cartella di Gas, ogni comando viene negato.
+
+### 5.2 Cancello e firme
+- V-1 esterna / V-2 bot #180: il codice che applica cancello e firma (bot, memoria, script dei controlli, `CLAUDE.md`) **resta livello 2** (deciso il 19 ottobre), ma con: doppia verifica obbligatoria bot + chat, firma **solo coi bottoni** (mai a voce) e **mai di notte**. ⏳ Da mettere nel codice.
+- Note basse su #180: finta riga di intestazione dentro il diff della firma; caratteri invisibili gestiti in parte per classe e in parte a elenco; messaggi diversi al modello senza avviso a te; un diff oltre 4096 caratteri non passa su Telegram; caratteri sosia non rilevabili; "una PR per scopo" saltata.
+- ✅ R-203-2 e C-d superate dal principio dell'autonomia del 19 ottobre (capitolo 0); ⏳ da mettere nel codice.
+- C5 non fatta: scadenza delle approvazioni (vedi R1). C6 non fatta: bottone Modifica e firme a gruppi. C-pin non fatta.
+- R-c3-1b (mitigata), R-c3-2 (validare la durata), R-c3-5 (cosmetica).
+- R-c4b1-3: invio del messaggio di firma che blocca il turno fino a 15 secondi per destinatario.
+- R-c4b1-4: una riga rovinata conta nel tetto finché non scade.
+- R-c4b2-6: esecuzione nello stesso filo del bot; i bottoni degli altri destinatari restano.
+- R-c4b2-7: dopo un errore del database la richiesta resta senza bottoni.
+- R-c4b2-8, R-c4a-2 (cosmetiche). R-c4b2-10: test sensibile alla lentezza.
+- R-c4b3-3, R-c4b3-4, R-c4b3-5 (vedi R7).
+- R-c2-2, R-c2-4, R-c2-5, R-c2-6, R-c2-10 (non bloccanti); R-c2-8 (accettata: un test entrato senza seconda revisione).
+- R-erm-1, R-erm-2: l'isolamento dei test da Telegram copre un file solo e un solo modo di chiamare la rete.
+- R-220-1: l'esito di un'azione notturna firmata finisce nella tua conversazione.
+- Il documento del cancello si contraddice in tre punti con il codice di oggi: da riallineare.
+
+### 5.3 Giro notturno e scritture
+- **Il catalogo delle fonti di studio è scrivibile da Gas.** Dovrebbe cambiarlo solo una persona; oggi è un file libero, quindi Gas potrebbe riattivare una fonte tolta. Da chiudere presto.
+- R-223-1 (bassa): la cartella `reports/` è scrivibile da Gas, e quei testi li leggono revisore e bot.
+- R-223-2 (deciso il 19 ottobre): si tiene la lista dei file vietati, decisa insieme a Gas-operatore. In più: ⏳ segnalazione **solo** quando nasce un file nuovo che sembra delicato (chiavi, configurazioni, script); i documenti normali passano in silenzio.
+- R-224-2 (cosmetica): nome del compito con spazio o punto finale.
+- R-251-1 (bassa): nomi alternativi dello stesso file su Windows, che non usiamo.
+- R-222-2: esito dedotto dall'inizio del testo (vedi R7).
+- Tetti di tempo non duri. Il riepilogo Telegram si spegne solo con `0`.
+- Disco senza blocco dei file: il giro si ferma e avvisa; da riprovare sul server.
+- Nessun timer per Linux: esiste solo quello del Mac.
+- `setup_notte.md` dice ancora "Gas non può modificare il proprio motore": oggi può, con firma. Testo da riallineare.
+
+### 5.4 Memoria, conoscenza, vettori
+- F-diario-args, F-args-pin (vedi R6).
+- R-fts-1 (tetto alle parole cercate), R-fts-2, R-fts-3, R-e2e-refactor-1/2, R-k4-3 (minori o cosmetiche).
+- Prova reale della conoscenza: 2 su 3; fallisce la domanda di una parola sola.
+- Iniezione "comportamentale": mitigata, non chiusa.
+- R-lez-bis-1 (cosmetica), R-lez-2 (nessun blocco strutturale sugli strumenti delle lezioni, coperto da un test).
+- Separatori Unicode insoliti non rifiutati nelle lezioni.
+- R3 della sonda: il diario non ha archiviazione. Mai cancellare; esportare quando servirà.
+- R5 della sonda: rafforzare ancora la protezione del diario.
+- R-wire-1: soglia della ricerca per significato tarata su esempi finti. 🔒 R5.
+- R-wire-2: ricerca per significato debole sulle domande corte in italiano.
+- Confronto col modello `e5-small`: mai fatto.
+- R-reidx-3: picco di memoria RAM durante la reindicizzazione (le fonti si contraddicono: chiusa o solo ridotta). 🔒 R5.
+- R-vec-3: riprovare sul server nuovo che il motore dei vettori si carichi.
+- Tre comandi dei vettori ignorano la variabile che sposta l'archivio: sul server lavorerebbero su un archivio diverso.
+- R26-1, R26-2: codice d'uscita del backup esterno e un test mancante.
+- Nessun test per i due comandi dei vettori.
+- R1-R4 della rubrica: quattro ritocchi a codice e test.
+- R-crm-diario-rr: un test mai ri-revisionato.
+- Riserve vecchie di giugno, mai chiuse e senza dettaglio in nessun file: R-test-1 (tetto finestra), R2 #6 (cambio cartella), R3 #4 (falsi allarmi sui percorsi), foto di sicurezza "TASK C", aggancio di fine sessione, R-mem, R-mem2a.
+- F4 del prompt: nelle istruzioni convivono "dichiara che non puoi" e "non bloccarti". Mitigata, non risolta.
+- Il registro `gas_debug.log` ha un percorso relativo: se Gas parte da un'altra cartella finisce altrove.
+
+### 5.5 Telegram e telemetria
+- R-tel-budget-perf: il costo si ricalcola rileggendo tutto il registro a ogni turno.
+- R-tel-tool_res (cosmetica).
+- F5 delle fondamenta: una sola cronologia condivisa nel bot.
+- Il bot ri-esegue i messaggi modificati; i messaggi oltre 60 caratteri contano sempre come "complessi".
+- Tempi di risposta e numero di tentativi nel registro: mai fatto. Riconoscimento del "troppe richieste" fatto confrontando testi. Il registro conserva solo il livello dell'errore.
+- Avvisi di rete del bot a riposo: abbassare il rumore. Registro che cresce: rotazione.
+- Indagine sulla lentezza di Gas sul server (voce di luglio). 🔒 R5.
+- Notifica su Telegram se Gas parte degradato: decisa, da verificare se esiste.
+
+### 5.6 Modelli e fornitori
+- Gradino OpenRouter gratuito in degrado: trovare un modello gratuito stabile o dichiararlo "quando va".
+- Mistral come gradino candidato: prima la sonda sui limiti e sulle regole dei dati. Vale la regola dei modelli del capitolo 0: i gratuiti solo per lavori semplici senza dati personali.
+- 🅿️ Sblocco OpenRouter da 10 dollari (da 50 a 1000 richieste al giorno): rimandato (19 ottobre), si riapre se serve.
+- ⏳ **OmniRoute come sonda fuori dal motore** (riaperto il 19 ottobre): affidabilità, dove finiscono i dati, utilità come ponte. Se si rompe spesso, scartato.
+- Groq: limite di 8000 token al minuto, più cadute sul gradino dopo.
+- Gemini gratuito finito a 20 richieste al giorno nella prova del 28 settembre: da ricontrollare.
+- Commento sui prezzi Gemini datato.
+- ❌ Ollama: rimosso dal piano (19 ottobre).
+- 🅿️ `gas --brain`, DeepSeek come operaio, "Il Consiglio" di modelli economici, profilo del revisore a pezzi. La voce di giugno "ragionamento avanzato" è confluita qui e in R2.
+- Voce del 21 giugno "ottimizzazione della cache dei prompt": citata in chat, contenuto non ritrovato.
+
+### 5.7 Bot di verifica, merge, permessi
+- R-162-1: isolamento nel lavoro del bot (probabilmente chiusa, mai confermata). R-162-2, R-160-1: la pulizia dei segreti dipende da una versione fissata.
+- R-158-5 (👤): il bot non esegue i test.
+- R-192-1: senza recinto non partono nemmeno i modelli di riserva.
+- R-193-1, R-193-2, R-194-3, R-191-1 (basse o cosmetiche).
+- Fable 5.1 nel bot fallisce, causa ignota. Oggi è l'ultima riserva: resta da capire perché.
+- R-198-1: il bot dichiara da sé di aver usato gli strumenti. R-198-2 (cosmetica, documento).
+- R-163-2 (👤): il NO del bot è legato al commit, un commit vuoto riapre il giudizio. R-163-3, R-164-3 (dichiarate).
+- R-205-1, R-205-2: due modi di sfuggire al controllo sul testo del verdetto.
+- R-161-2: convalida dell'approvazione automatica (probabilmente già avvenuta, non scritta).
+- ✅ G-3 fatto (14 ottobre): token ristretto `gas-agente` creato (scade il 4 gennaio 2027), avvio con `gasclaude`, blocco in `gasmerge --auto` (fase 2). Restano R-186-3, R-186-4, R-189-1. Limite: GitHub non separa il permesso di inviare da quello di fare merge.
+- ⏳ La regola di merge autonomo è scritta in `CLAUDE.md` ma non nel codice; `fine-task.md` dice ancora "non mergiare". Lavoro per il turno di notte (R3).
+- ⏳ **Pulizia di rami e PR una volta a settimana** (19 ottobre; più spesso solo se crescono): l'agente verifica che il contenuto sia su `main` e prepara la lista; la cancellazione resta di Gas-operatore.
+- Regole da non rompere: mai escludere percorsi dai test automatici; etichetta `verifica` obbligatoria sulla PR.
+- Nessun controllo sull'indirizzo passato al verificatore: fa fede il commit nel suo commento.
+- Il commento del verificatore esterno esce con la tua identità.
+- Il verificatore esterno deve usare un modello diverso da quello dell'agente: oggi può coincidere.
+- Il bot ha dato "fallito" per "finding medio" su un verdetto con soli finding bassi (PR #183).
+
+### 5.8 Cancello di sviluppo, dossier, agganci automatici
+- V-B (media): il controllo prova che le citazioni esistono, non che la revisione sia avvenuta; il segno di "revisione fatta" lega il diff, non il verdetto. V-C (media): l'aggancio vede solo `git commit`.
+- V-5 esterna #180 (bassa): il controllo delle citazioni scarta quelle precedute da una parola con i due punti e non vede più una riga inesistente. V-3 esterna #180: regola di fine lavoro da precisare.
+- R-141-2 (mitigata): una PR può svuotare i controlli tenendone il nome. R-143-2 (mitigata), R-143-3 (👤 uscita dallo stallo).
+- R-139-1, R-136-2, R-136-3, R-138-3: formati di verdetto che passano o si spezzano.
+- R-137-1, R-137-2 / R-gjq-1 (il cancello blocca qualunque comando che contiene "git … commit"), R-137-3, R-gjq-2, R-gjq-3.
+- R-138-5 / V-5 #121 (👤): file fuori dal perimetro di revisione (`.gitignore`, `knowledge/`, `CLAUDE.md`). V-3 #121 (👤): etichette `origin/*`.
+- F-controlli-auto: verdetto vuoto che passa; dossier scritto prima del push; esiti diversi tra le parti.
+- R-ci-1: ricerca del titolo non ancorata a inizio riga. R-verdetto-evidenza: manca il controllo sulla riga citata.
+- R-finegat-1, R-finegat-2, R-finale-2, R-147-2.
+- V-2 della verifica #127 (un secondo aggiornamento senza pulizia, non coperto da test). V-3 della verifica #123: il controllo degli indirizzi IP è cieco a certe codifiche e agli indirizzi spezzati.
+- R-155-3 (👤): due agenti nella stessa cartella. Finding "aggancio di fine sessione + sessioni parallele" mai registrato.
+- 👤 F3 "partenza su `main`": i commit fatti direttamente su `main` sfuggono all'aggancio.
+- F-scrivi-rep-main, F-sessionend-msg, etichetta sbagliata in `settings.json`, commit del revisore con numero non compilato, F-handoff-c4a (un dossier vecchio con un dato falso).
+- Sessione interrotta prima della chiusura: la cronologia non si salva.
+- Se una PR entra dopo il calcolo del diff, il dossier può includere commit estranei.
+- Proposta mai impegnata: la chiusura si ferma se manca la PR. Contare i rami a fine giro.
+- `gasmerge`: residui minori (#62-R1 mitigata, finestra di pochi millisecondi, variabile che può puntare a un altro repo).
+- Note #146: righe doppie in `.gitignore`; i futuri file audio di prova vanno aggiunti a mano.
+- Verdetti #173-#177 non provabili per intero. Review #56 con verdetto vuoto; PR #43 revisionata da un agente generico; lezione #50 persa; mancano #83 e #84.
+
+### 5.9 Documenti da riallineare
+- `stato_progetto.md` pesa 143 KB; la regola dice circa 100 righe. Lo storico va spostato; restano tre ✅ da archiviare e marcatori vecchi (es. R-finale-1, F-env-app).
+- ✅ `roadmap.md` sostituito da questo documento (19 ottobre).
+- `README.md` vecchio (non parla di cancello, Telegram, notte, memoria).
+- `gas_identity.md` cita solo due modelli della cascata.
+- `fine-task.md`: "merge da WSL"; aggiunge un file che git ignora; parla solo di motore e test mentre il perimetro di revisione è più largo.
+- Regole operative di `stato_progetto.md`: superate R1 e R2 ("merge mai dall'agente") e i riferimenti a WSL. Le altre valgono.
+- Titoli fuorvianti, sigle riusate (F1, F3, F6, R2), contatore delle review fermo a 92.
+- Sezioni sul server che parlano del vecchio Hetzner come vivo.
+- `setup_verifica_bot.md`: un passo scritto come futuro è già fatto.
+- `raccomandazioni_aperte.md`: contiene solo "repo privato".
+- Micro-compito di luglio mai fatto: raffinare il controllo di processo segnato 🟡.
+- ⏳ 👤 Istruzioni del progetto su claude.ai: chiedono ancora la stampa integrale del report, il comando `/agents` e parlano di Codespace. Da aggiornare; collegare anche il repo GitHub al progetto (regola del 19 ottobre).
+- Versioni di Python diverse: 3.11 nei test automatici, 3.14 sul Mac.
+
+### 5.10 Spesa
+- Spesa di sviluppo: non tracciata né fermata dal codice. La leva è la disciplina (modello leggero di default, contesto pulito tra i compiti).
+- Tetto di spesa di Gas: conta a prezzi di listino anche i modelli gratuiti. Diventa una protezione vera con R2.
+
+---
+
+## 6. Decisioni che spettano a te
+
+Restano solo quelle aperte. Le decisioni del 19 ottobre sono scritte nelle rocce e nel capitolo 0.
+
+**Aperte dal 19 ottobre.**
+1. Motivi dell'allarme urgente sul telefono e tetto al giorno (R6).
+2. Scelta della voce all'ascolto: Piper italiano, "Jarvis" per Piper o clone della tua voce (R8).
+3. Lezioni #4, #5, #6, da rivedere a testo (R9).
+4. Da chiarire: il freno di giorno all'80% della finestra delle 5 ore (R2).
+
+**Non discusse il 19 ottobre.**
+5. PR da chiudere o mergiare: #158, #109, #141, #87 (da verificare se ancora aperte) — non discussa 19 ott.
+6. Regole del bot: R-163-2, R-158-5, perimetro di revisione, etichette `origin/*`, uscita dallo stallo, due agenti nella stessa cartella, partenza su `main` — non discussa 19 ott.
+7. Regole sui dati dei fornitori e GDPR prima dei contatti veri — non discussa 19 ott.
+8. Tetto di consumo della voce — non discussa 19 ott.
+9. Mistral e Cerebras a pagamento — non discussa 19 ott.
+10. Quando Gas riflette da solo — non discussa 19 ott. La riflessione automatica di ottobre (fine compito notturno e `clear`) copre il caso principale; resta aperto se servono altri momenti (es. ogni N turni).
+11. Lista delle azioni tranquille e delicate per il controllo del PC (R12) — non discussa 19 ott.
+12. TradeGasFX in un repo suo — non discussa 19 ott.
+13. Firma dei commit dell'agente — non discussa 19 ott.
+
+## 7. Lavoro mai arrivato su `main`
+
+Rami non mergiati (controllati con git l'11 ottobre):
+
+| Ramo | Avanti di | Ultimo | Cos'è |
+|---|---|---|---|
+| `codex/tradegasfx-redesign` | 20 commit | 7 ott | Sito TradeGasFX, solo documenti (PR #141) |
+| `fix/r2-durabilita-memoria` | 9 | 19 ago | Vecchio lavoro su revisore e controlli |
+| `fix/nonascii-cd-tests` | 4 | 19 ago | Test sui nomi non ASCII |
+| `cert/mac-migration-2026-09-12` | 3 | 12 set | Certificazione Mac (PR #87 mai mergiata) |
+| `chore/fine-task-robusto` | 3 | 2 ott | Modifica a `fine-task.md` |
+| `test/prova-verifica-bot` | 2 | 7 ott | Prova del bot |
+| `docs/scollega-gashistory-da-r2` | 1 | 20 ago | Nota superata |
+| `feat/merge-automatico` | 1 | 6 ott | Solo una risposta salvata |
+| `fix/crm-idemp-diario` | 1 | 19 lug | Nota superata |
+
+- Altri 16 rami sono già dentro `main`. Se ne possono cancellare 15: `feat/merge-automatico-z1xjx2` è il ramo di lavoro attivo e resta.
+- Aggiornamento del 19 ottobre: `fix/crm-idemp-diario` cancellato dall'operatore. Da qui in poi la pulizia si fa una volta a settimana (capitolo 5.7). La tabella sopra è ferma all'11 ottobre: si rifà alla prossima pulizia.
+- Nominati nei file e non più presenti: `fix/review44-riserve-AC`, `claude/phone-gas-development-10svqc` (toccava i modelli), `fix/gasmerge-hardening` (il suo contenuto è arrivato su `main` a luglio). Per i primi due non è scritto chi li ha tolti.
+- Cancellare un ramo è un'azione tua; prima si controlla a mano che il contenuto sia su `main`. `gasmerge` cancella già da solo il ramo appena mergiato.
+
+---
+
+## 8. Server nuovo: la lista completa
+
+**Prima di accenderlo.**
+- Metodo di pagamento verificato e avviso di fatturazione. È la lezione del 14 settembre: server perso per circa 26 euro non pagati.
+- Accesso a due fattori sull'account del fornitore, col codice di recupero su carta.
+- Repo privato. Revisione umana esterna.
+- Chiavi tutte nuove (ElevenLabs, voce, Telegram, modelli).
+- Niente vecchia chiave SSH ereditata dall'account.
+- Macchina virtuale KVM, processore x86: **Netcup**, circa 8 GB di RAM per partire (deciso il 19 ottobre). Oracle gratuito e DigitalOcean scartati; l'account Hetzner è stato chiuso.
+
+**Messa in sicurezza (procedura in `reports/runbook_s1_hardening.md`).**
+0. Console di emergenza del fornitore aperta e provata prima di toccare l'accesso. Lezione di luglio: la console web storpiava i tasti; la via vera era la modalità di soccorso con password nota. Ctrl+Alt+Canc lì riavvia il server.
+1. Aggiornamenti automatici.
+2. Blocco automatico di chi sbaglia la password (fail2ban).
+3. Utente non amministratore per Gas.
+4. Accesso solo con chiave, provato da una seconda finestra.
+5. Niente accesso da amministratore, niente password.
+6. Verifica finale con tre prove.
+- Mancano nella procedura e vanno aggiunti: muro di rete (solo la porta 22), recinto bwrap, backup fuori dal server, file delle chiavi con permessi stretti.
+- Memoria di scambio da 2 a 4 GB; limiti di RAM per il servizio; un utente amministratore separato.
+
+**Installazione di Gas.**
+- Copia pulita da GitHub, ambiente Python, `python gas.py doctor` senza errori.
+- File delle chiavi con: Gemini, Groq, OpenRouter, Telegram (token e lista di chi può scrivere), voce, ElevenLabs, tetto di spesa, modalità del recinto, interruttore e posizione dell'archivio dei vettori.
+- Un vecchio `.env` accanto al programma riempie le variabili mancanti: controllare (R-260-3).
+- Nome dell'ambiente Python fuori dalle foto di sicurezza (F7).
+- Servizio che riparte da solo; `gas doctor` non blocca l'avvio.
+- Mai lo stesso token Telegram su due macchine.
+- Giro notturno col timer di Linux (da scrivere).
+- Server voce separato, solo locale finché non c'è la connessione cifrata.
+- Gli agganci automatici di sviluppo vanno riprovati su Linux.
+
+**Dopo.**
+- Backup automatico di memoria e cronologia verso l'esterno, dal primo giorno.
+- Allarme "uomo morto": se Gas smette di dare segni, arriva un avviso.
+- Tarare la ricerca per significato e misurare la RAM a regime.
+- Foto di sicurezza: se `doctor` ne mostra zero è anomalo; la pulizia resta manuale.
+- Rotazione dei registri.
+- Recinto sempre in modalità stretta se c'è altro sulla macchina.
+- Idea vecchia da rivalutare: Gas che parte a tempo e si spegne, invece del servizio sempre acceso.
+
+---
+
+## 9. Idee e parcheggi
+
+- 🅿️ Telegram unico per comandare Gas e Claude Code: superato a metà dal comando da telefono; resta il ponte di R10.
+- 🅿️ Notifiche push sul telefono (crash, test rossi, fine del giro): in parte coperte dall'allarme gratuito di R6.
+- 🅿️ OpenClaw: solo ricognizione, mai copia nel motore.
+- 🅿️ Mirage (file di servizi diversi visti come una cartella): da valutare con il marketing. Solo in lettura, con lista delle risorse permesse, mai scritture automatiche verso il cloud.
+- 🅿️ `revisor.py` / "Claude Council": concetto interno, mai chiarito.
+- 🅿️ Comandi vocali per Claude Code a mani libere durante lo sviluppo (roadmap di giugno, poi sparita).
+- 🅿️ `monitor.py` (roadmap di giugno): oggi coperto da `doctor`; l'allarme è al capitolo 8.
+- 🅿️ Accesso da telefono con SSH + tmux: solo se serve. Una sessione esposta è una porta d'ingresso sulla macchina di sviluppo.
+- 🅿️ Claude Dispatch: scartato a luglio perché pilotava Windows; col Mac il motivo è caduto.
+- 🅿️ Conservazione del diario: archivio ed esportazione, mai cancellazione.
+- ✅ Abbonamento usato tramite Agent SDK o `claude -p`: entrato in roadmap come R2 (19 ottobre). Le regole vanno riverificate prima di costruire.
+
+---
+
+## 10. Piani esterni parcheggiati
+
+Stanno in `reports/roadmap_da_valutare.md`, non filtrati. Si valutano a roadmap principale finita, salvo GAS WEB OS (sotto). La divisione qui sotto è una mia proposta. Le voci contrarie ai principi restano escluse senza una decisione consapevole.
+
+### "Blueprint Supremo" (19 luglio), 7 fasi
+- **Compatibile, da filtrare dentro:** firma umana via Telegram, cuore del sistema in sola lettura, cifratura dei dati a riposo, contenitori Docker, archivio su spazio esterno (R2/S3), grafo delle conoscenze, memoria vettoriale su database, pulizia degli ingressi ("Doganiere"), ricerca mista, riflessione notturna, "tabù" dopo un veto, controllo di CPU e RAM prima dei lavori pesanti, backup notturno cifrato, file di stato, commit automatico di ogni modifica autorizzata.
+- **Già coperto in parte da quello che abbiamo:** guardiano della spesa che taglia le connessioni, compressione della chat, foto di sicurezza con ritorno indietro.
+- **Contrario ai nostri principi (non entra senza una tua decisione consapevole):** Gas che riscrive da solo le proprie istruzioni senza approvazione, Gas che scrive e integra codice nel proprio cuore senza cancelli, micro-addestramento notturno automatico (LoRA), "darwinismo" della memoria con cancellazioni decise dal modello, memoria olografica in RAM. Diverso è il braccio previsto a giugno: istruzioni cambiate con diff, ripristino e tua approvazione.
+- **Altre voci del piano:** due cervelli con micro-agenti, cache privata per ogni sotto-agente, memoria veloce Redis, comandi di sistema sui file in cloud di ogni formato, flussi tra servizi diversi, cache a due livelli, sincronizzazione con Obsidian o Anytype, osservatore dell'editor di codice, precaricamento predittivo, spazio di lavoro portabile, estrazione di idee dai video ("De-Boner"), generatore di copioni video, avatar e influencer virtuali.
+
+### "GAS WEB OS" (27 luglio) — ⏳ entra in roadmap (19 ottobre)
+**Deciso il 19 ottobre:** entra dopo il completamento di Gas, con alta ambizione: deve distinguersi dalla concorrenza (test e un salto di qualità rispetto ad altri che ci hanno provato). ⏳ Blueprint da sviluppare presto, dopo Gas.
+Sistema per vendere siti e servizi digitali alle attività locali: trovare le attività, analizzare la presenza online, punteggio da 0 a 100, strategia e bozza del sito, rubrica e ricontatti.
+- Strumenti previsti: Airtable (archivio), HubSpot (trattative), Make (automazioni), agente "GAS WEB SCOUT".
+- Tre fasi: prima a mano con le prime automazioni; poi raccolta e analisi automatiche; poi quattro agenti (Scout, Analyst, Sales, Follow-up).
+- Obiettivo: 1000 attività raccolte, le migliori 100 pronte per la chiamata, tu fai solo la vendita.
+- Nodi aperti: dati dei contatti su servizi terzi (GDPR). La scelta Make contro Gas-Python è chiusa: Gas-Python, n8n come piano B (R11).
+
+---
+
+## 11. Scartato o già deciso (non riaprire)
+
+- ❌ Cerebras gratuito come gradino: contesto reale di 8192 token e coda satura.
+- ❌ GitHub Models come gradino (limiti da prototipo e un token GitHub sul server); resta usabile come banco di prova in sviluppo.
+- ❌ Più di circa 6 gradini nella cascata.
+- ~~❌ Accesso con l'abbonamento Claude dentro Gas~~: superato il 19 ottobre, è il nuovo R2.
+- ❌ OmniRoute nel motore, per ora. Riaperto solo come sonda fuori dal motore (capitolo 5.6).
+- 🔄 Claude Code sul server di produzione: **da ridecidere con R2 e R5** (19 ottobre).
+- ❌ "Sempre in ascolto" che agisce senza essere chiamato.
+- ❌ Instagram come fonte automatica.
+- ❌ Fusione dei contatti, ripristini e pulizie in mano al modello: solo a mano.
+- ❌ L'opzione di GitHub che cancella da sola i rami dopo il merge.
+- ❌ Riscrittura della storia di git.
+- ✅ Deciso: livello 2 (firma) per `gas.py`, `brains/` e `modules/`; lettura libera.
+- ✅ Deciso: cascata del bot Opus 5.5 → Opus 4.8 → Fable 5.1.
+- ✅ Deciso: il revisore cita sempre col percorso completo.
+- ✅ Deciso: il verdetto del verificatore esterno va come commento sulla PR.
+- ✅ Deciso: si lavora in Cowork; la chat di strategia fa il controllo esterno ogni tanto.
+- ✅ Deciso: i brainstorming anche a voce; i comandi per l'agente sempre scritti.
+- ❌ Secondo account GitHub "macchina": scartato (19 ottobre), coperto dal token ristretto.
+- ❌ Make per il marketing; Twilio per l'allarme; ElevenLabs a pagamento; Ollama; crediti API Claude per ora (19 ottobre).
+- ❌ Merge automatico dopo N notti pulite: sostituito da "merge sempre al mattino, per ora" (19 ottobre).
+
+---
+
+## 12. Progetti satellite (fuori dal motore)
+
+Il bot di trading è uscito dalla roadmap (19 ottobre): l'operatore lo ha fatto altrove.
+
+- **TradeGasFX**: sito con pannello servizi e contatto WhatsApp. Vive su un ramo del repo di Gas (20 commit, solo documenti). Da decidere se spostarlo in un repo suo. Prima di pubblicare: testimonianze vere e verifica delle condizioni dichiarate.
+- **Sala segnali sull'oro (XAUUSD) su Telegram**: tuo piano separato, non è nella roadmap di Gas.
+
+---
+
+## 13. Come è stata controllata
+
+1. Ogni file di `reports/`, `CLAUDE.md`, i file in `.claude/` e i sette documenti del progetto sono stati letti per intero, da lettori diversi.
+2. I punti tecnici sono stati riscontrati nel codice: 41 affermazioni controllate, nessuna falsa, 10 imprecise e corrette.
+3. Cinque controlli indipendenti hanno confrontato la bozza con le fonti, uno per gruppo: roadmap del repo e piani parcheggiati; prima metà dello stato; seconda metà e storico; progetti, procedure e codice; documenti del progetto, memoria e 40 ricerche nelle chat.
+4. I controlli hanno trovato circa 45 voci mancanti e circa 20 frasi sbagliate o imprecise. Sono tutte dentro questa versione.
+5. Le regole Anthropic sono state verificate sulle pagine ufficiali l'11 ottobre 2026.
+
+**Limiti onesti.**
+- Lo stato delle PR aperte non l'ho potuto leggere da GitHub: le voci "da verificare" sono segnate.
+- Le chat si cercano per spezzoni, non si rileggono intere: una frase detta una volta sola e mai scritta in un file può essere sfuggita.
+- Dove due file si contraddicono ho preso il più recente e l'ho scritto.
+- Sette riserve di giugno hanno solo il nome: il dettaglio non è in nessun file.
