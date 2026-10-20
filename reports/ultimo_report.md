@@ -1,6 +1,6 @@
-# ULTIMO REPORT — 2026-10-20 — Dopo #222: README e cartelle di progetto alla firma, comando `gas fida-contatto`
+# ULTIMO REPORT — 2026-10-20 — Avviso Telegram sui lead modificati dopo una lettura
 
-Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge di #222 (ok dell'operatore: «mergia 222 e parti con le due modifiche»).
+Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge di #224 (operatore: «mergia 224 e fai l'avviso su telegram»).
 
 ## DECISIONI UMANE RICHIESTE
 
@@ -8,9 +8,5 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge di #222 (ok
 
 ## Esito
 
-- **R-ve222-4 — file letti dagli agenti alla firma dopo una lettura** — FATTA LA PARTE SUI FILE (resta aperta l'altra parte della riserva: dopo una lettura sono liberi i cambi di recapito e la chiusura di un lead; proposta avviso su Telegram). Dopo che Gas ha letto un testo di terzi, write_file resta libero solo per documenti md/txt/csv in sottocartelle di lavoro (es. `dati/`). Vanno alla firma: i file nella radice del repo (README.md…), le cartelle di progetto (tests, tools, docs, clients, scripts, brains, modules) e i nomi di istruzioni per agenti in qualunque cartella (README, AGENT*, CLAUDE, GEMINI, SKILL, CONTRIBUTING, CONVENTIONS, copilot-instructions, requirements*). Review #377 APPROVATO CON RISERVE.
-- **R-bot222-1 — comando `gas fida-contatto`** — FATTA. Senza chiave elenca i lead segnati «non fidati»; con la chiave mostra la scheda (da controllare) e chiede conferma y/N, poi toglie il segno scrivendo una riga di diario `contatto_fidato` nella stessa transazione. Solo comando umano, non tool dell'agente. Review #377.
-- **Riserve di #377** — R-377-1 BASSA (un tool inventato «contatto_fidato» poteva falsificare la traccia nel diario) e R-377-2 COSMETICA (AGENT.md, CONVENTIONS.md liberi) CHIUSE. Review #378 APPROVATO CON RISERVE: R-378-1 BASSA, il prefisso «agent» manda alla firma anche file come `dati/agente_vendite.md` (solo attrito).
-- **Bot e verifica esterna su `b59b2dd`** — bot APPROVATO CON RISERVE (neutral: decide l'operatore), nessuna ALTA/MEDIA; V-1 BASSA: R-ve222-4 era dichiarata chiusa per intero (corretto qui). Verifica esterna ([commento](https://github.com/Gasss23/Gas/pull/224#issuecomment-6292485286)) APPROVATO CON RISERVE, nessuna ALTA/MEDIA: R-378-1 confermata; R-ve224-2 BASSA/COSMETICA carattere invisibile in testa al nome resta libero; §6 dell'handoff senza esito CI (aggiornato).
-- **Bot su `47d83fc`** — APPROVATO CON RISERVE (neutral), V-1 BASSA: in `fida-contatto` un turno contaminato poteva riscrivere il lead tra la scheda mostrata e la conferma → CHIUSA in `d6fe921` (il segno si toglie solo se il lead è identico alla scheda, nello stesso lock). Review #379 APPROVATO CON RISERVE: R-379-1 BASSA (anche una riscrittura identica fa fallire il comando; basta rilanciarlo).
-- **Test** — kernel 916 → 924 PASS, 0 FAIL; pytest tests/ 1519 passed.
+- **Avviso su Telegram (R-ve222-4, seconda parte)** — FATTA. Dopo che Gas ha letto un testo esterno, se cambia il recapito di un lead già in rubrica o lo chiude, l'operatore riceve un messaggio solo informativo (niente bottoni) con valore vecchio e nuovo, resi visibili su una riga. Lead nuovi o note: nessun avviso. Invio fallito: avviso nella scatola nera, il turno prosegue. Review #380 APPROVATO CON RISERVE: R-380-1 BASSA (recapito cambiato su una chiave vecchia di un lead fuso: nessun avviso), R-380-2 BASSA (con Telegram irraggiungibile il turno aspetta fino a 15 s per destinatario).
+- **Test** — kernel 924 → 927 PASS, 0 FAIL; pytest tests/ 1519 passed.
