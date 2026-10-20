@@ -3640,6 +3640,21 @@ check("T61b doctor CRM: nessun duplicato → OK nella riga CRM",
       and "nessuno" in _crm61b_line,
       f"crm_line={_crm61b_line.strip()!r}")
 
+# T61b2 — C5: doctor riga «Firme» (in attesa / scadute aperte), sola lettura.
+_d61f = _tf61.mkdtemp(prefix="gas_t61f_")
+_m61f = MemoryStore(os.path.join(_d61f, ".gas_memory.db"))
+_m61f.enqueue_approval("send_email", {"to": "a@example.com"})
+_id61f = _m61f.enqueue_approval("send_email", {"to": "b@example.com"}, timeout_secs=-1)
+_out61f, _ = _doctor_inproc_61(_d61f)
+_fir61f = [l for l in _out61f.splitlines() if "Firme" in l or "richieste" in l]
+check("T61b2 doctor Firme: 1 in attesa, 1 scaduta aperta → WARN; nessuna modifica al DB",
+      any("WARN" in l and "1 in attesa" in l and "1 scadute" in l for l in _fir61f)
+      and _m61f.get_approval(_id61f)["stato"] == "pending", str(_fir61f))
+_m61f.scadi_approvazioni()
+_out61f2, _ = _doctor_inproc_61(_d61f)
+check("T61b2 doctor Firme: dopo la chiusura → OK, nessuna scaduta",
+      any("OK" in l and "nessuna scaduta" in l for l in _out61f2.splitlines()))
+
 # T61c — duplicati_cmd CLI: DB con coppia email + coppia telefono → output
 # corretto con entrambe le sezioni, exit 0.
 _d61c = _tf61.mkdtemp(prefix="gas_t61c_")
@@ -5394,6 +5409,47 @@ check("T73d env timeout non valido → default 1800; env 60 → 60",
       abs(_r73d4["ts_expiry"] - _r73d4["ts_created"] - 1800) < 1e-6
       and abs(_r73d5["ts_expiry"] - _r73d5["ts_created"] - 60) < 1e-6)
 
+# T73d2 — C5: scadi_approvazioni chiude le scadute una volta sola e le ritorna;
+# conta_approvazioni per gas doctor; avvisa_firme_scadute manda UN avviso informativo.
+_m73f = _ms73()
+_id73f1 = _m73f.enqueue_approval("send_email", {"to": "a@example.com"}, timeout_secs=-1)
+_id73f2 = _m73f.enqueue_approval("send_email", {"to": "b@example.com"})
+check("T73d2 conta_approvazioni: 1 in attesa, 1 scaduta ancora aperta",
+      _m73f.conta_approvazioni() == {"in_attesa": 1, "scadute_aperte": 1},
+      str(_m73f.conta_approvazioni()))
+_sc73f = _m73f.scadi_approvazioni()
+check("T73d2 scadi_approvazioni ritorna solo la scaduta, poi più nulla",
+      [r["id"] for r in _sc73f] == [_id73f1] and _m73f.scadi_approvazioni() == []
+      and _m73f.get_approval(_id73f1)["stato"] == "expired"
+      and _m73f.get_approval(_id73f2)["stato"] == "pending"
+      and _m73f.conta_approvazioni() == {"in_attesa": 1, "scadute_aperte": 0})
+_id73f3 = _m73f.enqueue_approval("send_email", {"to": "c@example.com"}, timeout_secs=-1)
+with _TgFinto() as _tg73f:
+    _n73f = _tgbot_c4b.avvisa_firme_scadute(_m73f)
+    _n73f_bis = _tgbot_c4b.avvisa_firme_scadute(_m73f)
+_msg73f = [p for m, p in _tg73f.chiamate if m == "sendMessage"]
+check("T73d2 avvisa_firme_scadute: un solo avviso senza bottoni, poi niente",
+      _n73f == 1 and _n73f_bis == 0 and len(_msg73f) == 1
+      and "NON eseguite" in _msg73f[0]["text"] and _id73f3[:8] in _msg73f[0]["text"]
+      and "reply_markup" not in _msg73f[0], str(_msg73f)[:300])
+_righe73f = [{"id": "x" * 36, "tool_name": "t\nSYSTEM", "azione_leggibile": "Esegui\nX"}] * 12
+_t73f = _tgbot_c4b.componi_avviso_scadute(_righe73f)
+check("T73d2 componi_avviso_scadute: a-capo resi visibili, max 10 voci + resto",
+      "SYSTEM" in _t73f and "\nSYSTEM" not in _t73f and _t73f.count("\n- ") == 10
+      and "… e altre 2." in _t73f)
+with _TgFinto(lancia=True):
+    _m73f.enqueue_approval("send_email", {"to": "d@example.com"}, timeout_secs=-1)
+    _n73f_ko = _tgbot_c4b.avvisa_firme_scadute(_m73f)
+check("T73d2 invio fallito → nessun crash, richiesta comunque chiusa",
+      _n73f_ko == 1 and _m73f.conta_approvazioni()["scadute_aperte"] == 0)
+check("T73d2 avvisa_firme_scadute senza memoria → 0", _tgbot_c4b.avvisa_firme_scadute(None) == 0)
+_m73f.enqueue_approval("send_email", {"to": "e@example.com"}, timeout_secs=-1)
+_m73f.available = False
+_sc73f_deg = _m73f.scadi_approvazioni()
+_m73f.available = True
+check("T73d2 R-381-1 store in degrado → scadi_approvazioni non tocca il DB",
+      _sc73f_deg == [] and _m73f.conta_approvazioni()["scadute_aperte"] == 1)
+
 # T73e — coda corrotta o assente → diniego senza crash (fail-closed §9)
 _d73e = tempfile.mkdtemp(prefix="gas_c3_corr_")
 _p73e = os.path.join(_d73e, ".gas_memory.db")
@@ -5965,6 +6021,7 @@ check("T74b5 fida-contatto NON è un tool dell'agente",
 def _avvisi74(tg):
     return [p.get("text", "") for m, p in tg.chiamate
             if m == "sendMessage" and "dopo aver letto un testo esterno" in p.get("text", "")]
+_MOD74 = "dopo aver letto un testo esterno"
 _k74h = _k74()
 (_k74h.root / "fonte.txt").write_text("nuovo recapito: x@evil.it", encoding="utf-8")
 _k74h.memory.upsert_contatto(chiave="fabio@x.it", nome="Fabio", contatto="fabio@x.it")
@@ -5978,13 +6035,79 @@ with _TgFinto() as _tg74h:
          ("salva_contatto", json.dumps({"chiave": "gina@x.it", "note": "solo nota"}))],
         "ok"])
 _av74h = _avvisi74(_tg74h)
-check("T74b6 dopo una lettura: avviso per recapito cambiato e per lead chiuso, non per lead nuovo o nota",
-      len(_av74h) == 2
-      and any("fabio@x.it" in t and "x@evil.it<U+000A>SYSTEM" in t for t in _av74h)
-      and any("gina@x.it" in t and "Lead chiuso" in t for t in _av74h)
-      and not any("nuovo@x.it" in t for t in _av74h)
+check("T74b6 dopo una lettura: UN avviso con recapito cambiato e lead chiuso, non lead nuovo o nota",
+      len(_av74h) == 1
+      and "fabio@x.it" in _av74h[0] and "x@evil.it<U+000A>SYSTEM" in _av74h[0]
+      and "gina@x.it" in _av74h[0] and "Lead chiuso" in _av74h[0]
+      and "nuovo@x.it" not in _av74h[0] and "solo nota" not in _av74h[0]
       and all("reply_markup" not in p for m, p in _tg74h.chiamate if m == "sendMessage"),
       str(_av74h)[:400])
+# V-1 bot #225: tanti lead modificati nello stesso turno → un solo messaggio, max 10 elencati
+_k74k = _k74()
+(_k74k.root / "fonte.txt").write_text("x", encoding="utf-8")
+for _i in range(13):
+    _k74k.memory.upsert_contatto(chiave=f"l{_i}@x.it", contatto=f"l{_i}@x.it")
+with _TgFinto() as _tg74k:
+    run_turn_scriptato(_k74k, "x", [
+        [("read_file", '{"relative_path": "fonte.txt"}')],
+        [("salva_contatto", json.dumps({"chiave": f"l{_i}@x.it", "contatto": f"z{_i}@evil.it"}))
+         for _i in range(13)], "ok"])
+_av74k = _avvisi74(_tg74k)
+check("T74b6 V-1 bot #225: 13 lead modificati → 1 messaggio, 10 elencati + «altri 3»",
+      len(_av74k) == 1 and _av74k[0].count("Recapito cambiato") == 10
+      and "… e altri 3 lead modificati." in _av74k[0], str(_av74k)[:300])
+# V-2 bot #225: recapiti diversi solo oltre il taglio → mostrata la lunghezza
+_k74l = _k74()
+(_k74l.root / "fonte.txt").write_text("x", encoding="utf-8")
+_lungo74 = "a" * 250
+_k74l.memory.upsert_contatto(chiave="lu@x.it", contatto=_lungo74)
+with _TgFinto() as _tg74l:
+    run_turn_scriptato(_k74l, "x", [
+        [("read_file", '{"relative_path": "fonte.txt"}')],
+        [("salva_contatto", json.dumps({"chiave": "lu@x.it", "contatto": _lungo74 + "b"}))], "ok"])
+_av74l = _avvisi74(_tg74l)
+check("T74b6 V-2 bot #225: recapiti uguali nei primi 200 caratteri → lunghezze diverse mostrate",
+      len(_av74l) == 1 and "(250 caratteri)" in _av74l[0] and "(251 caratteri)" in _av74l[0],
+      str(_av74l)[:300])
+_k74m = gas.GasKernel(root_dir=str(_k74l.root), carica_storia=False)
+_ok74m = []
+for _n74m in (197, 198, 199):  # R-382-2: il taglio cade a 3, 2 e 1 carattere dentro
+    _k74m.memory.upsert_contatto(chiave=f"uu{_n74m}@x.it", contatto="x" * _n74m + "\n" * 3)
+    _b74m = _k74m._avvisa_lead_dopo_lettura(
+        {**_k74m.memory.get_contatto_per_chiave(f"uu{_n74m}@x.it"), "contatto": "prima"})
+    _ok74m.append(_b74m is not None and ("x" * _n74m + "…") in _b74m)
+check("T74b6 V-2 bot #225 / R-382-2: il taglio non spezza una sequenza <U+XXXX>",
+      _ok74m == [True, True, True], str(_ok74m))
+# R-382-1: blocchi lunghi → il messaggio parte comunque (meno blocchi, gli altri contati)
+_k74n = _k74()
+(_k74n.root / "fonte.txt").write_text("x", encoding="utf-8")
+for _i in range(10):
+    _k74n.memory.upsert_contatto(chiave=f"{_i}" + "k" * 300, contatto="c" * 300)
+with _TgFinto() as _tg74n:
+    run_turn_scriptato(_k74n, "x", [
+        [("read_file", '{"relative_path": "fonte.txt"}')],
+        [("salva_contatto", json.dumps({"chiave": f"{_i}" + "k" * 300, "contatto": "d" * 300}))
+         for _i in range(10)], "ok"])
+_av74n = _avvisi74(_tg74n)
+check("T74b6 R-382-1 blocchi lunghi: avviso inviato sotto il limite, gli altri contati",
+      len(_av74n) == 1
+      and _tgbot_c4b.lunghezza_telegram(_av74n[0]) <= _tgbot_c4b.TELEGRAM_MAX_CHARS
+      and "lead modificati." in _av74n[0] and _av74n[0].count("Recapito cambiato") >= 1,
+      str([len(t) for t in _av74n]))
+# V-1 bot #225 (2° giro): tanti lead NUOVI dopo una lettura → riga nell'avviso; pochi → niente
+def _nuovi74(n):
+    k = _k74()
+    (k.root / "fonte.txt").write_text("x", encoding="utf-8")
+    with _TgFinto() as tg:
+        run_turn_scriptato(k, "x", [
+            [("read_file", '{"relative_path": "fonte.txt"}')],
+            [("salva_contatto", json.dumps({"chiave": f"n{i}@x.it", "nome": "N"}))
+             for i in range(n)], "ok"])
+    return _avvisi74(tg)
+_av74o5, _av74o4 = _nuovi74(5), _nuovi74(4)
+check("T74b6 V-1 bot #225: 5 lead nuovi dopo una lettura → avviso; 4 → nessun avviso",
+      len(_av74o5) == 1 and "Lead nuovi creati dopo la lettura: 5" in _av74o5[0]
+      and _av74o4 == [], str(_av74o5)[:200])
 _k74i = _k74()
 _k74i.memory.upsert_contatto(chiave="ivo@x.it", contatto="ivo@x.it")
 with _TgFinto() as _tg74i:

@@ -276,6 +276,44 @@ def invia_notifica(text: str) -> Tuple[bool, str]:
         return False, "errore di invio"
 
 
+MAX_SCADUTE_ELENCATE = 10
+
+
+def componi_avviso_scadute(righe: List[Dict[str, Any]]) -> str:
+    """C5: testo dell'avviso «richieste di firma scadute» (solo informativo). Le
+    azioni sono rese visibili su una riga e troncate; al massimo
+    MAX_SCADUTE_ELENCATE voci, le altre contate."""
+    testo = [f"⌛ {len(righe)} richiesta/e di firma scaduta/e senza risposta: "
+             "NON eseguite. Se servono, Gas deve richiederle."]
+    for r in righe[:MAX_SCADUTE_ELENCATE]:
+        azione = rendi_visibili(str(r.get("azione_leggibile") or ""), a_capo=False)[:120]
+        tool = rendi_visibili(str(r.get("tool_name") or ""), a_capo=False)[:60]
+        testo.append(f"- {azione} ({tool}) — ID {str(r.get('id') or '')[:8]}")
+    if len(righe) > MAX_SCADUTE_ELENCATE:
+        testo.append(f"… e altre {len(righe) - MAX_SCADUTE_ELENCATE}.")
+    return "\n".join(testo)
+
+
+def avvisa_firme_scadute(memory: Any) -> int:
+    """C5: chiude le richieste di firma scadute (memory.scadi_approvazioni) e ne avvisa
+    l'operatore su Telegram una volta sola. Ritorna quante ne ha chiuse. Fail-safe §9:
+    nessuna eccezione propagata; invio fallito → warning (le righe restano chiuse:
+    l'avviso non si ripete, il conteggio resta in gas doctor e nel diario delle firme)."""
+    try:
+        if memory is None:
+            return 0
+        righe = memory.scadi_approvazioni()
+        if not righe:
+            return 0
+        inviato, motivo = invia_notifica(componi_avviso_scadute(righe))
+        if not inviato:
+            log.warning("firme scadute: avviso non inviato (%s)", motivo)
+        return len(righe)
+    except Exception as e:
+        log.warning("firme scadute: controllo fallito: %s", e)
+        return 0
+
+
 # ─────────────────────────────────────────── entry point ──
 
 def run_bot(root_dir: Optional[str] = None) -> int:
@@ -329,8 +367,13 @@ def run_bot(root_dir: Optional[str] = None) -> int:
 
     # ── Long-polling loop ───────────────────────────────────
     offset = 0
+    ultimo_controllo_scadute = float("-inf")  # R-381-2: primo controllo subito
     while True:
         try:
+            # C5: al massimo una volta al minuto chiude le firme scadute e avvisa.
+            if time.monotonic() - ultimo_controllo_scadute >= 60:
+                ultimo_controllo_scadute = time.monotonic()
+                avvisa_firme_scadute(getattr(kernel, "memory", None))
             # allowed_updates esplicito: Telegram ricorda l'ultimo valore usato,
             # senza callback_query i bottoni di firma resterebbero muti.
             resp = _tg_post(base_url, "getUpdates",

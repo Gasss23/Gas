@@ -396,6 +396,24 @@ def _firma_notturna(kernel: Any) -> None:
         logging.warning("notte: scadenza notturna delle firme non impostata: %s", e)
 
 
+def _chiudi_firme_scadute(root: Path) -> int:
+    """C5: a fine giro chiude le richieste di firma scadute senza risposta (restano
+    nel DB per audit) e ritorna quante: il numero va negli avvisi del mattino, al
+    posto di un messaggio a parte. Mai eccezioni (§9): errore → 0."""
+    try:
+        from modules.memory import MemoryStore, default_db_path
+        # R-381-3: come gas doctor, niente DB creato come effetto collaterale.
+        if not default_db_path(root).exists():
+            return 0
+        mem = MemoryStore(default_db_path(root))
+        if not mem.available:
+            return 0
+        return len(mem.scadi_approvazioni())
+    except Exception as e:
+        logging.warning("notte: firme scadute non controllate: %s", e)
+        return 0
+
+
 def _lezioni_in_attesa(kernel: Any) -> Optional[int]:
     """R-345-3: quante lezioni aspettano ancora il sì dell'operatore. Mai eccezioni:
     kernel o memoria assenti/rotti → None (il messaggio conta solo quelle di stanotte)."""
@@ -538,6 +556,10 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                               "risposta": "", "errore": "kernel non avviato (gas_debug.log)"})
                 continue
             esiti.append(_esegui_compito(kernel, c, notte_dir, min(max_compito, resta)))
+        scadute = _chiudi_firme_scadute(root)
+        if scadute:
+            avvisi.append(f"{scadute} richiesta/e di firma scaduta/e senza risposta: "
+                          f"chiuse, NON eseguite")
         testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi)
         try:
             _scrivi_atomico(notte_dir / RIEPILOGO, testo)
