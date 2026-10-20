@@ -29,11 +29,12 @@
  modules/telegram/bot.py            |  18 ++++++++++++++++--
  reports/diff_sessione.md           |  15 ++++++++-------
  reports/handoff.md                 | 179 +++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------
+ reports/lavoro_parallelo.md        |  24 ++++++++++++++++++++++++
  reports/stato_progetto.md          |   2 ++
  reports/ultimo_report.md           |  14 +++++++-------
  tests/test_unit_gate.py            |   5 ++++-
  tests/test_unit_kernel.py          |  24 ++++++++++++++++++++++++
- 11 files changed, 125 insertions(+), 160 deletions(-)
+ 12 files changed, 149 insertions(+), 160 deletions(-)
 ```
 
 ---
@@ -41,6 +42,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f4f730e docs(fine-task): report e handoff — knowledge/ alla firma; regole del lavoro in parallelo
 48764e0 feat(cancello): il catalogo delle fonti di studio (knowledge/) va alla firma (roadmap 5.3)
 f2308de chore(revisore): memoria review #385 — APPROVATO
 6e8b0ff Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
