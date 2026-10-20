@@ -2581,16 +2581,8 @@ class GasKernel:
                 return None
 
             def _v(x: Any) -> str:
-                t = _tg_bot.rendi_visibili(str(x or "—"), a_capo=False)
-                if len(t) <= 200:
-                    return t
-                t = t[:200]
-                # V-2 bot #225 / R-382-2: non spezzare a metà una sequenza «<U+XXXX>»
-                # (anche quando nel taglio restano solo «<» o «<U»).
-                k = t.rfind("<")
-                if k != -1 and ">" not in t[k:]:
-                    t = t[:k]
-                return t + "…"
+                # V-2 bot #225 / R-382-2 / R-383-1: taglio che non spezza «<U+XXXX>».
+                return _tg_bot.tronca_visibile(x or "—", 200)
 
             righe = []
             vecchio, nuovo = prima.get("contatto") or "", dopo.get("contatto") or ""
@@ -4363,7 +4355,7 @@ def doctor(root_dir: Optional[str] = None) -> int:
     except Exception as _e_crm:
         check("CRM", "duplicati sospetti", "OK", f"non disponibile: {str(_e_crm)[:40]}")
 
-    # 12. Firme (C5): richieste in attesa e scadute ancora aperte. INFORMATIVO: le
+    # 11b. Firme (C5): richieste in attesa e scadute ancora aperte. INFORMATIVO: le
     # scadute aperte → WARN (le chiudono il bot e il giro notturno). SOLA LETTURA.
     try:
         _cnt = mem.conta_approvazioni() if (mem is not None and mem.available) else None
