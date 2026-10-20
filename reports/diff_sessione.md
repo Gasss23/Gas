@@ -1,7 +1,6 @@
-# DIFF SESSIONE — 2026-10-19 (regola fonte unica = repo)
+# DIFF SESSIONE — 2026-10-20 (roadmap del 19 ottobre)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `CLAUDE.md` — regola «documenti di progetto: fonte unica = il repo» (§3, dopo «Fatti sul Mac»).
-- `reports/stato_progetto.md` — decisioni operatore del 2026-10-19.
+- `reports/roadmap.md` — sostituito dalla roadmap completa dell'11 ottobre, aggiornata con gli avanzamenti e le decisioni del 19 ottobre.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
