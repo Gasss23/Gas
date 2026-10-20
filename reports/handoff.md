@@ -28,13 +28,13 @@
  modules/memory/store.py            |   4 ++--
  modules/telegram/bot.py            |  18 ++++++++++++++++--
  reports/diff_sessione.md           |  15 ++++++++-------
- reports/handoff.md                 | 179 +++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------
- reports/lavoro_parallelo.md        |  24 ++++++++++++++++++++++++
+ reports/handoff.md                 | 182 +++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------
+ reports/lavoro_parallelo.md        |  26 ++++++++++++++++++++++++++
  reports/stato_progetto.md          |   2 ++
  reports/ultimo_report.md           |  14 +++++++-------
  tests/test_unit_gate.py            |   5 ++++-
  tests/test_unit_kernel.py          |  24 ++++++++++++++++++++++++
- 12 files changed, 149 insertions(+), 160 deletions(-)
+ 12 files changed, 153 insertions(+), 161 deletions(-)
 ```
 
 ---
@@ -42,6 +42,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+abbc82e docs(lavoro_parallelo): le cartelle non assegnate si chiedono all'operatore (V-4 verifica esterna #228)
+3b95676 docs(fine-task): handoff con il diff completo
 f4f730e docs(fine-task): report e handoff — knowledge/ alla firma; regole del lavoro in parallelo
 48764e0 feat(cancello): il catalogo delle fonti di studio (knowledge/) va alla firma (roadmap 5.3)
 f2308de chore(revisore): memoria review #385 — APPROVATO
@@ -118,7 +120,8 @@ pytest `tests/`: `1529 passed in 182.37s (0:03:02)` (+6 gate).
 
 ## §6 STATO CI
 
-- Run sui commit di questo handoff: non ancora disponibile alla scrittura dell'handoff.
+- `3b95676`: handoff-check success; verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/228#issuecomment-6300729328)), nessuna ALTA/MEDIA; V-4 (cartelle non assegnate in lavoro_parallelo.md) corretta nel commit successivo.
+- Commit di questo handoff: run non ancora disponibile. §2/§3 non possono contenere il commit dell'handoff stesso.
 
 ## §7 RISERVE APERTE
 
