@@ -1,14 +1,13 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-20 — Roadmap aggiornata con le decisioni del 19 ottobre (PR #220)
+**Sessione:** 2026-10-20 — Briefing voce e recinto autonomia nel repo, link da R8 e R10 (PR #221)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #220 (https://github.com/Gasss23/Gas/pull/220): lo decide l'operatore.
-2. Da chiarire (R2): freno di giorno all'80% della finestra delle 5 ore.
-3. Proposte non applicate: elenco in `reports/ultimo_report.md` (CLAUDE.md §2, fine-task.md, stato_progetto.md, roadmap_sintesi.md, README/gas_identity).
+1. Merge della PR #221 (https://github.com/Gasss23/Gas/pull/221): lo decide l'operatore.
+2. Togliere dal progetto claude.ai le copie dei due documenti: ora fa fede solo il repo.
 
 (`gh` non disponibile nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
@@ -16,18 +15,22 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Roadmap aggiornata con le decisioni del 19 ottobre**: `FATTA` — `reports/roadmap.md`, ramo `feat/merge-automatico-z1xjx2`, PR #220 non mergiata.
+- **Aggiunta `reports/recinto_autonomia.md`** (copia identica dell'allegato): `FATTA`
+- **Aggiunta `reports/briefing_architettura_voce.md`** (copia identica dell'allegato): `FATTA`
+- **Link in `reports/roadmap.md` sotto R8 e R10**: `FATTA`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md |   5 +--
- reports/handoff.md       |  33 ++++++---------
- reports/roadmap.md       | 830 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------
- reports/ultimo_report.md |  67 +++++++++++++++++++++++++-----
- 4 files changed, 635 insertions(+), 300 deletions(-)
+ reports/briefing_architettura_voce.md | 90 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md              |  6 ++++--
+ reports/handoff.md                    | 40 +++++++++++++++++-----------------------
+ reports/recinto_autonomia.md          | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/roadmap.md                    |  2 ++
+ reports/ultimo_report.md              | 67 ++++++++++---------------------------------------------------------
+ 6 files changed, 190 insertions(+), 78 deletions(-)
 ```
 
 ---
@@ -35,8 +38,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-3e62106 docs(fine-task): report e handoff — roadmap del 19 ottobre (#220)
-98e7d57 docs(roadmap): roadmap completa aggiornata con le decisioni del 19 ottobre
+00e2050 docs(reports): briefing voce e recinto autonomia nel repo, link da R8 e R10
 ```
 
 ---
@@ -53,8 +55,8 @@ Nessuna modifica al motore: delta zero.
 
 ## §6 STATO CI
 
-- `3e62106`: unit-suite, handoff-check, smista success; verifica-bot failure (verdetto testuale APPROVATO CON RISERVE con soli finding BASSA/COSMETICA; dettaglio in ultimo_report).
-- Commit delle note e di questo handoff: run non ancora disponibile alla scrittura.
+- `00e2050`: handoff-check success; unit-suite in corso alla scrittura; verifica-bot skipped (etichetta `verifica` non messa: la PR non va mergiata ora).
+- Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
