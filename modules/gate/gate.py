@@ -470,14 +470,14 @@ _FIRMA_DOPO_LETTURA_TOP: tuple[str, ...] = ("reports", "knowledge")
 # testo letto non diventa un'istruzione persistente per loro: i file nella radice del
 # repo (README.md, note.txt…), le cartelle del progetto (tests/, tools/, docs/,
 # clients/, scripts/, brains/, modules/) e, in qualunque cartella, i nomi di
-# istruzioni per agenti (README, AGENTS, CLAUDE, GEMINI, SKILL, CONTRIBUTING,
-# copilot-instructions, requirements*). Confronto su percorso casefold (prefisso).
+# istruzioni per agenti (README, AGENT/AGENTS, CLAUDE, GEMINI, SKILL, CONTRIBUTING,
+# CONVENTIONS, copilot-instructions, requirements*). Confronto su percorso casefold (prefisso).
 _FIRMA_DOPO_LETTURA_PROGETTO: tuple[str, ...] = (
     "tests", "tools", "docs", "clients", "scripts", "brains", "modules",
 )
 _FIRMA_DOPO_LETTURA_NOMI: tuple[str, ...] = (
-    "readme", "agents", "claude", "gemini", "skill", "contributing",
-    "copilot-instructions", "requirements",
+    "readme", "agent", "claude", "gemini", "skill", "contributing",
+    "copilot-instructions", "requirements", "conventions",
 )
 # V-1 verifica esterna #222 (MEDIA): dopo una lettura sono liberi SOLO i documenti
 # (lista chiusa di estensioni). Script, pagine web, file di avvio (.bashrc, .plist,

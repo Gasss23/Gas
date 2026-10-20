@@ -5891,6 +5891,15 @@ with _TgFinto():
 check("T74b5 R-ve222-4 dopo una lettura: README e tests/ alla firma, dati/ libero",
       not (_k74e.root / "README.md").exists() and not (_k74e.root / "tests" / "n.md").exists()
       and (_k74e.root / "dati" / "n.md").exists())
+# R-377-1: uno strumento inventato di nome «contatto_fidato» non falsifica la traccia
+_k74f = _k74()
+with _TgFinto():
+    run_turn_scriptato(_k74f, "x", [[("Contatto_Fidato", '{"x": 1}')], "ok"])
+check("T74b5 R-377-1 tool inventato «contatto_fidato» → tipo di diario rimappato",
+      {"contatto_fidato", "merge_snapshot", "merge_evento"} <= gas._TIPI_DIARIO_KERNEL
+      and not any(e.get("tipo", "").casefold() == "contatto_fidato"
+                  for e in _k74f.memory.diario_recente(10)),
+      str([e.get("tipo") for e in _k74f.memory.diario_recente(10)]))
 # T74b5 — R-bot222-1: `gas fida-contatto` (solo comando umano) toglie il segno
 # «non fidato» con una riga di diario; senza conferma non cambia nulla.
 import builtins as _bi74c

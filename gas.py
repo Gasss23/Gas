@@ -557,7 +557,10 @@ _NESSUN_APPRENDIMENTO = "nessun nuovo apprendimento permanente"
 # modello manipolato potrebbe scrivere una riga 'recap' e farla reiniettare come
 # recap fidato. I nomi riservati vengono rimappati su _TIPO_TOOL_RISERVATO.
 _TIPI_DIARIO_KERNEL: frozenset = frozenset({"recap", "recap_non_fidato", "recap_notte",
-                                            "apprendimento", "turno_fine"})
+                                            "apprendimento", "turno_fine",
+                                            # R-377-1: tracce di azioni umane/CLI
+                                            "contatto_fidato", "merge_snapshot",
+                                            "merge_evento"})
 _TIPO_TOOL_RISERVATO = "tool_nome_riservato"
 # R-200-1: per la riflessione la fiducia è FAIL-CLOSED. Una finestra è "fidata" solo
 # se OGNI output di tool che contiene viene da questa allowlist (output prodotto dal

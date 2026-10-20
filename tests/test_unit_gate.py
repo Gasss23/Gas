@@ -777,6 +777,8 @@ def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
     ("write_file", {"relative_path": "dati/requirements.txt"}, False),
     ("write_file", {"relative_path": "dati/requirements-dev.txt"}, False),
     ("write_file", {"relative_path": "dati/Contributing.md"}, False),
+    ("write_file", {"relative_path": "dati/AGENT.md"}, False),
+    ("write_file", {"relative_path": "dati/CONVENTIONS.md"}, False),
     ("write_file", {"relative_path": "dati/clienti/elenco.md"}, True),
     ("write_file", {"relative_path": "memoria/appunti.md"}, True),
     ("write_file", {"relative_path": "dati/agenda.md"}, True),
