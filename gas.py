@@ -3924,6 +3924,11 @@ class GasKernel:
                                     turno_id=_turno_id,
                                 )
                                 self._add_to_history("tool", content=out, tool_call_id=tc.id, name=tc.function.name)
+                                # V-1 verifica esterna #222 (2° giro): le chiamate parallele nella
+                                # STESSA risposta vedono subito la lettura appena fatta (prima la
+                                # contaminazione si ricalcolava solo all'iterazione dopo).
+                                if tc.function.name in UNTRUSTED_INPUT_TOOLS:
+                                    _finestra_contaminata = True
                                 yield {"type": "tool_res", "output": out}
                             self._save_history()
                             # continua il loop per ottenere la risposta finale
