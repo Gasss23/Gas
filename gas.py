@@ -2550,6 +2550,55 @@ class GasKernel:
         except Exception as e:
             logging.warning("[GATE] marca_contatto_non_fidato fallita: %s", e)
 
+    def _lead_prima(self, tool_args: Any) -> Optional[Dict[str, Any]]:
+        """Scheda del lead PRIMA di salva_contatto/imposta_stato_contatto a turno
+        contaminato (stessa coercizione della chiave dell'esecuzione), per
+        _avvisa_lead_dopo_lettura. None se assente o in errore. Mai eccezioni (§9)."""
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            chiave = str(args.get("chiave") or "").strip() if isinstance(args, dict) else ""
+            if self.memory is None or not chiave:
+                return None
+            return self.memory.get_contatto_per_chiave(chiave)
+        except Exception as e:
+            logging.warning("[GATE] lettura del lead prima della modifica fallita: %s", e)
+            return None
+
+    def _avvisa_lead_dopo_lettura(self, prima: Optional[Dict[str, Any]]) -> None:
+        """R-ve222-4 (seconda parte, decisione operatore 2026-10-20): dopo una lettura
+        la rubrica resta libera, ma se un lead ESISTENTE cambia recapito o viene
+        chiuso (esce dal pin) l'operatore riceve un avviso su Telegram, solo
+        informativo. Valori resi visibili su una riga e troncati. Mai eccezioni (§9):
+        invio fallito → warning nella scatola nera, il turno prosegue."""
+        try:
+            if prima is None or self.memory is None:
+                return
+            dopo = self.memory.get_contatto(int(prima["id"]))
+            if dopo is None:
+                return
+
+            def _v(x: Any) -> str:
+                t = _tg_bot.rendi_visibili(str(x or "—"), a_capo=False)
+                return t if len(t) <= 200 else t[:200] + "…"
+
+            righe = []
+            if (prima.get("contatto") or "") != (dopo.get("contatto") or ""):
+                righe.append(f"Recapito cambiato: {_v(prima.get('contatto'))} → "
+                             f"{_v(dopo.get('contatto'))}")
+            if dopo.get("stato") in STATI_CHIUSI and prima.get("stato") not in STATI_CHIUSI:
+                righe.append(f"Lead chiuso: {_v(prima.get('stato'))} → {_v(dopo.get('stato'))}")
+            if not righe:
+                return
+            testo = ("⚠️ Gas ha modificato un lead dopo aver letto un testo esterno\n"
+                     f"Lead: {_v(dopo.get('chiave'))}\n" + "\n".join(righe) +
+                     "\nSe non ti torna, controlla la scheda: il lead è segnato "
+                     "«non fidato» (gas fida-contatto).")
+            inviato, motivo = _tg_bot.invia_notifica(testo)
+            if not inviato:
+                logging.warning("[GATE] avviso lead dopo una lettura non inviato: %s", motivo)
+        except Exception as e:
+            logging.warning("[GATE] avviso lead dopo una lettura fallito: %s", e)
+
     def _ha_chiavi_riservate(self, tool_args: Any) -> bool:
         try:
             args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
@@ -3922,12 +3971,17 @@ class GasKernel:
                                         tc.function.name, tc.function.arguments, _turno_id,
                                     )
                                 else:
+                                    _lead_contaminato = (
+                                        _finestra_contaminata and tc.function.name in
+                                        ("salva_contatto", "imposta_stato_contatto"))
+                                    _prima = (self._lead_prima(tc.function.arguments)
+                                              if _lead_contaminato else None)
                                     out = self.execute_tool_call(tc.function.name, tc.function.arguments)
                                     # V-1 bot #222: un contatto scritto a turno contaminato
                                     # resta segnato: chi lo rivede nel pin è contaminato.
-                                    if (_finestra_contaminata and tc.function.name in
-                                            ("salva_contatto", "imposta_stato_contatto")):
+                                    if _lead_contaminato:
                                         self._marca_contatto_non_fidato(tc.function.arguments)
+                                        self._avvisa_lead_dopo_lettura(_prima)
                                 # Diario: per azioni al cancello solo nome+id (F-diario-eco/args, mai args).
                                 # Per tutti gli altri casi: riassunto args + esito.
                                 _esito_str = self._esito_diario(tc.function.name, out)

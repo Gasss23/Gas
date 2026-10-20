@@ -1,19 +1,12 @@
-# ULTIMO REPORT — 2026-10-20 — Documenti di #221 e riserve bot #221 in stato_progetto (PR #223)
+# ULTIMO REPORT — 2026-10-20 — Avviso Telegram sui lead modificati dopo una lettura
 
-Ramo: `claude/peaceful-lovelace-0w2b7q`, rifatto da main (`a00b4e1`) dopo il conflitto segnalato dal bot (V-1 MEDIA su #223). Compito solo documentale. PR #223 (https://github.com/Gasss23/Gas/pull/223).
+Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge di #224 (operatore: «mergia 224 e fai l'avviso su telegram»).
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Togliere dal progetto claude.ai le copie di `briefing_architettura_voce.md` e `recinto_autonomia.md` (ora fa fede solo il repo).
+1. Merge della PR (decide l'operatore se il bot non dà un APPROVATO pulito).
 
 ## Esito
 
-- **V-1 bot #223 (MEDIA, conflitto con main)**: `FATTA` — main era avanzato (PR #222, #224); ramo rifatto da main, nessun conflitto.
-- **Proposte della PR #220 in `stato_progetto.md`**: `SALTATA` — superata: l'altra sessione le ha già applicate in `d9b144b` (PR #222: CLAUDE.md, fine-task.md, README, gas_identity, `roadmap_sintesi.md` tolto, stato allineato) e il rimando in roadmap non c'è più.
-- **Riserve bot #221 e documenti di #221 in `stato_progetto.md`**: `FATTA` — R-bot221-1/2 aperte (BASSE), R-bot221-3 chiusa da `d9b144b`.
-- **V-2 bot #223 (BASSA, stato_progetto troppo lungo)**: `DEFERITA` — spostare lo storico in `stato_storico.md` è una fetta a parte.
-- **V-3 bot #223 (COSMETICA, §0 dell'handoff senza la decisione «togliere le copie»)**: `FATTA` — ora c'è.
-
-## Anomalie
-
-- Il primo contenuto di #223 era già superato da main al momento della PR (due sessioni in parallelo).
+- **Avviso su Telegram (R-ve222-4, seconda parte)** — FATTA. Dopo che Gas ha letto un testo esterno, se cambia il recapito di un lead già in rubrica o lo chiude, l'operatore riceve un messaggio solo informativo (niente bottoni) con valore vecchio e nuovo, resi visibili su una riga. Lead nuovi o note: nessun avviso. Invio fallito: avviso nella scatola nera, il turno prosegue. Review #380 APPROVATO CON RISERVE: R-380-1 BASSA (recapito cambiato su una chiave vecchia di un lead fuso: nessun avviso), R-380-2 BASSA (con Telegram irraggiungibile il turno aspetta fino a 15 s per destinatario).
+- **Test** — kernel 924 → 927 PASS, 0 FAIL; pytest tests/ 1519 passed.
