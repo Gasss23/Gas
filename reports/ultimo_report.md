@@ -1,6 +1,6 @@
-# ULTIMO REPORT — 2026-10-20 — Catalogo delle fonti alla firma, taglio degli avvisi, lavoro in parallelo
+# ULTIMO REPORT — 2026-10-20 — Avviso sui file nuovi delicati (R-223-2), fonti di studio solo dentro knowledge/
 
-Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #226 (operatore: «mergia 226 quando è verde e continua con la roadmap»; poi «l'altra chat lavora sulla voce, tu resta sul motore»).
+Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #228 (operatore: «mergia 228 e fai tu la correzione su tools»).
 
 ## DECISIONI UMANE RICHIESTE
 
@@ -9,7 +9,6 @@ Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #226 (operatore: «mergia 
 
 ## Esito
 
-- **R-383-1 — avvisi che nascondevano il testo dopo un «<»** — FATTA. Nuova `tronca_visibile` (bot.py) usata dagli avvisi dei lead e delle firme scadute: taglio che non spezza i caratteri resi visibili e non cancella il resto del valore (V-1 bot #226, V-2 verifica esterna #226). Review #384 APPROVATO CON RISERVE (R-384-1 COSMETICA).
-- **Roadmap 5.3 — catalogo delle fonti di studio scrivibile da Gas** — FATTA. Ogni scrittura in `knowledge/` (catalogo `sources.yaml` e file delle fonti) va alla firma. Più due cosmetiche del bot #226 (nomi nei log, numerazione in doctor). Review #385 APPROVATO.
-- **Lavoro in parallelo** — regole per due chat (Motore e Voce) in `reports/lavoro_parallelo.md`.
-- **Test** — kernel 941 → 944 PASS, 0 FAIL; pytest tests/ 1529 passed.
+- **R-223-2 — avviso sui file nuovi delicati** (decisione del 19 ottobre) — FATTA. Quando Gas crea un file NUOVO libero che sembra delicato (configurazioni, script, chiavi, nomi da credenziali) arriva un avviso su Telegram, solo informativo, uno per turno e sempre sotto il limite di lunghezza. I documenti normali passano in silenzio. Review #386 BOCCIATO (R-386-1 MEDIA: messaggio oltre il limite che non partiva, chiusa; R-386-2 BASSA: falsi allarmi su nomi come «cronologia.md», chiusa) → #387 APPROVATO CON RISERVE (R-387-1 BASSA).
+- **Fonti di studio solo dentro knowledge/** (V-1 bot #228, «fai tu la correzione su tools») — FATTA. L'ingest rifiuta le fonti fuori da `knowledge/`; nuovo test e step di CI.
+- **Test** — kernel 944 → 947 PASS, 0 FAIL; pytest tests/ 1558 passed.
