@@ -23,3 +23,10 @@
 
 1. (Non urgente, serve prima di R5) Collegare `modules.voice.server.run_server` a un comando `python gas.py voice`: oggi il server voce si avvia solo a mano (`python -c "from modules.voice.server import run_server; run_server()"`).
 2. (Cosmetica) La docstring di `tests/test_unit_gate.py` dice che in CI gira solo voice_server: dopo il merge della PR #229 non è più vero.
+
+## Aggiornamento 2026-10-20 — merge di main nel ramo e merge della PR #229
+
+- **Merge di origin/main (#227, #228) nel ramo**: `FATTA` — commit `5b90d69`; conflitti solo nei log di sessione (tenuti quelli della PR) e in `memoria_revisore.md` (voci di main #384–#387 + voce «#384 (chat Voce)»). Review #388 APPROVATO CON RISERVE (R-388-1 BASSA, R-388-2 COSMETICA), voce e ingest 77 passed sull'albero fuso.
+- **Collisione #384 / R-384-1 tra chat Motore e chat Voce**: `FATTA` la disambiguazione in `reports/stato_progetto.md`; `DEFERITA` l'estensione della regola 4 di `reports/lavoro_parallelo.md` agli id dei finding (decisione/fetta a parte).
+- **Merge della PR #229**: deciso dall'operatore in chat («ok merge 229»); merge automatico attivato, parte a check verdi.
+

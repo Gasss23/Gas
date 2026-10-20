@@ -8,3 +8,4 @@ File toccati (base: punto di fork da origin/main):
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine fetta.
 
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.
+- Merge di origin/main (#227, #228) nel ramo (`5b90d69`): `.claude/agents/memoria_revisore.md` (voce #384 chat Voce dopo #384–#387 di main, voce #388), `reports/stato_progetto.md` (suffissi «chat Motore»/«chat Voce» su #384/R-384-x, riserve R-388-1/2).
