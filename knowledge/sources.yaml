@@ -6,6 +6,8 @@
 #   nome       : slug stabile (usato come source_name nel DB)
 #   tipo       : file | url  (v1: solo "file" supportato da ingest_knowledge.py)
 #   uri        : path relativo al repo (per tipo=file) o URL (per tipo=url)
+#                VINCOLO (2026-10-20): per tipo=file l'uri deve stare DENTRO knowledge/,
+#                l'unica cartella protetta dalla firma; fuori Gas potrebbe riscrivere la fonte.
 #   descrizione: testo leggibile per l'operatore
 #   approvata_il: data ISO dell'approvazione umana
 #   chunk_max  : numero massimo di chunk ingeribili da questa fonte (protezione anti-crescita)
