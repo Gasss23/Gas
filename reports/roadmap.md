@@ -165,12 +165,12 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 - ✅ Fetta 1 (12 ottobre): tetto di spesa ricontrollato prima di ogni chiamata, non solo a inizio compito (chiude F2).
 - ⏳ **Budget di Gas:** al massimo il 20% del limite **settimanale** al giorno, misurato **solo sul consumo di Gas**. Il consumo di sviluppo (Gas-operatore con Claude Code) non conta e non blocca Gas.
 - ⏳ Di notte nessun freno sulla finestra delle 5 ore.
-- ⏳ **Da chiarire:** il freno di giorno all'80% della finestra delle 5 ore (in conflitto con "conta solo il consumo di Gas").
+- ✅ **Chiarito il 20 ottobre (scelta A):** nessun freno sulla finestra delle 5 ore, né di giorno né di notte. Vale solo il tetto del 20% del limite settimanale al giorno, contato sul solo consumo di Gas (quello che l'operatore aveva già usato non conta).
 - ⏳ Al tetto: i lavori semplici passano ai modelli gratuiti, quelli importanti aspettano (regola dei modelli, capitolo 0). Parte la riflessione R9: analizza cosa ha fatto Gas, se era utile e come farlo con meno token, e propone lezioni in quarantena (le approva Gas-operatore).
 - ❌ Crediti API da 100 dollari: **non usati per ora** (riserva a crediti rifiutata il 19 ottobre).
 - ⏳ **Dubbio aperto:** come legge Gas il limite residuo? Forse deve contare da solo il proprio consumo. Da verificare in costruzione.
 - Riapre la decisione "Claude Code sul server di produzione" (capitolo 11): da ridecidere con R2 e R5.
-- Cambia la regola di `CLAUDE.md` "Claude non è un gradino di Gas": proposta all'operatore, non ancora applicata.
+- ✅ Regola di `CLAUDE.md` "Claude non è un gradino di Gas" cambiata il 20 ottobre (approvata dall'operatore).
 
 ### R3 — Turno di notte dello sviluppo ⏳
 **Cos'è.** Un'attività programmata di Claude Code in cloud ("routine"): parte da sola, lavora sul repo, apre una PR. È inclusa nell'abbonamento (Pro 5 al giorno, Max 15), conta nei limiti d'uso, non dipende dal Mac.
@@ -312,7 +312,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 ### 5.2 Cancello e firme
 - V-1 esterna / V-2 bot #180: il codice che applica cancello e firma (bot, memoria, script dei controlli, `CLAUDE.md`) **resta livello 2** (deciso il 19 ottobre), ma con: doppia verifica obbligatoria bot + chat, firma **solo coi bottoni** (mai a voce) e **mai di notte**. ⏳ Da mettere nel codice.
 - Note basse su #180: finta riga di intestazione dentro il diff della firma; caratteri invisibili gestiti in parte per classe e in parte a elenco; messaggi diversi al modello senza avviso a te; un diff oltre 4096 caratteri non passa su Telegram; caratteri sosia non rilevabili; "una PR per scopo" saltata.
-- ✅ R-203-2 e C-d superate dal principio dell'autonomia del 19 ottobre (capitolo 0); ⏳ da mettere nel codice. Nota: `stato_progetto.md` e `CLAUDE.md` non registrano ancora le decisioni del 19 ottobre (proposte all'operatore nel report della PR #220): finché non sono allineati, per queste voci fa fede questa roadmap.
+- ✅ R-203-2 e C-d superate dal principio dell'autonomia del 19 ottobre (capitolo 0); ⏳ da mettere nel codice. `stato_progetto.md` e `CLAUDE.md` allineati il 20 ottobre.
 - C5 non fatta: scadenza delle approvazioni (vedi R1). C6 non fatta: bottone Modifica e firme a gruppi. C-pin non fatta.
 - R-c3-1b (mitigata), R-c3-2 (validare la durata), R-c3-5 (cosmetica).
 - R-c4b1-3: invio del messaggio di firma che blocca il turno fino a 15 secondi per destinatario.
@@ -394,7 +394,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 - R-205-1, R-205-2: due modi di sfuggire al controllo sul testo del verdetto.
 - R-161-2: convalida dell'approvazione automatica (probabilmente già avvenuta, non scritta).
 - ✅ G-3 fatto (14 ottobre): token ristretto `gas-agente` creato (scade il 4 gennaio 2027), avvio con `gasclaude`, blocco in `gasmerge --auto` (fase 2). Restano R-186-3, R-186-4, R-189-1. Limite: GitHub non separa il permesso di inviare da quello di fare merge.
-- ⏳ La regola di merge autonomo è scritta in `CLAUDE.md` ma non nel codice; `fine-task.md` dice ancora "non mergiare". Lavoro per il turno di notte (R3).
+- ⏳ La regola di merge autonomo è scritta in `CLAUDE.md` ma non nel codice (lavoro per il turno di notte, R3). `fine-task.md` allineato il 20 ottobre.
 - ⏳ **Pulizia di rami e PR una volta a settimana** (19 ottobre; più spesso solo se crescono): l'agente verifica che il contenuto sia su `main` e prepara la lista; la cancellazione resta di Gas-operatore.
 - Regole da non rompere: mai escludere percorsi dai test automatici; etichetta `verifica` obbligatoria sulla PR.
 - Nessun controllo sull'indirizzo passato al verificatore: fa fede il commit nel suo commento.
@@ -426,9 +426,9 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 ### 5.9 Documenti da riallineare
 - `stato_progetto.md` pesa 143 KB; la regola dice circa 100 righe. Lo storico va spostato; restano tre ✅ da archiviare e marcatori vecchi (es. R-finale-1, F-env-app).
 - ✅ `roadmap.md` sostituito da questo documento (19 ottobre).
-- `README.md` vecchio (non parla di cancello, Telegram, notte, memoria).
-- `gas_identity.md` cita solo due modelli della cascata.
-- `fine-task.md`: "merge da WSL"; aggiunge un file che git ignora; parla solo di motore e test mentre il perimetro di revisione è più largo.
+- ✅ `README.md`: aggiunto un riassunto di cosa fa Gas oggi (20 ottobre).
+- ✅ `gas_identity.md`: cascata aggiornata (20 ottobre).
+- ✅ `fine-task.md`: "non mergiare / merge da WSL" allineato alla regola di merge (20 ottobre). Restano: aggiunge un file che git ignora; parla solo di motore e test mentre il perimetro di revisione è più largo.
 - Regole operative di `stato_progetto.md`: superate R1 e R2 ("merge mai dall'agente") e i riferimenti a WSL. Le altre valgono.
 - Titoli fuorvianti, sigle riusate (F1, F3, F6, R2), contatore delle review fermo a 92.
 - Sezioni sul server che parlano del vecchio Hetzner come vivo.
@@ -452,7 +452,6 @@ Restano solo quelle aperte. Le decisioni del 19 ottobre sono scritte nelle rocce
 1. Motivi dell'allarme urgente sul telefono e tetto al giorno (R6).
 2. Scelta della voce all'ascolto: Piper italiano, "Jarvis" per Piper o clone della tua voce (R8).
 3. Lezioni #4, #5, #6, da rivedere a testo (R9).
-4. Da chiarire: il freno di giorno all'80% della finestra delle 5 ore (R2).
 
 **Non discusse il 19 ottobre.**
 5. PR da chiudere o mergiare: #158, #109, #141, #87 (da verificare se ancora aperte) — non discussa 19 ott.

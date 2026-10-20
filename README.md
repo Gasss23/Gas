@@ -1,6 +1,17 @@
 # Gas
 il mio assistente personale gas
 
+## Cosa fa oggi (20 ottobre 2026)
+
+- **Motore** `gas.py`: cascata di modelli gratuiti (Gemini → Groq → OpenRouter → Ollama), 11 strumenti nativi, nessun comando di sistema in mano al modello.
+- **Memoria** (`modules/memory/`): diario che non si riscrive, rubrica contatti, ricerca, lezioni approvate dall'operatore, riflessione automatica a fine compito e a `clear`.
+- **Cancello** (`modules/gate/`): ogni azione è libera, da firmare (bottoni su Telegram) o vietata.
+- **Telegram** (`python3 gas.py telegram`) e **giro notturno** (`python3 gas.py notte`, riepilogo al mattino).
+- **Voce**: microfono → trascrizione → Gas → voce.
+- **Diagnosi**: `python3 gas.py doctor`.
+
+La roadmap (fonte unica) è in `reports/roadmap.md`; lo stato del giorno in `reports/stato_progetto.md`.
+
 ## ⏪ Macchina del tempo — ripristino snapshot (SOLO umano)
 
 Prima di ogni `write_file` (e di ogni `run_command`, oggi non offerto al modello), il kernel fotografa il repo
