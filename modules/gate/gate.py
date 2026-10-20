@@ -453,6 +453,52 @@ def livello_scrittura(relative_path: Any) -> int:
         return LIVELLO_MAI
 
 
+# Decisione operatore 2026-10-19 (autonomia; supera C-d e R-203-2): «dentro Gas
+# autonomia piena; tutto ciò che esce verso il mondo aspetta la firma». Dopo una
+# lettura (finestra contaminata) restano liberi gli strumenti reversibili e interni:
+# la rubrica (mutabile, ogni modifica tracciata nel diario) e write_file dei soli
+# documenti md/txt/csv di livello 1 (foto di sicurezza prima di scrivere). Tutto il resto resta al cancello: livello 2
+# (codice madre), azioni verso l'esterno, irreversibili, e le cartelle che toccano la
+# sicurezza del processo: reports/ (la leggono revisore e bot) e knowledge/ (catalogo
+# delle fonti di studio). Prefisso del primo pezzo: anche copie come reports_old/.
+_LIBERI_DOPO_LETTURA: frozenset[str] = frozenset({
+    "salva_contatto", "imposta_stato_contatto", "write_file",
+})
+_FIRMA_DOPO_LETTURA_TOP: tuple[str, ...] = ("reports", "knowledge")
+# V-1 verifica esterna #222 (MEDIA): dopo una lettura sono liberi SOLO i documenti
+# (lista chiusa di estensioni). Script, pagine web, file di avvio (.bashrc, .plist,
+# .service), configurazioni (yml/toml/json) e file nascosti restano alla firma.
+_DOC_LIBERI_DOPO_LETTURA: tuple[str, ...] = (".md", ".txt", ".csv")
+
+
+def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
+    """True se un'azione reversibile (UNCERTAIN) resta libera anche a finestra
+    contaminata. Guarda solo il NOME scritto dal modello: il kernel ripete il
+    controllo sul file vero (cartella di lavoro, symlink). Mai eccezioni: nel dubbio
+    False (l'azione va alla firma, come prima)."""
+    try:
+        if tool_name not in _LIBERI_DOPO_LETTURA:
+            return False
+        if tool_name != "write_file":
+            return True
+        parsed = _parse_args(args)
+        if parsed is None:
+            return False
+        rel = parsed.get("relative_path")
+        if livello_scrittura(rel) != LIVELLO_LIBERO:
+            return False
+        parts = PurePosixPath(_normalize_path(rel)).parts
+        primo = parts[0].strip(". ") if parts else ""
+        if not primo or primo.startswith(_FIRMA_DOPO_LETTURA_TOP):
+            return False
+        ultimo = parts[-1]
+        if ultimo.startswith(".") or any(p.startswith(".") for p in parts):
+            return False
+        return ultimo.rstrip(". ").endswith(_DOC_LIBERI_DOPO_LETTURA)
+    except Exception:
+        return False
+
+
 def _parse_args(args: Any) -> "dict[str, Any] | None":
     """Parse args to a dict.  Accepts dict or JSON string.  Returns None on failure."""
     if isinstance(args, dict):

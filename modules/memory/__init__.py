@@ -20,6 +20,7 @@ from .store import (
     normalizza_chiave,
     normalizza_telefono,
     now_iso_da,
+    approval_timeout_notte_secs,
 )
 from .vectors import (
     VectorStore,
@@ -40,6 +41,7 @@ __all__ = [
     "default_db_path",
     "normalizza_chiave",
     "now_iso_da",
+    "approval_timeout_notte_secs",
     "normalizza_telefono",
     "VectorStore",
     "DEFAULT_VECTORS_FILENAME",

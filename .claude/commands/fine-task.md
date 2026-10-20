@@ -111,7 +111,7 @@ VINCOLO FERREO: il numero PR scritto in §0 proviene ESCLUSIVAMENTE dall'output 
 Nessun numero hardcoded, nessun placeholder, mai "Merge PR #NN" scritto a prescindere.
 Se gh fallisce (exit non-zero) o $BRANCH è vuoto/main: §0 = `"PR NON verificata/creata: <errore reale>"` e il task è INCOMPLETO (gate bloccante).
 `"Nessuna."` in §0 è ammesso SOLO se la sessione non ha PR da mergiare.
-Usa `--fill` per `gh pr create`, mai aprire editor. NON mergiare (il merge è azione umana da WSL).
+Usa `--fill` per `gh pr create`, mai aprire editor. Merge: SOLO secondo la regola di merge di `CLAUDE.md` §10 (fonte unica, non riassunta qui).
 
 ---
 

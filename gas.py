@@ -26,6 +26,7 @@ from brains.model_ids import (
 )
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
+from modules.gate.gate import libero_dopo_lettura
 from modules.telegram import bot as _tg_bot
 
 GAS_VERSION = "0.2.0"  # FASE 2 (memoria SQLite) chiusa; vedi reports/roadmap.md
@@ -78,6 +79,12 @@ def _sanitize_memory_text(text: str) -> str:
     collaterale."""
     text = text.replace('<', '&lt;').replace('>', '&gt;')
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f]', '', text)
+
+
+def _campo_pin(text: Any) -> str:
+    """Campo del pin su UNA riga (verifica esterna #222 V-2): un a-capo nel nome o
+    nella prossima azione di un lead non deve creare una riga finta nel blocco."""
+    return " ".join(_sanitize_memory_text(str(text)).split())
 
 
 _GAS_SYSTEM_PROMPT_BASE = (
@@ -569,6 +576,10 @@ _RIEPILOGO_COMPRESSIONE_PREFIX = "[RIEPILOGO SESSIONI PRECEDENTI"
 # marcatore "pulito" sulla prima riga non contamina; un riepilogo con input esterno o
 # senza marcatore (es. compresso prima di questa regola) conta come input esterno (§3b).
 _RIEPILOGO_SOLO_INTERNO = "[SOLO INTERNO]"
+# V-1 bot #222: prefisso (scritto dal kernel, mai dal modello) delle righe di diario
+# delle azioni eseguite in un turno contaminato. Nel pin queste righe entrano senza
+# dettagli: il loro testo non si ricicla dalla memoria in un turno pulito.
+_DIARIO_NON_FIDATO = "[NON FIDATO] "
 _RIEPILOGO_INPUT_ESTERNO = "[CONTIENE INPUT ESTERNO]"
 _RIFLESSIONE_PROMPT = (
     "Sei Gas e stai chiudendo un task. Nel messaggio dell'utente trovi la trascrizione "
@@ -847,6 +858,13 @@ class GasKernel:
         # V-1 bot #176: un kernel senza storia non fotografa nemmeno la conversazione
         # dell'operatore negli snapshot (non la tocca, quindi non c'è nulla da proteggere).
         self.carica_storia: bool = carica_storia
+        # Scadenza delle firme chieste da questo kernel: None = default di env (30 min);
+        # il giro notturno la porta a 24 ore (decisione operatore 2026-10-19).
+        self.approval_timeout_secs: Optional[int] = None
+        # V-1 bot #222: il pin di questo turno mostra dati non fidati (_memoria_pin).
+        self._pin_non_fidato: bool = False
+        # R-371-2: la sessione ha visto un pin non fidato (si azzera con `clear`).
+        self._pin_non_fidato_visto: bool = False
         # Modalità del sandbox run_command: 'guarded' (default, vetting +
         # esecuzione senza shell) oppure 'dry_run' (anteprima fedele: fa il
         # vetting ma non esegue nulla — collaudo e kill-switch). Un valore non
@@ -1060,7 +1078,8 @@ class GasKernel:
             # R-203-1: il testo dei tool finisce in un messaggio 'user' e il messaggio tool
             # sparisce: la provenienza esterna va riportata sulla prima riga del riepilogo.
             esterno = self._finestra_e_contaminata(to_compress) or any(
-                m.get("role") == "tool" and not m.get("name") for m in to_compress)
+                m.get("role") == "tool" and not m.get("name") for m in to_compress) or bool(
+                getattr(self, "_pin_non_fidato_visto", False))  # R-371-2: pin non fidato
             marcatore = _RIEPILOGO_INPUT_ESTERNO if esterno else _RIEPILOGO_SOLO_INTERNO
             lines: List[str] = [
                 f"{_RIEPILOGO_COMPRESSIONE_PREFIX} — {len(to_compress)} messaggi compressi] {marcatore}"
@@ -1359,6 +1378,7 @@ class GasKernel:
 
     def clear_history(self):
         self.history = []
+        self._pin_non_fidato_visto = False
         if self.db_path.exists(): self.db_path.unlink()
 
     # Cap sull'output dei tool, in caratteri. Senza questo limite un singolo
@@ -2480,6 +2500,53 @@ class GasKernel:
         except Exception:
             return False  # il gate a valle (execute) resta fail-closed
 
+    def _libero_dopo_lettura(self, tool_name: str, tool_args: Any) -> bool:
+        """Decisione operatore 2026-10-19: a finestra contaminata restano liberi la
+        rubrica e write_file dei soli documenti md/txt/csv di livello 1 fuori da
+        reports/, knowledge/ e dai file ignorati da git. Per
+        write_file il controllo vale sia sul NOME sia sul file vero (cartella di
+        lavoro GAS_CWD, symlink): stesso calcolo dell'esecuzione. Nel dubbio False."""
+        if not libero_dopo_lettura(tool_name, tool_args):
+            return False
+        if tool_name != "write_file":
+            return True
+        if self._ha_chiavi_riservate(tool_args):
+            return False  # review #262: il cancello le nega, mai eseguirle libere
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
+            risolto = self._file_rel_root(cwd, args["relative_path"])
+            if risolto is None or not libero_dopo_lettura(
+                    "write_file", {"relative_path": risolto[1]}):
+                return False
+            # R-367-1: un file ignorato da git (gas_debug.log, logs/, *.bak…) non entra
+            # nella foto di sicurezza, quindi sovrascriverlo è irreversibile → firma.
+            # Esito 1 = non ignorato; 0 = ignorato; qualunque altro esito o errore → firma.
+            # R-368-1: «./» davanti, così un nome che inizia con «:» non diventa un
+            # pathspec magico (check-ignore non accetta GIT_LITERAL_PATHSPECS).
+            ign = subprocess.run(["git", "-C", str(self.root), "check-ignore", "-q",
+                                  "--no-index", "--", "./" + risolto[1]],
+                                 capture_output=True, timeout=10)
+            return ign.returncode == 1
+        except Exception:
+            return False
+
+    def _marca_contatto_non_fidato(self, tool_args: Any) -> None:
+        """V-1 bot #222: segna come non fidato il contatto toccato da salva_contatto /
+        imposta_stato_contatto in un turno contaminato. Mai eccezioni (§9)."""
+        try:
+            args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+            # Stessa coercizione dell'esecuzione (_salva_contatto/_imposta_stato_contatto):
+            # una chiave non stringa (es. intera) salva il contatto, quindi va segnata.
+            chiave = str(args.get("chiave") or "").strip() if isinstance(args, dict) else ""
+            if self.memory is None or not chiave:
+                logging.warning("[GATE] contatto non segnato come non fidato: "
+                                "memoria assente o chiave vuota")
+            elif not self.memory.marca_contatto_non_fidato(chiave):
+                logging.warning("[GATE] contatto non segnato come non fidato")
+        except Exception as e:
+            logging.warning("[GATE] marca_contatto_non_fidato fallita: %s", e)
+
     def _ha_chiavi_riservate(self, tool_args: Any) -> bool:
         try:
             args = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
@@ -2570,6 +2637,7 @@ class GasKernel:
             esito, aid = self.memory.accoda_approvazione(
                 tool_name, tool_args, turno_id=turno_id,
                 azione_leggibile=azione,
+                timeout_secs=getattr(self, "approval_timeout_secs", None),
             )
         except Exception as e:
             logging.warning("[GATE] accoda_approvazione eccezione (%s) — fail-closed, diniego", e)
@@ -2844,19 +2912,25 @@ class GasKernel:
         Fail-safe (§9): memoria None/degradata o qualunque errore → stringa
         vuota, il turno prosegue. Ritorna "" (niente da iniettare) oppure il
         blocco già preceduto da due newline, pronto per `system_prompt + pin`."""
+        # V-1 bot #222: True se il pin mostra dati scritti da un turno contaminato
+        # (contatto non_fidato o riga di diario marcata): il turno che lo vede è a sua
+        # volta contaminato. Nel dubbio (errore) True.
+        self._pin_non_fidato = False
         if self.memory is None:
             return ""
         try:
             righe: List[str] = []
             attivi = [c for c in self.memory.lista_contatti()
                       if c.get("stato") not in STATI_CHIUSI][:self.MEMORY_PIN_CONTACTS]
+            if any(c.get("non_fidato") for c in attivi):
+                self._pin_non_fidato = True
             if attivi:
                 righe.append("## Lead attivi")
                 for c in attivi:
-                    nome = _sanitize_memory_text(c.get("nome") or c.get("chiave") or "?")
-                    pa = (f" → prossima: {_sanitize_memory_text(c['prossima_azione'])}"
+                    nome = _campo_pin(c.get("nome") or c.get("chiave") or "?")
+                    pa = (f" → prossima: {_campo_pin(c['prossima_azione'])}"
                           if c.get("prossima_azione") else "")
-                    ult = (f" (ultimo: {_sanitize_memory_text(str(c['ultimo_contatto'])[:10])})"
+                    ult = (f" (ultimo: {_campo_pin(str(c['ultimo_contatto'])[:10])})"
                            if c.get("ultimo_contatto") else "")
                     righe.append(f"- {nome} [{c.get('stato')}]{pa}{ult}")
             # eventi recenti, escluso il rumore di lettura. Si scandisce una
@@ -2867,9 +2941,21 @@ class GasKernel:
             if eventi:
                 righe.append("## Ultime azioni")
                 for e in eventi:
+                    desc = str(e.get("descrizione") or "")
+                    tipo = str(e.get("tipo") or "")
+                    # V-1 bot #222 (4° giro): una riga scritta a turno contaminato entra
+                    # nel pin SENZA i dettagli (argomenti scelti dal modello), così il suo
+                    # testo non si ricicla e il segno non si autoalimenta: il pin non
+                    # diventa non fidato per le righe del diario, solo per i contatti.
+                    # R-371-1: «in», non «startswith» (per i nomi riservati c'è `nome=…`).
+                    # R-374-1: omesso anche il TIPO, che per le tool call è il nome
+                    # scelto dal modello (anche inventato e lungo).
+                    if _DIARIO_NON_FIDATO in desc:
+                        desc = _DIARIO_NON_FIDATO + "(dettagli omessi: azione dopo una lettura)"
+                        tipo = "azione"
                     righe.append(
-                        f"- [{_sanitize_memory_text(e.get('tipo', ''))}] "
-                        f"{_sanitize_memory_text(e.get('descrizione', ''))}"
+                        f"- [{_campo_pin(tipo)}] "
+                        f"{_campo_pin(desc)}"
                     )
             if not righe:
                 return ""
@@ -2888,7 +2974,13 @@ class GasKernel:
             return "\n\n" + _MEMORIA_DATI_OPEN + "\n" + blocco + "\n" + _MEMORIA_DATI_CLOSE
         except Exception as e:
             logging.warning(f"_memoria_pin fallito: {e}")
+            self._pin_non_fidato = True  # fail-closed: pin non valutabile
             return ""
+        finally:
+            # R-371-2: resta vero fino a `clear` (la riflessione non deve fare un
+            # recap fidato da una sessione che ha visto dati non fidati).
+            if self._pin_non_fidato:
+                self._pin_non_fidato_visto = True
 
     def _lezioni_pin(self) -> str:
         """Blocco <lezioni_dati> da appendere al system prompt: solo lezioni 'approvata',
@@ -3020,6 +3112,11 @@ class GasKernel:
                 or (m.get("role") == "user"
                     and str(m.get("content") or "").startswith(_RIEPILOGO_COMPRESSIONE_PREFIX))
                 for m in self.history)
+            # R-371-2: anche un pin non fidato visto in questa sessione, o mostrato
+            # adesso, rende la riflessione non fidata (il recap non viene reiniettato).
+            if not contaminata:
+                self._memoria_pin()
+                contaminata = bool(self._pin_non_fidato or self._pin_non_fidato_visto)
             esito["contaminata"] = contaminata
             # Lezioni già DECISE dall'operatore: il modello le vede per non riproporle,
             # avvolte come dato e sanitizzate. Mai quelle ancora 'proposta' (R-352-1). Delle
@@ -3727,7 +3824,9 @@ class GasKernel:
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la
                         # finestra può scorrere tra un'iterazione e l'altra.
                         _window = self._get_window()
-                        _finestra_contaminata = self._finestra_e_contaminata(_window)
+                        # V-1 bot #222: conta anche il pin che mostra dati non fidati.
+                        _finestra_contaminata = (self._finestra_e_contaminata(_window)
+                                                 or getattr(self, "_pin_non_fidato", False))
                         payload = [{"role": "system", "content": self.system_prompt + mem_pin + lezioni_pin + recap_pin}] + _window
                         # FETTA 1 (chiude F2): budget ricontrollato prima di OGNI chiamata,
                         # non solo a inizio turno. Superato a metà turno → il turno si
@@ -3808,6 +3907,8 @@ class GasKernel:
                                                "conta_file o data_ora.")
                                 elif _gc == GateClass.IRREVERSIBLE or (
                                     _gc == GateClass.UNCERTAIN and _finestra_contaminata
+                                    and not self._libero_dopo_lettura(
+                                        tc.function.name, tc.function.arguments)
                                 ):
                                     # C4a/C4b-1: parcheggia + read-back, NON esegue (§4b, turno suddiviso).
                                     logging.warning(
@@ -3819,6 +3920,11 @@ class GasKernel:
                                     )
                                 else:
                                     out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                                    # V-1 bot #222: un contatto scritto a turno contaminato
+                                    # resta segnato: chi lo rivede nel pin è contaminato.
+                                    if (_finestra_contaminata and tc.function.name in
+                                            ("salva_contatto", "imposta_stato_contatto")):
+                                        self._marca_contatto_non_fidato(tc.function.arguments)
                                 # Diario: per azioni al cancello solo nome+id (F-diario-eco/args, mai args).
                                 # Per tutti gli altri casi: riassunto args + esito.
                                 _esito_str = self._esito_diario(tc.function.name, out)
@@ -3827,13 +3933,19 @@ class GasKernel:
                                     _turno_tool_ko += 1
                                 self._diario_log_tool(
                                     tc.function.name,
-                                    f"{_gate_diario} | {_esito_str}"
-                                    if _gate_diario is not None else
-                                    f"{self._riassumi_args(tc.function.name, tc.function.arguments)}"
-                                    f" | {_esito_str}",
+                                    (_DIARIO_NON_FIDATO if _finestra_contaminata else "")
+                                    + (f"{_gate_diario} | {_esito_str}"
+                                       if _gate_diario is not None else
+                                       f"{self._riassumi_args(tc.function.name, tc.function.arguments)}"
+                                       f" | {_esito_str}"),
                                     turno_id=_turno_id,
                                 )
                                 self._add_to_history("tool", content=out, tool_call_id=tc.id, name=tc.function.name)
+                                # V-1 verifica esterna #222 (2° giro): le chiamate parallele nella
+                                # STESSA risposta vedono subito la lettura appena fatta (prima la
+                                # contaminazione si ricalcolava solo all'iterazione dopo).
+                                if tc.function.name in UNTRUSTED_INPUT_TOOLS:
+                                    _finestra_contaminata = True
                                 yield {"type": "tool_res", "output": out}
                             self._save_history()
                             # continua il loop per ottenere la risposta finale

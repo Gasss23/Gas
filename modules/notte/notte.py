@@ -12,7 +12,10 @@ Invarianti di sicurezza:
 - Ogni compito parte con una cronologia VUOTA e propria
   (.gas_notte/storia_<nome>.json): la conversazione dell'operatore
   (.gas_history.json) non entra nella finestra e non viene scritta dal giro, e
-  un compito non contamina il successivo. I kernel del giro nascono con
+  la cronologia di un compito non entra nel successivo. Eccezione voluta (V-1 bot
+  #222, 2026-10-20): un contatto scritto da un compito che ha letto testo di terzi
+  resta «non fidato» e, finché è nel blocco di memoria, contamina i compiti dopo
+  (le loro scritture non documentali vanno alla firma). I kernel del giro nascono con
   carica_storia=False (R-220-2, V-1 bot #176): la conversazione non viene
   nemmeno letta (né messa in quarantena se corrotta) né copiata negli snapshot.
   Eccezione (R-220-1): l'esito di
@@ -381,6 +384,18 @@ def _stampa_sicura(testo: str) -> None:
         pass
 
 
+def _firma_notturna(kernel: Any) -> None:
+    """Decisione operatore 2026-10-19: le firme chieste di notte scadono dopo 24 ore
+    (env GAS_APPROVAL_TIMEOUT_NOTTE_SECS), non dopo 30 minuti. Mai eccezioni: un
+    kernel che non accetta l'attributo resta col default di giorno (più corto, quindi
+    più prudente)."""
+    try:
+        from modules.memory import approval_timeout_notte_secs
+        kernel.approval_timeout_secs = approval_timeout_notte_secs()
+    except Exception as e:
+        logging.warning("notte: scadenza notturna delle firme non impostata: %s", e)
+
+
 def _lezioni_in_attesa(kernel: Any) -> Optional[int]:
     """R-345-3: quante lezioni aspettano ancora il sì dell'operatore. Mai eccezioni:
     kernel o memoria assenti/rotti → None (il messaggio conta solo quelle di stanotte)."""
@@ -516,6 +531,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 break
             try:
                 kernel = kernel_factory(str(root))
+                _firma_notturna(kernel)
             except Exception as e:
                 logging.warning("notte: kernel non creato per %s: %s", c["nome"], e)
                 esiti.append({"nome": c["nome"], "esito": "ko", "tool": 0, "durata": 0,
