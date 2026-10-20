@@ -15,23 +15,24 @@
 - **R-ve222-4 (file letti dagli agenti alla firma dopo una lettura)**: `FATTA` la parte sui file — review #377; resta aperta la parte su recapito/chiusura di un lead (V-1 bot #224).
 - **R-bot222-1 (comando `gas fida-contatto`)**: `FATTA` — review #377.
 - **Riserve R-377-1/R-377-2**: `FATTA` — review #378 APPROVATO CON RISERVE (R-378-1 BASSA).
+- **V-1 bot #224 (race tra scheda e conferma in fida-contatto)**: `FATTA` — review #379 APPROVATO CON RISERVE (R-379-1 BASSA).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- gas.py                             |  64 +++++++++++++++++++++++++++++++++++++-
+ .claude/agents/memoria_revisore.md |   3 ++
+ gas.py                             |  65 +++++++++++++++++++++++++++++++++++++-
  modules/gate/gate.py               |  18 +++++++++++
- modules/memory/store.py            |  24 +++++++++++++++
+ modules/memory/store.py            |  34 ++++++++++++++++++++
  reports/diff_sessione.md           |  16 +++++-----
- reports/handoff.md                 | 603 +++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 617 ++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++-
- reports/ultimo_report.md           |  25 +++++----------
+ reports/ultimo_report.md           |  26 ++++++----------
  tests/test_unit_gate.py            |  25 ++++++++++++++-
- tests/test_unit_kernel.py          |  65 +++++++++++++++++++++++++++++++++++++++
- 10 files changed, 266 insertions(+), 580 deletions(-)
+ tests/test_unit_kernel.py          |  82 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 320 insertions(+), 570 deletions(-)
 ```
 
 ---
@@ -39,6 +40,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d6fe921 fix(memoria): fida-contatto toglie il segno solo se il lead è quello mostrato (V-1 bot #224)
+382ffbd chore(revisore): memoria review #379 — APPROVATO CON RISERVE
+47d83fc docs(fine-task): esiti di bot e verifica esterna #224; R-ve222-4 chiusa solo per i file
 b59b2dd docs(fine-task): report e handoff — R-ve222-4 e gas fida-contatto
 a2f9d50 fix(cancello): tipi di diario delle azioni umane riservati; AGENT.md e CONVENTIONS.md alla firma (R-377-1, R-377-2)
 9037bbb chore(revisore): memoria review #378 — APPROVATO CON RISERVE
@@ -110,21 +114,54 @@ Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 10), stato_progetto.md (ce
 
 **Memoria**: riga #378 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata (9037bbb) con scripts/commit_memoria_revisore.sh. Lezione nuova: prima di accorciare un prefisso su nomi inglesi, provarlo contro le parole italiane del dominio.
 
+### Review #379
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #379 sul diff in staging di feat/merge-automatico-z1xjx2 (PR #224), che chiude V-1 BASSA del bot su 47d83fc. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (in modo mirato) e la mia memoria.
+
+**Cosa ho esaminato nel diff**
+- `modules/memory/store.py:1174`: apre `BEGIN IMMEDIATE` prima di leggere il record canonico e lo confronta con la scheda mostrata (`dict(c) != dict(atteso)`). Se sono diverse annulla la transazione e ritorna None. Rischio esaminato: tra il controllo e la scrittura un altro turno potrebbe scrivere (TOCTOU). Il lock in scrittura viene preso prima della lettura, quindi lettura, scrittura nel diario e UPDATE stanno nella stessa transazione serializzata. Python usa la gestione transazioni di default (non c'è nessun `autocommit` impostato in `_connect`), quindi il BEGIN esplicito funziona. In caso di contesa, l'`OperationalError` dopo il timeout di 10 secondi viene intercettato dall'except già presente: si scrive un warning e si ritorna None, senza crash (§9). Esito: ok.
+- `modules/memory/store.py:1177`: c'è un `rollback()` esplicito anche sul ramo «chiave assente», così il lock non resta aperto. Esito: ok.
+- `gas.py:4810`: `fida_contatto_cmd` passa `atteso=rec`. `rec` arriva da `get_contatto_per_chiave` e quindi dallo stesso `_risolvi_canonico` (`modules/memory/store.py:944`): stesse chiavi e stessi tipi, il confronto è omogeneo. Ho controllato anche altri due casi. Con `--yes` passa lo stesso `atteso`. Se nel frattempo il lead viene fuso in un altro, cambia l'id canonico, il confronto fallisce e il segno non viene tolto (fail-closed). Esito: ok.
+- `tests/test_unit_kernel.py:5938`: T74b5 V-1 bot #224 riscrive il lead dentro il prompt di conferma (`input` sostituito dal test) e verifica tre cose: rc 1, `non_fidato` ancora a 1, nessuna riga `contatto_fidato` nel diario. La riscrittura passa dall'`upsert_contatto` reale, nessun output di tool simulato. Esito: ok.
+
+**Cosa ho riprodotto io**
+- Suite del kernel: 924 PASS, 0 FAIL.
+- `pytest tests/`: 1519 passed.
+- Mutazione su una copia usa e getta (condizione di confronto sostituita da `if False:`): 923 PASS, 1 FAIL. Fallisce solo il T74b5 nuovo, quindi il test protegge davvero il fix.
+- Sonda diretta su `MemoryStore`: riscrivere il lead con contenuto identico dopo la stampa dà None (il segno resta); con una scheda presa subito prima dà successo.
+
+**Riserve**
+- **R-379-1 (BASSA)**: il confronto è sulla riga intera, `aggiornato_il` compreso. Quindi anche una riscrittura con contenuto identico fa fallire il comando (verificato con la sonda). Inoltre il messaggio mette insieme due cause diverse: «scheda cambiata» e «degrado DB». Blocca per sicurezza (fail-closed), costa solo un po' di attrito: l'operatore rilancia il comando. Se si vuole, si possono separare i due casi di None nel messaggio. Va tracciata in stato_progetto.md.
+
+**Cosa non ho verificato**
+- La contesa reale fra due processi (un turno di Gas in background che scrive mentre il comando aspetta la «y»). Il test la simula nello stesso processo, sostituendo `input`. Non ho lanciato due processi con un lock SQLite vero. La correttezza qui si basa sulla semantica documentata di `BEGIN IMMEDIATE`.
+- Il comportamento sulla VPS: non riproducibile in sviluppo.
+
+**Antipattern (Wall of Shame)**: nessuno slicing della history, nessuna simulazione dell'output dei tool. Non sono toccati il cap di 10 iterazioni, `_get_window` né i guardrail.
+
+**Memoria**: aggiunta la riga #379 con una lezione (un controllo «conferma su ciò che hai visto» va fatto nella stessa transazione della scrittura, con il lock preso prima della lettura). Committata da `scripts/commit_memoria_revisore.sh` (382ffbd); il diff in staging del motore resta intatto.
+
+**Incidente durante la review**: per sbaglio ho lanciato `git stash push --keep-index`. Ho controllato che lo stash coincidesse con l'index e che il working tree fosse uguale all'index, poi l'ho eliminato: nessuna modifica persa, staging invariato (3 file, +33/-5).
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 916 → 923 PASS, 0 FAIL (T74b5). Blocco reale: `=== RIEPILOGO: 923 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
-pytest `tests/`: `1519 passed in 181.33s (0:03:01)` (+22 gate).
+tests/test_unit_kernel.py in locale: 916 → 924 PASS, 0 FAIL (T74b5). Blocco reale: `=== RIEPILOGO: 924 PASS, 0 FAIL ===`. In CI i conteggi sono +2 (test del profilo sandbox saltati in locale).
+pytest `tests/`: `1519 passed in 187.04s (0:03:07)` (+22 gate).
 
 ## §6 STATO CI
 
 - `b59b2dd`: unit-suite e handoff-check success (kernel 925 PASS in CI); verifica-bot neutral (APPROVATO CON RISERVE, nessuna ALTA/MEDIA); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/224#issuecomment-6292485286)).
-- Commit dei soli report che aggiorna questo §6: run non ancora disponibile alla scrittura.
+- `47d83fc`: unit-suite e handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA race in fida-contatto chiusa in `d6fe921`).
+- `d6fe921` e questo handoff: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
 - R-378-1 (BASSA): il prefisso «agent» manda alla firma, dopo una lettura, anche file come `dati/agente_vendite.md` (solo attrito, fail-closed).
+- R-379-1 (BASSA): anche una riscrittura identica del lead fa fallire `fida-contatto` (basta rilanciarlo); il messaggio unisce «scheda cambiata» e «degrado DB».
 - R-ve224-2 (BASSA/COSMETICA): un carattere invisibile in testa al nome lascia libero «dati/\u200bAGENTS.md».
 - R-ve222-4, parte su recapito/chiusura di un lead dopo una lettura (proposta: avviso su Telegram).
 - Restano da #222: R-366-1, R-367-2, R-370-2, R-bot222-2, R-ve222-2, R-373-1, R-375-1, R-372-1 (vedi stato_progetto.md).
