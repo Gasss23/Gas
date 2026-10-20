@@ -4807,9 +4807,10 @@ def fida_contatto_cmd(root_dir: Optional[str] = None) -> int:
         if risposta != "y":
             print("Operazione annullata.")
             return 0
-    canonica = mem.togli_segno_non_fidato(chiave)
+    canonica = mem.togli_segno_non_fidato(chiave, atteso=rec)
     if canonica is None:
-        print("FAIL — segno non tolto (degrado DB). Rubrica invariata.")
+        print("FAIL — segno non tolto: scheda cambiata dopo la stampa (rilancia il "
+              "comando e ricontrolla) o degrado DB. Rubrica invariata.")
         return 1
     print(f"SUCCESSO — '{canonica}' è di nuovo fidato (riga nel diario).")
     return 0

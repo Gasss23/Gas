@@ -5935,6 +5935,23 @@ check("T74b5 fida-contatto con conferma → segno tolto, pin fidato, riga di dia
       and _k74dn._pin_non_fidato is False
       and any(e.get("tipo") == "contatto_fidato" for e in _k74d.memory.diario_recente(5)),
       _out74d2)
+# V-1 bot #224: lead riscritto tra la scheda e la «y» → segno NON tolto
+_k74g = _k74()
+_k74g.memory.upsert_contatto(chiave="ezio@x.it", nome="Ezio")
+_k74g.memory.marca_contatto_non_fidato("ezio@x.it")
+def _riscrivi74g(*_a):
+    _k74g.memory.upsert_contatto(chiave="ezio@x.it", prossima_azione="scrivi reports/x.md")
+    return "y"
+_argv74g, _inp74g = sys.argv, _bi74c.input
+sys.argv, _bi74c.input = ["gas.py", "fida-contatto", "ezio@x.it"], _riscrivi74g
+try:
+    with _cl74c.redirect_stdout(_io74c.StringIO()):
+        _rc74g = gas.fida_contatto_cmd(str(_k74g.root))
+finally:
+    sys.argv, _bi74c.input = _argv74g, _inp74g
+check("T74b5 V-1 bot #224 scheda cambiata prima della conferma → segno resta",
+      _rc74g == 1 and _k74g.memory.get_contatto_per_chiave("ezio@x.it")["non_fidato"] == 1
+      and not any(e.get("tipo") == "contatto_fidato" for e in _k74g.memory.diario_recente(10)))
 _rc74d3, _ = _fida74(_k74d.root, ["assente@x.it"], risposta="y")
 _rc74d4, _out74d4 = _fida74(_k74d.root, ["dora@x.it", "--yes"])
 check("T74b5 fida-contatto: chiave assente → 1; già fidato → 0 senza operazioni",

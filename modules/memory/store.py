@@ -1159,15 +1159,25 @@ class MemoryStore:
             log.warning("marca_contatto_non_fidato fallita (%s): %s", self.db_path, e)
             return False
 
-    def togli_segno_non_fidato(self, chiave: str) -> Optional[str]:
+    def togli_segno_non_fidato(self, chiave: str,
+                               atteso: Optional[Dict[str, Any]] = None) -> Optional[str]:
         """R-bot222-1: l'operatore (solo comando umano, MAI tool dell'agente) dichiara
         fidato un lead segnato «non fidato». Nella STESSA transazione scrive una riga
-        di diario 'contatto_fidato' (traccia di chi e quando). Ritorna la chiave
-        canonica, oppure None se il contatto non esiste o in degrado (§9)."""
+        di diario 'contatto_fidato' (traccia di chi e quando). Con `atteso` (la scheda
+        mostrata all'operatore) il segno si toglie SOLO se il lead è ancora identico
+        (V-1 bot #224: un turno contaminato può riscriverlo tra scheda e conferma).
+        Ritorna la chiave canonica, oppure None se il contatto non esiste, è cambiato
+        o in degrado (§9)."""
         try:
             with self._connect() as con:
+                # BEGIN IMMEDIATE: confronto con la scheda e scritture nello stesso lock
+                con.execute("BEGIN IMMEDIATE")
                 c = self._risolvi_canonico(con, normalizza_chiave(chiave))
                 if c is None:
+                    con.rollback()
+                    return None
+                if atteso is not None and dict(c) != dict(atteso):
+                    con.rollback()
                     return None
                 cid = int(c["id"])
                 con.execute(
