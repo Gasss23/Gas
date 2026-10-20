@@ -1,6 +1,6 @@
-# ULTIMO REPORT — 2026-10-20 — Avviso sui file nuovi delicati (R-223-2), fonti di studio solo dentro knowledge/
+# ULTIMO REPORT — 2026-10-20 — Avviso sui file delicati più preciso
 
-Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #228 (operatore: «mergia 228 e fai tu la correzione su tools»).
+Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #230 (operatore: «mergia 230 e continua con la roadmap»).
 
 ## DECISIONI UMANE RICHIESTE
 
@@ -9,6 +9,5 @@ Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #228 (operatore: «mergia 
 
 ## Esito
 
-- **R-223-2 — avviso sui file nuovi delicati** (decisione del 19 ottobre) — FATTA. Quando Gas crea un file NUOVO libero che sembra delicato (configurazioni, script, chiavi, nomi da credenziali) arriva un avviso su Telegram, solo informativo, uno per turno e sempre sotto il limite di lunghezza. I documenti normali passano in silenzio. Review #386 BOCCIATO (R-386-1 MEDIA: messaggio oltre il limite che non partiva, chiusa; R-386-2 BASSA: falsi allarmi su nomi come «cronologia.md», chiusa) → #387 APPROVATO CON RISERVE (R-387-1 BASSA).
-- **Fonti di studio solo dentro knowledge/** (V-1 bot #228, «fai tu la correzione su tools») — FATTA. L'ingest rifiuta le fonti fuori da `knowledge/`; nuovo test e step di CI.
-- **Test** — kernel 944 → 947 PASS, 0 FAIL; pytest tests/ 1558 passed.
+- **R-387-1 + note di verifica esterna e bot su #230** — FATTA. L'avviso sui file nuovi delicati guarda tutto il nome (parole intere ed estensioni interne come «a.sh.txt»), riconosce più tipi di file (.sql, .db, .terminal, .fish, .go…) e mostra la coda del percorso, così il nome del file è sempre visibile. Review #388 (chat Motore) APPROVATO CON RISERVE (R-388-1 e R-388-2 della chat Motore).
+- **Test** — kernel 947 → 949 PASS, 0 FAIL; pytest tests/ 1573 passed.

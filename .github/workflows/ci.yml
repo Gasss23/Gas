@@ -102,11 +102,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_hooks.py -v 2>&1 | tee "$RUNNER_TEMP/hooks_output.txt"
 
-      - name: Run voice server suite (pytest, zero token LLM)
+      - name: Run voice suite (pytest, zero token LLM)
+        # Server, trascrizione (stt) e sintesi (tts): Groq ed ElevenLabs sono sempre
+        # servizi finti iniettati nei test, zero rete. Prima girava solo il server (R8).
         if: always()
         run: |
           set -o pipefail
-          python -m pytest tests/test_unit_voice_server.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
+          python -m pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
 
       - name: Run handoff/verdetto check suite (pytest, zero token LLM)
         # R-138-4: i test di check_handoff/check_verdetto (gate A/B, ora required)
