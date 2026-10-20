@@ -805,6 +805,12 @@ def test_libero_dopo_lettura(tool, args, atteso):
     ("dati/cronologia.md", False), ("dati/sessione_marketing.md", False),
     ("dati/credito_clienti.csv", False), ("dati/monkey.md", False),
     ("dati/my-secret.md", True), ("dati/aws keys.txt", True),
+    # R-387-1 / V-1 verifica esterna #230
+    ("dati/x.secret.md", True), ("dati/id_rsa.txt", True), ("dati/accesstoken.md", True),
+    ("dati/a.sh.txt", True), ("dati/x.py.md", True), ("dati/q.sql", True),
+    ("dati/b.sqlite", True), ("dati/a.terminal", True), ("dati/w.workflow", True),
+    ("dati/c.fish", True), ("dati/l.webloc", True), ("dati/m.go", True),
+    ("dati/report.2026.md", False), ("dati/v1.2.txt", False), ("dati/note.finali.md", False),
 ])
 def test_sembra_delicato(path, atteso):
     """R-223-2: avviso solo informativo per i file nuovi che sembrano delicati."""

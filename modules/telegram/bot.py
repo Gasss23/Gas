@@ -164,6 +164,20 @@ def tronca_visibile(testo: Any, n: int) -> str:
     return t + "…"
 
 
+def tronca_visibile_coda(testo: Any, n: int) -> str:
+    """Come tronca_visibile ma tiene la CODA (V-1 bot #230: in un percorso lungo deve
+    restare visibile il nome del file): «…» + ultimi n caratteri, senza iniziare a
+    metà di una sequenza «<U+XXXX>» (cercata solo nei primi 10 caratteri)."""
+    t = rendi_visibili(str(testo), a_capo=False)
+    if len(t) <= n:
+        return t
+    t = t[-n:]
+    k = t.find(">", 0, 10)
+    if k != -1 and "<" not in t[:k]:
+        t = t[k + 1:]
+    return "…" + t
+
+
 def _blocco_modello(testo: str) -> str:
     """Testo del modello rientrato con "│ " su ogni riga: non può imitare le
     intestazioni del messaggio (review #262), invisibili resi visibili."""
