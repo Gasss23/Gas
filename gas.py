@@ -571,8 +571,8 @@ _RIEPILOGO_COMPRESSIONE_PREFIX = "[RIEPILOGO SESSIONI PRECEDENTI"
 # senza marcatore (es. compresso prima di questa regola) conta come input esterno (§3b).
 _RIEPILOGO_SOLO_INTERNO = "[SOLO INTERNO]"
 # V-1 bot #222: prefisso (scritto dal kernel, mai dal modello) delle righe di diario
-# delle azioni eseguite in un turno contaminato. Una riga così nel pin rende
-# contaminato anche il turno che la vede: la contaminazione non si ricicla dalla memoria.
+# delle azioni eseguite in un turno contaminato. Nel pin queste righe entrano senza
+# dettagli: il loro testo non si ricicla dalla memoria in un turno pulito.
 _DIARIO_NON_FIDATO = "[NON FIDATO] "
 _RIEPILOGO_INPUT_ESTERNO = "[CONTIENE INPUT ESTERNO]"
 _RIFLESSIONE_PROMPT = (
@@ -2928,17 +2928,24 @@ class GasKernel:
             # con rumore denso le azioni vere poco più indietro emergono (R3).
             eventi = [e for e in self.memory.diario_recente(self.MEMORY_PIN_SCAN)
                       if e.get("tipo") not in self.DIARIO_NOISE_TIPI][:self.MEMORY_PIN_EVENTS]
-            # R-371-1: «in», non «startswith»: per i nomi di tool riservati il diario
-            # antepone `nome=…`. Un segno falsificato dà solo più contaminazione.
-            if any(_DIARIO_NON_FIDATO in str(e.get("descrizione") or "")
-                   for e in eventi):
-                self._pin_non_fidato = True
             if eventi:
                 righe.append("## Ultime azioni")
                 for e in eventi:
+                    desc = str(e.get("descrizione") or "")
+                    tipo = str(e.get("tipo") or "")
+                    # V-1 bot #222 (4° giro): una riga scritta a turno contaminato entra
+                    # nel pin SENZA i dettagli (argomenti scelti dal modello), così il suo
+                    # testo non si ricicla e il segno non si autoalimenta: il pin non
+                    # diventa non fidato per le righe del diario, solo per i contatti.
+                    # R-371-1: «in», non «startswith» (per i nomi riservati c'è `nome=…`).
+                    # R-374-1: omesso anche il TIPO, che per le tool call è il nome
+                    # scelto dal modello (anche inventato e lungo).
+                    if _DIARIO_NON_FIDATO in desc:
+                        desc = _DIARIO_NON_FIDATO + "(dettagli omessi: azione dopo una lettura)"
+                        tipo = "azione"
                     righe.append(
-                        f"- [{_sanitize_memory_text(e.get('tipo', ''))}] "
-                        f"{_sanitize_memory_text(e.get('descrizione', ''))}"
+                        f"- [{_sanitize_memory_text(tipo)}] "
+                        f"{_sanitize_memory_text(desc)}"
                     )
             if not righe:
                 return ""

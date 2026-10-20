@@ -12,7 +12,10 @@ Invarianti di sicurezza:
 - Ogni compito parte con una cronologia VUOTA e propria
   (.gas_notte/storia_<nome>.json): la conversazione dell'operatore
   (.gas_history.json) non entra nella finestra e non viene scritta dal giro, e
-  un compito non contamina il successivo. I kernel del giro nascono con
+  la cronologia di un compito non entra nel successivo. Eccezione voluta (V-1 bot
+  #222, 2026-10-20): un contatto scritto da un compito che ha letto testo di terzi
+  resta «non fidato» e, finché è nel blocco di memoria, contamina i compiti dopo
+  (le loro scritture non documentali vanno alla firma). I kernel del giro nascono con
   carica_storia=False (R-220-2, V-1 bot #176): la conversazione non viene
   nemmeno letta (né messa in quarantena se corrotta) né copiata negli snapshot.
   Eccezione (R-220-1): l'esito di
