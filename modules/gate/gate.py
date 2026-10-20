@@ -465,6 +465,20 @@ _LIBERI_DOPO_LETTURA: frozenset[str] = frozenset({
     "salva_contatto", "imposta_stato_contatto", "write_file",
 })
 _FIRMA_DOPO_LETTURA_TOP: tuple[str, ...] = ("reports", "knowledge")
+# R-ve222-4 (verifica esterna #222, 3°-5° giro): restano alla firma dopo una lettura
+# anche i file che leggono gli agenti di sviluppo, il revisore e il bot, così un
+# testo letto non diventa un'istruzione persistente per loro: i file nella radice del
+# repo (README.md, note.txt…), le cartelle del progetto (tests/, tools/, docs/,
+# clients/, scripts/, brains/, modules/) e, in qualunque cartella, i nomi di
+# istruzioni per agenti (README, AGENT/AGENTS, CLAUDE, GEMINI, SKILL, CONTRIBUTING,
+# CONVENTIONS, copilot-instructions, requirements*). Confronto su percorso casefold (prefisso).
+_FIRMA_DOPO_LETTURA_PROGETTO: tuple[str, ...] = (
+    "tests", "tools", "docs", "clients", "scripts", "brains", "modules",
+)
+_FIRMA_DOPO_LETTURA_NOMI: tuple[str, ...] = (
+    "readme", "agent", "claude", "gemini", "skill", "contributing",
+    "copilot-instructions", "requirements", "conventions",
+)
 # V-1 verifica esterna #222 (MEDIA): dopo una lettura sono liberi SOLO i documenti
 # (lista chiusa di estensioni). Script, pagine web, file di avvio (.bashrc, .plist,
 # .service), configurazioni (yml/toml/json) e file nascosti restano alla firma.
@@ -491,7 +505,11 @@ def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
         primo = parts[0].strip(". ") if parts else ""
         if not primo or primo.startswith(_FIRMA_DOPO_LETTURA_TOP):
             return False
+        if len(parts) < 2 or primo.startswith(_FIRMA_DOPO_LETTURA_PROGETTO):
+            return False
         ultimo = parts[-1]
+        if ultimo.strip(". ").startswith(_FIRMA_DOPO_LETTURA_NOMI):
+            return False
         if ultimo.startswith(".") or any(p.startswith(".") for p in parts):
             return False
         return ultimo.rstrip(". ").endswith(_DOC_LIBERI_DOPO_LETTURA)
