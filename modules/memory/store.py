@@ -1954,36 +1954,60 @@ class MemoryStore:
             log.warning("get_pending_approvals fallita (%s): %s", self.db_path, e)
             return []
 
-    def expire_stale_approvals(self) -> int:
-        """Marca 'expired' (risolto_da='timeout') ogni 'pending' oltre ts_expiry.
-        Le righe restano per audit (§4d). Ritorna quante ne ha scadute; errore → 0
-        (le pending scadute restano comunque non approvabili: resolve_approval e
-        get_pending_approvals ricontrollano ts_expiry).
-        R-c3-1b: scade anche le righe con ts_expiry non numerico (TEXT/BLOB) —
-        in SQLite TEXT > REAL, quindi `ts_expiry <= now` non le matcherebbe mai."""
+    def scadi_approvazioni(self) -> List[Dict[str, Any]]:
+        """C5: marca 'expired' (risolto_da='timeout') ogni 'pending' oltre ts_expiry e
+        ritorna le righe scadute DA QUESTA chiamata (id, tool_name, azione_leggibile,
+        ts_created, ts_expiry), dalla più vecchia, per avvisare l'operatore una volta
+        sola. Le righe restano per audit (§4d). Lettura e UPDATE sotto lo stesso lock
+        (BEGIN IMMEDIATE): due chiamanti non avvisano due volte la stessa richiesta.
+        R-c3-1b: scade anche le righe con ts_expiry non numerico (TEXT/BLOB) — in
+        SQLite TEXT > REAL, quindi `ts_expiry <= now` non le matcherebbe mai.
+        Errore → [] (le pending scadute restano comunque non approvabili:
+        resolve_approval e get_pending_approvals ricontrollano ts_expiry)."""
         try:
             now = time.time()
             with self._connect() as con:
-                # R-c3-1b: righe corrotte con ts_expiry non numerico — scadute con WARN.
-                cur_bad = con.execute(
-                    "UPDATE approvals SET stato = 'expired', ts_resolved = ?, "
-                    "risolto_da = 'timeout' "
-                    "WHERE stato = 'pending' AND typeof(ts_expiry) NOT IN ('real', 'integer')",
-                    (now,),
-                )
-                n_bad = int(cur_bad.rowcount)
+                con.execute("BEGIN IMMEDIATE")
+                righe = self._rows(con.execute(
+                    "SELECT id, tool_name, azione_leggibile, ts_created, ts_expiry "
+                    "FROM approvals WHERE stato = 'pending' AND "
+                    "(typeof(ts_expiry) NOT IN ('real', 'integer') OR ts_expiry <= ?) "
+                    "ORDER BY ts_created, id", (now,)))
+                n_bad = sum(1 for r in righe
+                            if not isinstance(r["ts_expiry"], (int, float)))
                 if n_bad:
                     log.warning(
                         "expire_stale_approvals: %d pending con ts_expiry non numerico — scadute",
                         n_bad,
                     )
-                cur = con.execute(
+                con.executemany(
                     "UPDATE approvals SET stato = 'expired', ts_resolved = ?, "
-                    "risolto_da = 'timeout' WHERE stato = 'pending' AND ts_expiry <= ?",
-                    (now, now),
-                )
+                    "risolto_da = 'timeout' WHERE id = ? AND stato = 'pending'",
+                    [(now, r["id"]) for r in righe])
                 con.commit()
-                return int(cur.rowcount) + n_bad
+                return righe
         except (sqlite3.Error, OSError) as e:
             log.warning("expire_stale_approvals fallita (%s): %s", self.db_path, e)
-            return 0
+            return []
+
+    def expire_stale_approvals(self) -> int:
+        """Come scadi_approvazioni, ma ritorna solo quante ne ha scadute (0 su errore)."""
+        return len(self.scadi_approvazioni())
+
+    def conta_approvazioni(self) -> Optional[Dict[str, int]]:
+        """C5 (gas doctor): {'in_attesa': pending non scadute, 'scadute_aperte':
+        pending oltre ts_expiry non ancora marcate}. SOLA LETTURA; None in degrado."""
+        try:
+            now = time.time()
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT "
+                    "SUM(CASE WHEN typeof(ts_expiry) IN ('real', 'integer') "
+                    "         AND ts_expiry > ? THEN 1 ELSE 0 END), "
+                    "SUM(CASE WHEN typeof(ts_expiry) NOT IN ('real', 'integer') "
+                    "         OR ts_expiry <= ? THEN 1 ELSE 0 END) "
+                    "FROM approvals WHERE stato = 'pending'", (now, now)).fetchone()
+                return {"in_attesa": int(row[0] or 0), "scadute_aperte": int(row[1] or 0)}
+        except (sqlite3.Error, OSError) as e:
+            log.warning("conta_approvazioni fallita (%s): %s", self.db_path, e)
+            return None

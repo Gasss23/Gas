@@ -1178,3 +1178,49 @@ def test_scadenza_firma_valori_non_validi(tmp_path, monkeypatch):
             raise RuntimeError("no")
 
     notte._firma_notturna(_Rotto())  # mai eccezioni
+
+
+def test_firme_scadute_chiuse_e_negli_avvisi(monkeypatch, dirs):
+    """C5: a fine giro le richieste di firma scadute vengono chiuse (restano per
+    audit) e il loro numero entra negli avvisi del riepilogo del mattino."""
+    from modules.memory import MemoryStore, default_db_path
+    root, fuori = dirs
+    mem = MemoryStore(default_db_path(root))
+    aid = mem.enqueue_approval("send_email", {"to": "a@example.com"}, timeout_secs=-1)
+    viva = mem.enqueue_approval("send_email", {"to": "b@example.com"})
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]}))
+    assert mem.get_approval(aid)["stato"] == "expired"
+    assert mem.get_approval(viva)["stato"] == "pending"
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "1 richiesta/e di firma scaduta/e senza risposta: chiuse, NON eseguite" in riep
+    msg = notte.componi_messaggio_telegram("x", [], ["1 richiesta/e di firma scaduta/e "
+                                                     "senza risposta: chiuse, NON eseguite"])
+    assert "firma scaduta" in msg
+
+
+def test_firme_scadute_nessun_avviso_se_nessuna(monkeypatch, dirs):
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]}))
+    assert "firma scaduta" not in (root / ".gas_notte" / "ultimo_giro.md").read_text()
+
+
+def test_bot_controlla_le_firme_scadute(monkeypatch, tmp_path):
+    """C5: il loop del bot chiude e avvisa le firme scadute (al massimo una volta al
+    minuto) prima di leggere gli aggiornamenti."""
+    chiamate = []
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "finto")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "4242")
+
+    def _post(base_url, method, payload=None, timeout=70):
+        if method == "getMe":
+            return {"ok": True, "result": {"username": "gas"}}
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(_tg, "_tg_post", _post)
+    monkeypatch.setattr(_tg, "avvisa_firme_scadute", lambda m: chiamate.append(m) or 0)
+    monkeypatch.setattr(gas, "GasKernel",
+                        lambda root_dir=None: SimpleNamespace(memory="MEM"))
+    assert _tg.run_bot(str(tmp_path)) == 0
+    assert chiamate == ["MEM"]
