@@ -12,7 +12,7 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **R-ve222-4 (file letti dagli agenti alla firma dopo una lettura)**: `FATTA` — review #377.
+- **R-ve222-4 (file letti dagli agenti alla firma dopo una lettura)**: `FATTA` la parte sui file — review #377; resta aperta la parte su recapito/chiusura di un lead (V-1 bot #224).
 - **R-bot222-1 (comando `gas fida-contatto`)**: `FATTA` — review #377.
 - **Riserve R-377-1/R-377-2**: `FATTA` — review #378 APPROVATO CON RISERVE (R-378-1 BASSA).
 
@@ -26,12 +26,12 @@
  modules/gate/gate.py               |  18 +++++++++++
  modules/memory/store.py            |  24 +++++++++++++++
  reports/diff_sessione.md           |  16 +++++-----
- reports/handoff.md                 | 600 ++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 603 +++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++-
- reports/ultimo_report.md           |  24 +++++----------
+ reports/ultimo_report.md           |  25 +++++----------
  tests/test_unit_gate.py            |  25 ++++++++++++++-
  tests/test_unit_kernel.py          |  65 +++++++++++++++++++++++++++++++++++++++
- 10 files changed, 262 insertions(+), 580 deletions(-)
+ 10 files changed, 266 insertions(+), 580 deletions(-)
 ```
 
 ---
@@ -39,6 +39,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b59b2dd docs(fine-task): report e handoff — R-ve222-4 e gas fida-contatto
 a2f9d50 fix(cancello): tipi di diario delle azioni umane riservati; AGENT.md e CONVENTIONS.md alla firma (R-377-1, R-377-2)
 9037bbb chore(revisore): memoria review #378 — APPROVATO CON RISERVE
 a0d6ac1 feat(cancello): README e cartelle di progetto alla firma dopo una lettura; comando gas fida-contatto
@@ -118,9 +119,12 @@ pytest `tests/`: `1519 passed in 181.33s (0:03:01)` (+22 gate).
 
 ## §6 STATO CI
 
-- Run sui commit di questo handoff: non ancora disponibile alla scrittura dell'handoff.
+- `b59b2dd`: unit-suite e handoff-check success (kernel 925 PASS in CI); verifica-bot neutral (APPROVATO CON RISERVE, nessuna ALTA/MEDIA); verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/224#issuecomment-6292485286)).
+- Commit dei soli report che aggiorna questo §6: run non ancora disponibile alla scrittura.
 
 ## §7 RISERVE APERTE
 
 - R-378-1 (BASSA): il prefisso «agent» manda alla firma, dopo una lettura, anche file come `dati/agente_vendite.md` (solo attrito, fail-closed).
+- R-ve224-2 (BASSA/COSMETICA): un carattere invisibile in testa al nome lascia libero «dati/\u200bAGENTS.md».
+- R-ve222-4, parte su recapito/chiusura di un lead dopo una lettura (proposta: avviso su Telegram).
 - Restano da #222: R-366-1, R-367-2, R-370-2, R-bot222-2, R-ve222-2, R-373-1, R-375-1, R-372-1 (vedi stato_progetto.md).
