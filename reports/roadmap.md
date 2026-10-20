@@ -232,6 +232,7 @@ Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decision
 - 🅿️ Un file di stato con roadmap attiva e compiti del giorno (idea "Scratchpad" del Blueprint: si valuta solo a roadmap finita).
 
 ### R8 — Voce "Jarvis" ⏳ 🔒 R5
+Documento: [`reports/briefing_architettura_voce.md`](briefing_architettura_voce.md).
 Pezzi decisi a luglio-agosto e mai costruiti.
 - ⏳ Parola di attivazione "Hey Gas" sul dispositivo (openWakeWord; prima il modello pronto, poi la parola nostra).
 - ⏳ Finestra di ascolto di circa 12 secondi dopo la risposta, senza ripetere la parola.
@@ -264,6 +265,7 @@ Pezzi decisi a luglio-agosto e mai costruiti.
 - 🅿️ Dal Blueprint: "tabù" dopo un tuo veto, riflessione notturna sui registri.
 
 ### R10 — Aggiustarsi e programmarsi da solo ⏳ 🔒 R5
+Documento: [`reports/recinto_autonomia.md`](recinto_autonomia.md).
 ✅ Bozza del recinto **approvata** (19 ottobre). Proposte di Gas: idee illimitate in una lista ordinata per valore; al massimo **10 PR a notte**; le proposte con etichetta "importante" possono superare il limite. Resta la catena: PR su un ramo suo → firma di Gas-operatore → gemello di prova.
 - 🔄 Aggiustarsi: oggi c'è solo il passaggio automatico al modello successivo.
 - ⏳ Avviso in tempo reale quando un compito degrada a "solo testo" (rimandato per falsi allarmi; D3 della sonda telemetria).
