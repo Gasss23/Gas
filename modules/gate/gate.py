@@ -256,6 +256,12 @@ _LIVELLO3_CANCELLO: tuple[str, str] = ("modules", "gate")
 # viene eseguito o caricato fuori dalla sandbox. È ESATTAMENTE il vecchio insieme
 # negato in scrittura meno il livello 3: nessun file diventa più libero di "firma".
 _LIVELLO2_PREFISSI: tuple[str, ...] = ("gas.py", "brains", "modules")
+# Roadmap 5.3 (2026-10-20): il catalogo delle fonti di studio (knowledge/sources.yaml,
+# «solo un commit umano può modificarlo») e i file delle fonti che cita stanno in
+# knowledge/: ogni scrittura lì passa dalla firma, così Gas non riattiva una fonte
+# tolta né riscrive una fonte approvata. Solo PRIMO pezzo (prefisso, casefold):
+# anche copie come knowledge_old/; «dati/knowledge.md» resta libero.
+_LIVELLO2_TOP: tuple[str, ...] = ("knowledge",)
 
 LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI = 1, 2, 3
 
@@ -445,6 +451,8 @@ def livello_scrittura(relative_path: Any) -> int:
         if norm.rstrip("/. ").endswith(_DENY_WRITE_SUFFIXES):
             return LIVELLO_FIRMA
         if parts[0].startswith(_DENY_WRITE_TOP_PREFIXES):
+            return LIVELLO_FIRMA
+        if puliti[0].startswith(_LIVELLO2_TOP):
             return LIVELLO_FIRMA
         if any(p in _DENY_WRITE_ANY_PART_NAMES for p in puliti):
             return LIVELLO_FIRMA

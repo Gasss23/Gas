@@ -4355,7 +4355,7 @@ def doctor(root_dir: Optional[str] = None) -> int:
     except Exception as _e_crm:
         check("CRM", "duplicati sospetti", "OK", f"non disponibile: {str(_e_crm)[:40]}")
 
-    # 12. Firme (C5): richieste in attesa e scadute ancora aperte. INFORMATIVO: le
+    # 11b. Firme (C5): richieste in attesa e scadute ancora aperte. INFORMATIVO: le
     # scadute aperte → WARN (le chiudono il bot e il giro notturno). SOLA LETTURA.
     try:
         _cnt = mem.conta_approvazioni() if (mem is not None and mem.available) else None

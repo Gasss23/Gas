@@ -481,6 +481,9 @@ def test_livello3_mai_nemmeno_con_firma(path):
     "scripts/notte/catalogo_esempio.yaml", "CLAUDE.md", "dati/claude.md", "gas_identity.md",
     "requirements.txt", "requirements-dev.txt", "pytest.ini", ".vscode/tasks.json",
     "tests/test_x.py", "dati/brainstorming.md",  # prefisso "brains": prudente
+    # roadmap 5.3: catalogo delle fonti di studio e file delle fonti alla firma
+    "knowledge/sources.yaml", "knowledge/x.md", "Knowledge/Sources.YAML",
+    "knowledge./sources.yaml", "knowledge_old/sources.yaml", "./knowledge/test_source.txt",
 ])
 def test_livello2_firma(path):
     assert livello_scrittura(path) == LIVELLO_FIRMA
@@ -488,7 +491,7 @@ def test_livello2_firma(path):
 
 
 @pytest.mark.parametrize("path", [
-    "note.md", "reports/nota.md", "dati/lead.csv", "knowledge/x.md", "dati/gate/x.md",
+    "note.md", "reports/nota.md", "dati/lead.csv", "dati/knowledge.md", "dati/gate/x.md",
     "x/modules_note.txt.bak/../note.md",
 ])
 def test_livello1_libero(path):

@@ -5956,6 +5956,14 @@ check("T74b5 R-377-1 tool inventato «contatto_fidato» → tipo di diario rimap
       and not any(e.get("tipo", "").casefold() == "contatto_fidato"
                   for e in _k74f.memory.diario_recente(10)),
       str([e.get("tipo") for e in _k74f.memory.diario_recente(10)]))
+# Roadmap 5.3: il catalogo delle fonti di studio va alla firma anche senza letture
+_k74s = _k74()
+with _TgFinto():
+    run_turn_scriptato(_k74s, "x", [
+        [("write_file", json.dumps({"relative_path": "knowledge/sources.yaml",
+                                    "content": "sources: []"}))], "ok"])
+check("T74b5 roadmap 5.3: knowledge/sources.yaml mai scritto senza firma",
+      not (_k74s.root / "knowledge" / "sources.yaml").exists())
 # T74b5 — R-bot222-1: `gas fida-contatto` (solo comando umano) toglie il segno
 # «non fidato» con una riga di diario; senza conferma non cambia nulla.
 import builtins as _bi74c
