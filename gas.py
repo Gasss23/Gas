@@ -864,6 +864,7 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
 # R-tel-budget-perf: per ogni log dei token, le voci (ts, costo) delle ultime 24 ore
 # già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
 _COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
+_TS_LOG_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")  # formato di _log_tokens
 
 
 def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
@@ -885,7 +886,12 @@ def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
                 costo += max(0, int(r.get(chiave, 0))) * prezzo / 1_000_000
             except (TypeError, ValueError, OverflowError):  # R-410-1
                 pass
-        return (str(r.get("ts", "")), costo)
+        ts = r.get("ts")
+        # V-2 bot #234: solo un ts ISO vero; «None» o testo sarebbe ≥ cutoff per sempre
+        # (confronto tra stringhe) e terrebbe il budget bloccato senza scadenza.
+        if not isinstance(ts, str) or not _TS_LOG_RE.fullmatch(ts):
+            return None
+        return (ts, costo)
     except Exception:
         return None
 

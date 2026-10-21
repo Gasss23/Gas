@@ -7115,10 +7115,21 @@ check("T94c R-409-1/2 «in» contato con «out» rotto; riscritto più lungo con
       abs(_c94g - 0.1) < 1e-9 and abs(_c94h - 0.3) < 1e-9, f"{_c94g} {_c94h}")
 
 # T94d — R-410-1/2: numeri enormi non scartano la parte valida; negativi non abbassano
+# R-411-1: niente indice su un None (FAIL, non un'eccezione che ferma la suite)
+_neg94 = gas._costo_riga(json.dumps({"ts": _ora94, "provider": "gemini-flash-lite",
+                                      "in": -5_000_000, "out": 500_000}).encode())
+_big94 = gas._costo_riga(('{"ts": "%s", "provider": "gemini-flash-lite", "in": 1000000, '
+                          '"out": 1e400}' % _ora94).encode())
 check("T94d R-410-1/2 costo di una riga con «out» enorme o negativo",
-      gas._costo_riga(json.dumps({"ts": "x", "provider": "gemini-flash-lite",
-                                      "in": -5_000_000, "out": 500_000}).encode())[1] >= 0.2 - 1e-9
-      and gas._costo_riga(b'{"ts": "x", "provider": "gemini-flash-lite", "in": 1000000, "out": 1e400}')[1] > 0.09)
+      _neg94 is not None and _neg94[1] >= 0.2 - 1e-9
+      and _big94 is not None and _big94[1] > 0.09, f"{_neg94} {_big94}")
+# V-2 bot #234: ts mancante, null o non ISO → riga ignorata (mai «per sempre nelle 24h»)
+check("T94e V-2 bot #234 ts non ISO → riga ignorata",
+      all(gas._costo_riga(json.dumps({**({} if t is ... else {"ts": t}), "provider": "groq",
+                                       "in": 1, "out": 1}).encode()) is None
+          for t in (None, "None", "domani", 5, ..., "2026-10-21"))
+      and gas._costo_riga(json.dumps({"ts": _ora94, "provider": "groq", "in": 1,
+                                      "out": 1}).encode()) is not None)
 
 # T95 — R-fts-1: tetto alle parole delle ricerche FTS (diario e conoscenza)
 from modules.memory.store import MemoryStore as _MS95, FTS_MAX_TOKEN as _MAX95
