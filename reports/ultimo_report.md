@@ -1,34 +1,32 @@
-# ULTIMO REPORT — 2026-10-21 — Chat Mani, fetta 4: note delle PR #238 e #239 (R6, PR #239)
+# ULTIMO REPORT — 2026-10-21 — Chat Mani, fetta 5: riserve rimaste della lettura web (R6)
 
-Ramo `feat/mani-web-fetta4` (da main dopo il merge di #238, poi merge di main). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. PR #239 (https://github.com/Gasss23/Gas/pull/239). Fetta di sicurezza. Operatore: «procedi con la fetta 4», poi «a, correggi e mergia quando il bot approva».
+Ramo `feat/mani-web-fetta5` da main dopo il merge di #239. Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza. PR #242. Operatore: «procedi con la fetta 5».
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #239: autorizzato dall'operatore quando il bot approva (`verifica-bot` success sull'head, niente ALTA/MEDIA), con CI verde e senza conflitti.
+1. Merge della PR #242 (https://github.com/Gasss23/Gas/pull/242): vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
 2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
 
 ## Esito
 
-- **Nome del tag intero (V-1 bot #238, R-431-1)**: `FATTA` — `<styled-box>`, `<script_x>`, `<style.x>`, `</scriptx>` non sono blocchi nascosti.
-- **Ripiego alla pari col parser (V-2 ve #238)**: `FATTA` — stesso insieme `_TAG_NASCOSTI` per parser e ripiego; commenti tolti anche con «>».
-- **`embed` (R-431-2)**: `FATTA` — è un elemento vuoto: nascondeva il resto della pagina anche nel percorso normale (dalla fetta 1).
-- **Test (V-1/V-4 ve #238, V-2/V-3 bot #238)**: `FATTA`.
-- **Note bot e verifica esterna #239**: `FATTA` — nel ripiego un tag finisce al suo «>» fuori dai valori fra virgolette («</script>» dentro un attributo non chiude il blocco), titolo tolto dal testo, «/» dopo il nome, tag senza fine che porta via il resto (si perde testo, non esce contenuto nascosto), commenti vuoti `<!-->`/`<!--->` e chiusura `--!>` (lineare, con cache delle posizioni), math e object nascosti anche nel parser.
-- **R-439-1, R-440-1, R-441-1**: `FATTA` — la fine del tag segue il tokenizzatore HTML: resto del nome del tag fino a spazio, «/» o «>»; le virgolette aprono un valore solo dopo un «=» che segue un nome; un valore senza virgolette si prende «=» e virgolette. Regex possessiva, lineare (2 MB avversari ≤0,3 s). **R-439-2** (test sulla prima chiusura fra «-->» e «--!>») e **R-439-3** (`dict[str, int]`): `FATTA`.
-- **R-442-1, R-442-2**: `DEFERITA` — famiglia diversa (contenuto dei blocchi nascosti non grezzi e commenti fasulli `<!`, `<?`, CDATA): serve un contatore come quello del parser, fetta successiva. BASSE: il ripiego si usa solo se html.parser solleva un errore, e con pagine vere non succede.
-- **Test**: web suite 105 → 137 passed (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Mutazioni in copie isolate, tutte prese da almeno un test.
-- **Review**: #431 → #432 → #438 (merge di main) sul primo giro; #439 → #440 → #441 → #442 (chat Mani), tutte APPROVATO CON RISERVE, sul secondo giro (ciascuna ha chiuso le riserve della precedente, restano R-442-1/2).
-
-- **Merge di main (PR #240 della chat Motore)**: `FATTA` — conflitti solo su report e memoria del revisore, risolti come da `reports/lavoro_parallelo.md`. Review #444 (chat Mani) APPROVATO.
-- **Bot #239 sul secondo giro**: APPROVATO CON RISERVE, verifica-bot success; V-1 BASSA (`<svg/>` autochiuso nel ripiego) rimandata con R-442-1/2; V-2 COSMETICA corpo della PR aggiornato.
+- **R-442-1 / R-431-3 (contenuto dei nascosti non grezzi, annidamento)**: `FATTA` — contatore unico come `_Estrattore`: dentro svg, math, noscript, template, object, canvas si leggono i tag, quindi «</svg>» in un attributo o in un commento non chiude.
+- **R-442-2 (commenti fasulli)**: `FATTA` — `<!x`, `<?`, `</` senza lettera finiscono al primo «>», `<![CDATA[` a «]]>», in un'unica ricerca lineare. Tolta la regex finale `<[^<>]*>`: cancellava solo testo vero («a < b»).
+- **V-1 bot #239 (`<svg/>` autochiuso)**: `FATTA` — svg e math autochiusi non aprono; la «/» di un valore senza virgolette (`<svg a=x/>`) non conta. Senza gruppi di cattura: in Python 3.11 dentro una ripetizione possessiva danno SystemError.
+- **V-1 bot #239 2° giro (virgolette nella chiusura)**: `FATTA` — anche il tag di chiusura finisce al suo «>» fuori dalle virgolette.
+- **R-445-1 (grezzi del parser)**: `FATTA` — textarea, xmp, noembed, noframes, plaintext grezzi come in html.parser; un grezzo autochiuso fra i nascosti conta come apertura.
+- **R-446-1 (percorso normale)**: `FATTA` — `<script/>` e gli altri nascosti autochiusi (non svg/math) aprono come nei browser: prima html.parser li trattava come vuoti e il testo dopo (codice invisibile nel browser) arrivava al modello.
+- **R-432-1 / V-3 ve #239 / V-2 bot #239 2° giro**: `FATTA` — ramo morto tolto, test «a<script», docstring e commento dei test corretti.
+- **Test**: web suite 137 → 167 (166 al primo giro) (Python 3.13 e 3.11, anche con rete e DNS veri bloccati), con un test di confronto col parser su 4000 pagine casuali. Fuzz differenziale: 0 fughe su 500k pagine (3.13) e 300k (3.11). Mutazioni in copie isolate: tutte prese.
+- **Review**: #445 → #446 → #447 (chat Mani), APPROVATO CON RISERVE (ciascuna ha chiuso la riserva della precedente).
+- **V-1 bot #242 / V-1 verifica esterna #242 (contatore unico)**: `FATTA` — contatore per nome nel parser e nel ripiego: una chiusura scala solo un'apertura con lo stesso nome (in `<svg>X</script>Y` Y è invisibile per i browser e non arriva più al modello); chiude anche la parte (a) di R-447-1. Test 166 → 167. Review #448 (chat Mani) APPROVATO CON RISERVE (R-448-1 COSMETICA, R-448-2 di registro).
+- **Bot #242**: APPROVATO CON RISERVE (verifica-bot success), solo V-1 BASSA, chiusa sopra. **Verifica esterna #242**: APPROVATO CON RISERVE: V-1 = V-1 bot; V-2 BASSA (commenti vuoti su 3.11) registrata; V-3 COSMETICA (SystemError dei gruppi di cattura su 3.11 non riprodotto dal verificatore: l'agente l'ha visto sul pattern vero, il commento resta); V-4 COSMETICA §6 aggiornato.
+- Restano **R-447-1** parte (b) BASSA e **R-448-1** COSMETICA, dichiarate in `reports/stato_progetto.md`.
 
 ## Anomalie
 
-- Durante una prova di mutazione del primo giro l'agente ha usato `git checkout -- modules/web/leggi.py` e ha perso le modifiche non in staging; le ha riapplicate subito. Da allora le mutazioni si fanno solo in copie isolate.
-- I numeri delle review #438-#442 sono stati usati sia dalla chat Mani sia dalla chat Motore (anche gli id R-439-1 ecc.): distinti dal suffisso «(chat Mani)»/«(chat Motore)».
-- Il ripiego imita il tokenizzatore HTML a pezzi: ogni review ha trovato un caso nuovo della stessa famiglia (R-439-1 → R-440-1 → R-441-1). Il fuzz differenziale della #442 non trova più differenze sulla fine del tag di apertura.
+- Nessuna. Nota: html.parser di Python 3.11 non riconosce i commenti vuoti `<!-->`/`<!--->` (i browser e il 3.13 sì): il test di confronto esclude quelle pagine.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
-Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1/2/3/4»): aggancio di `leggi_pagina` con al modello solo `testo`, firma a finestra contaminata, tetto di chiamate, diario senza il testo della pagina, fiducia solo nei marcatori con il codice di quella chiamata.
+Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…5»): aggancio di `leggi_pagina` con al modello solo `testo`, firma a finestra contaminata, tetto di chiamate, diario senza il testo della pagina, fiducia solo nei marcatori con il codice di quella chiamata.
