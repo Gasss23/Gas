@@ -16,7 +16,8 @@
 - **V-1/V-2 bot #236 (5° giro), R-436-1**: `FATTA` — review #438 APPROVATO CON RISERVE.
 - **R-438-1 (= V-2 verifica esterna #240)**: `FATTA` — review #439 APPROVATO CON RISERVE (compress-history salva con unione rimandata).
 - **R-439-1, V-1 bot #240**: `FATTA` — review #440 APPROVATO CON RISERVE (_save_history dice se ha scritto; T97j controlla i messaggi inviati al provider).
-- **R-438-2 (= V-2 bot #240)**: `SALTATA` — limite BASSO dichiarato (scrivere a metà turno senza cambiare la lista rischierebbe duplicati).
+- **R-438-2 (= V-2 bot #240, V-1 verifica esterna #240)**: `SALTATA` — l'operatore ha scelto (a): limite BASSO accettato (2026-10-21).
+- **Regola «grave» del bot (falso rosso di verifica-bot su 4891448)**: `FATTA` — autorizzata dall'operatore; review #441 BOCCIATO (la prima versione nascondeva finding veri), #442 APPROVATO CON RISERVE, #443 APPROVATO.
 - **R7 / R-c4b3-3**: `DEFERITA` — prossima fetta.
 
 ---
@@ -24,20 +25,27 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- gas.py                             |  40 +++++++++++++++++++++---------
- reports/da_mergiare.md             |  22 ++++++++---------
- reports/diff_sessione.md           |  12 ++++-----
- reports/handoff.md                 | 483 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |   7 +++++
+ gas.py                             |  40 +++++++++++++++++--------
+ reports/da_mergiare.md             |  28 +++++++++++-------
+ reports/diff_sessione.md           |  14 ++++-----
+ reports/handoff.md                 | 575 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  27 +++++++-------------
- tests/test_unit_kernel.py          | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 8 files changed, 264 insertions(+), 430 deletions(-)
+ reports/ultimo_report.md           |  32 +++++++++-----------
+ scripts/bot_esito.py               |  17 ++++++++++-
+ tests/test_unit_kernel.py          | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ tests/test_unit_verifica_bot.py    |  33 +++++++++++++++++++++
+ 10 files changed, 435 insertions(+), 418 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e89ce76 fix(bot): una gravità a parole negata («non la considero più grave») non blocca più; «non mitigato: grave» e «non è la più grave» restano bloccanti (falso rosso #240)
+415c447 chore(revisore): memoria review #443 — APPROVATO
+a126671 chore(revisore): memoria review #442 — APPROVATO CON RISERVE
+6d5a019 chore(revisore): memoria review #441 — BOCCIATO
+4891448 docs(fine-task): report e handoff — compress-history onesto (#439/#440)
 28c7f94 fix(storia): _save_history dice se ha scritto; compress-history non dice ok senza salvare (R-439-1); T97j controlla i messaggi inviati al provider (V-1 bot #240)
 1f90bc8 chore(revisore): memoria review #440 — APPROVATO CON RISERVE
 361400f fix(storia): gas compress-history salva anche con un'unione rimandata, o dice che non ha salvato (R-438-1)
@@ -154,18 +162,132 @@ Review #440 (chat Motore) del diff staged, cioè gas.py e tests/test_unit_kernel
 
 File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #441 (chat Motore) — prima versione, BOCCIATA
+
+## VERDETTO: BOCCIATO
+
+Review #441 (chat Motore). Ho letto le tre fonti obbligatorie: CLAUDE.md sez. 5, reports/stato_progetto.md (le parti su verifica-bot e bot_esito) e .claude/agents/memoria_revisore.md. Le prove le ho fatte su una copia dell'index nello scratchpad (/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/r441). Nel repo reale lo staging è intatto (M scripts/bot_esito.py, M tests/test_unit_verifica_bot.py).
+
+**Elementi del diff esaminati**
+- `scripts/bot_esito.py:114` — `_GRAVITA_NEGATA` accetta fino a 3 parole qualsiasi (`\S+`) tra «non» e la gravità, e `\S+` ingoia anche «:», «,», «;». Rischio esaminato: un finding grave reale non deve sparire. Esito: **blocco**. In molte frasi «non» nega il verbo del difetto, non la gravità. Sonde sulla copia, con riga `V-1 — <frase>` senza gravità tra parentesi. Con il diff `_gravita_nel_testo` restituisce un insieme vuoto, a HEAD restituiva MEDIA:
+  - «non mitigato: grave»
+  - «il controllo non blocca: rischio grave»
+  - «non risolto, grave»
+  - «non autenticato: accesso critico»
+  - «non escludo un rischio grave»
+  - «non è stato chiuso: grave»
+  - «non verificato grave»
+  - «non ha test, importante»
+
+  Se il campo strutturato dice BASSA, la decisione diventa APPROVE: il controllo lascia passare un finding grave invece di bloccarlo, cioè il contrario del verso «nel dubbio blocca». Le tre frasi indicate da te si comportano così:
+  - «non si può escludere un bypass grave»: resta MEDIA, ci sono 5 parole in mezzo.
+  - «non c'è un fix, rischio critico»: resta MEDIA.
+  - «non mitigato: grave»: viene **nascosta**.
+- `scripts/bot_esito.py:192` — la regola a parole cerca sul testo ripulito, le altre regole restano sul testo intero. Rischio esaminato: la rimozione tocca altre regole. Esito: ok, perché la sostituzione riguarda solo `_FINDING_GRAVE_A_PAROLE`, mentre `_PAROLA_BLOCCANTE` e `_FINDING_GRAVITA` usano ancora `finding`/`sezione` originali. Il problema sta tutto nella larghezza della regex alla riga 114.
+- `tests/test_unit_verifica_bot.py:528` — test_b1_240_grave_negato_non_blocca riproduce il testo reale della #240 e si aspetta APPROVE. Esito: ok.
+- `tests/test_unit_verifica_bot.py:545` — test_b1_240_negazione_non_nasconde_gravita copre 4 casi. Esito: **riserva**. Mancano proprio le frasi di finding grave con «non» sul verbo, quindi la suite (316 passed) resta verde nonostante il fail-open.
+
+**Correzione suggerita, già provata in copia**: al posto di `\S+`, parole intermedie prese da una lista ammessa, senza punteggiatura:
+`r"\bnon\s+(?:(?:è|era|sono|sia|più|la|lo|li|le|si|considero|ritengo|così|molto|affatto|particolarmente|troppo|davvero|tanto|stato|stata)\s+){0,3}(?:" + _GRAVI + r")\b"`
+
+Risultati con questa variante:
+- tutte le frasi nascoste qui sopra tornano MEDIA;
+- tornano MEDIA anche i 4 casi del tuo test;
+- il caso #240 «per questo non la considero più grave» resta APPROVE, come «non è grave», «non è più così grave» e «non lo ritengo grave»;
+- «non si tratta di un problema grave» blocca: è un falso rosso, ma nel verso prudente;
+- tests/test_unit_verifica_bot.py: 316 passed.
+
+Va aggiunto al test parametrizzato della riga 545 un gruppo di frasi come «V-1 — non mitigato: grave», «V-1 — il controllo non blocca: rischio grave», «V-1 — non autenticato: accesso critico», senza gravità tra parentesi e con il campo strutturato BASSA, che devono dare COMMENT.
+
+**Rischi esplicitamente esclusi**
+- Comportamento sul runner GitHub reale e nuova esecuzione del bot sulla PR #240: non verificati, perché non sono riproducibili qui.
+- Le frasi in inglese («not mitigated: high»): non sono un problema, perché la regex cerca solo «non», quindi l'inglese non viene mai neutralizzato.
+- Non ho eseguito mutation testing sull'intera suite: mi sono limitato alle sonde mirate sul verso fail-safe.
+
+**Memoria**: riga #441 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (6d5a019, staging del diff intatto).
+
+### Review #442 (chat Motore)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #442 (chat Motore). È la ri-review della #441, che era stata BOCCIATA. Diff staged: scripts/bot_esito.py e tests/test_unit_verifica_bot.py. È la macchina del bot, quindi il merge lo decide l'operatore. Ho fatto le prove su una copia dell'albero staged, in /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/r442.
+
+**Cosa ho esaminato nel diff**
+- scripts/bot_esito.py:116 — `_GRAVITA_NEGATA` accetta tra «non» e la gravità solo parole di una lista chiusa, separate da spazi. Non c'è `re.I`, quindi vale solo in minuscolo. Rischio esaminato: che nasconda finding gravi veri (era il blocco della #441). Esito: **ok**. Su 19 sonde, queste restano MEDIA:
+  - «non è grave, è critico»
+  - «non lo è: grave»
+  - «non è solo grave»
+  - «non è meno grave di V-2»
+  - «non la sottovaluterei: grave»
+  - «non così: alta»
+  - «non sia grave e importante»
+  - «nonè grave»
+  - «non, grave»
+  - «Non la considero grave»
+  - «il fix non\nV-2 — grave»
+- scripts/bot_esito.py:195 — la sostituzione si applica solo alla regola a parole. La regola delle parole MAIUSCOLE e quella delle gravità tra parentesi lavorano ancora sulla sezione intera. Rischio esaminato: che togliere un pezzo di testo unisca due righe e nasconda l'id di un altro finding. Esito: **ok**. Dentro la lista non c'è nessun id V-/F-/R-/G-. Se il pezzo tolto attraversa un a capo, le righe si uniscono e i blocchi possono solo aumentare (verso sicuro).
+- tests/test_unit_verifica_bot.py:528 — il caso reale della #240 («per questo non la considero più grave») dà solo BASSA, quindi APPROVE. Esito: **ok**. Mutazione «tolgo la sostituzione»: il test fallisce.
+- tests/test_unit_verifica_bot.py:554 — test parametrizzato con le 12 frasi. Esito: **ok**. Mutazione «aggiungo `\S+` alla lista»: 9 test falliscono, quindi il test difende proprio il punto della #441. Sulla copia la suite dà 324 passed.
+
+**Riserve**
+- **R-442-1 (BASSA)**: «V-1 — non è la più grave ma rompe il merge» non dà nessuna gravità. Qui «la più» nega il primato, non la gravità, quindi il finding grave sparisce dal controllo sul testo. Resta il campo strutturato. Correzione possibile: richiedere che «più» non venga subito dopo «la/lo/le/li».
+- **R-442-2 (COSMETICA)**: «Non …» con la maiuscola a inizio frase resta un falso rosso. È nel verso sicuro.
+
+**Cosa NON ho verificato**: il comportamento sul workflow GitHub reale (verifica-bot.yml con la GitHub App). Non si riproduce in locale: ho provato solo `_gravita_nel_testo`, e `decidi` tramite la suite.
+
+La memoria del revisore è aggiornata con la riga #442 e committata da sola con scripts/commit_memoria_revisore.sh. Lo staging del diff è intatto: scripts/bot_esito.py e tests/test_unit_verifica_bot.py.
+
+### Review #443 (chat Motore) — commit e89ce76
+
+## VERDETTO: APPROVATO
+
+Review #443 (chat Motore), sul diff staged di scripts/bot_esito.py e tests/test_unit_verifica_bot.py. Riguarda la macchina del bot, quindi il merge lo decide l'operatore. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le voci su bot_esito, con Grep) e la coda di .claude/agents/memoria_revisore.md.
+
+**Cosa ho esaminato nel diff**
+- `scripts/bot_esito.py:196` — Qui la sostituzione di `_GRAVITA_NEGATA` passa per una funzione: se il pezzo trovato contiene «la|lo|le|li più», lo lascia com'è, e quindi la gravità resta bloccante. Rischio esaminato: che questa eccezione faccia passare un finding grave (fail-open), oppure che faccia tornare il falso rosso della #240. Esito: **ok**. L'eccezione può solo *conservare* la gravità, quindi sbaglia sempre nel verso sicuro. Il caso #240 «non la considero più grave» non contiene «la più» (in mezzo c'è «considero»), quindi viene ancora tolto e resta solo BASSA.
+- `scripts/bot_esito.py:116` — La regex `_GRAVITA_NEGATA` non è cambiata: è la stessa lista chiusa della #442, senza punteggiatura. Rischio esaminato: che sia tornato `\S+`. Esito: **ok**.
+- `tests/test_unit_verifica_bot.py:553` — Nuovo caso «V-1 — non è la più grave ma rompe il merge», che deve dare COMMENT. Rischio esaminato: che il test sia vacuo. Esito: **ok**. In una copia ho fatto una mutazione (`lambda m: ""`, cioè tolta l'eccezione): fallisce **solo** questo caso (1 failed, 324 passed).
+- `tests/test_unit_verifica_bot.py:528` — Il caso reale #240 dà ancora APPROVE. Esito: **ok**.
+
+**Prove nella copia nello scratchpad** (/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/r443)
+- Suite: **325 passed**.
+- 14 sonde su `_gravita_nel_testo`, tutte come atteso:
+  - **Danno MEDIA, cioè bloccano (corretto)**:
+    - «non è affatto la più grave ma rompe il merge»
+    - «non è la più grave»
+    - «non lo più grave»
+    - «non la più grave, ma critica»
+    - «non è la più grave; non è grave»
+    - «non le più gravi»
+    - «non sono le più gravi ma rompono»
+    - «non la considero più grave, ma è critica»
+  - **Danno solo BASSA, cioè la negazione vale ancora (corretto)**:
+    - «per questo non la considero più grave.» e «non la considero più grave»
+    - «non è più grave di prima»
+    - «non è grave»
+  - **Restano MEDIA, possibile falso rosso nel verso sicuro**: «non è la piu grave» (senza accento) e «non è la  più grave» (doppio spazio).
+
+**Rischio escluso esplicitamente**: non ho fatto girare il bot vero su GitHub, né rifatto il giro su una PR reale con `verifica-bot`: lì servono la GitHub App e il workflow, che in dev non si possono riprodurre. Ho controllato solo la funzione pura e la suite unitaria.
+
+**Note**
+- Le riserve R-442-2 (COSMETICA, «Non …» maiuscolo a inizio frase: falso rosso nel verso sicuro) e R-205-1 (BASSA) restano come sono. Questo diff non le cambia.
+- Il commento a `scripts/bot_esito.py:195` finisce senza punto («…non si toglie»). È cosmetico e non è una riserva.
+
+Memoria: ho aggiunto la riga contatore #443 a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata (commit 415c447). Lo staging è rimasto intatto: ci sono ancora i 2 file sotto review.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
 tests/test_unit_kernel.py: 992 → 996 PASS, 0 FAIL in locale (T97j, T97k, T97l, T97l2; in CI +2 per il sandbox bwrap: main 994 → 998 attesi). Blocco reale: `=== RIEPILOGO: 996 PASS, 0 FAIL ===`.
-pytest `tests/`: 1816 passed.
+pytest `tests/`: 1816 passed (+9 in tests/test_unit_verifica_bot.py: 316 → 325).
 
 ## §6 STATO CI
 
 - dec4ce9 (merge di #236 su main): CI di main non letta da qui.
 - aa7f538 (con 012856e, 340326d): unit-suite (996 PASS in CI), handoff-check success; verifica-bot SUCCESS (APPROVATO CON RISERVE, 2 BASSE + 1 COSMETICA: decide l'operatore).
-- 5eb1c1d, 361400f, 1f90bc8, 28c7f94: run non ancora disponibile alla scrittura dell'handoff.
+- 4891448 (con 5eb1c1d, 361400f, 1f90bc8, 28c7f94): unit-suite (998 PASS in CI), handoff-check success; verifica-bot FAILURE per falso rosso (la parola «grave» in «non la considero più grave»), corretto in e89ce76.
+- 6d5a019, 415c447 e le memorie #442, e89ce76: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

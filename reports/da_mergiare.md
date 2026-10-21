@@ -17,3 +17,9 @@
 - **Pro:** niente più falso «ok» su un'operazione manuale.
 - **Contro:** nessuno di rilievo (al più un «NON salvata» prudente se fallisce solo il secondo salvataggio, R-440-1).
 - **Controlli:** revisori #439, #440 APPROVATO CON RISERVE; kernel 996 PASS.
+
+### 3. Regola «grave» del bot di verifica (macchina del bot, autorizzata dall'operatore)
+- **Cosa:** il bot non blocca più per una frase come «non la considero più grave»; continua a bloccare «non mitigato: grave», «non è la più grave», ecc.
+- **Pro:** toglie il falso rosso che bloccava la #240.
+- **Contro:** tocca la macchina del bot (il check sarà «neutral»: decide l'operatore).
+- **Controlli:** revisori #441 (BOCCIATO, corretto), #442, #443 APPROVATO; suite del bot 325 passed.
