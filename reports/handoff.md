@@ -23,21 +23,23 @@
 - **R-445-1 (grezzi come html.parser, grezzi autochiusi)**: `FATTA`
 - **R-446-1 (`<script/>` sul percorso normale)**: `FATTA`
 - **R-432-1, V-3 ve #239, V-2 bot #239 2° giro (cosmetiche)**: `FATTA`
-- **R-447-1**: `DEFERITA — limite dichiarato (html.parser non entra in modalità grezza dopo «<script/>»); BASSA, nasconde comunque più di prima`
+- **V-1 bot #242 / V-1 ve #242 (contatore per nome)**: `FATTA`
+- **R-447-1**: parte (a) `FATTA` col contatore per nome; parte (b) `DEFERITA — un «<script/>» senza chiusura nasconde il resto della pagina: si perde testo, verso sicuro`
+- **V-2 ve #242 (commenti vuoti su 3.11)**: `DEFERITA — differenza del parser 3.11, il ripiego segue i browser; registrata`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +++
- modules/web/leggi.py               | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
+ .claude/agents/memoria_revisore.md |   6 ++++
+ modules/web/leggi.py               | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
  reports/diff_sessione.md           |  11 ++++----
- reports/handoff.md                 | 528 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 549 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  33 ++++++++++-------------
- tests/test_unit_web_leggi.py       | 106 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 7 files changed, 344 insertions(+), 444 deletions(-)
+ reports/ultimo_report.md           |  36 ++++++++++++------------
+ tests/test_unit_web_leggi.py       | 108 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 7 files changed, 398 insertions(+), 429 deletions(-)
 ```
 
 ---
@@ -45,6 +47,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+67485b2 fix(web): contatore dei blocchi nascosti per nome (V-1 bot #242)
+aa548dd chore(revisore): memoria review #448 — APPROVATO CON RISERVE
+ae2235b docs(fine-task): report, stato e handoff — chat Mani fetta 5 (#242)
 f583746 fix(web): fetta 5 chat Mani — ripiego con contatore come il parser, commenti fasulli, <script/> (R6)
 b147ca6 chore(revisore): memoria review #447 — APPROVATO CON RISERVE
 980997f chore(revisore): memoria review #446 — APPROVATO CON RISERVE
@@ -57,7 +62,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Tre verdetti, incollati integralmente: #445, #446, #447 (chat Mani), tutti sul diff del commit `f583746` (i giri #445/#446 hanno chiuso le proprie riserve nello stesso diff; le righe di memoria sono nei commit `b49e2a7`, `980997f`, `b147ca6` fatti dal revisore).
+Quattro verdetti, incollati integralmente: #445, #446, #447 (chat Mani) sul diff del commit `f583746` (i giri #445/#446 hanno chiuso le proprie riserve nello stesso diff; le righe di memoria sono nei commit `b49e2a7`, `980997f`, `b147ca6` fatti dal revisore); #448 (chat Mani) sul commit `67485b2` (memoria in `aa548dd`).
 
 ### Review #445 (chat Mani)
 
@@ -211,20 +216,61 @@ Script delle sonde e del fuzz: /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b
 
 ---
 
+### Review #448 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #448 (chat Mani), 2026-10-21. Diff staged su feat/mani-web-fetta5 (PR #242), base HEAD ae2235b. Prima della review ho letto: CLAUDE.md (sezioni 1, 4, 5, 8, 9, 10), reports/stato_progetto.md (la voce della fetta 5 di Mani; R-447-1) e .claude/agents/memoria_revisore.md (le lezioni sul ripiego HTML del 2026-10-21, ultima riga #447).
+
+Il diff non tocca niente del Wall of Shame: nessuno slicing della history, nessuna simulazione di tool, nessun provider, nessun cambio a `_get_window` o ai tetti. Il modulo resta FAIL-SAFE e la ricerca nel ripiego resta lineare.
+
+**Elementi del diff esaminati**
+
+- modules/web/leggi.py:443 — `handle_starttag` conta l'apertura anche in `_aperti[tag]`. Rischio: un'apertura contata in `_salta` ma non per nome non si chiuderebbe mai, e `_salta` smetterebbe di essere la somma di `_aperti`. Anche `handle_startendtag` (modules/web/leggi.py:452) passa da `handle_starttag`, quindi i `<script/>` contano per nome. La mutazione «apertura senza nome» fa fallire 1 test. Esito: ok.
+- modules/web/leggi.py:462 — `handle_endtag` scala solo se esiste un'apertura con lo stesso nome. Rischio: che ora si nasconda meno di prima, cioè una fuga di testo nascosto. Ho dimostrato l'invariante: le aperture sono identiche e il contatore per nome scala solo quando lo farebbe anche quello unico (o quando quello unico è già a zero). Quindi a ogni passo il totale per nome è almeno quello del contatore unico. Il fuzz «parser nuovo ⊆ parser HEAD» lo conferma con 0 casi su 200k. Le sonde vanno come atteso: `<svg>SEGRETO</script>VIS` prima mostrava VIS, ora niente; `<SVG>S</Script>S2</SVG>V` e `<object>S</iframe>S2</object>V` ora mostrano solo V. La mutazione «contatore unico» fa fallire 1 test. Esito: ok.
+- modules/web/leggi.py:587 e modules/web/leggi.py:595 — nel ripiego, il grezzo autochiuso nascosto e le aperture contate incrementano `aperti[nome]`. Rischio: come sopra, in più c'è la parità col parser (`<script/>` conta e una `</script>` successiva lo scala in entrambi i percorsi). Le mutazioni «grezzo autochiuso senza nome» e «contati senza nome» fanno fallire 1 test ciascuna. Esito: ok.
+- modules/web/leggi.py:597 — la chiusura nel ripiego scala solo se `aperti[nome[1:]] > 0`. Ho controllato che sia giusto togliere `nome[1:] in _TAG_NASCOSTI`: `aperti` contiene solo nomi già filtrati da `_CONTATI_RIPIEGO` o da `_GREZZI_RIPIEGO ∩ _TAG_NASCOSTI`. `title` non è in `_TAG_NASCOSTI`, quindi `<title/>` non conta, come nel parser. Ho provato anche `</svg >`, `</svg/>` e `</svg x=1>`: ok. Tempi: 2,8 MB con `<svg>`×200k più `</script>`×200k danno ripiego 0,47 s e parser 1,1 s; anche gli altri due input avversari restano sotto 1,1 s. Esito: ok.
+- tests/test_unit_web_leggi.py:859 — nuovo caso sul percorso normale `<svg>SEGRETO</script>SEGRETO_2</svg>VIS`. Rischio: un test che non cattura la regressione. Con la mutazione M1 (parser a contatore unico) fallisce. Esito: ok.
+- tests/test_unit_web_leggi.py:898 — il test che prima fissava «VIS visibile» è stato invertito, e alla riga dopo c'è il caso annidato al contrario `<svg><noscript>…</svg>…</noscript></svg>VIS`. La mutazione M2 (ripiego a contatore unico) lo fa fallire. Esito: ok.
+
+**Verifiche eseguite da me**
+
+- Suite del modulo: 167 passed (Python 3.13.16).
+- Fuzz indipendente (scratchpad r448/fuzz448.py). Controlla tre proprietà: il ripiego non mostra niente che il parser nasconde; il parser nuovo nasconde almeno quanto quello di HEAD; il ripiego nuovo almeno quanto quello di HEAD. Gli atomi sono aperture, chiusure, forme autochiuse e attributi con dentro una chiusura, su 18 nomi (maiuscole comprese). Risultato: 0 fughe su 100k pagine con 3.13.16 e 0 su 100k con 3.11.17.
+- 5 mutazioni su una copia del repo presa dall'index (parser a contatore unico, ripiego a contatore unico, grezzo autochiuso senza nome, contati senza nome, apertura del parser senza nome): ognuna fa fallire 1 test.
+
+**Riserve**
+
+- R-448-1 (COSMETICA): modules/web/leggi.py:112 è una riga di commento da 160 caratteri. Va mandata a capo come le righe vicine (circa 100 caratteri).
+- R-448-2 (BASSA, di registro): la correzione chiude anche la parte (a) di R-447-1. Prima `<script/>A</noscript>B</script>C` mostrava B; ora sia il parser sia il ripiego mostrano solo C (verificato). Va scritto in reports/stato_progetto.md come chiusa. Resta aperta la parte (b): un `<iframe/>` o `<script/>` senza chiusura nasconde il resto della pagina. È nel verso sicuro: si perde testo, non esce testo nascosto.
+
+**Rischio escluso**
+
+Non ho confrontato il comportamento con un vero parser HTML5 o con un browser: html5lib non è installato e in dev non ho un browser. Il confronto è solo fra ripiego, `_Estrattore` e HEAD. Esiste un caso noto, già presente prima del diff, che resta: nei browser `<p>` e `<div>` dentro svg fanno uscire dall'svg, mentre Gas continua a nasconderlo. È nel verso sicuro (perdita di testo) e il diff non lo cambia, perché il totale nascosto non scende mai.
+
+**Memoria**
+
+Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #448 (chat Mani) e una lezione (sondare le riserve aperte dello stesso meccanismo; affiancare un fuzz «nuovo ⊆ HEAD»). L'ho committata con scripts/commit_memoria_revisore.sh nel commit aa548dd. Il diff staged del motore è rimasto intatto. File di lavoro: /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r448/fuzz448.py, /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r448/mut.py, /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r448/sonde.py.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 137 → 166 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «166 passed», Python 3.13 e 3.11 (venv); 166 passed anche con rete e DNS veri bloccati via sitecustomize).
+- Web suite: 137 → 167 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «167 passed in 19.43s», Python 3.13 e 3.11 (venv) «167 passed in 19.44s»; con rete e DNS veri bloccati via sitecustomize «167 passed in 19.32s»). Primo giro (`f583746`) 137 → 166, secondo (`67485b2`) 166 → 167.
 - Fuzz differenziale ripiego contro parser: 0 fughe su 500k pagine (3.13) e 300k (3.11, escluse `<!-->`/`<!--->`).
 - Mutazioni in copie isolate, tutte prese (22): contatore che non scende o scende sotto zero, svg grezzo, autochiuso ignorato o anche con «/» nel valore, noscript autochiudibile, CDATA al primo «>», fasulli come tag, chiusura senza virgolette, testo dentro i blocchi, regex finale rimessa, confine del nome tolto, grezzi autochiusi (che non contano o che saltano), plaintext con chiusura, textarea/xmp/noframes non grezzi, `handle_startendtag` tolto / anche svg / tutti.
+- Secondo giro: fuzz 0 fughe su 200k (3.13) e 100k (3.11); mutazioni prese: parser a contatore unico, ripiego senza decremento per nome, grezzo autochiuso senza nome.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh run list` (gh non autenticato nella sessione cloud). Mappatura commit→run:
-- `b49e2a7`, `980997f`, `b147ca6`, `f583746`: nessuna run su questi SHA da soli (pushati insieme al commit di fine-task che contiene questo file): run non ancora disponibile alla scrittura dell'handoff.
+`gh` non autenticato nella sessione cloud: esiti letti dai check della PR #242 via MCP GitHub. Mappatura commit→run:
+- `b49e2a7`, `980997f`, `b147ca6`, `f583746`: nessuna run su questi SHA da soli (pushati insieme a `ae2235b`, che li contiene).
+- `ae2235b` (fine-task del primo giro): run 39687169817, unit-suite success («166 passed» della web suite su Python 3.11.17, letto dalla verifica esterna), handoff-check success; verifica-bot success (il primo giro del bot cancelled per concorrenza, il secondo success).
+- `aa548dd`, `67485b2`: nessuna run su questi SHA da soli (pushati col commit di fine-task che contiene questo file).
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-447-1 (chat Mani)** BASSA dichiarata: dopo `<script/>` html.parser non entra in modalità grezza, quindi il contatore scende alla prima chiusura di un nascosto qualsiasi; un `<script/>` senza chiusura nasconde il resto della pagina (si perde testo).
+- Di questa fetta: **R-447-1 (chat Mani)** BASSA parte (b): un `<script/>` senza chiusura nasconde il resto della pagina (si perde testo; la parte (a) è chiusa dal contatore per nome, R-448-2); **V-2 ve #242** BASSA html.parser 3.11 non riconosce `<!-->`/`<!--->` (il ripiego segue i browser; lo «0 fughe» su 3.11 vale escludendo quelle pagine); **R-448-1 (chat Mani)** COSMETICA riga di commento da 160 caratteri; V-3 ve #242 COSMETICA (SystemError su 3.11: visto dall'agente sul pattern vero, non riprodotto dal verificatore con le sue varianti).
 - Restano: R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5 e R-ve235-7 (limiti dichiarati). Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…5».
