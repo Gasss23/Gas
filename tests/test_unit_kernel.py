@@ -7486,12 +7486,13 @@ check("T97a turni interi di due processi: nessuno cancella l'altro",
 # B a metà turno, A ha salvato un turno intero: il turno di A va DOPO il seguito
 # di B (V-1 bot #236: è il caso del blocco della firma scritto dal bot)
 _a97._add_to_history("user", content="ancora A")
+_a97._add_to_history("assistant", content="risposta ancora A")
 _a97._save_history()
 _b97._add_to_history("assistant", content="seguito di B a metà turno")
 _b97._save_history()
 _f97b = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
 check("T97b B a metà turno + turno intero di A: «seguito di B» poi «ancora A», niente copia",
-      _f97b[-2:] == ["seguito di B a metà turno", "ancora A"]
+      _f97b[-3:] == ["seguito di B a metà turno", "ancora A", "risposta ancora A"]
       and not list(_r97.glob(".gas_history.json.conflitto.*")), str(_f97b))
 # entrambi a metà turno: la versione dell'altro va in una copia «conflitto»
 _a97._add_to_history("assistant", content="A a metà turno")
@@ -7599,13 +7600,60 @@ _f97i = [str(m.get("content")) for m in json.loads((_r97f / ".gas_history.json")
 check("T97i turno senza risposta finale: a fine turno su disco i nostri tool e il blocco dell'altro",
       _rim97i and "due-i" in _f97i and any("id-97i" in t for t in _f97i)
       and _cli97i._storia_rimandata is False, f"{_rim97i} {_f97i[-6:]}")
+# T97j — R-436-1 / V-1 bot #236 (5° giro): passa dal generatore di run_turn. Il bot
+# scrive prima del PRIMO salvataggio del turno della CLI: unione rimandata (il
+# modello non vede il blocco durante il turno); il turno finisce senza risposta
+# finale (provider in errore) e il finally di run_turn salva tutto
+_r97j = Path(tempfile.mkdtemp(prefix="gas_t97j_", dir=_TMP_ESECUZIONE))
+_cli97j = GasKernel(root_dir=str(_r97j))
+_cli97j.history = [{"role": "user", "content": "base"}, {"role": "assistant", "content": "ok"}]
+_cli97j._save_history()
+_bot97j = GasKernel(root_dir=str(_r97j))
+_visto97j: list = []
+class _Passo97j(list):
+    def __iter__(self):
+        _bot97j._storia_esito_firma("id-97j", "run_command", '{"command": "echo"}',
+                                    "ok", "fatto", True)
+        return super().__iter__()
+class _Esplodi97j(list):
+    def __iter__(self):
+        _visto97j.append(any("id-97j" in str(m.get("content")) for m in _cli97j.history))
+        raise RuntimeError("provider giù")
+_ev97j = run_turn_scriptato(_cli97j, "domanda j", [
+    _Passo97j([("calcola", '{"expr": "20+3"}')]), _Esplodi97j([("calcola", '{"expr": "1"}')])])
+_f97j = [str(m.get("content")) for m in json.loads((_r97j / ".gas_history.json").read_text())]
+check("T97j turno senza risposta: niente blocco altrui durante il turno, a fine turno tutto su disco",
+      _visto97j and not any(_visto97j) and any(e["type"] == "error" for e in _ev97j)
+      and "23" in _f97j and any("id-97j" in t for t in _f97j)
+      and _cli97j._storia_rimandata is False, f"{_visto97j} {_f97j}")
+# T97k — V-2 bot #236 (5° giro): scrittura fallita dopo un'unione «nostra + suoi»,
+# poi l'altro riscrive: i suoi messaggi già uniti non si duplicano
+_a97k = GasKernel(root_dir=str(_r97j))
+_b97k = GasKernel(root_dir=str(_r97j))
+_b97k._add_to_history("assistant", content="B extra")
+_a97k._add_to_history("user", content="A-k1")
+_a97k._add_to_history("assistant", content="rA-k1")
+_a97k._save_history()
+_salva97k = _b97k._salva_storia_su_file
+_b97k._salva_storia_su_file = lambda: False  # type: ignore[method-assign]
+_b97k._save_history()
+_b97k._salva_storia_su_file = _salva97k  # type: ignore[method-assign]
+_a97k._add_to_history("user", content="A-k2")
+_a97k._add_to_history("assistant", content="rA-k2")
+_a97k._save_history()
+_b97k._save_history()
+_f97k = [str(m.get("content")) for m in json.loads((_r97j / ".gas_history.json").read_text())]
+check("T97k niente duplicati dopo un'unione con scrittura fallita (V-2 bot #236)",
+      _f97k.count("A-k1") == 1 and _f97k.count("A-k2") == 1 and "B extra" in _f97k, str(_f97k))
+_sh39e.rmtree(_r97j, ignore_errors=True)
 # T97g — V-3 bot #236: lock della storia tenuto da un altro (processo fermo) → dopo
 # LOCK_STORIA_SEC si salva lo stesso, senza lock, con un avviso
 import fcntl as _fcntl97
 _tieni97 = open(_r97f / ".gas_history.json.lock", "a")
 _fcntl97.flock(_tieni97.fileno(), _fcntl97.LOCK_EX)
 _cli97.LOCK_STORIA_SEC = 0.2
-_cli97._add_to_history("user", content="col lock occupato")
+_cli97._add_to_history("user", content="domanda col lock")
+_cli97._add_to_history("assistant", content="col lock occupato")
 _t0_97 = _time_pulizia.monotonic()
 _cli97._save_history()
 _dt97 = _time_pulizia.monotonic() - _t0_97
