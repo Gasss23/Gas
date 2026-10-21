@@ -19,6 +19,7 @@
 - **5.5 R-tel-budget-perf — spesa letta solo sulle righe nuove**: `FATTA` — review #409, #411 APPROVATO CON RISERVE.
 - **V-1 bot #234, V-4 verifica esterna #234, R-409-1/2/3**: `FATTA` — review #410 APPROVATO CON RISERVE.
 - **R7 R-fts-1 — tetto alle parole delle ricerche**: `FATTA` — review #412 APPROVATO CON RISERVE (solo statica, disco temporaneo pieno).
+- **Budget: ts non validi/futuri, riga senza a capo, gas tokens (V-2 bot #234, V-1 verifica #234, R-411-1, R-413-1/2)**: `FATTA` — review #413, #414 APPROVATO CON RISERVE.
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -27,25 +28,30 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 ++++
- gas.py                             |  97 +++++++++++++++++++++++++++++++++++------------
+ .claude/agents/memoria_revisore.md |   9 +++++
+ gas.py                             | 130 ++++++++++++++++++++++++++++++++++++++++++++++++------------
  modules/gate/gate.py               |  12 +++++-
- modules/memory/store.py            |  21 ++++++++++-
- modules/notte/notte.py             | 124 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/da_mergiare.md             |  93 +++++++++++++++------------------------------
+ modules/memory/store.py            |  21 +++++++++-
+ modules/notte/notte.py             | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/da_mergiare.md             |  93 +++++++++++++++----------------------------
  reports/diff_sessione.md           |  16 ++++----
- reports/handoff.md                 | 744 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 780 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  39 ++++++++-----------
+ reports/ultimo_report.md           |  42 +++++++++-----------
  tests/test_unit_gate.py            |   8 ++++
- tests/test_unit_kernel.py          |  63 +++++++++++++++++++++++++++++++
- tests/test_unit_notte.py           | 194 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 752 insertions(+), 668 deletions(-)
+ tests/test_unit_kernel.py          |  95 ++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py           | 194 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 878 insertions(+), 648 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5142d8f fix(budget): ultima riga senza a capo contata; date finte o future ignorate; gas tokens regge un ts null (V-1 verifica #234, R-413-1/2)
+c10726e chore(revisore): memoria review #414 — APPROVATO CON RISERVE
+a86f493 fix(budget): riga del registro dei token senza data valida ignorata, mai «per sempre nelle 24 ore» (V-2 bot #234, R-411-1)
+9400261 chore(revisore): memoria review #413 — APPROVATO CON RISERVE
+2d07cd3 docs(fine-task): report, handoff, coda da_mergiare — tetto parole ricerche (R-fts-1)
 ab60f35 fix(memoria): tetto di 12 parole distinte (max 40 caratteri) alle ricerche nel diario e nella conoscenza (R-fts-1, roadmap R7)
 f682cc0 chore(revisore): memoria review #412 — APPROVATO CON RISERVE
 9d793f3 docs(fine-task): report, handoff, coda da_mergiare — spesa incrementale, correzioni #234
@@ -323,25 +329,97 @@ Rischi esplicitamente esclusi:
 
 ---
 
+### Review #413 (chat Motore) — commit a86f493
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #413 (chat Motore). Ho letto: CLAUDE.md (sez. 5, 8, 9, 10), le parti utili di reports/stato_progetto.md e la memoria del revisore (comprese le righe da #408 a #412).
+
+**Elementi del diff esaminati**
+1. `gas.py:867`: è la regex `_TS_LOG_RE`, con lo stesso formato di `_log_tokens` (`gas.py:1181`, strftime `%Y-%m-%dT%H:%M:%S`) e del cutoff (`gas.py:1213`). Ho controllato che i formati coincidano: il confronto tra stringhe resta corretto. Esito: ok.
+2. `gas.py:892`: il ts viene accettato solo se è una str e la regex combacia per intero (fullmatch). Le ho provate così:
+   - vengono ignorati: None, «None», «domani», 5, ts assente, «2026-10-21», «…Z», «….5», «…\n» finale;
+   - viene tenuto: il ts reale di `_log_tokens`.
+   Il `try/except Exception → None` resta, quindi nessun nuovo punto di crash (§9). Esito: ok. C'è una riserva, vedi R-413-1.
+3. `tests/test_unit_kernel.py:7118`: T94d ora controlla `is not None` prima di indicizzare. Con una regressione dà FAIL invece di fermare la suite: R-411-1 è chiusa. Esito: ok.
+4. `tests/test_unit_kernel.py:7127`: T94e prova sei ts non validi e uno valido. Mutazioni, fatte su una copia nello scratchpad poi cancellata:
+   - controllo tolto del tutto: T94e FAIL (962/1);
+   - controllo ridotto al solo `isinstance`: T94e FAIL (962/1).
+   Il test distingue davvero il fix. Esito: ok.
+
+Ho rifatto girare la suite del kernel sulla versione staged: 963 PASS, 0 FAIL. Non ci sono slicing della history né simulazioni di tool; `_get_window`, il tetto di 10 iterazioni e quello degli 8k non sono toccati.
+
+**Riserve**
+- **R-413-1 (BASSA)**: `\d` accetta anche le cifre Unicode, e la regex non controlla che la data esista.
+  - Sonda: «<U+FF12><U+FF10><U+FF12><U+FF16>-<U+FF11><U+FF10>-<U+FF12><U+FF11>T<U+FF11><U+FF10>:<U+FF10><U+FF10>:<U+FF10><U+FF10>» e «9999-99-99T99:99:99» vengono accettati, e vale lo stesso per qualunque ts futuro. Come stringa restano sempre ≥ cutoff, quindi il budget può restare bloccato per sempre, lo stesso effetto di V-2.
+  - Succede solo con un log scritto a mano: `_log_tokens` non può produrli.
+  - Rimedio: `re.ASCII` oppure `[0-9]`, poi `strptime`, e scartare i ts oltre l'ora attuale più un margine.
+- **R-413-2 (BASSA, preesistente, fuori dal diff)**: in `gas.py:4687` `tokens_cmd` fa `r.get("ts", "") >= cutoff`. Con `"ts": null` nel log il comando `gas tokens` si ferma con TypeError (None >= str); l'ho riprodotto con un log di una riga. Non tocca il loop del kernel.
+
+**Cosa non ho verificato**
+- Il comportamento su VPS o sul Mac con un `.gas_tokens.jsonl` reale e grande, e i tempi: non riproducibili qui.
+- Il percorso di `_daily_cost_usd` con la cache già piena di voci vecchie del formato precedente: ho controllato solo per lettura che il filtro `gas.py:1244` lavori sulle stesse tuple.
+
+**Note operative**
+- Il repo reale non è stato toccato oltre alla memoria: niente checkout, l'index staged è intatto.
+- La memoria è aggiornata (riga #413 con la lezione) e committata da sola con `scripts/commit_memoria_revisore.sh`: commit 9400261 sul branch feat/merge-automatico-z1xjx2.
+
+File: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+---
+
+### Review #414 (chat Motore) — commit 5142d8f
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #414 (chat Motore), sul diff staged in /home/user/Gas (gas.py, tests/test_unit_kernel.py). Prima della review ho letto CLAUDE.md (sez. 5, 8, 9), reports/stato_progetto.md (in modo selettivo) e .claude/agents/memoria_revisore.md (le lezioni e le righe da #409 a #413).
+
+**Elementi del diff esaminati**
+- gas.py:1262 — la riga finale senza «\n» viene contata solo nel totale e non entra in cache, e l'offset non si sposta. Rischi esaminati: doppio conteggio quando arriva il «\n»; una coda che contiene «\n»; un JSON a metà scritto da un processo concorrente. Sonda: 0.3 prima del «\n» e 0.3 dopo, quindi la riga è contata una volta sola. Il caso «coda con \n» non può capitare: dopo il blocco principale l'offset sta subito dopo l'ultimo «\n», e la guardia `b"\n" not in resto` lo esclude comunque. Un prefisso di riga non è JSON valido, perché la «}» finale c'è solo a riga completa. Le eccezioni restano dentro il try/except con warning (§9). — ok
+- gas.py:870 — `_ts_log_valido`: cifre ASCII, data vera con `strptime` (anche il secondo 60 dà ValueError, che viene preso), niente ts oltre ora+1h. Rischio esaminato: un ts appena scritto da `_log_tokens` (gas.py:1194, UTC, stesso formato) deve passare. Sonda: adesso e +59 minuti accettati, +61 minuti scartato. `timedelta` è importato a livello di modulo (gas.py:15), quindi niente NameError silenzioso che azzererebbe il budget. — ok
+- gas.py:4711 — `tokens_cmd` con un ts non stringa: `is_recent` diventa False e il comando non si ferma più. — ok
+- tests/test_unit_kernel.py:7087 — T94a con la coda senza «\n», poi il «\n» che arriva; T94e con cifre a larghezza piena, 9999-99-99 e 2999; T94f con «"ts": null». — ok, salvo R-414-3
+- Contesto: gas.py:1209 `_daily_cost_usd`: la cache filtra solo con `cutoff`, il filtro sul «futuro» si applica solo in lettura (vedi R-414-1).
+
+**Riproduzioni**: suite kernel **964 PASS, 0 FAIL**, rifatta su una copia nello scratchpad. Sonde (script /tmp/claude-0/-home-user-Gas/44c5231e-90cf-40cb-8216-3ee48596875d/scratchpad/sonda.py) con i risultati riportati sopra. In più, una coda da 5 MB senza «\n»: 20 chiamate in 0,13 s.
+
+**Finding**
+- **R-414-1 (chat Motore) BASSA**: se l'orologio torna indietro di più di 1 ora (correzione NTP sulla VPS), le voci già in cache restano contate. Rilette da capo, per esempio dopo un riavvio, vengono scartate come «future». Risultato: spesa sottostimata e kill-switch del budget più debole. Sonda: 0.15 con la cache, 0 dopo la rilettura. È il prezzo dichiarato per evitare un blocco permanente. Va almeno scritto nel commento di `_ts_log_valido`, oppure va riapplicato il filtro anche alle voci in cache, così il comportamento è lo stesso nei due casi.
+- **R-414-2 (chat Motore) BASSA**: una coda senza «\n» viene riletta intera a ogni chiamata, e due volte: nel blocco principale e nel blocco nuovo. Non c'è un tetto, quindi una coda spazzatura enorme costa I/O a ogni turno (misurato: trascurabile a 5 MB). Rimedio: riusare `nuovo[fine+1:]` quando è già stato letto, e saltare le code oltre una soglia, per esempio 64 KB, che non possono essere una riga di `_log_tokens`.
+- **R-414-3 (chat Motore) COSMETICA**: il messaggio di T94a non stampa `_c94c2`, quindi un fallimento del caso nuovo non mostra il valore. C'è anche un difetto preesistente: con la lista vuota `_daily_cost_usd` restituisce l'intero 0 invece di 0.0.
+
+**Escluso / non verificato**
+- **Mutazioni NON verificate.** Le ho lanciate su una copia: coda tolta, futuro tolto, `strptime` ignorato, `isinstance` tolto in `tokens_cmd`. Però il filtro grep era sbagliato: prendeva anche le righe PASS che contengono «Error» e con `head -5` le righe FAIL sono rimaste tagliate fuori. Poi il disco è finito pieno (ENOSPC). Quindi non so se T94a, T94e e T94f mordono davvero.
+- **Disco pieno.** /tmp occupa circa 30 GB, in gran parte cartelle `gas_test_*` lasciate dalle suite, comprese le mie 5 esecuzioni. Ho tentato di cancellare quelle dei miei run, ma il classificatore dei permessi ha negato l'operazione. **Va liberato lo spazio prima del prossimo run di test o commit**: va fatto dall'operatore o dall'agente principale, con il permesso.
+- Il comportamento con un vero salto dell'orologio di sistema è stato provato solo simulando `datetime.now`.
+
+Copia nello scratchpad cancellata. Nel repo reale ho toccato solo la memoria. Riga contatore #414 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con lo script (c10726e). Lezione nuova: nei run di mutazione filtrare solo `^\[FAIL\]|RIEPILOGO` e controllare prima lo spazio su /tmp, perché la suite lascia cartelle `gas_test_*`.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 957 → 962 PASS, 0 FAIL (T94a-d, T95). Blocco reale: `=== RIEPILOGO: 962 PASS, 0 FAIL ===`.
+tests/test_unit_kernel.py: 957 → 964 PASS, 0 FAIL (T94a-f, T95). Blocco reale: `=== RIEPILOGO: 964 PASS, 0 FAIL ===`.
 pytest `tests/test_unit_notte.py`: 106 → `122 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
 
-- 5267148 (con 6eaab53, d51de97, bb9305e e memorie): handoff-check success, unit-suite success, verifica-bot neutral (verdetto APPROVATO CON RISERVE, decide l'operatore) — dal verdetto del bot e dalla verifica esterna #234, e dall'evento check_suite.completed sulla PR.
-- 9d793f3 (con 6f6edd7, 7e9900c, 4227270 e memorie): run in corso alla scrittura dell'handoff.
-- ab60f35 e memorie: run non ancora disponibile alla scrittura dell'handoff.
+- 5267148: handoff-check, unit-suite success; verifica-bot neutral (APPROVATO CON RISERVE).
+- 9d793f3: unit-suite success, handoff-check success (verifica esterna #234 2° giro); verifica-bot neutral (APPROVATO CON RISERVE).
+- ab60f35: handoff-check failure (pushato senza il dossier, per l'HEAD staccato da un agente di verifica); superato dal commit successivo.
+- 2d07cd3: unit-suite success (kernel 964 PASS in CI), handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE) — dal verdetto del bot.
+- a86f493, 5142d8f e memorie: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-408-1 (BASSA): potatura del registro spenta da qualsiasi avviso del catalogo.
 - R-408-2 (COSMETICA): read_file su «.» negato invece di «è una cartella».
 - Limite dichiarato (#406): la ripresa riparte da capo con la nota, non rilegge la storia parziale del compito.
-- R-411-1 (BASSA): T94d interrompe la suite invece di dare FAIL se torna R-410-1.
 - R-411-2 (BASSA): conteggio enorme scritto a mano conta 0.
 - V-3 verifica esterna #234 (BASSA, dichiarata): un Ctrl-C dell'operatore conta come crash.
 - R-412-1 (BASSA): si tengono le prime 12 parole della ricerca.
 - R-412-2 (COSMETICA): T95 parziale.
+- R-414-1/2 (BASSE), R-414-3 (COSMETICA): orologio indietro, coda senza a capo riletta, messaggio di T94a.
+- Test che lasciano cartelle `gas_*` in /tmp (da sistemare).
+- V-2 bot #234 2° giro (BASSA): avviso «ripreso» prima dell'avvio reale.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
