@@ -110,6 +110,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_voice_server.py tests/test_unit_voice_stt.py tests/test_unit_voice_tts.py -v 2>&1 | tee "$RUNNER_TEMP/voice_output.txt"
 
+      - name: Run web suite (pytest, zero token LLM)
+        # modules/web (R6, chat Mani): server finto su 127.0.0.1 e DNS finto, zero rete vera.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_web_*.py -v 2>&1 | tee "$RUNNER_TEMP/web_output.txt"
+
       - name: Run handoff/verdetto check suite (pytest, zero token LLM)
         # R-138-4: i test di check_handoff/check_verdetto (gate A/B, ora required)
         # girano anche in CI, non solo in locale.
