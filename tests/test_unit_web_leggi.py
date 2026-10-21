@@ -606,12 +606,33 @@ def test_ripiego_senza_parser_se_html_parser_esplode(monkeypatch):
         raise ValueError("parser rotto")
 
     monkeypatch.setattr(web._Estrattore, "feed", esplode)
-    corpo = b"<p>uno</p><b>due</b><script>alert(1)</script><STYLE>x{}</style >tre &amp; quattro<noscript>n</noscript>"
+    corpo = (
+        "<p>uno</p><b>due</b><script>SEGRETO_SCRIPT</script><STYLE>SEGRETO_STYLE</style >tre &amp; quattro"
+        "<noscript>SEGRETO_NOSCRIPT</noscript><template>SEGRETO_TEMPLATE</template>"
+        "<svg><text>SEGRETO_SVG</text></svg><iframe>SEGRETO_IFRAME</iframe><canvas>SEGRETO_CANVAS</canvas>"
+        "<!-- con maggiore > SEGRETO_COMMENTO -->cinque<styled-box>VISIBILE_BOX</styled-box>"
+        "<scripts>VISIBILE_SCRIPTS</scripts>sei<script>SEGRETO_A</scriptx>SEGRETO_B</script>sette"
+        "<script_x>VISIBILE_SCRIPT_X</script_x><style.x>VISIBILE_STYLE_X</style.x>"
+        "<script>SEGRETO_C</script data-x=1>otto"
+    ).encode()
     pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": corpo, "troncato": False}
     t = web._componi("http://x.test/", pagina)["testo"]
-    assert "uno" in t and "due" in t and "tre & quattro" in t and "<p>" not in t
-    for nascosto in ("alert", "x{}", "\nn\n"):  # V-2 bot #237: script e stili tolti anche nel ripiego
-        assert nascosto not in t
+    for visibile in ("uno", "due", "tre & quattro", "cinque", "VISIBILE_BOX", "VISIBILE_SCRIPTS", "sei", "sette",
+                     "VISIBILE_SCRIPT_X", "VISIBILE_STYLE_X", "otto"):
+        assert visibile in t, visibile
+    # Come il parser: via i commenti e tutti gli elementi nascosti (V-1 ve #238, V-2 ve #238),
+    # ma non i tag che hanno solo lo stesso inizio (V-1 bot #238).
+    assert "SEGRETO" not in t and "<p>" not in t
+    assert "data-x" not in t  # la chiusura con attributi finisce al suo «>» (R-431-3)
+
+
+def test_ripiego_con_unescape_che_esplode(monkeypatch):
+    """V-3 bot #238: se html.unescape solleva, il ripiego tiene il testo com'è."""
+    def esplode(testo):
+        raise ValueError("unescape rotto")
+
+    monkeypatch.setattr(web, "html_unescape", esplode)
+    assert "a &amp; b" in web._testo_senza_parser("<p>a &amp; b</p>")
 
 
 def test_finto_marcatore_con_trattini_bassi_neutralizzato():
@@ -691,10 +712,12 @@ def _entro(secondi: float, funzione: str, espressione: str) -> bool:
     Mani). Se va oltre «secondi» il test fallisce invece di bloccare la suite per ore."""
     codice = f"from modules.web import leggi as web; web.{funzione}({espressione})"
     try:
-        subprocess.run([sys.executable, "-c", codice], cwd=_RADICE, check=True, timeout=secondi,
-                       capture_output=True)
+        esito = subprocess.run([sys.executable, "-c", codice], cwd=_RADICE, timeout=secondi,
+                               capture_output=True, text=True)
     except subprocess.TimeoutExpired:
         return False
+    # Se il figlio fallisce si vede perché (V-4 verifica esterna #238).
+    assert esito.returncode == 0, esito.stderr[-2000:]
     return True
 
 
@@ -705,7 +728,8 @@ def test_pulizia_lineare_con_tanti_trattini():
 
 
 def test_ripiego_lineare():
-    for pagina in ('"<script>x</script>" * 100_000', '"<script" * 200_000', '"<" * 1_000_000'):
+    for pagina in ('"<script>x</script>" * 100_000', '"<script" * 200_000', '"<" * 1_000_000',
+                   '"<!--" * 500_000', '"<script></scriptx" * 100_000', '"<s" * 1_000_000'):
         assert _entro(10.0, "_testo_senza_parser", pagina), pagina
 
 
@@ -737,6 +761,9 @@ def test_thread_dns_che_non_parte_restituisce_il_permesso(monkeypatch):
         def start(self):
             raise RuntimeError("thread rotto")
 
+    # I thread DNS lenti dei test precedenti tengono permessi: si aspetta che finiscano (V-2 bot #238).
+    for t in [t for t in threading.enumerate() if t.name == "gas-web-dns"]:
+        t.join(10)
     monkeypatch.setattr(web.threading, "Thread", _ThreadRotto)
     for _ in range(web.MAX_DNS_IN_CORSO + 2):
         with pytest.raises(RuntimeError):
@@ -800,4 +827,12 @@ def test_certificato_non_attendibile_rifiutato_sul_percorso_vero(tmp_path):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_embed_non_nasconde_il_resto_della_pagina(rete):
+    """R-431-2 (chat Mani): «embed» è vuoto; sia il parser sia il ripiego mostrano il seguito."""
+    pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": b"<p>a<embed src=x>VIS_DOPO_EMBED</p>",
+              "troncato": False}
+    assert "VIS_DOPO_EMBED" in web._componi("http://x.test/", pagina)["testo"]
+    assert "VIS_DOPO_EMBED" in web._testo_senza_parser("a<embed src=x>VIS_DOPO_EMBED")
 

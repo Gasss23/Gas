@@ -77,7 +77,17 @@ _FINTO_MARCATORE = re.compile(
     r"\[?[\s_-]{0,3}(?:fine[\s_-]+(?:del[\s_-]+)?)?contenuto[\s_-]+web[\s_-]+non[\s_-]*fidato",
     re.IGNORECASE,
 )
-_BLOCCHI_NASCOSTI = ("script", "style", "noscript", "template")
+# Elementi il cui contenuto non è testo da leggere: stessi per il parser e per il ripiego
+# (V-2 verifica esterna #238).
+# Niente «embed»: è un elemento vuoto, senza chiusura, e contarlo come blocco nascondeva
+# tutto il resto della pagina (R-431-2 chat Mani).
+_TAG_NASCOSTI = frozenset({
+    "script", "style", "noscript", "template", "svg", "math", "iframe", "object", "canvas",
+})
+# Inizio di un commento o di un tag con il nome intero (così «<styled-box>» non è «<style»,
+# V-1 bot #238). Classi semplici e niente annidamenti: la ricerca è lineare.
+_INIZIO_TAG = re.compile(r"<(!--|/?[a-z][a-z0-9:-]*)")
+_FINE_NOME = frozenset(" \t\n\r\f/>")
 _MINUSCOLE_ASCII = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 # Riferimenti numerici enormi («&#» + migliaia di cifre): html.parser solleva ValueError
 # (limite delle cifre degli interi) e la pagina diventerebbe illeggibile (R-ve235-4).
@@ -382,7 +392,7 @@ def _scarica(
 # ───────────────────────────── testo ─────────────────────────────
 
 class _Estrattore(HTMLParser):
-    _SALTA = {"script", "style", "noscript", "template", "svg", "math", "iframe", "object", "embed", "canvas"}
+    _SALTA = _TAG_NASCOSTI
     _BLOCCHI = {
         "p", "div", "br", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "table",
         "section", "article", "header", "footer", "nav", "aside", "blockquote", "pre", "hr",
@@ -449,36 +459,56 @@ def _decodifica(corpo: bytes, charset: str) -> str:
         return corpo.decode("utf-8", errors="replace")
 
 
-def _togli_blocchi_nascosti(testo: str) -> str:
-    """Toglie script, style, noscript e template. Lineare: per ogni tag si ricorda la
-    prossima posizione e la si ricerca solo quando resta indietro, quindi ogni find va
-    sempre avanti (niente regex con «.*?», che su tanti «<script» senza chiusura
-    tornerebbe quadratica). Un blocco senza chiusura arriva fino in fondo."""
-    basso = testo.translate(_MINUSCOLE_ASCII)  # lower() cambia la lunghezza («İ»): indici sfasati (R-429-1)
-    prossimo = {tag: basso.find("<" + tag) for tag in _BLOCCHI_NASCOSTI}
-    pezzi = []
-    i = 0
+def _chiusura(basso: str, tag: str, da: int) -> int:
+    """Posizione subito dopo la prima «</tag ... >» con il nome intero, o -1."""
+    k = da
     while True:
-        for tag, pos in prossimo.items():
-            if pos != -1 and pos < i:
-                prossimo[tag] = basso.find("<" + tag, i)
-        aperti = [(pos, tag) for tag, pos in prossimo.items() if pos != -1]
-        if not aperti:
+        c = basso.find("</" + tag, k)
+        if c == -1:
+            return -1
+        dopo = c + 2 + len(tag)
+        if dopo >= len(basso) or basso[dopo] in _FINE_NOME:
+            g = basso.find(">", dopo)
+            return len(basso) if g == -1 else g + 1
+        k = c + 1
+
+
+def _togli_blocchi_nascosti(testo: str) -> str:
+    """Toglie i commenti e gli elementi di _TAG_NASCOSTI (script, style, svg, iframe…),
+    come il parser ma senza contare l'annidamento (un blocco finisce alla prima chiusura
+    con lo stesso nome; R-431-3). Lineare: la ricerca va sempre avanti, niente regex con «.*?» (che su
+    tanti «<script» senza chiusura tornerebbe quadratica). Un commento o un blocco senza
+    chiusura arriva fino in fondo, come per il parser."""
+    basso = testo.translate(_MINUSCOLE_ASCII)  # lower() cambia la lunghezza («İ»): indici sfasati (R-429-1)
+    pezzi = []
+    i = pos = 0
+    while True:
+        m = _INIZIO_TAG.search(basso, pos)
+        if m is None:
             pezzi.append(testo[i:])
             break
-        pos, tag = min(aperti)
-        pezzi.append(testo[i:pos])
-        fine = basso.find("</" + tag, pos + 1)
-        if fine == -1:
-            break
-        chiusura = basso.find(">", fine)
-        i = len(testo) if chiusura == -1 else chiusura + 1
+        nome = m.group(1)
+        if nome == "!--":
+            pezzi.append(testo[i:m.start()])
+            fine = basso.find("-->", m.end())
+            if fine == -1:
+                break
+            i = pos = fine + 3
+        elif nome in _TAG_NASCOSTI and (m.end() >= len(basso) or basso[m.end()] in _FINE_NOME):
+            # Nome intero anche in apertura: «<script_x>» non è «<script» (R-431-1).
+            pezzi.append(testo[i:m.start()])
+            dopo = _chiusura(basso, nome, m.end())
+            if dopo == -1:
+                break
+            i = pos = dopo
+        else:
+            pos = m.end()
     return " ".join(pezzi)
 
 
 def _testo_senza_parser(grezzo: str) -> str:
-    """Ripiego se html.parser solleva: blocchi nascosti tolti, tag tolti (regex lineare:
-    [^<>] si ferma al primo «<»), riferimenti interpretati se possibile (V-2 bot #237)."""
+    """Ripiego se html.parser solleva: commenti e blocchi nascosti tolti, tag tolti (regex
+    lineare: [^<>] si ferma al primo «<»), riferimenti interpretati se possibile."""
     testo = re.sub(r"<[^<>]*>", " ", _togli_blocchi_nascosti(grezzo))
     try:
         return html_unescape(testo)
