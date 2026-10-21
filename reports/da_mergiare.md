@@ -4,40 +4,16 @@
 
 > **C6 deciso (2026-10-21):** l'operatore ha scelto (a) «lasciamo così»: una firma per ogni azione, niente «Modifica» né firme a gruppi.
 
-## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #233)
+## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #234)
 
-### 1. Compiti notturni che riprendono dopo un crash (roadmap R7, missione M3)
-- **Cosa:** il giro notturno segna quali compiti ha iniziato; se Gas si spegne a metà (crash, riavvio, corrente), al giro dopo quei compiti ripartono per primi con una nota «controlla cosa è già stato fatto e non ripeterlo». Dopo 3 interruzioni di fila il compito si salta (avviso, exit 1) e il giro dopo riprova da capo; chiesto a mano (`/compito`, `gas notte <nome>`) parte comunque.
-- **Pro:** primo pezzo concreto di M3 («un compito lungo interrotto riprende e finisce»); le azioni rischiose restano comunque alla firma.
-- **Contro:** si riparte da capo con la nota, non dal punto esatto: azioni libere già fatte (es. aggiungere righe a un file) possono ripetersi se il modello ignora la nota; un catalogo con avvisi fissi non pulisce le voci vecchie (R-408-1, bassa).
-- **Controlli:** revisori #406, #407, #410, #416-#418 (chat Motore) APPROVATO CON RISERVE; notte 125 passed (round-trip col kernel vero sulla ripresa; prova del verificatore con un kill vero). Seguito (#419, #420): i compiti mai interrotti partono sempre per primi; un compito che fa cadere Gas, dopo il salto, resta «sospetto» e parte in coda: costa agli altri solo la prima notte (prova su 8 e 12 notti).
+### 1. Tre stati per un comando firmato (roadmap R7, R-c4b3-5)
+- **Cosa:** se un comando approvato su Telegram parte ma si interrompe (es. tempo scaduto dopo 60 s), Gas ora dice «PARTITO, esito INCERTO: può aver fatto solo una parte del lavoro, controlla prima di ripetere», nella storia, nel diario e nel messaggio Telegram. Prima diceva «NON eseguito», che era falso.
+- **Pro:** niente più informazione sbagliata all'operatore e al modello; il diario delle azioni successive non viene più sporcato (R-428-1).
+- **Contro:** oggi i comandi di sistema sono spenti (allowlist vuota), quindi è un caso latente; due rami senza test (R-429-1, bassa).
+- **Controlli:** revisori #428, #429 (chat Motore) APPROVATO CON RISERVE; kernel 975 PASS. Bot V-B: success con 3 riserve BASSE (prossima fetta).
 
-### 2. Piccole riserve chiuse
-- **Cosa:** un catalogo rotto per un momento non cancella più il registro dei crash; `read_file` nega un nome vuoto o fatto solo di invisibili; il test del giro che falliva 1 volta su 20 è stabile (la causa era l'invio in parallelo della #233).
-- **Pro:** chiude R-407-1/2, R-405-1/2, R-404-2; CI più affidabile.
-- **Contro:** `read_file` su «.» ora è negato invece di dare «è una cartella» (R-408-2, cosmetica).
-- **Controlli:** revisore #408 (chat Motore) APPROVATO CON RISERVE; gate+notte 936 passed, kernel 957 PASS.
-
-### 3. Spesa giornaliera calcolata leggendo solo le righe nuove (roadmap 5.5)
-- **Cosa:** il controllo del tetto di spesa (prima di ogni chiamata a pagamento) non rilegge più tutto il registro dei token: legge solo le righe aggiunte. Su 100.000 righe: da ~480 ms a ~12 ms per controllo. Inoltre il registro rovinato (righe non valide, numeri negativi o assurdi) non abbassa più la spesa calcolata; prima una sola riga illeggibile azzerava tutto il conto.
-- **Pro:** chiude R-tel-budget-perf; il blocco del budget diventa più affidabile.
-- **Contro:** più codice in un punto delicato (il blocco della spesa). Una riscrittura a mano molto particolare del registro non verrebbe vista (limite dichiarato); un numero enorme scritto a mano conta 0 (R-411-2, bassa).
-- **Controlli:** revisori #409, #410, #411, #413, #414 (chat Motore) APPROVATO CON RISERVE; sonde del revisore: 2.400 + 18.000 casi uguali alla lettura completa; kernel 964 PASS. Seguito (#413/#414, #419-#421): una riga senza data valida non tiene più il budget bloccato per sempre; una data futura fino a 7 giorni conta (orologio tornato indietro), oltre si scarta; l'ultima riga senza «a capo» si conta; lettura a blocchi (2 milioni di righe: 1,7 s invece di ~6 s, memoria ~5 MB); `gas tokens` regge un registro rovinato.
-
-### 4. Ripresa dopo un crash più precisa
-- **Cosa:** un compito già finito non viene più ripreso se Gas si spegne durante la riflessione finale; il registro rifiuta numeri strani.
-- **Pro:** chiude V-1 del bot e V-4 della verifica esterna su #234.
-- **Contro:** nessuno noto.
-- **Controlli:** revisore #410 (chat Motore) APPROVATO CON RISERVE; notte 122 passed.
-
-### 5. Tetto alle parole delle ricerche nella memoria (roadmap R7, R-fts-1)
-- **Cosa:** quando Gas cerca nel diario o nella conoscenza, usa al massimo 12 parole distinte (ognuna di al massimo 40 caratteri).
-- **Pro:** una domanda enorme del modello non diventa una ricerca enorme; chiude R-fts-1.
-- **Contro:** in una domanda molto lunga le parole oltre la dodicesima non contano, anche se sono quelle importanti (R-412-1, bassa).
-- **Controlli:** revisore #412 (chat Motore) APPROVATO CON RISERVE, review solo letta (disco temporaneo pieno in quel momento); kernel 962 PASS rieseguito.
-
-### 6. Test che non riempiono più il disco
-- **Cosa:** la suite del motore lasciava ~430 cartelle temporanee per esecuzione (oggi 129.000, ~30 GB, disco pieno due volte). Ora usa una cartella per esecuzione, cancellata alla fine; le cartelle di esecuzioni interrotte si tolgono dopo 6 ore; la cache del modello dei vettori resta (sul Mac non si riscarica). L'avviso «ripreso» compare solo se il compito riparte davvero, anche in `gas_debug.log`.
-- **Pro:** niente più dischi pieni (anche sul Mac e sul futuro VPS); chiude R-415-1 (media), R-415-2, R-416-1 e V-2 del bot su #234.
-- **Contro:** nessuno noto; l'ordine degli avvisi nel riepilogo cambia un po'.
-- **Controlli:** revisori #415, #416, #417 (chat Motore) APPROVATO CON RISERVE; kernel 964 PASS, notte 124 passed.
+### 2. Bot e terminale non si cancellano più la storia (roadmap R7, R-c4b3-4)
+- **Cosa:** se Gas su Telegram e Gas da terminale lavorano sulla stessa cartella, l'ultimo che salvava cancellava i messaggi dell'altro (anche l'esito di una firma). Ora c'è un lock sul file: chi salva rilegge e accoda i propri turni completi; se uno dei due è a metà turno, la versione dell'altro va in una copia «conflitto» accanto alla storia, nulla si perde.
+- **Pro:** niente più conversazioni perse quando si usano insieme bot e terminale.
+- **Contro:** se entrambi sono a metà turno, la versione dell'altro va in una copia «conflitto» (al massimo 20, nulla perso ma va guardata a mano); provato con due kernel nello stesso processo e dalla verifica esterna con 3 processi veri, non su VPS.
+- **Controlli:** revisori #430-#434 (chat Motore) APPROVATO CON RISERVE, le MEDIE trovate (R-430-1, R-433-1, V-1 bot #236) chiuse; kernel 990 PASS, pytest 1807 passed.
