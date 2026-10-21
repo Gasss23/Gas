@@ -19,29 +19,36 @@
 - **R7 / R-c4b3-4 — due processi sulla stessa storia; test R-429-1, guardia R-429-2 (V-1/V-2 verifica esterna #236)**: `FATTA` — review #430 APPROVATO CON RISERVE (R-430-1 MEDIA).
 - **R-430-1/2/4/5**: `FATTA` — review #431 APPROVATO CON RISERVE.
 - **Merge di origin/main (#237, chat Mani) — V-1 verifica esterna #236 (PR non mergeabile)**: `FATTA` — review #432 APPROVATO; conflitti solo nei report e nella memoria del revisore.
-- **R7 / R-c4b3-3; V-1/V-2/V-3 bot #236**: `DEFERITA` — prossime fette.
+- **V-1/V-2/V-3 bot #236 (prima verifica), R-431-1/2, R-430-3**: `FATTA` — review #433 APPROVATO CON RISERVE (R-433-1 MEDIA).
+- **V-1 MEDIA bot #236 (esito della firma perso a metà turno), V-2/V-3 bot #236, R-433-1/2**: `FATTA` — review #434 APPROVATO CON RISERVE.
+- **R7 / R-c4b3-3**: `DEFERITA` — prossime fette.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 ++++++++
- gas.py                             | 175 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ .claude/agents/memoria_revisore.md |  12 ++++++++++++
+ gas.py                             | 253 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
  modules/telegram/bot.py            |   4 ++++
- reports/da_mergiare.md             |  50 +++++++++++++-------------------------------------
+ reports/da_mergiare.md             |  50 +++++++++++++-----------------------------------
  reports/diff_sessione.md           |  13 +++++++------
- reports/handoff.md                 | 285 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 373 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |   6 +++---
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  40 ++++++++++++++++++----------------------
- tests/test_unit_kernel.py          | 150 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 10 files changed, 539 insertions(+), 196 deletions(-)
+ reports/ultimo_report.md           |  40 ++++++++++++++++++---------------------
+ tests/test_unit_kernel.py          | 267 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 827 insertions(+), 195 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6548903 fix(storia,firma): unione della storia per contenuto, esito della firma tenuto a metà turno, lock con tetto di tempo; output non UTF-8 resta «partito» (V-1/V-2/V-3 bot #236, R-433-1/2)
+f1ad943 chore(revisore): memoria review #434 — APPROVATO CON RISERVE
+5b650d3 fix(firma,storia): errori d'avvio mai «partiti», incerta dopo il reclamo, test con processo vero; copie di conflitto collegate, con microsecondi e potate (V-1/V-2/V-3 bot #236, R-431-1/2, R-430-3)
+5b9bfc6 chore(revisore): memoria review #433 — APPROVATO CON RISERVE
+2923705 docs(fine-task): merge di main (#237) nel ramo, review #432
 21a146d Merge origin/main (#237, chat Mani) in feat/merge-automatico-z1xjx2
 4fb9dcd docs(fine-task): report e handoff — storia condivisa tra processi (#430/#431)
 ddc3422 fix(storia): l'impronta avanza solo se la scrittura riesce; salvataggio senza lock se il lock manca; lettura iniziale sotto lock (R-430-1/2/4/5)
@@ -218,12 +225,95 @@ Rischi esplicitamente esclusi:
 
 Memoria: ho aggiunto la riga contatore #432 (chat Motore) in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È modificata ma non staged, e non è committata: `scripts/commit_memoria_revisore.sh` non funziona durante un merge, quindi devi aggiungerla tu con `git add` e includerla nel commit di merge. Nessuna lezione nuova.
 
+### Review #433 (chat Motore) — commit 5b650d3
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #433 (chat Motore). Diff staged: gas.py e tests/test_unit_kernel.py. Le prove le ho fatte su una copia con la patch applicata in /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/rep. Il kernel dà 986 PASS e 0 FAIL. In questo container bwrap e i namespace ci sono, quindi T77ab è girato in os_strict dentro bwrap.
+
+Elementi del diff esaminati:
+- gas.py:4078 — `except (OSError, ValueError)` riporta `_run_command_avviato` a False. Rischio esaminato: le sottoclassi che nascono DOPO l'avvio del processo. Esito: **riserva (R-433-1, MEDIA)**. `UnicodeDecodeError` è una sottoclasse di ValueError e, con `text=True`, nasce in communicate quando il comando ha già finito di girare. L'ho riprodotto con `cat bad.bin` (byte 0xff, allowlist del recinto):
+  - a HEAD: «il comando è PARTITO ma si è interrotto (UnicodeDecodeError): esito INCERTO», con avviato True;
+  - col diff: «Errore eseguendo run_command: 'utf-8' codec can't decode…», con avviato False.
+
+  Quindi un comando che ha girato davvero viene dato per non partito, e in applica_firma diventa «non_partita» invece di «incerta». È una regressione proprio sulla proprietà che V-1 voleva rendere fedele. Oggi l'impatto pratico è basso: `SHELL_ALLOWLIST` di produzione è vuota e i comandi ammessi sono di sola lettura. Correzione: prima del ramo generico rilanciare `UnicodeError` lasciando il segno a True, oppure fare `except ValueError as e: if isinstance(e, UnicodeError): raise`. Serve anche un test con output non UTF-8.
+- gas.py:4070 — l'ambiente del figlio si calcola prima del segno «partito», e `TimeoutExpired` viene rilanciato lasciando il segno. Rischio esaminato: un ambiente rotto che lascia il segno a True. Esito: ok. Il segno viene azzerato all'inizio di execute_tool_call (gas.py:4019) e T77aa lo prova.
+- gas.py:3185 e gas.py:3226 — `reclamata` è inizializzata prima di ogni return e passa a True solo dopo che `reclama_esecuzione` è andato a buon fine. In gas.py:3282 l'except generico mette `eseguita=False, stato="incerta"`. Esito: ok.
+- gas.py:1162 — `os.link`, e `shutil.copy2` come ripiego, al posto di `os.replace`. Rischio esaminato: che la copia segua il file nuovo. Esito: ok. `_salva_storia_su_file` (gas.py:1237) scrive un file temporaneo e poi fa `os.replace`: il nome principale passa a un inode nuovo e la copia di conflitto tiene il vecchio. Se la nostra scrittura fallisce, il file principale resta intatto (T97d). Su un file system senza hardlink `copy2` conserva anche l'mtime, quindi la potatura resta coerente.
+- gas.py:1173 — `_pota_copie_conflitto` ordina per `st_mtime_ns`. Esito: **riserva (R-433-2, BASSA)**. Con mtime uguali decide l'ordine del glob. In una sonda con 4 copie a mtime 0 e MAX=2 la copia «zzz», creata per ultima, è stata cancellata. In pratica le copie ereditano l'mtime della scrittura dell'altro processo, quindi crescono sempre, ma non c'è uno spareggio sul nome. Inoltre se un'altra potatura cancella un file mentre gira il sort, `p.stat()` fallisce e finisce nel warning «Copia di conflitto non riuscita», che è fuorviante: la copia esiste già. Non si blocca niente.
+- tests/test_unit_kernel.py:6976 — T77ab lancia un `tail -f` vero con tetto di 0,5 s. Rischio esaminato: instabilità e processi orfani in CI. Esito: ok. Con bwrap il prefisso ha `--die-with-parent` (gas.py:1933) e `subprocess.run` su POSIX dopo il kill fa solo `wait()`, senza svuotare le pipe. Dopo la suite non c'era nessun `tail -f` vivo.
+
+Mutazioni sulla copia, tutte e quattro mordono (982 PASS, 4 FAIL):
+
+| Mutazione | Test che fallisce |
+|---|---|
+| `os.link` riportato a `os.replace` | T97d |
+| potatura tolta | T97e |
+| ripristinato il vecchio `except (FileNotFoundError, PermissionError)` | T77aa |
+| `reclamata` mai a True | T77ac |
+
+Rischio escluso: non ho provato il ramo `shutil.copy2` su un file system vero senza hardlink (FAT o certe condivisioni di rete: non riproducibile qui), né T77ab sul runner GitHub reale (provato solo in questo container, con bwrap funzionante). Non ho rieseguito `pytest tests/` intero: mi fido del dato dichiarato di 1807 passed.
+
+Wall of Shame: nessuno slicing della cronologia e nessuna simulazione dell'output dei tool. Il cap di 10 iterazioni e `_get_window` non sono toccati.
+
+Riserve da tracciare in stato_progetto.md:
+- **R-433-1 MEDIA**: UnicodeDecodeError marcato come «non partito». Consiglio di chiuderla in questa fetta prima del commit, con un nuovo giro di review.
+- **R-433-2 BASSA**: potatura con mtime uguali e stat concorrente.
+
+Memoria: ho aggiunto la riga #433 e una lezione in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola (5b9bfc6). Lo staging del diff è rimasto intatto (2 file).
+
+### Review #434 (chat Motore) — commit 6548903
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #434 (chat Motore) del diff staged: `gas.py` e `tests/test_unit_kernel.py`. Prima della review ho letto le tre fonti obbligatorie: CLAUDE.md (sez. 5), reports/stato_progetto.md e la mia memoria.
+
+Le prove le ho fatte su una copia dell'albero staged nello scratchpad. La suite del kernel dà **990 PASS, 0 FAIL**. Nel repo reale ho toccato solo la memoria (commit f1ad943). Lo staging è intatto.
+
+**Elementi del diff esaminati**
+- `gas.py:1115` — `_hash_messaggi`: sha256 del JSON ordinato. Rischio esaminato: il costo a ogni salvataggio. Ho misurato 12 ms per 2,4 MB (300 messaggi da 8 KB). La compressione tiene la storia sotto `HISTORY_MAX_MSGS = 100`, e l'hash viene calcolato una volta per salvataggio, più due solo quando il file è cambiato. Esito: ok.
+- `gas.py:1159` — la base si riconosce dal contenuto (n, hash) e non più dall'id della lista. Questo chiude V-2 (riuso dell'id). Caso `n_base > len(altrui)`, sondato: tutte e due le condizioni sono False, finisce nella copia «conflitto» e non si perde nessun messaggio. Esito: ok.
+- `gas.py:1170` — ramo «nostra + suoi». **Riserva MEDIA (R-434-1).** Il ramo scatta anche al salvataggio a metà turno di `gas.py:4503`, dalla seconda iterazione di tool in poi. La sonda è `p1.py`: il bot scrive mentre il secondo tool della CLI è in esecuzione. Effetto: il blocco della firma entra nella storia IN MEMORIA prima della prossima chiamata al modello. Quello che il modello riceve da `_get_window()`:
+  - `user, assistant(tc), tool, assistant(tc), tool, user[NOTIFICA], assistant(tc), tool, assistant «Preso atto»`
+  - la finestra finisce con un assistant;
+  - poi la risposta finale si accoda dopo: due assistant di fila nel file;
+  - il turno della CLI viene «dirottato»: l'ultimo user che il modello vede è la notifica, non la domanda dell'operatore.
+
+  Non crasha (§9 fa scattare il fallback), ma con Gemini il rischio è un 400 o una risposta sul tema sbagliato. T97f copre solo il caso in cui il bot scrive DOPO l'ultimo salvataggio dei tool. Correzione proposta: a metà turno (nostra lista che non chiude il turno), se si applica solo il ramo 2, NON unire né scrivere. La base resta quella vecchia e l'unione avviene al salvataggio finale, che è il caso già provato da T97f.
+- `gas.py:1176` — R-430-1, la base resta `(n_base, h_base)` dopo il ramo 2. **Riserva BASSA (R-434-2).** Se la scrittura fallisce, i messaggi dell'altro sono già nella nostra lista, ma la base non li comprende. Se poi l'altro processo riscrive, `altrui[n_base:]` li riaccoda di nuovo e restano duplicati. Servono una scrittura fallita e una scrittura concorrente: caso raro.
+- `gas.py:1203` — potatura con chiave `(mtime_ns, nome)` e `OSError` → `(0, nome)`. Questo chiude R-433-2. Esito: ok.
+- `gas.py:1231` — lock con `LOCK_NB` e tentativi ogni 0,05 s per 5 s, poi `TimeoutError`, che il `except Exception` già presente trasforma in warning con salvataggio senza lock. Nessuna attesa infinita. Il tempo usa `_time.monotonic`, già importato. Effetto collaterale accettabile: all'avvio, con il lock occupato, `__init__` può attendere fino a 5 s. Esito: ok.
+- `gas.py:4118` — `except (TimeoutExpired, UnicodeError)` rilancia con il segno «partito» a True. Questo chiude R-433-1 (T77ad PASS nella copia). **Riserva BASSA (R-434-3).** `UnicodeError` comprende anche `UnicodeEncodeError` all'avvio: l'ho sondato con `subprocess.run(['echo','\ud800'])` e un surrogato isolato arriva da un JSON valido. Il risultato è «PARTITO, INCERTO» per un comando mai partito. Il verso è prudente, ma per precisione andrebbe ristretto a `UnicodeDecodeError`.
+- `tests/test_unit_kernel.py:7535` — T97f. Rischio esaminato: è davvero la prova di «a metà turno»? Copre solo una tempistica, cioè la scrittura del bot fra il salvataggio dei tool e quello finale. Manca il caso di R-434-1. Esito: riserva, legata a R-434-1.
+- `tests/test_unit_kernel.py:7494` — T97b2, la sequenza A/B. Il ramo 2 riordina il file (seguito di B, poi ancora A), quindi il prefisso di A non coincide più con la sua base. Al successivo salvataggio di A a metà turno si va nella copia «conflitto», e «seguito di B» resta solo nella copia. Nessun messaggio si perde, e il test lo verifica sull'unione di storia e copie. È lo stesso effetto residuo di V-1, ma in un caso più stretto. Esito: ok, come limite dichiarato da registrare.
+
+**Wall of Shame**
+- `history[:n_base]` e `[n_base:]` lavorano sulla storia intera, per l'unione: non sono una finestra mandata al provider, quindi non sono slicing vietato. La finestra resta `_get_window()` (`gas.py:4356`).
+- Nessuna simulazione di output dei tool.
+- Il cap di 10 iterazioni non è toccato.
+
+**Rischi esclusi (non verificati)**
+- Il comportamento reale di Gemini, Groq e OpenRouter con una finestra che finisce con un assistant e con due assistant di fila: senza rete non è riproducibile.
+- Le mutazioni dichiarate (senza ramo 2, senza UnicodeError, base = altrui+nuovi, lock bloccante): non le ho rieseguite, mi fido del report. La suite completa è verde.
+- `pytest tests/` (1807): non rieseguito.
+
+**Memoria**
+- Riga #434 e una lezione nuova (provare l'unione a ogni punto di salvataggio del loop e guardare la finestra, non solo il file) committate con `scripts/commit_memoria_revisore.sh`: commit f1ad943.
+- Le riserve R-434-1 (MEDIA), R-434-2 e R-434-3 (BASSE) vanno tracciate in reports/stato_progetto.md.
+
+File:
+- /home/user/Gas/gas.py
+- /home/user/Gas/tests/test_unit_kernel.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- Sonda: /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/prove/p1.py
+- Log della suite: /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/k.log
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 971 → 981 PASS, 0 FAIL (T77u-z, T97a-c). Blocco reale: `=== RIEPILOGO: 981 PASS, 0 FAIL ===`.
-pytest `tests/`: 1796 passed (compresi i 85 test web arrivati con main).
+tests/test_unit_kernel.py: 971 → 990 PASS, 0 FAIL (T77u-z, T77aa-ad, T97a-g). Blocco reale: `=== RIEPILOGO: 990 PASS, 0 FAIL ===`.
+pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 
 ## §6 STATO CI
 
@@ -231,15 +321,18 @@ pytest `tests/`: 1796 passed (compresi i 85 test web arrivati con main).
 - be72cb5: handoff-check failure (commit intermedio pushato prima del dossier, atteso); superato da 33173bf.
 - 33173bf (con b997a5c, c19defc, 40da5ce): unit-suite, handoff-check success; verifica-bot success (APPROVATO CON RISERVE, V-1/V-2/V-3 BASSE: decide l'operatore).
 - 4fb9dcd (con 9a32029, 4ad247c, 63e6a2f, ddc3422): handoff-check success; unit-suite e verifica-bot non lette (superate dal merge di main).
-- 21a146d (merge di main #237): run non ancora disponibile alla scrittura dell'handoff.
+- 2923705 (con 21a146d): unit-suite, handoff-check success; verifica-bot FAILURE (V-1 MEDIA: esito della firma a metà turno), corretta in 6548903.
+- 5b9bfc6, 5b650d3, f1ad943, 6548903: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-428-1/2/3/4: chiuse in #429.
 - R-429-1/2: chiuse in #430 (T77x, T77y, guardia sul meta).
 - R-430-1/2/4/5: chiuse in #431.
-- R-430-3 (BASSA): copie «conflitto» della storia senza rotazione né avviso.
-- R-431-1/2 (BASSE): nome della copia di conflitto al secondo (collisione); copia spostata prima della scrittura (file principale assente se la scrittura fallisce).
+- R-430-3, R-431-1/2: chiuse in #433; R-433-1/2: chiuse in #434.
 - R-431-3 (COSMETICA): indice su un Optional in `__init__`.
-- V-1/V-2/V-3 bot #236 (BASSE): altri errori d'avvio lasciano «partito»; stato «non_partita» nell'except dopo il reclamo; manca un test con un processo vero ucciso dal timeout.
+- V-1/V-2/V-3 bot #236 (entrambi i giri): chiuse in #433/#434.
+- R-434-1 (MEDIA, aperta, prossima fetta): l'unione «nostra + suoi» può scattare anche al salvataggio a metà turno del loop: il modello vede la notifica della firma prima della propria risposta. Correzione: a metà turno non unire, rimandare al salvataggio finale.
+- R-434-2 (BASSA): dopo il ramo «nostra + suoi» una scrittura fallita più una concorrente possono duplicare messaggi.
+- R-434-3 (BASSA): UnicodeEncodeError all'avvio dato per «partito»: restringere a UnicodeDecodeError.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.

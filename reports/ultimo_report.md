@@ -15,11 +15,11 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **R7 / R-c4b3-4 — due processi sulla stessa storia** — FATTA. Il bot e un comando da terminale sulla stessa cartella non si cancellano più i messaggi: lock sul file, i turni interi dell'uno si accodano a quelli dell'altro; a metà turno la versione dell'altro va in una copia «conflitto». Review #430 APPROVATO CON RISERVE (R-430-1 MEDIA), #431 la chiude (impronta avanza solo se la scrittura riesce).
 - **V-1/V-2 verifica esterna #236 (= R-429-1/2)** — FATTA in #430.
 - **Merge di origin/main (#237, chat Mani)** — FATTO per togliere il conflitto segnalato dalla verifica esterna #236 (V-1 MEDIA). Review #432 APPROVATO.
-- **Test** — kernel 971 → 981 PASS, 0 FAIL; pytest tests/ 1796 passed.
+- **Riserve del bot sulla PR #236** — FATTA. Errori d'avvio di un comando mai «partiti», esito «incerto» se qualcosa si rompe dopo l'approvazione, test con un processo vero fermato dal tetto di tempo, copie «conflitto» con nome unico e al massimo 20 (review #433). La MEDIA del secondo giro (l'esito di una firma scritto dal bot a metà turno della CLI finiva solo nella copia) è chiusa: l'unione ora riconosce la storia dal contenuto e mette i turni interi dell'altro dopo la nostra risposta; il lock della storia aspetta al massimo 5 s (review #434).
+- **Test** — kernel 971 → 990 PASS, 0 FAIL; pytest tests/ 1807 passed.
 
 ## Prossimi passi
 
-1. V-1/V-2/V-3 bot #236: altri errori d'avvio, stato nell'except di applica_firma, test con processo vero.
-2. R-430-3: rotazione o avviso delle copie «conflitto».
-3. R7 / R-c4b3-3: crash tra reclamo e scrittura in storia.
+1. R-434-1 (MEDIA): a metà turno non unire la storia dell'altro processo, rimandare al salvataggio finale; R-434-2/3.
+2. R7 / R-c4b3-3: crash tra reclamo e scrittura in storia.
 4. R-408-1: potare il registro della notte solo se il file del catalogo è stato letto.

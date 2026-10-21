@@ -15,5 +15,5 @@
 ### 2. Bot e terminale non si cancellano più la storia (roadmap R7, R-c4b3-4)
 - **Cosa:** se Gas su Telegram e Gas da terminale lavorano sulla stessa cartella, l'ultimo che salvava cancellava i messaggi dell'altro (anche l'esito di una firma). Ora c'è un lock sul file: chi salva rilegge e accoda i propri turni completi; se uno dei due è a metà turno, la versione dell'altro va in una copia «conflitto» accanto alla storia, nulla si perde.
 - **Pro:** niente più conversazioni perse quando si usano insieme bot e terminale.
-- **Contro:** le copie «conflitto» si accumulano senza pulizia né avviso (R-430-3, bassa); provato con due kernel nello stesso processo, non con due processi veri su VPS.
-- **Controlli:** revisori #430 (R-430-1 MEDIA) e #431 (la chiude) APPROVATO CON RISERVE; kernel 981 PASS, pytest 1796 passed.
+- **Contro:** se entrambi sono a metà turno, la versione dell'altro va in una copia «conflitto» (al massimo 20, nulla perso ma va guardata a mano); provato con due kernel nello stesso processo e dalla verifica esterna con 3 processi veri, non su VPS.
+- **Controlli:** revisori #430-#434 (chat Motore) APPROVATO CON RISERVE, le MEDIE trovate (R-430-1, R-433-1, V-1 bot #236) chiuse; kernel 990 PASS, pytest 1807 passed.
