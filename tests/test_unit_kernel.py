@@ -6938,6 +6938,21 @@ try:
     check("T77x binario assente: il comando NON risulta partito (diario «[KO]», niente INCERTO)",
           "PARTITO" not in _o77x and _k77x._run_command_avviato is False
           and _k77x._esito_diario("run_command", _o77x) == "[KO]", _o77x[:150])
+    # R-430-5: eccezione DOPO che il comando ha finito (meta valorizzato) → niente «INCERTO»
+    class _Rotto77z(str):
+        def __add__(self, altro):
+            raise RuntimeError("concatenazione rotta")
+    def _finito77z(*a, **kw):
+        if a and "echo" in a[0]:
+            return SimpleNamespace(returncode=0, stdout=_Rotto77z("x"), stderr="")
+        return _run77u(*a, **kw)
+    try:
+        gas.subprocess.run = _finito77z
+        _o77z = _k77x.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    check("T77z eccezione dopo la fine del comando: niente «PARTITO… INCERTO» (R-430-5)",
+          "INCERTO" not in _o77z and _o77z.startswith("Errore eseguendo run_command"), _o77z[:150])
     _k77y = kernel_tmp()
     _k77y.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
     _k77y._run_command_meta = {"exit": 0, "stdout_n": 3, "stderr_n": 0}
@@ -7430,6 +7445,23 @@ _c97 = ([m.get("content") for m in json.loads(_cop97[0].read_text())] if _cop97 
 check("T97b a metà turno: storia di B intera, versione di A salvata nella copia «conflitto»",
       len(_cop97) == 1 and _f97b[-1] == "seguito di B a metà turno"
       and "ancora A" not in _f97b and _c97[-1] == "ancora A", f"{_f97b} | {_c97}")
+# T97c — R-430-1: una scrittura fallita non fa avanzare l'impronta: i messaggi
+# non scritti restano da scrivere anche dopo che un altro processo ha salvato
+_a97._add_to_history("user", content="A1")
+_a97._add_to_history("assistant", content="rA1")
+_salva97 = _a97._salva_storia_su_file
+_a97._salva_storia_su_file = lambda: False  # type: ignore[method-assign]
+_a97._save_history()
+_a97._salva_storia_su_file = _salva97  # type: ignore[method-assign]
+_b97._add_to_history("user", content="B2")
+_b97._add_to_history("assistant", content="rB2")
+_b97._save_history()
+_a97._add_to_history("user", content="A2")
+_a97._add_to_history("assistant", content="rA2")
+_a97._save_history()
+_f97c = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+check("T97c scrittura fallita: A1 non si perde dopo il salvataggio di B (R-430-1)",
+      "A1" in _f97c and "rA1" in _f97c and "B2" in _f97c and _f97c[-1] == "rA2", str(_f97c))
 _sh39e.rmtree(_r97, ignore_errors=True)
 
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma

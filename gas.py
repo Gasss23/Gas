@@ -945,12 +945,14 @@ class GasKernel:
         self.system_prompt: str = _build_system_prompt(self.root)
         # carica_storia=False (giro notturno, R-220-2): la conversazione dell'operatore
         # non viene né letta né, se corrotta, rinominata in quarantena.
-        self.history: List[Dict[str, Any]] = self._load_history() if carica_storia else []
         # R-c4b3-4: com'era il file della storia l'ultima volta che l'abbiamo letto o
         # scritto (percorso, impronta, lista, quanti messaggi): serve a non cancellare
         # i messaggi scritti nel frattempo da un altro processo sulla stessa root.
-        self._storia_sync: Optional[Tuple[str, Any, int, int]] = (
-            self._sync_storia() if carica_storia else None)
+        self._storia_sync: Optional[Tuple[str, Any, int, int]] = None
+        self.history: List[Dict[str, Any]] = (
+            self._carica_storia_bloccata() if carica_storia else [])
+        if carica_storia:  # la lista vera è quella appena assegnata (id per l'unione)
+            self._storia_sync = self._sync_storia_di(self._storia_sync[1])
         # V-1 bot #176: un kernel senza storia non fotografa nemmeno la conversazione
         # dell'operatore negli snapshot (non la tocca, quindi non c'è nulla da proteggere).
         self.carica_storia: bool = carica_storia
@@ -1110,7 +1112,11 @@ class GasKernel:
         return (st.st_ino, st.st_size, st.st_mtime_ns)
 
     def _sync_storia(self) -> Tuple[str, Any, int, int]:
-        return (str(self.db_path), self._impronta_storia(), id(self.history), len(self.history))
+        return self._sync_storia_di(self._impronta_storia())
+
+    def _sync_storia_di(self, impronta: Any, n: Optional[int] = None) -> Tuple[str, Any, int, int]:
+        hist = getattr(self, "history", [])
+        return (str(self.db_path), impronta, id(hist), len(hist) if n is None else n)
 
     def _unisci_storia_altrui(self) -> None:
         """R-c4b3-4: se un altro processo ha riscritto il file dopo la nostra ultima
@@ -1138,6 +1144,9 @@ class GasKernel:
             nuovi = self.history[sync[3]:]
         if nuovi is not None and (not nuovi or nuovi[0].get("role") == "user"):
             self.history = altrui + nuovi
+            # la base è ora il file dell'altro processo: se la nostra scrittura
+            # fallisce, al prossimo salvataggio i messaggi nuovi restano da scrivere
+            self._storia_sync = self._sync_storia_di(ora, len(altrui))
             if nuovi:
                 logging.warning("Storia scritta anche da un altro processo: accodati "
                                 "%d messaggi nuovi ai suoi %d", len(nuovi), len(altrui))
@@ -1151,25 +1160,57 @@ class GasKernel:
         except Exception as e:
             logging.warning("Copia di conflitto della storia non riuscita: %s", e)
 
-    def _save_history(self):
+    def _blocca_storia(self) -> Any:
+        """Lock esclusivo sul file accanto alla storia (R-c4b3-4). Se non si può
+        prendere (permessi, file system, niente fcntl) si va avanti senza lock
+        (R-430-2): meglio salvare senza protezione che non salvare."""
+        if fcntl is None:
+            return None
         lock_f = None
         try:
-            if fcntl is not None:
-                lock_f = open(self.db_path.parent / f"{self.db_path.name}.lock", "a")
-                fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
+            lock_f = open(self.db_path.parent / f"{self.db_path.name}.lock", "a")
+            fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
+            return lock_f
+        except Exception as e:
+            logging.warning("Lock della storia non disponibile (%s): salvo senza lock", e)
+            if lock_f is not None:
+                try:
+                    lock_f.close()
+                except Exception:
+                    pass
+            return None
+
+    @staticmethod
+    def _sblocca_storia(lock_f: Any) -> None:
+        if lock_f is not None:
+            try:
+                lock_f.close()  # rilascia il lock
+            except Exception:
+                pass
+
+    def _carica_storia_bloccata(self) -> List[Dict[str, Any]]:
+        """R-430-4: lettura e impronta sotto lo stesso lock della scrittura."""
+        lock_f = self._blocca_storia()
+        try:
+            return self._load_history()
+        finally:
+            self._storia_sync = self._sync_storia_di(self._impronta_storia())
+            self._sblocca_storia(lock_f)
+
+    def _save_history(self):
+        lock_f = self._blocca_storia()
+        try:
             self._unisci_storia_altrui()
-            self._salva_storia_su_file()
-            self._storia_sync = self._sync_storia()
+            # R-430-1: l'impronta avanza solo se la scrittura è riuscita davvero,
+            # altrimenti i messaggi non scritti si perderebbero alla prossima unione
+            if self._salva_storia_su_file():
+                self._storia_sync = self._sync_storia()
         except Exception as e:
             logging.warning("Salvataggio della storia non riuscito: %s", e)
         finally:
-            if lock_f is not None:
-                try:
-                    lock_f.close()  # rilascia il lock
-                except Exception:
-                    pass
+            self._sblocca_storia(lock_f)
 
-    def _salva_storia_su_file(self) -> None:
+    def _salva_storia_su_file(self) -> bool:
         tmp_path: Optional[Path] = None
         try:
             data = json.dumps(self.history, indent=2, ensure_ascii=False)
@@ -1188,6 +1229,7 @@ class GasKernel:
                     os.close(dir_fd)
             except Exception:
                 pass
+            return True
         except Exception as e:
             logging.warning("Errore scrittura atomica storico: %s", e)
             if tmp_path is not None:
@@ -1195,6 +1237,7 @@ class GasKernel:
                     tmp_path.unlink()
                 except Exception:
                     pass
+            return False
 
     # --- Compressione cronologia (FASE 2.5) ---
     # Default configurabili via env: GAS_HISTORY_MAX_MSGS, GAS_HISTORY_KEEP_MSGS.
