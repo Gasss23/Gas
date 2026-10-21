@@ -6953,6 +6953,47 @@ try:
         gas.subprocess.run = _run77u
     check("T77z eccezione dopo la fine del comando: niente «PARTITO… INCERTO» (R-430-5)",
           "INCERTO" not in _o77z and _o77z.startswith("Errore eseguendo run_command"), _o77z[:150])
+    # V-1 bot #236: altri errori di avvio (cartella che è un file, ambiente rotto) → mai «partito»
+    def _nondir77(*a, **kw):
+        if a and "echo" in a[0]:
+            raise NotADirectoryError(20, "Not a directory")
+        return _run77u(*a, **kw)
+    try:
+        gas.subprocess.run = _nondir77
+        _o77n = _k77x.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    _env77 = _k77x._sanitized_subprocess_env
+    def _envrotto77():
+        raise RuntimeError("ambiente rotto")
+    _k77x._sanitized_subprocess_env = _envrotto77  # type: ignore[method-assign]
+    _o77e = _k77x.execute_tool_call("run_command", _CMD77)
+    _k77x._sanitized_subprocess_env = _env77  # type: ignore[method-assign]
+    check("T77aa NotADirectoryError o ambiente rotto: il comando NON risulta partito (V-1 bot #236)",
+          "PARTITO" not in _o77n and "PARTITO" not in _o77e
+          and _k77x._run_command_avviato is False, f"{_o77n[:80]} | {_o77e[:80]}")
+    # V-3 bot #236: un processo VERO ucciso dal tetto di tempo → stato «incerta»
+    _k77t2 = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77t2)
+    _k77t2.RUN_COMMAND_TIMEOUT_SEC = 0.5
+    (Path(_k77t2.root) / "x.txt").write_text("a\n", encoding="utf-8")
+    _id77t2 = _k77t2.memory.enqueue_approval("run_command", '{"command": "tail -f x.txt"}')
+    with _TgFinto():
+        _k77t2.memory.resolve_approval(_id77t2, "approved", telegram_user_id=4242)
+        _r77t2 = _k77t2.applica_firma(_id77t2)
+    check("T77ab processo vero ucciso dal tetto di tempo → stato 'incerta' (V-3 bot #236)",
+          _r77t2.get("stato") == "incerta" and "esito incerto" in _r77t2["esito"], str(_r77t2)[:200])
+    # V-2 bot #236: eccezione dopo il reclamo → stato «incerta», non «non_partita»
+    _k77r = kernel_tmp()
+    _id77r = _k77r.memory.enqueue_approval("run_command", _CMD77)
+    def _esplode77(*a, **kw):
+        raise RuntimeError("errore a metà")
+    _k77r.execute_tool_call = _esplode77  # type: ignore[method-assign]
+    with _TgFinto():
+        _k77r.memory.resolve_approval(_id77r, "approved", telegram_user_id=4242)
+        _r77r = _k77r.applica_firma(_id77r)
+    check("T77ac eccezione dopo il reclamo → stato 'incerta' (V-2 bot #236)",
+          _r77r.get("stato") == "incerta" and _r77r["eseguita"] is False, str(_r77r))
     _k77y = kernel_tmp()
     _k77y.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
     _k77y._run_command_meta = {"exit": 0, "stdout_n": 3, "stderr_n": 0}
@@ -7445,6 +7486,29 @@ _c97 = ([m.get("content") for m in json.loads(_cop97[0].read_text())] if _cop97 
 check("T97b a metà turno: storia di B intera, versione di A salvata nella copia «conflitto»",
       len(_cop97) == 1 and _f97b[-1] == "seguito di B a metà turno"
       and "ancora A" not in _f97b and _c97[-1] == "ancora A", f"{_f97b} | {_c97}")
+# T97d — R-431-2: nel conflitto la versione dell'altro processo si collega/copia,
+# non si sposta: se poi la nostra scrittura fallisce, il file principale resta
+_a97._add_to_history("user", content="A3")
+_a97._save_history()
+_b97._add_to_history("assistant", content="B a metà turno")
+_salva97d = _b97._salva_storia_su_file
+_b97._salva_storia_su_file = lambda: False  # type: ignore[method-assign]
+_b97._save_history()
+_b97._salva_storia_su_file = _salva97d  # type: ignore[method-assign]
+_f97d = ([m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+         if (_r97 / ".gas_history.json").exists() else None)
+check("T97d conflitto + scrittura fallita: il file principale resta con la versione di A",
+      _f97d is not None and _f97d[-1] == "A3", str(_f97d))
+# T97e — R-430-3 / R-431-1: nomi delle copie mai uguali, al massimo MAX_COPIE_CONFLITTO
+_b97.MAX_COPIE_CONFLITTO = 2
+for _i97 in range(3):
+    _a97._add_to_history("user", content=f"A-giro{_i97}")
+    _a97._save_history()
+    _b97._add_to_history("assistant", content=f"B-giro{_i97}")
+    _b97._save_history()
+_cop97e = sorted(_r97.glob(".gas_history.json.conflitto.*"))
+check("T97e copie di conflitto potate a 2, ognuna con il proprio nome",
+      len(_cop97e) == 2 and len({p.name for p in _cop97e}) == 2, str([p.name for p in _cop97e]))
 # T97c — R-430-1: una scrittura fallita non fa avanzare l'impronta: i messaggi
 # non scritti restano da scrivere anche dopo che un altro processo ha salvato
 _a97._add_to_history("user", content="A1")

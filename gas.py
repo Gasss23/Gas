@@ -4,6 +4,7 @@ import difflib
 import hashlib
 import math as _math_module
 import os
+import shutil
 import threading
 try:
     import fcntl  # R-c4b3-4: lock della cronologia (assente su Windows)
@@ -1151,14 +1152,37 @@ class GasKernel:
                 logging.warning("Storia scritta anche da un altro processo: accodati "
                                 "%d messaggi nuovi ai suoi %d", len(nuovi), len(altrui))
             return
+        # R-431-1: microsecondi + pid nel nome, niente collisioni nello stesso secondo
         copia = self.db_path.parent / (f"{self.db_path.name}.conflitto."
-                                       f"{datetime.now():%Y%m%d-%H%M%S}.{os.getpid()}")
+                                       f"{datetime.now():%Y%m%d-%H%M%S-%f}.{os.getpid()}")
         try:
-            os.replace(self.db_path, copia)
+            # R-431-2: collegamento (o copia), non spostamento: il file principale
+            # resta al suo posto finché la nostra scrittura atomica non lo sostituisce
+            try:
+                os.link(self.db_path, copia)
+            except OSError:
+                shutil.copy2(self.db_path, copia)
             logging.warning("Storia scritta anche da un altro processo a metà turno: la "
                             "sua versione è salvata in %s", copia.name)
+            self._pota_copie_conflitto()
         except Exception as e:
             logging.warning("Copia di conflitto della storia non riuscita: %s", e)
+
+    MAX_COPIE_CONFLITTO = 20  # R-430-3: copie di conflitto della storia tenute
+
+    def _pota_copie_conflitto(self) -> None:
+        """R-430-3: tiene solo le copie di conflitto più recenti, con un avviso."""
+        copie = sorted(self.db_path.parent.glob(f"{self.db_path.name}.conflitto.*"),
+                       key=lambda p: p.stat().st_mtime_ns)
+        vecchie = copie[:-self.MAX_COPIE_CONFLITTO] if len(copie) > self.MAX_COPIE_CONFLITTO else []
+        for p in vecchie:
+            try:
+                p.unlink()
+            except OSError as e:
+                logging.warning("Copia di conflitto %s non cancellata: %s", p.name, e)
+        if vecchie:
+            logging.warning("Copie di conflitto della storia oltre %d: cancellate le %d più "
+                            "vecchie", self.MAX_COPIE_CONFLITTO, len(vecchie))
 
     def _blocca_storia(self) -> Any:
         """Lock esclusivo sul file accanto alla storia (R-c4b3-4). Se non si può
@@ -1864,6 +1888,7 @@ class GasKernel:
     # Il recinto (vetting, bwrap, snapshot) RESTA per il futuro: i test lo provano con
     # _SHELL_ALLOWLIST_RECINTO, che non è mai offerta al modello.
     SHELL_ALLOWLIST: frozenset = frozenset()
+    RUN_COMMAND_TIMEOUT_SEC: float = 60  # tetto di tempo di un run_command
     _SHELL_ALLOWLIST_RECINTO: frozenset = frozenset({
         "ls", "cat", "head", "tail", "wc", "grep", "echo", "pwd", "date",
         "stat", "file", "uniq", "cut", "tr", "nl", "diff", "comm", "true",
@@ -3157,6 +3182,7 @@ class GasKernel:
         FAIL-CLOSED §9: mai eccezioni."""
         res: Dict[str, Any] = {"tool": "", "eseguita": False, "stato": "non_partita",
                                "esito": "", "output": ""}  # R-428-4
+        reclamata = False
         if self.memory is None:
             res["esito"] = "store non disponibile: azione non eseguita"
             return res
@@ -3197,6 +3223,7 @@ class GasKernel:
             if not self.memory.reclama_esecuzione(approval_id):
                 res["esito"] = "già eseguita o non reclamabile: nessuna nuova esecuzione"
                 return res
+            reclamata = True  # V-2 bot #236: da qui un errore lascia l'esito incerto
             # Dal reclamo in poi l'azione NON si riesegue più, qualunque cosa accada.
             # R-c4b3-1: nessun residuo di un run_command precedente.
             self._run_command_meta = None
@@ -3252,6 +3279,8 @@ class GasKernel:
         except Exception as e:
             logging.warning("[GATE-C4B] applica_firma id=%s eccezione: %s", approval_id, e)
             res["esito"] = "errore interno: azione non eseguita o esito ignoto (vedi gas_debug.log)"
+            if reclamata:  # V-2 bot #236: dopo il reclamo non si sa se è partita
+                res["eseguita"], res["stato"] = False, "incerta"
             return res
 
     def _memoria_backup_auto(self) -> None:
@@ -4038,13 +4067,18 @@ class GasKernel:
                         "run_command in fallback applicativo: sandbox OS assente "
                         "(GAS_SANDBOX_MODE=os_with_fallback)")
                     exec_argv = argv
+                env_figlio = self._sanitized_subprocess_env()  # V-1 bot #236: prima del segno
                 self._run_command_avviato = True
                 try:
                     res = subprocess.run(exec_argv, shell=False, cwd=cwd,
-                                         capture_output=True, text=True, timeout=60,
-                                         env=self._sanitized_subprocess_env())
-                except (FileNotFoundError, PermissionError):
-                    self._run_command_avviato = False  # R-428-2: il processo non è partito
+                                         capture_output=True, text=True,
+                                         timeout=self.RUN_COMMAND_TIMEOUT_SEC, env=env_figlio)
+                except subprocess.TimeoutExpired:
+                    raise  # partito e ucciso dal tetto di tempo: esito incerto
+                except (OSError, ValueError):
+                    # R-428-2 / V-1 bot #236: errore di avvio (binario assente, permessi,
+                    # cartella che è un file, byte nullo negli argomenti): mai partito
+                    self._run_command_avviato = False
                     raise
                 self._run_command_meta = {
                     "exit": res.returncode,
