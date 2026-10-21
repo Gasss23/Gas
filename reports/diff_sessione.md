@@ -1,13 +1,10 @@
-# DIFF SESSIONE — 2026-10-21 (R-390-1, giro da Telegram R1, firma in parallelo 5.2, R7, cancello, chat Mani)
+# DIFF SESSIONE — 2026-10-21 (chat Mani, fetta 1: leggi_pagina)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/gate/gate.py` — `sembra_delicato` (estensioni interne, invisibili); `_invisibile` e `_forme` (invisibili di ogni categoria, forma tolta + forma con spazio nei controlli che negano); `libero_dopo_lettura` nega nomi grezzi che Cf/NFKC cambiano.
-- `modules/notte/notte.py` — `esegui_notte(solo=...)`; marcatore `ultimo_avvio`.
-- `gas.py` — `gas notte <nome>`; `_LOG_PATH` accanto a gas.py (se non apribile: solo console, doctor WARN); `_percorso_vettori` per kernel, doctor e comandi dei vettori.
-- `modules/telegram/bot.py` — `/notte`, `/compito <nome>`, log e avviso del giro, /notte@altro bot ignorato; invio in parallelo di firme e notifiche.
-- `tests/test_unit_gate.py`, `tests/test_unit_notte.py`, `tests/test_unit_kernel.py` — casi nuovi.
-- `.claude/agents/memoria_revisore.md` — righe #391-#405 (caratteri invisibili scritti come `<U+…>`).
-- `reports/lavoro_parallelo.md` — terza chat «Mani» e il suo compito.
-- `reports/setup_notte.md` — come lanciare un giro a mano.
-- `reports/da_mergiare.md`, `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.
+- `modules/web/__init__.py`, `modules/web/leggi.py` — nuovi: `leggi_pagina(url)`, lettura di una pagina web con le regole di sicurezza della fetta (R6).
+- `tests/test_unit_web_leggi.py` — nuovo: 83 test con server e DNS finti; righe con IP di prova marcate `gasmerge-ip-ok` per il Gate IP.
+- `.github/workflows/ci.yml` — passo nuovo «Run web suite».
+- `.claude/agents/memoria_revisore.md` — righe #391, #392, #393, #406, #407 (chat Mani).
+- `reports/stato_progetto.md` — blocco «Mani — fetta 1» con le riserve; data di aggiornamento.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
