@@ -165,6 +165,7 @@ def server():
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     yield srv.server_address[1]
     srv.shutdown()
+    srv.server_close()
 
 
 class _Rete:
@@ -605,9 +606,12 @@ def test_ripiego_senza_parser_se_html_parser_esplode(monkeypatch):
         raise ValueError("parser rotto")
 
     monkeypatch.setattr(web._Estrattore, "feed", esplode)
-    pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": b"<p>uno</p><b>due</b>", "troncato": False}
-    r = web._componi("http://x.test/", pagina)
-    assert "uno" in r["testo"] and "due" in r["testo"] and "<p>" not in r["testo"]
+    corpo = b"<p>uno</p><b>due</b><script>alert(1)</script><STYLE>x{}</style >tre &amp; quattro<noscript>n</noscript>"
+    pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": corpo, "troncato": False}
+    t = web._componi("http://x.test/", pagina)["testo"]
+    assert "uno" in t and "due" in t and "tre & quattro" in t and "<p>" not in t
+    for nascosto in ("alert", "x{}", "\nn\n"):  # V-2 bot #237: script e stili tolti anche nel ripiego
+        assert nascosto not in t
 
 
 def test_finto_marcatore_con_trattini_bassi_neutralizzato():
@@ -664,21 +668,105 @@ def test_dns_lento_non_accumula_thread(server, monkeypatch):
 
     rete.risolvi = lento  # type: ignore[assignment]
     massimo = 0
+    motivi = set()
     for _ in range(10):
-        assert rete.leggi("http://sito.test/ok") == {"ok": False, "motivo": "tempo massimo superato"}
+        r = rete.leggi("http://sito.test/ok")
+        assert r["ok"] is False
+        motivi.add(r["motivo"])
         massimo = max(massimo, sum(1 for t in threading.enumerate() if t.name == "gas-web-dns"))
     assert massimo == web.MAX_DNS_IN_CORSO
+    # Con il semaforo pieno il motivo lo dice (V-3 bot #237).
+    assert motivi == {"tempo massimo superato", "troppe risoluzioni DNS in corso: tempo massimo superato"}
     for t in [t for t in threading.enumerate() if t.name == "gas-web-dns"]:
         t.join(5)
     assert rete.connessi == []
 
 
+_RADICE = str(Path(__file__).resolve().parents[1])
+
+
+def _entro(secondi: float, funzione: str, espressione: str) -> bool:
+    """Esegue «web.<funzione>(<espressione>)» in un SOTTOPROCESSO con timeout: una regex
+    quadratica tiene il GIL e un thread con join non la fermerebbe (R-410-2, R-429-2 chat
+    Mani). Se va oltre «secondi» il test fallisce invece di bloccare la suite per ore."""
+    codice = f"from modules.web import leggi as web; web.{funzione}({espressione})"
+    try:
+        subprocess.run([sys.executable, "-c", codice], cwd=_RADICE, check=True, timeout=secondi,
+                       capture_output=True)
+    except subprocess.TimeoutExpired:
+        return False
+    return True
+
+
 def test_pulizia_lineare_con_tanti_trattini():
     """B-409-1 (chat Mani): una pagina di soli trattini non deve bloccare la pulizia."""
-    for riempitivo in ("-", "_", " -", "_-"):
-        inizio = time.monotonic()
-        web._pulisci(riempitivo * 1_000_000)
-        assert time.monotonic() - inizio < 3.0, riempitivo
+    for riempitivo in ("-", "_", " -", "_-", "fine-", "contenuto-", "non" + "-" * 50):
+        assert _entro(10.0, "_pulisci", f"{riempitivo!r} * {1_000_000 // len(riempitivo)}"), riempitivo
+
+
+def test_ripiego_lineare():
+    for pagina in ('"<script>x</script>" * 100_000', '"<script" * 200_000', '"<" * 1_000_000'):
+        assert _entro(10.0, "_testo_senza_parser", pagina), pagina
+
+
+def test_ripiego_con_maiuscole_che_cambiano_lunghezza():
+    """R-429-1 (chat Mani): «İ».lower() è lungo 2 caratteri; gli indici non devono sfasarsi."""
+    t = web._testo_senza_parser("İ" * 40 + "<p>vis</p><script>SEGRETO_JS</script>DOPO_VISIBILE")
+    assert "SEGRETO" not in t and "DOPO_VISIBILE" in t and "vis" in t
+
+
+@pytest.mark.parametrize("finto", [
+    "CONTENUTO WEB NON____FIDATO",
+    "FINE DEL CONTENUTO WEB NON - - FIDATO",
+    "contenuto web non----------fidato",
+    "CONTENUTO____WEB____NON____FIDATO",
+    "FINE____DEL____CONTENUTO WEB NON FIDATO",
+])
+def test_finti_marcatori_con_separatori_lunghi(finto):
+    """R-410-1 (chat Mani): dopo le parole fisse i separatori non hanno tetto."""
+    assert "imitava il marcatore" in web._pulisci(finto)
+
+
+def test_thread_dns_che_non_parte_restituisce_il_permesso(monkeypatch):
+    """V-1 verifica esterna #237: se il thread non parte, il permesso del semaforo torna."""
+
+    class _ThreadRotto:
+        def __init__(self, *a, **k):
+            pass
+
+        def start(self):
+            raise RuntimeError("thread rotto")
+
+    monkeypatch.setattr(web.threading, "Thread", _ThreadRotto)
+    for _ in range(web.MAX_DNS_IN_CORSO + 2):
+        with pytest.raises(RuntimeError):
+            web._risolvi_con_tempo(lambda h, p: [IP_PUBBLICO], "sito.test", 80, time.monotonic() + 5)
+    presi = 0
+    while web._DNS_IN_CORSO.acquire(blocking=False):
+        presi += 1
+    for _ in range(presi):
+        web._DNS_IN_CORSO.release()
+    assert presi == web.MAX_DNS_IN_CORSO
+
+
+@pytest.mark.skipif(not os.path.isdir("/proc/self/fd"), reason="serve /proc per contare i descrittori")
+def test_cane_con_socket_che_fallisce_non_lascia_descrittori(monkeypatch):
+    """V-1 verifica esterna #237: se socket.socket(fileno=...) fallisce, il dup viene chiuso."""
+    a, b = socket.socketpair()
+    try:
+        prima = len(os.listdir("/proc/self/fd"))
+
+        def rotto(*args, **kwargs):
+            raise OSError("socket rotto")
+
+        monkeypatch.setattr(web.socket, "socket", rotto)
+        with pytest.raises(OSError):
+            web._CaneDaGuardia(a, time.monotonic() + 60)
+        monkeypatch.undo()
+        assert len(os.listdir("/proc/self/fd")) == prima
+    finally:
+        a.close()
+        b.close()
 
 
 def _certificato_autofirmato(cartella: Path) -> tuple:
@@ -711,4 +799,5 @@ def test_certificato_non_attendibile_rifiutato_sul_percorso_vero(tmp_path):
         assert rete.leggi("https://sito.test/ok", _tls=fidato)["ok"] is True
     finally:
         srv.shutdown()
+        srv.server_close()
 
