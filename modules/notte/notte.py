@@ -80,6 +80,7 @@ Invarianti di sicurezza:
 from __future__ import annotations
 
 import errno
+import json
 import logging
 import math
 import os
@@ -99,6 +100,15 @@ RIEPILOGO = "ultimo_giro.md"
 # R-394-1: scritto appena il giro parte; il bot Telegram lo usa per capire se un giro
 # lanciato da lui è morto prima di arrivare qui (in quel caso nessuno ha avvisato).
 AVVIO = "ultimo_avvio"
+# R7 (M3, ripresa dopo un crash): compiti iniziati e non finiti. Un compito entra qui
+# prima di partire ed esce quando finisce (anche ko o tempo scaduto); se il processo
+# muore a metà (crash, kill, corrente) resta, e il giro dopo lo riprende (dopo gli altri).
+IN_CORSO = "in_corso.json"
+MAX_TENTATIVI = 3         # avvii interrotti dopo i quali il compito non si riprende più
+NOTA_RIPRESA = ("\n\n[NOTA DEL KERNEL — RIPRESA] Il giro precedente si è interrotto a metà "
+                "di questo compito. Prima di rifare qualcosa controlla cosa è già stato "
+                "fatto (strumento `ricorda`, file già scritti) e non ripetere le azioni "
+                "già eseguite.")
 MAX_COMPITI = 10          # compiti eseguiti per giro, oltre si ignorano (avviso)
 MAX_PROMPT_CHARS = 4000   # prompt di un compito
 MAX_RISPOSTA_CHARS = 3000  # risposta riportata nel riepilogo, per compito
@@ -226,10 +236,13 @@ def _rifletti_compito(kernel: Any, nome: str) -> Dict[str, Any]:
 
 
 def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
-                    max_sec: float = MAX_SEC_COMPITO_DEFAULT) -> Dict[str, Any]:
+                    max_sec: float = MAX_SEC_COMPITO_DEFAULT,
+                    al_termine: Optional[Callable[[], None]] = None) -> Dict[str, Any]:
     """Esegue UN compito su un kernel nuovo, con cronologia vuota e propria.
     Oltre max_sec (controllo tra un evento e l'altro) il turno viene chiuso ed
-    esito='ko'. Mai eccezioni: un errore diventa esito 'ko'."""
+    esito='ko'. Mai eccezioni: un errore diventa esito 'ko'. V-1 bot #234:
+    `al_termine` si chiama appena il turno è chiuso, PRIMA della riflessione e del
+    diario, così un crash in quel momento non fa riprendere un compito già finito."""
     nome = compito["nome"]
     esito: Dict[str, Any] = {"nome": nome, "esito": "ko", "tool": 0,
                              "risposta": "", "errore": "", "negate": 0, "in_attesa": 0}
@@ -239,17 +252,23 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
     try:
         kernel.history = []
         kernel.db_path = notte_dir / f"storia_{nome}.json"
-        gen = kernel.run_turn(compito["prompt"])
+        prompt = compito["prompt"] + (NOTA_RIPRESA if compito.get("ripresa") else "")
+        gen = kernel.run_turn(prompt)
         for ev in gen:
             tipo = ev.get("type") if isinstance(ev, dict) else None
             if tipo == "tool_res":
                 esito["tool"] += 1
                 out = str(ev.get("output", ""))
-                if out.startswith(_NEGATA):
+                if "cancello" in ev:
+                    # R-222-2: l'esito lo dice il kernel, non l'inizio del testo (un
+                    # file che comincia con «Operazione negata» non conta più)
+                    cancello = ev.get("cancello")
+                else:  # kernel senza la chiave (vecchio o finto): prefisso del testo
+                    cancello = ("negata" if out.startswith(_NEGATA) else
+                                "in_attesa" if out.startswith(_IN_ATTESA) else None)
+                if cancello == "negata":
                     esito["negate"] += 1
-                elif out.startswith(_IN_ATTESA):
-                    # Prefisso dell'esito del cancello. Limite dichiarato (R-222-2): un
-                    # file/stdout che INIZIA con la stessa frase gonfia solo il conteggio.
+                elif cancello == "in_attesa":
                     esito["in_attesa"] += 1
             elif tipo == "final":
                 esito["esito"] = "ok"
@@ -274,6 +293,11 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
             except Exception as e:
                 logging.warning("notte: chiusura turno %s: %s", nome, e)
     esito["durata"] = round(time.monotonic() - t0, 1)
+    if al_termine is not None:
+        try:
+            al_termine()
+        except Exception as e:
+            logging.warning("notte: fine del compito %s non registrata: %s", nome, e)
     if (esito["esito"] == "ok" and not scaduto and time.monotonic() - t0 < max_sec
             and riflessione_auto_attiva() and getattr(kernel, "history", None)):
         esito["riflessione"] = _rifletti_compito(kernel, nome)
@@ -297,8 +321,9 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
     if avvisi:
         righe += ["## Avvisi", ""] + [f"- {a}" for a in avvisi] + [""]
     for e in esiti:
+        ripreso = " — ripreso dopo un'interruzione" if e.get("ripreso") else ""  # R-406-3
         righe += [f"## {e['nome']} — {e['esito'].upper()} "
-                  f"({e['tool']} tool, {e.get('durata', 0)}s)", ""]
+                  f"({e['tool']} tool, {e.get('durata', 0)}s){ripreso}", ""]
         if e.get("negate") or e.get("in_attesa"):
             righe += [f"Azioni bloccate dal cancello o negate: {e.get('negate', 0)} · "
                       f"in attesa della tua firma su Telegram: {e.get('in_attesa', 0)}", ""]
@@ -495,11 +520,105 @@ def _scrivi_atomico(path: Path, testo: str) -> None:
     os.replace(tmp, path)
 
 
+def _leggi_in_corso(notte_dir: Path) -> Dict[str, Dict[str, Any]]:
+    """R7: i compiti rimasti a metà nei giri precedenti, {nome: {tentativi, inizio}}.
+    Mai eccezioni: file assente → {}; illeggibile o rovinato → {} e avviso nel log
+    (un registro rotto non deve fermare il giro)."""
+    path = notte_dir / IN_CORSO
+    try:
+        dati = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except Exception as e:
+        logging.warning("notte: %s illeggibile (%s): nessuna ripresa", IN_CORSO, e)
+        return {}
+    if not isinstance(dati, dict):
+        return {}
+    pulito: Dict[str, Dict[str, Any]] = {}
+    for nome, v in dati.items():
+        t = v.get("tentativi") if isinstance(v, dict) else None
+        # V-4 verifica esterna #234: niente bool (True è un int) né numeri assurdi
+        sospetto = isinstance(v, dict) and v.get("sospetto") is True
+        # R-419-1: tentativi 0 ammesso solo per un compito «sospetto» (saltato dopo
+        # MAX_TENTATIVI interruzioni: riparte da capo ma in coda, dopo gli altri)
+        if (isinstance(nome, str) and _NOME_RE.fullmatch(nome) and type(t) is int
+                and (0 < t <= 1000 or (t == 0 and sospetto))):  # V-2 #234: sospetto anche t>0
+            pulito[nome] = {"tentativi": t, "inizio": str(v.get("inizio", ""))[:40]}
+            if sospetto:
+                pulito[nome]["sospetto"] = True
+    return pulito
+
+
+def _scrivi_in_corso(notte_dir: Path, in_corso: Dict[str, Dict[str, Any]]) -> None:
+    """R7: salva il registro dei compiti in corso (scrittura atomica). Mai eccezioni:
+    se non si scrive, il giro va avanti senza ripresa (avviso nel log)."""
+    try:
+        _scrivi_atomico(notte_dir / IN_CORSO, json.dumps(in_corso, ensure_ascii=False))
+    except Exception as e:
+        logging.warning("notte: %s non scritto (%s): ripresa non garantita", IN_CORSO, e)
+
+
+def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str, Any]],
+                    avvisi: List[str], a_mano: bool = False, pota: bool = True
+                    ) -> Tuple[List[Dict[str, Any]], int]:
+    """R7: i compiti rimasti a metà ripartono DOPO quelli mai interrotti (prima chi
+    è stato interrotto una volta, poi chi 2+ volte), marcati `ripresa`. Oltre
+    MAX_TENTATIVI avvii interrotti il compito si salta (avviso) e il suo conto si
+    azzera, così il giro dopo ci riprova da capo invece di saltarlo per sempre;
+    R-419-1: resta però segnato «sospetto» e riparte in coda, dopo gli altri, finché
+    non finisce una volta senza far cadere Gas.
+    R-406-1: ritorna anche quanti compiti sono stati saltati (contano come ko per
+    l'exit code); `a_mano` (gas notte <nome>, /compito) = l'operatore lo chiede
+    esplicitamente: si rilancia lo stesso. R-406-2: in un giro completo le voci di
+    compiti che non sono più tra quelli attivi del catalogo si tolgono; R-407-1: solo
+    se il catalogo è stato letto senza avvisi (`pota`), così un catalogo assente o
+    rovinato per un momento non cancella i conti dei crash."""
+    nomi = {c["nome"] for c in compiti}
+    if not a_mano and pota:
+        for vecchio in [n for n in in_corso if n not in nomi]:
+            del in_corso[vecchio]
+    ripresi: List[Dict[str, Any]] = []
+    altri: List[Dict[str, Any]] = []
+    in_coda: List[Dict[str, Any]] = []  # V-1 bot #234: ripresi già falliti 2+ volte
+    saltati = 0
+    for c in compiti:
+        info = in_corso.get(c["nome"])
+        if info is None:
+            altri.append(c)
+        elif info["tentativi"] == 0:  # R-419-1: sospetto, riparte da capo ma in coda
+            in_coda.append(c)
+        elif info.get("sospetto") and info["tentativi"] < MAX_TENTATIVI:
+            # V-2 verifica #234 (4° giro): un sospetto ricaduto resta in coda, ripreso
+            in_coda.append({**c, "ripresa": True, "rilancio_a_mano": False,
+                            "interruzioni": info["tentativi"]})
+        elif info["tentativi"] >= MAX_TENTATIVI and not a_mano:
+            avvisi.append(f"compito '{c['nome']}' interrotto {info['tentativi']} volte di "
+                          "fila: saltato in questo giro, controlla gas_debug.log")
+            in_corso[c["nome"]] = {"tentativi": 0, "inizio": info.get("inizio", ""),
+                                   "sospetto": True}
+            saltati += 1
+        else:
+            # V-2 bot #234: l'avviso «ripreso» lo scrive il giro quando il compito parte
+            # davvero (kernel avviato, tempo rimasto), non qui.
+            voce = {**c, "ripresa": True,
+                    "rilancio_a_mano": info["tentativi"] >= MAX_TENTATIVI,
+                    "interruzioni": info["tentativi"]}
+            # V-1 bot #234: interrotto una volta → tra i ripresi; 2+ volte → in coda.
+            (in_coda if info["tentativi"] >= 2 else ripresi).append(voce)
+    # V-1 verifica esterna #234 (3° giro, MEDIA) e R-419-1: i compiti mai interrotti
+    # (e mai sospetti) partono SEMPRE per primi; poi i ripresi (interrotti una volta),
+    # infine quelli già falliti 2+ volte e i sospetti. Un compito che fa cadere Gas
+    # costa agli altri solo la prima notte, quando non si sa ancora che crasha.
+    return altri + ripresi + in_coda, saltati
+
+
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
                  kernel_factory: Optional[Callable[[str], Any]] = None,
                  solo: Optional[str] = None) -> int:
     """Un giro completo (R1: con `solo` = nome, il solo compito del catalogo con quel
-    nome esatto; nome assente o non attivo → avviso ed exit 1). Exit code: 0 tutti i compiti ok (o nessuno attivo),
+    nome esatto; nome assente o non attivo → avviso ed exit 1; R7: i compiti rimasti
+    a metà per un crash ripartono dopo gli altri, oltre MAX_TENTATIVI si saltano → exit 1).
+    Exit code: 0 tutti i compiti ok (o nessuno attivo),
     1 almeno un compito ko, saltato per tempo, catalogo non valido o giro
     interrotto da un errore (anche un lock che fallisce per un motivo diverso dal
     lock occupato), 2 un altro giro è in corso. A fine giro, a lock rilasciato,
@@ -536,6 +655,12 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 nome_vis = solo if _NOME_RE.fullmatch(str(solo)) else "(nome non valido)"
                 avvisi.append(f"compito '{nome_vis}' non trovato tra i compiti attivi del catalogo")
         catalogo_ko = bool(avvisi) and not compiti  # solo il catalogo decide l'exit code
+        in_corso = _leggi_in_corso(notte_dir)  # R7: ripresa dei compiti rimasti a metà
+        letto = dict(in_corso)
+        compiti, saltati_r7 = _ordina_riprese(compiti, in_corso, avvisi,
+                                              a_mano=solo is not None, pota=not avvisi)
+        if in_corso != letto:
+            _scrivi_in_corso(notte_dir, in_corso)  # conto azzerato dei compiti saltati
         if _env_budget() <= 0.0:
             os.environ["GAS_DAILY_TOKEN_BUDGET"] = BUDGET_NOTTE_DEFAULT_USD
             avvisi.append(f"GAS_DAILY_TOKEN_BUDGET non impostato: tetto di spesa del giro "
@@ -569,11 +694,33 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 esiti.append({"nome": c["nome"], "esito": "ko", "tool": 0, "durata": 0,
                               "risposta": "", "errore": "kernel non avviato (gas_debug.log)"})
                 continue
-            esiti.append(_esegui_compito(kernel, c, notte_dir, min(max_compito, resta)))
+            if c.get("ripresa"):  # V-2 bot #234: avviso solo per una ripresa vera
+                extra = (f" (rilanciato a mano dopo {c.get('interruzioni')} interruzioni)"
+                         if c.get("rilancio_a_mano") else "")
+                avvisi.append(f"compito '{c['nome']}' ripreso: il giro precedente si era "
+                              f"interrotto a metà{extra}")
+                logging.warning("notte: %s", avvisi[-1])  # R-416-1: anche nella scatola nera
+            info_prima = in_corso.get(c["nome"], {})
+            prima = info_prima.get("tentativi", 0)
+            in_corso[c["nome"]] = {"tentativi": prima + 1, "inizio": _ora_locale()}
+            if info_prima.get("sospetto"):  # V-2 #234: resta sospetto finché non finisce bene
+                in_corso[c["nome"]]["sospetto"] = True
+            _scrivi_in_corso(notte_dir, in_corso)
+            def _finito(nome: str = c["nome"]) -> None:
+                in_corso.pop(nome, None)  # finito (anche ko): non è un crash
+                _scrivi_in_corso(notte_dir, in_corso)
+            esito_c = _esegui_compito(kernel, c, notte_dir, min(max_compito, resta),
+                                      al_termine=_finito)
+            if c.get("ripresa"):
+                esito_c["ripreso"] = True
+            esiti.append(esito_c)
+            if c["nome"] in in_corso:  # rete di sicurezza: al_termine non è stato chiamato
+                _finito()
         scadute = _chiudi_firme_scadute(root)
         if scadute:
             avvisi.append(f"{scadute} richiesta/e di firma scaduta/e senza risposta: "
                           f"chiuse, NON eseguite")
+            logging.warning("notte: %s", avvisi[-1])  # R-417-1: anche in gas_debug.log
         testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi)
         try:
             _scrivi_atomico(notte_dir / RIEPILOGO, testo)
@@ -582,6 +729,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         print(testo)
         # inviato a lock rilasciato (V-2 #169)
         da_notificare = (inizio, esiti, avvisi, None, _lezioni_in_attesa(kernel))
+        if saltati_r7:  # R-406-1: un salto per crash ripetuti è un ko, anche se era l'unico
+            return 1
         if not compiti:
             return 1 if catalogo_ko else 0
         if tempo_finito:
