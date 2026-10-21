@@ -21,6 +21,8 @@
 - **Merge di origin/main (#237, chat Mani) — V-1 verifica esterna #236 (PR non mergeabile)**: `FATTA` — review #432 APPROVATO; conflitti solo nei report e nella memoria del revisore.
 - **V-1/V-2/V-3 bot #236 (prima verifica), R-431-1/2, R-430-3**: `FATTA` — review #433 APPROVATO CON RISERVE (R-433-1 MEDIA).
 - **V-1 MEDIA bot #236 (esito della firma perso a metà turno), V-2/V-3 bot #236, R-433-1/2**: `FATTA` — review #434 APPROVATO CON RISERVE.
+- **R-434-1 (MEDIA, = V-1 bot #236 3° giro), R-434-3**: `FATTA` — review #435 APPROVATO CON RISERVE: a metà turno l'unione con l'altro processo si rimanda alla fine del turno.
+- **V-2/V-3/V-4 bot #236 3° giro, R-435-1**: `DEFERITA` — prossima fetta.
 - **R7 / R-c4b3-3**: `DEFERITA` — prossime fette.
 
 ---
@@ -28,22 +30,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 ++++++++++++
- gas.py                             | 253 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ .claude/agents/memoria_revisore.md |  14 +++++++++++++
+ gas.py                             | 269 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  modules/telegram/bot.py            |   4 ++++
- reports/da_mergiare.md             |  50 +++++++++++++-----------------------------------
- reports/diff_sessione.md           |  13 +++++++------
- reports/handoff.md                 | 373 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------
+ reports/da_mergiare.md             |  50 ++++++++++++--------------------------------
+ reports/diff_sessione.md           |  13 ++++++------
+ reports/handoff.md                 | 408 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |   6 +++---
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  40 ++++++++++++++++++---------------------
- tests/test_unit_kernel.py          | 267 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 10 files changed, 827 insertions(+), 195 deletions(-)
+ reports/ultimo_report.md           |  40 ++++++++++++++++-------------------
+ tests/test_unit_kernel.py          | 295 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 909 insertions(+), 194 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8e4584f fix(storia): a metà turno l'unione con un altro processo si rimanda alla fine del turno (R-434-1, V-1 bot #236); solo UnicodeDecodeError resta «partito» (R-434-3)
+7aa3e60 chore(revisore): memoria review #435 — APPROVATO CON RISERVE
+48561e5 docs(fine-task): report e handoff — riserve del bot #236 (#433/#434), R-434-1 aperta
 6548903 fix(storia,firma): unione della storia per contenuto, esito della firma tenuto a metà turno, lock con tetto di tempo; output non UTF-8 resta «partito» (V-1/V-2/V-3 bot #236, R-433-1/2)
 f1ad943 chore(revisore): memoria review #434 — APPROVATO CON RISERVE
 5b650d3 fix(firma,storia): errori d'avvio mai «partiti», incerta dopo il reclamo, test con processo vero; copie di conflitto collegate, con microsecondi e potate (V-1/V-2/V-3 bot #236, R-431-1/2, R-430-3)
@@ -308,11 +313,38 @@ File:
 - Sonda: /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/prove/p1.py
 - Log della suite: /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/k.log
 
+### Review #435 (chat Motore) — commit 8e4584f
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (voce R-c4b3-4, riga 409) e .claude/agents/memoria_revisore.md (le ultime #432–#434 con le lezioni collegate).
+
+**Elementi del diff esaminati**
+- `gas.py:1133` — `_turno_chiuso()` dice che il turno è chiuso se l'ultimo messaggio è un assistant senza tool_calls, oppure se la storia è vuota. Rischio esaminato: il turno può chiudersi anche in altri modi, per esempio col blocco di `_storia_esito_firma`, che finisce con l'assistant «Preso atto». Esito: ok, quel blocco chiude il turno e l'unione avviene.
+- `gas.py:1177` — nel ramo «nostra + suoi», se il turno non è chiuso, la funzione restituisce False senza toccare `self.history` né `_storia_sync`. Rischio esaminato: che il modello veda la notifica dell'altro processo a metà turno (R-434-1). Esito: ok. Ho tolto il controllo in una copia della sorgente e T97h fallisce: la notifica finisce prima di «risposta finale h». Il primo ramo (i nostri messaggi nuovi cominciano con user, quindi i suoi vanno prima del nostro turno) non cambia e non spezza la sequenza.
+- `gas.py:1284` — `_save_history` esce senza scrivere quando l'unione è rimandata. Il lock si rilascia comunque nel finally. Rischio esaminato: crash-safety, con il turno a metà che non va su disco. Esito: riserva, vedi R-435-1.
+- `gas.py:4134` — l'except che lascia il segno «partito» ora è `(subprocess.TimeoutExpired, UnicodeDecodeError)`. Un UnicodeEncodeError all'avvio cade in `except (OSError, ValueError)` (riga 4137), che lo marca «mai partito». Rischio esaminato: le sottoclassi di ValueError che nascono dopo l'avvio del comando. Esito: ok, R-434-3 chiusa.
+- `tests/test_unit_kernel.py:7548` — T97h: il bot scrive mentre la CLI è al secondo giro di tool. Il test controlla che la notifica sia assente dalla storia in memoria e presente nel file, e che dopo il salvataggio finale stia dopo la risposta. Esito: ok, il test dimostra il caso che R-434-1 chiedeva.
+- Contesto `gas.py:1396` (compressione) e `gas.py:3217` (`_storia_esito_firma`), gli altri chiamanti di `_save_history`. Una compressione a metà turno con conflitto pendente non viene scritta, la base resta quella vecchia e al salvataggio finale si passa dal ramo 2 (storia compressa). Esito: ok.
+
+**Prove su una copia del codice staged nello scratchpad**: kernel 991 PASS, 0 FAIL. Mutazione senza `_turno_chiuso`: 990 PASS, 1 FAIL (T97h).
+
+**Riserve**
+- **R-435-1 BASSA**: un turno può finire senza risposta finale (10 iterazioni, pipeline esausta, eccezione del provider) mentre c'è un conflitto pendente. In quel caso non c'è un salvataggio che chiude il turno. Se il processo esce, i messaggi del turno (user e tool) non arrivano mai su disco. Sonda `/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/r435/sonda_435.py`: il tool del secondo giro manca dal file e anche da un nuovo processo. Se invece lo stesso processo fa un altro turno che si chiude, l'unione avviene e non si perde niente. Il diario registra comunque i tool. Rimedio suggerito: un salvataggio «forzato» nel finally di `run_turn`. A turno finito, unire i messaggi dell'altro dopo un tool non sporca più la finestra (tool → user è una sequenza valida). Da tracciare in stato_progetto.md.
+- **R-435-2 COSMETICA**: `compress-history` forzato (contesto `gas.py:5209`), con conflitto pendente e storia che finisce con un tool, non scrive niente ma riporta ok.
+- R-434-2 BASSA resta aperta, come dichiarato.
+
+**Rischi esclusi**
+- Non ho provato la concorrenza reale tra due processi vivi (CLI e bot Telegram) su VPS: ho simulato con due kernel nello stesso processo, come fa T97h.
+- Non ho rieseguito pytest tests/ completo (1807): ho rieseguito solo la suite kernel.
+
+Riga contatore #435 e una lezione aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md, committate con 7aa3e60 tramite scripts/commit_memoria_revisore.sh. Lo staging di gas.py e tests/test_unit_kernel.py è rimasto com'era.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 971 → 990 PASS, 0 FAIL (T77u-z, T77aa-ad, T97a-g). Blocco reale: `=== RIEPILOGO: 990 PASS, 0 FAIL ===`.
+tests/test_unit_kernel.py: 971 → 991 PASS, 0 FAIL in locale (T77u-z, T77aa-ad, T97a-h; in CI con bwrap 2 in più). Blocco reale: `=== RIEPILOGO: 991 PASS, 0 FAIL ===`.
 pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 
 ## §6 STATO CI
@@ -322,7 +354,8 @@ pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 - 33173bf (con b997a5c, c19defc, 40da5ce): unit-suite, handoff-check success; verifica-bot success (APPROVATO CON RISERVE, V-1/V-2/V-3 BASSE: decide l'operatore).
 - 4fb9dcd (con 9a32029, 4ad247c, 63e6a2f, ddc3422): handoff-check success; unit-suite e verifica-bot non lette (superate dal merge di main).
 - 2923705 (con 21a146d): unit-suite, handoff-check success; verifica-bot FAILURE (V-1 MEDIA: esito della firma a metà turno), corretta in 6548903.
-- 5b9bfc6, 5b650d3, f1ad943, 6548903: run non ancora disponibile alla scrittura dell'handoff.
+- 48561e5 (con 5b9bfc6, 5b650d3, f1ad943, 6548903): unit-suite success (kernel 992 PASS in CI), handoff-check success; verifica-bot FAILURE (V-1 MEDIA = R-434-1), corretta in 8e4584f.
+- 7aa3e60, 8e4584f: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -332,7 +365,9 @@ pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 - R-430-3, R-431-1/2: chiuse in #433; R-433-1/2: chiuse in #434.
 - R-431-3 (COSMETICA): indice su un Optional in `__init__`.
 - V-1/V-2/V-3 bot #236 (entrambi i giri): chiuse in #433/#434.
-- R-434-1 (MEDIA, aperta, prossima fetta): l'unione «nostra + suoi» può scattare anche al salvataggio a metà turno del loop: il modello vede la notifica della firma prima della propria risposta. Correzione: a metà turno non unire, rimandare al salvataggio finale.
+- R-434-1, R-434-3: chiuse in #435.
+- R-435-1 (BASSA): turno finito senza risposta finale con conflitto pendente → i suoi messaggi non vanno su disco se il processo esce.
+- R-435-2 (COSMETICA): compress-history con conflitto pendente non scrive ma dice ok.
+- V-2/V-3/V-4 bot #236 3° giro (BASSE/COSMETICA): Popen+communicate per il segno «partito», messaggio Telegram dell'errore interno, descrizione della PR.
 - R-434-2 (BASSA): dopo il ramo «nostra + suoi» una scrittura fallita più una concorrente possono duplicare messaggi.
-- R-434-3 (BASSA): UnicodeEncodeError all'avvio dato per «partito»: restringere a UnicodeDecodeError.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
