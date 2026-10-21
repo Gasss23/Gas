@@ -52,7 +52,7 @@
 b4617d8 feat(web): leggi_pagina — una pagina web in testo pulito, marcato NON FIDATO (R6, chat Mani)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. I commit di main portati dal merge `7925785` non sono della sessione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. I commit di main portati dal merge `7925785` non sono della sessione. Anche i numeri del §2 sono presi prima del commit di fine-task, che cambia `reports/handoff.md` stesso: le righe di quel file possono differire di poco (l'elenco dei file è esatto).
 
 ---
 
@@ -269,7 +269,7 @@ Review #406 (chat Mani): merge di origin/main 7bd0875 (PR #233) nel ramo feat/ma
 
 ### Review #407 (chat Mani) — verdetto RIEMESSO
 
-Riemesso dal revisore su richiesta, con lo stesso esito, gli IP in chiaro sostituiti da <IP-redatto> perché il Gate IP blocca il push. Il testo originale, con gli IP, è nel commit `55bd481` della cronologia del ramo.
+Riemesso dal revisore su richiesta, con lo stesso esito, gli IP in chiaro sostituiti da <IP-redatto> perché il Gate IP blocca il push. Il testo originale, con gli IP, è nel commit `713c20b` della cronologia del ramo.
 
 ## VERDETTO: APPROVATO
 
@@ -335,10 +335,11 @@ File rilevanti:
 
 ## §6 STATO CI
 
-- `b4617d8`, `6af7ff0`, `7925785`, `0fbe4f3`, `55bd481`: pushati insieme a `2d7c4c0` o prima; nessuna run verificata su questi SHA singoli (una run per push, che testa solo la testa).
+- `b4617d8`, `6af7ff0`, `7925785`, `0fbe4f3`, `713c20b`: pushati insieme a `2d7c4c0` o prima; nessuna run verificata su questi SHA singoli (una run per push, che testa solo la testa).
 - `2d7c4c0` (testa della PR al primo giro): run CI 39606477168 — unit-suite success (passo «Run web suite»: «83 passed»; kernel «959 PASS, 0 FAIL»), handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, la PR tocca `ci.yml`).
-- `2a83a4d` (V-1/V-2 del bot #235): run non ancora disponibile alla scrittura dell'handoff.
-- Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
+- `2a83a4d` (V-1/V-2 del bot #235): pushato insieme a `9a248c0`, nessuna run sul singolo SHA.
+- `9a248c0`: run CI 39608752359 — unit-suite success (passo «Run web suite» success), handoff-check success; bot APPROVATO CON RISERVE (V-1/V-2 COSMETICHE: stat del §2 e riferimento a `55bd481`, che era l'hash dell'albero e non del commit: corretto in `713c20b`).
+- Commit di correzione con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
