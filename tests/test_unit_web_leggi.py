@@ -856,6 +856,7 @@ def test_parser_script_autochiuso_apre_lo_script():
                             (b"<p>a</p><iframe/>SEGRETO</iframe>VIS", ("a", "VIS")),
                             (b"<p>a</p><SCRIPT/>SEGRETO</SCRIPT>VIS", ("a", "VIS")),
                             (b"<p>a</p><noscript/>SEGRETO</noscript>VIS", ("a", "VIS")),
+                            (b"<p>a</p><svg>SEGRETO</script>SEGRETO_2</svg>VIS", ("a", "VIS")),  # V-1 bot #242
                             (b"a<svg/>VIS<math/>VIS2<br/>VIS3", ("a", "VIS", "VIS2", "VIS3"))):
         t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
                                              "troncato": False})["testo"]
@@ -894,7 +895,8 @@ def test_parser_script_autochiuso_apre_lo_script():
     '<canvas><a title="</canvas>">SEGRETO</a></canvas>VIS',
     "<svg><!--</svg>-->SEGRETO</svg>VIS",
     "<svg><svg>SEGRETO</svg>SEGRETO_2</svg>VIS",                 # annidamento contato (R-431-3)
-    "<svg>SEGRETO</script>VIS",                                 # contatore unico, come _Estrattore
+    "<svg>SEGRETO</script>SEGRETO_2</svg>VIS",                  # una chiusura scala solo il suo nome (V-1 bot #242)
+    "<svg><noscript>SEGRETO</svg>SEGRETO_2</noscript></svg>VIS",
     "<svg a=x/>SEGRETO</svg>VIS",                               # la «/» è del valore: non autochiuso
     "<noscript/>SEGRETO</noscript>VIS",                         # «/» ignorata fuori da svg e math
     '<script>SEGRETO</script a=">">VIS',                        # chiusura con virgolette (V-1 bot #239, 2° giro)

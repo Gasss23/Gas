@@ -109,7 +109,7 @@ _AUTOCHIUSO = re.compile(_ATTRIBUTI + "/>")
 # Blocchi GREZZI: il contenuto è testo, non tag, e finisce alla prima chiusura con lo stesso
 # nome (come nel parser e nei browser). Gli altri nascosti si contano come fa _Estrattore:
 # dentro si leggono i tag, quindi «</svg>» in un attributo o in un commento non chiude
-# (R-442-1). svg e math autochiusi non aprono niente (V-1 bot #239), come nei browser.
+# (R-442-1), e una chiusura scala solo un'apertura con lo stesso nome (V-1 bot #242). svg e math autochiusi non aprono niente (V-1 bot #239), come nei browser.
 # Grezzi anche textarea, xmp, noembed, noframes e plaintext (fino in fondo), come in
 # html.parser: dentro non si contano aperture (R-445-1). Un grezzo autochiuso
 # («<script/>») non salta il contenuto: se è fra i nascosti conta come un'apertura, così il
@@ -435,10 +435,12 @@ class _Estrattore(HTMLParser):
         self.pezzi: list = []
         self.titolo: list = []
         self._salta = 0
+        self._aperti: dict[str, int] = {}  # aperture contate per nome (V-1 bot #242)
         self._nel_titolo = False
 
     def handle_starttag(self, tag: str, attrs: list) -> None:
         if tag in self._SALTA:
+            self._aperti[tag] = self._aperti.get(tag, 0) + 1
             self._salta += 1
         elif tag == "title":
             self._nel_titolo = True
@@ -455,7 +457,10 @@ class _Estrattore(HTMLParser):
             super().handle_startendtag(tag, attrs)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in self._SALTA and self._salta > 0:
+        # Una chiusura scala solo un'apertura con lo stesso nome: in «<svg>X</script>Y» per i
+        # browser Y resta dentro svg, quindi invisibile (V-1 bot #242).
+        if tag in self._SALTA and self._aperti.get(tag, 0) > 0:
+            self._aperti[tag] -= 1
             self._salta -= 1
         elif tag == "title":
             self._nel_titolo = False
@@ -538,8 +543,8 @@ def _togli_blocchi_nascosti(testo: str) -> str:
     """Toglie commenti, tag e gli elementi nascosti (script, style, svg, iframe, title…),
     come il parser: ogni tag finisce al suo «>» fuori dalle virgolette, quindi «<» o
     «</script>» dentro un attributo non contano (V-1 ve #239, V-3 bot #239); i blocchi
-    grezzi finiscono alla loro chiusura, gli altri nascosti si contano con un unico
-    contatore come in _Estrattore (R-442-1, chiude anche R-431-3); i commenti fasulli
+    grezzi finiscono alla loro chiusura, gli altri nascosti si contano per nome come in
+    _Estrattore (R-442-1, chiude anche R-431-3; V-1 bot #242); i commenti fasulli
     («<!x», «<?», «</» senza lettera) finiscono al primo «>», «<![cdata[» a «]]>» (R-442-2).
     Differenza dichiarata: un tag o un commento senza fine porta via il resto della pagina
     (si perde testo, non esce contenuto nascosto). Lineare: la ricerca va sempre avanti,
@@ -548,6 +553,7 @@ def _togli_blocchi_nascosti(testo: str) -> str:
     pezzi = []
     prossimi: dict[str, int] = {}
     salta = 0
+    aperti: dict[str, int] = {}
     i = pos = 0
     while True:
         m = _INIZIO_TAG.search(basso, pos)
@@ -578,6 +584,7 @@ def _togli_blocchi_nascosti(testo: str) -> str:
                     if nome in _GREZZI_RIPIEGO:
                         if _AUTOCHIUSO.match(basso, m.end()):
                             if nome in _TAG_NASCOSTI:
+                                aperti[nome] = aperti.get(nome, 0) + 1
                                 salta += 1
                         elif nome == "plaintext":
                             fine = -1
@@ -585,8 +592,10 @@ def _togli_blocchi_nascosti(testo: str) -> str:
                             fine = _chiusura(basso, nome, fine)
                     elif nome in _CONTATI_RIPIEGO:
                         if not (nome in _AUTOCHIUDIBILI and _AUTOCHIUSO.match(basso, m.end())):
+                            aperti[nome] = aperti.get(nome, 0) + 1
                             salta += 1
-                    elif nome[1:] in _TAG_NASCOSTI and nome.startswith("/") and salta:
+                    elif nome.startswith("/") and aperti.get(nome[1:], 0) > 0:
+                        aperti[nome[1:]] -= 1
                         salta -= 1
         if fine == -1:
             break
