@@ -566,6 +566,7 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
             del in_corso[vecchio]
     ripresi: List[Dict[str, Any]] = []
     altri: List[Dict[str, Any]] = []
+    in_coda: List[Dict[str, Any]] = []  # V-1 bot #234: ripresi già falliti 2+ volte
     saltati = 0
     for c in compiti:
         info = in_corso.get(c["nome"])
@@ -579,10 +580,13 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
         else:
             # V-2 bot #234: l'avviso «ripreso» lo scrive il giro quando il compito parte
             # davvero (kernel avviato, tempo rimasto), non qui.
-            ripresi.append({**c, "ripresa": True,
-                            "rilancio_a_mano": info["tentativi"] >= MAX_TENTATIVI,
-                            "interruzioni": info["tentativi"]})
-    return ripresi + altri, saltati
+            voce = {**c, "ripresa": True,
+                    "rilancio_a_mano": info["tentativi"] >= MAX_TENTATIVI,
+                    "interruzioni": info["tentativi"]}
+            # V-1 bot #234: un compito che fa cadere Gas a ogni avvio, rimesso sempre
+            # per primo, farebbe perdere il giro intero: dal secondo tentativo va in coda.
+            (in_coda if info["tentativi"] >= 2 else ripresi).append(voce)
+    return ripresi + altri + in_coda, saltati
 
 
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,

@@ -1714,3 +1714,24 @@ def test_r416_avviso_ripresa_nel_log(dirs, caplog):
     with caplog.at_level("WARNING"):
         esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
     assert "'lungo' ripreso" in caplog.text
+
+
+def test_v1_bot234_ripreso_due_volte_va_in_coda(dirs):
+    """V-1 bot #234: interrotto 1 volta → per primo; 2+ volte → dopo gli altri."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: breve
+    prompt: "breve"
+  - nome: lungo
+    prompt: "lungo"
+  - nome: medio
+    prompt: "medio"
+""")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 2, "inizio": "x"},
+                                                 "medio": {"tentativi": 1, "inizio": "x"}}))
+    visti = []
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti, crash=False))
+    assert [v.split(notte.NOTA_RIPRESA)[0] for v in visti] == ["medio", "breve", "lungo"]
