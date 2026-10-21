@@ -1,32 +1,28 @@
-# ULTIMO REPORT — 2026-10-21 — Chat Mani, fetta 5: riserve rimaste della lettura web (R6)
+# ULTIMO REPORT — 2026-10-21 — Chat Mani, fetta 6: note rimaste della PR #242 (R6, PR #243)
 
-Ramo `feat/mani-web-fetta5` da main dopo il merge di #239. Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza. PR #242. Operatore: «procedi con la fetta 5».
+Ramo `feat/mani-web-fetta6` da main dopo il merge di #242. Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. PR #243 (https://github.com/Gasss23/Gas/pull/243). Fetta di sicurezza. Operatore: «procedi con la fetta 6», poi «mergia quando il bot approva».
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #242 (https://github.com/Gasss23/Gas/pull/242): vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
+1. Merge della PR #243: autorizzato dall'operatore quando il bot approva (`verifica-bot` success sull'head, niente ALTA/MEDIA), con CI verde e senza conflitti.
 2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
 
 ## Esito
 
-- **R-442-1 / R-431-3 (contenuto dei nascosti non grezzi, annidamento)**: `FATTA` — contatore unico come `_Estrattore`: dentro svg, math, noscript, template, object, canvas si leggono i tag, quindi «</svg>» in un attributo o in un commento non chiude.
-- **R-442-2 (commenti fasulli)**: `FATTA` — `<!x`, `<?`, `</` senza lettera finiscono al primo «>», `<![CDATA[` a «]]>», in un'unica ricerca lineare. Tolta la regex finale `<[^<>]*>`: cancellava solo testo vero («a < b»).
-- **V-1 bot #239 (`<svg/>` autochiuso)**: `FATTA` — svg e math autochiusi non aprono; la «/» di un valore senza virgolette (`<svg a=x/>`) non conta. Senza gruppi di cattura: in Python 3.11 dentro una ripetizione possessiva danno SystemError.
-- **V-1 bot #239 2° giro (virgolette nella chiusura)**: `FATTA` — anche il tag di chiusura finisce al suo «>» fuori dalle virgolette.
-- **R-445-1 (grezzi del parser)**: `FATTA` — textarea, xmp, noembed, noframes, plaintext grezzi come in html.parser; un grezzo autochiuso fra i nascosti conta come apertura.
-- **R-446-1 (percorso normale)**: `FATTA` — `<script/>` e gli altri nascosti autochiusi (non svg/math) aprono come nei browser: prima html.parser li trattava come vuoti e il testo dopo (codice invisibile nel browser) arrivava al modello.
-- **R-432-1 / V-3 ve #239 / V-2 bot #239 2° giro**: `FATTA` — ramo morto tolto, test «a<script», docstring e commento dei test corretti.
-- **Test**: web suite 137 → 167 (166 al primo giro) (Python 3.13 e 3.11, anche con rete e DNS veri bloccati), con un test di confronto col parser su 4000 pagine casuali. Fuzz differenziale: 0 fughe su 500k pagine (3.13) e 300k (3.11). Mutazioni in copie isolate: tutte prese.
-- **Review**: #445 → #446 → #447 (chat Mani), APPROVATO CON RISERVE (ciascuna ha chiuso la riserva della precedente).
-- **V-1 bot #242 / V-1 verifica esterna #242 (contatore unico)**: `FATTA` — contatore per nome nel parser e nel ripiego: una chiusura scala solo un'apertura con lo stesso nome (in `<svg>X</script>Y` Y è invisibile per i browser e non arriva più al modello); chiude anche la parte (a) di R-447-1. Test 166 → 167. Review #448 (chat Mani) APPROVATO CON RISERVE (R-448-1 COSMETICA, R-448-2 di registro).
-- **Bot #242**: APPROVATO CON RISERVE (verifica-bot success), solo V-1 BASSA, chiusa sopra. **Verifica esterna #242**: APPROVATO CON RISERVE: V-1 = V-1 bot; V-2 BASSA (commenti vuoti su 3.11) registrata; V-3 COSMETICA (SystemError dei gruppi di cattura su 3.11 non riprodotto dal verificatore: l'agente l'ha visto sul pattern vero, il commento resta); V-4 COSMETICA §6 aggiornato.
-- Restano **R-447-1** parte (b) BASSA e **R-448-1** COSMETICA, dichiarate in `reports/stato_progetto.md`.
+- **V-2 verifica esterna #242 bis (`<title/>`)**: `FATTA` — `<title/>` apre il titolo nel parser e nel ripiego come nei browser: il testo fino a `</title>` va nella riga «Titolo:», non nel corpo.
+- **R-449-1**: `FATTA` — dentro svg/math l'autochiusura vale e `<title/>` resta vuoto (era una regressione del primo giro: sulle icone svg si perdeva il resto della pagina).
+- **V-1 verifica esterna #242 bis (test sul contatore)**: `FATTA` — chiusura in più dopo una coppia bilanciata sul percorso normale e nel ripiego.
+- **R-449-2, R-448-1, V-3/V-4 verifica esterna #242**: `FATTA` — caso del ripiego che discrimina, riga lunga a capo, commento sul SystemError di Python 3.11 con l'input che lo provoca (riprodotto su 3.11.17: con un gruppo di cattura nella ripetizione possessiva, `<a b="1"="x>` solleva SystemError; altri input no, per questo i verificatori non lo vedevano).
+- **Note del bot #242 sull'handoff della fetta 5 (run fallita su `f583746`, righe citate)**: `SALTATA — riguardano il dossier della fetta 5, sostituito da questo`. Nota: la run 39687109665 su `f583746` era fallita (handoff-check) perché l'handoff non era ancora aggiornato, come previsto.
+- **R-450-1 (punti di integrazione HTML dentro svg/math)**: `DEFERITA — BASSA preesistente, registrata in stato_progetto`.
+- **Test**: web suite 167 → 172 (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Fuzz differenziale 0 fughe. Mutazioni in copie isolate: tutte prese.
+- **Review**: #449 (chat Mani) APPROVATO CON RISERVE (R-449-1 BASSA, R-449-2 COSMETICA, chiuse nello stesso giro) → #450 (chat Mani) APPROVATO CON RISERVE (R-450-1 BASSA preesistente).
 
 ## Anomalie
 
-- Nessuna. Nota: html.parser di Python 3.11 non riconosce i commenti vuoti `<!-->`/`<!--->` (i browser e il 3.13 sì): il test di confronto esclude quelle pagine.
+- Nessuna.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
-Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…5»): aggancio di `leggi_pagina` con al modello solo `testo`, firma a finestra contaminata, tetto di chiamate, diario senza il testo della pagina, fiducia solo nei marcatori con il codice di quella chiamata.
+Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…6»): aggancio di `leggi_pagina` con al modello solo `testo`, firma a finestra contaminata, tetto di chiamate, diario senza il testo della pagina, fiducia solo nei marcatori con il codice di quella chiamata.
