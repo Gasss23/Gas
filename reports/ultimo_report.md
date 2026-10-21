@@ -21,14 +21,14 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **Ordine delle riprese (V-1 bot #234)** — FATTA. Review #418 APPROVATO CON RISERVE; limite dichiarato R-418-3.
 - **Compiti che crashano non affamano gli altri; registro dei costi a blocchi; date future (V-1/V-2 verifica #234 3° giro, V-1 bot #234, R-419-1, R-420-1 — tutte e tre MEDIE chiuse)** — FATTA. Review #419, #420, #421 APPROVATO CON RISERVE.
 - **Righe valide lunghe contate; compito «sospetto» resta segnato e va in coda dopo un nuovo crash (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)** — FATTA. Review #422 APPROVATO CON RISERVE (R-422-1/2 BASSE, R-422-3 COSMETICA).
+- **Riserve R-422 (avviso per righe enormi, test a cavallo di blocchi)** — FATTA. Review #423 APPROVATO CON RISERVE.
+- **Riga finale del registro dei token non riletta a file invariato; avviso «firme scadute» anche in gas_debug.log (V-1 bot e verifica esterna #234 5° giro, R-417-1)** — FATTA. Review #424 APPROVATO CON RISERVE. V-3 verifica esterna non regge (registro toccato solo sotto il lock del giro).
 - **Anomalie** — disco temporaneo pieno due volte: cloni e ambienti Python degli agenti di verifica, poi ~129.000 cartelle `gas_*` lasciate dai test in /tmp (ripulite: da 4 MB a 29 GB liberi). Un agente di verifica ha staccato l'HEAD del repo vero: commit dei report rifatto sul ramo giusto.
 - **Verifica esterna #234** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot su #234: APPROVATO CON RISERVE (neutral, decide l'operatore).
-- **Test** — kernel 957 → 967 PASS, 0 FAIL; gate 811 → 817; notte 106 → 129.
+- **Test** — kernel 957 → 969 PASS, 0 FAIL; gate 811 → 817; notte 106 → 129.
 
 ## Prossimi passi
 
-1. R-422-1/2/3: avviso per righe oltre ~17 MiB, test con riga più lunga di un blocco, commenti.
-2. R7: ripresa dal punto esatto (rileggere la storia parziale del compito) — valutare.
-3. R-417-1: avviso «firme scadute» anche in gas_debug.log.
-4. R-408-1: potare il registro solo se il file del catalogo è stato letto.
-5. Agganciare lo strumento web della chat Mani quando arriva la sua richiesta.
+1. R7: ripresa dal punto esatto (rileggere la storia parziale del compito) — valutare.
+2. R-408-1: potare il registro solo se il file del catalogo è stato letto.
+3. Agganciare lo strumento web della chat Mani quando arriva la sua richiesta.

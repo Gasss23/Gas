@@ -24,6 +24,8 @@
 - **Ordine delle riprese (V-1 bot #234)**: `FATTA` — review #418 APPROVATO CON RISERVE (limite dichiarato R-418-3).
 - **Compiti sani per primi, sospetti in coda; registro dei costi a blocchi; date future (V-1/V-2 verifica #234 3° giro, V-1 bot #234, R-419-1, R-420-1)**: `FATTA` — review #419, #420, #421 APPROVATO CON RISERVE.
 - **Righe valide lunghe contate; «sospetto» mantenuto e in coda (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)**: `FATTA` — review #422 APPROVATO CON RISERVE.
+- **Riserve R-422-1/2/3 (avviso righe enormi, test a cavallo di blocchi)**: `FATTA` — review #423 APPROVATO CON RISERVE.
+- **Riga finale non riletta a file invariato; firme scadute nel log (V-1 bot V-B e verifica esterna #234 5° giro, R-417-1, R-423-1)**: `FATTA` — review #424 APPROVATO CON RISERVE. V-3 verifica esterna (registro senza blocco): non regge, il registro si tocca dopo il lock esclusivo del giro.
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -32,25 +34,30 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   19 +++++++
- gas.py                             |  178 ++++++++++++++++++++++++++++++++++++++++++++++++++++----------
- modules/gate/gate.py               |   12 ++++-
- modules/memory/store.py            |   21 +++++++-
- modules/notte/notte.py             |  155 +++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/da_mergiare.md             |   99 +++++++++++++----------------------
+ .claude/agents/memoria_revisore.md |   21 +++++++
+ gas.py                             |  189 ++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ modules/gate/gate.py               |   12 +++-
+ modules/memory/store.py            |   21 ++++++-
+ modules/notte/notte.py             |  156 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ reports/da_mergiare.md             |   99 ++++++++++++--------------------
  reports/diff_sessione.md           |   17 +++---
- reports/handoff.md                 | 1022 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 1101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |    2 +-
- reports/ultimo_report.md           |   48 ++++++++---------
+ reports/ultimo_report.md           |   46 +++++++--------
  tests/test_unit_gate.py            |    8 +++
- tests/test_unit_kernel.py          |  171 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           |  330 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 1497 insertions(+), 585 deletions(-)
+ tests/test_unit_kernel.py          |  220 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           |  340 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 13 files changed, 1646 insertions(+), 586 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+214a450 fix(budget,notte): riga finale non riletta a file invariato; firme scadute anche nel log (V-1 bot/verifica #234 5° giro, R-417-1, R-423-1)
+06da7ac chore(revisore): memoria review #424 — APPROVATO CON RISERVE
+d718b5d fix(budget): avviso anche per righe enormi scartate dal ramo lungo; test a cavallo di blocchi (R-422-1/2/3)
+6609ca5 chore(revisore): memoria review #423 — APPROVATO CON RISERVE
+0c02776 docs(fine-task): report e handoff — righe valide lunghe, sospetto in coda (#422)
 373542f fix(budget,notte): righe valide lunghe contate; sospetto mantenuto e in coda (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)
 9533488 chore(revisore): memoria review #422 — APPROVATO CON RISERVE
 9f470a9 chore(revisore): memoria review #422 — APPROVATO CON RISERVE
@@ -748,11 +755,85 @@ Spazio su disco (`df -h /`): 29 GB liberi, uso al 29%. Ho lavorato su una copia 
 
 File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/modules/notte/notte.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/tests/test_unit_notte.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #423 (chat Motore) — commit d718b5d
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #423 (chat Motore). Ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md (sezione R-422) e la mia memoria, poi ho esaminato il diff STAGED (gas.py, tests/test_unit_kernel.py). Il working tree coincide con lo staged.
+
+**Elementi del diff esaminati**
+- `gas.py:1284` — nel ramo `lunga`, quando la riga troppo lunga si chiude col suo «\n», ora scrive `logging.warning("log dei token: riga oltre %d byte ignorata")`. Rischio esaminato: avviso doppio o ripetuto. Esito: ok. Ho provato su una copia con blocco da 4 KB e tetto di 50 KB:
+  - «\n» che chiude esattamente un blocco senza nient'altro dopo: 1 avviso, poi 0. Il caso non ne produce un secondo, perché `find == rfind` e quindi `righe` resta vuoto.
+  - Stesso caso con una riga valida dopo: 1 avviso, conto 0.1.
+  - Due righe lunghe di fila: 2 avvisi, poi 0.
+  - Riga lunga finale senza «\n»: 0 avvisi a ogni chiamata (R-421-1 rispettata). Aggiungendo poi il «\n» si ha 1 avviso, poi 0.
+  - Bordo: 50.000 byte la riga si conta; 50.001 byte si scarta con 1 avviso.
+- `tests/test_unit_kernel.py:7202` (righe 7213 e 7216) — T94i con `_COSTI_BLOCCO = 4096` e `_RIGA_MAX = 50_000`, e ripristino nel finally. Rischi esaminati: la mutazione non viene presa, oppure lo stato globale patchato sporca gli altri test. Esito: ok.
+  - Mutazione «accumulo a 65536» al posto di `_RIGA_MAX`: solo T94i FAIL (0.2 invece di 0.3), T94h passa. R-422-2 è chiusa.
+  - Mutazione «avviso nuovo tolto»: T94i FAIL. R-422-1 è coperta.
+  - Le globali sono lette dalla funzione al momento della chiamata, quindi la patch vale. Valori, handler e cache vengono ripristinati nel finally. La suite intera dà 968 PASS e 0 FAIL, riprodotti su una copia nello scratchpad (poi cancellata).
+- `gas.py:1260` e `gas.py:1315` — i commenti «64 KB» ora dicono `_RIGA_MAX`. Esito: ok, R-422-3 chiusa.
+
+**Riserva**
+- R-423-1 (chat Motore), COSMETICA: T94i usa il logger root, quindi stampa i warning anche in console durante la suite. Inoltre non verifica che l'avviso sia uno solo: il controllo è `any(...)`, non un conteggio uguale a 1. Il caso di un solo avviso l'ho verificato con la sonda, non lo verifica il test.
+
+**Rischio escluso**: non ho verificato il comportamento con i valori reali (blocco da 1 MiB, tetto di 16 MiB) né i tempi su file grandi. La logica è identica a scala ridotta, e i 36 casi da 70 KB a 20 MiB erano già stati provati nella review #422. Le altre suite (notte) non le ho rilanciate, perché il diff non le tocca.
+
+**Memoria**: aggiunta la riga #423 a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata solo quel file (commit 6609ca5). Lo staging è intatto (2 file, +30/-2). Non ho toccato HEAD oltre a quel commit.
+
+### Review #424 (chat Motore) — commit 214a450
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #424 (chat Motore) del diff STAGED (gas.py, modules/notte/notte.py, tests/test_unit_kernel.py, tests/test_unit_notte.py). Prima della review ho letto: CLAUDE.md (sez. 5), stato_progetto.md (righe sul budget e sulla notte) e la memoria del revisore.
+
+**Prove fatte su una copia nello scratchpad (poi cancellata)**
+- Ho controllato che la copia fosse uguale byte per byte al diff staged.
+- Risultati: kernel 969 PASS / 0 FAIL, notte 129 passed. T79a fallisce solo se la copia non ha l'indice git; con l'indice popolato passa.
+- Mutazioni:
+  - con `invariato` forzato a False, T94j fallisce (1 chiamata invece di 0);
+  - senza la riga di log in notte.py, `test_firme_scadute_chiuse_e_negli_avvisi` fallisce;
+  - togliendo `and not invariato` dalla condizione di lettura i test **passano lo stesso** (969/0): vedi R-424-2.
+- Sonda di equivalenza: 7.103 confronti tra «cache calda» e «cache vuota» su 300 sequenze casuali (righe aggiunte, righe tagliate senza «\n», «\n» aggiunti, file troncati, chiamate ripetute). Differenze: 0.
+
+**Elementi esaminati**
+- `gas.py:1265` — `invariato` vale solo se esiste `c["fin"]` con la stessa (dimensione, mtime_ns). Rischio: «fin» ereditato dopo un reset della cache. Esito ok: il reset (gas.py:1255-1257) crea un dizionario nuovo senza «fin», quindi `invariato` è False e il file si rilegge.
+- `gas.py:1266` — salta la lettura dei blocchi se il file è invariato. Rischio: interazione col ramo `st_size == offset`. Esito ok: se il mtime cambia il reset c'era già; se è uguale, prima non si leggeva niente e ora `voce_fin` è None in cache. Sonda: 0,2/0,2/0,2 anche dopo `utime`, uguale alla lettura a cache vuota.
+- `gas.py:1316` e `gas.py:1322` — riuso di `fin[2]`; altrimenti nuova decodifica e aggiornamento di `c["fin"]`. Rischio: stessa dimensione e stesso mtime che nascondono un cambiamento. Esito **riserva** (R-424-1): provato riscrivendo a mano l'ultima riga a parità di lunghezza e forzando lo stesso mtime_ns con `os.utime`. Risultato: 0,2 in cache contro 0,3 a cache vuota.
+  - Con gli append normali non succede, perché la dimensione cambia sempre, e il valore si corregge al primo append successivo.
+  - Su ext4 lo mtime ha risoluzione di pochi millisecondi. Il caso diventa realistico solo su filesystem con risoluzione di 1 secondo e con una modifica a mano della riga finale fatta nello stesso secondo.
+  - È la stessa fiducia che il codice dava già alle righe complete (contro le modifiche sul posto protegge solo l'impronta di testa e di coda).
+- `gas.py:1327` — il cutoff delle 24 ore si riapplica a ogni chiamata anche alla voce in cache. Rischio: una voce scaduta che resta contata. Esito ok.
+  - Nota: una riga finale con data oltre 7 giorni nel futuro resta in cache come None anche quando rientra nei 7 giorni, mentre prima veniva rivalutata a ogni chiamata. Ora si comporta come le righe complete; la metto in R-424-1.
+- `modules/notte/notte.py:718` — l'avviso «firme scadute» va anche in gas_debug.log, dopo l'append all'elenco degli avvisi. Rischio: messaggio doppio con il ciclo `for a in avvisi` di notte.py:664-665. Esito ok: quel ciclo viene prima delle firme scadute; il test conta esattamente una riga (`tests/test_unit_notte.py:1207`).
+- `tests/test_unit_kernel.py:7225` — R-423-1: l'avviso in T94i ora è contato `== 1`. Esito ok. Il logger root che stampa in console non è stato toccato; era COSMETICA, accettabile.
+- `tests/test_unit_kernel.py:7247` — T94j. Esito **riserva**:
+  - R-424-2: conta le decodifiche (`_costo_riga`), non le letture. La promessa di V-1, «a file invariato non si legge niente», non è protetta: se si toglie `and not invariato` alla riga 1266 il file torna a essere riletto (fino a 16 MiB) a ogni chiamata e la suite resta verde.
+  - R-424-3: dopo il «\n» il test non controlla che `_costo_riga` venga chiamata una volta sola. Il totale di 0,2 esclude solo il doppio conteggio.
+
+**V-3 della verifica esterna (in_corso.json senza blocco): SMENTITA.**
+- `modules/notte/notte.py:635` prende un `flock` LOCK_EX non bloccante. Se il lock è occupato il giro esce con 2; se il filesystem non supporta flock, l'errore viene rilanciato e il giro esce con 1 senza toccare il registro.
+- Il lock resta aperto fino al `finally` (notte.py:742-745).
+- Le uniche letture e scritture di in_corso.json sono alle righe 653, 658, 703 e 706, tutte dopo il lock. Nel repo nessun altro scrive quel file (grep).
+- Due giri sovrapposti sulla stessa root si escludono. Con root diverse i file in_corso.json sono diversi.
+- Unico buco teorico: `fcntl is None` (Windows), che non è un ambiente di destinazione.
+
+**Riserve da tracciare in stato_progetto.md**
+- R-424-1 (chat Motore) BASSA: se l'ultima riga senza «\n» viene riscritta a mano con la stessa lunghezza e lo stesso mtime_ns, il valore resta vecchio finché non arriva un append. Lo stesso per una riga finale con data oltre 7 giorni nel futuro, che resta scartata anche quando rientra nei 7 giorni (come le righe complete).
+- R-424-2 (chat Motore) BASSA: T94j non protegge il «niente lettura»; la mutazione su gas.py:1266 sopravvive.
+- R-424-3 (chat Motore) COSMETICA: T94j non conta le chiamate a `_costo_riga` dopo il «\n».
+
+Nessuno slicing della history: i `[-64:]` sono byte del log. Nessuna simulazione di tool, guardrail invariati. Le eccezioni restano intercettate dal `try/except` esterno, che scrive un warning e restituisce 0.0.
+
+**Rischio escluso**: non ho verificato il comportamento reale dello mtime su un filesystem della VPS con risoluzione di 1 secondo (o NFS), perché non è riproducibile qui. L'ho solo simulato con `os.utime`. Non ho misurato tempi o memoria della lettura evitata, ho solo contato le decodifiche.
+
+**Memoria**: riga #424 aggiunta e committata (commit 06da7ac, solo /home/user/Gas/.claude/agents/memoria_revisore.md). Il resto dello staging è intatto. Lezione nuova: un test che promette «niente lavoro» deve contare l'operazione costosa promessa (qui la lettura del file), non solo quella a valle.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 957 → 967 PASS, 0 FAIL (T94a-h, T94e2, T95). Blocco reale: `=== RIEPILOGO: 967 PASS, 0 FAIL ===`.
+tests/test_unit_kernel.py: 957 → 969 PASS, 0 FAIL (T94a-j, T94e2, T95). Blocco reale: `=== RIEPILOGO: 969 PASS, 0 FAIL ===`.
 pytest `tests/test_unit_notte.py`: 106 → `129 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
@@ -766,7 +847,8 @@ pytest `tests/test_unit_notte.py`: 106 → `129 passed`; `tests/test_unit_gate.p
 - 01bf064 (con 3a43d93, 5999fdb, f2c3e29 e memorie): run non letta prima della scrittura.
 - 8e3072b (con d9f58bb): verifica-bot neutral (APPROVATO CON RISERVE, V-1/V-2 basse poi chiuse); check suite completata.
 - eb869d2 (con 898a4a2, 7204835, 3701278 e memorie): check suite completata senza check falliti (evento GitHub).
-- 9f470a9, 9533488, 373542f: run non ancora disponibile alla scrittura dell'handoff.
+- 0c02776 (con 9f470a9, 9533488, 373542f): check suite completata senza check falliti (evento GitHub); verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA chiusa da 214a450).
+- d718b5d, 6609ca5, 214a450, 06da7ac: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -778,11 +860,11 @@ pytest `tests/test_unit_notte.py`: 106 → `129 passed`; `tests/test_unit_gate.p
 - R-412-1 (BASSA): si tengono le prime 12 parole della ricerca.
 - R-412-2 (COSMETICA): T95 parziale.
 - R-414-1/2 (BASSE), R-414-3 (COSMETICA): orologio indietro, coda senza a capo riletta, messaggio di T94a.
-- R-417-1 (BASSA): avviso «firme scadute» del giro non va in gas_debug.log.
 - R-415-3, R-416-2, R-417-2, R-418-1 (COSMETICHE).
 - R-418-2 (BASSA): compito in coda fermato dal tetto di tempo resta a tentativi 2.
-- R-422-1 (BASSA): righe oltre ~17 MiB scartate senza riga di log.
-- R-422-2 (BASSA): manca un test con una riga valida più lunga di un blocco da 1 MiB.
-- R-422-3 (COSMETICA): due commenti parlano ancora di 64 KB.
+- R-423-1: chiusa in #424.
+- R-424-1 (BASSA): riga finale riscritta a mano con stessa lunghezza e stesso mtime resta col valore vecchio fino al prossimo append.
+- R-424-2 (BASSA): T94j non protegge il «niente lettura» a file invariato.
+- R-424-3 (COSMETICA): T94j non conta le decodifiche dopo il «\n».
 - Residuo dichiarato: orologio indietro di oltre 7 giorni → quella spesa esce dal tetto per 24 ore.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
