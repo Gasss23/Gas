@@ -4,6 +4,7 @@ import difflib
 import hashlib
 import math as _math_module
 import os
+import threading
 import re
 import json
 import shlex
@@ -864,6 +865,7 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
 # R-tel-budget-perf: per ogni log dei token, le voci (ts, costo) delle ultime 24 ore
 # già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
 _COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
+_COSTI_LOCK = threading.Lock()  # V-2 verifica #234 (7° giro): cache mutata sul posto
 _TS_RAPIDO_RE = re.compile(rb'"ts"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"')
 _COSTI_BLOCCO = 1 << 20  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
 # V-1 verifica #234 (4° giro): una riga VALIDA lunga si conta sempre (scartarla
@@ -947,6 +949,7 @@ class GasKernel:
         # il giro notturno la porta a 24 ore (decisione operatore 2026-10-19).
         self.approval_timeout_secs: Optional[int] = None
         self._file_delicati_turno: List[str] = []  # R-223-2, svuotata a fine turno
+        self._esito_contenuto = False  # R-222-2/R-425-2: vedi execute_tool_call
         # V-1 bot #222: il pin di questo turno mostra dati non fidati (_memoria_pin).
         self._pin_non_fidato: bool = False
         # R-371-2: la sessione ha visto un pin non fidato (si azzera con `clear`).
@@ -1228,6 +1231,11 @@ class GasKernel:
         R-tel-budget-perf: il log è in sola aggiunta, quindi si leggono solo le righe
         NUOVE dall'ultima volta (`_COSTI_CACHE`, per file); se il file è stato
         sostituito o accorciato (inode diverso o più corto) si rilegge da capo."""
+        with _COSTI_LOCK:  # due thread sullo stesso log non contano due volte
+            return self._daily_cost_usd_bloccato()
+
+    def _daily_cost_usd_bloccato(self) -> float:
+        """Corpo di _daily_cost_usd, da chiamare solo con _COSTI_LOCK preso."""
         try:
             log_path = self.root / TOKEN_LOG_FILENAME
             try:

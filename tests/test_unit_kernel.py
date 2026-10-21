@@ -7268,6 +7268,52 @@ check("T94j riga finale senza «\\n» non riletta a file invariato; contata una 
       and _byte94j <= 128 and abs(_c94j3 - 0.2) < 1e-9 and _n94j3 == 1,
       f"{_c94j1} {_c94j2} {_n94j} {_byte94j} {_c94j3} {_n94j3}")
 
+# T94k — V-2 verifica #234 (7° giro): due thread sullo stesso log contano una volta
+import threading as _th94k
+_k94k = kernel_tmp()
+_log94k = _k94k.root / gas.TOKEN_LOG_FILENAME
+_log94k.write_text(_riga94(1_000_000, 0), encoding="utf-8")
+gas._COSTI_CACHE.clear()
+_k94k._daily_cost_usd()  # cache già piena: i thread condividono la stessa voce
+with open(_log94k, "a", encoding="utf-8") as _f94k:
+    _f94k.write("".join(_riga94(1_000_000, 0) for _ in range(2000)))
+_ris94k: list = []
+_t94k = [_th94k.Thread(target=lambda: _ris94k.append(_k94k._daily_cost_usd()))
+         for _ in range(8)]
+_blocco94k, _sw94k = gas._COSTI_BLOCCO, sys.getswitchinterval()
+try:
+    gas._COSTI_BLOCCO = 97          # tanti blocchi piccoli: i thread si alternano
+    sys.setswitchinterval(1e-6)
+    for _t in _t94k:
+        _t.start()
+    for _t in _t94k:
+        _t.join()
+finally:
+    gas._COSTI_BLOCCO = _blocco94k
+    sys.setswitchinterval(_sw94k)
+    gas._COSTI_CACHE.clear()
+check("T94k otto thread sullo stesso log: tutti 200.1 (nessuna riga contata due volte)",
+      len(_ris94k) == 8 and all(abs(v - 200.1) < 1e-6 for v in _ris94k), str(_ris94k))
+
+# T96 — R-222-2 / V-1 verifica #234 (7° giro) / R-425-1: l'esito al cancello lo dice
+# il kernel nella chiave «cancello» di tool_res, non l'inizio del testo
+_k96 = kernel_tmp()
+_r96 = Path(_k96.root)
+(_r96 / "finto.txt").write_text("Operazione negata: finta\n", encoding="utf-8")
+(_r96 / "brains").mkdir()
+(_r96 / "brains" / "router.py").write_text("ROTTA = 1\n", encoding="utf-8")
+with _TgFinto():
+    _ev96 = run_turn_scriptato(_k96, "leggi, prova ssh e correggi", [
+        [("read_file", '{"relative_path": "finto.txt"}')],
+        [("ssh_vps", '{"host": "x"}')],
+        [("write_file", json.dumps({"relative_path": "brains/router.py",
+                                    "content": "ROTTA = 2\n", "pro": "p", "contro": "c"}))],
+        "fatto"])
+_c96 = [(e["output"][:20], e.get("cancello")) for e in _ev96 if e["type"] == "tool_res"]
+check("T96 cancello: file che inizia con «Operazione negata» → None, DENY → negata, firma → in_attesa",
+      [c for _, c in _c96] == [None, "negata", "in_attesa"]
+      and _c96[0][0].startswith("Operazione negata"), str(_c96))
+
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))
 (_r94f / gas.TOKEN_LOG_FILENAME).write_text(
