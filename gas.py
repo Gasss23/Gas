@@ -4431,11 +4431,11 @@ def doctor(root_dir: Optional[str] = None) -> int:
           f"{_cfg_mps} eventi" + ("" if os.environ.get("GAS_MEMORY_PIN_SCAN") else " (default)"))
     if _env_flag("GAS_VECTORS"):
         _cfg_em = os.environ.get("GAS_EMBED_MODEL", "").strip() or EMBED_MODEL_NAME
-        _cfg_vdb = os.environ.get("GAS_VECTORS_DB", "").strip() or str(default_vectors_path(root))
+        _cfg_vdb = str(_percorso_vettori(root))  # R-397-3: lo stesso percorso del codice
         check("Config", "EMBED_MODEL", "OK",
               f"{_cfg_em}" + ("" if os.environ.get("GAS_EMBED_MODEL") else " (default)"))
         check("Config", "VECTORS_DB", "OK",
-              f"{_cfg_vdb}" + ("" if os.environ.get("GAS_VECTORS_DB") else " (default)"))
+              f"{_cfg_vdb}" + ("" if os.environ.get("GAS_VECTORS_DB", "").strip() else " (default)"))
 
     # 10. Telemetria runtime: call count + fallthrough per-provider dal log token.
     # Lettura locale (.gas_tokens.jsonl), zero token LLM, zero ping.

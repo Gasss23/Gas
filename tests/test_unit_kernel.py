@@ -6982,6 +6982,22 @@ check("T93a R7 gas_debug.log con percorso assoluto accanto a gas.py",
       and gas._LOG_PATH == Path(gas.__file__).resolve().parent / "gas_debug.log"
       and str(gas._LOG_PATH) in _bf77q, str(_bf77q))
 
+# T93a2 — R-397-2: la prova vera è da un'ALTRA cartella (in CI si parte dalla root)
+_tmp93a = tempfile.mkdtemp(prefix="gas_t93a_")
+try:
+    _p93a = subprocess.run(
+        [sys.executable, "-c",
+         "import logging, gas; print([getattr(h, 'baseFilename', '') for h in "
+         "logging.getLogger().handlers if isinstance(h, gas.RotatingFileHandler)])"],
+        cwd=_tmp93a, capture_output=True, text=True, timeout=120,
+        env={**os.environ, "PYTHONPATH": str(Path(gas.__file__).resolve().parent)})
+finally:
+    _sh39e.rmtree(_tmp93a, ignore_errors=True)
+check("T93a2 R-397-2 gas importato da un'altra cartella scrive il log accanto a gas.py",
+      _p93a.returncode == 0
+      and repr(str(Path(gas.__file__).resolve().parent / "gas_debug.log")) in _p93a.stdout
+      and _tmp93a not in _p93a.stdout, (_p93a.stdout + _p93a.stderr)[-300:])
+
 # T93b — R7: reindex, calibrate-vectors ed eval-vectors rispettano GAS_VECTORS_DB
 _vs_orig93 = gas.VectorStore
 _visti93: list = []

@@ -469,6 +469,8 @@ from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, 
     "modules/gate.py", "modules/gate_bis/x.py",
     "\uff4d\uff4f\uff44\uff55\uff4c\uff45\uff53/gate/gate.py",  # fullwidth (NFKC)
     "./.env", "\uff0eenv", "x/../.git/hooks/pre-commit",
+    # V-1 verifica esterna #233 (3° giro): invisibili dentro i nomi vietati
+    ".e\u200bnv", "modules/ga\u200bte/gate.py", ".gas_\u200bnotte/x", "\u200b.git/config",
 ])
 def test_livello3_mai_nemmeno_con_firma(path):
     assert livello_scrittura(path) == LIVELLO_MAI
@@ -484,6 +486,9 @@ def test_livello3_mai_nemmeno_con_firma(path):
     # roadmap 5.3: catalogo delle fonti di studio e file delle fonti alla firma
     "knowledge/sources.yaml", "knowledge/x.md", "Knowledge/Sources.YAML",
     "knowledge./sources.yaml", "knowledge_old/sources.yaml", "./knowledge/test_source.txt",
+    # V-1 verifica esterna #233 (3° giro): caratteri invisibili (Cf) non aggirano la firma
+    "run.sh\u200b", "run.s\u200bh", "run.py\u200b", "x\ufeff.zsh", "g\u200bas.py",
+    "scripts\u200b/x.md",
 ])
 def test_livello2_firma(path):
     assert livello_scrittura(path) == LIVELLO_FIRMA

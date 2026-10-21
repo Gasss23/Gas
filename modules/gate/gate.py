@@ -168,12 +168,16 @@ _DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
 def _normalize_path(p: str) -> str:
     """Normalize a path string for denylist comparison.
 
-    Steps: unicodedata NFKC → strip leading './' loops → os.path.normpath →
+    Steps: unicodedata NFKC → drop Cf (invisible) chars → strip leading './' loops → os.path.normpath →
     casefold.  Raises ValueError for absolute paths or traversal (starts with
     '..' after normpath).
     NFKC reduces FULLWIDTH characters (U+FF0E ．, U+FF0F ／) to ASCII '.', '/'.
     """
     p = unicodedata.normalize("NFKC", p)
+    # V-1 verifica esterna #233 (3° giro): via i caratteri invisibili (Unicode Cf:
+    # zero-width, BOM, controlli di direzione), che NFKC lascia: «run.sh\u200b»
+    # va alla firma come «run.sh», non al livello libero. Solo per il confronto.
+    p = "".join(c for c in p if unicodedata.category(c) != "Cf")
     # Strip any number of leading "./" sequences.
     while p.startswith("./"):
         p = p[2:]
