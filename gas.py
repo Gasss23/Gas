@@ -43,14 +43,25 @@ _LOG_MAX_BYTES = 5 * 1024 * 1024  # soglia di rotazione di gas_debug.log (cerca_
 # che la rotazione scatti: una rotazione pesa fino a _LOG_MAX_BYTES + lo sforo in byte
 # dell'ultimo record. 1 MiB e' largo per qualunque record di log plausibile.
 _LOG_SFORO_MAX = 1024 * 1024
+# R7 (roadmap): la scatola nera sta SEMPRE accanto a gas.py, anche se Gas parte da
+# un'altra cartella (prima il percorso era relativo alla cartella di avvio).
+_LOG_PATH = Path(__file__).resolve().parent / "gas_debug.log"
+# V-2 bot #233: cartella non scrivibile → Gas parte lo stesso (CLAUDE.md §1, zero
+# crash), con la sola console e un avviso: mai un errore all'import.
+_LOG_ERRORE = ""
+try:
+    _file_handler: Optional[logging.Handler] = RotatingFileHandler(
+        str(_LOG_PATH), maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8")
+except OSError as _e_log:
+    _file_handler = None
+    _LOG_ERRORE = f"{type(_e_log).__name__}: {_e_log}"
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        RotatingFileHandler("gas_debug.log", maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8"),
-        _console_handler,
-    ],
+    handlers=[h for h in (_file_handler, _console_handler) if h is not None],
 )
+if _file_handler is None:
+    logging.warning("gas_debug.log non apribile (%s): registro solo a schermo", _LOG_ERRORE)
 _snapshot_log = logging.getLogger("gas.snapshot")
 # Messaggi informativi della knowledge base: solo nella scatola nera, mai a schermo
 # (la console mostra da WARNING in su). Prova sul Mac 2026-10-16: la tabella FTS
@@ -850,6 +861,14 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
     return None
 
 
+def _percorso_vettori(root: Path) -> Path:
+    """Archivio dei vettori: GAS_VECTORS_DB se impostata, altrimenti <root>/.gas_vectors.db.
+    R7 (roadmap): unica fonte del percorso, così reindex/vettori/doctor e il kernel
+    lavorano sullo stesso archivio (prima tre comandi ignoravano la variabile)."""
+    env = os.environ.get("GAS_VECTORS_DB", "").strip()
+    return Path(env).resolve() if env else default_vectors_path(root)
+
+
 class GasKernel:
     def __init__(self, root_dir: Optional[str] = None, carica_storia: bool = True):
         self.root: Path = Path(root_dir or os.getcwd()).resolve()
@@ -932,8 +951,7 @@ class GasKernel:
         self.vectors: Optional[VectorStore] = None
         if _env_flag("GAS_VECTORS"):
             try:
-                _vec_db = os.environ.get("GAS_VECTORS_DB", "").strip()
-                _vec_path = Path(_vec_db).resolve() if _vec_db else default_vectors_path(self.root)
+                _vec_path = _percorso_vettori(self.root)
                 _vec_model = os.environ.get("GAS_EMBED_MODEL", "").strip() or EMBED_MODEL_NAME
                 self.vectors = VectorStore(_vec_path, model_name=_vec_model)
             except Exception as e:
@@ -2045,8 +2063,8 @@ class GasKernel:
         regola e' la stessa nei due rami (salto su cartella e tetto dedicato per nome),
         cosi' l'insieme dei file trattati come log coincide e non torna l'asimmetria che
         aveva causato V-1.
-        C4 (decisione operatore 2026-10-14): il `RotatingFileHandler` apre un percorso
-        RELATIVO alla cwd, che puo' non coincidere con la root (`esegui_notte(root_dir)`):
+        C4 (decisione operatore 2026-10-14): il log vero sta accanto a gas.py (`_LOG_PATH`),
+        che puo' non coincidere con la root (`esegui_notte(root_dir)`):
         oltre alla root vale la cartella VERA del log, letta da `baseFilename` dei
         RotatingFileHandler del logger radice che scrivono un file `gas_debug.log`."""
         if not self._LOG_KERNEL_RE.fullmatch(path.name):
@@ -4230,8 +4248,11 @@ def doctor(root_dir: Optional[str] = None) -> int:
             check("Storia", "_get_window", "FAIL", f"parte da role:{window[0]['role']}")
 
     # 5. Log
-    log_path = root / "gas_debug.log"
-    if not log_path.exists():
+    log_path = _LOG_PATH  # R7: la scatola nera vera, non quella della cartella di avvio
+    if _file_handler is None:  # R-401-1: scatola nera spenta all'avvio
+        check("Log", "gas_debug.log", "WARN",
+              f"non scrivibile ({_LOG_ERRORE}): registro solo a schermo")
+    elif not log_path.exists():
         check("Log", "gas_debug.log", "OK", "assente")
     else:
         size_mb = log_path.stat().st_size / (1024 * 1024)
@@ -4363,8 +4384,7 @@ def doctor(root_dir: Optional[str] = None) -> int:
     if _env_flag("GAS_VECTORS"):
         try:
             from modules.memory.vectors import VectorStore as _VS
-            _vec_db_env = os.environ.get("GAS_VECTORS_DB", "").strip()
-            _vec_probe_path = Path(_vec_db_env).resolve() if _vec_db_env else default_vectors_path(root)
+            _vec_probe_path = _percorso_vettori(root)
             _vs_probe = _VS(_vec_probe_path)  # init: DB sidecar, NO model load
             if _vs_probe.available:
                 check("Memoria", "vector store", "OK",
@@ -4422,11 +4442,11 @@ def doctor(root_dir: Optional[str] = None) -> int:
           f"{_cfg_mps} eventi" + ("" if os.environ.get("GAS_MEMORY_PIN_SCAN") else " (default)"))
     if _env_flag("GAS_VECTORS"):
         _cfg_em = os.environ.get("GAS_EMBED_MODEL", "").strip() or EMBED_MODEL_NAME
-        _cfg_vdb = os.environ.get("GAS_VECTORS_DB", "").strip() or str(default_vectors_path(root))
+        _cfg_vdb = str(_percorso_vettori(root))  # R-397-3: lo stesso percorso del codice
         check("Config", "EMBED_MODEL", "OK",
               f"{_cfg_em}" + ("" if os.environ.get("GAS_EMBED_MODEL") else " (default)"))
         check("Config", "VECTORS_DB", "OK",
-              f"{_cfg_vdb}" + ("" if os.environ.get("GAS_VECTORS_DB") else " (default)"))
+              f"{_cfg_vdb}" + ("" if os.environ.get("GAS_VECTORS_DB", "").strip() else " (default)"))
 
     # 10. Telemetria runtime: call count + fallthrough per-provider dal log token.
     # Lettura locale (.gas_tokens.jsonl), zero token LLM, zero ping.
@@ -4545,7 +4565,7 @@ def reindex(root_dir: Optional[str] = None,
     if not memory.available:
         print("✗ reindex: memoria non disponibile/degradata — niente da indicizzare.")
         return 1
-    vs = vectors if vectors is not None else VectorStore(default_vectors_path(root))
+    vs = vectors if vectors is not None else VectorStore(_percorso_vettori(root))
     if not vs.available:
         print("✗ reindex: vector store non disponibile (numpy/fastembed assenti o DB "
               "sidecar corrotto). Installa le dipendenze (requirements.txt) e riprova.")
@@ -4686,7 +4706,7 @@ def calibrate_vectors_cmd(root_dir: Optional[str] = None, n_sample: int = 20) ->
     if not mem.available:
         print("✗ calibrate-vectors: memoria non disponibile — niente da campionare.")
         return 1
-    vs = VectorStore(default_vectors_path(root))
+    vs = VectorStore(_percorso_vettori(root))
     if not vs.available:
         dr = getattr(vs, "disable_reason", "") or "dipendenze assenti"
         print(f"✗ calibrate-vectors: vector store non disponibile ({dr}).")
@@ -4732,7 +4752,7 @@ def eval_vectors_cmd(root_dir: Optional[str] = None, query: Optional[str] = None
     qualità del retrieval e confrontare modelli (cambia GAS_EMBED_MODEL + gas reindex).
     Senza query mostra le statistiche del vector store. Zero token LLM."""
     root = Path(root_dir or os.getcwd()).resolve()
-    vs = VectorStore(default_vectors_path(root))
+    vs = VectorStore(_percorso_vettori(root))
     if not vs.available:
         dr = getattr(vs, "disable_reason", "") or "dipendenze assenti"
         print(f"✗ eval-vectors: vector store non disponibile ({dr}).")
@@ -5192,12 +5212,15 @@ def rifletti_cmd(root_dir: Optional[str] = None) -> int:
     return 0 if esito.get("ok") else 1
 
 
-def notte_cmd(root_dir: Optional[str] = None) -> int:
-    """CLI `gas notte` (FASE 4.5 fetta 1): un giro autonomo dei compiti del catalogo
-    (~/.gas_notte.yaml o env GAS_NOTTE_CATALOGO). Lo lancia il timer di sistema."""
+def notte_cmd(root_dir: Optional[str] = None, solo: Optional[str] = None) -> int:
+    """CLI `gas notte [nome]` (FASE 4.5 fetta 1): un giro autonomo dei compiti del
+    catalogo (~/.gas_notte.yaml o env GAS_NOTTE_CATALOGO). Lo lancia il timer di
+    sistema o, da R1, il bot Telegram (`/notte`, `/compito <nome>`)."""
     from modules.notte import esegui_notte
     # R-220-2: il compito non legge né mette in quarantena la conversazione dell'operatore.
-    return esegui_notte(root_dir, kernel_factory=lambda r: GasKernel(root_dir=r, carica_storia=False))
+    extra = {"solo": solo} if solo is not None else {}
+    return esegui_notte(root_dir, **extra,
+                        kernel_factory=lambda r: GasKernel(root_dir=r, carica_storia=False))
 
 
 def main():
@@ -5246,7 +5269,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "rifletti":
         sys.exit(rifletti_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "notte":
-        sys.exit(notte_cmd())
+        sys.exit(notte_cmd(solo=sys.argv[2]) if len(sys.argv) > 2 else notte_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())

@@ -23,8 +23,11 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 import os
 import re
+import subprocess
+import sys
 import time
 import unicodedata
 import urllib.error
@@ -228,6 +231,36 @@ def bottoni_firma(approval_id: str) -> Dict[str, Any]:
     ]]}
 
 
+# R-c4b1-3: invio a tutti i destinatari IN PARALLELO, così il turno che chiede una
+# firma resta fermo al massimo ~15 s in tutto (non 15 s per destinatario).
+INVIO_TIMEOUT_SECS = 15
+_INVIO_MAX_THREAD = 8
+
+
+def _invia_a_tutti(base_url: str, ids: Set[int], payload: Dict[str, Any],
+                   etichetta: str) -> int:
+    """sendMessage di `payload` (+ chat_id) a ogni ID, in parallelo. Ritorna quanti
+    l'hanno ricevuto (risposta ok=True). Un destinatario che fallisce o solleva
+    conta come non consegnato; il dettaglio va solo nel log (niente token)."""
+    def _uno(chat_id: int) -> bool:
+        try:
+            resp = _tg_post(base_url, "sendMessage", {"chat_id": chat_id, **payload},
+                            timeout=INVIO_TIMEOUT_SECS)
+            return isinstance(resp, dict) and resp.get("ok") is True
+        except Exception as e:
+            log.warning("%s: errore di invio a chat_id %d: %s", etichetta, chat_id,
+                        type(e).__name__)
+            return False
+
+    ordinati = sorted(ids)
+    with ThreadPoolExecutor(max_workers=max(1, min(len(ordinati), _INVIO_MAX_THREAD))) as ex:
+        esiti = list(ex.map(_uno, ordinati))
+    for chat_id, ok in zip(ordinati, esiti):
+        if not ok:
+            log.warning("%s: invio a chat_id %d fallito", etichetta, chat_id)
+    return sum(esiti)
+
+
 def invia_read_back(text: str, approval_id: Optional[str] = None) -> Tuple[bool, str]:
     """Invia `text` (senza parse_mode, senza anteprima link) con i bottoni di firma
     di `approval_id` a ogni ID in TELEGRAM_ALLOWED_IDS. Senza un ID valido niente
@@ -247,19 +280,13 @@ def invia_read_back(text: str, approval_id: Optional[str] = None) -> Tuple[bool,
         if not isinstance(approval_id, str) or not _CALLBACK_RE.fullmatch(f"ok:{approval_id}"):
             return False, "ID approvazione non valido"
         base_url = f"{_TELEGRAM_API}{token}"
-        consegnati = 0
-        for chat_id in sorted(allowed):
-            resp = _tg_post(base_url, "sendMessage",
-                            {"chat_id": chat_id, "text": text,
-                             # R-c4b1-2: niente anteprima: un URL di terzi negli args
-                             # non deve diventare una card nel messaggio di firma.
-                             "link_preview_options": {"is_disabled": True},
-                             "reply_markup": bottoni_firma(approval_id)},
-                            timeout=15)
-            if isinstance(resp, dict) and resp.get("ok") is True:
-                consegnati += 1
-            else:
-                log.warning("read-back: invio a chat_id %d fallito", chat_id)
+        consegnati = _invia_a_tutti(base_url, allowed,
+                                    {"text": text,
+                                     # R-c4b1-2: niente anteprima: un URL di terzi negli
+                                     # args non deve diventare una card nel messaggio.
+                                     "link_preview_options": {"is_disabled": True},
+                                     "reply_markup": bottoni_firma(approval_id)},
+                                    "read-back")
         if consegnati == 0:
             return False, "invio fallito verso tutti i destinatari"
         return True, ""
@@ -287,16 +314,10 @@ def invia_notifica(text: str) -> Tuple[bool, str]:
         if lunghezza_telegram(text) > TELEGRAM_MAX_CHARS:
             return False, "testo oltre il limite Telegram"
         base_url = f"{_TELEGRAM_API}{token}"
-        consegnati = 0
-        for chat_id in sorted(allowed):
-            resp = _tg_post(base_url, "sendMessage",
-                            {"chat_id": chat_id, "text": text,
-                             "link_preview_options": {"is_disabled": True}},
-                            timeout=15)
-            if isinstance(resp, dict) and resp.get("ok") is True:
-                consegnati += 1
-            else:
-                log.warning("notifica: invio a chat_id %d fallito", chat_id)
+        consegnati = _invia_a_tutti(base_url, allowed,
+                                    {"text": text,
+                                     "link_preview_options": {"is_disabled": True}},
+                                    "notifica")
         if consegnati == 0:
             return False, "invio fallito verso tutti i destinatari"
         return True, ""
@@ -349,6 +370,7 @@ def avvisa_firme_scadute(memory: Any) -> int:
 def run_bot(root_dir: Optional[str] = None) -> int:
     """Loop principale del bridge bot. Blocca fino a KeyboardInterrupt (Ctrl-C).
     Exit code: 0 = uscita pulita, 1 = configurazione mancante."""
+    global _BOT_USERNAME  # R-403-3
 
     # ── Configurazione ──────────────────────────────────────
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -380,8 +402,10 @@ def run_bot(root_dir: Optional[str] = None) -> int:
         print("✗ gas telegram: impossibile connettersi all'API Telegram.")
         print("  Verifica TELEGRAM_BOT_TOKEN e la connessione di rete.")
         return 1
-    bot_username = me.get("result", {}).get("username", "bot")
-    print(f"✓ gas telegram: connesso come @{bot_username}")
+    username = (me.get("result") or {}).get("username")
+    # R-403-2: senza username (None) i comandi con «@…» si accettano come prima.
+    _BOT_USERNAME = username if isinstance(username, str) and username else None
+    print(f"✓ gas telegram: connesso come @{_BOT_USERNAME or 'bot'}")
     print(f"  Chat autorizzate: {sorted(allowed)}")
     print("  In ascolto… (Ctrl-C per uscire)\n")
 
@@ -404,6 +428,7 @@ def run_bot(root_dir: Optional[str] = None) -> int:
             if time.monotonic() - ultimo_controllo_scadute >= 60:
                 ultimo_controllo_scadute = time.monotonic()
                 avvisa_firme_scadute(getattr(kernel, "memory", None))
+                _raccogli_giri()
             # allowed_updates esplicito: Telegram ricorda l'ultimo valore usato,
             # senza callback_query i bottoni di firma resterebbero muti.
             resp = _tg_post(base_url, "getUpdates",
@@ -425,6 +450,125 @@ def run_bot(root_dir: Optional[str] = None) -> int:
         except Exception as e:
             log.warning("Errore nel loop di polling: %s — riprendo tra 5s", e)
             time.sleep(5)
+
+
+# ─────────────────────────────── giro notturno da Telegram (R1) ──
+
+# R1: `/notte` lancia un giro completo, `/compito <nome>` un solo compito del catalogo.
+# Il giro parte in un processo a parte (`gas.py notte [nome]`): il bot resta in
+# ascolto, il lock del giro impedisce i doppioni e il riepilogo arriva su Telegram a
+# fine giro, come dal timer. Il nome passa come argomento (niente shell) e solo se
+# rispetta il formato del catalogo.
+# V-3 verifica esterna #233: separatore solo spazio o tab (non spazi Unicode).
+# V-1 verifica esterna #233: il nome non inizia con «-» (mai un'opzione per gas.py).
+_COMANDO_GIRO_RE = re.compile(r"/(notte|compito)(?:@(\w+))?(?:[ \t]+(.*))?", re.I | re.S)
+_NOME_COMPITO_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}")
+_giri_lanciati: List[Any] = []
+# V-3 bot #233: «/notte@AltroBot» non è per Gas. Impostato da run_bot (getMe).
+_BOT_USERNAME: Optional[str] = None
+
+
+def comando_giro(text: Any) -> Optional[Tuple[str, Optional[str]]]:
+    """None se il testo non è un comando del giro; altrimenti ('notte', None),
+    ('compito', nome) o ('errore', messaggio per l'operatore). Mai eccezioni."""
+    try:
+        m = _COMANDO_GIRO_RE.fullmatch(text.strip()) if isinstance(text, str) else None
+        if not m:
+            return None
+        destinatario = m.group(2)
+        if (destinatario and _BOT_USERNAME
+                and destinatario.casefold() != _BOT_USERNAME.casefold()):
+            return None  # comando per un altro bot del gruppo
+        cmd, arg = m.group(1).lower(), (m.group(3) or "").strip()
+        if cmd == "notte":
+            if arg:
+                return ("errore", "/notte non vuole argomenti. Per un solo compito: /compito <nome>")
+            return ("notte", None)
+        if not arg:
+            return ("errore", "Uso: /compito <nome> (il nome come nel catalogo dei compiti)")
+        if not _NOME_COMPITO_RE.fullmatch(arg):
+            return ("errore", "Nome del compito non valido: solo a-z 0-9 _ -, max 40.")
+        return ("compito", arg)
+    except Exception:
+        return None
+
+
+_GAS_PY: Path = Path(__file__).resolve().parents[2] / "gas.py"
+# R-392-2: l'uscita del giro lanciato dal bot va qui (come launchd.log per il timer).
+LOG_GIRO_TELEGRAM = "telegram_giro.log"
+
+
+# R-393-1: testo fisso (nessun dato del processo) per un giro morto prima di partire.
+TESTO_GIRO_NON_PARTITO = ("✗ Il giro lanciato da Telegram si è fermato prima di partire. "
+                          "Dettagli in .gas_notte/" + LOG_GIRO_TELEGRAM)
+
+
+def _giro_partito(voce: Dict[str, Any]) -> bool:
+    """True se il giro ha scritto il marcatore di avvio dopo il lancio, cioè è
+    arrivato a `esegui_notte`, che da lì avvisa da sé in ogni caso (riepilogo,
+    «INTERROTTO», «NON avviato»: R-394-1). Nel dubbio True: meglio un avviso in
+    meno che uno doppio."""
+    try:
+        from modules.notte.notte import AVVIO, NOTTE_DIR
+        marcatore = Path(voce["root"]) / NOTTE_DIR / AVVIO
+        return marcatore.stat().st_mtime >= voce["t0"] - 1
+    except FileNotFoundError:
+        return False
+    except Exception:
+        return True
+
+
+def _raccogli_giri() -> int:
+    """Toglie dalla lista i giri finiti (niente processi zombie). Ritorna quanti
+    sono ancora in corso. R-392-2/R-393-1/R-394-1: un giro morto prima di
+    `esegui_notte` (nessun marcatore di avvio scritto dopo il lancio) finisce in
+    gas_debug.log e su Telegram. Codice 2 escluso: lock occupato, già notificato."""
+    for voce in list(_giri_lanciati):
+        try:
+            rc = voce["p"].poll()
+            if rc is None:
+                continue
+            if rc != 2 and not _giro_partito(voce):
+                log.warning("giro lanciato da Telegram uscito con codice %s senza "
+                            "riepilogo (vedi .gas_notte/%s)", rc, LOG_GIRO_TELEGRAM)
+                if os.environ.get("GAS_NOTTE_TELEGRAM", "").strip() != "0":
+                    invia_notifica(TESTO_GIRO_NON_PARTITO)
+        except Exception as e:
+            log.warning("raccolta del giro lanciato da Telegram fallita: %s", e)
+        _giri_lanciati.remove(voce)
+    return len(_giri_lanciati)
+
+
+def lancia_giro(root: Path, nome: Optional[str] = None) -> str:
+    """Avvia `gas.py notte [nome]` in un processo a parte e ritorna la risposta per
+    l'operatore. Un solo giro lanciato da qui alla volta. Mai eccezioni."""
+    try:
+        if _raccogli_giri():
+            return "Un giro lanciato da qui è ancora in corso: aspetta il suo riepilogo."
+        if nome is not None and not _NOME_COMPITO_RE.fullmatch(nome):
+            return "Nome del compito non valido."
+        # R-392-1: gas.py è quello accanto a questo modulo, non quello della cartella
+        # da cui è partito il bot.
+        if not _GAS_PY.is_file():
+            log.warning("lancia_giro: gas.py non trovato in %s", _GAS_PY)  # R-393-2
+            return "✗ Giro NON avviato: gas.py non trovato (dettagli in gas_debug.log)."
+        cmd = [sys.executable, str(_GAS_PY), "notte"] + ([nome] if nome else [])
+        cartella = root / ".gas_notte"
+        cartella.mkdir(parents=True, exist_ok=True)
+        t0 = time.time()
+        with open(cartella / LOG_GIRO_TELEGRAM, "ab") as out:
+            p = subprocess.Popen(cmd, cwd=str(root), stdin=subprocess.DEVNULL,
+                                 stdout=out, stderr=subprocess.STDOUT,
+                                 start_new_session=True, close_fds=True)
+        _giri_lanciati.append({"p": p, "t0": t0, "root": root})
+        cosa = f"Compito «{nome}» avviato" if nome else "Giro notturno avviato"
+        if os.environ.get("GAS_NOTTE_TELEGRAM", "").strip() == "0":  # V-2 bot #233
+            return (f"{cosa}. Riepilogo su Telegram spento (GAS_NOTTE_TELEGRAM=0): "
+                    "a fine giro leggilo in .gas_notte/ultimo_giro.md")
+        return f"{cosa}: il riepilogo arriva qui a fine giro."
+    except Exception as e:
+        log.warning("lancia_giro fallita: %s", e)
+        return "✗ Giro NON avviato: errore nel lancio (dettagli in gas_debug.log)."
 
 
 # ─────────────────────────────────────────── gestione update ──
@@ -449,6 +593,16 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
 
         if chat_id not in allowed:
             log.warning("Messaggio da chat_id %d non autorizzato — ignorato", chat_id)
+            return
+
+        giro = comando_giro(text)
+        if giro is not None:
+            tipo, valore = giro
+            if tipo == "errore":
+                _send_text(base_url, chat_id, valore or "")
+            else:
+                root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
+                _send_text(base_url, chat_id, lancia_giro(Path(root), valore))
             return
 
         _send_typing(base_url, chat_id)

@@ -96,6 +96,9 @@ except ImportError:  # Windows: niente lock, il giro resta comunque eseguibile
 
 NOTTE_DIR = ".gas_notte"
 RIEPILOGO = "ultimo_giro.md"
+# R-394-1: scritto appena il giro parte; il bot Telegram lo usa per capire se un giro
+# lanciato da lui è morto prima di arrivare qui (in quel caso nessuno ha avvisato).
+AVVIO = "ultimo_avvio"
 MAX_COMPITI = 10          # compiti eseguiti per giro, oltre si ignorano (avviso)
 MAX_PROMPT_CHARS = 4000   # prompt di un compito
 MAX_RISPOSTA_CHARS = 3000  # risposta riportata nel riepilogo, per compito
@@ -493,8 +496,10 @@ def _scrivi_atomico(path: Path, testo: str) -> None:
 
 
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
-                 kernel_factory: Optional[Callable[[str], Any]] = None) -> int:
-    """Un giro completo. Exit code: 0 tutti i compiti ok (o nessuno attivo),
+                 kernel_factory: Optional[Callable[[str], Any]] = None,
+                 solo: Optional[str] = None) -> int:
+    """Un giro completo (R1: con `solo` = nome, il solo compito del catalogo con quel
+    nome esatto; nome assente o non attivo → avviso ed exit 1). Exit code: 0 tutti i compiti ok (o nessuno attivo),
     1 almeno un compito ko, saltato per tempo, catalogo non valido o giro
     interrotto da un errore (anche un lock che fallisce per un motivo diverso dal
     lock occupato), 2 un altro giro è in corso. A fine giro, a lock rilasciato,
@@ -506,6 +511,10 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
     da_notificare: Optional[Tuple[Any, ...]] = None
     try:
         notte_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            (notte_dir / AVVIO).write_text(_ora_locale() + "\n", encoding="utf-8")
+        except Exception as e:
+            logging.warning("notte: marcatore di avvio non scritto: %s", e)
         if fcntl is not None:
             lock_f = open(notte_dir / "lock", "w")
             try:
@@ -521,6 +530,11 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 return 2
         inizio = _ora_locale()
         compiti, avvisi = carica_catalogo(catalogo, root)
+        if solo is not None:
+            compiti = [c for c in compiti if c["nome"] == solo]
+            if not compiti:
+                nome_vis = solo if _NOME_RE.fullmatch(str(solo)) else "(nome non valido)"
+                avvisi.append(f"compito '{nome_vis}' non trovato tra i compiti attivi del catalogo")
         catalogo_ko = bool(avvisi) and not compiti  # solo il catalogo decide l'exit code
         if _env_budget() <= 0.0:
             os.environ["GAS_DAILY_TOKEN_BUDGET"] = BUDGET_NOTTE_DEFAULT_USD
