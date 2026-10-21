@@ -171,6 +171,8 @@ def tronca_visibile_coda(testo: Any, n: int) -> str:
     t = rendi_visibili(str(testo), a_capo=False)
     if len(t) <= n:
         return t
+    if n <= 0:  # R-388-2: t[-0:] prenderebbe tutto
+        return "…"
     t = t[-n:]
     k = t.find(">", 0, 10)
     if k != -1 and "<" not in t[:k]:

@@ -6147,6 +6147,9 @@ _ok74w = []
 for _k74w in range(195, 206):  # il taglio dall'inizio cade in ogni punto della sequenza
     _t74w = _tgbot_c4b.tronca_visibile_coda("\u202e" * 3 + "b" * _k74w, 200)
     _ok74w.append(_t74w.startswith("…<U+202E>") or _t74w.startswith("…b"))
+check("T74b6 R-388-2 tronca_visibile_coda con n<=0 non restituisce tutto",
+      _tgbot_c4b.tronca_visibile_coda("abcdef", 0) == "…"
+      and _tgbot_c4b.tronca_visibile_coda("abcdef", -1) == "…")
 check("T74b6 V-1 bot #230 tronca_visibile_coda: nome del file visibile, nessuna sequenza spezzata",
       _c74w.endswith("/x.json") and _c74w.startswith("…") and len(_c74w) == 51
       and all(_ok74w), str(_ok74w))
