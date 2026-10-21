@@ -5228,6 +5228,12 @@ def compress_history_cmd(root_dir: Optional[str] = None) -> int:
     print(f"  Messaggi attuali:   {n_before}")
     print(f"  Messaggi da tenere: {keep}  (GAS_HISTORY_KEEP_MSGS)")
     ok = kernel._compress_history_if_needed(force=True)
+    if ok and kernel._storia_rimandata:
+        # R-438-1: il comando non è dentro un turno: niente rinvio, si scrive ora
+        kernel._save_history(fine_turno=True)
+    if ok and kernel._storia_rimandata:
+        print("✗ compress-history: compressione NON salvata (vedi gas_debug.log).")
+        return 1
     if ok:
         n_after = len(kernel.history)
         print(f"  Messaggi dopo:      {n_after}")

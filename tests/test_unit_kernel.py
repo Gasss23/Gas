@@ -7646,6 +7646,37 @@ _f97k = [str(m.get("content")) for m in json.loads((_r97j / ".gas_history.json")
 check("T97k niente duplicati dopo un'unione con scrittura fallita (V-2 bot #236)",
       _f97k.count("A-k1") == 1 and _f97k.count("A-k2") == 1 and "B extra" in _f97k, str(_f97k))
 _sh39e.rmtree(_r97j, ignore_errors=True)
+# T97l — R-438-1: `gas compress-history` su una storia che finisce a metà turno, con
+# un altro processo che ha scritto nel frattempo: la compressione si salva davvero
+_r97l = Path(tempfile.mkdtemp(prefix="gas_t97l_", dir=_TMP_ESECUZIONE))
+_s97l = []
+for _i in range(30):
+    _s97l += [{"role": "user", "content": f"u{_i}"}, {"role": "assistant", "content": f"a{_i}"}]
+_s97l += [{"role": "user", "content": "aperto"},
+          {"role": "assistant", "content": None, "tool_calls": [{"id": "t1", "type": "function",
+           "function": {"name": "calcola", "arguments": "{}"}}]},
+          {"role": "tool", "content": "x", "tool_call_id": "t1", "name": "calcola"}]
+(_r97l / ".gas_history.json").write_text(json.dumps(_s97l), encoding="utf-8")
+_orig_init97l = GasKernel.__init__
+def _init_poi_altro97l(self, *a, **kw):
+    _orig_init97l(self, *a, **kw)
+    if getattr(_init_poi_altro97l, "fatto", False):
+        return
+    _init_poi_altro97l.fatto = True  # type: ignore[attr-defined]
+    _altro = GasKernel.__new__(GasKernel)   # «bot» che scrive subito dopo la lettura
+    _orig_init97l(_altro, root_dir=str(_r97l))
+    _altro._storia_esito_firma("id-97l", "run_command", "{}", "ok", "fatto", True)
+try:
+    GasKernel.__init__ = _init_poi_altro97l  # type: ignore[method-assign]
+    with _ctx34.redirect_stdout(io.StringIO()) as _out97l:
+        _rc97l = gas.compress_history_cmd(str(_r97l))
+finally:
+    GasKernel.__init__ = _orig_init97l  # type: ignore[method-assign]
+_f97l = json.loads((_r97l / ".gas_history.json").read_text())
+check("T97l compress-history con unione in sospeso: compressione scritta, blocco dell'altro tenuto",
+      _rc97l == 0 and len(_f97l) < len(_s97l)
+      and any("id-97l" in str(m.get("content")) for m in _f97l), f"{_rc97l} {len(_f97l)}")
+_sh39e.rmtree(_r97l, ignore_errors=True)
 # T97g — V-3 bot #236: lock della storia tenuto da un altro (processo fermo) → dopo
 # LOCK_STORIA_SEC si salva lo stesso, senza lock, con un avviso
 import fcntl as _fcntl97
