@@ -264,23 +264,25 @@ Review #406 (chat Mani): merge di origin/main 7bd0875 (PR #233) nel ramo feat/ma
 - Ho aggiunto in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#406 (chat Mani) — 2026-10-21 — APPROVATO — … Nessuna lezione nuova.» (riga 647). Al momento è solo nel working tree, non in staging: devi fare `git add` prima di `segna_review_ok.sh` e del commit di merge.
 - NON ho eseguito `scripts/commit_memoria_revisore.sh`, per due motivi: me l'hai chiesto, e durante un merge in corso `git commit -o` (commit parziale) viene rifiutato da git, oppure chiuderebbe il merge al posto tuo.
 
-### Review #407 (chat Mani)
+### Review #407 (chat Mani) — verdetto RIEMESSO
+
+Riemesso dal revisore su richiesta, con lo stesso esito, gli IP in chiaro sostituiti da <IP-redatto> perché il Gate IP blocca il push. Il testo originale, con gli IP, è nel commit `55bd481` della cronologia del ramo.
 
 ## VERDETTO: APPROVATO
 
 Ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci "Mani" di reports/stato_progetto.md (riga 605) e le lezioni sul Gate IP in .claude/agents/memoria_revisore.md (#75, #124, #147-#154, #172).
 
 **Elementi del diff esaminati**
-- `tests/test_unit_web_leggi.py:25` — `IP_PUBBLICO` è "93.184.216.34", con il marcatore. Rischio esaminato: che un IP pubblico vero venga contattato davvero. Esito: **ok**. Il connettore finto `tests/test_unit_web_leggi.py:181` registra l'IP e poi apre la connessione solo verso 127.0.0.1 sulla porta del server locale. Per qualsiasi IP diverso dai due pubblici finti solleva AssertionError. Lo stesso vale per `tests/test_unit_web_leggi.py:26`.
-- `tests/test_unit_web_leggi.py:71` — redirect 307 verso 169.254.169.254, con il marcatore. Rischio esaminato: una connessione all'indirizzo dei metadati. Esito: **ok**. `tests/test_unit_web_leggi.py:271` controlla `connessi == [(IP_PUBBLICO, 80)]`, quindi il redirect viene rifiutato senza aprire una seconda connessione.
-- `tests/test_unit_web_leggi.py:168` e `tests/test_unit_web_leggi.py:169` — il DNS finto restituisce 10.0.0.5 e 192.168.1.1. Esito: **ok**. Sono indirizzi interni che il test vuole veder rifiutare, e `tests/test_unit_web_leggi.py:264` controlla `connessi == []`.
-- `tests/test_unit_web_leggi.py:248` fino a `tests/test_unit_web_leggi.py:253` — URL con indirizzi interni nella lista parametrizzata. Esito: **ok**. Vengono rifiutati senza connessione (`tests/test_unit_web_leggi.py:258`). La riga 251 non è marcata ma contiene solo `::ffff:127.0.0.1`: il gate la tratta come loopback e la regex IPv4 non tocca gli IPv6, quindi va bene così.
-- `tests/test_unit_web_leggi.py:277` — 8.8.8.8 e IP_PUBBLICO passati a `web.indirizzo_interno`. Esito: **ok**. È una funzione pura, non apre nessuna connessione.
+- `tests/test_unit_web_leggi.py:25` — `IP_PUBBLICO` è un IP pubblico di esempio, con il marcatore. Rischio esaminato: che un IP pubblico vero venga contattato davvero. Esito: **ok**. Il connettore finto `tests/test_unit_web_leggi.py:181` registra l'IP e poi apre la connessione solo verso il loopback <IP-redatto>, sulla porta del server locale. Per qualsiasi IP diverso dai due pubblici finti solleva AssertionError. Lo stesso vale per `tests/test_unit_web_leggi.py:26`.
+- `tests/test_unit_web_leggi.py:71` — redirect 307 verso l'indirizzo dei metadati cloud <IP-redatto>, con il marcatore. Rischio esaminato: una connessione all'indirizzo dei metadati. Esito: **ok**. `tests/test_unit_web_leggi.py:271` controlla `connessi == [(IP_PUBBLICO, 80)]`, quindi il redirect viene rifiutato senza aprire una seconda connessione.
+- `tests/test_unit_web_leggi.py:168` e `tests/test_unit_web_leggi.py:169` — il DNS finto restituisce indirizzi privati <IP-redatto>. Esito: **ok**. Sono indirizzi interni che il test vuole veder rifiutare, e `tests/test_unit_web_leggi.py:264` controlla `connessi == []`.
+- `tests/test_unit_web_leggi.py:248` fino a `tests/test_unit_web_leggi.py:253` — URL con indirizzi interni nella lista parametrizzata. Esito: **ok**. Vengono rifiutati senza connessione (`tests/test_unit_web_leggi.py:258`). La riga 251 non è marcata ma contiene solo un IPv6 mappato sul loopback: il gate la tratta come loopback e la regex IPv4 non tocca gli IPv6, quindi va bene così.
+- `tests/test_unit_web_leggi.py:277` — un IP di un DNS pubblico e IP_PUBBLICO passati a `web.indirizzo_interno`. Esito: **ok**. È una funzione pura, non apre nessuna connessione.
 
 **I tre controlli richiesti**
 1. **Solo commenti.** L'albero sintattico (AST) del file nell'indice è identico a quello in HEAD (`ast.dump` uguale). Ho rieseguito i test: 83 passed in 7.33s.
-2. **Uso onesto del marcatore.** Tutte le 11 righe marcate contengono solo IP di prova. Nessuna di queste porta a contattare un host reale: i due IP pubblici finti finiscono su 127.0.0.1, e gli altri sono indirizzi interni che il codice deve rifiutare prima di connettersi. Nessun test chiama `leggi_pagina` senza il connettore finto: l'unica chiamata è in `tests/test_unit_web_leggi.py:188`.
-3. **Gate IP.** Ho rifatto a mano i tre passi del gate in `scripts/fine_task_finale.sh:73` (ricerca IP, filtro loopback, filtro per marcatore con `--and --not`, confronto `-Fx`) sul tree dell'indice (`git write-tree` = e91c0d3). Risultato: **0 residui** (rc del filtro = 1). Sul tree di HEAD le righe non marcate erano 10, quindi il blocco era reale. Le aggiunte in reports/ ancora fuori dall'indice contengono solo 127.0.0.1, che il gate accetta come loopback. Lo script non l'ho lanciato.
+2. **Uso onesto del marcatore.** Tutte le 11 righe marcate contengono solo IP di prova. Nessuna di queste porta a contattare un host reale: i due IP pubblici finti finiscono sul loopback, e gli altri sono indirizzi interni che il codice deve rifiutare prima di connettersi. Nessun test chiama `leggi_pagina` senza il connettore finto: l'unica chiamata è in `tests/test_unit_web_leggi.py:188`.
+3. **Gate IP.** Ho rifatto a mano i tre passi del gate in `scripts/fine_task_finale.sh:73` (ricerca IP, filtro loopback, filtro per marcatore con `--and --not`, confronto `-Fx`) sul tree dell'indice (`git write-tree` = e91c0d3). Risultato: **0 residui** (rc del filtro = 1). Sul tree di HEAD le righe non marcate erano 10, quindi il blocco era reale. Le aggiunte in reports/ ancora fuori dall'indice contengono solo il loopback, che il gate accetta. Lo script non l'ho lanciato.
 
 **Rischi esclusi**
 - Lo script vero gira su `HEAD^{tree}` dopo il commit, io ho controllato il tree dell'indice. Se prima del commit vengono messi nell'indice altri file con IP, il risultato cambia.
@@ -288,8 +290,6 @@ Ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci "Mani" di reports/stato_progetto.
 - Non ho eseguito la suite del kernel: il diff non tocca il motore.
 
 **Riserve**: nessuna.
-
-**Memoria**: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#407 (chat Mani) — 2026-10-21 — APPROVATO — …». Come mi hai chiesto non l'ho committata e non ho lanciato `scripts/commit_memoria_revisore.sh`: il file entra nel commit di fine task.
 
 ---
 
