@@ -18,6 +18,7 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **Riserve del bot sulla PR #236** — FATTA. Errori d'avvio di un comando mai «partiti», esito «incerto» se qualcosa si rompe dopo l'approvazione, test con un processo vero fermato dal tetto di tempo, copie «conflitto» con nome unico e al massimo 20 (review #433). La MEDIA del secondo giro (l'esito di una firma scritto dal bot a metà turno della CLI finiva solo nella copia) è chiusa: l'unione ora riconosce la storia dal contenuto e mette i turni interi dell'altro dopo la nostra risposta; il lock della storia aspetta al massimo 5 s (review #434).
 - **R-434-1 (MEDIA, = V-1 bot #236 3° giro)** — FATTA: a metà turno la storia dell'altro processo non entra nella finestra del modello, l'unione avviene alla fine del turno (review #435).
 - **R-435-1 e V-3 bot #236** — FATTA: un turno finito senza risposta finale salva comunque la storia; un errore interno dopo l'approvazione resta registrato e compare su Telegram (review #436). V-2 del bot accettata come limite.
+- **Merge di origin/main (#238, chat Mani)** — FATTO per togliere un nuovo conflitto della PR #236. Review #437 APPROVATO.
 - **Test** — kernel 971 → 992 PASS, 0 FAIL; pytest tests/ 1807 passed.
 
 ## Prossimi passi

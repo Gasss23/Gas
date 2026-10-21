@@ -23,6 +23,7 @@
 - **V-1 MEDIA bot #236 (esito della firma perso a metà turno), V-2/V-3 bot #236, R-433-1/2**: `FATTA` — review #434 APPROVATO CON RISERVE.
 - **R-434-1 (MEDIA, = V-1 bot #236 3° giro), R-434-3**: `FATTA` — review #435 APPROVATO CON RISERVE: a metà turno l'unione con l'altro processo si rimanda alla fine del turno.
 - **R-435-1, V-3 bot #236 3° giro**: `FATTA` — review #436 APPROVATO CON RISERVE (salvataggio a fine turno nel finally di run_turn; errore interno dopo il reclamo registrato e mostrato su Telegram).
+- **Merge di origin/main (#238, chat Mani)**: `FATTA` — conflitto della PR #236 (mergeable dirty), review #437 APPROVATO.
 - **V-2 bot #236 3° giro**: `SALTATA` — accettata (OSError dentro communicate dopo l'avvio non realistico con pipe locali POSIX; confermato dal revisore #436).
 - **R7 / R-c4b3-3**: `DEFERITA` — prossime fette.
 
@@ -31,22 +32,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  16 +++++++++++++
- gas.py                             | 283 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- modules/telegram/bot.py            |   4 ++++
- reports/da_mergiare.md             |  50 +++++++++++----------------------------
- reports/diff_sessione.md           |  13 ++++++-----
- reports/handoff.md                 | 457 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |  17 +++++++++++++
+ gas.py                             | 283 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ modules/telegram/bot.py            |   4 +++
+ reports/da_mergiare.md             |  50 ++++++++++---------------------------
+ reports/diff_sessione.md           |  13 +++++-----
+ reports/handoff.md                 | 494 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------
  reports/roadmap.md                 |   6 ++---
- reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  43 +++++++++++++++++-----------------
- tests/test_unit_kernel.py          | 321 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 10 files changed, 1002 insertions(+), 195 deletions(-)
+ reports/stato_progetto.md          |   4 +--
+ reports/ultimo_report.md           |  43 +++++++++++++++----------------
+ tests/test_unit_kernel.py          | 321 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 1047 insertions(+), 188 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+310d581 Merge origin/main (#238, chat Mani) in feat/merge-automatico-z1xjx2
+fda38c7 docs(fine-task): report e handoff — R-435-1 e V-3 bot #236 chiuse (#436)
 41c18c0 fix(storia,firma): salvataggio a fine turno anche senza risposta finale (R-435-1); errore interno dopo il reclamo registrato e mostrato su Telegram (V-3 bot #236)
 3294875 chore(revisore): memoria review #436 — APPROVATO CON RISERVE
 d4c57a0 docs(fine-task): report, stato e diff di sessione allineati alla #435
@@ -384,6 +387,25 @@ Prima della review ho letto CLAUDE.md (sezioni 1, 5, 8 e 10), reports/stato_prog
 
 Memoria: riga #436 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (3294875). Lo staging è intatto (gas.py, modules/telegram/bot.py, tests/test_unit_kernel.py).
 
+### Review #437 (chat Motore) — merge 310d581
+
+## VERDETTO: APPROVATO
+
+Review #437 (chat Motore): merge in corso, staged e non committato, di origin/main eb8e246 (PR #238, chat Mani fetta 3) dentro feat/merge-automatico-z1xjx2.
+
+Letture fatte prima della review: CLAUDE.md (sezioni 5, 8, 10), reports/stato_progetto.md (la parte toccata dal merge) e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi esaminati**
+- `.claude/agents/memoria_revisore.md:693` — righe #429 e #430 (chat Mani) aggiunte in coda. Rischio esaminato: righe perse o duplicate nell'unione. Nello staged ci sono 694 righe = 692 di HEAD + le 2 righe di Mani. Nessuna riga di HEAD o di main manca, non ci sono duplicati né righe estranee, non ci sono marcatori di conflitto. Esito: ok.
+- `modules/web/leggi.py:457` — minuscole solo ASCII nel ripiego (fetta 3). Rischio esaminato: contenuto diverso da main. Il file staged è identico byte per byte a eb8e246, e lo stesso vale per `tests/test_unit_web_leggi.py:688`. Il ramo non li tocca dalla merge-base. Web suite: 105 passed. Esito: ok.
+- `gas.py:1184` — `_storia_rimandata = True`, l'unione della storia viene rimandata a fine turno. Rischio esaminato: scontro tra il gas.py del ramo e modules/web. Né gas.py né modules/telegram/bot.py importano modules.web o chiamano leggi_pagina: l'aggancio non è ancora fatto, quindi i due lati non si sovrappongono. Il merge non tocca gas.py rispetto a HEAD. Esito: ok.
+- `gas.py:4569` — salvataggio `fine_turno` nel finally di run_turn (R-435-1). Rischio esaminato: regressione dovuta al merge. È intatto, e restano intatti anche il tetto `for _ in range(10)` a `gas.py:4378` e `_get_window` a `gas.py:1572`. Esito: ok.
+- `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» unita automaticamente. La fetta 3 (PR #238) sta sopra la fetta 2, senza perdite. Il blocco «Mani — fetta 3» sta tra «Modo di lavorare» (Motore) e «Mani — fetta 2». Il risultato ha senso. Esito: ok.
+
+**Rischio esplicitamente escluso:** non ho rieseguito la suite kernel (992/0) né quella gate+notte (1052). Mi fido del dato dell'agente, perché il merge non cambia nessun file del kernel o dei gate rispetto a HEAD: i soli file di codice cambiati sono quelli web, identici a main. Non ho rifatto la review del contenuto della fetta 3: l'hanno già revisionata la #429 e la #430 (chat Mani).
+
+**Memoria:** ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #437 (chat Motore), APPROVATO, nessuna lezione nuova. `scripts/commit_memoria_revisore.sh` non l'ho eseguito perché il merge è in corso: la riga va inclusa nel commit di merge (va rimessa in staging con `git add .claude/agents/memoria_revisore.md`, perché l'ho scritta dopo il tuo staging).
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
@@ -401,7 +423,8 @@ pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 - 48561e5 (con 5b9bfc6, 5b650d3, f1ad943, 6548903): unit-suite success (kernel 992 PASS in CI), handoff-check success; verifica-bot FAILURE (V-1 MEDIA = R-434-1), corretta in 8e4584f.
 - 4a1ac96: verifica-bot annullato (head cambiata durante la verifica).
 - d4c57a0 (con 7aa3e60, 8e4584f): unit-suite success (kernel 993 PASS in CI), handoff-check success; verifica-bot SUCCESS (APPROVATO CON RISERVE, solo BASSE/COSMETICHE: decide l'operatore).
-- 3294875, 41c18c0: run non ancora disponibile alla scrittura dell'handoff.
+- fda38c7 (con 3294875, 41c18c0): unit-suite (kernel 994 PASS in CI), handoff-check success; verifica-bot SUCCESS (APPROVATO CON RISERVE, 3 BASSE + 1 COSMETICA: decide l'operatore).
+- 310d581 (merge di main #238): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
