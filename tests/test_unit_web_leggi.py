@@ -22,8 +22,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from modules.web import leggi as web
 from modules.web import leggi_pagina
 
-IP_PUBBLICO = "93.184.216.34"
-IP_PUBBLICO_2 = "151.101.1.1"
+IP_PUBBLICO = "93.184.216.34"  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
+IP_PUBBLICO_2 = "151.101.1.1"  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
 
 
 # ───────────────────────────── server finto ─────────────────────────────
@@ -68,7 +68,7 @@ class _Gestore(BaseHTTPRequestHandler):
         elif p == "/redir-interno":
             self._rispondi(302, b"", {"Location": "http://interno.test/ok"})
         elif p == "/redir-ip-interno":
-            self._rispondi(307, b"", {"Location": "http://169.254.169.254/latest/meta-data/"})
+            self._rispondi(307, b"", {"Location": "http://169.254.169.254/latest/meta-data/"})  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
         elif p == "/redir-file":
             self._rispondi(302, b"", {"Location": "file:///etc/passwd"})
         elif p == "/redir-vuoto":
@@ -165,8 +165,8 @@ class _Rete:
         self.dns = dns if dns is not None else {
             "sito.test": [IP_PUBBLICO],
             "altro.test": [IP_PUBBLICO_2],
-            "interno.test": ["10.0.0.5"],
-            "misto.test": [IP_PUBBLICO, "192.168.1.1"],
+            "interno.test": ["10.0.0.5"],  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
+            "misto.test": [IP_PUBBLICO, "192.168.1.1"],  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
             "v6locale.test": ["fe80::1"],
         }
         self.risolti: list = []
@@ -245,12 +245,12 @@ def test_redirect_esterno_e_relativo(rete):
 # ───────────────────────────── indirizzi interni ─────────────────────────────
 
 @pytest.mark.parametrize("url", [
-    "http://127.0.0.1/", "http://127.1.2.3:8080/", "http://10.0.0.1/", "http://172.16.0.1/",
-    "http://172.31.255.255/", "http://192.168.1.1/", "http://169.254.169.254/latest/meta-data/",
-    "http://100.64.0.1/", "http://0.0.0.0/", "http://[::1]/", "http://[fe80::1]/",
+    "http://127.0.0.1/", "http://127.1.2.3:8080/", "http://10.0.0.1/", "http://172.16.0.1/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
+    "http://172.31.255.255/", "http://192.168.1.1/", "http://169.254.169.254/latest/meta-data/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
+    "http://100.64.0.1/", "http://0.0.0.0/", "http://[::1]/", "http://[fe80::1]/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
     "http://[fc00::1]/", "http://[fd12:3456::1]/", "http://[::ffff:127.0.0.1]/",
-    "http://[::ffff:10.0.0.1]/", "http://[64:ff9b::7f00:1]/", "http://[2002:7f00:1::]/",
-    "http://[2001::1]/", "http://[ff02::1]/", "http://[::]/", "http://224.0.0.1/",
+    "http://[::ffff:10.0.0.1]/", "http://[64:ff9b::7f00:1]/", "http://[2002:7f00:1::]/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
+    "http://[2001::1]/", "http://[ff02::1]/", "http://[::]/", "http://224.0.0.1/",  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
     "http://localhost/", "http://LOCALHOST:8000/", "http://foo.localhost/",
 ])
 def test_indirizzi_interni_rifiutati_senza_connessione(rete, url):
@@ -274,7 +274,7 @@ def test_redirect_verso_interni_rifiutato(rete, percorso):
 
 
 def test_ip_pubblici_accettati():
-    for ip in (IP_PUBBLICO, "8.8.8.8", "2606:4700:4700::1111", "64:ff9b::808:808"):
+    for ip in (IP_PUBBLICO, "8.8.8.8", "2606:4700:4700::1111", "64:ff9b::808:808"):  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
         assert web.indirizzo_interno(ip) is False, ip
     assert web.indirizzo_interno("fec0::1") is True  # site-local (R4 review #391)
     assert web.indirizzo_interno("non-un-ip") is True
