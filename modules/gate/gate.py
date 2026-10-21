@@ -515,10 +515,15 @@ _ESTENSIONI_DELICATE: tuple[str, ...] = (
 # «a.sh.txt», «x.py.md».
 # V-1 bot #231 / V-5 verifica esterna #231: solo tipi ESEGUIBILI (non le estensioni
 # corte come c, h, r, go, db, app, url, key: «verbale.c.rossi.md» è un documento).
+# R-390-1: anche chiavi, archivi di password e database («server.pem.txt»,
+# «dump.sql.txt», «prod.env.txt»). Verifica esterna #232: fuori le parole che sono
+# anche nomi comuni («customer.service.md», «manuale.html.pdf», «node.js.md»).
 _ESTENSIONI_INTERNE_DELICATE: frozenset[str] = frozenset({
-    "sh", "zsh", "bash", "fish", "command", "terminal", "py", "pyw", "pth", "js", "mjs",
-    "cjs", "ts", "rb", "pl", "php", "ps1", "psm1", "bat", "cmd", "vbs", "exe", "dll",
-    "jar", "applescript", "scpt", "workflow", "html", "htm", "plist", "service", "desktop",
+    "sh", "zsh", "bash", "fish", "command", "terminal", "py", "pyw", "pth", "mjs",
+    "cjs", "rb", "php", "ps1", "psm1", "bat", "vbs", "exe", "dll",
+    "jar", "applescript", "scpt", "workflow",
+    "pem", "p12", "pfx", "kdbx", "ovpn", "gpg", "jks", "sql", "sqlite", "sqlite3",
+    "ipynb", "env",
 })
 _NOMI_DELICATI: frozenset[str] = frozenset({
     "key", "keys", "apikey", "token", "tokens", "secret", "secrets", "password",
@@ -538,7 +543,10 @@ def sembra_delicato(relative_path: Any) -> bool:
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return True
-        nome = PurePosixPath(_normalize_path(relative_path)).name.rstrip(". ")
+        nome = PurePosixPath(_normalize_path(relative_path)).name
+        # Verifica esterna #232: via i caratteri invisibili (zero-width, BOM, controlli
+        # di direzione), che NFKC lascia: «a.sh\u200b.txt» non sfugge.
+        nome = "".join(c for c in nome if unicodedata.category(c) != "Cf").rstrip(". ")
         if nome.startswith(".") or "." not in nome or nome.endswith(_ESTENSIONI_DELICATE):
             return True  # file nascosti (rc, dotfile), senza estensione, config/script
         # V-2 verifica esterna #231: pezzi ripuliti dagli spazi («a.sh .txt»).
