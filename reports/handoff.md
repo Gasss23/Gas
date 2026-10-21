@@ -26,16 +26,16 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++
+ .claude/agents/memoria_revisore.md |   6 +++
  .github/workflows/ci.yml           |   7 ++++
  modules/web/__init__.py            |   4 ++
- modules/web/leggi.py               | 481 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/web/leggi.py               | 486 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md           |  17 ++++----
- reports/handoff.md                 | 776 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 787 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 +-
- reports/ultimo_report.md           |  57 ++++++++++++++-------------
- tests/test_unit_web_leggi.py       | 539 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 1285 insertions(+), 605 deletions(-)
+ reports/ultimo_report.md           |  59 ++++++++++++++-------------
+ tests/test_unit_web_leggi.py       | 560 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 1336 insertions(+), 594 deletions(-)
 ```
 
 ---
@@ -43,6 +43,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2a83a4d fix(web): niente titolo fuori dai marcatori, niente redirect da https a http (V-1/V-2 bot #235, chat Mani)
+2d7c4c0 docs(fine-task): verdetto #407 (chat Mani) riemesso con gli IP redatti (Gate IP)
+713c20b docs(fine-task): report, stato e handoff — chat Mani fetta 1, leggi_pagina (#235)
 0fbe4f3 test(web): marcatore gasmerge-ip-ok sulle righe con IP di prova (Gate IP)
 7925785 Merge origin/main (#233) in feat/mani-web-leggi-pagina
 6af7ff0 fix(web): il cane da guardia possiede una copia del descrittore (R-392-1, chat Mani)
@@ -55,7 +58,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Cinque verdetti, incollati integralmente nell'ordine: #391 (chat Mani, BOCCIATO), #392 (chat Mani), #393 (chat Mani), #406 (chat Mani, merge di main), #407 (chat Mani, marcatori del Gate IP nei test). Le righe citate dalla #391 si riferiscono alla prima versione del file.
+Sei verdetti, incollati integralmente nell'ordine: #391 (chat Mani, BOCCIATO), #392 (chat Mani), #393 (chat Mani), #406 (chat Mani, merge di main), #407 (chat Mani, marcatori del Gate IP nei test, verdetto riemesso), #408 (chat Mani, V-1/V-2 del bot #235). Le righe citate dalla #391 si riferiscono alla prima versione del file.
 
 ### Review #391 (chat Mani)
 
@@ -291,21 +294,53 @@ Ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci "Mani" di reports/stato_progetto.
 
 **Riserve**: nessuna.
 
+### Review #408 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #408 (chat Mani). Diff STAGED su feat/mani-web-leggi-pagina (PR #235): `modules/web/leggi.py` e `tests/test_unit_web_leggi.py`. Prima della review ho letto CLAUDE.md (sez. 5), `reports/stato_progetto.md` (voce Mani, riga 605) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:430` — il dict restituito non ha più `titolo` (V-1 bot). Rischio cercato: un chiamante o un test che legga ancora `r["titolo"]`, oppure il titolo finito fuori dai marcatori. Una grep su tutto il repo non trova nessun uso di `titolo` fuori da `modules/web/`, e l'unico chiamante di `leggi_pagina` è la suite di test. Il titolo resta solo come riga «Titolo:» dentro i marcatori (`modules/web/leggi.py:425`), tra INIZIO e FINE NON FIDATO. Esito: ok.
+- `modules/web/leggi.py:467` — rifiuta un redirect da https a http (V-2 bot). Rischio cercato: modi per aggirare il controllo. Il controllo gira dopo `_valida_url`, che porta già lo schema in minuscolo, e prima di DNS e connessione. `cifrato` resta acceso fino alla fine della catena. Ho fatto una sonda con un `_scarica` finto (nessuna rete). Vengono rifiutati: «HTTP://», «Http://», « http://» con spazio iniziale, «\thttp://», «http://a.test:443/», https→https→http, https→«//c»→«HTTP://», http→https→http (si connette una volta sola, in https). Restano in https: «//host», «/rel» e «rel». «http:/x» e «http:x» vengono rifiutati prima, come «url senza nome host». Esito: ok.
+- `tests/test_unit_web_leggi.py:207` — controlla l'insieme esatto delle chiavi, più «Titolo: Titolo & prova» dentro `testo` (`tests/test_unit_web_leggi.py:209`). Esito: ok.
+- `tests/test_unit_web_leggi.py:547` e `tests/test_unit_web_leggi.py:555` — test https→http rifiutato (una sola connessione, `(IP_PUBBLICO, 443)`) e http→https permesso (`tls.nomi == ["altro.test"]`). Prova di mutazione su una copia nel mio spazio di lavoro, togliendo le due righe del controllo: fallisce solo `test_redirect_da_https_a_http_rifiutato`. Il test quindi distingue il codice giusto da quello sbagliato. Esito: ok.
+- Nessuna violazione del Wall of Shame: il diff non tocca history, `_get_window` né il kernel. Nessun output di tool simulato. Le eccezioni restano tutte intercettate (`modules/web/leggi.py:479`, mai eccezioni verso chi chiama).
+
+**Test rifatti**: 85 passed su Python 3.13.
+- 85 passed su 3.11.17 lanciato con `uv` (pytest non è installato nel 3.11 di sistema).
+
+**Riserve**
+- R-408-1 (chat Mani) BASSA: la regola «al modello va SOLO `testo`» è scritta nel docstring ma il codice non la impone. Il campo `url` sta fuori dai marcatori e il suo percorso lo sceglie in parte il server che fa il redirect (con escape, niente a capo). Quando la chat Motore aggancerà `leggi_pagina`, deve passare al modello solo `testo`. Va tracciata in `stato_progetto.md` insieme a R-392-3.
+- R-408-2 (chat Mani) COSMETICA: l'elenco «Regole» in testa al modulo (`modules/web/leggi.py:6`) non cita il divieto di downgrade.
+
+**Rischio escluso esplicitamente**
+- Suite con rete e DNS veri bloccati: non riprodotta. `unshare -rn` qui non alza il loopback, quindi il server finto locale non parte (31 errori dovuti all'ambiente, non al codice). Mi fido della prova del chiamante.
+- Comportamento con un vero server TLS e un redirect reale: non verificato, perché non si riproduce senza rete.
+
+**Memoria**: ho aggiunto la riga «#408 (chat Mani) — 2026-10-21 — APPROVATO CON RISERVE — …» in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Il file è modificato e NON in stage. Come mi hai chiesto non ho committato e non ho lanciato `scripts/commit_memoria_revisore.sh`: lo devi committare tu, perché il revisore.md richiede quel commit. Nessuna lezione nuova.
+
+File rilevanti:
+- `/home/user/Gas/modules/web/leggi.py`
+- `/home/user/Gas/tests/test_unit_web_leggi.py`
+- `/home/user/Gas/.claude/agents/memoria_revisore.md`
+- La sonda: `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/sonda408.py`
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite (nuova): 0 → 83 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «83 passed», Python 3.13.16 e 3.11.17; 83 passed anche con rete e DNS veri bloccati via sitecustomize).
+- Web suite (nuova): 0 → 85 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «85 passed»; 83 prima delle correzioni del bot #235, Python 3.13.16 e 3.11.17; 85 passed anche con rete e DNS veri bloccati via sitecustomize).
 - Nessuna modifica a `gas.py` né agli altri moduli. Sull'albero fuso il revisore #406 ha rilanciato gate 811 passed, notte 106 passed, kernel 952 PASS / 1 FAIL (T31g: manca `sqlite_vec` in questo ambiente, fallisce uguale su origin/main pulito).
 
 ## §6 STATO CI
 
-- `b4617d8`, `6af7ff0`: pushati sul ramo prima dell'apertura della PR; run CI di push non verificate in questa sessione.
-- `7925785` (merge di main): run non ancora disponibile alla scrittura dell'handoff.
-- Commit dei marcatori del Gate IP: run non ancora disponibile alla scrittura dell'handoff.
+- `b4617d8`, `6af7ff0`, `7925785`, `0fbe4f3`, `55bd481`: pushati insieme a `2d7c4c0` o prima; nessuna run verificata su questi SHA singoli (una run per push, che testa solo la testa).
+- `2d7c4c0` (testa della PR al primo giro): run CI 39606477168 — unit-suite success (passo «Run web suite»: «83 passed»; kernel «959 PASS, 0 FAIL»), handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, la PR tocca `ci.yml`).
+- `2a83a4d` (V-1/V-2 del bot #235): run non ancora disponibile alla scrittura dell'handoff.
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: R-392-3, R-392-2 (parte residua), R-393-1, R-393-2, R6 e R7 della #391 (tutte chat Mani, BASSE/COSMETICHE): dettaglio in `reports/stato_progetto.md`, blocco «Mani — fetta 1».
+- Di questa fetta: R-392-3, R-392-2 (parte residua), R-393-1, R-393-2, R6 e R7 della #391, R-408-1, R-408-2 (tutte chat Mani, BASSE/COSMETICHE); dalla verifica esterna #235: R-ve235-1 MEDIA (per l'aggancio: canale di uscita dati), R-ve235-4/5/6 BASSE, R-ve235-7 COSMETICA: dettaglio in `reports/stato_progetto.md`, blocco «Mani — fetta 1».
 - Le altre riserve aperte del progetto sono in `reports/stato_progetto.md`.
