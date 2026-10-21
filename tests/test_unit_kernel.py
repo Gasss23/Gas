@@ -7114,6 +7114,12 @@ _c94h = _k94c._daily_cost_usd()                                  # 0.1 + 0.2
 check("T94c R-409-1/2 «in» contato con «out» rotto; riscritto più lungo con lo stesso inizio → 0.3",
       abs(_c94g - 0.1) < 1e-9 and abs(_c94h - 0.3) < 1e-9, f"{_c94g} {_c94h}")
 
+# T94d — R-410-1/2: numeri enormi non scartano la parte valida; negativi non abbassano
+check("T94d R-410-1/2 costo di una riga con «out» enorme o negativo",
+      gas._costo_riga(json.dumps({"ts": "x", "provider": "gemini-flash-lite",
+                                      "in": -5_000_000, "out": 500_000}).encode())[1] >= 0.2 - 1e-9
+      and gas._costo_riga(b'{"ts": "x", "provider": "gemini-flash-lite", "in": 1000000, "out": 1e400}')[1] > 0.09)
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(

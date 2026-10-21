@@ -881,8 +881,9 @@ def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
         # R-409-1: «in» e «out» contati ognuno per conto suo, come la lettura di prima
         for chiave, prezzo in (("in", p_in), ("out", p_out)):
             try:
-                costo += int(r.get(chiave, 0)) * prezzo / 1_000_000
-            except (TypeError, ValueError):
+                # R-410-2: un conteggio negativo non abbassa la spesa (budget)
+                costo += max(0, int(r.get(chiave, 0))) * prezzo / 1_000_000
+            except (TypeError, ValueError, OverflowError):  # R-410-1
                 pass
         return (str(r.get("ts", "")), costo)
     except Exception:
