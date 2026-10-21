@@ -106,6 +106,17 @@ _FINDING_GRAVE_A_PAROLE = re.compile(
     # R-316-2: anche gli id alfabetici esentati da _RISERVA_REGISTRATA ("R-gate-wt-1").
     r"^\W*[VFRG]-(?:[A-Za-z0-9]+-)*\d+\b.*\b(" + _GRAVI + r")\b", re.M | re.I)
 _APRE_GRAVE = re.compile(r"\s*(" + _GRAVI + r")\b", re.I)
+# Bot #240: «V-1 (BASSA) — … non la considero più grave» bloccava come MEDIA. Una gravità
+# a parole MINUSCOLA negata da «non» poco prima (al massimo 3 parole in mezzo) non conta
+# per la regola a parole. Solo minuscolo: «non è ALTA», «NON grave», parole maiuscole e
+# gravità tra parentesi restano viste come prima (nel dubbio blocca).
+# Review #441: tra «non» e la gravità solo parole di una lista chiusa, senza punteggiatura
+# («non la considero più grave», «non è grave»); «non mitigato: grave», «non autenticato:
+# accesso critico» negano il difetto, non la gravità, e restano bloccanti.
+_GRAVITA_NEGATA = re.compile(
+    r"\bnon\s+(?:(?:è|era|sono|sia|più|la|lo|li|le|si|considero|ritengo|così|molto"
+    r"|affatto|particolarmente|troppo|davvero|tanto|stato|stata)\s+){0,3}"
+    r"(?:" + _GRAVI + r")\b")
 
 
 def solo_reports(files: list[str]) -> bool:
@@ -181,7 +192,11 @@ def _gravita_nel_testo(testo: str) -> set[str]:
     # HIGH, CRITICAL, BLOCKER... contano come MEDIA (bloccanti) anche se fuori vocabolario.
     trovate: set[str] = {p if p in GRAVITA_BLOCCANTI else "MEDIA"
                          for p in _PAROLA_BLOCCANTE.findall(finding)}
-    if _FINDING_GRAVE_A_PAROLE.search(sezione):
+    # R-442-1: «non è la più grave» nega il primato, non la gravità: non si toglie
+    pulita = _GRAVITA_NEGATA.sub(
+        lambda m: m.group(0) if re.search(r"\b(?:la|lo|le|li)\s+più\b", m.group(0)) else "",
+        sezione)
+    if _FINDING_GRAVE_A_PAROLE.search(pulita):
         trovate.add("MEDIA")
     # R-159-3: tra parentesi conta la gravità che APRE la parentesi ("(alta)", "(MEDIA-BASSA)"),
     # non una parola qualsiasi ("(test saltati)", "(in media 3 ms)", "(parte multimediale)").

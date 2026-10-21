@@ -1,10 +1,10 @@
-# DIFF SESSIONE — 2026-10-21 (dopo il merge di #234: tre stati per un comando firmato)
+# DIFF SESSIONE — 2026-10-21 (dopo il merge di #236: ultime riserve del bot sulla storia condivisa)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py` — `_run_command_avviato` (True da quando il comando parte, azzerato a ogni tool call e in applica_firma); `_esito_diario` «[KO] esito incerto»; applica_firma con `stato` finita/incerta/non_partita; testo d'errore «PARTITO… esito INCERTO» per il modello.
-- `gas.py` (storia) — `_blocca_storia`, `_carica_storia_bloccata`, `_unisci_storia_altrui`, `_storia_sync`, `_salva_storia_su_file` che dice se è riuscita, base riconosciuta dal contenuto (sha256), copie «conflitto» collegate e potate, lock con tetto di tempo (R-c4b3-4, R-430, R-431, V bot #236).
-- `modules/telegram/bot.py` — messaggio «⚠️ Approvata e PARTITA, ma esito INCERTO».
-- `tests/test_unit_kernel.py` — T77u-z, T77aa-ad, T97a-g.
-- `.claude/agents/memoria_revisore.md` — righe #428-#437 (più le righe della chat Mani arrivate con main).
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/da_mergiare.md`, `reports/roadmap.md` — report.
+- `gas.py` — rinvio a fine turno in entrambi i rami di `_unisci_storia_altrui`; quinto elemento della base (`gia`) contro i duplicati dopo una scrittura fallita; `_save_history` restituisce se ha scritto; `compress_history_cmd` salva a fine operazione e dice ok solo se ha scritto.
+- `tests/test_unit_kernel.py` — T97j (dal generatore di run_turn, messaggi inviati al provider), T97k (niente duplicati), T97l/T97l2 (compress-history); T97b e T97g con turni chiusi.
+- `scripts/bot_esito.py` — `_GRAVITA_NEGATA`: gravità a parole negata (lista chiusa) ignorata dalla regola a parole (falso rosso #240).
+- `tests/test_unit_verifica_bot.py` — caso reale #240 e 13 frasi che devono restare bloccanti.
+- `.claude/agents/memoria_revisore.md` — righe #438-#443.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/da_mergiare.md` — report.

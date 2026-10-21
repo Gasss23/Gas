@@ -4,16 +4,22 @@
 
 > **C6 deciso (2026-10-21):** l'operatore ha scelto (a) «lasciamo così»: una firma per ogni azione, niente «Modifica» né firme a gruppi.
 
-## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #234)
+## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #236)
 
-### 1. Tre stati per un comando firmato (roadmap R7, R-c4b3-5)
-- **Cosa:** se un comando approvato su Telegram parte ma si interrompe (es. tempo scaduto dopo 60 s), Gas ora dice «PARTITO, esito INCERTO: può aver fatto solo una parte del lavoro, controlla prima di ripetere», nella storia, nel diario e nel messaggio Telegram. Prima diceva «NON eseguito», che era falso.
-- **Pro:** niente più informazione sbagliata all'operatore e al modello; il diario delle azioni successive non viene più sporcato (R-428-1).
-- **Contro:** oggi i comandi di sistema sono spenti (allowlist vuota), quindi è un caso latente; due rami senza test (R-429-1, bassa).
-- **Controlli:** revisori #428, #429 (chat Motore) APPROVATO CON RISERVE; kernel 975 PASS. Bot V-B: success con 3 riserve BASSE (prossima fetta).
+### 1. Storia condivisa tra bot e terminale: ultime riserve del bot (roadmap R7, R-c4b3-4)
+- **Cosa:** quando il bot Telegram e il terminale scrivono la stessa storia, durante un turno il modello non vede mai i messaggi dell'altro processo (prima succedeva al primo salvataggio del turno); se un salvataggio fallisce, i messaggi dell'altro non finiscono doppi.
+- **Pro:** chiude le riserve rimaste dopo il merge di #236; un test passa dal turno vero (provider giù, nessuna risposta finale).
+- **Contro:** se un altro processo ha scritto, i messaggi del turno in corso restano solo in memoria fino alla fine del turno (un kill -9 a metà li perde, R-438-2).
+- **Controlli:** revisore #438 (chat Motore) APPROVATO CON RISERVE; kernel 994 PASS, pytest 1816 passed. Bot V-B: success con riserve basse.
 
-### 2. Bot e terminale non si cancellano più la storia (roadmap R7, R-c4b3-4)
-- **Cosa:** se Gas su Telegram e Gas da terminale lavorano sulla stessa cartella, l'ultimo che salvava cancellava i messaggi dell'altro (anche l'esito di una firma). Ora c'è un lock sul file: chi salva rilegge e accoda i propri turni completi; se uno dei due è a metà turno, la versione dell'altro va in una copia «conflitto» accanto alla storia, nulla si perde.
-- **Pro:** niente più conversazioni perse quando si usano insieme bot e terminale.
-- **Contro:** se entrambi sono a metà turno, la versione dell'altro va in una copia «conflitto» (al massimo 20, nulla perso ma va guardata a mano); provato con due kernel nello stesso processo e dalla verifica esterna con 3 processi veri, non su VPS.
-- **Controlli:** revisori #430-#434 (chat Motore) APPROVATO CON RISERVE, le MEDIE trovate (R-430-1, R-433-1, V-1 bot #236) chiuse; kernel 990 PASS, pytest 1807 passed.
+### 2. `gas compress-history` onesto (R-438-1, R-439-1)
+- **Cosa:** il comando di compressione della storia ora salva anche quando un altro processo ha scritto nel frattempo, e dice «Compressi» solo se la storia compressa è davvero su disco (altrimenti «NON salvata» ed exit 1).
+- **Pro:** niente più falso «ok» su un'operazione manuale.
+- **Contro:** nessuno di rilievo (al più un «NON salvata» prudente se fallisce solo il secondo salvataggio, R-440-1).
+- **Controlli:** revisori #439, #440 APPROVATO CON RISERVE; kernel 996 PASS.
+
+### 3. Regola «grave» del bot di verifica (macchina del bot, autorizzata dall'operatore)
+- **Cosa:** il bot non blocca più per una frase come «non la considero più grave»; continua a bloccare «non mitigato: grave», «non è la più grave», ecc.
+- **Pro:** toglie il falso rosso che bloccava la #240.
+- **Contro:** tocca la macchina del bot (il check sarà «neutral»: decide l'operatore).
+- **Controlli:** revisori #441 (BOCCIATO, corretto), #442, #443 APPROVATO; suite del bot 325 passed.

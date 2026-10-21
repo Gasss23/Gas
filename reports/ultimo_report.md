@@ -1,29 +1,23 @@
-# ULTIMO REPORT — 2026-10-21 — Tre stati per un comando firmato e storia condivisa tra processi (R7, R-c4b3-5, R-c4b3-4)
+# ULTIMO REPORT — 2026-10-21 — Ultime riserve del bot sulla storia condivisa (dopo il merge di #236)
 
-Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #234 (operatore: «mergia 234 e continua con la roadmap»; C6 decisa «lasciamo così»).
+Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #236 (operatore: «mergia 236 e mostrami cosa rimane da mergiare e continua con la roadmap»).
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della nuova PR: pro e contro in `reports/da_mergiare.md`.
+1. Merge della PR #240: l'operatore ha detto «mergia 240» (dopo il nuovo giro del bot).
+2. R-438-2: scelta (a), limite accettato.
 
 ## Esito
 
-- **Merge PR #234** — FATTO (`35b55be`) su richiesta dell'operatore, dopo aver unito main (#235 della chat Mani, review #427 APPROVATO) per togliere il conflitto.
-- **C6** — DECISA dall'operatore: (a) «lasciamo così» (una firma per azione, niente «Modifica» né firme a gruppi). Registrata in roadmap e da_mergiare.
-- **R7 / R-c4b3-5 — tre stati per un comando firmato** — FATTA. Un run_command firmato che parte e si interrompe (tempo scaduto) ora risulta «PARTITO, esito INCERTO» nella storia, nel diario e su Telegram, non più «NON eseguito (diniego interno)». Review #428 APPROVATO CON RISERVE (R-428-1 MEDIA).
-- **R-428-1/2/3/4** — FATTA. Il segno «partito» si azzera a ogni tool call (non sporca più il diario di azioni negate o parcheggiate dopo); un errore di avvio (binario assente) non è «incerto»; anche il modello legge «PARTITO… esito INCERTO» senza l'argv di bwrap. Review #429 APPROVATO CON RISERVE (R-429-1 BASSA, R-429-2 COSMETICA).
-- **R7 / R-c4b3-4 — due processi sulla stessa storia** — FATTA. Il bot e un comando da terminale sulla stessa cartella non si cancellano più i messaggi: lock sul file, i turni interi dell'uno si accodano a quelli dell'altro; a metà turno la versione dell'altro va in una copia «conflitto». Review #430 APPROVATO CON RISERVE (R-430-1 MEDIA), #431 la chiude (impronta avanza solo se la scrittura riesce).
-- **V-1/V-2 verifica esterna #236 (= R-429-1/2)** — FATTA in #430.
-- **Merge di origin/main (#237, chat Mani)** — FATTO per togliere il conflitto segnalato dalla verifica esterna #236 (V-1 MEDIA). Review #432 APPROVATO.
-- **Riserve del bot sulla PR #236** — FATTA. Errori d'avvio di un comando mai «partiti», esito «incerto» se qualcosa si rompe dopo l'approvazione, test con un processo vero fermato dal tetto di tempo, copie «conflitto» con nome unico e al massimo 20 (review #433). La MEDIA del secondo giro (l'esito di una firma scritto dal bot a metà turno della CLI finiva solo nella copia) è chiusa: l'unione ora riconosce la storia dal contenuto e mette i turni interi dell'altro dopo la nostra risposta; il lock della storia aspetta al massimo 5 s (review #434).
-- **R-434-1 (MEDIA, = V-1 bot #236 3° giro)** — FATTA: a metà turno la storia dell'altro processo non entra nella finestra del modello, l'unione avviene alla fine del turno (review #435).
-- **R-435-1 e V-3 bot #236** — FATTA: un turno finito senza risposta finale salva comunque la storia; un errore interno dopo l'approvazione resta registrato e compare su Telegram (review #436). V-2 del bot accettata come limite.
-- **Merge di origin/main (#238, chat Mani)** — FATTO per togliere un nuovo conflitto della PR #236. Review #437 APPROVATO.
-- **Test** — kernel 971 → 992 PASS, 0 FAIL; pytest tests/ 1807 passed.
+- **Merge PR #236** — FATTO (`dec4ce9`) su richiesta dell'operatore.
+- **V-1/V-2 bot #236 (5° giro) e R-436-1** — FATTA. A metà turno la storia dell'altro processo non entra mai nella finestra del modello, nemmeno al primo salvataggio del turno; i suoi messaggi già uniti a un salvataggio fallito non si duplicano; un test passa dal generatore vero di run_turn (turno finito senza risposta finale). Review #438 APPROVATO CON RISERVE (R-438-1 BASSA, R-438-2 nota).
+- **R-438-1 e R-439-1** — FATTA: `gas compress-history` salva la compressione anche con un'unione rimandata e non dice più «Compressi» se non ha scritto (review #439, #440).
+- **V-1 bot #240** — FATTA: T97j controlla i messaggi che il provider riceve davvero. V-2 bot #240 (= R-438-2) resta un limite BASSO dichiarato.
+- **Regola «grave» del bot** — FATTA su richiesta dell'operatore: una gravità a parole negata («non la considero più grave») non blocca più; frasi come «non mitigato: grave» o «non è la più grave» restano bloccanti. Review #441 BOCCIATO, #442 APPROVATO CON RISERVE, #443 APPROVATO.
+- **R-438-2** — l'operatore ha scelto (a): limite BASSO accettato.
+- **Test** — kernel 992 → 996 PASS, 0 FAIL; pytest tests/ 1816 passed.
 
 ## Prossimi passi
 
-1. R-436-1 (test del finally di run_turn dal generatore), R-436-2, R-434-2.
-2. Due turni concorrenti intrecciati (V-4 bot #236 4° giro): base sul prefisso comune.
-2. R7 / R-c4b3-3: crash tra reclamo e scrittura in storia.
-4. R-408-1: potare il registro della notte solo se il file del catalogo è stato letto.
+1. R7 / R-c4b3-3: crash tra reclamo e scrittura in storia.
+2. R-408-1: potare il registro della notte solo se il file del catalogo è stato letto.
