@@ -402,6 +402,8 @@ def run_bot(root_dir: Optional[str] = None) -> int:
         print("  Verifica TELEGRAM_BOT_TOKEN e la connessione di rete.")
         return 1
     bot_username = me.get("result", {}).get("username", "bot")
+    global _BOT_USERNAME
+    _BOT_USERNAME = bot_username if isinstance(bot_username, str) else None
     print(f"✓ gas telegram: connesso come @{bot_username}")
     print(f"  Chat autorizzate: {sorted(allowed)}")
     print("  In ascolto… (Ctrl-C per uscire)\n")
@@ -458,9 +460,11 @@ def run_bot(root_dir: Optional[str] = None) -> int:
 # rispetta il formato del catalogo.
 # V-3 verifica esterna #233: separatore solo spazio o tab (non spazi Unicode).
 # V-1 verifica esterna #233: il nome non inizia con «-» (mai un'opzione per gas.py).
-_COMANDO_GIRO_RE = re.compile(r"/(notte|compito)(?:@\w+)?(?:[ \t]+(.*))?", re.I | re.S)
+_COMANDO_GIRO_RE = re.compile(r"/(notte|compito)(?:@(\w+))?(?:[ \t]+(.*))?", re.I | re.S)
 _NOME_COMPITO_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}")
 _giri_lanciati: List[Any] = []
+# V-3 bot #233: «/notte@AltroBot» non è per Gas. Impostato da run_bot (getMe).
+_BOT_USERNAME: Optional[str] = None
 
 
 def comando_giro(text: Any) -> Optional[Tuple[str, Optional[str]]]:
@@ -470,7 +474,11 @@ def comando_giro(text: Any) -> Optional[Tuple[str, Optional[str]]]:
         m = _COMANDO_GIRO_RE.fullmatch(text.strip()) if isinstance(text, str) else None
         if not m:
             return None
-        cmd, arg = m.group(1).lower(), (m.group(2) or "").strip()
+        destinatario = m.group(2)
+        if (destinatario and _BOT_USERNAME
+                and destinatario.casefold() != _BOT_USERNAME.casefold()):
+            return None  # comando per un altro bot del gruppo
+        cmd, arg = m.group(1).lower(), (m.group(3) or "").strip()
         if cmd == "notte":
             if arg:
                 return ("errore", "/notte non vuole argomenti. Per un solo compito: /compito <nome>")
@@ -553,6 +561,9 @@ def lancia_giro(root: Path, nome: Optional[str] = None) -> str:
                                  start_new_session=True, close_fds=True)
         _giri_lanciati.append({"p": p, "t0": t0, "root": root})
         cosa = f"Compito «{nome}» avviato" if nome else "Giro notturno avviato"
+        if os.environ.get("GAS_NOTTE_TELEGRAM", "").strip() == "0":  # V-2 bot #233
+            return (f"{cosa}. Riepilogo su Telegram spento (GAS_NOTTE_TELEGRAM=0): "
+                    "a fine giro leggilo in .gas_notte/ultimo_giro.md")
         return f"{cosa}: il riepilogo arriva qui a fine giro."
     except Exception as e:
         log.warning("lancia_giro fallita: %s", e)

@@ -165,6 +165,24 @@ _DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
 })
 
 
+# V-1 bot #233 (5° giro): oltre ai Cf, i caratteri che si vedono vuoti ma non sono
+# Cf (selettori di variante, riempitivi hangul, combining grapheme joiner, braille
+# vuoto). Elenco dei Default_Ignorable_Code_Point non Cf, più U+2800.
+_INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
+    (0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
+    (0x2800, 0x2800), (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFFA0, 0xFFA0),
+    (0xE0100, 0xE01EF),
+)
+
+
+def _invisibile(c: str) -> bool:
+    """True per un carattere che non si vede: Unicode Cf o uno di _INVISIBILI_NON_CF."""
+    if unicodedata.category(c) == "Cf":
+        return True
+    o = ord(c)
+    return any(a <= o <= b for a, b in _INVISIBILI_NON_CF)
+
+
 def _normalize_path(p: str) -> str:
     """Normalize a path string for denylist comparison.
 
@@ -177,7 +195,7 @@ def _normalize_path(p: str) -> str:
     # V-1 verifica esterna #233 (3° giro): via i caratteri invisibili (Unicode Cf:
     # zero-width, BOM, controlli di direzione), che NFKC lascia: «run.sh\u200b»
     # va alla firma come «run.sh», non al livello libero. Solo per il confronto.
-    p = "".join(c for c in p if unicodedata.category(c) != "Cf")
+    p = "".join(c for c in p if not _invisibile(c))
     # Strip any number of leading "./" sequences.
     while p.startswith("./"):
         p = p[2:]
@@ -553,7 +571,7 @@ def sembra_delicato(relative_path: Any) -> bool:
         nome = PurePosixPath(_normalize_path(relative_path)).name
         # Verifica esterna #232: via i caratteri invisibili (zero-width, BOM, controlli
         # di direzione), che NFKC lascia: «a.sh\u200b.txt» non sfugge.
-        nome = "".join(c for c in nome if unicodedata.category(c) != "Cf").rstrip(". ")
+        nome = "".join(c for c in nome if not _invisibile(c)).rstrip(". ")
         if nome.startswith(".") or "." not in nome or nome.endswith(_ESTENSIONI_DELICATE):
             return True  # file nascosti (rc, dotfile), senza estensione, config/script
         # V-2 verifica esterna #231: pezzi ripuliti dagli spazi («a.sh .txt»).
@@ -591,7 +609,7 @@ def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
         # le varianti (NFKC) solo per il confronto; qui si CONCEDE, quindi un nome
         # grezzo che quelle trasformazioni cambiano («a.m\u200bd», «a.\uff4dd»: il
         # file vero non è un .md) resta alla firma.
-        if (any(unicodedata.category(c) == "Cf" for c in rel)
+        if (any(_invisibile(c) for c in rel)
                 or unicodedata.normalize("NFKC", rel) != rel):
             return False
         parts = PurePosixPath(_normalize_path(rel)).parts

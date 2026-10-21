@@ -489,6 +489,8 @@ def test_livello3_mai_nemmeno_con_firma(path):
     # V-1 verifica esterna #233 (3° giro): caratteri invisibili (Cf) non aggirano la firma
     "run.sh\u200b", "run.s\u200bh", "run.py\u200b", "x\ufeff.zsh", "g\u200bas.py",
     "scripts\u200b/x.md",
+    # V-1 bot #233 (5° giro): invisibili non Cf (selettore di variante, riempitivi)
+    "run.sh\ufe0f", "run.s\u034fh", "run.py\u3164", "run.sh\U000e0100",
 ])
 def test_livello2_firma(path):
     assert livello_scrittura(path) == LIVELLO_FIRMA
@@ -798,6 +800,8 @@ def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
     ("write_file", {"relative_path": "notes/a.\uff4dd"}, False),
     ("write_file", {"relative_path": "notes/a.\uff54xt"}, False),
     ("write_file", {"relative_path": "notes/caff\u00e8.md"}, True),  # accento NFC: resta libero
+    ("write_file", {"relative_path": "notes/a.m\ufe0fd"}, False),  # V-1 bot #233
+    ("write_file", {"relative_path": "notes/a.md\u2800"}, False),
     ("send_email", {"to": "a@b.it"}, False),
     ("run_command", {"command": "ls"}, False),
     ("browser_scrape", {"url": "x"}, False),
@@ -836,6 +840,7 @@ def test_libero_dopo_lettura(tool, args, atteso):
     ("dati/node.js.md", False), ("dati/b.ts.txt", False),
     ("dati/a.plist.txt", True), ("dati/a.desktop.txt", True),  # V-3 verifica esterna #233
     ("dati/avvio.cmd.txt", True),  # V-2 verifica esterna #233 (4° giro)
+    ("dati/a.sh\ufe0f.txt", True), ("dati/x.json\u3164", True),  # V-1 bot #233
     ("dati/a.sh\u200b.txt", True), ("dati/x.json\u200b", True), ("dati/a\ufeff.secret", True),
 ])
 def test_sembra_delicato(path, atteso):

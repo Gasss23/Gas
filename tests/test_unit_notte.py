@@ -26,6 +26,8 @@ def _ermetico(monkeypatch):
     def _vietato(*a, **kw):
         raise RuntimeError("test ermetico: niente HTTP verso Telegram")
     monkeypatch.setattr(_tg, "_tg_post", _vietato)
+    # V-3 bot #233: run_bot imposta lo username del bot; mai tra un test e l'altro
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", None)
     for k in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
               # V-2 bot #164: i tetti di tempo dell'ambiente cambierebbero i messaggi attesi
               "GAS_NOTTE_MAX_SEC_COMPITO", "GAS_NOTTE_MAX_SEC_GIRO",
@@ -1456,3 +1458,22 @@ def test_marcatore_avvio_in_ogni_ramo(monkeypatch, dirs):
     assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
                         kernel_factory=lambda r: None) == 1
     assert _tg._giro_partito(voce)
+
+
+def test_comando_giro_altro_bot(monkeypatch):
+    """V-3 bot #233: in un gruppo «/notte@AltroBot» non è per Gas."""
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
+    assert _tg.comando_giro("/notte@AltroBot") is None
+    assert _tg.comando_giro("/notte@gasbot") == ("notte", None)
+    assert _tg.comando_giro("/compito@GasBot conta") == ("compito", "conta")
+    assert _tg.comando_giro("/notte") == ("notte", None)
+
+
+def test_lancia_giro_telegram_spento(monkeypatch, tmp_path):
+    """V-2 bot #233: con GAS_NOTTE_TELEGRAM=0 la risposta non promette il riepilogo."""
+    _PopenFinto.lanciati = []
+    monkeypatch.setattr(_tg.subprocess, "Popen", _PopenFinto)
+    monkeypatch.setattr(_tg, "_giri_lanciati", [])
+    monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "0")
+    r = _tg.lancia_giro(tmp_path)
+    assert "spento" in r and "ultimo_giro.md" in r and "arriva qui" not in r
