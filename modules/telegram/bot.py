@@ -664,6 +664,10 @@ def componi_esito_firma(azione: str, approval_id: str, risolta: bool, motivo: st
     if res.get("eseguita"):
         testo = (f"✅ Approvata ed eseguita: {res.get('tool')}\nID: {approval_id}\n"
                  f"Esito: {res.get('esito')}")
+    elif res.get("stato") == "incerta":  # R-c4b3-5: partita ma senza esito
+        testo = (f"⚠️ Approvata, ma esito INCERTO: {res.get('tool') or ''} può essere "
+                 f"partita e aver fatto solo una parte del lavoro. Controlla prima di "
+                 f"ripetere.\nID: {approval_id}\nEsito: {res.get('esito') or 'ignoto'}")
     else:
         testo = (f"⚠️ Firma registrata ma azione {res.get('tool') or ''} NON eseguita: "
                  f"{res.get('esito') or 'motivo ignoto'}\nID: {approval_id}")

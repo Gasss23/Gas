@@ -6865,6 +6865,159 @@ try:
           _r77l["eseguita"] is False and "integrità" in _r77l["esito"]
           and _ex77l == [] and _esec77(_k77l) == [], str(_r77l))
 
+    # T77u — R-c4b3-5: comando firmato che parte e va in timeout → terzo stato
+    # «partita, esito incerto» (prima diceva «NON eseguita, diniego interno»)
+    _k77u = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77u)
+    _id77u = _k77u.memory.enqueue_approval("run_command", _CMD77)
+    _run77u = gas.subprocess.run
+    def _scade77u(*a, **kw):  # solo il comando firmato scade, non lo snapshot (git)
+        if a and "echo" in a[0]:
+            raise gas.subprocess.TimeoutExpired(a[0], 60)
+        return _run77u(*a, **kw)
+    with _TgFinto():
+        _k77u.memory.resolve_approval(_id77u, "approved", telegram_user_id=4242)
+        try:
+            gas.subprocess.run = _scade77u
+            _r77u = _k77u.applica_firma(_id77u)
+        finally:
+            gas.subprocess.run = _run77u
+    _st77u = " ".join(str(m.get("content") or "") for m in _k77u.history)
+    _msg77u = _tgbot_c4b.componi_esito_firma("ok", _id77u, True, "", _r77u)
+    check("T77u timeout dopo la firma → stato 'incerta', mai 'NON eseguita' (R-c4b3-5)",
+          _r77u.get("stato") == "incerta" and _r77u["eseguita"] is False
+          and "esito incerto" in _r77u["esito"] and "INCERTO" in _st77u
+          and "diniego interno" not in _st77u and "esito INCERTO" in _msg77u,
+          f"{_r77u} | {_msg77u[:120]}")
+    _r77u2 = _k77u.execute_tool_call("calcola", '{"expr": "1+1"}')
+    check("T77u il segno «partito» non resta per lo strumento dopo",
+          _k77u._esito_diario("run_command", "") == "[OK] (non eseguito)", _r77u2)
+
+    # T77v — R-428-1: un segno «partito» rimasto da prima non sporca il diario di un
+    # run_command negato dal cancello (ramo che non passa da execute_tool_call)
+    _k77v = kernel_tmp()
+    _k77v.SHELL_ALLOWLIST = []  # run_command spento → DENY
+    _k77v._run_command_avviato = True   # come dopo un timeout: partito, senza meta
+    _k77v._run_command_meta = None
+    _dia77v: list = []
+    _orig_dia77v = _k77v._diario_log_tool
+    def _spia_dia77v(nome, testo, **kw):
+        _dia77v.append(testo)
+        return _orig_dia77v(nome, testo, **kw)
+    _k77v._diario_log_tool = _spia_dia77v  # type: ignore[method-assign]
+    run_turn_scriptato(_k77v, "esegui", [[("run_command", _CMD77)], "ok"])
+    check("T77v diario di un run_command negato: «[KO]», mai «esito incerto» né «exit=»",
+          len(_dia77v) == 1 and "[KO]" in _dia77v[0] and "incerto" not in _dia77v[0]
+          and "exit=" not in _dia77v[0], str(_dia77v))
+    # R-428-3: il modello legge che il comando era partito (ramo senza firma)
+    _k77w = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77w)
+    _k77w.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
+    try:
+        gas.subprocess.run = _scade77u
+        _o77w = _k77w.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    check("T77w timeout senza firma: il modello legge «PARTITO… esito INCERTO»",
+          "PARTITO" in _o77w and "INCERTO" in _o77w, _o77w[:200])
+
+    # T77x — R-429-1 / V-1 verifica #236: (a) binario assente → non «partito»;
+    # (b) meta residuo + run_command parcheggiato → diario «[OK] (non eseguito)»
+    _k77x = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77x)
+    _k77x.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
+    def _manca77x(*a, **kw):
+        if a and "echo" in a[0]:
+            raise FileNotFoundError(2, "No such file or directory", "echo")
+        return _run77u(*a, **kw)
+    try:
+        gas.subprocess.run = _manca77x
+        _o77x = _k77x.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    check("T77x binario assente: il comando NON risulta partito (diario «[KO]», niente INCERTO)",
+          "PARTITO" not in _o77x and _k77x._run_command_avviato is False
+          and _k77x._esito_diario("run_command", _o77x) == "[KO]", _o77x[:150])
+    # R-430-5: eccezione DOPO che il comando ha finito (meta valorizzato) → niente «INCERTO»
+    class _Rotto77z(str):
+        def __add__(self, altro):
+            raise RuntimeError("concatenazione rotta")
+    def _finito77z(*a, **kw):
+        if a and "echo" in a[0]:
+            return SimpleNamespace(returncode=0, stdout=_Rotto77z("x"), stderr="")
+        return _run77u(*a, **kw)
+    try:
+        gas.subprocess.run = _finito77z
+        _o77z = _k77x.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    check("T77z eccezione dopo la fine del comando: niente «PARTITO… INCERTO» (R-430-5)",
+          "INCERTO" not in _o77z and _o77z.startswith("Errore eseguendo run_command"), _o77z[:150])
+    # V-1 bot #236: altri errori di avvio (cartella che è un file, ambiente rotto) → mai «partito»
+    def _nondir77(*a, **kw):
+        if a and "echo" in a[0]:
+            raise NotADirectoryError(20, "Not a directory")
+        return _run77u(*a, **kw)
+    try:
+        gas.subprocess.run = _nondir77
+        _o77n = _k77x.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    _env77 = _k77x._sanitized_subprocess_env
+    def _envrotto77():
+        raise RuntimeError("ambiente rotto")
+    _k77x._sanitized_subprocess_env = _envrotto77  # type: ignore[method-assign]
+    _o77e = _k77x.execute_tool_call("run_command", _CMD77)
+    _k77x._sanitized_subprocess_env = _env77  # type: ignore[method-assign]
+    check("T77aa NotADirectoryError o ambiente rotto: il comando NON risulta partito (V-1 bot #236)",
+          "PARTITO" not in _o77n and "PARTITO" not in _o77e
+          and _k77x._run_command_avviato is False, f"{_o77n[:80]} | {_o77e[:80]}")
+    # R-433-1: comando finito con output non UTF-8 → è partito: esito INCERTO
+    (Path(_k77x.root) / "bad.bin").write_bytes(b"\xff\xfe\x00ok\n")
+    _o77u8 = _k77x.execute_tool_call("run_command", '{"command": "cat bad.bin"}')
+    check("T77ad output non UTF-8: il comando risulta PARTITO, esito INCERTO (R-433-1)",
+          "PARTITO" in _o77u8 and _k77x._run_command_avviato is True, _o77u8[:150])
+    # V-3 bot #236: un processo VERO ucciso dal tetto di tempo → stato «incerta»
+    _k77t2 = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77t2)
+    _k77t2.RUN_COMMAND_TIMEOUT_SEC = 0.5
+    (Path(_k77t2.root) / "x.txt").write_text("a\n", encoding="utf-8")
+    _id77t2 = _k77t2.memory.enqueue_approval("run_command", '{"command": "tail -f x.txt"}')
+    with _TgFinto():
+        _k77t2.memory.resolve_approval(_id77t2, "approved", telegram_user_id=4242)
+        _r77t2 = _k77t2.applica_firma(_id77t2)
+    check("T77ab processo vero ucciso dal tetto di tempo → stato 'incerta' (V-3 bot #236)",
+          _r77t2.get("stato") == "incerta" and "esito incerto" in _r77t2["esito"], str(_r77t2)[:200])
+    # V-2 bot #236: eccezione dopo il reclamo → stato «incerta», non «non_partita»
+    _k77r = kernel_tmp()
+    _id77r = _k77r.memory.enqueue_approval("run_command", _CMD77)
+    def _esplode77(*a, **kw):
+        raise RuntimeError("errore a metà")
+    _k77r.execute_tool_call = _esplode77  # type: ignore[method-assign]
+    with _TgFinto():
+        _k77r.memory.resolve_approval(_id77r, "approved", telegram_user_id=4242)
+        _r77r = _k77r.applica_firma(_id77r)
+    _msg77r = _tgbot_c4b.componi_esito_firma("ok", _id77r, True, "", _r77r)
+    check("T77ac eccezione dopo il reclamo → stato 'incerta', esito registrato e nel messaggio (V-2/V-3 bot #236)",
+          _r77r.get("stato") == "incerta" and _r77r["eseguita"] is False
+          and "errore interno" in _msg77r
+          and any("esito incerto" in (e or "") for _, e in _esec77(_k77r)),
+          f"{_r77r} | {_msg77r[:160]} | {_esec77(_k77r)}")
+    _k77y = kernel_tmp()
+    _k77y.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
+    _k77y._run_command_meta = {"exit": 0, "stdout_n": 3, "stderr_n": 0}
+    _dia77y: list = []
+    _orig_dia77y = _k77y._diario_log_tool
+    def _spia_dia77y(nome, testo, **kw):
+        _dia77y.append(testo)
+        return _orig_dia77y(nome, testo, **kw)
+    _k77y._diario_log_tool = _spia_dia77y  # type: ignore[method-assign]
+    with _TgFinto():
+        run_turn_scriptato(_k77y, "esegui", [[("run_command", _CMD77)], "in attesa"])
+    check("T77y meta residuo + run_command alla firma: diario senza «exit=»",
+          len(_dia77y) == 1 and "exit=" not in _dia77y[0] and "pending id=" in _dia77y[0],
+          str(_dia77y))
+
     # T77m — vincoli DB su approval_esecuzioni (valgono anche da SQL grezzo)
     _k77m = kernel_tmp()
     _id77m = _k77m.memory.enqueue_approval("run_command", _CMD77)
@@ -7313,6 +7466,174 @@ _c96 = [(e["output"][:20], e.get("cancello")) for e in _ev96 if e["type"] == "to
 check("T96 cancello: file che inizia con «Operazione negata» → None, DENY → negata, firma → in_attesa",
       [c for _, c in _c96] == [None, "negata", "in_attesa"]
       and _c96[0][0].startswith("Operazione negata"), str(_c96))
+
+# T97 — R7 / R-c4b3-4: due processi sulla stessa root non si cancellano la storia
+_r97 = Path(tempfile.mkdtemp(prefix="gas_t97_", dir=_TMP_ESECUZIONE))
+_a97 = GasKernel(root_dir=str(_r97))
+_a97.history = [{"role": "user", "content": "ciao"}, {"role": "assistant", "content": "ok"}]
+_a97._save_history()
+_b97 = GasKernel(root_dir=str(_r97))          # «secondo processo»: legge la stessa storia
+_a97._add_to_history("user", content="domanda di A")
+_a97._add_to_history("assistant", content="risposta ad A")
+_a97._save_history()
+_b97._add_to_history("user", content="domanda di B")
+_b97._add_to_history("assistant", content="risposta a B")
+_b97._save_history()
+_f97 = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+check("T97a turni interi di due processi: nessuno cancella l'altro",
+      _f97 == ["ciao", "ok", "domanda di A", "risposta ad A", "domanda di B", "risposta a B"],
+      str(_f97))
+# B a metà turno, A ha salvato un turno intero: il turno di A va DOPO il seguito
+# di B (V-1 bot #236: è il caso del blocco della firma scritto dal bot)
+_a97._add_to_history("user", content="ancora A")
+_a97._save_history()
+_b97._add_to_history("assistant", content="seguito di B a metà turno")
+_b97._save_history()
+_f97b = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+check("T97b B a metà turno + turno intero di A: «seguito di B» poi «ancora A», niente copia",
+      _f97b[-2:] == ["seguito di B a metà turno", "ancora A"]
+      and not list(_r97.glob(".gas_history.json.conflitto.*")), str(_f97b))
+# entrambi a metà turno: la versione dell'altro va in una copia «conflitto»
+_a97._add_to_history("assistant", content="A a metà turno")
+_a97._save_history()
+_b97._add_to_history("assistant", content="B ancora a metà turno")
+_b97._save_history()
+_cop97 = list(_r97.glob(".gas_history.json.conflitto.*"))
+_tutti97: set = {str(m.get("content")) for m in json.loads((_r97 / ".gas_history.json").read_text())}
+for _c in _cop97:
+    _tutti97 |= {str(m.get("content")) for m in json.loads(_c.read_text())}
+check("T97b2 entrambi a metà turno: nessun messaggio perso (storia + copie «conflitto»)",
+      len(_cop97) >= 1 and {"seguito di B a metà turno", "ancora A", "A a metà turno",
+                            "B ancora a metà turno"} <= _tutti97, str(sorted(_tutti97))[:300])
+# T97d — R-431-2: nel conflitto la versione dell'altro processo si collega/copia,
+# non si sposta: se poi la nostra scrittura fallisce, il file principale resta
+_a97._add_to_history("assistant", content="A3")
+_a97._save_history()
+_b97._add_to_history("assistant", content="B a metà turno")
+_salva97d = _b97._salva_storia_su_file
+_b97._salva_storia_su_file = lambda: False  # type: ignore[method-assign]
+_b97._save_history()
+_b97._salva_storia_su_file = _salva97d  # type: ignore[method-assign]
+_f97d = ([m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+         if (_r97 / ".gas_history.json").exists() else None)
+check("T97d conflitto + scrittura fallita: il file principale resta con la versione di A",
+      _f97d is not None and _f97d[-1] == "A3", str(_f97d))
+# T97e — R-430-3 / R-431-1: nomi delle copie mai uguali, al massimo MAX_COPIE_CONFLITTO
+_b97.MAX_COPIE_CONFLITTO = 2
+for _i97 in range(3):
+    _a97._add_to_history("assistant", content=f"A-giro{_i97}")
+    _a97._save_history()
+    _b97._add_to_history("assistant", content=f"B-giro{_i97}")
+    _b97._save_history()
+_cop97e = sorted(_r97.glob(".gas_history.json.conflitto.*"))
+# T97f — V-1 bot #236: il bot scrive l'esito di una firma mentre la CLI è a metà
+# turno; il salvataggio finale della CLI lo tiene nella storia (dopo la risposta)
+_r97f = Path(tempfile.mkdtemp(prefix="gas_t97f_", dir=_TMP_ESECUZIONE))
+_cli97 = GasKernel(root_dir=str(_r97f))
+_cli97.history = [{"role": "user", "content": "esegui"},
+                  {"role": "assistant", "content": "in attesa della firma"}]
+_cli97._save_history()
+_bot97 = GasKernel(root_dir=str(_r97f))
+_cli97._add_to_history("user", content="e poi?")
+_cli97._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tc1", function=SimpleNamespace(name="calcola", arguments='{"expr": "1+1"}'))])
+_cli97._add_to_history("tool", content="2", tool_call_id="tc1", name="calcola")
+_cli97._save_history()
+_bot97._storia_esito_firma("id-97f", "run_command", '{"command": "echo"}',
+                           "approvata ed eseguita", "fatto", True)
+_cli97._add_to_history("assistant", content="risposta finale della CLI")
+_cli97._save_history()
+_f97f = json.loads((_r97f / ".gas_history.json").read_text())
+_testi97f = [str(m.get("content")) for m in _f97f]
+_i97f = next((i for i, t in enumerate(_testi97f) if "id-97f" in t), -1)
+check("T97f esito della firma scritto a metà turno della CLI: resta nella storia, dopo la risposta",
+      _i97f > 0 and _testi97f.index("risposta finale della CLI") < _i97f
+      and not list(_r97f.glob(".gas_history.json.conflitto.*")), str(_testi97f)[:300])
+# T97h — R-434-1: il bot scrive mentre la CLI è ancora a metà turno (secondo giro di
+# tool): niente unione in memoria (il modello non vede la notifica prima della sua
+# risposta), file dell'altro intatto; l'unione arriva al salvataggio finale
+_cli97h = GasKernel(root_dir=str(_r97f))
+_bot97h = GasKernel(root_dir=str(_r97f))
+_cli97h._add_to_history("user", content="giro h")
+_cli97h._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tch1", function=SimpleNamespace(name="calcola", arguments='{"expr": "2+2"}'))])
+_cli97h._add_to_history("tool", content="4", tool_call_id="tch1", name="calcola")
+_cli97h._save_history()
+_bot97h.history = json.loads((_r97f / ".gas_history.json").read_text())
+_bot97h._storia_sync = _bot97h._sync_storia()
+_bot97h._storia_esito_firma("id-97h", "run_command", '{"command": "echo"}',
+                            "approvata ed eseguita", "fatto", True)
+_cli97h._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tch2", function=SimpleNamespace(name="calcola", arguments='{"expr": "3+3"}'))])
+_cli97h._add_to_history("tool", content="6", tool_call_id="tch2", name="calcola")
+_cli97h._save_history()   # a metà turno: rimanda
+_mem97h = [str(m.get("content")) for m in _cli97h.history]
+_file97h = [str(m.get("content")) for m in json.loads((_r97f / ".gas_history.json").read_text())]
+_ok97h_meta = (not any("id-97h" in t for t in _mem97h) and any("id-97h" in t for t in _file97h))
+_cli97h._add_to_history("assistant", content="risposta finale h")
+_cli97h._save_history()
+_fin97h = [str(m.get("content")) for m in json.loads((_r97f / ".gas_history.json").read_text())]
+_i97h = next((i for i, t in enumerate(_fin97h) if "id-97h" in t), -1)
+check("T97h bot a metà turno della CLI: unione rimandata alla fine, notifica dopo la risposta",
+      _ok97h_meta and _i97h > _fin97h.index("risposta finale h") and "6" in _fin97h,
+      f"{_ok97h_meta} {_fin97h[-8:]}")
+# T97i — R-435-1: turno finito SENZA risposta finale con unione rimandata: il
+# salvataggio di fine turno scrive comunque (i nostri tool + il blocco dell'altro)
+_cli97i = GasKernel(root_dir=str(_r97f))
+_bot97i = GasKernel(root_dir=str(_r97f))
+_cli97i._add_to_history("user", content="giro i")
+_cli97i._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tci1", function=SimpleNamespace(name="calcola", arguments='{"expr": "1"}'))])
+_cli97i._add_to_history("tool", content="uno", tool_call_id="tci1", name="calcola")
+_cli97i._save_history()
+_bot97i.history = json.loads((_r97f / ".gas_history.json").read_text())
+_bot97i._storia_sync = _bot97i._sync_storia()
+_bot97i._storia_esito_firma("id-97i", "run_command", '{"command": "echo"}', "ok", "fatto", True)
+_cli97i._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tci2", function=SimpleNamespace(name="calcola", arguments='{"expr": "2"}'))])
+_cli97i._add_to_history("tool", content="due-i", tool_call_id="tci2", name="calcola")
+_cli97i._save_history()                      # a metà turno: rimandata
+_rim97i = _cli97i._storia_rimandata
+_cli97i._save_history(fine_turno=True)       # come il finally di run_turn
+_f97i = [str(m.get("content")) for m in json.loads((_r97f / ".gas_history.json").read_text())]
+check("T97i turno senza risposta finale: a fine turno su disco i nostri tool e il blocco dell'altro",
+      _rim97i and "due-i" in _f97i and any("id-97i" in t for t in _f97i)
+      and _cli97i._storia_rimandata is False, f"{_rim97i} {_f97i[-6:]}")
+# T97g — V-3 bot #236: lock della storia tenuto da un altro (processo fermo) → dopo
+# LOCK_STORIA_SEC si salva lo stesso, senza lock, con un avviso
+import fcntl as _fcntl97
+_tieni97 = open(_r97f / ".gas_history.json.lock", "a")
+_fcntl97.flock(_tieni97.fileno(), _fcntl97.LOCK_EX)
+_cli97.LOCK_STORIA_SEC = 0.2
+_cli97._add_to_history("user", content="col lock occupato")
+_t0_97 = _time_pulizia.monotonic()
+_cli97._save_history()
+_dt97 = _time_pulizia.monotonic() - _t0_97
+_tieni97.close()
+_f97g = [m.get("content") for m in json.loads((_r97f / ".gas_history.json").read_text())]
+check("T97g lock occupato: salvataggio dopo ~0,2 s senza lock, niente attesa infinita",
+      _f97g[-1] == "col lock occupato" and _dt97 < 3, f"{_dt97:.2f}s {_f97g[-1:]}")
+_sh39e.rmtree(_r97f, ignore_errors=True)
+check("T97e copie di conflitto potate a 2, ognuna con il proprio nome",
+      len(_cop97e) == 2 and len({p.name for p in _cop97e}) == 2, str([p.name for p in _cop97e]))
+# T97c — R-430-1: una scrittura fallita non fa avanzare l'impronta: i messaggi
+# non scritti restano da scrivere anche dopo che un altro processo ha salvato
+_a97._add_to_history("user", content="A1")
+_a97._add_to_history("assistant", content="rA1")
+_salva97 = _a97._salva_storia_su_file
+_a97._salva_storia_su_file = lambda: False  # type: ignore[method-assign]
+_a97._save_history()
+_a97._salva_storia_su_file = _salva97  # type: ignore[method-assign]
+_b97._add_to_history("user", content="B2")
+_b97._add_to_history("assistant", content="rB2")
+_b97._save_history()
+_a97._add_to_history("user", content="A2")
+_a97._add_to_history("assistant", content="rA2")
+_a97._save_history()
+_f97c = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+check("T97c scrittura fallita: A1 non si perde dopo il salvataggio di B (R-430-1)",
+      "A1" in _f97c and "rA1" in _f97c and "B2" in _f97c and _f97c[-1] == "rA2", str(_f97c))
+_sh39e.rmtree(_r97, ignore_errors=True)
 
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))

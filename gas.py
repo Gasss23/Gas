@@ -4,7 +4,12 @@ import difflib
 import hashlib
 import math as _math_module
 import os
+import shutil
 import threading
+try:
+    import fcntl  # R-c4b3-4: lock della cronologia (assente su Windows)
+except ImportError:  # pragma: no cover
+    fcntl = None  # type: ignore[assignment]
 import re
 import json
 import shlex
@@ -941,7 +946,15 @@ class GasKernel:
         self.system_prompt: str = _build_system_prompt(self.root)
         # carica_storia=False (giro notturno, R-220-2): la conversazione dell'operatore
         # non viene né letta né, se corrotta, rinominata in quarantena.
-        self.history: List[Dict[str, Any]] = self._load_history() if carica_storia else []
+        # R-c4b3-4: com'era il file della storia l'ultima volta che l'abbiamo letto o
+        # scritto (percorso, impronta, lista, quanti messaggi): serve a non cancellare
+        # i messaggi scritti nel frattempo da un altro processo sulla stessa root.
+        self._storia_sync: Optional[Tuple[str, Any, int, str]] = None
+        self._storia_rimandata = False  # R-435-1: unione rimandata a fine turno
+        self.history: List[Dict[str, Any]] = (
+            self._carica_storia_bloccata() if carica_storia else [])
+        if carica_storia and self._storia_sync is not None:  # base = lista appena letta
+            self._storia_sync = self._sync_storia_di(self._storia_sync[1])
         # V-1 bot #176: un kernel senza storia non fotografa nemmeno la conversazione
         # dell'operatore negli snapshot (non la tocca, quindi non c'è nulla da proteggere).
         self.carica_storia: bool = carica_storia
@@ -950,6 +963,7 @@ class GasKernel:
         self.approval_timeout_secs: Optional[int] = None
         self._file_delicati_turno: List[str] = []  # R-223-2, svuotata a fine turno
         self._esito_contenuto = False  # R-222-2/R-425-2: vedi execute_tool_call
+        self._run_command_avviato = False  # R-c4b3-5: vedi execute_tool_call
         # V-1 bot #222: il pin di questo turno mostra dati non fidati (_memoria_pin).
         self._pin_non_fidato: bool = False
         # R-371-2: la sessione ha visto un pin non fidato (si azzera con `clear`).
@@ -1091,7 +1105,199 @@ class GasKernel:
                 logging.warning("Quarantena storia fallita: %s", e2)
             return []
 
-    def _save_history(self):
+    def _impronta_storia(self) -> Any:
+        """(inode, dimensione, mtime_ns) del file della storia, None se manca."""
+        try:
+            st = self.db_path.stat()
+        except FileNotFoundError:
+            return None
+        return (st.st_ino, st.st_size, st.st_mtime_ns)
+
+    @staticmethod
+    def _hash_messaggi(msgs: List[Dict[str, Any]]) -> str:
+        return hashlib.sha256(json.dumps(msgs, sort_keys=True, ensure_ascii=False)
+                              .encode("utf-8")).hexdigest()
+
+    def _sync_storia(self) -> Tuple[str, Any, int, str]:
+        return self._sync_storia_di(self._impronta_storia())
+
+    def _sync_storia_di(self, impronta: Any) -> Tuple[str, Any, int, str]:
+        """(percorso, impronta del file, quanti messaggi, hash del loro contenuto).
+        V-2 bot #236: la base si riconosce dal contenuto, non dall'id della lista."""
+        hist = getattr(self, "history", [])
+        return (str(self.db_path), impronta, len(hist), self._hash_messaggi(hist))
+
+    @staticmethod
+    def _inizia_turno(msgs: List[Dict[str, Any]]) -> bool:
+        return not msgs or msgs[0].get("role") == "user"
+
+    def _turno_chiuso(self) -> bool:
+        """La nostra storia finisce con una risposta dell'assistente (senza tool
+        call): il turno è chiuso e si possono accodare i turni di un altro processo."""
+        ultimo = self.history[-1] if self.history else None
+        return ultimo is None or (ultimo.get("role") == "assistant"
+                                  and not ultimo.get("tool_calls"))
+
+    def _unisci_storia_altrui(self, fine_turno: bool = False) -> bool:
+        """R-c4b3-4: se un altro processo ha riscritto il file dopo la nostra ultima
+        lettura/scrittura (la «base»), i suoi messaggi non si cancellano. Si uniscono
+        solo blocchi che cominciano un turno (role user), così nessuna sequenza
+        assistant→tool resta spezzata:
+          - i nostri messaggi nuovi cominciano un turno → sua storia + nostri;
+          - siamo a metà turno (o abbiamo compresso) e la sua storia estende la base
+            con turni interi → nostra + suoi (V-1 bot #236: l'esito di una firma
+            scritto dal bot a metà turno nostro arriva dopo la nostra risposta);
+          - altrimenti la sua versione va in una copia «conflitto», con un avviso."""
+        sync = self._storia_sync
+        if sync is None or sync[0] != str(self.db_path):
+            return True  # storia mai letta da questo file (es. giro notturno): come prima
+        ora = self._impronta_storia()
+        if ora is None or ora == sync[1]:
+            return True
+        try:
+            with open(self.db_path, "r", encoding="utf-8") as f:
+                altrui = json.load(f)
+            if not isinstance(altrui, list):
+                raise ValueError("storia non è una lista")
+        except Exception as e:
+            logging.warning("Storia cambiata da un altro processo ma illeggibile (%s): "
+                            "la sovrascrivo", e)
+            return True
+        n_base, h_base = sync[2], sync[3]
+        nostri_da_base = (len(self.history) >= n_base
+                          and self._hash_messaggi(self.history[:n_base]) == h_base)
+        suoi_da_base = (len(altrui) >= n_base
+                        and self._hash_messaggi(altrui[:n_base]) == h_base)
+        nuovi = self.history[n_base:] if nostri_da_base else None
+        suoi = altrui[n_base:] if suoi_da_base else None
+        unita: Optional[List[Dict[str, Any]]] = None
+        if nuovi is not None and self._inizia_turno(nuovi):
+            unita = altrui + nuovi               # ordine di salvataggio: i suoi prima
+            base = (len(altrui), self._hash_messaggi(altrui))
+        elif suoi is not None and self._inizia_turno(suoi):
+            if not self._turno_chiuso() and not fine_turno:
+                # R-434-1: a metà turno non si unisce né si scrive: il modello non deve
+                # vedere i messaggi dell'altro prima della propria risposta. L'unione
+                # avviene al salvataggio finale del turno (base invariata).
+                logging.warning("Storia scritta anche da un altro processo: unione "
+                                "rimandata alla fine del turno")
+                self._storia_rimandata = True
+                return False
+            unita = self.history + suoi          # turno chiuso, o storia compressa
+            base = (n_base, h_base)
+        if unita is not None:
+            aggiunti = len(unita) - len(self.history)
+            self.history = unita
+            # R-430-1: la base resta la parte comune al file appena letto e alla
+            # nostra lista, MAI ciò che non è ancora scritto: se la scrittura fallisce,
+            # al prossimo salvataggio i nostri messaggi restano da scrivere
+            self._storia_sync = (sync[0], ora, base[0], base[1])
+            logging.warning("Storia scritta anche da un altro processo: unita "
+                            "(%d messaggi in più nella nostra)", aggiunti)
+            return True
+        # R-431-1: microsecondi + pid nel nome, niente collisioni nello stesso secondo
+        copia = self.db_path.parent / (f"{self.db_path.name}.conflitto."
+                                       f"{datetime.now():%Y%m%d-%H%M%S-%f}.{os.getpid()}")
+        try:
+            # R-431-2: collegamento (o copia), non spostamento: il file principale
+            # resta al suo posto finché la nostra scrittura atomica non lo sostituisce
+            try:
+                os.link(self.db_path, copia)
+            except OSError:
+                shutil.copy2(self.db_path, copia)
+            logging.warning("Storia scritta anche da un altro processo a metà turno: la "
+                            "sua versione è salvata in %s", copia.name)
+            self._pota_copie_conflitto()
+        except Exception as e:
+            logging.warning("Copia di conflitto della storia non riuscita: %s", e)
+        return True
+
+    MAX_COPIE_CONFLITTO = 20  # R-430-3: copie di conflitto della storia tenute
+    LOCK_STORIA_SEC = 5.0     # V-3 bot #236: attesa massima del lock della storia
+
+    def _pota_copie_conflitto(self) -> None:
+        """R-430-3: tiene solo le copie di conflitto più recenti, con un avviso."""
+        def _chiave(p: Path) -> Tuple[int, str]:
+            try:
+                return (p.stat().st_mtime_ns, p.name)  # R-433-2: spareggio sul nome
+            except OSError:
+                return (0, p.name)  # già cancellata da un'altra potatura
+        copie = sorted(self.db_path.parent.glob(f"{self.db_path.name}.conflitto.*"),
+                       key=_chiave)
+        vecchie = copie[:-self.MAX_COPIE_CONFLITTO] if len(copie) > self.MAX_COPIE_CONFLITTO else []
+        for p in vecchie:
+            try:
+                p.unlink()
+            except OSError as e:
+                logging.warning("Copia di conflitto %s non cancellata: %s", p.name, e)
+        if vecchie:
+            logging.warning("Copie di conflitto della storia oltre %d: cancellate le %d più "
+                            "vecchie", self.MAX_COPIE_CONFLITTO, len(vecchie))
+
+    def _blocca_storia(self) -> Any:
+        """Lock esclusivo sul file accanto alla storia (R-c4b3-4). Se non si può
+        prendere (permessi, file system, niente fcntl) si va avanti senza lock
+        (R-430-2): meglio salvare senza protezione che non salvare."""
+        if fcntl is None:
+            return None
+        lock_f = None
+        try:
+            lock_f = open(self.db_path.parent / f"{self.db_path.name}.lock", "a")
+            # V-3 bot #236: niente attesa infinita se chi tiene il lock è fermo
+            # (processo sospeso, file system di rete): tentativi per qualche secondo
+            scadenza = _time.monotonic() + self.LOCK_STORIA_SEC
+            while True:
+                try:
+                    fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    return lock_f
+                except BlockingIOError:
+                    if _time.monotonic() >= scadenza:
+                        raise TimeoutError(f"lock occupato da oltre {self.LOCK_STORIA_SEC}s")
+                    _time.sleep(0.05)
+        except Exception as e:
+            logging.warning("Lock della storia non disponibile (%s): salvo senza lock", e)
+            if lock_f is not None:
+                try:
+                    lock_f.close()
+                except Exception:
+                    pass
+            return None
+
+    @staticmethod
+    def _sblocca_storia(lock_f: Any) -> None:
+        if lock_f is not None:
+            try:
+                lock_f.close()  # rilascia il lock
+            except Exception:
+                pass
+
+    def _carica_storia_bloccata(self) -> List[Dict[str, Any]]:
+        """R-430-4: lettura e impronta sotto lo stesso lock della scrittura."""
+        lock_f = self._blocca_storia()
+        try:
+            return self._load_history()
+        finally:
+            self._storia_sync = self._sync_storia_di(self._impronta_storia())
+            self._sblocca_storia(lock_f)
+
+    def _save_history(self, fine_turno: bool = False):
+        """fine_turno=True (finally di run_turn, R-435-1): il turno è finito anche se
+        senza risposta finale (tetto di iterazioni, errore): l'unione non si rimanda."""
+        lock_f = self._blocca_storia()
+        try:
+            if not self._unisci_storia_altrui(fine_turno):
+                return  # R-434-1: unione rimandata alla fine del turno
+            # R-430-1: l'impronta avanza solo se la scrittura è riuscita davvero,
+            # altrimenti i messaggi non scritti si perderebbero alla prossima unione
+            if self._salva_storia_su_file():
+                self._storia_sync = self._sync_storia()
+                self._storia_rimandata = False
+        except Exception as e:
+            logging.warning("Salvataggio della storia non riuscito: %s", e)
+        finally:
+            self._sblocca_storia(lock_f)
+
+    def _salva_storia_su_file(self) -> bool:
         tmp_path: Optional[Path] = None
         try:
             data = json.dumps(self.history, indent=2, ensure_ascii=False)
@@ -1110,6 +1316,7 @@ class GasKernel:
                     os.close(dir_fd)
             except Exception:
                 pass
+            return True
         except Exception as e:
             logging.warning("Errore scrittura atomica storico: %s", e)
             if tmp_path is not None:
@@ -1117,6 +1324,7 @@ class GasKernel:
                     tmp_path.unlink()
                 except Exception:
                     pass
+            return False
 
     # --- Compressione cronologia (FASE 2.5) ---
     # Default configurabili via env: GAS_HISTORY_MAX_MSGS, GAS_HISTORY_KEEP_MSGS.
@@ -1743,6 +1951,7 @@ class GasKernel:
     # Il recinto (vetting, bwrap, snapshot) RESTA per il futuro: i test lo provano con
     # _SHELL_ALLOWLIST_RECINTO, che non è mai offerta al modello.
     SHELL_ALLOWLIST: frozenset = frozenset()
+    RUN_COMMAND_TIMEOUT_SEC: float = 60  # tetto di tempo di un run_command
     _SHELL_ALLOWLIST_RECINTO: frozenset = frozenset({
         "ls", "cat", "head", "tail", "wc", "grep", "echo", "pwd", "date",
         "stat", "file", "uniq", "cut", "tr", "nl", "diff", "comm", "true",
@@ -2063,9 +2272,11 @@ class GasKernel:
                 return "[KO]"
             return f"[OK] {getattr(self, '_lettura_meta', None) or 'eseguito'}"
         if name == "run_command":
+            meta = getattr(self, "_run_command_meta", None)
+            if meta is None and getattr(self, "_run_command_avviato", False):
+                return "[KO] esito incerto: partito ma interrotto"  # R-c4b3-5
             if negativo:
                 return "[KO]"
-            meta = getattr(self, "_run_command_meta", None)
             if meta is not None:
                 return (f"[OK] exit={meta['exit']} "
                         f"stdout={meta['stdout_n']} char "
@@ -2975,7 +3186,8 @@ class GasKernel:
         return f"Operazione negata: {motivo}. Approvazione revocata.", f"revocata id={aid}"
 
     def _storia_esito_firma(self, approval_id: str, tool: str, args_json: str,
-                            notizia: str, out: Optional[str], eseguita: bool) -> None:
+                            notizia: str, out: Optional[str], eseguita: bool,
+                            incerta: bool = False) -> None:
         """C4b-3 (R-c4b2-1, design §4b passo 9): l'esito della firma entra nella
         storia come blocco autonomo, visibile al modello dal turno successivo
         (precedente: il riepilogo user+assistant di _compress_history_if_needed):
@@ -3004,7 +3216,7 @@ class GasKernel:
                                "tool_call_id": tcid, "name": tool})
             blocco.append({"role": "assistant", "content": (
                 f"Preso atto (kernel): azione '{tool}' ID {approval_id} — "
-                f"{'eseguita' if eseguita else 'NON eseguita'}.")})
+                f"{'eseguita' if eseguita else 'partita, esito INCERTO' if incerta else 'NON eseguita'}.")})
             # Tutto il blocco o niente: la storia non resta mai con un pezzo solo.
             self.history.extend(blocco)
             self._save_history()
@@ -3025,11 +3237,15 @@ class GasKernel:
         storia (_storia_esito_firma), così il modello li vede al turno dopo.
         Diario: 'approvata id=' / 'rifiutata id=' + esito; per i tool non fidati
         solo conteggi (F-diario-eco), mai args.
-        Ritorna {"tool", "eseguita", "esito", "output"}; "eseguita" è True solo se
+        Ritorna {"tool", "eseguita", "stato", "esito", "output"}; "stato" è
+        finita / incerta (run_command partito e interrotto, R-c4b3-5) / non_partita.
+        "eseguita" è True solo se
         l'esito non è [KO] (R-c4b2-3); per run_command solo se il comando è partito
         davvero (segnale del kernel, R-c4b2-9/R-c4b3-1), mai dedotto dall'output.
         FAIL-CLOSED §9: mai eccezioni."""
-        res: Dict[str, Any] = {"tool": "", "eseguita": False, "esito": "", "output": ""}
+        res: Dict[str, Any] = {"tool": "", "eseguita": False, "stato": "non_partita",
+                               "esito": "", "output": ""}  # R-428-4
+        reclamata = False
         if self.memory is None:
             res["esito"] = "store non disponibile: azione non eseguita"
             return res
@@ -3070,9 +3286,11 @@ class GasKernel:
             if not self.memory.reclama_esecuzione(approval_id):
                 res["esito"] = "già eseguita o non reclamabile: nessuna nuova esecuzione"
                 return res
+            reclamata = True  # V-2 bot #236: da qui un errore lascia l'esito incerto
             # Dal reclamo in poi l'azione NON si riesegue più, qualunque cosa accada.
             # R-c4b3-1: nessun residuo di un run_command precedente.
             self._run_command_meta = None
+            self._run_command_avviato = False
             if gate_classify(tool, args_json) == GateClass.DENY:
                 logging.warning("[GATE-C4B] id=%s %s → DENY al ricontrollo: non eseguita",
                                 approval_id, tool)
@@ -3082,6 +3300,7 @@ class GasKernel:
                 out = self.execute_tool_call(tool, args_json, firmata=True)
             esito = self._esito_diario(tool, out)
             dry_run = False
+            incerta = False
             if tool == "run_command":
                 # R-c4b3-1: l'esito viene dal segnale del kernel (_run_command_meta è
                 # valorizzato SOLO se il comando è partito davvero), mai dal testo
@@ -3094,17 +3313,27 @@ class GasKernel:
                            and (out or "").startswith("[DRY-RUN]"))
                 # R-c4b2-3/R-c4b2-9: diniego interno o anteprima dry-run ≠ esecuzione.
                 res["eseguita"] = meta is not None
+                # R-c4b3-5: terzo stato, partito ma finito senza esito (tempo scaduto)
+                incerta = meta is None and bool(getattr(self, "_run_command_avviato", False))
             else:
                 # Gli altri tool parcheggiabili restituiscono testo del kernel.
                 res["eseguita"] = not esito.startswith("[KO]")
+            res["stato"] = ("finita" if res["eseguita"] else
+                            "incerta" if incerta else "non_partita")
             if res["eseguita"]:
                 notizia = ("l'operatore l'ha APPROVATA via Telegram e il kernel l'ha eseguita "
                            "con gli argomenti salvati. L'output è nel risultato del tool che segue.")
+            elif incerta:
+                notizia = ("l'operatore l'ha APPROVATA via Telegram e il comando è PARTITO, "
+                           "ma si è interrotto senza esito (es. tempo scaduto): può aver fatto "
+                           "solo una parte del lavoro. Esito INCERTO: verifica prima di "
+                           "ripetere. Il dettaglio è nel risultato del tool che segue.")
             else:
                 notizia = ("l'operatore l'ha APPROVATA via Telegram ma NON è stata eseguita "
                            f"({'modalità dry-run' if dry_run else 'diniego interno'}). "
                            "Il dettaglio è nel risultato del tool che segue.")
-            self._storia_esito_firma(approval_id, tool, args_json, notizia, out, res["eseguita"])
+            self._storia_esito_firma(approval_id, tool, args_json, notizia, out, res["eseguita"],
+                                     incerta=incerta)
             self.memory.registra_esito_esecuzione(approval_id, esito)
             self._diario_log_tool(tool, f"approvata id={approval_id} | {esito}",
                                   turno_id=str(uuid.uuid4()))
@@ -3113,6 +3342,13 @@ class GasKernel:
         except Exception as e:
             logging.warning("[GATE-C4B] applica_firma id=%s eccezione: %s", approval_id, e)
             res["esito"] = "errore interno: azione non eseguita o esito ignoto (vedi gas_debug.log)"
+            if reclamata:  # V-2 bot #236: dopo il reclamo non si sa se è partita
+                res["eseguita"], res["stato"] = False, "incerta"
+                try:  # V-3 bot #236 (3° giro): l'esito resta registrato
+                    self.memory.registra_esito_esecuzione(
+                        approval_id, "[KO] errore interno dopo il reclamo: esito incerto")
+                except Exception as e2:
+                    logging.warning("[GATE-C4B] esito id=%s non registrato: %s", approval_id, e2)
             return res
 
     def _memoria_backup_auto(self) -> None:
@@ -3848,6 +4084,7 @@ class GasKernel:
         # R-222-2: True solo se l'esito porta testo che non scrive il kernel (file,
         # stdout, diario): lì un «Operazione negata» iniziale non è un diniego.
         self._esito_contenuto = False
+        self._run_command_avviato = False  # R-c4b3-5: True da quando il comando parte
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
@@ -3898,9 +4135,21 @@ class GasKernel:
                         "run_command in fallback applicativo: sandbox OS assente "
                         "(GAS_SANDBOX_MODE=os_with_fallback)")
                     exec_argv = argv
-                res = subprocess.run(exec_argv, shell=False, cwd=cwd,
-                                     capture_output=True, text=True, timeout=60,
-                                     env=self._sanitized_subprocess_env())
+                env_figlio = self._sanitized_subprocess_env()  # V-1 bot #236: prima del segno
+                self._run_command_avviato = True
+                try:
+                    res = subprocess.run(exec_argv, shell=False, cwd=cwd,
+                                         capture_output=True, text=True,
+                                         timeout=self.RUN_COMMAND_TIMEOUT_SEC, env=env_figlio)
+                except (subprocess.TimeoutExpired, UnicodeDecodeError):  # R-434-3
+                    # partito: ucciso dal tetto di tempo, oppure finito con un output
+                    # che non è testo (R-433-1): esito incerto, il segno resta
+                    raise
+                except (OSError, ValueError):
+                    # R-428-2 / V-1 bot #236: errore di avvio (binario assente, permessi,
+                    # cartella che è un file, byte nullo negli argomenti): mai partito
+                    self._run_command_avviato = False
+                    raise
                 self._run_command_meta = {
                     "exit": res.returncode,
                     "stdout_n": len(res.stdout),
@@ -4005,6 +4254,12 @@ class GasKernel:
                 and getattr(self, "_lettura_meta", None) is not None))
             return self._cap_tool_output(name, args, out)
         except Exception as e:
+            if (name == "run_command" and self._run_command_avviato
+                    and self._run_command_meta is None):  # R-429-2
+                # R-428-3: anche il modello legge che il comando era partito
+                return (f"Errore eseguendo run_command: il comando è PARTITO ma si è "
+                        f"interrotto ({type(e).__name__}): esito INCERTO, può aver fatto "
+                        f"solo una parte del lavoro. Verifica prima di ripetere.")
             return f"Errore eseguendo {name}: {str(e)}"
 
     def run_turn(self, user_prompt: str) -> Generator[Dict[str, Any], None, None]:
@@ -4185,6 +4440,10 @@ class GasKernel:
                             self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
                             for tc in msg.tool_calls:
                                 # C2: gate check prima di eseguire.
+                                # R-428-1: nessun segno di un run_command precedente sul
+                                # diario di questa chiamata (DENY e cancello non eseguono)
+                                self._run_command_meta = None
+                                self._run_command_avviato = False
                                 _gc = gate_classify(tc.function.name, tc.function.arguments)
                                 # FETTA 1 PR B: run_command non offerto (allowlist vuota) →
                                 # diniego secco, mai una richiesta di firma per un comando
@@ -4307,6 +4566,8 @@ class GasKernel:
             yield {"type": "error",
                    "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
+            if self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
+                self._save_history(fine_turno=True)
             _chiudi_turno()
             self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)
             self._invia_avvisi_file(self._file_delicati_turno)
