@@ -7120,6 +7120,16 @@ check("T94d R-410-1/2 costo di una riga con «out» enorme o negativo",
                                       "in": -5_000_000, "out": 500_000}).encode())[1] >= 0.2 - 1e-9
       and gas._costo_riga(b'{"ts": "x", "provider": "gemini-flash-lite", "in": 1000000, "out": 1e400}')[1] > 0.09)
 
+# T95 — R-fts-1: tetto alle parole delle ricerche FTS (diario e conoscenza)
+from modules.memory.store import MemoryStore as _MS95, FTS_MAX_TOKEN as _MAX95
+_q95 = _MS95._fts_match(" ".join(f"parola{i}" for i in range(50)) + " parola0 " + "a" * 100)
+_k95 = gas.GasKernel._knowledge_fts_match("cane cane gatto " + "z" * 90 + " " +
+                                           " ".join(f"voce{i}" for i in range(50)))
+check("T95 R-fts-1 query FTS: al massimo 12 parole distinte, ognuna max 40 caratteri",
+      _q95.count('"*') == _MAX95 == 12 and '"parola0"* "parola1"*' in _q95
+      and _k95.count('"*') == 12 and _k95.startswith('"cane"* OR "gatto"* OR "' + "z" * 40 + '"*'),
+      _q95[:80] + " | " + _k95[:80])
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(

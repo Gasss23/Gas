@@ -515,6 +515,25 @@ def normalizza_telefono(telefono: Optional[str]) -> str:
     return ""
 
 
+
+# R-fts-1: tetto alle parole di una ricerca (il testo arriva dal modello: una query
+# enorme non deve costare una MATCH enorme). Parole doppie tolte, ognuna accorciata.
+FTS_MAX_TOKEN = 12
+FTS_MAX_TOKEN_CHARS = 40
+
+
+def _token_fts(token: List[str]) -> List[str]:
+    """Prime FTS_MAX_TOKEN parole distinte, ognuna di al massimo FTS_MAX_TOKEN_CHARS."""
+    visti: List[str] = []
+    for t in token:
+        t = t[:FTS_MAX_TOKEN_CHARS]
+        if t not in visti:
+            visti.append(t)
+            if len(visti) >= FTS_MAX_TOKEN:
+                break
+    return visti
+
+
 class MemoryStore:
     """Accesso al DB di memoria. Connessioni a vita breve (una per operazione):
     semplice, niente stato condiviso fra thread, e ogni metodo è blindato in
@@ -1068,7 +1087,7 @@ class MemoryStore:
         virgolette neutralizzano i caratteri speciali della sintassi FTS5
         (operatori AND/OR/NOT, parentesi, ecc.) → nessun errore di sintassi su
         input arbitrario dell'utente. '' se non c'è alcun token (→ nessuna ricerca)."""
-        token = re.findall(r"\w+", str(testo or "").lower(), flags=re.UNICODE)
+        token = _token_fts(re.findall(r"\w+", str(testo or "").lower(), flags=re.UNICODE))
         if not token:
             return ""
         return " ".join(f'"{t}"*' for t in token)

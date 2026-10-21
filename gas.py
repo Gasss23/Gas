@@ -3575,7 +3575,8 @@ class GasKernel:
         """Costruisce query FTS5 sicura: token ≥3 char, quotati, prefisso *, uniti in OR.
         Le virgolette neutralizzano operatori FTS (AND/OR/NOT/NEAR, parentesi, :).
         Ritorna '' se non ci sono token validi (→ nessuna ricerca)."""
-        tokens = re.findall(r'\w{3,}', str(query or '').lower(), flags=re.UNICODE)
+        from modules.memory.store import _token_fts  # R-fts-1: stesso tetto del diario
+        tokens = _token_fts(re.findall(r'\w{3,}', str(query or '').lower(), flags=re.UNICODE))
         if not tokens:
             return ''
         return ' OR '.join(f'"{t}"*' for t in tokens)
