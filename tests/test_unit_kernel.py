@@ -6974,6 +6974,46 @@ with _TgLento(ids="2,3") as _tg77o3:
 check("T77o2 tutti i destinatari falliti (uno solleva) → False, fail-closed",
       _r77o3 == (False, "invio fallito verso tutti i destinatari"), str(_r77o3))
 
+# T93a — R7: la scatola nera sta accanto a gas.py, qualunque sia la cartella di avvio
+_bf77q = [getattr(h, "baseFilename", None) for h in logging.getLogger().handlers
+          if isinstance(h, gas.RotatingFileHandler)]
+check("T93a R7 gas_debug.log con percorso assoluto accanto a gas.py",
+      gas._LOG_PATH.is_absolute()
+      and gas._LOG_PATH == Path(gas.__file__).resolve().parent / "gas_debug.log"
+      and str(gas._LOG_PATH) in _bf77q, str(_bf77q))
+
+# T93b — R7: reindex, calibrate-vectors ed eval-vectors rispettano GAS_VECTORS_DB
+_vs_orig93 = gas.VectorStore
+_visti93: list = []
+class _VsFinto93:
+    def __init__(self, path, *a, **kw):
+        _visti93.append(Path(path))
+        self.available = False
+        self.disable_reason = "finto"
+_env93 = os.environ.get("GAS_VECTORS_DB")
+_root93 = Path(tempfile.mkdtemp(prefix="gas_t93b_"))
+_alt93 = _root93 / "altrove" / "vettori.db"
+try:
+    gas.VectorStore = _VsFinto93
+    os.environ["GAS_VECTORS_DB"] = str(_alt93)
+    with _ctx34.redirect_stdout(io.StringIO()):
+        gas.reindex(str(_root93))
+        gas.calibrate_vectors_cmd(str(_root93))
+        gas.eval_vectors_cmd(str(_root93))
+    _con93 = list(_visti93)
+    del os.environ["GAS_VECTORS_DB"]
+    _senza93 = gas._percorso_vettori(_root93)
+finally:
+    gas.VectorStore = _vs_orig93
+    if _env93 is None:
+        os.environ.pop("GAS_VECTORS_DB", None)
+    else:
+        os.environ["GAS_VECTORS_DB"] = _env93
+    _sh39e.rmtree(_root93, ignore_errors=True)
+check("T93b R7 i tre comandi dei vettori usano GAS_VECTORS_DB; senza, <root>/.gas_vectors.db",
+      len(_con93) == 3 and all(p == _alt93.resolve() for p in _con93)
+      and _senza93 == _root93 / ".gas_vectors.db", str(_con93))
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(
