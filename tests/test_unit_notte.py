@@ -1494,3 +1494,118 @@ def test_run_bot_senza_username(monkeypatch, tmp_path):
     assert _tg.run_bot(str(tmp_path)) == 0
     assert _tg._BOT_USERNAME is None
     assert _tg.comando_giro("/notte@QualsiasiBot") == ("notte", None)
+
+
+# ── R7: ripresa dei compiti rimasti a metà dopo un crash ─────────────────────
+
+class _KCrash:
+    """Kernel finto: il compito «lungo» fa crollare il processo a metà (BaseException,
+    come un kill), gli altri finiscono."""
+    def __init__(self, visti, crash=True):
+        self.visti, self.crash, self.history = visti, crash, []
+
+    def _diario_log(self, *a, **k):
+        pass
+
+    def run_turn(self, prompt):
+        self.visti.append(prompt)
+        yield {"type": "tool_res", "output": "ok"}
+        if self.crash and prompt.startswith("lungo"):
+            raise KeyboardInterrupt("crash simulato")
+        yield {"type": "final", "content": "fatto"}
+
+
+def _cat_r7(fuori):
+    return _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: breve
+    prompt: "breve"
+  - nome: lungo
+    prompt: "lungo"
+""")
+
+
+def test_r7_crash_poi_ripresa_per_primo(dirs):
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    visti = []
+    with pytest.raises(KeyboardInterrupt):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti))
+    reg = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
+    assert reg["lungo"]["tentativi"] == 1 and "breve" not in reg
+    # giro dopo: «lungo» per primo, con la nota di ripresa; poi «breve»
+    visti2 = []
+    rc = esegui_notte(str(root), catalogo=cat,
+                      kernel_factory=lambda r: _KCrash(visti2, crash=False))
+    assert rc == 0
+    assert visti2[0].startswith("lungo") and notte.NOTA_RIPRESA in visti2[0]
+    assert visti2[1] == "breve"
+    assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "'lungo' ripreso" in testo
+
+
+def test_r7_oltre_max_tentativi_saltato_e_azzerato(dirs):
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps(
+        {"lungo": {"tentativi": notte.MAX_TENTATIVI, "inizio": "x"}}))
+    visti = []
+    assert esegui_notte(str(root), catalogo=cat,
+                        kernel_factory=lambda r: _KCrash(visti, crash=False)) == 0
+    assert visti == ["breve"]
+    assert "interrotto 3 volte" in (nd / "ultimo_giro.md").read_text()
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
+    # il giro dopo ci riprova da capo, senza nota
+    visti2 = []
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti2, crash=False))
+    assert sorted(visti2) == ["breve", "lungo"]
+
+
+def test_r7_ko_e_tempo_scaduto_non_sono_crash(dirs):
+    """Un compito finito male (eccezione normale) esce dal registro: niente ripresa."""
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+
+    class _KRotto(_KCrash):
+        def run_turn(self, prompt):
+            raise RuntimeError("errore normale")
+            yield  # pragma: no cover
+
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KRotto([]))
+    assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
+
+
+@pytest.mark.parametrize("contenuto", ["{rotto", "[1,2]", '{"../x": {"tentativi": 1}}',
+                                       '{"a": {"tentativi": "1"}}', '{"a": {"tentativi": 0}}'])
+def test_r7_registro_rovinato_niente_ripresa(dirs, contenuto):
+    root, fuori = dirs
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(contenuto)
+    assert notte._leggi_in_corso(nd) == {}
+
+
+def test_r7_ripresa_round_trip_col_kernel_vero(monkeypatch, dirs):
+    """§7: la ripresa col kernel vero non si ferma dopo la prima tool call; il
+    modello riceve il prompt con la nota di ripresa."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: conta
+    prompt: "quanto fa 6*7"
+""")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"conta": {"tentativi": 1, "inizio": "x"}}))
+    script = _Script({
+        "quanto fa 6*7" + notte.NOTA_RIPRESA: [
+            [("calcola", json.dumps({"expr": "6*7"}))],
+            [("calcola", json.dumps({"expr": "1+1"}))], "42"],
+    })
+    assert _giro(monkeypatch, root, cat, script) == 0
+    storia = json.loads((nd / "storia_conta.json").read_text())
+    assert sum(1 for m in storia if m.get("role") == "tool") == 2
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
