@@ -577,11 +577,11 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
             del in_corso[c["nome"]]
             saltati += 1
         else:
-            extra = (f" (rilanciato a mano dopo {info['tentativi']} interruzioni)"
-                     if info["tentativi"] >= MAX_TENTATIVI else "")
-            avvisi.append(f"compito '{c['nome']}' ripreso: il giro precedente si era "
-                          f"interrotto a metà{extra}")
-            ripresi.append({**c, "ripresa": True})
+            # V-2 bot #234: l'avviso «ripreso» lo scrive il giro quando il compito parte
+            # davvero (kernel avviato, tempo rimasto), non qui.
+            ripresi.append({**c, "ripresa": True,
+                            "rilancio_a_mano": info["tentativi"] >= MAX_TENTATIVI,
+                            "interruzioni": info["tentativi"]})
     return ripresi + altri, saltati
 
 
@@ -667,6 +667,11 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 esiti.append({"nome": c["nome"], "esito": "ko", "tool": 0, "durata": 0,
                               "risposta": "", "errore": "kernel non avviato (gas_debug.log)"})
                 continue
+            if c.get("ripresa"):  # V-2 bot #234: avviso solo per una ripresa vera
+                extra = (f" (rilanciato a mano dopo {c.get('interruzioni')} interruzioni)"
+                         if c.get("rilancio_a_mano") else "")
+                avvisi.append(f"compito '{c['nome']}' ripreso: il giro precedente si era "
+                              f"interrotto a metà{extra}")
             prima = in_corso.get(c["nome"], {}).get("tentativi", 0)
             in_corso[c["nome"]] = {"tentativi": prima + 1, "inizio": _ora_locale()}
             _scrivi_in_corso(notte_dir, in_corso)

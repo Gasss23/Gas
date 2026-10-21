@@ -18,6 +18,16 @@ from types import SimpleNamespace
 # (129.000 accumulate, ~30 GB, disco pieno). Tutte le cartelle temporanee della
 # suite, anche dei sottoprocessi (TMPDIR), stanno in UNA cartella per esecuzione,
 # cancellata all'uscita.
+_TMP_SISTEMA = tempfile.gettempdir()  # R-415-1: per le cache che restano tra le esecuzioni
+# R-415-2: le cartelle di esecuzioni uccise (SIGKILL, timeout: atexit non parte) più
+# vecchie di 6 ore si tolgono all'avvio.
+import time as _time_pulizia
+for _vecchia in Path(_TMP_SISTEMA).glob("gas_kernel_run_*"):
+    try:
+        if _time_pulizia.time() - _vecchia.stat().st_mtime > 6 * 3600:
+            shutil.rmtree(_vecchia, True)
+    except OSError:
+        pass
 _TMP_ESECUZIONE = tempfile.mkdtemp(prefix="gas_kernel_run_")
 tempfile.tempdir = _TMP_ESECUZIONE
 os.environ["TMPDIR"] = _TMP_ESECUZIONE
@@ -1826,7 +1836,7 @@ _real_done = False
 try:
     # cache del modello STABILE (fuori dal repo, sotto la temp di sistema): scarica
     # una volta sola e riusa nelle run successive, niente ~500MB ad ogni suite.
-    cache_real = str(Path(tempfile.gettempdir()) / "gas_vec_model_cache")
+    cache_real = str(Path(_TMP_SISTEMA) / "gas_vec_model_cache")  # R-415-1: stabile tra le esecuzioni
     d_real = tempfile.mkdtemp(prefix="gas_vec_real_")
     vs_real = VectorStore(default_vectors_path(d_real), model_cache_dir=cache_real)
     if not vs_real.available:

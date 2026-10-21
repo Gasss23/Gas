@@ -1686,3 +1686,19 @@ def test_v1_bot234_registro_tolto_prima_della_riflessione(monkeypatch, dirs):
                      kernel_factory=lambda r: _KConStoria([], crash=False))
     assert visto["registro"] == {}
     assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
+
+
+def test_v2_bot234_ripreso_solo_se_parte(dirs):
+    """V-2 bot #234: se il kernel non parte, niente avviso «ripreso» e la voce resta."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lungo\n    prompt: lungo\n")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 1, "inizio": "x"}}))
+
+    def _rotto(r):
+        raise RuntimeError("kernel non avviato")
+    esegui_notte(str(root), catalogo=cat, kernel_factory=_rotto)
+    testo = (nd / "ultimo_giro.md").read_text()
+    assert "'lungo' ripreso" not in testo
+    assert json.loads((nd / notte.IN_CORSO).read_text())["lungo"]["tentativi"] == 1
