@@ -102,7 +102,7 @@ RIEPILOGO = "ultimo_giro.md"
 AVVIO = "ultimo_avvio"
 # R7 (M3, ripresa dopo un crash): compiti iniziati e non finiti. Un compito entra qui
 # prima di partire ed esce quando finisce (anche ko o tempo scaduto); se il processo
-# muore a metà (crash, kill, corrente) resta, e il giro dopo lo riprende per primo.
+# muore a metà (crash, kill, corrente) resta, e il giro dopo lo riprende (dopo gli altri).
 IN_CORSO = "in_corso.json"
 MAX_TENTATIVI = 3         # avvii interrotti dopo i quali il compito non si riprende più
 NOTA_RIPRESA = ("\n\n[NOTA DEL KERNEL — RIPRESA] Il giro precedente si è interrotto a metà "
@@ -551,7 +551,8 @@ def _scrivi_in_corso(notte_dir: Path, in_corso: Dict[str, Dict[str, Any]]) -> No
 def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str, Any]],
                     avvisi: List[str], a_mano: bool = False, pota: bool = True
                     ) -> Tuple[List[Dict[str, Any]], int]:
-    """R7: i compiti rimasti a metà vanno per primi, marcati `ripresa`. Oltre
+    """R7: i compiti rimasti a metà ripartono DOPO quelli mai interrotti (prima chi
+    è stato interrotto una volta, poi chi 2+ volte), marcati `ripresa`. Oltre
     MAX_TENTATIVI avvii interrotti il compito si salta (avviso) e il suo conto si
     azzera, così il giro dopo ci riprova da capo invece di saltarlo per sempre.
     R-406-1: ritorna anche quanti compiti sono stati saltati (contano come ko per
@@ -586,7 +587,10 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
             # V-1 bot #234: un compito che fa cadere Gas a ogni avvio, rimesso sempre
             # per primo, farebbe perdere il giro intero: dal secondo tentativo va in coda.
             (in_coda if info["tentativi"] >= 2 else ripresi).append(voce)
-    return ripresi + altri + in_coda, saltati
+    # V-1 verifica esterna #234 (3° giro, MEDIA): i compiti mai interrotti partono
+    # SEMPRE per primi, così un compito che fa cadere Gas non toglie notti agli altri;
+    # poi i ripresi (interrotti una volta), infine quelli già falliti 2+ volte.
+    return altri + ripresi + in_coda, saltati
 
 
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
@@ -594,7 +598,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                  solo: Optional[str] = None) -> int:
     """Un giro completo (R1: con `solo` = nome, il solo compito del catalogo con quel
     nome esatto; nome assente o non attivo → avviso ed exit 1; R7: i compiti rimasti
-    a metà per un crash ripartono per primi, oltre MAX_TENTATIVI si saltano → exit 1).
+    a metà per un crash ripartono dopo gli altri, oltre MAX_TENTATIVI si saltano → exit 1).
     Exit code: 0 tutti i compiti ok (o nessuno attivo),
     1 almeno un compito ko, saltato per tempo, catalogo non valido o giro
     interrotto da un errore (anche un lock che fallisce per un motivo diverso dal

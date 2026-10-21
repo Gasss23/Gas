@@ -1536,13 +1536,14 @@ def test_r7_crash_poi_ripresa_per_primo(dirs):
         esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti))
     reg = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
     assert reg["lungo"]["tentativi"] == 1 and "breve" not in reg
-    # giro dopo: «lungo» per primo, con la nota di ripresa; poi «breve»
+    # giro dopo: prima «breve» (mai interrotto), poi «lungo» con la nota di ripresa
+    # (V-1 verifica esterna #234: i compiti sani non aspettano quelli che crashano)
     visti2 = []
     rc = esegui_notte(str(root), catalogo=cat,
                       kernel_factory=lambda r: _KCrash(visti2, crash=False))
     assert rc == 0
-    assert visti2[0].startswith("lungo") and notte.NOTA_RIPRESA in visti2[0]
-    assert visti2[1] == "breve"
+    assert visti2[0] == "breve"
+    assert visti2[1].startswith("lungo") and notte.NOTA_RIPRESA in visti2[1]
     assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
     testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
     assert "'lungo' ripreso" in testo
@@ -1734,4 +1735,20 @@ compiti:
                                                  "medio": {"tentativi": 1, "inizio": "x"}}))
     visti = []
     esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti, crash=False))
-    assert [v.split(notte.NOTA_RIPRESA)[0] for v in visti] == ["medio", "breve", "lungo"]
+    assert [v.split(notte.NOTA_RIPRESA)[0] for v in visti] == ["breve", "medio", "lungo"]
+
+
+def test_v1_verifica234_compito_che_crasha_non_affama_gli_altri(dirs):
+    """V-1 verifica esterna #234 (MEDIA): un compito che fa cadere Gas a ogni avvio
+    non impedisce agli altri di girare: per 6 notti «breve» parte sempre."""
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    girati_breve = 0
+    for _notte in range(6):
+        visti = []
+        try:
+            esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti))
+        except KeyboardInterrupt:
+            pass
+        girati_breve += visti.count("breve")
+    assert girati_breve == 6

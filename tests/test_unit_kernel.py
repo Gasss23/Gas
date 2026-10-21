@@ -7183,6 +7183,29 @@ finally:
     _sh39e.rmtree(_r94f, ignore_errors=True)
 check("T94f R-413-2 gas tokens con ts null: nessuna eccezione", _rc94f == 0, _err94f)
 
+# T94g — V-2 verifica #234: lettura a blocchi (anche minuscoli: righe a cavallo di
+# più blocchi) = stesso costo della lettura in un colpo solo
+_k94g = kernel_tmp()
+_log94g = _k94g.root / gas.TOKEN_LOG_FILENAME
+_log94g.write_text("".join(_riga94(1_000_000 * (i % 3), 250_000) for i in range(20))
+                   + _riga94(1_000_000, 0)[:-1], encoding="utf-8")   # ultima senza «\n»
+_c94g_intero = _k94g._daily_cost_usd()
+gas._COSTI_CACHE.clear()
+_blocco94 = gas._COSTI_BLOCCO
+try:
+    gas._COSTI_BLOCCO = 7
+    _c94g_blocchi = _k94g._daily_cost_usd()
+    with open(_log94g, "a", encoding="utf-8") as _f94g:
+        _f94g.write("\n" + _riga94(0, 500_000))
+    _c94g_dopo = _k94g._daily_cost_usd()
+finally:
+    gas._COSTI_BLOCCO = _blocco94
+_atteso94g = sum((1_000_000 * (i % 3)) * 0.10 / 1e6 + 250_000 * 0.40 / 1e6 for i in range(20)) + 0.1
+check("T94g lettura a blocchi da 7 byte = lettura intera; riga finale e aggiunte contate una volta",
+      abs(_c94g_intero - _atteso94g) < 1e-9 and abs(_c94g_blocchi - _atteso94g) < 1e-9
+      and abs(_c94g_dopo - (_atteso94g + 0.2)) < 1e-9,
+      f"{_c94g_intero} {_c94g_blocchi} {_c94g_dopo} atteso {_atteso94g}")
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(

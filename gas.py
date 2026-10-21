@@ -864,6 +864,8 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
 # R-tel-budget-perf: per ogni log dei token, le voci (ts, costo) delle ultime 24 ore
 # già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
 _COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
+_TS_RAPIDO_RE = re.compile(rb'"ts"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"')
+_COSTI_BLOCCO = 1 << 20  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
 _TS_LOG_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")  # _log_tokens
 
 
@@ -1241,30 +1243,46 @@ class GasKernel:
                 c = {"id": (st.st_dev, st.st_ino), "offset": 0, "voci": [], "testa": testa,
                      "coda": b""}
             c["mtime"] = st.st_mtime_ns
+            resto = b""
             if st.st_size > c["offset"]:
+                # V-2 verifica esterna #234 (3° giro): lettura a blocchi, niente file
+                # intero in memoria alla prima lettura di un log grande.
                 with open(log_path, "rb") as f:
                     f.seek(c["offset"])
-                    nuovo = f.read(st.st_size - c["offset"])
-                fine = nuovo.rfind(b"\n")  # solo righe complete: una a metà si rilegge
-                if fine >= 0:
-                    for raw in nuovo[:fine].split(b"\n"):
-                        voce = _costo_riga(raw)
-                        if voce is not None and voce[0] >= cutoff:  # R-409-3: vecchie scartate subito
-                            c["voci"].append(voce)
-                    c["offset"] += fine + 1
-                    c["coda"] = (c["coda"] + nuovo[:fine + 1])[-64:]
+                    da_leggere = st.st_size - c["offset"]
+                    while da_leggere > 0:
+                        blocco = f.read(min(_COSTI_BLOCCO, da_leggere))
+                        if not blocco:
+                            break
+                        da_leggere -= len(blocco)
+                        dati = resto + blocco
+                        fine = dati.rfind(b"\n")  # solo righe complete: una a metà si rilegge
+                        if fine < 0:
+                            resto = dati
+                            continue
+                        for raw in dati[:fine].split(b"\n"):
+                            # uscita rapida: riga con UN solo «"ts"» più vecchio delle 24
+                            # ore → non conta, inutile decodificarla (log grandi)
+                            m = _TS_RAPIDO_RE.search(raw)
+                            if (m is not None and raw.count(b'"ts"') == 1
+                                    and m.group(1).decode("ascii") < cutoff):
+                                continue
+                            voce = _costo_riga(raw)
+                            if voce is not None and voce[0] >= cutoff:  # R-409-3
+                                c["voci"].append(voce)
+                        c["offset"] += fine + 1
+                        c["coda"] = (c["coda"] + dati[:fine + 1])[-64:]
+                        resto = dati[fine + 1:]
             c["testa"] = testa
             c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
             _COSTI_CACHE[chiave] = c
             totale = sum(v[1] for v in c["voci"])
             # V-1 verifica esterna #234: l'ultima riga senza «\n» (log scritto a mano o
             # troncato) si conta lo stesso se è valida, senza spostare l'offset: così
-            # quando arriva il suo «\n» viene letta una volta sola.
-            if st.st_size > c["offset"]:
-                with open(log_path, "rb") as f:
-                    f.seek(c["offset"])
-                    resto = f.read(st.st_size - c["offset"])
-                voce = _costo_riga(resto) if b"\n" not in resto else None
+            # quando arriva il suo «\n» viene letta una volta sola. R-414-2: niente
+            # seconda lettura, e oltre 64 KB non può essere una riga di _log_tokens.
+            if resto and len(resto) <= 65536:
+                voce = _costo_riga(resto)
                 if voce is not None and voce[0] >= cutoff:
                     totale += voce[1]
             return totale
