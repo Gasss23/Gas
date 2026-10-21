@@ -1289,22 +1289,24 @@ class GasKernel:
             self._storia_sync = self._sync_storia_di(self._impronta_storia())
             self._sblocca_storia(lock_f)
 
-    def _save_history(self, fine_turno: bool = False):
+    def _save_history(self, fine_turno: bool = False) -> bool:
         """fine_turno=True (finally di run_turn, R-435-1): il turno è finito anche se
         senza risposta finale (tetto di iterazioni, errore): l'unione non si rimanda."""
         lock_f = self._blocca_storia()
         try:
             if not self._unisci_storia_altrui(fine_turno):
-                return  # R-434-1: unione rimandata alla fine del turno
+                return False  # R-434-1: unione rimandata alla fine del turno
             # R-430-1: l'impronta avanza solo se la scrittura è riuscita davvero,
             # altrimenti i messaggi non scritti si perderebbero alla prossima unione
             if self._salva_storia_su_file():
                 self._storia_sync = self._sync_storia()
                 self._storia_rimandata = False
+                return True  # R-439-1: chi chiama sa se la storia è su disco
         except Exception as e:
             logging.warning("Salvataggio della storia non riuscito: %s", e)
         finally:
             self._sblocca_storia(lock_f)
+        return False
 
     def _salva_storia_su_file(self) -> bool:
         tmp_path: Optional[Path] = None
@@ -5228,10 +5230,9 @@ def compress_history_cmd(root_dir: Optional[str] = None) -> int:
     print(f"  Messaggi attuali:   {n_before}")
     print(f"  Messaggi da tenere: {keep}  (GAS_HISTORY_KEEP_MSGS)")
     ok = kernel._compress_history_if_needed(force=True)
-    if ok and kernel._storia_rimandata:
-        # R-438-1: il comando non è dentro un turno: niente rinvio, si scrive ora
-        kernel._save_history(fine_turno=True)
-    if ok and kernel._storia_rimandata:
+    # R-438-1 / R-439-1: il comando non è dentro un turno (niente rinvio) e dice ok
+    # solo se la storia compressa è davvero su disco
+    if ok and not kernel._save_history(fine_turno=True):
         print("✗ compress-history: compressione NON salvata (vedi gas_debug.log).")
         return 1
     if ok:

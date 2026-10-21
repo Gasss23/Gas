@@ -7619,11 +7619,21 @@ class _Esplodi97j(list):
     def __iter__(self):
         _visto97j.append(any("id-97j" in str(m.get("content")) for m in _cli97j.history))
         raise RuntimeError("provider giù")
-_ev97j = run_turn_scriptato(_cli97j, "domanda j", [
-    _Passo97j([("calcola", '{"expr": "20+3"}')]), _Esplodi97j([("calcola", '{"expr": "1"}')])])
+_inviati97j: list = []  # V-1 bot #240: i messaggi che il provider riceve davvero
+_create97j = ScriptedCompletions.create
+def _registra97j(self, model=None, messages=None, tools=None, tool_choice=None):
+    _inviati97j.append(json.dumps(messages or [], default=str))
+    return _create97j(self, model=model, messages=messages, tools=tools, tool_choice=tool_choice)
+ScriptedCompletions.create = _registra97j  # type: ignore[method-assign]
+try:
+    _ev97j = run_turn_scriptato(_cli97j, "domanda j", [
+        _Passo97j([("calcola", '{"expr": "20+3"}')]), _Esplodi97j([("calcola", '{"expr": "1"}')])])
+finally:
+    ScriptedCompletions.create = _create97j  # type: ignore[method-assign]
 _f97j = [str(m.get("content")) for m in json.loads((_r97j / ".gas_history.json").read_text())]
 check("T97j turno senza risposta: niente blocco altrui durante il turno, a fine turno tutto su disco",
       _visto97j and not any(_visto97j) and any(e["type"] == "error" for e in _ev97j)
+      and len(_inviati97j) >= 2 and not any("id-97j" in m for m in _inviati97j)
       and "23" in _f97j and any("id-97j" in t for t in _f97j)
       and _cli97j._storia_rimandata is False, f"{_visto97j} {_f97j}")
 # T97k — V-2 bot #236 (5° giro): scrittura fallita dopo un'unione «nostra + suoi»,
@@ -7676,6 +7686,18 @@ _f97l = json.loads((_r97l / ".gas_history.json").read_text())
 check("T97l compress-history con unione in sospeso: compressione scritta, blocco dell'altro tenuto",
       _rc97l == 0 and len(_f97l) < len(_s97l)
       and any("id-97l" in str(m.get("content")) for m in _f97l), f"{_rc97l} {len(_f97l)}")
+# R-439-1: scrittura fallita senza rinvio → niente «✓ Compressi», exit 1
+(_r97l / ".gas_history.json").write_text(json.dumps(_s97l), encoding="utf-8")
+_salva97l = GasKernel._salva_storia_su_file
+try:
+    GasKernel._salva_storia_su_file = lambda self: False  # type: ignore[method-assign]
+    with _ctx34.redirect_stdout(io.StringIO()) as _out97l2:
+        _rc97l2 = gas.compress_history_cmd(str(_r97l))
+finally:
+    GasKernel._salva_storia_su_file = _salva97l  # type: ignore[method-assign]
+check("T97l2 compress-history con scrittura fallita: exit 1 e «NON salvata» (R-439-1)",
+      _rc97l2 == 1 and "NON salvata" in _out97l2.getvalue()
+      and "Compressi" not in _out97l2.getvalue(), _out97l2.getvalue()[-200:])
 _sh39e.rmtree(_r97l, ignore_errors=True)
 # T97g — V-3 bot #236: lock della storia tenuto da un altro (processo fermo) → dopo
 # LOCK_STORIA_SEC si salva lo stesso, senza lock, con un avviso
