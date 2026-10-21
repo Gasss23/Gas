@@ -864,7 +864,20 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
 # R-tel-budget-perf: per ogni log dei token, le voci (ts, costo) delle ultime 24 ore
 # già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
 _COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
-_TS_LOG_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")  # formato di _log_tokens
+_TS_LOG_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")  # _log_tokens
+
+
+def _ts_log_valido(ts: Any) -> bool:
+    """R-413-1: ts del log dei token accettato solo se è nel formato di _log_tokens
+    (cifre ASCII), una data vera e non nel futuro (oltre 1 ora di margine): un ts
+    finto o futuro resterebbe «nelle ultime 24 ore» per sempre e bloccherebbe il budget."""
+    if not isinstance(ts, str) or not _TS_LOG_RE.fullmatch(ts):
+        return False
+    try:
+        quando = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    return quando <= datetime.now(timezone.utc) + timedelta(hours=1)
 
 
 def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
@@ -889,7 +902,7 @@ def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
         ts = r.get("ts")
         # V-2 bot #234: solo un ts ISO vero; «None» o testo sarebbe ≥ cutoff per sempre
         # (confronto tra stringhe) e terrebbe il budget bloccato senza scadenza.
-        if not isinstance(ts, str) or not _TS_LOG_RE.fullmatch(ts):
+        if not _ts_log_valido(ts):
             return None
         return (ts, costo)
     except Exception:
@@ -1243,7 +1256,18 @@ class GasKernel:
             c["testa"] = testa
             c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
             _COSTI_CACHE[chiave] = c
-            return sum(v[1] for v in c["voci"])
+            totale = sum(v[1] for v in c["voci"])
+            # V-1 verifica esterna #234: l'ultima riga senza «\n» (log scritto a mano o
+            # troncato) si conta lo stesso se è valida, senza spostare l'offset: così
+            # quando arriva il suo «\n» viene letta una volta sola.
+            if st.st_size > c["offset"]:
+                with open(log_path, "rb") as f:
+                    f.seek(c["offset"])
+                    resto = f.read(st.st_size - c["offset"])
+                voce = _costo_riga(resto) if b"\n" not in resto else None
+                if voce is not None and voce[0] >= cutoff:
+                    totale += voce[1]
+            return totale
         except Exception as e:
             logging.warning("_daily_cost_usd fallita (%s) — budget non applicato", e)
             return 0.0
@@ -4684,7 +4708,8 @@ def tokens_cmd(root_dir: Optional[str] = None, days: Optional[int] = None) -> in
             out_t = int(r.get("out", 0))
         except (TypeError, ValueError):
             continue  # record JSONL malformato — skip silenzioso (§9)
-        is_recent = cutoff is not None and r.get("ts", "") >= cutoff
+        _ts = r.get("ts")  # R-413-2: un ts null o non stringa non ferma `gas tokens`
+        is_recent = cutoff is not None and isinstance(_ts, str) and _ts >= cutoff
         if evt == "fallthrough":
             reason = r.get("reason") or ""
             for bucket, cond in ((ft_totali, True), (ft_recenti, is_recent)):

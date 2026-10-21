@@ -7084,11 +7084,15 @@ with open(_log94, "a", encoding="utf-8") as _f94:
     _f94.write(_riga94(1_000_000, 0)[:-15])                      # riga a metà: non contata
 _c94c = _k94._daily_cost_usd()
 with open(_log94, "a", encoding="utf-8") as _f94:
-    _f94.write(_riga94(1_000_000, 0)[-15:])                      # completata: ora contata
+    _f94.write(_riga94(1_000_000, 0)[-15:-1])                    # completa ma senza «\n»
+_c94c2 = _k94._daily_cost_usd()                                  # V-1 verifica #234: contata
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write("\n")                                             # arriva il «\n»: una volta sola
 _c94d = _k94._daily_cost_usd()
 _off94 = gas._COSTI_CACHE[str(_log94)]["offset"]
 check("T94a lettura a pezzi: righe nuove sommate, riga a metà aspettata",
       abs(_c94a - 0.1) < 1e-9 and abs(_c94b - 0.3) < 1e-9 and abs(_c94c - 0.3) < 1e-9
+      and abs(_c94c2 - 0.4) < 1e-9
       and abs(_c94d - 0.4) < 1e-9 and _off94 == _log94.stat().st_size,
       f"{_c94a} {_c94b} {_c94c} {_c94d}")
 with open(_log94, "w", encoding="utf-8") as _f94:                # file accorciato/riscritto
@@ -7127,7 +7131,10 @@ check("T94d R-410-1/2 costo di una riga con «out» enorme o negativo",
 check("T94e V-2 bot #234 ts non ISO → riga ignorata",
       all(gas._costo_riga(json.dumps({**({} if t is ... else {"ts": t}), "provider": "groq",
                                        "in": 1, "out": 1}).encode()) is None
-          for t in (None, "None", "domani", 5, ..., "2026-10-21"))
+          for t in (None, "None", "domani", 5, ..., "2026-10-21",
+                    # R-413-1: cifre non ASCII, data impossibile, data nel futuro
+                    "\uff12\uff10\uff12\uff16-10-21T10:00:00", "9999-99-99T99:99:99",
+                    "2999-01-01T00:00:00"))
       and gas._costo_riga(json.dumps({"ts": _ora94, "provider": "groq", "in": 1,
                                       "out": 1}).encode()) is not None)
 
@@ -7140,6 +7147,20 @@ check("T95 R-fts-1 query FTS: al massimo 12 parole distinte, ognuna max 40 carat
       _q95.count('"*') == _MAX95 == 12 and '"parola0"* "parola1"*' in _q95
       and _k95.count('"*') == 12 and _k95.startswith('"cane"* OR "gatto"* OR "' + "z" * 40 + '"*'),
       _q95[:80] + " | " + _k95[:80])
+
+# T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
+_r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))
+(_r94f / gas.TOKEN_LOG_FILENAME).write_text(
+    '{"ts": null, "provider": "groq", "in": 1, "out": 1}\n', encoding="utf-8")
+try:
+    with _ctx34.redirect_stdout(io.StringIO()):
+        _rc94f = gas.tokens_cmd(str(_r94f))
+    _err94f = ""
+except Exception as _e94f:
+    _rc94f, _err94f = None, repr(_e94f)
+finally:
+    _sh39e.rmtree(_r94f, ignore_errors=True)
+check("T94f R-413-2 gas tokens con ts null: nessuna eccezione", _rc94f == 0, _err94f)
 
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
