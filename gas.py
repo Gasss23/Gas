@@ -861,6 +861,28 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
     return None
 
 
+# R-tel-budget-perf: per ogni log dei token, le voci (ts, costo) delle ultime 24 ore
+# già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
+_COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
+    """(ts, costo USD) di una riga del log dei token; None se vuota, illeggibile,
+    un «fallthrough» o con numeri non validi (come la lettura completa di prima)."""
+    try:
+        line = raw.decode("utf-8").strip()
+        if not line:
+            return None
+        r = json.loads(line)
+        if not isinstance(r, dict) or r.get("event", "call") == "fallthrough":
+            return None
+        p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(r.get("provider", "?"), (0.0, 0.0))
+        costo = int(r.get("in", 0)) * p_in / 1_000_000 + int(r.get("out", 0)) * p_out / 1_000_000
+        return (str(r.get("ts", "")), costo)
+    except Exception:
+        return None
+
+
 def _percorso_vettori(root: Path) -> Path:
     """Archivio dei vettori: GAS_VECTORS_DB se impostata, altrimenti <root>/.gas_vectors.db.
     R7 (roadmap): unica fonte del percorso, così reindex/vettori/doctor e il kernel
@@ -1161,37 +1183,45 @@ class GasKernel:
     def _daily_cost_usd(self) -> float:
         """Somma i costi (USD stimati) degli ultimi 86400 secondi dal log token.
         FAIL-SAFE: log assente/corrotto → 0.0 (mai bloccare il turno per log
-        mancante, §9). Zero token LLM: sola lettura file locale."""
+        mancante, §9). Zero token LLM: sola lettura file locale.
+        R-tel-budget-perf: il log è in sola aggiunta, quindi si leggono solo le righe
+        NUOVE dall'ultima volta (`_COSTI_CACHE`, per file); se il file è stato
+        sostituito o accorciato (inode diverso o più corto) si rilegge da capo."""
         try:
             log_path = self.root / TOKEN_LOG_FILENAME
-            if not log_path.exists():
+            try:
+                st = log_path.stat()
+            except FileNotFoundError:
+                _COSTI_CACHE.pop(str(log_path), None)
                 return 0.0
             from datetime import timedelta
             # Stesso formato di _log_tokens ("ts": strftime("%Y-%m-%dT%H:%M:%S")) →
             # il confronto stringa lessicografico è corretto (ISO 8601 senza "Z").
             cutoff = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
-            total = 0.0
-            with open(log_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        r = json.loads(line)
-                    except Exception:
-                        continue
-                    if r.get("event", "call") == "fallthrough":
-                        continue
-                    if r.get("ts", "") < cutoff:
-                        continue
-                    prov = r.get("provider", "?")
-                    p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(prov, (0.0, 0.0))
-                    try:
-                        total += int(r.get("in", 0)) * p_in / 1_000_000
-                        total += int(r.get("out", 0)) * p_out / 1_000_000
-                    except (TypeError, ValueError):
-                        continue
-            return total
+            chiave = str(log_path)
+            with open(log_path, "rb") as f:
+                testa = f.read(64)  # impronta: un file riscritto da capo cambia l'inizio
+            c = _COSTI_CACHE.get(chiave)
+            if (c is None or c["id"] != (st.st_dev, st.st_ino) or st.st_size < c["offset"]
+                    or c["testa"] != testa[:len(c["testa"])]
+                    or (st.st_size == c["offset"] and st.st_mtime_ns != c["mtime"])):
+                c = {"id": (st.st_dev, st.st_ino), "offset": 0, "voci": [], "testa": testa}
+            c["mtime"] = st.st_mtime_ns
+            if st.st_size > c["offset"]:
+                with open(log_path, "rb") as f:
+                    f.seek(c["offset"])
+                    nuovo = f.read(st.st_size - c["offset"])
+                fine = nuovo.rfind(b"\n")  # solo righe complete: una a metà si rilegge
+                if fine >= 0:
+                    for raw in nuovo[:fine].split(b"\n"):
+                        voce = _costo_riga(raw)
+                        if voce is not None:
+                            c["voci"].append(voce)
+                    c["offset"] += fine + 1
+            c["testa"] = testa
+            c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
+            _COSTI_CACHE[chiave] = c
+            return sum(v[1] for v in c["voci"])
         except Exception as e:
             logging.warning("_daily_cost_usd fallita (%s) — budget non applicato", e)
             return 0.0

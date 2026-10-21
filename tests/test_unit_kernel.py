@@ -7067,6 +7067,39 @@ check("T93b R7 i tre comandi dei vettori usano GAS_VECTORS_DB; senza, <root>/.ga
       len(_con93) == 3 and all(p == _alt93.resolve() for p in _con93)
       and _senza93 == _root93 / ".gas_vectors.db", str(_con93))
 
+# T94 — R-tel-budget-perf: costo letto a pezzi = costo letto per intero
+_k94 = kernel_tmp()
+_log94 = _k94.root / gas.TOKEN_LOG_FILENAME
+_ora94 = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+def _riga94(n_in, n_out, ts=None, ev="call"):
+    return json.dumps({"ts": ts or _ora94, "provider": "gemini-flash-lite", "model": "x",
+                       "in": n_in, "out": n_out, "event": ev}) + "\n"
+with open(_log94, "w", encoding="utf-8") as _f94:
+    _f94.write(_riga94(1_000_000, 0) + _riga94(0, 0, ev="fallthrough") + "rotta\n")
+_c94a = _k94._daily_cost_usd()                                   # 0.1
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write(_riga94(0, 500_000) + _riga94(1_000_000, 0, ts="2020-01-01T00:00:00"))
+_c94b = _k94._daily_cost_usd()                                   # 0.1 + 0.2
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write(_riga94(1_000_000, 0)[:-15])                      # riga a metà: non contata
+_c94c = _k94._daily_cost_usd()
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write(_riga94(1_000_000, 0)[-15:])                      # completata: ora contata
+_c94d = _k94._daily_cost_usd()
+_off94 = gas._COSTI_CACHE[str(_log94)]["offset"]
+check("T94a lettura a pezzi: righe nuove sommate, riga a metà aspettata",
+      abs(_c94a - 0.1) < 1e-9 and abs(_c94b - 0.3) < 1e-9 and abs(_c94c - 0.3) < 1e-9
+      and abs(_c94d - 0.4) < 1e-9 and _off94 == _log94.stat().st_size,
+      f"{_c94a} {_c94b} {_c94c} {_c94d}")
+with open(_log94, "w", encoding="utf-8") as _f94:                # file accorciato/riscritto
+    _f94.write(_riga94(0, 250_000))
+_c94e = _k94._daily_cost_usd()
+_log94.unlink()
+_c94f = _k94._daily_cost_usd()
+check("T94b log riscritto → riletto da capo; log cancellato → 0.0",
+      abs(_c94e - 0.1) < 1e-9 and _c94f == 0.0 and str(_log94) not in gas._COSTI_CACHE,
+      f"{_c94e} {_c94f}")
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(
