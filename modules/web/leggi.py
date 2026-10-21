@@ -19,7 +19,9 @@ Regole (fail-safe, CLAUDE.md §9):
 Limiti dichiarati: il tempo massimo copre rete e download; la decodifica e la pulizia
 del testo (lineari, qualche secondo al massimo su 2 MB) vengono dopo (R-ve235-5). Il
 DNS di sistema non si può interrompere: le risoluzioni in corso sono limitate a
-MAX_DNS_IN_CORSO thread (R-ve235-7).
+MAX_DNS_IN_CORSO thread (R-ve235-7); se sono tutte appese, le letture successive
+falliscono con «troppe risoluzioni DNS in corso» finché il resolver non rinuncia. Se
+html.parser fallisce, il ripiego senza parser perde il titolo.
 
 Zero dipendenze esterne: solo stdlib. I proxy d'ambiente non si usano (http.client).
 """
@@ -37,6 +39,7 @@ import ssl
 import threading
 import time
 import unicodedata
+from html import unescape as html_unescape
 from html.parser import HTMLParser
 from typing import Callable, Optional
 from urllib.parse import quote, urljoin, urlsplit
@@ -67,13 +70,15 @@ _NAT64_LOCALE = ipaddress.ip_network("64:ff9b:1::/48")
 _6TO4 = ipaddress.ip_network("2002::/16")
 _TEREDO = ipaddress.ip_network("2001::/32")
 _NOME_HOST = re.compile(r"[a-z0-9.-]{1,253}")
-# Separatori con un tetto ({0,3}/{1,3}): con «*» o «+» una pagina di soli trattini rende
-# la regex quadratica (2 MB = ore di CPU, B-409-1 review #409 chat Mani).
+# Tetto ({0,3}) SOLO sul prefisso libero in testa: con «*» lì una pagina di soli trattini
+# rende la regex quadratica (2 MB = ore di CPU, B-409-1 review #409 chat Mani). Dopo una
+# parola fissa la ripetizione è lineare, quindi «+»/«*» restano (R-410-1 chat Mani).
 _FINTO_MARCATORE = re.compile(
-    r"\[?[\s_-]{0,3}(?:fine[\s_-]{1,3}(?:del[\s_-]{1,3})?)?contenuto[\s_-]{1,3}web[\s_-]{1,3}"
-    r"non[\s_-]{0,3}fidato",
+    r"\[?[\s_-]{0,3}(?:fine[\s_-]+(?:del[\s_-]+)?)?contenuto[\s_-]+web[\s_-]+non[\s_-]*fidato",
     re.IGNORECASE,
 )
+_BLOCCHI_NASCOSTI = ("script", "style", "noscript", "template")
+_MINUSCOLE_ASCII = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 # Riferimenti numerici enormi («&#» + migliaia di cifre): html.parser solleva ValueError
 # (limite delle cifre degli interi) e la pagina diventerebbe illeggibile (R-ve235-4).
 # Nessun carattere vero supera U+10FFFF: 8+ cifre decimali o 7+ esadecimali sono comunque
@@ -159,7 +164,7 @@ def _risolvi_con_tempo(risolvi: Risolutore, host: str, porta: int, scadenza: flo
     massimo fino alla scadenza. Il thread non si può fermare: il semaforo lo rilascia
     solo quando la risoluzione finisce davvero, così i thread vivi non si accumulano."""
     if not _DNS_IN_CORSO.acquire(timeout=_rimasto(scadenza)):
-        raise _Rifiuto("tempo massimo superato")
+        raise _Rifiuto("troppe risoluzioni DNS in corso: tempo massimo superato")
     esito: dict = {}
 
     def _lavoro() -> None:
@@ -444,6 +449,43 @@ def _decodifica(corpo: bytes, charset: str) -> str:
         return corpo.decode("utf-8", errors="replace")
 
 
+def _togli_blocchi_nascosti(testo: str) -> str:
+    """Toglie script, style, noscript e template. Lineare: per ogni tag si ricorda la
+    prossima posizione e la si ricerca solo quando resta indietro, quindi ogni find va
+    sempre avanti (niente regex con «.*?», che su tanti «<script» senza chiusura
+    tornerebbe quadratica). Un blocco senza chiusura arriva fino in fondo."""
+    basso = testo.translate(_MINUSCOLE_ASCII)  # lower() cambia la lunghezza («İ»): indici sfasati (R-429-1)
+    prossimo = {tag: basso.find("<" + tag) for tag in _BLOCCHI_NASCOSTI}
+    pezzi = []
+    i = 0
+    while True:
+        for tag, pos in prossimo.items():
+            if pos != -1 and pos < i:
+                prossimo[tag] = basso.find("<" + tag, i)
+        aperti = [(pos, tag) for tag, pos in prossimo.items() if pos != -1]
+        if not aperti:
+            pezzi.append(testo[i:])
+            break
+        pos, tag = min(aperti)
+        pezzi.append(testo[i:pos])
+        fine = basso.find("</" + tag, pos + 1)
+        if fine == -1:
+            break
+        chiusura = basso.find(">", fine)
+        i = len(testo) if chiusura == -1 else chiusura + 1
+    return " ".join(pezzi)
+
+
+def _testo_senza_parser(grezzo: str) -> str:
+    """Ripiego se html.parser solleva: blocchi nascosti tolti, tag tolti (regex lineare:
+    [^<>] si ferma al primo «<»), riferimenti interpretati se possibile (V-2 bot #237)."""
+    testo = re.sub(r"<[^<>]*>", " ", _togli_blocchi_nascosti(grezzo))
+    try:
+        return html_unescape(testo)
+    except Exception:  # noqa: BLE001 — riferimenti strani: si lascia il testo com'è
+        return testo
+
+
 def _componi(url_finale: str, pagina: dict) -> dict:
     codice = secrets.token_hex(6)
     grezzo = _decodifica(pagina["corpo"], pagina["charset"])
@@ -460,8 +502,8 @@ def _componi(url_finale: str, pagina: dict) -> dict:
             corpo = _pulisci("".join(estrattore.pezzi))
             titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
         except ValueError:
-            # html.parser non ce la fa (riferimenti strani): testo senza tag, senza interpretarli.
-            corpo = _pulisci(re.sub(r"<[^<>]*>", " ", grezzo))  # [^<>]: lineare anche senza «>»
+            # html.parser non ce la fa: ripiego senza parser (titolo perso).
+            corpo = _pulisci(_testo_senza_parser(grezzo))
     troncato = pagina["troncato"]
     if len(corpo) > MAX_CARATTERI:
         corpo = corpo[:MAX_CARATTERI]
