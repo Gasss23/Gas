@@ -7199,6 +7199,32 @@ _c94h = _k94h._daily_cost_usd()
 check("T94h riga valida da 100 KB contata (0.3 = tre righe da 0.1)", abs(_c94h - 0.3) < 1e-9,
       str(_c94h))
 
+# T94i — R-422-1/2: la stessa riga valida lunga, letta a blocchi da 4 KB (quindi a
+# cavallo di molti blocchi), si conta; con un tetto di riga più basso si scarta
+# e lascia un avviso nella scatola nera (anche quando passa dal ramo «lunga»)
+_logrec94i: list = []
+class _H94i(logging.Handler):
+    def emit(self, record):
+        _logrec94i.append(record.getMessage())
+_h94i = _H94i(level=logging.WARNING)
+_blocco94i, _rigamax94i = gas._COSTI_BLOCCO, gas._RIGA_MAX
+logging.getLogger().addHandler(_h94i)
+try:
+    gas._COSTI_BLOCCO = 4096
+    gas._COSTI_CACHE.clear()
+    _c94i_conta = _k94h._daily_cost_usd()
+    gas._RIGA_MAX = 50_000
+    gas._COSTI_CACHE.clear()
+    _c94i_scarta = _k94h._daily_cost_usd()
+finally:
+    gas._COSTI_BLOCCO, gas._RIGA_MAX = _blocco94i, _rigamax94i
+    logging.getLogger().removeHandler(_h94i)
+    gas._COSTI_CACHE.clear()
+check("T94i riga lunga a cavallo di blocchi: contata sotto il tetto, scartata con avviso sopra",
+      abs(_c94i_conta - 0.3) < 1e-9 and abs(_c94i_scarta - 0.2) < 1e-9
+      and any("riga oltre 50000 byte" in m for m in _logrec94i),
+      f"{_c94i_conta} {_c94i_scarta} {_logrec94i}")
+
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))
 (_r94f / gas.TOKEN_LOG_FILENAME).write_text(

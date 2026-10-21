@@ -1257,7 +1257,7 @@ class GasKernel:
                      "coda": b""}
             c["mtime"] = st.st_mtime_ns
             resto = b""        # byte dopo l'ultimo «\n» (riga non ancora finita)
-            lunga = False      # R-419-2: riga oltre 64 KB senza «\n»: si salta, non si accumula
+            lunga = False      # R-419-2: riga oltre _RIGA_MAX senza «\n»: si salta, non si accumula
             pendenti = 0       # byte letti dopo l'ultimo «\n» (anche se non tenuti)
             if st.st_size > c["offset"]:
                 # V-2 verifica esterna #234 (3° giro): lettura a blocchi, niente file
@@ -1281,6 +1281,8 @@ class GasKernel:
                                 resto = (resto + blocco)[-64:]  # solo per l'impronta di coda
                             continue
                         if lunga:  # la riga troppo lunga finisce al primo «\n»: scartata
+                            logging.warning("log dei token: riga oltre %d byte ignorata",
+                                            _RIGA_MAX)  # R-422-1: avviso anche qui
                             righe = blocco[blocco.find(b"\n") + 1:fine]
                         else:
                             righe = resto + blocco[:fine]
@@ -1310,7 +1312,7 @@ class GasKernel:
             # V-1 verifica esterna #234: l'ultima riga senza «\n» (log scritto a mano o
             # troncato) si conta lo stesso se è valida, senza spostare l'offset: così
             # quando arriva il suo «\n» viene letta una volta sola. R-414-2: niente
-            # seconda lettura, e oltre 64 KB non può essere una riga di _log_tokens.
+            # seconda lettura, e oltre _RIGA_MAX si ignora (R-422-3).
             if resto and not lunga and len(resto) <= _RIGA_MAX:
                 voce = _costo_riga(resto, avvisa=False)  # R-421-1: riletta a ogni chiamata
                 if voce is not None and voce[0] >= cutoff:
