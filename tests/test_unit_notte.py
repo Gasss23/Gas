@@ -4,6 +4,7 @@ Il kernel vero gira su root temporanee col client API finto (come la suite del
 kernel); Telegram è spento e il trasporto HTTP bloccato.
 """
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -1191,16 +1192,19 @@ def test_scadenza_firma_valori_non_validi(tmp_path, monkeypatch):
     notte._firma_notturna(_Rotto())  # mai eccezioni
 
 
-def test_firme_scadute_chiuse_e_negli_avvisi(monkeypatch, dirs):
+def test_firme_scadute_chiuse_e_negli_avvisi(monkeypatch, dirs, caplog):
     """C5: a fine giro le richieste di firma scadute vengono chiuse (restano per
-    audit) e il loro numero entra negli avvisi del riepilogo del mattino."""
+    audit) e il loro numero entra negli avvisi del riepilogo del mattino e, una
+    volta sola, in gas_debug.log (R-417-1)."""
     from modules.memory import MemoryStore, default_db_path
     root, fuori = dirs
     mem = MemoryStore(default_db_path(root))
     aid = mem.enqueue_approval("send_email", {"to": "a@example.com"}, timeout_secs=-1)
     viva = mem.enqueue_approval("send_email", {"to": "b@example.com"})
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
-    _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]}))
+    with caplog.at_level(logging.WARNING):
+        _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]}))
+    assert sum("firma scaduta/e" in r.getMessage() for r in caplog.records) == 1
     assert mem.get_approval(aid)["stato"] == "expired"
     assert mem.get_approval(viva)["stato"] == "pending"
     riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()

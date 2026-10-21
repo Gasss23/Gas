@@ -7222,8 +7222,31 @@ finally:
     gas._COSTI_CACHE.clear()
 check("T94i riga lunga a cavallo di blocchi: contata sotto il tetto, scartata con avviso sopra",
       abs(_c94i_conta - 0.3) < 1e-9 and abs(_c94i_scarta - 0.2) < 1e-9
-      and any("riga oltre 50000 byte" in m for m in _logrec94i),
+      and sum("riga oltre 50000 byte" in m for m in _logrec94i) == 1,  # R-423-1
       f"{_c94i_conta} {_c94i_scarta} {_logrec94i}")
+
+# T94j — V-1 bot/verifica #234 (5° giro): l'ultima riga senza «\n» si decodifica
+# una volta sola finché il file non cambia; quando arriva il suo «\n» conta una volta
+_k94j = kernel_tmp()
+_log94j = _k94j.root / gas.TOKEN_LOG_FILENAME
+_log94j.write_text(_riga94(1_000_000, 0) + _riga94(1_000_000, 0)[:-1], encoding="utf-8")
+_c94j1 = _k94j._daily_cost_usd()
+_costo_riga94j, _chiamate94j = gas._costo_riga, []
+def _conta94j(*a, **kw):
+    _chiamate94j.append(1)
+    return _costo_riga94j(*a, **kw)
+try:
+    gas._costo_riga = _conta94j
+    _c94j2 = _k94j._daily_cost_usd()
+    _n94j = len(_chiamate94j)
+    with open(_log94j, "a", encoding="utf-8") as _f94j:
+        _f94j.write("\n")
+    _c94j3 = _k94j._daily_cost_usd()
+finally:
+    gas._costo_riga = _costo_riga94j
+check("T94j riga finale senza «\\n» non riletta a file invariato; contata una volta col suo «\\n»",
+      abs(_c94j1 - 0.2) < 1e-9 and abs(_c94j2 - 0.2) < 1e-9 and _n94j == 0
+      and abs(_c94j3 - 0.2) < 1e-9, f"{_c94j1} {_c94j2} {_n94j} {_c94j3}")
 
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))

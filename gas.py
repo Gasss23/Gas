@@ -1259,7 +1259,11 @@ class GasKernel:
             resto = b""        # byte dopo l'ultimo «\n» (riga non ancora finita)
             lunga = False      # R-419-2: riga oltre _RIGA_MAX senza «\n»: si salta, non si accumula
             pendenti = 0       # byte letti dopo l'ultimo «\n» (anche se non tenuti)
-            if st.st_size > c["offset"]:
+            # V-1 bot/verifica #234 (5° giro): file uguale all'ultima chiamata (stessa
+            # dimensione e mtime) → la riga finale senza «\n» non si rilegge né decodifica
+            fin = c.get("fin")
+            invariato = fin is not None and fin[:2] == (st.st_size, st.st_mtime_ns)
+            if st.st_size > c["offset"] and not invariato:
                 # V-2 verifica esterna #234 (3° giro): lettura a blocchi, niente file
                 # intero in memoria alla prima lettura di un log grande.
                 with open(log_path, "rb") as f:
@@ -1305,18 +1309,23 @@ class GasKernel:
                         c["coda"] = (c["coda"] + resto + blocco[:fine + 1])[-64:]
                         resto, lunga = blocco[fine + 1:], False
                         pendenti = len(resto)
-            c["testa"] = testa
-            c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
-            _COSTI_CACHE[chiave] = c
-            totale = sum(v[1] for v in c["voci"])
             # V-1 verifica esterna #234: l'ultima riga senza «\n» (log scritto a mano o
             # troncato) si conta lo stesso se è valida, senza spostare l'offset: così
             # quando arriva il suo «\n» viene letta una volta sola. R-414-2: niente
             # seconda lettura, e oltre _RIGA_MAX si ignora (R-422-3).
-            if resto and not lunga and len(resto) <= _RIGA_MAX:
-                voce = _costo_riga(resto, avvisa=False)  # R-421-1: riletta a ogni chiamata
-                if voce is not None and voce[0] >= cutoff:
-                    totale += voce[1]
+            if invariato:
+                voce_fin = fin[2]
+            else:
+                voce_fin = None
+                if resto and not lunga and len(resto) <= _RIGA_MAX:
+                    voce_fin = _costo_riga(resto, avvisa=False)  # R-421-1: niente avviso
+                c["fin"] = (st.st_size, st.st_mtime_ns, voce_fin)
+            c["testa"] = testa
+            c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
+            _COSTI_CACHE[chiave] = c
+            totale = sum(v[1] for v in c["voci"])
+            if voce_fin is not None and voce_fin[0] >= cutoff:
+                totale += voce_fin[1]
             return totale
         except Exception as e:
             logging.warning("_daily_cost_usd fallita (%s) — budget non applicato", e)

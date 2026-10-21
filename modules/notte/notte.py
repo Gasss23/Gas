@@ -715,6 +715,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         if scadute:
             avvisi.append(f"{scadute} richiesta/e di firma scaduta/e senza risposta: "
                           f"chiuse, NON eseguite")
+            logging.warning("notte: %s", avvisi[-1])  # R-417-1: anche in gas_debug.log
         testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi)
         try:
             _scrivi_atomico(notte_dir / RIEPILOGO, testo)
