@@ -736,7 +736,7 @@ def test_riepilogo_telegram_troppo_lungo_manda_i_conteggi(monkeypatch, dirs):
     root, fuori = dirs
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
     inviati = _telegram_finto(monkeypatch)
-    monkeypatch.setattr(_tg, "TELEGRAM_MAX_CHARS", 230)  # ridotto ~195, completo ~278
+    monkeypatch.setattr(_tg, "TELEGRAM_MAX_CHARS", 330)  # ridotto ~295, completo ~375 (con lo stato del mattino)
     assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
     assert len(inviati) == 2
     testo = inviati[0][1]["text"]
@@ -1845,3 +1845,74 @@ compiti:
     assert [v.split(notte.NOTA_RIPRESA)[0] for v in visti] == ["breve", "medio", "lungo"]
     assert notte.NOTA_RIPRESA in visti[2]
     assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
+
+
+# ---------- R1: resoconto di spesa e stato, calcolato dal kernel ----------
+
+def _memoria_con_lead(root):
+    """DB vero: 1 lead attivo fresco, 1 attivo fermo da 10 giorni, 1 con data
+    illeggibile, 1 chiuso vecchio (non conta) e 1 firma in attesa."""
+    import sqlite3
+    from modules.memory import MemoryStore, default_db_path
+    mem = MemoryStore(default_db_path(root))
+    for chiave in ("fresco@x.it", "fermo@x.it", "rotto@x.it", "chiuso@x.it"):
+        mem.upsert_contatto(chiave, nome="NOMESEGRETO " + chiave)
+    with sqlite3.connect(str(default_db_path(root))) as con:
+        con.execute("UPDATE contatti SET aggiornato_il = '2020-01-01T00:00:00+00:00' "
+                    "WHERE chiave IN ('fermo@x.it', 'chiuso@x.it')")
+        con.execute("UPDATE contatti SET aggiornato_il = 'boh' WHERE chiave = 'rotto@x.it'")
+        con.execute("UPDATE contatti SET stato = 'chiuso' WHERE chiave = 'chiuso@x.it'")
+    mem.enqueue_approval("write_file", {"relative_path": "a.md", "content": "x"})
+    return mem
+
+
+def test_stato_mattino_conta_lead_fermi_e_firme(dirs, monkeypatch):
+    root, _ = dirs
+    mem = _memoria_con_lead(root)
+    monkeypatch.setenv("GAS_DAILY_TOKEN_BUDGET", "2")
+    k = SimpleNamespace(memory=mem, _daily_cost_usd=lambda: 0.4567)
+    st = notte.stato_mattino(k)
+    assert st == {"spesa": 0.4567, "tetto": 2.0, "lead_attivi": 3, "lead_fermi": 2,
+                  "firme_in_attesa": 1}
+    righe = notte.righe_stato_mattino(st)
+    assert righe == ["Spesa ultime 24 ore: $0.46 su un tetto di $2.00",
+                     "Lead attivi: 3 (fermi da 7+ giorni: 2)", "Firme in attesa: 1"]
+
+
+def test_stato_mattino_fail_safe(monkeypatch):
+    """§9: spesa che solleva, memoria rotta → voci «non lette», nessuna eccezione."""
+    def _boom(*a, **k):
+        raise RuntimeError("rotto")
+    k = SimpleNamespace(memory=SimpleNamespace(lista_contatti=_boom, conta_approvazioni=_boom),
+                        _daily_cost_usd=_boom)
+    st = notte.stato_mattino(k)
+    assert st["spesa"] is None and st["lead_attivi"] is None and st["firme_in_attesa"] is None
+    assert notte.righe_stato_mattino(st) == [
+        "Spesa ultime 24 ore: non letta", "Lead attivi: non letti", "Firme in attesa: non lette"]
+    assert notte.stato_mattino(SimpleNamespace())["lead_attivi"] is None  # niente memoria
+    # R-453-1: DB rotto → lista_contatti dà [] ma conta_approvazioni None: «non letti», mai 0
+    rotta = SimpleNamespace(lista_contatti=lambda *a: [], conta_approvazioni=lambda: None)
+    st2 = notte.stato_mattino(SimpleNamespace(memory=rotta))
+    assert st2["lead_attivi"] is None and st2["lead_fermi"] is None
+    spenta = SimpleNamespace(available=False, lista_contatti=lambda *a: [],
+                             conta_approvazioni=lambda: {"in_attesa": 0})
+    assert notte.stato_mattino(SimpleNamespace(memory=spenta))["lead_attivi"] is None
+    assert notte.righe_stato_mattino(None) == []
+
+
+def test_resoconto_nel_giro_e_su_telegram_senza_nomi(monkeypatch, dirs):
+    """Il resoconto finisce nel riepilogo e nel messaggio del mattino: solo numeri,
+    mai i nomi dei lead (dati personali, non vanno su Telegram)."""
+    root, fuori = dirs
+    _memoria_con_lead(root)
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+    assert _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]})) == 0
+    riepilogo = (root / ".gas_notte" / "ultimo_giro.md").read_text(encoding="utf-8")
+    assert "## Stato (calcolato dal kernel)" in riepilogo
+    assert "- Lead attivi: 3 (fermi da 7+ giorni: 2)" in riepilogo
+    assert "- Spesa ultime 24 ore: $" in riepilogo and "su un tetto di $1.00" in riepilogo
+    testo = inviati[0][1]["text"]
+    assert "Lead attivi: 3 (fermi da 7+ giorni: 2)" in testo and "Firme in attesa: 1" in testo
+    assert "NOMESEGRETO" not in testo and "@x.it" not in testo
+    assert "NOMESEGRETO" not in riepilogo
