@@ -308,8 +308,9 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
     if avvisi:
         righe += ["## Avvisi", ""] + [f"- {a}" for a in avvisi] + [""]
     for e in esiti:
+        ripreso = " — ripreso dopo un'interruzione" if e.get("ripreso") else ""  # R-406-3
         righe += [f"## {e['nome']} — {e['esito'].upper()} "
-                  f"({e['tool']} tool, {e.get('durata', 0)}s)", ""]
+                  f"({e['tool']} tool, {e.get('durata', 0)}s){ripreso}", ""]
         if e.get("negate") or e.get("in_attesa"):
             righe += [f"Azioni bloccate dal cancello o negate: {e.get('negate', 0)} · "
                       f"in attesa della tua firma su Telegram: {e.get('in_attesa', 0)}", ""]
@@ -538,25 +539,38 @@ def _scrivi_in_corso(notte_dir: Path, in_corso: Dict[str, Dict[str, Any]]) -> No
 
 
 def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str, Any]],
-                    avvisi: List[str]) -> List[Dict[str, Any]]:
+                    avvisi: List[str], a_mano: bool = False
+                    ) -> Tuple[List[Dict[str, Any]], int]:
     """R7: i compiti rimasti a metà vanno per primi, marcati `ripresa`. Oltre
     MAX_TENTATIVI avvii interrotti il compito si salta (avviso) e il suo conto si
-    azzera, così il giro dopo ci riprova da capo invece di saltarlo per sempre."""
+    azzera, così il giro dopo ci riprova da capo invece di saltarlo per sempre.
+    R-406-1: ritorna anche quanti compiti sono stati saltati (contano come ko per
+    l'exit code); `a_mano` (gas notte <nome>, /compito) = l'operatore lo chiede
+    esplicitamente: si rilancia lo stesso. R-406-2: in un giro completo le voci di
+    compiti che non sono più tra quelli attivi del catalogo si tolgono."""
+    nomi = {c["nome"] for c in compiti}
+    if not a_mano:
+        for vecchio in [n for n in in_corso if n not in nomi]:
+            del in_corso[vecchio]
     ripresi: List[Dict[str, Any]] = []
     altri: List[Dict[str, Any]] = []
+    saltati = 0
     for c in compiti:
         info = in_corso.get(c["nome"])
         if info is None:
             altri.append(c)
-        elif info["tentativi"] >= MAX_TENTATIVI:
+        elif info["tentativi"] >= MAX_TENTATIVI and not a_mano:
             avvisi.append(f"compito '{c['nome']}' interrotto {info['tentativi']} volte di "
                           "fila: saltato in questo giro, controlla gas_debug.log")
             del in_corso[c["nome"]]
+            saltati += 1
         else:
+            extra = (f" (rilanciato a mano dopo {info['tentativi']} interruzioni)"
+                     if info["tentativi"] >= MAX_TENTATIVI else "")
             avvisi.append(f"compito '{c['nome']}' ripreso: il giro precedente si era "
-                          "interrotto a metà")
+                          f"interrotto a metà{extra}")
             ripresi.append({**c, "ripresa": True})
-    return ripresi + altri
+    return ripresi + altri, saltati
 
 
 def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None,
@@ -602,7 +616,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         catalogo_ko = bool(avvisi) and not compiti  # solo il catalogo decide l'exit code
         in_corso = _leggi_in_corso(notte_dir)  # R7: ripresa dei compiti rimasti a metà
         letto = dict(in_corso)
-        compiti = _ordina_riprese(compiti, in_corso, avvisi)
+        compiti, saltati_r7 = _ordina_riprese(compiti, in_corso, avvisi,
+                                              a_mano=solo is not None)
         if in_corso != letto:
             _scrivi_in_corso(notte_dir, in_corso)  # conto azzerato dei compiti saltati
         if _env_budget() <= 0.0:
@@ -659,6 +674,8 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         print(testo)
         # inviato a lock rilasciato (V-2 #169)
         da_notificare = (inizio, esiti, avvisi, None, _lezioni_in_attesa(kernel))
+        if saltati_r7:  # R-406-1: un salto per crash ripetuti è un ko, anche se era l'unico
+            return 1
         if not compiti:
             return 1 if catalogo_ko else 0
         if tempo_finito:

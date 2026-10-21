@@ -1553,8 +1553,9 @@ def test_r7_oltre_max_tentativi_saltato_e_azzerato(dirs):
     (nd / notte.IN_CORSO).write_text(json.dumps(
         {"lungo": {"tentativi": notte.MAX_TENTATIVI, "inizio": "x"}}))
     visti = []
+    # R-406-1: il salto conta come ko (exit 1)
     assert esegui_notte(str(root), catalogo=cat,
-                        kernel_factory=lambda r: _KCrash(visti, crash=False)) == 0
+                        kernel_factory=lambda r: _KCrash(visti, crash=False)) == 1
     assert visti == ["breve"]
     assert "interrotto 3 volte" in (nd / "ultimo_giro.md").read_text()
     assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
@@ -1608,4 +1609,41 @@ compiti:
     assert _giro(monkeypatch, root, cat, script) == 0
     storia = json.loads((nd / "storia_conta.json").read_text())
     assert sum(1 for m in storia if m.get("role") == "tool") == 2
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
+
+
+def test_r406_solo_a_mano_rilancia_oltre_il_tetto(dirs):
+    """R-406-1: chiesto a mano (gas notte <nome>, /compito) si rilancia lo stesso."""
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps(
+        {"lungo": {"tentativi": 3, "inizio": "x"}, "altro": {"tentativi": 1, "inizio": "x"}}))
+    visti = []
+    assert esegui_notte(str(root), catalogo=cat, solo="lungo",
+                        kernel_factory=lambda r: _KCrash(visti, crash=False)) == 0
+    assert len(visti) == 1 and notte.NOTA_RIPRESA in visti[0]
+    testo = (nd / "ultimo_giro.md").read_text()
+    assert "rilanciato a mano dopo 3 interruzioni" in testo and "ripreso dopo un'interruzione" in testo
+    # con solo le voci degli altri compiti restano
+    assert set(json.loads((nd / notte.IN_CORSO).read_text())) == {"altro"}
+
+
+def test_r406_unico_compito_saltato_exit_1(dirs):
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lungo\n    prompt: lungo\n")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 3, "inizio": "x"}}))
+    assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([])) == 1
+
+
+def test_r406_voci_fuori_catalogo_tolte_nel_giro_completo(dirs):
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"fantasma": {"tentativi": 1, "inizio": "x"}}))
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
     assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
