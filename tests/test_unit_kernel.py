@@ -6997,8 +6997,12 @@ try:
     with _TgFinto():
         _k77r.memory.resolve_approval(_id77r, "approved", telegram_user_id=4242)
         _r77r = _k77r.applica_firma(_id77r)
-    check("T77ac eccezione dopo il reclamo → stato 'incerta' (V-2 bot #236)",
-          _r77r.get("stato") == "incerta" and _r77r["eseguita"] is False, str(_r77r))
+    _msg77r = _tgbot_c4b.componi_esito_firma("ok", _id77r, True, "", _r77r)
+    check("T77ac eccezione dopo il reclamo → stato 'incerta', esito registrato e nel messaggio (V-2/V-3 bot #236)",
+          _r77r.get("stato") == "incerta" and _r77r["eseguita"] is False
+          and "errore interno" in _msg77r
+          and any("esito incerto" in (e or "") for _, e in _esec77(_k77r)),
+          f"{_r77r} | {_msg77r[:160]} | {_esec77(_k77r)}")
     _k77y = kernel_tmp()
     _k77y.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
     _k77y._run_command_meta = {"exit": 0, "stdout_n": 3, "stderr_n": 0}
@@ -7573,6 +7577,28 @@ _i97h = next((i for i, t in enumerate(_fin97h) if "id-97h" in t), -1)
 check("T97h bot a metà turno della CLI: unione rimandata alla fine, notifica dopo la risposta",
       _ok97h_meta and _i97h > _fin97h.index("risposta finale h") and "6" in _fin97h,
       f"{_ok97h_meta} {_fin97h[-8:]}")
+# T97i — R-435-1: turno finito SENZA risposta finale con unione rimandata: il
+# salvataggio di fine turno scrive comunque (i nostri tool + il blocco dell'altro)
+_cli97i = GasKernel(root_dir=str(_r97f))
+_bot97i = GasKernel(root_dir=str(_r97f))
+_cli97i._add_to_history("user", content="giro i")
+_cli97i._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tci1", function=SimpleNamespace(name="calcola", arguments='{"expr": "1"}'))])
+_cli97i._add_to_history("tool", content="uno", tool_call_id="tci1", name="calcola")
+_cli97i._save_history()
+_bot97i.history = json.loads((_r97f / ".gas_history.json").read_text())
+_bot97i._storia_sync = _bot97i._sync_storia()
+_bot97i._storia_esito_firma("id-97i", "run_command", '{"command": "echo"}', "ok", "fatto", True)
+_cli97i._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tci2", function=SimpleNamespace(name="calcola", arguments='{"expr": "2"}'))])
+_cli97i._add_to_history("tool", content="due-i", tool_call_id="tci2", name="calcola")
+_cli97i._save_history()                      # a metà turno: rimandata
+_rim97i = _cli97i._storia_rimandata
+_cli97i._save_history(fine_turno=True)       # come il finally di run_turn
+_f97i = [str(m.get("content")) for m in json.loads((_r97f / ".gas_history.json").read_text())]
+check("T97i turno senza risposta finale: a fine turno su disco i nostri tool e il blocco dell'altro",
+      _rim97i and "due-i" in _f97i and any("id-97i" in t for t in _f97i)
+      and _cli97i._storia_rimandata is False, f"{_rim97i} {_f97i[-6:]}")
 # T97g — V-3 bot #236: lock della storia tenuto da un altro (processo fermo) → dopo
 # LOCK_STORIA_SEC si salva lo stesso, senza lock, con un avviso
 import fcntl as _fcntl97

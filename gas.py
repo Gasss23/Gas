@@ -950,6 +950,7 @@ class GasKernel:
         # scritto (percorso, impronta, lista, quanti messaggi): serve a non cancellare
         # i messaggi scritti nel frattempo da un altro processo sulla stessa root.
         self._storia_sync: Optional[Tuple[str, Any, int, str]] = None
+        self._storia_rimandata = False  # R-435-1: unione rimandata a fine turno
         self.history: List[Dict[str, Any]] = (
             self._carica_storia_bloccata() if carica_storia else [])
         if carica_storia and self._storia_sync is not None:  # base = lista appena letta
@@ -1137,7 +1138,7 @@ class GasKernel:
         return ultimo is None or (ultimo.get("role") == "assistant"
                                   and not ultimo.get("tool_calls"))
 
-    def _unisci_storia_altrui(self) -> bool:
+    def _unisci_storia_altrui(self, fine_turno: bool = False) -> bool:
         """R-c4b3-4: se un altro processo ha riscritto il file dopo la nostra ultima
         lettura/scrittura (la «base»), i suoi messaggi non si cancellano. Si uniscono
         solo blocchi che cominciano un turno (role user), così nessuna sequenza
@@ -1174,12 +1175,13 @@ class GasKernel:
             unita = altrui + nuovi               # ordine di salvataggio: i suoi prima
             base = (len(altrui), self._hash_messaggi(altrui))
         elif suoi is not None and self._inizia_turno(suoi):
-            if not self._turno_chiuso():
+            if not self._turno_chiuso() and not fine_turno:
                 # R-434-1: a metà turno non si unisce né si scrive: il modello non deve
                 # vedere i messaggi dell'altro prima della propria risposta. L'unione
                 # avviene al salvataggio finale del turno (base invariata).
                 logging.warning("Storia scritta anche da un altro processo: unione "
                                 "rimandata alla fine del turno")
+                self._storia_rimandata = True
                 return False
             unita = self.history + suoi          # turno chiuso, o storia compressa
             base = (n_base, h_base)
@@ -1278,15 +1280,18 @@ class GasKernel:
             self._storia_sync = self._sync_storia_di(self._impronta_storia())
             self._sblocca_storia(lock_f)
 
-    def _save_history(self):
+    def _save_history(self, fine_turno: bool = False):
+        """fine_turno=True (finally di run_turn, R-435-1): il turno è finito anche se
+        senza risposta finale (tetto di iterazioni, errore): l'unione non si rimanda."""
         lock_f = self._blocca_storia()
         try:
-            if not self._unisci_storia_altrui():
+            if not self._unisci_storia_altrui(fine_turno):
                 return  # R-434-1: unione rimandata alla fine del turno
             # R-430-1: l'impronta avanza solo se la scrittura è riuscita davvero,
             # altrimenti i messaggi non scritti si perderebbero alla prossima unione
             if self._salva_storia_su_file():
                 self._storia_sync = self._sync_storia()
+                self._storia_rimandata = False
         except Exception as e:
             logging.warning("Salvataggio della storia non riuscito: %s", e)
         finally:
@@ -3339,6 +3344,11 @@ class GasKernel:
             res["esito"] = "errore interno: azione non eseguita o esito ignoto (vedi gas_debug.log)"
             if reclamata:  # V-2 bot #236: dopo il reclamo non si sa se è partita
                 res["eseguita"], res["stato"] = False, "incerta"
+                try:  # V-3 bot #236 (3° giro): l'esito resta registrato
+                    self.memory.registra_esito_esecuzione(
+                        approval_id, "[KO] errore interno dopo il reclamo: esito incerto")
+                except Exception as e2:
+                    logging.warning("[GATE-C4B] esito id=%s non registrato: %s", approval_id, e2)
             return res
 
     def _memoria_backup_auto(self) -> None:
@@ -4556,6 +4566,8 @@ class GasKernel:
             yield {"type": "error",
                    "content": f"Pipeline esausta: nessun cervello ha risposto. {_dettaglio}."}
         finally:
+            if self._storia_rimandata:  # R-435-1: turno finito senza risposta finale
+                self._save_history(fine_turno=True)
             _chiudi_turno()
             self._invia_avvisi_lead(_avvisi_lead, _lead_nuovi)
             self._invia_avvisi_file(self._file_delicati_turno)
