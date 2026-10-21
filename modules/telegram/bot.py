@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 import os
 import re
 import subprocess
@@ -230,6 +231,36 @@ def bottoni_firma(approval_id: str) -> Dict[str, Any]:
     ]]}
 
 
+# R-c4b1-3: invio a tutti i destinatari IN PARALLELO, così il turno che chiede una
+# firma resta fermo al massimo ~15 s in tutto (non 15 s per destinatario).
+INVIO_TIMEOUT_SECS = 15
+_INVIO_MAX_THREAD = 8
+
+
+def _invia_a_tutti(base_url: str, ids: Set[int], payload: Dict[str, Any],
+                   etichetta: str) -> int:
+    """sendMessage di `payload` (+ chat_id) a ogni ID, in parallelo. Ritorna quanti
+    l'hanno ricevuto (risposta ok=True). Un destinatario che fallisce o solleva
+    conta come non consegnato; il dettaglio va solo nel log (niente token)."""
+    def _uno(chat_id: int) -> bool:
+        try:
+            resp = _tg_post(base_url, "sendMessage", {"chat_id": chat_id, **payload},
+                            timeout=INVIO_TIMEOUT_SECS)
+            return isinstance(resp, dict) and resp.get("ok") is True
+        except Exception as e:
+            log.warning("%s: errore di invio a chat_id %d: %s", etichetta, chat_id,
+                        type(e).__name__)
+            return False
+
+    ordinati = sorted(ids)
+    with ThreadPoolExecutor(max_workers=max(1, min(len(ordinati), _INVIO_MAX_THREAD))) as ex:
+        esiti = list(ex.map(_uno, ordinati))
+    for chat_id, ok in zip(ordinati, esiti):
+        if not ok:
+            log.warning("%s: invio a chat_id %d fallito", etichetta, chat_id)
+    return sum(esiti)
+
+
 def invia_read_back(text: str, approval_id: Optional[str] = None) -> Tuple[bool, str]:
     """Invia `text` (senza parse_mode, senza anteprima link) con i bottoni di firma
     di `approval_id` a ogni ID in TELEGRAM_ALLOWED_IDS. Senza un ID valido niente
@@ -249,19 +280,13 @@ def invia_read_back(text: str, approval_id: Optional[str] = None) -> Tuple[bool,
         if not isinstance(approval_id, str) or not _CALLBACK_RE.fullmatch(f"ok:{approval_id}"):
             return False, "ID approvazione non valido"
         base_url = f"{_TELEGRAM_API}{token}"
-        consegnati = 0
-        for chat_id in sorted(allowed):
-            resp = _tg_post(base_url, "sendMessage",
-                            {"chat_id": chat_id, "text": text,
-                             # R-c4b1-2: niente anteprima: un URL di terzi negli args
-                             # non deve diventare una card nel messaggio di firma.
-                             "link_preview_options": {"is_disabled": True},
-                             "reply_markup": bottoni_firma(approval_id)},
-                            timeout=15)
-            if isinstance(resp, dict) and resp.get("ok") is True:
-                consegnati += 1
-            else:
-                log.warning("read-back: invio a chat_id %d fallito", chat_id)
+        consegnati = _invia_a_tutti(base_url, allowed,
+                                    {"text": text,
+                                     # R-c4b1-2: niente anteprima: un URL di terzi negli
+                                     # args non deve diventare una card nel messaggio.
+                                     "link_preview_options": {"is_disabled": True},
+                                     "reply_markup": bottoni_firma(approval_id)},
+                                    "read-back")
         if consegnati == 0:
             return False, "invio fallito verso tutti i destinatari"
         return True, ""
@@ -289,16 +314,10 @@ def invia_notifica(text: str) -> Tuple[bool, str]:
         if lunghezza_telegram(text) > TELEGRAM_MAX_CHARS:
             return False, "testo oltre il limite Telegram"
         base_url = f"{_TELEGRAM_API}{token}"
-        consegnati = 0
-        for chat_id in sorted(allowed):
-            resp = _tg_post(base_url, "sendMessage",
-                            {"chat_id": chat_id, "text": text,
-                             "link_preview_options": {"is_disabled": True}},
-                            timeout=15)
-            if isinstance(resp, dict) and resp.get("ok") is True:
-                consegnati += 1
-            else:
-                log.warning("notifica: invio a chat_id %d fallito", chat_id)
+        consegnati = _invia_a_tutti(base_url, allowed,
+                                    {"text": text,
+                                     "link_preview_options": {"is_disabled": True}},
+                                    "notifica")
         if consegnati == 0:
             return False, "invio fallito verso tutti i destinatari"
         return True, ""

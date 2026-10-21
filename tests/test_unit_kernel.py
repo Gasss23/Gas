@@ -6950,6 +6950,30 @@ with _TgFinto() as _tg77o:
 check("T77o read-back senza ID valido (anche UUID + \\n finale) → False, nessun invio",
       _r77o == [False] * 6 and _tg77o.chiamate == [], str(_r77o))
 
+# T77o2 — R-c4b1-3: invio in parallelo, turno fermo ~1 timeout in tutto (non × N);
+# un destinatario che fallisce o solleva non blocca gli altri.
+class _TgLento(_TgFinto):
+    def __call__(self, base_url, method, payload=None, timeout=70):
+        self.chiamate.append((method, payload))
+        _time.sleep(0.3)
+        cid = (payload or {}).get("chat_id")
+        if cid == 2:
+            raise RuntimeError("trasporto finto: solleva")
+        return {"ok": cid != 3, "result": {}}
+with _TgLento(ids="1,2,3,4,5,6") as _tg77o2:
+    _t77o2 = _time.monotonic()
+    _r77o2 = _tgbot_c4b.invia_read_back("x", approval_id="07e094fd-6b43-40bd-b78e-efe0a19262d8")
+    _n77o2 = _tgbot_c4b.invia_notifica("y")
+    _d77o2 = _time.monotonic() - _t77o2
+check("T77o2 R-c4b1-3 read-back e notifica in parallelo (6 destinatari da 0.3s < 1.2s)",
+      _r77o2 == (True, "") and _n77o2 == (True, "") and _d77o2 < 1.2
+      and sorted(c[1]["chat_id"] for c in _tg77o2.chiamate) == sorted([1, 2, 3, 4, 5, 6] * 2),
+      f"{_r77o2} {_n77o2} {_d77o2:.2f}s")
+with _TgLento(ids="2,3") as _tg77o3:
+    _r77o3 = _tgbot_c4b.invia_read_back("x", approval_id="07e094fd-6b43-40bd-b78e-efe0a19262d8")
+check("T77o2 tutti i destinatari falliti (uno solleva) → False, fail-closed",
+      _r77o3 == (False, "invio fallito verso tutti i destinatari"), str(_r77o3))
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(
