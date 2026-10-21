@@ -877,7 +877,13 @@ def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
         if not isinstance(r, dict) or r.get("event", "call") == "fallthrough":
             return None
         p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(r.get("provider", "?"), (0.0, 0.0))
-        costo = int(r.get("in", 0)) * p_in / 1_000_000 + int(r.get("out", 0)) * p_out / 1_000_000
+        costo = 0.0
+        # R-409-1: «in» e «out» contati ognuno per conto suo, come la lettura di prima
+        for chiave, prezzo in (("in", p_in), ("out", p_out)):
+            try:
+                costo += int(r.get(chiave, 0)) * prezzo / 1_000_000
+            except (TypeError, ValueError):
+                pass
         return (str(r.get("ts", "")), costo)
     except Exception:
         return None
@@ -1202,10 +1208,18 @@ class GasKernel:
             with open(log_path, "rb") as f:
                 testa = f.read(64)  # impronta: un file riscritto da capo cambia l'inizio
             c = _COSTI_CACHE.get(chiave)
+            coda = b""
+            if c is not None and 0 < c["offset"] <= st.st_size:
+                # R-409-2: impronta anche dei byte subito prima del punto letto: un file
+                # riscritto sul posto, più lungo e con lo stesso inizio, si rilegge.
+                with open(log_path, "rb") as f:
+                    f.seek(max(0, c["offset"] - 64))
+                    coda = f.read(min(64, c["offset"]))
             if (c is None or c["id"] != (st.st_dev, st.st_ino) or st.st_size < c["offset"]
-                    or c["testa"] != testa[:len(c["testa"])]
+                    or c["testa"] != testa[:len(c["testa"])] or coda != c["coda"]
                     or (st.st_size == c["offset"] and st.st_mtime_ns != c["mtime"])):
-                c = {"id": (st.st_dev, st.st_ino), "offset": 0, "voci": [], "testa": testa}
+                c = {"id": (st.st_dev, st.st_ino), "offset": 0, "voci": [], "testa": testa,
+                     "coda": b""}
             c["mtime"] = st.st_mtime_ns
             if st.st_size > c["offset"]:
                 with open(log_path, "rb") as f:
@@ -1215,9 +1229,10 @@ class GasKernel:
                 if fine >= 0:
                     for raw in nuovo[:fine].split(b"\n"):
                         voce = _costo_riga(raw)
-                        if voce is not None:
+                        if voce is not None and voce[0] >= cutoff:  # R-409-3: vecchie scartate subito
                             c["voci"].append(voce)
                     c["offset"] += fine + 1
+                    c["coda"] = (c["coda"] + nuovo[:fine + 1])[-64:]
             c["testa"] = testa
             c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
             _COSTI_CACHE[chiave] = c

@@ -236,10 +236,13 @@ def _rifletti_compito(kernel: Any, nome: str) -> Dict[str, Any]:
 
 
 def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
-                    max_sec: float = MAX_SEC_COMPITO_DEFAULT) -> Dict[str, Any]:
+                    max_sec: float = MAX_SEC_COMPITO_DEFAULT,
+                    al_termine: Optional[Callable[[], None]] = None) -> Dict[str, Any]:
     """Esegue UN compito su un kernel nuovo, con cronologia vuota e propria.
     Oltre max_sec (controllo tra un evento e l'altro) il turno viene chiuso ed
-    esito='ko'. Mai eccezioni: un errore diventa esito 'ko'."""
+    esito='ko'. Mai eccezioni: un errore diventa esito 'ko'. V-1 bot #234:
+    `al_termine` si chiama appena il turno è chiuso, PRIMA della riflessione e del
+    diario, così un crash in quel momento non fa riprendere un compito già finito."""
     nome = compito["nome"]
     esito: Dict[str, Any] = {"nome": nome, "esito": "ko", "tool": 0,
                              "risposta": "", "errore": "", "negate": 0, "in_attesa": 0}
@@ -285,6 +288,11 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
             except Exception as e:
                 logging.warning("notte: chiusura turno %s: %s", nome, e)
     esito["durata"] = round(time.monotonic() - t0, 1)
+    if al_termine is not None:
+        try:
+            al_termine()
+        except Exception as e:
+            logging.warning("notte: fine del compito %s non registrata: %s", nome, e)
     if (esito["esito"] == "ok" and not scaduto and time.monotonic() - t0 < max_sec
             and riflessione_auto_attiva() and getattr(kernel, "history", None)):
         esito["riflessione"] = _rifletti_compito(kernel, nome)
@@ -524,7 +532,9 @@ def _leggi_in_corso(notte_dir: Path) -> Dict[str, Dict[str, Any]]:
     pulito: Dict[str, Dict[str, Any]] = {}
     for nome, v in dati.items():
         t = v.get("tentativi") if isinstance(v, dict) else None
-        if isinstance(nome, str) and _NOME_RE.fullmatch(nome) and isinstance(t, int) and t > 0:
+        # V-4 verifica esterna #234: niente bool (True è un int) né numeri assurdi
+        if (isinstance(nome, str) and _NOME_RE.fullmatch(nome) and type(t) is int
+                and 0 < t <= 1000):
             pulito[nome] = {"tentativi": t, "inizio": str(v.get("inizio", ""))[:40]}
     return pulito
 
@@ -660,12 +670,16 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             prima = in_corso.get(c["nome"], {}).get("tentativi", 0)
             in_corso[c["nome"]] = {"tentativi": prima + 1, "inizio": _ora_locale()}
             _scrivi_in_corso(notte_dir, in_corso)
-            esito_c = _esegui_compito(kernel, c, notte_dir, min(max_compito, resta))
+            def _finito(nome: str = c["nome"]) -> None:
+                in_corso.pop(nome, None)  # finito (anche ko): non è un crash
+                _scrivi_in_corso(notte_dir, in_corso)
+            esito_c = _esegui_compito(kernel, c, notte_dir, min(max_compito, resta),
+                                      al_termine=_finito)
             if c.get("ripresa"):
                 esito_c["ripreso"] = True
             esiti.append(esito_c)
-            in_corso.pop(c["nome"], None)  # finito (anche ko): non è un crash
-            _scrivi_in_corso(notte_dir, in_corso)
+            if c["nome"] in in_corso:  # rete di sicurezza: al_termine non è stato chiamato
+                _finito()
         scadute = _chiudi_firme_scadute(root)
         if scadute:
             avvisi.append(f"{scadute} richiesta/e di firma scaduta/e senza risposta: "

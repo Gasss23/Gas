@@ -7100,6 +7100,20 @@ check("T94b log riscritto → riletto da capo; log cancellato → 0.0",
       abs(_c94e - 0.1) < 1e-9 and _c94f == 0.0 and str(_log94) not in gas._COSTI_CACHE,
       f"{_c94e} {_c94f}")
 
+# T94c — R-409-1/2: «out» non intero conta comunque «in»; file riscritto sul posto
+# più lungo e con lo stesso inizio → riletto da capo (prima sottostimava)
+_k94c = kernel_tmp()
+_log94c = _k94c.root / gas.TOKEN_LOG_FILENAME
+_r94c = json.dumps({"ts": _ora94, "provider": "gemini-flash-lite", "model": "x",
+                    "in": 1_000_000, "out": "abc", "event": "call"}) + "\n"
+_log94c.write_text(_r94c, encoding="utf-8")
+_c94g = _k94c._daily_cost_usd()                                  # 0.1 (solo «in»)
+_log94c.write_text(_riga94(1_000_000, 0) + _riga94(0, 500_000), encoding="utf-8")
+_st94 = _log94c.stat()
+_c94h = _k94c._daily_cost_usd()                                  # 0.1 + 0.2
+check("T94c R-409-1/2 «in» contato con «out» rotto; riscritto più lungo con lo stesso inizio → 0.3",
+      abs(_c94g - 0.1) < 1e-9 and abs(_c94h - 0.3) < 1e-9, f"{_c94g} {_c94h}")
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(

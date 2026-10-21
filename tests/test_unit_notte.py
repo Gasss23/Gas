@@ -1583,7 +1583,9 @@ def test_r7_ko_e_tempo_scaduto_non_sono_crash(dirs):
 
 
 @pytest.mark.parametrize("contenuto", ["{rotto", "[1,2]", '{"../x": {"tentativi": 1}}',
-                                       '{"a": {"tentativi": "1"}}', '{"a": {"tentativi": 0}}'])
+                                       '{"a": {"tentativi": "1"}}', '{"a": {"tentativi": 0}}',
+                                       '{"a": {"tentativi": true}}',  # V-4 verifica #234
+                                       '{"a": {"tentativi": 1000000000000000000000000000000}}'])
 def test_r7_registro_rovinato_niente_ripresa(dirs, contenuto):
     root, fuori = dirs
     nd = root / ".gas_notte"
@@ -1660,3 +1662,27 @@ def test_r407_catalogo_assente_non_cancella_il_registro(dirs):
     assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
                         kernel_factory=lambda r: None) == 1
     assert json.loads((nd / notte.IN_CORSO).read_text())["lungo"]["tentativi"] == 2
+
+
+def test_v1_bot234_registro_tolto_prima_della_riflessione(monkeypatch, dirs):
+    """V-1 bot #234: il compito esce dal registro appena il turno finisce; un crash
+    durante la riflessione automatica non lo fa riprendere al giro dopo."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: breve\n    prompt: breve\n")
+    monkeypatch.setenv("GAS_RIFLESSIONE_AUTO", "1")
+    visto = {}
+
+    def _rifletti_crash(kernel, nome):
+        visto["registro"] = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
+        raise KeyboardInterrupt("crash durante la riflessione")
+    monkeypatch.setattr(notte, "_rifletti_compito", _rifletti_crash)
+
+    class _KConStoria(_KCrash):
+        def run_turn(self, prompt):
+            self.history.append({"role": "user", "content": prompt})
+            yield from super().run_turn(prompt)
+    with pytest.raises(KeyboardInterrupt):
+        esegui_notte(str(root), catalogo=cat,
+                     kernel_factory=lambda r: _KConStoria([], crash=False))
+    assert visto["registro"] == {}
+    assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
