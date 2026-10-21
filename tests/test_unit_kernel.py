@@ -7168,17 +7168,25 @@ check("T95 R-fts-1 query FTS: al massimo 12 parole distinte, ognuna max 40 carat
       and _k95.count('"*') == 12 and _k95.startswith('"cane"* OR "gatto"* OR "' + "z" * 40 + '"*'),
       _q95[:80] + " | " + _k95[:80])
 
-# T94e2 — V-1 bot #234 / R-414-1: un ts nel futuro (orologio tornato indietro) si
-# conta ADESSO, non si scarta (la spesa resta nel tetto e scade dopo 24 ore)
-_fut94 = gas._costo_riga(json.dumps({"ts": "2999-01-01T00:00:00", "provider": "gemini-flash-lite",
-                                     "in": 1_000_000, "out": 0}).encode())
+# T94e2 — V-1 bot #234 / R-414-1 / R-420-1: ts nel futuro entro 7 giorni tenuto
+# COM'È (stabile in ogni processo, scade a ts+24h); oltre 7 giorni scartato
 _due_ore94 = (datetime.now(timezone.utc) + _td(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
 _fut94b = gas._costo_riga(json.dumps({"ts": _due_ore94, "provider": "gemini-flash-lite",
                                       "in": 1_000_000, "out": 0}).encode())
-check("T94e2 V-1 bot #234 ts futuro → contato con l'ora attuale (mai scartato, mai per sempre)",
-      _fut94 is not None and _fut94b is not None
-      and _fut94[0] <= datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-      and abs(_fut94[1] - 0.1) < 1e-9 and _fut94b[0] < _due_ore94, f"{_fut94} {_fut94b}")
+_fut94 = gas._costo_riga(json.dumps({"ts": "2999-01-01T00:00:00", "provider": "gemini-flash-lite",
+                                     "in": 1_000_000, "out": 0}).encode())
+# a cache vuota (processo nuovo) il risultato è lo stesso
+_k94e = kernel_tmp()
+(_k94e.root / gas.TOKEN_LOG_FILENAME).write_text(json.dumps(
+    {"ts": _due_ore94, "provider": "gemini-flash-lite", "in": 1_000_000, "out": 0}) + "\n",
+    encoding="utf-8")
+_c94e1 = _k94e._daily_cost_usd()
+gas._COSTI_CACHE.clear()
+_c94e2 = _k94e._daily_cost_usd()
+check("T94e2 ts futuro: entro 7 giorni tenuto com'è (anche a cache vuota), oltre scartato",
+      _fut94b is not None and _fut94b[0] == _due_ore94 and abs(_fut94b[1] - 0.1) < 1e-9
+      and _fut94 is None and abs(_c94e1 - 0.1) < 1e-9 and abs(_c94e2 - 0.1) < 1e-9,
+      f"{_fut94b} {_fut94} {_c94e1} {_c94e2}")
 
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))

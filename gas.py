@@ -865,26 +865,29 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
 # già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
 _COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
 _TS_RAPIDO_RE = re.compile(rb'"ts"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"')
-_COSTI_BLOCCO = 1 << 20
-_RIGA_MAX = 65536  # una riga di _log_tokens è ben più corta: oltre è spazzatura (R-419-2)  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
+# V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB (R-420-3)
+_COSTI_BLOCCO = 1 << 20  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
+_RIGA_MAX = 65536  # una riga di _log_tokens è ben più corta: oltre è spazzatura (R-419-2)
 _TS_LOG_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")  # _log_tokens
 
 
 def _ts_log_valido(ts: Any) -> Optional[str]:
     """R-413-1: ts del log dei token accettato solo se è nel formato di _log_tokens
-    (cifre ASCII) e una data vera; altrimenti None (riga ignorata). V-1 bot #234
-    (chiude anche R-414-1): un ts nel FUTURO (oltre 1 ora, es. orologio tornato
-    indietro) non si scarta ma si conta ADESSO: la spesa non esce dal tetto e,
-    dopo 24 ore, la voce scade come le altre (mai un blocco per sempre)."""
+    (cifre ASCII) e una data vera; altrimenti None (riga ignorata). V-1 bot #234 /
+    R-414-1 / R-420-1: un ts nel futuro fino a 7 giorni (orologio tornato indietro)
+    si tiene COM'È: conta nel tetto e scade da solo a ts+24h, uguale in ogni processo
+    (niente «adesso» ricalcolato a ogni avvio); oltre 7 giorni è un log rovinato o
+    scritto a mano: riga scartata, con un avviso nella scatola nera."""
     if not isinstance(ts, str) or not _TS_LOG_RE.fullmatch(ts):
         return None
     try:
         quando = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
     except ValueError:
         return None
-    adesso = datetime.now(timezone.utc)
-    if quando > adesso + timedelta(hours=1):
-        return adesso.strftime("%Y-%m-%dT%H:%M:%S")
+    if quando > datetime.now(timezone.utc) + timedelta(days=7):
+        logging.warning("log dei token: riga con data %s oltre 7 giorni nel futuro, "
+                        "ignorata", ts)
+        return None
     return ts
 
 
@@ -1279,6 +1282,8 @@ class GasKernel:
                         else:
                             righe = resto + blocco[:fine]
                         for raw in righe.split(b"\n") if righe else ():
+                            if len(raw) > _RIGA_MAX:  # R-420-2: stesso tetto ovunque
+                                continue
                             # uscita rapida: riga con UN solo «"ts"», senza escape (R-419-3),
                             # più vecchia delle 24 ore → non conta, inutile decodificarla
                             m = _TS_RAPIDO_RE.search(raw)

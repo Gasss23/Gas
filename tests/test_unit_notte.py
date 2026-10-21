@@ -1781,3 +1781,14 @@ compiti:
     assert girati == [0, 1, 1, 1, 1, 1, 1, 1], girati
     reg = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
     assert "lungo" in reg
+
+
+def test_r420_sospetto_va_in_coda_dopo_i_ripresi():
+    """R-420-4: il compito sospetto (tentativi 0) va in fondo, dopo i mai interrotti
+    e dopo i ripresi; non è marcato come ripresa."""
+    compiti = [{"nome": n, "prompt": n} for n in ("lungo", "breve", "medio")]
+    in_corso = {"lungo": {"tentativi": 0, "inizio": "x", "sospetto": True},
+                "medio": {"tentativi": 1, "inizio": "x"}}
+    ordine, saltati = notte._ordina_riprese(compiti, in_corso, [])
+    assert [c["nome"] for c in ordine] == ["breve", "medio", "lungo"] and saltati == 0
+    assert not ordine[2].get("ripresa") and ordine[1].get("ripresa")
