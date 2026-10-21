@@ -513,9 +513,13 @@ _ESTENSIONI_DELICATE: tuple[str, ...] = (
 )
 # Estensioni INTERNE (non finali) che tradiscono un file eseguibile mascherato:
 # «a.sh.txt», «x.py.md».
-_ESTENSIONI_INTERNE_DELICATE: frozenset[str] = frozenset(
-    {e.lstrip(".") for e in _ESTENSIONI_DELICATE}
-    | {"sh", "zsh", "bash", "command", "py", "pyw", "pth"})
+# V-1 bot #231 / V-5 verifica esterna #231: solo tipi ESEGUIBILI (non le estensioni
+# corte come c, h, r, go, db, app, url, key: «verbale.c.rossi.md» è un documento).
+_ESTENSIONI_INTERNE_DELICATE: frozenset[str] = frozenset({
+    "sh", "zsh", "bash", "fish", "command", "terminal", "py", "pyw", "pth", "js", "mjs",
+    "cjs", "ts", "rb", "pl", "php", "ps1", "psm1", "bat", "cmd", "vbs", "exe", "dll",
+    "jar", "applescript", "scpt", "workflow", "html", "htm", "plist", "service", "desktop",
+})
 _NOMI_DELICATI: frozenset[str] = frozenset({
     "key", "keys", "apikey", "token", "tokens", "secret", "secrets", "password",
     "passwords", "passwd", "credential", "credentials", "creds", "auth", "cookie",
@@ -537,14 +541,16 @@ def sembra_delicato(relative_path: Any) -> bool:
         nome = PurePosixPath(_normalize_path(relative_path)).name.rstrip(". ")
         if nome.startswith(".") or "." not in nome or nome.endswith(_ESTENSIONI_DELICATE):
             return True  # file nascosti (rc, dotfile), senza estensione, config/script
-        pezzi = nome.split(".")
-        # R-387-1: estensioni interne («a.sh.txt») ...
+        # V-2 verifica esterna #231: pezzi ripuliti dagli spazi («a.sh .txt»).
+        pezzi = [p.strip() for p in nome.split(".")]
+        # R-387-1: estensioni interne eseguibili («a.sh.txt») ...
         if any(p in _ESTENSIONI_INTERNE_DELICATE for p in pezzi[1:-1]):
             return True
-        # ... e parole intere di TUTTO il nome tranne l'ultima estensione (divise su
-        # _ - . e spazi), non pezzi di parola: «cronologia.md», «sessione_marketing.md»,
-        # «monkey.md» restano documenti; «x.secret.md» no (R-386-2, R-387-1).
-        parole = [w for w in re.split(r"[_\-.\s]+", ".".join(pezzi[:-1])) if w]
+        # ... e parole intere di TUTTO il nome, ultima estensione compresa (R-388-1:
+        # «github.token», «aws.credentials»), divise su _ - . e spazi, non pezzi di
+        # parola: «cronologia.md», «sessione_marketing.md», «monkey.md» restano
+        # documenti; «x.secret.md» no (R-386-2, R-387-1).
+        parole = [w for w in re.split(r"[_\-.\s]+", nome) if w]
         return any(w in _NOMI_DELICATI for w in parole)
     except Exception:
         return True

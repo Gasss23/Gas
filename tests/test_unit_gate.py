@@ -811,6 +811,11 @@ def test_libero_dopo_lettura(tool, args, atteso):
     ("dati/b.sqlite", True), ("dati/a.terminal", True), ("dati/w.workflow", True),
     ("dati/c.fish", True), ("dati/l.webloc", True), ("dati/m.go", True),
     ("dati/report.2026.md", False), ("dati/v1.2.txt", False), ("dati/note.finali.md", False),
+    # R-388-1, V-1/V-2/V-5 verifica esterna e bot #231
+    ("dati/github.token", True), ("dati/aws.credentials", True), ("dati/a.secret", True),
+    ("dati/a.sh .txt", True), ("dati/verbale.c.rossi.md", False),
+    ("dati/f.lli.r.bianchi.txt", False), ("dati/ordine.url.pdf", False),
+    ("dati/notes.app.docx", False), ("dati/piano.c.md", False),
 ])
 def test_sembra_delicato(path, atteso):
     """R-223-2: avviso solo informativo per i file nuovi che sembrano delicati."""
