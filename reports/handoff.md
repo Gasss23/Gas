@@ -22,6 +22,7 @@
 - **Budget: ts non validi/futuri, riga senza a capo, gas tokens (V-2 bot #234, V-1 verifica #234, R-411-1, R-413-1/2)**: `FATTA` — review #413, #414 APPROVATO CON RISERVE.
 - **Test che riempivano /tmp, cache modello, avviso «ripreso» (R-415-1/2, R-416-1, V-2 bot #234)**: `FATTA` — review #415, #416, #417 APPROVATO CON RISERVE.
 - **Ordine delle riprese (V-1 bot #234)**: `FATTA` — review #418 APPROVATO CON RISERVE (limite dichiarato R-418-3).
+- **Compiti sani per primi, sospetti in coda; registro dei costi a blocchi; date future (V-1/V-2 verifica #234 3° giro, V-1 bot #234, R-419-1, R-420-1)**: `FATTA` — review #419, #420, #421 APPROVATO CON RISERVE.
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -30,25 +31,32 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  14 ++++++
- gas.py                             | 130 ++++++++++++++++++++++++++++++++++++++++++++-----------
- modules/gate/gate.py               |  12 +++++-
- modules/memory/store.py            |  21 ++++++++-
- modules/notte/notte.py             | 134 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/da_mergiare.md             |  99 ++++++++++++++++--------------------------
- reports/diff_sessione.md           |  17 ++++----
- reports/handoff.md                 | 842 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |  18 +++++++
+ gas.py                             | 173 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ modules/gate/gate.py               |  12 ++++-
+ modules/memory/store.py            |  21 +++++++-
+ modules/notte/notte.py             | 148 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/da_mergiare.md             |  99 +++++++++++++++-----------------------
+ reports/diff_sessione.md           |  17 ++++---
+ reports/handoff.md                 | 938 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  43 +++++++++----------
+ reports/ultimo_report.md           |  44 ++++++++---------
  tests/test_unit_gate.py            |   8 ++++
- tests/test_unit_kernel.py          | 118 +++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           | 243 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 1076 insertions(+), 607 deletions(-)
+ tests/test_unit_kernel.py          | 160 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           | 300 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 1356 insertions(+), 584 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3701278 fix(budget): data futura entro 7 giorni tenuta com'è (stabile tra processi), oltre scartata; tetto di riga ovunque (R-420-1/2/3/4)
+a871d24 chore(revisore): memoria review #421 — APPROVATO CON RISERVE
+7204835 fix(notte,budget): compito saltato resta «sospetto» e parte in coda; ts futuro contato adesso; lettura a blocchi senza copie quadratiche (R-419-1/2/3, V-1 bot #234, R-414-1)
+1bddf93 chore(revisore): memoria review #420 — APPROVATO CON RISERVE
+898a4a2 fix(notte,budget): compiti mai interrotti sempre per primi; registro dei costi letto a blocchi con uscita rapida sulle righe vecchie (V-1/V-2 verifica esterna #234)
+ecec535 chore(revisore): memoria review #419 — APPROVATO CON RISERVE
+8e3072b docs(fine-task): report, handoff, coda da_mergiare — ordine delle riprese (#418)
 d9f58bb fix(notte): compito ripreso già fallito 2+ volte va in coda, dopo gli altri (V-1 bot #234)
 632ca76 chore(revisore): memoria review #418 — APPROVATO CON RISERVE
 01bf064 docs(fine-task): report, handoff, coda da_mergiare — test che non riempiono /tmp (#415-#417)
@@ -538,10 +546,142 @@ Nel repo reale non ho fatto checkout né modifiche. Le prove le ho fatte su una 
 
 ---
 
+### Review #419 (chat Motore) — commit 898a4a2
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #419 (chat Motore). Diff staged: gas.py, modules/notte/notte.py, tests/test_unit_kernel.py, tests/test_unit_notte.py. Prima della review ho letto CLAUDE.md (sez. 5), le voci aperte in reports/stato_progetto.md e la mia memoria (#415-#418). Spazio su disco: `df -h /` dava 29G liberi. Ho lavorato su una copia nello scratchpad e poi l'ho cancellata; nel repo reale ho toccato solo la memoria.
+
+**Cosa ho riprodotto:** notte 126 passed, kernel 965 PASS / 0 FAIL. Ho rimesso il vecchio ordine `ripresi + altri + in_coda` come prova: falliscono 3 test della notte, compreso quello nuovo.
+
+**Elementi del diff esaminati**
+- modules/notte/notte.py:593 — l'ordine ora è `altri + ripresi + in_coda`. Rischio esaminato: un compito che crasha toglie ancora notti ai compiti sani? Esito: **riserva** (R-419-1).
+- gas.py:1258 — lettura a blocchi: `dati = resto + blocco`, offset avanzato di `fine + 1`, `resto` ripreso dal blocco successivo. Rischi esaminati: righe a cavallo di più blocchi, blocco che finisce esattamente su «\n», file senza «\n», aggiunta incrementale. Ho confrontato 300 log casuali con blocchi da 1/2/3/7/64 byte e da 1 MiB, più un'aggiunta incrementale, con una lettura intera di riferimento: risultati identici, salvo le righe costruite a mano di R-419-3. Esito: ok sulla correttezza, **riserva** sulle prestazioni (R-419-2).
+- gas.py:1266 — uscita rapida con `_TS_RAPIDO_RE` (gas.py:867), un solo `"ts"` e confronto col cutoff. Rischi esaminati: spazi, `"ts"` annidato, chiave `ts` duplicata, `"ts"` dentro una stringa, ts con frazioni di secondo, fallthrough, righe spazzatura. Tutti coincidono con json.loads, tranne le chiavi scritte con escape. Esito: **riserva** (R-419-3).
+- gas.py:1284 — la riga finale senza «\n» si prende dal resto in memoria e si ignora sopra i 64 KB (R-414-2 chiusa). Esito: ok.
+- tests/test_unit_kernel.py:7204 — T94g, blocchi da 7 byte confrontati con la lettura intera, poi un'aggiunta. Esito: ok.
+- tests/test_unit_notte.py:1741 — test «6 notti su 6». Esito: **riserva**. Il catalogo mette «breve» per primo, quindi la notte 1 passa comunque e il test non prova il caso peggiore.
+
+**Finding**
+- **R-419-1 (MEDIA): V-1 non è chiusa davvero.** Ho simulato 8 notti con il compito che crasha messo PRIMO nel catalogo:
+  - con questo diff, «breve» parte così: [0,1,1,1,0,1,1,1];
+  - a HEAD partiva così: [0,0,1,1,0,0,1,1];
+  - con il compito che crasha messo secondo: [1,1,1,1,1,1,1,1].
+
+  La causa: dopo MAX_TENTATIVI il compito viene saltato e il suo conto si azzera (modules/notte/notte.py:576). Al giro dopo torna tra gli «altri» e, se nel catalogo viene prima, fa cadere di nuovo il giro. Risultato: si perde ancora 1 notte su 4. Il commento di modules/notte/notte.py:591 («non toglie notti agli altri») e la docstring sono quindi falsi in questo caso. Rimedio:
+  - all'azzeramento tenere una traccia del compito (es. `{"tentativi": 0, "sospetto": True}`) e metterlo in coda anche quando riparte come «nuovo»;
+  - in alternativa, dichiarare il limite;
+  - in entrambi i casi aggiungere un test col compito che crasha primo nel catalogo.
+
+  Finché non si fa, V-1 non va dichiarata chiusa nei report.
+- **R-419-2 (BASSA): rallentamento quadratico su una riga senza «\n» lunghissima.** Se nel file mancano gli «\n» per molti blocchi, `resto + blocco` ricopia tutto a ogni blocco. Misura: coda senza «\n» da 128 MB = 7,0 s a ogni chiamata (HEAD 0,35 s), perché l'offset non avanza e si rilegge ogni volta. In quel caso `resto` tiene anche tutto in memoria, contro lo scopo di V-2. Rimedio: cercare «\n» solo nel blocco nuovo e, oltre i 64 KB, smettere di accumulare fino al prossimo «\n».
+- **R-419-3 (BASSA): l'uscita rapida può scartare una riga che json.loads conterebbe.** Succede con una chiave scritta con escape:
+  - `{"ts":"<vecchio>","ts":"<nuovo>",...}`, oppure
+  - `{"ts":"<nuovo>","x":{"ts":"<vecchio>"}}`.
+
+  Riprodotto: in questi casi la spesa risulta più bassa del vero. Succede solo con log scritti a mano (`_log_tokens` usa json.dumps, che non fa escape di lettere ASCII). Rimedio da una riga: niente uscita rapida se `b"\\" in raw`.
+- **R-419-4 (COSMETICA): testi rimasti indietro.** Il nome di tests/test_unit_notte.py:1531 (`..._ripresa_per_primo`), la docstring di tests/test_unit_notte.py:1721 («per primo») e il commento V-1 bot di modules/notte/notte.py:586 non descrivono più l'ordine attuale. Va aggiornata anche la nota R-418-3 in reports/da_mergiare.md.
+- **Domanda sul tetto di tempo:** se gli «altri» esauriscono il tempo del giro, un compito ripreso messo in fondo non parte. Compare comunque ogni notte nell'avviso «tetto di tempo del giro … saltati N compiti (nomi)», che va anche in gas_debug.log, quindi si vede. Però il suo conto resta fermo (1 o 2) e non arriva mai al salto né all'azzeramento. Estende R-418-2, BASSA, nessun nuovo finding.
+
+**Antipattern del Wall of Shame:** nessuno slicing della history, nessuna simulazione di output dei tool. `_daily_cost_usd` resta tutto dentro try/except con logging.warning (FAIL-SAFE §9). Il cap di 10 iterazioni e `_get_window` non sono toccati.
+
+**Cosa NON ho verificato:**
+- Il comportamento sul VPS, con un log vero da decine di MB e un disco lento: non è riproducibile qui. Le misure 1,7 s / 1 ms dell'agente non le ho rifatte.
+- Un kill vero del processo durante un giro: ho usato il KeyboardInterrupt simulato di `_KCrash`.
+- Una scrittura concorrente nel log mentre lo si legge a blocchi.
+
+**Memoria:** riga #419 e una lezione aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md, registrate da sole (ecec535). Il diff staged è rimasto com'era.
+
+---
+
+### Review #420 (chat Motore) — commit 7204835
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Prima della review ho letto CLAUDE.md (sezioni 1, 5, 8, 9 e 10), le parti di `reports/stato_progetto.md` che servivano e le ultime righe di `.claude/agents/memoria_revisore.md`, comprese le lezioni #418 e #419. Spazio su `/`: 28% usato. Ho lavorato su una copia nello scratchpad (HEAD più il diff staged), che poi ho cancellato. Nel repo reale ho toccato solo la memoria, già registrata con lo script (commit 1bddf93).
+
+**Elementi del diff esaminati**
+
+- `modules/notte/notte.py:589` — dopo MAX_TENTATIVI interruzioni la voce diventa `{"tentativi": 0, "inizio": …, "sospetto": True}` invece di essere cancellata. Rischio esaminato: il compito che crasha torna «nuovo» e ruba di nuovo notti agli altri. Ho simulato 12 notti con il compito che crasha in OGNI posizione del catalogo ([lungo,a,b], [a,lungo,b], [a,b,lungo]): gli altri perdono solo la notte 1, poi girano sempre. Mutazione (rimesso `del in_corso[...]`): falliscono 2 test. **Esito: ok.**
+- `modules/notte/notte.py:583` — un compito con tentativi 0 va in coda e senza marcatura `ripresa`. Rischi esaminati:
+  - Potatura: un compito sospetto tolto dal catalogo si toglie anche dal registro (riga 573, con `pota`).
+  - Sospetto chiesto a mano: il ramo t==0 viene prima del ramo `a_mano`, quindi il compito parte comunque.
+  - `in_corso != letto`: la voce viene sostituita con un dict nuovo, quindi la differenza si vede e il registro si scrive.
+  - Kernel non creato: il compito resta sospetto.
+
+  **Esito: ok.** Riserva R-420-4 qui sotto.
+- `modules/notte/notte.py:540` — `_leggi_in_corso` accetta tentativi 0 solo con `sospetto is True`. Rischio: un registro rovinato con tentativi 0 o con `sospetto` non booleano. Senza sospetto la voce si scarta ancora. **Esito: ok.**
+- `gas.py:1273` — una riga oltre `_RIGA_MAX` senza «\n» diventa `lunga` e se ne tengono solo gli ultimi 64 byte. `gas.py:1292-1293` — offset e coda si aggiornano con `pendenti`. Rischio esaminato: la coda in cache deve restare uguale ai 64 byte prima dell'offset nel file. Ho fatto una sonda con blocchi da 1, 7, 64, 100, 4096 e 70000 byte, 40 log casuali per ogni dimensione, righe spazzatura da 65 a 140 KB, più l'aggiunta a metà di una riga lunga che si chiude al giro dopo. Ho confrontato offset e coda con `data.rfind(b"\n")+1` e con i 64 byte reali prima dell'offset, e il totale con quello calcolato a cache vuota: 0 errori. La coda resta corretta anche con `lunga` vera, perché `resto` contiene esattamente gli ultimi 64 byte dei byte pendenti e subito dopo viene `blocco[:fine+1]`, senza buchi. **Esito: ok.** Riserva R-420-2 qui sotto.
+- `gas.py:1285` — niente uscita rapida se nella riga c'è un backslash (chiude R-419-3). **Esito: ok.**
+- `gas.py:887` — un ts nel futuro (oltre 1 ora) diventa l'ora attuale. Rischio esaminato: che la voce resti nel conto per sempre. **Esito: riserva R-420-1.**
+- `tests/test_unit_notte.py:1761` (test nuovo R-419-1), `tests/test_unit_notte.py:1552` (test vecchio aggiornato), `tests/test_unit_kernel.py:7178` (T94e2). Risultati sulla copia: notte 127 passed, kernel 966 PASS / 0 FAIL. **Esito: ok.**
+
+**Riserve**
+
+- **R-420-1 MEDIA** — Il ts futuro viene trasformato in «adesso» quando la riga si LEGGE, e `_COSTI_CACHE` vive solo dentro il processo.
+  - Ogni processo nuovo rilegge il log da capo e ri-timbra la riga con l'ora del momento: `gas notte` da cron, ogni comando da terminale, ogni riavvio del bot.
+  - Quindi una riga con ts «2999-01-01…» conta nel tetto per sempre. L'ho provato: col primo calcolo vale 0,1 USD; nello stesso processo, dopo la scadenza simulata, vale 0; con la cache svuotata (processo nuovo) torna a 0,1. Una riga finale senza «\n» conta sempre allo stesso modo.
+  - La docstring a `gas.py:873` («mai un blocco per sempre») è vera solo dentro un processo che resta acceso.
+  - Con un errore di orologio realistico (ore o giorni) la voce scade comunque a ts+24h, quindi il caso grave nasce solo da un log rovinato o scritto a mano. È proprio il caso che R-413-1 voleva coprire.
+  - Correzione suggerita: contare come «adesso» solo i ts futuri entro un margine plausibile (es. 2-7 giorni) e scartare quelli oltre con un warning in gas_debug.log; in alternativa usare una data che non cambi da un processo all'altro. Va aggiunto un test a cache vuota.
+- **R-420-2 BASSA** — Il vero tetto di riga non è `_RIGA_MAX` (64 KB) ma «un blocco intero senza \n». Una riga JSON valida tra 1 e 2 MiB conta oppure no a seconda di dove cade rispetto ai blocchi. Provato con una riga da 1.048.698 byte: a offset 0 il totale è 0, a offset 1.048.277 è 0,1. Capita solo con log scritti a mano. Per allineare il comportamento al commento basta scartare nel ciclo anche `len(resto + blocco[:fine]) > _RIGA_MAX`.
+- **R-420-3 COSMETICA** — Il commento «V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB» è finito in coda alla riga di `_RIGA_MAX` (`gas.py:869`) invece di stare su `_COSTI_BLOCCO`.
+- **R-420-4 BASSA** — Con la mutazione «senza il ramo t==0» fallisce solo il test vecchio, non `test_r419`: il sospetto finirebbe tra i ripresi, comunque dopo gli altri. Il test nuovo quindi non protegge da solo la messa in coda del sospetto. Collegato: se il sospetto non parte per il tetto di tempo, resta `{0, sospetto}` senza mai arrivare a un nuovo salto (estende R-418-2; si vede solo in «saltati per tempo»).
+
+Coerenza col progetto: nessuno slicing della history, nessuna simulazione di output dei tool, cap e `_get_window` non toccati. `_daily_cost_usd` resta a prova di crash: in caso di errore scrive in gas_debug.log e restituisce 0.0. Il diff va nella direzione «robustezza > potenza».
+
+**Rischi esplicitamente esclusi**
+
+- Comportamento reale su VPS con cron e un log di token grande (centinaia di MB): non riproducibile qui. Ho misurato solo la logica, non i 0,10 s dichiarati dall'agente.
+- Non ho rifatto la sonda differenziale dell'agente (150 log × 5 aggiunte) contro una lettura completa di riferimento: ho fatto una sonda mia, mirata a offset e coda.
+- Gate dei test (817): non eseguito.
+
+Memoria aggiornata: riga #420 più una lezione (un valore «normalizzato all'ora attuale» dentro una cache in memoria va provato anche a cache vuota, cioè in un processo nuovo). Il file è `/home/user/Gas/.claude/agents/memoria_revisore.md`, registrato in 1bddf93.
+
+---
+
+### Review #421 (chat Motore) — commit 3701278
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #421 (chat Motore), sul diff staged: gas.py, tests/test_unit_kernel.py, tests/test_unit_notte.py. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (in modo mirato) e .claude/agents/memoria_revisore.md. Spazio su disco con `df -h /`: 29G liberi, uso 28%.
+
+Ho riprodotto tutto su una copia nello scratchpad, poi cancellata. Nel repo reale non ho toccato nulla oltre alla memoria (commit a871d24); lo staging è intatto. Risultati: kernel 966 PASS / 0 FAIL, notte 128 passed.
+
+**Elementi esaminati**
+- gas.py:887 — `_ts_log_valido`: un ts nel futuro fino a 7 giorni resta com'è, oltre viene scartato con un `logging.warning`. Rischio esaminato: il caso V-1 del bot #234 (orologio tornato indietro) e la tenuta a cache vuota. Prova: con l'orologio indietro di 3 giorni, due righe di «ieri» del vecchio orologio contano 0,2 USD. Contano finché l'ora attuale non arriva a ts+24h, con lo stesso valore in ogni processo; la durata massima è circa 8 giorni. Bordo dei 7 giorni: −5 minuti contato, +5 minuti scartato. La spesa resta quindi nel tetto, con una durata limitata. Esito: ok, R-420-1 chiusa.
+- gas.py:1285 — una riga oltre `_RIGA_MAX` viene saltata ovunque cada. Rischio esaminato: righe lunghe a cavallo dei blocchi. Prova: una riga di 100 KB in mezzo dà 0,2 come atteso. Una riga di circa 1 MiB a offset 0, 500.000 e 1.048.277 dà sempre 0,1, mentre in #420 l'esito cambiava con l'offset. Esito: ok, R-420-2 chiusa, ma senza test (vedi R-421-2).
+- gas.py:1310 — riga finale senza «\n», rivalutata a ogni chiamata (contesto). Rischio esaminato: avviso ripetuto. Esito: riserva R-421-1.
+- tests/test_unit_kernel.py:7171 — T94e2 riscritto. Ho rimesso la vecchia logica dell'«adesso» (mutazione): T94e2 FALLISCE, quindi il test protegge la correzione. Nota: la parte «a cache vuota» da sola non distingue le due logiche (danno 0,1 entrambe); a discriminare è `_fut94b[0] == _due_ore94`. Esito: ok.
+- tests/test_unit_notte.py:1786 — test unitario di `_ordina_riprese`. Ho tolto il ramo `tentativi == 0` (mutazione): falliscono questo test e test_r7_oltre_max_tentativi_saltato_e_azzerato. Esito: ok, R-420-4 chiusa.
+- gas.py:868 — il commento è stato spostato su `_COSTI_BLOCCO`, ma ora compare due volte (una riga sopra e la stessa in linea). Esito: riserva cosmetica, R-421-3.
+
+**Avviso ripetuto (domanda dell'operatore)**
+- Riga oltre 7 giorni chiusa da «\n»: le righe scartate non entrano in cache ma l'offset le supera, quindi l'avviso esce una volta per processo. Prova: 5 chiamate nello stesso processo → 1 avviso; 3 processi nuovi → 3 avvisi. È il comportamento atteso.
+- La stessa riga come ULTIMA riga senza «\n»: 5 chiamate → 5 avvisi (vedi R-421-1).
+
+**Finding**
+- R-421-1 BASSA: una riga oltre i 7 giorni, se è l'ultima del file e non ha «\n», produce un avviso in gas_debug.log a OGNI chiamata di `_daily_cost_usd`. `_budget_superato` la chiama più volte per turno (gas.py:3410, gas.py:4055, gas.py:4107, gas.py:4132), quindi la scatola nera cresce a ogni turno finché qualcuno non aggiunge una riga al log. Correzioni possibili: niente avviso per la riga finale rivalutata, oppure ricordare in cache che quella riga è già stata segnalata.
+- R-421-2 BASSA: R-420-2 non ha un test. Togliendo il controllo su gas.py:1285 (mutazione) il kernel resta 966/0. Serve un test con una riga di 64 KB–1 MiB, chiusa da «\n», nello stesso blocco di righe valide e con un ts recente: oggi verrebbe contata.
+- R-421-3 COSMETICA: il commento «V-2 verifica #234 … a blocchi da 1 MiB» è duplicato su gas.py:868-869.
+
+**Rischio escluso**
+- Non ho provato su VPS un salto vero dell'orologio di sistema: l'ho simulato scrivendo ts futuri nel log.
+- Residuo dichiarato: se l'orologio torna indietro di più di 7 giorni (per esempio un orologio di sistema azzerato), la spesa precedente esce dal tetto, che resta aperto solo per quelle 24 ore. Accettabile, ma va scritto in stato_progetto.md.
+
+**Antipattern (Wall of Shame)**: nessuno slicing della history e nessuna simulazione di output dei tool. Le eccezioni restano intercettate: `_costo_riga` e `_daily_cost_usd` con logging.warning e 0.0.
+
+**Memoria**
+- Aggiunta la riga #421 con la lezione: un avviso su una riga da scartare va provato anche sull'ultima riga senza «\n», che si rivaluta a ogni chiamata perché l'offset non avanza.
+- Registrata con `scripts/commit_memoria_revisore.sh` (commit a871d24).
+- File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 957 → 964 PASS, 0 FAIL (T94a-f, T95). Blocco reale: `=== RIEPILOGO: 964 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_notte.py`: 106 → `125 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
+tests/test_unit_kernel.py: 957 → 966 PASS, 0 FAIL (T94a-g, T94e2, T95). Blocco reale: `=== RIEPILOGO: 966 PASS, 0 FAIL ===`.
+pytest `tests/test_unit_notte.py`: 106 → `128 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
 
@@ -552,7 +692,8 @@ pytest `tests/test_unit_notte.py`: 106 → `125 passed`; `tests/test_unit_gate.p
 - 0a11a8b (con a86f493, 5142d8f e memorie): run non letta (nessun evento ricevuto prima della scrittura).
 - 0a11a8b: verifica-bot failure (il bot ha letto come riserva la frase «nessuna ALTA/MEDIA aperta» della descrizione; testo del verdetto APPROVATO CON RISERVE con V-1 BASSA, ora chiusa da d9f58bb).
 - 01bf064 (con 3a43d93, 5999fdb, f2c3e29 e memorie): run non letta prima della scrittura.
-- d9f58bb e memoria: run non ancora disponibile alla scrittura dell'handoff.
+- 8e3072b (con d9f58bb): verifica-bot neutral (APPROVATO CON RISERVE, V-1/V-2 basse poi chiuse); check suite completata.
+- 898a4a2, 7204835, 3701278 e memorie: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -567,5 +708,6 @@ pytest `tests/test_unit_notte.py`: 106 → `125 passed`; `tests/test_unit_gate.p
 - R-417-1 (BASSA): avviso «firme scadute» del giro non va in gas_debug.log.
 - R-415-3, R-416-2, R-417-2, R-418-1 (COSMETICHE).
 - R-418-2 (BASSA): compito in coda fermato dal tetto di tempo resta a tentativi 2.
-- R-418-3 (BASSA, dichiarata): un compito che fa cadere Gas a ogni avvio fa perdere ancora un giro su quattro.
+- R-421-1/2 (BASSE), R-421-3 (COSMETICA): avviso ripetuto su riga finale lontana nel futuro, test mancante per righe lunghe, commento doppio.
+- Residuo dichiarato: orologio indietro di oltre 7 giorni → quella spesa esce dal tetto per 24 ore.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
