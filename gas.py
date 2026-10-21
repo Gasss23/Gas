@@ -949,10 +949,10 @@ class GasKernel:
         # R-c4b3-4: com'era il file della storia l'ultima volta che l'abbiamo letto o
         # scritto (percorso, impronta, lista, quanti messaggi): serve a non cancellare
         # i messaggi scritti nel frattempo da un altro processo sulla stessa root.
-        self._storia_sync: Optional[Tuple[str, Any, int, int]] = None
+        self._storia_sync: Optional[Tuple[str, Any, int, str]] = None
         self.history: List[Dict[str, Any]] = (
             self._carica_storia_bloccata() if carica_storia else [])
-        if carica_storia:  # la lista vera è quella appena assegnata (id per l'unione)
+        if carica_storia and self._storia_sync is not None:  # base = lista appena letta
             self._storia_sync = self._sync_storia_di(self._storia_sync[1])
         # V-1 bot #176: un kernel senza storia non fotografa nemmeno la conversazione
         # dell'operatore negli snapshot (non la tocca, quindi non c'è nulla da proteggere).
@@ -1112,19 +1112,34 @@ class GasKernel:
             return None
         return (st.st_ino, st.st_size, st.st_mtime_ns)
 
-    def _sync_storia(self) -> Tuple[str, Any, int, int]:
+    @staticmethod
+    def _hash_messaggi(msgs: List[Dict[str, Any]]) -> str:
+        return hashlib.sha256(json.dumps(msgs, sort_keys=True, ensure_ascii=False)
+                              .encode("utf-8")).hexdigest()
+
+    def _sync_storia(self) -> Tuple[str, Any, int, str]:
         return self._sync_storia_di(self._impronta_storia())
 
-    def _sync_storia_di(self, impronta: Any, n: Optional[int] = None) -> Tuple[str, Any, int, int]:
+    def _sync_storia_di(self, impronta: Any) -> Tuple[str, Any, int, str]:
+        """(percorso, impronta del file, quanti messaggi, hash del loro contenuto).
+        V-2 bot #236: la base si riconosce dal contenuto, non dall'id della lista."""
         hist = getattr(self, "history", [])
-        return (str(self.db_path), impronta, id(hist), len(hist) if n is None else n)
+        return (str(self.db_path), impronta, len(hist), self._hash_messaggi(hist))
+
+    @staticmethod
+    def _inizia_turno(msgs: List[Dict[str, Any]]) -> bool:
+        return not msgs or msgs[0].get("role") == "user"
 
     def _unisci_storia_altrui(self) -> None:
         """R-c4b3-4: se un altro processo ha riscritto il file dopo la nostra ultima
-        lettura/scrittura, i suoi messaggi non si cancellano. I nostri messaggi nuovi
-        si accodano ai suoi solo se cominciano un turno (role user), così nessuna
-        sequenza assistant→tool resta spezzata; altrimenti la versione dell'altro
-        processo va in una copia «conflitto» accanto alla storia, con un avviso."""
+        lettura/scrittura (la «base»), i suoi messaggi non si cancellano. Si uniscono
+        solo blocchi che cominciano un turno (role user), così nessuna sequenza
+        assistant→tool resta spezzata:
+          - i nostri messaggi nuovi cominciano un turno → sua storia + nostri;
+          - siamo a metà turno (o abbiamo compresso) e la sua storia estende la base
+            con turni interi → nostra + suoi (V-1 bot #236: l'esito di una firma
+            scritto dal bot a metà turno nostro arriva dopo la nostra risposta);
+          - altrimenti la sua versione va in una copia «conflitto», con un avviso."""
         sync = self._storia_sync
         if sync is None or sync[0] != str(self.db_path):
             return  # storia mai letta da questo file (es. giro notturno): come prima
@@ -1140,17 +1155,29 @@ class GasKernel:
             logging.warning("Storia cambiata da un altro processo ma illeggibile (%s): "
                             "la sovrascrivo", e)
             return
-        nuovi: Optional[List[Dict[str, Any]]] = None
-        if id(self.history) == sync[2] and len(self.history) >= sync[3]:
-            nuovi = self.history[sync[3]:]
-        if nuovi is not None and (not nuovi or nuovi[0].get("role") == "user"):
-            self.history = altrui + nuovi
-            # la base è ora il file dell'altro processo: se la nostra scrittura
-            # fallisce, al prossimo salvataggio i messaggi nuovi restano da scrivere
-            self._storia_sync = self._sync_storia_di(ora, len(altrui))
-            if nuovi:
-                logging.warning("Storia scritta anche da un altro processo: accodati "
-                                "%d messaggi nuovi ai suoi %d", len(nuovi), len(altrui))
+        n_base, h_base = sync[2], sync[3]
+        nostri_da_base = (len(self.history) >= n_base
+                          and self._hash_messaggi(self.history[:n_base]) == h_base)
+        suoi_da_base = (len(altrui) >= n_base
+                        and self._hash_messaggi(altrui[:n_base]) == h_base)
+        nuovi = self.history[n_base:] if nostri_da_base else None
+        suoi = altrui[n_base:] if suoi_da_base else None
+        unita: Optional[List[Dict[str, Any]]] = None
+        if nuovi is not None and self._inizia_turno(nuovi):
+            unita = altrui + nuovi               # ordine di salvataggio: i suoi prima
+            base = (len(altrui), self._hash_messaggi(altrui))
+        elif suoi is not None and self._inizia_turno(suoi):
+            unita = self.history + suoi          # siamo a metà turno, o abbiamo compresso
+            base = (n_base, h_base)
+        if unita is not None:
+            aggiunti = len(unita) - len(self.history)
+            self.history = unita
+            # R-430-1: la base resta la parte comune al file appena letto e alla
+            # nostra lista, MAI ciò che non è ancora scritto: se la scrittura fallisce,
+            # al prossimo salvataggio i nostri messaggi restano da scrivere
+            self._storia_sync = (sync[0], ora, base[0], base[1])
+            logging.warning("Storia scritta anche da un altro processo: unita "
+                            "(%d messaggi in più nella nostra)", aggiunti)
             return
         # R-431-1: microsecondi + pid nel nome, niente collisioni nello stesso secondo
         copia = self.db_path.parent / (f"{self.db_path.name}.conflitto."
@@ -1169,11 +1196,17 @@ class GasKernel:
             logging.warning("Copia di conflitto della storia non riuscita: %s", e)
 
     MAX_COPIE_CONFLITTO = 20  # R-430-3: copie di conflitto della storia tenute
+    LOCK_STORIA_SEC = 5.0     # V-3 bot #236: attesa massima del lock della storia
 
     def _pota_copie_conflitto(self) -> None:
         """R-430-3: tiene solo le copie di conflitto più recenti, con un avviso."""
+        def _chiave(p: Path) -> Tuple[int, str]:
+            try:
+                return (p.stat().st_mtime_ns, p.name)  # R-433-2: spareggio sul nome
+            except OSError:
+                return (0, p.name)  # già cancellata da un'altra potatura
         copie = sorted(self.db_path.parent.glob(f"{self.db_path.name}.conflitto.*"),
-                       key=lambda p: p.stat().st_mtime_ns)
+                       key=_chiave)
         vecchie = copie[:-self.MAX_COPIE_CONFLITTO] if len(copie) > self.MAX_COPIE_CONFLITTO else []
         for p in vecchie:
             try:
@@ -1193,8 +1226,17 @@ class GasKernel:
         lock_f = None
         try:
             lock_f = open(self.db_path.parent / f"{self.db_path.name}.lock", "a")
-            fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
-            return lock_f
+            # V-3 bot #236: niente attesa infinita se chi tiene il lock è fermo
+            # (processo sospeso, file system di rete): tentativi per qualche secondo
+            scadenza = _time.monotonic() + self.LOCK_STORIA_SEC
+            while True:
+                try:
+                    fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    return lock_f
+                except BlockingIOError:
+                    if _time.monotonic() >= scadenza:
+                        raise TimeoutError(f"lock occupato da oltre {self.LOCK_STORIA_SEC}s")
+                    _time.sleep(0.05)
         except Exception as e:
             logging.warning("Lock della storia non disponibile (%s): salvo senza lock", e)
             if lock_f is not None:
@@ -4073,8 +4115,10 @@ class GasKernel:
                     res = subprocess.run(exec_argv, shell=False, cwd=cwd,
                                          capture_output=True, text=True,
                                          timeout=self.RUN_COMMAND_TIMEOUT_SEC, env=env_figlio)
-                except subprocess.TimeoutExpired:
-                    raise  # partito e ucciso dal tetto di tempo: esito incerto
+                except (subprocess.TimeoutExpired, UnicodeError):
+                    # partito: ucciso dal tetto di tempo, oppure finito con un output
+                    # che non è testo (R-433-1): esito incerto, il segno resta
+                    raise
                 except (OSError, ValueError):
                     # R-428-2 / V-1 bot #236: errore di avvio (binario assente, permessi,
                     # cartella che è un file, byte nullo negli argomenti): mai partito

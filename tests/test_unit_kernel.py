@@ -6972,6 +6972,11 @@ try:
     check("T77aa NotADirectoryError o ambiente rotto: il comando NON risulta partito (V-1 bot #236)",
           "PARTITO" not in _o77n and "PARTITO" not in _o77e
           and _k77x._run_command_avviato is False, f"{_o77n[:80]} | {_o77e[:80]}")
+    # R-433-1: comando finito con output non UTF-8 → è partito: esito INCERTO
+    (Path(_k77x.root) / "bad.bin").write_bytes(b"\xff\xfe\x00ok\n")
+    _o77u8 = _k77x.execute_tool_call("run_command", '{"command": "cat bad.bin"}')
+    check("T77ad output non UTF-8: il comando risulta PARTITO, esito INCERTO (R-433-1)",
+          "PARTITO" in _o77u8 and _k77x._run_command_avviato is True, _o77u8[:150])
     # V-3 bot #236: un processo VERO ucciso dal tetto di tempo → stato «incerta»
     _k77t2 = kernel_tmp()
     senza_sandbox_os_usa_fallback(_k77t2)
@@ -7474,21 +7479,31 @@ _f97 = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_t
 check("T97a turni interi di due processi: nessuno cancella l'altro",
       _f97 == ["ciao", "ok", "domanda di A", "risposta ad A", "domanda di B", "risposta a B"],
       str(_f97))
-# a metà turno (i messaggi nuovi non cominciano con user): la versione dell'altro
-# processo resta in una copia «conflitto», niente sequenze spezzate nella storia
+# B a metà turno, A ha salvato un turno intero: il turno di A va DOPO il seguito
+# di B (V-1 bot #236: è il caso del blocco della firma scritto dal bot)
 _a97._add_to_history("user", content="ancora A")
 _a97._save_history()
 _b97._add_to_history("assistant", content="seguito di B a metà turno")
 _b97._save_history()
-_cop97 = list(_r97.glob(".gas_history.json.conflitto.*"))
 _f97b = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
-_c97 = ([m.get("content") for m in json.loads(_cop97[0].read_text())] if _cop97 else [])
-check("T97b a metà turno: storia di B intera, versione di A salvata nella copia «conflitto»",
-      len(_cop97) == 1 and _f97b[-1] == "seguito di B a metà turno"
-      and "ancora A" not in _f97b and _c97[-1] == "ancora A", f"{_f97b} | {_c97}")
+check("T97b B a metà turno + turno intero di A: «seguito di B» poi «ancora A», niente copia",
+      _f97b[-2:] == ["seguito di B a metà turno", "ancora A"]
+      and not list(_r97.glob(".gas_history.json.conflitto.*")), str(_f97b))
+# entrambi a metà turno: la versione dell'altro va in una copia «conflitto»
+_a97._add_to_history("assistant", content="A a metà turno")
+_a97._save_history()
+_b97._add_to_history("assistant", content="B ancora a metà turno")
+_b97._save_history()
+_cop97 = list(_r97.glob(".gas_history.json.conflitto.*"))
+_tutti97: set = {str(m.get("content")) for m in json.loads((_r97 / ".gas_history.json").read_text())}
+for _c in _cop97:
+    _tutti97 |= {str(m.get("content")) for m in json.loads(_c.read_text())}
+check("T97b2 entrambi a metà turno: nessun messaggio perso (storia + copie «conflitto»)",
+      len(_cop97) >= 1 and {"seguito di B a metà turno", "ancora A", "A a metà turno",
+                            "B ancora a metà turno"} <= _tutti97, str(sorted(_tutti97))[:300])
 # T97d — R-431-2: nel conflitto la versione dell'altro processo si collega/copia,
 # non si sposta: se poi la nostra scrittura fallisce, il file principale resta
-_a97._add_to_history("user", content="A3")
+_a97._add_to_history("assistant", content="A3")
 _a97._save_history()
 _b97._add_to_history("assistant", content="B a metà turno")
 _salva97d = _b97._salva_storia_su_file
@@ -7502,11 +7517,49 @@ check("T97d conflitto + scrittura fallita: il file principale resta con la versi
 # T97e — R-430-3 / R-431-1: nomi delle copie mai uguali, al massimo MAX_COPIE_CONFLITTO
 _b97.MAX_COPIE_CONFLITTO = 2
 for _i97 in range(3):
-    _a97._add_to_history("user", content=f"A-giro{_i97}")
+    _a97._add_to_history("assistant", content=f"A-giro{_i97}")
     _a97._save_history()
     _b97._add_to_history("assistant", content=f"B-giro{_i97}")
     _b97._save_history()
 _cop97e = sorted(_r97.glob(".gas_history.json.conflitto.*"))
+# T97f — V-1 bot #236: il bot scrive l'esito di una firma mentre la CLI è a metà
+# turno; il salvataggio finale della CLI lo tiene nella storia (dopo la risposta)
+_r97f = Path(tempfile.mkdtemp(prefix="gas_t97f_", dir=_TMP_ESECUZIONE))
+_cli97 = GasKernel(root_dir=str(_r97f))
+_cli97.history = [{"role": "user", "content": "esegui"},
+                  {"role": "assistant", "content": "in attesa della firma"}]
+_cli97._save_history()
+_bot97 = GasKernel(root_dir=str(_r97f))
+_cli97._add_to_history("user", content="e poi?")
+_cli97._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tc1", function=SimpleNamespace(name="calcola", arguments='{"expr": "1+1"}'))])
+_cli97._add_to_history("tool", content="2", tool_call_id="tc1", name="calcola")
+_cli97._save_history()
+_bot97._storia_esito_firma("id-97f", "run_command", '{"command": "echo"}',
+                           "approvata ed eseguita", "fatto", True)
+_cli97._add_to_history("assistant", content="risposta finale della CLI")
+_cli97._save_history()
+_f97f = json.loads((_r97f / ".gas_history.json").read_text())
+_testi97f = [str(m.get("content")) for m in _f97f]
+_i97f = next((i for i, t in enumerate(_testi97f) if "id-97f" in t), -1)
+check("T97f esito della firma scritto a metà turno della CLI: resta nella storia, dopo la risposta",
+      _i97f > 0 and _testi97f.index("risposta finale della CLI") < _i97f
+      and not list(_r97f.glob(".gas_history.json.conflitto.*")), str(_testi97f)[:300])
+# T97g — V-3 bot #236: lock della storia tenuto da un altro (processo fermo) → dopo
+# LOCK_STORIA_SEC si salva lo stesso, senza lock, con un avviso
+import fcntl as _fcntl97
+_tieni97 = open(_r97f / ".gas_history.json.lock", "a")
+_fcntl97.flock(_tieni97.fileno(), _fcntl97.LOCK_EX)
+_cli97.LOCK_STORIA_SEC = 0.2
+_cli97._add_to_history("user", content="col lock occupato")
+_t0_97 = _time_pulizia.monotonic()
+_cli97._save_history()
+_dt97 = _time_pulizia.monotonic() - _t0_97
+_tieni97.close()
+_f97g = [m.get("content") for m in json.loads((_r97f / ".gas_history.json").read_text())]
+check("T97g lock occupato: salvataggio dopo ~0,2 s senza lock, niente attesa infinita",
+      _f97g[-1] == "col lock occupato" and _dt97 < 3, f"{_dt97:.2f}s {_f97g[-1:]}")
+_sh39e.rmtree(_r97f, ignore_errors=True)
 check("T97e copie di conflitto potate a 2, ognuna con il proprio nome",
       len(_cop97e) == 2 and len({p.name for p in _cop97e}) == 2, str([p.name for p in _cop97e]))
 # T97c — R-430-1: una scrittura fallita non fa avanzare l'impronta: i messaggi
