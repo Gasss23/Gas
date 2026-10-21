@@ -25,6 +25,8 @@ import json
 import logging
 import os
 import re
+import subprocess
+import sys
 import time
 import unicodedata
 import urllib.error
@@ -404,6 +406,7 @@ def run_bot(root_dir: Optional[str] = None) -> int:
             if time.monotonic() - ultimo_controllo_scadute >= 60:
                 ultimo_controllo_scadute = time.monotonic()
                 avvisa_firme_scadute(getattr(kernel, "memory", None))
+                _raccogli_giri()
             # allowed_updates esplicito: Telegram ricorda l'ultimo valore usato,
             # senza callback_query i bottoni di firma resterebbero muti.
             resp = _tg_post(base_url, "getUpdates",
@@ -425,6 +428,71 @@ def run_bot(root_dir: Optional[str] = None) -> int:
         except Exception as e:
             log.warning("Errore nel loop di polling: %s — riprendo tra 5s", e)
             time.sleep(5)
+
+
+# ─────────────────────────────── giro notturno da Telegram (R1) ──
+
+# R1: `/notte` lancia un giro completo, `/compito <nome>` un solo compito del catalogo.
+# Il giro parte in un processo a parte (`gas.py notte [nome]`): il bot resta in
+# ascolto, il lock del giro impedisce i doppioni e il riepilogo arriva su Telegram a
+# fine giro, come dal timer. Il nome passa come argomento (niente shell) e solo se
+# rispetta il formato del catalogo.
+_COMANDO_GIRO_RE = re.compile(r"/(notte|compito)(?:@\w+)?(?:\s+(.*))?", re.I | re.S)
+_NOME_COMPITO_RE = re.compile(r"[a-z0-9_-]{1,40}")
+_giri_lanciati: List[Any] = []
+
+
+def comando_giro(text: Any) -> Optional[Tuple[str, Optional[str]]]:
+    """None se il testo non è un comando del giro; altrimenti ('notte', None),
+    ('compito', nome) o ('errore', messaggio per l'operatore). Mai eccezioni."""
+    try:
+        m = _COMANDO_GIRO_RE.fullmatch(text.strip()) if isinstance(text, str) else None
+        if not m:
+            return None
+        cmd, arg = m.group(1).lower(), (m.group(2) or "").strip()
+        if cmd == "notte":
+            if arg:
+                return ("errore", "/notte non vuole argomenti. Per un solo compito: /compito <nome>")
+            return ("notte", None)
+        if not arg:
+            return ("errore", "Uso: /compito <nome> (il nome come nel catalogo dei compiti)")
+        if not _NOME_COMPITO_RE.fullmatch(arg):
+            return ("errore", "Nome del compito non valido: solo a-z 0-9 _ -, max 40.")
+        return ("compito", arg)
+    except Exception:
+        return None
+
+
+def _raccogli_giri() -> int:
+    """Toglie dalla lista i giri finiti (niente processi zombie). Ritorna quanti
+    sono ancora in corso."""
+    for p in list(_giri_lanciati):
+        try:
+            if p.poll() is not None:
+                _giri_lanciati.remove(p)
+        except Exception:
+            _giri_lanciati.remove(p)
+    return len(_giri_lanciati)
+
+
+def lancia_giro(root: Path, nome: Optional[str] = None) -> str:
+    """Avvia `gas.py notte [nome]` in un processo a parte e ritorna la risposta per
+    l'operatore. Un solo giro lanciato da qui alla volta. Mai eccezioni."""
+    try:
+        if _raccogli_giri():
+            return "Un giro lanciato da qui è ancora in corso: aspetta il suo riepilogo."
+        if nome is not None and not _NOME_COMPITO_RE.fullmatch(nome):
+            return "Nome del compito non valido."
+        cmd = [sys.executable, str(root / "gas.py"), "notte"] + ([nome] if nome else [])
+        p = subprocess.Popen(cmd, cwd=str(root), stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True, close_fds=True)
+        _giri_lanciati.append(p)
+        cosa = f"Compito «{nome}» avviato" if nome else "Giro notturno avviato"
+        return f"{cosa}: il riepilogo arriva qui a fine giro."
+    except Exception as e:
+        log.warning("lancia_giro fallita: %s", e)
+        return "✗ Giro NON avviato: errore nel lancio (dettagli in gas_debug.log)."
 
 
 # ─────────────────────────────────────────── gestione update ──
@@ -449,6 +517,16 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
 
         if chat_id not in allowed:
             log.warning("Messaggio da chat_id %d non autorizzato — ignorato", chat_id)
+            return
+
+        giro = comando_giro(text)
+        if giro is not None:
+            tipo, valore = giro
+            if tipo == "errore":
+                _send_text(base_url, chat_id, valore or "")
+            else:
+                root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
+                _send_text(base_url, chat_id, lancia_giro(Path(root), valore))
             return
 
         _send_typing(base_url, chat_id)

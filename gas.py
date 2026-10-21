@@ -5192,12 +5192,15 @@ def rifletti_cmd(root_dir: Optional[str] = None) -> int:
     return 0 if esito.get("ok") else 1
 
 
-def notte_cmd(root_dir: Optional[str] = None) -> int:
-    """CLI `gas notte` (FASE 4.5 fetta 1): un giro autonomo dei compiti del catalogo
-    (~/.gas_notte.yaml o env GAS_NOTTE_CATALOGO). Lo lancia il timer di sistema."""
+def notte_cmd(root_dir: Optional[str] = None, solo: Optional[str] = None) -> int:
+    """CLI `gas notte [nome]` (FASE 4.5 fetta 1): un giro autonomo dei compiti del
+    catalogo (~/.gas_notte.yaml o env GAS_NOTTE_CATALOGO). Lo lancia il timer di
+    sistema o, da R1, il bot Telegram (`/notte`, `/compito <nome>`)."""
     from modules.notte import esegui_notte
     # R-220-2: il compito non legge né mette in quarantena la conversazione dell'operatore.
-    return esegui_notte(root_dir, kernel_factory=lambda r: GasKernel(root_dir=r, carica_storia=False))
+    extra = {"solo": solo} if solo is not None else {}
+    return esegui_notte(root_dir, **extra,
+                        kernel_factory=lambda r: GasKernel(root_dir=r, carica_storia=False))
 
 
 def main():
@@ -5246,7 +5249,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "rifletti":
         sys.exit(rifletti_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "notte":
-        sys.exit(notte_cmd())
+        sys.exit(notte_cmd(solo=sys.argv[2]) if len(sys.argv) > 2 else notte_cmd())
     if len(sys.argv) > 1 and sys.argv[1] == "telegram":
         from modules.telegram.bot import run_bot
         sys.exit(run_bot())
