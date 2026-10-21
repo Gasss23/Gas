@@ -1,37 +1,29 @@
-# ULTIMO REPORT — 2026-10-21 — Ripresa dei compiti dopo un crash (R7/M3), spesa giornaliera incrementale (5.5)
+# ULTIMO REPORT — 2026-10-21 — Chat Mani, fetta 2: `leggi_pagina` più robusta (R6, PR #237)
 
-Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #233 (operatore: «mergia 233… continua fino a che non finisci la roadmap»).
+Ramo `feat/mani-web-fetta2` (da main dopo il merge di #235, poi merge di main). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. PR #237 (https://github.com/Gasss23/Gas/pull/237). Fetta di sicurezza. Operatore: «procedi con la prossima fetta Mani», «mergia quando il bot approva».
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della nuova PR: pro e contro in `reports/da_mergiare.md` (voci 1-6).
-2. C6: decisa (a) «lasciamo così» (operatore, 2026-10-21).
-3. Secondo passaggio claude.ai sulle fette del cancello della #233 (se non già fatto).
+1. Merge della PR #237: su richiesta dell'operatore l'agente la mergia quando il bot approva (check `verifica-bot` success, nessuna riserva ALTA/MEDIA); la PR non tocca `ci.yml`.
+2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
+3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani): decisione dell'operatore.
 
 ## Esito
 
-- **Merge PR #233** — FATTO (`7bd0875`), su richiesta dell'operatore.
-- **R7/M3 fetta 1: ripresa dei compiti dopo un crash** — FATTA. Review #406 (chat Motore) APPROVATO CON RISERVE (R-406-1 MEDIA), #407 APPROVATO CON RISERVE (chiude R-406-1/2/3).
-- **Riserve piccole (R-407-1/2, R-405-1/2, R-404-2)** — FATTA. Review #408 APPROVATO CON RISERVE.
-- **5.5 R-tel-budget-perf: spesa letta solo sulle righe nuove** — FATTA. Review #409, #411 (chat Motore) APPROVATO CON RISERVE.
-- **V-1 bot #234, V-4 verifica #234, R-409-1/2/3** — FATTA. Review #410 APPROVATO CON RISERVE.
-- **R7 R-fts-1: tetto alle parole delle ricerche** — FATTA. Review #412 APPROVATO CON RISERVE (solo statica: disco temporaneo pieno; suite rieseguita dopo).
-- **Budget: date non valide o future ignorate, ultima riga senza a capo contata, gas tokens robusto (V-2 bot #234, V-1 verifica #234, R-411-1, R-413-1/2)** — FATTA. Review #413, #414 APPROVATO CON RISERVE.
-- **Test che riempivano /tmp, cache del modello, avviso «ripreso» (R-415-1/2, R-416-1, V-2 bot #234)** — FATTA. Review #415, #416, #417 APPROVATO CON RISERVE.
-- **Ordine delle riprese (V-1 bot #234)** — FATTA. Review #418 APPROVATO CON RISERVE; limite dichiarato R-418-3.
-- **Compiti che crashano non affamano gli altri; registro dei costi a blocchi; date future (V-1/V-2 verifica #234 3° giro, V-1 bot #234, R-419-1, R-420-1 — tutte e tre MEDIE chiuse)** — FATTA. Review #419, #420, #421 APPROVATO CON RISERVE.
-- **Righe valide lunghe contate; compito «sospetto» resta segnato e va in coda dopo un nuovo crash (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)** — FATTA. Review #422 APPROVATO CON RISERVE (R-422-1/2 BASSE, R-422-3 COSMETICA).
-- **Riserve R-422 (avviso per righe enormi, test a cavallo di blocchi)** — FATTA. Review #423 APPROVATO CON RISERVE.
-- **Riga finale del registro dei token non riletta a file invariato; avviso «firme scadute» anche in gas_debug.log (V-1 bot e verifica esterna #234 5° giro, R-417-1)** — FATTA. Review #424 APPROVATO CON RISERVE. V-3 verifica esterna non regge (registro toccato solo sotto il lock del giro).
-- **R7 / R-222-2: il riepilogo della notte non si fa più ingannare da un file che comincia con «Operazione negata» (l'esito lo dice il kernel); test T94j più stretto (R-424-2/3)** — FATTA. Review #425 APPROVATO CON RISERVE.
-- **Lock sulla cache dei costi (due thread non contano due volte) e test del kernel per l'esito «negata / in attesa» (V-1/V-2 verifica esterna #234 7° giro, R-425-1/2)** — FATTA. Review #426 APPROVATO CON RISERVE.
-- **Merge di origin/main (#235, chat Mani)** — FATTO per togliere il conflitto della PR #234 (operatore: «mergia 234»). Review #427 APPROVATO.
-- **Anomalie** — disco temporaneo pieno due volte: cloni e ambienti Python degli agenti di verifica, poi ~129.000 cartelle `gas_*` lasciate dai test in /tmp (ripulite: da 4 MB a 29 GB liberi). Un agente di verifica ha staccato l'HEAD del repo vero: commit dei report rifatto sul ramo giusto.
-- **Verifica esterna #234** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot su #234: APPROVATO CON RISERVE (neutral, decide l'operatore).
-- **Test** — kernel 957 → 971 PASS, 0 FAIL; gate 811 → 817; notte 106 → 130.
+- **Riferimenti numerici enormi (R-ve235-4)**: `FATTA` — `&#` + migliaia di cifre diventano U+FFFD (zeri iniziali tolti prima); se html.parser solleva comunque, ripiego senza parser con una regex lineare.
+- **Thread del DNS (R-ve235-7)**: `FATTA` — al massimo 4 risoluzioni vive (semaforo rilasciato solo quando la risoluzione finisce davvero).
+- **Cane da guardia (R-393-1, R-393-2)**: `FATTA` — la copia del descrittore si chiude sempre, anche se il costruttore fallisce a metà; test.
+- **Finti marcatori (R-392-3)**: `FATTA` in parte — anche con trattini e trattini bassi; separatori a tetto dopo la B-409-1. La difesa vera resta il codice casuale.
+- **Test mancanti (R-ve235-6)**: `FATTA` — certificato autofirmato rifiutato sul percorso vero (`_tls=None`) e accettato con la sua CA, tetto redirect, timeout di connessione, primo IP.
+- **Docstring (R-408-2, R-ve235-5)**: `FATTA` — divieto di downgrade e limiti dichiarati.
+- **Test**: web suite 85 → 96 passed (Python 3.13 e 3.11, anche con rete e DNS veri bloccati); mutazioni sui test nuovi tutte prese.
+- **Review**: #409 (chat Mani) BOCCIATO (B-409-1 ALTA: la regex nuova dei finti marcatori era quadratica, 40k trattini = 27 s, 2 MB = ore; R-409-2 MEDIA: tre test che non mordevano; R-409-3 BASSA) → corretti; #410 (chat Mani) APPROVATO CON RISERVE (R-410-1 BASSA, R-410-2 COSMETICA); #428 (chat Mani, merge di main) APPROVATO.
+- **Allineamenti chiesti dalla verifica esterna #235 (V-3/V-4)**: `FATTA` per lo stato (85/96 test); l'handoff di questa fetta dichiara i commit intermedi.
 
-## Prossimi passi
+## Anomalie
 
-1. R7: ripresa dal punto esatto (rileggere la storia parziale del compito) — valutare.
-2. R-408-1: potare il registro solo se il file del catalogo è stato letto.
-3. Agganciare lo strumento web della chat Mani quando arriva la sua richiesta.
+- Nessuna. I numeri delle review #409/#410 coincidono con quelli della chat Motore: distinti dal suffisso «(chat Mani)».
+
+## RICHIESTE ALLA CHAT MOTORE
+
+Invariate dalla fetta 1 (PR #235): aggancio di `leggi_pagina` come strumento (al modello solo `testo`; a finestra contaminata `leggi_pagina` va alla firma; tetto di chiamate per turno e per notte; diario con URL ed esito, mai il testo; il modello si fida solo dei marcatori con il codice di quella chiamata). Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1» e «Mani — fetta 2».
