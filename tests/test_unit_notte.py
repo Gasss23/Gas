@@ -26,6 +26,8 @@ def _ermetico(monkeypatch):
     def _vietato(*a, **kw):
         raise RuntimeError("test ermetico: niente HTTP verso Telegram")
     monkeypatch.setattr(_tg, "_tg_post", _vietato)
+    # V-3 bot #233: run_bot imposta lo username del bot; mai tra un test e l'altro
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", None)
     for k in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL",
               # V-2 bot #164: i tetti di tempo dell'ambiente cambierebbero i messaggi attesi
               "GAS_NOTTE_MAX_SEC_COMPITO", "GAS_NOTTE_MAX_SEC_GIRO",
@@ -347,6 +349,12 @@ def test_cli_notte(monkeypatch):
     with pytest.raises(SystemExit) as e:
         gas.main()
     assert e.value.code == 0 and chiamate == [1]
+    # R1: `gas notte <nome>` passa il nome
+    monkeypatch.setattr(gas, "notte_cmd", lambda solo=None: chiamate.append(solo) or 0)
+    monkeypatch.setattr(sys, "argv", ["gas.py", "notte", "conta"])
+    with pytest.raises(SystemExit):
+        gas.main()
+    assert chiamate == [1, "conta"]
 
 
 def test_nessun_compito_attivo_senza_budget_esce_0(dirs):
@@ -1231,3 +1239,258 @@ def test_firme_scadute_non_crea_il_db(dirs):
     root, _ = dirs
     assert notte._chiudi_firme_scadute(root) == 0
     assert not (root / ".gas_memory.db").exists()
+
+
+# ── R1: un solo compito e lancio da Telegram ────────────────────────────────
+
+def test_solo_un_compito_round_trip(monkeypatch, dirs):
+    """R1: `solo` esegue SOLO il compito con quel nome; il loop non si ferma dopo
+    la prima tool call (§7)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: leggi
+    prompt: "leggi la nota"
+  - nome: conta
+    prompt: "quanto fa 6*7"
+""")
+    script = _Script({
+        "quanto fa 6*7": [[("calcola", json.dumps({"expr": "6*7"}))],
+                          [("calcola", json.dumps({"expr": "1+1"}))], "42"],
+    })
+    monkeypatch.setattr(gas, "OpenAI", script.fabbrica())
+    rc = esegui_notte(str(root), catalogo=cat, solo="conta",
+                      kernel_factory=lambda r: gas.GasKernel(root_dir=r, carica_storia=False))
+    assert rc == 0
+    nd = root / ".gas_notte"
+    assert (nd / "storia_conta.json").exists()
+    assert not (nd / "storia_leggi.json").exists()
+    storia = json.loads((nd / "storia_conta.json").read_text())
+    assert sum(1 for m in storia if m.get("role") == "tool") == 2
+
+
+@pytest.mark.parametrize("solo", ["manca", "../x", "Conta"])
+def test_solo_compito_assente(monkeypatch, dirs, solo):
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: conta
+    prompt: "quanto fa 6*7"
+""")
+    fatti = []
+    rc = esegui_notte(str(root), catalogo=cat, solo=solo,
+                      kernel_factory=lambda r: fatti.append(r))
+    assert rc == 1 and fatti == []
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "non trovato" in testo and "../x" not in testo
+
+
+def test_notte_cmd_passa_il_nome(monkeypatch):
+    visti = {}
+    import modules.notte as _mn
+    monkeypatch.setattr(_mn, "esegui_notte", lambda r, solo=None, kernel_factory=None:
+                        visti.setdefault("solo", solo) and 0)
+    gas.notte_cmd(solo="conta")
+    assert visti["solo"] == "conta"
+
+
+@pytest.mark.parametrize("testo,atteso", [
+    ("/notte", ("notte", None)), ("/Notte@GasBot", ("notte", None)),
+    ("/compito punto_lead", ("compito", "punto_lead")),
+    ("/compito@GasBot conta ", ("compito", "conta")),
+    ("ciao /notte", None), ("/nottex", None), ("/compito\u00a0conta", None), ("notte", None), (None, None), (5, None),
+])
+def test_comando_giro(testo, atteso):
+    assert _tg.comando_giro(testo) == atteso
+
+
+@pytest.mark.parametrize("testo", ["/notte adesso", "/compito", "/compito ../x",
+                                    "/compito a b", "/compito Conta", "/compito " + "x" * 41,
+                                    "/compito -h", "/compito --help"])
+def test_comando_giro_errori(testo):
+    tipo, msg = _tg.comando_giro(testo)
+    assert tipo == "errore" and msg
+
+
+class _PopenFinto:
+    lanciati: list = []
+
+    def __init__(self, cmd, **kw):
+        self.cmd, self.kw, self.finito = cmd, kw, False
+        _PopenFinto.lanciati.append(self)
+
+    def poll(self):
+        return 0 if self.finito else None
+
+
+def test_lancia_giro_un_solo_processo(monkeypatch, tmp_path):
+    _PopenFinto.lanciati = []
+    monkeypatch.setattr(_tg.subprocess, "Popen", _PopenFinto)
+    monkeypatch.setattr(_tg, "_giri_lanciati", [])
+    r1 = _tg.lancia_giro(tmp_path, "conta")
+    assert "conta" in r1 and "avviato" in r1
+    p = _PopenFinto.lanciati[0]
+    assert _tg._giri_lanciati[0]["p"] is p and _tg._giri_lanciati[0]["root"] == tmp_path
+    # R-392-1: gas.py accanto al modulo, non nella cartella del bot
+    assert p.cmd == [sys.executable, str(_tg._GAS_PY), "notte", "conta"]
+    assert Path(p.cmd[1]).is_file()
+    assert p.kw.get("shell") is not True and p.kw["cwd"] == str(tmp_path)
+    # R-392-2: l'uscita va nel log, non nel nulla
+    assert p.kw["stdout"] is not _tg.subprocess.DEVNULL
+    assert (tmp_path / ".gas_notte" / _tg.LOG_GIRO_TELEGRAM).exists()
+    # un secondo giro mentre il primo gira: rifiutato, nessun processo nuovo
+    assert "ancora in corso" in _tg.lancia_giro(tmp_path)
+    assert len(_PopenFinto.lanciati) == 1
+    p.finito = True
+    assert "Giro notturno avviato" in _tg.lancia_giro(tmp_path)
+    assert _PopenFinto.lanciati[1].cmd[-1] == "notte"
+    p2 = _PopenFinto.lanciati[1]
+    p2.finito = True
+    assert "non valido" in _tg.lancia_giro(tmp_path, "../x")
+    assert len(_PopenFinto.lanciati) == 2
+
+
+def test_lancia_giro_errore_non_solleva(monkeypatch, tmp_path):
+    def _rotto(*a, **kw):
+        raise OSError("niente")
+    monkeypatch.setattr(_tg.subprocess, "Popen", _rotto)
+    monkeypatch.setattr(_tg, "_giri_lanciati", [])
+    assert "NON avviato" in _tg.lancia_giro(tmp_path)
+
+
+def test_handle_update_comando_notte(monkeypatch, tmp_path):
+    inviati = []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append((c, t)))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    lanci = []
+    monkeypatch.setattr(_tg, "lancia_giro", lambda root, nome=None: lanci.append((root, nome)) or "ok")
+
+    class _K:
+        root = tmp_path
+
+        def run_turn(self, t):
+            raise AssertionError("il comando non deve arrivare al modello")
+
+    def upd(chat, testo):
+        return {"update_id": 1, "message": {"chat": {"id": chat}, "text": testo}}
+
+    _tg._handle_update("http://finto", upd(7, "/compito conta"), {7}, _K())
+    assert lanci == [(tmp_path, "conta")] and inviati == [(7, "ok")]
+    _tg._handle_update("http://finto", upd(8, "/notte"), {7}, _K())  # chat non autorizzata
+    assert len(lanci) == 1 and len(inviati) == 1
+    _tg._handle_update("http://finto", upd(7, "/compito"), {7}, _K())
+    assert len(lanci) == 1 and "Uso" in inviati[-1][1]
+
+
+def test_lancia_giro_senza_gas_py(monkeypatch, tmp_path):
+    """R-392-1: gas.py assente → «NON avviato», nessun processo."""
+    _PopenFinto.lanciati = []
+    monkeypatch.setattr(_tg.subprocess, "Popen", _PopenFinto)
+    monkeypatch.setattr(_tg, "_giri_lanciati", [])
+    monkeypatch.setattr(_tg, "_GAS_PY", tmp_path / "manca" / "gas.py")
+    assert "NON avviato" in _tg.lancia_giro(tmp_path)
+    assert _PopenFinto.lanciati == []
+
+
+def test_raccogli_giri_segnala_morte_precoce(monkeypatch, caplog, tmp_path):
+    """R-392-2/R-393-1: giro finito senza marcatore di avvio dopo il lancio (anche codice 1,
+    traceback di Python) → riga nel log e avviso su Telegram; codice 2 (lock
+    occupato, già notificato dal giro) e giri col marcatore di avvio → silenzio."""
+    import time as _t
+    avvisi = []
+    monkeypatch.setattr(_tg, "invia_notifica", lambda t: avvisi.append(t) or (True, ""))
+    monkeypatch.delenv("GAS_NOTTE_TELEGRAM", raising=False)
+
+    def voce(rc, root, t0):
+        p = _PopenFinto(["x"])
+        p.poll = lambda: rc
+        return {"p": p, "t0": t0, "root": root}
+
+    vuota = tmp_path / "vuota"
+    vuota.mkdir()
+    con = tmp_path / "con"
+    (con / ".gas_notte").mkdir(parents=True)
+    t0 = _t.time()
+    (con / ".gas_notte" / notte.AVVIO).write_text("ok")
+    vecchia = tmp_path / "vecchia"
+    (vecchia / ".gas_notte").mkdir(parents=True)
+    (vecchia / ".gas_notte" / notte.AVVIO).write_text("ok")
+    os.utime(vecchia / ".gas_notte" / notte.AVVIO, (t0 - 3600, t0 - 3600))
+    giri = [voce(1, vuota, t0), voce(120, vecchia, t0), voce(2, vuota, t0),
+            voce(1, con, t0), voce(0, con, t0), voce(None, con, t0)]
+    monkeypatch.setattr(_tg, "_giri_lanciati", giri)
+    with caplog.at_level("WARNING"):
+        assert _tg._raccogli_giri() == 1  # solo quello ancora in corso
+    assert "codice 1 " in caplog.text and "codice 120" in caplog.text
+    assert "codice 2 " not in caplog.text and "codice 0" not in caplog.text
+    assert avvisi == [_tg.TESTO_GIRO_NON_PARTITO] * 2
+    # spento con GAS_NOTTE_TELEGRAM=0: solo il log
+    monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "0")
+    monkeypatch.setattr(_tg, "_giri_lanciati", [voce(1, vuota, t0)])
+    _tg._raccogli_giri()
+    assert len(avvisi) == 2
+
+
+def test_raccogli_giri_non_solleva(monkeypatch):
+    class _Rotto:
+        def poll(self):
+            raise OSError("x")
+    monkeypatch.setattr(_tg, "_giri_lanciati", [{"p": _Rotto(), "t0": 0, "root": "/"}])
+    assert _tg._raccogli_giri() == 0
+
+
+def test_marcatore_avvio_in_ogni_ramo(monkeypatch, dirs):
+    """R-394-1: esegui_notte scrive il marcatore di avvio anche quando poi si
+    interrompe (ramo except) o trova il catalogo assente: il bot non manda un
+    secondo messaggio «prima di partire»."""
+    import time as _t
+    root, fuori = dirs
+    t0 = _t.time()
+    assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
+                        kernel_factory=lambda r: None) == 1
+    voce = {"p": None, "t0": t0, "root": root}
+    assert _tg._giro_partito(voce)
+
+    def _esplode(*a, **kw):
+        raise RuntimeError("rotto")
+    monkeypatch.setattr(notte, "carica_catalogo", _esplode)
+    (root / ".gas_notte" / notte.AVVIO).unlink()
+    assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
+                        kernel_factory=lambda r: None) == 1
+    assert _tg._giro_partito(voce)
+
+
+def test_comando_giro_altro_bot(monkeypatch):
+    """V-3 bot #233: in un gruppo «/notte@AltroBot» non è per Gas."""
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
+    assert _tg.comando_giro("/notte@AltroBot") is None
+    assert _tg.comando_giro("/notte@gasbot") == ("notte", None)
+    assert _tg.comando_giro("/compito@GasBot conta") == ("compito", "conta")
+    assert _tg.comando_giro("/notte") == ("notte", None)
+
+
+def test_lancia_giro_telegram_spento(monkeypatch, tmp_path):
+    """V-2 bot #233: con GAS_NOTTE_TELEGRAM=0 la risposta non promette il riepilogo."""
+    _PopenFinto.lanciati = []
+    monkeypatch.setattr(_tg.subprocess, "Popen", _PopenFinto)
+    monkeypatch.setattr(_tg, "_giri_lanciati", [])
+    monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "0")
+    r = _tg.lancia_giro(tmp_path)
+    assert "spento" in r and "ultimo_giro.md" in r and "arriva qui" not in r
+
+
+def test_run_bot_senza_username(monkeypatch, tmp_path):
+    """R-403-2: getMe senza username → _BOT_USERNAME None, «/notte@X» accettato."""
+    risposte = iter([{"ok": True, "result": {}}])
+
+    def _post(base, metodo, payload=None, timeout=70):
+        if metodo == "getMe":
+            return next(risposte)
+        raise KeyboardInterrupt
+    monkeypatch.setattr(_tg, "_tg_post", _post)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "finto")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "7")
+    monkeypatch.setattr(_tg, "avvisa_firme_scadute", lambda m: 0)
+    assert _tg.run_bot(str(tmp_path)) == 0
+    assert _tg._BOT_USERNAME is None
+    assert _tg.comando_giro("/notte@QualsiasiBot") == ("notte", None)

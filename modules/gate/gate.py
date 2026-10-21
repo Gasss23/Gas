@@ -165,15 +165,44 @@ _DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
 })
 
 
+# V-1 bot #233 (5° giro): oltre alle categorie invisibili, i caratteri assegnati che
+# si vedono vuoti (selettori di variante, riempitivi hangul, combining grapheme
+# joiner, braille vuoto): Default_Ignorable_Code_Point assegnati non Cf, più U+2800.
+_INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
+    (0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
+    (0x2800, 0x2800), (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFFA0, 0xFFA0),
+    (0xE0100, 0xE01EF),
+)
+
+
+# R-403-1: anche controlli (Cc), non assegnati (Cn: es. U+E0000), surrogati (Cs),
+# uso privato (Co) e separatori di riga/paragrafo (Zl, Zp): nessuno è un carattere
+# visibile di un nome di file. Toglierli porta solo verso firma o diniego.
+_CATEGORIE_INVISIBILI: frozenset[str] = frozenset({"Cf", "Cc", "Cn", "Cs", "Co", "Zl", "Zp"})
+
+
+def _invisibile(c: str) -> bool:
+    """True per un carattere che non si vede: categorie _CATEGORIE_INVISIBILI o uno
+    di _INVISIBILI_NON_CF."""
+    if unicodedata.category(c) in _CATEGORIE_INVISIBILI:
+        return True
+    o = ord(c)
+    return any(a <= o <= b for a, b in _INVISIBILI_NON_CF)
+
+
 def _normalize_path(p: str) -> str:
     """Normalize a path string for denylist comparison.
 
-    Steps: unicodedata NFKC → strip leading './' loops → os.path.normpath →
+    Steps: unicodedata NFKC → drop Cf (invisible) chars → strip leading './' loops → os.path.normpath →
     casefold.  Raises ValueError for absolute paths or traversal (starts with
     '..' after normpath).
     NFKC reduces FULLWIDTH characters (U+FF0E ．, U+FF0F ／) to ASCII '.', '/'.
     """
     p = unicodedata.normalize("NFKC", p)
+    # V-1 verifica esterna #233 (3° giro): via i caratteri invisibili (Unicode Cf:
+    # zero-width, BOM, controlli di direzione), che NFKC lascia: «run.sh\u200b»
+    # va alla firma come «run.sh», non al livello libero. Solo per il confronto.
+    p = "".join(c for c in p if not _invisibile(c))
     # Strip any number of leading "./" sequences.
     while p.startswith("./"):
         p = p[2:]
@@ -183,6 +212,18 @@ def _normalize_path(p: str) -> str:
     if p == ".." or p.startswith(".." + os.sep):
         raise ValueError(f"path traversal: {p!r}")
     return p.casefold()
+
+
+def _forme(p: str) -> "list[str]":
+    """R-404-1: le forme di un percorso da controllare nei confronti che NEGANO.
+    `_normalize_path` toglie i caratteri invisibili, ma così due parole si fondono
+    («x<U+0009>secret.md» → «xsecret.md») e il nome da segreto non si riconosce più;
+    sostituendoli con uno spazio («x secret.md») si riconosce, ma «run.s<U+200B>h»
+    non finisce più con «.sh». Si controllano entrambe e vince l'esito più severo.
+    Senza invisibili: una sola forma, il percorso com'è."""
+    nfkc = unicodedata.normalize("NFKC", p)
+    spaziato = "".join(" " if _invisibile(c) else c for c in nfkc)
+    return [p] if spaziato == nfkc else [p, spaziato]
 
 
 def _in_denylist(normalized: str, prefissi: "tuple[str, ...] | None" = None) -> bool:
@@ -218,6 +259,15 @@ def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | N
     raw = args.get("relative_path")
     if raw is None or not isinstance(raw, str):
         return GateClass.DENY
+    for forma in _forme(raw):  # R-404-1: basta una forma negata
+        esito = _check_path_forma(forma, write)
+        if esito is not None:
+            return esito
+    return None
+
+
+def _check_path_forma(raw: str, write: bool) -> "GateClass | None":
+    """Corpo di _check_path_arg su una sola forma del percorso."""
     try:
         norm = _normalize_path(raw)
     except ValueError:
@@ -410,8 +460,11 @@ def lettura_consentita(relative_path: Any) -> bool:
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return False
-        norm = _normalize_path(relative_path)
-        return not (_in_denylist(norm, _LETTURA_NEGATA) or _nome_da_segreto(norm))
+        for forma in _forme(relative_path):  # R-404-1: ogni forma deve essere leggibile
+            norm = _normalize_path(forma)
+            if _in_denylist(norm, _LETTURA_NEGATA) or _nome_da_segreto(norm):
+                return False
+        return True
     except Exception:
         return False
 
@@ -422,10 +475,19 @@ def livello_scrittura(relative_path: Any) -> int:
     1 = libero (snapshot preventivo, cancello solo se la finestra è contaminata);
     2 = firma umana su Telegram con diff reale generato dal kernel + pro e contro;
     3 = mai. Percorso non stringa, assoluto, con traversal o non normalizzabile → 3.
-    Mai eccezioni (fail-closed su 3)."""
+    Mai eccezioni (fail-closed su 3). R-404-1: il più severo tra le forme del
+    percorso (`_forme`)."""
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return LIVELLO_MAI
+        return max(_livello_forma(f) for f in _forme(relative_path))
+    except Exception:
+        return LIVELLO_MAI
+
+
+def _livello_forma(relative_path: str) -> int:
+    """Corpo di livello_scrittura su una sola forma del percorso."""
+    try:
         norm = _normalize_path(relative_path)
         parts = PurePosixPath(norm).parts
         if not parts or norm in (".", ""):
@@ -515,10 +577,18 @@ _ESTENSIONI_DELICATE: tuple[str, ...] = (
 # «a.sh.txt», «x.py.md».
 # V-1 bot #231 / V-5 verifica esterna #231: solo tipi ESEGUIBILI (non le estensioni
 # corte come c, h, r, go, db, app, url, key: «verbale.c.rossi.md» è un documento).
+# V-2 verifica esterna #233 (4° giro): «cmd» resta (eseguibile Windows come bat).
+# R-390-1: anche chiavi, archivi di password e database («server.pem.txt»,
+# «dump.sql.txt», «prod.env.txt»). Verifica esterna #232: fuori le parole che sono
+# anche nomi comuni («customer.service.md», «manuale.html.pdf», «node.js.md»).
 _ESTENSIONI_INTERNE_DELICATE: frozenset[str] = frozenset({
-    "sh", "zsh", "bash", "fish", "command", "terminal", "py", "pyw", "pth", "js", "mjs",
-    "cjs", "ts", "rb", "pl", "php", "ps1", "psm1", "bat", "cmd", "vbs", "exe", "dll",
-    "jar", "applescript", "scpt", "workflow", "html", "htm", "plist", "service", "desktop",
+    "sh", "zsh", "bash", "fish", "command", "terminal", "py", "pyw", "pth", "mjs",
+    "cjs", "rb", "php", "ps1", "psm1", "bat", "cmd", "vbs", "exe", "dll",
+    "jar", "applescript", "scpt", "workflow",
+    # V-3 verifica esterna #233: file di avvio, non ambigui («a.plist.txt»)
+    "plist", "desktop",
+    "pem", "p12", "pfx", "kdbx", "ovpn", "gpg", "jks", "sql", "sqlite", "sqlite3",
+    "ipynb", "env",
 })
 _NOMI_DELICATI: frozenset[str] = frozenset({
     "key", "keys", "apikey", "token", "tokens", "secret", "secrets", "password",
@@ -538,7 +608,18 @@ def sembra_delicato(relative_path: Any) -> bool:
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return True
-        nome = PurePosixPath(_normalize_path(relative_path)).name.rstrip(". ")
+        return any(_delicato_forma(f) for f in _forme(relative_path))  # R-404-1
+    except Exception:
+        return True
+
+
+def _delicato_forma(relative_path: str) -> bool:
+    """Corpo di sembra_delicato su una sola forma del percorso."""
+    try:
+        nome = PurePosixPath(_normalize_path(relative_path)).name
+        # Verifica esterna #232: via i caratteri invisibili (zero-width, BOM, controlli
+        # di direzione), che NFKC lascia: «a.sh\u200b.txt» non sfugge.
+        nome = "".join(c for c in nome if not _invisibile(c)).rstrip(". ")
         if nome.startswith(".") or "." not in nome or nome.endswith(_ESTENSIONI_DELICATE):
             return True  # file nascosti (rc, dotfile), senza estensione, config/script
         # V-2 verifica esterna #231: pezzi ripuliti dagli spazi («a.sh .txt»).
@@ -571,6 +652,13 @@ def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
             return False
         rel = parsed.get("relative_path")
         if livello_scrittura(rel) != LIVELLO_LIBERO:
+            return False
+        # R-398-1/R-399-1: _normalize_path toglie i caratteri invisibili (Cf) e unifica
+        # le varianti (NFKC) solo per il confronto; qui si CONCEDE, quindi un nome
+        # grezzo che quelle trasformazioni cambiano («a.m\u200bd», «a.\uff4dd»: il
+        # file vero non è un .md) resta alla firma.
+        if (any(_invisibile(c) for c in rel)
+                or unicodedata.normalize("NFKC", rel) != rel):
             return False
         parts = PurePosixPath(_normalize_path(rel)).parts
         primo = parts[0].strip(". ") if parts else ""
@@ -658,13 +746,14 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
             except ValueError:
                 return GateClass.DENY
             for token in tokens:
-                try:
-                    norm = _normalize_path(token)
-                except ValueError:
-                    # Absolute path or traversal as a command argument → DENY.
-                    return GateClass.DENY
-                if _in_denylist(norm, _LETTURA_NEGATA):
-                    return GateClass.DENY
+                for forma in _forme(token):  # R-404-1
+                    try:
+                        norm = _normalize_path(forma)
+                    except ValueError:
+                        # Absolute path or traversal as a command argument → DENY.
+                        return GateClass.DENY
+                    if _in_denylist(norm, _LETTURA_NEGATA):
+                        return GateClass.DENY
             # Belt-and-suspenders: whole-command substring check (NFKC + casefold).
             # Catches --flag=.env.prod and -f.env patterns where the token itself
             # is not a normalizable path but embeds a denied name as a value.

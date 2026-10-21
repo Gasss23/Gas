@@ -82,6 +82,11 @@ leggi_righe, cerca_testo, conta_file, data_ora).
 5. Il Mac deve essere acceso (anche a schermo spento) alle 03:00; se dorme, launchd
    esegue il giro al risveglio.
 
+## Lanciare un giro a mano (R1, 2026-10-21)
+
+- Dal terminale: `python3 gas.py notte` (tutto il catalogo) o `python3 gas.py notte <nome>` (un solo compito, nome esatto del catalogo).
+- Da Telegram, col bot acceso (`python3 gas.py telegram`): `/notte` oppure `/compito <nome>`. Il bot risponde subito «avviato»; il riepilogo arriva a fine giro, come dal timer. Un solo giro lanciato dal bot alla volta; se un altro giro (anche del timer) è in corso, arriva «NON avviato».
+
 ## Spegnere
 
 `launchctl unload ~/Library/LaunchAgents/com.gas.notte.plist`

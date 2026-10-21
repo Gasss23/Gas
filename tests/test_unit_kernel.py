@@ -6950,6 +6950,123 @@ with _TgFinto() as _tg77o:
 check("T77o read-back senza ID valido (anche UUID + \\n finale) → False, nessun invio",
       _r77o == [False] * 6 and _tg77o.chiamate == [], str(_r77o))
 
+# T77o2 — R-c4b1-3: invio in parallelo, turno fermo ~1 timeout in tutto (non × N);
+# un destinatario che fallisce o solleva non blocca gli altri.
+class _TgLento(_TgFinto):
+    def __call__(self, base_url, method, payload=None, timeout=70):
+        self.chiamate.append((method, payload))
+        _time.sleep(0.3)
+        cid = (payload or {}).get("chat_id")
+        if cid == 2:
+            raise RuntimeError("trasporto finto: solleva")
+        return {"ok": cid != 3, "result": {}}
+with _TgLento(ids="1,2,3,4,5,6") as _tg77o2:
+    _t77o2 = _time.monotonic()
+    _r77o2 = _tgbot_c4b.invia_read_back("x", approval_id="07e094fd-6b43-40bd-b78e-efe0a19262d8")
+    _n77o2 = _tgbot_c4b.invia_notifica("y")
+    _d77o2 = _time.monotonic() - _t77o2
+check("T77o2 R-c4b1-3 read-back e notifica in parallelo (6 destinatari da 0.3s < 1.2s)",
+      _r77o2 == (True, "") and _n77o2 == (True, "") and _d77o2 < 1.2
+      and sorted(c[1]["chat_id"] for c in _tg77o2.chiamate) == sorted([1, 2, 3, 4, 5, 6] * 2),
+      f"{_r77o2} {_n77o2} {_d77o2:.2f}s")
+with _TgLento(ids="2,3") as _tg77o3:
+    _r77o3 = _tgbot_c4b.invia_read_back("x", approval_id="07e094fd-6b43-40bd-b78e-efe0a19262d8")
+check("T77o2 tutti i destinatari falliti (uno solleva) → False, fail-closed",
+      _r77o3 == (False, "invio fallito verso tutti i destinatari"), str(_r77o3))
+
+# T93a — R7: la scatola nera sta accanto a gas.py, qualunque sia la cartella di avvio
+_bf77q = [getattr(h, "baseFilename", None) for h in logging.getLogger().handlers
+          if isinstance(h, gas.RotatingFileHandler)]
+check("T93a R7 gas_debug.log con percorso assoluto accanto a gas.py",
+      gas._LOG_PATH.is_absolute()
+      and gas._LOG_PATH == Path(gas.__file__).resolve().parent / "gas_debug.log"
+      and str(gas._LOG_PATH) in _bf77q, str(_bf77q))
+
+# T93a2 — R-397-2: la prova vera è da un'ALTRA cartella (in CI si parte dalla root)
+_tmp93a = tempfile.mkdtemp(prefix="gas_t93a_")
+try:
+    _p93a = subprocess.run(
+        [sys.executable, "-c",
+         "import logging, gas; print([getattr(h, 'baseFilename', '') for h in "
+         "logging.getLogger().handlers if isinstance(h, gas.RotatingFileHandler)])"],
+        cwd=_tmp93a, capture_output=True, text=True, timeout=120,
+        env={**os.environ, "PYTHONPATH": str(Path(gas.__file__).resolve().parent)})
+finally:
+    _sh39e.rmtree(_tmp93a, ignore_errors=True)
+check("T93a2 R-397-2 gas importato da un'altra cartella scrive il log accanto a gas.py",
+      _p93a.returncode == 0
+      and repr(str(Path(gas.__file__).resolve().parent / "gas_debug.log")) in _p93a.stdout
+      and _tmp93a not in _p93a.stdout, (_p93a.stdout + _p93a.stderr)[-300:])
+
+# T93a3 — V-2 bot #233: cartella di gas.py non scrivibile → import senza errori
+_tmp93c = tempfile.mkdtemp(prefix="gas_t93c_")
+try:
+    _p93c = subprocess.run(
+        [sys.executable, "-c",
+         "import logging.handlers as H\n"
+         "class R(H.RotatingFileHandler):\n"
+         "    def __init__(self, *a, **k): raise PermissionError('sola lettura')\n"
+         "H.RotatingFileHandler = R\n"
+         "import gas, logging\n"
+         "print('OK', gas._file_handler is None, len(logging.getLogger().handlers))"],
+        cwd=_tmp93c, capture_output=True, text=True, timeout=120,
+        env={**os.environ, "PYTHONPATH": str(Path(gas.__file__).resolve().parent)})
+finally:
+    _sh39e.rmtree(_tmp93c, ignore_errors=True)
+check("T93a3 V-2 bot #233 log non apribile: gas si importa, registro solo a schermo",
+      _p93c.returncode == 0 and "OK True 1" in _p93c.stdout
+      and "non apribile" in _p93c.stderr, (_p93c.stdout + _p93c.stderr)[-300:])
+
+# T93a4 — R-401-1: doctor avvisa se la scatola nera è spenta
+_fh93d = gas._file_handler
+_r93d = Path(tempfile.mkdtemp(prefix="gas_t93d_"))
+try:
+    gas._file_handler = None
+    gas._LOG_ERRORE = "PermissionError: prova"
+    _buf93d = io.StringIO()
+    with _ctx34.redirect_stdout(_buf93d):
+        gas.doctor(str(_r93d))
+finally:
+    gas._file_handler = _fh93d
+    gas._LOG_ERRORE = ""
+    _sh39e.rmtree(_r93d, ignore_errors=True)
+_riga93d = [l for l in _buf93d.getvalue().splitlines() if "gas_debug.log" in l]
+check("T93a4 R-401-1 doctor: scatola nera spenta → WARN «non scrivibile»",
+      len(_riga93d) == 1 and "WARN" in _riga93d[0] and "non scrivibile" in _riga93d[0],
+      str(_riga93d))
+
+# T93b — R7: reindex, calibrate-vectors ed eval-vectors rispettano GAS_VECTORS_DB
+_vs_orig93 = gas.VectorStore
+_visti93: list = []
+class _VsFinto93:
+    def __init__(self, path, *a, **kw):
+        _visti93.append(Path(path))
+        self.available = False
+        self.disable_reason = "finto"
+_env93 = os.environ.get("GAS_VECTORS_DB")
+_root93 = Path(tempfile.mkdtemp(prefix="gas_t93b_"))
+_alt93 = _root93 / "altrove" / "vettori.db"
+try:
+    gas.VectorStore = _VsFinto93
+    os.environ["GAS_VECTORS_DB"] = str(_alt93)
+    with _ctx34.redirect_stdout(io.StringIO()):
+        gas.reindex(str(_root93))
+        gas.calibrate_vectors_cmd(str(_root93))
+        gas.eval_vectors_cmd(str(_root93))
+    _con93 = list(_visti93)
+    del os.environ["GAS_VECTORS_DB"]
+    _senza93 = gas._percorso_vettori(_root93)
+finally:
+    gas.VectorStore = _vs_orig93
+    if _env93 is None:
+        os.environ.pop("GAS_VECTORS_DB", None)
+    else:
+        os.environ["GAS_VECTORS_DB"] = _env93
+    _sh39e.rmtree(_root93, ignore_errors=True)
+check("T93b R7 i tre comandi dei vettori usano GAS_VECTORS_DB; senza, <root>/.gas_vectors.db",
+      len(_con93) == 3 and all(p == _alt93.resolve() for p in _con93)
+      and _senza93 == _root93 / ".gas_vectors.db", str(_con93))
+
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000
 _txt77p = _tgbot_c4b.componi_esito_firma(
