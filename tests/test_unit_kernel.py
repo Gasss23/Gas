@@ -8168,6 +8168,49 @@ try:
           _k78m.recupera_esito_firma(_id78m) is None and _k78m.recupera_esito_firma(_id78n) is None
           and _k78n.recupera_esito_firma(_id78n) is None and len(_k78m.history) == _n78n
           and _esec77(_k78m)[-1][0] != _id78n)
+    # T78o — V-1 verifica esterna #241: kernel senza recupera_esito_firma → None + log
+    _id78o = _k78m.memory.enqueue_approval("run_command", {"command": "echo o"})
+    _k78m.memory.resolve_approval(_id78o, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78o)
+    _log78o = []
+    _orig_w78o = _tg_erm.log.warning
+    _tg_erm.log.warning = lambda *a, **k: _log78o.append(a[0] % a[1:] if len(a) > 1 else a[0])
+    try:
+        _r78o = _tg_erm._riprova_orfana(_k78m.memory, SimpleNamespace(), _id78o, "m")
+    finally:
+        _tg_erm.log.warning = _orig_w78o
+    check("T78o kernel senza recupero → (None, motivo) e warning nel log",
+          _r78o == (None, "m") and any(_id78o in r and "recuperarne" in r for r in _log78o),
+          str(_log78o))
+    # T78p — V-2 verifica esterna #241: il recupero conta su «un click alla volta».
+    # Guardia statica: gli update si gestiscono solo con chiamate dirette (mai passati
+    # a thread/executor) e l'unico ThreadPoolExecutor del bot resta nell'invio.
+    import ast as _ast78p
+    _src78p = Path(_tg_erm.__file__).read_text(encoding="utf-8")
+    _albero78p = _ast78p.parse(_src78p)
+    _gestori78p = {"_handle_update", "gestisci_callback", "_riprova_orfana"}
+    _chiamati78p = {id(n.func) for n in _ast78p.walk(_albero78p) if isinstance(n, _ast78p.Call)}
+    _riferiti78p = [n.id for n in _ast78p.walk(_albero78p)
+                    if isinstance(n, _ast78p.Name) and n.id in _gestori78p
+                    and isinstance(n.ctx, _ast78p.Load) and id(n) not in _chiamati78p]
+    # R-450-1: costruttori cercati in TUTTO il modulo (anche un pool a livello di modulo),
+    # ciascuno attribuito alla funzione che lo contiene ("<modulo>" se fuori da ogni funzione)
+    _dentro78p = {}
+    for _f78p in _ast78p.walk(_albero78p):
+        if isinstance(_f78p, (_ast78p.FunctionDef, _ast78p.AsyncFunctionDef)):
+            for _n78p in _ast78p.walk(_f78p):
+                _dentro78p.setdefault(id(_n78p), _f78p.name)
+    # R-451-1: anche Timer e gli alias d'import («... import ThreadPoolExecutor as TPE»)
+    _nomi78p = {"ThreadPoolExecutor", "Thread", "Timer", "ProcessPoolExecutor",
+                "start_new_thread", "to_thread", "run_in_executor"}
+    _nomi78p |= {a.asname for n in _ast78p.walk(_albero78p)
+                 if isinstance(n, (_ast78p.Import, _ast78p.ImportFrom))
+                 for a in n.names if a.asname and a.name.split(".")[-1] in _nomi78p}
+    _pool78p = [_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
+                if isinstance(n, _ast78p.Call)
+                and getattr(n.func, "id", getattr(n.func, "attr", "")) in _nomi78p]
+    check("T78p update gestiti uno alla volta: nessun gestore passato a thread, pool solo nell'invio",
+          _riferiti78p == [] and _pool78p == ["_invia_a_tutti"], f"{_riferiti78p} {_pool78p}")
 finally:
     if _saved_sb78 is None:
         os.environ.pop("GAS_SANDBOX_MODE", None)

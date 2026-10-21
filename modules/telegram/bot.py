@@ -693,7 +693,11 @@ def _riprova_orfana(memory: Any, kernel: Any, aid: str,
             return None, motivo
         if memory.get_esecuzione(aid):
             recupera = getattr(kernel, "recupera_esito_firma", None)
-            return (recupera(aid) if callable(recupera) else None), motivo
+            if not callable(recupera):  # V-1 verifica esterna #241: niente recupero muto
+                log.warning("callback: id=%s già reclamata ma il kernel non sa "
+                            "recuperarne l'esito", aid)
+                return None, motivo
+            return recupera(aid), motivo
         if time.time() < row["ts_expiry"]:
             log.warning("callback: id=%s approvata ma mai eseguita — nuovo tentativo", aid)
             return kernel.applica_firma(aid), motivo

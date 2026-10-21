@@ -3400,9 +3400,10 @@ class GasKernel:
             # "[OK] (non eseguito)" = anteprima dry-run di run_command (R-445-1)
             if not esito.startswith("[KO]") and esito != "[OK] (non eseguito)":  # R-446-1
                 stato = "finita"
+                # V-1 bot #241: la causa può essere anche un'eccezione assorbita, non solo un crash
                 notizia = ("l'operatore l'ha APPROVATA via Telegram e il kernel l'ha eseguita "
-                           "con gli argomenti salvati; Gas si è poi interrotto e l'output "
-                           "non è più disponibile.")
+                           "con gli argomenti salvati, ma l'esito non era entrato in storia "
+                           "(interruzione o errore interno): l'output non è più disponibile.")
             elif "incert" in esito:
                 stato = "incerta"
                 notizia = ("l'operatore l'ha APPROVATA via Telegram, ma Gas si è interrotto "
