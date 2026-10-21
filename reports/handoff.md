@@ -25,36 +25,43 @@
 - **R7 — registro accanto a gas.py, vettori con GAS_VECTORS_DB**: `FATTA` — review #397.
 - **Cancello — caratteri invisibili e NFKC** (V-1 verifica esterna #233 3° giro, R-398-1, R-399-1): `FATTA` — review #398, #399, #400.
 - **Registro non apribile, doctor, «cmd»** (V-2 bot #233, V-2 verifica esterna #233 4° giro, R-401-1/3): `FATTA` — review #401, #402.
+- **Cancello 2ª parte — invisibili di ogni tipo, forme multiple; bot /notte@altro, riepilogo spento** (V-1/V-2/V-3 bot #233 5° giro, R-403-1 MEDIA, R-404-1 ALTA): `FATTA` — review #403 APPROVATO CON RISERVE, #404 BOCCIATO (commit non fatto), #405 APPROVATO CON RISERVE (commit 71e7fe4 e 2d98a04).
 - **R7 — compiti lunghi che riprendono dopo un crash**: `DEFERITA` — serve un disegno.
 
-Tutte le review (chat Motore): APPROVATO CON RISERVE, nessuna ALTA/MEDIA.
+Review (chat Motore): tutte APPROVATO CON RISERVE salvo #404 BOCCIATO (R-404-1 ALTA, chiusa in #405); nessuna ALTA/MEDIA aperta.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  18 ++++++++++---
- gas.py                             |  67 ++++++++++++++++++++++++++++++----------------
- modules/gate/gate.py               |  32 ++++++++++++++++++----
- modules/notte/notte.py             |  18 +++++++++++--
- modules/telegram/bot.py            | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
- reports/da_mergiare.md             |  63 +++++++++++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |  17 +++++++-----
- reports/handoff.md                 | 520 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------
- reports/lavoro_parallelo.md        |  17 +++++++++++-
- reports/setup_notte.md             |   5 ++++
- reports/stato_progetto.md          |   6 +++--
- reports/ultimo_report.md           |  36 ++++++++++++++++---------
- tests/test_unit_gate.py            |  21 +++++++++++++++
- tests/test_unit_kernel.py          | 117 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_notte.py           | 225 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 15 files changed, 1226 insertions(+), 124 deletions(-)
+ .claude/agents/memoria_revisore.md |  21 ++++++++++--
+ gas.py                             |  67 ++++++++++++++++++++++++-------------
+ modules/gate/gate.py               | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ modules/notte/notte.py             |  18 ++++++++--
+ modules/telegram/bot.py            | 204 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------
+ reports/da_mergiare.md             |  69 ++++++++++++++++++++++++++++++++++----
+ reports/diff_sessione.md           |  17 ++++++----
+ reports/handoff.md                 | 647 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------
+ reports/lavoro_parallelo.md        |  17 +++++++++-
+ reports/setup_notte.md             |   5 +++
+ reports/stato_progetto.md          |   6 ++--
+ reports/ultimo_report.md           |  37 ++++++++++++++-------
+ tests/test_unit_gate.py            |  52 +++++++++++++++++++++++++++++
+ tests/test_unit_kernel.py          | 117 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py           | 263 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 15 files changed, 1523 insertions(+), 136 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2d98a04 fix(cancello): invisibili di ogni categoria; i controlli che negano guardano anche la forma con lo spazio, così le parole da segreto non si fondono (R-403-1, R-404-1)
+1b2cb5e chore(revisore): memoria review #405 — APPROVATO CON RISERVE
+88b9a77 chore(revisore): memoria review #404 — BOCCIATO
+71e7fe4 fix(cancello): anche gli invisibili non Cf (selettori di variante, riempitivi) non aggirano la firma; bot: /notte@altro ignorato, risposta col riepilogo spento (V-1/V-2/V-3 bot #233)
+38d14e6 chore(revisore): memoria review #403 — APPROVATO CON RISERVE
+7dc6bb8 docs(fine-task): report, handoff, coda da_mergiare — registro a prova di crash (#401, #402)
 fd6add0 fix(doctor): avviso se la scatola nera gas_debug.log è spenta (R-401-1/3)
 afcc527 chore(revisore): memoria review #402 — APPROVATO CON RISERVE
 948c20d fix(log): Gas parte anche se gas_debug.log non si apre; «cmd» di nuovo segnalato (V-2 bot #233, V-2 verifica esterna #233)
@@ -510,10 +517,126 @@ Ho aggiunto la riga contatore #402 in `/home/user/Gas/.claude/agents/memoria_rev
 
 ---
 
+### Review #403 (chat Motore) — commit 71e7fe4
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #403 (chat Motore). Ho letto CLAUDE.md (sez. 1, 4, 5, 8, 9), reports/stato_progetto.md (riga 601: cancello, registro e R1) e .claude/agents/memoria_revisore.md (#398-#402, compresa la lezione sulla «normalizzazione solo per il confronto»). Il diff non contiene slicing della history né simulazione dei tool. I numeri dei test li ho riprodotti io: gate+notte 890 passed, kernel 957 PASS / 0 FAIL.
+
+**Elementi del diff esaminati**
+- `modules/gate/gate.py:171` — `_invisibile(c)`: categoria Cf più l'elenco di intervalli. Rischio: elenco incompleto o troppo largo. Esito: **riserva** (R-403-1). Le sonde confermano i casi elencati: «run.sh<U+FE0F>», «run.sh<U+3164>», «run.sh<U+034F>» e «run.sh<U+E0100>» ora sono al livello 2.
+- `modules/gate/gate.py:198` — `_normalize_path` toglie gli invisibili dopo NFKC, solo per il confronto. Rischio: che togliere caratteri renda il controllo più permissivo. Esito: **ok**. Togliere caratteri porta solo verso firma o diniego (es. «..<U+0001>/x» → ValueError → DENY).
+- `modules/gate/gate.py:612` — `libero_dopo_lettura`: un nome grezzo con invisibili va alla firma. Rischio: la funzione concede, quindi va provata sul nome grezzo (lezione #398). Esito: **ok**. «notes/a.m<U+FE0F>d» e «notes/a.md<U+2800>» danno False. Il coreano NFC («notes/한국어.md») resta libero.
+- `modules/gate/gate.py:178` — U+115F/U+1160 (riempitivi Jamo hangul). Rischio: rompere nomi coreani reali. Esito: **ok**.
+  - Nelle sillabe precomposte NFC non compaiono.
+  - Nella forma NFD moderna (es. U+1112 U+1161 U+11AB) nemmeno.
+  - NFKC li lascia invariati e porta U+3164 e U+FFA0 a U+1160, già nell'elenco.
+  - Li usano solo sequenze arcaiche o incomplete. L'effetto è solo «firma», mai diniego.
+- `modules/telegram/bot.py:478` — `comando_giro` scarta «/notte@AltroBot» con confronto casefold. Il test `tests/test_unit_notte.py:1463` copre maiuscole/minuscole e il caso senza «@». Esito: **ok**.
+- `modules/telegram/bot.py:404-406` — username ricavato da getMe, poi `global _BOT_USERNAME`. Esito: **riserva** (R-403-2, R-403-3).
+- `modules/telegram/bot.py:564` — con GAS_NOTTE_TELEGRAM=0 la risposta non promette il riepilogo. Rischio: semantica diversa da quella del notturno. Esito: **ok**. Il controllo `.strip() == "0"` è identico a `modules/notte/notte.py:442`, e il riepilogo va comunque in `.gas_notte/ultimo_giro.md` (`modules/notte/notte.py:98`).
+- `tests/test_unit_notte.py:29` — la fixture azzera `_BOT_USERNAME` a ogni test. Esito: **ok**. Senza, un test che chiama run_bot con un getMe finto lascerebbe lo username agli altri test.
+
+**Finding**
+- **R-403-1 (chat Motore) MEDIA.** L'elenco non è «tutti i Default_Ignorable non Cf», come dice il commento: mancano i Default_Ignorable non assegnati (categoria Cn). Lo standard Unicode chiede di renderli invisibili.
+  - Intervalli mancanti: U+2065, U+FFF0-FFF8, U+E0000, U+E0002-E001F, U+E0080-E00FF, U+E01F0-E0FFF.
+  - Sonde: «.e<U+E0000>nv» → livello 1 (con <U+200B> è 3); «gas.p<U+E0000>y» → 1; «run.sh<U+E0000>» → 1.
+  - Stessa classe con i caratteri di controllo (Cc) e i separatori di riga/paragrafo (Zl, Zp): «run.sh<U+007F>», «run.sh<U+0001>», «run.sh\n» → 1.
+  - Non è una regressione (prima era uguale o peggio), ma il bot lo segnalerà al 6° giro.
+  - Proposta: considerare invisibili anche le categorie generali Cc, Cn, Cs, Co, Zl, Zp, oltre all'elenco. Si va sempre nella direzione firma/diniego.
+- **R-403-2 (chat Motore) BASSA.** `me.get("result", {}).get("username", "bot")` restituisce la stringa "bot" quando lo username manca, non None. Quindi `_BOT_USERNAME` vale "bot" e «/notte@GasBot» viene ignorato: il contrario di «senza username si accetta come prima». In pratica getMe di un bot dà sempre lo username. Correzione: `.get("username")` e il fallback "bot" solo nella stampa.
+- **R-403-3 (chat Motore) COSMETICA.** `global _BOT_USERNAME` sta a metà di run_bot. È lecito, perché il nome non è usato prima nella funzione, ma va messo in testa alla funzione.
+
+**Rischio escluso:** non ho provato come Telegram, il terminale del Mac o un VPS mostrano davvero i caratteri non assegnati e quelli di controllo: non è riproducibile in questo ambiente. Non ho fatto la prova di mutazione sui nuovi test: dalla lettura del codice di HEAD fallirebbero tutti. Il ramo `run_bot` con getMe senza username l'ho solo letto, non eseguito.
+
+Memoria aggiornata e committata a parte (riga #403 con la lezione), commit 38d14e6. File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+---
+
+### Review #404 (chat Motore) — BOCCIATO, nessun commit; correzione rivista in #405
+
+## VERDETTO: BOCCIATO
+
+Review #404 (chat Motore). Ho letto CLAUDE.md, la parte di reports/stato_progetto.md che serve (cercata con grep) e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+
+- `modules/gate/gate.py:181` — `_CATEGORIE_INVISIBILI` = Cf, Cc, Cn, Cs, Co, Zl, Zp. Rischio esaminato: il carattere tolto fonde due parole. Esito: **blocco** (R-404-1).
+- `modules/gate/gate.py:205` — `_normalize_path` toglie quei caratteri prima di ogni confronto con le liste di nomi vietati. Questa funzione la usano anche `lettura_consentita`, `livello_scrittura`, `_nome_da_segreto` e i token di `run_command` (`modules/gate/gate.py:709`).
+  - I confronti per prefisso diventano più stretti: «.e<U+E0000>nv» → livello 3, «run.sh<U+0001>» → livello 2. Questo va bene.
+  - Le regex a confine di parola dei segreti invece si spengono.
+  - Esito: **blocco**.
+- `tests/test_unit_gate.py:474` e `tests/test_unit_gate.py:495` — i casi nuovi di livello 3 e livello 2 passano. Nessun caso controlla un segreto con il separatore dentro il nome. Esito: riserva (rientra in R-404-1).
+- `modules/telegram/bot.py:405` — username da `(me.get("result") or {}).get("username")`. Se manca o è vuoto si usa None, e «bot» compare solo nella stampa. `global` è in testa a `modules/telegram/bot.py:373`. Esito: ok, chiude R-403-2 e R-403-3.
+- `tests/test_unit_notte.py:1482` — `test_run_bot_senza_username`. La fixture autouse (`tests/test_unit_notte.py:22`) ripristina `_BOT_USERNAME`, quindi il valore non passa da un test all'altro. `run_bot` aggiunge la cartella sopra `tmp_path` a `sys.path`. È una piccola contaminazione, ma non è lei la causa del test instabile. Esito: ok.
+
+**Finding**
+
+- **R-404-1 (ALTA, regressione di sicurezza nel cancello)**: ho provato lo stesso nome con il `modules/gate/gate.py` di HEAD e con quello in staging.
+  - Il nome «x<U+0009>secret.md» a HEAD è livello 3 con lettura negata. Col diff diventa livello 1 e `lettura_consentita` restituisce True.
+  - Stesso risultato con «x<U+000A>secret.md», «x<U+001F>secret.md», «x<U+0085>secret.md», «x<U+2028>secret.md» e «notes/x<U+0009>id_rsa». Anche Cn e Co aprono nomi prima negati: «x<U+E0000>secret.md», «x<U+E000>secret.md».
+  - Causa: il carattere viene tolto e le parole si fondono («xsecret»), quindi `_nome_da_segreto` e `_NOME_INTERO_RE` non riconoscono più la parola. Anche `sembra_delicato` passa da True a False.
+  - Stessa classe, ma già presente a HEAD: «x<U+200B>secret.md», «x<U+FE0F>secret.md» e «x<U+3164>secret.md» erano già livello 1 e leggibili, perché Cf e invisibili non Cf si toglievano già da prima.
+  - Correzione proposta: nei controlli che NEGANO (prefissi, `_nome_da_segreto`, livello 3, lettura) valutare due forme, «carattere tolto» e «carattere sostituito con spazio», e tenere l'esito più restrittivo. Aggiungere i casi di test sopra, compresi quelli già presenti a HEAD.
+- **R-404-2 (BASSA, preesistente, non causata da questo diff)**: il fallimento «1 failed, 898 passed» che hai visto l'ho riprodotto 1 volta su 20 run. È `tests/test_unit_notte.py:748` `test_riepilogo_telegram_inviato_a_lock_rilasciato`, un test della #169 che controlla il lock con `flock`, quindi dipende dai tempi. Non è legato a `_BOT_USERNAME` né a `_giri_lanciati`. Va tracciato in stato_progetto.md.
+
+**Le tue domande**
+
+- **Cc con <U+0009>/<U+000A>**: non sono più stretti, anzi aprono la regressione R-404-1. I caratteri «spazio» (Cc, Zl, Zp, <U+0085>) vanno trattati come separatori, non tolti. Gli altri Cc (<U+0001>, <U+007F>) si possono togliere, purché si controlli anche la forma con lo spazio.
+- **Co, uso privato**: macOS (mappatura SFM, U+F001-F0FF) e gli invisibili mettono caratteri PUA in nomi reali. In `libero_dopo_lettura` portano solo alla firma: falso negativo accettabile, da dichiarare. Il problema vero è quello di R-404-1.
+- **Cs, surrogati**: compaiono nei nomi Linux non UTF-8 (surrogateescape). Toglierli rende più stretti i confronti per prefisso («.e<U+DCFF>nv» → livello 3). `unicodedata.normalize` li accetta senza errori. Vale però lo stesso problema di R-404-1.
+- **Nota**: Cn dipende dalla versione Unicode di Python (qui 15.1, Python 3.13). Un carattere assegnato in Unicode più recente viene trattato come invisibile, e questo spinge solo verso firma o diniego.
+
+**Riproduzioni**: gate+notte 899 passed in 19 run su 20 (1 fallimento su R-404-2). I confronti HEAD/staging li ho fatti con uno script di prova nello scratchpad (/tmp/claude-0/-home-user-Gas/44c5231e-90cf-40cb-8216-3ee48596875d/scratchpad/probe.py).
+
+**Rischi esclusi**
+- La suite kernel (957 PASS) non l'ho rieseguita: il diff non tocca gas.py.
+- Il comportamento di `run_bot` con il vero getMe di Telegram non l'ho verificato: in dev non c'è rete né token.
+- Non ho controllato se sul VPS esistono file con caratteri di controllo nel nome.
+
+Memoria: riga #404 e lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (88b9a77).
+
+---
+
+### Review #405 (chat Motore) — commit 2d98a04 (contiene anche il diff visto in #404)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #405 (chat Motore). È la nuova revisione dopo il BOCCIATO della #404: la regressione segnalata come R-404-1 è chiusa. Ho letto prima, come richiesto, CLAUDE.md (sezione 5), reports/stato_progetto.md e la mia memoria.
+
+**Elementi del diff che ho esaminato**
+- `modules/gate/gate.py:217` — `_forme(p)` restituisce `[p]` se non ci sono caratteri invisibili, altrimenti `[p, NFKC con ogni invisibile sostituito da uno spazio]`. Rischio esaminato: c'è una forma meno severa della versione prima della regressione (e706955~1)? Ho fatto una sonda ampia: 60 nomi (segreti, chiavi, .env, cancello, script, documenti) × 27 caratteri invisibili (Cf, Cc <U+0009>/<U+000A>/<U+001F>/<U+0085>/<U+007F>, Cn <U+E0000>/<U+2065>/<U+FFF0>, Co <U+E000>, Zl/Zp <U+2028>/<U+2029>, DICP <U+FE0F>/<U+3164>/<U+034F>/<U+115F>/<U+17B4>, <U+00A0>, <U+3000>), inseriti in ogni posizione, più le coppie di invisibili. In totale 46707 nomi, confrontati su livello_scrittura, lettura_consentita, read_file, write_file, run_command, sembra_delicato e libero_dopo_lettura. Risultato: **0 casi meno severi** sia rispetto a e706955~1 sia rispetto a HEAD. Esito: ok.
+- `modules/gate/gate.py:226` — mutazione: con `_forme` che restituisce sempre `[p]` falliscono 17 test, quindi i test nuovi distinguono la correzione. Ho poi ripristinato il file, il working tree è identico allo staged. Esito: ok.
+- `modules/gate/gate.py:488` — `_livello_forma` e `modules/gate/gate.py:616` `_delicato_forma` hanno ciascuna il proprio try che si chiude sul lato prudente (LIVELLO_MAI / True), in più al try esterno di livello_scrittura e sembra_delicato. Non c'è ricorsione. Rischio esaminato: un'eccezione che lascia passare. Ho provato surrogati soli (<U+D800>, <U+DFFF>), pezzi oltre 255 caratteri e 5000 <U+200B>: risultato 3/DENY oppure 2, nessuna eccezione. Esito: ok.
+- `modules/gate/gate.py:269` — `_check_path_forma` è il corpo originale applicato a una sola forma, e la prima forma negata vince. `modules/gate/gate.py:746` fa lo stesso sui token di run_command. Esito: ok.
+- Spazi finali nella forma con gli spazi: «run.sh » viene ripulito da `rstrip("/. ")` / `rstrip(". ")`, mentre «<U+200B>keys» → « keys» viene preso dal prefisso `[-_ .]*+` di `_NOME_INTERO_RE`. Le forme con spazio iniziale o finale possono solo aggiungere dinieghi, che sono innocui perché vince il più severo. Esito: ok.
+- `modules/telegram/bot.py:405` — `_BOT_USERNAME` vale None quando manca lo username, e `global` è in testa a run_bot. Già visto in #404. Esito: ok.
+- `tests/test_unit_gate.py:860` — test_r404 per lettura negata, read_file DENY, sembra_delicato e run_command. Esito: ok.
+
+Ho rifatto i test: gate+notte 917 passed, kernel 957 PASS / 0 FAIL. Ho confermato i casi che mi avevi indicato: x<U+200B>secret.md e prod.env<U+200B>ironment.py tornano a livello 3 / DENY (a HEAD erano 1 e 2). Nessuno slicing della history e nessuna simulazione di tool: il diff tocca solo il cancello.
+
+**Riserve**
+- **R-405-1 (chat Motore) BASSA, preesistente:** `gate_classify("read_file")` dà SAFE per i nomi «<U+0009>» e «<U+200B>», mentre `lettura_consentita` dà False e il livello è 3. Succede uguale in tutte e tre le versioni. Va allineato read_file a lettura_consentita per i nomi che restano vuoti dopo la normalizzazione.
+- **R-405-2 (chat Motore) COSMETICA:** la docstring di `_normalize_path` (`modules/gate/gate.py:195`) dice ancora «drop Cf», ma ora toglie tutte le categorie invisibili.
+- R-404-2 (test flock instabile) va ancora tracciata in reports/stato_progetto.md.
+
+**Cosa NON ho verificato**
+- La sonda copre i nomi del mio elenco e le loro varianti con invisibili, non tutto lo spazio Unicode: un nome sensibile che non è nell'elenco non è coperto.
+- Non ho verificato il comportamento sul filesystem reale del Mac (nomi NFD, HFS+) né il ricontrollo che il kernel fa sul nome risolto: non si riproduce in questo ambiente, ed è la riserva aperta R-400-1.
+
+**Memoria:** ho aggiunto la riga #405 (con la lezione «sonda differenziale contro la versione prima della regressione») in /home/user/Gas/.claude/agents/memoria_revisore.md, committata come 1b2cb5e. Lo staged del motore è intatto.
+
+**File della sonda (da riusare):**
+- /tmp/claude-0/-home-user-Gas/44c5231e-90cf-40cb-8216-3ee48596875d/scratchpad/probe/sonda.py
+- /tmp/claude-0/-home-user-Gas/44c5231e-90cf-40cb-8216-3ee48596875d/scratchpad/probe/check2.py
+- /tmp/claude-0/-home-user-Gas/44c5231e-90cf-40cb-8216-3ee48596875d/scratchpad/probe/check3.py
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 tests/test_unit_kernel.py in locale: 950 → 957 PASS, 0 FAIL (T77o2, T93a, T93a2, T93a3, T93a4, T93b). Blocco reale: `=== RIEPILOGO: 957 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_gate.py`: `777 passed` (745 a inizio sessione); `tests/test_unit_notte.py`: `103 passed`. pytest intero `1627 passed in 180.55s` sul commit 0fafbe9 (prima delle fette cancello e registro).
+pytest `tests/test_unit_gate.py`: `811 passed` (745 a inizio sessione); `tests/test_unit_notte.py`: `106 passed`. pytest intero `1627 passed in 180.55s` sul commit 0fafbe9 (prima delle fette cancello e registro). `test_riepilogo_telegram_inviato_a_lock_rilasciato` (notte, preesistente) fallisce circa 1 volta su 20 (R-404-2).
 
 ## §6 STATO CI
 
@@ -524,7 +647,8 @@ CI NON VERIFICATA da qui (gh assente nel container); dati dai verdetti della ver
 - b49f47b: handoff-check failure (handoff non aggiornato in quel push).
 - 467ddf7: unit-suite success, handoff-check success; verifica-bot failure per caratteri invisibili nel verdetto (APPROVATO CON RISERVE nel testo).
 - 532c351 (con 0fafbe9, e706955, 0614242, b32cbea e memorie): unit-suite success (kernel 957 PASS in CI), handoff-check success; verifica-bot failure per caratteri invisibili nel verdetto (APPROVATO CON RISERVE nel testo), dal verdetto del bot e dalla verifica esterna #233 (4° giro).
-- 948c20d, fd6add0 e memorie: run non ancora disponibile alla scrittura dell'handoff.
+- 7dc6bb8 (con 948c20d, fd6add0 e memorie): unit-suite success (kernel 959 PASS in CI), handoff-check success; verifica-bot failure per caratteri invisibili nel verdetto (APPROVATO CON RISERVE nel testo), dal verdetto del bot.
+- 71e7fe4, 2d98a04 e memorie: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -537,5 +661,8 @@ CI NON VERIFICATA da qui (gh assente nel container); dati dai verdetti della ver
 - R-400-1 (BASSA): nomi NFD dopo una lettura alla firma (accettato).
 - R-401-2 (BASSA): senza file handler un log residuo accanto a gas.py non è riconosciuto se root diversa.
 - R-402-1 (COSMETICA): T93a4 non controlla l'exit code di doctor.
+- R-404-2 (BASSA): test notte del lock instabile (1 su 20).
+- R-405-1 (BASSA, preesistente): read_file SAFE su un nome fatto solo di invisibili.
+- R-405-2 (COSMETICA): docstring di `_normalize_path`.
 - Verifica esterna #233 4° giro: V-3 (doctor(root_dir) legge sempre il log accanto a gas.py: voluto), V-5/V-6 dichiarate.
 - Verifica esterna #233: V-5 3° giro (giro ucciso dopo il marcatore: nessun avviso), V-2 bot (marcatore condiviso col timer) — BASSE.

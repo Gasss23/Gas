@@ -60,3 +60,9 @@
 - **Pro:** chiude V-2 del bot e V-2 della verifica esterna #233 (4° giro); rispetta «zero crash».
 - **Contro:** in quel caso la scatola nera è spenta finché non si sistemano i permessi (lo dice doctor).
 - **Controlli:** revisori #401 e #402 (chat Motore) APPROVATO CON RISERVE; kernel 957 PASS, gate 777.
+
+### 10. Cancello: invisibili di ogni tipo, senza fondere le parole (sicurezza)
+- **Cosa:** anche i caratteri invisibili «non standard» (selettori di variante, caratteri non assegnati, controlli) non aggirano più la firma; e un invisibile messo fra due parole («x<invisibile>secret.md») non nasconde più un nome da segreto. Bot Telegram: «/notte@AltroBot» ignorato; con il riepilogo spento la risposta non lo promette.
+- **Pro:** chiude V-1/V-2/V-3 del bot (5° giro), R-403-1 (media) e R-404-1 (alta). R-404-1 era una regressione introdotta dalla voce 8 di questa stessa PR: senza questa voce la voce 8 NON va mergiata. Sonda del revisore su 46.707 nomi: nessun caso meno severo di prima della sessione.
+- **Contro:** nomi di file con caratteri insoliti chiedono più spesso la firma. Restano R-405-1 (bassa, già esistente: read_file su un nome fatto solo di invisibili) e R-404-2 (un test vecchio del lock a volte fallisce, 1 su 20).
+- **Controlli:** revisore #403 APPROVATO CON RISERVE, #404 BOCCIATO, #405 APPROVATO CON RISERVE (chat Motore); gate+notte 917 passed, kernel 957 PASS.

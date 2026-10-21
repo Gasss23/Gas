@@ -4,7 +4,7 @@ Ramo `feat/merge-automatico-z1xjx2`, PR #233 (la #232 era già mergiata: ramo ri
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #233: pro e contro in `reports/da_mergiare.md` (voci 1-9). Il check del bot è rosso solo per i caratteri invisibili che il bot stesso ricopia: il testo dei verdetti è APPROVATO CON RISERVE.
+1. Merge della PR #233: pro e contro in `reports/da_mergiare.md` (voci 1-10). Il check del bot è rosso solo per i caratteri invisibili che il bot stesso ricopia: il testo dei verdetti è APPROVATO CON RISERVE.
 2. C6 (bottone «Modifica» e firme a gruppi): decidere (a) lasciare così, (b) disegnare il «Modifica», (c) anche le firme a gruppi.
 3. Aprire la terza chat «Mani» col prompt dato in chat (anche in fondo a `reports/lavoro_parallelo.md`).
 4. Provare dal vero sul Mac: `python3 gas.py telegram`, poi `/compito <nome>` dal telefono.
@@ -21,9 +21,10 @@ Ramo `feat/merge-automatico-z1xjx2`, PR #233 (la #232 era già mergiata: ramo ri
 - **R7: registro accanto a gas.py, archivio dei vettori con GAS_VECTORS_DB** — FATTA. Review #397.
 - **Cancello: caratteri invisibili e lettere travestite (V-1 verifica esterna #233 3° giro, R-398-1, R-399-1)** — FATTA. Review #398, #399, #400.
 - **Registro non apribile → Gas parte lo stesso; doctor avvisa; «cmd» segnalato (V-2 bot #233, V-2 verifica esterna #233 4° giro, R-401-1/3)** — FATTA. Review #401, #402.
-- Tutte le review: APPROVATO CON RISERVE, nessuna ALTA/MEDIA.
-- **Test** — kernel 950 → 957 PASS, 0 FAIL; gate 745 → 777; notte 103; pytest intero 1627 passed (prima della fetta cancello).
-- **Verifica esterna #233** — quattro giri, tutti APPROVATO CON RISERVE.
+- **Cancello, 2ª parte: invisibili di ogni tipo senza fondere le parole; /notte@altro bot ignorato (V-1/V-2/V-3 bot #233 5° giro, R-403-1, R-404-1)** — FATTA. Review #403, #404 BOCCIATO (R-404-1 ALTA: regressione introdotta dalla mia fetta #398), #405 APPROVATO CON RISERVE.
+- Tutte le altre review: APPROVATO CON RISERVE, nessuna ALTA/MEDIA aperta.
+- **Test** — kernel 950 → 957 PASS, 0 FAIL; gate 745 → 811; notte 103; pytest intero 1627 passed (prima della fetta cancello).
+- **Verifica esterna #233** — cinque giri, tutti APPROVATO CON RISERVE.
 - **Anomalia** — il bot di verifica ha bocciato per «caratteri invisibili nel testo» verdetti che erano APPROVATO CON RISERVE: li avevo incollati nei report; ora sono scritti come `<U+200B>`.
 
 ## Prossimi passi
