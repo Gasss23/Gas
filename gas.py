@@ -3035,7 +3035,8 @@ class GasKernel:
         l'esito non è [KO] (R-c4b2-3); per run_command solo se il comando è partito
         davvero (segnale del kernel, R-c4b2-9/R-c4b3-1), mai dedotto dall'output.
         FAIL-CLOSED §9: mai eccezioni."""
-        res: Dict[str, Any] = {"tool": "", "eseguita": False, "esito": "", "output": ""}
+        res: Dict[str, Any] = {"tool": "", "eseguita": False, "stato": "non_partita",
+                               "esito": "", "output": ""}  # R-428-4
         if self.memory is None:
             res["esito"] = "store non disponibile: azione non eseguita"
             return res
@@ -3918,9 +3919,13 @@ class GasKernel:
                         "(GAS_SANDBOX_MODE=os_with_fallback)")
                     exec_argv = argv
                 self._run_command_avviato = True
-                res = subprocess.run(exec_argv, shell=False, cwd=cwd,
-                                     capture_output=True, text=True, timeout=60,
-                                     env=self._sanitized_subprocess_env())
+                try:
+                    res = subprocess.run(exec_argv, shell=False, cwd=cwd,
+                                         capture_output=True, text=True, timeout=60,
+                                         env=self._sanitized_subprocess_env())
+                except (FileNotFoundError, PermissionError):
+                    self._run_command_avviato = False  # R-428-2: il processo non è partito
+                    raise
                 self._run_command_meta = {
                     "exit": res.returncode,
                     "stdout_n": len(res.stdout),
@@ -4025,6 +4030,11 @@ class GasKernel:
                 and getattr(self, "_lettura_meta", None) is not None))
             return self._cap_tool_output(name, args, out)
         except Exception as e:
+            if name == "run_command" and self._run_command_avviato:
+                # R-428-3: anche il modello legge che il comando era partito
+                return (f"Errore eseguendo run_command: il comando è PARTITO ma si è "
+                        f"interrotto ({type(e).__name__}): esito INCERTO, può aver fatto "
+                        f"solo una parte del lavoro. Verifica prima di ripetere.")
             return f"Errore eseguendo {name}: {str(e)}"
 
     def run_turn(self, user_prompt: str) -> Generator[Dict[str, Any], None, None]:
@@ -4205,6 +4215,10 @@ class GasKernel:
                             self._add_to_history("assistant", content=msg.content, tool_calls=msg.tool_calls)
                             for tc in msg.tool_calls:
                                 # C2: gate check prima di eseguire.
+                                # R-428-1: nessun segno di un run_command precedente sul
+                                # diario di questa chiamata (DENY e cancello non eseguono)
+                                self._run_command_meta = None
+                                self._run_command_avviato = False
                                 _gc = gate_classify(tc.function.name, tc.function.arguments)
                                 # FETTA 1 PR B: run_command non offerto (allowlist vuota) →
                                 # diniego secco, mai una richiesta di firma per un comando

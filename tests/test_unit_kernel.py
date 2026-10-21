@@ -6893,6 +6893,34 @@ try:
     check("T77u il segno «partito» non resta per lo strumento dopo",
           _k77u._esito_diario("run_command", "") == "[OK] (non eseguito)", _r77u2)
 
+    # T77v — R-428-1: un segno «partito» rimasto da prima non sporca il diario di un
+    # run_command negato dal cancello (ramo che non passa da execute_tool_call)
+    _k77v = kernel_tmp()
+    _k77v.SHELL_ALLOWLIST = []  # run_command spento → DENY
+    _k77v._run_command_avviato = True   # come dopo un timeout: partito, senza meta
+    _k77v._run_command_meta = None
+    _dia77v: list = []
+    _orig_dia77v = _k77v._diario_log_tool
+    def _spia_dia77v(nome, testo, **kw):
+        _dia77v.append(testo)
+        return _orig_dia77v(nome, testo, **kw)
+    _k77v._diario_log_tool = _spia_dia77v  # type: ignore[method-assign]
+    run_turn_scriptato(_k77v, "esegui", [[("run_command", _CMD77)], "ok"])
+    check("T77v diario di un run_command negato: «[KO]», mai «esito incerto» né «exit=»",
+          len(_dia77v) == 1 and "[KO]" in _dia77v[0] and "incerto" not in _dia77v[0]
+          and "exit=" not in _dia77v[0], str(_dia77v))
+    # R-428-3: il modello legge che il comando era partito (ramo senza firma)
+    _k77w = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77w)
+    _k77w.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
+    try:
+        gas.subprocess.run = _scade77u
+        _o77w = _k77w.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    check("T77w timeout senza firma: il modello legge «PARTITO… esito INCERTO»",
+          "PARTITO" in _o77w and "INCERTO" in _o77w, _o77w[:200])
+
     # T77m — vincoli DB su approval_esecuzioni (valgono anche da SQL grezzo)
     _k77m = kernel_tmp()
     _id77m = _k77m.memory.enqueue_approval("run_command", _CMD77)
