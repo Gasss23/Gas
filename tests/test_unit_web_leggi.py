@@ -614,11 +614,12 @@ def test_ripiego_senza_parser_se_html_parser_esplode(monkeypatch):
         "<scripts>VISIBILE_SCRIPTS</scripts>sei<script>SEGRETO_A</scriptx>SEGRETO_B</script>sette"
         "<script_x>VISIBILE_SCRIPT_X</script_x><style.x>VISIBILE_STYLE_X</style.x>"
         "<script>SEGRETO_C</script data-x=1>otto"
+        "<math>SEGRETO_MATH</math><object>SEGRETO_OBJECT</object>nove"
     ).encode()
     pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": corpo, "troncato": False}
     t = web._componi("http://x.test/", pagina)["testo"]
     for visibile in ("uno", "due", "tre & quattro", "cinque", "VISIBILE_BOX", "VISIBILE_SCRIPTS", "sei", "sette",
-                     "VISIBILE_SCRIPT_X", "VISIBILE_STYLE_X", "otto"):
+                     "VISIBILE_SCRIPT_X", "VISIBILE_STYLE_X", "otto", "nove"):
         assert visibile in t, visibile
     # Come il parser: via i commenti e tutti gli elementi nascosti (V-1 ve #238, V-2 ve #238),
     # ma non i tag che hanno solo lo stesso inizio (V-1 bot #238).
@@ -829,10 +830,69 @@ def test_certificato_non_attendibile_rifiutato_sul_percorso_vero(tmp_path):
         srv.server_close()
 
 
-def test_embed_non_nasconde_il_resto_della_pagina(rete):
+def test_embed_non_nasconde_il_resto_della_pagina():
     """R-431-2 (chat Mani): «embed» è vuoto; sia il parser sia il ripiego mostrano il seguito."""
     pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": b"<p>a<embed src=x>VIS_DOPO_EMBED</p>",
               "troncato": False}
     assert "VIS_DOPO_EMBED" in web._componi("http://x.test/", pagina)["testo"]
     assert "VIS_DOPO_EMBED" in web._testo_senza_parser("a<embed src=x>VIS_DOPO_EMBED")
+
+
+def test_parser_nasconde_math_e_object():
+    """V-1 bot #239: anche math e object, sul percorso normale."""
+    corpo = b"<p>uno</p><math>SEGRETO_MATH</math><object>SEGRETO_OBJECT</object><p>due</p>"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
+                                         "troncato": False})["testo"]
+    assert "uno" in t and "due" in t and "SEGRETO" not in t
+
+
+@pytest.mark.parametrize("pagina", [
+    'a<script data-x="</script>">SEGRETO</script>VIS',         # V-1 ve #239
+    '<iframe title="</iframe>">SEGRETO</iframe>VIS',
+    "<noscript data-a='</noscript>'>SEGRETO</noscript>VIS",
+    "<svg/>SEGRETO</svg>VIS",                                   # «/» dopo il nome (V-3 ve #239)
+    "<title>SEGRETO_TITOLO</title>VIS",                         # il titolo non va nel testo (V-2 ve #239)
+    "a<!-->VIS", "a<!--->VIS", "a<!--SEGRETO--!>VIS",           # commenti vuoti e «--!>» (V-2 bot #239)
+    '<a title="<!--">VIS</a>', '<a title="<script>">VIS</a>',   # «<» negli attributi (V-3 bot #239)
+    '<a title="x>y">VIS</a>',
+    '<script x"y z="w></script>">SEGRETO</script>VIS',         # virgolette solo dopo «=» (R-439-1)
+    "<script x'y z='w></script>'>SEGRETO</script>VIS",
+    '<script a=b"c d="</script>">SEGRETO</script>VIS',         # «"» dentro un valore senza virgolette
+    '<script a = "</script>">SEGRETO</script>VIS',              # spazi attorno a «=»
+    '<a title = "x>y">VIS</a>',
+    '<a b=="x><script>">SEGRETO</script>VIS',                  # «=» che non apre un valore (R-440-1)
+    '<a b=c="x><script>">SEGRETO</script>VIS',
+    '<a ="x><script>">SEGRETO</script>VIS',
+    '<a b="1"="x><script>">SEGRETO</script>VIS',
+    '<a b = = "x><script>">SEGRETO</script>VIS',
+    '<a b=c=="x><script>">SEGRETO</script>VIS',                # «=» dentro un valore senza virgolette
+    '<a=b="><script>">SEGRETO</script>VIS',                     # resto del nome del tag (R-441-1)
+    '<a"="><script>">SEGRETO</script>VIS',
+    '</a"="><script>">SEGRETO</script>VIS',
+    "<div'='><style>'>SEGRETO</style>VIS",
+])
+def test_ripiego_attributi_e_commenti(pagina):
+    t = web._testo_senza_parser(pagina)
+    assert "VIS" in t and "SEGRETO" not in t and "<" not in t and ">" not in t, t
+
+
+def test_ripiego_commenti_chiude_la_prima_chiusura():
+    """Fra «-->» e «--!>» vince quella che viene prima (R-439-2)."""
+    for pagina in ("a<!--x-->VIS<!--y--!>b", "a<!--x--!>VIS<!--y-->b"):
+        t = web._testo_senza_parser(pagina)
+        assert "VIS" in t and "x" not in t and "y" not in t, t
+
+
+def test_ripiego_tag_senza_fine_porta_via_il_resto():
+    """Un tag mai chiuso non lascia pezzi di markup nel testo (V-2 ve #239)."""
+    assert web._testo_senza_parser('a<a href="SEGRETO').strip() == "a"
+    assert web._testo_senza_parser('a<a href="SEGRETO>x').strip() == "a"  # valore mai chiuso (R-439-1)
+
+
+def test_ripiego_lineare_su_attributi_e_commenti():
+    for pagina in ('"<!--a--!>" * 200_000', '"<a \\"" + "x" * 2_000_000', '"<a b=\\"c\\">" * 200_000',
+                   '"<!-->" * 400_000', '"<script a=\\">\\">x</script>" * 100_000',
+                   '"<a x=\\"" + "x" * 2_000_000 + ">"', '"<a x=\\"" * 400_000 + ">"',
+                   '"<a x=y\\"" * 400_000 + ">"'):
+        assert _entro(10.0, "_testo_senza_parser", pagina), pagina
 
