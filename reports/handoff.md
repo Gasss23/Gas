@@ -1,297 +1,470 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-21 (dopo il merge di #236) — ultime riserve del bot sulla storia condivisa
+**Sessione:** 2026-10-21 — Chat Mani, fetta 4: note delle PR #238 e #239 (R6, PR #239)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #240 (https://github.com/Gasss23/Gas/pull/240; numero e URL dall'API GitHub): pro e contro in `reports/da_mergiare.md`; l'agente mergia da solo solo con un APPROVATO pulito del bot (CLAUDE.md §10).
+1. Merge della PR #239 (https://github.com/Gasss23/Gas/pull/239): l'operatore ha scritto «a, correggi e mergia quando il bot approva»; l'agente mergia quando `verifica-bot` è success sull'head (niente ALTA/MEDIA), CI verde, nessun conflitto.
+2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
+3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
+
+(`gh` non autenticato nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge PR #236**: `FATTA` — su richiesta dell'operatore, merge `dec4ce9`.
-- **V-1/V-2 bot #236 (5° giro), R-436-1**: `FATTA` — review #438 APPROVATO CON RISERVE.
-- **R-438-1 (= V-2 verifica esterna #240)**: `FATTA` — review #439 APPROVATO CON RISERVE (compress-history salva con unione rimandata).
-- **R-439-1, V-1 bot #240**: `FATTA` — review #440 APPROVATO CON RISERVE (_save_history dice se ha scritto; T97j controlla i messaggi inviati al provider).
-- **R-438-2 (= V-2 bot #240, V-1 verifica esterna #240)**: `SALTATA` — l'operatore ha scelto (a): limite BASSO accettato (2026-10-21).
-- **Regola «grave» del bot (falso rosso di verifica-bot su 4891448)**: `FATTA` — autorizzata dall'operatore; review #441 BOCCIATO (la prima versione nascondeva finding veri), #442 APPROVATO CON RISERVE, #443 APPROVATO.
-- **R7 / R-c4b3-3**: `DEFERITA` — prossima fetta.
+- **Nome del tag intero (V-1 bot #238, R-431-1)**: `FATTA`
+- **Ripiego alla pari col parser (V-2 ve #238)**: `FATTA` (annidamento non contato, dichiarato)
+- **`embed` fuori dai tag con contenuto (R-431-2)**: `FATTA`
+- **Test mancanti (V-1/V-4 ve #238, V-2/V-3 bot #238)**: `FATTA`
+- **Note bot e verifica esterna #239 (fine del tag fuori dalle virgolette, titolo, «/» dopo il nome, tag senza fine, math/object, commenti vuoti e «--!>», «<» negli attributi)**: `FATTA`
+- **R-439-1, R-440-1, R-441-1 (fine del tag come il tokenizzatore HTML), R-439-2, R-439-3**: `FATTA`
+- **R-442-1, R-442-2 (contenuto dei blocchi nascosti non grezzi, commenti fasulli `<!`/`<?`/CDATA nel ripiego)**: `DEFERITA — famiglia diversa (contenuto dei blocchi, non il tag di apertura), richiede un contatore come il parser: fetta successiva; BASSE, il ripiego non si attiva con pagine vere`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++
- gas.py                             |  40 +++++++++++++++++--------
- reports/da_mergiare.md             |  28 +++++++++++-------
+ .claude/agents/memoria_revisore.md |  12 ++++++++
+ modules/web/leggi.py               | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
  reports/diff_sessione.md           |  14 ++++-----
- reports/handoff.md                 | 575 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  32 +++++++++-----------
- scripts/bot_esito.py               |  17 ++++++++++-
- tests/test_unit_kernel.py          | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- tests/test_unit_verifica_bot.py    |  33 +++++++++++++++++++++
- 10 files changed, 435 insertions(+), 418 deletions(-)
+ reports/handoff.md                 | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |   4 ++-
+ reports/ultimo_report.md           |  39 ++++++++++++++++---------
+ tests/test_unit_web_leggi.py       | 109 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 7 files changed, 591 insertions(+), 268 deletions(-)
 ```
+
+---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e89ce76 fix(bot): una gravità a parole negata («non la considero più grave») non blocca più; «non mitigato: grave» e «non è la più grave» restano bloccanti (falso rosso #240)
-415c447 chore(revisore): memoria review #443 — APPROVATO
-a126671 chore(revisore): memoria review #442 — APPROVATO CON RISERVE
-6d5a019 chore(revisore): memoria review #441 — BOCCIATO
-4891448 docs(fine-task): report e handoff — compress-history onesto (#439/#440)
-28c7f94 fix(storia): _save_history dice se ha scritto; compress-history non dice ok senza salvare (R-439-1); T97j controlla i messaggi inviati al provider (V-1 bot #240)
-1f90bc8 chore(revisore): memoria review #440 — APPROVATO CON RISERVE
-361400f fix(storia): gas compress-history salva anche con un'unione rimandata, o dice che non ha salvato (R-438-1)
-5eb1c1d chore(revisore): memoria review #439 — APPROVATO CON RISERVE
-aa7f538 docs(fine-task): report e handoff — ultime riserve del bot sulla storia condivisa (#438)
-340326d fix(storia): rinvio a fine turno anche al primo salvataggio, niente duplicati dopo una scrittura fallita, test del finally di run_turn (V-1/V-2 bot #236 5° giro, R-436-1)
-012856e chore(revisore): memoria review #438 — APPROVATO CON RISERVE
+33be621 Merge origin/main in feat/mani-web-fetta4
+4f9ff13 docs(fine-task): report, stato e handoff — chat Mani fetta 4, secondo giro (#239)
+3e0fe70 fix(web): fetta 4 chat Mani — fine del tag come il tokenizzatore HTML (R-439-1, R-440-1, R-441-1)
+e72a96a chore(revisore): memoria review #442 — APPROVATO CON RISERVE
+f7a3a05 chore(revisore): memoria review #441 — APPROVATO CON RISERVE
+c43a59e chore(revisore): memoria review #440 — APPROVATO CON RISERVE
+71bd77e docs(fine-task): report, stato e handoff — chat Mani fetta 4 (#239)
+befc78e Merge origin/main in feat/mani-web-fetta4
+12f7f71 fix(web): fetta 4 chat Mani — ripiego alla pari col parser, nomi dei tag interi, embed
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit, quindi le righe di `reports/handoff.md` possono differire di poco (l'elenco dei file è esatto). I commit di main portati dai merge non sono della sessione; il merge `33be621` porta la PR #240 (chat Motore).
+
+---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #438 (chat Motore) — commit 340326d
+Otto verdetti, incollati integralmente: #431 (chat Mani), #432 (chat Mani), #438 (chat Mani, merge di main) per `12f7f71`/`befc78e`; #439, #440, #441, #442 (chat Mani) per `3e0fe70` (i giri #439-#441 hanno chiuso le proprie riserve nello stesso diff, il commit porta il diff approvato dalla #442; le righe di memoria sono nei commit `c43a59e`, `f7a3a05`, `e72a96a` fatti dal revisore); #444 (chat Mani) per il merge di main `33be621` (PR #240 della chat Motore).
+
+### Review #431 (chat Mani)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #438 (chat Motore). Ho controllato il diff in staging su gas.py e tests/test_unit_kernel.py. Prima ho letto CLAUDE.md, le parti di stato_progetto.md che riguardano la storia e la coda della mia memoria.
-
-**Punti del diff esaminati**
-- gas.py:1188 — il rinvio a metà turno («unita is not None and not _turno_chiuso() and not fine_turno») ora vale per entrambi i rami. Rischio esaminato: il rinvio blocca per sempre la scrittura. Ho controllato chi chiama `_save_history`:
-  - `_storia_esito_firma` (gas.py:3231) chiude sempre con «Preso atto», senza tool_calls, quindi non viene mai rinviato.
-  - Le due chiamate dentro il loop di run_turn (gas.py:4538 e gas.py:4542) e la compressione a inizio turno (gas.py:4318) sono coperte dal finally (gas.py:4578).
-  - L'unico chiamante fuori da run_turn è la CLI `compress-history` (vedi R-438-1).
-  - Esito: ok.
-- gas.py:1176 — il dedupe `suoi = altrui[gia[0]:]` scatta solo se il file dell'altro estende quello già unito (lunghezza e hash). Rischi esaminati:
-  - Il ramo 1 dopo un'unione del ramo 2 duplicherebbe i suoi messaggi: è irraggiungibile, perché `nuovi[0]` resta lo stesso messaggio non-user e `nuovi` vuoto porterebbe già al ramo 1.
-  - `gia[0] < n_base` non può succedere per costruzione.
-  - Esito: ok.
-- gas.py:1202 e gas.py:1302 — la base ha il 5° elemento solo dopo un'unione del ramo 2, e `_sync_storia()` lo azzera dopo una scrittura riuscita. Sonda nella copia:
-  - lunghezza della base 5 dopo la scrittura fallita, 4 dopo quella riuscita;
-  - poi A scrive e B è a metà turno: rinvio attivo, B non vede A2;
-  - a fine turno il file è `['B extra','A1','rA1','A2','rA2','B q',None,'7','rB']`, senza duplicati, con flag False.
-  - Esito: ok.
-- gas.py:952 — l'annotazione `Optional[Tuple[Any, ...]]` è coerente con le tuple da 4 e da 5 elementi. Esito: ok.
-- tests/test_unit_kernel.py:7603 — T97j passa davvero dal generatore di run_turn: il bot scrive durante la prima chiamata, poi il provider va giù. Ho rifatto le mutazioni nella copia nello scratchpad:
-  - finally tolto → T97j FAIL;
-  - rinvio solo nel ramo 2 → T97j FAIL;
-  - dedupe tolto → T97k FAIL;
-  - 5° elemento mai scritto → T97k FAIL (tests/test_unit_kernel.py:7646).
-  - Esito: ok, R-436-1 chiusa.
-- tests/test_unit_kernel.py:7489 e tests/test_unit_kernel.py:7655 — T97b e T97g ora chiudono i turni di A con una risposta. È un adeguamento coerente con la nuova regola, non un indebolimento. Esito: ok.
-
-**Suite nella copia:** kernel 993 PASS, 1 FAIL. Il FAIL è T79a ed è dovuto alla copia: senza `git ls-files` trova 0 file. Non dipende dal diff.
-
-**Riserve**
-- **R-438-1 BASSA (c'era già prima di questo diff):** `python gas.py compress-history` (gas.py:5230) gira fuori da run_turn. Se la storia finisce a metà turno (turno precedente esaurito) e un altro processo ha scritto, il salvataggio viene rinviato e nessun finally lo recupera. La compressione non viene scritta, ma il comando stampa lo stesso «Compressi N messaggi». Non si perdono dati: sul file resta la storia intera. Il caso c'era già col rinvio del ramo 2 (compressione → nostri non da base → ramo 2). Correzione proposta: chiamare `_save_history(fine_turno=True)` in quel comando, oppure controllare `_storia_rimandata` prima di stampare.
-- **R-438-2 (nota, scelta accettabile):** col rinvio anche nel ramo 1, se un altro processo ha scritto, i messaggi del turno in corso restano solo in memoria fino alla fine del turno. Un kill -9 a metà turno li perde, mentre prima venivano scritti a ogni passo dei tool. È il prezzo di «il modello non vede il blocco dell'altro durante il turno»: va dichiarato in stato_progetto.md.
-
-**Cosa NON ho verificato:** due processi reali in parallelo con il lock vero su VPS e il bot Telegram vivo, perché in dev non si riproduce (le prove usano due kernel nello stesso processo). Non ho rilanciato pytest tests/ (1816): ho girato solo la suite kernel e le mutazioni.
-
-La riga #438 è stata scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con scripts/commit_memoria_revisore.sh. Lo staging di gas.py e tests/test_unit_kernel.py è intatto.
-
-### Review #439 (chat Motore) — commit 361400f
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #439 (chat Motore). Prima di revisionare ho letto CLAUDE.md, la riga di R-438-1 in reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md. Nella copia nello scratchpad (/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/c439) la suite del kernel dà **995 PASS 0 FAIL**.
-
-**Cosa ho esaminato nel diff**
-- `gas.py:5231` — se l'unione è stata rimandata, il comando chiama `_save_history(fine_turno=True)`. Rischio esaminato: che la scrittura non avvenga perché il comando sta fuori da `run_turn`. Ho tolto la chiamata nella copia (mutazione): la storia resta di 67 messaggi e T97l va in FAIL. Esito: **ok**.
-- `gas.py:5234` — se l'unione resta rimandata, stampa «✗ compress-history: compressione NON salvata» e restituisce 1. Rischio esaminato: un falso «✓ Compressi». Ho fatto una sonda in cui la scrittura fallisce solo per il kernel principale, dopo che l'«altro» ha già scritto: rc 1 con il messaggio ✗. Esito: **ok**.
-- `tests/test_unit_kernel.py:7649` — T97l. Hai chiesto se la patch di `GasKernel.__init__` viene sempre ripristinata: sì.
-  - L'assegnazione sta dentro il `try` e il `finally` rimette l'originale anche se `__init__` solleva un'eccezione.
-  - L'«altro» kernel è costruito con `_orig_init97l`, quindi non c'è ricorsione; in più c'è la guardia `fatto`.
-  - Dopo la mia sonda `GasKernel.__init__.__name__` è tornato `__init__`.
-  - Esito: **ok**.
-- Hai chiesto anche dell'ordine del blocco della firma dopo una storia compressa che finisce con un tool. Il file finale finisce così: `user, assistant(tool_calls t1), tool t1, user(notifica firma), assistant(tool_calls firma_), tool, assistant(Preso atto)`.
-  - Ogni tool ha la sua chiamata, quindi non ci sono tool orfani e il controllo di `doctor` resta verde.
-  - Un messaggio user dopo un tool è accettato dai provider compatibili con OpenAI.
-  - È la stessa forma che produce già il `finally` di `run_turn` quando si raggiunge il tetto di iterazioni (nel contesto: `gas.py:1188`, ramo «turno chiuso o storia compressa» di `_unisci_storia_altrui`).
-  - Esito: **ok**.
-- `gas.py:1303` (contesto) — `_storia_rimandata` torna False solo se la scrittura riesce, ed è questo che rende corretto il secondo controllo a `gas.py:5234`. Esito: **ok**.
-
-**Riserva**
-- **R-439-1 (chat Motore), BASSA, preesistente.** Senza rinvio, se la scrittura fallisce (`_salva_storia_su_file` restituisce False) `_storia_rimandata` resta False. Il comando stampa «✓ Compressi 42» con rc 0, ma il file resta di 63 messaggi: l'ho riprodotto con una sonda. È lo stesso tipo di falso «ok» di R-438-1, su un ramo diverso.
-  - Correzione: far restituire a `_save_history` l'esito della scrittura e usarlo in `compress_history_cmd`.
-  - Va tracciata in stato_progetto.md.
-
-**Cosa non ho verificato**
-- Non ho verificato su un'API reale (Gemini nativo) che la sequenza tool→user venga accettata: non era riproducibile qui senza chiavi e senza consumare token. Mi baso sul fatto che la stessa forma esiste già nel `finally` di `run_turn`.
-- Non ho verificato la concorrenza reale tra due processi (il test la simula nello stesso processo).
-
-**Memoria**
-- Ho aggiunto la riga #439 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata da sola (commit 5eb1c1d, `scripts/commit_memoria_revisore.sh`); nessuna lezione nuova.
-- Lo staging è intatto: restano staged solo `gas.py` e `tests/test_unit_kernel.py`.
-
-### Review #440 (chat Motore) — commit 28c7f94
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #440 (chat Motore) del diff staged, cioè gas.py e tests/test_unit_kernel.py. Ho letto prima CLAUDE.md (sez. 5), stato_progetto.md (riga R-c4b3-4) e la mia memoria.
-
-**Elementi esaminati**
-- `gas.py:1292` — `_save_history` ora restituisce un bool. `return True` arriva solo dopo che `_salva_storia_su_file` è riuscito. Il `return False` sta dopo il try/finally, quindi copre i casi «unione rimandata», «scrittura fallita» ed «eccezione». Il lock si rilascia sempre nel finally. Ho controllato il rischio di rompere chi chiama la funzione: gli altri chiamanti (`gas.py:1412`, `gas.py:3233`, `gas.py:4540`, `gas.py:4544`, `gas.py:4581`) ignorano il valore di ritorno. Con grep non risulta nessun uso in modules/ né in tests/. Esito: ok.
-- `gas.py:5235` — `compress_history_cmd` salva sempre con `fine_turno=True` e restituisce 1 con «✗ NON salvata» se il salvataggio fallisce. Ho guardato la doppia scrittura: la compressione salva già una volta da sola (`gas.py:1412`). Il secondo salvataggio riscrive lo stesso contenuto, oppure unisce un turno di un altro processo arrivato nel frattempo, cosa corretta. Costa solo una scrittura atomica in più. Esito: ok, con una riserva cosmetica (R-440-1, sotto).
-- `tests/test_unit_kernel.py:7622` — T97j registra i messaggi che il provider finto riceve davvero. La patch di `ScriptedCompletions.create` è applicata prima del try e il ripristino sta nel finally, quindi viene rimesso a posto anche se `run_turn_scriptato` solleva. In quel caso l'eccezione risale poi al file di test, come negli altri test del file. `_Esplodi97j` solleva dentro `__iter__`, cioè dopo `create`: la seconda chiamata viene quindi registrata e la condizione `len >= 2` è sensata. Esito: ok.
-- `tests/test_unit_kernel.py:7689` — T97l2 ripristina la storia, forza `_salva_storia_su_file` a restituire False (in try/finally) e verifica rc 1, «NON salvata» e l'assenza di «Compressi». È proprio il caso di R-439-1, cioè scrittura fallita senza unione rimandata. Esito: ok.
-
-**Prove su una copia nello scratchpad** (/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/c440)
-- Suite del kernel: 995 PASS, 1 FAIL. Il FAIL è T79a, dovuto all'ambiente: la copia non è un repo git, quindi `git ls-files` non trova file. Era successo uguale nella #438.
-- Mutazione «ripristino del vecchio codice di compress-history»: T97l2 FAIL.
-- Mutazione «`return True` al posto del `return False` finale»: T97l2 FAIL.
-- Mutazione «rinvio dell'unione tolto»: T97h, T97i e T97j FAIL.
-- Stessa mutazione, ma togliendo dal test la clausola `_visto97j`: T97j fallisce comunque, sulla sola clausola dei messaggi inviati. Quindi la correzione V-1 del bot su PR #240 controlla davvero qualcosa.
-
-**Riserve**
-- **R-440-1 (chat Motore), COSMETICA**: se il primo salvataggio (quello dentro la compressione) riesce e il secondo fallisce, il comando dà rc 1 e «NON salvata» anche se il file è già compresso. È l'errore nella direzione prudente.
-- **R-438-2 / V-2 bot #240, BASSA**: non corretta, resta un limite dichiarato. Se un altro processo ha scritto, i messaggi del turno stanno solo in memoria fino a fine turno e un kill -9 li perde. Va tenuta in stato_progetto.md.
-
-**Rischio escluso**: non ho riprodotto un fallimento reale del filesystem (disco pieno, permessi) durante compress-history: l'ho simulato con la patch di `_salva_storia_su_file`. Non ho rilanciato pytest su tutti i 1816 test: mi baso sul vostro risultato, e nessun altro file usa il valore di ritorno.
-
-**Memoria del revisore**: riga #440 aggiunta e committata con `scripts/commit_memoria_revisore.sh` (commit 1f90bc8, non pushato). Lo staging è intatto: 2 file, +31 −8. Nessuna lezione nuova.
-
-File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
-
-### Review #441 (chat Motore) — prima versione, BOCCIATA
-
-## VERDETTO: BOCCIATO
-
-Review #441 (chat Motore). Ho letto le tre fonti obbligatorie: CLAUDE.md sez. 5, reports/stato_progetto.md (le parti su verifica-bot e bot_esito) e .claude/agents/memoria_revisore.md. Le prove le ho fatte su una copia dell'index nello scratchpad (/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/r441). Nel repo reale lo staging è intatto (M scripts/bot_esito.py, M tests/test_unit_verifica_bot.py).
+Review #431 (chat Mani). Diff staged su feat/mani-web-fetta4: `modules/web/leggi.py` e `tests/test_unit_web_leggi.py`. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 9), le voci «Mani — fetta 1/2/3» di `reports/stato_progetto.md` e le lezioni della memoria (#409, #410, #429, #430). Nel diff non ci sono slicing della history né output dei tool simulati. Il cap di 10 iterazioni e `_get_window` non vengono toccati.
 
 **Elementi del diff esaminati**
-- `scripts/bot_esito.py:114` — `_GRAVITA_NEGATA` accetta fino a 3 parole qualsiasi (`\S+`) tra «non» e la gravità, e `\S+` ingoia anche «:», «,», «;». Rischio esaminato: un finding grave reale non deve sparire. Esito: **blocco**. In molte frasi «non» nega il verbo del difetto, non la gravità. Sonde sulla copia, con riga `V-1 — <frase>` senza gravità tra parentesi. Con il diff `_gravita_nel_testo` restituisce un insieme vuoto, a HEAD restituiva MEDIA:
-  - «non mitigato: grave»
-  - «il controllo non blocca: rischio grave»
-  - «non risolto, grave»
-  - «non autenticato: accesso critico»
-  - «non escludo un rischio grave»
-  - «non è stato chiuso: grave»
-  - «non verificato grave»
-  - «non ha test, importante»
+- `modules/web/leggi.py:87` — `_INIZIO_TAG` prende il nome intero. Rischio esaminato: che la regex torni costosa. Esito: ok. Dopo la ripetizione non c'è nulla, quindi non può tornare indietro a riprovare. Misure su 2 MB: nome lungo 2 MB 0,02 s; «<a»×N 0,31 s; «<!-»×N 0,05 s; «</»×N 0,07 s.
+- `modules/web/leggi.py:460` — `_chiusura`. Rischio esaminato: tempo quadratico con chiusure finte. Esito: ok. Ogni `find` va solo avanti e la ricerca di «>» avviene una volta per blocco. Misure su 2 MB: blocchi con 5 «</scriptx» finti 0,08 s; «</scriptx» ripetuto in un solo blocco 0,07 s; «</script» senza «>» 0,10 s; «<script></script\t» senza «>» 0,15 s.
+- `modules/web/leggi.py:474` — `_togli_blocchi_nascosti`. Rischio esaminato: linearità con commenti e blocchi. Esito: ok. Commenti annidati 0,004 s; commenti non chiusi 0,004 s; «<!---->»×N 0,16 s; «İ»×2M 0,33 s.
+- `modules/web/leggi.py:393` — `_SALTA = _TAG_NASCOSTI`. Rischio esaminato: che il percorso normale cambi. Esito: ok. L'insieme è identico a quello di HEAD (riga 385 di HEAD). Diventa un frozenset, e `_SALTA` si usa solo con `in` (`modules/web/leggi.py:408` e `modules/web/leggi.py:416`). `_BLOCCHI_NASCOSTI` non ha più chiamanti.
+- `modules/web/leggi.py:494` — l'apertura di un tag nascosto. Esito: riserva R-431-1, sotto.
+- `tests/test_unit_web_leggi.py:604` — test del ripiego con SEGRETO_* per tutti i tag e per il commento. Rischio esaminato: mutazioni che sopravvivono. Esito: ok. Ho rifatto io 4 mutazioni in copie isolate: svg tolto dall'insieme, apertura per prefisso, confine della chiusura tolto, commenti ignorati. Ognuna produce 1 FAIL.
+- `tests/test_unit_web_leggi.py:625` — unescape che solleva. Esito: ok. Il monkeypatch agisce sul globale `html_unescape` (`modules/web/leggi.py:42`), letto a `modules/web/leggi.py:510` al momento della chiamata.
+- `tests/test_unit_web_leggi.py:705` — `_entro` con l'assert sul returncode e lo stderr. Esito: ok. Il timeout dà ancora False e un figlio che si schianta ora mostra il motivo.
+- `tests/test_unit_web_leggi.py:750` — attesa dei thread «gas-web-dns» (`modules/web/leggi.py:187`). Esito: ok, con un limite: un join(10) per thread non dà garanzie se il DNS resta appeso oltre 10 s. Mi sembra accettabile.
+- Suite web: 106 passed su Python 3.13.16.
 
-  Se il campo strutturato dice BASSA, la decisione diventa APPROVE: il controllo lascia passare un finding grave invece di bloccarlo, cioè il contrario del verso «nel dubbio blocca». Le tre frasi indicate da te si comportano così:
-  - «non si può escludere un bypass grave»: resta MEDIA, ci sono 5 parole in mezzo.
-  - «non c'è un fix, rischio critico»: resta MEDIA.
-  - «non mitigato: grave»: viene **nascosta**.
-- `scripts/bot_esito.py:192` — la regola a parole cerca sul testo ripulito, le altre regole restano sul testo intero. Rischio esaminato: la rimozione tocca altre regole. Esito: ok, perché la sostituzione riguarda solo `_FINDING_GRAVE_A_PAROLE`, mentre `_PAROLA_BLOCCANTE` e `_FINDING_GRAVITA` usano ancora `finding`/`sezione` originali. Il problema sta tutto nella larghezza della regex alla riga 114.
-- `tests/test_unit_verifica_bot.py:528` — test_b1_240_grave_negato_non_blocca riproduce il testo reale della #240 e si aspetta APPROVE. Esito: ok.
-- `tests/test_unit_verifica_bot.py:545` — test_b1_240_negazione_non_nasconde_gravita copre 4 casi. Esito: **riserva**. Mancano proprio le frasi di finding grave con «non» sul verbo, quindi la suite (316 passed) resta verde nonostante il fail-open.
+**Riserve**
+- **R-431-1 (chat Mani), BASSA**: la correzione V-1 bot #238 è solo a metà. In apertura il confronto è ancora per prefisso quando dopo il nome c'è un carattere fuori da `[a-z0-9:-]`. Con «a<script_x>VIS</script_x>DOPO», «<style.x>» e «<script\x00>» il ripiego nasconde tutto il resto della pagina, mentre il parser li mostra (misurato). La direzione è prudente (si perde testo, non esce contenuto nascosto). Correzione: a `modules/web/leggi.py:494` richiedere che dopo `m.end()` venga un carattere di `_FINE_NOME` o la fine del testo, come già fa la chiusura, e aggiungere un test con «<script_x>».
+- **R-431-2 (chat Mani), BASSA, preesistente dalla fetta 1, ora anche nel ripiego**: `embed` è un elemento vuoto, senza chiusura. Con «a<embed src=x>VIS_DOPO_EMBED» sia il parser (percorso normale) sia il ripiego restituiscono solo «a»: il contatore `_salta` non torna mai a zero. Correzione: togliere embed dall'insieme dei tag con contenuto (o trattarlo come elemento vuoto) e aggiungere un test.
+- **R-431-3 (chat Mani), COSMETICA**:
+  - il ripiego non gestisce l'annidamento: «<svg><svg></svg>SEGRETO</svg>VIS» mostra SEGRETO, il parser no. La frase «alla pari col parser» vale per l'insieme dei tag e per i commenti, non per la profondità;
+  - nessun test vede gli attributi della chiusura: la mutazione `return ... dopo` al posto di `g + 1` a `modules/web/leggi.py:471` resta verde.
 
-**Correzione suggerita, già provata in copia**: al posto di `\S+`, parole intermedie prese da una lista ammessa, senza punteggiatura:
-`r"\bnon\s+(?:(?:è|era|sono|sia|più|la|lo|li|le|si|considero|ritengo|così|molto|affatto|particolarmente|troppo|davvero|tanto|stato|stata)\s+){0,3}(?:" + _GRAVI + r")\b"`
+**Verifica da avversario: differenze rispetto a html.parser**
+- `<script>` dentro un commento: uguale al parser.
+- `</script` dentro una stringa JS: chiude alla prima occorrenza come il parser e il browser. È parità, non una fuga.
+- CDATA: il ripiego lascia frammenti come «<![CDATA[ x». Viene da `<[^<>]*>` ed era già così prima; è una fuga di markup, non di contenuto di script.
+- `<!-->`, `--!>`, «<!--» dentro un attributo, `<svg/>`: il ripiego nasconde più del parser. Direzione prudente.
 
-Risultati con questa variante:
-- tutte le frasi nascoste qui sopra tornano MEDIA;
-- tornano MEDIA anche i 4 casi del tuo test;
-- il caso #240 «per questo non la considero più grave» resta APPROVE, come «non è grave», «non è più così grave» e «non lo ritengo grave»;
-- «non si tratta di un problema grave» blocca: è un falso rosso, ma nel verso prudente;
-- tests/test_unit_verifica_bot.py: 316 passed.
+**Rischi esclusi**
+- Python 3.11 non verificato da me (qui c'è solo 3.13); mi baso sul vostro «106 passed su 3.11».
+- Comportamento con pagine reali e rete vera non verificato: le sonde sono solo su stringhe sintetiche.
+- Margine CI dei test a tempo non rimisurato su un runner lento (carichi locali ≤0,34 s contro 10 s).
 
-Va aggiunto al test parametrizzato della riga 545 un gruppo di frasi come «V-1 — non mitigato: grave», «V-1 — il controllo non blocca: rischio grave», «V-1 — non autenticato: accesso critico», senza gravità tra parentesi e con il campo strutturato BASSA, che devono dare COMMENT.
+**Memoria**: aggiunta la riga «#431 (chat Mani) — 2026-10-21 — APPROVATO CON RISERVE — …», con una lezione, in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Il file è modificato ma non in staging. Non ho committato e non ho lanciato `scripts/commit_memoria_revisore.sh`, come mi hai chiesto: il commit spetta a te.
 
-**Rischi esplicitamente esclusi**
-- Comportamento sul runner GitHub reale e nuova esecuzione del bot sulla PR #240: non verificati, perché non sono riproducibili qui.
-- Le frasi in inglese («not mitigated: high»): non sono un problema, perché la regex cerca solo «non», quindi l'inglese non viene mai neutralizzato.
-- Non ho eseguito mutation testing sull'intera suite: mi sono limitato alle sonde mirate sul verso fail-safe.
+File di sonda (fuori dal repo):
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/sonde.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/parita.py
 
-**Memoria**: riga #441 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (6d5a019, staging del diff intatto).
-
-### Review #442 (chat Motore)
+### Review #432 (chat Mani)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #442 (chat Motore). È la ri-review della #441, che era stata BOCCIATA. Diff staged: scripts/bot_esito.py e tests/test_unit_verifica_bot.py. È la macchina del bot, quindi il merge lo decide l'operatore. Ho fatto le prove su una copia dell'albero staged, in /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/r442.
+Ri-review #432 (chat Mani). Diff STAGED su feat/mani-web-fetta4: modules/web/leggi.py, tests/test_unit_web_leggi.py e la riga #431 in memoria. Ho letto prima CLAUDE.md, reports/stato_progetto.md (sezioni Mani) e .claude/agents/memoria_revisore.md. Il diff non tocca la history, i tool, `_get_window`, i tetti né i provider.
 
-**Cosa ho esaminato nel diff**
-- scripts/bot_esito.py:116 — `_GRAVITA_NEGATA` accetta tra «non» e la gravità solo parole di una lista chiusa, separate da spazi. Non c'è `re.I`, quindi vale solo in minuscolo. Rischio esaminato: che nasconda finding gravi veri (era il blocco della #441). Esito: **ok**. Su 19 sonde, queste restano MEDIA:
-  - «non è grave, è critico»
-  - «non lo è: grave»
-  - «non è solo grave»
-  - «non è meno grave di V-2»
-  - «non la sottovaluterei: grave»
-  - «non così: alta»
-  - «non sia grave e importante»
-  - «nonè grave»
-  - «non, grave»
-  - «Non la considero grave»
-  - «il fix non\nV-2 — grave»
-- scripts/bot_esito.py:195 — la sostituzione si applica solo alla regola a parole. La regola delle parole MAIUSCOLE e quella delle gravità tra parentesi lavorano ancora sulla sezione intera. Rischio esaminato: che togliere un pezzo di testo unisca due righe e nasconda l'id di un altro finding. Esito: **ok**. Dentro la lista non c'è nessun id V-/F-/R-/G-. Se il pezzo tolto attraversa un a capo, le righe si uniscono e i blocchi possono solo aumentare (verso sicuro).
-- tests/test_unit_verifica_bot.py:528 — il caso reale della #240 («per questo non la considero più grave») dà solo BASSA, quindi APPROVE. Esito: **ok**. Mutazione «tolgo la sostituzione»: il test fallisce.
-- tests/test_unit_verifica_bot.py:554 — test parametrizzato con le 12 frasi. Esito: **ok**. Mutazione «aggiungo `\S+` alla lista»: 9 test falliscono, quindi il test difende proprio il punto della #441. Sulla copia la suite dà 324 passed.
+Elementi esaminati:
+- `modules/web/leggi.py:497` — l'apertura di un tag nascosto vale solo se dopo il nome viene un carattere di `_FINE_NOME` oppure la fine del testo. Rischio esaminato: lettura oltre la fine del testo. L'`or` si ferma prima di leggere `basso[m.end()]` quando `m.end() >= len(basso)`. L'ho provato con «a<script», «a<svg», «x<!--» e con 200.000 stringhe casuali fatte di pezzi come «<», «</», script, embed, «!--», «İ», \x00: nessuna eccezione. «<script_x>», «<SCRIPT_X>», «<scriptx>» e «<script\x00>» restano visibili, come fa html.parser. Esito: ok, R-431-1 chiusa.
+- `modules/web/leggi.py:84` — «embed» tolto da `_TAG_NASCOSTI`. Rischio esaminato: che esca contenuto nascosto. embed è un elemento vuoto e non ha testo suo. In «a<embed src=x>B</embed>C» sia il parser sia il ripiego mostrano B, come i browser. `src` è un attributo e non diventa mai testo. In «<object><embed>FALLBACK</object>» il fallback resta nascosto da object. Esito: ok, R-431-2 chiusa.
+- `modules/web/leggi.py:395` — `_SALTA = _TAG_NASCOSTI`. Rischio esaminato: altri cambi nel percorso normale. Rispetto a HEAD cambia solo il tipo (da set a frozenset) e manca embed. Nessuno modifica `_SALTA`: a `modules/web/leggi.py:410` e `modules/web/leggi.py:418` c'è solo il test `in`. Esito: ok.
+- `modules/web/leggi.py:470` — `_chiusura` riconosce la chiusura solo col nome intero e finisce al suo «>». Stesso rischio dell'indice, stessa protezione. Esito: ok.
+- `tests/test_unit_web_leggi.py:832` — il test su embed controlla tutti e due i percorsi (parser e ripiego). Esito: ok.
+- `tests/test_unit_web_leggi.py:626` — la chiusura con attributi `</script data-x=1>`. Esito: ok, R-431-3 chiusa (la docstring dichiara anche che il ripiego non conta l'annidamento).
 
-**Riserve**
-- **R-442-1 (BASSA)**: «V-1 — non è la più grave ma rompe il merge» non dà nessuna gravità. Qui «la più» nega il primato, non la gravità, quindi il finding grave sparisce dal controllo sul testo. Resta il campo strutturato. Correzione possibile: richiedere che «più» non venga subito dopo «la/lo/le/li».
-- **R-442-2 (COSMETICA)**: «Non …» con la maiuscola a inizio frase resta un falso rosso. È nel verso sicuro.
+Mutazioni rifatte da me su una copia presa dall'index (poi cancellata). Ognuna fa fallire 1 test:
+- apertura per prefisso;
+- embed rimesso nell'insieme;
+- `return dopo`;
+- confine della chiusura tolto;
+- commenti ignorati;
+- svg tolto.
 
-**Cosa NON ho verificato**: il comportamento sul workflow GitHub reale (verifica-bot.yml con la GitHub App). Non si riproduce in locale: ho provato solo `_gravita_nel_testo`, e `decidi` tramite la suite.
+Test: 107 passed su 3.13 e 107 passed su 3.11 (via uv).
 
-La memoria del revisore è aggiornata con la riga #442 e committata da sola con scripts/commit_memoria_revisore.sh. Lo staging del diff è intatto: scripts/bot_esito.py e tests/test_unit_verifica_bot.py.
+Tempi: 2 MB di «<script», «<script_», «<embed>», «</script», «<style.x>» o «<script x» stanno sotto 0,20 s ciascuno.
 
-### Review #443 (chat Motore) — commit e89ce76
+Riserve:
+- R-432-1 (chat Mani), COSMETICA: la mutazione che toglie il caso «fine del testo» dall'apertura (`m.end() < len and …`) passa lo stesso, 107/0. Effetto: «<script» in fondo alla pagina resterebbe come testo letterale. Basta un assert sul ripiego di «a<script».
+- Nota, non è una riserva: con «<script/>B</script>» il ripiego nasconde B, mentre il parser lo mostra (preesistente). I browser lo nascondono, quindi il ripiego sbaglia nella direzione sicura.
+
+Rischio escluso: non ho confrontato tutto il ripiego con html.parser su HTML reale preso dalla rete (sandbox senza siti veri). Ho verificato solo i casi sintetici sopra e il fuzz.
+
+Memoria: ho aggiunto la riga «#432 (chat Mani) — 2026-10-21 — APPROVATO CON RISERVE — …» in fondo a /home/user/Gas/.claude/agents/memoria_revisore.md. Non è in staging (stato `MM`) e, come mi hai chiesto, non ho committato né lanciato `scripts/commit_memoria_revisore.sh`: se vuoi includerla, fai tu `git add`. Nessuna lezione nuova.
+
+File: /home/user/Gas/modules/web/leggi.py, /home/user/Gas/tests/test_unit_web_leggi.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #438 (chat Mani)
 
 ## VERDETTO: APPROVATO
 
-Review #443 (chat Motore), sul diff staged di scripts/bot_esito.py e tests/test_unit_verifica_bot.py. Riguarda la macchina del bot, quindi il merge lo decide l'operatore. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le voci su bot_esito, con Grep) e la coda di .claude/agents/memoria_revisore.md.
+Review #438 (chat Mani). Ho controllato il merge in corso di origin/main (dec4ce9, uguale a MERGE_HEAD) nel ramo feat/mani-web-fetta4 (HEAD 12f7f71, merge-base eb8e246). Prima ho letto CLAUDE.md (sezione 5), l'inizio di reports/stato_progetto.md e la parte finale della memoria.
 
-**Cosa ho esaminato nel diff**
-- `scripts/bot_esito.py:196` — Qui la sostituzione di `_GRAVITA_NEGATA` passa per una funzione: se il pezzo trovato contiene «la|lo|le|li più», lo lascia com'è, e quindi la gravità resta bloccante. Rischio esaminato: che questa eccezione faccia passare un finding grave (fail-open), oppure che faccia tornare il falso rosso della #240. Esito: **ok**. L'eccezione può solo *conservare* la gravità, quindi sbaglia sempre nel verso sicuro. Il caso #240 «non la considero più grave» non contiene «la più» (in mezzo c'è «considero»), quindi viene ancora tolto e resta solo BASSA.
-- `scripts/bot_esito.py:116` — La regex `_GRAVITA_NEGATA` non è cambiata: è la stessa lista chiusa della #442, senza punteggiatura. Rischio esaminato: che sia tornato `\S+`. Esito: **ok**.
-- `tests/test_unit_verifica_bot.py:553` — Nuovo caso «V-1 — non è la più grave ma rompe il merge», che deve dare COMMENT. Rischio esaminato: che il test sia vacuo. Esito: **ok**. In una copia ho fatto una mutazione (`lambda m: ""`, cioè tolta l'eccezione): fallisce **solo** questo caso (1 failed, 324 passed).
-- `tests/test_unit_verifica_bot.py:528` — Il caso reale #240 dà ancora APPROVE. Esito: **ok**.
+**Punto 1, perimetro.** `git diff --cached origin/main` tocca solo 3 file: modules/web/leggi.py, tests/test_unit_web_leggi.py e .claude/agents/memoria_revisore.md (+2 righe).
+- Il diff dei due file web contro origin/main è identico byte per byte a `git diff eb8e246 HEAD` sugli stessi file.
+- I blob nell'index coincidono con quelli di HEAD.
+- Main non tocca quei file dalla merge-base.
+- gas.py, modules/telegram/bot.py e tests/test_unit_kernel.py nell'index sono uguali a origin/main (si vedono nello stato solo perché arrivano dal merge).
+- Albero di lavoro pulito, nessun file non tracciato.
 
-**Prove nella copia nello scratchpad** (/tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/r443)
-- Suite: **325 passed**.
-- 14 sonde su `_gravita_nel_testo`, tutte come atteso:
-  - **Danno MEDIA, cioè bloccano (corretto)**:
-    - «non è affatto la più grave ma rompe il merge»
-    - «non è la più grave»
-    - «non lo più grave»
-    - «non la più grave, ma critica»
-    - «non è la più grave; non è grave»
-    - «non le più gravi»
-    - «non sono le più gravi ma rompono»
-    - «non la considero più grave, ma è critica»
-  - **Danno solo BASSA, cioè la negazione vale ancora (corretto)**:
-    - «per questo non la considero più grave.» e «non la considero più grave»
-    - «non è più grave di prima»
-    - «non è grave»
-  - **Restano MEDIA, possibile falso rosso nel verso sicuro**: «non è la piu grave» (senza accento) e «non è la  più grave» (doppio spazio).
+**Punto 2, memoria.**
+- Versione staged: 697 righe, cioè le 695 di main più le 2 righe #431/#432 (chat Mani). Stanno alle righe 695 e 696, subito prima di #437 (chat Motore).
+- Nessuna riga di HEAD o di main va persa.
+- Nessun duplicato, nessuna riga inventata, nessun marcatore `<<<<<<<`, `=======` o `>>>>>>>`.
 
-**Rischio escluso esplicitamente**: non ho fatto girare il bot vero su GitHub, né rifatto il giro su una PR reale con `verifica-bot`: lì servono la GitHub App e il workflow, che in dev non si possono riprodurre. Ho controllato solo la funzione pura e la suite unitaria.
+**Punto 3, chiamanti.** git grep su `leggi_pagina`, `modules.web` e `modules/web` (esclusi modules/web, il suo test, reports/ e la memoria) trova solo un commento in .github/workflows/ci.yml:114. Nessun uso in gas.py né negli altri moduli: l'aggancio non è ancora fatto.
 
-**Note**
-- Le riserve R-442-2 (COSMETICA, «Non …» maiuscolo a inizio frase: falso rosso nel verso sicuro) e R-205-1 (BASSA) restano come sono. Questo diff non le cambia.
-- Il commento a `scripts/bot_esito.py:195` finisce senza punto («…non si toglie»). È cosmetico e non è una riserva.
+Citazioni:
+- modules/web/leggi.py:497 — apertura del tag confrontata col nome intero (_FINE_NOME o fine del testo). Rischio: il merge perde o altera la correzione R-431-1. Ok: il blob nell'index è uguale a HEAD 12f7f71.
+- modules/web/leggi.py:84 — `_TAG_NASCOSTI` senza «embed», usato in modules/web/leggi.py:395 come `_SALTA`. Rischio: main reintroduce o cambia l'insieme. Ok: main non tocca il file dalla eb8e246.
+- tests/test_unit_web_leggi.py:832 — test «embed non nasconde il resto della pagina». Rischio: un test della fetta 4 perso nel merge. Ok: è presente e passa (web 107 passed).
+- tests/test_unit_web_leggi.py:626 — controllo sugli attributi della chiusura (R-431-3). Rischio: lo stesso. Ok.
+- .claude/agents/memoria_revisore.md:695-696 — le righe #431/#432 (chat Mani) messe a mano. Rischio: righe perse, duplicate o marcatori rimasti. Ok, verificato con diff e comm contro HEAD e main.
+- .github/workflows/ci.yml:114 (contesto) — unico riferimento a modules/web fuori dal modulo, ed è un commento. Ok.
 
-Memoria: ho aggiunto la riga contatore #443 a /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata (commit 415c447). Lo staging è rimasto intatto: ci sono ancora i 2 file sotto review.
+Suite sull'albero fuso (Python 3.13):
+- web: 107 passed;
+- gate + notte: 947 passed;
+- kernel: 987 PASS e 1 FAIL. Il FAIL è T31g e dipende dall'ambiente: `import sqlite_vec` dà ModuleNotFoundError. gas.py e il test kernel sono identici a origin/main, quindi non viene da questo merge (stesso esito già registrato nella #428 chat Mani);
+- `pytest --co tests`: 1818 test raccolti, senza errori.
+
+Wall of Shame: il merge non porta codice nuovo del motore, quindi nessuno slicing della history e nessuna simulazione di tool introdotti.
+
+**Rischio escluso.** Non ho rifatto in modo indipendente la review del contenuto dei 27 commit della chat Motore (gas.py e il resto), già revisionati e mergiati su main. Mi sono limitato a verificare che nell'index siano uguali a origin/main. Non ho verificato T31g con sqlite_vec installato: qui il pacchetto non c'è.
+
+**Memoria.** Ho aggiunto la riga «#438 (chat Mani) — 2026-10-21 — APPROVATO — …» in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, ora riga 698. La modifica non è nell'index né committata, come chiesto; commit_memoria_revisore.sh non l'ho lanciato. Prima del commit di merge va aggiunta all'index con git add; dopo il git add il marcatore va rigenerato con `bash scripts/segna_review_ok.sh`.
+
+Nota: il mio primo tentativo di scrivere la riga con un heredoc in Bash è stato bloccato dall'hook review_gate.sh. Il testo conteneva parole come «commit» e «--cached» e l'hook l'ha preso per un comando git di scrittura (il marcatore non corrisponde ancora al diff staged). L'ho scritta con lo strumento Edit. Il gate ha bloccato, quindi ha funzionato; è un falso positivo del filtro che riconosce i comandi, non un buco.
+
+---
+
+---
+
+### Review #439 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #439 (chat Mani). Riguarda il diff staged del ramo feat/mani-web-fetta4 (PR #239), che chiude le note di bot e verifica esterna #239 nel ripiego senza parser di `modules/web/leggi.py`.
+
+Ho letto prima CLAUDE.md (sez. 1, 4, 5, 8, 9, 10), `reports/stato_progetto.md` (le sezioni Mani, :605 e seguenti) e la mia memoria (lezioni sulle regex e sul ripiego, #429–#438).
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:94` — `_FINE_TAG`, il «>» fuori dalle virgolette. Rischio ReDoS: ok. Le tre alternative partono da caratteri diversi e nessuna ripetizione è annidata. Misure su 2 MB, tutte entro 0,42 s:
+  - apici alterni `"'`×1M seguiti da «>»;
+  - `<title "` + «"»×2M + «>»;
+  - `<a "x>`×N;
+  - `<a b="c" d='e' f=g>`×N;
+  - script con `</script>` nell'attributo ×N;
+  - `<a "`×N senza «>» (in questo caso il `find(">")` alla `modules/web/leggi.py:526` evita la regex).
+- `modules/web/leggi.py:94` — completezza della chiusura di V-1 ve #239: **riserva R-439-1**, vedi sotto.
+- `modules/web/leggi.py:482` — `_fine_commento` con la cache `prossimi`. Rischi: ordine «-->»/«--!>», reset, posizioni vecchie. Esito ok:
+  - fuzz differenziale contro una versione senza cache, 300k pagine casuali (commenti, «-->», «--!>», «<!-->», «<!--->», script, virgolette): uscite identiche;
+  - una posizione salvata è usata solo se ≥ da, quindi è davvero la prossima; «-1» non viene mai ricercato; i tratti cercati sono disgiunti, quindi la ricerca resta lineare.
+- `modules/web/leggi.py:497` — `min(fini)`. Rischio: mutazione non presa da nessun test. Esito: riserva R-439-2.
+- `modules/web/leggi.py:529` e `modules/web/leggi.py:96` — `title` aggiunto solo nel ripiego, col confine del nome sempre in apertura. Ok: `<title a="</title>">SEGRETO</title>VIS` → il ripiego dà « VIS»; il parser mette SEGRETO nel campo Titolo, non nel testo.
+- `modules/web/leggi.py:401` (contesto) — `_SALTA = _TAG_NASCOSTI` è invariato. Il diff non tocca `_Estrattore` né `_TAG_NASCOSTI`, quindi il percorso normale non cambia: ok.
+- `tests/test_unit_web_leggi.py:859` — test parametrico su attributi e commenti. Ok, però manca il caso della virgoletta in posizione non di valore (R-439-1).
+- `tests/test_unit_web_leggi.py:869` — test a tempo in sottoprocesso con `_entro` (`tests/test_unit_web_leggi.py:710`). Ok.
+- `tests/test_unit_web_leggi.py:841` — math e object sul percorso del parser. Ok. È tolta anche la fixture `rete` inutile dal test su embed.
+- `modules/web/leggi.py:563` (contesto, `_componi`) — il ripiego parte solo su ValueError di html.parser. Su 200k pagine casuali di metacaratteri e sui casi noti (`<![foo[`, DOCTYPE con sottoinsieme interno, «&#» con migliaia di cifre) il ripiego non è mai partito e non è uscita nessuna eccezione. Per questo le riserve restano BASSE.
+
+Test: 121 passed su 3.13 e 121 passed su 3.11 (uv), con index uguale al working tree.
+
+**Riserve**
+- **R-439-1 (chat Mani) BASSA — V-1 ve #239 è chiusa solo in parte.** `_FINE_TAG` (`modules/web/leggi.py:94`) accoppia tutte le virgolette, ma in HTML5 (e in html.parser) una virgoletta apre un valore solo dopo «=».
+  - Una virgoletta nel nome di un attributo, o dentro un valore senza virgolette, apre un finto valore. Questo si chiude sull'apertura del valore vero, quindi il tag finisce prima del dovuto. A quel punto il `</script>` dentro il valore vero chiude il blocco.
+  - Sonde (il parser mostra «VIS», il ripiego mostra SEGRETO):
+    - `<script x"y z="w></script>">SEGRETO</script>VIS` → « ">SEGRETO VIS»
+    - `<script x'y z='w></script>'>SEGRETO</script>VIS` → stesso esito con l'apice singolo
+    - `<script a=b"c d="e></script>">SEGRETO</script>VIS` → stesso esito
+    - `<iframe a=b"c d="e></iframe>">SEGRETO</iframe>VIS` → stesso esito
+    - `<a x"y z="w>ATTR_SEGRETO">VIS` → il valore dell'attributo esce nel testo
+  - Correzione che ho provato in una copia isolata (`git checkout-index`, la tua copia di lavoro non è toccata):
+    ```
+    _FINE_TAG = re.compile(r"""(?:[^>=]|=[ \t\n\r\f]*+(?:"[^"]*"|'[^']*'|(?!["'])))*+>""")
+    ```
+    Risultato: 121 passed, tutte le sonde danno « VIS», tempi sui 2 MB uguali o migliori (≤0,32 s). Anche un valore fra virgolette mai chiuso (`<script a="></script>SEGRETO`) porta via il resto, come nel browser. I quantificatori possessivi richiedono Python 3.11+, che è il minimo del progetto e la versione della CI (.github/workflows/ci.yml:44).
+  - Consiglio di farla in questa PR, con un test sulla prima sonda: è lo stesso finding che la PR dichiara chiuso.
+- **R-439-2 (chat Mani) COSMETICA:** la mutazione `min(fini)` → `max(fini)` alla `modules/web/leggi.py:497` sopravvive (121/0). Nessun test ha «-->» e «--!>» nella stessa pagina. Test suggerito: `a<!--x-->VIS<!--y--!>b`.
+- **R-439-3 (chat Mani) COSMETICA:**
+  - la chiusura (`modules/web/leggi.py:477`) non guarda le virgolette: `<script>SEGRETO</script x=">">VIS` → «">VIS». Restano pezzi di markup, ma non esce contenuto nascosto;
+  - `prossimi: dict` (`modules/web/leggi.py:482`, `modules/web/leggi.py:512`) andrebbe tipizzato `dict[str, int]` (CLAUDE.md sez. 4).
+
+**Cose che NON ho verificato o che ho escluso**
+- Il caso del doppio escape dentro script (`<script><!--<script>…</script>STILL--></script>`), che il browser nasconde: «STILL» esce sia dal parser sia dal ripiego. È un limite di html.parser già presente prima del diff e fuori da questa fetta.
+- Il CDATA (`<![CDATA[`) e i commenti finti (`<?…>`): il ripiego tutt'al più nasconde di più, cioè va nella direzione sicura.
+- Il backtick non è una virgoletta per HTML5, quindi il comportamento è coerente col parser (`<a href=\`x>\`>VIS` → entrambi danno «`>VIS»).
+- Non ho controllato un parser con versioni di html.parser diverse da 3.11 e 3.13. Non ho controllato il comportamento dei browser veri: ho confrontato solo con le regole HTML5 e con html.parser 3.13.
+
+**Memoria**
+- Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#439 (chat Mani) — 2026-10-21 — APPROVATO CON RISERVE — …» e una lezione: le virgolette aprono un valore solo dopo «=», quindi va sempre sondato `<script x"y z="w></script>">SEGRETO`.
+- Su tua richiesta non ho committato e non ho eseguito `scripts/commit_memoria_revisore.sh`: il file risulta modificato e non in staging.
+
+Le sonde stanno in `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/` (sonda1.py, sonda2.py, tempi.py, diff_cache.py). Le copie isolate sono `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/copia` (mutazione min→max) e `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/copia2` (correzione proposta).
+
+---
+
+### Review #440 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #440 (chat Mani), 2026-10-21, ramo feat/mani-web-fetta4 (PR #239), diff staged. Ho letto CLAUDE.md (sez. 5, 8, 9, 10), le parti utili di reports/stato_progetto.md e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:96` — `_FINE_TAG` con la regex proposta nella #439 (le virgolette aprono un valore solo dopo «=», ripetizioni possessive). Rischio esaminato: le sonde della R-439-1 e la linearità. Esito: **ok** per le sonde dichiarate. `<script x"y z="w></script>">SEGRETO</script>VIS` dà «VIS» sia nel ripiego sia nel parser. Ho provato 11 input avversari da 2 MB, col «>» finale perché altrimenti il `find` a `modules/web/leggi.py:528` li scarta prima della regex: tutti sotto 0,23 s. Con la mutazione «apici singoli tolti» falliscono 2 test.
+- `modules/web/leggi.py:499` — `min(fini)` tra «-->» e «--!>». Rischio esaminato: la mutazione min→max, che nella #439 sopravviveva. Esito: **ok**, ora `tests/test_unit_web_leggi.py:869` fallisce (R-439-2 chiusa).
+- `modules/web/leggi.py:484` e `modules/web/leggi.py:514` — `prossimi: dict[str, int]`. Esito: **ok** (R-439-3 chiusa; la parte sulle virgolette nella chiusura resta una differenza dichiarata, che non fa uscire contenuto nascosto).
+- `tests/test_unit_web_leggi.py:858`, `tests/test_unit_web_leggi.py:879`, `tests/test_unit_web_leggi.py:882` — le nuove sonde: valore mai chiuso e linearità in sottoprocesso con 3 casi in più. Esito: **ok**. Con Python 3.13 risultano 127 passed.
+- `modules/web/leggi.py:96` — **riserva R-440-1 (chat Mani), BASSA**: resta un caso della stessa famiglia. La regex tratta OGNI «=» come inizio di un valore. Per HTML5 (e per html.parser di Python 3.13) invece un «=» è un carattere normale in questi casi: dentro un valore senza virgolette, subito dopo un valore fra virgolette, all'inizio di un nome, oppure ripetuto. In quei casi il tag del ripiego finisce DOPO quello vero e si mangia l'apertura dello script. Sonde verificate sullo staged (il ripiego mostra «SEGRETO VIS», il parser solo «VIS»):
+  `<a b=="x><script>">SEGRETO</script>VIS`
+  `<a b=c="x><script>">SEGRETO</script>VIS`
+  `<a ="x><script>">SEGRETO</script>VIS`
+  `<a b="1"="x><script>">SEGRETO</script>VIS`
+  `<a b = = "x><script>">SEGRETO</script>VIS`
+  Correzione provata in una copia isolata, poi cancellata:
+  `_FINE_TAG = re.compile(r"""(?:[ \t\n\r\f/]|[^ \t\n\r\f/>][^ \t\n\r\f/>=]*+(?:[ \t\n\r\f]*+=[ \t\n\r\f]*+(?:"[^"]*+"?|'[^']*+'?|[^ \t\n\r\f>]*+))?)*+>""")`
+  Funziona così: prima viene il nome dell'attributo, poi un «=» conta solo dopo un nome. Un valore senza virgolette si prende anche «=» e virgolette. Una virgoletta mai chiusa arriva fino in fondo, quindi niente match e il resto si perde, come nello standard. Risultato: 127 passed, le 7 sonde danno lo stesso risultato del parser (anche `<script a=b="x></script>">SEGRETO</script>VIS`, dove il parser MOSTRA `">SEGRETO`) e i tempi sui 11 input avversari sono gli stessi (≤0,31 s). Gravità BASSA perché il ripiego si raggiunge solo se html.parser solleva un'eccezione (nella #439 nessuna di 200k pagine casuali ci è arrivata). La fuga però è reale, nello stesso verso della R-439-1.
+
+**Rischi esclusi (non verificati)**
+- La suite con Python 3.11 non l'ho rieseguita: qui python3.11 non ha pytest. Mi fido del tuo 127 passed su 3.11 (venv). Le regex possessive compilano su 3.11.
+- Le sonde le ho confrontate con html.parser 3.13 e con le regole del tokenizzatore HTML5 lette a memoria, non con un browser vero: in questo ambiente non c'è html5lib né un browser.
+- Rete e DNS bloccati (sitecustomize) non li ho riprovati.
+
+Il diff non tocca gas.py, la history, `_get_window`, il tetto di 10 iterazioni né i provider. Nessun Wall of Shame.
+
+**Note per l'agente principale**
+- Memoria: ho aggiunto la riga #440 e una lezione in `/home/user/Gas/.claude/agents/memoria_revisore.md` e le ho committate con `scripts/commit_memoria_revisore.sh` (commit c43a59e). Quel commit include anche la tua riga #439, che era staged. Ora lo staged contiene solo `modules/web/leggi.py` e `tests/test_unit_web_leggi.py`, quindi `segna_review_ok.sh` va lanciato sullo staged attuale.
+- R-440-1 va tracciata in stato_progetto.md, oppure chiusa con la regex qui sopra, aggiungendo le 5 sonde al parametrize di `test_ripiego_attributi_e_commenti`.
+
+---
+
+### Review #441 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #441 (chat Mani), 2026-10-21. Ramo feat/mani-web-fetta4 (PR #239). Ho esaminato il diff STAGED (solo modules/web/leggi.py e tests/test_unit_web_leggi.py). Index e worktree sono identici. Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9 e 10), reports/stato_progetto.md (blocchi Mani, fette 1-4) e .claude/agents/memoria_revisore.md (fino alla #440).
+
+Wall of Shame: in questo diff non c'è nessuno slicing della history, nessuna simulazione di tool, nessun contatto con il kernel. È tutto codice puro del modulo web, senza rete.
+
+### Elementi del diff esaminati
+
+1. modules/web/leggi.py:98 — `_FINE_TAG`, la regex degli attributi spezzata su due stringhe raw. Rischio: che non sia identica a quella proposta nella #440, o che sia rotta dalla concatenazione con triple virgolette. Esito: **ok**. Ho confrontato in modo programmatico la stringa del pattern con quella della #440: è identica (True). Il fuzz differenziale contro html.parser sulla fine del tag (900k tag casuali, 3 seed) non trova nessuna differenza quando la regex trova il «>» e il nome sta nella classe di `_INIZIO_TAG`. Tutte le differenze rimaste sono «la regex dà -1» su una virgoletta mai chiusa. È il caso dichiarato nel commento: il resto della pagina si perde, ma non esce contenuto nascosto.
+2. modules/web/leggi.py:532 — prima un `find(">")`, poi `_FINE_TAG.match`. Rischio: costo quadratico su tanti tag. Esito: **ok**. Il find si ferma al primo «>», che sta sempre entro la fine della regex. Se la regex fallisce si esce subito con break. Ripetizioni possessive, nessuna ripetizione vuota.
+3. tests/test_unit_web_leggi.py:868 — sonda `<a b=c=="x><script>">SEGRETO</script>VIS`, nel parametrize di `test_ripiego_attributi_e_commenti` (tests/test_unit_web_leggi.py:870). Rischio: test che non morde. Esito: **ok**. Ho rifatto io due mutazioni in una copia isolata: «nome che accetta =» → 5 FAIL; «valore senza virgolette che si ferma a = e alle virgolette» → 1 FAIL. Risultato: 133 passed (Python 3.13).
+4. modules/web/leggi.py:89 — `_INIZIO_TAG` con il nome `[a-z0-9:-]*` (contesto: la riga non è cambiata, ma ora fa da confine con `_FINE_TAG`). Rischio: che la regex degli attributi parta a metà nome. Esito: **riserva**, è la R-441-1 qui sotto.
+
+### Riserve
+
+- **R-441-1 (chat Mani) BASSA**, stessa famiglia di R-439-1 e R-440-1, spostata sul NOME DEL TAG. In HTML5 (e in html.parser) il nome del tag continua fino a uno spazio, «/» o «>». `_INIZIO_TAG` invece prende solo `[a-z0-9:-]`. Quindi `_FINE_TAG` comincia a metà nome e legge «"», «'» e «=» come attributi.
+  - Sonde confermate (il ripiego mostra SEGRETO, il parser no): `<a=b="><script>">SEGRETO</script>VIS`, `<a"="><script>">SEGRETO</script>VIS`, `<ax=="><script>">…`, `</a"="><script>">…`, `<div'='><style>'>SEGRETO</style>VIS`, `<a.="><script>">…`.
+  - Fuzz sul codice staged: 50 casi su 100k.
+  - Correzione provata in copia: aggiungere `[^ \t\n\r\f/>]*+` in testa a `_FINE_TAG` (il resto del nome del tag). Risultato: 133 passed, 0 casi su 300k, 0 differenze di fine tag contro html.parser, input avversari da 2 MB in ≤0,014 s.
+  - Il controllo del nome intero sui tag nascosti non cambia, perché lì il carattere dopo il nome è già in `_FINE_NOME`.
+  - Test suggerito: aggiungere al parametrize `<a=b="><script>">SEGRETO</script>VIS` e `<a"="><script>">SEGRETO</script>VIS`.
+  - Gravità bassa: il ripiego non si raggiunge con pagine vere (vedi la nota della fetta 4 in stato_progetto). Ma è un intervento di un solo token: consiglio di chiuderla prima del commit.
+- Nota COSMETICA: in `test_embed_non_nasconde_il_resto_della_pagina` è stata tolta la fixture `rete`. È corretto, perché `_componi` non usa la rete.
+
+### Rischi esplicitamente esclusi
+
+- Non ho rifatto le esecuzioni su Python 3.11 (venv) né quelle con rete e DNS bloccati che dichiari: qui ho solo 3.13. Della tua lista di mutazioni ne ho ripetute solo 2 su 6.
+- Non ho verificato il comportamento dei browser veri. Il riferimento è html.parser 3.13 più le regole del tokenizzatore HTML5 lette a mano.
+- Non ho valutato se aspettarsi un'altra iterazione della stessa famiglia (tokenizzatore imitato a pezzi): il fuzz copriva tag e attributi con un alfabeto ridotto (lettere, = " ' spazi / > < . _).
+
+### Memoria
+
+Ho aggiunto la riga `#441 (chat Mani) — 2026-10-21 — APPROVATO CON RISERVE — …` e una lezione nuova (fuzz differenziale anche con nomi di tag «sporchi»; il confine fra regex del nome e regex degli attributi deve usare la classe di HTML5). Sono in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole con scripts/commit_memoria_revisore.sh (commit f7a3a05). L'index del diff sotto review è rimasto intatto (i due file restano staged).
+
+Copia isolata usata per mutazioni e correzione (fuori dal repo): /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/copia
+
+---
+
+### Review #442 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #442 (chat Mani), 2026-10-21. Ramo feat/mani-web-fetta4 (PR #239). Ho esaminato il diff STAGED: solo modules/web/leggi.py e tests/test_unit_web_leggi.py. L'albero di lavoro è identico allo staged. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la sezione Mani di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:99 — `_FINE_TAG` ha ora in testa `[^ \t\n\r\f/>]*+`, cioè il resto del nome del tag secondo HTML5. È identico alla correzione proposta nella #441. Rischi esaminati:
+  - Tempi: su 6 input avversari da circa 2 MB con nomi sporchi (`<a` + 2M «=», `"=` ripetuti, `</a` ripetuti, `<a"=` senza «>» e simili) il tempo massimo è 0,011 s.
+  - Python 3.11: i quantificatori possessivi compilano su 3.11.17.
+  - Esito: ok.
+- tests/test_unit_web_leggi.py:869 — le 4 sonde nuove: `<a=b=">`, `<a"=">`, `</a"=">`, `<div'='>`. Rischio esaminato: che i test non colgano un ritorno indietro. Ho rifatto la mutazione «senza il resto del nome» in una copia isolata: falliscono tutte e 4. Esito: ok, R-441-1 chiusa.
+- modules/web/leggi.py:475 — `_chiusura` (funzione non toccata, ma chiamata dal codice nuovo a modules/web/leggi.py:537) cerca «</nome» senza tener conto di virgolette e commenti. Rischio esaminato: un «</nome» dentro un attributo o un commento, all'interno di un blocco nascosto NON grezzo. Esito: **riserva R-442-1**.
+- modules/web/leggi.py:510 — la docstring di `_togli_blocchi_nascosti` dice che «<» o «</script>» dentro un attributo «non contano». Vale solo per il tag di apertura, non per il contenuto dei blocchi nascosti non grezzi. Esito: riserva, è la stessa R-442-1.
+- modules/web/leggi.py:89 — `_INIZIO_TAG` riconosce solo `<!--` e `<lettera` / `</lettera`. Rischio esaminato: costrutti che il parser chiude al primo «>» e il ripiego no. Esito: **riserva R-442-2**.
+
+**Verifiche fatte da me**
+- 137 passed su Python 3.13.16. Su 3.11 non c'è pytest: lì ho controllato solo che le regex compilino.
+- Fuzz differenziale contro `_Estrattore`/html.parser, su 300k stringhe con alfabeto ampio: nomi di tag sporchi, `<!`, `<?`, `<![`, `\x00`, «İ», `\f`, `\r`, «&», tag grezzi e non grezzi. Conto come «fuga» ogni parola visibile nel ripiego e assente sia dal corpo sia dal titolo del parser.
+- La famiglia R-439/440/441 (fine del tag di apertura) non dà più differenze. Restano due famiglie diverse, descritte sotto.
+
+**Riserve**
+- **R-442-1 (chat Mani) BASSA** — Dentro i blocchi nascosti NON grezzi (svg, math, noscript, template, object, canvas) html.parser legge i tag. Quindi un «</svg>» dentro un attributo o un commento non chiude il blocco. Il ripiego invece lo chiude subito e mostra quello che segue.
+  - Riprodotto su tutti e sei:
+    - `<svg><a title="</svg>">SEGRETO</a></svg>VIS`: parser `'VIS'`, ripiego `' ">SEGRETO  VIS'`.
+    - Lo stesso con noscript, template, object, canvas, e con math usando gli apici singoli.
+    - Lo stesso con un commento: `<svg><!--</svg>-->SEGRETO</svg>VIS`.
+  - Per script e iframe il comportamento è già alla pari, perché il parser li tratta come grezzi.
+  - È la stessa famiglia di V-1 ve #239, spostata dal tag di apertura al contenuto del blocco.
+- **R-442-2 (chat Mani) BASSA** — Per il parser sono commenti fasulli, che finiscono al primo «>», questi costrutti: `<!x…`, `<?…`, `</` seguito da un carattere che non è una lettera. `<![CDATA[` finisce invece a «]]>».
+  - Nel ripiego la regex finale `<[^<>]*>` si ferma a un «<» interno, e i costrutti non chiusi a fine pagina restano interi. Quindi il loro contenuto resta nel testo.
+  - Esempi: `<!Q <?\f>V`, `a<![CDATA[ > Q ]]>b`.
+  - Frequenza: circa il 12% delle stringhe casuali, per lo più code non chiuse a fine pagina.
+  - Non riesce a far saltare l'apertura di uno script: il ripiego vede più tag del parser, non meno.
+
+Le due riserve sono BASSE perché il ripiego scatta solo se html.parser solleva un errore. Le 60.000 pagine casuali della verifica esterna #238 non l'hanno mai attivato.
+
+**Correzione provata in copia isolata** (non nel tuo albero), che chiude R-442-1, R-442-2 e anche R-431-3:
+- Un'unica regex di ricerca: `<(!--|/?[a-z][a-z0-9:-]*|!\[cdata\[|[!?/])`.
+- I casi `!`, `?`, `/` finiscono al primo «>»; `![cdata[` finisce a «]]>».
+- `_chiusura` resta solo per i tag grezzi: script, style, iframe, title.
+- Per gli altri nascosti, un contatore come quello di `_Estrattore`: +1 all'apertura, −1 alla chiusura se è sopra 0. I pezzi di testo si aggiungono solo quando il contatore è a 0.
+- Risultati: 137 passed, 0 differenze su 250k stringhe del fuzz, 2 MB avversari in al massimo 0,42 s.
+- Attenzione: una prima versione con due `search` separate partendo da `pos` era quadratica (40k «<?>» = 28,6 s, e due test a tempo fallivano). Serve un'unica alternanza, oppure tenere la posizione in cache.
+
+**Wall of Shame e guardrail**: questo diff non tocca la history, `_get_window`, il tetto delle 10 iterazioni, i tetti di output né i provider. Nessuna simulazione di output dei tool. Il ripiego resta fail-safe: `html_unescape` è protetto da try/except e nel ciclo non ci sono eccezioni nuove.
+
+**Rischio escluso**
+- Non ho eseguito la suite su Python 3.11, perché in questo ambiente pytest c'è solo su 3.13. Su 3.11.17 ho controllato soltanto che le regex compilino e che l'html.parser installato abbia gli stessi elementi grezzi/RCDATA di 3.13.16.
+- Non ho verificato il comportamento con versioni più vecchie di html.parser (senza le patch che rendono grezzo iframe), come quelle che potrebbero esserci sul VPS o sul Mac: in questo ambiente non sono riproducibili.
+- Non ho verificato su pagine reali, solo sul fuzz.
+
+**Memoria**: riga #442 e una lezione aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md, committate da me con `scripts/commit_memoria_revisore.sh` (commit e72a96a). L'index del diff sotto review è intatto.
+
+File utili:
+- Script di fuzz: /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/fuzz442.py e /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/fuzz442b.py
+- Prototipo della correzione: /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/proto/modules/web/leggi.py
+
+---
+
+### Review #444 (chat Mani) — verdetto RIEMESSO dal revisore
+
+Il primo testo citava `gas.py` e `scripts/bot_esito.py`, che dopo il merge non sono più nel diff di sessione: il gate B lo rifiutava (0 citazioni di file del diff). Come vuole /fine-task, il revisore ha riemesso il verdetto (stesso esito e sostanza); sotto il testo riemesso, poi l'originale integrale dentro un blocco di codice (non conteggiato dal gate).
+
+## VERDETTO: APPROVATO
+
+Review #444 (chat Mani), 2026-10-21, riemessa. L'esito e la sostanza non cambiano. Oggetto: il merge di origin/main 7897f97 (PR #240, chat Motore) nel ramo feat/mani-web-fetta4, committato come 33be621 (genitori 4f9ff13 e 7897f97, base comune dec4ce9). Ho riletto CLAUDE.md (sez. 5), reports/stato_progetto.md (blocco «Mani — fetta 4», riga 605) e .claude/agents/memoria_revisore.md.
+
+**Perché la riemissione.** Dopo il merge il diff di sessione è `git diff 7897f97..HEAD`. I suoi file di codice sono solo modules/web/leggi.py e tests/test_unit_web_leggi.py, quindi le citazioni del primo testo (gas.py, scripts/bot_esito.py) non contano più per il gate B.
+
+**Metodo.** Ho fatto quattro controlli:
+- `git diff 4f9ff13 33be621 -- modules/web tests/test_unit_web_leggi.py` dà 0 righe: il merge lascia l'area Mani identica al commit prima del merge.
+- `git diff dec4ce9 7897f97 -- modules/web tests/test_unit_web_leggi.py` è vuoto: main non tocca l'area Mani.
+- `git diff 7897f97 33be621 -- gas.py scripts/bot_esito.py tests/test_unit_kernel.py tests/test_unit_verifica_bot.py reports/da_mergiare.md` è vuoto: i file di main sono arrivati identici.
+- gas.py non importa modules.web (grep vuoto), quindi tra i due lati non c'è legame nel codice.
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:99`: `_FINE_TAG`, la fine del tag nel ripiego secondo il tokenizzatore HTML (resto del nome, virgolette solo dopo «=», ripetizioni possessive). Rischio: che il merge abbia alterato o perso le correzioni R-439-1/R-440-1/R-441-1 del secondo giro. È identico a 4f9ff13 (0 righe di diff sull'area Mani). Esito: ok.
+- `modules/web/leggi.py:508`: `_togli_blocchi_nascosti`, la ricerca lineare che usa `_FINE_TAG` (alla riga 533 c'è un find di «>» prima della regex). Rischio: un'unione automatica con righe perse o duplicate dentro la funzione. Identica a 4f9ff13, e main non tocca modules/web dalla base dec4ce9. Esito: ok.
+- `tests/test_unit_web_leggi.py:849`: la parametrizzazione di `test_ripiego_attributi_e_commenti` con i casi R-439-1, R-440-1 e R-441-1. Rischio: test del secondo giro persi nel merge, che darebbero una suite verde ma vuota. Il file è identico a 4f9ff13. Sull'albero 33be621 la suite gira con «137 passed in 17.40s», lo stesso conteggio dichiarato per 4f9ff13. Esito: ok.
+- `tests/test_unit_web_leggi.py:892`: `test_ripiego_lineare_su_attributi_e_commenti` (tetto di 10 s sulle pagine patologiche). Rischio: perdita della garanzia di linearità. È presente e passa nella stessa esecuzione. Esito: ok.
+- Contesto, già verificato nel primo testo e invariato: `.claude/agents/memoria_revisore.md:698` e `reports/stato_progetto.md:605`. Sono unioni a multinsieme base/ours/theirs con 0 righe perse, 0 in più e nessun marcatore di conflitto. reports/handoff.md, ultimo_report.md e diff_sessione.md sono la versione Mani, come prescrive lavoro_parallelo.md. Nota non bloccante, sempre valida: con numeri sovrapposti l'ordine «per numero» non cresce sempre fra i blocchi delle due chat. È accettato dalla regola 4 di lavoro_parallelo.md.
+
+**Esecuzione.** Sull'albero 33be621 tests/test_unit_web_leggi.py dà 137 passed. Nel primo passaggio tests/test_unit_web_leggi.py + tests/test_unit_verifica_bot.py davano 462 passed. La suite kernel (991 PASS / 1 FAIL T31g, sqlite_vec assente) non l'ho rieseguita: mi fido del dato del chiamante, coerente con main.
+
+**Rischio escluso.** Non ho rivisto nel merito la logica di unione della storia in gas.py, né le regole di gravità in scripts/bot_esito.py. È codice di main già revisionato dalla chat Motore (#438-#443), e il merge non lo altera: questa review verifica solo che la risoluzione sia fedele. Non ho verificato il fallimento di T31g (sqlite_vec manca in questo ambiente) né il commit di fine-task successivo a 33be621, che al momento della review non esiste ancora (HEAD = 33be621, reports/ modificati in staging).
+
+**Antipattern.** Il merge non introduce slicing della history né simulazione di tool. Il cap delle 10 iterazioni e `_get_window` non sono toccati dal lato Mani.
+
+**Memoria.** In coda a /home/user/Gas/.claude/agents/memoria_revisore.md ho aggiunto una riga datata sulla riemissione: in una review di merge le citazioni vanno prese dai file del diff di sessione dopo il merge. Nessuna nuova riga contatore, perché la #444 c'è già. Non ho committato e non ho toccato reports/: il file risulta modificato (` M`) e va incluso nel commit di fine-task.
+
+Nota per il chiamante: `python3 scripts/check_verdetto.py` sul handoff attuale dà ancora «verdetto 8: 0 citazioni»: il testo nel §4 va sostituito con questo verdetto riemesso, poi rilanciato il gate B.
+
+#### Testo originale della review #444 (prima della riemissione)
+
+```text
+## VERDETTO: APPROVATO
+
+Review #444 (chat Mani), 2026-10-21. Oggetto: il merge di origin/main 7897f97 (PR #240, chat Motore) nel ramo feat/mani-web-fetta4. HEAD è 4f9ff13 e il merge non è ancora committato. Ho letto prima CLAUDE.md (sez. 5), reports/stato_progetto.md, .claude/agents/memoria_revisore.md e reports/lavoro_parallelo.md (regole 3 e 4).
+
+**Metodo.** Ho confrontato ogni file staged con i due genitori (HEAD e MERGE_HEAD) e con la base comune dec4ce9. Per memoria e stato ho fatto un controllo a multinsieme: atteso = base + righe aggiunte da ciascun lato − righe tolte da ciascun lato.
+
+**Elementi del diff esaminati**
+- `gas.py:1175`: aggiunge `gia = sync[4]`, così i messaggi già uniti a un salvataggio fallito non si accodano due volte. Rischio esaminato: la risoluzione del merge altera il codice del Motore, oppure c'è uno slicing della history verso i provider. Il gas.py staged è identico byte per byte a MERGE_HEAD (0 righe di diff). Le fette `altrui[:gia[0]]` e `self.history[n_base:]` servono all'unione su disco e all'impronta, non alla finestra mandata ai provider. Le aveva già revisionate la chat Motore (#438-#443). Esito: ok.
+- `gas.py:1188`: il rinvio dell'unione a metà turno vale ora per entrambi i rami. Stesso rischio, stessa verifica (identico a main). `py_compile` passa. Esito: ok.
+- `scripts/bot_esito.py:109`: nuove righe sulla gravità nel testo del verdetto del bot. Rischio: righe di main perse o duplicate. Identico a MERGE_HEAD (0 righe di diff); tests/test_unit_verifica_bot.py e tests/test_unit_kernel.py sono anch'essi identici a main. Esito: ok.
+- `.claude/agents/memoria_revisore.md:698`: Mani #438-#442, poi Motore #438-#443 da `.claude/agents/memoria_revisore.md:707`. Rischio: righe perse o doppie nell'unione manuale. Contro l'unione attesa mancano 0 righe e ce ne sono 0 in più, nessuna riga non vuota duplicata, nessun marcatore di conflitto. Esito: ok.
+  - Nota non bloccante: con numeri sovrapposti la sequenza non cresce sempre fra i due blocchi (la Mani #442 viene prima della Motore #438). È accettato dalla regola 4 di lavoro_parallelo.md. Mescolare le righe delle due chat sarebbe solo un'alternativa, non una correzione dovuta.
+- `reports/stato_progetto.md:409`: la riga R-c4b3-4 nella versione di main. `reports/stato_progetto.md:605`: il blocco «Mani — fetta 4» col secondo giro, incluse R-439/440/441-1 CHIUSE e R-442-1/R-442-2 (chat Mani) aperte. Rischio: unione automatica che perde una delle due parti. Il controllo a multinsieme dà 0 mancanti e 0 in più. L'unico duplicato («Riserve aperte:», 5 volte) è identico in base, ours e theirs, quindi non nasce dal merge. Esito: ok.
+- `reports/da_mergiare.md` è identico a main. reports/handoff.md, ultimo_report.md e diff_sessione.md sono identici a HEAD (versione Mani), come prescrive lavoro_parallelo.md:23. Esito: ok.
+- Area Mani: `git diff base..MERGE_HEAD -- modules/web tests/test_unit_web_leggi.py` è vuoto, quindi main non tocca l'area Mani. gas.py non importa modules.web, quindi tra i due lati non c'è legame nel codice.
+
+**Esecuzione.** tests/test_unit_web_leggi.py + tests/test_unit_verifica_bot.py sull'albero unito: 462 passed. La suite kernel (991 PASS / 1 FAIL T31g, sqlite_vec assente) non l'ho rieseguita: mi fido del dato del chiamante, coerente con main.
+
+**Rischio escluso.** Non ho rivisto nel merito la logica di unione della storia in gas.py, né le nuove regole di gravità in scripts/bot_esito.py. Sono codice di main già revisionato dalla chat Motore (#438-#443), e il merge non le altera. Questa review verifica solo che la risoluzione sia fedele. Non ho verificato nemmeno il fallimento di T31g (sqlite_vec manca in questo ambiente).
+
+**Memoria.** Ho aggiunto la riga «#444 (chat Mani) — 2026-10-21 — APPROVATO — …» in coda a /home/user/Gas/.claude/agents/memoria_revisore.md (lezione: nessuna nuova, solo la nota sull'ordine non monotono). Il file risulta modificato ma non in staging, quindi va aggiunto con `git add` prima del commit di merge. Come richiesto, NON ho lanciato commit_memoria_revisore.sh.
+```
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 992 → 996 PASS, 0 FAIL in locale (T97j, T97k, T97l, T97l2; in CI +2 per il sandbox bwrap: main 994 → 998 attesi). Blocco reale: `=== RIEPILOGO: 996 PASS, 0 FAIL ===`.
-pytest `tests/`: 1816 passed (+9 in tests/test_unit_verifica_bot.py: 316 → 325).
+- Web suite: 105 → 137 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «137 passed in 17.42s», Python 3.13 e 3.11 (venv): «137 passed in 16.94s»; con rete e DNS veri bloccati via sitecustomize: «137 passed in 16.81s»). Primo giro (`12f7f71`) 105 → 107, secondo giro (`3e0fe70`) 107 → 137.
+- Mutazioni del secondo giro, in copia isolata, ciascuna presa da almeno un test: senza il resto del nome del tag, nome dell'attributo che accetta «=», valore senza virgolette senza «=» e virgolette, chiusura della virgoletta obbligatoria, niente spazi prima/dopo «=», niente apici, min→max fra «-->» e «--!>».
+- Mutazioni eseguite in copie isolate (1 FAIL ciascuna): commenti ignorati, insieme a 4 tag, confine della chiusura tolto, apertura per prefisso, except di unescape tolto, embed rimesso, chiusura senza «>».
+- Sull'albero unito col secondo merge (review #444): web suite 137 passed; kernel 991 PASS / 1 FAIL (T31g, stessa causa); verifica_bot + gate + notte 1272 passed.
+- Sull'albero fuso (review #438): gate + notte 947 passed; kernel 987 PASS / 1 FAIL (T31g: manca `sqlite_vec` in questo ambiente, uguale su origin/main).
 
 ## §6 STATO CI
 
-- dec4ce9 (merge di #236 su main): CI di main non letta da qui.
-- aa7f538 (con 012856e, 340326d): unit-suite (996 PASS in CI), handoff-check success; verifica-bot SUCCESS (APPROVATO CON RISERVE, 2 BASSE + 1 COSMETICA: decide l'operatore).
-- 4891448 (con 5eb1c1d, 361400f, 1f90bc8, 28c7f94): unit-suite (998 PASS in CI), handoff-check success; verifica-bot FAILURE per falso rosso (la parola «grave» in «non la considero più grave»), corretto in e89ce76.
-- 6d5a019, 415c447 e le memorie #442, e89ce76: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA con `gh run list` (gh non autenticato nella sessione cloud). Mappatura commit→run:
+- `12f7f71`: pushato da solo prima del merge di main; run di push non verificata in questa sessione.
+- `befc78e` (merge di main) e `71bd77e` (fine-task del primo giro): pushati insieme, run sulla testa `71bd77e`; esito letto dai check della PR #239 via MCP, non da `gh`.
+- `c43a59e`, `f7a3a05`, `e72a96a`, `3e0fe70`: nessuna run su questi SHA da soli (pushati insieme a `4f9ff13`, che li contiene).
+- `4f9ff13` (fine-task del secondo giro, testa con `c43a59e`…`3e0fe70`): run 39678458664, unit-suite success, handoff-check success; verifica-bot success (letti dai check della PR via MCP).
+- `33be621` (merge di main): nessuna run su questo SHA da solo (pushato col commit di fine-task che contiene questo file).
+- Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-438-1, R-439-1: chiuse in #439/#440.
-- R-440-1 (COSMETICA): compress-history può dire «NON salvata» se solo il secondo salvataggio fallisce (direzione prudente).
-- R-438-2 (nota dichiarata): con un altro processo che ha scritto, i messaggi del turno in corso restano in memoria fino alla fine del turno; un kill -9 a metà turno li perde.
-- Riserve precedenti: vedi `reports/stato_progetto.md`.
+- Di questa fetta: **R-442-1 (chat Mani)** BASSA dentro i blocchi nascosti non grezzi (svg, math, noscript, template, object, canvas) il ripiego chiude al primo «</nome» anche dentro un attributo o un commento; **R-442-2 (chat Mani)** BASSA commenti fasulli `<!x`, `<?`, `</` non lettera e `<![CDATA[` nel ripiego (vede più tag del parser, non meno); R-431-3 (annidamento non contato, ora parte di R-442-1); R-432-1 (COSMETICA). Il revisore ha un prototipo che le chiude (contatore come il parser), da portare in una fetta successiva. **V-1 bot #239** BASSA `<svg/>`/`<math/>` autochiusi aprono un blocco nel ripiego (si perde testo, non esce nulla), stessa fetta; V-2 bot #239 COSMETICA: corpo della PR aggiornato, resta il commento del test che cita R-431-3.
+- Restano: R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5 e R-ve235-7 (limiti dichiarati). Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1/2/3/4».

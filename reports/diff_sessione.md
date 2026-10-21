@@ -1,10 +1,10 @@
-# DIFF SESSIONE — 2026-10-21 (dopo il merge di #236: ultime riserve del bot sulla storia condivisa)
+# DIFF SESSIONE — 2026-10-21 (chat Mani, fetta 4)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `gas.py` — rinvio a fine turno in entrambi i rami di `_unisci_storia_altrui`; quinto elemento della base (`gia`) contro i duplicati dopo una scrittura fallita; `_save_history` restituisce se ha scritto; `compress_history_cmd` salva a fine operazione e dice ok solo se ha scritto.
-- `tests/test_unit_kernel.py` — T97j (dal generatore di run_turn, messaggi inviati al provider), T97k (niente duplicati), T97l/T97l2 (compress-history); T97b e T97g con turni chiusi.
-- `scripts/bot_esito.py` — `_GRAVITA_NEGATA`: gravità a parole negata (lista chiusa) ignorata dalla regola a parole (falso rosso #240).
-- `tests/test_unit_verifica_bot.py` — caso reale #240 e 13 frasi che devono restare bloccanti.
-- `.claude/agents/memoria_revisore.md` — righe #438-#443.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`, `reports/stato_progetto.md`, `reports/da_mergiare.md` — report.
+- `modules/web/leggi.py` — `_TAG_NASCOSTI` unico per parser e ripiego (con math/object, senza `embed`), nome del tag intero; nel ripiego fine del tag come il tokenizzatore HTML (virgolette solo dopo «=», resto del nome), commenti vuoti e `--!>` lineari, titolo tolto.
+- `tests/test_unit_web_leggi.py` — sonde delle review #431-#442 e delle note di bot e verifica esterna #238/#239, linearità in sottoprocesso (137 test).
+- `.claude/agents/memoria_revisore.md` — righe #431, #432, #438, #439-#442, #444 (chat Mani), più quelle della chat Motore portate dal merge.
+- Dal merge di main (PR #240, chat Motore, non di questa sessione): `gas.py`, `scripts/bot_esito.py`, test kernel e verifica_bot, `reports/da_mergiare.md`.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 4».
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
