@@ -18,6 +18,7 @@
 - **R-428-1/2/3/4**: `FATTA` — review #429 APPROVATO CON RISERVE.
 - **R7 / R-c4b3-4 — due processi sulla stessa storia; test R-429-1, guardia R-429-2 (V-1/V-2 verifica esterna #236)**: `FATTA` — review #430 APPROVATO CON RISERVE (R-430-1 MEDIA).
 - **R-430-1/2/4/5**: `FATTA` — review #431 APPROVATO CON RISERVE.
+- **Merge di origin/main (#237, chat Mani) — V-1 verifica esterna #236 (PR non mergeabile)**: `FATTA` — review #432 APPROVATO; conflitti solo nei report e nella memoria del revisore.
 - **R7 / R-c4b3-3; V-1/V-2/V-3 bot #236**: `DEFERITA` — prossime fette.
 
 ---
@@ -25,22 +26,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |    7 +++
- gas.py                             |  175 +++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- modules/telegram/bot.py            |    4 ++
- reports/da_mergiare.md             |   50 +++++------------
- reports/diff_sessione.md           |   16 +++---
- reports/handoff.md                 | 1063 ++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/roadmap.md                 |    6 +--
- reports/stato_progetto.md          |    4 +-
- reports/ultimo_report.md           |   41 +++++---------
- tests/test_unit_kernel.py          |  150 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 10 files changed, 494 insertions(+), 1022 deletions(-)
+ .claude/agents/memoria_revisore.md |   8 ++++++++
+ gas.py                             | 175 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ modules/telegram/bot.py            |   4 ++++
+ reports/da_mergiare.md             |  50 +++++++++++++-------------------------------------
+ reports/diff_sessione.md           |  13 +++++++------
+ reports/handoff.md                 | 285 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                 |   6 +++---
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  40 ++++++++++++++++++----------------------
+ tests/test_unit_kernel.py          | 150 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 539 insertions(+), 196 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+21a146d Merge origin/main (#237, chat Mani) in feat/merge-automatico-z1xjx2
+4fb9dcd docs(fine-task): report e handoff — storia condivisa tra processi (#430/#431)
 ddc3422 fix(storia): l'impronta avanza solo se la scrittura riesce; salvataggio senza lock se il lock manca; lettura iniziale sotto lock (R-430-1/2/4/5)
 63e6a2f chore(revisore): memoria review #431 — APPROVATO CON RISERVE
 4ad247c fix(storia): due processi sulla stessa root non si cancellano la storia (R7, R-c4b3-4); test R-429-1, guardia R-429-2
@@ -193,6 +196,28 @@ Review #431 (chat Motore). Riguarda il diff STAGED su gas.py e tests/test_unit_k
 
 File: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #432 (chat Motore) — merge 21a146d
+
+## VERDETTO: APPROVATO
+
+Review #432 (chat Motore): merge in corso, solo staged, di origin/main 9030b2f (PR #237, fetta 2 della chat Mani) dentro feat/merge-automatico-z1xjx2. La merge-base è 35b55be. Prima della review ho letto CLAUDE.md (dato nel contesto), la sezione Mani/Motore di reports/stato_progetto.md (dal diff) e la coda di .claude/agents/memoria_revisore.md.
+
+Elementi esaminati:
+- `.claude/agents/memoria_revisore.md:681` — righe Mani #409/#410/#428 (chat Mani) messe in coda dopo la #431 Motore. Rischio esaminato: righe perse, duplicate o marcatori di conflitto. Ho confrontato riga per riga l'index con HEAD (680 righe) e con MERGE_HEAD (676): l'index ha 683 righe, cioè HEAD più le 3 righe Mani. Nessuna riga di HEAD o di main manca, nessuna riga non vuota è duplicata, non ci sono righe inventate né marcatori. Esito: ok.
+- `modules/web/leggi.py:26` — import del modulo web, solo stdlib (righe 26-42). Rischio esaminato: uno scontro con il ramo Motore. `git diff 35b55be HEAD -- modules/web tests/test_unit_web_leggi.py` è vuoto, quindi il ramo non tocca quei file. Lo staged contro MERGE_HEAD non li elenca: sono identici a 9030b2f. Esito: ok.
+- `gas.py:1163` — `_blocca_storia`, il lock della storia condivisa tra processi (#430/#431). Rischio esaminato: il merge altera il codice del ramo, oppure gas.py importa modules.web. Il grep non trova `modules.web` né `leggi_pagina` in gas.py, modules/telegram/ e brains/: l'aggancio non esiste ancora e quindi non può scontrarsi con nulla. Esito: ok.
+- `gas.py:1206` — l'impronta di sincronizzazione avanza solo se `_salva_storia_su_file()` riesce (R-430-1). Rischio esaminato: una perdita durante l'unione. Il codice è intatto e lo staged contro HEAD non tocca gas.py. Esito: ok.
+- `modules/telegram/bot.py:668` — ramo «esito INCERTO» (#428). Il merge non lo tocca e il file non ha import da modules/web. Esito: ok.
+- `tests/test_unit_kernel.py:7448` — T97c è presente. Con `pytest --co tests` la raccolta dà 1807 test senza errori né collisioni di nomi. La web suite dà 96 passed. Esito: ok.
+- `reports/stato_progetto.md:4` — l'unione automatica è sensata: la riga 4 prende la voce Mani «fetta 2, PR #237» e tiene intera la catena precedente. Il blocco Motore «Modo di lavorare», che c'era solo in HEAD, è conservato. Il blocco «Mani — fetta 2» sta sopra «fetta 1». `git ls-files -u` è vuoto: nessun percorso resta in conflitto. Esito: ok. Nota non bloccante: il blocco fetta 1 elenca ancora come aperte R-ve235-4/5/6/7 e R-393-1/2, che il blocco fetta 2 dichiara chiuse. Il disallineamento viene da main (testo Mani), non dalla risoluzione del merge.
+
+Rischi esplicitamente esclusi:
+- Non ho rieseguito la suite kernel (981/0) né i gate e la notte (1043). Mi fido dei numeri dell'agente, perché non posso fare checkout o copie del tree durante il merge senza rischiare l'index. Ho eseguito solo la web suite e la raccolta pytest.
+- Non ho verificato il comportamento su VPS né la CI remota: non sono riproducibili qui.
+- Non ho controllato i report di sessione (handoff.md, ultimo_report.md, diff_sessione.md). L'agente li ha tenuti quelli del ramo per scelta dichiarata e la loro coerenza spetta al gate A.
+
+Memoria: ho aggiunto la riga contatore #432 (chat Motore) in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È modificata ma non staged, e non è committata: `scripts/commit_memoria_revisore.sh` non funziona durante un merge, quindi devi aggiungerla tu con `git add` e includerla nel commit di merge. Nessuna lezione nuova.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
@@ -205,7 +230,8 @@ pytest `tests/`: 1796 passed (compresi i 85 test web arrivati con main).
 - 521b018 (testa della PR #234, mergiata): unit-suite, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE).
 - be72cb5: handoff-check failure (commit intermedio pushato prima del dossier, atteso); superato da 33173bf.
 - 33173bf (con b997a5c, c19defc, 40da5ce): unit-suite, handoff-check success; verifica-bot success (APPROVATO CON RISERVE, V-1/V-2/V-3 BASSE: decide l'operatore).
-- 9a32029, 4ad247c, 63e6a2f, ddc3422: run non ancora disponibile alla scrittura dell'handoff.
+- 4fb9dcd (con 9a32029, 4ad247c, 63e6a2f, ddc3422): handoff-check success; unit-suite e verifica-bot non lette (superate dal merge di main).
+- 21a146d (merge di main #237): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

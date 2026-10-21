@@ -14,6 +14,7 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **R-428-1/2/3/4** — FATTA. Il segno «partito» si azzera a ogni tool call (non sporca più il diario di azioni negate o parcheggiate dopo); un errore di avvio (binario assente) non è «incerto»; anche il modello legge «PARTITO… esito INCERTO» senza l'argv di bwrap. Review #429 APPROVATO CON RISERVE (R-429-1 BASSA, R-429-2 COSMETICA).
 - **R7 / R-c4b3-4 — due processi sulla stessa storia** — FATTA. Il bot e un comando da terminale sulla stessa cartella non si cancellano più i messaggi: lock sul file, i turni interi dell'uno si accodano a quelli dell'altro; a metà turno la versione dell'altro va in una copia «conflitto». Review #430 APPROVATO CON RISERVE (R-430-1 MEDIA), #431 la chiude (impronta avanza solo se la scrittura riesce).
 - **V-1/V-2 verifica esterna #236 (= R-429-1/2)** — FATTA in #430.
+- **Merge di origin/main (#237, chat Mani)** — FATTO per togliere il conflitto segnalato dalla verifica esterna #236 (V-1 MEDIA). Review #432 APPROVATO.
 - **Test** — kernel 971 → 981 PASS, 0 FAIL; pytest tests/ 1796 passed.
 
 ## Prossimi passi
