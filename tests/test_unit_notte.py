@@ -1477,3 +1477,20 @@ def test_lancia_giro_telegram_spento(monkeypatch, tmp_path):
     monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "0")
     r = _tg.lancia_giro(tmp_path)
     assert "spento" in r and "ultimo_giro.md" in r and "arriva qui" not in r
+
+
+def test_run_bot_senza_username(monkeypatch, tmp_path):
+    """R-403-2: getMe senza username → _BOT_USERNAME None, «/notte@X» accettato."""
+    risposte = iter([{"ok": True, "result": {}}])
+
+    def _post(base, metodo, payload=None, timeout=70):
+        if metodo == "getMe":
+            return next(risposte)
+        raise KeyboardInterrupt
+    monkeypatch.setattr(_tg, "_tg_post", _post)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "finto")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_IDS", "7")
+    monkeypatch.setattr(_tg, "avvisa_firme_scadute", lambda m: 0)
+    assert _tg.run_bot(str(tmp_path)) == 0
+    assert _tg._BOT_USERNAME is None
+    assert _tg.comando_giro("/notte@QualsiasiBot") == ("notte", None)

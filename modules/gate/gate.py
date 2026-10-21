@@ -165,9 +165,9 @@ _DENY_WRITE_ANY_PART_NAMES: frozenset[str] = frozenset({
 })
 
 
-# V-1 bot #233 (5° giro): oltre ai Cf, i caratteri che si vedono vuoti ma non sono
-# Cf (selettori di variante, riempitivi hangul, combining grapheme joiner, braille
-# vuoto). Elenco dei Default_Ignorable_Code_Point non Cf, più U+2800.
+# V-1 bot #233 (5° giro): oltre alle categorie invisibili, i caratteri assegnati che
+# si vedono vuoti (selettori di variante, riempitivi hangul, combining grapheme
+# joiner, braille vuoto): Default_Ignorable_Code_Point assegnati non Cf, più U+2800.
 _INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
     (0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
     (0x2800, 0x2800), (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFFA0, 0xFFA0),
@@ -175,9 +175,16 @@ _INVISIBILI_NON_CF: tuple[tuple[int, int], ...] = (
 )
 
 
+# R-403-1: anche controlli (Cc), non assegnati (Cn: es. U+E0000), surrogati (Cs),
+# uso privato (Co) e separatori di riga/paragrafo (Zl, Zp): nessuno è un carattere
+# visibile di un nome di file. Toglierli porta solo verso firma o diniego.
+_CATEGORIE_INVISIBILI: frozenset[str] = frozenset({"Cf", "Cc", "Cn", "Cs", "Co", "Zl", "Zp"})
+
+
 def _invisibile(c: str) -> bool:
-    """True per un carattere che non si vede: Unicode Cf o uno di _INVISIBILI_NON_CF."""
-    if unicodedata.category(c) == "Cf":
+    """True per un carattere che non si vede: categorie _CATEGORIE_INVISIBILI o uno
+    di _INVISIBILI_NON_CF."""
+    if unicodedata.category(c) in _CATEGORIE_INVISIBILI:
         return True
     o = ord(c)
     return any(a <= o <= b for a, b in _INVISIBILI_NON_CF)
@@ -205,6 +212,18 @@ def _normalize_path(p: str) -> str:
     if p == ".." or p.startswith(".." + os.sep):
         raise ValueError(f"path traversal: {p!r}")
     return p.casefold()
+
+
+def _forme(p: str) -> "list[str]":
+    """R-404-1: le forme di un percorso da controllare nei confronti che NEGANO.
+    `_normalize_path` toglie i caratteri invisibili, ma così due parole si fondono
+    («x<U+0009>secret.md» → «xsecret.md») e il nome da segreto non si riconosce più;
+    sostituendoli con uno spazio («x secret.md») si riconosce, ma «run.s<U+200B>h»
+    non finisce più con «.sh». Si controllano entrambe e vince l'esito più severo.
+    Senza invisibili: una sola forma, il percorso com'è."""
+    nfkc = unicodedata.normalize("NFKC", p)
+    spaziato = "".join(" " if _invisibile(c) else c for c in nfkc)
+    return [p] if spaziato == nfkc else [p, spaziato]
 
 
 def _in_denylist(normalized: str, prefissi: "tuple[str, ...] | None" = None) -> bool:
@@ -240,6 +259,15 @@ def _check_path_arg(args: dict[str, Any], write: bool = False) -> "GateClass | N
     raw = args.get("relative_path")
     if raw is None or not isinstance(raw, str):
         return GateClass.DENY
+    for forma in _forme(raw):  # R-404-1: basta una forma negata
+        esito = _check_path_forma(forma, write)
+        if esito is not None:
+            return esito
+    return None
+
+
+def _check_path_forma(raw: str, write: bool) -> "GateClass | None":
+    """Corpo di _check_path_arg su una sola forma del percorso."""
     try:
         norm = _normalize_path(raw)
     except ValueError:
@@ -432,8 +460,11 @@ def lettura_consentita(relative_path: Any) -> bool:
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return False
-        norm = _normalize_path(relative_path)
-        return not (_in_denylist(norm, _LETTURA_NEGATA) or _nome_da_segreto(norm))
+        for forma in _forme(relative_path):  # R-404-1: ogni forma deve essere leggibile
+            norm = _normalize_path(forma)
+            if _in_denylist(norm, _LETTURA_NEGATA) or _nome_da_segreto(norm):
+                return False
+        return True
     except Exception:
         return False
 
@@ -444,10 +475,19 @@ def livello_scrittura(relative_path: Any) -> int:
     1 = libero (snapshot preventivo, cancello solo se la finestra è contaminata);
     2 = firma umana su Telegram con diff reale generato dal kernel + pro e contro;
     3 = mai. Percorso non stringa, assoluto, con traversal o non normalizzabile → 3.
-    Mai eccezioni (fail-closed su 3)."""
+    Mai eccezioni (fail-closed su 3). R-404-1: il più severo tra le forme del
+    percorso (`_forme`)."""
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return LIVELLO_MAI
+        return max(_livello_forma(f) for f in _forme(relative_path))
+    except Exception:
+        return LIVELLO_MAI
+
+
+def _livello_forma(relative_path: str) -> int:
+    """Corpo di livello_scrittura su una sola forma del percorso."""
+    try:
         norm = _normalize_path(relative_path)
         parts = PurePosixPath(norm).parts
         if not parts or norm in (".", ""):
@@ -568,6 +608,14 @@ def sembra_delicato(relative_path: Any) -> bool:
     try:
         if not isinstance(relative_path, str) or not relative_path.strip():
             return True
+        return any(_delicato_forma(f) for f in _forme(relative_path))  # R-404-1
+    except Exception:
+        return True
+
+
+def _delicato_forma(relative_path: str) -> bool:
+    """Corpo di sembra_delicato su una sola forma del percorso."""
+    try:
         nome = PurePosixPath(_normalize_path(relative_path)).name
         # Verifica esterna #232: via i caratteri invisibili (zero-width, BOM, controlli
         # di direzione), che NFKC lascia: «a.sh\u200b.txt» non sfugge.
@@ -698,13 +746,14 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
             except ValueError:
                 return GateClass.DENY
             for token in tokens:
-                try:
-                    norm = _normalize_path(token)
-                except ValueError:
-                    # Absolute path or traversal as a command argument → DENY.
-                    return GateClass.DENY
-                if _in_denylist(norm, _LETTURA_NEGATA):
-                    return GateClass.DENY
+                for forma in _forme(token):  # R-404-1
+                    try:
+                        norm = _normalize_path(forma)
+                    except ValueError:
+                        # Absolute path or traversal as a command argument → DENY.
+                        return GateClass.DENY
+                    if _in_denylist(norm, _LETTURA_NEGATA):
+                        return GateClass.DENY
             # Belt-and-suspenders: whole-command substring check (NFKC + casefold).
             # Catches --flag=.env.prod and -f.env patterns where the token itself
             # is not a normalizable path but embeds a denied name as a value.

@@ -370,6 +370,7 @@ def avvisa_firme_scadute(memory: Any) -> int:
 def run_bot(root_dir: Optional[str] = None) -> int:
     """Loop principale del bridge bot. Blocca fino a KeyboardInterrupt (Ctrl-C).
     Exit code: 0 = uscita pulita, 1 = configurazione mancante."""
+    global _BOT_USERNAME  # R-403-3
 
     # ── Configurazione ──────────────────────────────────────
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -401,10 +402,10 @@ def run_bot(root_dir: Optional[str] = None) -> int:
         print("✗ gas telegram: impossibile connettersi all'API Telegram.")
         print("  Verifica TELEGRAM_BOT_TOKEN e la connessione di rete.")
         return 1
-    bot_username = me.get("result", {}).get("username", "bot")
-    global _BOT_USERNAME
-    _BOT_USERNAME = bot_username if isinstance(bot_username, str) else None
-    print(f"✓ gas telegram: connesso come @{bot_username}")
+    username = (me.get("result") or {}).get("username")
+    # R-403-2: senza username (None) i comandi con «@…» si accettano come prima.
+    _BOT_USERNAME = username if isinstance(username, str) and username else None
+    print(f"✓ gas telegram: connesso come @{_BOT_USERNAME or 'bot'}")
     print(f"  Chat autorizzate: {sorted(allowed)}")
     print("  In ascolto… (Ctrl-C per uscire)\n")
 

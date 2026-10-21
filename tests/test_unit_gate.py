@@ -471,6 +471,11 @@ from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, 
     "./.env", "\uff0eenv", "x/../.git/hooks/pre-commit",
     # V-1 verifica esterna #233 (3° giro): invisibili dentro i nomi vietati
     ".e\u200bnv", "modules/ga\u200bte/gate.py", ".gas_\u200bnotte/x", "\u200b.git/config",
+    ".e\U000e0000nv", ".e\u2065nv", ".en\ufff0v",  # R-403-1
+    # R-404-1: un invisibile tra due parole non fonde il nome da segreto
+    "x\tsecret.md", "x\nsecret.md", "x\x1fsecret.md", "x\x85secret.md",
+    "x\u2028secret.md", "notes/x\tid_rsa", "x\U000e0000secret.md", "x\ue000secret.md",
+    "x\u200bsecret.md", "x\ufe0fsecret.md", "x\u3164secret.md",
 ])
 def test_livello3_mai_nemmeno_con_firma(path):
     assert livello_scrittura(path) == LIVELLO_MAI
@@ -491,6 +496,8 @@ def test_livello3_mai_nemmeno_con_firma(path):
     "scripts\u200b/x.md",
     # V-1 bot #233 (5° giro): invisibili non Cf (selettore di variante, riempitivi)
     "run.sh\ufe0f", "run.s\u034fh", "run.py\u3164", "run.sh\U000e0100",
+    # R-403-1: non assegnati (Cn), controlli (Cc), separatori di riga
+    "gas.p\U000e0000y", "run.sh\U000e0000", "run.sh\x7f", "run.sh\x01", "run.sh\u2028",
 ])
 def test_livello2_firma(path):
     assert livello_scrittura(path) == LIVELLO_FIRMA
@@ -847,3 +854,22 @@ def test_sembra_delicato(path, atteso):
     """R-223-2: avviso solo informativo per i file nuovi che sembrano delicati."""
     from modules.gate.gate import sembra_delicato
     assert sembra_delicato(path) is atteso
+
+
+@pytest.mark.parametrize("path", [
+    "x\tsecret.md", "x\u200bsecret.md", "x\ufe0fsecret.md", "x\U000e0000secret.md",
+    "notes/x\tid_rsa", ".e\u200bnv",
+])
+def test_r404_lettura_negata_con_invisibili(path):
+    """R-404-1: lettura negata anche con un invisibile dentro un nome da segreto."""
+    from modules.gate.gate import lettura_consentita
+    assert lettura_consentita(path) is False
+    assert gate_classify("read_file", {"relative_path": path}) == GateClass.DENY
+
+
+def test_r404_delicato_e_run_command_con_invisibili():
+    from modules.gate.gate import sembra_delicato
+    assert sembra_delicato("dati/x\tsecret.md") is True
+    assert sembra_delicato("dati/x\u200bsecret.md") is True
+    assert gate_classify("run_command", {"command": "cat .e\u200bnv"}) == GateClass.DENY
+    assert gate_classify("run_command", {"command": "cat .e\U000e0000nv"}) == GateClass.DENY
