@@ -48,6 +48,7 @@ _LOG_SFORO_MAX = 1024 * 1024
 _LOG_PATH = Path(__file__).resolve().parent / "gas_debug.log"
 # V-2 bot #233: cartella non scrivibile → Gas parte lo stesso (CLAUDE.md §1, zero
 # crash), con la sola console e un avviso: mai un errore all'import.
+_LOG_ERRORE = ""
 try:
     _file_handler: Optional[logging.Handler] = RotatingFileHandler(
         str(_LOG_PATH), maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8")
@@ -4248,7 +4249,10 @@ def doctor(root_dir: Optional[str] = None) -> int:
 
     # 5. Log
     log_path = _LOG_PATH  # R7: la scatola nera vera, non quella della cartella di avvio
-    if not log_path.exists():
+    if _file_handler is None:  # R-401-1: scatola nera spenta all'avvio
+        check("Log", "gas_debug.log", "WARN",
+              f"non scrivibile ({_LOG_ERRORE}): registro solo a schermo")
+    elif not log_path.exists():
         check("Log", "gas_debug.log", "OK", "assente")
     else:
         size_mb = log_path.stat().st_size / (1024 * 1024)

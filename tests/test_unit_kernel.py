@@ -7017,6 +7017,24 @@ check("T93a3 V-2 bot #233 log non apribile: gas si importa, registro solo a sche
       _p93c.returncode == 0 and "OK True 1" in _p93c.stdout
       and "non apribile" in _p93c.stderr, (_p93c.stdout + _p93c.stderr)[-300:])
 
+# T93a4 — R-401-1: doctor avvisa se la scatola nera è spenta
+_fh93d = gas._file_handler
+_r93d = Path(tempfile.mkdtemp(prefix="gas_t93d_"))
+try:
+    gas._file_handler = None
+    gas._LOG_ERRORE = "PermissionError: prova"
+    _buf93d = io.StringIO()
+    with _ctx34.redirect_stdout(_buf93d):
+        gas.doctor(str(_r93d))
+finally:
+    gas._file_handler = _fh93d
+    gas._LOG_ERRORE = ""
+    _sh39e.rmtree(_r93d, ignore_errors=True)
+_riga93d = [l for l in _buf93d.getvalue().splitlines() if "gas_debug.log" in l]
+check("T93a4 R-401-1 doctor: scatola nera spenta → WARN «non scrivibile»",
+      len(_riga93d) == 1 and "WARN" in _riga93d[0] and "non scrivibile" in _riga93d[0],
+      str(_riga93d))
+
 # T93b — R7: reindex, calibrate-vectors ed eval-vectors rispettano GAS_VECTORS_DB
 _vs_orig93 = gas.VectorStore
 _visti93: list = []
