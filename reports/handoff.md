@@ -20,6 +20,7 @@
 - **V-1 bot #234, V-4 verifica esterna #234, R-409-1/2/3**: `FATTA` — review #410 APPROVATO CON RISERVE.
 - **R7 R-fts-1 — tetto alle parole delle ricerche**: `FATTA` — review #412 APPROVATO CON RISERVE (solo statica, disco temporaneo pieno).
 - **Budget: ts non validi/futuri, riga senza a capo, gas tokens (V-2 bot #234, V-1 verifica #234, R-411-1, R-413-1/2)**: `FATTA` — review #413, #414 APPROVATO CON RISERVE.
+- **Test che riempivano /tmp, cache modello, avviso «ripreso» (R-415-1/2, R-416-1, V-2 bot #234)**: `FATTA` — review #415, #416, #417 APPROVATO CON RISERVE.
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -28,25 +29,32 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++
- gas.py                             | 130 ++++++++++++++++++++++++++++++++++++++++++++++++------------
+ .claude/agents/memoria_revisore.md |  12 ++++++
+ gas.py                             | 130 +++++++++++++++++++++++++++++++++++++++++++++------------
  modules/gate/gate.py               |  12 +++++-
  modules/memory/store.py            |  21 +++++++++-
- modules/notte/notte.py             | 124 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/da_mergiare.md             |  93 +++++++++++++++----------------------------
- reports/diff_sessione.md           |  16 ++++----
- reports/handoff.md                 | 780 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ modules/notte/notte.py             | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/da_mergiare.md             |  99 ++++++++++++++++---------------------------
+ reports/diff_sessione.md           |  17 ++++----
+ reports/handoff.md                 | 825 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  42 +++++++++-----------
+ reports/ultimo_report.md           |  42 +++++++++----------
  tests/test_unit_gate.py            |   8 ++++
- tests/test_unit_kernel.py          |  95 ++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_notte.py           | 194 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 878 insertions(+), 648 deletions(-)
+ tests/test_unit_kernel.py          | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           | 222 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 1023 insertions(+), 615 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f2c3e29 fix(notte): avviso «ripreso» anche nella scatola nera (R-416-1)
+0187872 chore(revisore): memoria review #417 — APPROVATO CON RISERVE
+5999fdb fix: cache del modello dei test stabile tra le esecuzioni, pulizia delle cartelle di esecuzioni uccise; avviso «ripreso» solo quando il compito parte (R-415-1/2, V-2 bot #234)
+59374ed chore(revisore): memoria review #416 — APPROVATO CON RISERVE
+3a43d93 test(kernel): cartelle temporanee della suite in una sola cartella per esecuzione, cancellata alla fine (riempivano /tmp: ~430 per run)
+3892c08 chore(revisore): memoria review #415 — APPROVATO CON RISERVE
+0a11a8b docs(fine-task): report, handoff, coda da_mergiare — budget robusto (#413, #414), pulizia disco
 5142d8f fix(budget): ultima riga senza a capo contata; date finte o future ignorate; gas tokens regge un ts null (V-1 verifica #234, R-413-1/2)
 c10726e chore(revisore): memoria review #414 — APPROVATO CON RISERVE
 a86f493 fix(budget): riga del registro dei token senza data valida ignorata, mai «per sempre nelle 24 ore» (V-2 bot #234, R-411-1)
@@ -397,10 +405,114 @@ Copia nello scratchpad cancellata. Nel repo reale ho toccato solo la memoria. Ri
 
 ---
 
+### Review #415 (chat Motore) — commit 3a43d93
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #415 (chat Motore), sul diff staged: solo tests/test_unit_kernel.py, +11 righe in testa al file.
+
+Prima della review ho letto CLAUDE.md (già nel contesto), reports/stato_progetto.md (solo le parti che servivano: la voce «Da fare» sulla pulizia di /tmp e R-414) e la coda di .claude/agents/memoria_revisore.md.
+
+**Cosa ho esaminato**
+- `tests/test_unit_kernel.py:21` — crea una cartella `gas_kernel_run_*` per esecuzione e ci punta `tempfile.tempdir`. Rischio esaminato: uno dei `mkdtemp` successivi esce lo stesso in /tmp. Esito: ok. L'override viene prima di `import gas` e di tutti i `mkdtemp`, e copre anche `gas.py:1590` (snapshot).
+- `tests/test_unit_kernel.py:23` — imposta `TMPDIR` per i sottoprocessi. Rischio esaminato: rompe il sandbox bwrap o le cartelle di lavoro temporanee di T93a2/T93a3. Esito: ok. bwrap fa ro-bind di `/` e maschera solo `/home`, `/root` e `/run` (`gas.py:1721`), quindi /tmp non è mascherato e una root sotto la cartella di esecuzione si comporta come prima. Su copia: 964 PASS e 0 FAIL.
+- `tests/test_unit_kernel.py:24` — registra con `atexit` lo `shutil.rmtree` con errori ignorati. Rischio esaminato: la pulizia non parte. Esito: ok. Il `sys.exit` finale (`tests/test_unit_kernel.py:9978`) e le eccezioni non gestite fanno partire `atexit`, e nel file non c'è nessun `os._exit`. In CI (`.github/workflows/ci.yml:97`) il codice di uscita resta quello del `sys.exit`. Il file è escluso dalla raccolta di pytest (`tests/conftest.py:6`, `collect_ignore`), quindi l'override non tocca le altre suite.
+- `tests/test_unit_kernel.py:1829` — T30e mette la cache del modello sotto `gettempdir()`. Rischio esaminato: una cache che deve restare tra un'esecuzione e l'altra ora vive nella cartella per esecuzione. Esito: riserva (R-415-1).
+- `tests/test_unit_kernel.py:5501` — T73e toglie la scrittura a una cartella (`chmod 0o500`). Rischio esaminato: `rmtree` non riesce a cancellarla e la cartella resta. Esito: ok, il permesso viene ripristinato nel `finally`.
+
+**Riproduzione** (copia nello scratchpad, poi cancellata): `df -h /` prima e dopo con 28 GB liberi. Suite kernel: 964 PASS, 0 FAIL in 35 s, rc 0. /tmp prima e dopo identico: 0 voci nuove. T30e risulta SKIP in questo ambiente perché manca la rete per i pesi del modello.
+
+**Finding**
+- **R-415-1 (chat Motore) MEDIA**: T30e (`tests/test_unit_kernel.py:1829`) tiene la cache del modello in `gettempdir()/gas_vec_model_cache`, e il commento la dichiara «STABILE: scarica una volta sola». Ora quel percorso è dentro la cartella per esecuzione, quindi su una macchina con rete (il Mac dell'operatore) il modello, che pesa centinaia di MB, viene riscaricato e cancellato a ogni esecuzione. La CI non cambia, perché ogni run parte comunque senza cache. Correzione: salvare `tempfile.gettempdir()` PRIMA dell'override (es. `_TMP_SISTEMA`) e usarlo per `cache_real`.
+- **R-415-2 (chat Motore) BASSA**: se il processo viene ucciso (SIGKILL), terminato con SIGTERM o fermato dal timeout della CI, `atexit` non parte e resta una cartella `gas_kernel_run_*` intera. Una sola per esecuzione: accettabile rispetto alle ~430 di prima, ma nessuno ripulisce le vecchie. Rimedio facoltativo: all'avvio togliere le `gas_kernel_run_*` più vecchie di qualche ora.
+- **R-415-3 (chat Motore) COSMETICA**: la misura «0 cartelle» l'ho fatta da root, e a root i permessi non impediscono `rmtree`. Da utente normale una cartella lasciata non scrivibile verrebbe saltata in silenzio (`ignore_errors=True`). Oggi l'unico caso, T73e, ripristina il permesso.
+
+**Cosa NON ho verificato**
+- Il download reale del modello in T30e: qui manca la rete, quindi R-415-1 viene dalla lettura del codice e non da una misura.
+- Il comportamento su macOS, dove `TMPDIR` è in `/var/folders` e c'è il sandbox applicativo senza bwrap: non riproducibile in questo ambiente.
+- Il pytest intero da 1703: non l'ho rieseguito, il diff non lo tocca grazie a `collect_ignore`.
+- Interruzioni vere con SIGKILL/SIGTERM: le ho valutate dalla semantica di Python, senza provarle.
+
+**Memoria**: riga #415 e lezione aggiunte in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate con `scripts/commit_memoria_revisore.sh` (commit 3892c08). Lezione: quando si sposta la cartella temporanea di sistema, cercare gli usi di `gettempdir()` come cache che deve restare tra le esecuzioni, perché diventano per-esecuzione.
+
+Nota: un mio comando contenente «git commit» (nella copia dello scratchpad) è stato bloccato dall'hook del gate di review. Il repo reale non è stato toccato, a parte la memoria.
+
+---
+
+### Review #416 (chat Motore) — commit 5999fdb
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #416 (chat Motore). Ho letto CLAUDE.md (sezioni 5, 8 e 10), le voci R7 e R-415 di reports/stato_progetto.md e la memoria del revisore.
+
+Ho riprodotto tutto su una copia dell'index nello scratchpad, poi cancellata. Disco prima di partire: 29 GB liberi (28% usato).
+- **Suite:** notte 123 passed, kernel 964 PASS / 0 FAIL. Dopo l'esecuzione in /tmp resta solo `gas_vec_model_cache`.
+
+**Elementi del diff esaminati**
+- `modules/notte/notte.py:582` — `_ordina_riprese` non scrive più l'avviso e passa `rilancio_a_mano` e `interruzioni` nel compito. Rischio: si perde il testo «rilanciato a mano dopo N interruzioni». test_r406_solo_a_mano_rilancia_oltre_il_tetto passa ancora. Esito: ok.
+- `modules/notte/notte.py:670` — l'avviso «ripreso» nasce solo dopo che il kernel è partito, e quindi anche dopo il controllo del tempo rimasto. Ho controllato tre casi:
+  - **Kernel che non parte:** nessun avviso e voce del registro invariata (tentativi 1).
+  - **Tempo del giro finito prima del compito ripreso** (sonda con `time.monotonic` forzato): rc 1, solo l'avviso «tetto di tempo… saltati 1 compiti (lungo)», nessun «ripreso», registro invariato.
+  - **Mutazione** (avviso rimesso prima della creazione del kernel): test_v2_bot234_ripreso_solo_se_parte FAIL, quindi il test discrimina.
+  - Esito: ok, con la riserva R-416-1.
+- `tests/test_unit_kernel.py:21` — `_TMP_SISTEMA` viene salvato prima dell'override e si tolgono le `gas_kernel_run_*` più vecchie di 6 ore. Sonda:
+  - una cartella vecchia (7 ore) viene tolta, una recente resta;
+  - un symlink vecchio verso una cartella esterna NON viene seguito (`rmtree` lo rifiuta, errore ignorato) e il bersaglio resta intatto.
+  - Un'altra esecuzione della suite in corso da più di 6 ore potrebbe perdere la sua cartella. È accettabile: la suite dura circa 35 s, e il mtime della cartella si aggiorna a ogni `mkdtemp` dentro di essa. Esito: ok.
+- `tests/test_unit_kernel.py:1839` — T30e usa `_TMP_SISTEMA` per la cache del modello: la cache resta tra le esecuzioni, quindi R-415-1 è chiusa. Esito: ok.
+- `tests/test_unit_notte.py:1691` — test nuovo: kernel rotto con una voce di registro a 1 → niente «'lungo' ripreso» nel riepilogo e registro a 1. Esito: ok.
+
+Ordine degli avvisi nel riepilogo: i test esistenti (`tests/test_unit_notte.py:1548`, `tests/test_unit_notte.py:1633`) controllano solo che il testo ci sia, non la posizione. L'avviso «ripreso» ora viene dopo quello sul budget: cambia l'ordine, nessun test rotto.
+
+**Finding**
+- **R-416-1 (chat Motore) BASSA:** l'avviso «ripreso» ora viene creato DOPO il ciclo `for a in avvisi: logging.warning("notte: %s", a)`. Quindi non arriva più in gas_debug.log: compare solo nel riepilogo e su Telegram. Prima ci arrivava. Rimedio: un `logging.warning` accanto all'`avvisi.append` nuovo.
+- **R-416-2 (chat Motore) COSMETICA:**
+  - l'ordine degli avvisi nel riepilogo è cambiato;
+  - `import time as _time_pulizia` sta a metà del file;
+  - i symlink `gas_kernel_run_*` vecchi restano in /tmp: non vengono seguiti né tolti.
+
+Wall of Shame: nessuno slicing della history e nessuna simulazione dei tool. Guardrail (tetto di 10 iterazioni, `_get_window`, fail-safe dei provider) non toccati.
+
+**Rischio escluso:** il download reale del modello in T30e con rete non è verificato (qui è un SKIP o una cache già presente). Ho verificato solo che il percorso della cache stia fuori dalla cartella dell'esecuzione. Non ho verificato nemmeno la pulizia da utente non root con cartelle senza permesso di scrittura.
+
+**Memoria:** riga #416 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, con la lezione: «spostare la generazione di un avviso dopo il punto in cui la lista viene loggata lo toglie dalla scatola nera». Committata con `scripts/commit_memoria_revisore.sh` (commit 59374ed, solo quel file). Il diff staged è rimasto intatto: 3 file, 37 righe aggiunte e 6 tolte.
+
+---
+
+### Review #417 (chat Motore) — commit f2c3e29
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #417 (chat Motore) del diff staged: chiude R-416-1. Ho letto CLAUDE.md, stato_progetto e la mia memoria.
+
+**Cosa ho controllato nel diff**
+- `modules/notte/notte.py:675`: aggiunge `logging.warning("notte: %s", avvisi[-1])` subito dopo che l'avviso «compito 'X' ripreso…» viene aggiunto alla lista.
+  - Rischio: righe doppie nel log, oppure avviso che ancora non ci arriva.
+  - Esito: ok. Il ciclo che scrive nel log gli altri avvisi (`modules/notte/notte.py:641`) gira prima del loop dei compiti, quindi questo avviso finisce nel log una sola volta. Il formato è lo stesso di `modules/notte/notte.py:659` (avviso del tetto del giro). Viene ancora creato solo dopo l'avvio del kernel, come voluto in V-2 bot #234. Nessun nuovo punto di crash: `logging` è già importato e la riga è dentro il try del giro.
+- `tests/test_unit_notte.py:1707`, `test_r416_avviso_ripresa_nel_log`: con caplog controlla che il testo «'lungo' ripreso» arrivi nel log quando nel registro c'è un compito in corso e il kernel parte.
+  - Rischio: test che passa anche senza il fix.
+  - Esito: ok. Ho tolto la riga di log in una copia: fallisce solo questo test, gli altri 123 passano.
+- Riprodotto su una copia nello scratchpad, poi cancellata: suite notte **124 passed**.
+
+**Finding**
+- R-417-1 (chat Motore) BASSA, già presente e fuori dal diff: l'avviso «N richiesta/e di firma scaduta/e … chiuse, NON eseguite» (`modules/notte/notte.py:692`) viene aggiunto anch'esso dopo il ciclo di log. Va nel riepilogo e su Telegram ma non in gas_debug.log. È lo stesso difetto di R-416-1; si sistema con un `logging.warning("notte: %s", avvisi[-1])` dopo l'append.
+- R-417-2 (chat Motore) COSMETICA: il test verifica che la riga ci sia, non che sia una sola. Oggi il codice non scrive doppioni, ma il test non lo protegge.
+
+**Cosa NON ho verificato**
+- Non ho controllato che l'avviso arrivi davvero nel file gas_debug.log con l'handler reale del kernel e su VPS. caplog intercetta il logger principale, e lì scrivono anche gli altri avvisi del giro, ma non ho provato il file vero in esecuzione notturna.
+- Non ho rieseguito la suite del kernel: il diff tocca solo la notte.
+
+**Memoria**
+- Riga #417 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md con la lezione: quando si chiude un «avviso che non arriva nel log», cercare tutti gli avvisi aggiunti dopo il ciclo di log, non solo quello segnalato.
+- Committata con lo script apposito (commit 0187872). Il diff staged sotto review è intatto.
+- Nel repo non ho fatto altre modifiche e nessun checkout.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 tests/test_unit_kernel.py: 957 → 964 PASS, 0 FAIL (T94a-f, T95). Blocco reale: `=== RIEPILOGO: 964 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_notte.py`: 106 → `122 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
+pytest `tests/test_unit_notte.py`: 106 → `124 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
 
@@ -408,7 +520,8 @@ pytest `tests/test_unit_notte.py`: 106 → `122 passed`; `tests/test_unit_gate.p
 - 9d793f3: unit-suite success, handoff-check success (verifica esterna #234 2° giro); verifica-bot neutral (APPROVATO CON RISERVE).
 - ab60f35: handoff-check failure (pushato senza il dossier, per l'HEAD staccato da un agente di verifica); superato dal commit successivo.
 - 2d07cd3: unit-suite success (kernel 964 PASS in CI), handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE) — dal verdetto del bot.
-- a86f493, 5142d8f e memorie: run non ancora disponibile alla scrittura dell'handoff.
+- 0a11a8b (con a86f493, 5142d8f e memorie): run non letta (nessun evento ricevuto prima della scrittura).
+- 3a43d93, 5999fdb, f2c3e29 e memorie: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -420,6 +533,6 @@ pytest `tests/test_unit_notte.py`: 106 → `122 passed`; `tests/test_unit_gate.p
 - R-412-1 (BASSA): si tengono le prime 12 parole della ricerca.
 - R-412-2 (COSMETICA): T95 parziale.
 - R-414-1/2 (BASSE), R-414-3 (COSMETICA): orologio indietro, coda senza a capo riletta, messaggio di T94a.
-- Test che lasciano cartelle `gas_*` in /tmp (da sistemare).
-- V-2 bot #234 2° giro (BASSA): avviso «ripreso» prima dell'avvio reale.
+- R-417-1 (BASSA): avviso «firme scadute» del giro non va in gas_debug.log.
+- R-415-3, R-416-2, R-417-2 (COSMETICHE).
 - Riserve precedenti: vedi `reports/stato_progetto.md`.

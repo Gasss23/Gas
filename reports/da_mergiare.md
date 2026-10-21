@@ -35,3 +35,9 @@
 - **Pro:** una domanda enorme del modello non diventa una ricerca enorme; chiude R-fts-1.
 - **Contro:** in una domanda molto lunga le parole oltre la dodicesima non contano, anche se sono quelle importanti (R-412-1, bassa).
 - **Controlli:** revisore #412 (chat Motore) APPROVATO CON RISERVE, review solo letta (disco temporaneo pieno in quel momento); kernel 962 PASS rieseguito.
+
+### 6. Test che non riempiono più il disco
+- **Cosa:** la suite del motore lasciava ~430 cartelle temporanee per esecuzione (oggi 129.000, ~30 GB, disco pieno due volte). Ora usa una cartella per esecuzione, cancellata alla fine; le cartelle di esecuzioni interrotte si tolgono dopo 6 ore; la cache del modello dei vettori resta (sul Mac non si riscarica). L'avviso «ripreso» compare solo se il compito riparte davvero, anche in `gas_debug.log`.
+- **Pro:** niente più dischi pieni (anche sul Mac e sul futuro VPS); chiude R-415-1 (media), R-415-2, R-416-1 e V-2 del bot su #234.
+- **Contro:** nessuno noto; l'ordine degli avvisi nel riepilogo cambia un po'.
+- **Controlli:** revisori #415, #416, #417 (chat Motore) APPROVATO CON RISERVE; kernel 964 PASS, notte 124 passed.
