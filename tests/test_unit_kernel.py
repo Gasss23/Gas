@@ -6921,6 +6921,38 @@ try:
     check("T77w timeout senza firma: il modello legge «PARTITO… esito INCERTO»",
           "PARTITO" in _o77w and "INCERTO" in _o77w, _o77w[:200])
 
+    # T77x — R-429-1 / V-1 verifica #236: (a) binario assente → non «partito»;
+    # (b) meta residuo + run_command parcheggiato → diario «[OK] (non eseguito)»
+    _k77x = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77x)
+    _k77x.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
+    def _manca77x(*a, **kw):
+        if a and "echo" in a[0]:
+            raise FileNotFoundError(2, "No such file or directory", "echo")
+        return _run77u(*a, **kw)
+    try:
+        gas.subprocess.run = _manca77x
+        _o77x = _k77x.execute_tool_call("run_command", _CMD77)
+    finally:
+        gas.subprocess.run = _run77u
+    check("T77x binario assente: il comando NON risulta partito (diario «[KO]», niente INCERTO)",
+          "PARTITO" not in _o77x and _k77x._run_command_avviato is False
+          and _k77x._esito_diario("run_command", _o77x) == "[KO]", _o77x[:150])
+    _k77y = kernel_tmp()
+    _k77y.SHELL_ALLOWLIST = _k77u.SHELL_ALLOWLIST
+    _k77y._run_command_meta = {"exit": 0, "stdout_n": 3, "stderr_n": 0}
+    _dia77y: list = []
+    _orig_dia77y = _k77y._diario_log_tool
+    def _spia_dia77y(nome, testo, **kw):
+        _dia77y.append(testo)
+        return _orig_dia77y(nome, testo, **kw)
+    _k77y._diario_log_tool = _spia_dia77y  # type: ignore[method-assign]
+    with _TgFinto():
+        run_turn_scriptato(_k77y, "esegui", [[("run_command", _CMD77)], "in attesa"])
+    check("T77y meta residuo + run_command alla firma: diario senza «exit=»",
+          len(_dia77y) == 1 and "exit=" not in _dia77y[0] and "pending id=" in _dia77y[0],
+          str(_dia77y))
+
     # T77m — vincoli DB su approval_esecuzioni (valgono anche da SQL grezzo)
     _k77m = kernel_tmp()
     _id77m = _k77m.memory.enqueue_approval("run_command", _CMD77)
@@ -7369,6 +7401,36 @@ _c96 = [(e["output"][:20], e.get("cancello")) for e in _ev96 if e["type"] == "to
 check("T96 cancello: file che inizia con «Operazione negata» → None, DENY → negata, firma → in_attesa",
       [c for _, c in _c96] == [None, "negata", "in_attesa"]
       and _c96[0][0].startswith("Operazione negata"), str(_c96))
+
+# T97 — R7 / R-c4b3-4: due processi sulla stessa root non si cancellano la storia
+_r97 = Path(tempfile.mkdtemp(prefix="gas_t97_", dir=_TMP_ESECUZIONE))
+_a97 = GasKernel(root_dir=str(_r97))
+_a97.history = [{"role": "user", "content": "ciao"}, {"role": "assistant", "content": "ok"}]
+_a97._save_history()
+_b97 = GasKernel(root_dir=str(_r97))          # «secondo processo»: legge la stessa storia
+_a97._add_to_history("user", content="domanda di A")
+_a97._add_to_history("assistant", content="risposta ad A")
+_a97._save_history()
+_b97._add_to_history("user", content="domanda di B")
+_b97._add_to_history("assistant", content="risposta a B")
+_b97._save_history()
+_f97 = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+check("T97a turni interi di due processi: nessuno cancella l'altro",
+      _f97 == ["ciao", "ok", "domanda di A", "risposta ad A", "domanda di B", "risposta a B"],
+      str(_f97))
+# a metà turno (i messaggi nuovi non cominciano con user): la versione dell'altro
+# processo resta in una copia «conflitto», niente sequenze spezzate nella storia
+_a97._add_to_history("user", content="ancora A")
+_a97._save_history()
+_b97._add_to_history("assistant", content="seguito di B a metà turno")
+_b97._save_history()
+_cop97 = list(_r97.glob(".gas_history.json.conflitto.*"))
+_f97b = [m.get("content") for m in json.loads((_r97 / ".gas_history.json").read_text())]
+_c97 = ([m.get("content") for m in json.loads(_cop97[0].read_text())] if _cop97 else [])
+check("T97b a metà turno: storia di B intera, versione di A salvata nella copia «conflitto»",
+      len(_cop97) == 1 and _f97b[-1] == "seguito di B a metà turno"
+      and "ancora A" not in _f97b and _c97[-1] == "ancora A", f"{_f97b} | {_c97}")
+_sh39e.rmtree(_r97, ignore_errors=True)
 
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))

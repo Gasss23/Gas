@@ -5,6 +5,10 @@ import hashlib
 import math as _math_module
 import os
 import threading
+try:
+    import fcntl  # R-c4b3-4: lock della cronologia (assente su Windows)
+except ImportError:  # pragma: no cover
+    fcntl = None  # type: ignore[assignment]
 import re
 import json
 import shlex
@@ -942,6 +946,11 @@ class GasKernel:
         # carica_storia=False (giro notturno, R-220-2): la conversazione dell'operatore
         # non viene né letta né, se corrotta, rinominata in quarantena.
         self.history: List[Dict[str, Any]] = self._load_history() if carica_storia else []
+        # R-c4b3-4: com'era il file della storia l'ultima volta che l'abbiamo letto o
+        # scritto (percorso, impronta, lista, quanti messaggi): serve a non cancellare
+        # i messaggi scritti nel frattempo da un altro processo sulla stessa root.
+        self._storia_sync: Optional[Tuple[str, Any, int, int]] = (
+            self._sync_storia() if carica_storia else None)
         # V-1 bot #176: un kernel senza storia non fotografa nemmeno la conversazione
         # dell'operatore negli snapshot (non la tocca, quindi non c'è nulla da proteggere).
         self.carica_storia: bool = carica_storia
@@ -1092,7 +1101,75 @@ class GasKernel:
                 logging.warning("Quarantena storia fallita: %s", e2)
             return []
 
+    def _impronta_storia(self) -> Any:
+        """(inode, dimensione, mtime_ns) del file della storia, None se manca."""
+        try:
+            st = self.db_path.stat()
+        except FileNotFoundError:
+            return None
+        return (st.st_ino, st.st_size, st.st_mtime_ns)
+
+    def _sync_storia(self) -> Tuple[str, Any, int, int]:
+        return (str(self.db_path), self._impronta_storia(), id(self.history), len(self.history))
+
+    def _unisci_storia_altrui(self) -> None:
+        """R-c4b3-4: se un altro processo ha riscritto il file dopo la nostra ultima
+        lettura/scrittura, i suoi messaggi non si cancellano. I nostri messaggi nuovi
+        si accodano ai suoi solo se cominciano un turno (role user), così nessuna
+        sequenza assistant→tool resta spezzata; altrimenti la versione dell'altro
+        processo va in una copia «conflitto» accanto alla storia, con un avviso."""
+        sync = self._storia_sync
+        if sync is None or sync[0] != str(self.db_path):
+            return  # storia mai letta da questo file (es. giro notturno): come prima
+        ora = self._impronta_storia()
+        if ora is None or ora == sync[1]:
+            return
+        try:
+            with open(self.db_path, "r", encoding="utf-8") as f:
+                altrui = json.load(f)
+            if not isinstance(altrui, list):
+                raise ValueError("storia non è una lista")
+        except Exception as e:
+            logging.warning("Storia cambiata da un altro processo ma illeggibile (%s): "
+                            "la sovrascrivo", e)
+            return
+        nuovi: Optional[List[Dict[str, Any]]] = None
+        if id(self.history) == sync[2] and len(self.history) >= sync[3]:
+            nuovi = self.history[sync[3]:]
+        if nuovi is not None and (not nuovi or nuovi[0].get("role") == "user"):
+            self.history = altrui + nuovi
+            if nuovi:
+                logging.warning("Storia scritta anche da un altro processo: accodati "
+                                "%d messaggi nuovi ai suoi %d", len(nuovi), len(altrui))
+            return
+        copia = self.db_path.parent / (f"{self.db_path.name}.conflitto."
+                                       f"{datetime.now():%Y%m%d-%H%M%S}.{os.getpid()}")
+        try:
+            os.replace(self.db_path, copia)
+            logging.warning("Storia scritta anche da un altro processo a metà turno: la "
+                            "sua versione è salvata in %s", copia.name)
+        except Exception as e:
+            logging.warning("Copia di conflitto della storia non riuscita: %s", e)
+
     def _save_history(self):
+        lock_f = None
+        try:
+            if fcntl is not None:
+                lock_f = open(self.db_path.parent / f"{self.db_path.name}.lock", "a")
+                fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
+            self._unisci_storia_altrui()
+            self._salva_storia_su_file()
+            self._storia_sync = self._sync_storia()
+        except Exception as e:
+            logging.warning("Salvataggio della storia non riuscito: %s", e)
+        finally:
+            if lock_f is not None:
+                try:
+                    lock_f.close()  # rilascia il lock
+                except Exception:
+                    pass
+
+    def _salva_storia_su_file(self) -> None:
         tmp_path: Optional[Path] = None
         try:
             data = json.dumps(self.history, indent=2, ensure_ascii=False)
@@ -4030,7 +4107,8 @@ class GasKernel:
                 and getattr(self, "_lettura_meta", None) is not None))
             return self._cap_tool_output(name, args, out)
         except Exception as e:
-            if name == "run_command" and self._run_command_avviato:
+            if (name == "run_command" and self._run_command_avviato
+                    and self._run_command_meta is None):  # R-429-2
                 # R-428-3: anche il modello legge che il comando era partito
                 return (f"Errore eseguendo run_command: il comando è PARTITO ma si è "
                         f"interrotto ({type(e).__name__}): esito INCERTO, può aver fatto "
