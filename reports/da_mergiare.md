@@ -4,22 +4,17 @@
 
 > **C6 deciso (2026-10-21):** l'operatore ha scelto (a) «lasciamo così»: una firma per ogni azione, niente «Modifica» né firme a gruppi.
 
-## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #236)
 
-### 1. Storia condivisa tra bot e terminale: ultime riserve del bot (roadmap R7, R-c4b3-4)
-- **Cosa:** quando il bot Telegram e il terminale scrivono la stessa storia, durante un turno il modello non vede mai i messaggi dell'altro processo (prima succedeva al primo salvataggio del turno); se un salvataggio fallisce, i messaggi dell'altro non finiscono doppi.
-- **Pro:** chiude le riserve rimaste dopo il merge di #236; un test passa dal turno vero (provider giù, nessuna risposta finale).
-- **Contro:** se un altro processo ha scritto, i messaggi del turno in corso restano solo in memoria fino alla fine del turno (un kill -9 a metà li perde, R-438-2).
-- **Controlli:** revisore #438 (chat Motore) APPROVATO CON RISERVE; kernel 994 PASS, pytest 1816 passed. Bot V-B: success con riserve basse.
+## Da fare domattina (operatore) — messe da parte il 2026-10-21 sera
 
-### 2. `gas compress-history` onesto (R-438-1, R-439-1)
-- **Cosa:** il comando di compressione della storia ora salva anche quando un altro processo ha scritto nel frattempo, e dice «Compressi» solo se la storia compressa è davvero su disco (altrimenti «NON salvata» ed exit 1).
-- **Pro:** niente più falso «ok» su un'operazione manuale.
-- **Contro:** nessuno di rilievo (al più un «NON salvata» prudente se fallisce solo il secondo salvataggio, R-440-1).
-- **Controlli:** revisori #439, #440 APPROVATO CON RISERVE; kernel 996 PASS.
+1. **Ramo della PR #141**: apri https://github.com/Gasss23/Gas/pull/141 e in fondo premi «Delete branch» (la PR è già chiusa; l'agente non ha il permesso di cancellare rami).
+2. **Secondo passaggio claude.ai sulla PR #239** (fetta di sicurezza della chat Mani, già mergiata): incolla il link https://github.com/Gasss23/Gas/pull/239 nella chat del progetto Gas su claude.ai e chiedi la verifica; se trova qualcosa, riportalo qui.
+3. **Decisione R6 porte** (chat Mani, review #391): `leggi_pagina` oggi accetta qualunque porta (1-65535) verso host pubblici. Rispondi «solo 80/443» oppure «lascia così».
 
-### 3. Regola «grave» del bot di verifica (macchina del bot, autorizzata dall'operatore)
-- **Cosa:** il bot non blocca più per una frase come «non la considero più grave»; continua a bloccare «non mitigato: grave», «non è la più grave», ecc.
-- **Pro:** toglie il falso rosso che bloccava la #240.
-- **Contro:** tocca la macchina del bot (il check sarà «neutral»: decide l'operatore).
-- **Controlli:** revisori #441 (BOCCIATO, corretto), #442, #443 APPROVATO; suite del bot 325 passed.
+## Coda
+
+### 1. Esito di un'azione firmata non perso dopo un'interruzione (roadmap R7, R-c4b3-3)
+- **Cosa:** se Gas si ferma dopo aver preso in carico un'azione che hai firmato ma prima di scriverne l'esito, al nuovo click (o quando Telegram ripete il click) Gas non la riesegue: scrive nella storia l'esito che ha nel database (se manca, «esito INCERTO») e ti manda il messaggio giusto invece di «Nessuna modifica».
+- **Pro:** il modello non resta all'oscuro di un'azione firmata; mai una seconda esecuzione.
+- **Contro:** l'output dell'azione non c'è più (resta solo l'esito); R-445-3 (cosmetica, già c'era) aperta.
+- **Controlli:** revisore #445 e #446 APPROVATO CON RISERVE (riserve chiuse), #447 APPROVATO; kernel 1008 PASS, pytest 1862 passed.

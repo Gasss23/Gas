@@ -1,10 +1,11 @@
-# DIFF SESSIONE — 2026-10-21 (chat Mani, fetta 4)
+# DIFF SESSIONE — 2026-10-21 (chat Motore, R7 R-c4b3-3)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/web/leggi.py` — `_TAG_NASCOSTI` unico per parser e ripiego (con math/object, senza `embed`), nome del tag intero; nel ripiego fine del tag come il tokenizzatore HTML (virgolette solo dopo «=», resto del nome), commenti vuoti e `--!>` lineari, titolo tolto.
-- `tests/test_unit_web_leggi.py` — sonde delle review #431-#442 e delle note di bot e verifica esterna #238/#239, linearità in sottoprocesso (137 test).
-- `.claude/agents/memoria_revisore.md` — righe #431, #432, #438, #439-#442, #444 (chat Mani), più quelle della chat Motore portate dal merge.
-- Dal merge di main (PR #240, chat Motore, non di questa sessione): `gas.py`, `scripts/bot_esito.py`, test kernel e verifica_bot, `reports/da_mergiare.md`.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 4».
+- `gas.py` — `recupera_esito_firma` (esito dal DB in storia dopo un'interruzione, mai una nuova esecuzione), helper `_tag_esito_firma`/`_esito_firma_in_storia`.
+- `modules/telegram/bot.py` — `_riprova_orfana` chiama il recupero se l'azione era già reclamata; commento «un click alla volta» (R-445-2).
+- `tests/test_unit_kernel.py` — T78l (crash simulato e riavvio), T78m (esiti OK/KO/incerto/dry-run/write_file), T78n (niente da recuperare).
+- `.claude/agents/memoria_revisore.md` — righe #445, #446, #447.
+- `reports/da_mergiare.md` — «Da fare domattina» per l'operatore e voce della PR #241.
+- `reports/stato_progetto.md`, `reports/roadmap.md` — R-c4b3-3 chiusa.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
