@@ -1,29 +1,26 @@
-# ULTIMO REPORT — 2026-10-21 — Tre stati per un comando firmato e storia condivisa tra processi (R7, R-c4b3-5, R-c4b3-4)
+# ULTIMO REPORT — 2026-10-21 — Chat Mani, fetta 4: note della PR #238 (R6, PR #239)
 
-Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #234 (operatore: «mergia 234 e continua con la roadmap»; C6 decisa «lasciamo così»).
+Ramo `feat/mani-web-fetta4` (da main dopo il merge di #238, poi merge di main). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. PR #239 (https://github.com/Gasss23/Gas/pull/239). Fetta di sicurezza. Operatore: «procedi con la fetta 4».
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della nuova PR: pro e contro in `reports/da_mergiare.md`.
+1. Merge della PR #239: per questa fetta l'operatore non ha (ancora) ripetuto «mergia quando il bot approva»; vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), altrimenti decide l'operatore.
+2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
+3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
 
 ## Esito
 
-- **Merge PR #234** — FATTO (`35b55be`) su richiesta dell'operatore, dopo aver unito main (#235 della chat Mani, review #427 APPROVATO) per togliere il conflitto.
-- **C6** — DECISA dall'operatore: (a) «lasciamo così» (una firma per azione, niente «Modifica» né firme a gruppi). Registrata in roadmap e da_mergiare.
-- **R7 / R-c4b3-5 — tre stati per un comando firmato** — FATTA. Un run_command firmato che parte e si interrompe (tempo scaduto) ora risulta «PARTITO, esito INCERTO» nella storia, nel diario e su Telegram, non più «NON eseguito (diniego interno)». Review #428 APPROVATO CON RISERVE (R-428-1 MEDIA).
-- **R-428-1/2/3/4** — FATTA. Il segno «partito» si azzera a ogni tool call (non sporca più il diario di azioni negate o parcheggiate dopo); un errore di avvio (binario assente) non è «incerto»; anche il modello legge «PARTITO… esito INCERTO» senza l'argv di bwrap. Review #429 APPROVATO CON RISERVE (R-429-1 BASSA, R-429-2 COSMETICA).
-- **R7 / R-c4b3-4 — due processi sulla stessa storia** — FATTA. Il bot e un comando da terminale sulla stessa cartella non si cancellano più i messaggi: lock sul file, i turni interi dell'uno si accodano a quelli dell'altro; a metà turno la versione dell'altro va in una copia «conflitto». Review #430 APPROVATO CON RISERVE (R-430-1 MEDIA), #431 la chiude (impronta avanza solo se la scrittura riesce).
-- **V-1/V-2 verifica esterna #236 (= R-429-1/2)** — FATTA in #430.
-- **Merge di origin/main (#237, chat Mani)** — FATTO per togliere il conflitto segnalato dalla verifica esterna #236 (V-1 MEDIA). Review #432 APPROVATO.
-- **Riserve del bot sulla PR #236** — FATTA. Errori d'avvio di un comando mai «partiti», esito «incerto» se qualcosa si rompe dopo l'approvazione, test con un processo vero fermato dal tetto di tempo, copie «conflitto» con nome unico e al massimo 20 (review #433). La MEDIA del secondo giro (l'esito di una firma scritto dal bot a metà turno della CLI finiva solo nella copia) è chiusa: l'unione ora riconosce la storia dal contenuto e mette i turni interi dell'altro dopo la nostra risposta; il lock della storia aspetta al massimo 5 s (review #434).
-- **R-434-1 (MEDIA, = V-1 bot #236 3° giro)** — FATTA: a metà turno la storia dell'altro processo non entra nella finestra del modello, l'unione avviene alla fine del turno (review #435).
-- **R-435-1 e V-3 bot #236** — FATTA: un turno finito senza risposta finale salva comunque la storia; un errore interno dopo l'approvazione resta registrato e compare su Telegram (review #436). V-2 del bot accettata come limite.
-- **Merge di origin/main (#238, chat Mani)** — FATTO per togliere un nuovo conflitto della PR #236. Review #437 APPROVATO.
-- **Test** — kernel 971 → 992 PASS, 0 FAIL; pytest tests/ 1807 passed.
+- **Nome del tag intero (V-1 bot #238, R-431-1)**: `FATTA` — in apertura (`_INIZIO_TAG` più il controllo del carattere dopo il nome) e in chiusura (`_chiusura`): `<styled-box>`, `<script_x>`, `<style.x>`, `</scriptx>` non sono blocchi nascosti.
+- **Ripiego alla pari col parser (V-2 ve #238)**: `FATTA` — stesso insieme `_TAG_NASCOSTI` per parser e ripiego; commenti tolti anche se contengono «>». Il ripiego non conta l'annidamento (dichiarato, R-431-3).
+- **`embed` (R-431-2)**: `FATTA` — tolto dai tag con contenuto: è un elemento vuoto e nascondeva il resto della pagina anche nel percorso normale (difetto presente dalla fetta 1).
+- **Test (V-1/V-4 ve #238, V-2/V-3 bot #238)**: `FATTA` — contenuti riconoscibili (SEGRETO_*) per tutti i tag nascosti e il commento, chiusura con attributi, unescape che solleva, stderr del sottoprocesso nei test a tempo, attesa dei thread DNS prima del test del semaforo.
+- **Test**: web suite 105 → 107 passed (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Mutazioni eseguite in copie isolate, ciascuna presa da almeno un test: commenti ignorati, insieme a 4 tag, confine della chiusura tolto, apertura per prefisso, except di unescape tolto, embed rimesso, chiusura senza «>».
+- **Review**: #431 (chat Mani) APPROVATO CON RISERVE (R-431-1/2 BASSE, R-431-3 COSMETICA: corrette nello stesso giro) → #432 (chat Mani) APPROVATO CON RISERVE (R-432-1 COSMETICA) → #438 (chat Mani, merge di main) APPROVATO.
 
-## Prossimi passi
+## Anomalie
 
-1. R-436-1 (test del finally di run_turn dal generatore), R-436-2, R-434-2.
-2. Due turni concorrenti intrecciati (V-4 bot #236 4° giro): base sul prefisso comune.
-2. R7 / R-c4b3-3: crash tra reclamo e scrittura in storia.
-4. R-408-1: potare il registro della notte solo se il file del catalogo è stato letto.
+- Durante una prova di mutazione l'agente ha usato `git checkout -- modules/web/leggi.py` per annullarla e ha riportato il file alla versione di main, perdendo le modifiche non ancora in staging; le ha riapplicate subito (stesso script) e i test le confermano. Da qui in poi le mutazioni si fanno solo in copie isolate.
+
+## RICHIESTE ALLA CHAT MOTORE
+
+Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1/2/3/4»): aggancio di `leggi_pagina` con al modello solo `testo`, firma a finestra contaminata, tetto di chiamate, diario senza il testo della pagina, fiducia solo nei marcatori con il codice di quella chiamata.
