@@ -5,7 +5,7 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 ## DECISIONI UMANE RICHIESTE
 
 1. Merge della nuova PR: pro e contro in `reports/da_mergiare.md` (voci 1-6).
-2. C6 (bottone «Modifica» e firme a gruppi): (a) lasciare così, (b) disegnare il «Modifica», (c) anche le firme a gruppi.
+2. C6: decisa (a) «lasciamo così» (operatore, 2026-10-21).
 3. Secondo passaggio claude.ai sulle fette del cancello della #233 (se non già fatto).
 
 ## Esito
@@ -25,6 +25,7 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **Riga finale del registro dei token non riletta a file invariato; avviso «firme scadute» anche in gas_debug.log (V-1 bot e verifica esterna #234 5° giro, R-417-1)** — FATTA. Review #424 APPROVATO CON RISERVE. V-3 verifica esterna non regge (registro toccato solo sotto il lock del giro).
 - **R7 / R-222-2: il riepilogo della notte non si fa più ingannare da un file che comincia con «Operazione negata» (l'esito lo dice il kernel); test T94j più stretto (R-424-2/3)** — FATTA. Review #425 APPROVATO CON RISERVE.
 - **Lock sulla cache dei costi (due thread non contano due volte) e test del kernel per l'esito «negata / in attesa» (V-1/V-2 verifica esterna #234 7° giro, R-425-1/2)** — FATTA. Review #426 APPROVATO CON RISERVE.
+- **Merge di origin/main (#235, chat Mani)** — FATTO per togliere il conflitto della PR #234 (operatore: «mergia 234»). Review #427 APPROVATO.
 - **Anomalie** — disco temporaneo pieno due volte: cloni e ambienti Python degli agenti di verifica, poi ~129.000 cartelle `gas_*` lasciate dai test in /tmp (ripulite: da 4 MB a 29 GB liberi). Un agente di verifica ha staccato l'HEAD del repo vero: commit dei report rifatto sul ramo giusto.
 - **Verifica esterna #234** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot su #234: APPROVATO CON RISERVE (neutral, decide l'operatore).
 - **Test** — kernel 957 → 971 PASS, 0 FAIL; gate 811 → 817; notte 106 → 130.

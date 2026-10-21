@@ -2,7 +2,7 @@
 
 > Decisione dell'operatore (2026-10-21): la chat Motore lavora di fila sulla roadmap; qui si accumula ciò che è pronto, una voce per fetta, con i pro e i contro del merge. L'operatore passa 1-2 volte al giorno, legge questa pagina e scrive «mergia #N» oppure «no». Le voci mergiate si tolgono.
 
-> **Decisione per te (C6, bottone «Modifica» e firme a gruppi):** il 30 settembre avevi deciso «una firma per ogni azione, niente gruppi»; il «Modifica» non ha ancora un disegno. Non lo costruisco finché non dici: (a) lasciamo così, (b) disegnamo il «Modifica» (cosa si può cambiare e come si rifirma), (c) anche le firme a gruppi.
+> **C6 deciso (2026-10-21):** l'operatore ha scelto (a) «lasciamo così»: una firma per ogni azione, niente «Modifica» né firme a gruppi.
 
 ## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #233)
 

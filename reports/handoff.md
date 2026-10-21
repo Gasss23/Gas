@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #234 (https://github.com/Gasss23/Gas/pull/234; numero e URL dall'API GitHub, `gh` non usato): pro e contro in `reports/da_mergiare.md`; l'agente mergia da solo solo con un APPROVATO pulito del bot (CLAUDE.md §10).
-2. C6 (bottone «Modifica» e firme a gruppi): decisione dell'operatore.
+2. C6: decisa (a) «lasciamo così» dall'operatore il 2026-10-21 — nessuna azione.
 
 ---
 
@@ -28,7 +28,8 @@
 - **Riga finale non riletta a file invariato; firme scadute nel log (V-1 bot V-B e verifica esterna #234 5° giro, R-417-1, R-423-1)**: `FATTA` — review #424 APPROVATO CON RISERVE. V-3 verifica esterna (registro senza blocco): non regge, il registro si tocca dopo il lock esclusivo del giro.
 - **R7 / R-222-2 — esito «negata/in attesa» detto dal kernel, non dall'inizio del testo; T94j più stretto (R-424-2/3)**: `FATTA` — review #425 APPROVATO CON RISERVE.
 - **Lock sulla cache dei costi; test del kernel per l'esito al cancello (V-1/V-2 verifica esterna #234 7° giro, R-425-1/2)**: `FATTA` — review #426 APPROVATO CON RISERVE.
-- **C6**: `SALTATA` — decisione dell'operatore.
+- **Merge di origin/main (#235, chat Mani) per togliere il conflitto della PR**: `FATTA` — review #427 APPROVATO; conflitti solo nei report di sessione e nella memoria del revisore.
+- **C6**: `SALTATA` — l'operatore ha scelto (a) «lasciamo così» (2026-10-21).
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
 ---
@@ -36,26 +37,28 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   23 +++++++
- gas.py                             |  214 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |   24 ++++++++
+ gas.py                             |  214 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  modules/gate/gate.py               |   12 +++-
  modules/memory/store.py            |   21 ++++++-
- modules/notte/notte.py             |  169 ++++++++++++++++++++++++++++++++++++++++++++++++----
- reports/da_mergiare.md             |   99 ++++++++++++------------------
- reports/diff_sessione.md           |   17 +++---
- reports/handoff.md                 | 1175 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------
- reports/roadmap.md                 |    4 +-
- reports/stato_progetto.md          |    2 +-
- reports/ultimo_report.md           |   48 ++++++++-------
+ modules/notte/notte.py             |  169 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+ reports/da_mergiare.md             |  103 +++++++++++++---------------------
+ reports/diff_sessione.md           |   16 +++---
+ reports/handoff.md                 | 1104 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------
+ reports/roadmap.md                 |    6 +-
+ reports/stato_progetto.md          |    4 +-
+ reports/ultimo_report.md           |   62 ++++++++++----------
  tests/test_unit_gate.py            |    8 +++
- tests/test_unit_kernel.py          |  286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           |  359 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 14 files changed, 1848 insertions(+), 589 deletions(-)
+ tests/test_unit_kernel.py          |  286 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           |  359 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 14 files changed, 2000 insertions(+), 388 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d6cc1cd Merge origin/main (#235, chat Mani) in feat/merge-automatico-z1xjx2
+634eba9 docs(fine-task): report e handoff — lock della cache dei costi, test dell'esito al cancello (#426)
 efd2294 fix(budget): lock sulla cache dei costi; test del kernel per l'esito al cancello (V-1/V-2 verifica #234 7° giro, R-425-1/2)
 cf1915e chore(revisore): memoria review #426 — APPROVATO CON RISERVE
 47b3957 docs(fine-task): report, handoff e roadmap — R-222-2 chiusa (#425)
@@ -905,6 +908,33 @@ Review #426 (chat Motore) del diff in staging (gas.py e tests/test_unit_kernel.p
 
 **Memoria**: aggiunta la riga #426 in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (cf1915e). Lo staging di gas.py e dei test è rimasto com'era. Nessuna lezione nuova.
 
+### Review #427 (chat Motore) — merge d6cc1cd
+
+## VERDETTO: APPROVATO
+
+Review #427 (chat Motore): merge in corso di origin/main 0616d3a (PR #235, chat Mani) dentro feat/merge-automatico-z1xjx2. Prima della review ho fatto le letture obbligatorie: CLAUDE.md e la coda di .claude/agents/memoria_revisore.md. Di reports/stato_progetto.md ho letto solo le parti toccate dal merge.
+
+**Elementi del diff esaminati**
+- `.claude/agents/memoria_revisore.md:630` — righe della chat Mani (#391/#392/#393) inserite tra le #391–#393 della chat Motore. Rischio esaminato: righe perse o duplicate nella risoluzione. Ho confrontato riga per riga HEAD (666 righe), MERGE_HEAD (649) e staged (672):
+  - nessuna riga di HEAD manca nello staged;
+  - nessuna riga di main manca;
+  - nessun duplicato (righe vuote escluse);
+  - nessuna riga estranea a entrambi.
+
+  666 + 6 righe Mani (#391, #392, #393, #406, #407, #408) = 672. I numeri uguali sono distinti dalle etichette «(chat Mani)»/«(chat Motore)». Esito: ok.
+- `.github/workflows/ci.yml:113` — passo «Run web suite» (`if: always()`, `pipefail`, `tests/test_unit_web_*.py`) dentro il job `unit-suite` (riga 24; `handoff-check` resta a riga 282). Rischio esaminato: test web non lanciati, oppure check required alterati. Il ci.yml staged è identico a quello di MERGE_HEAD (diff vuoto). Il ramo non tocca ci.yml dalla merge-base 7bd0875, quindi non c'era conflitto reale. Nomi dei job required invariati. Esito: ok.
+- `modules/web/leggi.py:20` — import del modulo (riga 20 `from __future__`, poi righe 22–36): solo libreria standard (http.client, ssl, socket, ipaddress, html.parser…). Rischio esaminato: scontri col ramo. Nessun import da gas.py, notte, gate, memory o telegram, e nessuno di questi importa `modules.web` o `leggi_pagina` (grep vuoto). Raccolta pytest dell'intera cartella tests: 1796 test (1711 + 85) senza collisioni di nomi né problemi con tests/conftest.py. Rieseguiti i soli web: 85 passed. Esito: ok.
+- `reports/stato_progetto.md:605` — paragrafo «Mani — fetta 1» aggiunto dopo il blocco della chat Motore. La riga 601 (R1 giro da Telegram) è la versione del ramo, più aggiornata di main. Esito: ok.
+- `reports/stato_progetto.md:4` — nell'intestazione «Ultimo aggiornamento» il 2026-10-21 ora cita solo la PR #235 (chat Mani). Il lavoro della chat Motore dello stesso giorno non è nominato, ma la riga di HEAD era già ferma al 20. Esito: cosmetico, non blocca. Puoi correggerlo nell'aggiornamento di fine task.
+
+**Rischio escluso**
+- Non ho rieseguito la suite kernel (971/0) né l'intera suite pytest sul tree unito: mi fido del tuo dato «kernel 971 PASS 0 FAIL, web+notte+gate 1032 passed». Ho verificato solo la raccolta dei test e i 85 test web.
+- Non ho verificato l'esito della CI su GitHub: il merge non è ancora pushato.
+- Non ho riesaminato la logica di sicurezza di leggi_pagina (SSRF, timeout): è già stata revisionata dalla chat Mani (review #391–#393 e #406–#408 Mani) e il merge non la modifica.
+
+**Memoria del revisore**
+La riga contatore #427 (chat Motore) è stata aggiunta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, ma NON è committata. `scripts/commit_memoria_revisore.sh` ha fallito senza bloccare (rc 0, warning in gas_debug.log: «fatal: cannot do a partial commit during a merge»). Il merge è ancora in corso (MERGE_HEAD presente) e l'index degli altri file è intatto. Il file risulta `MM`: prima del commit di merge devi fare `git add .claude/agents/memoria_revisore.md` per includere la riga.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
@@ -926,7 +956,8 @@ pytest `tests/test_unit_notte.py`: 106 → `130 passed`; `tests/test_unit_gate.p
 - 0c02776 (con 9f470a9, 9533488, 373542f): check suite completata senza check falliti (evento GitHub); verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA chiusa da 214a450).
 - 6160555 (con d718b5d, 6609ca5, 214a450, 06da7ac): unit-suite, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, nessuna riserva ALTA/MEDIA).
 - 47b3957 (con ef8a5dd, 52501e2): unit-suite success (kernel 971 PASS), handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, nessuna ALTA/MEDIA).
-- cf1915e, efd2294: run non ancora disponibile alla scrittura dell'handoff.
+- 634eba9 (con cf1915e, efd2294): unit-suite, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE).
+- d6cc1cd (merge di main): run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

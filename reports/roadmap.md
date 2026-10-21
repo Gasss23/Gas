@@ -216,7 +216,7 @@ Tutto da zero. Lista completa al capitolo 8.
 - ⏳ Notifica su Telegram come strumento di Gas.
 - ⏳ **Allarme urgente sul telefono** (nuovo, 19 ottobre): **solo gratuito** (es. ntfy a priorità massima, che suona anche in silenzioso). Twilio scartato perché a pagamento. 👤 Motivi dell'allarme e tetto al giorno: da decidere insieme.
 - ⏳ Le prove M1, M2 e M4 scritte come test veri nel repo.
-- ⏳ Bottone "Modifica" e firme a gruppi (fetta C6 del cancello).
+- ❌ Bottone "Modifica" e firme a gruppi (fetta C6 del cancello): l'operatore ha scelto «lasciamo così» il 21 ottobre (una firma per azione).
 - ⏳ **Regole fisse** (disegno della memoria di giugno, mai costruito): chi non contattare, tono, canali, cosa vendi. 👤 Le scrive Gas-operatore.
 - ⏳ Dati di persone vere: valgono la regola dei modelli del capitolo 0 (solo modelli forti) e il GDPR (capitolo 6).
 - ⏳ Pulizie collegate: gli argomenti degli strumenti finiscono nel diario e nel promemoria anche quando contengono testo di terzi (F-diario-args, F-args-pin, fetta "C-pin"). La correzione del diario di settembre vale solo in avanti: il testo di terzi già scritto resta.
