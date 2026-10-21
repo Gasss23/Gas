@@ -586,10 +586,12 @@ def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
         rel = parsed.get("relative_path")
         if livello_scrittura(rel) != LIVELLO_LIBERO:
             return False
-        # R-398-1: _normalize_path toglie i caratteri invisibili (Cf) solo per il
-        # confronto; qui si CONCEDE, quindi un nome grezzo con un Cf («a.m\u200bd»,
-        # il file vero non è un .md) resta alla firma.
-        if any(unicodedata.category(c) == "Cf" for c in rel):
+        # R-398-1/R-399-1: _normalize_path toglie i caratteri invisibili (Cf) e unifica
+        # le varianti (NFKC) solo per il confronto; qui si CONCEDE, quindi un nome
+        # grezzo che quelle trasformazioni cambiano («a.m\u200bd», «a.\uff4dd»: il
+        # file vero non è un .md) resta alla firma.
+        if (any(unicodedata.category(c) == "Cf" for c in rel)
+                or unicodedata.normalize("NFKC", rel) != rel):
             return False
         parts = PurePosixPath(_normalize_path(rel)).parts
         primo = parts[0].strip(". ") if parts else ""

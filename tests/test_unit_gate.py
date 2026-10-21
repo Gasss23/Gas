@@ -794,6 +794,10 @@ def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
     ("write_file", {"relative_path": "notes/a.m\u200bd"}, False),
     ("write_file", {"relative_path": "notes/a.t\u200bxt"}, False),
     ("write_file", {"relative_path": "notes\ufeff/a.md"}, False),
+    # R-399-1: varianti che NFKC unifica (larghezza piena) → firma
+    ("write_file", {"relative_path": "notes/a.\uff4dd"}, False),
+    ("write_file", {"relative_path": "notes/a.\uff54xt"}, False),
+    ("write_file", {"relative_path": "notes/caff\u00e8.md"}, True),  # accento NFC: resta libero
     ("send_email", {"to": "a@b.it"}, False),
     ("run_command", {"command": "ls"}, False),
     ("browser_scrape", {"url": "x"}, False),
