@@ -1,21 +1,24 @@
-# ULTIMO REPORT — 2026-10-21 — Avviso sui file delicati: note di #231; nuovo modo di lavorare
+# ULTIMO REPORT — 2026-10-21 — Avviso file delicati (R-390-1) e giro notturno da Telegram (R1)
 
-Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #231 (operatore: «mergia 231 e continua con la roadmap… tieni da parte tutto quello che c'è da mergiare con pro e contro»; poi «salva tutto, ripartiamo dando un clear»).
+Ramo `feat/merge-automatico-z1xjx2`, PR #233 (la #232 era già mergiata: ramo riallineato a main). Richieste dell'operatore: lavorare di fila sulla roadmap senza chiedere; un compito per una terza chat che non vada in conflitto.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR aperta: pro e contro in `reports/da_mergiare.md`.
-2. Togliere dal progetto claude.ai le copie di `briefing_architettura_voce.md` e `recinto_autonomia.md` (l'agente non vi ha accesso).
+1. Merge della PR #233: pro e contro in `reports/da_mergiare.md` (voci 1-4).
+2. Aprire la terza chat «Mani» col prompt in fondo a `reports/lavoro_parallelo.md`.
+3. Provare dal vero sul Mac: `python3 gas.py telegram`, poi `/compito <nome>` dal telefono.
 
 ## Esito
 
-- **Note di verifica esterna e bot su #231, R-388-1/2** — FATTA. Estensioni interne solo eseguibili, parole delicate su tutto il nome, spazi nei pezzi, `tronca_visibile_coda(t, 0)`. Review #390 (chat Motore) APPROVATO CON RISERVE (R-390-1 BASSA, R-390-2 COSMETICA).
-- **Nuovo modo di lavorare** — registrato in `reports/stato_progetto.md` e nella nuova coda `reports/da_mergiare.md`.
-- **Test** — kernel 949 → 950 PASS, 0 FAIL; pytest tests/ 1582 passed.
+- **R-390-1 + note verifica esterna #232** — FATTA. Review #391 (chat Motore) APPROVATO CON RISERVE.
+- **Compito della chat Mani** (R6, leggere il web in `modules/web/`) — FATTA (solo documento).
+- **R1: lanciare un giro o un compito da Telegram** — FATTA. Review #392 (chat Motore) APPROVATO CON RISERVE.
+- **Rifiniture R-392-1/2 e V-3 verifica esterna #233** — FATTA. Review #393 (chat Motore) APPROVATO CON RISERVE. V-2 #233 non serve: i `.sh`/`.py` finali vanno già alla firma (livello 2), l'avviso guarda solo i file liberi.
+- **Test** — kernel 950 PASS, 0 FAIL; notte+gate 858 passed.
+- **Verifica esterna #233** — APPROVATO CON RISERVE (V-1 MEDIA handoff mancante, rigenerato ora).
 
-## Prossimi passi (per la sessione dopo il clear)
+## Prossimi passi
 
-1. R-390-1 + verifica esterna #232: rimettere pem, p12, pfx, kdbx, ovpn, gpg, jks, sql, sqlite, ipynb tra le estensioni interne; togliere le ambigue (html, htm, ts, pl, cmd, service, desktop, plist, js) dalle interne; caratteri invisibili nei pezzi; valutare «env».
-2. Roadmap R1: lanciare un compito o un giro notturno da Telegram.
-3. Roadmap 5.2: invio della firma che blocca il turno (R-c4b1-3), bottone Modifica (C6).
-4. Roadmap R7: compiti lunghi che riprendono dopo un crash.
+1. R-393-1: avvisare quando il giro lanciato dal bot muore prima di partire.
+2. Roadmap 5.2: invio della firma che blocca il turno (R-c4b1-3), bottone Modifica (C6).
+3. Roadmap R7: compiti lunghi che riprendono dopo un crash.
