@@ -15,7 +15,7 @@ Ramo `feat/merge-automatico-z1xjx2`, dopo il merge di #231 (operatore: «mergia 
 
 ## Prossimi passi (per la sessione dopo il clear)
 
-1. R-390-1: rimettere pem, p12, pfx, kdbx, ovpn, gpg, jks, sql, sqlite tra le estensioni interne.
+1. R-390-1 + verifica esterna #232: rimettere pem, p12, pfx, kdbx, ovpn, gpg, jks, sql, sqlite, ipynb tra le estensioni interne; togliere le ambigue (html, htm, ts, pl, cmd, service, desktop, plist, js) dalle interne; caratteri invisibili nei pezzi; valutare «env».
 2. Roadmap R1: lanciare un compito o un giro notturno da Telegram.
 3. Roadmap 5.2: invio della firma che blocca il turno (R-c4b1-3), bottone Modifica (C6).
 4. Roadmap R7: compiti lunghi che riprendono dopo un crash.

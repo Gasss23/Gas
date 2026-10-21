@@ -8,4 +8,4 @@
 - **Cosa:** l'avviso «file nuovo che sembra delicato» non scatta più su documenti con iniziali nel nome (`verbale.c.rossi.md`), riconosce `github.token` e `aws.credentials`, regge gli spazi nel nome.
 - **Pro:** meno falsi allarmi su Telegram, più casi veri presi.
 - **Contro:** chiavi e database con doppia estensione (`server.pem.txt`, `dump.sql.txt`) non vengono più segnalati (riserva R-390-1, bassa: è solo un avviso, non blocca nulla); si sistema nella fetta successiva.
-- **Controlli:** revisore #390 APPROVATO CON RISERVE; test 1582 passati; bot e verifica esterna: vedi la PR.
+- **Controlli:** revisore #390 APPROVATO CON RISERVE; test 1582 passati; verifica esterna APPROVATO CON RISERVE, nessuna ALTA/MEDIA ([commento](https://github.com/Gasss23/Gas/pull/232#issuecomment-6313976785)): restano falsi allarmi su estensioni ambigue (`customer.service.md`, `manuale.html.pdf`) e la perdita di `server.pem.txt` (R-390-1). Bot: vedi la PR.
