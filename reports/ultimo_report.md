@@ -15,9 +15,12 @@ Ramo `feat/mani-web-fetta6` da main dopo il merge di #242. Area della chat Mani:
 - **V-1 verifica esterna #242 bis (test sul contatore)**: `FATTA` — chiusura in più dopo una coppia bilanciata sul percorso normale e nel ripiego.
 - **R-449-2, R-448-1, V-3/V-4 verifica esterna #242**: `FATTA` — caso del ripiego che discrimina, riga lunga a capo, commento sul SystemError di Python 3.11 con l'input che lo provoca (riprodotto su 3.11.17: con un gruppo di cattura nella ripetizione possessiva, `<a b="1"="x>` solleva SystemError; altri input no, per questo i verificatori non lo vedevano).
 - **Note del bot #242 sull'handoff della fetta 5 (run fallita su `f583746`, righe citate)**: `SALTATA — riguardano il dossier della fetta 5, sostituito da questo`. Nota: la run 39687109665 su `f583746` era fallita (handoff-check) perché l'handoff non era ancora aggiornato, come previsto.
-- **R-450-1 (punti di integrazione HTML dentro svg/math)**: `DEFERITA — BASSA preesistente, registrata in stato_progetto`.
-- **Test**: web suite 167 → 172 (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Fuzz differenziale 0 fughe. Mutazioni in copie isolate: tutte prese.
-- **Review**: #449 (chat Mani) APPROVATO CON RISERVE (R-449-1 BASSA, R-449-2 COSMETICA, chiuse nello stesso giro) → #450 (chat Mani) APPROVATO CON RISERVE (R-450-1 BASSA preesistente).
+- **V-1 bot #243 (`<title/>` dentro noscript)**: `FATTA` — `<title/>` apre il titolo solo se non sono aperti svg, math, script, style, iframe, noscript; dentro template, object, canvas valgono le regole HTML (R-451-1, review #451).
+- **V-1 verifica esterna #243 (XHTML)**: `FATTA` — per `application/xhtml+xml` ogni `<x/>` è vuoto, nel parser e nel ripiego (`_Estrattore(xhtml)`, `_testo_senza_parser(…, xhtml)`).
+- **V-2 verifica esterna #243 (`<p>`/`<div>` fuori da svg)** e **R-450-1**: `DEFERITA — BASSE preesistenti, registrate in stato_progetto`.
+- **Bot #243** (primo head): APPROVATO CON RISERVE, V-1 BASSA chiusa sopra. **Verifica esterna #243** ([commento](https://github.com/Gasss23/Gas/pull/243#issuecomment-6329014034)): APPROVATO CON RISERVE, V-1/V-2 BASSE, V-3/V-4 COSMETICHE (V-3 coperta dalla correzione di V-1 bot, V-4 §6 aggiornato).
+- **Test**: web suite 167 → 174 (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Fuzz differenziale 0 fughe. Mutazioni in copie isolate: tutte prese.
+- **Review**: #449 (chat Mani) APPROVATO CON RISERVE (R-449-1 BASSA, R-449-2 COSMETICA, chiuse nello stesso giro) → #450 (chat Mani) APPROVATO CON RISERVE (R-450-1 BASSA preesistente) → #451 (chat Mani) APPROVATO CON RISERVE (R-451-1 BASSA, chiusa) → #452 (chat Mani) APPROVATO.
 
 ## Anomalie
 

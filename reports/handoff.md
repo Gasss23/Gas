@@ -21,21 +21,23 @@
 - **V-1 ve #242 bis (test della chiusura in più)**: `FATTA`
 - **R-449-2, R-448-1, V-3/V-4 ve #242 (cosmetiche)**: `FATTA`
 - **Note del bot #242 sull'handoff della fetta 5**: `SALTATA — dossier della fetta 5 superato da questo`
-- **R-450-1 (punti di integrazione HTML dentro svg/math)**: `DEFERITA — BASSA preesistente, registrata`
+- **V-1 bot #243 (`<title/>` dentro noscript) e R-451-1**: `FATTA`
+- **V-1 ve #243 (XHTML: autochiusi vuoti)**: `FATTA`
+- **R-450-1, V-2 ve #243 (punti di integrazione e breakout dentro svg/math)**: `DEFERITA — BASSE preesistenti, registrate`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
- modules/web/leggi.py               |  21 ++++++++++++++-------
+ .claude/agents/memoria_revisore.md |   7 +++++++
+ modules/web/leggi.py               |  44 ++++++++++++++++++++++++++++++--------------
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 337 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  30 +++++++++++++-----------------
- tests/test_unit_web_leggi.py       |  24 ++++++++++++++++++++++++
- 7 files changed, 141 insertions(+), 228 deletions(-)
+ reports/ultimo_report.md           |  33 ++++++++++++++++-----------------
+ tests/test_unit_web_leggi.py       |  49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 266 insertions(+), 218 deletions(-)
 ```
 
 ---
@@ -43,6 +45,10 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c03b994 fix(web): <title/> solo fuori da svg/math/script/noscript, XHTML con autochiusi vuoti (V-1 bot #243, V-1 ve #243)
+32e8469 chore(revisore): memoria review #452 — APPROVATO
+3cec5f6 chore(revisore): memoria review #451 — APPROVATO CON RISERVE
+ceaf517 docs(fine-task): report, stato e handoff — chat Mani fetta 6 (#243)
 6f13e6e fix(web): fetta 6 chat Mani — <title/> apre il titolo fuori da svg/math, test sul contatore (R6)
 354f866 chore(revisore): memoria review #450 — APPROVATO CON RISERVE
 a5c33b2 chore(revisore): memoria review #449 — APPROVATO CON RISERVE
@@ -54,7 +60,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Due verdetti, incollati integralmente: #449 e #450 (chat Mani), sul diff del commit `6f13e6e` (la #449 ha chiuso le proprie riserve nello stesso diff; le righe di memoria sono nei commit `a5c33b2`, `354f866` fatti dal revisore).
+Quattro verdetti, incollati integralmente: #449 e #450 (chat Mani) sul diff del commit `6f13e6e` (la #449 ha chiuso le proprie riserve nello stesso diff; memoria in `a5c33b2`, `354f866`); #451 e #452 (chat Mani) sul diff del commit `c03b994` (la #451 ha chiuso la propria riserva nello stesso diff; memoria in `3cec5f6`, `32e8469`).
 
 ### Review #449 (chat Mani)
 
@@ -146,20 +152,104 @@ File utili nello scratchpad:
 
 ---
 
+### Review #451 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #451 (chat Mani), 2026-10-21. Fetta 6 Mani, PR #243, diff STAGED su head ceaf517. Ho letto prima CLAUDE.md (sezioni 1, 5, 8, 9 e 10), reports/stato_progetto.md (per grep) e la memoria del revisore (lezioni #445-#450, tra cui quella sui punti di integrazione svg/math).
+
+**Elementi del diff esaminati**
+
+1. `modules/web/leggi.py:463` — `<title/>` apre il titolo solo se `not self._salta`. Ho controllato che svg e math restino esentati come prima (sono nel contatore) e che noscript, `<script/>…<TITLE/>` e template non aprano più il titolo. **Esito: riserva (R-451-1, sotto).** Sui casi noscript e `<script/>…<TITLE/>` è corretto: con lo scripting attivo noscript è testo, e il secondo è testo dello script.
+2. `modules/web/leggi.py:464` — in XHTML `handle_startendtag` torna al comportamento predefinito di html.parser, che chiama apertura e poi chiusura. Rischio esaminato: contatore sbilanciato. Per i nomi in `_SALTA` `handle_endtag` scala `_aperti`/`_salta` subito dopo l'aumento, quindi il saldo è 0. Per title `_nel_titolo` si accende e si spegne. **Esito: ok.**
+3. `modules/web/leggi.py:596` — nel ripiego, in XHTML un grezzo autochiuso non apre niente. In HTML il titolo usa `not salta`, che specchia il parser. **Esito: ok.**
+4. `modules/web/leggi.py:604` — nel ripiego i contati autochiusi non aprono niente se `xhtml` oppure se sono svg/math. Questo coincide con il parser, che in XHTML ha saldo 0. **Esito: ok.**
+5. `modules/web/leggi.py:636` — `xhtml` viene da `pagina["tipo"]`. Rischio: un tipo con maiuscole o parametri che non combacia. Il tipo arriva già minuscolo e senza `;charset` (vedi `modules/web/leggi.py:393`). Il valore passa sia all'estrattore sia al ripiego (`modules/web/leggi.py:645`). **Esito: ok.**
+6. `tests/test_unit_web_leggi.py:877` — il test XHTML copre il percorso normale, il ripiego con `xhtml=True` e anche il verso HTML: in HTML `<script/>` continua ad aprire (`tests/test_unit_web_leggi.py:886`), quindi il test ha senso. **Esito: ok.**
+7. `tests/test_unit_web_leggi.py:895` — aggiunto il caso `<template><title/></template>VIS`, con l'attesa che VIS resti nel corpo. **Esito: riserva**, perché fissa nel test il comportamento di R-451-1.
+
+**Verifiche mie**
+- `pytest tests/test_unit_web_leggi.py`: 173 passed su Python 3.13.16.
+- I fuzz dell'autore, rilanciati con un seme mio (451), danno 0 fughe in entrambi i casi:
+  - `fuzz5.py`, HTML: 30k casi.
+  - `fuzz5x.py`, XHTML: 30k casi.
+- Ho confrontato con l'oracolo html5lib 1.1 (in scratchpad) il codice a HEAD 6f13e6e e il diff staged, con 7 sonde.
+
+**Riserve**
+
+- **R-451-1 (chat Mani) — BASSA.** L'esenzione `not self._salta` (`modules/web/leggi.py:463`, e lo specchio `modules/web/leggi.py:596`) è più larga del necessario.
+  - Copre anche template, object e canvas. Lì i browser applicano le regole HTML: `<title/>` apre davvero il titolo, che si porta via il resto fino a `</title>`.
+  - Oracolo: `<p>a</p><object><title/></object>VIS` dà come testo visibile solo «a», con title = «</object>VIS». Stesso risultato per canvas e template.
+  - A HEAD VIS finiva nella riga «Titolo:», limitata a 200 caratteri: era la stessa resa dei browser. Con il diff esce intero nel corpo, cioè testo che i browser nascondono arriva al modello senza limite. Resta comunque dentro il blocco non fidato, per questo la gravità è BASSA.
+  - `tests/test_unit_web_leggi.py:895` fissa il caso template nel verso sbagliato.
+  - Correzione provata in una copia (`/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r451/leggi_alt.py`):
+    `tag == "title" and not any(self._aperti.get(n, 0) for n in self._SALTA - {"template", "object", "canvas"})`
+  - Con questa correzione:
+    - restano corretti noscript (VIS nel corpo), `<svg><title/></svg>VIS`, `<script/><TITLE/>X</script>VIS` e `<object><noscript><title/></noscript></object>VIS`;
+    - template e object tornano a «Titolo: VIS».
+  - Va specchiata nel ripiego con lo stesso insieme, al posto di `not salta`. Poi vanno rifatti il fuzz di parità e il test a `tests/test_unit_web_leggi.py:895` (template: «Titolo:» presente).
+  - Conviene chiuderla in questa stessa PR: costa poco.
+- **V-2 ve #243 (fuga di `<p>`/`<div>` fuori da svg).** Confermata preesistente: è la stessa classe di R-450-1. Anche `<svg><foreignObject><title/>` mostra VIS sia a HEAD sia nel diff, mentre per i browser è title. Va registrata come dichiarato.
+
+**Rischi esplicitamente esclusi**
+- Non ho rifatto la suite su Python 3.11 né il fuzz XHTML su 3.11 (le 22 fughe con `<!-->`). Mi baso sui numeri dichiarati dall'autore. Quella differenza di 3.11 è già nota (V-2 ve #242).
+- Non ho rifatto le mutazioni dichiarate dall'autore. Ho fatto solo la variante della correzione di R-451-1.
+- L'oracolo html5lib non ha lo scripting attivo, quindi per noscript non rappresenta i browser reali. Su quel caso il giudizio si basa sullo standard (con scripting attivo noscript è testo grezzo), non sull'oracolo.
+- La fedeltà XHTML oltre gli autochiusi non è verificata: per esempio il markup dentro `<script>` in XML. È fuori dallo scopo del diff.
+
+Riga #451 aggiunta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, insieme a una lezione nuova: un'esenzione basata sul contatore globale va sondata per ogni nome contato. Committata con `scripts/commit_memoria_revisore.sh` (commit 3cec5f6, solo quel file). Il diff staged di leggi.py e dei test è rimasto intatto nell'index.
+
+---
+
+### Review #452 (chat Mani)
+
+## VERDETTO: APPROVATO
+
+Review #452 (chat Mani), 2026-10-21. È la ri-review della #451 sul diff STAGED del ramo feat/mani-web-fetta6 (PR #243): modules/web/leggi.py e tests/test_unit_web_leggi.py. Il diff staged contiene anche la parte XHTML e noscript già approvata nella #451, che resta valida.
+
+**Elementi del diff esaminati**
+1. `modules/web/leggi.py:127`: introduce `_TITOLO_VUOTO_IN = _TAG_NASCOSTI - {"template", "object", "canvas"}`, cioè script, style, noscript, svg, math e iframe. Rischio esaminato: che l'insieme non corrisponda a quello che fanno i browser. Ho fatto 24 sonde contro l'oracolo html5lib 1.1 (che ho nello scratchpad). Le sonde coprono i 9 nomi nascosti, sia aperti sia autochiusi; i casi annidati template>svg, object>noscript, svg>object e canvas>svg; le maiuscole; `<title />`. Con template, object e canvas il testo dopo va nel titolo (invisibile), come nei browser. Con svg, math, script, style e iframe resta visibile nel corpo. Noscript fa eccezione solo verso html5lib, che lavora con gli script spenti: col modello «script attivi» già scelto in V-1 bot #243 il testo resta visibile, ed è coerente. Esito: ok.
+2. `modules/web/leggi.py:466`: nel parser `<title/>` apre il titolo solo se nessun nome di `_TITOLO_VUOTO_IN` è aperto in `_aperti`. Rischio esaminato: un contatore che resta alto. Il conto è per nome, quindi una chiusura con un nome diverso non lo fa scendere. Un nascosto lasciato aperto senza chiusura tiene `_salta` sopra zero, e il testo dopo è comunque nascosto (verso sicuro). Esito: ok.
+3. `modules/web/leggi.py:600`: nel ripiego c'è lo stesso controllo, sullo stesso insieme. Rischio esaminato: che parser e ripiego divergano. Ho fatto un fuzz mio con seme 452: 13 nomi (compresi foreignObject, textarea e title) in 4 forme, più i commenti. Risultato: 0 fughe «ripiego ⊆ parser» su 40.000 pagine (Python 3.13). La riga resta entro 110 caratteri. Esito: ok.
+4. `tests/test_unit_web_leggi.py:877`: il nuovo test `test_title_autochiuso_dentro_template_object_canvas_apre_il_titolo`. Rischio esaminato: un test che passa anche senza la correzione. Ho fatto tre mutazioni in copie prese dall'index: insieme uguale a tutti i nascosti; noscript tolto dall'insieme; solo il ripiego su tutti i nascosti. Ognuna dà 1 FAIL: la prima e la terza fanno fallire questo test, la seconda fa fallire `tests/test_unit_web_leggi.py:900`. Esito: ok.
+5. `tests/test_unit_web_leggi.py:905`: `<script/><title/></script>VIS` sostituisce il caso template, che prima era fissato nel verso sbagliato (R-451-1). Ho verificato con html5lib che VIS è visibile, come chiede il test. Esito: ok.
+
+Suite: 174 passed su 3.13 (`tests/test_unit_web_leggi.py`). Nel diff nessuno slicing della history, nessuna simulazione dell'output dei tool, nessun tocco a `_get_window`, al limite di 10 iterazioni o al limite di 8k caratteri in uscita.
+
+R-451-1 è chiusa.
+
+**Rischi esclusi esplicitamente**
+- Non ho rifatto io le prove su 3.11 né quelle con rete e DNS bloccati: la fonte è l'autore. La parte cambiata è logica pura sul contatore, senza dipendenze dalla versione di html.parser, e le altre verifiche su 3.11 le avevo fatte nelle #449 e #450.
+- La riserva preesistente R-450-1 (punti di integrazione HTML dentro svg e math, per esempio foreignObject) non è toccata da questo diff e resta aperta.
+- Il comportamento dei browser veri non l'ho verificato: l'oracolo è html5lib 1.1, che lavora con gli script spenti.
+
+**Memoria**: ho aggiunto la riga #452 a `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit 32e8469, `chore(revisore): memoria review #452 — APPROVATO`). Nessuna lezione nuova. Il diff staged è rimasto intatto: 2 file, 50 righe aggiunte e 16 tolte.
+
+File utili:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/s452/sonde.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/s452/fuzz.py
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 167 → 172 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «172 passed in 19.40s» su Python 3.13; «172 passed in 18.87s» su 3.11 (venv); «172 passed in 18.81s» con rete e DNS veri bloccati via sitecustomize).
-- Fuzz differenziale ripiego contro parser: 0 fughe su 200k pagine (3.13) e 100k (3.11).
+- Web suite: 167 → 174 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «174 passed in 19.91s» su Python 3.13; «174 passed in 19.38s» su 3.11 (venv); «174 passed in 18.83s» con rete e DNS veri bloccati via sitecustomize). Primo giro (`6f13e6e`) 167 → 172, secondo (`c03b994`) 172 → 174.
+- Fuzz differenziale ripiego contro parser: 0 fughe su 200k pagine HTML (3.13), 100k (3.11, escluse `<!-->`), 100k XHTML (3.13).
+- Mutazioni del secondo giro, tutte prese: esenzione del titolo estesa a tutti i nascosti / solo svg-math / senza script, xhtml ignorato nel parser, nel ripiego (grezzi e contati) e in `_componi`, title aperto ovunque.
 - Mutazioni in copie isolate, tutte prese: parser `_aperti` che non scala, ripiego `aperti` che non scala, `<title/>` vuoto nel parser, title autochiuso ignorato nel ripiego, title anche dentro svg (parser e ripiego).
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-`gh` non autenticato nella sessione cloud: esiti letti dai check della PR via MCP GitHub. Mappatura commit→run:
-- `a5c33b2`, `354f866`, `6f13e6e`: pushati insieme prima di aprire la PR #243; una run di push sulla testa `6f13e6e` può esistere con handoff-check rosso (handoff non ancora aggiornato, come per `f583746` nella fetta 5): non verificata alla scrittura dell'handoff.
+`gh` non autenticato nella sessione cloud: esiti letti dai check della PR #243 via MCP GitHub. Mappatura commit→run:
+- `a5c33b2`, `354f866`, `6f13e6e`: pushati insieme prima di aprire la PR; run di push sulla testa `6f13e6e` non letta (handoff-check atteso rosso: handoff non ancora aggiornato).
+- `ceaf517` (fine-task del primo giro): run 39694284271, unit-suite success, handoff-check success; verifica-bot success (letto dalla verifica esterna #243 e dal check della PR).
+- `3cec5f6`, `32e8469`, `c03b994`: nessuna run su questi SHA da soli (pushati col commit di fine-task che contiene questo file).
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-450-1 (chat Mani)** BASSA preesistente: nei punti di integrazione HTML dentro svg/math (foreignObject, desc, title; mi, mo, mn, ms, mtext) `<title/>` apre un titolo per i browser, mentre parser e ripiego lo trattano come vuoto.
+- Di questa fetta: **V-2 ve #243** BASSA preesistente: `<p>`/`<div>` dentro svg fanno uscire dal contenuto foreign per i browser (`<svg><p><title/></svg>X</title>` mostra X), non coperta dalla correzione proposta per R-450-1; **R-450-1 (chat Mani)** BASSA preesistente: nei punti di integrazione HTML dentro svg/math (foreignObject, desc, title; mi, mo, mn, ms, mtext) `<title/>` apre un titolo per i browser, mentre parser e ripiego lo trattano come vuoto.
 - Restano: R-447-1 parte (b), V-2 ve #242 (commenti vuoti su 3.11), R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…6».
