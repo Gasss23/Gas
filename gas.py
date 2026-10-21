@@ -46,14 +46,21 @@ _LOG_SFORO_MAX = 1024 * 1024
 # R7 (roadmap): la scatola nera sta SEMPRE accanto a gas.py, anche se Gas parte da
 # un'altra cartella (prima il percorso era relativo alla cartella di avvio).
 _LOG_PATH = Path(__file__).resolve().parent / "gas_debug.log"
+# V-2 bot #233: cartella non scrivibile → Gas parte lo stesso (CLAUDE.md §1, zero
+# crash), con la sola console e un avviso: mai un errore all'import.
+try:
+    _file_handler: Optional[logging.Handler] = RotatingFileHandler(
+        str(_LOG_PATH), maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8")
+except OSError as _e_log:
+    _file_handler = None
+    _LOG_ERRORE = f"{type(_e_log).__name__}: {_e_log}"
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        RotatingFileHandler(str(_LOG_PATH), maxBytes=_LOG_MAX_BYTES, backupCount=3, encoding="utf-8"),
-        _console_handler,
-    ],
+    handlers=[h for h in (_file_handler, _console_handler) if h is not None],
 )
+if _file_handler is None:
+    logging.warning("gas_debug.log non apribile (%s): registro solo a schermo", _LOG_ERRORE)
 _snapshot_log = logging.getLogger("gas.snapshot")
 # Messaggi informativi della knowledge base: solo nella scatola nera, mai a schermo
 # (la console mostra da WARNING in su). Prova sul Mac 2026-10-16: la tabella FTS

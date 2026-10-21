@@ -6998,6 +6998,25 @@ check("T93a2 R-397-2 gas importato da un'altra cartella scrive il log accanto a 
       and repr(str(Path(gas.__file__).resolve().parent / "gas_debug.log")) in _p93a.stdout
       and _tmp93a not in _p93a.stdout, (_p93a.stdout + _p93a.stderr)[-300:])
 
+# T93a3 — V-2 bot #233: cartella di gas.py non scrivibile → import senza errori
+_tmp93c = tempfile.mkdtemp(prefix="gas_t93c_")
+try:
+    _p93c = subprocess.run(
+        [sys.executable, "-c",
+         "import logging.handlers as H\n"
+         "class R(H.RotatingFileHandler):\n"
+         "    def __init__(self, *a, **k): raise PermissionError('sola lettura')\n"
+         "H.RotatingFileHandler = R\n"
+         "import gas, logging\n"
+         "print('OK', gas._file_handler is None, len(logging.getLogger().handlers))"],
+        cwd=_tmp93c, capture_output=True, text=True, timeout=120,
+        env={**os.environ, "PYTHONPATH": str(Path(gas.__file__).resolve().parent)})
+finally:
+    _sh39e.rmtree(_tmp93c, ignore_errors=True)
+check("T93a3 V-2 bot #233 log non apribile: gas si importa, registro solo a schermo",
+      _p93c.returncode == 0 and "OK True 1" in _p93c.stdout
+      and "non apribile" in _p93c.stderr, (_p93c.stdout + _p93c.stderr)[-300:])
+
 # T93b — R7: reindex, calibrate-vectors ed eval-vectors rispettano GAS_VECTORS_DB
 _vs_orig93 = gas.VectorStore
 _visti93: list = []

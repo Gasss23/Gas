@@ -519,12 +519,13 @@ _ESTENSIONI_DELICATE: tuple[str, ...] = (
 # «a.sh.txt», «x.py.md».
 # V-1 bot #231 / V-5 verifica esterna #231: solo tipi ESEGUIBILI (non le estensioni
 # corte come c, h, r, go, db, app, url, key: «verbale.c.rossi.md» è un documento).
+# V-2 verifica esterna #233 (4° giro): «cmd» resta (eseguibile Windows come bat).
 # R-390-1: anche chiavi, archivi di password e database («server.pem.txt»,
 # «dump.sql.txt», «prod.env.txt»). Verifica esterna #232: fuori le parole che sono
 # anche nomi comuni («customer.service.md», «manuale.html.pdf», «node.js.md»).
 _ESTENSIONI_INTERNE_DELICATE: frozenset[str] = frozenset({
     "sh", "zsh", "bash", "fish", "command", "terminal", "py", "pyw", "pth", "mjs",
-    "cjs", "rb", "php", "ps1", "psm1", "bat", "vbs", "exe", "dll",
+    "cjs", "rb", "php", "ps1", "psm1", "bat", "cmd", "vbs", "exe", "dll",
     "jar", "applescript", "scpt", "workflow",
     # V-3 verifica esterna #233: file di avvio, non ambigui («a.plist.txt»)
     "plist", "desktop",

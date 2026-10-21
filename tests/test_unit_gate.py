@@ -835,6 +835,7 @@ def test_libero_dopo_lettura(tool, args, atteso):
     ("dati/customer.service.md", False), ("dati/manuale.html.pdf", False),
     ("dati/node.js.md", False), ("dati/b.ts.txt", False),
     ("dati/a.plist.txt", True), ("dati/a.desktop.txt", True),  # V-3 verifica esterna #233
+    ("dati/avvio.cmd.txt", True),  # V-2 verifica esterna #233 (4° giro)
     ("dati/a.sh\u200b.txt", True), ("dati/x.json\u200b", True), ("dati/a\ufeff.secret", True),
 ])
 def test_sembra_delicato(path, atteso):
