@@ -121,6 +121,10 @@ _GREZZI_RIPIEGO = frozenset({
 })
 _CONTATI_RIPIEGO = _TAG_NASCOSTI - _GREZZI_RIPIEGO
 _AUTOCHIUDIBILI = frozenset({"svg", "math"})
+# Dentro questi nascosti «<title/>» non è un titolo: in svg e math l'autochiusura vale, in
+# script, style, iframe e noscript (con gli script attivi) per i browser è testo. Dentro
+# template, object e canvas invece valgono le regole HTML e apre il titolo (R-451-1).
+_TITOLO_VUOTO_IN = _TAG_NASCOSTI - {"template", "object", "canvas"}
 _MINUSCOLE_ASCII = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 # Riferimenti numerici enormi («&#» + migliaia di cifre): html.parser solleva ValueError
 # (limite delle cifre degli interi) e la pagina diventerebbe illeggibile (R-ve235-4).
@@ -432,8 +436,11 @@ class _Estrattore(HTMLParser):
         "form", "dd", "dt", "dl", "main", "figure", "figcaption", "title", "td", "th",
     }
 
-    def __init__(self) -> None:
+    def __init__(self, xhtml: bool = False) -> None:
         super().__init__(convert_charrefs=True)
+        # In una pagina application/xhtml+xml vale l'XML: «<x/>» è vuoto davvero, per
+        # ogni tag (V-1 verifica esterna #243).
+        self._xhtml = xhtml
         self.pezzi: list = []
         self.titolo: list = []
         self._salta = 0
@@ -454,10 +461,11 @@ class _Estrattore(HTMLParser):
         # browser apre lo script: il testo dopo è codice invisibile. Fra i nascosti solo svg
         # e math si autochiudono davvero; gli altri contano come apertura (R-446-1). Anche
         # «<title/>» apre il titolo: per i browser il testo fino a «</title>» è il titolo,
-        # non si vede nella pagina (V-2 verifica esterna #242). Dentro svg o math invece
-        # l'autochiusura vale e «<title/>» è vuoto davvero (R-449-1: icone svg).
-        dentro_svg = any(self._aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
-        if (tag in self._SALTA and tag not in _AUTOCHIUDIBILI) or (tag == "title" and not dentro_svg):
+        # non si vede nella pagina (V-2 verifica esterna #242). Non dentro i nascosti di
+        # _TITOLO_VUOTO_IN (R-449-1: icone svg; V-1 bot #243: noscript; R-451-1).
+        titolo = tag == "title" and not any(self._aperti.get(n, 0) for n in _TITOLO_VUOTO_IN)
+        apre = (tag in self._SALTA and tag not in _AUTOCHIUDIBILI) or titolo
+        if apre and not self._xhtml:
             self.handle_starttag(tag, attrs)
         else:
             super().handle_startendtag(tag, attrs)
@@ -545,7 +553,7 @@ def _fine_commento(basso: str, da: int, prossimi: dict[str, int]) -> int:
     return f + lunghezza
 
 
-def _togli_blocchi_nascosti(testo: str) -> str:
+def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
     """Toglie commenti, tag e gli elementi nascosti (script, style, svg, iframe, title…),
     come il parser: ogni tag finisce al suo «>» fuori dalle virgolette, quindi «<» o
     «</script>» dentro un attributo non contano (V-1 ve #239, V-3 bot #239); i blocchi
@@ -589,8 +597,8 @@ def _togli_blocchi_nascosti(testo: str) -> str:
                 if basso[m.end()] in _FINE_NOME:
                     if nome in _GREZZI_RIPIEGO:
                         if _AUTOCHIUSO.match(basso, m.end()):
-                            dentro_svg = any(aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
-                            if nome in _TAG_NASCOSTI or (nome == "title" and not dentro_svg):
+                            titolo = nome == "title" and not any(aperti.get(n, 0) for n in _TITOLO_VUOTO_IN)
+                            if not xhtml and (nome in _TAG_NASCOSTI or titolo):
                                 aperti[nome] = aperti.get(nome, 0) + 1
                                 salta += 1
                         elif nome == "plaintext":
@@ -598,7 +606,7 @@ def _togli_blocchi_nascosti(testo: str) -> str:
                         else:
                             fine = _chiusura(basso, nome, fine)
                     elif nome in _CONTATI_RIPIEGO:
-                        if not (nome in _AUTOCHIUDIBILI and _AUTOCHIUSO.match(basso, m.end())):
+                        if not ((xhtml or nome in _AUTOCHIUDIBILI) and _AUTOCHIUSO.match(basso, m.end())):
                             aperti[nome] = aperti.get(nome, 0) + 1
                             salta += 1
                     elif nome.startswith("/") and aperti.get(nome[1:], 0) > 0:
@@ -610,11 +618,11 @@ def _togli_blocchi_nascosti(testo: str) -> str:
     return " ".join(pezzi)
 
 
-def _testo_senza_parser(grezzo: str) -> str:
+def _testo_senza_parser(grezzo: str, xhtml: bool = False) -> str:
     """Ripiego se html.parser solleva: commenti, tag e blocchi nascosti tolti, riferimenti
     interpretati se possibile. Un «<» che non apre un tag («a < b», «<1») resta testo,
     come nel parser."""
-    testo = _togli_blocchi_nascosti(grezzo)
+    testo = _togli_blocchi_nascosti(grezzo, xhtml)
     try:
         return html_unescape(testo)
     except Exception:  # noqa: BLE001 — riferimenti strani: si lascia il testo com'è
@@ -630,7 +638,8 @@ def _componi(url_finale: str, pagina: dict) -> dict:
     else:
         grezzo = _RIF_ZERI_HEX.sub(r"&#\1", _RIF_ZERI_DEC.sub("&#", grezzo))
         grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
-        estrattore = _Estrattore()
+        xhtml = pagina["tipo"] == "application/xhtml+xml"
+        estrattore = _Estrattore(xhtml)
         try:
             estrattore.feed(grezzo)
             estrattore.close()
@@ -638,7 +647,7 @@ def _componi(url_finale: str, pagina: dict) -> dict:
             titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
         except ValueError:
             # html.parser non ce la fa: ripiego senza parser (titolo perso).
-            corpo = _pulisci(_testo_senza_parser(grezzo))
+            corpo = _pulisci(_testo_senza_parser(grezzo, xhtml))
     troncato = pagina["troncato"]
     if len(corpo) > MAX_CARATTERI:
         corpo = corpo[:MAX_CARATTERI]

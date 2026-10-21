@@ -874,10 +874,35 @@ def test_parser_title_autochiuso_apre_il_titolo():
     assert "Titolo: TITOLO_X" in t and t.count("TITOLO_X") == 1 and "VIS" in t, t
 
 
+def test_title_autochiuso_dentro_template_object_canvas_apre_il_titolo():
+    """Dentro template, object e canvas valgono le regole HTML: «<title/>» apre il titolo e il
+    testo dopo non va nel corpo (R-451-1)."""
+    for nome in ("template", "object", "canvas"):
+        corpo = f"<p>a</p><{nome}><title/></{nome}>TITOLO_X".encode()
+        t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
+                                             "troncato": False})["testo"]
+        assert "Titolo: TITOLO_X" in t and t.count("TITOLO_X") == 1, t
+        assert "TITOLO_X" not in web._testo_senza_parser(corpo.decode()), nome
+
+
+def test_xhtml_autochiusi_vuoti():
+    """In application/xhtml+xml vale l'XML: «<title/>», «<script/>», «<noscript/>» sono vuoti e
+    il testo dopo resta nel corpo, sul percorso normale e nel ripiego (V-1 verifica esterna #243)."""
+    corpo = b"<p>a</p><title/>VIS1<script/>VIS2<noscript/>VIS3<iframe/>VIS4"
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8", "corpo": corpo,
+                                         "troncato": False})["testo"]
+    assert "Titolo:" not in t and all(v in t for v in ("VIS1", "VIS2", "VIS3", "VIS4")), t
+    r = web._testo_senza_parser(corpo.decode(), xhtml=True)
+    assert all(v in r for v in ("VIS1", "VIS2", "VIS3", "VIS4")), r
+    assert "VIS2" not in web._testo_senza_parser(corpo.decode())  # in HTML «<script/>» apre lo script
+
+
 def test_title_autochiuso_dentro_svg_resta_vuoto():
-    """Dentro svg o math l'autochiusura vale: «<title/>» non apre il titolo e il testo dopo
-    resta nel corpo, sul percorso normale e nel ripiego (R-449-1)."""
-    for corpo in (b"<p>a</p><svg><title/></svg>VIS", b"<p>a</p><math><title/></math>VIS"):
+    """Dentro svg o math l'autochiusura vale, e dentro script e noscript «<title/>» è testo:
+    il testo dopo resta nel corpo, sul percorso normale e nel ripiego (R-449-1, V-1 bot #243)."""
+    for corpo in (b"<p>a</p><svg><title/></svg>VIS", b"<p>a</p><math><title/></math>VIS",
+                  b"<p>a</p><noscript><title/></noscript>VIS",  # dentro noscript è testo (V-1 bot #243)
+                  b"<p>a</p><script/><title/></script>VIS"):
         t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
                                              "troncato": False})["testo"]
         assert "Titolo:" not in t and "VIS" in t, t
