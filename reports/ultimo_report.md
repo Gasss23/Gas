@@ -17,10 +17,12 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **Merge di origin/main (#237, chat Mani)** — FATTO per togliere il conflitto segnalato dalla verifica esterna #236 (V-1 MEDIA). Review #432 APPROVATO.
 - **Riserve del bot sulla PR #236** — FATTA. Errori d'avvio di un comando mai «partiti», esito «incerto» se qualcosa si rompe dopo l'approvazione, test con un processo vero fermato dal tetto di tempo, copie «conflitto» con nome unico e al massimo 20 (review #433). La MEDIA del secondo giro (l'esito di una firma scritto dal bot a metà turno della CLI finiva solo nella copia) è chiusa: l'unione ora riconosce la storia dal contenuto e mette i turni interi dell'altro dopo la nostra risposta; il lock della storia aspetta al massimo 5 s (review #434).
 - **R-434-1 (MEDIA, = V-1 bot #236 3° giro)** — FATTA: a metà turno la storia dell'altro processo non entra nella finestra del modello, l'unione avviene alla fine del turno (review #435).
-- **Test** — kernel 971 → 991 PASS, 0 FAIL; pytest tests/ 1807 passed.
+- **R-435-1 e V-3 bot #236** — FATTA: un turno finito senza risposta finale salva comunque la storia; un errore interno dopo l'approvazione resta registrato e compare su Telegram (review #436). V-2 del bot accettata come limite.
+- **Test** — kernel 971 → 992 PASS, 0 FAIL; pytest tests/ 1807 passed.
 
 ## Prossimi passi
 
-1. V-2/V-3/V-4 bot #236 (3° giro) e R-435-1 (salvataggio a fine turno senza risposta finale).
+1. R-436-1 (test del finally di run_turn dal generatore), R-436-2, R-434-2.
+2. Due turni concorrenti intrecciati (V-4 bot #236 4° giro): base sul prefisso comune.
 2. R7 / R-c4b3-3: crash tra reclamo e scrittura in storia.
 4. R-408-1: potare il registro della notte solo se il file del catalogo è stato letto.

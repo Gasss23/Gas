@@ -22,7 +22,8 @@
 - **V-1/V-2/V-3 bot #236 (prima verifica), R-431-1/2, R-430-3**: `FATTA` — review #433 APPROVATO CON RISERVE (R-433-1 MEDIA).
 - **V-1 MEDIA bot #236 (esito della firma perso a metà turno), V-2/V-3 bot #236, R-433-1/2**: `FATTA` — review #434 APPROVATO CON RISERVE.
 - **R-434-1 (MEDIA, = V-1 bot #236 3° giro), R-434-3**: `FATTA` — review #435 APPROVATO CON RISERVE: a metà turno l'unione con l'altro processo si rimanda alla fine del turno.
-- **V-2/V-3/V-4 bot #236 3° giro, R-435-1**: `DEFERITA` — prossima fetta.
+- **R-435-1, V-3 bot #236 3° giro**: `FATTA` — review #436 APPROVATO CON RISERVE (salvataggio a fine turno nel finally di run_turn; errore interno dopo il reclamo registrato e mostrato su Telegram).
+- **V-2 bot #236 3° giro**: `SALTATA` — accettata (OSError dentro communicate dopo l'avvio non realistico con pipe locali POSIX; confermato dal revisore #436).
 - **R7 / R-c4b3-3**: `DEFERITA` — prossime fette.
 
 ---
@@ -30,22 +31,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  14 +++++++++++++
- gas.py                             | 269 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |  16 +++++++++++++
+ gas.py                             | 283 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  modules/telegram/bot.py            |   4 ++++
- reports/da_mergiare.md             |  50 ++++++++++++--------------------------------
- reports/diff_sessione.md           |  13 ++++++------
- reports/handoff.md                 | 411 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------
- reports/roadmap.md                 |   6 +++---
+ reports/da_mergiare.md             |  50 +++++++++++----------------------------
+ reports/diff_sessione.md           |  13 ++++++-----
+ reports/handoff.md                 | 457 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------
+ reports/roadmap.md                 |   6 ++---
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  41 +++++++++++++++++-------------------
- tests/test_unit_kernel.py          | 295 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 10 files changed, 913 insertions(+), 194 deletions(-)
+ reports/ultimo_report.md           |  43 +++++++++++++++++-----------------
+ tests/test_unit_kernel.py          | 321 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 1002 insertions(+), 195 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+41c18c0 fix(storia,firma): salvataggio a fine turno anche senza risposta finale (R-435-1); errore interno dopo il reclamo registrato e mostrato su Telegram (V-3 bot #236)
+3294875 chore(revisore): memoria review #436 — APPROVATO CON RISERVE
+d4c57a0 docs(fine-task): report, stato e diff di sessione allineati alla #435
 4a1ac96 docs(fine-task): report e handoff — R-434-1 chiusa (#435)
 8e4584f fix(storia): a metà turno l'unione con un altro processo si rimanda alla fine del turno (R-434-1, V-1 bot #236); solo UnicodeDecodeError resta «partito» (R-434-3)
 7aa3e60 chore(revisore): memoria review #435 — APPROVATO CON RISERVE
@@ -341,11 +345,50 @@ Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto
 
 Riga contatore #435 e una lezione aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md, committate con 7aa3e60 tramite scripts/commit_memoria_revisore.sh. Lo staging di gas.py e tests/test_unit_kernel.py è rimasto com'era.
 
+### Review #436 (chat Motore) — commit 41c18c0
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Prima della review ho letto CLAUDE.md (sezioni 1, 5, 8 e 10), reports/stato_progetto.md (voce R-c4b3-4 con R-434-x e R-435-x) e .claude/agents/memoria_revisore.md (lezioni #434 e #435). Ho fatto le prove su una copia nello scratchpad, il cui gas.py è identico a quello in staging. Risultato sulla copia: suite del kernel 992 PASS, 0 FAIL.
+
+**Elementi del diff esaminati**
+- `gas.py:1185` — se il turno è a metà, l'unione viene rimandata e `_storia_rimandata` diventa True. Con `fine_turno=True` invece non si rimanda più e si unisce con `self.history + suoi`. Rischio esaminato: il flag resta "appeso" tra un turno e l'altro. Succede solo se la scrittura fallisce, e l'effetto è solo un salvataggio in più nel finally del turno dopo, che non fa danni. — ok
+- `gas.py:1281` — `_save_history(fine_turno)` rimette il flag a False solo dopo una scrittura riuscita. Se la scrittura fallisce il flag resta True e il finally riprova. Questo è coerente con R-430-1: la "base" avanza solo se la scrittura riesce. — ok
+- `gas.py:4569` — nel finally di run_turn, se c'è un'unione in sospeso, salva con `fine_turno=True` prima di `_chiudi_turno()`. Rischio esaminato: un'eccezione sollevata nel finally che salterebbe `_chiudi_turno` e gli avvisi. Non può succedere: `_blocca_storia` intercetta Exception (al massimo attende i 5 s del lock) e il corpo di `_save_history` sta tutto in un try/except Exception. GeneratorExit non arriva al salvataggio, perché il salvataggio non contiene nessun yield. Sonde fatte:
+  - run_turn con un modello finto che chiede sempre un tool (30 giri, pipeline esausta), con il bot che scrive dopo il 1° salvataggio: su disco 65 messaggi, compreso il blocco del bot, e flag False.
+  - `g.close()` dopo 4 eventi (GeneratorExit): stesso esito, 15 messaggi su disco con il blocco del bot.
+
+  — ok, ma con la riserva R-436-1 sotto.
+- `gas.py:3345` — dopo il reclamo, nell'except, si chiama `registra_esito_esecuzione(..., "[KO] errore interno dopo il reclamo: esito incerto")` dentro un try. Rischio vincoli DB: l'UPDATE in modules/memory/store.py:1929 scrive solo se `esito IS NULL`. Quindi se l'eccezione arriva dopo che l'esito vero è già stato registrato (cioè da `_diario_log_tool` in poi), il KO non lo sovrascrive: rowcount 0, si torna False, nessuna eccezione. Gli errori sqlite sono già intercettati dentro lo store e il try esterno è una difesa in più. Mutazione (testo dell'esito cambiato) → T77ac FAIL: il test morde. — ok
+- `modules/telegram/bot.py:668` — il messaggio per lo stato «incerta» è ora generico e mostra l'esito. Rischio: si perde un'informazione. Prima, nel caso del run_command scaduto (dove il kernel SA che il comando è partito), il messaggio diceva «PARTITA»; ora dice «può essere partita». — riserva cosmetica (R-436-2)
+- `tests/test_unit_kernel.py:7578` — T97i chiama direttamente `_save_history(fine_turno=True)`. — riserva: vedi R-436-1
+
+**Riserve**
+- **R-436-1 BASSA — il finally di run_turn non è coperto da nessun test.** Ho tolto le 2 righe del finally su una copia (mutazione): la suite resta 992/0, mentre la mia sonda mostra solo 7 messaggi su disco invece di 65. Proposta di test che passa dal generatore:
+  - kernel CLI e kernel bot sulla stessa root, con `gas.OpenAI` finto la cui `create` restituisce sempre una tool_call `calcola`;
+  - alla 2ª chiamata il bot fa `_storia_esito_firma(...)`;
+  - si chiama `list(cli.run_turn("ciao"))`, oppure `g.close()` dopo qualche evento per coprire anche GeneratorExit;
+  - si verifica su disco che ci siano l'ultimo tool del CLI e il blocco del bot, e che il flag sia False.
+
+  Lo script della sonda è /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/sonda.py (modi `full` e `close`).
+- **R-436-2 COSMETICA — testo del caso «tempo scaduto».** Va ripristinato per quel caso un testo del tipo «PARTITA, esito incerto», distinguendo il caso con un campo in `res` (ad esempio `motivo_incerta`) oppure passando il testo dal kernel.
+
+**Su V-2 del bot #236 (non corretto): la scelta regge.** Con pipe locali su POSIX e senza `input`, un OSError dentro communicate non è realistico. In più, dopo il reclamo l'azione non viene comunque rieseguita: l'errore resterebbe solo nel testo («mai partito» invece di «incerto»). Riscrivere 6 test non vale il costo. Va tracciata come accettata in stato_progetto.md.
+
+**Osservazione, non una riserva della fetta:** se un turno si interrompe con tool_calls in parallelo e solo una parte dei risultati arrivati (GeneratorExit a metà, oppure eccezione di un provider), il salvataggio di fine turno mette il blocco dell'altro processo dopo un assistant-con-tool_calls rimasto senza tutte le risposte. Il problema esisteva già: lo stesso accade col prossimo messaggio user. La nuova riga non crea una classe di errore nuova.
+
+**Cosa non ho verificato:**
+- La parte pytest (1807 test): non l'ho rieseguita, mi fido del numero riportato.
+- La concorrenza reale tra due processi, cioè un bot Telegram vivo e la CLI su VPS con lock fcntl su file system diversi: non si riproduce in dev, le sonde girano in un solo processo con due kernel.
+- Il giro notturno vero che chiude il generatore: ho simulato la chiusura con `g.close()`.
+
+Memoria: riga #436 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (3294875). Lo staging è intatto (gas.py, modules/telegram/bot.py, tests/test_unit_kernel.py).
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 971 → 991 PASS, 0 FAIL in locale (T77u-z, T77aa-ad, T97a-h; in CI con bwrap 2 in più). Blocco reale: `=== RIEPILOGO: 991 PASS, 0 FAIL ===`.
+tests/test_unit_kernel.py: 971 → 992 PASS, 0 FAIL in locale (T77u-z, T77aa-ad, T97a-i; in CI con bwrap 1-2 in più). Blocco reale: `=== RIEPILOGO: 992 PASS, 0 FAIL ===`.
 pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 
 ## §6 STATO CI
@@ -356,7 +399,9 @@ pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 - 4fb9dcd (con 9a32029, 4ad247c, 63e6a2f, ddc3422): handoff-check success; unit-suite e verifica-bot non lette (superate dal merge di main).
 - 2923705 (con 21a146d): unit-suite, handoff-check success; verifica-bot FAILURE (V-1 MEDIA: esito della firma a metà turno), corretta in 6548903.
 - 48561e5 (con 5b9bfc6, 5b650d3, f1ad943, 6548903): unit-suite success (kernel 992 PASS in CI), handoff-check success; verifica-bot FAILURE (V-1 MEDIA = R-434-1), corretta in 8e4584f.
-- 7aa3e60, 8e4584f: run non ancora disponibile alla scrittura dell'handoff.
+- 4a1ac96: verifica-bot annullato (head cambiata durante la verifica).
+- d4c57a0 (con 7aa3e60, 8e4584f): unit-suite success (kernel 993 PASS in CI), handoff-check success; verifica-bot SUCCESS (APPROVATO CON RISERVE, solo BASSE/COSMETICHE: decide l'operatore).
+- 3294875, 41c18c0: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -367,8 +412,11 @@ pytest `tests/`: 1807 passed (compresi i test web arrivati con main).
 - R-431-3 (COSMETICA): indice su un Optional in `__init__`.
 - V-1/V-2/V-3 bot #236 (entrambi i giri): chiuse in #433/#434.
 - R-434-1, R-434-3: chiuse in #435.
-- R-435-1 (BASSA): turno finito senza risposta finale con conflitto pendente → i suoi messaggi non vanno su disco se il processo esce.
+- R-435-1: chiusa in #436.
+- R-436-1 (BASSA): il salvataggio nel finally di run_turn è provato solo con una chiamata diretta (T97i), non passando dal generatore.
+- R-436-2 (COSMETICA): il messaggio Telegram del caso «tempo scaduto» dice «può essere partita» invece di «PARTITA».
+- Limite (V-4 bot #236 4° giro, BASSA): due turni concorrenti intrecciati possono lasciare la risposta finale del bot solo nella copia «conflitto».
 - R-435-2 (COSMETICA): compress-history con conflitto pendente non scrive ma dice ok.
-- V-2/V-3/V-4 bot #236 3° giro (BASSE/COSMETICA): Popen+communicate per il segno «partito», messaggio Telegram dell'errore interno, descrizione della PR.
+- V-3 bot #236 3° giro: chiusa in #436; V-2 accettata; V-4/V-6 (descrizione della PR): aggiornata.
 - R-434-2 (BASSA): dopo il ramo «nostra + suoi» una scrittura fallita più una concorrente possono duplicare messaggi.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
