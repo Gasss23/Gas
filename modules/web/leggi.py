@@ -100,7 +100,8 @@ _FINE_NOME = frozenset(" \t\n\r\f/>")
 # va fino a spazio, «/» o «>», oltre quello che prende _INIZIO_TAG (R-441-1: «<a=b="x>»).
 # Una «/» subito prima del «>» resta fuori dal ciclo: _AUTOCHIUSO trova la stessa fine solo
 # se il tag è autochiuso («<svg/>»; in «<svg a=x/>» la «/» è del valore). Niente gruppi di
-# cattura: in Python 3.11 dentro una ripetizione possessiva danno SystemError.
+# cattura: in Python 3.11.17, con un gruppo dentro questa ripetizione possessiva, la ricerca
+# su «<a b="1"="x>» solleva SystemError («span of capturing group is wrong»).
 _ATTRIBUTI = (r"""[^ \t\n\r\f/>]*+(?:[ \t\n\r\f]|/(?!>)|[^ \t\n\r\f/>][^ \t\n\r\f/>=]*+"""
               r"""(?:[ \t\n\r\f]*+=[ \t\n\r\f]*+(?:"[^"]*+"?|'[^']*+'?|[^ \t\n\r\f>]*+))?)*+""")
 _FINE_TAG = re.compile(_ATTRIBUTI + "/?>")
@@ -109,11 +110,12 @@ _AUTOCHIUSO = re.compile(_ATTRIBUTI + "/>")
 # Blocchi GREZZI: il contenuto è testo, non tag, e finisce alla prima chiusura con lo stesso
 # nome (come nel parser e nei browser). Gli altri nascosti si contano come fa _Estrattore:
 # dentro si leggono i tag, quindi «</svg>» in un attributo o in un commento non chiude
-# (R-442-1), e una chiusura scala solo un'apertura con lo stesso nome (V-1 bot #242). svg e math autochiusi non aprono niente (V-1 bot #239), come nei browser.
+# (R-442-1), e una chiusura scala solo un'apertura con lo stesso nome (V-1 bot #242).
+# svg e math autochiusi non aprono niente (V-1 bot #239), come nei browser.
 # Grezzi anche textarea, xmp, noembed, noframes e plaintext (fino in fondo), come in
 # html.parser: dentro non si contano aperture (R-445-1). Un grezzo autochiuso
-# («<script/>») non salta il contenuto: se è fra i nascosti conta come un'apertura, così il
-# contatore del ripiego non resta mai sotto quello del parser.
+# («<script/>») non salta il contenuto: se è fra i nascosti, o è il titolo, conta come
+# un'apertura, così il contatore del ripiego non resta mai sotto quello del parser.
 _GREZZI_RIPIEGO = frozenset({
     "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "plaintext",
 })
@@ -450,8 +452,12 @@ class _Estrattore(HTMLParser):
     def handle_startendtag(self, tag: str, attrs: list) -> None:
         # html.parser tratta «<script/>» come vuoto (apertura e subito chiusura), ma per i
         # browser apre lo script: il testo dopo è codice invisibile. Fra i nascosti solo svg
-        # e math si autochiudono davvero; gli altri contano come apertura (R-446-1).
-        if tag in self._SALTA and tag not in _AUTOCHIUDIBILI:
+        # e math si autochiudono davvero; gli altri contano come apertura (R-446-1). Anche
+        # «<title/>» apre il titolo: per i browser il testo fino a «</title>» è il titolo,
+        # non si vede nella pagina (V-2 verifica esterna #242). Dentro svg o math invece
+        # l'autochiusura vale e «<title/>» è vuoto davvero (R-449-1: icone svg).
+        dentro_svg = any(self._aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
+        if (tag in self._SALTA and tag not in _AUTOCHIUDIBILI) or (tag == "title" and not dentro_svg):
             self.handle_starttag(tag, attrs)
         else:
             super().handle_startendtag(tag, attrs)
@@ -583,7 +589,8 @@ def _togli_blocchi_nascosti(testo: str) -> str:
                 if basso[m.end()] in _FINE_NOME:
                     if nome in _GREZZI_RIPIEGO:
                         if _AUTOCHIUSO.match(basso, m.end()):
-                            if nome in _TAG_NASCOSTI:
+                            dentro_svg = any(aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
+                            if nome in _TAG_NASCOSTI or (nome == "title" and not dentro_svg):
                                 aperti[nome] = aperti.get(nome, 0) + 1
                                 salta += 1
                         elif nome == "plaintext":

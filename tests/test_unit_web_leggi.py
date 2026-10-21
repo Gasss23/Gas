@@ -857,10 +857,31 @@ def test_parser_script_autochiuso_apre_lo_script():
                             (b"<p>a</p><SCRIPT/>SEGRETO</SCRIPT>VIS", ("a", "VIS")),
                             (b"<p>a</p><noscript/>SEGRETO</noscript>VIS", ("a", "VIS")),
                             (b"<p>a</p><svg>SEGRETO</script>SEGRETO_2</svg>VIS", ("a", "VIS")),  # V-1 bot #242
+                            # una chiusura in più dopo una coppia non tocca il contatore (V-1 ve #242)
+                            (b"<p>a</p><svg>SEGRETO</svg>VIS</svg>VIS2", ("a", "VIS", "VIS2")),
+                            (b"<p>a</p><script/>SEGRETO</script>VIS</script>VIS2", ("a", "VIS", "VIS2")),
                             (b"a<svg/>VIS<math/>VIS2<br/>VIS3", ("a", "VIS", "VIS2", "VIS3"))):
         t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
                                              "troncato": False})["testo"]
         assert "SEGRETO" not in t and all(v in t for v in visibili), (corpo, t)
+
+
+def test_parser_title_autochiuso_apre_il_titolo():
+    """«<title/>X</title>» è un titolo come «<title>X</title>»: X va nella riga del titolo,
+    non nel testo della pagina (V-2 verifica esterna #242)."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8",
+                                         "corpo": b"<p>a</p><title/>TITOLO_X</title>VIS", "troncato": False})["testo"]
+    assert "Titolo: TITOLO_X" in t and t.count("TITOLO_X") == 1 and "VIS" in t, t
+
+
+def test_title_autochiuso_dentro_svg_resta_vuoto():
+    """Dentro svg o math l'autochiusura vale: «<title/>» non apre il titolo e il testo dopo
+    resta nel corpo, sul percorso normale e nel ripiego (R-449-1)."""
+    for corpo in (b"<p>a</p><svg><title/></svg>VIS", b"<p>a</p><math><title/></math>VIS"):
+        t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
+                                             "troncato": False})["testo"]
+        assert "Titolo:" not in t and "VIS" in t, t
+        assert "VIS" in web._testo_senza_parser(corpo.decode()), corpo
 
 
 @pytest.mark.parametrize("pagina", [
@@ -911,6 +932,9 @@ def test_parser_script_autochiuso_apre_lo_script():
     "<svg><noframes></svg></noframes>SEGRETO</svg>VIS",
     "<script/><svg><noscript></script>SEGRETO</noscript></svg>VIS",  # grezzo autochiuso (R-445-1)
     "<script/>SEGRETO</script>VIS",                             # per i browser «<script/>» apre lo script
+    "<title/>SEGRETO</title>VIS",                               # anche «<title/>» (V-2 ve #242)
+    "<title/><svg></title>SEGRETO</svg>VIS",
+    "<svg>SEGRETO</svg></svg>VIS",                              # chiusura in più dopo una coppia (R-449-2)
 ])
 def test_ripiego_attributi_e_commenti(pagina):
     t = web._testo_senza_parser(pagina)
