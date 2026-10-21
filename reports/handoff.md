@@ -1,52 +1,68 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-21 — avviso file delicati (R-390-1), giro notturno da Telegram (R1), firma in parallelo (5.2), compito della chat Mani
+**Sessione:** 2026-10-21 — avviso file delicati (R-390-1), giro da Telegram (R1), firma in parallelo (5.2), R7 (registro e vettori), cancello (caratteri invisibili), compito della chat Mani
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #233 (https://github.com/Gasss23/Gas/pull/233): pro e contro in `reports/da_mergiare.md`; l'agente mergia da solo solo con un APPROVATO pulito del bot (CLAUDE.md §10). Numero e URL dall'API GitHub (`create_pull_request`), `gh` assente nel container.
-2. Aprire la terza chat «Mani» col prompt in fondo a `reports/lavoro_parallelo.md`.
-3. Prova dal vero sul Mac: bot acceso, `/compito <nome>` dal telefono.
+2. C6 (bottone «Modifica» e firme a gruppi): decisione dell'operatore.
+3. Aprire la terza chat «Mani» col prompt in fondo a `reports/lavoro_parallelo.md`.
+4. Prova dal vero sul Mac: bot acceso, `/compito <nome>` dal telefono.
+5. Fetta cancello (review #398-#400): secondo passaggio nella chat claude.ai.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **R-390-1 + note verifica esterna #232**: `FATTA` — review #391 (chat Motore) APPROVATO CON RISERVE.
+- **R-390-1 + note verifica esterna #232**: `FATTA` — review #391.
 - **Compito della chat Mani** (documento): `FATTA`.
-- **R1 — giro o compito lanciato da Telegram**: `FATTA` — review #392 e #393 (chat Motore) APPROVATO CON RISERVE. V-2 verifica esterna #233 non serve (i `.sh`/`.py` finali vanno alla firma, livello 2).
-- **Avviso se il giro muore prima di partire** (R-393-1, R-394-1, V-1/V-3 verifica esterna #233 2° giro): `FATTA` — review #394 e #395 (chat Motore) APPROVATO CON RISERVE.
-- **5.2 — firma inviata in parallelo (R-c4b1-3)**: `FATTA` — review #396 (chat Motore) APPROVATO CON RISERVE.
-- **5.2 — bottone Modifica e firme a gruppi (C6)**, **R7**: `DEFERITA` — prossime fette.
+- **R1 — giro o compito lanciato da Telegram**: `FATTA` — review #392, #393.
+- **Avviso se il giro muore prima di partire**: `FATTA` — review #394, #395.
+- **5.2 — firma inviata in parallelo (R-c4b1-3)**: `FATTA` — review #396.
+- **5.2 — C6 bottone Modifica e firme a gruppi**: `SALTATA` — decisione dell'operatore (30 settembre: niente gruppi; Modifica senza disegno).
+- **R7 — registro accanto a gas.py, vettori con GAS_VECTORS_DB**: `FATTA` — review #397.
+- **Cancello — caratteri invisibili e NFKC** (V-1 verifica esterna #233 3° giro, R-398-1, R-399-1): `FATTA` — review #398, #399, #400.
+- **R7 — compiti lunghi che riprendono dopo un crash**: `DEFERITA` — serve un disegno.
+
+Tutte le review (chat Motore): APPROVATO CON RISERVE, nessuna ALTA/MEDIA.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- gas.py                             |  13 ++++++++-----
- modules/gate/gate.py               |  18 ++++++++++++++----
- modules/notte/notte.py             |  18 ++++++++++++++++--
- modules/telegram/bot.py            | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------
- reports/da_mergiare.md             |  41 +++++++++++++++++++++++++++++++++++------
- reports/diff_sessione.md           |  17 ++++++++++-------
- reports/handoff.md                 | 301 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------
- reports/lavoro_parallelo.md        |  17 ++++++++++++++++-
- reports/setup_notte.md             |   5 +++++
- reports/stato_progetto.md          |   6 ++++--
- reports/ultimo_report.md           |  29 +++++++++++++++++------------
- tests/test_unit_gate.py            |   7 +++++++
- tests/test_unit_kernel.py          |  24 ++++++++++++++++++++++++
- tests/test_unit_notte.py           | 225 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 15 files changed, 812 insertions(+), 103 deletions(-)
+ .claude/agents/memoria_revisore.md |  12 +++++++++-
+ gas.py                             |  48 ++++++++++++++++++++++++---------------
+ modules/gate/gate.py               |  31 +++++++++++++++++++++----
+ modules/notte/notte.py             |  18 +++++++++++++--
+ modules/telegram/bot.py            | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------
+ reports/da_mergiare.md             |  57 +++++++++++++++++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           |  17 ++++++++------
+ reports/handoff.md                 | 448 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------
+ reports/lavoro_parallelo.md        |  17 +++++++++++++-
+ reports/setup_notte.md             |   5 ++++
+ reports/stato_progetto.md          |   6 +++--
+ reports/ultimo_report.md           |  35 ++++++++++++++++++----------
+ tests/test_unit_gate.py            |  20 ++++++++++++++++
+ tests/test_unit_kernel.py          |  80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py           | 225 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 15 files changed, 1089 insertions(+), 118 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b32cbea fix(cancello): nome grezzo che NFKC cambia mai libero dopo una lettura (R-399-1)
+46bcd6f chore(revisore): memoria review #400 — APPROVATO CON RISERVE
+0614242 fix(cancello): nome grezzo con caratteri invisibili mai libero dopo una lettura (R-398-1)
+5ea821a chore(revisore): memoria review #399 — APPROVATO CON RISERVE
+e706955 fix(cancello): caratteri invisibili tolti anche nel confronto dei percorsi (V-1 verifica esterna #233), test del log da un'altra cartella (R-397-2/3)
+ea98089 chore(revisore): memoria review #398 — APPROVATO CON RISERVE
+0fafbe9 fix(r7): gas_debug.log sempre accanto a gas.py; i comandi dei vettori rispettano GAS_VECTORS_DB (roadmap R7)
+d576a9b chore(revisore): memoria review #397 — APPROVATO CON RISERVE
+467ddf7 docs(fine-task): report, handoff, coda da_mergiare — avviso giro, firma in parallelo (5.2)
 b49f47b fix(telegram): richiesta di firma e notifiche inviate in parallelo ai destinatari (R-c4b1-3, roadmap 5.2)
 f041652 chore(revisore): memoria review #396 — APPROVATO CON RISERVE
 73cca2d fix(notte): marcatore di avvio del giro, niente doppio avviso; nome del compito senza «-» iniziale (R-394-1, V-1/V-3 verifica esterna #233)
@@ -68,6 +84,8 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
+Nota: nei verdetti i caratteri invisibili citati dal revisore sono scritti come `<U+XXXX>` (stesso testo, solo resi visibili: il bot di verifica rifiuta i caratteri invisibili).
+
 ### Review #391 (chat Motore) — commit f12e973
 
 ## VERDETTO: APPROVATO CON RISERVE
@@ -86,7 +104,7 @@ Prima della review ho letto, nell'ordine richiesto: CLAUDE.md (sez. 5 e 8), repo
   - Esito: ok, con la riserva R-391-1.
 - modules/gate/gate.py:549 — toglie dal nome i caratteri invisibili (Unicode categoria Cf) prima di TUTTI i controlli, anche quello sul file nascosto e sull'estensione finale.
   - Rischio esaminato: un carattere invisibile che aggira i controlli.
-  - Prove: `​.bashrc`, `a.py​.txt` (così si chiude anche R-390-2), `a﻿.secret` e `a.sh
+  - Prove: `<U+200B>.bashrc`, `a.py<U+200B>.txt` (così si chiude anche R-390-2), `a<U+FEFF>.secret` e `a.sh
 .txt` danno True. `unicodedata` era già importato (modules/gate/gate.py:34). L'`except` che restituisce True resta.
   - Esito: ok.
 - tests/test_unit_gate.py:819-824 — 14 casi nuovi che coprono sia il ritorno dei tipi delicati sia i falsi allarmi tolti, più i 3 casi con caratteri invisibili. Esito: ok.
@@ -300,23 +318,152 @@ File: /home/user/Gas/modules/telegram/bot.py, /home/user/Gas/tests/test_unit_ker
 
 ---
 
+### Review #397 (chat Motore) — commit 0fafbe9
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Prima della review ho letto CLAUDE.md (sezioni 5, 8, 9 e 10), le parti di reports/stato_progetto.md che riguardano R7 e i finding aperti, e le lezioni pertinenti della mia memoria (quelle sulla cartella di avvio e sul log nella root, review #306 e #310). Il diff non tocca la cronologia né `_get_window`, non simula l'output dei tool, lascia intatti il cap di 10 iterazioni e il fallback dei provider.
+
+**Elementi del diff esaminati**
+- `gas.py:48` — `_LOG_PATH = Path(__file__).resolve().parent / "gas_debug.log"`. Rischio esaminato: il log finisce in un posto diverso a seconda della cartella da cui parte Gas. Esito: ok. Ho importato gas da una cartella estranea e il gestore del log scrive su /home/user/Gas/gas_debug.log. Il log resta ignorato da git (.gitignore:10 e .gitignore:49). Il timer notturno (scripts/notte/com.gas.notte.plist:15) fa già `cd "$HOME/Gas"`, quindi per lui il percorso non cambia; il bot Telegram avviato da un'altra cartella ne guadagna.
+- `gas.py:53` — il gestore del log (RotatingFileHandler) ora apre `str(_LOG_PATH)`. Rischio esaminato: crash all'import. Esito: ok. Il rischio esiste già oggi con la cartella di avvio; vedi il rischio escluso.
+- `gas.py:4243` — il controllo Log di doctor ora guarda `_LOG_PATH`. Rischio esaminato: doctor lanciato su un'altra root misura il file sbagliato. Esito: ok. Ora misura il file che viene scritto davvero, cioè il comportamento corretto.
+- `gas.py:856` — `_percorso_vettori`, usato dal kernel (gas.py:946), dalla sonda di doctor (gas.py:4376), da `reindex` (gas.py:4557), da `calibrate_vectors_cmd` (gas.py:4698) e da `eval_vectors_cmd` (gas.py:4744). Rischio esaminato: la nuova funzione non deve cambiare il comportamento del kernel. Esito: ok. È lo stesso codice di prima, solo spostato (strip, resolve, default). T37d e T93b passano.
+- `gas.py:2049` — `_e_log_kernel`, invariato a parte la docstring. Rischio esaminato: effetto su cerca_testo ed elenca quando la root non è la cartella di gas.py. Esito: riserva (R-397-1).
+- `tests/test_unit_kernel.py:6977` — T93a. Rischio esaminato: il test deve fallire se torna il bug. Esito: riserva (R-397-2).
+- `tests/test_unit_kernel.py:6985` — T93b. Usa un VectorStore finto, salva e ripristina la variabile d'ambiente nel finally e cancella la cartella temporanea. Esito: ok. Se uno dei tre comandi torna al percorso predefinito, il test fallisce: la condizione `all(p == _alt93.resolve())` non regge più.
+
+**Riproduzioni**
+- Suite del kernel lanciata dalla radice del repo: 954 PASS, 0 FAIL.
+- Sonda con root temporanea in una cartella estranea: il gestore del log punta a /home/user/Gas/gas_debug.log. Sia il file `<root>/gas_debug.log` sia il log vero risultano «log del kernel».
+- Mutazione: gestore di nuovo con percorso relativo `"gas_debug.log"`. Lanciata dalla cartella del codice: 954/0, cioè la mutazione passa. Lanciata da /tmp: T93a FAIL.
+
+**Finding**
+- **R-397-1 (chat Motore) BASSA**: in gas.py:2066 la regola «cartella == root» di `_e_log_kernel` diventa obsoleta quando la root non coincide con la cartella di gas.py, perché il log vero non sta più lì. Un file dell'utente `<root>/gas_debug.log` viene saltato nella ricerca su cartella e contato come log del kernel. L'ho provato: con la root temporanea, cerca_testo risponde «1 log del kernel (gas_debug.log) non cercati» e il log vero è altrove. Nel caso normale (root = cartella del repo, come per il timer notturno) non cambia nulla. Correzione: tenere solo la regola che legge la cartella vera del log (baseFilename), oppure confrontare con `_LOG_PATH.parent`. Così si chiude anche il residuo che avevo dichiarato nella review #310.
+- **R-397-2 (chat Motore) BASSA**: T93a non scopre il bug in CI, perché la CI lancia `python tests/test_unit_kernel.py` dalla radice del repo (.github/workflows/ci.yml:97). Lì percorso relativo e assoluto coincidono, e la mutazione «gestore relativo» passa. Il test fallisce solo se lanciato da un'altra cartella. Correzione: un sottoprocesso con cwd in una cartella temporanea che esegue `import gas` e stampa il baseFilename del gestore, con l'atteso uguale alla cartella del repo.
+- **R-397-3 (chat Motore) COSMETICA**: la riga Config VECTORS_DB di doctor (gas.py:4434) calcola ancora il percorso a mano. Lo mostra senza resolve, quindi un percorso relativo appare diverso da quello che il codice usa davvero. Con la variabile fatta di soli spazi mostra il predefinito ma senza l'etichetta «(default)». Basta usare `_percorso_vettori(root)` anche lì.
+
+**Rischio escluso (non verificato)**
+- Cartella di gas.py non scrivibile, per esempio un VPS con il codice installato in sola lettura e Gas che gira con un altro utente. In quel caso l'apertura del log all'import solleva l'errore e Gas si ferma, senza ripiego. Il rischio c'era già prima con la cartella di avvio, ma ora non si aggira più cambiando cartella. Non l'ho riprodotto: in sviluppo il repo è scrivibile. Va tenuto presente al deploy sul VPS.
+- launchd sul Mac non l'ho eseguito: ho solo letto il plist.
+
+Memoria aggiornata con la riga #397 e una lezione nuova (un test sul percorso indipendente dalla cartella di avvio va lanciato da una cartella diversa da quella del codice), committata in d576a9b. File: /home/user/Gas/.claude/agents/memoria_revisore.md
+
+---
+
+### Review #398 (chat Motore) — commit e706955
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #398 (chat Motore), fetta di sicurezza sul cancello. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 9), la sezione di reports/stato_progetto.md su R1/5.2 e la parte finale della memoria del revisore. Nel diff non ci sono slicing della history né simulazioni di tool.
+
+**Elementi del diff esaminati**
+- `modules/gate/gate.py:180` — dopo NFKC toglie i caratteri Unicode Cf (invisibili). Rischio esaminato: che renda più permissivo qualcuno degli usi. Ho messo a confronto il gate.py di HEAD con quello staged sugli stessi percorsi:
+  - `run.sh`+ZWSP e `x.s`+ZWSP+`h`: livello 1 → 2.
+  - `.e`+ZWSP+`nv` e `docs/ke`+ZWSP+`ys`: livello 1 (lettura SAFE) → 3 (lettura DENY).
+  - `<U+200B>/etc/passwd`: ora «percorso assoluto», quindi DENY. `.<U+200B>./x`: ora «../x», cioè traversal, quindi DENY. Togliere i Cf non può eliminare un `/` né un `..`: crea solo percorsi assoluti o traversal, quindi è più stretto.
+  - `_in_denylist` (match per prefisso) e `_nome_da_segreto`: più stretti. `prod.env`+ZWSP+`x` resta DENY.
+  - Esito: ok per la lettura, per la denylist, per livello_scrittura e per run_command.
+- `modules/gate/gate.py:600` — `libero_dopo_lettura`: è l'unico caso PIÙ permissivo, vedi R-398-1. Esito: riserva.
+- `tests/test_unit_gate.py:472` e `tests/test_unit_gate.py:489` — i casi nuovi di livello 3 e 2 con caratteri invisibili. Riprodotto: 770 passed. Esito: ok.
+- `tests/test_unit_kernel.py:6985` — T93a2 importa gas in un sottoprocesso con cwd temporanea. Mutazione: con `_LOG_PATH = Path("gas_debug.log")` l'handler finisce nella cartella temporanea, quindi il test fallisce e discrimina. Riprodotto: kernel 955 PASS, 0 FAIL. Esito: ok.
+- `gas.py:4434` — doctor usa `_percorso_vettori(root)` (variabile d'ambiente ripulita e risolta), e «(default)» guarda la variabile ripulita dagli spazi. È coerente con `gas.py:856`. Esito: ok.
+
+**Finding**
+- **R-398-1 (chat Motore) BASSA.**
+  - Cosa succede: `libero_dopo_lettura` (`modules/gate/gate.py:600`) ora dà True a `notes/a.m<U+200B>d` e `notes/a.t<U+200B>xt`; con HEAD dava False. Il nome ripulito finisce con .md/.txt, quello del file vero no.
+  - Perché il kernel non lo ferma: il suo ricontrollo sul file vero (`gas.py:2533`) passa di nuovo da `_normalize_path`, quindi toglie gli stessi caratteri e lascia passare.
+  - Danno: basso. È un file di livello 1, con un'estensione che nessun interprete esegue, ancora soggetto al controllo di git check-ignore. Però contraddice la regola «a finestra contaminata restano liberi solo i documenti md/txt/csv».
+  - Correzione proposta: in `libero_dopo_lettura`, return False se `relative_path` grezzo contiene un carattere Cf.
+- **R-398-2 (chat Motore) COSMETICA.**
+  - La pulizia dei Cf in `sembra_delicato` (`modules/gate/gate.py:555`) ora è ridondante.
+  - Il controllo per sottostringa sul comando intero in `gate_classify` non toglie i Cf, quindi `--file=.e`+ZWSP+`nv` passa. Non è una regressione: il file vero ha un nome diverso da `.env`.
+
+**Rischio escluso:** non ho provato una scrittura vera da parte del modello di un file con Cf nel nome attraverso `run_turn`, dentro la sandbox e con GAS_CWD diversa dalla root. Ho verificato solo le funzioni del gate e il percorso di codice del kernel (`gas.py:2533`), senza un giro agentico completo. Non ho verificato nemmeno il comportamento su macOS/APFS con nomi che contengono Cf (normalizzazione del filesystem): non è riproducibile qui.
+
+**Memoria:** aggiunta la riga #398 con la lezione «una normalizzazione solo per il confronto rende più stretti i controlli che negano ma più larghi quelli che concedono: ogni funzione che concede va riprovata sul nome grezzo». Committata con `scripts/commit_memoria_revisore.sh` (ea98089), in /home/user/Gas/.claude/agents/memoria_revisore.md.
+
+Ricordati di tracciare R-398-1 e R-398-2 in /home/user/Gas/reports/stato_progetto.md prima del commit.
+
+---
+
+### Review #399 (chat Motore) — commit 0614242
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #399 (chat Motore): chiude R-398-1. Diff staged: modules/gate/gate.py (+5), tests/test_unit_gate.py (+4).
+
+**Cosa ho controllato nel diff**
+- modules/gate/gate.py:592 — `libero_dopo_lettura` restituisce False se il `relative_path` grezzo contiene un carattere Unicode Cf. A quel punto `rel` è sempre una stringa, perché `livello_scrittura` (modules/gate/gate.py:431) dà 3 a tutto ciò che non è una stringa. Rischio esaminato: restano scoperti altri caratteri invisibili? Ho provato zero-width space, word joiner, soft hyphen, BOM, RLO, U+180E e un tag char da 4 byte: tutti danno False. «notes/a.md» dà ancora True. Esito: ok.
+- tests/test_unit_gate.py:794 — 3 casi nuovi (zero-width space nell'estensione .md e .txt, BOM nella cartella). Rischio esaminato: il test distingue la versione corretta da quella vecchia? Sì: a HEAD gli stessi nomi davano True (verificato sul file a HEAD). Esito: ok.
+- gas.py:2533 (contesto) — il ricontrollo del kernel usa il nome risolto da gas.py:1970 `_file_rel_root`. Rischio esaminato: il nome risolto perde i Cf? Sonda con root temporanea: il symlink «notes/link.md» punta a «notes/a.m<U+200B>d», il nome risolto è 'notes/a.m<U+200B>d' e la funzione dà False. Esito: ok, anche il kernel nega.
+
+**Test riprodotti**: gate 773 passed, kernel 955 PASS / 0 FAIL.
+
+**Riserve**
+- R-399-1 (chat Motore) BASSA, già presente prima di questa modifica (e anche prima di #398): è lo stesso tipo di buco, ma passa dalla normalizzazione NFKC (che unifica le varianti di uno stesso carattere). I nomi «notes/a.<U+FF4D>d» e «notes/a.<U+FF54>xt» (lettere a larghezza piena nell'estensione) danno True sia sul nome sia nel ricontrollo del kernel, ma il file vero non è un .md/.txt. Verificato anche sul codice a HEAD e prima di e706955. Il danno è basso (livello 1, estensione non eseguibile), ma contraddice la regola «solo documenti md/txt/csv». Correzione: controllare l'estensione sul nome GREZZO, oppure negare se `rel != unicodedata.normalize("NFKC", rel)`. Il secondo vale per tutto il nome e copre anche i Cf.
+- R-399-2 (chat Motore) COSMETICA: i test coprono solo zero-width space e BOM. Mancano un caso NFKC e un test del kernel con un symlink che punta a un nome con Cf.
+
+**Cosa non ho verificato**: il comportamento su filesystem che normalizzano i nomi da sé (APFS/HFS+ sul Mac, NTFS), che potrebbero far coincidere il nome grezzo con un file diverso. In dev c'è solo Linux/ext4, quindi non si può riprodurre.
+
+**Memoria**: riga #399 con la lezione aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md e committata (5ea821a). Lezione: se una normalizzazione serve solo per il confronto, chiudere il buco togliendo una sola categoria (Cf) lascia aperte le altre trasformazioni (NFKC). Nelle funzioni che concedono va confrontato l'esito sul nome grezzo, invece di elencare categorie.
+
+---
+
+### Review #400 (chat Motore) — commit b32cbea
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #400 (chat Motore), sul diff staged. Chiude R-399-1. Ho letto prima CLAUDE.md (sezioni 1, 5, 8, 9, 10), la memoria del revisore e i finding #398 e #399.
+
+**Elementi del diff esaminati**
+- `modules/gate/gate.py:593` — `libero_dopo_lettura` ora nega anche quando `NFKC(rel) != rel`.
+  - Rischio esaminato: altri modi di aggirare il controllo sull'estensione.
+  - Sonde: «a.<U+FF4D>d», «a.<U+217F>d», «a<U+3002>md», «a.<U+24DC>d», «<U+FB01>le.md» danno tutte False.
+  - Ricerca su tutti i caratteri che NFKC lascia invariati ma che casefold porta ad ASCII (ß, İ, ǰ, ẖ…), messi in ogni posizione delle estensioni md/txt/csv: 0 casi True.
+  - Esito: ok.
+- `modules/gate/gate.py:593` — serve ancora il controllo Cf separato? Sì: NFKC NON toglie i Cf (`NFKC("a<U+200B>") == "a<U+200B>"`, verificato). Senza quel controllo «a.m<U+200B>d» tornerebbe libero. Esito: ok, va tenuto.
+- `tests/test_unit_gate.py:798` — 2 casi a larghezza piena negati e «caffè» (NFC) libero. Rischio esaminato: se il test distingue il codice giusto da quello sbagliato. A HEAD i casi a larghezza piena davano True (sonda della review #399), quindi i 2 nuovi casi falliscono senza la modifica. Esito: ok.
+- Contesto, `gas.py:2533` — il ricontrollo del kernel passa il nome risolto dal filesystem a `libero_dopo_lettura`. Un nome NFD (accento decomposto: file creato su HFS+, oppure symlink verso un nome NFD) va quindi alla firma. È più stretto, mai più largo. Esito: riserva R-400-1.
+
+**Riprodotti**: gate 776 passed, kernel 955 PASS / 0 FAIL.
+
+**Finding**
+- **R-400-1 (chat Motore) BASSA**: falsi negativi accettabili, perché l'azione va solo alla firma e non viene negata.
+  - Nomi NFD come «caffè.md» danno False (sondato).
+  - Lo stesso vale per nomi con «…», «ª», «º» o legature.
+  - Nel caso normale non succede: il modello scrive NFC, e su Linux/APFS il nome viene conservato così com'è.
+  - Da dichiarare nel commento del codice.
+- **R-400-2 (chat Motore) COSMETICA**: manca un caso di test NFD (False atteso) e manca il symlink nel kernel. La parte symlink resta R-399-2.
+
+**Rischio escluso**: non ho verificato davvero il comportamento su macOS (APFS/HFS+), perché in dev c'è solo Linux. Per lo stesso motivo non ho provato il ricontrollo del kernel con un symlink reale verso un nome NFD: l'ho ragionato sul codice.
+
+**Memoria**: la riga #400 (chat Motore) è in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da sola (46bcd6f). Nessuna lezione nuova.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 950 → 952 PASS, 0 FAIL (T77o2). Blocco reale: `=== RIEPILOGO: 952 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_notte.py`: `103 passed in 3.01s`; `tests/test_unit_gate.py`: 760 casi (745 a inizio sessione).
+tests/test_unit_kernel.py in locale: 950 → 955 PASS, 0 FAIL (T77o2, T93a, T93a2, T93b). Blocco reale: `=== RIEPILOGO: 955 PASS, 0 FAIL ===`.
+pytest `tests/test_unit_gate.py`: `776 passed` (745 a inizio sessione); `tests/test_unit_notte.py`: `103 passed`. pytest intero `1627 passed in 180.55s` sul commit 0fafbe9 (prima delle fette cancello).
 
 ## §6 STATO CI
 
-CI NON VERIFICATA (gh assente nel container). f12e973, caf5bdd: run del primo push della PR #233 (letta dalla verifica esterna: unit-suite success, handoff-check failure per handoff mancante). 9793154: run letta dalla verifica esterna #233 (2° giro): handoff-check success, unit-suite in corso. 18c4628, 5a21053 e memorie: nessuna run su questi SHA (pushati insieme a 9793154). 1678804, 73cca2d, b49f47b e memorie: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA da qui (gh assente nel container); dati dai verdetti della verifica esterna e del bot su #233:
+- caf5bdd (con f12e973): unit-suite success, handoff-check failure (handoff mancante).
+- 9793154 (con 18c4628, 5a21053 e memorie): unit-suite success, handoff-check success.
+- 73cca2d (con 1678804 e memorie): handoff-check success.
+- b49f47b: handoff-check failure (handoff non aggiornato in quel push).
+- 467ddf7: unit-suite success, handoff-check success; verifica-bot failure per caratteri invisibili nel verdetto (APPROVATO CON RISERVE nel testo).
+- 0fafbe9, e706955, 0614242, b32cbea e memorie: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-391-1 (chat Motore, BASSA): `a.html.txt`, `x.js.md`, `a.ts.txt` non più segnalati (scelta dichiarata).
-- R-391-2 (chat Motore, COSMETICA): `env` interno su `dev.env.md`; segni combinanti non tolti.
-- R-392-3 (chat Motore, COSMETICA): compito oltre MAX_COMPITI «non trovato»; messaggio modificato rilancia.
-- R-393-2 (chat Motore, COSMETICA): log senza rotazione; `run.sh` + invisibile finale (la riga di log mancante è chiusa da #394).
-- R-395-1 (chat Motore, BASSA): nomi del catalogo con «-»/«_» iniziale non lanciabili da Telegram.
-- R-395-2 (chat Motore, COSMETICA): avviso doppio se il mkdir fallisce; avviso perso se un giro del timer parte nello stesso istante.
-- R-396-1 (chat Motore, BASSA): tetto ~15 s non assoluto (DNS, >8 destinatari).
-- R-396-2 (chat Motore, COSMETICA): doppio warning per destinatario che solleva.
-- Verifica esterna #233: V-4/V-5 (cosmetiche, Cc non tolti, = R-391-2); 2° giro V-2 (= R-391-1).
+- R-391-1 (BASSA), R-391-2 (COSMETICA): avviso file delicati, scelte dichiarate.
+- R-392-3, R-393-2 (COSMETICHE): MAX_COMPITI con /compito; log senza rotazione.
+- R-395-1 (BASSA), R-395-2 (COSMETICA): nomi del catalogo con «-»/«_» iniziale; avvisi doppi/persi rari.
+- R-396-1 (BASSA), R-396-2 (COSMETICA): tetto ~15 s non assoluto; doppio warning.
+- R-397-1 (BASSA): `<root>/gas_debug.log` trattato come log se root ≠ cartella di gas.py.
+- R-398-2, R-399-2, R-400-2 (COSMETICHE): Cf ridondante, test symlink/NFD mancanti.
+- R-400-1 (BASSA): nomi NFD dopo una lettura alla firma (accettato).
+- Verifica esterna #233: V-5 3° giro (giro ucciso dopo il marcatore: nessun avviso), V-2 bot (marcatore condiviso col timer) — BASSE.

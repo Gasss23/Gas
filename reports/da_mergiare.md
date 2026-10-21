@@ -2,7 +2,11 @@
 
 > Decisione dell'operatore (2026-10-21): la chat Motore lavora di fila sulla roadmap; qui si accumula ciò che è pronto, una voce per fetta, con i pro e i contro del merge. L'operatore passa 1-2 volte al giorno, legge questa pagina e scrive «mergia #N» oppure «no». Le voci mergiate si tolgono.
 
+> **Decisione per te (C6, bottone «Modifica» e firme a gruppi):** il 30 settembre avevi deciso «una firma per ogni azione, niente gruppi»; il «Modifica» non ha ancora un disegno. Non lo costruisco finché non dici: (a) lasciamo così, (b) disegnamo il «Modifica» (cosa si può cambiare e come si rifirma), (c) anche le firme a gruppi.
+
 ## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #232)
+
+> **Bot di verifica su #233:** verdetto APPROVATO CON RISERVE ma check rosso per «caratteri invisibili nel testo» (li avevo incollati nei report citando i verdetti): ora sono scritti come `<U+200B>`; il bot va rilanciato sul nuovo commit.
 
 ### 1. Avviso sui file delicati: chiavi e database tornano, via le parole ambigue
 - **Cosa:** l'avviso «file nuovo che sembra delicato» torna a scattare su `server.pem.txt`, `dump.sql.txt`, `prod.env.txt`, `vault.kdbx.txt`; non scatta più su `customer.service.md`, `manuale.html.pdf`, `node.js.md`; i caratteri invisibili nel nome non lo aggirano più.
@@ -37,4 +41,16 @@
 - **Cosa:** il messaggio con i bottoni Approva/Rifiuta (e le notifiche) parte verso tutti i destinatari insieme, non uno dopo l'altro.
 - **Pro:** con più telefoni autorizzati il turno di Gas non resta fermo 15 secondi per ciascuno; regola di sicurezza invariata (se non arriva a nessuno la firma è revocata).
 - **Contro:** il tetto di ~15 s non è assoluto (rete lenta, oltre 8 destinatari: R-396-1, bassa).
-- **Controlli:** revisore #396 (chat Motore) APPROVATO CON RISERVE; kernel 952 PASS.
+- **Controlli:** revisore #396 (chat Motore) APPROVATO CON RISERVE; kernel 952 PASS. Verifica esterna #233 (3° giro) APPROVATO CON RISERVE, nessuna ALTA/MEDIA, «mergiabile» ([commento](https://github.com/Gasss23/Gas/pull/233#issuecomment-6314696663)).
+
+### 7. Registro e archivio dei vettori sempre al posto giusto (roadmap R7)
+- **Cosa:** `gas_debug.log` sta sempre accanto a `gas.py`, anche se Gas parte da un'altra cartella; `reindex`, `calibrate-vectors`, `eval-vectors` e `doctor` usano l'archivio dei vettori indicato da `GAS_VECTORS_DB`, come il resto di Gas.
+- **Pro:** chiude due voci di R7; il bot Telegram avviato da un'altra cartella non sparpaglia più il registro.
+- **Contro:** se la cartella di Gas non è scrivibile (es. VPS in sola lettura) Gas non parte (rischio già presente, ora senza scappatoia); con una cartella di lavoro diversa, un file utente `gas_debug.log` lì viene trattato come registro (R-397-1, bassa).
+- **Controlli:** revisori #397 e #398 (chat Motore) APPROVATO CON RISERVE; kernel 955 PASS; pytest intero 1627 passed.
+
+### 8. Cancello: caratteri invisibili e lettere «travestite» nei nomi dei file (sicurezza)
+- **Cosa:** un nome come `run.sh` o `.env` con dentro un carattere invisibile non scivola più al livello libero (prima `.env` con un invisibile era libero); dopo una lettura, un nome che sembra `.md` ma non lo è davvero (invisibili, lettere a larghezza piena) va alla firma.
+- **Pro:** chiude V-1 della verifica esterna #233 (3° giro), R-398-1 e R-399-1; il cancello diventa solo più stretto.
+- **Contro:** nomi con accenti scritti «scomposti» (file nati su vecchi Mac) dopo una lettura chiedono la firma (R-400-1, bassa). Fetta di sicurezza: secondo passaggio nella chat claude.ai consigliato.
+- **Controlli:** revisori #398, #399, #400 (chat Motore) APPROVATO CON RISERVE; gate 776 passed, kernel 955 PASS.
