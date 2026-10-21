@@ -216,7 +216,7 @@ Tutto da zero. Lista completa al capitolo 8.
 - ⏳ Notifica su Telegram come strumento di Gas.
 - ⏳ **Allarme urgente sul telefono** (nuovo, 19 ottobre): **solo gratuito** (es. ntfy a priorità massima, che suona anche in silenzioso). Twilio scartato perché a pagamento. 👤 Motivi dell'allarme e tetto al giorno: da decidere insieme.
 - ⏳ Le prove M1, M2 e M4 scritte come test veri nel repo.
-- ⏳ Bottone "Modifica" e firme a gruppi (fetta C6 del cancello).
+- ❌ Bottone "Modifica" e firme a gruppi (fetta C6 del cancello): l'operatore ha scelto «lasciamo così» il 21 ottobre (una firma per azione).
 - ⏳ **Regole fisse** (disegno della memoria di giugno, mai costruito): chi non contattare, tono, canali, cosa vendi. 👤 Le scrive Gas-operatore.
 - ⏳ Dati di persone vere: valgono la regola dei modelli del capitolo 0 (solo modelli forti) e il GDPR (capitolo 6).
 - ⏳ Pulizie collegate: gli argomenti degli strumenti finiscono nel diario e nel promemoria anche quando contengono testo di terzi (F-diario-args, F-args-pin, fetta "C-pin"). La correzione del diario di settembre vale solo in avanti: il testo di terzi già scritto resta.
@@ -228,7 +228,7 @@ Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decision
 - ⏳ Tetti di tempo duri.
 - ⏳ Tre stati per un comando o un'azione: non partita, finita, partita con esito incerto (R-c4b3-5, R-c4b3-3).
 - ⏳ Due processi che scrivono la stessa cronologia (R-c4b3-4; nota 6b della review #38).
-- ⏳ L'esito di un compito notturno è dedotto dall'inizio del testo: un file che comincia con "Operazione negata" falsa i conteggi (R-222-2).
+- ✅ L'esito di un compito notturno non è più dedotto dall'inizio del testo: lo dice il kernel (R-222-2, review #425, 21 ottobre).
 - 🅿️ Un file di stato con roadmap attiva e compiti del giorno (idea "Scratchpad" del Blueprint: si valuta solo a roadmap finita).
 
 ### R8 — Voce "Jarvis" ⏳ 🔒 R5
@@ -334,7 +334,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 - R-223-2 (deciso il 19 ottobre): si tiene la lista dei file vietati, decisa insieme a Gas-operatore. In più: ✅ segnalazione **solo** quando nasce un file nuovo che sembra delicato (chiavi, configurazioni, script); i documenti normali passano in silenzio (nel codice dal 20 ottobre, PR dopo #228).
 - R-224-2 (cosmetica): nome del compito con spazio o punto finale.
 - R-251-1 (bassa): nomi alternativi dello stesso file su Windows, che non usiamo.
-- R-222-2: esito dedotto dall'inizio del testo (vedi R7).
+- ✅ R-222-2: esito dedotto dall'inizio del testo — chiusa (review #425).
 - Tetti di tempo non duri. Il riepilogo Telegram si spegne solo con `0`.
 - Disco senza blocco dei file: il giro si ferma e avvisa; da riprovare sul server.
 - Nessun timer per Linux: esiste solo quello del Mac.

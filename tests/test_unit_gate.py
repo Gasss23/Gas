@@ -873,3 +873,11 @@ def test_r404_delicato_e_run_command_con_invisibili():
     assert sembra_delicato("dati/x\u200bsecret.md") is True
     assert gate_classify("run_command", {"command": "cat .e\u200bnv"}) == GateClass.DENY
     assert gate_classify("run_command", {"command": "cat .e\U000e0000nv"}) == GateClass.DENY
+
+
+@pytest.mark.parametrize("path", ["\t", "\u200b", "\u200b\u200b", "./\u200b", " ", "."])
+def test_r405_read_file_nome_vuoto_negato(path):
+    """R-405-1: read_file su un nome che dopo la normalizzazione è vuoto (o la root)
+    → DENY. lettura_consentita resta True su «.»: la usano gli strumenti di cartella
+    (cerca_testo, elenca_cartella) per la root."""
+    assert gate_classify("read_file", {"relative_path": path}) == GateClass.DENY

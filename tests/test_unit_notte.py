@@ -4,6 +4,7 @@ Il kernel vero gira su root temporanee col client API finto (come la suite del
 kernel); Telegram è spento e il trasporto HTTP bloccato.
 """
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -755,7 +756,10 @@ def test_riepilogo_telegram_inviato_a_lock_rilasciato(monkeypatch, dirs):
     def _post(base_url, method, payload=None, timeout=70):
         with open(root / ".gas_notte" / "lock", "w") as f:
             try:
-                notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_EX | notte.fcntl.LOCK_NB)
+                # R-404-2: lock CONDIVISO. Dalla #396 i destinatari ricevono in parallelo:
+                # due LOCK_EX di questo stesso test si escludevano a vicenda (1 su 20);
+                # un LOCK_SH fallisce lo stesso se il giro tiene ancora il suo LOCK_EX.
+                notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_SH | notte.fcntl.LOCK_NB)
                 liberi.append(True)
             except OSError:
                 liberi.append(False)
@@ -1188,16 +1192,38 @@ def test_scadenza_firma_valori_non_validi(tmp_path, monkeypatch):
     notte._firma_notturna(_Rotto())  # mai eccezioni
 
 
-def test_firme_scadute_chiuse_e_negli_avvisi(monkeypatch, dirs):
+def test_r222_2_testo_letto_non_falsa_i_conteggi(monkeypatch, dirs):
+    """R-222-2: un file che COMINCIA con la frase di un diniego o di un'attesa di
+    firma non conta come azione negata o in attesa; un diniego vero del kernel
+    (lettura fuori dalla cartella) conta ancora."""
+    root, fuori = dirs
+    (root / "finto.txt").write_text("Operazione negata: finta\n", encoding="utf-8")
+    (root / "finto2.txt").write_text("Azione in attesa di approvazione umana (ID: z).\n",
+                                     encoding="utf-8")
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    script = _Script({"p": [[("read_file", json.dumps({"relative_path": "finto.txt"}))],
+                            [("leggi_righe", json.dumps({"relative_path": "finto2.txt",
+                                                         "da": 1, "a": 1}))],
+                            [("read_file", json.dumps({"relative_path": "../fuori.txt"}))],
+                            "fatto"]})
+    _giro(monkeypatch, root, cat, script)
+    riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "negate: 1 · in attesa della tua firma su Telegram: 0" in riep
+
+
+def test_firme_scadute_chiuse_e_negli_avvisi(monkeypatch, dirs, caplog):
     """C5: a fine giro le richieste di firma scadute vengono chiuse (restano per
-    audit) e il loro numero entra negli avvisi del riepilogo del mattino."""
+    audit) e il loro numero entra negli avvisi del riepilogo del mattino e, una
+    volta sola, in gas_debug.log (R-417-1)."""
     from modules.memory import MemoryStore, default_db_path
     root, fuori = dirs
     mem = MemoryStore(default_db_path(root))
     aid = mem.enqueue_approval("send_email", {"to": "a@example.com"}, timeout_secs=-1)
     viva = mem.enqueue_approval("send_email", {"to": "b@example.com"})
     cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
-    _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]}))
+    with caplog.at_level(logging.WARNING):
+        _giro(monkeypatch, root, cat, _Script({"p": ["fatto"]}))
+    assert sum("firma scaduta/e" in r.getMessage() for r in caplog.records) == 1
     assert mem.get_approval(aid)["stato"] == "expired"
     assert mem.get_approval(viva)["stato"] == "pending"
     riep = (root / ".gas_notte" / "ultimo_giro.md").read_text()
@@ -1494,3 +1520,328 @@ def test_run_bot_senza_username(monkeypatch, tmp_path):
     assert _tg.run_bot(str(tmp_path)) == 0
     assert _tg._BOT_USERNAME is None
     assert _tg.comando_giro("/notte@QualsiasiBot") == ("notte", None)
+
+
+# ── R7: ripresa dei compiti rimasti a metà dopo un crash ─────────────────────
+
+class _KCrash:
+    """Kernel finto: il compito «lungo» fa crollare il processo a metà (BaseException,
+    come un kill), gli altri finiscono."""
+    def __init__(self, visti, crash=True):
+        self.visti, self.crash, self.history = visti, crash, []
+
+    def _diario_log(self, *a, **k):
+        pass
+
+    def run_turn(self, prompt):
+        self.visti.append(prompt)
+        yield {"type": "tool_res", "output": "ok"}
+        if self.crash and prompt.startswith("lungo"):
+            raise KeyboardInterrupt("crash simulato")
+        yield {"type": "final", "content": "fatto"}
+
+
+def _cat_r7(fuori):
+    return _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: breve
+    prompt: "breve"
+  - nome: lungo
+    prompt: "lungo"
+""")
+
+
+def test_r7_crash_poi_ripresa_dopo_gli_altri(dirs):
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    visti = []
+    with pytest.raises(KeyboardInterrupt):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti))
+    reg = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
+    assert reg["lungo"]["tentativi"] == 1 and "breve" not in reg
+    # giro dopo: prima «breve» (mai interrotto), poi «lungo» con la nota di ripresa
+    # (V-1 verifica esterna #234: i compiti sani non aspettano quelli che crashano)
+    visti2 = []
+    rc = esegui_notte(str(root), catalogo=cat,
+                      kernel_factory=lambda r: _KCrash(visti2, crash=False))
+    assert rc == 0
+    assert visti2[0] == "breve"
+    assert visti2[1].startswith("lungo") and notte.NOTA_RIPRESA in visti2[1]
+    assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
+    testo = (root / ".gas_notte" / "ultimo_giro.md").read_text()
+    assert "'lungo' ripreso" in testo
+
+
+def test_r7_oltre_max_tentativi_saltato_e_azzerato(dirs):
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps(
+        {"lungo": {"tentativi": notte.MAX_TENTATIVI, "inizio": "x"}}))
+    visti = []
+    # R-406-1: il salto conta come ko (exit 1)
+    assert esegui_notte(str(root), catalogo=cat,
+                        kernel_factory=lambda r: _KCrash(visti, crash=False)) == 1
+    assert visti == ["breve"]
+    assert "interrotto 3 volte" in (nd / "ultimo_giro.md").read_text()
+    # R-419-1: conto azzerato ma il compito resta «sospetto»
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {
+        "lungo": {"tentativi": 0, "inizio": "x", "sospetto": True}}
+    # il giro dopo ci riprova da capo, senza nota, ma in coda; finito bene → tolto
+    visti2 = []
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti2, crash=False))
+    assert visti2 == ["breve", "lungo"]
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
+
+
+def test_r7_ko_e_tempo_scaduto_non_sono_crash(dirs):
+    """Un compito finito male (eccezione normale) esce dal registro: niente ripresa."""
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+
+    class _KRotto(_KCrash):
+        def run_turn(self, prompt):
+            raise RuntimeError("errore normale")
+            yield  # pragma: no cover
+
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KRotto([]))
+    assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
+
+
+@pytest.mark.parametrize("contenuto", ["{rotto", "[1,2]", '{"../x": {"tentativi": 1}}',
+                                       '{"a": {"tentativi": "1"}}', '{"a": {"tentativi": 0}}',
+                                       '{"a": {"tentativi": true}}',  # V-4 verifica #234
+                                       '{"a": {"tentativi": 1000000000000000000000000000000}}'])
+def test_r7_registro_rovinato_niente_ripresa(dirs, contenuto):
+    root, fuori = dirs
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(contenuto)
+    assert notte._leggi_in_corso(nd) == {}
+
+
+def test_r7_ripresa_round_trip_col_kernel_vero(monkeypatch, dirs):
+    """§7: la ripresa col kernel vero non si ferma dopo la prima tool call; il
+    modello riceve il prompt con la nota di ripresa."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: conta
+    prompt: "quanto fa 6*7"
+""")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"conta": {"tentativi": 1, "inizio": "x"}}))
+    script = _Script({
+        "quanto fa 6*7" + notte.NOTA_RIPRESA: [
+            [("calcola", json.dumps({"expr": "6*7"}))],
+            [("calcola", json.dumps({"expr": "1+1"}))], "42"],
+    })
+    assert _giro(monkeypatch, root, cat, script) == 0
+    storia = json.loads((nd / "storia_conta.json").read_text())
+    assert sum(1 for m in storia if m.get("role") == "tool") == 2
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
+
+
+def test_r406_solo_a_mano_rilancia_oltre_il_tetto(dirs):
+    """R-406-1: chiesto a mano (gas notte <nome>, /compito) si rilancia lo stesso."""
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps(
+        {"lungo": {"tentativi": 3, "inizio": "x"}, "altro": {"tentativi": 1, "inizio": "x"}}))
+    visti = []
+    assert esegui_notte(str(root), catalogo=cat, solo="lungo",
+                        kernel_factory=lambda r: _KCrash(visti, crash=False)) == 0
+    assert len(visti) == 1 and notte.NOTA_RIPRESA in visti[0]
+    testo = (nd / "ultimo_giro.md").read_text()
+    assert "rilanciato a mano dopo 3 interruzioni" in testo and "ripreso dopo un'interruzione" in testo
+    # con solo le voci degli altri compiti restano
+    assert set(json.loads((nd / notte.IN_CORSO).read_text())) == {"altro"}
+
+
+def test_r406_unico_compito_saltato_exit_1(dirs):
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lungo\n    prompt: lungo\n")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 3, "inizio": "x"}}))
+    assert esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([])) == 1
+
+
+def test_r406_voci_fuori_catalogo_tolte_nel_giro_completo(dirs):
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"fantasma": {"tentativi": 1, "inizio": "x"}}))
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
+
+
+def test_r407_catalogo_assente_non_cancella_il_registro(dirs):
+    root, fuori = dirs
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 2, "inizio": "x"}}))
+    assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
+                        kernel_factory=lambda r: None) == 1
+    assert json.loads((nd / notte.IN_CORSO).read_text())["lungo"]["tentativi"] == 2
+
+
+def test_v1_bot234_registro_tolto_prima_della_riflessione(monkeypatch, dirs):
+    """V-1 bot #234: il compito esce dal registro appena il turno finisce; un crash
+    durante la riflessione automatica non lo fa riprendere al giro dopo."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: breve\n    prompt: breve\n")
+    monkeypatch.setenv("GAS_RIFLESSIONE_AUTO", "1")
+    visto = {}
+
+    def _rifletti_crash(kernel, nome):
+        visto["registro"] = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
+        raise KeyboardInterrupt("crash durante la riflessione")
+    monkeypatch.setattr(notte, "_rifletti_compito", _rifletti_crash)
+
+    class _KConStoria(_KCrash):
+        def run_turn(self, prompt):
+            self.history.append({"role": "user", "content": prompt})
+            yield from super().run_turn(prompt)
+    with pytest.raises(KeyboardInterrupt):
+        esegui_notte(str(root), catalogo=cat,
+                     kernel_factory=lambda r: _KConStoria([], crash=False))
+    assert visto["registro"] == {}
+    assert json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text()) == {}
+
+
+def test_v2_bot234_ripreso_solo_se_parte(dirs):
+    """V-2 bot #234: se il kernel non parte, niente avviso «ripreso» e la voce resta."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lungo\n    prompt: lungo\n")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 1, "inizio": "x"}}))
+
+    def _rotto(r):
+        raise RuntimeError("kernel non avviato")
+    esegui_notte(str(root), catalogo=cat, kernel_factory=_rotto)
+    testo = (nd / "ultimo_giro.md").read_text()
+    assert "'lungo' ripreso" not in testo
+    assert json.loads((nd / notte.IN_CORSO).read_text())["lungo"]["tentativi"] == 1
+
+
+def test_r416_avviso_ripresa_nel_log(dirs, caplog):
+    """R-416-1: l'avviso «ripreso» arriva anche in gas_debug.log."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lungo\n    prompt: lungo\n")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 1, "inizio": "x"}}))
+    with caplog.at_level("WARNING"):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
+    assert "'lungo' ripreso" in caplog.text
+
+
+def test_v1_bot234_ripreso_due_volte_va_in_coda(dirs):
+    """V-1 bot #234 / V-1 verifica #234: prima i mai interrotti, poi chi è stato
+    interrotto una volta, in fondo chi 2+ volte."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: breve
+    prompt: "breve"
+  - nome: lungo
+    prompt: "lungo"
+  - nome: medio
+    prompt: "medio"
+""")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 2, "inizio": "x"},
+                                                 "medio": {"tentativi": 1, "inizio": "x"}}))
+    visti = []
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti, crash=False))
+    assert [v.split(notte.NOTA_RIPRESA)[0] for v in visti] == ["breve", "medio", "lungo"]
+
+
+def test_v1_verifica234_compito_che_crasha_non_affama_gli_altri(dirs):
+    """V-1 verifica esterna #234 (MEDIA): un compito che fa cadere Gas a ogni avvio
+    non impedisce agli altri di girare: per 6 notti «breve» parte sempre."""
+    root, fuori = dirs
+    cat = _cat_r7(fuori)
+    girati_breve = 0
+    for _notte in range(6):
+        visti = []
+        try:
+            esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti))
+        except KeyboardInterrupt:
+            pass
+        girati_breve += visti.count("breve")
+    assert girati_breve == 6
+
+
+def test_r419_compito_che_crasha_primo_nel_catalogo(dirs):
+    """R-419-1: col compito che fa cadere Gas messo PRIMO nel catalogo, «breve» perde
+    solo la prima notte (quando non si sa ancora che crasha), poi gira sempre, anche
+    dopo il salto e l'azzeramento (il compito resta «sospetto» e parte in coda)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: lungo
+    prompt: "lungo"
+  - nome: breve
+    prompt: "breve"
+""")
+    girati = []
+    for _notte in range(8):
+        visti = []
+        try:
+            esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti))
+        except KeyboardInterrupt:
+            pass
+        girati.append(visti.count("breve"))
+    assert girati == [0, 1, 1, 1, 1, 1, 1, 1], girati
+    reg = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
+    assert "lungo" in reg
+
+
+def test_r420_sospetto_va_in_coda_dopo_i_ripresi():
+    """R-420-4: il compito sospetto (tentativi 0) va in fondo, dopo i mai interrotti
+    e dopo i ripresi; non è marcato come ripresa."""
+    compiti = [{"nome": n, "prompt": n} for n in ("lungo", "breve", "medio")]
+    in_corso = {"lungo": {"tentativi": 0, "inizio": "x", "sospetto": True},
+                "medio": {"tentativi": 1, "inizio": "x"}}
+    ordine, saltati = notte._ordina_riprese(compiti, in_corso, [])
+    assert [c["nome"] for c in ordine] == ["breve", "medio", "lungo"] and saltati == 0
+    assert not ordine[2].get("ripresa") and ordine[1].get("ripresa")
+
+
+def test_v2_verifica234_sospetto_ricaduto_resta_in_coda(dirs):
+    """V-2 verifica #234: un sospetto che crasha di nuovo resta sospetto e in coda
+    (dopo i ripresi normali), con la nota di ripresa."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: lungo
+    prompt: "lungo"
+  - nome: medio
+    prompt: "medio"
+  - nome: breve
+    prompt: "breve"
+""")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 0, "inizio": "x",
+                                                           "sospetto": True}}))
+    with pytest.raises(KeyboardInterrupt):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([]))
+    reg = json.loads((nd / notte.IN_CORSO).read_text())
+    assert reg["lungo"]["tentativi"] == 1 and reg["lungo"]["sospetto"] is True
+    reg["medio"] = {"tentativi": 1, "inizio": "x"}
+    (nd / notte.IN_CORSO).write_text(json.dumps(reg))
+    visti = []
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti, crash=False))
+    assert [v.split(notte.NOTA_RIPRESA)[0] for v in visti] == ["breve", "medio", "lungo"]
+    assert notte.NOTA_RIPRESA in visti[2]
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}

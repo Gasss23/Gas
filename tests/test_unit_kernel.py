@@ -3,14 +3,35 @@
 Tutto gira su root temporanee con client API finto iniettato in gas.OpenAI:
 nessuna chiamata reale, nessuna scrittura su .gas_history.json del repo.
 """
+import atexit
 import importlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
+
+# Pulizia (2026-10-21): ogni esecuzione lasciava ~430 cartelle temporanee in /tmp
+# (129.000 accumulate, ~30 GB, disco pieno). Tutte le cartelle temporanee della
+# suite, anche dei sottoprocessi (TMPDIR), stanno in UNA cartella per esecuzione,
+# cancellata all'uscita.
+_TMP_SISTEMA = tempfile.gettempdir()  # R-415-1: per le cache che restano tra le esecuzioni
+# R-415-2: le cartelle di esecuzioni uccise (SIGKILL, timeout: atexit non parte) più
+# vecchie di 6 ore si tolgono all'avvio.
+import time as _time_pulizia
+for _vecchia in Path(_TMP_SISTEMA).glob("gas_kernel_run_*"):
+    try:
+        if _time_pulizia.time() - _vecchia.stat().st_mtime > 6 * 3600:
+            shutil.rmtree(_vecchia, True)
+    except OSError:
+        pass
+_TMP_ESECUZIONE = tempfile.mkdtemp(prefix="gas_kernel_run_")
+tempfile.tempdir = _TMP_ESECUZIONE
+os.environ["TMPDIR"] = _TMP_ESECUZIONE
+atexit.register(shutil.rmtree, _TMP_ESECUZIONE, True)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import gas
@@ -1815,7 +1836,7 @@ _real_done = False
 try:
     # cache del modello STABILE (fuori dal repo, sotto la temp di sistema): scarica
     # una volta sola e riusa nelle run successive, niente ~500MB ad ogni suite.
-    cache_real = str(Path(tempfile.gettempdir()) / "gas_vec_model_cache")
+    cache_real = str(Path(_TMP_SISTEMA) / "gas_vec_model_cache")  # R-415-1: stabile tra le esecuzioni
     d_real = tempfile.mkdtemp(prefix="gas_vec_real_")
     vs_real = VectorStore(default_vectors_path(d_real), model_cache_dir=cache_real)
     if not vs_real.available:
@@ -7066,6 +7087,269 @@ finally:
 check("T93b R7 i tre comandi dei vettori usano GAS_VECTORS_DB; senza, <root>/.gas_vectors.db",
       len(_con93) == 3 and all(p == _alt93.resolve() for p in _con93)
       and _senza93 == _root93 / ".gas_vectors.db", str(_con93))
+
+# T94 — R-tel-budget-perf: costo letto a pezzi = costo letto per intero
+_k94 = kernel_tmp()
+_log94 = _k94.root / gas.TOKEN_LOG_FILENAME
+_ora94 = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+def _riga94(n_in, n_out, ts=None, ev="call"):
+    return json.dumps({"ts": ts or _ora94, "provider": "gemini-flash-lite", "model": "x",
+                       "in": n_in, "out": n_out, "event": ev}) + "\n"
+with open(_log94, "w", encoding="utf-8") as _f94:
+    _f94.write(_riga94(1_000_000, 0) + _riga94(0, 0, ev="fallthrough") + "rotta\n")
+_c94a = _k94._daily_cost_usd()                                   # 0.1
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write(_riga94(0, 500_000) + _riga94(1_000_000, 0, ts="2020-01-01T00:00:00"))
+_c94b = _k94._daily_cost_usd()                                   # 0.1 + 0.2
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write(_riga94(1_000_000, 0)[:-15])                      # riga a metà: non contata
+_c94c = _k94._daily_cost_usd()
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write(_riga94(1_000_000, 0)[-15:-1])                    # completa ma senza «\n»
+_c94c2 = _k94._daily_cost_usd()                                  # V-1 verifica #234: contata
+with open(_log94, "a", encoding="utf-8") as _f94:
+    _f94.write("\n")                                             # arriva il «\n»: una volta sola
+_c94d = _k94._daily_cost_usd()
+_off94 = gas._COSTI_CACHE[str(_log94)]["offset"]
+check("T94a lettura a pezzi: righe nuove sommate, riga a metà aspettata",
+      abs(_c94a - 0.1) < 1e-9 and abs(_c94b - 0.3) < 1e-9 and abs(_c94c - 0.3) < 1e-9
+      and abs(_c94c2 - 0.4) < 1e-9
+      and abs(_c94d - 0.4) < 1e-9 and _off94 == _log94.stat().st_size,
+      f"{_c94a} {_c94b} {_c94c} {_c94d}")
+with open(_log94, "w", encoding="utf-8") as _f94:                # file accorciato/riscritto
+    _f94.write(_riga94(0, 250_000))
+_c94e = _k94._daily_cost_usd()
+_log94.unlink()
+_c94f = _k94._daily_cost_usd()
+check("T94b log riscritto → riletto da capo; log cancellato → 0.0",
+      abs(_c94e - 0.1) < 1e-9 and _c94f == 0.0 and str(_log94) not in gas._COSTI_CACHE,
+      f"{_c94e} {_c94f}")
+
+# T94c — R-409-1/2: «out» non intero conta comunque «in»; file riscritto sul posto
+# più lungo e con lo stesso inizio → riletto da capo (prima sottostimava)
+_k94c = kernel_tmp()
+_log94c = _k94c.root / gas.TOKEN_LOG_FILENAME
+_r94c = json.dumps({"ts": _ora94, "provider": "gemini-flash-lite", "model": "x",
+                    "in": 1_000_000, "out": "abc", "event": "call"}) + "\n"
+_log94c.write_text(_r94c, encoding="utf-8")
+_c94g = _k94c._daily_cost_usd()                                  # 0.1 (solo «in»)
+_log94c.write_text(_riga94(1_000_000, 0) + _riga94(0, 500_000), encoding="utf-8")
+_st94 = _log94c.stat()
+_c94h = _k94c._daily_cost_usd()                                  # 0.1 + 0.2
+check("T94c R-409-1/2 «in» contato con «out» rotto; riscritto più lungo con lo stesso inizio → 0.3",
+      abs(_c94g - 0.1) < 1e-9 and abs(_c94h - 0.3) < 1e-9, f"{_c94g} {_c94h}")
+
+# T94d — R-410-1/2: numeri enormi non scartano la parte valida; negativi non abbassano
+# R-411-1: niente indice su un None (FAIL, non un'eccezione che ferma la suite)
+_neg94 = gas._costo_riga(json.dumps({"ts": _ora94, "provider": "gemini-flash-lite",
+                                      "in": -5_000_000, "out": 500_000}).encode())
+_big94 = gas._costo_riga(('{"ts": "%s", "provider": "gemini-flash-lite", "in": 1000000, '
+                          '"out": 1e400}' % _ora94).encode())
+check("T94d R-410-1/2 costo di una riga con «out» enorme o negativo",
+      _neg94 is not None and _neg94[1] >= 0.2 - 1e-9
+      and _big94 is not None and _big94[1] > 0.09, f"{_neg94} {_big94}")
+# V-2 bot #234: ts mancante, null o non ISO → riga ignorata (mai «per sempre nelle 24h»)
+check("T94e V-2 bot #234 ts non ISO → riga ignorata",
+      all(gas._costo_riga(json.dumps({**({} if t is ... else {"ts": t}), "provider": "groq",
+                                       "in": 1, "out": 1}).encode()) is None
+          for t in (None, "None", "domani", 5, ..., "2026-10-21",
+                    # R-413-1: cifre non ASCII, data impossibile, data nel futuro
+                    "\uff12\uff10\uff12\uff16-10-21T10:00:00", "9999-99-99T99:99:99"))
+      and gas._costo_riga(json.dumps({"ts": _ora94, "provider": "groq", "in": 1,
+                                      "out": 1}).encode()) is not None)
+
+# T95 — R-fts-1: tetto alle parole delle ricerche FTS (diario e conoscenza)
+from modules.memory.store import MemoryStore as _MS95, FTS_MAX_TOKEN as _MAX95
+_q95 = _MS95._fts_match(" ".join(f"parola{i}" for i in range(50)) + " parola0 " + "a" * 100)
+_k95 = gas.GasKernel._knowledge_fts_match("cane cane gatto " + "z" * 90 + " " +
+                                           " ".join(f"voce{i}" for i in range(50)))
+check("T95 R-fts-1 query FTS: al massimo 12 parole distinte, ognuna max 40 caratteri",
+      _q95.count('"*') == _MAX95 == 12 and '"parola0"* "parola1"*' in _q95
+      and _k95.count('"*') == 12 and _k95.startswith('"cane"* OR "gatto"* OR "' + "z" * 40 + '"*'),
+      _q95[:80] + " | " + _k95[:80])
+
+# T94e2 — V-1 bot #234 / R-414-1 / R-420-1: ts nel futuro entro 7 giorni tenuto
+# COM'È (stabile in ogni processo, scade a ts+24h); oltre 7 giorni scartato
+_due_ore94 = (datetime.now(timezone.utc) + _td(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
+_fut94b = gas._costo_riga(json.dumps({"ts": _due_ore94, "provider": "gemini-flash-lite",
+                                      "in": 1_000_000, "out": 0}).encode())
+_fut94 = gas._costo_riga(json.dumps({"ts": "2999-01-01T00:00:00", "provider": "gemini-flash-lite",
+                                     "in": 1_000_000, "out": 0}).encode())
+# a cache vuota (processo nuovo) il risultato è lo stesso
+_k94e = kernel_tmp()
+(_k94e.root / gas.TOKEN_LOG_FILENAME).write_text(json.dumps(
+    {"ts": _due_ore94, "provider": "gemini-flash-lite", "in": 1_000_000, "out": 0}) + "\n",
+    encoding="utf-8")
+_c94e1 = _k94e._daily_cost_usd()
+gas._COSTI_CACHE.clear()
+_c94e2 = _k94e._daily_cost_usd()
+check("T94e2 ts futuro: entro 7 giorni tenuto com'è (anche a cache vuota), oltre scartato",
+      _fut94b is not None and _fut94b[0] == _due_ore94 and abs(_fut94b[1] - 0.1) < 1e-9
+      and _fut94 is None and abs(_c94e1 - 0.1) < 1e-9 and abs(_c94e2 - 0.1) < 1e-9,
+      f"{_fut94b} {_fut94} {_c94e1} {_c94e2}")
+
+# T94h — V-1 verifica #234 (4° giro) / R-421-2: una riga VALIDA lunga (100 KB di
+# imbottitura, chiusa da «\n», in mezzo ad altre) si conta: non si aggira il budget
+_k94h = kernel_tmp()
+_lunga94 = json.dumps({"ts": _ora94, "provider": "gemini-flash-lite", "in": 1_000_000,
+                       "out": 0, "x": "a" * 100_000}) + "\n"
+(_k94h.root / gas.TOKEN_LOG_FILENAME).write_text(_riga94(1_000_000, 0) + _lunga94
+                                                  + _riga94(1_000_000, 0), encoding="utf-8")
+_c94h = _k94h._daily_cost_usd()
+check("T94h riga valida da 100 KB contata (0.3 = tre righe da 0.1)", abs(_c94h - 0.3) < 1e-9,
+      str(_c94h))
+
+# T94i — R-422-1/2: la stessa riga valida lunga, letta a blocchi da 4 KB (quindi a
+# cavallo di molti blocchi), si conta; con un tetto di riga più basso si scarta
+# e lascia un avviso nella scatola nera (anche quando passa dal ramo «lunga»)
+_logrec94i: list = []
+class _H94i(logging.Handler):
+    def emit(self, record):
+        _logrec94i.append(record.getMessage())
+_h94i = _H94i(level=logging.WARNING)
+_blocco94i, _rigamax94i = gas._COSTI_BLOCCO, gas._RIGA_MAX
+logging.getLogger().addHandler(_h94i)
+try:
+    gas._COSTI_BLOCCO = 4096
+    gas._COSTI_CACHE.clear()
+    _c94i_conta = _k94h._daily_cost_usd()
+    gas._RIGA_MAX = 50_000
+    gas._COSTI_CACHE.clear()
+    _c94i_scarta = _k94h._daily_cost_usd()
+finally:
+    gas._COSTI_BLOCCO, gas._RIGA_MAX = _blocco94i, _rigamax94i
+    logging.getLogger().removeHandler(_h94i)
+    gas._COSTI_CACHE.clear()
+check("T94i riga lunga a cavallo di blocchi: contata sotto il tetto, scartata con avviso sopra",
+      abs(_c94i_conta - 0.3) < 1e-9 and abs(_c94i_scarta - 0.2) < 1e-9
+      and sum("riga oltre 50000 byte" in m for m in _logrec94i) == 1,  # R-423-1
+      f"{_c94i_conta} {_c94i_scarta} {_logrec94i}")
+
+# T94j — V-1 bot/verifica #234 (5° giro): l'ultima riga senza «\n» si decodifica
+# una volta sola finché il file non cambia; quando arriva il suo «\n» conta una volta
+_k94j = kernel_tmp()
+_log94j = _k94j.root / gas.TOKEN_LOG_FILENAME
+_log94j.write_text(_riga94(1_000_000, 0) + _riga94(1_000_000, 0)[:-1], encoding="utf-8")
+_c94j1 = _k94j._daily_cost_usd()
+_costo_riga94j, _chiamate94j = gas._costo_riga, []
+def _conta94j(*a, **kw):
+    _chiamate94j.append(1)
+    return _costo_riga94j(*a, **kw)
+_letture94j: list = []
+class _F94j:  # R-424-2: conta i byte letti dal log, non solo le decodifiche
+    def __init__(self, f):
+        self._f = f
+    def __enter__(self):
+        return self
+    def __exit__(self, *a):
+        return self._f.__exit__(*a)
+    def read(self, n=-1):
+        b = self._f.read(n)
+        _letture94j.append(len(b))
+        return b
+    def __getattr__(self, k):
+        return getattr(self._f, k)
+def _apri94j(*a, **kw):
+    return _F94j(open(*a, **kw))
+try:
+    gas._costo_riga = _conta94j
+    gas.open = _apri94j
+    _c94j2 = _k94j._daily_cost_usd()
+    _n94j, _byte94j = len(_chiamate94j), sum(_letture94j)
+    with open(_log94j, "a", encoding="utf-8") as _f94j:
+        _f94j.write("\n")
+    _c94j3 = _k94j._daily_cost_usd()
+    _n94j3 = len(_chiamate94j) - _n94j  # R-424-3: decodifiche dopo il «\n»
+finally:
+    gas._costo_riga = _costo_riga94j
+    del gas.open
+check("T94j riga finale senza «\\n» non riletta a file invariato; contata una volta col suo «\\n»",
+      abs(_c94j1 - 0.2) < 1e-9 and abs(_c94j2 - 0.2) < 1e-9 and _n94j == 0
+      and _byte94j <= 128 and abs(_c94j3 - 0.2) < 1e-9 and _n94j3 == 1,
+      f"{_c94j1} {_c94j2} {_n94j} {_byte94j} {_c94j3} {_n94j3}")
+
+# T94k — V-2 verifica #234 (7° giro): due thread sullo stesso log contano una volta
+import threading as _th94k
+_k94k = kernel_tmp()
+_log94k = _k94k.root / gas.TOKEN_LOG_FILENAME
+_log94k.write_text(_riga94(1_000_000, 0), encoding="utf-8")
+gas._COSTI_CACHE.clear()
+_k94k._daily_cost_usd()  # cache già piena: i thread condividono la stessa voce
+with open(_log94k, "a", encoding="utf-8") as _f94k:
+    _f94k.write("".join(_riga94(1_000_000, 0) for _ in range(2000)))
+_ris94k: list = []
+_t94k = [_th94k.Thread(target=lambda: _ris94k.append(_k94k._daily_cost_usd()))
+         for _ in range(8)]
+_blocco94k, _sw94k = gas._COSTI_BLOCCO, sys.getswitchinterval()
+try:
+    gas._COSTI_BLOCCO = 97          # tanti blocchi piccoli: i thread si alternano
+    sys.setswitchinterval(1e-6)
+    for _t in _t94k:
+        _t.start()
+    for _t in _t94k:
+        _t.join()
+finally:
+    gas._COSTI_BLOCCO = _blocco94k
+    sys.setswitchinterval(_sw94k)
+    gas._COSTI_CACHE.clear()
+check("T94k otto thread sullo stesso log: tutti 200.1 (nessuna riga contata due volte)",
+      len(_ris94k) == 8 and all(abs(v - 200.1) < 1e-6 for v in _ris94k), str(_ris94k))
+
+# T96 — R-222-2 / V-1 verifica #234 (7° giro) / R-425-1: l'esito al cancello lo dice
+# il kernel nella chiave «cancello» di tool_res, non l'inizio del testo
+_k96 = kernel_tmp()
+_r96 = Path(_k96.root)
+(_r96 / "finto.txt").write_text("Operazione negata: finta\n", encoding="utf-8")
+(_r96 / "brains").mkdir()
+(_r96 / "brains" / "router.py").write_text("ROTTA = 1\n", encoding="utf-8")
+with _TgFinto():
+    _ev96 = run_turn_scriptato(_k96, "leggi, prova ssh e correggi", [
+        [("read_file", '{"relative_path": "finto.txt"}')],
+        [("ssh_vps", '{"host": "x"}')],
+        [("write_file", json.dumps({"relative_path": "brains/router.py",
+                                    "content": "ROTTA = 2\n", "pro": "p", "contro": "c"}))],
+        "fatto"])
+_c96 = [(e["output"][:20], e.get("cancello")) for e in _ev96 if e["type"] == "tool_res"]
+check("T96 cancello: file che inizia con «Operazione negata» → None, DENY → negata, firma → in_attesa",
+      [c for _, c in _c96] == [None, "negata", "in_attesa"]
+      and _c96[0][0].startswith("Operazione negata"), str(_c96))
+
+# T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
+_r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))
+(_r94f / gas.TOKEN_LOG_FILENAME).write_text(
+    '{"ts": null, "provider": "groq", "in": 1, "out": 1}\n', encoding="utf-8")
+try:
+    with _ctx34.redirect_stdout(io.StringIO()):
+        _rc94f = gas.tokens_cmd(str(_r94f))
+    _err94f = ""
+except Exception as _e94f:
+    _rc94f, _err94f = None, repr(_e94f)
+finally:
+    _sh39e.rmtree(_r94f, ignore_errors=True)
+check("T94f R-413-2 gas tokens con ts null: nessuna eccezione", _rc94f == 0, _err94f)
+
+# T94g — V-2 verifica #234: lettura a blocchi (anche minuscoli: righe a cavallo di
+# più blocchi) = stesso costo della lettura in un colpo solo
+_k94g = kernel_tmp()
+_log94g = _k94g.root / gas.TOKEN_LOG_FILENAME
+_log94g.write_text("".join(_riga94(1_000_000 * (i % 3), 250_000) for i in range(20))
+                   + _riga94(1_000_000, 0)[:-1], encoding="utf-8")   # ultima senza «\n»
+_c94g_intero = _k94g._daily_cost_usd()
+gas._COSTI_CACHE.clear()
+_blocco94 = gas._COSTI_BLOCCO
+try:
+    gas._COSTI_BLOCCO = 7
+    _c94g_blocchi = _k94g._daily_cost_usd()
+    with open(_log94g, "a", encoding="utf-8") as _f94g:
+        _f94g.write("\n" + _riga94(0, 500_000))
+    _c94g_dopo = _k94g._daily_cost_usd()
+finally:
+    gas._COSTI_BLOCCO = _blocco94
+_atteso94g = sum((1_000_000 * (i % 3)) * 0.10 / 1e6 + 250_000 * 0.40 / 1e6 for i in range(20)) + 0.1
+check("T94g lettura a blocchi da 7 byte = lettura intera; riga finale e aggiunte contate una volta",
+      abs(_c94g_intero - _atteso94g) < 1e-9 and abs(_c94g_blocchi - _atteso94g) < 1e-9
+      and abs(_c94g_dopo - (_atteso94g + 0.2)) < 1e-9,
+      f"{_c94g_intero} {_c94g_blocchi} {_c94g_dopo} atteso {_atteso94g}")
 
 # T77p — esito all'operatore: output lungo troncato in UTF-16, surrogate integre
 _long77 = "😀" * 2000

@@ -4,6 +4,7 @@ import difflib
 import hashlib
 import math as _math_module
 import os
+import threading
 import re
 import json
 import shlex
@@ -861,6 +862,70 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
     return None
 
 
+# R-tel-budget-perf: per ogni log dei token, le voci (ts, costo) delle ultime 24 ore
+# già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
+_COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
+_COSTI_LOCK = threading.Lock()  # V-2 verifica #234 (7° giro): cache mutata sul posto
+_TS_RAPIDO_RE = re.compile(rb'"ts"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"')
+_COSTI_BLOCCO = 1 << 20  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
+# V-1 verifica #234 (4° giro): una riga VALIDA lunga si conta sempre (scartarla
+# toglierebbe la sua spesa dal tetto); oltre 16 MiB è spazzatura (R-419-2: tetto
+# all'accumulo di una riga senza «\n»).
+_RIGA_MAX = 16 << 20
+_TS_LOG_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")  # _log_tokens
+
+
+def _ts_log_valido(ts: Any, avvisa: bool = True) -> Optional[str]:
+    """R-413-1: ts del log dei token accettato solo se è nel formato di _log_tokens
+    (cifre ASCII) e una data vera; altrimenti None (riga ignorata). V-1 bot #234 /
+    R-414-1 / R-420-1: un ts nel futuro fino a 7 giorni (orologio tornato indietro)
+    si tiene COM'È: conta nel tetto e scade da solo a ts+24h, uguale in ogni processo
+    (niente «adesso» ricalcolato a ogni avvio); oltre 7 giorni è un log rovinato o
+    scritto a mano: riga scartata, con un avviso nella scatola nera."""
+    if not isinstance(ts, str) or not _TS_LOG_RE.fullmatch(ts):
+        return None
+    try:
+        quando = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    if quando > datetime.now(timezone.utc) + timedelta(days=7):
+        if avvisa:  # R-421-1: niente avviso a ogni chiamata per l'ultima riga senza «\n»
+            logging.warning("log dei token: riga con data %s oltre 7 giorni nel futuro, "
+                            "ignorata", ts)
+        return None
+    return ts
+
+
+def _costo_riga(raw: bytes, avvisa: bool = True) -> Optional[Tuple[str, float]]:
+    """(ts, costo USD) di una riga del log dei token; None se vuota, illeggibile,
+    un «fallthrough» o con numeri non validi (come la lettura completa di prima)."""
+    try:
+        line = raw.decode("utf-8").strip()
+        if not line:
+            return None
+        r = json.loads(line)
+        if not isinstance(r, dict) or r.get("event", "call") == "fallthrough":
+            return None
+        p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(r.get("provider", "?"), (0.0, 0.0))
+        costo = 0.0
+        # R-409-1: «in» e «out» contati ognuno per conto suo, come la lettura di prima
+        for chiave, prezzo in (("in", p_in), ("out", p_out)):
+            try:
+                # R-410-2: un conteggio negativo non abbassa la spesa (budget)
+                costo += max(0, int(r.get(chiave, 0))) * prezzo / 1_000_000
+            except (TypeError, ValueError, OverflowError):  # R-410-1
+                pass
+        ts = r.get("ts")
+        # V-2 bot #234: solo un ts ISO vero; «None» o testo sarebbe ≥ cutoff per sempre
+        # (confronto tra stringhe) e terrebbe il budget bloccato senza scadenza.
+        ts_ok = _ts_log_valido(ts, avvisa)
+        if ts_ok is None:
+            return None
+        return (ts_ok, costo)
+    except Exception:
+        return None
+
+
 def _percorso_vettori(root: Path) -> Path:
     """Archivio dei vettori: GAS_VECTORS_DB se impostata, altrimenti <root>/.gas_vectors.db.
     R7 (roadmap): unica fonte del percorso, così reindex/vettori/doctor e il kernel
@@ -884,6 +949,7 @@ class GasKernel:
         # il giro notturno la porta a 24 ore (decisione operatore 2026-10-19).
         self.approval_timeout_secs: Optional[int] = None
         self._file_delicati_turno: List[str] = []  # R-223-2, svuotata a fine turno
+        self._esito_contenuto = False  # R-222-2/R-425-2: vedi execute_tool_call
         # V-1 bot #222: il pin di questo turno mostra dati non fidati (_memoria_pin).
         self._pin_non_fidato: bool = False
         # R-371-2: la sessione ha visto un pin non fidato (si azzera con `clear`).
@@ -1161,37 +1227,114 @@ class GasKernel:
     def _daily_cost_usd(self) -> float:
         """Somma i costi (USD stimati) degli ultimi 86400 secondi dal log token.
         FAIL-SAFE: log assente/corrotto → 0.0 (mai bloccare il turno per log
-        mancante, §9). Zero token LLM: sola lettura file locale."""
+        mancante, §9). Zero token LLM: sola lettura file locale.
+        R-tel-budget-perf: il log è in sola aggiunta, quindi si leggono solo le righe
+        NUOVE dall'ultima volta (`_COSTI_CACHE`, per file); se il file è stato
+        sostituito o accorciato (inode diverso o più corto) si rilegge da capo."""
+        with _COSTI_LOCK:  # due thread sullo stesso log non contano due volte
+            return self._daily_cost_usd_bloccato()
+
+    def _daily_cost_usd_bloccato(self) -> float:
+        """Corpo di _daily_cost_usd, da chiamare solo con _COSTI_LOCK preso."""
         try:
             log_path = self.root / TOKEN_LOG_FILENAME
-            if not log_path.exists():
+            try:
+                st = log_path.stat()
+            except FileNotFoundError:
+                _COSTI_CACHE.pop(str(log_path), None)
                 return 0.0
             from datetime import timedelta
             # Stesso formato di _log_tokens ("ts": strftime("%Y-%m-%dT%H:%M:%S")) →
             # il confronto stringa lessicografico è corretto (ISO 8601 senza "Z").
             cutoff = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
-            total = 0.0
-            with open(log_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        r = json.loads(line)
-                    except Exception:
-                        continue
-                    if r.get("event", "call") == "fallthrough":
-                        continue
-                    if r.get("ts", "") < cutoff:
-                        continue
-                    prov = r.get("provider", "?")
-                    p_in, p_out = _PROVIDER_PRICE_PER_MTok.get(prov, (0.0, 0.0))
-                    try:
-                        total += int(r.get("in", 0)) * p_in / 1_000_000
-                        total += int(r.get("out", 0)) * p_out / 1_000_000
-                    except (TypeError, ValueError):
-                        continue
-            return total
+            chiave = str(log_path)
+            with open(log_path, "rb") as f:
+                testa = f.read(64)  # impronta: un file riscritto da capo cambia l'inizio
+            c = _COSTI_CACHE.get(chiave)
+            coda = b""
+            if c is not None and 0 < c["offset"] <= st.st_size:
+                # R-409-2: impronta anche dei byte subito prima del punto letto: un file
+                # riscritto sul posto, più lungo e con lo stesso inizio, si rilegge.
+                with open(log_path, "rb") as f:
+                    f.seek(max(0, c["offset"] - 64))
+                    coda = f.read(min(64, c["offset"]))
+            if (c is None or c["id"] != (st.st_dev, st.st_ino) or st.st_size < c["offset"]
+                    or c["testa"] != testa[:len(c["testa"])] or coda != c["coda"]
+                    or (st.st_size == c["offset"] and st.st_mtime_ns != c["mtime"])):
+                c = {"id": (st.st_dev, st.st_ino), "offset": 0, "voci": [], "testa": testa,
+                     "coda": b""}
+            c["mtime"] = st.st_mtime_ns
+            resto = b""        # byte dopo l'ultimo «\n» (riga non ancora finita)
+            lunga = False      # R-419-2: riga oltre _RIGA_MAX senza «\n»: si salta, non si accumula
+            pendenti = 0       # byte letti dopo l'ultimo «\n» (anche se non tenuti)
+            # V-1 bot/verifica #234 (5° giro): file uguale all'ultima chiamata (stessa
+            # dimensione e mtime) → la riga finale senza «\n» non si rilegge né decodifica
+            fin = c.get("fin")
+            invariato = fin is not None and fin[:2] == (st.st_size, st.st_mtime_ns)
+            if st.st_size > c["offset"] and not invariato:
+                # V-2 verifica esterna #234 (3° giro): lettura a blocchi, niente file
+                # intero in memoria alla prima lettura di un log grande.
+                with open(log_path, "rb") as f:
+                    f.seek(c["offset"])
+                    da_leggere = st.st_size - c["offset"]
+                    while da_leggere > 0:
+                        blocco = f.read(min(_COSTI_BLOCCO, da_leggere))
+                        if not blocco:
+                            break
+                        da_leggere -= len(blocco)
+                        fine = blocco.rfind(b"\n")  # «\n» cercato solo nel blocco nuovo
+                        if fine < 0:
+                            pendenti += len(blocco)
+                            if not lunga:
+                                resto += blocco
+                                if len(resto) > _RIGA_MAX:
+                                    lunga, resto = True, resto[-64:]
+                            else:
+                                resto = (resto + blocco)[-64:]  # solo per l'impronta di coda
+                            continue
+                        if lunga:  # la riga troppo lunga finisce al primo «\n»: scartata
+                            logging.warning("log dei token: riga oltre %d byte ignorata",
+                                            _RIGA_MAX)  # R-422-1: avviso anche qui
+                            righe = blocco[blocco.find(b"\n") + 1:fine]
+                        else:
+                            righe = resto + blocco[:fine]
+                        for raw in righe.split(b"\n") if righe else ():
+                            if len(raw) > _RIGA_MAX:  # R-420-2: stesso tetto ovunque
+                                logging.warning("log dei token: riga oltre %d byte ignorata",
+                                                _RIGA_MAX)
+                                continue
+                            # uscita rapida: riga con UN solo «"ts"», senza escape (R-419-3),
+                            # più vecchia delle 24 ore → non conta, inutile decodificarla
+                            m = _TS_RAPIDO_RE.search(raw)
+                            if (m is not None and b"\\" not in raw
+                                    and raw.count(b'"ts"') == 1
+                                    and m.group(1).decode("ascii") < cutoff):
+                                continue
+                            voce = _costo_riga(raw)
+                            if voce is not None and voce[0] >= cutoff:  # R-409-3
+                                c["voci"].append(voce)
+                        c["offset"] += pendenti + fine + 1
+                        c["coda"] = (c["coda"] + resto + blocco[:fine + 1])[-64:]
+                        resto, lunga = blocco[fine + 1:], False
+                        pendenti = len(resto)
+            # V-1 verifica esterna #234: l'ultima riga senza «\n» (log scritto a mano o
+            # troncato) si conta lo stesso se è valida, senza spostare l'offset: così
+            # quando arriva il suo «\n» viene letta una volta sola. R-414-2: niente
+            # seconda lettura, e oltre _RIGA_MAX si ignora (R-422-3).
+            if invariato:
+                voce_fin = fin[2]
+            else:
+                voce_fin = None
+                if resto and not lunga and len(resto) <= _RIGA_MAX:
+                    voce_fin = _costo_riga(resto, avvisa=False)  # R-421-1: niente avviso
+                c["fin"] = (st.st_size, st.st_mtime_ns, voce_fin)
+            c["testa"] = testa
+            c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
+            _COSTI_CACHE[chiave] = c
+            totale = sum(v[1] for v in c["voci"])
+            if voce_fin is not None and voce_fin[0] >= cutoff:
+                totale += voce_fin[1]
+            return totale
         except Exception as e:
             logging.warning("_daily_cost_usd fallita (%s) — budget non applicato", e)
             return 0.0
@@ -3529,7 +3672,8 @@ class GasKernel:
         """Costruisce query FTS5 sicura: token ≥3 char, quotati, prefisso *, uniti in OR.
         Le virgolette neutralizzano operatori FTS (AND/OR/NOT/NEAR, parentesi, :).
         Ritorna '' se non ci sono token validi (→ nessuna ricerca)."""
-        tokens = re.findall(r'\w{3,}', str(query or '').lower(), flags=re.UNICODE)
+        from modules.memory.store import _token_fts  # R-fts-1: stesso tetto del diario
+        tokens = _token_fts(re.findall(r'\w{3,}', str(query or '').lower(), flags=re.UNICODE))
         if not tokens:
             return ''
         return ' OR '.join(f'"{t}"*' for t in tokens)
@@ -3701,6 +3845,9 @@ class GasKernel:
     def execute_tool_call(self, name: str, args_str: Any, firmata: bool = False) -> str:
         """Esegue un tool. `firmata=True` SOLO da applica_firma (firma umana valida):
         abilita write_file di livello 2 (1A), mai il livello 3."""
+        # R-222-2: True solo se l'esito porta testo che non scrive il kernel (file,
+        # stdout, diario): lì un «Operazione negata» iniziale non è un diniego.
+        self._esito_contenuto = False
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
@@ -3853,6 +4000,9 @@ class GasKernel:
                 # passa più di qui (vedi _unisci_contatti). Il meccanismo di merge
                 # in MemoryStore resta intatto. Tool ignoto → diniego pulito.
                 return "Tool non trovato."
+            self._esito_contenuto = (name in ("run_command", "read_file", "ricorda") or (
+                name in self._TOOL_LETTURA_NATIVI
+                and getattr(self, "_lettura_meta", None) is not None))
             return self._cap_tool_output(name, args, out)
         except Exception as e:
             return f"Errore eseguendo {name}: {str(e)}"
@@ -4049,9 +4199,11 @@ class GasKernel:
                                         and self._write_livello2(tc.function.arguments)):
                                     _gc = GateClass.IRREVERSIBLE
                                 _gate_diario: Optional[str] = None  # azioni al cancello: diario senza args
+                                _cancello: Optional[str] = None  # R-222-2: esito detto dal kernel
                                 if _gc == GateClass.DENY:
                                     logging.warning(f"[GATE] DENY: {tc.function.name}")
                                     out = "Operazione negata: azione non consentita in modalità autonoma."
+                                    _cancello = "negata"
                                     if _run_command_spento:  # V-3 bot #185: indica gli strumenti
                                         out = ("Operazione negata: Gas non ha comandi di sistema. "
                                                "Usa elenca_cartella, leggi_righe, cerca_testo, "
@@ -4069,6 +4221,10 @@ class GasKernel:
                                     out, _gate_diario = self._parcheggia_e_notifica(
                                         tc.function.name, tc.function.arguments, _turno_id,
                                     )
+                                    if out.startswith("Azione in attesa di approvazione umana"):
+                                        _cancello = "in_attesa"
+                                    elif out.startswith("Operazione negata"):
+                                        _cancello = "negata"
                                 else:
                                     _lead_contaminato = (
                                         _finestra_contaminata and tc.function.name in
@@ -4076,6 +4232,9 @@ class GasKernel:
                                     _prima = (self._lead_prima(tc.function.arguments)
                                               if _lead_contaminato else None)
                                     out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                                    if (out.startswith("Operazione negata")
+                                            and not getattr(self, "_esito_contenuto", False)):
+                                        _cancello = "negata"
                                     # V-1 bot #222: un contatto scritto a turno contaminato
                                     # resta segnato: chi lo rivede nel pin è contaminato.
                                     if _lead_contaminato:
@@ -4107,7 +4266,7 @@ class GasKernel:
                                 # contaminazione si ricalcolava solo all'iterazione dopo).
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
-                                yield {"type": "tool_res", "output": out}
+                                yield {"type": "tool_res", "output": out, "cancello": _cancello}
                             self._save_history()
                             # continua il loop per ottenere la risposta finale
                         elif msg.content:
@@ -4631,7 +4790,8 @@ def tokens_cmd(root_dir: Optional[str] = None, days: Optional[int] = None) -> in
             out_t = int(r.get("out", 0))
         except (TypeError, ValueError):
             continue  # record JSONL malformato — skip silenzioso (§9)
-        is_recent = cutoff is not None and r.get("ts", "") >= cutoff
+        _ts = r.get("ts")  # R-413-2: un ts null o non stringa non ferma `gas tokens`
+        is_recent = cutoff is not None and isinstance(_ts, str) and _ts >= cutoff
         if evt == "fallthrough":
             reason = r.get("reason") or ""
             for bucket, cond in ((ft_totali, True), (ft_recenti, is_recent)):
