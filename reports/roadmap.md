@@ -152,10 +152,10 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 - ⏳ 👤 Provare i bottoni Approva e Rifiuta con un click vero, col bot acceso (`python3 gas.py telegram`). Il "Rifiuta" non aveva fatto nulla: se resta così è un bug.
 - ✅ **Durata della firma** (decisa il 19 ottobre, nel codice dal 20 ottobre): 24 ore per le richieste del giro notturno (`GAS_APPROVAL_TIMEOUT_NOTTE_SECS`); di giorno restano 30 minuti (`GAS_APPROVAL_TIMEOUT_SECS`). Si cambia dal file delle chiavi.
 - ✅ **Autonomia dopo una lettura** (decisa il 19 ottobre, nel codice dal 20 ottobre; supera C-d e R-203-2): dopo una lettura restano liberi la rubrica (`salva_contatto`, `imposta_stato_contatto`) e `write_file` sui soli documenti `.md`, `.txt`, `.csv` di livello 1 (con foto di sicurezza; script, pagine web, file di avvio, configurazioni e file nascosti restano alla firma, V-1 verifica esterna #222). Restano alla firma: codice madre (livello 2), azioni verso l'esterno e irreversibili, e — come «sicurezza» — `reports/` (la leggono revisore e bot) e `knowledge/` (catalogo delle fonti di studio), e i file ignorati da git (non entrano nella foto di sicurezza, es. `gas_debug.log`). Il controllo vale anche sul file vero (cartella di lavoro, symlink). La contaminazione non si ricicla dalla memoria: un contatto o un'azione scritti dopo una lettura restano segnati «non fidati», e il turno che li rivede nel blocco di memoria è a sua volta contaminato (V-1 bot #222).
-- ⏳ Scadenza delle firme (fetta C5): chiamarla dal giro, mostrarla in `gas doctor`, avvisare "approvazione scaduta".
+- ✅ Scadenza delle firme (fetta C5, 20 ottobre): chiusa dal bot e dal giro, mostrata in `gas doctor`, avviso «approvazione scaduta».
 - ⏳ 👤 Archivio della conoscenza mai creato sul Mac (avviso `knowledge_fts`).
 - ⏳ 👤 Riallineare il Mac a `main` e installare il timer (`reports/setup_notte.md`). Sul Mac `main` è occupato da una seconda copia di lavoro: si usa `git fetch origin && git switch --detach origin/main`.
-- ⏳ Riempire l'elenco dei compiti con lavori veri: punto sui lead, contatti fermi, resoconto di spesa e stato.
+- ⏳ Riempire l'elenco dei compiti con lavori veri: punto sui lead, contatti fermi. ✅ Resoconto di spesa e stato (21 ottobre): lo calcola il kernel a fine giro, senza modello, e va nel messaggio del mattino (solo numeri).
 - ⏳ Lanciare un compito o un giro da Telegram (previsto nella FASE 4.5, mai fatto).
 - La prova si fa a mano e di giorno. Per le notti vere serve R5.
 

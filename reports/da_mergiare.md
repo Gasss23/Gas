@@ -18,3 +18,7 @@
 - **Pro:** il modello non resta all'oscuro di un'azione firmata; mai una seconda esecuzione.
 - **Contro:** l'output dell'azione non c'è più (resta solo l'esito); R-445-3 (cosmetica, già c'era) aperta.
 - **Controlli:** revisore #445 e #446 APPROVATO CON RISERVE (riserve chiuse), #447 APPROVATO; kernel 1008 PASS, pytest 1862 passed.
+- **Aggiunte dopo (stessa PR #241):** chiuse le riserve del bot e della verifica esterna (testo del recupero, log, test «un click alla volta»; review #450-#452). Nuovo: **resoconto del mattino** (roadmap R1): nel messaggio Telegram del giro notturno spesa delle ultime 24 ore e tetto, lead attivi e fermi da 7+ giorni, firme in attesa — solo numeri, calcolati senza modello (review #453/#454).
+- **Pro (aggiunte):** al mattino vedi subito quanto ha speso Gas e quali lead sono fermi, senza aprire file.
+- **Contro (aggiunte):** il messaggio del mattino ha 3 righe in più; se la memoria è rotta le righe dicono «non letti»; R-453-2/R-454-1 basse.
+- **Controlli (totale):** kernel 1010 PASS, pytest 1895 passed.
