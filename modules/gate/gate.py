@@ -586,6 +586,11 @@ def libero_dopo_lettura(tool_name: Any, args: Any) -> bool:
         rel = parsed.get("relative_path")
         if livello_scrittura(rel) != LIVELLO_LIBERO:
             return False
+        # R-398-1: _normalize_path toglie i caratteri invisibili (Cf) solo per il
+        # confronto; qui si CONCEDE, quindi un nome grezzo con un Cf («a.m\u200bd»,
+        # il file vero non è un .md) resta alla firma.
+        if any(unicodedata.category(c) == "Cf" for c in rel):
+            return False
         parts = PurePosixPath(_normalize_path(rel)).parts
         primo = parts[0].strip(". ") if parts else ""
         if not primo or primo.startswith(_FIRMA_DOPO_LETTURA_TOP):

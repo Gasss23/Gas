@@ -790,6 +790,10 @@ def test_cartelle_simili_a_chiavi_restano_scrivibili(path):
     ("write_file", {"relative_path": "dati/clienti/elenco.md"}, True),
     ("write_file", {"relative_path": "memoria/appunti.md"}, True),
     ("write_file", {"relative_path": "dati/agenda.md"}, True),
+    # R-398-1: nome grezzo con un carattere invisibile → firma
+    ("write_file", {"relative_path": "notes/a.m\u200bd"}, False),
+    ("write_file", {"relative_path": "notes/a.t\u200bxt"}, False),
+    ("write_file", {"relative_path": "notes\ufeff/a.md"}, False),
     ("send_email", {"to": "a@b.it"}, False),
     ("run_command", {"command": "ls"}, False),
     ("browser_scrape", {"url": "x"}, False),
