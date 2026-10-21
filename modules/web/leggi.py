@@ -4,7 +4,8 @@ Lettura di UNA pagina web — roadmap R6 («leggere il web»), chat Mani.
 Funzione pubblica: leggi_pagina(url) -> dict
 
 Regole (fail-safe, CLAUDE.md §9):
-  - solo http e https, niente credenziali nell'URL;
+  - solo http e https, niente credenziali nell'URL; dopo un salto in https niente
+    redirect verso http (la pagina non finisce letta in chiaro);
   - niente indirizzi interni (loopback, reti private, link-local, CGNAT, multicast,
     IPv6 locali, IPv4 nascosti in IPv6): controllati sull'URL, su TUTTI gli indirizzi
     dati dal DNS e a ogni redirect; la connessione va all'indirizzo controllato
@@ -14,6 +15,11 @@ Regole (fail-safe, CLAUDE.md §9):
   - il testo esce SEMPRE dentro il marcatore «NON FIDATO» e troncato;
   - mai eccezioni verso chi chiama: in errore {"ok": False, "motivo": ...}, con un
     motivo scritto da qui (mai testo della pagina o del server).
+
+Limiti dichiarati: il tempo massimo copre rete e download; la decodifica e la pulizia
+del testo (lineari, qualche secondo al massimo su 2 MB) vengono dopo (R-ve235-5). Il
+DNS di sistema non si può interrompere: le risoluzioni in corso sono limitate a
+MAX_DNS_IN_CORSO thread (R-ve235-7).
 
 Zero dipendenze esterne: solo stdlib. I proxy d'ambiente non si usano (http.client).
 """
@@ -45,6 +51,7 @@ MAX_CARATTERI = 8000         # caratteri di testo restituiti al massimo
 MAX_TITOLO = 200
 MAX_REDIRECT = 5
 MAX_URL = 2048
+MAX_DNS_IN_CORSO = 4         # risoluzioni DNS contemporanee al massimo (thread che non si possono fermare)
 
 USER_AGENT = "Gas/1.0 (lettore di pagine, solo testo)"
 # Marcatori: a ogni chiamata portano un codice casuale che la pagina non può indovinare,
@@ -60,9 +67,20 @@ _NAT64_LOCALE = ipaddress.ip_network("64:ff9b:1::/48")
 _6TO4 = ipaddress.ip_network("2002::/16")
 _TEREDO = ipaddress.ip_network("2001::/32")
 _NOME_HOST = re.compile(r"[a-z0-9.-]{1,253}")
+# Separatori con un tetto ({0,3}/{1,3}): con «*» o «+» una pagina di soli trattini rende
+# la regex quadratica (2 MB = ore di CPU, B-409-1 review #409 chat Mani).
 _FINTO_MARCATORE = re.compile(
-    r"\[?\s*(?:fine\s+(?:del\s+)?)?contenuto\s+web\s+non[\s_-]*fidato", re.IGNORECASE
+    r"\[?[\s_-]{0,3}(?:fine[\s_-]{1,3}(?:del[\s_-]{1,3})?)?contenuto[\s_-]{1,3}web[\s_-]{1,3}"
+    r"non[\s_-]{0,3}fidato",
+    re.IGNORECASE,
 )
+# Riferimenti numerici enormi («&#» + migliaia di cifre): html.parser solleva ValueError
+# (limite delle cifre degli interi) e la pagina diventerebbe illeggibile (R-ve235-4).
+# Nessun carattere vero supera U+10FFFF: 8+ cifre decimali o 7+ esadecimali sono comunque
+# non validi e diventano U+FFFD.
+_RIF_ZERI_DEC = re.compile(r"&#0+(?=[0-9])")
+_RIF_ZERI_HEX = re.compile(r"&#([xX])0+(?=[0-9a-fA-F])")
+_RIF_ENORME = re.compile(r"&#(?:[0-9]{8,}|[xX][0-9a-fA-F]{7,});?")
 # Charset ammessi (decodifica lineare). Fuori punycode, idna, utf-7, *_escape e simili:
 # alcuni sono quadratici (punycode: 2 MB = minuti di CPU, review #391 chat Mani).
 _CHARSET_AMMESSI = frozenset({
@@ -133,8 +151,15 @@ def _rimasto(scadenza: float) -> float:
     return r
 
 
+_DNS_IN_CORSO = threading.BoundedSemaphore(MAX_DNS_IN_CORSO)
+
+
 def _risolvi_con_tempo(risolvi: Risolutore, host: str, porta: int, scadenza: float) -> list:
-    """Il DNS di sistema non ha un timeout: lo si chiama in un thread e lo si aspetta al massimo fino alla scadenza."""
+    """Il DNS di sistema non ha un timeout: lo si chiama in un thread e lo si aspetta al
+    massimo fino alla scadenza. Il thread non si può fermare: il semaforo lo rilascia
+    solo quando la risoluzione finisce davvero, così i thread vivi non si accumulano."""
+    if not _DNS_IN_CORSO.acquire(timeout=_rimasto(scadenza)):
+        raise _Rifiuto("tempo massimo superato")
     esito: dict = {}
 
     def _lavoro() -> None:
@@ -142,9 +167,15 @@ def _risolvi_con_tempo(risolvi: Risolutore, host: str, porta: int, scadenza: flo
             esito["ips"] = list(risolvi(host, porta))
         except Exception as e:  # noqa: BLE001 — qualunque errore del DNS è un rifiuto
             esito["errore"] = type(e).__name__
+        finally:
+            _DNS_IN_CORSO.release()
 
-    t = threading.Thread(target=_lavoro, name="gas-web-dns", daemon=True)
-    t.start()
+    try:
+        t = threading.Thread(target=_lavoro, name="gas-web-dns", daemon=True)
+        t.start()
+    except Exception:
+        _DNS_IN_CORSO.release()
+        raise
     t.join(_rimasto(scadenza))
     if t.is_alive():
         raise _Rifiuto("tempo massimo superato")
@@ -223,12 +254,21 @@ class _CaneDaGuardia:
     se http.client ha già chiuso il suo descrittore (R-392-1 chat Mani)."""
 
     def __init__(self, sock: socket.socket, scadenza: float) -> None:
-        self._copia = socket.socket(fileno=os.dup(sock.fileno()))
+        fd = os.dup(sock.fileno())
+        try:
+            self._copia = socket.socket(fileno=fd)
+        except Exception:
+            os.close(fd)
+            raise
         self._lucchetto = threading.Lock()
         self._finito = False
-        self._timer = threading.Timer(max(0.0, scadenza - time.monotonic()), self._taglia)
-        self._timer.daemon = True
-        self._timer.start()
+        try:
+            self._timer = threading.Timer(max(0.0, scadenza - time.monotonic()), self._taglia)
+            self._timer.daemon = True
+            self._timer.start()
+        except Exception:
+            self._copia.close()  # costruttore fallito a metà: niente copia lasciata aperta (R-393-2)
+            raise
 
     def _taglia(self) -> None:
         with self._lucchetto:
@@ -411,11 +451,17 @@ def _componi(url_finale: str, pagina: dict) -> dict:
     if pagina["tipo"] == "text/plain":
         corpo = _pulisci(grezzo)
     else:
+        grezzo = _RIF_ZERI_HEX.sub(r"&#\1", _RIF_ZERI_DEC.sub("&#", grezzo))
+        grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
         estrattore = _Estrattore()
-        estrattore.feed(grezzo)
-        estrattore.close()
-        corpo = _pulisci("".join(estrattore.pezzi))
-        titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
+        try:
+            estrattore.feed(grezzo)
+            estrattore.close()
+            corpo = _pulisci("".join(estrattore.pezzi))
+            titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
+        except ValueError:
+            # html.parser non ce la fa (riferimenti strani): testo senza tag, senza interpretarli.
+            corpo = _pulisci(re.sub(r"<[^<>]*>", " ", grezzo))  # [^<>]: lineare anche senza «>»
     troncato = pagina["troncato"]
     if len(corpo) > MAX_CARATTERI:
         corpo = corpo[:MAX_CARATTERI]
