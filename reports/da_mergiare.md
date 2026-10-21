@@ -10,7 +10,7 @@
 - **Cosa:** il giro notturno segna quali compiti ha iniziato; se Gas si spegne a metà (crash, riavvio, corrente), al giro dopo quei compiti ripartono per primi con una nota «controlla cosa è già stato fatto e non ripeterlo». Dopo 3 interruzioni di fila il compito si salta (avviso, exit 1) e il giro dopo riprova da capo; chiesto a mano (`/compito`, `gas notte <nome>`) parte comunque.
 - **Pro:** primo pezzo concreto di M3 («un compito lungo interrotto riprende e finisce»); le azioni rischiose restano comunque alla firma.
 - **Contro:** si riparte da capo con la nota, non dal punto esatto: azioni libere già fatte (es. aggiungere righe a un file) possono ripetersi se il modello ignora la nota; un catalogo con avvisi fissi non pulisce le voci vecchie (R-408-1, bassa).
-- **Controlli:** revisori #406 e #407 (chat Motore) APPROVATO CON RISERVE; notte 118 passed (round-trip col kernel vero sulla ripresa).
+- **Controlli:** revisori #406, #407, #410, #416-#418 (chat Motore) APPROVATO CON RISERVE; notte 125 passed (round-trip col kernel vero sulla ripresa; prova del verificatore con un kill vero). Limite (R-418-3): un compito che fa cadere Gas a ogni avvio fa ancora perdere un giro su quattro (prima due): la prima volta lo si riprova per primo, poi va in coda, alla quarta si salta.
 
 ### 2. Piccole riserve chiuse
 - **Cosa:** un catalogo rotto per un momento non cancella più il registro dei crash; `read_file` nega un nome vuoto o fatto solo di invisibili; il test del giro che falliva 1 volta su 20 è stabile (la causa era l'invio in parallelo della #233).

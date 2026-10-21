@@ -21,6 +21,7 @@
 - **R7 R-fts-1 — tetto alle parole delle ricerche**: `FATTA` — review #412 APPROVATO CON RISERVE (solo statica, disco temporaneo pieno).
 - **Budget: ts non validi/futuri, riga senza a capo, gas tokens (V-2 bot #234, V-1 verifica #234, R-411-1, R-413-1/2)**: `FATTA` — review #413, #414 APPROVATO CON RISERVE.
 - **Test che riempivano /tmp, cache modello, avviso «ripreso» (R-415-1/2, R-416-1, V-2 bot #234)**: `FATTA` — review #415, #416, #417 APPROVATO CON RISERVE.
+- **Ordine delle riprese (V-1 bot #234)**: `FATTA` — review #418 APPROVATO CON RISERVE (limite dichiarato R-418-3).
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -29,25 +30,28 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 ++++++
- gas.py                             | 130 +++++++++++++++++++++++++++++++++++++++++++++------------
+ .claude/agents/memoria_revisore.md |  14 ++++++
+ gas.py                             | 130 ++++++++++++++++++++++++++++++++++++++++++++-----------
  modules/gate/gate.py               |  12 +++++-
- modules/memory/store.py            |  21 +++++++++-
- modules/notte/notte.py             | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/da_mergiare.md             |  99 ++++++++++++++++---------------------------
+ modules/memory/store.py            |  21 ++++++++-
+ modules/notte/notte.py             | 134 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/da_mergiare.md             |  99 ++++++++++++++++--------------------------
  reports/diff_sessione.md           |  17 ++++----
- reports/handoff.md                 | 825 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 842 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  42 +++++++++----------
+ reports/ultimo_report.md           |  43 +++++++++----------
  tests/test_unit_gate.py            |   8 ++++
- tests/test_unit_kernel.py          | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           | 222 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 1023 insertions(+), 615 deletions(-)
+ tests/test_unit_kernel.py          | 118 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           | 243 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 1076 insertions(+), 607 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d9f58bb fix(notte): compito ripreso già fallito 2+ volte va in coda, dopo gli altri (V-1 bot #234)
+632ca76 chore(revisore): memoria review #418 — APPROVATO CON RISERVE
+01bf064 docs(fine-task): report, handoff, coda da_mergiare — test che non riempiono /tmp (#415-#417)
 f2c3e29 fix(notte): avviso «ripreso» anche nella scatola nera (R-416-1)
 0187872 chore(revisore): memoria review #417 — APPROVATO CON RISERVE
 5999fdb fix: cache del modello dei test stabile tra le esecuzioni, pulizia delle cartelle di esecuzioni uccise; avviso «ripreso» solo quando il compito parte (R-415-1/2, V-2 bot #234)
@@ -509,10 +513,35 @@ Review #417 (chat Motore) del diff staged: chiude R-416-1. Ho letto CLAUDE.md, s
 
 ---
 
+### Review #418 (chat Motore) — commit d9f58bb
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #418 (chat Motore): chiude V-1 del bot su PR #234. Ho fatto le tre letture obbligatorie: CLAUDE.md, la parte di reports/stato_progetto.md che riguarda #234 e la notte, e la memoria del revisore.
+
+Elementi del diff esaminati:
+- `modules/notte/notte.py:583-589`: la voce di ripresa ora va in `ripresi` se tentativi == 1, in `in_coda` se tentativi >= 2. Rischio esaminato: ordine instabile e chiavi perse. Esito: ok. Le tre liste mantengono l'ordine del catalogo. Prova su una copia: con catalogo a,b,c,d,e e tentativi {a:2, b:2, d:1, e:3} l'ordine è [d, c, a, b], con e saltato (saltati=1). `ripresa`, `rilancio_a_mano` e `interruzioni` restano invariati.
+- `modules/notte/notte.py:575`: il salto oltre MAX_TENTATIVI (3) non cambia. Rischio esaminato: interazione con `solo` e con il rilancio a mano. Esito: ok. Con `solo`/a_mano c'è un solo compito, quindi l'ordine non conta. Prova: e (tentativi 3) rilanciato a mano non viene saltato e ha `rilancio_a_mano=True`; b (tentativi 2) rilanciato a mano ha ripresa=True ed è eseguito.
+- `tests/test_unit_notte.py:1719`: il test `test_v1_bot234_ripreso_due_volte_va_in_coda` verifica l'ordine [medio, breve, lungo] passando da `esegui_notte` intero. Rischio esaminato: un test che passa anche senza la correzione. Esito: ok. Con la versione di HEAD di notte.py il test FALLISCE; con la correzione la suite notte dà 125 passed.
+- Contesto, `modules/notte/notte.py:681`: il contatore cresce solo quando il compito parte davvero. Serve a valutare il caso del tetto di tempo (vedi R-418-2).
+
+Il nuovo codice non tocca il Wall of Shame (né la storia né `_get_window`) né i guardrail (cap 10 iterazioni, cap 8k output, anti-memoria). Non ci sono nuove eccezioni da gestire.
+
+Finding:
+- **R-418-1 (BASSA, cosmetica)**: le docstring a `modules/notte/notte.py:554` («i compiti rimasti a metà vanno per primi») e `modules/notte/notte.py:597` («ripartono per primi») non descrivono più il comportamento. Vanno aggiornate: tentativi 1 per primi, 2 o più in coda.
+- **R-418-2 (BASSA, accettabile)**: un compito in coda che non parte perché è finito il tempo del giro non incrementa il contatore. Resta a tentativi 2 da una notte all'altra e non arriva mai al salto con azzeramento. Il blocco non è silenzioso: compare ogni notte in «tetto di tempo ... saltati ...» ed esce con exit 1. Lo considero accettabile perché è preferibile a un compito che fa cadere Gas e consuma tutto il giro. Riserva da tracciare: l'avviso di salto per tempo non dice che quel compito era una ripresa in coda. Si può aggiungere se si vuole che l'operatore lo riconosca.
+- **R-418-3 (BASSA, da dichiarare)**: resta un costo. Con un compito che fa cadere Gas subito, nella seconda notte del ciclo (tentativi 1, per primo) il giro si perde ancora tutto. Ciclo: notte 1 si perdono i compiti che vengono dopo nel catalogo; notte 2 si perde tutto; notte 3 gli altri girano e poi cade; notte 4 il compito è saltato e il contatore azzerato. Prima della correzione si perdevano 2 notti intere su 4, ora 1. Scelta difendibile: un singolo crash può essere casuale, quindi riprovarlo per primo ha senso. Va però detto così nel report e non come «risolto del tutto».
+
+Cosa NON ho verificato: il comportamento reale sul Mac/VPS con un processo che cade davvero (kill durante il compito) e il tetto di tempo reale del giro. Non sono riproducibili qui; ho provato solo `_ordina_riprese` in isolamento e la suite notte con un kernel finto. Non ho rieseguito la suite completa del kernel, perché il diff tocca solo modules/notte e il suo test.
+
+Nel repo reale non ho fatto checkout né modifiche. Le prove le ho fatte su una copia nello scratchpad, già cancellata. In /home/user/Gas/.claude/agents/memoria_revisore.md ho aggiunto la riga #418 e una lezione (con contatori di crash, simulare il ciclo notte per notte e il caso in cui il compito non parte), poi l'ho registrata con scripts/commit_memoria_revisore.sh, che non ha stampato errori.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 tests/test_unit_kernel.py: 957 → 964 PASS, 0 FAIL (T94a-f, T95). Blocco reale: `=== RIEPILOGO: 964 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_notte.py`: 106 → `124 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
+pytest `tests/test_unit_notte.py`: 106 → `125 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
 
@@ -521,7 +550,9 @@ pytest `tests/test_unit_notte.py`: 106 → `124 passed`; `tests/test_unit_gate.p
 - ab60f35: handoff-check failure (pushato senza il dossier, per l'HEAD staccato da un agente di verifica); superato dal commit successivo.
 - 2d07cd3: unit-suite success (kernel 964 PASS in CI), handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE) — dal verdetto del bot.
 - 0a11a8b (con a86f493, 5142d8f e memorie): run non letta (nessun evento ricevuto prima della scrittura).
-- 3a43d93, 5999fdb, f2c3e29 e memorie: run non ancora disponibile alla scrittura dell'handoff.
+- 0a11a8b: verifica-bot failure (il bot ha letto come riserva la frase «nessuna ALTA/MEDIA aperta» della descrizione; testo del verdetto APPROVATO CON RISERVE con V-1 BASSA, ora chiusa da d9f58bb).
+- 01bf064 (con 3a43d93, 5999fdb, f2c3e29 e memorie): run non letta prima della scrittura.
+- d9f58bb e memoria: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -534,5 +565,7 @@ pytest `tests/test_unit_notte.py`: 106 → `124 passed`; `tests/test_unit_gate.p
 - R-412-2 (COSMETICA): T95 parziale.
 - R-414-1/2 (BASSE), R-414-3 (COSMETICA): orologio indietro, coda senza a capo riletta, messaggio di T94a.
 - R-417-1 (BASSA): avviso «firme scadute» del giro non va in gas_debug.log.
-- R-415-3, R-416-2, R-417-2 (COSMETICHE).
+- R-415-3, R-416-2, R-417-2, R-418-1 (COSMETICHE).
+- R-418-2 (BASSA): compito in coda fermato dal tetto di tempo resta a tentativi 2.
+- R-418-3 (BASSA, dichiarata): un compito che fa cadere Gas a ogni avvio fa perdere ancora un giro su quattro.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
