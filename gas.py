@@ -949,7 +949,7 @@ class GasKernel:
         # R-c4b3-4: com'era il file della storia l'ultima volta che l'abbiamo letto o
         # scritto (percorso, impronta, lista, quanti messaggi): serve a non cancellare
         # i messaggi scritti nel frattempo da un altro processo sulla stessa root.
-        self._storia_sync: Optional[Tuple[str, Any, int, str]] = None
+        self._storia_sync: Optional[Tuple[Any, ...]] = None
         self._storia_rimandata = False  # R-435-1: unione rimandata a fine turno
         self.history: List[Dict[str, Any]] = (
             self._carica_storia_bloccata() if carica_storia else [])
@@ -1170,28 +1170,37 @@ class GasKernel:
                         and self._hash_messaggi(altrui[:n_base]) == h_base)
         nuovi = self.history[n_base:] if nostri_da_base else None
         suoi = altrui[n_base:] if suoi_da_base else None
+        # V-2 bot #236 (5° giro): i suoi messaggi già uniti a un salvataggio fallito
+        # non si accodano una seconda volta (sync[4] = suo file già unito)
+        gia = sync[4] if len(sync) > 4 else None
+        if (suoi is not None and gia is not None and len(altrui) >= gia[0]
+                and self._hash_messaggi(altrui[:gia[0]]) == gia[1]):
+            suoi = altrui[gia[0]:]
         unita: Optional[List[Dict[str, Any]]] = None
+        gia_nuovo = None
         if nuovi is not None and self._inizia_turno(nuovi):
             unita = altrui + nuovi               # ordine di salvataggio: i suoi prima
             base = (len(altrui), self._hash_messaggi(altrui))
         elif suoi is not None and self._inizia_turno(suoi):
-            if not self._turno_chiuso() and not fine_turno:
-                # R-434-1: a metà turno non si unisce né si scrive: il modello non deve
-                # vedere i messaggi dell'altro prima della propria risposta. L'unione
-                # avviene al salvataggio finale del turno (base invariata).
-                logging.warning("Storia scritta anche da un altro processo: unione "
-                                "rimandata alla fine del turno")
-                self._storia_rimandata = True
-                return False
             unita = self.history + suoi          # turno chiuso, o storia compressa
             base = (n_base, h_base)
+            gia_nuovo = (len(altrui), self._hash_messaggi(altrui))
+        if unita is not None and not self._turno_chiuso() and not fine_turno:
+            # R-434-1 / V-1 bot #236 (5° giro): a metà turno non si unisce né si
+            # scrive, in nessuno dei due rami: il modello non vede i messaggi
+            # dell'altro durante il proprio turno. Si unisce alla fine del turno.
+            logging.warning("Storia scritta anche da un altro processo: unione "
+                            "rimandata alla fine del turno")
+            self._storia_rimandata = True
+            return False
         if unita is not None:
             aggiunti = len(unita) - len(self.history)
             self.history = unita
             # R-430-1: la base resta la parte comune al file appena letto e alla
             # nostra lista, MAI ciò che non è ancora scritto: se la scrittura fallisce,
             # al prossimo salvataggio i nostri messaggi restano da scrivere
-            self._storia_sync = (sync[0], ora, base[0], base[1])
+            self._storia_sync = ((sync[0], ora, base[0], base[1]) if gia_nuovo is None
+                                 else (sync[0], ora, base[0], base[1], gia_nuovo))
             logging.warning("Storia scritta anche da un altro processo: unita "
                             "(%d messaggi in più nella nostra)", aggiunti)
             return True
@@ -1280,22 +1289,24 @@ class GasKernel:
             self._storia_sync = self._sync_storia_di(self._impronta_storia())
             self._sblocca_storia(lock_f)
 
-    def _save_history(self, fine_turno: bool = False):
+    def _save_history(self, fine_turno: bool = False) -> bool:
         """fine_turno=True (finally di run_turn, R-435-1): il turno è finito anche se
         senza risposta finale (tetto di iterazioni, errore): l'unione non si rimanda."""
         lock_f = self._blocca_storia()
         try:
             if not self._unisci_storia_altrui(fine_turno):
-                return  # R-434-1: unione rimandata alla fine del turno
+                return False  # R-434-1: unione rimandata alla fine del turno
             # R-430-1: l'impronta avanza solo se la scrittura è riuscita davvero,
             # altrimenti i messaggi non scritti si perderebbero alla prossima unione
             if self._salva_storia_su_file():
                 self._storia_sync = self._sync_storia()
                 self._storia_rimandata = False
+                return True  # R-439-1: chi chiama sa se la storia è su disco
         except Exception as e:
             logging.warning("Salvataggio della storia non riuscito: %s", e)
         finally:
             self._sblocca_storia(lock_f)
+        return False
 
     def _salva_storia_su_file(self) -> bool:
         tmp_path: Optional[Path] = None
@@ -5219,6 +5230,11 @@ def compress_history_cmd(root_dir: Optional[str] = None) -> int:
     print(f"  Messaggi attuali:   {n_before}")
     print(f"  Messaggi da tenere: {keep}  (GAS_HISTORY_KEEP_MSGS)")
     ok = kernel._compress_history_if_needed(force=True)
+    # R-438-1 / R-439-1: il comando non è dentro un turno (niente rinvio) e dice ok
+    # solo se la storia compressa è davvero su disco
+    if ok and not kernel._save_history(fine_turno=True):
+        print("✗ compress-history: compressione NON salvata (vedi gas_debug.log).")
+        return 1
     if ok:
         n_after = len(kernel.history)
         print(f"  Messaggi dopo:      {n_after}")
