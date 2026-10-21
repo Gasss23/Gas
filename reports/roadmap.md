@@ -227,7 +227,7 @@ Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decision
 - ⏳ **Lista dei lavori ricorrenti con stato** (fatto, in sospeso, fallito, da non ritentare): disegno di giugno, mai costruito.
 - ⏳ Tetti di tempo duri.
 - ✅ Tre stati per un comando firmato: non partito, finito, partito con esito incerto (R-c4b3-5, review #428/#429, 21 ottobre). Resta R-c4b3-3 (crash tra reclamo e storia).
-- ⏳ Due processi che scrivono la stessa cronologia (R-c4b3-4; nota 6b della review #38).
+- ✅ Due processi che scrivono la stessa cronologia: lock e unione dei turni (R-c4b3-4, review #430/#431, 21 ottobre).
 - ✅ L'esito di un compito notturno non è più dedotto dall'inizio del testo: lo dice il kernel (R-222-2, review #425, 21 ottobre).
 - 🅿️ Un file di stato con roadmap attiva e compiti del giorno (idea "Scratchpad" del Blueprint: si valuta solo a roadmap finita).
 
@@ -322,7 +322,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 - R-c4b2-6: esecuzione nello stesso filo del bot; i bottoni degli altri destinatari restano.
 - R-c4b2-7: dopo un errore del database la richiesta resta senza bottoni.
 - R-c4b2-8, R-c4a-2 (cosmetiche). R-c4b2-10: test sensibile alla lentezza.
-- R-c4b3-3, R-c4b3-4 (vedi R7); ✅ R-c4b3-5 chiusa (#428/#429).
+- R-c4b3-3 (vedi R7); ✅ R-c4b3-4 (#430/#431) e R-c4b3-5 (#428/#429) chiuse.
 - R-c2-2, R-c2-4, R-c2-5, R-c2-6, R-c2-10 (non bloccanti); R-c2-8 (accettata: un test entrato senza seconda revisione).
 - R-erm-1, R-erm-2: l'isolamento dei test da Telegram copre un file solo e un solo modo di chiamare la rete.
 - R-220-1: l'esito di un'azione notturna firmata finisce nella tua conversazione.

@@ -1,4 +1,4 @@
-# ULTIMO REPORT — 2026-10-21 — Tre stati per un comando firmato (R7, R-c4b3-5)
+# ULTIMO REPORT — 2026-10-21 — Tre stati per un comando firmato e storia condivisa tra processi (R7, R-c4b3-5, R-c4b3-4)
 
 Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #234 (operatore: «mergia 234 e continua con la roadmap»; C6 decisa «lasciamo così»).
 
@@ -12,11 +12,13 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **C6** — DECISA dall'operatore: (a) «lasciamo così» (una firma per azione, niente «Modifica» né firme a gruppi). Registrata in roadmap e da_mergiare.
 - **R7 / R-c4b3-5 — tre stati per un comando firmato** — FATTA. Un run_command firmato che parte e si interrompe (tempo scaduto) ora risulta «PARTITO, esito INCERTO» nella storia, nel diario e su Telegram, non più «NON eseguito (diniego interno)». Review #428 APPROVATO CON RISERVE (R-428-1 MEDIA).
 - **R-428-1/2/3/4** — FATTA. Il segno «partito» si azzera a ogni tool call (non sporca più il diario di azioni negate o parcheggiate dopo); un errore di avvio (binario assente) non è «incerto»; anche il modello legge «PARTITO… esito INCERTO» senza l'argv di bwrap. Review #429 APPROVATO CON RISERVE (R-429-1 BASSA, R-429-2 COSMETICA).
-- **Test** — kernel 971 → 975 PASS, 0 FAIL (T77u, T77v, T77w).
+- **R7 / R-c4b3-4 — due processi sulla stessa storia** — FATTA. Il bot e un comando da terminale sulla stessa cartella non si cancellano più i messaggi: lock sul file, i turni interi dell'uno si accodano a quelli dell'altro; a metà turno la versione dell'altro va in una copia «conflitto». Review #430 APPROVATO CON RISERVE (R-430-1 MEDIA), #431 la chiude (impronta avanza solo se la scrittura riesce).
+- **V-1/V-2 verifica esterna #236 (= R-429-1/2)** — FATTA in #430.
+- **Test** — kernel 971 → 981 PASS, 0 FAIL; pytest tests/ 1796 passed.
 
 ## Prossimi passi
 
-1. R-429-1: due test mancanti (errore di avvio, meta residuo su azione parcheggiata).
-2. R7 / R-c4b3-4: due processi che scrivono la stessa cronologia (lock + accodamento dei messaggi nuovi).
+1. V-1/V-2/V-3 bot #236: altri errori d'avvio, stato nell'except di applica_firma, test con processo vero.
+2. R-430-3: rotazione o avviso delle copie «conflitto».
 3. R7 / R-c4b3-3: crash tra reclamo e scrittura in storia.
 4. R-408-1: potare il registro della notte solo se il file del catalogo è stato letto.

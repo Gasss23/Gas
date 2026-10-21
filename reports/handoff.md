@@ -16,29 +16,36 @@
 - **C6**: `FATTA` (decisione) — l'operatore ha scelto (a) «lasciamo così».
 - **R7 / R-c4b3-5 — tre stati per un comando firmato**: `FATTA` — review #428 APPROVATO CON RISERVE.
 - **R-428-1/2/3/4**: `FATTA` — review #429 APPROVATO CON RISERVE.
-- **R7 / R-c4b3-4, R-c4b3-3**: `DEFERITA` — prossime fette.
+- **R7 / R-c4b3-4 — due processi sulla stessa storia; test R-429-1, guardia R-429-2 (V-1/V-2 verifica esterna #236)**: `FATTA` — review #430 APPROVATO CON RISERVE (R-430-1 MEDIA).
+- **R-430-1/2/4/5**: `FATTA` — review #431 APPROVATO CON RISERVE.
+- **R7 / R-c4b3-3; V-1/V-2/V-3 bot #236**: `DEFERITA` — prossime fette.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |    3 ++
- gas.py                             |   52 +++++++++++++++----
+ .claude/agents/memoria_revisore.md |    7 +++
+ gas.py                             |  175 +++++++++++++++++++++++++++++++++++++++++++++++++++++++----
  modules/telegram/bot.py            |    4 ++
- reports/da_mergiare.md             |   42 +++------------
- reports/diff_sessione.md           |   15 +++---
- reports/handoff.md                 | 1014 +++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/roadmap.md                 |    4 +-
- reports/stato_progetto.md          |    2 +-
- reports/ultimo_report.md           |   39 +++++---------
- tests/test_unit_kernel.py          |   56 ++++++++++++++++++++
- 10 files changed, 192 insertions(+), 1039 deletions(-)
+ reports/da_mergiare.md             |   50 +++++------------
+ reports/diff_sessione.md           |   16 +++---
+ reports/handoff.md                 | 1063 ++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                 |    6 +--
+ reports/stato_progetto.md          |    4 +-
+ reports/ultimo_report.md           |   41 +++++---------
+ tests/test_unit_kernel.py          |  150 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 494 insertions(+), 1022 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ddc3422 fix(storia): l'impronta avanza solo se la scrittura riesce; salvataggio senza lock se il lock manca; lettura iniziale sotto lock (R-430-1/2/4/5)
+63e6a2f chore(revisore): memoria review #431 — APPROVATO CON RISERVE
+4ad247c fix(storia): due processi sulla stessa root non si cancellano la storia (R7, R-c4b3-4); test R-429-1, guardia R-429-2
+9a32029 chore(revisore): memoria review #430 — APPROVATO CON RISERVE
+33173bf docs(fine-task): report e handoff — tre stati per un comando firmato (#428/#429), C6 decisa
 be72cb5 fix(firma): segno «partito» azzerato a ogni tool call, errore di avvio non incerto, il modello legge «esito INCERTO» (R-428-1/2/3/4)
 40da5ce chore(revisore): memoria review #429 — APPROVATO CON RISERVE
 c19defc fix(firma): comando firmato partito e interrotto → esito INCERTO, non «NON eseguito» (R7, R-c4b3-5)
@@ -116,21 +123,97 @@ Review #429 (chat Motore). Diff in staging: gas.py, tests/test_unit_kernel.py. H
 
 Memoria aggiornata con la riga #429 (nessuna lezione nuova) e committata da sola: 0f458fa, sopra 52b8e00, nessuno dei due pushato. Lo staging di gas.py e tests/test_unit_kernel.py è intatto. File: /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #430 (chat Motore) — commit 4ad247c
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #430 (chat Motore) del diff staged su gas.py e tests/test_unit_kernel.py. Ho letto CLAUDE.md (sezioni 5, 8 e 9), la parte di stato_progetto.md su R-c4b3-4 e R-429 e la mia memoria. Le prove le ho fatte su una copia nello scratchpad, poi cancellata. Lo staging non l'ho toccato.
+
+**Risultati delle prove**
+- Suite del kernel sulla copia: 978 PASS e 1 FAIL. Il FAIL è T79a ed è un problema della copia, non del codice: la copia ha un git appena inizializzato e senza file tracciati, quindi T79a trova «0 file».
+- Mutazioni:
+  - senza `_unisci_storia_altrui`: T97a e T97b falliscono;
+  - senza il reset di `_run_command_avviato` per FileNotFoundError: T77x fallisce;
+  - senza l'azzeramento del meta in `run_turn`: T77y fallisce (diario «[OK] exit=0…»);
+  - senza `and self._run_command_meta is None`: sopravvive, perché nessun test copre quel ramo.
+
+**Elementi del diff esaminati**
+- `gas.py:1154`: `_save_history` prende un flock esclusivo su `.gas_history.json.lock`, unisce, scrive e aggiorna `_storia_sync`. Rischio deadlock: il lock si prende solo qui, nessuna chiamata ricorsiva, e l'unione e la scrittura fanno solo I/O su file. Due kernel nello stesso processo usano descrittori diversi, quindi si mettono in fila senza bloccarsi a vicenda. Esito: ok. Il lock è bloccante e senza timeout: lo accetto. Il file `.lock` e le copie di conflitto sono coperti da `.gitignore` (`.gas_history.json.*`). Lo snapshot fa `git add -f` solo di `.gas_history.json`. I prefissi di `_SAFE_PATH_DENY_PREFIXES` (`.gas_history`) impediscono al modello di leggere le copie di conflitto. Esito: ok.
+- `gas.py:1162`: `_storia_sync` viene aggiornato dopo `_salva_storia_su_file()`, che però inghiotte i propri errori. Esito: **riserva R-430-1 (MEDIA)**. Sonda: A aggiunge A1/rA1 e la scrittura fallisce in silenzio; B scrive; A aggiunge A2 e salva. Risultato nel file E nella memoria di A: `['u0','a0','B1','rB1','A2','rA2']`, cioè A1 e rA1 persi del tutto. Prima della modifica A li avrebbe riscritti. Correzione: `_salva_storia_su_file` restituisce un bool e `_storia_sync` avanza solo se la scrittura è riuscita.
+- `gas.py:1138` / `gas.py:1140`: `nuovi = self.history[sync[3]:]` e poi `history = altrui + nuovi` solo se `nuovi` comincia con role user. Questo slicing calcola cosa salvare, non costruisce la finestra per i provider, quindi non è l'antipattern del Wall of Shame: `_get_window` resta l'unico costruttore della finestra. Ordine dei messaggi per Gemini, sonda 2: B salva dopo un blocco di tool (le chiamate `_save_history` di `run_turn` stanno sempre a fine blocco di tool o dopo la risposta finale, mai a metà sequenza), poi A accoda un turno. Ruoli: `user, assistant, user, assistant(tc), tool, user, assistant`. Le coppie tool_call/tool restano complete, nessun assistant(tool_calls) senza risposta, nessun doppio assistant. Il passaggio tool→user c'è già oggi quando si raggiunge il tetto di iterazioni. Esito: ok. Effetto dichiarato: quando B salva di nuovo a metà turno, il turno di A resta solo nella copia di conflitto (ping-pong tra copie). Lo accetto perché i dati sono conservati.
+- `gas.py:1148`: `os.replace(self.db_path, copia)` sul ramo del conflitto. La compressione (`gas.py:1266`) e `clear_history` (`gas.py:1622`) assegnano una lista nuova, quindi l'id cambia e la versione dell'altro processo va nella copia di conflitto invece di essere cancellata. Esito: ok. `applica_firma` (`gas.py:3090`) estende e salva un blocco che comincia con user, quindi si unisce, ed è proprio il caso R-c4b3-4. Esito: ok.
+- `gas.py:953`: `_storia_sync` è None con carica_storia=False. Il giro notturno (`modules/notte/notte.py:254`) cambia `db_path`, quindi il controllo `sync[0] != str(self.db_path)` evita di unire storie di compiti diversi. Esito: ok.
+- `gas.py:4111`: il ramo «PARTITO… INCERTO» ora richiede `_run_command_meta is None`. È semanticamente corretto: con il meta valorizzato il comando è già terminato. Esito: ok, ma il ramo è senza test (R-430-5).
+- `tests/test_unit_kernel.py:7418` (T97a) e `tests/test_unit_kernel.py:6938` / `tests/test_unit_kernel.py:6952` (T77x/T77y): uccidono le mutazioni dichiarate e non simulano output di tool verso il modello. Esito: ok.
+
+**Riserve**
+- **R-430-1 (MEDIA)**: `_storia_sync` avanza anche quando la scrittura fallisce in silenzio. Con una scrittura successiva di un altro processo, i nostri messaggi non scritti si perdono sia dal file sia dalla memoria. È riprodotto.
+- **R-430-2 (BASSA)**: se l'apertura del file `.lock` o il flock falliscono (permessi, file system), salta TUTTO il salvataggio, con un warning. Prima la scrittura si tentava comunque. Meglio degradare a «scrivi senza lock».
+- **R-430-3 (BASSA)**: le copie `.gas_history.json.conflitto.*` si accumulano senza rotazione né avviso all'operatore. Contengono la conversazione, quindi restano fuori dagli snapshot.
+- **R-430-4 (BASSA)**: in `__init__` `_load_history` legge senza lock e `_sync_storia` fa stat dopo. Se un altro processo scrive in mezzo, l'impronta è quella nuova ma il contenuto quello vecchio, e i suoi messaggi verrebbero sovrascritti. La finestra di tempo è minima.
+- **R-430-5 (COSMETICA)**: la condizione `meta is None` (`gas.py:4111`) non ha test, la mutazione sopravvive.
+
+**Cosa NON ho verificato**
+- Concorrenza reale tra due processi OS (bot su VPS + CLI): T97 e le mie sonde usano due kernel nello stesso processo, in sequenza. Il comportamento del flock sotto carico reale e su file system di rete non è riprodotto.
+- Un vero 400 di Gemini sulla sequenza unita: ho controllato solo l'ordine dei ruoli, senza chiamate API.
+- pytest su tutto `tests/`: non l'ho rilanciato, ho girato solo la suite del kernel.
+
+Memoria: riga #430 e una lezione nuova (l'impronta avanza solo se la scrittura riesce), committate con scripts/commit_memoria_revisore.sh («chore(revisore): memoria review #430 — APPROVATO CON RISERVE»). Il file è /home/user/Gas/.claude/agents/memoria_revisore.md.
+
+### Review #431 (chat Motore) — commit ddc3422
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #431 (chat Motore). Riguarda il diff STAGED su gas.py e tests/test_unit_kernel.py, che chiude le riserve R-430-1, R-430-2, R-430-4 e R-430-5. Le prove le ho fatte su una copia nello scratchpad, poi cancellata. Nel repo vero ho toccato solo la mia memoria: commit 63e6a2f, non pushato. Lo staging è intatto (stessi 2 file, +90 e -15 righe).
+
+**Cosa ho esaminato**
+- `gas.py:1206` — `_save_history` aggiorna `_storia_sync` solo se `_salva_storia_su_file()` restituisce True (R-430-1). Rischio esaminato: l'impronta avanza anche se la scrittura fallisce. Mutazione «sync sempre»: T97c fallisce. **ok**
+- `gas.py:1149` — dopo un'unione la base diventa il file dell'altro processo: `(ora, id della nuova lista, len(altrui))`. Mutazione senza questa riga: T97c fallisce, perché al salvataggio dopo il fallimento la differenza di id manda nel ramo conflitto e B2/rB2 finiscono solo nella copia. Sonda «unione, due scritture fallite, B salva, A salva»: nel file ci sono `u0,B1,B2,A1,A2`, nessuna perdita. **ok**
+- `gas.py:1163` — `_blocca_storia`: se l'apertura del .lock o il flock falliscono, scrive un warning e si salva senza lock (R-430-2). Sonda con `.gas_history.json.lock` creato come cartella: warning «salvo senza lock» e storia scritta. **ok**
+- `gas.py:1192` e `gas.py:955` — `_carica_storia_bloccata` legge la storia e ne prende l'impronta sotto il lock, poi in `__init__` si rifà `_storia_sync` con l'id della lista vera (R-430-4). Il `getattr(self, "history", [])` di `gas.py:1117` durante la lettura dà l'id di una lista provvisoria, ma viene subito sostituito alla riga 955: **corretto**. Mutazione senza il resync: T97a fallisce.
+  - Lock lasciato aperto: dopo `__init__` il lock è libero (prova con LOCK_NB). Resta libero anche dopo la quarantena, perché il rename tocca la storia e non il .lock; in quel caso l'impronta è None e il salvataggio successivo scrive normalmente.
+  - Se `_load_history` solleva un'eccezione, il `finally` rilascia comunque il lock.
+  - Deadlock: nessuna chiamata annidata, quindi nessun deadlock nemmeno con due kernel nello stesso processo. **ok**
+- `tests/test_unit_kernel.py:6941` — T77z: eccezione dopo che il meta è valorizzato, il testo non contiene «INCERTO». Mutazione senza `meta is None` (`gas.py:4154`): T77z fallisce (R-430-5). **ok**
+- `gas.py:1153` (contesto, ramo conflitto) — l'ordine dei passi è os.replace della versione altrui, poi la nostra scrittura. Sonda «conflitto + scrittura fallita»: il file principale resta **assente** finché non si salva di nuovo, e la versione altrui sta solo nella copia. Al giro dopo B riscrive tutto e A fa di nuovo conflitto: è il ping-pong già dichiarato, senza perdita nella sonda. **riserva** (R-431-2)
+
+**Esecuzione sulla copia**: kernel 981 PASS, 0 FAIL. Le quattro mutazioni falliscono come atteso: T97c, T97c, T77z, T97a.
+
+**Riserve**
+- **R-431-1 BASSA**: il nome della copia di conflitto ha la risoluzione al secondo più il pid. Due conflitti nello stesso secondo dallo stesso processo producono lo stesso nome e `os.replace` sovrascrive la prima copia. L'ho riprodotto: nella sonda non si è perso nulla perché la seconda copia conteneva già la prima, ma con 3 processi si possono perdere dati. Proposta: usare `%f` (microsecondi) o un contatore. È vicina a R-430-3.
+- **R-431-2 BASSA**: nel ramo conflitto la copia viene spostata prima della scrittura. Se poi la scrittura fallisce, il file principale manca: un processo che parte in quel momento riparte da una storia vuota, mentre la storia altrui resta solo nella copia. Proposta: copiare o fare un hardlink invece di spostare, così il file resta finché la scrittura atomica non lo sostituisce.
+- **R-431-3 COSMETICA**: `gas.py:955` indicizza `self._storia_sync`, che è Optional. A runtime funziona perché il `finally` lo valorizza sempre, ma mypy lo segnalerebbe.
+- R-430-3 (copie di conflitto senza rotazione) resta aperta e dichiarata.
+
+**Cosa non ho verificato**
+- Il comportamento del flock su file system di rete o su macOS (APFS): non riproducibile qui. Lì un lock tenuto a lungo da un altro processo blocca anche l'avvio di Gas, oltre al salvataggio come succedeva già prima.
+- Non ho rieseguito `pytest tests/` (1796 passed): mi fido del dato dell'agente principale, ho rieseguito solo la suite del kernel.
+
+**Memoria**: aggiunta la riga #431 e una lezione nuova (rami che spostano il file condiviso prima di riscriverlo, collisione del nome della copia). Committata con scripts/commit_memoria_revisore.sh in 63e6a2f.
+
+File: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 971 → 975 PASS, 0 FAIL (T77u, T77v, T77w). Blocco reale: `=== RIEPILOGO: 975 PASS, 0 FAIL ===`.
-pytest `tests/` (prima di #429): 1711 passed; dopo il merge di main si aggiungono i 85 test web.
+tests/test_unit_kernel.py: 971 → 981 PASS, 0 FAIL (T77u-z, T97a-c). Blocco reale: `=== RIEPILOGO: 981 PASS, 0 FAIL ===`.
+pytest `tests/`: 1796 passed (compresi i 85 test web arrivati con main).
 
 ## §6 STATO CI
 
 - 521b018 (testa della PR #234, mergiata): unit-suite, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE).
-- b997a5c, c19defc, 40da5ce, be72cb5: run non ancora disponibile alla scrittura dell'handoff (commit nuovi sopra main, non ancora pushati).
+- be72cb5: handoff-check failure (commit intermedio pushato prima del dossier, atteso); superato da 33173bf.
+- 33173bf (con b997a5c, c19defc, 40da5ce): unit-suite, handoff-check success; verifica-bot success (APPROVATO CON RISERVE, V-1/V-2/V-3 BASSE: decide l'operatore).
+- 9a32029, 4ad247c, 63e6a2f, ddc3422: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - R-428-1/2/3/4: chiuse in #429.
-- R-429-1 (BASSA): mancano i test dell'errore di avvio (FileNotFoundError) e del meta residuo su un'azione parcheggiata.
-- R-429-2 (COSMETICA): il ramo d'errore guarda solo il segno «partito», non anche il meta.
+- R-429-1/2: chiuse in #430 (T77x, T77y, guardia sul meta).
+- R-430-1/2/4/5: chiuse in #431.
+- R-430-3 (BASSA): copie «conflitto» della storia senza rotazione né avviso.
+- R-431-1/2 (BASSE): nome della copia di conflitto al secondo (collisione); copia spostata prima della scrittura (file principale assente se la scrittura fallisce).
+- R-431-3 (COSMETICA): indice su un Optional in `__init__`.
+- V-1/V-2/V-3 bot #236 (BASSE): altri errori d'avvio lasciano «partito»; stato «non_partita» nell'except dopo il reclamo; manca un test con un processo vero ucciso dal timeout.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
