@@ -437,8 +437,10 @@ def run_bot(root_dir: Optional[str] = None) -> int:
 # ascolto, il lock del giro impedisce i doppioni e il riepilogo arriva su Telegram a
 # fine giro, come dal timer. Il nome passa come argomento (niente shell) e solo se
 # rispetta il formato del catalogo.
-_COMANDO_GIRO_RE = re.compile(r"/(notte|compito)(?:@\w+)?(?:\s+(.*))?", re.I | re.S)
-_NOME_COMPITO_RE = re.compile(r"[a-z0-9_-]{1,40}")
+# V-3 verifica esterna #233: separatore solo spazio o tab (non spazi Unicode).
+# V-1 verifica esterna #233: il nome non inizia con «-» (mai un'opzione per gas.py).
+_COMANDO_GIRO_RE = re.compile(r"/(notte|compito)(?:@\w+)?(?:[ \t]+(.*))?", re.I | re.S)
+_NOME_COMPITO_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}")
 _giri_lanciati: List[Any] = []
 
 
@@ -469,16 +471,19 @@ LOG_GIRO_TELEGRAM = "telegram_giro.log"
 
 
 # R-393-1: testo fisso (nessun dato del processo) per un giro morto prima di partire.
-TESTO_GIRO_NON_PARTITO = ("✗ Il giro lanciato da Telegram si è fermato prima di partire "
-                          "(nessun riepilogo). Dettagli in .gas_notte/" + LOG_GIRO_TELEGRAM)
+TESTO_GIRO_NON_PARTITO = ("✗ Il giro lanciato da Telegram si è fermato prima di partire. "
+                          "Dettagli in .gas_notte/" + LOG_GIRO_TELEGRAM)
 
 
 def _giro_partito(voce: Dict[str, Any]) -> bool:
-    """True se il giro ha scritto il riepilogo dopo il lancio (quindi è arrivato a
-    `esegui_notte`). Nel dubbio True: meglio un avviso in meno che uno falso."""
+    """True se il giro ha scritto il marcatore di avvio dopo il lancio, cioè è
+    arrivato a `esegui_notte`, che da lì avvisa da sé in ogni caso (riepilogo,
+    «INTERROTTO», «NON avviato»: R-394-1). Nel dubbio True: meglio un avviso in
+    meno che uno doppio."""
     try:
-        riepilogo = Path(voce["root"]) / ".gas_notte" / "ultimo_giro.md"
-        return riepilogo.stat().st_mtime >= voce["t0"] - 1
+        from modules.notte.notte import AVVIO, NOTTE_DIR
+        marcatore = Path(voce["root"]) / NOTTE_DIR / AVVIO
+        return marcatore.stat().st_mtime >= voce["t0"] - 1
     except FileNotFoundError:
         return False
     except Exception:
@@ -487,9 +492,9 @@ def _giro_partito(voce: Dict[str, Any]) -> bool:
 
 def _raccogli_giri() -> int:
     """Toglie dalla lista i giri finiti (niente processi zombie). Ritorna quanti
-    sono ancora in corso. R-392-2/R-393-1: un giro morto prima di `esegui_notte`
-    (nessun riepilogo scritto dopo il lancio; codice 2 escluso = lock occupato,
-    già notificato dal giro) finisce in gas_debug.log e su Telegram."""
+    sono ancora in corso. R-392-2/R-393-1/R-394-1: un giro morto prima di
+    `esegui_notte` (nessun marcatore di avvio scritto dopo il lancio) finisce in
+    gas_debug.log e su Telegram. Codice 2 escluso: lock occupato, già notificato."""
     for voce in list(_giri_lanciati):
         try:
             rc = voce["p"].poll()

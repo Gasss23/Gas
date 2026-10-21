@@ -96,6 +96,9 @@ except ImportError:  # Windows: niente lock, il giro resta comunque eseguibile
 
 NOTTE_DIR = ".gas_notte"
 RIEPILOGO = "ultimo_giro.md"
+# R-394-1: scritto appena il giro parte; il bot Telegram lo usa per capire se un giro
+# lanciato da lui è morto prima di arrivare qui (in quel caso nessuno ha avvisato).
+AVVIO = "ultimo_avvio"
 MAX_COMPITI = 10          # compiti eseguiti per giro, oltre si ignorano (avviso)
 MAX_PROMPT_CHARS = 4000   # prompt di un compito
 MAX_RISPOSTA_CHARS = 3000  # risposta riportata nel riepilogo, per compito
@@ -508,6 +511,10 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
     da_notificare: Optional[Tuple[Any, ...]] = None
     try:
         notte_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            (notte_dir / AVVIO).write_text(_ora_locale() + "\n", encoding="utf-8")
+        except Exception as e:
+            logging.warning("notte: marcatore di avvio non scritto: %s", e)
         if fcntl is not None:
             lock_f = open(notte_dir / "lock", "w")
             try:

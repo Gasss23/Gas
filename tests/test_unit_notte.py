@@ -1296,14 +1296,15 @@ def test_notte_cmd_passa_il_nome(monkeypatch):
     ("/notte", ("notte", None)), ("/Notte@GasBot", ("notte", None)),
     ("/compito punto_lead", ("compito", "punto_lead")),
     ("/compito@GasBot conta ", ("compito", "conta")),
-    ("ciao /notte", None), ("/nottex", None), ("notte", None), (None, None), (5, None),
+    ("ciao /notte", None), ("/nottex", None), ("/compito\u00a0conta", None), ("notte", None), (None, None), (5, None),
 ])
 def test_comando_giro(testo, atteso):
     assert _tg.comando_giro(testo) == atteso
 
 
 @pytest.mark.parametrize("testo", ["/notte adesso", "/compito", "/compito ../x",
-                                    "/compito a b", "/compito Conta", "/compito " + "x" * 41])
+                                    "/compito a b", "/compito Conta", "/compito " + "x" * 41,
+                                    "/compito -h", "/compito --help"])
 def test_comando_giro_errori(testo):
     tipo, msg = _tg.comando_giro(testo)
     assert tipo == "errore" and msg
@@ -1390,9 +1391,9 @@ def test_lancia_giro_senza_gas_py(monkeypatch, tmp_path):
 
 
 def test_raccogli_giri_segnala_morte_precoce(monkeypatch, caplog, tmp_path):
-    """R-392-2/R-393-1: giro finito senza riepilogo dopo il lancio (anche codice 1,
+    """R-392-2/R-393-1: giro finito senza marcatore di avvio dopo il lancio (anche codice 1,
     traceback di Python) → riga nel log e avviso su Telegram; codice 2 (lock
-    occupato, già notificato dal giro) e giri col riepilogo → silenzio."""
+    occupato, già notificato dal giro) e giri col marcatore di avvio → silenzio."""
     import time as _t
     avvisi = []
     monkeypatch.setattr(_tg, "invia_notifica", lambda t: avvisi.append(t) or (True, ""))
@@ -1408,11 +1409,11 @@ def test_raccogli_giri_segnala_morte_precoce(monkeypatch, caplog, tmp_path):
     con = tmp_path / "con"
     (con / ".gas_notte").mkdir(parents=True)
     t0 = _t.time()
-    (con / ".gas_notte" / "ultimo_giro.md").write_text("ok")
+    (con / ".gas_notte" / notte.AVVIO).write_text("ok")
     vecchia = tmp_path / "vecchia"
     (vecchia / ".gas_notte").mkdir(parents=True)
-    (vecchia / ".gas_notte" / "ultimo_giro.md").write_text("ok")
-    os.utime(vecchia / ".gas_notte" / "ultimo_giro.md", (t0 - 3600, t0 - 3600))
+    (vecchia / ".gas_notte" / notte.AVVIO).write_text("ok")
+    os.utime(vecchia / ".gas_notte" / notte.AVVIO, (t0 - 3600, t0 - 3600))
     giri = [voce(1, vuota, t0), voce(120, vecchia, t0), voce(2, vuota, t0),
             voce(1, con, t0), voce(0, con, t0), voce(None, con, t0)]
     monkeypatch.setattr(_tg, "_giri_lanciati", giri)
@@ -1434,3 +1435,24 @@ def test_raccogli_giri_non_solleva(monkeypatch):
             raise OSError("x")
     monkeypatch.setattr(_tg, "_giri_lanciati", [{"p": _Rotto(), "t0": 0, "root": "/"}])
     assert _tg._raccogli_giri() == 0
+
+
+def test_marcatore_avvio_in_ogni_ramo(monkeypatch, dirs):
+    """R-394-1: esegui_notte scrive il marcatore di avvio anche quando poi si
+    interrompe (ramo except) o trova il catalogo assente: il bot non manda un
+    secondo messaggio «prima di partire»."""
+    import time as _t
+    root, fuori = dirs
+    t0 = _t.time()
+    assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
+                        kernel_factory=lambda r: None) == 1
+    voce = {"p": None, "t0": t0, "root": root}
+    assert _tg._giro_partito(voce)
+
+    def _esplode(*a, **kw):
+        raise RuntimeError("rotto")
+    monkeypatch.setattr(notte, "carica_catalogo", _esplode)
+    (root / ".gas_notte" / notte.AVVIO).unlink()
+    assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
+                        kernel_factory=lambda r: None) == 1
+    assert _tg._giro_partito(voce)
