@@ -6,7 +6,7 @@
 
 ## PR aperta del ramo `feat/merge-automatico-z1xjx2` (nuova, dopo il merge di #232)
 
-> **Bot di verifica su #233:** verdetto APPROVATO CON RISERVE ma check rosso per «caratteri invisibili nel testo» (li avevo incollati nei report citando i verdetti): ora sono scritti come `<U+200B>`; il bot va rilanciato sul nuovo commit.
+> **Bot di verifica su #233:** il testo del verdetto è sempre APPROVATO CON RISERVE (nessuna ALTA/MEDIA), ma il check resta rosso per «caratteri invisibili nel testo»: questa PR parla proprio di caratteri invisibili e il bot li ricopia quando li cita. Ho tolto quelli nei miei file; se il check resta rosso, il merge lo decidi tu (regola: niente merge autonomo).
 
 ### 1. Avviso sui file delicati: chiavi e database tornano, via le parole ambigue
 - **Cosa:** l'avviso «file nuovo che sembra delicato» torna a scattare su `server.pem.txt`, `dump.sql.txt`, `prod.env.txt`, `vault.kdbx.txt`; non scatta più su `customer.service.md`, `manuale.html.pdf`, `node.js.md`; i caratteri invisibili nel nome non lo aggirano più.
@@ -54,3 +54,9 @@
 - **Pro:** chiude V-1 della verifica esterna #233 (3° giro), R-398-1 e R-399-1; il cancello diventa solo più stretto.
 - **Contro:** nomi con accenti scritti «scomposti» (file nati su vecchi Mac) dopo una lettura chiedono la firma (R-400-1, bassa). Fetta di sicurezza: secondo passaggio nella chat claude.ai consigliato.
 - **Controlli:** revisori #398, #399, #400 (chat Motore) APPROVATO CON RISERVE; gate 776 passed, kernel 955 PASS.
+
+### 9. Gas parte anche se il registro non si può scrivere
+- **Cosa:** se `gas_debug.log` non si può aprire (cartella in sola lettura), Gas parte lo stesso, scrive solo a schermo e `gas doctor` lo segnala; `avvio.cmd.txt` di nuovo segnalato come delicato.
+- **Pro:** chiude V-2 del bot e V-2 della verifica esterna #233 (4° giro); rispetta «zero crash».
+- **Contro:** in quel caso la scatola nera è spenta finché non si sistemano i permessi (lo dice doctor).
+- **Controlli:** revisori #401 e #402 (chat Motore) APPROVATO CON RISERVE; kernel 957 PASS, gate 777.

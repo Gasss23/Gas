@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-21 — avviso file delicati (R-390-1), giro da Telegram (R1), firma in parallelo (5.2), R7 (registro e vettori), cancello (caratteri invisibili), compito della chat Mani
+**Sessione:** 2026-10-21 — avviso file delicati (R-390-1), giro da Telegram (R1), firma in parallelo (5.2), R7 (registro e vettori), cancello (caratteri invisibili), registro a prova di crash, compito della chat Mani
 
 ---
 
@@ -24,6 +24,7 @@
 - **5.2 — C6 bottone Modifica e firme a gruppi**: `SALTATA` — decisione dell'operatore (30 settembre: niente gruppi; Modifica senza disegno).
 - **R7 — registro accanto a gas.py, vettori con GAS_VECTORS_DB**: `FATTA` — review #397.
 - **Cancello — caratteri invisibili e NFKC** (V-1 verifica esterna #233 3° giro, R-398-1, R-399-1): `FATTA` — review #398, #399, #400.
+- **Registro non apribile, doctor, «cmd»** (V-2 bot #233, V-2 verifica esterna #233 4° giro, R-401-1/3): `FATTA` — review #401, #402.
 - **R7 — compiti lunghi che riprendono dopo un crash**: `DEFERITA` — serve un disegno.
 
 Tutte le review (chat Motore): APPROVATO CON RISERVE, nessuna ALTA/MEDIA.
@@ -33,27 +34,32 @@ Tutte le review (chat Motore): APPROVATO CON RISERVE, nessuna ALTA/MEDIA.
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 +++++++++-
- gas.py                             |  48 ++++++++++++++++++++++++---------------
- modules/gate/gate.py               |  31 +++++++++++++++++++++----
- modules/notte/notte.py             |  18 +++++++++++++--
- modules/telegram/bot.py            | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------
- reports/da_mergiare.md             |  57 +++++++++++++++++++++++++++++++++++++++++-----
- reports/diff_sessione.md           |  17 ++++++++------
- reports/handoff.md                 | 448 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------
- reports/lavoro_parallelo.md        |  17 +++++++++++++-
+ .claude/agents/memoria_revisore.md |  18 ++++++++++---
+ gas.py                             |  67 ++++++++++++++++++++++++++++++----------------
+ modules/gate/gate.py               |  32 ++++++++++++++++++----
+ modules/notte/notte.py             |  18 +++++++++++--
+ modules/telegram/bot.py            | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
+ reports/da_mergiare.md             |  63 +++++++++++++++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           |  17 +++++++-----
+ reports/handoff.md                 | 520 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------
+ reports/lavoro_parallelo.md        |  17 +++++++++++-
  reports/setup_notte.md             |   5 ++++
  reports/stato_progetto.md          |   6 +++--
- reports/ultimo_report.md           |  35 ++++++++++++++++++----------
- tests/test_unit_gate.py            |  20 ++++++++++++++++
- tests/test_unit_kernel.py          |  80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_notte.py           | 225 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 15 files changed, 1089 insertions(+), 118 deletions(-)
+ reports/ultimo_report.md           |  36 ++++++++++++++++---------
+ tests/test_unit_gate.py            |  21 +++++++++++++++
+ tests/test_unit_kernel.py          | 117 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py           | 225 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 15 files changed, 1226 insertions(+), 124 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fd6add0 fix(doctor): avviso se la scatola nera gas_debug.log è spenta (R-401-1/3)
+afcc527 chore(revisore): memoria review #402 — APPROVATO CON RISERVE
+948c20d fix(log): Gas parte anche se gas_debug.log non si apre; «cmd» di nuovo segnalato (V-2 bot #233, V-2 verifica esterna #233)
+44a8ce6 chore(revisore): memoria review #401 — APPROVATO CON RISERVE
+532c351 docs(fine-task): report, handoff, coda da_mergiare — R7 registro e vettori, cancello e caratteri invisibili
 b32cbea fix(cancello): nome grezzo che NFKC cambia mai libero dopo una lettura (R-399-1)
 46bcd6f chore(revisore): memoria review #400 — APPROVATO CON RISERVE
 0614242 fix(cancello): nome grezzo con caratteri invisibili mai libero dopo una lettura (R-398-1)
@@ -442,10 +448,72 @@ Review #400 (chat Motore), sul diff staged. Chiude R-399-1. Ho letto prima CLAUD
 
 ---
 
+### Review #401 (chat Motore) — commit 948c20d
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #401 (chat Motore), diff staged su 4 file: gas.py, modules/gate/gate.py, tests/test_unit_gate.py, tests/test_unit_kernel.py.
+
+Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (letto in parte, solo le sezioni utili) e .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- gas.py:51 — mette il `RotatingFileHandler` dentro un try/except OSError: se il file non si apre, `_file_handler` vale None e l'errore va in `_LOG_ERRORE`. Rischio esaminato: un errore che non è OSError (cartella al posto del file, permesso negato, sola lettura). `IsADirectoryError`/`PermissionError` sono sottoclassi di OSError e `encoding` è fisso, quindi nessun altro errore è plausibile. La variabile `_e_log` viene cancellata a fine except, ma il messaggio è già salvato come stringa. Esito: ok.
+- gas.py:57 — `basicConfig` riceve solo gli handler diversi da None; poi un `logging.warning` va alla sola console (stderr). Rischio esaminato: Gas resta senza alcun handler o si blocca. La console c'è sempre, quindi il rischio non c'è. Esito: ok. Nota: la regola di CLAUDE.md §9 («loggare in gas_debug.log») qui non si può rispettare per costruzione, e l'avviso a console è il ripiego giusto.
+- gas.py:62 — `_LOG_ERRORE` si usa solo se `_file_handler is None`, cioè solo dopo che il ramo except l'ha definita: nessun NameError a runtime. Esito: riserva cosmetica (R-401-3).
+- gas.py:2075 — `_e_log_kernel` scorre gli handler della radice e cerca `baseFilename`. Rischio esaminato: comportamento senza file handler. Il ciclo non trova nulla e non solleva errori; il ramo «cartella == root» resta valido. Esito: riserva (R-401-2).
+- gas.py:4250 — doctor sul log. Rischio esaminato: scatola nera spenta. Il doctor dà «OK assente» oppure «OK x MB» e non segnala che il kernel non riesce a scrivere il log. Esito: riserva (R-401-1).
+- modules/gate/gate.py:528 — «cmd» torna tra le estensioni interne delicate. Rischio esaminato: falsi positivi su nomi comuni. Al massimo `x.cmd.md` chiede una firma, non c'è mai un diniego, e l'estensione è davvero un eseguibile Windows come `bat`. Esito: ok.
+- tests/test_unit_gate.py:838 — caso «dati/avvio.cmd.txt» → True. Esito: ok.
+- tests/test_unit_kernel.py:7001 — T93a3: un sottoprocesso partito da una cartella temporanea sostituisce `RotatingFileHandler` con una versione che solleva PermissionError. Funziona perché gas.py importa il nome DOPO la sostituzione. Rischio esaminato: il test potrebbe non accorgersi del bug. Mutazione fatta da me: gas.py di HEAD con lo stesso snippet → `PermissionError: sola lettura` all'import; col diff → «OK True 1» più l'avviso su stderr. Il test se ne accorge. Esito: ok.
+
+**Riprodotto**: gate 777 passed, kernel 956 PASS / 0 FAIL (T93a3 PASS).
+
+**Finding**
+- R-401-1 (chat Motore) BASSA: il doctor (gas.py:4250) dà OK sul log anche quando la scatola nera è spenta. Su VPS l'avviso all'avvio scorre via e il doctor è il punto naturale per scoprirlo. Correzione: WARN «scatola nera non scrivibile» se `_file_handler is None`.
+- R-401-2 (chat Motore) BASSA: senza file handler, `_e_log_kernel` (gas.py:2075) non riconosce più un `gas_debug.log` rimasto accanto a gas.py quando root ≠ cartella di gas.py. `cerca_testo` lo tratterebbe come un file dell'utente. È accettabile, perché in quella sessione il kernel non lo sta scrivendo, ma va dichiarato nella docstring.
+- R-401-3 (chat Motore) COSMETICA: `_LOG_ERRORE` è definito solo nel ramo except (gas.py:56). Funziona, ma i linter lo segnalano come «possibly unbound». Correzione: inizializzarlo a `""` prima del try.
+
+**Rischio escluso**: non ho provato una cartella davvero in sola lettura né il caso in cui il disco si riempie DOPO l'apertura, durante la rotazione. Girando come root nel container, `chmod` non toglie la scrittura: ho usato solo la sostituzione dell'handler. Il fallimento della rotazione a runtime (`doRollover` su cartella in sola lettura) era già così prima: lo gestisce `Handler.handleError`, che stampa a console e non solleva.
+
+Memoria aggiornata: riga #401 più la lezione «il fallback senza scatola nera va reso visibile anche nel doctor». Committata da sola in 44c5231e (`chore(revisore): memoria review #401`); il diff staged del motore è intatto (4 file).
+
+File: /home/user/Gas/gas.py, /home/user/Gas/modules/gate/gate.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/tests/test_unit_gate.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+---
+
+### Review #402 (chat Motore) — commit fd6add0
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #402 (chat Motore): chiusura di R-401-1 e R-401-3. Prima della review ho letto CLAUDE.md (sezioni 5, 8 e 10), reports/stato_progetto.md (solo la parte che serviva, con grep) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `gas.py:51` — `_LOG_ERRORE = ""` ora è inizializzato prima del try. Rischio esaminato: il nome poteva restare non definito, sia per i linter sia per doctor quando il file handler si apre bene. Esito: ok. La variabile prende il messaggio d'errore solo nel ramo except (`gas.py:57`) e l'avviso all'avvio (`gas.py:64`) resta invariato. R-401-3 è chiusa.
+- `gas.py:4252` — doctor dà WARN «non scrivibile (<errore>): registro solo a schermo» se `_file_handler is None`; gli altri due casi del controllo Log (file assente o dimensione) sono passati in `elif`/`else`. Rischi esaminati:
+  - Variabili lette all'avvio invece che alla chiamata: no, doctor le legge dal modulo al momento della chiamata, quindi la patch del test ha effetto.
+  - Exit code: ok. Il WARN finisce solo nel conteggio degli avvisi, e il `return 1` scatta solo se ci sono FAIL (`gas.py:4493`-`gas.py:4497`). Con soli avvisi il ritorno è 0. L'ho verificato leggendo il codice e con una sonda da `/tmp`: la riga stampata è `[WARN ] Log gas_debug.log non scrivibile (PermissionError: x): registro solo a schermo`. Nella sonda l'exit code era 1, ma per i FAIL delle chiavi API assenti in un ambiente vuoto, non per il WARN.
+  - Il dettaglio stampa solo tipo e messaggio dell'eccezione, cioè al massimo il percorso: nessun segreto.
+
+  Esito: ok. R-401-1 è chiusa.
+- `tests/test_unit_kernel.py:7020` — T93a4 sostituisce per il test `gas._file_handler`/`gas._LOG_ERRORE` e li ripristina nel finally, poi controlla che ci sia una sola riga gas_debug.log con WARN e «non scrivibile». Rischio esaminato: test che non distingue il codice giusto da quello rotto. Esito: ok. Ho riprodotto la suite kernel: 957 PASS, 0 FAIL. Poi ho tolto il ramo nuovo di doctor: T93a4 FAIL (riga `[OK   ] Log gas_debug.log 3.76 MB`), 956/1. Quindi il test distingue. Dopo la prova ho ripristinato gas.py; il diff staged è rimasto intatto (2 file, +23/-1).
+
+**Finding**
+- R-402-1 (chat Motore) COSMETICA: T93a4 non controlla l'exit code di doctor. Oggi che il WARN non lo alzi è garantito solo dalla lettura di `gas.py:4493`. Proposta: un controllo che, con solo il WARN del log in più, l'esito non diventi 1 (per esempio confrontando il conteggio dei FAIL con e senza la patch).
+- R-402-2 (chat Motore) BASSA: R-401-1, R-401-2 e R-401-3 non compaiono in `reports/stato_progetto.md` (grep vuoto). Vanno tracciate le chiusure di R-401-1/3, e R-401-2 come aperta: `_e_log_kernel` senza file handler non riconosce un gas_debug.log residuo quando la cartella di lavoro di Gas è diversa da quella di gas.py.
+
+**Cosa NON ho verificato**
+- Comportamento reale su VPS o Mac con una cartella davvero non scrivibile (permessi del filesystem): ho simulato solo la sostituzione delle variabili nel modulo. Il ramo except all'import era già stato provato in #401 con T93a3.
+- La suite gate non l'ho rilanciata: il diff non tocca modules/gate.
+
+**Memoria**
+Ho aggiunto la riga contatore #402 in `/home/user/Gas/.claude/agents/memoria_revisore.md` e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit afcc527). Nessuna lezione nuova.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py in locale: 950 → 955 PASS, 0 FAIL (T77o2, T93a, T93a2, T93b). Blocco reale: `=== RIEPILOGO: 955 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_gate.py`: `776 passed` (745 a inizio sessione); `tests/test_unit_notte.py`: `103 passed`. pytest intero `1627 passed in 180.55s` sul commit 0fafbe9 (prima delle fette cancello).
+tests/test_unit_kernel.py in locale: 950 → 957 PASS, 0 FAIL (T77o2, T93a, T93a2, T93a3, T93a4, T93b). Blocco reale: `=== RIEPILOGO: 957 PASS, 0 FAIL ===`.
+pytest `tests/test_unit_gate.py`: `777 passed` (745 a inizio sessione); `tests/test_unit_notte.py`: `103 passed`. pytest intero `1627 passed in 180.55s` sul commit 0fafbe9 (prima delle fette cancello e registro).
 
 ## §6 STATO CI
 
@@ -455,7 +523,8 @@ CI NON VERIFICATA da qui (gh assente nel container); dati dai verdetti della ver
 - 73cca2d (con 1678804 e memorie): handoff-check success.
 - b49f47b: handoff-check failure (handoff non aggiornato in quel push).
 - 467ddf7: unit-suite success, handoff-check success; verifica-bot failure per caratteri invisibili nel verdetto (APPROVATO CON RISERVE nel testo).
-- 0fafbe9, e706955, 0614242, b32cbea e memorie: run non ancora disponibile alla scrittura dell'handoff.
+- 532c351 (con 0fafbe9, e706955, 0614242, b32cbea e memorie): unit-suite success (kernel 957 PASS in CI), handoff-check success; verifica-bot failure per caratteri invisibili nel verdetto (APPROVATO CON RISERVE nel testo), dal verdetto del bot e dalla verifica esterna #233 (4° giro).
+- 948c20d, fd6add0 e memorie: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -466,4 +535,7 @@ CI NON VERIFICATA da qui (gh assente nel container); dati dai verdetti della ver
 - R-397-1 (BASSA): `<root>/gas_debug.log` trattato come log se root ≠ cartella di gas.py.
 - R-398-2, R-399-2, R-400-2 (COSMETICHE): Cf ridondante, test symlink/NFD mancanti.
 - R-400-1 (BASSA): nomi NFD dopo una lettura alla firma (accettato).
+- R-401-2 (BASSA): senza file handler un log residuo accanto a gas.py non è riconosciuto se root diversa.
+- R-402-1 (COSMETICA): T93a4 non controlla l'exit code di doctor.
+- Verifica esterna #233 4° giro: V-3 (doctor(root_dir) legge sempre il log accanto a gas.py: voluto), V-5/V-6 dichiarate.
 - Verifica esterna #233: V-5 3° giro (giro ucciso dopo il marcatore: nessun avviso), V-2 bot (marcatore condiviso col timer) — BASSE.
