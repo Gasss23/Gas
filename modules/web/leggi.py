@@ -215,17 +215,17 @@ def _imposta_timeout(sock: socket.socket, scadenza: float) -> None:
 
 class _CaneDaGuardia:
     """Alla scadenza interrompe la connessione, a qualunque punto sia (handshake TLS,
-    intestazioni, corpo). Lavora sul NUMERO del descrittore preso prima del TLS:
-    wrap_socket stacca il socket grezzo (fileno -1), quindi agire su quell'oggetto non
-    taglierebbe più niente (B1 review #391 chat Mani). Lo shutdown su una copia (dup)
-    vale per la connessione intera. Il lucchetto evita di toccare un descrittore già
-    chiuso e magari riusato da altro."""
+    intestazioni, corpo). wrap_socket stacca il socket grezzo (fileno -1), quindi agire
+    su quell'oggetto non taglierebbe più niente (B1 review #391 chat Mani): il cane
+    possiede una COPIA del descrittore (os.dup nel costruttore) e fa lo shutdown su
+    quella, che vale per la connessione intera. La copia la chiude solo ferma(), sotto
+    lucchetto: il numero non può essere riusato da altri finché il cane è vivo, anche
+    se http.client ha già chiuso il suo descrittore (R-392-1 chat Mani)."""
 
     def __init__(self, sock: socket.socket, scadenza: float) -> None:
-        self._fd = sock.fileno()
+        self._copia = socket.socket(fileno=os.dup(sock.fileno()))
         self._lucchetto = threading.Lock()
         self._finito = False
-        self.scattato = False
         self._timer = threading.Timer(max(0.0, scadenza - time.monotonic()), self._taglia)
         self._timer.daemon = True
         self._timer.start()
@@ -234,23 +234,18 @@ class _CaneDaGuardia:
         with self._lucchetto:
             if self._finito:
                 return
-            self.scattato = True
             try:
-                copia = socket.socket(fileno=os.dup(self._fd))
-            except OSError:
-                return
-            try:
-                copia.shutdown(socket.SHUT_RDWR)
+                self._copia.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
-            finally:
-                copia.close()
 
     def ferma(self) -> None:
-        """Da chiamare PRIMA di chiudere il socket."""
-        with self._lucchetto:
-            self._finito = True
+        """Da chiamare quando la richiesta è finita: spegne il timer e chiude la copia."""
         self._timer.cancel()
+        with self._lucchetto:
+            if not self._finito:
+                self._finito = True
+                self._copia.close()
 
 
 def _scarica(
