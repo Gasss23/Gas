@@ -539,7 +539,7 @@ def _scrivi_in_corso(notte_dir: Path, in_corso: Dict[str, Dict[str, Any]]) -> No
 
 
 def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str, Any]],
-                    avvisi: List[str], a_mano: bool = False
+                    avvisi: List[str], a_mano: bool = False, pota: bool = True
                     ) -> Tuple[List[Dict[str, Any]], int]:
     """R7: i compiti rimasti a metà vanno per primi, marcati `ripresa`. Oltre
     MAX_TENTATIVI avvii interrotti il compito si salta (avviso) e il suo conto si
@@ -547,9 +547,11 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
     R-406-1: ritorna anche quanti compiti sono stati saltati (contano come ko per
     l'exit code); `a_mano` (gas notte <nome>, /compito) = l'operatore lo chiede
     esplicitamente: si rilancia lo stesso. R-406-2: in un giro completo le voci di
-    compiti che non sono più tra quelli attivi del catalogo si tolgono."""
+    compiti che non sono più tra quelli attivi del catalogo si tolgono; R-407-1: solo
+    se il catalogo è stato letto senza avvisi (`pota`), così un catalogo assente o
+    rovinato per un momento non cancella i conti dei crash."""
     nomi = {c["nome"] for c in compiti}
-    if not a_mano:
+    if not a_mano and pota:
         for vecchio in [n for n in in_corso if n not in nomi]:
             del in_corso[vecchio]
     ripresi: List[Dict[str, Any]] = []
@@ -577,7 +579,9 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                  kernel_factory: Optional[Callable[[str], Any]] = None,
                  solo: Optional[str] = None) -> int:
     """Un giro completo (R1: con `solo` = nome, il solo compito del catalogo con quel
-    nome esatto; nome assente o non attivo → avviso ed exit 1). Exit code: 0 tutti i compiti ok (o nessuno attivo),
+    nome esatto; nome assente o non attivo → avviso ed exit 1; R7: i compiti rimasti
+    a metà per un crash ripartono per primi, oltre MAX_TENTATIVI si saltano → exit 1).
+    Exit code: 0 tutti i compiti ok (o nessuno attivo),
     1 almeno un compito ko, saltato per tempo, catalogo non valido o giro
     interrotto da un errore (anche un lock che fallisce per un motivo diverso dal
     lock occupato), 2 un altro giro è in corso. A fine giro, a lock rilasciato,
@@ -617,7 +621,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
         in_corso = _leggi_in_corso(notte_dir)  # R7: ripresa dei compiti rimasti a metà
         letto = dict(in_corso)
         compiti, saltati_r7 = _ordina_riprese(compiti, in_corso, avvisi,
-                                              a_mano=solo is not None)
+                                              a_mano=solo is not None, pota=not avvisi)
         if in_corso != letto:
             _scrivi_in_corso(notte_dir, in_corso)  # conto azzerato dei compiti saltati
         if _env_budget() <= 0.0:

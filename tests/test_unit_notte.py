@@ -755,7 +755,10 @@ def test_riepilogo_telegram_inviato_a_lock_rilasciato(monkeypatch, dirs):
     def _post(base_url, method, payload=None, timeout=70):
         with open(root / ".gas_notte" / "lock", "w") as f:
             try:
-                notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_EX | notte.fcntl.LOCK_NB)
+                # R-404-2: lock CONDIVISO. Dalla #396 i destinatari ricevono in parallelo:
+                # due LOCK_EX di questo stesso test si escludevano a vicenda (1 su 20);
+                # un LOCK_SH fallisce lo stesso se il giro tiene ancora il suo LOCK_EX.
+                notte.fcntl.flock(f.fileno(), notte.fcntl.LOCK_SH | notte.fcntl.LOCK_NB)
                 liberi.append(True)
             except OSError:
                 liberi.append(False)
@@ -1647,3 +1650,13 @@ def test_r406_voci_fuori_catalogo_tolte_nel_giro_completo(dirs):
     (nd / notte.IN_CORSO).write_text(json.dumps({"fantasma": {"tentativi": 1, "inizio": "x"}}))
     esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
     assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
+
+
+def test_r407_catalogo_assente_non_cancella_il_registro(dirs):
+    root, fuori = dirs
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 2, "inizio": "x"}}))
+    assert esegui_notte(str(root), catalogo=fuori / "manca.yaml",
+                        kernel_factory=lambda r: None) == 1
+    assert json.loads((nd / notte.IN_CORSO).read_text())["lungo"]["tentativi"] == 2

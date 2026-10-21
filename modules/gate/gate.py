@@ -193,7 +193,7 @@ def _invisibile(c: str) -> bool:
 def _normalize_path(p: str) -> str:
     """Normalize a path string for denylist comparison.
 
-    Steps: unicodedata NFKC → drop Cf (invisible) chars → strip leading './' loops → os.path.normpath →
+    Steps: unicodedata NFKC → drop invisible chars (`_invisibile`) → strip leading './' loops → os.path.normpath →
     casefold.  Raises ValueError for absolute paths or traversal (starts with
     '..' after normpath).
     NFKC reduces FULLWIDTH characters (U+FF0E ．, U+FF0F ／) to ASCII '.', '/'.
@@ -734,6 +734,16 @@ def gate_classify(tool_name: Any, args: Any) -> GateClass:
             result = _check_path_arg(parsed)
             if result is not None:
                 return result
+            # R-405-1: read_file vuole un FILE: un nome che dopo la normalizzazione è
+            # vuoto o la root (soli spazi o invisibili) è negato. Gli strumenti di
+            # cartella invece usano «.» per la root.
+            if tool_name == "read_file" and isinstance(parsed.get("relative_path"), str):
+                for forma in _forme(parsed["relative_path"]):
+                    try:
+                        if _normalize_path(forma).strip() in ("", "."):
+                            return GateClass.DENY
+                    except ValueError:
+                        return GateClass.DENY
             # Path is clean → fall through to allowlist lookup.
 
         # Rule 4 — run_command: token denylist check + §8e sandbox rule.
