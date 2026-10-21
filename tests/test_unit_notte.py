@@ -1702,3 +1702,15 @@ def test_v2_bot234_ripreso_solo_se_parte(dirs):
     testo = (nd / "ultimo_giro.md").read_text()
     assert "'lungo' ripreso" not in testo
     assert json.loads((nd / notte.IN_CORSO).read_text())["lungo"]["tentativi"] == 1
+
+
+def test_r416_avviso_ripresa_nel_log(dirs, caplog):
+    """R-416-1: l'avviso «ripreso» arriva anche in gas_debug.log."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: lungo\n    prompt: lungo\n")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 1, "inizio": "x"}}))
+    with caplog.at_level("WARNING"):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([], crash=False))
+    assert "'lungo' ripreso" in caplog.text

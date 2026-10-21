@@ -672,6 +672,7 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                          if c.get("rilancio_a_mano") else "")
                 avvisi.append(f"compito '{c['nome']}' ripreso: il giro precedente si era "
                               f"interrotto a metà{extra}")
+                logging.warning("notte: %s", avvisi[-1])  # R-416-1: anche nella scatola nera
             prima = in_corso.get(c["nome"], {}).get("tentativi", 0)
             in_corso[c["nome"]] = {"tentativi": prima + 1, "inizio": _ora_locale()}
             _scrivi_in_corso(notte_dir, in_corso)
