@@ -3837,6 +3837,9 @@ class GasKernel:
     def execute_tool_call(self, name: str, args_str: Any, firmata: bool = False) -> str:
         """Esegue un tool. `firmata=True` SOLO da applica_firma (firma umana valida):
         abilita write_file di livello 2 (1A), mai il livello 3."""
+        # R-222-2: True solo se l'esito porta testo che non scrive il kernel (file,
+        # stdout, diario): lì un «Operazione negata» iniziale non è un diniego.
+        self._esito_contenuto = False
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
@@ -3989,6 +3992,9 @@ class GasKernel:
                 # passa più di qui (vedi _unisci_contatti). Il meccanismo di merge
                 # in MemoryStore resta intatto. Tool ignoto → diniego pulito.
                 return "Tool non trovato."
+            self._esito_contenuto = (name in ("run_command", "read_file", "ricorda") or (
+                name in self._TOOL_LETTURA_NATIVI
+                and getattr(self, "_lettura_meta", None) is not None))
             return self._cap_tool_output(name, args, out)
         except Exception as e:
             return f"Errore eseguendo {name}: {str(e)}"
@@ -4185,9 +4191,11 @@ class GasKernel:
                                         and self._write_livello2(tc.function.arguments)):
                                     _gc = GateClass.IRREVERSIBLE
                                 _gate_diario: Optional[str] = None  # azioni al cancello: diario senza args
+                                _cancello: Optional[str] = None  # R-222-2: esito detto dal kernel
                                 if _gc == GateClass.DENY:
                                     logging.warning(f"[GATE] DENY: {tc.function.name}")
                                     out = "Operazione negata: azione non consentita in modalità autonoma."
+                                    _cancello = "negata"
                                     if _run_command_spento:  # V-3 bot #185: indica gli strumenti
                                         out = ("Operazione negata: Gas non ha comandi di sistema. "
                                                "Usa elenca_cartella, leggi_righe, cerca_testo, "
@@ -4205,6 +4213,10 @@ class GasKernel:
                                     out, _gate_diario = self._parcheggia_e_notifica(
                                         tc.function.name, tc.function.arguments, _turno_id,
                                     )
+                                    if out.startswith("Azione in attesa di approvazione umana"):
+                                        _cancello = "in_attesa"
+                                    elif out.startswith("Operazione negata"):
+                                        _cancello = "negata"
                                 else:
                                     _lead_contaminato = (
                                         _finestra_contaminata and tc.function.name in
@@ -4212,6 +4224,9 @@ class GasKernel:
                                     _prima = (self._lead_prima(tc.function.arguments)
                                               if _lead_contaminato else None)
                                     out = self.execute_tool_call(tc.function.name, tc.function.arguments)
+                                    if (out.startswith("Operazione negata")
+                                            and not getattr(self, "_esito_contenuto", False)):
+                                        _cancello = "negata"
                                     # V-1 bot #222: un contatto scritto a turno contaminato
                                     # resta segnato: chi lo rivede nel pin è contaminato.
                                     if _lead_contaminato:
@@ -4243,7 +4258,7 @@ class GasKernel:
                                 # contaminazione si ricalcolava solo all'iterazione dopo).
                                 if tc.function.name in UNTRUSTED_INPUT_TOOLS:
                                     _finestra_contaminata = True
-                                yield {"type": "tool_res", "output": out}
+                                yield {"type": "tool_res", "output": out, "cancello": _cancello}
                             self._save_history()
                             # continua il loop per ottenere la risposta finale
                         elif msg.content:

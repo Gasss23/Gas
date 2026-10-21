@@ -259,11 +259,16 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
             if tipo == "tool_res":
                 esito["tool"] += 1
                 out = str(ev.get("output", ""))
-                if out.startswith(_NEGATA):
+                if "cancello" in ev:
+                    # R-222-2: l'esito lo dice il kernel, non l'inizio del testo (un
+                    # file che comincia con «Operazione negata» non conta più)
+                    cancello = ev.get("cancello")
+                else:  # kernel senza la chiave (vecchio o finto): prefisso del testo
+                    cancello = ("negata" if out.startswith(_NEGATA) else
+                                "in_attesa" if out.startswith(_IN_ATTESA) else None)
+                if cancello == "negata":
                     esito["negate"] += 1
-                elif out.startswith(_IN_ATTESA):
-                    # Prefisso dell'esito del cancello. Limite dichiarato (R-222-2): un
-                    # file/stdout che INIZIA con la stessa frase gonfia solo il conteggio.
+                elif cancello == "in_attesa":
                     esito["in_attesa"] += 1
             elif tipo == "final":
                 esito["esito"] = "ok"

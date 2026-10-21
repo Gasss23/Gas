@@ -7235,18 +7235,38 @@ _costo_riga94j, _chiamate94j = gas._costo_riga, []
 def _conta94j(*a, **kw):
     _chiamate94j.append(1)
     return _costo_riga94j(*a, **kw)
+_letture94j: list = []
+class _F94j:  # R-424-2: conta i byte letti dal log, non solo le decodifiche
+    def __init__(self, f):
+        self._f = f
+    def __enter__(self):
+        return self
+    def __exit__(self, *a):
+        return self._f.__exit__(*a)
+    def read(self, n=-1):
+        b = self._f.read(n)
+        _letture94j.append(len(b))
+        return b
+    def __getattr__(self, k):
+        return getattr(self._f, k)
+def _apri94j(*a, **kw):
+    return _F94j(open(*a, **kw))
 try:
     gas._costo_riga = _conta94j
+    gas.open = _apri94j
     _c94j2 = _k94j._daily_cost_usd()
-    _n94j = len(_chiamate94j)
+    _n94j, _byte94j = len(_chiamate94j), sum(_letture94j)
     with open(_log94j, "a", encoding="utf-8") as _f94j:
         _f94j.write("\n")
     _c94j3 = _k94j._daily_cost_usd()
+    _n94j3 = len(_chiamate94j) - _n94j  # R-424-3: decodifiche dopo il «\n»
 finally:
     gas._costo_riga = _costo_riga94j
+    del gas.open
 check("T94j riga finale senza «\\n» non riletta a file invariato; contata una volta col suo «\\n»",
       abs(_c94j1 - 0.2) < 1e-9 and abs(_c94j2 - 0.2) < 1e-9 and _n94j == 0
-      and abs(_c94j3 - 0.2) < 1e-9, f"{_c94j1} {_c94j2} {_n94j} {_c94j3}")
+      and _byte94j <= 128 and abs(_c94j3 - 0.2) < 1e-9 and _n94j3 == 1,
+      f"{_c94j1} {_c94j2} {_n94j} {_byte94j} {_c94j3} {_n94j3}")
 
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))
