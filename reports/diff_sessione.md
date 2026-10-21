@@ -8,5 +8,5 @@
 - `modules/gate/gate.py` — read_file nega un nome vuoto/root; docstring di `_normalize_path`.
 - `tests/test_unit_kernel.py` — cartella temporanea unica per esecuzione (pulizia di /tmp), cache del modello stabile.
 - `tests/test_unit_kernel.py`, `tests/test_unit_notte.py`, `tests/test_unit_gate.py` — casi nuovi; test del lock con LOCK_SH.
-- `.claude/agents/memoria_revisore.md` — righe #406-#421.
+- `.claude/agents/memoria_revisore.md` — righe #406-#422.
 - `reports/da_mergiare.md`, `reports/stato_progetto.md`, `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report.

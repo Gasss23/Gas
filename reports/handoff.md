@@ -23,6 +23,7 @@
 - **Test che riempivano /tmp, cache modello, avviso «ripreso» (R-415-1/2, R-416-1, V-2 bot #234)**: `FATTA` — review #415, #416, #417 APPROVATO CON RISERVE.
 - **Ordine delle riprese (V-1 bot #234)**: `FATTA` — review #418 APPROVATO CON RISERVE (limite dichiarato R-418-3).
 - **Compiti sani per primi, sospetti in coda; registro dei costi a blocchi; date future (V-1/V-2 verifica #234 3° giro, V-1 bot #234, R-419-1, R-420-1)**: `FATTA` — review #419, #420, #421 APPROVATO CON RISERVE.
+- **Righe valide lunghe contate; «sospetto» mantenuto e in coda (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)**: `FATTA` — review #422 APPROVATO CON RISERVE.
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -31,25 +32,29 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  18 +++++++
- gas.py                             | 173 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------
- modules/gate/gate.py               |  12 ++++-
- modules/memory/store.py            |  21 +++++++-
- modules/notte/notte.py             | 148 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/da_mergiare.md             |  99 +++++++++++++++-----------------------
- reports/diff_sessione.md           |  17 ++++---
- reports/handoff.md                 | 938 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  44 ++++++++---------
- tests/test_unit_gate.py            |   8 ++++
- tests/test_unit_kernel.py          | 160 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           | 300 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 1356 insertions(+), 584 deletions(-)
+ .claude/agents/memoria_revisore.md |   19 +++++++
+ gas.py                             |  178 ++++++++++++++++++++++++++++++++++++++++++++++++++++----------
+ modules/gate/gate.py               |   12 ++++-
+ modules/memory/store.py            |   21 +++++++-
+ modules/notte/notte.py             |  155 +++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/da_mergiare.md             |   99 +++++++++++++----------------------
+ reports/diff_sessione.md           |   17 +++---
+ reports/handoff.md                 | 1022 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/stato_progetto.md          |    2 +-
+ reports/ultimo_report.md           |   48 ++++++++---------
+ tests/test_unit_gate.py            |    8 +++
+ tests/test_unit_kernel.py          |  171 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           |  330 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 1497 insertions(+), 585 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+373542f fix(budget,notte): righe valide lunghe contate; sospetto mantenuto e in coda (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)
+9533488 chore(revisore): memoria review #422 — APPROVATO CON RISERVE
+9f470a9 chore(revisore): memoria review #422 — APPROVATO CON RISERVE
+eb869d2 docs(fine-task): report, handoff, coda da_mergiare — compiti sani per primi, lettura a blocchi, date future (#419-#421)
 3701278 fix(budget): data futura entro 7 giorni tenuta com'è (stabile tra processi), oltre scartata; tetto di riga ovunque (R-420-1/2/3/4)
 a871d24 chore(revisore): memoria review #421 — APPROVATO CON RISERVE
 7204835 fix(notte,budget): compito saltato resta «sospetto» e parte in coda; ts futuro contato adesso; lettura a blocchi senza copie quadratiche (R-419-1/2/3, V-1 bot #234, R-414-1)
@@ -676,12 +681,79 @@ Ho riprodotto tutto su una copia nello scratchpad, poi cancellata. Nel repo real
 - Registrata con `scripts/commit_memoria_revisore.sh` (commit a871d24).
 - File: /home/user/Gas/.claude/agents/memoria_revisore.md
 
+### Review #422 (chat Motore) — commit 373542f
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #422 (chat Motore), sul diff staged: gas.py, modules/notte/notte.py, tests/test_unit_kernel.py, tests/test_unit_notte.py. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), reports/stato_progetto.md (in modo mirato) e la memoria del revisore.
+
+Spazio su disco (`df -h /`): 29 GB liberi, uso al 29%. Ho lavorato su una copia nello scratchpad (HEAD più il diff staged), poi l'ho cancellata. Nel repo reale non ho toccato niente, a parte la memoria.
+
+**Riproduzione**
+- Kernel: 967 PASS, 0 FAIL.
+- Notte: 129 passed.
+
+**Mutazioni**
+- `_RIGA_MAX = 65536`: T94h fallisce (0.2 invece di 0.3).
+- Senza la conservazione del sospetto in modules/notte/notte.py:701: il test nuovo fallisce.
+- Senza il ramo in modules/notte/notte.py:585: il test nuovo fallisce.
+
+**Elementi esaminati**
+- gas.py:872 — `_RIGA_MAX = 16 << 20`.
+  - Rischio esaminato: lettura completa e lettura a blocchi danno risultati diversi per righe tra 64 KB e 16 MiB.
+  - Sonda su 36 casi (righe da 70 KB, 1 MiB, 1 MiB+5, 5 MiB, M-1, M, M+1, M+512 KB e 20 MiB, ciascuna agli offset 0, 1, 500k e 1 MiB-3): tutti uguali al riferimento. Una riga di 16 MiB o meno si conta sempre, una più lunga si scarta sempre.
+  - Riga lunga 3 MiB aggiunta al file a pezzi: contata una volta sola.
+  - Esito: ok.
+- gas.py:1278 — accumulo `resto += blocco` fino a 16 MiB.
+  - Rischio esaminato: memoria e tempo.
+  - Riga finale da 16 MiB senza «\n», riletta a ogni chiamata: 0,086 s per chiamata, picco di memoria 49 MiB (64 MiB se la riga ha il «\n»).
+  - Riga finale da 64 MiB senza «\n»: 0,057 s per chiamata, perché passa dal ramo `lunga` e tiene solo la coda.
+  - Succede solo con un log scritto a mano o rovinato. Su una VPS è accettabile.
+  - Esito: ok.
+- gas.py:1288 — warning sulle righe oltre il tetto.
+  - Esito: riserva R-422-1 (sotto).
+- gas.py:1315 — `_costo_riga(resto, avvisa=False)`.
+  - La riga finale senza «\n» non scrive più l'avviso a ogni chiamata (chiude R-421-1).
+  - Quando arriva il suo «\n» la riga passa per il ramo normale e avvisa una volta.
+  - Esito: ok.
+- modules/notte/notte.py:585 e modules/notte/notte.py:701 — un compito sospetto che ricade va in coda con la nota di ripresa, e il segno resta finché il compito non finisce.
+  - Ho simulato 9 notti con il compito che crasha in posizione 0, 1 e 2 del catalogo.
+  - Gli altri compiti perdono solo la notte 1. Poi l'andamento è [crash 2, crash 3, salto con {0, sospetto}, crash 1 con sospetto, …]: il segno non si perde mai.
+  - Esito: ok.
+- Casi chiesti, tutti ok:
+  - `_leggi_in_corso` con sospetto e tentativi > 0: già accettato dal codice precedente, il diff aggiunge solo un commento.
+  - Sospetto che arriva a MAX_TENTATIVI: scende nel ramo salto, torna a {0, sospetto} e il giro conta come ko.
+  - Sospetto chiesto a mano (`solo="lungo"`): parte con la nota di ripresa, finisce, e il registro si svuota (`{}`).
+- tests/test_unit_notte.py:1797 — il test nuovo copre il crash con il segno conservato e l'ordine breve, medio, lungo.
+  - Esito: ok.
+
+**Finding**
+- **R-422-1 BASSA**: il warning «riga oltre 16 MiB ignorata» (gas.py:1288) parte solo per le righe tra 16 e circa 17 MiB.
+  - Le righe più lunghe passano dal ramo `lunga` e vengono scartate senza nessun log. Provato: riga da 20 MiB, 0 warning; da M+1 e da M+512 KB, warning presente.
+  - Quindi la frase del brief «oltre 16 MiB scartate con logging.warning» vale solo in parte.
+  - Rimedio: un warning anche nel punto in cui `lunga` diventa True, oppure quando la riga lunga si chiude.
+- **R-422-2 BASSA**: V-1 è provata solo a metà.
+  - La mutazione che riporta l'accumulo tra blocchi a 64 KB (`if len(resto) > 65536` in gas.py:1278) sopravvive: 967 PASS, 0 FAIL.
+  - Motivo: la riga di T94h è da 100 KB e sta dentro un solo blocco da 1 MiB.
+  - Manca un test con una riga valida più lunga di un blocco (per esempio 2 MiB, oppure `_COSTI_BLOCCO` ridotto con un patch).
+- **R-422-3 COSMETICA**: i commenti in gas.py:1260 («riga oltre 64 KB senza «\n»») e gas.py:1313 («oltre 64 KB non può essere una riga di _log_tokens») sono ormai falsi.
+
+**Wall of Shame e guardrail**
+- Niente slicing della history e niente simulazione di output dei tool: il codice nuovo tocca solo il log dei token e il registro della notte.
+- Fail-safe §9: tutto resta dentro il try e il `except` con `logging.warning` di `_daily_cost_usd`. Il cap di 10 iterazioni e `_get_window` non sono toccati.
+
+**Rischio escluso**: non ho verificato il comportamento su una VPS reale con un disco lento o poca RAM. Le misure (circa 0,09 s e 64 MiB di picco) vengono dal container di sviluppo. Non ho verificato nemmeno gli accessi concorrenti al log (scrittura di `_log_tokens` durante la lettura a blocchi): non è riproducibile in modo deterministico qui, e il diff non cambia l'aggiunta in coda al log.
+
+**Memoria**: riga #422 aggiunta, con la lezione «quando si alza un tetto letto a blocchi, il test deve usare una riga più lunga di un blocco». Committata con scripts/commit_memoria_revisore.sh (commit 9533488, solo la memoria; l'index staged è rimasto intatto). Nello scratchpad restano file di sessioni precedenti (b, m, v, v415.md…v421.md), che non ho toccato.
+
+File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/modules/notte/notte.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/tests/test_unit_notte.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 957 → 966 PASS, 0 FAIL (T94a-g, T94e2, T95). Blocco reale: `=== RIEPILOGO: 966 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_notte.py`: 106 → `128 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
+tests/test_unit_kernel.py: 957 → 967 PASS, 0 FAIL (T94a-h, T94e2, T95). Blocco reale: `=== RIEPILOGO: 967 PASS, 0 FAIL ===`.
+pytest `tests/test_unit_notte.py`: 106 → `129 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
 
@@ -693,7 +765,8 @@ pytest `tests/test_unit_notte.py`: 106 → `128 passed`; `tests/test_unit_gate.p
 - 0a11a8b: verifica-bot failure (il bot ha letto come riserva la frase «nessuna ALTA/MEDIA aperta» della descrizione; testo del verdetto APPROVATO CON RISERVE con V-1 BASSA, ora chiusa da d9f58bb).
 - 01bf064 (con 3a43d93, 5999fdb, f2c3e29 e memorie): run non letta prima della scrittura.
 - 8e3072b (con d9f58bb): verifica-bot neutral (APPROVATO CON RISERVE, V-1/V-2 basse poi chiuse); check suite completata.
-- 898a4a2, 7204835, 3701278 e memorie: run non ancora disponibile alla scrittura dell'handoff.
+- eb869d2 (con 898a4a2, 7204835, 3701278 e memorie): check suite completata senza check falliti (evento GitHub).
+- 9f470a9, 9533488, 373542f: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -708,6 +781,8 @@ pytest `tests/test_unit_notte.py`: 106 → `128 passed`; `tests/test_unit_gate.p
 - R-417-1 (BASSA): avviso «firme scadute» del giro non va in gas_debug.log.
 - R-415-3, R-416-2, R-417-2, R-418-1 (COSMETICHE).
 - R-418-2 (BASSA): compito in coda fermato dal tetto di tempo resta a tentativi 2.
-- R-421-1/2 (BASSE), R-421-3 (COSMETICA): avviso ripetuto su riga finale lontana nel futuro, test mancante per righe lunghe, commento doppio.
+- R-422-1 (BASSA): righe oltre ~17 MiB scartate senza riga di log.
+- R-422-2 (BASSA): manca un test con una riga valida più lunga di un blocco da 1 MiB.
+- R-422-3 (COSMETICA): due commenti parlano ancora di 64 KB.
 - Residuo dichiarato: orologio indietro di oltre 7 giorni → quella spesa esce dal tetto per 24 ore.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
