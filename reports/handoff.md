@@ -29,14 +29,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++
- modules/web/leggi.py               | 107 +++++++++++++++++++++++++++++++++++++++++++++++++++------------
- reports/diff_sessione.md           |  13 ++++----
- reports/handoff.md                 | 608 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |  12 ++++++++
+ modules/web/leggi.py               | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ reports/diff_sessione.md           |  14 ++++-----
+ reports/handoff.md                 | 574 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++-
- reports/ultimo_report.md           |  45 ++++++++++++++-------------
- tests/test_unit_web_leggi.py       | 109 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 7 files changed, 512 insertions(+), 385 deletions(-)
+ reports/ultimo_report.md           |  39 ++++++++++++++++---------
+ tests/test_unit_web_leggi.py       | 109 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 7 files changed, 591 insertions(+), 268 deletions(-)
 ```
 
 ---
@@ -44,6 +44,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+33be621 Merge origin/main in feat/mani-web-fetta4
+4f9ff13 docs(fine-task): report, stato e handoff — chat Mani fetta 4, secondo giro (#239)
 3e0fe70 fix(web): fetta 4 chat Mani — fine del tag come il tokenizzatore HTML (R-439-1, R-440-1, R-441-1)
 e72a96a chore(revisore): memoria review #442 — APPROVATO CON RISERVE
 f7a3a05 chore(revisore): memoria review #441 — APPROVATO CON RISERVE
@@ -53,13 +55,13 @@ befc78e Merge origin/main in feat/mani-web-fetta4
 12f7f71 fix(web): fetta 4 chat Mani — ripiego alla pari col parser, nomi dei tag interi, embed
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit, quindi le righe di `reports/handoff.md` possono differire di poco (l'elenco dei file è esatto). I commit di main portati dal merge non sono della sessione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit, quindi le righe di `reports/handoff.md` possono differire di poco (l'elenco dei file è esatto). I commit di main portati dai merge non sono della sessione; il merge `33be621` porta la PR #240 (chat Motore).
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Sette verdetti, incollati integralmente: #431 (chat Mani), #432 (chat Mani), #438 (chat Mani, merge di main) per `12f7f71`/`befc78e`; #439, #440, #441, #442 (chat Mani) per `3e0fe70` (i giri #439-#441 hanno chiuso le proprie riserve nello stesso diff, il commit porta il diff approvato dalla #442; le righe di memoria sono nei commit `c43a59e`, `f7a3a05`, `e72a96a` fatti dal revisore).
+Otto verdetti, incollati integralmente: #431 (chat Mani), #432 (chat Mani), #438 (chat Mani, merge di main) per `12f7f71`/`befc78e`; #439, #440, #441, #442 (chat Mani) per `3e0fe70` (i giri #439-#441 hanno chiuso le proprie riserve nello stesso diff, il commit porta il diff approvato dalla #442; le righe di memoria sono nei commit `c43a59e`, `f7a3a05`, `e72a96a` fatti dal revisore); #444 (chat Mani) per il merge di main `33be621` (PR #240 della chat Motore).
 
 ### Review #431 (chat Mani)
 
@@ -383,11 +385,73 @@ File utili:
 
 ---
 
+### Review #444 (chat Mani) — verdetto RIEMESSO dal revisore
+
+Il primo testo citava `gas.py` e `scripts/bot_esito.py`, che dopo il merge non sono più nel diff di sessione: il gate B lo rifiutava (0 citazioni di file del diff). Come vuole /fine-task, il revisore ha riemesso il verdetto (stesso esito e sostanza); sotto il testo riemesso, poi l'originale integrale dentro un blocco di codice (non conteggiato dal gate).
+
+## VERDETTO: APPROVATO
+
+Review #444 (chat Mani), 2026-10-21, riemessa. L'esito e la sostanza non cambiano. Oggetto: il merge di origin/main 7897f97 (PR #240, chat Motore) nel ramo feat/mani-web-fetta4, committato come 33be621 (genitori 4f9ff13 e 7897f97, base comune dec4ce9). Ho riletto CLAUDE.md (sez. 5), reports/stato_progetto.md (blocco «Mani — fetta 4», riga 605) e .claude/agents/memoria_revisore.md.
+
+**Perché la riemissione.** Dopo il merge il diff di sessione è `git diff 7897f97..HEAD`. I suoi file di codice sono solo modules/web/leggi.py e tests/test_unit_web_leggi.py, quindi le citazioni del primo testo (gas.py, scripts/bot_esito.py) non contano più per il gate B.
+
+**Metodo.** Ho fatto quattro controlli:
+- `git diff 4f9ff13 33be621 -- modules/web tests/test_unit_web_leggi.py` dà 0 righe: il merge lascia l'area Mani identica al commit prima del merge.
+- `git diff dec4ce9 7897f97 -- modules/web tests/test_unit_web_leggi.py` è vuoto: main non tocca l'area Mani.
+- `git diff 7897f97 33be621 -- gas.py scripts/bot_esito.py tests/test_unit_kernel.py tests/test_unit_verifica_bot.py reports/da_mergiare.md` è vuoto: i file di main sono arrivati identici.
+- gas.py non importa modules.web (grep vuoto), quindi tra i due lati non c'è legame nel codice.
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:99`: `_FINE_TAG`, la fine del tag nel ripiego secondo il tokenizzatore HTML (resto del nome, virgolette solo dopo «=», ripetizioni possessive). Rischio: che il merge abbia alterato o perso le correzioni R-439-1/R-440-1/R-441-1 del secondo giro. È identico a 4f9ff13 (0 righe di diff sull'area Mani). Esito: ok.
+- `modules/web/leggi.py:508`: `_togli_blocchi_nascosti`, la ricerca lineare che usa `_FINE_TAG` (alla riga 533 c'è un find di «>» prima della regex). Rischio: un'unione automatica con righe perse o duplicate dentro la funzione. Identica a 4f9ff13, e main non tocca modules/web dalla base dec4ce9. Esito: ok.
+- `tests/test_unit_web_leggi.py:849`: la parametrizzazione di `test_ripiego_attributi_e_commenti` con i casi R-439-1, R-440-1 e R-441-1. Rischio: test del secondo giro persi nel merge, che darebbero una suite verde ma vuota. Il file è identico a 4f9ff13. Sull'albero 33be621 la suite gira con «137 passed in 17.40s», lo stesso conteggio dichiarato per 4f9ff13. Esito: ok.
+- `tests/test_unit_web_leggi.py:892`: `test_ripiego_lineare_su_attributi_e_commenti` (tetto di 10 s sulle pagine patologiche). Rischio: perdita della garanzia di linearità. È presente e passa nella stessa esecuzione. Esito: ok.
+- Contesto, già verificato nel primo testo e invariato: `.claude/agents/memoria_revisore.md:698` e `reports/stato_progetto.md:605`. Sono unioni a multinsieme base/ours/theirs con 0 righe perse, 0 in più e nessun marcatore di conflitto. reports/handoff.md, ultimo_report.md e diff_sessione.md sono la versione Mani, come prescrive lavoro_parallelo.md. Nota non bloccante, sempre valida: con numeri sovrapposti l'ordine «per numero» non cresce sempre fra i blocchi delle due chat. È accettato dalla regola 4 di lavoro_parallelo.md.
+
+**Esecuzione.** Sull'albero 33be621 tests/test_unit_web_leggi.py dà 137 passed. Nel primo passaggio tests/test_unit_web_leggi.py + tests/test_unit_verifica_bot.py davano 462 passed. La suite kernel (991 PASS / 1 FAIL T31g, sqlite_vec assente) non l'ho rieseguita: mi fido del dato del chiamante, coerente con main.
+
+**Rischio escluso.** Non ho rivisto nel merito la logica di unione della storia in gas.py, né le regole di gravità in scripts/bot_esito.py. È codice di main già revisionato dalla chat Motore (#438-#443), e il merge non lo altera: questa review verifica solo che la risoluzione sia fedele. Non ho verificato il fallimento di T31g (sqlite_vec manca in questo ambiente) né il commit di fine-task successivo a 33be621, che al momento della review non esiste ancora (HEAD = 33be621, reports/ modificati in staging).
+
+**Antipattern.** Il merge non introduce slicing della history né simulazione di tool. Il cap delle 10 iterazioni e `_get_window` non sono toccati dal lato Mani.
+
+**Memoria.** In coda a /home/user/Gas/.claude/agents/memoria_revisore.md ho aggiunto una riga datata sulla riemissione: in una review di merge le citazioni vanno prese dai file del diff di sessione dopo il merge. Nessuna nuova riga contatore, perché la #444 c'è già. Non ho committato e non ho toccato reports/: il file risulta modificato (` M`) e va incluso nel commit di fine-task.
+
+Nota per il chiamante: `python3 scripts/check_verdetto.py` sul handoff attuale dà ancora «verdetto 8: 0 citazioni»: il testo nel §4 va sostituito con questo verdetto riemesso, poi rilanciato il gate B.
+
+#### Testo originale della review #444 (prima della riemissione)
+
+```text
+## VERDETTO: APPROVATO
+
+Review #444 (chat Mani), 2026-10-21. Oggetto: il merge di origin/main 7897f97 (PR #240, chat Motore) nel ramo feat/mani-web-fetta4. HEAD è 4f9ff13 e il merge non è ancora committato. Ho letto prima CLAUDE.md (sez. 5), reports/stato_progetto.md, .claude/agents/memoria_revisore.md e reports/lavoro_parallelo.md (regole 3 e 4).
+
+**Metodo.** Ho confrontato ogni file staged con i due genitori (HEAD e MERGE_HEAD) e con la base comune dec4ce9. Per memoria e stato ho fatto un controllo a multinsieme: atteso = base + righe aggiunte da ciascun lato − righe tolte da ciascun lato.
+
+**Elementi del diff esaminati**
+- `gas.py:1175`: aggiunge `gia = sync[4]`, così i messaggi già uniti a un salvataggio fallito non si accodano due volte. Rischio esaminato: la risoluzione del merge altera il codice del Motore, oppure c'è uno slicing della history verso i provider. Il gas.py staged è identico byte per byte a MERGE_HEAD (0 righe di diff). Le fette `altrui[:gia[0]]` e `self.history[n_base:]` servono all'unione su disco e all'impronta, non alla finestra mandata ai provider. Le aveva già revisionate la chat Motore (#438-#443). Esito: ok.
+- `gas.py:1188`: il rinvio dell'unione a metà turno vale ora per entrambi i rami. Stesso rischio, stessa verifica (identico a main). `py_compile` passa. Esito: ok.
+- `scripts/bot_esito.py:109`: nuove righe sulla gravità nel testo del verdetto del bot. Rischio: righe di main perse o duplicate. Identico a MERGE_HEAD (0 righe di diff); tests/test_unit_verifica_bot.py e tests/test_unit_kernel.py sono anch'essi identici a main. Esito: ok.
+- `.claude/agents/memoria_revisore.md:698`: Mani #438-#442, poi Motore #438-#443 da `.claude/agents/memoria_revisore.md:707`. Rischio: righe perse o doppie nell'unione manuale. Contro l'unione attesa mancano 0 righe e ce ne sono 0 in più, nessuna riga non vuota duplicata, nessun marcatore di conflitto. Esito: ok.
+  - Nota non bloccante: con numeri sovrapposti la sequenza non cresce sempre fra i due blocchi (la Mani #442 viene prima della Motore #438). È accettato dalla regola 4 di lavoro_parallelo.md. Mescolare le righe delle due chat sarebbe solo un'alternativa, non una correzione dovuta.
+- `reports/stato_progetto.md:409`: la riga R-c4b3-4 nella versione di main. `reports/stato_progetto.md:605`: il blocco «Mani — fetta 4» col secondo giro, incluse R-439/440/441-1 CHIUSE e R-442-1/R-442-2 (chat Mani) aperte. Rischio: unione automatica che perde una delle due parti. Il controllo a multinsieme dà 0 mancanti e 0 in più. L'unico duplicato («Riserve aperte:», 5 volte) è identico in base, ours e theirs, quindi non nasce dal merge. Esito: ok.
+- `reports/da_mergiare.md` è identico a main. reports/handoff.md, ultimo_report.md e diff_sessione.md sono identici a HEAD (versione Mani), come prescrive lavoro_parallelo.md:23. Esito: ok.
+- Area Mani: `git diff base..MERGE_HEAD -- modules/web tests/test_unit_web_leggi.py` è vuoto, quindi main non tocca l'area Mani. gas.py non importa modules.web, quindi tra i due lati non c'è legame nel codice.
+
+**Esecuzione.** tests/test_unit_web_leggi.py + tests/test_unit_verifica_bot.py sull'albero unito: 462 passed. La suite kernel (991 PASS / 1 FAIL T31g, sqlite_vec assente) non l'ho rieseguita: mi fido del dato del chiamante, coerente con main.
+
+**Rischio escluso.** Non ho rivisto nel merito la logica di unione della storia in gas.py, né le nuove regole di gravità in scripts/bot_esito.py. Sono codice di main già revisionato dalla chat Motore (#438-#443), e il merge non le altera. Questa review verifica solo che la risoluzione sia fedele. Non ho verificato nemmeno il fallimento di T31g (sqlite_vec manca in questo ambiente).
+
+**Memoria.** Ho aggiunto la riga «#444 (chat Mani) — 2026-10-21 — APPROVATO — …» in coda a /home/user/Gas/.claude/agents/memoria_revisore.md (lezione: nessuna nuova, solo la nota sull'ordine non monotono). Il file risulta modificato ma non in staging, quindi va aggiunto con `git add` prima del commit di merge. Come richiesto, NON ho lanciato commit_memoria_revisore.sh.
+```
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Web suite: 105 → 137 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «137 passed in 17.42s», Python 3.13 e 3.11 (venv): «137 passed in 16.94s»; con rete e DNS veri bloccati via sitecustomize: «137 passed in 16.81s»). Primo giro (`12f7f71`) 105 → 107, secondo giro (`3e0fe70`) 107 → 137.
 - Mutazioni del secondo giro, in copia isolata, ciascuna presa da almeno un test: senza il resto del nome del tag, nome dell'attributo che accetta «=», valore senza virgolette senza «=» e virgolette, chiusura della virgoletta obbligatoria, niente spazi prima/dopo «=», niente apici, min→max fra «-->» e «--!>».
 - Mutazioni eseguite in copie isolate (1 FAIL ciascuna): commenti ignorati, insieme a 4 tag, confine della chiusura tolto, apertura per prefisso, except di unescape tolto, embed rimesso, chiusura senza «>».
+- Sull'albero unito col secondo merge (review #444): web suite 137 passed; kernel 991 PASS / 1 FAIL (T31g, stessa causa); verifica_bot + gate + notte 1272 passed.
 - Sull'albero fuso (review #438): gate + notte 947 passed; kernel 987 PASS / 1 FAIL (T31g: manca `sqlite_vec` in questo ambiente, uguale su origin/main).
 
 ## §6 STATO CI
@@ -395,10 +459,12 @@ File utili:
 CI NON VERIFICATA con `gh run list` (gh non autenticato nella sessione cloud). Mappatura commit→run:
 - `12f7f71`: pushato da solo prima del merge di main; run di push non verificata in questa sessione.
 - `befc78e` (merge di main) e `71bd77e` (fine-task del primo giro): pushati insieme, run sulla testa `71bd77e`; esito letto dai check della PR #239 via MCP, non da `gh`.
-- `c43a59e`, `f7a3a05`, `e72a96a`, `3e0fe70`: nessuna run su questi SHA da soli (pushati insieme al commit di fine-task che contiene questo file): run non ancora disponibile alla scrittura dell'handoff.
+- `c43a59e`, `f7a3a05`, `e72a96a`, `3e0fe70`: nessuna run su questi SHA da soli (pushati insieme a `4f9ff13`, che li contiene).
+- `4f9ff13` (fine-task del secondo giro, testa con `c43a59e`…`3e0fe70`): run 39678458664, unit-suite success, handoff-check success; verifica-bot success (letti dai check della PR via MCP).
+- `33be621` (merge di main): nessuna run su questo SHA da solo (pushato col commit di fine-task che contiene questo file).
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-442-1 (chat Mani)** BASSA dentro i blocchi nascosti non grezzi (svg, math, noscript, template, object, canvas) il ripiego chiude al primo «</nome» anche dentro un attributo o un commento; **R-442-2 (chat Mani)** BASSA commenti fasulli `<!x`, `<?`, `</` non lettera e `<![CDATA[` nel ripiego (vede più tag del parser, non meno); R-431-3 (annidamento non contato, ora parte di R-442-1); R-432-1 (COSMETICA). Il revisore ha un prototipo che le chiude (contatore come il parser), da portare in una fetta successiva.
+- Di questa fetta: **R-442-1 (chat Mani)** BASSA dentro i blocchi nascosti non grezzi (svg, math, noscript, template, object, canvas) il ripiego chiude al primo «</nome» anche dentro un attributo o un commento; **R-442-2 (chat Mani)** BASSA commenti fasulli `<!x`, `<?`, `</` non lettera e `<![CDATA[` nel ripiego (vede più tag del parser, non meno); R-431-3 (annidamento non contato, ora parte di R-442-1); R-432-1 (COSMETICA). Il revisore ha un prototipo che le chiude (contatore come il parser), da portare in una fetta successiva. **V-1 bot #239** BASSA `<svg/>`/`<math/>` autochiusi aprono un blocco nel ripiego (si perde testo, non esce nulla), stessa fetta; V-2 bot #239 COSMETICA: corpo della PR aggiornato, resta il commento del test che cita R-431-3.
 - Restano: R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5 e R-ve235-7 (limiti dichiarati). Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1/2/3/4».

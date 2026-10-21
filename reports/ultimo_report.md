@@ -20,9 +20,13 @@ Ramo `feat/mani-web-fetta4` (da main dopo il merge di #238, poi merge di main). 
 - **Test**: web suite 105 → 137 passed (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Mutazioni in copie isolate, tutte prese da almeno un test.
 - **Review**: #431 → #432 → #438 (merge di main) sul primo giro; #439 → #440 → #441 → #442 (chat Mani), tutte APPROVATO CON RISERVE, sul secondo giro (ciascuna ha chiuso le riserve della precedente, restano R-442-1/2).
 
+- **Merge di main (PR #240 della chat Motore)**: `FATTA` — conflitti solo su report e memoria del revisore, risolti come da `reports/lavoro_parallelo.md`. Review #444 (chat Mani) APPROVATO.
+- **Bot #239 sul secondo giro**: APPROVATO CON RISERVE, verifica-bot success; V-1 BASSA (`<svg/>` autochiuso nel ripiego) rimandata con R-442-1/2; V-2 COSMETICA corpo della PR aggiornato.
+
 ## Anomalie
 
 - Durante una prova di mutazione del primo giro l'agente ha usato `git checkout -- modules/web/leggi.py` e ha perso le modifiche non in staging; le ha riapplicate subito. Da allora le mutazioni si fanno solo in copie isolate.
+- I numeri delle review #438-#442 sono stati usati sia dalla chat Mani sia dalla chat Motore (anche gli id R-439-1 ecc.): distinti dal suffisso «(chat Mani)»/«(chat Motore)».
 - Il ripiego imita il tokenizzatore HTML a pezzi: ogni review ha trovato un caso nuovo della stessa famiglia (R-439-1 → R-440-1 → R-441-1). Il fuzz differenziale della #442 non trova più differenze sulla fine del tag di apertura.
 
 ## RICHIESTE ALLA CHAT MOTORE
