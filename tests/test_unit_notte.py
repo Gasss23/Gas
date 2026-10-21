@@ -1792,3 +1792,33 @@ def test_r420_sospetto_va_in_coda_dopo_i_ripresi():
     ordine, saltati = notte._ordina_riprese(compiti, in_corso, [])
     assert [c["nome"] for c in ordine] == ["breve", "medio", "lungo"] and saltati == 0
     assert not ordine[2].get("ripresa") and ordine[1].get("ripresa")
+
+
+def test_v2_verifica234_sospetto_ricaduto_resta_in_coda(dirs):
+    """V-2 verifica #234: un sospetto che crasha di nuovo resta sospetto e in coda
+    (dopo i ripresi normali), con la nota di ripresa."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: lungo
+    prompt: "lungo"
+  - nome: medio
+    prompt: "medio"
+  - nome: breve
+    prompt: "breve"
+""")
+    nd = root / ".gas_notte"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / notte.IN_CORSO).write_text(json.dumps({"lungo": {"tentativi": 0, "inizio": "x",
+                                                           "sospetto": True}}))
+    with pytest.raises(KeyboardInterrupt):
+        esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash([]))
+    reg = json.loads((nd / notte.IN_CORSO).read_text())
+    assert reg["lungo"]["tentativi"] == 1 and reg["lungo"]["sospetto"] is True
+    reg["medio"] = {"tentativi": 1, "inizio": "x"}
+    (nd / notte.IN_CORSO).write_text(json.dumps(reg))
+    visti = []
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti, crash=False))
+    assert [v.split(notte.NOTA_RIPRESA)[0] for v in visti] == ["breve", "medio", "lungo"]
+    assert notte.NOTA_RIPRESA in visti[2]
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}

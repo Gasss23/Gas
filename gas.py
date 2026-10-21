@@ -865,13 +865,15 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
 # già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
 _COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
 _TS_RAPIDO_RE = re.compile(rb'"ts"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"')
-# V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB (R-420-3)
 _COSTI_BLOCCO = 1 << 20  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
-_RIGA_MAX = 65536  # una riga di _log_tokens è ben più corta: oltre è spazzatura (R-419-2)
+# V-1 verifica #234 (4° giro): una riga VALIDA lunga si conta sempre (scartarla
+# toglierebbe la sua spesa dal tetto); oltre 16 MiB è spazzatura (R-419-2: tetto
+# all'accumulo di una riga senza «\n»).
+_RIGA_MAX = 16 << 20
 _TS_LOG_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")  # _log_tokens
 
 
-def _ts_log_valido(ts: Any) -> Optional[str]:
+def _ts_log_valido(ts: Any, avvisa: bool = True) -> Optional[str]:
     """R-413-1: ts del log dei token accettato solo se è nel formato di _log_tokens
     (cifre ASCII) e una data vera; altrimenti None (riga ignorata). V-1 bot #234 /
     R-414-1 / R-420-1: un ts nel futuro fino a 7 giorni (orologio tornato indietro)
@@ -885,13 +887,14 @@ def _ts_log_valido(ts: Any) -> Optional[str]:
     except ValueError:
         return None
     if quando > datetime.now(timezone.utc) + timedelta(days=7):
-        logging.warning("log dei token: riga con data %s oltre 7 giorni nel futuro, "
-                        "ignorata", ts)
+        if avvisa:  # R-421-1: niente avviso a ogni chiamata per l'ultima riga senza «\n»
+            logging.warning("log dei token: riga con data %s oltre 7 giorni nel futuro, "
+                            "ignorata", ts)
         return None
     return ts
 
 
-def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
+def _costo_riga(raw: bytes, avvisa: bool = True) -> Optional[Tuple[str, float]]:
     """(ts, costo USD) di una riga del log dei token; None se vuota, illeggibile,
     un «fallthrough» o con numeri non validi (come la lettura completa di prima)."""
     try:
@@ -913,7 +916,7 @@ def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
         ts = r.get("ts")
         # V-2 bot #234: solo un ts ISO vero; «None» o testo sarebbe ≥ cutoff per sempre
         # (confronto tra stringhe) e terrebbe il budget bloccato senza scadenza.
-        ts_ok = _ts_log_valido(ts)
+        ts_ok = _ts_log_valido(ts, avvisa)
         if ts_ok is None:
             return None
         return (ts_ok, costo)
@@ -1283,6 +1286,8 @@ class GasKernel:
                             righe = resto + blocco[:fine]
                         for raw in righe.split(b"\n") if righe else ():
                             if len(raw) > _RIGA_MAX:  # R-420-2: stesso tetto ovunque
+                                logging.warning("log dei token: riga oltre %d byte ignorata",
+                                                _RIGA_MAX)
                                 continue
                             # uscita rapida: riga con UN solo «"ts"», senza escape (R-419-3),
                             # più vecchia delle 24 ore → non conta, inutile decodificarla
@@ -1307,7 +1312,7 @@ class GasKernel:
             # quando arriva il suo «\n» viene letta una volta sola. R-414-2: niente
             # seconda lettura, e oltre 64 KB non può essere una riga di _log_tokens.
             if resto and not lunga and len(resto) <= _RIGA_MAX:
-                voce = _costo_riga(resto)
+                voce = _costo_riga(resto, avvisa=False)  # R-421-1: riletta a ogni chiamata
                 if voce is not None and voce[0] >= cutoff:
                     totale += voce[1]
             return totale

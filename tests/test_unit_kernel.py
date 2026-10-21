@@ -7188,6 +7188,17 @@ check("T94e2 ts futuro: entro 7 giorni tenuto com'è (anche a cache vuota), oltr
       and _fut94 is None and abs(_c94e1 - 0.1) < 1e-9 and abs(_c94e2 - 0.1) < 1e-9,
       f"{_fut94b} {_fut94} {_c94e1} {_c94e2}")
 
+# T94h — V-1 verifica #234 (4° giro) / R-421-2: una riga VALIDA lunga (100 KB di
+# imbottitura, chiusa da «\n», in mezzo ad altre) si conta: non si aggira il budget
+_k94h = kernel_tmp()
+_lunga94 = json.dumps({"ts": _ora94, "provider": "gemini-flash-lite", "in": 1_000_000,
+                       "out": 0, "x": "a" * 100_000}) + "\n"
+(_k94h.root / gas.TOKEN_LOG_FILENAME).write_text(_riga94(1_000_000, 0) + _lunga94
+                                                  + _riga94(1_000_000, 0), encoding="utf-8")
+_c94h = _k94h._daily_cost_usd()
+check("T94h riga valida da 100 KB contata (0.3 = tre righe da 0.1)", abs(_c94h - 0.3) < 1e-9,
+      str(_c94h))
+
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))
 (_r94f / gas.TOKEN_LOG_FILENAME).write_text(

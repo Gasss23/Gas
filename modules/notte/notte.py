@@ -537,7 +537,7 @@ def _leggi_in_corso(notte_dir: Path) -> Dict[str, Dict[str, Any]]:
         # R-419-1: tentativi 0 ammesso solo per un compito «sospetto» (saltato dopo
         # MAX_TENTATIVI interruzioni: riparte da capo ma in coda, dopo gli altri)
         if (isinstance(nome, str) and _NOME_RE.fullmatch(nome) and type(t) is int
-                and (0 < t <= 1000 or (t == 0 and sospetto))):
+                and (0 < t <= 1000 or (t == 0 and sospetto))):  # V-2 #234: sospetto anche t>0
             pulito[nome] = {"tentativi": t, "inizio": str(v.get("inizio", ""))[:40]}
             if sospetto:
                 pulito[nome]["sospetto"] = True
@@ -582,6 +582,10 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
             altri.append(c)
         elif info["tentativi"] == 0:  # R-419-1: sospetto, riparte da capo ma in coda
             in_coda.append(c)
+        elif info.get("sospetto") and info["tentativi"] < MAX_TENTATIVI:
+            # V-2 verifica #234 (4° giro): un sospetto ricaduto resta in coda, ripreso
+            in_coda.append({**c, "ripresa": True, "rilancio_a_mano": False,
+                            "interruzioni": info["tentativi"]})
         elif info["tentativi"] >= MAX_TENTATIVI and not a_mano:
             avvisi.append(f"compito '{c['nome']}' interrotto {info['tentativi']} volte di "
                           "fila: saltato in questo giro, controlla gas_debug.log")
@@ -691,8 +695,11 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
                 avvisi.append(f"compito '{c['nome']}' ripreso: il giro precedente si era "
                               f"interrotto a metà{extra}")
                 logging.warning("notte: %s", avvisi[-1])  # R-416-1: anche nella scatola nera
-            prima = in_corso.get(c["nome"], {}).get("tentativi", 0)
+            info_prima = in_corso.get(c["nome"], {})
+            prima = info_prima.get("tentativi", 0)
             in_corso[c["nome"]] = {"tentativi": prima + 1, "inizio": _ora_locale()}
+            if info_prima.get("sospetto"):  # V-2 #234: resta sospetto finché non finisce bene
+                in_corso[c["nome"]]["sospetto"] = True
             _scrivi_in_corso(notte_dir, in_corso)
             def _finito(nome: str = c["nome"]) -> None:
                 in_corso.pop(nome, None)  # finito (anche ko): non è un crash
