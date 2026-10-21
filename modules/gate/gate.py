@@ -522,6 +522,8 @@ _ESTENSIONI_INTERNE_DELICATE: frozenset[str] = frozenset({
     "sh", "zsh", "bash", "fish", "command", "terminal", "py", "pyw", "pth", "mjs",
     "cjs", "rb", "php", "ps1", "psm1", "bat", "vbs", "exe", "dll",
     "jar", "applescript", "scpt", "workflow",
+    # V-3 verifica esterna #233: file di avvio, non ambigui («a.plist.txt»)
+    "plist", "desktop",
     "pem", "p12", "pfx", "kdbx", "ovpn", "gpg", "jks", "sql", "sqlite", "sqlite3",
     "ipynb", "env",
 })

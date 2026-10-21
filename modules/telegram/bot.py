@@ -463,15 +463,26 @@ def comando_giro(text: Any) -> Optional[Tuple[str, Optional[str]]]:
         return None
 
 
+_GAS_PY: Path = Path(__file__).resolve().parents[2] / "gas.py"
+# R-392-2: l'uscita del giro lanciato dal bot va qui (come launchd.log per il timer).
+LOG_GIRO_TELEGRAM = "telegram_giro.log"
+
+
 def _raccogli_giri() -> int:
     """Toglie dalla lista i giri finiti (niente processi zombie). Ritorna quanti
-    sono ancora in corso."""
+    sono ancora in corso. R-392-2: un giro morto prima di `esegui_notte` (codice
+    diverso da 0, 1, 2) finisce nel log."""
     for p in list(_giri_lanciati):
         try:
-            if p.poll() is not None:
-                _giri_lanciati.remove(p)
+            rc = p.poll()
+            if rc is None:
+                continue
+            if rc not in (0, 1, 2):
+                log.warning("giro lanciato da Telegram uscito con codice %s "
+                            "(vedi .gas_notte/%s)", rc, LOG_GIRO_TELEGRAM)
         except Exception:
-            _giri_lanciati.remove(p)
+            pass
+        _giri_lanciati.remove(p)
     return len(_giri_lanciati)
 
 
@@ -483,10 +494,17 @@ def lancia_giro(root: Path, nome: Optional[str] = None) -> str:
             return "Un giro lanciato da qui è ancora in corso: aspetta il suo riepilogo."
         if nome is not None and not _NOME_COMPITO_RE.fullmatch(nome):
             return "Nome del compito non valido."
-        cmd = [sys.executable, str(root / "gas.py"), "notte"] + ([nome] if nome else [])
-        p = subprocess.Popen(cmd, cwd=str(root), stdin=subprocess.DEVNULL,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             start_new_session=True, close_fds=True)
+        # R-392-1: gas.py è quello accanto a questo modulo, non quello della cartella
+        # da cui è partito il bot.
+        if not _GAS_PY.is_file():
+            return "✗ Giro NON avviato: gas.py non trovato (dettagli in gas_debug.log)."
+        cmd = [sys.executable, str(_GAS_PY), "notte"] + ([nome] if nome else [])
+        cartella = root / ".gas_notte"
+        cartella.mkdir(parents=True, exist_ok=True)
+        with open(cartella / LOG_GIRO_TELEGRAM, "ab") as out:
+            p = subprocess.Popen(cmd, cwd=str(root), stdin=subprocess.DEVNULL,
+                                 stdout=out, stderr=subprocess.STDOUT,
+                                 start_new_session=True, close_fds=True)
         _giri_lanciati.append(p)
         cosa = f"Compito «{nome}» avviato" if nome else "Giro notturno avviato"
         return f"{cosa}: il riepilogo arriva qui a fine giro."

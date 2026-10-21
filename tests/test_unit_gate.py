@@ -820,7 +820,8 @@ def test_libero_dopo_lettura(tool, args, atteso):
     ("dati/server.pem.txt", True), ("dati/dump.sql.txt", True), ("dati/a.p12.md", True),
     ("dati/vault.kdbx.txt", True), ("dati/prod.env.txt", True), ("dati/n.ipynb.txt", True),
     ("dati/customer.service.md", False), ("dati/manuale.html.pdf", False),
-    ("dati/node.js.md", False), ("dati/guida.desktop.md", False), ("dati/b.ts.txt", False),
+    ("dati/node.js.md", False), ("dati/b.ts.txt", False),
+    ("dati/a.plist.txt", True), ("dati/a.desktop.txt", True),  # V-3 verifica esterna #233
     ("dati/a.sh\u200b.txt", True), ("dati/x.json\u200b", True), ("dati/a\ufeff.secret", True),
 ])
 def test_sembra_delicato(path, atteso):

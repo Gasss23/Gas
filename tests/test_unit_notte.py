@@ -1327,8 +1327,13 @@ def test_lancia_giro_un_solo_processo(monkeypatch, tmp_path):
     r1 = _tg.lancia_giro(tmp_path, "conta")
     assert "conta" in r1 and "avviato" in r1
     p = _PopenFinto.lanciati[0]
-    assert p.cmd == [sys.executable, str(tmp_path / "gas.py"), "notte", "conta"]
+    # R-392-1: gas.py accanto al modulo, non nella cartella del bot
+    assert p.cmd == [sys.executable, str(_tg._GAS_PY), "notte", "conta"]
+    assert Path(p.cmd[1]).is_file()
     assert p.kw.get("shell") is not True and p.kw["cwd"] == str(tmp_path)
+    # R-392-2: l'uscita va nel log, non nel nulla
+    assert p.kw["stdout"] is not _tg.subprocess.DEVNULL
+    assert (tmp_path / ".gas_notte" / _tg.LOG_GIRO_TELEGRAM).exists()
     # un secondo giro mentre il primo gira: rifiutato, nessun processo nuovo
     assert "ancora in corso" in _tg.lancia_giro(tmp_path)
     assert len(_PopenFinto.lanciati) == 1
@@ -1371,3 +1376,24 @@ def test_handle_update_comando_notte(monkeypatch, tmp_path):
     assert len(lanci) == 1 and len(inviati) == 1
     _tg._handle_update("http://finto", upd(7, "/compito"), {7}, _K())
     assert len(lanci) == 1 and "Uso" in inviati[-1][1]
+
+
+def test_lancia_giro_senza_gas_py(monkeypatch, tmp_path):
+    """R-392-1: gas.py assente → «NON avviato», nessun processo."""
+    _PopenFinto.lanciati = []
+    monkeypatch.setattr(_tg.subprocess, "Popen", _PopenFinto)
+    monkeypatch.setattr(_tg, "_giri_lanciati", [])
+    monkeypatch.setattr(_tg, "_GAS_PY", tmp_path / "manca" / "gas.py")
+    assert "NON avviato" in _tg.lancia_giro(tmp_path)
+    assert _PopenFinto.lanciati == []
+
+
+def test_raccogli_giri_segnala_morte_precoce(monkeypatch, caplog):
+    """R-392-2: codice d'uscita fuori da 0/1/2 → riga nel log; lista ripulita."""
+    a, b = _PopenFinto(["x"]), _PopenFinto(["y"])
+    a.poll = lambda: 0
+    b.poll = lambda: 120
+    monkeypatch.setattr(_tg, "_giri_lanciati", [a, b])
+    with caplog.at_level("WARNING"):
+        assert _tg._raccogli_giri() == 0
+    assert "codice 120" in caplog.text and "codice 0" not in caplog.text
