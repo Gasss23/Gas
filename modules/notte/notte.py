@@ -533,9 +533,14 @@ def _leggi_in_corso(notte_dir: Path) -> Dict[str, Dict[str, Any]]:
     for nome, v in dati.items():
         t = v.get("tentativi") if isinstance(v, dict) else None
         # V-4 verifica esterna #234: niente bool (True è un int) né numeri assurdi
+        sospetto = isinstance(v, dict) and v.get("sospetto") is True
+        # R-419-1: tentativi 0 ammesso solo per un compito «sospetto» (saltato dopo
+        # MAX_TENTATIVI interruzioni: riparte da capo ma in coda, dopo gli altri)
         if (isinstance(nome, str) and _NOME_RE.fullmatch(nome) and type(t) is int
-                and 0 < t <= 1000):
+                and (0 < t <= 1000 or (t == 0 and sospetto))):
             pulito[nome] = {"tentativi": t, "inizio": str(v.get("inizio", ""))[:40]}
+            if sospetto:
+                pulito[nome]["sospetto"] = True
     return pulito
 
 
@@ -554,7 +559,9 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
     """R7: i compiti rimasti a metà ripartono DOPO quelli mai interrotti (prima chi
     è stato interrotto una volta, poi chi 2+ volte), marcati `ripresa`. Oltre
     MAX_TENTATIVI avvii interrotti il compito si salta (avviso) e il suo conto si
-    azzera, così il giro dopo ci riprova da capo invece di saltarlo per sempre.
+    azzera, così il giro dopo ci riprova da capo invece di saltarlo per sempre;
+    R-419-1: resta però segnato «sospetto» e riparte in coda, dopo gli altri, finché
+    non finisce una volta senza far cadere Gas.
     R-406-1: ritorna anche quanti compiti sono stati saltati (contano come ko per
     l'exit code); `a_mano` (gas notte <nome>, /compito) = l'operatore lo chiede
     esplicitamente: si rilancia lo stesso. R-406-2: in un giro completo le voci di
@@ -573,10 +580,13 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
         info = in_corso.get(c["nome"])
         if info is None:
             altri.append(c)
+        elif info["tentativi"] == 0:  # R-419-1: sospetto, riparte da capo ma in coda
+            in_coda.append(c)
         elif info["tentativi"] >= MAX_TENTATIVI and not a_mano:
             avvisi.append(f"compito '{c['nome']}' interrotto {info['tentativi']} volte di "
                           "fila: saltato in questo giro, controlla gas_debug.log")
-            del in_corso[c["nome"]]
+            in_corso[c["nome"]] = {"tentativi": 0, "inizio": info.get("inizio", ""),
+                                   "sospetto": True}
             saltati += 1
         else:
             # V-2 bot #234: l'avviso «ripreso» lo scrive il giro quando il compito parte
@@ -584,12 +594,12 @@ def _ordina_riprese(compiti: List[Dict[str, Any]], in_corso: Dict[str, Dict[str,
             voce = {**c, "ripresa": True,
                     "rilancio_a_mano": info["tentativi"] >= MAX_TENTATIVI,
                     "interruzioni": info["tentativi"]}
-            # V-1 bot #234: un compito che fa cadere Gas a ogni avvio, rimesso sempre
-            # per primo, farebbe perdere il giro intero: dal secondo tentativo va in coda.
+            # V-1 bot #234: interrotto una volta → tra i ripresi; 2+ volte → in coda.
             (in_coda if info["tentativi"] >= 2 else ripresi).append(voce)
-    # V-1 verifica esterna #234 (3° giro, MEDIA): i compiti mai interrotti partono
-    # SEMPRE per primi, così un compito che fa cadere Gas non toglie notti agli altri;
-    # poi i ripresi (interrotti una volta), infine quelli già falliti 2+ volte.
+    # V-1 verifica esterna #234 (3° giro, MEDIA) e R-419-1: i compiti mai interrotti
+    # (e mai sospetti) partono SEMPRE per primi; poi i ripresi (interrotti una volta),
+    # infine quelli già falliti 2+ volte e i sospetti. Un compito che fa cadere Gas
+    # costa agli altri solo la prima notte, quando non si sa ancora che crasha.
     return altri + ripresi + in_coda, saltati
 
 

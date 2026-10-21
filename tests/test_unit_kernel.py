@@ -7154,8 +7154,7 @@ check("T94e V-2 bot #234 ts non ISO → riga ignorata",
                                        "in": 1, "out": 1}).encode()) is None
           for t in (None, "None", "domani", 5, ..., "2026-10-21",
                     # R-413-1: cifre non ASCII, data impossibile, data nel futuro
-                    "\uff12\uff10\uff12\uff16-10-21T10:00:00", "9999-99-99T99:99:99",
-                    "2999-01-01T00:00:00"))
+                    "\uff12\uff10\uff12\uff16-10-21T10:00:00", "9999-99-99T99:99:99"))
       and gas._costo_riga(json.dumps({"ts": _ora94, "provider": "groq", "in": 1,
                                       "out": 1}).encode()) is not None)
 
@@ -7168,6 +7167,18 @@ check("T95 R-fts-1 query FTS: al massimo 12 parole distinte, ognuna max 40 carat
       _q95.count('"*') == _MAX95 == 12 and '"parola0"* "parola1"*' in _q95
       and _k95.count('"*') == 12 and _k95.startswith('"cane"* OR "gatto"* OR "' + "z" * 40 + '"*'),
       _q95[:80] + " | " + _k95[:80])
+
+# T94e2 — V-1 bot #234 / R-414-1: un ts nel futuro (orologio tornato indietro) si
+# conta ADESSO, non si scarta (la spesa resta nel tetto e scade dopo 24 ore)
+_fut94 = gas._costo_riga(json.dumps({"ts": "2999-01-01T00:00:00", "provider": "gemini-flash-lite",
+                                     "in": 1_000_000, "out": 0}).encode())
+_due_ore94 = (datetime.now(timezone.utc) + _td(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
+_fut94b = gas._costo_riga(json.dumps({"ts": _due_ore94, "provider": "gemini-flash-lite",
+                                      "in": 1_000_000, "out": 0}).encode())
+check("T94e2 V-1 bot #234 ts futuro → contato con l'ora attuale (mai scartato, mai per sempre)",
+      _fut94 is not None and _fut94b is not None
+      and _fut94[0] <= datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+      and abs(_fut94[1] - 0.1) < 1e-9 and _fut94b[0] < _due_ore94, f"{_fut94} {_fut94b}")
 
 # T94f — R-413-2: `gas tokens` con un ts null nel log non si ferma
 _r94f = Path(tempfile.mkdtemp(prefix="gas_t94f_"))

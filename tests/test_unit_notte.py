@@ -1528,7 +1528,7 @@ compiti:
 """)
 
 
-def test_r7_crash_poi_ripresa_per_primo(dirs):
+def test_r7_crash_poi_ripresa_dopo_gli_altri(dirs):
     root, fuori = dirs
     cat = _cat_r7(fuori)
     visti = []
@@ -1562,11 +1562,14 @@ def test_r7_oltre_max_tentativi_saltato_e_azzerato(dirs):
                         kernel_factory=lambda r: _KCrash(visti, crash=False)) == 1
     assert visti == ["breve"]
     assert "interrotto 3 volte" in (nd / "ultimo_giro.md").read_text()
-    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
-    # il giro dopo ci riprova da capo, senza nota
+    # R-419-1: conto azzerato ma il compito resta «sospetto»
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {
+        "lungo": {"tentativi": 0, "inizio": "x", "sospetto": True}}
+    # il giro dopo ci riprova da capo, senza nota, ma in coda; finito bene → tolto
     visti2 = []
     esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti2, crash=False))
-    assert sorted(visti2) == ["breve", "lungo"]
+    assert visti2 == ["breve", "lungo"]
+    assert json.loads((nd / notte.IN_CORSO).read_text()) == {}
 
 
 def test_r7_ko_e_tempo_scaduto_non_sono_crash(dirs):
@@ -1718,7 +1721,8 @@ def test_r416_avviso_ripresa_nel_log(dirs, caplog):
 
 
 def test_v1_bot234_ripreso_due_volte_va_in_coda(dirs):
-    """V-1 bot #234: interrotto 1 volta → per primo; 2+ volte → dopo gli altri."""
+    """V-1 bot #234 / V-1 verifica #234: prima i mai interrotti, poi chi è stato
+    interrotto una volta, in fondo chi 2+ volte."""
     root, fuori = dirs
     cat = _scrivi(fuori / "c.yaml", """
 compiti:
@@ -1752,3 +1756,28 @@ def test_v1_verifica234_compito_che_crasha_non_affama_gli_altri(dirs):
             pass
         girati_breve += visti.count("breve")
     assert girati_breve == 6
+
+
+def test_r419_compito_che_crasha_primo_nel_catalogo(dirs):
+    """R-419-1: col compito che fa cadere Gas messo PRIMO nel catalogo, «breve» perde
+    solo la prima notte (quando non si sa ancora che crasha), poi gira sempre, anche
+    dopo il salto e l'azzeramento (il compito resta «sospetto» e parte in coda)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", """
+compiti:
+  - nome: lungo
+    prompt: "lungo"
+  - nome: breve
+    prompt: "breve"
+""")
+    girati = []
+    for _notte in range(8):
+        visti = []
+        try:
+            esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _KCrash(visti))
+        except KeyboardInterrupt:
+            pass
+        girati.append(visti.count("breve"))
+    assert girati == [0, 1, 1, 1, 1, 1, 1, 1], girati
+    reg = json.loads((root / ".gas_notte" / notte.IN_CORSO).read_text())
+    assert "lungo" in reg

@@ -865,21 +865,27 @@ def _lezione_simile(testo: str, catalogo: List[Dict[str, Any]]) -> Optional[int]
 # già lette e il punto del file fin dove si è letto. Vedi GasKernel._daily_cost_usd.
 _COSTI_CACHE: Dict[str, Dict[str, Any]] = {}
 _TS_RAPIDO_RE = re.compile(rb'"ts"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"')
-_COSTI_BLOCCO = 1 << 20  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
+_COSTI_BLOCCO = 1 << 20
+_RIGA_MAX = 65536  # una riga di _log_tokens è ben più corta: oltre è spazzatura (R-419-2)  # V-2 verifica #234: lettura del log dei token a blocchi da 1 MiB
 _TS_LOG_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")  # _log_tokens
 
 
-def _ts_log_valido(ts: Any) -> bool:
+def _ts_log_valido(ts: Any) -> Optional[str]:
     """R-413-1: ts del log dei token accettato solo se è nel formato di _log_tokens
-    (cifre ASCII), una data vera e non nel futuro (oltre 1 ora di margine): un ts
-    finto o futuro resterebbe «nelle ultime 24 ore» per sempre e bloccherebbe il budget."""
+    (cifre ASCII) e una data vera; altrimenti None (riga ignorata). V-1 bot #234
+    (chiude anche R-414-1): un ts nel FUTURO (oltre 1 ora, es. orologio tornato
+    indietro) non si scarta ma si conta ADESSO: la spesa non esce dal tetto e,
+    dopo 24 ore, la voce scade come le altre (mai un blocco per sempre)."""
     if not isinstance(ts, str) or not _TS_LOG_RE.fullmatch(ts):
-        return False
+        return None
     try:
         quando = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
     except ValueError:
-        return False
-    return quando <= datetime.now(timezone.utc) + timedelta(hours=1)
+        return None
+    adesso = datetime.now(timezone.utc)
+    if quando > adesso + timedelta(hours=1):
+        return adesso.strftime("%Y-%m-%dT%H:%M:%S")
+    return ts
 
 
 def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
@@ -904,9 +910,10 @@ def _costo_riga(raw: bytes) -> Optional[Tuple[str, float]]:
         ts = r.get("ts")
         # V-2 bot #234: solo un ts ISO vero; «None» o testo sarebbe ≥ cutoff per sempre
         # (confronto tra stringhe) e terrebbe il budget bloccato senza scadenza.
-        if not _ts_log_valido(ts):
+        ts_ok = _ts_log_valido(ts)
+        if ts_ok is None:
             return None
-        return (ts, costo)
+        return (ts_ok, costo)
     except Exception:
         return None
 
@@ -1243,7 +1250,9 @@ class GasKernel:
                 c = {"id": (st.st_dev, st.st_ino), "offset": 0, "voci": [], "testa": testa,
                      "coda": b""}
             c["mtime"] = st.st_mtime_ns
-            resto = b""
+            resto = b""        # byte dopo l'ultimo «\n» (riga non ancora finita)
+            lunga = False      # R-419-2: riga oltre 64 KB senza «\n»: si salta, non si accumula
+            pendenti = 0       # byte letti dopo l'ultimo «\n» (anche se non tenuti)
             if st.st_size > c["offset"]:
                 # V-2 verifica esterna #234 (3° giro): lettura a blocchi, niente file
                 # intero in memoria alla prima lettura di un log grande.
@@ -1255,24 +1264,35 @@ class GasKernel:
                         if not blocco:
                             break
                         da_leggere -= len(blocco)
-                        dati = resto + blocco
-                        fine = dati.rfind(b"\n")  # solo righe complete: una a metà si rilegge
+                        fine = blocco.rfind(b"\n")  # «\n» cercato solo nel blocco nuovo
                         if fine < 0:
-                            resto = dati
+                            pendenti += len(blocco)
+                            if not lunga:
+                                resto += blocco
+                                if len(resto) > _RIGA_MAX:
+                                    lunga, resto = True, resto[-64:]
+                            else:
+                                resto = (resto + blocco)[-64:]  # solo per l'impronta di coda
                             continue
-                        for raw in dati[:fine].split(b"\n"):
-                            # uscita rapida: riga con UN solo «"ts"» più vecchio delle 24
-                            # ore → non conta, inutile decodificarla (log grandi)
+                        if lunga:  # la riga troppo lunga finisce al primo «\n»: scartata
+                            righe = blocco[blocco.find(b"\n") + 1:fine]
+                        else:
+                            righe = resto + blocco[:fine]
+                        for raw in righe.split(b"\n") if righe else ():
+                            # uscita rapida: riga con UN solo «"ts"», senza escape (R-419-3),
+                            # più vecchia delle 24 ore → non conta, inutile decodificarla
                             m = _TS_RAPIDO_RE.search(raw)
-                            if (m is not None and raw.count(b'"ts"') == 1
+                            if (m is not None and b"\\" not in raw
+                                    and raw.count(b'"ts"') == 1
                                     and m.group(1).decode("ascii") < cutoff):
                                 continue
                             voce = _costo_riga(raw)
                             if voce is not None and voce[0] >= cutoff:  # R-409-3
                                 c["voci"].append(voce)
-                        c["offset"] += fine + 1
-                        c["coda"] = (c["coda"] + dati[:fine + 1])[-64:]
-                        resto = dati[fine + 1:]
+                        c["offset"] += pendenti + fine + 1
+                        c["coda"] = (c["coda"] + resto + blocco[:fine + 1])[-64:]
+                        resto, lunga = blocco[fine + 1:], False
+                        pendenti = len(resto)
             c["testa"] = testa
             c["voci"] = [v for v in c["voci"] if v[0] >= cutoff]
             _COSTI_CACHE[chiave] = c
@@ -1281,7 +1301,7 @@ class GasKernel:
             # troncato) si conta lo stesso se è valida, senza spostare l'offset: così
             # quando arriva il suo «\n» viene letta una volta sola. R-414-2: niente
             # seconda lettura, e oltre 64 KB non può essere una riga di _log_tokens.
-            if resto and len(resto) <= 65536:
+            if resto and not lunga and len(resto) <= _RIGA_MAX:
                 voce = _costo_riga(resto)
                 if voce is not None and voce[0] >= cutoff:
                     totale += voce[1]
