@@ -2652,7 +2652,9 @@ class GasKernel:
                      "script, chiavi). Non sono bloccati: controllali se non te li aspettavi.")
 
             def _componi(k: int) -> str:
-                righe = [testa] + [f"- {_tg_bot.tronca_visibile(p, 200)}" for p in percorsi[:k]]
+                # V-1 bot #230: si tiene la coda, così il nome del file resta visibile.
+                righe = [testa] + [f"- {_tg_bot.tronca_visibile_coda(p, 200)}"
+                                   for p in percorsi[:k]]
                 if len(percorsi) > k:
                     righe.append(f"… e altri {len(percorsi) - k}.")
                 return "\n".join(righe)

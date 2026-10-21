@@ -5988,14 +5988,29 @@ _k74v = _k74()
 with _TgFinto() as _tg74v:
     run_turn_scriptato(_k74v, "x", [
         [("write_file", json.dumps({"relative_path": "dati/" + ("😀" * 60 + "/") * 4
-                                    + f"{_i}.json", "content": "{}"})) for _i in range(10)],
+                                    + f"{_i}.json", "content": "{}"})) for _i in range(12)],
         "ok"])
 _av74v = [p.get("text", "") for m, p in _tg74v.chiamate
           if m == "sendMessage" and "sembrano delicati" in p.get("text", "")]
 check("T74b5 R-386-1 avviso file delicati sotto il limite Telegram anche con nomi lunghi",
       len(_av74v) == 1
       and _tgbot_c4b.lunghezza_telegram(_av74v[0]) <= _tgbot_c4b.TELEGRAM_MAX_CHARS
-      and "… e altri" in _av74v[0], str([len(t) for t in _av74v]))
+      and "… e altri" in _av74v[0]
+      # V-1 bot #230: la coda del percorso (il nome del file) resta visibile
+      and all(f"/{_i}.json" in _av74v[0] for _i in range(2)), _av74v[0][:400] if _av74v else "")
+# R-386-1: il ciclo di riduzione scatta davvero (limite abbassato per il test)
+_max74x = _tgbot_c4b.TELEGRAM_MAX_CHARS
+_tgbot_c4b.TELEGRAM_MAX_CHARS = 1500
+try:
+    with _TgFinto() as _tg74x:
+        _k74v._invia_avvisi_file(["dati/" + ("😀" * 60 + "/") * 4 + f"{_i}.json"
+                                  for _i in range(10)])
+finally:
+    _tgbot_c4b.TELEGRAM_MAX_CHARS = _max74x
+_av74x = [p.get("text", "") for m, p in _tg74x.chiamate if m == "sendMessage"]
+check("T74b5 R-386-1 riduzione: sotto un limite più basso l'avviso parte con meno percorsi",
+      len(_av74x) == 1 and _tgbot_c4b.lunghezza_telegram(_av74x[0]) <= 1500
+      and "… e altri" in _av74x[0] and "/0.json" in _av74x[0], str([len(t) for t in _av74x]))
 _k74u = _k74()
 with _TgFinto() as _tg74u:
     run_turn_scriptato(_k74u, "x", [
@@ -6127,6 +6142,14 @@ check("T74b6 V-2 bot #225 / R-382-2: il taglio non spezza una sequenza <U+XXXX>"
 # R-383-1: un «<» letterale all'inizio non cancella il resto del valore mostrato
 _t74p = _tgbot_c4b.tronca_visibile("<" + "z" * 250, 200)
 _t74q = _tgbot_c4b.tronca_visibile("mail@x.it<" + "B" * 250, 200)
+_c74w = _tgbot_c4b.tronca_visibile_coda("dati/" + "a" * 300 + "/x.json", 50)
+_ok74w = []
+for _k74w in range(195, 206):  # il taglio dall'inizio cade in ogni punto della sequenza
+    _t74w = _tgbot_c4b.tronca_visibile_coda("\u202e" * 3 + "b" * _k74w, 200)
+    _ok74w.append(_t74w.startswith("…<U+202E>") or _t74w.startswith("…b"))
+check("T74b6 V-1 bot #230 tronca_visibile_coda: nome del file visibile, nessuna sequenza spezzata",
+      _c74w.endswith("/x.json") and _c74w.startswith("…") and len(_c74w) == 51
+      and all(_ok74w), str(_ok74w))
 check("T74b6 R-383-1 un «<» letterale non nasconde il valore",
       _t74p == "<" + "z" * 199 + "…" and _t74q.startswith("mail@x.it<BBB") and len(_t74q) == 201,
       repr(_t74p[:20]) + repr(_t74q[:20]))

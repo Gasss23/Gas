@@ -505,12 +505,24 @@ _ESTENSIONI_DELICATE: tuple[str, ...] = (
     ".xml", ".jar", ".exe", ".dll", ".app",
     ".key", ".pem", ".crt", ".cer", ".der", ".p12", ".pfx", ".jks", ".asc", ".gpg",
     ".pub", ".kdbx", ".ovpn",
+    # R-387-1 / V-1 verifica esterna #230: altri tipi eseguibili, script e dati
+    ".terminal", ".workflow", ".fish", ".csh", ".ksh", ".webloc", ".url",
+    ".sql", ".db", ".sqlite", ".sqlite3", ".tsx", ".jsx", ".go", ".c", ".cpp", ".h",
+    ".java", ".kt", ".kts", ".swift", ".rs", ".tf", ".gradle", ".scala", ".r",
+    ".ipynb", ".awk", ".pkg", ".dmg", ".msi", ".deb", ".rpm",
 )
+# Estensioni INTERNE (non finali) che tradiscono un file eseguibile mascherato:
+# «a.sh.txt», «x.py.md».
+_ESTENSIONI_INTERNE_DELICATE: frozenset[str] = frozenset(
+    {e.lstrip(".") for e in _ESTENSIONI_DELICATE}
+    | {"sh", "zsh", "bash", "command", "py", "pyw", "pth"})
 _NOMI_DELICATI: frozenset[str] = frozenset({
     "key", "keys", "apikey", "token", "tokens", "secret", "secrets", "password",
     "passwords", "passwd", "credential", "credentials", "creds", "auth", "cookie",
     "cookies", "session", "config", "settings", "cron", "crontab", "launch",
     "autostart", "makefile", "dockerfile", "procfile",
+    # R-387-1: chiavi e token scritti attaccati o con nomi d'uso comune
+    "rsa", "ed25519", "ssh", "accesstoken", "apitoken", "privatekey", "pgp",
 })
 
 
@@ -525,9 +537,14 @@ def sembra_delicato(relative_path: Any) -> bool:
         nome = PurePosixPath(_normalize_path(relative_path)).name.rstrip(". ")
         if nome.startswith(".") or "." not in nome or nome.endswith(_ESTENSIONI_DELICATE):
             return True  # file nascosti (rc, dotfile), senza estensione, config/script
-        # R-386-2: parole intere del nome (divise su _ - . e spazi), non pezzi:
-        # «cronologia.md», «sessione_marketing.md», «monkey.md» restano documenti.
-        parole = [w for w in re.split(r"[_\-.\s]+", nome.split(".")[0]) if w]
+        pezzi = nome.split(".")
+        # R-387-1: estensioni interne («a.sh.txt») ...
+        if any(p in _ESTENSIONI_INTERNE_DELICATE for p in pezzi[1:-1]):
+            return True
+        # ... e parole intere di TUTTO il nome tranne l'ultima estensione (divise su
+        # _ - . e spazi), non pezzi di parola: «cronologia.md», «sessione_marketing.md»,
+        # «monkey.md» restano documenti; «x.secret.md» no (R-386-2, R-387-1).
+        parole = [w for w in re.split(r"[_\-.\s]+", ".".join(pezzi[:-1])) if w]
         return any(w in _NOMI_DELICATI for w in parole)
     except Exception:
         return True
