@@ -7545,6 +7545,34 @@ _i97f = next((i for i, t in enumerate(_testi97f) if "id-97f" in t), -1)
 check("T97f esito della firma scritto a metà turno della CLI: resta nella storia, dopo la risposta",
       _i97f > 0 and _testi97f.index("risposta finale della CLI") < _i97f
       and not list(_r97f.glob(".gas_history.json.conflitto.*")), str(_testi97f)[:300])
+# T97h — R-434-1: il bot scrive mentre la CLI è ancora a metà turno (secondo giro di
+# tool): niente unione in memoria (il modello non vede la notifica prima della sua
+# risposta), file dell'altro intatto; l'unione arriva al salvataggio finale
+_cli97h = GasKernel(root_dir=str(_r97f))
+_bot97h = GasKernel(root_dir=str(_r97f))
+_cli97h._add_to_history("user", content="giro h")
+_cli97h._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tch1", function=SimpleNamespace(name="calcola", arguments='{"expr": "2+2"}'))])
+_cli97h._add_to_history("tool", content="4", tool_call_id="tch1", name="calcola")
+_cli97h._save_history()
+_bot97h.history = json.loads((_r97f / ".gas_history.json").read_text())
+_bot97h._storia_sync = _bot97h._sync_storia()
+_bot97h._storia_esito_firma("id-97h", "run_command", '{"command": "echo"}',
+                            "approvata ed eseguita", "fatto", True)
+_cli97h._add_to_history("assistant", content=None, tool_calls=[SimpleNamespace(
+    id="tch2", function=SimpleNamespace(name="calcola", arguments='{"expr": "3+3"}'))])
+_cli97h._add_to_history("tool", content="6", tool_call_id="tch2", name="calcola")
+_cli97h._save_history()   # a metà turno: rimanda
+_mem97h = [str(m.get("content")) for m in _cli97h.history]
+_file97h = [str(m.get("content")) for m in json.loads((_r97f / ".gas_history.json").read_text())]
+_ok97h_meta = (not any("id-97h" in t for t in _mem97h) and any("id-97h" in t for t in _file97h))
+_cli97h._add_to_history("assistant", content="risposta finale h")
+_cli97h._save_history()
+_fin97h = [str(m.get("content")) for m in json.loads((_r97f / ".gas_history.json").read_text())]
+_i97h = next((i for i, t in enumerate(_fin97h) if "id-97h" in t), -1)
+check("T97h bot a metà turno della CLI: unione rimandata alla fine, notifica dopo la risposta",
+      _ok97h_meta and _i97h > _fin97h.index("risposta finale h") and "6" in _fin97h,
+      f"{_ok97h_meta} {_fin97h[-8:]}")
 # T97g — V-3 bot #236: lock della storia tenuto da un altro (processo fermo) → dopo
 # LOCK_STORIA_SEC si salva lo stesso, senza lock, con un avviso
 import fcntl as _fcntl97

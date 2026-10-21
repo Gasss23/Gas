@@ -1130,7 +1130,14 @@ class GasKernel:
     def _inizia_turno(msgs: List[Dict[str, Any]]) -> bool:
         return not msgs or msgs[0].get("role") == "user"
 
-    def _unisci_storia_altrui(self) -> None:
+    def _turno_chiuso(self) -> bool:
+        """La nostra storia finisce con una risposta dell'assistente (senza tool
+        call): il turno è chiuso e si possono accodare i turni di un altro processo."""
+        ultimo = self.history[-1] if self.history else None
+        return ultimo is None or (ultimo.get("role") == "assistant"
+                                  and not ultimo.get("tool_calls"))
+
+    def _unisci_storia_altrui(self) -> bool:
         """R-c4b3-4: se un altro processo ha riscritto il file dopo la nostra ultima
         lettura/scrittura (la «base»), i suoi messaggi non si cancellano. Si uniscono
         solo blocchi che cominciano un turno (role user), così nessuna sequenza
@@ -1142,10 +1149,10 @@ class GasKernel:
           - altrimenti la sua versione va in una copia «conflitto», con un avviso."""
         sync = self._storia_sync
         if sync is None or sync[0] != str(self.db_path):
-            return  # storia mai letta da questo file (es. giro notturno): come prima
+            return True  # storia mai letta da questo file (es. giro notturno): come prima
         ora = self._impronta_storia()
         if ora is None or ora == sync[1]:
-            return
+            return True
         try:
             with open(self.db_path, "r", encoding="utf-8") as f:
                 altrui = json.load(f)
@@ -1154,7 +1161,7 @@ class GasKernel:
         except Exception as e:
             logging.warning("Storia cambiata da un altro processo ma illeggibile (%s): "
                             "la sovrascrivo", e)
-            return
+            return True
         n_base, h_base = sync[2], sync[3]
         nostri_da_base = (len(self.history) >= n_base
                           and self._hash_messaggi(self.history[:n_base]) == h_base)
@@ -1167,7 +1174,14 @@ class GasKernel:
             unita = altrui + nuovi               # ordine di salvataggio: i suoi prima
             base = (len(altrui), self._hash_messaggi(altrui))
         elif suoi is not None and self._inizia_turno(suoi):
-            unita = self.history + suoi          # siamo a metà turno, o abbiamo compresso
+            if not self._turno_chiuso():
+                # R-434-1: a metà turno non si unisce né si scrive: il modello non deve
+                # vedere i messaggi dell'altro prima della propria risposta. L'unione
+                # avviene al salvataggio finale del turno (base invariata).
+                logging.warning("Storia scritta anche da un altro processo: unione "
+                                "rimandata alla fine del turno")
+                return False
+            unita = self.history + suoi          # turno chiuso, o storia compressa
             base = (n_base, h_base)
         if unita is not None:
             aggiunti = len(unita) - len(self.history)
@@ -1178,7 +1192,7 @@ class GasKernel:
             self._storia_sync = (sync[0], ora, base[0], base[1])
             logging.warning("Storia scritta anche da un altro processo: unita "
                             "(%d messaggi in più nella nostra)", aggiunti)
-            return
+            return True
         # R-431-1: microsecondi + pid nel nome, niente collisioni nello stesso secondo
         copia = self.db_path.parent / (f"{self.db_path.name}.conflitto."
                                        f"{datetime.now():%Y%m%d-%H%M%S-%f}.{os.getpid()}")
@@ -1194,6 +1208,7 @@ class GasKernel:
             self._pota_copie_conflitto()
         except Exception as e:
             logging.warning("Copia di conflitto della storia non riuscita: %s", e)
+        return True
 
     MAX_COPIE_CONFLITTO = 20  # R-430-3: copie di conflitto della storia tenute
     LOCK_STORIA_SEC = 5.0     # V-3 bot #236: attesa massima del lock della storia
@@ -1266,7 +1281,8 @@ class GasKernel:
     def _save_history(self):
         lock_f = self._blocca_storia()
         try:
-            self._unisci_storia_altrui()
+            if not self._unisci_storia_altrui():
+                return  # R-434-1: unione rimandata alla fine del turno
             # R-430-1: l'impronta avanza solo se la scrittura è riuscita davvero,
             # altrimenti i messaggi non scritti si perderebbero alla prossima unione
             if self._salva_storia_su_file():
@@ -4115,7 +4131,7 @@ class GasKernel:
                     res = subprocess.run(exec_argv, shell=False, cwd=cwd,
                                          capture_output=True, text=True,
                                          timeout=self.RUN_COMMAND_TIMEOUT_SEC, env=env_figlio)
-                except (subprocess.TimeoutExpired, UnicodeError):
+                except (subprocess.TimeoutExpired, UnicodeDecodeError):  # R-434-3
                     # partito: ucciso dal tetto di tempo, oppure finito con un output
                     # che non è testo (R-433-1): esito incerto, il segno resta
                     raise
