@@ -950,6 +950,7 @@ class GasKernel:
         self.approval_timeout_secs: Optional[int] = None
         self._file_delicati_turno: List[str] = []  # R-223-2, svuotata a fine turno
         self._esito_contenuto = False  # R-222-2/R-425-2: vedi execute_tool_call
+        self._run_command_avviato = False  # R-c4b3-5: vedi execute_tool_call
         # V-1 bot #222: il pin di questo turno mostra dati non fidati (_memoria_pin).
         self._pin_non_fidato: bool = False
         # R-371-2: la sessione ha visto un pin non fidato (si azzera con `clear`).
@@ -2063,9 +2064,11 @@ class GasKernel:
                 return "[KO]"
             return f"[OK] {getattr(self, '_lettura_meta', None) or 'eseguito'}"
         if name == "run_command":
+            meta = getattr(self, "_run_command_meta", None)
+            if meta is None and getattr(self, "_run_command_avviato", False):
+                return "[KO] esito incerto: partito ma interrotto"  # R-c4b3-5
             if negativo:
                 return "[KO]"
-            meta = getattr(self, "_run_command_meta", None)
             if meta is not None:
                 return (f"[OK] exit={meta['exit']} "
                         f"stdout={meta['stdout_n']} char "
@@ -2975,7 +2978,8 @@ class GasKernel:
         return f"Operazione negata: {motivo}. Approvazione revocata.", f"revocata id={aid}"
 
     def _storia_esito_firma(self, approval_id: str, tool: str, args_json: str,
-                            notizia: str, out: Optional[str], eseguita: bool) -> None:
+                            notizia: str, out: Optional[str], eseguita: bool,
+                            incerta: bool = False) -> None:
         """C4b-3 (R-c4b2-1, design §4b passo 9): l'esito della firma entra nella
         storia come blocco autonomo, visibile al modello dal turno successivo
         (precedente: il riepilogo user+assistant di _compress_history_if_needed):
@@ -3004,7 +3008,7 @@ class GasKernel:
                                "tool_call_id": tcid, "name": tool})
             blocco.append({"role": "assistant", "content": (
                 f"Preso atto (kernel): azione '{tool}' ID {approval_id} — "
-                f"{'eseguita' if eseguita else 'NON eseguita'}.")})
+                f"{'eseguita' if eseguita else 'partita, esito INCERTO' if incerta else 'NON eseguita'}.")})
             # Tutto il blocco o niente: la storia non resta mai con un pezzo solo.
             self.history.extend(blocco)
             self._save_history()
@@ -3025,7 +3029,9 @@ class GasKernel:
         storia (_storia_esito_firma), così il modello li vede al turno dopo.
         Diario: 'approvata id=' / 'rifiutata id=' + esito; per i tool non fidati
         solo conteggi (F-diario-eco), mai args.
-        Ritorna {"tool", "eseguita", "esito", "output"}; "eseguita" è True solo se
+        Ritorna {"tool", "eseguita", "stato", "esito", "output"}; "stato" è
+        finita / incerta (run_command partito e interrotto, R-c4b3-5) / non_partita.
+        "eseguita" è True solo se
         l'esito non è [KO] (R-c4b2-3); per run_command solo se il comando è partito
         davvero (segnale del kernel, R-c4b2-9/R-c4b3-1), mai dedotto dall'output.
         FAIL-CLOSED §9: mai eccezioni."""
@@ -3073,6 +3079,7 @@ class GasKernel:
             # Dal reclamo in poi l'azione NON si riesegue più, qualunque cosa accada.
             # R-c4b3-1: nessun residuo di un run_command precedente.
             self._run_command_meta = None
+            self._run_command_avviato = False
             if gate_classify(tool, args_json) == GateClass.DENY:
                 logging.warning("[GATE-C4B] id=%s %s → DENY al ricontrollo: non eseguita",
                                 approval_id, tool)
@@ -3082,6 +3089,7 @@ class GasKernel:
                 out = self.execute_tool_call(tool, args_json, firmata=True)
             esito = self._esito_diario(tool, out)
             dry_run = False
+            incerta = False
             if tool == "run_command":
                 # R-c4b3-1: l'esito viene dal segnale del kernel (_run_command_meta è
                 # valorizzato SOLO se il comando è partito davvero), mai dal testo
@@ -3094,17 +3102,27 @@ class GasKernel:
                            and (out or "").startswith("[DRY-RUN]"))
                 # R-c4b2-3/R-c4b2-9: diniego interno o anteprima dry-run ≠ esecuzione.
                 res["eseguita"] = meta is not None
+                # R-c4b3-5: terzo stato, partito ma finito senza esito (tempo scaduto)
+                incerta = meta is None and bool(getattr(self, "_run_command_avviato", False))
             else:
                 # Gli altri tool parcheggiabili restituiscono testo del kernel.
                 res["eseguita"] = not esito.startswith("[KO]")
+            res["stato"] = ("finita" if res["eseguita"] else
+                            "incerta" if incerta else "non_partita")
             if res["eseguita"]:
                 notizia = ("l'operatore l'ha APPROVATA via Telegram e il kernel l'ha eseguita "
                            "con gli argomenti salvati. L'output è nel risultato del tool che segue.")
+            elif incerta:
+                notizia = ("l'operatore l'ha APPROVATA via Telegram e il comando è PARTITO, "
+                           "ma si è interrotto senza esito (es. tempo scaduto): può aver fatto "
+                           "solo una parte del lavoro. Esito INCERTO: verifica prima di "
+                           "ripetere. Il dettaglio è nel risultato del tool che segue.")
             else:
                 notizia = ("l'operatore l'ha APPROVATA via Telegram ma NON è stata eseguita "
                            f"({'modalità dry-run' if dry_run else 'diniego interno'}). "
                            "Il dettaglio è nel risultato del tool che segue.")
-            self._storia_esito_firma(approval_id, tool, args_json, notizia, out, res["eseguita"])
+            self._storia_esito_firma(approval_id, tool, args_json, notizia, out, res["eseguita"],
+                                     incerta=incerta)
             self.memory.registra_esito_esecuzione(approval_id, esito)
             self._diario_log_tool(tool, f"approvata id={approval_id} | {esito}",
                                   turno_id=str(uuid.uuid4()))
@@ -3848,6 +3866,7 @@ class GasKernel:
         # R-222-2: True solo se l'esito porta testo che non scrive il kernel (file,
         # stdout, diario): lì un «Operazione negata» iniziale non è un diniego.
         self._esito_contenuto = False
+        self._run_command_avviato = False  # R-c4b3-5: True da quando il comando parte
         try:
             args = json.loads(args_str) if isinstance(args_str, str) else args_str
             cwd = Path(os.environ.get("GAS_CWD", str(self.root)))
@@ -3898,6 +3917,7 @@ class GasKernel:
                         "run_command in fallback applicativo: sandbox OS assente "
                         "(GAS_SANDBOX_MODE=os_with_fallback)")
                     exec_argv = argv
+                self._run_command_avviato = True
                 res = subprocess.run(exec_argv, shell=False, cwd=cwd,
                                      capture_output=True, text=True, timeout=60,
                                      env=self._sanitized_subprocess_env())

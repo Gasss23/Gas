@@ -6865,6 +6865,34 @@ try:
           _r77l["eseguita"] is False and "integrità" in _r77l["esito"]
           and _ex77l == [] and _esec77(_k77l) == [], str(_r77l))
 
+    # T77u — R-c4b3-5: comando firmato che parte e va in timeout → terzo stato
+    # «partita, esito incerto» (prima diceva «NON eseguita, diniego interno»)
+    _k77u = kernel_tmp()
+    senza_sandbox_os_usa_fallback(_k77u)
+    _id77u = _k77u.memory.enqueue_approval("run_command", _CMD77)
+    _run77u = gas.subprocess.run
+    def _scade77u(*a, **kw):  # solo il comando firmato scade, non lo snapshot (git)
+        if a and "echo" in a[0]:
+            raise gas.subprocess.TimeoutExpired(a[0], 60)
+        return _run77u(*a, **kw)
+    with _TgFinto():
+        _k77u.memory.resolve_approval(_id77u, "approved", telegram_user_id=4242)
+        try:
+            gas.subprocess.run = _scade77u
+            _r77u = _k77u.applica_firma(_id77u)
+        finally:
+            gas.subprocess.run = _run77u
+    _st77u = " ".join(str(m.get("content") or "") for m in _k77u.history)
+    _msg77u = _tgbot_c4b.componi_esito_firma("ok", _id77u, True, "", _r77u)
+    check("T77u timeout dopo la firma → stato 'incerta', mai 'NON eseguita' (R-c4b3-5)",
+          _r77u.get("stato") == "incerta" and _r77u["eseguita"] is False
+          and "esito incerto" in _r77u["esito"] and "INCERTO" in _st77u
+          and "diniego interno" not in _st77u and "esito INCERTO" in _msg77u,
+          f"{_r77u} | {_msg77u[:120]}")
+    _r77u2 = _k77u.execute_tool_call("calcola", '{"expr": "1+1"}')
+    check("T77u il segno «partito» non resta per lo strumento dopo",
+          _k77u._esito_diario("run_command", "") == "[OK] (non eseguito)", _r77u2)
+
     # T77m — vincoli DB su approval_esecuzioni (valgono anche da SQL grezzo)
     _k77m = kernel_tmp()
     _id77m = _k77m.memory.enqueue_approval("run_command", _CMD77)
