@@ -8065,6 +8065,109 @@ try:
     check("T78j storia guasta → applica_firma esegue e ritorna l'esito, nessuna eccezione",
           _r78j["eseguita"] is True and _r78j["esito"].startswith("[OK] exit=0")
           and len(_raw73(_k78j.memory, "SELECT 1 FROM approval_esecuzioni")) == 1, str(_r78j)[:150])
+
+    # T78l — R-c4b3-3: Gas interrotto tra il reclamo e la storia. Al riavvio un nuovo
+    # click su Approva NON riesegue: chiude l'esito come INCERTO e lo mette in storia.
+    _k78l = kernel_tmp()
+    _id78l = _k78l.memory.enqueue_approval("run_command", _CMD78)
+    _k78l.memory.resolve_approval(_id78l, "approved", telegram_user_id=4242)
+    _k78l.memory.reclama_esecuzione(_id78l)  # "crash" qui: nessun esito, nessuna storia
+    _k78l2 = GasKernel(root_dir=str(_k78l.root))  # riavvio
+    _ex78l = _spia75(_k78l2)
+    _o78l = gas.OpenAI
+    gas.OpenAI = _NoLLM78
+    try:
+        with _TgFinto() as _tg78l:
+            _clicca77(_k78l2, _cb77(_id78l), _tg78l)
+    finally:
+        gas.OpenAI = _o78l
+    _b78l = _blocco78(_k78l2, _id78l)
+    _txt78l = _tg78l.chiamate[-1][1].get("text", "") if _tg78l.chiamate else ""
+    check("T78l crash dopo il reclamo: nuovo click → nessuna esecuzione, esito INCERTO registrato",
+          _ex78l == [] and _esec77(_k78l2) == [
+              (_id78l, "[KO] interrotta dopo il reclamo: esito incerto")], str(_esec77(_k78l2)))
+    check("T78l blocco in storia senza tool_call (output perso): notifica INCERTO + presa d'atto",
+          [m["role"] for m in _b78l] == ["user", "assistant"]
+          and "INCERTO" in _b78l[0]["content"] and "echo" not in _b78l[0]["content"]
+          and "partita, esito INCERTO" in _b78l[1]["content"], str(_b78l)[:300])
+    check("T78l l'operatore riceve ⚠️ esito INCERTO (non più 'Nessuna modifica')",
+          _txt78l.startswith("⚠️ Approvata, ma esito INCERTO"), _txt78l[:150])
+    _disco78l = json.loads(Path(_k78l2.db_path).read_text(encoding="utf-8"))
+    check("T78l blocco salvato su disco", _disco78l[-2:] == _b78l, str(len(_disco78l)))
+    with _TgFinto() as _tg78l2:
+        _clicca77(_k78l2, _cb77(_id78l), _tg78l2)
+    check("T78l altro click → nessun secondo blocco, nessuna esecuzione, 'Nessuna modifica'",
+          _ex78l == [] and len(_blocco78(_k78l2, _id78l)) == 2
+          and sum(1 for m in _k78l2.history if m.get("role") == "user"
+                  and _tag78(_id78l) in (m.get("content") or "")) == 1
+          and _tg78l2.chiamate[-1][1].get("text", "").startswith("Nessuna modifica"))
+    _ev78l = _turno_spia78(_k78l2, "com'è andata?",
+                           [[("calcola", '{"expr": "6*7"}')], "esito incerto, controllo"])
+    _p78l = _CompletionsSpia78.visti[0] if _CompletionsSpia78.visti else []
+    check("T78l round-trip §7: il modello vede l'esito INCERTO al turno dopo",
+          any(_tag78(_id78l) in (m.get("content") or "") for m in _p78l)
+          and [e["type"] for e in _ev78l] == ["tool_res", "final"], str(_ev78l)[:200])
+
+    # T78m — esito registrato ma storia mai scritta → recupero 'eseguita', senza output
+    _k78m = kernel_tmp()
+    _id78m = _k78m.memory.enqueue_approval("run_command", _CMD78)
+    _k78m.memory.resolve_approval(_id78m, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m)
+    _k78m.memory.registra_esito_esecuzione(_id78m, "[OK] exit=0 stdout=21 char stderr=0 char")
+    _ex78m = _spia75(_k78m)
+    with _TgFinto() as _tg78m:
+        _clicca77(_k78m, _cb77(_id78m), _tg78m)
+    _b78m = _blocco78(_k78m, _id78m)
+    _txt78m = _tg78m.chiamate[-1][1].get("text", "") if _tg78m.chiamate else ""
+    check("T78m esito [OK] senza storia → blocco 'eseguita' senza output, ✅, nessuna esecuzione",
+          _ex78m == [] and [m["role"] for m in _b78m] == ["user", "assistant"]
+          and "— eseguita." in _b78m[1]["content"] and "non è più disponibile" in _b78m[0]["content"]
+          and _txt78m.startswith("✅ Approvata ed eseguita") and "exit=0" in _txt78m, _txt78m[:150])
+    _id78m2 = _k78m.memory.enqueue_approval("run_command", {"command": "echo z"})
+    _k78m.memory.resolve_approval(_id78m2, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m2)
+    _k78m.memory.registra_esito_esecuzione(_id78m2, "[KO]")
+    _r78m2 = _k78m.recupera_esito_firma(_id78m2)
+    _b78m2 = _blocco78(_k78m, _id78m2)
+    check("T78m esito [KO] senza storia → 'NON eseguita', stato non_partita",
+          _r78m2 is not None and _r78m2["stato"] == "non_partita" and _r78m2["eseguita"] is False
+          and len(_b78m2) == 2 and "NON è stata eseguita" in _b78m2[0]["content"]
+          and "— NON eseguita." in _b78m2[1]["content"], str(_r78m2))
+    _id78m3 = _k78m.memory.enqueue_approval("run_command", {"command": "echo w"})
+    _k78m.memory.resolve_approval(_id78m3, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m3)
+    _k78m.memory.registra_esito_esecuzione(_id78m3, "[KO] errore interno dopo il reclamo: esito incerto")
+    _r78m3 = _k78m.recupera_esito_firma(_id78m3)
+    check("T78m errore interno dopo il reclamo (V-3 bot #236) → recupero INCERTO",
+          _r78m3 is not None and _r78m3["stato"] == "incerta", str(_r78m3))
+
+    _id78m4 = _k78m.memory.enqueue_approval("run_command", {"command": "echo d"})
+    _k78m.memory.resolve_approval(_id78m4, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m4)
+    _k78m.memory.registra_esito_esecuzione(_id78m4, "[OK] (non eseguito)")
+    _r78m4 = _k78m.recupera_esito_firma(_id78m4)
+    check("T78m R-445-1 dry-run '[OK] (non eseguito)' → non_partita, mai 'eseguita'",
+          _r78m4 is not None and _r78m4["stato"] == "non_partita"
+          and _r78m4["eseguita"] is False, str(_r78m4))
+
+    _id78m5 = _k78m.memory.enqueue_approval("write_file", {"relative_path": "x.txt", "content": "c"})
+    _k78m.memory.resolve_approval(_id78m5, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m5)
+    _k78m.memory.registra_esito_esecuzione(_id78m5, "[OK] scritto (non eseguito).txt")
+    _r78m5 = _k78m.recupera_esito_firma(_id78m5)
+    check("T78m R-446-1 esito [OK] che CONTIENE '(non eseguito)' → resta 'finita'",
+          _r78m5 is not None and _r78m5["stato"] == "finita", str(_r78m5))
+
+    # T78n — niente da recuperare: esito già in storia, mai reclamata, memoria assente
+    _id78n = _k78m.memory.enqueue_approval("run_command", {"command": "echo n"})
+    _k78m.memory.resolve_approval(_id78n, "approved", telegram_user_id=4242)
+    _n78n = len(_k78m.history)
+    _k78n = kernel_tmp()
+    _k78n.memory = None
+    check("T78n esito già in storia / mai reclamata / memoria assente → None, storia invariata",
+          _k78m.recupera_esito_firma(_id78m) is None and _k78m.recupera_esito_firma(_id78n) is None
+          and _k78n.recupera_esito_firma(_id78n) is None and len(_k78m.history) == _n78n
+          and _esec77(_k78m)[-1][0] != _id78n)
 finally:
     if _saved_sb78 is None:
         os.environ.pop("GAS_SANDBOX_MODE", None)

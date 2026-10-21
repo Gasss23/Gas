@@ -3196,6 +3196,15 @@ class GasKernel:
             logging.warning("[GATE-C4B] revoca di id=%s NON riuscita: %s", aid, msg)
         return f"Operazione negata: {motivo}. Approvazione revocata.", f"revocata id={aid}"
 
+    @staticmethod
+    def _tag_esito_firma(approval_id: str) -> str:
+        return f"[NOTIFICA DEL KERNEL — esito firma umana, ID: {approval_id}]"
+
+    def _esito_firma_in_storia(self, approval_id: str) -> bool:
+        tag = self._tag_esito_firma(approval_id)
+        return any(m.get("role") == "user" and tag in (m.get("content") or "")
+                   for m in self.history)
+
     def _storia_esito_firma(self, approval_id: str, tool: str, args_json: str,
                             notizia: str, out: Optional[str], eseguita: bool,
                             incerta: bool = False) -> None:
@@ -3210,10 +3219,9 @@ class GasKernel:
         Inizia con 'user' → l'ancora di _get_window resta valida. Una sola volta
         per ID. Nessuna chiamata LLM. FAIL-SAFE §9: errore → solo log."""
         try:
-            tag = f"[NOTIFICA DEL KERNEL — esito firma umana, ID: {approval_id}]"
-            if any(m.get("role") == "user" and tag in (m.get("content") or "")
-                   for m in self.history):
+            if self._esito_firma_in_storia(approval_id):
                 return
+            tag = self._tag_esito_firma(approval_id)
             blocco: List[Dict[str, Any]] = [{"role": "user", "content": (
                 f"{tag} Messaggio generato dal kernel, non scritto dall'operatore. "
                 f"Azione '{tool}': {notizia} Non richiedere di nuovo la stessa azione: "
@@ -3361,6 +3369,59 @@ class GasKernel:
                 except Exception as e2:
                     logging.warning("[GATE-C4B] esito id=%s non registrato: %s", approval_id, e2)
             return res
+
+    def recupera_esito_firma(self, approval_id: str) -> Optional[Dict[str, Any]]:
+        """R-c4b3-3: azione già reclamata ma con l'esito mai entrato in storia
+        (Gas interrotto tra il reclamo e _storia_esito_firma, o errore interno dopo
+        il reclamo). Chiamata dal bridge al nuovo click su Approva: NON esegue mai
+        nulla; scrive in storia l'esito ricavato dal DB, senza output (non c'è più).
+        Esito mai registrato (crash a metà) → lo chiude come INCERTO: dopo il
+        reclamo non si sa se l'azione è partita. Il bridge gestisce un click alla
+        volta, quindi un reclamo senza esito visto qui non ha un'esecuzione in corso.
+        Ritorna il dict di applica_firma se ha scritto, None se non c'era niente da
+        recuperare (esito già in storia, nessun reclamo). FAIL-SAFE §9: mai eccezioni."""
+        if self.memory is None:
+            return None
+        try:
+            if self._esito_firma_in_storia(approval_id):
+                return None
+            row = self.memory.get_approval(approval_id)
+            esec = self.memory.get_esecuzione(approval_id)
+            if row is None or esec is None:
+                return None
+            tool, args_json = row["tool_name"], row["tool_args_json"]
+            esito = esec.get("esito")
+            if esito is None:
+                self.memory.registra_esito_esecuzione(
+                    approval_id, "[KO] interrotta dopo il reclamo: esito incerto")
+                # se nel frattempo l'esito l'ha scritto qualcun altro, vale il suo
+                esito = ((self.memory.get_esecuzione(approval_id) or {}).get("esito")
+                         or "[KO] interrotta dopo il reclamo: esito incerto")
+            # "[OK] (non eseguito)" = anteprima dry-run di run_command (R-445-1)
+            if not esito.startswith("[KO]") and esito != "[OK] (non eseguito)":  # R-446-1
+                stato = "finita"
+                notizia = ("l'operatore l'ha APPROVATA via Telegram e il kernel l'ha eseguita "
+                           "con gli argomenti salvati; Gas si è poi interrotto e l'output "
+                           "non è più disponibile.")
+            elif "incert" in esito:
+                stato = "incerta"
+                notizia = ("l'operatore l'ha APPROVATA via Telegram, ma Gas si è interrotto "
+                           "dopo averla presa in carico: può essere partita e aver fatto solo "
+                           "una parte del lavoro. Esito INCERTO: verifica prima di ripetere.")
+            else:
+                stato = "non_partita"
+                notizia = ("l'operatore l'ha APPROVATA via Telegram ma NON è stata eseguita; "
+                           "l'esito è stato recuperato dopo un'interruzione di Gas.")
+            logging.warning("[GATE-C4B] id=%s esito recuperato in storia: %s", approval_id, stato)
+            self._storia_esito_firma(approval_id, tool, args_json, notizia, None,
+                                     stato == "finita", incerta=stato == "incerta")
+            self._diario_log_tool(tool, f"esito recuperato id={approval_id} | {esito}",
+                                  turno_id=str(uuid.uuid4()))
+            return {"tool": tool, "eseguita": stato == "finita", "stato": stato,
+                    "esito": esito, "output": ""}
+        except Exception as e:
+            logging.warning("[GATE-C4B] recupera_esito_firma id=%s eccezione: %s", approval_id, e)
+            return None
 
     def _memoria_backup_auto(self) -> None:
         """Backup automatico THROTTLED del DB di memoria: backup LOCALE (anti

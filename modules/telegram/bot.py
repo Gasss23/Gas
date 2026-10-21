@@ -684,11 +684,16 @@ def _riprova_orfana(memory: Any, kernel: Any, aid: str,
     """R-c4b2-2: richiesta 'approved' ma MAI reclamata (crash tra firma ed
     esecuzione). Nuovo click su Approva entro la scadenza → applica_firma (il
     reclamo impedisce comunque una seconda esecuzione); oltre la scadenza →
-    nessuna esecuzione e messaggio esplicito. Altri casi → motivo invariato."""
+    nessuna esecuzione e messaggio esplicito. R-c4b3-3: già reclamata ma con
+    l'esito mai entrato in storia → recupera_esito_firma (non esegue nulla).
+    Altri casi → motivo invariato."""
     try:
         row = memory.get_approval(aid)
-        if row is None or row.get("stato") != "approved" or memory.get_esecuzione(aid):
+        if row is None or row.get("stato") != "approved":
             return None, motivo
+        if memory.get_esecuzione(aid):
+            recupera = getattr(kernel, "recupera_esito_firma", None)
+            return (recupera(aid) if callable(recupera) else None), motivo
         if time.time() < row["ts_expiry"]:
             log.warning("callback: id=%s approvata ma mai eseguita — nuovo tentativo", aid)
             return kernel.applica_firma(aid), motivo
@@ -746,6 +751,9 @@ def gestisci_callback(base_url: str, cq: Dict[str, Any], allowed: Set[int],
             except Exception as e:
                 log.warning("callback: resolve_approval id=%s eccezione: %s", aid, e)
                 risolta, motivo = False, "errore interno"
+        # R-445-2: click gestiti UNO ALLA VOLTA (niente thread qui). recupera_esito_firma
+        # in _riprova_orfana conta su questo: un reclamo senza esito non ha
+        # un'esecuzione in corso. Un handler concorrente richiede di rivederlo.
         if risolta:
             log.warning("callback: id=%s %s da user_id %d", aid, stato, uid)
             res = kernel.applica_firma(aid)
