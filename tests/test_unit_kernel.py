@@ -3,14 +3,25 @@
 Tutto gira su root temporanee con client API finto iniettato in gas.OpenAI:
 nessuna chiamata reale, nessuna scrittura su .gas_history.json del repo.
 """
+import atexit
 import importlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
+
+# Pulizia (2026-10-21): ogni esecuzione lasciava ~430 cartelle temporanee in /tmp
+# (129.000 accumulate, ~30 GB, disco pieno). Tutte le cartelle temporanee della
+# suite, anche dei sottoprocessi (TMPDIR), stanno in UNA cartella per esecuzione,
+# cancellata all'uscita.
+_TMP_ESECUZIONE = tempfile.mkdtemp(prefix="gas_kernel_run_")
+tempfile.tempdir = _TMP_ESECUZIONE
+os.environ["TMPDIR"] = _TMP_ESECUZIONE
+atexit.register(shutil.rmtree, _TMP_ESECUZIONE, True)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import gas
