@@ -27,6 +27,7 @@
 - **Riserve R-422-1/2/3 (avviso righe enormi, test a cavallo di blocchi)**: `FATTA` — review #423 APPROVATO CON RISERVE.
 - **Riga finale non riletta a file invariato; firme scadute nel log (V-1 bot V-B e verifica esterna #234 5° giro, R-417-1, R-423-1)**: `FATTA` — review #424 APPROVATO CON RISERVE. V-3 verifica esterna (registro senza blocco): non regge, il registro si tocca dopo il lock esclusivo del giro.
 - **R7 / R-222-2 — esito «negata/in attesa» detto dal kernel, non dall'inizio del testo; T94j più stretto (R-424-2/3)**: `FATTA` — review #425 APPROVATO CON RISERVE.
+- **Lock sulla cache dei costi; test del kernel per l'esito al cancello (V-1/V-2 verifica esterna #234 7° giro, R-425-1/2)**: `FATTA` — review #426 APPROVATO CON RISERVE.
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -35,26 +36,29 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   22 +++++++
- gas.py                             |  206 +++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |   23 +++++++
+ gas.py                             |  214 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  modules/gate/gate.py               |   12 +++-
  modules/memory/store.py            |   21 ++++++-
- modules/notte/notte.py             |  169 +++++++++++++++++++++++++++++++++++++++++++++++++----
- reports/da_mergiare.md             |   99 ++++++++++++-------------------
+ modules/notte/notte.py             |  169 ++++++++++++++++++++++++++++++++++++++++++++++++----
+ reports/da_mergiare.md             |   99 ++++++++++++------------------
  reports/diff_sessione.md           |   17 +++---
- reports/handoff.md                 | 1147 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 1175 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |    4 +-
  reports/stato_progetto.md          |    2 +-
- reports/ultimo_report.md           |   47 +++++++--------
+ reports/ultimo_report.md           |   48 ++++++++-------
  tests/test_unit_gate.py            |    8 +++
- tests/test_unit_kernel.py          |  240 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           |  359 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 14 files changed, 1762 insertions(+), 591 deletions(-)
+ tests/test_unit_kernel.py          |  286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           |  359 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 14 files changed, 1848 insertions(+), 589 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+efd2294 fix(budget): lock sulla cache dei costi; test del kernel per l'esito al cancello (V-1/V-2 verifica #234 7° giro, R-425-1/2)
+cf1915e chore(revisore): memoria review #426 — APPROVATO CON RISERVE
+47b3957 docs(fine-task): report, handoff e roadmap — R-222-2 chiusa (#425)
 52501e2 fix(notte,kernel): esito «negata/in attesa» detto dal kernel, non dal testo (R7 R-222-2); T94j conta i byte letti (R-424-2/3)
 ef8a5dd chore(revisore): memoria review #425 — APPROVATO CON RISERVE
 6160555 docs(fine-task): report e handoff — riserve #422-#424, riga finale non riletta, firme scadute nel log
@@ -876,11 +880,36 @@ Rischi esclusi:
 
 Memoria: aggiunta la riga #425 (lezione: quando un flag si decide all'uscita normale, cercare i rami che impostano il meta e dopo possono ancora negare o sollevare eccezioni). Commit ef8a5dd in /home/user/Gas/.claude/agents/memoria_revisore.md.
 
+### Review #426 (chat Motore) — commit efd2294
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #426 (chat Motore) del diff in staging (gas.py e tests/test_unit_kernel.py, +54 righe). Ho letto prima CLAUDE.md (sez. 5, 8 e 9), la parte di reports/stato_progetto.md sul budget e su R7, e la memoria del revisore. Le prove le ho fatte su una copia nello scratchpad, poi cancellata.
+
+**Elementi del diff esaminati**
+1. `gas.py:868` — `_COSTI_LOCK = threading.Lock()` a livello di modulo. Rischio esaminato: un lock non rientrante può bloccarsi se qualcuno lo riprende mentre lo tiene già, o se il processo viene sdoppiato con fork. Il corpo non rientra in `_daily_cost_usd`: chiama solo `logging.warning`, che usa gli handler standard (StreamHandler e RotatingFileHandler, nessuno personalizzato), e `_costo_riga`, una funzione pura. Il codice non usa né `os.fork` né multiprocessing. Esito: ok.
+2. `gas.py:1234` — `_daily_cost_usd` prende il lock e chiama `_daily_cost_usd_bloccato`, cioè il corpo di prima senza modifiche. Rischio esaminato: chiamanti che hanno già il lock e modifiche della cache fatte fuori dal lock. L'unico chiamante è `_budget_superato` (`gas.py:1351`), che non ha il lock in mano. Tutte le modifiche a `_COSTI_CACHE` (pop, get, assegnazione) stanno dentro il corpo protetto. Il `try/except` che rende la funzione fail-safe resta dentro il corpo, quindi il lock si rilascia sempre col `with`. Esito: ok. C'è una riserva BASSA (R-426-2), sotto.
+3. `tests/test_unit_kernel.py:7271` — T94k. Rischio esaminato: il test potrebbe non ripristinare blocco e switch interval, essere lento o instabile in CI. Il `finally` rimette `_COSTI_BLOCCO`, lo switch interval e la cache, e l'ho verificato con un assert a ogni giro. Ho lanciato T94k da solo 30 volte: 30 su 30 corretti, 0,04 s in media, 0,06 s al massimo. Su una sola CPU (taskset): 20 su 20. Con il lock tolto (sostituito da nullcontext) fallisce sempre: 5 su 5, e 3 su 3 su una CPU. Il test quindi blocca davvero l'errore e non è instabile. Esito: ok.
+4. `tests/test_unit_kernel.py:7298` — T96 con kernel vero. Mutazioni provate: (a) `_cancello` di «in attesa» messo a None, per cui il parcheggio esce senza «in_attesa»: T96 FAIL, quindi R-425-1 è chiusa; (b) `_esito_contenuto` sempre False (`gas.py:4003`): T96 FAIL, perché il file letto viene etichettato «negata». Esito: ok.
+5. `gas.py:952` — `self._esito_contenuto = False` aggiunto in `__init__`. Rischio esaminato: la riga serve davvero? Togliendola la suite resta 971 PASS e 0 FAIL, perché `gas.py:4236` la legge ancora con `getattr(..., False)`. Esito: riserva COSMETICA (R-426-1).
+
+**Riprodotto sulla copia**: test del kernel 971 PASS, 0 FAIL. pytest su tutta `tests/`: 1711 passed in 186 s, che include notte e gate (le tue 947).
+
+**Riserve**
+- **R-426-1 (chat Motore) COSMETICA**: la dichiarazione in `__init__` serve solo come documentazione. Il getattr con default in `gas.py:4236` la rende superflua, e nessun test se ne accorge se la si toglie. Se vuoi che conti, il getattr si può sostituire con l'attributo diretto.
+- **R-426-2 (chat Motore) BASSA, da dichiarare**: il lock è uno solo per tutti i log dei token, di qualsiasi kernel, e resta preso durante la lettura del file. Una prima lettura di un log grande (circa 1,7 s con 2 milioni di righe, come misurato nella #419) mette in attesa i `_budget_superato` degli altri thread, per esempio Telegram e voce. Non produce errori di conteggio né blocchi permanenti: è solo latenza.
+
+**Rischio escluso**: non ho verificato il comportamento con Python free-threaded (3.13t) né sul VPS. Il primo non è nel piano, il secondo non si riproduce in sviluppo. Non ho misurato la contesa reale del lock sotto carico Telegram più voce: in sviluppo non ci sono turni concorrenti veri.
+
+**Wall of Shame**: nessuno slicing della history e nessun output dei tool simulato. Nel test i tool passano dal vero `execute_tool_call` attraverso `run_turn_scriptato`. Cap e `_get_window` non sono toccati.
+
+**Memoria**: aggiunta la riga #426 in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (cf1915e). Lo staging di gas.py e dei test è rimasto com'era. Nessuna lezione nuova.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 957 → 969 PASS, 0 FAIL (T94a-j, T94e2, T95). Blocco reale: `=== RIEPILOGO: 969 PASS, 0 FAIL ===`.
+tests/test_unit_kernel.py: 957 → 971 PASS, 0 FAIL (T94a-k, T94e2, T95, T96). Blocco reale: `=== RIEPILOGO: 971 PASS, 0 FAIL ===`.
 pytest `tests/test_unit_notte.py`: 106 → `130 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
@@ -896,7 +925,8 @@ pytest `tests/test_unit_notte.py`: 106 → `130 passed`; `tests/test_unit_gate.p
 - eb869d2 (con 898a4a2, 7204835, 3701278 e memorie): check suite completata senza check falliti (evento GitHub).
 - 0c02776 (con 9f470a9, 9533488, 373542f): check suite completata senza check falliti (evento GitHub); verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA chiusa da 214a450).
 - 6160555 (con d718b5d, 6609ca5, 214a450, 06da7ac): unit-suite, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, nessuna riserva ALTA/MEDIA).
-- ef8a5dd, 52501e2: run non ancora disponibile alla scrittura dell'handoff.
+- 47b3957 (con ef8a5dd, 52501e2): unit-suite success (kernel 971 PASS), handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, nessuna ALTA/MEDIA).
+- cf1915e, efd2294: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -913,7 +943,8 @@ pytest `tests/test_unit_notte.py`: 106 → `130 passed`; `tests/test_unit_gate.p
 - R-423-1: chiusa in #424.
 - R-424-1 (BASSA): riga finale riscritta a mano con stessa lunghezza e stesso mtime resta col valore vecchio fino al prossimo append.
 - R-424-2/3: chiuse in #425.
-- R-425-1 (BASSA): nessun test con kernel vero copre «in attesa ≥ 1» con la chiave nuova.
-- R-425-2 (COSMETICA): `_esito_contenuto` non dichiarato in `__init__` (stato per istanza, come `_lettura_meta`).
+- R-425-1/2: chiuse in #426.
+- R-426-1 (COSMETICA): la dichiarazione in `__init__` è solo documentazione (getattr con default).
+- R-426-2 (BASSA, dichiarata): un solo lock per tutti i log dei token: una prima lettura lunga fa aspettare gli altri thread (solo latenza).
 - Residuo dichiarato: orologio indietro di oltre 7 giorni → quella spesa esce dal tetto per 24 ore.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
