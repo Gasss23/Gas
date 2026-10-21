@@ -468,21 +468,41 @@ _GAS_PY: Path = Path(__file__).resolve().parents[2] / "gas.py"
 LOG_GIRO_TELEGRAM = "telegram_giro.log"
 
 
+# R-393-1: testo fisso (nessun dato del processo) per un giro morto prima di partire.
+TESTO_GIRO_NON_PARTITO = ("✗ Il giro lanciato da Telegram si è fermato prima di partire "
+                          "(nessun riepilogo). Dettagli in .gas_notte/" + LOG_GIRO_TELEGRAM)
+
+
+def _giro_partito(voce: Dict[str, Any]) -> bool:
+    """True se il giro ha scritto il riepilogo dopo il lancio (quindi è arrivato a
+    `esegui_notte`). Nel dubbio True: meglio un avviso in meno che uno falso."""
+    try:
+        riepilogo = Path(voce["root"]) / ".gas_notte" / "ultimo_giro.md"
+        return riepilogo.stat().st_mtime >= voce["t0"] - 1
+    except FileNotFoundError:
+        return False
+    except Exception:
+        return True
+
+
 def _raccogli_giri() -> int:
     """Toglie dalla lista i giri finiti (niente processi zombie). Ritorna quanti
-    sono ancora in corso. R-392-2: un giro morto prima di `esegui_notte` (codice
-    diverso da 0, 1, 2) finisce nel log."""
-    for p in list(_giri_lanciati):
+    sono ancora in corso. R-392-2/R-393-1: un giro morto prima di `esegui_notte`
+    (nessun riepilogo scritto dopo il lancio; codice 2 escluso = lock occupato,
+    già notificato dal giro) finisce in gas_debug.log e su Telegram."""
+    for voce in list(_giri_lanciati):
         try:
-            rc = p.poll()
+            rc = voce["p"].poll()
             if rc is None:
                 continue
-            if rc not in (0, 1, 2):
-                log.warning("giro lanciato da Telegram uscito con codice %s "
-                            "(vedi .gas_notte/%s)", rc, LOG_GIRO_TELEGRAM)
-        except Exception:
-            pass
-        _giri_lanciati.remove(p)
+            if rc != 2 and not _giro_partito(voce):
+                log.warning("giro lanciato da Telegram uscito con codice %s senza "
+                            "riepilogo (vedi .gas_notte/%s)", rc, LOG_GIRO_TELEGRAM)
+                if os.environ.get("GAS_NOTTE_TELEGRAM", "").strip() != "0":
+                    invia_notifica(TESTO_GIRO_NON_PARTITO)
+        except Exception as e:
+            log.warning("raccolta del giro lanciato da Telegram fallita: %s", e)
+        _giri_lanciati.remove(voce)
     return len(_giri_lanciati)
 
 
@@ -497,15 +517,17 @@ def lancia_giro(root: Path, nome: Optional[str] = None) -> str:
         # R-392-1: gas.py è quello accanto a questo modulo, non quello della cartella
         # da cui è partito il bot.
         if not _GAS_PY.is_file():
+            log.warning("lancia_giro: gas.py non trovato in %s", _GAS_PY)  # R-393-2
             return "✗ Giro NON avviato: gas.py non trovato (dettagli in gas_debug.log)."
         cmd = [sys.executable, str(_GAS_PY), "notte"] + ([nome] if nome else [])
         cartella = root / ".gas_notte"
         cartella.mkdir(parents=True, exist_ok=True)
+        t0 = time.time()
         with open(cartella / LOG_GIRO_TELEGRAM, "ab") as out:
             p = subprocess.Popen(cmd, cwd=str(root), stdin=subprocess.DEVNULL,
                                  stdout=out, stderr=subprocess.STDOUT,
                                  start_new_session=True, close_fds=True)
-        _giri_lanciati.append(p)
+        _giri_lanciati.append({"p": p, "t0": t0, "root": root})
         cosa = f"Compito «{nome}» avviato" if nome else "Giro notturno avviato"
         return f"{cosa}: il riepilogo arriva qui a fine giro."
     except Exception as e:

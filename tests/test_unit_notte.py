@@ -1327,6 +1327,7 @@ def test_lancia_giro_un_solo_processo(monkeypatch, tmp_path):
     r1 = _tg.lancia_giro(tmp_path, "conta")
     assert "conta" in r1 and "avviato" in r1
     p = _PopenFinto.lanciati[0]
+    assert _tg._giri_lanciati[0]["p"] is p and _tg._giri_lanciati[0]["root"] == tmp_path
     # R-392-1: gas.py accanto al modulo, non nella cartella del bot
     assert p.cmd == [sys.executable, str(_tg._GAS_PY), "notte", "conta"]
     assert Path(p.cmd[1]).is_file()
@@ -1388,12 +1389,48 @@ def test_lancia_giro_senza_gas_py(monkeypatch, tmp_path):
     assert _PopenFinto.lanciati == []
 
 
-def test_raccogli_giri_segnala_morte_precoce(monkeypatch, caplog):
-    """R-392-2: codice d'uscita fuori da 0/1/2 → riga nel log; lista ripulita."""
-    a, b = _PopenFinto(["x"]), _PopenFinto(["y"])
-    a.poll = lambda: 0
-    b.poll = lambda: 120
-    monkeypatch.setattr(_tg, "_giri_lanciati", [a, b])
+def test_raccogli_giri_segnala_morte_precoce(monkeypatch, caplog, tmp_path):
+    """R-392-2/R-393-1: giro finito senza riepilogo dopo il lancio (anche codice 1,
+    traceback di Python) → riga nel log e avviso su Telegram; codice 2 (lock
+    occupato, già notificato dal giro) e giri col riepilogo → silenzio."""
+    import time as _t
+    avvisi = []
+    monkeypatch.setattr(_tg, "invia_notifica", lambda t: avvisi.append(t) or (True, ""))
+    monkeypatch.delenv("GAS_NOTTE_TELEGRAM", raising=False)
+
+    def voce(rc, root, t0):
+        p = _PopenFinto(["x"])
+        p.poll = lambda: rc
+        return {"p": p, "t0": t0, "root": root}
+
+    vuota = tmp_path / "vuota"
+    vuota.mkdir()
+    con = tmp_path / "con"
+    (con / ".gas_notte").mkdir(parents=True)
+    t0 = _t.time()
+    (con / ".gas_notte" / "ultimo_giro.md").write_text("ok")
+    vecchia = tmp_path / "vecchia"
+    (vecchia / ".gas_notte").mkdir(parents=True)
+    (vecchia / ".gas_notte" / "ultimo_giro.md").write_text("ok")
+    os.utime(vecchia / ".gas_notte" / "ultimo_giro.md", (t0 - 3600, t0 - 3600))
+    giri = [voce(1, vuota, t0), voce(120, vecchia, t0), voce(2, vuota, t0),
+            voce(1, con, t0), voce(0, con, t0), voce(None, con, t0)]
+    monkeypatch.setattr(_tg, "_giri_lanciati", giri)
     with caplog.at_level("WARNING"):
-        assert _tg._raccogli_giri() == 0
-    assert "codice 120" in caplog.text and "codice 0" not in caplog.text
+        assert _tg._raccogli_giri() == 1  # solo quello ancora in corso
+    assert "codice 1 " in caplog.text and "codice 120" in caplog.text
+    assert "codice 2 " not in caplog.text and "codice 0" not in caplog.text
+    assert avvisi == [_tg.TESTO_GIRO_NON_PARTITO] * 2
+    # spento con GAS_NOTTE_TELEGRAM=0: solo il log
+    monkeypatch.setenv("GAS_NOTTE_TELEGRAM", "0")
+    monkeypatch.setattr(_tg, "_giri_lanciati", [voce(1, vuota, t0)])
+    _tg._raccogli_giri()
+    assert len(avvisi) == 2
+
+
+def test_raccogli_giri_non_solleva(monkeypatch):
+    class _Rotto:
+        def poll(self):
+            raise OSError("x")
+    monkeypatch.setattr(_tg, "_giri_lanciati", [{"p": _Rotto(), "t0": 0, "root": "/"}])
+    assert _tg._raccogli_giri() == 0
