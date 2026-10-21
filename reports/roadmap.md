@@ -228,7 +228,7 @@ Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decision
 - ⏳ Tetti di tempo duri.
 - ⏳ Tre stati per un comando o un'azione: non partita, finita, partita con esito incerto (R-c4b3-5, R-c4b3-3).
 - ⏳ Due processi che scrivono la stessa cronologia (R-c4b3-4; nota 6b della review #38).
-- ⏳ L'esito di un compito notturno è dedotto dall'inizio del testo: un file che comincia con "Operazione negata" falsa i conteggi (R-222-2).
+- ✅ L'esito di un compito notturno non è più dedotto dall'inizio del testo: lo dice il kernel (R-222-2, review #425, 21 ottobre).
 - 🅿️ Un file di stato con roadmap attiva e compiti del giorno (idea "Scratchpad" del Blueprint: si valuta solo a roadmap finita).
 
 ### R8 — Voce "Jarvis" ⏳ 🔒 R5
@@ -334,7 +334,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 - R-223-2 (deciso il 19 ottobre): si tiene la lista dei file vietati, decisa insieme a Gas-operatore. In più: ✅ segnalazione **solo** quando nasce un file nuovo che sembra delicato (chiavi, configurazioni, script); i documenti normali passano in silenzio (nel codice dal 20 ottobre, PR dopo #228).
 - R-224-2 (cosmetica): nome del compito con spazio o punto finale.
 - R-251-1 (bassa): nomi alternativi dello stesso file su Windows, che non usiamo.
-- R-222-2: esito dedotto dall'inizio del testo (vedi R7).
+- ✅ R-222-2: esito dedotto dall'inizio del testo — chiusa (review #425).
 - Tetti di tempo non duri. Il riepilogo Telegram si spegne solo con `0`.
 - Disco senza blocco dei file: il giro si ferma e avvisa; da riprovare sul server.
 - Nessun timer per Linux: esiste solo quello del Mac.

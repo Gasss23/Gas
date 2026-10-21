@@ -26,6 +26,7 @@
 - **Righe valide lunghe contate; «sospetto» mantenuto e in coda (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)**: `FATTA` — review #422 APPROVATO CON RISERVE.
 - **Riserve R-422-1/2/3 (avviso righe enormi, test a cavallo di blocchi)**: `FATTA` — review #423 APPROVATO CON RISERVE.
 - **Riga finale non riletta a file invariato; firme scadute nel log (V-1 bot V-B e verifica esterna #234 5° giro, R-417-1, R-423-1)**: `FATTA` — review #424 APPROVATO CON RISERVE. V-3 verifica esterna (registro senza blocco): non regge, il registro si tocca dopo il lock esclusivo del giro.
+- **R7 / R-222-2 — esito «negata/in attesa» detto dal kernel, non dall'inizio del testo; T94j più stretto (R-424-2/3)**: `FATTA` — review #425 APPROVATO CON RISERVE.
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -34,25 +35,29 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   21 +++++++
- gas.py                             |  189 ++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ .claude/agents/memoria_revisore.md |   22 +++++++
+ gas.py                             |  206 +++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  modules/gate/gate.py               |   12 +++-
  modules/memory/store.py            |   21 ++++++-
- modules/notte/notte.py             |  156 +++++++++++++++++++++++++++++++++++++++++++++++++--
- reports/da_mergiare.md             |   99 ++++++++++++--------------------
+ modules/notte/notte.py             |  169 +++++++++++++++++++++++++++++++++++++++++++++++++----
+ reports/da_mergiare.md             |   99 ++++++++++++-------------------
  reports/diff_sessione.md           |   17 +++---
- reports/handoff.md                 | 1101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 1147 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                 |    4 +-
  reports/stato_progetto.md          |    2 +-
- reports/ultimo_report.md           |   46 +++++++--------
+ reports/ultimo_report.md           |   47 +++++++--------
  tests/test_unit_gate.py            |    8 +++
- tests/test_unit_kernel.py          |  220 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           |  340 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 13 files changed, 1646 insertions(+), 586 deletions(-)
+ tests/test_unit_kernel.py          |  240 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           |  359 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 14 files changed, 1762 insertions(+), 591 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+52501e2 fix(notte,kernel): esito «negata/in attesa» detto dal kernel, non dal testo (R7 R-222-2); T94j conta i byte letti (R-424-2/3)
+ef8a5dd chore(revisore): memoria review #425 — APPROVATO CON RISERVE
+6160555 docs(fine-task): report e handoff — riserve #422-#424, riga finale non riletta, firme scadute nel log
 214a450 fix(budget,notte): riga finale non riletta a file invariato; firme scadute anche nel log (V-1 bot/verifica #234 5° giro, R-417-1, R-423-1)
 06da7ac chore(revisore): memoria review #424 — APPROVATO CON RISERVE
 d718b5d fix(budget): avviso anche per righe enormi scartate dal ramo lungo; test a cavallo di blocchi (R-422-1/2/3)
@@ -829,12 +834,54 @@ Nessuno slicing della history: i `[-64:]` sono byte del log. Nessuna simulazione
 
 **Memoria**: riga #424 aggiunta e committata (commit 06da7ac, solo /home/user/Gas/.claude/agents/memoria_revisore.md). Il resto dello staging è intatto. Lezione nuova: un test che promette «niente lavoro» deve contare l'operazione costosa promessa (qui la lettura del file), non solo quella a valle.
 
+### Review #425 (chat Motore) — commit 52501e2
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #425 (chat Motore). Ho letto CLAUDE.md (sezioni 5, 8 e 9), le voci R7, R-222-2 e R-424 in reports/stato_progetto.md e le ultime righe e lezioni di .claude/agents/memoria_revisore.md. Le prove le ho fatte su una copia nello scratchpad, poi cancellata. Nel repo reale ho committato solo la memoria (commit ef8a5dd). I quattro file staged sono rimasti intatti.
+
+Elementi del diff esaminati:
+- gas.py:3840 — `_esito_contenuto` viene azzerato all'ingresso di execute_tool_call. Rischio esaminato: un valore residuo da una chiamata precedente. Esito: ok. L'azzeramento avviene a ogni chiamata, prima del try.
+- gas.py:3995 — `_esito_contenuto` diventa True solo all'uscita normale. Rischio esaminato: un diniego del kernel che passa da quell'uscita e quindi smette di essere contato. Esito: ok.
+  - run_command: i dinieghi tornano tutti prima (vetting, os_strict, snapshot); il dry-run comincia con «[DRY-RUN]».
+  - read_file: il diniego di `_risolvi_lettura` torna prima.
+  - ricorda: il testo comincia sempre col blocco dati della memoria, mai con «Operazione negata».
+  - Lettori nativi: `_lettura_meta` viene azzerato nel ramo prima della chiamata (gas.py:3970). Ho controllato tutti i dinieghi (gas.py:2329-2353 dispatcher, gas.py:2355 _elenca_cartella, gas.py:2398 _leggi_righe, gas.py:2431 _cerca_testo, `_conta_file` subito sotto): tornano tutti PRIMA che il meta venga impostato. Dopo il meta c'è solo la costruzione della stringa finale, che non può fallire in modo realistico; anche un'eccezione a quel punto verrebbe catturata dal try del dispatcher.
+- gas.py:4194-4229 — `_cancello` in run_turn. Rischio esaminato: classificazione sbagliata nei tre rami. Esito: ok.
+  - DENY → "negata".
+  - Parcheggio: «Azione in attesa…» → in_attesa; «Operazione negata…» (anche `_NEGATO_STORE` e la revoca) → negata; «Azione già in attesa» → None, come prima.
+- gas.py:4261 — chiave nuova nell'evento tool_res. Rischio esaminato: altri consumatori che si rompono. Esito: ok. modules/telegram/bot.py:616, la CLI (gas.py:5442) e modules/voice/server.py:158 leggono solo "output" o ignorano l'evento. Nessun test confronta il dizionario intero.
+- modules/notte/notte.py:262 — usa `ev["cancello"]` se c'è, altrimenti il vecchio prefisso. Rischio esaminato: regressione con i kernel finti dei test. Esito: ok, notte 130 passed.
+- tests/test_unit_kernel.py:7238-7266 — T94j: patch di `gas.open` e `del gas.open` nel finally. Rischio esaminato: (a) il `del` cancella un `open` vero del modulo; (b) la patch non intercetta le letture. Esito: ok. gas.py non ha un `open` a livello di modulo, e la lettura usa l'`open` builtin (gas.py:1269). Il tetto di 128 byte corrisponde alle due impronte da 64 byte (gas.py:1244 e gas.py:1252).
+- tests/test_unit_notte.py:1195 — test nuovo R-222-2. Esito: ok. La lettura «../fuori.txt» passa davvero dal ramo DENY del cancello: la mutazione lo conferma.
+
+Prove sulla copia:
+- Suite: kernel 969 PASS 0 FAIL, notte 130 passed.
+- Mutazioni:
+  - senza «and not _esito_contenuto» → FAIL del test nuovo;
+  - DENY senza `_cancello="negata"` → FAIL del test nuovo;
+  - parcheggio senza "negata" → FAIL di test_irreversibile_parcheggiato_non_eseguito;
+  - «and not invariato» tolto da gas.py:1266 → T94j FAIL (246 byte letti; R-424-2 chiusa).
+- R-424-3: `_n94j3 == 1` controlla che dopo il «\n» la riga venga decodificata una volta sola. Chiusa.
+- Wall of Shame: nessun taglio della storia, nessuna simulazione di output dei tool, cap e guardrail non toccati.
+
+Riserve:
+- **R-425-1 (chat Motore), BASSA**: la mutazione «parcheggio senza `_cancello = "in_attesa"`» sopravvive (kernel 969/0, notte 130). Nessun test con un kernel vero produce «in attesa ≥ 1»; l'unico che lo verifica (tests/test_unit_notte.py:388) usa un kernel finto senza la chiave.
+- **R-425-2 (chat Motore), COSMETICA**: `_esito_contenuto` non è dichiarato in `__init__` (lo si legge con getattr). È stato tenuto per istanza come `_lettura_meta` e `_run_command_meta`, quindi non è sicuro se due turni girano insieme sullo stesso kernel. Il problema c'era già prima.
+
+Rischi esclusi:
+- Concorrenza reale bot/notte sullo stesso kernel: non riprodotta, è un problema già esistente.
+- Suite dei gate (817): non rieseguita, perché il diff non tocca gli script dei gate.
+- Comportamento su VPS: non verificato, non riproducibile in dev.
+
+Memoria: aggiunta la riga #425 (lezione: quando un flag si decide all'uscita normale, cercare i rami che impostano il meta e dopo possono ancora negare o sollevare eccezioni). Commit ef8a5dd in /home/user/Gas/.claude/agents/memoria_revisore.md.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
 tests/test_unit_kernel.py: 957 → 969 PASS, 0 FAIL (T94a-j, T94e2, T95). Blocco reale: `=== RIEPILOGO: 969 PASS, 0 FAIL ===`.
-pytest `tests/test_unit_notte.py`: 106 → `129 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
+pytest `tests/test_unit_notte.py`: 106 → `130 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
 
@@ -848,7 +895,8 @@ pytest `tests/test_unit_notte.py`: 106 → `129 passed`; `tests/test_unit_gate.p
 - 8e3072b (con d9f58bb): verifica-bot neutral (APPROVATO CON RISERVE, V-1/V-2 basse poi chiuse); check suite completata.
 - eb869d2 (con 898a4a2, 7204835, 3701278 e memorie): check suite completata senza check falliti (evento GitHub).
 - 0c02776 (con 9f470a9, 9533488, 373542f): check suite completata senza check falliti (evento GitHub); verifica-bot neutral (APPROVATO CON RISERVE, V-1 BASSA chiusa da 214a450).
-- d718b5d, 6609ca5, 214a450, 06da7ac: run non ancora disponibile alla scrittura dell'handoff.
+- 6160555 (con d718b5d, 6609ca5, 214a450, 06da7ac): unit-suite, handoff-check success; verifica-bot neutral (APPROVATO CON RISERVE, nessuna riserva ALTA/MEDIA).
+- ef8a5dd, 52501e2: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -864,7 +912,8 @@ pytest `tests/test_unit_notte.py`: 106 → `129 passed`; `tests/test_unit_gate.p
 - R-418-2 (BASSA): compito in coda fermato dal tetto di tempo resta a tentativi 2.
 - R-423-1: chiusa in #424.
 - R-424-1 (BASSA): riga finale riscritta a mano con stessa lunghezza e stesso mtime resta col valore vecchio fino al prossimo append.
-- R-424-2 (BASSA): T94j non protegge il «niente lettura» a file invariato.
-- R-424-3 (COSMETICA): T94j non conta le decodifiche dopo il «\n».
+- R-424-2/3: chiuse in #425.
+- R-425-1 (BASSA): nessun test con kernel vero copre «in attesa ≥ 1» con la chiave nuova.
+- R-425-2 (COSMETICA): `_esito_contenuto` non dichiarato in `__init__` (stato per istanza, come `_lettura_meta`).
 - Residuo dichiarato: orologio indietro di oltre 7 giorni → quella spesa esce dal tetto per 24 ore.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.

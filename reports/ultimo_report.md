@@ -23,9 +23,10 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **Righe valide lunghe contate; compito «sospetto» resta segnato e va in coda dopo un nuovo crash (V-1/V-2 verifica #234 4° giro, R-421-1/2/3)** — FATTA. Review #422 APPROVATO CON RISERVE (R-422-1/2 BASSE, R-422-3 COSMETICA).
 - **Riserve R-422 (avviso per righe enormi, test a cavallo di blocchi)** — FATTA. Review #423 APPROVATO CON RISERVE.
 - **Riga finale del registro dei token non riletta a file invariato; avviso «firme scadute» anche in gas_debug.log (V-1 bot e verifica esterna #234 5° giro, R-417-1)** — FATTA. Review #424 APPROVATO CON RISERVE. V-3 verifica esterna non regge (registro toccato solo sotto il lock del giro).
+- **R7 / R-222-2: il riepilogo della notte non si fa più ingannare da un file che comincia con «Operazione negata» (l'esito lo dice il kernel); test T94j più stretto (R-424-2/3)** — FATTA. Review #425 APPROVATO CON RISERVE.
 - **Anomalie** — disco temporaneo pieno due volte: cloni e ambienti Python degli agenti di verifica, poi ~129.000 cartelle `gas_*` lasciate dai test in /tmp (ripulite: da 4 MB a 29 GB liberi). Un agente di verifica ha staccato l'HEAD del repo vero: commit dei report rifatto sul ramo giusto.
 - **Verifica esterna #234** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot su #234: APPROVATO CON RISERVE (neutral, decide l'operatore).
-- **Test** — kernel 957 → 969 PASS, 0 FAIL; gate 811 → 817; notte 106 → 129.
+- **Test** — kernel 957 → 969 PASS, 0 FAIL; gate 811 → 817; notte 106 → 130.
 
 ## Prossimi passi
 
