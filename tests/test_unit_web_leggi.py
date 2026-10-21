@@ -63,6 +63,10 @@ class _Gestore(BaseHTTPRequestHandler):
             self._rispondi(200, "<p>ciao</p>".encode(), {"Content-Type": "text/html; charset=inesistente-99"})
         elif p == "/redir-esterno":
             self._rispondi(302, b"", {"Location": "http://altro.test/ok"})
+        elif p == "/redir-http":
+            self._rispondi(302, b"", {"Location": "http://altro.test/ok"})
+        elif p == "/redir-https":
+            self._rispondi(302, b"", {"Location": "https://altro.test/ok"})
         elif p == "/redir-relativo":
             self._rispondi(301, b"", {"Location": "/ok"})
         elif p == "/redir-interno":
@@ -200,8 +204,9 @@ def test_pagina_html_testo_pulito_e_marcato(rete):
     r = rete.leggi("http://sito.test/ok")
     assert r["ok"] is True
     assert r["fidato"] is False
-    assert r["titolo"] == "Titolo & prova"
+    assert set(r) == {"ok", "url", "testo", "troncato", "fidato", "codice"}  # niente titolo fuori dai marcatori (V-1 bot #235)
     t = r["testo"]
+    assert "Titolo: Titolo & prova" in t
     assert len(r["codice"]) == 12
     assert t.startswith(web.INIZIO_NON_FIDATO.format(codice=r["codice"]))
     assert t.endswith(web.FINE_NON_FIDATO.format(codice=r["codice"]))
@@ -537,3 +542,19 @@ def test_marcatore_a_tutta_larghezza_neutralizzato():
     pulito = web._pulisci(finto)
     assert "NON FIDATO" not in pulito.upper().replace("NON_", "NON ")
     assert "imitava il marcatore" in pulito
+
+
+def test_redirect_da_https_a_http_rifiutato(server):
+    """V-2 bot #235: una pagina chiesta in https non finisce letta in chiaro."""
+    rete = _Rete(server)
+    r = rete.leggi("https://sito.test/redir-http", _tls=_TlsCheStacca())
+    assert r == {"ok": False, "motivo": "redirect da https a http non permesso"}
+    assert rete.connessi == [(IP_PUBBLICO, 443)]
+
+
+def test_redirect_da_http_a_https_permesso(server):
+    tls = _TlsCheStacca()
+    r = _Rete(server).leggi("http://sito.test/redir-https", _tls=tls)
+    assert r["ok"] is True and r["url"] == "https://altro.test/ok"
+    assert tls.nomi == ["altro.test"]
+

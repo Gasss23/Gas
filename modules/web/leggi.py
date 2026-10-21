@@ -430,7 +430,6 @@ def _componi(url_finale: str, pagina: dict) -> dict:
     return {
         "ok": True,
         "url": url_finale,
-        "titolo": titolo,
         "testo": "\n".join(righe),
         "troncato": troncato,
         "fidato": False,
@@ -449,8 +448,10 @@ def leggi_pagina(
 ) -> dict:
     """Scarica UNA pagina e ne restituisce il testo pulito, marcato NON FIDATO.
 
-    → {"ok": True, "url", "titolo", "testo", "troncato", "fidato": False, "codice"}
-      («codice» è il codice casuale dei due marcatori NON FIDATO di questa chiamata.)
+    → {"ok": True, "url", "testo", "troncato", "fidato": False, "codice"}
+      Al modello va SOLO «testo»: è l'unico campo dentro i marcatori NON FIDATO (titolo
+      compreso). «url», «troncato» e «codice» (il codice casuale dei marcatori di questa
+      chiamata) sono dati per il codice che chiama, non per il modello.
     → {"ok": False, "motivo"} in qualunque errore (mai eccezioni).
 
     I parametri con il trattino basso servono solo ai test (DNS e connessioni finti).
@@ -460,8 +461,12 @@ def leggi_pagina(
     connetti = _connetti or _connetti_tcp
     try:
         attuale = url
+        cifrato = False
         for salto in range(MAX_REDIRECT + 1):
             schema, host, porta, percorso, normalizzato = _valida_url(attuale)
+            if cifrato and schema != "https":
+                raise _Rifiuto("redirect da https a http non permesso")
+            cifrato = cifrato or schema == "https"
             pagina = _scarica(schema, host, porta, percorso, scadenza, risolvi, connetti, _tls)
             if "redirect" not in pagina:
                 return _componi(normalizzato, pagina)
