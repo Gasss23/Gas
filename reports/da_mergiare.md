@@ -10,4 +10,10 @@
 - **Cosa:** quando il bot Telegram e il terminale scrivono la stessa storia, durante un turno il modello non vede mai i messaggi dell'altro processo (prima succedeva al primo salvataggio del turno); se un salvataggio fallisce, i messaggi dell'altro non finiscono doppi.
 - **Pro:** chiude le riserve rimaste dopo il merge di #236; un test passa dal turno vero (provider giù, nessuna risposta finale).
 - **Contro:** se un altro processo ha scritto, i messaggi del turno in corso restano solo in memoria fino alla fine del turno (un kill -9 a metà li perde, R-438-2).
-- **Controlli:** revisore #438 (chat Motore) APPROVATO CON RISERVE; kernel 994 PASS, pytest 1816 passed.
+- **Controlli:** revisore #438 (chat Motore) APPROVATO CON RISERVE; kernel 994 PASS, pytest 1816 passed. Bot V-B: success con riserve basse.
+
+### 2. `gas compress-history` onesto (R-438-1, R-439-1)
+- **Cosa:** il comando di compressione della storia ora salva anche quando un altro processo ha scritto nel frattempo, e dice «Compressi» solo se la storia compressa è davvero su disco (altrimenti «NON salvata» ed exit 1).
+- **Pro:** niente più falso «ok» su un'operazione manuale.
+- **Contro:** nessuno di rilievo (al più un «NON salvata» prudente se fallisce solo il secondo salvataggio, R-440-1).
+- **Controlli:** revisori #439, #440 APPROVATO CON RISERVE; kernel 996 PASS.
