@@ -9,6 +9,8 @@ mai saltato nei test, si cambia solo dove arriva il socket.
 from __future__ import annotations
 
 import os
+import random
+import re
 import shutil
 import socket
 import ssl
@@ -624,7 +626,7 @@ def test_ripiego_senza_parser_se_html_parser_esplode(monkeypatch):
     # Come il parser: via i commenti e tutti gli elementi nascosti (V-1 ve #238, V-2 ve #238),
     # ma non i tag che hanno solo lo stesso inizio (V-1 bot #238).
     assert "SEGRETO" not in t and "<p>" not in t
-    assert "data-x" not in t  # la chiusura con attributi finisce al suo «>» (R-431-3)
+    assert "data-x" not in t  # la chiusura con attributi finisce al suo «>»
 
 
 def test_ripiego_con_unescape_che_esplode(monkeypatch):
@@ -839,18 +841,32 @@ def test_embed_non_nasconde_il_resto_della_pagina():
 
 
 def test_parser_nasconde_math_e_object():
-    """V-1 bot #239: anche math e object, sul percorso normale."""
+    """Fissa un comportamento che c'era già: math e object nascosti anche sul percorso
+    normale (V-1 bot #239; non è una correzione, V-2 bot #239 secondo giro)."""
     corpo = b"<p>uno</p><math>SEGRETO_MATH</math><object>SEGRETO_OBJECT</object><p>due</p>"
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
                                          "troncato": False})["testo"]
     assert "uno" in t and "due" in t and "SEGRETO" not in t
 
 
+def test_parser_script_autochiuso_apre_lo_script():
+    """«<script/>» per i browser apre lo script: il testo dopo non va al modello; svg e math
+    autochiusi invece non nascondono niente (R-446-1)."""
+    for corpo, visibili in ((b"<p>a</p><script/>SEGRETO</script><p>VIS</p>", ("a", "VIS")),
+                            (b"<p>a</p><iframe/>SEGRETO</iframe>VIS", ("a", "VIS")),
+                            (b"<p>a</p><SCRIPT/>SEGRETO</SCRIPT>VIS", ("a", "VIS")),
+                            (b"<p>a</p><noscript/>SEGRETO</noscript>VIS", ("a", "VIS")),
+                            (b"a<svg/>VIS<math/>VIS2<br/>VIS3", ("a", "VIS", "VIS2", "VIS3"))):
+        t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
+                                             "troncato": False})["testo"]
+        assert "SEGRETO" not in t and all(v in t for v in visibili), (corpo, t)
+
+
 @pytest.mark.parametrize("pagina", [
     'a<script data-x="</script>">SEGRETO</script>VIS',         # V-1 ve #239
     '<iframe title="</iframe>">SEGRETO</iframe>VIS',
     "<noscript data-a='</noscript>'>SEGRETO</noscript>VIS",
-    "<svg/>SEGRETO</svg>VIS",                                   # «/» dopo il nome (V-3 ve #239)
+    "<svg/x>SEGRETO</svg>VIS",                                  # «/» dopo il nome (V-3 ve #239)
     "<title>SEGRETO_TITOLO</title>VIS",                         # il titolo non va nel testo (V-2 ve #239)
     "a<!-->VIS", "a<!--->VIS", "a<!--SEGRETO--!>VIS",           # commenti vuoti e «--!>» (V-2 bot #239)
     '<a title="<!--">VIS</a>', '<a title="<script>">VIS</a>',   # «<» negli attributi (V-3 bot #239)
@@ -870,6 +886,29 @@ def test_parser_nasconde_math_e_object():
     '<a"="><script>">SEGRETO</script>VIS',
     '</a"="><script>">SEGRETO</script>VIS',
     "<div'='><style>'>SEGRETO</style>VIS",
+    '<svg><a title="</svg>">SEGRETO</a></svg>VIS',              # dentro i nascosti contati si leggono i tag (R-442-1)
+    "<math><a title='</math>'>SEGRETO</a></math>VIS",
+    '<noscript><a title="</noscript>">SEGRETO</a></noscript>VIS',
+    '<template><a title="</template>">SEGRETO</a></template>VIS',
+    '<object><a title="</object>">SEGRETO</a></object>VIS',
+    '<canvas><a title="</canvas>">SEGRETO</a></canvas>VIS',
+    "<svg><!--</svg>-->SEGRETO</svg>VIS",
+    "<svg><svg>SEGRETO</svg>SEGRETO_2</svg>VIS",                 # annidamento contato (R-431-3)
+    "<svg>SEGRETO</script>VIS",                                 # contatore unico, come _Estrattore
+    "<svg a=x/>SEGRETO</svg>VIS",                               # la «/» è del valore: non autochiuso
+    "<noscript/>SEGRETO</noscript>VIS",                         # «/» ignorata fuori da svg e math
+    '<script>SEGRETO</script a=">">VIS',                        # chiusura con virgolette (V-1 bot #239, 2° giro)
+    "a<![CDATA[ > SEGRETO ]]>VIS",                              # commenti fasulli (R-442-2)
+    '<?x a="><script>">SEGRETO</script>VIS',                    # finiscono al primo «>», virgolette o no
+    '<!x a="><script>">SEGRETO</script>VIS',
+    '</ a="><script>">SEGRETO</script>VIS',
+    "</svg><svg>SEGRETO</svg>VIS",                              # una chiusura in più non manda il contatore sotto zero
+    "<svg><textarea></svg></textarea>SEGRETO</svg>VIS",         # grezzi come in html.parser (R-445-1)
+    "<svg><xmp></svg></xmp>SEGRETO</svg>VIS",
+    "<svg><noembed></svg></noembed>SEGRETO</svg>VIS",
+    "<svg><noframes></svg></noframes>SEGRETO</svg>VIS",
+    "<script/><svg><noscript></script>SEGRETO</noscript></svg>VIS",  # grezzo autochiuso (R-445-1)
+    "<script/>SEGRETO</script>VIS",                             # per i browser «<script/>» apre lo script
 ])
 def test_ripiego_attributi_e_commenti(pagina):
     t = web._testo_senza_parser(pagina)
@@ -883,6 +922,62 @@ def test_ripiego_commenti_chiude_la_prima_chiusura():
         assert "VIS" in t and "x" not in t and "y" not in t, t
 
 
+def test_ripiego_svg_e_math_autochiusi():
+    """«<svg/>» e «<math/>» non aprono un blocco: il testo dopo resta (V-1 bot #239)."""
+    for pagina in ("a<svg/>VIS", "a<math />VIS", '<svg a="x"/>VIS', "<svg><svg/>SEGRETO</svg>VIS"):
+        t = web._testo_senza_parser(pagina)
+        assert "VIS" in t and "SEGRETO" not in t, (pagina, t)
+
+
+def test_ripiego_commenti_fasulli_e_testo_con_minore():
+    """«<!x», «<?», «</» senza lettera finiscono al primo «>»; un «<» che non apre un tag
+    resta testo, come nel parser (R-442-2)."""
+    for pagina, atteso in (("a<!Q <?\f>VIS", "a VIS"), ("a<?php SEGRETO ?>VIS", "a VIS"),
+                           ("a</ SEGRETO>VIS", "a VIS"), ("a<!doctype html>VIS", "a VIS"),
+                           ("a < b <1> c", "a < b <1> c")):
+        assert " ".join(web._testo_senza_parser(pagina).split()) == atteso, pagina
+
+
+def test_ripiego_plaintext_porta_via_il_resto():
+    """Dopo «<plaintext>» il parser legge tutto come testo: il ripiego lo toglie (R-445-1)."""
+    assert web._testo_senza_parser("a<plaintext><svg>SEGRETO").strip() == "a"
+    assert web._testo_senza_parser("a<plaintext>x</plaintext>b").strip() == "a"  # nessuna chiusura
+
+
+def test_ripiego_script_in_fondo():
+    """Un «<script» in fondo al testo porta via solo sé stesso (R-432-1, V-3 ve #239)."""
+    assert web._testo_senza_parser("a<script").strip() == "a"
+    assert web._testo_senza_parser("a<svg").strip() == "a"
+
+
+def test_ripiego_non_mostra_niente_che_il_parser_nasconde():
+    """Confronto col parser su pagine casuali: ogni parola che il ripiego lascia nel testo
+    è visibile anche per _Estrattore (nel testo o nel titolo). Escluse le pagine con i
+    commenti vuoti «<!-->» e «<!--->»: html.parser di Python 3.11 non li riconosce (i browser
+    e il 3.13 sì) e nasconde il testo che segue."""
+    atomi = ["<", "</", ">", '"', "'", "=", "/", " ", "\n", "!", "--", "<!--", "-->", "--!>", "<!", "<?",
+             "script", "style", "a", "title", "svg", "math", "noscript", "template", "iframe", "object",
+             "canvas", "embed", "<![CDATA[", "]]>", "/>", "x", "İ", "&", ";", "textarea", "xmp", "noembed",
+             "noframes", "plaintext", "<svg>", "<svg/>", "<script/>", "<title/>"]
+    rng = random.Random(239)
+    for _ in range(4000):
+        pezzi, k = [], 0
+        for _ in range(rng.randint(5, 30)):
+            if rng.random() < 0.15:
+                pezzi.append(f"Q{k}Z")
+                k += 1
+            else:
+                pezzi.append(rng.choice(atomi))
+        pagina = "".join(pezzi)
+        if "<!-->" in pagina or "<!--->" in pagina:
+            continue
+        estrattore = web._Estrattore()
+        estrattore.feed(pagina)
+        estrattore.close()
+        visibili = set(re.findall(r"Q\d+Z", "".join(estrattore.pezzi) + " " + " ".join(estrattore.titolo)))
+        assert set(re.findall(r"Q\d+Z", web._testo_senza_parser(pagina))) <= visibili, pagina
+
+
 def test_ripiego_tag_senza_fine_porta_via_il_resto():
     """Un tag mai chiuso non lascia pezzi di markup nel testo (V-2 ve #239)."""
     assert web._testo_senza_parser('a<a href="SEGRETO').strip() == "a"
@@ -893,6 +988,9 @@ def test_ripiego_lineare_su_attributi_e_commenti():
     for pagina in ('"<!--a--!>" * 200_000', '"<a \\"" + "x" * 2_000_000', '"<a b=\\"c\\">" * 200_000',
                    '"<!-->" * 400_000', '"<script a=\\">\\">x</script>" * 100_000',
                    '"<a x=\\"" + "x" * 2_000_000 + ">"', '"<a x=\\"" * 400_000 + ">"',
-                   '"<a x=y\\"" * 400_000 + ">"'):
+                   '"<a x=y\\"" * 400_000 + ">"', '"<?>" * 500_000', '"<![cdata[" * 200_000',
+                   '"<![CDATA[" + "x" * 2_000_000', '"<svg>" * 400_000', '"</svg>" * 400_000',
+                   '"<svg><a title=\\"</svg>\\">" * 100_000', '"<script></script a=\\">\\">" * 100_000',
+                   '"<script>x</script a=\\"" * 100_000'):
         assert _entro(10.0, "_testo_senza_parser", pagina), pagina
 

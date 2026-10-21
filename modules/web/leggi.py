@@ -84,9 +84,11 @@ _FINTO_MARCATORE = re.compile(
 _TAG_NASCOSTI = frozenset({
     "script", "style", "noscript", "template", "svg", "math", "iframe", "object", "canvas",
 })
-# Inizio di un commento o di un tag con il nome intero (così «<styled-box>» non è «<style»,
-# V-1 bot #238). Classi semplici e niente annidamenti: la ricerca è lineare.
-_INIZIO_TAG = re.compile(r"<(!--|/?[a-z][a-z0-9:-]*)")
+# Inizio di un commento, di un tag con il nome intero (così «<styled-box>» non è «<style»,
+# V-1 bot #238) o di un commento fasullo: «<![cdata[», «<!x», «<?», «</» senza lettera
+# (R-442-2). Un'unica ricerca con alternative fisse: lineare (con due ricerche separate,
+# ripartite ogni volta da capo, tanti «<?>» la rendevano quadratica).
+_INIZIO_TAG = re.compile(r"<(!--|/?[a-z][a-z0-9:-]*|!\[cdata\[|[!?/])")
 _FINE_NOME = frozenset(" \t\n\r\f/>")
 # Fine di un tag: il primo «>» fuori dai valori fra virgolette (V-1 ve #239: un «</script>»
 # dentro un attributo non chiude il blocco). Come il tokenizzatore HTML: prima il nome
@@ -96,11 +98,27 @@ _FINE_NOME = frozenset(" \t\n\r\f/>")
 # fondo, quindi niente «>» e il resto si perde. Ripetizioni possessive (Python 3.11+):
 # lineare anche quando il «>» non c'è. In testa il resto del nome del tag: per HTML il nome
 # va fino a spazio, «/» o «>», oltre quello che prende _INIZIO_TAG (R-441-1: «<a=b="x>»).
-_FINE_TAG = re.compile(
-    r"""[^ \t\n\r\f/>]*+(?:[ \t\n\r\f/]|[^ \t\n\r\f/>][^ \t\n\r\f/>=]*+"""
-    r"""(?:[ \t\n\r\f]*+=[ \t\n\r\f]*+(?:"[^"]*+"?|'[^']*+'?|[^ \t\n\r\f>]*+))?)*+>""")
+# Una «/» subito prima del «>» resta fuori dal ciclo: _AUTOCHIUSO trova la stessa fine solo
+# se il tag è autochiuso («<svg/>»; in «<svg a=x/>» la «/» è del valore). Niente gruppi di
+# cattura: in Python 3.11 dentro una ripetizione possessiva danno SystemError.
+_ATTRIBUTI = (r"""[^ \t\n\r\f/>]*+(?:[ \t\n\r\f]|/(?!>)|[^ \t\n\r\f/>][^ \t\n\r\f/>=]*+"""
+              r"""(?:[ \t\n\r\f]*+=[ \t\n\r\f]*+(?:"[^"]*+"?|'[^']*+'?|[^ \t\n\r\f>]*+))?)*+""")
+_FINE_TAG = re.compile(_ATTRIBUTI + "/?>")
+_AUTOCHIUSO = re.compile(_ATTRIBUTI + "/>")
 # Nel ripiego anche il titolo va tolto: il parser lo mette nel suo campo, non nel testo.
-_TAG_NASCOSTI_RIPIEGO = _TAG_NASCOSTI | {"title"}
+# Blocchi GREZZI: il contenuto è testo, non tag, e finisce alla prima chiusura con lo stesso
+# nome (come nel parser e nei browser). Gli altri nascosti si contano come fa _Estrattore:
+# dentro si leggono i tag, quindi «</svg>» in un attributo o in un commento non chiude
+# (R-442-1). svg e math autochiusi non aprono niente (V-1 bot #239), come nei browser.
+# Grezzi anche textarea, xmp, noembed, noframes e plaintext (fino in fondo), come in
+# html.parser: dentro non si contano aperture (R-445-1). Un grezzo autochiuso
+# («<script/>») non salta il contenuto: se è fra i nascosti conta come un'apertura, così il
+# contatore del ripiego non resta mai sotto quello del parser.
+_GREZZI_RIPIEGO = frozenset({
+    "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "plaintext",
+})
+_CONTATI_RIPIEGO = _TAG_NASCOSTI - _GREZZI_RIPIEGO
+_AUTOCHIUDIBILI = frozenset({"svg", "math"})
 _MINUSCOLE_ASCII = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 # Riferimenti numerici enormi («&#» + migliaia di cifre): html.parser solleva ValueError
 # (limite delle cifre degli interi) e la pagina diventerebbe illeggibile (R-ve235-4).
@@ -427,6 +445,15 @@ class _Estrattore(HTMLParser):
         if tag in self._BLOCCHI:
             self.pezzi.append("\n")
 
+    def handle_startendtag(self, tag: str, attrs: list) -> None:
+        # html.parser tratta «<script/>» come vuoto (apertura e subito chiusura), ma per i
+        # browser apre lo script: il testo dopo è codice invisibile. Fra i nascosti solo svg
+        # e math si autochiudono davvero; gli altri contano come apertura (R-446-1).
+        if tag in self._SALTA and tag not in _AUTOCHIUDIBILI:
+            self.handle_starttag(tag, attrs)
+        else:
+            super().handle_startendtag(tag, attrs)
+
     def handle_endtag(self, tag: str) -> None:
         if tag in self._SALTA and self._salta > 0:
             self._salta -= 1
@@ -473,7 +500,9 @@ def _decodifica(corpo: bytes, charset: str) -> str:
 
 
 def _chiusura(basso: str, tag: str, da: int) -> int:
-    """Posizione subito dopo la prima «</tag ... >» con il nome intero, o -1."""
+    """Posizione subito dopo la prima «</tag ... >» con il nome intero, o -1. Anche il tag di
+    chiusura finisce al suo «>» fuori dalle virgolette (V-1 bot #239, secondo giro: in
+    «</script a=">">» il tag finisce all'ultimo «>»); senza fine si prende il resto."""
     k = da
     while True:
         c = basso.find("</" + tag, k)
@@ -481,8 +510,8 @@ def _chiusura(basso: str, tag: str, da: int) -> int:
             return -1
         dopo = c + 2 + len(tag)
         if dopo >= len(basso) or basso[dopo] in _FINE_NOME:
-            g = basso.find(">", dopo)
-            return len(basso) if g == -1 else g + 1
+            fine_tag = _FINE_TAG.match(basso, dopo) if basso.find(">", dopo) != -1 else None
+            return len(basso) if fine_tag is None else fine_tag.end()
         k = c + 1
 
 
@@ -507,35 +536,58 @@ def _fine_commento(basso: str, da: int, prossimi: dict[str, int]) -> int:
 
 def _togli_blocchi_nascosti(testo: str) -> str:
     """Toglie commenti, tag e gli elementi nascosti (script, style, svg, iframe, title…),
-    vicino a quello che fa il parser: ogni tag finisce al suo «>» fuori dalle virgolette,
-    quindi «<» o «</script>» dentro un attributo non contano (V-1 ve #239, V-3 bot #239).
-    Differenze dichiarate: l'annidamento non si conta (un blocco finisce alla prima
-    chiusura con lo stesso nome, R-431-3); un tag o un commento senza fine porta via il
-    resto della pagina (si perde testo, non esce contenuto nascosto). Lineare: la ricerca
-    va sempre avanti, niente regex con «.*?» (che su tanti «<script» senza chiusura
-    tornerebbe quadratica)."""
+    come il parser: ogni tag finisce al suo «>» fuori dalle virgolette, quindi «<» o
+    «</script>» dentro un attributo non contano (V-1 ve #239, V-3 bot #239); i blocchi
+    grezzi finiscono alla loro chiusura, gli altri nascosti si contano con un unico
+    contatore come in _Estrattore (R-442-1, chiude anche R-431-3); i commenti fasulli
+    («<!x», «<?», «</» senza lettera) finiscono al primo «>», «<![cdata[» a «]]>» (R-442-2).
+    Differenza dichiarata: un tag o un commento senza fine porta via il resto della pagina
+    (si perde testo, non esce contenuto nascosto). Lineare: la ricerca va sempre avanti,
+    niente regex con «.*?» (che su tanti «<script» senza chiusura tornerebbe quadratica)."""
     basso = testo.translate(_MINUSCOLE_ASCII)  # lower() cambia la lunghezza («İ»): indici sfasati (R-429-1)
     pezzi = []
     prossimi: dict[str, int] = {}
+    salta = 0
     i = pos = 0
     while True:
         m = _INIZIO_TAG.search(basso, pos)
         if m is None:
-            pezzi.append(testo[i:])
+            if not salta:
+                pezzi.append(testo[i:])
             break
-        pezzi.append(testo[i:m.start()])
+        if not salta:
+            pezzi.append(testo[i:m.start()])
         nome = m.group(1)
         if nome == "!--":
             fine = _fine_commento(basso, m.end(), prossimi)
+        elif nome == "![cdata[":
+            f = basso.find("]]>", m.end())
+            fine = -1 if f == -1 else f + 3
+        elif nome in ("!", "?", "/"):
+            f = basso.find(">", m.end())
+            fine = -1 if f == -1 else f + 1
         else:
             fine = -1
             # Prima un find: se il «>» non c'è proprio, la regex non va nemmeno provata.
             fine_tag = _FINE_TAG.match(basso, m.end()) if basso.find(">", m.end()) != -1 else None
+            # Con un «>» dopo, m.end() è dentro il testo. Nome intero: «<script_x>» non è
+            # «<script» (R-431-1).
             if fine_tag is not None:
                 fine = fine_tag.end()
-                if nome in _TAG_NASCOSTI_RIPIEGO and (m.end() >= len(basso) or basso[m.end()] in _FINE_NOME):
-                    # Nome intero anche in apertura: «<script_x>» non è «<script» (R-431-1).
-                    fine = _chiusura(basso, nome, fine)
+                if basso[m.end()] in _FINE_NOME:
+                    if nome in _GREZZI_RIPIEGO:
+                        if _AUTOCHIUSO.match(basso, m.end()):
+                            if nome in _TAG_NASCOSTI:
+                                salta += 1
+                        elif nome == "plaintext":
+                            fine = -1
+                        else:
+                            fine = _chiusura(basso, nome, fine)
+                    elif nome in _CONTATI_RIPIEGO:
+                        if not (nome in _AUTOCHIUDIBILI and _AUTOCHIUSO.match(basso, m.end())):
+                            salta += 1
+                    elif nome[1:] in _TAG_NASCOSTI and nome.startswith("/") and salta:
+                        salta -= 1
         if fine == -1:
             break
         i = pos = fine
@@ -543,10 +595,10 @@ def _togli_blocchi_nascosti(testo: str) -> str:
 
 
 def _testo_senza_parser(grezzo: str) -> str:
-    """Ripiego se html.parser solleva: commenti, tag e blocchi nascosti tolti (resti di
-    markup tolti con una regex lineare: [^<>] si ferma al primo «<»), riferimenti
-    interpretati se possibile."""
-    testo = re.sub(r"<[^<>]*>", " ", _togli_blocchi_nascosti(grezzo))
+    """Ripiego se html.parser solleva: commenti, tag e blocchi nascosti tolti, riferimenti
+    interpretati se possibile. Un «<» che non apre un tag («a < b», «<1») resta testo,
+    come nel parser."""
+    testo = _togli_blocchi_nascosti(grezzo)
     try:
         return html_unescape(testo)
     except Exception:  # noqa: BLE001 — riferimenti strani: si lascia il testo com'è
