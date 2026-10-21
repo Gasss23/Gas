@@ -38,25 +38,26 @@
 
 ```
  .claude/agents/memoria_revisore.md |   24 ++++++++
- gas.py                             |  214 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ gas.py                             |  214 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
  modules/gate/gate.py               |   12 +++-
  modules/memory/store.py            |   21 ++++++-
- modules/notte/notte.py             |  169 +++++++++++++++++++++++++++++++++++++++++++++++++++----
- reports/da_mergiare.md             |  103 +++++++++++++---------------------
- reports/diff_sessione.md           |   16 +++---
- reports/handoff.md                 | 1104 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------
+ modules/notte/notte.py             |  169 +++++++++++++++++++++++++++++++++++++++++++++++++----
+ reports/da_mergiare.md             |  103 +++++++++++++-------------------
+ reports/diff_sessione.md           |   16 ++---
+ reports/handoff.md                 | 1143 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------
  reports/roadmap.md                 |    6 +-
  reports/stato_progetto.md          |    4 +-
  reports/ultimo_report.md           |   62 ++++++++++----------
  tests/test_unit_gate.py            |    8 +++
- tests/test_unit_kernel.py          |  286 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- tests/test_unit_notte.py           |  359 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 14 files changed, 2000 insertions(+), 388 deletions(-)
+ tests/test_unit_kernel.py          |  286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ tests/test_unit_notte.py           |  359 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 14 files changed, 2039 insertions(+), 388 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+239768c docs(fine-task): merge di main (#235) nel ramo, C6 decisa «lasciamo così»
 d6cc1cd Merge origin/main (#235, chat Mani) in feat/merge-automatico-z1xjx2
 634eba9 docs(fine-task): report e handoff — lock della cache dei costi, test dell'esito al cancello (#426)
 efd2294 fix(budget): lock sulla cache dei costi; test del kernel per l'esito al cancello (V-1/V-2 verifica #234 7° giro, R-425-1/2)
@@ -908,8 +909,11 @@ Review #426 (chat Motore) del diff in staging (gas.py e tests/test_unit_kernel.p
 
 **Memoria**: aggiunta la riga #426 in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (cf1915e). Lo staging di gas.py e dei test è rimasto com'era. Nessuna lezione nuova.
 
-### Review #427 (chat Motore) — merge d6cc1cd
+### Review #427 (chat Motore) — merge d6cc1cd — verdetto originale
 
+(Testo integrale, in un blocco di codice perché le sue citazioni puntano a file usciti dal diff di sessione dopo il merge; fa fede per il gate il verdetto riemesso qui sotto.)
+
+```text
 ## VERDETTO: APPROVATO
 
 Review #427 (chat Motore): merge in corso di origin/main 0616d3a (PR #235, chat Mani) dentro feat/merge-automatico-z1xjx2. Prima della review ho fatto le letture obbligatorie: CLAUDE.md e la coda di .claude/agents/memoria_revisore.md. Di reports/stato_progetto.md ho letto solo le parti toccate dal merge.
@@ -934,6 +938,40 @@ Review #427 (chat Motore): merge in corso di origin/main 0616d3a (PR #235, chat 
 
 **Memoria del revisore**
 La riga contatore #427 (chat Motore) è stata aggiunta in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, ma NON è committata. `scripts/commit_memoria_revisore.sh` ha fallito senza bloccare (rc 0, warning in gas_debug.log: «fatal: cannot do a partial commit during a merge»). Il merge è ancora in corso (MERGE_HEAD presente) e l'index degli altri file è intatto. Il file risulta `MM`: prima del commit di merge devi fare `git add .claude/agents/memoria_revisore.md` per includere la riga.
+```
+
+### Review #427 (chat Motore) — verdetto RIEMESSO dal revisore con le citazioni nella forma del gate (stesso esito; la base della sessione è passata a 0616d3a dopo il merge)
+
+## VERDETTO: APPROVATO
+
+Review #427 (chat Motore), versione riemessa con citazioni nel diff di sessione `0616d3a..HEAD`: merge in corso di origin/main 0616d3a (PR #235, chat Mani) dentro feat/merge-automatico-z1xjx2. L'esito è lo stesso; ho aggiunto i punti del codice del ramo controllati per gli scontri con modules/web. Prima della review ho fatto le letture obbligatorie: CLAUDE.md e la coda di .claude/agents/memoria_revisore.md. Di reports/stato_progetto.md ho letto solo le parti toccate dal merge.
+
+**Elementi esaminati nel diff di sessione**
+- `gas.py:21` — import del kernel (`modules.memory`, `brains.model_ids`, poi `modules.gate.gate` a :28–:30, `modules.telegram` a :31). Rischio esaminato: scontro di nomi o di import col nuovo package modules/web. gas.py non importa `modules.web` e non nomina `leggi_pagina` (grep vuoto). Il tool non è registrato nel kernel, quindi il merge non tocca il percorso di run_turn. Esito: ok.
+- `modules/gate/gate.py:82` — `UNTRUSTED_INPUT_TOOLS`. Rischio esaminato: incoerenza tra il gate del ramo e il nuovo lettore web. Oggi `leggi_pagina` non è un tool del loop, quindi la sua assenza dalla lista è coerente. Le uniche occorrenze di «web» in gate.py (`modules/gate/gate.py:553`, `modules/gate/gate.py:571`) sono commenti ed estensioni di file, nessun legame col modulo. Esito: ok, con una nota per il futuro: quando `leggi_pagina` diventerà un tool del loop, dovrà entrare in `UNTRUSTED_INPUT_TOOLS`.
+- `modules/notte/notte.py:80` — import della notte (riga 80 `from __future__`, poi righe 82–91, solo libreria standard). Rischio esaminato: dipendenze incrociate con modules/web. Non ce ne sono, e nessun riferimento a web in notte.py né in `modules/memory/store.py` (grep vuoto). Esito: ok.
+- `tests/test_unit_kernel.py:1` — la suite kernel del ramo convive con tests/test_unit_web_leggi.py. Rischio esaminato: collisioni di nomi di test o di conftest. Raccolta pytest dell'intera cartella tests: 1796 test (1711 + 85) senza errori. Rieseguiti i soli test web: 85 passed. Esito: ok.
+- `.claude/agents/memoria_revisore.md:630` — righe Mani inserite tra le #391–#393 della chat Motore. Rischio esaminato: righe perse o duplicate nella risoluzione. Ho confrontato riga per riga HEAD (666 righe), MERGE_HEAD (649) e staged (672):
+  - nessuna riga di HEAD manca nello staged;
+  - nessuna riga di main manca;
+  - nessun duplicato;
+  - nessuna riga estranea a entrambi.
+
+  666 + 6 righe Mani (#391, #392, #393, #406, #407, #408) = 672. Esito: ok.
+- `reports/stato_progetto.md:605` — paragrafo «Mani — fetta 1» aggiunto. La riga 601 (R1 giro da Telegram) è la versione del ramo, più aggiornata di main. Esito: ok.
+- `reports/stato_progetto.md:4` — nell'intestazione il 2026-10-21 cita solo la PR #235. Esito: cosmetico, da sistemare nell'aggiornamento di fine task.
+
+**Controlli di contesto (file non nel diff di sessione)**
+- `.github/workflows/ci.yml:113` — passo «Run web suite» (`if: always()`, `pipefail`, `tests/test_unit_web_*.py`) nel job `unit-suite` (riga 24); `handoff-check` resta a riga 282. Il ci.yml staged è identico a quello di main e il ramo non lo tocca dalla merge-base 7bd0875. Check required invariati. Esito: ok.
+- `modules/web/leggi.py:20` — solo libreria standard, nessun import del kernel, della notte, del gate o dello store. Esito: ok.
+
+**Rischio escluso**
+- Non ho rieseguito la suite kernel (971/0) né l'intera suite pytest sul tree unito: mi fido del dato del chiamante. Ho verificato solo la raccolta dei test e i 85 test web.
+- Non ho verificato l'esito della CI su GitHub: il merge non è ancora pushato.
+- Non ho riesaminato la logica di sicurezza di leggi_pagina (SSRF, timeout): è già revisionata dalla chat Mani e il merge non la modifica.
+
+**Memoria del revisore**
+La riga #427 è già in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` dal primo passaggio; come chiesto, non ho toccato né il repo né la memoria. La riga NON è committata: `scripts/commit_memoria_revisore.sh` non può fare un commit parziale durante un merge. Prima del commit di merge devi fare `git add .claude/agents/memoria_revisore.md` per includerla.
 
 ---
 
