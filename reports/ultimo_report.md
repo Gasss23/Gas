@@ -4,7 +4,7 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della nuova PR: pro e contro in `reports/da_mergiare.md` (voci 1-4).
+1. Merge della nuova PR: pro e contro in `reports/da_mergiare.md` (voci 1-5).
 2. C6 (bottone «Modifica» e firme a gruppi): (a) lasciare così, (b) disegnare il «Modifica», (c) anche le firme a gruppi.
 3. Secondo passaggio claude.ai sulle fette del cancello della #233 (se non già fatto).
 
@@ -15,8 +15,10 @@ Ramo `feat/merge-automatico-z1xjx2`, ripartito da main dopo il merge della PR #2
 - **Riserve piccole (R-407-1/2, R-405-1/2, R-404-2)** — FATTA. Review #408 APPROVATO CON RISERVE.
 - **5.5 R-tel-budget-perf: spesa letta solo sulle righe nuove** — FATTA. Review #409, #411 (chat Motore) APPROVATO CON RISERVE.
 - **V-1 bot #234, V-4 verifica #234, R-409-1/2/3** — FATTA. Review #410 APPROVATO CON RISERVE.
+- **R7 R-fts-1: tetto alle parole delle ricerche** — FATTA. Review #412 APPROVATO CON RISERVE (solo statica: disco temporaneo pieno; suite rieseguita dopo).
+- **Anomalia** — disco temporaneo pieno (cloni e ambienti Python lasciati dagli agenti di verifica): ripulito.
 - **Verifica esterna #234** — APPROVATO CON RISERVE, nessuna ALTA/MEDIA. Bot su #234: APPROVATO CON RISERVE (neutral, decide l'operatore).
-- **Test** — kernel 957 → 961 PASS, 0 FAIL; gate 811 → 817; notte 106 → 122.
+- **Test** — kernel 957 → 962 PASS, 0 FAIL; gate 811 → 817; notte 106 → 122.
 
 ## Prossimi passi
 

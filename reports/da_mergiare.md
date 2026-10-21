@@ -29,3 +29,9 @@
 - **Pro:** chiude V-1 del bot e V-4 della verifica esterna su #234.
 - **Contro:** nessuno noto.
 - **Controlli:** revisore #410 (chat Motore) APPROVATO CON RISERVE; notte 122 passed.
+
+### 5. Tetto alle parole delle ricerche nella memoria (roadmap R7, R-fts-1)
+- **Cosa:** quando Gas cerca nel diario o nella conoscenza, usa al massimo 12 parole distinte (ognuna di al massimo 40 caratteri).
+- **Pro:** una domanda enorme del modello non diventa una ricerca enorme; chiude R-fts-1.
+- **Contro:** in una domanda molto lunga le parole oltre la dodicesima non contano, anche se sono quelle importanti (R-412-1, bassa).
+- **Controlli:** revisore #412 (chat Motore) APPROVATO CON RISERVE, review solo letta (disco temporaneo pieno in quel momento); kernel 962 PASS rieseguito.

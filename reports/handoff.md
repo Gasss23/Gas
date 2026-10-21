@@ -18,6 +18,7 @@
 - **Riserve R-407-1/2, R-405-1/2, R-404-2**: `FATTA` — review #408 APPROVATO CON RISERVE.
 - **5.5 R-tel-budget-perf — spesa letta solo sulle righe nuove**: `FATTA` — review #409, #411 APPROVATO CON RISERVE.
 - **V-1 bot #234, V-4 verifica esterna #234, R-409-1/2/3**: `FATTA` — review #410 APPROVATO CON RISERVE.
+- **R7 R-fts-1 — tetto alle parole delle ricerche**: `FATTA` — review #412 APPROVATO CON RISERVE (solo statica, disco temporaneo pieno).
 - **C6**: `SALTATA` — decisione dell'operatore.
 - **R7 — ripresa dal punto esatto**: `DEFERITA` — da valutare.
 
@@ -26,24 +27,28 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 +++
- gas.py                             |  94 +++++++++++++++++++++++++++++++++++------------
+ .claude/agents/memoria_revisore.md |   7 ++++
+ gas.py                             |  97 +++++++++++++++++++++++++++++++++++------------
  modules/gate/gate.py               |  12 +++++-
- modules/notte/notte.py             | 124 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- reports/da_mergiare.md             |  87 +++++++++++++-------------------------------
- reports/diff_sessione.md           |  15 +++-----
- reports/handoff.md                 | 720 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ modules/memory/store.py            |  21 ++++++++++-
+ modules/notte/notte.py             | 124 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ reports/da_mergiare.md             |  93 +++++++++++++++------------------------------
+ reports/diff_sessione.md           |  16 ++++----
+ reports/handoff.md                 | 744 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 +-
- reports/ultimo_report.md           |  37 +++++++------------
+ reports/ultimo_report.md           |  39 ++++++++-----------
  tests/test_unit_gate.py            |   8 ++++
- tests/test_unit_kernel.py          |  53 +++++++++++++++++++++++++++
- tests/test_unit_notte.py           | 194 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 12 files changed, 674 insertions(+), 678 deletions(-)
+ tests/test_unit_kernel.py          |  63 +++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py           | 194 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 752 insertions(+), 668 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ab60f35 fix(memoria): tetto di 12 parole distinte (max 40 caratteri) alle ricerche nel diario e nella conoscenza (R-fts-1, roadmap R7)
+f682cc0 chore(revisore): memoria review #412 — APPROVATO CON RISERVE
+9d793f3 docs(fine-task): report, handoff, coda da_mergiare — spesa incrementale, correzioni #234
 4227270 fix(budget): conteggi negativi o enormi nel registro dei token non abbassano né azzerano la spesa (R-410-1/2)
 d9e8ed9 chore(revisore): memoria review #411 — APPROVATO CON RISERVE
 7e9900c fix(notte,budget): compito tolto dal registro prima della riflessione; registro più severo; costo: in/out separati, impronta di coda (V-1 bot #234, V-4 verifica #234, R-409-1/2/3)
@@ -277,15 +282,57 @@ File: /home/user/Gas/gas.py, /home/user/Gas/tests/test_unit_kernel.py, /home/use
 
 ---
 
+### Review #412 (chat Motore) — commit ab60f35
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #412 (chat Motore). La review è solo statica. Bash non funziona: ogni comando fallisce con ENOSPC, perché il tmp della sessione è pieno. Anche la scrittura di `.claude/agents/memoria_revisore.md` è fallita (ENOSPC). Quindi non ho rieseguito né sonde né suite: i numeri «Kernel 962 PASS» e «pytest 27 passed» vengono dal brief, non li ho rifatti io.
+
+Ho letto CLAUDE.md (testo integrale nel contesto), le voci R7/R-fts in reports/stato_progetto.md e le ultime voci della memoria (#407-#411).
+
+Elementi del diff esaminati:
+- `modules/memory/store.py:525` — `_token_fts`: tronca a 40 caratteri, poi toglie le parole doppie e si ferma a 12 parole distinte.
+  - Rischi esaminati: lista vuota (dà [], poi «nessuna ricerca» come prima), parole doppie che nascono dal troncamento (deduplicate dopo il taglio, corretto), taglio a metà carattere (lo slicing di str lavora su codepoint, nessun problema).
+  - Esito: ok.
+- `modules/memory/store.py:1090` — `_fts_match` del diario, in AND implicito.
+  - Rischio esaminato: qualità della ricerca. Con meno parole in AND i risultati sono un sovrinsieme di quelli di prima (più larghi), mai un errore. Il prefisso da 40 caratteri con «*» è più largo della parola intera.
+  - Le parole contengono solo caratteri \w, quindi le virgolette non si possono rompere e la sintassi FTS5 resta valida. Il tokenizer è unicode61 di default (`modules/memory/store.py:603`).
+  - Se la ricerca FTS non trova nulla, `ricorda` ricade sulla ricerca per sottostringa (`modules/memory/store.py:1100`), che non è cambiata.
+  - Esito: ok.
+- `gas.py:3578` — import pigro di `_token_fts`, un nome privato del modulo memoria.
+  - Rischio esaminato: ImportError che fa crashare la ricerca nella conoscenza. È escluso: `modules.memory` è già importato a livello di modulo in `gas.py:20`, quindi se mancasse fallirebbe prima l'avvio del kernel. L'import pigro non aggiunge nuovi punti di crash.
+  - Nome privato usato fuori dal modulo: accettabile, accoppiamento dichiarato nel commento.
+  - Esito: ok.
+- `gas.py:3597` — il chiamante (`_knowledge_search`) gestisce già il ritorno '' come «saltata», solo nel log.
+  - Esito: ok.
+- `tests/test_unit_kernel.py:7123` — T95.
+  - Esito: riserva (R-412-2).
+
+Guardrail: `_get_window`, il tetto di 10 iterazioni e il pin della memoria non sono toccati. Nessuno slicing della storia, nessuna simulazione dell'output dei tool.
+
+Finding:
+- **R-412-1 (chat Motore) BASSA**: si tengono le PRIME 12 parole. Nella conoscenza (OR, parole di almeno 3 caratteri) una domanda lunga perde le parole chiave in coda, che spesso sono il tema. Inoltre le parole vuote («che», «della», «per») occupano posti. Nel diario la regex è `\w+`, quindi contano anche «a» ed «e». Prima di questo diff nessuna parola andava persa. Rimedio da valutare: filtrare le stopword oppure preferire le parole più lunghe.
+- **R-412-2 (chat Motore) COSMETICA**: nella metà diario di T95 il tetto delle 12 parole scatta prima di «parola0» doppia e della parola da 100 caratteri. Quindi parole doppie e troncamento sono provati solo sulla metà conoscenza. Manca anche una prova con un MATCH reale su SQLite e un prefisso da 40 caratteri.
+
+Rischi esplicitamente esclusi:
+- Mutazioni, esecuzione di T95 e suite kernel/pytest: non riprodotte, perché Bash è inutilizzabile (ENOSPC).
+- Comportamento su VPS: non verificato.
+- Qualità del ranking BM25 su dati reali: non misurata.
+
+(Nota dell'agente principale: la riga di memoria #412 dettata dal revisore è stata aggiunta dall'agente principale dopo aver liberato il disco, commit f682cc0; suite kernel rieseguita dall'agente principale: 962 PASS, 0 FAIL.)
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-tests/test_unit_kernel.py: 957 → 961 PASS, 0 FAIL (T94a-d). Blocco reale: `=== RIEPILOGO: 961 PASS, 0 FAIL ===`.
+tests/test_unit_kernel.py: 957 → 962 PASS, 0 FAIL (T94a-d, T95). Blocco reale: `=== RIEPILOGO: 962 PASS, 0 FAIL ===`.
 pytest `tests/test_unit_notte.py`: 106 → `122 passed`; `tests/test_unit_gate.py`: 811 → `817 passed`.
 
 ## §6 STATO CI
 
 - 5267148 (con 6eaab53, d51de97, bb9305e e memorie): handoff-check success, unit-suite success, verifica-bot neutral (verdetto APPROVATO CON RISERVE, decide l'operatore) — dal verdetto del bot e dalla verifica esterna #234, e dall'evento check_suite.completed sulla PR.
-- 6f6edd7, 7e9900c, 4227270 e memorie: run non ancora disponibile alla scrittura dell'handoff.
+- 9d793f3 (con 6f6edd7, 7e9900c, 4227270 e memorie): run in corso alla scrittura dell'handoff.
+- ab60f35 e memorie: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -295,4 +342,6 @@ pytest `tests/test_unit_notte.py`: 106 → `122 passed`; `tests/test_unit_gate.p
 - R-411-1 (BASSA): T94d interrompe la suite invece di dare FAIL se torna R-410-1.
 - R-411-2 (BASSA): conteggio enorme scritto a mano conta 0.
 - V-3 verifica esterna #234 (BASSA, dichiarata): un Ctrl-C dell'operatore conta come crash.
+- R-412-1 (BASSA): si tengono le prime 12 parole della ricerca.
+- R-412-2 (COSMETICA): T95 parziale.
 - Riserve precedenti: vedi `reports/stato_progetto.md`.
