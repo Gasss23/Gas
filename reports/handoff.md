@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-21 — Chat Mani, fetta 4: note della PR #238 (R6, PR #239)
+**Sessione:** 2026-10-21 — Chat Mani, fetta 4: note delle PR #238 e #239 (R6, PR #239)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #239 (https://github.com/Gasss23/Gas/pull/239): vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo nuova richiesta esplicita dell'operatore.
+1. Merge della PR #239 (https://github.com/Gasss23/Gas/pull/239): l'operatore ha scritto «a, correggi e mergia quando il bot approva»; l'agente mergia quando `verifica-bot` è success sull'head (niente ALTA/MEDIA), CI verde, nessun conflitto.
 2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
 
@@ -20,20 +20,23 @@
 - **Ripiego alla pari col parser (V-2 ve #238)**: `FATTA` (annidamento non contato, dichiarato)
 - **`embed` fuori dai tag con contenuto (R-431-2)**: `FATTA`
 - **Test mancanti (V-1/V-4 ve #238, V-2/V-3 bot #238)**: `FATTA`
+- **Note bot e verifica esterna #239 (fine del tag fuori dalle virgolette, titolo, «/» dopo il nome, tag senza fine, math/object, commenti vuoti e «--!>», «<» negli attributi)**: `FATTA`
+- **R-439-1, R-440-1, R-441-1 (fine del tag come il tokenizzatore HTML), R-439-2, R-439-3**: `FATTA`
+- **R-442-1, R-442-2 (contenuto dei blocchi nascosti non grezzi, commenti fasulli `<!`/`<?`/CDATA nel ripiego)**: `DEFERITA — famiglia diversa (contenuto dei blocchi, non il tag di apertura), richiede un contatore come il parser: fetta successiva; BASSE, il ripiego non si attiva con pagine vere`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/web/leggi.py               |  74 ++++++++++++++++++++++++++++++++++++++-----------------
- reports/diff_sessione.md           |  13 +++++-----
- reports/handoff.md                 | 480 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |  11 +++++++
+ modules/web/leggi.py               | 107 +++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ reports/diff_sessione.md           |  13 ++++----
+ reports/handoff.md                 | 608 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   4 ++-
- reports/ultimo_report.md           |  41 +++++++++++++++----------------
- tests/test_unit_web_leggi.py       |  49 +++++++++++++++++++++++++++++++------
- 7 files changed, 235 insertions(+), 429 deletions(-)
+ reports/ultimo_report.md           |  45 ++++++++++++++-------------
+ tests/test_unit_web_leggi.py       | 109 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 7 files changed, 512 insertions(+), 385 deletions(-)
 ```
 
 ---
@@ -41,6 +44,11 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3e0fe70 fix(web): fetta 4 chat Mani — fine del tag come il tokenizzatore HTML (R-439-1, R-440-1, R-441-1)
+e72a96a chore(revisore): memoria review #442 — APPROVATO CON RISERVE
+f7a3a05 chore(revisore): memoria review #441 — APPROVATO CON RISERVE
+c43a59e chore(revisore): memoria review #440 — APPROVATO CON RISERVE
+71bd77e docs(fine-task): report, stato e handoff — chat Mani fetta 4 (#239)
 befc78e Merge origin/main in feat/mani-web-fetta4
 12f7f71 fix(web): fetta 4 chat Mani — ripiego alla pari col parser, nomi dei tag interi, embed
 ```
@@ -51,7 +59,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Tre verdetti, incollati integralmente: #431 (chat Mani), #432 (chat Mani), #438 (chat Mani, merge di main).
+Sette verdetti, incollati integralmente: #431 (chat Mani), #432 (chat Mani), #438 (chat Mani, merge di main) per `12f7f71`/`befc78e`; #439, #440, #441, #442 (chat Mani) per `3e0fe70` (i giri #439-#441 hanno chiuso le proprie riserve nello stesso diff, il commit porta il diff approvato dalla #442; le righe di memoria sono nei commit `c43a59e`, `f7a3a05`, `e72a96a` fatti dal revisore).
 
 ### Review #431 (chat Mani)
 
@@ -175,19 +183,222 @@ Nota: il mio primo tentativo di scrivere la riga con un heredoc in Bash è stato
 
 ---
 
+---
+
+### Review #439 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #439 (chat Mani). Riguarda il diff staged del ramo feat/mani-web-fetta4 (PR #239), che chiude le note di bot e verifica esterna #239 nel ripiego senza parser di `modules/web/leggi.py`.
+
+Ho letto prima CLAUDE.md (sez. 1, 4, 5, 8, 9, 10), `reports/stato_progetto.md` (le sezioni Mani, :605 e seguenti) e la mia memoria (lezioni sulle regex e sul ripiego, #429–#438).
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:94` — `_FINE_TAG`, il «>» fuori dalle virgolette. Rischio ReDoS: ok. Le tre alternative partono da caratteri diversi e nessuna ripetizione è annidata. Misure su 2 MB, tutte entro 0,42 s:
+  - apici alterni `"'`×1M seguiti da «>»;
+  - `<title "` + «"»×2M + «>»;
+  - `<a "x>`×N;
+  - `<a b="c" d='e' f=g>`×N;
+  - script con `</script>` nell'attributo ×N;
+  - `<a "`×N senza «>» (in questo caso il `find(">")` alla `modules/web/leggi.py:526` evita la regex).
+- `modules/web/leggi.py:94` — completezza della chiusura di V-1 ve #239: **riserva R-439-1**, vedi sotto.
+- `modules/web/leggi.py:482` — `_fine_commento` con la cache `prossimi`. Rischi: ordine «-->»/«--!>», reset, posizioni vecchie. Esito ok:
+  - fuzz differenziale contro una versione senza cache, 300k pagine casuali (commenti, «-->», «--!>», «<!-->», «<!--->», script, virgolette): uscite identiche;
+  - una posizione salvata è usata solo se ≥ da, quindi è davvero la prossima; «-1» non viene mai ricercato; i tratti cercati sono disgiunti, quindi la ricerca resta lineare.
+- `modules/web/leggi.py:497` — `min(fini)`. Rischio: mutazione non presa da nessun test. Esito: riserva R-439-2.
+- `modules/web/leggi.py:529` e `modules/web/leggi.py:96` — `title` aggiunto solo nel ripiego, col confine del nome sempre in apertura. Ok: `<title a="</title>">SEGRETO</title>VIS` → il ripiego dà « VIS»; il parser mette SEGRETO nel campo Titolo, non nel testo.
+- `modules/web/leggi.py:401` (contesto) — `_SALTA = _TAG_NASCOSTI` è invariato. Il diff non tocca `_Estrattore` né `_TAG_NASCOSTI`, quindi il percorso normale non cambia: ok.
+- `tests/test_unit_web_leggi.py:859` — test parametrico su attributi e commenti. Ok, però manca il caso della virgoletta in posizione non di valore (R-439-1).
+- `tests/test_unit_web_leggi.py:869` — test a tempo in sottoprocesso con `_entro` (`tests/test_unit_web_leggi.py:710`). Ok.
+- `tests/test_unit_web_leggi.py:841` — math e object sul percorso del parser. Ok. È tolta anche la fixture `rete` inutile dal test su embed.
+- `modules/web/leggi.py:563` (contesto, `_componi`) — il ripiego parte solo su ValueError di html.parser. Su 200k pagine casuali di metacaratteri e sui casi noti (`<![foo[`, DOCTYPE con sottoinsieme interno, «&#» con migliaia di cifre) il ripiego non è mai partito e non è uscita nessuna eccezione. Per questo le riserve restano BASSE.
+
+Test: 121 passed su 3.13 e 121 passed su 3.11 (uv), con index uguale al working tree.
+
+**Riserve**
+- **R-439-1 (chat Mani) BASSA — V-1 ve #239 è chiusa solo in parte.** `_FINE_TAG` (`modules/web/leggi.py:94`) accoppia tutte le virgolette, ma in HTML5 (e in html.parser) una virgoletta apre un valore solo dopo «=».
+  - Una virgoletta nel nome di un attributo, o dentro un valore senza virgolette, apre un finto valore. Questo si chiude sull'apertura del valore vero, quindi il tag finisce prima del dovuto. A quel punto il `</script>` dentro il valore vero chiude il blocco.
+  - Sonde (il parser mostra «VIS», il ripiego mostra SEGRETO):
+    - `<script x"y z="w></script>">SEGRETO</script>VIS` → « ">SEGRETO VIS»
+    - `<script x'y z='w></script>'>SEGRETO</script>VIS` → stesso esito con l'apice singolo
+    - `<script a=b"c d="e></script>">SEGRETO</script>VIS` → stesso esito
+    - `<iframe a=b"c d="e></iframe>">SEGRETO</iframe>VIS` → stesso esito
+    - `<a x"y z="w>ATTR_SEGRETO">VIS` → il valore dell'attributo esce nel testo
+  - Correzione che ho provato in una copia isolata (`git checkout-index`, la tua copia di lavoro non è toccata):
+    ```
+    _FINE_TAG = re.compile(r"""(?:[^>=]|=[ \t\n\r\f]*+(?:"[^"]*"|'[^']*'|(?!["'])))*+>""")
+    ```
+    Risultato: 121 passed, tutte le sonde danno « VIS», tempi sui 2 MB uguali o migliori (≤0,32 s). Anche un valore fra virgolette mai chiuso (`<script a="></script>SEGRETO`) porta via il resto, come nel browser. I quantificatori possessivi richiedono Python 3.11+, che è il minimo del progetto e la versione della CI (.github/workflows/ci.yml:44).
+  - Consiglio di farla in questa PR, con un test sulla prima sonda: è lo stesso finding che la PR dichiara chiuso.
+- **R-439-2 (chat Mani) COSMETICA:** la mutazione `min(fini)` → `max(fini)` alla `modules/web/leggi.py:497` sopravvive (121/0). Nessun test ha «-->» e «--!>» nella stessa pagina. Test suggerito: `a<!--x-->VIS<!--y--!>b`.
+- **R-439-3 (chat Mani) COSMETICA:**
+  - la chiusura (`modules/web/leggi.py:477`) non guarda le virgolette: `<script>SEGRETO</script x=">">VIS` → «">VIS». Restano pezzi di markup, ma non esce contenuto nascosto;
+  - `prossimi: dict` (`modules/web/leggi.py:482`, `modules/web/leggi.py:512`) andrebbe tipizzato `dict[str, int]` (CLAUDE.md sez. 4).
+
+**Cose che NON ho verificato o che ho escluso**
+- Il caso del doppio escape dentro script (`<script><!--<script>…</script>STILL--></script>`), che il browser nasconde: «STILL» esce sia dal parser sia dal ripiego. È un limite di html.parser già presente prima del diff e fuori da questa fetta.
+- Il CDATA (`<![CDATA[`) e i commenti finti (`<?…>`): il ripiego tutt'al più nasconde di più, cioè va nella direzione sicura.
+- Il backtick non è una virgoletta per HTML5, quindi il comportamento è coerente col parser (`<a href=\`x>\`>VIS` → entrambi danno «`>VIS»).
+- Non ho controllato un parser con versioni di html.parser diverse da 3.11 e 3.13. Non ho controllato il comportamento dei browser veri: ho confrontato solo con le regole HTML5 e con html.parser 3.13.
+
+**Memoria**
+- Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#439 (chat Mani) — 2026-10-21 — APPROVATO CON RISERVE — …» e una lezione: le virgolette aprono un valore solo dopo «=», quindi va sempre sondato `<script x"y z="w></script>">SEGRETO`.
+- Su tua richiesta non ho committato e non ho eseguito `scripts/commit_memoria_revisore.sh`: il file risulta modificato e non in staging.
+
+Le sonde stanno in `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/` (sonda1.py, sonda2.py, tempi.py, diff_cache.py). Le copie isolate sono `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/copia` (mutazione min→max) e `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/copia2` (correzione proposta).
+
+---
+
+### Review #440 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #440 (chat Mani), 2026-10-21, ramo feat/mani-web-fetta4 (PR #239), diff staged. Ho letto CLAUDE.md (sez. 5, 8, 9, 10), le parti utili di reports/stato_progetto.md e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:96` — `_FINE_TAG` con la regex proposta nella #439 (le virgolette aprono un valore solo dopo «=», ripetizioni possessive). Rischio esaminato: le sonde della R-439-1 e la linearità. Esito: **ok** per le sonde dichiarate. `<script x"y z="w></script>">SEGRETO</script>VIS` dà «VIS» sia nel ripiego sia nel parser. Ho provato 11 input avversari da 2 MB, col «>» finale perché altrimenti il `find` a `modules/web/leggi.py:528` li scarta prima della regex: tutti sotto 0,23 s. Con la mutazione «apici singoli tolti» falliscono 2 test.
+- `modules/web/leggi.py:499` — `min(fini)` tra «-->» e «--!>». Rischio esaminato: la mutazione min→max, che nella #439 sopravviveva. Esito: **ok**, ora `tests/test_unit_web_leggi.py:869` fallisce (R-439-2 chiusa).
+- `modules/web/leggi.py:484` e `modules/web/leggi.py:514` — `prossimi: dict[str, int]`. Esito: **ok** (R-439-3 chiusa; la parte sulle virgolette nella chiusura resta una differenza dichiarata, che non fa uscire contenuto nascosto).
+- `tests/test_unit_web_leggi.py:858`, `tests/test_unit_web_leggi.py:879`, `tests/test_unit_web_leggi.py:882` — le nuove sonde: valore mai chiuso e linearità in sottoprocesso con 3 casi in più. Esito: **ok**. Con Python 3.13 risultano 127 passed.
+- `modules/web/leggi.py:96` — **riserva R-440-1 (chat Mani), BASSA**: resta un caso della stessa famiglia. La regex tratta OGNI «=» come inizio di un valore. Per HTML5 (e per html.parser di Python 3.13) invece un «=» è un carattere normale in questi casi: dentro un valore senza virgolette, subito dopo un valore fra virgolette, all'inizio di un nome, oppure ripetuto. In quei casi il tag del ripiego finisce DOPO quello vero e si mangia l'apertura dello script. Sonde verificate sullo staged (il ripiego mostra «SEGRETO VIS», il parser solo «VIS»):
+  `<a b=="x><script>">SEGRETO</script>VIS`
+  `<a b=c="x><script>">SEGRETO</script>VIS`
+  `<a ="x><script>">SEGRETO</script>VIS`
+  `<a b="1"="x><script>">SEGRETO</script>VIS`
+  `<a b = = "x><script>">SEGRETO</script>VIS`
+  Correzione provata in una copia isolata, poi cancellata:
+  `_FINE_TAG = re.compile(r"""(?:[ \t\n\r\f/]|[^ \t\n\r\f/>][^ \t\n\r\f/>=]*+(?:[ \t\n\r\f]*+=[ \t\n\r\f]*+(?:"[^"]*+"?|'[^']*+'?|[^ \t\n\r\f>]*+))?)*+>""")`
+  Funziona così: prima viene il nome dell'attributo, poi un «=» conta solo dopo un nome. Un valore senza virgolette si prende anche «=» e virgolette. Una virgoletta mai chiusa arriva fino in fondo, quindi niente match e il resto si perde, come nello standard. Risultato: 127 passed, le 7 sonde danno lo stesso risultato del parser (anche `<script a=b="x></script>">SEGRETO</script>VIS`, dove il parser MOSTRA `">SEGRETO`) e i tempi sui 11 input avversari sono gli stessi (≤0,31 s). Gravità BASSA perché il ripiego si raggiunge solo se html.parser solleva un'eccezione (nella #439 nessuna di 200k pagine casuali ci è arrivata). La fuga però è reale, nello stesso verso della R-439-1.
+
+**Rischi esclusi (non verificati)**
+- La suite con Python 3.11 non l'ho rieseguita: qui python3.11 non ha pytest. Mi fido del tuo 127 passed su 3.11 (venv). Le regex possessive compilano su 3.11.
+- Le sonde le ho confrontate con html.parser 3.13 e con le regole del tokenizzatore HTML5 lette a memoria, non con un browser vero: in questo ambiente non c'è html5lib né un browser.
+- Rete e DNS bloccati (sitecustomize) non li ho riprovati.
+
+Il diff non tocca gas.py, la history, `_get_window`, il tetto di 10 iterazioni né i provider. Nessun Wall of Shame.
+
+**Note per l'agente principale**
+- Memoria: ho aggiunto la riga #440 e una lezione in `/home/user/Gas/.claude/agents/memoria_revisore.md` e le ho committate con `scripts/commit_memoria_revisore.sh` (commit c43a59e). Quel commit include anche la tua riga #439, che era staged. Ora lo staged contiene solo `modules/web/leggi.py` e `tests/test_unit_web_leggi.py`, quindi `segna_review_ok.sh` va lanciato sullo staged attuale.
+- R-440-1 va tracciata in stato_progetto.md, oppure chiusa con la regex qui sopra, aggiungendo le 5 sonde al parametrize di `test_ripiego_attributi_e_commenti`.
+
+---
+
+### Review #441 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #441 (chat Mani), 2026-10-21. Ramo feat/mani-web-fetta4 (PR #239). Ho esaminato il diff STAGED (solo modules/web/leggi.py e tests/test_unit_web_leggi.py). Index e worktree sono identici. Letture obbligatorie fatte: CLAUDE.md (sez. 5, 8, 9 e 10), reports/stato_progetto.md (blocchi Mani, fette 1-4) e .claude/agents/memoria_revisore.md (fino alla #440).
+
+Wall of Shame: in questo diff non c'è nessuno slicing della history, nessuna simulazione di tool, nessun contatto con il kernel. È tutto codice puro del modulo web, senza rete.
+
+### Elementi del diff esaminati
+
+1. modules/web/leggi.py:98 — `_FINE_TAG`, la regex degli attributi spezzata su due stringhe raw. Rischio: che non sia identica a quella proposta nella #440, o che sia rotta dalla concatenazione con triple virgolette. Esito: **ok**. Ho confrontato in modo programmatico la stringa del pattern con quella della #440: è identica (True). Il fuzz differenziale contro html.parser sulla fine del tag (900k tag casuali, 3 seed) non trova nessuna differenza quando la regex trova il «>» e il nome sta nella classe di `_INIZIO_TAG`. Tutte le differenze rimaste sono «la regex dà -1» su una virgoletta mai chiusa. È il caso dichiarato nel commento: il resto della pagina si perde, ma non esce contenuto nascosto.
+2. modules/web/leggi.py:532 — prima un `find(">")`, poi `_FINE_TAG.match`. Rischio: costo quadratico su tanti tag. Esito: **ok**. Il find si ferma al primo «>», che sta sempre entro la fine della regex. Se la regex fallisce si esce subito con break. Ripetizioni possessive, nessuna ripetizione vuota.
+3. tests/test_unit_web_leggi.py:868 — sonda `<a b=c=="x><script>">SEGRETO</script>VIS`, nel parametrize di `test_ripiego_attributi_e_commenti` (tests/test_unit_web_leggi.py:870). Rischio: test che non morde. Esito: **ok**. Ho rifatto io due mutazioni in una copia isolata: «nome che accetta =» → 5 FAIL; «valore senza virgolette che si ferma a = e alle virgolette» → 1 FAIL. Risultato: 133 passed (Python 3.13).
+4. modules/web/leggi.py:89 — `_INIZIO_TAG` con il nome `[a-z0-9:-]*` (contesto: la riga non è cambiata, ma ora fa da confine con `_FINE_TAG`). Rischio: che la regex degli attributi parta a metà nome. Esito: **riserva**, è la R-441-1 qui sotto.
+
+### Riserve
+
+- **R-441-1 (chat Mani) BASSA**, stessa famiglia di R-439-1 e R-440-1, spostata sul NOME DEL TAG. In HTML5 (e in html.parser) il nome del tag continua fino a uno spazio, «/» o «>». `_INIZIO_TAG` invece prende solo `[a-z0-9:-]`. Quindi `_FINE_TAG` comincia a metà nome e legge «"», «'» e «=» come attributi.
+  - Sonde confermate (il ripiego mostra SEGRETO, il parser no): `<a=b="><script>">SEGRETO</script>VIS`, `<a"="><script>">SEGRETO</script>VIS`, `<ax=="><script>">…`, `</a"="><script>">…`, `<div'='><style>'>SEGRETO</style>VIS`, `<a.="><script>">…`.
+  - Fuzz sul codice staged: 50 casi su 100k.
+  - Correzione provata in copia: aggiungere `[^ \t\n\r\f/>]*+` in testa a `_FINE_TAG` (il resto del nome del tag). Risultato: 133 passed, 0 casi su 300k, 0 differenze di fine tag contro html.parser, input avversari da 2 MB in ≤0,014 s.
+  - Il controllo del nome intero sui tag nascosti non cambia, perché lì il carattere dopo il nome è già in `_FINE_NOME`.
+  - Test suggerito: aggiungere al parametrize `<a=b="><script>">SEGRETO</script>VIS` e `<a"="><script>">SEGRETO</script>VIS`.
+  - Gravità bassa: il ripiego non si raggiunge con pagine vere (vedi la nota della fetta 4 in stato_progetto). Ma è un intervento di un solo token: consiglio di chiuderla prima del commit.
+- Nota COSMETICA: in `test_embed_non_nasconde_il_resto_della_pagina` è stata tolta la fixture `rete`. È corretto, perché `_componi` non usa la rete.
+
+### Rischi esplicitamente esclusi
+
+- Non ho rifatto le esecuzioni su Python 3.11 (venv) né quelle con rete e DNS bloccati che dichiari: qui ho solo 3.13. Della tua lista di mutazioni ne ho ripetute solo 2 su 6.
+- Non ho verificato il comportamento dei browser veri. Il riferimento è html.parser 3.13 più le regole del tokenizzatore HTML5 lette a mano.
+- Non ho valutato se aspettarsi un'altra iterazione della stessa famiglia (tokenizzatore imitato a pezzi): il fuzz copriva tag e attributi con un alfabeto ridotto (lettere, = " ' spazi / > < . _).
+
+### Memoria
+
+Ho aggiunto la riga `#441 (chat Mani) — 2026-10-21 — APPROVATO CON RISERVE — …` e una lezione nuova (fuzz differenziale anche con nomi di tag «sporchi»; il confine fra regex del nome e regex degli attributi deve usare la classe di HTML5). Sono in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole con scripts/commit_memoria_revisore.sh (commit f7a3a05). L'index del diff sotto review è rimasto intatto (i due file restano staged).
+
+Copia isolata usata per mutazioni e correzione (fuori dal repo): /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/copia
+
+---
+
+### Review #442 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #442 (chat Mani), 2026-10-21. Ramo feat/mani-web-fetta4 (PR #239). Ho esaminato il diff STAGED: solo modules/web/leggi.py e tests/test_unit_web_leggi.py. L'albero di lavoro è identico allo staged. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9 e 10), la sezione Mani di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:99 — `_FINE_TAG` ha ora in testa `[^ \t\n\r\f/>]*+`, cioè il resto del nome del tag secondo HTML5. È identico alla correzione proposta nella #441. Rischi esaminati:
+  - Tempi: su 6 input avversari da circa 2 MB con nomi sporchi (`<a` + 2M «=», `"=` ripetuti, `</a` ripetuti, `<a"=` senza «>» e simili) il tempo massimo è 0,011 s.
+  - Python 3.11: i quantificatori possessivi compilano su 3.11.17.
+  - Esito: ok.
+- tests/test_unit_web_leggi.py:869 — le 4 sonde nuove: `<a=b=">`, `<a"=">`, `</a"=">`, `<div'='>`. Rischio esaminato: che i test non colgano un ritorno indietro. Ho rifatto la mutazione «senza il resto del nome» in una copia isolata: falliscono tutte e 4. Esito: ok, R-441-1 chiusa.
+- modules/web/leggi.py:475 — `_chiusura` (funzione non toccata, ma chiamata dal codice nuovo a modules/web/leggi.py:537) cerca «</nome» senza tener conto di virgolette e commenti. Rischio esaminato: un «</nome» dentro un attributo o un commento, all'interno di un blocco nascosto NON grezzo. Esito: **riserva R-442-1**.
+- modules/web/leggi.py:510 — la docstring di `_togli_blocchi_nascosti` dice che «<» o «</script>» dentro un attributo «non contano». Vale solo per il tag di apertura, non per il contenuto dei blocchi nascosti non grezzi. Esito: riserva, è la stessa R-442-1.
+- modules/web/leggi.py:89 — `_INIZIO_TAG` riconosce solo `<!--` e `<lettera` / `</lettera`. Rischio esaminato: costrutti che il parser chiude al primo «>» e il ripiego no. Esito: **riserva R-442-2**.
+
+**Verifiche fatte da me**
+- 137 passed su Python 3.13.16. Su 3.11 non c'è pytest: lì ho controllato solo che le regex compilino.
+- Fuzz differenziale contro `_Estrattore`/html.parser, su 300k stringhe con alfabeto ampio: nomi di tag sporchi, `<!`, `<?`, `<![`, `\x00`, «İ», `\f`, `\r`, «&», tag grezzi e non grezzi. Conto come «fuga» ogni parola visibile nel ripiego e assente sia dal corpo sia dal titolo del parser.
+- La famiglia R-439/440/441 (fine del tag di apertura) non dà più differenze. Restano due famiglie diverse, descritte sotto.
+
+**Riserve**
+- **R-442-1 (chat Mani) BASSA** — Dentro i blocchi nascosti NON grezzi (svg, math, noscript, template, object, canvas) html.parser legge i tag. Quindi un «</svg>» dentro un attributo o un commento non chiude il blocco. Il ripiego invece lo chiude subito e mostra quello che segue.
+  - Riprodotto su tutti e sei:
+    - `<svg><a title="</svg>">SEGRETO</a></svg>VIS`: parser `'VIS'`, ripiego `' ">SEGRETO  VIS'`.
+    - Lo stesso con noscript, template, object, canvas, e con math usando gli apici singoli.
+    - Lo stesso con un commento: `<svg><!--</svg>-->SEGRETO</svg>VIS`.
+  - Per script e iframe il comportamento è già alla pari, perché il parser li tratta come grezzi.
+  - È la stessa famiglia di V-1 ve #239, spostata dal tag di apertura al contenuto del blocco.
+- **R-442-2 (chat Mani) BASSA** — Per il parser sono commenti fasulli, che finiscono al primo «>», questi costrutti: `<!x…`, `<?…`, `</` seguito da un carattere che non è una lettera. `<![CDATA[` finisce invece a «]]>».
+  - Nel ripiego la regex finale `<[^<>]*>` si ferma a un «<» interno, e i costrutti non chiusi a fine pagina restano interi. Quindi il loro contenuto resta nel testo.
+  - Esempi: `<!Q <?\f>V`, `a<![CDATA[ > Q ]]>b`.
+  - Frequenza: circa il 12% delle stringhe casuali, per lo più code non chiuse a fine pagina.
+  - Non riesce a far saltare l'apertura di uno script: il ripiego vede più tag del parser, non meno.
+
+Le due riserve sono BASSE perché il ripiego scatta solo se html.parser solleva un errore. Le 60.000 pagine casuali della verifica esterna #238 non l'hanno mai attivato.
+
+**Correzione provata in copia isolata** (non nel tuo albero), che chiude R-442-1, R-442-2 e anche R-431-3:
+- Un'unica regex di ricerca: `<(!--|/?[a-z][a-z0-9:-]*|!\[cdata\[|[!?/])`.
+- I casi `!`, `?`, `/` finiscono al primo «>»; `![cdata[` finisce a «]]>».
+- `_chiusura` resta solo per i tag grezzi: script, style, iframe, title.
+- Per gli altri nascosti, un contatore come quello di `_Estrattore`: +1 all'apertura, −1 alla chiusura se è sopra 0. I pezzi di testo si aggiungono solo quando il contatore è a 0.
+- Risultati: 137 passed, 0 differenze su 250k stringhe del fuzz, 2 MB avversari in al massimo 0,42 s.
+- Attenzione: una prima versione con due `search` separate partendo da `pos` era quadratica (40k «<?>» = 28,6 s, e due test a tempo fallivano). Serve un'unica alternanza, oppure tenere la posizione in cache.
+
+**Wall of Shame e guardrail**: questo diff non tocca la history, `_get_window`, il tetto delle 10 iterazioni, i tetti di output né i provider. Nessuna simulazione di output dei tool. Il ripiego resta fail-safe: `html_unescape` è protetto da try/except e nel ciclo non ci sono eccezioni nuove.
+
+**Rischio escluso**
+- Non ho eseguito la suite su Python 3.11, perché in questo ambiente pytest c'è solo su 3.13. Su 3.11.17 ho controllato soltanto che le regex compilino e che l'html.parser installato abbia gli stessi elementi grezzi/RCDATA di 3.13.16.
+- Non ho verificato il comportamento con versioni più vecchie di html.parser (senza le patch che rendono grezzo iframe), come quelle che potrebbero esserci sul VPS o sul Mac: in questo ambiente non sono riproducibili.
+- Non ho verificato su pagine reali, solo sul fuzz.
+
+**Memoria**: riga #442 e una lezione aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md, committate da me con `scripts/commit_memoria_revisore.sh` (commit e72a96a). L'index del diff sotto review è intatto.
+
+File utili:
+- Script di fuzz: /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/fuzz442.py e /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/fuzz442b.py
+- Prototipo della correzione: /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/proto/modules/web/leggi.py
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 105 → 107 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «107 passed», Python 3.13.16 e 3.11.17; 107 passed anche con rete e DNS veri bloccati via sitecustomize).
+- Web suite: 105 → 137 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «137 passed in 17.42s», Python 3.13 e 3.11 (venv): «137 passed in 16.94s»; con rete e DNS veri bloccati via sitecustomize: «137 passed in 16.81s»). Primo giro (`12f7f71`) 105 → 107, secondo giro (`3e0fe70`) 107 → 137.
+- Mutazioni del secondo giro, in copia isolata, ciascuna presa da almeno un test: senza il resto del nome del tag, nome dell'attributo che accetta «=», valore senza virgolette senza «=» e virgolette, chiusura della virgoletta obbligatoria, niente spazi prima/dopo «=», niente apici, min→max fra «-->» e «--!>».
 - Mutazioni eseguite in copie isolate (1 FAIL ciascuna): commenti ignorati, insieme a 4 tag, confine della chiusura tolto, apertura per prefisso, except di unescape tolto, embed rimesso, chiusura senza «>».
 - Sull'albero fuso (review #438): gate + notte 947 passed; kernel 987 PASS / 1 FAIL (T31g: manca `sqlite_vec` in questo ambiente, uguale su origin/main).
 
 ## §6 STATO CI
 
+CI NON VERIFICATA con `gh run list` (gh non autenticato nella sessione cloud). Mappatura commit→run:
 - `12f7f71`: pushato da solo prima del merge di main; run di push non verificata in questa sessione.
-- `befc78e` (merge di main): pushato prima dell'apertura della PR; run non verificata in questa sessione. Sui commit intermedi `handoff-check` può essere rosso per costruzione.
+- `befc78e` (merge di main) e `71bd77e` (fine-task del primo giro): pushati insieme, run sulla testa `71bd77e`; esito letto dai check della PR #239 via MCP, non da `gh`.
+- `c43a59e`, `f7a3a05`, `e72a96a`, `3e0fe70`: nessuna run su questi SHA da soli (pushati insieme al commit di fine-task che contiene questo file): run non ancora disponibile alla scrittura dell'handoff.
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: R-432-1 (COSMETICA), R-431-3 (dichiarata nella docstring), chat Mani.
+- Di questa fetta: **R-442-1 (chat Mani)** BASSA dentro i blocchi nascosti non grezzi (svg, math, noscript, template, object, canvas) il ripiego chiude al primo «</nome» anche dentro un attributo o un commento; **R-442-2 (chat Mani)** BASSA commenti fasulli `<!x`, `<?`, `</` non lettera e `<![CDATA[` nel ripiego (vede più tag del parser, non meno); R-431-3 (annidamento non contato, ora parte di R-442-1); R-432-1 (COSMETICA). Il revisore ha un prototipo che le chiude (contatore come il parser), da portare in una fetta successiva.
 - Restano: R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5 e R-ve235-7 (limiti dichiarati). Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1/2/3/4».
