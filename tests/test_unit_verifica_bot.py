@@ -525,6 +525,39 @@ class TestStorico:
         v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
         assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
 
+    def test_b1_240_grave_negato_non_blocca(self):
+        # PR #240, head 4891448: check failure per «non la considero più grave» nella
+        # riga di un finding BASSA.
+        testo = (
+            "VERIFICA ESTERNA #240 — APPROVATO CON RISERVE\nFINDING:\n"
+            "V-1 (BASSA) — Regressione di durabilità. I dati dell'altro processo non si "
+            "perdono, per questo non la considero più grave. Fix: un file d'appoggio.\n"
+            "V-2 (COSMETICA) — descrizione vecchia.\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA"), _f("V-2", "COSMETICA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "APPROVE"
+
+    @pytest.mark.parametrize("riga", [
+        "V-1 (BASSA) — non solo lento ma grave",          # «non» non nega «grave»… resta visto
+        "V-1 (BASSA) — non è ALTA a parole ma critica",    # maiuscolo e altra gravità
+        "V-1 (BASSA) — NON grave, anzi grave",             # negazione maiuscola: non vale
+        "V-1 (BASSA) — non era grave, ora è grave",        # seconda occorrenza non negata
+        # review #441: «non» nega il difetto, non la gravità → resta bloccante
+        "V-1 — non mitigato: grave",
+        "V-1 — il controllo non blocca: rischio grave",
+        "V-1 — non autenticato: accesso critico",
+        "V-1 — non risolto, grave",
+        "V-1 — non escludo un rischio grave",
+        "V-1 — non è stato chiuso: grave",
+        "V-1 — non verificato grave",
+        "V-1 — non ha test, importante",
+        "V-1 — non è la più grave ma rompe il merge",       # R-442-1
+    ])
+    def test_b1_240_negazione_non_nasconde_gravita(self, riga):
+        testo = ("VERIFICA ESTERNA #1 — APPROVATO CON RISERVE\nFINDING:\n"
+                 f"{riga}\nNON VERIFICATO: -")
+        v = _verdetto("APPROVATO CON RISERVE", [_f("V-1", "BASSA")], testo)
+        assert be.decidi(v, SHA, SHA)[0] == "COMMENT"
+
     def test_riserva_registrata_nel_json_resta_bloccante(self):
         # Se il modello mette la riserva nel campo strutturato con gravità ALTA, il campo
         # vince: la nuova regola tocca solo il testo libero.
