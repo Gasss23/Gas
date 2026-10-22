@@ -1,13 +1,13 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-22 — Chat Mani, fetta 9: nodo corrente dentro svg/math come i browser (R6)
+**Sessione:** 2026-10-22 — Chat Mani, fetta 9: nodo corrente dentro svg/math come i browser (R6, PR #246), con il secondo giro dopo la verifica esterna #246
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #245 (chiesto dall'operatore): aspetta che GitHub sincronizzi la PR sul nuovo head e che il bot riporti. Finché non è mergiata, la PR di questa fetta contiene anche i commit della fetta 8.
-2. Merge della PR di questa fetta: vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
+1. **R-ve246-5 (MEDIA, già presente su main)**: un elemento HTML speciale dentro `<canvas>`/`<object>` fa arrivare al modello testo nascosto ai browser. Chiuderla bene richiede un vero costruttore dell'albero HTML5 (es. lexbor via selectolax): dipendenza nuova, decide l'operatore.
+2. Merge della PR #246 (https://github.com/Gasss23/Gas/pull/246): chiesto dall'operatore «quando il bot approva».
 3. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True.
 4. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
@@ -15,28 +15,26 @@
 
 ## §1 SCOPE & ESITO FETTE
 
-- **R-463-1 (CDATA nei punti di integrazione)**: `FATTA`
-- **R-450-1, V-2 ve #243 (uscita da svg/math)**: `FATTA`
-- **R-ve245-1 (XHTML con prefissi)**: `FATTA`
-- **R-456-1 (`<svg><noembed/>`)**: `FATTA`
-- **B-467-1, B-467-2, R-467-1, R-468-1, R-468-2 (dalle review)**: `FATTA`
-- **R-467-2, R-469-1, tabelle**: `DEFERITA — BASSE, registrate in stato_progetto`
+- **R-463-1, R-450-1, V-2 ve #243, R-ve245-1, R-456-1 (primo giro)**: `FATTA`
+- **B-467-1, B-467-2, R-467-1, R-468-1, R-468-2**: `FATTA`
+- **V-1, V-2, V-3 ve #246 (ALTE), R-vb246-2**: `FATTA`
+- **B-470-1, R-470-1, R-470-2, R-471-1, R-471-2**: `FATTA`
+- **R-ve246-5 (MEDIA preesistente)**: `DEFERITA — decisione dell'operatore`
+- **R-469-1 (BASSA preesistente)**: `DEFERITA — registrata`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
-Verso main: finché la #245 non è mergiata comprende anche la fetta 8.
-
 ```
- .claude/agents/memoria_revisore.md |  15 +
- modules/web/leggi.py               | 360 +++++++++++++++++++----
- reports/diff_sessione.md           |  11 +-
- reports/handoff.md                 | 564 ++++++++++++++++---------------------
- reports/stato_progetto.md          |   4 +
- reports/ultimo_report.md           |  47 ++--
- tests/test_unit_web_leggi.py       | 259 ++++++++++++++++-
- 7 files changed, 849 insertions(+), 411 deletions(-)
+ .claude/agents/memoria_revisore.md |   9 +
+ modules/web/leggi.py               | 419 +++++++++++++++++++++++++++++++------
+ reports/diff_sessione.md           |  12 +-
+ reports/handoff.md                 | 385 +++++++++++++---------------------
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  44 ++--
+ tests/test_unit_web_leggi.py       | 196 ++++++++++++++++-
+ 7 files changed, 723 insertions(+), 344 deletions(-)
 ```
 
 ---
@@ -44,20 +42,28 @@ Verso main: finché la #245 non è mergiata comprende anche la fetta 8.
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+04ba26a Merge remote-tracking branch 'origin/main' into feat/mani-web-fetta9
+073036d fix(web): fetta 9 chat Mani, secondo giro — pila incerta, </p> e </br>, font, costo lineare (ve #246)
+324101e chore(revisore): memoria review #472 — APPROVATO
+075036a chore(revisore): memoria review #471 — APPROVATO CON RISERVE
+8a1bec0 chore(revisore): memoria review #470 — BOCCIATO
+854224a docs(fine-task): handoff con stato CI e riserva V-2 bot #246 — chat Mani fetta 9
+c4954c2 docs(stato): riserva V-2 bot #246 registrata — chat Mani fetta 9
+f2c4be1 docs(fine-task): report, stato e handoff — chat Mani fetta 9
+ca131fa Merge remote-tracking branch 'origin/feat/mani-web-fetta8' into feat/mani-web-fetta9
 6ed47c3 fix(web): fetta 9 chat Mani — nodo corrente dentro svg/math come i browser (R6)
 b50139b chore(revisore): memoria review #469 — APPROVATO CON RISERVE
 07a7932 chore(revisore): memoria review #468 — APPROVATO CON RISERVE
 06a6f45 chore(revisore): memoria review #467 — BOCCIATO
-ca131fa Merge remote-tracking branch 'origin/feat/mani-web-fetta8' into feat/mani-web-fetta9
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit (l'elenco dei file è esatto). L'ultima riga è il merge del ramo della fetta 8 (solo report).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit (l'elenco dei file è esatto).
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Tre verdetti, incollati integralmente: #467 (BOCCIATO), #468 e #469 (chat Mani) sul diff staged della fetta 9, cresciuto da una review all'altra e committato in `6ed47c3` dopo la #469 (memorie in `06a6f45`, `07a7932`, `b50139b`, fatte dal revisore). Le righe citate nelle #467 e #468 si riferiscono al diff di allora.
+Sei verdetti, incollati integralmente. #467 (BOCCIATO), #468 e #469 (chat Mani) sul primo giro, committato in `6ed47c3` (memorie `06a6f45`, `07a7932`, `b50139b`). #470 (BOCCIATO), #471 e #472 (chat Mani) sul secondo giro, committato in `073036d` dopo la #472 (memorie `8a1bec0`, `075036a`, `324101e`). Le righe citate nelle review intermedie si riferiscono al diff di allora.
 
 ### Review #467 (chat Mani) — verdetto integrale
 
@@ -210,22 +216,163 @@ Review #469 (chat Mani): ri-review della #468 sul diff staged della fetta 9. Le 
 - In worktree c'è reports/stato_progetto.md modificato e non staged: non è mio e non l'ho toccato.
 - Memoria: aggiunta la riga #469 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola (b50139b). Nessuna lezione nuova.
 
+### Review #470 (chat Mani) — verdetto integrale
+
+## VERDETTO: BOCCIATO
+
+Review #470 (chat Mani): diff staged sopra HEAD 854224a, cioè la correzione della verifica esterna #246. Le letture obbligatorie le avevo già fatte in questa sessione. Worktree e index coincidono (controllato con cmp); dopo il commit della memoria lo staging è intatto.
+
+**In breve:** le correzioni di V-1, V-2, V-3 e V-5 reggono. Il blocco riguarda il ramo, non le righe nuove: una fuga di contenuto di script, entrata con la fetta 9, che alla #467 avevo valutato male.
+
+**Motivo bloccante B-470-1 (ALTA, fuga rispetto a main 9782bd9).** È la mia R-467-2: alla #467 l'avevo data BASSA, ed era una valutazione sbagliata.
+- Nel contenuto estraneo `<font>` con color, face o size dovrebbe far uscire da svg/math. Non succede: Gas resta in svg mentre il browser è tornato in HTML.
+- Così un `<script>` o `<style>` NON autochiuso diventa un elemento svg. Il `</svg>` che segue chiude svg e lo script, e i conteggi scendono: il contenuto dello script arriva al modello, sia dal parser sia dal ripiego.
+- Pagine di prova:
+  - `<p>A</p><svg><font size=2><script></svg>SEGRETO</script>VIS`
+  - `<p>A</p><math><font face=x><style></math>SEGRETO</style>VIS`
+- Gas mostra SEGRETO. main, html5lib e lexbor lo nascondono: l'albero lexbor è `<svg></svg><font size="2"><script></svg>M1</script>…`.
+- Senza attributi (`<svg><font><script></svg>X`) X è visibile anche per html5lib, quindi la distinzione per attributo è proprio quella che manca.
+- Rimedio suggerito:
+  - nel parser, `<font>` con un attributo color/face/size (basta che ci sia, anche senza valore) conta come tag di uscita, anche nella forma `<font color=x/>`;
+  - nel ripiego, che non legge gli attributi, un `<font` nel contenuto estraneo rende la pila incerta. È il verso sicuro: i font in svg sono rari.
+  - Test: le due pagine sopra, più la variante senza attributi che deve restare visibile.
+
+**Elementi del diff esaminati**
+
+- modules/web/leggi.py:312 — `</p>` e `</br>` con la cima estranea fanno uscire (V-1). Rischio esaminato: uscita senza traccia del contenitore. Esito: **ok**. Se la pila si svuota il browser crea un `p` vuoto e lo chiude subito, quindi non resta aperto nessun elemento speciale. Mutazione in copia (uscita tolta): 1 FAIL.
+- modules/web/leggi.py:325 — tag fuori dalla pila, senza HTML né punti di integrazione: se è in `_visti` o in `_IMPLICITI` la pila diventa incerta, altrimenti la chiusura è ignorata (V-2). Rischio esaminato: un antenato chiuso dal browser. Esito: **ok**.
+  - Ogni ritorno di questo ramo è «ignorata», quindi al massimo si nasconde di più; «incerta» copre il caso in cui il browser è già tornato all'HTML.
+  - L'unica chiusura che salta lo scope è `</template>`, e template resta contato, quindi niente fuga.
+  - Mutazione: 5 FAIL.
+- modules/web/leggi.py:216 — `_togli_da` / `_metti` (V-3). Rischio esaminato: indici disallineati dalla pila e costo. Esito: **ok**.
+  - Ogni push corrisponde a un pop in ordine di pila, quindi `_posizioni`, `_html` e `_punti` restano coerenti con la pila e il costo è ammortizzato.
+  - In `apri` la scansione di `aperti` è limitata a 11 nomi.
+  - Oltre `PROFONDITA_MAX` la pila diventa incerta, nel verso sicuro.
+- modules/web/leggi.py:248 — `cdata()`: con un elemento HTML in cima la pila diventa incerta e il CDATA è trattato come fasullo. Rischio esaminato: CDATA vero per il browser dopo chiusure implicite. Esito: **ok**. Mutazione: 1 FAIL.
+- modules/web/leggi.py:283 — un'uscita che svuota la pila con canvas, object o altri contenitori nascosti aperti → incerta (V-5). Esito: **ok**. Mutazione: 3 FAIL.
+- modules/web/leggi.py:803 e modules/web/leggi.py:970 — parser e ripiego tagliano il resto della pagina allo stesso modo. Rischio esaminato: un ripiego che mostra più del parser. Esito: **ok**. Mutazione in `handle_data`: 9 FAIL.
+- tests/test_unit_web_leggi.py:1174 — iframe in math con CDATA vero. Esito: **ok**, è un caso che distingue la scelta «i grezzi restano elementi».
+
+**Riserve**
+
+- **R-470-1 BASSA:** la mutazione «elemento HTML diverso senza incerta» (modules/web/leggi.py:343) dà 0 FAIL. Non trovo una fuga senza quella protezione: la pila di Gas ha elementi HTML in più, quindi blocca le chiusure. È una protezione in più che nessun test prova; va dichiarata o coperta.
+- **R-470-2 BASSA:** quando la pila diventa incerta il resto della pagina sparisce senza lasciare traccia in gas_debug.log (stessa famiglia di R-466-2). Proposta: un warning, una volta per pagina.
+
+**Su cosa chiedevi di valutare**
+
+- Gli inneschi di «incerta» coprono le divergenze della pila che conosco, tranne B-470-1. Quella non è una divergenza della pila: è un tag di uscita non riconosciuto, quindi Gas resta in contenuto estraneo dove il browser è in HTML.
+- `_visti` sovrastima, e il verso è sicuro.
+
+**Riesecuzioni**
+
+- Suite web: 281 passed su 3.13.16 e su 3.11.17.
+- Mio fuzz con oracolo html5lib, senza gli atomi `</p>`/`</br>` (html5lib non li implementa), con in più font con attributi: 3×20k, 0 fughe del ripiego e 0 regressioni. Il fuzz NON trova B-470-1 (serve la sequenza esatta font con attributo, script, `</svg>`); l'ho trovata con le pagine di prova e l'ho confermata con lexbor.
+- Le regressioni del fuzz con `</p>`/`</br>` sono quelle che descrivi: limite di html5lib.
+
+**Rischi esclusi**
+
+- Browser vero: non provato. Oracoli usati: html5lib e lexbor.
+- Parser vecchio reale (CPython 3.12.3), fuzz5/5b/5x e fzl con lexbor 4×20k: non rieseguiti, li hai dichiarati tu.
+- Quanto testo si perde con «incerta» su pagine vere: non misurato, manca un corpus.
+
+**Memoria:** aggiunte la riga #470 e una lezione che corregge la mia valutazione di R-467-2, in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (8a1bec0).
+
+### Review #471 (chat Mani) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #471 (chat Mani): diff staged sopra 854224a, ri-review della #470. Le letture obbligatorie le avevo già fatte in questa sessione. Worktree e index coincidono (controllato con cmp); dopo il commit della memoria lo staging è intatto.
+
+**Esito in breve:** B-470-1 è chiusa, così come R-470-1 e R-470-2. Resta un buco nei test (R-471-1, MEDIA): il codice è giusto, ma le due scelte nuove «a pila vuota svg e math restano contati» non hanno un test che fallisca se le si toglie. Più una nota BASSA sul log.
+
+**Elementi del diff esaminati**
+
+- modules/web/leggi.py:715 — `_font_esce`: un attributo color, face o size presente, anche senza valore, fa uscire `<font>`. Il valore arriva sia ad `apri` sia a `_esito_autochiuso`. Rischio: attributi scritti in modi diversi. Esito: **ok**.
+  - html.parser mette i nomi in minuscolo, quindi `<font COLOR>` funziona.
+  - Sonde: `size=2` + script in svg, `face` + style in math, `COLOR` senza valore e `<font color=x/>` danno solo «A».
+  - `<font>` senza attributi: il parser mostra X come lexbor, il ripiego lo nasconde.
+  - Mutazione in copia (`_font_esce` sempre False): FAIL.
+- modules/web/leggi.py:284 — il ripiego non legge gli attributi, quindi un `<font>` nel contenuto estraneo rende la pila incerta. Rischio: il ripiego mostra più del parser. Esito: **ok**: il verso è sicuro. Mutazione (niente incerta): FAIL.
+- modules/web/leggi.py:298 — un'uscita in `apri` che svuota la pila non scala svg/math, che restano contati fino alla loro chiusura. Rischio: conteggi chiusi per errore (radice V-5). Esito: **ok** nel codice, **riserva** sui test.
+  - Mutazione che li fa scalare di nuovo: 0 FAIL.
+  - Col mutante `<p>A</p><canvas><form></canvas><svg><b/>SEGRETO` dà SEGRETO al modello, parser e ripiego. lexbor lo mette dentro canvas, quindi è nascosto.
+- modules/web/leggi.py:330 — stessa scelta per `</p>` e `</br>` in `chiudi`. Esito: **ok** nel codice, **riserva** sui test.
+  - Mutazione: 0 FAIL.
+  - Col mutante `<p>A</p><canvas><form></canvas><svg></p>SEGRETO` dà SEGRETO; idem con `</br>`.
+- modules/web/leggi.py:1064 — warning nel log quando la pila del parser è incerta (R-470-2). Esito: **ok**, ma il ripiego non lascia traccia (vedi R-471-2).
+- tests/test_unit_web_leggi.py:1213 — test diretto di «chiusura fermata da un elemento HTML → incerta». Esito: **ok**, chiude R-470-1.
+- tests/test_unit_web_leggi.py:1186 e tests/test_unit_web_leggi.py:1203 — pagine di B-470-1 e font senza attributi. Esito: **ok**.
+
+**Riserve**
+
+- **R-471-1 MEDIA (test):** aggiungere a `test_pila_incerta_o_uscita_non_fanno_uscire_testo` queste tre pagine:
+  - `<p>A</p><canvas><form></canvas><svg><b/>SEGRETO`
+  - `<p>A</p><canvas><form></canvas><svg></p>SEGRETO`
+  - `<p>A</p><canvas><form></canvas><svg></br>SEGRETO`
+  Oggi passano, e falliscono coi due mutanti.
+- **R-471-2 BASSA:** il warning in gas_debug.log c'è solo sul percorso del parser. Quando lavora il ripiego (Python senza le patch, o eccezione del parser) la pagina tagliata non lascia traccia.
+- **Nota (verso sicuro, va bene):** `<p>A</p><svg><g><font size=1><title/></svg>TIT</title>VIS` ora perde VIS. Svg resta contato e il suo `</svg>` sta dentro il titolo; main mostrava VIS.
+
+**Riesecuzioni**
+
+- Suite web: 288 passed su 3.13.16 e su 3.11.17.
+- Mio fuzz con oracolo html5lib (font con attributi, senza `</p>`/`</br>`): 20k su 3.13 e 20k su 3.11, 0 fughe del ripiego e 0 regressioni.
+- Pagine di prova confermate con lexbor (selectolax).
+
+**Rischi esclusi**
+
+- Browser vero: non provato.
+- fzl con lexbor 4×20k, fuzz5/5b, fuzz9 e parser vecchio reale: non rieseguiti, li hai dichiarati tu.
+- Quanto testo si perde con «incerta» su pagine vere: non misurato, manca un corpus.
+
+**Memoria:** aggiunta la riga #471 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola (075036a). Nessuna lezione nuova.
+
+### Review #472 (chat Mani) — verdetto integrale (diff del commit `073036d`)
+
+## VERDETTO: APPROVATO
+
+Review #472 (chat Mani): ri-review della #471, solo sul delta. R-471-1 e R-471-2 sono chiuse e non resta nessuna riserva aperta su questo delta.
+
+Ho controllato che worktree e index coincidano (cmp). Dopo il commit della memoria lo staging è intatto. Il delta rispetto all'index della #471 contiene solo le due modifiche che hai descritto.
+
+**Elementi del diff esaminati**
+
+- modules/web/leggi.py:991 — il ripiego, se la pila è incerta, scrive un warning e si ferma; solo dopo controlla `fine == -1`. Rischio: un cambio di comportamento dovuto al nuovo ordine dei controlli, o un doppio log. Esito: **ok**.
+  - Le due condizioni portano tutte e due a `break`, quindi l'ordine non cambia ciò che arriva al modello.
+  - Doppio log impossibile: `_testo_senza_parser` è chiamato solo nel ramo `except ValueError` di `_componi`, cioè quando il parser non ha finito; il warning del parser si scrive solo quando il parser va a buon fine.
+  - Mutazione in copia che toglie il warning: 1 FAIL (tests/test_unit_web_leggi.py:1237).
+- tests/test_unit_web_leggi.py:1191 — le tre pagine canvas/form (`<b/>`, `</p>`, `</br>`) che chiudono R-471-1. Rischio: test che non distinguono la correzione. Esito: **ok**.
+  - Mutazione «uscita a pila vuota che scala svg» in `apri`: 1 FAIL (alla #471 era 0).
+  - Mutazione «`</p>`/`</br>` a pila vuota» in `chiudi`: 2 FAIL (alla #471 era 0).
+
+**Riesecuzioni:** suite web 291 passed su 3.13.16 e su 3.11.17.
+
+**Rischi esclusi**
+- Il resto del diff l'ho rivisto alla #470 e alla #471 e qui non l'ho riesaminato, come mi hai chiesto.
+- Non ho rifatto fuzz (il delta tocca solo il log e i test) né provato il parser vecchio reale o un browser vero.
+- Il messaggio del ripiego non contiene l'URL, perché la funzione non lo riceve: per questo uso va bene.
+
+**Memoria:** aggiunta la riga #472 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola (324101e). Nessuna lezione nuova.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 239 → 264 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «264 passed» su Python 3.13.16 e 3.11.17, venv).
-- Fuzz con oracolo html5lib contro l'head della fetta 8 (fuzz9: 2×30k su 3.13, 20k su 3.11; r467/fz.py del revisore: 5×20k; fz_noenc): 0 fughe del ripiego; 0 casi in cui il nuovo mostra un testo che html5lib nasconde, salvo 2 casi con `</template>` dove html5lib sbaglia (lo standard chiude il template).
-- fuzz5/5b/5x (ripiego contro parser): 0 fughe.
-- Mutazioni del revisore in copie: vedi i verdetti #467–#469.
+- Web suite: 239 → 264 (primo giro) → 291 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «291 passed» su Python 3.13.16 e 3.11.17, venv).
+- Fuzz con oracolo lexbor (selectolax 1.0.2) contro fetta 8 e main, 8×20k: 0 regressioni; fughe rimaste = R-ve246-5, uguali o meno della fetta 8.
+- Fuzz con oracolo html5lib (fuzz9, r467/fz.py): 0 regressioni salvo uscite con `</p>`/`</br>`, dove html5lib non segue lo standard (lexbor conferma il nostro esito).
+- fuzz5/5b/5x (ripiego contro parser): 0 fughe. Parser vecchio reale (CPython 3.12.3): 6 fallimenti attesi (titolo perso, rilevatore), nessuna fuga.
+- Test nuovi del secondo giro contro il codice del primo giro: 15 FAILED su 16 (il perf da solo oltre 2 minuti).
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
 Mappatura commit→run:
-- `f2c4be1` (head della PR #246 all'apertura): verifica-bot **failure** per V-1 MEDIA = nessuna run di ci.yml (né unit-suite né handoff-check). Dalle 15:15 UTC GitHub non elabora i push di questa sessione: ref aggiornati, ma nessuna run `push` e head delle PR ferme (#245 su `649f441`, #246 su `f2c4be1`); `c4954c2` (riserva V-2 del bot) e questo commit non hanno fatto partire niente alla scrittura. Blocco spiegato nel [commento](https://github.com/Gasss23/Gas/pull/246#issuecomment-6346702736).
+- `f2c4be1`, `c4954c2`: nessuna run (GitHub non elaborava i push, 15:15–17:23 UTC).
+- `854224a`: unit-suite success, handoff-check success, verifica-bot failure (BOCCIATO: V-1, V-2, V-3 = quelli della verifica esterna, chiusi in `073036d`).
+- `073036d`, merge di main e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-vb246-2** BASSA (`</p>`/`</br>` nel contenuto estraneo non fanno uscire: si nasconde di più); **R-467-2 (chat Mani)** BASSA (`<font>` con attributi in svg); **R-469-1 (chat Mani)** BASSA preesistente (`</template>` attraverso un punto di integrazione: si perde testo, verso sicuro); tabelle (`<object><table></object>X`) BASSA preesistente.
+- Di questa fetta: **R-ve246-5** MEDIA preesistente (canvas/object con elementi speciali; serve un costruttore HTML5, decisione dell'operatore); **R-469-1** BASSA preesistente (`</template>` attraverso un punto di integrazione, verso sicuro); quanto testo si perde con «incerta» su pagine vere: non misurato.
 - Restano: R-466-1, R-466-2, R-ve245-2…5, R-ve245b-4, R-454-2, R-453-2, R-456-2, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…9».

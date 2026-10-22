@@ -1,29 +1,29 @@
-# ULTIMO REPORT — 2026-10-22 — Chat Mani, fetta 9: nodo corrente dentro svg/math come i browser (R6)
+# ULTIMO REPORT — 2026-10-22 — Chat Mani, fetta 9: nodo corrente dentro svg/math come i browser (R6, PR #246), secondo giro
 
-Ramo `feat/mani-web-fetta9`, partito dalla fetta 8 (PR #245, non ancora mergiata: su GitHub la PR è rimasta ferma al vecchio head dopo i push del secondo giro). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza.
+Ramo `feat/mani-web-fetta9`, PR #246 (https://github.com/Gasss23/Gas/pull/246). La PR #245 (fetta 8) è mergiata e main è entrata in questo ramo. Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #245 (chiesto dall'operatore): aspetta che GitHub sincronizzi la PR sul nuovo head e che il bot riporti; questa PR contiene anche i commit della fetta 8 finché la #245 non è mergiata.
-2. Merge di questa PR: vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
+1. **R-ve246-5 (MEDIA, già presente su main)**: un elemento HTML speciale dentro `<canvas>` o `<object>` fa arrivare al modello testo che il browser nasconde. Per chiudere bene questa famiglia serve un vero costruttore dell'albero HTML5 (per esempio lexbor, via selectolax): è una dipendenza nuova, quindi decide l'operatore.
+2. Merge della PR #246: l'operatore ha chiesto di mergiarla quando il bot approva.
 3. Sul Mac e sulla VPS: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` (dalla cartella di Gas) deve dire True.
 4. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
 ## Esito
 
-- **R-463-1 (MEDIA, CDATA nei punti di integrazione)**: `FATTA` — `_Contesto` tiene il nodo corrente come il browser; CDATA vero solo se è svg/math.
-- **R-450-1, V-2 ve #243 (uscita da svg/math con `<p>`, `<div>`…)**: `FATTA`.
-- **R-ve245-1 (MEDIA, XHTML con prefissi)**: `FATTA` — in XHTML conta il nome locale.
-- **R-456-1 (`<svg><noembed/></svg>VIS`)**: `FATTA`.
-- **B-467-1, B-467-2 (ALTE, regressioni trovate dal revisore)**, **R-467-1, R-468-1 (test)**, **R-468-2 (MEDIA preesistente)**: `FATTA`.
-- **R-467-2, R-469-1 (BASSE), tabelle**: `DEFERITA — registrate in stato_progetto`.
-- **Test**: web suite 239 → 264 (Python 3.13 e 3.11). Fuzz con oracolo html5lib contro l'head della fetta 8: 0 fughe del ripiego, 0 casi in cui il nuovo mostra di più, salvo 2 casi con `</template>` dove html5lib sbaglia (per lo standard il template si chiude; revisore d'accordo).
-- **Review**: #467 BOCCIATO, #468 e #469 (chat Mani) APPROVATO CON RISERVE.
+- **Primo giro** (R-463-1, R-450-1, V-2 ve #243, R-ve245-1, R-456-1; B-467-1/2, R-468-1/2): `FATTA` (review #467–#469).
+- **V-1 ve #246 (ALTA, `</p>`/`</br>`)**: `FATTA` — escono dal contenuto estraneo come vuole lo standard.
+- **V-2 ve #246 (ALTA, antenati HTML) e R-vb246-2**: `FATTA` — dove l'esito dipende da quello che la pila non vede, la pila diventa incerta e il resto della pagina si nasconde (warning nel log).
+- **V-3 ve #246 (ALTA, costo quadratico)**: `FATTA` — strutture O(1), 20k annidamenti in meno di 5 s.
+- **B-470-1 (ALTA, `<font>` con attributi)**, R-470-1/2, R-471-1/2: `FATTA`.
+- **R-ve246-5 (MEDIA preesistente, canvas/object)**: `DEFERITA — decisione dell'operatore (costruttore HTML5)`.
+- **Test**: web suite 264 → 291 (Python 3.13 e 3.11). Fuzz con oracolo lexbor contro fetta 8 e main (8×20k): 0 regressioni; le fughe rimaste sono tutte R-ve246-5, uguali o meno della fetta 8. Fuzz html5lib e ripiego: 0 (le «regressioni» per html5lib sono tutte `</p>`/`</br>`, dove html5lib non segue lo standard e lexbor sì).
+- **Review**: #467 BOCCIATO, #468 e #469 APPROVATO CON RISERVE, #470 BOCCIATO, #471 APPROVATO CON RISERVE, #472 APPROVATO (chat Mani).
 
 ## Anomalie
 
-- Durante la fetta ho dovuto mettere da parte (stash) il lavoro per pushare un commit di soli report sul ramo della fetta 8: il gate di review guarda il repo principale anche per i commit fatti da un worktree. Il revisore l'ha notato nel verdetto #467; il contenuto revisionato è rimasto identico (cmp).
-- Alcuni vecchi test codificavano la semantica di html.parser invece di quella dei browser: portati alla semantica dei browser (verificata con html5lib).
+- Dalle 15:15 alle 17:23 UTC GitHub non ha elaborato i push di questa sessione (ref aggiornati, PR e CI ferme): la verifica esterna e il bot hanno lavorato su head senza CI. Poi tutto è ripartito da solo.
+- Ho provato «grezzi sempre testo grezzo nel contenuto estraneo»: il fuzz lexbor ha trovato una regressione (CDATA vero dentro iframe in math), quindi sono tornato alla semantica del browser con la pila incerta.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
