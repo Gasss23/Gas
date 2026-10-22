@@ -10774,6 +10774,8 @@ try:
     with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
         _con98.execute("UPDATE contatti SET stato = 'nuovo' WHERE chiave = 'acapo98'")
     _s98i = _k98._ricorda(None, None, 10, fermi=True)
+    check("T98j V-1 ve #241: chiamata diretta con fermi=\"false\" non elenca i lead",
+          "dal più fermo" not in _k98._ricorda(None, None, 10, fermi="false"))
     check("T98i R-455-3: a capo nel nome → nessuna riga finta",
           "\n- [nuovo] FINTO98" not in _s98i and "FINTO98" in _s98i, _s98i[:500])
 except Exception as _e98:

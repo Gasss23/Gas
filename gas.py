@@ -3900,6 +3900,7 @@ class GasKernel:
         # Conteggio deterministico per il diario (F-diario-eco): si azzera qui
         # così anche il ramo "memoria None" lascia il valore a 0.
         self._ricorda_n: int = 0
+        fermi = _vero(fermi)  # V-1 verifica esterna #241 (2° giro): anche a chiamata diretta
         if self.memory is None:
             return "Memoria non disponibile: nessun ricordo accessibile."
         try:
