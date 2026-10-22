@@ -1,9 +1,9 @@
-# DIFF SESSIONE — 2026-10-21 (chat Mani, fetta 6)
+# DIFF SESSIONE — 2026-10-22 (chat Mani, fetta 7)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/web/leggi.py` — `<title/>` apre il titolo nel parser e nel ripiego fuori da svg/math/script/style/iframe/noscript (`_TITOLO_VUOTO_IN`); modo XHTML con autochiusi vuoti; commenti: riga lunga a capo, SystemError su 3.11 con l'input preciso.
-- `tests/test_unit_web_leggi.py` — chiusura in più dopo una coppia, `<title/>` dentro e fuori da svg/math, caso del ripiego che discrimina `<title/>` in template/object/canvas e noscript, XHTML (174 test).
-- `.claude/agents/memoria_revisore.md` — righe #449-#452 (chat Mani).
-- `reports/stato_progetto.md` — blocco «Mani — fetta 6», numeri della fetta 5 allineati.
+- `modules/web/leggi.py` — grezzi autochiusi in testo grezzo (`_GREZZI_AUTOCHIUSI`, `_modo_grezzo`), esenzione dentro svg/math solo per i non nascosti, ripiego allineato; `_commenti_e_cdata_xml` per XHTML.
+- `tests/test_unit_web_leggi.py` — sonde R-453-1, R-454-1, template, XHTML (commenti, CDATA, linearità, ripiego), html.parser vecchio (190 test).
+- `.claude/agents/memoria_revisore.md` — righe #453-#455 (chat Mani).
+- `reports/stato_progetto.md` — blocco «Mani — fetta 7».
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
