@@ -10717,6 +10717,68 @@ try:
 except Exception as _e92x:
     check("T92 blocco senza eccezioni", False, repr(_e92x))
 
+# ---------- T98: R1 contatti fermi — ricorda(fermi=true) ----------
+print("\n--- T98: ricorda fermi ---")
+try:
+    _k98 = kernel_tmp()
+    for _c98 in ("fresco98", "vecchio98", "medio98", "rotto98", "chiuso98"):
+        _k98.memory.upsert_contatto(_c98, nome="N_" + _c98, prossima_azione="chiamare " + _c98)
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        for _c98, _ts98 in (("vecchio98", "2020-01-01T00:00:00+00:00"),
+                            ("medio98", "2025-01-01T00:00:00+00:00"),
+                            ("chiuso98", "2019-01-01T00:00:00+00:00"), ("rotto98", "boh")):
+            _con98.execute("UPDATE contatti SET aggiornato_il = ? WHERE chiave = ?", (_ts98, _c98))
+        _con98.execute("UPDATE contatti SET stato = 'chiuso' WHERE chiave = 'chiuso98'")
+    _k98.memory.append_diario("nota", "EVENTO98 nel diario")  # R-455-2: diario non vuoto
+    _k98.memory.upsert_contatto("acapo98", nome="N_acapo98\n- [nuovo] FINTO98",
+                                prossima_azione="x")
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        _con98.execute("UPDATE contatti SET stato = 'chiuso' WHERE chiave = 'acapo98'")
+    _ev98 = run_turn_scriptato(_k98, "chi è fermo?", [
+        [("ricorda", '{"fermi": true}')], "fatto"])
+    _o98 = [e["output"] for e in _ev98 if e["type"] == "tool_res"]
+    _f98 = [e for e in _ev98 if e["type"] == "final"]
+    _txt98 = _o98[0] if _o98 else ""
+    _pos98 = [_txt98.find("N_" + c) for c in ("rotto98", "vecchio98", "medio98", "fresco98")]
+    check("T98a round-trip: ricorda fermi elenca i lead attivi dal più fermo, chiusi esclusi",
+          len(_o98) == 1 and len(_f98) == 1 and -1 not in _pos98 and _pos98 == sorted(_pos98)
+          and "N_chiuso98" not in _txt98 and "data illeggibile" in _txt98
+          and "fermo da 0 giorni" in _txt98 and "chiamare vecchio98" in _txt98
+          and "(4 di 4)" in _txt98, _txt98[:400])
+    check("T98b conteggio del diario sulle righe dei lead (F-diario-eco)",
+          _k98._ricorda_n == 4, str(_k98._ricorda_n))
+    _s98 = _k98._ricorda(None, None, 2, fermi=True)
+    check("T98c n limita l'elenco (2 di 4)",
+          "(2 di 4)" in _s98 and "N_fresco98" not in _s98, _s98[:300])
+    # stringa "false" dal modello: niente elenco dei fermi (vale il diario di default)
+    _ev98d = run_turn_scriptato(_k98, "diario", [
+        [("ricorda", '{"fermi": "false"}')], "fatto"])
+    _o98d = [e["output"] for e in _ev98d if e["type"] == "tool_res"]
+    check("T98d fermi=\"false\" non attiva l'elenco",
+          len(_o98d) == 1 and "dal più fermo" not in _o98d[0] and "eventi del diario" in _o98d[0],
+          _o98d[0][:200] if _o98d else "")
+    check("T98e _vero: solo valori veri espliciti",
+          [gas._vero(v) for v in (True, 1, "true", "Sì", "false", "0", 0, None, "x", 2)]
+          == [True, True, True, True, False, False, False, False, False, False])
+    _k98m = kernel_tmp()
+    _k98m.memory = None
+    check("T98f memoria assente: messaggio gentile, nessuna eccezione",
+          "non disponibile" in _k98m._ricorda(None, None, 10, fermi=True))
+    check("T98g R-455-2: con fermi il diario di default NON si aggiunge",
+          "EVENTO98" not in _txt98 and "EVENTO98" in _o98d[0], _txt98[-200:])
+    _k98.memory.conta_approvazioni = lambda: None  # R-455-1: DB degradato
+    _s98h = _k98._ricorda(None, None, 10, fermi=True)
+    del _k98.memory.conta_approvazioni
+    check("T98h R-455-1: memoria degradata → «NON letto», mai «nessun lead attivo»",
+          "NON letto" in _s98h and "nessun lead attivo" not in _s98h, _s98h[:200])
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        _con98.execute("UPDATE contatti SET stato = 'nuovo' WHERE chiave = 'acapo98'")
+    _s98i = _k98._ricorda(None, None, 10, fermi=True)
+    check("T98i R-455-3: a capo nel nome → nessuna riga finta",
+          "\n- [nuovo] FINTO98" not in _s98i and "FINTO98" in _s98i, _s98i[:500])
+except Exception as _e98:
+    check("T98 blocco senza eccezioni", False, repr(_e98))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:

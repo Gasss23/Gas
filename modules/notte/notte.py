@@ -420,18 +420,68 @@ def _giorni_fa(ts: Any, adesso: datetime) -> Optional[float]:
         return None
 
 
+CODA_LOG_TOKEN = 65536  # byte finali del log dei token controllati dal resoconto
+
+
+def _tetto_applicato() -> float:
+    """V-2 verifica esterna #241: il tetto mostrato è quello che applica
+    _budget_superato (stessa lettura e stessi limiti); ripiego _env_budget."""
+    try:
+        from gas import _env_float
+        return _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
+    except Exception:
+        return _env_budget()
+
+
+def _righe_illeggibili_log(root: Any) -> int:
+    """Righe non JSON nella coda del log dei token (ultimi CODA_LOG_TOKEN byte).
+    Log assente (o root ignota) → 0; log che non si apre → -1. Mai eccezioni."""
+    if root is None:
+        return 0
+    try:
+        from gas import TOKEN_LOG_FILENAME
+        path = Path(root) / TOKEN_LOG_FILENAME
+        if not path.exists():
+            return 0
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            fine = f.tell()
+            f.seek(max(0, fine - CODA_LOG_TOKEN))
+            coda = f.read()
+        righe = coda.split(b"\n")
+        if fine > CODA_LOG_TOKEN:
+            righe = righe[1:]  # la prima è probabilmente tagliata a metà
+        rotte = 0
+        for r in righe:
+            if not r.strip():
+                continue
+            try:
+                if not isinstance(json.loads(r), dict):
+                    rotte += 1
+            except ValueError:
+                rotte += 1
+        return rotte
+    except Exception as e:
+        logging.warning("notte: log dei token non controllato: %s", type(e).__name__)
+        return -1
+
+
 def stato_mattino(kernel: Any) -> Dict[str, Any]:
     """R1 «resoconto di spesa e stato»: numeri calcolati dal kernel a fine giro, senza
     modello e senza token: spesa delle ultime 24 ore e tetto, lead attivi e fermi,
     firme in attesa. SOLO conteggi (mai nomi o testo dei lead: vanno su Telegram).
     Ogni voce è indipendente e fail-safe (§9): se non si legge vale None."""
-    stato: Dict[str, Any] = {"spesa": None, "tetto": _env_budget() or None,
-                             "lead_attivi": None, "lead_fermi": None, "firme_in_attesa": None}
+    stato: Dict[str, Any] = {"spesa": None, "tetto": _tetto_applicato() or None,
+                             "log_illeggibili": 0, "lead_attivi": None, "lead_fermi": None,
+                             "firme_in_attesa": None}
     try:
         costo = getattr(kernel, "_daily_cost_usd", None)
         if callable(costo):
             v = float(costo())
             stato["spesa"] = v if math.isfinite(v) else None
+            # V-1 verifica esterna #241: _daily_cost_usd salta le righe rotte (e dà 0.0
+            # a log illeggibile): «$0.00» non deve rassicurare se il log è rovinato.
+            stato["log_illeggibili"] = _righe_illeggibili_log(getattr(kernel, "root", None))
     except Exception as e:
         logging.warning("notte: spesa non letta per il resoconto: %s", type(e).__name__)
     mem = getattr(kernel, "memory", None)
@@ -472,6 +522,12 @@ def righe_stato_mattino(stato: Optional[Dict[str, Any]]) -> List[str]:
         r_spesa = f"Spesa ultime 24 ore: ${spesa:.2f} su un tetto di ${tetto:.2f}"
     else:
         r_spesa = f"Spesa ultime 24 ore: ${spesa:.2f} (nessun tetto)"
+    rotte = stato.get("log_illeggibili") or 0
+    if spesa is not None and rotte:
+        r_spesa += (" — ATTENZIONE: log dei token illeggibile, spesa forse sottostimata"
+                    if rotte < 0 else
+                    f" — ATTENZIONE: {rotte} righe illeggibili nel log dei token, "
+                    "spesa forse sottostimata")
     attivi, fermi = stato.get("lead_attivi"), stato.get("lead_fermi")
     r_lead = ("Lead attivi: non letti" if attivi is None else
               f"Lead attivi: {attivi} (fermi da {GIORNI_LEAD_FERMO}+ giorni: {fermi})")

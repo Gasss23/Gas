@@ -98,6 +98,16 @@ def _sanitize_memory_text(text: str) -> str:
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f]', '', text)
 
 
+def _vero(v: Any) -> bool:
+    """Booleano passato dal modello: True solo per true/1/"true"/"sì" (una stringa
+    qualsiasi come "false" non deve valere vero)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v == 1
+    return isinstance(v, str) and v.strip().lower() in ("true", "1", "si", "sì", "yes")
+
+
 def _campo_pin(text: Any) -> str:
     """Campo del pin su UNA riga (verifica esterna #222 V-2): un a-capo nel nome o
     nella prossima azione di un lead non deve creare una riga finta nel blocco."""
@@ -1076,7 +1086,7 @@ class GasKernel:
             {"type": "function", "function": {"name": "cerca_testo", "description": "Cerca un testo LETTERALE (non espressioni regolari) in un file o nei file di testo di una cartella; restituisce percorso, numero di riga e riga. Nella ricerca su cartella i log del kernel (gas_debug.log e le sue rotazioni) sono saltati e dichiarati: per cercare dentro uno di essi indicalo in relative_path. Sola lettura.", "parameters": {"type": "object", "properties": {"testo": {"type": "string", "description": "testo esatto da cercare"}, "relative_path": {"type": "string", "description": "file o cartella relativi alla root di Gas (default '.')"}, "ignora_maiuscole": {"type": "boolean", "description": "true = non distingue maiuscole e minuscole (default false)"}}, "required": ["testo"]}}},
             {"type": "function", "function": {"name": "conta_file", "description": "Conta righe, parole e caratteri di un file di testo. Sola lettura.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "data_ora", "description": "Restituisce data, ora e fuso orario attuali.", "parameters": {"type": "object", "properties": {}, "required": []}}},
-            {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate, le schede dei lead/contatti e la knowledge base di nozioni apprese. Usalo per ricordare cosa è già successo con un lead, cosa hai già fatto in passato, o per cercare conoscenze deliberatamente acquisite. Non scrive nulla. Per la cultura generale non è obbligatorio: se non trova nulla, rispondi con le tue conoscenze.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare nel diario e nella knowledge base; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}}, "required": []}}},
+            {"type": "function", "function": {"name": "ricorda", "description": "Consulta la memoria di lungo periodo di Gas (SOLA LETTURA): il diario delle azioni passate, le schede dei lead/contatti e la knowledge base di nozioni apprese. Usalo per ricordare cosa è già successo con un lead, cosa hai già fatto in passato, o per cercare conoscenze deliberatamente acquisite. Non scrive nulla. Per la cultura generale non è obbligatorio: se non trova nulla, rispondi con le tue conoscenze.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "parole da cercare nel diario e nella knowledge base; la ricerca è per parole/radici e ordinata per pertinenza (opzionale)"}, "contatto": {"type": "string", "description": "chiave o nome di un lead per vederne scheda e storia (opzionale)"}, "n": {"type": "integer", "description": "numero massimo di eventi da restituire (default 10)"}, "fermi": {"type": "boolean", "description": "true = elenca i lead attivi fermi da più tempo (dal più vecchio aggiornamento), con i giorni passati (opzionale)"}}, "required": []}}},
             {"type": "function", "function": {"name": "salva_contatto", "description": "Crea o aggiorna un lead/contatto nella rubrica di Gas (memoria persistente). Usalo per registrare un nuovo lead o aggiornarne nome/recapito/prossima azione/note. NON cambia lo stato del lead nel funnel: per quello usa imposta_stato_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string", "description": "identificatore univoco del lead (email/handle/telefono normalizzato)"}, "nome": {"type": "string"}, "contatto": {"type": "string", "description": "recapito: email/telefono/handle"}, "prossima_azione": {"type": "string"}, "note": {"type": "string"}}, "required": ["chiave"]}}},
             {"type": "function", "function": {"name": "imposta_stato_contatto", "description": "Cambia lo STATO di un lead esistente nel funnel (nuovo, contattato, risposto, interessato, rifiutato, chiuso). Il lead deve già esistere: crealo prima con salva_contatto.", "parameters": {"type": "object", "properties": {"chiave": {"type": "string"}, "stato": {"type": "string", "description": "uno tra: nuovo, contattato, risposto, interessato, rifiutato, chiuso"}, "prossima_azione": {"type": "string"}}, "required": ["chiave", "stato"]}}},
             {"type": "function", "function": {"name": "calcola", "description": "Valuta un'espressione aritmetica pura (+ - * / // % **) e funzioni math (sqrt, floor, ceil, log, log2, log10, sin, cos, tan, fabs, factorial) e costanti (math.pi, math.e). ZERO accesso a shell o file. Usalo per qualsiasi calcolo numerico preciso.", "parameters": {"type": "object", "properties": {"expr": {"type": "string", "description": "espressione aritmetica, es. '7*8', 'math.sqrt(144)', '(3+5)*2'"}}, "required": ["expr"]}}}
@@ -2247,7 +2257,8 @@ class GasKernel:
                     f"verso={str(args.get('chiave_verso', ''))[:80]!r}")
         if name == "ricorda":
             return (f"query={str(args.get('query', '') or '')[:60]!r} "
-                    f"contatto={str(args.get('contatto', '') or '')[:60]!r}")
+                    f"contatto={str(args.get('contatto', '') or '')[:60]!r}"
+                    + (" fermi=True" if _vero(args.get("fermi")) else ""))
         # tool sconosciuto: dump compatto delle chiavi (difensivo)
         return ", ".join(f"{k}={str(v)[:60]!r}" for k, v in args.items())[:200]
 
@@ -3881,7 +3892,7 @@ class GasKernel:
         return cand[0], nota
 
     def _ricorda(self, query: Optional[str] = None, contatto: Optional[str] = None,
-                 n: int = 10) -> str:
+                 n: int = 10, fermi: bool = False) -> str:
         """Lettura on-demand della memoria (tool 'ricorda'). SOLA LETTURA: nessuna
         scrittura/mutazione. Output compatto (poi capato da _cap_tool_output come
         ogni tool). Fail-safe: memoria None/degradata → messaggio gentile, mai
@@ -3955,8 +3966,12 @@ class GasKernel:
             parti.append(f"Diario per '{query}' ({len(hit)}):")
             parti += ([self._fmt_evento_datato(e) for e in hit]
                       or ["- (nessun risultato)"])
+        # R1 «contatti fermi»: lead attivi dal più vecchio aggiornamento. Il pin mostra
+        # solo i più recenti, quindi proprio i lead fermi ne restano fuori.
+        if fermi:
+            parti += self._lead_fermi(n)
         # 3) default: ultimi eventi del diario
-        if not contatto and not query:
+        if not contatto and not query and not fermi:
             eventi = self.memory.diario_recente(n)
             parti.append(f"Ultimi {len(eventi)} eventi del diario:")
             parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in eventi]
@@ -3975,6 +3990,40 @@ class GasKernel:
             if k_block:
                 result = result + "\n" + k_block
         return result
+
+    def _lead_fermi(self, n: int) -> List[str]:
+        """Righe dei lead attivi (stato non chiuso) ordinati dal più vecchio
+        aggiornamento, con i giorni passati. Data illeggibile = in testa (nel dubbio
+        si segnala). Solo lettura; righe «- [» così il conteggio del diario le vede."""
+        # R-455-1: a memoria degradata lista_contatti dà [] → mai «nessun lead attivo»
+        # (conta_approvazioni sullo stesso DB dà None in quel caso, come nel giro).
+        if (not getattr(self.memory, "available", True)
+                or self.memory.conta_approvazioni() is None):
+            return ["Elenco dei lead NON letto: memoria degradata (vedi gas doctor)."]
+        attivi = [c for c in self.memory.lista_contatti()
+                  if c.get("stato") not in STATI_CHIUSI]
+        adesso = datetime.now(timezone.utc)
+
+        def _giorni(c: Dict[str, Any]) -> Optional[int]:
+            try:
+                t = datetime.fromisoformat(str(c.get("aggiornato_il")))
+                if t.tzinfo is None:
+                    t = t.replace(tzinfo=timezone.utc)
+                return max(0, int((adesso - t).total_seconds() // 86400))
+            except (TypeError, ValueError):
+                return None
+
+        coppie = sorted(((_giorni(c), c) for c in attivi),
+                        key=lambda gc: float("-inf") if gc[0] is None else -gc[0])[:n]
+        righe = [f"Lead attivi dal più fermo ({len(coppie)} di {len(attivi)}):"]
+        for g, c in coppie:
+            quando = "data illeggibile" if g is None else f"fermo da {g} giorni"
+            # R-455-3: _campo_pin, così un a capo nel nome non crea righe finte
+            righe.append(f"- [{c.get('stato')}] {_campo_pin(c.get('nome') or c.get('chiave'))} — "
+                         f"{quando} — prossima: {_campo_pin(c.get('prossima_azione') or '—')}")
+        if not coppie:
+            righe.append("- (nessun lead attivo)")
+        return righe
 
     @staticmethod
     def _knowledge_fts_match(query: str) -> str:
@@ -4305,7 +4354,8 @@ class GasKernel:
                 # dal sandbox di run_command. Nessuno snapshot (non muta nulla).
                 out = self._ricorda(args.get("query") if isinstance(args, dict) else None,
                                     args.get("contatto") if isinstance(args, dict) else None,
-                                    args.get("n", 10) if isinstance(args, dict) else 10)
+                                    args.get("n", 10) if isinstance(args, dict) else 10,
+                                    fermi=isinstance(args, dict) and _vero(args.get("fermi")))
             elif name == "salva_contatto":
                 # Scrittura nella rubrica, in-process (codice fidato): niente FS/
                 # rete, niente sandbox/snapshot. La riga viene comunque tracciata

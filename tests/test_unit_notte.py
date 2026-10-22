@@ -1872,8 +1872,8 @@ def test_stato_mattino_conta_lead_fermi_e_firme(dirs, monkeypatch):
     monkeypatch.setenv("GAS_DAILY_TOKEN_BUDGET", "2")
     k = SimpleNamespace(memory=mem, _daily_cost_usd=lambda: 0.4567)
     st = notte.stato_mattino(k)
-    assert st == {"spesa": 0.4567, "tetto": 2.0, "lead_attivi": 3, "lead_fermi": 2,
-                  "firme_in_attesa": 1}
+    assert st == {"spesa": 0.4567, "tetto": 2.0, "log_illeggibili": 0, "lead_attivi": 3,
+                  "lead_fermi": 2, "firme_in_attesa": 1}
     righe = notte.righe_stato_mattino(st)
     assert righe == ["Spesa ultime 24 ore: $0.46 su un tetto di $2.00",
                      "Lead attivi: 3 (fermi da 7+ giorni: 2)", "Firme in attesa: 1"]
@@ -1916,3 +1916,38 @@ def test_resoconto_nel_giro_e_su_telegram_senza_nomi(monkeypatch, dirs):
     assert "Lead attivi: 3 (fermi da 7+ giorni: 2)" in testo and "Firme in attesa: 1" in testo
     assert "NOMESEGRETO" not in testo and "@x.it" not in testo
     assert "NOMESEGRETO" not in riepilogo
+
+
+def test_stato_mattino_log_token_rotto_non_rassicura(dirs, monkeypatch):
+    """V-1 verifica esterna #241: log dei token rovinato → «$0.00» con avviso, mai
+    una spesa zero che rassicura. V-2: il tetto mostrato è quello applicato (max 100000)."""
+    root, _ = dirs
+    (root / gas.TOKEN_LOG_FILENAME).write_text('{"ok": 1}\nspazzatura\n[1]\n', encoding="utf-8")
+    monkeypatch.setenv("GAS_DAILY_TOKEN_BUDGET", "999999")
+    k = SimpleNamespace(root=root, _daily_cost_usd=lambda: 0.0)
+    st = notte.stato_mattino(k)
+    assert st["log_illeggibili"] == 2 and st["tetto"] == 100000.0
+    assert notte.righe_stato_mattino(st)[0] == (
+        "Spesa ultime 24 ore: $0.00 su un tetto di $100000.00 — ATTENZIONE: 2 righe "
+        "illeggibili nel log dei token, spesa forse sottostimata")
+    # log sano o assente: nessun avviso
+    (root / gas.TOKEN_LOG_FILENAME).write_text('{"ok": 1}\n', encoding="utf-8")
+    assert notte.stato_mattino(k)["log_illeggibili"] == 0
+    (root / gas.TOKEN_LOG_FILENAME).unlink()
+    assert notte.stato_mattino(k)["log_illeggibili"] == 0
+    # log che non si apre (è una cartella) → avviso «illeggibile»
+    (root / gas.TOKEN_LOG_FILENAME).mkdir()
+    st3 = notte.stato_mattino(k)
+    assert st3["log_illeggibili"] == -1
+    assert "log dei token illeggibile" in notte.righe_stato_mattino(st3)[0]
+
+
+def test_log_token_oltre_64kb_prima_riga_tagliata_non_conta(dirs):
+    """R-455-2: oltre CODA_LOG_TOKEN la prima riga della coda è tagliata a metà e
+    non deve contare come illeggibile."""
+    root, _ = dirs
+    riga = json.dumps({"ts": "2026-10-21T00:00:00", "pad": "x" * 100}) + "\n"
+    n = notte.CODA_LOG_TOKEN // len(riga) + 50
+    (root / gas.TOKEN_LOG_FILENAME).write_text(riga * n, encoding="utf-8")
+    assert len(riga) * n > notte.CODA_LOG_TOKEN
+    assert notte._righe_illeggibili_log(root) == 0
