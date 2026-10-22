@@ -15,6 +15,7 @@
 - **Prova sul Mac dopo #247**: `FATTA`.
 - **Coda dei lavori notturni**: `FATTA`.
 - **Turno di notte (attività programmata trig_01Qmdw9id2aVtMXhXTnu6wDe, 00:41 ogni notte)**: `FATTA`.
+- **Riserve del bot su #251 (prima notte solo documentale, R4 aggiornata, gh nel cloud, titolo sezione B, voci R3 della roadmap)**: `FATTA`.
 - **Backup iCloud**: `DEFERITA — con l'operatore`.
 
 ---
@@ -22,17 +23,19 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/coda_notte.md    | 33 +++++++++++++++++++++++++++++++++
+ reports/coda_notte.md    | 36 ++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md |  7 +++----
- reports/handoff.md       | 30 ++++++++++--------------------
- reports/roadmap.md       |  2 +-
+ reports/handoff.md       | 36 ++++++++++++++++--------------------
+ reports/roadmap.md       | 10 +++++-----
  reports/ultimo_report.md | 17 +++++++++--------
- 5 files changed, 56 insertions(+), 33 deletions(-)
+ 5 files changed, 69 insertions(+), 37 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+491b725 docs(notte): prima notte solo documentale, R4 aggiornata, gh nel cloud (V-1/V-2/V-3/V-4 bot #251)
+29ec139 docs(fine-task): turno di notte programmato, coda dei lavori (#251)
 cfb847a docs(notte): coda dei lavori del turno di notte (R3)
 ```
 
