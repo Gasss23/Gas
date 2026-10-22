@@ -1,38 +1,39 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-22 — Chat Mani, fetta 11: tag con virgolette aperte, annotation-xml speciale, chiusure di blocco in scope (R6)
+**Sessione:** 2026-10-22 — Chat Mani, fetta 12: script a doppio escape, DOCTYPE e PI in XHTML, parser vecchi (R6)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #250: l'operatore ha chiesto «mergia 250 quando il bot approva»; si mergia quando il bot approva sull'head finale con CI verde.
-2. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un costruttore HTML5 vero (es. lexbor): decide l'operatore.
-3. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True.
+1. Merge della PR della fetta 12: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+2. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; chiuderla bene richiede un vero costruttore HTML5 (es. lexbor): decidi tu.
+3. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True (se dice False Gas lo scrive ora anche in gas_debug.log).
 4. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **R-ve248-3 (fuga preesistente)**: `FATTA`
-- **V-1 bot #248 (perdita)**: `FATTA`
-- **R-ve246b-5 (perdita)**: `FATTA` per le chiusure di blocco in scope
-- **B-476-1 (ALTA), R-476-1 (BASSA)**: `FATTA`
+- **R-454-2**: `FATTA`
+- **R-453-2** (con B-482-1 e B-483-1 ALTE): `FATTA`
+- **V-2 ve #242**: `FATTA`
+- **R-466-1, R-466-2, R-ve245b-4**: `FATTA`
+- **R-482-1**: `FATTA`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   8 +++
- modules/web/leggi.py               |  98 +++++++++++++++++++++++++++++----
- reports/diff_sessione.md           |  13 ++---
- reports/handoff.md                 |  62 +--------------------
+ .claude/agents/memoria_revisore.md |   5 +
+ modules/web/leggi.py               | 167 +++++++++++++++++++--
+ reports/diff_sessione.md           |  10 +-
+ reports/handoff.md                 | 298 +------------------------------------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  29 ++++++----
- tests/test_unit_web_leggi.py       | 108 ++++++++++++++++++++++++++++++++++++-
- 7 files changed, 233 insertions(+), 87 deletions(-)
+ reports/ultimo_report.md           |  27 ++--
+ tests/test_unit_web_leggi.py       | 139 ++++++++++++++++-
+ 7 files changed, 321 insertions(+), 327 deletions(-)
 ```
 
 ---
@@ -40,19 +41,10 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-85cb0a9 fix(web): la chiusura di blocco non toglie un noscript aperto — chat Mani fetta 11 (V-1 bot #250 bis)
-55b2eac chore(revisore): memoria review #481 — APPROVATO
-fae1211 docs(fine-task): verdetto #478 riemesso per il gate B — chat Mani fetta 11
-1d775e2 docs(fine-task): secondo giro della PR #250 (merge di main, riserve di bot e verifica esterna) — chat Mani fetta 11
-f0f86dc chore(revisore): memoria review #480 — APPROVATO
-6792d18 fix(web): fetta 11 chat Mani — annotation-xml speciale solo in MathML, warning con URL, test dei formattanti a sé (bot #250, ve #250)
-a52a3e1 chore(revisore): memoria review #480 — APPROVATO
-88400f6 chore(revisore): memoria review #479 — APPROVATO
-1be8be7 Merge origin/main (5cc85e5, PR #247 e #249) in feat/mani-web-fetta11
-e772a27 docs(fine-task): report, stato e handoff — chat Mani fetta 11
-a76a646 fix(web): fetta 11 chat Mani — tag con virgolette aperte, annotation-xml speciale, chiusure di blocco in scope (R6)
-f9eb918 chore(revisore): memoria review #477 — APPROVATO
-c472651 chore(revisore): memoria review #476 — BOCCIATO
+621da82 feat(web): fetta 12 — script a doppio escape, DOCTYPE e PI in XHTML, parser vecchi (R6)
+d1fff5f chore(revisore): memoria review #484 — APPROVATO
+6e8872b chore(revisore): memoria review #483 — BOCCIATO
+5dbbe9a chore(revisore): memoria review #482 — BOCCIATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; il §2 è preso dall'index con i report già in stage, quindi l'elenco dei file è esatto e i numeri dei report possono differire di poco.
@@ -61,237 +53,168 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Sei verdetti, incollati integralmente (chat Mani): #476 (BOCCIATO) e #477 (APPROVATO) sul diff della fetta 11 committato in `a76a646`; #478 (APPROVATO, riemesso per il gate B) sul merge di main `1be8be7`; #479 e #480 (APPROVATO) sulle riserve del bot e della verifica esterna #250, committate in `6792d18`; #481 (APPROVATO) sulla fuga trovata dal bot sull'head `fae1211`, committata in `85cb0a9` (memorie `c472651`, `f9eb918`, `88400f6`, `a52a3e1`, `55b2eac`; la riga #478 è nel commit di merge). Le righe citate nelle review intermedie si riferiscono al diff di allora.
+Tre verdetti, incollati integralmente (chat Mani), tutti sul diff staged della fetta 12 poi committato in `621da82`: #482 (BOCCIATO, B-482-1) sulla prima versione, #483 (BOCCIATO, B-483-1) sul primo rimedio, #484 (APPROVATO) sulla versione finale. Le righe citate nelle review intermedie si riferiscono al diff di allora.
 
-### Review #476 (chat Mani) — verdetto integrale
+### Review #482 (chat Mani) — verdetto integrale (diff staged della fetta 12, prima del rimedio)
 
 ## VERDETTO: BOCCIATO
 
-La review #476 (chat Mani, fetta 11, diff STAGED su modules/web/leggi.py e tests/test_unit_web_leggi.py) è BOCCIATA per un motivo bloccante: B-476-1, una regressione ALTA che introduce la nuova regola delle chiusure «in scope». Le altre due correzioni sono giuste.
+Review #482 (chat Mani), fetta 12. Diff staged su `modules/web/leggi.py` e `tests/test_unit_web_leggi.py`, ramo feat/mani-web-fetta12, base main 7af0c48. Prima della review ho letto CLAUDE.md, i blocchi «Mani» di `reports/stato_progetto.md` e la mia memoria.
 
-Letture fatte: CLAUDE.md sez. 5, i blocchi «Mani — fetta 9» e «fetta 10» di reports/stato_progetto.md, la coda di .claude/agents/memoria_revisore.md.
+**Motivo del blocco: B-482-1 (ALTA, nuova fuga rispetto a main)**
+- `modules/web/leggi.py:1203` — Per il DOCTYPE con sottoinsieme interno il codice cerca «[» e poi `]\s*>` (`modules/web/leggi.py:1170`) senza saltare né i testi tra virgolette né i commenti.
+- Il rischio esaminato è una fine del DOCTYPE diversa da quella dell'XML.
+- Esito: blocco. Ho provato il codice staged, su Python 3.13, con pagine `application/xhtml+xml`:
+  - `<!DOCTYPE html SYSTEM "[">` + `<html xmlns=…><body><script>if(a[0]>1){}SEGRETO</script>VIS…`: il «[» tra virgolette fa cercare `]>` fino a `a[0]>` dentro lo script. Il testo da lì in poi diventa visibile e il modello riceve `1){}SEGRETOVIS`. Su main 7af0c48 SEGRETO era nascosto, quindi è una regressione. Stessa cosa con `SYSTEM '['` e `<style>a[x]>b{}SEGRETO</style>`.
+  - `<!DOCTYPE html [<!-- ]>SEGRETO -->]>…`: arriva SEGRETO. Su main era nascosto, perché il commento veniva tolto per primo. Anche questa è una regressione.
+  - Due casi lasciano passare SEGRETO anche su main, quindi la fuga era già lì e R-453-2 non è chiusa del tutto: `<!ENTITY x "]>SEGRETO">` e `SYSTEM ">" [<!ENTITY x "<b>SEGRETO</b>">]>`. In più, `<!ENTITY x "<b>SEGRETO</b>">` su main usciva e con il diff è nascosto.
+- Rimedio, provato in una copia nella scratchpad: una funzione `_fine_doctype` che salta i testi tra `'…'` e `"…"`; dentro il sottoinsieme salta anche `<!--…-->` e `<?…?>`. Si ferma a «>» fuori dal sottoinsieme, oppure a «]» seguito da spazi e «>». Se qualcosa non si chiude, restituisce -1 e il resto viene scartato. Con questo le 7 sonde XHTML danno 0 SEGRETO e VIS presente, e la suite resta verde (333 passed). Nella versione vera le ricerche di commenti e PI senza fine vanno fatte con `find` e uscita subito a -1. La mia regex di prova con `.*?` può diventare quadratica con tanti `<!--` aperti.
+- Servono test per le sonde sopra, con `SYSTEM "["` seguito da `]>` dentro uno script e il commento con `]>` nel sottoinsieme.
 
-**Elementi del diff esaminati**
+**Cosa ho verificato e va bene**
+- `modules/web/leggi.py:990`, `_fine_script`: è una macchina a 3 stati.
+  - Il rischio esaminato è uno scostamento dagli stati «script data escaped» e «double escaped» dello standard WHATWG.
+  - Esito ok:
+    - `<!-->` e `<!--->` riportano allo stato 0, perché la regex `<!(?=--)` consuma solo 2 caratteri e lascia trovare `-->`.
+    - `<script` porta al doppio escape solo dallo stato 1.
+    - `</script` nello stato 2 riporta allo stato 1.
+    - Va bene anche con maiuscole e minuscole, e con `<scripts>`.
+    - L'insieme dei delimitatori coincide con `_FINE_NOME`, quindi in `_chiusura` (`modules/web/leggi.py:1035`) il ciclo non riparte mai dallo stato 0.
+  - 3000 ripetizioni di `<!--<script></script>` danno V come nel browser.
+- `modules/web/leggi.py:907`: `interesting` viene sostituito con `_FineScriptTrovata`.
+  - Il rischio esaminato è un uso di `interesting` da parte di html.parser diverso da `.search(rawdata, i)`.
+  - Esito ok: ho letto html.parser di 3.11.17, 3.12.3 e 3.13.16. Lo usano solo con `.search(rawdata, i)` e `.start()`, e `clear_cdata_mode` lo ripristina.
+  - `<script/>` è coperto, perché il controllo viene dopo `super()`.
+  - Gli script dentro svg e in XHTML non passano in modalità testo grezzo (CDATA), quindi non vengono toccati.
+  - `<p>x</p><script>abc</script  T99` e altri casi a fine pagina danno ok=True su 3.11, 3.12 e 3.13.
+- `modules/web/leggi.py:890`, `parse_comment`: il rischio esaminato è una perdita o una fuga su 3.11. Esito ok, e su 3.13 non cambia niente.
+- `modules/web/leggi.py:117` e `modules/web/leggi.py:1243`, rilevatore del parser e avviso nel log una sola volta: ok. Se due thread arrivano insieme può uscire un doppio warning, cosa cosmetica.
+- Test: `tests/test_unit_web_leggi.py:1086` (doppio escape, parser e ripiego), `tests/test_unit_web_leggi.py:1111`, `tests/test_unit_web_leggi.py:1120`, `tests/test_unit_web_leggi.py:1143` e il marcatore `tests/test_unit_web_leggi.py:32`: ok. `tests/test_unit_web_leggi.py:1103` (XHTML) non contiene i casi del blocco.
+- Suite web: 333 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+- Mutazioni, in una copia isolata:
+  - `interesting` non sostituito: 4 FAIL.
+  - Ripiego senza `_fine_script`: 4 FAIL.
+  - Override di `parse_comment` tolto: 1 FAIL su 3.11.
 
-- `modules/web/leggi.py:395` — chiusura di blocco in scope (R-ve246b-5): toglie tutto fino al tag se fra il tag e la cima non ci sono speciali né confini. Rischio esaminato: la pila di Gas resta con un elemento HTML in meno del browser. Esito: **blocco B-476-1** (dettagli sotto).
-- `modules/web/leggi.py:852` — `_controlla_tag`: confronta il tag letto da html.parser con la regola del browser (`_RESTO_NOME` più `_FINE_TAG`). Se non coincidono imposta `_taglia` e scrive un warning. Rischio esaminato: fughe e falsi positivi. Fuzz di 60k pagine con oracolo lexbor (sintassi casuale con spazi, `=`, virgolette, `/`, `<`, tab): 0 fughe nel parser e nel ripiego. Esito: ok per le fughe, una riserva sulle perdite (R-476-1).
-- `modules/web/leggi.py:870` — `parse_endtag` passa da `_controlla_tag` anche nel ramo dei commenti fasulli, dove lo stdlib chiama parse_bogus_comment (`</` seguito da un carattere che non è una lettera). Lì browser e html.parser finiscono entrambi al primo `>` e ignorano le virgolette. Esito: **riserva R-476-1 BASSA**. Le 55 perdite nuove del fuzz sono tutte di questo tipo, per esempio `</ a="x>VIS` perde VIS. Rimedio: saltare il controllo se il carattere dopo `</` non è una lettera ASCII.
-- `modules/web/leggi.py:235` — indice `_speciali` (i punti più ogni annotation-xml). `modules/web/leggi.py:375` lo usa nel ramo R-468-2 e `modules/web/leggi.py:388` nel `fermo`. Rischio esaminato: `_togli_da` deve restare coerente con la pila, e una chiusura non deve attraversare un annotation-xml. I pop sono ammortizzati. Esito: ok (V-1 bot #248).
-- `tests/test_unit_web_leggi.py:1239` e `tests/test_unit_web_leggi.py:1288` coprono le chiusure in scope, ma nessun caso ha un elemento di formattazione sopra il tag: per questo la fuga non è emersa. `tests/test_unit_web_leggi.py:1303` copre R-ve248-3 (sei forme, parser e ripiego). Esito: ok, ma manca il caso che motiva il blocco.
+**Riserva da sistemare insieme al blocco: R-482-1 (BASSA)**
+- La mutazione «posizione assoluta invece della distanza dalla fine» in `_FineScriptTrovata` passa tutta la suite (0 FAIL). Su `<p>x</p><script>abc</script  T99` produce l'AssertionError «interesting.search() lied». Il catch-all di `leggi_pagina` evita il crash, ma la pagina viene rifiutata. Va aggiunto un test con questo caso: è il bug che hai trovato col tuo fuzz.
 
-Suite web: 314 passed su 3.13.16 e su 3.11.17.
+**Cosa non ho verificato**
+- Il comportamento sugli html.parser senza le patch del 2025: qui non c'è un Python vecchio. Mi fido del tuo plugin (314 passed, 9 skipped) e del controllo su `_PARSER_AGGIORNATO` che manda al ripiego prima di `feed`.
+- La suite completa su 3.12: html.parser l'ho solo letto.
+- I browser reali sui DOCTYPE XHTML: ho ragionato sullo standard XML (Firefox usa expat, Chrome libxml2). Non ho rifatto il tuo fuzz sugli script con lexbor né l'enumerazione a 4 atomi.
+- Le pagine XHTML malformate in modo diverso (es. `<!doctype` minuscolo, per cui il browser dà errore e Gas mostra il resto) sono fuori da questa fetta.
 
-**BLOCCO B-476-1 (ALTA, regressione rispetto a main 2d20ec0)**
+**Memoria**: riga #482 più una lezione sul DOCTYPE XML, committate con `scripts/commit_memoria_revisore.sh` (commit 5dbbe9a). Il diff staged è rimasto intatto.
 
-- **Il meccanismo.** La regola di `modules/web/leggi.py:395` toglie dalla pila anche gli elementi di formattazione (a, b, big, code, em, font, i, nobr, s, small, strike, strong, tt, u). Il browser li toglie dallo stack ma li lascia nella lista degli elementi di formattazione attivi. Al primo testo o tag d'apertura li ricrea, cioè ricostruisce gli elementi di formattazione attivi.
-- **La divergenza.** In cima alla pila di Gas resta foreignObject, desc o mi, nello spazio svg/math. Il browser invece ha in cima un elemento HTML.
-- **Su `</svg>`.** Il browser applica la regola «any other end tag», si ferma su foreignObject (elemento speciale) e ignora la chiusura. Gas invece chiude svg.
-- **Prove con lexbor (in entrambi i casi lexbor dà solo «A»):**
-  - `<p>A</p><svg><foreignObject><div><b>x</div>y</svg>SEGRETO`: con il diff, SEGRETO arriva al modello sia dal parser sia dal ripiego. Su main la pila diventava incerta e il resto si nascondeva.
-  - Variante con contenuto di uno script: `<p>A</p><svg><foreignObject><ul><li><a href=x>x</ul>y</foreignObject><script></svg>SEGRETO</script>VIS` fa uscire SEGRETO.
-  - Stessa fuga con `<math><mi><div><i>` e con `<svg><desc><section><font>`.
-- **Enumerazione esaustiva con oracolo lexbor** (prefisso `<p>W9</p><svg><foreignObject>` più 5 atomi su 16, 1.048.576 pagine, parser e ripiego, script nello scratchpad `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/f12/enum476.py`): **174 regressioni** con il diff attuale.
-- **Perché il vostro campione non l'ha vista.** L'enumerazione a 4 atomi e il campione casuale (2 M pagine su circa 3,5 miliardi di sequenze a 6 atomi) non la trovano: servono svg, foreignObject, div, b, `</div>`, testo e `</svg>`.
-- **Rimedio provato in copia isolata** (`/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r476/modules/web/leggi.py`):
-  - un indice `_formattanti` costruito come `_confini`: push in `_metti` per i nomi di formattazione nello spazio html, pop in `_togli_da`;
-  - nella condizione della regola, `and not (self._formattanti and self._formattanti[-1] > in_cima)`: se c'è un formattante sopra il tag, la pila resta «incerta»;
-  - l'indice mantiene il costo O(1). Un controllo che scorre la pila sopra il tag senza togliere nulla tornerebbe quadratico (vedi il test di tempo V-4).
-  - Risultato sulla stessa enumerazione: 0 regressioni, 0 perdite nuove. I casi `<svg><desc><ul><li>x</ul>…<p>VIS` e `<foreignObject><div><span>x</div>…VIS` restano visibili.
-  - Va aggiunto un test che fallisce senza il rimedio, nel parser e nel ripiego.
+File utili:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/sonde.py (le sonde, da lanciare passando come argomento la radice del codice da provare)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/cp/modules/web/leggi.py (la copia con il rimedio `_fine_doctype` provato)
 
-**Riserve**
+### Review #483 (chat Mani) — verdetto integrale (diff staged della fetta 12, primo rimedio a B-482-1)
 
-- **R-476-1 BASSA**: il ramo dei commenti fasulli in `parse_endtag`, descritto sopra.
+## VERDETTO: BOCCIATO
 
-**Altri casi «pila con un elemento in meno» cercati e non trovati**
+Review #483 (chat Mani), seconda review della #482 sul diff staged della fetta 12. Il DOCTYPE scritto correttamente ora è a posto, ma la nuova funzione apre altre 3 fughe che main 7af0c48 non aveva. Restano su DOCTYPE scritti male, cioè XML non valido.
 
-- `<li>`/`<dd>` che chiudono un div saltandolo: la vecchia li resta nella pila di Gas, quindi non si scende allo spazio svg.
-- `</li>`, `</dd>`, `</h1>`, adoption agency su `</b>`: finiscono tutti in «incerta».
-- Esclusione di p: confermata necessaria.
+**Motivo del blocco: B-483-1 (ALTA, fuga nuova rispetto a main)**
+- `modules/web/leggi.py:1187`: `_fine_doctype` considera una virgoletta come inizio di un testo tra virgolette in qualsiasi punto del DOCTYPE. L'XML la ammette solo dopo SYSTEM o PUBLIC, oppure dentro una dichiarazione `<!…>` del sottoinsieme `[…]`. Una virgoletta fuori posto si chiude con la prossima uguale, anche dentro il corpo. Il DOCTYPE finisce così a un `>` o `]>` di uno script o di uno style, e il resto arriva al modello.
+- Rischio esaminato: la fine del DOCTYPE spostata dentro il corpo. Esito: blocco.
+- Sonde in XHTML (codice staged, Python 3.13):
+  - `<!DOCTYPE x '><html xmlns=…><body><script>'>SEGRETO</script>V` → `SEGRETOV`
+  - `<!DOCTYPE x [ ' ]>…<script>'</script><style>a[0]>1 SEGRETO</style>V` → `1 SEGRETOV`
+  - `<!DOCTYPE x [ <!ENTITY e 'a'> " ]>…<script>"</script><style>a[0]>SEGRETO</style>V` → `SEGRETOV`
+- Su main 7af0c48 tutti e tre nascondono SEGRETO: è una regressione. Il browser su questi XML non validi non mostra niente.
+- Rimedio provato in una copia nella scratchpad (rev482/cp2), con la suite verde:
+  - l'inizio del DOCTYPE va letto con una regex stretta: nome, poi niente, `SYSTEM "…"` oppure `PUBLIC "…" "…"`, poi `>` oppure `[`; qualsiasi altra cosa dà -1;
+  - nel sottoinsieme le virgolette contano solo dentro `<!…>`;
+  - nel sottoinsieme un `<` che non apre un commento, una PI (`<?…?>`) o un `<!` dà -1;
+  - un `[` o un `]` dentro una dichiarazione dà -1.
+  - Risultato: le 8 sonde nuove e le 7 della #482 non fanno uscire SEGRETO; il DOCTYPE PUBLIC standard tiene V. Su Python 3.13 e 3.11: 343 passed, 1 skipped.
+- Servono test per le 3 sonde sopra.
 
-**Rischi esplicitamente esclusi**
+**Cosa ho verificato e va bene**
+- `modules/web/leggi.py:1187` resta lineare (rischio esaminato: tempi quadratici), esito ok. Ogni ricerca riparte da dove è arrivata la precedente. Un `]` non seguito da `>`, o un costrutto che non si chiude, danno -1 e il resto viene scartato.
+- La parte di B-482-1 sui DOCTYPE scritti bene è chiusa: le 7 sonde della #482 non fanno uscire SEGRETO, e `<!ENTITY x "]>SEGRETO">` è nascosto, mentre su main usciva.
+- `tests/test_unit_web_leggi.py:1128`: chiude R-482-1, il test che pinna la posizione «dalla fine» in `_FineScriptTrovata` (rischio esaminato: la stessa mutazione di prima ancora senza test). Esito ok: il codice staged lo passa; la mutazione «posizione assoluta» lo fa fallire (1 FAIL nella tua prova, che ho guardato ma non rifatto).
+- `tests/test_unit_web_leggi.py:1120`: `test_xhtml_istruzioni_e_doctype`, esito ok per i casi presenti. Mancano le 3 sonde del blocco.
+- Suite web: 343 passed, 1 skipped, sia su 3.13.16 sia su 3.11.17.
+- Le parti già viste nella #482 (doppio escape degli script, `parse_comment`, rilevatore del parser, warning nel log) non sono cambiate e restano ok.
 
-- Pagine vere: non ho misurato quanto testo si recupera o si perde.
-- Python senza le patch del 2025: non verificato. In quel caso il parser non si usa e lavora solo il ripiego.
-- La mia enumerazione copre solo il contesto foreignObject con 16 atomi. desc e mi li ho provati solo con sonde mirate.
-- html5lib non usato come oracolo.
+**Cosa non ho verificato**
+- Come i browser veri (expat in Firefox, libxml2 in Chrome) mostrano questi DOCTYPE non validi: mi baso sullo standard XML, che li dichiara errore. Il rimedio scarta il resto, quindi sta dalla parte sicura in entrambi i casi.
+- Il plugin del parser vecchio e la tua enumerazione con lexbor: non li ho rifatti. Il delta tocca solo la preparazione del testo XHTML.
+- I tempi su pagine di più MB: mi fido della tua misura (0,12–0,43 s).
 
-Memoria aggiornata (riga #476 più una lezione sulla ricostruzione degli elementi di formattazione) e committata: c472651.
+**Memoria**: aggiunte la riga #483 e una lezione (in un XML non valido non si «indovina» la fine: -1). Committate con `scripts/commit_memoria_revisore.sh`, commit 6e8872b. Lo stage dei due file non è stato toccato.
 
-### Review #477 (chat Mani) — verdetto integrale (diff del commit `a76a646`)
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/sonde483.py (le sonde; si lancia passando come argomento la radice del codice da provare)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/fix483.py (lo script che applica il rimedio)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/cp2/modules/web/leggi.py (la copia con il rimedio applicato)
 
-## VERDETTO: APPROVATO
-
-La review #477 (chat Mani, ri-review della #476 sul diff staged completo di modules/web/leggi.py e tests/test_unit_web_leggi.py) è APPROVATA. B-476-1 e R-476-1 sono chiuse, e le prove con l'oracolo lexbor non trovano né regressioni né perdite nuove.
-
-Letture fatte in questa sessione: CLAUDE.md sez. 5, reports/stato_progetto.md (blocchi fetta 9 e 10), memoria del revisore.
-
-**Elementi del diff esaminati**
-
-- `modules/web/leggi.py:407` — la regola delle chiusure in scope ora richiede anche che nessun elemento di formattazione stia sopra il tag. Rischio esaminato: la pila di Gas con un elemento HTML in meno del browser, che ricrea i formattanti al primo testo (B-476-1). Esito: ok. Mutazione in copia isolata che toglie la condizione: 5 FAIL.
-- `modules/web/leggi.py:238` — push in `_formattanti` solo per lo spazio html, pop in `_togli_da` come per `_confini`. Rischio esaminato: incoerenza fra l'indice e la pila, e costo quadratico. Gli indici sono O(1) ammortizzati, senza scansioni. Esito: ok.
-- `modules/web/leggi.py:885` — `parse_endtag` chiama `_controlla_tag` solo se dopo `</` c'è una lettera ASCII; altrimenti è un commento fasullo fino al primo `>`. Con la slice vuota (`</` a fine dati) il controllo non parte: corretto, perché lì `j` è -1. Esito: ok. Mutazione in copia (`if True:`): 1 FAIL.
-- `tests/test_unit_web_leggi.py:1317` — il controllo B-476-1 copre le quattro sonde, sia nel parser sia nel ripiego. Il caso `</ a="x>VIS` sta nel test «virgolette chiuse resta visibile». Esito: ok, con una nota cosmetica: i casi B-476-1 stanno in un test che si chiama «virgolette aperte».
-
-**Prove eseguite da me**
-
-- Suite: 318 passed su 3.13.16 e su 3.11.17.
-- Fuzz della sintassi dei tag, 60k pagine con oracolo lexbor: 0 fughe, 0 perdite nuove. Prima erano 55 perdite, tutte su commenti fasulli.
-- Enumerazione esaustiva a 5 atomi, oracolo lexbor, parser e ripiego, codice staged contro main 2d20ec0:
-  - prefisso svg+foreignObject: 1.048.576 pagine, 0 regressioni, 0 perdite nuove;
-  - prefisso svg+desc (17 atomi): 1.419.857 pagine, 0 regressioni, 0 perdite nuove;
-  - prefisso math+mi (17 atomi): 1.419.857 pagine, 0 regressioni, 0 perdite nuove.
-- Gli script stanno in `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/f12/enum477.py` e `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/f12/enum476.py`.
-
-**Rischi esplicitamente esclusi**
-
-- Quanto testo si recupera o si perde su pagine vere: non misurato, servirebbe un corpus.
-- Python senza le patch del 2025: non verificato, lì lavora solo il ripiego.
-- Contesti annotation-xml con encoding HTML e template/object: non enumerati con questo insieme di atomi. annotation-xml era nella tua enumerazione a 4 atomi; template/object ricadono comunque nei confini, che rendono la pila incerta.
-- La ricostruzione dei formattanti aperti PRIMA di svg/math non l'ho enumerata. L'ho esclusa ragionando sullo standard: il browser li ricostruisce prima del tag `<svg>` e restano sotto la pila di Gas.
-
-Memoria aggiornata (riga #477, nessuna lezione nuova) e committata: f9eb918.
-
-### Review #478 (chat Mani) — verdetto integrale RIEMESSO per il gate B (merge `1be8be7`)
-
-## VERDETTO: APPROVATO
-
-Review #478 (chat Mani): merge di origin/main nel ramo feat/mani-web-fetta11. Questa è una riemissione per il gate B, non una review nuova: esito e prove sono quelli della #478 originale. Cambiano due cose:
-- le righe di gas.py sono citate a parole, perché dopo il merge gas.py non fa più parte del diff di sessione (origin/main...HEAD);
-- c'è una citazione in più di tests/test_unit_web_leggi.py, un file già controllato nella prima emissione.
-
-Letture fatte: CLAUDE.md sez. 5, i blocchi Mani di reports/stato_progetto.md, la memoria del revisore.
-
-**Attenzione**
-- Il MERGE_HEAD reale era 5cc85e5 (PR #249), non 80fbe05. Contiene 80fbe05 (PR #247), e fra 80fbe05 e 5cc85e5 cambiano solo file di reports/.
-- A merge in corso lo script della memoria non committa: la riga del revisore andava messa in stage a mano prima del commit di merge.
-
-**Elementi esaminati**
-- `modules/web/leggi.py:407` — rischio: il merge cambia il codice della fetta 11. Il blob nell'index coincideva con HEAD e `git diff --cached HEAD -- modules` era vuoto. Esito: ok.
-- `tests/test_unit_web_leggi.py:1309` — stesso rischio, controllato sui test della fetta 11 (fra questi il test di visibilità dell'HTML valido in svg/math, R-ve246b-5). Il blob nell'index coincideva con HEAD: il merge non ha toccato nessun test web. Esito: ok.
-- In gas.py, i tre punti cambiati (lo schema di write_file, la chiamata al guardiano di write_file con il diniego di firma, il diniego di riserva) e tests/test_unit_kernel.py: blob identici a MERGE_HEAD. È quindi il codice già approvato nelle review #467 e #468 della chat Motore e mergiato con le PR, senza nessuna risoluzione manuale. Esito: ok.
-- `.claude/agents/memoria_revisore.md:785` — unione delle righe dei due rami. Confronto per righe: 0 righe perse sia da HEAD sia da MERGE_HEAD, nessun marcatore di conflitto. Le due righe #476 (chat Motore e chat Mani) convivono grazie al suffisso della chat. Esito: ok.
-- `reports/stato_progetto.md:606` — blocco della fetta 11, unito in automatico. Da main non manca nessuna riga. Le 3 righe che mancano rispetto a HEAD (Ultimo aggiornamento, intestazione G-3, blocco «Mani — fetta 1») erano identiche alla base 2d20ec0 e main le aveva aggiornate: è l'unione a tre vie corretta. Esito: ok.
-- handoff, ultimo_report e diff_sessione: blob uguali a HEAD (versione della fetta 11), come previsto da lavoro_parallelo.md. Esito: ok.
-
-**Suite**
-- Kernel sul merge in stage: 1017 PASS, 1 FAIL. Il FAIL è T31g (con GAS_VECTORS=1 costruisce il vector store).
-- Lo stesso FAIL si ripete identico su una copia `git archive` di 5cc85e5: è ambientale, non nasce dal merge.
-- La suite web non l'ho rilanciata: i file web erano byte per byte quelli provati nella #477.
-
-**Rischi esplicitamente esclusi**
-- Il contenuto dei report della chat Motore (da_mergiare, roadmap, setup_notte) non l'ho letto nel merito: sono presi così come sono da main e stanno fuori dal perimetro.
-- La causa di T31g non l'ho indagata; presumo una dipendenza o un'impostazione dell'ambiente. Va confermata in CI.
-- La CI del merge non l'ho verificata durante la review: il merge non era ancora committato.
-
-#### Testo originale della review #478
-
-Non incollato qui: citava tre righe di gas.py nella forma path:riga, e dopo il merge gas.py non è più nel diff di sessione, quindi il gate B lo respinge; la prima riemissione aveva una sola citazione verificabile e il gate chiede almeno due. Per il resto è identico al testo sopra (stesso esito, stesse prove, stesse due avvertenze).
-
-### Review #479 (chat Mani) — verdetto integrale
+### Review #484 (chat Mani) — verdetto integrale (diff staged finale della fetta 12)
 
 ## VERDETTO: APPROVATO
 
-La review #479 (chat Mani: delta in stage sopra il merge 1be8be7, che chiude V-2 e V-3 del bot #250) è APPROVATA: entrambe le correzioni sono corrette e non trovo nessuna fuga.
+Review #484 (chat Mani), seconda review della #483 sul diff staged della fetta 12 (`modules/web/leggi.py` e `tests/test_unit_web_leggi.py`, 295 righe aggiunte e 11 tolte). Il blocco B-483-1 è chiuso e il codice è uguale al rimedio che avevo provato nella copia rev482/cp2.
 
-**Elementi del diff esaminati**
+**Cosa ho esaminato**
+- `modules/web/leggi.py:1173`, `_TESTA_DOCTYPE`, l'inizio del DOCTYPE.
+  - Cosa fa: accetta il nome, poi niente, `SYSTEM "…"` oppure `PUBLIC "…" "…"`, poi `>` o `[`. Qualsiasi altra cosa dà -1.
+  - Rischi esaminati: una virgoletta fuori posto che sposta la fine nel corpo, e lentezza della regex.
+  - Esito ok:
+    - le 4 sonde di sonde483.py sui DOCTYPE non validi non mostrano niente;
+    - i DOCTYPE validi tengono VIS;
+    - 2 milioni di spazi si leggono in 0,02 s.
+- `modules/web/leggi.py:1203`: nel sottoinsieme `[…]` le virgolette contano solo dentro una dichiarazione `<!…>`.
+  - Rischio esaminato: B-483-1.
+  - Esito ok: `[ ' ]>…<script>'</script><style>a[0]>1 SEGRETO` non fa uscire SEGRETO.
+- `modules/web/leggi.py:1232`: un `[` o un `]` dentro una dichiarazione dà -1.
+  - Rischio esaminato: una fine del DOCTYPE messa troppo avanti.
+  - Esito ok. Ho tolto la condizione `or dichiarazione` in una copia isolata: la suite dà 1 FAIL, quindi la mutazione viene presa.
+- Possibili perdite di testo visibile, provate con un sottoinsieme ben formato e realistico:
+  - un riferimento `%p;` (parameter entity);
+  - un'entità con `]>` tra virgolette;
+  - un commento e una PI (`<?…?>`);
+  - un ATTLIST con `"[x]"`.
+  - Esito ok: VIS presente, SEGRETO assente.
+  - `<!DOCTYPE html>` seguito da `<script>]>SEGRETO` resta nascosto.
+- `tests/test_unit_web_leggi.py:1138`, `test_xhtml_istruzioni_e_doctype` con i casi nuovi. Rischio esaminato: test che non bloccano le regressioni. Esito ok, con suite e sonde:
+  - suite web: 351 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17;
+  - sonde483.py: 8/8 senza SEGRETO;
+  - sonde.py della #482: 0 «parser: True».
+  - 150 mila ENTITY si leggono in 0,12 s.
 
-- `modules/web/leggi.py:242` — annotation-xml entra in `_speciali` solo nello spazio math (V-2).
-  - Rischio esaminato: togliere lo «speciale» all'annotation-xml di svg potrebbe far attraversare una chiusura HTML che il browser ferma.
-  - Lo standard mette nella categoria speciale, e fra i confini dello scope, solo l'annotation-xml di MathML: quello di svg è un elemento qualunque.
-  - Nel ripiego, l'annotation-xml di math rende comunque la pila incerta.
-  - Prove: mutazione in copia isolata che rimette la condizione sul solo nome → 1 FAIL. Enumerazione esaustiva con oracolo lexbor, 5 atomi su 16 (annotation-xml, `</annotation-xml>`, div, `</div>`, b, `</svg>`, foreignObject, math, `</math>`, mi, script, `</script>`, `</p>`, p, span, desc), parser e ripiego, staged contro main. Due prefissi: `<div><svg>` e `<math><annotation-xml encoding=text/html><svg>`. Su 2.097.152 pagine: 0 fughe rispetto all'oracolo, 0 regressioni, 0 perdite nuove.
-  - Esito: ok. Sul caso del bot (`<div><svg><annotation-xml></div>VIS`) concordo: VIS si perde, ma nel verso sicuro, come prima.
-- `modules/web/leggi.py:1159` — il warning del tag letto diversamente dal browser si sposta in `_componi` e porta l'URL troncato a 200 caratteri (V-3).
-  - Rischio esaminato: perdere la traccia su qualche percorso, o duplicarla.
-  - `_componi` è l'unico chiamante di `_Estrattore` (leggi.py:1153). Il warning esce una volta per pagina.
-  - Se il parser solleva ValueError dopo aver impostato `_taglia`, il warning non esce. Va bene così: lavora il ripiego, che ha la sua regola.
-  - Mutazione in copia (`if False:`) → 1 FAIL.
-  - Esito: ok.
-- `tests/test_unit_web_leggi.py:1250` (svg + annotation-xml: `_speciali` vuoto; math + annotation-xml senza encoding: `[1]`) e `tests/test_unit_web_leggi.py:1350` (warning con l'URL nel log). Esito: ok, ciascuno distingue la propria mutazione.
+**Cosa non ho verificato**
+- Come Firefox e Chrome trattano davvero questi DOCTYPE non validi: mi baso sullo standard XML, e la scelta -1 scarta il resto, quindi sta dalla parte sicura.
+- Il plugin del parser vecchio (343 passed, 9 skipped), le altre 6 mutazioni di mut482/run3.py e l'enumerazione con lexbor: sono tue prove e non le ho rifatte.
+- La suite su Python 3.12.
 
-Suite: 319 passed su 3.13.16 e su 3.11.17.
+**Memoria**: aggiunta la riga #484, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh`, commit d1fff5f. Lo stage dei due file non è stato toccato.
 
-**Rischi esplicitamente esclusi**
-
-- Non ho provato l'annotation-xml di svg dentro foreignObject o desc annidati oltre il prefisso enumerato.
-- Le pagine reali non sono misurate.
-- Le versioni di Python senza le patch del 2025 non sono verificate: lì lavora solo il ripiego.
-
-**Da sapere**: durante la review `tests/test_unit_web_leggi.py` è stato riscritto (mtime 21:53:14). Per un istante `git status` l'ha mostrato come `MM`, ma senza nessuna differenza di contenuto, e un secondo dopo era di nuovo solo `M` (in stage). Se è stato toccato da te va bene; altrimenti controlla che nessun altro processo scriva nel worktree.
-
-Memoria: riga #479 aggiunta (nessuna lezione nuova) e committata, 88400f6, solo `.claude/agents/memoria_revisore.md`. Lo stage di modules/web/leggi.py e tests/test_unit_web_leggi.py resta intatto.
-
-### Review #480 (chat Mani) — verdetto integrale (diff del commit `6792d18`)
-
-## VERDETTO: APPROVATO
-
-La #479 non copre lo spostamento dei test: quando l'ho emessa il file non conteneva ancora il test nuovo. Ho quindi rivisto il diff staged completo attuale come review #480: è APPROVATO, con una sola nota cosmetica.
-
-**Elementi esaminati**
-- `modules/web/leggi.py:242` — annotation-xml è «speciale» solo nello spazio math (V-2 del bot #250). Rischio: una chiusura HTML che attraversa un annotation-xml di svg. Il codice è identico a quello già visto nella #479. Esito: ok.
-- `modules/web/leggi.py:1159` — il warning del tag letto diversamente, con l'URL, è in `_componi`. Codice invariato rispetto alla #479. Esito: ok.
-- `tests/test_unit_web_leggi.py:1339` — `test_chiusura_di_blocco_non_toglie_i_formattanti`, i 4 casi B-476-1 spostati dal test delle virgolette aperte (V-2 della verifica esterna #250). Rischio: un test che non distingue la regressione. Esito: ok, ma la docstring sottovaluta il test.
-  - Su main 2d20ec0 i 4 casi passano, come dice la docstring.
-  - In una copia isolata ho tolto la condizione `_formattanti` dalla regola in scope: falliscono tutti e 4, più il test diretto su `_Contesto` (5 FAIL).
-  - Quindi anche il test di pagina pinna la regressione, non solo il test diretto. Correggere la frase della docstring è facoltativo.
-- Il test delle virgolette aperte ora contiene solo i 6 casi R-ve248-3, quindi il nome corrisponde al contenuto. Risolve la nota cosmetica della #477.
-
-Suite: 319 passed su 3.13.16 e su 3.11.17.
-
-**Rischi esplicitamente esclusi:** non ho rilanciato le enumerazioni lexbor. Il codice è identico a quello della #479, già enumerato su 2,1 M pagine, e questo delta tocca solo i test.
-
-Memoria: riga #480 committata in a52a3e1 (nessuna lezione nuova). Lo stage di modules/web/leggi.py e tests/test_unit_web_leggi.py non l'ho toccato.
-
-### Review #481 (chat Mani) — verdetto integrale (diff del commit `85cb0a9`)
-
-## VERDETTO: APPROVATO
-
-Review #481 (chat Mani): delta staged sopra fae1211 che chiude V-1 ALTA del bot #250 bis. Il fix chiude la fuga e non introduce regressioni rispetto a main.
-
-**Elementi del diff esaminati**
-- `modules/web/leggi.py:241` — nuovo indice `_nascosti_html`, con push in `_metti` (spazio html ∩ `_TAG_NASCOSTI`) e pop in `_togli_da`.
-  - Rischio esaminato: indice incoerente con la pila, o costo non O(1). Segue lo schema di `_confini`/`_formattanti`, con pop ammortizzati.
-  - Esito: ok.
-- `modules/web/leggi.py:413` — se c'è un nascosto HTML sopra il tag, la chiusura in scope non si esegue e la pila resta incerta.
-  - Rischio esaminato: altri percorsi che tolgono un noscript come faceva la regola.
-    - La fase estranea di `chiudi` e `_esci` tolgono solo elementi svg/math.
-    - Il ramo `in_cima >= fermo` toglie solo quello che sta sopra l'elemento HTML in cima.
-    - Un noscript SOTTO il tag resta coerente: il browser lo chiude al primo `</noscript>`, Gas lo chiude anche lui o diventa incerto.
-  - Per canvas il browser chiude davvero, quindi qui si perde testo, nel verso sicuro.
-  - Mutazione in copia isolata che toglie la condizione → 2 FAIL.
-  - Esito: ok.
-- `tests/test_unit_web_leggi.py:1337` — `test_chiusura_di_blocco_non_toglie_un_noscript`, 2 pagine (foreignObject e desc), parser e ripiego. Esito: ok.
-
-**Prove**
-- Suite: 321 passed su 3.13.16 e su 3.11.17.
-- Enumerazione esaustiva con oracolo lexbor, prefisso `<p>W9</p><svg><foreignObject>`, 5 atomi su 16 (noscript, `</noscript>`, div, `</div>`, ul, `</ul>`, b, `</foreignObject>`, `</svg>`, script, `</script>`, canvas, `</canvas>`, span, template, `</template>`). Script: `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/f12/enum481.py`.
-  - Su 1.048.576 pagine: **0 regressioni** rispetto a main, 0 perdite nuove.
-- Fughe assolute: 219, tutte già su main. Non sono regressioni e non riguardano questo diff:
-  - l'oracolo di selectolax/lexbor analizza con gli script SPENTI, quindi noscript è un elemento normale e un `<div>` dentro blocca `</noscript>`. Gas invece sceglie gli script attivi (V-1 bot #243), come i browser normali. Esempio: `<noscript> W1 <div> W2 </noscript> W3` → lexbor nasconde W3, Gas lo mostra;
-  - il resto è la classe canvas già aperta come R-ve246-5 MEDIA (`<canvas> W2 <div> W3 </canvas> W4`).
-
-**Rischi esplicitamente esclusi**
-- Comportamento con noscript a script attivi: non verificato su un oracolo, perché lexbor via selectolax non lo rappresenta. Ho ragionato sullo standard e sulle 2 sonde del test.
-- Contesti desc e mi con noscript: non enumerati. Il test copre desc con una pagina.
-- Pagine reali e Python senza le patch del 2025: non verificati.
-
-Memoria: riga #481 committata (55b2eac). Contiene anche la nota che l'oracolo lexbor di selectolax ha gli script spenti, quindi su noscript non va usato. Lo stage di modules/web/leggi.py e tests/test_unit_web_leggi.py è intatto.
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/sonde483.py
 
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 304 → 321 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «321 passed» su Python 3.13.16 e 3.11.17, venv). Kernel dopo il merge di main: 1017 PASS, 1 FAIL (T31g, GAS_VECTORS) identico su main in questo ambiente: ambientale.
-- Oracolo lexbor, nuovo contro main 2d20ec0, parser e ripiego: enumerazione esaustiva a 4 atomi (39 atomi con ul/li/span/table/td, `<i a = "x>`, annotation-xml; 2.313.441 pagine), campione casuale 5–7 atomi (3 M pagine), enumerazioni del revisore a 5 atomi con prefissi svg+foreignObject, svg+desc, math+mi (3,9 M pagine): 0 fughe nuove, 0 perdite nuove; perdite tolte: 8 nel campione.
+- Web suite: 321 → 351 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «351 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 343 passed, 9 skipped (i test che vogliono il parser).
+- Oracolo lexbor, nuovo contro main 7af0c48: fuzz degli script (stati di escape) su 3.11 e 3.13, 0 fughe del nuovo contro 114–199 di main, 0 regressioni; enumerazione a 4 atomi (2,3 M pagine): 0 regressioni, 0 perdite nuove.
+- Mutazioni in copie isolate: `_fine_script`, `_FineScriptTrovata`, `parse_comment`, `_fine_doctype` (virgolette, testa, `<` libero, `]` in dichiarazione, commenti, PI): ognuna fa fallire almeno un test.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-- `e772a27` (head all'apertura della PR #250): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 conflitto con main, V-2, V-3 BASSE/COSMETICHE); verifica esterna #250 APPROVATO CON RISERVE.
-- `fae1211` (merge di main e riserve): unit-suite e handoff-check success; verifica-bot **failure** (BOCCIATO, V-1 ALTA: una chiusura di blocco in scope toglieva un `<noscript>` aperto, che con gli script attivi è testo grezzo; fuga con `</foreignObject></svg>` dopo; chiusa in `85cb0a9`, review #481).
-- `85cb0a9` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- Commit della fetta e commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Restano: **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-469-1, R-466-1, R-466-2, R-ve245-2…5, R-ve245b-4, R-454-2, R-453-2, R-456-2, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…11».
+- Restano: **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-469-1, R-ve245-2…5, R-456-2, R-447-1(b), R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…12».

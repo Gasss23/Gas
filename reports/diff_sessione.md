@@ -1,9 +1,9 @@
-# DIFF SESSIONE — 2026-10-22 (chat Mani, fetta 11)
+# DIFF SESSIONE — 2026-10-22 (chat Mani, fetta 12)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/web/leggi.py` — `_Estrattore.parse_starttag`/`parse_endtag` con `_controlla_tag` (tag riconfrontato con la regola del browser, `_taglia`); `_Contesto` con gli indici `_speciali` (punti più annotation-xml), `_confini`, `_formattanti` e la regola delle chiusure di blocco in scope (`_CHIUSURE_IN_SCOPE`, `_CONFINI_SCOPE`, `_FORMATTANTI`).
-- `tests/test_unit_web_leggi.py` — tag con virgolette aperte, HTML valido in svg/math senza perdite, formattanti, test diretti di `_Contesto` (318 test).
-- `.claude/agents/memoria_revisore.md` — righe #476, #477 (chat Mani).
-- `reports/stato_progetto.md` — blocco «Mani — fetta 11».
+- `modules/web/leggi.py` — `_parser_aggiornato` (funzione pura) e warning una volta se il parser è vecchio; `_fine_script` (stati script data escaped / double escaped) e `_FineScriptTrovata` al posto della regex di html.parser; `parse_comment` per `<!-->`/`<!--->`; in XHTML `_commenti_e_cdata_xml` toglie anche PI e DOCTYPE, con `_fine_doctype` che legge il DOCTYPE come l'XML.
+- `tests/test_unit_web_leggi.py` — marcatore `solo_parser_aggiornato`, test del rilevatore e dell'avviso, doppio escape, PI e DOCTYPE, commenti vuoti, posizione dalla fine (351 test).
+- `.claude/agents/memoria_revisore.md` — righe #482, #483, #484 (chat Mani).
+- `reports/stato_progetto.md` — blocco «Mani — fetta 12».
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
