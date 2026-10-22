@@ -73,7 +73,7 @@ leggi_righe, cerca_testo, conta_file, data_ora).
 3. Prova a mano: `cd ~/Gas && python3 gas.py notte` → poi `cat .gas_notte/ultimo_giro.md`
 4. Timer notturno:
    ```
-   mkdir -p ~/Gas/.gas_notte
+   mkdir -p ~/Gas/.gas_notte ~/Library/LaunchAgents   # la seconda può mancare (Mac dell'operatore, 22 ottobre)
    sed "s/TUO_UTENTE/$(whoami)/g" ~/Gas/scripts/notte/com.gas.notte.plist > ~/Library/LaunchAgents/com.gas.notte.plist
    launchctl load ~/Library/LaunchAgents/com.gas.notte.plist
    ```

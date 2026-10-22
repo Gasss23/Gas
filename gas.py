@@ -1079,7 +1079,7 @@ class GasKernel:
             "GAS_LETTURA_MAX_BYTES_PER_FILE", GasKernel.LETTURA_MAX_BYTES_PER_FILE, min_val=1)
         self.tools_schema = [
             {"type": "function", "function": {"name": "run_command", "description": "Esegue un comando di sola lettura da una allowlist, senza shell (no pipe/redirezioni/interpreti). Dove disponibile gira in sandbox OS: rete isolata, filesystem read-only.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
-            {"type": "function", "function": {"name": "write_file", "description": "Scrive un file (percorso relativo alla root di Gas, contenuto INTERO). File normali: scrittura diretta. File DELICATI (codice: gas.py, brains/, modules/, qualsiasi .py o script di shell, scripts/, config degli strumenti, CLAUDE.md, gas_identity.md, requirements): la modifica NON viene applicata subito ma va alla firma dell'operatore su Telegram con il diff reale, e servono gli argomenti 'pro' e 'contro'. Alcuni file non si scrivono MAI, nemmeno con firma (.env, .git, .claude, modules/gate, memoria e cronologia).", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "pro": {"type": "string", "description": "Solo per i file delicati: perché conviene la modifica."}, "contro": {"type": "string", "description": "Solo per i file delicati: rischi e possibili effetti collaterali."}}, "required": ["relative_path", "content"]}}},
+            {"type": "function", "function": {"name": "write_file", "description": "Scrive un file (percorso relativo alla root di Gas, contenuto INTERO). File normali: scrittura diretta. File DELICATI (codice: gas.py, brains/, modules/, qualsiasi .py o script di shell, scripts/, config degli strumenti, CLAUDE.md, gas_identity.md, requirements): la modifica NON viene applicata subito ma va alla firma dell'operatore su Telegram con il diff reale, e servono gli argomenti 'pro' e 'contro', che scrivi TU (non chiederli all'utente: l'operatore li legge nella firma e decide). Alcuni file non si scrivono MAI, nemmeno con firma (.env, .git, .claude, modules/gate, memoria e cronologia).", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "pro": {"type": "string", "description": "Solo per i file delicati: perché conviene la modifica (lo scrivi tu)."}, "contro": {"type": "string", "description": "Solo per i file delicati: rischi e possibili effetti collaterali (li scrivi tu)."}}, "required": ["relative_path", "content"]}}},
             {"type": "function", "function": {"name": "read_file", "description": "Legge un file di testo intero. Per i file grandi usa leggi_righe.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}}},
             {"type": "function", "function": {"name": "elenca_cartella", "description": "Elenca il contenuto di una cartella del progetto: per ogni voce tipo (file/cartella/link), dimensione in byte, data di modifica e nome. Sola lettura, funzione interna di Gas (niente comandi di sistema). I file protetti non compaiono.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string", "description": "cartella relativa alla root di Gas (default '.')"}, "profondita": {"type": "integer", "description": "livelli di sottocartelle da mostrare (default 1, massimo 3)"}}, "required": []}}},
             {"type": "function", "function": {"name": "leggi_righe", "description": "Legge le righe da 'da' ad 'a' (comprese, numerate da 1) di un file di testo. Usalo per leggere a pezzi i file troppo grandi per read_file. Sola lettura.", "parameters": {"type": "object", "properties": {"relative_path": {"type": "string"}, "da": {"type": "integer", "description": "prima riga (da 1)"}, "a": {"type": "integer", "description": "ultima riga (compresa)"}}, "required": ["relative_path", "da", "a"]}}},
@@ -3097,9 +3097,13 @@ class GasKernel:
             pro, contro = args.get("pro"), args.get("contro")
             if not (isinstance(pro, str) and pro.strip()
                     and isinstance(contro, str) and contro.strip()):
+                # prova reale 2026-10-22: il modello leggeva «spiega all'operatore» come
+                # «chiedili all'operatore» e girava la domanda all'utente
                 return None, ("per un file delicato (codice, script, configurazione) servono "
-                              "gli argomenti 'pro' e 'contro': spiega all'operatore perché "
-                              "conviene la modifica e quali rischi ha, poi richiedila")
+                              "gli argomenti 'pro' e 'contro': SCRIVILI TU (perché conviene "
+                              "la modifica e quali rischi ha) e richiama subito write_file con "
+                              "pro e contro compilati; non chiederli all'utente, li leggerà "
+                              "nella richiesta di firma")
             if max(len(pro), len(contro)) > self._FIRMA_PRO_CONTRO_MAX:
                 return None, (f"'pro' e 'contro' devono stare entro {self._FIRMA_PRO_CONTRO_MAX} "
                               "caratteri ciascuno (non si tronca: accorciali)")
@@ -4310,8 +4314,10 @@ class GasKernel:
                 if livello == LIVELLO_FIRMA:
                     if not firmata:
                         logging.warning("[GATE-1A] write_file livello 2 senza firma: %r", rel_root)
+                        # V-3 bot #247: dire chi scrive pro e contro, come nel diniego di firma
                         return ("Operazione negata: file delicato, serve la firma "
-                                "dell'operatore (richiedila con 'pro' e 'contro').")
+                                "dell'operatore: richiedila chiamando write_file con 'pro' e "
+                                "'contro' scritti da te (non chiederli all'utente).")
                     # Review #262: si scrive solo il file mostrato nella firma.
                     if args.get(self._FIRMA_CODICE_FILE) != rel_root:
                         logging.warning("[GATE-1A] %r non è il file firmato — diniego", rel_root)
