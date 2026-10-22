@@ -86,7 +86,7 @@ import math
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -119,6 +119,7 @@ MIN_SEC = 30                     # sotto questo valore l'env viene alzato
 GIRO_OCCUPATO = "giro_occupato"  # valore di `interrotto` quando il lock è già preso
 MAX_AVVISI_TELEGRAM = 5          # avvisi riportati nel messaggio del mattino
 MAX_AVVISO_CHARS = 200           # lunghezza di ciascun avviso nel messaggio
+GIORNI_LEAD_FERMO = 7            # lead attivo senza aggiornamenti da tanti giorni = fermo
 _NOME_RE = re.compile(r"[a-z0-9_-]{1,40}")
 _NEGATA = "Operazione negata"
 _IN_ATTESA = "Azione in attesa di approvazione umana"  # gas.py _parcheggia_e_notifica
@@ -313,11 +314,14 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
 
 
 def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
-                       avvisi: List[str]) -> str:
+                       avvisi: List[str], stato: Optional[Dict[str, Any]] = None) -> str:
     ok = sum(1 for e in esiti if e["esito"] == "ok")
     righe = [f"# Giro notturno di Gas — {inizio}", "",
              f"Catalogo: `{catalogo}` — compiti eseguiti: {len(esiti)}, ok: {ok}, "
              f"ko: {len(esiti) - ok}", ""]
+    righe_stato = righe_stato_mattino(stato)
+    if righe_stato:
+        righe += ["## Stato (calcolato dal kernel)", ""] + [f"- {r}" for r in righe_stato] + [""]
     if avvisi:
         righe += ["## Avvisi", ""] + [f"- {a}" for a in avvisi] + [""]
     for e in esiti:
@@ -352,7 +356,8 @@ def _componi_riepilogo(inizio: str, catalogo: Path, esiti: List[Dict[str, Any]],
 
 def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
                                avvisi: List[str], solo_conteggi: bool = False,
-                               lezioni_in_attesa: Optional[int] = None) -> str:
+                               lezioni_in_attesa: Optional[int] = None,
+                               stato: Optional[Dict[str, Any]] = None) -> str:
     """Riepilogo breve del giro per Telegram: solo metadati, mai la risposta del
     modello né il testo degli errori (non fidati). Con `solo_conteggi` (testo
     completo oltre il limite di Telegram) restano i soli conteggi.
@@ -360,7 +365,8 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
     precedenti, R-345-3); None se non contate → solo quelle proposte stanotte."""
     ok = sum(1 for e in esiti if e["esito"] == "ok")
     righe = [f"Gas — giro notturno del {inizio}",
-             f"Compiti eseguiti: {len(esiti)} · ok: {ok} · ko: {len(esiti) - ok}", ""]
+             f"Compiti eseguiti: {len(esiti)} · ok: {ok} · ko: {len(esiti) - ok}"]
+    righe += righe_stato_mattino(stato) + [""]  # solo numeri del kernel, mai nomi
     nuove = sum(e["riflessione"]["lezioni"] for e in esiti
                 if e.get("riflessione") and e["riflessione"]["ok"])
     # R-359-1: lista_lezioni dà [] anche a DB rotto: mai meno di quelle di stanotte.
@@ -401,6 +407,145 @@ def componi_messaggio_telegram(inizio: str, esiti: List[Dict[str, Any]],
     righe += riga_lezioni
     righe += ["", f"Risposte e dettagli (testo NON verificato): {NOTTE_DIR}/{RIEPILOGO}"]
     return "\n".join(righe)
+
+
+def _giorni_fa(ts: Any, adesso: datetime) -> Optional[float]:
+    """Giorni passati da un timestamp ISO della memoria; None se illeggibile."""
+    try:
+        t = datetime.fromisoformat(str(ts))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return (adesso - t).total_seconds() / 86400
+    except (TypeError, ValueError):
+        return None
+
+
+CODA_LOG_TOKEN = 65536  # byte finali del log dei token controllati dal resoconto
+
+
+def _tetto_applicato() -> float:
+    """V-2 verifica esterna #241: il tetto mostrato è quello che applica
+    _budget_superato (stessa lettura e stessi limiti); ripiego _env_budget."""
+    try:
+        from gas import _env_float
+        return _env_float("GAS_DAILY_TOKEN_BUDGET", 0.0, min_val=0.0, max_val=100_000.0)
+    except Exception:
+        return _env_budget()
+
+
+def _righe_illeggibili_log(root: Any) -> int:
+    """Righe non JSON del log dei token DENTRO la finestra di 24 ore di _daily_cost_usd
+    (V-1 bot #241), cercate negli ultimi CODA_LOG_TOKEN byte: contano solo quelle dopo
+    l'ultima riga valida più vecchia di 24 ore (il log è in sola aggiunta, quindi in
+    ordine di tempo). Una riga finale senza a capo è in scrittura e non conta.
+    Log assente (o root ignota) → 0; log che non si apre → -1. Mai eccezioni.
+    Limite dichiarato: oltre 64 KB di log nelle 24 ore le righe più vecchie non si vedono."""
+    if root is None:
+        return 0
+    try:
+        from gas import TOKEN_LOG_FILENAME
+        path = Path(root) / TOKEN_LOG_FILENAME
+        if not path.exists():
+            return 0
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            fine = f.tell()
+            f.seek(max(0, fine - CODA_LOG_TOKEN))
+            coda = f.read()
+        righe = coda.split(b"\n")
+        righe = righe[:-1]  # l'ultimo pezzo è vuoto o una riga ancora in scrittura
+        if fine > CODA_LOG_TOKEN:
+            righe = righe[1:]  # la prima è probabilmente tagliata a metà
+        # stesso formato e stessa soglia di _daily_cost_usd (ts UTC "%Y-%m-%dT%H:%M:%S")
+        soglia = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+        rotte = 0
+        for r in righe:
+            if not r.strip():
+                continue
+            try:
+                d = json.loads(r)
+            except ValueError:
+                d = None
+            if not isinstance(d, dict):
+                rotte += 1
+            elif d.get("ts") and str(d["ts"]) < soglia:
+                # riga valida fuori finestra: le rotte prima sono vecchie. Ts assente =
+                # dentro la finestra (R-459-3: nel dubbio non si azzera)
+                rotte = 0
+        return rotte
+    except Exception as e:
+        logging.warning("notte: log dei token non controllato: %s", type(e).__name__)
+        return -1
+
+
+def stato_mattino(kernel: Any) -> Dict[str, Any]:
+    """R1 «resoconto di spesa e stato»: numeri calcolati dal kernel a fine giro, senza
+    modello e senza token: spesa delle ultime 24 ore e tetto, lead attivi e fermi,
+    firme in attesa. SOLO conteggi (mai nomi o testo dei lead: vanno su Telegram).
+    Ogni voce è indipendente e fail-safe (§9): se non si legge vale None."""
+    stato: Dict[str, Any] = {"spesa": None, "tetto": _tetto_applicato() or None,
+                             "log_illeggibili": 0, "lead_attivi": None, "lead_fermi": None,
+                             "firme_in_attesa": None}
+    try:
+        costo = getattr(kernel, "_daily_cost_usd", None)
+        if callable(costo):
+            v = float(costo())
+            stato["spesa"] = v if math.isfinite(v) else None
+            # V-1 verifica esterna #241: _daily_cost_usd salta le righe rotte (e dà 0.0
+            # a log illeggibile): «$0.00» non deve rassicurare se il log è rovinato.
+            stato["log_illeggibili"] = _righe_illeggibili_log(getattr(kernel, "root", None))
+    except Exception as e:
+        logging.warning("notte: spesa non letta per il resoconto: %s", type(e).__name__)
+    mem = getattr(kernel, "memory", None)
+    if mem is None or not getattr(mem, "available", True):
+        return stato
+    # R-453-1: lista_contatti dà [] anche a DB rotto («0 lead» rassicurerebbe il falso).
+    # conta_approvazioni sullo stesso DB dà None in quel caso: se fallisce, lead e
+    # firme restano «non letti».
+    try:
+        conta = mem.conta_approvazioni()
+    except Exception as e:
+        conta = None
+        logging.warning("notte: firme non contate per il resoconto: %s", type(e).__name__)
+    if conta is None:
+        return stato
+    stato["firme_in_attesa"] = int(conta.get("in_attesa", 0))
+    try:
+        from modules.memory import STATI_CHIUSI
+        attivi = [c for c in mem.lista_contatti() if c.get("stato") not in STATI_CHIUSI]
+        adesso = datetime.now(timezone.utc)
+        giorni = [_giorni_fa(c.get("aggiornato_il"), adesso) for c in attivi]
+        stato["lead_attivi"] = len(attivi)
+        # data illeggibile = fermo (nel dubbio si segnala, non si nasconde)
+        stato["lead_fermi"] = sum(1 for g in giorni if g is None or g >= GIORNI_LEAD_FERMO)
+    except Exception as e:
+        logging.warning("notte: lead non contati per il resoconto: %s", type(e).__name__)
+    return stato
+
+
+def righe_stato_mattino(stato: Optional[Dict[str, Any]]) -> List[str]:
+    """Righe brevi del resoconto (riepilogo e Telegram). Voce None → «non letta»."""
+    if not stato:
+        return []
+    spesa, tetto = stato.get("spesa"), stato.get("tetto")
+    if spesa is None:
+        r_spesa = "Spesa ultime 24 ore: non letta"
+    elif tetto:
+        r_spesa = f"Spesa ultime 24 ore: ${spesa:.2f} su un tetto di ${tetto:.2f}"
+    else:
+        r_spesa = f"Spesa ultime 24 ore: ${spesa:.2f} (nessun tetto)"
+    rotte = stato.get("log_illeggibili") or 0
+    if spesa is not None and rotte:
+        r_spesa += (" — ATTENZIONE: log dei token illeggibile, spesa forse sottostimata"
+                    if rotte < 0 else
+                    f" — ATTENZIONE: {rotte} righe illeggibili nel log dei token, "
+                    "spesa forse sottostimata")
+    attivi, fermi = stato.get("lead_attivi"), stato.get("lead_fermi")
+    r_lead = ("Lead attivi: non letti" if attivi is None else
+              f"Lead attivi: {attivi} (fermi da {GIORNI_LEAD_FERMO}+ giorni: {fermi})")
+    firme = stato.get("firme_in_attesa")
+    r_firme = f"Firme in attesa: {'non lette' if firme is None else firme}"
+    return [r_spesa, r_lead, r_firme]
 
 
 def _stampa_sicura(testo: str) -> None:
@@ -457,7 +602,8 @@ def _lezioni_in_attesa(kernel: Any) -> Optional[int]:
 
 def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[str],
                        interrotto: Optional[str] = None,
-                       lezioni_in_attesa: Optional[int] = None) -> None:
+                       lezioni_in_attesa: Optional[int] = None,
+                       stato: Optional[Dict[str, Any]] = None) -> None:
     """Compone e invia il riepilogo del mattino. Mai eccezioni: anche un errore nel
     comporre il messaggio è solo loggato e non cambia l'esito del giro (R-238-2).
     `interrotto` = nome del tipo d'eccezione se il giro si è fermato prima della
@@ -480,11 +626,13 @@ def _notifica_telegram(inizio: str, esiti: List[Dict[str, Any]], avvisi: List[st
                          "Dettagli in gas_debug.log.")
         else:
             testo = componi_messaggio_telegram(inizio, esiti, avvisi,
-                                               lezioni_in_attesa=lezioni_in_attesa)
+                                               lezioni_in_attesa=lezioni_in_attesa,
+                                               stato=stato)
         if interrotto is None and lunghezza_telegram(testo) > TELEGRAM_MAX_CHARS:
             # V-1 verifica esterna #169: meglio i soli conteggi che nessun messaggio.
             testo = componi_messaggio_telegram(inizio, esiti, avvisi, solo_conteggi=True,
-                                               lezioni_in_attesa=lezioni_in_attesa)
+                                               lezioni_in_attesa=lezioni_in_attesa,
+                                               stato=stato)
         inviato, motivo = invia_notifica(testo)
     except Exception as e:
         logging.warning("notte: riepilogo Telegram non inviato: %s", type(e).__name__)
@@ -721,14 +869,15 @@ def esegui_notte(root_dir: Optional[str] = None, catalogo: Optional[Path] = None
             avvisi.append(f"{scadute} richiesta/e di firma scaduta/e senza risposta: "
                           f"chiuse, NON eseguite")
             logging.warning("notte: %s", avvisi[-1])  # R-417-1: anche in gas_debug.log
-        testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi)
+        stato = stato_mattino(kernel)
+        testo = _componi_riepilogo(inizio, catalogo, esiti, avvisi, stato)
         try:
             _scrivi_atomico(notte_dir / RIEPILOGO, testo)
         except Exception as e:
             logging.warning("notte: riepilogo non scritto: %s", e)
         print(testo)
         # inviato a lock rilasciato (V-2 #169)
-        da_notificare = (inizio, esiti, avvisi, None, _lezioni_in_attesa(kernel))
+        da_notificare = (inizio, esiti, avvisi, None, _lezioni_in_attesa(kernel), stato)
         if saltati_r7:  # R-406-1: un salto per crash ripetuti è un ko, anche se era l'unico
             return 1
         if not compiti:

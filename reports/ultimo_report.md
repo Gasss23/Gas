@@ -1,31 +1,23 @@
-# ULTIMO REPORT — 2026-10-21 — Chat Mani, fetta 6: note rimaste della PR #242 (R6, PR #243)
-
-Ramo `feat/mani-web-fetta6` da main dopo il merge di #242. Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. PR #243 (https://github.com/Gasss23/Gas/pull/243). Fetta di sicurezza. Operatore: «procedi con la fetta 6», poi «mergia quando il bot approva».
+# Ultimo report — 2026-10-21 (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-
-1. Merge della PR #243: autorizzato dall'operatore quando il bot approva (`verifica-bot` success sull'head, niente ALTA/MEDIA), con CI verde e senza conflitti.
-2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
-3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
+1. Merge della PR #241 (pro e contro in `reports/da_mergiare.md`).
+2. Secondo passaggio nella chat claude.ai sulla PR #241 (tocca la firma).
 
 ## Esito
+- R7 R-c4b3-3 (esito della firma recuperato dopo un'interruzione): FATTA — review #445-#447.
+- Merge di main (PR #242 della chat Mani) nel ramo: FATTA — review #449 APPROVATO.
+- Riserve di #241 (V-1 bot; V-1, V-2 verifica esterna): FATTA — review #450-#452.
+- R1 resoconto di spesa e stato nel messaggio del mattino: FATTA — review #453/#454 APPROVATO CON RISERVE.
+- Merge di main con la PR #243 (conflitto segnalato dalla verifica esterna) e V-1 della verifica esterna (2° giro): FATTA — review #457/#458 APPROVATO.
+- Riserve del bot su 5f4c524 (V-1 log solo nelle 24 ore, V-5 testo): FATTA — review #459/#460. V-2 del bot (segno nel DB): DEFERITA — cambio di schema.
+- R-445-3: DEFERITA — cosmetica, preesistente.
+- R1 contatti fermi (`ricorda fermi=true`, catalogo d'esempio) e V-1/V-2 della verifica esterna e del bot #241 (spesa a log rotto, tetto mostrato): FATTA — review #455/#456.
 
-- **V-2 verifica esterna #242 bis (`<title/>`)**: `FATTA` — `<title/>` apre il titolo nel parser e nel ripiego come nei browser: il testo fino a `</title>` va nella riga «Titolo:», non nel corpo.
-- **R-449-1**: `FATTA` — dentro svg/math l'autochiusura vale e `<title/>` resta vuoto (era una regressione del primo giro: sulle icone svg si perdeva il resto della pagina).
-- **V-1 verifica esterna #242 bis (test sul contatore)**: `FATTA` — chiusura in più dopo una coppia bilanciata sul percorso normale e nel ripiego.
-- **R-449-2, R-448-1, V-3/V-4 verifica esterna #242**: `FATTA` — caso del ripiego che discrimina, riga lunga a capo, commento sul SystemError di Python 3.11 con l'input che lo provoca (riprodotto su 3.11.17: con un gruppo di cattura nella ripetizione possessiva, `<a b="1"="x>` solleva SystemError; altri input no, per questo i verificatori non lo vedevano).
-- **Note del bot #242 sull'handoff della fetta 5 (run fallita su `f583746`, righe citate)**: `SALTATA — riguardano il dossier della fetta 5, sostituito da questo`. Nota: la run 39687109665 su `f583746` era fallita (handoff-check) perché l'handoff non era ancora aggiornato, come previsto.
-- **V-1 bot #243 (`<title/>` dentro noscript)**: `FATTA` — `<title/>` apre il titolo solo se non sono aperti svg, math, script, style, iframe, noscript; dentro template, object, canvas valgono le regole HTML (R-451-1, review #451).
-- **V-1 verifica esterna #243 (XHTML)**: `FATTA` — per `application/xhtml+xml` ogni `<x/>` è vuoto, nel parser e nel ripiego (`_Estrattore(xhtml)`, `_testo_senza_parser(…, xhtml)`).
-- **V-2 verifica esterna #243 (`<p>`/`<div>` fuori da svg)** e **R-450-1**: `DEFERITA — BASSE preesistenti, registrate in stato_progetto`.
-- **Bot #243** (primo head): APPROVATO CON RISERVE, V-1 BASSA chiusa sopra. **Verifica esterna #243** ([commento](https://github.com/Gasss23/Gas/pull/243#issuecomment-6329014034)): APPROVATO CON RISERVE, V-1/V-2 BASSE, V-3/V-4 COSMETICHE (V-3 coperta dalla correzione di V-1 bot, V-4 §6 aggiornato).
-- **Test**: web suite 167 → 174 (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Fuzz differenziale 0 fughe. Mutazioni in copie isolate: tutte prese.
-- **Review**: #449 (chat Mani) APPROVATO CON RISERVE (R-449-1 BASSA, R-449-2 COSMETICA, chiuse nello stesso giro) → #450 (chat Mani) APPROVATO CON RISERVE (R-450-1 BASSA preesistente) → #451 (chat Mani) APPROVATO CON RISERVE (R-451-1 BASSA, chiusa) → #452 (chat Mani) APPROVATO.
+## Test
+Kernel 1020 PASS 0 FAIL; pytest tests/ 1905 passed.
 
 ## Anomalie
-
-- Nessuna.
-
-## RICHIESTE ALLA CHAT MOTORE
-
-Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…6»): aggancio di `leggi_pagina` con al modello solo `testo`, firma a finestra contaminata, tetto di chiamate, diario senza il testo della pagina, fiducia solo nei marcatori con il codice di quella chiamata.
+- La CI del push di `079c879` era rossa perché l'handoff non era aggiornato; corretto dal commit di fine-task `eafe6ee` (CI verde).
+- L'handoff di #240 dichiarava +9 test del bot: erano +14 (311 → 325).
+- Mail orarie: non le mandava l'agente (nessuna attività programmata sua attiva); arrivano dalle notifiche GitHub delle review del bot. Si spengono dalle impostazioni GitHub dell'operatore.
