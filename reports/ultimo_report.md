@@ -5,7 +5,7 @@ Ramo `feat/mani-web-fetta7` da main dopo il merge di #243. Area della chat Mani:
 ## DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #244: vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
-2. Fetta 8 per V-2 e V-3 della verifica esterna #244 (MEDIA preesistenti, testo nascosto in casi particolari)?
+2. Fetta 8 per R-ve244-2 e R-ve244-3 (MEDIA preesistenti, testo nascosto in casi particolari)?
 3. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 4. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
 
@@ -18,7 +18,8 @@ Ramo `feat/mani-web-fetta7` da main dopo il merge di #243. Area della chat Mani:
 - **V-1 verifica esterna #243 bis (test)**: `FATTA` — propagazione del modo XHTML al ripiego dentro `_componi`.
 - **V-1 bot #244 (noembed/noframes)**: `FATTA` — fra i nascosti nel parser e nel ripiego: `<noembed/>` (regressione di questa PR) e `<noembed>X</noembed>` (preesistente) non portano più al modello testo che i browser non mostrano. **V-2 bot #244** (COSMETICA): docstring del test.
 - **Merge di main (PR #241 della chat Motore)**: `FATTA` — conflitti solo su report e memoria del revisore, risolti come da `reports/lavoro_parallelo.md`; review #461 (chat Mani) APPROVATO.
-- **Verifica esterna #244** ([commento](https://github.com/Gasss23/Gas/pull/244#issuecomment-6340143206)): APPROVATO CON RISERVE. V-1 MEDIA (PR in conflitto con main): chiusa col merge. V-4 = V-1 bot #244, chiusa. V-5 COSMETICA: §6 aggiornato. **V-2 MEDIA** (XHTML, script annidati con lo stesso nome) e **V-3 MEDIA** (CDATA in HTML): preesistenti, `DEFERITA — registrate, proposte per la fetta 8`.
+- **Verifica esterna #244** ([commento](https://github.com/Gasss23/Gas/pull/244#issuecomment-6340143206)): APPROVATO CON RISERVE. V-1 MEDIA (PR in conflitto con main): chiusa col merge. V-4 = V-1 bot #244, chiusa. V-5 COSMETICA: §6 aggiornato. V-2 MEDIA (XHTML, script annidati con lo stesso nome) e V-3 MEDIA (CDATA in HTML): preesistenti, `DEFERITA — registrate come **R-ve244-2** e **R-ve244-3**, proposte per la fetta 8`.
+- **Bot #244 sull'head del merge (31b94fd)**: «failure», ma il verdetto testuale è APPROVATO CON RISERVE con V-1 BASSA e V-2 COSMETICA. **V-1** (regressione di questa PR: in XHTML togliere un commento o un CDATA aperto dentro un tag incollava i pezzi, `</scr<!---->ipt>` diventava `</script>`): `FATTA` — la pagina è malformata e si porta via il resto; review #462 (chat Mani) APPROVATO. **V-2** (commento superato di `_GREZZI_RIPIEGO`): `FATTA`. Il «failure» sembra un falso rosso di `scripts/bot_esito.py` (conta le MEDIA preesistenti citate come V-x): fuori dall'area Mani, segnalato sotto.
 - **R-454-2, R-453-2, R-456-1, R-456-2**: `DEFERITA — BASSE/COSMETICHE, registrate in stato_progetto`.
 - **Test**: web suite 174 → 192 (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Fuzz differenziale 0 fughe (HTML, XHTML); fuzz con oracolo html5lib del revisore: 0 casi in cui il nuovo codice mostra più di HEAD un testo che i browser nascondono. Mutazioni in copie isolate: tutte prese.
 - **Review**: #453 (chat Mani) APPROVATO CON RISERVE (R-453-1 MEDIA, R-453-2 BASSA) → #454 BOCCIATO (R-454-1 MEDIA, regressione mia) → #455 APPROVATO CON RISERVE (R-454-2 BASSA preesistente) → #456 APPROVATO CON RISERVE (R-456-1 BASSA verso sicuro, R-456-2 COSMETICA).
@@ -28,5 +29,7 @@ Ramo `feat/mani-web-fetta7` da main dopo il merge di #243. Area della chat Mani:
 - Un primo tentativo (esenzione larga dentro svg/math) ha introdotto una fuga: presa dalla review #454 prima del commit.
 
 ## RICHIESTE ALLA CHAT MOTORE
+
+- (Nuova, per chi gestisce il bot) `scripts/bot_esito.py` sembra contare come nuove le MEDIA preesistenti citate col loro nome V-x nel verdetto («V-2 ve #244 (MEDIA, preesistente)»): sul head 31b94fd della PR #244 ha dato «failure — finding MEDIA» con soli finding nuovi BASSA/COSMETICA. Proposta: esentare anche le citazioni «V-x … (…, preesistente)», come già per gli id R-.
 
 Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…7»): aggancio di `leggi_pagina` con al modello solo `testo`, firma a finestra contaminata, tetto di chiamate, diario senza il testo della pagina, fiducia solo nei marcatori con il codice di quella chiamata.

@@ -7,7 +7,9 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #244 (https://github.com/Gasss23/Gas/pull/244): vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
-2. Fetta 8 per V-2 e V-3 della verifica esterna #244 (MEDIA preesistenti)?
+2. Fetta 8 per R-ve244-2 e R-ve244-3 (MEDIA preesistenti)?
+
+Nota: il check verifica-bot su 31b94fd è «failure» con verdetto testuale APPROVATO CON RISERVE (finding nuovi BASSA/COSMETICA, chiusi qui): sembra un falso rosso di `scripts/bot_esito.py` sulle MEDIA preesistenti citate come V-x (fuori dall'area Mani, segnalato nel report).
 3. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 4. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
 
@@ -25,7 +27,8 @@
 - **V-3 bot #243 (conteggi dell'handoff), V-3/V-4/V-5 ve #243 bis (dossier della fetta 6)**: `SALTATA — riguardano il dossier della fetta 6, superato da questo`
 - **V-1 bot #244 (noembed/noframes fra i nascosti), V-2 bot #244 (docstring)**: `FATTA`
 - **Merge di main (PR #241) e V-1 ve #244 (conflitto)**: `FATTA`
-- **V-2 ve #244 (XHTML script annidati), V-3 ve #244 (CDATA in HTML)**: `DEFERITA — MEDIA preesistenti, registrate, proposte per la fetta 8`
+- **V-1 bot #244 2° giro (XHTML, pezzi incollati), V-2 bot #244 2° giro (commento)**: `FATTA`
+- **R-ve244-2 (era V-2 ve #244, XHTML script annidati), R-ve244-3 (era V-3 ve #244, CDATA in HTML)**: `DEFERITA — MEDIA preesistenti, registrate, proposte per la fetta 8`
 - **R-454-2, R-453-2, R-456-1, R-456-2**: `DEFERITA — BASSE/COSMETICHE, registrate`
 
 ---
@@ -33,14 +36,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  10 ++++++
- modules/web/leggi.py               |  74 ++++++++++++++++++++++++++++++++++++-----
+ .claude/agents/memoria_revisore.md |  11 ++++++
+ modules/web/leggi.py               |  84 ++++++++++++++++++++++++++++++++++++++------
  reports/diff_sessione.md           |  18 +++++-----
- reports/handoff.md                 | 654 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 693 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  43 ++++++++++++++----------
- tests/test_unit_web_leggi.py       | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 7 files changed, 498 insertions(+), 439 deletions(-)
+ reports/ultimo_report.md           |  46 +++++++++++++++---------
+ tests/test_unit_web_leggi.py       | 140 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 7 files changed, 559 insertions(+), 435 deletions(-)
 ```
 
 ---
@@ -48,6 +51,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6e3318a fix(web): XHTML, commento o CDATA dentro un tag porta via il resto (V-1 bot #244, 2° giro)
+7f7070d chore(revisore): memoria review #462 — APPROVATO
+31b94fd docs(fine-task): report e handoff dopo il merge di main — chat Mani fetta 7 (#244)
 6392549 Merge origin/main in feat/mani-web-fetta7
 a194e01 docs(fine-task): report, stato e handoff — chat Mani fetta 7, noembed (#244)
 6f9bfe7 fix(web): noembed e noframes fra i nascosti (V-1 bot #244)
@@ -65,7 +71,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Cinque verdetti, incollati integralmente: #453, #454 (BOCCIATO), #455 (chat Mani) sul diff del commit `54706c2` (le riserve e il blocco sono stati chiusi nello stesso diff prima del commit; memoria in `7f28b4c`, `a75a310`, `ec14e89`); #456 (chat Mani) sul commit `6f9bfe7` (memoria in `85b2ac2`); #461 (chat Mani) sul merge di main `6392549` (PR #241 della chat Motore).
+Sei verdetti, incollati integralmente: #453, #454 (BOCCIATO), #455 (chat Mani) sul diff del commit `54706c2` (le riserve e il blocco sono stati chiusi nello stesso diff prima del commit; memoria in `7f28b4c`, `a75a310`, `ec14e89`); #456 (chat Mani) sul commit `6f9bfe7` (memoria in `85b2ac2`); #461 (chat Mani) sul merge di main `6392549` (PR #241 della chat Motore); #462 (chat Mani) sul commit `6e3318a` (memoria in `7f7070d`).
 
 ### Review #453 (chat Mani)
 
@@ -339,12 +345,58 @@ Memoria: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md
 
 ---
 
+### Review #462 (chat Mani)
+
+## VERDETTO: APPROVATO
+
+Review #462 (chat Mani), 2026-10-22. PR #244, ramo feat/mani-web-fetta7, base HEAD 31b94fd. Ho rivisto il diff staged: modules/web/leggi.py (+9/-5) e tests/test_unit_web_leggi.py (+5/-1). Prima ho letto CLAUDE.md, la sezione «Mani» di reports/stato_progetto.md e la coda della mia memoria.
+
+**Elementi del diff esaminati**
+
+1. `modules/web/leggi.py:669`. Il nuovo controllo `testo.rfind("<", i, inizio) > testo.rfind(">", i, inizio)` interrompe il ciclo prima di togliere un commento o un CDATA che si apre dentro un tag.
+   - Rischio esaminato: l'invariante «i pezzi precedenti finiscono tutti fuori da un tag». Un pezzo vuoto, o senza `<` e senza `>`, eredita lo stato del pezzo precedente, che è stato già controllato. Il contenuto del CDATA entra con l'escape, quindi non sposta lo stato. Nell'XML ben formato un `<` apre sempre del markup: nel testo va scritto `&lt;` e nei valori degli attributi è vietato. Quindi un `<` libero, dentro un tag o nel testo, è una pagina malformata e il taglio segue la politica già dichiarata.
+   - Unico falso «fuori» possibile: un `>` dentro un attributo seguito da un commento, per esempio `<a title="x>y<!---->">`. In quel caso la giuntura unisce solo testo di attributo e non può formare un nome di tag, perché servirebbe un `<` dopo l'ultimo `>`.
+   - Prove: in pagine valide nessuna perdita di testo visibile (`<p title="a>b">`, `1 &lt; 2`, `a > b`, `<![CDATA[a<b]]>`: VIS presente). Il costo resta lineare: un `rfind` per ciascuno dei due caratteri sul solo pezzo tenuto.
+   - Esito: ok.
+2. `modules/web/leggi.py:651-655`. La docstring aggiornata descrive la nuova politica e il motivo della linearità.
+   - Rischio esaminato: che dichiari più di quanto il codice fa. Corrisponde al codice.
+   - Esito: ok.
+3. `modules/web/leggi.py:119`. Il commento di `_GREZZI_RIPIEGO` ora dice che in HTML un grezzo autochiuso apre il testo grezzo fino a `</tag>` (V-2 bot #244, R-453-1).
+   - Rischio esaminato: un commento superato. Ora è coerente con il comportamento introdotto in fetta 7.
+   - Esito: ok.
+4. `tests/test_unit_web_leggi.py:980-982`. Tre casi nuovi: commento e CDATA dentro `</scr…ipt>`, più un caso di controllo fra tag normali con «PRIMA», «VIS» e «VIS2».
+   - Rischio esaminato: test vuoti. «PRIMA» non compare nei marcatori. Nel terzo caso «VIS» è sottostringa di «VIS2», ma se si tagliasse il CDATA mancherebbe «VIS2», e se si tagliasse il primo commento mancherebbero entrambi: il caso resta discriminante.
+   - Esito: ok.
+
+**Verifiche eseguite da me**
+- `pytest tests/test_unit_web_leggi.py`: 192 passed (Python 3.13.16).
+- Mutazioni in una copia estratta dall'index (`git checkout-index`):
+  - controllo tolto: 1 FAIL;
+  - `>` sostituito con `>=`: 1 FAIL;
+  - `rfind` da 0 invece che da `i`: passa, ed è una mutazione equivalente, come dichiarato.
+  - Interrompere solo il pezzo invece di tagliare il resto è una politica alternativa sicura (nessuna fuga), non un buco dei test.
+- Fuzz mirato alle giunture: frammenti di `</scr`, `ipt>`, `<!--`, `-->`, CDATA, `<`, `>`, virgolette, dentro uno script XHTML con «SEGRETO» dopo. 0 fughe su 100.000. Lo stesso fuzz con il controllo tolto trova 1 fuga su 20.000: è debole ma sensibile alla regressione.
+
+**Coerenza col progetto.** Il diff non tocca gas.py, la finestra, il cap di iterazioni, i provider né i guardrail. Nessuno slicing della history, nessuna simulazione di tool. La politica sulle pagine malformate resta fail-safe: si perde testo, il testo nascosto non arriva al modello.
+
+**Rischi esclusi**
+- Non ho rieseguito la suite su 3.11 né con rete e DNS bloccati: quei risultati sono dichiarati, non riverificati.
+- Non ho rieseguito il fuzz HTML da 100k dell'autore: ho fatto solo il mio fuzz XHTML sulle giunture.
+- Non ho letto il commento del bot #244 su 31b94fd.
+
+**Nota su scripts/bot_esito.py (fuori dall'area Mani, non bloccante).** Secondo la docstring di `scripts/bot_esito.py:183`, la funzione conta le gravità citate nel testo libero, per esempio «V-1 (media)». Esenta solo le citazioni di riserve già registrate con id R- («R-203-1 (ALTA, ...)», R-161-1). Se il verdetto del bot cita «V-2/V-3 verifica esterna #244 (MEDIA, preesistenti)», il check va in «failure» con la motivazione «finding MEDIA» anche se i finding nuovi sono solo BASSA e COSMETICA. Il falso rosso è plausibile, ma non l'ho verificato sul commento reale. Conviene registrarlo in stato_progetto come candidato per la chat che gestisce il bot, ad esempio esentando anche le citazioni «V-x … #N (…, preesistente)».
+
+Memoria: riga #462 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con scripts/commit_memoria_revisore.sh (commit 7f7070d, solo quel file). Il diff staged del motore è rimasto intatto nell'index. Nessuna lezione nuova.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Web suite: 174 → 192 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «192 passed in 21.57s» su Python 3.13; «192 passed in 21.97s» su 3.11 (venv); «192 passed in 21.31s» con rete e DNS veri bloccati via sitecustomize). Primo giro (`54706c2`) 174 → 190, secondo (`6f9bfe7`) 190 → 192.
 - Fuzz differenziale ripiego contro parser: 0 fughe su 200k pagine HTML (3.13), 100k (3.11, escluse `<!-->`), 100k XHTML (3.13). Fuzz con oracolo html5lib (`fuzz454.py` del revisore): «fughe ripiego 0, nuovo>HEAD 326 di cui nascosti per html5lib 0 su 30000».
 - Mutazioni in copie isolate, tutte prese: senza `_modo_grezzo`, senza ripiego TypeError, esenzione svg/math per tutti o per nessuno (parser e ripiego), ripiego che ignora i grezzi autochiusi, contati del ripiego con esenzione, `_componi` senza XML, CDATA senza escape, commenti tenuti, cache disattivata (quadratico), ripiego senza xhtml, commento/CDATA senza fine tenuto.
 - Secondo giro: fuzz HTML 0 fughe (200k 3.13, 100k 3.11); fuzz454 con oracolo html5lib contro HEAD 51f7986 «nuovo>HEAD 0 di cui nascosti 0 su 30000» (gli atomi non contenevano noembed: il revisore l'ha rifatto con noembed/noframes, 0/0 su 30k + 10k); mutazioni senza noembed / senza noframes prese.
+- Terzo giro (`6e3318a`): 192 passed su 3.13, 3.11 e senza rete; fuzz HTML 0 fughe su 100k; mutazioni «senza controllo dentro-tag» e «taglio prima del pezzo» prese.
 - Sull'albero unito col merge di main (review #461): web 192 passed; kernel 1015 PASS / 1 FAIL (T31g: manca `sqlite_vec` in questo ambiente, preesistente); notte + gate + verifica_bot 1278 passed.
 - Il diff della fetta non tocca `gas.py` né altre suite (quelle portate dal merge sono della chat Motore).
 
@@ -355,10 +407,12 @@ Memoria: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md
 - `51f7986` (fine-task del primo giro): run 39772940360 success (unit-suite «190 passed» della web suite su 3.11.17, letto dal bot), handoff-check success; verifica-bot success.
 - `85b2ac2`, `6f9bfe7`: nessuna run su questi SHA da soli (pushati insieme ad `a194e01`).
 - `a194e01` (fine-task del secondo giro): run di push non letta in questa sessione; il bot sul suo head non aveva ancora riportato alla scrittura.
-- `6392549` (merge di main): nessuna run su questo SHA da solo (pushato col commit di fine-task che contiene questo file).
+- `6392549` (merge di main): nessuna run su questo SHA da solo (pushato insieme a `31b94fd`).
+- `31b94fd` (fine-task dopo il merge): run 39775073207 success (unit-suite, handoff-check; web suite «192 passed» su 3.11.17, letto dal bot); verifica-bot **failure** (vedi §0, nota).
+- `7f7070d`, `6e3318a`: nessuna run su questi SHA da soli (pushati col commit di fine-task che contiene questo file).
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **V-2 ve #244** MEDIA preesistente (XHTML: script/style annidati con lo stesso nome chiudono prima); **V-3 ve #244** MEDIA preesistente (HTML: `<![CDATA[` letto fino a `]]>` invece che al primo `>`); **R-456-1 (chat Mani)** BASSA verso sicuro: `<svg><noembed/></svg>VIS` nasconde il resto della pagina; **R-456-2 (chat Mani)** COSMETICA commento di `_TITOLO_VUOTO_IN`; **R-454-2 (chat Mani)** BASSA preesistente: doppio escape negli script (`<script><!--<script></script>X`); **R-453-2 (chat Mani)** BASSA preesistente: PI e DOCTYPE interno in XHTML.
+- Di questa fetta: **R-ve244-2** (era V-2 ve #244) MEDIA preesistente (XHTML: script/style annidati con lo stesso nome chiudono prima); **R-ve244-3** (era V-3 ve #244) MEDIA preesistente (HTML: `<![CDATA[` letto fino a `]]>` invece che al primo `>`); **R-456-1 (chat Mani)** BASSA verso sicuro: `<svg><noembed/></svg>VIS` nasconde il resto della pagina; **R-456-2 (chat Mani)** COSMETICA commento di `_TITOLO_VUOTO_IN`; **R-454-2 (chat Mani)** BASSA preesistente: doppio escape negli script (`<script><!--<script></script>X`); **R-453-2 (chat Mani)** BASSA preesistente: PI e DOCTYPE interno in XHTML.
 - Restano: R-450-1 e V-2 ve #243, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…7».
