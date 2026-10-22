@@ -160,6 +160,20 @@ _VUOTI_HTML = frozenset({
     "source", "track", "wbr",
 })
 _RESTO_NOME = re.compile(r"[^ \t\n\r\f/>]*")
+# Chiusure di blocco che il browser esegue se il tag è «in scope», togliendo tutto quello che
+# sta sopra; nessuno di questi elementi si chiude da solo aprendone un altro (R-ve246b-5).
+_CHIUSURE_IN_SCOPE = frozenset({
+    "address", "article", "aside", "blockquote", "center", "details", "dialog", "dir", "div",
+    "dl", "fieldset", "figcaption", "figure", "footer", "header", "hgroup", "listing", "main",
+    "menu", "nav", "ol", "pre", "search", "section", "summary", "ul",
+})
+# Elementi di formattazione: tolti dalla pila, il browser li ricrea al primo testo, quindi
+# una chiusura che li toglie lascerebbe la pila di Gas più corta della sua (B-476-1).
+_FORMATTANTI = frozenset({"a", "b", "big", "code", "em", "font", "i", "nobr", "s", "small", "strike",
+                          "strong", "tt", "u"})
+# Elementi HTML che fanno da confine allo scope (o cambiano modo, come select).
+_CONFINI_SCOPE = frozenset({"applet", "caption", "html", "table", "td", "th", "marquee", "object",
+                            "template", "select"})
 
 
 class _Contesto:
@@ -194,6 +208,12 @@ class _Contesto:
         self._posizioni: dict[str, list[int]] = {}  # nome → indici nella pila, dal basso
         self._html: list[int] = []                   # indici degli elementi HTML
         self._punti: list[int] = []                  # indici dei punti di integrazione
+        # Indici degli elementi svg/math «speciali» per le chiusure HTML: i punti e ogni
+        # annotation-xml di MathML, anche senza encoding HTML (V-1 bot #248, V-2 bot #250).
+        self._speciali: list[int] = []
+        self._confini: list[int] = []                # indici degli elementi HTML di confine
+        self._formattanti: list[int] = []            # indici degli elementi di formattazione
+        self._nascosti_html: list[int] = []          # indici dei nascosti HTML (noscript, canvas…)
         self._visti: set[str] = set()                # nomi già aperti nella pagina (sovrastima)
 
     @staticmethod
@@ -214,8 +234,16 @@ class _Contesto:
         self._posizioni.setdefault(nome, []).append(k)
         if spazio == "html":
             self._html.append(k)
+            if nome in _CONFINI_SCOPE:
+                self._confini.append(k)
+            if nome in _FORMATTANTI:
+                self._formattanti.append(k)
+            if nome in _TAG_NASCOSTI:
+                self._nascosti_html.append(k)
         elif punto or self._punto(nome, spazio):
             self._punti.append(k)
+        if spazio != "html" and (k in self._punti[-1:] or (spazio == "math" and nome == "annotation-xml")):
+            self._speciali.append(k)
 
     def _togli_da(self, k: int) -> list[str]:
         """Toglie dalla pila l'elemento k e quelli sopra; restituisce i nomi tolti."""
@@ -228,6 +256,14 @@ class _Contesto:
             self._html.pop()
         while self._punti and self._punti[-1] >= k:
             self._punti.pop()
+        while self._speciali and self._speciali[-1] >= k:
+            self._speciali.pop()
+        while self._confini and self._confini[-1] >= k:
+            self._confini.pop()
+        while self._formattanti and self._formattanti[-1] >= k:
+            self._formattanti.pop()
+        while self._nascosti_html and self._nascosti_html[-1] >= k:
+            self._nascosti_html.pop()
         return tolti
 
     def _in_cima(self, nome: str) -> int:
@@ -333,9 +369,9 @@ class _Contesto:
         """Registra una chiusura. Restituisce (ignorata, nascosti chiusi oltre al tag). Come il
         browser: nel contenuto estraneo «</p>» e «</br>» fanno uscire (V-1 ve #246), le altre
         chiusure risalgono la pila per nome finché trovano un elemento HTML; da lì valgono le
-        regole HTML, che ripartono dal nodo corrente e si fermano al primo elemento HTML o
-        punto di integrazione. Dove l'esito dipende da quello che la pila non vede, la pila
-        diventa incerta."""
+        regole HTML, che ripartono dal nodo corrente e si fermano al primo elemento HTML,
+        punto di integrazione o annotation-xml. Dove l'esito dipende da quello che la pila non
+        vede, la pila diventa incerta."""
         if not self.pila:
             return False, []
         usciti: list[str] = []
@@ -350,8 +386,9 @@ class _Contesto:
                 if in_cima > html:
                     return False, [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
                 if html < 0:
-                    if self._punti:
-                        # Un punto di integrazione ferma la chiusura di un antenato (R-468-2).
+                    if self._speciali:
+                        # Un punto di integrazione o un annotation-xml ferma la chiusura di
+                        # un antenato (R-468-2, V-1 bot #248).
                         return True, []
                     if tag in self._visti or tag in self._IMPLICITI:
                         # Il tag può stare fra gli antenati HTML che la pila non vede: il
@@ -359,16 +396,26 @@ class _Contesto:
                         self.incerta = True
                     # Mai aperto nella pagina: per il browser è una chiusura in più, ignorata.
                     return True, []
-        # Regole HTML dal nodo corrente: ci si ferma al primo elemento HTML o punto di
-        # integrazione (sotto c'è sempre un punto di integrazione: gli elementi HTML si
-        # aprono solo lì sopra).
-        fermo = max(self._html[-1] if self._html else -1, self._punti[-1] if self._punti else -1)
+        # Regole HTML dal nodo corrente: ci si ferma al primo elemento HTML, punto di
+        # integrazione o annotation-xml (sotto c'è sempre un punto di integrazione: gli
+        # elementi HTML si aprono solo lì sopra).
+        fermo = max(self._html[-1] if self._html else -1, self._speciali[-1] if self._speciali else -1)
         in_cima = self._in_cima(tag)
         if fermo < 0:
             return False, usciti
         if in_cima >= fermo:
             return False, usciti + [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
         if in_cima >= 0 and self.pila[fermo][1] == "html":
+            if (tag in _CHIUSURE_IN_SCOPE and self.pila[in_cima][1] == "html"
+                    and not (self._speciali and self._speciali[-1] > in_cima)
+                    and not (self._confini and self._confini[-1] > in_cima)
+                    and not (self._formattanti and self._formattanti[-1] > in_cima)
+                    and not (self._nascosti_html and self._nascosti_html[-1] > in_cima)):
+                # «</ul>» con un «<li>» aperto sopra: il tag è in scope, il browser chiude lui e
+                # tutto quello che sta sopra (R-ve246b-5). Non se sopra c'è un nascosto HTML
+                # aperto: con gli script attivi noscript è testo grezzo e «</div>» è suo
+                # contenuto, html.parser invece lo legge come tag (V-1 bot #250 bis).
+                return False, usciti + [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
             # Elemento HTML diverso con il tag più sotto: il browser a volte chiude (scope,
             # chiusure implicite), a volte no.
             self.incerta = True
@@ -393,6 +440,7 @@ def _esito_autochiuso(tag: str, contesto: _Contesto, aperti: dict, xhtml: bool,
         return "vuoto"
     return "aperto"
 _MINUSCOLE_ASCII = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+_LETTERE_ASCII = frozenset("abcdefghijklmnopqrstuvwxyz")
 # Riferimenti numerici enormi («&#» + migliaia di cifre): html.parser solleva ValueError
 # (limite delle cifre degli interi) e la pagina diventerebbe illeggibile (R-ve235-4).
 # Nessun carattere vero supera U+10FFFF: 8+ cifre decimali o 7+ esadecimali sono comunque
@@ -714,6 +762,7 @@ class _Estrattore(HTMLParser):
         self._aperti: dict[str, int] = {}  # aperture contate per nome (V-1 bot #242)
         self._nel_titolo = False
         self._contesto = _Contesto(self._aperti)
+        self._taglia = False  # un tag letto diversamente dal browser: il resto si nasconde
 
     def _locale(self, tag: str) -> str:
         # In XHTML conta il nome locale: «<h:script>» con h = XHTML è uno script (V-1 ve #245).
@@ -819,6 +868,31 @@ class _Estrattore(HTMLParser):
         self.handle_comment(rawdata[i + 2:j])
         return j + 1
 
+    def _controlla_tag(self, i: int, j: int, salto: int) -> None:
+        # html.parser chiude un tag al primo «>» anche dentro un valore tra virgolette mai
+        # chiuso se ci sono spazi attorno a «=» («<div a = "x>SEGRETO»), il browser no: il tag
+        # va avanti e il resto non è testo (R-ve248-3). Il tag letto si riconfronta con la
+        # regola del browser, la stessa del ripiego; se non coincide il resto si nasconde.
+        if j < 0 or self._taglia:
+            return
+        basso = self.rawdata[i:j].translate(_MINUSCOLE_ASCII)
+        fine = _FINE_TAG.match(basso, _RESTO_NOME.match(basso, salto).end())
+        if fine is None or fine.end() != len(basso):
+            self._taglia = True
+
+    def parse_starttag(self, i: int) -> int:
+        j = super().parse_starttag(i)
+        self._controlla_tag(i, j, 1)
+        return j
+
+    def parse_endtag(self, i: int) -> int:
+        j = super().parse_endtag(i)
+        # «</» senza una lettera dopo è un commento fasullo fino al primo «>», per il browser e
+        # per html.parser: le virgolette non contano (R-476-1).
+        if self.rawdata[i + 2:i + 3].translate(_MINUSCOLE_ASCII) in _LETTERE_ASCII:
+            self._controlla_tag(i, j, 2)
+        return j
+
     def close(self) -> None:
         # Gli html.parser senza le patch del 2025 danno come testo quello che a fine pagina è
         # rimasto aperto («<!--<script>X», «<a b="X»), i parser nuovi lo scartano come i
@@ -848,7 +922,7 @@ class _Estrattore(HTMLParser):
             self.pezzi.append("\n")
 
     def handle_data(self, data: str) -> None:
-        if self._salta or self._contesto.incerta:
+        if self._salta or self._contesto.incerta or self._taglia:
             # Con la pila incerta il resto della pagina si nasconde (vedi _Contesto).
             return
         if self._nel_titolo:
@@ -1090,6 +1164,10 @@ def _componi(url_finale: str, pagina: dict) -> dict:
                 raise ValueError("html.parser senza le patch del 2025")
             estrattore.feed(grezzo)
             estrattore.close()
+            if estrattore._taglia:
+                # Un tag letto diversamente dal browser: il resto è nascosto (R-ve248-3, V-3 bot #250).
+                logger.warning("leggi_pagina: tag letto diversamente dal browser, resto della pagina nascosto su %r",
+                               url_finale[:200])
             if estrattore._contesto.incerta:
                 # Il resto della pagina è stato nascosto: lo si dice nella scatola nera (R-470-2).
                 logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
