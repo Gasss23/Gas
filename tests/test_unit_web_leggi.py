@@ -1129,6 +1129,239 @@ def test_xhtml_titolo_con_tag():
     assert "Titolo: T U" in t and "<b>" not in t and "VIS" in t, t
 
 
+@pytest.mark.parametrize("pagina", [
+    # CDATA in un punto di integrazione con un elemento HTML aperto: commento fasullo (R-463-1)
+    "<p>PRIMA</p><svg><foreignObject><div><![CDATA[x><script>]]></svg>SEGRETO</script>VIS",
+    "<p>PRIMA</p><math><mi><b><![CDATA[x><script>]]></math>SEGRETO</script>VIS",
+    # con l'elemento HTML chiuso prima di «</svg>»: senza il nodo corrente il CDATA sarebbe vero
+    "<p>PRIMA</p><svg><foreignObject><div><![CDATA[x><script>]]></div></svg>SEGRETO</script>VIS",
+    # annotation-xml di math è sempre un punto di integrazione: un tag di uscita non esce (B-467-1)
+    '<p>PRIMA</p><math><semantics><mi>x</mi><annotation-xml encoding="text/html"><div>SEGRETO</div>'
+    '</annotation-xml></semantics></math>VIS',
+    # una chiusura HTML non attraversa un punto di integrazione (B-467-2)
+    "<p>PRIMA</p><svg><foreignObject><div><math><mi></div></svg>SEGRETO",
+    "<p>PRIMA</p><svg><foreignObject><div><svg><desc></div></svg>SEGRETO",
+    "<p>PRIMA</p><math><mi><div><svg><desc></div></math>SEGRETO",
+    # annotation-xml anche sotto un elemento svg: _esci si ferma lì (R-468-1)
+    '<p>PRIMA</p><math><annotation-xml encoding="text/html"><svg><p>SEGRETO</p></svg></annotation-xml></math>VIS',
+    # un antenato nascosto fuori dalla pila non si chiude attraverso un punto di integrazione (R-468-2)
+    "<p>PRIMA</p><canvas><svg><foreignObject></canvas></svg>SEGRETO",
+    # «<title/>» in un punto di integrazione apre il titolo (R-450-1)
+    "<p>PRIMA</p><svg><foreignObject><title/></svg>SEGRETO</title>VIS",
+    "<p>PRIMA</p><svg><foreignObject><script/></svg>SEGRETO</script>VIS",
+    # «<![cdata[» minuscolo non è un CDATA (R-463-2)
+    "<p>PRIMA</p><svg><![cdata[ x></svg><script> ]]></svg> SEGRETO </script> VIS",
+])
+def test_nodo_corrente_come_il_browser(pagina):
+    """_Contesto tiene il nodo corrente dentro svg/math come il browser: nei punti di
+    integrazione con un elemento HTML aperto valgono le regole HTML. Parser e ripiego."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    corpo = "\n".join(r for r in t.splitlines() if not r.startswith("Titolo:"))
+    assert "SEGRETO" not in corpo and "PRIMA" in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and "PRIMA" in r, r
+
+
+@pytest.mark.parametrize("pagina", [
+    # «</p>» e «</br>» fanno uscire dal contenuto estraneo (V-1 ve #246)
+    "<p>Ciao</p><svg></p><style>x</svg>SEGRETO</style>fine",
+    "<p>Ciao</p><svg></br><script>X</svg>SEGRETO</script>fine",
+    "<p>Ciao</p><math></p><script>X</math>SEGRETO</script>fine",
+    "<p>Ciao</p><svg><g></p><iframe>X</svg>SEGRETO</iframe>fine",
+    "<p>Ciao</p><svg></p><![CDATA[x><script>]]></svg>SEGRETO</script>fine",
+    # nel contenuto estraneo iframe è un elemento: il CDATA vero dentro arriva fino a «]]>»
+    "<p>Ciao</p><math><iframe><![CDATA[x</iframe><li>SEGRETO",
+    # un antenato HTML chiuso da dentro svg/math (V-2 ve #246)
+    "<p>Ciao</p><div><svg></div><script>/*</svg>SEGRETO*/</script>fine",
+    "<p>Ciao</p><b><math></b><style>x</math>SEGRETO</style>fine",
+    "<p>Ciao</p><section><svg></section><noembed>x</svg>SEGRETO</noembed>fine",
+    "<p>Ciao</p><div><svg></div><![CDATA[x><script>]]></svg>SEGRETO</script>fine",
+    "<p>Ciao</p><table><tr><td><svg></tbody><![CDATA[x><script>]]></svg>SEGRETO</script>fine",
+    # un'uscita dal contenuto estraneo dentro canvas: un elemento speciale ferma «</canvas>» (V-5 ve #246)
+    "<p>Ciao</p><canvas><math><div/></canvas>SEGRETO",
+    "<p>Ciao</p><canvas><math><h1></canvas>SEGRETO",
+    "<p>Ciao</p><canvas/><svg><h1></canvas>SEGRETO",
+    # «<font>» con color/face/size esce dal contenuto estraneo (B-470-1)
+    "<p>Ciao</p><svg><font size=2><script></svg>SEGRETO</script>VIS",
+    "<p>Ciao</p><math><font face=x><style></math>SEGRETO</style>VIS",
+    "<p>Ciao</p><svg><font color><script></svg>SEGRETO</script>VIS",
+    # un'uscita che svuota la pila lascia svg/math contati: i conteggi possono aver chiuso
+    # canvas per errore (radice V-5 ve #246, R-471-1)
+    "<p>Ciao</p><canvas><form></canvas><svg><b/>SEGRETO",
+    "<p>Ciao</p><canvas><form></canvas><svg></p>SEGRETO",
+    "<p>Ciao</p><canvas><form></canvas><svg></br>SEGRETO",
+    # annotation-xml senza encoding HTML non è un punto di integrazione: un'uscita esce anche
+    # da math e il «</math>» dopo non chiude l'svg aperto (V-1 ve #246 bis)
+    "<p>Ciao</p><math><annotation-xml></p><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml></br><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml><br><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml><div></div><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml><img><svg></math>SEGRETO",
+    # vale il primo «encoding», senza togliere spazi (B-473-1)
+    '<p>Ciao</p><math><annotation-xml encoding=" text/html "></p><svg></math>SEGRETO',
+    '<p>Ciao</p><math><annotation-xml encoding="x" encoding="text/html"></p><svg></math>SEGRETO',
+    # un nascosto autochiuso nel contenuto estraneo è vuoto davvero (V-2 ve #246 bis)
+    "<p>Ciao</p><svg><script/><svg></script></svg>SEGRETO",
+    "<p>Ciao</p><svg><style/><svg></style></svg>SEGRETO",
+    "<p>Ciao</p><math><script/><math></script></math>SEGRETO",
+    # CDATA con un elemento HTML in cima: il browser può averlo già chiuso
+    "<p>Ciao</p><svg><foreignObject><p><div></div><![CDATA[x></p></svg>SEGRETO]]>fine",
+])
+def test_pila_incerta_o_uscita_non_fanno_uscire_testo(pagina):
+    """Dove il browser esce da svg/math o dipende da antenati che la pila non vede, il testo
+    nascosto non arriva al modello: uscita con «</p>»/«</br>», testo grezzo sempre, pila
+    incerta che nasconde il resto. Parser e ripiego."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "Ciao" in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and "Ciao" in r, r
+
+
+def test_font_senza_attributi_resta_in_svg():
+    """Senza color/face/size «<font>» resta un elemento svg: «</svg>» chiude e X è visibile
+    (B-470-1). Il ripiego non legge gli attributi: lì la pila diventa incerta."""
+    pagina = "<p>Ciao</p><svg><font><script></svg>X"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "X" in t.split("Ciao", 1)[1], t
+    assert "X" not in web._testo_senza_parser(pagina)
+
+
+def test_chiusura_fermata_da_un_elemento_html_rende_incerta():
+    """Una chiusura fermata da un elemento HTML diverso, con il tag più sotto, rende la pila
+    incerta (R-470-1)."""
+    c = web._Contesto({})
+    for tag in ("svg", "foreignobject", "div", "b"):
+        c.apri(tag, True)
+    assert c.chiudi("div") == (True, []) and c.incerta
+
+
+def test_pila_incerta_lascia_traccia_nel_log(caplog):
+    """Quando la pila diventa incerta lo si scrive nella scatola nera (R-470-2)."""
+    pagina = "<p>Ciao</p><div><svg></div>resto"
+    with caplog.at_level("WARNING", logger="gas.web"):
+        web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})
+    assert any("incerti" in m for m in caplog.messages), caplog.messages
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="gas.web"):
+        web._testo_senza_parser(pagina)
+    assert any("incerti nel ripiego" in m for m in caplog.messages), caplog.messages
+
+
+def test_chiusura_mai_aperta_in_svg_non_nasconde_il_resto():
+    """Una chiusura di un tag mai aperto nella pagina, dentro svg, per il browser è ignorata:
+    la pila non diventa incerta e il testo dopo «</svg>» resta (V-1 bot #242)."""
+    pagina = "<p>a</p><svg>SEGRETO</script>SEGRETO_2</svg>VIS"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "VIS" in t and "SEGRETO" not in t, t
+    assert "VIS" in web._testo_senza_parser(pagina)
+
+
+def test_annotation_xml_con_encoding_html_e_un_punto_di_integrazione():
+    """Con encoding HTML annotation-xml è un punto di integrazione: «</p>» non esce, «</math>»
+    chiude anche l'svg dentro e VIS è visibile, come per lexbor. Il ripiego non legge
+    l'encoding: pila incerta (V-1 ve #246 bis)."""
+    for enc in ("text/html", "TEXT/HTML", "Application/XHTML+XML"):
+        pagina = f'<p>Ciao</p><math><annotation-xml encoding="{enc}"></p><svg></math>VIS'
+        t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                             "troncato": False})["testo"]
+        assert "VIS" in t, t
+        assert "VIS" not in web._testo_senza_parser(pagina)
+
+
+def test_ripiego_annotation_xml_rende_la_pila_incerta():
+    """Il ripiego non legge l'encoding: un annotation-xml in math rende la pila incerta, così
+    un «</math>» non fa uscire testo che il browser lascia dentro svg (V-1 ve #248)."""
+    pagina = '<p>A</p><math>MK0<svg>MK1<annotation-xml encoding="text/html">MK2<annotation-xml>MK3</math>MK4'
+    r = web._testo_senza_parser(pagina)
+    assert "MK4" not in r and "A" in r, r
+
+
+def test_pila_profonda_con_tante_chiusure_resta_lineare():
+    """Profondità vicina al tetto e centinaia di migliaia di chiusure assenti: ogni chiusura
+    costa O(1), non O(profondità) (V-4 ve #246 bis)."""
+    pagina = "<svg>" + "<g>" * 1000 + "</q>" * 400000
+    inizio = time.monotonic()
+    web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                     "troncato": False})
+    assert time.monotonic() - inizio < 6
+    inizio = time.monotonic()
+    web._testo_senza_parser(pagina)
+    assert time.monotonic() - inizio < 6
+
+
+def test_pila_profonda_resta_lineare():
+    """Tante aperture dentro svg e tante chiusure di tag assenti: tempo lineare, niente
+    scansioni della pila a ogni chiusura (V-3 ve #246)."""
+    n = 20000
+    for pagina in ("<svg>" + "<g>" * n + "</q>" * n + "</svg>VIS",
+                   "<svg><foreignObject><div><svg>" + "<g>" * n + "</q>" * n,
+                   "<svg><foreignObject>" + "<b>" * n + "</q>" * n):
+        inizio = time.monotonic()
+        web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})
+        web._testo_senza_parser(pagina)
+        assert time.monotonic() - inizio < 5, pagina[:40]
+
+
+def test_chiusura_html_attraverso_elementi_svg():
+    """Senza punti di integrazione in mezzo, una chiusura HTML chiude anche gli elementi svg
+    sopra, come nei browser: VIS resta visibile (controprova di B-467-2)."""
+    pagina = "<p>PRIMA</p><svg><foreignObject><div><svg><g></div></svg></svg>VIS"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "VIS" in t, t
+    assert "VIS" in web._testo_senza_parser(pagina)
+
+
+@pytest.mark.parametrize("pagina, visibili", [
+    # un tag HTML fa uscire da svg (V-2 ve #243): il titolo dopo è un titolo vero; svg resta
+    # contato fino a «</svg>» (verso sicuro, V-5 ve #246), quindi qui VIS resta nascosto
+    ("<p>PRIMA</p><svg><p><title/></svg>SEGRETO</title>VIS", ("PRIMA",)),
+    ("<p>PRIMA</p><svg><p><title/></svg>SEGRETO</title></svg>VIS", ("PRIMA", "VIS")),
+    ("<p>PRIMA</p><svg><g><p>VIS</p></g></svg>VIS2", ("PRIMA", "VIS", "VIS2")),
+    # dentro svg vero «<x/>» è vuoto: il resto della pagina non si perde (R-456-1)
+    ("<p>PRIMA</p><svg><script/></svg>VIS", ("PRIMA", "VIS")),
+    ("<p>PRIMA</p><svg><noembed/></svg>VIS", ("PRIMA", "VIS")),
+    # in un punto di integrazione senza elementi HTML aperti il CDATA è vero
+    ("<p>PRIMA</p><svg><foreignObject><![CDATA[a>b</svg>SEGRETO]]></svg>VIS", ("PRIMA", "VIS")),
+    # dopo la chiusura dell'elemento HTML il nodo corrente torna foreignObject: CDATA vero
+    ("<p>PRIMA</p><svg><foreignObject><div></div><![CDATA[a>b</svg>SEGRETO]]></svg>VIS", ("PRIMA", "VIS")),
+    ("<p>PRIMA</p><svg><foreignObject><style>x</style><![CDATA[a>b</svg>SEGRETO]]></svg>VIS", ("PRIMA", "VIS")),
+    # dentro svg/math i grezzi sono elementi svg/math, non testo grezzo: «</svg>» chiude davvero
+    ("<p>PRIMA</p><svg><style></svg>VIS", ("PRIMA", "VIS")),
+    # un nascosto chiuso da un'uscita resta contato (scelta prudente): VIS, visibile ai browser,
+    # qui resta nascosto; l'importante è che SEGRETO non esca
+    ("<p>PRIMA</p><math><noembed a='</noembed>'><span><noembed>SEGRETO</noembed>VIS", ("PRIMA",)),
+    # una chiusura fermata da un elemento HTML (mi, span, table…) non chiude math
+    ("<p>PRIMA</p><math><mi><span><table/><svg></math>SEGRETO", ("PRIMA",)),
+])
+def test_uscita_e_autochiusi_in_svg(pagina, visibili):
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    corpo = "\n".join(r for r in t.splitlines() if not r.startswith("Titolo:"))
+    assert "SEGRETO" not in corpo and all(v in corpo for v in visibili), t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and all(v in r for v in visibili), r
+
+
+@pytest.mark.parametrize("pagina", [
+    '<r xmlns:h="http://www.w3.org/1999/xhtml"><p>PRIMA</p><h:script>SEGRETO</h:script>VIS</r>',
+    '<x:style xmlns:x="http://www.w3.org/1999/xhtml">SEGRETO</x:style><p>PRIMA</p>VIS',
+])
+def test_xhtml_nomi_con_prefisso(pagina):
+    """In XHTML conta il nome locale: «<h:script>» è uno script (V-1 ve #245)."""
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                         "corpo": pagina.encode(), "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "PRIMA" in t and "VIS" in t, t
+    r = web._testo_senza_parser(pagina, xhtml=True)
+    assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
+
+
 def test_xhtml_commenti_e_cdata():
     """In XHTML commenti e CDATA seguono l'XML anche dentro script e style: «</script>» lì
     dentro non chiude lo script (V-2 bot #243); il CDATA fuori da uno script è testo."""
@@ -1227,7 +1460,7 @@ def test_title_autochiuso_dentro_svg_resta_vuoto():
     "<svg><!--</svg>-->SEGRETO</svg>VIS",
     "<svg><svg>SEGRETO</svg>SEGRETO_2</svg>VIS",                 # annidamento contato (R-431-3)
     "<svg>SEGRETO</script>SEGRETO_2</svg>VIS",                  # una chiusura scala solo il suo nome (V-1 bot #242)
-    "<svg><noscript>SEGRETO</svg>SEGRETO_2</noscript></svg>VIS",
+    "<svg><noscript>SEGRETO</noscript>SEGRETO_2</svg>VIS",      # in svg noscript è un elemento svg
     "<svg a=x/>SEGRETO</svg>VIS",                               # la «/» è del valore: non autochiuso
     "<noscript/>SEGRETO</noscript>VIS",                         # «/» ignorata fuori da svg e math
     '<script>SEGRETO</script a=">">VIS',                        # chiusura con virgolette (V-1 bot #239, 2° giro)
@@ -1236,10 +1469,10 @@ def test_title_autochiuso_dentro_svg_resta_vuoto():
     '<!x a="><script>">SEGRETO</script>VIS',
     '</ a="><script>">SEGRETO</script>VIS',
     "</svg><svg>SEGRETO</svg>VIS",                              # una chiusura in più non manda il contatore sotto zero
-    "<svg><textarea></svg></textarea>SEGRETO</svg>VIS",         # grezzi come in html.parser (R-445-1)
-    "<svg><xmp></svg></xmp>SEGRETO</svg>VIS",
-    "<svg><noembed></svg></noembed>SEGRETO</svg>VIS",
-    "<svg><noframes></svg></noframes>SEGRETO</svg>VIS",
+    "<svg><foreignObject><textarea></svg></textarea>SEGRETO</svg>VIS",  # grezzi in un punto di integrazione (R-445-1)
+    "<svg><foreignObject><xmp></svg></xmp>SEGRETO</svg>VIS",
+    "<svg><foreignObject><noembed></svg></noembed>SEGRETO</svg>VIS",
+    "<svg><foreignObject><noframes></svg></noframes>SEGRETO</svg>VIS",
     "<script/>SEGRETO<svg><noscript></script>VIS",               # grezzo autochiuso: testo grezzo (R-445-1, R-453-1)
     "<script/>SEGRETO</script>VIS",                             # per i browser «<script/>» apre lo script
     "<title/>SEGRETO</title>VIS",                               # anche «<title/>» (V-2 ve #242)
