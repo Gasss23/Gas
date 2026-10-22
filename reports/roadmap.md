@@ -184,7 +184,7 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 - **Divisione 80/20:** di giorno il 20% importante (Gas-operatore + Claude), di notte il resto tecnico.
 - **Ultimi giri entro le 05:00**, così alle 10 la finestra delle 5 ore è già ripartita. Va bene consumare i limiti di notte, ma il limite settimanale va tenuto d'occhio nelle prime settimane.
 - ⏳ Lavori già destinati al turno di notte: regola di merge nel codice e allineamento di `fine-task.md` ("non mergiare"); il lavoro tecnico di R7.
-- ⚠️ Una routine lavora senza chiedere permessi. Prima di accenderla vanno fatte le protezioni gratuite di R4 (issue disattivate, interazioni limitate, l'agente legge solo il codice e la sua coda).
+- ⚠️ Una routine lavora senza chiedere permessi: per questo le protezioni gratuite di R4 sono state fatte prima di accenderla (22 ottobre, vedi R4).
 - Limiti del cloud: lì Gas non gira (niente chiavi dei modelli, niente recinto), quindi le prove del recinto valgono solo nei test automatici. Il cloud scrive solo su un ramo suo e non può cancellare rami. Per GitHub: `gh api` REST passa dal proxy della sessione (provato di giorno il 22 ottobre); il turno notturno non ha gli strumenti GitHub di sessione (attività creata senza connettori). Se non riesce ad aprire la PR, lo scrive in `reports/report_notte.md` sul suo ramo.
 - Più avanti: Gas stesso scrive le proposte in coda (vedi "Ponte" in R10).
 
