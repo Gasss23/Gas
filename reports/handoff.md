@@ -7,8 +7,9 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #244 (https://github.com/Gasss23/Gas/pull/244): vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
-2. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
-3. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
+2. Fetta 8 per V-2 e V-3 della verifica esterna #244 (MEDIA preesistenti)?
+3. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
+4. Porte verso host pubblici ancora libere (R6 della review #391, chat Mani).
 
 (`gh` non autenticato nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
@@ -23,6 +24,8 @@
 - **V-1 ve #243 bis (test propagazione XHTML al ripiego)**: `FATTA`
 - **V-3 bot #243 (conteggi dell'handoff), V-3/V-4/V-5 ve #243 bis (dossier della fetta 6)**: `SALTATA — riguardano il dossier della fetta 6, superato da questo`
 - **V-1 bot #244 (noembed/noframes fra i nascosti), V-2 bot #244 (docstring)**: `FATTA`
+- **Merge di main (PR #241) e V-1 ve #244 (conflitto)**: `FATTA`
+- **V-2 ve #244 (XHTML script annidati), V-3 ve #244 (CDATA in HTML)**: `DEFERITA — MEDIA preesistenti, registrate, proposte per la fetta 8`
 - **R-454-2, R-453-2, R-456-1, R-456-2**: `DEFERITA — BASSE/COSMETICHE, registrate`
 
 ---
@@ -30,14 +33,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
- modules/web/leggi.py               |  74 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 392 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------
+ .claude/agents/memoria_revisore.md |  10 ++++++
+ modules/web/leggi.py               |  74 ++++++++++++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           |  18 +++++-----
+ reports/handoff.md                 | 654 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  30 +++++++++++++---------------
- tests/test_unit_web_leggi.py       | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- 7 files changed, 450 insertions(+), 203 deletions(-)
+ reports/ultimo_report.md           |  43 ++++++++++++++----------
+ tests/test_unit_web_leggi.py       | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 7 files changed, 498 insertions(+), 439 deletions(-)
 ```
 
 ---
@@ -45,6 +48,8 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6392549 Merge origin/main in feat/mani-web-fetta7
+a194e01 docs(fine-task): report, stato e handoff — chat Mani fetta 7, noembed (#244)
 6f9bfe7 fix(web): noembed e noframes fra i nascosti (V-1 bot #244)
 85b2ac2 chore(revisore): memoria review #456 — APPROVATO CON RISERVE
 51f7986 docs(fine-task): report, stato e handoff — chat Mani fetta 7 (#244)
@@ -54,13 +59,13 @@ a75a310 chore(revisore): memoria review #454 — BOCCIATO
 7f28b4c chore(revisore): memoria review #453 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit, quindi le righe di `reports/handoff.md` possono differire di poco (l'elenco dei file è esatto).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit, quindi le righe di `reports/handoff.md` possono differire di poco (l'elenco dei file è esatto). I commit di main portati dal merge non sono della sessione; il merge `6392549` porta la PR #241 (chat Motore).
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Quattro verdetti, incollati integralmente: #453, #454 (BOCCIATO), #455 (chat Mani) sul diff del commit `54706c2` (le riserve e il blocco sono stati chiusi nello stesso diff prima del commit; memoria in `7f28b4c`, `a75a310`, `ec14e89`); #456 (chat Mani) sul commit `6f9bfe7` (memoria in `85b2ac2`).
+Cinque verdetti, incollati integralmente: #453, #454 (BOCCIATO), #455 (chat Mani) sul diff del commit `54706c2` (le riserve e il blocco sono stati chiusi nello stesso diff prima del commit; memoria in `7f28b4c`, `a75a310`, `ec14e89`); #456 (chat Mani) sul commit `6f9bfe7` (memoria in `85b2ac2`); #461 (chat Mani) sul merge di main `6392549` (PR #241 della chat Motore).
 
 ### Review #453 (chat Mani)
 
@@ -296,23 +301,64 @@ File utili nello scratchpad:
 
 ---
 
+### Review #461 (chat Mani)
+
+## VERDETTO: APPROVATO
+
+Review #461 (chat Mani), 2026-10-22. Ho esaminato il merge di origin/main 1c023fa (PR #241, chat Motore) nel ramo feat/mani-web-fetta7. HEAD è a194e01, la base del merge è 5698cd3, il merge non è ancora committato e l'ho esaminato con `git diff --cached`.
+
+Letture fatte prima della review: CLAUDE.md (sezione 5, sezione 8 e roadmap), reports/stato_progetto.md (letto in parte, nei blocchi toccati dal merge), .claude/agents/memoria_revisore.md (in coda, lezioni #449-#460 di entrambe le chat).
+
+Elementi del diff esaminati:
+- modules/web/leggi.py:86 — `_TAG_NASCOSTI` con noembed e noframes (la chiusura di V-1 bot #244). Rischio: che la risoluzione dei conflitti abbia perso o modificato il codice della fetta 7. Prova: `git diff --cached HEAD -- modules/web/leggi.py` dà 0 righe e `git diff 5698cd3 MERGE_HEAD` sullo stesso file dà 0 righe, quindi main non lo tocca. Anche worktree e index coincidono. Esito: ok.
+- modules/web/leggi.py:477 — esenzione dentro svg/math solo per i tag che non sono nascosti (`estraneo and tag not in self._SALTA`, R-454-1). Rischio: che il merge abbia riportato una versione precedente della fetta. Il file staged è identico a HEAD (vedi sopra). Esito: ok.
+- tests/test_unit_web_leggi.py:908 — sonda `<noembed/><script>SEGRETO…` di V-1 bot #244. Rischio: che i test della fetta 7 siano stati persi. Il file staged è identico a HEAD (0 righe) e main non lo tocca. Ho rieseguito la suite web sull'albero unito: 192 passed. Esito: ok.
+- reports/stato_progetto.md:606 — blocco «Mani — fetta 7» con la chiusura di V-1 bot #244. Rischio: righe perse o duplicate dall'unione automatica. Ho fatto un conteggio di ogni riga sulle tre versioni (base, ours, theirs) contro l'index: 0 righe mancanti, 0 righe in più, nessuna duplicata, nessun marcatore di conflitto. Rispetto a main le righe in più sono le 2 della chat Mani. Rispetto a HEAD ci sono le 3 aggiunte e le 2 rimozioni della chat Motore (testata «Ultimo aggiornamento» e R-c4b3-3 / R1). La stringa «V-1 bot #244» compare una volta sola. Esito: ok.
+- .claude/agents/memoria_revisore.md:713 — unione delle righe delle due chat. Rischio: lezioni perse o duplicate. Conteggio come sopra: 0 perse, 0 in più. Rispetto a main ci sono esattamente le 9 righe della chat Mani (#453-#456 con le loro lezioni). Rispetto a HEAD ci sono esattamente le 20 righe della chat Motore (#445-#456 e #457-#460). Esito: ok. I numeri #449-#456 compaiono due volte, ma con il suffisso di chat diverso: è previsto da reports/lavoro_parallelo.md.
+
+Contesto, file del lato main (staged identici a MERGE_HEAD, 0 righe ciascuno):
+- gas.py:3998 — `_lead_fermi`, già revisionato nella #456 della chat Motore. Esito: ok.
+- modules/notte/notte.py:471 — azzeramento con ts presente, già revisionato nella #460 della chat Motore. Esito: ok.
+
+Sono identici a main anche modules/telegram/bot.py, tests/test_unit_kernel.py, tests/test_unit_notte.py, reports/roadmap.md, reports/da_mergiare.md e scripts/notte/catalogo_esempio.yaml. reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md sono identici a HEAD (0 righe), quindi è stata tenuta la versione della chat Mani, come dichiarato. gas.py non importa ancora modules/web, quindi non c'è interazione fra le due aree.
+
+Test rieseguiti da me sull'albero unito:
+- web: 192 passed;
+- notte: 136 passed;
+- kernel: 1015 PASS, 1 FAIL (T31g). Il fallimento c'era già: `sqlite_vec` non è installato in questo ambiente e main non tocca T31g.
+
+Nota bassa, non dovuta al merge e non bloccante: la testata «Ultimo aggiornamento» di stato_progetto.md cita come voce più recente la chat Motore (PR #241) e non la fetta 7 della chat Mani (PR #244). La chat Mani non aveva aggiornato la testata. Se volete, aggiungetela al prossimo aggiornamento dello stato.
+
+Rischi esclusi:
+- La suite gate + verifica_bot (dichiarata 1278 passed) non l'ho rieseguita. Il merge non porta file di quell'area: l'unico file di scripts/ toccato è catalogo_esempio.yaml, identico a main.
+- Non ho rifatto la revisione del contenuto del codice della chat Motore: è già stato revisionato nelle #445-#460 della chat Motore. Qui ho verificato solo che arrivi intatto.
+- T31g con sqlite_vec installato non è verificabile in questo ambiente.
+- Il comportamento su VPS non è riproducibile in sviluppo.
+
+Memoria: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#461 (chat Mani) — 2026-10-22 — APPROVATO — … Nessuna lezione nuova». Come richiesto NON l'ho committata e NON ho lanciato commit_memoria_revisore.sh. Il file ora è «MM»: l'aggiunta è solo nell'albero di lavoro, quindi va messa in staging (`git add .claude/agents/memoria_revisore.md`) prima del commit di merge. Poi il diff staged cambia, e va tenuto conto di questo per lo SHA del marcatore di segna_review_ok.sh.
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Web suite: 174 → 192 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «192 passed in 21.57s» su Python 3.13; «192 passed in 21.97s» su 3.11 (venv); «192 passed in 21.31s» con rete e DNS veri bloccati via sitecustomize). Primo giro (`54706c2`) 174 → 190, secondo (`6f9bfe7`) 190 → 192.
 - Fuzz differenziale ripiego contro parser: 0 fughe su 200k pagine HTML (3.13), 100k (3.11, escluse `<!-->`), 100k XHTML (3.13). Fuzz con oracolo html5lib (`fuzz454.py` del revisore): «fughe ripiego 0, nuovo>HEAD 326 di cui nascosti per html5lib 0 su 30000».
 - Mutazioni in copie isolate, tutte prese: senza `_modo_grezzo`, senza ripiego TypeError, esenzione svg/math per tutti o per nessuno (parser e ripiego), ripiego che ignora i grezzi autochiusi, contati del ripiego con esenzione, `_componi` senza XML, CDATA senza escape, commenti tenuti, cache disattivata (quadratico), ripiego senza xhtml, commento/CDATA senza fine tenuto.
 - Secondo giro: fuzz HTML 0 fughe (200k 3.13, 100k 3.11); fuzz454 con oracolo html5lib contro HEAD 51f7986 «nuovo>HEAD 0 di cui nascosti 0 su 30000» (gli atomi non contenevano noembed: il revisore l'ha rifatto con noembed/noframes, 0/0 su 30k + 10k); mutazioni senza noembed / senza noframes prese.
-- Il diff non tocca `gas.py` né altre suite.
+- Sull'albero unito col merge di main (review #461): web 192 passed; kernel 1015 PASS / 1 FAIL (T31g: manca `sqlite_vec` in questo ambiente, preesistente); notte + gate + verifica_bot 1278 passed.
+- Il diff della fetta non tocca `gas.py` né altre suite (quelle portate dal merge sono della chat Motore).
 
 ## §6 STATO CI
 
 `gh` non autenticato nella sessione cloud: esiti letti dai check della PR #244 via MCP GitHub. Mappatura commit→run:
 - `7f28b4c`, `a75a310`, `ec14e89`, `54706c2`: pushati insieme prima di aprire la PR; run di push sulla testa `54706c2` non letta (handoff-check atteso rosso: handoff non ancora aggiornato).
 - `51f7986` (fine-task del primo giro): run 39772940360 success (unit-suite «190 passed» della web suite su 3.11.17, letto dal bot), handoff-check success; verifica-bot success.
-- `85b2ac2`, `6f9bfe7`: nessuna run su questi SHA da soli (pushati col commit di fine-task che contiene questo file).
+- `85b2ac2`, `6f9bfe7`: nessuna run su questi SHA da soli (pushati insieme ad `a194e01`).
+- `a194e01` (fine-task del secondo giro): run di push non letta in questa sessione; il bot sul suo head non aveva ancora riportato alla scrittura.
+- `6392549` (merge di main): nessuna run su questo SHA da solo (pushato col commit di fine-task che contiene questo file).
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-456-1 (chat Mani)** BASSA verso sicuro: `<svg><noembed/></svg>VIS` nasconde il resto della pagina; **R-456-2 (chat Mani)** COSMETICA commento di `_TITOLO_VUOTO_IN`; **R-454-2 (chat Mani)** BASSA preesistente: doppio escape negli script (`<script><!--<script></script>X`); **R-453-2 (chat Mani)** BASSA preesistente: PI e DOCTYPE interno in XHTML.
+- Di questa fetta: **V-2 ve #244** MEDIA preesistente (XHTML: script/style annidati con lo stesso nome chiudono prima); **V-3 ve #244** MEDIA preesistente (HTML: `<![CDATA[` letto fino a `]]>` invece che al primo `>`); **R-456-1 (chat Mani)** BASSA verso sicuro: `<svg><noembed/></svg>VIS` nasconde il resto della pagina; **R-456-2 (chat Mani)** COSMETICA commento di `_TITOLO_VUOTO_IN`; **R-454-2 (chat Mani)** BASSA preesistente: doppio escape negli script (`<script><!--<script></script>X`); **R-453-2 (chat Mani)** BASSA preesistente: PI e DOCTYPE interno in XHTML.
 - Restano: R-450-1 e V-2 ve #243, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…7».
