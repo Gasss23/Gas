@@ -1233,9 +1233,26 @@ def test_chiusura_fermata_da_un_elemento_html_rende_incerta():
     """Una chiusura fermata da un elemento HTML diverso, con il tag più sotto, rende la pila
     incerta (R-470-1)."""
     c = web._Contesto({})
+    for tag in ("svg", "foreignobject", "span", "b"):
+        c.apri(tag, True)
+    assert c.chiudi("span") == (True, []) and c.incerta
+    # le chiusure di blocco in scope invece si eseguono, come nel browser (R-ve246b-5)
+    c = web._Contesto({})
+    for tag in ("svg", "foreignobject", "div", "span"):
+        c.apri(tag, True)
+    assert c.chiudi("div") == (False, []) and not c.incerta and c.pila == [("svg", "svg"), ("foreignobject", "svg")]
+    # con un elemento di formattazione sopra no: il browser lo ricrea (B-476-1)
+    c = web._Contesto({})
     for tag in ("svg", "foreignobject", "div", "b"):
         c.apri(tag, True)
-    assert c.chiudi("div") == (True, []) and c.incerta
+    c.chiudi("div")
+    assert c.incerta
+    # ma non oltre un confine dello scope
+    c = web._Contesto({})
+    for tag in ("svg", "foreignobject", "div", "table", "td"):
+        c.apri(tag, True)
+    c.chiudi("div")
+    assert c.incerta
 
 
 def test_pila_incerta_lascia_traccia_nel_log(caplog):
@@ -1271,6 +1288,51 @@ def test_annotation_xml_con_encoding_html_e_un_punto_di_integrazione():
                                              "troncato": False})["testo"]
         assert "VIS" in t, t
         assert "VIS" not in web._testo_senza_parser(pagina)
+
+
+@pytest.mark.parametrize("pagina, visibili", [
+    # chiusure di blocco con elementi aperti sopra: HTML valido, niente pila incerta (R-ve246b-5)
+    ("<p>A</p><svg><desc><ul><li>x</ul></desc></svg><p>VIS</p>", ("A", "VIS")),
+    ("<p>A</p><svg><foreignObject><div><span>x</div></foreignObject></svg><p>VIS</p>", ("A", "VIS")),
+    # annotation-xml senza encoding ferma la chiusura di un antenato (V-1 bot #248)
+    ("<p>A</p><div><math><annotation-xml></div></math>VIS", ("A", "VIS")),
+])
+def test_html_valido_in_svg_e_math_non_perde_testo(pagina, visibili):
+    e = web._Estrattore()
+    e.feed(pagina)
+    e.close()
+    t = "".join(e.pezzi)
+    assert all(v in t for v in visibili) and "x" not in t and not e._contesto.incerta, t
+
+
+@pytest.mark.parametrize("pagina", [
+    # spazi attorno a «=» e virgolette mai chiuse: per il browser il tag non finisce (R-ve248-3)
+    '<p>A</p><div a = "x>SEGRETO',
+    '<p>A</p><div a= "x>SEGRETO',
+    "<p>A</p><div a = 'x>SEGRETO",
+    '<p>A</p></div a = "x>SEGRETO',
+    '<p>A</p><br a = "x/>SEGRETO',
+    '<p>A</p><div a = "x" b = "y>SEGRETO',
+    # una chiusura di blocco non toglie gli elementi di formattazione che il browser ricrea (B-476-1)
+    "<p>A</p><svg><foreignObject><div><b>x</div>y</svg>SEGRETO",
+    "<p>A</p><svg><foreignObject><ul><li><a href=x>x</ul>y</foreignObject><script></svg>SEGRETO</script>VIS",
+    "<p>A</p><math><mi><div><i>x</div>y</math>SEGRETO",
+    "<p>A</p><svg><desc><section><font>x</section>y</svg>SEGRETO",
+])
+def test_tag_con_virgolette_aperte_come_il_browser(pagina):
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "A" in t, t
+    assert "SEGRETO" not in web._testo_senza_parser(pagina)
+
+
+def test_tag_con_spazi_e_virgolette_chiuse_resta_visibile():
+    for pagina in ('<p>A</p><div a = "x">VIS', "<p>A</p><div a = x>VIS", '<p>A</p><div a="x>y">VIS',
+                   '<p>A</p></ a="x>VIS'):  # «</ » è un commento fasullo fino al primo «>» (R-476-1)
+        e = web._Estrattore()
+        e.feed(pagina)
+        e.close()
+        assert "VIS" in "".join(e.pezzi) and not e._taglia, pagina
 
 
 def test_ripiego_annotation_xml_rende_la_pila_incerta():
