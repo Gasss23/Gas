@@ -1,19 +1,14 @@
-# Ultimo report — 2026-10-22 (chat Motore)
+# Ultimo report — 2026-10-22 sera (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della nuova PR (pro e contro scritti da Gas): pro e contro in `reports/da_mergiare.md`.
-2. Poi riprova sul Mac: «scrivi il file prova_firma.py con dentro print(1)» senza pro e contro → deve arrivare subito la firma.
+1. Merge della PR #249 (solo documenti: decisione porte, coda dei merge svuotata).
+2. Prova sul Mac dopo #247: aggiornare a main, riavviare il bot, `clear`, poi «scrivi il file prova_firma.py con dentro print(1)» → deve arrivare subito la firma.
 
 ## Esito
-- PR #241 mergiata su richiesta dell'operatore («mergia 241»): FATTA.
-- Prova dal vero sul Mac (R1): FATTA — aggiornamento a main, doctor, catalogo, tetto di spesa, bottoni Approva/Rifiuta, giro da Telegram con messaggio del mattino, timer notturno, lezione 13 approvata.
-- Difetto emerso (il modello chiedeva i pro e contro all'utente): FATTA la correzione — review #467 APPROVATO.
-- V-3 del bot #247 (diniego di riserva): FATTA — review #468.
-- Backup iCloud, protezioni del repo, server Netcup: DEFERITA — da fare con l'operatore.
-- Mail di GitHub, ramo #141, porte del lettore web: DEFERITA — in attesa dell'operatore.
-
-## Test
-Kernel 1022 PASS 0 FAIL; pytest tests/ 1970 passed (prima di T82h1b).
+- PR #247 mergiata su richiesta dell'operatore («mergia 247»): FATTA — CI verde, bot APPROVATA (riserve cosmetiche: conteggio kernel 1024 in CI contro 1022 in locale, dati vecchi nell'handoff).
+- Decisione porte del lettore web «solo 80/443»: FATTA la registrazione in roadmap e stato — DEFERITA la parte nel codice (chat Mani).
+- Ramo della PR #141 cancellato e mail di GitHub spente: FATTA (operatore).
+- Coda dei merge (`da_mergiare.md`) svuotata: FATTA.
 
 ## Anomalie
-- Sul Mac mancava la cartella `~/Library/LaunchAgents`: ora `setup_notte.md` la crea prima del timer.
+- Nella serata GitHub ha ritardato gli eventi di push: la CI è partita dopo il bot, che ha bocciato due SHA per «CI assente». Risolto ripushando.
