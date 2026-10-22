@@ -4,7 +4,7 @@ Ramo `feat/mani-web-fetta12` da main 7af0c48 (dopo il merge di #250). Area della
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 12: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+1. Merge della PR #252: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
 2. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; chiuderla bene richiede un vero costruttore HTML5 (es. lexbor): decidi tu.
 3. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True (se dice False Gas lo scrive ora anche in gas_debug.log).
 4. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
@@ -12,12 +12,13 @@ Ramo `feat/mani-web-fetta12` da main 7af0c48 (dopo il merge di #250). Area della
 ## Esito
 
 - **R-454-2 (doppio escape negli script)**: `FATTA`.
-- **R-453-2 (PI e DOCTYPE in XHTML)**: `FATTA`, con **B-482-1** e **B-483-1** (ALTE, trovate dal revisore nelle prime due versioni del DOCTYPE): `FATTA`.
+- **R-453-2 (chat Mani) (PI e DOCTYPE in XHTML)**: `FATTA`, con **B-482-1** e **B-483-1** (ALTE, trovate dal revisore nelle prime due versioni del DOCTYPE): `FATTA`.
 - **V-2 ve #242 (commenti vuoti su 3.11)**: `FATTA`.
 - **R-466-1, R-466-2, R-ve245b-4 (parser vecchi: rilevatore provato, avviso nel log, test saltati invece che rossi)**: `FATTA`.
 - **R-482-1 (test della posizione dalla fine)**: `FATTA`.
-- **Test**: web suite 321 → 351 (Python 3.13 e 3.11; col parser vecchio 343 passati e 9 saltati apposta). Fuzz e enumerazione con oracolo lexbor: 0 regressioni; mutazioni tutte prese.
-- **Review**: #482 BOCCIATO, #483 BOCCIATO, #484 APPROVATO (chat Mani): verdetti integrali nell'handoff.
+- **Bot #252 e verifica esterna #252 su 3cea14e: BOCCIATO.** V-1 MEDIA (testo dopo un DOCTYPE con `<script>` in un letterale): `FATTA`. V-2 bot / V-5 ve COSMETICA (avviso non atomico): `FATTA`. V-3 ve BASSA (test per 5 mutanti) e R-485-1: `FATTA`. V-4 ve (conflitto con main): merge di main `FATTA`. V-6 ve COSMETICA: `FATTA`. V-2 ve BASSA preesistente (XHTML malformato letto come HTML): registrata come **R-ve252-2**, da decidere.
+- **Test**: web suite 321 → 364 (Python 3.13 e 3.11; col parser vecchio 356 passati e 9 saltati apposta). Fuzz e enumerazione con oracolo lexbor: 0 regressioni; mutazioni elencate tutte prese.
+- **Review**: #482 BOCCIATO, #483 BOCCIATO, #484 APPROVATO, #485 APPROVATO CON RISERVE, #486 APPROVATO, #487 APPROVATO (merge di main) (chat Mani): verdetti integrali nell'handoff.
 
 ## RICHIESTE ALLA CHAT MOTORE
 

@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 12: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+1. Merge della PR #252: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
 2. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; chiuderla bene richiede un vero costruttore HTML5 (es. lexbor): decidi tu.
 3. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True (se dice False Gas lo scrive ora anche in gas_debug.log).
 4. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
@@ -16,24 +16,25 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **R-454-2**: `FATTA`
-- **R-453-2** (con B-482-1 e B-483-1 ALTE): `FATTA`
+- **R-453-2 (chat Mani)** (con B-482-1 e B-483-1 ALTE): `FATTA`
 - **V-2 ve #242**: `FATTA`
 - **R-466-1, R-466-2, R-ve245b-4**: `FATTA`
 - **R-482-1**: `FATTA`
+- **Secondo giro, bot e verifica esterna #252 BOCCIATO su 3cea14e**: V-1 MEDIA `FATTA`; V-2 bot / V-5 ve `FATTA`; V-3 ve e R-485-1 `FATTA`; V-4 ve (merge di main) `FATTA`; V-6 ve `FATTA`; V-2 ve registrata come R-ve252-2 (BASSA preesistente, da decidere)
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +
- modules/web/leggi.py               | 167 +++++++++++++++++++--
- reports/diff_sessione.md           |  10 +-
- reports/handoff.md                 | 298 +------------------------------------
+ .claude/agents/memoria_revisore.md |   9 ++
+ modules/web/leggi.py               | 190 ++++++++++++++++++++++++++++++++++---
+ reports/diff_sessione.md           |  13 ++-
+ reports/handoff.md                 |  95 +------------------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  27 ++--
- tests/test_unit_web_leggi.py       | 139 ++++++++++++++++-
- 7 files changed, 321 insertions(+), 327 deletions(-)
+ reports/ultimo_report.md           |  32 ++++---
+ tests/test_unit_web_leggi.py       | 159 ++++++++++++++++++++++++++++++-
+ 7 files changed, 375 insertions(+), 125 deletions(-)
 ```
 
 ---
@@ -41,6 +42,11 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+13b7526 Merge origin/main (PR #251) in feat/mani-web-fetta12 (V-4 ve #252)
+f644a04 fix(web): fetta 12 — prologo XHTML dopo il DOCTYPE, test dei mutanti (V-1/V-5 bot e ve #252)
+42077c0 chore(revisore): memoria review #486 — APPROVATO
+e5548a0 chore(revisore): memoria review #485 — APPROVATO CON RISERVE
+3cea14e docs(reports): fine fetta 12 chat Mani — report, handoff, stato
 621da82 feat(web): fetta 12 — script a doppio escape, DOCTYPE e PI in XHTML, parser vecchi (R6)
 d1fff5f chore(revisore): memoria review #484 — APPROVATO
 6e8872b chore(revisore): memoria review #483 — BOCCIATO
@@ -53,7 +59,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Tre verdetti, incollati integralmente (chat Mani), tutti sul diff staged della fetta 12 poi committato in `621da82`: #482 (BOCCIATO, B-482-1) sulla prima versione, #483 (BOCCIATO, B-483-1) sul primo rimedio, #484 (APPROVATO) sulla versione finale. Le righe citate nelle review intermedie si riferiscono al diff di allora.
+Sei verdetti, incollati integralmente (chat Mani): #482 (BOCCIATO, B-482-1), #483 (BOCCIATO, B-483-1) e #484 (APPROVATO) sul diff della fetta 12 committato in `621da82`; #485 (APPROVATO CON RISERVE) e #486 (APPROVATO) sul secondo giro committato in `f644a04`; #487 (APPROVATO) sul merge di main 2abc23b, commit `13b7526`. Le righe citate nelle review intermedie si riferiscono al diff di allora.
 
 ### Review #482 (chat Mani) — verdetto integrale (diff staged della fetta 12, prima del rimedio)
 
@@ -202,19 +208,135 @@ File:
 - /home/user/Gas/tests/test_unit_web_leggi.py
 - /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/sonde483.py
 
+### Review #485 (chat Mani) — verdetto integrale (delta per V-1 e V-2 del bot #252)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #485 (chat Mani), sul delta staged della PR #252 (head 3cea14e), che risponde al BOCCIATO del bot: V-1 MEDIA (`<script>` scritto dentro il DOCTYPE, SEGRETO dopo) e V-2 COSMETICA (avviso nel log non atomico). Il delta chiude V-1 e V-2 senza aprire fughe nuove. Resta un buco nei test (R-485-1).
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:1241` (regex `_DOPO_DOCTYPE`) e `modules/web/leggi.py:1270` (controllo del prologo in `_commenti_e_cdata_xml`).
+  - Cosa fa: dopo un DOCTYPE, ogni pezzo tenuto può contenere solo spazi, oppure spazi seguiti da `<` e una lettera, che è l'inizio dell'elemento radice. Commenti e PI (`<?…?>`) sono ammessi; un CDATA fa break, e lo stesso controllo vale per la coda finale.
+  - Rischio esaminato: SEGRETO che esce dopo il DOCTYPE, o testo valido perso.
+  - Esito ok:
+    - le 2 sonde del bot non fanno uscire SEGRETO;
+    - nascondono il resto anche un secondo DOCTYPE con `<script>` nel letterale, un DOCTYPE scritto dopo la radice, `</x>` nel prologo e `SEGRETO` da solo dopo il DOCTYPE;
+    - un prologo valido (`<?xml?>`, DOCTYPE, commento, PI, a capo, poi la radice) tiene V e il contenuto del CDATA nel corpo;
+    - quando un `<lettera` è stato visto il prologo si chiude, quindi le pagine normali non pagano niente.
+  - La regex usa `$` invece di `\Z`, ma qui sono equivalenti perché `[ \t\r\n]*` consuma già gli a capo.
+- `modules/web/leggi.py:1319`, il lucchetto intorno al controllo e al segno dell'avviso (V-2).
+  - Rischio esaminato: avviso scritto due volte, oppure blocco del lucchetto.
+  - Esito ok: `primo` viene sempre assegnato e il warning si scrive fuori dal lucchetto.
+- Suite web: 357 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+- sonde483.py: 0 casi con SEGRETO. sonde.py della #482: 0 «parser: True».
+
+**Riserva: R-485-1 (BASSA, test)**
+- Ho cambiato in una copia isolata `_DOPO_DOCTYPE` in `[^<]*(?:(<[A-Za-z])|$)`, cioè testo ammesso prima di `<lettera`. Con questo cambio la suite resta tutta verde.
+- Il motivo: in tutti i casi nuovi di `tests/test_unit_web_leggi.py:1129` SEGRETO è seguito da `</script>`, quindi il controllo cade comunque su `</`.
+- Il codice staged nasconde `<!DOCTYPE x SYSTEM "<script>">SEGRETO<html xmlns=…><body><p>V</p>…`. Con il cambio SEGRETO esce, e su main esce già oggi (è la classe preesistente).
+- Da fare: aggiungere quel caso, oppure `<!DOCTYPE html><!-- c -->SEGRETO<html…>`, a `test_xhtml_istruzioni_e_doctype`.
+
+**Nota sulla classe preesistente «XHTML malformato letto come HTML»**
+- Rientra anche il testo dopo la radice: `…</html>\nCODA` mostra CODA, mentre il browser si ferma al primo errore.
+- Va nella stessa riserva che registri in stato_progetto.md; non è da correggere in questa PR.
+
+**Cosa non ho verificato**
+- Come Firefox (expat) e Chrome (libxml2) mostrano davvero un prologo non valido: mi baso sullo standard XML (nel prologo solo spazi, commenti e PI), e la scelta «break» toglie testo, quindi sta dalla parte sicura.
+- Il plugin del parser vecchio, le tue mutazioni di run4.py e i tempi su 1,8–3 MB: sono tue prove e non le ho rifatte.
+- La suite su Python 3.12.
+
+**Memoria**: aggiunte la riga #485 e una lezione sui mutanti «testo prima della fine ammessa», committate con `scripts/commit_memoria_revisore.sh` (commit e5548a0). Lo stage dei due file non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/cp4/modules/web/leggi.py (la copia col mutante `[^<]*` che sopravvive)
+
+### Review #486 (chat Mani) — verdetto integrale (test per R-485-1 e V-3 ve #252)
+
+## VERDETTO: APPROVATO
+
+Review #486 (chat Mani): rispetto alla #485 cambiano solo i test in stage. La riserva della #485 (R-485-1, il mutante `[^<]*` sul prologo che passava tutta la suite) è chiusa, e i mutanti segnalati in V-3 dalla verifica esterna #252 adesso vengono presi.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:1241`: il codice in stage è identico a quello approvato nella #485. Il confronto con la mia copia cp4 differisce solo nella riga del mutante.
+  - Rischio esaminato: una modifica del codice che passa come «solo test».
+  - Esito ok.
+- `tests/test_unit_web_leggi.py:1139` e la riga successiva: aggiungono i due casi «testo dopo il DOCTYPE, poi la radice» (`SYSTEM "<script>">SEGRETO<html…>` e `<!-- c -->SEGRETO<html…>`).
+  - Rischio esaminato: il mutante `[^<]*` della #485 che sopravvive ancora.
+  - Esito ok: rimesso il nuovo file di test nella copia mutata, il mutante dà 2 FAIL.
+- `tests/test_unit_web_leggi.py:1087` e la riga prima: due casi nuovi sul doppio escape degli script.
+  - Rischio esaminato: risultati attesi diversi da quelli del browser.
+  - Esito ok. Ho seguito a mano gli stati dello standard WHATWG:
+    - `<!--<script></script><script></script>SEGRETO</script>`: dal doppio escape `</script>` torna all'escape, non allo script normale, quindi SEGRETO resta nascosto e VIS esce.
+    - `<!--<script><!--</script>SEGRETO</script>`: `<!--` dentro il doppio escape non cambia stato, quindi SEGRETO resta nascosto.
+  - Entrambi i casi controllano anche il ripiego.
+- I casi `[ > ]`, `[<!ENTITY a <!ENTITY b> ]` e `<!DOCTYPE>` vogliono che il resto della pagina sparisca. Sono coerenti con `_fine_doctype`, che per l'XML non valido restituisce -1.
+- Suite web: 364 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Cosa non ho verificato**
+- Le singole mutazioni di `scratchpad/mut482/run5.py` per V-3: ho rifatto solo il mio mutante `[^<]*`.
+- La suite col parser vecchio (356 passed, 9 skipped) e quella su Python 3.12.
+- Il merge di main 2abc23b: lo rivedo a parte come #487.
+
+**Memoria**: aggiunta la riga #486, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh` (commit 42077c0). Lo stage dei due file non è stato toccato.
+
+File:
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /home/user/Gas/modules/web/leggi.py
+
+### Review #487 (chat Mani) — verdetto integrale (merge di main 2abc23b)
+
+## VERDETTO: APPROVATO
+
+Review #487 (chat Mani): merge di origin/main 2abc23b (PR #251, chat Motore) in feat/mani-web-fetta12, ancora da committare. HEAD è f644a04, MERGE_HEAD è 2abc23b e la base comune è 7af0c48. Il merge non tocca il codice e non perde righe.
+
+**Cosa ho esaminato**
+- `.claude/agents/memoria_revisore.md:802`: l'unica riga che entra da main è la #482 della chat Motore.
+  - Rischio esaminato: righe perse durante la risoluzione del conflitto.
+  - Esito ok:
+    - ho confrontato le righe del file in stage con HEAD e con MERGE_HEAD: 0 righe perse da ciascun lato, nessuna riga inventata, nessun marcatore di conflitto;
+    - le tue righe #482–#486 (`.claude/agents/memoria_revisore.md:801` è la #486) sono intatte.
+  - Nota: il numero #482 è stato usato da due chat (Motore e Mani). È la stessa collisione fra chat parallele già vista con la #476; non tocca il merge.
+- `modules/web/leggi.py:1241` e `tests/test_unit_web_leggi.py:1139`.
+  - Rischio esaminato: il merge che cambia il codice già approvato.
+  - Esito ok:
+    - `git diff --cached HEAD` su modules, tests, gas.py e brains è vuoto;
+    - i due file in stage sono identici a HEAD, cioè al codice approvato in #484–#486;
+    - da 7af0c48, main non ha toccato il motore.
+- I report.
+  - Rischio esaminato: una scelta di lato sbagliata nella risoluzione dei conflitti.
+  - Esito ok:
+    - `reports/roadmap.md` e `reports/coda_notte.md` sono uguali a main, ed è giusto perché il ramo non li toccava;
+    - handoff, ultimo_report e diff_sessione sono uguali a HEAD (`--ours`): sono log di sessione che riscrivi a fine giro;
+    - `reports/stato_progetto.md` è uguale a HEAD, e main non l'aveva modificato dalla base.
+
+**Cosa non ho verificato**
+- Non ho rilanciato la suite: il codice in stage è identico, byte per byte, a quello già provato nella #486 (364 passed su 3.13 e 3.11).
+- Le parti delle versioni di main di handoff, ultimo_report e diff_sessione che vengono scartate: per regola sono fotografie di sessione e la storia resta in git.
+- La CI sul commit di merge: non esiste ancora.
+
+**Memoria**: la riga #487 è aggiunta in `.claude/agents/memoria_revisore.md` e messa in stage con `git add`, senza commit perché il merge è in corso. Finisce nel commit di merge. Nessuna lezione nuova. Il resto dello stage non è stato toccato.
+
+File:
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /home/user/Gas/reports/roadmap.md
+- /home/user/Gas/reports/coda_notte.md
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 321 → 351 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «351 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 343 passed, 9 skipped (i test che vogliono il parser).
+- Web suite: 321 → 364 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «364 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 356 passed, 9 skipped (i test che vogliono il parser).
 - Oracolo lexbor, nuovo contro main 7af0c48: fuzz degli script (stati di escape) su 3.11 e 3.13, 0 fughe del nuovo contro 114–199 di main, 0 regressioni; enumerazione a 4 atomi (2,3 M pagine): 0 regressioni, 0 perdite nuove.
-- Mutazioni in copie isolate: `_fine_script`, `_FineScriptTrovata`, `parse_comment`, `_fine_doctype` (virgolette, testa, `<` libero, `]` in dichiarazione, commenti, PI): ognuna fa fallire almeno un test.
+- Mutazioni in copie isolate, elencate: `_fine_script` (anche i due mutanti di V-3 ve), `_FineScriptTrovata`, `parse_comment`, `_fine_doctype` (virgolette, testa, testa assente, `<` libero, `<` e `]` in dichiarazione, `>` fuori dichiarazione, commenti, PI), prologo dopo il DOCTYPE (assente, `<` qualsiasi, `[^<]*`, CDATA, fine subito): ognuna fa fallire almeno un test.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-- Commit della fetta e commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `3cea14e` (head all'apertura della PR #252): unit-suite e handoff-check success; verifica-bot **failure** (BOCCIATO, V-1 MEDIA, chiusa in `f644a04`); verifica esterna #252 BOCCIATO (V-1 MEDIA, V-2/V-3/V-4 BASSE, V-5/V-6 COSMETICHE: vedi §1).
+- `f644a04`, il merge `13b7526` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Restano: **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-469-1, R-ve245-2…5, R-456-2, R-447-1(b), R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…12».
+- Restano: **R-ve252-2** BASSA preesistente (XHTML malformato letto come HTML, da decidere), **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-469-1, R-ve245-2…5, R-456-2, R-447-1(b), R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…12».
