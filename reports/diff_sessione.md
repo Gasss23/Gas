@@ -1,12 +1,10 @@
-# Diff della sessione (chat Motore, 2026-10-21, PR #241)
+# DIFF SESSIONE — 2026-10-22 (chat Mani, fetta 7)
 
-- `gas.py`: `ricorda` con `fermi` (`_lead_fermi`, `_vero`), lead attivi dal più fermo (R1); `recupera_esito_firma` (esito di un'azione firmata riscritto in storia dopo un'interruzione, mai una nuova esecuzione); testo della notizia «interruzione o errore interno» (V-1 bot #241).
-- `modules/telegram/bot.py`: `_riprova_orfana` chiama il recupero se l'azione è già reclamata; log se il kernel non sa recuperare (V-1 verifica esterna #241).
-- `modules/notte/notte.py`: `stato_mattino` e `righe_stato_mattino`, resoconto di spesa e stato nel riepilogo e nel messaggio Telegram del mattino (R1); avviso se il log dei token ha righe illeggibili, tetto mostrato = tetto applicato.
-- `scripts/notte/catalogo_esempio.yaml`: punto_lead usa `ricorda fermi=true`.
-- `tests/test_unit_kernel.py`: T98a-T98i (ricorda fermi); T78l-T78p (recupero, log, guardia «un click alla volta»).
-- `tests/test_unit_notte.py`: 5 test del resoconto; limite finto di Telegram portato a 330 nel test dei soli conteggi.
-- `.claude/agents/memoria_revisore.md`: righe delle review #445-#454 (unione con le righe della chat Mani nel merge).
-- `reports/`: stato_progetto, roadmap, da_mergiare, ultimo_report, handoff, diff_sessione aggiornati.
+> Si riscrive a ogni sessione; la storia completa sta in git.
 
-La storia completa sta in git.
+- `modules/web/leggi.py` — grezzi autochiusi in testo grezzo (`_GREZZI_AUTOCHIUSI`, `_modo_grezzo`), esenzione dentro svg/math solo per i non nascosti, ripiego allineato; `_commenti_e_cdata_xml` per XHTML; noembed e noframes fra i nascosti; in XHTML commento o CDATA dentro un tag porta via il resto.
+- `tests/test_unit_web_leggi.py` — sonde R-453-1, R-454-1, template, XHTML (commenti, CDATA, linearità, ripiego), html.parser vecchio noembed/noframes (192 test).
+- `.claude/agents/memoria_revisore.md` — righe #453-#456, #461, #462 (chat Mani), più quelle della chat Motore portate dal merge.
+- Dal merge di main (PR #241, chat Motore, non di questa sessione): `gas.py`, `modules/notte/`, `modules/telegram/bot.py`, test kernel e notte, `scripts/notte/catalogo_esempio.yaml`, `reports/roadmap.md`, `reports/da_mergiare.md`.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 7».
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.

@@ -39,6 +39,7 @@ import ssl
 import threading
 import time
 import unicodedata
+from html import escape as html_escape
 from html import unescape as html_unescape
 from html.parser import HTMLParser
 from typing import Callable, Optional
@@ -81,8 +82,10 @@ _FINTO_MARCATORE = re.compile(
 # (V-2 verifica esterna #238).
 # Niente «embed»: è un elemento vuoto, senza chiusura, e contarlo come blocco nascondeva
 # tutto il resto della pagina (R-431-2 chat Mani).
+# noembed e noframes: testo grezzo che i browser non mostrano (V-1 bot #244).
 _TAG_NASCOSTI = frozenset({
     "script", "style", "noscript", "template", "svg", "math", "iframe", "object", "canvas",
+    "noembed", "noframes",
 })
 # Inizio di un commento, di un tag con il nome intero (così «<styled-box>» non è «<style»,
 # V-1 bot #238) o di un commento fasullo: «<![cdata[», «<!x», «<?», «</» senza lettera
@@ -113,13 +116,15 @@ _AUTOCHIUSO = re.compile(_ATTRIBUTI + "/>")
 # (R-442-1), e una chiusura scala solo un'apertura con lo stesso nome (V-1 bot #242).
 # svg e math autochiusi non aprono niente (V-1 bot #239), come nei browser.
 # Grezzi anche textarea, xmp, noembed, noframes e plaintext (fino in fondo), come in
-# html.parser: dentro non si contano aperture (R-445-1). Un grezzo autochiuso
-# («<script/>») non salta il contenuto: se è fra i nascosti, o è il titolo, conta come
-# un'apertura, così il contatore del ripiego non resta mai sotto quello del parser.
+# html.parser: dentro non si contano aperture (R-445-1). In HTML anche un grezzo autochiuso
+# («<script/>») apre il testo grezzo fino a «</tag>», come nei browser (R-453-1).
 _GREZZI_RIPIEGO = frozenset({
     "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "plaintext",
 })
 _CONTATI_RIPIEGO = _TAG_NASCOSTI - _GREZZI_RIPIEGO
+# Grezzi che in HTML aprono il testo grezzo anche scritti autochiusi («<title/>», «<script/>»):
+# per i browser la «/» non conta (R-453-1). plaintext a parte: lì resta ignorato.
+_GREZZI_AUTOCHIUSI = _GREZZI_RIPIEGO - {"plaintext"}
 _AUTOCHIUDIBILI = frozenset({"svg", "math"})
 # Dentro questi nascosti «<title/>» non è un titolo: in svg e math l'autochiusura vale, in
 # script, style, iframe e noscript (con gli script attivi) per i browser è testo. Dentro
@@ -438,8 +443,8 @@ class _Estrattore(HTMLParser):
 
     def __init__(self, xhtml: bool = False) -> None:
         super().__init__(convert_charrefs=True)
-        # In una pagina application/xhtml+xml vale l'XML: «<x/>» è vuoto davvero, per
-        # ogni tag (V-1 verifica esterna #243).
+        # In una pagina application/xhtml+xml «<x/>» è vuoto davvero, per ogni tag (V-1
+        # verifica esterna #243); commenti e CDATA li sistema prima _commenti_e_cdata_xml.
         self._xhtml = xhtml
         self.pezzi: list = []
         self.titolo: list = []
@@ -463,12 +468,30 @@ class _Estrattore(HTMLParser):
         # «<title/>» apre il titolo: per i browser il testo fino a «</title>» è il titolo,
         # non si vede nella pagina (V-2 verifica esterna #242). Non dentro i nascosti di
         # _TITOLO_VUOTO_IN (R-449-1: icone svg; V-1 bot #243: noscript; R-451-1).
+        # I grezzi aprono anche il testo grezzo fino a «</tag>», come nei browser: una chiusura
+        # di un contenitore scritta lì dentro non chiude niente (R-453-1). Dentro svg o math
+        # l'autochiusura vale solo per i tag non nascosti: nei punti di integrazione HTML
+        # (foreignObject, desc, mi, mtext…) «<script/>» apre davvero lo script (R-454-1).
+        estraneo = any(self._aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
+        if self._xhtml or (estraneo and tag not in self._SALTA):
+            super().handle_startendtag(tag, attrs)
+            return
         titolo = tag == "title" and not any(self._aperti.get(n, 0) for n in _TITOLO_VUOTO_IN)
-        apre = (tag in self._SALTA and tag not in _AUTOCHIUDIBILI) or titolo
-        if apre and not self._xhtml:
+        if tag in _GREZZI_AUTOCHIUSI and (tag != "title" or titolo):
+            # Anche dentro template: il testo grezzo tiene aperto il template, quindi il titolo
+            # (inerte per i browser) resta nascosto (V-1 bot #243).
+            self.handle_starttag(tag, attrs)
+            self._modo_grezzo(tag)
+        elif tag in self._SALTA and tag not in _AUTOCHIUDIBILI:
             self.handle_starttag(tag, attrs)
         else:
             super().handle_startendtag(tag, attrs)
+
+    def _modo_grezzo(self, tag: str) -> None:
+        try:
+            self.set_cdata_mode(tag, escapable=tag in ("title", "textarea"))
+        except TypeError:  # html.parser senza le patch recenti: niente «escapable»
+            self.set_cdata_mode(tag)
 
     def handle_endtag(self, tag: str) -> None:
         # Una chiusura scala solo un'apertura con lo stesso nome: in «<svg>X</script>Y» per i
@@ -597,10 +620,12 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
                 if basso[m.end()] in _FINE_NOME:
                     if nome in _GREZZI_RIPIEGO:
                         if _AUTOCHIUSO.match(basso, m.end()):
+                            # Come _Estrattore.handle_startendtag (R-453-1).
+                            estraneo = any(aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
                             titolo = nome == "title" and not any(aperti.get(n, 0) for n in _TITOLO_VUOTO_IN)
-                            if not xhtml and (nome in _TAG_NASCOSTI or titolo):
-                                aperti[nome] = aperti.get(nome, 0) + 1
-                                salta += 1
+                            vuoto = xhtml or (estraneo and nome not in _TAG_NASCOSTI) or nome == "plaintext"
+                            if not (vuoto or (nome == "title" and not titolo)):
+                                fine = _chiusura(basso, nome, fine)
                         elif nome == "plaintext":
                             fine = -1
                         else:
@@ -616,6 +641,41 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
             break
         i = pos = fine
     return " ".join(pezzi)
+
+
+def _commenti_e_cdata_xml(testo: str) -> str:
+    """Per application/xhtml+xml: nell'XML i commenti non sono mai testo e il contenuto di un
+    CDATA è testo letterale, anche dentro script e style. html.parser invece chiude uno
+    script al primo «</script>» anche dentro un commento o un CDATA, e quello che segue
+    arriverebbe al modello (V-2 bot #243). Qui i commenti si tolgono e il CDATA diventa testo
+    con l'escape; un commento o un CDATA senza fine, o aperto dentro un tag (togliendolo,
+    «</scr<!---->ipt>» diventerebbe «</script>», V-1 bot #244), porta via il resto: per l'XML la
+    pagina è comunque malformata. Lineare: le due ricerche ripartono solo quando restano
+    indietro, e per sapere se si è dentro un tag basta l'ultimo «<» e «>» del pezzo tenuto
+    (i pezzi prima finiscono tutti fuori da un tag, altrimenti ci si è già fermati)."""
+    pezzi = []
+    i = 0
+    prossimo = {"<!--": -2, "<![CDATA[": -2}
+    while True:
+        for apertura, dove in prossimo.items():
+            if dove != -1 and dove < i:
+                prossimo[apertura] = testo.find(apertura, i)
+        trovati = [(dove, apertura) for apertura, dove in prossimo.items() if dove != -1]
+        if not trovati:
+            pezzi.append(testo[i:])
+            break
+        inizio, apertura = min(trovati)
+        pezzi.append(testo[i:inizio])
+        if testo.rfind("<", i, inizio) > testo.rfind(">", i, inizio):
+            break
+        chiusura = "-->" if apertura == "<!--" else "]]>"
+        fine = testo.find(chiusura, inizio + len(apertura))
+        if fine == -1:
+            break
+        if apertura == "<![CDATA[":
+            pezzi.append(html_escape(testo[inizio + len(apertura):fine], quote=False))
+        i = fine + len(chiusura)
+    return "".join(pezzi)
 
 
 def _testo_senza_parser(grezzo: str, xhtml: bool = False) -> str:
@@ -636,9 +696,11 @@ def _componi(url_finale: str, pagina: dict) -> dict:
     if pagina["tipo"] == "text/plain":
         corpo = _pulisci(grezzo)
     else:
+        xhtml = pagina["tipo"] == "application/xhtml+xml"
+        if xhtml:
+            grezzo = _commenti_e_cdata_xml(grezzo)
         grezzo = _RIF_ZERI_HEX.sub(r"&#\1", _RIF_ZERI_DEC.sub("&#", grezzo))
         grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
-        xhtml = pagina["tipo"] == "application/xhtml+xml"
         estrattore = _Estrattore(xhtml)
         try:
             estrattore.feed(grezzo)
