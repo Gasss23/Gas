@@ -17,4 +17,4 @@
 - **Cosa:** nella prova di oggi, a «scrivi prova_firma.py» Gas ti chiedeva i pro e i contro. Ora lo schema dello strumento e il messaggio di diniego gli dicono di scriverli lui e di richiedere subito la firma.
 - **Pro:** la richiesta di firma arriva al primo messaggio.
 - **Contro:** pro e contro restano «scritti dal modello, non verificati» come prima (il diff reale lo vedi sempre).
-- **Controlli:** revisore #467 e #468 APPROVATO; kernel 1022 PASS, pytest 1970 passed.
+- **Controlli:** revisore #467 e #468 APPROVATO; kernel 1022 PASS; pytest 1970 passed (misurato prima di T82h1b).

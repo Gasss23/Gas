@@ -17,7 +17,7 @@
 - **Merge PR #241** («mergia 241»): `FATTA` — 1c023fa.
 - **Prova dal vero sul Mac (R1)**: `FATTA` — doctor, catalogo, tetto, bottoni Approva/Rifiuta, `/notte` con messaggio del mattino, timer `com.gas.notte`, lezione 13 approvata.
 - **Difetto «pro e contro chiesti all'utente»**: `FATTA` — review #467 APPROVATO.
-- **V-3 bot #247 (diniego di riserva che non diceva chi scrive pro e contro)**: `FATTA` — review #468 APPROVATO. V-1/V-2 del bot erano sullo SHA 2ea4f80 senza report e senza CI: i report sono nel commit dopo.
+- **V-3 bot #247 (diniego di riserva che non diceva chi scrive pro e contro)**: `FATTA` — review #468 APPROVATO. V-1/V-2 del bot erano sullo SHA 2ea4f80 senza report e senza CI: i report sono nel commit dopo. Bot su 2dc4f7a: V-1 MEDIA (CI non partita: ritardo di GitHub sugli eventi di push, la run di 2ea4f80 è arrivata solo alle 18:24) e V-2 COSMETICA (diff_sessione e descrizione della PR) chiuse con questo push.
 - **Backup iCloud, protezioni del repo, server Netcup**: `DEFERITA — da fare con l'operatore`.
 
 ---
@@ -28,19 +28,20 @@
  .claude/agents/memoria_revisore.md |   2 ++
  gas.py                             |  14 ++++++++++----
  reports/da_mergiare.md             |  17 ++++++-----------
- reports/diff_sessione.md           |  14 +++++++-------
- reports/handoff.md                 | 347 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/diff_sessione.md           |  15 ++++++++-------
+ reports/handoff.md                 | 351 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |   8 ++++----
  reports/setup_notte.md             |   2 +-
  reports/stato_progetto.md          |   4 ++--
  reports/ultimo_report.md           |  45 ++++++++++++---------------------------------
  tests/test_unit_kernel.py          |  11 +++++++++++
- 10 files changed, 122 insertions(+), 342 deletions(-)
+ 10 files changed, 127 insertions(+), 342 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2dc4f7a docs(fine-task): V-3 bot #247, CI e report allineati (#247)
 d579a1f fix(firma): anche il diniego di riserva dice chi scrive pro e contro (V-3 bot #247)
 19b1ef6 chore(revisore): memoria review #468 — APPROVATO
 2aa7a39 docs(fine-task): prova sul Mac (R1), pro e contro scritti da Gas (#247)
@@ -110,9 +111,10 @@ Kernel 1020 → 1022 PASS (T82a2 e T82h1b nuovi; base `main` 2127bbe = 1020 in l
 
 ## §6 STATO CI
 
-- `2ea4f80`: nessuna run CI su questo SHA (solo verifica-bot 39827089566, failure: BOCCIATO per report mancanti e CI assente su quello SHA).
-- `2aa7a39`: nessuna run su questo SHA; il push non risultava registrato dalla PR (head ferma a `2ea4f80`).
-- `eaf9043`, `19b1ef6`, `d579a1f` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `2ea4f80`: CI 39830977401 arrivata in ritardo (18:24): handoff-check failure (quel commit non conteneva l'handoff, voluto); verifica-bot failure (BOCCIATO: report e CI mancanti).
+- `2aa7a39`, `eaf9043`, `19b1ef6`, `d579a1f`: nessuna run su questo SHA (eventi di push in ritardo su GitHub).
+- `2dc4f7a`: nessuna run CI; verifica-bot 39830687425 failure (V-1: CI assente).
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
