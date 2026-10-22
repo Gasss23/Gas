@@ -17,7 +17,7 @@
 - **Merge PR #241** («mergia 241»): `FATTA` — 1c023fa.
 - **Prova dal vero sul Mac (R1)**: `FATTA` — doctor, catalogo, tetto, bottoni Approva/Rifiuta, `/notte` con messaggio del mattino, timer `com.gas.notte`, lezione 13 approvata.
 - **Difetto «pro e contro chiesti all'utente»**: `FATTA` — review #467 APPROVATO.
-- **V-3 bot #247 (diniego di riserva che non diceva chi scrive pro e contro)**: `FATTA` — review #468 APPROVATO. V-1/V-2 del bot erano sullo SHA 2ea4f80 senza report e senza CI: i report sono nel commit dopo. Bot su 2dc4f7a: V-1 MEDIA (CI non partita: ritardo di GitHub sugli eventi di push, la run di 2ea4f80 è arrivata solo alle 18:24) e V-2 COSMETICA (diff_sessione e descrizione della PR) chiuse con questo push.
+- **V-3 bot #247 (diniego di riserva che non diceva chi scrive pro e contro)**: `FATTA` — review #468 APPROVATO. V-1/V-2 del bot erano sullo SHA 2ea4f80 senza report e senza CI: i report sono nel commit dopo. Bot su 2dc4f7a e 8630ec6: V-1 MEDIA «CI assente» dovuta al ritardo di GitHub (il bot è partito prima della CI); la CI è poi arrivata verde su 2aa7a39, 2dc4f7a e 8630ec6. V-2 (report e descrizione) corrette.
 - **Backup iCloud, protezioni del repo, server Netcup**: `DEFERITA — da fare con l'operatore`.
 
 ---
@@ -29,18 +29,19 @@
  gas.py                             |  14 ++++++++++----
  reports/da_mergiare.md             |  17 ++++++-----------
  reports/diff_sessione.md           |  15 ++++++++-------
- reports/handoff.md                 | 351 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 356 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |   8 ++++----
  reports/setup_notte.md             |   2 +-
  reports/stato_progetto.md          |   4 ++--
  reports/ultimo_report.md           |  45 ++++++++++++---------------------------------
  tests/test_unit_kernel.py          |  11 +++++++++++
- 10 files changed, 127 insertions(+), 342 deletions(-)
+ 10 files changed, 132 insertions(+), 342 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8630ec6 docs(fine-task): report allineati al 2° giro, V-2 bot #247 (#247)
 2dc4f7a docs(fine-task): V-3 bot #247, CI e report allineati (#247)
 d579a1f fix(firma): anche il diniego di riserva dice chi scrive pro e contro (V-3 bot #247)
 19b1ef6 chore(revisore): memoria review #468 — APPROVATO
@@ -111,9 +112,13 @@ Kernel 1020 → 1022 PASS (T82a2 e T82h1b nuovi; base `main` 2127bbe = 1020 in l
 
 ## §6 STATO CI
 
-- `2ea4f80`: CI 39830977401 arrivata in ritardo (18:24): handoff-check failure (quel commit non conteneva l'handoff, voluto); verifica-bot failure (BOCCIATO: report e CI mancanti).
-- `2aa7a39`, `eaf9043`, `19b1ef6`, `d579a1f`: nessuna run su questo SHA (eventi di push in ritardo su GitHub).
-- `2dc4f7a`: nessuna run CI; verifica-bot 39830687425 failure (V-1: CI assente).
+Run lette via `gh api` REST (ramo `feat/merge-automatico-z1xjx2`):
+
+- `8630ec6` — CI success (unit-suite, handoff-check); verifica-bot failure (V-1: CI non ancora partita quando ha verificato).
+- `2dc4f7a` — CI success; verifica-bot failure (stesso motivo).
+- `2aa7a39` — CI 39831062721 success.
+- `2ea4f80` — CI 39830977401 failure su handoff-check (commit senza handoff, voluto; unit-suite success); verifica-bot failure.
+- `eaf9043`, `19b1ef6`, `d579a1f`: nessuna run su questo SHA (pushati insieme ad altri commit).
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
