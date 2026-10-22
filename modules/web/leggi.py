@@ -176,8 +176,9 @@ class _Contesto:
     punto di integrazione in mezzo; una chiusura fermata da un elemento HTML diverso con il
     tag più sotto; un «<![CDATA[» con un elemento HTML in cima; un'uscita dal contenuto
     estraneo dentro un altro contenitore nascosto (canvas, object…, V-5 ve #246); una pila
-    troppo profonda. annotation-xml di math conta sempre come punto di integrazione (il
-    ripiego non legge gli attributi: si nasconde di più, B-467-1). Ogni operazione costa O(1)
+    troppo profonda; un annotation-xml di math nel ripiego, che non ne legge l'encoding.
+    annotation-xml è un punto di integrazione solo con encoding text/html o
+    application/xhtml+xml, come nei browser (B-467-1, V-1 ve #246 bis). Ogni operazione costa O(1)
     ammortizzato: niente scansioni della pila (V-3 ve #246). Il conteggio dei nascosti resta
     in `aperti` (lo stesso dizionario del chiamante): apri e chiudi dicono quali nascosti la
     pila ha chiuso insieme a un altro tag, da scalare."""
@@ -197,11 +198,14 @@ class _Contesto:
 
     @staticmethod
     def _punto(nome: str, spazio: str) -> bool:
-        # Punto di integrazione HTML (o di testo MathML); annotation-xml sempre (B-467-1).
-        return spazio != "html" and (nome in _PUNTI_HTML[spazio]
-                                     or (spazio == "math" and nome == "annotation-xml"))
+        # Punto di integrazione HTML (o di testo MathML) per nome; annotation-xml dipende
+        # dall'encoding e lo decide chi lo apre.
+        return spazio != "html" and nome in _PUNTI_HTML[spazio]
 
-    def _metti(self, nome: str, spazio: str) -> None:
+    def _cima_punto(self) -> bool:
+        return bool(self._punti) and self._punti[-1] == len(self.pila) - 1
+
+    def _metti(self, nome: str, spazio: str, punto: bool = False) -> None:
         if len(self.pila) >= self.PROFONDITA_MAX:
             self.incerta = True
             return
@@ -210,7 +214,7 @@ class _Contesto:
         self._posizioni.setdefault(nome, []).append(k)
         if spazio == "html":
             self._html.append(k)
-        elif self._punto(nome, spazio):
+        elif punto or self._punto(nome, spazio):
             self._punti.append(k)
 
     def _togli_da(self, k: int) -> list[str]:
@@ -238,8 +242,9 @@ class _Contesto:
         if spazio == "html":
             return False
         if nome == "annotation-xml" and spazio == "math":
-            return False
-        return not (self._punto(nome, spazio) and not (spazio == "math" and tag in ("mglyph", "malignmark")))
+            # Punto di integrazione HTML: regole HTML; altrimenti solo «<svg>» le segue.
+            return not (self._cima_punto() or tag == "svg")
+        return not (self._cima_punto() and not (spazio == "math" and tag in ("mglyph", "malignmark")))
 
     @staticmethod
     def _esce(tag: str, font_esce: Optional[bool]) -> bool:
@@ -263,7 +268,7 @@ class _Contesto:
 
     def _esci(self) -> list[str]:
         usciti = []
-        while self.pila and self.pila[-1][1] != "html" and not self._punto(*self.pila[-1]):
+        while self.pila and self.pila[-1][1] != "html" and not self._cima_punto():
             nome = self.pila[-1][0]
             self._togli_da(len(self.pila) - 1)
             # Solo svg e math: gli altri nascosti chiusi da un'uscita restano contati, nel verso
@@ -272,9 +277,11 @@ class _Contesto:
                 usciti.append(nome)
         return usciti
 
-    def apri(self, tag: str, resta_aperto: bool, font_esce: Optional[bool] = None) -> list[str]:
+    def apri(self, tag: str, resta_aperto: bool, font_esce: Optional[bool] = None,
+             html_dentro: Optional[bool] = None) -> list[str]:
         """Registra un'apertura; restituisce i nascosti chiusi da un'uscita. font_esce dice se
-        «<font>» ha color/face/size; None se non si sa (il ripiego non legge gli attributi)."""
+        «<font>» ha color/face/size, html_dentro se annotation-xml ha encoding HTML; None se
+        non si sa (il ripiego non legge gli attributi)."""
         self._visti.add(tag)
         if not self.pila:
             if tag in _AUTOCHIUDIBILI and resta_aperto:
@@ -300,7 +307,16 @@ class _Contesto:
                     self._metti(tag, "html")
                 return usciti
             if resta_aperto:
-                self._metti(tag, self.pila[-1][1])
+                spazio = self.pila[-1][1]
+                if tag == "annotation-xml" and spazio == "math":
+                    if html_dentro is None:
+                        # Senza l'encoding non si sa se è un punto di integrazione (V-1 ve #246
+                        # bis): pila incerta.
+                        self.incerta = True
+                        return []
+                    self._metti(tag, spazio, html_dentro)
+                else:
+                    self._metti(tag, spazio)
             return []
         if tag in _AUTOCHIUDIBILI:
             if resta_aperto:
@@ -366,9 +382,10 @@ def _esito_autochiuso(tag: str, contesto: _Contesto, aperti: dict, xhtml: bool,
     if xhtml:
         return "vuoto"
     if contesto.regole_estranee(tag, font_esce):
-        # Nel contenuto estraneo «<x/>» è vuoto; i nascosti però restano aperti (si contano e
-        # li chiude la chiusura del contenitore): verso sicuro se la pila sbaglia (R-454-1).
-        return "aperto" if tag in _TAG_NASCOSTI and tag not in _AUTOCHIUDIBILI else "vuoto"
+        # Nel contenuto estraneo «<x/>» è vuoto davvero, anche per i nascosti: tenerli aperti
+        # faceva chiudere a «</script>» un svg annidato che il browser lascia aperto (V-2 ve
+        # #246 bis). Dove la pila potrebbe sbagliare diventa incerta.
+        return "vuoto"
     titolo_vuoto = tag == "title" and any(aperti.get(n, 0) for n in _TITOLO_VUOTO_IN)
     if tag in _GREZZI_AUTOCHIUSI and not titolo_vuoto:
         return "grezzo"
@@ -715,10 +732,20 @@ class _Estrattore(HTMLParser):
     def _font_esce(tag: str, attrs: list) -> bool:
         return tag == "font" and any(k in ("color", "face", "size") for k, _ in attrs)
 
+    @staticmethod
+    def _html_dentro(attrs: list) -> bool:
+        # annotation-xml è un punto di integrazione HTML con questi encoding (V-1 ve #246 bis).
+        # Come i browser: vale il primo attributo «encoding», confronto esatto senza togliere
+        # spazi, maiuscole ignorate solo in ASCII (B-473-1).
+        for k, v in attrs:
+            if k == "encoding":
+                return (v or "").translate(_MINUSCOLE_ASCII) in ("text/html", "application/xhtml+xml")
+        return False
+
     def handle_starttag(self, tag: str, attrs: list) -> None:
         tag = self._locale(tag)
         if not self._xhtml:
-            self._scala(self._contesto.apri(tag, True, self._font_esce(tag, attrs)))
+            self._scala(self._contesto.apri(tag, True, self._font_esce(tag, attrs), self._html_dentro(attrs)))
         self._inizio(tag)
 
     def _inizio(self, tag: str) -> None:
@@ -742,7 +769,7 @@ class _Estrattore(HTMLParser):
         font_esce = self._font_esce(tag, attrs)
         esito = _esito_autochiuso(tag, self._contesto, self._aperti, self._xhtml, font_esce)
         if not self._xhtml:
-            self._scala(self._contesto.apri(tag, esito != "vuoto", font_esce))
+            self._scala(self._contesto.apri(tag, esito != "vuoto", font_esce, self._html_dentro(attrs)))
         self._inizio(tag)
         if esito == "grezzo":
             self._modo_grezzo(tag)

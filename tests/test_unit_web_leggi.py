@@ -1191,6 +1191,20 @@ def test_nodo_corrente_come_il_browser(pagina):
     "<p>Ciao</p><canvas><form></canvas><svg><b/>SEGRETO",
     "<p>Ciao</p><canvas><form></canvas><svg></p>SEGRETO",
     "<p>Ciao</p><canvas><form></canvas><svg></br>SEGRETO",
+    # annotation-xml senza encoding HTML non è un punto di integrazione: un'uscita esce anche
+    # da math e il «</math>» dopo non chiude l'svg aperto (V-1 ve #246 bis)
+    "<p>Ciao</p><math><annotation-xml></p><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml></br><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml><br><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml><div></div><svg></math>SEGRETO",
+    "<p>Ciao</p><math><annotation-xml><img><svg></math>SEGRETO",
+    # vale il primo «encoding», senza togliere spazi (B-473-1)
+    '<p>Ciao</p><math><annotation-xml encoding=" text/html "></p><svg></math>SEGRETO',
+    '<p>Ciao</p><math><annotation-xml encoding="x" encoding="text/html"></p><svg></math>SEGRETO',
+    # un nascosto autochiuso nel contenuto estraneo è vuoto davvero (V-2 ve #246 bis)
+    "<p>Ciao</p><svg><script/><svg></script></svg>SEGRETO",
+    "<p>Ciao</p><svg><style/><svg></style></svg>SEGRETO",
+    "<p>Ciao</p><math><script/><math></script></math>SEGRETO",
     # CDATA con un elemento HTML in cima: il browser può averlo già chiuso
     "<p>Ciao</p><svg><foreignObject><p><div></div><![CDATA[x></p></svg>SEGRETO]]>fine",
 ])
@@ -1245,6 +1259,31 @@ def test_chiusura_mai_aperta_in_svg_non_nasconde_il_resto():
                                          "troncato": False})["testo"]
     assert "VIS" in t and "SEGRETO" not in t, t
     assert "VIS" in web._testo_senza_parser(pagina)
+
+
+def test_annotation_xml_con_encoding_html_e_un_punto_di_integrazione():
+    """Con encoding HTML annotation-xml è un punto di integrazione: «</p>» non esce, «</math>»
+    chiude anche l'svg dentro e VIS è visibile, come per lexbor. Il ripiego non legge
+    l'encoding: pila incerta (V-1 ve #246 bis)."""
+    for enc in ("text/html", "TEXT/HTML", "Application/XHTML+XML"):
+        pagina = f'<p>Ciao</p><math><annotation-xml encoding="{enc}"></p><svg></math>VIS'
+        t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                             "troncato": False})["testo"]
+        assert "VIS" in t, t
+        assert "VIS" not in web._testo_senza_parser(pagina)
+
+
+def test_pila_profonda_con_tante_chiusure_resta_lineare():
+    """Profondità vicina al tetto e centinaia di migliaia di chiusure assenti: ogni chiusura
+    costa O(1), non O(profondità) (V-4 ve #246 bis)."""
+    pagina = "<svg>" + "<g>" * 1000 + "</q>" * 400000
+    inizio = time.monotonic()
+    web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                     "troncato": False})
+    assert time.monotonic() - inizio < 6
+    inizio = time.monotonic()
+    web._testo_senza_parser(pagina)
+    assert time.monotonic() - inizio < 6
 
 
 def test_pila_profonda_resta_lineare():
