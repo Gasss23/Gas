@@ -874,15 +874,132 @@ def test_parser_title_autochiuso_apre_il_titolo():
     assert "Titolo: TITOLO_X" in t and t.count("TITOLO_X") == 1 and "VIS" in t, t
 
 
-def test_title_autochiuso_dentro_template_object_canvas_apre_il_titolo():
-    """Dentro template, object e canvas valgono le regole HTML: «<title/>» apre il titolo e il
-    testo dopo non va nel corpo (R-451-1)."""
-    for nome in ("template", "object", "canvas"):
-        corpo = f"<p>a</p><{nome}><title/></{nome}>TITOLO_X".encode()
+def test_title_autochiuso_dentro_object_canvas_apre_il_titolo():
+    """Dentro object e canvas valgono le regole HTML: «<title/>» apre il titolo e il testo dopo
+    non va nel corpo (R-451-1; template a parte: test_title_autochiuso_dentro_template_resta_nascosto)."""
+    for nome in ("object", "canvas"):
+        corpo = f"<p>a</p><{nome}><title/></{nome}>TITOLO_X</title>".encode()
         t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
                                              "troncato": False})["testo"]
-        assert "Titolo: TITOLO_X" in t and t.count("TITOLO_X") == 1, t
+        # Il titolo è testo grezzo fino a «</title>», come nei browser: dentro c'è anche «</nome>»,
+        # quindi il contenitore resta aperto e il titolo non va nemmeno nel suo campo (R-453-1).
+        corpo_pagina = "\n".join(r for r in t.splitlines() if not r.startswith("Titolo:"))
+        assert "TITOLO_X" not in corpo_pagina, t
         assert "TITOLO_X" not in web._testo_senza_parser(corpo.decode()), nome
+
+
+def test_title_autochiuso_dentro_template_resta_nascosto():
+    """Il contenuto di template è inerte: il testo dopo «<template><title/>» fino a
+    «</title>» non va né nel corpo né nella riga del titolo (V-1 bot #243), e un «</template>»
+    lì dentro è testo del titolo, non chiude il template (R-453-1)."""
+    corpo = b"<p>a</p><template><title/></template>SEGRETO</title>SEGRETO_2</template>VIS"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "Titolo:" not in t and "VIS" in t, t
+    r = web._testo_senza_parser(corpo.decode())
+    assert "SEGRETO" not in r and "VIS" in r, r
+
+
+@pytest.mark.parametrize("pagina", [
+    "<p>a</p><template><title/></template></title>SEGRETO</template>VIS",
+    "<p>a</p><object><title/></object></title>SEGRETO</object>VIS",
+    "<p>a</p><template><script/></template></script>SEGRETO</template>VIS",
+    "<p>a</p><noscript><script/></noscript></script>SEGRETO</noscript>VIS",
+])
+def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
+    """«<title/>», «<script/>»… aprono il testo grezzo come nei browser: una chiusura di un
+    contenitore scritta lì dentro non lo chiude (R-453-1), nel parser e nel ripiego."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "VIS" in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and "VIS" in r, r
+
+
+def test_grezzi_autochiusi_come_i_browser():
+    """Testo grezzo anche per i grezzi visibili; dentro svg/math i non nascosti autochiusi sono
+    vuoti (R-453-1)."""
+    for corpo, atteso in ((b"<p>a</p><title/><div a=\"</title>\">VIS", '">VIS'),
+                          (b"<p>a</p><textarea/>T<b>U</b></textarea>VIS", "T<b>U</b>VIS"),
+                          (b"<p>a</p><math><title/></math>VIS", "VIS"),
+                          (b"<p>a</p><svg><textarea/></svg>VIS", "VIS")):
+        t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
+                                             "troncato": False})["testo"]
+        assert atteso in t, (corpo, t)
+    for pagina in ("<math><title/></math>VIS", "<svg><textarea/></svg>VIS"):
+        assert "VIS" in web._testo_senza_parser(pagina), pagina
+
+
+@pytest.mark.parametrize("pagina", [
+    "<svg><foreignObject><script/></svg>SEGRETO</script>VIS",
+    "<svg><desc><style/></svg>SEGRETO</style>VIS",
+    "<math><mi><iframe/></math>SEGRETO</iframe>VIS",
+    "<math><mtext><script/></math>SEGRETO</script>VIS",
+    "<svg><foreignObject><noscript/></svg>SEGRETO</noscript>VIS",
+    "<svg><foreignObject><script/></svg></script>SEGRETO",
+])
+def test_nascosti_autochiusi_nei_punti_di_integrazione(pagina):
+    """Nei punti di integrazione HTML dentro svg/math «<script/>» & co. aprono davvero: un
+    «</svg>» lì dentro non chiude niente (R-454-1). Nel verso sicuro: dentro svg vero si
+    nasconde anche quello che i browser mostrano."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t, t
+    assert "SEGRETO" not in web._testo_senza_parser(pagina), pagina
+
+
+def test_grezzi_autochiusi_con_html_parser_vecchio(monkeypatch):
+    """Su un html.parser senza «escapable» (versioni senza le patch recenti) si apre lo stesso
+    il testo grezzo (R-453-1)."""
+    originale = web.HTMLParser.set_cdata_mode
+
+    def vecchio(self, elem, *args, **kwargs):
+        if kwargs:
+            raise TypeError("set_cdata_mode() got an unexpected keyword argument 'escapable'")
+        return originale(self, elem)
+
+    monkeypatch.setattr(web.HTMLParser, "set_cdata_mode", vecchio)
+    corpo = b"<p>a</p><template><title/></template></title>SEGRETO</template>VIS"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": corpo,
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "VIS" in t, t
+
+
+def test_xhtml_commenti_e_cdata():
+    """In XHTML commenti e CDATA seguono l'XML anche dentro script e style: «</script>» lì
+    dentro non chiude lo script (V-2 bot #243); il CDATA fuori da uno script è testo."""
+    for corpo, visibili in ((b"<p>a</p><script><!--</script>-->SEGRETO</script>VIS", ("a", "VIS")),
+                            (b"<p>a</p><style><![CDATA[</style>]]>SEGRETO</style>VIS", ("a", "VIS")),
+                            (b"<p>a</p><![CDATA[<b>x</b> & y]]>VIS<!-- SEGRETO -->Z", ("<b>x</b> & y", "VIS", "Z")),
+                            (b"<p>a</p><!-- SEGRETO", ("a",)),
+                            (b"<p>a</p><script><![CDATA[</script>SEGRETO", ("a",))):  # senza fine: via il resto
+        t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                             "corpo": corpo, "troncato": False})["testo"]
+        assert "SEGRETO" not in t and all(v in t for v in visibili), (corpo, t)
+    # In HTML resta il comportamento dei browser: lo script finisce al primo «</script>».
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8",
+                                         "corpo": b"<script><!--</script>-->VIS</script>", "troncato": False})["testo"]
+    assert "VIS" in t, t
+
+
+def test_xhtml_anche_nel_ripiego_di_componi(monkeypatch):
+    """Quando html.parser solleva, _componi passa il modo XHTML anche al ripiego (V-1 verifica
+    esterna #243, secondo giro)."""
+    def esplode(self, dati):
+        raise ValueError("parser rotto")
+
+    monkeypatch.setattr(web._Estrattore, "feed", esplode)
+    corpo = b"<p>a</p><script/>VIS2<script><!--</script>-->SEGRETO</script>VIS3"
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8", "corpo": corpo,
+                                         "troncato": False})["testo"]
+    assert "VIS2" in t and "VIS3" in t and "SEGRETO" not in t, t
+
+
+def test_xhtml_commenti_e_cdata_lineare():
+    for pagina in ('"<!--a-->" * 300_000', '"<!--" * 500_000', '"<![CDATA[" * 300_000',
+                   '"<!--a-->" * 200_000 + "<![CDATA["', '"<![CDATA[a]]>" * 200_000 + "<!--"',
+                   '"<!--" + "x" * 2_000_000'):
+        assert _entro(10.0, "_commenti_e_cdata_xml", pagina), pagina
 
 
 def test_xhtml_autochiusi_vuoti():
@@ -955,10 +1072,10 @@ def test_title_autochiuso_dentro_svg_resta_vuoto():
     "<svg><xmp></svg></xmp>SEGRETO</svg>VIS",
     "<svg><noembed></svg></noembed>SEGRETO</svg>VIS",
     "<svg><noframes></svg></noframes>SEGRETO</svg>VIS",
-    "<script/><svg><noscript></script>SEGRETO</noscript></svg>VIS",  # grezzo autochiuso (R-445-1)
+    "<script/>SEGRETO<svg><noscript></script>VIS",               # grezzo autochiuso: testo grezzo (R-445-1, R-453-1)
     "<script/>SEGRETO</script>VIS",                             # per i browser «<script/>» apre lo script
     "<title/>SEGRETO</title>VIS",                               # anche «<title/>» (V-2 ve #242)
-    "<title/><svg></title>SEGRETO</svg>VIS",
+    "<title/>SEGRETO<svg></title>VIS",
     "<svg>SEGRETO</svg></svg>VIS",                              # chiusura in più dopo una coppia (R-449-2)
 ])
 def test_ripiego_attributi_e_commenti(pagina):
