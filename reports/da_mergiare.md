@@ -21,4 +21,5 @@
 - **Aggiunte dopo (stessa PR #241):** chiuse le riserve del bot e della verifica esterna (testo del recupero, log, test «un click alla volta»; review #450-#452). Nuovo: **resoconto del mattino** (roadmap R1): nel messaggio Telegram del giro notturno spesa delle ultime 24 ore e tetto, lead attivi e fermi da 7+ giorni, firme in attesa — solo numeri, calcolati senza modello (review #453/#454).
 - **Pro (aggiunte):** al mattino vedi subito quanto ha speso Gas e quali lead sono fermi, senza aprire file.
 - **Contro (aggiunte):** il messaggio del mattino ha 3 righe in più; se la memoria è rotta le righe dicono «non letti»; R-453-2/R-454-1 basse.
-- **Controlli (totale):** kernel 1010 PASS, pytest 1895 passed.
+- **Ancora:** `ricorda` con `fermi=true` elenca i lead attivi dal più fermo (il blocco di memoria mostrava solo i più recenti); il compito d'esempio punto_lead lo usa. La spesa del mattino avvisa se il log dei token è rovinato (review #455/#456).
+- **Controlli (totale):** kernel 1019 PASS, pytest 1897 passed.

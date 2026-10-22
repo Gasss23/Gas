@@ -1,6 +1,6 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-21 — Chat Motore: R7 R-c4b3-3 (esito della firma recuperato), riserve finali di #241, resoconto di spesa e stato nel messaggio del mattino (R1) — PR #241
+**Sessione:** 2026-10-21 — Chat Motore: R7 R-c4b3-3 (esito della firma recuperato), riserve finali di #241, resoconto di spesa e stato nel messaggio del mattino (R1), contatti fermi in `ricorda` (R1) — PR #241
 
 ---
 
@@ -19,31 +19,37 @@
 - **Riserve di #241 (V-1 bot, V-1/V-2 verifica esterna)**: `FATTA` — review #450/#451 APPROVATO CON RISERVE (chiuse), #452 APPROVATO.
 - **R1 resoconto di spesa e stato**: `FATTA` — review #453/#454 APPROVATO CON RISERVE.
 - **R-445-3**: `DEFERITA — COSMETICA, preesistente, fetta successiva`.
-- **R1 compiti veri nel catalogo (contatti fermi)**: `DEFERITA — prossima fetta`.
+- **R1 contatti fermi (`ricorda fermi=true`, catalogo d'esempio)**: `FATTA` — review #455 APPROVATO CON RISERVE, #456 APPROVATO.
+- **V-1/V-2 verifica esterna e bot #241 (spesa del mattino a log rotto, tetto mostrato)**: `FATTA` — nella stessa fetta (#455/#456); descrizione della PR aggiornata (V-2 bot).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 +++++++++++
- gas.py                             |  68 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- modules/notte/notte.py             |  97 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- modules/telegram/bot.py            |  16 +++++++++++++--
- reports/da_mergiare.md             |  31 ++++++++++++++--------------
- reports/diff_sessione.md           |  16 ++++++++-------
- reports/handoff.md                 | 401 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/roadmap.md                 |   8 ++++----
- reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  39 +++++++++++++----------------------
- tests/test_unit_kernel.py          | 146 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_notte.py           |  73 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 12 files changed, 648 insertions(+), 264 deletions(-)
+ .claude/agents/memoria_revisore.md  |  15 ++++++++++++
+ gas.py                              | 128 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ modules/notte/notte.py              | 153 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ modules/telegram/bot.py             |  16 +++++++++++--
+ reports/da_mergiare.md              |  32 ++++++++++++-------------
+ reports/diff_sessione.md            |  17 +++++++------
+ reports/handoff.md                  | 473 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                  |   8 +++----
+ reports/stato_progetto.md           |   5 ++--
+ reports/ultimo_report.md            |  39 +++++++++++-------------------
+ scripts/notte/catalogo_esempio.yaml |   5 ++--
+ tests/test_unit_kernel.py           | 208 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py            | 108 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 939 insertions(+), 268 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3c136d4 feat(memoria): ricorda fermi=true — lead attivi dal più fermo (R1); spesa del mattino onesta
+ebaf9f3 chore(revisore): memoria review #456 — APPROVATO
+e8e7fc8 chore(revisore): memoria review #455 — APPROVATO CON RISERVE
+075e323 docs(fine-task): report e handoff — riserve di #241 e resoconto del mattino R1 (#241)
 0037522 feat(notte): resoconto di spesa e stato nel riepilogo del mattino (R1)
 3b988f6 chore(revisore): memoria review #454 — APPROVATO CON RISERVE
 1f0a2e9 chore(revisore): memoria review #453 — APPROVATO CON RISERVE
@@ -275,35 +281,88 @@ Ri-review #454 della #453, sul diff staged di modules/notte/notte.py e tests/tes
 
 Riga contatore #454 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato `scripts/commit_memoria_revisore.sh` per committarla, ma non ha stampato nulla e non ho controllato il log git: verifica che il commit esista.
 
+### Review #455 (chat Motore)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #455 (chat Motore). Ho letto CLAUDE.md (sez. 5, 8 e 9), le voci rilevanti di reports/stato_progetto.md (R1, R-453/454, contaminazione) e la memoria del revisore. Ho esaminato il diff staged su 5 file. Nessuno slicing della storia, nessuna simulazione dei tool, `_get_window` e il tetto di 10 iterazioni non sono toccati.
+
+**Elementi del diff esaminati**
+- `gas.py:101` — `_vero()`: un booleano del modello vale vero solo per valori veri espliciti. Rischio esaminato: la stringa "false" attiva l'elenco. Esito: ok. Ho messo `bool()` al posto di `_vero` e T98d fallisce; T98e copre la tabella dei valori.
+- `gas.py:4352` — passaggio di `fermi` a `_ricorda`, con la guardia `isinstance(args, dict)`. Rischio esaminato: argomenti che non sono un dizionario fanno crashare il programma. Esito: ok.
+- `gas.py:3994` — `_lead_fermi`: lead attivi senza STATI_CHIUSI, data illeggibile in testa, `max(0, …)` per le date future, date senza fuso trattate come UTC. Rischi esaminati: ordine sbagliato e lead chiusi inclusi. Esito: ok. Mettere la data illeggibile in coda fa fallire T98a; togliere il filtro dei chiusi fa fallire T98a, T98b e T98c. Le righe entrano nelle stesse `parti`, quindi passano da `_sanitize_memory_text` e finiscono nel blocco `<memoria_dati>`.
+- `gas.py:3974` — `and not fermi` esclude gli ultimi eventi del diario. Rischio esaminato: il comportamento di ricorda senza fermi cambia. Esito: ok, con fermi falso la condizione è identica a prima. Riserva sul test: se tolgo `and not fermi` i test passano lo stesso (1016/0). Il motivo è che nel fixture il diario è vuoto, quindi le righe del diario che ricompaiono non si vedono.
+- `gas.py:2261` — nel diario la descrizione di ricorda aggiunge « fermi=True». Rischio esaminato: nella riga del diario entra testo di terzi. Esito: ok, aggiunge solo una costante.
+- `modules/gate/gate.py:83` (contesto) — ricorda resta in UNTRUSTED_INPUT_TOOLS, quindi il suo output contamina ancora la finestra. Esito: ok. La regola dei modelli per i dati personali è la stessa di `ricorda contatto=…`, quindi non c'è una nuova esposizione.
+- `modules/notte/notte.py:426` — `_tetto_applicato` usa `gas._env_float` con gli stessi limiti di `_budget_superato` (`gas.py:1571`). Rischio esaminato: tetto mostrato diverso da quello applicato. Esito: ok. Se rimetto `_env_budget` il test della notte fallisce; con NaN il tetto vale 0, con inf viene limitato a 100000, come nel kernel.
+- `modules/notte/notte.py:436` — `_righe_illeggibili_log`: legge solo gli ultimi 64 KB, in sola lettura, senza mai sollevare eccezioni. Un byte UTF-8 non valido dà UnicodeDecodeError, che è una sottoclasse di ValueError, quindi la riga conta come rotta. Un log che è una cartella dà -1. Esito: ok. Se cambio -1 in 0, o tolgo il controllo che la riga sia un dizionario, il test fallisce.
+- `modules/notte/notte.py:453` — salto della prima riga tagliata quando il log supera 64 KB. Esito: riserva. Se tolgo questa riga i test passano (134 passed): non c'è un test con un log più grande di 64 KB, e senza il salto comparirebbe un avviso falso di 1 riga illeggibile.
+- `scripts/notte/catalogo_esempio.yaml:9` — il compito punto_lead usa fermi=true. Esito: ok.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- R-455-1 BASSA: con la memoria degradata (`available=False`), `lista_contatti` restituisce [] e ricorda con fermi scrive «(nessun lead attivo)». È una falsa rassicurazione, lo stesso schema di R-454-1. Il compito notturno punto_lead la vedrebbe come «nessuno è fermo».
+- R-455-2 BASSA (test): mancano due test che fermino le due mutazioni sopravvissute, cioè la riga `gas.py:3974` senza `and not fermi` (serve un fixture con il diario non vuoto) e il salto della prima riga a `modules/notte/notte.py:453` (serve un log più grande di 64 KB).
+- R-455-3 COSMETICA: in `_lead_fermi` nome e prossima_azione non passano da `_campo_pin`. Un a-capo crea righe finte dentro `<memoria_dati>`. Il ramo `contatto=` fa già lo stesso, quindi non è una regressione. Le righe finte non gonfiano `_ricorda_n`, che conta gli elementi di `parti` e non le righe del testo.
+
+**Prove mie**: kernel 1016 PASS 0 FAIL, notte 134 passed. Ho fatto 8 mutazioni, poi ho ripristinato i file; l'albero di lavoro ha di nuovo solo il diff staged. 6 mutazioni fanno fallire i test, 2 sopravvivono (le due di R-455-2).
+
+**Rischio escluso**: non ho verificato il comportamento sulla VPS durante un giro notturno vero, con il log dei token scritto da un altro processo mentre il resoconto lo legge. Un'ultima riga a metà scrittura conterebbe come illeggibile e darebbe un avviso falso, cioè prudente. Non è riproducibile in dev. Non ho rilanciato nemmeno l'intera `pytest tests/` (1896): ho rilanciato solo le suite toccate.
+
+Memoria: riga #455 e una lezione (mutazione inversa sui parametri che escludono un ramo di default) aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md e già committate (e8e7fc8).
+
+### Review #456 (chat Motore)
+
+## VERDETTO: APPROVATO
+
+Ri-review #456 (chat Motore) della #455, sullo stesso diff staged: gas.py, modules/notte/notte.py, scripts/notte/catalogo_esempio.yaml, tests/test_unit_kernel.py, tests/test_unit_notte.py.
+
+**Cosa ho controllato nel diff**
+- `gas.py:3998` — `_lead_fermi` restituisce «Elenco dei lead NON letto: memoria degradata» se `available` è False (l'attributo esiste davvero, `modules/memory/store.py:546`) o se `conta_approvazioni()` dà None. Rischio: «nessun lead attivo» mostrato a DB rotto, cioè un falso via libera. Ho tolto la guardia in una copia e T98h fallisce. Esito: ok, R-455-1 chiusa.
+- `gas.py:4022` — nome e prossima_azione passano da `_campo_pin`, come nel pin (`gas.py:3534`). Rischio: un a capo nel nome crea una riga finta «- [nuovo] …» nel blocco. Ho tolto `_campo_pin` dal nome e T98i fallisce. Esito: ok, R-455-3 chiusa.
+- `gas.py:3974` — `and not fermi` esclude il diario di default. Il nuovo test (`tests/test_unit_kernel.py:10732`) scrive un evento nel diario. Ho rifatto la mutazione M4 sopravvissuta nella #455 (tolto `and not fermi`): ora T98b (conteggio 5) e T98g falliscono. Esito: ok, R-455-2 chiusa per il kernel.
+- `modules/notte/notte.py:453` — `righe[1:]` salta la prima riga tagliata della coda. Il test `tests/test_unit_notte.py:1945` usa righe da 141 byte e 514 ripetizioni: il taglio cade 29 byte dentro una riga, quindi il test non passa per caso. Ho rifatto la mutazione N1 sopravvissuta (tolto `righe[1:]`) e il test fallisce. Esito: ok, R-455-2 chiusa per notte.
+- `gas.py:4357` — la chiamata passa `fermi` con `_vero`; i valori «false», 0 e None non attivano l'elenco (T98d/T98e). Esito: ok.
+
+**Prove (in una copia dell'index nello scratchpad)**: kernel 1019 PASS, 0 FAIL; tests/test_unit_notte.py 135 passed. Ognuna delle 4 mutazioni fa fallire almeno un test.
+
+**Cosa NON ho verificato**
+- Il caso stretto con la tabella approvals sana e la tabella contatti rotta: `lista_contatti` dà [] e l'elenco dice «nessun lead attivo». È lo stesso residuo BASSO già accettato come R-454-1. Non l'ho sondato: serve rompere una sola tabella dello stesso file DB.
+- Il comportamento reale del modello con il nuovo prompt in `scripts/notte/catalogo_esempio.yaml`: serve un provider vivo, non riproducibile in dev.
+- Non ho rilanciato `pytest tests/` per intero: 1897 passed è la tua cifra, io ho girato solo kernel e notte.
+
+**Memoria**: riga #456 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit ebaf9f3). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 996 → 1010 PASS (T78l, T78m, T78n, T78o, T78p nuovi); pytest `tests/` 1862 → 1895 passed (3 test nuovi del resoconto, più la web suite arrivata col merge di #242). Nessun FAIL. Correzione dell'handoff di #240: il delta dei test del bot lì dichiarato +9 era +14 (311 → 325).
+Kernel 996 → 1019 PASS (T78l-T78p, T98a-T98i nuovi); pytest `tests/` 1862 → 1897 passed (5 test nuovi del resoconto, più la web suite arrivata col merge di #242). Nessun FAIL. Correzione dell'handoff di #240: il delta dei test del bot lì dichiarato +9 era +14 (311 → 325).
 
 ```
-=== RIEPILOGO: 1010 PASS, 0 FAIL ===
-1895 passed in 183.36s (0:03:03)
+=== RIEPILOGO: 1019 PASS, 0 FAIL ===
+1897 passed in 186.04s (0:03:06)
 ```
 
 ## §6 STATO CI
 
-`gh` non autenticato per `gh run list`; run lette via `gh api` REST (ramo `feat/merge-automatico-z1xjx2`):
+`gh run list` non autenticato; run lette via `gh api` REST (ramo `feat/merge-automatico-z1xjx2`):
 
 ```
+39695262594 verifica-bot 075e323 completed success
+39695260138 CI 075e323 completed success
 39685338876 verifica-bot eafe6ee completed success
 39685329478 verifica-bot eafe6ee completed skipped
-39685325511 CI eafe6ee completed success
-39685172943 verifica-bot 079c879 completed skipped
-39685151985 CI 079c879 completed failure
 ```
 
-- `eafe6ee` — CI 39685325511 success (unit-suite e handoff-check); verifica-bot 39685338876 success.
-- `079c879` — CI 39685151985 failure (pushato senza l'handoff aggiornato: il commit di fine-task `eafe6ee` lo ha corretto); `ad1ab5e`, `d48d453`, `8c4e11c`: nessuna run su questo SHA.
-- `ee0b4d7`, `6ab3ee0`, `4fdc3dd`, `c8ac93d`, `c82875f`, `1f0a2e9`, `3b988f6`, `0037522` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (pushati insieme a fine task: sarà testato solo l'albero del commit di testa).
+- `075e323` — CI 39695260138 success (unit-suite, handoff-check); verifica-bot 39695262594 success (APPROVATO CON RISERVE, V-1/V-2 chiuse in questa fetta).
+- `eafe6ee` — CI 39685325511 success; verifica-bot 39685338876 success.
+- `079c879` — CI 39685151985 failure (handoff non aggiornato, corretto da `eafe6ee`).
+- `ee0b4d7`, `6ab3ee0`, `4fdc3dd`, `c8ac93d`, `c82875f`, `1f0a2e9`, `3b988f6`, `0037522`: nessuna run su questo SHA (pushati insieme, testati solo nell'albero di `075e323`); `ad1ab5e`, `d48d453`, `8c4e11c`: nessuna run su questo SHA.
+- `e8e7fc8`, `ebaf9f3`, `3c136d4` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-445-3 (chat Motore)** COSMETICA, preesistente: crash tra `_storia_esito_firma` e `registra_esito_esecuzione` → esito NULL nel DB per sempre.
 - **R-453-2 (chat Motore)** BASSA, accettata dal revisore: spesa «non letta» se nessun kernel è stato creato.
-- **R-454-1 (chat Motore)** BASSA: tabella `approvals` sana ma `contatti` rotta → «Lead attivi: 0».
+- **V-3 verifica esterna #241** COSMETICA: «NON è stata eseguita» anche per un [KO] da errore del tool (coerente con applica_firma).
+- **R-454-1 (chat Motore)** BASSA: tabella `approvals` sana ma `contatti` rotta → «Lead attivi: 0» (stesso residuo in `ricorda fermi`, #456).
 - Nota COSMETICA #454: `int(conta.get("in_attesa", 0))` fuori dal try.
 - Limite dichiarato #452: la guardia T78p è statica (getattr dinamico, importlib, nomi passati per variabile non visti).

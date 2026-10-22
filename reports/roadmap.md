@@ -155,7 +155,7 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 - ✅ Scadenza delle firme (fetta C5, 20 ottobre): chiusa dal bot e dal giro, mostrata in `gas doctor`, avviso «approvazione scaduta».
 - ⏳ 👤 Archivio della conoscenza mai creato sul Mac (avviso `knowledge_fts`).
 - ⏳ 👤 Riallineare il Mac a `main` e installare il timer (`reports/setup_notte.md`). Sul Mac `main` è occupato da una seconda copia di lavoro: si usa `git fetch origin && git switch --detach origin/main`.
-- ⏳ Riempire l'elenco dei compiti con lavori veri: punto sui lead, contatti fermi. ✅ Resoconto di spesa e stato (21 ottobre): lo calcola il kernel a fine giro, senza modello, e va nel messaggio del mattino (solo numeri).
+- ✅ Contatti fermi (22 ottobre): `ricorda fermi=true` e compito d'esempio punto_lead. ⏳ Riempire il catalogo vero sul Mac con lavori veri. ✅ Resoconto di spesa e stato (21 ottobre): lo calcola il kernel a fine giro, senza modello, e va nel messaggio del mattino (solo numeri).
 - ⏳ Lanciare un compito o un giro da Telegram (previsto nella FASE 4.5, mai fatto).
 - La prova si fa a mano e di giorno. Per le notti vere serve R5.
 
