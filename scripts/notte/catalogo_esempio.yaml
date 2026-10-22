@@ -6,8 +6,9 @@
 compiti:
   - nome: punto_lead
     prompt: >-
-      Usa ricorda per rivedere i lead attivi e le loro prossime azioni.
-      Fammi un elenco breve: chi è fermo da più tempo e cosa conviene fare domani.
+      Usa ricorda con fermi=true per vedere i lead attivi fermi da più tempo,
+      poi ricorda con contatto=<nome> sui primi tre per la loro storia.
+      Fammi un elenco breve: chi è fermo, da quanti giorni e cosa conviene fare domani.
   - nome: salute_sistema
     prompt: >-
       Usa elenca_cartella sulla cartella di Gas e dimmi in tre righe quali file

@@ -8065,6 +8065,152 @@ try:
     check("T78j storia guasta → applica_firma esegue e ritorna l'esito, nessuna eccezione",
           _r78j["eseguita"] is True and _r78j["esito"].startswith("[OK] exit=0")
           and len(_raw73(_k78j.memory, "SELECT 1 FROM approval_esecuzioni")) == 1, str(_r78j)[:150])
+
+    # T78l — R-c4b3-3: Gas interrotto tra il reclamo e la storia. Al riavvio un nuovo
+    # click su Approva NON riesegue: chiude l'esito come INCERTO e lo mette in storia.
+    _k78l = kernel_tmp()
+    _id78l = _k78l.memory.enqueue_approval("run_command", _CMD78)
+    _k78l.memory.resolve_approval(_id78l, "approved", telegram_user_id=4242)
+    _k78l.memory.reclama_esecuzione(_id78l)  # "crash" qui: nessun esito, nessuna storia
+    _k78l2 = GasKernel(root_dir=str(_k78l.root))  # riavvio
+    _ex78l = _spia75(_k78l2)
+    _o78l = gas.OpenAI
+    gas.OpenAI = _NoLLM78
+    try:
+        with _TgFinto() as _tg78l:
+            _clicca77(_k78l2, _cb77(_id78l), _tg78l)
+    finally:
+        gas.OpenAI = _o78l
+    _b78l = _blocco78(_k78l2, _id78l)
+    _txt78l = _tg78l.chiamate[-1][1].get("text", "") if _tg78l.chiamate else ""
+    check("T78l crash dopo il reclamo: nuovo click → nessuna esecuzione, esito INCERTO registrato",
+          _ex78l == [] and _esec77(_k78l2) == [
+              (_id78l, "[KO] interrotta dopo il reclamo: esito incerto")], str(_esec77(_k78l2)))
+    check("T78l blocco in storia senza tool_call (output perso): notifica INCERTO + presa d'atto",
+          [m["role"] for m in _b78l] == ["user", "assistant"]
+          and "INCERTO" in _b78l[0]["content"] and "echo" not in _b78l[0]["content"]
+          and "partita, esito INCERTO" in _b78l[1]["content"], str(_b78l)[:300])
+    check("T78l l'operatore riceve ⚠️ esito INCERTO (non più 'Nessuna modifica')",
+          _txt78l.startswith("⚠️ Approvata, ma esito INCERTO"), _txt78l[:150])
+    _disco78l = json.loads(Path(_k78l2.db_path).read_text(encoding="utf-8"))
+    check("T78l blocco salvato su disco", _disco78l[-2:] == _b78l, str(len(_disco78l)))
+    with _TgFinto() as _tg78l2:
+        _clicca77(_k78l2, _cb77(_id78l), _tg78l2)
+    check("T78l altro click → nessun secondo blocco, nessuna esecuzione, 'Nessuna modifica'",
+          _ex78l == [] and len(_blocco78(_k78l2, _id78l)) == 2
+          and sum(1 for m in _k78l2.history if m.get("role") == "user"
+                  and _tag78(_id78l) in (m.get("content") or "")) == 1
+          and _tg78l2.chiamate[-1][1].get("text", "").startswith("Nessuna modifica"))
+    _ev78l = _turno_spia78(_k78l2, "com'è andata?",
+                           [[("calcola", '{"expr": "6*7"}')], "esito incerto, controllo"])
+    _p78l = _CompletionsSpia78.visti[0] if _CompletionsSpia78.visti else []
+    check("T78l round-trip §7: il modello vede l'esito INCERTO al turno dopo",
+          any(_tag78(_id78l) in (m.get("content") or "") for m in _p78l)
+          and [e["type"] for e in _ev78l] == ["tool_res", "final"], str(_ev78l)[:200])
+
+    # T78m — esito registrato ma storia mai scritta → recupero 'eseguita', senza output
+    _k78m = kernel_tmp()
+    _id78m = _k78m.memory.enqueue_approval("run_command", _CMD78)
+    _k78m.memory.resolve_approval(_id78m, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m)
+    _k78m.memory.registra_esito_esecuzione(_id78m, "[OK] exit=0 stdout=21 char stderr=0 char")
+    _ex78m = _spia75(_k78m)
+    with _TgFinto() as _tg78m:
+        _clicca77(_k78m, _cb77(_id78m), _tg78m)
+    _b78m = _blocco78(_k78m, _id78m)
+    _txt78m = _tg78m.chiamate[-1][1].get("text", "") if _tg78m.chiamate else ""
+    check("T78m esito [OK] senza storia → blocco 'eseguita' senza output, ✅, nessuna esecuzione",
+          _ex78m == [] and [m["role"] for m in _b78m] == ["user", "assistant"]
+          and "— eseguita." in _b78m[1]["content"] and "non è più disponibile" in _b78m[0]["content"]
+          and _txt78m.startswith("✅ Approvata ed eseguita") and "exit=0" in _txt78m, _txt78m[:150])
+    _id78m2 = _k78m.memory.enqueue_approval("run_command", {"command": "echo z"})
+    _k78m.memory.resolve_approval(_id78m2, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m2)
+    _k78m.memory.registra_esito_esecuzione(_id78m2, "[KO]")
+    _r78m2 = _k78m.recupera_esito_firma(_id78m2)
+    _b78m2 = _blocco78(_k78m, _id78m2)
+    check("T78m esito [KO] senza storia → 'NON eseguita', stato non_partita",
+          _r78m2 is not None and _r78m2["stato"] == "non_partita" and _r78m2["eseguita"] is False
+          and len(_b78m2) == 2 and "NON è stata eseguita" in _b78m2[0]["content"]
+          and "— NON eseguita." in _b78m2[1]["content"], str(_r78m2))
+    _id78m3 = _k78m.memory.enqueue_approval("run_command", {"command": "echo w"})
+    _k78m.memory.resolve_approval(_id78m3, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m3)
+    _k78m.memory.registra_esito_esecuzione(_id78m3, "[KO] errore interno dopo il reclamo: esito incerto")
+    _r78m3 = _k78m.recupera_esito_firma(_id78m3)
+    check("T78m errore interno dopo il reclamo (V-3 bot #236) → recupero INCERTO",
+          _r78m3 is not None and _r78m3["stato"] == "incerta", str(_r78m3))
+
+    _id78m4 = _k78m.memory.enqueue_approval("run_command", {"command": "echo d"})
+    _k78m.memory.resolve_approval(_id78m4, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m4)
+    _k78m.memory.registra_esito_esecuzione(_id78m4, "[OK] (non eseguito)")
+    _r78m4 = _k78m.recupera_esito_firma(_id78m4)
+    check("T78m R-445-1 dry-run '[OK] (non eseguito)' → non_partita, mai 'eseguita'",
+          _r78m4 is not None and _r78m4["stato"] == "non_partita"
+          and _r78m4["eseguita"] is False, str(_r78m4))
+
+    _id78m5 = _k78m.memory.enqueue_approval("write_file", {"relative_path": "x.txt", "content": "c"})
+    _k78m.memory.resolve_approval(_id78m5, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78m5)
+    _k78m.memory.registra_esito_esecuzione(_id78m5, "[OK] scritto (non eseguito).txt")
+    _r78m5 = _k78m.recupera_esito_firma(_id78m5)
+    check("T78m R-446-1 esito [OK] che CONTIENE '(non eseguito)' → resta 'finita'",
+          _r78m5 is not None and _r78m5["stato"] == "finita", str(_r78m5))
+
+    # T78n — niente da recuperare: esito già in storia, mai reclamata, memoria assente
+    _id78n = _k78m.memory.enqueue_approval("run_command", {"command": "echo n"})
+    _k78m.memory.resolve_approval(_id78n, "approved", telegram_user_id=4242)
+    _n78n = len(_k78m.history)
+    _k78n = kernel_tmp()
+    _k78n.memory = None
+    check("T78n esito già in storia / mai reclamata / memoria assente → None, storia invariata",
+          _k78m.recupera_esito_firma(_id78m) is None and _k78m.recupera_esito_firma(_id78n) is None
+          and _k78n.recupera_esito_firma(_id78n) is None and len(_k78m.history) == _n78n
+          and _esec77(_k78m)[-1][0] != _id78n)
+    # T78o — V-1 verifica esterna #241: kernel senza recupera_esito_firma → None + log
+    _id78o = _k78m.memory.enqueue_approval("run_command", {"command": "echo o"})
+    _k78m.memory.resolve_approval(_id78o, "approved", telegram_user_id=4242)
+    _k78m.memory.reclama_esecuzione(_id78o)
+    _log78o = []
+    _orig_w78o = _tg_erm.log.warning
+    _tg_erm.log.warning = lambda *a, **k: _log78o.append(a[0] % a[1:] if len(a) > 1 else a[0])
+    try:
+        _r78o = _tg_erm._riprova_orfana(_k78m.memory, SimpleNamespace(), _id78o, "m")
+    finally:
+        _tg_erm.log.warning = _orig_w78o
+    check("T78o kernel senza recupero → (None, motivo) e warning nel log",
+          _r78o == (None, "m") and any(_id78o in r and "recuperarne" in r for r in _log78o),
+          str(_log78o))
+    # T78p — V-2 verifica esterna #241: il recupero conta su «un click alla volta».
+    # Guardia statica: gli update si gestiscono solo con chiamate dirette (mai passati
+    # a thread/executor) e l'unico ThreadPoolExecutor del bot resta nell'invio.
+    import ast as _ast78p
+    _src78p = Path(_tg_erm.__file__).read_text(encoding="utf-8")
+    _albero78p = _ast78p.parse(_src78p)
+    _gestori78p = {"_handle_update", "gestisci_callback", "_riprova_orfana"}
+    _chiamati78p = {id(n.func) for n in _ast78p.walk(_albero78p) if isinstance(n, _ast78p.Call)}
+    _riferiti78p = [n.id for n in _ast78p.walk(_albero78p)
+                    if isinstance(n, _ast78p.Name) and n.id in _gestori78p
+                    and isinstance(n.ctx, _ast78p.Load) and id(n) not in _chiamati78p]
+    # R-450-1: costruttori cercati in TUTTO il modulo (anche un pool a livello di modulo),
+    # ciascuno attribuito alla funzione che lo contiene ("<modulo>" se fuori da ogni funzione)
+    _dentro78p = {}
+    for _f78p in _ast78p.walk(_albero78p):
+        if isinstance(_f78p, (_ast78p.FunctionDef, _ast78p.AsyncFunctionDef)):
+            for _n78p in _ast78p.walk(_f78p):
+                _dentro78p.setdefault(id(_n78p), _f78p.name)
+    # R-451-1: anche Timer e gli alias d'import («... import ThreadPoolExecutor as TPE»)
+    _nomi78p = {"ThreadPoolExecutor", "Thread", "Timer", "ProcessPoolExecutor",
+                "start_new_thread", "to_thread", "run_in_executor"}
+    _nomi78p |= {a.asname for n in _ast78p.walk(_albero78p)
+                 if isinstance(n, (_ast78p.Import, _ast78p.ImportFrom))
+                 for a in n.names if a.asname and a.name.split(".")[-1] in _nomi78p}
+    _pool78p = [_dentro78p.get(id(n), "<modulo>") for n in _ast78p.walk(_albero78p)
+                if isinstance(n, _ast78p.Call)
+                and getattr(n.func, "id", getattr(n.func, "attr", "")) in _nomi78p]
+    check("T78p update gestiti uno alla volta: nessun gestore passato a thread, pool solo nell'invio",
+          _riferiti78p == [] and _pool78p == ["_invia_a_tutti"], f"{_riferiti78p} {_pool78p}")
 finally:
     if _saved_sb78 is None:
         os.environ.pop("GAS_SANDBOX_MODE", None)
@@ -10570,6 +10716,70 @@ try:
                 os.environ[_k92x] = _v92
 except Exception as _e92x:
     check("T92 blocco senza eccezioni", False, repr(_e92x))
+
+# ---------- T98: R1 contatti fermi — ricorda(fermi=true) ----------
+print("\n--- T98: ricorda fermi ---")
+try:
+    _k98 = kernel_tmp()
+    for _c98 in ("fresco98", "vecchio98", "medio98", "rotto98", "chiuso98"):
+        _k98.memory.upsert_contatto(_c98, nome="N_" + _c98, prossima_azione="chiamare " + _c98)
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        for _c98, _ts98 in (("vecchio98", "2020-01-01T00:00:00+00:00"),
+                            ("medio98", "2025-01-01T00:00:00+00:00"),
+                            ("chiuso98", "2019-01-01T00:00:00+00:00"), ("rotto98", "boh")):
+            _con98.execute("UPDATE contatti SET aggiornato_il = ? WHERE chiave = ?", (_ts98, _c98))
+        _con98.execute("UPDATE contatti SET stato = 'chiuso' WHERE chiave = 'chiuso98'")
+    _k98.memory.append_diario("nota", "EVENTO98 nel diario")  # R-455-2: diario non vuoto
+    _k98.memory.upsert_contatto("acapo98", nome="N_acapo98\n- [nuovo] FINTO98",
+                                prossima_azione="x")
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        _con98.execute("UPDATE contatti SET stato = 'chiuso' WHERE chiave = 'acapo98'")
+    _ev98 = run_turn_scriptato(_k98, "chi è fermo?", [
+        [("ricorda", '{"fermi": true}')], "fatto"])
+    _o98 = [e["output"] for e in _ev98 if e["type"] == "tool_res"]
+    _f98 = [e for e in _ev98 if e["type"] == "final"]
+    _txt98 = _o98[0] if _o98 else ""
+    _pos98 = [_txt98.find("N_" + c) for c in ("rotto98", "vecchio98", "medio98", "fresco98")]
+    check("T98a round-trip: ricorda fermi elenca i lead attivi dal più fermo, chiusi esclusi",
+          len(_o98) == 1 and len(_f98) == 1 and -1 not in _pos98 and _pos98 == sorted(_pos98)
+          and "N_chiuso98" not in _txt98 and "data illeggibile" in _txt98
+          and "fermo da 0 giorni" in _txt98 and "chiamare vecchio98" in _txt98
+          and "(4 di 4)" in _txt98, _txt98[:400])
+    check("T98b conteggio del diario sulle righe dei lead (F-diario-eco)",
+          _k98._ricorda_n == 4, str(_k98._ricorda_n))
+    _s98 = _k98._ricorda(None, None, 2, fermi=True)
+    check("T98c n limita l'elenco (2 di 4)",
+          "(2 di 4)" in _s98 and "N_fresco98" not in _s98, _s98[:300])
+    # stringa "false" dal modello: niente elenco dei fermi (vale il diario di default)
+    _ev98d = run_turn_scriptato(_k98, "diario", [
+        [("ricorda", '{"fermi": "false"}')], "fatto"])
+    _o98d = [e["output"] for e in _ev98d if e["type"] == "tool_res"]
+    check("T98d fermi=\"false\" non attiva l'elenco",
+          len(_o98d) == 1 and "dal più fermo" not in _o98d[0] and "eventi del diario" in _o98d[0],
+          _o98d[0][:200] if _o98d else "")
+    check("T98e _vero: solo valori veri espliciti",
+          [gas._vero(v) for v in (True, 1, "true", "Sì", "false", "0", 0, None, "x", 2)]
+          == [True, True, True, True, False, False, False, False, False, False])
+    _k98m = kernel_tmp()
+    _k98m.memory = None
+    check("T98f memoria assente: messaggio gentile, nessuna eccezione",
+          "non disponibile" in _k98m._ricorda(None, None, 10, fermi=True))
+    check("T98g R-455-2: con fermi il diario di default NON si aggiunge",
+          "EVENTO98" not in _txt98 and "EVENTO98" in _o98d[0], _txt98[-200:])
+    _k98.memory.conta_approvazioni = lambda: None  # R-455-1: DB degradato
+    _s98h = _k98._ricorda(None, None, 10, fermi=True)
+    del _k98.memory.conta_approvazioni
+    check("T98h R-455-1: memoria degradata → «NON letto», mai «nessun lead attivo»",
+          "NON letto" in _s98h and "nessun lead attivo" not in _s98h, _s98h[:200])
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        _con98.execute("UPDATE contatti SET stato = 'nuovo' WHERE chiave = 'acapo98'")
+    _s98i = _k98._ricorda(None, None, 10, fermi=True)
+    check("T98j V-1 ve #241: chiamata diretta con fermi=\"false\" non elenca i lead",
+          "dal più fermo" not in _k98._ricorda(None, None, 10, fermi="false"))
+    check("T98i R-455-3: a capo nel nome → nessuna riga finta",
+          "\n- [nuovo] FINTO98" not in _s98i and "FINTO98" in _s98i, _s98i[:500])
+except Exception as _e98:
+    check("T98 blocco senza eccezioni", False, repr(_e98))
 
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")

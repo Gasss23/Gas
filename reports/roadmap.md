@@ -152,10 +152,10 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 - ⏳ 👤 Provare i bottoni Approva e Rifiuta con un click vero, col bot acceso (`python3 gas.py telegram`). Il "Rifiuta" non aveva fatto nulla: se resta così è un bug.
 - ✅ **Durata della firma** (decisa il 19 ottobre, nel codice dal 20 ottobre): 24 ore per le richieste del giro notturno (`GAS_APPROVAL_TIMEOUT_NOTTE_SECS`); di giorno restano 30 minuti (`GAS_APPROVAL_TIMEOUT_SECS`). Si cambia dal file delle chiavi.
 - ✅ **Autonomia dopo una lettura** (decisa il 19 ottobre, nel codice dal 20 ottobre; supera C-d e R-203-2): dopo una lettura restano liberi la rubrica (`salva_contatto`, `imposta_stato_contatto`) e `write_file` sui soli documenti `.md`, `.txt`, `.csv` di livello 1 (con foto di sicurezza; script, pagine web, file di avvio, configurazioni e file nascosti restano alla firma, V-1 verifica esterna #222). Restano alla firma: codice madre (livello 2), azioni verso l'esterno e irreversibili, e — come «sicurezza» — `reports/` (la leggono revisore e bot) e `knowledge/` (catalogo delle fonti di studio), e i file ignorati da git (non entrano nella foto di sicurezza, es. `gas_debug.log`). Il controllo vale anche sul file vero (cartella di lavoro, symlink). La contaminazione non si ricicla dalla memoria: un contatto o un'azione scritti dopo una lettura restano segnati «non fidati», e il turno che li rivede nel blocco di memoria è a sua volta contaminato (V-1 bot #222).
-- ⏳ Scadenza delle firme (fetta C5): chiamarla dal giro, mostrarla in `gas doctor`, avvisare "approvazione scaduta".
+- ✅ Scadenza delle firme (fetta C5, 20 ottobre): chiusa dal bot e dal giro, mostrata in `gas doctor`, avviso «approvazione scaduta».
 - ⏳ 👤 Archivio della conoscenza mai creato sul Mac (avviso `knowledge_fts`).
 - ⏳ 👤 Riallineare il Mac a `main` e installare il timer (`reports/setup_notte.md`). Sul Mac `main` è occupato da una seconda copia di lavoro: si usa `git fetch origin && git switch --detach origin/main`.
-- ⏳ Riempire l'elenco dei compiti con lavori veri: punto sui lead, contatti fermi, resoconto di spesa e stato.
+- ✅ Contatti fermi (22 ottobre): `ricorda fermi=true` e compito d'esempio punto_lead. ⏳ Riempire il catalogo vero sul Mac con lavori veri. ✅ Resoconto di spesa e stato (21 ottobre): lo calcola il kernel a fine giro, senza modello, e va nel messaggio del mattino (solo numeri).
 - ⏳ Lanciare un compito o un giro da Telegram (previsto nella FASE 4.5, mai fatto).
 - La prova si fa a mano e di giorno. Per le notti vere serve R5.
 
@@ -226,7 +226,7 @@ Oggi ogni compito notturno parte da zero e non può riprendere. Nessuna decision
 - ⏳ Piano scritto del compito, progressi salvati, ripresa dopo un'interruzione (M3).
 - ⏳ **Lista dei lavori ricorrenti con stato** (fatto, in sospeso, fallito, da non ritentare): disegno di giugno, mai costruito.
 - ⏳ Tetti di tempo duri.
-- ✅ Tre stati per un comando firmato: non partito, finito, partito con esito incerto (R-c4b3-5, review #428/#429, 21 ottobre). Resta R-c4b3-3 (crash tra reclamo e storia).
+- ✅ Tre stati per un comando firmato: non partito, finito, partito con esito incerto (R-c4b3-5, review #428/#429, 21 ottobre). ✅ R-c4b3-3 (crash tra reclamo e storia: esito recuperato al nuovo click, review #445-#447, 21 ottobre).
 - ✅ Due processi che scrivono la stessa cronologia: lock e unione dei turni (R-c4b3-4, review #430/#431, 21 ottobre).
 - ✅ L'esito di un compito notturno non è più dedotto dall'inizio del testo: lo dice il kernel (R-222-2, review #425, 21 ottobre).
 - 🅿️ Un file di stato con roadmap attiva e compiti del giorno (idea "Scratchpad" del Blueprint: si valuta solo a roadmap finita).
@@ -322,7 +322,7 @@ Sono le "task minori" per il turno di notte. Gravità come scritta nei file.
 - R-c4b2-6: esecuzione nello stesso filo del bot; i bottoni degli altri destinatari restano.
 - R-c4b2-7: dopo un errore del database la richiesta resta senza bottoni.
 - R-c4b2-8, R-c4a-2 (cosmetiche). R-c4b2-10: test sensibile alla lentezza.
-- R-c4b3-3 (vedi R7); ✅ R-c4b3-4 (#430/#431) e R-c4b3-5 (#428/#429) chiuse.
+- ✅ R-c4b3-3 (#445-#447), R-c4b3-4 (#430/#431) e R-c4b3-5 (#428/#429) chiuse.
 - R-c2-2, R-c2-4, R-c2-5, R-c2-6, R-c2-10 (non bloccanti); R-c2-8 (accettata: un test entrato senza seconda revisione).
 - R-erm-1, R-erm-2: l'isolamento dei test da Telegram copre un file solo e un solo modo di chiamare la rete.
 - R-220-1: l'esito di un'azione notturna firmata finisce nella tua conversazione.
