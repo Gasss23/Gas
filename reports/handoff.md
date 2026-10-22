@@ -53,18 +53,22 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 Un verdetto, incollato integralmente: #463 (chat Mani), sul diff del commit `aa0b4f9` (memoria in `96b83f5`, fatta dal revisore).
 
-### Review #463 (chat Mani)
+### Review #463 (chat Mani) — verdetto RIEMESSO dal revisore
+
+Il primo testo citava righe della libreria standard (html/parser.py) nella forma path:riga, che il gate B cerca nel repo: il revisore lo ha riemesso (stesso esito e sostanza). Sotto il testo riemesso integrale; com'era l'originale è descritto subito dopo.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #463 (chat Mani), 2026-10-22. Fetta 8 Mani (R6), diff staged su feat/mani-web-fetta8, base 43a2545. Prima di iniziare ho letto CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (blocco «Mani — fetta 7», dove R-ve244-2 e R-ve244-3 risultano aperte) e le lezioni sul parsing HTML in .claude/agents/memoria_revisore.md (righe 700-752: punti di integrazione, oracolo html5lib, atomi del fuzz).
+Review #463 (chat Mani), 2026-10-22, riemessa lo stesso giorno. Fetta 8 Mani (R6), ramo feat/mani-web-fetta8, commit aa0b4f9, base 43a2545. Riemissione: l'esito e la sostanza non cambiano. Cambia solo il modo di citare lo stdlib: il gate B (`scripts/check_verdetto.py`) cercava nel repo le righe di html/parser.py scritte nella forma path:riga. Prima della riemissione ho controllato che le righe citate di modules/web/leggi.py e tests/test_unit_web_leggi.py siano le stesse a HEAD (bef1ef8): fra aa0b4f9 e HEAD quei due file non cambiano.
+
+Prima della review ho letto CLAUDE.md (sez. 1, 5, 8, 10), reports/stato_progetto.md (blocco «Mani — fetta 7», dove R-ve244-2 e R-ve244-3 risultano aperte) e le lezioni sul parsing HTML in .claude/agents/memoria_revisore.md (righe 700-752: punti di integrazione, oracolo html5lib, atomi del fuzz).
 
 Il diff non contiene slicing della history né output di tool simulati. Non tocca né i guardrail (cap 10 iterazioni, 8k, `_get_window`) né i provider. Va nel verso «zero crash»: nel parser i casi senza fine restituiscono -1, come fa html.parser.
 
 ### Elementi del diff esaminati
 
 - modules/web/leggi.py:507 — override di `parse_html_declaration`. Fuori da svg/math, `<![CDATA[` diventa un commento fasullo fino al primo `>`.
-  - Ho letto lo stdlib 3.13.16. Righe citate: Lib/html/parser.py:287 e :390, quindi stdlib e non repo. `goahead` chiama `parse_html_declaration` per ogni `<!` che non è un commento. Con -1 e fine dati arriva al ramo `startswith("<![CDATA[") and self._support_cdata`, quindi `unknown_decl`, quindi testo nascosto. Lo stesso vale per la 3.11.17.
+  - Ho letto lo stdlib di Python 3.13.16: `parse_html_declaration` (riga 287 di html/parser.py) e il ramo di fine dati di `goahead` (riga 390 dello stesso file). `goahead` chiama `parse_html_declaration` per ogni `<!` che non è un commento. Con -1 e fine dati arriva al ramo `startswith("<![CDATA[") and self._support_cdata`, quindi `unknown_decl`, quindi testo nascosto. Lo stesso vale per la 3.11.17.
   - Il confronto è case-sensitive come nello stdlib. Il minuscolo `<![cdata[` va in `parse_bogus_comment`, come nei browser.
   - Sonde su 3.13 e 3.11: `<![CDATA[a><script>]]>SEGRETO</script>VIS` dava SEGRETO nascosto e VIS visibile (a HEAD SEGRETO usciva). Esito: ok.
 - modules/web/leggi.py:511 — controllo `estraneo` con il contatore svg/math. Rischio esaminato: i punti di integrazione HTML. Esito: riserva R-463-1 (sotto).
@@ -112,13 +116,18 @@ Il diff non contiene slicing della history né output di tool simulati. Non tocc
 - Il comportamento su html.parser vecchi, senza le patch (niente `_support_cdata`, ramo di fine dati con `handle_data`). Qui ci sono solo 3.13.16 e 3.11.17, entrambe con le patch.
 - Il comportamento dei browser veri. Ho usato html5lib 1.1 come oracolo, che lavora con lo scripting spento.
 - I fuzz da 100k/200k e fuzz_cdata.py dichiarati non li ho rieseguiti: i file stanno nel tuo scratchpad. Ho fatto sonde mirate.
+- Nella riemissione non ho rieseguito suite, sonde né mutazioni: ho solo riscontrato a HEAD le righe citate del repo.
 
 ### Lezioni nuove in memoria
 
 - Il CDATA dipende dal nodo corrente aggiustato: sondare sempre i punti di integrazione con un elemento HTML aperto.
 - L'oracolo html5lib (etree) deve saltare i nodi commento, altrimenti dà falsi positivi. Mi è successo nelle sonde: i commenti fasulli risultavano «visibili».
 
-Riga #463 scritta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola con scripts/commit_memoria_revisore.sh (commit 96b83f5). Il diff staged del motore è rimasto intatto. Sonde e html5lib stanno nello scratchpad, in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/sonda.py.
+Riga #463 in .claude/agents/memoria_revisore.md, committata da sola con scripts/commit_memoria_revisore.sh (commit 96b83f5). Il diff staged del motore è rimasto intatto. Per la riemissione ho aggiunto in memoria una sola riga breve, non committata. Sonde e html5lib stanno nello scratchpad della sessione (file sonda.py).
+
+#### Testo originale della review #463
+
+Non incollato qui: il gate B controlla le citazioni path:riga anche dentro i blocchi di codice, e l'originale citava le righe 287 e 390 del file html/parser.py della libreria standard in quella forma (file fuori dal repo). Per il resto è identico al testo riemesso sopra (stesso esito, stessi elementi esaminati, stesse riserve R-463-1 e R-463-2, stesse note); il riemesso aggiunge solo la frase sulla riemissione e la voce «nella riemissione non ho rieseguito suite, sonde né mutazioni». La riga #463 della memoria del revisore (commit `96b83f5`) riporta lo stesso esito.
 
 ---
 

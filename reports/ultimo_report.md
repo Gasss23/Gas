@@ -20,6 +20,7 @@ Ramo `feat/mani-web-fetta8` da main dopo il merge di #244 (mergiata con l'ok del
 ## Anomalie
 
 - Un mio caso di test con template era sbagliato (per i browser lì SEGRETO è visibile): sostituito prima del commit.
+- Il verdetto #463 citava righe della libreria standard nella forma path:riga e il gate B lo bloccava: il revisore l'ha riemesso (stesso esito). Il testo originale non è incollato nell'handoff perché il gate controlla anche i blocchi di codice: lì è descritto in cosa differiva.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
