@@ -126,6 +126,7 @@ def _parser_aggiornato(classe: type) -> bool:
 
 _PARSER_AGGIORNATO = _parser_aggiornato(HTMLParser)
 _avviso_parser_vecchio = threading.Event()  # l'avviso si scrive una volta sola (R-466-2)
+_lucchetto_avviso = threading.Lock()  # controllo e segno insieme, anche con più letture (V-2 bot #252)
 # Costrutto rimasto aperto a fine pagina (commento, tag, dichiarazione): per i browser non è
 # testo. Un «<» o «</» da soli invece lo sono.
 _COSTRUTTO_APERTO = re.compile(r"<(?:[a-zA-Z!?]|/.)", re.S)
@@ -1236,6 +1237,10 @@ def _fine_doctype(testo: str, da: int) -> int:
             return -1 if fine is None else fine.end() - 1
 
 
+# Dopo un DOCTYPE, prima dell'elemento radice, l'XML ammette solo spazi, commenti e PI.
+_DOPO_DOCTYPE = re.compile(r"[ \t\r\n]*(?:(<[A-Za-z])|$)")
+
+
 def _commenti_e_cdata_xml(testo: str) -> str:
     """Per application/xhtml+xml: nell'XML i commenti non sono mai testo e il contenuto di un
     CDATA è testo letterale, anche dentro script e style. html.parser invece chiude uno
@@ -1248,25 +1253,33 @@ def _commenti_e_cdata_xml(testo: str) -> str:
     (i pezzi prima finiscono tutti fuori da un tag, altrimenti ci si è già fermati).
     Anche le istruzioni di elaborazione «<?…?>» e il DOCTYPE con il sottoinsieme interno
     «[…]» si tolgono fino alla loro fine XML: html.parser le chiude al primo «>» e un
-    «</script>» scritto dentro chiudeva lo script (R-453-2)."""
+    «</script>» scritto dentro chiudeva lo script (R-453-2). Dopo un DOCTYPE, testo prima del
+    primo elemento rende la pagina malformata e il resto se ne va: un «<script>» scritto in un
+    letterale del DOCTYPE non apre niente, e il testo dopo non era più nascosto (V-1 bot #252)."""
     pezzi = []
     i = 0
+    prologo = False
     prossimo = {"<!--": -2, "<![CDATA[": -2, "<?": -2, "<!DOCTYPE": -2}
     while True:
         for apertura, dove in prossimo.items():
             if dove != -1 and dove < i:
                 prossimo[apertura] = testo.find(apertura, i)
         trovati = [(dove, apertura) for apertura, dove in prossimo.items() if dove != -1]
-        if not trovati:
-            pezzi.append(testo[i:])
-            break
-        inizio, apertura = min(trovati)
+        inizio, apertura = min(trovati) if trovati else (len(testo), "")
+        if prologo:
+            radice = _DOPO_DOCTYPE.match(testo, i, inizio)
+            if radice is None:
+                break
+            prologo = radice.group(1) is None
         pezzi.append(testo[i:inizio])
-        if testo.rfind("<", i, inizio) > testo.rfind(">", i, inizio):
+        if not trovati:
+            break
+        if testo.rfind("<", i, inizio) > testo.rfind(">", i, inizio) or prologo and apertura == "<![CDATA[":
             break
         chiusura = {"<!--": "-->", "<![CDATA[": "]]>", "<?": "?>", "<!DOCTYPE": ">"}[apertura]
         if apertura == "<!DOCTYPE":
             fine = _fine_doctype(testo, inizio + len(apertura))
+            prologo = True
         else:
             fine = testo.find(chiusura, inizio + len(apertura))
         if fine == -1:
@@ -1303,8 +1316,10 @@ def _componi(url_finale: str, pagina: dict) -> dict:
         estrattore = _Estrattore(xhtml)
         try:
             if not _PARSER_AGGIORNATO:
-                if not _avviso_parser_vecchio.is_set():
+                with _lucchetto_avviso:
+                    primo = not _avviso_parser_vecchio.is_set()
                     _avviso_parser_vecchio.set()
+                if primo:
                     # Python senza le patch del 2025: si legge col ripiego, senza titolo e con
                     # le textarea nascoste; lo si dice una volta nella scatola nera (R-466-2).
                     logger.warning("leggi_pagina: html.parser senza le patch del 2025, si usa il ripiego")

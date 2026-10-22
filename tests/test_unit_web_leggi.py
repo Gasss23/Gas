@@ -1082,6 +1082,9 @@ def test_parser_aggiornato_rilevato():
     ("<p>A</p><script><!--</script>VIS", ("A", "VIS")),
     ("<p>A</p><script><!--><script></script>VIS", ("A", "VIS")),
     ("<p>A</p><script><!--<script>-->SEGRETO</script>VIS", ("A", "VIS")),
+    # dal doppio escape «</script>» torna all'escape, non allo script normale; «<!--» non cambia (V-3 ve #252)
+    ("<p>A</p><script><!--<script></script><script></script>SEGRETO</script>VIS", ("A", "VIS")),
+    ("<p>A</p><script><!--<script><!--</script>SEGRETO</script>VIS", ("A", "VIS")),
 ])
 def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
@@ -1126,6 +1129,23 @@ def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
     ('<!DOCTYPE x [ <x ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>', ()),
     ('<!DOCTYPE x [ <!ENTITY a ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>',
      ()),
+    # testo dopo un DOCTYPE valido, prima dell'elemento radice: XML malformato (V-1 bot #252)
+    ('<!DOCTYPE html SYSTEM "<html xmlns=\'http://www.w3.org/1999/xhtml\'><body><p>A</p><script>">SEGRETO</script>'
+     '<p>V</p></body></html>', ()),
+    ('<!DOCTYPE x [<!ENTITY e "<p>A</p><script>">]>SEGRETO</script><p>V</p>', ()),
+    ('<!DOCTYPE x SYSTEM "<script>">\n<!-- c --> <?p x?>SEGRETO</script><p>V</p>', ()),
+    ('<!DOCTYPE x SYSTEM "<script>">< SEGRETO</script><p>V</p>', ()),
+    ('<!DOCTYPE x SYSTEM "<script>"> <![CDATA[SEGRETO]]><p>V</p>', ()),
+    ('<!DOCTYPE x SYSTEM "<script>">SEGRETO<html xmlns="http://www.w3.org/1999/xhtml"><body><p>V</p></body></html>',
+     ()),
+    ('<!DOCTYPE html><!-- c -->SEGRETO<html xmlns="http://www.w3.org/1999/xhtml"><body><p>V</p></body></html>', ()),
+    # sottoinsieme non valido: «>» fuori da una dichiarazione, «<» dentro, DOCTYPE senza nome (V-3 ve #252)
+    ('<!DOCTYPE x [ > ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>', ()),
+    ('<!DOCTYPE x [<!ENTITY a <!ENTITY b> ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p>'
+     '</body></html>', ()),
+    ('<!DOCTYPE><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>', ()),
+    ('<!DOCTYPE html>\n<!-- c -->\n<?p x?>\n<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
+     '<p>VIS</p></body></html>', ("A", "VIS")),
     # il DOCTYPE standard resta com'è
     ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'
      '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><script>SEGRETO</script><p>VIS</p></body></html>',
