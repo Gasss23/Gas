@@ -2,6 +2,7 @@
 
 > Fonte unica dei lavori che il turno di notte (Claude Code in cloud, attività programmata) prende in carico.
 > La riempiono l'operatore e la chat Motore. **Una voce = una fetta = al massimo una PR a notte** (salvo tempo avanzato).
+> **Prima notte (22→23 ottobre) = notte di prova (roadmap R3): SOLO le voci 1 e 2, che sono solo documenti. Niente codice.** Dalla seconda notte: una voce del motore per notte, in ordine.
 > Ordine: prima i lavori lasciati a metà e i piccoli accantonati (regola 80/20: di giorno il 20% importante, di notte il resto),
 > poi la roadmap in ordine (`reports/roadmap.md`). Le voci fatte si spostano in fondo a «Fatte» con il numero della PR.
 
@@ -12,6 +13,7 @@
 - Ultimi lavori entro le 05:00 (ora italiana).
 - A fine turno scrive `reports/report_notte.md`: per ogni voce, in poche righe, cosa ha fatto, perché, cosa migliora, quali rischi.
 - Se una voce richiede una decisione dell'operatore, si ferma, la scrive nel report e passa alla successiva.
+- Se non riesce ad aprire la PR (strumenti GitHub assenti), lascia tutto pushato sul ramo e lo scrive in `reports/report_notte.md`.
 
 ## Da fare (in ordine)
 
@@ -22,10 +24,11 @@
 4. **`righe_stato_mattino` con spesa non finita** (verifica esterna #241, V-1): `isfinite` anche lì, mai «$nan».
 5. **Database bloccato fra due letture** (R-454-1 / V-2 bot #241): `lista_contatti` dà `[]` su errore → «Lead attivi: 0». Una lettura dei contatti che segnali l'errore (None) per il resoconto e per `ricorda fermi`.
 
-### B. Riserve basse più grosse (una per notte)
+### B. Riserve più grosse (una per notte)
 6. **Recupero dell'esito di una firma basato sulla storia** (V-1 bot #241, R-445-3): un segno nel DB «esito notificato in storia» al posto della scansione della storia. Cambio di schema: migrazione additiva, fail-safe.
 
 ### C. Roadmap (in ordine, `reports/roadmap.md`)
+7a. **Lavori già destinati al turno di notte** (roadmap R3): regola di merge nel codice e allineamento di `fine-task.md` («non mergiare»). Tocca la macchina di controllo: revisore e verifica esterna obbligatori; se cambia una regola, fermarsi e chiedere all'operatore nel report.
 7. **R7**: piano scritto del compito, progressi salvati e ripresa (M3); lista dei lavori ricorrenti con stato; tetti di tempo duri.
 8. **R2**: budget di Gas al 20% del limite settimanale al giorno (prima riverificare le regole d'uso dell'abbonamento sulla pagina ufficiale; se non è possibile, fermarsi e scriverlo nel report).
 

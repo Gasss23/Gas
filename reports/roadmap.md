@@ -176,7 +176,7 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 **Cos'è.** Un'attività programmata di Claude Code in cloud ("routine"): parte da sola, lavora sul repo, apre una PR. È inclusa nell'abbonamento (Pro 5 al giorno, Max 15), conta nei limiti d'uso, non dipende dal Mac.
 - ⏳ Prima notte di prova: un compito solo documentale, nessun merge.
 - ⏳ Poi una riserva piccola del motore per notte, dalla lista del capitolo 5.
-- ✅ Coda dei lavori notturni: `reports/coda_notte.md` (22 ottobre). Protezioni R4 fatte dall'operatore il 22 ottobre (issue spente, interazioni limitate ai collaboratori).
+- ✅ Coda dei lavori notturni: `reports/coda_notte.md` (22 ottobre); turno programmato ogni notte alle 00:41, prima notte 22→23 ottobre. Protezioni R4 fatte dall'operatore il 22 ottobre: issue spente (verificato dall'agente via API), interazioni limitate ai collaboratori (dichiarato dall'operatore, non verificabile col token dell'agente).
 - **Costruisce Claude Code in cloud**, non Gas col cervello gratuito.
 - **Niente connettori** (Gmail e gli altri) nelle routine notturne, per ora. Si riapre più avanti.
 - **Nessun merge di notte.** Al mattino un report breve per ogni PR, poche righe: cosa ha fatto, perché, cosa migliora, quali rischi. Gas-operatore controlla e decide il merge. Per ora il merge è sempre al mattino.
@@ -185,15 +185,15 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 - **Ultimi giri entro le 05:00**, così alle 10 la finestra delle 5 ore è già ripartita. Va bene consumare i limiti di notte, ma il limite settimanale va tenuto d'occhio nelle prime settimane.
 - ⏳ Lavori già destinati al turno di notte: regola di merge nel codice e allineamento di `fine-task.md` ("non mergiare"); il lavoro tecnico di R7.
 - ⚠️ Una routine lavora senza chiedere permessi. Prima di accenderla vanno fatte le protezioni gratuite di R4 (issue disattivate, interazioni limitate, l'agente legge solo il codice e la sua coda).
-- Limiti del cloud: lì Gas non gira (niente chiavi dei modelli, niente recinto), quindi le prove del recinto valgono solo nei test automatici. Il cloud scrive solo su un ramo suo e non può cancellare rami. Il comando `gh` non è autenticato: si usano gli strumenti GitHub della sessione.
+- Limiti del cloud: lì Gas non gira (niente chiavi dei modelli, niente recinto), quindi le prove del recinto valgono solo nei test automatici. Il cloud scrive solo su un ramo suo e non può cancellare rami. Per GitHub: `gh api` REST passa dal proxy della sessione (provato di giorno il 22 ottobre); il turno notturno non ha gli strumenti GitHub di sessione (attività creata senza connettori). Se non riesce ad aprire la PR, lo scrive in `reports/report_notte.md` sul suo ramo.
 - Più avanti: Gas stesso scrive le proposte in coda (vedi "Ponte" in R10).
 
 ### R4 — Protezioni di base ⏳ 👤
 - ⏳ 👤 **Backup cifrato su iCloud Drive** (deciso il 19 ottobre) di: memoria (`.gas_memory.db`: diario e rubrica), file delle chiavi (`.env`) e cronologia delle conversazioni (`.gas_history.json`). Password della cifratura nel gestore di password. Mai chiavi in chiaro. Il comando di copia esterna esiste già da giugno.
 - 🅿️ **Repo privato + GitHub Pro: rimandato** (19 ottobre). Intanto, gratis e **prima di accendere R3**:
-  - ⏳ 👤 issue disattivate;
-  - ⏳ 👤 interazioni limitate ai collaboratori (da rinnovare ogni 6 mesi);
-  - ⏳ l'agente notturno legge solo il codice e la sua coda, mai issue o commenti di altri.
+  - ✅ 👤 issue disattivate (22 ottobre, verificato via API);
+  - ✅ 👤 interazioni limitate ai collaboratori (22 ottobre, dichiarato dall'operatore; da rinnovare ogni 6 mesi, entro il 22 aprile 2027);
+  - ✅ l'agente notturno legge solo il codice e la sua coda, mai issue o commenti di altri (regola nella coda e nel prompt dell'attività, 22 ottobre).
 - ⏳ 👤 Verificare che il token Telegram esposto il 5 luglio non sia quello in uso oggi.
 - ⏳ 👤 Chiave ElevenLabs: un documento la dà sostituita il 26 agosto, il repo dice ancora "da ruotare". Controllare sul pannello; per il server, chiave nuova in ogni caso.
 - ⏳ 👤 Vecchio PC: dismetterlo dopo aver salvato le chiavi `.ssh` e gli altri progetti, e aver controllato che non restino segreti nelle impostazioni del terminale.
