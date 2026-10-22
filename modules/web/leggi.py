@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import codecs
 import http.client
+import inspect
 import ipaddress
 import logging
 import os
@@ -109,6 +110,18 @@ _ATTRIBUTI = (r"""[^ \t\n\r\f/>]*+(?:[ \t\n\r\f]|/(?!>)|[^ \t\n\r\f/>][^ \t\n\r\
               r"""(?:[ \t\n\r\f]*+=[ \t\n\r\f]*+(?:"[^"]*+"?|'[^']*+'?|[^ \t\n\r\f>]*+))?)*+""")
 _FINE_TAG = re.compile(_ATTRIBUTI + "/?>")
 _AUTOCHIUSO = re.compile(_ATTRIBUTI + "/>")
+# html.parser con le patch del 2025 (CDATA, testo grezzo «escapable», tag come in HTML5).
+# Senza, il tokenizzatore vecchio sbaglia in modi che non si chiudono uno alla volta
+# («</x a='>SEGRETO», titolo non grezzo: R-465-1): lì si usa sempre il ripiego, che non
+# dipende da html.parser.
+try:
+    _PARSER_AGGIORNATO = (hasattr(HTMLParser, "_set_support_cdata")
+                          and "escapable" in inspect.signature(HTMLParser.set_cdata_mode).parameters)
+except (TypeError, ValueError):
+    _PARSER_AGGIORNATO = False
+# Costrutto rimasto aperto a fine pagina (commento, tag, dichiarazione): per i browser non è
+# testo. Un «<» o «</» da soli invece lo sono.
+_COSTRUTTO_APERTO = re.compile(r"<(?:[a-zA-Z!?]|/.)", re.S)
 # Nel ripiego anche il titolo va tolto: il parser lo mette nel suo campo, non nel testo.
 # Blocchi GREZZI: il contenuto è testo, non tag, e finisce alla prima chiusura con lo stesso
 # nome (come nel parser e nei browser). Gli altri nascosti si contano come fa _Estrattore:
@@ -505,17 +518,34 @@ class _Estrattore(HTMLParser):
         super().set_cdata_mode(elem, **kwargs)
 
     def parse_html_declaration(self, i: int) -> int:
-        # In HTML, fuori da svg e math, «<![CDATA[» è un commento fasullo che finisce al primo
-        # «>», come nei browser; html.parser lo leggeva fino a «]]>» e quello che c'era dentro
-        # arrivava al modello come testo (R-ve244-3). Dentro svg/math resta un CDATA vero.
+        # In HTML ogni «<![» è un commento fasullo che finisce al primo «>», come nei browser;
+        # html.parser leggeva «<![CDATA[» fino a «]]>» e quello che c'era dentro arrivava al
+        # modello come testo (R-ve244-3). Solo dentro svg/math e solo «<![CDATA[» scritto
+        # così è un CDATA vero, fino a «]]>». Tutto qui, senza super(): gli html.parser senza
+        # le patch del 2025 mandavano ogni «<![» (anche «<![cdata[», «<![if») fino a «]]>»
+        # (V-1 bot #245). feed riceve la pagina intera, quindi una sezione senza fine va fino
+        # in fondo, come nei browser, invece di diventare testo a fine pagina.
+        rawdata = self.rawdata
+        if self._xhtml or not rawdata.startswith("<![", i):
+            return super().parse_html_declaration(i)
         estraneo = any(self._aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
-        if not self._xhtml and not estraneo and self.rawdata.startswith("<![CDATA[", i):
-            j = self.rawdata.find(">", i + 2)
-            if j < 0:
-                return -1
-            self.handle_comment(self.rawdata[i + 2:j])
-            return j + 1
-        return super().parse_html_declaration(i)
+        if estraneo and rawdata.startswith("<![CDATA[", i):
+            # Dentro svg/math tutto è nascosto: il contenuto del CDATA non serve.
+            j = rawdata.find("]]>", i + 9)
+            return len(rawdata) if j < 0 else j + 3
+        j = rawdata.find(">", i + 3)
+        if j < 0:
+            return len(rawdata)
+        self.handle_comment(rawdata[i + 2:j])
+        return j + 1
+
+    def close(self) -> None:
+        # Gli html.parser senza le patch del 2025 danno come testo quello che a fine pagina è
+        # rimasto aperto («<!--<script>X», «<a b="X»), i parser nuovi lo scartano come i
+        # browser (R-464-1). Fuori dal testo grezzo lo si scarta qui, su ogni versione.
+        if not self.cdata_elem and _COSTRUTTO_APERTO.match(self.rawdata):
+            self.rawdata = ""
+        super().close()
 
     def handle_endtag(self, tag: str) -> None:
         # Una chiusura scala solo un'apertura con lo stesso nome: in «<svg>X</script>Y» per i
@@ -629,8 +659,10 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
             fine = _fine_commento(basso, m.end(), prossimi)
         elif nome == "![cdata[":
             # Come _Estrattore.parse_html_declaration: fuori da svg/math è un commento
-            # fasullo fino al primo «>» (R-ve244-3).
-            if any(aperti.get(n, 0) for n in _AUTOCHIUDIBILI) or xhtml:
+            # fasullo fino al primo «>» (R-ve244-3); dentro è un CDATA vero solo scritto
+            # «<![CDATA[» (V-1 bot #245).
+            if xhtml or (any(aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
+                         and testo.startswith("<![CDATA[", m.start())):
                 f = basso.find("]]>", m.end())
                 fine = -1 if f == -1 else f + 3
             else:
@@ -739,12 +771,14 @@ def _componi(url_finale: str, pagina: dict) -> dict:
         grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
         estrattore = _Estrattore(xhtml)
         try:
+            if not _PARSER_AGGIORNATO:
+                raise ValueError("html.parser senza le patch del 2025")
             estrattore.feed(grezzo)
             estrattore.close()
             corpo = _pulisci("".join(estrattore.pezzi))
             titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
         except ValueError:
-            # html.parser non ce la fa: ripiego senza parser (titolo perso).
+            # html.parser vecchio o che non ce la fa: ripiego senza parser (titolo perso).
             corpo = _pulisci(_testo_senza_parser(grezzo, xhtml))
     troncato = pagina["troncato"]
     if len(corpo) > MAX_CARATTERI:
