@@ -40,6 +40,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1d775e2 docs(fine-task): secondo giro della PR #250 (merge di main, riserve di bot e verifica esterna) — chat Mani fetta 11
 f0f86dc chore(revisore): memoria review #480 — APPROVATO
 6792d18 fix(web): fetta 11 chat Mani — annotation-xml speciale solo in MathML, warning con URL, test dei formattanti a sé (bot #250, ve #250)
 a52a3e1 chore(revisore): memoria review #480 — APPROVATO
@@ -152,34 +153,37 @@ Memoria aggiornata (riga #477, nessuna lezione nuova) e committata: f9eb918.
 
 ## VERDETTO: APPROVATO
 
-Review #478 (chat Mani): merge di origin/main nel ramo feat/mani-web-fetta11. Questa è una riemissione per il gate B, non una review nuova: esito e prove sono quelli della #478 originale. Cambia solo la voce su gas.py, che ora è a parole perché dopo il merge gas.py non fa più parte del diff di sessione (origin/main...HEAD).
+Review #478 (chat Mani): merge di origin/main nel ramo feat/mani-web-fetta11. Questa è una riemissione per il gate B, non una review nuova: esito e prove sono quelli della #478 originale. Cambiano due cose:
+- le righe di gas.py sono citate a parole, perché dopo il merge gas.py non fa più parte del diff di sessione (origin/main...HEAD);
+- c'è una citazione in più di tests/test_unit_web_leggi.py, un file già controllato nella prima emissione.
 
 Letture fatte: CLAUDE.md sez. 5, i blocchi Mani di reports/stato_progetto.md, la memoria del revisore.
 
 **Attenzione**
-- Il MERGE_HEAD reale era 5cc85e5 (PR #249), non 80fbe05. Contiene 80fbe05 (PR #247), e fra i due cambiano solo file in reports/.
+- Il MERGE_HEAD reale era 5cc85e5 (PR #249), non 80fbe05. Contiene 80fbe05 (PR #247), e fra 80fbe05 e 5cc85e5 cambiano solo file di reports/.
 - A merge in corso lo script della memoria non committa: la riga del revisore andava messa in stage a mano prima del commit di merge.
 
 **Elementi esaminati**
-- `modules/web/leggi.py:407` — controllato che il merge non abbia cambiato il codice della fetta 11. Il blob nell'index coincideva con HEAD per leggi.py e per test_unit_web_leggi.py, e `git diff --cached HEAD -- modules` era vuoto. Esito: ok.
-- In gas.py, i tre punti cambiati (lo schema di write_file, la chiamata al guardiano di write_file con il diniego di firma, il diniego di riserva) e tests/test_unit_kernel.py: i blob coincidevano con MERGE_HEAD. È quindi il codice già approvato in #467/#468 (chat Motore) e mergiato con le PR, nessuna risoluzione manuale. Esito: ok.
+- `modules/web/leggi.py:407` — rischio: il merge cambia il codice della fetta 11. Il blob nell'index coincideva con HEAD e `git diff --cached HEAD -- modules` era vuoto. Esito: ok.
+- `tests/test_unit_web_leggi.py:1309` — stesso rischio, controllato sui test della fetta 11 (fra questi il test di visibilità dell'HTML valido in svg/math, R-ve246b-5). Il blob nell'index coincideva con HEAD: il merge non ha toccato nessun test web. Esito: ok.
+- In gas.py, i tre punti cambiati (lo schema di write_file, la chiamata al guardiano di write_file con il diniego di firma, il diniego di riserva) e tests/test_unit_kernel.py: blob identici a MERGE_HEAD. È quindi il codice già approvato nelle review #467 e #468 della chat Motore e mergiato con le PR, senza nessuna risoluzione manuale. Esito: ok.
 - `.claude/agents/memoria_revisore.md:785` — unione delle righe dei due rami. Confronto per righe: 0 righe perse sia da HEAD sia da MERGE_HEAD, nessun marcatore di conflitto. Le due righe #476 (chat Motore e chat Mani) convivono grazie al suffisso della chat. Esito: ok.
-- `reports/stato_progetto.md:606` — blocco della fetta 11, unito in automatico. Da main nessuna riga persa. Le 3 righe «perse» da HEAD (Ultimo aggiornamento, intestazione G-3, blocco Mani — fetta 1) erano identiche alla base 2d20ec0 e main le aveva aggiornate: è l'unione a tre vie corretta. Esito: ok.
-- handoff, ultimo_report e diff_sessione: blob uguali a HEAD (versione della fetta 11), come prevede lavoro_parallelo.md. Esito: ok.
+- `reports/stato_progetto.md:606` — blocco della fetta 11, unito in automatico. Da main non manca nessuna riga. Le 3 righe che mancano rispetto a HEAD (Ultimo aggiornamento, intestazione G-3, blocco «Mani — fetta 1») erano identiche alla base 2d20ec0 e main le aveva aggiornate: è l'unione a tre vie corretta. Esito: ok.
+- handoff, ultimo_report e diff_sessione: blob uguali a HEAD (versione della fetta 11), come previsto da lavoro_parallelo.md. Esito: ok.
 
 **Suite**
-- Kernel sul merge in stage: 1017 PASS, 1 FAIL. Il FAIL è T31g (GAS_VECTORS=1 costruisce il vector store).
-- Lo stesso FAIL c'è identico su una copia `git archive` di 5cc85e5: è ambientale, non nasce dal merge.
-- La suite web l'ho rilanciata solo per la #477: i file web non sono cambiati.
+- Kernel sul merge in stage: 1017 PASS, 1 FAIL. Il FAIL è T31g (con GAS_VECTORS=1 costruisce il vector store).
+- Lo stesso FAIL si ripete identico su una copia `git archive` di 5cc85e5: è ambientale, non nasce dal merge.
+- La suite web non l'ho rilanciata: i file web erano byte per byte quelli provati nella #477.
 
 **Rischi esplicitamente esclusi**
-- Contenuto dei report della chat Motore (da_mergiare, roadmap, setup_notte): non letto nel merito. Sono presi così come sono da main e sono fuori dal perimetro.
-- Causa di T31g: non indagata, presumibilmente una dipendenza o un'impostazione dell'ambiente. Va confermata in CI.
-- CI del merge: non verificata durante la review, perché il merge non era ancora committato.
+- Il contenuto dei report della chat Motore (da_mergiare, roadmap, setup_notte) non l'ho letto nel merito: sono presi così come sono da main e stanno fuori dal perimetro.
+- La causa di T31g non l'ho indagata; presumo una dipendenza o un'impostazione dell'ambiente. Va confermata in CI.
+- La CI del merge non l'ho verificata durante la review: il merge non era ancora committato.
 
 #### Testo originale della review #478
 
-Non incollato qui: citava tre righe di gas.py nella forma path:riga, e dopo il merge gas.py non è più nel diff di sessione, quindi il gate B lo respinge. Per il resto è identico al testo riemesso sopra (stesso esito, stesse prove, stesse due avvertenze); la riemissione aggiunge solo la frase iniziale sulla riemissione.
+Non incollato qui: citava tre righe di gas.py nella forma path:riga, e dopo il merge gas.py non è più nel diff di sessione, quindi il gate B lo respinge; la prima riemissione aveva una sola citazione verificabile e il gate chiede almeno due. Per il resto è identico al testo sopra (stesso esito, stesse prove, stesse due avvertenze).
 
 ### Review #479 (chat Mani) — verdetto integrale
 
