@@ -1,16 +1,16 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-22 — Chat Mani, fetta 8: CDATA in HTML e XHTML senza testo grezzo (R6, PR #245)
+**Sessione:** 2026-10-22 — Chat Mani, fetta 8: CDATA in HTML e XHTML senza testo grezzo (R6, PR #245), con il secondo giro dopo il bot #245
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #245 (https://github.com/Gasss23/Gas/pull/245): vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
-2. R-463-1 (MEDIA preesistente): fetta dedicata per tracciare il nodo corrente come il browser (chiuderebbe anche R-450-1 e V-2 ve #243)?
+1. Merge della PR #245 (https://github.com/Gasss23/Gas/pull/245): l'operatore l'ha chiesto («mergia 245 e procedi con la fetta 9»); il check obbligatorio verifica-bot sull'head precedente era «failure» (V-1 bot #245, MEDIA, corretta in questo giro): si mergia quando il bot riporta sul nuovo head.
+2. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True; con False Gas legge il web col ripiego (niente titoli, verso sicuro).
 3. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
-(`gh` non autenticato nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
+(`gh` senza GraphQL nella sessione cloud: numero/URL della PR presi dall'esito reale di `create_pull_request` via MCP GitHub.)
 
 ---
 
@@ -19,21 +19,23 @@
 - **R-ve244-3 (CDATA in HTML)**: `FATTA` (fuori da svg/math; residuo R-463-1)
 - **R-ve244-2 (XHTML senza testo grezzo)**: `FATTA`
 - **V-1 bot #244 (limite dichiarato)**: `FATTA`
-- **R-463-1, R-463-2**: `DEFERITA — preesistenti, registrate`
+- **V-1 bot #245 (ogni `<![` su ogni html.parser)**: `FATTA` (chiude anche R-463-2)
+- **R-464-1, R-464-2, R-464-3, R-465-1, R-465-2**: `FATTA`
+- **R-463-1, R-466-1, R-466-2, R-ve245-1…5**: `DEFERITA — registrate in stato_progetto` (R-463-1 e R-ve245-1 nella fetta 9)
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/web/leggi.py               |  42 +++++++++++++++++++++++++++++++++---
- reports/diff_sessione.md           |  11 +++++-----
- reports/handoff.md                 | 425 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  33 +++++++++++-----------------
- tests/test_unit_web_leggi.py       |  40 +++++++++++++++++++++++++++++++++-
- 7 files changed, 170 insertions(+), 386 deletions(-)
+ .claude/agents/memoria_revisore.md |  10 +
+ modules/web/leggi.py               |  78 ++++++-
+ reports/diff_sessione.md           |  11 +-
+ reports/handoff.md                 | 436 +++++++------------------------------
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  34 ++-
+ tests/test_unit_web_leggi.py       | 163 +++++++++++++-
+ 7 files changed, 350 insertions(+), 384 deletions(-)
 ```
 
 ---
@@ -41,17 +43,23 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+2ce6f94 fix(web): fetta 8 chat Mani, secondo giro — sezioni <![ e parser vecchi (V-1 bot #245)
+a60f7f6 chore(revisore): memoria review #466 — APPROVATO CON RISERVE
+7d63885 chore(revisore): memoria review #465 — APPROVATO CON RISERVE
+6548b0c chore(revisore): memoria review #464 — APPROVATO CON RISERVE
+649f441 docs(fine-task): verdetto #463 riemesso per il gate B — chat Mani fetta 8 (#245)
+bef1ef8 docs(fine-task): report, stato e handoff — chat Mani fetta 8 (#245)
 aa0b4f9 fix(web): fetta 8 chat Mani — CDATA in HTML come i browser, XHTML senza testo grezzo (R6)
 96b83f5 chore(revisore): memoria review #463 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit, quindi le righe di `reports/handoff.md` possono differire di poco (l'elenco dei file è esatto).
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit (l'elenco dei file è esatto).
 
 ---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Un verdetto, incollato integralmente: #463 (chat Mani), sul diff del commit `aa0b4f9` (memoria in `96b83f5`, fatta dal revisore).
+Quattro verdetti, incollati integralmente: #463 (chat Mani) sul commit `aa0b4f9`; #464, #465 e #466 (chat Mani) sul diff staged del secondo giro, cresciuto da una review all'altra e committato in `2ce6f94` dopo la #466 (memorie in `6548b0c`, `7d63885`, `a60f7f6`, fatte dal revisore).
 
 ### Review #463 (chat Mani) — verdetto RIEMESSO dal revisore
 
@@ -129,22 +137,194 @@ Riga #463 in .claude/agents/memoria_revisore.md, committata da sola con scripts/
 
 Non incollato qui: il gate B controlla le citazioni path:riga anche dentro i blocchi di codice, e l'originale citava le righe 287 e 390 del file html/parser.py della libreria standard in quella forma (file fuori dal repo). Per il resto è identico al testo riemesso sopra (stesso esito, stessi elementi esaminati, stesse riserve R-463-1 e R-463-2, stesse note); il riemesso aggiunge solo la frase sulla riemissione e la voce «nella riemissione non ho rieseguito suite, sonde né mutazioni». La riga #463 della memoria del revisore (commit `96b83f5`) riporta lo stesso esito.
 
+### Review #464 (chat Mani) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #464 (chat Mani) sul ramo feat/mani-web-fetta8 (PR #245), diff staged in modules/web/leggi.py e tests/test_unit_web_leggi.py. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (voci «Mani — fetta 7/8») e la mia memoria.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:516 — in HTML ogni «<![» viene gestito dall'override senza chiamare super(); XHTML e gli altri «<!» passano ancora a super(). Rischio esaminato: in html.parser, moderno e vecchio, goahead chiama parse_html_declaration per ogni «<!» che non è un commento. Il ramo di fine dati (`k < 0`) non si raggiunge più, perché l'override non restituisce mai -1. Ricerca del «>» da i+3: equivale a quella del browser, perché in i+2 c'è sempre «[». — ok
+- modules/web/leggi.py:519 — CDATA vero solo dentro svg/math e solo con «<![CDATA[» maiuscolo esatto, fino a «]]>»; tutto il resto è commento fasullo fino al primo «>» (modules/web/leggi.py:525). Rischio esaminato: maiuscole e minuscole, sezioni senza fine, `<![`/`<![>`/`<![ >` vuoti. Sonde con l'oracolo html5lib tutte coerenti. — ok
+- modules/web/leggi.py:525 — senza fine restituisce `len(rawdata)`. Rischio esaminato: consumo di una pagina passata a pezzi. In modules/web/leggi.py:753 feed riceve la pagina intera in una sola chiamata, quindi va bene. — ok, con riserva R-464-2 sui test
+- modules/web/leggi.py:644 — il ripiego considera CDATA vero solo `testo.startswith("<![CDATA[")` sul testo originale. Rischio esaminato: sfasamento degli indici tra `basso` e `testo`. La translate conserva la lunghezza, quindi gli indici coincidono. Chiude R-463-2 (`<svg><![cdata[x></svg>VIS`: HEAD perdeva VIS, ora c'è). — ok
+- tests/test_unit_web_leggi.py:971 — `_dichiarazione_vecchia` copia il parse_html_declaration pre-patch. Rischio esaminato: simula solo il metodo, non goahead. — riserva (R-464-2)
+- tests/test_unit_web_leggi.py:996 e tests/test_unit_web_leggi.py:1013 — 6+2 pagine × parser vecchio/nuovo, sia sul parser sia sul ripiego. — ok
+
+**Verifiche rifatte da me**
+- Suite web: 215 passed su 3.13.16 e su 3.11.17.
+- **Parser vecchio reale**: ho scaricato html/parser.py di CPython v3.12.3, non patchato (gli stdlib locali 3.11/3.12/3.13 hanno tutti la patch), e l'ho messo in `sys.modules["html.parser"]` con un plugin pytest.
+  - Codice staged: 214 passed, 1 failed (`test_ripiego_non_mostra_niente_che_il_parser_nasconde`). Lo stesso fallimento c'è a HEAD: il parser vecchio non riconosce «--!>», quindi nasconde di più (verso sicuro). Non dipende dal diff.
+  - Codice di HEAD col parser vecchio: SEG arriva al modello su `<![cdata[`/`<![if`; AssertionError su `<![foo bar>`, `<![>`, `<![ >`. La fix chiude anche questi.
+- Fuzz differenziale 2×15k, nuovo contro HEAD, con oracolo html5lib (copia di HEAD presa con git archive):
+  - parser moderno: 0 casi in cui il nuovo mostra più di HEAD;
+  - parser vecchio reale: 9 casi, tutti dovuti a un commento o tag senza fine a fine pagina (HEAD andava in eccezione o si fermava prima) → R-464-1.
+- Mutazioni su una copia dell'index:
+  - super() di nuovo per i «<![» non CDATA → 1 FAIL col parser moderno, 8 col vecchio reale;
+  - ripiego che accetta il minuscolo → 1 FAIL moderno, 2 vecchio;
+  - CDATA minuscolo nel parser → 1 FAIL moderno, 2 vecchio;
+  - `return -1` al posto di `len(rawdata)` → **0 FAIL** col parser moderno e con la simulazione; 2 FAIL solo col parser vecchio reale.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-464-1 (chat Mani), MEDIA, preesistente** (solo html.parser senza le patch 2025): ogni costrutto senza fine a fine pagina diventa testo a close(). Riguarda `<!--`, `<!x`, `</x`, `<a b="`, `<!DOCTYPE`, `<?`. Esempio: `<p>A</p><!--<script>SEG` → SEG al modello, uguale a HEAD; il ripiego lo nasconde. È la stessa classe di V-1 bot #245, ma la fix copre solo «<![». Possibile chiusura: scartare il `rawdata` rimasto prima di close() sui parser vecchi, oppure un override di fine dati.
+- **R-464-2 (chat Mani), BASSA**: nessun test della suite protegge il ramo `return len(rawdata)` di modules/web/leggi.py:525 sul parser della CI. Il ramo di fine dati sta in goahead, non nel metodo simulato. Suggerimento: un test diretto, per esempio `e.rawdata = "<p>A</p><![x"; assert e.parse_html_declaration(8) == len(e.rawdata)`, anche per il ramo CDATA in svg.
+- **R-464-3 (chat Mani), BASSA, preesistente**: XHTML con parser vecchio, `<![foo bar>` → AssertionError. La intercetta leggi_pagina (l'except generico, §9: log e risposta di errore), quindi la lettura fallisce ma non c'è crash né fuga. In HTML la fix la elimina.
+- Restano aperte: R-463-1 (punti di integrazione), R-454-2, R-453-2, R-456-1/2, R-450-1, R-447-1(b), V-2 ve #242.
+
+**Rischi esclusi**
+- Non ho verificato quale patch di Python gira sul Mac o sulla VPS: non è visibile dal repo. R-464-1 conta solo se quel Python è anteriore alle patch del 2025.
+- Il parser vecchio reale l'ho provato solo con la v3.12.3, non con le 3.9-3.11 non patchate (il codice di goahead è equivalente, ma non l'ho rieseguito).
+- L'oracolo html5lib tratta male `template` (contenuto in un frammento): i casi con template li ho esclusi dal conteggio; sono identici fra HEAD e nuovo.
+- Non ho rieseguito la suite kernel: il diff non tocca gas.py.
+
+Memoria aggiornata (riga #464 più una lezione sul parser vecchio reale contro la simulazione) e committata con scripts/commit_memoria_revisore.sh (6548b0c), solo /home/user/Gas/.claude/agents/memoria_revisore.md.
+
+Materiale delle prove in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p464:
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p464/sonde464t.py (sonde con oracolo)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p464/fz464c.py (fuzz)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/plug464/oldparser464.py (plugin del parser vecchio)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/old464/html/parser.py (CPython v3.12.3)
+
+NB dell'agente principale: le righe citate da questo verdetto si riferiscono al diff staged di allora; il commit finale (2ce6f94) contiene anche le modifiche delle #465 e #466, quindi in modules/web/leggi.py alcune righe sono scese (l'override sta ora a modules/web/leggi.py:520).
+
+### Review #465 (chat Mani) — verdetto integrale
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #465 (chat Mani): ri-review del diff staged completo di modules/web/leggi.py e tests/test_unit_web_leggi.py. Il diff include la parte già vista nella #464 (verdetto consegnato prima) più la chiusura di R-464-1 e R-464-2. Le letture obbligatorie le avevo già fatte per la #464, nella stessa sessione: CLAUDE.md, reports/stato_progetto.md, memoria.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:532 — override di `close()`. Fuori dal testo grezzo, se il `rawdata` rimasto apre un costrutto, lo scarta prima di `super().close()`.
+  - Rischio esaminato: buttare testo visibile o rompere la fine dati del parser moderno.
+  - Il residuo dopo feed comincia sempre al «<» dove goahead si è fermato. Il residuo di solo testo (es. `a &amp`) non corrisponde e resta a super().
+  - Parser moderno: 0 differenze in 15k casi di fuzz contro HEAD.
+  - Il match è ancorato, quindi costo O(1).
+  - — ok
+- modules/web/leggi.py:114 — `_COSTRUTTO_APERTO` = «<» seguito da lettera ASCII, «!» o «?», oppure «</» seguito da un carattere qualsiasi. Rischio esaminato: coerenza col tokenizzatore dei browser. `<!`, `<?`, `<a`, `</x`, `</ ` a fine file non danno testo; `<1`, `<` e `</` da soli sì. Coincide col comportamento dei browser. — ok
+- modules/web/leggi.py:536 — guardia `not self.cdata_elem`. Rischio esaminato: residuo dentro title/textarea. Togliendola non cambia nessuna sonda (`<title>T</ti` resta «T</ti» come per i browser): è difensiva e non testata. — ok
+- modules/web/leggi.py:525 — ramo `len(rawdata)` (parte della #464): ora lo protegge tests/test_unit_web_leggi.py:1023. Mutazioni a `-1` → 1 FAIL sul parser moderno, sia nel ramo HTML sia in quello svg. R-464-2 chiusa. — ok
+- tests/test_unit_web_leggi.py:1044 — 7 pagine × `close` vecchio simulato, che emette il rawdata come dato. tests/test_unit_web_leggi.py:1059 controlla che «<» e «</» restino testo. — ok, con la riserva R-465-2
+
+**Verifiche rifatte da me**
+- Suite web: 231 passed su 3.13.16 e su 3.11.17.
+- Col parser vecchio reale (CPython v3.12.3 via plugin): 230 passed, 1 failed. È `test_ripiego_non_mostra_niente_che_il_parser_nasconde`, il preesistente «--!>» già visto nella #464.
+- I test nuovi contro HEAD danno 14 FAILED: sono i 6 della #464 più gli 8 nuovi, coerente con quanto dichiarato.
+- Fuzz con oracolo html5lib, 2×15k (fz465, che misura anche le perdite):
+  - parser moderno: 0 casi in cui il nuovo mostra più di HEAD, 0 perdite nuove;
+  - parser vecchio reale: 6 casi in cui il nuovo mostra più di HEAD. Li ho controllati: sono tutti contenuti di un `<title>` aperto, che finiscono nel campo «Titolo» come sul parser moderno, dove il titolo contiene anche di più. Nessuna fuga nel corpo.
+  - parser vecchio reale: 70 perdite nuove, nel verso sicuro. 8 vengono da `<!-->`/`<!--->`, che il parser vecchio non riconosce (classe V-2 ve #242); prima il resto della pagina usciva come testo, ora viene scartato. 59 vengono dal titolo non grezzo del parser vecchio. Le ultime 3 sono noscript/template, uguali al parser moderno.
+- Fuzz di parità: stesso codice nuovo, parser vecchio contro moderno, 20k casi con stesso seme. Il vecchio mostra di più in 14 casi, tutti preesistenti e non di fine pagina (vedi R-465-1).
+- Mutazioni su una copia dell'index:
+  - close tolto → 7 FAIL moderno, 15 vecchio;
+  - regex su ogni «<» → 1 FAIL moderno, 2 vecchio;
+  - guardia cdata tolta → 0 moderno, 1 vecchio (è solo il preesistente);
+  - `/.` → `/[a-zA-Z]` → 0 FAIL moderno, 1 vecchio.
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-465-1 (chat Mani), MEDIA, preesistente** (solo html.parser senza le patch del 2025): R-464-1 è chiusa per i costrutti aperti a fine pagina, ma il tokenizzatore vecchio fa ancora uscire testo nascosto a metà pagina.
+  - `<p>A</p></x a='>SEG` → SEG al modello (identico a HEAD; parser moderno e ripiego lo nascondono).
+  - `<p>A</p><template><title></template></template>SEG` → SEG nel campo Titolo: il titolo non è testo grezzo nel parser vecchio.
+  - La classe resta aperta finché si correggono i parser vecchi un caso alla volta. Proposta strutturale: rilevare a runtime un html.parser non patchato (per esempio senza `_set_support_cdata`) e usare il ripiego, che in tutte queste sonde è corretto. Oppure dichiarare la versione minima di Python.
+- **R-465-2 (chat Mani), BASSA**: due rami di modules/web/leggi.py:114 non sono protetti sul parser di CI: «</» seguito da un carattere che non è una lettera (`</ SEG`, `</1SEG` a fine pagina) e la guardia `cdata_elem`. Basta aggiungere `"<p>PRIMA</p></ SEGRETO"` e `"<p>PRIMA</p></1SEGRETO"` a tests/test_unit_web_leggi.py:1044.
+- Nota COSMETICA, nessuna fuga: col parser vecchio `<textarea>X</te` a fine pagina dà «X» invece di «X</te», perché textarea non è testo grezzo nel parser vecchio.
+- Restano aperte: R-464-3 (XHTML, `<![foo>` su parser vecchio → AssertionError presa da §9), R-463-1, R-454-2, R-453-2, R-456-1/2, R-450-1, R-447-1(b), V-2 ve #242.
+
+**Rischi esclusi**
+- Non ho verificato la versione e la patch di Python sul Mac o sulla VPS: dal repo non si vedono. R-465-1 conta solo se lì gira un html.parser anteriore alle patch del 2025.
+- Il parser vecchio reale l'ho provato solo con la v3.12.3.
+- L'oracolo html5lib tratta template e noscript diversamente da Gas (Gas assume scripting attivo): quei casi li ho valutati a mano.
+- Non ho rieseguito la suite kernel: il diff non tocca gas.py.
+
+Memoria aggiornata (riga #465 più una lezione sul fuzz di parità tra parser vecchio e moderno) e committata solo /home/user/Gas/.claude/agents/memoria_revisore.md (7d63885). Il diff staged sotto review è intatto (modules/web/leggi.py, tests/test_unit_web_leggi.py). reports/ ha modifiche non staged dell'agente principale, che non ho toccato.
+
+Materiale delle prove:
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p464/fz465.py (fuzz con le perdite)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p464/par465.py (parità vecchio/moderno)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p464/dbg465.py (residuo dopo feed)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/plug464/oldparser464.py (plugin del parser vecchio)
+
+### Review #466 (chat Mani) — verdetto integrale (diff del commit `2ce6f94`)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #466 (chat Mani): diff staged completo (modules/web/leggi.py, tests/test_unit_web_leggi.py) = #464 + #465 + il nuovo rilevatore del parser. Letture obbligatorie fatte (CLAUDE.md, stato_progetto.md, memoria) nella stessa sessione.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:118 — `_PARSER_AGGIORNATO`, calcolato all'import: vale True se HTMLParser ha `_set_support_cdata` e se `set_cdata_mode` ha il parametro `escapable`; con TypeError/ValueError vale False.
+  - Rischio esaminato: falso positivo (parser vecchio preso per nuovo) e falso negativo. Ho controllato i sorgenti di html/parser.py sui tag CPython (raw.githubusercontent.com).
+  - **False**: 3.9.23, 3.10.18, 3.11.13, 3.12.11, 3.13.5, che non hanno nessuna patch. False anche su 3.13.6 e 3.13.7, che hanno `escapable`, `--!?>` e il nuovo tokenizzatore dei tag ma non `_set_support_cdata`: lì il rilevatore è conservativo e usa il ripiego, verso sicuro.
+  - **True**: 3.9.24, 3.10.19, 3.11.14, 3.12.12, 3.13.8, 3.13.9, 3.14.0, main. Tutte hanno anche `--!?>`, `locatetagend` e RCDATA per title, quindi i fix di tokenizzatore di R-465-1.
+  - Locali: 3.11.17, 3.12.3 Ubuntu (con backport) e 3.13.16 → True. La CI usa "3.11", quindi 3.11.14 o successiva.
+  - Nessuna eccezione possibile all'import su una funzione Python.
+  - — ok
+- modules/web/leggi.py:774 — con un parser vecchio si alza ValueError dentro il try e si passa al ripiego esistente.
+  - Rischio esaminato: un'eccezione che sfugge, o il ripiego che fa uscire testo da solo.
+  - Il ValueError è preso dall'except subito sotto.
+  - Chiude anche R-464-3: in XHTML non c'è più AssertionError, perché il parser vecchio non viene più usato.
+  - — ok
+- modules/web/leggi.py:542 e modules/web/leggi.py:124 — `close()` e `_COSTRUTTO_APERTO`, invariati dalla #465. — ok
+- tests/test_unit_web_leggi.py:1071 — con il flag a False e `feed` vietato, le sonde R-465-1 non fanno uscire SEGRETO. Mutazione «raise tolto» → 3 FAIL sul parser moderno. — ok
+- tests/test_unit_web_leggi.py:1043 e tests/test_unit_web_leggi.py:1044 — casi `</ SEGRETO` e `</1SEGRETO`: R-465-2 chiusa. — ok
+- tests/test_unit_web_leggi.py:1061 — controlla che il flag sia True nell'ambiente corrente. Utile come allarme se la CI o il Mac passano a un Python non patchato, ma non prova la logica del rilevatore. — riserva R-466-1
+
+**Verifiche rifatte da me**
+- Suite web: 239 passed su 3.13.16 e su 3.11.17.
+- Parser vecchio reale (CPython v3.12.3 via plugin): 233 passed, 6 failed, tutti attesi e coerenti con quanto dichiarato:
+  - tre test di titolo (titolo perso col ripiego);
+  - `test_grezzi_autochiusi_come_i_browser` (textarea nascosta);
+  - rilevatore False;
+  - il preesistente «--!>».
+- Sonde sul parser vecchio:
+  - `</x a='>SEG` → «A»;
+  - `<template><title></template></template>SEG` → «A»;
+  - `<textarea>X</textarea>` → X nascosto: perdita nel verso sicuro, come dichiarato.
+- Fuzz con oracolo html5lib, 2×15k (fz465):
+  - parser vecchio, dove ora lavora solo il ripiego: 0 casi in cui il nuovo mostra più di HEAD. Solo 3 differenze dall'oracolo, tutte template/noscript (limiti noti dell'oracolo; Gas assume scripting attivo);
+  - parser moderno: 0 casi in cui il nuovo mostra più di HEAD e 0 perdite nuove.
+- Mutazioni su una copia dell'index:
+  - raise tolto → 3 FAIL moderno, 5 vecchio;
+  - rilevatore sempre True → 0 FAIL moderno, 1 vecchio;
+  - `and` → `or` → 0 FAIL moderno, 6 vecchio.
+
+**Valutazione delle tre domande**
+1. **Il rilevatore è affidabile?** Sì, sulle versioni ufficiali CPython controllate. I due marcatori arrivano insieme alle patch del tokenizzatore (gh-135661 e seguenti), salvo 3.13.6 e 3.13.7, dove l'esito è conservativo. Limite: le distribuzioni con backport parziali (Ubuntu, Homebrew, pyenv con patch proprie) sono verificate solo nel caso 3.12.3 Ubuntu.
+2. **Il ripiego sempre attivo sui parser vecchi è accettabile?** Sì. Perde il titolo e nasconde le textarea, ma è nel verso sicuro e coerente con «robustezza > potenza». Il ripiego era già il percorso di emergenza fuzzato in tutte le review precedenti.
+3. **Il resto del diff** è come nelle #464 e #465: le riserve di allora sono chiuse (R-464-1, R-464-2, R-464-3, R-465-1, R-465-2).
+
+**Riserve (da tracciare in stato_progetto.md)**
+- **R-466-1 (chat Mani), BASSA**: la logica del rilevatore non è testata sul parser della CI. Il flag è un'espressione calcolata all'import: le mutazioni «sempre True» e `or` passano tutte e 239 sul parser moderno. Proposta: una funzione pura `_parser_aggiornato(cls)`, provata con classi finte nei casi «nessun marcatore», «solo escapable» (come 3.13.6/7) e «entrambi».
+- **R-466-2 (chat Mani), BASSA**: la degradazione è silenziosa. Su un Python vecchio Gas perde sempre il titolo e il testo delle textarea, ma niente lo dice. Proposta: un `logger.warning` una sola volta in gas_debug.log (in linea con §8 Model Awareness e §9), oppure una riga in `python gas.py doctor`.
+- Nota COSMETICA: con il ripiego obbligatorio sui parser vecchi, gli override pensati per loro (il ripiego TypeError di `_modo_grezzo`, il ramo «vecchio» di `close`) restano come difesa in profondità. Il commento che li presenta come «valido su ogni versione» potrebbe citare il nuovo instradamento.
+- Restano aperte: R-463-1, R-454-2, R-453-2, R-456-1/2, R-450-1, R-447-1(b), V-2 ve #242.
+
+**Rischi esclusi**
+- La versione di Python sul Mac e sulla VPS non l'ho verificata: dal repo non si vede. Va controllata con `python3 -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` sulla macchina.
+- I backport delle distribuzioni diverse da Ubuntu 3.12.3 non li ho verificati.
+- Il parser vecchio reale l'ho provato solo con la v3.12.3. Per le altre versioni ho controllato solo i marcatori nei sorgenti.
+- Non ho rieseguito la suite kernel: il diff non tocca gas.py.
+
+Memoria aggiornata (riga #466 più una lezione sui rilevatori di versione) e committata solo /home/user/Gas/.claude/agents/memoria_revisore.md (a60f7f6). Il diff staged è intatto; reports/ ha modifiche non staged dell'agente principale, che non ho toccato.
+
+Sorgenti CPython scaricati in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/vers466; fuzz in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/p464/fz465.py.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 192 → 199 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «199 passed in 21.04s» su Python 3.13; «199 passed in 20.44s» su 3.11 (venv); «199 passed in 19.85s» con rete e DNS veri bloccati via sitecustomize).
-- Fuzz differenziale: 0 fughe su 200k HTML (3.13), 100k (3.11), 100k XHTML; fuzz454/fuzz456 con oracolo html5lib contro HEAD: 0/0; fuzz con atomi CDATA (`fuzz_cdata.py`): 1 caso su 30k (3.13) visibile sotto il modello «script attivi», 0 su 15k (3.11).
-- Mutazioni in copie isolate, 7/7 prese: senza override CDATA, override anche in svg, cdata_mode attivo in XHTML, ripiego CDATA sempre/mai fino a `]]>`, ripiego XHTML con grezzi non contati / come in HTML.
+- Web suite: 192 → 199 (primo giro) → 239 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «239 passed» su Python 3.13.16, 3.11.17 e 3.12.3, venv).
+- Con il html/parser.py reale di CPython 3.12.3 non patchato (plugin che lo sostituisce): 233 passed, 6 failed attesi (titolo perso col ripiego ×3, textarea nascosta, rilevatore False, il preesistente `--!>`); nessuna fuga.
+- Test nuovi del secondo giro contro il codice del primo giro: falliscono (6 per `<![`, 8 per i costrutti aperti a fine pagina).
+- Fuzz con oracolo html5lib contro l'head precedente: 0 casi in cui il nuovo mostra di più sul parser moderno (2×30k miei, 2×15k del revisore); sul parser vecchio reale 0 dopo il rilevatore (#466).
+- Mutazioni del revisore in copie dell'index: vedi i verdetti #464–#466.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-`gh` non autenticato nella sessione cloud. Mappatura commit→run:
-- `96b83f5`, `aa0b4f9`: pushati insieme prima di aprire la PR #245; run di push sulla testa `aa0b4f9` non letta (handoff-check atteso rosso: handoff non ancora aggiornato).
-- Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura commit→run:
+- `649f441` (head precedente): unit-suite success, handoff-check success, verifica-bot **failure** (V-1 bot #245, MEDIA), verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/245#issuecomment-6344406907)).
+- `2ce6f94` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-463-1 (chat Mani)** MEDIA preesistente (CDATA nei punti di integrazione con un elemento HTML aperto); **R-463-2 (chat Mani)** BASSA preesistente (ripiego case-insensitive su CDATA dentro svg).
-- Restano: R-454-2, R-453-2, R-456-1/2, R-450-1, V-2 ve #243, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…8».
+- Di questa fetta: **R-463-1 (chat Mani)** MEDIA preesistente (CDATA nei punti di integrazione con un elemento HTML aperto, fetta 9); **R-466-1** BASSA (rilevatore non testato con classi finte); **R-466-2** BASSA (degradazione silenziosa su Python vecchio); **R-ve245-1** MEDIA preesistente (XHTML con prefissi di namespace, fetta 9); R-ve245-2…5 BASSE/COSMETICHE.
+- Restano: R-454-2, R-453-2, R-456-1/2, R-450-1, V-2 ve #243, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…8» e «fetta 8, secondo giro».
