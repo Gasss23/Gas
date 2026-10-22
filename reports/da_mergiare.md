@@ -22,4 +22,4 @@
 - **Pro (aggiunte):** al mattino vedi subito quanto ha speso Gas e quali lead sono fermi, senza aprire file.
 - **Contro (aggiunte):** il messaggio del mattino ha 3 righe in più; se la memoria è rotta le righe dicono «non letti»; R-453-2/R-454-1 basse.
 - **Ancora:** `ricorda` con `fermi=true` elenca i lead attivi dal più fermo (il blocco di memoria mostrava solo i più recenti); il compito d'esempio punto_lead lo usa. La spesa del mattino avvisa se il log dei token è rovinato (review #455/#456).
-- **Controlli (totale):** kernel 1020 PASS, pytest 1897 passed; main (PR #243) già unito, nessun conflitto.
+- **Controlli (totale):** kernel 1020 PASS, pytest 1905 passed; main (PR #243) già unito, nessun conflitto. Bot: «neutral, decide l'operatore», APPROVATO CON RISERVE (solo BASSE: recupero basato sulla storia, DB bloccato fra due letture, controllo del log parziale).

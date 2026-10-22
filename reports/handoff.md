@@ -22,6 +22,7 @@
 - **R1 contatti fermi (`ricorda fermi=true`, catalogo d'esempio)**: `FATTA` — review #455 APPROVATO CON RISERVE, #456 APPROVATO.
 - **Merge di main (PR #243 chat Mani, conflitto segnalato dalla verifica esterna 2° giro, V-0)**: `FATTA` — review #457 APPROVATO.
 - **V-1 verifica esterna #241 2° giro (`fermi` normalizzato anche dentro `_ricorda`)**: `FATTA` — review #458 APPROVATO.
+- **Riserve del bot su 5f4c524 (V-1 righe rotte del log solo nelle 24 ore, V-5 testo dell'esito incerto)**: `FATTA` — review #459 APPROVATO CON RISERVE (chiuse), #460 APPROVATO. V-2 (segno nel DB al posto della scansione della storia): `DEFERITA — cambio di schema`.
 - **V-1/V-2 verifica esterna e bot #241 (spesa del mattino a log rotto, tetto mostrato)**: `FATTA` — nella stessa fetta (#455/#456); descrizione della PR aggiornata (V-2 bot).
 
 ---
@@ -29,25 +30,29 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  17 ++++++++++++
- gas.py                              | 129 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- modules/notte/notte.py              | 153 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- modules/telegram/bot.py             |  16 +++++++++--
- reports/da_mergiare.md              |  32 +++++++++++-----------
- reports/diff_sessione.md            |  17 +++++++-----
- reports/handoff.md                  | 521 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------
- reports/roadmap.md                  |   8 +++---
+ .claude/agents/memoria_revisore.md  |  20 +++++++++++++
+ gas.py                              | 131 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ modules/notte/notte.py              | 167 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ modules/telegram/bot.py             |  16 ++++++++--
+ reports/da_mergiare.md              |  32 ++++++++++----------
+ reports/diff_sessione.md            |  17 ++++++-----
+ reports/handoff.md                  | 589 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                  |   8 ++---
  reports/stato_progetto.md           |   5 ++--
- reports/ultimo_report.md            |  39 +++++++++++----------------
+ reports/ultimo_report.md            |  42 +++++++++++---------------
  scripts/notte/catalogo_esempio.yaml |   5 ++--
- tests/test_unit_kernel.py           | 210 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_notte.py            | 108 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 1012 insertions(+), 248 deletions(-)
+ tests/test_unit_kernel.py           | 210 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py            | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 1118 insertions(+), 250 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+801532b fix(notte): righe rotte del log contate solo nelle 24 ore; testo dell'esito incerto (V-1/V-5 bot #241)
+6726ee7 chore(revisore): memoria review #460 — APPROVATO
+a965355 chore(revisore): memoria review #459 — APPROVATO CON RISERVE
+a57a16a docs(fine-task): report e handoff — merge di main #243 e V-1 verifica esterna (#241)
 b0c5566 fix(memoria): fermi normalizzato anche dentro _ricorda (V-1 verifica esterna #241, 2° giro)
 e7ccb22 chore(revisore): memoria review #458 — APPROVATO
 03488e4 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
@@ -395,13 +400,72 @@ Guardrail e regole del progetto: nessuno slicing della history, nessuna simulazi
 
 Memoria: riga #458 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit e7ccb22). Nessuna lezione nuova.
 
+### Review #459 (chat Motore)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #459 (chat Motore). Diff staged: gas.py, modules/notte/notte.py, tests/test_unit_notte.py. Worktree uguale all'index. Prima della review ho letto CLAUDE.md (sezioni 1, 5, 8 e 10), le voci di reports/stato_progetto.md su #241 e la mia memoria. Nel diff non ci sono slicing della history né simulazioni di tool, e nessun guardrail è indebolito.
+
+**Cosa ho controllato nel diff**
+- modules/notte/notte.py:456 — `righe = righe[:-1]` scarta l'ultimo pezzo senza a capo, cioè una riga ancora in scrittura. Rischio esaminato: l'ordine rispetto a `righe[1:]` quando la coda supera 64 KB, e una riga unica più lunga di 64 KB. Esito: ok, in entrambi i casi il conteggio dà 0 e non va in errore.
+- modules/notte/notte.py:459 — la soglia usa lo stesso formato e la stessa finestra di 24 ore di gas.py:1478 (`_daily_cost_usd_bloccato`). Rischio esaminato: un disallineamento tra le due finestre. Esito: ok.
+- modules/notte/notte.py:471 — una riga valida più vecchia della soglia azzera le righe rotte contate prima. Rischio esaminato: valori di ts anomali, provati con sonde. Esito: riserva R-459-3.
+  - Rotta tra una riga vecchia e una nuova: 1. Rotta dopo una riga nuova: 1. ts null: 1. ts con "Z": 1.
+  - Solo una riga rotta senza a capo: 0. Righe fuori ordine: 0, accettabile.
+- tests/test_unit_notte.py:1956 — test nuovo. Esito: ok.
+  - Ho provato due mutazioni su una copia dall'index: tolto l'azzeramento, e tolto `[:-1]`. Ciascuna fa fallire 1 test.
+  - Le prove su notte: 136 passed.
+- tests/test_unit_notte.py:1925 — commento aggiunto «niente ts: nella finestra». Esito: riserva R-459-1.
+- gas.py:3422 — testo del ramo 'incerta' di `recupera_esito_firma`. Rischio esaminato: se un test controlla il vecchio testo («si è interrotto»). Esito: nessun test lo controlla; riserva R-459-2.
+- Contesto (file non nel diff): gas.py:4269 conferma che un comando scaduto (`TimeoutExpired`) lascia davvero l'esito incerto.
+
+**Riserve, da tracciare in stato_progetto.md**
+- **R-459-1 COSMETICA** — tests/test_unit_notte.py:1925: il commento è falso.
+  - Un dict senza ts dà `""`, che è minore della soglia: la riga è trattata come VECCHIA e azzera il conteggio.
+  - Il test passa solo perché `{"ok": 1}` è la prima riga. Correggere il commento.
+- **R-459-2 COSMETICA** — gas.py:3422: «crash di Gas o comando scaduto» non copre tutte le cause di esito incerto.
+  - Restano fuori l'errore interno dopo il reclamo (gas.py:3379) e l'output che non è testo (gas.py:4269).
+  - Suggerimento: «per esempio crash di Gas o comando scaduto».
+- **R-459-3 BASSA** — modules/notte/notte.py:471: un dict valido senza ts (o con ts "") che segue righe rotte le azzera.
+  - Sonda: `rotta\n{"ok":1}\n` dà 0.
+  - Nel log reale ogni riga ha il ts (gas.py:1441), quindi il caso è teorico. Basta dichiararlo o trattare il ts assente come «dentro la finestra».
+
+**V-2 bot #241 (perdita del tag dopo una doppia compressione)**: sono d'accordo a lasciarla come residuo, perché la correzione vera richiede un segno nel DB, cioè un cambio di schema. Va però scritta in stato_progetto.md come residuo aperto con il motivo; non basta citarla nel report.
+
+**Cosa non ho verificato**
+- Non ho rieseguito la suite del kernel (1020) né `pytest tests/` (1905). La modifica a gas.py cambia solo una stringa e nessun test la controlla, quindi mi fido delle tue prove.
+- Non ho verificato il comportamento con più di 64 KB di log nelle 24 ore su VPS: è il limite che dichiari nella docstring, e in dev non si riproduce in modo realistico.
+
+**Memoria**: ho scritto la riga #459 più una lezione (ts assente o "" trattato come «più vecchio di tutto» in un confronto tra stringhe). Committata da sola nel commit a965355.
+
+### Review #460 (chat Motore)
+
+## VERDETTO: APPROVATO
+
+Ho fatto la ri-review #460 (chat Motore) della #459 sullo stesso diff staged: gas.py, modules/notte/notte.py, tests/test_unit_notte.py. Ho letto le parti che servivano: CLAUDE.md sez. 5, reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md con la riga della #459.
+
+Elementi esaminati:
+- modules/notte/notte.py:471 — `elif d.get("ts") and str(d["ts"]) < soglia:` azzera le rotte solo se la riga ha un ts presente e più vecchio della soglia. Rischio esaminato: un ts assente, vuoto o nullo che azzera le righe rotte senza avvisare (R-459-3). Ho controllato con una sonda: dopo una riga rotta, `{"ts": null}`, `{"ts": ""}` e `{"ts": "abc"}` danno 1; `{"ts": "1999-01-01T00:00:00"}` dà 0, come deve. Esito: ok, R-459-3 chiusa.
+- tests/test_unit_notte.py:1969 — nuovo caso `rotta\n{"ok": 1}\n`, che deve dare 1. Rischio esaminato: un test che non scatta se si rimette la logica vecchia. Mutazione in una copia presa dall'index: condizione vecchia `str(d.get("ts", "")) < soglia` → 1 FAIL (test_log_token_righe_rotte_solo_nella_finestra_di_24_ore), 135 passed. Esito: ok.
+- tests/test_unit_notte.py:1925 — il commento ora dice «righe senza ts: dentro la finestra», e con il codice nuovo è vero. Esito: ok, R-459-1 chiusa.
+- gas.py:3422 — la notizia ora dice «(per esempio crash di Gas o comando scaduto)»: le cause non sono più presentate come un elenco completo. Esito: ok, R-459-2 chiusa.
+- modules/notte/notte.py:456 e modules/notte/notte.py:460 — `righe[:-1]` e la soglia a 24 ore sono rimasti uguali a quelli approvati nella #459. Niente slicing della cronologia (qui si taglia una lista di righe del log, non la storia dei messaggi), nessun guardrail indebolito, fallback FAIL-SAFE con logging.warning intatto. Esito: ok.
+
+Prove: tests/test_unit_notte.py → 136 passed sul diff staged.
+
+Nota non bloccante, non è una riserva: un ts numerico (es. `{"ts": 1}`) diventa la stringa "1", che è minore della soglia, quindi azzera le rotte. Nel log reale non succede, perché gas.py scrive sempre il ts come stringa ISO.
+
+Rischio escluso: non ho rieseguito la suite del kernel (1020 PASS 0 FAIL è il risultato dichiarato da chi mi ha chiamato). Sul kernel il diff cambia solo il testo di una stringa in gas.py:3422, che i test non controllano parola per parola. Non ho verificato il comportamento sul Mac o sulla VPS.
+
+Memoria: ho aggiunto la riga contatore #460 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza lezioni nuove, e ho lanciato scripts/commit_memoria_revisore.sh, che non ha stampato errori.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 996 → 1020 PASS (T78l-T78p, T98a-T98j nuovi); pytest `tests/` 1862 → 1897 passed (5 test nuovi del resoconto, più la web suite arrivata col merge di #242). Nessun FAIL. Correzione dell'handoff di #240: il delta dei test del bot lì dichiarato +9 era +14 (311 → 325).
+Kernel 996 → 1020 PASS (T78l-T78p, T98a-T98j nuovi); pytest `tests/` 1862 → 1905 passed (7 test nuovi del resoconto, più la web suite arrivata col merge di #242). Nessun FAIL. Correzione dell'handoff di #240: il delta dei test del bot lì dichiarato +9 era +14 (311 → 325).
 
 ```
 === RIEPILOGO: 1020 PASS, 0 FAIL ===
-1897 passed in 186.04s (0:03:06)
+1905 passed in 178.83s (0:02:58)
 ```
 
 ## §6 STATO CI
@@ -409,16 +473,17 @@ Kernel 996 → 1020 PASS (T78l-T78p, T98a-T98j nuovi); pytest `tests/` 1862 → 
 `gh run list` non autenticato; run lette via `gh api` REST (ramo `feat/merge-automatico-z1xjx2`):
 
 ```
+39698877745 verifica-bot a57a16a completed success
+39698875797 CI a57a16a completed success
 39698000744 verifica-bot 5f4c524 completed success
 39697998856 CI 5f4c524 completed success
-39695262594 verifica-bot 075e323 completed success
 ```
 
-- `5f4c524` — CI 39697998856 success (unit-suite, handoff-check); verifica-bot 39698000744 success.
-- `075e323` — CI 39695260138 success; verifica-bot 39695262594 success.
-- `eafe6ee` — CI 39685325511 success; `079c879` — CI 39685151985 failure (handoff non aggiornato, corretto da `eafe6ee`).
-- Gli altri commit della sessione fino a `5f4c524`: nessuna run su questo SHA (pushati insieme, testati solo nell'albero del commit di testa di ogni push).
-- `03488e4`, `e7ccb22`, `b0c5566` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `a57a16a` — CI 39698875797 success (unit-suite, handoff-check); verifica-bot 39698877745 success, esito «neutral: decide l'operatore», verdetto APPROVATO CON RISERVE senza ALTA/MEDIA.
+- `5f4c524` — CI 39697998856 success; verifica-bot 39698000744 success (nel check run: failure per il conflitto con main, chiuso in `03488e4`).
+- `075e323` — CI 39695260138 success; `eafe6ee` — CI 39685325511 success; `079c879` — CI 39685151985 failure (handoff non aggiornato, corretto da `eafe6ee`).
+- Gli altri commit della sessione: nessuna run su questo SHA (pushati insieme, testati solo nell'albero del commit di testa di ogni push).
+- `a965355`, `6726ee7`, `801532b` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -428,5 +493,8 @@ Kernel 996 → 1020 PASS (T78l-T78p, T98a-T98j nuovi); pytest `tests/` 1862 → 
 - **R-454-1 (chat Motore)** BASSA: tabella `approvals` sana ma `contatti` rotta → «Lead attivi: 0» (stesso residuo in `ricorda fermi`, #456).
 - V-2 verifica esterna #241 2° giro BASSA: l'ordinamento per età di `ricorda fermi` non è stato riprodotto in sonda (coperto da T98a).
 - Note COSMETICHE #458: posizione di T98j, nessun dettaglio in caso di FAIL, type hint `fermi: bool`.
+- **V-2 bot #241 (5f4c524) / V-1 bot #241 (a57a16a)** BASSA, deferita: il recupero decide «non in storia» scandendo la storia; dopo `/reset` o due compressioni il tag sparisce e un click tardivo scrive una notizia falsa (mai una nuova esecuzione). Fix: segno nel DB, cambio di schema.
+- **V-2 bot #241 (a57a16a)** BASSA: un «database is locked» tra `conta_approvazioni` e `lista_contatti` dà ancora «Lead attivi: 0» (stesso schema di R-454-1).
+- **V-3 bot #241 (a57a16a)** BASSA: il controllo del log dei token è parziale (ultimi 64 KB; righe JSON valide scartate da `_costo_riga` non contano).
 - Nota COSMETICA #454: `int(conta.get("in_attesa", 0))` fuori dal try.
 - Limite dichiarato #452: la guardia T78p è statica (getattr dinamico, importlib, nomi passati per variabile non visti).
