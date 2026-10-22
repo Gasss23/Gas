@@ -16,6 +16,7 @@
 - **Merge PR #247**: `FATTA` — 80fbe05.
 - **Decisione porte «solo 80/443»**: `FATTA` in roadmap/stato; `DEFERITA — codice, chat Mani`.
 - **Coda dei merge svuotata**: `FATTA`.
+- **V-1 bot #249 (riserva R6 #391 ancora «in attesa» in stato_progetto)**: `FATTA`. V-2 (numeri del §2 presi prima della stesura finale): rigenerati ora.
 
 ---
 
@@ -24,16 +25,18 @@
 ```
  reports/da_mergiare.md    |  10 ++--------
  reports/diff_sessione.md  |  12 +++++-------
- reports/handoff.md        | 134 ++++++++++++++------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md        | 141 +++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md        |   1 +
- reports/stato_progetto.md |   2 +-
+ reports/stato_progetto.md |   4 ++--
  reports/ultimo_report.md  |  21 ++++++++-------------
- 6 files changed, 31 insertions(+), 149 deletions(-)
+ 6 files changed, 39 insertions(+), 150 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+ad75867 docs(stato): riserva R6 #391 decisa — solo 80/443 (V-1 bot #249)
+7b5a83f docs(fine-task): report di fine sessione — merge di #247, decisione porte (#249)
 5782fff docs(roadmap): decisione porte del lettore web (solo 80/443), coda dei merge svuotata
 ```
 
