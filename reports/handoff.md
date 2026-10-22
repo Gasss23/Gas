@@ -25,14 +25,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  7 +++
- modules/web/leggi.py               | 90 ++++++++++++++++++++++++++++++++----
- reports/diff_sessione.md           | 13 +++---
- reports/handoff.md                 | 62 +------------------------
- reports/stato_progetto.md          |  2 +
- reports/ultimo_report.md           | 28 +++++++----
- tests/test_unit_web_leggi.py       | 95 +++++++++++++++++++++++++++++++++++++-
- 7 files changed, 210 insertions(+), 87 deletions(-)
+ .claude/agents/memoria_revisore.md |   8 +++
+ modules/web/leggi.py               |  98 +++++++++++++++++++++++++++++----
+ reports/diff_sessione.md           |  13 ++---
+ reports/handoff.md                 |  62 +--------------------
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  29 ++++++----
+ tests/test_unit_web_leggi.py       | 108 ++++++++++++++++++++++++++++++++++++-
+ 7 files changed, 233 insertions(+), 87 deletions(-)
 ```
 
 ---
@@ -40,6 +40,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+85cb0a9 fix(web): la chiusura di blocco non toglie un noscript aperto — chat Mani fetta 11 (V-1 bot #250 bis)
+55b2eac chore(revisore): memoria review #481 — APPROVATO
+fae1211 docs(fine-task): verdetto #478 riemesso per il gate B — chat Mani fetta 11
 1d775e2 docs(fine-task): secondo giro della PR #250 (merge di main, riserve di bot e verifica esterna) — chat Mani fetta 11
 f0f86dc chore(revisore): memoria review #480 — APPROVATO
 6792d18 fix(web): fetta 11 chat Mani — annotation-xml speciale solo in MathML, warning con URL, test dei formattanti a sé (bot #250, ve #250)
@@ -58,7 +61,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Cinque verdetti, incollati integralmente (chat Mani): #476 (BOCCIATO) e #477 (APPROVATO) sul diff della fetta 11 committato in `a76a646`; #478 (APPROVATO, riemesso per il gate B) sul merge di main `1be8be7`; #479 e #480 (APPROVATO) sulle riserve del bot e della verifica esterna #250, committate in `6792d18` (memorie `c472651`, `f9eb918`, `88400f6`, `a52a3e1`; la riga #478 è nel commit di merge). Le righe citate nelle review intermedie si riferiscono al diff di allora.
+Sei verdetti, incollati integralmente (chat Mani): #476 (BOCCIATO) e #477 (APPROVATO) sul diff della fetta 11 committato in `a76a646`; #478 (APPROVATO, riemesso per il gate B) sul merge di main `1be8be7`; #479 e #480 (APPROVATO) sulle riserve del bot e della verifica esterna #250, committate in `6792d18`; #481 (APPROVATO) sulla fuga trovata dal bot sull'head `fae1211`, committata in `85cb0a9` (memorie `c472651`, `f9eb918`, `88400f6`, `a52a3e1`, `55b2eac`; la riga #478 è nel commit di merge). Le righe citate nelle review intermedie si riferiscono al diff di allora.
 
 ### Review #476 (chat Mani) — verdetto integrale
 
@@ -240,18 +243,54 @@ Suite: 319 passed su 3.13.16 e su 3.11.17.
 
 Memoria: riga #480 committata in a52a3e1 (nessuna lezione nuova). Lo stage di modules/web/leggi.py e tests/test_unit_web_leggi.py non l'ho toccato.
 
+### Review #481 (chat Mani) — verdetto integrale (diff del commit `85cb0a9`)
+
+## VERDETTO: APPROVATO
+
+Review #481 (chat Mani): delta staged sopra fae1211 che chiude V-1 ALTA del bot #250 bis. Il fix chiude la fuga e non introduce regressioni rispetto a main.
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:241` — nuovo indice `_nascosti_html`, con push in `_metti` (spazio html ∩ `_TAG_NASCOSTI`) e pop in `_togli_da`.
+  - Rischio esaminato: indice incoerente con la pila, o costo non O(1). Segue lo schema di `_confini`/`_formattanti`, con pop ammortizzati.
+  - Esito: ok.
+- `modules/web/leggi.py:413` — se c'è un nascosto HTML sopra il tag, la chiusura in scope non si esegue e la pila resta incerta.
+  - Rischio esaminato: altri percorsi che tolgono un noscript come faceva la regola.
+    - La fase estranea di `chiudi` e `_esci` tolgono solo elementi svg/math.
+    - Il ramo `in_cima >= fermo` toglie solo quello che sta sopra l'elemento HTML in cima.
+    - Un noscript SOTTO il tag resta coerente: il browser lo chiude al primo `</noscript>`, Gas lo chiude anche lui o diventa incerto.
+  - Per canvas il browser chiude davvero, quindi qui si perde testo, nel verso sicuro.
+  - Mutazione in copia isolata che toglie la condizione → 2 FAIL.
+  - Esito: ok.
+- `tests/test_unit_web_leggi.py:1337` — `test_chiusura_di_blocco_non_toglie_un_noscript`, 2 pagine (foreignObject e desc), parser e ripiego. Esito: ok.
+
+**Prove**
+- Suite: 321 passed su 3.13.16 e su 3.11.17.
+- Enumerazione esaustiva con oracolo lexbor, prefisso `<p>W9</p><svg><foreignObject>`, 5 atomi su 16 (noscript, `</noscript>`, div, `</div>`, ul, `</ul>`, b, `</foreignObject>`, `</svg>`, script, `</script>`, canvas, `</canvas>`, span, template, `</template>`). Script: `/tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/f12/enum481.py`.
+  - Su 1.048.576 pagine: **0 regressioni** rispetto a main, 0 perdite nuove.
+- Fughe assolute: 219, tutte già su main. Non sono regressioni e non riguardano questo diff:
+  - l'oracolo di selectolax/lexbor analizza con gli script SPENTI, quindi noscript è un elemento normale e un `<div>` dentro blocca `</noscript>`. Gas invece sceglie gli script attivi (V-1 bot #243), come i browser normali. Esempio: `<noscript> W1 <div> W2 </noscript> W3` → lexbor nasconde W3, Gas lo mostra;
+  - il resto è la classe canvas già aperta come R-ve246-5 MEDIA (`<canvas> W2 <div> W3 </canvas> W4`).
+
+**Rischi esplicitamente esclusi**
+- Comportamento con noscript a script attivi: non verificato su un oracolo, perché lexbor via selectolax non lo rappresenta. Ho ragionato sullo standard e sulle 2 sonde del test.
+- Contesti desc e mi con noscript: non enumerati. Il test copre desc con una pagina.
+- Pagine reali e Python senza le patch del 2025: non verificati.
+
+Memoria: riga #481 committata (55b2eac). Contiene anche la nota che l'oracolo lexbor di selectolax ha gli script spenti, quindi su noscript non va usato. Lo stage di modules/web/leggi.py e tests/test_unit_web_leggi.py è intatto.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 304 → 319 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «319 passed» su Python 3.13.16 e 3.11.17, venv). Kernel dopo il merge di main: 1017 PASS, 1 FAIL (T31g, GAS_VECTORS) identico su main in questo ambiente: ambientale.
+- Web suite: 304 → 321 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «321 passed» su Python 3.13.16 e 3.11.17, venv). Kernel dopo il merge di main: 1017 PASS, 1 FAIL (T31g, GAS_VECTORS) identico su main in questo ambiente: ambientale.
 - Oracolo lexbor, nuovo contro main 2d20ec0, parser e ripiego: enumerazione esaustiva a 4 atomi (39 atomi con ul/li/span/table/td, `<i a = "x>`, annotation-xml; 2.313.441 pagine), campione casuale 5–7 atomi (3 M pagine), enumerazioni del revisore a 5 atomi con prefissi svg+foreignObject, svg+desc, math+mi (3,9 M pagine): 0 fughe nuove, 0 perdite nuove; perdite tolte: 8 nel campione.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
 - `e772a27` (head all'apertura della PR #250): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 conflitto con main, V-2, V-3 BASSE/COSMETICHE); verifica esterna #250 APPROVATO CON RISERVE.
-- `1be8be7` (merge di main), `6792d18` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `fae1211` (merge di main e riserve): unit-suite e handoff-check success; verifica-bot **failure** (BOCCIATO, V-1 ALTA: una chiusura di blocco in scope toglieva un `<noscript>` aperto, che con gli script attivi è testo grezzo; fuga con `</foreignObject></svg>` dopo; chiusa in `85cb0a9`, review #481).
+- `85cb0a9` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

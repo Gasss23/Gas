@@ -15,8 +15,9 @@ Ramo `feat/mani-web-fetta11` da main 2d20ec0 (dopo il merge di #248). Area della
 - **V-1 bot #248 (perdita, annotation-xml)**: `FATTA`.
 - **R-ve246b-5 (perdita su HTML valido in svg/math)**: `FATTA` per le chiusure di blocco in scope; restano incerti (verso sicuro) i casi con confini, formattanti o elementi che il browser chiude da solo (p, li, dd, dt, h1–h6, tabelle).
 - **B-476-1 (ALTA, trovata dal revisore nella prima versione)**, **R-476-1 (BASSA)**: `FATTA`.
-- **Test**: web suite 304 → 319 (Python 3.13 e 3.11). Oracolo lexbor, nuovo contro main: 0 fughe nuove e 0 perdite nuove su circa 9 milioni di pagine (enumerazioni esaustive e campioni).
+- **Test**: web suite 304 → 321 (Python 3.13 e 3.11). Oracolo lexbor, nuovo contro main: 0 fughe nuove e 0 perdite nuove su circa 9 milioni di pagine (enumerazioni esaustive e campioni).
 - **Review**: #476 BOCCIATO, #477 APPROVATO, #478 APPROVATO (merge di main), #479 e #480 APPROVATO (riserve del bot e della verifica esterna #250) (chat Mani).
+- **Bot #250 su `fae1211`: BOCCIATO** (V-1 ALTA: la chiusura di blocco toglieva un noscript aperto): `FATTA` (indice dei nascosti HTML, review #481).
 - **Bot #250 e verifica esterna #250**: APPROVATO CON RISERVE, solo BASSE (conflitto con main: chiuso col merge; annotation-xml speciale solo in MathML e warning con l'URL: FATTA; test dei formattanti a sé: FATTA; casi preesistenti aggiunti a R-ve246-5).
 
 ## RICHIESTE ALLA CHAT MOTORE
