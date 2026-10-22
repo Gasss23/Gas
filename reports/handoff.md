@@ -18,6 +18,7 @@
 - **Prova dal vero sul Mac (R1)**: `FATTA` — doctor, catalogo, tetto, bottoni Approva/Rifiuta, `/notte` con messaggio del mattino, timer `com.gas.notte`, lezione 13 approvata.
 - **Difetto «pro e contro chiesti all'utente»**: `FATTA` — review #467 APPROVATO.
 - **V-3 bot #247 (diniego di riserva che non diceva chi scrive pro e contro)**: `FATTA` — review #468 APPROVATO. V-1/V-2 del bot erano sullo SHA 2ea4f80 senza report e senza CI: i report sono nel commit dopo. Bot su 2dc4f7a e 8630ec6: V-1 MEDIA «CI assente» dovuta al ritardo di GitHub (il bot è partito prima della CI); la CI è poi arrivata verde su 2aa7a39, 2dc4f7a e 8630ec6. V-2 (report e descrizione) corrette.
+- **Merge di main (PR #246, #248 chat Mani; conflitto segnalato dal bot su 0ada24e, V-1)**: `FATTA` — review #476 APPROVATO.
 - **Backup iCloud, protezioni del repo, server Netcup**: `DEFERITA — da fare con l'operatore`.
 
 ---
@@ -25,22 +26,24 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
+ .claude/agents/memoria_revisore.md |   3 +++
  gas.py                             |  14 ++++++++++----
  reports/da_mergiare.md             |  17 ++++++-----------
  reports/diff_sessione.md           |  15 ++++++++-------
- reports/handoff.md                 | 356 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 232 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |   8 ++++----
  reports/setup_notte.md             |   2 +-
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  45 ++++++++++++---------------------------------
+ reports/ultimo_report.md           |  34 ++++++++++++----------------------
  tests/test_unit_kernel.py          |  11 +++++++++++
- 10 files changed, 132 insertions(+), 342 deletions(-)
+ 10 files changed, 153 insertions(+), 187 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+cfe172b Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+0ada24e docs(fine-task): stato CI reale nell'handoff, V-1/V-2 bot #247 (#247)
 8630ec6 docs(fine-task): report allineati al 2° giro, V-2 bot #247 (#247)
 2dc4f7a docs(fine-task): V-3 bot #247, CI e report allineati (#247)
 d579a1f fix(firma): anche il diniego di riserva dice chi scrive pro e contro (V-3 bot #247)
@@ -101,6 +104,33 @@ Rischio escluso: il comportamento reale del modello (Gemini/Groq) con il nuovo t
 
 Riga contatore #468 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato scripts/commit_memoria_revisore.sh, che non ha stampato nulla; il commit non l'ho controllato.
 
+### Review #476 (chat Motore)
+
+## VERDETTO: APPROVATO
+
+Review #476 (chat Motore). È il merge di origin/main 2d20ec0 (PR #246 e #248, chat Mani) dentro feat/merge-automatico-z1xjx2 (HEAD 0ada24e, PR #247). Il merge è ancora in corso.
+
+Ho letto prima CLAUDE.md, la memoria del revisore (fino alla #475) e lo stato del progetto: nel diff di `stato_progetto.md` ho guardato solo le parti toccate dal merge.
+
+**Cosa ho controllato nel diff (base = origin/main 2d20ec0)**
+- `modules/web/leggi.py:205` — la parte web arrivata da main (`_cima_punto` e le funzioni vicine). Rischio: che nel merge si sia alterato qualcosa. `git diff --cached 2d20ec0 -- modules/web tests/test_unit_web_leggi.py` è vuoto, quindi il file è identico a main. Rispetto a HEAD il diff è di +446/-69, cioè proprio le fette 9 e 10 di Mani. **ok**
+- `tests/test_unit_web_leggi.py:1276` — i test del ripiego con annotation-xml dentro math, arrivati da main. Anche questo file è identico a main (stesso comando sopra). Le tue prove dicono 304 passed, in linea con la review #475. **ok**
+- `gas.py:3102` — il messaggio di rifiuto quando a write_file livello 2 mancano pro e contro: ora dice al modello di scriverli lui. Rischio: che il diff della sessione verso main contenga cambi non revisionati. Il diff del motore verso main è soltanto `gas.py:1082` (la descrizione del tool), `gas.py:3102` e `gas.py:4318` (il rifiuto di riserva senza firma), tutti già approvati nelle review #467 e #468. Sono solo testi; i controlli del gate restano gli stessi (il log `[GATE-1A]` e il rifiuto senza firma ci sono ancora). **ok**
+- `tests/test_unit_kernel.py:8964` — i test T82a2 e T82h1b controllano le frasi nuove nel rifiuto e nella descrizione del tool. Sono asserzioni sul testo prodotto davvero dal kernel, senza output dei tool inventati. **ok**
+- `.claude/agents/memoria_revisore.md:770` — il conflitto risolto unendo le due versioni: le #467 e #468 della chat Motore restano prima delle #467 e #468 della chat Mani. Confronto riga per riga: 0 righe perse sia da HEAD sia da MERGE_HEAD, nessun marcatore di conflitto rimasto. I numeri doppi (#467 e #468 per due chat) c'erano già e sono distinti dall'etichetta della chat. **ok**
+- `reports/stato_progetto.md:606` — l'unione automatica ha aggiunto le voci «Mani — fetta 10» (riga 606) e «fetta 9» (riga 608). Sembrano mancare 2 righe di main: l'intestazione «Ultimo aggiornamento» e la voce G-3. In realtà main non le aveva toccate (il loro hash è uguale a quello della base 2127bbe), mentre il ramo le aveva aggiornate: resta giustamente la versione del ramo. Nessun marcatore di conflitto. **ok**
+- I report di sessione (handoff, ultimo_report, diff_sessione, da_mergiare, roadmap, setup_notte) restano nella versione del ramo: rispetto a HEAD non c'è nessuna riga tolta in reports/. Questo è voluto, visto che li riscrivi a fine sessione. **ok**
+
+**Cosa NON ho verificato**
+- Non ho rieseguito le suite: mi baso sulle tue prove (web 304 passed, kernel 1022 PASS 0 FAIL) e sul fatto che i file del motore sono identici a main oppure a HEAD, entrambi già passati per review e test.
+- Il comportamento su VPS e sul Mac non è riproducibile qui.
+- Il contenuto dei report di sessione non l'ho controllato nel merito: verranno riscritti.
+
+**Riga della memoria**
+Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#476 (chat Motore) — 2026-10-22 — APPROVATO — …», senza lezioni nuove.
+
+**NON l'ho committata**: il merge è in corso e quindi non ho lanciato `scripts/commit_memoria_revisore.sh`. La riga è solo nel file su disco, non nell'index. Prima del commit di merge devi fare `git add .claude/agents/memoria_revisore.md`, così finisce nel merge, poi rigenerare il marcatore con `bash scripts/segna_review_ok.sh`: il diff in stage cambia.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Kernel 1020 → 1022 PASS (T82a2 e T82h1b nuovi; base `main` 2127bbe = 1020 in locale); pytest `tests/` 1970 passed. Nessun FAIL.
@@ -119,7 +149,8 @@ Run lette via `gh api` REST (ramo `feat/merge-automatico-z1xjx2`):
 - `2aa7a39` — CI 39831062721 success.
 - `2ea4f80` — CI 39830977401 failure su handoff-check (commit senza handoff, voluto; unit-suite success); verifica-bot failure.
 - `eaf9043`, `19b1ef6`, `d579a1f`: nessuna run su questo SHA (pushati insieme ad altri commit).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `0ada24e` — CI success; verifica-bot failure (V-1: conflitto con main, risolto nel merge successivo).
+- Merge di main e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
