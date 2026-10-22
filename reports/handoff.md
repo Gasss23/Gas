@@ -20,6 +20,8 @@
 - **R1 resoconto di spesa e stato**: `FATTA` — review #453/#454 APPROVATO CON RISERVE.
 - **R-445-3**: `DEFERITA — COSMETICA, preesistente, fetta successiva`.
 - **R1 contatti fermi (`ricorda fermi=true`, catalogo d'esempio)**: `FATTA` — review #455 APPROVATO CON RISERVE, #456 APPROVATO.
+- **Merge di main (PR #243 chat Mani, conflitto segnalato dalla verifica esterna 2° giro, V-0)**: `FATTA` — review #457 APPROVATO.
+- **V-1 verifica esterna #241 2° giro (`fermi` normalizzato anche dentro `_ricorda`)**: `FATTA` — review #458 APPROVATO.
 - **V-1/V-2 verifica esterna e bot #241 (spesa del mattino a log rotto, tetto mostrato)**: `FATTA` — nella stessa fetta (#455/#456); descrizione della PR aggiornata (V-2 bot).
 
 ---
@@ -27,25 +29,29 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  15 ++++++++++++
- gas.py                              | 128 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/notte/notte.py              | 153 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- modules/telegram/bot.py             |  16 +++++++++++--
- reports/da_mergiare.md              |  32 ++++++++++++-------------
- reports/diff_sessione.md            |  17 +++++++------
- reports/handoff.md                  | 473 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------
- reports/roadmap.md                  |   8 +++----
+ .claude/agents/memoria_revisore.md  |  17 ++++++++++++
+ gas.py                              | 129 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ modules/notte/notte.py              | 153 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ modules/telegram/bot.py             |  16 +++++++++--
+ reports/da_mergiare.md              |  32 +++++++++++-----------
+ reports/diff_sessione.md            |  17 +++++++-----
+ reports/handoff.md                  | 521 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                  |   8 +++---
  reports/stato_progetto.md           |   5 ++--
- reports/ultimo_report.md            |  39 +++++++++++-------------------
+ reports/ultimo_report.md            |  39 +++++++++++----------------
  scripts/notte/catalogo_esempio.yaml |   5 ++--
- tests/test_unit_kernel.py           | 208 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_notte.py            | 108 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 13 files changed, 939 insertions(+), 268 deletions(-)
+ tests/test_unit_kernel.py           | 210 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py            | 108 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 13 files changed, 1012 insertions(+), 248 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+b0c5566 fix(memoria): fermi normalizzato anche dentro _ricorda (V-1 verifica esterna #241, 2° giro)
+e7ccb22 chore(revisore): memoria review #458 — APPROVATO
+03488e4 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+5f4c524 docs(fine-task): report e handoff — contatti fermi in ricorda, spesa del mattino onesta (#241)
 3c136d4 feat(memoria): ricorda fermi=true — lead attivi dal più fermo (R1); spesa del mattino onesta
 ebaf9f3 chore(revisore): memoria review #456 — APPROVATO
 e8e7fc8 chore(revisore): memoria review #455 — APPROVATO CON RISERVE
@@ -332,12 +338,69 @@ Ri-review #456 (chat Motore) della #455, sullo stesso diff staged: gas.py, modul
 
 **Memoria**: riga #456 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit ebaf9f3). Nessuna lezione nuova.
 
+### Review #457 (chat Motore)
+
+## VERDETTO: APPROVATO
+
+Review #457 (chat Motore): merge di origin/main 5698cd3 (PR #243, chat Mani, fetta 6 web) dentro feat/merge-automatico-z1xjx2 (HEAD 5f4c524). Base comune: e3ffc0a.
+
+**Elementi del diff esaminati** (citazioni prese dal diff di sessione dopo il merge, base = origin/main, come chiede la lezione #444):
+- modules/web/leggi.py:127 — `_TITOLO_VUOTO_IN`, cioè la parte di main portata dentro dal merge. Rischio esaminato: che il merge l'avesse cambiata. Il file nell'index ha 0 righe di differenza da MERGE_HEAD e il worktree è uguale all'index. Esito: ok.
+- tests/test_unit_web_leggi.py:877 — i test della fetta 6. Stessa verifica: 0 righe di differenza da main. Ho rilanciato la suite sul tree unito: 174 passed. Esito: ok.
+- gas.py:3998 — `_lead_fermi` con memoria degradata, già approvato nella review #456. Rischio esaminato: che il merge avesse toccato i file del motore. gas.py, modules/notte/notte.py, modules/telegram/bot.py, tests/test_unit_kernel.py e tests/test_unit_notte.py hanno 0 righe di differenza tra index e HEAD. Rispetto a main, il diff di sessione contiene solo il lavoro già revisionato nelle review #449-#456 (chat Motore). Esito: ok.
+- tests/test_unit_notte.py:1945 — il test del log oltre 64 KB, già revisionato nella #456: è nel diff di sessione ed è invariato rispetto a HEAD. Esito: ok.
+- .claude/agents/memoria_revisore.md:737 — l'inizio del blocco chat Mani, che segue il blocco chat Motore (righe da 725 a 736). Rischio esaminato: righe perse o duplicate nel conflitto. Ho confrontato il multinsieme delle righe di base, ramo e main: 0 righe perse, 0 in più, nessun marcatore di conflitto, e l'ordine è quello dichiarato. Esito: ok.
+- reports/stato_progetto.md:606 — la nota della fetta 6 Mani entrata col merge automatico. Stessa verifica sul multinsieme: 0 righe perse, 0 in più, nessun marcatore. Esito: ok.
+
+**Report di sessione:** diff_sessione.md, handoff.md e ultimo_report.md restano nella versione del ramo. È corretto, sono log di sessione. Le versioni di main restano nella storia di git, al commit 5698cd3.
+
+**Rischio escluso:** non ho rilanciato la suite del kernel (1019/0) né quella di notte. Mi sono fidato delle tue prove, perché quei file sono identici a HEAD, che è già stato verificato nella review #456. Non ho controllato neanche la CI del commit di merge, che non esiste ancora.
+
+**Riga di memoria:** ho scritto la riga #457 (chat Motore) in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. NON è committata: con il merge in corso non ho lanciato commit_memoria_revisore.sh. Il file ora risulta `MM`: la riga è nel worktree ma non nell'index. Prima del commit di merge esegui `git add .claude/agents/memoria_revisore.md`, così la riga entra in quel commit. Ricorda che lo SHA del diff staged cambia: rigenera il marcatore con segna_review_ok.sh dopo l'add.
+
+Nessuna lezione nuova.
+
+### Review #458 (chat Motore)
+
+## VERDETTO: APPROVATO
+
+Review #458 (chat Motore). Ho letto il diff staged: 1 riga in gas.py e 2 in tests/test_unit_kernel.py. Ho controllato il contesto delle regole (CLAUDE.md sez. 5, lo stato del progetto e la mia memoria).
+
+Elementi esaminati:
+- `gas.py:3903`: `fermi = _vero(fermi)` sta in testa a `_ricorda`, dopo l'azzeramento di `_ricorda_n` e prima del ramo «memoria None».
+  - Rischio esaminato: un valore non booleano (es. la stringa "false") poteva arrivare a `if fermi:` (`gas.py:3972`) e alla condizione del diario di default (`gas.py:3975`).
+  - Ora quel valore viene convertito in booleano prima di entrambi i punti. `_vero` (`gas.py:101`) restituisce True solo per true/1/"true"/"sì"/"yes" e non solleva eccezioni con nessun tipo.
+  - Esito: ok.
+- `gas.py:4359`: execute_tool_call continua ad applicare `_vero` prima della chiamata.
+  - Rischio esaminato: una doppia conversione che dà risultati diversi.
+  - La doppia applicazione non cambia il risultato (`_vero(True)` è True, `_vero(False)` è False), quindi è innocua. Anche la riga del diario a `gas.py:2261` usa `_vero` per conto suo e resta coerente.
+  - Esito: ok.
+- `tests/test_unit_kernel.py:10777`: T98j chiama direttamente `_ricorda(None, None, 10, fermi="false")` e controlla che «dal più fermo» non compaia.
+  - Rischio esaminato: un controllo «non contiene» che passa sempre, anche senza la correzione.
+  - Mutazione fatta come richiesto, in una copia ricavata dall'index e messa nello scratchpad. Ho tolto la riga di `gas.py:3903`:
+    - con la riga: **1020 PASS, 0 FAIL** (Python 3.13.16);
+    - senza la riga: **1019 PASS, 1 FAIL**, e fallisce solo T98j.
+  - Il test regge davvero la correzione. Esito: ok.
+
+Note COSMETICHE (non bloccanti, non serve tracciarle):
+- T98j sta tra il calcolo di `_s98i` e il check T98i: l'ordine di lettura è strano. Non interferisce, perché la chiamata non scrive nel DB.
+- T98j non ha l'argomento di dettaglio. In caso di FAIL non mostra l'output.
+- Il type hint `fermi: bool` ora riceve di fatto `Any`.
+
+Rischi esclusi:
+- Non ho rieseguito la suite sotto Python 3.11 (versione della CI) né pytest: qui c'è solo 3.13.16, e la modifica non dipende dalla versione.
+- Non ho controllato altri chiamanti diretti di `_ricorda` fuori da gas.py e dai test.
+
+Guardrail e regole del progetto: nessuno slicing della history, nessuna simulazione di output dei tool, nessuna modifica al cap di 10 iterazioni né a `_get_window`. La regola «zero crash» (fail-safe) è rispettata.
+
+Memoria: riga #458 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (commit e7ccb22). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 996 → 1019 PASS (T78l-T78p, T98a-T98i nuovi); pytest `tests/` 1862 → 1897 passed (5 test nuovi del resoconto, più la web suite arrivata col merge di #242). Nessun FAIL. Correzione dell'handoff di #240: il delta dei test del bot lì dichiarato +9 era +14 (311 → 325).
+Kernel 996 → 1020 PASS (T78l-T78p, T98a-T98j nuovi); pytest `tests/` 1862 → 1897 passed (5 test nuovi del resoconto, più la web suite arrivata col merge di #242). Nessun FAIL. Correzione dell'handoff di #240: il delta dei test del bot lì dichiarato +9 era +14 (311 → 325).
 
 ```
-=== RIEPILOGO: 1019 PASS, 0 FAIL ===
+=== RIEPILOGO: 1020 PASS, 0 FAIL ===
 1897 passed in 186.04s (0:03:06)
 ```
 
@@ -346,17 +409,16 @@ Kernel 996 → 1019 PASS (T78l-T78p, T98a-T98i nuovi); pytest `tests/` 1862 → 
 `gh run list` non autenticato; run lette via `gh api` REST (ramo `feat/merge-automatico-z1xjx2`):
 
 ```
+39698000744 verifica-bot 5f4c524 completed success
+39697998856 CI 5f4c524 completed success
 39695262594 verifica-bot 075e323 completed success
-39695260138 CI 075e323 completed success
-39685338876 verifica-bot eafe6ee completed success
-39685329478 verifica-bot eafe6ee completed skipped
 ```
 
-- `075e323` — CI 39695260138 success (unit-suite, handoff-check); verifica-bot 39695262594 success (APPROVATO CON RISERVE, V-1/V-2 chiuse in questa fetta).
-- `eafe6ee` — CI 39685325511 success; verifica-bot 39685338876 success.
-- `079c879` — CI 39685151985 failure (handoff non aggiornato, corretto da `eafe6ee`).
-- `ee0b4d7`, `6ab3ee0`, `4fdc3dd`, `c8ac93d`, `c82875f`, `1f0a2e9`, `3b988f6`, `0037522`: nessuna run su questo SHA (pushati insieme, testati solo nell'albero di `075e323`); `ad1ab5e`, `d48d453`, `8c4e11c`: nessuna run su questo SHA.
-- `e8e7fc8`, `ebaf9f3`, `3c136d4` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `5f4c524` — CI 39697998856 success (unit-suite, handoff-check); verifica-bot 39698000744 success.
+- `075e323` — CI 39695260138 success; verifica-bot 39695262594 success.
+- `eafe6ee` — CI 39685325511 success; `079c879` — CI 39685151985 failure (handoff non aggiornato, corretto da `eafe6ee`).
+- Gli altri commit della sessione fino a `5f4c524`: nessuna run su questo SHA (pushati insieme, testati solo nell'albero del commit di testa di ogni push).
+- `03488e4`, `e7ccb22`, `b0c5566` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
@@ -364,5 +426,7 @@ Kernel 996 → 1019 PASS (T78l-T78p, T98a-T98i nuovi); pytest `tests/` 1862 → 
 - **R-453-2 (chat Motore)** BASSA, accettata dal revisore: spesa «non letta» se nessun kernel è stato creato.
 - **V-3 verifica esterna #241** COSMETICA: «NON è stata eseguita» anche per un [KO] da errore del tool (coerente con applica_firma).
 - **R-454-1 (chat Motore)** BASSA: tabella `approvals` sana ma `contatti` rotta → «Lead attivi: 0» (stesso residuo in `ricorda fermi`, #456).
+- V-2 verifica esterna #241 2° giro BASSA: l'ordinamento per età di `ricorda fermi` non è stato riprodotto in sonda (coperto da T98a).
+- Note COSMETICHE #458: posizione di T98j, nessun dettaglio in caso di FAIL, type hint `fermi: bool`.
 - Nota COSMETICA #454: `int(conta.get("in_attesa", 0))` fuori dal try.
 - Limite dichiarato #452: la guardia T78p è statica (getattr dinamico, importlib, nomi passati per variabile non visti).

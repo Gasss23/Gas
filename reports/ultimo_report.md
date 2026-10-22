@@ -9,11 +9,12 @@
 - Merge di main (PR #242 della chat Mani) nel ramo: FATTA — review #449 APPROVATO.
 - Riserve di #241 (V-1 bot; V-1, V-2 verifica esterna): FATTA — review #450-#452.
 - R1 resoconto di spesa e stato nel messaggio del mattino: FATTA — review #453/#454 APPROVATO CON RISERVE.
+- Merge di main con la PR #243 (conflitto segnalato dalla verifica esterna) e V-1 della verifica esterna (2° giro): FATTA — review #457/#458 APPROVATO.
 - R-445-3: DEFERITA — cosmetica, preesistente.
 - R1 contatti fermi (`ricorda fermi=true`, catalogo d'esempio) e V-1/V-2 della verifica esterna e del bot #241 (spesa a log rotto, tetto mostrato): FATTA — review #455/#456.
 
 ## Test
-Kernel 1019 PASS 0 FAIL; pytest tests/ 1897 passed.
+Kernel 1020 PASS 0 FAIL; pytest tests/ 1897 passed (prima di T98j).
 
 ## Anomalie
 - La CI del push di `079c879` era rossa perché l'handoff non era aggiornato; corretto dal commit di fine-task `eafe6ee` (CI verde).
