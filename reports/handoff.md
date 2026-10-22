@@ -322,7 +322,7 @@ Sorgenti CPython scaricati in /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b8
 
 Mappatura commit→run:
 - `649f441` (head precedente): unit-suite success, handoff-check success, verifica-bot **failure** (V-1 bot #245, MEDIA), verifica esterna APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/245#issuecomment-6344406907)).
-- `2ce6f94` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `2ce6f94`, `9782bd9`: nessun evento di GitHub al push (PR ferma su `649f441`, nessuna run): rilevato dalla verifica esterna #245 bis ([commento](https://github.com/Gasss23/Gas/pull/245#issuecomment-6346157705), APPROVATO CON RISERVE); il commit che aggiorna questa riga rifà il push.
 
 ## §7 RISERVE APERTE
 
