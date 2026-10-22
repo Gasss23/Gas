@@ -8961,6 +8961,15 @@ try:
           and _tg82a.chiamate == [] and _f82.read_text() == "echo uno\necho due\n",
           str(_out82(_ev82a))[:200])
 
+    # T82a2 — prova reale 2026-10-22: il diniego dice al modello di scrivere LUI pro e
+    # contro (non chiederli all'utente); anche lo schema del tool lo dice
+    _o82a2 = " ".join(_out82(_ev82a))
+    _wf_schema82 = next(t for t in _k82.tools_schema if t["function"]["name"] == "write_file")
+    check("T82a2 diniego e schema: pro/contro li scrive il modello, non li chiede all'utente",
+          "SCRIVILI TU" in _o82a2 and "non chiederli all'utente" in _o82a2
+          and "scrivi TU" in _wf_schema82["function"]["description"]
+          and "non chiederli" in _wf_schema82["function"]["description"], _o82a2[:300])
+
     # T82b — livello 2 con pro/contro (finestra PULITA): al cancello lo stesso
     _ex82 = _spia75(_k82)
     with _TgFinto() as _tg82b:
