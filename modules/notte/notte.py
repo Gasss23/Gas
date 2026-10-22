@@ -86,7 +86,7 @@ import math
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -434,8 +434,12 @@ def _tetto_applicato() -> float:
 
 
 def _righe_illeggibili_log(root: Any) -> int:
-    """Righe non JSON nella coda del log dei token (ultimi CODA_LOG_TOKEN byte).
-    Log assente (o root ignota) → 0; log che non si apre → -1. Mai eccezioni."""
+    """Righe non JSON del log dei token DENTRO la finestra di 24 ore di _daily_cost_usd
+    (V-1 bot #241), cercate negli ultimi CODA_LOG_TOKEN byte: contano solo quelle dopo
+    l'ultima riga valida più vecchia di 24 ore (il log è in sola aggiunta, quindi in
+    ordine di tempo). Una riga finale senza a capo è in scrittura e non conta.
+    Log assente (o root ignota) → 0; log che non si apre → -1. Mai eccezioni.
+    Limite dichiarato: oltre 64 KB di log nelle 24 ore le righe più vecchie non si vedono."""
     if root is None:
         return 0
     try:
@@ -449,17 +453,25 @@ def _righe_illeggibili_log(root: Any) -> int:
             f.seek(max(0, fine - CODA_LOG_TOKEN))
             coda = f.read()
         righe = coda.split(b"\n")
+        righe = righe[:-1]  # l'ultimo pezzo è vuoto o una riga ancora in scrittura
         if fine > CODA_LOG_TOKEN:
             righe = righe[1:]  # la prima è probabilmente tagliata a metà
+        # stesso formato e stessa soglia di _daily_cost_usd (ts UTC "%Y-%m-%dT%H:%M:%S")
+        soglia = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
         rotte = 0
         for r in righe:
             if not r.strip():
                 continue
             try:
-                if not isinstance(json.loads(r), dict):
-                    rotte += 1
+                d = json.loads(r)
             except ValueError:
+                d = None
+            if not isinstance(d, dict):
                 rotte += 1
+            elif d.get("ts") and str(d["ts"]) < soglia:
+                # riga valida fuori finestra: le rotte prima sono vecchie. Ts assente =
+                # dentro la finestra (R-459-3: nel dubbio non si azzera)
+                rotte = 0
         return rotte
     except Exception as e:
         logging.warning("notte: log dei token non controllato: %s", type(e).__name__)

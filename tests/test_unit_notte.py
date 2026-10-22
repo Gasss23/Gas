@@ -1922,7 +1922,7 @@ def test_stato_mattino_log_token_rotto_non_rassicura(dirs, monkeypatch):
     """V-1 verifica esterna #241: log dei token rovinato → «$0.00» con avviso, mai
     una spesa zero che rassicura. V-2: il tetto mostrato è quello applicato (max 100000)."""
     root, _ = dirs
-    (root / gas.TOKEN_LOG_FILENAME).write_text('{"ok": 1}\nspazzatura\n[1]\n', encoding="utf-8")
+    (root / gas.TOKEN_LOG_FILENAME).write_text('{"ok": 1}\nspazzatura\n[1]\n', encoding="utf-8")  # righe senza ts: dentro la finestra
     monkeypatch.setenv("GAS_DAILY_TOKEN_BUDGET", "999999")
     k = SimpleNamespace(root=root, _daily_cost_usd=lambda: 0.0)
     st = notte.stato_mattino(k)
@@ -1951,3 +1951,21 @@ def test_log_token_oltre_64kb_prima_riga_tagliata_non_conta(dirs):
     (root / gas.TOKEN_LOG_FILENAME).write_text(riga * n, encoding="utf-8")
     assert len(riga) * n > notte.CODA_LOG_TOKEN
     assert notte._righe_illeggibili_log(root) == 0
+
+
+def test_log_token_righe_rotte_solo_nella_finestra_di_24_ore(dirs):
+    """V-1 bot #241: una riga rotta più vecchia di 24 ore non dà l'avviso ogni mattina;
+    una riga finale senza a capo (in scrittura) non conta."""
+    root, _ = dirs
+    from datetime import datetime, timedelta, timezone
+    fmt = "%Y-%m-%dT%H:%M:%S"
+    vecchio = (datetime.now(timezone.utc) - timedelta(days=3)).strftime(fmt)
+    nuovo = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime(fmt)
+    log = root / gas.TOKEN_LOG_FILENAME
+    log.write_text(f'rotta\n{{"ts": "{vecchio}"}}\n{{"ts": "{nuovo}"}}\n{{"ts": "x', encoding="utf-8")
+    assert notte._righe_illeggibili_log(root) == 0
+    log.write_text(f'{{"ts": "{vecchio}"}}\nrotta\n{{"ts": "{nuovo}"}}\n', encoding="utf-8")
+    assert notte._righe_illeggibili_log(root) == 1
+    # R-459-3: una riga valida SENZA ts dopo una rotta non la azzera
+    log.write_text('rotta\n{"ok": 1}\n', encoding="utf-8")
+    assert notte._righe_illeggibili_log(root) == 1

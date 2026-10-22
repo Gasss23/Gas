@@ -3417,8 +3417,10 @@ class GasKernel:
                            "(interruzione o errore interno): l'output non è più disponibile.")
             elif "incert" in esito:
                 stato = "incerta"
-                notizia = ("l'operatore l'ha APPROVATA via Telegram, ma Gas si è interrotto "
-                           "dopo averla presa in carico: può essere partita e aver fatto solo "
+                # V-5 bot #241, R-459-2: le cause possibili sono più d'una (crash, scadenza, errore interno)
+                notizia = ("l'operatore l'ha APPROVATA via Telegram, ma l'esecuzione si è "
+                           "interrotta (per esempio crash di Gas o comando scaduto) dopo la presa in carico: "
+                           "può essere partita e aver fatto solo "
                            "una parte del lavoro. Esito INCERTO: verifica prima di ripetere.")
             else:
                 stato = "non_partita"
