@@ -82,8 +82,10 @@ _FINTO_MARCATORE = re.compile(
 # (V-2 verifica esterna #238).
 # Niente «embed»: è un elemento vuoto, senza chiusura, e contarlo come blocco nascondeva
 # tutto il resto della pagina (R-431-2 chat Mani).
+# noembed e noframes: testo grezzo che i browser non mostrano (V-1 bot #244).
 _TAG_NASCOSTI = frozenset({
     "script", "style", "noscript", "template", "svg", "math", "iframe", "object", "canvas",
+    "noembed", "noframes",
 })
 # Inizio di un commento, di un tag con il nome intero (così «<styled-box>» non è «<style»,
 # V-1 bot #238) o di un commento fasullo: «<![cdata[», «<!x», «<?», «</» senza lettera

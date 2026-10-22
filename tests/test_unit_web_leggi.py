@@ -904,11 +904,14 @@ def test_title_autochiuso_dentro_template_resta_nascosto():
     "<p>a</p><template><title/></template></title>SEGRETO</template>VIS",
     "<p>a</p><object><title/></object></title>SEGRETO</object>VIS",
     "<p>a</p><template><script/></template></script>SEGRETO</template>VIS",
-    "<p>a</p><noscript><script/></noscript></script>SEGRETO</noscript>VIS",
+    "<p>a</p><noscript><script/></noscript></script>SEGRETO</noscript>VIS",  # verso sicuro: qui i browser lo mostrano
+    "<p>a</p><noembed/><script>SEGRETO</script></noembed>VIS",       # noembed nascosto (V-1 bot #244)
+    "<p>a</p><noembed>SEGRETO</noembed><noframes>SEGRETO_2</noframes>VIS",
 ])
 def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     """«<title/>», «<script/>»… aprono il testo grezzo come nei browser: una chiusura di un
-    contenitore scritta lì dentro non lo chiude (R-453-1), nel parser e nel ripiego."""
+    contenitore scritta lì dentro non lo chiude (R-453-1), nel parser e nel ripiego. Il caso
+    noscript nasconde più dei browser (verso sicuro, V-2 bot #244)."""
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
                                          "troncato": False})["testo"]
     assert "SEGRETO" not in t and "VIS" in t, t
