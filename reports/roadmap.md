@@ -176,7 +176,7 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 **Cos'è.** Un'attività programmata di Claude Code in cloud ("routine"): parte da sola, lavora sul repo, apre una PR. È inclusa nell'abbonamento (Pro 5 al giorno, Max 15), conta nei limiti d'uso, non dipende dal Mac.
 - ⏳ Prima notte di prova: un compito solo documentale, nessun merge.
 - ⏳ Poi una riserva piccola del motore per notte, dalla lista del capitolo 5.
-- ⏳ Coda dei lavori notturni in un file del repo, riempita da te e da me.
+- ✅ Coda dei lavori notturni: `reports/coda_notte.md` (22 ottobre). Protezioni R4 fatte dall'operatore il 22 ottobre (issue spente, interazioni limitate ai collaboratori).
 - **Costruisce Claude Code in cloud**, non Gas col cervello gratuito.
 - **Niente connettori** (Gmail e gli altri) nelle routine notturne, per ora. Si riapre più avanti.
 - **Nessun merge di notte.** Al mattino un report breve per ogni PR, poche righe: cosa ha fatto, perché, cosa migliora, quali rischi. Gas-operatore controlla e decide il merge. Per ora il merge è sempre al mattino.
