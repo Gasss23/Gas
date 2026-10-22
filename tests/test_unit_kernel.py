@@ -9066,6 +9066,8 @@ try:
     _o82h3 = _k82.execute_tool_call("write_file", _wf82(".env", "A=1\n"), firmata=True)
     check("T82h execute senza firma su livello 2 → negato",
           "serve la firma" in _o82h1, _o82h1)
+    check("T82h1b V-3 bot #247: il diniego dice che pro e contro li scrive il modello",
+          "scritti da te" in _o82h1 and "non chiederli all'utente" in _o82h1, _o82h1)
     check("T82h firmata ma senza impronta/file firmato → negato (fail-closed)",
           _o82h2.startswith("Operazione negata") and "File non scritto" in _o82h2, _o82h2)
     check("T82h livello 3 anche con firmata=True → negato",

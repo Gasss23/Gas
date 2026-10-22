@@ -4314,8 +4314,10 @@ class GasKernel:
                 if livello == LIVELLO_FIRMA:
                     if not firmata:
                         logging.warning("[GATE-1A] write_file livello 2 senza firma: %r", rel_root)
+                        # V-3 bot #247: dire chi scrive pro e contro, come nel diniego di firma
                         return ("Operazione negata: file delicato, serve la firma "
-                                "dell'operatore (richiedila con 'pro' e 'contro').")
+                                "dell'operatore: richiedila chiamando write_file con 'pro' e "
+                                "'contro' scritti da te (non chiederli all'utente).")
                     # Review #262: si scrive solo il file mostrato nella firma.
                     if args.get(self._FIRMA_CODICE_FILE) != rel_root:
                         logging.warning("[GATE-1A] %r non è il file firmato — diniego", rel_root)
