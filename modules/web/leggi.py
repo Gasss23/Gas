@@ -114,11 +114,18 @@ _AUTOCHIUSO = re.compile(_ATTRIBUTI + "/>")
 # Senza, il tokenizzatore vecchio sbaglia in modi che non si chiudono uno alla volta
 # («</x a='>SEGRETO», titolo non grezzo: R-465-1): lì si usa sempre il ripiego, che non
 # dipende da html.parser.
-try:
-    _PARSER_AGGIORNATO = (hasattr(HTMLParser, "_set_support_cdata")
-                          and "escapable" in inspect.signature(HTMLParser.set_cdata_mode).parameters)
-except (TypeError, ValueError):
-    _PARSER_AGGIORNATO = False
+def _parser_aggiornato(classe: type) -> bool:
+    """La classe ha le patch del 2025: «_set_support_cdata» e «escapable» in set_cdata_mode
+    (funzione a sé per provarla con classi finte, R-466-1)."""
+    try:
+        return (hasattr(classe, "_set_support_cdata")
+                and "escapable" in inspect.signature(classe.set_cdata_mode).parameters)
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
+_PARSER_AGGIORNATO = _parser_aggiornato(HTMLParser)
+_avviso_parser_vecchio = threading.Event()  # l'avviso si scrive una volta sola (R-466-2)
 # Costrutto rimasto aperto a fine pagina (commento, tag, dichiarazione): per i browser non è
 # testo. Un «<» o «</» da soli invece lo sono.
 _COSTRUTTO_APERTO = re.compile(r"<(?:[a-zA-Z!?]|/.)", re.S)
@@ -880,9 +887,24 @@ class _Estrattore(HTMLParser):
         if fine is None or fine.end() != len(basso):
             self._taglia = True
 
+    def parse_comment(self, i: int, report: bool = True) -> int:
+        # «<!-->» e «<!--->» sono commenti vuoti per i browser e per html.parser recente;
+        # quello di Python 3.11 li legge come l'inizio di un commento e nasconde il testo
+        # fino al «-->» dopo (V-2 ve #242).
+        for vuoto in ("<!-->", "<!--->"):
+            if self.rawdata.startswith(vuoto, i):
+                if report:
+                    self.handle_comment("")
+                return i + len(vuoto)
+        return super().parse_comment(i, report)
+
     def parse_starttag(self, i: int) -> int:
         j = super().parse_starttag(i)
         self._controlla_tag(i, j, 1)
+        if j >= 0 and self.cdata_elem == "script":
+            # html.parser chiude lo script al primo «</script», il browser no se c'è il doppio
+            # escape «<!--<script>» (R-454-2): la ricerca trova solo la fine vera.
+            self.interesting = _FineScriptTrovata(self.rawdata, _fine_script(self.rawdata, j))
         return j
 
     def parse_endtag(self, i: int) -> int:
@@ -959,13 +981,58 @@ def _decodifica(corpo: bytes, charset: str) -> str:
         return corpo.decode("utf-8", errors="replace")
 
 
+# Stati del testo di uno script per il browser (WHATWG, «script data»): dopo «<!--» un
+# «</script>» chiude ancora, ma dopo «<!--<script>» no, finché «</script>» o «-->» non
+# escono dal doppio escape (R-454-2). Basta guardare questi segni, nell'ordine.
+_SEGNI_SCRIPT = re.compile(r"<!(?=--)|-->|</?script(?=[\t\n\r\f />])", re.IGNORECASE | re.ASCII)
+
+
+def _fine_script(testo: str, da: int) -> int:
+    """Posizione del «</script» che per il browser chiude lo script iniziato in da, o -1."""
+    stato = 0  # 0 testo, 1 dopo «<!--», 2 doppio escape dopo «<!--<script»
+    for m in _SEGNI_SCRIPT.finditer(testo, da):
+        segno = m.group()
+        if segno == "-->":
+            stato = 0
+        elif segno == "<!":
+            if stato == 0:
+                stato = 1
+        elif segno[1] == "/":
+            if stato < 2:
+                return m.start()
+            stato = 1
+        elif stato == 1:
+            stato = 2
+    return -1
+
+
+class _FineScriptTrovata:
+    """Al posto della regex di html.parser nel testo grezzo di uno script: «trova» solo il
+    «</script» che per il browser chiude lo script (R-454-2). La posizione si tiene come
+    distanza dalla fine del testo: html.parser a fine giro toglie da rawdata la parte già
+    letta, e feed riceve la pagina intera una volta sola, quindi la distanza non cambia."""
+
+    def __init__(self, testo: str, dove: int) -> None:
+        self._dalla_fine = len(testo) - dove if dove >= 0 else -1
+        self._dove = dove
+
+    def search(self, testo: str, da: int = 0) -> Optional["_FineScriptTrovata"]:
+        if self._dalla_fine < 0:
+            return None
+        self._dove = len(testo) - self._dalla_fine
+        return self if 0 <= da <= self._dove else None
+
+    def start(self) -> int:
+        return self._dove
+
+
 def _chiusura(basso: str, tag: str, da: int) -> int:
     """Posizione subito dopo la prima «</tag ... >» con il nome intero, o -1. Anche il tag di
     chiusura finisce al suo «>» fuori dalle virgolette (V-1 bot #239, secondo giro: in
     «</script a=">">» il tag finisce all'ultimo «>»); senza fine si prende il resto."""
     k = da
     while True:
-        c = basso.find("</" + tag, k)
+        c = _fine_script(basso, k) if tag == "script" else basso.find("</" + tag, k)
         if c == -1:
             return -1
         dopo = c + 2 + len(tag)
@@ -1100,6 +1167,75 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
     return " ".join(pezzi)
 
 
+_SEGNI_DOCTYPE = re.compile(r"[\"'<>\[\]]")
+_DOPO_SOTTOINSIEME = re.compile(r"[ \t\r\n]*>")
+_LETTERALE_XML = r"""(?:"[^"]*"|'[^']*')"""
+_TESTA_DOCTYPE = re.compile(
+    r"[ \t\r\n]+[^ \t\r\n>\[\]\"'<]+(?:[ \t\r\n]+(?:SYSTEM[ \t\r\n]*" + _LETTERALE_XML
+    + r"|PUBLIC[ \t\r\n]*" + _LETTERALE_XML + r"[ \t\r\n]*" + _LETTERALE_XML + r"))?[ \t\r\n]*")
+
+
+def _fine_doctype(testo: str, da: int) -> int:
+    """Posizione del «>» che chiude un DOCTYPE XML aperto prima di «da», o -1 se non si chiude
+    o non è scritto come vuole l'XML. Le virgolette contano solo dove l'XML le ammette (dopo
+    SYSTEM o PUBLIC, dentro una dichiarazione «<!…>» del sottoinsieme «[…]»); nel sottoinsieme
+    anche commenti e istruzioni di elaborazione non chiudono niente: «SYSTEM "["» o
+    «<!-- ]> -->» facevano finire il DOCTYPE troppo presto (B-482-1) e una virgoletta fuori
+    posto lo faceva finire dentro uno script (B-483-1). Per una pagina XML non valida non si
+    indovina la fine: -1 e il resto se ne va. Lineare: ogni ricerca riparte da dove è arrivata
+    la precedente."""
+    testa = _TESTA_DOCTYPE.match(testo, da)
+    if testa is None:
+        return -1
+    i = testa.end()
+    if testo.startswith(">", i):
+        return i
+    if not testo.startswith("[", i):
+        return -1
+    i += 1
+    dichiarazione = False
+    while True:
+        m = _SEGNI_DOCTYPE.search(testo, i)
+        if m is None:
+            return -1
+        segno, i = m.group(), m.start()
+        if segno in "\"'":
+            if not dichiarazione:
+                return -1
+            i = testo.find(segno, i + 1)
+            if i == -1:
+                return -1
+            i += 1
+        elif segno == "<":
+            if dichiarazione:
+                return -1
+            if testo.startswith("<!--", i):
+                i = testo.find("-->", i + 4)
+                if i == -1:
+                    return -1
+                i += 3
+            elif testo.startswith("<?", i):
+                i = testo.find("?>", i + 2)
+                if i == -1:
+                    return -1
+                i += 2
+            elif testo.startswith("<!", i):
+                dichiarazione = True
+                i += 2
+            else:
+                return -1
+        elif segno == ">":
+            if not dichiarazione:
+                return -1
+            dichiarazione = False
+            i += 1
+        elif segno == "[" or dichiarazione:
+            return -1
+        else:
+            fine = _DOPO_SOTTOINSIEME.match(testo, i + 1)
+            return -1 if fine is None else fine.end() - 1
+
+
 def _commenti_e_cdata_xml(testo: str) -> str:
     """Per application/xhtml+xml: nell'XML i commenti non sono mai testo e il contenuto di un
     CDATA è testo letterale, anche dentro script e style. html.parser invece chiude uno
@@ -1109,10 +1245,13 @@ def _commenti_e_cdata_xml(testo: str) -> str:
     «</scr<!---->ipt>» diventerebbe «</script>», V-1 bot #244), porta via il resto: per l'XML la
     pagina è comunque malformata. Lineare: le due ricerche ripartono solo quando restano
     indietro, e per sapere se si è dentro un tag basta l'ultimo «<» e «>» del pezzo tenuto
-    (i pezzi prima finiscono tutti fuori da un tag, altrimenti ci si è già fermati)."""
+    (i pezzi prima finiscono tutti fuori da un tag, altrimenti ci si è già fermati).
+    Anche le istruzioni di elaborazione «<?…?>» e il DOCTYPE con il sottoinsieme interno
+    «[…]» si tolgono fino alla loro fine XML: html.parser le chiude al primo «>» e un
+    «</script>» scritto dentro chiudeva lo script (R-453-2)."""
     pezzi = []
     i = 0
-    prossimo = {"<!--": -2, "<![CDATA[": -2}
+    prossimo = {"<!--": -2, "<![CDATA[": -2, "<?": -2, "<!DOCTYPE": -2}
     while True:
         for apertura, dove in prossimo.items():
             if dove != -1 and dove < i:
@@ -1125,8 +1264,11 @@ def _commenti_e_cdata_xml(testo: str) -> str:
         pezzi.append(testo[i:inizio])
         if testo.rfind("<", i, inizio) > testo.rfind(">", i, inizio):
             break
-        chiusura = "-->" if apertura == "<!--" else "]]>"
-        fine = testo.find(chiusura, inizio + len(apertura))
+        chiusura = {"<!--": "-->", "<![CDATA[": "]]>", "<?": "?>", "<!DOCTYPE": ">"}[apertura]
+        if apertura == "<!DOCTYPE":
+            fine = _fine_doctype(testo, inizio + len(apertura))
+        else:
+            fine = testo.find(chiusura, inizio + len(apertura))
         if fine == -1:
             break
         if apertura == "<![CDATA[":
@@ -1161,6 +1303,11 @@ def _componi(url_finale: str, pagina: dict) -> dict:
         estrattore = _Estrattore(xhtml)
         try:
             if not _PARSER_AGGIORNATO:
+                if not _avviso_parser_vecchio.is_set():
+                    _avviso_parser_vecchio.set()
+                    # Python senza le patch del 2025: si legge col ripiego, senza titolo e con
+                    # le textarea nascoste; lo si dice una volta nella scatola nera (R-466-2).
+                    logger.warning("leggi_pagina: html.parser senza le patch del 2025, si usa il ripiego")
                 raise ValueError("html.parser senza le patch del 2025")
             estrattore.feed(grezzo)
             estrattore.close()

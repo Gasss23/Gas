@@ -27,6 +27,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from modules.web import leggi as web
 from modules.web import leggi_pagina
 
+# Test che provano il parser: su un Python senza le patch del 2025 Gas usa il ripiego (niente
+# titolo, textarea nascoste) e questi si saltano invece di andare in rosso (R-ve245b-4).
+solo_parser_aggiornato = pytest.mark.skipif(not web._PARSER_AGGIORNATO,
+                                            reason="html.parser senza le patch del 2025: si usa il ripiego")
+
 IP_PUBBLICO = "93.184.216.34"  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
 IP_PUBBLICO_2 = "151.101.1.1"  # gasmerge-ip-ok: IP di esempio dei test, nessuna connessione reale
 
@@ -211,6 +216,7 @@ def rete(server):
 
 # ───────────────────────────── caso buono ─────────────────────────────
 
+@solo_parser_aggiornato
 def test_pagina_html_testo_pulito_e_marcato(rete):
     r = rete.leggi("http://sito.test/ok")
     assert r["ok"] is True
@@ -866,6 +872,7 @@ def test_parser_script_autochiuso_apre_lo_script():
         assert "SEGRETO" not in t and all(v in t for v in visibili), (corpo, t)
 
 
+@solo_parser_aggiornato
 def test_parser_title_autochiuso_apre_il_titolo():
     """«<title/>X</title>» è un titolo come «<title>X</title>»: X va nella riga del titolo,
     non nel testo della pagina (V-2 verifica esterna #242)."""
@@ -919,6 +926,7 @@ def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     assert "SEGRETO" not in r and "VIS" in r, r
 
 
+@solo_parser_aggiornato
 def test_grezzi_autochiusi_come_i_browser():
     """Testo grezzo anche per i grezzi visibili; dentro svg/math i non nascosti autochiusi sono
     vuoti (R-453-1)."""
@@ -1058,9 +1066,133 @@ def test_costrutto_aperto_a_fine_pagina(pagina, vecchio, monkeypatch):
     assert "SEGRETO" not in t and "PRIMA" in t, t
 
 
+@pytest.mark.skipif(not os.environ.get("CI"), reason="allarme solo in CI: in locale può girare un Python vecchio")
 def test_parser_aggiornato_rilevato():
-    """Gli html.parser della CI e del venv hanno le patch del 2025: si usa il parser."""
+    """L'html.parser della CI ha le patch del 2025: si usa il parser (allarme se cambia)."""
     assert web._PARSER_AGGIORNATO
+
+
+@pytest.mark.parametrize("pagina, visibili", [
+    # doppio escape: dopo «<!--<script>» il primo «</script>» non chiude (R-454-2)
+    ("<p>A</p><script><!--<script></script>SEGRETO</script>VIS", ("A", "VIS")),
+    ("<p>A</p><script><!--<script >x</script>SEGRETO--></script>VIS", ("A", "VIS")),
+    ("<p>A</p><SCRIPT><!--<Script/></script>SEGRETO</SCRIPT>VIS", ("A", "VIS")),
+    ("<p>A</p><script><!--<script></script>SEGRETO", ("A",)),
+    # senza doppio escape «</script>» chiude anche dopo «<!--»
+    ("<p>A</p><script><!--</script>VIS", ("A", "VIS")),
+    ("<p>A</p><script><!--><script></script>VIS", ("A", "VIS")),
+    ("<p>A</p><script><!--<script>-->SEGRETO</script>VIS", ("A", "VIS")),
+])
+def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and all(v in t for v in visibili), t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and all(v in r for v in visibili), r
+
+
+@pytest.mark.parametrize("pagina, visibili", [
+    # istruzioni di elaborazione e sottoinsieme interno del DOCTYPE fino alla fine XML (R-453-2)
+    ('<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><script><?x > </script> ?>SEGRETO</script>'
+     '<p>VIS</p></body></html>', ("A", "VIS")),
+    ('<!DOCTYPE html [<!ENTITY e "x"> <!-- </script> --> ]><html xmlns="http://www.w3.org/1999/xhtml">'
+     '<body><p>A</p><p>VIS</p></body></html>', ("A", "VIS")),
+    ('<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><?x a="<script>"?>VIS'
+     '<style>SEGRETO</style></body></html>', ("A", "VIS")),
+    # virgolette e commenti non chiudono il DOCTYPE (B-482-1)
+    ('<!DOCTYPE html SYSTEM "[">\n<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
+     '<script>if(a[0]>1){}SEGRETO</script><p>VIS</p></body></html>', ("A", "VIS")),
+    ("<!DOCTYPE html SYSTEM '['><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>A</p>"
+     "<style>a[x]>b{}SEGRETO</style><p>VIS</p></body></html>", ("A", "VIS")),
+    ('<!DOCTYPE html [<!-- ]>SEGRETO -->]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
+     '<p>VIS</p></body></html>', ("A", "VIS")),
+    ('<!DOCTYPE html [<?x ]>SEGRETO ?>]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
+     '<p>VIS</p></body></html>', ("A", "VIS")),
+    ('<!DOCTYPE html [<!ENTITY x "]>SEGRETO">]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
+     '<p>VIS</p></body></html>', ("A", "VIS")),
+    ('<!DOCTYPE html SYSTEM ">" [<!ENTITY x "<b>SEGRETO</b>">]><html xmlns="http://www.w3.org/1999/xhtml">'
+     '<body><p>A</p><p>VIS</p></body></html>', ("A", "VIS")),
+    # virgolette fuori posto: XML non valido, il resto se ne va (B-483-1)
+    ("<!DOCTYPE x '><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>A</p>"
+     "<script>'>SEGRETO</script><p>V</p></body></html>", ()),
+    ("<!DOCTYPE x [ ' ]><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>A</p>"
+     "<script>'</script><style>a[0]>1 SEGRETO</style><p>V</p></body></html>", ()),
+    ("<!DOCTYPE x [ <!ENTITY e 'a'> \" ]><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>A</p>"
+     "<script>\"</script><style>a[0]>SEGRETO</style><p>V</p></body></html>", ()),
+    ('<!DOCTYPE x "><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
+     '<script>a="x">SEGRETO</script><p>V</p></body></html>', ()),
+    ("<!DOCTYPE x [ ' ]><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>A</p>"
+     "<script>' ]>SEGRETO</script><p>V</p></body></html>", ()),
+    ('<!DOCTYPE x [ <x ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>', ()),
+    ('<!DOCTYPE x [ <!ENTITY a ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>',
+     ()),
+    # il DOCTYPE standard resta com'è
+    ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'
+     '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><script>SEGRETO</script><p>VIS</p></body></html>',
+     ("A", "VIS")),
+    # DOCTYPE che non si chiude: il resto se ne va
+    ('<p>A</p><!DOCTYPE html SYSTEM "x><p>SEGRETO</p>', ("A",)),
+    ('<p>A</p><!DOCTYPE html [<!-- ]> --><p>SEGRETO</p>', ("A",)),
+    ('<p>A</p><!DOCTYPE html [ ]x><p>SEGRETO</p>', ("A",)),
+])
+def test_xhtml_istruzioni_e_doctype(pagina, visibili):
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                         "corpo": pagina.encode(), "troncato": False})["testo"]
+    assert "SEGRETO" not in t and all(v in t for v in visibili) and "?>" not in t and "]>" not in t, t
+    r = web._testo_senza_parser(web._commenti_e_cdata_xml(pagina), True)
+    assert "SEGRETO" not in r and all(v in r for v in visibili), r
+
+
+def test_fine_script_cercata_dalla_fine_del_testo():
+    """html.parser accorcia il testo mentre legge: la fine dello script si ricorda come distanza
+    dalla fine, se no un «</script» senza «>» in fondo alla pagina lo mandava in errore (R-482-1)."""
+    e = web._Estrattore()
+    e.feed("<p>x</p><script>abc</script  T99")
+    e.close()
+    assert "x" in "".join(e.pezzi) and "abc" not in "".join(e.pezzi)
+
+
+def test_commento_vuoto_su_ogni_python():
+    """«<!-->» e «<!--->» sono commenti vuoti anche su Python 3.11 (V-2 ve #242)."""
+    e = web._Estrattore()
+    e.feed("<p>A</p><!-->VIS<!--x-->B<!--->C<!--->D<!-->E")
+    e.close()
+    t = "".join(e.pezzi)
+    assert all(v in t for v in ("VIS", "B", "C", "D", "E")) and "x" not in t, t
+
+
+def test_rilevatore_del_parser_con_classi_finte():
+    """Il rilevatore vuole entrambe le patch del 2025 (R-466-1)."""
+    class Nessuna:
+        def set_cdata_mode(self, elem):
+            pass
+
+    class SoloEscapable:  # come CPython 3.13.6 e 3.13.7
+        def set_cdata_mode(self, elem, *, escapable=False):
+            pass
+
+    class Entrambe(SoloEscapable):
+        def _set_support_cdata(self, flag):
+            pass
+
+    class SenzaMetodo:
+        _set_support_cdata = None
+
+    assert not web._parser_aggiornato(Nessuna)
+    assert not web._parser_aggiornato(SoloEscapable)
+    assert web._parser_aggiornato(Entrambe)
+    assert not web._parser_aggiornato(SenzaMetodo)
+
+
+def test_parser_vecchio_lo_dice_una_volta_nel_log(monkeypatch, caplog):
+    """Su un Python vecchio la lettura col ripiego si scrive nel log una volta sola (R-466-2)."""
+    monkeypatch.setattr(web, "_PARSER_AGGIORNATO", False)
+    monkeypatch.setattr(web, "_avviso_parser_vecchio", threading.Event())
+    with caplog.at_level("WARNING", logger="gas.web"):
+        for _ in range(3):
+            web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": b"<p>A</p>",
+                                             "troncato": False})
+    assert sum("senza le patch" in m for m in caplog.messages) == 1, caplog.messages
 
 
 @pytest.mark.parametrize("pagina", [
@@ -1122,6 +1254,7 @@ def test_xhtml_grezzi_annidati(pagina):
     assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
 
 
+@solo_parser_aggiornato
 def test_xhtml_titolo_con_tag():
     """In XHTML il titolo non è testo grezzo: i tag dentro non finiscono nel titolo come testo."""
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
@@ -1219,6 +1352,7 @@ def test_pila_incerta_o_uscita_non_fanno_uscire_testo(pagina):
     assert "SEGRETO" not in r and "Ciao" in r, r
 
 
+@solo_parser_aggiornato
 def test_font_senza_attributi_resta_in_svg():
     """Senza color/face/size «<font>» resta un elemento svg: «</svg>» chiude e X è visibile
     (B-470-1). Il ripiego non legge gli attributi: lì la pila diventa incerta."""
@@ -1287,6 +1421,7 @@ def test_chiusura_mai_aperta_in_svg_non_nasconde_il_resto():
     assert "VIS" in web._testo_senza_parser(pagina)
 
 
+@solo_parser_aggiornato
 def test_annotation_xml_con_encoding_html_e_un_punto_di_integrazione():
     """Con encoding HTML annotation-xml è un punto di integrazione: «</p>» non esce, «</math>»
     chiude anche l'svg dentro e VIS è visibile, come per lexbor. Il ripiego non legge
@@ -1360,6 +1495,7 @@ def test_chiusura_di_blocco_non_toglie_i_formattanti(pagina):
     assert "SEGRETO" not in web._testo_senza_parser(pagina)
 
 
+@solo_parser_aggiornato
 def test_tag_letto_diversamente_lascia_traccia_nel_log(caplog):
     """Il resto nascosto per un tag letto diversamente dal browser si scrive nel log con la
     pagina (V-3 bot #250)."""
@@ -1625,6 +1761,7 @@ def test_ripiego_script_in_fondo():
     assert web._testo_senza_parser("a<svg").strip() == "a"
 
 
+@solo_parser_aggiornato
 def test_ripiego_non_mostra_niente_che_il_parser_nasconde():
     """Confronto col parser su pagine casuali: ogni parola che il ripiego lascia nel testo
     è visibile anche per _Estrattore (nel testo o nel titolo). Escluse le pagine con i
