@@ -1273,6 +1273,14 @@ def test_annotation_xml_con_encoding_html_e_un_punto_di_integrazione():
         assert "VIS" not in web._testo_senza_parser(pagina)
 
 
+def test_ripiego_annotation_xml_rende_la_pila_incerta():
+    """Il ripiego non legge l'encoding: un annotation-xml in math rende la pila incerta, così
+    un «</math>» non fa uscire testo che il browser lascia dentro svg (V-1 ve #248)."""
+    pagina = '<p>A</p><math>MK0<svg>MK1<annotation-xml encoding="text/html">MK2<annotation-xml>MK3</math>MK4'
+    r = web._testo_senza_parser(pagina)
+    assert "MK4" not in r and "A" in r, r
+
+
 def test_pila_profonda_con_tante_chiusure_resta_lineare():
     """Profondità vicina al tetto e centinaia di migliaia di chiusure assenti: ogni chiusura
     costa O(1), non O(profondità) (V-4 ve #246 bis)."""
