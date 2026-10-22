@@ -116,9 +116,8 @@ _AUTOCHIUSO = re.compile(_ATTRIBUTI + "/>")
 # (R-442-1), e una chiusura scala solo un'apertura con lo stesso nome (V-1 bot #242).
 # svg e math autochiusi non aprono niente (V-1 bot #239), come nei browser.
 # Grezzi anche textarea, xmp, noembed, noframes e plaintext (fino in fondo), come in
-# html.parser: dentro non si contano aperture (R-445-1). Un grezzo autochiuso
-# («<script/>») non salta il contenuto: se è fra i nascosti, o è il titolo, conta come
-# un'apertura, così il contatore del ripiego non resta mai sotto quello del parser.
+# html.parser: dentro non si contano aperture (R-445-1). In HTML anche un grezzo autochiuso
+# («<script/>») apre il testo grezzo fino a «</tag>», come nei browser (R-453-1).
 _GREZZI_RIPIEGO = frozenset({
     "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "plaintext",
 })
@@ -649,8 +648,11 @@ def _commenti_e_cdata_xml(testo: str) -> str:
     CDATA è testo letterale, anche dentro script e style. html.parser invece chiude uno
     script al primo «</script>» anche dentro un commento o un CDATA, e quello che segue
     arriverebbe al modello (V-2 bot #243). Qui i commenti si tolgono e il CDATA diventa testo
-    con l'escape; un commento o un CDATA senza fine porta via il resto (per l'XML la pagina
-    è comunque malformata). Lineare: le due ricerche ripartono solo quando restano indietro."""
+    con l'escape; un commento o un CDATA senza fine, o aperto dentro un tag (togliendolo,
+    «</scr<!---->ipt>» diventerebbe «</script>», V-1 bot #244), porta via il resto: per l'XML la
+    pagina è comunque malformata. Lineare: le due ricerche ripartono solo quando restano
+    indietro, e per sapere se si è dentro un tag basta l'ultimo «<» e «>» del pezzo tenuto
+    (i pezzi prima finiscono tutti fuori da un tag, altrimenti ci si è già fermati)."""
     pezzi = []
     i = 0
     prossimo = {"<!--": -2, "<![CDATA[": -2}
@@ -664,6 +666,8 @@ def _commenti_e_cdata_xml(testo: str) -> str:
             break
         inizio, apertura = min(trovati)
         pezzi.append(testo[i:inizio])
+        if testo.rfind("<", i, inizio) > testo.rfind(">", i, inizio):
+            break
         chiusura = "-->" if apertura == "<!--" else "]]>"
         fine = testo.find(chiusura, inizio + len(apertura))
         if fine == -1:

@@ -975,7 +975,11 @@ def test_xhtml_commenti_e_cdata():
                             (b"<p>a</p><style><![CDATA[</style>]]>SEGRETO</style>VIS", ("a", "VIS")),
                             (b"<p>a</p><![CDATA[<b>x</b> & y]]>VIS<!-- SEGRETO -->Z", ("<b>x</b> & y", "VIS", "Z")),
                             (b"<p>a</p><!-- SEGRETO", ("a",)),
-                            (b"<p>a</p><script><![CDATA[</script>SEGRETO", ("a",))):  # senza fine: via il resto
+                            (b"<p>a</p><script><![CDATA[</script>SEGRETO", ("a",)),  # senza fine: via il resto
+                            # dentro un tag: togliendolo i pezzi si attaccherebbero (V-1 bot #244)
+                            (b"<p>PRIMA</p><script>x</scr<!---->ipt>SEGRETO</script>VIS", ("PRIMA",)),
+                            (b"<p>PRIMA</p><script>x</scr<![CDATA[ipt]]>>SEGRETO</script>VIS", ("PRIMA",)),
+                            (b"<p>PRIMA</p><b>x</b><!-- c -->VIS<i>y</i><![CDATA[z]]>VIS2", ("PRIMA", "VIS", "VIS2"))):
         t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
                                              "corpo": corpo, "troncato": False})["testo"]
         assert "SEGRETO" not in t and all(v in t for v in visibili), (corpo, t)
