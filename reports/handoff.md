@@ -25,10 +25,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  3 ++
- modules/web/leggi.py               | 63 +++++++++++++++++++++++++++-----------
- tests/test_unit_web_leggi.py       | 39 +++++++++++++++++++++++
- 3 files changed, 87 insertions(+), 18 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +
+ modules/web/leggi.py               |  63 ++++--
+ reports/diff_sessione.md           |  10 +-
+ reports/handoff.md                 | 381 ++++++++-----------------------------
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  28 ++-
+ tests/test_unit_web_leggi.py       |  39 ++++
+ 7 files changed, 187 insertions(+), 339 deletions(-)
 ```
 
 ---
@@ -36,6 +40,7 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7602d3a docs(fine-task): report, stato e handoff — chat Mani fetta 10
 1016ef2 fix(web): fetta 10 chat Mani — annotation-xml solo con encoding HTML, autochiusi vuoti nel contenuto estraneo (ve #246 bis)
 8d08649 chore(revisore): memoria review #474 — APPROVATO
 92dd988 chore(revisore): memoria review #473 — BOCCIATO
