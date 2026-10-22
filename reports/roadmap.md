@@ -210,6 +210,7 @@ Tutto da zero. Lista completa al capitolo 8.
 
 ### R6 — Le mani: web, mail, social, notifiche ⏳
 **Ordine (19 ottobre):** web → mail → social → notifiche Telegram.
+- ✅ **Decisione porte del lettore web** (operatore, 22 ottobre): `leggi_pagina` solo verso le porte 80 e 443 (oggi accetta 1-65535). ⏳ Da mettere nel codice (chat Mani).
 - ⏳ Leggere il web in un ambiente chiuso (browser senza schermo), per cercare clienti e leggere siti. Ogni testo letto è "non fidato".
 - ⏳ Mail: leggere, preparare bozze, inviare **solo con firma**.
 - ⏳ Messaggi diretti, post pubblici sui social e invio di moduli: sempre con firma.
