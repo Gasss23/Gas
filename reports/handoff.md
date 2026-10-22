@@ -1,196 +1,158 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-22 — Chat Mani, fetta 10: annotation-xml e autochiusi nel contenuto estraneo (R6, correzione dopo la verifica esterna #246)
+**Sessione:** 2026-10-22 — Chat Motore: merge di #241, prova dal vero sul Mac (R1), pro e contro della firma scritti dal modello — PR #247
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore. Chiude una fuga ALTA oggi su main (V-1 ve #246 bis).
-2. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un costruttore HTML5 vero (es. lexbor): decide l'operatore.
-3. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True.
-4. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
+1. Merge della PR #247 (https://github.com/Gasss23/Gas/pull/247; numero e URL dall'esito reale di `gh api POST /pulls`): pro e contro in `reports/da_mergiare.md`; l'agente mergia da solo solo con un APPROVATO pulito del bot (CLAUDE.md §10).
+2. Dopo il merge, riprova sul Mac: «scrivi il file prova_firma.py con dentro print(1)» senza pro e contro → deve arrivare subito la richiesta di firma.
+3. Ancora in attesa dell'operatore: mail di GitHub, ramo della PR #141, porte del lettore web, backup iCloud, protezioni del repo, server Netcup.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **V-1 ve #246 bis (ALTA) e B-473-1 (ALTA)**: `FATTA`
-- **V-2 ve #246 bis (MEDIA preesistente)**: `FATTA`
-- **V-4 ve #246 bis (MEDIA, test)**: `FATTA`
-- **R-ve246b-5 (BASSA)**: `DEFERITA — registrata`
-- **V-1 ve #248 (BASSA, test del ripiego)**: `FATTA`
-- **R-ve248-3 (BASSA preesistente)**: `DEFERITA — registrata`
+- **Merge PR #241** («mergia 241»): `FATTA` — 1c023fa.
+- **Prova dal vero sul Mac (R1)**: `FATTA` — doctor, catalogo, tetto, bottoni Approva/Rifiuta, `/notte` con messaggio del mattino, timer `com.gas.notte`, lezione 13 approvata.
+- **Difetto «pro e contro chiesti all'utente»**: `FATTA` — review #467 APPROVATO.
+- **V-3 bot #247 (diniego di riserva che non diceva chi scrive pro e contro)**: `FATTA` — review #468 APPROVATO. V-1/V-2 del bot erano sullo SHA 2ea4f80 senza report e senza CI: i report sono nel commit dopo. Bot su 2dc4f7a e 8630ec6: V-1 MEDIA «CI assente» dovuta al ritardo di GitHub (il bot è partito prima della CI); la CI è poi arrivata verde su 2aa7a39, 2dc4f7a e 8630ec6. V-2 (report e descrizione) corrette.
+- **Merge di main (PR #246, #248 chat Mani; conflitto segnalato dal bot su 0ada24e, V-1)**: `FATTA` — review #476 APPROVATO.
+- **Backup iCloud, protezioni del repo, server Netcup**: `DEFERITA — da fare con l'operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 +
- modules/web/leggi.py               |  63 ++++--
- reports/diff_sessione.md           |  10 +-
- reports/handoff.md                 | 384 ++++++++-----------------------------
- reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  28 ++-
- tests/test_unit_web_leggi.py       |  47 +++++
- 7 files changed, 200 insertions(+), 338 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +++
+ gas.py                             |  14 ++++++++++----
+ reports/da_mergiare.md             |  17 ++++++-----------
+ reports/diff_sessione.md           |  15 ++++++++-------
+ reports/handoff.md                 | 232 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                 |   8 ++++----
+ reports/setup_notte.md             |   2 +-
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  34 ++++++++++++----------------------
+ tests/test_unit_kernel.py          |  11 +++++++++++
+ 10 files changed, 153 insertions(+), 187 deletions(-)
 ```
-
----
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-6e87492 test(web): ripiego con annotation-xml rende la pila incerta — chat Mani fetta 10 (V-1 ve #248)
-73a3211 chore(revisore): memoria review #475 — APPROVATO
-5a0786f docs(fine-task): handoff con il diff completo — chat Mani fetta 10
-7602d3a docs(fine-task): report, stato e handoff — chat Mani fetta 10
-1016ef2 fix(web): fetta 10 chat Mani — annotation-xml solo con encoding HTML, autochiusi vuoti nel contenuto estraneo (ve #246 bis)
-8d08649 chore(revisore): memoria review #474 — APPROVATO
-92dd988 chore(revisore): memoria review #473 — BOCCIATO
+cfe172b Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+0ada24e docs(fine-task): stato CI reale nell'handoff, V-1/V-2 bot #247 (#247)
+8630ec6 docs(fine-task): report allineati al 2° giro, V-2 bot #247 (#247)
+2dc4f7a docs(fine-task): V-3 bot #247, CI e report allineati (#247)
+d579a1f fix(firma): anche il diniego di riserva dice chi scrive pro e contro (V-3 bot #247)
+19b1ef6 chore(revisore): memoria review #468 — APPROVATO
+2aa7a39 docs(fine-task): prova sul Mac (R1), pro e contro scritti da Gas (#247)
+2ea4f80 fix(firma): pro e contro li scrive il modello, non li chiede all'utente
+eaf9043 chore(revisore): memoria review #467 — APPROVATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; anche i numeri del §2 sono presi prima di quel commit (l'elenco dei file è esatto).
-
----
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Tre verdetti, incollati integralmente: #473 (BOCCIATO) e #474 (APPROVATO) (chat Mani) sul diff della fetta 10 committato in `1016ef2`; #475 (APPROVATO) sul test aggiunto dopo la verifica esterna #248, committato in `6e87492` (memorie `92dd988`, `8d08649`, `73a3211`, fatte dal revisore). Le righe citate nella #473 si riferiscono al diff di allora.
-
-### Review #473 (chat Mani) — verdetto integrale
-
-## VERDETTO: BOCCIATO
-
-Review #473 (chat Mani), fetta 10, ramo feat/mani-web-fetta10 creato da main 17c0cfc. Ho rivisto il diff staged; worktree e index coincidono (controllato con cmp). Dopo il commit della memoria lo staging è intatto. Le letture obbligatorie le avevo già fatte in questa sessione.
-
-**In breve:** la correzione di V-1 si aggira con uno spazio nel valore di `encoding`, o con un secondo attributo `encoding`. In quei casi il testo nascosto arriva al modello. Il resto della fetta è a posto.
-
-**Motivo bloccante B-473-1 (ALTA: la correzione di V-1 ve #246 si aggira)**
-
-Dove: modules/web/leggi.py:738, `_html_dentro`. La funzione sbaglia in due punti:
-- **`.strip()`.** Lo standard confronta il valore esatto e ignora solo maiuscole e minuscole ASCII. Con `encoding=" text/html "` il browser NON ha un punto di integrazione, Gas sì.
-- **`any(...)` su tutti gli attributi.** html.parser restituisce anche i duplicati, mentre i browser tengono solo il primo. Con `encoding="x" encoding="text/html"` il browser NON ha un punto di integrazione, Gas sì.
-
-Pagine di prova, controllate con lexbor (selectolax):
-- `<p>A</p><math><annotation-xml encoding=" text/html "></p><svg></math>SEGRETO`
-- `<p>A</p><math><annotation-xml encoding="x" encoding="text/html"></p><svg></math>SEGRETO`
-
-In entrambe lexbor esce da math con `</p>` e mette SEGRETO dentro `<svg>`, quindi nascosto. Il parser di Gas restituisce invece «A SEGRETO». Il ripiego è salvo, perché lì la pila diventa incerta.
-
-Con questi due valori Gas si comporta come main, quindi non è una regressione rispetto a main. Ma lascia aperta la fuga ALTA che la fetta deve chiudere. L'enumerazione esaustiva non poteva vederla: gli atomi non hanno attributi.
-
-Rimedio:
-- usare solo il PRIMO attributo `encoding`;
-- niente strip;
-- minuscole solo ASCII (`translate(_MINUSCOLE_ASCII)` al posto di `lower()`: oggi è innocuo, ma è il confronto dello standard);
-- test con le due pagine sopra più `encoding="TEXT/HTML"`, che deve restare un punto, come per lexbor.
-
-**Elementi del diff esaminati**
-
-- modules/web/leggi.py:205 — `_cima_punto`: la cima della pila è un punto di integrazione se il suo indice è in `_punti`. Rischio: indici disallineati dopo i pop. Esito: **ok**, `_togli_da` sfoltisce `_punti` insieme alla pila.
-- modules/web/leggi.py:246 — `_estranee` per annotation-xml: se è un punto valgono le regole HTML; se non lo è valgono quelle estranee, tranne per `<svg>`. Rischio: divergenze dalla scelta dello standard fra regole HTML ed estranee. Esito: **ok**.
-  - Sono le due righe dello standard.
-  - L'eccezione mglyph/malignmark resta solo per mi, mo, mn, ms, mtext, come vuole lo standard.
-- modules/web/leggi.py:312 — nel ripiego un annotation-xml in math aperto rende la pila incerta. Rischio: il ripiego mostra più del parser. Esito: **ok**, è il verso sicuro.
-  - La forma autochiusa non entra in pila e non rende incerto niente, ed è corretto così.
-  - Sulle pagine reali il costo è basso: KaTeX e MathJax usano `<annotation>`, non annotation-xml.
-- modules/web/leggi.py:383 — nel contenuto estraneo `<x/>` è sempre vuoto, anche per i nascosti (V-2). Rischio: aver tolto una protezione che compensava una pila sbagliata. Esito: **ok**: oggi le divergenze della pila passano da «incerta». Le 3 sonde V-2 sono nei test (tests/test_unit_web_leggi.py:1196 e righe seguenti).
-- modules/web/leggi.py:738 — `_html_dentro`. Esito: **blocco** (B-473-1).
-- tests/test_unit_web_leggi.py:1261 e tests/test_unit_web_leggi.py:1272 — controprova con encoding text/html e test di tempo (V-4). Esito: **ok**. Il test di tempo non l'ho cronometrato contro una mutazione lineare: prendo per buona la tua misura e quella del verificatore (16 s).
-
-**Riesecuzioni**
-- Suite web: 301 passed su 3.13.16 e su 3.11.17.
-- Le pagine di B-473-1 le ho provate con lexbor e html5lib. html5lib non implementa l'uscita con `</p>`: per questi casi l'oracolo giusto è lexbor.
-- Enumerazione a 4 atomi (0 regressioni, 0 fughe su 1,87 milioni di pagine): dichiarata da te, non rieseguita, e non copre gli attributi.
-
-**Rischi esclusi**
-- Browser vero: non provato. Oracoli usati: lexbor e html5lib.
-- Enumerazione a 5 atomi: in corso, non valutata.
-- Parser vecchio reale (CPython 3.12.3): non riprovato. Lì lavora il ripiego, che rende la pila incerta su annotation-xml.
-
-**V-5 (BASSA):** d'accordo a registrarla così.
-
-**Memoria:** aggiunte la riga #473 e una lezione nuova (come si sondano i valori degli attributi: spazi, maiuscole, entità, duplicati) in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole (92dd988).
-
-### Review #474 (chat Mani) — verdetto integrale (diff del commit `1016ef2`)
+### Review #467 (chat Motore)
 
 ## VERDETTO: APPROVATO
 
-Review #474 (chat Mani): ri-review della #473 sulla fetta 10. B-473-1 è chiusa e non ho trovato altro da segnalare. Worktree e index coincidono (cmp), e lo staging è rimasto intatto dopo il commit della memoria.
+Review #467 (chat Motore). Prima della review ho letto CLAUDE.md (sez. 1, 5, 8, 9), le parti di reports/stato_progetto.md e di memoria_revisore.md che riguardano firma e pro/contro, e il diff staged di gas.py e tests/test_unit_kernel.py.
 
-**Elementi del diff esaminati**
+**Cosa ho controllato nel diff**
+- `gas.py:1082`: sono cambiate solo le descrizioni nello schema di write_file. Ora dicono che pro e contro li «scrivi TU», che non vanno chiesti all'utente e che «l'operatore li legge nella firma e decide». Rischio: che il testo faccia passare l'idea di un consenso già dato o di una scorciatoia per evitare la firma. Il testo dice il contrario: la decisione resta dell'operatore e la frase che il file delicato «va alla firma dell'operatore su Telegram con il diff reale» non è cambiata. Esito: ok.
+- `gas.py:3102`: sono cambiate solo le parole del diniego. Non cambia nessuna logica: la condizione su pro e contro (stringhe non vuote), il limite `_FIRMA_PRO_CONTRO_MAX`, il controllo del percorso e il passaggio alla firma restano identici.
+  - Rischio «inventare il consenso»: il testo chiede al modello di scrivere argomenti suoi, non di dichiarare un'approvazione. Esito: ok.
+  - Rischio §5 (simulazione dei tool): il messaggio chiede di richiamare davvero write_file, non di fingerne il risultato. Esito: ok.
+  - Rischio loop: «richiama subito» porta al massimo a una tool call in più, sempre sotto il tetto di 10 iterazioni. Esito: ok.
+- `modules/telegram/bot.py:215` (contesto, non toccato): il messaggio di firma etichetta ancora «PRO (scritti dal modello, non verificati)», e così anche il CONTRO. Il cancello quindi non si indebolisce: anche se il modello scrive pro di parte, l'operatore vede il diff reale e l'avviso. Esito: ok.
+- `tests/test_unit_kernel.py:8964`: il test T82a2 riusa il turno vero di T82a e controlla «SCRIVILI TU» e «non chiederli all'utente» nel diniego, più «scrivi TU» e «non chiederli» nella descrizione dello schema. Con il testo vecchio fallirebbe (quelle stringhe non c'erano). Esito: ok.
 
-- **modules/web/leggi.py:740 — `_html_dentro`.** Ora legge solo il primo attributo `encoding`, confronta il valore esatto senza strip e porta in minuscolo solo l'ASCII.
-  - Rischio esaminato: Gas e browser che non concordano sul valore dell'attributo.
-  - Esito: **ok**. Ho provato sette pagine contro lexbor e coincidono tutte:
-    - `encoding=" text/html "` non è un punto di integrazione: SEGRETO nascosto.
-    - `encoding="x" encoding="text/html"` non è un punto: SEGRETO nascosto.
-    - `encoding="text/html" encoding="x"` è un punto: X dentro math, nascosto, e VIS visibile.
-    - `encoding="text&#47;html"` è un punto: html.parser decodifica l'entità come fanno i browser.
-    - `ENCODING=TEXT/HTML` senza virgolette è un punto.
-    - `encoding` senza valore non è un punto. Lexbor esce da math e mostra X; Gas nasconde X, quindi nasconde di più (verso sicuro).
-    - `encoding="text/html"` con la K del simbolo Kelvin in coda non è un punto: SEGRETO nascosto.
-- **tests/test_unit_web_leggi.py:1202** — le pagine di B-473-1 dentro `test_pila_incerta_o_uscita_non_fanno_uscire_testo`.
-  - Rischio esaminato: test che non pinnano la correzione.
-  - Esito: **ok**. Con mutazioni in copia: rimettere lo strip dà 1 FAIL; tornare ad `any` su tutti gli attributi dà 1 FAIL.
-- **tests/test_unit_web_leggi.py:1268** — la controprova sui tre encoding con maiuscole diverse.
-  - Esito: **ok**. Togliere il passaggio in minuscolo dà 1 FAIL.
+**Prove**
+- Ho rilanciato la suite del kernel: 1021 PASS, 0 FAIL.
 
-**Riesecuzioni:** suite web 303 passed su 3.13.16 e su 3.11.17.
+**Cosa NON ho verificato**
+- Non ho provato se un LLM reale, su Telegram, ora compila davvero pro e contro invece di chiederli. Non si riproduce in modo deterministico in dev: lo deve confermare una nuova prova reale dell'operatore.
+- Non ho rilanciato `pytest tests/` (1970 passed secondo l'agente). Il diff tocca solo stringhe e un test del kernel, che ho rilanciato.
+- Non ho fatto il test di mutazione sul testo vecchio: è dimostrabile a lettura, le stringhe cercate non esistevano.
 
-**Rischi esclusi**
-- Browser vero: non provato, ho usato solo lexbor come riferimento.
-- Enumerazione a 5 atomi: è ancora in corso e i suoi atomi non hanno attributi, quindi non tocca questa correzione.
-- Parser vecchio reale (CPython 3.12.3): non riprovato. Su quelle versioni lavora il ripiego, che con annotation-xml dentro math rende la pila incerta e nasconde il resto della pagina.
-- Il resto del diff della fetta 10 l'ho visto alla #473 e qui non l'ho rivisto.
+**Riserve**
+- Nessuna bloccante.
+- Nota fuori dal diff, nessuna azione richiesta: un modello che scrive pro favorevoli e contro minimizzati era un rischio anche prima. È coperto dall'etichetta «non verificati» e dal diff reale nel messaggio di firma.
 
-**Memoria:** riga #474 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (8d08649). Nessuna lezione nuova.
+**Memoria del revisore**
+- Ho aggiunto la riga #467 con una lezione in `/home/user/Gas/.claude/agents/memoria_revisore.md`: nei dinieghi al modello evitare «spiega all'operatore»; dire chi scrive cosa e quale azione fare dopo.
+- È già committata da sola (eaf9043, `git commit -o` sul solo file di memoria) e il diff staged di gas.py e tests/test_unit_kernel.py è rimasto intatto.
+- Il marcatore della review non l'ho creato: dopo il verdetto va lanciato `bash scripts/segna_review_ok.sh`.
 
-### Review #475 (chat Mani) — verdetto integrale (diff del commit `6e87492`)
+### Review #468 (chat Motore)
 
 ## VERDETTO: APPROVATO
 
-Review #475 (chat Mani). È un delta di soli test sopra HEAD 5a0786f, che chiude V-1 BASSA della verifica esterna #248. Il test nuovo è giusto e fallisce se si toglie la protezione che deve sorvegliare. Worktree e index coincidono (controllato con cmp); dopo il commit della memoria lo staging è intatto.
+Review #468 (chat Motore). Ho letto le parti che servono di CLAUDE.md (sezione 5, Wall of Shame), di reports/stato_progetto.md e di .claude/agents/memoria_revisore.md, ma non questi tre file per intero. Ho esaminato il diff staged (gas.py e tests/test_unit_kernel.py).
 
-**Elementi esaminati**
+Elementi del diff esaminati:
+- `gas.py:4318`: il diniego di riserva di write_file per un file di livello 2 senza firma ora dice «richiedila chiamando write_file con 'pro' e 'contro' scritti da te (non chiederli all'utente)». Rischio esaminato: che il cancello cambi o si indebolisca, o che il messaggio contraddica il diniego principale. Esito: ok. Cambia solo la stringa restituita; il ramo `if not firmata` → return è lo stesso, e il log `[GATE-1A]` resta. Il testo è coerente con il diniego principale (`gas.py:3102`, «SCRIVILI TU… non chiederli all'utente») e applica la lezione della review #467. Nessuno slicing della history e nessuna simulazione di tool.
+- `tests/test_unit_kernel.py:9069`: il nuovo T82h1b controlla che il messaggio `_o82h1` contenga «scritti da te» e «non chiederli all'utente». Rischio esaminato: che T82h si rompa e che rimangano asserzioni sulla stringa vecchia. Esito: ok. T82h (`tests/test_unit_kernel.py:9067`, cerca «serve la firma») resta valido, perché quella parte è rimasta nel messaggio (`gas.py:4318`). Ho cercato in tutti i file .py «richiedila con» e «'pro' e 'contro')»: nessuna occorrenza fuori dal diff.
+- Esecuzione: `python tests/test_unit_kernel.py` → 1022 PASS, 0 FAIL, riprodotto.
 
-- **tests/test_unit_web_leggi.py:1276** — nuovo test `test_ripiego_annotation_xml_rende_la_pila_incerta`. Prova che nel ripiego un `annotation-xml` dentro math rende la pila incerta.
-  - Rischio esaminato: un test che non distingue la protezione.
-  - Mutazione in copia su modules/web/leggi.py:312 (annotation-xml messo in pila come «non punto» invece di rendere la pila incerta): 1 FAIL, come hai dichiarato.
-  - Nella pagina, `<svg>` dentro `<math>` è un elemento MathML, perché nel contenuto estraneo l'elemento prende lo spazio del nodo corrente. Quindi l'`annotation-xml` che segue è davvero di math e il test esercita il ramo giusto.
-  - Esito: **ok**.
-- **tests/test_unit_web_leggi.py:1281** — controlla che MK4 non esca dal ripiego.
-  - Rischio esaminato: che l'attesa sia sbagliata.
-  - lexbor mette MK4 dentro math, quindi nascosto: l'attesa è corretta.
-  - Anche il parser attuale dà solo «A», benché il test controlli solo il ripiego.
-  - Esito: **ok**. Il controllo `"A" in r` è debole ma non dà falsi positivi: nessun MKn contiene «A».
+Rischio escluso: il comportamento reale del modello (Gemini/Groq) con il nuovo testo non è verificato, perché servirebbe una prova live con i provider e non si può fare in dev. Ho escluso anche la suite pytest completa: la modifica è solo testo e tocca una stringa sola.
 
-**Riesecuzioni:** suite web 304 passed su 3.13.16.
+Riga contatore #468 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato scripts/commit_memoria_revisore.sh, che non ha stampato nulla; il commit non l'ho controllato.
 
-**Rischi esclusi**
-- Non ho rieseguito la suite su 3.11: il delta è un test solo, puro Python, senza dipendenze di versione.
-- Il codice di modules/web/leggi.py non cambia in questo delta; l'ho visto alla #473 e alla #474.
-- Browser vero: non provato, ho usato solo lexbor come riferimento.
+### Review #476 (chat Motore)
 
-**Memoria:** riga #475 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola (73a3211). Nessuna lezione nuova.
+## VERDETTO: APPROVATO
 
----
+Review #476 (chat Motore). È il merge di origin/main 2d20ec0 (PR #246 e #248, chat Mani) dentro feat/merge-automatico-z1xjx2 (HEAD 0ada24e, PR #247). Il merge è ancora in corso.
+
+Ho letto prima CLAUDE.md, la memoria del revisore (fino alla #475) e lo stato del progetto: nel diff di `stato_progetto.md` ho guardato solo le parti toccate dal merge.
+
+**Cosa ho controllato nel diff (base = origin/main 2d20ec0)**
+- `modules/web/leggi.py:205` — la parte web arrivata da main (`_cima_punto` e le funzioni vicine). Rischio: che nel merge si sia alterato qualcosa. `git diff --cached 2d20ec0 -- modules/web tests/test_unit_web_leggi.py` è vuoto, quindi il file è identico a main. Rispetto a HEAD il diff è di +446/-69, cioè proprio le fette 9 e 10 di Mani. **ok**
+- `tests/test_unit_web_leggi.py:1276` — i test del ripiego con annotation-xml dentro math, arrivati da main. Anche questo file è identico a main (stesso comando sopra). Le tue prove dicono 304 passed, in linea con la review #475. **ok**
+- `gas.py:3102` — il messaggio di rifiuto quando a write_file livello 2 mancano pro e contro: ora dice al modello di scriverli lui. Rischio: che il diff della sessione verso main contenga cambi non revisionati. Il diff del motore verso main è soltanto `gas.py:1082` (la descrizione del tool), `gas.py:3102` e `gas.py:4318` (il rifiuto di riserva senza firma), tutti già approvati nelle review #467 e #468. Sono solo testi; i controlli del gate restano gli stessi (il log `[GATE-1A]` e il rifiuto senza firma ci sono ancora). **ok**
+- `tests/test_unit_kernel.py:8964` — i test T82a2 e T82h1b controllano le frasi nuove nel rifiuto e nella descrizione del tool. Sono asserzioni sul testo prodotto davvero dal kernel, senza output dei tool inventati. **ok**
+- `.claude/agents/memoria_revisore.md:770` — il conflitto risolto unendo le due versioni: le #467 e #468 della chat Motore restano prima delle #467 e #468 della chat Mani. Confronto riga per riga: 0 righe perse sia da HEAD sia da MERGE_HEAD, nessun marcatore di conflitto rimasto. I numeri doppi (#467 e #468 per due chat) c'erano già e sono distinti dall'etichetta della chat. **ok**
+- `reports/stato_progetto.md:606` — l'unione automatica ha aggiunto le voci «Mani — fetta 10» (riga 606) e «fetta 9» (riga 608). Sembrano mancare 2 righe di main: l'intestazione «Ultimo aggiornamento» e la voce G-3. In realtà main non le aveva toccate (il loro hash è uguale a quello della base 2127bbe), mentre il ramo le aveva aggiornate: resta giustamente la versione del ramo. Nessun marcatore di conflitto. **ok**
+- I report di sessione (handoff, ultimo_report, diff_sessione, da_mergiare, roadmap, setup_notte) restano nella versione del ramo: rispetto a HEAD non c'è nessuna riga tolta in reports/. Questo è voluto, visto che li riscrivi a fine sessione. **ok**
+
+**Cosa NON ho verificato**
+- Non ho rieseguito le suite: mi baso sulle tue prove (web 304 passed, kernel 1022 PASS 0 FAIL) e sul fatto che i file del motore sono identici a main oppure a HEAD, entrambi già passati per review e test.
+- Il comportamento su VPS e sul Mac non è riproducibile qui.
+- Il contenuto dei report di sessione non l'ho controllato nel merito: verranno riscritti.
+
+**Riga della memoria**
+Ho aggiunto in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga «#476 (chat Motore) — 2026-10-22 — APPROVATO — …», senza lezioni nuove.
+
+**NON l'ho committata**: il merge è in corso e quindi non ho lanciato `scripts/commit_memoria_revisore.sh`. La riga è solo nel file su disco, non nell'index. Prima del commit di merge devi fare `git add .claude/agents/memoria_revisore.md`, così finisce nel merge, poi rigenerare il marcatore con `bash scripts/segna_review_ok.sh`: il diff in stage cambia.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 291 → 304 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «304 passed» su Python 3.13.16; 303 su 3.11.17 prima del test del ripiego).
-- Test nuovi contro main: 11 FAILED (le sonde V-1/V-2 e la controprova; il «9» della prima versione era sbagliato, V-2 ve #248); il test di tempo passa anche su main (che ha già O(1)) e fallisce con una scansione lineare (misura del verificatore: 16 s).
-- Enumerazione esaustiva con oracolo lexbor (script della verifica esterna, 37 atomi senza attributi, parser e ripiego, nuovo contro main 17c0cfc): 4 atomi, 1.874.161 pagine, 0 regressioni e 0 fughe; 5 atomi: 69.343.957 pagine, 0 regressioni e 0 fughe.
-- Il diff non tocca `gas.py` né altre suite.
+Kernel 1020 → 1022 PASS (T82a2 e T82h1b nuovi; base `main` 2127bbe = 1020 in locale); pytest `tests/` 1970 passed. Nessun FAIL.
+
+```
+=== RIEPILOGO: 1022 PASS, 0 FAIL ===
+1970 passed in 205.08s (0:03:25)
+```
 
 ## §6 STATO CI
 
-- `5a0786f` (head all'apertura della PR #248): unit-suite success, handoff-check success, verifica-bot in corso alla scrittura. Verifica esterna #248 APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/248#issuecomment-6349304044)).
-- `6e87492` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+Run lette via `gh api` REST (ramo `feat/merge-automatico-z1xjx2`):
+
+- `8630ec6` — CI success (unit-suite, handoff-check); verifica-bot failure (V-1: CI non ancora partita quando ha verificato).
+- `2dc4f7a` — CI success; verifica-bot failure (stesso motivo).
+- `2aa7a39` — CI 39831062721 success.
+- `2ea4f80` — CI 39830977401 failure su handoff-check (commit senza handoff, voluto; unit-suite success); verifica-bot failure.
+- `eaf9043`, `19b1ef6`, `d579a1f`: nessuna run su questo SHA (pushati insieme ad altri commit).
+- `0ada24e` — CI success; verifica-bot failure (V-1: conflitto con main, risolto nel merge successivo).
+- Merge di main e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-ve246b-5** BASSA (pila incerta su HTML valido con fine tag omessi in desc/foreignObject: si perde il resto della pagina, frequenza non misurata); **R-ve248-3** BASSA preesistente (`<div a = "x>SEGRETO`: con spazi attorno a «=» e virgolette mai chiuse html.parser chiude il tag, i browser scartano il resto).
-- Restano: **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-469-1, R-466-1, R-466-2, R-ve245-2…5, R-ve245b-4, R-454-2, R-453-2, R-456-2, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…10».
+- Nessuna nuova dalla review #467. Da confermare con una prova reale che il modello compili davvero pro e contro (non riproducibile in dev).
+- Riserve aperte di #241 (BASSE) in `reports/stato_progetto.md`: recupero basato sulla storia (segno nel DB), database bloccato fra due letture, controllo del log dei token parziale, «un click alla volta» solo statico.
