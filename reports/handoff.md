@@ -17,6 +17,7 @@
 - **Merge PR #241** («mergia 241»): `FATTA` — 1c023fa.
 - **Prova dal vero sul Mac (R1)**: `FATTA` — doctor, catalogo, tetto, bottoni Approva/Rifiuta, `/notte` con messaggio del mattino, timer `com.gas.notte`, lezione 13 approvata.
 - **Difetto «pro e contro chiesti all'utente»**: `FATTA` — review #467 APPROVATO.
+- **V-3 bot #247 (diniego di riserva che non diceva chi scrive pro e contro)**: `FATTA` — review #468 APPROVATO. V-1/V-2 del bot erano sullo SHA 2ea4f80 senza report e senza CI: i report sono nel commit dopo.
 - **Backup iCloud, protezioni del repo, server Netcup**: `DEFERITA — da fare con l'operatore`.
 
 ---
@@ -24,22 +25,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- gas.py                             |  10 +++++++---
+ .claude/agents/memoria_revisore.md |   2 ++
+ gas.py                             |  14 ++++++++++----
  reports/da_mergiare.md             |  17 ++++++-----------
  reports/diff_sessione.md           |  14 +++++++-------
- reports/handoff.md                 | 331 +++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 347 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |   8 ++++----
  reports/setup_notte.md             |   2 +-
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  44 +++++++++++---------------------------------
- tests/test_unit_kernel.py          |   9 +++++++++
- 10 files changed, 93 insertions(+), 347 deletions(-)
+ reports/ultimo_report.md           |  45 ++++++++++++---------------------------------
+ tests/test_unit_kernel.py          |  11 +++++++++++
+ 10 files changed, 122 insertions(+), 342 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d579a1f fix(firma): anche il diniego di riserva dice chi scrive pro e contro (V-3 bot #247)
+19b1ef6 chore(revisore): memoria review #468 — APPROVATO
+2aa7a39 docs(fine-task): prova sul Mac (R1), pro e contro scritti da Gas (#247)
 2ea4f80 fix(firma): pro e contro li scrive il modello, non li chiede all'utente
 eaf9043 chore(revisore): memoria review #467 — APPROVATO
 ```
@@ -80,19 +84,35 @@ Review #467 (chat Motore). Prima della review ho letto CLAUDE.md (sez. 1, 5, 8, 
 - È già committata da sola (eaf9043, `git commit -o` sul solo file di memoria) e il diff staged di gas.py e tests/test_unit_kernel.py è rimasto intatto.
 - Il marcatore della review non l'ho creato: dopo il verdetto va lanciato `bash scripts/segna_review_ok.sh`.
 
+### Review #468 (chat Motore)
+
+## VERDETTO: APPROVATO
+
+Review #468 (chat Motore). Ho letto le parti che servono di CLAUDE.md (sezione 5, Wall of Shame), di reports/stato_progetto.md e di .claude/agents/memoria_revisore.md, ma non questi tre file per intero. Ho esaminato il diff staged (gas.py e tests/test_unit_kernel.py).
+
+Elementi del diff esaminati:
+- `gas.py:4318`: il diniego di riserva di write_file per un file di livello 2 senza firma ora dice «richiedila chiamando write_file con 'pro' e 'contro' scritti da te (non chiederli all'utente)». Rischio esaminato: che il cancello cambi o si indebolisca, o che il messaggio contraddica il diniego principale. Esito: ok. Cambia solo la stringa restituita; il ramo `if not firmata` → return è lo stesso, e il log `[GATE-1A]` resta. Il testo è coerente con il diniego principale (`gas.py:3102`, «SCRIVILI TU… non chiederli all'utente») e applica la lezione della review #467. Nessuno slicing della history e nessuna simulazione di tool.
+- `tests/test_unit_kernel.py:9069`: il nuovo T82h1b controlla che il messaggio `_o82h1` contenga «scritti da te» e «non chiederli all'utente». Rischio esaminato: che T82h si rompa e che rimangano asserzioni sulla stringa vecchia. Esito: ok. T82h (`tests/test_unit_kernel.py:9067`, cerca «serve la firma») resta valido, perché quella parte è rimasta nel messaggio (`gas.py:4318`). Ho cercato in tutti i file .py «richiedila con» e «'pro' e 'contro')»: nessuna occorrenza fuori dal diff.
+- Esecuzione: `python tests/test_unit_kernel.py` → 1022 PASS, 0 FAIL, riprodotto.
+
+Rischio escluso: il comportamento reale del modello (Gemini/Groq) con il nuovo testo non è verificato, perché servirebbe una prova live con i provider e non si può fare in dev. Ho escluso anche la suite pytest completa: la modifica è solo testo e tocca una stringa sola.
+
+Riga contatore #468 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato scripts/commit_memoria_revisore.sh, che non ha stampato nulla; il commit non l'ho controllato.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Kernel 1020 → 1021 PASS (T82a2 nuovo; base `main` 2127bbe = 1020 in locale); pytest `tests/` 1970 passed. Nessun FAIL.
+Kernel 1020 → 1022 PASS (T82a2 e T82h1b nuovi; base `main` 2127bbe = 1020 in locale); pytest `tests/` 1970 passed. Nessun FAIL.
 
 ```
-=== RIEPILOGO: 1021 PASS, 0 FAIL ===
+=== RIEPILOGO: 1022 PASS, 0 FAIL ===
 1970 passed in 205.08s (0:03:25)
 ```
 
 ## §6 STATO CI
 
-- `eaf9043`, `2ea4f80`: nessuna run su questo SHA (pushati insieme all'apertura della PR #247; la run della PR testa il commit di testa).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+- `2ea4f80`: nessuna run CI su questo SHA (solo verifica-bot 39827089566, failure: BOCCIATO per report mancanti e CI assente su quello SHA).
+- `2aa7a39`: nessuna run su questo SHA; il push non risultava registrato dalla PR (head ferma a `2ea4f80`).
+- `eaf9043`, `19b1ef6`, `d579a1f` e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

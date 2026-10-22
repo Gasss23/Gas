@@ -8,11 +8,12 @@
 - PR #241 mergiata su richiesta dell'operatore («mergia 241»): FATTA.
 - Prova dal vero sul Mac (R1): FATTA — aggiornamento a main, doctor, catalogo, tetto di spesa, bottoni Approva/Rifiuta, giro da Telegram con messaggio del mattino, timer notturno, lezione 13 approvata.
 - Difetto emerso (il modello chiedeva i pro e contro all'utente): FATTA la correzione — review #467 APPROVATO.
+- V-3 del bot #247 (diniego di riserva): FATTA — review #468.
 - Backup iCloud, protezioni del repo, server Netcup: DEFERITA — da fare con l'operatore.
 - Mail di GitHub, ramo #141, porte del lettore web: DEFERITA — in attesa dell'operatore.
 
 ## Test
-Kernel 1021 PASS 0 FAIL; pytest tests/ 1970 passed.
+Kernel 1022 PASS 0 FAIL; pytest tests/ 1970 passed (prima di T82h1b).
 
 ## Anomalie
 - Sul Mac mancava la cartella `~/Library/LaunchAgents`: ora `setup_notte.md` la crea prima del timer.
