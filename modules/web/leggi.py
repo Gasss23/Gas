@@ -165,22 +165,71 @@ _RESTO_NOME = re.compile(r"[^ \t\n\r\f/>]*")
 class _Contesto:
     """Pila degli elementi aperti dentro svg e math, con lo spazio («svg», «math» o «html»),
     come la tiene il browser quanto basta per sapere se un tag segue le regole del contenuto
-    estraneo («<x/>» vuoto davvero, «<![CDATA[» vero, niente testo grezzo) o quelle HTML.
-    Fuori da svg/math la pila è vuota. Approssimazioni dichiarate: una chiusura toglie fino
-    all'ultima apertura con lo stesso nome, o è ignorata se prima c'è un elemento HTML (i
-    browser a volte la eseguono: si nasconde di più); annotation-xml di math conta sempre come
-    punto di integrazione, anche senza encoding HTML (il ripiego non legge gli attributi:
-    si nasconde di più, R-467). Il conteggio dei nascosti resta in _aperti: apri e chiudi
-    dicono quali nascosti la pila ha chiuso insieme a un altro tag, da scalare."""
+    estraneo («<x/>» vuoto davvero, «<![CDATA[» vero) o quelle HTML. Fuori da svg/math la
+    pila è vuota. Nel contenuto estraneo i grezzi (script, style…) sono elementi svg/math,
+    non testo grezzo, come nei browser: un CDATA vero dentro di loro arriva fino a «]]>».
 
-    def __init__(self) -> None:
+    Dove il browser dipende da cose che la pila non vede (gli antenati HTML di svg/math, le
+    chiusure implicite degli elementi HTML in un punto di integrazione), la pila non tira a
+    indovinare: diventa «incerta» e da lì il resto della pagina si nasconde (si perde testo,
+    non esce testo nascosto). Succede con: una chiusura che risale oltre la pila senza un
+    punto di integrazione in mezzo; una chiusura fermata da un elemento HTML diverso con il
+    tag più sotto; un «<![CDATA[» con un elemento HTML in cima; un'uscita dal contenuto
+    estraneo dentro un altro contenitore nascosto (canvas, object…, V-5 ve #246); una pila
+    troppo profonda. annotation-xml di math conta sempre come punto di integrazione (il
+    ripiego non legge gli attributi: si nasconde di più, B-467-1). Ogni operazione costa O(1)
+    ammortizzato: niente scansioni della pila (V-3 ve #246). Il conteggio dei nascosti resta
+    in `aperti` (lo stesso dizionario del chiamante): apri e chiudi dicono quali nascosti la
+    pila ha chiuso insieme a un altro tag, da scalare."""
+
+    PROFONDITA_MAX = 1024
+    # Antenati che il browser può avere senza che la pagina li scriva (tabelle).
+    _IMPLICITI = frozenset({"table", "tbody", "thead", "tfoot", "tr", "td", "th", "caption", "colgroup"})
+
+    def __init__(self, aperti: dict) -> None:
         self.pila: list[tuple[str, str]] = []
+        self.incerta = False
+        self._aperti = aperti
+        self._posizioni: dict[str, list[int]] = {}  # nome → indici nella pila, dal basso
+        self._html: list[int] = []                   # indici degli elementi HTML
+        self._punti: list[int] = []                  # indici dei punti di integrazione
+        self._visti: set[str] = set()                # nomi già aperti nella pagina (sovrastima)
 
     @staticmethod
     def _punto(nome: str, spazio: str) -> bool:
         # Punto di integrazione HTML (o di testo MathML); annotation-xml sempre (B-467-1).
         return spazio != "html" and (nome in _PUNTI_HTML[spazio]
                                      or (spazio == "math" and nome == "annotation-xml"))
+
+    def _metti(self, nome: str, spazio: str) -> None:
+        if len(self.pila) >= self.PROFONDITA_MAX:
+            self.incerta = True
+            return
+        k = len(self.pila)
+        self.pila.append((nome, spazio))
+        self._posizioni.setdefault(nome, []).append(k)
+        if spazio == "html":
+            self._html.append(k)
+        elif self._punto(nome, spazio):
+            self._punti.append(k)
+
+    def _togli_da(self, k: int) -> list[str]:
+        """Toglie dalla pila l'elemento k e quelli sopra; restituisce i nomi tolti."""
+        tolti = []
+        while len(self.pila) > k:
+            nome, _ = self.pila.pop()
+            self._posizioni[nome].pop()
+            tolti.append(nome)
+        while self._html and self._html[-1] >= k:
+            self._html.pop()
+        while self._punti and self._punti[-1] >= k:
+            self._punti.pop()
+        return tolti
+
+    def _in_cima(self, nome: str) -> int:
+        """Indice dell'apertura più in alto con quel nome, -1 se non c'è."""
+        pos = self._posizioni.get(nome)
+        return pos[-1] if pos else -1
 
     def _estranee(self, tag: str) -> bool:
         if not self.pila:
@@ -192,90 +241,131 @@ class _Contesto:
             return False
         return not (self._punto(nome, spazio) and not (spazio == "math" and tag in ("mglyph", "malignmark")))
 
-    def regole_estranee(self, tag: str) -> bool:
-        """Il tag di apertura segue le regole del contenuto estraneo."""
-        return self._estranee(tag) and tag not in _ESCONO_DA_ESTRANEO
+    @staticmethod
+    def _esce(tag: str, font_esce: Optional[bool]) -> bool:
+        # «<font>» esce dal contenuto estraneo solo con color, face o size (B-470-1).
+        return tag in _ESCONO_DA_ESTRANEO or (tag == "font" and bool(font_esce))
 
-    def cdata_vero(self) -> bool:
-        """«<![CDATA[» è un CDATA vero solo se il nodo corrente è un elemento svg/math."""
-        return bool(self.pila) and self.pila[-1][1] != "html"
+    def regole_estranee(self, tag: str, font_esce: Optional[bool] = None) -> bool:
+        """Il tag di apertura segue le regole del contenuto estraneo."""
+        return self._estranee(tag) and not self._esce(tag, font_esce)
+
+    def cdata(self) -> str:
+        """Che cos'è «<![CDATA[» qui: «vero» se il nodo corrente è un elemento svg/math,
+        «fasullo» (commento fino al primo «>») fuori da svg/math. Con un elemento HTML in
+        cima la pila non sa se il browser lo ha già chiuso: la pila diventa incerta."""
+        if not self.pila:
+            return "fasullo"
+        if self.pila[-1][1] != "html":
+            return "vero"
+        self.incerta = True
+        return "fasullo"
 
     def _esci(self) -> list[str]:
         usciti = []
         while self.pila and self.pila[-1][1] != "html" and not self._punto(*self.pila[-1]):
-            nome, _ = self.pila.pop()
+            nome = self.pila[-1][0]
+            self._togli_da(len(self.pila) - 1)
             # Solo svg e math: gli altri nascosti chiusi da un'uscita restano contati, nel verso
-            # di nascondere di più (la pila non vede gli antenati HTML di svg, e un «</x>» che
-            # il browser usa per chiuderli qui non chiude niente).
+            # di nascondere di più.
             if nome in _AUTOCHIUDIBILI:
                 usciti.append(nome)
         return usciti
 
-    def apri(self, tag: str, resta_aperto: bool) -> list[str]:
-        """Registra un'apertura; restituisce i nascosti chiusi da un'uscita."""
+    def apri(self, tag: str, resta_aperto: bool, font_esce: Optional[bool] = None) -> list[str]:
+        """Registra un'apertura; restituisce i nascosti chiusi da un'uscita. font_esce dice se
+        «<font>» ha color/face/size; None se non si sa (il ripiego non legge gli attributi)."""
+        self._visti.add(tag)
         if not self.pila:
             if tag in _AUTOCHIUDIBILI and resta_aperto:
-                self.pila.append((tag, tag))
+                self._metti(tag, tag)
             return []
         if self._estranee(tag):
-            if tag in _ESCONO_DA_ESTRANEO:
+            if tag == "font" and font_esce is None:
+                # Senza gli attributi non si sa se il browser esce: pila incerta (B-470-1).
+                self.incerta = True
+                return []
+            if self._esce(tag, font_esce):
                 usciti = self._esci()
-                if self.pila and resta_aperto and tag not in _VUOTI_HTML:
-                    self.pila.append((tag, "html"))
+                if not self.pila:
+                    if any(v > 0 for n, v in self._aperti.items() if n not in _AUTOCHIUDIBILI):
+                        # Si torna all'HTML dentro canvas, object…: un elemento speciale aperto
+                        # lì ferma la chiusura del contenitore, e i conteggi non lo vedono (V-5
+                        # ve #246).
+                        self.incerta = True
+                    # Fuori dalla pila decidono i conteggi, che possono sbagliare (V-5): svg e
+                    # math restano contati fino alla loro chiusura, come prima della pila.
+                    return []
+                if resta_aperto and tag not in _VUOTI_HTML:
+                    self._metti(tag, "html")
                 return usciti
             if resta_aperto:
-                self.pila.append((tag, self.pila[-1][1]))
+                self._metti(tag, self.pila[-1][1])
             return []
         if tag in _AUTOCHIUDIBILI:
             if resta_aperto:
-                self.pila.append((tag, tag))
+                self._metti(tag, tag)
         elif resta_aperto and tag not in _VUOTI_HTML:
-            self.pila.append((tag, "html"))
+            self._metti(tag, "html")
         return []
 
     def estraneo_aperto(self, tag: str) -> bool:
         """Il tag appena aperto è un elemento svg/math (in cima alla pila con il suo spazio)."""
         return bool(self.pila) and self.pila[-1][0] == tag and self.pila[-1][1] != "html"
 
-    def _togli(self, k: int) -> tuple[bool, list[str]]:
-        sopra = self.pila[k + 1:]
-        del self.pila[k:]
-        return False, [n for n, _ in sopra if n in _TAG_NASCOSTI]
-
     def chiudi(self, tag: str) -> tuple[bool, list[str]]:
         """Registra una chiusura. Restituisce (ignorata, nascosti chiusi oltre al tag). Come il
-        browser: nel contenuto estraneo si risale la pila per nome finché si incontra un
-        elemento HTML; da lì valgono le regole HTML, che ripartono dal nodo corrente e si
-        fermano a un punto di integrazione (mi, desc, foreignObject…: B-467-2) o a un elemento
-        HTML diverso, se il tag sta più sotto (approssimazione: si nasconde di più)."""
+        browser: nel contenuto estraneo «</p>» e «</br>» fanno uscire (V-1 ve #246), le altre
+        chiusure risalgono la pila per nome finché trovano un elemento HTML; da lì valgono le
+        regole HTML, che ripartono dal nodo corrente e si fermano al primo elemento HTML o
+        punto di integrazione. Dove l'esito dipende da quello che la pila non vede, la pila
+        diventa incerta."""
         if not self.pila:
             return False, []
+        usciti: list[str] = []
         if self.pila[-1][1] != "html":
-            for k in range(len(self.pila) - 1, -1, -1):
-                nome, spazio = self.pila[k]
-                if spazio == "html":
-                    break
-                if nome == tag:
-                    return self._togli(k)
+            if tag in ("p", "br"):
+                usciti = self._esci()
+                if not self.pila:
+                    return False, []  # come per le aperture: svg e math restano contati
             else:
-                # Il tag sta fuori dalla pila (un antenato di svg/math): per il browser un punto
-                # di integrazione in mezzo ferma la chiusura (R-468-2).
-                return any(self._punto(n, sp) for n, sp in self.pila), []
-        for k in range(len(self.pila) - 1, -1, -1):
-            nome, spazio = self.pila[k]
-            if nome == tag:
-                return self._togli(k)
-            if spazio == "html" or self._punto(nome, spazio):
-                return any(n == tag for n, _ in self.pila[:k]), []
-        return False, []
+                in_cima = self._in_cima(tag)
+                html = self._html[-1] if self._html else -1
+                if in_cima > html:
+                    return False, [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
+                if html < 0:
+                    if self._punti:
+                        # Un punto di integrazione ferma la chiusura di un antenato (R-468-2).
+                        return True, []
+                    if tag in self._visti or tag in self._IMPLICITI:
+                        # Il tag può stare fra gli antenati HTML che la pila non vede: il
+                        # browser lo chiuderebbe insieme a svg/math (V-2 ve #246).
+                        self.incerta = True
+                    # Mai aperto nella pagina: per il browser è una chiusura in più, ignorata.
+                    return True, []
+        # Regole HTML dal nodo corrente: ci si ferma al primo elemento HTML o punto di
+        # integrazione (sotto c'è sempre un punto di integrazione: gli elementi HTML si
+        # aprono solo lì sopra).
+        fermo = max(self._html[-1] if self._html else -1, self._punti[-1] if self._punti else -1)
+        in_cima = self._in_cima(tag)
+        if fermo < 0:
+            return False, usciti
+        if in_cima >= fermo:
+            return False, usciti + [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
+        if in_cima >= 0 and self.pila[fermo][1] == "html":
+            # Elemento HTML diverso con il tag più sotto: il browser a volte chiude (scope,
+            # chiusure implicite), a volte no.
+            self.incerta = True
+        return True, usciti
 
 
-def _esito_autochiuso(tag: str, contesto: _Contesto, aperti: dict, xhtml: bool) -> str:
+def _esito_autochiuso(tag: str, contesto: _Contesto, aperti: dict, xhtml: bool,
+                      font_esce: Optional[bool] = None) -> str:
     """Cosa diventa «<tag/>»: «vuoto», «grezzo» (testo grezzo fino a «</tag>») o «aperto»
     (per l'HTML la «/» non conta). Stessa decisione nel parser e nel ripiego."""
     if xhtml:
         return "vuoto"
-    if contesto.regole_estranee(tag):
+    if contesto.regole_estranee(tag, font_esce):
         # Nel contenuto estraneo «<x/>» è vuoto; i nascosti però restano aperti (si contano e
         # li chiude la chiusura del contenitore): verso sicuro se la pila sbaglia (R-454-1).
         return "aperto" if tag in _TAG_NASCOSTI and tag not in _AUTOCHIUDIBILI else "vuoto"
@@ -606,7 +696,7 @@ class _Estrattore(HTMLParser):
         self._salta = 0
         self._aperti: dict[str, int] = {}  # aperture contate per nome (V-1 bot #242)
         self._nel_titolo = False
-        self._contesto = _Contesto()
+        self._contesto = _Contesto(self._aperti)
 
     def _locale(self, tag: str) -> str:
         # In XHTML conta il nome locale: «<h:script>» con h = XHTML è uno script (V-1 ve #245).
@@ -621,10 +711,14 @@ class _Estrattore(HTMLParser):
                 self._aperti[nome] -= 1
                 self._salta -= 1
 
+    @staticmethod
+    def _font_esce(tag: str, attrs: list) -> bool:
+        return tag == "font" and any(k in ("color", "face", "size") for k, _ in attrs)
+
     def handle_starttag(self, tag: str, attrs: list) -> None:
         tag = self._locale(tag)
         if not self._xhtml:
-            self._scala(self._contesto.apri(tag, True))
+            self._scala(self._contesto.apri(tag, True, self._font_esce(tag, attrs)))
         self._inizio(tag)
 
     def _inizio(self, tag: str) -> None:
@@ -645,9 +739,10 @@ class _Estrattore(HTMLParser):
         # punti di integrazione HTML valgono di nuovo le regole HTML (R-454-1, R-450-1): lo
         # decide _Contesto, con la stessa funzione usata dal ripiego.
         tag = self._locale(tag)
-        esito = _esito_autochiuso(tag, self._contesto, self._aperti, self._xhtml)
+        font_esce = self._font_esce(tag, attrs)
+        esito = _esito_autochiuso(tag, self._contesto, self._aperti, self._xhtml, font_esce)
         if not self._xhtml:
-            self._scala(self._contesto.apri(tag, esito != "vuoto"))
+            self._scala(self._contesto.apri(tag, esito != "vuoto", font_esce))
         self._inizio(tag)
         if esito == "grezzo":
             self._modo_grezzo(tag)
@@ -668,7 +763,8 @@ class _Estrattore(HTMLParser):
         # «<script>» annidato si conta per nome, così il primo «</script>» non chiude tutto
         # (R-ve244-2). Commenti e CDATA li ha già tolti _commenti_e_cdata_xml.
         # Anche nel contenuto estraneo: «<svg><style>» o «<math><noembed>» sono elementi
-        # svg/math, non testo grezzo, come nei browser (R-463-1).
+        # svg/math, non testo grezzo, come nei browser (R-463-1). Dove la pila potrebbe
+        # sbagliare diventa incerta e nasconde il resto (V-1, V-2 ve #246).
         if self._xhtml or self._contesto.estraneo_aperto(elem):
             return
         super().set_cdata_mode(elem, **kwargs)
@@ -686,7 +782,7 @@ class _Estrattore(HTMLParser):
         rawdata = self.rawdata
         if self._xhtml or not rawdata.startswith("<![", i):
             return super().parse_html_declaration(i)
-        if self._contesto.cdata_vero() and rawdata.startswith("<![CDATA[", i):
+        if rawdata.startswith("<![CDATA[", i) and self._contesto.cdata() == "vero":
             # Nel contenuto estraneo tutto è nascosto: il contenuto del CDATA non serve.
             j = rawdata.find("]]>", i + 9)
             return len(rawdata) if j < 0 else j + 3
@@ -725,7 +821,8 @@ class _Estrattore(HTMLParser):
             self.pezzi.append("\n")
 
     def handle_data(self, data: str) -> None:
-        if self._salta:
+        if self._salta or self._contesto.incerta:
+            # Con la pila incerta il resto della pagina si nasconde (vedi _Contesto).
             return
         if self._nel_titolo:
             self.titolo.append(data)
@@ -811,7 +908,7 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
     prossimi: dict[str, int] = {}
     salta = 0
     aperti: dict[str, int] = {}
-    contesto = _Contesto()
+    contesto = _Contesto(aperti)
 
     def scala(nomi: list[str]) -> None:
         nonlocal salta
@@ -836,7 +933,7 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
             # Come _Estrattore.parse_html_declaration: CDATA vero solo se il nodo corrente è
             # svg/math (R-ve244-3, R-463-1) e scritto in maiuscolo come vuole lo standard
             # (R-463-2); altrimenti commento fasullo fino al primo «>».
-            if xhtml or (contesto.cdata_vero() and testo.startswith("<![CDATA[", m.start())):
+            if xhtml or (testo.startswith("<![CDATA[", m.start()) and contesto.cdata() == "vero"):
                 f = basso.find("]]>", m.end())
                 fine = -1 if f == -1 else f + 3
             else:
@@ -891,6 +988,11 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
                     elif tag in _CONTATI_RIPIEGO:
                         aperti[tag] = aperti.get(tag, 0) + 1
                         salta += 1
+        if contesto.incerta:
+            # Con la pila incerta il resto della pagina si nasconde, come nel parser; lo si
+            # dice nella scatola nera (R-471-2).
+            logger.warning("leggi_pagina: svg/math incerti nel ripiego, resto della pagina nascosto")
+            break
         if fine == -1:
             break
         i = pos = fine
@@ -961,6 +1063,9 @@ def _componi(url_finale: str, pagina: dict) -> dict:
                 raise ValueError("html.parser senza le patch del 2025")
             estrattore.feed(grezzo)
             estrattore.close()
+            if estrattore._contesto.incerta:
+                # Il resto della pagina è stato nascosto: lo si dice nella scatola nera (R-470-2).
+                logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
             corpo = _pulisci("".join(estrattore.pezzi))
             titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
         except ValueError:

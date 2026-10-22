@@ -1163,6 +1163,104 @@ def test_nodo_corrente_come_il_browser(pagina):
     assert "SEGRETO" not in r and "PRIMA" in r, r
 
 
+@pytest.mark.parametrize("pagina", [
+    # «</p>» e «</br>» fanno uscire dal contenuto estraneo (V-1 ve #246)
+    "<p>Ciao</p><svg></p><style>x</svg>SEGRETO</style>fine",
+    "<p>Ciao</p><svg></br><script>X</svg>SEGRETO</script>fine",
+    "<p>Ciao</p><math></p><script>X</math>SEGRETO</script>fine",
+    "<p>Ciao</p><svg><g></p><iframe>X</svg>SEGRETO</iframe>fine",
+    "<p>Ciao</p><svg></p><![CDATA[x><script>]]></svg>SEGRETO</script>fine",
+    # nel contenuto estraneo iframe è un elemento: il CDATA vero dentro arriva fino a «]]>»
+    "<p>Ciao</p><math><iframe><![CDATA[x</iframe><li>SEGRETO",
+    # un antenato HTML chiuso da dentro svg/math (V-2 ve #246)
+    "<p>Ciao</p><div><svg></div><script>/*</svg>SEGRETO*/</script>fine",
+    "<p>Ciao</p><b><math></b><style>x</math>SEGRETO</style>fine",
+    "<p>Ciao</p><section><svg></section><noembed>x</svg>SEGRETO</noembed>fine",
+    "<p>Ciao</p><div><svg></div><![CDATA[x><script>]]></svg>SEGRETO</script>fine",
+    "<p>Ciao</p><table><tr><td><svg></tbody><![CDATA[x><script>]]></svg>SEGRETO</script>fine",
+    # un'uscita dal contenuto estraneo dentro canvas: un elemento speciale ferma «</canvas>» (V-5 ve #246)
+    "<p>Ciao</p><canvas><math><div/></canvas>SEGRETO",
+    "<p>Ciao</p><canvas><math><h1></canvas>SEGRETO",
+    "<p>Ciao</p><canvas/><svg><h1></canvas>SEGRETO",
+    # «<font>» con color/face/size esce dal contenuto estraneo (B-470-1)
+    "<p>Ciao</p><svg><font size=2><script></svg>SEGRETO</script>VIS",
+    "<p>Ciao</p><math><font face=x><style></math>SEGRETO</style>VIS",
+    "<p>Ciao</p><svg><font color><script></svg>SEGRETO</script>VIS",
+    # un'uscita che svuota la pila lascia svg/math contati: i conteggi possono aver chiuso
+    # canvas per errore (radice V-5 ve #246, R-471-1)
+    "<p>Ciao</p><canvas><form></canvas><svg><b/>SEGRETO",
+    "<p>Ciao</p><canvas><form></canvas><svg></p>SEGRETO",
+    "<p>Ciao</p><canvas><form></canvas><svg></br>SEGRETO",
+    # CDATA con un elemento HTML in cima: il browser può averlo già chiuso
+    "<p>Ciao</p><svg><foreignObject><p><div></div><![CDATA[x></p></svg>SEGRETO]]>fine",
+])
+def test_pila_incerta_o_uscita_non_fanno_uscire_testo(pagina):
+    """Dove il browser esce da svg/math o dipende da antenati che la pila non vede, il testo
+    nascosto non arriva al modello: uscita con «</p>»/«</br>», testo grezzo sempre, pila
+    incerta che nasconde il resto. Parser e ripiego."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "Ciao" in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and "Ciao" in r, r
+
+
+def test_font_senza_attributi_resta_in_svg():
+    """Senza color/face/size «<font>» resta un elemento svg: «</svg>» chiude e X è visibile
+    (B-470-1). Il ripiego non legge gli attributi: lì la pila diventa incerta."""
+    pagina = "<p>Ciao</p><svg><font><script></svg>X"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "X" in t.split("Ciao", 1)[1], t
+    assert "X" not in web._testo_senza_parser(pagina)
+
+
+def test_chiusura_fermata_da_un_elemento_html_rende_incerta():
+    """Una chiusura fermata da un elemento HTML diverso, con il tag più sotto, rende la pila
+    incerta (R-470-1)."""
+    c = web._Contesto({})
+    for tag in ("svg", "foreignobject", "div", "b"):
+        c.apri(tag, True)
+    assert c.chiudi("div") == (True, []) and c.incerta
+
+
+def test_pila_incerta_lascia_traccia_nel_log(caplog):
+    """Quando la pila diventa incerta lo si scrive nella scatola nera (R-470-2)."""
+    pagina = "<p>Ciao</p><div><svg></div>resto"
+    with caplog.at_level("WARNING", logger="gas.web"):
+        web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})
+    assert any("incerti" in m for m in caplog.messages), caplog.messages
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="gas.web"):
+        web._testo_senza_parser(pagina)
+    assert any("incerti nel ripiego" in m for m in caplog.messages), caplog.messages
+
+
+def test_chiusura_mai_aperta_in_svg_non_nasconde_il_resto():
+    """Una chiusura di un tag mai aperto nella pagina, dentro svg, per il browser è ignorata:
+    la pila non diventa incerta e il testo dopo «</svg>» resta (V-1 bot #242)."""
+    pagina = "<p>a</p><svg>SEGRETO</script>SEGRETO_2</svg>VIS"
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "VIS" in t and "SEGRETO" not in t, t
+    assert "VIS" in web._testo_senza_parser(pagina)
+
+
+def test_pila_profonda_resta_lineare():
+    """Tante aperture dentro svg e tante chiusure di tag assenti: tempo lineare, niente
+    scansioni della pila a ogni chiusura (V-3 ve #246)."""
+    n = 20000
+    for pagina in ("<svg>" + "<g>" * n + "</q>" * n + "</svg>VIS",
+                   "<svg><foreignObject><div><svg>" + "<g>" * n + "</q>" * n,
+                   "<svg><foreignObject>" + "<b>" * n + "</q>" * n):
+        inizio = time.monotonic()
+        web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})
+        web._testo_senza_parser(pagina)
+        assert time.monotonic() - inizio < 5, pagina[:40]
+
+
 def test_chiusura_html_attraverso_elementi_svg():
     """Senza punti di integrazione in mezzo, una chiusura HTML chiude anche gli elementi svg
     sopra, come nei browser: VIS resta visibile (controprova di B-467-2)."""
@@ -1174,8 +1272,10 @@ def test_chiusura_html_attraverso_elementi_svg():
 
 
 @pytest.mark.parametrize("pagina, visibili", [
-    # un tag HTML fa uscire da svg (V-2 ve #243): il titolo dopo è un titolo vero
-    ("<p>PRIMA</p><svg><p><title/></svg>SEGRETO</title>VIS", ("PRIMA", "VIS")),
+    # un tag HTML fa uscire da svg (V-2 ve #243): il titolo dopo è un titolo vero; svg resta
+    # contato fino a «</svg>» (verso sicuro, V-5 ve #246), quindi qui VIS resta nascosto
+    ("<p>PRIMA</p><svg><p><title/></svg>SEGRETO</title>VIS", ("PRIMA",)),
+    ("<p>PRIMA</p><svg><p><title/></svg>SEGRETO</title></svg>VIS", ("PRIMA", "VIS")),
     ("<p>PRIMA</p><svg><g><p>VIS</p></g></svg>VIS2", ("PRIMA", "VIS", "VIS2")),
     # dentro svg vero «<x/>» è vuoto: il resto della pagina non si perde (R-456-1)
     ("<p>PRIMA</p><svg><script/></svg>VIS", ("PRIMA", "VIS")),
