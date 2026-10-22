@@ -490,8 +490,32 @@ class _Estrattore(HTMLParser):
     def _modo_grezzo(self, tag: str) -> None:
         try:
             self.set_cdata_mode(tag, escapable=tag in ("title", "textarea"))
-        except TypeError:  # html.parser senza le patch recenti: niente «escapable»
+        except TypeError:
+            # html.parser senza le patch recenti: niente «escapable», quindi in «<title/>» e
+            # «<textarea/>» i riferimenti restano letterali («&amp;»). Solo resa, nessuna
+            # fuga (V-1 bot #244, dichiarato).
             self.set_cdata_mode(tag)
+
+    def set_cdata_mode(self, elem: str, **kwargs) -> None:
+        # In XHTML (XML) script e style non sono testo grezzo: dentro ci sono elementi e un
+        # «<script>» annidato si conta per nome, così il primo «</script>» non chiude tutto
+        # (R-ve244-2). Commenti e CDATA li ha già tolti _commenti_e_cdata_xml.
+        if self._xhtml:
+            return
+        super().set_cdata_mode(elem, **kwargs)
+
+    def parse_html_declaration(self, i: int) -> int:
+        # In HTML, fuori da svg e math, «<![CDATA[» è un commento fasullo che finisce al primo
+        # «>», come nei browser; html.parser lo leggeva fino a «]]>» e quello che c'era dentro
+        # arrivava al modello come testo (R-ve244-3). Dentro svg/math resta un CDATA vero.
+        estraneo = any(self._aperti.get(n, 0) for n in _AUTOCHIUDIBILI)
+        if not self._xhtml and not estraneo and self.rawdata.startswith("<![CDATA[", i):
+            j = self.rawdata.find(">", i + 2)
+            if j < 0:
+                return -1
+            self.handle_comment(self.rawdata[i + 2:j])
+            return j + 1
+        return super().parse_html_declaration(i)
 
     def handle_endtag(self, tag: str) -> None:
         # Una chiusura scala solo un'apertura con lo stesso nome: in «<svg>X</script>Y» per i
@@ -604,8 +628,14 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
         if nome == "!--":
             fine = _fine_commento(basso, m.end(), prossimi)
         elif nome == "![cdata[":
-            f = basso.find("]]>", m.end())
-            fine = -1 if f == -1 else f + 3
+            # Come _Estrattore.parse_html_declaration: fuori da svg/math è un commento
+            # fasullo fino al primo «>» (R-ve244-3).
+            if any(aperti.get(n, 0) for n in _AUTOCHIUDIBILI) or xhtml:
+                f = basso.find("]]>", m.end())
+                fine = -1 if f == -1 else f + 3
+            else:
+                f = basso.find(">", m.end())
+                fine = -1 if f == -1 else f + 1
         elif nome in ("!", "?", "/"):
             f = basso.find(">", m.end())
             fine = -1 if f == -1 else f + 1
@@ -626,6 +656,12 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
                             vuoto = xhtml or (estraneo and nome not in _TAG_NASCOSTI) or nome == "plaintext"
                             if not (vuoto or (nome == "title" and not titolo)):
                                 fine = _chiusura(basso, nome, fine)
+                        elif xhtml:
+                            # In XHTML non sono testo grezzo: i nascosti (e il titolo) si contano
+                            # per nome come gli altri, gli altri grezzi sono tag normali (R-ve244-2).
+                            if nome in _TAG_NASCOSTI or nome == "title":
+                                aperti[nome] = aperti.get(nome, 0) + 1
+                                salta += 1
                         elif nome == "plaintext":
                             fine = -1
                         else:
