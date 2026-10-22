@@ -968,6 +968,167 @@ def test_grezzi_autochiusi_con_html_parser_vecchio(monkeypatch):
     assert "SEGRETO" not in t and "VIS" in t, t
 
 
+def _dichiarazione_vecchia(self, i):
+    # parse_html_declaration degli html.parser senza le patch del 2025 (gh-135661).
+    rawdata = self.rawdata
+    if rawdata[i:i + 4] == "<!--":
+        return self.parse_comment(i)
+    if rawdata[i:i + 3] == "<![":
+        return self.parse_marked_section(i)
+    if rawdata[i:i + 9].lower() == "<!doctype":
+        j = rawdata.find(">", i + 9)
+        if j == -1:
+            return -1
+        self.handle_decl(rawdata[i + 2:j])
+        return j + 1
+    return self.parse_bogus_comment(i)
+
+
+@pytest.mark.parametrize("vecchio", [False, True])
+@pytest.mark.parametrize("pagina", [
+    "<p>PRIMA</p><![cdata[a><script>]]>SEGRETO</script>VIS",
+    "<p>PRIMA</p><![CData[a><script>]]>SEGRETO</script>VIS",
+    "<p>PRIMA</p><![CDATA[a><script>]]>SEGRETO</script>VIS",
+    "<p>PRIMA</p><![temp[a><script>]]>SEGRETO</script>VIS",
+    "<p>PRIMA</p><![if a><script>]>SEGRETO</script>VIS",
+    "<p>PRIMA</p><svg><![cdata[a></svg>VIS",                    # dentro svg solo «CDATA» maiuscolo
+])
+def test_sezioni_marcate_su_ogni_html_parser(pagina, vecchio, monkeypatch):
+    """Ogni «<![» fuori da svg/math è un commento fasullo fino al primo «>», anche sugli
+    html.parser senza le patch del 2025, che lo leggevano fino a «]]>» (V-1 bot #245)."""
+    if vecchio:
+        monkeypatch.setattr(web.HTMLParser, "parse_html_declaration", _dichiarazione_vecchia)
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "PRIMA" in t and "VIS" in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
+
+
+@pytest.mark.parametrize("vecchio", [False, True])
+@pytest.mark.parametrize("pagina", [
+    "<p>PRIMA</p><![CDATA[ SEGRETO",                            # senza fine: commento fino in fondo
+    "<p>PRIMA</p><svg><![CDATA[ </svg>SEGRETO",
+])
+def test_sezioni_marcate_senza_fine(pagina, vecchio, monkeypatch):
+    if vecchio:
+        monkeypatch.setattr(web.HTMLParser, "parse_html_declaration", _dichiarazione_vecchia)
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "PRIMA" in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and "PRIMA" in r, r
+
+
+def test_sezione_senza_fine_arriva_in_fondo():
+    """Il ramo «senza fine» dell'override consuma tutta la pagina (R-464-2): il fine dati di
+    goahead non lo raggiunge mai, quindi va provato direttamente."""
+    for rawdata, aperto in (("<p>A</p><![x SEGRETO", ""), ("<svg><![CDATA[ SEGRETO", "svg")):
+        e = web._Estrattore()
+        if aperto:
+            e._aperti[aperto] = 1
+        e.rawdata = rawdata
+        assert e.parse_html_declaration(rawdata.index("<![")) == len(rawdata)
+
+
+@pytest.mark.parametrize("vecchio", [False, True])
+@pytest.mark.parametrize("pagina", [
+    "<p>PRIMA</p><!--<script>SEGRETO",
+    "<p>PRIMA</p><!x SEGRETO",
+    "<p>PRIMA</p></x SEGRETO",
+    '<p>PRIMA</p><a b="SEGRETO',
+    "<p>PRIMA</p><!DOCTYPE SEGRETO",
+    "<p>PRIMA</p><?x SEGRETO",
+    "<p>PRIMA</p><aSEGRETO",
+    "<p>PRIMA</p></ SEGRETO",
+    "<p>PRIMA</p></1SEGRETO",
+])
+def test_costrutto_aperto_a_fine_pagina(pagina, vecchio, monkeypatch):
+    """Un costrutto rimasto aperto a fine pagina non è testo, nemmeno sugli html.parser senza
+    le patch del 2025, che a close() lo davano come testo (R-464-1)."""
+    if vecchio:
+        def close_vecchio(self):
+            self.handle_data(self.rawdata)
+            self.rawdata = ""
+        monkeypatch.setattr(web.HTMLParser, "close", close_vecchio)
+    e = web._Estrattore()
+    e.feed(pagina)
+    e.close()
+    t = "".join(e.pezzi)
+    assert "SEGRETO" not in t and "PRIMA" in t, t
+
+
+def test_parser_aggiornato_rilevato():
+    """Gli html.parser della CI e del venv hanno le patch del 2025: si usa il parser."""
+    assert web._PARSER_AGGIORNATO
+
+
+@pytest.mark.parametrize("pagina", [
+    "<p>PRIMA</p></x a='>SEGRETO",
+    "<p>PRIMA</p><template><title></template></template>SEGRETO",
+    "<p>PRIMA</p><![cdata[a><script>]]>SEGRETO</script>",
+])
+def test_parser_vecchio_usa_il_ripiego(pagina, monkeypatch):
+    """Su un html.parser senza le patch del 2025 si usa il ripiego, che non dipende dal
+    tokenizzatore vecchio (R-465-1)."""
+    monkeypatch.setattr(web, "_PARSER_AGGIORNATO", False)
+
+    def vietato(self, dati):
+        raise AssertionError("parser vecchio usato")
+
+    monkeypatch.setattr(web._Estrattore, "feed", vietato)
+    r = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})
+    assert "SEGRETO" not in r["testo"] and "PRIMA" in r["testo"], r
+
+
+def test_minore_a_fine_pagina_resta_testo():
+    """«<» e «</» da soli a fine pagina sono testo anche per i browser."""
+    for pagina in ("<p>A</p>x <", "<p>A</p>x </"):
+        e = web._Estrattore()
+        e.feed(pagina)
+        e.close()
+        assert "".join(e.pezzi).endswith(pagina.split("</p>")[1]), e.pezzi
+
+
+@pytest.mark.parametrize("pagina", [
+    "<p>PRIMA</p><![CDATA[a><script>]]>SEGRETO</script>VIS",
+    "<p>PRIMA</p><![CDATA[a><style>]]>SEGRETO</style>VIS",
+    "<p>PRIMA</p><svg><![CDATA[a>b</svg>SEGRETO]]></svg>VIS",   # dentro svg è un CDATA vero
+])
+def test_cdata_in_html_come_i_browser(pagina):
+    """In HTML, fuori da svg/math, «<![CDATA[» è un commento fasullo fino al primo «>»: un
+    «<script>» scritto dopo apre davvero lo script (R-ve244-3); dentro svg/math è un CDATA
+    vero fino a «]]>». Nel parser e nel ripiego."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "PRIMA" in t and "VIS" in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
+
+
+@pytest.mark.parametrize("pagina", [
+    "<p>PRIMA</p><script><script></script>SEGRETO</script>VIS",
+    "<p>PRIMA</p><style><style></style>SEGRETO</style>VIS",
+    "<p>PRIMA</p><noscript><noscript></noscript>SEGRETO</noscript>VIS",
+])
+def test_xhtml_grezzi_annidati(pagina):
+    """In XHTML script e style non sono testo grezzo: un «<script>» annidato si conta per nome
+    e il primo «</script>» non chiude tutto (R-ve244-2). Nel parser e nel ripiego."""
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                         "corpo": pagina.encode(), "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "PRIMA" in t and "VIS" in t, t
+    r = web._testo_senza_parser(pagina, xhtml=True)
+    assert "SEGRETO" not in r and "PRIMA" in r and "VIS" in r, r
+
+
+def test_xhtml_titolo_con_tag():
+    """In XHTML il titolo non è testo grezzo: i tag dentro non finiscono nel titolo come testo."""
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                         "corpo": b"<title>T<b>U</b></title><p>VIS</p>", "troncato": False})["testo"]
+    assert "Titolo: T U" in t and "<b>" not in t and "VIS" in t, t
+
+
 def test_xhtml_commenti_e_cdata():
     """In XHTML commenti e CDATA seguono l'XML anche dentro script e style: «</script>» lì
     dentro non chiude lo script (V-2 bot #243); il CDATA fuori da uno script è testo."""
@@ -1070,7 +1231,7 @@ def test_title_autochiuso_dentro_svg_resta_vuoto():
     "<svg a=x/>SEGRETO</svg>VIS",                               # la «/» è del valore: non autochiuso
     "<noscript/>SEGRETO</noscript>VIS",                         # «/» ignorata fuori da svg e math
     '<script>SEGRETO</script a=">">VIS',                        # chiusura con virgolette (V-1 bot #239, 2° giro)
-    "a<![CDATA[ > SEGRETO ]]>VIS",                              # commenti fasulli (R-442-2)
+    "a<![CDATA[ SEGRETO >VIS",                                  # commenti fasulli (R-442-2, R-ve244-3)
     '<?x a="><script>">SEGRETO</script>VIS',                    # finiscono al primo «>», virgolette o no
     '<!x a="><script>">SEGRETO</script>VIS',
     '</ a="><script>">SEGRETO</script>VIS',

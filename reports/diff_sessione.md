@@ -1,10 +1,9 @@
-# DIFF SESSIONE — 2026-10-22 (chat Mani, fetta 7)
+# DIFF SESSIONE — 2026-10-22 (chat Mani, fetta 8)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/web/leggi.py` — grezzi autochiusi in testo grezzo (`_GREZZI_AUTOCHIUSI`, `_modo_grezzo`), esenzione dentro svg/math solo per i non nascosti, ripiego allineato; `_commenti_e_cdata_xml` per XHTML; noembed e noframes fra i nascosti; in XHTML commento o CDATA dentro un tag porta via il resto.
-- `tests/test_unit_web_leggi.py` — sonde R-453-1, R-454-1, template, XHTML (commenti, CDATA, linearità, ripiego), html.parser vecchio noembed/noframes (192 test).
-- `.claude/agents/memoria_revisore.md` — righe #453-#456, #461, #462 (chat Mani), più quelle della chat Motore portate dal merge.
-- Dal merge di main (PR #241, chat Motore, non di questa sessione): `gas.py`, `modules/notte/`, `modules/telegram/bot.py`, test kernel e notte, `scripts/notte/catalogo_esempio.yaml`, `reports/roadmap.md`, `reports/da_mergiare.md`.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 7».
+- `modules/web/leggi.py` — `_Estrattore.parse_html_declaration` (CDATA in HTML come commento fasullo fuori da svg/math), `_Estrattore.set_cdata_mode` (niente testo grezzo in XHTML), ripiego allineato, commento sul limite dei parser vecchi; secondo giro: ogni `<![` gestito dall'override senza super() (V-1 bot #245), `_Estrattore.close()` che scarta un costrutto aperto a fine pagina (R-464-1), `_COSTRUTTO_APERTO`, `_PARSER_AGGIORNATO` (html.parser vecchio → ripiego, R-465-1).
+- `tests/test_unit_web_leggi.py` — CDATA in HTML, XHTML con grezzi annidati e titolo con tag; secondo giro: sezioni marcate su ogni html.parser (anche vecchio simulato), costrutti aperti a fine pagina, parser vecchio → ripiego (239 test).
+- `.claude/agents/memoria_revisore.md` — righe #463, #464, #465, #466 (chat Mani).
+- `reports/stato_progetto.md` — blocchi «Mani — fetta 8» e «fetta 8, secondo giro».
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
