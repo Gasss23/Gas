@@ -15,9 +15,10 @@ Ramo `feat/mani-web-fetta7` da main dopo il merge di #243. Area della chat Mani:
 - **V-1 bot #243 (`<title/>` in template)**: `FATTA` — resta nascosto: il testo grezzo tiene aperto il template.
 - **V-2 bot #243 (XHTML, commenti e CDATA dentro script/style)**: `FATTA` — `_commenti_e_cdata_xml` prima del parser, solo per `application/xhtml+xml`; lineare (test in sottoprocesso).
 - **V-1 verifica esterna #243 bis (test)**: `FATTA` — propagazione del modo XHTML al ripiego dentro `_componi`.
-- **R-454-2, R-453-2**: `DEFERITA — BASSE preesistenti, registrate in stato_progetto`.
-- **Test**: web suite 174 → 190 (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Fuzz differenziale 0 fughe (HTML, XHTML); fuzz con oracolo html5lib del revisore: 0 casi in cui il nuovo codice mostra più di HEAD un testo che i browser nascondono. Mutazioni in copie isolate: tutte prese.
-- **Review**: #453 (chat Mani) APPROVATO CON RISERVE (R-453-1 MEDIA, R-453-2 BASSA) → #454 BOCCIATO (R-454-1 MEDIA, regressione mia) → #455 APPROVATO CON RISERVE (R-454-2 BASSA preesistente).
+- **V-1 bot #244 (noembed/noframes)**: `FATTA` — fra i nascosti nel parser e nel ripiego: `<noembed/>` (regressione di questa PR) e `<noembed>X</noembed>` (preesistente) non portano più al modello testo che i browser non mostrano. **V-2 bot #244** (COSMETICA): docstring del test.
+- **R-454-2, R-453-2, R-456-1, R-456-2**: `DEFERITA — BASSE/COSMETICHE, registrate in stato_progetto`.
+- **Test**: web suite 174 → 192 (Python 3.13 e 3.11, anche con rete e DNS veri bloccati). Fuzz differenziale 0 fughe (HTML, XHTML); fuzz con oracolo html5lib del revisore: 0 casi in cui il nuovo codice mostra più di HEAD un testo che i browser nascondono. Mutazioni in copie isolate: tutte prese.
+- **Review**: #453 (chat Mani) APPROVATO CON RISERVE (R-453-1 MEDIA, R-453-2 BASSA) → #454 BOCCIATO (R-454-1 MEDIA, regressione mia) → #455 APPROVATO CON RISERVE (R-454-2 BASSA preesistente) → #456 APPROVATO CON RISERVE (R-456-1 BASSA verso sicuro, R-456-2 COSMETICA).
 
 ## Anomalie
 

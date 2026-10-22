@@ -22,21 +22,22 @@
 - **V-2 bot #243 (XHTML: commenti e CDATA)**: `FATTA`
 - **V-1 ve #243 bis (test propagazione XHTML al ripiego)**: `FATTA`
 - **V-3 bot #243 (conteggi dell'handoff), V-3/V-4/V-5 ve #243 bis (dossier della fetta 6)**: `SALTATA — riguardano il dossier della fetta 6, superato da questo`
-- **R-454-2, R-453-2**: `DEFERITA — BASSE preesistenti, registrate`
+- **V-1 bot #244 (noembed/noframes fra i nascosti), V-2 bot #244 (docstring)**: `FATTA`
+- **R-454-2, R-453-2, R-456-1, R-456-2**: `DEFERITA — BASSE/COSMETICHE, registrate`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- modules/web/leggi.py               |  72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ .claude/agents/memoria_revisore.md |   9 +++++++++
+ modules/web/leggi.py               |  74 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
  reports/diff_sessione.md           |  10 +++++-----
- reports/handoff.md                 | 334 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 392 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/stato_progetto.md          |   2 ++
- reports/ultimo_report.md           |  29 +++++++++++++----------------
- tests/test_unit_web_leggi.py       | 133 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
- 7 files changed, 382 insertions(+), 205 deletions(-)
+ reports/ultimo_report.md           |  30 +++++++++++++---------------
+ tests/test_unit_web_leggi.py       | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ 7 files changed, 450 insertions(+), 203 deletions(-)
 ```
 
 ---
@@ -44,6 +45,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6f9bfe7 fix(web): noembed e noframes fra i nascosti (V-1 bot #244)
+85b2ac2 chore(revisore): memoria review #456 — APPROVATO CON RISERVE
+51f7986 docs(fine-task): report, stato e handoff — chat Mani fetta 7 (#244)
 54706c2 fix(web): fetta 7 chat Mani — grezzi autochiusi in testo grezzo, XHTML commenti/CDATA, title in template (R6)
 ec14e89 chore(revisore): memoria review #455 — APPROVATO CON RISERVE
 a75a310 chore(revisore): memoria review #454 — BOCCIATO
@@ -56,7 +60,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Tre verdetti, incollati integralmente: #453, #454 (BOCCIATO), #455 (chat Mani), sul diff del commit `54706c2` (le riserve e il blocco sono stati chiusi nello stesso diff prima del commit; memoria in `7f28b4c`, `a75a310`, `ec14e89`, fatti dal revisore).
+Quattro verdetti, incollati integralmente: #453, #454 (BOCCIATO), #455 (chat Mani) sul diff del commit `54706c2` (le riserve e il blocco sono stati chiusi nello stesso diff prima del commit; memoria in `7f28b4c`, `a75a310`, `ec14e89`); #456 (chat Mani) sul commit `6f9bfe7` (memoria in `85b2ac2`).
 
 ### Review #453 (chat Mani)
 
@@ -244,20 +248,71 @@ File rilevanti:
 
 ---
 
+### Review #456 (chat Mani)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #456 (chat Mani), 2026-10-22. Riguarda la PR #244, fetta 7 di Mani, ramo feat/mani-web-fetta7. Ho rivisto il diff staged sopra l'head 51f7986: modules/web/leggi.py +2 e tests/test_unit_web_leggi.py +5/-2. Prima della review ho letto CLAUDE.md (sez. 5), reports/stato_progetto.md (voce fetta 7) e .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- modules/web/leggi.py:88 — aggiunge «noembed» e «noframes» a `_TAG_NASCOSTI`. Questo li mette anche in `_Estrattore._SALTA`, in `_TITOLO_VUOTO_IN` e nell'esenzione svg/math. Rischio esaminato: un'interazione con i contatori (`_aperti`/`_salta`) e con il testo grezzo aperto da `<noembed/>`. Ora `handle_starttag` conta l'apertura e `</noembed>` la scala, quindi niente squilibri. Su 3.13.16 e 3.11.17 html.parser ha già noembed/noframes in `CDATA_CONTENT_ELEMENTS`, quindi il contenuto è grezzo come nei browser. Esito: ok.
+- modules/web/leggi.py:125 — `_CONTATI_RIPIEGO = _TAG_NASCOSTI - _GREZZI_RIPIEGO` resta invariato, perché noembed/noframes erano già in `_GREZZI_RIPIEGO`. Rischio esaminato: il ripiego potrebbe contarli due volte, come contenitore e come grezzo. Non succede. Esito: ok.
+- modules/web/leggi.py:477 (parser) e modules/web/leggi.py:627 (ripiego) — l'esenzione «dentro svg/math l'autochiusura vale» ora esclude anche noembed/noframes. Rischio esaminato: una regressione nei punti di integrazione HTML, la classe di R-454-1. Con l'oracolo html5lib 1.1, confrontato con una copia di HEAD rigenerata e controllata con diff, la modifica chiude tre fughe che c'erano già a HEAD:
+  - `<svg><foreignObject><noembed/></svg>SEGRETO</noembed>VIS`
+  - `<math><mi><noframes/></math>SEGRETO</noframes>VIS`
+  - `<template><noembed/></template>SEGRETO</noembed>VIS`
+
+  Prima SEGRETO arrivava al modello sia nel parser sia nel ripiego; ora non arriva più. Esito: ok, con la riserva R-456-1.
+- tests/test_unit_web_leggi.py:908 e tests/test_unit_web_leggi.py:909 — i due casi nuovi del parametrize controllano sia `_componi` (parser) sia `_testo_senza_parser` (ripiego). Rischio esaminato: test che non mordono. La mutazione «senza noembed» in `_TAG_NASCOSTI`, provata su una copia, fa fallire 2 test. Esito: ok.
+- tests/test_unit_web_leggi.py:914 — la docstring dichiara che il caso noscript nasconde più dei browser (V-2 bot #244). Esito: ok.
+
+**Verifiche fatte**
+- 192 passed su 3.13.16 e su 3.11.17 (venv nello scratchpad).
+- Oracolo html5lib su 11 sonde, tra cui:
+  - `<noembed><title/></noembed>VIS`: ora il parser non mostra più `<title/>` come testo.
+  - `<noembed><!--</noembed>-->VIS`: coerente con i browser.
+  - Nessun caso dove la versione nuova mostra qualcosa che HEAD nascondeva.
+- Nota di processo: il fuzz454 citato nella richiesta NON ha noembed/noframes fra gli atomi (r454/fuzz454.py, lista `nomi`), quindi il suo «0 su 30000» non esercitava questa modifica. L'ho rifatto aggiungendo noembed e noframes, più un controllo assoluto sui casi che li contengono:
+  - seme 4560, 30k casi su 3.13: 0 fughe nel ripiego, 0 casi «nuovo>HEAD», 0 casi in cui la versione nuova mostra testo che HEAD nascondeva;
+  - seme 4561, 10k casi su 3.11: stesso esito.
+
+**Riserve (da tracciare in reports/stato_progetto.md)**
+- R-456-1 (chat Mani), BASSA, perdita nel verso sicuro: `<svg><noembed/></svg>VIS` ora nasconde tutto il resto della pagina fino a un `</noembed>`, nel parser e nel ripiego. Per i browser, dentro svg `<noembed/>` è un elemento estraneo vuoto e VIS si vede; HEAD lo mostrava. È la stessa classe, già accettata, di `<svg><script/></svg>VIS`. Non è una fuga: nella pagina reale perdi del contenuto, non lo esponi.
+- R-456-2 (chat Mani), COSMETICA: il commento di modules/web/leggi.py:130 (righe 130-132, sopra `_TITOLO_VUOTO_IN`) elenca «script, style, iframe e noscript» ma non noembed/noframes, che ora fanno parte dell'insieme.
+- Restano aperte, come prima: R-454-2, R-453-2, R-450-1, R-447-1(b), V-2 ve #242/#243.
+
+**Cosa NON ho verificato**
+- Il comportamento di html.parser vecchi senza le patch recenti, dove noembed/noframes non sono in `CDATA_CONTENT_ELEMENTS`. Non ho un interprete così nell'ambiente. Ragionando sul codice, lì il contenuto si legge come tag ma resta dentro il contatore `_salta`, quindi l'errore va nel verso di nascondere di più. È un ragionamento, non una prova.
+- Il comportamento nei browser reali con gli script attivi (noscript grezzo): l'oracolo html5lib non ha il flag scripting.
+
+**Wall of Shame**: niente. Il diff non tocca la history né `_get_window`, non simula tool, non tocca provider né il cap delle 10 iterazioni.
+
+**Memoria**: ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga «#456 (chat Mani) — 2026-10-22 — APPROVATO CON RISERVE — …» e una lezione nuova: prima di citare un fuzz riusato come prova, controllare che i suoi atomi contengano i tag toccati dal diff. È committata con scripts/commit_memoria_revisore.sh (commit 85b2ac2). Il diff staged del motore resta intatto nell'index.
+
+File utili nello scratchpad:
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r456/fuzz456.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r456/oracolo.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/r456/head/modules/web/leggi.py (copia di HEAD)
+
+---
+
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 174 → 190 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «190 passed in 22.46s» su Python 3.13; «190 passed in 23.00s» su 3.11 (venv); «190 passed in 21.88s» con rete e DNS veri bloccati via sitecustomize).
+- Web suite: 174 → 192 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «192 passed in 21.57s» su Python 3.13; «192 passed in 21.97s» su 3.11 (venv); «192 passed in 21.31s» con rete e DNS veri bloccati via sitecustomize). Primo giro (`54706c2`) 174 → 190, secondo (`6f9bfe7`) 190 → 192.
 - Fuzz differenziale ripiego contro parser: 0 fughe su 200k pagine HTML (3.13), 100k (3.11, escluse `<!-->`), 100k XHTML (3.13). Fuzz con oracolo html5lib (`fuzz454.py` del revisore): «fughe ripiego 0, nuovo>HEAD 326 di cui nascosti per html5lib 0 su 30000».
 - Mutazioni in copie isolate, tutte prese: senza `_modo_grezzo`, senza ripiego TypeError, esenzione svg/math per tutti o per nessuno (parser e ripiego), ripiego che ignora i grezzi autochiusi, contati del ripiego con esenzione, `_componi` senza XML, CDATA senza escape, commenti tenuti, cache disattivata (quadratico), ripiego senza xhtml, commento/CDATA senza fine tenuto.
+- Secondo giro: fuzz HTML 0 fughe (200k 3.13, 100k 3.11); fuzz454 con oracolo html5lib contro HEAD 51f7986 «nuovo>HEAD 0 di cui nascosti 0 su 30000» (gli atomi non contenevano noembed: il revisore l'ha rifatto con noembed/noframes, 0/0 su 30k + 10k); mutazioni senza noembed / senza noframes prese.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-`gh` non autenticato nella sessione cloud. Mappatura commit→run:
-- `7f28b4c`, `a75a310`, `ec14e89`, `54706c2`: pushati insieme prima di aprire la PR #244; run di push sulla testa `54706c2` non letta (handoff-check atteso rosso: handoff non ancora aggiornato).
+`gh` non autenticato nella sessione cloud: esiti letti dai check della PR #244 via MCP GitHub. Mappatura commit→run:
+- `7f28b4c`, `a75a310`, `ec14e89`, `54706c2`: pushati insieme prima di aprire la PR; run di push sulla testa `54706c2` non letta (handoff-check atteso rosso: handoff non ancora aggiornato).
+- `51f7986` (fine-task del primo giro): run 39772940360 success (unit-suite «190 passed» della web suite su 3.11.17, letto dal bot), handoff-check success; verifica-bot success.
+- `85b2ac2`, `6f9bfe7`: nessuna run su questi SHA da soli (pushati col commit di fine-task che contiene questo file).
 - Commit di fine-task con questo handoff: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-454-2 (chat Mani)** BASSA preesistente: doppio escape negli script (`<script><!--<script></script>X`); **R-453-2 (chat Mani)** BASSA preesistente: PI e DOCTYPE interno in XHTML.
+- Di questa fetta: **R-456-1 (chat Mani)** BASSA verso sicuro: `<svg><noembed/></svg>VIS` nasconde il resto della pagina; **R-456-2 (chat Mani)** COSMETICA commento di `_TITOLO_VUOTO_IN`; **R-454-2 (chat Mani)** BASSA preesistente: doppio escape negli script (`<script><!--<script></script>X`); **R-453-2 (chat Mani)** BASSA preesistente: PI e DOCTYPE interno in XHTML.
 - Restano: R-450-1 e V-2 ve #243, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…7».
