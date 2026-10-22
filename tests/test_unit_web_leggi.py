@@ -1247,6 +1247,15 @@ def test_chiusura_fermata_da_un_elemento_html_rende_incerta():
         c.apri(tag, True)
     c.chiudi("div")
     assert c.incerta
+    # annotation-xml è speciale solo in MathML (V-2 bot #250)
+    c = web._Contesto({})
+    c.apri("svg", True)
+    c.apri("annotation-xml", True)
+    assert not c._speciali
+    c = web._Contesto({})
+    c.apri("math", True)
+    c.apri("annotation-xml", True, html_dentro=False)
+    assert c._speciali == [1]
     # ma non oltre un confine dello scope
     c = web._Contesto({})
     for tag in ("svg", "foreignobject", "div", "table", "td"):
@@ -1313,17 +1322,39 @@ def test_html_valido_in_svg_e_math_non_perde_testo(pagina, visibili):
     '<p>A</p></div a = "x>SEGRETO',
     '<p>A</p><br a = "x/>SEGRETO',
     '<p>A</p><div a = "x" b = "y>SEGRETO',
-    # una chiusura di blocco non toglie gli elementi di formattazione che il browser ricrea (B-476-1)
-    "<p>A</p><svg><foreignObject><div><b>x</div>y</svg>SEGRETO",
-    "<p>A</p><svg><foreignObject><ul><li><a href=x>x</ul>y</foreignObject><script></svg>SEGRETO</script>VIS",
-    "<p>A</p><math><mi><div><i>x</div>y</math>SEGRETO",
-    "<p>A</p><svg><desc><section><font>x</section>y</svg>SEGRETO",
 ])
 def test_tag_con_virgolette_aperte_come_il_browser(pagina):
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
                                          "troncato": False})["testo"]
     assert "SEGRETO" not in t and "A" in t, t
     assert "SEGRETO" not in web._testo_senza_parser(pagina)
+
+
+@pytest.mark.parametrize("pagina", [
+    "<p>A</p><svg><foreignObject><div><b>x</div>y</svg>SEGRETO",
+    "<p>A</p><svg><foreignObject><ul><li><a href=x>x</ul>y</foreignObject><script></svg>SEGRETO</script>VIS",
+    "<p>A</p><math><mi><div><i>x</div>y</math>SEGRETO",
+    "<p>A</p><svg><desc><section><font>x</section>y</svg>SEGRETO",
+])
+def test_chiusura_di_blocco_non_toglie_i_formattanti(pagina):
+    """Una chiusura di blocco non toglie gli elementi di formattazione che il browser ricrea
+    (B-476-1): la pila resta incerta e SEGRETO non esce. Lo stesso esito c'era anche prima
+    della regola delle chiusure in scope; la regressione la pinna il test diretto su _Contesto
+    (V-2 ve #250)."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "A" in t, t
+    assert "SEGRETO" not in web._testo_senza_parser(pagina)
+
+
+def test_tag_letto_diversamente_lascia_traccia_nel_log(caplog):
+    """Il resto nascosto per un tag letto diversamente dal browser si scrive nel log con la
+    pagina (V-3 bot #250)."""
+    pagina = '<p>A</p><div a = "x>SEGRETO'
+    with caplog.at_level("WARNING", logger="gas.web"):
+        web._componi("http://x.test/pagina", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                               "troncato": False})
+    assert any("letto diversamente" in m and "x.test/pagina" in m for m in caplog.messages), caplog.messages
 
 
 def test_tag_con_spazi_e_virgolette_chiuse_resta_visibile():

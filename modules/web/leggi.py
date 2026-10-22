@@ -209,7 +209,7 @@ class _Contesto:
         self._html: list[int] = []                   # indici degli elementi HTML
         self._punti: list[int] = []                  # indici dei punti di integrazione
         # Indici degli elementi svg/math «speciali» per le chiusure HTML: i punti e ogni
-        # annotation-xml, anche senza encoding HTML (V-1 bot #248).
+        # annotation-xml di MathML, anche senza encoding HTML (V-1 bot #248, V-2 bot #250).
         self._speciali: list[int] = []
         self._confini: list[int] = []                # indici degli elementi HTML di confine
         self._formattanti: list[int] = []            # indici degli elementi di formattazione
@@ -239,7 +239,7 @@ class _Contesto:
                 self._formattanti.append(k)
         elif punto or self._punto(nome, spazio):
             self._punti.append(k)
-        if spazio != "html" and (k in self._punti[-1:] or nome == "annotation-xml"):
+        if spazio != "html" and (k in self._punti[-1:] or (spazio == "math" and nome == "annotation-xml")):
             self._speciali.append(k)
 
     def _togli_da(self, k: int) -> list[str]:
@@ -871,7 +871,6 @@ class _Estrattore(HTMLParser):
         fine = _FINE_TAG.match(basso, _RESTO_NOME.match(basso, salto).end())
         if fine is None or fine.end() != len(basso):
             self._taglia = True
-            logger.warning("leggi_pagina: tag letto diversamente dal browser, resto della pagina nascosto")
 
     def parse_starttag(self, i: int) -> int:
         j = super().parse_starttag(i)
@@ -1157,6 +1156,10 @@ def _componi(url_finale: str, pagina: dict) -> dict:
                 raise ValueError("html.parser senza le patch del 2025")
             estrattore.feed(grezzo)
             estrattore.close()
+            if estrattore._taglia:
+                # Un tag letto diversamente dal browser: il resto è nascosto (R-ve248-3, V-3 bot #250).
+                logger.warning("leggi_pagina: tag letto diversamente dal browser, resto della pagina nascosto su %r",
+                               url_finale[:200])
             if estrattore._contesto.incerta:
                 # Il resto della pagina è stato nascosto: lo si dice nella scatola nera (R-470-2).
                 logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
