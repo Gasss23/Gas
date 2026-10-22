@@ -16,8 +16,9 @@ Ramo `feat/mani-web-fetta10` da main 17c0cfc (dopo il merge di #246). Area della
 - **V-2 ve #246 bis (MEDIA preesistente)**: `FATTA` — `<script/>` & co. nel contenuto estraneo sono vuoti davvero.
 - **V-4 ve #246 bis (MEDIA, test)**: `FATTA`.
 - **R-ve246b-5 (BASSA, perdita di testo)**: `DEFERITA — registrata`.
-- **Test**: web suite 291 → 303 (Python 3.13 e 3.11). Enumerazione esaustiva con oracolo lexbor (37 atomi, parser e ripiego, nuovo contro main): 4 atomi, 1,87 M pagine, 0 regressioni e 0 fughe; 5 atomi: in corso alla scrittura dell'handoff.
-- **Review**: #473 BOCCIATO, #474 APPROVATO (chat Mani).
+- **Test**: web suite 291 → 304 (Python 3.13 e 3.11). Enumerazione esaustiva con oracolo lexbor (37 atomi, parser e ripiego, nuovo contro main): 4 atomi, 1,87 M pagine, 0 regressioni e 0 fughe; 5 atomi: 69.343.957 pagine, 0 regressioni e 0 fughe.
+- **Review**: #473 BOCCIATO, #474 APPROVATO, #475 APPROVATO (test del ripiego, V-1 ve #248) (chat Mani).
+- **Verifica esterna #248**: APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/248#issuecomment-6349304044)): V-1 BASSA test del ripiego `FATTA`; V-2 COSMETICA conteggio 9→11 `FATTA`; V-3 BASSA preesistente registrata come R-ve248-3.
 
 ## Anomalie
 

@@ -19,20 +19,22 @@
 - **V-2 ve #246 bis (MEDIA preesistente)**: `FATTA`
 - **V-4 ve #246 bis (MEDIA, test)**: `FATTA`
 - **R-ve246b-5 (BASSA)**: `DEFERITA — registrata`
+- **V-1 ve #248 (BASSA, test del ripiego)**: `FATTA`
+- **R-ve248-3 (BASSA preesistente)**: `DEFERITA — registrata`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +
+ .claude/agents/memoria_revisore.md |   4 +
  modules/web/leggi.py               |  63 ++++--
  reports/diff_sessione.md           |  10 +-
- reports/handoff.md                 | 381 ++++++++-----------------------------
+ reports/handoff.md                 | 384 ++++++++-----------------------------
  reports/stato_progetto.md          |   2 +
  reports/ultimo_report.md           |  28 ++-
- tests/test_unit_web_leggi.py       |  39 ++++
- 7 files changed, 187 insertions(+), 339 deletions(-)
+ tests/test_unit_web_leggi.py       |  47 +++++
+ 7 files changed, 200 insertions(+), 338 deletions(-)
 ```
 
 ---
@@ -40,6 +42,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6e87492 test(web): ripiego con annotation-xml rende la pila incerta — chat Mani fetta 10 (V-1 ve #248)
+73a3211 chore(revisore): memoria review #475 — APPROVATO
+5a0786f docs(fine-task): handoff con il diff completo — chat Mani fetta 10
 7602d3a docs(fine-task): report, stato e handoff — chat Mani fetta 10
 1016ef2 fix(web): fetta 10 chat Mani — annotation-xml solo con encoding HTML, autochiusi vuoti nel contenuto estraneo (ve #246 bis)
 8d08649 chore(revisore): memoria review #474 — APPROVATO
@@ -52,7 +57,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Due verdetti, incollati integralmente: #473 (BOCCIATO) e #474 (APPROVATO) (chat Mani), sul diff staged della fetta 10 committato in `1016ef2` dopo la #474 (memorie `92dd988`, `8d08649`, fatte dal revisore). Le righe citate nella #473 si riferiscono al diff di allora.
+Tre verdetti, incollati integralmente: #473 (BOCCIATO) e #474 (APPROVATO) (chat Mani) sul diff della fetta 10 committato in `1016ef2`; #475 (APPROVATO) sul test aggiunto dopo la verifica esterna #248, committato in `6e87492` (memorie `92dd988`, `8d08649`, `73a3211`, fatte dal revisore). Le righe citate nella #473 si riferiscono al diff di allora.
 
 ### Review #473 (chat Mani) — verdetto integrale
 
@@ -143,20 +148,49 @@ Review #474 (chat Mani): ri-review della #473 sulla fetta 10. B-473-1 è chiusa 
 
 **Memoria:** riga #474 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (8d08649). Nessuna lezione nuova.
 
+### Review #475 (chat Mani) — verdetto integrale (diff del commit `6e87492`)
+
+## VERDETTO: APPROVATO
+
+Review #475 (chat Mani). È un delta di soli test sopra HEAD 5a0786f, che chiude V-1 BASSA della verifica esterna #248. Il test nuovo è giusto e fallisce se si toglie la protezione che deve sorvegliare. Worktree e index coincidono (controllato con cmp); dopo il commit della memoria lo staging è intatto.
+
+**Elementi esaminati**
+
+- **tests/test_unit_web_leggi.py:1276** — nuovo test `test_ripiego_annotation_xml_rende_la_pila_incerta`. Prova che nel ripiego un `annotation-xml` dentro math rende la pila incerta.
+  - Rischio esaminato: un test che non distingue la protezione.
+  - Mutazione in copia su modules/web/leggi.py:312 (annotation-xml messo in pila come «non punto» invece di rendere la pila incerta): 1 FAIL, come hai dichiarato.
+  - Nella pagina, `<svg>` dentro `<math>` è un elemento MathML, perché nel contenuto estraneo l'elemento prende lo spazio del nodo corrente. Quindi l'`annotation-xml` che segue è davvero di math e il test esercita il ramo giusto.
+  - Esito: **ok**.
+- **tests/test_unit_web_leggi.py:1281** — controlla che MK4 non esca dal ripiego.
+  - Rischio esaminato: che l'attesa sia sbagliata.
+  - lexbor mette MK4 dentro math, quindi nascosto: l'attesa è corretta.
+  - Anche il parser attuale dà solo «A», benché il test controlli solo il ripiego.
+  - Esito: **ok**. Il controllo `"A" in r` è debole ma non dà falsi positivi: nessun MKn contiene «A».
+
+**Riesecuzioni:** suite web 304 passed su 3.13.16.
+
+**Rischi esclusi**
+- Non ho rieseguito la suite su 3.11: il delta è un test solo, puro Python, senza dipendenze di versione.
+- Il codice di modules/web/leggi.py non cambia in questo delta; l'ho visto alla #473 e alla #474.
+- Browser vero: non provato, ho usato solo lexbor come riferimento.
+
+**Memoria:** riga #475 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola (73a3211). Nessuna lezione nuova.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 291 → 303 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «303 passed» su Python 3.13.16 e 3.11.17, venv).
-- Test nuovi contro main: 9 FAILED (le sonde V-1/V-2); il test di tempo passa anche su main (che ha già O(1)) e fallisce con una scansione lineare (misura del verificatore: 16 s).
-- Enumerazione esaustiva con oracolo lexbor (script della verifica esterna, 37 atomi senza attributi, parser e ripiego, nuovo contro main 17c0cfc): 4 atomi, 1.874.161 pagine, 0 regressioni e 0 fughe; 5 atomi: in corso alla scrittura dell'handoff.
+- Web suite: 291 → 304 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «304 passed» su Python 3.13.16; 303 su 3.11.17 prima del test del ripiego).
+- Test nuovi contro main: 11 FAILED (le sonde V-1/V-2 e la controprova; il «9» della prima versione era sbagliato, V-2 ve #248); il test di tempo passa anche su main (che ha già O(1)) e fallisce con una scansione lineare (misura del verificatore: 16 s).
+- Enumerazione esaustiva con oracolo lexbor (script della verifica esterna, 37 atomi senza attributi, parser e ripiego, nuovo contro main 17c0cfc): 4 atomi, 1.874.161 pagine, 0 regressioni e 0 fughe; 5 atomi: 69.343.957 pagine, 0 regressioni e 0 fughe.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-- `1016ef2` e il commit di fine-task con questo handoff: pushati all'apertura della PR; run non ancora disponibili alla scrittura dell'handoff.
+- `5a0786f` (head all'apertura della PR #248): unit-suite success, handoff-check success, verifica-bot in corso alla scrittura. Verifica esterna #248 APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/248#issuecomment-6349304044)).
+- `6e87492` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-ve246b-5** BASSA (pila incerta su HTML valido con fine tag omessi in desc/foreignObject: si perde testo).
+- Di questa fetta: **R-ve246b-5** BASSA (pila incerta su HTML valido con fine tag omessi in desc/foreignObject: si perde il resto della pagina, frequenza non misurata); **R-ve248-3** BASSA preesistente (`<div a = "x>SEGRETO`: con spazi attorno a «=» e virgolette mai chiuse html.parser chiude il tag, i browser scartano il resto).
 - Restano: **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-469-1, R-466-1, R-466-2, R-ve245-2…5, R-ve245b-4, R-454-2, R-453-2, R-456-2, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…10».
