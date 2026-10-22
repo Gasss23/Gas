@@ -223,9 +223,9 @@ Review #469 (chat Mani): ri-review della #468 sul diff staged della fetta 9. Le 
 ## §6 STATO CI
 
 Mappatura commit→run:
-- `6ed47c3` e il commit di fine-task con questo handoff: pushati insieme all'apertura della PR; run non ancora disponibili alla scrittura dell'handoff.
+- `f2c4be1` (head della PR #246 all'apertura): verifica-bot **failure** per V-1 MEDIA = nessuna run di ci.yml (né unit-suite né handoff-check). Dalle 15:15 UTC GitHub non elabora i push di questa sessione: ref aggiornati, ma nessuna run `push` e head delle PR ferme (#245 su `649f441`, #246 su `f2c4be1`); `c4954c2` (riserva V-2 del bot) e questo commit non hanno fatto partire niente alla scrittura. Blocco spiegato nel [commento](https://github.com/Gasss23/Gas/pull/246#issuecomment-6346702736).
 
 ## §7 RISERVE APERTE
 
-- Di questa fetta: **R-467-2 (chat Mani)** BASSA (`<font>` con attributi in svg); **R-469-1 (chat Mani)** BASSA preesistente (`</template>` attraverso un punto di integrazione: si perde testo, verso sicuro); tabelle (`<object><table></object>X`) BASSA preesistente.
+- Di questa fetta: **R-vb246-2** BASSA (`</p>`/`</br>` nel contenuto estraneo non fanno uscire: si nasconde di più); **R-467-2 (chat Mani)** BASSA (`<font>` con attributi in svg); **R-469-1 (chat Mani)** BASSA preesistente (`</template>` attraverso un punto di integrazione: si perde testo, verso sicuro); tabelle (`<object><table></object>X`) BASSA preesistente.
 - Restano: R-466-1, R-466-2, R-ve245-2…5, R-ve245b-4, R-454-2, R-453-2, R-456-2, R-447-1(b), V-2 ve #242, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-5, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…9».
