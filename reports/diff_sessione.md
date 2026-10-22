@@ -1,8 +1,7 @@
-# Diff della sessione (chat Motore, 2026-10-22 sera, PR #249)
+# Diff della sessione (chat Motore, 2026-10-22 notte, PR #251)
 
-- `reports/roadmap.md`: decisione dell'operatore sulle porte del lettore web (solo 80/443), da mettere nel codice.
-- `reports/stato_progetto.md`: ramo #141 cancellato, mail spente, decisione porte, #241 e #247 mergiate.
-- `reports/da_mergiare.md`: tolte le voci fatte (#141, porte) e la coda delle PR mergiate.
+- `reports/coda_notte.md`: nuovo — regole del turno di notte (R3) e coda dei lavori in ordine.
+- `reports/roadmap.md`: coda creata, protezioni R4 fatte.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
 La storia completa sta in git.

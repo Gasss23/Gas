@@ -1,14 +1,15 @@
-# Ultimo report — 2026-10-22 sera (chat Motore)
+# Ultimo report — 2026-10-22 notte (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #249 (solo documenti: decisione porte, coda dei merge svuotata).
-2. Prova sul Mac dopo #247: aggiornare a main, riavviare il bot, `clear`, poi «scrivi il file prova_firma.py con dentro print(1)» → deve arrivare subito la firma.
+1. Merge della PR #251 (coda dei lavori notturni, solo documenti), meglio prima delle 00:41.
 
 ## Esito
-- PR #247 mergiata su richiesta dell'operatore («mergia 247»): FATTA — CI verde, bot APPROVATA (riserve cosmetiche: conteggio kernel 1024 in CI contro 1022 in locale, dati vecchi nell'handoff).
-- Decisione porte del lettore web «solo 80/443»: FATTA la registrazione in roadmap e stato — DEFERITA la parte nel codice (chat Mani).
-- Ramo della PR #141 cancellato e mail di GitHub spente: FATTA (operatore).
-- Coda dei merge (`da_mergiare.md`) svuotata: FATTA.
+- Prova sul Mac dopo #247: FATTA — pro e contro scritti da Gas, firma al primo messaggio, Rifiuta non esegue.
+- Protezioni R4 (issue spente, interazioni limitate): FATTA dall'operatore (issue spente verificate via API; limiti alle interazioni non verificabili con il token dell'agente).
+- Coda dei lavori notturni `reports/coda_notte.md`: FATTA.
+- Turno di notte dello sviluppo (R3): FATTA la programmazione — attività «Turno di notte Gas», ogni notte alle 00:41 ora italiana, sessione nuova, notifiche spente, senza connettori; promemoria per il report alle 8:30.
+- Backup iCloud: DEFERITA — lo facciamo a breve con l'operatore.
 
 ## Anomalie
-- Nella serata GitHub ha ritardato gli eventi di push: la CI è partita dopo il bot, che ha bocciato due SHA per «CI assente». Risolto ripushando.
+- `clear` su Telegram non esiste (solo terminale): in coda come voce 3.
+- Il turno di notte non ha gli strumenti GitHub di sessione: usa `gh api` (da verificare alla prima notte).
