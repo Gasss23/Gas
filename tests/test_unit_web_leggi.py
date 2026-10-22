@@ -1331,6 +1331,19 @@ def test_tag_con_virgolette_aperte_come_il_browser(pagina):
 
 
 @pytest.mark.parametrize("pagina", [
+    "<p>A</p><svg><foreignObject><div><noscript></div></foreignObject></svg>SEGRETO",
+    "<p>A</p><svg><desc><section><noscript></section></desc></svg>SEGRETO</noscript>",
+])
+def test_chiusura_di_blocco_non_toglie_un_noscript(pagina):
+    """Con gli script attivi noscript è testo grezzo: «</div>» è suo contenuto e il resto
+    resta nascosto. La chiusura di blocco non lo toglie (V-1 bot #250 bis)."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and "A" in t, t
+    assert "SEGRETO" not in web._testo_senza_parser(pagina)
+
+
+@pytest.mark.parametrize("pagina", [
     "<p>A</p><svg><foreignObject><div><b>x</div>y</svg>SEGRETO",
     "<p>A</p><svg><foreignObject><ul><li><a href=x>x</ul>y</foreignObject><script></svg>SEGRETO</script>VIS",
     "<p>A</p><math><mi><div><i>x</div>y</math>SEGRETO",

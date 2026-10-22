@@ -213,6 +213,7 @@ class _Contesto:
         self._speciali: list[int] = []
         self._confini: list[int] = []                # indici degli elementi HTML di confine
         self._formattanti: list[int] = []            # indici degli elementi di formattazione
+        self._nascosti_html: list[int] = []          # indici dei nascosti HTML (noscript, canvas…)
         self._visti: set[str] = set()                # nomi già aperti nella pagina (sovrastima)
 
     @staticmethod
@@ -237,6 +238,8 @@ class _Contesto:
                 self._confini.append(k)
             if nome in _FORMATTANTI:
                 self._formattanti.append(k)
+            if nome in _TAG_NASCOSTI:
+                self._nascosti_html.append(k)
         elif punto or self._punto(nome, spazio):
             self._punti.append(k)
         if spazio != "html" and (k in self._punti[-1:] or (spazio == "math" and nome == "annotation-xml")):
@@ -259,6 +262,8 @@ class _Contesto:
             self._confini.pop()
         while self._formattanti and self._formattanti[-1] >= k:
             self._formattanti.pop()
+        while self._nascosti_html and self._nascosti_html[-1] >= k:
+            self._nascosti_html.pop()
         return tolti
 
     def _in_cima(self, nome: str) -> int:
@@ -404,9 +409,12 @@ class _Contesto:
             if (tag in _CHIUSURE_IN_SCOPE and self.pila[in_cima][1] == "html"
                     and not (self._speciali and self._speciali[-1] > in_cima)
                     and not (self._confini and self._confini[-1] > in_cima)
-                    and not (self._formattanti and self._formattanti[-1] > in_cima)):
+                    and not (self._formattanti and self._formattanti[-1] > in_cima)
+                    and not (self._nascosti_html and self._nascosti_html[-1] > in_cima)):
                 # «</ul>» con un «<li>» aperto sopra: il tag è in scope, il browser chiude lui e
-                # tutto quello che sta sopra (R-ve246b-5).
+                # tutto quello che sta sopra (R-ve246b-5). Non se sopra c'è un nascosto HTML
+                # aperto: con gli script attivi noscript è testo grezzo e «</div>» è suo
+                # contenuto, html.parser invece lo legge come tag (V-1 bot #250 bis).
                 return False, usciti + [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
             # Elemento HTML diverso con il tag più sotto: il browser a volte chiude (scope,
             # chiusure implicite), a volte no.
