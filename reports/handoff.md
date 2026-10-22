@@ -15,7 +15,7 @@
 - **Prova sul Mac dopo #247**: `FATTA`.
 - **Coda dei lavori notturni**: `FATTA`.
 - **Turno di notte (attività programmata trig_01Qmdw9id2aVtMXhXTnu6wDe, 00:41 ogni notte)**: `FATTA`.
-- **Riserve del bot su #251 (prima notte solo documentale, R4 aggiornata, gh nel cloud, titolo sezione B, voci R3 della roadmap)**: `FATTA`. 2° giro: «mai merge di notte» prevale su CLAUDE.md §10; R3 al passato. 3° giro: testo dell'attività programmata copiato nella coda. 4° giro: merge di main (#250 chat Mani, review #482 APPROVATO, V-1 MEDIA del bot chiusa) e coda non copiata né modificata dal turno se non è su main (V-2). 5° giro: comandi REST al posto di `gh pr …` nel cloud, regola unica sul numero di voci per notte (prompt dell'attività aggiornato e copia allineata).
+- **Riserve del bot su #251 (prima notte solo documentale, R4 aggiornata, gh nel cloud, titolo sezione B, voci R3 della roadmap)**: `FATTA`. 2° giro: «mai merge di notte» prevale su CLAUDE.md §10; R3 al passato. 3° giro: testo dell'attività programmata copiato nella coda. 4° giro: merge di main (#250 chat Mani, review #482 APPROVATO, V-1 MEDIA del bot chiusa) e coda non copiata né modificata dal turno se non è su main (V-2). 5° giro: comandi REST al posto di `gh pr …` nel cloud, regola unica sul numero di voci per notte (prompt dell'attività aggiornato e copia allineata). 6° giro: prima notte riconosciuta da un segno oggettivo e data in ora italiana; sempre una sola PR.
 - **Backup iCloud**: `DEFERITA — con l'operatore`.
 
 ---
@@ -26,15 +26,17 @@
  .claude/agents/memoria_revisore.md |   1 +
  reports/coda_notte.md              |  51 +++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md           |  12 +++++-------
- reports/handoff.md                 | 289 +++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 291 +++++++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/roadmap.md                 |  12 ++++++------
  reports/ultimo_report.md           |  32 +++++++++++---------------------
- 6 files changed, 103 insertions(+), 294 deletions(-)
+ 6 files changed, 105 insertions(+), 294 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fe7819e docs(notte): prima notte riconosciuta senza dipendere dal fuso, sempre una PR (V-1/V-2 bot #251)
+e706540 docs(fine-task): handoff 5° giro #251 (#251)
 bafb366 docs(notte): gh REST nel cloud e regola unica sul numero di voci (V-1/V-2 bot #251)
 a152136 docs(fine-task): merge di main #250 e V-2 bot #251 (#251)
 5623152 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
