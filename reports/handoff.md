@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #251 (https://github.com/Gasss23/Gas/pull/251; numero e URL dall'esito reale di `gh api POST /pulls`): solo documenti.
+1. Merge della PR #251 (https://github.com/Gasss23/Gas/pull/251; numero e URL dall'esito reale di `gh api POST /pulls`): solo documenti. Il turno della prima notte, se parte prima del merge, legge la coda dal ramo della PR.
 
 ---
 
@@ -15,7 +15,7 @@
 - **Prova sul Mac dopo #247**: `FATTA`.
 - **Coda dei lavori notturni**: `FATTA`.
 - **Turno di notte (attività programmata trig_01Qmdw9id2aVtMXhXTnu6wDe, 00:41 ogni notte)**: `FATTA`.
-- **Riserve del bot su #251 (prima notte solo documentale, R4 aggiornata, gh nel cloud, titolo sezione B, voci R3 della roadmap)**: `FATTA`. 2° giro: «mai merge di notte» prevale su CLAUDE.md §10; R3 al passato. 3° giro: testo dell'attività programmata copiato nella coda.
+- **Riserve del bot su #251 (prima notte solo documentale, R4 aggiornata, gh nel cloud, titolo sezione B, voci R3 della roadmap)**: `FATTA`. 2° giro: «mai merge di notte» prevale su CLAUDE.md §10; R3 al passato. 3° giro: testo dell'attività programmata copiato nella coda. 4° giro: merge di main (#250 chat Mani, review #482 APPROVATO, V-1 MEDIA del bot chiusa) e coda non copiata né modificata dal turno se non è su main (V-2).
 - **Backup iCloud**: `DEFERITA — con l'operatore`.
 
 ---
@@ -23,17 +23,20 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/coda_notte.md    | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md |  7 +++----
- reports/handoff.md       | 40 ++++++++++++++++++++--------------------
- reports/roadmap.md       | 12 ++++++------
- reports/ultimo_report.md | 17 +++++++++--------
- 5 files changed, 89 insertions(+), 38 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ reports/coda_notte.md              |  51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  12 +++++-------
+ reports/handoff.md                 | 286 ++++++++++++++++++++++++++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                 |  12 ++++++------
+ reports/ultimo_report.md           |  32 +++++++++++---------------------
+ 6 files changed, 100 insertions(+), 294 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5623152 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+f22dad8 docs(fine-task): handoff 3° giro #251 (#251)
 d2cb4af docs(notte): testo dell'attività programmata nel repo (V-1 bot #251)
 c1fe686 docs(fine-task): handoff 2° giro #251 (#251)
 d4956fd docs(notte): mai merge di notte, prevale su CLAUDE.md §10 (V-1/V-2 bot #251)
