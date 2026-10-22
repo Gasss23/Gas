@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa fetta: vale CLAUDE.md §10 (merge autonomo solo con APPROVATO pieno del bot), salvo richiesta esplicita dell'operatore.
+1. Merge della PR #250: l'operatore ha chiesto «mergia 250 quando il bot approva»; si mergia quando il bot approva sull'head finale con CI verde.
 2. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un costruttore HTML5 vero (es. lexbor): decide l'operatore.
 3. Sul Mac e sulla VPS, dalla cartella di Gas: `.venv/bin/python -c "import modules.web.leggi as w; print(w._PARSER_AGGIORNATO)"` deve dire True.
 4. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
@@ -25,14 +25,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +
- modules/web/leggi.py               |  87 ++++++++++++++--
- reports/diff_sessione.md           |  10 +-
- reports/handoff.md                 | 197 +------------------------------------
- reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  26 ++---
- tests/test_unit_web_leggi.py       |  64 +++++++++++-
- 7 files changed, 161 insertions(+), 228 deletions(-)
+ .claude/agents/memoria_revisore.md |  7 +++
+ modules/web/leggi.py               | 90 ++++++++++++++++++++++++++++++++----
+ reports/diff_sessione.md           | 13 +++---
+ reports/handoff.md                 | 62 +------------------------
+ reports/stato_progetto.md          |  2 +
+ reports/ultimo_report.md           | 28 +++++++----
+ tests/test_unit_web_leggi.py       | 95 +++++++++++++++++++++++++++++++++++++-
+ 7 files changed, 210 insertions(+), 87 deletions(-)
 ```
 
 ---
@@ -40,6 +40,12 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f0f86dc chore(revisore): memoria review #480 — APPROVATO
+6792d18 fix(web): fetta 11 chat Mani — annotation-xml speciale solo in MathML, warning con URL, test dei formattanti a sé (bot #250, ve #250)
+a52a3e1 chore(revisore): memoria review #480 — APPROVATO
+88400f6 chore(revisore): memoria review #479 — APPROVATO
+1be8be7 Merge origin/main (5cc85e5, PR #247 e #249) in feat/mani-web-fetta11
+e772a27 docs(fine-task): report, stato e handoff — chat Mani fetta 11
 a76a646 fix(web): fetta 11 chat Mani — tag con virgolette aperte, annotation-xml speciale, chiusure di blocco in scope (R6)
 f9eb918 chore(revisore): memoria review #477 — APPROVATO
 c472651 chore(revisore): memoria review #476 — BOCCIATO
@@ -51,7 +57,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Due verdetti, incollati integralmente: #476 (BOCCIATO) e #477 (APPROVATO) (chat Mani), sul diff della fetta 11 committato in `a76a646` dopo la #477 (memorie `c472651`, `f9eb918`, fatte dal revisore). Le righe citate nella #476 si riferiscono al diff di allora.
+Cinque verdetti, incollati integralmente (chat Mani): #476 (BOCCIATO) e #477 (APPROVATO) sul diff della fetta 11 committato in `a76a646`; #478 (APPROVATO, riemesso per il gate B) sul merge di main `1be8be7`; #479 e #480 (APPROVATO) sulle riserve del bot e della verifica esterna #250, committate in `6792d18` (memorie `c472651`, `f9eb918`, `88400f6`, `a52a3e1`; la riga #478 è nel commit di merge). Le righe citate nelle review intermedie si riferiscono al diff di allora.
 
 ### Review #476 (chat Mani) — verdetto integrale
 
@@ -142,17 +148,106 @@ Letture fatte in questa sessione: CLAUDE.md sez. 5, reports/stato_progetto.md (b
 
 Memoria aggiornata (riga #477, nessuna lezione nuova) e committata: f9eb918.
 
+### Review #478 (chat Mani) — verdetto integrale RIEMESSO per il gate B (merge `1be8be7`)
+
+## VERDETTO: APPROVATO
+
+Review #478 (chat Mani): merge di origin/main nel ramo feat/mani-web-fetta11. Questa è una riemissione per il gate B, non una review nuova: esito e prove sono quelli della #478 originale. Cambia solo la voce su gas.py, che ora è a parole perché dopo il merge gas.py non fa più parte del diff di sessione (origin/main...HEAD).
+
+Letture fatte: CLAUDE.md sez. 5, i blocchi Mani di reports/stato_progetto.md, la memoria del revisore.
+
+**Attenzione**
+- Il MERGE_HEAD reale era 5cc85e5 (PR #249), non 80fbe05. Contiene 80fbe05 (PR #247), e fra i due cambiano solo file in reports/.
+- A merge in corso lo script della memoria non committa: la riga del revisore andava messa in stage a mano prima del commit di merge.
+
+**Elementi esaminati**
+- `modules/web/leggi.py:407` — controllato che il merge non abbia cambiato il codice della fetta 11. Il blob nell'index coincideva con HEAD per leggi.py e per test_unit_web_leggi.py, e `git diff --cached HEAD -- modules` era vuoto. Esito: ok.
+- In gas.py, i tre punti cambiati (lo schema di write_file, la chiamata al guardiano di write_file con il diniego di firma, il diniego di riserva) e tests/test_unit_kernel.py: i blob coincidevano con MERGE_HEAD. È quindi il codice già approvato in #467/#468 (chat Motore) e mergiato con le PR, nessuna risoluzione manuale. Esito: ok.
+- `.claude/agents/memoria_revisore.md:785` — unione delle righe dei due rami. Confronto per righe: 0 righe perse sia da HEAD sia da MERGE_HEAD, nessun marcatore di conflitto. Le due righe #476 (chat Motore e chat Mani) convivono grazie al suffisso della chat. Esito: ok.
+- `reports/stato_progetto.md:606` — blocco della fetta 11, unito in automatico. Da main nessuna riga persa. Le 3 righe «perse» da HEAD (Ultimo aggiornamento, intestazione G-3, blocco Mani — fetta 1) erano identiche alla base 2d20ec0 e main le aveva aggiornate: è l'unione a tre vie corretta. Esito: ok.
+- handoff, ultimo_report e diff_sessione: blob uguali a HEAD (versione della fetta 11), come prevede lavoro_parallelo.md. Esito: ok.
+
+**Suite**
+- Kernel sul merge in stage: 1017 PASS, 1 FAIL. Il FAIL è T31g (GAS_VECTORS=1 costruisce il vector store).
+- Lo stesso FAIL c'è identico su una copia `git archive` di 5cc85e5: è ambientale, non nasce dal merge.
+- La suite web l'ho rilanciata solo per la #477: i file web non sono cambiati.
+
+**Rischi esplicitamente esclusi**
+- Contenuto dei report della chat Motore (da_mergiare, roadmap, setup_notte): non letto nel merito. Sono presi così come sono da main e sono fuori dal perimetro.
+- Causa di T31g: non indagata, presumibilmente una dipendenza o un'impostazione dell'ambiente. Va confermata in CI.
+- CI del merge: non verificata durante la review, perché il merge non era ancora committato.
+
+#### Testo originale della review #478
+
+Non incollato qui: citava tre righe di gas.py nella forma path:riga, e dopo il merge gas.py non è più nel diff di sessione, quindi il gate B lo respinge. Per il resto è identico al testo riemesso sopra (stesso esito, stesse prove, stesse due avvertenze); la riemissione aggiunge solo la frase iniziale sulla riemissione.
+
+### Review #479 (chat Mani) — verdetto integrale
+
+## VERDETTO: APPROVATO
+
+La review #479 (chat Mani: delta in stage sopra il merge 1be8be7, che chiude V-2 e V-3 del bot #250) è APPROVATA: entrambe le correzioni sono corrette e non trovo nessuna fuga.
+
+**Elementi del diff esaminati**
+
+- `modules/web/leggi.py:242` — annotation-xml entra in `_speciali` solo nello spazio math (V-2).
+  - Rischio esaminato: togliere lo «speciale» all'annotation-xml di svg potrebbe far attraversare una chiusura HTML che il browser ferma.
+  - Lo standard mette nella categoria speciale, e fra i confini dello scope, solo l'annotation-xml di MathML: quello di svg è un elemento qualunque.
+  - Nel ripiego, l'annotation-xml di math rende comunque la pila incerta.
+  - Prove: mutazione in copia isolata che rimette la condizione sul solo nome → 1 FAIL. Enumerazione esaustiva con oracolo lexbor, 5 atomi su 16 (annotation-xml, `</annotation-xml>`, div, `</div>`, b, `</svg>`, foreignObject, math, `</math>`, mi, script, `</script>`, `</p>`, p, span, desc), parser e ripiego, staged contro main. Due prefissi: `<div><svg>` e `<math><annotation-xml encoding=text/html><svg>`. Su 2.097.152 pagine: 0 fughe rispetto all'oracolo, 0 regressioni, 0 perdite nuove.
+  - Esito: ok. Sul caso del bot (`<div><svg><annotation-xml></div>VIS`) concordo: VIS si perde, ma nel verso sicuro, come prima.
+- `modules/web/leggi.py:1159` — il warning del tag letto diversamente dal browser si sposta in `_componi` e porta l'URL troncato a 200 caratteri (V-3).
+  - Rischio esaminato: perdere la traccia su qualche percorso, o duplicarla.
+  - `_componi` è l'unico chiamante di `_Estrattore` (leggi.py:1153). Il warning esce una volta per pagina.
+  - Se il parser solleva ValueError dopo aver impostato `_taglia`, il warning non esce. Va bene così: lavora il ripiego, che ha la sua regola.
+  - Mutazione in copia (`if False:`) → 1 FAIL.
+  - Esito: ok.
+- `tests/test_unit_web_leggi.py:1250` (svg + annotation-xml: `_speciali` vuoto; math + annotation-xml senza encoding: `[1]`) e `tests/test_unit_web_leggi.py:1350` (warning con l'URL nel log). Esito: ok, ciascuno distingue la propria mutazione.
+
+Suite: 319 passed su 3.13.16 e su 3.11.17.
+
+**Rischi esplicitamente esclusi**
+
+- Non ho provato l'annotation-xml di svg dentro foreignObject o desc annidati oltre il prefisso enumerato.
+- Le pagine reali non sono misurate.
+- Le versioni di Python senza le patch del 2025 non sono verificate: lì lavora solo il ripiego.
+
+**Da sapere**: durante la review `tests/test_unit_web_leggi.py` è stato riscritto (mtime 21:53:14). Per un istante `git status` l'ha mostrato come `MM`, ma senza nessuna differenza di contenuto, e un secondo dopo era di nuovo solo `M` (in stage). Se è stato toccato da te va bene; altrimenti controlla che nessun altro processo scriva nel worktree.
+
+Memoria: riga #479 aggiunta (nessuna lezione nuova) e committata, 88400f6, solo `.claude/agents/memoria_revisore.md`. Lo stage di modules/web/leggi.py e tests/test_unit_web_leggi.py resta intatto.
+
+### Review #480 (chat Mani) — verdetto integrale (diff del commit `6792d18`)
+
+## VERDETTO: APPROVATO
+
+La #479 non copre lo spostamento dei test: quando l'ho emessa il file non conteneva ancora il test nuovo. Ho quindi rivisto il diff staged completo attuale come review #480: è APPROVATO, con una sola nota cosmetica.
+
+**Elementi esaminati**
+- `modules/web/leggi.py:242` — annotation-xml è «speciale» solo nello spazio math (V-2 del bot #250). Rischio: una chiusura HTML che attraversa un annotation-xml di svg. Il codice è identico a quello già visto nella #479. Esito: ok.
+- `modules/web/leggi.py:1159` — il warning del tag letto diversamente, con l'URL, è in `_componi`. Codice invariato rispetto alla #479. Esito: ok.
+- `tests/test_unit_web_leggi.py:1339` — `test_chiusura_di_blocco_non_toglie_i_formattanti`, i 4 casi B-476-1 spostati dal test delle virgolette aperte (V-2 della verifica esterna #250). Rischio: un test che non distingue la regressione. Esito: ok, ma la docstring sottovaluta il test.
+  - Su main 2d20ec0 i 4 casi passano, come dice la docstring.
+  - In una copia isolata ho tolto la condizione `_formattanti` dalla regola in scope: falliscono tutti e 4, più il test diretto su `_Contesto` (5 FAIL).
+  - Quindi anche il test di pagina pinna la regressione, non solo il test diretto. Correggere la frase della docstring è facoltativo.
+- Il test delle virgolette aperte ora contiene solo i 6 casi R-ve248-3, quindi il nome corrisponde al contenuto. Risolve la nota cosmetica della #477.
+
+Suite: 319 passed su 3.13.16 e su 3.11.17.
+
+**Rischi esplicitamente esclusi:** non ho rilanciato le enumerazioni lexbor. Il codice è identico a quello della #479, già enumerato su 2,1 M pagine, e questo delta tocca solo i test.
+
+Memoria: riga #480 committata in a52a3e1 (nessuna lezione nuova). Lo stage di modules/web/leggi.py e tests/test_unit_web_leggi.py non l'ho toccato.
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 304 → 318 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «318 passed» su Python 3.13.16 e 3.11.17, venv).
+- Web suite: 304 → 319 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «319 passed» su Python 3.13.16 e 3.11.17, venv). Kernel dopo il merge di main: 1017 PASS, 1 FAIL (T31g, GAS_VECTORS) identico su main in questo ambiente: ambientale.
 - Oracolo lexbor, nuovo contro main 2d20ec0, parser e ripiego: enumerazione esaustiva a 4 atomi (39 atomi con ul/li/span/table/td, `<i a = "x>`, annotation-xml; 2.313.441 pagine), campione casuale 5–7 atomi (3 M pagine), enumerazioni del revisore a 5 atomi con prefissi svg+foreignObject, svg+desc, math+mi (3,9 M pagine): 0 fughe nuove, 0 perdite nuove; perdite tolte: 8 nel campione.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-- `a76a646` e il commit di fine-task con questo handoff: pushati all'apertura della PR; run non ancora disponibili alla scrittura dell'handoff.
+- `e772a27` (head all'apertura della PR #250): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 conflitto con main, V-2, V-3 BASSE/COSMETICHE); verifica esterna #250 APPROVATO CON RISERVE.
+- `1be8be7` (merge di main), `6792d18` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
