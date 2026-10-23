@@ -19,6 +19,7 @@
 - **Errori: limite in testo semplice, niente testo di Claude, argomenti non validi (V-2/V-3/V-4 bot #256)**: `FATTA`.
 - **Dicitura del tetto nella via B (V-3 ve #256)**: `FATTA`.
 - **Note del bot e della verifica esterna #258 (costo 0, conto rovinato, LC_*, R-496-1)**: `FATTA` (19213c0, review #497).
+- **V-1 MEDIA bot #258 (il modello poteva azzerare il proprio tetto)**: `FATTA` (75e7b7a, review #498). Correzione: nel verdetto #496 qui sotto l'elemento su gate.py:623 («scriverlo richiede la firma») era FALSO, come riconosciuto dal revisore nella #498 e riprodotto prima del fix.
 - **Catalogo notturno, opzione CLI, doctor, setup Mac**: `DEFERITA — prossime fette`.
 
 ---
@@ -26,24 +27,29 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |   6 ++++++
  .gitignore                         |   2 ++
- brains/claude_cli.py               | 158 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------
- gas.py                             |  91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  21 ++++++++++-----------
- reports/handoff.md                 | 243 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ brains/claude_cli.py               | 159 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------
+ gas.py                             |  92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/gate/gate.py               |   3 ++-
+ reports/diff_sessione.md           |  22 +++++++++++-----------
+ reports/handoff.md                 | 263 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/r2_regole_abbonamento.md   |   2 ++
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  22 ++++++++++++----------
+ reports/ultimo_report.md           |  23 +++++++++++++----------
  tests/test_unit_claude_cli.py      | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
- tests/test_unit_kernel.py          |  54 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 12 files changed, 473 insertions(+), 249 deletions(-)
+ tests/test_unit_gate.py            |   1 +
+ tests/test_unit_kernel.py          |  56 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 14 files changed, 513 insertions(+), 241 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+75e7b7a fix(gate): il conto del tetto del forte è di livello 3 (V-1 MEDIA bot #258)
+ded9b2c chore(revisore): memoria review #498 — APPROVATO CON RISERVE
+c5e90a4 docs(fine-task): handoff dopo le correzioni #258 (review #497)
 19213c0 fix(r2): note del bot e della verifica esterna #258 sul tetto del forte
 85f74d7 chore(revisore): memoria review #497 — APPROVATO CON RISERVE
 a6d9261 docs(fine-task): report R2 via B fetta 2, riserve R-496
@@ -110,12 +116,44 @@ Rischio escluso: non ho verificato il comportamento reale della CLI `claude` (se
 
 Memoria: riga #497 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da `scripts/commit_memoria_revisore.sh` (85f74d7).
 
+### Review #498 (commit 75e7b7a: conto del tetto al livello 3 del cancello, V-1 MEDIA bot #258)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #498 (chat Motore). Diff staged sulla PR #258 (R2 via B fetta 2, correzione di V-1 del bot). Fetta di sicurezza.
+
+Ho letto prima CLAUDE.md (sezione 5), reports/stato_progetto.md (R2 via B, riga 378) e .claude/agents/memoria_revisore.md (fino alla #497).
+
+Elementi esaminati:
+- modules/gate/gate.py:104 — aggiunge `.gas_claude_cli_uso` a `_DENY_PREFIXES`. Rischio: varianti del nome che sfuggono. Sonda: maiuscole, `x/../`, `./`, `.json.123.tmp`, punto o spazio finale, carattere invisibile (ZWSP), lettera a larghezza piena, tutte DENY. — ok
+- modules/gate/gate.py:301 — lo aggiunge al livello 3. Di conseguenza entra anche in `_LETTURA_NEGATA` (modules/gate/gate.py:323), che è un alias. Rischio: copertura parziale degli strumenti. read_file, elenca_cartella e cerca_testo lo escludono. run_command lo controlla per singolo argomento (modules/gate/gate.py:766) e per sottostringa del comando intero (`cat`, `cp a .gas_claude_cli_uso.json`: DENY). `cat ./.gas_claude*` passa, ma senza shell non c'è espansione: il comando non raggiunge il file. — ok
+- gas.py:1886 — aggiunge il nome a `_SAFE_PATH_DENY_PREFIXES`. Rischio: rompere la scrittura del kernel. Ho provato con un kernel vero in una cartella temporanea. `_registra_uso_claude_cli` (contesto gas.py:1643) scrive direttamente sul file, senza passare dal cancello, e porta il conto a 0.75. I write_file e read_file del modello vengono negati e il conto non cambia. Il doctor non legge questo file. — ok
+- Prova mutante «solo cancello»: ho tolto il nome dalla lista di gas.py e la scrittura viene ancora negata dal livello 3 («non si scrive mai»), e il file non viene creato. Le due protezioni funzionano anche separatamente. — ok
+- tests/test_unit_gate.py:465 e tests/test_unit_kernel.py:4406 — due nomi in più nei test (livello 3 e T68s). Ho rieseguito la suite del cancello: 819 passed. T68s guarda solo «Operazione negata» e non dice quale strato ha bloccato. Va bene, perché ogni strato è provato anche da solo. — ok
+- brains/claude_cli.py:254 — solo un commento (V-2 del bot): la stima sul tempo scaduto è MINIMA. — ok
+- Altre vie di scrittura: il modello ha un solo strumento che scrive file, write_file. Rubrica e memoria passano dal database con codice del kernel. `claude -p` gira con `--tools ""` in una cartella temporanea (brains/claude_cli.py:233). Non c'è una via per rinominare o cancellare file. — ok
+
+Riserve:
+- **R-498-1 COSMETICA** (c'era già prima): quando `_safe_path` nega un nome in denylist, il messaggio dice «il percorso … esce dalla root», cosa falsa. Vale anche per `.gas_tokens`.
+- **R-498-2 BASSA** (c'era già prima, fuori dal diff; risponde alla domanda «altri file di stato non protetti»): `gas_debug.log`, `reports/snapshots.log` e `telegram_giro.log` sono di livello 1, quindi il modello li può scrivere se il turno non è contaminato. Non sono tetti né conti che decidono qualcosa. Però la scatola nera e l'indice degli snapshot si possono falsificare (gli snapshot veri stanno in `.git`, che è protetto). Gli altri file di stato del kernel (history, lock della history, tokens, memory, knowledge, vectors, `.gas_notte`) sono già al livello 3.
+
+Rischi esclusi:
+- Non ho rieseguito la suite kernel completa (1035/0) né il pytest completo (2135): li prendo dal tuo messaggio. Ho rieseguito la suite del cancello e le sonde col kernel reale.
+- Non ho verificato filesystem che ignorano maiuscole/minuscole o Unicode NFD su macOS oltre a quello che copre `_forme`.
+- La corsa fra processi R-496-2 resta aperta e non è toccata da questo diff.
+
+Nota: la mia #496 aveva sbagliato. Il riferimento a modules/gate/gate.py:623 («file nascosto → firma») era falso, e tu lo hai riprodotto. Ho aggiunto una lezione in memoria: un nuovo file di stato va protetto nello stesso diff che lo crea, e va provato col kernel reale.
+
+Memoria: riga #498 più una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate con `scripts/commit_memoria_revisore.sh` (ded9b2c). Lo stage del diff è intatto (5 file).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python tests/test_unit_kernel.py`: 1029 → 1035 PASS (T99g-l nuovi; T99d rafforzato), 0 FAIL.
   `=== RIEPILOGO: 1035 PASS, 0 FAIL ===`
 - `pytest tests/test_unit_claude_cli.py`: 12 → 19 passed.
-- `pytest tests/` completo: `2133 passed, 1 skipped in 192.34s (0:03:12)`.
+- `pytest tests/test_unit_gate.py`: 817 → 819 passed (2 nomi nel livello 3; senza il fix 2 FAIL).
+- T68s: 2 nomi in più (senza il fix FAIL: il modello scriveva davvero il conto).
+- `pytest tests/` completo: `2135 passed, 1 skipped in 208.25s (0:03:28)`.
 - Prova vera dell'adattatore (`claude -p` con l'ambiente ridotto, in questo ambiente Linux): risposta `'ok'`, costo equivalente `0.0003846`.
 
 ## §6 STATO CI
@@ -123,17 +161,19 @@ Memoria: riga #497 e una lezione aggiunte in /home/user/Gas/.claude/agents/memor
 `gh run list -L 3` alla scrittura:
 
 ```
+completed	success	R2 via B fetta 2: codice per chiamata, ambiente permesso, tetto del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39997949885	3m29s	2026-10-23T17:47:23Z
+completed	success	docs(fine-task): handoff dopo le correzioni #258 (review #497)	CI	feat/merge-automatico-z1xjx2	push	39997947699	3m6s	2026-10-23T17:47:22Z
 completed	success	R2 via B fetta 2: codice per chiamata, ambiente permesso, tetto del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39996402478	3m46s	2026-10-23T17:36:04Z
-completed	skipped	R2 via B fetta 2: codice per chiamata, ambiente permesso, tetto del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39996390596	2s	2026-10-23T17:35:59Z
-completed	success	docs(fine-task): report R2 via B fetta 2, riserve R-496	CI	feat/merge-automatico-z1xjx2	push	39996388617	2m51s	2026-10-23T17:35:58Z
 ```
 
-Mappatura: f7f3c62+cf58065 pushati insieme (run sulla testa cf58065); a6d9261 (report): CI verde sul suo push (unit-suite, handoff-check, verifica-bot success). 85f74d7 (memoria) e 19213c0 (correzioni) e il commit di fine-task che li segue: run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
+Mappatura: f7f3c62+cf58065 (run sulla testa cf58065); a6d9261: CI verde; 85f74d7+19213c0+c5e90a4: run sulla testa c5e90a4 (unit-suite/handoff-check; verifica-bot failure = BOCCIATO V-1, corretto in 75e7b7a). ded9b2c, 75e7b7a e il commit di fine-task che li segue: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - ~~R-496-1~~ chiusa in 19213c0 (errori, formato sbagliato e tempo scaduto entrano nel tetto).
-- **R-497-1** (BASSA): alcuni rami d'errore non portano ancora il costo (uscita non JSON, chiamata/argomenti non validi su risposta pagata, \`usage\` non numerico).
+- **R-497-1** (BASSA): alcuni rami d'errore non portano ancora il costo (uscita non JSON, chiamata/argomenti non validi su risposta pagata, `usage` non numerico).
 - **R-497-2** (BASSA): una data futura nel conto ferma il forte fino a quel giorno (fail-closed).
+- **R-498-1** (COSMETICA, preesistente): il diniego di `_safe_path` su un nome vietato dice «esce dalla root».
+- **R-498-2** (BASSA, preesistente): `gas_debug.log`, `reports/snapshots.log`, `telegram_giro.log` sono scrivibili dal modello a finestra pulita.
 - **R-496-2** (BASSA): due processi in parallelo possono perdere un aggiornamento del conto (niente lock).
 - **R-496-3** (BASSA): login reale col portachiavi del Mac e con `CLAUDE_CODE_OAUTH_TOKEN` sulla VPS da provare con l'ambiente ridotto.

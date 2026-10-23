@@ -12,8 +12,9 @@
 - **Tetto giornaliero del forte**: `FATTA` (V-1 bot #256). `GAS_CLAUDE_CLI_TETTO_USD`, default 4,60 $ «come se fosse API» (`total_cost_usd` della CLI), controllato prima di ogni chiamata; superato → turno fermato dichiarato, mai ai gratuiti; conto illeggibile → forte fermo (fail-closed).
 - **Errori**: `FATTA`. Limite in testo semplice → QUOTA (V-2 bot), niente testo di Claude nel log (V-3 bot), argomenti non validi → errore (V-4 bot).
 - **Documenti**: `FATTA`. Dicitura del tetto nella via B corretta (V-3 verifica esterna #256): 4,60 $ è una misura indicativa, il limite del piano non è in dollari.
-- **Test**: kernel 1035 PASS 0 FAIL (T99d rafforzato, T99g-l nuovi); claude_cli 19 passed; pytest completo 2133 passed, 1 skipped. Prova vera dell'adattatore con l'ambiente ridotto in questo ambiente Linux: risposta «ok», costo equivalente 0,0004 $.
+- **Test**: kernel 1035 PASS 0 FAIL (T99d rafforzato, T99g-l nuovi); claude_cli 19 passed; cancello 819 passed; pytest completo 2135 passed, 1 skipped. Prova vera dell'adattatore con l'ambiente ridotto in questo ambiente Linux: risposta «ok», costo equivalente 0,0004 $.
 - **Note del bot e della verifica esterna #258**: `FATTA`. Costo 0 non più accettato, conto rovinato → forte fermo, variabili `LC_` per nome, errori e tempo scaduto nel tetto (review #497 APPROVATO CON RISERVE, R-497-1/2 BASSE).
+- **V-1 MEDIA bot #258**: `FATTA`. Il modello poteva azzerare il proprio tetto scrivendo il file del conto: ora è al livello 3 del cancello (review #498 APPROVATO CON RISERVE).
 - **Fette successive R2**: `DEFERITA` (campo `cervello: forte` nel catalogo notturno e opzione CLI, riga del doctor, setup del Mac).
 
 ## Anomalie
