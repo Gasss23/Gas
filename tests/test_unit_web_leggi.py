@@ -402,6 +402,39 @@ def test_codice_dei_marcatori_cambia_a_ogni_chiamata(rete):
 
 # ───────────────────────────── tempi ─────────────────────────────
 
+def test_rete_lascia_tempo_per_pulire_la_pagina(monkeypatch):
+    """La rete si ferma prima dei 15 s: restano fino a 3 s per pulire una pagina grande,
+    così il totale non li supera (R-ve235-5)."""
+    viste: list = []
+
+    def scarica(*argomenti: object) -> dict:
+        viste.append(argomenti[4])
+        return {"tipo": "text/plain", "charset": "utf-8", "corpo": b"x", "troncato": False}
+
+    monkeypatch.setattr(web, "_scarica", scarica)
+    inizio = time.monotonic()
+    assert web.leggi_pagina("http://sito.test/")["ok"] is True
+    assert viste and viste[0] <= inizio + web.TIMEOUT_TOTALE - web.RISERVA_COMPOSIZIONE + 0.5, viste
+    assert viste[0] >= inizio + web.TIMEOUT_TOTALE - web.RISERVA_COMPOSIZIONE - 0.5, viste
+
+
+def test_errore_nella_pulizia_non_e_un_tempo_superato(monkeypatch):
+    """Un errore di _componi dopo la scadenza della rete si chiama col suo nome (R-496-2)."""
+    monkeypatch.setattr(web, "TIMEOUT_TOTALE", 0.2)
+
+    def scarica(*argomenti: object) -> dict:
+        time.sleep(0.3)  # oltre la scadenza della rete
+        return {"tipo": "text/plain", "charset": "utf-8", "corpo": b"x", "troncato": False}
+
+    def componi(*argomenti: object) -> dict:
+        raise RuntimeError("rotto")
+
+    monkeypatch.setattr(web, "_scarica", scarica)
+    monkeypatch.setattr(web, "_componi", componi)
+    assert web.leggi_pagina("http://sito.test/") == {"ok": False,
+                                                       "motivo": "errore nella pulizia della pagina (RuntimeError)"}
+
+
 def test_server_lento_tempo_massimo(rete, monkeypatch):
     monkeypatch.setattr(web, "TIMEOUT_TOTALE", 1.0)
     inizio = time.monotonic()
@@ -926,6 +959,18 @@ def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     assert "SEGRETO" not in r and "VIS" in r, r
 
 
+@pytest.mark.parametrize("pagina", ["<p>PRIMA</p><script/>RESTO", "<p>PRIMA</p><iframe src=x />RESTO",
+                                    "<p>PRIMA</p><style/>RESTO"])
+def test_grezzo_autochiuso_senza_chiusura_nasconde_il_resto(pagina):
+    """Un grezzo autochiuso mai chiuso porta via il resto, come nei browser (lexbor dà solo
+    «PRIMA»): non è una perdita di Gas (R-447-1 parte b)."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "PRIMA" in t and "RESTO" not in t, t
+    r = web._testo_senza_parser(pagina)
+    assert "PRIMA" in r and "RESTO" not in r, r
+
+
 @solo_parser_aggiornato
 def test_grezzi_autochiusi_come_i_browser():
     """Testo grezzo anche per i grezzi visibili; dentro svg/math i non nascosti autochiusi sono
@@ -1237,10 +1282,14 @@ def test_parser_vecchio_lo_dice_una_volta_nel_log(monkeypatch, caplog):
     with caplog.at_level("WARNING", logger="gas.web"):
         # prima le letture in parallelo, sul lucchetto ancora libero (V-2 ve #255), poi in fila
         partenza = threading.Barrier(8)
+        errori: list = []
 
         def leggi() -> None:
-            partenza.wait()
-            web._componi("http://x.test/", pagina)
+            try:
+                partenza.wait()
+                web._componi("http://x.test/", pagina)
+            except Exception as e:  # noqa: BLE001 — un thread che si rompe deve far fallire il test
+                errori.append(e)
 
         letture = [threading.Thread(target=leggi) for _ in range(8)]
         for t in letture:
@@ -1249,6 +1298,7 @@ def test_parser_vecchio_lo_dice_una_volta_nel_log(monkeypatch, caplog):
             t.join()
         for _ in range(3):
             web._componi("http://x.test/", pagina)
+    assert not errori, errori  # V-2 bot #255 bis
     assert sum("senza le patch" in m for m in caplog.messages) == 1, caplog.messages
 
 
