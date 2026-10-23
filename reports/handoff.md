@@ -20,21 +20,22 @@
 - **R-456-2** (commento): `FATTA`
 - **R-ve245-5** (titolo XHTML annidato): `FATTA`
 - **Secondo giro, bot #255 su 2dd08b6 APPROVATO CON RISERVE**: V-1 BASSA (contatore del titolo anche in HTML) `FATTA`; V-2 COSMETICA (commento dei test) `FATTA`
+- **Verifica esterna #255 APPROVATO CON RISERVE**: V-1 BASSA (= V-1 bot) `FATTA`; V-2 BASSA (test dell'avviso in parallelo) `FATTA`; V-3 COSMETICA `FATTA`; V-4 COSMETICA voluto
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
-```
- .claude/agents/memoria_revisore.md |   3 +
- modules/web/leggi.py               |  26 +++----
- reports/diff_sessione.md           |  11 +--
- reports/handoff.md                 | 136 +++++++++++++++++++++++++++++++------
+``
+ .claude/agents/memoria_revisore.md |   4 +
+ modules/web/leggi.py               |  26 +++---
+ reports/diff_sessione.md           |  11 ++-
+ reports/handoff.md                 | 180 +++++++++++++++++++++++++++++++------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  26 +++++--
- tests/test_unit_web_leggi.py       |  38 ++++++++++-
- 7 files changed, 195 insertions(+), 47 deletions(-)
-```
+ reports/ultimo_report.md           |  27 ++++--
+ tests/test_unit_web_leggi.py       |  50 ++++++++++-
+ 7 files changed, 249 insertions(+), 51 deletions(-)
+``
 
 NB: preso dall'index con tutti i report in stage, dopo aver scritto questo handoff (V-3 ve #252); solo la riga di `reports/handoff.md` può differire di poche righe, perché lo stat è dentro il file stesso.
 
@@ -42,13 +43,16 @@ NB: preso dall'index con tutti i report in stage, dopo aver scritto questo hando
 
 ## §3 GIT LOG --ONELINE (sessione)
 
-```
+``
+95627a4 test(web): fetta 13 — avviso in parallelo davvero, sonde del titolo in svg/math (V-1/V-2 ve #255)
+4aea67b chore(revisore): memoria review #494 — APPROVATO
+2a0340f docs(reports): fetta 13 chat Mani, secondo giro — report, handoff, stato
 58fc102 fix(web): fetta 13 — titolo contato solo in XHTML (V-1/V-2 bot #255)
 ed769e1 chore(revisore): memoria review #493 — APPROVATO
 2dd08b6 docs(reports): fine fetta 13 chat Mani — report, handoff, stato
 60f64b8 feat(web): fetta 13 — riserve minori della #252, titolo XHTML annidato (R6)
 208a89c chore(revisore): memoria review #492 — APPROVATO
-```
+``
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
@@ -56,7 +60,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Due verdetti, incollati integralmente (chat Mani): #492 (APPROVATO) sul diff della fetta 13 committato in `60f64b8`; #493 (APPROVATO) sul secondo giro committato in `58fc102`.
+Tre verdetti, incollati integralmente (chat Mani): #492 (APPROVATO) sul diff della fetta 13 committato in `60f64b8`; #493 (APPROVATO) sul secondo giro committato in `58fc102`; #494 (APPROVATO) sui test della verifica esterna committati in `95627a4`.
 
 ### Review #492 (chat Mani) — verdetto integrale (fetta 13, diff committato poi in un solo commit)
 
@@ -135,18 +139,50 @@ File:
 - /home/user/Gas/modules/web/leggi.py
 - /home/user/Gas/tests/test_unit_web_leggi.py
 
+### Review #494 (chat Mani) — verdetto integrale (test per V-1 e V-2 della verifica esterna #255)
+
+## VERDETTO: APPROVATO
+
+Review #494 (chat Mani), sul delta in stage della PR #255 (head 2a0340f). Cambia solo il file di test, per la verifica esterna #255. Il numero #494 era libero: il più alto in memoria era #493.
+
+**Cosa ho esaminato**
+- `tests/test_unit_web_leggi.py:1239`: il test dell'avviso ora fa partire 8 letture insieme, sincronizzate con `threading.Barrier(8)` mentre il lucchetto è ancora libero, e poi fa le 3 letture in fila.
+  - Rischio esaminato: V-2, cioè che la parte in parallelo non provi niente; e in più che il test resti appeso o dia esiti a caso.
+  - Esito ok:
+    - in una copia isolata ho scritto un mutante non atomico (`locked()`, poi 20 ms di attesa, poi `acquire`): il test fallisce 3 volte su 3;
+    - sul codice vero passa 5 volte su 5;
+    - la Barrier non può bloccarsi, perché ogni thread chiama `wait()` prima di qualsiasi lavoro.
+- `tests/test_unit_web_leggi.py:1324`: le 2 sonde della verifica esterna, `<svg><title><title>x</title></svg>BODY` e `<math><title>a<title>b</title></math>BODY`, aggiunte come parametri insieme a quella del bot.
+  - Rischio esaminato: V-1 che può tornare senza che un test se ne accorga.
+  - Esito ok: tutte e 3 passano sul codice approvato nella #493. Il mutante «conta anche in HTML» dà 3 FAIL secondo la tua run3.py; io l'avevo già provato sul caso del bot nella #493.
+- Suite web: 383 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Nota cosmetica**
+- Se un'eccezione avviene dentro uno dei thread, il test non fallisce: le 3 letture in fila scrivono comunque l'avviso una volta. È un buco minore, non blocca.
+
+**Cosa non ho verificato**
+- La suite col parser vecchio (374 passed e 10 skipped).
+- Il codice: non è cambiato rispetto alla #493, perché in stage c'è solo `tests/test_unit_web_leggi.py`.
+- V-4 (in XHTML un titolo non chiuso si porta dietro il resto): è il comportamento voluto, uguale al ripiego, e non l'ho sondato di nuovo.
+
+**Memoria**: aggiunta la riga #494, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh` (commit 4aea67b). Lo stage non è stato toccato.
+
+File:
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 377 → 381 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «381 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 372 passed, 10 skipped (i test che vogliono il parser).
-- Mutazioni in copie isolate (scratchpad/mut13/run.py): titolo booleano 1 FAIL, conta anche in HTML 1 FAIL (scratchpad/mut13/run2.py), avviso sempre scritto 1 FAIL, virgolette fuori dichiarazione nel DOCTYPE 2 FAIL.
+- Web suite: 377 → 383 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «383 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 374 passed, 10 skipped (i test che vogliono il parser).
+- Mutazioni in copie isolate (scratchpad/mut13/run.py): titolo booleano 1 FAIL, conta anche in HTML 3 FAIL, avviso non atomico 1 FAIL su 5 ripetizioni su 5 (scratchpad/mut13/run3.py), avviso sempre scritto 1 FAIL, virgolette fuori dichiarazione nel DOCTYPE 2 FAIL.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
 - `2dd08b6` (apertura della PR #255): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA e V-2 COSMETICA, chiuse in `58fc102`).
-- `58fc102` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- Verifica esterna #255 su `2dd08b6`: APPROVATO CON RISERVE (V-1, V-2 BASSE chiuse; V-3, V-4 COSMETICHE).
+- `2a0340f` (secondo giro, pushato): run in corso alla scrittura; `95627a4` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

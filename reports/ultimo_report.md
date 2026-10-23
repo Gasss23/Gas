@@ -16,8 +16,9 @@ Ramo `feat/mani-web-fetta13` da main 0d70e82 (dopo il merge di #252 e #253). Are
 - **R-456-2 (commento, COSMETICA)**: `FATTA`.
 - **R-ve245-5 (titolo XHTML annidato, BASSA)**: `FATTA`.
 - **Bot #255 su 2dd08b6: APPROVATO CON RISERVE**: V-1 BASSA (contatore del titolo anche in HTML, corpo nella riga del titolo dopo svg/math): `FATTA`, si conta solo in XHTML; V-2 COSMETICA (commento dei test): `FATTA`.
-- **Test**: web suite 377 → 381 (Python 3.13 e 3.11; col parser vecchio 372 passati e 10 saltati apposta). Mutazioni nuove (titolo booleano, conta anche in HTML, avviso sempre scritto, virgolette fuori dichiarazione): tutte prese.
-- **Review**: #492 APPROVATO, #493 APPROVATO (chat Mani): verdetti integrali nell'handoff.
+- **Verifica esterna #255: APPROVATO CON RISERVE**: V-1 BASSA (= V-1 bot) `FATTA`, con le sue sonde nei test; V-2 BASSA (test dell'avviso in parallelo che non provava niente) `FATTA`; V-3 COSMETICA `FATTA`; V-4 COSMETICA (titolo XHTML non chiuso) voluto.
+- **Test**: web suite 377 → 383 (Python 3.13 e 3.11; col parser vecchio 374 passati e 10 saltati apposta). Mutazioni nuove (titolo booleano, conta anche in HTML, avviso sempre scritto, avviso non atomico, virgolette fuori dichiarazione): tutte prese.
+- **Review**: #492, #493, #494 APPROVATO (chat Mani): verdetti integrali nell'handoff.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
