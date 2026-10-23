@@ -23,18 +23,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md         |  6 ++++--
- reports/handoff.md               | 31 ++++++++++++-------------------
- reports/r2_regole_abbonamento.md | 25 +++++++++++++++++++++++++
- reports/roadmap.md               |  1 +
- reports/stato_progetto.md        |  4 ++--
- reports/ultimo_report.md         | 14 ++++++--------
- 6 files changed, 50 insertions(+), 31 deletions(-)
+
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+42aa92b docs(R2): premessa sui crediti corretta, cronologia di stato (V-1/V-2 bot #254)
+7837a9f docs(fine-task): report della sessione del 23 (R2, turno di notte)
 ae0f412 docs(stato): giro del 23, turno di notte, riserve bot #253
 93344cb docs(R2): regole d'uso dell'abbonamento riverificate, via A/B per l'operatore
 ```
