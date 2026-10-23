@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. R2: via A (API key con i crediti inclusi nel Max 5x) o via B (`claude -p` col login) — `reports/r2_regole_abbonamento.md`.
-2. Merge della PR PLACEHOLDER_PR (solo documenti).
+2. Merge della PR #254 (https://github.com/Gasss23/Gas/pull/254; numero e URL da `gh api POST /pulls`) (solo documenti).
 
 ---
 
@@ -22,13 +22,20 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-PLACEHOLDER_STAT
+ reports/diff_sessione.md         |  6 ++++--
+ reports/handoff.md               | 31 ++++++++++++-------------------
+ reports/r2_regole_abbonamento.md | 25 +++++++++++++++++++++++++
+ reports/roadmap.md               |  1 +
+ reports/stato_progetto.md        |  4 ++--
+ reports/ultimo_report.md         | 14 ++++++--------
+ 6 files changed, 50 insertions(+), 31 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-PLACEHOLDER_LOG
+ae0f412 docs(stato): giro del 23, turno di notte, riserve bot #253
+93344cb docs(R2): regole d'uso dell'abbonamento riverificate, via A/B per l'operatore
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione; per lo stesso motivo la riga di `reports/handoff.md` nel §2 non conta il commit finale.
