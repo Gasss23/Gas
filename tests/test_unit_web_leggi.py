@@ -1235,13 +1235,20 @@ def test_parser_vecchio_lo_dice_una_volta_nel_log(monkeypatch, caplog):
     monkeypatch.setattr(web, "_avviso_parser_vecchio", threading.Lock())
     pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": b"<p>A</p>", "troncato": False}
     with caplog.at_level("WARNING", logger="gas.web"):
-        for _ in range(3):
+        # prima le letture in parallelo, sul lucchetto ancora libero (V-2 ve #255), poi in fila
+        partenza = threading.Barrier(8)
+
+        def leggi() -> None:
+            partenza.wait()
             web._componi("http://x.test/", pagina)
-        letture = [threading.Thread(target=web._componi, args=("http://x.test/", pagina)) for _ in range(8)]
+
+        letture = [threading.Thread(target=leggi) for _ in range(8)]
         for t in letture:
             t.start()
         for t in letture:
             t.join()
+        for _ in range(3):
+            web._componi("http://x.test/", pagina)
     assert sum("senza le patch" in m for m in caplog.messages) == 1, caplog.messages
 
 
@@ -1312,11 +1319,16 @@ def test_xhtml_titolo_con_tag():
     assert "Titolo: T U" in t and "<b>" not in t and "VIS" in t, t
 
 
-def test_titolo_in_svg_math_non_si_accumula_in_html():
+@pytest.mark.parametrize("pagina", [
+    "<math><title><title></math><title>T</title><p>BODY</p>",
+    "<svg><title><title>x</title></svg>BODY",
+    "<math><title>a<title>b</title></math>BODY",
+])
+def test_titolo_in_svg_math_non_si_accumula_in_html(pagina):
     """In HTML i «<title>» dentro svg/math non sono grezzi: le aperture non si contano, se no
-    all'uscita il corpo finiva nella riga del titolo (V-1 bot #255)."""
+    all'uscita il corpo finiva nella riga del titolo (V-1 bot #255, V-1 ve #255)."""
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "troncato": False,
-                                         "corpo": b"<math><title><title></math><title>T</title><p>BODY</p>"})["testo"]
+                                         "corpo": pagina.encode()})["testo"]
     assert "BODY" in t.split("\n\n", 1)[1], t
 
 
