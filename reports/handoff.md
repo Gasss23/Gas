@@ -19,20 +19,21 @@
 - **V-1 ve #252 quater** (test sulle virgolette nel DOCTYPE): `FATTA`
 - **R-456-2** (commento): `FATTA`
 - **R-ve245-5** (titolo XHTML annidato): `FATTA`
+- **Secondo giro, bot #255 su 2dd08b6 APPROVATO CON RISERVE**: V-1 BASSA (contatore del titolo anche in HTML) `FATTA`; V-2 COSMETICA (commento dei test) `FATTA`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  1 +
- modules/web/leggi.py               | 25 +++++-----
- reports/diff_sessione.md           | 11 +++--
- reports/handoff.md                 | 96 +++++++++++++++++++++++++++++---------
- reports/stato_progetto.md          |  2 +
- reports/ultimo_report.md           | 25 +++++++---
- tests/test_unit_web_leggi.py       | 30 ++++++++++--
- 7 files changed, 143 insertions(+), 47 deletions(-)
+ .claude/agents/memoria_revisore.md |   3 +
+ modules/web/leggi.py               |  26 +++----
+ reports/diff_sessione.md           |  11 +--
+ reports/handoff.md                 | 136 +++++++++++++++++++++++++++++++------
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  26 +++++--
+ tests/test_unit_web_leggi.py       |  38 ++++++++++-
+ 7 files changed, 195 insertions(+), 47 deletions(-)
 ```
 
 NB: preso dall'index con tutti i report in stage, dopo aver scritto questo handoff (V-3 ve #252); solo la riga di `reports/handoff.md` può differire di poche righe, perché lo stat è dentro il file stesso.
@@ -42,6 +43,9 @@ NB: preso dall'index con tutti i report in stage, dopo aver scritto questo hando
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+58fc102 fix(web): fetta 13 — titolo contato solo in XHTML (V-1/V-2 bot #255)
+ed769e1 chore(revisore): memoria review #493 — APPROVATO
+2dd08b6 docs(reports): fine fetta 13 chat Mani — report, handoff, stato
 60f64b8 feat(web): fetta 13 — riserve minori della #252, titolo XHTML annidato (R6)
 208a89c chore(revisore): memoria review #492 — APPROVATO
 ```
@@ -52,7 +56,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Un verdetto, incollato integralmente (chat Mani): #492 (APPROVATO) sul diff della fetta 13 committato in `60f64b8`.
+Due verdetti, incollati integralmente (chat Mani): #492 (APPROVATO) sul diff della fetta 13 committato in `60f64b8`; #493 (APPROVATO) sul secondo giro committato in `58fc102`.
 
 ### Review #492 (chat Mani) — verdetto integrale (fetta 13, diff committato poi in un solo commit)
 
@@ -96,17 +100,53 @@ File:
 - /home/user/Gas/modules/web/leggi.py
 - /home/user/Gas/tests/test_unit_web_leggi.py
 
+### Review #493 (chat Mani) — verdetto integrale (V-1 e V-2 del bot #255)
+
+## VERDETTO: APPROVATO
+
+Review #493 (chat Mani), sul delta in stage della PR #255 (head 2dd08b6) per il bot #255. Il numero #493 era libero: in memoria il più alto era #492.
+
+In HTML il titolo torna a comportarsi come su main; in XHTML resta il contatore introdotto nella #492.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:818`: `_nel_titolo` conta le aperture solo in XHTML. In HTML resta a 1 e la chiusura lo riporta a 0, cioè lo stesso comportamento di main con il booleano.
+  - Rischio esaminato: V-1 del bot, cioè aperture accumulate dentro svg/math che all'uscita non si scalano.
+  - Esito ok:
+    - la sonda del bot `<math><title><title></math><title>T</title><p>BODY</p>` dà «Titolo: T» con BODY nel corpo;
+    - 6 sonde HTML danno lo stesso testo di main 0d70e82: title annidati in math/svg, `</title>` in più, `<svg><title><title></svg>X</title>Y`, `<math><mi><title>`, `<title/>`.
+- `tests/test_unit_web_leggi.py:1315`: test nuovo sulla sonda del bot.
+  - Rischio esaminato: che la regressione possa tornare senza che un test se ne accorga.
+  - Esito ok: con il mutante «conta anche in HTML» (`+= 1`, cioè il codice della #492) in una copia isolata, la suite dà 1 FAIL.
+  - Il test non ha il marcatore del parser aggiornato; col parser vecchio passa dal ripiego, che tiene BODY nel corpo.
+- V-2 COSMETICA: il commento «(V-3 ve #252)» ora sta sopra i suoi casi. Ok.
+- Suite web: 381 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Una mia mancanza da segnalare**
+- Nella #492 le mie sonde non avevano preso questo caso. Quella con svg era nascosta per altri motivi, e non avevo provato il caso «apri due title dentro math, esci, poi un titolo vero fuori». L'ho aggiunto come lezione in memoria.
+
+**Cosa non ho verificato**
+- La suite col parser vecchio (372 passed e 10 skipped).
+- La mutazione «titolo booleano» della tua run2.py: il test XHTML della #492 la copriva già.
+- Il titolo in XHTML quando si esce dal contenuto estraneo: in XHTML le chiusure sono esplicite e Gas non fa uscite implicite da svg/math, ma non l'ho sondato.
+
+**Memoria**: aggiunte la riga #493 e una lezione (un contatore di aperture vale solo dove le chiusure sono garantite). Committate con `scripts/commit_memoria_revisore.sh` (commit ed769e1). Lo stage dei due file non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 377 → 380 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «380 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 371 passed, 10 skipped (i test che vogliono il parser).
-- Mutazioni in copie isolate (scratchpad/mut13/run.py): titolo booleano 1 FAIL, avviso sempre scritto 1 FAIL, virgolette fuori dichiarazione nel DOCTYPE 2 FAIL.
+- Web suite: 377 → 381 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «381 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 372 passed, 10 skipped (i test che vogliono il parser).
+- Mutazioni in copie isolate (scratchpad/mut13/run.py): titolo booleano 1 FAIL, conta anche in HTML 1 FAIL (scratchpad/mut13/run2.py), avviso sempre scritto 1 FAIL, virgolette fuori dichiarazione nel DOCTYPE 2 FAIL.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-- `60f64b8` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `2dd08b6` (apertura della PR #255): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA e V-2 COSMETICA, chiuse in `58fc102`).
+- `58fc102` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
