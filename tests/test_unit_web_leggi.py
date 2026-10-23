@@ -1142,6 +1142,12 @@ def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
     ('<!DOCTYPE x SYSTEM "<script>">SEGRETO<html xmlns="http://www.w3.org/1999/xhtml"><body><p>V</p></body></html>',
      ()),
     ('<!DOCTYPE html><!-- c -->SEGRETO<html xmlns="http://www.w3.org/1999/xhtml"><body><p>V</p></body></html>', ()),
+    # virgolette nel sottoinsieme fuori da una dichiarazione, con solo spazi e un tag dopo il
+    # falso «]>»: le altre difese non bastano (V-1 ve #252 quater)
+    ("<!DOCTYPE x [ ' ]><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>A</p>"
+     "<script>' ]> <b>SEGRETO</b></script></body></html>", ()),
+    ('<!DOCTYPE x [ " ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
+     '<style>" ]> <b>SEGRETO</b></style></body></html>', ()),
     # sottoinsieme non valido: «>» fuori da una dichiarazione, «<» dentro, DOCTYPE senza nome (V-3 ve #252)
     ('<!DOCTYPE x [ > ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>', ()),
     ('<!DOCTYPE x [<!ENTITY a <!ENTITY b> ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p>'
@@ -1226,11 +1232,23 @@ def test_rilevatore_del_parser_con_classi_finte():
 def test_parser_vecchio_lo_dice_una_volta_nel_log(monkeypatch, caplog):
     """Su un Python vecchio la lettura col ripiego si scrive nel log una volta sola (R-466-2)."""
     monkeypatch.setattr(web, "_PARSER_AGGIORNATO", False)
-    monkeypatch.setattr(web, "_avviso_parser_vecchio", threading.Event())
+    monkeypatch.setattr(web, "_avviso_parser_vecchio", threading.Lock())
+    pagina = {"tipo": "text/html", "charset": "utf-8", "corpo": b"<p>A</p>", "troncato": False}
     with caplog.at_level("WARNING", logger="gas.web"):
+        # prima le letture in parallelo, sul lucchetto ancora libero (V-2 ve #255), poi in fila
+        partenza = threading.Barrier(8)
+
+        def leggi() -> None:
+            partenza.wait()
+            web._componi("http://x.test/", pagina)
+
+        letture = [threading.Thread(target=leggi) for _ in range(8)]
+        for t in letture:
+            t.start()
+        for t in letture:
+            t.join()
         for _ in range(3):
-            web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": b"<p>A</p>",
-                                             "troncato": False})
+            web._componi("http://x.test/", pagina)
     assert sum("senza le patch" in m for m in caplog.messages) == 1, caplog.messages
 
 
@@ -1299,6 +1317,32 @@ def test_xhtml_titolo_con_tag():
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
                                          "corpo": b"<title>T<b>U</b></title><p>VIS</p>", "troncato": False})["testo"]
     assert "Titolo: T U" in t and "<b>" not in t and "VIS" in t, t
+
+
+@pytest.mark.parametrize("pagina", [
+    "<math><title><title></math><title>T</title><p>BODY</p>",
+    "<svg><title><title>x</title></svg>BODY",
+    "<math><title>a<title>b</title></math>BODY",
+])
+def test_titolo_in_svg_math_non_si_accumula_in_html(pagina):
+    """In HTML i «<title>» dentro svg/math non sono grezzi: le aperture non si contano, se no
+    all'uscita il corpo finiva nella riga del titolo (V-1 bot #255, V-1 ve #255)."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "troncato": False,
+                                         "corpo": pagina.encode()})["testo"]
+    assert "BODY" in t.split("\n\n", 1)[1], t
+
+
+@solo_parser_aggiornato
+def test_xhtml_titolo_annidato_come_nel_ripiego():
+    """In XHTML un «<title>» dentro il titolo è un elemento: il testo dopo la sua chiusura resta
+    nel titolo, nel parser come nel ripiego (R-ve245-5)."""
+    pagina = "<title>T<title></title>X</title><p>VIS</p>"
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                         "corpo": pagina.encode(), "troncato": False})["testo"]
+    corpo = t.split("\n\n", 1)[1]
+    assert "Titolo: T X" in t and "X" not in corpo and "VIS" in corpo, t
+    r = web._testo_senza_parser(web._commenti_e_cdata_xml(pagina), True)
+    assert "X" not in r and "VIS" in r, r
 
 
 @pytest.mark.parametrize("pagina", [
