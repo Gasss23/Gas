@@ -323,6 +323,7 @@ GROQ_MODEL = MODEL_GROQ
 OPENROUTER_FREE_MODEL = MODEL_OPENROUTER                        # tool-capable
 OLLAMA_MODEL = MODEL_OLLAMA                                      # tool-capable
 TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità token per-chiamata
+CLAUDE_CLI_USO_FILENAME = ".gas_claude_cli_uso.json"              # uso del cervello forte, oggi
 
 # Prezzi per milione di token (USD), approssimati — aggiornare se cambiano.
 # Fonte: pagine prezzi ufficiali (rilevate al 2025-06).
@@ -1598,6 +1599,65 @@ class GasKernel:
         speso = self._daily_cost_usd()
         return (speso, limite) if speso >= limite else None
 
+    def _uso_claude_cli(self) -> Optional[float]:
+        """Uso di oggi (giorno locale) del cervello forte, in USD «come se fosse API»
+        (R2 fetta 2, V-1 bot #256: il prezzo di claude-cli è 0 e il tetto in USD di
+        GAS_DAILY_TOKEN_BUDGET non lo fermerebbe mai). File assente o di un altro
+        giorno → 0.0. File illeggibile → None: FAIL-CLOSED, il forte resta fermo
+        finché l'operatore non lo sistema (meglio che consumare senza conto)."""
+        p = self.root / CLAUDE_CLI_USO_FILENAME
+        if not p.exists():
+            return 0.0
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+            # V-2 bot #258: prima si valida TUTTO (usd e data vera, non futura), poi si
+            # guarda il giorno; un conto rovinato ma in JSON valido non azzera l'uso.
+            usd = d["usd"]
+            if isinstance(usd, bool) or not isinstance(usd, (int, float)):
+                raise ValueError(f"usd={usd!r}")
+            v = float(usd)
+            if not (v == v and 0.0 <= v < 1e9):
+                raise ValueError(v)
+            giorno = datetime.strptime(str(d["giorno"]), "%Y-%m-%d").date()
+            oggi = datetime.now().date()
+            if giorno > oggi:
+                raise ValueError(f"giorno futuro {giorno}")
+            return v if giorno == oggi else 0.0
+        except Exception as e:
+            logging.warning("uso del cervello forte illeggibile (%s): forte fermo", e)
+            return None
+
+    def _registra_uso_claude_cli(self, usd: Any) -> None:
+        """Aggiunge l'uso di una chiamata al conto di oggi (scrittura atomica). File
+        illeggibile → non si tocca (resta il fermo). Mai eccezioni (§9)."""
+        try:
+            gia = self._uso_claude_cli()
+            if gia is None:
+                return
+            try:
+                usd_f = max(0.0, float(usd))
+            except (TypeError, ValueError):
+                usd_f = 0.0
+            p = self.root / CLAUDE_CLI_USO_FILENAME
+            tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")  # un .tmp per processo (R-496-2)
+            tmp.write_text(json.dumps({"giorno": datetime.now().date().isoformat(),
+                                       "usd": round(gia + usd_f, 6)}), encoding="utf-8")
+            os.replace(tmp, p)
+        except Exception as e:
+            logging.warning("_registra_uso_claude_cli: scrittura fallita (%s) — ignorato", e)
+
+    def _tetto_claude_cli_superato(self) -> Optional[Tuple[Optional[float], float]]:
+        """(usato, tetto) se il tetto giornaliero del cervello forte è raggiunto (o il
+        conto è illeggibile: usato=None), altrimenti None. Tetto GAS_CLAUDE_CLI_TETTO_USD,
+        default 4.60: il 20% al giorno del limite settimanale deciso dall'operatore,
+        espresso nel costo equivalente che la CLI riporta (`total_cost_usd`). È una
+        misura indicativa: il limite vero del piano non è in dollari."""
+        tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
+        usato = self._uso_claude_cli()
+        if usato is None or usato >= tetto:
+            return (usato, tetto)
+        return None
+
     def _add_to_history(self, role: str, content: Optional[str] = None, tool_calls: Optional[List[Any]] = None, tool_call_id: Optional[str] = None, name: Optional[str] = None):
         """Costruisce un dizionario puro, evitando oggetti complessi."""
         entry = {"role": role}
@@ -1823,6 +1883,7 @@ class GasKernel:
     _SAFE_PATH_DENY_PREFIXES: tuple = (
         ".gas_memory", ".gas_history", ".gas_vectors",
         ".gas_tokens", ".gas_knowledge",
+        ".gas_claude_cli_uso",  # V-1 bot #258: il conto del tetto del forte
         "gas_history",  # undotted: LLM hallucination variants
     )
 
@@ -4449,6 +4510,17 @@ class GasKernel:
             )
             self._diario_log("turno_fine", descr, fonte="kernel", turno_id=_turno_id)
 
+        def _errore_tetto_forte(t: Tuple[Optional[float], float]) -> Dict[str, Any]:
+            if t[0] is None:
+                motivo = (f"il conto dell'uso di oggi ({CLAUDE_CLI_USO_FILENAME}) è "
+                          "illeggibile: controllalo o cancellalo")
+            else:
+                motivo = (f"usati ${t[0]:.2f} equivalenti oggi (tetto ${t[1]:.2f}, "
+                          "GAS_CLAUDE_CLI_TETTO_USD)")
+            return {"type": "error",
+                    "content": (f"Cervello forte fermo: {motivo}. I lavori importanti "
+                                "restano in attesa: non passano ai modelli gratuiti.")}
+
         def _errore_budget_meta_turno(sup: Tuple[float, float]) -> Dict[str, Any]:
             return {"type": "error",
                     "content": (f"Budget giornaliero esaurito a metà turno: "
@@ -4554,6 +4626,18 @@ class GasKernel:
                                             f"(${_sup[0]:.4f} / ${_sup[1]:.2f}): turno fermato")
                             yield _errore_budget_meta_turno(_sup)
                             return
+                        # R2 fetta 2: tetto giornaliero del cervello forte, prima di OGNI
+                        # chiamata. Superato → turno fermato dichiarato (il forte non
+                        # ripiega mai sui gratuiti).
+                        if name == "claude-cli":
+                            _tetto = self._tetto_claude_cli_superato()
+                            if _tetto is not None:
+                                _turno_budget = True
+                                if not _chiamato_rung:
+                                    _turno_tentati.pop()
+                                logging.warning(f"cervello forte: tetto giornaliero {_tetto}: turno fermato")
+                                yield _errore_tetto_forte(_tetto)
+                                return
                         _chiamato_rung = True
                         try:
                             response = client.chat.completions.create(
@@ -4561,6 +4645,11 @@ class GasKernel:
                                 tools=self.tools_schema, tool_choice="auto"
                             )
                         except Exception as e:
+                            # R-496-1: una chiamata al forte fallita dopo il consumo
+                            # (errore, formato sbagliato, tempo scaduto) entra nel tetto.
+                            if name == "claude-cli":
+                                self._registra_uso_claude_cli(
+                                    getattr(e, "costo_equivalente_usd", 0.0))
                             # Il 400 di Gemini può essere transitorio (diagnosi
                             # 2026-06-10: stesso payload accettato 5/5 al replay):
                             # UN solo retry con payload identico, poi fallback
@@ -4590,6 +4679,9 @@ class GasKernel:
                             self._log_tokens(name, model,
                                              getattr(usage, "prompt_tokens", 0) or 0,
                                              getattr(usage, "completion_tokens", 0) or 0)
+                        if name == "claude-cli":
+                            self._registra_uso_claude_cli(
+                                getattr(usage, "costo_equivalente_usd", 0.0) if usage else 0.0)
                         msg = response.choices[0].message
 
                         if msg.tool_calls:
