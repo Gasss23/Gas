@@ -1142,13 +1142,13 @@ def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
     ('<!DOCTYPE x SYSTEM "<script>">SEGRETO<html xmlns="http://www.w3.org/1999/xhtml"><body><p>V</p></body></html>',
      ()),
     ('<!DOCTYPE html><!-- c -->SEGRETO<html xmlns="http://www.w3.org/1999/xhtml"><body><p>V</p></body></html>', ()),
-    # sottoinsieme non valido: «>» fuori da una dichiarazione, «<» dentro, DOCTYPE senza nome (V-3 ve #252)
     # virgolette nel sottoinsieme fuori da una dichiarazione, con solo spazi e un tag dopo il
     # falso «]>»: le altre difese non bastano (V-1 ve #252 quater)
     ("<!DOCTYPE x [ ' ]><html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>A</p>"
      "<script>' ]> <b>SEGRETO</b></script></body></html>", ()),
     ('<!DOCTYPE x [ " ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
      '<style>" ]> <b>SEGRETO</b></style></body></html>', ()),
+    # sottoinsieme non valido: «>» fuori da una dichiarazione, «<» dentro, DOCTYPE senza nome (V-3 ve #252)
     ('<!DOCTYPE x [ > ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>', ()),
     ('<!DOCTYPE x [<!ENTITY a <!ENTITY b> ]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p>'
      '</body></html>', ()),
@@ -1310,6 +1310,14 @@ def test_xhtml_titolo_con_tag():
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
                                          "corpo": b"<title>T<b>U</b></title><p>VIS</p>", "troncato": False})["testo"]
     assert "Titolo: T U" in t and "<b>" not in t and "VIS" in t, t
+
+
+def test_titolo_in_svg_math_non_si_accumula_in_html():
+    """In HTML i «<title>» dentro svg/math non sono grezzi: le aperture non si contano, se no
+    all'uscita il corpo finiva nella riga del titolo (V-1 bot #255)."""
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "troncato": False,
+                                         "corpo": b"<math><title><title></math><title>T</title><p>BODY</p>"})["testo"]
+    assert "BODY" in t.split("\n\n", 1)[1], t
 
 
 @solo_parser_aggiornato

@@ -813,8 +813,9 @@ class _Estrattore(HTMLParser):
             self._salta += 1
         elif tag == "title":
             # In XHTML il titolo non è testo grezzo e un «<title>» dentro è un elemento: si
-            # contano, come nel ripiego (R-ve245-5). In HTML il titolo è grezzo e non si annida.
-            self._nel_titolo += 1
+            # contano, come nel ripiego (R-ve245-5). In HTML si resta a uno: dentro svg/math i
+            # «<title>» non sono grezzi e le aperture non scalerebbero all'uscita (V-1 bot #255).
+            self._nel_titolo = self._nel_titolo + 1 if self._xhtml else 1
         if tag in self._BLOCCHI:
             self.pezzi.append("\n")
 
