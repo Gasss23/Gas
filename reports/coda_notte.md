@@ -46,5 +46,5 @@ Sei il TURNO DI NOTTE dello sviluppo di Gas (roadmap R3, repo GitHub Gasss23/Gas
 ```
 
 ## Fatte
-- 1. **Note cosmetiche del bot su #249**: intestazione «Ultimo aggiornamento» di `stato_progetto.md` senza la sessione del 22 sera; titolo «Da fare domattina … 2026-10-21 sera» in `da_mergiare.md` da aggiornare; nota nel §2 dell'handoff che la riga di `handoff.md` non conta il commit finale. — **fatta, PR #259** (notte del 2026-10-24)
-- 2. **Registrare la prova del 22 ottobre** in `stato_progetto.md`: dopo #247 Gas compila da solo pro e contro (firma arrivata al primo messaggio, Rifiuta non ha eseguito). — **fatta, PR #259** (notte del 2026-10-24)
+- Voce 1 — Note cosmetiche del bot su #249 — fatta, PR #259 (notte del 2026-10-24)
+- Voce 2 — Prova del 22 ottobre dopo #247 registrata in `stato_progetto.md` — fatta, PR #259 (notte del 2026-10-24)

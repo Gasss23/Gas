@@ -14,6 +14,9 @@ Prima notte: nessun ramo `notte/*` su GitHub e «Fatte» vuota → SOLO le voci 
 - **Perché / cosa migliora**: il difetto della prima prova (pro e contro chiesti all'utente) risulta chiuso anche dal vero, non solo nei test.
 - **Rischi**: l'unica fonte è la voce della coda (resoconto dell'operatore): nel repo non ci sono log della prova. Se il resoconto fosse impreciso, il 🟡 chiuso andrebbe riaperto.
 
+## Verifica del bot su #259
+APPROVATO CON RISERVE, CI verde. V-1 BASSA (conteggio di `handoff.md` nel §2 non misurato: ora «n/d») e V-2 COSMETICA (forma delle voci in «Fatte») corrette in un secondo commit.
+
 ## Cosa deve decidere l'operatore
 1. Merge della PR #259 (il turno di notte non mergia).
 2. Se rendere fissa la nota sul conteggio di `handoff.md` nel template `fine-task.md` (perimetro di review: una fetta di giorno o una voce della coda).

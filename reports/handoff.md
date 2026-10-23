@@ -27,17 +27,18 @@
  reports/coda_notte.md     |  5 ++---
  reports/da_mergiare.md    |  2 +-
  reports/diff_sessione.md  | 20 +++++++-------------
- reports/handoff.md        | 90 +++++++++++++-----------
+ reports/handoff.md        | n/d (commit finale)
  reports/report_notte.md   | 21 +++++++++++++++++++++
  reports/stato_progetto.md |  6 ++++--
  reports/ultimo_report.md  | 23 ++++++++++-------------
 ```
 
-NB (V-1 bot #249): la riga di `reports/handoff.md` è aggiunta a mano e il suo conteggio è approssimato: lo stat è preso prima del commit finale che contiene l'handoff stesso, quindi non conta le righe di quel commit. Gli altri conteggi sono quelli reali di `git diff --cached --stat`.
+NB (V-1 bot #249 e V-1 bot #259): per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta tutto nel commit finale che lo contiene), quindi è scritto «n/d». Gli altri conteggi sono quelli reali di `git diff --cached --stat` presi prima di quel commit; il diff reale della PR fa fede.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e172949 docs(fine-task): turno di notte 2026-10-24 — report, handoff, coda (voci 1-2 fatte, PR #259)
 80678a9 docs(notte): note cosmetiche del bot su #249 e prova del 22 ottobre dopo #247 (coda_notte voci 1-2)
 ```
 
@@ -60,10 +61,13 @@ completed	success	R2 via B fetta 2: codice per chiamata, ambiente permesso, tett
 ```
 
 Mappatura commit→run:
-- `80678a9` → run CI 40035425614 (push), in corso alla scrittura dell'handoff.
-- commit di fine-task (questo file): run non ancora disponibile alla scrittura dell'handoff.
+- `80678a9` → run CI 40035425614 (push); albero di testa poi superato da `e172949`.
+- `e172949` → `unit-suite` success, `handoff-check` success, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 BASSA e V-2 COSMETICA corrette nel commit successivo).
+- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
+
+- Bot #259 (APPROVATO CON RISERVE): V-1 BASSA (conteggio di handoff.md nel §2) e V-2 COSMETICA (forma delle voci in «Fatte») corrette in questo commit; resta da rendere fissa la regola «n/d» nel template `fine-task.md` (decisione §0.2).
 
 - La voce 2 poggia solo sul resoconto dell'operatore nella coda (nessun log nel repo).
 - «Protezioni del repo» non tracciate (V-3 bot #249): decisione §0.3.
