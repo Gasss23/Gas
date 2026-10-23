@@ -22,20 +22,21 @@
 - **R-482-1**: `FATTA`
 - **Secondo giro, bot e verifica esterna #252 BOCCIATO su 3cea14e**: V-1 MEDIA `FATTA`; V-2 bot / V-5 ve `FATTA`; V-3 ve e R-485-1 `FATTA`; V-4 ve (merge di main) `FATTA`; V-6 ve `FATTA`; V-2 ve registrata come R-ve252-2 (BASSA preesistente, da decidere)
 - **Terzo giro, bot #252 su 3c0be94 APPROVATO CON RISERVE (COSMETICHE) e seconda verifica esterna APPROVATO CON RISERVE**: V-1 ve bis BASSA (PI senza nome) `FATTA` (B-488-1); V-2 ve bis BASSA (test) `FATTA`; V-1 bot COSMETICA (descrizione PR) `FATTA`; V-2 bot COSMETICA (Event+Lock) aperta
+- **Quarto giro, bot #252 su fe64e4f APPROVATO CON RISERVE**: V-1 BASSA (PI senza nome nel sottoinsieme del DOCTYPE) `FATTA`
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  12 +++
- modules/web/leggi.py               | 199 ++++++++++++++++++++++++++++++++++---
+ .claude/agents/memoria_revisore.md |  13 +++
+ modules/web/leggi.py               | 202 ++++++++++++++++++++++++++++++++++---
  reports/diff_sessione.md           |  13 ++-
- reports/handoff.md                 |  95 +-----------------
+ reports/handoff.md                 |  95 +----------------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  33 ++++--
- tests/test_unit_web_leggi.py       | 174 +++++++++++++++++++++++++++++++-
- 7 files changed, 403 insertions(+), 125 deletions(-)
+ reports/ultimo_report.md           |  34 +++++--
+ tests/test_unit_web_leggi.py       | 178 +++++++++++++++++++++++++++++++-
+ 7 files changed, 412 insertions(+), 125 deletions(-)
 ```
 
 ---
@@ -43,6 +44,9 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e8dbf34 fix(web): fetta 12 — PI senza nome anche nel sottoinsieme del DOCTYPE (V-1 bot #252 ter)
+a81f5af chore(revisore): memoria review #490 — APPROVATO
+fe64e4f docs(reports): fetta 12 chat Mani, terzo giro — report, handoff, stato
 719d3ce fix(web): fetta 12 — PI XHTML solo con nome XML valido, test <scripts> (V-1/V-2 ve #252 bis)
 2cf21e5 chore(revisore): memoria review #489 — APPROVATO
 9293b9b chore(revisore): memoria review #488 — BOCCIATO
@@ -64,7 +68,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Otto verdetti, incollati integralmente (chat Mani): #482 (BOCCIATO, B-482-1), #483 (BOCCIATO, B-483-1) e #484 (APPROVATO) sul diff della fetta 12 committato in `621da82`; #485 (APPROVATO CON RISERVE) e #486 (APPROVATO) sul secondo giro committato in `f644a04`; #487 (APPROVATO) sul merge di main 2abc23b, commit `13b7526`; #488 (BOCCIATO, B-488-1) e #489 (APPROVATO) sul terzo giro committato in `719d3ce`. Le righe citate nelle review intermedie si riferiscono al diff di allora.
+Nove verdetti, incollati integralmente (chat Mani): #482 (BOCCIATO, B-482-1), #483 (BOCCIATO, B-483-1) e #484 (APPROVATO) sul diff della fetta 12 committato in `621da82`; #485 (APPROVATO CON RISERVE) e #486 (APPROVATO) sul secondo giro committato in `f644a04`; #487 (APPROVATO) sul merge di main 2abc23b, commit `13b7526`; #488 (BOCCIATO, B-488-1) e #489 (APPROVATO) sul terzo giro committato in `719d3ce`; #490 (APPROVATO) sul quarto giro committato in `e8dbf34`. Le righe citate nelle review intermedie si riferiscono al diff di allora.
 
 ### Review #482 (chat Mani) — verdetto integrale (diff staged della fetta 12, prima del rimedio)
 
@@ -403,20 +407,54 @@ File:
 - /home/user/Gas/modules/web/leggi.py
 - /home/user/Gas/tests/test_unit_web_leggi.py
 
+### Review #490 (chat Mani) — verdetto integrale (V-1 bot #252 ter, PI nel sottoinsieme del DOCTYPE)
+
+## VERDETTO: APPROVATO
+
+Review #490 (chat Mani), sul delta in stage della PR #252 (head fe64e4f) per V-1 BASSA del bot #252 ter. Il caso `<!DOCTYPE x [<?<!--?>]>…SEGRETO` è chiuso e il testo nascosto resta nascosto come su main.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:1177`: `_INIZIO_PI` e `_INIZIALE_XML` sono stati spostati sopra `_fine_doctype`.
+  - Rischio esaminato: che lo spostamento abbia cambiato anche la regex.
+  - Esito ok: nel diff il testo tolto e quello aggiunto sono identici, ed è lo stesso approvato nella #489. Cambia solo il commento, con una riga in più.
+- `modules/web/leggi.py:1227`: una `<?` nel sottoinsieme `[…]` del DOCTYPE senza un nome XML valido restituisce -1, quindi il resto della pagina si scarta.
+  - Rischio esaminato: una fuga, oppure una perdita sulle PI valide.
+  - Esito ok, sonde contro main 7af0c48:
+    - `[<?<!--?>]`, `[<?x<!--?>]` e `[<? <!--?>]` nascondono SEGRETO, come main;
+    - `[<?x ]>SEGRETO ?>]` nasconde SEGRETO, mentre su main usciva;
+    - `[<?x?>]` tiene VISTO.
+- `tests/test_unit_web_leggi.py:1155` e la riga dopo: le 2 sonde del bot.
+  - Rischio esaminato: il nuovo controllo tolto senza che nessun test se ne accorga.
+  - Esito ok: tolto il controllo in una copia isolata, la suite dà 2 FAIL.
+- Suite web: 377 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+- sonde483.py e sonde.py della #482: 0 fughe.
+
+**Cosa non ho verificato**
+- I commenti XML non validi nel sottoinsieme (es. `<!-- -- ]> -->`): Gas li salta fino al primo `-->`. Ho controllato a ragionamento che non mostrano niente più di main, ma non li ho provati.
+- La suite col parser vecchio (369 passed e 9 skipped) e quella su Python 3.12.
+- Il comportamento dei browser veri: per lo standard XML questi casi sono errori fatali, e il -1 scarta il resto, quindi sta dalla parte sicura.
+
+**Memoria**: aggiunta la riga #490, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh` (commit a81f5af). Lo stage dei due file non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 321 → 375 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «375 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 367 passed, 9 skipped (i test che vogliono il parser).
+- Web suite: 321 → 377 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «377 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 369 passed, 9 skipped (i test che vogliono il parser).
 - Oracolo lexbor, nuovo contro main 7af0c48: fuzz degli script (stati di escape) su 3.11 e 3.13, 0 fughe del nuovo contro 114–199 di main, 0 regressioni; enumerazione a 4 atomi (2,3 M pagine): 0 regressioni, 0 perdite nuove.
-- Mutazioni in copie isolate, elencate: `_fine_script` (anche i due mutanti di V-3 ve), `_FineScriptTrovata`, `parse_comment`, `_fine_doctype` (virgolette, testa, testa assente, `<` libero, `<` e `]` in dichiarazione, `>` fuori dichiarazione, commenti, PI), prologo dopo il DOCTYPE (assente, `<` qualsiasi, `[^<]*`, CDATA, fine subito), nome della PI (assente, solo il primo carattere, iniziale qualsiasi), `_SEGNI_SCRIPT` senza lookahead: ognuna fa fallire almeno un test.
+- Mutazioni in copie isolate, elencate: `_fine_script` (anche i due mutanti di V-3 ve), `_FineScriptTrovata`, `parse_comment`, `_fine_doctype` (virgolette, testa, testa assente, `<` libero, `<` e `]` in dichiarazione, `>` fuori dichiarazione, commenti, PI), prologo dopo il DOCTYPE (assente, `<` qualsiasi, `[^<]*`, CDATA, fine subito), nome della PI (assente, solo il primo carattere, iniziale qualsiasi, assente nel sottoinsieme), `_SEGNI_SCRIPT` senza lookahead: ognuna fa fallire almeno un test.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
 - `3cea14e` (head all'apertura della PR #252): unit-suite e handoff-check success; verifica-bot **failure** (BOCCIATO, V-1 MEDIA, chiusa in `f644a04`); verifica esterna #252 BOCCIATO (V-1 MEDIA, V-2/V-3/V-4 BASSE, V-5/V-6 COSMETICHE: vedi §1).
 - `3c0be94` (secondo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (solo COSMETICHE); seconda verifica esterna #252 APPROVATO CON RISERVE (V-1 e V-2 BASSE, chiuse in `719d3ce`).
-- `719d3ce` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `fe64e4f` (terzo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA, chiusa in `e8dbf34`).
+- `e8dbf34` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

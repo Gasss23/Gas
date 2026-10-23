@@ -18,8 +18,9 @@ Ramo `feat/mani-web-fetta12` da main 7af0c48 (dopo il merge di #250). Area della
 - **R-482-1 (test della posizione dalla fine)**: `FATTA`.
 - **Bot #252 e verifica esterna #252 su 3cea14e: BOCCIATO.** V-1 MEDIA (testo dopo un DOCTYPE con `<script>` in un letterale): `FATTA`. V-2 bot / V-5 ve COSMETICA (avviso non atomico): `FATTA`. V-3 ve BASSA (test per 5 mutanti) e R-485-1: `FATTA`. V-4 ve (conflitto con main): merge di main `FATTA`. V-6 ve COSMETICA: `FATTA`. V-2 ve BASSA preesistente (XHTML malformato letto come HTML): registrata come **R-ve252-2**, da decidere.
 - **Bot #252 su 3c0be94: APPROVATO CON RISERVE** (solo COSMETICHE: descrizione della PR aggiornata; Event+Lock, nota aperta). **Seconda verifica esterna #252: APPROVATO CON RISERVE**: V-1 BASSA (PI senza nome XML in XHTML non valido faceva uscire testo): `FATTA`, con B-488-1 dal revisore; V-2 BASSA (test di `<scripts>`): `FATTA`; V-3 COSMETICA: tenuta.
-- **Test**: web suite 321 → 375 (Python 3.13 e 3.11; col parser vecchio 367 passati e 9 saltati apposta). Fuzz e enumerazione con oracolo lexbor: 0 regressioni; mutazioni elencate tutte prese.
-- **Review**: #482 BOCCIATO, #483 BOCCIATO, #484 APPROVATO, #485 APPROVATO CON RISERVE, #486 APPROVATO, #487 APPROVATO (merge di main), #488 BOCCIATO, #489 APPROVATO (chat Mani): verdetti integrali nell'handoff.
+- **Bot #252 su fe64e4f: APPROVATO CON RISERVE**: V-1 BASSA (PI senza nome nel sottoinsieme del DOCTYPE): `FATTA`.
+- **Test**: web suite 321 → 377 (Python 3.13 e 3.11; col parser vecchio 369 passati e 9 saltati apposta). Fuzz e enumerazione con oracolo lexbor: 0 regressioni; mutazioni elencate tutte prese.
+- **Review**: #482 BOCCIATO, #483 BOCCIATO, #484 APPROVATO, #485 APPROVATO CON RISERVE, #486 APPROVATO, #487 APPROVATO (merge di main), #488 BOCCIATO, #489 APPROVATO, #490 APPROVATO (chat Mani): verdetti integrali nell'handoff.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
