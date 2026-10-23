@@ -1883,6 +1883,7 @@ class GasKernel:
     _SAFE_PATH_DENY_PREFIXES: tuple = (
         ".gas_memory", ".gas_history", ".gas_vectors",
         ".gas_tokens", ".gas_knowledge",
+        ".gas_claude_cli_uso",  # V-1 bot #258: il conto del tetto del forte
         "gas_history",  # undotted: LLM hallucination variants
     )
 

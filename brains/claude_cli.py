@@ -251,8 +251,9 @@ class ClaudeCliClient:
                 raise RuntimeError("claude-cli: comando `claude` non trovato") from e
             except subprocess.TimeoutExpired as e:
                 err = RuntimeError(f"claude-cli: nessuna risposta entro {self.timeout}s")
-                # R-496-1: il consumo c'è stato comunque; almeno l'ingresso (≈4 caratteri
-                # per token) entra nel conto del tetto.
+                # R-496-1: il consumo c'è stato comunque; entra nel conto almeno
+                # l'ingresso (≈4 caratteri per token). È una stima MINIMA (V-2 bot #258):
+                # mancano il prompt interno di Claude Code, la cache e l'uscita già fatta.
                 err.costo_equivalente_usd = _costo_equivalente(
                     {}, (len(sistema) + len(_trascrizione(messages, codice))) // 4, 0)
                 raise err from e

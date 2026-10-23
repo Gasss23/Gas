@@ -4403,6 +4403,8 @@ _TARGETS_68s = [
     ".gas_vectors.index",
     ".gas_tokens.cache",
     "gas_history.json",
+    ".gas_claude_cli_uso.json",  # V-1 bot #258: il modello non azzera il proprio tetto
+    ".gas_claude_cli_uso.json.123.tmp",
 ]
 _failures_68s = []
 for _fname in _TARGETS_68s:
