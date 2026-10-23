@@ -29,12 +29,12 @@
 ```
  .claude/agents/memoria_revisore.md |   4 +
  modules/web/leggi.py               |  26 +++---
- reports/diff_sessione.md           |  11 ++-
- reports/handoff.md                 | 173 ++++++++++++++++++++++++++++++++-----
+ reports/diff_sessione.md           |  13 +--
+ reports/handoff.md                 | 183 +++++++++++++++++++++++++++++++------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  27 ++++--
- tests/test_unit_web_leggi.py       |  50 ++++++++++-
- 7 files changed, 246 insertions(+), 47 deletions(-)
+ reports/ultimo_report.md           |  28 ++++--
+ tests/test_unit_web_leggi.py       |  50 +++++++++-
+ 7 files changed, 252 insertions(+), 54 deletions(-)
 ```
 
 NB: preso dall'index con tutti i report in stage, dopo aver scritto questo handoff (V-3 ve #252); solo la riga di `reports/handoff.md` può differire di poche righe, perché lo stat è dentro il file stesso.
@@ -44,6 +44,8 @@ NB: preso dall'index con tutti i report in stage, dopo aver scritto questo hando
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5355adf Merge origin/main (PR #254) in feat/mani-web-fetta13
+85feb49 docs(reports): fetta 13 chat Mani — handoff con i blocchi di codice corretti
 2f903fb docs(reports): fetta 13 chat Mani, terzo giro — report, handoff, stato
 95627a4 test(web): fetta 13 — avviso in parallelo davvero, sonde del titolo in svg/math (V-1/V-2 ve #255)
 4aea67b chore(revisore): memoria review #494 — APPROVATO
@@ -183,7 +185,9 @@ File:
 
 - `2dd08b6` (apertura della PR #255): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA e V-2 COSMETICA, chiuse in `58fc102`).
 - Verifica esterna #255 su `2dd08b6`: APPROVATO CON RISERVE (V-1, V-2 BASSE chiuse; V-3, V-4 COSMETICHE).
-- `2a0340f` (secondo giro, pushato): run in corso alla scrittura; `95627a4` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `2a0340f` (secondo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (una COSMETICA: descrizione della PR, aggiornata).
+- `85feb49` (terzo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (una COSMETICA: eccezioni dei thread nel test dell'avviso, rimandata); verifica esterna #255 APPROVATO CON RISERVE (V-1 BASSA, XHTML malformato con title annidati in svg: corpo nella riga del titolo, legata a R-ve252-2; V-2/V-3/V-4 COSMETICHE).
+- L'operatore ha detto «mergia 255»; il merge è stato rifiutato per conflitto con main (PR #254): merge di main `5355adf` (solo log di sessione, tenuta la versione Mani). Run sul merge e sul commit di fine-task con questo handoff: non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
