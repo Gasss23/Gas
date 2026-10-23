@@ -28,8 +28,9 @@ from modules.memory import now_iso_da
 from modules.memory import VectorStore, default_vectors_path, EMBED_MODEL_NAME
 from brains.model_ids import (
     MODEL_GEMINI_LITE, MODEL_GEMINI_FLASH, MODEL_GROQ, MODEL_OPENROUTER, MODEL_OLLAMA,
-    GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
+    MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
+from brains.claude_cli import ClaudeCliClient
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
 from modules.gate.gate import libero_dopo_lettura, sembra_delicato
@@ -332,6 +333,9 @@ _PROVIDER_PRICE_PER_MTok: Dict[str, Tuple[float, float]] = {
     "groq":              (GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M),  # env-overridabili GAS_GROQ_PRICE_IN/OUT
     "openrouter":        (0.00,  0.00),   # meta-llama free tier → 0
     "ollama":            (0.00,  0.00),   # locale → 0
+    # R2 via B: `claude -p` col login dell'abbonamento, nessuna spesa in dollari.
+    # I token si registrano lo stesso (tetto dedicato in una fetta successiva).
+    "claude-cli":        (0.00,  0.00),
 }
 
 # Registro STATICO dei modelli che DICHIARANO function calling. Serve SOLO per
@@ -342,6 +346,7 @@ _PROVIDER_PRICE_PER_MTok: Dict[str, Tuple[float, float]] = {
 TOOL_CAPABLE_MODELS = frozenset({
     GEMINI_FLASH_LITE_MODEL, GEMINI_FLASH_MODEL, GROQ_MODEL,
     OPENROUTER_FREE_MODEL, OLLAMA_MODEL,
+    MODEL_CLAUDE_FORTE,  # via ClaudeCliClient: strumenti di Gas col formato JSON fisso
 })
 
 def _model_tool_capable(model: str) -> bool:
@@ -798,6 +803,15 @@ def _tronca_righe(testo: str, cap: int, marcatore: str) -> str:
 _FREE_RUNG_NAMES: frozenset = frozenset({"openrouter", "ollama"})
 
 
+def _rung_disponibile(name: str, env: str) -> bool:
+    """Il rung si può usare? Per i provider HTTP basta la variabile (chiave o URL).
+    Per `claude-cli` serve un interruttore esplicito (GAS_CLAUDE_CLI=1): un valore
+    qualsiasi, «0» compreso, non deve accendere l'abbonamento."""
+    if name == "claude-cli":
+        return _env_flag(env)
+    return bool(os.environ.get(env))
+
+
 def _cascata_provider(compito: str) -> List[Tuple[str, str, Optional[str], str]]:
     """Cascata dei provider (nome, env-chiave, base_url, modello) per la classe di
     compito ('semplice' o altro = 'complesso'). Punto UNICO condiviso da run_turn e
@@ -810,6 +824,10 @@ def _cascata_provider(compito: str) -> List[Tuple[str, str, Optional[str], str]]
     Ollama: la "chiave" del gate e' GAS_OLLAMA_URL (presenza), percio'
     api_key=base_url=URL: Ollama ignora la chiave, e' deliberato.
     L'URL di Ollama si legge a OGNI chiamata (non all'import): l'env vale al turno."""
+    if compito == "forte":
+        # R2 via B: lavori importanti SOLO sul modello forte. Se non è disponibile il
+        # turno non scala ai gratuiti (regola dei modelli, CLAUDE.md §2): aspetta.
+        return [("claude-cli", "GAS_CLAUDE_CLI", None, MODEL_CLAUDE_FORTE)]
     ollama_url = os.environ.get("GAS_OLLAMA_URL")
     free_rungs: List[Tuple[str, str, Optional[str], str]] = [
         ("openrouter", "OPENROUTER_API_KEY", OPENROUTER_URL, OPENROUTER_FREE_MODEL),
@@ -3675,6 +3693,8 @@ class GasKernel:
         corpo = _sanitize_memory_text("\n".join(righe))
         return "<trascrizione_dati>\n" + corpo + "\n</trascrizione_dati>"
 
+    CLAUDE_CLI_TIMEOUT_SEC: int = 300  # `claude -p` (ragionamento lungo): tetto per chiamata
+
     def _timeout_provider(self, name: str) -> int:
         """Timeout HTTP del rung: Ollama locale ha il suo (R-226-1)."""
         return self.OLLAMA_TIMEOUT_SEC if name == "ollama" else self.PROVIDER_TIMEOUT_SEC
@@ -4394,7 +4414,8 @@ class GasKernel:
                         f"solo una parte del lavoro. Verifica prima di ripetere.")
             return f"Errore eseguendo {name}: {str(e)}"
 
-    def run_turn(self, user_prompt: str) -> Generator[Dict[str, Any], None, None]:
+    def run_turn(self, user_prompt: str,
+                 cervello: Optional[str] = None) -> Generator[Dict[str, Any], None, None]:
         # --- Fetta 1 auto-apprendimento: tracking per turno_fine ---
         _turno_id = str(uuid.uuid4())
         _turno_tool_n = 0
@@ -4442,7 +4463,8 @@ class GasKernel:
             self._add_to_history("user", content=user_prompt)
 
             from brains.router import classifica_compito
-            compito = classifica_compito(user_prompt)
+            # R2 via B: «forte» solo su richiesta esplicita, mai dal classificatore.
+            compito = "forte" if cervello == "forte" else classifica_compito(user_prompt)
             _turno_classe = compito
 
             # Iniezione memoria ALWAYS-ON (fetta 2b): calcolata UNA volta per turno
@@ -4488,7 +4510,7 @@ class GasKernel:
             # testo grezzo dell'errore (potrebbe riportare dati della richiesta).
             _motivi: List[str] = []
             for name, env, url, model in providers:
-                if not os.environ.get(env):
+                if not _rung_disponibile(name, env):
                     _motivi.append(f"{name}: {env} non impostata")
                     continue
                 # Fetta B: traccia tutti i provider TENTATI (non solo l'ultimo);
@@ -4504,9 +4526,11 @@ class GasKernel:
                                     f"dichiarato, turno potenzialmente tool-blind")
                 payload: List[Dict[str, Any]] = []
                 try:
-                    client = OpenAI(base_url=url, api_key=os.environ.get(env),
-                                    timeout=self._timeout_provider(name),
-                                    max_retries=self.PROVIDER_MAX_RETRIES)
+                    client = (ClaudeCliClient(timeout=self.CLAUDE_CLI_TIMEOUT_SEC)
+                              if name == "claude-cli" else
+                              OpenAI(base_url=url, api_key=os.environ.get(env),
+                                     timeout=self._timeout_provider(name),
+                                     max_retries=self.PROVIDER_MAX_RETRIES))
                     for _ in range(10):  # max 10 iterazioni agentic loop
                         # C2: calcola contaminazione dalla finestra PRIMA di inviare
                         # al provider (§3b). Ricalcolata a ogni iterazione perché la
