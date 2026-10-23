@@ -16,9 +16,9 @@
 5. Il consumo residuo dell'abbonamento si vede con `/status` (interattivo); non c'è un modo documentato per leggerlo da un programma.
 
 ## Conseguenza per R2 (proposta della chat Motore, decide l'operatore)
-- **Via A — API key con i 100 $ al mese inclusi nel Max (consigliata)**: è la strada esplicitamente permessa per l'uso automatico (API key → Commercial Terms). Il consumo di Gas è separato dall'abbonamento che usi tu con Claude Code (non tocca i tuoi limiti), ha un tetto naturale (100 $ al mese, poi si ferma, mai addebiti in più) e si misura dai token di ogni risposta, che Gas già registra. Il tetto del 20% al giorno diventa circa 3,30 $ al giorno sui 100 $ mensili, oppure un tetto giornaliero a scelta.
+- **Via A — API key con i 100 $ al mese inclusi nel Max (consigliata, ma riapre la decisione del 19 ottobre)**: è la strada esplicitamente permessa per l'uso automatico (API key → Commercial Terms). Il consumo di Gas è separato dall'abbonamento che usi tu con Claude Code (non tocca i tuoi limiti), ha un tetto naturale (100 $ al mese, poi si ferma, mai addebiti in più) e si misura dai token di ogni risposta, che Gas già registra. Il tetto del 20% al giorno diventa circa 3,30 $ al giorno sui 100 $ mensili, oppure un tetto giornaliero a scelta.
 - **Via B — `claude -p` col login dell'abbonamento**: usa i limiti del piano (5 ore + settimanale) che condividi con lo sviluppo, il consumo residuo non si legge da programma, e l'uso automatico su server è ambiguo per le Consumer Terms. Sconsigliata finché Anthropic non lo chiarisce.
-- Nota: la decisione del 19 ottobre «crediti API da 100 $: non usati per ora» era stata presa quando i crediti non erano inclusi nel piano; con l'aggiornamento del 7 ottobre sono inclusi nel Max 5x.
+- **Nota onesta (correzione del bot #254)**: i crediti da 100 $ erano già noti e documentati dall'11 ottobre (`reports/proposta_cervello_forte.md`), e il 19 ottobre l'operatore ha scelto di non usarli (roadmap R2: «riserva a crediti rifiutata»). Il fatto nuovo NON sono i crediti: è l'ambiguità delle Consumer Terms §3.7 sull'uso automatico col login dell'abbonamento, emersa in questa verifica. La via A quindi **riapre** la decisione del 19 ottobre per questo motivo; se l'operatore conferma la via B, si costruisce la via B accettando il rischio dichiarato.
 
 ## Da decidere (operatore)
 1. Via A o via B.

@@ -15,6 +15,7 @@
 
 - **Verifica delle regole R2**: `FATTA`.
 - **Riserve bot #253 V-1/V-2**: `FATTA`.
+- **Bot #254 V-1 MEDIA (premessa falsa sui crediti) e V-2 BASSA (cronologia in stato_progetto)**: `FATTA`.
 - **Costruzione R2**: `DEFERITA — decisione dell'operatore`.
 
 ---
