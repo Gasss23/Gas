@@ -1085,6 +1085,9 @@ def test_parser_aggiornato_rilevato():
     # dal doppio escape «</script>» torna all'escape, non allo script normale; «<!--» non cambia (V-3 ve #252)
     ("<p>A</p><script><!--<script></script><script></script>SEGRETO</script>VIS", ("A", "VIS")),
     ("<p>A</p><script><!--<script><!--</script>SEGRETO</script>VIS", ("A", "VIS")),
+    # «<scripts>» e «</scripts>» non sono il tag script (V-2 ve #252 bis)
+    ("<p>A</p><script><!--</scripts>SEGRETO</script>VIS", ("A", "VIS")),
+    ("<p>A</p><script><!--<scripts></script>VIS", ("A", "VIS")),
 ])
 def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
@@ -1146,6 +1149,18 @@ def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
     ('<!DOCTYPE><html xmlns="http://www.w3.org/1999/xhtml"><body><p>SEGRETO</p></body></html>', ()),
     ('<!DOCTYPE html>\n<!-- c -->\n<?p x?>\n<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p>'
      '<p>VIS</p></body></html>', ("A", "VIS")),
+    # istruzione di elaborazione senza nome: XML non valido, il resto se ne va (V-1 ve #252 bis)
+    ('<?<!--?>SEGRETO', ()),
+    ('<?x<!--?>SEGRETO', ()),
+    ('<?a<![CDATA[?>SEGRETO<p>V</p>', ()),
+    ('<?\u00a0<!--?>SEGRETO', ()),
+    ('<?\u00a0 <!--?>SEGRETO', ()),
+    ('<?1 <!--?>SEGRETO', ()),
+    ('<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><?x?><?\u00e9-1.\u00b7 a?>'
+     '<?xml-stylesheet href="a"?><p>VIS</p></body></html>', ("A", "VIS")),
+    ('<?xml version="1.0"?><?<![CDATA[?>SEGRETO<p>V</p>', ()),
+    ('<html xmlns="http://www.w3.org/1999/xhtml"><body><p>V</p><?<!--?><script>x</script>SEGRETO</body></html>',
+     ("V",)),
     # il DOCTYPE standard resta com'è
     ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'
      '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><script>SEGRETO</script><p>VIS</p></body></html>',

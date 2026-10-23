@@ -1239,6 +1239,13 @@ def _fine_doctype(testo: str, da: int) -> int:
 
 # Dopo un DOCTYPE, prima dell'elemento radice, l'XML ammette solo spazi, commenti e PI.
 _DOPO_DOCTYPE = re.compile(r"[ \t\r\n]*(?:(<[A-Za-z])|$)")
+# Un'istruzione di elaborazione comincia con un nome XML intero, seguito da uno spazio o da «?>»:
+# «<?<!--?>» o «<?x<!--?>» non lo sono, e chiuderle al primo «?>» faceva uscire il testo che un
+# «<!--» senza fine portava via (V-1 ve #252 bis, B-488-1).
+_INIZIALE_XML = (r"A-Z_a-z:\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C\u200D"
+                 r"\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\U00010000-\U000EFFFF")
+_INIZIO_PI = re.compile(r"<\?[" + _INIZIALE_XML + r"][" + _INIZIALE_XML
+                        + r"\-.0-9\xB7\u0300-\u036F\u203F\u2040]*(?:[ \t\r\n]|\?>)")
 
 
 def _commenti_e_cdata_xml(testo: str) -> str:
@@ -1275,6 +1282,8 @@ def _commenti_e_cdata_xml(testo: str) -> str:
         if not trovati:
             break
         if testo.rfind("<", i, inizio) > testo.rfind(">", i, inizio) or prologo and apertura == "<![CDATA[":
+            break
+        if apertura == "<?" and not _INIZIO_PI.match(testo, inizio):
             break
         chiusura = {"<!--": "-->", "<![CDATA[": "]]>", "<?": "?>", "<!DOCTYPE": ">"}[apertura]
         if apertura == "<!DOCTYPE":
