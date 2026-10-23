@@ -1,19 +1,26 @@
-# ULTIMO REPORT — 2026-10-23 — R2 via B, fetta 1: Claude come cervello forte via `claude -p`
+# ULTIMO REPORT — 2026-10-23 — Chat Mani, fetta 14: tempo riservato alla pulizia, grezzi autochiusi conformi (R6)
+
+Ramo `feat/mani-web-fetta14` da main b3f04d9 (dopo il merge di #255 e #256). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta (vedi §0 dell'handoff): verdetto del revisore APPROVATO CON RISERVE, quindi il merge spetta all'operatore (regola CLAUDE.md §10).
-2. Per accendere il cervello forte, più avanti: sul Mac `claude` loggato con l'account Max di Gas, `GAS_CLAUDE_CLI=1` nel `.env` di Gas, nessuna `ANTHROPIC_API_KEY`. NON ancora: prima vanno chiuse R-494-1/2 e fatte le fette budget e catalogo.
+1. Merge della PR della fetta 14: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+2. **R-ve252-2 e R-ve255-1 (BASSE, XHTML malformato)**: estendere «il resto della pagina se ne va» a tutto l'XHTML malformato (più sicuro, si perde testo)? Decidi tu.
+3. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un vero costruttore HTML5 (es. lexbor): decidi tu.
+4. Rete più corta: i siti lenti ora vanno in timeout a 12 s invece che a 15 (per tenere il totale nei 15 s). Se preferisci 15 s di rete e un totale fino a ~18 s, dimmelo.
+5. Decisione aperta dell'altra chat (R2, A/B): vedi `reports/stato_progetto.md` e `reports/r2_regole_abbonamento.md` (V-3 bot #255).
+6. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
 ## Esito
 
-- **Fetta 1 — adattatore `brains/claude_cli.py` + rung «forte» in `gas.py`**: `FATTA`. Claude risponde solo in JSON fisso, senza strumenti propri, MCP o skill (`--tools "" --strict-mcp-config --disable-slash-commands --setting-sources ""`), in una cartella temporanea vuota, con l'ambiente ripulito da `ANTHROPIC_*` e dai segreti; il system prompt passa da un file nella cartella temporanea. Le chiamate agli strumenti le esegue `run_turn` (cancello, tetti, diario). Il rung parte solo con `cervello="forte"` e `GAS_CLAUDE_CLI=1`; non ripiega mai sui gratuiti. Oggi è dormiente: nessun chiamante passa `cervello="forte"`.
-- **Review**: #492 BOCCIATO (iniezione di tag nella trascrizione) → #493 APPROVATO CON RISERVE (neutralizzazione che corrompeva il codice) → #494 APPROVATO CON RISERVE (due BASSE, R-494-1/2, tracciate in `stato_progetto.md`).
-- **Merge di main (PR #255, chat Mani)**: conflitti solo nei report e nella memoria del revisore; review #495 APPROVATO.
-- **Test**: `tests/test_unit_claude_cli.py` 12 passed; kernel 1029 PASS 0 FAIL (T99a-f); pytest completo 2118 passed, 1 skipped (prima delle correzioni R-493: solo l'adattatore è cambiato dopo); nuovo passo CI «Run claude-cli suite».
-- **Documenti**: cifra corretta a 4,60 $/giorno in `r2_regole_abbonamento.md`, decisione via B registrata lì e nella roadmap.
-- **Fette successive R2**: `DEFERITA — prossime sessioni` (budget dedicato, `cervello: forte` nel catalogo notturno e opzione CLI, riga del doctor, setup del Mac).
+- **R-ve235-5 (pulizia fuori dai 15 s, BASSA)**: `FATTA` (rete 12 s + 3 s di riserva).
+- **R-496-1 (docstring, COSMETICA)**, **R-496-2 (errore della pulizia chiamato tempo superato, BASSA)**: `FATTA`.
+- **R-447-1 parte (b)**: chiusa come conforme ai browser, con test.
+- **V-2 bot #255 bis (eccezioni dei thread nel test, COSMETICA)**: `FATTA`.
+- **R-ve255-1**: registrata (decisione insieme a R-ve252-2).
+- **Test**: web suite 383 → 388 (Python 3.13 e 3.11; col parser vecchio 379 passati e 10 saltati apposta). Mutazioni nuove (senza riserva, flag della pulizia mai spento): prese.
+- **Review**: #496 APPROVATO CON RISERVE, #497 APPROVATO (chat Mani): verdetti integrali nell'handoff.
 
-## Anomalie
+## RICHIESTE ALLA CHAT MOTORE
 
-- Nessuna prova dal vero col login Max: qui la CLI gira con un altro account. Il messaggio esatto di limite raggiunto non è stato provocato.
+Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…14»).
