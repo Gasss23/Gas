@@ -1,15 +1,13 @@
-# DIFF SESSIONE — 2026-10-23 (chat Motore, R2 via B fetta 1)
+# DIFF SESSIONE — 2026-10-23 (chat Motore, R2 via B fetta 2)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `brains/claude_cli.py` (nuovo): adattatore `claude -p` con la forma del client OpenAI usata da `run_turn`; risposta JSON fissa, niente strumenti di Claude, ambiente pulito, trascrizione protetta dall'iniezione di tag.
-- `brains/model_ids.py`: `MODEL_CLAUDE_FORTE` (env `GAS_MODEL_CLAUDE_FORTE`).
-- `gas.py`: rung `claude-cli` nella cascata «forte», acceso solo da `GAS_CLAUDE_CLI`; `run_turn(..., cervello=None)`; prezzo 0 (abbonamento).
-- `tests/test_unit_claude_cli.py` (nuovo): 12 test dell'adattatore (opzioni, ambiente, iniezione, codice intatto, errori/quota).
-- `tests/test_unit_kernel.py`: T99a-f (round-trip, diario, cancello, interruttore, nessun ripiego sui gratuiti).
-- `.github/workflows/ci.yml`: passo «Run claude-cli suite».
-- `.claude/agents/memoria_revisore.md`: righe #492–#494 e lezioni.
-- `reports/r2_regole_abbonamento.md`, `reports/roadmap.md`: 4,60 $/giorno, decisione via B.
-- `reports/stato_progetto.md`: aggiornamento e riserve R-494-1/2.
+- `brains/claude_cli.py`: codice casuale per chiamata nei tag, lista di variabili permesse, errori senza testo di Claude, limite in testo semplice → QUOTA, argomenti non validi → errore, costo equivalente per chiamata.
+- `gas.py`: tetto giornaliero del cervello forte (`.gas_claude_cli_uso.json`, `GAS_CLAUDE_CLI_TETTO_USD`), controllato prima di ogni chiamata del rung.
+- `.gitignore`: il conto dell'uso del forte resta fuori dal repo.
+- `tests/test_unit_claude_cli.py`: 18 test (codice, iniezione, ambiente, errori, costo).
+- `tests/test_unit_kernel.py`: T99d rafforzato, T99g-j (conto, tetto, file illeggibile, altro giorno).
+- `.claude/agents/memoria_revisore.md`: riga #496 e lezione.
+- `reports/r2_regole_abbonamento.md`, `reports/roadmap.md`: tetto nella via B, stato delle fette.
+- `reports/stato_progetto.md`: riserve R-496-1/2/3.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
-- Merge di origin/main (PR #255, web fetta 13 della chat Mani): `modules/web/leggi.py` e `tests/test_unit_web_leggi.py` arrivano identici a main (review #495).
