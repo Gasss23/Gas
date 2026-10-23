@@ -18,8 +18,6 @@
 ## Da fare (in ordine)
 
 ### A. Piccoli lavori accantonati
-1. **Note cosmetiche del bot su #249**: intestazione «Ultimo aggiornamento» di `stato_progetto.md` senza la sessione del 22 sera; titolo «Da fare domattina … 2026-10-21 sera» in `da_mergiare.md` da aggiornare; nota nel §2 dell'handoff che la riga di `handoff.md` non conta il commit finale.
-2. **Registrare la prova del 22 ottobre** in `stato_progetto.md`: dopo #247 Gas compila da solo pro e contro (firma arrivata al primo messaggio, Rifiuta non ha eseguito).
 3. **Comando `/clear` su Telegram** (oggi `clear` funziona solo nel terminale): stesso effetto del `clear` del terminale (riflessione + storia svuotata), solo dagli ID autorizzati. Motore: revisore obbligatorio.
 4. **`righe_stato_mattino` con spesa non finita** (verifica esterna #241, V-1): `isfinite` anche lì, mai «$nan».
 5. **Database bloccato fra due letture** (R-454-1 / V-2 bot #241): `lista_contatti` dà `[]` su errore → «Lead attivi: 0». Una lettura dei contatti che segnali l'errore (None) per il resoconto e per `ricorda fermi`.
@@ -48,4 +46,5 @@ Sei il TURNO DI NOTTE dello sviluppo di Gas (roadmap R3, repo GitHub Gasss23/Gas
 ```
 
 ## Fatte
-(vuoto)
+- 1. **Note cosmetiche del bot su #249**: intestazione «Ultimo aggiornamento» di `stato_progetto.md` senza la sessione del 22 sera; titolo «Da fare domattina … 2026-10-21 sera» in `da_mergiare.md` da aggiornare; nota nel §2 dell'handoff che la riga di `handoff.md` non conta il commit finale. — **fatta, PR #259** (notte del 2026-10-24)
+- 2. **Registrare la prova del 22 ottobre** in `stato_progetto.md`: dopo #247 Gas compila da solo pro e contro (firma arrivata al primo messaggio, Rifiuta non ha eseguito). — **fatta, PR #259** (notte del 2026-10-24)
