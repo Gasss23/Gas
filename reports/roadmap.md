@@ -162,6 +162,7 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 ### R2 — Cervello forte: Claude con l'abbonamento 🔄
 **Riscritto il 19 ottobre.** Gas usa Claude con l'abbonamento **Max 5x di Gas**, tramite `claude -p` / Agent SDK, nei limiti del piano.
 - ⚠️ Le regole Anthropic sull'uso dell'abbonamento sono cambiate più volte nel 2026: **riverificare sulla pagina ufficiale prima di costruire**.
+- ✅ **Regole riverificate il 23 ottobre** (`reports/r2_regole_abbonamento.md`): con l'abbonamento `claude -p`/SDK consumano i limiti del piano, ma l'uso automatico su server è ambiguo per le Consumer Terms; il Max 5x include ora **100 $ al mese di crediti API**, validi con una API key (uso automatico esplicitamente permesso). ⏳ 👤 Decisione: via A (API key con i crediti inclusi, consigliata) o via B (`claude -p` col login).
 - ✅ Fetta 1 (12 ottobre): tetto di spesa ricontrollato prima di ogni chiamata, non solo a inizio compito (chiude F2).
 - ⏳ **Budget di Gas:** al massimo il 20% del limite **settimanale** al giorno, misurato **solo sul consumo di Gas**. Il consumo di sviluppo (Gas-operatore con Claude Code) non conta e non blocca Gas.
 - ⏳ Di notte nessun freno sulla finestra delle 5 ore.
