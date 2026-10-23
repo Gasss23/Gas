@@ -26,16 +26,16 @@
 
 ## §2 GIT DIFF --STAT (sessione)
 
-``
+```
  .claude/agents/memoria_revisore.md |   4 +
  modules/web/leggi.py               |  26 +++---
  reports/diff_sessione.md           |  11 ++-
- reports/handoff.md                 | 180 +++++++++++++++++++++++++++++++------
+ reports/handoff.md                 | 173 ++++++++++++++++++++++++++++++++-----
  reports/stato_progetto.md          |   2 +
  reports/ultimo_report.md           |  27 ++++--
  tests/test_unit_web_leggi.py       |  50 ++++++++++-
- 7 files changed, 249 insertions(+), 51 deletions(-)
-``
+ 7 files changed, 246 insertions(+), 47 deletions(-)
+```
 
 NB: preso dall'index con tutti i report in stage, dopo aver scritto questo handoff (V-3 ve #252); solo la riga di `reports/handoff.md` può differire di poche righe, perché lo stat è dentro il file stesso.
 
@@ -43,7 +43,8 @@ NB: preso dall'index con tutti i report in stage, dopo aver scritto questo hando
 
 ## §3 GIT LOG --ONELINE (sessione)
 
-``
+```
+2f903fb docs(reports): fetta 13 chat Mani, terzo giro — report, handoff, stato
 95627a4 test(web): fetta 13 — avviso in parallelo davvero, sonde del titolo in svg/math (V-1/V-2 ve #255)
 4aea67b chore(revisore): memoria review #494 — APPROVATO
 2a0340f docs(reports): fetta 13 chat Mani, secondo giro — report, handoff, stato
@@ -52,7 +53,7 @@ ed769e1 chore(revisore): memoria review #493 — APPROVATO
 2dd08b6 docs(reports): fine fetta 13 chat Mani — report, handoff, stato
 60f64b8 feat(web): fetta 13 — riserve minori della #252, titolo XHTML annidato (R6)
 208a89c chore(revisore): memoria review #492 — APPROVATO
-``
+```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
