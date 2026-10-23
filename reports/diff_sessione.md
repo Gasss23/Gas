@@ -11,3 +11,4 @@
 - `reports/r2_regole_abbonamento.md`, `reports/roadmap.md`: tetto nella via B, stato delle fette.
 - `reports/stato_progetto.md`: riserve R-496-1/2/3.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+- Correzioni dopo bot e verifica esterna #258 (`brains/claude_cli.py`, `gas.py`, test, `.gitignore`): costo 0, conto rovinato, LC_*, costo sugli errori.

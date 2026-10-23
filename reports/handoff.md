@@ -7,7 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #258 (https://github.com/Gasss23/Gas/pull/258) — verdetto revisore APPROVATO CON RISERVE: decide l'operatore (CLAUDE.md §10).
-2. Prima di accendere `GAS_CLAUDE_CLI`: chiudere o accettare R-496-1/2, provare il login (R-496-3).
+2. Prima di accendere `GAS_CLAUDE_CLI`: chiudere o accettare R-497-1/2 e R-496-2, provare il login (R-496-3).
 
 ---
 
@@ -18,6 +18,7 @@
 - **Tetto giornaliero del forte (V-1 bot #256)**: `FATTA`.
 - **Errori: limite in testo semplice, niente testo di Claude, argomenti non validi (V-2/V-3/V-4 bot #256)**: `FATTA`.
 - **Dicitura del tetto nella via B (V-3 ve #256)**: `FATTA`.
+- **Note del bot e della verifica esterna #258 (costo 0, conto rovinato, LC_*, R-496-1)**: `FATTA` (19213c0, review #497).
 - **Catalogo notturno, opzione CLI, doctor, setup Mac**: `DEFERITA — prossime fette`.
 
 ---
@@ -25,31 +26,34 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
+ .claude/agents/memoria_revisore.md |   4 ++++
  .gitignore                         |   2 ++
- brains/claude_cli.py               | 132 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------
- gas.py                             |  79 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  20 +++++++++-----------
- reports/handoff.md                 | 224 +++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ brains/claude_cli.py               | 158 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------
+ gas.py                             |  91 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  21 ++++++++++-----------
+ reports/handoff.md                 | 243 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  reports/r2_regole_abbonamento.md   |   2 ++
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  21 +++++++++++----------
- tests/test_unit_claude_cli.py      |  96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
- tests/test_unit_kernel.py          |  32 +++++++++++++++++++++++++++++++-
- 12 files changed, 353 insertions(+), 263 deletions(-)
+ reports/ultimo_report.md           |  22 ++++++++++++----------
+ tests/test_unit_claude_cli.py      | 119 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ tests/test_unit_kernel.py          |  54 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 12 files changed, 473 insertions(+), 249 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+19213c0 fix(r2): note del bot e della verifica esterna #258 sul tetto del forte
+85f74d7 chore(revisore): memoria review #497 — APPROVATO CON RISERVE
+a6d9261 docs(fine-task): report R2 via B fetta 2, riserve R-496
 cf58065 feat(r2): fetta 2 del cervello forte — codice per chiamata, ambiente permesso, tetto
 f7f3c62 chore(revisore): memoria review #496 — APPROVATO CON RISERVE
 ```
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore: cf58065 `feat(r2): fetta 2 del cervello forte — codice per chiamata, ambiente permesso, tetto`.
+Commit motore: cf58065 (review #496, sotto) e 19213c0 (review #497, più in basso). Commit cf58065: `feat(r2): fetta 2 del cervello forte — codice per chiamata, ambiente permesso, tetto`.
 
 ## VERDETTO: APPROVATO CON RISERVE
 
@@ -79,12 +83,39 @@ Letture obbligatorie fatte: CLAUDE.md §5, §8 e §9; reports/stato_progetto.md,
 
 **Memoria**: riga #496 più una lezione nuova (un contatore di spesa agganciato solo al ramo di successo sottostima), committata con scripts/commit_memoria_revisore.sh (commit f7f3c62, solo `/home/user/Gas/.claude/agents/memoria_revisore.md`).
 
+### Review #497 (commit 19213c0: note del bot e della verifica esterna #258)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #497 (chat Motore). È la nuova revisione della #496 sul diff in staging della PR #258 (R2 via B fetta 2, rung claude-cli dormiente). Ho letto la coda della memoria e la voce R2 in reports/stato_progetto.md; CLAUDE.md §5 e §8–9 li avevo già nel contesto.
+
+Elementi del diff esaminati:
+- `brains/claude_cli.py:180`: `_costo_equivalente` accetta solo int/float non booleani con 0 < v < 1000. Con 0, True, inf, NaN, valori negativi o stringhe usa la stima dai token. Rischio: un tetto che non scatta mai con un costo pari a 0. Esito: ok, chiude V-1 bot/ve #258. Il test copre 0, 0.0 e True.
+- `brains/claude_cli.py:46`: l'elenco `_ENV_PERMESSE` ora contiene i nomi LC_* scritti per esteso e non usa più prefissi (`brains/claude_cli.py:104`). Rischio: una variabile segreta che passa con un prefisso. Esito: ok, `LC_TOKEN_SECRET` viene escluso e il test lo verifica (chiude V-2 ve #258).
+- `brains/claude_cli.py:252`: il tempo scaduto porta `costo_equivalente_usd`, stimato sui caratteri d'ingresso diviso 4. Gli errori della CLI e il formato sbagliato usano `_costo_dati` (`brains/claude_cli.py:190`), che gestisce un `usage` assente o non numerico. Rischio: consumo non contato. Esito: riserva R-497-1 (sotto).
+- `gas.py:1615`: `_uso_claude_cli` controlla prima usd (numero non booleano, finito, ≥0) e poi il giorno (strptime, mai nel futuro). Solo dopo lo confronta con oggi. Rischio: un conto rovinato ma in JSON valido azzererebbe l'uso. Esito: ok. Una lista, `giorno` None, usd stringa o booleano, una data futura o la chiave mancante danno sempre None, cioè forte fermo (T99k). Un giorno passato e valido dà 0.0 (T99j).
+- `gas.py:4646`: nell'`except` attorno alla create la registrazione avviene solo se `name == "claude-cli"`. `_registra_uso_claude_cli` (`gas.py:1631`) non solleva mai, e il `raise` nudo che segue rilancia `e` (il contesto dell'eccezione esterna viene ripristinato). Rischio: cambiare il fallback degli altri provider o il retry Gemini 400. Esito: ok. Per i nomi gemini* il ramo non entra. Il forte non ripiega sui gratuiti: T99l non produce nessun final e l'uso registrato è 0.5.
+- `gas.py:1642`: un file .tmp con il pid per ogni processo. Il .gitignore è allineato al nuovo nome. Esito: ok, ma il lock manca ancora (R-496-2, dichiarato).
+
+§5: niente slicing diretto della history e niente simulazione dei tool. §8: il limite di 10 iterazioni non è toccato. §9: le eccezioni restano intercettate e il fallback non cambia. Il blocco in caso di dubbio (fail-closed) è coerente con la regola dei modelli: quando il conto è dubbio, il forte resta fermo e non passa ai gratuiti.
+
+Test rilanciati da me: claude_cli 19 passed; kernel 1035 PASS, 0 FAIL (T99k e T99l PASS).
+
+Riserve, tutte BASSE:
+- **R-497-1**: alcuni rami non portano ancora il costo: uscita non JSON (`brains/claude_cli.py:259`), JSON che non è un oggetto, chiamata o argomenti non validi (`brains/claude_cli.py:284`, su una risposta riuscita e quindi pagata), `usage` non numerico nel successo (int() solleva ValueError). Correzione semplice: racchiudere il parsing dopo il runner e, se `dati` è un oggetto JSON, attaccare `_costo_dati(dati)` a qualunque eccezione.
+- **R-497-2**: se la data nel conto è futura (cambio di fuso o orologio tornato indietro), il forte resta fermo fino a quel giorno. È in linea con il blocco in caso di dubbio e si risolve da solo, ma va annotato nella documentazione o nel doctor.
+- **R-496-2** resta aperta: manca il lock tra processi (corsa lettura-somma-scrittura).
+
+Rischio escluso: non ho verificato il comportamento reale della CLI `claude` (se riporta davvero `total_cost_usd` sugli errori e sul tempo scaduto, e il login con il nuovo elenco esplicito di LC_*), perché non si può riprodurre senza l'abbonamento e il Mac/VPS. Non ho lanciato il pytest completo (2133 secondo l'agente): ho rieseguito solo le due suite toccate.
+
+Memoria: riga #497 e una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da `scripts/commit_memoria_revisore.sh` (85f74d7).
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `python tests/test_unit_kernel.py`: 1029 → 1033 PASS (T99g, T99h, T99i, T99j nuovi; T99d rafforzato), 0 FAIL.
-  `=== RIEPILOGO: 1033 PASS, 0 FAIL ===`
-- `pytest tests/test_unit_claude_cli.py`: 12 → 18 passed.
-- `pytest tests/` completo: `2132 passed, 1 skipped in 193.19s (0:03:13)`.
+- `python tests/test_unit_kernel.py`: 1029 → 1035 PASS (T99g-l nuovi; T99d rafforzato), 0 FAIL.
+  `=== RIEPILOGO: 1035 PASS, 0 FAIL ===`
+- `pytest tests/test_unit_claude_cli.py`: 12 → 19 passed.
+- `pytest tests/` completo: `2133 passed, 1 skipped in 192.34s (0:03:12)`.
 - Prova vera dell'adattatore (`claude -p` con l'ambiente ridotto, in questo ambiente Linux): risposta `'ok'`, costo equivalente `0.0003846`.
 
 ## §6 STATO CI
@@ -92,15 +123,17 @@ Letture obbligatorie fatte: CLAUDE.md §5, §8 e §9; reports/stato_progetto.md,
 `gh run list -L 3` alla scrittura:
 
 ```
-completed	skipped	R2 via B fetta 2: codice per chiamata, ambiente permesso, tetto del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39996334939	2s	2026-10-23T17:35:34Z
-in_progress		feat(r2): fetta 2 del cervello forte — codice per chiamata, ambiente …	CI	feat/merge-automatico-z1xjx2	push	39996329497	18s	2026-10-23T17:35:32Z
-in_progress		feat(web): fetta 14 Mani — tempo riservato alla pulizia, grezzi autochiusi conformi (R6)	verifica-bot	feat/mani-web-fetta14	pull_request_target	39996169035	1m27s	2026-10-23T17:34:23Z
+completed	success	R2 via B fetta 2: codice per chiamata, ambiente permesso, tetto del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39996402478	3m46s	2026-10-23T17:36:04Z
+completed	skipped	R2 via B fetta 2: codice per chiamata, ambiente permesso, tetto del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39996390596	2s	2026-10-23T17:35:59Z
+completed	success	docs(fine-task): report R2 via B fetta 2, riserve R-496	CI	feat/merge-automatico-z1xjx2	push	39996388617	2m51s	2026-10-23T17:35:58Z
 ```
 
-Mappatura: f7f3c62 (memoria) e cf58065 (motore) pushati insieme: una run sul push, che testa la testa cf58065; f7f3c62 non ha run propria. Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura: f7f3c62+cf58065 pushati insieme (run sulla testa cf58065); a6d9261 (report): CI verde sul suo push (unit-suite, handoff-check, verifica-bot success). 85f74d7 (memoria) e 19213c0 (correzioni) e il commit di fine-task che li segue: run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
 
 ## §7 RISERVE APERTE
 
-- **R-496-1** (BASSA): il costo si conta solo sulle risposte riuscite; errori o timeout dopo il consumo non entrano nel tetto.
+- ~~R-496-1~~ chiusa in 19213c0 (errori, formato sbagliato e tempo scaduto entrano nel tetto).
+- **R-497-1** (BASSA): alcuni rami d'errore non portano ancora il costo (uscita non JSON, chiamata/argomenti non validi su risposta pagata, \`usage\` non numerico).
+- **R-497-2** (BASSA): una data futura nel conto ferma il forte fino a quel giorno (fail-closed).
 - **R-496-2** (BASSA): due processi in parallelo possono perdere un aggiornamento del conto (niente lock).
 - **R-496-3** (BASSA): login reale col portachiavi del Mac e con `CLAUDE_CODE_OAUTH_TOKEN` sulla VPS da provare con l'ambiente ridotto.
