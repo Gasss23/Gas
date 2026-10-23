@@ -12,3 +12,4 @@
 - `reports/r2_regole_abbonamento.md`, `reports/roadmap.md`: 4,60 $/giorno, decisione via B.
 - `reports/stato_progetto.md`: aggiornamento e riserve R-494-1/2.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+- Merge di origin/main (PR #255, web fetta 13 della chat Mani): `modules/web/leggi.py` e `tests/test_unit_web_leggi.py` arrivano identici a main (review #495).

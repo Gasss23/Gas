@@ -22,25 +22,27 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
+ .claude/agents/memoria_revisore.md |   7 +++++++
  .github/workflows/ci.yml           |   7 +++++++
  brains/claude_cli.py               | 229 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  brains/model_ids.py                |   2 ++
  gas.py                             |  38 +++++++++++++++++++++++++++++++-------
  reports/diff_sessione.md           |  18 ++++++++++++------
- reports/handoff.md                 | 146 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------
+ reports/handoff.md                 | 282 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------
  reports/r2_regole_abbonamento.md   |   4 +++-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  21 ++++++++++++++-------
+ reports/ultimo_report.md           |  28 +++++++++++-----------------
  tests/test_unit_claude_cli.py      | 155 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          | 101 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 13 files changed, 683 insertions(+), 50 deletions(-)
+ 13 files changed, 707 insertions(+), 170 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8671f47 Merge origin/main (PR #255) in feat/merge-automatico-z1xjx2 — review #495 APPROVATO
+318835c docs(fine-task): report R2 via B fetta 1, riserve R-494, 4,60 $/giorno e decisione via B
 22d300d feat(r2): cervello forte via `claude -p` (via B, fetta 1)
 acc288f chore(revisore): memoria review #494 — APPROVATO CON RISERVE
 2c0e9d6 chore(revisore): memoria review #493 — APPROVATO CON RISERVE
@@ -155,6 +157,28 @@ Review #494 (chat Motore). È la nuova revisione della #493 su R2 via B fetta 1,
 
 **Memoria:** ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #494 e una lezione sui sosia Unicode. È committata con scripts/commit_memoria_revisore.sh (acc288f).
 
+### Review #495 (merge di origin/main, PR #255 — commit 8671f47)
+
+## VERDETTO: APPROVATO
+
+Review #495 (chat Motore): merge in corso di origin/main 76007aa (PR #255, chat Mani, fetta web 13) dentro feat/merge-automatico-z1xjx2 (PR #256, HEAD 318835c). La base comune è 7664837.
+
+Cosa ho controllato nel diff:
+- `modules/web/leggi.py:818` — è il contatore del titolo che conta solo in XHTML (fetta 13 di main). Rischio controllato: che la risoluzione del merge abbia alterato il file. `git diff --cached origin/main -- modules tests/test_unit_web_leggi.py` restituisce 0 righe, quindi il file è uguale a main. Esito: ok.
+- `modules/web/leggi.py:131` — è l'avviso protetto da un solo Lock, arrivato da main. Rischio controllato: slicing della history o simulazione dei tool introdotti dal merge. Il file è identico a main. L'unico `[-1:]` del file (`modules/web/leggi.py:255`, `self._punti[-1:]`) è una pila del parser, non la cronologia dei messaggi. Esito: ok.
+- `tests/test_unit_web_leggi.py:1239` — test con Barrier(8) arrivato da main. Rischio controllato: un test perso o duplicato nella fusione. Il file è identico a main. Risultato: 395 passed, 1 skipped (test web + test claude_cli). Esito: ok.
+- `reports/stato_progetto.md:608` — è la voce «Mani — fetta 13», fusa in automatico. Rischio controllato: righe perse. Rispetto a HEAD non manca nessuna riga. Rispetto a MERGE_HEAD ne manca 1: è la riga «Ultimo aggiornamento», che il ramo ha riscritto. Da base a MERGE_HEAD main ha solo aggiunto 2 righe, senza cancellarne nessuna, e quelle 2 righe ci sono. Esito: ok.
+- `.claude/agents/memoria_revisore.md` — conflitto risolto unendo le due parti (Motore #492–#494, poi Mani #492–#494). Rispetto a HEAD e a MERGE_HEAD non manca nessuna riga, e non ci sono marcatori di conflitto (cercati in memoria, stato_progetto, reports/*.md, leggi.py e nel suo test). Esito: ok.
+- File del motore propri del ramo (`brains/claude_cli.py`, `gas.py`, `tests/test_unit_claude_cli.py`, `tests/test_unit_kernel.py`) — rischio controllato: modifiche fatte dal merge. Lo stage contro HEAD tocca solo leggi.py, il suo test, la memoria e stato_progetto, quindi questi file sono uguali a HEAD. Il kernel passa 1029 test su 1029, 0 FAIL. Esito: ok.
+- handoff, ultimo_report e diff_sessione sono uguali a HEAD, come dichiarato: non compaiono nel diff contro HEAD.
+
+Cosa NON ho verificato:
+- Non ho rivisto nel merito le scelte di parsing della fetta 13: sono già state revisionate nelle review #492–#494 della chat Mani.
+- Non ho controllato la CI su GitHub dopo il merge: il commit di merge non esiste ancora.
+- Ho lanciato i test solo con il Python del venv locale, non anche su 3.11.
+
+Riga contatore #495 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È fuori dallo stage e NON è committata, come richiesto (merge in corso): va inclusa nel commit di merge o nel commit di fine task. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python tests/test_unit_kernel.py`: 1022 → 1029 PASS (T99a-f nuovi), 0 FAIL.
@@ -167,12 +191,12 @@ Review #494 (chat Motore). È la nuova revisione della #493 su R2 via B fetta 1,
 `gh run list -L 3` alla scrittura:
 
 ```
-completed	skipped	R2 via B fetta 1: Claude come cervello forte via claude -p (dormiente)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39992320582	1s	2026-10-23T17:06:17Z
-in_progress		feat(r2): cervello forte via `claude -p` (via B, fetta 1)	CI	feat/merge-automatico-z1xjx2	push	39992303071	14s	2026-10-23T17:06:09Z
-completed	success	Merge pull request #255 from Gasss23/feat/mani-web-fetta13	CI	main	push	39990272278	3m15s	2026-10-23T16:51:44Z
+completed	success	R2 via B fetta 1: Claude come cervello forte via claude -p (dormiente)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39992384804	4m9s	2026-10-23T17:06:45Z
+completed	skipped	R2 via B fetta 1: Claude come cervello forte via claude -p (dormiente)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39992366470	2s	2026-10-23T17:06:37Z
+completed	success	docs(fine-task): report R2 via B fetta 1, riserve R-494, 4,60 $/giorn…	CI	feat/merge-automatico-z1xjx2	push	39992362330	2m54s	2026-10-23T17:06:35Z
 ```
 
-Mappatura: 22d300d (commit motore) e i commit di memoria 4b58b01/2c0e9d6/acc288f sono stati pushati insieme: una sola run per il push, che testa solo la testa 22d300d; i commit intermedi non hanno run propria. Il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura: 22d300d (motore) con i commit di memoria 4b58b01/2c0e9d6/acc288f: una run sul push (testa 22d300d). 318835c (report): run del suo push. 8671f47 (merge di main) e il commit di fine-task che lo segue: run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
 
 ## §7 RISERVE APERTE
 
