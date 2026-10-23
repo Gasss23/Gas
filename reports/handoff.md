@@ -21,20 +21,21 @@
 - **R-466-1, R-466-2, R-ve245b-4**: `FATTA`
 - **R-482-1**: `FATTA`
 - **Secondo giro, bot e verifica esterna #252 BOCCIATO su 3cea14e**: V-1 MEDIA `FATTA`; V-2 bot / V-5 ve `FATTA`; V-3 ve e R-485-1 `FATTA`; V-4 ve (merge di main) `FATTA`; V-6 ve `FATTA`; V-2 ve registrata come R-ve252-2 (BASSA preesistente, da decidere)
+- **Terzo giro, bot #252 su 3c0be94 APPROVATO CON RISERVE (COSMETICHE) e seconda verifica esterna APPROVATO CON RISERVE**: V-1 ve bis BASSA (PI senza nome) `FATTA` (B-488-1); V-2 ve bis BASSA (test) `FATTA`; V-1 bot COSMETICA (descrizione PR) `FATTA`; V-2 bot COSMETICA (Event+Lock) aperta
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 ++
- modules/web/leggi.py               | 190 ++++++++++++++++++++++++++++++++++---
+ .claude/agents/memoria_revisore.md |  12 +++
+ modules/web/leggi.py               | 199 ++++++++++++++++++++++++++++++++++---
  reports/diff_sessione.md           |  13 ++-
- reports/handoff.md                 |  95 +------------------
+ reports/handoff.md                 |  95 +-----------------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  32 ++++---
- tests/test_unit_web_leggi.py       | 159 ++++++++++++++++++++++++++++++-
- 7 files changed, 375 insertions(+), 125 deletions(-)
+ reports/ultimo_report.md           |  33 ++++--
+ tests/test_unit_web_leggi.py       | 174 +++++++++++++++++++++++++++++++-
+ 7 files changed, 403 insertions(+), 125 deletions(-)
 ```
 
 ---
@@ -42,6 +43,10 @@
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+719d3ce fix(web): fetta 12 — PI XHTML solo con nome XML valido, test <scripts> (V-1/V-2 ve #252 bis)
+2cf21e5 chore(revisore): memoria review #489 — APPROVATO
+9293b9b chore(revisore): memoria review #488 — BOCCIATO
+3c0be94 docs(reports): fetta 12 chat Mani, secondo giro — report, handoff, stato
 13b7526 Merge origin/main (PR #251) in feat/mani-web-fetta12 (V-4 ve #252)
 f644a04 fix(web): fetta 12 — prologo XHTML dopo il DOCTYPE, test dei mutanti (V-1/V-5 bot e ve #252)
 42077c0 chore(revisore): memoria review #486 — APPROVATO
@@ -59,7 +64,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Sei verdetti, incollati integralmente (chat Mani): #482 (BOCCIATO, B-482-1), #483 (BOCCIATO, B-483-1) e #484 (APPROVATO) sul diff della fetta 12 committato in `621da82`; #485 (APPROVATO CON RISERVE) e #486 (APPROVATO) sul secondo giro committato in `f644a04`; #487 (APPROVATO) sul merge di main 2abc23b, commit `13b7526`. Le righe citate nelle review intermedie si riferiscono al diff di allora.
+Otto verdetti, incollati integralmente (chat Mani): #482 (BOCCIATO, B-482-1), #483 (BOCCIATO, B-483-1) e #484 (APPROVATO) sul diff della fetta 12 committato in `621da82`; #485 (APPROVATO CON RISERVE) e #486 (APPROVATO) sul secondo giro committato in `f644a04`; #487 (APPROVATO) sul merge di main 2abc23b, commit `13b7526`; #488 (BOCCIATO, B-488-1) e #489 (APPROVATO) sul terzo giro committato in `719d3ce`. Le righe citate nelle review intermedie si riferiscono al diff di allora.
 
 ### Review #482 (chat Mani) — verdetto integrale (diff staged della fetta 12, prima del rimedio)
 
@@ -323,19 +328,95 @@ File:
 - /home/user/Gas/reports/roadmap.md
 - /home/user/Gas/reports/coda_notte.md
 
+### Review #488 (chat Mani) — verdetto integrale (V-1 e V-2 della seconda verifica esterna #252, prima versione)
+
+## VERDETTO: BOCCIATO
+
+Review #488 (chat Mani): delta in stage sulla PR #252 (head 3c0be94) per la seconda verifica esterna #252. La fuga V-1 si riapre aggiungendo una sola lettera, quindi su XML non valido resta la regressione rispetto a main. V-2 invece è chiusa.
+
+**Motivo del blocco: B-488-1 (BASSA come V-1, ma il fix non chiude il finding)**
+- `modules/web/leggi.py:1244`: `_INIZIO_PI` controlla solo il primo carattere dopo `<?`. In XML però una PI (`<?…?>`) vuole il nome intero, seguito da uno spazio oppure da `?>`.
+- Sonde sul codice in stage, in XHTML, tutte con SEGRETO visibile. Su main 7af0c48 tutte e 4 lo nascondono:
+  - `<?x<!--?>SEGRETO`
+  - `<?a<![CDATA[?>SEGRETO`
+  - `<html…><body><p>V</p><?x<!--?><script>x</script>SEGRETO</body></html>`
+  - `…<? <!--?>SEGRETO` (`[^\x00-\x7f]` accetta anche caratteri che non possono iniziare un nome XML)
+- `modules/web/leggi.py:1282`, il break sulla PI non valida: il punto in cui si fa break è giusto, il problema è solo la regex.
+- Rimedio provato in una copia isolata (rev482/cp5):
+  - `_INIZIO_PI` controlla il nome XML intero, con gli intervalli NameStartChar e NameChar dello standard, e poi richiede uno spazio oppure `?>`.
+  - Risultato su 10 sonde: le 5 con SEGRETO lo nascondono; tengono il testo `<?x <!--?>VISTO`, `<?x?>VISTO`, `<?xml-stylesheet href="a"?>VISTO` e un nome non ASCII valido (`<?é-1.· a?>`).
+  - Suite: 369 passed e 1 skipped su 3.13 e 3.11.
+- Servono test per `<?x<!--?>SEGRETO` e per il caso con ` `.
+
+**Cosa ho verificato e va bene**
+- `tests/test_unit_web_leggi.py:1089` e la riga dopo chiudono V-2 (`</scripts>` e `<scripts>` non sono il tag script).
+  - Rischio esaminato: il mutante «niente lookahead» in `_SEGNI_SCRIPT` che sopravvive.
+  - Esito ok: in una copia isolata il mutante dà 1 FAIL.
+- `tests/test_unit_web_leggi.py:1153`, le sonde della verifica esterna. Esito ok per i casi presenti, ma tutti hanno `<!--` subito dopo `<?`, quindi non provano il nome seguito da caratteri non ammessi.
+- Suite web sul codice in stage: 369 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Cosa non ho verificato**
+- Come i browser veri trattano una PI senza nome valido: per lo standard XML è un errore, e la scelta break scarta il resto, quindi sta dalla parte sicura.
+- La suite col parser vecchio (361 passed e 9 skipped).
+- La mutazione «senza il controllo del nome della PI»: è nel tuo run6.py e non l'ho rifatta.
+- V-3 è cosmetica e non viene toccata.
+
+**Memoria**: aggiunte la riga #488 e una lezione (validare tutta la produzione XML, non solo il primo carattere), committate con `scripts/commit_memoria_revisore.sh` (commit 9293b9b). Lo stage dei due file non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/fix488.py (script che applica il rimedio)
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev482/cp5/modules/web/leggi.py (copia con il rimedio applicato)
+
+### Review #489 (chat Mani) — verdetto integrale (V-1/V-2 della seconda verifica esterna #252, versione finale)
+
+## VERDETTO: APPROVATO
+
+Review #489 (chat Mani), ri-review della #488 sul delta in stage della PR #252 (head 3c0be94). B-488-1 è chiusa: `<?x<!--?>SEGRETO` e le altre sonde della #488 adesso restano nascoste, e le PI valide tengono il loro testo.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:1247`, `_INIZIO_PI` (con `_INIZIALE_XML` a `modules/web/leggi.py:1245`).
+  - Cosa fa: per aprire una PI (`<?…?>`) vuole il nome XML intero, poi uno spazio oppure `?>`.
+  - Rischio esaminato: la nuova scrittura (stringhe raw con escape `\u` per `re`, caratteri singoli invece di intervalli di due) che cambia gli intervalli rispetto alla mia cp5.
+  - Esito ok: ho confrontato le due regex su tutti i code point Unicode, sia come carattere iniziale sia come carattere interno al nome, e ho trovato 0 differenze.
+- `modules/web/leggi.py:1286`, il break sulla PI non valida.
+  - Rischio esaminato: una fuga o una perdita di testo.
+  - Esito ok, sulle 10 sonde della #488:
+    - le 5 con SEGRETO lo nascondono: `<?x<!--?>`, `<?a<![CDATA[?>`, `<? <!--?>`, `<?<!--?>` e il caso con lo script nel corpo;
+    - tengono VISTO: `<?x <!--?>`, `<?x?>`, `<?xml-stylesheet href="a"?>` e `<?é-1.· a?>`;
+    - in più ho provato `<?x\t<!--?>VISTO`, che tiene VISTO.
+- `tests/test_unit_web_leggi.py:1154` e i casi vicini in `test_xhtml_istruzioni_e_doctype`.
+  - Rischio esaminato: il mutante «controllo solo del primo carattere» che sopravvive.
+  - Esito ok: il caso `<?x<!--?>SEGRETO` è il controesempio esatto per quel mutante. Secondo la tua prova (run7.py) il mutante dà 2 FAIL.
+- Suite web: 375 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+- sonde483.py e sonde.py della #482: 0 fughe.
+
+**Cosa non ho verificato**
+- Le mutazioni di run7.py: non le ho rifatte. Ho però controllato che il controesempio di ciascuna stia nei test.
+- La suite col parser vecchio (367 passed e 9 skipped) e quella su Python 3.12.
+- I tempi su pagine da 3 MB: mi fido della tua misura. La regex non torna indietro: legge il nome una volta sola e poi guarda un carattere.
+
+**Memoria**: aggiunta la riga #489, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh` (commit 2cf21e5). Lo stage dei due file non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Web suite: 321 → 364 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «364 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 356 passed, 9 skipped (i test che vogliono il parser).
+- Web suite: 321 → 375 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «375 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 367 passed, 9 skipped (i test che vogliono il parser).
 - Oracolo lexbor, nuovo contro main 7af0c48: fuzz degli script (stati di escape) su 3.11 e 3.13, 0 fughe del nuovo contro 114–199 di main, 0 regressioni; enumerazione a 4 atomi (2,3 M pagine): 0 regressioni, 0 perdite nuove.
-- Mutazioni in copie isolate, elencate: `_fine_script` (anche i due mutanti di V-3 ve), `_FineScriptTrovata`, `parse_comment`, `_fine_doctype` (virgolette, testa, testa assente, `<` libero, `<` e `]` in dichiarazione, `>` fuori dichiarazione, commenti, PI), prologo dopo il DOCTYPE (assente, `<` qualsiasi, `[^<]*`, CDATA, fine subito): ognuna fa fallire almeno un test.
+- Mutazioni in copie isolate, elencate: `_fine_script` (anche i due mutanti di V-3 ve), `_FineScriptTrovata`, `parse_comment`, `_fine_doctype` (virgolette, testa, testa assente, `<` libero, `<` e `]` in dichiarazione, `>` fuori dichiarazione, commenti, PI), prologo dopo il DOCTYPE (assente, `<` qualsiasi, `[^<]*`, CDATA, fine subito), nome della PI (assente, solo il primo carattere, iniziale qualsiasi), `_SEGNI_SCRIPT` senza lookahead: ognuna fa fallire almeno un test.
 - Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
 - `3cea14e` (head all'apertura della PR #252): unit-suite e handoff-check success; verifica-bot **failure** (BOCCIATO, V-1 MEDIA, chiusa in `f644a04`); verifica esterna #252 BOCCIATO (V-1 MEDIA, V-2/V-3/V-4 BASSE, V-5/V-6 COSMETICHE: vedi §1).
-- `f644a04`, il merge `13b7526` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `3c0be94` (secondo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (solo COSMETICHE); seconda verifica esterna #252 APPROVATO CON RISERVE (V-1 e V-2 BASSE, chiuse in `719d3ce`).
+- `719d3ce` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
