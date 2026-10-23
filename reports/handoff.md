@@ -14,22 +14,28 @@
 
 - **Report della prima notte**: `FATTA` — voci 1 e 2 fatte in locale ma non pubblicate (push 403, repo non collegato alla sessione).
 - **Attività ricreata in una sessione fissa con il repo**: `FATTA`.
+- **Merge di main (#252 chat Mani)**: `FATTA` — review #491 APPROVATO (facoltativa, file del motore identici a main).
+- **Riserve bot #253**: V-1 roadmap R3 aggiornata `FATTA`; V-2/V-3 (definizione di prima notte, letture delle notti prima) `DEFERITA — il testo dell'attività si cambia solo dalla sessione fissa`, annotato in coda_notte.md.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/coda_notte.md    | 16 ++++++++--------
- reports/diff_sessione.md |  5 ++---
- reports/handoff.md       | 63 +++++++++------------------------------------------------------
- reports/ultimo_report.md | 15 ++++++---------
- 4 files changed, 25 insertions(+), 74 deletions(-)
+ .claude/agents/memoria_revisore.md |   1 +
+ reports/coda_notte.md              |  16 ++++++-------
+ reports/diff_sessione.md           |  12 ++++------
+ reports/handoff.md                 | 442 +++++++++++++++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ reports/roadmap.md                 |   4 ++--
+ reports/ultimo_report.md           |  29 ++++++------------------
+ 6 files changed, 40 insertions(+), 464 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+cd58329 Merge remote-tracking branch 'origin/main' into feat/merge-automatico-z1xjx2
+2a6a829 docs(fine-task): esito della prima notte e turno ricreato (#253)
 73b1d39 docs(notte): turno in una sessione fissa con il repo (prima notte senza push, 403)
 ```
 
