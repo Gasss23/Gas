@@ -163,6 +163,13 @@ jobs:
           set -o pipefail
           python -m pytest tests/test_unit_dotenv.py -v 2>&1 | tee "$RUNNER_TEMP/dotenv_output.txt"
 
+      - name: Run claude-cli suite (pytest, zero token LLM)
+        # R2 via B (2026-10-23): adattatore `claude -p` con runner finto, nessun processo vero.
+        if: always()
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_unit_claude_cli.py -v 2>&1 | tee "$RUNNER_TEMP/claude_cli_output.txt"
+
       - name: Ingest delle fonti di studio (solo dentro knowledge/)
         # V-1 bot #228: le fonti di tipo file fuori da knowledge/ vanno rifiutate.
         if: always()

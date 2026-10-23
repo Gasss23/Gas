@@ -5,6 +5,8 @@ MODEL_GEMINI_FLASH = os.environ.get("GAS_MODEL_GEMINI_FLASH", "gemini-2.5-flash"
 MODEL_GROQ = os.environ.get("GAS_MODEL_GROQ", "openai/gpt-oss-120b")
 MODEL_OPENROUTER = os.environ.get("GAS_MODEL_OPENROUTER", "meta-llama/llama-3.3-70b-instruct:free")
 MODEL_OLLAMA = os.environ.get("GAS_MODEL_OLLAMA", "qwen2.5:7b-instruct")
+# R2 via B (2026-10-23): cervello forte con `claude -p` e il login dell'abbonamento Max.
+MODEL_CLAUDE_FORTE = os.environ.get("GAS_MODEL_CLAUDE_FORTE", "claude-sonnet-5-5")
 
 # Prezzi Groq per milione di token (USD) — fonte groq.com/pricing, verificato 2026-07-13.
 # Storico: output era $0.75 al lancio, sceso a $0.60. Overridabili via env GAS_GROQ_PRICE_IN/OUT.

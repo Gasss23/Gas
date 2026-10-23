@@ -10792,6 +10792,107 @@ try:
 except Exception as _e98:
     check("T98 blocco senza eccezioni", False, repr(_e98))
 
+# ---------- T99: R2 via B — cervello forte con `claude -p` (adattatore finto) ----------
+print("\n--- T99: claude-cli ---")
+try:
+    import subprocess as _sp99
+    from brains.claude_cli import ClaudeCliClient as _CCC99
+
+    def _cli99(risposte, registro):
+        """Fabbrica di ClaudeCliClient col runner finto: una risposta per chiamata."""
+        it = iter(risposte)
+
+        def _run(cmd, stdin, cwd, env, timeout):
+            registro.append({"cmd": cmd, "stdin": stdin, "env": env})
+            out = next(it)
+            return _sp99.CompletedProcess(cmd, 0, stdout=json.dumps({
+                "type": "result", "subtype": "success", "is_error": False,
+                "structured_output": out,
+                "usage": {"input_tokens": 10, "output_tokens": 3}}), stderr="")
+        return lambda timeout=None: _CCC99(timeout=timeout, binario="claude", runner=_run)
+
+    _saved99 = {kk: os.environ.get(kk) for kk in
+                ("GAS_CLAUDE_CLI", "GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY",
+                 "GAS_OLLAMA_URL", "ANTHROPIC_API_KEY")}
+    _orig99 = gas.ClaudeCliClient
+    try:
+        for _kk in ("GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+            os.environ.pop(_kk, None)
+        os.environ["GEMINI_API_KEY"] = "dummy-for-test"
+        os.environ["ANTHROPIC_API_KEY"] = "sk-non-deve-arrivare"
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        _k99 = kernel_tmp()
+        (Path(_k99.root) / "nota99.txt").write_text("CONTENUTO99", encoding="utf-8")
+        _reg99 = []
+        gas.ClaudeCliClient = _cli99([
+            {"testo": "", "chiamate": [{"nome": "read_file",
+                                        "argomenti": {"relative_path": "nota99.txt"}}]},
+            {"testo": "La nota dice CONTENUTO99", "chiamate": []}], _reg99)
+        _ev99 = list(_k99.run_turn("leggi nota99.txt", cervello="forte"))
+        _o99 = [e["output"] for e in _ev99 if e["type"] == "tool_res"]
+        _f99 = [e["content"] for e in _ev99 if e["type"] == "final"]
+        check("T99a round-trip §7 col cervello forte: tool di Gas eseguito, risposta finale",
+              len(_o99) == 1 and "CONTENUTO99" in _o99[0] and _f99 == ["La nota dice CONTENUTO99"]
+              and len(_reg99) == 2, str(_ev99)[:300])
+        check("T99b il risultato dello strumento torna a Claude come dato, senza segreti nell'ambiente",
+              '<risultato_strumento' in _reg99[1]["stdin"] and "CONTENUTO99" in _reg99[1]["stdin"]
+              and "ANTHROPIC_API_KEY" not in _reg99[0]["env"] and "GEMINI_API_KEY" not in _reg99[0]["env"],
+              str(sorted(_reg99[0]["env"]))[:200])
+        _d99 = [r for r in _k99.memory.diario_recente(5) if r["tipo"] == "turno_fine"]
+        check("T99c diario: provider claude-cli, classe forte",
+              bool(_d99) and "provider=claude-cli" in _d99[0]["descrizione"]
+              and "classe=forte" in _d99[0]["descrizione"], str(_d99)[:200])
+        # Il cancello vale anche per Claude: write_file su codice senza firma → negato/parcheggiato
+        _reg99c = []
+        gas.ClaudeCliClient = _cli99([
+            {"testo": "", "chiamate": [{"nome": "write_file", "argomenti": {
+                "relative_path": "x99.py", "content": "print(1)"}}]},
+            {"testo": "fatto", "chiamate": []}], _reg99c)
+        _ev99c = list(_k99.run_turn("scrivi x99.py", cervello="forte"))
+        _o99c = [e["output"] for e in _ev99c if e["type"] == "tool_res"]
+        check("T99d il cancello vale anche per Claude: niente file di codice senza firma",
+              len(_o99c) == 1 and not (Path(_k99.root) / "x99.py").exists()
+              and "pro" in _o99c[0], _o99c[0][:200] if _o99c else "")
+        # Senza interruttore (o con «0») il forte non parte e NON scala ai gratuiti
+        _k99e = kernel_tmp()
+        for _val in (None, "0"):
+            if _val is None:
+                os.environ.pop("GAS_CLAUDE_CLI", None)
+            else:
+                os.environ["GAS_CLAUDE_CLI"] = _val
+            _reg99e = []
+            gas.ClaudeCliClient = _cli99([], _reg99e)
+            _gem99 = []
+            _orig_oa99 = gas.OpenAI
+            class _OA99:
+                def __init__(self, *a, **k):
+                    _gem99.append(1)
+                    self.chat = SimpleNamespace(completions=ScriptedCompletions(["gratuito"]))
+            gas.OpenAI = _OA99
+            try:
+                _ev99e = list(_k99e.run_turn("ciao", cervello="forte"))
+            finally:
+                gas.OpenAI = _orig_oa99
+            check(f"T99e GAS_CLAUDE_CLI={_val!r}: il forte non parte e non scala ai gratuiti",
+                  _reg99e == [] and _gem99 == [] and not [e for e in _ev99e if e["type"] == "final"],
+                  str(_ev99e)[:200])
+        # Senza `cervello` il classificatore non sceglie mai il forte, anche con l'interruttore acceso
+        os.environ["GAS_CLAUDE_CLI"] = "1"
+        _reg99f = []
+        gas.ClaudeCliClient = _cli99([], _reg99f)
+        _ev99f = run_turn_scriptato(_k99e, "analizza a fondo il progetto e proponi una strategia", ["ok"])
+        check("T99f senza richiesta esplicita il cervello forte non si usa mai",
+              _reg99f == [] and [e for e in _ev99f if e["type"] == "final"], str(_ev99f)[:200])
+    finally:
+        gas.ClaudeCliClient = _orig99
+        for _kk, _v in _saved99.items():
+            if _v is None:
+                os.environ.pop(_kk, None)
+            else:
+                os.environ[_kk] = _v
+except Exception as _e99:
+    check("T99 blocco senza eccezioni", False, repr(_e99))
+
 # ---------- riepilogo ----------
 print(f"\n=== RIEPILOGO: {len(PASS)} PASS, {len(FAIL)} FAIL ===")
 for f in FAIL:
