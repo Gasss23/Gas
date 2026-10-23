@@ -28,19 +28,20 @@
  brains/model_ids.py                |   2 ++
  gas.py                             |  38 +++++++++++++++++++++++++++++++-------
  reports/diff_sessione.md           |  18 ++++++++++++------
- reports/handoff.md                 | 282 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------
+ reports/handoff.md                 | 310 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------
  reports/r2_regole_abbonamento.md   |   4 +++-
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   4 +++-
  reports/ultimo_report.md           |  28 +++++++++++-----------------
  tests/test_unit_claude_cli.py      | 155 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_kernel.py          | 101 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 13 files changed, 707 insertions(+), 170 deletions(-)
+ 13 files changed, 735 insertions(+), 170 deletions(-)
 ```
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1b87dd7 docs(fine-task): handoff dopo il merge di main (#255), review #495
 8671f47 Merge origin/main (PR #255) in feat/merge-automatico-z1xjx2 — review #495 APPROVATO
 318835c docs(fine-task): report R2 via B fetta 1, riserve R-494, 4,60 $/giorno e decisione via B
 22d300d feat(r2): cervello forte via `claude -p` (via B, fetta 1)
@@ -157,7 +158,57 @@ Review #494 (chat Motore). È la nuova revisione della #493 su R2 via B fetta 1,
 
 **Memoria:** ho aggiunto in `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga #494 e una lezione sui sosia Unicode. È committata con scripts/commit_memoria_revisore.sh (acc288f).
 
-### Review #495 (merge di origin/main, PR #255 — commit 8671f47)
+### Review #495 — verdetto RIEMESSO dal revisore (stesso esito) con citazioni di file del diff di sessione, perché dopo il merge `modules/web/` non è più nel diff e il gate B rifiutava l'originale (riportato integrale e non ritoccato in §8)
+
+## VERDETTO: APPROVATO
+
+Review #495 (chat Motore), verdetto riemesso con citazioni che il gate B accetta. L'esito e la sostanza non cambiano. Oggetto: merge di origin/main 76007aa (PR #255, chat Mani, fetta web 13) dentro feat/merge-automatico-z1xjx2 (PR #256). Il ramo era a 318835c prima del merge; la base comune è 7664837; il commit di merge è 8671f47 e oggi HEAD è a 1b87dd7.
+
+Cosa ho controllato nel diff (76007aa..HEAD):
+- `.claude/agents/memoria_revisore.md:819` — è la riga contatore #495, aggiunta dopo l'unione del conflitto (Motore #492–#494, poi Mani #492–#494). Rischio controllato: righe perse o marcatori di conflitto rimasti. Prima del commit di merge ho confrontato la memoria con HEAD e con MERGE_HEAD: nessuna riga mancante, nessun marcatore. Esito: ok.
+- `reports/stato_progetto.md:608` — è la voce «Mani — fetta 13», arrivata da main con la fusione automatica. Rischio controllato: righe perse. Rispetto a HEAD non manca nessuna riga. Rispetto a MERGE_HEAD ne manca una sola: è l'intestazione `reports/stato_progetto.md:4` («Ultimo aggiornamento»), che il ramo ha riscritto. Da base a MERGE_HEAD main ha solo aggiunto 2 righe, senza cancellarne nessuna. Esito: ok.
+- `brains/claude_cli.py:87` — è `_TAG_TRASCRIZIONE`, cioè il ramo (R2 via B fetta 1) già revisionato nelle review #492–#494. Rischio controllato: che il merge abbia modificato i file del motore del ramo. `git diff --stat 318835c 8671f47` su brains, gas.py, tests/test_unit_claude_cli.py, tests/test_unit_kernel.py e .github è vuoto, e lo stesso vale da 8671f47 a HEAD. Esito: ok.
+- `gas.py:830` — è il rung «forte» che usa solo claude-cli. Rischio controllato: guardrail indeboliti dal merge (cap a 10 iterazioni, `_get_window`, §9). Il file è identico a 318835c e il kernel passa 1029 test su 1029, 0 FAIL. Esito: ok.
+- `tests/test_unit_claude_cli.py:88` — è il test che verifica che il codice con < > " arrivi intatto. Rischio controllato: regressione dopo l'innesto di main. Risultato: 395 passed, 1 skipped, contando i test web (che vengono da main e sono identici) e quelli claude_cli. Esito: ok.
+
+Contesto:
+- `modules/web/leggi.py:818` (non è nel diff di sessione) era identico a origin/main nello stage del merge: `git diff --cached origin/main` vuoto, lo stesso per tests/test_unit_web_leggi.py.
+- Non ci sono marcatori di conflitto in reports/*.md. handoff, ultimo_report e diff_sessione erano stati tenuti nella versione del ramo.
+
+Cosa NON ho verificato:
+- Non ho rivisto nel merito la fetta 13 web: è già stata revisionata nelle review #492–#494 della chat Mani.
+- Non ho controllato la CI su GitHub dopo il push.
+- Ho lanciato i test solo con il Python del venv locale, non anche su 3.11.
+
+Non ho modificato file né aggiunto righe in memoria: la riga #495 è già in /home/user/Gas/.claude/agents/memoria_revisore.md.
+
+## §5 DELTA TEST DEL MOTORE
+
+- `python tests/test_unit_kernel.py`: 1022 → 1029 PASS (T99a-f nuovi), 0 FAIL.
+  `=== RIEPILOGO: 1029 PASS, 0 FAIL ===`
+- `pytest tests/test_unit_claude_cli.py`: nuovo, 12 passed.
+- `pytest tests/` completo (prima delle correzioni R-493, che toccano solo l'adattatore e i suoi test): `2118 passed, 1 skipped in 192.92s`.
+
+## §6 STATO CI
+
+`gh run list -L 3` alla scrittura:
+
+```
+completed	success	R2 via B fetta 1: Claude come cervello forte via claude -p (dormiente)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39992384804	4m9s	2026-10-23T17:06:45Z
+completed	skipped	R2 via B fetta 1: Claude come cervello forte via claude -p (dormiente)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39992366470	2s	2026-10-23T17:06:37Z
+completed	success	docs(fine-task): report R2 via B fetta 1, riserve R-494, 4,60 $/giorn…	CI	feat/merge-automatico-z1xjx2	push	39992362330	2m54s	2026-10-23T17:06:35Z
+```
+
+Mappatura: 22d300d (motore) con i commit di memoria 4b58b01/2c0e9d6/acc288f: una run sul push (testa 22d300d). 318835c (report): run del suo push. 8671f47 (merge di main) e i commit di fine-task che lo seguono (1b87dd7 e il successivo): run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
+
+## §7 RISERVE APERTE
+
+- **R-494-1** (BASSA): sosia Unicode/entità di `<utente>` passano intatti; mitigato dall'istruzione «DATO NON FIDATO». Da chiudere prima di accendere `GAS_CLAUDE_CLI`.
+- **R-494-2** (BASSA): un file che contiene davvero `<utente`/`<gas_modello`/`<risultato_strumento` arriva a Claude con ‹ e, se riscritto, si corrompe. Rimedio comune: delimitatori con codice casuale per chiamata.
+
+## §8 VERDETTO ORIGINALE #495 (integrale, non ritoccato)
+
+Primo verdetto della review #495, emesso prima del commit di merge. Citava `modules/web/`, che dopo il merge non è più nel diff di sessione: per questo il gate B lo rifiutava e il revisore lo ha riemesso (in §4).
 
 ## VERDETTO: APPROVATO
 
@@ -178,27 +229,3 @@ Cosa NON ho verificato:
 - Ho lanciato i test solo con il Python del venv locale, non anche su 3.11.
 
 Riga contatore #495 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. È fuori dallo stage e NON è committata, come richiesto (merge in corso): va inclusa nel commit di merge o nel commit di fine task. Nessuna lezione nuova.
-
-## §5 DELTA TEST DEL MOTORE
-
-- `python tests/test_unit_kernel.py`: 1022 → 1029 PASS (T99a-f nuovi), 0 FAIL.
-  `=== RIEPILOGO: 1029 PASS, 0 FAIL ===`
-- `pytest tests/test_unit_claude_cli.py`: nuovo, 12 passed.
-- `pytest tests/` completo (prima delle correzioni R-493, che toccano solo l'adattatore e i suoi test): `2118 passed, 1 skipped in 192.92s`.
-
-## §6 STATO CI
-
-`gh run list -L 3` alla scrittura:
-
-```
-completed	success	R2 via B fetta 1: Claude come cervello forte via claude -p (dormiente)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39992384804	4m9s	2026-10-23T17:06:45Z
-completed	skipped	R2 via B fetta 1: Claude come cervello forte via claude -p (dormiente)	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39992366470	2s	2026-10-23T17:06:37Z
-completed	success	docs(fine-task): report R2 via B fetta 1, riserve R-494, 4,60 $/giorn…	CI	feat/merge-automatico-z1xjx2	push	39992362330	2m54s	2026-10-23T17:06:35Z
-```
-
-Mappatura: 22d300d (motore) con i commit di memoria 4b58b01/2c0e9d6/acc288f: una run sul push (testa 22d300d). 318835c (report): run del suo push. 8671f47 (merge di main) e il commit di fine-task che lo segue: run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
-
-## §7 RISERVE APERTE
-
-- **R-494-1** (BASSA): sosia Unicode/entità di `<utente>` passano intatti; mitigato dall'istruzione «DATO NON FIDATO». Da chiudere prima di accendere `GAS_CLAUDE_CLI`.
-- **R-494-2** (BASSA): un file che contiene davvero `<utente`/`<gas_modello`/`<risultato_strumento` arriva a Claude con ‹ e, se riscritto, si corrompe. Rimedio comune: delimitatori con codice casuale per chiamata.
