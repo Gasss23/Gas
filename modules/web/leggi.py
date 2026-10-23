@@ -125,8 +125,10 @@ def _parser_aggiornato(classe: type) -> bool:
 
 
 _PARSER_AGGIORNATO = _parser_aggiornato(HTMLParser)
-_avviso_parser_vecchio = threading.Event()  # l'avviso si scrive una volta sola (R-466-2)
-_lucchetto_avviso = threading.Lock()  # controllo e segno insieme, anche con più letture (V-2 bot #252)
+# L'avviso del parser vecchio si scrive una volta sola (R-466-2): il lucchetto si prende senza
+# aspettare e non si rilascia mai, quindi solo la prima lettura lo ottiene, anche con più
+# letture insieme (V-2 bot #252, V-4 ve #252).
+_avviso_parser_vecchio = threading.Lock()
 # Costrutto rimasto aperto a fine pagina (commento, tag, dichiarazione): per i browser non è
 # testo. Un «<» o «</» da soli invece lo sono.
 _COSTRUTTO_APERTO = re.compile(r"<(?:[a-zA-Z!?]|/.)", re.S)
@@ -147,8 +149,8 @@ _CONTATI_RIPIEGO = _TAG_NASCOSTI - _GREZZI_RIPIEGO
 # per i browser la «/» non conta (R-453-1). plaintext a parte: lì resta ignorato.
 _GREZZI_AUTOCHIUSI = _GREZZI_RIPIEGO - {"plaintext"}
 _AUTOCHIUDIBILI = frozenset({"svg", "math"})
-# Dentro questi nascosti «<title/>» non è un titolo: in script, style, iframe e noscript (con
-# gli script attivi) per i browser è testo. Dentro template, object e canvas invece valgono
+# Dentro questi nascosti «<title/>» non è un titolo: in script, style, iframe, noembed, noframes
+# e noscript (con gli script attivi) per i browser è testo (R-456-2). Dentro template, object e canvas invece valgono
 # le regole HTML e apre il titolo (R-451-1). svg e math li decide _Contesto.
 _TITOLO_VUOTO_IN = _TAG_NASCOSTI - {"template", "object", "canvas", "svg", "math"}
 # Il contenuto estraneo (svg, math) come lo tiene il browser (R-463-1, R-450-1, V-2 ve #243).
@@ -768,7 +770,7 @@ class _Estrattore(HTMLParser):
         self.titolo: list = []
         self._salta = 0
         self._aperti: dict[str, int] = {}  # aperture contate per nome (V-1 bot #242)
-        self._nel_titolo = False
+        self._nel_titolo = 0
         self._contesto = _Contesto(self._aperti)
         self._taglia = False  # un tag letto diversamente dal browser: il resto si nasconde
 
@@ -810,7 +812,10 @@ class _Estrattore(HTMLParser):
             self._aperti[tag] = self._aperti.get(tag, 0) + 1
             self._salta += 1
         elif tag == "title":
-            self._nel_titolo = True
+            # In XHTML il titolo non è testo grezzo e un «<title>» dentro è un elemento: si
+            # contano, come nel ripiego (R-ve245-5). In HTML si resta a uno: dentro svg/math i
+            # «<title>» non sono grezzi e le aperture non scalerebbero all'uscita (V-1 bot #255).
+            self._nel_titolo = self._nel_titolo + 1 if self._xhtml else 1
         if tag in self._BLOCCHI:
             self.pezzi.append("\n")
 
@@ -939,8 +944,8 @@ class _Estrattore(HTMLParser):
         if tag in self._SALTA and self._aperti.get(tag, 0) > 0:
             self._aperti[tag] -= 1
             self._salta -= 1
-        elif tag == "title":
-            self._nel_titolo = False
+        elif tag == "title" and self._nel_titolo:
+            self._nel_titolo -= 1
         if tag in self._BLOCCHI:
             self.pezzi.append("\n")
 
@@ -1328,10 +1333,7 @@ def _componi(url_finale: str, pagina: dict) -> dict:
         estrattore = _Estrattore(xhtml)
         try:
             if not _PARSER_AGGIORNATO:
-                with _lucchetto_avviso:
-                    primo = not _avviso_parser_vecchio.is_set()
-                    _avviso_parser_vecchio.set()
-                if primo:
+                if _avviso_parser_vecchio.acquire(blocking=False):
                     # Python senza le patch del 2025: si legge col ripiego, senza titolo e con
                     # le textarea nascoste; lo si dice una volta nella scatola nera (R-466-2).
                     logger.warning("leggi_pagina: html.parser senza le patch del 2025, si usa il ripiego")
