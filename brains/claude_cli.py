@@ -46,11 +46,12 @@ from typing import Any, Callable, Dict, List, Optional
 _ENV_PERMESSE = frozenset({
     "PATH", "HOME", "USER", "LOGNAME", "SHELL", "TMPDIR", "TMP", "TEMP", "LANG", "TZ",
     "TERM", "CLAUDE_CONFIG_DIR", "CLAUDE_CODE_OAUTH_TOKEN",
+    "LC_ALL", "LC_CTYPE", "LC_MESSAGES", "LC_COLLATE", "LC_NUMERIC", "LC_TIME",
+    "LC_MONETARY",
     "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME",
     "XDG_RUNTIME_DIR", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "SSL_CERT_DIR",
     "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy",
 })
-_ENV_PERMESSE_PREFISSI = ("LC_",)
 
 # Risposta obbligata: testo finale oppure chiamate agli strumenti di Gas.
 SCHEMA_RISPOSTA: Dict[str, Any] = {
@@ -100,7 +101,7 @@ def _ambiente_pulito(env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     sta nei file/portachiavi dell'utente (HOME) o in CLAUDE_CODE_OAUTH_TOKEN."""
     sorgente = dict(os.environ if env is None else env)
     return {k: v for k, v in sorgente.items()
-            if k in _ENV_PERMESSE or k.startswith(_ENV_PERMESSE_PREFISSI)}
+            if k in _ENV_PERMESSE}  # nomi esatti, niente prefissi (V-2 ve #258)
 
 
 def _nuovo_codice() -> str:
@@ -174,15 +175,27 @@ _PREZZO_RIFERIMENTO = (3.00, 15.00)
 def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int) -> float:
     """Costo «come se fosse API» della chiamata (`total_cost_usd` della CLI). Con
     l'abbonamento non si paga a consumo: serve solo a misurare l'uso contro il tetto
-    giornaliero di Gas. Valore assente o non valido → stima prudente dai token."""
-    try:
-        v = float(dati.get("total_cost_usd"))
-        if v == v and 0.0 <= v < 1_000.0:
+    giornaliero di Gas. Valore assente, non valido, booleano o 0 (V-1 bot/ve #258: con
+    0 il tetto non scatterebbe mai) → stima prudente dai token."""
+    v = dati.get("total_cost_usd")
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        v = float(v)
+        if v == v and 0.0 < v < 1_000.0:
             return v
-    except (TypeError, ValueError):
-        pass
     p_in, p_out = _PREZZO_RIFERIMENTO
     return (entrata * p_in + uscita * p_out) / 1_000_000
+
+
+def _costo_dati(dati: Dict[str, Any]) -> float:
+    """Costo equivalente di una risposta JSON qualsiasi (anche d'errore)."""
+    u = dati.get("usage") if isinstance(dati.get("usage"), dict) else {}
+    try:
+        entrata = sum(int(u.get(k) or 0) for k in
+                      ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+        uscita = int(u.get("output_tokens") or 0)
+    except (TypeError, ValueError):
+        entrata = uscita = 0
+    return _costo_equivalente(dati, entrata, uscita)
 
 
 def _esegui(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
@@ -237,7 +250,12 @@ class ClaudeCliClient:
             except FileNotFoundError as e:
                 raise RuntimeError("claude-cli: comando `claude` non trovato") from e
             except subprocess.TimeoutExpired as e:
-                raise RuntimeError(f"claude-cli: nessuna risposta entro {self.timeout}s") from e
+                err = RuntimeError(f"claude-cli: nessuna risposta entro {self.timeout}s")
+                # R-496-1: il consumo c'è stato comunque; almeno l'ingresso (≈4 caratteri
+                # per token) entra nel conto del tetto.
+                err.costo_equivalente_usd = _costo_equivalente(
+                    {}, (len(sistema) + len(_trascrizione(messages, codice))) // 4, 0)
+                raise err from e
         try:
             dati = json.loads(proc.stdout or "")
         except ValueError:
@@ -251,11 +269,15 @@ class ClaudeCliClient:
             # Nel messaggio (che finisce nel log) niente testo di Claude, che potrebbe
             # citare la conversazione (V-3 bot #256): solo il tipo d'errore.
             tipo = re.sub(r"[^a-z_]", "", str(dati.get("subtype") or "errore").lower())[:40]
-            raise RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
+            err = RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
                                + f"claude-cli: errore ({tipo or 'errore'})")
+            err.costo_equivalente_usd = _costo_dati(dati)  # R-496-1: anche gli errori consumano
+            raise err
         out = dati.get("structured_output")
         if not isinstance(out, dict) or not isinstance(out.get("chiamate"), list):
-            raise RuntimeError("claude-cli: risposta senza il formato richiesto")
+            err = RuntimeError("claude-cli: risposta senza il formato richiesto")
+            err.costo_equivalente_usd = _costo_dati(dati)
+            raise err
         chiamate = []
         for c in out["chiamate"]:
             if not isinstance(c, dict) or not isinstance(c.get("nome"), str):

@@ -140,6 +140,7 @@ def test_ambiente_solo_variabili_permesse():
                             "ANTHROPIC_BASE_URL": "u", "GEMINI_API_KEY": "g",
                             "TELEGRAM_BOT_TOKEN": "t", "CLAUDE_CODE_USE_BEDROCK": "1",
                             "GH_PAT": "p", "AWS_SESSION": "s", "COOKIE": "c",  # V-2 ve #256
+                            "LC_TOKEN_SECRET": "x",  # V-2 ve #258: niente prefissi
                             "LC_ALL": "it_IT.UTF-8", "HTTPS_PROXY": "http://p",
                             "CLAUDE_CODE_OAUTH_TOKEN": "login"})
     assert env == {"PATH": "/bin", "HOME": "/h", "LC_ALL": "it_IT.UTF-8",
@@ -206,6 +207,28 @@ def test_costo_equivalente():
     c = ClaudeCliClient(runner=_runner(_ok({"testo": "x", "chiamate": []}), {}))
     stima = c.chat.completions.create(model="m", messages=_msgs()).usage.costo_equivalente_usd
     assert abs(stima - (125 * 3 + 7 * 15) / 1_000_000) < 1e-12
+    # V-1 bot/ve #258: 0 o un booleano non valgono, si usa la stima (altrimenti tetto mai)
+    for finto in (0, 0.0, True):
+        c = ClaudeCliClient(runner=_runner(dict(_ok({"testo": "x", "chiamate": []}),
+                                                total_cost_usd=finto), {}))
+        v = c.chat.completions.create(model="m", messages=_msgs()).usage.costo_equivalente_usd
+        assert abs(v - stima) < 1e-12, finto
+
+
+def test_anche_gli_errori_portano_il_costo():
+    """R-496-1: risposta d'errore, formato sbagliato e tempo scaduto consumano."""
+    for dati, atteso in (
+            ({"is_error": True, "subtype": "error", "total_cost_usd": 0.4}, 0.4),
+            (dict(_ok(None), total_cost_usd=0.3), 0.3)):
+        with pytest.raises(RuntimeError) as e:
+            ClaudeCliClient(runner=_runner(dati, {})).chat.completions.create(model="m", messages=_msgs())
+        assert e.value.costo_equivalente_usd == atteso
+
+    def lento(cmd, stdin, cwd, env, timeout):
+        raise subprocess.TimeoutExpired(cmd, timeout)
+    with pytest.raises(RuntimeError) as e:
+        ClaudeCliClient(runner=lento).chat.completions.create(model="m", messages=_msgs(), tools=_TOOLS)
+    assert e.value.costo_equivalente_usd > 0
 
 
 def test_uscita_non_json_cli_assente_e_tempo_scaduto():

@@ -10905,6 +10905,28 @@ try:
             check("T99i conto illeggibile: forte fermo (fail-closed), file non sovrascritto",
                   _reg99h == [] and any("illeggibile" in e.get("content", "") for e in _ev99i)
                   and _uso99.read_text(encoding="utf-8") == "{rotto", str(_ev99i)[:300])
+            # V-2 bot #258: conto rovinato ma in JSON valido → forte fermo, non azzerato
+            _rotti99 = [{"giorno": None, "usd": 1}, {"giorno": "2000-01-01", "usd": "x"},
+                        {"giorno": "2999-01-01", "usd": 0}, {"usd": 0}, [1, 2],
+                        {"giorno": datetime.now().date().isoformat(), "usd": True}]
+            _esiti99 = []
+            for _r99 in _rotti99:
+                _uso99.write_text(json.dumps(_r99), encoding="utf-8")
+                _esiti99.append(_k99._uso_claude_cli())
+            check("T99k V-2 bot #258: conto rovinato in JSON valido → illeggibile (fail-closed)",
+                  _esiti99 == [None] * len(_rotti99), str(_esiti99))
+            # R-496-1: una chiamata fallita dopo il consumo entra nel conto
+            _uso99.unlink()
+            def _cli_err99(timeout=None):
+                def _run(cmd, stdin, cwd, env, t):
+                    return _sp99.CompletedProcess(cmd, 1, stdout=json.dumps({
+                        "is_error": True, "subtype": "error", "total_cost_usd": 0.5}), stderr="")
+                return _CCC99(timeout=timeout, binario="claude", runner=_run)
+            gas.ClaudeCliClient = _cli_err99
+            _ev99l = list(_k99.run_turn("ciao", cervello="forte"))
+            check("T99l R-496-1: errore della CLI dopo il consumo → uso registrato, nessun ripiego",
+                  _k99._uso_claude_cli() == 0.5 and not [e for e in _ev99l if e["type"] == "final"],
+                  str(_ev99l)[:200])
             _uso99.write_text(json.dumps({"giorno": "2000-01-01", "usd": 999}), encoding="utf-8")
             check("T99j conto di un altro giorno: si riparte da zero",
                   _k99._uso_claude_cli() == 0.0 and _k99._tetto_claude_cli_superato() is None)

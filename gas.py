@@ -1610,12 +1610,19 @@ class GasKernel:
             return 0.0
         try:
             d = json.loads(p.read_text(encoding="utf-8"))
-            if d.get("giorno") != datetime.now().date().isoformat():
-                return 0.0
-            v = float(d.get("usd"))
+            # V-2 bot #258: prima si valida TUTTO (usd e data vera, non futura), poi si
+            # guarda il giorno; un conto rovinato ma in JSON valido non azzera l'uso.
+            usd = d["usd"]
+            if isinstance(usd, bool) or not isinstance(usd, (int, float)):
+                raise ValueError(f"usd={usd!r}")
+            v = float(usd)
             if not (v == v and 0.0 <= v < 1e9):
                 raise ValueError(v)
-            return v
+            giorno = datetime.strptime(str(d["giorno"]), "%Y-%m-%d").date()
+            oggi = datetime.now().date()
+            if giorno > oggi:
+                raise ValueError(f"giorno futuro {giorno}")
+            return v if giorno == oggi else 0.0
         except Exception as e:
             logging.warning("uso del cervello forte illeggibile (%s): forte fermo", e)
             return None
@@ -1632,7 +1639,7 @@ class GasKernel:
             except (TypeError, ValueError):
                 usd_f = 0.0
             p = self.root / CLAUDE_CLI_USO_FILENAME
-            tmp = p.with_name(p.name + ".tmp")
+            tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")  # un .tmp per processo (R-496-2)
             tmp.write_text(json.dumps({"giorno": datetime.now().date().isoformat(),
                                        "usd": round(gia + usd_f, 6)}), encoding="utf-8")
             os.replace(tmp, p)
@@ -4637,6 +4644,11 @@ class GasKernel:
                                 tools=self.tools_schema, tool_choice="auto"
                             )
                         except Exception as e:
+                            # R-496-1: una chiamata al forte fallita dopo il consumo
+                            # (errore, formato sbagliato, tempo scaduto) entra nel tetto.
+                            if name == "claude-cli":
+                                self._registra_uso_claude_cli(
+                                    getattr(e, "costo_equivalente_usd", 0.0))
                             # Il 400 di Gemini può essere transitorio (diagnosi
                             # 2026-06-10: stesso payload accettato 5/5 al replay):
                             # UN solo retry con payload identico, poi fallback
