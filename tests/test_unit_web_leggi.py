@@ -1152,6 +1152,10 @@ def test_script_con_doppio_escape_come_il_browser(pagina, visibili):
     # istruzione di elaborazione senza nome: XML non valido, il resto se ne va (V-1 ve #252 bis)
     ('<?<!--?>SEGRETO', ()),
     ('<?x<!--?>SEGRETO', ()),
+    ('<!DOCTYPE x [<?<!--?>]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><p>SEGRETO</p></body></html>',
+     ()),
+    ('<!DOCTYPE x [<?x<!--?>]><html xmlns="http://www.w3.org/1999/xhtml"><body><p>A</p><p>SEGRETO</p></body></html>',
+     ()),
     ('<?a<![CDATA[?>SEGRETO<p>V</p>', ()),
     ('<?\u00a0<!--?>SEGRETO', ()),
     ('<?\u00a0 <!--?>SEGRETO', ()),

@@ -1168,6 +1168,14 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
     return " ".join(pezzi)
 
 
+# Un'istruzione di elaborazione comincia con un nome XML intero, seguito da uno spazio o da «?>»:
+# «<?<!--?>» o «<?x<!--?>» non lo sono, e chiuderle al primo «?>» faceva uscire il testo che un
+# «<!--» senza fine portava via (V-1 ve #252 bis, B-488-1); vale anche nel sottoinsieme del DOCTYPE
+# (V-1 bot #252 ter).
+_INIZIALE_XML = (r"A-Z_a-z:\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C\u200D"
+                 r"\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\U00010000-\U000EFFFF")
+_INIZIO_PI = re.compile(r"<\?[" + _INIZIALE_XML + r"][" + _INIZIALE_XML
+                        + r"\-.0-9\xB7\u0300-\u036F\u203F\u2040]*(?:[ \t\r\n]|\?>)")
 _SEGNI_DOCTYPE = re.compile(r"[\"'<>\[\]]")
 _DOPO_SOTTOINSIEME = re.compile(r"[ \t\r\n]*>")
 _LETTERALE_XML = r"""(?:"[^"]*"|'[^']*')"""
@@ -1216,6 +1224,8 @@ def _fine_doctype(testo: str, da: int) -> int:
                     return -1
                 i += 3
             elif testo.startswith("<?", i):
+                if not _INIZIO_PI.match(testo, i):
+                    return -1
                 i = testo.find("?>", i + 2)
                 if i == -1:
                     return -1
@@ -1239,13 +1249,6 @@ def _fine_doctype(testo: str, da: int) -> int:
 
 # Dopo un DOCTYPE, prima dell'elemento radice, l'XML ammette solo spazi, commenti e PI.
 _DOPO_DOCTYPE = re.compile(r"[ \t\r\n]*(?:(<[A-Za-z])|$)")
-# Un'istruzione di elaborazione comincia con un nome XML intero, seguito da uno spazio o da «?>»:
-# «<?<!--?>» o «<?x<!--?>» non lo sono, e chiuderle al primo «?>» faceva uscire il testo che un
-# «<!--» senza fine portava via (V-1 ve #252 bis, B-488-1).
-_INIZIALE_XML = (r"A-Z_a-z:\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C\u200D"
-                 r"\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\U00010000-\U000EFFFF")
-_INIZIO_PI = re.compile(r"<\?[" + _INIZIALE_XML + r"][" + _INIZIALE_XML
-                        + r"\-.0-9\xB7\u0300-\u036F\u203F\u2040]*(?:[ \t\r\n]|\?>)")
 
 
 def _commenti_e_cdata_xml(testo: str) -> str:
