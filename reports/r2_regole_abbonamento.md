@@ -25,3 +25,5 @@
 2. Se via A: collegare l'organizzazione Console al piano Max (impostazioni dell'account claude.ai), creare una API key dedicata a Gas e metterla nel `.env` del Mac (`ANTHROPIC_API_KEY` solo nel `.env` di Gas, non nel profilo della shell, altrimenti anche Claude Code la userebbe al posto dell'abbonamento).
 
 **Decisione dell'operatore (23 ottobre): via B** («mergia 254, via B»): `claude -p` col login dell'abbonamento Max di Gas, rischio §3.7 accettato. La via A resta documentata qui come alternativa.
+
+**Nota sul tetto nella via B (correzione V-3 della verifica esterna #256)**: i 4,60 $ al giorno nascono dai 100 $ al mese di crediti API, che valgono SOLO per la via A. Con la via B (login dell'abbonamento) i crediti non c'entrano e il limite del piano non è in dollari. Gas misura l'uso col costo «come se fosse API» che la CLI riporta per ogni chiamata (`total_cost_usd`) e si ferma a `GAS_CLAUDE_CLI_TETTO_USD` (default 4,60) al giorno: è una misura indicativa del 20% deciso dall'operatore, da ritarare guardando l'uso reale del piano.
