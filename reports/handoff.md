@@ -25,21 +25,24 @@
 
 ```
  .claude/agents/memoria_revisore.md |  1 +
- reports/diff_sessione.md           | 11 ++++-------
- reports/handoff.md                 | 55 ++++++++++++++++++++++---------------------------------
+ reports/diff_sessione.md           | 12 +++++-------
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |  2 +-
  reports/ultimo_report.md           | 22 ++++++++++++----------
- 4 files changed, 39 insertions(+), 50 deletions(-)
 ```
 
-NB: la riga di `reports/handoff.md` non è misurabile (il file conta se stesso prima del commit finale): consideratela n/d. Gli altri conteggi sono presi con i report già in stage.
+NB: la riga di `reports/handoff.md` è n/d (il file conta se stesso prima del commit finale) e la riga di totale è tolta per lo stesso motivo; le altre righe sono prese con i report già in stage.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+d34e279 docs(fine-task): report del 24 dopo il merge della #259
 938e6fe Merge origin/main (PR #259) in feat/merge-automatico-z1xjx2: conflitti solo nei log di sessione
 7ccdda1 docs(fine-task): report del 24 ottobre (merge #258, notte, review #499)
 7faf491 chore(revisore): memoria review #499 — APPROVATO
 ```
+
+NB: il commit di fine-task che contiene questo file non compare nel log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
