@@ -7,7 +7,9 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #260 (https://github.com/Gasss23/Gas/pull/260) (solo documenti e memoria del revisore).
-2. Tre consigli in attesa del sì dell'operatore (vedi `reports/ultimo_report.md`).
+2. Regola «n/d» per la riga di `handoff.md` nel template `fine-task.md` (consiglio: sì, fetta col revisore).
+2b. Dove tracciare le «protezioni del repo» (consiglio: voce R4 della roadmap).
+2c. Testo dell'attività di notte da aggiornare dalla sua sessione fissa (consiglio: sì). Tutte e tre registrate anche in `stato_progetto.md` → Prossimi passi.
 3. Lezioni del giro delle 3:00 da approvare sul Mac.
 
 ---
@@ -25,9 +27,9 @@
 
 ```
  .claude/agents/memoria_revisore.md |  1 +
- reports/diff_sessione.md           | 12 +++++-------
+ reports/diff_sessione.md           | 13 ++++++-------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |  2 +-
+ reports/stato_progetto.md          |  4 +++-
  reports/ultimo_report.md           | 22 ++++++++++++----------
 ```
 
@@ -36,6 +38,7 @@ NB: la riga di `reports/handoff.md` è n/d (il file conta se stesso prima del co
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3a53208 docs(fine-task): note del bot #260 — stato_progetto aggiornato, conteggi del dossier
 d34e279 docs(fine-task): report del 24 dopo il merge della #259
 938e6fe Merge origin/main (PR #259) in feat/merge-automatico-z1xjx2: conflitti solo nei log di sessione
 7ccdda1 docs(fine-task): report del 24 ottobre (merge #258, notte, review #499)
@@ -62,8 +65,8 @@ in_progress		feat(web): fetta 14 Mani — tempo riservato alla pulizia, grezzi a
 completed	success	docs(reports): fetta 14 chat Mani — handoff dopo il merge di main	CI	feat/mani-web-fetta14	push	40114244420	3m31s	2026-10-24T17:01:40Z
 ```
 
-Mappatura: 7faf491+7ccdda1 (run sulla testa 7ccdda1: verde, bot APPROVATO CON RISERVE, V-1 BASSA sul conteggio di handoff.md). Il merge di main (PR #259) e il commit di fine-task che lo segue: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura: 7faf491+7ccdda1 (run sulla testa 7ccdda1: verde, bot APPROVATO CON RISERVE, V-1 BASSA sul conteggio di handoff.md). 938e6fe+d34e279: CI 40114524577 success, verifica-bot 40114525724 success (APPROVATO CON RISERVE, V-1/V-2/V-3 BASSE/COSMETICHE). 3a53208: CI success, verifica-bot success (APPROVATO CON RISERVE, V-1/V-2 BASSE). Commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova. Le riserve del cervello forte (R-497-1/2, R-496-2/3, R-498-1/2 e le note BASSE di bot e verifica esterna #258) sono in `reports/stato_progetto.md`.
+Bot #260 su d34e279: V-1/V-2/V-3 chiuse in 3a53208; bot #260 su 3a53208: V-1 (§6 non aggiornato) e V-2 (decisioni solo in ultimo_report) chiuse nel commit di fine-task che contiene questo file. Le riserve del cervello forte (R-497-1/2, R-496-2/3, R-498-1/2 e le note BASSE di bot e verifica esterna #258) sono in `reports/stato_progetto.md`.
