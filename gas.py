@@ -960,6 +960,36 @@ def _costo_riga(raw: bytes, avvisa: bool = True) -> Optional[Tuple[str, float]]:
         return None
 
 
+def _leggi_uso_claude_cli(root: Path) -> Optional[float]:
+    """Uso di oggi (giorno locale) del cervello forte, in USD «come se fosse API»
+    (R2 fetta 2, V-1 bot #256: il prezzo di claude-cli è 0 e il tetto in USD di
+    GAS_DAILY_TOKEN_BUDGET non lo fermerebbe mai). File assente o di un altro giorno
+    passato → 0.0. File illeggibile, rovinato o con data futura → None: FAIL-CLOSED, il
+    forte resta fermo finché l'operatore non lo sistema (meglio che consumare senza
+    conto). Funzione di modulo: la usano il kernel e il doctor (R-497-2)."""
+    p = root / CLAUDE_CLI_USO_FILENAME
+    if not p.exists():
+        return 0.0
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        # V-2 bot #258: prima si valida TUTTO (usd e data vera, non futura), poi si
+        # guarda il giorno; un conto rovinato ma in JSON valido non azzera l'uso.
+        usd = d["usd"]
+        if isinstance(usd, bool) or not isinstance(usd, (int, float)):
+            raise ValueError(f"usd={usd!r}")
+        v = float(usd)
+        if not (v == v and 0.0 <= v < 1e9):
+            raise ValueError(v)
+        giorno = datetime.strptime(str(d["giorno"]), "%Y-%m-%d").date()
+        oggi = datetime.now().date()
+        if giorno > oggi:
+            raise ValueError(f"giorno futuro {giorno}")
+        return v if giorno == oggi else 0.0
+    except Exception as e:
+        logging.warning("uso del cervello forte illeggibile (%s): forte fermo", e)
+        return None
+
+
 def _percorso_vettori(root: Path) -> Path:
     """Archivio dei vettori: GAS_VECTORS_DB se impostata, altrimenti <root>/.gas_vectors.db.
     R7 (roadmap): unica fonte del percorso, così reindex/vettori/doctor e il kernel
@@ -1600,51 +1630,53 @@ class GasKernel:
         return (speso, limite) if speso >= limite else None
 
     def _uso_claude_cli(self) -> Optional[float]:
-        """Uso di oggi (giorno locale) del cervello forte, in USD «come se fosse API»
-        (R2 fetta 2, V-1 bot #256: il prezzo di claude-cli è 0 e il tetto in USD di
-        GAS_DAILY_TOKEN_BUDGET non lo fermerebbe mai). File assente o di un altro
-        giorno → 0.0. File illeggibile → None: FAIL-CLOSED, il forte resta fermo
-        finché l'operatore non lo sistema (meglio che consumare senza conto)."""
-        p = self.root / CLAUDE_CLI_USO_FILENAME
-        if not p.exists():
-            return 0.0
-        try:
-            d = json.loads(p.read_text(encoding="utf-8"))
-            # V-2 bot #258: prima si valida TUTTO (usd e data vera, non futura), poi si
-            # guarda il giorno; un conto rovinato ma in JSON valido non azzera l'uso.
-            usd = d["usd"]
-            if isinstance(usd, bool) or not isinstance(usd, (int, float)):
-                raise ValueError(f"usd={usd!r}")
-            v = float(usd)
-            if not (v == v and 0.0 <= v < 1e9):
-                raise ValueError(v)
-            giorno = datetime.strptime(str(d["giorno"]), "%Y-%m-%d").date()
-            oggi = datetime.now().date()
-            if giorno > oggi:
-                raise ValueError(f"giorno futuro {giorno}")
-            return v if giorno == oggi else 0.0
-        except Exception as e:
-            logging.warning("uso del cervello forte illeggibile (%s): forte fermo", e)
-            return None
+        """Uso di oggi del cervello forte (vedi `_leggi_uso_claude_cli`)."""
+        return _leggi_uso_claude_cli(self.root)
 
     def _registra_uso_claude_cli(self, usd: Any) -> None:
         """Aggiunge l'uso di una chiamata al conto di oggi (scrittura atomica). File
-        illeggibile → non si tocca (resta il fermo). Mai eccezioni (§9)."""
+        illeggibile → non si tocca (resta il fermo). Lettura, somma e scrittura avvengono
+        sotto un lucchetto su file (R-496-2: il bot e il giro di notte in parallelo non
+        perdono più un aggiornamento; dove `fcntl` manca si procede senza), atteso al
+        massimo LOCK_STORIA_SEC (R-502-1). Se il consumo NON si riesce a registrare
+        (lucchetto occupato, disco, file illeggibile) il forte si ferma per questo
+        processo (R-502-2: mai consumare senza conto). Mai eccezioni (§9)."""
+        registrato = fermo_gia = False
         try:
-            gia = self._uso_claude_cli()
-            if gia is None:
-                return
             try:
-                usd_f = max(0.0, float(usd))
+                usd_f = float(usd)
             except (TypeError, ValueError):
                 usd_f = 0.0
+            if not _math_module.isfinite(usd_f) or usd_f < 0:  # V-4 ve #258: niente Infinity
+                logging.warning("_registra_uso_claude_cli: costo non valido (%r) — ignorato", usd)
+                usd_f = 0.0
             p = self.root / CLAUDE_CLI_USO_FILENAME
-            tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")  # un .tmp per processo (R-496-2)
-            tmp.write_text(json.dumps({"giorno": datetime.now().date().isoformat(),
-                                       "usd": round(gia + usd_f, 6)}), encoding="utf-8")
-            os.replace(tmp, p)
+            with open(p.with_name(p.name + ".lock"), "a", encoding="utf-8") as lucchetto:
+                if fcntl is not None:
+                    scadenza = _time.monotonic() + self.LOCK_STORIA_SEC
+                    while True:
+                        try:
+                            fcntl.flock(lucchetto.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            break
+                        except BlockingIOError:
+                            if _time.monotonic() >= scadenza:
+                                raise TimeoutError(f"lucchetto del conto occupato da oltre "
+                                                   f"{self.LOCK_STORIA_SEC}s")
+                            _time.sleep(0.05)
+                gia = self._uso_claude_cli()
+                if gia is None:
+                    fermo_gia = True  # già fermo: _tetto_claude_cli_superato lo vede da sé
+                    return
+                tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+                tmp.write_text(json.dumps({"giorno": datetime.now().date().isoformat(),
+                                           "usd": round(gia + usd_f, 6)}), encoding="utf-8")
+                os.replace(tmp, p)
+                registrato = True
         except Exception as e:
-            logging.warning("_registra_uso_claude_cli: scrittura fallita (%s) — ignorato", e)
+            logging.warning("_registra_uso_claude_cli: scrittura fallita (%s) — forte fermo", e)
+        finally:
+            if not registrato and not fermo_gia:
+                self._forte_senza_conto = True
 
     def _tetto_claude_cli_superato(self) -> Optional[Tuple[Optional[float], float]]:
         """(usato, tetto) se il tetto giornaliero del cervello forte è raggiunto (o il
@@ -1653,6 +1685,8 @@ class GasKernel:
         espresso nel costo equivalente che la CLI riporta (`total_cost_usd`). È una
         misura indicativa: il limite vero del piano non è in dollari."""
         tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
+        if getattr(self, "_forte_senza_conto", False):  # R-502-2: un consumo non registrato
+            return (None, tetto)
         usato = self._uso_claude_cli()
         if usato is None or usato >= tetto:
             return (usato, tetto)
@@ -2487,8 +2521,8 @@ class GasKernel:
                    if isinstance(relative_path, str) else None)
         if risolto is None:
             return None, (f"Operazione negata: il percorso '{relative_path}' "
-                          "esce dalla root di Gas. Usa solo percorsi relativi "
-                          "interni al progetto.")
+                          "esce dalla root di Gas o è un file di sistema protetto. "
+                          "Usa solo percorsi relativi interni al progetto.")
         path, rel_root = risolto
         # Lettura del codice aperta (operatore 2026-10-11): un symlink con nome
         # innocuo non legge .env, .git, .claude o la memoria.
@@ -4513,7 +4547,8 @@ class GasKernel:
         def _errore_tetto_forte(t: Tuple[Optional[float], float]) -> Dict[str, Any]:
             if t[0] is None:
                 motivo = (f"il conto dell'uso di oggi ({CLAUDE_CLI_USO_FILENAME}) è "
-                          "illeggibile: controllalo o cancellalo")
+                          "illeggibile o non si è potuto aggiornare: controllalo o "
+                          "cancellalo e riavvia Gas (dettagli in gas_debug.log)")
             else:
                 motivo = (f"usati ${t[0]:.2f} equivalenti oggi (tetto ${t[1]:.2f}, "
                           "GAS_CLAUDE_CLI_TETTO_USD)")
@@ -4866,6 +4901,25 @@ def doctor(root_dir: Optional[str] = None) -> int:
             esito, dettaglio = _classify_provider_error(
                 getattr(e, "status_code", None), str(e), obbligatoria)
             check("Provider", name, esito, dettaglio)
+
+    # 2a. Cervello forte (R2 via B): MAI una chiamata vera (consumerebbe l'abbonamento),
+    # solo interruttore, comando presente e conto di oggi contro il tetto (R-497-2: un
+    # conto illeggibile o con data futura tiene il forte fermo, e qui si vede).
+    if not _env_flag("GAS_CLAUDE_CLI"):
+        check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)")
+    else:
+        binario = os.environ.get("GAS_CLAUDE_BIN") or shutil.which("claude")
+        check("Cervello forte", "comando claude", "OK" if binario else "WARN",
+              "presente" if binario else "non trovato: il forte non può rispondere")
+        usato = _leggi_uso_claude_cli(root)
+        tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
+        if usato is None:
+            check("Cervello forte", "conto di oggi", "WARN",
+                  f"{CLAUDE_CLI_USO_FILENAME} illeggibile o con data futura: forte fermo "
+                  "(controllalo o cancellalo)")
+        else:
+            check("Cervello forte", "conto di oggi", "OK" if usato < tetto else "WARN",
+                  f"${usato:.2f} su ${tetto:.2f}" + ("" if usato < tetto else ": tetto raggiunto, forte fermo fino a domani"))
 
     # 2b. Integrità del modello free (R1/R2 #5): METADATI OpenRouter, NESSUNA
     # generazione (coerente con "doctor non consuma token LLM"). SOLO se la chiave

@@ -4405,6 +4405,7 @@ _TARGETS_68s = [
     "gas_history.json",
     ".gas_claude_cli_uso.json",  # V-1 bot #258: il modello non azzera il proprio tetto
     ".gas_claude_cli_uso.json.123.tmp",
+    ".gas_claude_cli_uso.json.lock",  # R-502-3
 ]
 _failures_68s = []
 for _fname in _TARGETS_68s:
@@ -10798,6 +10799,7 @@ except Exception as _e98:
 print("\n--- T99: claude-cli ---")
 try:
     import subprocess as _sp99
+    import time as _time99
     from brains.claude_cli import ClaudeCliClient as _CCC99
 
     def _cli99(risposte, registro):
@@ -10929,6 +10931,48 @@ try:
             check("T99l R-496-1: errore della CLI dopo il consumo → uso registrato, nessun ripiego",
                   _k99._uso_claude_cli() == 0.5 and not [e for e in _ev99l if e["type"] == "final"],
                   str(_ev99l)[:200])
+            # V-4 ve #258: un costo infinito o negativo non rende il conto illeggibile
+            _uso99.unlink()
+            _k99._registra_uso_claude_cli(float("inf"))
+            _k99._registra_uso_claude_cli(-3)
+            _k99._registra_uso_claude_cli(0.25)
+            check("T99m costi non finiti o negativi ignorati, conto sempre leggibile",
+                  _k99._uso_claude_cli() == 0.25, _uso99.read_text(encoding="utf-8"))
+            # R-502-1/2: lucchetto occupato → attesa limitata, consumo non registrato → forte fermo
+            import fcntl as _fc99
+            _lk99 = open(str(_uso99) + ".lock", "a")
+            _fc99.flock(_lk99.fileno(), _fc99.LOCK_EX)
+            _k99.LOCK_STORIA_SEC = 0.2
+            _t99 = _time99.monotonic()
+            try:
+                _k99._registra_uso_claude_cli(0.1)
+            finally:
+                _lk99.close()
+            _dt99 = _time99.monotonic() - _t99
+            check("T99o lucchetto occupato: attesa limitata e forte fermo (consumo non registrato)",
+                  _dt99 < 2 and _k99._uso_claude_cli() == 0.25
+                  and _k99._tetto_claude_cli_superato() == (None, 4.60), f"{_dt99:.2f}s")
+            _k99._forte_senza_conto = False
+            del _k99.LOCK_STORIA_SEC
+            # R-497-2: il doctor mostra il forte (spento, acceso, conto rovinato) senza chiamarlo
+            import io as _io99, contextlib as _cl99
+            for _kk in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):
+                os.environ.pop(_kk, None)
+            def _doc99():
+                _b = _io99.StringIO()
+                with _cl99.redirect_stdout(_b):
+                    gas.doctor(str(_k99.root))
+                return [l for l in _b.getvalue().splitlines() if "Cervello forte" in l]
+            os.environ["GAS_CLAUDE_CLI"] = "0"
+            _d99a = _doc99()
+            os.environ["GAS_CLAUDE_CLI"] = "1"
+            _d99b = _doc99()
+            _uso99.write_text(json.dumps({"giorno": "2999-01-01", "usd": 0}), encoding="utf-8")
+            _d99c = _doc99()
+            check("T99n doctor: forte spento → OK, acceso → conto di oggi, data futura → WARN fermo",
+                  any("spento" in l for l in _d99a)
+                  and any("conto di oggi" in l and "$0.25" in l for l in _d99b)
+                  and any("WARN" in l and "forte fermo" in l for l in _d99c), str(_d99a + _d99b + _d99c)[:400])
             _uso99.write_text(json.dumps({"giorno": "2000-01-01", "usd": 999}), encoding="utf-8")
             check("T99j conto di un altro giorno: si riparte da zero",
                   _k99._uso_claude_cli() == 0.0 and _k99._tetto_claude_cli_superato() is None)
