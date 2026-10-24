@@ -10967,6 +10967,17 @@ try:
             _d99a = _doc99()
             os.environ["GAS_CLAUDE_CLI"] = "1"
             _d99b = _doc99()
+            _sbin99 = os.environ.get("GAS_CLAUDE_BIN")
+            os.environ["GAS_CLAUDE_BIN"] = "/non/esiste/claude"
+            try:
+                _d99e = _doc99()
+            finally:
+                if _sbin99 is None:
+                    os.environ.pop("GAS_CLAUDE_BIN", None)
+                else:
+                    os.environ["GAS_CLAUDE_BIN"] = _sbin99
+            check("T99p V-1 bot #262: GAS_CLAUDE_BIN inesistente → doctor WARN, non «presente»",
+                  any("comando claude" in l and "WARN" in l for l in _d99e), str(_d99e)[:300])
             _uso99.write_text(json.dumps({"giorno": "2999-01-01", "usd": 0}), encoding="utf-8")
             _d99c = _doc99()
             check("T99n doctor: forte spento → OK, acceso → conto di oggi, data futura → WARN fermo",

@@ -4908,9 +4908,10 @@ def doctor(root_dir: Optional[str] = None) -> int:
     if not _env_flag("GAS_CLAUDE_CLI"):
         check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)")
     else:
-        binario = os.environ.get("GAS_CLAUDE_BIN") or shutil.which("claude")
+        # V-1 bot #262: un GAS_CLAUDE_BIN che non esiste o non è eseguibile non è «presente»
+        binario = shutil.which(os.environ.get("GAS_CLAUDE_BIN") or "claude")
         check("Cervello forte", "comando claude", "OK" if binario else "WARN",
-              "presente" if binario else "non trovato: il forte non può rispondere")
+              "presente" if binario else "non trovato o non eseguibile: il forte non può rispondere")
         usato = _leggi_uso_claude_cli(root)
         tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
         if usato is None:
