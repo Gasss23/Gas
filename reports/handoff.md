@@ -18,7 +18,7 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **R-ve235-5** (pulizia fuori dai 15 s): `FATTA`
-- **R-496-1, R-496-2** (dalla review #496): `FATTA`
+- **R-496-1, R-496-2 (chat Mani)** (dalla review #496): `FATTA`
 - **R-447-1 parte (b)**: chiusa come conforme
 - **V-2 bot #255 bis**: `FATTA`
 - **R-ve255-1**: registrata
@@ -29,13 +29,13 @@
 
 ```
  .claude/agents/memoria_revisore.md |   3 +
- modules/web/leggi.py               |  17 ++-
- reports/diff_sessione.md           |  19 +--
- reports/handoff.md                 | 286 +++++++++++++++++++------------------
+ modules/web/leggi.py               |  17 +++-
+ reports/diff_sessione.md           |  15 +--
+ reports/handoff.md                 | 190 ++++++++++++++++++++++++++++++-------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  33 +++--
- tests/test_unit_web_leggi.py       |  54 ++++++-
- 7 files changed, 246 insertions(+), 168 deletions(-)
+ reports/ultimo_report.md           |  33 ++++---
+ tests/test_unit_web_leggi.py       |  54 ++++++++++-
+ 7 files changed, 256 insertions(+), 58 deletions(-)
 ```
 
 NB: preso dall'index con tutti i report in stage, dopo aver scritto questo handoff; solo la riga di `reports/handoff.md` può differire di poche righe, perché lo stat è dentro il file stesso.
@@ -45,6 +45,8 @@ NB: preso dall'index con tutti i report in stage, dopo aver scritto questo hando
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+c7c3770 Merge origin/main (PR #259) in feat/mani-web-fetta14
+c0608a0 docs(reports): fetta 14 chat Mani — handoff dopo il merge di main
 6ba148d Merge origin/main (PR #258) in feat/mani-web-fetta14
 b99ab59 docs(reports): fine fetta 14 chat Mani — report, handoff, stato
 3bd972f feat(web): fetta 14 — tempo riservato alla pulizia, grezzi autochiusi conformi (R6)
@@ -184,7 +186,7 @@ File:
 ## §6 STATO CI
 
 - `b99ab59` (apertura della PR #257): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 COSMETICA: commento di TIMEOUT_TOTALE); verifica esterna #257 APPROVATO CON RISERVE (V-1 BASSA: test del redirect non valido per R-496-2; V-2/V-3 COSMETICHE) — rimandate alla prossima fetta.
-- L'operatore ha detto «mergia 257»; il merge era rifiutato per conflitto con main (PR #258): merge di main, review #499. Run sul merge e sul commit di fine-task con questo handoff: non ancora disponibili alla scrittura dell'handoff.
+- L'operatore ha detto «mergia 257»; il merge era rifiutato per conflitto con main (PR #258): merge di main, review #499. Su `c0608a0` CI e verifica-bot success, bot APPROVATO CON RISERVE (V-1 BASSA test del redirect, V-2 BASSA id R-496-x usati da due chat: suffisso aggiunto, V-3 COSMETICA commento di TIMEOUT_TOTALE). Il merge era di nuovo rifiutato per conflitto (PR #259, solo report): merge di main f26893f. Run sul merge e sul commit di fine-task con questo handoff: non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

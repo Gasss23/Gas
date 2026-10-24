@@ -14,7 +14,7 @@ Ramo `feat/mani-web-fetta14` da main b3f04d9 (dopo il merge di #255 e #256). Are
 ## Esito
 
 - **R-ve235-5 (pulizia fuori dai 15 s, BASSA)**: `FATTA` (rete 12 s + 3 s di riserva).
-- **R-496-1 (docstring, COSMETICA)**, **R-496-2 (errore della pulizia chiamato tempo superato, BASSA)**: `FATTA`.
+- **R-496-1 (docstring, COSMETICA)**, **R-496-2 (chat Mani) (errore della pulizia chiamato tempo superato, BASSA)**: `FATTA`.
 - **R-447-1 parte (b)**: chiusa come conforme ai browser, con test.
 - **V-2 bot #255 bis (eccezioni dei thread nel test, COSMETICA)**: `FATTA`.
 - **R-ve255-1**: registrata (decisione insieme a R-ve252-2).
