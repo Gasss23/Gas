@@ -38,7 +38,7 @@ import subprocess
 import tempfile
 import uuid
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # Le sole variabili che arrivano a `claude -p` (lista di quelle permesse, V-2 #256):
 # percorsi, lingua, file temporanei, proxy e certificati, cartella di config e login
@@ -167,35 +167,71 @@ def _prefisso_limite(*testi: Any) -> str:
     return "429 " if any(p in tutto for p in _SEGNALI_LIMITE) else ""
 
 
-# Prezzo API di riferimento (Sonnet, USD per milione di token) per stimare il costo
-# equivalente quando la CLI non dà `total_cost_usd`.
-_PREZZO_RIFERIMENTO = (3.00, 15.00)
+# Prezzi API di riferimento (USD per milione di token, ingresso/uscita) per stimare il
+# costo equivalente quando la CLI non dà `total_cost_usd`. Sono riferimenti PRUDENTI
+# per famiglia (V-1 bot #258: con un modello più caro la stima Sonnet sottostimava);
+# una famiglia sconosciuta usa il più caro (fail-closed). Da ritarare con l'uso vero.
+_PREZZI_FAMIGLIA = (("haiku", (1.00, 5.00)), ("sonnet", (3.00, 15.00)), ("opus", (15.00, 75.00)))
+_PREZZO_PIU_CARO = (15.00, 75.00)
+# Pavimento per chiamata (V-1 ve/bot #258): anche la risposta più piccola fa girare
+# Claude Code; nessuna chiamata conta meno di questi token d'ingresso.
+_TOKEN_MINIMI_CHIAMATA = 500
+# Tetto ai conteggi di token letti dalla CLI (nessuna chiamata vera ne usa tanti).
+_TOKEN_MASSIMI = 10**9
 
 
-def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int) -> float:
+def _prezzo(model: str) -> Tuple[float, float]:
+    m = str(model or "").lower()
+    for famiglia, prezzo in _PREZZI_FAMIGLIA:
+        if famiglia in m:
+            return prezzo
+    return _PREZZO_PIU_CARO
+
+
+def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int,
+                       model: str = "") -> float:
     """Costo «come se fosse API» della chiamata (`total_cost_usd` della CLI). Con
     l'abbonamento non si paga a consumo: serve solo a misurare l'uso contro il tetto
     giornaliero di Gas. Valore assente, non valido, booleano o 0 (V-1 bot/ve #258: con
-    0 il tetto non scatterebbe mai) → stima prudente dai token."""
+    0 il tetto non scatterebbe mai) → stima dai token col prezzo della famiglia del
+    modello. In ogni caso mai meno del pavimento per chiamata."""
+    p_in, p_out = _prezzo(model)
+    pavimento = _TOKEN_MINIMI_CHIAMATA * p_in / 1_000_000
     v = dati.get("total_cost_usd")
     if isinstance(v, (int, float)) and not isinstance(v, bool):
-        v = float(v)
+        try:
+            v = float(v)  # un int enorme (10**400) va in overflow: si usa la stima (#505)
+        except OverflowError:
+            v = float("nan")
         if v == v and 0.0 < v < 1_000.0:
-            return v
-    p_in, p_out = _PREZZO_RIFERIMENTO
-    return (entrata * p_in + uscita * p_out) / 1_000_000
+            return max(v, pavimento)
+    return max((max(0, entrata) * p_in + max(0, uscita) * p_out) / 1_000_000, pavimento)
 
 
-def _costo_dati(dati: Dict[str, Any]) -> float:
-    """Costo equivalente di una risposta JSON qualsiasi (anche d'errore)."""
+def _token(dati: Dict[str, Any]) -> Tuple[int, int]:
+    """(ingresso, uscita) dall'`usage` della CLI; valori non numerici → 0."""
     u = dati.get("usage") if isinstance(dati.get("usage"), dict) else {}
-    try:
-        entrata = sum(int(u.get(k) or 0) for k in
-                      ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
-        uscita = int(u.get("output_tokens") or 0)
-    except (TypeError, ValueError):
-        entrata = uscita = 0
-    return _costo_equivalente(dati, entrata, uscita)
+
+    def _n(k: str) -> int:
+        try:
+            # V-1 ve #262: un intero enorme manderebbe in overflow il calcolo del costo
+            return min(max(0, int(u.get(k) or 0)), _TOKEN_MASSIMI)
+        except (TypeError, ValueError, OverflowError):
+            return 0
+    return (_n("input_tokens") + _n("cache_creation_input_tokens") + _n("cache_read_input_tokens"),
+            _n("output_tokens"))
+
+
+def _costo_dati(dati: Dict[str, Any], model: str = "") -> float:
+    """Costo equivalente di una risposta JSON qualsiasi (anche d'errore)."""
+    entrata, uscita = _token(dati)
+    return _costo_equivalente(dati, entrata, uscita, model)
+
+
+def _con_costo(err: RuntimeError, costo: float) -> RuntimeError:
+    """Attacca all'eccezione il costo equivalente consumato (lo legge run_turn per il tetto)."""
+    err.costo_equivalente_usd = costo
+    return err
 
 
 def _esegui(cmd: List[str], stdin: str, cwd: str, env: Dict[str, str],
@@ -244,61 +280,69 @@ class ClaudeCliClient:
             file_sistema = os.path.join(vuota, "sistema.txt")
             with open(file_sistema, "w", encoding="utf-8") as f:
                 f.write(sistema)
+            stdin = _trascrizione(messages, codice)
+            # Stima minima del consumo quando la CLI non dice nulla (tempo scaduto, uscita
+            # non JSON): solo l'ingresso, ≈4 caratteri per token. Mancano il prompt
+            # interno di Claude Code, la cache e l'uscita già fatta (V-2 bot #258).
+            stima_minima = _costo_equivalente({}, (len(sistema) + len(stdin)) // 4, 0, model)
             try:
-                proc = self._runner(self.comando(model, file_sistema), _trascrizione(messages, codice),
+                proc = self._runner(self.comando(model, file_sistema), stdin,
                                     vuota, _ambiente_pulito(), self.timeout)
             except FileNotFoundError as e:
                 raise RuntimeError("claude-cli: comando `claude` non trovato") from e
             except subprocess.TimeoutExpired as e:
-                err = RuntimeError(f"claude-cli: nessuna risposta entro {self.timeout}s")
-                # R-496-1: il consumo c'è stato comunque; entra nel conto almeno
-                # l'ingresso (≈4 caratteri per token). È una stima MINIMA (V-2 bot #258):
-                # mancano il prompt interno di Claude Code, la cache e l'uscita già fatta.
-                err.costo_equivalente_usd = _costo_equivalente(
-                    {}, (len(sistema) + len(_trascrizione(messages, codice))) // 4, 0)
-                raise err from e
+                raise _con_costo(RuntimeError(f"claude-cli: nessuna risposta entro {self.timeout}s"),
+                                 stima_minima) from e
         try:
             dati = json.loads(proc.stdout or "")
         except ValueError:
             # V-2 bot #256: anche un limite scritto in testo semplice è QUOTA.
-            raise RuntimeError(_prefisso_limite(proc.stdout, proc.stderr)
-                               + f"claude-cli: uscita non JSON (codice {proc.returncode})")
+            # R-497-1: anche un'uscita non JSON ha consumato.
+            raise _con_costo(RuntimeError(_prefisso_limite(proc.stdout, proc.stderr)
+                             + f"claude-cli: uscita non JSON (codice {proc.returncode})"),
+                             stima_minima)
         if not isinstance(dati, dict):
-            raise RuntimeError("claude-cli: uscita JSON inattesa")
+            raise _con_costo(RuntimeError("claude-cli: uscita JSON inattesa"), stima_minima)
+        # R-497-1: QUALSIASI errore dopo una risposta JSON porta il costo di quella
+        # risposta (chiamate o argomenti non validi su una risposta pagata compresi).
+        try:
+            return self._risposta(dati, proc, model)
+        except RuntimeError as err:
+            if not hasattr(err, "costo_equivalente_usd"):
+                err.costo_equivalente_usd = _costo_dati(dati, model)
+            raise
+        except Exception as e:
+            raise _con_costo(RuntimeError("claude-cli: risposta non valida"),
+                             _costo_dati(dati, model)) from e
+
+    def _risposta(self, dati: Dict[str, Any], proc: subprocess.CompletedProcess,
+                  model: str) -> SimpleNamespace:
         if dati.get("is_error") or dati.get("subtype") != "success":
             # Il testo può citare il limite raggiunto: «429» → QUOTA nel classificatore.
             # Nel messaggio (che finisce nel log) niente testo di Claude, che potrebbe
             # citare la conversazione (V-3 bot #256): solo il tipo d'errore.
             tipo = re.sub(r"[^a-z_]", "", str(dati.get("subtype") or "errore").lower())[:40]
-            err = RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
+            raise RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
                                + f"claude-cli: errore ({tipo or 'errore'})")
-            err.costo_equivalente_usd = _costo_dati(dati)  # R-496-1: anche gli errori consumano
-            raise err
         out = dati.get("structured_output")
         if not isinstance(out, dict) or not isinstance(out.get("chiamate"), list):
-            err = RuntimeError("claude-cli: risposta senza il formato richiesto")
-            err.costo_equivalente_usd = _costo_dati(dati)
-            raise err
+            raise RuntimeError("claude-cli: risposta senza il formato richiesto")
         chiamate = []
         for c in out["chiamate"]:
             if not isinstance(c, dict) or not isinstance(c.get("nome"), str):
                 raise RuntimeError("claude-cli: chiamata a uno strumento non valida")
             if not isinstance(c.get("argomenti"), dict):  # V-4 bot #256: niente {} in silenzio
                 raise RuntimeError("claude-cli: argomenti di una chiamata non validi")
-            argomenti = c["argomenti"]
             chiamate.append(SimpleNamespace(
                 id=f"cli_{uuid.uuid4().hex[:24]}", type="function",
                 function=SimpleNamespace(name=c["nome"],
-                                         arguments=json.dumps(argomenti, ensure_ascii=False))))
+                                         arguments=json.dumps(c["argomenti"], ensure_ascii=False))))
         testo = out.get("testo") if isinstance(out.get("testo"), str) else ""
-        u = dati.get("usage") or {}
-        entrata = sum(int(u.get(k) or 0) for k in
-                      ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+        entrata, uscita = _token(dati)
         messaggio = SimpleNamespace(content=(testo or None) if chiamate else testo,
                                     tool_calls=chiamate or None)
-        uscita = int(u.get("output_tokens") or 0)
         return SimpleNamespace(
             choices=[SimpleNamespace(message=messaggio,
                                      finish_reason="tool_calls" if chiamate else "stop")],
             usage=SimpleNamespace(prompt_tokens=entrata, completion_tokens=uscita,
-                                  costo_equivalente_usd=_costo_equivalente(dati, entrata, uscita)))
+                                  costo_equivalente_usd=_costo_equivalente(dati, entrata, uscita, model)))

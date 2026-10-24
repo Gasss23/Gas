@@ -1,21 +1,22 @@
-# ULTIMO REPORT — 2026-10-24 — Merge #258/#259, report della notte, tre consigli applicati
+# ULTIMO REPORT — 2026-10-24 — R2 via B, fetta 3: note BASSE del cervello forte chiuse
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (vedi §0 dell'handoff): tocca il template `fine-task.md` (review #501 APPROVATO CON RISERVE), quindi decide l'operatore.
-2. Chiedere direttamente nella sessione fissa del turno di notte di applicare il testo nuovo dell'attività (la sessione ha rifiutato la richiesta della chat Motore).
-3. Approvare o rifiutare sul Mac le 3 lezioni del giro delle 3:00 (`python3 gas.py lezioni lista`).
+1. Merge della PR della fetta (vedi §0 dell'handoff): tocca il motore e il template fine-task. L'ultima review (#503) è APPROVATO; il merge autonomo vale solo se anche il bot dà APPROVATO senza riserve.
+2. Prima di accendere il forte: provare sul Mac `claude -p` col login Max di Gas (R-496-3).
+3. Ancora aperti da prima: testo nuovo dell'attività di notte da chiedere direttamente nella sessione fissa; 3 lezioni da approvare sul Mac.
 
 ## Esito
 
-- **Merge della PR #258 (R2 via B fetta 2)**: `FATTA`.
-- **Report del turno di notte del 24 e merge della PR #259**: `FATTA`. Prima del merge, main portato nel ramo della notte (review #499). Bot #259: V-1 BASSA + V-2 COSMETICA al primo giro, V-1 BASSA e V-2 BASSA al secondo (la #499 non era ancora in memoria su quel ramo: arriva con questa PR).
-- **Giro delle 3:00 sul Mac**: OK (1 compito, 0 errori, spesa 0 $, 3 lezioni da approvare).
-- **Consiglio 1 — regola «n/d» nel template `fine-task.md`**: `FATTA` (review #501 APPROVATO CON RISERVE, R-501-1 cosmetica).
-- **Consiglio 2 — «protezioni del repo» nella voce R4 della roadmap**: `FATTA`.
-- **Consiglio 3 — testo nuovo dell'attività di notte**: `DEFERITA — la sessione fissa vuole la richiesta direttamente dall'operatore`. Testo nuovo già in `reports/coda_notte.md` e inviato alla sessione.
-- **Merge di main (PR #257 della chat Mani) in questo ramo**: `FATTA` (review #500 APPROVATO).
-- **Merge della PR #260**: superato. La PR resta aperta con questo stesso ramo e ora contiene anche i tre consigli.
+- **Costo su ogni errore dopo una risposta della CLI (R-497-1)**: `FATTA`. Uscita non JSON, JSON non oggetto, chiamate o argomenti non validi su una risposta pagata, eccezioni impreviste; `usage` non numerico non solleva più.
+- **Prezzo per famiglia del modello e pavimento per chiamata (V-1 bot/ve #258)**: `FATTA`. Haiku 1/5, Sonnet 3/15, Opus 15/75 $/M, famiglia sconosciuta = la più cara; nessuna chiamata conta meno di 500 token d'ingresso.
+- **Conto sotto lucchetto (R-496-2, R-502-1/2)**: `FATTA`. Attesa massima 5 s; se il consumo non si registra il forte si ferma fino al riavvio del processo.
+- **Costi non finiti o negativi ignorati (V-4 ve #258)**: `FATTA`.
+- **Doctor «Cervello forte» (R-497-2)**: `FATTA`. Spento/acceso, comando presente, conto di oggi contro il tetto, conto illeggibile o con data futura = WARN; nessuna chiamata a `claude`.
+- **Messaggio dei file protetti (R-498-1)** e **deroga n/d nel template (R-501-1)**: `FATTA`.
+- **Review**: #502 APPROVATO CON RISERVE (R-502-1/2/3) → corrette → #503 APPROVATO.
+- **Test**: `tests/test_unit_claude_cli.py` 21 passed; kernel 1039 PASS 0 FAIL (T99m/n/o/p nuovi, lockfile in T68s); V-1 bot #262 corretta (doctor, review #504); V-1 verifica esterna #262 corretta (numeri enormi, review #505 → #506); claude_cli 22 passed; pytest completo 2142 passed, 1 skipped.
+- **Campo `cervello: forte` nel catalogo notturno e setup del Mac**: `DEFERITA — prossima fetta, dopo la prova del login`.
 
 ## Anomalie
 
