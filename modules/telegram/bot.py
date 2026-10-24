@@ -571,6 +571,129 @@ def lancia_giro(root: Path, nome: Optional[str] = None) -> str:
         return "✗ Giro NON avviato: errore nel lancio (dettagli in gas_debug.log)."
 
 
+# ──────────────────────────────────────── /clear da Telegram ──
+
+# Coda notte, voce 3: stesso effetto del `clear` del terminale (_clear_con_riflessione
+# in gas.py): riflessione sul task appena chiuso (spegnibile con GAS_RIFLESSIONE_AUTO=0),
+# poi cronologia svuotata anche se la riflessione fallisce. Solo dalle chat autorizzate:
+# il controllo è in _handle_update, prima di ogni comando.
+_COMANDO_CLEAR_RE = re.compile(r"/clear(?:@(\w+))?(?:[ \t]+(.*))?", re.I | re.S)
+# R-502-1: il recap va INTERO all'operatore, come nel terminale (R-200-3/R-201-2: vede
+# sempre cosa verrà dato come contesto), in messaggi a parte sotto il limite di Telegram.
+_CLEAR_PEZZO_MAX = 4000
+_CLEAR_LEZIONE_MAX = 300
+_CLEAR_SCARTATE_MAX = 5  # R-502-3
+
+
+def comando_clear(text: Any) -> Optional[Tuple[str, Optional[str]]]:
+    """None se il testo non è /clear; altrimenti ('clear', None) o ('errore',
+    messaggio per l'operatore). Mai eccezioni."""
+    try:
+        m = _COMANDO_CLEAR_RE.fullmatch(text.strip()) if isinstance(text, str) else None
+        if not m:
+            return None
+        destinatario = m.group(1)
+        if (destinatario and _BOT_USERNAME
+                and destinatario.casefold() != _BOT_USERNAME.casefold()):
+            return None  # comando per un altro bot del gruppo
+        if (m.group(2) or "").strip():
+            return ("errore", "/clear non vuole argomenti.")
+        return ("clear", None)
+    except Exception:
+        return None
+
+
+def _taglio_sicuro(t: str, n: int) -> int:
+    """Punto di taglio <= n che non spezza una sequenza «<U+XXXX>» (max 10 caratteri)."""
+    k = t.rfind("<", max(0, n - 10), n)
+    return k if k > 0 and ">" not in t[k:n] else n
+
+
+def messaggi_recap(recap: str) -> List[str]:
+    """Recap del modello INTERO, reso visibile e rientrato con «│ » (non può imitare
+    le righe del messaggio), diviso in messaggi da al massimo _CLEAR_PEZZO_MAX
+    caratteri; una riga troppo lunga si spezza senza rompere «<U+XXXX>»."""
+    righe: List[str] = []
+    for r in rendi_visibili(recap).split("\n"):
+        r = "│ " + r
+        while len(r) > _CLEAR_PEZZO_MAX:
+            k = _taglio_sicuro(r, _CLEAR_PEZZO_MAX)
+            righe.append(r[:k])
+            r = "│ " + r[k:]
+        righe.append(r)
+    pezzi: List[str] = []
+    cur: List[str] = []
+    for r in righe:
+        if cur and len("\n".join(cur + [r])) > _CLEAR_PEZZO_MAX:
+            pezzi.append("\n".join(cur))
+            cur = []
+        cur.append(r)
+    if cur:
+        pezzi.append("\n".join(cur))
+    return pezzi
+
+
+def righe_riflessione(esito: Dict[str, Any]) -> List[str]:
+    """Esito di GasKernel.rifletti() per Telegram, come _stampa_riflessione nel
+    terminale, senza il testo del recap (va in messaggi a parte: messaggi_recap).
+    Il testo del modello è reso visibile e non può imitare le righe del messaggio."""
+    if not esito.get("ok"):
+        return [f"✗ Riflessione non eseguita: {tronca_visibile(esito.get('errore'), 200)}"]
+    provider = tronca_visibile(esito.get("provider"), 60)
+    righe = [f"✓ Riflessione fatta (provider: {provider})."]
+    if esito.get("provider") != esito.get("provider_atteso"):
+        # §8 Model Awareness: dichiarare il passaggio a un rung di riserva.
+        righe.append(f"⚠ Ha risposto un provider di riserva ({provider}) invece di "
+                     f"{tronca_visibile(esito.get('provider_atteso'), 60)}: qualità del "
+                     "recap possibilmente più bassa.")
+    if esito.get("recap_tipo") == "recap":
+        righe.append(f"Recap salvato nel diario (#{esito.get('recap_id')}): verrà dato "
+                     "come contesto ai prossimi turni. Testo intero qui sotto.")
+    else:
+        righe.append(f"⚠ Recap salvato nel diario (#{esito.get('recap_id')}) come NON "
+                     "fidato: il task conteneva output di tool non garantiti, quindi NON "
+                     "verrà iniettato automaticamente. Resta consultabile con «ricorda». "
+                     "Testo intero qui sotto.")
+    if esito.get("lezioni"):
+        righe.append("Lezioni proposte (in quarantena, entrano nel prompt solo se le approvi):")
+        for lz in esito["lezioni"]:
+            righe.append(f"#{lz.get('id')} │ {tronca_visibile(lz.get('testo'), _CLEAR_LEZIONE_MAX)}")
+        righe.append("Per decidere, nel terminale: gas lezioni approva <id> | gas lezioni rifiuta <id>")
+    else:
+        righe.append("Nessun nuovo apprendimento permanente.")
+    scartate = list(esito.get("scartate") or [])
+    for testo, motivo in scartate[:_CLEAR_SCARTATE_MAX]:
+        righe.append(f"(scartata: {tronca_visibile(motivo, 80)} — {tronca_visibile(testo, 80)})")
+    if len(scartate) > _CLEAR_SCARTATE_MAX:
+        righe.append(f"(… e altre {len(scartate) - _CLEAR_SCARTATE_MAX} scartate)")
+    return righe
+
+
+def esegui_clear(kernel: Any) -> List[str]:
+    """/clear: riflessione (se c'è storia e GAS_RIFLESSIONE_AUTO non è 0), poi
+    cronologia pulita in ogni caso. Ritorna i messaggi per l'operatore: il primo con
+    l'esito della pulizia in testa, poi il recap intero. Mai eccezioni (§9)."""
+    riflessione: List[str] = []
+    recap: List[str] = []
+    try:
+        from modules.notte.notte import riflessione_auto_attiva
+        if getattr(kernel, "history", None) and riflessione_auto_attiva():
+            esito = kernel.rifletti()
+            riflessione = righe_riflessione(esito)
+            if esito.get("ok"):
+                recap = messaggi_recap(str(esito.get("recap") or ""))
+    except Exception as e:  # rifletti non solleva; cintura per import e composizione
+        log.warning("/clear: riflessione automatica fallita: %s", e)
+        riflessione, recap = ["✗ Riflessione non eseguita (dettagli in gas_debug.log)."], []
+    try:
+        kernel.clear_history()
+        pulizia = "✓ Cronologia pulita."
+    except Exception as e:
+        log.warning("/clear: pulizia della cronologia fallita: %s", e)
+        pulizia = "✗ Cronologia NON pulita (dettagli in gas_debug.log)."
+    return ["\n".join([pulizia] + riflessione)] + recap
+
+
 # ─────────────────────────────────────────── gestione update ──
 
 def _handle_update(base_url: str, upd: Dict[str, Any],
@@ -603,6 +726,17 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
             else:
                 root = getattr(kernel, "root", None) or Path(os.getcwd()).resolve()
                 _send_text(base_url, chat_id, lancia_giro(Path(root), valore))
+            return
+
+        pulizia = comando_clear(text)
+        if pulizia is not None:
+            tipo, valore = pulizia
+            if tipo == "errore":
+                _send_text(base_url, chat_id, valore or "")
+            else:
+                _send_typing(base_url, chat_id)  # la riflessione può durare minuti
+                for messaggio in esegui_clear(kernel):
+                    _send_text(base_url, chat_id, messaggio)
             return
 
         _send_typing(base_url, chat_id)

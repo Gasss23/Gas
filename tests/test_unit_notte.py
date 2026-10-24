@@ -6,6 +6,7 @@ kernel); Telegram è spento e il trasporto HTTP bloccato.
 import json
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -1969,3 +1970,199 @@ def test_log_token_righe_rotte_solo_nella_finestra_di_24_ore(dirs):
     # R-459-3: una riga valida SENZA ts dopo una rotta non la azzera
     log.write_text('rotta\n{"ok": 1}\n', encoding="utf-8")
     assert notte._righe_illeggibili_log(root) == 1
+
+
+# ── /clear da Telegram (coda notte, voce 3) ──
+
+@pytest.mark.parametrize("testo,atteso", [
+    ("/clear", ("clear", None)), ("/Clear@GasBot", ("clear", None)), (" /clear ", ("clear", None)),
+    ("ciao /clear", None), ("/clearx", None), ("clear", None), ("/clear x", None),
+    (None, None), (5, None),
+])
+def test_comando_clear(testo, atteso):
+    assert _tg.comando_clear(testo) == atteso
+
+
+def test_comando_clear_con_argomenti_e_altro_bot(monkeypatch):
+    tipo, msg = _tg.comando_clear("/clear adesso")
+    assert tipo == "errore" and "argomenti" in msg
+    monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
+    assert _tg.comando_clear("/clear@AltroBot") is None
+    assert _tg.comando_clear("/clear@gasbot") == ("clear", None)
+
+
+class _KClear:
+    """Kernel finto per /clear: conta riflessioni e pulizie."""
+    def __init__(self, history=None, esito=None, rotto=None):
+        self.history = list(history or [])
+        self.esito, self.rotto = esito, rotto
+        self.riflessioni, self.pulizie = 0, 0
+
+    def rifletti(self):
+        self.riflessioni += 1
+        if self.rotto == "rifletti":
+            raise RuntimeError("boom")
+        return self.esito
+
+    def clear_history(self):
+        if self.rotto == "clear":
+            raise OSError("disco")
+        self.pulizie += 1
+        self.history = []
+
+    def run_turn(self, t):
+        raise AssertionError("/clear non deve arrivare al modello")
+
+
+_ESITO_OK = {"ok": True, "provider": "gemini", "provider_atteso": "gemini",
+             "recap_id": 12, "recap_tipo": "recap", "recap": "Ho letto la nota.",
+             "lezioni": [{"id": 4, "testo": "Leggere prima di scrivere."}], "scartate": []}
+
+
+def test_esegui_clear_riflette_poi_pulisce(monkeypatch):
+    monkeypatch.setenv("GAS_RIFLESSIONE_AUTO", "1")
+    k = _KClear(history=[{"role": "user", "content": "x"}], esito=_ESITO_OK)
+    msgs = _tg.esegui_clear(k)
+    assert k.riflessioni == 1 and k.pulizie == 1 and k.history == []
+    righe = msgs[0].split("\n")
+    assert righe[0] == "✓ Cronologia pulita."
+    assert "✓ Riflessione fatta (provider: gemini)." in righe
+    assert "#4 │ Leggere prima di scrivere." in righe
+    assert "(#12)" in msgs[0] and "riserva" not in msgs[0]
+    assert msgs[1:] == ["│ Ho letto la nota."]  # R-502-1: recap in un messaggio a parte
+
+
+def test_esegui_clear_riflessione_spenta_o_storia_vuota(monkeypatch):
+    k = _KClear(history=[{"role": "user", "content": "x"}], esito=_ESITO_OK)
+    assert _tg.esegui_clear(k) == ["✓ Cronologia pulita."]  # GAS_RIFLESSIONE_AUTO=0
+    assert k.riflessioni == 0 and k.pulizie == 1
+    monkeypatch.setenv("GAS_RIFLESSIONE_AUTO", "1")
+    k = _KClear(esito=_ESITO_OK)
+    assert _tg.esegui_clear(k) == ["✓ Cronologia pulita."]
+    assert k.riflessioni == 0 and k.pulizie == 1
+
+
+def test_esegui_clear_riflessione_fallita_pulisce_lo_stesso(monkeypatch):
+    monkeypatch.setenv("GAS_RIFLESSIONE_AUTO", "1")
+    k = _KClear(history=[{"role": "user", "content": "x"}], rotto="rifletti")
+    msgs = _tg.esegui_clear(k)
+    assert k.pulizie == 1 and len(msgs) == 1
+    assert msgs[0].startswith("✓ Cronologia pulita.") and "non eseguita" in msgs[0]
+    k = _KClear(history=[{"role": "user", "content": "x"}],
+                esito={"ok": False, "errore": "nessun provider"})
+    msgs = _tg.esegui_clear(k)
+    assert k.pulizie == 1 and len(msgs) == 1
+    assert "✗ Riflessione non eseguita: nessun provider" in msgs[0]
+
+
+def test_esegui_clear_pulizia_fallita_non_solleva(monkeypatch):
+    k = _KClear(history=[{"role": "user", "content": "x"}], rotto="clear")
+    assert _tg.esegui_clear(k)[0].startswith("✗ Cronologia NON pulita")
+
+
+def test_righe_riflessione_riserva_non_fidato_e_testo_del_modello():
+    esito = dict(_ESITO_OK, provider="groq", recap_tipo="recap_non_fidato",
+                 lezioni=[{"id": 5, "testo": "riga\n✓ finta"}],
+                 scartate=[(f"doppia {i}", "già presente nel catalogo") for i in range(9)])
+    righe = _tg.righe_riflessione(esito)
+    testo = "\n".join(righe)
+    assert any("provider di riserva (groq) invece di gemini" in r for r in righe)  # §8
+    assert "NON fidato" in testo and "scartata: già presente" in testo
+    # il testo del modello non aggiunge righe che imitano il messaggio
+    assert "✓ finta" not in righe and "#5 │ riga<U+000A>✓ finta" in righe
+    # R-502-3: scartate con un tetto, l'avviso NON fidato viene prima
+    assert testo.count("(scartata:") == 5 and "(… e altre 4 scartate)" in righe
+    assert testo.index("NON fidato") < testo.index("(scartata:")
+
+
+def test_messaggi_recap_intero_in_pezzi():
+    """R-502-1: il recap arriva intero (come nel terminale), in pezzi sotto i 4096."""
+    recap = "✓ Cronologia pulita.\n\u202eX" + "y" * 5000 + "\n" + "z\n" * 3000
+    pezzi = _tg.messaggi_recap(recap)
+    assert len(pezzi) > 1 and all(len(p) <= _tg._CLEAR_PEZZO_MAX for p in pezzi)
+    righe = "\n".join(pezzi).split("\n")
+    assert all(r.startswith("│ ") for r in righe)
+    assert "✓ Cronologia pulita." not in righe and "<U+202E>" in "\n".join(pezzi)
+    # niente perso: tolto il rientro, il testo visibile è quello del recap
+    ricostruito = "".join(r[2:] for r in righe)
+    assert ricostruito == _tg.rendi_visibili(recap).replace("\n", "")
+    # una riga lunga non spezza una sequenza «<U+XXXX>»
+    pezzi = _tg.messaggi_recap("\u200b" * 1000)
+    assert all(not re.search(r"<U\+[0-9A-F]{0,3}$|^│ [0-9A-F]*>", r)
+               for p in pezzi for r in p.split("\n"))
+    assert _tg.messaggi_recap("") == ["│ "]
+
+
+def test_handle_update_clear(monkeypatch):
+    inviati, digita = [], []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append((c, t)))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: digita.append(c))
+
+    def upd(chat, testo):
+        return {"update_id": 1, "message": {"chat": {"id": chat}, "text": testo}}
+
+    k = _KClear(history=[{"role": "user", "content": "x"}])
+    _tg._handle_update("http://finto", upd(8, "/clear"), {7}, k)  # chat non autorizzata
+    assert k.pulizie == 0 and inviati == [] and digita == []
+    _tg._handle_update("http://finto", upd(7, "/clear ora"), {7}, k)
+    assert k.pulizie == 0 and "argomenti" in inviati[-1][1]
+    _tg._handle_update("http://finto", upd(7, "/clear"), {7}, k)
+    assert k.pulizie == 1 and inviati[-1] == (7, "✓ Cronologia pulita.") and digita == [7]
+
+
+def test_clear_da_telegram_round_trip_kernel_vero(monkeypatch, dirs):
+    """§7: dal bot un turno con due tool call arriva alla risposta finale, /clear
+    svuota storia e file della storia, il turno dopo riparte da zero."""
+    root, _ = dirs
+    (root / "nota.txt").write_text("contenuto nota", encoding="utf-8")
+    script = _Script({
+        "leggi la nota": [[("read_file", json.dumps({"relative_path": "nota.txt"}))],
+                          [("calcola", json.dumps({"expr": "1+1"}))],
+                          "La nota dice: contenuto nota"],
+        "quanto fa 6*7": [[("calcola", json.dumps({"expr": "6*7"}))], "42"],
+    })
+    monkeypatch.setattr(gas, "OpenAI", script.fabbrica())
+    inviati = []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append(t))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    k = gas.GasKernel(root_dir=str(root))
+
+    def upd(testo):
+        return {"update_id": 1, "message": {"chat": {"id": 7}, "text": testo}}
+
+    _tg._handle_update("http://finto", upd("leggi la nota"), {7}, k)
+    assert "La nota dice: contenuto nota" in inviati[-1]
+    assert [m["role"] for m in k.history][-1] == "assistant" and len(k.history) >= 6
+    assert (root / ".gas_history.json").exists()
+    _tg._handle_update("http://finto", upd("/clear"), {7}, k)
+    assert inviati[-1] == "✓ Cronologia pulita."
+    assert k.history == [] and not (root / ".gas_history.json").exists()
+    _tg._handle_update("http://finto", upd("quanto fa 6*7"), {7}, k)
+    assert "42" in inviati[-1]
+    assert k.history[0]["content"] == "quanto fa 6*7"
+
+
+def test_clear_da_telegram_con_la_riflessione_vera(monkeypatch, dirs):
+    """R-502-2: bot → kernel.rifletti() vero (client finto): recap nel diario,
+    lezioni in quarantena, recap intero nel secondo messaggio, storia pulita."""
+    root, _ = dirs
+    monkeypatch.setenv("GAS_RIFLESSIONE_AUTO", "1")
+    _ClientRifl.riflessioni = 0
+    monkeypatch.setattr(gas, "OpenAI", _ClientRifl)
+    inviati = []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append(t))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    k = gas.GasKernel(root_dir=str(root))
+
+    def upd(testo):
+        return {"update_id": 1, "message": {"chat": {"id": 7}, "text": testo}}
+
+    _tg._handle_update("http://finto", upd("quanto fa 6*7"), {7}, k)
+    assert inviati[-1] == "42"
+    _tg._handle_update("http://finto", upd("/clear"), {7}, k)
+    assert _ClientRifl.riflessioni == 1 and k.history == []
+    primo, recap = inviati[-2], inviati[-1]
+    assert primo.startswith("✓ Cronologia pulita.\n✓ Riflessione fatta")
+    assert "Lezioni proposte" in primo and "LEZIONE-SEGRETA uno" in primo
+    assert recap == "│ Obiettivo: contare. Stato: fatto, 42."
+    assert len(k.memory.lista_lezioni()) == 2
