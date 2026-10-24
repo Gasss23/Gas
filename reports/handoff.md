@@ -56,7 +56,7 @@ NB: il commit di fine-task che contiene questo file non compare nel log, per cos
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit nel perimetro di review: f28b17c (`.claude/commands/fine-task.md`, review #501) e il merge 1be3039 (review #500). La review #499 riguarda il merge sul ramo `notte/2026-10-24` (PR #259), già mergiato.
+Commit nel perimetro di review: f28b17c (`.claude/commands/fine-task.md`, review #501). Il merge 1be3039 (review #500) porta file del motore identici a main, quindi fuori dal diff di sessione: il suo verdetto integrale è in §8. La review #499 riguarda il merge sul ramo `notte/2026-10-24` (PR #259), già mergiato.
 
 ### Review #501 (f28b17c)
 
@@ -79,7 +79,28 @@ Cosa NON ho verificato: il comportamento del bot di verifica sulla prossima PR, 
 
 Memoria: ho aggiunto la riga #501 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata con scripts/commit_memoria_revisore.sh (commit b0c759b, solo quel file). Nessuna lezione nuova.
 
-### Review #500 (merge 1be3039)
+## §5 DELTA TEST DEL MOTORE
+
+Nessuna modifica a gas.py/tests/ in questa sessione (i file del motore arrivati con il merge di main sono identici a main, review #500).
+
+## §6 STATO CI
+
+`gh run list -L 3` alle 17:40 UTC:
+
+```
+completed	success	Merge pull request #257 from Gasss23/feat/mani-web-fetta14	CI	main	push	40115672298	2m31s	2026-10-24T17:20:28Z
+completed	success	docs: merge #258, report della notte del 24, memoria review #499	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40115466232	2m43s	2026-10-24T17:17:42Z
+completed	success	docs(fine-task): decisioni in attesa in stato_progetto, §6 del dossie…	CI	feat/merge-automatico-z1xjx2	push	40115464691	3m6s	2026-10-24T17:17:40Z
+```
+
+Mappatura: ee96055 (ultimo commit pushato prima di questa tornata): CI verde, bot APPROVATO CON RISERVE. 1be3039, b0c759b, f28b17c e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
+
+## §7 RISERVE APERTE
+
+- **R-501-1** (COSMETICA): il segnaposto del §2 e il commento di 4bis nel template dicono ancora «output GREZZO» senza nominare la deroga n/d.
+- Le riserve del cervello forte (R-497-1/2, R-496-2/3, R-498-1/2 e le note BASSE di bot e verifica esterna #258) restano in `reports/stato_progetto.md`.
+
+## §8 VERDETTO DEL MERGE DI MAIN (review #500, integrale)
 
 ## VERDETTO: APPROVATO
 
@@ -102,24 +123,3 @@ ATTENZIONE, da sapere prima di committare:
 2. Ho scritto la riga #500 con Edit in /home/user/Gas/.claude/agents/memoria_revisore.md (riga 830). Ora è una modifica NON in stage, non committata e non messa in stage (merge in corso, come richiesto). Prima di concludere il merge esegui `git add .claude/agents/memoria_revisore.md`. Non ho lanciato commit_memoria_revisore.sh.
 
 Riga contatore: #500 (chat Motore) — 2026-10-24 — APPROVATO — nessuna lezione nuova.
-
-## §5 DELTA TEST DEL MOTORE
-
-Nessuna modifica a gas.py/tests/ in questa sessione (i file del motore arrivati con il merge di main sono identici a main, review #500).
-
-## §6 STATO CI
-
-`gh run list -L 3` alle 17:40 UTC:
-
-```
-completed	success	Merge pull request #257 from Gasss23/feat/mani-web-fetta14	CI	main	push	40115672298	2m31s	2026-10-24T17:20:28Z
-completed	success	docs: merge #258, report della notte del 24, memoria review #499	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40115466232	2m43s	2026-10-24T17:17:42Z
-completed	success	docs(fine-task): decisioni in attesa in stato_progetto, §6 del dossie…	CI	feat/merge-automatico-z1xjx2	push	40115464691	3m6s	2026-10-24T17:17:40Z
-```
-
-Mappatura: ee96055 (ultimo commit pushato prima di questa tornata): CI verde, bot APPROVATO CON RISERVE. 1be3039, b0c759b, f28b17c e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
-
-## §7 RISERVE APERTE
-
-- **R-501-1** (COSMETICA): il segnaposto del §2 e il commento di 4bis nel template dicono ancora «output GREZZO» senza nominare la deroga n/d.
-- Le riserve del cervello forte (R-497-1/2, R-496-2/3, R-498-1/2 e le note BASSE di bot e verifica esterna #258) restano in `reports/stato_progetto.md`.
