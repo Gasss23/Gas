@@ -41,6 +41,8 @@ NB: regola «n/d» — la riga di `reports/handoff.md` è n/d e la riga di total
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+528e0d6 docs(fine-task): verdetto del merge (#500) in §8, fuori dal diff di sessione
+90e63a9 docs(fine-task): report del 24 — tre consigli, merge di main (#257)
 f28b17c docs(fine-task): regola «n/d» per la riga di handoff.md nel §2 (decisione dell'operatore)
 b0c759b chore(revisore): memoria review #501 — APPROVATO CON RISERVE
 1be3039 Merge origin/main (PR #257) in feat/merge-automatico-z1xjx2 — review #500 APPROVATO
