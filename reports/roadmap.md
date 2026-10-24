@@ -191,7 +191,7 @@ Finché non passa, "Gas lavora di notte" non è vero. Nessun lavoro autonomo su 
 
 ### R4 — Protezioni di base ⏳ 👤
 - ⏳ 👤 **Backup cifrato su iCloud Drive** (deciso il 19 ottobre) di: memoria (`.gas_memory.db`: diario e rubrica), file delle chiavi (`.env`) e cronologia delle conversazioni (`.gas_history.json`). Password della cifratura nel gestore di password. Mai chiavi in chiaro. Il comando di copia esterna esiste già da giugno.
-- 🅿️ **Repo privato + GitHub Pro: rimandato** (19 ottobre). Intanto, gratis e **prima di accendere R3**:
+- 🅿️ **Protezioni del repo — repo privato + GitHub Pro: rimandato** (19 ottobre; è l'impegno «protezioni del repo» citato da V-3 bot #249, tracciato qui per decisione dell'operatore del 24 ottobre). Intanto, gratis e **prima di accendere R3**:
   - ✅ 👤 issue disattivate (22 ottobre, verificato via API);
   - ✅ 👤 interazioni limitate ai collaboratori (22 ottobre, dichiarato dall'operatore; da rinnovare ogni 6 mesi, entro il 22 aprile 2027);
   - ✅ l'agente notturno legge solo il codice e la sua coda, mai issue o commenti di altri (regola nella coda e nel prompt dell'attività, 22 ottobre).

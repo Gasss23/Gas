@@ -1,17 +1,21 @@
-# ULTIMO REPORT — 2026-10-24 — Merge #258, report della notte, merge di main nella #259
+# ULTIMO REPORT — 2026-10-24 — Merge #258/#259, report della notte, tre consigli applicati
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Tre consigli in attesa del sì dell'operatore: nota sul conteggio di `handoff.md` nel template `fine-task.md` (fetta col revisore); «protezioni del repo» tracciate nella voce R4 della roadmap; aggiornare il testo dell'attività di notte tramite la sua sessione fissa.
-2. Approvare o rifiutare sul Mac le 3 lezioni proposte dal giro delle 3:00 (`python3 gas.py lezioni lista`).
+1. Merge della PR di questa sessione (vedi §0 dell'handoff): tocca il template `fine-task.md` (review #501 APPROVATO CON RISERVE), quindi decide l'operatore.
+2. Chiedere direttamente nella sessione fissa del turno di notte di applicare il testo nuovo dell'attività (la sessione ha rifiutato la richiesta della chat Motore).
+3. Approvare o rifiutare sul Mac le 3 lezioni del giro delle 3:00 (`python3 gas.py lezioni lista`).
 
 ## Esito
 
-- **Merge della PR #258 (R2 via B fetta 2)**: `FATTA` su richiesta dell'operatore.
-- **Report del turno di notte del 24**: `FATTA`. PR #259 (voci 1 e 2 della coda, solo documenti), bot APPROVATO CON RISERVE (una BASSA cosmetica), CI verde.
-- **Merge di main nella #259**: `FATTA`. Conflitti solo nei report (log di sessione della notte tenuti, intestazione di `stato_progetto.md` unita); review #499 APPROVATO; commit c72ed0c pushato sul ramo `notte/2026-10-24`.
-- **Merge della PR #259**: `FATTA` (CI verde, bot APPROVATO CON RISERVE con due BASSE sul dossier della notte: conteggi non aggiornati dopo il commit finale e «review #499» non ancora in memoria su quel ramo — la riga #499 arriva con la PR #260).
+- **Merge della PR #258 (R2 via B fetta 2)**: `FATTA`.
+- **Report del turno di notte del 24 e merge della PR #259**: `FATTA`. Prima del merge, main portato nel ramo della notte (review #499). Bot #259: V-1 BASSA + V-2 COSMETICA al primo giro, V-1 BASSA e V-2 BASSA al secondo (la #499 non era ancora in memoria su quel ramo: arriva con questa PR).
 - **Giro delle 3:00 sul Mac**: OK (1 compito, 0 errori, spesa 0 $, 3 lezioni da approvare).
+- **Consiglio 1 — regola «n/d» nel template `fine-task.md`**: `FATTA` (review #501 APPROVATO CON RISERVE, R-501-1 cosmetica).
+- **Consiglio 2 — «protezioni del repo» nella voce R4 della roadmap**: `FATTA`.
+- **Consiglio 3 — testo nuovo dell'attività di notte**: `DEFERITA — la sessione fissa vuole la richiesta direttamente dall'operatore`. Testo nuovo già in `reports/coda_notte.md` e inviato alla sessione.
+- **Merge di main (PR #257 della chat Mani) in questo ramo**: `FATTA` (review #500 APPROVATO).
+- **Merge della PR #260**: superato. La PR resta aperta con questo stesso ramo e ora contiene anche i tre consigli.
 
 ## Anomalie
 
