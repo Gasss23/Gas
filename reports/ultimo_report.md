@@ -10,7 +10,7 @@
 - **Merge della PR #258 (R2 via B fetta 2)**: `FATTA` su richiesta dell'operatore.
 - **Report del turno di notte del 24**: `FATTA`. PR #259 (voci 1 e 2 della coda, solo documenti), bot APPROVATO CON RISERVE (una BASSA cosmetica), CI verde.
 - **Merge di main nella #259**: `FATTA`. Conflitti solo nei report (log di sessione della notte tenuti, intestazione di `stato_progetto.md` unita); review #499 APPROVATO; commit c72ed0c pushato sul ramo `notte/2026-10-24`.
-- **Merge della PR #259**: `DEFERITA — in attesa di CI e bot sul nuovo commit`.
+- **Merge della PR #259**: `FATTA` (CI verde, bot APPROVATO CON RISERVE con due BASSE sul dossier della notte: conteggi non aggiornati dopo il commit finale e «review #499» non ancora in memoria su quel ramo — la riga #499 arriva con la PR #260).
 - **Giro delle 3:00 sul Mac**: OK (1 compito, 0 errori, spesa 0 $, 3 lezioni da approvare).
 
 ## Anomalie

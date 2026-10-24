@@ -17,23 +17,27 @@
 - **Merge #258**: `FATTA`.
 - **Report della notte del 24**: `FATTA`.
 - **Merge di main nella #259 (review #499)**: `FATTA`.
-- **Merge #259**: `DEFERITA — in attesa di CI e bot sul nuovo commit`.
+- **Merge #259**: `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- reports/diff_sessione.md           |  13 ++-----------
- reports/handoff.md                 | 157 ++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------
- reports/ultimo_report.md           |  22 +++++++++-------------
- 4 files changed, 26 insertions(+), 167 deletions(-)
+ .claude/agents/memoria_revisore.md |  1 +
+ reports/diff_sessione.md           | 11 ++++-------
+ reports/handoff.md                 | 55 ++++++++++++++++++++++---------------------------------
+ reports/ultimo_report.md           | 22 ++++++++++++----------
+ 4 files changed, 39 insertions(+), 50 deletions(-)
 ```
+
+NB: la riga di `reports/handoff.md` non è misurabile (il file conta se stesso prima del commit finale): consideratela n/d. Gli altri conteggi sono presi con i report già in stage.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+938e6fe Merge origin/main (PR #259) in feat/merge-automatico-z1xjx2: conflitti solo nei log di sessione
+7ccdda1 docs(fine-task): report del 24 ottobre (merge #258, notte, review #499)
 7faf491 chore(revisore): memoria review #499 — APPROVATO
 ```
 
@@ -50,12 +54,12 @@ Nessuna modifica a gas.py/tests/.
 `gh run list -L 3` alla scrittura:
 
 ```
-in_progress		Turno di notte 2026-10-24: voci 1 e 2 della coda (solo documenti)	verifica-bot	notte/2026-10-24	pull_request_target	40114161048	35s	2026-10-24T17:00:39Z
-in_progress		Merge origin/main (PR #258) in notte/2026-10-24: conflitti solo nei r…	CI	notte/2026-10-24	push	40114159075	36s	2026-10-24T17:00:38Z
-completed	success	Merge pull request #258 from Gasss23/feat/merge-automatico-z1xjx2	CI	main	push	40113988238	2m37s	2026-10-24T16:58:25Z
+in_progress		Merge pull request #259 from Gasss23/notte/2026-10-24	CI	main	push	40114465576	40s	2026-10-24T17:04:35Z
+in_progress		feat(web): fetta 14 Mani — tempo riservato alla pulizia, grezzi autochiusi conformi (R6)	verifica-bot	feat/mani-web-fetta14	pull_request_target	40114246162	3m33s	2026-10-24T17:01:42Z
+completed	success	docs(reports): fetta 14 chat Mani — handoff dopo il merge di main	CI	feat/mani-web-fetta14	push	40114244420	3m31s	2026-10-24T17:01:40Z
 ```
 
-Mappatura: 7faf491 e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura: 7faf491+7ccdda1 (run sulla testa 7ccdda1: verde, bot APPROVATO CON RISERVE, V-1 BASSA sul conteggio di handoff.md). Il merge di main (PR #259) e il commit di fine-task che lo segue: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
