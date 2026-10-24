@@ -28,14 +28,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 +
+ .claude/agents/memoria_revisore.md |   3 +
  modules/web/leggi.py               |  17 ++-
- reports/diff_sessione.md           |  18 +--
- reports/handoff.md                 | 278 +++++++++++++------------------------
+ reports/diff_sessione.md           |  19 +--
+ reports/handoff.md                 | 286 +++++++++++++++++++------------------
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  29 ++--
+ reports/ultimo_report.md           |  33 +++--
  tests/test_unit_web_leggi.py       |  54 ++++++-
- 7 files changed, 192 insertions(+), 208 deletions(-)
+ 7 files changed, 246 insertions(+), 168 deletions(-)
 ```
 
 NB: preso dall'index con tutti i report in stage, dopo aver scritto questo handoff; solo la riga di `reports/handoff.md` può differire di poche righe, perché lo stat è dentro il file stesso.
@@ -45,6 +45,8 @@ NB: preso dall'index con tutti i report in stage, dopo aver scritto questo hando
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+6ba148d Merge origin/main (PR #258) in feat/mani-web-fetta14
+b99ab59 docs(reports): fine fetta 14 chat Mani — report, handoff, stato
 3bd972f feat(web): fetta 14 — tempo riservato alla pulizia, grezzi autochiusi conformi (R6)
 185216f chore(revisore): memoria review #497 — APPROVATO
 973a818 chore(revisore): memoria review #496 — APPROVATO CON RISERVE
@@ -56,7 +58,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Due verdetti, incollati integralmente (chat Mani), tutti e due sul diff della fetta 14 committato in `3bd972f`: #496 (APPROVATO CON RISERVE) sulla prima versione, #497 (APPROVATO) con le sue riserve chiuse. Le righe citate nella #496 si riferiscono al diff di allora.
+Tre verdetti, incollati integralmente (chat Mani): #496 (APPROVATO CON RISERVE) e #497 (APPROVATO) sul diff della fetta 14 committato in `3bd972f`; #499 (APPROVATO) sul merge di main 3b02651 (PR #258), fatto perché il merge della PR, chiesto dall'operatore, era rifiutato per conflitto. Le righe citate nella #496 si riferiscono al diff di allora.
 
 ### Review #496 (chat Mani) — verdetto integrale (fetta 14, prima versione)
 
@@ -131,6 +133,45 @@ File:
 - /home/user/Gas/modules/web/leggi.py
 - /home/user/Gas/tests/test_unit_web_leggi.py
 
+### Review #499 (chat Mani) — verdetto integrale (merge di main 3b02651)
+
+## VERDETTO: APPROVATO
+
+Review #499 (chat Mani): merge di origin/main 3b02651 (PR #258, chat Motore) in feat/mani-web-fetta14, ancora da committare. HEAD è b99ab59, la base comune è b3f04d9. Il merge non tocca il codice web e non perde righe. Il numero #499 era libero: il più alto in memoria era #498.
+
+**Cosa ho esaminato**
+- `.claude/agents/memoria_revisore.md:819`–`.claude/agents/memoria_revisore.md:826`: le righe entrate da main (#495–#498 della chat Motore), mescolate alle righe #496–#497 della chat Mani.
+  - Rischio esaminato: righe perse o inventate nella risoluzione del conflitto.
+  - Esito ok:
+    - confronto riga per riga: 0 righe perse da HEAD, 0 perse da MERGE_HEAD, nessuna riga inventata;
+    - nessun marcatore di conflitto, né qui né in `reports/stato_progetto.md`.
+  - Nota: i numeri #496 e #497 sono usati sia dalla chat Mani sia dalla chat Motore. È di nuovo la collisione di numerazione fra chat parallele, non un errore del merge.
+- `modules/web/leggi.py:57` e `modules/web/leggi.py:1414`.
+  - Rischio esaminato: il merge che cambia il codice web già approvato.
+  - Esito ok:
+    - `modules/web/leggi.py` e `tests/test_unit_web_leggi.py` in stage sono identici a HEAD, cioè al codice approvato in #496–#497;
+    - `git diff --cached HEAD` su modules/web e sul test web è vuoto;
+    - suite web: 388 passed e 1 skipped (3.13).
+- `reports/stato_progetto.md`, unito in automatico.
+  - Rischio esaminato: un'unione automatica sbagliata.
+  - Esito ok: 0 righe perse da main. Le 2 righe che mancano rispetto a HEAD sono righe della base che main ha aggiornato («Ultimo aggiornamento» e la voce R2 fetta 1), quindi l'unione a tre vie è corretta.
+- File entrati da main: gas.py, brains/claude_cli.py, modules/gate/gate.py, i test kernel, claude_cli e gate, .gitignore, roadmap.md, r2_regole_abbonamento.md.
+  - Rischio esaminato: modifiche introdotte durante il merge.
+  - Esito ok: tutti identici byte per byte a MERGE_HEAD. Li cito solo a parole, perché dopo il merge non sono più nel diff di sessione.
+- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD (`--ours`): sono log di sessione e vanno riscritti a fine giro.
+
+**Cosa non ho verificato**
+- Il contenuto del codice entrato da main (R2 `claude -p`, gate, kernel): è stato rivisto nella chat Motore e qui non è cambiato.
+- Le suite kernel, claude_cli e gate su questo merge: i file sono identici a main, e i loro test girano in CI sul commit di merge.
+- La CI sul commit di merge: il commit non esiste ancora.
+
+**Memoria**: aggiunta la riga #499 (`.claude/agents/memoria_revisore.md`, riga 828), nessuna lezione nuova. Il file è in stage con `git add` e non è committato, perché il merge è in corso: entra nel commit di merge. Il resto dello stage non è stato toccato.
+
+File:
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /home/user/Gas/reports/stato_progetto.md
+- /home/user/Gas/modules/web/leggi.py
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
@@ -142,7 +183,8 @@ File:
 
 ## §6 STATO CI
 
-- `3bd972f` e il commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `b99ab59` (apertura della PR #257): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 COSMETICA: commento di TIMEOUT_TOTALE); verifica esterna #257 APPROVATO CON RISERVE (V-1 BASSA: test del redirect non valido per R-496-2; V-2/V-3 COSMETICHE) — rimandate alla prossima fetta.
+- L'operatore ha detto «mergia 257»; il merge era rifiutato per conflitto con main (PR #258): merge di main, review #499. Run sul merge e sul commit di fine-task con questo handoff: non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 

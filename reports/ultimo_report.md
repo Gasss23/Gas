@@ -19,7 +19,8 @@ Ramo `feat/mani-web-fetta14` da main b3f04d9 (dopo il merge di #255 e #256). Are
 - **V-2 bot #255 bis (eccezioni dei thread nel test, COSMETICA)**: `FATTA`.
 - **R-ve255-1**: registrata (decisione insieme a R-ve252-2).
 - **Test**: web suite 383 → 388 (Python 3.13 e 3.11; col parser vecchio 379 passati e 10 saltati apposta). Mutazioni nuove (senza riserva, flag della pulizia mai spento): prese.
-- **Review**: #496 APPROVATO CON RISERVE, #497 APPROVATO (chat Mani): verdetti integrali nell'handoff.
+- **Bot #257 e verifica esterna #257: APPROVATO CON RISERVE** (V-1 ve BASSA: test del redirect non valido; note COSMETICHE): rimandate alla prossima fetta, merge chiesto dall'operatore.
+- **Review**: #496 APPROVATO CON RISERVE, #497 APPROVATO, #499 APPROVATO (merge di main) (chat Mani): verdetti integrali nell'handoff.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
