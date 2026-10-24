@@ -11,5 +11,7 @@
 - **Voci 6–8**: SALTATE — vengono dopo in ordine; le voci solo-documenti non ci sono.
 
 ## Anomalie
+- Kernel: CI 1037 PASS 0 FAIL, misura locale nel cloud 1031 PASS 0 FAIL (V-1 bot #263 bis, differenza non spiegata).
+- Terzo giro bot/verifica esterna: APPROVATO CON RISERVE, solo BASSE, tracciate in `stato_progetto.md`.
 - Nessuna. Non provato col Telegram vero (nessuna credenziale nel cloud).
 - Dettaglio: `reports/report_notte.md`.

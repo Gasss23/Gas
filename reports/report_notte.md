@@ -14,8 +14,10 @@ Seconda notte (la PR #259 della prima è mergiata): al massimo UNA voce del moto
 - Verifica esterna ([commento](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390800357)): APPROVATO CON RISERVE, nessuna ALTA/MEDIA. V-1 BASSA («/clear» con testo su una riga nuova andava al modello) corretta.
 - Review #504 sul secondo giro: APPROVATO CON RISERVE. Nuova R-504-1 BASSA preesistente: `/notte` e `/compito` partono ancora da un messaggio modificato (da fare in una voce futura).
 
+- Terzo giro (dopo le correzioni): bot e [verifica esterna](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390966722) APPROVATO CON RISERVE, CI verde. Solo note BASSE, registrate in `stato_progetto.md` e non corrette stanotte per non riaprire un altro giro: «/clear@AltroBot» eseguito se all'avvio il bot non conosce il proprio nome; riflessione che blocca il polling; marcatore di continuazione del recap; kernel 1037 in CI contro 1031 nella misura locale.
+
 ## Cosa deve decidere l'operatore
 1. Merge della PR #263 (il turno di notte non mergia).
 2. Prova dal vero: bot acceso (`python3 gas.py telegram`), qualche messaggio, poi `/clear`.
-3. Se mettere in coda R-504-1 (`/notte` da messaggio modificato).
+3. Se mettere in coda R-504-1 (`/notte` da messaggio modificato) e la nota «/clear@AltroBot» (fix di una riga).
 4. Il testo dell'attività programmata: la chat Motore ha chiesto il 24 ottobre di cambiarlo, dicendo che l'avevi approvato. Non l'ho fatto: serve la tua richiesta in questa sessione.

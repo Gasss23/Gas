@@ -39,6 +39,7 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+f23234f docs(fine-task): turno di notte 2026-10-25 — secondo giro, review #504 (PR #263)
 17adcfb fix(telegram): /clear solo da un messaggio nuovo, a capo come separatore, recap vuoto (note #263)
 e02c8bf chore(revisore): memoria review #504 — APPROVATO CON RISERVE
 3cfdc29 docs(fine-task): turno di notte 2026-10-25 — report, handoff, coda (voce 3 fatta, PR #263)
@@ -140,7 +141,7 @@ Memoria aggiornata: riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `python tests/test_unit_kernel.py`: `=== RIEPILOGO: 1031 PASS, 0 FAIL ===` (invariato: gas.py non toccato).
+- `python tests/test_unit_kernel.py`: `=== RIEPILOGO: 1031 PASS, 0 FAIL ===` in locale (cloud); in CI 1037 PASS, 0 FAIL sia su main sia sul ramo (V-1 bot #263 bis). Invariato: gas.py non toccato.
 - `python -m pytest -q tests/`: main `2140 passed, 1 skipped` → ramo `2159 passed, 1 skipped` (+19 test di `/clear` in `tests/test_unit_notte.py`; dopo 17adcfb stessi numeri, test aggiornati). Nessun FAIL.
 
 ## §6 STATO CI
@@ -155,6 +156,7 @@ Mappatura commit→run:
 - `ceeed81` → run CI 40141292710 (push).
 - `3cfdc29` → run CI 40141400864 success (`unit-suite`, `handoff-check`); `verifica-bot` 40141412196 success (bot APPROVATO CON RISERVE).
 - `e02c8bf`, `17adcfb`: nessuna run su questo SHA (pushati insieme al commit di fine-task).
+- `f23234f` (fine-task del secondo giro) → run CI 40142732300 success (`unit-suite`, `handoff-check`), `verifica-bot` success.
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
@@ -165,4 +167,5 @@ Mappatura commit→run:
 - **R-504-2 (chat Notte)** COSMETICA: recap di soli NBSP/caratteri di controllo mostrato come «(recap vuoto)».
 - V-2 bot #263, seconda parte: «sta scrivendo» mandato una volta sola durante una riflessione lunga.
 - Verifica esterna #263 ([commento](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390800357)) APPROVATO CON RISERVE: V-1 chiusa in 17adcfb; V-2 = R-503-1/2; V-3 COSMETICA (data della sessione in ora italiana, §6 datato) nessuna azione.
+- Terzo giro su `f23234f`: bot e [verifica esterna](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390966722) APPROVATO CON RISERVE, solo BASSE (`/clear@AltroBot` con username ignoto, polling bloccato dalla riflessione, marcatore di continuazione, kernel 1037 in CI contro 1031 in locale), tracciate in `stato_progetto.md`.
 - Non provato col Telegram vero.
