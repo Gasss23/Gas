@@ -16,8 +16,10 @@ Regole (fail-safe, CLAUDE.md §9):
   - mai eccezioni verso chi chiama: in errore {"ok": False, "motivo": ...}, con un
     motivo scritto da qui (mai testo della pagina o del server).
 
-Limiti dichiarati: il tempo massimo copre rete e download; la decodifica e la pulizia
-del testo (lineari, qualche secondo al massimo su 2 MB) vengono dopo (R-ve235-5). Il
+Limiti dichiarati: rete e download hanno TIMEOUT_TOTALE meno RISERVA_COMPOSIZIONE (12 s
+su 15); i 3 s restanti sono per la decodifica e la pulizia del testo, lineari, misurate fino
+a ~3 s su 2 MB difficili, ma senza un tetto rigido: su una macchina lenta il totale può
+superare di poco i 15 s (R-ve235-5, R-496-1). Il
 DNS di sistema non si può interrompere: le risoluzioni in corso sono limitate a
 MAX_DNS_IN_CORSO thread (R-ve235-7); se sono tutte appese, le letture successive
 falliscono con «troppe risoluzioni DNS in corso» finché il resolver non rinuncia. Se
@@ -50,6 +52,9 @@ logger = logging.getLogger("gas.web")
 
 # Limiti fissi (non configurabili da chi chiama).
 TIMEOUT_TOTALE = 15.0        # secondi per tutto: DNS, connessioni, redirect, corpo
+# Una parte del tempo resta per pulire la pagina scaricata: con 2 MB difficili servono fino a
+# ~3 s, che prima si aggiungevano ai 15 della rete (R-ve235-5). Con tempi corti (test) un quinto.
+RISERVA_COMPOSIZIONE = 3.0
 TIMEOUT_CONNESSIONE = 5.0    # secondi per aprire una connessione
 MAX_BYTE = 2_000_000         # byte letti al massimo dal corpo
 MAX_CARATTERI = 8000         # caratteri di testo restituiti al massimo
@@ -1392,9 +1397,10 @@ def leggi_pagina(
 
     I parametri con il trattino basso servono solo ai test (DNS e connessioni finti).
     """
-    scadenza = time.monotonic() + TIMEOUT_TOTALE
+    scadenza = time.monotonic() + TIMEOUT_TOTALE - min(RISERVA_COMPOSIZIONE, TIMEOUT_TOTALE / 5)
     risolvi = _risolvi or _risolvi_dns
     connetti = _connetti or _connetti_tcp
+    in_rete = True
     try:
         attuale = url
         cifrato = False
@@ -1405,6 +1411,7 @@ def leggi_pagina(
             cifrato = cifrato or schema == "https"
             pagina = _scarica(schema, host, porta, percorso, scadenza, risolvi, connetti, _tls)
             if "redirect" not in pagina:
+                in_rete = False
                 return _componi(normalizzato, pagina)
             if salto == MAX_REDIRECT:
                 raise _Rifiuto("troppi redirect")
@@ -1417,6 +1424,10 @@ def leggi_pagina(
     except Exception as e:  # noqa: BLE001 — mai eccezioni verso chi chiama (§9)
         nome = type(e).__name__
         logger.warning("leggi_pagina: errore %s su %r", nome, url[:200] if isinstance(url, str) else type(url).__name__)
+        if not in_rete:
+            # Un errore della pulizia, anche dopo la scadenza della rete, non è un tempo
+            # massimo superato (R-496-2).
+            return {"ok": False, "motivo": f"errore nella pulizia della pagina ({nome})"}
         if time.monotonic() >= scadenza or isinstance(e, (socket.timeout, TimeoutError)):
             return {"ok": False, "motivo": "tempo massimo superato"}
         return {"ok": False, "motivo": f"errore di rete o di protocollo ({nome})"}
