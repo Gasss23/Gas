@@ -50,3 +50,5 @@ gas_debug.log.*
 
 # E1: copia divergente del canone per altri agenti, solo locale (decisione operatore 2026-10-13)
 AGENTS.md
+.gas_claude_cli_uso.json
+.gas_claude_cli_uso.json.*.tmp
