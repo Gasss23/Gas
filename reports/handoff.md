@@ -27,18 +27,18 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
+ .claude/agents/memoria_revisore.md |   7 +++++++
  .claude/commands/fine-task.md      |   4 ++--
  .gitignore                         |   1 +
- brains/claude_cli.py               | 122 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------
- gas.py                             | 132 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
- reports/diff_sessione.md           |  14 ++++++++------
+ brains/claude_cli.py               | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
+ gas.py                             | 133 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
+ reports/diff_sessione.md           |  15 +++++++++------
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   4 ++--
  reports/ultimo_report.md           |  25 +++++++++++++------------
- tests/test_unit_claude_cli.py      |  68 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- tests/test_unit_kernel.py          |  44 ++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_claude_cli.py      |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ tests/test_unit_kernel.py          |  55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — la riga di `reports/handoff.md` è n/d e la riga di totale è tolta; le altre righe sono prese con i report già in stage.
@@ -46,6 +46,12 @@ NB: regola «n/d» — la riga di `reports/handoff.md` è n/d e la riga di total
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+e3e4eea fix(r2): numeri enormi in usage o total_cost_usd non fanno perdere il costo (V-1 ve #262)
+74acd99 chore(revisore): memoria review #506 — APPROVATO
+25028b0 chore(revisore): memoria review #505 — BOCCIATO
+f906586 fix(doctor): «comando claude» presente solo se eseguibile davvero (V-1 bot #262)
+2a94e8d chore(revisore): memoria review #504 — APPROVATO
+af82b7b docs(fine-task): report R2 via B fetta 3 (review #503)
 9161425 feat(r2): fetta 3 del cervello forte — costo su ogni errore, conto sotto lucchetto, doctor
 a779e43 chore(revisore): memoria review #503 — APPROVATO
 c1409f7 chore(revisore): memoria review #502 — APPROVATO CON RISERVE
@@ -55,7 +61,7 @@ NB: il commit di fine-task che contiene questo file non compare nel log, per cos
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore: 9161425 `feat(r2): fetta 3 del cervello forte`. Due review sullo stesso diff, in ordine.
+Commit motore: 9161425 `feat(r2): fetta 3 del cervello forte` (review #502 → #503) il fix del doctor dopo il bot #262 (review #504) e il fix dei numeri enormi dopo la verifica esterna #262 (review #505 → #506).
 
 ### Review #502 (APPROVATO CON RISERVE, riserve corrette prima del commit)
 
@@ -128,28 +134,102 @@ Ho letto prima CLAUDE.md (sez. 5, 8, 9 e 10), poi le righe R2 di reports/stato_p
 - Riga #503 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md`, nessuna lezione nuova.
 - Committata da sola con `scripts/commit_memoria_revisore.sh` (commit a779e43). Il resto dello stage non è stato toccato.
 
+### Review #504 (commit fix doctor, V-1 bot #262)
+
+## VERDETTO: APPROVATO
+
+Review #504 (chat Motore), diff staged della PR #262, correzione del finding V-1 del bot.
+
+Elementi del diff esaminati:
+- `gas.py:4912` — il doctor ora calcola il binario con `shutil.which(os.environ.get("GAS_CLAUDE_BIN") or "claude")`. Rischio esaminato: un percorso falso dato come «presente», e casi limite. Ho provato dal vero: un percorso assoluto inesistente dà None, una cartella dà None, `/bin/ls` restituisce il percorso, una stringa vuota ricade su "claude" grazie a `or`. Il risultato è coerente con l'adattatore in `brains/claude_cli.py:253`: un nome relativo viene risolto nel PATH sia da `which` sia da subprocess. Esito: ok.
+- `gas.py:4913` — la riga del check mostra WARN con «non trovato o non eseguibile». Rischio esaminato: il doctor chiama claude e consuma l'abbonamento. Nella funzione doctor gli unici subprocess sono `git` (`gas.py:5010`, `gas.py:5022`), il forte non viene mai invocato. Esito: ok.
+- `tests/test_unit_kernel.py:10970` — T99p imposta `GAS_CLAUDE_BIN=/non/esiste/claude` e si aspetta WARN; la variabile viene ripristinata in un `finally`, anche se prima non c'era (pop). Rischio esaminato: la variabile resta sporca per i test successivi. Esito: ok. Output reale: `[WARN ] Cervello forte comando claude non trovato o non eseguibile`.
+- `tests/test_unit_kernel.py:10982` (contesto, T99n) — l'asserzione controlla solo «spento», «conto di oggi $0.25» e «WARN forte fermo», mai la riga «comando claude». Rischio esaminato: il test dipende dalla presenza di `claude` nel PATH della CI. Non ne dipende. Esito: ok. Qui claude è nel PATH, ma con `PATH=/usr/bin:/bin` `which` dà None, e T99n non lo guarda.
+
+Esecuzione: kernel 1039 PASS 0 FAIL, `tests/test_unit_claude_cli.py` 21 passed.
+
+Rischio escluso: non ho verificato come si comporta `which` su un file che esiste ma non è eseguibile sul Mac/VPS reale, né con permessi ACL particolari. Il caso «non eseguibile» non ha un test dedicato (T99p copre solo «non esiste»). L'ho accettato perché è la semantica documentata di `shutil.which` (controlla `os.access(X_OK)`). Nessuna riserva aperta.
+
+Memoria: aggiunta la riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con `scripts/commit_memoria_revisore.sh` (commit 2a94e8d). Nessuna lezione nuova.
+
+### Review #505 (BOCCIATO, corretto prima del commit)
+
+## VERDETTO: BOCCIATO
+
+Review #505 (chat Motore), diff staged della PR #262: chiusura della V-1 della verifica esterna #262 (overflow nel calcolo del costo).
+
+**Elementi del diff esaminati**
+- `brains/claude_cli.py:215`: `_n` ora limita ogni conteggio a `_TOKEN_MASSIMI`. Ho controllato se restano overflow dai token e se il tetto falsa conteggi veri. Prove dirette: `inf` va a 0 (OverflowError intercettato), `1e300` va al tetto, una stringa di 500 cifre va al tetto, il costo resta finito (90000.0). **ok**
+- `brains/claude_cli.py:180`: `_TOKEN_MASSIMI = 10**9`. Ho controllato se il tetto falsa conteggi realistici. Il contesto massimo è circa 1M token e con `--tools ""` c'è un solo giro, quindi il tetto sta circa 1000 volte sopra qualsiasi chiamata vera. Al tetto il costo vale circa 120000 $, quindi il tetto giornaliero scatta comunque. **ok**
+- `tests/test_unit_claude_cli.py:301`: il nuovo test copre `usage` enorme sul ramo riuscito e su quello d'errore. Però non prova lo stesso valore ostile in `total_cost_usd`. **riserva** (diventa parte del blocco)
+
+**Motivo bloccante (stessa V-1, campo diverso)**
+- `brains/claude_cli.py:202`: `float(v)` su `total_cost_usd` intero enorme (`10**400`, che `json.loads` restituisce come int) solleva OverflowError fuori da ogni try. Ho fatto la prova col runner dei test (`_runner` e `_ok`):
+  - risposta riuscita con `total_cost_usd = 10**400`: si ottiene `OverflowError`, SENZA `costo_equivalente_usd`. Il percorso: `brains/claude_cli.py:345` passa al ramo generico `except Exception`, che ricalcola `_costo_dati` a `brains/claude_cli.py:313` e risolleva lo stesso OverflowError nudo;
+  - risposta d'errore con `total_cost_usd = 10**400`: stesso risultato, `OverflowError` SENZA costo. Qui l'eccezione parte dentro l'`except RuntimeError`, alla riga `brains/claude_cli.py:309`.
+- Contesto: `gas.py:4687` intercetta `Exception`, quindi niente crash e il fallback parte, ma registra `getattr(e, "costo_equivalente_usd", 0.0)`, cioè 0. Il tetto perde il consumo: è esattamente il sintomo della V-1.
+- Correzione suggerita: in `_costo_equivalente` intercettare `OverflowError` attorno a `float(v)` (oppure scartare gli int fuori dall'intervallo prima di convertire) e far ricadere sulla stima dai token. Poi aggiungere al test il caso `total_cost_usd = 10**400` su entrambi i rami.
+
+**Altri percorsi verificati**
+- `brains/claude_cli.py:284`, `(len(sistema) + len(stdin)) // 4`: `len` è limitato dalla memoria, quindi anche 10^12 caratteri danno un prodotto float finito. **ok**
+- `total_cost_usd` float `1e400` (inf) o nan: scartato dal controllo `v == v and 0 < v < 1000`. **ok**
+
+**Rischio escluso**: non ho verificato `_registra_uso_claude_cli` in `gas.py` con costi al tetto (circa 1,2e5 $). Mi sono basato sulla review #503 («0/inf/negativo → 0») e sul fatto che un valore finito grande fa solo scattare il tetto. Non ho rilanciato le suite complete (22 passed e 1039/0 sono dichiarati dall'agente): ho fatto solo prove mirate.
+
+**Memoria**: riga #505 e una lezione nuova (provare il valore ostile su tutti i campi numerici dello stesso calcolo, non solo su quello del finding). Ho lanciato `scripts/commit_memoria_revisore.sh`: commit `25028b0` con solo `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+
+File rilevanti:
+- /home/user/Gas/brains/claude_cli.py
+- /home/user/Gas/tests/test_unit_claude_cli.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/t.py (script di riproduzione)
+
+### Review #506 (commit fix numeri enormi, V-1 ve #262)
+
+## VERDETTO: APPROVATO
+
+Re-review #506 (chat Motore) della PR #262, dopo il BOCCIATO #505. Prima della review ho letto CLAUDE.md (§5 sugli antipattern, §8 sui limiti API, §9 sulla gestione degli errori), `reports/stato_progetto.md` (la parte sul cervello forte via `claude -p`) e la memoria del revisore, inclusa la lezione #505: un valore ostile va provato su tutti i campi numerici.
+
+Elementi del diff esaminati:
+- `brains/claude_cli.py:202` — `float(v)` di `total_cost_usd` ora è dentro un try: un OverflowError diventa nan, e il confronto `v == v` fa usare la stima dai token. Rischio esaminato: un intero enorme fa uscire un'eccezione senza costo attaccato. Provato con 10**400, -10**400, inf, -inf, nan, '5', None, True, 0, 1e-300 e [1]: danno tutti il pavimento 0.0015 (sonnet). Il BOCCIATO #505 è chiuso. Esito: ok.
+- `brains/claude_cli.py:218` — tetto `_TOKEN_MASSIMI` (10**9) su ogni campo di `usage`. Rischio esaminato: overflow o costo infinito dai token. Provato con inf, nan, una stringa di 5000 cifre (int() dà ValueError, intercettato), una lista e un `usage` che non è un dict: tutti diventano 0. Con tutti e 4 i campi a 10**400 il costo è 120000 $, un numero finito che fa scattare il tetto giornaliero (va nella direzione sicura, cioè il forte si ferma). Esito: ok.
+- `tests/test_unit_claude_cli.py:301` — `test_token_enormi_non_rompono_il_costo` copre 10**400 sia in `usage` sia in `total_cost_usd`, sul ramo riuscito e su quello d'errore, con costo finito e positivo. Esito: ok. È una nota cosmetica, non una riserva: il test controlla solo `0 < costo < inf` e non il valore esatto del pavimento.
+- Contesto: `brains/claude_cli.py:296` — un intero JSON con più di 4300 cifre fa fallire `json.loads` con ValueError, che il codice già intercetta: il costo diventa `stima_minima`. Un float JSON 1e400 diventa inf, che è già gestito. Esito: ok.
+- Contesto: `gas.py:4715` — il kernel passa `prompt_tokens`/`completion_tokens` (massimo 3·10**9, interi) a `_log_tokens`, e `gas.py:4719` il costo, ormai sempre finito, a `_registra_uso_claude_cli`. Esito: ok.
+
+Altri percorsi di overflow: non ne restano nel calcolo del costo né nei campi numerici della risposta. `returncode` finisce solo dentro una f-string, `subtype` e `result` sono stringhe ripulite.
+
+Nessuna violazione del Wall of Shame: niente slicing della storia, niente output dei tool simulato. Nessun limite indebolito.
+
+Rischio escluso: non ho verificato il comportamento con la CLI `claude` vera, perché nel container non c'è il login. La sonda ha usato solo il runner dei test e chiamate dirette alle funzioni. Resta valido quanto già dichiarato prima: un `total_cost_usd` tra 0 e 1000 riportato dalla CLI viene preso per buono (999.9 → 999.9). È una scelta di progetto che c'era già, non nasce da questo diff.
+
+Test: claude_cli 22 passed (ho rilanciato io la suite). Suite del kernel non rilanciata: questo diff non tocca `gas.py`.
+
+Memoria: aggiunta la riga #506 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da `scripts/commit_memoria_revisore.sh` (commit 74acd99, solo quel file). Il diff staged del motore è rimasto intatto. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
-- `python tests/test_unit_kernel.py`: 1035 → 1038 PASS (T99m, T99n, T99o nuovi; lockfile in T68s), 0 FAIL.
-  `=== RIEPILOGO: 1038 PASS, 0 FAIL ===`
-- `pytest tests/test_unit_claude_cli.py`: 19 → 21 passed.
+- `python tests/test_unit_kernel.py`: 1035 → 1039 PASS (T99m, T99n, T99o, T99p nuovi; lockfile in T68s), 0 FAIL.
+  `=== RIEPILOGO: 1039 PASS, 0 FAIL ===`
+- `pytest tests/test_unit_claude_cli.py`: 19 → 22 passed.
 - `pytest tests/` completo: `2142 passed, 1 skipped in 194.63s (0:03:14)`.
 
 ## §6 STATO CI
 
-`gh run list -L 3` alle 21:27 UTC:
+`gh run list -L 3` alle 21:39 UTC:
 
 ```
-queued		feat(r2): fetta 3 del cervello forte — costo su ogni errore, conto so…	CI	feat/merge-automatico-z1xjx2	push	40134300964	1s	2026-10-24T21:27:35Z
-completed	success	Merge pull request #260 from Gasss23/feat/merge-automatico-z1xjx2	CI	feat/merge-automatico-z1xjx2	push	40130653007	3m6s	2026-10-24T20:38:01Z
-completed	success	Merge pull request #260 from Gasss23/feat/merge-automatico-z1xjx2	CI	main	push	40130634370	2m39s	2026-10-24T20:37:46Z
+completed	success	R2 via B fetta 3: costo su ogni errore, conto sotto lucchetto, doctor del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40134316028	3m6s	2026-10-24T21:27:48Z
+completed	skipped	R2 via B fetta 3: costo su ogni errore, conto sotto lucchetto, doctor del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40134312898	1s	2026-10-24T21:27:46Z
+completed	success	docs(fine-task): report R2 via B fetta 3 (review #503)	CI	feat/merge-automatico-z1xjx2	push	40134311011	2m58s	2026-10-24T21:27:44Z
 ```
 
-Mappatura: c1409f7, a779e43 e 9161425 pushati insieme: una run sulla testa 9161425; i commit di memoria non hanno run propria. Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura: af82b7b (testa precedente): CI verde (unit-suite, handoff-check), verifica-bot neutral (APPROVATO CON RISERVE). Commit successivi (memoria #504, fix doctor, memoria #505/#506, fix numeri enormi) e il commit di fine-task: una sola run sul push, sulla testa; run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-496-3** (BASSA): login vero col portachiavi del Mac (e `CLAUDE_CODE_OAUTH_TOKEN` sulla VPS) da provare con l'ambiente ridotto.
 - Prezzi di riferimento per famiglia da ritarare con l'uso vero (dichiarato nel codice).
 - Comportamento dichiarato (nota di design #503): un errore di registrazione del consumo ferma il forte fino al riavvio; il doctor non vede questo fermo.
+- **V-2 bot #262** (BASSA): se la registrazione del consumo fallisce si ferma solo il processo che ha fallito; gli altri processi contano una chiamata in meno e dopo il riavvio quel consumo è perso (al massimo una chiamata per evento).
 - **R-498-2** (BASSA, preesistente): alcuni log scrivibili dal modello a finestra pulita.

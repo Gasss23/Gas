@@ -10,3 +10,4 @@
 - `.claude/agents/memoria_revisore.md`: righe #502, #503.
 - `reports/stato_progetto.md`, `reports/roadmap.md`: stato del forte dopo la fetta 3.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+- Correzioni dopo bot e verifica esterna #262: doctor (`gas.py`, T99p) e numeri enormi nel costo (`brains/claude_cli.py`, test).

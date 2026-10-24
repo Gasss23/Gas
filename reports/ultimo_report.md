@@ -15,7 +15,7 @@
 - **Doctor «Cervello forte» (R-497-2)**: `FATTA`. Spento/acceso, comando presente, conto di oggi contro il tetto, conto illeggibile o con data futura = WARN; nessuna chiamata a `claude`.
 - **Messaggio dei file protetti (R-498-1)** e **deroga n/d nel template (R-501-1)**: `FATTA`.
 - **Review**: #502 APPROVATO CON RISERVE (R-502-1/2/3) → corrette → #503 APPROVATO.
-- **Test**: `tests/test_unit_claude_cli.py` 21 passed; kernel 1038 PASS 0 FAIL (T99m/n/o nuovi, lockfile in T68s); pytest completo 2142 passed, 1 skipped.
+- **Test**: `tests/test_unit_claude_cli.py` 21 passed; kernel 1039 PASS 0 FAIL (T99m/n/o/p nuovi, lockfile in T68s); V-1 bot #262 corretta (doctor, review #504); V-1 verifica esterna #262 corretta (numeri enormi, review #505 → #506); claude_cli 22 passed; pytest completo 2142 passed, 1 skipped.
 - **Campo `cervello: forte` nel catalogo notturno e setup del Mac**: `DEFERITA — prossima fetta, dopo la prova del login`.
 
 ## Anomalie
