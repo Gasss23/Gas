@@ -435,6 +435,24 @@ def test_errore_nella_pulizia_non_e_un_tempo_superato(monkeypatch):
                                                        "motivo": "errore nella pulizia della pagina (RuntimeError)"}
 
 
+@pytest.mark.parametrize("secondo", ["redirect_invalido", "rete_rotta"])
+def test_errore_nei_redirect_resta_di_rete(monkeypatch, secondo):
+    """Un errore mentre si seguono i redirect (Location non valido, rete che si rompe al
+    secondo salto) resta un errore di rete, non della pulizia (V-1 ve #257)."""
+    salti: list = []
+
+    def scarica(*argomenti: object) -> dict:
+        salti.append(argomenti[1])
+        if not salti[1:]:
+            return {"redirect": "http://[rotto/x" if secondo == "redirect_invalido" else "http://altro.test/"}
+        raise OSError("connessione chiusa")
+
+    monkeypatch.setattr(web, "_scarica", scarica)
+    r = web.leggi_pagina("http://sito.test/")
+    nome = "ValueError" if secondo == "redirect_invalido" else "OSError"
+    assert r == {"ok": False, "motivo": f"errore di rete o di protocollo ({nome})"}, r
+
+
 def test_server_lento_tempo_massimo(rete, monkeypatch):
     monkeypatch.setattr(web, "TIMEOUT_TOTALE", 1.0)
     inizio = time.monotonic()
@@ -957,6 +975,38 @@ def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     assert "SEGRETO" not in t and "VIS" in t, t
     r = web._testo_senza_parser(pagina)
     assert "SEGRETO" not in r and "VIS" in r, r
+
+
+@pytest.mark.parametrize("pagina, visibili", [
+    # «</template>» con svg/math aperti dentro: il browser chiude il template e quello che c'è
+    # sopra, senza guardare lo scope (R-469-1)
+    ("<p>A</p><template><svg>SEGRETO</template>VIS", ("A", "VIS")),
+    ("<p>A</p><template><svg><foreignObject>SEGRETO</template>VIS", ("A", "VIS")),
+    ("<p>A</p><template><svg><foreignObject><div>SEGRETO</template>VIS", ("A", "VIS")),
+    ("<p>A</p><template><math><mi>SEGRETO</template>VIS", ("A", "VIS")),
+    ("<p>A</p><template><template><svg>SEGRETO</template>SEGRETO</template>VIS", ("A", "VIS")),
+    # un altro nascosto HTML fra il template e svg resta contato e nasconde il resto (il
+    # browser con object in mezzo mostrerebbe VIS: si perde testo, verso sicuro)
+    ("<p>A</p><template><object><svg>SEGRETO</template>VIS", ("A",)),
+    ("<p>A</p><object><template><svg>SEGRETO</template>SEGRETO", ("A",)),
+    # template svg/math rimasti contati dopo un'uscita non sono un template HTML (B-500-1)
+    ("<p>A</p><svg><foreignObject><svg><template><div></template>SEGRETO", ("A",)),
+    ("<p>A</p><svg><foreignObject><svg><template><p>x</p></template>SEGRETO", ("A",)),
+    ("<p>A</p><math><mi><svg><template><div></template>SEGRETO", ("A",)),
+    ("<p>A</p><svg><desc><math><template><b>x</b></template>SEGRETO", ("A",)),
+    ("<p>A</p><svg><template></p><svg></template>SEGRETO", ("A",)),
+    # un template già chiuso non si richiude: il contatore scende con ogni chiusura
+    ("<p>A</p><template></template><svg></template>SEGRETO", ("A",)),
+    ("<p>A</p><template><svg></template>VIS<svg></template>SEGRETO", ("A", "VIS")),
+    # noscript nella pila: con gli script attivi «</template>» è suo testo grezzo
+    ("<p>A</p><template><svg><foreignObject><noscript>SEGRETO</template>SEGRETO", ("A",)),
+])
+def test_chiusura_del_template_sopra_svg_math(pagina, visibili):
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert "SEGRETO" not in t and all(v in t for v in visibili), t
+    r = web._testo_senza_parser(pagina)
+    assert "SEGRETO" not in r and all(v in r for v in visibili), r
 
 
 @pytest.mark.parametrize("pagina", ["<p>PRIMA</p><script/>RESTO", "<p>PRIMA</p><iframe src=x />RESTO",
