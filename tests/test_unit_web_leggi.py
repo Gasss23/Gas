@@ -1008,8 +1008,17 @@ def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     # un template scritto dentro un noscript è testo per il browser: non si chiude (V-1 ve #261);
     # Gas lo conta come aperto e nasconde anche quello che il browser mostra (verso sicuro, come main)
     ("<p>A</p><noscript>X<template>X</noscript>T<mi>T<b>T</div>T<svg>SEGRETO</template>SEGRETO", ("A",)),
-    # un noscript già chiuso non conta
-    ("<p>A</p><template><noscript></noscript><svg></template>VIS", ("A", "VIS")),
+    # con un noscript nella pagina la regola non si usa: i conti dei template non sono affidabili
+    # (V-1 ve #261 bis)
+    ("<p>A</p><template><template><noscript></template></noscript><svg></template>SEGRETO", ("A",)),
+    ("<p>A</p><template><svg></template><template><noscript></template></noscript>SEGRETO", ("A",)),
+    ("<p>A</p><template>X<template>X<noscript>X</template>X</noscript>X<svg>X</template>SEGRETO</script>SEGRETO",
+     ("A",)),
+    # un template svg nella pila si chiude per nome, non con la regola (V-2 ve #261 bis)
+    ("<p>A</p><template>X<svg>X<template>X</template>SEGRETO", ("A",)),
+    ("<p>A</p><template><svg><template>X</template>SEGRETO", ("A",)),
+    # anche un noscript già chiuso spegne la regola: si perde VIS come su main (verso sicuro)
+    ("<p>A</p><template><noscript></noscript><svg></template>SEGRETO", ("A",)),
 ])
 def test_chiusura_del_template_sopra_svg_math(pagina, visibili):
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
