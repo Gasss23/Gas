@@ -1,22 +1,15 @@
-# ULTIMO REPORT — 2026-10-24 — Merge #258/#259, report della notte, tre consigli applicati
+# ULTIMO REPORT — 2026-10-25 — Turno di notte: `/clear` da Telegram (voce 3 di `coda_notte.md`)
 
 ## DECISIONI UMANE RICHIESTE
-
-1. Merge della PR di questa sessione (vedi §0 dell'handoff): tocca il template `fine-task.md` (review #501 APPROVATO CON RISERVE), quindi decide l'operatore.
-2. Chiedere direttamente nella sessione fissa del turno di notte di applicare il testo nuovo dell'attività (la sessione ha rifiutato la richiesta della chat Motore).
-3. Approvare o rifiutare sul Mac le 3 lezioni del giro delle 3:00 (`python3 gas.py lezioni lista`).
+1. Merge della PR #263 (https://github.com/Gasss23/Gas/pull/263): il turno di notte non mergia mai.
+2. Prova dal vero di `/clear` col bot acceso.
+3. Testo dell'attività programmata: la chat Motore ha chiesto il cambio (24 ottobre); serve la richiesta dell'operatore in questa sessione.
 
 ## Esito
-
-- **Merge della PR #258 (R2 via B fetta 2)**: `FATTA`.
-- **Report del turno di notte del 24 e merge della PR #259**: `FATTA`. Prima del merge, main portato nel ramo della notte (review #499). Bot #259: V-1 BASSA + V-2 COSMETICA al primo giro, V-1 BASSA e V-2 BASSA al secondo (la #499 non era ancora in memoria su quel ramo: arriva con questa PR).
-- **Giro delle 3:00 sul Mac**: OK (1 compito, 0 errori, spesa 0 $, 3 lezioni da approvare).
-- **Consiglio 1 — regola «n/d» nel template `fine-task.md`**: `FATTA` (review #501 APPROVATO CON RISERVE, R-501-1 cosmetica).
-- **Consiglio 2 — «protezioni del repo» nella voce R4 della roadmap**: `FATTA`.
-- **Consiglio 3 — testo nuovo dell'attività di notte**: `DEFERITA — la sessione fissa vuole la richiesta direttamente dall'operatore`. Testo nuovo già in `reports/coda_notte.md` e inviato alla sessione.
-- **Merge di main (PR #257 della chat Mani) in questo ramo**: `FATTA` (review #500 APPROVATO).
-- **Merge della PR #260**: superato. La PR resta aperta con questo stesso ramo e ora contiene anche i tre consigli.
+- **Voce 3 — `/clear` su Telegram**: FATTA. Review #502 APPROVATO CON RISERVE (R-502-1 MEDIA, R-502-2/3 BASSE, tutte chiuse), #503 APPROVATO CON RISERVE (R-503-1 BASSA, R-503-2 COSMETICA aperte). pytest 2140 → 2159 passed; kernel 1031 PASS 0 FAIL.
+- **Voci 4 e 5**: SALTATE — toccano il motore, al massimo una voce del motore a notte.
+- **Voci 6–8**: SALTATE — vengono dopo in ordine; le voci solo-documenti non ci sono.
 
 ## Anomalie
-
-- Nessuna.
+- Nessuna. Non provato col Telegram vero (nessuna credenziale nel cloud).
+- Dettaglio: `reports/report_notte.md`.

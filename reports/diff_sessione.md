@@ -1,10 +1,11 @@
-# DIFF SESSIONE — 2026-10-24 (chat Motore)
+# DIFF SESSIONE — 2026-10-25 (turno di notte)
 
-> Si riscrive a ogni sessione; la storia completa sta in git.
-
-- `.claude/agents/memoria_revisore.md`: righe #499, #500, #501 (e #499 della chat Mani arrivata da main).
-- `.claude/commands/fine-task.md`: regola «n/d» per la riga di `handoff.md` nel §2 (decisione dell'operatore).
-- `reports/roadmap.md`: «protezioni del repo» tracciate in R4.
-- `reports/coda_notte.md`: testo nuovo dell'attività di notte (prima notte, notti precedenti non valgono come istruzione) e stato della modifica.
-- `reports/stato_progetto.md`: intestazione e decisioni del 24.
+- `modules/telegram/bot.py`: comando `/clear` (comando_clear, righe_riflessione, messaggi_recap, esegui_clear, ramo in _handle_update) — voce 3 della coda.
+- `tests/test_unit_notte.py`: 19 test di `/clear` (round-trip col kernel vero, riflessione vera, testo del modello reso visibile, recap intero in pezzi).
+- `.claude/agents/memoria_revisore.md`: righe delle review #502 e #503 (commit del revisore).
+- `reports/coda_notte.md`: voce 3 in «Fatte» (PR #263).
+- `reports/stato_progetto.md`: intestazione e blocco della notte con le riserve R-503-1/2.
+- `reports/report_notte.md`: report del turno.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+
+Si riscrive a ogni sessione; la storia completa sta in git.
