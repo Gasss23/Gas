@@ -340,7 +340,9 @@ class _Contesto:
         if not self.pila:
             if tag in _AUTOCHIUDIBILI and resta_aperto:
                 self._metti(tag, tag)
-            if tag == "template" and resta_aperto:
+            if tag == "template" and resta_aperto and not self._aperti.get("noscript", 0):
+                # Dentro un noscript, con gli script attivi, «<template>» è testo: per il
+                # browser non c'è nessun template da chiudere (V-1 ve #261).
                 self._template_fuori += 1
             return []
         if self._estranee(tag):
@@ -389,11 +391,12 @@ class _Contesto:
         """«</template>» con il template sotto la pila: per il browser, da qualsiasi punto del
         contenuto estraneo, la chiusura arriva alle regole HTML, che chiudono il template senza
         guardare lo scope e tolgono tutto quello che c'è sopra (R-469-1). Si scalano solo il
-        template e i nascosti della pila: un nascosto HTML aperto fra il template e la pila
-        resta contato e nasconde il resto (verso sicuro). Con un nascosto HTML nella pila
-        (noscript, che con gli script attivi è testo grezzo e si porta via «</template>») la
-        pila diventa incerta, come prima."""
-        if self._nascosti_html:
+        template e i nascosti della pila (object, canvas… li toglie anche il browser): un
+        nascosto HTML aperto fra il template e la pila resta contato e nasconde il resto
+        (verso sicuro). Con un noscript aperto, nella pila o fuori, la pila diventa incerta come
+        prima: con gli script attivi è testo grezzo e «</template>» è suo testo (V-1 bot #261);
+        gli altri grezzi html.parser li legge già come testo."""
+        if self._aperti.get("noscript", 0):
             self.incerta = True
             return True, []
         self._template_fuori -= 1

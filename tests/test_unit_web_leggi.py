@@ -1000,6 +1000,16 @@ def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     ("<p>A</p><template><svg></template>VIS<svg></template>SEGRETO", ("A", "VIS")),
     # noscript nella pila: con gli script attivi «</template>» è suo testo grezzo
     ("<p>A</p><template><svg><foreignObject><noscript>SEGRETO</template>SEGRETO", ("A",)),
+    # noscript fra il template e la pila, o sotto il template: «</template>» è sempre suo testo (V-1 bot #261)
+    ("<p>A</p><template><noscript><svg></template></noscript>SEGRETO", ("A",)),
+    ("<p>A</p><template><noscript><svg></template>SEGRETO</noscript>SEGRETO", ("A",)),
+    ("<p>A</p><noscript><template><svg></template>SEGRETO", ("A",)),
+    ("<p>A</p><template><noscript><math></template>SEGRETO</noscript>SEGRETO", ("A",)),
+    # un template scritto dentro un noscript è testo per il browser: non si chiude (V-1 ve #261);
+    # Gas lo conta come aperto e nasconde anche quello che il browser mostra (verso sicuro, come main)
+    ("<p>A</p><noscript>X<template>X</noscript>T<mi>T<b>T</div>T<svg>SEGRETO</template>SEGRETO", ("A",)),
+    # un noscript già chiuso non conta
+    ("<p>A</p><template><noscript></noscript><svg></template>VIS", ("A", "VIS")),
 ])
 def test_chiusura_del_template_sopra_svg_math(pagina, visibili):
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
