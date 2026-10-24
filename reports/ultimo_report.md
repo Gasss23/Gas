@@ -18,8 +18,9 @@ Ramo `feat/mani-web-fetta15` da main 172c2d7 (dopo il merge di #257). Area della
 - **V-1 ve #257 (test dei redirect rotti, BASSA)**: `FATTA`.
 - **V-1 bot / V-2 ve #257 (commento di TIMEOUT_TOTALE, COSMETICA)**: `FATTA`.
 - **Bot #261 e verifica esterna #261: BOCCIATO** per V-1 ALTA (noscript fuori dalla pila, forme a e b): `FATTA` (review #502, #503). V-2 ve MEDIA preesistente (tag letti dentro noscript): registrata come **R-ve261-2**. V-3/V-4 ve BASSE (testo di stato, §6): `FATTA`.
-- **Test**: web suite 388 → 411 (dopo il secondo giro) (Python 3.13 e 3.11; col parser vecchio 396 passati e 10 saltati apposta). Oracolo lexbor su ~5 milioni di pagine: 0 perdite nuove, 0 fughe nuove (4 casi R-ve246-5 resi visibili, già su main senza prefisso). Mutazioni: tutte prese.
-- **Review**: #500 BOCCIATO, #501, #502, #503 APPROVATO (chat Mani): verdetti integrali nell'handoff.
+- **Bot #261 su c16487c: APPROVATO CON RISERVE** (V-1 BASSA numero del parser vecchio, V-2 COSMETICA descrizione: `FATTA`). **Seconda verifica esterna #261: BOCCIATO** per V-1 ALTA (i controlli puntuali su noscript non chiudevano la classe: 82 fughe nella sua enumerazione): `FATTA` a livello di pagina (con `<noscript` la regola non si usa), review #504; V-2 BASSA (test del template svg chiuso per nome): `FATTA`; V-3/V-4: `FATTA`.
+- **Test**: web suite 388 → 416 (Python 3.13 e 3.11; col parser vecchio 407 passati e 10 saltati apposta). Oracolo lexbor su ~5 milioni di pagine: 0 perdite nuove, 0 fughe nuove (4 casi R-ve246-5 resi visibili, già su main senza prefisso). Mutazioni: tutte prese.
+- **Review**: #500 BOCCIATO, #501, #502, #503, #504 APPROVATO (chat Mani): verdetti integrali nell'handoff.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
