@@ -138,6 +138,11 @@ Tutte le fette devono comparire qui — incluse quelle saltate.
 - I **conteggi di righe** (colonna a destra del '|') sono approssimati per costruzione:
   `reports/handoff.md` conta se stesso tra le righe modificate, ma il suo conteggio finale
   è ignoto al momento della scrittura. La CI NON confronta mai i conteggi, solo i path.
+- **Regola «n/d» (decisione dell'operatore, 2026-10-24)**: siccome il conteggio di
+  `reports/handoff.md` non è misurabile, nella sua riga scrivi `n/d` al posto del numero e
+  togli la riga di totale («N files changed, …»), poi sotto il blocco una NB che lo dice.
+  Gli altri conteggi si prendono con i report già in stage (passo 4bis). Motivo: il bot
+  segnalava a ogni PR lo scarto tra il conteggio dichiarato e quello reale.
 - **Allowlist CI**: `reports/ultima_risposta.md` è escluso dal confronto.
   Motivo: quel file viene committato dall'hook `scrivi_rep` DOPO il fine-task, quindi
   la sua assenza dal §2 è strutturale e attesa — non un errore.
