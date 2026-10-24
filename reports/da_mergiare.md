@@ -5,7 +5,7 @@
 > **C6 deciso (2026-10-21):** l'operatore ha scelto (a) «lasciamo così»: una firma per ogni azione, niente «Modifica» né firme a gruppi.
 
 
-## Da fare domattina (operatore) — messe da parte il 2026-10-21 sera
+## Da fare (operatore) — aperte dal 2026-10-21 sera, sezione rivista il 2026-10-22 e il 2026-10-24
 
 1. **Secondo passaggio claude.ai sulla PR #239** (fetta di sicurezza della chat Mani, già mergiata): incolla il link https://github.com/Gasss23/Gas/pull/239 nella chat del progetto Gas su claude.ai e chiedi la verifica; se trova qualcosa, riportalo qui.
 
