@@ -296,3 +296,25 @@ def test_eccezione_imprevista_diventa_errore_con_costo(monkeypatch):
     with pytest.raises(RuntimeError, match="^claude-cli: risposta non valida") as e:
         c.chat.completions.create(model="m", messages=_msgs())
     assert e.value.costo_equivalente_usd == 0.3
+
+
+def test_token_enormi_non_rompono_il_costo():
+    """V-1 ve #262: un `usage` con interi enormi non fa perdere il costo."""
+    enorme = {"input_tokens": 10 ** 400, "output_tokens": 10 ** 400}
+    r = ClaudeCliClient(runner=_runner(_ok({"testo": "x", "chiamate": []}, usage=enorme), {})) \
+        .chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert 0 < r.usage.costo_equivalente_usd < float("inf")
+    with pytest.raises(RuntimeError) as e:
+        ClaudeCliClient(runner=_runner({"is_error": True, "subtype": "error", "usage": enorme}, {})) \
+            .chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert 0 < e.value.costo_equivalente_usd < float("inf")
+    # #505: lo stesso valore ostile in total_cost_usd, su entrambi i rami
+    for dati in (dict(_ok({"testo": "x", "chiamate": []}), total_cost_usd=10 ** 400),
+                 {"is_error": True, "subtype": "error", "total_cost_usd": 10 ** 400}):
+        try:
+            r = ClaudeCliClient(runner=_runner(dati, {})) \
+                .chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+            costo = r.usage.costo_equivalente_usd
+        except RuntimeError as err:
+            costo = err.costo_equivalente_usd
+        assert 0 < costo < float("inf")

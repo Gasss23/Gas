@@ -176,6 +176,8 @@ _PREZZO_PIU_CARO = (15.00, 75.00)
 # Pavimento per chiamata (V-1 ve/bot #258): anche la risposta più piccola fa girare
 # Claude Code; nessuna chiamata conta meno di questi token d'ingresso.
 _TOKEN_MINIMI_CHIAMATA = 500
+# Tetto ai conteggi di token letti dalla CLI (nessuna chiamata vera ne usa tanti).
+_TOKEN_MASSIMI = 10**9
 
 
 def _prezzo(model: str) -> Tuple[float, float]:
@@ -197,7 +199,10 @@ def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int,
     pavimento = _TOKEN_MINIMI_CHIAMATA * p_in / 1_000_000
     v = dati.get("total_cost_usd")
     if isinstance(v, (int, float)) and not isinstance(v, bool):
-        v = float(v)
+        try:
+            v = float(v)  # un int enorme (10**400) va in overflow: si usa la stima (#505)
+        except OverflowError:
+            v = float("nan")
         if v == v and 0.0 < v < 1_000.0:
             return max(v, pavimento)
     return max((max(0, entrata) * p_in + max(0, uscita) * p_out) / 1_000_000, pavimento)
@@ -209,7 +214,8 @@ def _token(dati: Dict[str, Any]) -> Tuple[int, int]:
 
     def _n(k: str) -> int:
         try:
-            return max(0, int(u.get(k) or 0))
+            # V-1 ve #262: un intero enorme manderebbe in overflow il calcolo del costo
+            return min(max(0, int(u.get(k) or 0)), _TOKEN_MASSIMI)
         except (TypeError, ValueError, OverflowError):
             return 0
     return (_n("input_tokens") + _n("cache_creation_input_tokens") + _n("cache_read_input_tokens"),
