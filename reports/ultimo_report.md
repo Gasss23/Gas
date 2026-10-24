@@ -1,27 +1,24 @@
-# ULTIMO REPORT — 2026-10-23 — Chat Mani, fetta 14: tempo riservato alla pulizia, grezzi autochiusi conformi (R6)
+# ULTIMO REPORT — 2026-10-24 — Chat Mani, fetta 15: </template> sopra svg/math come il browser (R6)
 
-Ramo `feat/mani-web-fetta14` da main b3f04d9 (dopo il merge di #255 e #256). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza.
+Ramo `feat/mani-web-fetta15` da main 172c2d7 (dopo il merge di #257). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 14: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
-2. **R-ve252-2 e R-ve255-1 (BASSE, XHTML malformato)**: estendere «il resto della pagina se ne va» a tutto l'XHTML malformato (più sicuro, si perde testo)? Decidi tu.
-3. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un vero costruttore HTML5 (es. lexbor): decidi tu.
-4. Rete più corta: i siti lenti ora vanno in timeout a 12 s invece che a 15 (per tenere il totale nei 15 s). Se preferisci 15 s di rete e un totale fino a ~18 s, dimmelo.
-5. Decisione aperta dell'altra chat (R2, A/B): vedi `reports/stato_progetto.md` e `reports/r2_regole_abbonamento.md` (V-3 bot #255).
+1. Merge della PR della fetta 15: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+2. **R-ve252-2 e R-ve255-1 (BASSE, XHTML malformato)**: estendere «il resto della pagina se ne va» a tutto l'XHTML malformato? Decidi tu.
+3. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un vero costruttore HTML5 (es. lexbor): decidi tu. Con questa fetta si vede anche dopo un template chiuso.
+4. Rete a 12 s invece di 15 (fetta 14): confermi?
+5. **R-ve235-7**: proposta di chiuderla come compromesso accettato (il DNS di sistema non si può interrompere; al massimo 4 risoluzioni appese).
 6. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
 ## Esito
 
-- **R-ve235-5 (pulizia fuori dai 15 s, BASSA)**: `FATTA` (rete 12 s + 3 s di riserva).
-- **R-496-1 (docstring, COSMETICA)**, **R-496-2 (chat Mani) (errore della pulizia chiamato tempo superato, BASSA)**: `FATTA`.
-- **R-447-1 parte (b)**: chiusa come conforme ai browser, con test.
-- **V-2 bot #255 bis (eccezioni dei thread nel test, COSMETICA)**: `FATTA`.
-- **R-ve255-1**: registrata (decisione insieme a R-ve252-2).
-- **Test**: web suite 383 → 388 (Python 3.13 e 3.11; col parser vecchio 379 passati e 10 saltati apposta). Mutazioni nuove (senza riserva, flag della pulizia mai spento): prese.
-- **Bot #257 e verifica esterna #257: APPROVATO CON RISERVE** (V-1 ve BASSA: test del redirect non valido; note COSMETICHE): rimandate alla prossima fetta, merge chiesto dall'operatore.
-- **Review**: #496 APPROVATO CON RISERVE, #497 APPROVATO, #499 APPROVATO (merge di main) (chat Mani): verdetti integrali nell'handoff.
+- **R-469-1 (`</template>` sopra svg/math, perdita)**: `FATTA`, con **B-500-1** (ALTA, trovata dal revisore nella prima versione): `FATTA`.
+- **V-1 ve #257 (test dei redirect rotti, BASSA)**: `FATTA`.
+- **V-1 bot / V-2 ve #257 (commento di TIMEOUT_TOTALE, COSMETICA)**: `FATTA`.
+- **Test**: web suite 388 → 405 (Python 3.13 e 3.11; col parser vecchio 396 passati e 10 saltati apposta). Oracolo lexbor su ~5 milioni di pagine: 0 perdite nuove, 0 fughe nuove (4 casi R-ve246-5 resi visibili, già su main senza prefisso). Mutazioni: tutte prese.
+- **Review**: #500 BOCCIATO, #501 APPROVATO (chat Mani): verdetti integrali nell'handoff.
 
 ## RICHIESTE ALLA CHAT MOTORE
 
-Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…14»).
+Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…15»).
