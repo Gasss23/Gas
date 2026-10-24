@@ -4403,6 +4403,8 @@ _TARGETS_68s = [
     ".gas_vectors.index",
     ".gas_tokens.cache",
     "gas_history.json",
+    ".gas_claude_cli_uso.json",  # V-1 bot #258: il modello non azzera il proprio tetto
+    ".gas_claude_cli_uso.json.123.tmp",
 ]
 _failures_68s = []
 for _fname in _TARGETS_68s:
@@ -10852,7 +10854,7 @@ try:
         _o99c = [e["output"] for e in _ev99c if e["type"] == "tool_res"]
         check("T99d il cancello vale anche per Claude: niente file di codice senza firma",
               len(_o99c) == 1 and not (Path(_k99.root) / "x99.py").exists()
-              and "pro" in _o99c[0], _o99c[0][:200] if _o99c else "")
+              and "'pro' e 'contro'" in _o99c[0], _o99c[0][:200] if _o99c else "")
         # Senza interruttore (o con «0») il forte non parte e NON scala ai gratuiti
         _k99e = kernel_tmp()
         for _val in (None, "0"):
@@ -10883,6 +10885,58 @@ try:
         _ev99f = run_turn_scriptato(_k99e, "analizza a fondo il progetto e proponi una strategia", ["ok"])
         check("T99f senza richiesta esplicita il cervello forte non si usa mai",
               _reg99f == [] and [e for e in _ev99f if e["type"] == "final"], str(_ev99f)[:200])
+        # R2 fetta 2 — tetto giornaliero del forte (V-1 bot #256)
+        _uso99 = Path(_k99.root) / gas.CLAUDE_CLI_USO_FILENAME
+        _d99g = json.loads(_uso99.read_text(encoding="utf-8"))
+        check("T99g l'uso del forte si registra nel conto di oggi",
+              _d99g.get("giorno") == datetime.now().date().isoformat()
+              and _d99g.get("usd", 0) > 0, str(_d99g))
+        _saved99t = os.environ.get("GAS_CLAUDE_CLI_TETTO_USD")
+        try:
+            os.environ["GAS_CLAUDE_CLI_TETTO_USD"] = str(_d99g["usd"])  # già raggiunto
+            _reg99h = []
+            gas.ClaudeCliClient = _cli99([], _reg99h)
+            _ev99h = list(_k99.run_turn("ciao", cervello="forte"))
+            check("T99h tetto raggiunto: nessuna chiamata, turno fermato dichiarato",
+                  _reg99h == [] and any(e["type"] == "error" and "Cervello forte fermo" in e["content"]
+                                        and "non passano ai modelli gratuiti" in e["content"]
+                                        for e in _ev99h), str(_ev99h)[:300])
+            os.environ.pop("GAS_CLAUDE_CLI_TETTO_USD")
+            _uso99.write_text("{rotto", encoding="utf-8")
+            _ev99i = list(_k99.run_turn("ciao", cervello="forte"))
+            check("T99i conto illeggibile: forte fermo (fail-closed), file non sovrascritto",
+                  _reg99h == [] and any("illeggibile" in e.get("content", "") for e in _ev99i)
+                  and _uso99.read_text(encoding="utf-8") == "{rotto", str(_ev99i)[:300])
+            # V-2 bot #258: conto rovinato ma in JSON valido → forte fermo, non azzerato
+            _rotti99 = [{"giorno": None, "usd": 1}, {"giorno": "2000-01-01", "usd": "x"},
+                        {"giorno": "2999-01-01", "usd": 0}, {"usd": 0}, [1, 2],
+                        {"giorno": datetime.now().date().isoformat(), "usd": True}]
+            _esiti99 = []
+            for _r99 in _rotti99:
+                _uso99.write_text(json.dumps(_r99), encoding="utf-8")
+                _esiti99.append(_k99._uso_claude_cli())
+            check("T99k V-2 bot #258: conto rovinato in JSON valido → illeggibile (fail-closed)",
+                  _esiti99 == [None] * len(_rotti99), str(_esiti99))
+            # R-496-1: una chiamata fallita dopo il consumo entra nel conto
+            _uso99.unlink()
+            def _cli_err99(timeout=None):
+                def _run(cmd, stdin, cwd, env, t):
+                    return _sp99.CompletedProcess(cmd, 1, stdout=json.dumps({
+                        "is_error": True, "subtype": "error", "total_cost_usd": 0.5}), stderr="")
+                return _CCC99(timeout=timeout, binario="claude", runner=_run)
+            gas.ClaudeCliClient = _cli_err99
+            _ev99l = list(_k99.run_turn("ciao", cervello="forte"))
+            check("T99l R-496-1: errore della CLI dopo il consumo → uso registrato, nessun ripiego",
+                  _k99._uso_claude_cli() == 0.5 and not [e for e in _ev99l if e["type"] == "final"],
+                  str(_ev99l)[:200])
+            _uso99.write_text(json.dumps({"giorno": "2000-01-01", "usd": 999}), encoding="utf-8")
+            check("T99j conto di un altro giorno: si riparte da zero",
+                  _k99._uso_claude_cli() == 0.0 and _k99._tetto_claude_cli_superato() is None)
+        finally:
+            if _saved99t is None:
+                os.environ.pop("GAS_CLAUDE_CLI_TETTO_USD", None)
+            else:
+                os.environ["GAS_CLAUDE_CLI_TETTO_USD"] = _saved99t
     finally:
         gas.ClaudeCliClient = _orig99
         for _kk, _v in _saved99.items():
