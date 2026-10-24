@@ -1984,8 +1984,9 @@ def test_comando_clear(testo, atteso):
 
 
 def test_comando_clear_con_argomenti_e_altro_bot(monkeypatch):
-    tipo, msg = _tg.comando_clear("/clear adesso")
-    assert tipo == "errore" and "argomenti" in msg
+    for testo in ("/clear adesso", "/clear\nfoo", "/clear@GasBot\r\nx"):  # V-1 ve #263
+        tipo, msg = _tg.comando_clear(testo)
+        assert tipo == "errore" and "argomenti" in msg
     monkeypatch.setattr(_tg, "_BOT_USERNAME", "GasBot")
     assert _tg.comando_clear("/clear@AltroBot") is None
     assert _tg.comando_clear("/clear@gasbot") == ("clear", None)
@@ -2090,7 +2091,8 @@ def test_messaggi_recap_intero_in_pezzi():
     pezzi = _tg.messaggi_recap("\u200b" * 1000)
     assert all(not re.search(r"<U\+[0-9A-F]{0,3}$|^│ [0-9A-F]*>", r)
                for p in pezzi for r in p.split("\n"))
-    assert _tg.messaggi_recap("") == ["│ "]
+    assert _tg.messaggi_recap("") == ["│ (recap vuoto)"]  # V-2 bot #263
+    assert _tg.messaggi_recap(" \n ") == ["│ (recap vuoto)"]
 
 
 def test_handle_update_clear(monkeypatch):
@@ -2106,6 +2108,10 @@ def test_handle_update_clear(monkeypatch):
     assert k.pulizie == 0 and inviati == [] and digita == []
     _tg._handle_update("http://finto", upd(7, "/clear ora"), {7}, k)
     assert k.pulizie == 0 and "argomenti" in inviati[-1][1]
+    # V-1 bot #263: un vecchio messaggio modificato in «/clear» non pulisce niente
+    _tg._handle_update("http://finto", {"update_id": 2, "edited_message": {
+        "chat": {"id": 7}, "text": "/clear"}}, {7}, k)
+    assert k.pulizie == 0 and "messaggio nuovo" in inviati[-1][1] and digita == []
     _tg._handle_update("http://finto", upd(7, "/clear"), {7}, k)
     assert k.pulizie == 1 and inviati[-1] == (7, "✓ Cronologia pulita.") and digita == [7]
 

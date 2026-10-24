@@ -577,7 +577,9 @@ def lancia_giro(root: Path, nome: Optional[str] = None) -> str:
 # in gas.py): riflessione sul task appena chiuso (spegnibile con GAS_RIFLESSIONE_AUTO=0),
 # poi cronologia svuotata anche se la riflessione fallisce. Solo dalle chat autorizzate:
 # il controllo è in _handle_update, prima di ogni comando.
-_COMANDO_CLEAR_RE = re.compile(r"/clear(?:@(\w+))?(?:[ \t]+(.*))?", re.I | re.S)
+# V-1 verifica esterna #263: anche un a capo separa gli argomenti («/clear\nfoo» → errore,
+# non testo per il modello); gli spazi Unicode no, come per /notte (V-3 ve #233).
+_COMANDO_CLEAR_RE = re.compile(r"/clear(?:@(\w+))?(?:[ \t\r\n]+(.*))?", re.I | re.S)
 # R-502-1: il recap va INTERO all'operatore, come nel terminale (R-200-3/R-201-2: vede
 # sempre cosa verrà dato come contesto), in messaggi a parte sotto il limite di Telegram.
 _CLEAR_PEZZO_MAX = 4000
@@ -613,6 +615,8 @@ def messaggi_recap(recap: str) -> List[str]:
     """Recap del modello INTERO, reso visibile e rientrato con «│ » (non può imitare
     le righe del messaggio), diviso in messaggi da al massimo _CLEAR_PEZZO_MAX
     caratteri; una riga troppo lunga si spezza senza rompere «<U+XXXX>»."""
+    if not recap.strip():  # V-2 bot #263: niente messaggio quasi vuoto
+        return ["│ (recap vuoto)"]
     righe: List[str] = []
     for r in rendi_visibili(recap).split("\n"):
         r = "│ " + r
@@ -731,7 +735,12 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
         pulizia = comando_clear(text)
         if pulizia is not None:
             tipo, valore = pulizia
-            if tipo == "errore":
+            if not upd.get("message"):
+                # V-1 bot #263: modificare un vecchio messaggio in «/clear» non deve
+                # cancellare la cronologia: un comando distruttivo vale solo se nuovo.
+                _send_text(base_url, chat_id, "/clear non vale da un messaggio "
+                           "modificato: mandalo come messaggio nuovo.")
+            elif tipo == "errore":
                 _send_text(base_url, chat_id, valore or "")
             else:
                 _send_typing(base_url, chat_id)  # la riflessione può durare minuti
