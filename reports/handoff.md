@@ -1,73 +1,193 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-24 — Turno di notte (prima notte di prova R3): voci 1 e 2 di `reports/coda_notte.md`, solo documenti
+**Sessione:** 2026-10-23 — Chat Mani, fetta 14: tempo riservato alla pulizia, grezzi autochiusi conformi (R6)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #259 (https://github.com/Gasss23/Gas/pull/259). Numero e URL dalla risposta JSON di `gh api -X POST repos/Gasss23/Gas/pulls` (GraphQL non disponibile). Il turno di notte non mergia mai.
-2. Nota sul conteggio di `handoff.md` da rendere fissa nel template `.claude/commands/fine-task.md` (perimetro di review): sì/no.
-3. Dove tracciare «protezioni del repo» (impegno rimandato, V-3 bot #249, oggi in nessun documento).
-4. Testo dell'attività programmata «Turno di notte Gas» da allineare come scritto in `coda_notte.md` (bot #253 V-2/V-3): non toccato dal turno di notte.
+1. Merge della PR della fetta 14: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+2. **R-ve252-2 e R-ve255-1 (BASSE, XHTML malformato)**: estendere «il resto della pagina se ne va» a tutto l'XHTML malformato (più sicuro, si perde testo)? Decidi tu.
+3. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un vero costruttore HTML5 (es. lexbor): decidi tu.
+4. Rete più corta: i siti lenti ora vanno in timeout a 12 s invece che a 15 (per tenere il totale nei 15 s). Se preferisci 15 s di rete e un totale fino a ~18 s, dimmelo.
+5. Decisione aperta dell'altra chat (R2, A/B): vedi `reports/stato_progetto.md` e `reports/r2_regole_abbonamento.md` (V-3 bot #255).
+6. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Note cosmetiche del bot su #249**: `FATTA` — intestazione di `stato_progetto.md` con la sessione del 22 sera (#249), titolo della sezione «Da fare» di `da_mergiare.md` con le date vere, nota nel §2 qui sotto.
-- **Fetta 2 — Prova del 22 ottobre dopo #247**: `FATTA` — blocco in `stato_progetto.md`; 🟡 «Rifiuta senza effetto» (8 ottobre) segnato superato. Fonte: solo il resoconto nella coda.
-- **Voci 3–8 della coda**: `SALTATA — prima notte: solo voci 1 e 2 per regola del turno`.
+- **R-ve235-5** (pulizia fuori dai 15 s): `FATTA`
+- **R-496-1, R-496-2 (chat Mani)** (dalla review #496): `FATTA`
+- **R-447-1 parte (b)**: chiusa come conforme
+- **V-2 bot #255 bis**: `FATTA`
+- **R-ve255-1**: registrata
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/coda_notte.md     |  5 ++---
- reports/da_mergiare.md    |  2 +-
- reports/diff_sessione.md  | 20 +++++++-------------
- reports/handoff.md        | n/d (commit finale)
- reports/report_notte.md   | 21 +++++++++++++++++++++
- reports/stato_progetto.md |  6 ++++--
- reports/ultimo_report.md  | 23 ++++++++++-------------
+ .claude/agents/memoria_revisore.md |   3 +
+ modules/web/leggi.py               |  17 +++-
+ reports/diff_sessione.md           |  15 +--
+ reports/handoff.md                 | 190 ++++++++++++++++++++++++++++++-------
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  33 ++++---
+ tests/test_unit_web_leggi.py       |  54 ++++++++++-
+ 7 files changed, 256 insertions(+), 58 deletions(-)
 ```
 
-NB (V-1 bot #249 e V-1 bot #259): per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta tutto nel commit finale che lo contiene), quindi è scritto «n/d». Gli altri conteggi sono quelli reali di `git diff --cached --stat` presi prima di quel commit; il diff reale della PR fa fede.
+NB: preso dall'index con tutti i report in stage, dopo aver scritto questo handoff; solo la riga di `reports/handoff.md` può differire di poche righe, perché lo stat è dentro il file stesso.
+
+---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e172949 docs(fine-task): turno di notte 2026-10-24 — report, handoff, coda (voci 1-2 fatte, PR #259)
-80678a9 docs(notte): note cosmetiche del bot su #249 e prova del 22 ottobre dopo #247 (coda_notte voci 1-2)
+c7c3770 Merge origin/main (PR #259) in feat/mani-web-fetta14
+c0608a0 docs(reports): fetta 14 chat Mani — handoff dopo il merge di main
+6ba148d Merge origin/main (PR #258) in feat/mani-web-fetta14
+b99ab59 docs(reports): fine fetta 14 chat Mani — report, handoff, stato
+3bd972f feat(web): fetta 14 — tempo riservato alla pulizia, grezzi autochiusi conformi (R6)
+185216f chore(revisore): memoria review #497 — APPROVATO
+973a818 chore(revisore): memoria review #496 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+
+---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-nessun diff motore, revisore non richiesto.
+Tre verdetti, incollati integralmente (chat Mani): #496 (APPROVATO CON RISERVE) e #497 (APPROVATO) sul diff della fetta 14 committato in `3bd972f`; #499 (APPROVATO) sul merge di main 3b02651 (PR #258), fatto perché il merge della PR, chiesto dall'operatore, era rifiutato per conflitto. Le righe citate nella #496 si riferiscono al diff di allora.
+
+### Review #496 (chat Mani) — verdetto integrale (fetta 14, prima versione)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #496 (chat Mani), fetta 14 sul ramo feat/mani-web-fetta14 (da main b3f04d9). Il numero #496 era libero: il più alto in memoria era #495.
+
+Le 3 modifiche sono corrette. Restano due riserve piccole: una docstring da aggiornare e un'etichetta d'errore che può ingannare.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:1398` (costante a `modules/web/leggi.py:55`): la scadenza della rete diventa 15 − min(3, 15/5), cioè 12 s.
+  - Rischi esaminati (quelli che chiedevi):
+    - **Siti lenti**: ora vanno in timeout a 12 s invece che a 15. È il prezzo dichiarato, accettabile.
+    - **Il `min(…, TIMEOUT_TOTALE/5)`**: è corretto. Con 15 s vale 3; con i tempi dei test (0,2–1 s) lascia alla rete l'80%. I test dei server lenti passano tutti (9 su 9).
+    - **Il messaggio «tempo massimo superato»**: si basa sulla stessa scadenza, quindi scatta a 12 s e resta coerente.
+  - In `gas.py` e `modules/` non c'è nessun chiamante di `leggi_pagina` fuori dal modulo web, quindi non c'è un altro timeout esterno con cui la nuova scadenza possa scontrarsi.
+  - La pulizia della pagina (`_componi`) resta senza scadenza. I 3 s sono una tua misura, non un tetto garantito: su una VPS più lenta il totale può superare i 15 s.
+- `tests/test_unit_web_leggi.py:405`: test nuovo della scadenza passata a `_scarica`.
+  - Rischio esaminato: il mutante «senza riserva» che sopravvive.
+  - Esito ok: in una copia isolata dà 1 FAIL. L'indice `argomenti[4]` corrisponde alla scadenza nella chiamata posizionale di `_scarica`.
+- `tests/test_unit_web_leggi.py:947`: `<script/>`, `<iframe src=x />` e `<style/>` mai chiusi portano via il resto.
+  - Rischio esaminato: che sia una perdita di Gas e non il comportamento dei browser.
+  - Esito ok: ho rifatto la prova con lexbor e dà solo «PRIMA» in tutti e 3 i casi. R-447-1 parte b si può chiudere come «conforme».
+- `tests/test_unit_web_leggi.py:1284`: le eccezioni dei thread finiscono in una lista che deve restare vuota. Chiude il punto cosmetico della #494. Ok.
+- Suite web: 387 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Riserve**
+- **R-496-1 COSMETICA**: la docstring del modulo (`modules/web/leggi.py:19`) dice ancora che il tempo massimo copre solo rete e download e che la pulizia viene dopo. Va aggiornata: 12 s alla rete più 3 s di riserva, e la pulizia non ha un tetto rigido.
+- **R-496-2 BASSA, preesistente**: se `_componi` solleva un'eccezione dopo la scadenza della rete, il ramo generico (`modules/web/leggi.py:1423`) la riporta come «tempo massimo superato» e non come errore. Con la scadenza a 12 s questo diventa più probabile. Il motivo esatto resta comunque nel log.
+
+**Cosa non ho verificato**
+- I tempi di pulizia sulla VPS: non riproducibili qui, mi fido delle tue misure (fino a 2,9 s).
+- La suite col parser vecchio (378 passed e 10 skipped).
+- La tua mutazione in mut14/run.py: ho rifatto io il mutante «senza riserva».
+
+**Memoria**: aggiunta la riga #496 con R-496-1 e R-496-2, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh` (commit 973a818). Lo stage non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
+### Review #497 (chat Mani) — verdetto integrale (fetta 14 con le riserve della #496)
+
+## VERDETTO: APPROVATO
+
+Review #497 (chat Mani), fetta 14 con le due riserve della #496 sistemate. Il numero #497 era libero: il più alto in memoria era #496.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:1414`: il flag `in_rete` si spegne subito prima di `_componi`, cioè dopo l'ultimo download e fuori dal giro dei redirect.
+  - Rischio esaminato: un errore di rete o un redirect classificato come errore della pulizia.
+  - Esito ok: il flag si spegne solo nel ramo senza redirect, subito prima del `return _componi(...)`. Tutti gli errori di `_scarica` e dei redirect lo trovano ancora acceso.
+- `modules/web/leggi.py:1427`: nel ramo generico, a flag spento, il motivo è «errore nella pulizia della pagina (Nome)».
+  - Rischi esaminati: testo della pagina o del server che finisce nel motivo, e chiamanti che leggono i testi dei motivi.
+  - Esito ok:
+    - nel motivo va solo il nome del tipo di eccezione, mai testo della pagina, quindi la regola del modulo («motivo scritto da qui») è rispettata;
+    - il warning nel log resta com'era;
+    - ho cercato con grep i testi dei motivi nei file .py: nessuno, fuori da modules/web e dai test web, li legge.
+- `tests/test_unit_web_leggi.py:421`: test nuovo con `_scarica` che dorme oltre la scadenza e `_componi` che solleva un errore.
+  - Rischio esaminato: il mutante «flag mai spento» che sopravvive.
+  - Esito ok: in una copia isolata ho tolto lo spegnimento del flag e la suite dà 1 FAIL.
+- R-496-1: la docstring del modulo ora dice 12 s su 15 alla rete e 3 s alla pulizia, e che la pulizia non ha un tetto rigido. Corretta.
+- Suite web: 388 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Cosa non ho verificato**
+- La suite col parser vecchio (379 passed e 10 skipped).
+- I tempi reali di pulizia su VPS: valgono le tue misure. La docstring ora dichiara che sono una stima, non un limite.
+- Un caso residuo: un errore dentro `_valida_url` o `urljoin` mentre si seguono i redirect viene ancora chiamato «errore di rete o di protocollo». Era così anche prima e non è cambiato.
+
+**Memoria**: aggiunta la riga #497, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh` (commit 185216f). Lo stage non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
+### Review #499 (chat Mani) — verdetto integrale (merge di main 3b02651)
+
+## VERDETTO: APPROVATO
+
+Review #499 (chat Mani): merge di origin/main 3b02651 (PR #258, chat Motore) in feat/mani-web-fetta14, ancora da committare. HEAD è b99ab59, la base comune è b3f04d9. Il merge non tocca il codice web e non perde righe. Il numero #499 era libero: il più alto in memoria era #498.
+
+**Cosa ho esaminato**
+- `.claude/agents/memoria_revisore.md:819`–`.claude/agents/memoria_revisore.md:826`: le righe entrate da main (#495–#498 della chat Motore), mescolate alle righe #496–#497 della chat Mani.
+  - Rischio esaminato: righe perse o inventate nella risoluzione del conflitto.
+  - Esito ok:
+    - confronto riga per riga: 0 righe perse da HEAD, 0 perse da MERGE_HEAD, nessuna riga inventata;
+    - nessun marcatore di conflitto, né qui né in `reports/stato_progetto.md`.
+  - Nota: i numeri #496 e #497 sono usati sia dalla chat Mani sia dalla chat Motore. È di nuovo la collisione di numerazione fra chat parallele, non un errore del merge.
+- `modules/web/leggi.py:57` e `modules/web/leggi.py:1414`.
+  - Rischio esaminato: il merge che cambia il codice web già approvato.
+  - Esito ok:
+    - `modules/web/leggi.py` e `tests/test_unit_web_leggi.py` in stage sono identici a HEAD, cioè al codice approvato in #496–#497;
+    - `git diff --cached HEAD` su modules/web e sul test web è vuoto;
+    - suite web: 388 passed e 1 skipped (3.13).
+- `reports/stato_progetto.md`, unito in automatico.
+  - Rischio esaminato: un'unione automatica sbagliata.
+  - Esito ok: 0 righe perse da main. Le 2 righe che mancano rispetto a HEAD sono righe della base che main ha aggiornato («Ultimo aggiornamento» e la voce R2 fetta 1), quindi l'unione a tre vie è corretta.
+- File entrati da main: gas.py, brains/claude_cli.py, modules/gate/gate.py, i test kernel, claude_cli e gate, .gitignore, roadmap.md, r2_regole_abbonamento.md.
+  - Rischio esaminato: modifiche introdotte durante il merge.
+  - Esito ok: tutti identici byte per byte a MERGE_HEAD. Li cito solo a parole, perché dopo il merge non sono più nel diff di sessione.
+- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD (`--ours`): sono log di sessione e vanno riscritti a fine giro.
+
+**Cosa non ho verificato**
+- Il contenuto del codice entrato da main (R2 `claude -p`, gate, kernel): è stato rivisto nella chat Motore e qui non è cambiato.
+- Le suite kernel, claude_cli e gate su questo merge: i file sono identici a main, e i loro test girano in CI sul commit di merge.
+- La CI sul commit di merge: il commit non esiste ancora.
+
+**Memoria**: aggiunta la riga #499 (`.claude/agents/memoria_revisore.md`, riga 828), nessuna lezione nuova. Il file è in stage con `git add` e non è committato, perché il merge è in corso: entra nel commit di merge. Il resto dello stage non è stato toccato.
+
+File:
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /home/user/Gas/reports/stato_progetto.md
+- /home/user/Gas/modules/web/leggi.py
+
+---
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/.
+- Web suite: 383 → 388 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «388 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 379 passed, 10 skipped.
+- Mutazioni in copie isolate (scratchpad/mut14/run.py): «senza riserva» 1 FAIL, «flag della pulizia mai spento» 1 FAIL.
+- Tempi misurati di `_componi` su 2 MB: tag 2,6 s, svg annidati 2,9 s, div/li 2,5 s, attributi 1,0 s, XHTML 2,2 s.
+- Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-```
-completed	skipped	Turno di notte 2026-10-24: voci 1 e 2 della coda (solo documenti)	verifica-bot	notte/2026-10-24	pull_request_target	40035437278	2s	2026-10-23T22:43:30Z
-in_progress		docs(notte): note cosmetiche del bot su #249 e prova del 22 ottobre d…	CI	notte/2026-10-24	push	40035425614	34s	2026-10-23T22:43:23Z
-completed	success	R2 via B fetta 2: codice per chiamata, ambiente permesso, tetto del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	39999597454	3m7s	2026-10-23T17:59:27Z
-```
-
-Mappatura commit→run:
-- `80678a9` → run CI 40035425614 (push); albero di testa poi superato da `e172949`.
-- `e172949` → `unit-suite` success, `handoff-check` success, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 BASSA e V-2 COSMETICA corrette nel commit successivo).
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- `b99ab59` (apertura della PR #257): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 COSMETICA: commento di TIMEOUT_TOTALE); verifica esterna #257 APPROVATO CON RISERVE (V-1 BASSA: test del redirect non valido per R-496-2; V-2/V-3 COSMETICHE) — rimandate alla prossima fetta.
+- L'operatore ha detto «mergia 257»; il merge era rifiutato per conflitto con main (PR #258): merge di main, review #499. Su `c0608a0` CI e verifica-bot success, bot APPROVATO CON RISERVE (V-1 BASSA test del redirect, V-2 BASSA id R-496-x usati da due chat: suffisso aggiunto, V-3 COSMETICA commento di TIMEOUT_TOTALE). Il merge era di nuovo rifiutato per conflitto (PR #259, solo report): merge di main f26893f. Run sul merge e sul commit di fine-task con questo handoff: non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Bot #259 (APPROVATO CON RISERVE): V-1 BASSA (conteggio di handoff.md nel §2) e V-2 COSMETICA (forma delle voci in «Fatte») corrette in questo commit; resta da rendere fissa la regola «n/d» nel template `fine-task.md` (decisione §0.2).
-
-- La voce 2 poggia solo sul resoconto dell'operatore nella coda (nessun log nel repo).
-- «Protezioni del repo» non tracciate (V-3 bot #249): decisione §0.3.
+- Restano: **R-ve252-2** e **R-ve255-1** BASSE (XHTML malformato, da decidere), **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-469-1, R-ve245-2…4, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3, R-ve235-7. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…14».
