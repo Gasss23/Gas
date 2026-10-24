@@ -1,25 +1,26 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-24 — Chat Motore: merge #258/#259, report della notte, tre consigli applicati
+**Sessione:** 2026-10-24 — Chat Motore: R2 via B fetta 3 (note BASSE del cervello forte chiuse, ancora spento)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #260 (https://github.com/Gasss23/Gas/pull/260): tocca `.claude/commands/fine-task.md` (review #501 APPROVATO CON RISERVE), decide l'operatore.
-2. Chiedere direttamente nella sessione fissa del turno di notte di applicare il testo nuovo dell'attività.
-3. Approvare o rifiutare sul Mac le 3 lezioni del giro delle 3:00.
+1. Merge della PR #262 (https://github.com/Gasss23/Gas/pull/262): tocca motore e template fine-task; ultima review #503 APPROVATO.
+2. Prima di accendere il forte: prova sul Mac di `claude -p` col login Max di Gas (R-496-3).
+3. Testo nuovo dell'attività di notte da chiedere nella sessione fissa; 3 lezioni da approvare sul Mac.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Merge #258**: `FATTA`.
-- **Report della notte del 24 e merge #259 (review #499 sul merge di main nel ramo della notte)**: `FATTA`.
-- **Consiglio 1 — regola «n/d» nel template fine-task**: `FATTA` (review #501).
-- **Consiglio 2 — protezioni del repo in R4**: `FATTA`.
-- **Consiglio 3 — testo dell'attività di notte**: `DEFERITA — serve la richiesta diretta dell'operatore nella sessione fissa`.
-- **Merge di main (#257) in questo ramo**: `FATTA` (review #500).
+- **Costo su ogni errore (R-497-1)**: `FATTA`.
+- **Prezzo per famiglia e pavimento (V-1 bot/ve #258)**: `FATTA`.
+- **Conto sotto lucchetto, attesa limitata, forte fermo se il consumo non si registra (R-496-2, R-502-1/2)**: `FATTA`.
+- **Costi non finiti (V-4 ve #258)**: `FATTA`.
+- **Doctor «Cervello forte» (R-497-2)**: `FATTA`.
+- **Messaggio dei file protetti (R-498-1), deroga n/d nel template (R-501-1)**: `FATTA`.
+- **Campo `cervello: forte` nel catalogo notturno, setup del Mac**: `DEFERITA — dopo la prova del login`.
 
 ---
 
@@ -27,13 +28,17 @@
 
 ```
  .claude/agents/memoria_revisore.md |   3 +++
- .claude/commands/fine-task.md      |   5 +++++
- reports/coda_notte.md              |   6 +++---
- reports/diff_sessione.md           |  14 +++++++-------
+ .claude/commands/fine-task.md      |   4 ++--
+ .gitignore                         |   1 +
+ brains/claude_cli.py               | 122 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------
+ gas.py                             | 132 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
+ reports/diff_sessione.md           |  14 ++++++++------
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  33 ++++++++++++++-------------------
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  25 +++++++++++++------------
+ tests/test_unit_claude_cli.py      |  68 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ tests/test_unit_kernel.py          |  44 ++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — la riga di `reports/handoff.md` è n/d e la riga di totale è tolta; le altre righe sono prese con i report già in stage.
@@ -41,87 +46,110 @@ NB: regola «n/d» — la riga di `reports/handoff.md` è n/d e la riga di total
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-528e0d6 docs(fine-task): verdetto del merge (#500) in §8, fuori dal diff di sessione
-90e63a9 docs(fine-task): report del 24 — tre consigli, merge di main (#257)
-f28b17c docs(fine-task): regola «n/d» per la riga di handoff.md nel §2 (decisione dell'operatore)
-b0c759b chore(revisore): memoria review #501 — APPROVATO CON RISERVE
-1be3039 Merge origin/main (PR #257) in feat/merge-automatico-z1xjx2 — review #500 APPROVATO
-ee96055 docs(fine-task): decisioni in attesa in stato_progetto, §6 del dossier (bot #260)
-3a53208 docs(fine-task): note del bot #260 — stato_progetto aggiornato, conteggi del dossier
-d34e279 docs(fine-task): report del 24 dopo il merge della #259
-938e6fe Merge origin/main (PR #259) in feat/merge-automatico-z1xjx2: conflitti solo nei log di sessione
-7ccdda1 docs(fine-task): report del 24 ottobre (merge #258, notte, review #499)
-7faf491 chore(revisore): memoria review #499 — APPROVATO
+9161425 feat(r2): fetta 3 del cervello forte — costo su ogni errore, conto sotto lucchetto, doctor
+a779e43 chore(revisore): memoria review #503 — APPROVATO
+c1409f7 chore(revisore): memoria review #502 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare nel log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit nel perimetro di review: f28b17c (`.claude/commands/fine-task.md`, review #501). Il merge 1be3039 (review #500) porta file del motore identici a main, quindi fuori dal diff di sessione: il suo verdetto integrale è in §8. La review #499 riguarda il merge sul ramo `notte/2026-10-24` (PR #259), già mergiato.
+Commit motore: 9161425 `feat(r2): fetta 3 del cervello forte`. Due review sullo stesso diff, in ordine.
 
-### Review #501 (f28b17c)
+### Review #502 (APPROVATO CON RISERVE, riserve corrette prima del commit)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #501 (chat Motore). Ho letto CLAUDE.md, reports/stato_progetto.md e .claude/agents/memoria_revisore.md. Il diff staged ha una sola modifica: 5 righe aggiunte in .claude/commands/fine-task.md.
+Review #502 (chat Motore). Diff staged in /home/user/Gas: R2 via B fetta 3, con il cervello forte ancora spento. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci R2 di reports/stato_progetto.md (R-496-2, R-497-1/2, R-498-1) e la memoria. Ho applicato la lezione #496/#498: ogni nuovo file di stato va nella denylist e va provato col kernel reale.
 
-Cosa ho controllato nel diff:
-- `.claude/commands/fine-task.md:141` — aggiunge la «Regola n/d»: nella riga di reports/handoff.md si scrive `n/d`, si toglie la riga di totale, si aggiunge una NB. Rischio controllato: che il gate A (`scripts/check_handoff.py`) rifiuti la riga o la mancanza del totale. Esito: ok. `_declared_set` prende solo il path a sinistra del «|» e già scarta la riga «N files changed». L'ho provato sul reports/handoff.md reale, che ha già la riga `n/d` e non ha il totale: set estratto di 5 path, `check_handoff: OK`, rc=0.
-- `.claude/commands/fine-task.md:144` — dice di prendere gli altri conteggi con i report già in stage (passo 4bis). Rischio controllato: che sia in contrasto con 4bis o che indebolisca un gate. Esito: ok. È coerente con `.claude/commands/fine-task.md:214`, che rigenera §2 con `git diff --cached --stat` dopo lo stage. Nessun gate confronta i conteggi: la CI confronta solo i path. Già la riga preesistente `.claude/commands/fine-task.md:139` lo dichiara, e grep non trova controlli su «files changed» o «n/d» in verifica_esterna.md, bot_esito.py e nei workflow.
+**Elementi del diff esaminati**
+- `brains/claude_cli.py:308`: ramo `except RuntimeError` / `except Exception` attorno a `_risposta`. Rischio: che cambi la classificazione QUOTA o il fallback. I RuntimeError escono con il messaggio originale e il «429 » resta in testa. Il costo si aggiunge solo se manca. Solo le eccezioni impreviste vengono avvolte in «risposta non valida», che non è un limite. In `run_turn` il ramo `except` resta uguale: registra il costo e poi `raise`, quindi il fallback non cambia. **ok**
+- `brains/claude_cli.py:299`: un JSON che non è un oggetto e un'uscita non JSON portano `stima_minima`, calcolata una sola volta prima del runner. Il prefisso `_prefisso_limite` resta. **ok**
+- `brains/claude_cli.py:189`: `_costo_equivalente` usa il prezzo della famiglia del modello. Una famiglia sconosciuta prende 15/75, cioè fail-closed; il pavimento vale anche su `total_cost_usd`. Prove dirette: `_prezzo("x")=(15,75)`; 1e-9 su sonnet dà 0.0015; nessun valore negativo passa. **ok**
+- `brains/claude_cli.py:206`: `_token` con `usage` non numerico. Prova diretta: `"abc"` e `inf` danno (0,0) senza eccezioni, perché OverflowError è intercettato. **ok**
+- `gas.py:1650`: flock sul file `.lock` attorno a lettura, somma e scrittura. Prova con 4 processi × 50 registrazioni da 0.01: il risultato è 2.0 esatto, nessun aggiornamento perso. Il fail-closed resta: con conto illeggibile la funzione esce sotto lucchetto senza scrivere. **riserva R-502-1**: il `LOCK_EX` è bloccante e senza timeout. La sezione critica è breve e un crash libera il lucchetto, ma un detentore fermo (SIGSTOP, disco lento) blocca il turno all'infinito. Nel repo c'è già la convenzione `LOCK_NB` a `gas.py:1319`.
+- `gas.py:1646`: costi infiniti o negativi ignorati con warning; T99m PASS. **ok**
+- `.gitignore:55`: lockfile aggiunto. Prova col kernel reale (`execute_tool_call`): `write_file` e `read_file` sono negati su `.gas_claude_cli_uso.json.lock`, `.GAS-claude-cli-uso.json.lock` e `sub/.gas_claude_cli_uso.json.lock`. Lo nega il prefisso esistente a `gas.py:1903`, e lo stesso prefisso c'è nel cancello `modules/gate/gate.py:104`. **ok**
+- `gas.py:4887`: sezione «Cervello forte» del doctor. Usa solo `_env_flag`, `shutil.which` e `_leggi_uso_claude_cli`: nessuna chiamata a `claude`, nessun token consumato. Il tetto ha lo stesso default e gli stessi limiti di `_tetto_claude_cli_superato`. T99n PASS e l'ambiente viene ripristinato da `_saved99`. **ok**
+- `gas.py:2507`: messaggio di diniego (R-498-1). **ok**
+- `.claude/commands/fine-task.md:131`: il segnaposto del §2 e il commento di 4bis citano la regola «n/d»; chiude R-501-1. **ok**
 
-Contesto:
-- `scripts/check_handoff.py:99` — scarto della riga di totale con regex `\d+\s+files?\s+changed`. Toglierla quindi non cambia nulla per il gate. ok.
-- `scripts/check_handoff.py:101` — `line.split("|")[0]`: il contenuto a destra (numero o `n/d`) non conta. ok.
+**Controlli generali**
+- §5 (Wall of Shame): nessuno slicing della history, nessun output di tool simulato. I test usano runner finti iniettati per la CLI, non risultati di tool inventati.
+- §9: le eccezioni restano intercettate. `_registra_uso_claude_cli` non solleva mai e scrive un warning nel log.
+- Cap 10 iterazioni: non toccato.
 
-Riserva:
-- R-501-1 COSMETICA: il segnaposto del template a `.claude/commands/fine-task.md:131` dice ancora «output GREZZO di git diff --stat ${BASE}..HEAD». Anche il commento di 4bis a `.claude/commands/fine-task.md:219` («nomi grezzi»). Nessuno dei due nomina la deroga n/d, quindi un lettore può trovarli in contrasto con la nuova regola. Basta aggiungere «(salvo la regola n/d sotto)». Non blocca.
+**Test rieseguiti da me**
+- `tests/test_unit_claude_cli.py`: 20 passed.
+- `tests/test_unit_kernel.py`: 1037 PASS, 0 FAIL.
 
-Cosa NON ho verificato: il comportamento del bot di verifica sulla prossima PR, cioè se smette davvero di segnalare lo scarto. È un agente esterno con un prompt che non si può eseguire qui; si vedrà solo alla prossima PR con l'etichetta `verifica`. Non ho fatto girare nemmeno `scripts/check_verdetto.py`: non legge §2, quindi la modifica non lo tocca.
+**Riserve, da tracciare in reports/stato_progetto.md prima di accendere `GAS_CLAUDE_CLI`**
+- **R-502-1 BASSA**: `fcntl.flock(..., LOCK_EX)` a `gas.py:1653` è senza timeout dentro il turno. Usare `LOCK_NB` con tentativi limitati: se il lucchetto non arriva, il turno va fermato o il consumo scritto lo stesso, mai un'attesa infinita.
+- **R-502-2 BASSA**: se il lockfile non si apre, il lucchetto non si prende o la scrittura fallisce, c'è solo un warning e il consumo non entra nel conto. È fail-open sul tetto (il problema c'era già per `os.replace`; ora si aggiunge il caso del lockfile). Da valutare un fermo del forte quando la registrazione fallisce.
+- **R-502-3 COSMETICA**: il ramo `except Exception` generico (`brains/claude_cli.py:308`) non ha un test, e il lockfile manca dalla lista `_TARGETS_68s` (`tests/test_unit_kernel.py:4399`). La protezione l'ho verificata solo a mano.
 
-Memoria: ho aggiunto la riga #501 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata con scripts/commit_memoria_revisore.sh (commit b0c759b, solo quel file). Nessuna lezione nuova.
+**Rischi esclusi**
+- La CLI `claude` vera non è stata chiamata: il forte è spento e consumerebbe l'abbonamento. Il formato reale di `total_cost_usd` e `usage` resta quello dei test.
+- Il lucchetto su macOS e su file system di rete (NFS) non è stato verificato: qui c'è solo Linux locale.
+- La suite pytest completa (2141 passed) non l'ho rieseguita io: ho eseguito le due suite toccate.
 
-## §5 DELTA TEST DEL MOTORE
+Riga #502 e una lezione nuova (lucchetti nel turno solo con `LOCK_NB` o timeout) aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md e committate con `scripts/commit_memoria_revisore.sh` (commit c1409f7).
 
-Nessuna modifica a gas.py/tests/ in questa sessione (i file del motore arrivati con il merge di main sono identici a main, review #500).
-
-## §6 STATO CI
-
-`gh run list -L 3` alle 17:40 UTC:
-
-```
-completed	success	Merge pull request #257 from Gasss23/feat/mani-web-fetta14	CI	main	push	40115672298	2m31s	2026-10-24T17:20:28Z
-completed	success	docs: merge #258, report della notte del 24, memoria review #499	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40115466232	2m43s	2026-10-24T17:17:42Z
-completed	success	docs(fine-task): decisioni in attesa in stato_progetto, §6 del dossie…	CI	feat/merge-automatico-z1xjx2	push	40115464691	3m6s	2026-10-24T17:17:40Z
-```
-
-Mappatura: ee96055 (ultimo commit pushato prima di questa tornata): CI verde, bot APPROVATO CON RISERVE. 1be3039, b0c759b, f28b17c e il commit di fine-task: run non ancora disponibile alla scrittura dell'handoff (una sola run per il push, sulla testa).
-
-## §7 RISERVE APERTE
-
-- **R-501-1** (COSMETICA): il segnaposto del §2 e il commento di 4bis nel template dicono ancora «output GREZZO» senza nominare la deroga n/d.
-- Le riserve del cervello forte (R-497-1/2, R-496-2/3, R-498-1/2 e le note BASSE di bot e verifica esterna #258) restano in `reports/stato_progetto.md`.
-
-## §8 VERDETTO DEL MERGE DI MAIN (review #500, integrale)
+### Review #503 (verdetto finale sul diff committato)
 
 ## VERDETTO: APPROVATO
 
-Review #500 (chat Motore): merge in corso di origin/main 172c2d7 (PR #257, chat Mani, web fetta 14) dentro feat/merge-automatico-z1xjx2 (PR #260, HEAD ee96055, base comune f26893f).
+Ho letto prima CLAUDE.md (sez. 5, 8, 9 e 10), poi le righe R2 di reports/stato_progetto.md e infine la memoria del revisore. Questa è la review #503: l'ultima in memoria era la #502.
 
-Letture obbligatorie: CLAUDE.md (sez. 5, 8, 10), reports/stato_progetto.md (intestazione e righe toccate), memoria_revisore.md (ultime voci da #498 a #499).
+**Cosa ho controllato nel diff**
+- `gas.py:1659` — il lucchetto sul conto ora si prende con `LOCK_EX | LOCK_NB`, riprovando ogni 0,05 s fino a `LOCK_STORIA_SEC` (5 s, `gas.py:1284`, la stessa regola del lucchetto della storia). Scaduto il tempo parte un `TimeoutError` dentro il `with`: il file si chiude e l'errore lo prende l'`except Exception`. Il rischio era che il turno restasse bloccato: non succede. Esito: ok, R-502-1 chiusa.
+- `gas.py:1679` — il blocco `finally` accende `_forte_senza_conto` solo se il consumo non è stato registrato e il conto non era già fermo. Rischio esaminato: il flag acceso per sbaglio nei casi normali. Nel percorso normale si arriva sempre a `registrato=True`, anche quando il costo è 0, non numerico, infinito o negativo (diventa 0.0 e si scrive comunque). Nel ramo «conto già illeggibile» il `return` dentro il `with` passa dal `finally` con `fermo_gia=True`, quindi il flag resta spento ed è corretto, perché il forte lo ferma già `_uso_claude_cli`. Se arriva un `KeyboardInterrupt` il flag si accende e l'interruzione prosegue: va bene. Esito: ok.
+- `gas.py:1688` — `_tetto_claude_cli_superato` legge il flag con `getattr` (non serve inizializzarlo nel costruttore) e restituisce `(None, tetto)`: il forte si ferma fino al riavvio, cioè fail-closed. La chiamata sta dentro `if name == "claude-cli"` (`gas.py:4668`), quindi gli altri provider non cambiano. Il messaggio di `_errore_tetto_forte` ora parla anche dell'aggiornamento non riuscito e del riavvio. Esito: ok, R-502-2 chiusa.
+- Windows (`fcntl` None, contesto `gas.py:12`): si fa solo l'`open(..., "a")` del lockfile, senza attesa e senza lucchetto; lettura, somma e scrittura avvengono come prima. Niente si rompe. Esito: ok.
+- §9 (eccezioni intercettate e loggate): `_registra_uso_claude_cli` intercetta tutto e logga come warning («scrittura fallita … — forte fermo»). Il flag non solleva mai e i due punti di chiamata (`gas.py:4686`, `gas.py:4718`) non cambiano. Nel ramo `except` della create, il `raise` nudo arriva dopo la registrazione: il fallback degli altri provider e il retry di Gemini restano come prima. Esito: ok.
+- `tests/test_unit_kernel.py:4408` — il lockfile è nella lista T68s (scrittura negata al modello). `tests/test_unit_kernel.py:10952` — in T99o un altro fd tiene il lucchetto: misurati 0,20 s di attesa, conto fermo a 0.25, tetto `(None, 4.60)`; poi il flag e `LOCK_STORIA_SEC` vengono ripristinati. Esito: ok.
+- `brains/claude_cli.py:308` — il ramo `except Exception` generico ora ha un test: l'eccezione diventa «claude-cli: risposta non valida» col costo. Esito: ok, R-502-3 chiusa.
+- `.claude/commands/fine-task.md:131` — il segnaposto «output GREZZO» e il commento di 4bis ora citano la regola «n/d». Esito: ok, chiude anche R-501-1 (cosmetica).
+- `.gitignore`: aggiunto `.gas_claude_cli_uso.json.lock`. Esito: ok.
 
-Elementi esaminati:
-- `.claude/agents/memoria_revisore.md:828` — #499 della chat Motore, presa dal ramo (HEAD) — rischio: che una riga si perda o che l'unione cambi l'ordine — esito ok. Confronto con `sort -u`/`comm`: 0 righe perse rispetto a HEAD e 0 rispetto a MERGE_HEAD. L'ordine è #499 Motore (riga 828), poi #499 Mani (riga 829), poi la mia #500 (riga 830). Contro origin/main questo file aggiunge solo righe.
-- `.claude/agents/memoria_revisore.md:829` — #499 della chat Mani, presa da main — rischio: riga doppia o modificata — esito ok, è identica a MERGE_HEAD. Il numero #499 usato due volte è una collisione di numerazione tra chat parallele già nota. Non è un errore del merge.
-- `reports/stato_progetto.md:4` — intestazione «Ultimo aggiornamento» — rischio: perdere la voce di main — esito ok. È l'unica riga di MERGE_HEAD assente dal file unito, ma il suo testo («2026-10-24 (chat Notte…») è contenuto per intero nella nuova intestazione, come «prima:» (verificato con un controllo di sottostringa). La riga è identica a quella di HEAD. Rispetto a HEAD le righe perse sono 0.
-- `reports/stato_progetto.md:586` — blocco «Decisioni in attesa dell'operatore (dal turno di notte del 24 ottobre, PR #259)» che viene dal ramo — rischio: che sia un duplicato o un residuo di conflitto — esito ok, è una voce sola e senza marcatori.
-- File del motore portati da main (contesto, fuori dal diff contro origin/main) — rischio: modifica nascosta del motore dentro un merge «solo documenti» — esito ok. `git diff --cached MERGE_HEAD` su gas.py, brains, modules, tests, scripts, .github e .claude mostra solo la memoria (+1 riga). Quindi modules/web/leggi.py e tests/test_unit_web_leggi.py in stage sono identici byte per byte a origin/main. Il test web gira: 388 passed, 1 skipped.
-- `git diff --cached origin/main --stat`: solo 5 file documentali (memoria +1, diff_sessione, handoff, stato_progetto, ultimo_report). Nessun marcatore di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) in reports/ né in memoria. Nessun antipattern del Wall of Shame possibile: il diff non contiene codice.
+**Prove rieseguite da me**
+- claude_cli: 21 passed.
+- kernel: 1038 PASS, 0 FAIL (T99o e T68s PASS).
 
-Rischio escluso: non ho verificato nel merito il contenuto di handoff, ultimo_report e diff_sessione presi con la versione del ramo («--ours»). Sono log di sessione del ramo: li valida il gate A/B a fine task. Non ho rifatto la review di leggi.py: il file è identico a main, già approvato nella chat Mani (#496–#497).
+**Nota di design (non è una riserva)**: in un processo che resta acceso a lungo (il bot) basta un solo errore passeggero di disco o di lucchetto per fermare il forte fino al riavvio, senza che si rimetta in moto da solo. È voluto (meglio fermo che consumare senza conto) e il messaggio dice di riavviare. Il doctor non vede questo flag, perché vive solo dentro il processo.
 
-ATTENZIONE, da sapere prima di committare:
-1. Nel working tree ci sono modifiche NON in stage estranee al merge: `.claude/commands/fine-task.md` (dentro il perimetro di review), `reports/coda_notte.md`, `reports/roadmap.md`. Le ha bloccate il gate PreToolUse (review_gate.sh), che mi ha impedito un comando Bash. Non le ho revisionate né toccate. Vanno messe da parte con `git stash` oppure revisionate a parte: questo verdetto non le copre.
-2. Ho scritto la riga #500 con Edit in /home/user/Gas/.claude/agents/memoria_revisore.md (riga 830). Ora è una modifica NON in stage, non committata e non messa in stage (merge in corso, come richiesto). Prima di concludere il merge esegui `git add .claude/agents/memoria_revisore.md`. Non ho lanciato commit_memoria_revisore.sh.
+**Cosa NON ho verificato**
+- Il comportamento vero su Windows: niente ambiente Windows qui, l'ho valutato leggendo il codice.
+- Il flock su filesystem di rete (NFS, dove può dare `ENOLCK`): non riproducibile qui. Leggendo il codice, finirebbe in `except` e fermerebbe il forte (fail-closed).
+- Non ho rieseguito il pytest completo (dichiarato 2142 passed, 1 skipped) né fatto una prova con un mutante sul flag.
 
-Riga contatore: #500 (chat Motore) — 2026-10-24 — APPROVATO — nessuna lezione nuova.
+**Memoria**
+- Riga #503 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md`, nessuna lezione nuova.
+- Committata da sola con `scripts/commit_memoria_revisore.sh` (commit a779e43). Il resto dello stage non è stato toccato.
+
+## §5 DELTA TEST DEL MOTORE
+
+- `python tests/test_unit_kernel.py`: 1035 → 1038 PASS (T99m, T99n, T99o nuovi; lockfile in T68s), 0 FAIL.
+  `=== RIEPILOGO: 1038 PASS, 0 FAIL ===`
+- `pytest tests/test_unit_claude_cli.py`: 19 → 21 passed.
+- `pytest tests/` completo: `2142 passed, 1 skipped in 194.63s (0:03:14)`.
+
+## §6 STATO CI
+
+`gh run list -L 3` alle 21:27 UTC:
+
+```
+queued		feat(r2): fetta 3 del cervello forte — costo su ogni errore, conto so…	CI	feat/merge-automatico-z1xjx2	push	40134300964	1s	2026-10-24T21:27:35Z
+completed	success	Merge pull request #260 from Gasss23/feat/merge-automatico-z1xjx2	CI	feat/merge-automatico-z1xjx2	push	40130653007	3m6s	2026-10-24T20:38:01Z
+completed	success	Merge pull request #260 from Gasss23/feat/merge-automatico-z1xjx2	CI	main	push	40130634370	2m39s	2026-10-24T20:37:46Z
+```
+
+Mappatura: c1409f7, a779e43 e 9161425 pushati insieme: una run sulla testa 9161425; i commit di memoria non hanno run propria. Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+
+## §7 RISERVE APERTE
+
+- **R-496-3** (BASSA): login vero col portachiavi del Mac (e `CLAUDE_CODE_OAUTH_TOKEN` sulla VPS) da provare con l'ambiente ridotto.
+- Prezzi di riferimento per famiglia da ritarare con l'uso vero (dichiarato nel codice).
+- Comportamento dichiarato (nota di design #503): un errore di registrazione del consumo ferma il forte fino al riavvio; il doctor non vede questo fermo.
+- **R-498-2** (BASSA, preesistente): alcuni log scrivibili dal modello a finestra pulita.
