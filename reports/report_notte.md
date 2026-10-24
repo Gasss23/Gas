@@ -9,7 +9,13 @@ Seconda notte (la PR #259 della prima è mergiata): al massimo UNA voce del moto
 - **Controlli**: 19 test nuovi (round-trip col kernel vero con due tool call, `/clear`, turno nuovo da zero; un giro con la riflessione vera). pytest 2140 → 2159 passed; kernel 1031 PASS 0 FAIL. Review #502 APPROVATO CON RISERVE (una MEDIA: recap tagliato, a differenza del terminale), corretta; review #503 APPROVATO CON RISERVE.
 - **Rischi**: la riflessione può durare minuti e intanto il bot non risponde ad altri messaggi (come per un turno normale); l'indicatore «sta scrivendo» sparisce dopo pochi secondi. Riserve aperte: R-503-1 BASSA (conteggio in caratteri, non in unità UTF-16, solo per testi pieni di emoji), R-503-2 COSMETICA. Non provato col Telegram vero.
 
+## Verifiche su #263
+- Bot: APPROVATO CON RISERVE. V-1 BASSA (`/clear` da un messaggio modificato cancellava la cronologia) e V-2 COSMETICA (recap vuoto) corrette; l'indicatore «sta scrivendo» resta mandato una volta sola.
+- Verifica esterna ([commento](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390800357)): APPROVATO CON RISERVE, nessuna ALTA/MEDIA. V-1 BASSA («/clear» con testo su una riga nuova andava al modello) corretta.
+- Review #504 sul secondo giro: APPROVATO CON RISERVE. Nuova R-504-1 BASSA preesistente: `/notte` e `/compito` partono ancora da un messaggio modificato (da fare in una voce futura).
+
 ## Cosa deve decidere l'operatore
 1. Merge della PR #263 (il turno di notte non mergia).
 2. Prova dal vero: bot acceso (`python3 gas.py telegram`), qualche messaggio, poi `/clear`.
-3. Il testo dell'attività programmata: la chat Motore ha chiesto il 24 ottobre di cambiarlo, dicendo che l'avevi approvato. Non l'ho fatto: serve la tua richiesta in questa sessione.
+3. Se mettere in coda R-504-1 (`/notte` da messaggio modificato).
+4. Il testo dell'attività programmata: la chat Motore ha chiesto il 24 ottobre di cambiarlo, dicendo che l'avevi approvato. Non l'ho fatto: serve la tua richiesta in questa sessione.

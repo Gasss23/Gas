@@ -23,22 +23,25 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/telegram/bot.py            | 134 +++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/telegram/bot.py            | 143 +++++++++++++++++++++++++
  reports/coda_notte.md              |   2 +-
  reports/diff_sessione.md           |  17 +++++++++--------
  reports/handoff.md                 | n/d (commit finale)
- reports/report_notte.md            |  31 +++++++++++--------------------
+ reports/report_notte.md            |  35 ++++++++++++++-------------
  reports/stato_progetto.md          |   4 +++-
  reports/ultimo_report.md           |  25 +++++++++----------------
- tests/test_unit_notte.py           | 197 +++++++++++++++++++++++++++++
+ tests/test_unit_notte.py           | 203 +++++++++++++++++++++++++++++
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta tutto nel commit finale), quindi «n/d». Gli altri conteggi vengono da `git diff --cached --stat` preso prima del commit finale, con le barre accorciate; il diff reale della PR fa fede.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d». Gli altri conteggi vengono da `git diff --cached --stat` preso prima del commit finale, con le barre accorciate; il diff reale della PR fa fede.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+17adcfb fix(telegram): /clear solo da un messaggio nuovo, a capo come separatore, recap vuoto (note #263)
+e02c8bf chore(revisore): memoria review #504 — APPROVATO CON RISERVE
+3cfdc29 docs(fine-task): turno di notte 2026-10-25 — report, handoff, coda (voce 3 fatta, PR #263)
 ceeed81 feat(telegram): /clear da Telegram come il clear del terminale (coda notte voce 3)
 c5faa56 chore(revisore): memoria review #503 — APPROVATO CON RISERVE
 3ba317f chore(revisore): memoria review #502 — APPROVATO CON RISERVE
@@ -96,26 +99,70 @@ Wall of Shame: nessuno slicing della cronologia (i tagli sono solo su testo da m
 
 **Memoria**: riga #503 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (c5faa56). Il diff del motore resta in stage. Nessuna lezione nuova.
 
+### Review #504 (chat Notte) — sul diff committato in 17adcfb (note di bot e verifica esterna su #263)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #504 (chat Notte): diff staged di PR #263, ramo notte/2026-10-25, 3° giro del comando /clear da Telegram.
+
+Prima della review ho letto: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (le parti su clear e recap, R-201-2) e la memoria del revisore (#502, #503).
+
+**Elementi del diff esaminati**
+1. `modules/telegram/bot.py:738` — se il comando arriva da un `edited_message` (cioè `upd["message"]` assente o vuoto), risponde «mandalo come messaggio nuovo» e non pulisce la cronologia.
+   - Rischi controllati: ordine rispetto al ramo errore e al controllo della chat autorizzata, chiamata a `_send_typing`, caso `"message": {}`.
+   - Il controllo viene prima dell'errore «argomenti» e dopo quello sulla chat autorizzata (`modules/telegram/bot.py:721`). Non chiama `_send_typing` (lo prova il test con `digita == []`). Con `"message": {}` il messaggio viene trattato come modificato, cioè nella direzione sicura.
+   - Esito: ok. V-1 bot #263 chiusa.
+2. `modules/telegram/bot.py:582` — nella regex anche `\r` e `\n` separano gli argomenti.
+   - Sonda: «/clear\n» → clear; «/clear\t\n\r» → clear; «/CLEAR\nx\ny» → errore «non vuole argomenti»; «/clear\xa0foo» → None, come per /notte (decisione già presa, V-3 ve #233).
+   - Il `fullmatch` sul testo già ripulito con `strip` e il flag `re.S` fanno entrare tutte le righe nel gruppo degli argomenti.
+   - Esito: ok. V-1 verifica esterna #263 chiusa.
+3. `modules/telegram/bot.py:618` — un recap vuoto o fatto solo di spazi produce «│ (recap vuoto)».
+   - Il chiamante `modules/telegram/bot.py:688` passa sempre una `str`, quindi nessun crash.
+   - U+200B non viene tolto da `strip` e resta visibile come `<U+200B>` (verificato con una sonda).
+   - Esito: ok, con la riserva R-504-2.
+4. `tests/test_unit_notte.py:2111` — test del messaggio modificato in /clear: nessuna pulizia, risposta «messaggio nuovo», nessun «sta scrivendo».
+   - `tests/test_unit_notte.py:1987` copre «/clear\nfoo» e «/clear@GasBot\r\nx».
+   - `tests/test_unit_notte.py:2094` copre il recap vuoto e quello fatto solo di spazi.
+   - Esito: ok.
+
+Ho rilanciato `pytest -q tests/test_unit_notte.py -k "clear or recap"`: 18 passed. Le suite intere (1031 PASS e 2159 passed) le ho prese dalle tue misure, non le ho rilanciate.
+
+Antipattern del Wall of Shame: nessuno. Niente slicing della history, niente output simulato dei tool, cap del loop e `_get_window` non toccati. I percorsi di errore restano fail-safe: `comando_clear` ha il suo try/except e `_handle_update` intercetta tutto.
+
+**Riserve**
+- **R-504-1 (BASSA)**: `/notte` (`comando_giro`, `modules/telegram/bot.py:725`) parte ancora da un `edited_message`. È la stessa classe di problema del V-1 bot: modificare un vecchio messaggio in «/notte» lancia un giro. È fuori da questo diff, va tracciata.
+- **R-504-2 (COSMETICA)**: `str.strip` toglie anche NBSP e i caratteri di controllo \x1c-\x1f. Un recap fatto solo di quei caratteri appare come «(recap vuoto)» invece di mostrarli visibili come `<U+XXXX>`. Nessun danno pratico.
+
+**Rischio escluso**
+Non ho verificato il comportamento reale di Telegram con `edited_message` sul bot vivo (se e quando lo consegna dopo `allowed_updates`): in dev non si riproduce, ho visto solo update finti. Non ho rilanciato le suite intere.
+
+Memoria aggiornata: riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con lo script (e02c8bf). Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - `python tests/test_unit_kernel.py`: `=== RIEPILOGO: 1031 PASS, 0 FAIL ===` (invariato: gas.py non toccato).
-- `python -m pytest -q tests/`: main `2140 passed, 1 skipped` → ramo `2159 passed, 1 skipped` (+19 test di `/clear` in `tests/test_unit_notte.py`). Nessun FAIL.
+- `python -m pytest -q tests/`: main `2140 passed, 1 skipped` → ramo `2159 passed, 1 skipped` (+19 test di `/clear` in `tests/test_unit_notte.py`; dopo 17adcfb stessi numeri, test aggiornati). Nessun FAIL.
 
 ## §6 STATO CI
 
 ```
-completed	skipped	Turno di notte 2026-10-25: /clear da Telegram (coda voce 3)	verifica-bot	notte/2026-10-25	pull_request_target	40141304878	7s	2026-10-24T23:05:44Z
-in_progress		feat(telegram): /clear da Telegram come il clear del terminale (coda …	CI	notte/2026-10-25	push	40141292710	44s	2026-10-24T23:05:34Z
-completed	success	R2 via B fetta 3: costo su ogni errore, conto sotto lucchetto, doctor del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40135227128	3m17s	2026-10-24T21:40:05Z
+completed	success	Turno di notte 2026-10-25: /clear da Telegram (coda voce 3)	verifica-bot	notte/2026-10-25	pull_request_target	40141412196	3m35s	2026-10-24T23:07:16Z
+completed	skipped	Turno di notte 2026-10-25: /clear da Telegram (coda voce 3)	verifica-bot	notte/2026-10-25	pull_request_target	40141402639	6s	2026-10-24T23:07:09Z
 ```
 
 Mappatura commit→run:
 - `3ba317f`, `c5faa56`: nessuna run su questo SHA (pushati insieme a `ceeed81`).
-- `ceeed81` → run CI 40141292710 (push), in corso alla scrittura dell'handoff.
+- `ceeed81` → run CI 40141292710 (push).
+- `3cfdc29` → run CI 40141400864 success (`unit-suite`, `handoff-check`); `verifica-bot` 40141412196 success (bot APPROVATO CON RISERVE).
+- `e02c8bf`, `17adcfb`: nessuna run su questo SHA (pushati insieme al commit di fine-task).
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-503-1 (chat Notte)** BASSA: pezzo da 4000 contato in caratteri, non in unità UTF-16.
 - **R-503-2 (chat Notte)** COSMETICA: lezione piena di invisibili tagliata con «…» su Telegram.
-- Non provato col Telegram vero (indicatore «sta scrivendo» durante una riflessione lunga).
+- **R-504-1 (chat Notte)** BASSA preesistente: `/notte` e `/compito` partono ancora da un messaggio modificato.
+- **R-504-2 (chat Notte)** COSMETICA: recap di soli NBSP/caratteri di controllo mostrato come «(recap vuoto)».
+- V-2 bot #263, seconda parte: «sta scrivendo» mandato una volta sola durante una riflessione lunga.
+- Verifica esterna #263 ([commento](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390800357)) APPROVATO CON RISERVE: V-1 chiusa in 17adcfb; V-2 = R-503-1/2; V-3 COSMETICA (data della sessione in ora italiana, §6 datato) nessuna azione.
+- Non provato col Telegram vero.
