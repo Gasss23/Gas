@@ -1683,7 +1683,10 @@ class GasKernel:
         conto è illeggibile: usato=None), altrimenti None. Tetto GAS_CLAUDE_CLI_TETTO_USD,
         default 4.60: il 20% al giorno del limite settimanale deciso dall'operatore,
         espresso nel costo equivalente che la CLI riporta (`total_cost_usd`). È una
-        misura indicativa: il limite vero del piano non è in dollari."""
+        misura indicativa: il limite vero del piano non è in dollari.
+        Limite dichiarato (V-1 bot #262): il controllo avviene PRIMA della chiamata e fuori
+        dal lucchetto (che copre solo la registrazione dopo): due processi in parallelo
+        possono passare insieme e sforare il tetto di al massimo una chiamata ciascuno."""
         tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
         if getattr(self, "_forte_senza_conto", False):  # R-502-2: un consumo non registrato
             return (None, tetto)

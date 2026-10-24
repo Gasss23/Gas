@@ -318,3 +318,15 @@ def test_token_enormi_non_rompono_il_costo():
         except RuntimeError as err:
             costo = err.costo_equivalente_usd
         assert 0 < costo < float("inf")
+
+
+def test_costo_grande_conta_e_non_si_scarta():
+    """V-1 ve #262: un total_cost_usd ≥ 1000 (o infinito) conta, limitato al massimo."""
+    from brains.claude_cli import _costo_equivalente, _COSTO_MASSIMO
+    assert _costo_equivalente({"total_cost_usd": 1000}, 10, 10, "claude-opus-5-5") == 1000.0
+    assert _costo_equivalente({"total_cost_usd": 5e7}, 10, 10, "claude-sonnet-5-5") == _COSTO_MASSIMO
+    assert _costo_equivalente({"total_cost_usd": float("inf")}, 0, 0, "x") == _COSTO_MASSIMO
+    assert _costo_equivalente({"total_cost_usd": 10 ** 400}, 0, 0, "x") == _COSTO_MASSIMO
+    # negativo o nan restano scartati: si usa la stima (col pavimento)
+    for v in (-5, float("nan")):
+        assert _costo_equivalente({"total_cost_usd": v}, 0, 0, "claude-sonnet-5-5") == 500 * 3 / 1e6
