@@ -1,17 +1,17 @@
-# ULTIMO REPORT — 2026-10-25 — R2 via B, fetta 5: ultime note sul costo chiuse
+# ULTIMO REPORT — 2026-10-25 sera — Punto di ripartenza della chat Motore
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta (vedi §0 dell'handoff): tocca il motore. Review #509 APPROVATO senza riserve: se anche il bot dà APPROVATO senza riserve, la regola di merge autonomo permette il merge da solo.
-2. Prima di accendere il forte: prova del login sul Mac (R-496-3).
-3. Ancora aperti: testo nuovo dell'attività di notte da chiedere nella sessione fissa; 3 lezioni da approvare sul Mac.
+1. Prova del login sul Mac per il cervello forte (R-496-3), comando in `reports/stato_progetto.md` → Prossimi passi → RIPARTENZA.
+2. Testo nuovo dell'attività di notte da chiedere nella sessione fissa.
+3. 3 lezioni da approvare o rifiutare sul Mac.
+4. Merge della PR di questo salvataggio (solo documenti).
 
 ## Esito
 
-- **R-507-1 (negativo enorme contato come 1e6)**: `FATTA`, ora è scartato come gli altri negativi.
-- **V-2 bot #264, primo giro (il massimo valeva per la stima solo grazie ai limiti attuali)**: `FATTA`, `min(..., _COSTO_MASSIMO)` esplicito.
-- **V-2 bot #264, secondo giro (nessun test della catena completa)**: `FATTA`, T99q.
-- **Test**: `tests/test_unit_claude_cli.py` 24 passed; kernel 1040 PASS 0 FAIL; pytest completo 2173 passed, 1 skipped.
+- **Merge delle PR #258, #259, #260, #262, #264, #265** (24–25 ottobre, R2 via B fette 2–5, turno di notte, tre consigli): `FATTA` su richiesta dell'operatore.
+- **Punto di ripartenza scritto in `stato_progetto.md`**: `FATTA` (la chat viene ripulita con /clear).
+- **Fetta di accensione del cervello forte**: `DEFERITA — dopo la prova del login sul Mac`.
 
 ## Anomalie
 
