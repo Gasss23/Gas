@@ -1022,6 +1022,10 @@ def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     # «<noscript» si cerca senza guardare maiuscole e minuscole (R-ve261-3, V-1 ve #261)
     ("<p>A</p><template><template><NOSCRIPT></template></NOSCRIPT><svg></template>SEGRETO", ("A",)),
     ("<p>A</p><template><svg></template><template><NoScript></template></noscript>SEGRETO", ("A",)),
+    # ...anche con attributi e in fondo a una pagina lunga: il flag guarda il testo intero (V-3 ve #268)
+    ("<p>A</p><template><template><noscript class=x></template></noscript><svg></template>SEGRETO", ("A",)),
+    ("<p>A</p>" + "x" * 3000 + "<template><template><noscript></template></noscript><svg></template>SEGRETO",
+     ("A",)),
     # un «</template>» in più a pila vuota non fa scendere il contatore sotto zero: il template
     # aperto dopo si chiude ancora con la regola (R-ve261-6, V-4 ve #261)
     ("<p>A</p></template><template><svg></template>VIS", ("A", "VIS")),
@@ -1046,6 +1050,13 @@ def test_estrattore_senza_flag_noscript_va_nel_verso_sicuro():
     e.feed("<p>A</p><template><svg></template>VIS")
     e.close()
     assert not e._contesto.incerta and "VIS" in "".join(e.pezzi)
+    # anche _Contesto da solo (V-1 bot #268)
+    for flag, incerta in (((), True), ((False,), False)):
+        c = web._Contesto({}, *flag)
+        c.apri("template", True)
+        c.apri("svg", True)
+        c.chiudi("template")
+        assert c.incerta is incerta and (c.pila == []) is not incerta
 
 
 @pytest.mark.parametrize("pagina", ["<p>PRIMA</p><script/>RESTO", "<p>PRIMA</p><iframe src=x />RESTO",
