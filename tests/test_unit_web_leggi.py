@@ -1019,6 +1019,13 @@ def test_grezzi_autochiusi_aprono_il_testo_grezzo(pagina):
     ("<p>A</p><template><svg><template>X</template>SEGRETO", ("A",)),
     # anche un noscript già chiuso spegne la regola: si perde VIS come su main (verso sicuro)
     ("<p>A</p><template><noscript></noscript><svg></template>SEGRETO", ("A",)),
+    # «<noscript» si cerca senza guardare maiuscole e minuscole (R-ve261-3, V-1 ve #261)
+    ("<p>A</p><template><template><NOSCRIPT></template></NOSCRIPT><svg></template>SEGRETO", ("A",)),
+    ("<p>A</p><template><svg></template><template><NoScript></template></noscript>SEGRETO", ("A",)),
+    # un «</template>» in più a pila vuota non fa scendere il contatore sotto zero: il template
+    # aperto dopo si chiude ancora con la regola (R-ve261-6, V-4 ve #261)
+    ("<p>A</p></template><template><svg></template>VIS", ("A", "VIS")),
+    ("<p>A</p></template></template><template><math><mi>SEGRETO</template>VIS", ("A", "VIS")),
 ])
 def test_chiusura_del_template_sopra_svg_math(pagina, visibili):
     t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
@@ -1026,6 +1033,19 @@ def test_chiusura_del_template_sopra_svg_math(pagina, visibili):
     assert "SEGRETO" not in t and all(v in t for v in visibili), t
     r = web._testo_senza_parser(pagina)
     assert "SEGRETO" not in r and all(v in r for v in visibili), r
+
+
+def test_estrattore_senza_flag_noscript_va_nel_verso_sicuro():
+    """Senza il flag di _componi la regola R-469-1 è spenta come nelle pagine con noscript:
+    la pila diventa incerta e il resto si nasconde (R-511-1, R-512-1)."""
+    e = web._Estrattore()
+    e.feed("<p>A</p><template><svg></template>SEGRETO")
+    e.close()
+    assert e._contesto.incerta and "SEGRETO" not in "".join(e.pezzi)
+    e = web._Estrattore(con_noscript=False)
+    e.feed("<p>A</p><template><svg></template>VIS")
+    e.close()
+    assert not e._contesto.incerta and "VIS" in "".join(e.pezzi)
 
 
 @pytest.mark.parametrize("pagina", ["<p>PRIMA</p><script/>RESTO", "<p>PRIMA</p><iframe src=x />RESTO",
@@ -1985,7 +2005,7 @@ def test_ripiego_non_mostra_niente_che_il_parser_nasconde():
         pagina = "".join(pezzi)
         if "<!-->" in pagina or "<!--->" in pagina:
             continue
-        estrattore = web._Estrattore()
+        estrattore = web._Estrattore(con_noscript=web._NOSCRIPT.search(pagina) is not None)
         estrattore.feed(pagina)
         estrattore.close()
         visibili = set(re.findall(r"Q\d+Z", "".join(estrattore.pezzi) + " " + " ".join(estrattore.titolo)))
