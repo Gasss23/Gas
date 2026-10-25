@@ -203,16 +203,30 @@ def test_limite_in_testo_semplice_vale_come_quota():
 def test_costo_equivalente():
     c = ClaudeCliClient(runner=_runner(dict(_ok({"testo": "x", "chiamate": []}), total_cost_usd=0.25), {}))
     assert c.chat.completions.create(model="m", messages=_msgs()).usage.costo_equivalente_usd == 0.25
-    # senza total_cost_usd: stima prudente dai token (125 in × 3 + 7 out × 15, per milione)
-    c = ClaudeCliClient(runner=_runner(_ok({"testo": "x", "chiamate": []}), {}))
-    stima = c.chat.completions.create(model="m", messages=_msgs()).usage.costo_equivalente_usd
-    assert abs(stima - (125 * 3 + 7 * 15) / 1_000_000) < 1e-12
-    # V-1 bot/ve #258: 0 o un booleano non valgono, si usa la stima (altrimenti tetto mai)
-    for finto in (0, 0.0, True):
-        c = ClaudeCliClient(runner=_runner(dict(_ok({"testo": "x", "chiamate": []}),
+    # senza total_cost_usd: stima dai token col prezzo della famiglia (Sonnet 3/15 $/M)
+    grande = {"input_tokens": 10_000, "output_tokens": 1_000}
+    c = ClaudeCliClient(runner=_runner(_ok({"testo": "x", "chiamate": []}, usage=grande), {}))
+    stima = c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs()).usage.costo_equivalente_usd
+    assert abs(stima - (10_000 * 3 + 1_000 * 15) / 1_000_000) < 1e-12
+    # V-1 bot/ve #258: 0, booleano o costo minuscolo non valgono; stima o pavimento
+    for finto in (0, 0.0, True, 1e-12):
+        c = ClaudeCliClient(runner=_runner(dict(_ok({"testo": "x", "chiamate": []}, usage=grande),
                                                 total_cost_usd=finto), {}))
-        v = c.chat.completions.create(model="m", messages=_msgs()).usage.costo_equivalente_usd
-        assert abs(v - stima) < 1e-12, finto
+        v = c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs()).usage.costo_equivalente_usd
+        assert v >= 500 * 3 / 1_000_000, finto
+        if finto != 1e-12:
+            assert abs(v - stima) < 1e-12, finto
+
+
+def test_prezzo_per_famiglia_e_pavimento():
+    """V-1 bot #258: la stima segue il modello; famiglia sconosciuta = la più cara."""
+    from brains.claude_cli import _costo_equivalente
+    assert _costo_equivalente({}, 1_000_000, 0, "claude-haiku-5-5") == 1.0
+    assert _costo_equivalente({}, 1_000_000, 0, "claude-sonnet-5-5") == 3.0
+    assert _costo_equivalente({}, 1_000_000, 0, "claude-opus-5-5") == 15.0
+    assert _costo_equivalente({}, 1_000_000, 0, "modello-nuovo") == 15.0
+    # pavimento: nessuna chiamata conta meno di 500 token d'ingresso
+    assert _costo_equivalente({}, 0, 0, "claude-sonnet-5-5") == 500 * 3 / 1_000_000
 
 
 def test_anche_gli_errori_portano_il_costo():
@@ -223,6 +237,29 @@ def test_anche_gli_errori_portano_il_costo():
         with pytest.raises(RuntimeError) as e:
             ClaudeCliClient(runner=_runner(dati, {})).chat.completions.create(model="m", messages=_msgs())
         assert e.value.costo_equivalente_usd == atteso
+
+    # R-497-1: anche i rami d'errore dopo una risposta pagata portano il costo
+    pagata = {"total_cost_usd": 0.2, "usage": {"input_tokens": "molti"}}
+    for out in ({"testo": "x", "chiamate": [{"argomenti": {}}]},
+                {"testo": "x", "chiamate": [{"nome": "a", "argomenti": 1}]}):
+        with pytest.raises(RuntimeError) as e:
+            ClaudeCliClient(runner=_runner(dict(_ok(out), **pagata), {})) \
+                .chat.completions.create(model="m", messages=_msgs())
+        assert e.value.costo_equivalente_usd == 0.2
+    # `usage` non numerico in una risposta riuscita: niente eccezione, token a 0
+    r = ClaudeCliClient(runner=_runner(dict(_ok({"testo": "x", "chiamate": []}), **pagata), {})) \
+        .chat.completions.create(model="m", messages=_msgs())
+    assert r.usage.costo_equivalente_usd == 0.2 and r.usage.prompt_tokens == 0
+
+    def non_json(cmd, stdin, cwd, env, timeout):
+        return subprocess.CompletedProcess(cmd, 1, stdout="boh", stderr="")
+
+    def lista(cmd, stdin, cwd, env, timeout):
+        return subprocess.CompletedProcess(cmd, 0, stdout="[1]", stderr="")
+    for run in (non_json, lista):
+        with pytest.raises(RuntimeError) as e:
+            ClaudeCliClient(runner=run).chat.completions.create(model="m", messages=_msgs())
+        assert e.value.costo_equivalente_usd > 0
 
     def lento(cmd, stdin, cwd, env, timeout):
         raise subprocess.TimeoutExpired(cmd, timeout)
@@ -246,3 +283,57 @@ def test_uscita_non_json_cli_assente_e_tempo_scaduto():
         raise subprocess.TimeoutExpired(cmd, timeout)
     with pytest.raises(RuntimeError, match="entro 7s"):
         ClaudeCliClient(timeout=7, runner=lento).chat.completions.create(model="m", messages=_msgs())
+
+
+def test_eccezione_imprevista_diventa_errore_con_costo(monkeypatch):
+    """R-502-3: un'eccezione non prevista dopo una risposta JSON resta un errore del
+    rung (RuntimeError, non QUOTA) e porta il costo della risposta."""
+    c = ClaudeCliClient(runner=_runner(dict(_ok({"testo": "x", "chiamate": []}), total_cost_usd=0.3), {}))
+
+    def rotto(*a, **k):
+        raise KeyError("x")
+    monkeypatch.setattr(c, "_risposta", rotto)
+    with pytest.raises(RuntimeError, match="^claude-cli: risposta non valida") as e:
+        c.chat.completions.create(model="m", messages=_msgs())
+    assert e.value.costo_equivalente_usd == 0.3
+
+
+def test_token_enormi_non_rompono_il_costo():
+    """V-1 ve #262: un `usage` con interi enormi non fa perdere il costo."""
+    enorme = {"input_tokens": 10 ** 400, "output_tokens": 10 ** 400}
+    r = ClaudeCliClient(runner=_runner(_ok({"testo": "x", "chiamate": []}, usage=enorme), {})) \
+        .chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert 0 < r.usage.costo_equivalente_usd < float("inf")
+    with pytest.raises(RuntimeError) as e:
+        ClaudeCliClient(runner=_runner({"is_error": True, "subtype": "error", "usage": enorme}, {})) \
+            .chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert 0 < e.value.costo_equivalente_usd < float("inf")
+    # #505: lo stesso valore ostile in total_cost_usd, su entrambi i rami
+    for dati in (dict(_ok({"testo": "x", "chiamate": []}), total_cost_usd=10 ** 400),
+                 {"is_error": True, "subtype": "error", "total_cost_usd": 10 ** 400}):
+        try:
+            r = ClaudeCliClient(runner=_runner(dati, {})) \
+                .chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+            costo = r.usage.costo_equivalente_usd
+        except RuntimeError as err:
+            costo = err.costo_equivalente_usd
+        assert 0 < costo < float("inf")
+
+
+def test_costo_grande_conta_e_non_si_scarta():
+    """V-1 ve #262: un total_cost_usd ≥ 1000 (o infinito) conta, limitato al massimo."""
+    from brains.claude_cli import _costo_equivalente, _COSTO_MASSIMO
+    assert _costo_equivalente({"total_cost_usd": 1000}, 10, 10, "claude-opus-5-5") == 1000.0
+    assert _costo_equivalente({"total_cost_usd": 5e7}, 10, 10, "claude-sonnet-5-5") == _COSTO_MASSIMO
+    assert _costo_equivalente({"total_cost_usd": float("inf")}, 0, 0, "x") == _COSTO_MASSIMO
+    assert _costo_equivalente({"total_cost_usd": 10 ** 400}, 0, 0, "x") == _COSTO_MASSIMO
+    # negativo o nan restano scartati: si usa la stima (col pavimento)
+    for v in (-5, float("nan"), float("-inf"), -10 ** 400):  # R-507-1
+        assert _costo_equivalente({"total_cost_usd": v}, 0, 0, "claude-sonnet-5-5") == 500 * 3 / 1e6
+
+
+def test_la_stima_non_supera_il_costo_massimo(monkeypatch):
+    """V-2 bot #264: il massimo vale anche per la stima dai token, non solo per caso."""
+    import brains.claude_cli as cc
+    monkeypatch.setattr(cc, "_TOKEN_MASSIMI", 10 ** 15)
+    assert cc._costo_equivalente({}, 10 ** 15, 10 ** 15, "claude-opus-5-5") == cc._COSTO_MASSIMO

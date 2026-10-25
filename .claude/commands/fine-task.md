@@ -128,7 +128,7 @@ Tutte le fette devono comparire qui — incluse quelle saltate.
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
-<output GREZZO di `git diff --stat ${BASE}..HEAD`>
+<output GREZZO di `git diff --stat ${BASE}..HEAD`, salvo la regola «n/d» qui sotto per la riga di reports/handoff.md e la riga di totale>
 ```
 
 **VINCOLI VERIFICATI DA CI (job handoff-check):**
@@ -216,7 +216,7 @@ NON includere nel commit file del motore (gas.py, brains/, modules/, tests/) —
 Esegui ora, con i file di report già in stage:
 
 ```bash
-git -c core.quotePath=false diff --cached --stat=400 ${BASE}     # ← va in §2 di handoff.md (nomi grezzi, mai troncati: nota b review #143)
+git -c core.quotePath=false diff --cached --stat=400 ${BASE}     # ← va in §2 di handoff.md (nomi grezzi, mai troncati: nota b review #143; poi regola «n/d» del §2)
 git log --oneline ${BASE}..HEAD      # ← va in §3 di handoff.md
 gh run list -L 3                     # ← va in §6 di handoff.md (se gh disponibile; altrimenti "CI NON VERIFICATA (gh assente)")
 ```
