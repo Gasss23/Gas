@@ -147,6 +147,7 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
           - nome: rassegna_lead        # [a-z0-9_-], max 40, unico
             prompt: "Fai il punto sui lead attivi ..."
             attivo: true               # opzionale, default true
+            cervello: forte            # opzionale: solo il cervello forte (R2), mai i gratuiti
 
     Mai eccezioni: ogni problema diventa un avviso e la voce viene saltata."""
     avvisi: List[str] = []
@@ -196,7 +197,15 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
         if len(prompt) > MAX_PROMPT_CHARS:
             avvisi.append(f"compito '{nome}': prompt oltre {MAX_PROMPT_CHARS} caratteri, saltato")
             continue
-        compiti.append({"nome": nome, "prompt": prompt.strip()})
+        cervello = v.get("cervello")
+        if cervello is not None and cervello != "forte":
+            # Fail-closed: un valore sbagliato non deve far finire il lavoro ai gratuiti
+            avvisi.append(f"compito '{nome}': cervello può essere solo 'forte', saltato")
+            continue
+        voce = {"nome": nome, "prompt": prompt.strip()}
+        if cervello:
+            voce["cervello"] = cervello
+        compiti.append(voce)
     if len(compiti) > MAX_COMPITI:
         avvisi.append(f"{len(compiti)} compiti attivi: eseguiti solo i primi {MAX_COMPITI}")
         compiti = compiti[:MAX_COMPITI]
@@ -254,7 +263,8 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
         kernel.history = []
         kernel.db_path = notte_dir / f"storia_{nome}.json"
         prompt = compito["prompt"] + (NOTA_RIPRESA if compito.get("ripresa") else "")
-        gen = kernel.run_turn(prompt)
+        gen = (kernel.run_turn(prompt, cervello="forte") if compito.get("cervello") == "forte"
+               else kernel.run_turn(prompt))
         for ev in gen:
             tipo = ev.get("type") if isinstance(ev, dict) else None
             if tipo == "tool_res":

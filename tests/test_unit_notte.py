@@ -2172,3 +2172,28 @@ def test_clear_da_telegram_con_la_riflessione_vera(monkeypatch, dirs):
     assert "Lezioni proposte" in primo and "LEZIONE-SEGRETA uno" in primo
     assert recap == "│ Obiettivo: contare. Stato: fatto, 42."
     assert len(k.memory.lista_lezioni()) == 2
+
+
+def test_cervello_forte_dal_catalogo(dirs):
+    """Accensione R2: `cervello: forte` arriva a run_turn; valore sbagliato → saltato
+    (fail-closed: il lavoro non deve finire ai gratuiti); senza il campo, run_turn come prima."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  "compiti:\n  - nome: a\n    prompt: p\n    cervello: forte\n"
+                  "  - nome: b\n    prompt: p\n    cervello: debole\n"
+                  "  - nome: c\n    prompt: p\n")
+    compiti, avvisi = carica_catalogo(cat, root)
+    assert [c.get("cervello") for c in compiti] == ["forte", None]
+    assert any("'b'" in a and "forte" in a for a in avvisi)
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append(kw)
+            yield {"type": "final", "content": "ok"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
+    assert visti == [{"cervello": "forte"}, {}]

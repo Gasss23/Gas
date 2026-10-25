@@ -10961,6 +10961,26 @@ try:
             check("T99q costo massimo registrato, conto leggibile e tetto che scatta",
                   _k99._uso_claude_cli() == _CM99
                   and _k99._tetto_claude_cli_superato() == (_CM99, 4.60), str(_k99._uso_claude_cli()))
+            # V-1 bot #265: la stessa catena passando da run_turn, con la CLI finta che
+            # riporta un costo enorme → conto al massimo, turno dopo fermato dal tetto
+            _uso99.unlink()
+            _reg99r = []
+            def _cli_caro99(timeout=None):
+                def _run(cmd, stdin, cwd, env, t):
+                    _reg99r.append(1)
+                    return _sp99.CompletedProcess(cmd, 0, stdout=json.dumps({
+                        "type": "result", "subtype": "success", "is_error": False,
+                        "structured_output": {"testo": "caro", "chiamate": []},
+                        "total_cost_usd": 10 ** 400}), stderr="")
+                return _CCC99(timeout=timeout, binario="claude", runner=_run)
+            gas.ClaudeCliClient = _cli_caro99
+            _ev99r = list(_k99.run_turn("ciao", cervello="forte"))
+            _ev99r2 = list(_k99.run_turn("ancora", cervello="forte"))
+            check("T99r V-1 bot #265: costo enorme via run_turn → conto al massimo, tetto che ferma il turno dopo",
+                  [e["content"] for e in _ev99r if e["type"] == "final"] == ["caro"]
+                  and _k99._uso_claude_cli() == _CM99 and len(_reg99r) == 1
+                  and any("Cervello forte fermo" in e.get("content", "") for e in _ev99r2),
+                  str(_ev99r2)[:200])
             _uso99.unlink()
             _k99._registra_uso_claude_cli(0.25)
             # R-497-2: il doctor mostra il forte (spento, acceso, conto rovinato) senza chiamarlo

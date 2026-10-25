@@ -77,6 +77,10 @@ SCHEMA_RISPOSTA: Dict[str, Any] = {
 # Si cercano anche nell'uscita non JSON e in stderr (V-2 bot #256).
 _SEGNALI_LIMITE = ("usage limit", "rate limit", "rate_limit", "weekly limit",
                    "5-hour limit", "limit reached", "limite di utilizzo")
+# Login dell'abbonamento scaduto o mancante (prova sul Mac del 25 ottobre: subtype
+# «success» con is_error). Errore KO con istruzione chiara, MAI QUOTA.
+_SEGNALI_LOGIN = ("failed to authenticate", "oauth session", "oauth token", "not logged in", "please run /login",
+                  "invalid api key", "authentication_error")
 
 _ISTRUZIONI_FORMATO = (
     "\n\n# FORMATO DELLA RISPOSTA (obbligatorio)\n"
@@ -211,7 +215,10 @@ def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int,
             # V-1 ve #262: un costo grande (anche ≥ 1000 o infinito) NON si scarta: conta,
             # limitato a _COSTO_MASSIMO, e fa scattare il tetto (fail-closed).
             return max(min(v, _COSTO_MASSIMO), pavimento)
-    stima = (max(0, entrata) * p_in + max(0, uscita) * p_out) / 1_000_000
+    # V-2 ve #265: token enormi passati direttamente non vanno in overflow
+    entrata = min(max(0, entrata), _TOKEN_MASSIMI)
+    uscita = min(max(0, uscita), _TOKEN_MASSIMI)
+    stima = (entrata * p_in + uscita * p_out) / 1_000_000
     return min(max(stima, pavimento), _COSTO_MASSIMO)  # V-2 bot #264: il massimo vale sempre
 
 
@@ -329,6 +336,12 @@ class ClaudeCliClient:
             # Nel messaggio (che finisce nel log) niente testo di Claude, che potrebbe
             # citare la conversazione (V-3 bot #256): solo il tipo d'errore.
             tipo = re.sub(r"[^a-z_]", "", str(dati.get("subtype") or "errore").lower())[:40]
+            # R-511-1: il limite (QUOTA) si controlla prima del login
+            if not _prefisso_limite(dati.get("result"), proc.stderr) and any(
+                    p in " ".join(str(t or "") for t in (dati.get("result"), proc.stderr)).lower()
+                    for p in _SEGNALI_LOGIN):
+                raise RuntimeError("claude-cli: login dell'abbonamento scaduto o mancante "
+                                   "(sul computer di Gas: `claude`, poi /login)")
             raise RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
                                + f"claude-cli: errore ({tipo or 'errore'})")
         out = dati.get("structured_output")

@@ -6017,7 +6017,12 @@ def main():
             if prompt == "rifletti":
                 _stampa_riflessione(kernel.rifletti())
                 continue
-            for event in kernel.run_turn(prompt):
+            # R2: «/forte <richiesta>» manda il turno al solo cervello forte (mai ai
+            # gratuiti); con la barra una frase normale non ci finisce per sbaglio (R-511-2)
+            cervello = None
+            if prompt.lower().startswith("/forte "):
+                cervello, prompt = "forte", prompt[7:].strip()
+            for event in kernel.run_turn(prompt, cervello=cervello):
                 if event["type"] == "final": print(f"\n{event['content']}\n")
                 elif event["type"] == "tool_res": print(f"  → {event['output'].strip()}")
                 elif event["type"] == "error": print(f"\n✗ {event['content']}\n")
