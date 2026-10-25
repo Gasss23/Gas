@@ -10954,6 +10954,15 @@ try:
                   and _k99._tetto_claude_cli_superato() == (None, 4.60), f"{_dt99:.2f}s")
             _k99._forte_senza_conto = False
             del _k99.LOCK_STORIA_SEC
+            # V-2 bot #264: catena completa costo massimo → conto → tetto che scatta
+            from brains.claude_cli import _COSTO_MASSIMO as _CM99
+            _uso99.unlink()
+            _k99._registra_uso_claude_cli(_CM99)
+            check("T99q costo massimo registrato, conto leggibile e tetto che scatta",
+                  _k99._uso_claude_cli() == _CM99
+                  and _k99._tetto_claude_cli_superato() == (_CM99, 4.60), str(_k99._uso_claude_cli()))
+            _uso99.unlink()
+            _k99._registra_uso_claude_cli(0.25)
             # R-497-2: il doctor mostra il forte (spento, acceso, conto rovinato) senza chiamarlo
             import io as _io99, contextlib as _cl99
             for _kk in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "GAS_OLLAMA_URL"):

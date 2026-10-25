@@ -1,11 +1,10 @@
-# DIFF SESSIONE — 2026-10-24 (chat Motore, R2 via B fetta 4)
+# DIFF SESSIONE — 2026-10-25 (chat Motore, R2 via B fetta 5)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `brains/claude_cli.py`: un costo riportato grande conta (massimo `_COSTO_MASSIMO` = 1e6) invece di essere scartato.
-- `gas.py`: docstring del tetto con il limite dei processi in parallelo.
-- `tests/test_unit_claude_cli.py`: test dei costi grandi.
-- `.claude/agents/memoria_revisore.md`: riga #507.
-- `reports/stato_progetto.md`: fetta 4 e R-507-1.
+- `brains/claude_cli.py`: negativo enorme scartato; massimo esplicito sulla stima dai token.
+- `tests/test_unit_claude_cli.py`: casi -inf, -10**400; test del massimo sulla stima.
+- `tests/test_unit_kernel.py`: T99q (catena costo massimo → conto → tetto).
+- `.claude/agents/memoria_revisore.md`: riga #509.
+- `reports/stato_progetto.md`: R-507-1 chiusa.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
-- Merge di origin/main (PR #261 chat Mani): conflitti solo nei log e nella memoria (review #508).

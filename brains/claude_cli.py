@@ -203,13 +203,16 @@ def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int,
     if isinstance(v, (int, float)) and not isinstance(v, bool):
         try:
             v = float(v)
-        except OverflowError:  # un int enorme (10**400): conta come il massimo (#505)
-            v = float("inf")
+        except OverflowError:
+            # Un int enorme: positivo conta come il massimo (#505), negativo si scarta
+            # come gli altri negativi (R-507-1).
+            v = float("inf") if v > 0 else float("nan")
         if v == v and v > 0.0:
             # V-1 ve #262: un costo grande (anche ≥ 1000 o infinito) NON si scarta: conta,
             # limitato a _COSTO_MASSIMO, e fa scattare il tetto (fail-closed).
             return max(min(v, _COSTO_MASSIMO), pavimento)
-    return max((max(0, entrata) * p_in + max(0, uscita) * p_out) / 1_000_000, pavimento)
+    stima = (max(0, entrata) * p_in + max(0, uscita) * p_out) / 1_000_000
+    return min(max(stima, pavimento), _COSTO_MASSIMO)  # V-2 bot #264: il massimo vale sempre
 
 
 def _token(dati: Dict[str, Any]) -> Tuple[int, int]:
