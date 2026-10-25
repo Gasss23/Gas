@@ -1,17 +1,14 @@
-# ULTIMO REPORT — 2026-10-25 — Turno di notte: `/clear` da Telegram (voce 3 di `coda_notte.md`)
+# ULTIMO REPORT — 2026-10-25 — Accensione del cervello forte (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #263 (https://github.com/Gasss23/Gas/pull/263): il turno di notte non mergia mai.
-2. Prova dal vero di `/clear` col bot acceso.
-3. Testo dell'attività programmata: la chat Motore ha chiesto il cambio (24 ottobre); serve la richiesta dell'operatore in questa sessione.
+1. Merge della PR #269 (https://github.com/Gasss23/Gas/pull/269), secondo CLAUDE.md §10 dopo l'esito del bot.
+2. Sul Mac: rifare il login dell'abbonamento (`claude`, poi `/login`), lanciare la prova del login, poi mettere `GAS_CLAUDE_CLI=1` nel `.env` (passi in `reports/r2_regole_abbonamento.md`).
 
 ## Esito
-- **Voce 3 — `/clear` su Telegram**: FATTA. Review #502 APPROVATO CON RISERVE (R-502-1 MEDIA, R-502-2/3 BASSE, tutte chiuse), #503 APPROVATO CON RISERVE (R-503-1 BASSA, R-503-2 COSMETICA aperte). Secondo giro dopo bot e verifica esterna su #263 (entrambi APPROVATO CON RISERVE): #504 APPROVATO CON RISERVE, aperte R-504-1 BASSA (`/notte` da messaggio modificato, preesistente) e R-504-2 COSMETICA. pytest 2140 → 2159 passed; kernel 1031 PASS 0 FAIL.
-- **Voci 4 e 5**: SALTATE — toccano il motore, al massimo una voce del motore a notte.
-- **Voci 6–8**: SALTATE — vengono dopo in ordine; le voci solo-documenti non ci sono.
+- **PR #266**: già mergiata dall'operatore (bot success, CI verde).
+- **Prova del login sul Mac (R-496-3)**: KO — la CLI ha risposto «Failed to authenticate: OAuth session expired and could not be refreshed». Serve un nuovo `/login` (👤).
+- **Fetta di accensione**: FATTA (PR #269). Login scaduto → messaggio chiaro (limite controllato prima, R-511-1); clamp dei token dentro `_costo_equivalente` (V-2 ve #265); T99r (V-1 bot #265); tolto il monkeypatch inutile (V-2 bot #265); `cervello: forte` nel catalogo notturno (fail-closed); `/forte` nel terminale (R-511-2); setup del Mac documentato. Review #511 APPROVATO CON RISERVE (chiuse), #512 APPROVATO. Kernel 1041 PASS 0 FAIL; claude_cli + notte 182 passed.
+- **Testo dell'attività di notte, 3 lezioni, backup iCloud**: DEFERITE — azioni dell'operatore.
 
 ## Anomalie
-- Kernel: CI 1037 PASS 0 FAIL, misura locale nel cloud 1031 PASS 0 FAIL (V-1 bot #263 bis, differenza non spiegata).
-- Terzo giro bot/verifica esterna: APPROVATO CON RISERVE, solo BASSE, tracciate in `stato_progetto.md`.
-- Nessuna. Non provato col Telegram vero (nessuna credenziale nel cloud).
-- Dettaglio: `reports/report_notte.md`.
+- `gh` nel cloud non è autenticato: PR creata con lo strumento GitHub; stato CI letto dallo stesso strumento.

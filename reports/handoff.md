@@ -1,215 +1,115 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-25 — Turno di notte: `/clear` da Telegram (voce 3 di `reports/coda_notte.md`)
+**Sessione:** 2026-10-25 sera — Accensione del cervello forte (chat Motore)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #263 (https://github.com/Gasss23/Gas/pull/263). Numero e URL dalla risposta JSON di `gh api -X POST repos/Gasss23/Gas/pulls` (GraphQL non disponibile). Il turno di notte non mergia mai.
-2. Prova dal vero: bot acceso (`python3 gas.py telegram`), qualche messaggio, poi `/clear`.
-3. Testo dell'attività programmata «Turno di notte Gas»: la chat Motore ha chiesto il cambio il 24 ottobre riferendo un'approvazione dell'operatore; non applicato, serve la richiesta dell'operatore in questa sessione.
+1. Merge della PR #269 (https://github.com/Gasss23/Gas/pull/269). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge solo secondo CLAUDE.md §10.
+2. Sul Mac: `/login` dell'abbonamento Max di Gas (il login era scaduto), prova del login, `GAS_CLAUDE_CLI=1` nel `.env` (`reports/r2_regole_abbonamento.md`).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Voce 3, `/clear` su Telegram**: `FATTA` — `modules/telegram/bot.py` + 19 test in `tests/test_unit_notte.py`; review #502 e #503 APPROVATO CON RISERVE.
-- **Voci 4 e 5**: `SALTATA — toccano il motore: al massimo una voce del motore a notte`.
-- **Voci 6–8**: `SALTATA — dopo in ordine; nessuna voce solo-documenti da aggiungere`.
+- **Fetta 0 — Esito della PR #266**: `FATTA` — già mergiata dall'operatore, bot success, CI verde.
+- **Fetta 1 — Prova del login sul Mac (R-496-3)**: `DEFERITA — login scaduto («OAuth session expired»), serve /login dell'operatore`.
+- **Fetta 2 — Accensione del forte**: `FATTA` — note di #265 chiuse, login scaduto chiaro, `cervello: forte` nel catalogo, `/forte` nel terminale, setup del Mac.
+- **Fette 3–5 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- modules/telegram/bot.py            | 143 +++++++++++++++++++++++++
- reports/coda_notte.md              |   2 +-
- reports/diff_sessione.md           |  13 ++++++-------
- reports/handoff.md                 | n/d (commit finale)
- reports/report_notte.md            |  35 ++++++++++++++-------------
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  23 +++++++++++------------
- tests/test_unit_notte.py           | 203 +++++++++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md  |  2 ++
+ brains/claude_cli.py                | 15 ++++++++++++++-
+ gas.py                              |  7 ++++++-
+ modules/notte/notte.py              | 14 ++++++++++++--
+ reports/diff_sessione.md            | 16 +++++++++-------
+ reports/handoff.md                  | n/d
+ reports/r2_regole_abbonamento.md    |  8 ++++++++
+ reports/stato_progetto.md           |  2 +-
+ reports/ultimo_report.md            | 19 ++++++++-----------
+ scripts/notte/catalogo_esempio.yaml |  3 +++
+ tests/test_unit_claude_cli.py       | 33 +++++++++++++++++++++++++++++----
+ tests/test_unit_kernel.py           | 20 ++++++++++++++++++++
+ tests/test_unit_notte.py            | 25 +++++++++++++++++++++++++
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d». Gli altri conteggi vengono da `git diff --cached --stat` preso prima del commit finale, con le barre accorciate; il diff reale della PR fa fede.
+NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile, riga di totale tolta.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-5d4c8a7 Merge origin/main (98ed619, solo report) in notte/2026-10-25 (PR #263)
-7cde91a docs(fine-task): handoff di #263 aggiornato dopo il merge di main (review #510, chat Mani)
-32c2690 Merge origin/main (a944b57) in notte/2026-10-25 (PR #263)
-4a96de8 docs(fine-task): turno di notte 2026-10-25 — note del terzo giro su #263 tracciate
-f23234f docs(fine-task): turno di notte 2026-10-25 — secondo giro, review #504 (PR #263)
-17adcfb fix(telegram): /clear solo da un messaggio nuovo, a capo come separatore, recap vuoto (note #263)
-e02c8bf chore(revisore): memoria review #504 — APPROVATO CON RISERVE
-3cfdc29 docs(fine-task): turno di notte 2026-10-25 — report, handoff, coda (voce 3 fatta, PR #263)
-ceeed81 feat(telegram): /clear da Telegram come il clear del terminale (coda notte voce 3)
-c5faa56 chore(revisore): memoria review #503 — APPROVATO CON RISERVE
-3ba317f chore(revisore): memoria review #502 — APPROVATO CON RISERVE
+1717413 feat(R2): accensione del cervello forte — login scaduto chiaro, cervello: forte nel catalogo notturno, /forte nel terminale
+c0917bb chore(revisore): memoria review #512 — APPROVATO
+861b33a chore(revisore): memoria review #511 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #502 (chat Notte) — sul primo diff staged, poi corretto
+Commit 1717413 — due giri sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
+
+### Review #511 (integrale)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #502 (chat Notte), ramo notte/2026-10-25. Ho esaminato il diff STAGED: modules/telegram/bot.py (+109) e tests/test_unit_notte.py (+152). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti che servivano) e la mia memoria.
-
-**Cosa ho controllato nel diff**
-1. `modules/telegram/bot.py:707` — il ramo `/clear` in `_handle_update` sta DOPO il controllo `chat_id not in allowed` e dopo `/notte`/`/compito`. Rischio esaminato: una chat non autorizzata che pulisce la cronologia, oppure `/clear` che arriva al modello. Esito: ok. `test_handle_update_clear` (tests/test_unit_notte.py:2077) prova che una chat non autorizzata non provoca né pulizia né invio, e il kernel finto solleva un errore se si arriva a `run_turn`.
-2. `modules/telegram/bot.py:652` — `esegui_clear` confrontato riga per riga con `_clear_con_riflessione` (contesto: gas.py:5860). L'ordine è lo stesso: riflessione solo se c'è storia e `riflessione_auto_attiva()`, poi `clear_history()` in ogni caso. Rischi esaminati: pulizia saltata se la riflessione fallisce, eccezione che risale (§9). Esito: ok. Due try separati, `log.warning` in entrambi, la pulizia fallita diventa «✗ Cronologia NON pulita». Ctrl-C qui non serve perché il bot non è interattivo.
-3. `modules/telegram/bot.py:580` — la regex segue lo schema di `_COMANDO_GIRO_RE`: destinatario @bot, argomenti separati da spazio o tab, che danno errore. Rischio esaminato: un falso positivo distruttivo. Esito: ok. «/clearx», «ciao /clear» e «/clear<NBSP>x» non attivano il comando. Ho provato a mano «/clear\nora»: ritorna None e quindi va al modello come testo normale (non distruttivo, stesso comportamento di /notte).
-4. `modules/telegram/bot.py:618` — `righe_riflessione` passa tutto il testo del modello per `rendi_visibili`/`tronca_visibile`. Le lezioni restano su una riga sola (a_capo=False). Il recap è indentato con «│ » e messo per ultimo. Il cambio di provider viene dichiarato (§8). Rischio esaminato: righe finte che imitano l'esito, caratteri bidi. Esito: ok, coperto da tests/test_unit_notte.py:2060.
-5. `tests/test_unit_notte.py:2094` — il round-trip §7 col kernel vero e il client finto fa due tool call, arriva alla risposta finale, poi `/clear` svuota la storia e cancella .gas_history.json, e il turno dopo riparte da user. Esito: ok (con la riserva R-502-2).
-6. Wall of Shame: il diff non ha slicing della history (l'unico taglio è sulla stringa del recap, `modules/telegram/bot.py:605`) e non simula output dei tool. Il cap delle 10 iterazioni, `_get_window` e i guardrail non sono toccati.
-
-**Riserve** (vanno messe in stato_progetto.md)
-- **R-502-1 MEDIA** — `modules/telegram/bot.py:583`: `_CLEAR_RECAP_MAX = 1200` taglia il recap. Il terminale invece lo mostra INTERO per decisione R-201-2/R-200-3 (gas.py:5838: «l'operatore vede SEMPRE cosa verrà dato come contesto»). Il recap salvato può arrivare a 4000 caratteri, quindi su Telegram l'operatore può non vedere fino a ~2800 caratteri di contesto che verrà iniettato. Non lo blocco: resta leggibile con «ricorda» o dal terminale. Correzione suggerita: mandare il recap intero in uno o più messaggi a parte invece di tagliarlo. Se no, serve una decisione esplicita dell'operatore.
-- **R-502-2 BASSA** — `tests/test_unit_notte.py:2094`: il round-trip col kernel vero gira con `GAS_RIFLESSIONE_AUTO=0` (impostato da un fixture, riga 40). Il percorso bot → `kernel.rifletti()` reale non è mai provato insieme: la riflessione è testata solo col kernel finto.
-- **R-502-3 BASSA** — `modules/telegram/bot.py:638`: le righe «(scartata: …)» non hanno un tetto e vengono prima dell'avviso «Recap … NON fidato». Se il modello propone molte lezioni scartate, il taglio a 4096 di `_send_text` può togliere quell'avviso, e il commento alla riga 582 promette solo che restano l'esito e le lezioni. Basta mettere un tetto alle scartate (es. 5 + «… e altre N») oppure spostare l'avviso NON fidato prima.
-
-**Misure mie** (venv indicato): `python tests/test_unit_kernel.py` → 1031 PASS, 0 FAIL; `pytest -q tests/` completo, verde fino al 100%; test `-k clear` → 16 passed.
-
-**Cosa NON ho verificato**: il comportamento col Telegram vero (polling reale, indicatore «sta scrivendo» che scade dopo ~5 s durante una riflessione di minuti, update ricevuti durante il blocco). In dev non si riproduce e non ci sono credenziali. Non ho verificato neanche cosa succede se REPL e bot girano in parallelo sullo stesso .gas_history.json: è un problema che c'era già prima, non introdotto da questo diff.
-
-**Memoria**: aggiunta la riga #502 più una lezione (portare un comando del terminale su un altro canale senza perdere le garanzie di visibilità già decise), committate con lo script (3ba317f) in /home/user/Gas/.claude/agents/memoria_revisore.md.
-
-### Review #503 (chat Notte) — sul diff committato in ceeed81
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #503 (chat Notte), diff STAGED in /home/user/Gas, ramo notte/2026-10-25: `/clear` da Telegram, secondo giro dopo la #502. File in stage: modules/telegram/bot.py (+134) e tests/test_unit_notte.py (+197). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti che servono) e la mia memoria.
-
-**Cosa ho guardato nel diff**
-1. `modules/telegram/bot.py:612` — `messaggi_recap` manda il recap INTERO, con le righe rientrate da «│ » e diviso in messaggi da al massimo 4000 caratteri. Rischio controllato: un pezzo oltre i 4096, una sequenza «<U+XXXX>» spezzata, testo perso. Prova fatta: 3 righe da più di 3999 caratteri con «<x » e U+200B al punto di taglio danno pezzi di [3997, 4000, 4000, 29], senza sequenze spezzate. Il test ricostruisce il testo visibile senza perdite. Esito: ok, **R-502-1 chiusa** (stessa garanzia del terminale, R-201-2).
-2. `modules/telegram/bot.py:606` — `_taglio_sicuro` cerca un «<» solo negli ultimi 10 caratteri e lo scarta se dopo c'è già un «>». Rischio controllato: un ciclo infinito, oppure un «<» scritto nel testo che fa tagliare male. Ogni giro avanza di almeno 3990 caratteri, e un «<» letterale fa solo tagliare un po' prima. Esito: ok.
-3. `modules/telegram/bot.py:665` — le righe «scartata» hanno un tetto (5, poi «… e altre N»), e l'avviso «NON fidato» viene prima delle lezioni. Rischio controllato: un primo messaggio troppo lungo. Conto: al massimo 3 lezioni (`RIFLESSIONE_MAX_LEZIONI`) da al massimo 300 caratteri (`LEZIONE_TESTO_MAX` in modules/memory/store.py:75), più 5 scartate da circa 170: circa 2 KB, sotto il limite. Esito: ok, **R-502-3 chiusa**.
-4. `modules/telegram/bot.py:694` e `modules/telegram/bot.py:738` — `esegui_clear` ora ritorna una lista: in testa l'esito della pulizia, poi il recap. `_handle_update` manda i messaggi in ordine, dopo il controllo della chat autorizzata. Rischio controllato: la pulizia saltata se la riflessione fallisce, un'eccezione che arriva fino al loop del bot. Ci sono due try separati, il fallimento finisce nel log con `log.warning` e la pulizia avviene sempre (§9). Esito: ok.
-5. `tests/test_unit_notte.py:2145` — round-trip bot → `kernel.rifletti()` vero con il client finto `_ClientRifl`: controlla recap nel secondo messaggio, lezioni in quarantena (2 nel DB) e storia vuota. Esito: ok, **R-502-2 chiusa**. Ho girato `pytest -k clear` su tests/test_unit_notte.py: 17 passed.
-
-Wall of Shame: nessuno slicing della cronologia (i tagli sono solo su testo da mostrare) e nessuna simulazione degli strumenti fuori dai test. Il tetto di 10 iterazioni, `_get_window` e i guardrail della memoria non sono toccati.
-
-**Riserve**
-- **R-503-1 BASSA**: il pezzo da 4000 è contato in caratteri Python, mentre Telegram conta in unità UTF-16. 4000 caratteri «astrali» (es. emoji) superano 4096 e Telegram rifiuterebbe il messaggio. È lo stesso limite che ha già `_send_text`, e un recap così non è realistico.
-- **R-503-2 COSMETICA**: una lezione (al massimo 300 caratteri nello store) piena di caratteri invisibili, una volta resi come «<U+XXXX>», supera 300 e su Telegram viene tagliata con «…». Il testo intero resta in `gas lezioni lista`, ed è lì che si approva.
-
-**Cosa NON ho verificato**: l'invio vero sull'API di Telegram (limite effettivo, limiti di frequenza con molti pezzi), perché in sviluppo il trasporto HTTP è bloccato. Non ho rifatto nemmeno l'intera suite: mi fido delle tue misure (1031 PASS nel kernel, 2159 passed con pytest).
-
-**Memoria**: riga #503 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (c5faa56). Il diff del motore resta in stage. Nessuna lezione nuova.
-
-### Review #504 (chat Notte) — sul diff committato in 17adcfb (note di bot e verifica esterna su #263)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #504 (chat Notte): diff staged di PR #263, ramo notte/2026-10-25, 3° giro del comando /clear da Telegram.
-
-Prima della review ho letto: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (le parti su clear e recap, R-201-2) e la memoria del revisore (#502, #503).
+Ho letto le tre fonti obbligatorie: CLAUDE.md (§5, §8, §9), la memoria del revisore (ultima riga #510) e la voce «RIPARTENZA chat Motore (25 ottobre sera)» di reports/stato_progetto.md. La fetta chiude il punto 2 di quella voce. Non c'è slicing della history, non c'è simulazione di output dei tool, il cap di 10 iterazioni e `_get_window` restano intatti. Ho rilanciato `tests/test_unit_claude_cli.py` e `tests/test_unit_notte.py`: 181 passed.
 
 **Elementi del diff esaminati**
-1. `modules/telegram/bot.py:738` — se il comando arriva da un `edited_message` (cioè `upd["message"]` assente o vuoto), risponde «mandalo come messaggio nuovo» e non pulisce la cronologia.
-   - Rischi controllati: ordine rispetto al ramo errore e al controllo della chat autorizzata, chiamata a `_send_typing`, caso `"message": {}`.
-   - Il controllo viene prima dell'errore «argomenti» e dopo quello sulla chat autorizzata (`modules/telegram/bot.py:721`). Non chiama `_send_typing` (lo prova il test con `digita == []`). Con `"message": {}` il messaggio viene trattato come modificato, cioè nella direzione sicura.
-   - Esito: ok. V-1 bot #263 chiusa.
-2. `modules/telegram/bot.py:582` — nella regex anche `\r` e `\n` separano gli argomenti.
-   - Sonda: «/clear\n» → clear; «/clear\t\n\r» → clear; «/CLEAR\nx\ny» → errore «non vuole argomenti»; «/clear\xa0foo» → None, come per /notte (decisione già presa, V-3 ve #233).
-   - Il `fullmatch` sul testo già ripulito con `strip` e il flag `re.S` fanno entrare tutte le righe nel gruppo degli argomenti.
-   - Esito: ok. V-1 verifica esterna #263 chiusa.
-3. `modules/telegram/bot.py:618` — un recap vuoto o fatto solo di spazi produce «│ (recap vuoto)».
-   - Il chiamante `modules/telegram/bot.py:688` passa sempre una `str`, quindi nessun crash.
-   - U+200B non viene tolto da `strip` e resta visibile come `<U+200B>` (verificato con una sonda).
-   - Esito: ok, con la riserva R-504-2.
-4. `tests/test_unit_notte.py:2111` — test del messaggio modificato in /clear: nessuna pulizia, risposta «messaggio nuovo», nessun «sta scrivendo».
-   - `tests/test_unit_notte.py:1987` copre «/clear\nfoo» e «/clear@GasBot\r\nx».
-   - `tests/test_unit_notte.py:2094` copre il recap vuoto e quello fatto solo di spazi.
-   - Esito: ok.
-
-Ho rilanciato `pytest -q tests/test_unit_notte.py -k "clear or recap"`: 18 passed. Le suite intere (1031 PASS e 2159 passed) le ho prese dalle tue misure, non le ho rilanciate.
-
-Antipattern del Wall of Shame: nessuno. Niente slicing della history, niente output simulato dei tool, cap del loop e `_get_window` non toccati. I percorsi di errore restano fail-safe: `comando_clear` ha il suo try/except e `_handle_update` intercetta tutto.
+- brains/claude_cli.py:339 — se `result` o stderr contengono un segnale di login, l'errore diventa «login dell'abbonamento scaduto o mancante». Rischi esaminati: testo di Claude nel log, falso QUOTA, costo perso. Esito: ok. Il messaggio non contiene testo della CLI, non ha il prefisso 429, e il costo arriva lo stesso perché il ramo `except RuntimeError` mette `_costo_dati`. Riserva R-511-1 sotto.
+- brains/claude_cli.py:219 — entrata e uscita vengono limitate a [0, `_TOKEN_MASSIMI`] prima della stima. Rischi esaminati: overflow e valori negativi. Sondato a mano: 10**400 → 90000.0 (≤ `_COSTO_MASSIMO`), -10**400 e 0 → pavimento 0.0075, 10**9+1 → 90000.0. Esito: ok. COSMETICA: il `max(0, …)` alla riga 221 ora è ridondante.
+- modules/notte/notte.py:200 — con un valore di `cervello` diverso da `forte`, compreso `""`, il compito viene saltato con un avviso (fail-closed). Un valore `null` vale come campo assente. Esito: ok.
+- modules/notte/notte.py:266 — `cervello="forte"` arriva a `run_turn` solo se presente, quindi i kernel finti con `run_turn(prompt)` restano compatibili. Ho controllato la ripresa R7 (cioè il rilancio dei compiti rimasti a metà dopo un crash): `_ordina_riprese` costruisce le voci con `{**c, ...}`, quindi il campo `cervello` non si perde e un compito ripreso non finisce ai modelli gratuiti. Esito: ok.
+- gas.py:6021 — prefisso «forte » nel terminale di Gas; `run_turn` accetta `cervello` (gas.py:4515). L'input è già passato da strip, quindi «forte» da solo va come prompt normale. Esito: ok, con la riserva R-511-2.
+- tests/test_unit_notte.py:2177 — un caso con `forte`, uno con valore sbagliato e uno senza campo; controlla che a `run_turn` arrivino `{"cervello": "forte"}` e `{}`. Esito: ok.
+- tests/test_unit_kernel.py:10966 — T99r fa passare la catena da `run_turn` con una CLI finta che riporta `total_cost_usd` 10**400: il conto va al massimo e il turno dopo viene fermato dal tetto con una sola chiamata alla CLI. Chiude V-1 bot #265. Esito: ok, ma non l'ho eseguito (vedi sotto).
 
 **Riserve**
-- **R-504-1 (BASSA)**: `/notte` (`comando_giro`, `modules/telegram/bot.py:725`) parte ancora da un `edited_message`. È la stessa classe di problema del V-1 bot: modificare un vecchio messaggio in «/notte» lancia un giro. È fuori da questo diff, va tracciata.
-- **R-504-2 (COSMETICA)**: `str.strip` toglie anche NBSP e i caratteri di controllo \x1c-\x1f. Un recap fatto solo di quei caratteri appare come «(recap vuoto)» invece di mostrarli visibili come `<U+XXXX>`. Nessun danno pratico.
+1. **R-511-1 BASSA**: il controllo del login viene prima di quello del limite, e il segnale `"oauth"` è largo. Un messaggio di limite raggiunto che cita «oauth», o un `result` di errore che riporta una conversazione sull'OAuth, diventerebbe un errore di login (KO) invece di QUOTA. Non manda niente ai modelli gratuiti, ma sbaglia la diagnosi. Correzione proposta: controllare prima `_prefisso_limite`, oppure restringere il segnale a «oauth session»/«oauth token».
+2. **R-511-2 BASSA**: il prefisso «forte » prende anche frasi normali («forte questo risultato…») e le manda al cervello forte. Va verso il modello più forte, quindi nessun dato finisce ai gratuiti, ma consuma il tetto giornaliero. Basta dichiararlo nel setup oppure usare un prefisso meno ambiguo (es. «/forte»).
 
-**Rischio escluso**
-Non ho verificato il comportamento reale di Telegram con `edited_message` sul bot vivo (se e quando lo consegna dopo `allowed_updates`): in dev non si riproduce, ho visto solo update finti. Non ho rilanciato le suite intere.
+**Cosa NON ho verificato**
+- Non ho eseguito la suite kernel (i 1041 PASS e T99r sono dichiarati, non riprodotti da me). T99r l'ho controllato solo leggendolo.
+- Non ho verificato il comportamento reale della CLI `claude` col login scaduto: si vede solo sul Mac. Mi baso sulla risposta riportata nel task.
+- Doc (`reports/r2_regole_abbonamento.md`, `scripts/notte/catalogo_esempio.yaml`) letta: coerente.
 
-Memoria aggiornata: riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con lo script (e02c8bf). Nessuna lezione nuova.
+**Memoria**: ho aggiunto la riga #511 (con una lezione sui campi di catalogo da propagare nei percorsi di ripresa) in /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato niente: il commit della memoria non l'ho controllato.
 
-Merge successivo di origin/main 98ed619 (PR #266, solo `reports/`, fuori dal perimetro): revisore non richiesto.
-
-**Review #510 (chat Mani) — merge di origin/main a944b57 nella PR (commit 32c2690), fatto dalla chat Mani su richiesta dell'operatore («mergia 263»). Verdetto integrale:**
+### Review #512 (integrale, ri-review del delta)
 
 ## VERDETTO: APPROVATO
 
-Review #510 (chat Mani). Oggetto: il merge di origin/main a944b57 nell'head 4a96de8 della PR #263 (base 16110b2) sul branch notte/2026-10-25. Diff staged.
+Ri-review solo del delta staged dopo la #511: le due riserve BASSE e la COSMETICA sono chiuse, senza riserve nuove. Ho rilanciato claude_cli + notte: 182 passed. Nessun antipattern di CLAUDE.md §5 nel delta.
 
 **Elementi del diff esaminati**
-- `gas.py:3873`: `rifletti` passa per `_cascata_provider("complesso")`. Rischio: le fette 3-5 di main (rung claude-cli, tetto, flock) cambiano cosa succede quando si lancia `/clear` da Telegram. Esito: ok. Il rung claude-cli c'è solo per `compito == "forte"` (`gas.py:828`). Main non tocca né `rifletti` né `clear_history`. Il nuovo flock LOCK_EX|LOCK_NB di main protegge il conto del cervello forte, non la storia. Il lock della storia (`gas.py:1319`) è invariato.
-- `modules/telegram/bot.py:685`: `esegui_clear` chiama `kernel.rifletti()`, con un try/except che logga in gas_debug.log. Rischio: la firma o le chiavi dell'esito cambiate da main. Esito: ok. Il blob di bot.py nello stage è quello di HEAD e main non lo tocca dalla base. La firma `rifletti(self, iniettabile=True)` e le chiavi dell'esito (`ok`, `recap`, `lezioni`, `scartate`…) sono le stesse.
-- `modules/telegram/bot.py:693`: `kernel.clear_history()` sta in un try/except separato, quindi la pulizia avviene sempre. Rischio: perdere la garanzia «pulizia anche se la riflessione fallisce». Esito: ok, `clear_history` (`gas.py:1888`) è invariato rispetto alla base.
+1. brains/claude_cli.py:340 — prima si controlla il limite (`_prefisso_limite`), solo dopo il login. Rischio esaminato: un messaggio di limite raggiunto che cita «oauth» trattato come login scaduto (KO invece di QUOTA). Esito: ok. Con un limite si arriva al raise con «429 », che resta QUOTA. Il messaggio di login continua a non contenere testo di Claude. **R-511-1 chiusa.**
+2. brains/claude_cli.py:82 — i segnali di login sono ristretti a «oauth session» e «oauth token». Rischio esaminato: il login scaduto vero non viene più riconosciuto. Esito: ok. Il testo della prova sul Mac contiene sia «failed to authenticate» sia «oauth session», quindi `tests/test_unit_claude_cli.py` resta coerente. Il caso opposto lo copre il nuovo test `tests/test_unit_claude_cli.py:356` (`test_limite_con_oauth_resta_quota`): ok.
+3. brains/claude_cli.py:221 — il `max(0, …)` ridondante è tolto dopo il clamp. Rischio esaminato: valori negativi. Esito: ok, il clamp alle righe 219–220 li porta già a 0. **COSMETICA chiusa.**
+4. gas.py:6023 — il prefisso nel terminale di Gas ora è «/forte » e si taglia con `[7:]`. Rischi esaminati: frase normale mandata per sbaglio al forte, taglio sbagliato. Esito: ok. «/forte » è lungo 7 caratteri, e la doc in `reports/r2_regole_abbonamento.md` è allineata. **R-511-2 chiusa.**
 
-**Controllo meccanico della risoluzione**
-- Blob dello stage confrontati con HEAD e MERGE_HEAD:
-  - uguali a MERGE_HEAD byte per byte: gas.py, brains/claude_cli.py, modules/web/leggi.py, tests/test_unit_kernel.py, tests/test_unit_claude_cli.py, tests/test_unit_web_leggi.py, .claude/commands/fine-task.md, .gitignore, reports/roadmap.md;
-  - uguali a HEAD: modules/telegram/bot.py, tests/test_unit_notte.py, handoff, ultimo_report, diff_sessione, coda_notte, report_notte.
-- `git diff --cached origin/main` contiene solo i file della PR #263: bot.py, test_unit_notte.py, reports/ e la memoria.
-- memoria_revisore.md: nessuna riga persa né da HEAD né da MERGE_HEAD. Ci sono le righe #502-#504 della chat Notte e poi le #505-#509 di main.
-- stato_progetto.md, riga 4: contiene la voce Notte e poi l'intera riga di main (verificato come sottostringa). L'unica riga «persa» da HEAD è la riga R2 fette 1-2. Era già nella base e main l'ha aggiornata, quindi l'unione a tre vie è corretta.
-- Nessun marcatore di conflitto. `git diff --cached --check` è pulito. Il working tree è uguale allo stage.
+**Cosa NON ho verificato**
+- La suite kernel (1041 PASS) non l'ho rieseguita: il delta non tocca le parti che usa T99r.
+- Non ho verificato la forma reale dei messaggi di limite della CLI `claude`: si vede solo sul Mac. I segnali restano un'euristica.
 
-**Test** (Python 3 di sistema)
-- test_unit_notte, test_unit_claude_cli e test_unit_web_leggi: 595 passed, 1 skipped.
-- tests/test_unit_kernel.py: 1035 PASS, 1 FAIL.
-  - Il FAIL è T31g (vector store con GAS_VECTORS=1).
-  - Su un worktree pulito di origin/main esce lo stesso identico risultato (1035/1, T31g). Dipende dall'ambiente, non dal merge.
-
-**Rischio escluso**
-- Non ho provato `/clear` dal vero su Telegram né sul Mac: non si riproduce in questo ambiente. La coerenza fra bot.py e gas.py l'ho verificata solo leggendo il codice e con i test unitari.
-- Non ho rieseguito le review del codice entrato da main (#496-#509, già approvato).
-
-**Memoria del revisore**
-- Ho aggiunto e messo in stage la riga contatore `#510 (chat Mani) — 2026-10-25 — APPROVATO — … Nessuna lezione nuova.` in /home/user/Gas/.claude/agents/memoria_revisore.md.
-- Non ho lanciato `scripts/commit_memoria_revisore.sh`, per due motivi: c'è un merge in corso (`git commit -o` non è ammesso durante un merge) e hai chiesto di non committare. La riga entra col commit del merge, come nelle review #505, #507 e #508.
-- Lo stage ora contiene anche questa riga, quindi lo SHA del diff è cambiato: `bash scripts/segna_review_ok.sh` va lanciato DOPO questa review, sullo stage attuale.
-
+**Memoria**: riga #512 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit «chore(revisore): memoria review #512 — APPROVATO»). La riga #511 era già committata.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Dopo il merge di main a944b57 (chat Mani, 2026-10-25): `pytest -q tests/` 2192 passed, 1 skipped; kernel come main (vedi review #510).
-
-- `python tests/test_unit_kernel.py`: `=== RIEPILOGO: 1031 PASS, 0 FAIL ===` in locale (cloud); in CI 1037 PASS, 0 FAIL sia su main sia sul ramo (V-1 bot #263 bis). Invariato: gas.py non toccato.
-- `python -m pytest -q tests/`: main `2140 passed, 1 skipped` → ramo `2159 passed, 1 skipped` (+19 test di `/clear` in `tests/test_unit_notte.py`; dopo 17adcfb stessi numeri, test aggiornati). Nessun FAIL.
+- Kernel: 1040 → 1041 PASS (T99r nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`
+- `tests/test_unit_claude_cli.py` + `tests/test_unit_notte.py`: 182 passed (2 test nuovi in claude_cli, 1 in notte; 1 modificato).
 
 ## §6 STATO CI
 
-```
-completed	success	Turno di notte 2026-10-25: /clear da Telegram (coda voce 3)	verifica-bot	notte/2026-10-25	pull_request_target	40141412196	3m35s	2026-10-24T23:07:16Z
-completed	skipped	Turno di notte 2026-10-25: /clear da Telegram (coda voce 3)	verifica-bot	notte/2026-10-25	pull_request_target	40141402639	6s	2026-10-24T23:07:09Z
-```
-
-Mappatura commit→run:
-- `3ba317f`, `c5faa56`: nessuna run su questo SHA (pushati insieme a `ceeed81`).
-- `ceeed81` → run CI 40141292710 (push).
-- `3cfdc29` → run CI 40141400864 success (`unit-suite`, `handoff-check`); `verifica-bot` 40141412196 success (bot APPROVATO CON RISERVE).
-- `e02c8bf`, `17adcfb`: nessuna run su questo SHA (pushati insieme al commit di fine-task).
-- `f23234f` (fine-task del secondo giro) → run CI 40142732300 success (`unit-suite`, `handoff-check`), `verifica-bot` success.
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+CI NON VERIFICATA con `gh` (nel cloud `gh` non è autenticato: «Failed to log in to github.com using token (GH_TOKEN)»). Letto con lo strumento GitHub `actions_list` sul branch:
+- 1717413 → run CI 40240897439 (push): `in_progress` alla scrittura dell'handoff; verifica-bot 40240911265: `skipped` (manca l'etichetta `verifica`).
+- c0917bb, 861b33a → nessuna run su questi SHA (pushati insieme a 1717413, testati solo nell'albero di testa).
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-503-1 (chat Notte)** BASSA: pezzo da 4000 contato in caratteri, non in unità UTF-16.
-- **R-503-2 (chat Notte)** COSMETICA: lezione piena di invisibili tagliata con «…» su Telegram.
-- **R-504-1 (chat Notte)** BASSA preesistente: `/notte` e `/compito` partono ancora da un messaggio modificato.
-- **R-504-2 (chat Notte)** COSMETICA: recap di soli NBSP/caratteri di controllo mostrato come «(recap vuoto)».
-- V-2 bot #263, seconda parte: «sta scrivendo» mandato una volta sola durante una riflessione lunga.
-- Verifica esterna #263 ([commento](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390800357)) APPROVATO CON RISERVE: V-1 chiusa in 17adcfb; V-2 = R-503-1/2; V-3 COSMETICA (data della sessione in ora italiana, §6 datato) nessuna azione.
-- Terzo giro su `f23234f`: bot e [verifica esterna](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390966722) APPROVATO CON RISERVE, solo BASSE (`/clear@AltroBot` con username ignoto, polling bloccato dalla riflessione, marcatore di continuazione, kernel 1037 in CI contro 1031 in locale), tracciate in `stato_progetto.md`.
-- Non provato col Telegram vero.
+Nessuna (R-511-1, R-511-2 e la COSMETICA chiuse in #512).
