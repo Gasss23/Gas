@@ -52,3 +52,4 @@ gas_debug.log.*
 AGENTS.md
 .gas_claude_cli_uso.json
 .gas_claude_cli_uso.json.*.tmp
+.gas_claude_cli_uso.json.lock
