@@ -23,14 +23,14 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |   5 +++++
  modules/telegram/bot.py            | 143 +++++++++++++++++++++++++
  reports/coda_notte.md              |   2 +-
  reports/diff_sessione.md           |  17 +++++++++--------
  reports/handoff.md                 | n/d (commit finale)
  reports/report_notte.md            |  35 ++++++++++++++-------------
  reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  25 +++++++++----------------
+ reports/ultimo_report.md           |  23 +++++++++++------------
  tests/test_unit_notte.py           | 203 +++++++++++++++++++++++++++++
 ```
 
@@ -39,6 +39,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+32c2690 Merge origin/main (a944b57) in notte/2026-10-25 (PR #263)
+4a96de8 docs(fine-task): turno di notte 2026-10-25 — note del terzo giro su #263 tracciate
 f23234f docs(fine-task): turno di notte 2026-10-25 — secondo giro, review #504 (PR #263)
 17adcfb fix(telegram): /clear solo da un messaggio nuovo, a capo come separatore, recap vuoto (note #263)
 e02c8bf chore(revisore): memoria review #504 — APPROVATO CON RISERVE
@@ -139,7 +141,45 @@ Non ho verificato il comportamento reale di Telegram con `edited_message` sul bo
 
 Memoria aggiornata: riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con lo script (e02c8bf). Nessuna lezione nuova.
 
+**Review #510 (chat Mani) — merge di origin/main a944b57 nella PR (commit 32c2690), fatto dalla chat Mani su richiesta dell'operatore («mergia 263»). Verdetto integrale:**
+
+## VERDETTO: APPROVATO
+
+Review #510 (chat Mani). Oggetto: il merge di origin/main a944b57 nell'head 4a96de8 della PR #263 (base 16110b2) sul branch notte/2026-10-25. Diff staged.
+
+**Elementi del diff esaminati**
+- `gas.py:3873`: `rifletti` passa per `_cascata_provider("complesso")`. Rischio: le fette 3-5 di main (rung claude-cli, tetto, flock) cambiano cosa succede quando si lancia `/clear` da Telegram. Esito: ok. Il rung claude-cli c'è solo per `compito == "forte"` (`gas.py:828`). Main non tocca né `rifletti` né `clear_history`. Il nuovo flock LOCK_EX|LOCK_NB di main protegge il conto del cervello forte, non la storia. Il lock della storia (`gas.py:1319`) è invariato.
+- `modules/telegram/bot.py:685`: `esegui_clear` chiama `kernel.rifletti()`, con un try/except che logga in gas_debug.log. Rischio: la firma o le chiavi dell'esito cambiate da main. Esito: ok. Il blob di bot.py nello stage è quello di HEAD e main non lo tocca dalla base. La firma `rifletti(self, iniettabile=True)` e le chiavi dell'esito (`ok`, `recap`, `lezioni`, `scartate`…) sono le stesse.
+- `modules/telegram/bot.py:693`: `kernel.clear_history()` sta in un try/except separato, quindi la pulizia avviene sempre. Rischio: perdere la garanzia «pulizia anche se la riflessione fallisce». Esito: ok, `clear_history` (`gas.py:1888`) è invariato rispetto alla base.
+
+**Controllo meccanico della risoluzione**
+- Blob dello stage confrontati con HEAD e MERGE_HEAD:
+  - uguali a MERGE_HEAD byte per byte: gas.py, brains/claude_cli.py, modules/web/leggi.py, tests/test_unit_kernel.py, tests/test_unit_claude_cli.py, tests/test_unit_web_leggi.py, .claude/commands/fine-task.md, .gitignore, reports/roadmap.md;
+  - uguali a HEAD: modules/telegram/bot.py, tests/test_unit_notte.py, handoff, ultimo_report, diff_sessione, coda_notte, report_notte.
+- `git diff --cached origin/main` contiene solo i file della PR #263: bot.py, test_unit_notte.py, reports/ e la memoria.
+- memoria_revisore.md: nessuna riga persa né da HEAD né da MERGE_HEAD. Ci sono le righe #502-#504 della chat Notte e poi le #505-#509 di main.
+- stato_progetto.md, riga 4: contiene la voce Notte e poi l'intera riga di main (verificato come sottostringa). L'unica riga «persa» da HEAD è la riga R2 fette 1-2. Era già nella base e main l'ha aggiornata, quindi l'unione a tre vie è corretta.
+- Nessun marcatore di conflitto. `git diff --cached --check` è pulito. Il working tree è uguale allo stage.
+
+**Test** (Python 3 di sistema)
+- test_unit_notte, test_unit_claude_cli e test_unit_web_leggi: 595 passed, 1 skipped.
+- tests/test_unit_kernel.py: 1035 PASS, 1 FAIL.
+  - Il FAIL è T31g (vector store con GAS_VECTORS=1).
+  - Su un worktree pulito di origin/main esce lo stesso identico risultato (1035/1, T31g). Dipende dall'ambiente, non dal merge.
+
+**Rischio escluso**
+- Non ho provato `/clear` dal vero su Telegram né sul Mac: non si riproduce in questo ambiente. La coerenza fra bot.py e gas.py l'ho verificata solo leggendo il codice e con i test unitari.
+- Non ho rieseguito le review del codice entrato da main (#496-#509, già approvato).
+
+**Memoria del revisore**
+- Ho aggiunto e messo in stage la riga contatore `#510 (chat Mani) — 2026-10-25 — APPROVATO — … Nessuna lezione nuova.` in /home/user/Gas/.claude/agents/memoria_revisore.md.
+- Non ho lanciato `scripts/commit_memoria_revisore.sh`, per due motivi: c'è un merge in corso (`git commit -o` non è ammesso durante un merge) e hai chiesto di non committare. La riga entra col commit del merge, come nelle review #505, #507 e #508.
+- Lo stage ora contiene anche questa riga, quindi lo SHA del diff è cambiato: `bash scripts/segna_review_ok.sh` va lanciato DOPO questa review, sullo stage attuale.
+
+
 ## §5 DELTA TEST DEL MOTORE
+
+Dopo il merge di main a944b57 (chat Mani, 2026-10-25): `pytest -q tests/` 2192 passed, 1 skipped; kernel come main (vedi review #510).
 
 - `python tests/test_unit_kernel.py`: `=== RIEPILOGO: 1031 PASS, 0 FAIL ===` in locale (cloud); in CI 1037 PASS, 0 FAIL sia su main sia sul ramo (V-1 bot #263 bis). Invariato: gas.py non toccato.
 - `python -m pytest -q tests/`: main `2140 passed, 1 skipped` → ramo `2159 passed, 1 skipped` (+19 test di `/clear` in `tests/test_unit_notte.py`; dopo 17adcfb stessi numeri, test aggiornati). Nessun FAIL.
