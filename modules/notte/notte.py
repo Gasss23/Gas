@@ -198,7 +198,8 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
             avvisi.append(f"compito '{nome}': prompt oltre {MAX_PROMPT_CHARS} caratteri, saltato")
             continue
         cervello = v.get("cervello")
-        if cervello is not None and cervello != "forte":
+        # V-2 ve #269: un campo presente ma vuoto (null, ~) non è «nessun vincolo»
+        if "cervello" in v and cervello != "forte":
             # Fail-closed: un valore sbagliato non deve far finire il lavoro ai gratuiti
             avvisi.append(f"compito '{nome}': cervello può essere solo 'forte', saltato")
             continue

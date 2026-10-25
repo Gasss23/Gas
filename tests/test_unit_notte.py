@@ -2181,9 +2181,11 @@ def test_cervello_forte_dal_catalogo(dirs):
     cat = _scrivi(fuori / "c.yaml",
                   "compiti:\n  - nome: a\n    prompt: p\n    cervello: forte\n"
                   "  - nome: b\n    prompt: p\n    cervello: debole\n"
-                  "  - nome: c\n    prompt: p\n")
+                  "  - nome: c\n    prompt: p\n"
+                  "  - nome: d\n    prompt: p\n    cervello:\n")
     compiti, avvisi = carica_catalogo(cat, root)
     assert [c.get("cervello") for c in compiti] == ["forte", None]
+    assert any("'d'" in a for a in avvisi)  # V-2 ve #269: vuoto → saltato
     assert any("'b'" in a and "forte" in a for a in avvisi)
     visti = []
 

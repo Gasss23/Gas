@@ -340,8 +340,9 @@ class ClaudeCliClient:
             if not _prefisso_limite(dati.get("result"), proc.stderr) and any(
                     p in " ".join(str(t or "") for t in (dati.get("result"), proc.stderr)).lower()
                     for p in _SEGNALI_LOGIN):
-                raise RuntimeError("claude-cli: login dell'abbonamento scaduto o mancante "
-                                   "(sul computer di Gas: `claude`, poi /login)")
+                raise RuntimeError("claude-cli: login dell'abbonamento scaduto, mancante o "
+                                   "non valido (sul computer di Gas: `claude`, poi /login; "
+                                   "nessuna ANTHROPIC_API_KEY arriva a claude)")
             raise RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
                                + f"claude-cli: errore ({tipo or 'errore'})")
         out = dati.get("structured_output")

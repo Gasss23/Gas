@@ -6020,6 +6020,9 @@ def main():
             # R2: «/forte <richiesta>» manda il turno al solo cervello forte (mai ai
             # gratuiti); con la barra una frase normale non ci finisce per sbaglio (R-511-2)
             cervello = None
+            if prompt.lower() == "/forte":  # V-3 ve #269: senza richiesta non va ai gratuiti
+                print("\nUso: /forte <richiesta>\n")
+                continue
             if prompt.lower().startswith("/forte "):
                 cervello, prompt = "forte", prompt[7:].strip()
             for event in kernel.run_turn(prompt, cervello=cervello):
