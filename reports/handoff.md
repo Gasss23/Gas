@@ -26,7 +26,7 @@
  .claude/agents/memoria_revisore.md |   5 +++++
  modules/telegram/bot.py            | 143 +++++++++++++++++++++++++
  reports/coda_notte.md              |   2 +-
- reports/diff_sessione.md           |  17 +++++++++--------
+ reports/diff_sessione.md           |  13 ++++++-------
  reports/handoff.md                 | n/d (commit finale)
  reports/report_notte.md            |  35 ++++++++++++++-------------
  reports/stato_progetto.md          |   4 +++-
@@ -39,6 +39,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5d4c8a7 Merge origin/main (98ed619, solo report) in notte/2026-10-25 (PR #263)
+7cde91a docs(fine-task): handoff di #263 aggiornato dopo il merge di main (review #510, chat Mani)
 32c2690 Merge origin/main (a944b57) in notte/2026-10-25 (PR #263)
 4a96de8 docs(fine-task): turno di notte 2026-10-25 — note del terzo giro su #263 tracciate
 f23234f docs(fine-task): turno di notte 2026-10-25 — secondo giro, review #504 (PR #263)
@@ -140,6 +142,8 @@ Antipattern del Wall of Shame: nessuno. Niente slicing della history, niente out
 Non ho verificato il comportamento reale di Telegram con `edited_message` sul bot vivo (se e quando lo consegna dopo `allowed_updates`): in dev non si riproduce, ho visto solo update finti. Non ho rilanciato le suite intere.
 
 Memoria aggiornata: riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con lo script (e02c8bf). Nessuna lezione nuova.
+
+Merge successivo di origin/main 98ed619 (PR #266, solo `reports/`, fuori dal perimetro): revisore non richiesto.
 
 **Review #510 (chat Mani) — merge di origin/main a944b57 nella PR (commit 32c2690), fatto dalla chat Mani su richiesta dell'operatore («mergia 263»). Verdetto integrale:**
 
