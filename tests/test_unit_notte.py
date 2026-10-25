@@ -2172,3 +2172,46 @@ def test_clear_da_telegram_con_la_riflessione_vera(monkeypatch, dirs):
     assert "Lezioni proposte" in primo and "LEZIONE-SEGRETA uno" in primo
     assert recap == "│ Obiettivo: contare. Stato: fatto, 42."
     assert len(k.memory.lista_lezioni()) == 2
+
+
+@pytest.mark.parametrize("spesa,tetto,attesa", [
+    (float("nan"), 2.0, "Spesa ultime 24 ore: non letta"),
+    (float("inf"), 2.0, "Spesa ultime 24 ore: non letta"),
+    (float("-inf"), None, "Spesa ultime 24 ore: non letta"),
+    ("0.5", 2.0, "Spesa ultime 24 ore: non letta"),
+    (True, 2.0, "Spesa ultime 24 ore: non letta"),
+    (1, 2, "Spesa ultime 24 ore: $1.00 su un tetto di $2.00"),
+    (0.5, float("nan"), "Spesa ultime 24 ore: $0.50 (tetto non letto)"),
+    (0.5, float("inf"), "Spesa ultime 24 ore: $0.50 (tetto non letto)"),
+    (0.5, -1.0, "Spesa ultime 24 ore: $0.50 (tetto non letto)"),
+    (0.5, "2", "Spesa ultime 24 ore: $0.50 (tetto non letto)"),
+    (0.5, 0.0, "Spesa ultime 24 ore: $0.50 (nessun tetto)"),
+    (0.5, None, "Spesa ultime 24 ore: $0.50 (nessun tetto)"),
+    (0.5, 0, "Spesa ultime 24 ore: $0.50 (nessun tetto)"),
+    (10**400, 2.0, "Spesa ultime 24 ore: non letta"),  # R-515-1
+    (0.5, 10**400, "Spesa ultime 24 ore: $0.50 (tetto non letto)"),
+    (0.5, "", "Spesa ultime 24 ore: $0.50 (tetto non letto)"),  # R-515-2
+    (0.5, [], "Spesa ultime 24 ore: $0.50 (tetto non letto)"),
+    (0.5, False, "Spesa ultime 24 ore: $0.50 (tetto non letto)"),
+])
+def test_righe_stato_mattino_mai_nan(spesa, tetto, attesa):
+    """Voce 4 della coda notte (V-1 verifica esterna #241): nessun «$nan»/«$inf»,
+    nessuna eccezione, e un tetto illeggibile non diventa «nessun tetto»."""
+    st = {"spesa": spesa, "tetto": tetto, "log_illeggibili": 0, "lead_attivi": None,
+          "lead_fermi": None, "firme_in_attesa": None}
+    righe = notte.righe_stato_mattino(st)
+    assert righe[0] == attesa
+    assert not any(x in righe[0].lower() for x in ("nan", "inf"))
+
+
+def test_resoconto_con_spesa_non_finita_nel_giro(monkeypatch, dirs):
+    """Round-trip: un giro vero con tetto «nan» nello stato arriva al riepilogo
+    senza «$nan» (il tetto viene da _tetto_applicato, qui forzato)."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    monkeypatch.setattr(notte, "_tetto_applicato", lambda: float("nan"))
+    _telegram_finto(monkeypatch)
+    assert _giro(monkeypatch, root, cat, _Script({"p": [[("calcola", json.dumps({"expr": "1+1"}))],
+                                                       "fatto"]})) == 0
+    riepilogo = (root / ".gas_notte" / "ultimo_giro.md").read_text(encoding="utf-8")
+    assert "(tetto non letto)" in riepilogo and "$nan" not in riepilogo
