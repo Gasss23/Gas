@@ -206,6 +206,9 @@ class _Contesto:
     tag più sotto; un «<![CDATA[» con un elemento HTML in cima; un'uscita dal contenuto
     estraneo dentro un altro contenitore nascosto (canvas, object…, V-5 ve #246); una pila
     troppo profonda; un annotation-xml di math nel ripiego, che non ne legge l'encoding.
+    Eccezione: «</template>» con un template HTML sotto la pila non la rende incerta ma chiude
+    il template e tutto quello che c'è sopra, come il browser (R-469-1, _chiudi_template),
+    tranne nelle pagine con «<noscript» (con_noscript), dove resta la regola di prima.
     annotation-xml è un punto di integrazione solo con encoding text/html o
     application/xhtml+xml, come nei browser (B-467-1, V-1 ve #246 bis). Ogni operazione costa O(1)
     ammortizzato: niente scansioni della pila (V-3 ve #246). Il conteggio dei nascosti resta
@@ -216,7 +219,7 @@ class _Contesto:
     # Antenati che il browser può avere senza che la pagina li scriva (tabelle).
     _IMPLICITI = frozenset({"table", "tbody", "thead", "tfoot", "tr", "td", "th", "caption", "colgroup"})
 
-    def __init__(self, aperti: dict) -> None:
+    def __init__(self, aperti: dict, con_noscript: bool = True) -> None:
         self.pila: list[tuple[str, str]] = []
         self.incerta = False
         self._aperti = aperti
@@ -237,7 +240,8 @@ class _Contesto:
         # legge i tag (R-ve261-2) e i conti dei template non sono affidabili; la chiusura del
         # template sopra svg/math non si usa e vale la pila incerta, come prima (V-1 bot e ve
         # #261: un controllo sul solo noscript aperto lasciava passare una classe intera).
-        self.con_noscript = False
+        # Senza il flag si va nel verso sicuro, come in _Estrattore (R-511-1, V-1 bot #268).
+        self.con_noscript = con_noscript
 
     @staticmethod
     def _punto(nome: str, spazio: str) -> bool:
@@ -794,7 +798,7 @@ class _Estrattore(HTMLParser):
         "form", "dd", "dt", "dl", "main", "figure", "figcaption", "title", "td", "th",
     }
 
-    def __init__(self, xhtml: bool = False) -> None:
+    def __init__(self, xhtml: bool = False, con_noscript: bool = True) -> None:
         super().__init__(convert_charrefs=True)
         # In una pagina application/xhtml+xml «<x/>» è vuoto davvero, per ogni tag (V-1
         # verifica esterna #243); commenti e CDATA li sistema prima _commenti_e_cdata_xml.
@@ -804,7 +808,9 @@ class _Estrattore(HTMLParser):
         self._salta = 0
         self._aperti: dict[str, int] = {}  # aperture contate per nome (V-1 bot #242)
         self._nel_titolo = 0
-        self._contesto = _Contesto(self._aperti)
+        # Lo decide chi conosce la pagina intera (_componi), non il pezzo passato a feed (R-ve261-6);
+        # senza, si va nel verso sicuro: regola R-469-1 spenta come con noscript (R-511-1).
+        self._contesto = _Contesto(self._aperti, con_noscript)
         self._taglia = False  # un tag letto diversamente dal browser: il resto si nasconde
 
     def _locale(self, tag: str) -> str:
@@ -953,11 +959,6 @@ class _Estrattore(HTMLParser):
         if self.rawdata[i + 2:i + 3].translate(_MINUSCOLE_ASCII) in _LETTERE_ASCII:
             self._controlla_tag(i, j, 2)
         return j
-
-    def feed(self, data: str) -> None:
-        if _NOSCRIPT.search(data):
-            self._contesto.con_noscript = True
-        super().feed(data)
 
     def close(self) -> None:
         # Gli html.parser senza le patch del 2025 danno come testo quello che a fine pagina è
@@ -1120,8 +1121,7 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
     prossimi: dict[str, int] = {}
     salta = 0
     aperti: dict[str, int] = {}
-    contesto = _Contesto(aperti)
-    contesto.con_noscript = _NOSCRIPT.search(testo) is not None
+    contesto = _Contesto(aperti, _NOSCRIPT.search(testo) is not None)
 
     def scala(nomi: list[str]) -> None:
         nonlocal salta
@@ -1369,7 +1369,7 @@ def _componi(url_finale: str, pagina: dict) -> dict:
             grezzo = _commenti_e_cdata_xml(grezzo)
         grezzo = _RIF_ZERI_HEX.sub(r"&#\1", _RIF_ZERI_DEC.sub("&#", grezzo))
         grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
-        estrattore = _Estrattore(xhtml)
+        estrattore = _Estrattore(xhtml, con_noscript=_NOSCRIPT.search(grezzo) is not None)
         try:
             if not _PARSER_AGGIORNATO:
                 if _avviso_parser_vecchio.acquire(blocking=False):

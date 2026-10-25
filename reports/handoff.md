@@ -1,215 +1,218 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-25 — Turno di notte: `/clear` da Telegram (voce 3 di `reports/coda_notte.md`)
+**Sessione:** 2026-10-25 — Mani fetta 16: riserve di #261 (R-ve261-3, R-ve261-4, R-ve261-5, R-ve261-6) e secondo giro sulle riserve di bot e verifica esterna #268, chat Mani
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #263 (https://github.com/Gasss23/Gas/pull/263). Numero e URL dalla risposta JSON di `gh api -X POST repos/Gasss23/Gas/pulls` (GraphQL non disponibile). Il turno di notte non mergia mai.
-2. Prova dal vero: bot acceso (`python3 gas.py telegram`), qualche messaggio, poi `/clear`.
-3. Testo dell'attività programmata «Turno di notte Gas»: la chat Motore ha chiesto il cambio il 24 ottobre riferendo un'approvazione dell'operatore; non applicato, serve la richiesta dell'operatore in questa sessione.
+1. Merge della PR #268 (https://github.com/Gasss23/Gas/pull/268). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5008938487","url":"https://github.com/Gasss23/Gas/pull/268"}`); `gh` nel cloud non è autenticato (GH_TOKEN rifiutato). Merge da solo solo con APPROVATO pulito del bot sull'head.
+2. R-ve261-4 (frameset): accettarla o chiuderla, con la descrizione corretta di §1.
+3. Decisioni ancora aperte, da portare una alla volta: R-ve261-2 MEDIA, R-ve246-5 MEDIA, R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Voce 3, `/clear` su Telegram**: `FATTA` — `modules/telegram/bot.py` + 19 test in `tests/test_unit_notte.py`; review #502 e #503 APPROVATO CON RISERVE.
-- **Voci 4 e 5**: `SALTATA — toccano il motore: al massimo una voce del motore a notte`.
-- **Voci 6–8**: `SALTATA — dopo in ordine; nessuna voce solo-documenti da aggiungere`.
+Primo giro (fd5184b):
+- **R-ve261-3 — test `<NOSCRIPT>`/`<NoScript>`**: `FATTA`.
+- **R-ve261-6 — `con_noscript` in `_componi`, docstring, test a pila vuota**: `FATTA` — default sicuro (R-511-1) fissato da un test (R-512-1). Riga di test doppia: `SALTATA — non esiste su main` (falso positivo di V-4(b) ve #261, confermato dal revisore #511).
+- **R-ve261-4 — sonda frameset**: `FATTA` (sonda), decisione all'operatore — `<p>W0</p><frameset><template><svg></template>W1` dà W0 W1 in Gas e in lexbor: non è una fuga.
+- **R-ve261-5 — frasi giuste**: `FATTA` — per #261: «0 fughe nuove fuori dalla classe R-ve246-5» e «mutazioni prese tutte tranne quella senza `re.IGNORECASE`».
+
+Secondo giro (d6898c7 e questi report), riserve di bot #268 (APPROVATO CON RISERVE) e verifica esterna #268 (APPROVATO CON RISERVE, https://github.com/Gasss23/Gas/pull/268#issuecomment-6403781355):
+- **V-1 bot #268 BASSA — default non sicuro in `_Contesto`**: `FATTA` — `_Contesto(aperti, con_noscript=True)`, flag passato al costruttore da `_Estrattore` e dal ripiego, default fissato da un test.
+- **V-2 bot #268 COSMETICA — blocco vecchio di stato_progetto**: `FATTA` — annotato con le chiusure.
+- **V-1 ve #268 BASSA — numeri stantii**: `FATTA` — numeri di §5 tutti rimisurati sul codice finale.
+- **V-2 ve #268 BASSA — descrizione del frameset**: `FATTA` — la classe è `<frameset>` preceduto solo da spazi, commenti e tag senza testo (`<frameset>W1`, `<div></div><frameset>W1`, `<p> </p><frameset>W1`: lexbor niente, Gas W1, anche su main); con un testo non vuoto o br, img, hr, table, li prima, il browser ignora il frameset e lexbor mostra W1 come Gas.
+- **V-3 ve #268 BASSA — test sul testo intero**: `FATTA` — pagine con `<noscript class=x>` e con noscript dopo 3000 caratteri.
+- **V-4 ve #268 COSMETICA — §6 stantio**: `FATTA` — §6 riscritto.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   5 +++++
- modules/telegram/bot.py            | 143 +++++++++++++++++++++++++
- reports/coda_notte.md              |   2 +-
- reports/diff_sessione.md           |  13 ++++++-------
+ .claude/agents/memoria_revisore.md |   6 ++++++
+ modules/web/leggi.py               |  24 ++++++++++++------------
+ reports/diff_sessione.md           |  12 +++++-------
  reports/handoff.md                 | n/d (commit finale)
- reports/report_notte.md            |  35 ++++++++++++++-------------
- reports/stato_progetto.md          |   4 +++-
- reports/ultimo_report.md           |  23 +++++++++++------------
- tests/test_unit_notte.py           | 203 +++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   5 +++--
+ reports/ultimo_report.md           |  56 +++++++++++++++++++++++++++++++++++++++++++++-----------
+ tests/test_unit_web_leggi.py       |  33 ++++++++++++++++++++++++++++++++-
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d». Gli altri conteggi vengono da `git diff --cached --stat` preso prima del commit finale, con le barre accorciate; il diff reale della PR fa fede.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat` preso con i report in stage, prima del commit finale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-5d4c8a7 Merge origin/main (98ed619, solo report) in notte/2026-10-25 (PR #263)
-7cde91a docs(fine-task): handoff di #263 aggiornato dopo il merge di main (review #510, chat Mani)
-32c2690 Merge origin/main (a944b57) in notte/2026-10-25 (PR #263)
-4a96de8 docs(fine-task): turno di notte 2026-10-25 — note del terzo giro su #263 tracciate
-f23234f docs(fine-task): turno di notte 2026-10-25 — secondo giro, review #504 (PR #263)
-17adcfb fix(telegram): /clear solo da un messaggio nuovo, a capo come separatore, recap vuoto (note #263)
-e02c8bf chore(revisore): memoria review #504 — APPROVATO CON RISERVE
-3cfdc29 docs(fine-task): turno di notte 2026-10-25 — report, handoff, coda (voce 3 fatta, PR #263)
-ceeed81 feat(telegram): /clear da Telegram come il clear del terminale (coda notte voce 3)
-c5faa56 chore(revisore): memoria review #503 — APPROVATO CON RISERVE
-3ba317f chore(revisore): memoria review #502 — APPROVATO CON RISERVE
+d6898c7 fix(web): default sicuro anche in _Contesto, test noscript con attributi e in fondo (PR #268)
+fd4b00e chore(revisore): memoria review #514 — APPROVATO
+56af27f docs(fine-task): Mani fetta 16 — report, handoff, stato (PR #268, review #511-#513)
+fd5184b fix(web): con_noscript calcolato in _componi, test NOSCRIPT e pila vuota (fetta 16 Mani)
+903be16 chore(revisore): memoria review #513 — APPROVATO
+cb1040c chore(revisore): memoria review #512 — APPROVATO CON RISERVE
+1009528 chore(revisore): memoria review #511 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #502 (chat Notte) — sul primo diff staged, poi corretto
+Commit motore fd5184b (primo giro): tre review, #511 sul primo diff, #512 dopo il default `True`, #513 dopo il test del default (diff committato). Commit motore d6898c7 (secondo giro, riserve di bot e verifica esterna #268): review #514. Verdetti integrali:
+
+### Review #511 (chat Mani) — primo diff staged
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #502 (chat Notte), ramo notte/2026-10-25. Ho esaminato il diff STAGED: modules/telegram/bot.py (+109) e tests/test_unit_notte.py (+152). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti che servivano) e la mia memoria.
-
-**Cosa ho controllato nel diff**
-1. `modules/telegram/bot.py:707` — il ramo `/clear` in `_handle_update` sta DOPO il controllo `chat_id not in allowed` e dopo `/notte`/`/compito`. Rischio esaminato: una chat non autorizzata che pulisce la cronologia, oppure `/clear` che arriva al modello. Esito: ok. `test_handle_update_clear` (tests/test_unit_notte.py:2077) prova che una chat non autorizzata non provoca né pulizia né invio, e il kernel finto solleva un errore se si arriva a `run_turn`.
-2. `modules/telegram/bot.py:652` — `esegui_clear` confrontato riga per riga con `_clear_con_riflessione` (contesto: gas.py:5860). L'ordine è lo stesso: riflessione solo se c'è storia e `riflessione_auto_attiva()`, poi `clear_history()` in ogni caso. Rischi esaminati: pulizia saltata se la riflessione fallisce, eccezione che risale (§9). Esito: ok. Due try separati, `log.warning` in entrambi, la pulizia fallita diventa «✗ Cronologia NON pulita». Ctrl-C qui non serve perché il bot non è interattivo.
-3. `modules/telegram/bot.py:580` — la regex segue lo schema di `_COMANDO_GIRO_RE`: destinatario @bot, argomenti separati da spazio o tab, che danno errore. Rischio esaminato: un falso positivo distruttivo. Esito: ok. «/clearx», «ciao /clear» e «/clear<NBSP>x» non attivano il comando. Ho provato a mano «/clear\nora»: ritorna None e quindi va al modello come testo normale (non distruttivo, stesso comportamento di /notte).
-4. `modules/telegram/bot.py:618` — `righe_riflessione` passa tutto il testo del modello per `rendi_visibili`/`tronca_visibile`. Le lezioni restano su una riga sola (a_capo=False). Il recap è indentato con «│ » e messo per ultimo. Il cambio di provider viene dichiarato (§8). Rischio esaminato: righe finte che imitano l'esito, caratteri bidi. Esito: ok, coperto da tests/test_unit_notte.py:2060.
-5. `tests/test_unit_notte.py:2094` — il round-trip §7 col kernel vero e il client finto fa due tool call, arriva alla risposta finale, poi `/clear` svuota la storia e cancella .gas_history.json, e il turno dopo riparte da user. Esito: ok (con la riserva R-502-2).
-6. Wall of Shame: il diff non ha slicing della history (l'unico taglio è sulla stringa del recap, `modules/telegram/bot.py:605`) e non simula output dei tool. Il cap delle 10 iterazioni, `_get_window` e i guardrail non sono toccati.
-
-**Riserve** (vanno messe in stato_progetto.md)
-- **R-502-1 MEDIA** — `modules/telegram/bot.py:583`: `_CLEAR_RECAP_MAX = 1200` taglia il recap. Il terminale invece lo mostra INTERO per decisione R-201-2/R-200-3 (gas.py:5838: «l'operatore vede SEMPRE cosa verrà dato come contesto»). Il recap salvato può arrivare a 4000 caratteri, quindi su Telegram l'operatore può non vedere fino a ~2800 caratteri di contesto che verrà iniettato. Non lo blocco: resta leggibile con «ricorda» o dal terminale. Correzione suggerita: mandare il recap intero in uno o più messaggi a parte invece di tagliarlo. Se no, serve una decisione esplicita dell'operatore.
-- **R-502-2 BASSA** — `tests/test_unit_notte.py:2094`: il round-trip col kernel vero gira con `GAS_RIFLESSIONE_AUTO=0` (impostato da un fixture, riga 40). Il percorso bot → `kernel.rifletti()` reale non è mai provato insieme: la riflessione è testata solo col kernel finto.
-- **R-502-3 BASSA** — `modules/telegram/bot.py:638`: le righe «(scartata: …)» non hanno un tetto e vengono prima dell'avviso «Recap … NON fidato». Se il modello propone molte lezioni scartate, il taglio a 4096 di `_send_text` può togliere quell'avviso, e il commento alla riga 582 promette solo che restano l'esito e le lezioni. Basta mettere un tetto alle scartate (es. 5 + «… e altre N») oppure spostare l'avviso NON fidato prima.
-
-**Misure mie** (venv indicato): `python tests/test_unit_kernel.py` → 1031 PASS, 0 FAIL; `pytest -q tests/` completo, verde fino al 100%; test `-k clear` → 16 passed.
-
-**Cosa NON ho verificato**: il comportamento col Telegram vero (polling reale, indicatore «sta scrivendo» che scade dopo ~5 s durante una riflessione di minuti, update ricevuti durante il blocco). In dev non si riproduce e non ci sono credenziali. Non ho verificato neanche cosa succede se REPL e bot girano in parallelo sullo stesso .gas_history.json: è un problema che c'era già prima, non introdotto da questo diff.
-
-**Memoria**: aggiunta la riga #502 più una lezione (portare un comando del terminale su un altro canale senza perdere le garanzie di visibilità già decise), committate con lo script (3ba317f) in /home/user/Gas/.claude/agents/memoria_revisore.md.
-
-### Review #503 (chat Notte) — sul diff committato in ceeed81
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #503 (chat Notte), diff STAGED in /home/user/Gas, ramo notte/2026-10-25: `/clear` da Telegram, secondo giro dopo la #502. File in stage: modules/telegram/bot.py (+134) e tests/test_unit_notte.py (+197). Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti che servono) e la mia memoria.
-
-**Cosa ho guardato nel diff**
-1. `modules/telegram/bot.py:612` — `messaggi_recap` manda il recap INTERO, con le righe rientrate da «│ » e diviso in messaggi da al massimo 4000 caratteri. Rischio controllato: un pezzo oltre i 4096, una sequenza «<U+XXXX>» spezzata, testo perso. Prova fatta: 3 righe da più di 3999 caratteri con «<x » e U+200B al punto di taglio danno pezzi di [3997, 4000, 4000, 29], senza sequenze spezzate. Il test ricostruisce il testo visibile senza perdite. Esito: ok, **R-502-1 chiusa** (stessa garanzia del terminale, R-201-2).
-2. `modules/telegram/bot.py:606` — `_taglio_sicuro` cerca un «<» solo negli ultimi 10 caratteri e lo scarta se dopo c'è già un «>». Rischio controllato: un ciclo infinito, oppure un «<» scritto nel testo che fa tagliare male. Ogni giro avanza di almeno 3990 caratteri, e un «<» letterale fa solo tagliare un po' prima. Esito: ok.
-3. `modules/telegram/bot.py:665` — le righe «scartata» hanno un tetto (5, poi «… e altre N»), e l'avviso «NON fidato» viene prima delle lezioni. Rischio controllato: un primo messaggio troppo lungo. Conto: al massimo 3 lezioni (`RIFLESSIONE_MAX_LEZIONI`) da al massimo 300 caratteri (`LEZIONE_TESTO_MAX` in modules/memory/store.py:75), più 5 scartate da circa 170: circa 2 KB, sotto il limite. Esito: ok, **R-502-3 chiusa**.
-4. `modules/telegram/bot.py:694` e `modules/telegram/bot.py:738` — `esegui_clear` ora ritorna una lista: in testa l'esito della pulizia, poi il recap. `_handle_update` manda i messaggi in ordine, dopo il controllo della chat autorizzata. Rischio controllato: la pulizia saltata se la riflessione fallisce, un'eccezione che arriva fino al loop del bot. Ci sono due try separati, il fallimento finisce nel log con `log.warning` e la pulizia avviene sempre (§9). Esito: ok.
-5. `tests/test_unit_notte.py:2145` — round-trip bot → `kernel.rifletti()` vero con il client finto `_ClientRifl`: controlla recap nel secondo messaggio, lezioni in quarantena (2 nel DB) e storia vuota. Esito: ok, **R-502-2 chiusa**. Ho girato `pytest -k clear` su tests/test_unit_notte.py: 17 passed.
-
-Wall of Shame: nessuno slicing della cronologia (i tagli sono solo su testo da mostrare) e nessuna simulazione degli strumenti fuori dai test. Il tetto di 10 iterazioni, `_get_window` e i guardrail della memoria non sono toccati.
-
-**Riserve**
-- **R-503-1 BASSA**: il pezzo da 4000 è contato in caratteri Python, mentre Telegram conta in unità UTF-16. 4000 caratteri «astrali» (es. emoji) superano 4096 e Telegram rifiuterebbe il messaggio. È lo stesso limite che ha già `_send_text`, e un recap così non è realistico.
-- **R-503-2 COSMETICA**: una lezione (al massimo 300 caratteri nello store) piena di caratteri invisibili, una volta resi come «<U+XXXX>», supera 300 e su Telegram viene tagliata con «…». Il testo intero resta in `gas lezioni lista`, ed è lì che si approva.
-
-**Cosa NON ho verificato**: l'invio vero sull'API di Telegram (limite effettivo, limiti di frequenza con molti pezzi), perché in sviluppo il trasporto HTTP è bloccato. Non ho rifatto nemmeno l'intera suite: mi fido delle tue misure (1031 PASS nel kernel, 2159 passed con pytest).
-
-**Memoria**: riga #503 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola (c5faa56). Il diff del motore resta in stage. Nessuna lezione nuova.
-
-### Review #504 (chat Notte) — sul diff committato in 17adcfb (note di bot e verifica esterna su #263)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #504 (chat Notte): diff staged di PR #263, ramo notte/2026-10-25, 3° giro del comando /clear da Telegram.
-
-Prima della review ho letto: CLAUDE.md (sez. 5, 8, 9, 10), reports/stato_progetto.md (le parti su clear e recap, R-201-2) e la memoria del revisore (#502, #503).
+Review #511 (chat Mani). Ho esaminato il diff in stage di claude/peaceful-lovelace-0w2b7q rispetto alla base origin/main 0dfe330, Mani fetta 16, che chiude R-ve261-3 e R-ve261-6. Prima della review ho letto CLAUDE.md (sez. 5), il blocco «riserve rimaste dopo il merge di #261» in reports/stato_progetto.md e la memoria del revisore.
 
 **Elementi del diff esaminati**
-1. `modules/telegram/bot.py:738` — se il comando arriva da un `edited_message` (cioè `upd["message"]` assente o vuoto), risponde «mandalo come messaggio nuovo» e non pulisce la cronologia.
-   - Rischi controllati: ordine rispetto al ramo errore e al controllo della chat autorizzata, chiamata a `_send_typing`, caso `"message": {}`.
-   - Il controllo viene prima dell'errore «argomenti» e dopo quello sulla chat autorizzata (`modules/telegram/bot.py:721`). Non chiama `_send_typing` (lo prova il test con `digita == []`). Con `"message": {}` il messaggio viene trattato come modificato, cioè nella direzione sicura.
-   - Esito: ok. V-1 bot #263 chiusa.
-2. `modules/telegram/bot.py:582` — nella regex anche `\r` e `\n` separano gli argomenti.
-   - Sonda: «/clear\n» → clear; «/clear\t\n\r» → clear; «/CLEAR\nx\ny» → errore «non vuole argomenti»; «/clear\xa0foo» → None, come per /notte (decisione già presa, V-3 ve #233).
-   - Il `fullmatch` sul testo già ripulito con `strip` e il flag `re.S` fanno entrare tutte le righe nel gruppo degli argomenti.
-   - Esito: ok. V-1 verifica esterna #263 chiusa.
-3. `modules/telegram/bot.py:618` — un recap vuoto o fatto solo di spazi produce «│ (recap vuoto)».
-   - Il chiamante `modules/telegram/bot.py:688` passa sempre una `str`, quindi nessun crash.
-   - U+200B non viene tolto da `strip` e resta visibile come `<U+200B>` (verificato con una sonda).
-   - Esito: ok, con la riserva R-504-2.
-4. `tests/test_unit_notte.py:2111` — test del messaggio modificato in /clear: nessuna pulizia, risposta «messaggio nuovo», nessun «sta scrivendo».
-   - `tests/test_unit_notte.py:1987` copre «/clear\nfoo» e «/clear@GasBot\r\nx».
-   - `tests/test_unit_notte.py:2094` copre il recap vuoto e quello fatto solo di spazi.
-   - Esito: ok.
+- `modules/web/leggi.py:1372`: `_componi` calcola `con_noscript` con `_NOSCRIPT.search(grezzo)` sul testo intero e lo passa al costruttore. Rischio esaminato: il comportamento cambia rispetto all'override di `feed` tolto? No: l'override cercava sullo stesso `grezzo` passato in un solo `feed`, quindi il risultato è identico. Il ripiego senza parser calcola il flag da sé (`modules/web/leggi.py:1124`, non toccato). Esito: ok.
+- `modules/web/leggi.py:800` e `modules/web/leggi.py:812`: nuovo parametro `con_noscript: bool = False`, scritto in `_contesto.con_noscript`. Rischio esaminato: un chiamante che non passa il flag. Oggi l'unico chiamante in produzione è `_componi`. I test che costruiscono `_Estrattore()` senza flag (tests/test_unit_web_leggi.py righe 1156, 1183, 1403, 1654, 1721) usano pagine senza noscript, quindi non cambia niente. Il default però è il valore NON sicuro. Esito: riserva R-511-1.
+- `modules/web/leggi.py:209`: la docstring di `_Contesto` ora descrive l'eccezione di `_chiudi_template` (R-469-1) e il caso noscript. Rischio esaminato: che contraddica il codice. È coerente con la guardia `not self.con_noscript` in `modules/web/leggi.py:417`. Esito: ok.
+- `tests/test_unit_web_leggi.py:1023` e `tests/test_unit_web_leggi.py:1024`: pagine con `<NOSCRIPT>` e `<NoScript>`. Rischio esaminato: che il mutante senza `re.IGNORECASE` sopravviva ancora. Ho rifatto il mutante a mano e il test FALLISCE, quindi R-ve261-3 è chiusa. Esito: ok.
+- `tests/test_unit_web_leggi.py:1027` e `tests/test_unit_web_leggi.py:1028`: `</template>` in più a pila vuota. Rischio esaminato: il mutante senza `and self._template_fuori` in `modules/web/leggi.py:414` (citazione di contesto). Ho rifatto il mutante: il contatore scende a -1, il template successivo non arriva sopra 0 e VIS si perde, quindi il test FALLISCE. Esito: ok.
+- `tests/test_unit_web_leggi.py:1995`: il test casuale del ripiego passa il flag in modo esplicito. Senza, perderebbe il caso noscript che prima copriva l'override. Esito: ok.
 
-Ho rilanciato `pytest -q tests/test_unit_notte.py -k "clear or recap"`: 18 passed. Le suite intere (1031 PASS e 2159 passed) le ho prese dalle tue misure, non le ho rilanciate.
+**Prove rifatte da me**
+- Web suite: 420 passed, 1 skipped su Python 3.13.16 e su 3.11.
+- Mutanti, tutti presi (FAIL): senza IGNORECASE; senza guardia a pila vuota; flag ignorato nel costruttore; flag non passato da `_componi`.
+- Dopo ogni prova il working tree è tornato identico all'index (`git diff --quiet`).
+- V-4(b) della verifica esterna #261: confermo che su origin/main non c'è nessuna tupla di test doppia. Le uniche righe uguali sono prefissi di stringhe DOCTYPE con continuazioni diverse (righe 1238, 1244, 1261). Nessuna modifica serve.
 
-Antipattern del Wall of Shame: nessuno. Niente slicing della history, niente output simulato dei tool, cap del loop e `_get_window` non toccati. I percorsi di errore restano fail-safe: `comando_clear` ha il suo try/except e `_handle_update` intercetta tutto.
+**Antipattern (Wall of Shame)**: nessuno slicing della history, nessuna simulazione di tool. Il diff non tocca i guardrail (cap 10 iterazioni, cap 8k, `_get_window`) né il perimetro di ci.yml.
 
 **Riserve**
-- **R-504-1 (BASSA)**: `/notte` (`comando_giro`, `modules/telegram/bot.py:725`) parte ancora da un `edited_message`. È la stessa classe di problema del V-1 bot: modificare un vecchio messaggio in «/notte» lancia un giro. È fuori da questo diff, va tracciata.
-- **R-504-2 (COSMETICA)**: `str.strip` toglie anche NBSP e i caratteri di controllo \x1c-\x1f. Un recap fatto solo di quei caratteri appare come «(recap vuoto)» invece di mostrarli visibili come `<U+XXXX>`. Nessun danno pratico.
+- **R-511-1 (chat Mani) BASSA**: con default `con_noscript=False`, chi costruisce `_Estrattore` senza flag su una pagina con noscript riattiva la regola R-469-1, cioè la classe di fuga V-1 ve #261 bis. Prima l'override di `feed` lo calcolava da sé per qualunque chiamante. Oggi non è un difetto (l'unico chiamante in produzione passa il flag), ma va contro «verso sicuro / zero crash». Proposta: default `True` (fail-closed). L'ho provato e la suite resta 420 passed 1 skipped, e anche il mutante «flag non passato» verrebbe preso. In alternativa, parametro obbligatorio keyword-only. Va tracciata in stato_progetto.md.
 
-**Rischio escluso**
-Non ho verificato il comportamento reale di Telegram con `edited_message` sul bot vivo (se e quando lo consegna dopo `allowed_updates`): in dev non si riproduce, ho visto solo update finti. Non ho rilanciato le suite intere.
+**Cosa NON ho verificato**
+- Non ho rifatto il fuzz di identità PR/main su 300 mila pagine né il confronto con lexbor/selectolax sui 4 casi nuovi: è costoso e già dichiarato dall'autore. Per l'equivalenza mi sono basato sull'argomento statico (stesso `grezzo`, un solo `feed`).
+- Non ho rifatto la suite col parser vecchio forzato (`_PARSER_AGGIORNATO=False`): quel percorso usa `_testo_senza_parser`, che il diff non tocca.
+- Non ho rifatto i mutanti «flag spento nel ripiego» e «senza con_noscript in chiudi».
 
-Memoria aggiornata: riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola con lo script (e02c8bf). Nessuna lezione nuova.
+**Memoria**: riga contatore #511 e una lezione nuova (il default di un parametro che sostituisce un auto-rilevamento deve essere il valore sicuro) aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, committate da sole con lo script: commit 1009528. I file del diff restano in stage, non toccati.
 
-Merge successivo di origin/main 98ed619 (PR #266, solo `reports/`, fuori dal perimetro): revisore non richiesto.
+### Review #512 (chat Mani) — dopo il default `True`
 
-**Review #510 (chat Mani) — merge di origin/main a944b57 nella PR (commit 32c2690), fatto dalla chat Mani su richiesta dell'operatore («mergia 263»). Verdetto integrale:**
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #512 (chat Mani): ri-review del diff STAGED su claude/peaceful-lovelace-0w2b7q dopo la #511. Ho fatto le letture obbligatorie: CLAUDE.md sez. 5/8/9 (era nel contesto), reports/stato_progetto.md con Grep mirato, memoria_revisore.md (coda e lezioni recenti, compresa la lezione della #511 sul default fail-closed).
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:800`: `_Estrattore.__init__(xhtml: bool = False, con_noscript: bool = True)`. Rischio: un chiamante che dimentica il flag riapre la regola R-469-1. Esito: ok, chiude R-511-1. L'ho provato sul codice: `_Estrattore()` senza flag su `<p>A</p><template><svg></template>SEGRETO` dà la pila incerta e nasconde il resto (va nel verso sicuro).
+- `modules/web/leggi.py:1373`: `_componi` passa sempre `con_noscript=_NOSCRIPT.search(grezzo) is not None`, in modo esplicito. Rischio: il nuovo default cambia l'uscita reale. Esito: ok. Su una pagina senza noscript (`<template><svg></template>VIS`) passa False e VIS resta visibile come prima. Il default non arriva mai a `_componi`.
+- `modules/web/leggi.py:813`: il commento spiega il perché (R-ve261-6, R-511-1) e il flag viene assegnato al contesto. Esito: ok.
+- `modules/web/leggi.py:1125`: (contesto) il ripiego calcola ancora il flag da sé sul testo intero, con la stessa regex `_NOSCRIPT` che ha IGNORECASE (`modules/web/leggi.py:789`). Esito: ok, coerente.
+- Test che costruiscono `_Estrattore()` senza flag: `tests/test_unit_web_leggi.py:1156`, `tests/test_unit_web_leggi.py:1183`, `tests/test_unit_web_leggi.py:1315`, `tests/test_unit_web_leggi.py:1323`, `tests/test_unit_web_leggi.py:1403`, `tests/test_unit_web_leggi.py:1654`, `tests/test_unit_web_leggi.py:1721`. Nessuno contiene `</template>`, quindi per loro il default non fa differenza. Il test casuale a `tests/test_unit_web_leggi.py:1995` passa il flag esplicito, calcolato sulla pagina intera. Esito: ok.
+
+**Prove rifatte**
+- Web suite: 420 passed, 1 skipped su Python 3.13.16 e su 3.11.
+- Mutante «default=False», applicato al diff in un worktree separato: la suite resta 420 passed, 1 skipped, quindi il mutante sopravvive. Da qui la riserva.
+
+**Riserve**
+- R-512-1 BASSA: nessun test fissa il default `con_noscript=True`. Il mutante col default opposto passa tutta la suite, quindi il default può tornare a False senza che nessuno se ne accorga. Fix: un test con `_Estrattore()` senza flag su `<p>A</p><template><svg></template>X` che controlla `_contesto.incerta` e che X non compaia nel testo. Va tracciata in stato_progetto.md.
+
+**Rischio esplicitamente escluso**
+- Non ho rifatto i mutanti dichiarati dall'autore (senza IGNORECASE, senza guardia a pila vuota, flag non passato o ignorato, flag spento nel ripiego, senza con_noscript in chiudi). Li avevo già verificati nella #511 per i casi principali, e il codice interessato non è cambiato in questa revisione.
+- Non ho rifatto la suite col parser vecchio forzato (411/10 dichiarati): il cambio tocca solo il costruttore e `_componi` passa il flag prima di scegliere tra parser e ripiego.
+- Comportamento su VPS non verificato: la modifica è puramente locale al parser.
+
+**Memoria**
+- Ho aggiunto la riga #512 e una lezione in /home/user/Gas/.claude/agents/memoria_revisore.md (chiudendo una riserva su un default, provare il mutante col default opposto).
+- L'ho committata da sola con `scripts/commit_memoria_revisore.sh` (cb1040c). `modules/web/leggi.py` e `tests/test_unit_web_leggi.py` sono ancora in stage, non toccati.
+- Il worktree temporaneo del mutante è stato rimosso. Ne resta uno nello scratchpad (`/tmp/claude-0/-home-user-Gas/43e8a462-3a0c-4db5-a7de-fcbdd42c5c23/scratchpad/base`, su 0dfe330): c'era già prima di questa review e non l'ho toccato. Si toglie con `git worktree remove`.
+
+### Review #513 (chat Mani) — sul diff committato in fd5184b
 
 ## VERDETTO: APPROVATO
 
-Review #510 (chat Mani). Oggetto: il merge di origin/main a944b57 nell'head 4a96de8 della PR #263 (base 16110b2) sul branch notte/2026-10-25. Diff staged.
+Review #513 (chat Mani). È la ri-review del diff in stage su claude/peaceful-lovelace-0w2b7q dopo la #512. Ho fatto le letture obbligatorie: CLAUDE.md, le voci di reports/stato_progetto.md e la coda di memoria_revisore.md, con le lezioni del 2026-10-25 sul default fail-closed e sul mutante «default opposto».
+
+Elementi del diff esaminati:
+- tests/test_unit_web_leggi.py:1038 — `test_estrattore_senza_flag_noscript_va_nel_verso_sicuro`: crea `_Estrattore()` senza flag e gli passa `<p>A</p><template><svg></template>SEGRETO`, poi controlla che `_contesto.incerta` sia vero e che SEGRETO manchi da `pezzi`. Rischio esaminato: un test che non fissa davvero il default (R-512-1). Ho rifatto il mutante `con_noscript: bool = False` in modules/web/leggi.py:800: 1 failed, 420 passed, quindi il mutante viene preso. Gli attributi `incerta` (modules/web/leggi.py:224) e `pezzi` (modules/web/leggi.py:805) esistono, quindi le asserzioni non passano per caso. Esito: ok, **R-512-1 chiusa**.
+- tests/test_unit_web_leggi.py:1045 — seconda metà del test: con `_Estrattore(con_noscript=False)` la pila non è incerta e VIS è visibile. Rischio esaminato: che il test passi anche se il parametro viene ignorato e il flag resta sempre True. Ho rifatto il mutante che forza la riga modules/web/leggi.py:813 a `True`: 1 failed, preso. Il test quindi fissa sia il default sia il passaggio del valore esplicito. Esito: ok.
+- modules/web/leggi.py:800 — default `con_noscript=True`, invariato rispetto alla #512. Conferma la direzione fail-closed. Esito: ok.
+
+Suite web rifatta da me: 421 passed, 1 skipped su Python 3.13.16 e su 3.11. Dopo ogni mutante ho ripristinato dall'index (`git checkout`); i due file del diff restano in stage come prima. Nessun guardrail toccato: niente `_get_window`, cap del loop, slicing della history o simulazione di tool.
+
+Rischio escluso: il resto del diff (default True, flag calcolato in `_componi`, test NOSCRIPT e pila vuota, ripiego nel test fuzz) non l'ho ri-sondato oltre la suite. È identico a quanto già verificato nella #511 e nella #512, e la sola aggiunta è il test. Comportamento su pagine reali o su VPS non verificato: fuori perimetro per un'aggiunta solo di test.
+
+Memoria: ho aggiunto la riga #513 in /home/user/Gas/.claude/agents/memoria_revisore.md, nessuna lezione nuova. L'ho committata da sola con scripts/commit_memoria_revisore.sh (commit 903be16); modules/web/leggi.py e tests/test_unit_web_leggi.py restano in stage. Nota: il marcatore `.claude/.review_ok` va rigenerato con `bash scripts/segna_review_ok.sh`, perché il gate PreToolUse ora lo considera non corrispondente al diff in stage.
+
+### Review #514 (chat Mani) — secondo giro, sul diff committato in d6898c7
+
+## VERDETTO: APPROVATO
+
+Review #514 (chat Mani). Ho letto il diff staged del branch claude/peaceful-lovelace-0w2b7q (PR #268): 2 file, +16 −6. Prima ho fatto le tre letture obbligatorie: CLAUDE.md, che era già nel contesto; reports/stato_progetto.md, la parte iniziale e la voce della fetta 16; la memoria del revisore, le lezioni e la coda dalla #504 alla #513.
 
 **Elementi del diff esaminati**
-- `gas.py:3873`: `rifletti` passa per `_cascata_provider("complesso")`. Rischio: le fette 3-5 di main (rung claude-cli, tetto, flock) cambiano cosa succede quando si lancia `/clear` da Telegram. Esito: ok. Il rung claude-cli c'è solo per `compito == "forte"` (`gas.py:828`). Main non tocca né `rifletti` né `clear_history`. Il nuovo flock LOCK_EX|LOCK_NB di main protegge il conto del cervello forte, non la storia. Il lock della storia (`gas.py:1319`) è invariato.
-- `modules/telegram/bot.py:685`: `esegui_clear` chiama `kernel.rifletti()`, con un try/except che logga in gas_debug.log. Rischio: la firma o le chiavi dell'esito cambiate da main. Esito: ok. Il blob di bot.py nello stage è quello di HEAD e main non lo tocca dalla base. La firma `rifletti(self, iniettabile=True)` e le chiavi dell'esito (`ok`, `recap`, `lezioni`, `scartate`…) sono le stesse.
-- `modules/telegram/bot.py:693`: `kernel.clear_history()` sta in un try/except separato, quindi la pulizia avviene sempre. Rischio: perdere la garanzia «pulizia anche se la riflessione fallisce». Esito: ok, `clear_history` (`gas.py:1888`) è invariato rispetto alla base.
+- `modules/web/leggi.py:222` — ora si scrive `_Contesto(aperti, con_noscript: bool = True)`. Prima il default stava fisso a `False` dentro `__init__`, ed è il punto V-1 del bot #268. Rischio esaminato: un chiamante che dimentica il flag riapre la regola della chiusura del template (quella introdotta con R-469-1). Esito: ok, il default è il valore sicuro e uguale a quello di `_Estrattore` (`modules/web/leggi.py:801`).
+- `modules/web/leggi.py:813` — `_Estrattore` passa il flag al costruttore invece di assegnarlo dopo. Rischio esaminato: un ordine diverso di inizializzazione, o il flag perso per strada. Esito: ok. Il mutante «`_Estrattore` non passa il flag» e il mutante «flag forzato a True in `_Contesto`» fanno fallire entrambi tests/test_unit_web_leggi.py::test_estrattore_senza_flag_noscript_va_nel_verso_sicuro.
+- `modules/web/leggi.py:1124` — il ripiego `_togli_blocchi_nascosti` passa `_NOSCRIPT.search(testo) is not None`. Rischio esaminato: il ripiego che finisce sul default o con il flag spento. Esito: ok. Il mutante «non passa il flag» fallisce sulla pagina «</template></template><template><math>…» e il mutante «False fisso» fallisce sulla pagina lunga.
+- Contesto: `modules/web/leggi.py:418` è l'unico punto in cui conta `con_noscript`, cioè «</template>» con template fuori dalla pila. Per questo i test diretti `_Contesto({})` di `tests/test_unit_web_leggi.py:1602-1627` (svg/foreignobject/span/b/div/table/annotation-xml, nessun template) non cambiano significato col nuovo default. L'ho provato: col mutante default=False test_chiusura_fermata_da_un_elemento_html_rende_incerta resta verde. Esito: ok.
+- `tests/test_unit_web_leggi.py:1054` — il ciclo su `((), True), ((False,), False)` fissa il default di `_Contesto` in entrambi i versi. Ho tracciato i due casi a mano. Col default si va su `_visti` e la pila diventa incerta con `[svg]` ancora dentro. Con False si va su `_chiudi_template`, la pila si svuota e non diventa incerta. L'asserzione `(c.pila == []) is not incerta` è coerente coi due rami. Esito: ok, e il mutante default=False lo fa fallire.
+- `tests/test_unit_web_leggi.py:1026` e `tests/test_unit_web_leggi.py:1027` — le due pagine nuove (V-3 della verifica esterna #268). Rischio esaminato: test che non mordono. Esito: ok. Il mutante con la regex `<noscript>` chiusa fa 1 FAIL esattamente su `<noscript class=x>`, e il mutante `_componi` su `grezzo[:1000]` fa 1 FAIL esattamente sulla pagina da 3000 caratteri.
 
-**Controllo meccanico della risoluzione**
-- Blob dello stage confrontati con HEAD e MERGE_HEAD:
-  - uguali a MERGE_HEAD byte per byte: gas.py, brains/claude_cli.py, modules/web/leggi.py, tests/test_unit_kernel.py, tests/test_unit_claude_cli.py, tests/test_unit_web_leggi.py, .claude/commands/fine-task.md, .gitignore, reports/roadmap.md;
-  - uguali a HEAD: modules/telegram/bot.py, tests/test_unit_notte.py, handoff, ultimo_report, diff_sessione, coda_notte, report_notte.
-- `git diff --cached origin/main` contiene solo i file della PR #263: bot.py, test_unit_notte.py, reports/ e la memoria.
-- memoria_revisore.md: nessuna riga persa né da HEAD né da MERGE_HEAD. Ci sono le righe #502-#504 della chat Notte e poi le #505-#509 di main.
-- stato_progetto.md, riga 4: contiene la voce Notte e poi l'intera riga di main (verificato come sottostringa). L'unica riga «persa» da HEAD è la riga R2 fette 1-2. Era già nella base e main l'ha aggiornata, quindi l'unione a tre vie è corretta.
-- Nessun marcatore di conflitto. `git diff --cached --check` è pulito. Il working tree è uguale allo stage.
+**Prove rifatte da me**
+- Suite web: 423 passed, 1 skipped sia su Python 3.13.16 sia su 3.11.
+- 7 mutanti su una copia del tree staged nello scratchpad: tutti presi.
+  - default False in `_Contesto`
+  - `_Estrattore` senza flag
+  - ripiego senza flag
+  - ripiego con False fisso
+  - flag forzato True
+  - `_componi` su `[:1000]`
+  - regex `<noscript>` chiusa
 
-**Test** (Python 3 di sistema)
-- test_unit_notte, test_unit_claude_cli e test_unit_web_leggi: 595 passed, 1 skipped.
-- tests/test_unit_kernel.py: 1035 PASS, 1 FAIL.
-  - Il FAIL è T31g (vector store con GAS_VECTORS=1).
-  - Su un worktree pulito di origin/main esce lo stesso identico risultato (1035/1, T31g). Dipende dall'ambiente, non dal merge.
+Non ho rifatto gli altri 5 mutanti dell'autore (IGNORECASE, guardia a pila vuota, ripiego su `testo[:1000]`, `chiudi` senza `con_noscript`, default False in `_Estrattore`). Sono già stati verificati nelle review #511–#513 e il diff non tocca quelle righe.
 
-**Rischio escluso**
-- Non ho provato `/clear` dal vero su Telegram né sul Mac: non si riproduce in questo ambiente. La coerenza fra bot.py e gas.py l'ho verificata solo leggendo il codice e con i test unitari.
-- Non ho rieseguito le review del codice entrato da main (#496-#509, già approvato).
+**Rischi esclusi esplicitamente**
+- Non ho rifatto la corsa col parser vecchio forzato (414 passed, 10 skipped secondo l'autore): il diff non tocca il percorso che sceglie il parser, solo il costruttore di `_Contesto`.
+- Non ho verificato il comportamento su pagine reali del web: in dev si usano solo pagine sintetiche.
+- V-1, V-2 e V-4 della verifica esterna e V-2 del bot: stanno solo nei report, fuori dal diff, quindi non li ho revisionati qui.
 
-**Memoria del revisore**
-- Ho aggiunto e messo in stage la riga contatore `#510 (chat Mani) — 2026-10-25 — APPROVATO — … Nessuna lezione nuova.` in /home/user/Gas/.claude/agents/memoria_revisore.md.
-- Non ho lanciato `scripts/commit_memoria_revisore.sh`, per due motivi: c'è un merge in corso (`git commit -o` non è ammesso durante un merge) e hai chiesto di non committare. La riga entra col commit del merge, come nelle review #505, #507 e #508.
-- Lo stage ora contiene anche questa riga, quindi lo SHA del diff è cambiato: `bash scripts/segna_review_ok.sh` va lanciato DOPO questa review, sullo stage attuale.
+Antipattern del Wall of Shame (sezione 5 di CLAUDE.md): nessuno slicing della history né simulazione di tool. Il diff è tutto in modules/web, e i guardrail del motore (cap di 10 iterazioni, cap di 8k, `_get_window`) non sono toccati. Nessuna riserva nuova.
+
+**Memoria**
+- Ho aggiunto la riga contatore #514 in /home/user/Gas/.claude/agents/memoria_revisore.md e l'ho committata con lo script: commit fd4b00e «chore(revisore): memoria review #514 — APPROVATO».
+- Nessuna lezione nuova.
+- In stage restano modules/web/leggi.py e tests/test_unit_web_leggi.py. reports/stato_progetto.md e reports/ultimo_report.md sono modificati ma non in stage, come li ho trovati.
 
 
 ## §5 DELTA TEST DEL MOTORE
 
-Dopo il merge di main a944b57 (chat Mani, 2026-10-25): `pytest -q tests/` 2192 passed, 1 skipped; kernel come main (vedi review #510).
-
-- `python tests/test_unit_kernel.py`: `=== RIEPILOGO: 1031 PASS, 0 FAIL ===` in locale (cloud); in CI 1037 PASS, 0 FAIL sia su main sia sul ramo (V-1 bot #263 bis). Invariato: gas.py non toccato.
-- `python -m pytest -q tests/`: main `2140 passed, 1 skipped` → ramo `2159 passed, 1 skipped` (+19 test di `/clear` in `tests/test_unit_notte.py`; dopo 17adcfb stessi numeri, test aggiornati). Nessun FAIL.
+Solo la web suite (gas.py e gli altri test non toccati). Tutto misurato sul codice finale (d6898c7):
+- `python3 -m pytest -q tests/test_unit_web_leggi.py`: main `416 passed, 1 skipped` → ramo `423 passed, 1 skipped in 24.64s` (3.13.16) e `423 passed, 1 skipped in 24.55s` (3.11). +7 test: 6 pagine parametrizzate e 1 test dei default.
+- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `414 passed, 10 skipped in 22.94s` (main 407/10).
+- Mutazioni, 12, tutte prese (uscita di pytest): senza `re.IGNORECASE` → `2 failed, 421 passed`; regex `<noscript>` chiusa → `1 failed, 422 passed`; senza guardia a pila vuota → `2 failed, 421 passed`; flag non passato da `_componi` → `8 failed, 415 passed`; `_componi` su `grezzo[:1000]` → `1 failed, 422 passed`; ripiego su `testo[:1000]` → `1 failed, 422 passed`; flag ignorato in `_Estrattore` → `9 failed, 414 passed`; flag ignorato in `_Contesto` (forzato True) → `9 failed, 414 passed`; flag spento nel ripiego → `13 failed, 410 passed`; senza `con_noscript` in `chiudi` → `14 failed, 409 passed`; default `False` in `_Estrattore` → `1 failed, 422 passed`; default `False` in `_Contesto` → `1 failed, 422 passed`.
+- Oracolo contro main: testo identico a main (worktree di origin/main 0dfe330) su pagine casuali, parser e ripiego, con noscript in più grafie, template, svg/math, canvas/object, frameset e `&#0;`: seed 7-9 sul codice finale, 100 mila ciascuno, `differenze PR/main 0` (nei passaggi precedenti seed 1-6, altre 600 mila, 0). Quindi, sulle pagine provate, 0 fughe nuove e 0 perdite nuove rispetto a main.
+- Lexbor (selectolax 1.0.2, noscript→noembed): i casi nuovi danno lo stesso testo in Gas, main e lexbor.
 
 ## §6 STATO CI
 
+`gh run list` non disponibile (gh non autenticato nel cloud); run e job letti dall'integrazione GitHub (`actions_list`, branch claude/peaceful-lovelace-0w2b7q):
+
 ```
-completed	success	Turno di notte 2026-10-25: /clear da Telegram (coda voce 3)	verifica-bot	notte/2026-10-25	pull_request_target	40141412196	3m35s	2026-10-24T23:07:16Z
-completed	skipped	Turno di notte 2026-10-25: /clear da Telegram (coda voce 3)	verifica-bot	notte/2026-10-25	pull_request_target	40141402639	6s	2026-10-24T23:07:09Z
+40238463856  CI            push                 in_progress  —        d6898c7  2026-10-25T22:04:32Z
+40238465394  verifica-bot  pull_request_target  in_progress  —        d6898c7  2026-10-25T22:04:34Z
+40236338226  CI            push                 completed    success  56af27f  2026-10-25T21:37:14Z
+40236351265  verifica-bot  pull_request_target  completed    success  56af27f  2026-10-25T21:37:24Z
+40236101471  CI            push                 completed    failure  fd5184b  2026-10-25T21:34:08Z
 ```
 
 Mappatura commit→run:
-- `3ba317f`, `c5faa56`: nessuna run su questo SHA (pushati insieme a `ceeed81`).
-- `ceeed81` → run CI 40141292710 (push).
-- `3cfdc29` → run CI 40141400864 success (`unit-suite`, `handoff-check`); `verifica-bot` 40141412196 success (bot APPROVATO CON RISERVE).
-- `e02c8bf`, `17adcfb`: nessuna run su questo SHA (pushati insieme al commit di fine-task).
-- `f23234f` (fine-task del secondo giro) → run CI 40142732300 success (`unit-suite`, `handoff-check`), `verifica-bot` success.
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- `1009528`, `cb1040c`, `903be16`: nessuna run su questo SHA (pushati insieme a `fd5184b`).
+- `fd5184b` → run CI 40236101471: `unit-suite` success (web suite compresa), `handoff-check` failure allo step «Run check_handoff» (atteso: il commit motore non contiene ancora l'handoff della sessione).
+- `56af27f` → run CI 40236338226 success (`unit-suite`, `handoff-check`); verifica-bot 40236351265 success (APPROVATO CON RISERVE).
+- `fd4b00e`: nessuna run su questo SHA (pushato insieme a `d6898c7`).
+- `d6898c7` → run CI 40238463856 e verifica-bot 40238465394, in corso alla scrittura dell'handoff.
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-503-1 (chat Notte)** BASSA: pezzo da 4000 contato in caratteri, non in unità UTF-16.
-- **R-503-2 (chat Notte)** COSMETICA: lezione piena di invisibili tagliata con «…» su Telegram.
-- **R-504-1 (chat Notte)** BASSA preesistente: `/notte` e `/compito` partono ancora da un messaggio modificato.
-- **R-504-2 (chat Notte)** COSMETICA: recap di soli NBSP/caratteri di controllo mostrato come «(recap vuoto)».
-- V-2 bot #263, seconda parte: «sta scrivendo» mandato una volta sola durante una riflessione lunga.
-- Verifica esterna #263 ([commento](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390800357)) APPROVATO CON RISERVE: V-1 chiusa in 17adcfb; V-2 = R-503-1/2; V-3 COSMETICA (data della sessione in ora italiana, §6 datato) nessuna azione.
-- Terzo giro su `f23234f`: bot e [verifica esterna](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390966722) APPROVATO CON RISERVE, solo BASSE (`/clear@AltroBot` con username ignoto, polling bloccato dalla riflessione, marcatore di continuazione, kernel 1037 in CI contro 1031 in locale), tracciate in `stato_progetto.md`.
-- Non provato col Telegram vero.
+- Dalle review di questa sessione: R-511-1 e R-512-1 CHIUSE in fd5184b; #513 e #514 senza riserve. Nessuna aperta.
+- Bot #268 V-1/V-2 e verifica esterna #268 V-1..V-4: CHIUSE in questo giro (§1).
+- R-ve261-4 BASSA preesistente (classe frameset descritta in §1): decisione all'operatore.
+- Restano decisioni dell'operatore: R-ve261-2 MEDIA, R-ve246-5 MEDIA, R-ve252-2, R-ve255-1, R-ve235-7, tempo di rete 12 s.
