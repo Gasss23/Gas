@@ -1,23 +1,27 @@
-# ULTIMO REPORT — 2026-10-24 — R2 via B, fetta 3: note BASSE del cervello forte chiuse
+# ULTIMO REPORT — 2026-10-24 — Chat Mani, fetta 15: </template> sopra svg/math come il browser (R6)
+
+Ramo `feat/mani-web-fetta15` da main 172c2d7 (dopo il merge di #257). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza.
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta (vedi §0 dell'handoff): tocca il motore e il template fine-task. L'ultima review (#503) è APPROVATO; il merge autonomo vale solo se anche il bot dà APPROVATO senza riserve.
-2. Prima di accendere il forte: provare sul Mac `claude -p` col login Max di Gas (R-496-3).
-3. Ancora aperti da prima: testo nuovo dell'attività di notte da chiedere direttamente nella sessione fissa; 3 lezioni da approvare sul Mac.
+1. Merge della PR della fetta 15: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+2. **R-ve252-2 e R-ve255-1 (BASSE, XHTML malformato)**: estendere «il resto della pagina se ne va» a tutto l'XHTML malformato? Decidi tu.
+3. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un vero costruttore HTML5 (es. lexbor): decidi tu. Con questa fetta si vede anche dopo un template chiuso.
+3b. **R-ve261-2 (MEDIA, già presente, nuova riserva)**: Gas legge i tag dentro noscript, il browser con gli script attivi no; chiuderla vuol dire leggere noscript come testo grezzo (cambia cosa si vede delle pagine con noscript): decidi tu se farlo nella prossima fetta.
+4. Rete a 12 s invece di 15 (fetta 14): confermi?
+5. **R-ve235-7**: proposta di chiuderla come compromesso accettato (il DNS di sistema non si può interrompere; al massimo 4 risoluzioni appese).
+6. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
 ## Esito
 
-- **Costo su ogni errore dopo una risposta della CLI (R-497-1)**: `FATTA`. Uscita non JSON, JSON non oggetto, chiamate o argomenti non validi su una risposta pagata, eccezioni impreviste; `usage` non numerico non solleva più.
-- **Prezzo per famiglia del modello e pavimento per chiamata (V-1 bot/ve #258)**: `FATTA`. Haiku 1/5, Sonnet 3/15, Opus 15/75 $/M, famiglia sconosciuta = la più cara; nessuna chiamata conta meno di 500 token d'ingresso.
-- **Conto sotto lucchetto (R-496-2, R-502-1/2)**: `FATTA`. Attesa massima 5 s; se il consumo non si registra il forte si ferma fino al riavvio del processo.
-- **Costi non finiti o negativi ignorati (V-4 ve #258)**: `FATTA`.
-- **Doctor «Cervello forte» (R-497-2)**: `FATTA`. Spento/acceso, comando presente, conto di oggi contro il tetto, conto illeggibile o con data futura = WARN; nessuna chiamata a `claude`.
-- **Messaggio dei file protetti (R-498-1)** e **deroga n/d nel template (R-501-1)**: `FATTA`.
-- **Review**: #502 APPROVATO CON RISERVE (R-502-1/2/3) → corrette → #503 APPROVATO.
-- **Test**: `tests/test_unit_claude_cli.py` 21 passed; kernel 1039 PASS 0 FAIL (T99m/n/o/p nuovi, lockfile in T68s); V-1 bot #262 corretta (doctor, review #504); V-1 verifica esterna #262 corretta (numeri enormi, review #505 → #506); claude_cli 22 passed; pytest completo 2142 passed, 1 skipped.
-- **Campo `cervello: forte` nel catalogo notturno e setup del Mac**: `DEFERITA — prossima fetta, dopo la prova del login`.
+- **R-469-1 (`</template>` sopra svg/math, perdita)**: `FATTA`, con **B-500-1** (ALTA, trovata dal revisore nella prima versione): `FATTA`.
+- **V-1 ve #257 (test dei redirect rotti, BASSA)**: `FATTA`.
+- **V-1 bot / V-2 ve #257 (commento di TIMEOUT_TOTALE, COSMETICA)**: `FATTA`.
+- **Bot #261 e verifica esterna #261: BOCCIATO** per V-1 ALTA (noscript fuori dalla pila, forme a e b): `FATTA` (review #502, #503). V-2 ve MEDIA preesistente (tag letti dentro noscript): registrata come **R-ve261-2**. V-3/V-4 ve BASSE (testo di stato, §6): `FATTA`.
+- **Bot #261 su c16487c: APPROVATO CON RISERVE** (V-1 BASSA numero del parser vecchio, V-2 COSMETICA descrizione: `FATTA`). **Seconda verifica esterna #261: BOCCIATO** per V-1 ALTA (i controlli puntuali su noscript non chiudevano la classe: 82 fughe nella sua enumerazione): `FATTA` a livello di pagina (con `<noscript` la regola non si usa), review #504; V-2 BASSA (test del template svg chiuso per nome): `FATTA`; V-3/V-4: `FATTA`.
+- **Test**: web suite 388 → 416 (Python 3.13 e 3.11; col parser vecchio 407 passati e 10 saltati apposta). Oracolo lexbor su ~5 milioni di pagine: 0 perdite nuove, 0 fughe nuove (4 casi R-ve246-5 resi visibili, già su main senza prefisso). Mutazioni: tutte prese.
+- **Review**: #500 BOCCIATO, #501, #502, #503, #504 APPROVATO (chat Mani): verdetti integrali nell'handoff.
 
-## Anomalie
+## RICHIESTE ALLA CHAT MOTORE
 
-- Nessuna.
+Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…15»).

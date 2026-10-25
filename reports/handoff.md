@@ -1,235 +1,375 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-24 — Chat Motore: R2 via B fetta 3 (note BASSE del cervello forte chiuse, ancora spento)
+**Sessione:** 2026-10-24 — Chat Mani, fetta 15: </template> sopra svg/math come il browser (R6)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #262 (https://github.com/Gasss23/Gas/pull/262): tocca motore e template fine-task; ultima review #503 APPROVATO.
-2. Prima di accendere il forte: prova sul Mac di `claude -p` col login Max di Gas (R-496-3).
-3. Testo nuovo dell'attività di notte da chiedere nella sessione fissa; 3 lezioni da approvare sul Mac.
+1. Merge della PR della fetta 15: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
+2. **R-ve252-2 e R-ve255-1 (BASSE, XHTML malformato)**: estendere «il resto della pagina se ne va» a tutto l'XHTML malformato? Decidi tu.
+3. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un vero costruttore HTML5 (es. lexbor): decidi tu. Con questa fetta si vede anche dopo un template chiuso.
+3b. **R-ve261-2 (MEDIA, già presente, nuova riserva)**: Gas legge i tag dentro noscript, il browser con gli script attivi no; chiuderla vuol dire leggere noscript come testo grezzo (cambia cosa si vede delle pagine con noscript): decidi tu se farlo nella prossima fetta.
+4. Rete a 12 s invece di 15 (fetta 14): confermi?
+5. **R-ve235-7**: proposta di chiuderla come compromesso accettato (il DNS di sistema non si può interrompere; al massimo 4 risoluzioni appese).
+6. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Costo su ogni errore (R-497-1)**: `FATTA`.
-- **Prezzo per famiglia e pavimento (V-1 bot/ve #258)**: `FATTA`.
-- **Conto sotto lucchetto, attesa limitata, forte fermo se il consumo non si registra (R-496-2, R-502-1/2)**: `FATTA`.
-- **Costi non finiti (V-4 ve #258)**: `FATTA`.
-- **Doctor «Cervello forte» (R-497-2)**: `FATTA`.
-- **Messaggio dei file protetti (R-498-1), deroga n/d nel template (R-501-1)**: `FATTA`.
-- **Campo `cervello: forte` nel catalogo notturno, setup del Mac**: `DEFERITA — dopo la prova del login`.
+- **R-469-1** (`</template>` sopra svg/math): `FATTA`, con **B-500-1** (ALTA, dal revisore): `FATTA`
+- **V-1 ve #257** (test dei redirect rotti): `FATTA`
+- **V-1 bot / V-2 ve #257** (commento di TIMEOUT_TOTALE): `FATTA`
+- **Secondo giro, bot e verifica esterna #261 BOCCIATO**: V-1 ALTA (noscript fuori dalla pila, forme a e b) `FATTA`; V-2 ve MEDIA preesistente registrata come R-ve261-2; V-3/V-4 ve BASSE `FATTA`
+- **Terzo giro, seconda verifica esterna #261 BOCCIATO**: V-1 ALTA (classe noscript) `FATTA` a livello di pagina; V-2 BASSA (test) `FATTA`; V-3/V-4 `FATTA`; bot #261 su c16487c APPROVATO CON RISERVE (note corrette)
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++++
- .claude/commands/fine-task.md      |   4 ++--
- .gitignore                         |   1 +
- brains/claude_cli.py               | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
- gas.py                             | 133 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
- reports/diff_sessione.md           |  15 +++++++++------
+ .claude/agents/memoria_revisore.md |  10 +
+ modules/web/leggi.py               |  36 ++-
+ reports/diff_sessione.md           |  17 +-
  reports/handoff.md                 | n/d
- reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  25 +++++++++++++------------
- tests/test_unit_claude_cli.py      |  90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
- tests/test_unit_kernel.py          |  55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/stato_progetto.md          |   2 +
+ reports/ultimo_report.md           |  34 +--
+ tests/test_unit_web_leggi.py       |  69 ++++++
 ```
 
-NB: regola «n/d» — la riga di `reports/handoff.md` è n/d e la riga di totale è tolta; le altre righe sono prese con i report già in stage.
+NB: preso dall'index con tutti i report in stage; la riga di `reports/handoff.md` dice `n/d` e manca la riga del totale, come vuole la regola «n/d» di fine-task (il conteggio di questo file non è misurabile dentro il file stesso).
+
+---
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-e3e4eea fix(r2): numeri enormi in usage o total_cost_usd non fanno perdere il costo (V-1 ve #262)
-74acd99 chore(revisore): memoria review #506 — APPROVATO
-25028b0 chore(revisore): memoria review #505 — BOCCIATO
-f906586 fix(doctor): «comando claude» presente solo se eseguibile davvero (V-1 bot #262)
-2a94e8d chore(revisore): memoria review #504 — APPROVATO
-af82b7b docs(fine-task): report R2 via B fetta 3 (review #503)
-9161425 feat(r2): fetta 3 del cervello forte — costo su ogni errore, conto sotto lucchetto, doctor
-a779e43 chore(revisore): memoria review #503 — APPROVATO
-c1409f7 chore(revisore): memoria review #502 — APPROVATO CON RISERVE
+85e11e9 Merge origin/main (PR #262) in feat/mani-web-fetta15
+377e98d docs(reports): fetta 15 chat Mani — verdetto #505 riemesso per il gate B
+af99812 docs(reports): fetta 15 chat Mani — handoff dopo il merge di main (regola n/d)
+584fd7c Merge origin/main (PR #260) in feat/mani-web-fetta15
+4a6c34b docs(reports): fetta 15 chat Mani, terzo giro — report, handoff, stato
+955607c fix(web): fetta 15 — regola del template spenta nelle pagine con noscript (V-1/V-2 ve #261 bis)
+f55b732 chore(revisore): memoria review #504 — APPROVATO
+c16487c docs(reports): fetta 15 chat Mani, secondo giro — report, handoff, stato
+837fcd1 fix(web): fetta 15 — noscript e </template> (V-1 bot #261, V-1 ve #261)
+faf29a1 chore(revisore): memoria review #503 — APPROVATO
+9efd6b1 chore(revisore): memoria review #502 — APPROVATO
+3b50ee1 docs(reports): fine fetta 15 chat Mani — report, handoff, stato
+a2a8ef2 feat(web): fetta 15 — </template> sopra svg/math come il browser, redirect rotti di rete (R6)
+e6ebab8 chore(revisore): memoria review #501 — APPROVATO
+ec744dd chore(revisore): memoria review #500 — BOCCIATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare nel log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+
+---
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore: 9161425 `feat(r2): fetta 3 del cervello forte` (review #502 → #503) il fix del doctor dopo il bot #262 (review #504) e il fix dei numeri enormi dopo la verifica esterna #262 (review #505 → #506).
+Cinque verdetti, incollati integralmente (chat Mani): #500 (BOCCIATO, B-500-1) e #501 (APPROVATO) sul diff della fetta 15 committato in `a2a8ef2`; #502 e #503 (APPROVATO) sul secondo giro (noscript, V-1 bot e verifica esterna #261) committato in `837fcd1`; #504 (APPROVATO) sul terzo giro (noscript a livello di pagina) committato in `955607c`. La #504 sostituisce i controlli della #502 e della #503. #505 (APPROVATO, riemesso per il gate B) sul merge di main 16110b2 (PR #260) e #507 (APPROVATO) sul merge di main 89b8045 (PR #262), fatti perché il merge della PR, chiesto dall'operatore, era in conflitto. Le righe citate nella #500 si riferiscono al diff di allora.
 
-### Review #502 (APPROVATO CON RISERVE, riserve corrette prima del commit)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #502 (chat Motore). Diff staged in /home/user/Gas: R2 via B fetta 3, con il cervello forte ancora spento. Prima della review ho letto CLAUDE.md (sez. 5, 8, 9, 10), le voci R2 di reports/stato_progetto.md (R-496-2, R-497-1/2, R-498-1) e la memoria. Ho applicato la lezione #496/#498: ogni nuovo file di stato va nella denylist e va provato col kernel reale.
-
-**Elementi del diff esaminati**
-- `brains/claude_cli.py:308`: ramo `except RuntimeError` / `except Exception` attorno a `_risposta`. Rischio: che cambi la classificazione QUOTA o il fallback. I RuntimeError escono con il messaggio originale e il «429 » resta in testa. Il costo si aggiunge solo se manca. Solo le eccezioni impreviste vengono avvolte in «risposta non valida», che non è un limite. In `run_turn` il ramo `except` resta uguale: registra il costo e poi `raise`, quindi il fallback non cambia. **ok**
-- `brains/claude_cli.py:299`: un JSON che non è un oggetto e un'uscita non JSON portano `stima_minima`, calcolata una sola volta prima del runner. Il prefisso `_prefisso_limite` resta. **ok**
-- `brains/claude_cli.py:189`: `_costo_equivalente` usa il prezzo della famiglia del modello. Una famiglia sconosciuta prende 15/75, cioè fail-closed; il pavimento vale anche su `total_cost_usd`. Prove dirette: `_prezzo("x")=(15,75)`; 1e-9 su sonnet dà 0.0015; nessun valore negativo passa. **ok**
-- `brains/claude_cli.py:206`: `_token` con `usage` non numerico. Prova diretta: `"abc"` e `inf` danno (0,0) senza eccezioni, perché OverflowError è intercettato. **ok**
-- `gas.py:1650`: flock sul file `.lock` attorno a lettura, somma e scrittura. Prova con 4 processi × 50 registrazioni da 0.01: il risultato è 2.0 esatto, nessun aggiornamento perso. Il fail-closed resta: con conto illeggibile la funzione esce sotto lucchetto senza scrivere. **riserva R-502-1**: il `LOCK_EX` è bloccante e senza timeout. La sezione critica è breve e un crash libera il lucchetto, ma un detentore fermo (SIGSTOP, disco lento) blocca il turno all'infinito. Nel repo c'è già la convenzione `LOCK_NB` a `gas.py:1319`.
-- `gas.py:1646`: costi infiniti o negativi ignorati con warning; T99m PASS. **ok**
-- `.gitignore:55`: lockfile aggiunto. Prova col kernel reale (`execute_tool_call`): `write_file` e `read_file` sono negati su `.gas_claude_cli_uso.json.lock`, `.GAS-claude-cli-uso.json.lock` e `sub/.gas_claude_cli_uso.json.lock`. Lo nega il prefisso esistente a `gas.py:1903`, e lo stesso prefisso c'è nel cancello `modules/gate/gate.py:104`. **ok**
-- `gas.py:4887`: sezione «Cervello forte» del doctor. Usa solo `_env_flag`, `shutil.which` e `_leggi_uso_claude_cli`: nessuna chiamata a `claude`, nessun token consumato. Il tetto ha lo stesso default e gli stessi limiti di `_tetto_claude_cli_superato`. T99n PASS e l'ambiente viene ripristinato da `_saved99`. **ok**
-- `gas.py:2507`: messaggio di diniego (R-498-1). **ok**
-- `.claude/commands/fine-task.md:131`: il segnaposto del §2 e il commento di 4bis citano la regola «n/d»; chiude R-501-1. **ok**
-
-**Controlli generali**
-- §5 (Wall of Shame): nessuno slicing della history, nessun output di tool simulato. I test usano runner finti iniettati per la CLI, non risultati di tool inventati.
-- §9: le eccezioni restano intercettate. `_registra_uso_claude_cli` non solleva mai e scrive un warning nel log.
-- Cap 10 iterazioni: non toccato.
-
-**Test rieseguiti da me**
-- `tests/test_unit_claude_cli.py`: 20 passed.
-- `tests/test_unit_kernel.py`: 1037 PASS, 0 FAIL.
-
-**Riserve, da tracciare in reports/stato_progetto.md prima di accendere `GAS_CLAUDE_CLI`**
-- **R-502-1 BASSA**: `fcntl.flock(..., LOCK_EX)` a `gas.py:1653` è senza timeout dentro il turno. Usare `LOCK_NB` con tentativi limitati: se il lucchetto non arriva, il turno va fermato o il consumo scritto lo stesso, mai un'attesa infinita.
-- **R-502-2 BASSA**: se il lockfile non si apre, il lucchetto non si prende o la scrittura fallisce, c'è solo un warning e il consumo non entra nel conto. È fail-open sul tetto (il problema c'era già per `os.replace`; ora si aggiunge il caso del lockfile). Da valutare un fermo del forte quando la registrazione fallisce.
-- **R-502-3 COSMETICA**: il ramo `except Exception` generico (`brains/claude_cli.py:308`) non ha un test, e il lockfile manca dalla lista `_TARGETS_68s` (`tests/test_unit_kernel.py:4399`). La protezione l'ho verificata solo a mano.
-
-**Rischi esclusi**
-- La CLI `claude` vera non è stata chiamata: il forte è spento e consumerebbe l'abbonamento. Il formato reale di `total_cost_usd` e `usage` resta quello dei test.
-- Il lucchetto su macOS e su file system di rete (NFS) non è stato verificato: qui c'è solo Linux locale.
-- La suite pytest completa (2141 passed) non l'ho rieseguita io: ho eseguito le due suite toccate.
-
-Riga #502 e una lezione nuova (lucchetti nel turno solo con `LOCK_NB` o timeout) aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md e committate con `scripts/commit_memoria_revisore.sh` (commit c1409f7).
-
-### Review #503 (verdetto finale sul diff committato)
-
-## VERDETTO: APPROVATO
-
-Ho letto prima CLAUDE.md (sez. 5, 8, 9 e 10), poi le righe R2 di reports/stato_progetto.md e infine la memoria del revisore. Questa è la review #503: l'ultima in memoria era la #502.
-
-**Cosa ho controllato nel diff**
-- `gas.py:1659` — il lucchetto sul conto ora si prende con `LOCK_EX | LOCK_NB`, riprovando ogni 0,05 s fino a `LOCK_STORIA_SEC` (5 s, `gas.py:1284`, la stessa regola del lucchetto della storia). Scaduto il tempo parte un `TimeoutError` dentro il `with`: il file si chiude e l'errore lo prende l'`except Exception`. Il rischio era che il turno restasse bloccato: non succede. Esito: ok, R-502-1 chiusa.
-- `gas.py:1679` — il blocco `finally` accende `_forte_senza_conto` solo se il consumo non è stato registrato e il conto non era già fermo. Rischio esaminato: il flag acceso per sbaglio nei casi normali. Nel percorso normale si arriva sempre a `registrato=True`, anche quando il costo è 0, non numerico, infinito o negativo (diventa 0.0 e si scrive comunque). Nel ramo «conto già illeggibile» il `return` dentro il `with` passa dal `finally` con `fermo_gia=True`, quindi il flag resta spento ed è corretto, perché il forte lo ferma già `_uso_claude_cli`. Se arriva un `KeyboardInterrupt` il flag si accende e l'interruzione prosegue: va bene. Esito: ok.
-- `gas.py:1688` — `_tetto_claude_cli_superato` legge il flag con `getattr` (non serve inizializzarlo nel costruttore) e restituisce `(None, tetto)`: il forte si ferma fino al riavvio, cioè fail-closed. La chiamata sta dentro `if name == "claude-cli"` (`gas.py:4668`), quindi gli altri provider non cambiano. Il messaggio di `_errore_tetto_forte` ora parla anche dell'aggiornamento non riuscito e del riavvio. Esito: ok, R-502-2 chiusa.
-- Windows (`fcntl` None, contesto `gas.py:12`): si fa solo l'`open(..., "a")` del lockfile, senza attesa e senza lucchetto; lettura, somma e scrittura avvengono come prima. Niente si rompe. Esito: ok.
-- §9 (eccezioni intercettate e loggate): `_registra_uso_claude_cli` intercetta tutto e logga come warning («scrittura fallita … — forte fermo»). Il flag non solleva mai e i due punti di chiamata (`gas.py:4686`, `gas.py:4718`) non cambiano. Nel ramo `except` della create, il `raise` nudo arriva dopo la registrazione: il fallback degli altri provider e il retry di Gemini restano come prima. Esito: ok.
-- `tests/test_unit_kernel.py:4408` — il lockfile è nella lista T68s (scrittura negata al modello). `tests/test_unit_kernel.py:10952` — in T99o un altro fd tiene il lucchetto: misurati 0,20 s di attesa, conto fermo a 0.25, tetto `(None, 4.60)`; poi il flag e `LOCK_STORIA_SEC` vengono ripristinati. Esito: ok.
-- `brains/claude_cli.py:308` — il ramo `except Exception` generico ora ha un test: l'eccezione diventa «claude-cli: risposta non valida» col costo. Esito: ok, R-502-3 chiusa.
-- `.claude/commands/fine-task.md:131` — il segnaposto «output GREZZO» e il commento di 4bis ora citano la regola «n/d». Esito: ok, chiude anche R-501-1 (cosmetica).
-- `.gitignore`: aggiunto `.gas_claude_cli_uso.json.lock`. Esito: ok.
-
-**Prove rieseguite da me**
-- claude_cli: 21 passed.
-- kernel: 1038 PASS, 0 FAIL (T99o e T68s PASS).
-
-**Nota di design (non è una riserva)**: in un processo che resta acceso a lungo (il bot) basta un solo errore passeggero di disco o di lucchetto per fermare il forte fino al riavvio, senza che si rimetta in moto da solo. È voluto (meglio fermo che consumare senza conto) e il messaggio dice di riavviare. Il doctor non vede questo flag, perché vive solo dentro il processo.
-
-**Cosa NON ho verificato**
-- Il comportamento vero su Windows: niente ambiente Windows qui, l'ho valutato leggendo il codice.
-- Il flock su filesystem di rete (NFS, dove può dare `ENOLCK`): non riproducibile qui. Leggendo il codice, finirebbe in `except` e fermerebbe il forte (fail-closed).
-- Non ho rieseguito il pytest completo (dichiarato 2142 passed, 1 skipped) né fatto una prova con un mutante sul flag.
-
-**Memoria**
-- Riga #503 aggiunta in `/home/user/Gas/.claude/agents/memoria_revisore.md`, nessuna lezione nuova.
-- Committata da sola con `scripts/commit_memoria_revisore.sh` (commit a779e43). Il resto dello stage non è stato toccato.
-
-### Review #504 (commit fix doctor, V-1 bot #262)
-
-## VERDETTO: APPROVATO
-
-Review #504 (chat Motore), diff staged della PR #262, correzione del finding V-1 del bot.
-
-Elementi del diff esaminati:
-- `gas.py:4912` — il doctor ora calcola il binario con `shutil.which(os.environ.get("GAS_CLAUDE_BIN") or "claude")`. Rischio esaminato: un percorso falso dato come «presente», e casi limite. Ho provato dal vero: un percorso assoluto inesistente dà None, una cartella dà None, `/bin/ls` restituisce il percorso, una stringa vuota ricade su "claude" grazie a `or`. Il risultato è coerente con l'adattatore in `brains/claude_cli.py:253`: un nome relativo viene risolto nel PATH sia da `which` sia da subprocess. Esito: ok.
-- `gas.py:4913` — la riga del check mostra WARN con «non trovato o non eseguibile». Rischio esaminato: il doctor chiama claude e consuma l'abbonamento. Nella funzione doctor gli unici subprocess sono `git` (`gas.py:5010`, `gas.py:5022`), il forte non viene mai invocato. Esito: ok.
-- `tests/test_unit_kernel.py:10970` — T99p imposta `GAS_CLAUDE_BIN=/non/esiste/claude` e si aspetta WARN; la variabile viene ripristinata in un `finally`, anche se prima non c'era (pop). Rischio esaminato: la variabile resta sporca per i test successivi. Esito: ok. Output reale: `[WARN ] Cervello forte comando claude non trovato o non eseguibile`.
-- `tests/test_unit_kernel.py:10982` (contesto, T99n) — l'asserzione controlla solo «spento», «conto di oggi $0.25» e «WARN forte fermo», mai la riga «comando claude». Rischio esaminato: il test dipende dalla presenza di `claude` nel PATH della CI. Non ne dipende. Esito: ok. Qui claude è nel PATH, ma con `PATH=/usr/bin:/bin` `which` dà None, e T99n non lo guarda.
-
-Esecuzione: kernel 1039 PASS 0 FAIL, `tests/test_unit_claude_cli.py` 21 passed.
-
-Rischio escluso: non ho verificato come si comporta `which` su un file che esiste ma non è eseguibile sul Mac/VPS reale, né con permessi ACL particolari. Il caso «non eseguibile» non ha un test dedicato (T99p copre solo «non esiste»). L'ho accettato perché è la semantica documentata di `shutil.which` (controlla `os.access(X_OK)`). Nessuna riserva aperta.
-
-Memoria: aggiunta la riga #504 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata con `scripts/commit_memoria_revisore.sh` (commit 2a94e8d). Nessuna lezione nuova.
-
-### Review #505 (BOCCIATO, corretto prima del commit)
+### Review #500 (chat Mani) — verdetto integrale (fetta 15, prima versione)
 
 ## VERDETTO: BOCCIATO
 
-Review #505 (chat Motore), diff staged della PR #262: chiusura della V-1 della verifica esterna #262 (overflow nel calcolo del costo).
+Review #500 (chat Mani), fetta 15 sul ramo feat/mani-web-fetta15 (da main 172c2d7). Il numero #500 era libero: il più alto in memoria era #499. La regola nuova su `</template>` fa uscire testo nascosto che main nascondeva, sia nel parser sia nel ripiego.
 
-**Elementi del diff esaminati**
-- `brains/claude_cli.py:215`: `_n` ora limita ogni conteggio a `_TOKEN_MASSIMI`. Ho controllato se restano overflow dai token e se il tetto falsa conteggi veri. Prove dirette: `inf` va a 0 (OverflowError intercettato), `1e300` va al tetto, una stringa di 500 cifre va al tetto, il costo resta finito (90000.0). **ok**
-- `brains/claude_cli.py:180`: `_TOKEN_MASSIMI = 10**9`. Ho controllato se il tetto falsa conteggi realistici. Il contesto massimo è circa 1M token e con `--tools ""` c'è un solo giro, quindi il tetto sta circa 1000 volte sopra qualsiasi chiamata vera. Al tetto il costo vale circa 120000 $, quindi il tetto giornaliero scatta comunque. **ok**
-- `tests/test_unit_claude_cli.py:301`: il nuovo test copre `usage` enorme sul ramo riuscito e su quello d'errore. Però non prova lo stesso valore ostile in `total_cost_usd`. **riserva** (diventa parte del blocco)
+**Motivo del blocco: B-500-1 (ALTA, fuga nuova rispetto a main)**
+- `modules/web/leggi.py:405`: la regola scatta quando `aperti["template"] > 0`. Quel conteggio però include anche i `<template>` svg/math.
+  - `_esci` li toglie dalla pila senza scalarli («restano contati»).
+  - Se l'uscita si ferma su un punto di integrazione (foreignObject, desc, mi), la pila non è vuota e non diventa incerta.
+  - Di conseguenza `_chiudi_template` (`modules/web/leggi.py:383`, ramo riuscito a `modules/web/leggi.py:394`) chiude un template HTML che il browser non ha: svuota la pila e scala svg e template.
+- Sonde sul codice in stage: SEGRETO esce sia dal parser sia dal ripiego. Su main 172c2d7 e con lexbor resta nascosto (danno solo «A»):
+  - `<p>A</p><svg><foreignObject><svg><template><div></template>SEGRETO`
+  - `<p>A</p><svg><foreignObject><svg><template><p>x</p></template>SEGRETO`
+  - `<p>A</p><math><mi><svg><template><div></template>SEGRETO`
+  - `<p>A</p><svg><desc><math><template><b>x</b></template>SEGRETO`
+- Perché le tue prove non lo hanno visto: servono 6 atomi (svg, foreignObject, svg, template, div, /template). L'enumerazione a 4 non poteva arrivarci, e il campione a 6 era troppo rado.
+- Rimedio provato in una copia isolata, la cartella rev500/cp:
+  - nuovo contatore `_template_fuori` in `_Contesto`, che conta solo i template HTML aperti con la pila vuota;
+  - +1 in `apri` quando la pila è vuota e il tag è template;
+  - −1 in `chiudi` quando la pila è vuota, prima del `return`, e nel ramo riuscito di `_chiudi_template`;
+  - la regola usa `self._template_fuori > 0` al posto di `self._aperti.get("template", 0) > 0`.
+  - Risultato: le 4 sonde nascondono SEGRETO, le altre 6 (compresi i rischi che chiedevi) danno lo stesso testo di lexbor, il caso base `<p>A</p><template><svg></template>VIS` dà ancora «A VIS», e la suite resta verde (398 passed su 3.13 e 3.11).
+- Da fare: aggiungere le 4 sonde ai test e rifare l'enumerazione con lexbor usando prefissi fissi (`svg foreignObject svg`, `svg desc math`, `math mi svg`) seguiti da template.
 
-**Motivo bloccante (stessa V-1, campo diverso)**
-- `brains/claude_cli.py:202`: `float(v)` su `total_cost_usd` intero enorme (`10**400`, che `json.loads` restituisce come int) solleva OverflowError fuori da ogni try. Ho fatto la prova col runner dei test (`_runner` e `_ok`):
-  - risposta riuscita con `total_cost_usd = 10**400`: si ottiene `OverflowError`, SENZA `costo_equivalente_usd`. Il percorso: `brains/claude_cli.py:345` passa al ramo generico `except Exception`, che ricalcola `_costo_dati` a `brains/claude_cli.py:313` e risolleva lo stesso OverflowError nudo;
-  - risposta d'errore con `total_cost_usd = 10**400`: stesso risultato, `OverflowError` SENZA costo. Qui l'eccezione parte dentro l'`except RuntimeError`, alla riga `brains/claude_cli.py:309`.
-- Contesto: `gas.py:4687` intercetta `Exception`, quindi niente crash e il fallback parte, ma registra `getattr(e, "costo_equivalente_usd", 0.0)`, cioè 0. Il tetto perde il consumo: è esattamente il sintomo della V-1.
-- Correzione suggerita: in `_costo_equivalente` intercettare `OverflowError` attorno a `float(v)` (oppure scartare gli int fuori dall'intervallo prima di convertire) e far ricadere sulla stima dai token. Poi aggiungere al test il caso `total_cost_usd = 10**400` su entrambi i rami.
+**I rischi che chiedevi di guardare**
+- Template dentro un punto di integrazione, cioè template HTML nella pila: la regola non scatta e vale il percorso di prima. Ok.
+- Svg con un elemento chiamato «template»: sta in `_posizioni`, quindi la regola non scatta, e `</template>` lo chiude per nome come fa il browser. Ok.
+- `</p>` e `</br>` che svuotano la pila: svg e math restano contati, quindi il testo resta nascosto come in lexbor (sonda `<svg><template></p><svg></template>SEGRETO` → «A»). Ok, ma solo grazie alla sovrastima di svg: il rimedio lo rende indipendente da questa.
+- Il ripiego usa lo stesso `_Contesto`, quindi ha la stessa fuga, e il rimedio vale anche per lui.
 
-**Altri percorsi verificati**
-- `brains/claude_cli.py:284`, `(len(sistema) + len(stdin)) // 4`: `len` è limitato dalla memoria, quindi anche 10^12 caratteri danno un prodotto float finito. **ok**
-- `total_cost_usd` float `1e400` (inf) o nan: scartato dal controllo `v == v and 0 < v < 1000`. **ok**
+**Cosa va bene**
+- `tests/test_unit_web_leggi.py:439` (V-1 della verifica esterna #257): i redirect rotti restano «errore di rete o di protocollo (…)». Ok.
+- `tests/test_unit_web_leggi.py:995`: i casi della regola sono giusti, ma non contengono la sonda del blocco.
+- Il commento di TIMEOUT_TOTALE è allineato alla docstring. Ok.
+- Suite web: 398 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
 
-**Rischio escluso**: non ho verificato `_registra_uso_claude_cli` in `gas.py` con costi al tetto (circa 1,2e5 $). Mi sono basato sulla review #503 («0/inf/negativo → 0») e sul fatto che un valore finito grande fa solo scattare il tetto. Non ho rilanciato le suite complete (22 passed e 1039/0 sono dichiarati dall'agente): ho fatto solo prove mirate.
+**Cosa non ho verificato**
+- I casi con noscript: lexbor ha gli script spenti e non può fare da oracolo. Il controllo su `_nascosti_html` l'ho solo letto.
+- La suite col parser vecchio (389 passed e 10 skipped).
+- La tua enumerazione completa: le cifre (707 mila pagine a 4 atomi, 600 mila a 6) sono tue.
 
-**Memoria**: riga #505 e una lezione nuova (provare il valore ostile su tutti i campi numerici dello stesso calcolo, non solo su quello del finding). Ho lanciato `scripts/commit_memoria_revisore.sh`: commit `25028b0` con solo `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+**Memoria**: aggiunte la riga #500 e una lezione (una regola che toglie il nascondimento non deve fidarsi di `aperti`, che mescola HTML e svg/math e contiene sovrastime). Committate con `scripts/commit_memoria_revisore.sh` (commit ec744dd). Lo stage non è stato toccato.
 
-File rilevanti:
-- /home/user/Gas/brains/claude_cli.py
-- /home/user/Gas/tests/test_unit_claude_cli.py
-- /home/user/Gas/.claude/agents/memoria_revisore.md
-- /tmp/claude-0/-home-user-Gas/6049a349-3e7f-5be2-83ac-5dc6a4b4ff3d/scratchpad/t.py (script di riproduzione)
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev500/sonde.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev500/sonde2.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev500/cp/modules/web/leggi.py (copia con il rimedio)
 
-### Review #506 (commit fix numeri enormi, V-1 ve #262)
+### Review #501 (chat Mani) — verdetto integrale (fetta 15 dopo B-500-1)
 
 ## VERDETTO: APPROVATO
 
-Re-review #506 (chat Motore) della PR #262, dopo il BOCCIATO #505. Prima della review ho letto CLAUDE.md (§5 sugli antipattern, §8 sui limiti API, §9 sulla gestione degli errori), `reports/stato_progetto.md` (la parte sul cervello forte via `claude -p`) e la memoria del revisore, inclusa la lezione #505: un valore ostile va provato su tutti i campi numerici.
+Review #501 (chat Mani), ri-review della #500 sul diff in stage della fetta 15. B-500-1 è chiusa: le pagine che con la #500 facevano uscire SEGRETO ora lo nascondono, come main e lexbor. Il numero #501 era libero: il più alto in memoria era #500.
 
-Elementi del diff esaminati:
-- `brains/claude_cli.py:202` — `float(v)` di `total_cost_usd` ora è dentro un try: un OverflowError diventa nan, e il confronto `v == v` fa usare la stima dai token. Rischio esaminato: un intero enorme fa uscire un'eccezione senza costo attaccato. Provato con 10**400, -10**400, inf, -inf, nan, '5', None, True, 0, 1e-300 e [1]: danno tutti il pavimento 0.0015 (sonnet). Il BOCCIATO #505 è chiuso. Esito: ok.
-- `brains/claude_cli.py:218` — tetto `_TOKEN_MASSIMI` (10**9) su ogni campo di `usage`. Rischio esaminato: overflow o costo infinito dai token. Provato con inf, nan, una stringa di 5000 cifre (int() dà ValueError, intercettato), una lista e un `usage` che non è un dict: tutti diventano 0. Con tutti e 4 i campi a 10**400 il costo è 120000 $, un numero finito che fa scattare il tetto giornaliero (va nella direzione sicura, cioè il forte si ferma). Esito: ok.
-- `tests/test_unit_claude_cli.py:301` — `test_token_enormi_non_rompono_il_costo` copre 10**400 sia in `usage` sia in `total_cost_usd`, sul ramo riuscito e su quello d'errore, con costo finito e positivo. Esito: ok. È una nota cosmetica, non una riserva: il test controlla solo `0 < costo < inf` e non il valore esatto del pavimento.
-- Contesto: `brains/claude_cli.py:296` — un intero JSON con più di 4300 cifre fa fallire `json.loads` con ValueError, che il codice già intercetta: il costo diventa `stima_minima`. Un float JSON 1e400 diventa inf, che è già gestito. Esito: ok.
-- Contesto: `gas.py:4715` — il kernel passa `prompt_tokens`/`completion_tokens` (massimo 3·10**9, interi) a `_log_tokens`, e `gas.py:4719` il costo, ormai sempre finito, a `_registra_uso_claude_cli`. Esito: ok.
+**Cosa ho esaminato**
+- `modules/web/leggi.py:235` e `modules/web/leggi.py:413`: il contatore `_template_fuori`, che conta solo i template HTML aperti con la pila vuota, e la regola che ora usa quello invece di `aperti`.
+  - Rischio esaminato: differenze rispetto al rimedio che avevo provato nella #500.
+  - Esito ok: confrontato con la mia copia rev500/cp, cambiano solo il commento e l'ordine di due blocchi indipendenti dentro `apri`.
+  - Gli altri due punti del contatore, cioè il −1 a pila vuota (riga 411) e il −1 quando il template si chiude (riga 399), sono come nel rimedio.
+- Sonde sul codice in stage, sia parser sia ripiego:
+  - le 4 del blocco (`svg>foreignObject>svg`, `math>mi>svg`, `svg>desc>math` con template, più la variante con `<p>`) danno «A», come lexbor;
+  - le 6 della #500 hanno lo stesso esito di lexbor, compreso il caso base `<p>A</p><template><svg></template>VIS`, che dà «A VIS».
+- I due test sui decrementi.
+  - Rischio esaminato: il contatore che resta sbilanciato.
+  - Esito ok:
+    - `<template></template><svg></template>SEGRETO` dà «A»;
+    - `<template><svg></template>VIS<svg></template>SEGRETO` dà «A VIS». Su main dava «A», quindi è una perdita tolta, ed è anche l'esito di lexbor.
+- `tests/test_unit_web_leggi.py:993`: la prima sonda del blocco è ora nei test. Le mutazioni le hai fatte tu (mut15/run.py); il mutante «conta `aperti`» è esattamente il codice della #500, che con queste sonde faceva uscire SEGRETO.
+- Suite web: 405 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
 
-Altri percorsi di overflow: non ne restano nel calcolo del costo né nei campi numerici della risposta. `returncode` finisce solo dentro una f-string, `subtype` e `result` sono stringhe ripulite.
+**Sulle 4 «regressioni» col prefisso `<template><svg><foreignObject>`**
+- Sono della classe già nota R-ve246-5 (canvas con dentro un div), non una fuga nuova.
+- Prova: `<p>A</p><canvas> W1 <div> W2 </canvas> W3` mostra W3 già su main 172c2d7, anche senza prefisso.
+- Col prefisso, main nascondeva W3 solo perché nascondeva tutto quello che seguiva `</template>`. A chi scrive la pagina il codice nuovo non dà nessuna possibilità in più.
+- La riserva R-ve246-5 resta aperta com'era.
 
-Nessuna violazione del Wall of Shame: niente slicing della storia, niente output dei tool simulato. Nessun limite indebolito.
+**Cosa non ho verificato**
+- Le enumerazioni lexbor con i prefissi fissi (707 mila pagine per prefisso): le cifre sono tue, io ho rifatto solo le sonde mirate.
+- La suite col parser vecchio (396 passed e 10 skipped).
+- I casi con noscript: lexbor ha gli script spenti e non può fare da oracolo.
 
-Rischio escluso: non ho verificato il comportamento con la CLI `claude` vera, perché nel container non c'è il login. La sonda ha usato solo il runner dei test e chiamate dirette alle funzioni. Resta valido quanto già dichiarato prima: un `total_cost_usd` tra 0 e 1000 riportato dalla CLI viene preso per buono (999.9 → 999.9). È una scelta di progetto che c'era già, non nasce da questo diff.
+**Memoria**: aggiunta la riga #501, nessuna lezione nuova. Committata con `scripts/commit_memoria_revisore.sh` (commit e6ebab8). Lo stage non è stato toccato.
 
-Test: claude_cli 22 passed (ho rilanciato io la suite). Suite del kernel non rilanciata: questo diff non tocca `gas.py`.
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev500/sonde3.py
 
-Memoria: aggiunta la riga #506 in `/home/user/Gas/.claude/agents/memoria_revisore.md`, committata da `scripts/commit_memoria_revisore.sh` (commit 74acd99, solo quel file). Il diff staged del motore è rimasto intatto. Nessuna lezione nuova.
+### Review #502 (chat Mani) — verdetto integrale (V-1 ALTA bot #261, forma a)
+
+## VERDETTO: APPROVATO
+
+Review #502 (chat Mani), sul delta in stage della PR #261 (head 3b50ee1) per V-1 ALTA del bot #261. La fuga è chiusa: con un noscript aperto la pila torna incerta e il resto si nasconde, come su main. Il numero #502 era libero: il più alto in memoria era #501.
+
+Lo segnalo: nella #501 ho approvato senza provare un nascosto HTML che sta fra il template e la pila. È proprio la fuga che il bot ha trovato. Ho aggiunto in memoria la lezione corrispondente.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:397`, `_chiudi_template`: ora rende la pila incerta se c'è un qualsiasi noscript aperto (`aperti["noscript"]`), nella pila o fuori. Il controllo su `_nascosti_html` è tolto.
+  - Rischi esaminati: un noscript in ciascuna delle tre posizioni (sopra la pila, fra il template e la pila, sotto il template), e cosa cambia togliendo `_nascosti_html`.
+  - Esito ok. Sonde sul codice in stage, sia parser sia ripiego:
+    - `<template><noscript><svg></template></noscript>LEAK` → «A»;
+    - la variante con SEGRETO dentro il noscript → «A»;
+    - `<noscript><template><svg></template>SEGRETO` → «A»;
+    - `<template><svg><foreignObject><noscript></template>SEGRETO` → «A».
+    - Tutti come main 172c2d7.
+  - Il noscript già chiuso (`<template><noscript></noscript><svg></template>VIS`) dà «A VIS»: il conteggio torna a 0 e non blocca più.
+  - Togliere `_nascosti_html` non apre fughe:
+    - con gli script attivi, noscript è l'unico elemento della pila il cui contenuto è testo grezzo nel browser ma non in html.parser, ed è coperto dal conteggio;
+    - object e canvas nella pila il browser li chiude insieme al template: `<template><svg><foreignObject><object></template>VIS` dà «A VIS»;
+    - gli altri elementi a testo grezzo (style, script, iframe…) html.parser li legge già come testo, quindi `</template>` non arriva mai a `chiudi`.
+  - Un conteggio di noscript gonfiato da un noscript svg porta solo a pila incerta e testo nascosto: verso sicuro.
+- `tests/test_unit_web_leggi.py:1004`–`tests/test_unit_web_leggi.py:1008`: la sonda del bot, la variante, il noscript sotto il template e il noscript già chiuso.
+  - Rischio esaminato: che la fuga possa tornare senza che un test se ne accorga. Esito ok.
+  - La mutazione «senza noscript» (3 FAIL) l'hai fatta tu: non l'ho rifatta.
+- B-500-1 resta chiusa: `<svg><foreignObject><svg><template><div></template>SEGRETO` dà «A».
+- Suite web: 409 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Cosa non ho verificato**
+- I casi noscript con un oracolo: lexbor ha gli script spenti. La sicurezza qui si basa sul ragionamento (con noscript aperto la pila diventa incerta, come su main), non su un confronto.
+- Le enumerazioni lexbor con prefissi: le cifre sono tue.
+- La suite col parser vecchio (400 passed e 10 skipped).
+- `<template><object><svg></template>VIS` dà solo «A», mentre il browser mostrerebbe VIS: testo perso, non nascosto che esce. Era già dichiarato.
+
+**Memoria**: aggiunte la riga #502 e una lezione (sondare i nascosti in tre posizioni: nella pila, fra il contenitore e la pila, sotto il contenitore). Committate con `scripts/commit_memoria_revisore.sh` (commit 9efd6b1). Lo stage non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev500/sonde4.py
+
+### Review #503 (chat Mani) — verdetto integrale (V-1 ALTA verifica esterna #261, forma b)
+
+## VERDETTO: APPROVATO
+
+Review #503 (chat Mani), sul delta in stage della PR #261 per la verifica esterna #261. Il numero #503 era libero: il più alto in memoria era #502. Le due forme di V-1 ALTA sono chiuse: tutte le sonde danno lo stesso testo di main, salvo il caso base, che ora mostra VIS come il browser.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:343`, in `apri` a pila vuota: un `<template>` non entra più in `_template_fuori` se c'è un noscript aperto.
+  - Rischio esaminato: la forma (b) di V-1, cioè un template scritto dentro un noscript, che per il browser è testo, contato come vero e poi chiuso dalla regola.
+  - Esito ok. Contare un template in meno può solo rendere la pila incerta più spesso, quindi va nel verso sicuro.
+  - Sonde, sia parser sia ripiego, tutte uguali a main 172c2d7:
+    - la sonda della verifica `<p>T0</p><noscript>T1<template>T2</noscript>T3…<svg>T7</template>T8` → «T0»;
+    - `<noscript><template></noscript><svg></template>SEGRETO` → «A»;
+    - `<template><noscript><template></noscript>B</template><svg></template>SEGRETO` → «A». Il template interno, scritto nel noscript, non si conta; il `</template>` a pila vuota scala quello esterno; poi la regola non scatta.
+    - `<template><noscript></template></noscript><svg></template>X` → «A». Gas perde X, il browser lo mostrerebbe: testo perso, non nascosto che esce.
+- `_chiudi_template`, cioè il delta della #502 (pila incerta con un noscript aperto): invariato e ancora in stage.
+  - Rischio esaminato: la forma (a) di V-1. Esito ok: `<template><noscript><svg></template></noscript>LEAK` → «A».
+  - Il caso base `<template><svg></template>VIS` dà «A VIS». B-500-1 resta chiusa.
+- `tests/test_unit_web_leggi.py:1008`: le due forme della verifica sono nei test. La mutazione «template contato anche dentro noscript» (1 FAIL) l'hai fatta tu.
+- Suite web: 411 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Riserve già note che restano aperte**
+- **V-2 della verifica, preesistente (R-ve261-2)**: Gas legge i tag dentro un noscript, il browser no. Per esempio `<template><noscript></template>T1</noscript>T2` mostra T2. Va tenuta in stato_progetto.
+- **La «regressione» canvas più template del tuo fuzz**: è la classe R-ve246-5. La stessa uscita c'è già su main senza svg, quindi non dà niente di nuovo a chi scrive la pagina.
+
+**Cosa non ho verificato**
+- Il fuzz con noscript sostituito da noembed nell'oracolo: le cifre sono tue (1,5 milioni di pagine).
+- La suite col parser vecchio (402 passed e 10 skipped).
+- Le pagine con frameset: lì il browser ignora tutto, e Gas mostra comunque il testo. È un problema preesistente e più generale, non legato al template.
+
+**Memoria**: aggiunta la riga #503, nessuna lezione nuova: è un'applicazione di quella della #502 (noscript sotto il contenitore). Committata con `scripts/commit_memoria_revisore.sh` (commit faf29a1). Lo stage non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev500/sonde5.py
+
+### Review #504 (chat Mani) — verdetto integrale (noscript a livello di pagina, seconda verifica esterna #261)
+
+## VERDETTO: APPROVATO
+
+Review #504 (chat Mani), sul delta in stage della PR #261 (head c16487c) per la seconda verifica esterna #261. Il numero #504 era libero: il più alto in memoria era #503. La regola su `</template>` ora si spegne in tutte le pagine che contengono `<noscript`, quindi lì Gas segue riga per riga il percorso di main. Questo chiude la classe trovata dalla verifica, non solo le sue sonde.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:414`: la regola in `chiudi` scatta solo se `not self.con_noscript`.
+  - Rischio esaminato: V-1 ALTA. I controlli puntuali della #502 e della #503 lasciavano passare una classe di pagine con noscript; la verifica ne ha trovate 82.
+  - Esito ok:
+    - con noscript nella pagina `_chiudi_template` non viene mai chiamata e il percorso è quello di main;
+    - senza noscript il codice è quello approvato nella #501;
+    - `apri` e `_chiudi_template` sono tornati come nella #501.
+  - Sonde, sia parser sia ripiego, tutte con lo stesso testo di main 172c2d7:
+    - P2 `<template><svg></template><template><noscript></template></noscript>T6x` → «T0x»;
+    - P1 → «A»;
+    - V-2 `<template>T1<svg>T2<template>T3</template>T4` → «A»;
+    - `<NOSCRIPT>` maiuscolo → «A»;
+    - `<!-- <noscript -->` in un commento → «A». È una perdita voluta: la regola si spegne anche se noscript compare solo in un commento.
+    - B-500-1 resta chiusa.
+  - Senza noscript il caso base `<template><svg></template>VIS` dà ancora «A VIS».
+- Dove si accende il flag: `modules/web/leggi.py:959` nel parser (`feed`) e `modules/web/leggi.py:1124` nel ripiego. Sui rischi che chiedevi:
+  - **`feed` chiamato più volte**: in Gas avviene una volta sola, con la pagina intera, quindi un `<noscript` non può restare spezzato fra due chiamate. `close()` non passa da `feed` ma non ne ha bisogno.
+  - **XHTML**: `_Contesto.apri` e `chiudi` si usano solo se la pagina non è XHTML, sia nel parser sia nel ripiego. Quindi il testo già passato da `_commenti_e_cdata_xml` non conta per questa regola.
+  - **`<noscript` dentro commenti o attributi**: accende il flag e porta solo a più testo nascosto, mai meno.
+  - **Maiuscole e minuscole**: `re.IGNORECASE` senza ASCII riconosce più forme di quelle che il browser considera noscript (per esempio `noſcript`, con la s lunga). Anche questo porta solo a nascondere di più. Il contrario non può succedere: ogni noscript vero si scrive `<noscript` con lettere ASCII, e la regex lo trova sempre.
+- Test nuovi: P1, P2 e P3, le 2 pagine di V-2, e il caso «noscript già chiuso», che ora si aspetta la perdita come su main.
+- Suite web: 416 passed e 1 skipped, sia su 3.13.16 sia su 3.11.17.
+
+**Cosa non ho verificato**
+- Le mutazioni di run2.py e l'enumerazione esaustiva enumnos.py (1.126.358 pagine): le cifre sono tue. Io ho rifatto solo le sonde mirate.
+- La suite col parser vecchio (407 passed e 10 skipped).
+- I casi noscript con un oracolo: lexbor ha gli script spenti. La sicurezza qui si basa sul ragionamento: con noscript nella pagina il percorso è quello di main.
+
+**Memoria**: aggiunte la riga #504 e una lezione (quando Gas legge un elemento in modo diverso dal browser, una regola che allenta il nascondimento va spenta a livello di pagina, non rattoppata sulle singole sonde). Committate con `scripts/commit_memoria_revisore.sh` (commit f55b732). Lo stage non è stato toccato.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /tmp/claude-0/-home-user-Gas/5f4d2b04-ac60-5f96-b899-73c2097e5216/scratchpad/rev500/sonde6.py
+
+### Review #505 (chat Mani) — verdetto integrale RIEMESSO per il gate B (merge di main 16110b2, commit 584fd7c)
+
+Riemissione, non una review nuova: stesso esito e stesse prove della #505 originale, che citava come seconda prova solo la memoria del revisore (non contabile per il gate B).
+
+## VERDETTO: APPROVATO
+
+Review #505 (chat Mani), riemessa: merge di origin/main 16110b2 (PR #260, chat Motore) in feat/mani-web-fetta15, ora committato come 584fd7c. Base comune 172c2d7. Il merge non tocca il codice web e non perde righe.
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:414`, la regola su `</template>` spenta nelle pagine con noscript (codice della #504).
+  - Rischio esaminato: il merge che cambia il codice approvato.
+  - Esito ok: `git diff --cached HEAD -- modules tests` era vuoto; il file è identico a quello della #504.
+- `tests/test_unit_web_leggi.py:1004`, la sonda del bot #261 (`<template><noscript><svg></template></noscript>SEGRETO` → «A»).
+  - Rischio esaminato: test web cambiati o persi nel merge.
+  - Esito ok: il file di test è identico a HEAD, cioè a quello della #504 (416 passed e 1 skipped su 3.13 e 3.11 nella #504).
+- `.claude/agents/memoria_revisore.md:840` (la riga #505) e l'unione delle righe dei due lati.
+  - Rischio esaminato: righe perse o marcatori rimasti.
+  - Esito ok: 0 righe perse da HEAD e da MERGE_HEAD, nessuna riga inventata, nessun marcatore.
+- `reports/stato_progetto.md:586`, il blocco «Decisioni del turno di notte del 24 ottobre» entrato da main.
+  - Rischio esaminato: un'unione automatica sbagliata.
+  - Esito ok: il file è HEAD più le due modifiche di main, applicate identiche (questo blocco e la riga «Ultimo aggiornamento»). L'unica riga che manca rispetto a HEAD è quella della base che main ha aggiornato.
+- File entrati da main senza conflitti: `.claude/commands/fine-task.md` (regola «n/d»), coda_notte e roadmap. Sono identici byte per byte a MERGE_HEAD; li cito solo a parole, perché dopo il merge non sono nel diff di sessione.
+- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD (`--ours`): log di sessione.
+
+**Cosa non ho verificato**
+- Il contenuto della regola «n/d» in fine-task.md: è stata approvata nella chat Motore (#501 Motore) e qui non è cambiata.
+- La suite sul commit di merge: il codice è identico, byte per byte, a quello provato nella #504.
+- La CI sul commit di merge 584fd7c.
+
+File:
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+- /home/user/Gas/scripts/check_verdetto.py
+
+### Review #507 (chat Mani) — verdetto integrale (merge di main 89b8045)
+
+## VERDETTO: APPROVATO
+
+Review #507 (chat Mani): merge di origin/main 89b8045 (PR #262, chat Motore) in feat/mani-web-fetta15, ancora da committare. HEAD è 377e98d e la base comune è 16110b2. Il merge non tocca il codice web e non perde righe. Il numero #507 era libero: il più alto in memoria era #506 (chat Motore).
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:414`, la regola su `</template>` spenta nelle pagine con noscript.
+  - Rischio esaminato: il merge che cambia il codice approvato nella #504.
+  - Esito ok: `git diff --cached HEAD -- modules tests/test_unit_web_leggi.py` è vuoto, quindi il file è identico a HEAD.
+- `tests/test_unit_web_leggi.py:1004`, la sonda del bot #261 (`<template><noscript><svg></template></noscript>SEGRETO` → «A»).
+  - Rischio esaminato: test web cambiati o persi nel merge.
+  - Esito ok: il file è identico a HEAD. La suite web dà 416 passed e 1 skipped (prova tua sul merge, coerente con la #504).
+- `.claude/agents/memoria_revisore.md`, unione delle righe dei due lati.
+  - Rischio esaminato: righe perse o marcatori rimasti.
+  - Esito ok: 0 righe perse da HEAD e da MERGE_HEAD, nessuna riga inventata, nessun marcatore.
+- `reports/stato_progetto.md`, unito in automatico.
+  - Rischio esaminato: un'unione automatica sbagliata.
+  - Esito ok:
+    - 0 righe perse da main;
+    - le 2 righe che mancano rispetto a HEAD sono righe della base che main ha aggiornato («Ultimo aggiornamento» e la voce «R2 via B»), quindi l'unione a tre vie è corretta;
+    - nessun marcatore.
+- File entrati da main senza conflitti: gas.py, brains/claude_cli.py, .claude/commands/fine-task.md, i test kernel e claude_cli, .gitignore e roadmap. Sono tutti identici byte per byte a MERGE_HEAD; li cito solo a parole, perché dopo il merge escono dal diff di sessione.
+- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD (`--ours`), come dice lavoro_parallelo.md.
+
+**Cosa non ho verificato**
+- Il contenuto del codice entrato da main (R2 `claude -p`, fine-task.md): è stato rivisto nella chat Motore e qui non è cambiato.
+- Le suite kernel e claude_cli su questo merge: i file sono identici a main e i loro test girano in CI.
+- La CI sul commit di merge: il commit non esiste ancora.
+
+**Memoria**: aggiunta la riga #507 (`.claude/agents/memoria_revisore.md`, riga 848), nessuna lezione nuova. Come per la #505, l'ho scritta e messa in stage in due passi separati, senza commit perché il merge è in corso: entra nel commit di merge. Il resto dello stage non è stato toccato.
+
+File:
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
+---
 
 ## §5 DELTA TEST DEL MOTORE
 
-- `python tests/test_unit_kernel.py`: 1035 → 1039 PASS (T99m, T99n, T99o, T99p nuovi; lockfile in T68s), 0 FAIL.
-  `=== RIEPILOGO: 1039 PASS, 0 FAIL ===`
-- `pytest tests/test_unit_claude_cli.py`: 19 → 22 passed.
-- `pytest tests/` completo: `2142 passed, 1 skipped in 194.63s (0:03:14)`.
+- Web suite: 388 → 416 PASS (`python3 -m pytest tests/test_unit_web_leggi.py -q`: «416 passed, 1 skipped» su Python 3.13 e 3.11; lo skip è il test d'allarme che gira solo in CI). Col html.parser non patchato di CPython 3.12.3 caricato da plugin: 407 passed, 10 skipped.
+- Oracolo lexbor (scripting spento, quindi niente noscript negli atomi), nuovo contro main 172c2d7, parser e ripiego, 29 atomi: enumerazione esaustiva a 4 atomi senza prefisso (707.281 pagine) e con 6 prefissi fissi (707.281 ciascuno), campione a 6 atomi (600.000): 0 perdite nuove; 0 regressioni salvo 4 casi col prefisso `<template><svg><foreignObject>`, tutti della classe R-ve246-5 (canvas/object con un div dentro), identici su main senza prefisso; perdite tolte: oltre 67.000.
+- Noscript (l'oracolo lexbor ha gli script spenti, si usa noembed al suo posto nell'oracolo: stesso testo grezzo per lo standard): con `<noscript` nella pagina la regola non si usa e il percorso è quello di main; enumerazione esaustiva come quella della seconda verifica esterna (6 atomi template, /template, noscript, /noscript, svg, b, lunghezza 1–8, pagine con template e /template, parser e ripiego; scratchpad/f15/enumnos.py): 1.126.358 pagine, 0 fughe nuove, 0 perdite nuove (sul codice del secondo giro la verifica ne contava 82).
+- Mutazioni in copie isolate (scratchpad/mut15/run2.py): senza regola 6 FAIL, senza con_noscript 9 FAIL, senza il controllo `_posizioni` 2 FAIL, flag non acceso nel ripiego 9 FAIL, flag non acceso nel parser 9 FAIL, regola che conta `aperti` (codice della #500) 4 FAIL, contatore che non scende a pila vuota 1 FAIL, che non scende chiudendo 1 FAIL, flag di rete spento subito dopo `_scarica` 2 FAIL.
+- Il diff non tocca `gas.py` né altre suite.
 
 ## §6 STATO CI
 
-`gh run list -L 3` alle 21:39 UTC:
-
-```
-completed	success	R2 via B fetta 3: costo su ogni errore, conto sotto lucchetto, doctor del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40134316028	3m6s	2026-10-24T21:27:48Z
-completed	skipped	R2 via B fetta 3: costo su ogni errore, conto sotto lucchetto, doctor del cervello forte	verifica-bot	feat/merge-automatico-z1xjx2	pull_request_target	40134312898	1s	2026-10-24T21:27:46Z
-completed	success	docs(fine-task): report R2 via B fetta 3 (review #503)	CI	feat/merge-automatico-z1xjx2	push	40134311011	2m58s	2026-10-24T21:27:44Z
-```
-
-Mappatura: af82b7b (testa precedente): CI verde (unit-suite, handoff-check), verifica-bot neutral (APPROVATO CON RISERVE). Commit successivi (memoria #504, fix doctor, memoria #505/#506, fix numeri enormi) e il commit di fine-task: una sola run sul push, sulla testa; run non ancora disponibile alla scrittura dell'handoff.
+- `3b50ee1` (apertura della PR #261): unit-suite e handoff-check success; verifica-bot **failure** (BOCCIATO, V-1 ALTA noscript, chiusa in `837fcd1`); verifica esterna #261 BOCCIATO (stessa V-1, forme a e b; V-2 MEDIA preesistente → R-ve261-2; V-3/V-4 BASSE).
+- `c16487c` (secondo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA numero, V-2 COSMETICA descrizione: corrette); seconda verifica esterna #261 BOCCIATO (V-1 ALTA classe noscript, chiusa in `955607c`; V-2 BASSA test; V-3/V-4).
+- `4a6c34b` (terzo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA frameset da registrare, V-2 COSMETICA docstring); terza verifica esterna #261 APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/261#issuecomment-6388890173): V-1 BASSA test di `<NOSCRIPT>` maiuscolo, V-2 BASSA frameset, V-3 BASSA formulazione «4 casi», V-4 COSMETICA) — rimandate alla prossima fetta, merge chiesto dall'operatore.
+- `377e98d` (dopo il merge di main 16110b2): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA: il flag con_noscript si accende in `feed` sul pezzo passato, giusto solo perché feed si chiama una volta con la pagina intera; rimandata alla prossima fetta). Merge di nuovo rifiutato per conflitto (PR #262): merge di main 89b8045, review #507.
+- Merge di main 89b8045 e commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-496-3** (BASSA): login vero col portachiavi del Mac (e `CLAUDE_CODE_OAUTH_TOKEN` sulla VPS) da provare con l'ambiente ridotto.
-- Prezzi di riferimento per famiglia da ritarare con l'uso vero (dichiarato nel codice).
-- Comportamento dichiarato (nota di design #503): un errore di registrazione del consumo ferma il forte fino al riavvio; il doctor non vede questo fermo.
-- **V-2 bot #262** (BASSA): se la registrazione del consumo fallisce si ferma solo il processo che ha fallito; gli altri processi contano una chiamata in meno e dopo il riavvio quel consumo è perso (al massimo una chiamata per evento).
-- **R-498-2** (BASSA, preesistente): alcuni log scrivibili dal modello a finestra pulita.
+- Restano: **R-ve261-2** MEDIA preesistente (tag letti dentro noscript), **R-ve252-2** e **R-ve255-1** BASSE (XHTML malformato, da decidere), **R-ve246-5** MEDIA preesistente (canvas/object, decisione sul costruttore HTML5), R-ve235-7 (proposta: accettata), R-ve245-2…4, R6 porte, R7 riepilogo CI, R-408-1, R-ve235-1 (per l'aggancio), R-392-3. Dettaglio in `reports/stato_progetto.md`, blocchi «Mani — fetta 1…15».

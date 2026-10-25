@@ -1,13 +1,10 @@
-# DIFF SESSIONE — 2026-10-24 (chat Motore, R2 via B fetta 3)
+# DIFF SESSIONE — 2026-10-24 (chat Mani, fetta 15)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `brains/claude_cli.py`: costo su ogni errore dopo la risposta, prezzo per famiglia, pavimento per chiamata, `usage` robusto, parsing in `_risposta`.
-- `gas.py`: `_leggi_uso_claude_cli` di modulo, conto sotto lucchetto con attesa limitata, forte fermo se il consumo non si registra, costi non finiti ignorati, sezione «Cervello forte» nel doctor, messaggio dei file protetti.
-- `.gitignore`: lockfile del conto.
-- `.claude/commands/fine-task.md`: segnaposto e commento di 4bis citano la deroga n/d.
-- `tests/test_unit_claude_cli.py`, `tests/test_unit_kernel.py`: test nuovi (famiglie, pavimento, rami d'errore, eccezione imprevista, T99m/n/o, lockfile in T68s).
-- `.claude/agents/memoria_revisore.md`: righe #502, #503.
-- `reports/stato_progetto.md`, `reports/roadmap.md`: stato del forte dopo la fetta 3.
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
-- Correzioni dopo bot e verifica esterna #262: doctor (`gas.py`, T99p) e numeri enormi nel costo (`brains/claude_cli.py`, test).
+- `modules/web/leggi.py` — `_Contesto._chiudi_template` e contatore `_template_fuori` (R-469-1, B-500-1), regola spenta nelle pagine con noscript (`con_noscript`, V-1 bot/ve #261); commento di TIMEOUT_TOTALE.
+- `tests/test_unit_web_leggi.py` — chiusura del template sopra svg/math e con noscript, errori nei redirect (416 test).
+- `.claude/agents/memoria_revisore.md` — righe #500…#505 e #507 (chat Mani).
+- Merge di main 16110b2 (PR #260) e 89b8045 (PR #262), chat Motore: entrano `.claude/commands/fine-task.md`, gas.py, brains/claude_cli.py e i loro test, coda_notte, roadmap.
+- `reports/stato_progetto.md` — blocco «Mani — fetta 15».
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
