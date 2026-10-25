@@ -165,6 +165,16 @@ def _trascrizione(messages: List[Dict[str, Any]], codice: str) -> str:
     return "\n\n".join(parti)
 
 
+_MSG_LOGIN = ("claude-cli: login dell'abbonamento scaduto, mancante o non valido (sul "
+              "computer di Gas: `claude`, poi /login; nessuna ANTHROPIC_API_KEY arriva a claude)")
+
+
+def _login_scaduto(*testi: Any) -> bool:
+    """True se un testo dice che il login dell'abbonamento manca o è scaduto."""
+    tutto = " ".join(str(t or "") for t in testi).lower()
+    return any(p in tutto for p in _SEGNALI_LOGIN)
+
+
 def _prefisso_limite(*testi: Any) -> str:
     """«429 » se un testo dice che il limite dell'abbonamento è raggiunto."""
     tutto = " ".join(str(t or "") for t in testi).lower()
@@ -312,7 +322,11 @@ class ClaudeCliClient:
         except ValueError:
             # V-2 bot #256: anche un limite scritto in testo semplice è QUOTA.
             # R-497-1: anche un'uscita non JSON ha consumato.
-            raise _con_costo(RuntimeError(_prefisso_limite(proc.stdout, proc.stderr)
+            # V-2 bot #269: anche il login scaduto in testo semplice (dopo il limite).
+            limite = _prefisso_limite(proc.stdout, proc.stderr)
+            if not limite and _login_scaduto(proc.stdout, proc.stderr):
+                raise _con_costo(RuntimeError(_MSG_LOGIN), stima_minima)
+            raise _con_costo(RuntimeError(limite
                              + f"claude-cli: uscita non JSON (codice {proc.returncode})"),
                              stima_minima)
         if not isinstance(dati, dict):
@@ -337,12 +351,9 @@ class ClaudeCliClient:
             # citare la conversazione (V-3 bot #256): solo il tipo d'errore.
             tipo = re.sub(r"[^a-z_]", "", str(dati.get("subtype") or "errore").lower())[:40]
             # R-511-1: il limite (QUOTA) si controlla prima del login
-            if not _prefisso_limite(dati.get("result"), proc.stderr) and any(
-                    p in " ".join(str(t or "") for t in (dati.get("result"), proc.stderr)).lower()
-                    for p in _SEGNALI_LOGIN):
-                raise RuntimeError("claude-cli: login dell'abbonamento scaduto, mancante o "
-                                   "non valido (sul computer di Gas: `claude`, poi /login; "
-                                   "nessuna ANTHROPIC_API_KEY arriva a claude)")
+            if (not _prefisso_limite(dati.get("result"), proc.stderr)
+                    and _login_scaduto(dati.get("result"), proc.stderr)):
+                raise RuntimeError(_MSG_LOGIN)
             raise RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
                                + f"claude-cli: errore ({tipo or 'errore'})")
         out = dati.get("structured_output")

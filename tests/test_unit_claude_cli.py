@@ -270,7 +270,7 @@ def test_anche_gli_errori_portano_il_costo():
 
 def test_uscita_non_json_cli_assente_e_tempo_scaduto():
     def non_json(cmd, stdin, cwd, env, timeout):
-        return subprocess.CompletedProcess(cmd, 1, stdout="Not logged in", stderr="")
+        return subprocess.CompletedProcess(cmd, 1, stdout="errore inatteso", stderr="")
     with pytest.raises(RuntimeError, match="non JSON"):
         ClaudeCliClient(runner=non_json).chat.completions.create(model="m", messages=_msgs())
 
@@ -362,3 +362,27 @@ def test_limite_con_oauth_resta_quota():
     with pytest.raises(RuntimeError) as e:
         c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
     assert str(e.value).startswith("429") and "login" not in str(e.value)
+
+
+@pytest.mark.parametrize("stdout,stderr", [
+    ("Invalid API key · Please run /login", ""),
+    ("", "Not logged in. Please run /login"),
+])
+def test_login_scaduto_in_testo_semplice(stdout, stderr):
+    """V-2 bot #269: anche un'uscita non JSON col login scaduto dà l'istruzione /login."""
+    def run(cmd, stdin, cwd, env, timeout):
+        return subprocess.CompletedProcess(cmd, 1, stdout=stdout, stderr=stderr)
+    c = ClaudeCliClient(binario="claude", runner=run)
+    with pytest.raises(RuntimeError) as e:
+        c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert "/login" in str(e.value) and not str(e.value).startswith("429")
+    assert e.value.costo_equivalente_usd > 0
+
+
+def test_limite_in_testo_semplice_resta_quota():
+    def run(cmd, stdin, cwd, env, timeout):
+        return subprocess.CompletedProcess(cmd, 1, stdout="usage limit reached, please run /login", stderr="")
+    c = ClaudeCliClient(binario="claude", runner=run)
+    with pytest.raises(RuntimeError) as e:
+        c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert str(e.value).startswith("429")

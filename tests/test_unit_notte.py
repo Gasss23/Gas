@@ -2199,3 +2199,40 @@ def test_cervello_forte_dal_catalogo(dirs):
 
     esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
     assert visti == [{"cervello": "forte"}, {}]
+
+
+@pytest.mark.parametrize("testo,atteso", [
+    ("ciao", (None, "ciao")),
+    ("forte questo risultato", (None, "forte questo risultato")),
+    ("/forte analizza i lead", ("forte", "analizza i lead")),
+    ("/FORTE analizza", ("forte", "analizza")),
+    ("/forte dati del cliente", ("forte", "dati del cliente")),  # NBSP (Option+Spazio)
+    ("/forte\tx", ("forte", "x")),
+    ("/forte", ("uso", "")),
+    ("/forte:x", ("uso", "")),
+    ("/fortezza x", ("uso", "")),
+])
+def test_prefisso_forte(testo, atteso):
+    """V-1 bot #269 (R-515-1/2): /forte fail-closed su ogni separatore; mai ai gratuiti."""
+    assert gas.prefisso_forte(testo) == atteso
+
+
+def test_cervello_forte_conservato_nella_ripresa(dirs):
+    """V-4 bot #269: ogni ramo di _ordina_riprese conserva cervello: forte, e il compito
+    ripreso arriva a run_turn col forte."""
+    c = {"nome": "a", "prompt": "p", "cervello": "forte"}
+    for info in ({"tentativi": 0}, {"tentativi": 1}, {"tentativi": 2},
+                 {"tentativi": 1, "sospetto": True}):
+        voci, _ = notte._ordina_riprese([dict(c)], {"a": dict(info)}, [])
+        assert [v.get("cervello") for v in voci] == ["forte"], info
+    root, _ = dirs
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append(kw)
+            yield {"type": "final", "content": "ok"}
+
+    voci, _ = notte._ordina_riprese([dict(c)], {"a": {"tentativi": 1}}, [])
+    notte._esegui_compito(_K(), voci[0], root / ".gas_notte_t")
+    assert visti == [{"cervello": "forte"}]
