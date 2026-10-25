@@ -812,6 +812,9 @@ class _Estrattore(HTMLParser):
         # senza, si va nel verso sicuro: regola R-469-1 spenta come con noscript (R-511-1).
         self._contesto = _Contesto(self._aperti, con_noscript)
         self._taglia = False  # un tag letto diversamente dal browser: il resto si nasconde
+        # Dopo un «<frameset>» il resto si nasconde: il browser a volte non mostra il testo che
+        # segue e a volte sì (dipende da quello che c'è prima); si va nel verso sicuro (R-ve261-4).
+        self._frameset = False
 
     def _locale(self, tag: str) -> str:
         # In XHTML conta il nome locale: «<h:script>» con h = XHTML è uno script (V-1 ve #245).
@@ -847,6 +850,8 @@ class _Estrattore(HTMLParser):
         self._inizio(tag)
 
     def _inizio(self, tag: str) -> None:
+        if tag == "frameset":
+            self._frameset = True
         if tag in self._SALTA:
             self._aperti[tag] = self._aperti.get(tag, 0) + 1
             self._salta += 1
@@ -989,7 +994,7 @@ class _Estrattore(HTMLParser):
             self.pezzi.append("\n")
 
     def handle_data(self, data: str) -> None:
-        if self._salta or self._contesto.incerta or self._taglia:
+        if self._salta or self._contesto.incerta or self._taglia or self._frameset:
             # Con la pila incerta il resto della pagina si nasconde (vedi _Contesto).
             return
         if self._nel_titolo:
@@ -1201,6 +1206,10 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
                     elif tag in _CONTATI_RIPIEGO:
                         aperti[tag] = aperti.get(tag, 0) + 1
                         salta += 1
+                    if tag == "frameset":
+                        # Come _Estrattore: dopo «<frameset>» il resto si nasconde (R-ve261-4).
+                        logger.warning("leggi_pagina: <frameset> nel ripiego, resto della pagina nascosto")
+                        fine = -1
         if contesto.incerta:
             # Con la pila incerta il resto della pagina si nasconde, come nel parser; lo si
             # dice nella scatola nera (R-471-2).
@@ -1383,6 +1392,8 @@ def _componi(url_finale: str, pagina: dict) -> dict:
                 # Un tag letto diversamente dal browser: il resto è nascosto (R-ve248-3, V-3 bot #250).
                 logger.warning("leggi_pagina: tag letto diversamente dal browser, resto della pagina nascosto su %r",
                                url_finale[:200])
+            if estrattore._frameset:
+                logger.warning("leggi_pagina: <frameset>, resto della pagina nascosto su %r", url_finale[:200])
             if estrattore._contesto.incerta:
                 # Il resto della pagina è stato nascosto: lo si dice nella scatola nera (R-470-2).
                 logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
