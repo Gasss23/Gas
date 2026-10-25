@@ -7,7 +7,8 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #269 (https://github.com/Gasss23/Gas/pull/269). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge solo secondo CLAUDE.md §10.
-2. Sul Mac: `/login` dell'abbonamento Max di Gas (il login era scaduto), prova del login, `GAS_CLAUDE_CLI=1` nel `.env` (`reports/r2_regole_abbonamento.md`).
+2. Etichetta `verifica` già messa: attendere `verifica-bot` sull'ultimo commit.
+3. Sul Mac: `/login` dell'abbonamento Max di Gas (il login era scaduto), prova del login, `GAS_CLAUDE_CLI=1` nel `.env` (`reports/r2_regole_abbonamento.md`).
 
 ---
 
@@ -16,26 +17,27 @@
 - **Fetta 0 — Esito della PR #266**: `FATTA` — già mergiata dall'operatore, bot success, CI verde.
 - **Fetta 1 — Prova del login sul Mac (R-496-3)**: `DEFERITA — login scaduto («OAuth session expired»), serve /login dell'operatore`.
 - **Fetta 2 — Accensione del forte**: `FATTA` — note di #265 chiuse, login scaduto chiaro, `cervello: forte` nel catalogo, `/forte` nel terminale, setup del Mac.
-- **Fette 3–5 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
+- **Fetta 3 — Correzioni della verifica esterna #269**: `FATTA` — merge di main (V-1), V-2, V-3, V-4; review #515.
+- **Fette 4–6 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |  2 ++
- brains/claude_cli.py                | 15 ++++++++++++++-
- gas.py                              |  7 ++++++-
- modules/notte/notte.py              | 14 ++++++++++++--
- reports/diff_sessione.md            | 16 +++++++++-------
+ .claude/agents/memoria_revisore.md  |   3 +++
+ brains/claude_cli.py                |  16 +++++++++++++++-
+ gas.py                              |  10 +++++++++-
+ modules/notte/notte.py              |  15 +++++++++++++--
+ reports/diff_sessione.md            |  14 +++++++++-----
  reports/handoff.md                  | n/d
- reports/r2_regole_abbonamento.md    |  8 ++++++++
- reports/stato_progetto.md           |  2 +-
- reports/ultimo_report.md            | 19 ++++++++-----------
- scripts/notte/catalogo_esempio.yaml |  3 +++
- tests/test_unit_claude_cli.py       | 33 +++++++++++++++++++++++++++++----
- tests/test_unit_kernel.py           | 20 ++++++++++++++++++++
- tests/test_unit_notte.py            | 25 +++++++++++++++++++++++++
+ reports/r2_regole_abbonamento.md    |   8 ++++++++
+ reports/stato_progetto.md           |   2 +-
+ reports/ultimo_report.md            |  54 +++++++++---------------------------------------------
+ scripts/notte/catalogo_esempio.yaml |   3 +++
+ tests/test_unit_claude_cli.py       |  33 +++++++++++++++++++++++++++++----
+ tests/test_unit_kernel.py           |  20 ++++++++++++++++++++
+ tests/test_unit_notte.py            |  27 +++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile, riga di totale tolta.
@@ -43,6 +45,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile, r
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+26ce319 Merge origin/main in feat/merge-automatico-z1xjx2 (PR #269) + correzioni verifica esterna #269
+51d2a6b docs(fine-task): report dell'accensione del cervello forte (PR #269)
 1717413 feat(R2): accensione del cervello forte — login scaduto chiaro, cervello: forte nel catalogo notturno, /forte nel terminale
 c0917bb chore(revisore): memoria review #512 — APPROVATO
 861b33a chore(revisore): memoria review #511 — APPROVATO CON RISERVE
@@ -52,7 +56,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 1717413 — due giri sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
+Commit 1717413 — due giri (#511, #512); commit 26ce319 — review #515 sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
 
 ### Review #511 (integrale)
 
@@ -98,18 +102,48 @@ Ri-review solo del delta staged dopo la #511: le due riserve BASSE e la COSMETIC
 
 **Memoria**: riga #512 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit «chore(revisore): memoria review #512 — APPROVATO»). La riga #511 era già committata.
 
+### Review #515 (integrale, merge di main + correzioni ve #269, commit 26ce319)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho letto prima CLAUDE.md (sezioni 1, 5, 8 e 10), reports/stato_progetto.md (in modo mirato) e .claude/agents/memoria_revisore.md.
+
+**Elementi del diff esaminati**
+1. `modules/web/leggi.py:222` e `tests/test_unit_web_leggi.py:1054`: codice entrato da main. Rischio esaminato: una risoluzione del merge che altera il codice di main. Esito: ok. Il contenuto staged dei due file è identico a quello di MERGE_HEAD (stesso blob, `git rev-parse :f` contro `MERGE_HEAD:f`). `git diff MERGE_HEAD --cached --stat` non li elenca.
+2. `modules/notte/notte.py:202`: V-2. Il controllo passa da `cervello is not None` a `"cervello" in v`. Così un campo `cervello:` presente ma vuoto o null (anche `~`) fa saltare il compito, invece di essere letto come «nessun vincolo» e finire ai cervelli gratuiti. Rischio esaminato: falsi salti e ordine dei controlli. Il controllo arriva dopo `attivo` e dopo il prompt, `v` è già verificato come dict, e una voce senza la chiave resta valida. Esito: ok. Prova col mutante: rimettendo `is not None`, `tests/test_unit_notte.py:2184` (voce `d` con `cervello:` vuoto) fallisce (1 failed). Ho ripristinato il file e non ci sono modifiche residue.
+3. `gas.py:6023`: V-3. Se nel REPL si scrive solo «/forte», compare il messaggio d'uso e il ciclo riparte (`continue`), senza chiamare `run_turn`, quindi niente arriva ai gratuiti. Rischio esaminato: la variante «/forte » con lo spazio finale. Il prompt viene ripulito degli spazi (`.strip()` a `gas.py:6011`), quindi quel caso non può presentarsi. Il confronto ignora maiuscole e minuscole. Esito: ok, con la riserva R-515-1 sotto.
+4. `brains/claude_cli.py:343`: V-4. Cambia solo il testo dell'errore di login («scaduto, mancante o non valido»), con la stessa eccezione e lo stesso punto in cui viene lanciata. Il controllo del limite resta prima di quello del login (chiusura di R-511-1 intatta). Esito: ok.
+5. Merge, contro HEAD: i file del motore cambiano solo per le tre correzioni (`brains/claude_cli.py` 3 righe aggiunte e 2 tolte, `gas.py` 3 aggiunte, `modules/notte/notte.py` 2 aggiunte e 1 tolta). `tests/test_unit_kernel.py` e `tests/test_unit_claude_cli.py` sono invariati rispetto a HEAD. La memoria del revisore non perde nessuna riga, né rispetto a HEAD né rispetto a MERGE_HEAD. stato_progetto.md non perde righe di main: cambia solo la riga di intestazione, che main aveva aggiornato e il ramo ha unito. Non restano marcatori di conflitto e `git diff --cached --check` è pulito. Esito: ok.
+
+Wall of Shame: nessun taglio diretto della cronologia, nessuna simulazione di output dei tool, nessun guardrail toccato (tetto di 10 iterazioni, `_get_window`).
+
+**Finding**
+- **R-515-1 BASSA**: nessun test copre il nuovo ramo del REPL «/forte» da solo (`gas.py:6023`), perché `main()` non è coperto dai test. Se qualcuno tolgo la riga, la regressione passerebbe inosservata. Proposta: un test con `input` finto, oppure spostare il riconoscimento di «/forte» in una piccola funzione testabile.
+- **R-515-2 BASSA**: «/forte» seguito da un tab invece che da uno spazio (`gas.py:6026`) non viene riconosciuto e il messaggio, con «/forte» compreso, va alla cascata normale. È un input improbabile da tastiera; si chiude con `prompt.split(maxsplit=1)`.
+
+**Cosa non ho verificato**
+- Non ho rilanciato la suite kernel (1041) né l'intero pytest (2202): mi fido dei numeri che mi hai dato. Ho rilanciato solo notte e claude_cli: 182 passed.
+- Non ho controllato i testi di reports/handoff.md, ultimo_report.md e diff_sessione.md: li hai presi dal ramo e verranno riscritti a fine task.
+- Il comportamento reale di `claude -p` col login scaduto sul computer di Gas non è riproducibile qui.
+
+**Nota operativa**: ho scritto in coda a `.claude/agents/memoria_revisore.md` la riga contatore #515 (chat Motore). `scripts/commit_memoria_revisore.sh` non ha committato perché c'è un merge in corso (`commit -o` non è permesso durante un merge). Lo script ha comunque chiuso con exit 0, come previsto. La riga è quindi modificata ma non in stage: fai `git add .claude/agents/memoria_revisore.md` prima di concludere il merge, e rilancia `bash scripts/segna_review_ok.sh` dopo l'add, così il segno di review corrisponde a quello che è in stage.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Kernel: 1040 → 1041 PASS (T99r nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`
 - `tests/test_unit_claude_cli.py` + `tests/test_unit_notte.py`: 182 passed (2 test nuovi in claude_cli, 1 in notte; 1 modificato).
+- Dopo il merge di main e le correzioni: kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2202 passed, 1 skipped in 198.40s (0:03:18)`.
 
 ## §6 STATO CI
 
-CI NON VERIFICATA con `gh` (nel cloud `gh` non è autenticato: «Failed to log in to github.com using token (GH_TOKEN)»). Letto con lo strumento GitHub `actions_list` sul branch:
-- 1717413 → run CI 40240897439 (push): `in_progress` alla scrittura dell'handoff; verifica-bot 40240911265: `skipped` (manca l'etichetta `verifica`).
-- c0917bb, 861b33a → nessuna run su questi SHA (pushati insieme a 1717413, testati solo nell'albero di testa).
-- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+`gh` nel cloud non è autenticato («Failed to log in to github.com using token (GH_TOKEN)»): CI letta con lo strumento GitHub (check della PR #269).
+- 51d2a6b → run CI del push: `unit-suite` success, `handoff-check` success (riportato anche dalla verifica esterna #269).
+- 1717413 → run CI 40240897439 (push), non riletta a fine run; contenuto incluso nell'albero di 51d2a6b.
+- c0917bb, 861b33a → nessuna run su questi SHA (pushati insieme a 1717413).
+- 26ce319 e commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-Nessuna (R-511-1, R-511-2 e la COSMETICA chiuse in #512).
+- **R-515-1** BASSA: nessun test del ramo `/forte` da solo nel terminale (`main()` non testato).
+- **R-515-2** BASSA: `/forte` seguito da un tab non riconosciuto.
+- V-5 COSMETICA ve #269 (§6 datato): superata da questo handoff.
