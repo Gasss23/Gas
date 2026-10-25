@@ -18,26 +18,27 @@
 - **Fetta 1 — Prova del login sul Mac (R-496-3)**: `DEFERITA — login scaduto («OAuth session expired»), serve /login dell'operatore`.
 - **Fetta 2 — Accensione del forte**: `FATTA` — note di #265 chiuse, login scaduto chiaro, `cervello: forte` nel catalogo, `/forte` nel terminale, setup del Mac.
 - **Fetta 3 — Correzioni della verifica esterna #269**: `FATTA` — merge di main (V-1), V-2, V-3, V-4; review #515.
-- **Fette 4–6 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
+- **Fetta 4 — Correzioni del bot #269 (verifica-bot failure su 895f329)**: `FATTA` — V-1 MEDIA `/forte` fail-closed (`prefisso_forte`), V-2 login in testo semplice, V-4 test della ripresa; V-5 numero del kernel spiegato in §5; review #516 APPROVATO.
+- **Fette 5–7 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   3 +++
- brains/claude_cli.py                |  16 +++++++++++++++-
- gas.py                              |  10 +++++++++-
+ .claude/agents/memoria_revisore.md  |   4 ++++
+ brains/claude_cli.py                |  29 +++++++++++++++++++++++++++--
+ gas.py                              |  20 +++++++++++++++++++-
  modules/notte/notte.py              |  15 +++++++++++++--
  reports/diff_sessione.md            |  14 +++++++++-----
  reports/handoff.md                  | n/d
  reports/r2_regole_abbonamento.md    |   8 ++++++++
  reports/stato_progetto.md           |   2 +-
- reports/ultimo_report.md            |  54 +++++++++---------------------------------------------
+ reports/ultimo_report.md            |  56 +++++++++++---------------------------------------------
  scripts/notte/catalogo_esempio.yaml |   3 +++
- tests/test_unit_claude_cli.py       |  33 +++++++++++++++++++++++++++++----
+ tests/test_unit_claude_cli.py       |  59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
  tests/test_unit_kernel.py           |  20 ++++++++++++++++++++
- tests/test_unit_notte.py            |  27 +++++++++++++++++++++++++++
+ tests/test_unit_notte.py            |  64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile, riga di totale tolta.
@@ -45,6 +46,9 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile, r
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7e1f520 fix(R2): /forte fail-closed su ogni separatore, login scaduto anche in testo semplice (bot #269)
+aa7ce20 chore(revisore): memoria review #516 — APPROVATO
+895f329 docs(fine-task): report dopo merge di main e correzioni della verifica esterna #269
 26ce319 Merge origin/main in feat/merge-automatico-z1xjx2 (PR #269) + correzioni verifica esterna #269
 51d2a6b docs(fine-task): report dell'accensione del cervello forte (PR #269)
 1717413 feat(R2): accensione del cervello forte — login scaduto chiaro, cervello: forte nel catalogo notturno, /forte nel terminale
@@ -56,7 +60,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 1717413 — due giri (#511, #512); commit 26ce319 — review #515 sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
+Commit 1717413 — due giri (#511, #512); commit 26ce319 — review #515; commit 7e1f520 — review #516 sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
 
 ### Review #511 (integrale)
 
@@ -128,22 +132,53 @@ Wall of Shame: nessun taglio diretto della cronologia, nessuna simulazione di ou
 
 **Nota operativa**: ho scritto in coda a `.claude/agents/memoria_revisore.md` la riga contatore #515 (chat Motore). `scripts/commit_memoria_revisore.sh` non ha committato perché c'è un merge in corso (`commit -o` non è permesso durante un merge). Lo script ha comunque chiuso con exit 0, come previsto. La riga è quindi modificata ma non in stage: fai `git add .claude/agents/memoria_revisore.md` prima di concludere il merge, e rilancia `bash scripts/segna_review_ok.sh` dopo l'add, così il segno di review corrisponde a quello che è in stage.
 
+### Review #516 (integrale, correzioni del bot #269 su 895f329, commit 7e1f520)
+
+## VERDETTO: APPROVATO
+
+Ho revisionato il diff staged, cioè le correzioni del bot sul commit 895f329 della PR #269 (4 file, +96/-14). Ho letto prima CLAUDE.md, reports/stato_progetto.md (R-515) e la mia memoria. Il diff non contiene slicing della history né output di tool simulati, e i guardrail non sono indeboliti.
+
+Elementi esaminati:
+1. `gas.py:5958` — la nuova `prefisso_forte` divide il testo con `split(None, 1)`, quindi NBSP e tab contano come separatori. Ho cercato varianti che finissero ai gratuiti:
+   - «/forte:x», «/fortezza x», «/forte» nudo e il carattere invisibile U+200B finiscono tutti in ("uso", ""), quindi è fail-closed.
+   - Solo «/forte» seguito da uno spazio qualsiasi e da una richiesta va al forte.
+   - Ho provato a rimettere `split(" ")` al posto di `split(None, 1)`: 2 test falliscono (i casi NBSP e tab), poi ho ripristinato il file.
+   - Esito: ok.
+2. `gas.py:6034` — il terminale ora chiama `prefisso_forte` e, con "uso", stampa l'istruzione e fa `continue` prima di `run_turn`. Il prompt arriva già ripulito con `strip()`, quindi «/forte   » diventa «/forte» e va in "uso". Questo chiude R-515-1 (la logica ora è una funzione pura testata) e R-515-2 (il tab). Esito: ok.
+3. `brains/claude_cli.py:325` — nel ramo «uscita non JSON» il controllo del limite viene ancora prima di quello del login (coerente con R-511-1). Il login scaduto produce `_MSG_LOGIN`, e il costo resta registrato tramite `_con_costo`. Il ramo JSON a `brains/claude_cli.py:354` usa lo stesso helper senza cambiare comportamento. Esito: ok.
+4. `tests/test_unit_notte.py:2220` (V-4) — il test copre i 4 rami di `_ordina_riprese` e il passaggio fino a `run_turn` con `cervello: forte`. Il caso NBSP del test contiene davvero il byte NBSP: l'ho verificato. Esito: ok.
+5. `tests/test_unit_claude_cli.py:273` — il vecchio test ora usa stdout «errore inatteso». Il cambio è voluto ed è coperto da `test_login_scaduto_in_testo_semplice`. Esito: ok.
+
+Test che ho rifatto: claude_cli + notte, 195 passed.
+
+Rischi esclusi (cosa non ho verificato):
+- Il terminale vero di `main()` con `input()` non l'ho eseguito: l'ho valutato solo leggendo il codice.
+- Non ho indagato la differenza tra la suite kernel (1041) e la CI (1043).
+- Il bot Telegram non usa «/forte»: non è un difetto di questo diff, ma il forte resta raggiungibile solo dal terminale e dal catalogo notturno.
+
+Finding: nessuno.
+
+Memoria: ho aggiunto la riga #516 in /home/user/Gas/.claude/agents/memoria_revisore.md e lanciato `scripts/commit_memoria_revisore.sh`. Lo staging del diff è rimasto intatto (4 file).
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Kernel: 1040 → 1041 PASS (T99r nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`
 - `tests/test_unit_claude_cli.py` + `tests/test_unit_notte.py`: 182 passed (2 test nuovi in claude_cli, 1 in notte; 1 modificato).
 - Dopo il merge di main e le correzioni: kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2202 passed, 1 skipped in 198.40s (0:03:18)`.
+- Dopo le correzioni del bot (7e1f520): kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2215 passed, 1 skipped in 204.14s (0:03:24)`; claude_cli + notte 195 passed.
+- V-5 bot #269: in CI il kernel conta 1043 PASS (0 FAIL) su 895f329, in locale nel cloud 1041 (0 FAIL): differenza d'ambiente già vista sulla #263, causa non indagata.
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato («Failed to log in to github.com using token (GH_TOKEN)»): CI letta con lo strumento GitHub (check della PR #269).
-- 51d2a6b → run CI del push: `unit-suite` success, `handoff-check` success (riportato anche dalla verifica esterna #269).
-- 1717413 → run CI 40240897439 (push), non riletta a fine run; contenuto incluso nell'albero di 51d2a6b.
-- c0917bb, 861b33a → nessuna run su questi SHA (pushati insieme a 1717413).
-- 26ce319 e commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
+`gh` nel cloud non è autenticato: check letti con lo strumento GitHub sulla PR #269.
+- 895f329 → `unit-suite` success, `handoff-check` success, `verifica-bot` failure (bot: V-1 MEDIA, chiusa in 7e1f520).
+- 51d2a6b → `unit-suite` success, `handoff-check` success.
+- 26ce319, 1717413, c0917bb, 861b33a, aa7ce20 → nessuna run propria letta (pushati insieme ad altri: testati solo nell'albero di testa del push).
+- 7e1f520 e commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- **R-515-1** BASSA: nessun test del ramo `/forte` da solo nel terminale (`main()` non testato).
-- **R-515-2** BASSA: `/forte` seguito da un tab non riconosciuto.
-- V-5 COSMETICA ve #269 (§6 datato): superata da questo handoff.
+- R-515-1 e R-515-2: CHIUSE in 7e1f520 (`prefisso_forte` testata, ogni separatore).
+- V-1 ve #269 2° giro (BASSA): chiave del catalogo scritta male (`cervelo`, `CERVELLO`) accettata senza avviso → il compito va ai gratuiti. Aperta, prossima fetta.
+- V-2 ve #269 2° giro (BASSA, parte Telegram e voce): `/forte` esiste solo nel terminale; da Telegram e a voce il testo arriva ai gratuiti. Aperta, prossima fetta.
+- V-5 COSMETICHE (§6 datato): superate da questo handoff.
