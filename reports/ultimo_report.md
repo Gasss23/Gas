@@ -1,18 +1,17 @@
-# ULTIMO REPORT — 2026-10-25 — R2 via B, fetta 5: ultime note sul costo chiuse
+# Ultimo report — 2026-10-25 — Chat Mani: riserve rimaste dopo il merge di #261 salvate prima del /clear
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta (vedi §0 dell'handoff): tocca il motore. Review #509 APPROVATO senza riserve: se anche il bot dà APPROVATO senza riserve, la regola di merge autonomo permette il merge da solo.
-2. Prima di accendere il forte: prova del login sul Mac (R-496-3).
-3. Ancora aperti: testo nuovo dell'attività di notte da chiedere nella sessione fissa; 3 lezioni da approvare sul Mac.
+1. Merge della PR #267 (solo `reports/`): la mergio da sola la chat Mani se il bot dà APPROVATO pulito; altrimenti serve il tuo OK.
+2. PR #263 (chat Notte, `/clear` da Telegram): check tutti verdi, bot APPROVATO CON RISERVE (solo BASSE) → serve il tuo OK esplicito per il merge.
+3. Decisioni aperte della mia area (già in `reports/stato_progetto.md`): R-ve261-2 MEDIA (noscript come testo grezzo), R-ve252-2 / R-ve255-1 (XHTML malformato), R-ve246-5 MEDIA (canvas/object, costruttore HTML5), tempo di rete 12 s, R-ve235-7 (proposta: accettarla).
 
 ## Esito
 
-- **R-507-1 (negativo enorme contato come 1e6)**: `FATTA`, ora è scartato come gli altri negativi.
-- **V-2 bot #264, primo giro (il massimo valeva per la stima solo grazie ai limiti attuali)**: `FATTA`, `min(..., _COSTO_MASSIMO)` esplicito.
-- **V-2 bot #264, secondo giro (nessun test della catena completa)**: `FATTA`, T99q.
-- **Test**: `tests/test_unit_claude_cli.py` 24 passed; kernel 1040 PASS 0 FAIL; pytest completo 2173 passed, 1 skipped.
+- **Salvataggio delle riserve finali di #261**: FATTA. In `reports/stato_progetto.md` un blocco nuovo sotto «Mani — fetta 15» registra con id le riserve del bot #261 sul commit finale 5e704c0 (recensione https://github.com/Gasss23/Gas/pull/261#pullrequestreview-5640696945), che prima stavano solo nella recensione: R-ve261-3 BASSA (test `<NOSCRIPT>` maiuscolo mancante), R-ve261-4 BASSA preesistente (frameset), R-ve261-5 COSMETICA (frasi imprecise in ultimo_report/PR #261), R-ve261-6 COSMETICA (`con_noscript` in `feed`, docstring, test doppio).
+- **Chiusura di quelle riserve**: DEFERITA — si fanno nella prossima fetta Mani, quando l'operatore la chiede.
+- **Merge della PR #263**: SALTATA — non è della chat Mani e ha riserve: decide l'operatore.
 
 ## Anomalie
 
-- Nessuna.
+Nessuna. Codice non toccato; nessun file del perimetro di review nel diff.
