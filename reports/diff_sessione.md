@@ -1,10 +1,11 @@
-# DIFF SESSIONE — 2026-10-24 (chat Mani, fetta 15)
+# DIFF SESSIONE — 2026-10-24 (chat Motore, R2 via B fetta 4)
 
 > Si riscrive a ogni sessione; la storia completa sta in git.
 
-- `modules/web/leggi.py` — `_Contesto._chiudi_template` e contatore `_template_fuori` (R-469-1, B-500-1), regola spenta nelle pagine con noscript (`con_noscript`, V-1 bot/ve #261); commento di TIMEOUT_TOTALE.
-- `tests/test_unit_web_leggi.py` — chiusura del template sopra svg/math e con noscript, errori nei redirect (416 test).
-- `.claude/agents/memoria_revisore.md` — righe #500…#505 e #507 (chat Mani).
-- Merge di main 16110b2 (PR #260) e 89b8045 (PR #262), chat Motore: entrano `.claude/commands/fine-task.md`, gas.py, brains/claude_cli.py e i loro test, coda_notte, roadmap.
-- `reports/stato_progetto.md` — blocco «Mani — fetta 15».
-- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine sessione.
+- `brains/claude_cli.py`: un costo riportato grande conta (massimo `_COSTO_MASSIMO` = 1e6) invece di essere scartato.
+- `gas.py`: docstring del tetto con il limite dei processi in parallelo.
+- `tests/test_unit_claude_cli.py`: test dei costi grandi.
+- `.claude/agents/memoria_revisore.md`: riga #507.
+- `reports/stato_progetto.md`: fetta 4 e R-507-1.
+- `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+- Merge di origin/main (PR #261 chat Mani): conflitti solo nei log e nella memoria (review #508).

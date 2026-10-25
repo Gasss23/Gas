@@ -1,27 +1,19 @@
-# ULTIMO REPORT — 2026-10-24 — Chat Mani, fetta 15: </template> sopra svg/math come il browser (R6)
-
-Ramo `feat/mani-web-fetta15` da main 172c2d7 (dopo il merge di #257). Area della chat Mani: `modules/web/`, `tests/test_unit_web_*.py`. Fetta di sicurezza.
+# ULTIMO REPORT — 2026-10-24 — R2 via B, fetta 4: costi grandi contati
 
 ## DECISIONI UMANE RICHIESTE
 
-1. Merge della PR della fetta 15: solo con verdetto del bot APPROVATO puro sull'head finale e CI verde, oppure con il tuo ok.
-2. **R-ve252-2 e R-ve255-1 (BASSE, XHTML malformato)**: estendere «il resto della pagina se ne va» a tutto l'XHTML malformato? Decidi tu.
-3. **R-ve246-5 (MEDIA, già presente)**: canvas/object con elementi speciali; serve un vero costruttore HTML5 (es. lexbor): decidi tu. Con questa fetta si vede anche dopo un template chiuso.
-3b. **R-ve261-2 (MEDIA, già presente, nuova riserva)**: Gas legge i tag dentro noscript, il browser con gli script attivi no; chiuderla vuol dire leggere noscript come testo grezzo (cambia cosa si vede delle pagine con noscript): decidi tu se farlo nella prossima fetta.
-4. Rete a 12 s invece di 15 (fetta 14): confermi?
-5. **R-ve235-7**: proposta di chiuderla come compromesso accettato (il DNS di sistema non si può interrompere; al massimo 4 risoluzioni appese).
-6. Fetta di sicurezza: secondo passaggio nella chat claude.ai con il link della PR.
+1. Merge della PR della fetta (vedi §0 dell'handoff): tocca il motore, review #507 APPROVATO CON RISERVE, decide l'operatore.
+2. Prima di accendere il forte: prova del login sul Mac (R-496-3).
+3. Ancora aperti: testo nuovo dell'attività di notte da chiedere nella sessione fissa; 3 lezioni da approvare sul Mac.
 
 ## Esito
 
-- **R-469-1 (`</template>` sopra svg/math, perdita)**: `FATTA`, con **B-500-1** (ALTA, trovata dal revisore nella prima versione): `FATTA`.
-- **V-1 ve #257 (test dei redirect rotti, BASSA)**: `FATTA`.
-- **V-1 bot / V-2 ve #257 (commento di TIMEOUT_TOTALE, COSMETICA)**: `FATTA`.
-- **Bot #261 e verifica esterna #261: BOCCIATO** per V-1 ALTA (noscript fuori dalla pila, forme a e b): `FATTA` (review #502, #503). V-2 ve MEDIA preesistente (tag letti dentro noscript): registrata come **R-ve261-2**. V-3/V-4 ve BASSE (testo di stato, §6): `FATTA`.
-- **Bot #261 su c16487c: APPROVATO CON RISERVE** (V-1 BASSA numero del parser vecchio, V-2 COSMETICA descrizione: `FATTA`). **Seconda verifica esterna #261: BOCCIATO** per V-1 ALTA (i controlli puntuali su noscript non chiudevano la classe: 82 fughe nella sua enumerazione): `FATTA` a livello di pagina (con `<noscript` la regola non si usa), review #504; V-2 BASSA (test del template svg chiuso per nome): `FATTA`; V-3/V-4: `FATTA`.
-- **Test**: web suite 388 → 416 (Python 3.13 e 3.11; col parser vecchio 407 passati e 10 saltati apposta). Oracolo lexbor su ~5 milioni di pagine: 0 perdite nuove, 0 fughe nuove (4 casi R-ve246-5 resi visibili, già su main senza prefisso). Mutazioni: tutte prese.
-- **Review**: #500 BOCCIATO, #501, #502, #503, #504 APPROVATO (chat Mani): verdetti integrali nell'handoff.
+- **Costo grande riportato dalla CLI (V-1 verifica esterna #262, secondo giro)**: `FATTA`. Un `total_cost_usd` ≥ 1000, infinito o enorme conta (massimo 1e6) e fa scattare il tetto, invece di essere sostituito dalla stima.
+- **Processi in parallelo sul tetto (V-1 bot #262, secondo giro)**: `FATTA` come limite dichiarato nel codice: sforamento massimo di una chiamata per processo.
+- **Review**: #507 APPROVATO CON RISERVE (R-507-1 BASSA, tracciata in `stato_progetto.md`).
+- **Merge di main (PR #261 della chat Mani) per il conflitto della PR**: `FATTA` (review #508 APPROVATO).
+- **Test**: `tests/test_unit_claude_cli.py` 23 passed; kernel 1039 PASS 0 FAIL; pytest completo 2144 passed, 1 skipped.
 
-## RICHIESTE ALLA CHAT MOTORE
+## Anomalie
 
-Invariate (vedi `reports/stato_progetto.md`, blocchi «Mani — fetta 1…15»).
+- Nessuna.

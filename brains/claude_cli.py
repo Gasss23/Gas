@@ -178,6 +178,8 @@ _PREZZO_PIU_CARO = (15.00, 75.00)
 _TOKEN_MINIMI_CHIAMATA = 500
 # Tetto ai conteggi di token letti dalla CLI (nessuna chiamata vera ne usa tanti).
 _TOKEN_MASSIMI = 10**9
+# Massimo costo di una chiamata messo nel conto (un valore assurdo ferma il forte).
+_COSTO_MASSIMO = 1_000_000.0
 
 
 def _prezzo(model: str) -> Tuple[float, float]:
@@ -194,17 +196,19 @@ def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int,
     l'abbonamento non si paga a consumo: serve solo a misurare l'uso contro il tetto
     giornaliero di Gas. Valore assente, non valido, booleano o 0 (V-1 bot/ve #258: con
     0 il tetto non scatterebbe mai) → stima dai token col prezzo della famiglia del
-    modello. In ogni caso mai meno del pavimento per chiamata."""
+    modello. In ogni caso mai meno del pavimento per chiamata, mai più di _COSTO_MASSIMO."""
     p_in, p_out = _prezzo(model)
     pavimento = _TOKEN_MINIMI_CHIAMATA * p_in / 1_000_000
     v = dati.get("total_cost_usd")
     if isinstance(v, (int, float)) and not isinstance(v, bool):
         try:
-            v = float(v)  # un int enorme (10**400) va in overflow: si usa la stima (#505)
-        except OverflowError:
-            v = float("nan")
-        if v == v and 0.0 < v < 1_000.0:
-            return max(v, pavimento)
+            v = float(v)
+        except OverflowError:  # un int enorme (10**400): conta come il massimo (#505)
+            v = float("inf")
+        if v == v and v > 0.0:
+            # V-1 ve #262: un costo grande (anche ≥ 1000 o infinito) NON si scarta: conta,
+            # limitato a _COSTO_MASSIMO, e fa scattare il tetto (fail-closed).
+            return max(min(v, _COSTO_MASSIMO), pavimento)
     return max((max(0, entrata) * p_in + max(0, uscita) * p_out) / 1_000_000, pavimento)
 
 
