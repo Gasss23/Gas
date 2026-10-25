@@ -1,24 +1,23 @@
-# Report del turno di notte — 2026-10-24 (prima notte di prova, R3)
+# Report del turno di notte — 2026-10-25
 
-Ramo `notte/2026-10-24`, PR #259 (https://github.com/Gasss23/Gas/pull/259). Nessun merge (regola del turno).
-Prima notte: nessun ramo `notte/*` su GitHub e «Fatte» vuota → SOLO le voci 1 e 2, solo documenti.
+Ramo `notte/2026-10-25`, PR #263 (https://github.com/Gasss23/Gas/pull/263). Nessun merge (regola del turno).
+Seconda notte (la PR #259 della prima è mergiata): al massimo UNA voce del motore. Presa la voce 3; le voci 4 e 5 toccano anche loro il motore e restano alle prossime notti.
 
-## Voce 1 — Note cosmetiche del bot su #249 — FATTA
-- **Cosa**: in `stato_progetto.md` l'intestazione «Ultimo aggiornamento» ora nomina la sessione «2026-10-22 sera (decisione porte 80/443, PR #249)» (V-2 bot #249); in `da_mergiare.md` il titolo «Da fare domattina … 2026-10-21 sera» diventa «Da fare (operatore) — aperte dal 2026-10-21 sera, sezione rivista il 2026-10-22 e il 2026-10-24» (V-3); nel §2 dell'handoff di stanotte c'è la nota che la riga di `handoff.md` non conta il commit finale (V-1).
-- **Perché / cosa migliora**: intestazioni e titoli dicono il vero; chi confronta il §2 col diff della PR non scambia lo scarto per un errore.
-- **Rischi**: nessuno (solo documenti). La nota del §2 vale solo per questo handoff: per renderla fissa va messa nel template `.claude/commands/fine-task.md`, che è nel perimetro di review (vedi decisioni).
-- **Non fatto**: la parte di V-3 bot #249 su «protezioni del repo» non tracciate in nessun documento non era nella voce: resta da tracciare (vedi decisioni).
+## Voce 3 — Comando `/clear` su Telegram — FATTA
+- **Cosa**: in `modules/telegram/bot.py` il comando `/clear` fa come `clear` nel terminale: riflessione sul task (se c'è storia e `GAS_RIFLESSIONE_AUTO` non è 0), poi cronologia pulita in ogni caso. Funziona solo dalle chat in `TELEGRAM_ALLOWED_IDS`. Risposta: prima riga «✓ Cronologia pulita.» (o «✗ … NON pulita»), poi esito della riflessione, lezioni proposte con gli id, e il recap intero in messaggi a parte.
+- **Perché / cosa migliora**: da telefono si può chiudere un task e ripartire pulito senza il terminale; le lezioni proposte arrivano con l'id da approvare.
+- **Controlli**: 19 test nuovi (round-trip col kernel vero con due tool call, `/clear`, turno nuovo da zero; un giro con la riflessione vera). pytest 2140 → 2159 passed; kernel 1031 PASS 0 FAIL. Review #502 APPROVATO CON RISERVE (una MEDIA: recap tagliato, a differenza del terminale), corretta; review #503 APPROVATO CON RISERVE.
+- **Rischi**: la riflessione può durare minuti e intanto il bot non risponde ad altri messaggi (come per un turno normale); l'indicatore «sta scrivendo» sparisce dopo pochi secondi. Riserve aperte: R-503-1 BASSA (conteggio in caratteri, non in unità UTF-16, solo per testi pieni di emoji), R-503-2 COSMETICA. Non provato col Telegram vero.
 
-## Voce 2 — Prova del 22 ottobre dopo #247 — FATTA
-- **Cosa**: nuovo blocco «R1 — seconda prova dal vero dopo #247» in `stato_progetto.md`: Gas compila da solo pro e contro, la firma arriva al primo messaggio, Rifiuta non esegue. Il vecchio 🟡 «Bottone Rifiuta senza effetto» (8 ottobre, voce 9) è segnato superato.
-- **Perché / cosa migliora**: il difetto della prima prova (pro e contro chiesti all'utente) risulta chiuso anche dal vero, non solo nei test.
-- **Rischi**: l'unica fonte è la voce della coda (resoconto dell'operatore): nel repo non ci sono log della prova. Se il resoconto fosse impreciso, il 🟡 chiuso andrebbe riaperto.
+## Verifiche su #263
+- Bot: APPROVATO CON RISERVE. V-1 BASSA (`/clear` da un messaggio modificato cancellava la cronologia) e V-2 COSMETICA (recap vuoto) corrette; l'indicatore «sta scrivendo» resta mandato una volta sola.
+- Verifica esterna ([commento](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390800357)): APPROVATO CON RISERVE, nessuna ALTA/MEDIA. V-1 BASSA («/clear» con testo su una riga nuova andava al modello) corretta.
+- Review #504 sul secondo giro: APPROVATO CON RISERVE. Nuova R-504-1 BASSA preesistente: `/notte` e `/compito` partono ancora da un messaggio modificato (da fare in una voce futura).
 
-## Verifica del bot su #259
-APPROVATO CON RISERVE, CI verde. V-1 BASSA (conteggio di `handoff.md` nel §2 non misurato: ora «n/d») e V-2 COSMETICA (forma delle voci in «Fatte») corrette in un secondo commit.
+- Terzo giro (dopo le correzioni): bot e [verifica esterna](https://github.com/Gasss23/Gas/pull/263#issuecomment-6390966722) APPROVATO CON RISERVE, CI verde. Solo note BASSE, registrate in `stato_progetto.md` e non corrette stanotte per non riaprire un altro giro: «/clear@AltroBot» eseguito se all'avvio il bot non conosce il proprio nome; riflessione che blocca il polling; marcatore di continuazione del recap; kernel 1037 in CI contro 1031 nella misura locale.
 
 ## Cosa deve decidere l'operatore
-1. Merge della PR #259 (il turno di notte non mergia).
-2. Se rendere fissa la nota sul conteggio di `handoff.md` nel template `fine-task.md` (perimetro di review: una fetta di giorno o una voce della coda).
-3. Dove tracciare «protezioni del repo» (impegno rimandato citato da V-3 bot #249, oggi in nessun documento).
-4. Il testo dell'attività programmata va ancora cambiato come scritto in `coda_notte.md` (bot #253, V-2/V-3): il turno di notte non l'ha toccato.
+1. Merge della PR #263 (il turno di notte non mergia).
+2. Prova dal vero: bot acceso (`python3 gas.py telegram`), qualche messaggio, poi `/clear`.
+3. Se mettere in coda R-504-1 (`/notte` da messaggio modificato) e la nota «/clear@AltroBot» (fix di una riga).
+4. Il testo dell'attività programmata: la chat Motore ha chiesto il 24 ottobre di cambiarlo, dicendo che l'avevi approvato. Non l'ho fatto: serve la tua richiesta in questa sessione.

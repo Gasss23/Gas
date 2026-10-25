@@ -1,18 +1,17 @@
-# ULTIMO REPORT — 2026-10-25 sera — Punto di ripartenza della chat Motore
+# ULTIMO REPORT — 2026-10-25 — Turno di notte: `/clear` da Telegram (voce 3 di `coda_notte.md`)
 
 ## DECISIONI UMANE RICHIESTE
-
-1. Prova del login sul Mac per il cervello forte (R-496-3), comando in `reports/stato_progetto.md` → Prossimi passi → RIPARTENZA.
-2. Testo nuovo dell'attività di notte da chiedere nella sessione fissa.
-3. 3 lezioni da approvare o rifiutare sul Mac.
-4. Merge della PR di questo salvataggio (solo documenti).
+1. Merge della PR #263 (https://github.com/Gasss23/Gas/pull/263): il turno di notte non mergia mai.
+2. Prova dal vero di `/clear` col bot acceso.
+3. Testo dell'attività programmata: la chat Motore ha chiesto il cambio (24 ottobre); serve la richiesta dell'operatore in questa sessione.
 
 ## Esito
-
-- **Merge delle PR #258, #259, #260, #262, #264, #265** (24–25 ottobre, R2 via B fette 2–5, turno di notte, tre consigli): `FATTA` su richiesta dell'operatore.
-- **Punto di ripartenza scritto in `stato_progetto.md`**: `FATTA` (la chat viene ripulita con /clear).
-- **Fetta di accensione del cervello forte**: `DEFERITA — dopo la prova del login sul Mac`.
+- **Voce 3 — `/clear` su Telegram**: FATTA. Review #502 APPROVATO CON RISERVE (R-502-1 MEDIA, R-502-2/3 BASSE, tutte chiuse), #503 APPROVATO CON RISERVE (R-503-1 BASSA, R-503-2 COSMETICA aperte). Secondo giro dopo bot e verifica esterna su #263 (entrambi APPROVATO CON RISERVE): #504 APPROVATO CON RISERVE, aperte R-504-1 BASSA (`/notte` da messaggio modificato, preesistente) e R-504-2 COSMETICA. pytest 2140 → 2159 passed; kernel 1031 PASS 0 FAIL.
+- **Voci 4 e 5**: SALTATE — toccano il motore, al massimo una voce del motore a notte.
+- **Voci 6–8**: SALTATE — vengono dopo in ordine; le voci solo-documenti non ci sono.
 
 ## Anomalie
-
-- Nessuna.
+- Kernel: CI 1037 PASS 0 FAIL, misura locale nel cloud 1031 PASS 0 FAIL (V-1 bot #263 bis, differenza non spiegata).
+- Terzo giro bot/verifica esterna: APPROVATO CON RISERVE, solo BASSE, tracciate in `stato_progetto.md`.
+- Nessuna. Non provato col Telegram vero (nessuna credenziale nel cloud).
+- Dettaglio: `reports/report_notte.md`.
