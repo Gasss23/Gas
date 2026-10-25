@@ -51,7 +51,7 @@ from urllib.parse import quote, urljoin, urlsplit
 logger = logging.getLogger("gas.web")
 
 # Limiti fissi (non configurabili da chi chiama).
-TIMEOUT_TOTALE = 15.0        # secondi per tutto: DNS, connessioni, redirect, corpo
+TIMEOUT_TOTALE = 15.0        # secondi in tutto: rete (meno RISERVA_COMPOSIZIONE) e pulizia
 # Una parte del tempo resta per pulire la pagina scaricata: con 2 MB difficili servono fino a
 # ~3 s, che prima si aggiungevano ai 15 della rete (R-ve235-5). Con tempi corti (test) un quinto.
 RISERVA_COMPOSIZIONE = 3.0
@@ -230,6 +230,14 @@ class _Contesto:
         self._formattanti: list[int] = []            # indici degli elementi di formattazione
         self._nascosti_html: list[int] = []          # indici dei nascosti HTML (noscript, canvas…)
         self._visti: set[str] = set()                # nomi già aperti nella pagina (sovrastima)
+        # Template HTML aperti con la pila vuota, cioè sotto la pila: «aperti» non basta, conta
+        # anche i template svg/math e quelli che un'uscita lascia contati (B-500-1).
+        self._template_fuori = 0
+        # Pagina con «<noscript»: con gli script attivi noscript è testo grezzo, Gas invece ne
+        # legge i tag (R-ve261-2) e i conti dei template non sono affidabili; la chiusura del
+        # template sopra svg/math non si usa e vale la pila incerta, come prima (V-1 bot e ve
+        # #261: un controllo sul solo noscript aperto lasciava passare una classe intera).
+        self.con_noscript = False
 
     @staticmethod
     def _punto(nome: str, spazio: str) -> bool:
@@ -337,6 +345,8 @@ class _Contesto:
         if not self.pila:
             if tag in _AUTOCHIUDIBILI and resta_aperto:
                 self._metti(tag, tag)
+            if tag == "template" and resta_aperto:
+                self._template_fuori += 1
             return []
         if self._estranee(tag):
             if tag == "font" and font_esce is None:
@@ -380,6 +390,16 @@ class _Contesto:
         """Il tag appena aperto è un elemento svg/math (in cima alla pila con il suo spazio)."""
         return bool(self.pila) and self.pila[-1][0] == tag and self.pila[-1][1] != "html"
 
+    def _chiudi_template(self) -> tuple[bool, list[str]]:
+        """«</template>» con il template sotto la pila: per il browser, da qualsiasi punto del
+        contenuto estraneo, la chiusura arriva alle regole HTML, che chiudono il template senza
+        guardare lo scope e tolgono tutto quello che c'è sopra (R-469-1). Si scalano solo il
+        template e i nascosti della pila (object, canvas… li toglie anche il browser): un
+        nascosto HTML aperto fra il template e la pila resta contato e nasconde il resto
+        (verso sicuro). Non vale nelle pagine con noscript (vedi con_noscript)."""
+        self._template_fuori -= 1
+        return False, [n for n in self._togli_da(0) if n in _TAG_NASCOSTI]
+
     def chiudi(self, tag: str) -> tuple[bool, list[str]]:
         """Registra una chiusura. Restituisce (ignorata, nascosti chiusi oltre al tag). Come il
         browser: nel contenuto estraneo «</p>» e «</br>» fanno uscire (V-1 ve #246), le altre
@@ -388,7 +408,12 @@ class _Contesto:
         punto di integrazione o annotation-xml. Dove l'esito dipende da quello che la pila non
         vede, la pila diventa incerta."""
         if not self.pila:
+            if tag == "template" and self._template_fuori:
+                self._template_fuori -= 1
             return False, []
+        if (tag == "template" and not self.con_noscript and not self._posizioni.get("template")
+                and self._template_fuori > 0):
+            return self._chiudi_template()
         usciti: list[str] = []
         if self.pila[-1][1] != "html":
             if tag in ("p", "br"):
@@ -758,6 +783,9 @@ def _scarica(
 
 # ───────────────────────────── testo ─────────────────────────────
 
+_NOSCRIPT = re.compile(r"<noscript", re.IGNORECASE)
+
+
 class _Estrattore(HTMLParser):
     _SALTA = _TAG_NASCOSTI
     _BLOCCHI = {
@@ -926,6 +954,11 @@ class _Estrattore(HTMLParser):
             self._controlla_tag(i, j, 2)
         return j
 
+    def feed(self, data: str) -> None:
+        if _NOSCRIPT.search(data):
+            self._contesto.con_noscript = True
+        super().feed(data)
+
     def close(self) -> None:
         # Gli html.parser senza le patch del 2025 danno come testo quello che a fine pagina è
         # rimasto aperto («<!--<script>X», «<a b="X»), i parser nuovi lo scartano come i
@@ -1088,6 +1121,7 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
     salta = 0
     aperti: dict[str, int] = {}
     contesto = _Contesto(aperti)
+    contesto.con_noscript = _NOSCRIPT.search(testo) is not None
 
     def scala(nomi: list[str]) -> None:
         nonlocal salta
