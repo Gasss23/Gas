@@ -328,5 +328,12 @@ def test_costo_grande_conta_e_non_si_scarta():
     assert _costo_equivalente({"total_cost_usd": float("inf")}, 0, 0, "x") == _COSTO_MASSIMO
     assert _costo_equivalente({"total_cost_usd": 10 ** 400}, 0, 0, "x") == _COSTO_MASSIMO
     # negativo o nan restano scartati: si usa la stima (col pavimento)
-    for v in (-5, float("nan")):
+    for v in (-5, float("nan"), float("-inf"), -10 ** 400):  # R-507-1
         assert _costo_equivalente({"total_cost_usd": v}, 0, 0, "claude-sonnet-5-5") == 500 * 3 / 1e6
+
+
+def test_la_stima_non_supera_il_costo_massimo(monkeypatch):
+    """V-2 bot #264: il massimo vale anche per la stima dai token, non solo per caso."""
+    import brains.claude_cli as cc
+    monkeypatch.setattr(cc, "_TOKEN_MASSIMI", 10 ** 15)
+    assert cc._costo_equivalente({}, 10 ** 15, 10 ** 15, "claude-opus-5-5") == cc._COSTO_MASSIMO
