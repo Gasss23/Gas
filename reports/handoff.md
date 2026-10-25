@@ -29,13 +29,13 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +
- modules/web/leggi.py               |  36 +++-
- reports/diff_sessione.md           |  14 +-
+ .claude/agents/memoria_revisore.md |  10 +
+ modules/web/leggi.py               |  36 ++-
+ reports/diff_sessione.md           |  17 +-
  reports/handoff.md                 | n/d
  reports/stato_progetto.md          |   2 +
- reports/ultimo_report.md           |  33 ++--
- tests/test_unit_web_leggi.py       |  69 +++++++
+ reports/ultimo_report.md           |  34 +--
+ tests/test_unit_web_leggi.py       |  69 ++++++
 ```
 
 NB: preso dall'index con tutti i report in stage; la riga di `reports/handoff.md` dice `n/d` e manca la riga del totale, come vuole la regola «n/d» di fine-task (il conteggio di questo file non è misurabile dentro il file stesso).
@@ -45,6 +45,8 @@ NB: preso dall'index con tutti i report in stage; la riga di `reports/handoff.md
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+85e11e9 Merge origin/main (PR #262) in feat/mani-web-fetta15
+377e98d docs(reports): fetta 15 chat Mani — verdetto #505 riemesso per il gate B
 af99812 docs(reports): fetta 15 chat Mani — handoff dopo il merge di main (regola n/d)
 584fd7c Merge origin/main (PR #260) in feat/mani-web-fetta15
 4a6c34b docs(reports): fetta 15 chat Mani, terzo giro — report, handoff, stato
@@ -66,7 +68,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Cinque verdetti, incollati integralmente (chat Mani): #500 (BOCCIATO, B-500-1) e #501 (APPROVATO) sul diff della fetta 15 committato in `a2a8ef2`; #502 e #503 (APPROVATO) sul secondo giro (noscript, V-1 bot e verifica esterna #261) committato in `837fcd1`; #504 (APPROVATO) sul terzo giro (noscript a livello di pagina) committato in `955607c`. La #504 sostituisce i controlli della #502 e della #503. #505 (APPROVATO) sul merge di main 16110b2 (PR #260), fatto perché il merge della PR, chiesto dall'operatore, era in conflitto. Le righe citate nella #500 si riferiscono al diff di allora.
+Cinque verdetti, incollati integralmente (chat Mani): #500 (BOCCIATO, B-500-1) e #501 (APPROVATO) sul diff della fetta 15 committato in `a2a8ef2`; #502 e #503 (APPROVATO) sul secondo giro (noscript, V-1 bot e verifica esterna #261) committato in `837fcd1`; #504 (APPROVATO) sul terzo giro (noscript a livello di pagina) committato in `955607c`. La #504 sostituisce i controlli della #502 e della #503. #505 (APPROVATO, riemesso per il gate B) sul merge di main 16110b2 (PR #260) e #507 (APPROVATO) sul merge di main 89b8045 (PR #262), fatti perché il merge della PR, chiesto dall'operatore, era in conflitto. Le righe citate nella #500 si riferiscono al diff di allora.
 
 ### Review #500 (chat Mani) — verdetto integrale (fetta 15, prima versione)
 
@@ -313,6 +315,43 @@ File:
 - /home/user/Gas/tests/test_unit_web_leggi.py
 - /home/user/Gas/scripts/check_verdetto.py
 
+### Review #507 (chat Mani) — verdetto integrale (merge di main 89b8045)
+
+## VERDETTO: APPROVATO
+
+Review #507 (chat Mani): merge di origin/main 89b8045 (PR #262, chat Motore) in feat/mani-web-fetta15, ancora da committare. HEAD è 377e98d e la base comune è 16110b2. Il merge non tocca il codice web e non perde righe. Il numero #507 era libero: il più alto in memoria era #506 (chat Motore).
+
+**Cosa ho esaminato**
+- `modules/web/leggi.py:414`, la regola su `</template>` spenta nelle pagine con noscript.
+  - Rischio esaminato: il merge che cambia il codice approvato nella #504.
+  - Esito ok: `git diff --cached HEAD -- modules tests/test_unit_web_leggi.py` è vuoto, quindi il file è identico a HEAD.
+- `tests/test_unit_web_leggi.py:1004`, la sonda del bot #261 (`<template><noscript><svg></template></noscript>SEGRETO` → «A»).
+  - Rischio esaminato: test web cambiati o persi nel merge.
+  - Esito ok: il file è identico a HEAD. La suite web dà 416 passed e 1 skipped (prova tua sul merge, coerente con la #504).
+- `.claude/agents/memoria_revisore.md`, unione delle righe dei due lati.
+  - Rischio esaminato: righe perse o marcatori rimasti.
+  - Esito ok: 0 righe perse da HEAD e da MERGE_HEAD, nessuna riga inventata, nessun marcatore.
+- `reports/stato_progetto.md`, unito in automatico.
+  - Rischio esaminato: un'unione automatica sbagliata.
+  - Esito ok:
+    - 0 righe perse da main;
+    - le 2 righe che mancano rispetto a HEAD sono righe della base che main ha aggiornato («Ultimo aggiornamento» e la voce «R2 via B»), quindi l'unione a tre vie è corretta;
+    - nessun marcatore.
+- File entrati da main senza conflitti: gas.py, brains/claude_cli.py, .claude/commands/fine-task.md, i test kernel e claude_cli, .gitignore e roadmap. Sono tutti identici byte per byte a MERGE_HEAD; li cito solo a parole, perché dopo il merge escono dal diff di sessione.
+- `reports/handoff.md`, `reports/ultimo_report.md` e `reports/diff_sessione.md` sono uguali a HEAD (`--ours`), come dice lavoro_parallelo.md.
+
+**Cosa non ho verificato**
+- Il contenuto del codice entrato da main (R2 `claude -p`, fine-task.md): è stato rivisto nella chat Motore e qui non è cambiato.
+- Le suite kernel e claude_cli su questo merge: i file sono identici a main e i loro test girano in CI.
+- La CI sul commit di merge: il commit non esiste ancora.
+
+**Memoria**: aggiunta la riga #507 (`.claude/agents/memoria_revisore.md`, riga 848), nessuna lezione nuova. Come per la #505, l'ho scritta e messa in stage in due passi separati, senza commit perché il merge è in corso: entra nel commit di merge. Il resto dello stage non è stato toccato.
+
+File:
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+- /home/user/Gas/modules/web/leggi.py
+- /home/user/Gas/tests/test_unit_web_leggi.py
+
 ---
 
 ## §5 DELTA TEST DEL MOTORE
@@ -328,7 +367,8 @@ File:
 - `3b50ee1` (apertura della PR #261): unit-suite e handoff-check success; verifica-bot **failure** (BOCCIATO, V-1 ALTA noscript, chiusa in `837fcd1`); verifica esterna #261 BOCCIATO (stessa V-1, forme a e b; V-2 MEDIA preesistente → R-ve261-2; V-3/V-4 BASSE).
 - `c16487c` (secondo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA numero, V-2 COSMETICA descrizione: corrette); seconda verifica esterna #261 BOCCIATO (V-1 ALTA classe noscript, chiusa in `955607c`; V-2 BASSA test; V-3/V-4).
 - `4a6c34b` (terzo giro): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA frameset da registrare, V-2 COSMETICA docstring); terza verifica esterna #261 APPROVATO CON RISERVE ([commento](https://github.com/Gasss23/Gas/pull/261#issuecomment-6388890173): V-1 BASSA test di `<NOSCRIPT>` maiuscolo, V-2 BASSA frameset, V-3 BASSA formulazione «4 casi», V-4 COSMETICA) — rimandate alla prossima fetta, merge chiesto dall'operatore.
-- Merge di main 16110b2 (PR #260) e commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
+- `377e98d` (dopo il merge di main 16110b2): unit-suite, handoff-check e verifica-bot success; bot APPROVATO CON RISERVE (V-1 BASSA: il flag con_noscript si accende in `feed` sul pezzo passato, giusto solo perché feed si chiama una volta con la pagina intera; rimandata alla prossima fetta). Merge di nuovo rifiutato per conflitto (PR #262): merge di main 89b8045, review #507.
+- Merge di main 89b8045 e commit di fine-task con questo handoff: run non ancora disponibili alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
