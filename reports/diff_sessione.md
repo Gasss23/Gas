@@ -8,3 +8,4 @@
 - `.claude/agents/memoria_revisore.md`: riga #507.
 - `reports/stato_progetto.md`: fetta 4 e R-507-1.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
+- Merge di origin/main (PR #261 chat Mani): conflitti solo nei log e nella memoria (review #508).
