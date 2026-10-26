@@ -146,8 +146,11 @@ _COSTRUTTO_APERTO = re.compile(r"<(?:[a-zA-Z!?]|/.)", re.S)
 # Grezzi anche textarea, xmp, noembed, noframes e plaintext (fino in fondo), come in
 # html.parser: dentro non si contano aperture (R-445-1). In HTML anche un grezzo autochiuso
 # («<script/>») apre il testo grezzo fino a «</tag>», come nei browser (R-453-1).
+# Anche noscript: con gli script attivi (il modello di Gas) è testo grezzo fino a
+# «</noscript>», e un tag scritto dentro non apre né chiude niente (R-ve261-2).
 _GREZZI_RIPIEGO = frozenset({
-    "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "plaintext",
+    "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "noscript",
+    "plaintext",
 })
 _CONTATI_RIPIEGO = _TAG_NASCOSTI - _GREZZI_RIPIEGO
 # Grezzi che in HTML aprono il testo grezzo anche scritti autochiusi («<title/>», «<script/>»):
@@ -236,10 +239,11 @@ class _Contesto:
         # Template HTML aperti con la pila vuota, cioè sotto la pila: «aperti» non basta, conta
         # anche i template svg/math e quelli che un'uscita lascia contati (B-500-1).
         self._template_fuori = 0
-        # Pagina con «<noscript»: con gli script attivi noscript è testo grezzo, Gas invece ne
-        # legge i tag (R-ve261-2) e i conti dei template non sono affidabili; la chiusura del
-        # template sopra svg/math non si usa e vale la pila incerta, come prima (V-1 bot e ve
-        # #261: un controllo sul solo noscript aperto lasciava passare una classe intera).
+        # Pagina con «<noscript»: la chiusura del template sopra svg/math non si usa e vale la
+        # pila incerta, come prima (V-1 bot e ve #261: un controllo sul solo noscript aperto
+        # lasciava passare una classe intera). Da R-ve261-2 noscript è testo grezzo come nel
+        # browser, quindi i conti tornano; la regola resta spenta per prudenza, finché un
+        # confronto con l'oracolo non dice che si può riaccendere.
         # Senza il flag si va nel verso sicuro, come in _Estrattore (R-511-1, V-1 bot #268).
         self.con_noscript = con_noscript
 
@@ -457,8 +461,9 @@ class _Contesto:
                     and not (self._nascosti_html and self._nascosti_html[-1] > in_cima)):
                 # «</ul>» con un «<li>» aperto sopra: il tag è in scope, il browser chiude lui e
                 # tutto quello che sta sopra (R-ve246b-5). Non se sopra c'è un nascosto HTML
-                # aperto: con gli script attivi noscript è testo grezzo e «</div>» è suo
-                # contenuto, html.parser invece lo legge come tag (V-1 bot #250 bis).
+                # aperto (object, canvas…): nato per noscript, che con gli script attivi è
+                # testo grezzo (V-1 bot #250 bis; da R-ve261-2 lo è anche per Gas, quindi
+                # qui non arriva più), resta come guardia per gli altri (R-517-1).
                 return False, usciti + [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
             # Elemento HTML diverso con il tag più sotto: il browser a volte chiude (scope,
             # chiusure implicite), a volte no.
@@ -848,6 +853,10 @@ class _Estrattore(HTMLParser):
         if not self._xhtml:
             self._scala(self._contesto.apri(tag, True, self._font_esce(tag, attrs), self._html_dentro(attrs)))
         self._inizio(tag)
+        if tag == "noscript":
+            # Testo grezzo come nel ripiego (R-ve261-2); in XHTML e nel contenuto estraneo no:
+            # ci pensa set_cdata_mode.
+            self._modo_grezzo(tag)
 
     def _inizio(self, tag: str) -> None:
         if tag == "frameset":
