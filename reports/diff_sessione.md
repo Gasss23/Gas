@@ -1,9 +1,17 @@
-# DIFF SESSIONE — 2026-10-26 (chat Mani, fetta 18, PR #272)
+# DIFF SESSIONE — 2026-10-26 (chat Motore, chiusura di V-1/V-2 della verifica esterna #269)
 
-- `modules/web/leggi.py`: noscript testo grezzo nel parser (`_modo_grezzo` in `handle_starttag`) e nel ripiego (`_GREZZI_RIPIEGO`); commenti del flag `con_noscript` e della guardia `_nascosti_html` aggiornati — R-ve261-2, R-517-1.
-- `tests/test_unit_web_leggi.py`: `test_noscript_e_testo_grezzo` (9 pagine + XHTML), `test_titolo_resta_se_frameset_non_e_un_tag` (V-1 bot #270), tre casi del vecchio verso sicuro spostati o tolti.
-- `.claude/agents/memoria_revisore.md`: righe delle review #517 e #518 (commit del revisore).
-- `reports/stato_progetto.md`: intestazione, fetta 17 chiusa col merge, blocco «Mani — fetta 18» con R-518-1.
+Sessione dentro la PR #269 (ancora aperta): il diff dalla base comprende anche le fette del 25 ottobre.
+
+- `brains/router.py`: `prefisso_forte` (spostata da gas.py), condivisa da terminale, Telegram e voce.
+- `brains/claude_cli.py`: login scaduto riconosciuto (JSON e testo semplice, limite prima), clamp dei token; commento allineato al messaggio vero.
+- `gas.py`: importa `prefisso_forte`; `/forte` nel terminale.
+- `modules/telegram/bot.py`: `/forte <richiesta>` da Telegram, «/forte» nudo → istruzione d'uso.
+- `modules/voice/server.py`: `/forte` dalla voce, «/forte» nudo → 400.
+- `modules/notte/notte.py`: `cervello: forte` nel catalogo; qualunque chiave sconosciuta → compito saltato (con «forse 'cervello'?» se somiglia).
+- `tests/test_unit_claude_cli.py`, `tests/test_unit_kernel.py`, `tests/test_unit_notte.py`, `tests/test_unit_voice_server.py`: test di login, costo, `/forte`, catalogo, ripresa, Telegram, voce.
+- `scripts/notte/catalogo_esempio.yaml`, `reports/r2_regole_abbonamento.md`: uso del forte e setup del Mac.
+- `.claude/agents/memoria_revisore.md`: righe #511–#519 chat Motore (unite a quelle di main).
+- `reports/stato_progetto.md`: R-496-3 e le riserve di #269 chiuse.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
 Si riscrive a ogni sessione; la storia completa sta in git.

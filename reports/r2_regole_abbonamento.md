@@ -27,3 +27,11 @@
 **Decisione dell'operatore (23 ottobre): via B** («mergia 254, via B»): `claude -p` col login dell'abbonamento Max di Gas, rischio §3.7 accettato. La via A resta documentata qui come alternativa.
 
 **Nota sul tetto nella via B (correzione V-3 della verifica esterna #256)**: i 4,60 $ al giorno nascono dai 100 $ al mese di crediti API, che valgono SOLO per la via A. Con la via B (login dell'abbonamento) i crediti non c'entrano e il limite del piano non è in dollari. Gas misura l'uso col costo «come se fosse API» che la CLI riporta per ogni chiamata (`total_cost_usd`) e si ferma a `GAS_CLAUDE_CLI_TETTO_USD` (default 4,60) al giorno: è una misura indicativa del 20% deciso dall'operatore, da ritarare guardando l'uso reale del piano.
+
+## Accensione sul Mac (fetta di accensione, 25 ottobre)
+
+1. Login dell'abbonamento Max di Gas: in `~/Gas` lancia `claude`, scrivi `/login`, scegli «Claude account with subscription», esci con `/exit`. Se scade, Gas dice «login dell'abbonamento scaduto, mancante o non valido»: si rifà uguale.
+2. Prova del login (R-496-3): deve stampare `ok` e un numero (comando in `reports/stato_progetto.md`, RIPARTENZA).
+3. Nel `.env` di Gas: `GAS_CLAUDE_CLI=1` (tetto giornaliero facoltativo `GAS_CLAUDE_CLI_TETTO_USD`, default 4.60). NESSUNA `ANTHROPIC_API_KEY` nel `.env` (comunque non arriva a `claude`).
+4. `python3 gas.py doctor` → «Cervello forte: comando claude presente, conto di oggi».
+5. Uso: `/forte <richiesta>` nel terminale di Gas, su Telegram e nella voce (testo o trascrizione) (un prefisso scritto male, es. «/frote», non si riconosce e va come testo normale: scrivilo esatto); di notte `cervello: forte` nel compito del catalogo (`~/.gas_notte.yaml`; qualunque chiave diversa da `nome`, `prompt`, `attivo`, `cervello` — es. `cervelo` o `brain` — fa saltare il compito, con l'avviso nel report del mattino). Senza richiesta esplicita il forte non si usa mai.

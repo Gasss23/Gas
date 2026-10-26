@@ -368,3 +368,25 @@ def test_collection_dell_intero_repo_non_esplode():
                         "no:cacheprovider"], cwd=radice, capture_output=True, text=True,
                        timeout=300)
     assert r.returncode in (0, 5), (r.returncode, r.stdout[-2000:], r.stderr[-2000:])
+
+
+def test_forte_dalla_voce(monkeypatch):
+    """R-ve269-2: «/forte <richiesta>» dall'API testo va al solo forte; «/forte» nudo
+    → 400 con l'istruzione d'uso, nessun turno."""
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append((prompt, kw))
+            yield {"type": "final", "content": "ok"}
+
+    server, port = _make_server(_K(), "tok-forte-123456")
+    try:
+        auth = {"Authorization": "Bearer tok-forte-123456"}
+        assert _post(port, {"prompt": "/forte analizza"}, auth)[0] == 200
+        assert _post(port, {"prompt": "ciao"}, auth)[0] == 200
+        st, body = _post(port, {"prompt": "/forte"}, auth)
+        assert st == 400 and "Uso: /forte" in body["error"]
+    finally:
+        server.shutdown()
+    assert visti == [("analizza", {"cervello": "forte"}), ("ciao", {})]

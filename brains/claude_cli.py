@@ -77,6 +77,11 @@ SCHEMA_RISPOSTA: Dict[str, Any] = {
 # Si cercano anche nell'uscita non JSON e in stderr (V-2 bot #256).
 _SEGNALI_LIMITE = ("usage limit", "rate limit", "rate_limit", "weekly limit",
                    "5-hour limit", "limit reached", "limite di utilizzo")
+# Login dell'abbonamento scaduto o mancante (prova sul Mac del 25 ottobre: subtype
+# «success» con is_error, o testo semplice). Errore KO («scaduto, mancante o non
+# valido») con istruzione chiara, MAI QUOTA.
+_SEGNALI_LOGIN = ("failed to authenticate", "oauth session", "oauth token", "not logged in", "please run /login",
+                  "invalid api key", "authentication_error")
 
 _ISTRUZIONI_FORMATO = (
     "\n\n# FORMATO DELLA RISPOSTA (obbligatorio)\n"
@@ -161,6 +166,16 @@ def _trascrizione(messages: List[Dict[str, Any]], codice: str) -> str:
     return "\n\n".join(parti)
 
 
+_MSG_LOGIN = ("claude-cli: login dell'abbonamento scaduto, mancante o non valido (sul "
+              "computer di Gas: `claude`, poi /login; nessuna ANTHROPIC_API_KEY arriva a claude)")
+
+
+def _login_scaduto(*testi: Any) -> bool:
+    """True se un testo dice che il login dell'abbonamento manca o è scaduto."""
+    tutto = " ".join(str(t or "") for t in testi).lower()
+    return any(p in tutto for p in _SEGNALI_LOGIN)
+
+
 def _prefisso_limite(*testi: Any) -> str:
     """«429 » se un testo dice che il limite dell'abbonamento è raggiunto."""
     tutto = " ".join(str(t or "") for t in testi).lower()
@@ -211,7 +226,10 @@ def _costo_equivalente(dati: Dict[str, Any], entrata: int, uscita: int,
             # V-1 ve #262: un costo grande (anche ≥ 1000 o infinito) NON si scarta: conta,
             # limitato a _COSTO_MASSIMO, e fa scattare il tetto (fail-closed).
             return max(min(v, _COSTO_MASSIMO), pavimento)
-    stima = (max(0, entrata) * p_in + max(0, uscita) * p_out) / 1_000_000
+    # V-2 ve #265: token enormi passati direttamente non vanno in overflow
+    entrata = min(max(0, entrata), _TOKEN_MASSIMI)
+    uscita = min(max(0, uscita), _TOKEN_MASSIMI)
+    stima = (entrata * p_in + uscita * p_out) / 1_000_000
     return min(max(stima, pavimento), _COSTO_MASSIMO)  # V-2 bot #264: il massimo vale sempre
 
 
@@ -305,7 +323,11 @@ class ClaudeCliClient:
         except ValueError:
             # V-2 bot #256: anche un limite scritto in testo semplice è QUOTA.
             # R-497-1: anche un'uscita non JSON ha consumato.
-            raise _con_costo(RuntimeError(_prefisso_limite(proc.stdout, proc.stderr)
+            # V-2 bot #269: anche il login scaduto in testo semplice (dopo il limite).
+            limite = _prefisso_limite(proc.stdout, proc.stderr)
+            if not limite and _login_scaduto(proc.stdout, proc.stderr):
+                raise _con_costo(RuntimeError(_MSG_LOGIN), stima_minima)
+            raise _con_costo(RuntimeError(limite
                              + f"claude-cli: uscita non JSON (codice {proc.returncode})"),
                              stima_minima)
         if not isinstance(dati, dict):
@@ -329,6 +351,10 @@ class ClaudeCliClient:
             # Nel messaggio (che finisce nel log) niente testo di Claude, che potrebbe
             # citare la conversazione (V-3 bot #256): solo il tipo d'errore.
             tipo = re.sub(r"[^a-z_]", "", str(dati.get("subtype") or "errore").lower())[:40]
+            # R-511-1: il limite (QUOTA) si controlla prima del login
+            if (not _prefisso_limite(dati.get("result"), proc.stderr)
+                    and _login_scaduto(dati.get("result"), proc.stderr)):
+                raise RuntimeError(_MSG_LOGIN)
             raise RuntimeError(_prefisso_limite(dati.get("result"), proc.stderr)
                                + f"claude-cli: errore ({tipo or 'errore'})")
         out = dati.get("structured_output")

@@ -2172,3 +2172,108 @@ def test_clear_da_telegram_con_la_riflessione_vera(monkeypatch, dirs):
     assert "Lezioni proposte" in primo and "LEZIONE-SEGRETA uno" in primo
     assert recap == "│ Obiettivo: contare. Stato: fatto, 42."
     assert len(k.memory.lista_lezioni()) == 2
+
+
+def test_cervello_forte_dal_catalogo(dirs):
+    """Accensione R2: `cervello: forte` arriva a run_turn; valore sbagliato → saltato
+    (fail-closed: il lavoro non deve finire ai gratuiti); senza il campo, run_turn come prima."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  "compiti:\n  - nome: a\n    prompt: p\n    cervello: forte\n"
+                  "  - nome: b\n    prompt: p\n    cervello: debole\n"
+                  "  - nome: c\n    prompt: p\n"
+                  "  - nome: d\n    prompt: p\n    cervello:\n")
+    compiti, avvisi = carica_catalogo(cat, root)
+    assert [c.get("cervello") for c in compiti] == ["forte", None]
+    assert any("'d'" in a for a in avvisi)  # V-2 ve #269: vuoto → saltato
+    assert any("'b'" in a and "forte" in a for a in avvisi)
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append(kw)
+            yield {"type": "final", "content": "ok"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
+    assert visti == [{"cervello": "forte"}, {}]
+
+
+@pytest.mark.parametrize("testo,atteso", [
+    ("ciao", (None, "ciao")),
+    ("forte questo risultato", (None, "forte questo risultato")),
+    ("/forte analizza i lead", ("forte", "analizza i lead")),
+    ("/FORTE analizza", ("forte", "analizza")),
+    ("/forte dati del cliente", ("forte", "dati del cliente")),  # NBSP (Option+Spazio)
+    ("/forte\tx", ("forte", "x")),
+    ("/forte", ("uso", "")),
+    ("/forte:x", ("uso", "")),
+    ("/fortezza x", ("uso", "")),
+])
+def test_prefisso_forte(testo, atteso):
+    """V-1 bot #269 (R-515-1/2): /forte fail-closed su ogni separatore; mai ai gratuiti."""
+    assert gas.prefisso_forte(testo) == atteso
+
+
+def test_cervello_forte_conservato_nella_ripresa(dirs):
+    """V-4 bot #269: ogni ramo di _ordina_riprese conserva cervello: forte, e il compito
+    ripreso arriva a run_turn col forte."""
+    c = {"nome": "a", "prompt": "p", "cervello": "forte"}
+    for info in ({"tentativi": 0}, {"tentativi": 1}, {"tentativi": 2},
+                 {"tentativi": 1, "sospetto": True}):
+        voci, _ = notte._ordina_riprese([dict(c)], {"a": dict(info)}, [])
+        assert [v.get("cervello") for v in voci] == ["forte"], info
+    root, _ = dirs
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append(kw)
+            yield {"type": "final", "content": "ok"}
+
+    voci, _ = notte._ordina_riprese([dict(c)], {"a": {"tentativi": 1}}, [])
+    notte._esegui_compito(_K(), voci[0], root / ".gas_notte_t")
+    assert visti == [{"cervello": "forte"}]
+
+
+def test_handle_update_forte_da_telegram(monkeypatch):
+    """R-ve269-2: «/forte <richiesta>» da Telegram va al solo forte; «/forte» nudo o
+    con un separatore strano → istruzione d'uso, nessun turno ai gratuiti."""
+    inviati = []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append(t))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    visti = []
+
+    class _K:
+        def run_turn(self, t, **kw):
+            visti.append((t, kw))
+            yield {"type": "final", "content": "ok"}
+
+    def upd(testo):
+        return {"update_id": 1, "message": {"chat": {"id": 7}, "text": testo}}
+
+    _tg._handle_update("http://finto", upd("/forte analizza i lead"), {7}, _K())
+    _tg._handle_update("http://finto", upd("ciao"), {7}, _K())
+    assert visti == [("analizza i lead", {"cervello": "forte"}), ("ciao", {})]
+    for t in ("/forte", "/forte:x"):
+        _tg._handle_update("http://finto", upd(t), {7}, _K())
+        assert len(visti) == 2 and "Uso: /forte" in inviati[-1]
+
+
+@pytest.mark.parametrize("chiave", ["cervelo", "Cervello", "CERVELLO", "cervello ", "cerveló", "cervello_forte"])
+def test_chiave_cervello_scritta_male_salta_il_compito(dirs, chiave):
+    """R-ve269-1 e V-1 ve #269 (4° giro): qualunque chiave sconosciuta fa saltare il
+    compito (non finisce ai gratuiti senza vincolo); per una chiave che somiglia a
+    «cervello» l'avviso lo suggerisce."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  f"compiti:\n  - nome: a\n    prompt: p\n    \"{chiave}\": forte\n"
+                  "  - nome: b\n    prompt: p\n    brain: forte\n"
+                  "  - nome: c\n    prompt: p\n")
+    compiti, avvisi = carica_catalogo(cat, root)
+    assert [c["nome"] for c in compiti] == ["c"]
+    assert any("'a'" in a and "forse 'cervello'" in a and "saltato" in a for a in avvisi)
+    assert any("'b'" in a and "brain" in a and "saltato" in a
+               and "forse" not in a for a in avvisi)

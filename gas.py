@@ -31,6 +31,7 @@ from brains.model_ids import (
     MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from brains.claude_cli import ClaudeCliClient
+from brains.router import prefisso_forte  # R2: /forte (terminale, Telegram, voce)
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
 from modules.gate.gate import libero_dopo_lettura, sembra_delicato
@@ -6017,7 +6018,11 @@ def main():
             if prompt == "rifletti":
                 _stampa_riflessione(kernel.rifletti())
                 continue
-            for event in kernel.run_turn(prompt):
+            cervello, prompt = prefisso_forte(prompt)
+            if cervello == "uso":
+                print("\nUso: /forte <richiesta>\n")
+                continue
+            for event in kernel.run_turn(prompt, cervello=cervello):
                 if event["type"] == "final": print(f"\n{event['content']}\n")
                 elif event["type"] == "tool_res": print(f"  → {event['output'].strip()}")
                 elif event["type"] == "error": print(f"\n✗ {event['content']}\n")
