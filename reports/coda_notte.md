@@ -18,8 +18,6 @@
 ## Da fare (in ordine)
 
 ### A. Piccoli lavori accantonati
-4. **`righe_stato_mattino` con spesa non finita** (verifica esterna #241, V-1): `isfinite` anche lì, mai «$nan».
-5. **Database bloccato fra due letture** (R-454-1 / V-2 bot #241): `lista_contatti` dà `[]` su errore → «Lead attivi: 0». Una lettura dei contatti che segnali l'errore (None) per il resoconto e per `ricorda fermi`.
 
 ### B. Riserve più grosse
 6. **Recupero dell'esito di una firma basato sulla storia** (V-1 bot #241, R-445-3): un segno nel DB «esito notificato in storia» al posto della scansione della storia. Cambio di schema: migrazione additiva, fail-safe.
@@ -48,3 +46,5 @@ Sei il TURNO DI NOTTE dello sviluppo di Gas (roadmap R3, repo GitHub Gasss23/Gas
 - Voce 1 — Note cosmetiche del bot su #249 — fatta, PR #259 (notte del 2026-10-24)
 - Voce 2 — Prova del 22 ottobre dopo #247 registrata in `stato_progetto.md` — fatta, PR #259 (notte del 2026-10-24)
 - Voce 3 — Comando `/clear` su Telegram — fatta, PR #263 (notte del 2026-10-25)
+- Voce 4 — `righe_stato_mattino` mai «$nan» — fatta, PR #271 (notte del 2026-10-26)
+- Voce 5 — Contatti illeggibili mai «0 lead» (`leggi_contatti`) — fatta, PR #273 (notte del 2026-10-27)

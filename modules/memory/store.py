@@ -1218,7 +1218,16 @@ class MemoryStore:
         attivi). [] in degrado. Ordinati per ultimo aggiornamento decrescente. Le
         LAPIDI (lead fusi, merged_into valorizzato) sono ESCLUSE: l'elenco, il pin
         always-on e la ricerca substring vedono solo i lead canonici, mai i
-        doppioni assorbiti."""
+        doppioni assorbiti. Per CONTARE i lead usare leggi_contatti (R-454-1)."""
+        contatti = self.leggi_contatti(filtro_stato)
+        return [] if contatti is None else contatti
+
+    def leggi_contatti(self, filtro_stato: Optional[str] = None
+                       ) -> Optional[List[Dict[str, Any]]]:
+        """Come lista_contatti, ma None se la lettura fallisce (R-454-1 / V-2 bot
+        #241: DB bloccato fra due letture). [] vuol dire davvero «nessun contatto»:
+        chi conta i lead (resoconto del mattino, `ricorda fermi`) non deve scambiare
+        un errore per «0 lead». SOLA LETTURA, mai solleva."""
         try:
             with self._connect() as con:
                 if filtro_stato is not None:
@@ -1234,8 +1243,8 @@ class MemoryStore:
                     )
                 return self._rows(cur)
         except (sqlite3.Error, OSError) as e:
-            log.warning("lista_contatti fallita (%s): %s", self.db_path, e)
-            return []
+            log.warning("lettura dei contatti fallita (%s): %s", self.db_path, e)
+            return None
 
     # -------------------------------------------------- rilevamento duplicati
     @staticmethod
