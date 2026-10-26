@@ -30,8 +30,8 @@
 
 ## Accensione sul Mac (fetta di accensione, 25 ottobre)
 
-1. Login dell'abbonamento Max di Gas: in `~/Gas` lancia `claude`, scrivi `/login`, scegli «Claude account with subscription», esci con `/exit`. Se scade, Gas dice «login dell'abbonamento scaduto o mancante»: si rifà uguale.
+1. Login dell'abbonamento Max di Gas: in `~/Gas` lancia `claude`, scrivi `/login`, scegli «Claude account with subscription», esci con `/exit`. Se scade, Gas dice «login dell'abbonamento scaduto, mancante o non valido»: si rifà uguale.
 2. Prova del login (R-496-3): deve stampare `ok` e un numero (comando in `reports/stato_progetto.md`, RIPARTENZA).
 3. Nel `.env` di Gas: `GAS_CLAUDE_CLI=1` (tetto giornaliero facoltativo `GAS_CLAUDE_CLI_TETTO_USD`, default 4.60). NESSUNA `ANTHROPIC_API_KEY` nel `.env` (comunque non arriva a `claude`).
 4. `python3 gas.py doctor` → «Cervello forte: comando claude presente, conto di oggi».
-5. Uso: nel terminale di Gas `/forte <richiesta>`; di notte `cervello: forte` nel compito del catalogo (`~/.gas_notte.yaml`). Senza richiesta esplicita il forte non si usa mai.
+5. Uso: `/forte <richiesta>` nel terminale di Gas, su Telegram e nella voce (testo o trascrizione) (un prefisso scritto male, es. «/frote», non si riconosce e va come testo normale: scrivilo esatto); di notte `cervello: forte` nel compito del catalogo (`~/.gas_notte.yaml`; una chiave scritta male come `cervelo` fa saltare il compito). Senza richiesta esplicita il forte non si usa mai.

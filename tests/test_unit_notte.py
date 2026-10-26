@@ -2236,3 +2236,41 @@ def test_cervello_forte_conservato_nella_ripresa(dirs):
     voci, _ = notte._ordina_riprese([dict(c)], {"a": {"tentativi": 1}}, [])
     notte._esegui_compito(_K(), voci[0], root / ".gas_notte_t")
     assert visti == [{"cervello": "forte"}]
+
+
+def test_handle_update_forte_da_telegram(monkeypatch):
+    """R-ve269-2: «/forte <richiesta>» da Telegram va al solo forte; «/forte» nudo o
+    con un separatore strano → istruzione d'uso, nessun turno ai gratuiti."""
+    inviati = []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append(t))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    visti = []
+
+    class _K:
+        def run_turn(self, t, **kw):
+            visti.append((t, kw))
+            yield {"type": "final", "content": "ok"}
+
+    def upd(testo):
+        return {"update_id": 1, "message": {"chat": {"id": 7}, "text": testo}}
+
+    _tg._handle_update("http://finto", upd("/forte analizza i lead"), {7}, _K())
+    _tg._handle_update("http://finto", upd("ciao"), {7}, _K())
+    assert visti == [("analizza i lead", {"cervello": "forte"}), ("ciao", {})]
+    for t in ("/forte", "/forte:x"):
+        _tg._handle_update("http://finto", upd(t), {7}, _K())
+        assert len(visti) == 2 and "Uso: /forte" in inviati[-1]
+
+
+@pytest.mark.parametrize("chiave", ["cervelo", "Cervello", "CERVELLO", "cervello ", "cerveló", "cervello_forte"])
+def test_chiave_cervello_scritta_male_salta_il_compito(dirs, chiave):
+    """R-ve269-1: una chiave che somiglia a «cervello» fa saltare il compito (non
+    finisce ai gratuiti senza vincolo); altre chiavi sconosciute → solo avviso."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  f"compiti:\n  - nome: a\n    prompt: p\n    \"{chiave}\": forte\n"
+                  "  - nome: b\n    prompt: p\n    nota: x\n")
+    compiti, avvisi = carica_catalogo(cat, root)
+    assert [c["nome"] for c in compiti] == ["b"]
+    assert any("'a'" in a and "cervello" in a for a in avvisi)
+    assert any("'b'" in a and "nota" in a for a in avvisi)

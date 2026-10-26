@@ -139,6 +139,16 @@ def _dentro(path: Path, root: Path) -> bool:
         return False
 
 
+_CHIAVI_COMPITO = frozenset({"nome", "prompt", "attivo", "cervello"})
+
+
+def _somiglia_cervello(chiave: str) -> bool:
+    """R-ve269-1: una chiave sconosciuta che sembra «cervello» (maiuscole, refusi)."""
+    import difflib
+    k = str(chiave).strip().casefold()
+    return k.startswith("cerv") or difflib.SequenceMatcher(None, k, "cervello").ratio() >= 0.75
+
+
 def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[str]]:
     """Legge e valida il catalogo. Ritorna (compiti attivi validi, avvisi).
 
@@ -178,6 +188,7 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
             avvisi.append(f"voce {i}: non è un oggetto, saltata")
             continue
         nome, prompt, attivo = v.get("nome"), v.get("prompt"), v.get("attivo", True)
+        ignote = [str(k) for k in v if k not in _CHIAVI_COMPITO]
         if not isinstance(nome, str) or not _NOME_RE.fullmatch(nome):
             avvisi.append(f"voce {i}: nome mancante o non valido "
                           "(solo a-z 0-9 _ -, max 40), saltata")
@@ -197,6 +208,14 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
         if len(prompt) > MAX_PROMPT_CHARS:
             avvisi.append(f"compito '{nome}': prompt oltre {MAX_PROMPT_CHARS} caratteri, saltato")
             continue
+        if any(_somiglia_cervello(k) for k in ignote):
+            # R-ve269-1: «cervelo», «Cervello»… scritto male → il compito NON gira
+            # (fail-closed: senza il vincolo finirebbe ai gratuiti)
+            avvisi.append(f"compito '{nome}': chiave {ignote} non valida (forse "
+                          "'cervello'?), saltato")
+            continue
+        if ignote:
+            avvisi.append(f"compito '{nome}': chiavi sconosciute ignorate: {ignote}")
         cervello = v.get("cervello")
         # V-2 ve #269: un campo presente ma vuoto (null, ~) non è «nessun vincolo»
         if "cervello" in v and cervello != "forte":

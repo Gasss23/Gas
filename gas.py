@@ -31,6 +31,7 @@ from brains.model_ids import (
     MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from brains.claude_cli import ClaudeCliClient
+from brains.router import prefisso_forte  # R2: /forte (terminale, Telegram, voce)
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
 from modules.gate.gate import libero_dopo_lettura, sembra_delicato
@@ -5953,20 +5954,6 @@ def notte_cmd(root_dir: Optional[str] = None, solo: Optional[str] = None) -> int
     extra = {"solo": solo} if solo is not None else {}
     return esegui_notte(root_dir, **extra,
                         kernel_factory=lambda r: GasKernel(root_dir=r, carica_storia=False))
-
-
-def prefisso_forte(prompt: str) -> Tuple[Optional[str], str]:
-    """R2: «/forte <richiesta>» manda il turno al solo cervello forte (mai ai gratuiti);
-    con la barra una frase normale non ci finisce per sbaglio (R-511-2). Fail-closed
-    (V-1 bot #269): qualunque testo che inizia con «/forte» ma non è «/forte», un
-    separatore (spazio, tab, NBSP…) e una richiesta → ("uso", ""), mai ai gratuiti.
-    Ritorna (cervello, richiesta): (None, prompt) se il prefisso non c'è."""
-    if not prompt.lower().startswith("/forte"):
-        return None, prompt
-    parti = prompt.split(None, 1)  # None: separa su ogni spazio Unicode (NBSP, tab)
-    if parti[0].lower() != "/forte" or len(parti) < 2 or not parti[1].strip():
-        return "uso", ""
-    return "forte", parti[1].strip()
 
 
 def main():

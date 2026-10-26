@@ -78,7 +78,8 @@ SCHEMA_RISPOSTA: Dict[str, Any] = {
 _SEGNALI_LIMITE = ("usage limit", "rate limit", "rate_limit", "weekly limit",
                    "5-hour limit", "limit reached", "limite di utilizzo")
 # Login dell'abbonamento scaduto o mancante (prova sul Mac del 25 ottobre: subtype
-# «success» con is_error). Errore KO con istruzione chiara, MAI QUOTA.
+# «success» con is_error, o testo semplice). Errore KO («scaduto, mancante o non
+# valido») con istruzione chiara, MAI QUOTA.
 _SEGNALI_LOGIN = ("failed to authenticate", "oauth session", "oauth token", "not logged in", "please run /login",
                   "invalid api key", "authentication_error")
 

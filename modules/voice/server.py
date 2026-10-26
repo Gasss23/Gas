@@ -145,9 +145,18 @@ class VoiceHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"error": "Campo 'prompt' mancante o vuoto"})
                 return
 
+        # R-ve269-2: «/forte <richiesta>» anche dalla voce (testo o trascrizione), mai ai gratuiti
+        from brains.router import prefisso_forte
+        cervello, prompt = prefisso_forte(prompt)
+        if cervello == "uso":
+            self._send_json(400, {"error": "Uso: /forte <richiesta>"})
+            return
+
         try:
             result_content: Optional[str] = None
-            for event in self.kernel.run_turn(prompt):
+            turno = (self.kernel.run_turn(prompt, cervello="forte") if cervello == "forte"
+                     else self.kernel.run_turn(prompt))
+            for event in turno:
                 etype = event.get("type")
                 if etype == "final":
                     result_content = event.get("content", "")
