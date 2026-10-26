@@ -6,8 +6,8 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #269 (https://github.com/Gasss23/Gas/pull/269). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` e confermati da `pull_request_read` (stato «open», non mergiata, il 26 ottobre); `gh` nel cloud non è autenticato. Merge solo secondo CLAUDE.md §10.
-2. Sul Mac: `GAS_CLAUDE_CLI=1` nel `.env` (la prova del login è riuscita il 26: `ok 0.007764`), poi `python3 gas.py doctor`.
+1. Merge della PR #269 (https://github.com/Gasss23/Gas/pull/269): chiesto esplicitamente dall'operatore in sessione («e mergia 269»). Numero e URL dalla risposta dello strumento GitHub (`merge_pull_request` → 405 «Pull Request has merge conflicts» col main 1212a17); `gh` nel cloud non è autenticato. Conflitti risolti col merge 255218f; il merge lo esegue l'agente a CI e verifica-bot verdi.
+2. Sul Mac: `GAS_CLAUDE_CLI=1` nel `.env`, poi `python3 gas.py doctor`.
 
 ---
 
@@ -19,14 +19,15 @@
 - **Fetta 3 — Correzioni della verifica esterna #269**: `FATTA` — merge di main (V-1), V-2, V-3, V-4; review #515.
 - **Fetta 4 — Correzioni del bot #269 (verifica-bot failure su 895f329)**: `FATTA` — V-1 MEDIA `/forte` fail-closed (`prefisso_forte`), V-2 login in testo semplice, V-4 test della ripresa; V-5 numero del kernel spiegato in §5; review #516 APPROVATO.
 - **Fetta 5 — R-ve269-1, R-ve269-2 e COSMETICA del bot #269 (26 ottobre)**: `FATTA` — `/forte` da Telegram e voce, chiave del catalogo scritta male → compito saltato, doc del login; review #517 → #518 APPROVATO.
-- **Fette 6–8 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
+- **Fetta 6 — V-1 verifica esterna #269 4° giro + merge di main #272 (26 ottobre)**: `FATTA` — chiave sconosciuta nel catalogo → compito saltato (scelta dell'operatore); review #519 APPROVATO CON RISERVE.
+- **Fette 7–9 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   6 ++++++
+ .claude/agents/memoria_revisore.md  |   7 +++++++
  brains/claude_cli.py                |  30 ++++++++++++++++++++++++++++--
  brains/router.py                    |  21 ++++++++++++++++++++-
  gas.py                              |   7 ++++++-
@@ -37,11 +38,11 @@
  reports/handoff.md                  | n/d
  reports/r2_regole_abbonamento.md    |   8 ++++++++
  reports/stato_progetto.md           |   6 +++---
- reports/ultimo_report.md            |  55 ++++++++++---------------------------------------------
- scripts/notte/catalogo_esempio.yaml |   3 +++
+ reports/ultimo_report.md            |  39 +++++++++++----------------------------
+ scripts/notte/catalogo_esempio.yaml |   4 ++++
  tests/test_unit_claude_cli.py       |  59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
  tests/test_unit_kernel.py           |  20 ++++++++++++++++++++
- tests/test_unit_notte.py            | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_unit_notte.py            | 105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/test_unit_voice_server.py     |  22 ++++++++++++++++++++++
 ```
 
@@ -50,6 +51,8 @@ NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile, r
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+255218f Merge origin/main (PR #272) in feat/merge-automatico-z1xjx2 + V-1 ve #269: chiave sconosciuta nel catalogo → compito saltato
+0d253e1 docs(fine-task): report della chiusura di V-1/V-2 della verifica esterna #269 e della prova del login
 4d09301 fix(R2): /forte anche da Telegram e voce, chiave cervello scritta male fa saltare il compito (ve #269)
 384eab4 chore(revisore): memoria review #518 — APPROVATO
 ace3ad3 chore(revisore): memoria review #517 — APPROVATO CON RISERVE
@@ -68,7 +71,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 1717413 — due giri (#511, #512); commit 26ce319 — review #515; commit 7e1f520 — review #516; commit 4d09301 — review #517 e #518 sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
+Commit 1717413 — due giri (#511, #512); commit 26ce319 — review #515; commit 7e1f520 — review #516; commit 4d09301 — review #517 e #518; commit 255218f — review #519 sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
 
 ### Review #511 (integrale)
 
@@ -206,6 +209,40 @@ Nota: nel working tree c'è una modifica non staged a reports/stato_progetto.md 
 
 Memoria: riga #518 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata (384eab4), con una lezione nuova: per i caratteri invisibili (NBSP, tab) controllare i byte, non il testo a video.
 
+### Review #519 (integrale, merge di main + V-1 ve #269, commit 255218f)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Ho letto le tre fonti obbligatorie: CLAUDE.md (sezione 5), la parte di reports/stato_progetto.md su R2 e #269, e la coda della memoria del revisore (#511–#518).
+
+**Elementi del diff che ho controllato**
+- `modules/notte/notte.py:211` — ogni chiave diversa da nome, prompt, attivo e cervello fa saltare il compito. Il suggerimento «forse 'cervello'?» compare solo se la chiave gli somiglia.
+  - Rischio controllato: che un vincolo scritto male mandi il compito ai modelli gratuiti, o che una chiave non testuale faccia crashare.
+  - Prove che ho fatto: una chiave numerica `1` fa saltare il compito con un avviso, senza eccezioni. `cervello: forte` viene tenuto. Ho tolto il `continue` per controllare che i test se ne accorgano: 6 test falliscono, quindi il cambio è coperto. Poi ho rimesso il file com'era.
+  - Esito: ok.
+- `tests/test_unit_notte.py:2265` — il test ora copre tre casi: la chiave simile a «cervello» fa saltare il compito col suggerimento; `brain: forte` fa saltare il compito senza «forse»; il compito pulito resta.
+  - Rischio controllato: che il test non distingua i due rami dell'avviso.
+  - Esito: ok. I test della notte danno 173 passed.
+- `scripts/notte/catalogo_esempio.yaml:9` e `reports/r2_regole_abbonamento.md:37` — la documentazione è allineata alle quattro chiavi valide. Esito: ok.
+- Merge, controllo di contesto:
+  - `git diff MERGE_HEAD --cached --stat` non elenca `modules/web/leggi.py` né `tests/test_unit_web_leggi.py`, quindi sono identici a main (MERGE_HEAD).
+  - `git diff HEAD --cached --stat` elenca come file di motore solo notte e test_notte. Le nostre modifiche a brains, gas.py, telegram, voce e ai relativi test sono quindi intatte.
+  - Ho confrontato riga per riga la memoria nell'indice con HEAD e con MERGE_HEAD: 0 righe perse da entrambe le parti.
+  - Esito: ok.
+
+**Finding**
+1. **R-519-1 (COSMETICA):** in `reports/stato_progetto.md`, alla voce 2 di «Prossimi passi», c'è ancora scritto «Resta 👤: rifare `/login` sul Mac, prova del login». La voce 1, appena aggiornata, la dà già riuscita il 26 ottobre (`ok 0.007764`). Basta togliere quelle due parti alla fine del task.
+2. **Nota BASSA, preesistente e non bloccante:** nello stesso file la voce aperta «R2 via B» dice ancora «nessun chiamante passa `cervello="forte"`», ma ora lo passano il catalogo notturno e `/forte`. Da allineare quando si aggiorna lo stato.
+
+Non ci sono slicing della cronologia, simulazioni di tool o eccezioni non gestite nei provider. I guardrail non sono toccati.
+
+**Cosa non ho verificato**
+- Non ho rilanciato le suite intere (kernel 1041 e pytest 2241); ho eseguito solo i test della notte. Per le suite intere mi baso sui numeri che hai dichiarato.
+- Non ho provato un vero giro notturno sul Mac con il report del mattino: non si può riprodurre in dev.
+- Un compito con `attivo: false` e una chiave sconosciuta viene ignorato senza avviso. Succedeva già prima e quel compito non gira comunque, quindi va bene.
+
+**Memoria:** ho aggiunto la riga #519 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` (nessuna lezione nuova). La lascio modificata e non in stage, come mi hai chiesto per via del merge in corso, quindi non ho lanciato `commit_memoria_revisore.sh`.
+
 ## §5 DELTA TEST DEL MOTORE
 
 - Kernel: 1040 → 1041 PASS (T99r nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`
@@ -213,20 +250,24 @@ Memoria: riga #518 in /home/user/Gas/.claude/agents/memoria_revisore.md, committ
 - Dopo il merge di main e le correzioni: kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2202 passed, 1 skipped in 198.40s (0:03:18)`.
 - Dopo le correzioni del bot (7e1f520): kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2215 passed, 1 skipped in 204.14s (0:03:24)`; claude_cli + notte 195 passed.
 - Dopo la fetta del 26 (4d09301): kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2222 passed, 1 skipped in 194.31s (0:03:14)`.
+- Dopo 255218f: kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2241 passed, 1 skipped in 182.64s (0:03:02)`.
 - V-5 bot #269: in CI il kernel conta 1043 PASS (0 FAIL) su 895f329, in locale nel cloud 1041 (0 FAIL): differenza d'ambiente già vista sulla #263, causa non indagata.
 
 ## §6 STATO CI
 
 `gh` nel cloud non è autenticato: check letti con lo strumento GitHub sulla PR #269.
+- 0d253e1 → `unit-suite` success, `handoff-check` success, `verifica-bot` neutral.
 - 5e044f5 → `unit-suite` success, `handoff-check` success, `verifica-bot` neutral (PR sulla macchina del bot: decide l'operatore).
 - 895f329 → `unit-suite` success, `handoff-check` success, `verifica-bot` failure (V-1 MEDIA, chiusa in 7e1f520).
 - 51d2a6b → `unit-suite` success, `handoff-check` success.
 - 7e1f520, aa7ce20, 26ce319, 1717413, c0917bb, 861b33a, ace3ad3, 384eab4 → nessuna run propria letta (pushati insieme ad altri: testati solo nell'albero di testa del push).
-- 4d09301 e commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
+- 4d09301 → nessuna run propria (testato nell'albero di 0d253e1).
+- 255218f e commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-515-1, R-515-2, R-517-1, R-517-2, R-ve269-1, R-ve269-2 e la COSMETICA del bot #269: CHIUSE.
-- V-3 COSMETICA ve #269 (3° giro): «/forte» seguito solo da un carattere invisibile (U+200B) va al forte come richiesta non vuota (costo trascurabile, mai ai gratuiti). Aperta.
+- R-515-1/2, R-517-1/2, R-ve269-1/2, V-1 ve #269 4° giro, R-519-1 e la COSMETICA del bot #269: CHIUSE.
+- V-1 BASSA bot #269 (ultimo giro): «/forte@NomeBot richiesta» su Telegram non riconosciuto (fail-closed: istruzione d'uso). Aperta.
+- V-3 COSMETICA ve #269: «/forte» + solo carattere invisibile va al forte. Aperta.
 - V-4 COSMETICA ve #269: differenza kernel 1041 locale / 1043 CI non indagata. Aperta.
-- Limite dichiarato: un prefisso scritto male («/frote») va come testo normale (`reports/r2_regole_abbonamento.md`).
+- Limite dichiarato: un prefisso scritto male («/frote») va come testo normale.
