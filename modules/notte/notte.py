@@ -529,9 +529,9 @@ def stato_mattino(kernel: Any) -> Dict[str, Any]:
     mem = getattr(kernel, "memory", None)
     if mem is None or not getattr(mem, "available", True):
         return stato
-    # R-453-1: lista_contatti dà [] anche a DB rotto («0 lead» rassicurerebbe il falso).
-    # conta_approvazioni sullo stesso DB dà None in quel caso: se fallisce, lead e
-    # firme restano «non letti».
+    # R-453-1: se conta_approvazioni fallisce, lead e firme restano «non letti».
+    # R-454-1: i lead si leggono con leggi_contatti (None su errore), così anche un DB
+    # bloccato FRA le due letture non diventa «Lead attivi: 0».
     try:
         conta = mem.conta_approvazioni()
     except Exception as e:
@@ -542,7 +542,10 @@ def stato_mattino(kernel: Any) -> Dict[str, Any]:
     stato["firme_in_attesa"] = int(conta.get("in_attesa", 0))
     try:
         from modules.memory import STATI_CHIUSI
-        attivi = [c for c in mem.lista_contatti() if c.get("stato") not in STATI_CHIUSI]
+        contatti = mem.leggi_contatti()  # R-454-1: None = non letti, mai «0 lead»
+        if contatti is None:
+            return stato
+        attivi = [c for c in contatti if c.get("stato") not in STATI_CHIUSI]
         adesso = datetime.now(timezone.utc)
         giorni = [_giorni_fa(c.get("aggiornato_il"), adesso) for c in attivi]
         stato["lead_attivi"] = len(attivi)

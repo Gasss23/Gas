@@ -4121,13 +4121,13 @@ class GasKernel:
         """Righe dei lead attivi (stato non chiuso) ordinati dal più vecchio
         aggiornamento, con i giorni passati. Data illeggibile = in testa (nel dubbio
         si segnala). Solo lettura; righe «- [» così il conteggio del diario le vede."""
-        # R-455-1: a memoria degradata lista_contatti dà [] → mai «nessun lead attivo»
-        # (conta_approvazioni sullo stesso DB dà None in quel caso, come nel giro).
-        if (not getattr(self.memory, "available", True)
-                or self.memory.conta_approvazioni() is None):
+        # R-455-1 / R-454-1: memoria degradata o lettura fallita (anche un DB bloccato
+        # in quel momento) → «NON letto», mai «nessun lead attivo».
+        contatti = (self.memory.leggi_contatti()
+                    if getattr(self.memory, "available", True) else None)
+        if contatti is None:
             return ["Elenco dei lead NON letto: memoria degradata (vedi gas doctor)."]
-        attivi = [c for c in self.memory.lista_contatti()
-                  if c.get("stato") not in STATI_CHIUSI]
+        attivi = [c for c in contatti if c.get("stato") not in STATI_CHIUSI]
         adesso = datetime.now(timezone.utc)
 
         def _giorni(c: Dict[str, Any]) -> Optional[int]:

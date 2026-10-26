@@ -1884,18 +1884,18 @@ def test_stato_mattino_fail_safe(monkeypatch):
     """§9: spesa che solleva, memoria rotta → voci «non lette», nessuna eccezione."""
     def _boom(*a, **k):
         raise RuntimeError("rotto")
-    k = SimpleNamespace(memory=SimpleNamespace(lista_contatti=_boom, conta_approvazioni=_boom),
+    k = SimpleNamespace(memory=SimpleNamespace(leggi_contatti=_boom, conta_approvazioni=_boom),
                         _daily_cost_usd=_boom)
     st = notte.stato_mattino(k)
     assert st["spesa"] is None and st["lead_attivi"] is None and st["firme_in_attesa"] is None
     assert notte.righe_stato_mattino(st) == [
         "Spesa ultime 24 ore: non letta", "Lead attivi: non letti", "Firme in attesa: non lette"]
     assert notte.stato_mattino(SimpleNamespace())["lead_attivi"] is None  # niente memoria
-    # R-453-1: DB rotto → lista_contatti dà [] ma conta_approvazioni None: «non letti», mai 0
-    rotta = SimpleNamespace(lista_contatti=lambda *a: [], conta_approvazioni=lambda: None)
+    # R-453-1: DB rotto → conta_approvazioni None: «non letti», mai 0
+    rotta = SimpleNamespace(leggi_contatti=lambda *a: [], conta_approvazioni=lambda: None)
     st2 = notte.stato_mattino(SimpleNamespace(memory=rotta))
     assert st2["lead_attivi"] is None and st2["lead_fermi"] is None
-    spenta = SimpleNamespace(available=False, lista_contatti=lambda *a: [],
+    spenta = SimpleNamespace(available=False, leggi_contatti=lambda *a: [],
                              conta_approvazioni=lambda: {"in_attesa": 0})
     assert notte.stato_mattino(SimpleNamespace(memory=spenta))["lead_attivi"] is None
     assert notte.righe_stato_mattino(None) == []
@@ -2277,3 +2277,41 @@ def test_chiave_cervello_scritta_male_salta_il_compito(dirs, chiave):
     assert any("'a'" in a and "forse 'cervello'" in a and "saltato" in a for a in avvisi)
     assert any("'b'" in a and "brain" in a and "saltato" in a
                and "forse" not in a for a in avvisi)
+
+
+def test_stato_mattino_contatti_illeggibili_fra_due_letture(dirs, monkeypatch):
+    """Voce 5 della coda notte (R-454-1 / V-2 bot #241): le firme si leggono, i
+    contatti no (tabella illeggibile, come un DB bloccato fra le due letture) →
+    «Lead attivi: non letti», mai «Lead attivi: 0»; le firme restano contate."""
+    import sqlite3
+    root, _ = dirs
+    mem = _memoria_con_lead(root)
+    with sqlite3.connect(str(mem.db_path)) as con:
+        con.execute("ALTER TABLE contatti RENAME TO contatti_via")
+    assert mem.leggi_contatti() is None and mem.lista_contatti() == []
+    st = notte.stato_mattino(SimpleNamespace(memory=mem, _daily_cost_usd=lambda: 0.1))
+    assert st["firme_in_attesa"] == 1
+    assert st["lead_attivi"] is None and st["lead_fermi"] is None
+    assert notte.righe_stato_mattino(st)[1] == "Lead attivi: non letti"
+    with sqlite3.connect(str(mem.db_path)) as con:
+        con.execute("ALTER TABLE contatti_via RENAME TO contatti")
+    assert len(mem.leggi_contatti()) == len(mem.lista_contatti()) > 0
+
+
+def test_resoconto_nel_giro_con_contatti_illeggibili(monkeypatch, dirs):
+    """Round-trip: un giro vero (una tool call) con la lettura dei contatti che
+    fallisce (il kernel del giro riapre il DB e ricreerebbe una tabella rinominata,
+    quindi qui si fa fallire la lettura) arriva al riepilogo e su Telegram con
+    «Lead attivi: non letti»; le firme restano contate."""
+    from modules.memory import MemoryStore
+    root, fuori = dirs
+    _memoria_con_lead(root)
+    monkeypatch.setattr(MemoryStore, "leggi_contatti", lambda self, *a: None)
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+    assert _giro(monkeypatch, root, cat, _Script({"p": [[("calcola", json.dumps({"expr": "1+1"}))],
+                                                       "fatto"]})) == 0
+    riepilogo = (root / ".gas_notte" / "ultimo_giro.md").read_text(encoding="utf-8")
+    assert "- Lead attivi: non letti" in riepilogo and "Lead attivi: 0" not in riepilogo
+    assert "- Firme in attesa: 1" in riepilogo
+    assert "Lead attivi: non letti" in inviati[0][1]["text"]
