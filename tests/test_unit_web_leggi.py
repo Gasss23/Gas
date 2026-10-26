@@ -1072,6 +1072,8 @@ def test_estrattore_senza_flag_noscript_va_nel_verso_sicuro():
     # nel testo grezzo, in un commento o in un attributo non è un tag
     ("<p>A</p><script><frameset></script><!-- <frameset> --><a title='<frameset>'>VIS</a>", ("A", "VIS")),
     ("<p>A</p><framesets>VIS", ("A", "VIS")),
+    # anche il titolo scritto prima: il browser toglie il body intero (V-1 bot e ve #270)
+    ("<p>A</p><div></div><title>SEGRETO</title><frameset>", ("A",)),
 ])
 def test_dopo_il_frameset_il_resto_si_nasconde(pagina, visibili, caplog):
     """Dopo «<frameset>» il resto della pagina si nasconde, nel parser e nel ripiego: il
@@ -1088,6 +1090,9 @@ def test_dopo_il_frameset_il_resto_si_nasconde(pagina, visibili, caplog):
     x = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
                                          "corpo": b"<p>A</p><frameset>SEGRETO</frameset>", "troncato": False})["testo"]
     assert "SEGRETO" not in x and "A" in x, x
+    # il ripiego in XHTML, anche col prefisso (V-2 ve #270)
+    for xr in ("<p>A</p><frameset>SEGRETO</frameset>", "<p>A</p><h:frameset>SEGRETO</h:frameset>"):
+        assert web._testo_senza_parser(xr, True).split() == ["A"], xr
 
 
 @pytest.mark.parametrize("pagina", ["<p>PRIMA</p><script/>RESTO", "<p>PRIMA</p><iframe src=x />RESTO",

@@ -995,7 +995,8 @@ class _Estrattore(HTMLParser):
 
     def handle_data(self, data: str) -> None:
         if self._salta or self._contesto.incerta or self._taglia or self._frameset:
-            # Con la pila incerta il resto della pagina si nasconde (vedi _Contesto).
+            # Dentro un nascosto, con la pila incerta (vedi _Contesto), dopo un tag letto
+            # diversamente dal browser o dopo un «<frameset>» il testo non si tiene.
             return
         if self._nel_titolo:
             self.titolo.append(data)
@@ -1399,6 +1400,10 @@ def _componi(url_finale: str, pagina: dict) -> dict:
                 logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
             corpo = _pulisci("".join(estrattore.pezzi))
             titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
+            if estrattore._frameset:
+                # Anche un titolo scritto prima del frameset può non vedersi: il browser toglie
+                # il body intero, title compreso (V-1 bot e ve #270).
+                titolo = ""
         except ValueError:
             # html.parser vecchio o che non ce la fa: ripiego senza parser (titolo perso).
             corpo = _pulisci(_testo_senza_parser(grezzo, xhtml))
