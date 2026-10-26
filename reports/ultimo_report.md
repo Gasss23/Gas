@@ -1,51 +1,37 @@
-# ULTIMO REPORT — 2026-10-25 — Mani fetta 16: riserve di #261, secondo giro (R6, chat Mani, PR #268)
+# ULTIMO REPORT — 2026-10-26 — Mani fetta 17: R-ve261-4 chiusa col verso sicuro, secondo giro (R6, chat Mani, PR #270)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #268 (https://github.com/Gasss23/Gas/pull/268): la mergio da solo solo con APPROVATO pulito del bot; altrimenti serve il tuo OK.
-2. R-ve261-4 (frameset): accettarla o chiuderla. La descrizione corretta è sotto.
-3. Poi, una alla volta: R-ve261-2 MEDIA, R-ve246-5 MEDIA, R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
+1. Merge della PR #270 (https://github.com/Gasss23/Gas/pull/270): mergio da solo solo con APPROVATO pulito del bot sull'head, altrimenti serve il tuo OK.
+2. Prossime decisioni, una alla volta: R-ve261-2 MEDIA (noscript come testo grezzo), R-ve246-5 MEDIA, R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
 ## Esito
-### Primo giro (commit fd5184b)
-- **R-ve261-3** — FATTA: test con `<NOSCRIPT>` e `<NoScript>`.
-- **R-ve261-6** — FATTA:
-  - `con_noscript` si calcola in `_componi` sul testo intero;
-  - default sicuro (R-511-1), fissato da un test (R-512-1);
-  - docstring di `_Contesto` aggiornata;
-  - test a pila vuota.
-  - Riga di test doppia: SALTATA, perché non esiste su main.
-- **R-ve261-4** — FATTA la sonda. `<p>W0</p><frameset><template><svg></template>W1` dà W0 W1 sia in Gas sia in lexbor: non è una fuga.
-- **R-ve261-5** — FATTA. Per #261 le frasi giuste sono:
-  - «0 fughe nuove fuori dalla classe R-ve246-5»;
-  - «mutazioni prese tutte tranne quella senza `re.IGNORECASE`».
+- **PR #268 (fetta 16)** — MERGIATA (85a109b). Il bot sull'head 3f4568f ha dato APPROVATO senza finding, CI verde, nessun conflitto. La verifica esterna bis ha dato APPROVATO CON RISERVE:
+  - V-1 BASSA (descrizione del frameset ancora troppo larga): superata da questa fetta, ora la descrizione giusta è in `stato_progetto`;
+  - V-2 COSMETICA (#514 mancante in `stato_progetto`): FATTA;
+  - V-3 COSMETICA (§6 stantio): solo istantanea, nessuna azione.
+- **R-ve261-4 (frameset)** — FATTA, verso sicuro per decisione dell'operatore. Dopo un `<frameset>` il resto della pagina si nasconde, sia nel parser (`_Estrattore._frameset`) sia nel ripiego, con una riga nella scatola nera.
+  - Motivo: il browser mostra il frameset al posto del testo quando prima non c'è testo vero né un elemento che spegne il flag frameset-ok (br, img, hr, table, li, dd, pre, button, select, textarea, iframe, object, embed, input non hidden…). In quei casi Gas mostrava il testo.
+  - Costo dichiarato: si perde testo anche dove il browser lo mostrerebbe (es. `<p>W0</p><frameset><template><svg></template>W1` perde W1).
+- **Secondo giro** — bot e verifica esterna #270 hanno dato APPROVATO CON RISERVE:
+  - V-1 BASSA (bot e verifica esterna): il titolo scritto prima del frameset usciva (`<div></div><title>SEGRETO</title><frameset>` → «Titolo: SEGRETO»; preesistente su main). FATTA: con un frameset il titolo si scarta.
+  - V-2 BASSA (verifica esterna): il ripiego in XHTML non aveva test. FATTA: test con `<frameset>` e `<h:frameset>`.
+  - V-2 COSMETICA (bot) e V-4 COSMETICA (verifica esterna): commento di `handle_data` aggiornato: FATTA. Il log del ripiego resta senza URL: SALTATA, perché il ripiego l'URL non lo riceve, e anche l'altro suo log ne è senza.
+  - V-3 COSMETICA (verifica esterna), §6 dell'handoff: SALTATA, è un'istantanea per costruzione.
+  - Review #516 APPROVATO CON RISERVE: **R-516-1** BASSA. Su una pagina a frame vera Gas ora perde anche il titolo che sta nell'head. È il compromesso del verso sicuro, registrato in `stato_progetto`.
 
-### Secondo giro (riserve di bot e verifica esterna #268)
-- **V-1 bot #268** BASSA — FATTA. `_Contesto` ha ora `con_noscript: bool = True` e riceve il flag dal costruttore, sia in `_Estrattore` sia nel ripiego. Il default lo controlla un test.
-- **V-2 bot #268** COSMETICA — FATTA. Il blocco «riserve rimaste dopo il merge di #261» di `stato_progetto.md` ora dice quali riserve sono chiuse.
-- **V-1 ve #268** BASSA — FATTA. Numeri corretti: quelli del primo giro erano misurati prima dell'ultimo test. I numeri qui sotto sono tutti presi sul codice finale.
-- **V-2 ve #268** BASSA — FATTA, descrizione del frameset corretta:
-  - quando il browser usa il frameset e non mostra il testo: se `<frameset>` è preceduto solo da spazi, commenti e tag senza testo. Esempi: `<frameset>W1`, `<div></div><frameset>W1`, `<p> </p><frameset>W1`: lexbor non mostra niente, Gas mostra W1 (anche su main);
-  - quando lo ignora: se prima c'è un testo non vuoto o un tag come br, img, hr, table, li. Lì lexbor mostra W1 come Gas.
-- **V-3 ve #268** BASSA — FATTA: test con `<noscript class=x>` e con noscript dopo 3000 caratteri.
-- **V-4 ve #268** COSMETICA — FATTA: §6 dell'handoff riscritto con lo stato reale della CI.
-
-## Prove (tutte sul codice finale)
-- Web suite: 416 (main) → 423 passed, 1 skipped, su Python 3.13.16 e 3.11. Col parser vecchio forzato: 414 passed, 10 skipped.
-- Mutazioni: 12, tutte prese. Elenco reale (FAIL su 423):
-  - senza `re.IGNORECASE`: 2;
-  - regex `<noscript>` chiusa: 1;
-  - senza guardia a pila vuota: 2;
-  - flag non passato da `_componi`: 8;
-  - `_componi` solo sui primi 1000 caratteri: 1;
-  - ripiego solo sui primi 1000 caratteri: 1;
-  - flag ignorato in `_Estrattore`: 9;
-  - flag ignorato in `_Contesto`: 9;
-  - flag spento nel ripiego: 13;
-  - senza `con_noscript` in `chiudi`: 14;
-  - default `False` in `_Estrattore`: 1;
-  - default `False` in `_Contesto`: 1.
-- Oracolo contro main: testo identico a main su 300 mila pagine casuali sul codice finale (seed 7-9), parser e ripiego. Più 600 mila nei passaggi precedenti. Le pagine contengono noscript in più grafie, template, svg/math, canvas/object, frameset e `&#0;`. Differenze: 0. Quindi, sulle pagine provate, 0 fughe nuove e 0 perdite nuove rispetto a main.
-- I casi nuovi danno lo stesso testo di lexbor (selectolax, con noscript sostituito da noembed).
+## Prove (sul codice finale c843d3c)
+- Web suite: 423 (main) → 433 passed, 1 skipped, su Python 3.13.16 e 3.11. Col parser vecchio forzato: 424 passed, 10 skipped.
+- Mutazioni: 9, tutte prese. Elenco reale (FAIL su 433):
+  - titolo non svuotato: 1;
+  - ripiego con frameset solo in HTML: 10;
+  - flag mai acceso nel parser: 10;
+  - `handle_data` che lo ignora: 10;
+  - prefisso invece del nome nel parser: 1;
+  - ripiego senza taglio: 10;
+  - prefisso nel ripiego: 1;
+  - niente log nel parser: 8;
+  - niente log nel ripiego: 8.
+- Differenziale contro main (85a109b) e lexbor (selectolax, noscript→noembed): 360 mila pagine casuali × parser e ripiego (seed 1-3 sul primo giro, seed 4-6 sul codice finale, 60 mila ciascuno). Atomi usati: frameset in più grafie, frame, noframes, template, noscript, svg/math, br, img, table, script, commenti, attributi. `<title>` era fra gli atomi. Risultato: 0 fughe nuove; testo perso solo nelle pagine che contengono «frameset».
 
 ## Anomalie
 - `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.
