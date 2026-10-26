@@ -2264,13 +2264,16 @@ def test_handle_update_forte_da_telegram(monkeypatch):
 
 @pytest.mark.parametrize("chiave", ["cervelo", "Cervello", "CERVELLO", "cervello ", "cerveló", "cervello_forte"])
 def test_chiave_cervello_scritta_male_salta_il_compito(dirs, chiave):
-    """R-ve269-1: una chiave che somiglia a «cervello» fa saltare il compito (non
-    finisce ai gratuiti senza vincolo); altre chiavi sconosciute → solo avviso."""
+    """R-ve269-1 e V-1 ve #269 (4° giro): qualunque chiave sconosciuta fa saltare il
+    compito (non finisce ai gratuiti senza vincolo); per una chiave che somiglia a
+    «cervello» l'avviso lo suggerisce."""
     root, fuori = dirs
     cat = _scrivi(fuori / "c.yaml",
                   f"compiti:\n  - nome: a\n    prompt: p\n    \"{chiave}\": forte\n"
-                  "  - nome: b\n    prompt: p\n    nota: x\n")
+                  "  - nome: b\n    prompt: p\n    brain: forte\n"
+                  "  - nome: c\n    prompt: p\n")
     compiti, avvisi = carica_catalogo(cat, root)
-    assert [c["nome"] for c in compiti] == ["b"]
-    assert any("'a'" in a and "cervello" in a for a in avvisi)
-    assert any("'b'" in a and "nota" in a for a in avvisi)
+    assert [c["nome"] for c in compiti] == ["c"]
+    assert any("'a'" in a and "forse 'cervello'" in a and "saltato" in a for a in avvisi)
+    assert any("'b'" in a and "brain" in a and "saltato" in a
+               and "forse" not in a for a in avvisi)

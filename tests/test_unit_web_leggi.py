@@ -962,7 +962,6 @@ def test_title_autochiuso_dentro_template_resta_nascosto():
     "<p>a</p><template><title/></template></title>SEGRETO</template>VIS",
     "<p>a</p><object><title/></object></title>SEGRETO</object>VIS",
     "<p>a</p><template><script/></template></script>SEGRETO</template>VIS",
-    "<p>a</p><noscript><script/></noscript></script>SEGRETO</noscript>VIS",  # verso sicuro: qui i browser lo mostrano
     "<p>a</p><noembed/><script>SEGRETO</script></noembed>VIS",       # noembed nascosto (V-1 bot #244)
     "<p>a</p><noembed>SEGRETO</noembed><noframes>SEGRETO_2</noframes>VIS",
 ])
@@ -1057,6 +1056,75 @@ def test_estrattore_senza_flag_noscript_va_nel_verso_sicuro():
         c.apri("svg", True)
         c.chiudi("template")
         assert c.incerta is incerta and (c.pila == []) is not incerta
+
+
+@pytest.mark.parametrize("pagina, visibili", [
+    # il browser non mostra il testo dopo il frameset se prima non c'è testo vero
+    ("<frameset>SEGRETO", ()),
+    ("<p>A</p><div></div><frameset>SEGRETO", ("A",)),
+    ("<p>A</p><FrameSet rows=*><frame src=x>SEGRETO</frameset>SEGRETO", ("A",)),
+    ("<p>A</p><frameset/>SEGRETO", ("A",)),
+    ("<p>A</p><svg><frameset>SEGRETO</svg>SEGRETO", ("A",)),
+    # qui il browser lo mostrerebbe: si perde testo, verso sicuro
+    ("<p>A</p><frameset><template><svg></template>SEGRETO", ("A",)),
+    # nel testo grezzo, in un commento o in un attributo non è un tag
+    ("<p>A</p><script><frameset></script><!-- <frameset> --><a title='<frameset>'>VIS</a>", ("A", "VIS")),
+    ("<p>A</p><noscript><frameset></noscript>VIS", ("A", "VIS")),  # noscript è testo grezzo (R-ve261-2)
+    ("<p>A</p><framesets>VIS", ("A", "VIS")),
+    # anche il titolo scritto prima: il browser toglie il body intero (V-1 bot e ve #270)
+    ("<p>A</p><div></div><title>SEGRETO</title><frameset>", ("A",)),
+])
+def test_dopo_il_frameset_il_resto_si_nasconde(pagina, visibili, caplog):
+    """Dopo «<frameset>» il resto della pagina si nasconde, nel parser e nel ripiego: il
+    browser a volte mostra il frameset al posto del testo (R-ve261-4, verso sicuro)."""
+    caplog.set_level("WARNING", logger="gas.web")
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    assert ("<frameset>" in caplog.text) is ("SEGRETO" in pagina)  # nella scatola nera (parser o ripiego)
+    caplog.clear()
+    r = web._testo_senza_parser(pagina)
+    assert ("<frameset> nel ripiego" in caplog.text) is ("SEGRETO" in pagina)
+    for testo in (t, r):
+        assert "SEGRETO" not in testo and all(v in testo for v in visibili), testo
+    x = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                         "corpo": b"<p>A</p><frameset>SEGRETO</frameset>", "troncato": False})["testo"]
+    assert "SEGRETO" not in x and "A" in x, x
+    # il ripiego in XHTML, anche col prefisso (V-2 ve #270)
+    for xr in ("<p>A</p><frameset>SEGRETO</frameset>", "<p>A</p><h:frameset>SEGRETO</h:frameset>"):
+        assert web._testo_senza_parser(xr, True).split() == ["A"], xr
+
+
+@solo_parser_aggiornato
+def test_titolo_resta_se_frameset_non_e_un_tag():
+    """«frameset» in un commento o in un nome più lungo non scarta il titolo (V-1 bot #270)."""
+    r = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "troncato": False,
+                                         "corpo": b"<title>T</title><!-- <frameset> --><framesets>VIS"})
+    assert r["testo"].count("Titolo: T") == 1 and "VIS" in r["testo"], r["testo"]
+
+
+@pytest.mark.parametrize("pagina, visibili, nascosti", [
+    # con gli script attivi noscript è testo grezzo fino a «</noscript>», come nei browser:
+    # un tag scritto dentro non apre né chiude niente (R-ve261-2; lexbor con noscript→noembed)
+    ("<p>A</p><template><noscript></template>W1</noscript>W2", ("A",), ("W1", "W2")),
+    ("<p>A</p><noscript><svg></noscript>W1", ("A", "W1"), ()),
+    ("<p>A</p><noscript><textarea></noscript>W1", ("A", "W1"), ()),
+    ("<p>A</p><noscript><!--</noscript>-->W1", ("A", "W1"), ()),
+    ("<p>A</p><noscript><script/></noscript></script>W1</noscript>W2", ("A", "W1", "W2"), ()),
+    ('<p>A</p><noscript><a title="</noscript>">W1</a></noscript>W2', ("A", "W1", "W2"), ()),
+    ("<p>A</p><NOSCRIPT>W1</NoScript>W2", ("A", "W2"), ("W1",)),
+    ("<p>A</p><noscript/>W1</noscript>W2", ("A", "W2"), ("W1",)),
+    # dentro svg noscript è un elemento svg, non testo grezzo
+    ("<p>A</p><svg><noscript></svg>W1</noscript>W2", ("A", "W1", "W2"), ()),
+])
+def test_noscript_e_testo_grezzo(pagina, visibili, nascosti):
+    t = web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                         "troncato": False})["testo"]
+    for testo in (t, web._testo_senza_parser(pagina)):
+        assert all(v in testo for v in visibili) and not any(n in testo for n in nascosti), testo
+    # in XHTML noscript è un elemento come gli altri: il contenuto resta nascosto, i tag contano
+    x = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8", "troncato": False,
+                                         "corpo": b"<p>A</p><noscript><b>W1</b></noscript>W2"})["testo"]
+    assert "W1" not in x and "W2" in x, x
 
 
 @pytest.mark.parametrize("pagina", ["<p>PRIMA</p><script/>RESTO", "<p>PRIMA</p><iframe src=x />RESTO",
@@ -1928,7 +1996,6 @@ def test_title_autochiuso_dentro_svg_resta_vuoto():
     "<div'='><style>'>SEGRETO</style>VIS",
     '<svg><a title="</svg>">SEGRETO</a></svg>VIS',              # dentro i nascosti contati si leggono i tag (R-442-1)
     "<math><a title='</math>'>SEGRETO</a></math>VIS",
-    '<noscript><a title="</noscript>">SEGRETO</a></noscript>VIS',
     '<template><a title="</template>">SEGRETO</a></template>VIS',
     '<object><a title="</object>">SEGRETO</a></object>VIS',
     '<canvas><a title="</canvas>">SEGRETO</a></canvas>VIS',

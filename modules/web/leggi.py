@@ -146,8 +146,11 @@ _COSTRUTTO_APERTO = re.compile(r"<(?:[a-zA-Z!?]|/.)", re.S)
 # Grezzi anche textarea, xmp, noembed, noframes e plaintext (fino in fondo), come in
 # html.parser: dentro non si contano aperture (R-445-1). In HTML anche un grezzo autochiuso
 # («<script/>») apre il testo grezzo fino a «</tag>», come nei browser (R-453-1).
+# Anche noscript: con gli script attivi (il modello di Gas) è testo grezzo fino a
+# «</noscript>», e un tag scritto dentro non apre né chiude niente (R-ve261-2).
 _GREZZI_RIPIEGO = frozenset({
-    "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "plaintext",
+    "script", "style", "iframe", "title", "textarea", "xmp", "noembed", "noframes", "noscript",
+    "plaintext",
 })
 _CONTATI_RIPIEGO = _TAG_NASCOSTI - _GREZZI_RIPIEGO
 # Grezzi che in HTML aprono il testo grezzo anche scritti autochiusi («<title/>», «<script/>»):
@@ -236,10 +239,11 @@ class _Contesto:
         # Template HTML aperti con la pila vuota, cioè sotto la pila: «aperti» non basta, conta
         # anche i template svg/math e quelli che un'uscita lascia contati (B-500-1).
         self._template_fuori = 0
-        # Pagina con «<noscript»: con gli script attivi noscript è testo grezzo, Gas invece ne
-        # legge i tag (R-ve261-2) e i conti dei template non sono affidabili; la chiusura del
-        # template sopra svg/math non si usa e vale la pila incerta, come prima (V-1 bot e ve
-        # #261: un controllo sul solo noscript aperto lasciava passare una classe intera).
+        # Pagina con «<noscript»: la chiusura del template sopra svg/math non si usa e vale la
+        # pila incerta, come prima (V-1 bot e ve #261: un controllo sul solo noscript aperto
+        # lasciava passare una classe intera). Da R-ve261-2 noscript è testo grezzo come nel
+        # browser, quindi i conti tornano; la regola resta spenta per prudenza, finché un
+        # confronto con l'oracolo non dice che si può riaccendere.
         # Senza il flag si va nel verso sicuro, come in _Estrattore (R-511-1, V-1 bot #268).
         self.con_noscript = con_noscript
 
@@ -457,8 +461,9 @@ class _Contesto:
                     and not (self._nascosti_html and self._nascosti_html[-1] > in_cima)):
                 # «</ul>» con un «<li>» aperto sopra: il tag è in scope, il browser chiude lui e
                 # tutto quello che sta sopra (R-ve246b-5). Non se sopra c'è un nascosto HTML
-                # aperto: con gli script attivi noscript è testo grezzo e «</div>» è suo
-                # contenuto, html.parser invece lo legge come tag (V-1 bot #250 bis).
+                # aperto (object, canvas…): nato per noscript, che con gli script attivi è
+                # testo grezzo (V-1 bot #250 bis; da R-ve261-2 lo è anche per Gas, quindi
+                # qui non arriva più), resta come guardia per gli altri (R-517-1).
                 return False, usciti + [n for n in self._togli_da(in_cima)[:-1] if n in _TAG_NASCOSTI]
             # Elemento HTML diverso con il tag più sotto: il browser a volte chiude (scope,
             # chiusure implicite), a volte no.
@@ -812,6 +817,9 @@ class _Estrattore(HTMLParser):
         # senza, si va nel verso sicuro: regola R-469-1 spenta come con noscript (R-511-1).
         self._contesto = _Contesto(self._aperti, con_noscript)
         self._taglia = False  # un tag letto diversamente dal browser: il resto si nasconde
+        # Dopo un «<frameset>» il resto si nasconde: il browser a volte non mostra il testo che
+        # segue e a volte sì (dipende da quello che c'è prima); si va nel verso sicuro (R-ve261-4).
+        self._frameset = False
 
     def _locale(self, tag: str) -> str:
         # In XHTML conta il nome locale: «<h:script>» con h = XHTML è uno script (V-1 ve #245).
@@ -845,8 +853,14 @@ class _Estrattore(HTMLParser):
         if not self._xhtml:
             self._scala(self._contesto.apri(tag, True, self._font_esce(tag, attrs), self._html_dentro(attrs)))
         self._inizio(tag)
+        if tag == "noscript":
+            # Testo grezzo come nel ripiego (R-ve261-2); in XHTML e nel contenuto estraneo no:
+            # ci pensa set_cdata_mode.
+            self._modo_grezzo(tag)
 
     def _inizio(self, tag: str) -> None:
+        if tag == "frameset":
+            self._frameset = True
         if tag in self._SALTA:
             self._aperti[tag] = self._aperti.get(tag, 0) + 1
             self._salta += 1
@@ -989,8 +1003,9 @@ class _Estrattore(HTMLParser):
             self.pezzi.append("\n")
 
     def handle_data(self, data: str) -> None:
-        if self._salta or self._contesto.incerta or self._taglia:
-            # Con la pila incerta il resto della pagina si nasconde (vedi _Contesto).
+        if self._salta or self._contesto.incerta or self._taglia or self._frameset:
+            # Dentro un nascosto, con la pila incerta (vedi _Contesto), dopo un tag letto
+            # diversamente dal browser o dopo un «<frameset>» il testo non si tiene.
             return
         if self._nel_titolo:
             self.titolo.append(data)
@@ -1201,6 +1216,10 @@ def _togli_blocchi_nascosti(testo: str, xhtml: bool = False) -> str:
                     elif tag in _CONTATI_RIPIEGO:
                         aperti[tag] = aperti.get(tag, 0) + 1
                         salta += 1
+                    if tag == "frameset":
+                        # Come _Estrattore: dopo «<frameset>» il resto si nasconde (R-ve261-4).
+                        logger.warning("leggi_pagina: <frameset> nel ripiego, resto della pagina nascosto")
+                        fine = -1
         if contesto.incerta:
             # Con la pila incerta il resto della pagina si nasconde, come nel parser; lo si
             # dice nella scatola nera (R-471-2).
@@ -1383,11 +1402,17 @@ def _componi(url_finale: str, pagina: dict) -> dict:
                 # Un tag letto diversamente dal browser: il resto è nascosto (R-ve248-3, V-3 bot #250).
                 logger.warning("leggi_pagina: tag letto diversamente dal browser, resto della pagina nascosto su %r",
                                url_finale[:200])
+            if estrattore._frameset:
+                logger.warning("leggi_pagina: <frameset>, resto della pagina nascosto su %r", url_finale[:200])
             if estrattore._contesto.incerta:
                 # Il resto della pagina è stato nascosto: lo si dice nella scatola nera (R-470-2).
                 logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
             corpo = _pulisci("".join(estrattore.pezzi))
             titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
+            if estrattore._frameset:
+                # Anche un titolo scritto prima del frameset può non vedersi: il browser toglie
+                # il body intero, title compreso (V-1 bot e ve #270).
+                titolo = ""
         except ValueError:
             # html.parser vecchio o che non ce la fa: ripiego senza parser (titolo perso).
             corpo = _pulisci(_testo_senza_parser(grezzo, xhtml))

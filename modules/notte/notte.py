@@ -208,14 +208,14 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
         if len(prompt) > MAX_PROMPT_CHARS:
             avvisi.append(f"compito '{nome}': prompt oltre {MAX_PROMPT_CHARS} caratteri, saltato")
             continue
-        if any(_somiglia_cervello(k) for k in ignote):
-            # R-ve269-1: «cervelo», «Cervello»… scritto male → il compito NON gira
-            # (fail-closed: senza il vincolo finirebbe ai gratuiti)
-            avvisi.append(f"compito '{nome}': chiave {ignote} non valida (forse "
-                          "'cervello'?), saltato")
-            continue
         if ignote:
-            avvisi.append(f"compito '{nome}': chiavi sconosciute ignorate: {ignote}")
+            # R-ve269-1 e V-1 ve #269 (4° giro, scelta dell'operatore «sì V-1»): QUALUNQUE
+            # chiave sconosciuta («cervelo», «brain: forte», «modello: forte»…) fa saltare
+            # il compito: un vincolo scritto male non deve farlo finire ai gratuiti.
+            forse = " (forse 'cervello'?)" if any(_somiglia_cervello(k) for k in ignote) else ""
+            avvisi.append(f"compito '{nome}': chiavi sconosciute {ignote}{forse}, saltato "
+                          "(valide: nome, prompt, attivo, cervello)")
+            continue
         cervello = v.get("cervello")
         # V-2 ve #269: un campo presente ma vuoto (null, ~) non è «nessun vincolo»
         if "cervello" in v and cervello != "forte":
