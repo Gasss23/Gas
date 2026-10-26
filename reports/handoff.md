@@ -1,41 +1,35 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-26 — Mani fetta 17: R-ve261-4 (frameset) chiusa col verso sicuro, più secondo giro sulle riserve di bot e verifica esterna #270, chat Mani
+**Sessione:** 2026-10-26 — Mani fetta 18: noscript testo grezzo, R-ve261-2 chiusa, chat Mani
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #270 (https://github.com/Gasss23/Gas/pull/270). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5009491981","url":"https://github.com/Gasss23/Gas/pull/270"}`); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head.
-2. R-ve261-2 MEDIA (noscript come testo grezzo): «chiudi» o «accetta» (proposta: chiudi, fetta 18). Poi, una alla volta: R-ve246-5 MEDIA, R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
+1. Merge della PR #272 (https://github.com/Gasss23/Gas/pull/272). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5019112843","url":"https://github.com/Gasss23/Gas/pull/272"}`); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head.
+2. Prossime decisioni, una alla volta: R-ve246-5 MEDIA, R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7; da valutare con l'oracolo: R-518-1 e la riaccensione della regola R-469-1 nelle pagine con noscript.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-Primo giro (60148d7):
-- **R-ve261-4 — frameset, verso sicuro (decisione dell'operatore)**: `FATTA` — dopo un `<frameset>` il resto della pagina si nasconde, nel parser (`_Estrattore._frameset`) e nel ripiego, con una riga nella scatola nera. Costo dichiarato: si perde testo anche dove il browser lo mostrerebbe.
-- **Riserve della verifica esterna bis su #268** (PR #268 mergiata, 85a109b): V-1 BASSA descrizione del frameset → `FATTA`; V-2 COSMETICA #514 → `FATTA`; V-3 COSMETICA §6 → `SALTATA — istantanea per costruzione`.
-
-Secondo giro (c843d3c), bot #270 (https://github.com/Gasss23/Gas/pull/270#pullrequestreview-5645764962) e verifica esterna #270 (https://github.com/Gasss23/Gas/pull/270#issuecomment-6404585200), entrambi APPROVATO CON RISERVE:
-- **V-1 BASSA (bot e ve) — titolo prima del frameset**: `FATTA` — con un frameset il titolo si scarta (`<div></div><title>SEGRETO</title><frameset>` dava «Titolo: SEGRETO», preesistente).
-- **V-2 BASSA ve — ripiego XHTML senza test**: `FATTA`.
-- **V-2 COSMETICA bot / V-4 ve — commento e log**: commento `FATTA`; log del ripiego senza URL `SALTATA — il ripiego non riceve l'URL, come l'altro suo log`.
-- **V-3 COSMETICA ve — §6**: `SALTATA — istantanea per costruzione`.
-- **R-516-1 BASSA (review #516)**: registrata in stato_progetto come compromesso del verso sicuro (pagina a frame vera: si perde anche il titolo nell'head).
+- **R-ve261-2 — noscript testo grezzo (decisione dell'operatore «vai»)**: `FATTA` — parser (`_modo_grezzo`) e ripiego (`_GREZZI_RIPIEGO`); in XHTML e in svg/math resta un elemento; protezione `con_noscript` lasciata accesa per prudenza (concordato).
+- **V-1 bot #270 — test del titolo quando «frameset» non è un tag**: `FATTA` (PR #270 mergiata dall'operatore, 9924438).
+- **R-517-1 COSMETICA — commento della guardia `_nascosti_html`**: `FATTA`.
+- **R-518-1 BASSA — guardia `_nascosti_html` per canvas/object**: `DEFERITA — da decidere con l'oracolo, tracciata in stato_progetto`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   3 +++
- modules/web/leggi.py               |  20 ++++++++++++++++++--
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/web/leggi.py               |  23 ++++++++++++++++-------
  reports/diff_sessione.md           |  10 +++++-----
  reports/handoff.md                 | n/d (commit finale)
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  72 +++++++++++++++++++++++++++++-------------------------------------------
- tests/test_unit_web_leggi.py       |  36 ++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  55 ++++++++++++++++++++++++++-----------------------------
+ tests/test_unit_web_leggi.py       |  37 ++++++++++++++++++++++++++++++++++---
 ```
 
 NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat` preso con i report in stage, prima del commit finale.
@@ -43,106 +37,110 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-c843d3c fix(web): con un frameset si scarta anche il titolo, test del ripiego XHTML (PR #270)
-59a1ee8 chore(revisore): memoria review #516 — APPROVATO CON RISERVE
-f82c847 docs(fine-task): Mani fetta 17 — report, handoff, stato (PR #270, review #515)
-60148d7 fix(web): dopo <frameset> il resto della pagina si nasconde (R-ve261-4, verso sicuro)
-c2f0607 chore(revisore): memoria review #515 — APPROVATO
+05e956b fix(web): noscript è testo grezzo come nel browser con gli script attivi (R-ve261-2, fetta 18 Mani)
+dccf706 chore(revisore): memoria review #518 — APPROVATO CON RISERVE
+e3032e2 chore(revisore): memoria review #517 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 60148d7 (primo giro): review #515. Commit motore c843d3c (secondo giro, riserve di bot e verifica esterna #270): review #516. Verdetti integrali:
+Commit motore 05e956b: review #517 sul primo diff e #518 dopo la correzione del commento (R-517-1). Verdetti integrali:
 
-### Review #515 (chat Mani) — sul diff committato in 60148d7
-
-## VERDETTO: APPROVATO
-
-Review #515 (chat Mani) sul diff staged del branch claude/peaceful-lovelace-0w2b7q (Mani fetta 17, R-ve261-4 chiusa nel verso sicuro).
-
-**Letture obbligatorie fatte:** CLAUDE.md (sez. 1, 5, 8, 9, 10), reports/stato_progetto.md (righe 621-625 sulle fette Mani), lezioni di .claude/agents/memoria_revisore.md. Applicate in particolare: mutanti anche sui log, sonde sui contenitori in cui il tag non è un tag, e due percorsi (parser e ripiego) provati separatamente.
-
-**Elementi del diff esaminati:**
-- `modules/web/leggi.py:853` — `_inizio` accende `_frameset` quando il tag è esattamente `frameset`. Rischio: che `<frameset/>` o la forma XHTML con prefisso sfuggano. Viene chiamato sia da handle_starttag sia da handle_startendtag, dopo `_locale`. Provati `<frameset\t/>`, `<frameset/x>` e XHTML `<h:frameset/>`: resto nascosto. Esito: ok.
-- `modules/web/leggi.py:997` — `handle_data` scarta il testo quando il flag è acceso. Rischio: altri canali di uscita. L'unica altra uscita è il titolo, che passa anch'esso da handle_data: dopo il frameset si perde anche il titolo (`<frameset><title>SEGRETO` dà il titolo vuoto), cioè va nel verso sicuro. Esito: ok.
-- `modules/web/leggi.py:1209` — nel ripiego `fine = -1` per un'apertura `frameset`, messo dopo la catena degli esiti, quindi vale anche dentro svg, noscript e template e per la forma autochiusa. Rischio: che un `<frameset>` dentro script, testo grezzo, commento o attributo venga preso per un tag (si perderebbe testo per niente). `_chiusura` e `_fine_commento` lo saltano: `<style><frameset></style>VIS`, `<textarea>…`, `<title>…` danno VIS in entrambi i percorsi. Esito: ok.
-- `modules/web/leggi.py:1396` — riga nella scatola nera con l'URL tagliato a 200 caratteri, come le righe vicine. Esito: ok.
-- `tests/test_unit_web_leggi.py:1062` e `tests/test_unit_web_leggi.py:1076` — test parametrizzato su 9 pagine, che prova parser e ripiego separatamente, i due log e una pagina XHTML. Rischio: un test che non coglie le modifiche sbagliate. Ho rifatto 6 mutanti, tutti presi: handle_data che ignora il flag (9 FAIL), prefisso nel parser (1), prefisso nel ripiego (1), ripiego senza taglio (7), niente log nel parser (7), niente log nel ripiego (7). Esito: ok.
-
-**Sonde avversarie (parser e ripiego):**
-- Nascosto, come voluto: `<frameset\n>`, `<frameset a='>'>`, `<svg><foreignObject><frameset/>`, `<math><mi><frameset>`, `<template><frameset>`.
-- Non sono tag, quindi il testo resta visibile (come nel browser): `</frameset>`, `<frameset-x>`, `<frame>`, `<frameſet>` (s lunga: nessuno dei due parser la trasforma in minuscola ASCII), `<ｆrameset>` a tutta larghezza, `<\x00frameset>`.
-
-**Prove rifatte:** web suite 432 passed, 1 skipped su Python 3.13.16 e su 3.11. Dopo i mutanti ho ripristinato il file dall'indice: il diff staged è intatto.
-
-**Coerenza col progetto:** è la scelta «verso sicuro» decisa dall'operatore (si perde testo, mai testo nascosto che esce). Non tocca `_get_window`, il tetto di 10 iterazioni, i tetti di output né i provider. Niente slicing della history, niente simulazione di tool. Aggiunge una riga nella scatola nera.
-
-**Rischi esplicitamente esclusi (non verificati):**
-- Non ho rifatto il differenziale dell'autore da 180 mila pagine contro main e lexbor: lexbor non è disponibile qui. Per lettura del codice il flag si accende solo con il tag `frameset`, quindi le pagine senza quella parola non cambiano.
-- Non ho rifatto la prova col parser vecchio (423 passed, 10 skipped secondo l'autore): serve iniettare il parser.py di una versione CPython non aggiornata.
-- Non ho misurato quanto testo si perde sulle pagine reali che hanno un `<frameset>` a metà pagina: la perdita è accettata per decisione dell'operatore.
-
-**Note minime (nessuna riserva):** l'asserzione XHTML viene ripetuta uguale in tutti i 9 casi e non controlla il log. Cosmetica, non serve correggerla.
-
-**Memoria:** aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#515 (chat Mani) — 2026-10-25 — APPROVATO — …` (nessuna lezione nuova), committata da sola con scripts/commit_memoria_revisore.sh (commit c2f0607). I file del diff restano in stage. In `reports/stato_progetto.md` c'è una modifica non in stage che non è mia.
-
-### Review #516 (chat Mani) — secondo giro, sul diff committato in c843d3c
+### Review #517 (chat Mani) — primo diff staged
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #516 (chat Mani), diff STAGED del branch claude/peaceful-lovelace-0w2b7q (PR #270, secondo giro dopo bot e verifica esterna). Letture obbligatorie fatte: CLAUDE.md, reports/stato_progetto.md (voce fetta 17), .claude/agents/memoria_revisore.md.
+Review #517 (chat Mani), fetta 18 Mani: chiude R-ve261-2. Ho letto CLAUDE.md, la voce R-ve261-2 in reports/stato_progetto.md e la mia memoria (in particolare le lezioni #502–#504 su noscript).
 
 **Elementi del diff esaminati**
-1. `modules/web/leggi.py:1403` — se `estrattore._frameset` è acceso, il titolo raccolto si scarta (`titolo = ""`). Rischi controllati: (a) il titolo scritto prima del frameset che finiva fuori (V-1 bot e ve); (b) varianti del tag. Sonde rifatte: `<p>A</p><div></div><title>SEGRETO</title><frameset>` dà solo «A», niente riga «Titolo:». `<FRAMESET>`, `<frameset/>`, `<h:frameset>` e `<frameset>` in XHTML: titolo scartato. `<framesets>` e `<!--<frameset>-->`: titolo tenuto, perché non sono tag frameset. Il fix sta dentro il `try` e dopo il calcolo del titolo, quindi nessuna eccezione nuova. Il ripiego perdeva già il titolo prima. Esito: ok.
-2. `modules/web/leggi.py:998` — commento di `handle_data` aggiornato con le quattro condizioni (nascosto, pila incerta, `_taglia`, `_frameset`), che corrispondono alla riga `if` sopra. Esito: ok (chiude V-2 bot / V-4 ve).
-3. `tests/test_unit_web_leggi.py:1076` — nuovo caso parametrico con il titolo prima del frameset. Ho rifatto il mutante «titolo non svuotato» (riga 1406 cambiata in `pass`): 1 failed, preso. File ripristinato subito dopo; il diff staged è rimasto 2 file, +11/−1. Esito: ok.
-4. `tests/test_unit_web_leggi.py:1094` — ripiego XHTML (`_testo_senza_parser(..., True)`) con `<frameset>` e `<h:frameset>`: esce solo «A». Esito: ok (chiude V-2 ve).
+1. `modules/web/leggi.py:855`: in `handle_starttag` un `noscript` passa al testo grezzo con `_modo_grezzo`, dopo `_contesto.apri`.
+   - Rischio esaminato: che diventi grezzo anche dove il browser lo tratta come elemento svg/math. Non succede: l'override di `set_cdata_mode` lo salta in XHTML e quando `estraneo_aperto` è vero.
+   - Ho provato le sonde mi, annotation-xml text/html, foreignObject, desc, font color, select, table, head, `</noscriptx>`, `</noscript\t>` e `</noscript/>`: tutte allineate a lexbor.
+   - Il mutante che toglie il ramo fa 7 failed.
+   - Esito: ok.
+2. `modules/web/leggi.py:151`: `noscript` entra in `_GREZZI_RIPIEGO` e quindi anche in `_GREZZI_AUTOCHIUSI`. Di conseguenza `<noscript/>` apre il testo grezzo in HTML, mentre in svg resta vuoto passando per `_esito_autochiuso`.
+   - Rischio esaminato: un ripiego che diverge dal parser. Nelle mie sonde il ripiego dà gli stessi token del parser.
+   - Esito: ok.
+3. `modules/web/leggi.py:242`: il commento di `con_noscript` è aggiornato e la regola R-469-1 resta spenta (scelta prudente concordata con l'operatore).
+   - Esito: ok.
+4. `tests/test_unit_web_leggi.py:1119`: il nuovo `test_noscript_e_testo_grezzo` copre 9 pagine sia col parser sia col ripiego, più il caso XHTML.
+   - `tests/test_unit_web_leggi.py:1072`: il caso frameset dentro noscript ora è visibile.
+   - `tests/test_unit_web_leggi.py:1098`: il titolo resta quando «frameset» non è un tag (V-1 bot #270).
+   - I tre casi tolti codificavano il vecchio «verso sicuro». Con gli script attivi il browser mostra quel testo (verificato con lexbor), quindi toglierli è giusto.
+   - Esito: ok.
+5. Contesto: `modules/web/leggi.py:463`. Il commento del ramo con `_nascosti_html` dice ancora che html.parser legge come tag il contenuto di noscript, e non è più vero. La guardia invece resta valida per object e canvas.
+   - Esito: riserva R-517-1, cosmetica.
 
-**Suite rifatta**: web 433 passed, 1 skipped, sia su Python 3.13.16 sia su 3.11.
+**Prove rifatte**
+- Web suite: 441 passed, 1 skipped, sia su 3.13.16 sia su 3.11.
+- Fuzz mio, nuovo codice contro main 9924438 e contro lexbor con noscript sostituito da noembed: 120 mila pagine, parser e ripiego, 0 fughe nuove.
+  - Un primo giro che conteneva anche gli atomi `<noembed>` e `</noembed>` aveva dato fughe fasulle: venivano dall'oracolo, perché lì `</noembed>` chiude il noscript sostituito. Lezione aggiunta in memoria.
+- C'è anche una fuga di main che il fix chiude: `<p>W0</p><object><noscript></object>W1</noscript>W2</object>W3` su main mostrava W2, ora no (come lexbor).
 
-**Contesto progetto**: nessuna regola di CLAUDE.md sez. 5 violata (niente taglio diretto della history, niente output di tool simulato). Cap delle 10 iterazioni, `_get_window` e protezioni della memoria non toccati. Il fix va nel verso sicuro deciso dall'operatore per la riserva R-ve261-4.
+**Il punto che mi hai chiesto di controllare (testo che ora Gas mostra e il browser con script attivi nasconde)**: non ne ho trovati, né nel fuzz né nelle sonde mirate.
+- La frase «visibile sia con script attivi sia spenti» però non vale sempre. Esempio: `<noscript><style></noscript>W1</style>`. Con gli script attivi W1 si vede (e Gas lo mostra), con gli script spenti no. Non è una fuga, perché il modello di Gas sono gli script attivi, ma la frase va evitata nei report.
+
+**Riserve**
+- R-517-1 (cosmetica): aggiornare il commento in `modules/web/leggi.py:463`, che giustifica la guardia `_nascosti_html` con «html.parser invece lo legge come tag» per noscript, cosa non più vera.
+- Nota bassa, solo da annotare: `<p>W0</p><svg><font color=r><noscript></svg>W1</noscript>W2` ora perde W2, che lexbor mostra (main lo mostrava). Non è una classe nuova: la perdita c'è già nella stessa pagina senza `</svg>` (svg resta contato dopo l'uscita con font color). Main mostrava W2 solo perché leggeva `</svg>` dentro noscript. Probabilmente è una delle 2 perdite «vere» dichiarate dall'autore.
+
+**Rischio escluso**: non ho rifatto il differenziale da 180 mila pagine né la corsa col parser vecchio forzato (431/11), né i mutanti XHTML, ripiego e titolo. Ho fatto solo il mutante principale, e per il resto mi fido delle prove dell'autore. L'oracolo con noscript sostituito da noembed non riproduce la differenza head/body con gli script spenti.
+
+Ho preso nota della correzione dell'autore (38 su 40, non 34): non cambia il verdetto.
+
+**Memoria**: riga #517 più una lezione aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md e committate da sole (e3032e2). I file del diff restano in stage, intatti.
+
+### Review #518 (chat Mani) — sul diff committato in 05e956b
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #518 (chat Mani), ri-review di Mani fetta 18 dopo la #517. Ho controllato il diff in stage (`git diff --cached`) su claude/peaceful-lovelace-0w2b7q. Prima ho letto le tre fonti obbligatorie: CLAUDE.md, le voci R-ve261-2 di reports/stato_progetto.md e la coda di memoria_revisore.md.
+
+**Elementi del diff esaminati**
+- `modules/web/leggi.py:463` — commento sulla guardia `_nascosti_html` nel ramo delle chiusure in scope. Rischio: che il commento sia falso, cioè che un noscript HTML possa ancora stare in `_nascosti_html` sopra `in_cima`. Esito: **ok, il commento è vero.**
+  - Parser: `handle_starttag` mette noscript in pila (`modules/web/leggi.py:854`) e subito dopo accende il testo grezzo (`modules/web/leggi.py:856`). Da lì html.parser emette solo `</noscript>`, che trova noscript in cima e lo toglie.
+  - `<noscript/>`: `_esito_autochiuso` restituisce «grezzo», perché `_GREZZI_AUTOCHIUSI` deriva da `_GREZZI_RIPIEGO` (`modules/web/leggi.py:151`). Vale lo stesso percorso.
+  - Ripiego (`modules/web/leggi.py:1139`): `apri` mette noscript in pila e lo stesso passo lo toglie con `contesto.chiudi(tag)`, dopo `_chiusura`.
+  - Un noscript dentro svg/math entra in pila col suo spazio (svg/math), non come HTML, quindi non finisce in `_nascosti_html`. In XHTML `_Contesto` non si usa.
+  - Prova pratica: ho messo una spia su `chiudi` e generato 60 mila pagine casuali, passate sia al parser sia al ripiego, su 3.13.16 e su 3.11. Casi con un noscript HTML in `_nascosti_html` quando arriva un'altra chiusura: **0**. Con il mutante senza `_modo_grezzo` la spia ne trova 96, quindi è sensibile.
+- `modules/web/leggi.py:151` e `modules/web/leggi.py:856` — il resto del diff (noscript fra i grezzi del ripiego e testo grezzo nel parser) e i test (`tests/test_unit_web_leggi.py:1104` e seguenti) sono quelli della #517. Rischio: modifiche al codice eseguibile oltre al commento. Esito: ok. Le righe coincidono con quelle citate nella #517; il commento di `_Contesto` (`modules/web/leggi.py:242`) è testo e basta.
+- Suite web: **441 passed, 1 skipped** sia su 3.13.16 sia su 3.11.
 
 **Riserva**
-- **R-516-1 BASSA**: su una pagina a frame legittima (`<html><head><title>T</title></head><frameset><frame src=x></frameset>`) il browser mostra il titolo T. Gas ora restituisce un'uscita vuota, con la sola riga «Fonte:»; prima del fix restituiva almeno «Titolo: T». È una perdita consapevole del verso sicuro, ma nessun test e nessuna riga di stato la dichiarano in modo esplicito. Il commento dice solo «può non vedersi». Il differenziale dell'autore misura le fughe, non le perdite. Da scrivere in reports/stato_progetto.md come compromesso accettato. Volendo, si può rifinire più avanti: tenere il titolo solo se sta in head.
+- **R-518-1 BASSA.** Per object e canvas la guardia ora non protegge da fughe:
+  - Nessun test la fissa più: il mutante senza guardia lascia la suite a 441/1. Prima la copriva il caso noscript, che adesso non ci arriva.
+  - Per canvas causa una perdita di testo rispetto al browser. Con `<p>A</p><svg><foreignObject><ul><li><canvas></ul></foreignObject></svg>Z` il browser mostra «A Z» (`</ul>` chiude canvas) e Gas senza guardia fa lo stesso; con la guardia la pila diventa incerta e il ripiego dà solo «A».
+  - Per object la guardia è ridondante: object sta già in `_CONFINI_SCOPE` (`modules/web/leggi.py:193`).
+  - Va bene così come scelta di prudenza, ma va tracciata in stato_progetto. Due strade: un test che fissi il comportamento voluto, oppure togliere la guardia dopo un confronto con l'oracolo.
 
-**Nota COSMETICA (V-2 bot / V-4 ve)**: il log del ripiego resta senza URL. Va bene: è coerente con l'altro log del ripiego («svg/math incerti»), e `_testo_senza_parser` non riceve l'URL.
+**Rischio escluso.** Non ho confrontato con l'oracolo lexbor il comportamento con e senza guardia sulle pagine con canvas: ho solo ragionato sullo standard (canvas non ferma lo scope). Non ho provato html.parser vecchi senza le patch, che non sono disponibili qui. Su quelli iframe, noembed e noframes potrebbero non essere testo grezzo, e allora la guardia conterebbe anche per loro.
 
-**Rischio escluso**: non ho rifatto il differenziale contro lexbor (180 mila pagine × 2 percorsi), non riproducibile qui in tempi utili. Non ho rifatto gli altri 8 mutanti né la suite col parser vecchio forzato (424/10): ho ripetuto solo il mutante legato al fix nuovo. Per il resto vale l'evidenza dell'autore.
-
-**Memoria**: riga #516 e una lezione nuova («provare anche il caso legittimo quando un fix verso sicuro scarta un dato») aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md e committate da sole (commit 59a1ee8). I file del diff restano in stage. Resta non staged una modifica a /home/user/Gas/reports/stato_progetto.md che non è mia.
-
+**Memoria.** Ho aggiunto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga #518 e una lezione (rifare il mutante «senza guardia» quando una fetta rende irraggiungibile il caso per cui la guardia era nata). Committata da sola con `scripts/commit_memoria_revisore.sh` (dccf706). In stage restano solo `modules/web/leggi.py` e `tests/test_unit_web_leggi.py`, invariati; `reports/stato_progetto.md` resta modificato fuori stage come prima.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Solo la web suite (gas.py e gli altri test non toccati). Tutto sul codice finale c843d3c:
-- `python3 -m pytest -q tests/test_unit_web_leggi.py`: main 85a109b `423 passed, 1 skipped` → ramo `433 passed, 1 skipped in 24.89s` (3.13.16) e `433 passed, 1 skipped in 24.60s` (3.11). +10 pagine parametrizzate.
-- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `424 passed, 10 skipped in 22.84s` (main 414/10).
-- Mutazioni, 9, tutte prese (uscita di pytest): titolo non svuotato → `1 failed, 432 passed`; ripiego con frameset solo in HTML → `10 failed, 423 passed`; flag mai acceso nel parser → `10 failed, 423 passed`; `handle_data` che lo ignora → `10 failed, 423 passed`; prefisso invece del nome nel parser → `1 failed, 432 passed`; ripiego senza taglio → `10 failed, 423 passed`; prefisso nel ripiego → `1 failed, 432 passed`; niente log nel parser → `8 failed, 425 passed`; niente log nel ripiego → `8 failed, 425 passed`.
-- Differenziale contro main (worktree 85a109b) e lexbor (selectolax 1.0.2, noscript→noembed), × parser e ripiego, atomi con frameset in più grafie, frame, noframes, template, noscript, svg/math, br, img, table, script, `<title>`, commenti, attributi: sul codice finale seed 4 `fughe nuove 0, uscite con perdite 29930`, seed 5 `fughe nuove 0, uscite con perdite 29772`, seed 6 `fughe nuove 0, uscite con perdite 29566` (60 mila pagine ciascuno); sul primo giro seed 1-3, altre 180 mila, 0 fughe nuove. Nessuna perdita su pagine senza «frameset».
+Solo la web suite (gas.py e gli altri test non toccati):
+- `python3 -m pytest -q tests/test_unit_web_leggi.py`: main 9924438 `433 passed, 1 skipped` → ramo `441 passed, 1 skipped in 24.42s` (3.13.16; dopo il commento di R-517-1) e `441 passed, 1 skipped in 23.93s` (3.11).
+- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `431 passed, 11 skipped in 22.34s` (main 424/10).
+- Mutazioni, tutte prese (uscita di pytest): parser senza noscript grezzo → `7 failed, 434 passed`; grezzo anche in svg/XHTML → `2 failed, 439 passed`; ripiego senza noscript grezzo → `7 failed, 434 passed`; titolo scartato per sottostringa «frameset» → `1 failed, 440 passed`.
+- Differenziale contro main (worktree 9924438) e lexbor (selectolax 1.0.2, noscript→noembed, senza atomi noembed, textarea visibile, riga Titolo esclusa), × parser e ripiego: seed 1 `fughe nuove 0, uscite con perdite 12` (10 tolgono testo che lexbor nasconde), seed 2 `fughe nuove 0, uscite con perdite 14` (14), seed 3 `fughe nuove 0, uscite con perdite 14` (14); 60 mila pagine ciascuno.
 
 ## §6 STATO CI
 
 `gh run list` non disponibile (gh non autenticato nel cloud); run lette dall'integrazione GitHub (`actions_list`, branch claude/peaceful-lovelace-0w2b7q):
 
 ```
-40248756039  CI            push                 in_progress  —        c843d3c  2026-10-26T00:18:59Z
-40248757849  verifica-bot  pull_request_target  in_progress  —        c843d3c  2026-10-26T00:19:00Z
-40241977275  CI            push                 completed    success  f82c847  2026-10-25T22:49:35Z
-40241985236  verifica-bot  pull_request_target  completed    success  f82c847  2026-10-25T22:49:41Z
+40339701367  verifica-bot  pull_request_target  in_progress  —  05e956b  2026-10-26T14:26:41Z
 ```
 
 Mappatura commit→run:
-- `c2f0607`: nessuna run su questo SHA (pushato insieme a `60148d7`).
-- `60148d7` → run CI 40241874461: `handoff-check` failure (atteso: il commit motore non contiene l'handoff della sessione), `unit-suite` success (V-3 ve #270).
-- `f82c847` → run CI 40241977275 success; verifica-bot 40241985236 success (APPROVATO CON RISERVE).
-- `59a1ee8`: nessuna run su questo SHA (pushato insieme a `c843d3c`).
-- `c843d3c` → run CI 40248756039 e verifica-bot 40248757849, in corso alla scrittura dell'handoff.
+- `e3032e2`, `dccf706`: nessuna run su questo SHA (pushati insieme a `05e956b`).
+- `05e956b` → verifica-bot 40339701367 in corso; run CI di push non ancora elencata alla scrittura dell'handoff.
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-516-1 BASSA (review #516): compromesso del verso sicuro, registrato in stato_progetto (rifinitura possibile: tenere il titolo solo se sta nell'head).
-- Riserve di bot e verifica esterna #270: chiuse o motivate in §1.
-- Restano decisioni dell'operatore: R-ve261-2 MEDIA, R-ve246-5 MEDIA, R-ve252-2, R-ve255-1, R-ve235-7, tempo di rete 12 s.
+- R-518-1 BASSA (review #518): guardia `_nascosti_html` per canvas/object, da decidere con l'oracolo; tracciata in stato_progetto.
+- Restano decisioni dell'operatore: R-ve246-5 MEDIA, R-ve252-2, R-ve255-1, R-ve235-7, tempo di rete 12 s; riaccensione della regola R-469-1 nelle pagine con noscript.
