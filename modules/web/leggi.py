@@ -26,10 +26,11 @@ falliscono con «troppe risoluzioni DNS in corso» finché il resolver non rinun
 html.parser fallisce, il ripiego senza parser perde il titolo.
 
 Zero dipendenze esterne: solo stdlib. I proxy d'ambiente non si usano (http.client).
-Eccezione in prova, spenta per default (fetta 19, R-ve246-5): con GAS_WEB_LEXBOR=1 e
-selectolax installato il testo si legge con lexbor in un processo figlio (modules/web/lexbor.py),
+Eccezione, spenta per default (fette 19-20, R-ve246-5): con GAS_WEB_LEXBOR=1, selectolax
+installato e su Linux il testo si legge con lexbor in un processo figlio (modules/web/lexbor.py),
 che ha i suoi TEMPO_MAX s: da accesa il caso peggiore diventa circa 12 s di rete + 4 s del figlio
-+ fino a 3 s della lettura di sempre, se il figlio non ce la fa (R-520-2).
++ fino a 3 s della lettura di sempre, se il figlio non ce la fa (R-520-2), più fino a 4 s della
+sonda del figlio alla prima pagina (circa 23 s).
 """
 from __future__ import annotations
 
