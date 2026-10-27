@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (numero nel commit successivo, dalla risposta di `create_pull_request`; `gh` nel cloud non è autenticato), fatto dall'agente da qui secondo CLAUDE.md §10.
+1. Merge della PR #279 (https://github.com/Gasss23/Gas/pull/279), numero e URL dalla risposta JSON di `create_pull_request` (`gh` nel cloud non è autenticato); lo fa l'agente da qui secondo CLAUDE.md §10.
 2. Esito della prima notte di `punto_lead` col forte (`cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac).
 
 ---
@@ -38,6 +38,7 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+8c8620d docs(fine-task): report, ripartenza e regola «merge da qui»
 8610e95 fix(memoria): rubrica illeggibile dichiarata — ricorda contatto=X e gas fida-contatto (V-1 bot #273, R-520-1)
 37e4110 chore(revisore): memoria review #528 — APPROVATO
 7594529 chore(revisore): memoria review #527 — APPROVATO CON RISERVE

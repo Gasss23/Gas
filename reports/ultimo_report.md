@@ -1,7 +1,7 @@
 # ULTIMO REPORT — 2026-10-27 — Rubrica illeggibile dichiarata (V-1 bot #273, R-520-1) (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione, fatto dall'agente da qui (CLAUDE.md §10, decisione del 27 ottobre).
+1. Merge della PR #279 (https://github.com/Gasss23/Gas/pull/279), fatto dall'agente da qui (CLAUDE.md §10, decisione del 27 ottobre).
 2. Esito della prima notte di `punto_lead` col forte: output di `cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac.
 
 ## Esito
