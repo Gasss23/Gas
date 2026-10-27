@@ -1,10 +1,10 @@
-# DIFF SESSIONE — 2026-10-27 (chat Mani, fetta 19, PR #275)
+# DIFF SESSIONE — 2026-10-27 (chat Mani, fetta 20, PR #277)
 
-- `modules/web/lexbor.py` (nuovo): lettura del testo visibile con lexbor in un processo figlio (tempo e memoria limitati), spenta per default (`GAS_WEB_LEXBOR=1`), sonda del figlio, fail-safe sulla lettura di sempre — R-ve246-5 in prova.
-- `modules/web/leggi.py`: lettura con html.parser estratta in `_testo_e_titolo` senza cambiarla; `_componi` prova lexbor se acceso e non XHTML; docstring con l'eccezione «in prova» e il caso peggiore da accesa (R-520-2).
-- `tests/test_unit_web_lexbor.py` (nuovo): 22 test (spenta per default, casi R-ve246-5, titolo, pulizia e tetti, tempo massimo, figlio rotto, sonda, XHTML, isolamento del figlio con `-I`, ambiente vuoto e tetto di memoria); saltati senza selectolax.
-- `.claude/agents/memoria_revisore.md`: righe delle review #520-#524 della chat Mani (commit del revisore).
-- `reports/stato_progetto.md`: intestazione (unita a mano col merge di main), merge di #272, blocco «Mani — fetta 19» con le misure, il secondo giro e le riserve.
+- `modules/web/lexbor.py`: sonda del figlio con lock non bloccante e riprova dopo un timeout (R-521-1/2), motivo del fallimento da `_esegui`, solo Linux (uscita 3 altrove), ultima riga dello stderr nel warning, nascosti anche select/datalist/rp, attributo `hidden` e dialog chiusi, `nodo.attrs` (R-525-1).
+- `modules/web/leggi.py`: docstring con la sonda nella stima dei tempi (~23 s) e la condizione «su Linux».
+- `tests/test_unit_web_lexbor.py`: 28 test (nuovi: una sonda alla volta, sonda che si riprova, fuori da Linux, pulizia dello stderr, pagina con hidden/dialog/select/datalist/rp; test della sonda e docstring del tetto sistemati).
+- `.claude/agents/memoria_revisore.md`: righe delle review #525 e #526 (commit del revisore).
+- `reports/stato_progetto.md`: intestazione, numeri e merge della fetta 19, blocco «Mani — fetta 20».
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
 Si riscrive a ogni sessione; la storia completa sta in git.

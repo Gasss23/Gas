@@ -1,38 +1,41 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-27 — Mani fetta 19: prova della lettura con lexbor (R-ve246-5), spenta per default, più secondo giro (merge di main, test dell'isolamento del figlio), chat Mani
+**Sessione:** 2026-10-27 — Mani fetta 20: lettura con lexbor pronta per l'accensione, ancora spenta, chat Mani
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #275 (https://github.com/Gasss23/Gas/pull/275). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5026812511","url":"https://github.com/Gasss23/Gas/pull/275"}`); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head. Il merge non accende niente.
-2. Accendere la lettura con lexbor? Prima: R-521-1 e R-521-2, un'occhiata ai 5 casi con `<select>`, e la chat Motore (selectolax in requirements e CI, `GAS_WEB_LEXBOR=1` sul VPS).
+1. Merge della PR #277 (https://github.com/Gasss23/Gas/pull/277). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5034496930","url":"https://github.com/Gasss23/Gas/pull/277"}`); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head. Il merge non accende niente.
+2. Accensione: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt`; poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
 3. Poi, una alla volta: R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Prova lexbor (R-ve246-5, decisione dell'operatore «vai con la 2, parti dalla prova»)**: `FATTA` — `modules/web/lexbor.py` (processo figlio con tempo e memoria limitati, spenta per default, sonda del figlio, fail-safe), `leggi.py` con `_testo_e_titolo` estratta senza cambiarla, 20 test nuovi; misure in ultimo_report.
-- **R-520-1/2/3 (review #520)**: `FATTA`.
-- **R-520-4 COSMETICA, R-521-1/2 BASSE, R-521-3 COSMETICA**: `DEFERITA — da sistemare prima di un'eventuale accensione; la prova è spenta e vanno nel verso sicuro`.
-- **Secondo giro (bot e verifica esterna #275, entrambi APPROVATO CON RISERVE)**: V-1 ve conflitto con main → `FATTA` (merge 018c860, review #522 APPROVATO); V-2 ve isolamento del figlio senza test → `FATTA` (95fda3d, review #523 e #524); V-1 bot / V-3 ve selectolax assente in CI → `DEFERITA — richiesta alla chat Motore prima di accendere`; V-2 bot / V-4 ve numeri locali contro CI → `FATTA` (spiegati in ultimo_report); V-5 ve §6 → `FATTA`; R-524-1 COSMETICA → `DEFERITA`.
-- **Accensione della lettura con lexbor**: `DEFERITA — decisione dell'operatore e richiesta alla chat Motore (requirements, CI, VPS)`.
+- **Preparazione dell'accensione della lettura con lexbor (richiesta dell'operatore «prepara l'accensione»)**: `FATTA` — lettura ancora spenta per default.
+  - R-521-1 (lock della sonda), R-521-2 (riprova dopo timeout): `FATTA`.
+  - V-1 bot #275 (solo Linux), V-2 bot #275 (stderr nel warning), stima con la sonda: `FATTA`.
+  - R-521-3, R-524-1 (cosmetiche): `FATTA`.
+  - Casi con `<select>` → nascosti select, datalist, rp, attributo `hidden`, dialog chiusi: `FATTA`.
+  - R-525-1/2/3 (review #525): `FATTA`.
+  - R-526-1 COSMETICA (doppio controllo sotto lock senza test), R-520-4 COSMETICA: `DEFERITA — cosmetiche, verso sicuro`.
+- **Accensione vera**: `DEFERITA — serve la chat Motore (requirements, CI, ambiente del VPS)`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
- modules/web/leggi.py               |  75 ++++++++++++++++++++++++++++++++++++++++++++++----------------------------
- modules/web/lexbor.py              | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/diff_sessione.md           |  11 ++++++-----
+ .claude/agents/memoria_revisore.md |   4 ++++
+ modules/web/leggi.py               |   7 ++++---
+ modules/web/lexbor.py              |  83 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
+ reports/diff_sessione.md           |  12 ++++++------
  reports/handoff.md                 | n/d (commit finale)
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  58 +++++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/test_unit_web_lexbor.py      | 166 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  84 ++++++++++++++++++++++++++++++++++++++----------------------------------------------
+ tests/test_unit_web_lexbor.py      |  75 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
 NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat` preso con i report in stage, prima del commit finale.
@@ -40,315 +43,106 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-dec5a5b docs(fine-task): Mani fetta 19, secondo giro — report, handoff, stato (PR #275, review #522-#524)
-95fda3d test(web): isolamento del processo figlio di lexbor fissato da test (V-2 ve #275)
-f2a9509 chore(revisore): memoria review #524 — APPROVATO CON RISERVE
-c3a5292 chore(revisore): memoria review #523 — APPROVATO CON RISERVE
-018c860 Merge origin/main (1422021, PR #271 e #273) in claude/peaceful-lovelace-0w2b7q (PR #275)
-4557f31 docs(fine-task): Mani fetta 19 — report, handoff, stato (PR #275, review #520-#521)
-eb2df98 feat(web): prova della lettura con lexbor in un processo figlio, spenta per default (R-ve246-5, fetta 19 Mani)
-14716d9 chore(revisore): memoria review #521 — APPROVATO CON RISERVE
-8fe2253 chore(revisore): memoria review #520 — APPROVATO CON RISERVE
+ab5eb1d feat(web): lettura con lexbor pronta per l'accensione, ancora spenta (fetta 20 Mani)
+ffe99a8 chore(revisore): memoria review #526 — APPROVATO CON RISERVE
+88dd43a chore(revisore): memoria review #526 — APPROVATO CON RISERVE
+7290177 chore(revisore): memoria review #525 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore eb2df98: review #520 sul primo diff e #521 dopo la chiusura di R-520-1/2/3. Merge 018c860 (entrano da main file del perimetro): review #522. Commit motore 95fda3d (test dell'isolamento del figlio): review #523 e #524. Verdetti integrali:
+Commit motore ab5eb1d: review #525 sul primo diff e #526 dopo la chiusura di R-525-1/2/3. Verdetti integrali:
 
-### Review #520 (chat Mani) — primo diff staged
+### Review #525 (chat Mani) — primo diff staged
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #520 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: fetta 19, prova di lexbor spenta per default. Ho fatto le tre letture obbligatorie: CLAUDE.md, stato_progetto.md (selettivo, §fetta 19 e fette 1-18) e la memoria (lezioni recenti su leggi.py, oracoli e subprocess).
+Review #525 (chat Mani). Ho esaminato il diff staged, che tocca 3 file: `modules/web/leggi.py`, `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`. Prima ho letto CLAUDE.md (sez. 5), lo stato del progetto (voci delle fette 19 e 20) e le lezioni della mia memoria (lock, sonda «una volta sola», tetti di risorsa).
 
 **Elementi del diff esaminati**
+- `modules/web/lexbor.py:103` — lock non bloccante: prima si guarda il tempo di riprova, poi si tenta il lock. Rischi esaminati: deadlock, mancato rilascio, attesa per chi chiama — **ok**. Se il controllo sul tempo è vero, il lock non viene nemmeno preso. Se il lock è occupato, la funzione esce subito senza rilasciare. Il rilascio è in `finally` (`modules/web/lexbor.py:119`), quindi avviene in ogni ramo. `_esegui` intercetta già ogni Exception. Chi arriva mentre gira la sonda non aspetta. Mutante «senza release»: 1 failed.
+- `modules/web/lexbor.py:111` — riprova della sonda su `time.monotonic()`. Rischio esaminato: orologio che salta — **ok**. Il tempo monotono non torna mai indietro. Su Linux non avanza durante la sospensione, quindi al massimo la riprova arriva più tardi, mai prima: è il verso sicuro. Il valore di partenza 0.0 è corretto. Ho ripetuto 5 volte i test delle sonde: tutti verdi.
+- `modules/web/lexbor.py:82` — controllo dell'attributo `hidden` e dei dialog senza `open` tramite `nodo.attributes`. Rischi esaminati: costo e nodi senza attributi — **riserva**. Il risultato è corretto: un nodo senza attributi dà un dict vuoto; `HIDDEN` maiuscolo viene preso; `hidden=x` dentro svg viene nascosto (verso sicuro); `dialog open=false` resta visibile come nel browser. Ma `attributes` costruisce un dict di tutti gli attributi a ogni elemento. Misure: 20k div con 100 attributi ciascuno 3,31 s, contro 0,99 s con `nodo.attrs` (stessi esiti verificati); 200k p con 3 attributi 1,19 s contro 0,70 s. Con il tempo massimo di 4 s, più pagine finiscono sul ripiego: niente crash, ma +4 s e niente lexbor su quelle pagine.
+- `modules/web/lexbor.py:57` — select, datalist e rp nascosti. Rischio esaminato: perdite gravi di testo — **ok**. Un `<select>` non chiuso inghiotte il resto della pagina, perché lexbor segue il select nuovo. Ma anche il browser, nell'aspetto normale, mostra solo l'opzione scelta e non il resto. È comunque il verso sicuro (meno testo, mai testo nascosto). `rp` fuori da ruby è nascosto, come nel foglio di stile standard del browser.
+- `modules/web/lexbor.py:132` — `_ultima_riga` porta l'ultima riga dello stderr del figlio nel log. Rischio esaminato: testo della pagina o caratteri pericolosi nel log — **ok**. `splitlines` separa anche su `\r` e U+2028; i caratteri di controllo bidi e quelli a larghezza zero diventano `?`; il taglio è a 200 caratteri e il log usa `%r`. L'ultima riga è il messaggio di un'eccezione, non testo della pagina; anche nel caso peggiore il testo della pagina arriva già al modello come risultato del tool.
+- `modules/web/lexbor.py:52` — uscita 3 fuori da Linux. La sonda la tratta come «errore» e spegne la lettura per sempre, con un solo warning — **ok**. Il test sostituisce la stringa e non è vuoto: se la sostituzione non avvenisse, `attivo()` sarebbe True e il test fallirebbe.
+- `tests/test_unit_web_lexbor.py:118` — test «una sonda alla volta» — **riserva**. Il mutante `_SONDA.acquire()` bloccante sopravvive (27 passed), perché il test conta solo i lanci e almeno un True; la proprietà «niente attesa per chi chiama» non è fissata.
+- `modules/web/leggi.py:33` — stima nella docstring: 12+4+3+4 = circa 23 s — **ok**.
 
-1. `modules/web/leggi.py:1381` — estrae `_testo_e_titolo`, cioè la lettura con html.parser e il ripiego. Rischio: che lo spostamento cambi la logica. Ho confrontato il blocco vecchio (rientro tolto) con quello nuovo e cambiano solo i `return` al posto delle assegnazioni. Nel ripiego il titolo resta `""` come prima: il vecchio `titolo = ""` di `_componi` restava valido perché il ValueError arriva sempre prima che il titolo venga assegnato. Esito: ok.
-2. `modules/web/leggi.py:1426` — lexbor entra in gioco solo se `not xhtml and _lexbor.attivo()`, altrimenti si usa la lettura di sempre. Rischio: effetti da spenta e uscita dai delimitatori. Da spenta `selectolax` non viene importato: con `-X importtime` non compare, e `'selectolax' in sys.modules` dà False sia con la variabile accesa sia spenta. Resta solo `find_spec`, che è economico. Sul ramo lexbor ho provato i finti marcatori nel corpo e nel titolo (neutralizzati), il taglio a `MAX_CARATTERI` (troncato=True) e a `MAX_TITOLO` (200 caratteri), i caratteri di controllo e bidi nel titolo (tolti). Il testo resta dentro NON FIDATO. Esito: ok.
-3. `modules/web/lexbor.py:88` — processo figlio `sys.executable -I -c`, env vuoto, pagina su stdin, timeout 4 s. Rischi esaminati:
-   - zombie: `run()` su timeout fa kill e wait, e ho contato 0 zombie dopo le prove;
-   - thread: 8 letture in parallelo, tutte corrette;
-   - stdout grande: con `ensure_ascii` l'uscita resta sotto ~12 MB per 2 MB di pagina e viene letta con communicate, quindi niente blocchi;
-   - `-I`: implica `-P`, quindi la cwd non entra in `sys.path` e nessun modulo piantato lì viene caricato;
-   - pagina su stdin e non in argv: niente iniezione di argomenti;
-   - errori e timeout: finiscono tutti in un warning e in None (FAIL-SAFE §9);
-   - `KeyboardInterrupt`: non viene catturato, ed è giusto così.
+**Mutanti miei** (`modules/web/lexbor.py` ripristinato, il diff staged è intatto):
+- Presi: senza release (1 failed), rp visibile (1 failed).
+- Sopravvissuti: lock bloccante, senza doppio controllo sotto lock, senza `isprintable`, senza taglio a 200.
 
-   Esito: ok, con la riserva R-520-3.
-4. `modules/web/lexbor.py:48` — esclude i title dentro svg/math. Una sonda: `<svg><foreignObject><title>X</title>` scarta un title HTML che il browser userebbe. È una perdita nel verso sicuro. Esito: riserva cosmetica.
-5. `tests/test_unit_web_lexbor.py:52` e `tests/test_unit_web_lexbor.py:23` — casi di R-ve246-5 e test «da spenta non parte». I test passano. Ho però provato due mutanti nel ramo lexbor, su una copia nello scratchpad: «senza `[:MAX_TITOLO]`» sopravvive a tutto; «corpo senza `_pulisci`» fa passare tutti i 18 test nuovi e lo prende solo la suite vecchia accesa (14 FAIL contro gli 11 di base), che nessuno fa girare. Esito: riserva R-520-1.
+**Test**
+- lexbor: 27 passed (3.13.16 con selectolax 1.0.2), 2 passed e 25 skipped (3.11 senza selectolax).
+- Test web su 3.13: 469 passed, 1 skipped.
 
-**Prove rifatte**
-- Suite web su 3.13 (con selectolax): 459 passed, 1 skipped. Su 3.11 (senza): 443 passed, 17 skipped.
-- Con `GAS_WEB_LEXBOR=1`: 11 FAIL. Sono i 3 test dei log e 8 casi frameset/template.
-- Ho controllato a mano che `<p>A</p><frameset/>SEGRETO` lo mostri anche il browser: dopo il testo «A» il `<frameset>` viene ignorato.
-- Il perimetro è rispettato: solo `modules/web/` e `tests/test_unit_web_lexbor.py`. Nessun guardrail del motore è toccato.
-
-**Riserve (vanno in stato_progetto.md)**
-- **R-520-1 BASSA (test):** i 18 test nuovi non fissano `_pulisci` e `[:MAX_TITOLO]` sul ramo lexbor (i due mutanti del punto 5). Servono un test con un finto marcatore nel corpo e nel titolo e uno con un titolo lungo, a lexbor acceso.
-- **R-520-2 BASSA (doc):** la docstring di leggi.py, in `modules/web/leggi.py:28` e nei «Limiti dichiarati», dice ancora «solo stdlib» e ~15 s. Da accesa il caso peggiore è 12 s di rete + 4 s del figlio + fino a 3 s di ripiego, circa 19 s. Va dichiarato.
-- **R-520-3 BASSA:** `modules/web/lexbor.py:32` controlla la libreria nel padre con `find_spec`, ma il figlio parte con `-I` ed env vuoto. Ho provato un venv pulito con selectolax raggiungibile solo da PYTHONPATH: il padre la dà per presente, il figlio esce con 1, e ogni pagina paga circa 40 ms più un warning ripetuto. Non crasha, ma prima di accenderla serve un controllo in doctor o una sonda reale del figlio, una volta sola.
-- **R-520-4 COSMETICA:** un title HTML dentro foreignObject viene scartato (perdita, verso sicuro).
+**Riserve**
+- **R-525-1 (chat Mani) BASSA**: a `modules/web/lexbor.py:82` usare `attributi = nodo.attrs`. È l'oggetto `LexborAttributes`: `in` funziona senza costruire il dict, con gli stessi esiti verificati su HIDDEN, svg e dialog, ed è circa 3 volte più veloce sulle pagine ricche di attributi.
+- **R-525-2 (chat Mani) BASSA**: a `tests/test_unit_web_lexbor.py:118` aggiungere `esiti.count(False) >= 1`, così il mutante con lock bloccante viene preso. Con la pausa di 0,3 s nella sonda, gli altri 7 thread arrivano mentre gira.
+- **R-525-3 (chat Mani) COSMETICA**: senza test restano la pulizia di `_ultima_riga` (caratteri non stampabili, taglio a 200) e il doppio controllo sotto lock. Il codice è corretto, verificato a mano; il doppio controllo mancante costerebbe al massimo una sonda in più in una finestra stretta.
 
 **Rischi esplicitamente esclusi**
-- `RLIMIT_AS` su macOS: non verificato, non riproducibile qui. Se lì `setrlimit` fallisce, il figlio esce con 1 e si torna sempre alla lettura di sempre, senza crash.
-- Venv con selectolax installato dentro: non provato (servirebbe pip in rete). Per costruzione `-I` tiene i site-packages del venv.
-- Le misure dell'autore con l'oracolo (60 mila pagine, html5lib, 131 pagine di documentazione) non le ho rifatte: sono script fuori dal repo. Ho rifatto solo le sonde puntuali.
+- Comportamento su VPS e sul Mac reale, e il primo avvio a freddo del figlio fuori dall'ambiente di sviluppo: non riproducibili qui.
+- `os.fork` con il lock preso: non verificato. Gas non usa fork senza exec; nel caso peggiore il processo figlio non accenderebbe mai lexbor, che è il verso sicuro.
+- Oracolo html5lib su 60 mila pagine e le 131 pagine locali: non rifatti, cifre dichiarate dall'autore.
 
-Memoria: aggiunte la riga #520 e 2 lezioni, committate da sole con lo script (8fe2253). I file del diff restano in stage, come chiesto. Ora `git status` mostra anche `reports/stato_progetto.md` modificato e non in stage: non l'ho toccato io.
+**Memoria**
+- Riga contatore #525 e 2 lezioni (lock non bloccante da provare col mutante bloccante; costo di `nodo.attributes` contro `nodo.attrs`) aggiunte a `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+- Committate da sole: 7290177. I 3 file del diff restano in stage.
+- `reports/stato_progetto.md` era già modificato prima della review, non in stage: non l'ho toccato.
 
-### Review #521 (chat Mani) — sul diff committato in eb2df98
+### Review #526 (chat Mani) — sul diff committato in ab5eb1d
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Review #521 (chat Mani): ri-review del diff in stage su claude/peaceful-lovelace-0w2b7q, dopo la #520. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti sulla fetta 19 e sulle R-520) e .claude/agents/memoria_revisore.md, applicando anche le due lezioni del 2026-10-27.
+Review #526 (chat Mani): ri-review del diff staged su claude/peaceful-lovelace-0w2b7q dopo la #525. Prima della review ho letto CLAUDE.md (sez. 5), la parte di reports/stato_progetto.md sulla fetta 20 (§ riga 632) e la coda di memoria_revisore.md.
 
-**Elementi del diff esaminati**
-1. `modules/web/lexbor.py:82` — la sonda del figlio in `attivo()` parte una sola volta e il risultato resta in `_FIGLIO_OK`.
-   - Rischi esaminati: chiamate da più thread, costo, sonda in timeout, partenza da spenta.
-   - Prove rifatte con una spia su `subprocess.run`:
-     - da spenta: 0 figli lanciati e `_FIGLIO_OK` resta None;
-     - costo: circa 35 ms una volta sola, la seconda chiamata non lancia figli;
-     - 8 thread insieme alla prima chiamata: 16 figli, cioè 8 sonde più 8 letture; tutti leggono "VIS", nessun crash, esito finale True;
-     - sonda in timeout (TEMPO_MAX=0.001): False, e resta False anche dopo aver rimesso 4 s; nessun processo zombie.
-   - Esito: riserva (R-521-1, R-521-2).
-2. `modules/web/leggi.py:1431` — lexbor si usa solo se la pagina non è XHTML e `attivo()` è vero; `attivo()` viene valutato prima di `testo_visibile`, quindi da spenta non parte niente. Il ramo lexbor passa da `_pulisci` e dal tetto `MAX_TITOLO`.
-   - Rischio esaminato: tetto e pulizia non coperti dai test (era la R-520-1).
-   - Mutanti rifatti sui 20 test nuovi: senza `_pulisci` sul corpo 1 failed, senza `[:MAX_TITOLO]` 1 failed.
-   - Esito: ok, R-520-1 chiusa.
-3. `modules/web/lexbor.py:97` — `testo_visibile` passa il lavoro a `_esegui`, la stessa funzione usata dalla sonda.
-   - Mutanti rifatti: sonda ripetuta (`if True:`) 1 failed, acceso sempre (`return True`) 1 failed.
-   - Esito: ok, R-520-3 chiusa.
-4. `tests/test_unit_web_lexbor.py:66` — il test nuovo usa bidi, spazi doppi, un finto marcatore nel corpo e un titolo di 500 caratteri.
-   - Ho controllato che le asserzioni distinguano davvero il codice giusto da quello sbagliato.
-   - Esito: ok.
-5. `tests/test_unit_web_lexbor.py:85` — la chiamata reale ad `attivo()` dopo `monkeypatch.undo()` scrive `_FIGLIO_OK=True` fuori dal controllo del monkeypatch, quindi il valore resta per i test successivi.
-   - Ho controllato l'effetto sugli altri test: nessuno, perché True è il valore giusto quando selectolax c'è.
-   - Esito: riserva cosmetica (R-521-3).
-6. `modules/web/leggi.py:29` — la docstring ora dice dell'eccezione «in prova, spenta per default» e del caso peggiore da accesa (12 + 4 + 3 s).
-   - Esito: ok, R-520-2 chiusa.
+**Cosa ho controllato nel diff**
+- `modules/web/lexbor.py:82`: il figlio ora usa `attributi = nodo.attrs` al posto di `nodo.attributes` (chiude R-525-1). Rischio: che cambi l'esito sui casi limite. L'ho confrontato su 14 casi con selectolax 1.0.2, lanciato con `-I`: HIDDEN maiuscolo, hidden="", hidden=false, `<g hidden>` dentro svg, svg HIDDEN, math hidden, dialog senza attributi, dialog open=false, OPEN e open="", data-hidden, xlink:hidden, dialog dentro svg, body e p senza attributi (`len(attrs)==0`, nessuna eccezione). Le due forme danno esiti identici in tutti i casi. Il mutante che rimette `nodo.attributes` passa 28 su 28, come atteso: è equivalente. Esito: ok.
+- `tests/test_unit_web_lexbor.py:126`: la nuova asserzione `esiti.count(False) >= 1` (chiude R-525-2). Rischio: test instabile, oppure che non prenda il lock bloccante. Il mutante `_SONDA.acquire()` bloccante dà 1 failed. Il test non dovrebbe essere instabile: il primo thread tiene il lock per 0,3 s mentre gli altri 7 partono subito. 8 ripetizioni tutte verdi. Esito: ok.
+- `tests/test_unit_web_lexbor.py:99`: nuovo test di `_ultima_riga` in `modules/web/lexbor.py:132` (chiude in parte R-525-3). Mutanti: senza isprintable 1 failed, senza taglio a 200 1 failed, prima riga invece dell'ultima 2 failed. Il test non porta `@con_lexbor`, quindi gira anche in CI con 3.11 senza selectolax. Esito: ok.
+- `modules/web/lexbor.py:106`: il doppio controllo sotto lock non ha ancora un test. L'autore lo dichiara: nel caso peggiore parte una sonda in più in una finestra stretta, verso sicuro. Esito: riserva cosmetica (R-526-1).
+- Altri mutanti rifatti: «hidden» ignorato 1 failed, dialog chiuso ignorato 1 failed.
+- Dopo ogni mutante ho ripristinato il file con `git checkout --` dall'indice. Lo stage è intatto: M sui 3 file del diff, stato_progetto non in stage.
+- Suite: lexbor 28 passed con Python 3.13.16; con 3.11 3 passed e 25 skipped; web (`-k web`) 470 passed e 1 skipped con 3.13. Il 470 al posto del 469 dichiarato dall'autore dipende dalla selezione dei file. Nessuna regressione.
 
-**Prove rifatte**
-- Suite web su Python 3.13.16 con selectolax 1.0.2: 461 passed, 1 skipped.
-- Suite web su Python 3.11 senza selectolax: 443 passed, 19 skipped.
-- Coincidono con quelle dell'autore.
-- Dopo i mutanti i file sono tornati com'erano e l'index è intatto.
+**Wall of Shame e guardrail**: il diff non tocca la history, `_get_window`, il cap delle 10 iterazioni né i provider. Non c'è simulazione dei tool. Gli errori del figlio restano tutti intercettati e finiscono come warning in gas_debug.log, con il ripiego sulla lettura di sempre (§9 ok).
 
-**Riserve**
-- R-521-1 BASSA: la sonda non ha un lock. Con N thread alla prima chiamata partono N sonde, e se falliscono il warning esce fino a N volte. «Una volta sola» vale solo in sequenza. Va nel verso sicuro (costa circa 35 ms a sonda, il risultato è lo stesso). Se serve si chiude con un `threading.Lock` attorno alla sonda.
-- R-521-2 BASSA: un fallimento passeggero della sonda (per esempio un timeout di 4 s all'avvio a freddo su una VPS carica) spegne la prova per tutta la vita del processo. Va nel verso sicuro e lascia un warning, ma la prova smette di raccogliere misure. Da valutare se distinguere il timeout dall'ImportError, o riprovare dopo un po'.
-- R-521-3 COSMETICA: `test_sonda_del_figlio` lascia `_FIGLIO_OK=True` fuori dal monkeypatch (riga 85). La riga 82, prima di `undo()`, non serve.
-- Nota COSMETICA: il messaggio «oltre %.0f s» stampa «0 s» quando il tempo massimo è sotto 0,5 s. Succede solo nei test.
-- R-520-4 COSMETICA (un `title` dentro foreignObject viene scartato): resta aperta, scritta correttamente in stato_progetto.
+**Riserva**
+- R-526-1 COSMETICA: il doppio controllo sotto lock (`modules/web/lexbor.py:106`) resta senza test. È il residuo dichiarato di R-525-3 e va tracciato in reports/stato_progetto.md. In questo momento stato_progetto non contiene ancora le voci R-525-x/R-526-x: vanno aggiunte prima del commit.
 
-**Rischi esplicitamente esclusi**
-- Non ho verificato il caso di selectolax visibile solo via PYTHONPATH in un venv pulito: qui la libreria è installata nel sistema. Ho verificato solo che la sonda finta (ImportError) spenga la prova.
-- Non ho verificato tempi e memoria della sonda su VPS: non si riproducono in dev.
-- Non ho rigirato la suite vecchia da accesa (gli 11 FAIL attesi): mi fido della #520, e quel codice non è cambiato in questo delta.
+**Cosa non ho verificato**: non ho provato il comportamento del ramo acceso fuori da Linux su macOS reale, né la soglia di memoria del figlio su altre build di selectolax. Qui non sono riproducibili (sandbox Linux, una sola build 1.0.2). La sonda dell'uscita 3 è coperta solo dal test che sostituisce il nome della piattaforma.
 
-**Memoria**
-- Riga #521 e una lezione nuova (provare le cache «una volta sola» con N thread alla prima chiamata, contando i lanci reali) aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md.
-- Committate da sole con `scripts/commit_memoria_revisore.sh` (commit 14716d9).
-- I file del diff (modules/web/leggi.py, modules/web/lexbor.py, tests/test_unit_web_lexbor.py) restano in stage. reports/stato_progetto.md resta modificato e fuori stage, come l'ho trovato.
-
-### Review #522 (chat Mani) — merge di origin/main 1422021, commit 018c860: verdetto RIEMESSO dal revisore
-
-Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` solo file entrati da main, che non sono nel diff di sessione (base 1422021 dopo il merge): il Gate B lo ha rifiutato (1 citazione valida su 2). Come da regola il testo non è stato ritoccato: il revisore lo ha riemesso con lo stesso esito e le stesse conclusioni, aggiungendo citazioni sui file del diff. Fa fede il verdetto riemesso; l'originale resta qui per tracciabilità.
-
-Verdetto originale (sostituito dalla riemissione):
-
-```text
-## VERDETTO: APPROVATO
-
-Review #522 (chat Mani). Ho controllato il merge di origin/main 1422021 (PR #271 e #273) nel branch claude/peaceful-lovelace-0w2b7q (PR #275, HEAD 4557f31). Il merge è ancora in corso e la stage è quella di adesso.
-
-Ho letto le tre fonti obbligatorie: CLAUDE.md (sezioni 5, 8 e 9), le sezioni rilevanti di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
-
-**Elementi del diff esaminati**
-- `gas.py:4126` — `_lead_fermi` legge i lead con `leggi_contatti`; se la lettura dà None risponde «NON letto». Rischio: un blob mescolato fra PR e main. Esito **ok**: il blob in stage è identico a MERGE_HEAD (c1bce57) e la PR non toccava gas.py.
-- `modules/memory/store.py:1225` — `leggi_contatti` restituisce None su `sqlite3.Error`/`OSError`, e `lista_contatti` la avvolge. Rischio: eccezione non intercettata (sezione 9). Esito **ok**: il warning finisce nel log e c'è il fallback. Il blob è identico a main (359d0d8). Era già stato revisionato nella #520/#521 della chat Notte.
-- `modules/notte/notte.py:545` — lo stato del mattino usa `leggi_contatti`, e None diventa «non letti». Rischio: una mescolanza con l'altra modifica di main (`_dollari`, PR #271). Esito **ok**: il blob è identico a main (c7eafad).
-- `tests/test_unit_kernel.py:1` e `tests/test_unit_notte.py:1` — i test della chat Notte. Esito **ok**: blob identici a MERGE_HEAD (67140d2, ff17838).
-- `modules/web/lexbor.py:82` (contesto, codice della PR) — esito **ok**. `modules/web/leggi.py`, `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py` non compaiono in `git diff --cached HEAD`, quindi il merge non li tocca e restano quelli della PR. Fra il codice web e quello di contatti/notte non ci sono dipendenze.
-
-**Controlli meccanici**
-1. **File del perimetro e report notte:** stanno tutti in stage con il blob di MERGE_HEAD. Vale anche per reports/coda_notte.md e reports/report_notte.md. Nessuna mescolanza.
-2. **Report tenuti dalla PR:** reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md non compaiono nel diff cached rispetto a HEAD, quindi sono rimasti quelli della PR (--ours).
-3. **memoria_revisore.md:** nessuna riga persa né rispetto a HEAD né rispetto a MERGE_HEAD (confronto per righe ordinate). Le righe #520 e #521 di Mani e di Notte ci sono tutte.
-4. **stato_progetto.md:**
-   - Rispetto a HEAD cambia una sola riga, «Ultimo aggiornamento»: è stata sostituita dalla versione unita, con la voce Mani fetta 19 in testa seguita dalla catena di main (voci Notte #273 e #271 comprese).
-   - Rispetto a MERGE_HEAD cambiano due righe: la stessa «Ultimo aggiornamento» e la voce «fetta 18». Quella della fetta 18 arriva dalla PR: nella base è uguale a main (stesso md5) e la PR l'ha cambiata, quindi il merge a tre vie l'ha presa giustamente dalla PR.
-5. **Marcatori di conflitto:** nessuno nei file in stage.
-
-**Prove rifatte da me (Python 3.13)**
-- **Test web e notte:** `pytest tests/test_unit_web_*.py tests/test_unit_notte.py` dà 655 passed e 1 skipped, come nella prova dell'autore.
-- **Test del kernel:** `python3 tests/test_unit_kernel.py` dà 1038 PASS e 1 FAIL. Il FAIL è T31g (GAS_VECTORS=1, `vectors=VectorStore`), un problema dell'ambiente già notato nella #510. Non l'ho riprodotto su un worktree pulito di main: mi sono fidato della prova dell'autore.
-
-**Rischio escluso**
-Non ho rifatto la review semantica del codice di PR #271/#273, né i loro mutanti: sono già stati revisionati nella #515/#516 e #520/#521 della chat Notte. Qui ho verificato solo che i blob entrino intatti.
-Non ho verificato nemmeno il comportamento in CI e con Python 3.11 dopo il merge, perché in questa sessione ho girato solo con 3.13.
-
-**Wall of Shame**
-Nel diff non c'è slicing diretto della history né simulazione dell'output dei tool. Il cap di 10 iterazioni, il cap di 8k e `_get_window` non sono toccati.
-
-**Memoria del revisore**
-Ho aggiunto la riga #522 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza lezioni nuove, e l'ho messa in stage con `git add`. Lo script di commit non l'ho usato perché il merge è in corso. La riga segnala che le chat Mani e Notte hanno usato gli stessi numeri #520 e #521, e che il contatore riprende da #522.
-```
-
-Verdetto riemesso:
-
-## VERDETTO: APPROVATO
-
-Review #522 (chat Mani), riemessa con lo stesso esito e le stesse conclusioni. Ho aggiunto solo le citazioni sui file del diff di sessione (`git diff 1422021..HEAD`): modules/web/leggi.py, modules/web/lexbor.py e tests/test_unit_web_lexbor.py. La review riguarda il merge di origin/main 1422021 (PR #271 e #273, chat Notte) nel branch claude/peaceful-lovelace-0w2b7q (PR #275, HEAD della PR 4557f31). Il merge è stato poi committato come 018c860, con genitori 4557f31 e 1422021.
-
-Ho letto le tre fonti obbligatorie: CLAUDE.md (sezioni 5, 8 e 9), le sezioni rilevanti di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
-
-**Elementi del diff di sessione esaminati (codice della PR)**
-- `modules/web/leggi.py:1385` — `_testo_e_titolo`, il punto dove si sceglie fra lexbor e il parser di Gas. Rischio: che il merge abbia toccato il codice della PR. Esito **ok**: `git diff 4557f31 018c860 -- modules/web` è vuoto, quindi il merge non tocca il file, e durante il merge leggi.py non compariva in `git diff --cached HEAD`.
-- `modules/web/lexbor.py:75` — `attivo()`: la prova lexbor resta spenta salvo GAS_WEB_LEXBOR=1, con la sonda del figlio. Rischio: che i cambi di main (contatti e notte) la riaccendano o ci interferiscano. Esito **ok**: il blob è invariato rispetto alla PR, e fra modules/web e `leggi_contatti` o la notte non c'è nessuna dipendenza.
-- `tests/test_unit_web_lexbor.py:24` — `test_spento_per_default`, il test che fissa lo stato spento. Rischio: un test della PR perso o cambiato dal merge. Esito **ok**: file invariato (anche lui assente dal diff fra 4557f31 e 018c860) e passa nel giro web+notte.
-
-**Elementi di contesto entrati da main (fuori dal diff di sessione, verificati nel merge)**
-- `gas.py:4126` — `_lead_fermi` con `leggi_contatti`. Esito **ok**: blob identico a MERGE_HEAD (c1bce57).
-- `modules/memory/store.py:1225` — `leggi_contatti` dà None su `sqlite3.Error`/`OSError`, con il warning nel log e il fallback (sezione 9 rispettata). Esito **ok**: blob identico a main (359d0d8).
-- `modules/notte/notte.py:545` — None diventa «non letti». Esito **ok**: blob identico a main (c7eafad).
-
-**Controlli meccanici sul merge**
-1. **File del perimetro e report notte:** gas.py, modules/memory/store.py, modules/notte/notte.py, tests/test_unit_kernel.py, tests/test_unit_notte.py, reports/coda_notte.md e reports/report_notte.md stanno tutti col blob di MERGE_HEAD. Nessuna mescolanza.
-2. **Report tenuti dalla PR:** reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md sono rimasti quelli della PR (--ours).
-3. **memoria_revisore.md:** nessuna riga persa né rispetto a HEAD né rispetto a MERGE_HEAD. Le righe #520 e #521 di Mani e di Notte ci sono tutte.
-4. **stato_progetto.md:** la riga «Ultimo aggiornamento» è stata unita a mano, con la voce Mani fetta 19 davanti e poi la catena completa di main. La voce «fetta 18» viene dalla PR: nella base è uguale a main (stesso md5) e la PR l'ha cambiata, quindi il merge a tre vie l'ha presa giustamente dalla PR.
-5. **Marcatori di conflitto:** nessuno.
-
-**Prove rifatte (Python 3.13)**
-- **Test web e notte:** 655 passed e 1 skipped.
-- **Test del kernel:** 1038 PASS e 1 FAIL. Il FAIL è T31g, un problema dell'ambiente già notato nella #510.
-
-**Rischio escluso**
-Non ho rifatto la review semantica né i mutanti di PR #271/#273: sono già stati revisionati nella #515/#516 e #520/#521 della chat Notte. Qui ho verificato solo che i blob entrino intatti.
-Non ho verificato il comportamento in CI e con Python 3.11 dopo il merge, perché ho girato solo con 3.13. Non ho rifatto neanche il T31g su un worktree pulito di main: mi sono fidato della prova dell'autore.
-
-**Wall of Shame**
-Nel diff non c'è slicing diretto della history né simulazione dell'output dei tool. Il cap di 10 iterazioni, il cap di 8k e `_get_window` non sono toccati.
-
-**Memoria del revisore**
-Non l'ho aggiornata, come mi hai chiesto: la riga #522 è già in /home/user/Gas/.claude/agents/memoria_revisore.md dal primo invio.
-
-### Review #523 (chat Mani) — primo diff staged dei test di isolamento
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #523 (chat Mani). Diff in stage: solo tests/test_unit_web_lexbor.py, 29 righe aggiunte, due test nuovi. Chiude V-2 BASSA della verifica esterna #275. Prima ho letto CLAUDE.md (sezioni 1, 5, 8, 10), la sezione fetta 19 di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
-
-**Cosa ho esaminato**
-
-- `tests/test_unit_web_lexbor.py:140` — mette un `resource.py` in tmp_path e fa `monkeypatch.chdir` lì dentro. Controlla che la lettura riesca e che il file spia non venga creato.
-  - Rischio esaminato: che il test non prenda la rimozione di `-I`, e che lasci file o cambi la cartella per gli altri test.
-  - Esito: ok. Senza `-I` il `resource.py` piantato oscura quello di sistema, quindi `setrlimit` non esiste, il figlio restituisce None e la prima asserzione fallisce. tmp_path lo gestisce pytest, la cwd la ripristina monkeypatch. Dopo la suite `git status` è pulito.
-- `tests/test_unit_web_lexbor.py:151` (asserzioni in `tests/test_unit_web_lexbor.py:163` e `tests/test_unit_web_lexbor.py:164`) — spia su `subprocess.run` (argv[1] == "-I", env == {}), poi tetto di 20 MiB e risultato None.
-  - Rischio esaminato: che la spia resti attiva dopo il test, visto che `lexbor.subprocess` è il modulo globale di sistema. E che il tetto fallisca per un motivo diverso dalla memoria, o in modo instabile.
-  - Esito: riserva. Il patch è globale, ma dura solo il test e monkeypatch lo ripristina; anche `MEMORIA_MAX` viene ripristinato. `_FIGLIO_OK` non viene toccato, perché `testo_visibile` non passa da `attivo()`. Ho misurato la soglia lanciando il vero `_FIGLIO` con `-I` e ambiente vuoto:
-    - il figlio riesce da 23 MiB in su;
-    - a 22 MiB si ferma con SelectolaxError («Can't parse CSS selector»);
-    - a 20 MiB con MemoryError a metà import;
-    - da 16 MiB in giù con ImportError «failed to map segment».
-
-    Tutti gli errori vengono dalla memoria e il risultato è stabile qui (5 ripetizioni verdi). Però il margine è di circa 3 MiB, con motivi diversi vicino alla soglia: diventa R-523-1.
-- Contesto: `modules/web/lexbor.py:41` (`setrlimit` nel figlio) e `modules/web/lexbor.py:105` (avvio con `-I`, `env={}` a `modules/web/lexbor.py:107`). Il codice di produzione non è toccato: dopo i mutanti ho riportato il file all'originale e `git diff` è vuoto.
-
-**Mutanti rifatti da me** (con selectolax, Python 3.13)
-- Senza `-I`: 2 failed.
-- Con l'ambiente del padre (`env=dict(os.environ)`): 1 failed.
-- Senza `setrlimit`: 1 failed.
-- Tetto spostato DOPO l'import di selectolax: sopravvive. Lo considero equivalente, perché il tetto vale comunque sul lavoro di lexbor.
-
-**Suite**
-- Web (3.13.16, con selectolax): 464 passed, 1 skipped (l'autore ne riporta 463; differenza dovuta al filtro `-k web`, non indagata).
-- tests/test_unit_web_lexbor.py su 3.11.17 (senza selectolax): 2 passed, 20 skipped.
-
-Antipattern della sezione 5: nessuno slicing della history né simulazione dei tool (sono test che lanciano il figlio vero). Guardrail (cap 10 iterazioni, 8k, `_get_window`) non toccati.
-
-**Riserve**
-- R-523-1 (chat Mani) BASSA: con 20 MiB il test resta a ~3 MiB dalla soglia di riuscita, e quella soglia dipende dalla build (interprete, glibc, versione di selectolax). Altrove il figlio potrebbe riuscire anche a 20 MiB e il test darebbe un rosso falso; il contrario, un verde falso, non può succedere. Rimedio: un tetto sotto l'ingombro dell'interprete (es. `4 << 20`, il figlio occupa 15,6 MB già all'avvio). Così il motivo è uno solo (la libreria non si carica) e il margine è circa 5 volte.
-- R-523-2 (chat Mani) COSMETICA: la fixture `acceso` non serve ai due test, perché `testo_visibile` non passa da `attivo()`.
-
-**Rischi esclusi**
-- Comportamento di RLIMIT_AS su macOS non verificato: qui c'è solo Linux. Su Darwin il limite potrebbe non essere applicato, e con selectolax installato sul Mac il test del tetto potrebbe fallire.
-- Python 3.12, e 3.11 con selectolax, non verificati: non installati in questo ambiente.
-
-**Memoria**
-- Aggiunte in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #523 e una lezione sui test a tetto di risorsa: misurare la soglia di riuscita e il motivo dell'errore a più valori.
-- Committata da sola con `scripts/commit_memoria_revisore.sh` (commit c3a5292).
-- `tests/test_unit_web_lexbor.py` resta in stage, intatto.
-
-### Review #524 (chat Mani) — sul diff committato in 95fda3d
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Ho letto per intero, prima della review, CLAUDE.md (sezione 5), reports/stato_progetto.md e la mia memoria.
-
-**Elementi del diff esaminati**
-- `tests/test_unit_web_lexbor.py:165`: ora il tetto del test è `4 << 20` (4 MiB) invece di 20 MiB. Il rischio era che il figlio fallisse per motivi diversi, o per un motivo che dipende da come è compilata la libreria. Ho lanciato 20 volte il figlio (`lexbor._FIGLIO`, `-I`, `env={}`) a 4 MiB: 20 volte su 20 esce con codice 1 e sempre per lo stesso motivo. Il motivo è `ImportError: ... selectolax/lexbor.cpython-313-x86_64-linux-gnu.so: failed to map segment from shared object` alla riga 4 del figlio: il limite RLIMIT_AS impedisce di mappare in memoria il .so. Il tetto sta sotto l'ingombro dell'interprete all'avvio (circa 15,6 MB, misurato in #523), quindi il margine dalla soglia di riuscita (23 MiB) è ampio. Esito: ok, R-523-1 chiusa.
-- `tests/test_unit_web_lexbor.py:151`: verificato che il mutante resti preso. Ho tolto `setrlimit` da `modules/web/lexbor.py:41`: 1 failed, proprio questo test. Ho dato al figlio l'ambiente del padre (tolto `env={}` in `modules/web/lexbor.py:107`): 1 failed. Ho spostato il tetto DOPO l'import di selectolax: il mutante sopravvive. È lo stesso caso di #523 e lo considero equivalente, perché il tetto vale comunque sulla lettura della pagina. Dopo i mutanti ho ripristinato `modules/web/lexbor.py` (0 diff da HEAD). Esito: ok.
-- `tests/test_unit_web_lexbor.py:140` e `tests/test_unit_web_lexbor.py:151`: i due test non usano più la fixture `acceso`. Il rischio era che dipendessero da `GAS_WEB_LEXBOR` o da `_FIGLIO_OK`. Non dipendono: `testo_visibile` (`modules/web/lexbor.py:90`) guarda solo `_DISPONIBILE` e non passa da `attivo()`, e il marcatore `con_lexbor` salta i test se la libreria manca. Nel diff `acceso` compare solo nella riga di contesto di un test vecchio. Esito: ok, R-523-2 chiusa.
-
-**Prove eseguite**
-- `tests/test_unit_web_lexbor.py`: 22 passed con Python 3.13.16; 2 passed e 20 skipped con Python 3.11 (selectolax non c'è).
-- Il gruppo `-k "tetto or cartella"`, ripetuto 5 volte: sempre 2 passed.
-- Nessun Wall of Shame: il diff tocca solo un test, nessun taglio della cronologia, nessun output di tool simulato.
-
-**Riserve**
-- R-524-1 COSMETICA: la docstring del test alla riga `tests/test_unit_web_lexbor.py:151` dice che sotto l'ingombro dell'interprete il figlio «non riesce nemmeno a partire». In realtà il figlio parte, esegue `setrlimit` e cade all'import di selectolax. Basta riformulare, ad esempio «non riesce nemmeno a caricare la libreria».
-
-**Rischio escluso**
-- Non ho verificato il motivo dell'errore a 4 MiB su altre build o versioni di Python (VPS, CI con selectolax, macOS). Qui la libreria c'è solo per Python 3.13 e la CI la salta. Su macOS il limite RLIMIT_AS viene applicato in modo diverso. Comunque, una build diversa può dare al massimo un falso rosso, mai un falso verde: il mutante senza tetto riesce sempre.
-
-**Memoria**
-- Ho aggiunto in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md` la riga contatore #524 (nessuna lezione nuova).
-- L'ho committata da sola con `scripts/commit_memoria_revisore.sh` (commit f2a9509).
-- `tests/test_unit_web_lexbor.py` resta in stage, non è stato toccato.
+**Memoria**: ho aggiunto la riga #526 a `/home/user/Gas/.claude/agents/memoria_revisore.md`, nessuna lezione nuova. È committata con `scripts/commit_memoria_revisore.sh` (88dd43a). Un secondo commit, ffe99a8, corregge la riga citata da :105 a :106. I file del diff sotto review sono rimasti in stage.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Solo la web suite (gas.py e gli altri test non toccati):
-- `python3 -m pytest -q tests/test_unit_web_*.py`, codice finale 95fda3d: main `441 passed, 1 skipped` → ramo `463 passed, 1 skipped in 26.61s` (3.13.16, con selectolax); `443 passed, 21 skipped in 25.01s` (3.11 locale, senza selectolax; in CI un test che si salta solo in locale gira, quindi la CI dà 1 passed in più e 1 skipped in meno). +22 test in `tests/test_unit_web_lexbor.py`.
-- Dopo il merge di main (018c860): `pytest tests/test_unit_web_*.py tests/test_unit_notte.py` `655 passed, 1 skipped in 30.64s`; `python3 tests/test_unit_kernel.py` `=== RIEPILOGO: 1038 PASS, 1 FAIL ===` (T31g, GAS_VECTORS=1, identico su un worktree pulito di origin/main).
-- Isolamento del figlio (95fda3d), mutanti: senza `-I` → `2 failed, 20 passed`; con l'ambiente del padre → `1 failed, 21 passed`; senza tetto di memoria → `1 failed, 21 passed`.
-- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `451 passed, 11 skipped in 24.30s`.
-- Suite vecchia con `GAS_WEB_LEXBOR=1`: `11 failed, 430 passed, 1 skipped` (3 test dei log del percorso html.parser; 8 casi frameset/template dove il browser mostra il testo, lexbor e html5lib concordi).
-- Mutazioni del ramo lexbor (uscita di pytest sui 20 test): corpo senza `_pulisci` → `1 failed, 19 passed`; titolo senza tetto → `1 failed, 19 passed`; senza sonda → `1 failed, 19 passed`; sonda ripetuta → `1 failed, 19 passed`; acceso sempre → `1 failed, 19 passed`; titolo non nascosto → `1 failed, 19 passed`; nascosti ignorati → `5 failed, 15 passed`; script spenti → `1 failed, 19 passed`; titolo di svg accettato → `1 failed, 19 passed`; blocchi senza a capo → `1 failed, 19 passed`; anche in XHTML → `1 failed, 19 passed`.
-- Misure della prova (script nello scratchpad): oracolo html5lib su 60 mila pagine senza template/svg/math, seed 7 `FUGHE oggi 48, lexbor 0; PERDITE oggi 2975, lexbor 1860`, seed 8 `FUGHE oggi 40, lexbor 3; PERDITE oggi 2907, lexbor 1765`, seed 9 `FUGHE oggi 41, lexbor 2; PERDITE oggi 2831, lexbor 1764`; corpus `pagine 131, testo identico (parole) 127, diverse 4`, `tempo totale oggi 10.57s, lexbor 15.76s`; robustezza `seed 1: 100000 pagine senza eccezioni né crash`, `seed 2: 100000 pagine senza eccezioni né crash`; lexbor in processo `div 100k 23.00s`, `attr 100k 36.26s`, col figlio `div 100k 4.01s -> None`, `attr 100k 4.01s -> None`.
+Solo la web suite (gas.py e gli altri test non toccati), codice finale ab5eb1d:
+- `python3 -m pytest -q tests/test_unit_web_*.py`: main a0bf5c9 `463 passed, 1 skipped` → ramo `469 passed, 1 skipped in 28.81s` (3.13.16, con selectolax); `444 passed, 26 skipped in 26.00s` (3.11 locale, senza selectolax). `tests/test_unit_web_lexbor.py` da 22 a 28 test.
+- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `459 passed, 11 skipped in 28.20s`.
+- Suite vecchia con `GAS_WEB_LEXBOR=1`: `11 failed, 430 passed, 1 skipped` (gli stessi della fetta 19).
+- Mutazioni (uscita di pytest sui test lexbor): senza lock `1 failed, 26 passed`; timeout che spegne per sempre `1 failed, 26 passed`; risonda subito `1 failed, 26 passed`; anche fuori da Linux `1 failed, 26 passed`; hidden ignorato `1 failed, 26 passed`; dialog chiuso visibile `1 failed, 26 passed`; select visibile `1 failed, 26 passed`; rp visibile `1 failed, 26 passed`; stderr non nel log `2 failed, 25 passed`; lock bloccante `1 failed, 27 passed`; senza isprintable `1 failed, 27 passed`; senza taglio a 200 `1 failed, 27 passed`.
+- Oracolo html5lib (script nello scratchpad), 60 mila pagine senza template/svg/math: seed 7 `FUGHE oggi 48, lexbor 0; PERDITE oggi 2975, lexbor 2808`, seed 8 `FUGHE oggi 40, lexbor 0; PERDITE oggi 2907, lexbor 2717`, seed 9 `FUGHE oggi 41, lexbor 0; PERDITE oggi 2831, lexbor 2700`; corpus `pagine 131, testo identico (parole) 127, diverse 4`.
 
 ## §6 STATO CI
 
-`gh run list` non disponibile (gh non autenticato nel cloud); run lette dall'integrazione GitHub (`actions_list`, workflow ci.yml, branch claude/peaceful-lovelace-0w2b7q):
+`gh run list` non disponibile (gh non autenticato nel cloud); run lette dall'integrazione GitHub (`actions_list`, workflow ci.yml, branch claude/peaceful-lovelace-0w2b7q). Istantanea al momento della scrittura: lo stato aggiornato è sulla PR.
 
 ```
-40430887843  CI  push  in_progress  —        95fda3d  2026-10-27T01:09:31Z
-40430137225  CI  push  completed    success  018c860  2026-10-27T01:02:12Z
-40428232738  CI  push  completed    success  4557f31  2026-10-27T00:43:46Z
-40428033003  CI  push  completed    failure  eb2df98  2026-10-27T00:41:49Z
+40510137001  CI  push  in_progress  —  ab5eb1d  2026-10-27T13:13:20Z
 ```
 
 Mappatura commit→run:
-- `8fe2253`, `14716d9`: nessuna run su questo SHA (pushati insieme a `eb2df98`).
-- `eb2df98` → run CI 40428033003 failure: `handoff-check` allo step «Run check_handoff (versione main)», atteso (il commit motore non conteneva l'handoff); `unit-suite` success (V-5 ve #275).
-- `4557f31` → run CI 40428232738 success; verifica-bot success (APPROVATO CON RISERVE).
-- `018c860` → run CI 40430137225 success.
-- `c3a5292`, `f2a9509`: nessuna run su questo SHA (pushati insieme a `95fda3d`).
-- `95fda3d` → run CI 40430887843, in corso alla scrittura dell'handoff.
-- `dec5a5b` (primo commit di fine-task di questo giro, fermato dal Gate B sul verdetto #522 e mai pushato da solo): nessuna run su questo SHA.
+- `7290177`, `88dd43a`, `ffe99a8`: nessuna run su questo SHA (pushati insieme a `ab5eb1d`).
+- `ab5eb1d` → run CI 40510137001, in corso alla scrittura dell'handoff.
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-520-4 COSMETICA: un `title` HTML dentro foreignObject si scarta (perdita, verso sicuro).
-- R-521-1 BASSA: sonda del figlio senza lock (N thread → N sonde).
-- R-521-2 BASSA: un fallimento passeggero della sonda spegne la prova per tutta la vita del processo.
-- R-521-3 COSMETICA: `test_sonda_del_figlio` lascia `_FIGLIO_OK=True` fuori dal monkeypatch.
-- R-524-1 COSMETICA: la docstring del test del tetto dice «non riesce a partire», in realtà il figlio non carica la libreria.
-- V-1 bot / V-3 ve #275 BASSA: in CI selectolax manca e 18 test lexbor si saltano: richiesta alla chat Motore prima di accendere.
-- 5 casi con `<select>` in cui lexbor e html5lib divergono (standard cambiato di recente): da guardare prima di accendere.
-- Restano decisioni dell'operatore: accensione della lettura con lexbor; R-ve252-2, R-ve255-1, R-ve235-7, tempo di rete 12 s; R-518-1 e riaccensione di R-469-1 con noscript (superate se si accende lexbor).
+- R-526-1 COSMETICA: doppio controllo sotto lock in `attivo()` senza test.
+- R-520-4 COSMETICA: un `title` HTML dentro foreignObject si scarta.
+- Prima dell'accensione: selectolax in requirements e CI (chat Motore), così i 25 test lexbor oggi saltati girano.
+- Restano decisioni dell'operatore: R-ve252-2, R-ve255-1, R-ve235-7, tempo di rete 12 s.
