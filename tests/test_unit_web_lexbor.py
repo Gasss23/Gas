@@ -1,4 +1,4 @@
-"""Lettura con lexbor in prova (modules/web/lexbor.py, R-ve246-5, fetta 19 chat Mani).
+"""Lettura con lexbor, spenta per default (modules/web/lexbor.py, R-ve246-5, fette 19-21 chat Mani).
 Senza selectolax (oggi in CI) i test che lo usano si saltano; quelli del ripiego girano sempre."""
 import logging
 import threading
@@ -97,6 +97,8 @@ def test_spento_per_default(monkeypatch):
     ("<select size=" + "9" * 5000 + "><option>W1<option>W2</select>", ("W1",), ("W2",)),
     ("<select size=0000000000003><option>W1<option>W2</select>", ("W1", "W2"), ()),
     ("<select size=21474836470><option>W1<option>W2</select>", ("W1",), ("W2",)),
+    ("<select size=2147483647><option>W1<option>W2</select>", ("W1", "W2"), ()),
+    ("<select size=2147483648><option>W1<option>W2</select>", ("W1",), ("W2",)),
     ("<select multiple><option>W1<optgroup><option>W2</optgroup></select><select size=3><option>W3"
      "<option>W4</select><select size=x><option>W5<option>W6</select>", ("W1", "W2", "W3", "W4", "W5"), ("W6",)),
     # testo grezzo, commenti, attributi
