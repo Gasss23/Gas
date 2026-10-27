@@ -3993,7 +3993,7 @@ class GasKernel:
         chiave+nome. Ritorna (contatto|None, nota_ambiguità|None): se il substring
         trova PIÙ lead si prende il più recente ma si SEGNALA l'ambiguità invece di
         sceglierne uno in silenzio (riserva R1 fetta 2b). Fail-safe: memoria
-        None/degradata → (None, None)."""
+        None → (None, None); rubrica illeggibile → (None, nota «NON letta»), V-1 bot #273."""
         if self.memory is None:
             return None, None
         esatto = self.memory.get_contatto_per_chiave(termine)
@@ -4006,7 +4006,14 @@ class GasKernel:
         # normalizzata) "anna rossi". Il nome non è normalizzato in storage ma qui
         # viene canonicalizzato solo per il match, simmetrico al needle.
         ago = normalizza_chiave(termine)
-        cand = [c for c in self.memory.lista_contatti()
+        # V-1 bot #273: a lettura fallita non si dice «Nessun lead trovato» (falso:
+        # la rubrica non è stata letta) ma lo si dichiara nella nota.
+        leggi = getattr(self.memory, "leggi_contatti", None)
+        tutti = leggi() if callable(leggi) else self.memory.lista_contatti()
+        if tutti is None:
+            return None, ("⚠ Rubrica dei lead NON letta (lettura fallita): non so se "
+                          f"'{termine}' c'è. Riprova tra poco.")
+        cand = [c for c in tutti
                 if ago in (normalizza_chiave(c.get("chiave", "")) + " "
                            + normalizza_chiave(c.get("nome", "")))]
         if not cand:
@@ -4052,7 +4059,7 @@ class GasKernel:
                 parti += ([f"- [{e['tipo']}] {e['descrizione']}" for e in eventi]
                           or ["- (nessun evento)"])
             else:
-                parti.append(f"Nessun lead trovato per '{contatto}'.")
+                parti.append(nota or f"Nessun lead trovato per '{contatto}'.")
         # 2) ricerca testuale nel diario. Prima la ricerca FTS5 (Strato A del
         #    Vector DB): per parole/radici, ordinata per pertinenza. Se FTS è
         #    assente o non trova nulla, si ricade sulla ricerca substring storica
@@ -5691,7 +5698,14 @@ def fida_contatto_cmd(root_dir: Optional[str] = None) -> int:
         print("FAIL — memoria non disponibile (DB assente o corrotto).")
         return 1
     if not pos_args:
-        segnati = [c for c in mem.lista_contatti() if c.get("non_fidato")]
+        tutti = mem.leggi_contatti()
+        if tutti is None:
+            # R-520-1: a lettura fallita mai «Nessun lead segnato» (rassicurazione
+            # falsa su un segnale di sicurezza)
+            print("FAIL — lettura dei contatti fallita: non so se ci sono lead segnati "
+                  "«non fidati». Riprova tra poco (dettagli in gas_debug.log).")
+            return 1
+        segnati = [c for c in tutti if c.get("non_fidato")]
         if not segnati:
             print("Nessun lead segnato «non fidato».")
             return 0
