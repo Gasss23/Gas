@@ -3639,9 +3639,12 @@ class GasKernel:
         Fail-safe (§9): memoria None/degradata o qualunque errore → stringa
         vuota, il turno prosegue. Ritorna "" (niente da iniettare) oppure il
         blocco già preceduto da due newline, pronto per `system_prompt + pin`."""
-        # V-1 bot #222: True se il pin mostra dati scritti da un turno contaminato
+        # V-1 bot #222: True se il pin MOSTRA dati scritti da un turno contaminato
         # (contatto non_fidato o riga di diario marcata): il turno che lo vede è a sua
-        # volta contaminato. Nel dubbio (errore) True.
+        # volta contaminato. Nel dubbio (eccezione mentre il pin si costruisce) True.
+        # V-1 ve #273: se la lettura dei contatti fallisce (lista vuota), nel pin non
+        # entra nessun lead, quindi nessun dato non fidato: il segno resta False di
+        # proposito (con True una memoria guasta manderebbe alla firma ogni scrittura).
         self._pin_non_fidato = False
         if self.memory is None:
             return ""
