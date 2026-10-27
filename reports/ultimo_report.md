@@ -1,4 +1,4 @@
-# ULTIMO REPORT — 2026-10-27 — Mani fetta 19: prova della lettura con lexbor, spenta (R6, chat Mani, PR #275)
+# ULTIMO REPORT — 2026-10-27 — Mani fetta 19: prova della lettura con lexbor, spenta, secondo giro (R6, chat Mani, PR #275)
 
 ## DECISIONI UMANE RICHIESTE
 1. Merge della PR #275 (https://github.com/Gasss23/Gas/pull/275): la mergio da solo solo con APPROVATO pulito del bot sull'head, altrimenti serve il tuo OK. Il merge NON accende niente: la lettura resta spenta.
@@ -17,6 +17,14 @@
   - #520: R-520-1, R-520-2 e R-520-3 → FATTE; R-520-4 COSMETICA → DEFERITA.
   - #521: R-521-1 e R-521-2 BASSE, R-521-3 COSMETICA → DEFERITE, prima dell'accensione.
 
+- **Secondo giro** (bot e verifica esterna #275, entrambi APPROVATO CON RISERVE):
+  - V-1 BASSA (verifica esterna), conflitto con main: FATTA. Merge di main 1422021 (PR #271 e #273). Nei conflitti sui report ho tenuto i miei, `stato_progetto` è unito a mano, `memoria_revisore` ha le righe dei due lati. Review #522 APPROVATO.
+  - V-2 BASSA (verifica esterna), l'isolamento del figlio non era fissato da test: FATTA. Senza `-I` un `resource.py` piantato nella cartella corrente veniva eseguito. Ora due test fissano `-I`, l'ambiente vuoto e il tetto di memoria. Review #523 e #524 APPROVATO CON RISERVE (R-523-1/2 chiuse; R-524-1 COSMETICA aperta).
+  - V-1 BASSA (bot) e V-3 BASSA (verifica esterna), in CI 18 dei test lexbor si saltano perché selectolax manca: DEFERITA. È la richiesta alla chat Motore qui sotto, da fare prima di accendere.
+  - V-2 COSMETICA (bot) e V-4 COSMETICA (verifica esterna), numeri dei test: FATTA. In locale su 3.11 un test in più si salta (quello che gira solo in CI), quindi la CI dà 1 passed in più e 1 skipped in meno del locale; il totale è uguale.
+  - V-5 COSMETICA (verifica esterna), §6 dell'handoff stantio: FATTA, riscritto.
+  - Nota: le chat Mani e Notte hanno usato gli stessi numeri di review #520 e #521. Il contatore riprende da #522.
+
 ## Misure della prova (script nello scratchpad, fuori dal repo)
 1. **Costo di lexbor:** è quadratico su decine di migliaia di tag annidati che a ogni apertura scandiscono la pila. Sono 31 tag (div, section, ul…): 50 mila ≈ 6 s, 100 mila ≈ 23 s. Lo stesso vale per migliaia di attributi diversi in un tag (50 mila ≈ 8 s).
    - La chiamata in C non si interrompe: da qui il processo figlio.
@@ -33,8 +41,9 @@
    - 3 sono test dei log del percorso html.parser.
    - 8 sono casi frameset/template che codificano il «verso sicuro»: lì il browser mostra il testo, e lexbor e html5lib concordano su tutti e 7 i casi provati.
 
-## Test
-- Web suite (spenta): 441 + 20 nuovi = 461 passed, 1 skipped su Python 3.13.16 (con selectolax); 443 passed, 19 skipped su 3.11 (senza); 451 passed, 11 skipped col parser vecchio forzato.
+## Test (codice finale 95fda3d)
+- Web suite (spenta): 441 + 22 nuovi = 463 passed, 1 skipped su Python 3.13.16 (con selectolax); in locale 443 passed, 21 skipped su 3.11 (senza selectolax; la CI ne fa girare uno in più, quello che si salta solo in locale). Dopo il merge di main: web e notte 655 passed, 1 skipped; kernel 1038 PASS, 1 FAIL (T31g, ambientale, identico su main).
+- Isolamento del figlio (V-2 ve #275), mutanti presi: senza `-I` 2 FAIL, con l'ambiente del padre 1, senza tetto di memoria 1.
 - Mutazioni del ramo lexbor, tutte prese (FAIL su 20 test): corpo senza `_pulisci` 1, titolo senza tetto 1, senza sonda 1, sonda ripetuta 1, acceso sempre 1, titolo non nascosto 1, nascosti ignorati 5, script spenti 1, titolo di svg accettato 1, blocchi senza a capo 1, anche in XHTML 1. Prima della sonda anche «senza tempo massimo» (1).
 
 ## RICHIESTE ALLA CHAT MOTORE
