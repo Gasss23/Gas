@@ -556,17 +556,34 @@ def stato_mattino(kernel: Any) -> Dict[str, Any]:
     return stato
 
 
+def _dollari(v: Any) -> Optional[float]:
+    """Numero finito come float, altrimenti None (V-1 verifica esterna #241: mai
+    «$nan» o «$inf» nel resoconto, anche se lo stato arriva da altrove)."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    try:
+        return float(v) if math.isfinite(v) else None
+    except OverflowError:  # R-515-1: int fuori dal range dei float (es. 10**400)
+        return None
+
+
 def righe_stato_mattino(stato: Optional[Dict[str, Any]]) -> List[str]:
-    """Righe brevi del resoconto (riepilogo e Telegram). Voce None → «non letta»."""
+    """Righe brevi del resoconto (riepilogo e Telegram). Voce None o non finita →
+    «non letta»; tetto non finito o negativo → «tetto non letto», mai «nessun tetto»."""
     if not stato:
         return []
-    spesa, tetto = stato.get("spesa"), stato.get("tetto")
+    spesa, tetto = _dollari(stato.get("spesa")), stato.get("tetto")
+    tetto_f = _dollari(tetto)
+    if tetto is None or tetto_f == 0:  # R-515-2: "" o [] non sono «nessun tetto»
+        r_tetto = " (nessun tetto)"
+    elif tetto_f is not None and tetto_f > 0:
+        r_tetto = f" su un tetto di ${tetto_f:.2f}"
+    else:
+        r_tetto = " (tetto non letto)"
     if spesa is None:
         r_spesa = "Spesa ultime 24 ore: non letta"
-    elif tetto:
-        r_spesa = f"Spesa ultime 24 ore: ${spesa:.2f} su un tetto di ${tetto:.2f}"
     else:
-        r_spesa = f"Spesa ultime 24 ore: ${spesa:.2f} (nessun tetto)"
+        r_spesa = f"Spesa ultime 24 ore: ${spesa:.2f}{r_tetto}"
     rotte = stato.get("log_illeggibili") or 0
     if spesa is not None and rotte:
         r_spesa += (" — ATTENZIONE: log dei token illeggibile, spesa forse sottostimata"
