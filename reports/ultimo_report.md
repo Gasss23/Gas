@@ -1,7 +1,7 @@
 # ULTIMO REPORT — 2026-10-27 — V-1 della verifica esterna #273 (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione, secondo CLAUDE.md §10.
+1. Merge della PR #276 (https://github.com/Gasss23/Gas/pull/276), secondo CLAUDE.md §10.
 2. Prossime voci in coda dalla chat Notte: V-1 bot #273 (BASSA) e R-520-1 (BASSA, `gas fida-contatto` con lettura fallita).
 
 ## Esito

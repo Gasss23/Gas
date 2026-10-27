@@ -6,7 +6,8 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione: numero e URL nel commit successivo (dalla risposta di `create_pull_request`; `gh` nel cloud non è autenticato).
+1. Merge della PR #276 (https://github.com/Gasss23/Gas/pull/276). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge secondo CLAUDE.md §10.
+2. Prossime voci in coda: V-1 bot #273 (BASSA) e R-520-1 (BASSA).
 
 ---
 
@@ -34,6 +35,7 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bfc3e28 docs(fine-task): report della V-1 della verifica esterna #273
 8b6a965 fix(memoria): V-1 ve #273 — pin con contatti illeggibili: comportamento chiarito e fissato da un test
 661d2d0 chore(revisore): memoria review #526 — APPROVATO
 ```
