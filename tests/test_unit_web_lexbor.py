@@ -134,3 +134,33 @@ def test_xhtml_resta_a_leggi(acceso, monkeypatch):
     t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
                                          "corpo": b"<p>VIS</p>", "troncato": False})["testo"]
     assert "VIS" in t
+
+
+@con_lexbor
+def test_figlio_non_carica_moduli_dalla_cartella(monkeypatch, tmp_path):
+    """Con «-I» il figlio non mette la cartella corrente nel percorso dei moduli: un
+    «resource.py» scritto lì (Gas può scrivere file) non viene eseguito (V-2 ve #275)."""
+    spia = tmp_path / "ESEGUITO"
+    (tmp_path / "resource.py").write_text(f"open({str(spia)!r}, 'w').write('x')\n")
+    monkeypatch.chdir(tmp_path)
+    assert lexbor.testo_visibile("<p>W0</p>", frozenset(), frozenset()) == ("W0", "")
+    assert not spia.exists()
+
+
+@con_lexbor
+def test_figlio_isolato_e_con_tetto_di_memoria(monkeypatch):
+    """Il figlio parte con «-I», senza l'ambiente del padre (niente LD_PRELOAD e simili) e
+    con il tetto di memoria: sotto l'ingombro dell'interprete (circa 16 MB) non riesce nemmeno a
+    partire, con margine ampio dalla soglia di riuscita (V-2 ve #275, R-523-1)."""
+    vero = lexbor.subprocess.run
+    visti = []
+
+    def spia(argomenti, **opzioni):
+        visti.append((argomenti, opzioni))
+        return vero(argomenti, **opzioni)
+    monkeypatch.setattr(lexbor.subprocess, "run", spia)
+    assert lexbor.testo_visibile("<p>W0</p>", frozenset(), frozenset()) == ("W0", "")
+    argomenti, opzioni = visti[-1]
+    assert argomenti[1] == "-I" and opzioni["env"] == {}
+    monkeypatch.setattr(lexbor, "MEMORIA_MAX", 4 << 20)
+    assert lexbor.testo_visibile("<p>W0</p>", frozenset(), frozenset()) is None
