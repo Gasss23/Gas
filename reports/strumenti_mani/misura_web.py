@@ -1,6 +1,7 @@
 """Strumento di misura della chat Mani (fette 19-20): lettura con lexbor contro la lettura di sempre.
-Non è un test e non gira in CI. Serve html5lib (oracolo) e selectolax. I percorsi del corpus
-sono quelli dell'ambiente cloud del 2026-10-27.
+Non è un test, non gira in CI ed è fuori dal perimetro di review (sta in reports/, nessuno lo
+importa). Serve html5lib (oracolo) e selectolax. I percorsi del corpus sono quelli
+dell'ambiente cloud del 2026-10-27.
 Uso: python3 reports/strumenti_mani/misura_web.py corpus|fuzz SEED N|tempi|robustezza SEED N
 (con IN_PROCESSO=1 il codice del figlio gira nel processo, senza tetto di memoria)."""
 import os, re, sys, time, random, logging, subprocess, glob
@@ -34,7 +35,6 @@ def oracolo_html5lib(html: str) -> str:
     return " ".join(out)
 
 def corpus():
-    files = [f for f in glob.glob("/**/*.htm*", recursive=False)]
     files = []
     for radice in ("/usr/local/go1.25.1/doc", "/opt/node22/lib/node_modules/npm/docs/output", "/usr/share/doc", "/opt/google-cloud-sdk", "/root/.rustup/toolchains", "/usr/lib/libreoffice", "/usr/lib/python3"):
         files += glob.glob(radice + "/**/*.htm*", recursive=True)
