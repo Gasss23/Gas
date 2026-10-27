@@ -18,7 +18,7 @@
 ## Da fare (in ordine)
 
 ### A. Piccoli lavori accantonati
-0. **Pin di memoria con contatti illeggibili** (V-1 verifica esterna #273, MEDIA, preesistente; messa in cima dall'operatore il 2026-10-27): `_memoria_pin` (`gas.py`) usa `lista_contatti`, che dà [] su errore; a lettura fallita `_pin_non_fidato` resta False mentre il commento promette «nel dubbio True» → fail-open sul segnale di contaminazione (V-1 bot #222). Fix: `leggi_contatti`, su None `_pin_non_fidato=True`, con test di round-trip. Nella stessa fetta, stessa correzione: `ricorda contatto=X` (`_trova_contatto`, V-1 bot #273: a lettura fallita «Nessun lead trovato») e `gas fida-contatto` senza argomenti (R-520-1: «Nessun lead segnato non fidato»). Motore: revisore obbligatorio.
+0. **Contatti illeggibili scambiati per «nessun risultato»** (messa in cima dall'operatore il 2026-10-27): `ricorda contatto=X` (`_trova_contatto` in `gas.py`, V-1 bot #273: a lettura fallita «Nessun lead trovato») e `gas fida-contatto` senza argomenti (R-520-1: «Nessun lead segnato non fidato») usano ancora `lista_contatti`, che dà [] su errore. Fix: `leggi_contatti` e, su None, un messaggio «lettura dei contatti fallita» (WARN/FAIL per `fida-contatto`), con test di round-trip. NON toccare `_memoria_pin`: la V-1 della verifica esterna #273 è CHIUSA (review #526, chat Motore, 2026-10-27) tenendo il segno «non fidato» False a lettura fallita, fissato da T21b2/T20d. Motore: revisore obbligatorio.
 
 ### B. Riserve più grosse
 6. **Recupero dell'esito di una firma basato sulla storia** (V-1 bot #241, R-445-3): un segno nel DB «esito notificato in storia» al posto della scansione della storia. Cambio di schema: migrazione additiva, fail-safe.
