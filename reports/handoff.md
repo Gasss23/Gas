@@ -15,16 +15,18 @@
 - **Fetta 1 — Merge della PR #269**: `FATTA` — su richiesta esplicita dell'operatore.
 - **Fetta 2 — Accensione del forte sul Mac (operatore, guidata)**: `FATTA` — `.env`, doctor, catalogo, prova `/forte`.
 - **Fetta 3 — Configurazione del Mac nello stato del progetto**: `FATTA`.
+- **Fetta 4 — Note del bot #274 (V-1 roadmap R2, V-2 RIPARTENZA)**: `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  | 12 ++----------
+ reports/diff_sessione.md  | 13 +++----------
  reports/handoff.md        | n/d
- reports/stato_progetto.md |  6 +++---
- reports/ultimo_report.md  | 14 ++++++--------
+ reports/roadmap.md        |  2 +-
+ reports/stato_progetto.md |  8 ++++----
+ reports/ultimo_report.md  | 15 +++++++--------
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -32,6 +34,7 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fbca1ab docs(fine-task): numero della PR #274 nell'handoff
 2500db5 docs(stato): cervello forte acceso sul Mac (configurazione in G-3)
 ```
 
@@ -51,4 +54,4 @@ Nessuna modifica a gas.py/tests/.
 
 ## §7 RISERVE APERTE
 
-Nessuna nuova. Restano quelle registrate in `reports/stato_progetto.md` (bot #269 «/forte@NomeBot», COSMETICHE ve #269).
+V-1/V-2 bot #274 chiuse. Restano quelle registrate in `reports/stato_progetto.md` (bot #269 «/forte@NomeBot», COSMETICHE ve #269).
