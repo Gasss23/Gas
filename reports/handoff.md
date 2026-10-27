@@ -7,6 +7,7 @@
 ## §0 DECISIONI UMANE RICHIESTE
 
 1. Merge della PR #274 (https://github.com/Gasss23/Gas/pull/274), solo documenti. Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge secondo CLAUDE.md §10.
+2. Decisione aperta (chat Notte, PR #271/#273): mettere in coda per prima la **V-1 della verifica esterna #273** (MEDIA, preesistente: `_memoria_pin` a lettura dei contatti fallita non segna il turno come contaminato, fail-open), con V-1 bot #273 e R-520-1 — dettaglio in `reports/stato_progetto.md`.
 
 ---
 
@@ -17,6 +18,7 @@
 - **Fetta 3 — Configurazione del Mac nello stato del progetto**: `FATTA`.
 - **Fetta 4 — Note del bot #274 (V-1 roadmap R2, V-2 RIPARTENZA)**: `FATTA`.
 - **Fetta 5 — Note del bot #274, 2° giro (V-1 canali di /forte provati, V-2 §6 con le run CI)**: `FATTA`.
+- **Fetta 7 — Bot #274, 4° giro: V-1 BASSA (decisione aperta su V-1 ve #273 rimessa in §0, §7 e ultimo_report)**: `FATTA`.
 - **Fetta 6 — Bot #274, 3° giro: V-1 conflitto con main (#271) risolto col merge, V-2/V-3 cosmetiche**: `FATTA` — merge revisionato (review #522 APPROVATO: file del motore identici a main).
 
 ---
@@ -29,7 +31,7 @@
  reports/handoff.md                 | n/d
  reports/roadmap.md                 |   2 +-
  reports/stato_progetto.md          |   8 ++++----
- reports/ultimo_report.md           |  13 +++++++------
+ reports/ultimo_report.md           |  14 ++++++++------
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -37,6 +39,7 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+07b8ff4 docs(fine-task): report dopo il merge di main nella #274
 85e61d7 Merge origin/main (PR #271) in feat/merge-automatico-z1xjx2 (PR #274) + note cosmetiche del bot #274
 3de0c93 docs: note del bot #274 (2° giro) — canali di /forte provati, run CI nell'handoff
 cafd478 docs: note del bot #274 — roadmap R2 e RIPARTENZA allineate al forte acceso
@@ -60,8 +63,10 @@ Nessuna modifica a gas.py/tests/.
 - 2500db5 → run CI 40423823987: completed, success.
 - fbca1ab → run CI 40423852723: completed, success.
 - cafd478 → run CI 40424186394: success (letto dal bot #274, 3° giro).
-- 3de0c93, merge di main e commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
+- 3de0c93, 85e61d7, 07b8ff4 → run CI completate (letto dal bot #274: handoff-check success; unit-suite di 07b8ff4 in corso alla sua lettura).
+- Commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-V-1/V-2 bot #274 chiuse. Restano quelle registrate in `reports/stato_progetto.md` (bot #269 «/forte@NomeBot», COSMETICHE ve #269).
+- Nate da questa sessione: nessuna aperta (note dei 4 giri del bot #274 chiuse).
+- Preesistenti, da `reports/stato_progetto.md`: **V-1 ve #273 (MEDIA)** `_memoria_pin` fail-open a lettura dei contatti fallita — da mettere in coda per prima; V-1 bot #273 (BASSA); R-520-1 (BASSA); R-516-1 (COSMETICA); bot #269 «/forte@NomeBot» su Telegram (BASSA); COSMETICHE ve #269.
