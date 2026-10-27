@@ -30,7 +30,8 @@ Eccezione, spenta per default (fette 19-20, R-ve246-5): con GAS_WEB_LEXBOR=1, se
 installato e su Linux il testo si legge con lexbor in un processo figlio (modules/web/lexbor.py),
 che ha i suoi TEMPO_MAX s: da accesa il caso peggiore diventa circa 12 s di rete + 4 s del figlio
 + fino a 3 s della lettura di sempre, se il figlio non ce la fa (R-520-2), più fino a 4 s della
-sonda del figlio alla prima pagina (circa 23 s).
+sonda del figlio sulla lettura che la fa partire: alla prima pagina e, se fallisce, al più
+altre 2 volte a 600 s l'una dall'altra (circa 23 s).
 """
 from __future__ import annotations
 
@@ -1431,7 +1432,7 @@ def _componi(url_finale: str, pagina: dict) -> dict:
         letto = (_lexbor.testo_visibile(grezzo, _TAG_NASCOSTI, frozenset(_Estrattore._BLOCCHI))
                  if not xhtml and _lexbor.attivo() else None)
         if letto is not None:
-            # In prova, spenta per default: l'albero di lexbor come il browser (R-ve246-5).
+            # Spenta per default: l'albero di lexbor come il browser (R-ve246-5).
             corpo = _pulisci(letto[0])
             titolo = _pulisci(letto[1]).replace("\n", " ")[:MAX_TITOLO]
         else:

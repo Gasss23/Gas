@@ -54,6 +54,10 @@ def test_spento_per_default(monkeypatch):
     # dialog chiuso, details chiuso tranne il primo summary, datalist, rp
     ("<p>W0</p><div hidden>W1</div><p hidden=until-found>W2</p><dialog>W3</dialog><dialog open>W4</dialog>",
      ("W0", "W4"), ("W1", "W2", "W3")),
+    ("<p hidden=false>W1</p><p hidden=''>W2</p><p>W0</p>", ("W0",), ("W1", "W2")),
+    # contenuto di riserva di video e audio, interno di meter e progress (R-ve277-5)
+    ("<p>W0</p><video>W1<p>W2</p></video><audio controls>W3</audio><meter>W4</meter><progress>W5</progress>W6",
+     ("W0", "W6"), ("W1", "W2", "W3", "W4", "W5")),
     ("<body hidden><p>W1</p>", (), ("W1",)),
     ("<html hidden><body><p>W1</p>", (), ("W1",)),
     ("<p>W0</p><details><summary>W1</summary>W2<p>W3</p><summary>W4</summary></details>"
@@ -88,6 +92,11 @@ def test_spento_per_default(monkeypatch):
     ("<select size=' 2'><option>W1<option>W2</select>", ("W1", "W2"), ()),
     ("<select size=1_0><option>W1<option>W2</select>", ("W1",), ("W2",)),
     ("<select size=\u0663><option>W1<option>W2</select>", ("W1",), ("W2",)),
+    # «+2» vale 2; con migliaia di cifre il valore non vale: tendina (V-1, V-3 ve #277 ter)
+    ("<select size=+2><option>W1<option>W2</select>", ("W1", "W2"), ()),
+    ("<select size=" + "9" * 5000 + "><option>W1<option>W2</select>", ("W1",), ("W2",)),
+    ("<select size=0000000000003><option>W1<option>W2</select>", ("W1", "W2"), ()),
+    ("<select size=21474836470><option>W1<option>W2</select>", ("W1",), ("W2",)),
     ("<select multiple><option>W1<optgroup><option>W2</optgroup></select><select size=3><option>W3"
      "<option>W4</select><select size=x><option>W5<option>W6</select>", ("W1", "W2", "W3", "W4", "W5"), ("W6",)),
     # testo grezzo, commenti, attributi
@@ -144,11 +153,29 @@ def test_commenti_nel_select_restano_a_lexbor():
 @con_lexbor
 def test_molte_opzioni_annidate_restano_lineari():
     """Le opzioni si raccolgono scendendo una volta sola: 2000 div annidati e 20 mila opzioni
-    stanno ben dentro il tempo massimo del figlio (R-527-2: prima la risalita era quadratica)."""
+    stanno dentro il tempo massimo del figlio (R-527-2: con la risalita quadratica il figlio lo
+    superava). Niente soglia in secondi qui: su una macchina lenta darebbe falsi rossi (R-bot277-4)."""
     pagina = "<select multiple>" + "<div>" * 2000 + "<option>x</option>" * 20000
-    inizio = time.monotonic()
     assert lexbor.testo_visibile(pagina, frozenset(), frozenset()) is not None
-    assert time.monotonic() - inizio < 2.0
+
+
+@con_lexbor
+def test_size_enorme_non_fa_cadere_il_figlio():
+    """Un size di migliaia di cifre non fa cadere il figlio sul ripiego (V-1 ve #277 ter)."""
+    pagina = "<select size=" + "9" * 5000 + "><option>A<option>B</select>"
+    assert lexbor.testo_visibile(pagina, frozenset(), frozenset()) == ("\nA\n", "")
+
+
+@con_lexbor
+def test_sonda_riuscita_non_aspetta_il_lock(acceso):
+    """Dopo una sonda riuscita la lettura con lexbor resta accesa anche mentre il lock è preso
+    (V-3(c) ve #277 ter: senza il controllo iniziale chi arriva leggerebbe col ripiego)."""
+    lexbor._FIGLIO_OK = True
+    assert lexbor._SONDA.acquire(blocking=False)
+    try:
+        assert lexbor.attivo()
+    finally:
+        lexbor._SONDA.release()
 
 
 def test_ultima_riga_dello_stderr_pulita():
@@ -184,7 +211,7 @@ def test_una_sonda_alla_volta(acceso, monkeypatch):
 @con_lexbor
 def test_sonda_oltre_il_tempo_si_riprova(acceso, monkeypatch, caplog):
     """Una sonda finita oltre il tempo (avvio a freddo) non spegne la lettura per sempre: si
-    riprova dopo RIPROVA_SONDA secondi; un errore vero invece la spegne (R-521-2)."""
+    riprova dopo RIPROVA_SONDA secondi (R-521-2; anche un errore si riprova, fino a MAX_SONDE)."""
     caplog.set_level(logging.WARNING, logger="gas.web")
     monkeypatch.setattr(lexbor, "TEMPO_MAX", 0.01)
     monkeypatch.setattr(lexbor, "RIPROVA_SONDA", 0.2)
