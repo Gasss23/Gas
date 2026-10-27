@@ -1,6 +1,8 @@
 """Lettura con lexbor in prova (modules/web/lexbor.py, R-ve246-5, fetta 19 chat Mani).
 Senza selectolax (oggi in CI) i test che lo usano si saltano; quelli del ripiego girano sempre."""
 import logging
+import threading
+import time
 
 import pytest
 
@@ -19,6 +21,8 @@ def _testo(pagina: str) -> str:
 def acceso(monkeypatch):
     monkeypatch.setenv("GAS_WEB_LEXBOR", "1")
     monkeypatch.setattr(lexbor, "_FIGLIO_OK", None)  # la sonda riparte a ogni test
+    monkeypatch.setattr(lexbor, "_RIPROVA_DOPO", 0.0)
+    monkeypatch.setattr(lexbor, "_SONDE_FALLITE", 0)
 
 
 def test_spento_per_default(monkeypatch):
@@ -46,6 +50,46 @@ def test_spento_per_default(monkeypatch):
     ("<p>W0</p><svg><title>W1</title></svg><title>W2</title>W3", ("W0", "W3", "Titolo: W2"), ("W1",)),
     # pagina a frame: il browser non mostra testo
     ("<frameset>W1</frameset>W2", (), ("W1", "W2")),
+    # quello che il browser non mostra mai (fetta 20): attributo hidden (anche su html e body),
+    # dialog chiuso, details chiuso tranne il primo summary, datalist, rp
+    ("<p>W0</p><div hidden>W1</div><p hidden=until-found>W2</p><dialog>W3</dialog><dialog open>W4</dialog>",
+     ("W0", "W4"), ("W1", "W2", "W3")),
+    ("<body hidden><p>W1</p>", (), ("W1",)),
+    ("<html hidden><body><p>W1</p>", (), ("W1",)),
+    ("<p>W0</p><details><summary>W1</summary>W2<p>W3</p><summary>W4</summary></details>"
+     "<details open><summary>W5</summary>W6</details>", ("W0", "W1", "W5", "W6"), ("W2", "W3", "W4")),
+    ("<p>W0</p><datalist><option>W1</datalist><ruby>W2<rp>(</rp><rt>W3</rt><rp>)</rp></ruby>",
+     ("W0", "W2", "W3"), ("W1", "(")),
+    # del select solo quello che il browser mostra: l'opzione scelta (l'ultima con selected, se
+    # no la prima; vale label), tutte con multiple o size > 1 (V-1 bot / V-4 ve #277)
+    ("<p>W0</p><select><option>W1</option>W2<div>W3</div><option>W4</option></select>W5",
+     ("W0", "W1", "W5"), ("W2", "W3", "W4")),
+    ("<select><option selected>W1<option>W2<option selected>W3<option label=W5>W4</select>",
+     ("W3",), ("W1", "W2", "W4", "W5")),
+    ("<select><option label=W5>W4</select>", ("W5",), ("W4",)),
+    # il testo dell'opzione passa dalla stessa visita: niente script né elementi nascosti dentro
+    ("<select><option>W1<script>W2</script><span hidden>W3</span></select>", ("W1",), ("W2", "W3")),
+    ("<select><div hidden><option selected>W1</option></div><option>W2</select>", ("W2",), ("W1",)),
+    # opzioni dentro contenitori nascosti fra il select e l'opzione (R-527-1)
+    ("<select><datalist><option selected>W1</datalist><option>W2</select>", ("W2",), ("W1",)),
+    ("<select><svg><option selected>W1</svg><option>W2</select>", ("W2",), ("W1",)),
+    ("<select><object><option selected>W1</object><option>W2</select>", ("W2",), ("W1",)),
+    ("<select><canvas><option selected>W1</canvas><option>W2</select>", ("W2",), ("W1",)),
+    ("<select><!--W1--><div><!--W2--><option>W3</option></div></select>", ("W3",), ("W1", "W2")),
+    # hidden e disabled sull'opzione, come il browser (R-527-1, R-527-3): nella lista aperta le
+    # nascoste non si vedono; nella tendina si vede la scelta anche se nascosta (segnaposto),
+    # se no la prima non disabilitata
+    ("<select multiple><option hidden>W1<option>W2</select>", ("W2",), ("W1",)),
+    ("<select><option hidden>W1<option>W2</select>", ("W1",), ("W2",)),
+    ("<select><option hidden selected>W1<option>W2</select>", ("W1",), ("W2",)),
+    ("<select><option disabled>W1<option>W2</select>", ("W2",), ("W1",)),
+    # size letto come il browser: spazi, poi le cifre ASCII in testa
+    ("<select size=3abc><option>W1<option>W2</select>", ("W1", "W2"), ()),
+    ("<select size=' 2'><option>W1<option>W2</select>", ("W1", "W2"), ()),
+    ("<select size=1_0><option>W1<option>W2</select>", ("W1",), ("W2",)),
+    ("<select size=\u0663><option>W1<option>W2</select>", ("W1",), ("W2",)),
+    ("<select multiple><option>W1<optgroup><option>W2</optgroup></select><select size=3><option>W3"
+     "<option>W4</select><select size=x><option>W5<option>W6</select>", ("W1", "W2", "W3", "W4", "W5"), ("W6",)),
     # testo grezzo, commenti, attributi
     ("<p>W0</p><script>W1</script><!--W2--><a title='W3'>W4</a><textarea>W5</textarea>",
      ("W0", "W4", "W5"), ("W1", "W2", "W3")),
@@ -73,16 +117,118 @@ def test_testo_e_titolo_puliti_e_tagliati_come_sempre(acceso):
 @con_lexbor
 def test_sonda_del_figlio(acceso, monkeypatch, caplog):
     """Se il figlio non trova la libreria (per esempio vista solo via PYTHONPATH, che «-I»
-    ignora) lo dice la sonda una volta sola, e si usa la lettura di sempre (R-520-3)."""
+    ignora) lo dice la sonda una volta sola, con il motivo nella scatola nera, e si usa la
+    lettura di sempre (R-520-3); con il figlio sano la sonda passa."""
     caplog.set_level(logging.WARNING, logger="gas.web")
-    monkeypatch.setattr(lexbor, "_FIGLIO", "raise ImportError('selectolax')")
+    vero = lexbor._FIGLIO
+    monkeypatch.setattr(lexbor, "MAX_SONDE", 1)
+    monkeypatch.setattr(lexbor, "_FIGLIO", "raise ImportError('selectolax manca')")
     assert not lexbor.attivo() and not lexbor.attivo()
     assert caplog.text.count("il processo figlio non legge con lexbor") == 1
+    assert "selectolax manca" in caplog.text  # l'ultima riga dello stderr del figlio
     assert "VIS" in _testo("<p>VIS</p>")
+    monkeypatch.setattr(lexbor, "_FIGLIO", vero)
     monkeypatch.setattr(lexbor, "_FIGLIO_OK", None)
-    monkeypatch.undo()
-    monkeypatch.setenv("GAS_WEB_LEXBOR", "1")
     assert lexbor.attivo()
+
+
+@con_lexbor
+def test_commenti_nel_select_restano_a_lexbor():
+    """I commenti nel select non fanno cadere il figlio nel ripiego: la guardia sui nodi non
+    elemento si vede solo chiamando lexbor direttamente (R-528-1)."""
+    letto = lexbor.testo_visibile("<select><!--W1--><div><!--W2--><option>W3</option></div></select>",
+                                  frozenset(), frozenset())
+    assert letto is not None and letto[0].split() == ["W3"], letto
+
+
+@con_lexbor
+def test_molte_opzioni_annidate_restano_lineari():
+    """Le opzioni si raccolgono scendendo una volta sola: 2000 div annidati e 20 mila opzioni
+    stanno ben dentro il tempo massimo del figlio (R-527-2: prima la risalita era quadratica)."""
+    pagina = "<select multiple>" + "<div>" * 2000 + "<option>x</option>" * 20000
+    inizio = time.monotonic()
+    assert lexbor.testo_visibile(pagina, frozenset(), frozenset()) is not None
+    assert time.monotonic() - inizio < 2.0
+
+
+def test_ultima_riga_dello_stderr_pulita():
+    """Nella scatola nera va solo l'ultima riga dello stderr del figlio, stampabile e corta (R-525-3)."""
+    assert lexbor._ultima_riga("Traceback\n  ...\nImportError: x\u202ey\x00z\n".encode()) == "ImportError: x?y?z"
+    assert lexbor._ultima_riga(("E" * 500).encode()) == "E" * 200
+    assert lexbor._ultima_riga(b"") == "" and lexbor._ultima_riga(b"\xff\xfe") == "\ufffd\ufffd"
+
+
+@con_lexbor
+def test_una_sonda_alla_volta(acceso, monkeypatch):
+    """Con molte letture insieme alla prima chiamata parte una sola sonda; chi arriva mentre
+    gira usa la lettura di sempre (R-521-1)."""
+    vero = lexbor.subprocess.run
+    sonde = []
+
+    def spia(argomenti, **opzioni):
+        if opzioni.get("input") == b"<title>t</title><p>x</p>":
+            sonde.append(1)
+            time.sleep(0.3)
+        return vero(argomenti, **opzioni)
+    monkeypatch.setattr(lexbor.subprocess, "run", spia)
+    esiti = []
+    fili = [threading.Thread(target=lambda: esiti.append(lexbor.attivo())) for _ in range(8)]
+    for f in fili:
+        f.start()
+    for f in fili:
+        f.join()
+    # chi arriva mentre la sonda gira non aspetta: ha False e legge come sempre (R-525-2)
+    assert len(sonde) == 1 and esiti.count(True) >= 1 and esiti.count(False) >= 1 and lexbor.attivo()
+
+
+@con_lexbor
+def test_sonda_oltre_il_tempo_si_riprova(acceso, monkeypatch, caplog):
+    """Una sonda finita oltre il tempo (avvio a freddo) non spegne la lettura per sempre: si
+    riprova dopo RIPROVA_SONDA secondi; un errore vero invece la spegne (R-521-2)."""
+    caplog.set_level(logging.WARNING, logger="gas.web")
+    monkeypatch.setattr(lexbor, "TEMPO_MAX", 0.01)
+    monkeypatch.setattr(lexbor, "RIPROVA_SONDA", 0.2)
+    assert not lexbor.attivo() and lexbor._FIGLIO_OK is None and "si riprova" in caplog.text
+    assert not lexbor.attivo() and caplog.text.count("si riprova") == 1  # prima di RIPROVA_SONDA non si risonda
+    monkeypatch.setattr(lexbor, "TEMPO_MAX", 4.0)
+    time.sleep(0.25)
+    assert lexbor.attivo()
+
+
+@con_lexbor
+def test_sonda_fallita_si_riprova_poi_si_spegne(acceso, monkeypatch, caplog):
+    """Un errore della sonda (anche passeggero, come un fork negato) non spegne subito: si
+    riprova dopo RIPROVA_SONDA, e solo dopo MAX_SONDE fallimenti si spegne (V-3 bot e ve #277)."""
+    caplog.set_level(logging.WARNING, logger="gas.web")
+    vero = lexbor.subprocess.run
+    monkeypatch.setattr(lexbor, "RIPROVA_SONDA", 0.0)
+    guasti = [1]
+
+    def a_volte(argomenti, **opzioni):
+        if guasti:
+            guasti.pop()
+            raise BlockingIOError("fork negato")
+        return vero(argomenti, **opzioni)
+    monkeypatch.setattr(lexbor.subprocess, "run", a_volte)
+    assert not lexbor.attivo() and "si riprova" in caplog.text and lexbor._FIGLIO_OK is None
+    assert lexbor.attivo()  # il guasto era passeggero
+    monkeypatch.setattr(lexbor, "_FIGLIO_OK", None)
+    monkeypatch.setattr(lexbor, "_SONDE_FALLITE", 0)
+    monkeypatch.setattr(lexbor, "_FIGLIO", "raise ImportError('selectolax manca')")
+    for _ in range(lexbor.MAX_SONDE):
+        assert not lexbor.attivo()
+    assert lexbor._FIGLIO_OK is False and "sonde fallite" in caplog.text
+
+
+@con_lexbor
+def test_fuori_da_linux_il_figlio_si_rifiuta(acceso, monkeypatch, caplog):
+    """Il tetto di memoria (RLIMIT_AS) vale solo su Linux: altrove il figlio esce con 3 e la
+    lettura resta quella di sempre (V-1 bot #275)."""
+    caplog.set_level(logging.WARNING, logger="gas.web")
+    monkeypatch.setattr(lexbor, "MAX_SONDE", 1)
+    monkeypatch.setattr(lexbor, "_FIGLIO", lexbor._FIGLIO.replace('!= "linux"', '!= "nessuno"'))
+    assert not lexbor.attivo() and "solo Linux" in caplog.text
+    assert "VIS" in _testo("<p>VIS</p>")
 
 
 @con_lexbor
@@ -151,7 +297,7 @@ def test_figlio_non_carica_moduli_dalla_cartella(monkeypatch, tmp_path):
 def test_figlio_isolato_e_con_tetto_di_memoria(monkeypatch):
     """Il figlio parte con «-I», senza l'ambiente del padre (niente LD_PRELOAD e simili) e
     con il tetto di memoria: sotto l'ingombro dell'interprete (circa 16 MB) non riesce nemmeno a
-    partire, con margine ampio dalla soglia di riuscita (V-2 ve #275, R-523-1)."""
+    caricare la libreria, con margine ampio dalla soglia di riuscita (V-2 ve #275, R-523-1, R-524-1)."""
     vero = lexbor.subprocess.run
     visti = []
 
