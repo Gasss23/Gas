@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-PR non ancora creata alla scrittura di questo commit: numero e URL nel commit successivo.
+1. Merge della PR #274 (https://github.com/Gasss23/Gas/pull/274), solo documenti. Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge secondo CLAUDE.md §10.
 
 ---
 
@@ -32,7 +32,7 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit prima del commit di fine-task)
+2500db5 docs(stato): cervello forte acceso sul Mac (configurazione in G-3)
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
