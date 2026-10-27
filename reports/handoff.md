@@ -1,273 +1,178 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-25 sera / 26 — Accensione del cervello forte e chiusura delle note della #269 (chat Motore)
+**Sessione:** 2026-10-27 — Mani fetta 19: prova della lettura con lexbor (R-ve246-5), spenta per default, chat Mani
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #269 (https://github.com/Gasss23/Gas/pull/269): chiesto esplicitamente dall'operatore in sessione («e mergia 269»). Numero e URL dalla risposta dello strumento GitHub (`merge_pull_request` → 405 «Pull Request has merge conflicts» col main 1212a17); `gh` nel cloud non è autenticato. Conflitti risolti col merge 255218f; il merge lo esegue l'agente a CI e verifica-bot verdi.
-2. Sul Mac: `GAS_CLAUDE_CLI=1` nel `.env`, poi `python3 gas.py doctor`.
+1. Merge della PR #275 (https://github.com/Gasss23/Gas/pull/275). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5026812511","url":"https://github.com/Gasss23/Gas/pull/275"}`); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head. Il merge non accende niente.
+2. Accendere la lettura con lexbor? Prima: R-521-1 e R-521-2, un'occhiata ai 5 casi con `<select>`, e la chat Motore (selectolax in requirements e CI, `GAS_WEB_LEXBOR=1` sul VPS).
+3. Poi, una alla volta: R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 0 — Esito della PR #266**: `FATTA` — già mergiata dall'operatore, bot success, CI verde.
-- **Fetta 1 — Prova del login sul Mac (R-496-3)**: `FATTA` — 25: login scaduto («OAuth session expired»); 26, dopo `/login` dell'operatore: `ok 0.007764`.
-- **Fetta 2 — Accensione del forte**: `FATTA` — note di #265 chiuse, login scaduto chiaro, `cervello: forte` nel catalogo, `/forte` nel terminale, setup del Mac.
-- **Fetta 3 — Correzioni della verifica esterna #269**: `FATTA` — merge di main (V-1), V-2, V-3, V-4; review #515.
-- **Fetta 4 — Correzioni del bot #269 (verifica-bot failure su 895f329)**: `FATTA` — V-1 MEDIA `/forte` fail-closed (`prefisso_forte`), V-2 login in testo semplice, V-4 test della ripresa; V-5 numero del kernel spiegato in §5; review #516 APPROVATO.
-- **Fetta 5 — R-ve269-1, R-ve269-2 e COSMETICA del bot #269 (26 ottobre)**: `FATTA` — `/forte` da Telegram e voce, chiave del catalogo scritta male → compito saltato, doc del login; review #517 → #518 APPROVATO.
-- **Fetta 6 — V-1 verifica esterna #269 4° giro + merge di main #272 (26 ottobre)**: `FATTA` — chiave sconosciuta nel catalogo → compito saltato (scelta dell'operatore); review #519 APPROVATO CON RISERVE.
-- **Fette 7–9 — attività di notte, 3 lezioni, backup iCloud**: `DEFERITA — azioni dell'operatore`.
+- **Prova lexbor (R-ve246-5, decisione dell'operatore «vai con la 2, parti dalla prova»)**: `FATTA` — `modules/web/lexbor.py` (processo figlio con tempo e memoria limitati, spenta per default, sonda del figlio, fail-safe), `leggi.py` con `_testo_e_titolo` estratta senza cambiarla, 20 test nuovi; misure in ultimo_report.
+- **R-520-1/2/3 (review #520)**: `FATTA`.
+- **R-520-4 COSMETICA, R-521-1/2 BASSE, R-521-3 COSMETICA**: `DEFERITA — da sistemare prima di un'eventuale accensione; la prova è spenta e vanno nel verso sicuro`.
+- **Accensione della lettura con lexbor**: `DEFERITA — decisione dell'operatore e richiesta alla chat Motore (requirements, CI, VPS)`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md  |   7 +++++++
- brains/claude_cli.py                |  30 ++++++++++++++++++++++++++++--
- brains/router.py                    |  21 ++++++++++++++++++++-
- gas.py                              |   7 ++++++-
- modules/notte/notte.py              |  34 ++++++++++++++++++++++++++++++++--
- modules/telegram/bot.py             |  11 ++++++++++-
- modules/voice/server.py             |  11 ++++++++++-
- reports/diff_sessione.md            |  18 +++++++++++++-----
- reports/handoff.md                  | n/d
- reports/r2_regole_abbonamento.md    |   8 ++++++++
- reports/stato_progetto.md           |   6 +++---
- reports/ultimo_report.md            |  39 +++++++++++----------------------------
- scripts/notte/catalogo_esempio.yaml |   4 ++++
- tests/test_unit_claude_cli.py       |  59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- tests/test_unit_kernel.py           |  20 ++++++++++++++++++++
- tests/test_unit_notte.py            | 105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_unit_voice_server.py     |  22 ++++++++++++++++++++++
+ .claude/agents/memoria_revisore.md |   5 +++++
+ modules/web/leggi.py               |  75 +++++++++++++++++++++++++++++++++++++++++++++++----------------------------
+ modules/web/lexbor.py              | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/diff_sessione.md           |  19 ++++++-------------
+ reports/handoff.md                 | n/d (commit finale)
+ reports/stato_progetto.md          |   5 +++--
+ reports/ultimo_report.md           |  54 +++++++++++++++++++++++++++++++++++++++++++-----------
+ tests/test_unit_web_lexbor.py      | 136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — il conteggio di `reports/handoff.md` non è misurabile, riga di totale tolta.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat` preso con i report in stage, prima del commit finale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-255218f Merge origin/main (PR #272) in feat/merge-automatico-z1xjx2 + V-1 ve #269: chiave sconosciuta nel catalogo → compito saltato
-0d253e1 docs(fine-task): report della chiusura di V-1/V-2 della verifica esterna #269 e della prova del login
-4d09301 fix(R2): /forte anche da Telegram e voce, chiave cervello scritta male fa saltare il compito (ve #269)
-384eab4 chore(revisore): memoria review #518 — APPROVATO
-ace3ad3 chore(revisore): memoria review #517 — APPROVATO CON RISERVE
-5e044f5 docs(fine-task): report dopo le correzioni del bot #269
-7e1f520 fix(R2): /forte fail-closed su ogni separatore, login scaduto anche in testo semplice (bot #269)
-aa7ce20 chore(revisore): memoria review #516 — APPROVATO
-895f329 docs(fine-task): report dopo merge di main e correzioni della verifica esterna #269
-26ce319 Merge origin/main in feat/merge-automatico-z1xjx2 (PR #269) + correzioni verifica esterna #269
-51d2a6b docs(fine-task): report dell'accensione del cervello forte (PR #269)
-1717413 feat(R2): accensione del cervello forte — login scaduto chiaro, cervello: forte nel catalogo notturno, /forte nel terminale
-c0917bb chore(revisore): memoria review #512 — APPROVATO
-861b33a chore(revisore): memoria review #511 — APPROVATO CON RISERVE
+eb2df98 feat(web): prova della lettura con lexbor in un processo figlio, spenta per default (R-ve246-5, fetta 19 Mani)
+14716d9 chore(revisore): memoria review #521 — APPROVATO CON RISERVE
+8fe2253 chore(revisore): memoria review #520 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit 1717413 — due giri (#511, #512); commit 26ce319 — review #515; commit 7e1f520 — review #516; commit 4d09301 — review #517 e #518; commit 255218f — review #519 sullo stesso diff staged (il secondo sul delta che chiude le riserve del primo).
+Commit motore eb2df98: review #520 sul primo diff e #521 dopo la chiusura di R-520-1/2/3. Verdetti integrali:
 
-### Review #511 (integrale)
+### Review #520 (chat Mani) — primo diff staged
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Ho letto le tre fonti obbligatorie: CLAUDE.md (§5, §8, §9), la memoria del revisore (ultima riga #510) e la voce «RIPARTENZA chat Motore (25 ottobre sera)» di reports/stato_progetto.md. La fetta chiude il punto 2 di quella voce. Non c'è slicing della history, non c'è simulazione di output dei tool, il cap di 10 iterazioni e `_get_window` restano intatti. Ho rilanciato `tests/test_unit_claude_cli.py` e `tests/test_unit_notte.py`: 181 passed.
+Review #520 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: fetta 19, prova di lexbor spenta per default. Ho fatto le tre letture obbligatorie: CLAUDE.md, stato_progetto.md (selettivo, §fetta 19 e fette 1-18) e la memoria (lezioni recenti su leggi.py, oracoli e subprocess).
 
 **Elementi del diff esaminati**
-- brains/claude_cli.py:339 — se `result` o stderr contengono un segnale di login, l'errore diventa «login dell'abbonamento scaduto o mancante». Rischi esaminati: testo di Claude nel log, falso QUOTA, costo perso. Esito: ok. Il messaggio non contiene testo della CLI, non ha il prefisso 429, e il costo arriva lo stesso perché il ramo `except RuntimeError` mette `_costo_dati`. Riserva R-511-1 sotto.
-- brains/claude_cli.py:219 — entrata e uscita vengono limitate a [0, `_TOKEN_MASSIMI`] prima della stima. Rischi esaminati: overflow e valori negativi. Sondato a mano: 10**400 → 90000.0 (≤ `_COSTO_MASSIMO`), -10**400 e 0 → pavimento 0.0075, 10**9+1 → 90000.0. Esito: ok. COSMETICA: il `max(0, …)` alla riga 221 ora è ridondante.
-- modules/notte/notte.py:200 — con un valore di `cervello` diverso da `forte`, compreso `""`, il compito viene saltato con un avviso (fail-closed). Un valore `null` vale come campo assente. Esito: ok.
-- modules/notte/notte.py:266 — `cervello="forte"` arriva a `run_turn` solo se presente, quindi i kernel finti con `run_turn(prompt)` restano compatibili. Ho controllato la ripresa R7 (cioè il rilancio dei compiti rimasti a metà dopo un crash): `_ordina_riprese` costruisce le voci con `{**c, ...}`, quindi il campo `cervello` non si perde e un compito ripreso non finisce ai modelli gratuiti. Esito: ok.
-- gas.py:6021 — prefisso «forte » nel terminale di Gas; `run_turn` accetta `cervello` (gas.py:4515). L'input è già passato da strip, quindi «forte» da solo va come prompt normale. Esito: ok, con la riserva R-511-2.
-- tests/test_unit_notte.py:2177 — un caso con `forte`, uno con valore sbagliato e uno senza campo; controlla che a `run_turn` arrivino `{"cervello": "forte"}` e `{}`. Esito: ok.
-- tests/test_unit_kernel.py:10966 — T99r fa passare la catena da `run_turn` con una CLI finta che riporta `total_cost_usd` 10**400: il conto va al massimo e il turno dopo viene fermato dal tetto con una sola chiamata alla CLI. Chiude V-1 bot #265. Esito: ok, ma non l'ho eseguito (vedi sotto).
+
+1. `modules/web/leggi.py:1381` — estrae `_testo_e_titolo`, cioè la lettura con html.parser e il ripiego. Rischio: che lo spostamento cambi la logica. Ho confrontato il blocco vecchio (rientro tolto) con quello nuovo e cambiano solo i `return` al posto delle assegnazioni. Nel ripiego il titolo resta `""` come prima: il vecchio `titolo = ""` di `_componi` restava valido perché il ValueError arriva sempre prima che il titolo venga assegnato. Esito: ok.
+2. `modules/web/leggi.py:1426` — lexbor entra in gioco solo se `not xhtml and _lexbor.attivo()`, altrimenti si usa la lettura di sempre. Rischio: effetti da spenta e uscita dai delimitatori. Da spenta `selectolax` non viene importato: con `-X importtime` non compare, e `'selectolax' in sys.modules` dà False sia con la variabile accesa sia spenta. Resta solo `find_spec`, che è economico. Sul ramo lexbor ho provato i finti marcatori nel corpo e nel titolo (neutralizzati), il taglio a `MAX_CARATTERI` (troncato=True) e a `MAX_TITOLO` (200 caratteri), i caratteri di controllo e bidi nel titolo (tolti). Il testo resta dentro NON FIDATO. Esito: ok.
+3. `modules/web/lexbor.py:88` — processo figlio `sys.executable -I -c`, env vuoto, pagina su stdin, timeout 4 s. Rischi esaminati:
+   - zombie: `run()` su timeout fa kill e wait, e ho contato 0 zombie dopo le prove;
+   - thread: 8 letture in parallelo, tutte corrette;
+   - stdout grande: con `ensure_ascii` l'uscita resta sotto ~12 MB per 2 MB di pagina e viene letta con communicate, quindi niente blocchi;
+   - `-I`: implica `-P`, quindi la cwd non entra in `sys.path` e nessun modulo piantato lì viene caricato;
+   - pagina su stdin e non in argv: niente iniezione di argomenti;
+   - errori e timeout: finiscono tutti in un warning e in None (FAIL-SAFE §9);
+   - `KeyboardInterrupt`: non viene catturato, ed è giusto così.
+
+   Esito: ok, con la riserva R-520-3.
+4. `modules/web/lexbor.py:48` — esclude i title dentro svg/math. Una sonda: `<svg><foreignObject><title>X</title>` scarta un title HTML che il browser userebbe. È una perdita nel verso sicuro. Esito: riserva cosmetica.
+5. `tests/test_unit_web_lexbor.py:52` e `tests/test_unit_web_lexbor.py:23` — casi di R-ve246-5 e test «da spenta non parte». I test passano. Ho però provato due mutanti nel ramo lexbor, su una copia nello scratchpad: «senza `[:MAX_TITOLO]`» sopravvive a tutto; «corpo senza `_pulisci`» fa passare tutti i 18 test nuovi e lo prende solo la suite vecchia accesa (14 FAIL contro gli 11 di base), che nessuno fa girare. Esito: riserva R-520-1.
+
+**Prove rifatte**
+- Suite web su 3.13 (con selectolax): 459 passed, 1 skipped. Su 3.11 (senza): 443 passed, 17 skipped.
+- Con `GAS_WEB_LEXBOR=1`: 11 FAIL. Sono i 3 test dei log e 8 casi frameset/template.
+- Ho controllato a mano che `<p>A</p><frameset/>SEGRETO` lo mostri anche il browser: dopo il testo «A» il `<frameset>` viene ignorato.
+- Il perimetro è rispettato: solo `modules/web/` e `tests/test_unit_web_lexbor.py`. Nessun guardrail del motore è toccato.
+
+**Riserve (vanno in stato_progetto.md)**
+- **R-520-1 BASSA (test):** i 18 test nuovi non fissano `_pulisci` e `[:MAX_TITOLO]` sul ramo lexbor (i due mutanti del punto 5). Servono un test con un finto marcatore nel corpo e nel titolo e uno con un titolo lungo, a lexbor acceso.
+- **R-520-2 BASSA (doc):** la docstring di leggi.py, in `modules/web/leggi.py:28` e nei «Limiti dichiarati», dice ancora «solo stdlib» e ~15 s. Da accesa il caso peggiore è 12 s di rete + 4 s del figlio + fino a 3 s di ripiego, circa 19 s. Va dichiarato.
+- **R-520-3 BASSA:** `modules/web/lexbor.py:32` controlla la libreria nel padre con `find_spec`, ma il figlio parte con `-I` ed env vuoto. Ho provato un venv pulito con selectolax raggiungibile solo da PYTHONPATH: il padre la dà per presente, il figlio esce con 1, e ogni pagina paga circa 40 ms più un warning ripetuto. Non crasha, ma prima di accenderla serve un controllo in doctor o una sonda reale del figlio, una volta sola.
+- **R-520-4 COSMETICA:** un title HTML dentro foreignObject viene scartato (perdita, verso sicuro).
+
+**Rischi esplicitamente esclusi**
+- `RLIMIT_AS` su macOS: non verificato, non riproducibile qui. Se lì `setrlimit` fallisce, il figlio esce con 1 e si torna sempre alla lettura di sempre, senza crash.
+- Venv con selectolax installato dentro: non provato (servirebbe pip in rete). Per costruzione `-I` tiene i site-packages del venv.
+- Le misure dell'autore con l'oracolo (60 mila pagine, html5lib, 131 pagine di documentazione) non le ho rifatte: sono script fuori dal repo. Ho rifatto solo le sonde puntuali.
+
+Memoria: aggiunte la riga #520 e 2 lezioni, committate da sole con lo script (8fe2253). I file del diff restano in stage, come chiesto. Ora `git status` mostra anche `reports/stato_progetto.md` modificato e non in stage: non l'ho toccato io.
+
+### Review #521 (chat Mani) — sul diff committato in eb2df98
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #521 (chat Mani): ri-review del diff in stage su claude/peaceful-lovelace-0w2b7q, dopo la #520. Prima della review ho letto CLAUDE.md, reports/stato_progetto.md (le parti sulla fetta 19 e sulle R-520) e .claude/agents/memoria_revisore.md, applicando anche le due lezioni del 2026-10-27.
+
+**Elementi del diff esaminati**
+1. `modules/web/lexbor.py:82` — la sonda del figlio in `attivo()` parte una sola volta e il risultato resta in `_FIGLIO_OK`.
+   - Rischi esaminati: chiamate da più thread, costo, sonda in timeout, partenza da spenta.
+   - Prove rifatte con una spia su `subprocess.run`:
+     - da spenta: 0 figli lanciati e `_FIGLIO_OK` resta None;
+     - costo: circa 35 ms una volta sola, la seconda chiamata non lancia figli;
+     - 8 thread insieme alla prima chiamata: 16 figli, cioè 8 sonde più 8 letture; tutti leggono "VIS", nessun crash, esito finale True;
+     - sonda in timeout (TEMPO_MAX=0.001): False, e resta False anche dopo aver rimesso 4 s; nessun processo zombie.
+   - Esito: riserva (R-521-1, R-521-2).
+2. `modules/web/leggi.py:1431` — lexbor si usa solo se la pagina non è XHTML e `attivo()` è vero; `attivo()` viene valutato prima di `testo_visibile`, quindi da spenta non parte niente. Il ramo lexbor passa da `_pulisci` e dal tetto `MAX_TITOLO`.
+   - Rischio esaminato: tetto e pulizia non coperti dai test (era la R-520-1).
+   - Mutanti rifatti sui 20 test nuovi: senza `_pulisci` sul corpo 1 failed, senza `[:MAX_TITOLO]` 1 failed.
+   - Esito: ok, R-520-1 chiusa.
+3. `modules/web/lexbor.py:97` — `testo_visibile` passa il lavoro a `_esegui`, la stessa funzione usata dalla sonda.
+   - Mutanti rifatti: sonda ripetuta (`if True:`) 1 failed, acceso sempre (`return True`) 1 failed.
+   - Esito: ok, R-520-3 chiusa.
+4. `tests/test_unit_web_lexbor.py:66` — il test nuovo usa bidi, spazi doppi, un finto marcatore nel corpo e un titolo di 500 caratteri.
+   - Ho controllato che le asserzioni distinguano davvero il codice giusto da quello sbagliato.
+   - Esito: ok.
+5. `tests/test_unit_web_lexbor.py:85` — la chiamata reale ad `attivo()` dopo `monkeypatch.undo()` scrive `_FIGLIO_OK=True` fuori dal controllo del monkeypatch, quindi il valore resta per i test successivi.
+   - Ho controllato l'effetto sugli altri test: nessuno, perché True è il valore giusto quando selectolax c'è.
+   - Esito: riserva cosmetica (R-521-3).
+6. `modules/web/leggi.py:29` — la docstring ora dice dell'eccezione «in prova, spenta per default» e del caso peggiore da accesa (12 + 4 + 3 s).
+   - Esito: ok, R-520-2 chiusa.
+
+**Prove rifatte**
+- Suite web su Python 3.13.16 con selectolax 1.0.2: 461 passed, 1 skipped.
+- Suite web su Python 3.11 senza selectolax: 443 passed, 19 skipped.
+- Coincidono con quelle dell'autore.
+- Dopo i mutanti i file sono tornati com'erano e l'index è intatto.
 
 **Riserve**
-1. **R-511-1 BASSA**: il controllo del login viene prima di quello del limite, e il segnale `"oauth"` è largo. Un messaggio di limite raggiunto che cita «oauth», o un `result` di errore che riporta una conversazione sull'OAuth, diventerebbe un errore di login (KO) invece di QUOTA. Non manda niente ai modelli gratuiti, ma sbaglia la diagnosi. Correzione proposta: controllare prima `_prefisso_limite`, oppure restringere il segnale a «oauth session»/«oauth token».
-2. **R-511-2 BASSA**: il prefisso «forte » prende anche frasi normali («forte questo risultato…») e le manda al cervello forte. Va verso il modello più forte, quindi nessun dato finisce ai gratuiti, ma consuma il tetto giornaliero. Basta dichiararlo nel setup oppure usare un prefisso meno ambiguo (es. «/forte»).
+- R-521-1 BASSA: la sonda non ha un lock. Con N thread alla prima chiamata partono N sonde, e se falliscono il warning esce fino a N volte. «Una volta sola» vale solo in sequenza. Va nel verso sicuro (costa circa 35 ms a sonda, il risultato è lo stesso). Se serve si chiude con un `threading.Lock` attorno alla sonda.
+- R-521-2 BASSA: un fallimento passeggero della sonda (per esempio un timeout di 4 s all'avvio a freddo su una VPS carica) spegne la prova per tutta la vita del processo. Va nel verso sicuro e lascia un warning, ma la prova smette di raccogliere misure. Da valutare se distinguere il timeout dall'ImportError, o riprovare dopo un po'.
+- R-521-3 COSMETICA: `test_sonda_del_figlio` lascia `_FIGLIO_OK=True` fuori dal monkeypatch (riga 85). La riga 82, prima di `undo()`, non serve.
+- Nota COSMETICA: il messaggio «oltre %.0f s» stampa «0 s» quando il tempo massimo è sotto 0,5 s. Succede solo nei test.
+- R-520-4 COSMETICA (un `title` dentro foreignObject viene scartato): resta aperta, scritta correttamente in stato_progetto.
 
-**Cosa NON ho verificato**
-- Non ho eseguito la suite kernel (i 1041 PASS e T99r sono dichiarati, non riprodotti da me). T99r l'ho controllato solo leggendolo.
-- Non ho verificato il comportamento reale della CLI `claude` col login scaduto: si vede solo sul Mac. Mi baso sulla risposta riportata nel task.
-- Doc (`reports/r2_regole_abbonamento.md`, `scripts/notte/catalogo_esempio.yaml`) letta: coerente.
+**Rischi esplicitamente esclusi**
+- Non ho verificato il caso di selectolax visibile solo via PYTHONPATH in un venv pulito: qui la libreria è installata nel sistema. Ho verificato solo che la sonda finta (ImportError) spenga la prova.
+- Non ho verificato tempi e memoria della sonda su VPS: non si riproducono in dev.
+- Non ho rigirato la suite vecchia da accesa (gli 11 FAIL attesi): mi fido della #520, e quel codice non è cambiato in questo delta.
 
-**Memoria**: ho aggiunto la riga #511 (con una lezione sui campi di catalogo da propagare nei percorsi di ripresa) in /home/user/Gas/.claude/agents/memoria_revisore.md. Ho lanciato `scripts/commit_memoria_revisore.sh`, che non ha stampato niente: il commit della memoria non l'ho controllato.
-
-### Review #512 (integrale, ri-review del delta)
-
-## VERDETTO: APPROVATO
-
-Ri-review solo del delta staged dopo la #511: le due riserve BASSE e la COSMETICA sono chiuse, senza riserve nuove. Ho rilanciato claude_cli + notte: 182 passed. Nessun antipattern di CLAUDE.md §5 nel delta.
-
-**Elementi del diff esaminati**
-1. brains/claude_cli.py:340 — prima si controlla il limite (`_prefisso_limite`), solo dopo il login. Rischio esaminato: un messaggio di limite raggiunto che cita «oauth» trattato come login scaduto (KO invece di QUOTA). Esito: ok. Con un limite si arriva al raise con «429 », che resta QUOTA. Il messaggio di login continua a non contenere testo di Claude. **R-511-1 chiusa.**
-2. brains/claude_cli.py:82 — i segnali di login sono ristretti a «oauth session» e «oauth token». Rischio esaminato: il login scaduto vero non viene più riconosciuto. Esito: ok. Il testo della prova sul Mac contiene sia «failed to authenticate» sia «oauth session», quindi `tests/test_unit_claude_cli.py` resta coerente. Il caso opposto lo copre il nuovo test `tests/test_unit_claude_cli.py:356` (`test_limite_con_oauth_resta_quota`): ok.
-3. brains/claude_cli.py:221 — il `max(0, …)` ridondante è tolto dopo il clamp. Rischio esaminato: valori negativi. Esito: ok, il clamp alle righe 219–220 li porta già a 0. **COSMETICA chiusa.**
-4. gas.py:6023 — il prefisso nel terminale di Gas ora è «/forte » e si taglia con `[7:]`. Rischi esaminati: frase normale mandata per sbaglio al forte, taglio sbagliato. Esito: ok. «/forte » è lungo 7 caratteri, e la doc in `reports/r2_regole_abbonamento.md` è allineata. **R-511-2 chiusa.**
-
-**Cosa NON ho verificato**
-- La suite kernel (1041 PASS) non l'ho rieseguita: il delta non tocca le parti che usa T99r.
-- Non ho verificato la forma reale dei messaggi di limite della CLI `claude`: si vede solo sul Mac. I segnali restano un'euristica.
-
-**Memoria**: riga #512 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md e committata con `scripts/commit_memoria_revisore.sh` (commit «chore(revisore): memoria review #512 — APPROVATO»). La riga #511 era già committata.
-
-### Review #515 (integrale, merge di main + correzioni ve #269, commit 26ce319)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Ho letto prima CLAUDE.md (sezioni 1, 5, 8 e 10), reports/stato_progetto.md (in modo mirato) e .claude/agents/memoria_revisore.md.
-
-**Elementi del diff esaminati**
-1. `modules/web/leggi.py:222` e `tests/test_unit_web_leggi.py:1054`: codice entrato da main. Rischio esaminato: una risoluzione del merge che altera il codice di main. Esito: ok. Il contenuto staged dei due file è identico a quello di MERGE_HEAD (stesso blob, `git rev-parse :f` contro `MERGE_HEAD:f`). `git diff MERGE_HEAD --cached --stat` non li elenca.
-2. `modules/notte/notte.py:202`: V-2. Il controllo passa da `cervello is not None` a `"cervello" in v`. Così un campo `cervello:` presente ma vuoto o null (anche `~`) fa saltare il compito, invece di essere letto come «nessun vincolo» e finire ai cervelli gratuiti. Rischio esaminato: falsi salti e ordine dei controlli. Il controllo arriva dopo `attivo` e dopo il prompt, `v` è già verificato come dict, e una voce senza la chiave resta valida. Esito: ok. Prova col mutante: rimettendo `is not None`, `tests/test_unit_notte.py:2184` (voce `d` con `cervello:` vuoto) fallisce (1 failed). Ho ripristinato il file e non ci sono modifiche residue.
-3. `gas.py:6023`: V-3. Se nel REPL si scrive solo «/forte», compare il messaggio d'uso e il ciclo riparte (`continue`), senza chiamare `run_turn`, quindi niente arriva ai gratuiti. Rischio esaminato: la variante «/forte » con lo spazio finale. Il prompt viene ripulito degli spazi (`.strip()` a `gas.py:6011`), quindi quel caso non può presentarsi. Il confronto ignora maiuscole e minuscole. Esito: ok, con la riserva R-515-1 sotto.
-4. `brains/claude_cli.py:343`: V-4. Cambia solo il testo dell'errore di login («scaduto, mancante o non valido»), con la stessa eccezione e lo stesso punto in cui viene lanciata. Il controllo del limite resta prima di quello del login (chiusura di R-511-1 intatta). Esito: ok.
-5. Merge, contro HEAD: i file del motore cambiano solo per le tre correzioni (`brains/claude_cli.py` 3 righe aggiunte e 2 tolte, `gas.py` 3 aggiunte, `modules/notte/notte.py` 2 aggiunte e 1 tolta). `tests/test_unit_kernel.py` e `tests/test_unit_claude_cli.py` sono invariati rispetto a HEAD. La memoria del revisore non perde nessuna riga, né rispetto a HEAD né rispetto a MERGE_HEAD. stato_progetto.md non perde righe di main: cambia solo la riga di intestazione, che main aveva aggiornato e il ramo ha unito. Non restano marcatori di conflitto e `git diff --cached --check` è pulito. Esito: ok.
-
-Wall of Shame: nessun taglio diretto della cronologia, nessuna simulazione di output dei tool, nessun guardrail toccato (tetto di 10 iterazioni, `_get_window`).
-
-**Finding**
-- **R-515-1 BASSA**: nessun test copre il nuovo ramo del REPL «/forte» da solo (`gas.py:6023`), perché `main()` non è coperto dai test. Se qualcuno tolgo la riga, la regressione passerebbe inosservata. Proposta: un test con `input` finto, oppure spostare il riconoscimento di «/forte» in una piccola funzione testabile.
-- **R-515-2 BASSA**: «/forte» seguito da un tab invece che da uno spazio (`gas.py:6026`) non viene riconosciuto e il messaggio, con «/forte» compreso, va alla cascata normale. È un input improbabile da tastiera; si chiude con `prompt.split(maxsplit=1)`.
-
-**Cosa non ho verificato**
-- Non ho rilanciato la suite kernel (1041) né l'intero pytest (2202): mi fido dei numeri che mi hai dato. Ho rilanciato solo notte e claude_cli: 182 passed.
-- Non ho controllato i testi di reports/handoff.md, ultimo_report.md e diff_sessione.md: li hai presi dal ramo e verranno riscritti a fine task.
-- Il comportamento reale di `claude -p` col login scaduto sul computer di Gas non è riproducibile qui.
-
-**Nota operativa**: ho scritto in coda a `.claude/agents/memoria_revisore.md` la riga contatore #515 (chat Motore). `scripts/commit_memoria_revisore.sh` non ha committato perché c'è un merge in corso (`commit -o` non è permesso durante un merge). Lo script ha comunque chiuso con exit 0, come previsto. La riga è quindi modificata ma non in stage: fai `git add .claude/agents/memoria_revisore.md` prima di concludere il merge, e rilancia `bash scripts/segna_review_ok.sh` dopo l'add, così il segno di review corrisponde a quello che è in stage.
-
-### Review #516 — verdetto RIEMESSO per il gate B (commit 7e1f520)
-
-Il testo originale del #516 citava `gas.py` a una riga che non esiste più dopo 4d09301 (funzione spostata in `brains/router.py`); per la regola F-verdetto-ritoccato non è stato ritoccato: il revisore l'ha riemesso con lo stesso esito e citazioni valide. L'originale integrale è nel §4 di `reports/handoff.md` al commit 5e044f5.
-
-## VERDETTO: APPROVATO
-
-Questa è la riemissione del verdetto #516 per il gate B (`scripts/check_verdetto.py`): esito invariato, cambiano solo le citazioni, ora valide a HEAD (989b8fe). Dopo 4d09301 la funzione sta in brains/router.py. Non è una review nuova, quindi non ho aggiunto righe alla memoria.
-
-Elementi esaminati (citazioni ricontrollate sul file attuale):
-1. `brains/router.py:23` — `prefisso_forte` divide il testo con `split(None, 1)` (`brains/router.py:34`), quindi NBSP e tab contano come separatori. «/forte:x», «/fortezza x» e «/forte» nudo danno ("uso", ""), mai `run_turn`: è fail-closed. Il mutante `split(" ")` faceva fallire 2 test (NBSP e tab). Esito: ok.
-2. `gas.py:6021` — il terminale chiama `prefisso_forte`; con "uso" stampa l'istruzione (`gas.py:6023`) e fa `continue` prima di `run_turn`. Il prompt arriva già ripulito con `strip()`. Chiude R-515-1 e R-515-2. Esito: ok.
-3. `brains/claude_cli.py:327` — nel ramo «uscita non JSON» il limite viene controllato prima del login (coerente con R-511-1). Il login scaduto dà `_MSG_LOGIN` e il costo resta registrato (`brains/claude_cli.py:329`). Il ramo JSON usa lo stesso helper (`brains/claude_cli.py:356`). Esito: ok.
-4. `tests/test_unit_notte.py:2220` — copre i 4 rami di `_ordina_riprese` e il passaggio fino a `run_turn` con `cervello: forte`. `tests/test_unit_notte.py:2215` fissa i casi del prefisso, con NBSP reale. Esito: ok.
-5. `tests/test_unit_claude_cli.py:273` — il vecchio test ora usa stdout «errore inatteso»: il cambio è voluto ed è coperto da `tests/test_unit_claude_cli.py:371`. Esito: ok.
-
-Test (della review originale): claude_cli + notte, 195 passed.
-
-Rischi esclusi:
-- Il terminale vero di `main()` con `input()` non l'ho eseguito: l'ho valutato solo leggendo il codice.
-- Non ho indagato la differenza tra la suite kernel (1041) e la CI (1043).
-- Lo spostamento in brains/router.py e l'uso da Telegram e voce (4d09301) appartengono alle review #517/#518 e non li ho rivalutati qui.
-
-Finding: nessuno.
-
-### Review #517 (integrale, commit 4d09301)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Review #517, sul diff staged del branch feat/merge-automatico-z1xjx2 (PR #269): 9 file, +124/-20. Le letture obbligatorie sono fatte (CLAUDE.md, stato_progetto per la parte #269, memoria). Lo spostamento di `prefisso_forte` non cambia il comportamento e chiude R-ve269-2. Il blocco nel catalogo è fail-closed e chiude R-ve269-1. Nessun antipattern del Wall of Shame: il diff non tocca la history e non simula tool. Il cap di 10 iterazioni e `_get_window` non sono toccati.
-
-**Elementi esaminati**
-- `brains/router.py:23`: `prefisso_forte` spostata dentro il router senza cambiare logica. L'ho provata a mano: «/forte» seguito da NBSP, da a capo o da tab va al forte. «/fortex» e «/forte» seguito solo da spazi danno «uso». «forte x» senza barra non è un prefisso e va come testo normale. Rischio esaminato: regressione o import circolare. Esito: ok (router importa solo typing).
-- `gas.py:34`: importa la funzione dal router. `gas.prefisso_forte` resta valido: lo usa ancora `tests/test_unit_notte.py:2215`. `Tuple` serve ancora altrove in gas.py. Esito: ok.
-- `modules/telegram/bot.py:753`: il prefisso viene letto dopo i comandi giro e `/clear` e prima del turno. «uso» risponde con l'istruzione e non lancia il turno. Senza prefisso chiama `run_turn(text)` senza argomenti nuovi, quindi i kernel finti dei test restano compatibili. Rischio esaminato: crash del loop. Esito: ok, tutto è dentro il try esterno di `_handle_update` (fail-safe §9). La firma `cervello: Optional[str]` di `run_turn` esiste in `gas.py:4516`.
-- `modules/voice/server.py:150`: «uso» risponde 400, «forte» va al solo forte. Esito: riserva cosmetica, vedi R-517-2.
-- `modules/notte/notte.py:211`: una chiave sconosciuta che somiglia a «cervello» fa saltare il compito; le altre chiavi danno solo un avviso. La chiave viene convertita con `str(k)` prima del confronto. Ho provato il riconoscimento su chiavi comuni: «cartella», «cancello», «modello», «note», «orario» non sono riconosciute; «cervelo», «servello», «cervo» sì (meglio un falso positivo che salta il compito che un forte perso). Limite: «brain» o «cerebro» non vengono riconosciute e passano con il solo avviso. Esito: ok, fail-closed.
-- `brains/claude_cli.py:80`: il commento di `_SEGNALI_LOGIN` ora corrisponde al testo vero di `_MSG_LOGIN` («scaduto, mancante o non valido»). Anche la doc reports/r2_regole_abbonamento.md è allineata. Esito: ok.
-- Test mirati notte + voce: 193 passed. Le suite complete dichiarate (kernel 1041 PASS, pytest 2222 passed) non le ho rilanciate.
-
-**Finding**
-1. R-517-1 (BASSA): il ramo `startswith("cerv")` di `_somiglia_cervello` (`modules/notte/notte.py:145`) non è coperto dai test. Ho provato a toglierlo e i test passano lo stesso (5 passed), perché difflib da solo prende tutti i casi del test. Basterebbe un caso come «cerv» o «cervo» nel parametrize, dove serve solo `startswith`.
-2. R-517-2 (COSMETICA): la voce applica «/forte» anche al testo trascritto dall'audio, non solo all'API testo come dicono il commento e la doc. È innocuo, perché un «/forte» nudo dà 400 e non va ai gratuiti, ma il testo va allineato.
-3. Nota (nessuna gravità): il riepilogo parla di un test Telegram con NBSP, ma il test Telegram copre solo «/forte» nudo e «/forte:x». L'NBSP è coperto solo dal test della funzione, `tests/test_unit_notte.py:2209`. Va corretto il riepilogo o aggiunto il caso.
-
-**Rischio escluso**: non ho verificato il comportamento reale su Telegram e sul server voce con il forte attivo (`claude -p` dietro il login dell'abbonamento), perché in dev non si può riprodurre: mancano il Mac e il login. Non ho controllato il commento integrale della verifica esterna su GitHub: mi sono basato sulla descrizione del compito.
-
-Memoria aggiornata: riga #517 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata da sola (ace3ad3). L'index del diff staged è intatto. Durante la prova sul catalogo ho modificato modules/notte/notte.py nel working tree e l'ho poi ripristinato: nessuna differenza non staged rimasta.
-
-### Review #518 (integrale, ri-review del delta, commit 4d09301)
-
-## VERDETTO: APPROVATO
-
-Review #518, solo sul delta staged rispetto alla #517. Le due riserve sono chiuse e la mia nota 3 era sbagliata.
-
-**Elementi esaminati**
-- `tests/test_unit_notte.py:2265`: aggiunto «cervello_forte» ai casi del test. Rischio esaminato: il ramo `startswith("cerv")` di `_somiglia_cervello` (`modules/notte/notte.py:145`) non era coperto. Ho rifatto la prova togliendo quel ramo e ora il test fallisce (1 failed). R-517-1 chiusa, esito ok.
-- `modules/voice/server.py:148`: il commento ora dice «testo o trascrizione», e anche reports/r2_regole_abbonamento.md (punto 5) dice «nella voce (testo o trascrizione)». Rischio esaminato: doc diversa da quello che fa il codice. R-517-2 chiusa, esito ok.
-- `tests/test_unit_notte.py:2257`: la prima chiamata del test Telegram contiene davvero un NBSP: `cat -A` mostra i byte C2A0 tra «/forte» e «analizza». La nota 3 della #517 era una mia svista: avevo guardato il testo a video, dove l'NBSP sembra uno spazio.
-- Test mirati (catalogo e Telegram): 24 passed. Nel working tree ho ripristinato modules/notte/notte.py dopo la prova.
-
-**Rischio escluso**: non ho rilanciato le suite complete del kernel e di pytest, perché il delta riguarda solo un caso di test e due testi. Resta non verificato anche il comportamento reale del forte su Telegram e sulla voce col login dell'abbonamento, che in dev non si può riprodurre.
-
-Nota: nel working tree c'è una modifica non staged a reports/stato_progetto.md (2 righe), che non viene da me.
-
-Memoria: riga #518 in /home/user/Gas/.claude/agents/memoria_revisore.md, committata (384eab4), con una lezione nuova: per i caratteri invisibili (NBSP, tab) controllare i byte, non il testo a video.
-
-### Review #519 (integrale, merge di main + V-1 ve #269, commit 255218f)
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Ho letto le tre fonti obbligatorie: CLAUDE.md (sezione 5), la parte di reports/stato_progetto.md su R2 e #269, e la coda della memoria del revisore (#511–#518).
-
-**Elementi del diff che ho controllato**
-- `modules/notte/notte.py:211` — ogni chiave diversa da nome, prompt, attivo e cervello fa saltare il compito. Il suggerimento «forse 'cervello'?» compare solo se la chiave gli somiglia.
-  - Rischio controllato: che un vincolo scritto male mandi il compito ai modelli gratuiti, o che una chiave non testuale faccia crashare.
-  - Prove che ho fatto: una chiave numerica `1` fa saltare il compito con un avviso, senza eccezioni. `cervello: forte` viene tenuto. Ho tolto il `continue` per controllare che i test se ne accorgano: 6 test falliscono, quindi il cambio è coperto. Poi ho rimesso il file com'era.
-  - Esito: ok.
-- `tests/test_unit_notte.py:2265` — il test ora copre tre casi: la chiave simile a «cervello» fa saltare il compito col suggerimento; `brain: forte` fa saltare il compito senza «forse»; il compito pulito resta.
-  - Rischio controllato: che il test non distingua i due rami dell'avviso.
-  - Esito: ok. I test della notte danno 173 passed.
-- `scripts/notte/catalogo_esempio.yaml:9` e `reports/r2_regole_abbonamento.md:37` — la documentazione è allineata alle quattro chiavi valide. Esito: ok.
-- Merge, controllo di contesto:
-  - `git diff MERGE_HEAD --cached --stat` non elenca `modules/web/leggi.py` né `tests/test_unit_web_leggi.py`, quindi sono identici a main (MERGE_HEAD).
-  - `git diff HEAD --cached --stat` elenca come file di motore solo notte e test_notte. Le nostre modifiche a brains, gas.py, telegram, voce e ai relativi test sono quindi intatte.
-  - Ho confrontato riga per riga la memoria nell'indice con HEAD e con MERGE_HEAD: 0 righe perse da entrambe le parti.
-  - Esito: ok.
-
-**Finding**
-1. **R-519-1 (COSMETICA):** in `reports/stato_progetto.md`, alla voce 2 di «Prossimi passi», c'è ancora scritto «Resta 👤: rifare `/login` sul Mac, prova del login». La voce 1, appena aggiornata, la dà già riuscita il 26 ottobre (`ok 0.007764`). Basta togliere quelle due parti alla fine del task.
-2. **Nota BASSA, preesistente e non bloccante:** nello stesso file la voce aperta «R2 via B» dice ancora «nessun chiamante passa `cervello="forte"`», ma ora lo passano il catalogo notturno e `/forte`. Da allineare quando si aggiorna lo stato.
-
-Non ci sono slicing della cronologia, simulazioni di tool o eccezioni non gestite nei provider. I guardrail non sono toccati.
-
-**Cosa non ho verificato**
-- Non ho rilanciato le suite intere (kernel 1041 e pytest 2241); ho eseguito solo i test della notte. Per le suite intere mi baso sui numeri che hai dichiarato.
-- Non ho provato un vero giro notturno sul Mac con il report del mattino: non si può riprodurre in dev.
-- Un compito con `attivo: false` e una chiave sconosciuta viene ignorato senza avviso. Succedeva già prima e quel compito non gira comunque, quindi va bene.
-
-**Memoria:** ho aggiunto la riga #519 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md` (nessuna lezione nuova). La lascio modificata e non in stage, come mi hai chiesto per via del merge in corso, quindi non ho lanciato `commit_memoria_revisore.sh`.
+**Memoria**
+- Riga #521 e una lezione nuova (provare le cache «una volta sola» con N thread alla prima chiamata, contando i lanci reali) aggiunte a /home/user/Gas/.claude/agents/memoria_revisore.md.
+- Committate da sole con `scripts/commit_memoria_revisore.sh` (commit 14716d9).
+- I file del diff (modules/web/leggi.py, modules/web/lexbor.py, tests/test_unit_web_lexbor.py) restano in stage. reports/stato_progetto.md resta modificato e fuori stage, come l'ho trovato.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel: 1040 → 1041 PASS (T99r nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`
-- `tests/test_unit_claude_cli.py` + `tests/test_unit_notte.py`: 182 passed (2 test nuovi in claude_cli, 1 in notte; 1 modificato).
-- Dopo il merge di main e le correzioni: kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2202 passed, 1 skipped in 198.40s (0:03:18)`.
-- Dopo le correzioni del bot (7e1f520): kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2215 passed, 1 skipped in 204.14s (0:03:24)`; claude_cli + notte 195 passed.
-- Dopo la fetta del 26 (4d09301): kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2222 passed, 1 skipped in 194.31s (0:03:14)`.
-- Dopo 255218f: kernel `=== RIEPILOGO: 1041 PASS, 0 FAIL ===`; `python3 -m pytest -q tests`: `2241 passed, 1 skipped in 182.64s (0:03:02)`.
-- V-5 bot #269: in CI il kernel conta 1043 PASS (0 FAIL) su 895f329, in locale nel cloud 1041 (0 FAIL): differenza d'ambiente già vista sulla #263, causa non indagata.
+Solo la web suite (gas.py e gli altri test non toccati):
+- `python3 -m pytest -q tests/test_unit_web_*.py`: main c67ccec `441 passed, 1 skipped` → ramo `461 passed, 1 skipped in 26.68s` (3.13.16, con selectolax); `443 passed, 19 skipped in 23.94s` (3.11, senza selectolax, come la CI). +20 test in `tests/test_unit_web_lexbor.py`.
+- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `451 passed, 11 skipped in 24.30s`.
+- Suite vecchia con `GAS_WEB_LEXBOR=1`: `11 failed, 430 passed, 1 skipped` (3 test dei log del percorso html.parser; 8 casi frameset/template dove il browser mostra il testo, lexbor e html5lib concordi).
+- Mutazioni del ramo lexbor (uscita di pytest sui 20 test): corpo senza `_pulisci` → `1 failed, 19 passed`; titolo senza tetto → `1 failed, 19 passed`; senza sonda → `1 failed, 19 passed`; sonda ripetuta → `1 failed, 19 passed`; acceso sempre → `1 failed, 19 passed`; titolo non nascosto → `1 failed, 19 passed`; nascosti ignorati → `5 failed, 15 passed`; script spenti → `1 failed, 19 passed`; titolo di svg accettato → `1 failed, 19 passed`; blocchi senza a capo → `1 failed, 19 passed`; anche in XHTML → `1 failed, 19 passed`.
+- Misure della prova (script nello scratchpad): oracolo html5lib su 60 mila pagine senza template/svg/math, seed 7 `FUGHE oggi 48, lexbor 0; PERDITE oggi 2975, lexbor 1860`, seed 8 `FUGHE oggi 40, lexbor 3; PERDITE oggi 2907, lexbor 1765`, seed 9 `FUGHE oggi 41, lexbor 2; PERDITE oggi 2831, lexbor 1764`; corpus `pagine 131, testo identico (parole) 127, diverse 4`, `tempo totale oggi 10.57s, lexbor 15.76s`; robustezza `seed 1: 100000 pagine senza eccezioni né crash`, `seed 2: 100000 pagine senza eccezioni né crash`; lexbor in processo `div 100k 23.00s`, `attr 100k 36.26s`, col figlio `div 100k 4.01s -> None`, `attr 100k 4.01s -> None`.
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato: check letti con lo strumento GitHub sulla PR #269.
-- 0d253e1 → `unit-suite` success, `handoff-check` success, `verifica-bot` neutral.
-- 5e044f5 → `unit-suite` success, `handoff-check` success, `verifica-bot` neutral (PR sulla macchina del bot: decide l'operatore).
-- 895f329 → `unit-suite` success, `handoff-check` success, `verifica-bot` failure (V-1 MEDIA, chiusa in 7e1f520).
-- 51d2a6b → `unit-suite` success, `handoff-check` success.
-- 7e1f520, aa7ce20, 26ce319, 1717413, c0917bb, 861b33a, ace3ad3, 384eab4 → nessuna run propria letta (pushati insieme ad altri: testati solo nell'albero di testa del push).
-- 4d09301 → nessuna run propria (testato nell'albero di 0d253e1).
-- 255218f e commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
+`gh run list` non disponibile (gh non autenticato nel cloud); run lette dall'integrazione GitHub (`actions_list`, branch claude/peaceful-lovelace-0w2b7q):
+
+```
+40428033003  CI  push  in_progress  —  eb2df98  2026-10-27T00:41:49Z
+```
+
+Mappatura commit→run:
+- `8fe2253`, `14716d9`: nessuna run su questo SHA (pushati insieme a `eb2df98`).
+- `eb2df98` → run CI 40428033003, in corso alla scrittura dell'handoff.
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-515-1/2, R-517-1/2, R-ve269-1/2, V-1 ve #269 4° giro, R-519-1 e la COSMETICA del bot #269: CHIUSE.
-- V-1 BASSA bot #269 (ultimo giro): «/forte@NomeBot richiesta» su Telegram non riconosciuto (fail-closed: istruzione d'uso). Aperta.
-- V-3 COSMETICA ve #269: «/forte» + solo carattere invisibile va al forte. Aperta.
-- V-4 COSMETICA ve #269: differenza kernel 1041 locale / 1043 CI non indagata. Aperta.
-- Limite dichiarato: un prefisso scritto male («/frote») va come testo normale.
+- R-520-4 COSMETICA: un `title` HTML dentro foreignObject si scarta (perdita, verso sicuro).
+- R-521-1 BASSA: sonda del figlio senza lock (N thread → N sonde).
+- R-521-2 BASSA: un fallimento passeggero della sonda spegne la prova per tutta la vita del processo.
+- R-521-3 COSMETICA: `test_sonda_del_figlio` lascia `_FIGLIO_OK=True` fuori dal monkeypatch.
+- 5 casi con `<select>` in cui lexbor e html5lib divergono (standard cambiato di recente): da guardare prima di accendere.
+- Restano decisioni dell'operatore: accensione della lettura con lexbor; R-ve252-2, R-ve255-1, R-ve235-7, tempo di rete 12 s; R-518-1 e riaccensione di R-469-1 con noscript (superate se si accende lexbor).

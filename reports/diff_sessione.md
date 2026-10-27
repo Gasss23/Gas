@@ -1,17 +1,10 @@
-# DIFF SESSIONE — 2026-10-26 (chat Motore, chiusura di V-1/V-2 della verifica esterna #269)
+# DIFF SESSIONE — 2026-10-27 (chat Mani, fetta 19, PR #275)
 
-Sessione dentro la PR #269 (ancora aperta): il diff dalla base comprende anche le fette del 25 ottobre.
-
-- `brains/router.py`: `prefisso_forte` (spostata da gas.py), condivisa da terminale, Telegram e voce.
-- `brains/claude_cli.py`: login scaduto riconosciuto (JSON e testo semplice, limite prima), clamp dei token; commento allineato al messaggio vero.
-- `gas.py`: importa `prefisso_forte`; `/forte` nel terminale.
-- `modules/telegram/bot.py`: `/forte <richiesta>` da Telegram, «/forte» nudo → istruzione d'uso.
-- `modules/voice/server.py`: `/forte` dalla voce, «/forte» nudo → 400.
-- `modules/notte/notte.py`: `cervello: forte` nel catalogo; qualunque chiave sconosciuta → compito saltato (con «forse 'cervello'?» se somiglia).
-- `tests/test_unit_claude_cli.py`, `tests/test_unit_kernel.py`, `tests/test_unit_notte.py`, `tests/test_unit_voice_server.py`: test di login, costo, `/forte`, catalogo, ripresa, Telegram, voce.
-- `scripts/notte/catalogo_esempio.yaml`, `reports/r2_regole_abbonamento.md`: uso del forte e setup del Mac.
-- `.claude/agents/memoria_revisore.md`: righe #511–#519 chat Motore (unite a quelle di main).
-- `reports/stato_progetto.md`: R-496-3 e le riserve di #269 chiuse.
+- `modules/web/lexbor.py` (nuovo): lettura del testo visibile con lexbor in un processo figlio (tempo e memoria limitati), spenta per default (`GAS_WEB_LEXBOR=1`), sonda del figlio, fail-safe sulla lettura di sempre — R-ve246-5 in prova.
+- `modules/web/leggi.py`: lettura con html.parser estratta in `_testo_e_titolo` senza cambiarla; `_componi` prova lexbor se acceso e non XHTML; docstring con l'eccezione «in prova» e il caso peggiore da accesa (R-520-2).
+- `tests/test_unit_web_lexbor.py` (nuovo): 20 test (spenta per default, casi R-ve246-5, titolo, pulizia e tetti, tempo massimo, figlio rotto, sonda, XHTML); saltati senza selectolax.
+- `.claude/agents/memoria_revisore.md`: righe delle review #520 e #521 (commit del revisore).
+- `reports/stato_progetto.md`: intestazione, merge di #272, blocco «Mani — fetta 19» con le misure e le riserve.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
 Si riscrive a ogni sessione; la storia completa sta in git.
