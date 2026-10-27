@@ -1,33 +1,36 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-27 — V-1 della verifica esterna #273 (chat Motore)
+**Sessione:** 2026-10-27 — Rubrica illeggibile dichiarata in `ricorda` e `gas fida-contatto` (chat Motore)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #276 (https://github.com/Gasss23/Gas/pull/276). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge secondo CLAUDE.md §10.
-2. Prossime voci in coda: V-1 bot #273 (BASSA) e R-520-1 (BASSA).
+1. Merge della PR di questa sessione (numero nel commit successivo, dalla risposta di `create_pull_request`; `gh` nel cloud non è autenticato), fatto dall'agente da qui secondo CLAUDE.md §10.
+2. Esito della prima notte di `punto_lead` col forte (`cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Merge della PR #274**: `FATTA` — conflitto col main #275 risolto (review #525), merge su richiesta dell'operatore.
-- **Fetta 2 — V-1 ve #273**: `FATTA` — comportamento invariato (il fix proposto rompeva T20d senza chiudere un percorso reale), commento corretto e test T21b2; review #526 APPROVATO.
+- **Fetta 1 — Merge della PR #276 da qui**: `FATTA`.
+- **Fetta 2 — V-1 bot #273 e R-520-1**: `FATTA` — review #527 → #528 APPROVATO.
+- **Fetta 3 — Cosmetiche di #274/#276**: `FATTA`.
+- **Fetta 4 — Regola «merge da qui» in CLAUDE.md e RIPARTENZA aggiornata**: `FATTA`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- gas.py                             |  7 +++++--
- reports/diff_sessione.md           |  8 +++++---
+ .claude/agents/memoria_revisore.md |  4 +++-
+ CLAUDE.md                          |  1 +
+ gas.py                             | 22 ++++++++++++++++++----
+ reports/diff_sessione.md           | 11 ++++++-----
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 14 ++++++--------
- tests/test_unit_kernel.py          | 12 ++++++++++++
+ reports/stato_progetto.md          | 18 +++++++++---------
+ reports/ultimo_report.md           | 14 +++++++++-----
+ tests/test_unit_kernel.py          | 33 ++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -35,47 +38,75 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-bfc3e28 docs(fine-task): report della V-1 della verifica esterna #273
-8b6a965 fix(memoria): V-1 ve #273 — pin con contatti illeggibili: comportamento chiarito e fissato da un test
-661d2d0 chore(revisore): memoria review #526 — APPROVATO
+8610e95 fix(memoria): rubrica illeggibile dichiarata — ricorda contatto=X e gas fida-contatto (V-1 bot #273, R-520-1)
+37e4110 chore(revisore): memoria review #528 — APPROVATO
+7594529 chore(revisore): memoria review #527 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #526 (integrale, commit 8b6a965)
+### Review #527 (integrale, commit 8610e95)
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Le due riserve sono chiuse davvero. Ho controllato il codice e ho provato 3 mutanti: i test li prendono tutti.
+
+**Elementi del diff esaminati**
+- `gas.py:4011` — `_trova_contatto` legge la rubrica con `leggi_contatti`, tramite `getattr` con ripiego su `lista_contatti`. Se la lettura torna None, risponde `(None, «Rubrica dei lead NON letta…»)`. Rischi esaminati:
+  - il match esatto via `get_contatto_per_chiave` viene prima del controllo, ma su errore torna None e si arriva comunque al ramo None;
+  - `leggi_contatti` non solleva mai (`modules/memory/store.py:1225`);
+  - un mock senza il metodo usa il ripiego.
+  - Esito: ok.
+- `gas.py:4062` — `_ricorda` mostra `nota or «Nessun lead trovato…»`. Rischio esaminato: la nota di ambiguità entra in questo ramo solo quando `match` è None, quindi non c'è sovrapposizione. Esito: ok.
+- `gas.py:5701` — `fida_contatto_cmd` senza argomenti: con None stampa FAIL ed esce 1. `mem` è sempre un `MemoryStore` vero, quindi il metodo esiste. Rischio esaminato: una falsa rassicurazione su un segnale di sicurezza. Esito: ok.
+- `tests/test_unit_kernel.py:1038` — T21b2 forza `leggi_contatti` → None sull'istanza. Così `lista_contatti` passa per la catena reale e torna `[]`. Esito: ok.
+- `tests/test_unit_kernel.py:6088` — T74b5r sostituisce `gas.MemoryStore.leggi_contatti` e lo ripristina in un `finally`. Esito: ok.
+
+**Mutanti** (`gas.py` ripristinato ogni volta, `git diff` del working tree vuoto):
+1. Tolto il ramo None in `_trova_contatto` → la suite crasha con TypeError.
+2. `mem.leggi_contatti() or []` in fida-contatto → T74b5r FAIL.
+3. Tolto `nota or` → T21b3 FAIL.
+
+Suite kernel rieseguita da me: 1046 PASS, 0 FAIL.
+
+**Finding**
+1. R-527-1 COSMETICA — la docstring di `gas.py:3990` dice ancora «memoria None/degradata → (None, None)». Con memoria degradata adesso torna una nota.
+2. R-527-2 BASSA — il ripiego `getattr` (memoria senza `leggi_contatti` → `lista_contatti`) non ha un test dedicato.
+
+**Rischio escluso:** non ho rieseguito la suite pytest completa (dichiarati 2264 passed): ho girato solo il kernel e i mutanti. Le modifiche a `reports/stato_progetto.md` (G-3, frase su PR #273) le ho controllate solo nel testo del diff, non nel merito.
+
+**Memoria del revisore:** ho scritto la riga #527 e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit 7594529). Lo stesso commit ha incluso la correzione dell'etichetta «chat Motore» sulla riga #526, che era già in staging. Nell'index restano `gas.py`, `reports/stato_progetto.md` e `tests/test_unit_kernel.py`. Il diff è cambiato, quindi prima del commit va rieseguito `bash scripts/segna_review_ok.sh`.
+
+### Review #528 (integrale, ri-review del delta, commit 8610e95)
 
 ## VERDETTO: APPROVATO
 
-L'analisi regge. Ho cercato un percorso in cui un contatto non fidato arrivi al modello quando la lettura dei contatti fallisce, e non ne ho trovati. Tenere il segno a False quando la lettura fallisce è corretto: metterlo a True farebbe passare alla firma ogni scrittura con la memoria guasta (rompe T20d) senza chiudere nessun percorso reale.
+Ri-review della #527, solo sul delta in staging. Le due riserve R-527-1 e R-527-2 sono chiuse.
 
-Elementi del diff esaminati:
-1. `gas.py:3645` — nuovo commento: se la lettura fallisce, nel pin non entra nessun lead e il segno resta False di proposito. Rischio esaminato: che il commento copra un fail-open reale. `gas.py:3653` chiama `lista_contatti`, che con la lettura fallita restituisce `[]`. Quindi la lista dei lead attivi è vuota, nel pin non c'è la sezione dei lead e nessun campo di contatto raggiunge il prompt di sistema. Le eccezioni restano in fail-closed: il ramo except mette il segno a True (`gas.py:3707`). Esito: ok.
-2. `tests/test_unit_kernel.py:1035` — T21b2: rimpiazza `lista_contatti` con una funzione che restituisce `[]`, poi controlla che il pin non abbia lead, abbia ancora il diario («DM inviato a Mario») e che il segno resti False. Rischio esaminato: che il test non morda. Se si applica il fix proposto (`leggi_contatti` con True su None), il rimpiazzo non agisce più, Mario torna nel pin e la condizione «## Lead attivi not in pin_ko» fallisce. Il test quindi rileva il cambio, anche se con un messaggio di errore poco esplicito. Esito: ok.
+**Elementi del diff esaminati**
+- `gas.py:3990` — la docstring di `_trova_contatto` ora dice: «memoria None → (None, None); rubrica illeggibile → (None, nota «NON letta»)». Corrisponde al codice. Esito: ok, R-527-1 chiusa.
+- `tests/test_unit_kernel.py:1054` — T21b4 avvolge la memoria in `_MemVecchia`, che solleva AttributeError su `leggi_contatti`. Così `getattr` restituisce None e il codice usa `lista_contatti`. Rischio esaminato: che «Mario» trovasse il lead per chiave esatta senza passare dal ripiego. Non succede: la chiave in `tests/test_unit_kernel.py:998` è «mario@ex.com», quindi il lead si trova solo con la ricerca per sottostringa. Esito: ok, R-527-2 chiusa.
 
-Contesto, file non toccati:
-3. `modules/gate/gate.py:82` — `ricorda` è tra i tool di input non fidato (`UNTRUSTED_INPUT_TOOLS`): se il modello legge i contatti con `ricorda`, la finestra risulta contaminata a prescindere dal pin. Esito: ok.
-4. `gas.py:4256` — `salva_contatto` e `imposta_stato_contatto` restituiscono solo la chiave e lo stato forniti dal modello, mai campi letti da un contatto salvato. Le righe del diario scritte in turni contaminati entrano nel pin mascherate (dettagli e tipo omessi). `_pin_non_fidato_visto` resta vero fino a `clear`. Esito: nessun percorso alternativo.
+**Mutante:** il ripiego in `gas.py:4012` cambiato in `else []` fa fallire T21b4 (FAIL, 1046 PASS). Dopo il ripristino la suite kernel dà 1047 PASS e 0 FAIL, verificato da me. `gas.py` è tornato com'era: `git diff` del working tree è vuoto.
 
-Finding:
-1. COSMETICA: T21b2 rimpiazza `lista_contatti` e non `leggi_contatti`. Va bene oggi, ma se il codice passasse a `leggi_contatti` il test fallirebbe con un messaggio che non spiega il motivo. Non blocca.
+**Finding:** nessuno.
 
-Rischio escluso: non ho riprodotto un vero «database is locked» fra due processi né provato `gas notte` dal vero con il DB guasto. Il ramo d'errore è lo stesso (`leggi_contatti` → None → `[]`), già coperto da #520.
+**Rischio escluso:** non ho rieseguito la suite pytest completa, solo la suite kernel e il mutante.
 
-Verifica: kernel rifatto da me, 1044 PASS 0 FAIL.
-
-Memoria: riga #526 più una lezione, committata da sola in 661d2d0 (/home/user/Gas/.claude/agents/memoria_revisore.md).
+**Memoria del revisore:** riga #528 scritta e committata (37e4110). L'index contiene ancora solo il diff sotto review. Prima del commit va rieseguito `bash scripts/segna_review_ok.sh` sul diff attuale.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel: 1043 → 1044 PASS (T21b2 nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1044 PASS, 0 FAIL ===`
+- Kernel: 1044 → 1047 PASS (T21b3, T21b4, T74b5r), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1047 PASS, 0 FAIL ===`
+- `python3 -m pytest -q tests` (prima di T21b4): `2264 passed, 21 skipped in 209.00s (0:03:28)`.
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato. 661d2d0, 8b6a965 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+`gh` nel cloud non è autenticato. 7594529, 37e4110, 8610e95 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- COSMETICA #526: T21b2 sostituisce `lista_contatti`, non `leggi_contatti`.
-- Preesistenti: V-1 bot #273 (BASSA), R-520-1 (BASSA), R-516-1 (COSMETICA), bot #269 «/forte@NomeBot» (BASSA), COSMETICHE ve #269.
+- Nate da questa sessione: nessuna aperta (R-527-1/2 chiuse in #528).
+- Preesistenti: bot #269 «/forte@NomeBot» (BASSA); COSMETICHE ve #269; V-2 COSMETICA bot #273; R-516-1 (COSMETICA); V-2 BASSA ve #276 (test del pin con anche il diario illeggibile).

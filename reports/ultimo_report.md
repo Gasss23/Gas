@@ -1,12 +1,16 @@
-# ULTIMO REPORT — 2026-10-27 — V-1 della verifica esterna #273 (chat Motore)
+# ULTIMO REPORT — 2026-10-27 — Rubrica illeggibile dichiarata (V-1 bot #273, R-520-1) (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #276 (https://github.com/Gasss23/Gas/pull/276), secondo CLAUDE.md §10.
-2. Prossime voci in coda dalla chat Notte: V-1 bot #273 (BASSA) e R-520-1 (BASSA, `gas fida-contatto` con lettura fallita).
+1. Merge della PR di questa sessione, fatto dall'agente da qui (CLAUDE.md §10, decisione del 27 ottobre).
+2. Esito della prima notte di `punto_lead` col forte: output di `cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac.
 
 ## Esito
-- **PR #274**: mergiata dall'agente su richiesta dell'operatore («mergiata»: risultava ancora aperta per un conflitto col main #275, risolto, review #525 APPROVATO).
-- **V-1 ve #273**: FATTA (decisione dell'operatore «sì V-1 #273»), ma senza il fix proposto: provato, rompe T20d (memoria guasta → ogni scrittura alla firma) e non chiude un percorso reale (con la lettura fallita nessun lead entra nel pin). Commento di `_memoria_pin` corretto e test T21b2. Review #526 APPROVATO (una COSMETICA: T21b2 sostituisce `lista_contatti`, non `leggi_contatti`). Kernel 1044 PASS 0 FAIL.
+- **PR #276**: mergiata dall'agente da qui (decisione dell'operatore: i merge si fanno dalla sessione, mai da browser salvo ragione specifica; scritta in CLAUDE.md §10).
+- **V-1 bot #273**: FATTA — `ricorda contatto=X` con la rubrica illeggibile dice «Rubrica dei lead NON letta» invece di «Nessun lead trovato» (T21b3, ripiego T21b4).
+- **R-520-1**: FATTA — `gas fida-contatto` senza argomenti con la rubrica illeggibile dà FAIL (exit 1), mai «Nessun lead segnato» (T74b5r).
+- **Cosmetiche** di #274/#276: FATTE (T21b2 sulla catena reale, etichetta #526, frase dello stato, ANTHROPIC_API_KEY in G-3).
+- Review #527 APPROVATO CON RISERVE (R-527-1/2 chiuse), #528 APPROVATO. Kernel 1047 PASS 0 FAIL; pytest tests 2264 passed, 21 skipped (prima di T21b4).
+- **RIPARTENZA** aggiornata in `reports/stato_progetto.md` per la prossima chat.
 
 ## Anomalie
 - Nessuna.
