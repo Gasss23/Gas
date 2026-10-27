@@ -26,13 +26,13 @@
 
 ```
  .claude/agents/memoria_revisore.md |   9 +++++++++
- modules/web/leggi.py               |  75 +++++++++++++++++++++++++++++++++++++++++++++++----------------------------
- modules/web/lexbor.py              | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ modules/web/leggi.py               |  75 ++++++++++++++++++++++++++++++++++++++++++++++----------------------------
+ modules/web/lexbor.py              | 119 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/diff_sessione.md           |  11 ++++++-----
  reports/handoff.md                 | n/d (commit finale)
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  58 ++++++++++++++++++++++++++++++++++++++++++++++++++++------
- tests/test_unit_web_lexbor.py      | 166 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  58 +++++++++++++++++++++++++++++++++++++++++++++++++++------
+ tests/test_unit_web_lexbor.py      | 166 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
 NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat` preso con i report in stage, prima del commit finale.
@@ -40,6 +40,7 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+dec5a5b docs(fine-task): Mani fetta 19, secondo giro — report, handoff, stato (PR #275, review #522-#524)
 95fda3d test(web): isolamento del processo figlio di lexbor fissato da test (V-2 ve #275)
 f2a9509 chore(revisore): memoria review #524 — APPROVATO CON RISERVE
 c3a5292 chore(revisore): memoria review #523 — APPROVATO CON RISERVE
@@ -152,8 +153,13 @@ Review #521 (chat Mani): ri-review del diff in stage su claude/peaceful-lovelace
 - Committate da sole con `scripts/commit_memoria_revisore.sh` (commit 14716d9).
 - I file del diff (modules/web/leggi.py, modules/web/lexbor.py, tests/test_unit_web_lexbor.py) restano in stage. reports/stato_progetto.md resta modificato e fuori stage, come l'ho trovato.
 
-### Review #522 (chat Mani) — merge di origin/main 1422021, commit 018c860
+### Review #522 (chat Mani) — merge di origin/main 1422021, commit 018c860: verdetto RIEMESSO dal revisore
 
+Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` solo file entrati da main, che non sono nel diff di sessione (base 1422021 dopo il merge): il Gate B lo ha rifiutato (1 citazione valida su 2). Come da regola il testo non è stato ritoccato: il revisore lo ha riemesso con lo stesso esito e le stesse conclusioni, aggiungendo citazioni sui file del diff. Fa fede il verdetto riemesso; l'originale resta qui per tracciabilità.
+
+Verdetto originale (sostituito dalla riemissione):
+
+```text
 ## VERDETTO: APPROVATO
 
 Review #522 (chat Mani). Ho controllato il merge di origin/main 1422021 (PR #271 e #273) nel branch claude/peaceful-lovelace-0w2b7q (PR #275, HEAD 4557f31). Il merge è ancora in corso e la stage è quella di adesso.
@@ -189,6 +195,46 @@ Nel diff non c'è slicing diretto della history né simulazione dell'output dei 
 
 **Memoria del revisore**
 Ho aggiunto la riga #522 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza lezioni nuove, e l'ho messa in stage con `git add`. Lo script di commit non l'ho usato perché il merge è in corso. La riga segnala che le chat Mani e Notte hanno usato gli stessi numeri #520 e #521, e che il contatore riprende da #522.
+```
+
+Verdetto riemesso:
+
+## VERDETTO: APPROVATO
+
+Review #522 (chat Mani), riemessa con lo stesso esito e le stesse conclusioni. Ho aggiunto solo le citazioni sui file del diff di sessione (`git diff 1422021..HEAD`): modules/web/leggi.py, modules/web/lexbor.py e tests/test_unit_web_lexbor.py. La review riguarda il merge di origin/main 1422021 (PR #271 e #273, chat Notte) nel branch claude/peaceful-lovelace-0w2b7q (PR #275, HEAD della PR 4557f31). Il merge è stato poi committato come 018c860, con genitori 4557f31 e 1422021.
+
+Ho letto le tre fonti obbligatorie: CLAUDE.md (sezioni 5, 8 e 9), le sezioni rilevanti di reports/stato_progetto.md e la coda di .claude/agents/memoria_revisore.md.
+
+**Elementi del diff di sessione esaminati (codice della PR)**
+- `modules/web/leggi.py:1385` — `_testo_e_titolo`, il punto dove si sceglie fra lexbor e il parser di Gas. Rischio: che il merge abbia toccato il codice della PR. Esito **ok**: `git diff 4557f31 018c860 -- modules/web` è vuoto, quindi il merge non tocca il file, e durante il merge leggi.py non compariva in `git diff --cached HEAD`.
+- `modules/web/lexbor.py:75` — `attivo()`: la prova lexbor resta spenta salvo GAS_WEB_LEXBOR=1, con la sonda del figlio. Rischio: che i cambi di main (contatti e notte) la riaccendano o ci interferiscano. Esito **ok**: il blob è invariato rispetto alla PR, e fra modules/web e `leggi_contatti` o la notte non c'è nessuna dipendenza.
+- `tests/test_unit_web_lexbor.py:24` — `test_spento_per_default`, il test che fissa lo stato spento. Rischio: un test della PR perso o cambiato dal merge. Esito **ok**: file invariato (anche lui assente dal diff fra 4557f31 e 018c860) e passa nel giro web+notte.
+
+**Elementi di contesto entrati da main (fuori dal diff di sessione, verificati nel merge)**
+- `gas.py:4126` — `_lead_fermi` con `leggi_contatti`. Esito **ok**: blob identico a MERGE_HEAD (c1bce57).
+- `modules/memory/store.py:1225` — `leggi_contatti` dà None su `sqlite3.Error`/`OSError`, con il warning nel log e il fallback (sezione 9 rispettata). Esito **ok**: blob identico a main (359d0d8).
+- `modules/notte/notte.py:545` — None diventa «non letti». Esito **ok**: blob identico a main (c7eafad).
+
+**Controlli meccanici sul merge**
+1. **File del perimetro e report notte:** gas.py, modules/memory/store.py, modules/notte/notte.py, tests/test_unit_kernel.py, tests/test_unit_notte.py, reports/coda_notte.md e reports/report_notte.md stanno tutti col blob di MERGE_HEAD. Nessuna mescolanza.
+2. **Report tenuti dalla PR:** reports/handoff.md, reports/ultimo_report.md e reports/diff_sessione.md sono rimasti quelli della PR (--ours).
+3. **memoria_revisore.md:** nessuna riga persa né rispetto a HEAD né rispetto a MERGE_HEAD. Le righe #520 e #521 di Mani e di Notte ci sono tutte.
+4. **stato_progetto.md:** la riga «Ultimo aggiornamento» è stata unita a mano, con la voce Mani fetta 19 davanti e poi la catena completa di main. La voce «fetta 18» viene dalla PR: nella base è uguale a main (stesso md5) e la PR l'ha cambiata, quindi il merge a tre vie l'ha presa giustamente dalla PR.
+5. **Marcatori di conflitto:** nessuno.
+
+**Prove rifatte (Python 3.13)**
+- **Test web e notte:** 655 passed e 1 skipped.
+- **Test del kernel:** 1038 PASS e 1 FAIL. Il FAIL è T31g, un problema dell'ambiente già notato nella #510.
+
+**Rischio escluso**
+Non ho rifatto la review semantica né i mutanti di PR #271/#273: sono già stati revisionati nella #515/#516 e #520/#521 della chat Notte. Qui ho verificato solo che i blob entrino intatti.
+Non ho verificato il comportamento in CI e con Python 3.11 dopo il merge, perché ho girato solo con 3.13. Non ho rifatto neanche il T31g su un worktree pulito di main: mi sono fidato della prova dell'autore.
+
+**Wall of Shame**
+Nel diff non c'è slicing diretto della history né simulazione dell'output dei tool. Il cap di 10 iterazioni, il cap di 8k e `_get_window` non sono toccati.
+
+**Memoria del revisore**
+Non l'ho aggiornata, come mi hai chiesto: la riga #522 è già in /home/user/Gas/.claude/agents/memoria_revisore.md dal primo invio.
 
 ### Review #523 (chat Mani) — primo diff staged dei test di isolamento
 
@@ -293,6 +339,7 @@ Mappatura commit→run:
 - `018c860` → run CI 40430137225 success.
 - `c3a5292`, `f2a9509`: nessuna run su questo SHA (pushati insieme a `95fda3d`).
 - `95fda3d` → run CI 40430887843, in corso alla scrittura dell'handoff.
+- `dec5a5b` (primo commit di fine-task di questo giro, fermato dal Gate B sul verdetto #522 e mai pushato da solo): nessuna run su questo SHA.
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
