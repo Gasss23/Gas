@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-27 — Mani fetta 20: lettura con lexbor pronta per l'accensione, ancora spenta, chat Mani
+**Sessione:** 2026-10-27 — Mani fetta 20 con secondo giro: lettura con lexbor pronta per l'accensione, ancora spenta, chat Mani
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #277 (https://github.com/Gasss23/Gas/pull/277). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5034496930","url":"https://github.com/Gasss23/Gas/pull/277"}`); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head. Il merge non accende niente.
+1. Merge della PR #277 (https://github.com/Gasss23/Gas/pull/277). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5034496930","url":"https://github.com/Gasss23/Gas/pull/277"}`; `actions_list` riporta `"pull_requests":[277]` sulla run di 0418f37); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head. Il merge non accende niente.
 2. Accensione: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt`; poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
 3. Poi, una alla volta: R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
@@ -15,12 +15,10 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Preparazione dell'accensione della lettura con lexbor (richiesta dell'operatore «prepara l'accensione»)**: `FATTA` — lettura ancora spenta per default.
-  - R-521-1 (lock della sonda), R-521-2 (riprova dopo timeout): `FATTA`.
-  - V-1 bot #275 (solo Linux), V-2 bot #275 (stderr nel warning), stima con la sonda: `FATTA`.
-  - R-521-3, R-524-1 (cosmetiche): `FATTA`.
-  - Casi con `<select>` → nascosti select, datalist, rp, attributo `hidden`, dialog chiusi: `FATTA`.
-  - R-525-1/2/3 (review #525): `FATTA`.
-  - R-526-1 COSMETICA (doppio controllo sotto lock senza test), R-520-4 COSMETICA: `DEFERITA — cosmetiche, verso sicuro`.
+  - Primo giro (ab5eb1d): R-521-1/2/3, R-524-1, V-1/V-2 bot #275, stima dei tempi, select/datalist/rp/hidden/dialog chiusi, R-525-1/2/3: `FATTA`.
+  - Secondo giro (0418f37): V-1/V-2/V-3 bot #277 e V-1..V-5 verifica esterna #277 (V-1 ve = merge di main c75f462 in 33e0d42): `FATTA`.
+  - R-527-1/2/3/4, R-528-1/2: `FATTA`.
+  - R-528-3, R-529-1, R-526-1, R-520-4 (cosmetiche): `DEFERITA — cosmetiche, verso sicuro (mai testo nascosto)`.
 - **Accensione vera**: `DEFERITA — serve la chat Motore (requirements, CI, ambiente del VPS)`.
 
 ---
@@ -28,21 +26,27 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   4 ++++
+ .claude/agents/memoria_revisore.md |  11 +++++++++++
  modules/web/leggi.py               |   7 ++++---
- modules/web/lexbor.py              |  83 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
- reports/diff_sessione.md           |  12 ++++++------
+ modules/web/lexbor.py              | 191 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------
+ reports/diff_sessione.md           |   9 ++++++---
  reports/handoff.md                 | n/d (commit finale)
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  84 ++++++++++++++++++++++++++++++++++++++----------------------------------------------
- tests/test_unit_web_lexbor.py      |  75 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  39 +++++++++++++++++++++++++++++++--------
+ tests/test_unit_web_lexbor.py      | 156 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat` preso con i report in stage, prima del commit finale.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat c75f462` preso con i report in stage, prima del commit finale. BASE = `git merge-base origin/main HEAD` = c75f462 (dopo il merge di main 33e0d42).
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+0418f37 feat(web): fetta 20 secondo giro — select, details, hidden e sonde come il browser (PR #277)
+4f30374 chore(revisore): memoria review #529 — APPROVATO CON RISERVE
+d4ac3c9 chore(revisore): memoria review #528 — APPROVATO CON RISERVE
+3a23c4f chore(revisore): memoria review #527 — APPROVATO CON RISERVE
+33e0d42 Merge origin/main (c75f462, PR #274) in claude/peaceful-lovelace-0w2b7q (PR #277)
+dbe5efc docs(fine-task): Mani fetta 20 — report, handoff, stato (PR #277, review #525-#526)
 ab5eb1d feat(web): lettura con lexbor pronta per l'accensione, ancora spenta (fetta 20 Mani)
 ffe99a8 chore(revisore): memoria review #526 — APPROVATO CON RISERVE
 88dd43a chore(revisore): memoria review #526 — APPROVATO CON RISERVE
@@ -53,7 +57,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore ab5eb1d: review #525 sul primo diff e #526 dopo la chiusura di R-525-1/2/3. Verdetti integrali:
+Commit motore ab5eb1d: review #525 sul primo diff e #526 dopo la chiusura di R-525-1/2/3. Commit motore 0418f37: review #527 sul secondo giro, #528 dopo R-527-1..4, #529 dopo R-528-1/2. Il merge 33e0d42 non porta file del perimetro (solo reports/roadmap.md da main): niente review. Verdetti integrali:
 
 ### Review #525 (chat Mani) — primo diff staged
 
@@ -118,31 +122,170 @@ Review #526 (chat Mani): ri-review del diff staged su claude/peaceful-lovelace-0
 
 **Memoria**: ho aggiunto la riga #526 a `/home/user/Gas/.claude/agents/memoria_revisore.md`, nessuna lezione nuova. È committata con `scripts/commit_memoria_revisore.sh` (88dd43a). Un secondo commit, ffe99a8, corregge la riga citata da :105 a :106. I file del diff sotto review sono rimasti in stage.
 
+### Review #527 (chat Mani) — secondo giro, diff staged poi committato in 0418f37
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #527 (chat Mani). Diff staged di PR #277, branch claude/peaceful-lovelace-0w2b7q: modules/web/lexbor.py e tests/test_unit_web_lexbor.py. Ho riletto lo stage dopo l'avviso del coordinatore: lo stage non era vuoto quando l'ho letto. Lo SHA-256 di `git diff --cached` è e8485308…1759 sia all'inizio sia alla fine della review, e i file sono ancora in stage. Prima della review ho letto CLAUDE.md §5, reports/stato_progetto.md (fetta 20) e la memoria del revisore.
+
+**Elementi del diff esaminati**
+- modules/web/lexbor.py:81 — risalita da opzione a select: scarta se un antenato è nascosto (tag in `nascosti`, select, `hidden`/dialog chiuso). Rischio esaminato: testo nascosto che esce dal ramo delle opzioni. Il codice è corretto: con datalist, svg, object o canvas fra select e opzione esce W2, quella giusta. Però nessun test fissa la guardia sui tag. Il mutante che toglie `sopra.tag in nascosti` passa 38 su 38, e con quel mutante i 4 casi fanno uscire W1 (fuga reale). Esito: **riserva R-527-1**.
+- modules/web/lexbor.py:88 — filtro `not nascosto(o)` sull'opzione stessa (attributo `hidden`). Anche questo mutante passa 38 su 38: il test di tests/test_unit_web_lexbor.py:72 prende solo l'antenato `div hidden`. Esito: riserva, dentro R-527-1.
+- modules/web/lexbor.py:78 — `visibile_in`, cioè una risalita per ogni opzione trovata da `select.css("option")`. Rischio esaminato: costo. Il costo è opzioni × profondità. `<select multiple>` con 2000 div annidati e 2000 opzioni pesa 50 KB: risalita 3,43 s, figlio oltre i 4 s, si torna alla lettura di sempre. La stessa pagina su HEAD gira in 0,10 s. Su HEAD il ripiego era già forzabile con circa 250 KB di div annidati: non è una classe nuova, ma la soglia scende di circa 5 volte. Pagine reali (10 mila select da 10 opzioni, 1 MB): 0,46 s. Esito: **riserva R-527-2**.
+- modules/web/lexbor.py:98 — testo dell'opzione da `label` oppure da `visita(o, dentro_opzione=True)`. Rischio esaminato: script, style, svg, title o `hidden` dentro l'opzione. Sondati: escono solo i testi visibili; `label=''` ricade sul testo come da spec; il title dentro un'opzione diventa il titolo della scheda, coerente con la regola «primo title del documento». Esito: ok.
+- modules/web/lexbor.py:90 — `size` letto con `int()` di Python. Rischio esaminato: valori ostili. `size="1_0"` e `size="٣"` (cifra araba) danno la lista intera, mentre il browser mostra la tendina. `size="3abc"` dà la tendina, mentre il browser fa 3 righe. Un numero da 5000 cifre fa ValueError, intercettato: niente crash. Esito: riserva cosmetica, dentro R-527-3.
+- modules/web/lexbor.py:95 — scelta dell'opzione mostrata (l'ultima `selected`, altrimenti la prima). Rischio esaminato: coerenza con lo spec. Senza `selected` il browser prende la prima opzione NON disabilitata, Gas la prima in assoluto. Col segnaposto comune `<option hidden selected>Scegli` il browser mostra «Scegli» nel select chiuso, Gas mostra l'opzione dopo. Non esce testo nascosto: sono opzioni che si vedono aprendo la tendina. Esito: **riserva R-527-3**.
+- modules/web/lexbor.py:123 — `if not dentro_opzione` e il controllo `sopra.tag == "select"` alla riga 81. Rischio esaminato: select annidati. lexbor non annida mai i select (`<select><div><select>` chiude il primo; `<option>` dentro un'opzione la chiude). Questi rami sono quindi irraggiungibili dal parser, solo difensivi, e i loro mutanti passano 38 su 38. Esito: **riserva R-527-4**.
+- modules/web/lexbor.py:78 — confronto fra nodi con `mem_id`. Verificato in selectolax: `o.parent is s` è sempre False (a ogni accesso nasce un involucro nuovo), `mem_id` è un int ed è uguale per lo stesso nodo. Il confronto con `mem_id` è corretto; `is` è ridondante ma innocuo. Il mutante «solo `is`» viene preso. Esito: ok.
+- modules/web/lexbor.py:136 — `hidden` su body o html dà testo vuoto, il titolo resta. `hidden=false` nasconde comunque, come il browser. Il mutante «body ignorato» viene preso da tests/test_unit_web_lexbor.py:57. Esito: ok.
+- modules/web/lexbor.py:100 — `primo_summary`: solo un summary figlio diretto, che passa comunque dal controllo hidden. Sondati il summary non figlio (testo vuoto; il browser mostrerebbe «Details», perdita accettabile) e un summary `hidden` per primo (testo vuoto). Esito: ok.
+- modules/web/lexbor.py:162 — `_SONDE_FALLITE` incrementato solo sotto `_SONDA`, che è un lock non bloccante con doppio controllo su `_RIPROVA_DOPO`; si spegne con `>= MAX_SONDE` alla riga 163. Mutanti presi: `>` invece di `>=`, e `_RIPROVA_DOPO` non impostato (da tests/test_unit_web_lexbor.py:162 e dal test della sonda oltre il tempo). Esito: ok. Effetto dichiarato: dopo 3 sonde fallite, a 600 s una dall'altra, la lettura resta spenta finché il processo vive.
+- Contesto: modules/web/leggi.py:1431 — il chiamante passa `_TAG_NASCOSTI`, che contiene canvas, iframe, math, noembed, noframes, noscript, object, script, style, svg e template. Ricorsione limitata a 2 livelli (visita, opzione, visita senza select). Nessuno slicing della history (`scelte[-1:]` e `tutte[:1]` sono liste di opzioni) e nessuna simulazione di tool.
+
+**Riserve da tracciare in stato_progetto**
+- **R-527-1 (chat Mani) BASSA**: aggiungere casi parametrizzati per un'opzione `selected` dentro datalist, svg, object o canvas dentro il select, e per un'opzione con l'attributo `hidden` (riga 81 e riga 88). Oggi le guardie antifuga sono giuste ma nessun test le fissa.
+- **R-527-2 (chat Mani) BASSA, da chiudere prima dell'accensione**: `visibile_in` è quadratico. Proposta: memorizzare i `mem_id` degli antenati già verificati, oppure raccogliere le opzioni scendendo dall'alto con la stessa visita iterativa.
+- **R-527-3 (chat Mani) COSMETICA**: scelta dell'opzione (prima non disabilitata, segnaposto `hidden selected`) e lettura di `size` diverse dallo spec. Fissare la regola o dichiarare la differenza.
+- **R-527-4 (chat Mani) COSMETICA**: dichiarare che i rami sui select annidati sono difensivi e irraggiungibili dal parser. Oggi il report dice «dentro un'opzione un select annidato non si legge», come se fosse un caso reale.
+
+**Prove eseguite**: lexbor 38 passed con Python 3.13.16 e selectolax; 3 passed e 35 skipped con 3.11 senza selectolax; suite web con `-k web` 480 passed, 1 skipped. Ho provato 10 mutanti (5 presi, 5 sopravvissuti, descritti sopra) e 22 sonde sui casi limite. Il file modificato per i mutanti è stato ripristinato: SHA dello stage invariato, nessuna modifica fuori stage.
+
+**Rischio escluso**: non ho rifatto l'oracolo html5lib sulle 60 mila pagine né il confronto sulle 131 pagine locali: mi sono fidato delle misure dell'autore. Non ho verificato nel vero Chrome come appaiono le opzioni dentro un details chiuso o un dialog chiuso dentro il select (Gas legge la prima e scarta la seconda, quindi nel peggiore dei casi perde testo, non lo fa uscire). Non ho verificato il comportamento sul VPS: ambiente non disponibile qui.
+
+**Memoria**: riga #527 e 2 lezioni (selectolax: `is` contro `mem_id` e costo delle risalite; guardie su liste di tag da provare col mutante che toglie la lista). Commit atomico 3a23c4f fatto con `commit_memoria_revisore.sh`; i file del diff restano in stage.
+
+File: /home/user/Gas/modules/web/lexbor.py, /home/user/Gas/tests/test_unit_web_lexbor.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #528 (chat Mani) — dopo la chiusura di R-527-1..4
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #528 (chat Mani). È la seconda revisione, dopo la #527, del diff in stage (`git diff --cached`) sul branch claude/peaceful-lovelace-0w2b7q (PR #277). Prima della review ho letto CLAUDE.md, le voci di reports/stato_progetto.md su R-527 e lexbor, e la coda di memoria_revisore.md. Il diff non contiene antipattern: niente slicing della history, niente simulazione dei tool. I guardrail (10 iterazioni, `_get_window`, fail-safe §9) non vengono toccati. Se il figlio cade, si torna alla lettura normale di leggi.py.
+
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:78` — `opzioni_visibili` raccoglie le opzioni con una pila di iteratori, senza ricorsione. — Rischio: perdere guardie rispetto alla vecchia `visibile_in`. — **ok**. Le guardie ci sono tutte: tag nascosti, `nascosto()` (hidden e dialog chiuso), select annidati, nessuna discesa dentro le opzioni. Prove:
+  - dialog chiuso → D2, dialog aperto → D1;
+  - optgroup hidden → H2;
+  - template, noscript e math (con il `_TAG_NASCOSTI` vero) → la seconda opzione.
+  
+  Mutanti presi (1 failed ciascuno): versione quadratica, senza tag nascosti, senza `nascosto`.
+- `modules/web/lexbor.py:87` — salta i nodi non elemento. — Rischio: guardia senza test. — **riserva (R-528-1)**. Ho verificato che `attrs` su un commento solleva TypeError («attrs is only available for element nodes»). Il mutante senza questa riga però passa 52/52: il figlio esce con 1, e il ripiego di leggi.py nasconde i commenti lo stesso. Il caso a `tests/test_unit_web_lexbor.py:78` passa da `_componi` e quindi non distingue lexbor dal ripiego.
+- `modules/web/lexbor.py:95` — `intero()` legge `size`. — Rischio: divergenze dalle regole HTML degli interi non negativi. — **ok**. Risultati: `+2` → lista; `-2`, `0` e `''` → tendina; `' 2'` e `3abc` → lista; `1_0` e la cifra araba → tendina. Il mutante senza `lstrip` viene preso (1 failed).
+- `modules/web/lexbor.py:113` — tendina chiusa: l'ultima `selected`, altrimenti la prima libera. — Rischio: scostamento dallo standard. — **ok per il segnaposto `hidden selected`**: la selectedness esplicita vince anche se l'opzione è hidden o disabled (S1 mostrato); con tutte le opzioni disabled non si mostra niente. **Riserva cosmetica (R-528-2)** sul caso senza `selected`. Mutanti presi: «libere con hidden», «scelte senza hidden», «lista con hidden».
+- `tests/test_unit_web_lexbor.py:135` — test di tempo, < 2 s. — Rischio: test instabile. — **ok**. Tempi misurati:
+  - a riposo, 8 ripetizioni: 0,43–0,54 s;
+  - con 8 processi che consumano CPU su 4 core: 1,0–1,27 s, margine circa 1,6x.
+  
+  Il mutante quadratico viene preso. In CI il test è saltato perché selectolax non è installato.
+- Contesto: `modules/web/leggi.py:1431` — il chiamante passa `_TAG_NASCOSTI` e `_Estrattore._BLOCCHI`. Il diff non lo tocca.
+
+**Riserve**
+- **R-528-1 BASSA**: la guardia `is_element_node` a `modules/web/lexbor.py:87` non è fissata da nessun test. Il mutante finisce nel ripiego e passa. Correzione: aggiungere `assert lexbor.testo_visibile("<select><!--W1--><div><!--W2--><option>W3</option></div></select>", frozenset(), frozenset()) is not None` (meglio con il valore esatto).
+- **R-528-2 COSMETICA**: con `<select><option hidden>W1<option>W2</select>` lo standard mostra W1 (la selezione automatica prende la prima opzione non disabilitata, hidden non conta); Gas mostra W2.
+  - Il commento a `modules/web/lexbor.py:111` dice «la prima non disabilitata», ma il codice a `modules/web/lexbor.py:114` esclude anche le nascoste, e il test lo fissa.
+  - Non è una fuga da un contenitore nascosto: W2 si vede nel menu aperto.
+  - Da allineare allo standard, oppure da dichiarare come scelta.
+- **R-528-3 COSMETICA**: lexbor annida le option una dentro l'altra (`<select><option>A<div><option selected>B` → B dentro A, verificato con `.html`).
+  - Oggi si mostra A con il testo «AB». Per quanto ne so è coerente con lo standard, dove le opzioni annidate non entrano nella lista.
+  - Però il mutante «scende nelle opzioni» sopravvive: nessun test fissa questo comportamento.
+  - Sopravvivono anche i mutanti difensivi `!= "select"` (`modules/web/lexbor.py:91`) e `dentro_opzione` (`modules/web/lexbor.py:144`). Sono equivalenti, come già dichiarato per R-527-4.
+
+**Rischi esclusi**
+- Non ho fatto un confronto su un browser reale (Chrome/Firefox) per i casi del segnaposto hidden e delle option annidate: in questo ambiente non c'è un browser. R-528-2 e R-528-3 si basano sulla mia lettura dello standard HTML.
+- Non ho rifatto il fuzz con l'oracolo html5lib sulle 60 mila pagine: il dato è dell'autore.
+- Non ho rivisto la logica della sonda (`MAX_SONDE`), già approvata nella #527.
+
+**Prove eseguite**
+- Lexbor: 52 passed su 3.13.16 con selectolax 1.0.2; 3 passed e 49 skipped su 3.11.
+- Web più lexbor: 493 passed, 1 skipped.
+- 11 mutanti in tutto, poi file ripristinato: `git diff modules/web/lexbor.py` vuoto, stage intatto.
+
+**Memoria**: aggiunta la riga #528 con una lezione nuova (le guardie del figlio vanno provate con `testo_visibile(...) is not None`, non solo con il testo finale passato da `_componi`). Commit d4ac3c9, fatto con `scripts/commit_memoria_revisore.sh`. I due file del diff restano in stage.
+
+File:
+- /home/user/Gas/modules/web/lexbor.py
+- /home/user/Gas/tests/test_unit_web_lexbor.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #529 (chat Mani) — dopo la chiusura di R-528-1/2, diff committato in 0418f37
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #529 (chat Mani). Fetta 20, terzo giro sulla PR #277. Ho esaminato il diff in stage: `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`, 195 righe aggiunte e 38 tolte. Lo stage non è stato toccato.
+
+Letture obbligatorie fatte: CLAUDE.md §5, reports/stato_progetto.md (voce fetta 20), memoria_revisore.md (#527, #528 e lezioni).
+
+**Elementi del diff esaminati**
+1. `tests/test_unit_web_lexbor.py:136` — nuovo test `test_commenti_nel_select_restano_a_lexbor`. Chiama `testo_visibile` direttamente e verifica sia `is not None` sia il testo esatto `["W3"]`.
+   - Rischio: il test passa anche quando il figlio cade e scatta il ripiego (lezione di #528).
+   - Prova col mutante che toglie la guardia di `modules/web/lexbor.py:87`: fallisce SOLO questo test (1 fallito, 52 passati). Il caso parametrico gemello passa ancora tramite il ripiego, quindi questo test serve davvero.
+   - Esito: ok. **R-528-1 CHIUSA.**
+2. `modules/web/lexbor.py:115` — `libere` filtra solo `disabled`, cioè la selezione automatica dello standard (l'attributo hidden non conta). `modules/web/lexbor.py:116` tiene l'ultima opzione con selected, se no la prima libera. `tests/test_unit_web_lexbor.py:83` ora si aspetta W1.
+   - Rischio: un'opzione nascosta potrebbe far uscire testo da un contenitore nascosto.
+   - Non succede: `opzioni_visibili` (`modules/web/lexbor.py:78`) scarta ancora i sotto-alberi nascosti PRIMA del filtro, e il commento a `modules/web/lexbor.py:111` ora descrive il codice.
+   - Esito: ok. **R-528-2 CHIUSA.**
+3. `modules/web/lexbor.py:104` — `opzioni()`, verificata con alcune pagine di prova lanciate direttamente.
+   - `<select><optgroup disabled><option>A</optgroup><option>B</select>`: Gas mostra A, mentre per lo standard un'opzione dentro un optgroup disabilitato è disabilitata e il browser mostra B.
+   - Esito: riserva, vedi R-529-1.
+
+**Mutanti** (su una copia del repo nella scratchpad), tutti presi:
+- senza la guardia sui commenti
+- `libere` che esclude anche le hidden
+- `libere = tutte` (senza filtro disabled)
+- prima opzione selected invece dell'ultima
+- ultima opzione libera invece della prima
+- senza il controllo hidden su html
+- sonde spente al primo fallimento
+
+**Test**: lexbor 53 passati; web 495 passati e 1 saltato su Python 3.13.16 con selectolax 1.0.2. Il 495 al posto del vostro 494 viene dal filtro `-k web`, che prende un test in più.
+
+**Riserve**
+- R-529-1 (chat Mani), COSMETICA: Gas non considera disabilitate le opzioni dentro `<optgroup disabled>`, quindi nella tendina chiusa sceglie l'opzione sbagliata. Non fa uscire testo nascosto: è solo una differenza dal browser. Si corregge in `modules/web/lexbor.py:115` guardando anche il genitore optgroup.
+- R-528-3, COSMETICA (option dentro option): resta dichiarata e non corretta, come da vostra scelta.
+
+**Rischi esclusi**
+- Su Python 3.11 non ho rieseguito: lì manca selectolax e i test lexbor vengono saltati.
+- Non ho controllato con un browser vero cosa mostrano Chrome e Firefox per una tendina con tutte le opzioni disabilitate: mi baso sul testo dello standard.
+- Wall of Shame: nessuno slicing della history né simulazione dei tool. Il diff non tocca kernel e provider.
+
+Memoria aggiornata con la riga #529 (chat Mani) e una lezione (il «disabled» di un'opzione comprende l'optgroup disabilitato che la contiene). Committata da sola nel commit 4f30374: `/home/user/Gas/.claude/agents/memoria_revisore.md`.
+
+Nota: in quel file la riga #528 compare due volte (riga 901 e penultima riga). Non l'ho toccata: va sistemata a mano.
+
 ## §5 DELTA TEST DEL MOTORE
 
-Solo la web suite (gas.py e gli altri test non toccati), codice finale ab5eb1d:
-- `python3 -m pytest -q tests/test_unit_web_*.py`: main a0bf5c9 `463 passed, 1 skipped` → ramo `469 passed, 1 skipped in 28.81s` (3.13.16, con selectolax); `444 passed, 26 skipped in 26.00s` (3.11 locale, senza selectolax). `tests/test_unit_web_lexbor.py` da 22 a 28 test.
-- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `459 passed, 11 skipped in 28.20s`.
-- Suite vecchia con `GAS_WEB_LEXBOR=1`: `11 failed, 430 passed, 1 skipped` (gli stessi della fetta 19).
-- Mutazioni (uscita di pytest sui test lexbor): senza lock `1 failed, 26 passed`; timeout che spegne per sempre `1 failed, 26 passed`; risonda subito `1 failed, 26 passed`; anche fuori da Linux `1 failed, 26 passed`; hidden ignorato `1 failed, 26 passed`; dialog chiuso visibile `1 failed, 26 passed`; select visibile `1 failed, 26 passed`; rp visibile `1 failed, 26 passed`; stderr non nel log `2 failed, 25 passed`; lock bloccante `1 failed, 27 passed`; senza isprintable `1 failed, 27 passed`; senza taglio a 200 `1 failed, 27 passed`.
-- Oracolo html5lib (script nello scratchpad), 60 mila pagine senza template/svg/math: seed 7 `FUGHE oggi 48, lexbor 0; PERDITE oggi 2975, lexbor 2808`, seed 8 `FUGHE oggi 40, lexbor 0; PERDITE oggi 2907, lexbor 2717`, seed 9 `FUGHE oggi 41, lexbor 0; PERDITE oggi 2831, lexbor 2700`; corpus `pagine 131, testo identico (parole) 127, diverse 4`.
+Solo la web suite (gas.py e gli altri test non toccati), codice finale 0418f37:
+- `python3 -m pytest -q tests/test_unit_web_*.py`: main `463 passed, 1 skipped` → ramo `494 passed, 1 skipped in 30.76s` (3.13.16, con selectolax); `444 passed, 51 skipped in 25.98s` (3.11 locale, senza selectolax). `tests/test_unit_web_lexbor.py` da 22 (main) a 53 test.
+- Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `484 passed, 11 skipped in 29.89s`.
+- Suite vecchia con `GAS_WEB_LEXBOR=1` (test lexbor esclusi): `11 failed, 430 passed, 1 skipped, 53 deselected in 43.33s` (gli stessi 11 della fetta 19).
+- Mutanti di questo giro (uscita di pytest sui test lexbor): senza guardia sui commenti `1 failed, 52 passed in 6.24s`; scelta automatica che salta anche le hidden `1 failed, 52 passed in 6.21s`; scelta automatica senza filtro disabled `1 failed, 52 passed in 5.94s`.
+- Oracolo html5lib (script nello scratchpad), 60 mila pagine senza template/svg/math: fughe con lexbor 0 + 0 + 0, oggi 48 + 40 + 41; con i casi nuovi (body/html hidden, details, option, dialog) 2 fughe su 60 mila, entrambe `<title>` dentro `<select>` dove html5lib segue il select vecchio. Corpus: 131 pagine, 125 con le stesse parole (le 2 pagine COPYRIGHT di Rust perdono le licenze dentro 2.659 `<details>` chiusi).
 
 ## §6 STATO CI
 
-`gh run list` non disponibile (gh non autenticato nel cloud); run lette dall'integrazione GitHub (`actions_list`, workflow ci.yml, branch claude/peaceful-lovelace-0w2b7q). Istantanea al momento della scrittura: lo stato aggiornato è sulla PR.
+`gh run list` non disponibile (gh non autenticato nel cloud); run lette dall'integrazione GitHub (`actions_list`, workflow ci.yml, branch claude/peaceful-lovelace-0w2b7q, evento push). Istantanea al momento della scrittura: lo stato aggiornato è sulla PR.
 
 ```
-40510137001  CI  push  in_progress  —  ab5eb1d  2026-10-27T13:13:20Z
+40517590660  CI  push  queued     —        0418f37  2026-10-27T14:03:56Z
+40514061503  CI  push  completed  success  33e0d42  2026-10-27T13:40:05Z
+40510534646  CI  push  completed  success  dbe5efc  2026-10-27T13:16:05Z
+40510137001  CI  push  completed  failure  ab5eb1d  2026-10-27T13:13:20Z
 ```
 
 Mappatura commit→run:
 - `7290177`, `88dd43a`, `ffe99a8`: nessuna run su questo SHA (pushati insieme a `ab5eb1d`).
-- `ab5eb1d` → run CI 40510137001, in corso alla scrittura dell'handoff.
+- `ab5eb1d` → run 40510137001, failure (pushato prima dell'handoff della fetta: il commit di fine-task successivo è verde).
+- `dbe5efc` → run 40510534646, success.
+- `33e0d42` → run 40514061503, success.
+- `3a23c4f`, `d4ac3c9`, `4f30374`: nessuna run su questo SHA (pushati insieme a `0418f37`).
+- `0418f37` → run 40517590660, in coda alla scrittura dell'handoff.
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+- R-529-1 COSMETICA: opzione dentro `<optgroup disabled>` non considerata disabilitata (tendina chiusa: si legge l'opzione sbagliata, mai testo nascosto).
+- R-528-3 COSMETICA: option dentro option, comportamento senza test (dichiarato).
 - R-526-1 COSMETICA: doppio controllo sotto lock in `attivo()` senza test.
 - R-520-4 COSMETICA: un `title` HTML dentro foreignObject si scarta.
-- Prima dell'accensione: selectolax in requirements e CI (chat Motore), così i 25 test lexbor oggi saltati girano.
+- Prima dell'accensione: selectolax in requirements e CI (chat Motore), così i 50 test lexbor oggi saltati girano.
 - Restano decisioni dell'operatore: R-ve252-2, R-ve255-1, R-ve235-7, tempo di rete 12 s.
