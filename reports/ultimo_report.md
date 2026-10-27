@@ -1,14 +1,12 @@
-# ULTIMO REPORT — 2026-10-27 — Turno di notte: contatti illeggibili mai «0 lead» (voce 5 di `coda_notte.md`)
+# ULTIMO REPORT — 2026-10-27 — Cervello forte acceso sul Mac (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #273 (https://github.com/Gasss23/Gas/pull/273): il turno di notte non mergia mai. Anche la PR #271 è ancora aperta.
-2. R-520-1 in coda: sì/no.
-3. Testo dell'attività programmata: serve la richiesta dell'operatore in questa sessione, se lo vuole cambiare.
+1. Merge della PR di questa sessione (solo documenti), secondo CLAUDE.md §10.
 
 ## Esito
-- **Voce 4**: già fatta (PR #271, aperta) — SALTATA.
-- **Voce 5 — contatti illeggibili mai «0 lead»**: FATTA. Review #520 APPROVATO CON RISERVE (R-520-1 BASSA aperta, fuori fetta). kernel 1037 → 1039 PASS 0 FAIL; pytest 2241 → 2243 passed.
-- **Voci 6–8**: SALTATE — toccano il motore o vengono dopo; al massimo una voce del motore a notte.
+- **PR #269**: mergiata dall'agente su richiesta esplicita dell'operatore («e mergia 269»), CI verde, bot neutral (macchina del bot), verifica esterna APPROVATO CON RISERVE.
+- **Accensione sul Mac** (fatta dall'operatore, guidata): FATTA — `GAS_CLAUDE_CLI=1` nel `.env`, doctor «Cervello forte comando claude presente / conto di oggi $0.00 su $4.60», `cervello: forte` su `punto_lead` in `~/.gas_notte.yaml`, `/forte dimmi ciao` → «Ciao!».
+- **Configurazione del Mac** scritta in `reports/stato_progetto.md` (sezione G-3), come chiede CLAUDE.md.
 
 ## Anomalie
-- Nessuna. Dettaglio: `reports/report_notte.md`.
+- Nessuna. Nota: «forte dimmi ciao» senza barra va ai modelli normali (voluto).
