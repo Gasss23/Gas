@@ -17,21 +17,21 @@
 - **Fetta 2 — V-1 bot #273 e R-520-1**: `FATTA` — review #527 → #528 APPROVATO.
 - **Fetta 3 — Cosmetiche di #274/#276**: `FATTA`.
 - **Fetta 4 — Regola «merge da qui» in CLAUDE.md e RIPARTENZA aggiornata**: `FATTA`.
-- **Fetta 5 — Merge di main nella #279 (conflitto solo nei log; da main entra solo `reports/coda_notte.md`)**: `FATTA` — nessun file del perimetro toccato, revisore non richiesto.
+- **Fetta 5 — Merge di main nella #279 (conflitto solo nei log; da main entra solo `reports/coda_notte.md`)**: `FATTA` — nessun file del perimetro toccato, revisore non richiesto. Secondo merge di main (#277, chat Mani): file del motore identici a main, review #529 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  4 +++-
- CLAUDE.md                          |  1 +
- gas.py                             | 22 ++++++++++++++++++----
- reports/diff_sessione.md           |  8 ++++++--
+ .claude/agents/memoria_revisore.md |   7 +++++--
+ CLAUDE.md                          |   1 +
+ gas.py                             |  22 ++++++++++++++++++----
+ reports/diff_sessione.md           |  13 ++++++-------
  reports/handoff.md                 | n/d
- reports/stato_progetto.md          | 18 +++++++++---------
- reports/ultimo_report.md           | 17 +++++++++++------
- tests/test_unit_kernel.py          | 33 ++++++++++++++++++++++++++++++++-
+ reports/stato_progetto.md          |  18 +++++++++---------
+ reports/ultimo_report.md           |  47 +++++++++++------------------------------------
+ tests/test_unit_kernel.py          |  33 ++++++++++++++++++++++++++++++++-
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -39,6 +39,8 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+fbe92ee Merge origin/main (PR #277) in feat/merge-automatico-z1xjx2 (PR #279)
+3791640 docs(fine-task): handoff dopo il merge di main nella #279
 48bcc27 Merge origin/main in feat/merge-automatico-z1xjx2 (PR #279)
 edadc5c docs(fine-task): numero della PR #279 nei report
 8c8620d docs(fine-task): report, ripartenza e regola «merge da qui»
@@ -108,7 +110,7 @@ Ri-review della #527, solo sul delta in staging. Le due riserve R-527-1 e R-527-
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato (check letti con lo strumento GitHub). edadc5c → tutti i check verdi (unit-suite, handoff-check; verifica-bot neutral). 7594529, 37e4110, 8610e95, 8c8620d → nessuna run propria letta (pushati insieme). Merge di main e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+`gh` nel cloud non è autenticato (check letti con lo strumento GitHub). edadc5c → tutti i check verdi (unit-suite, handoff-check; verifica-bot neutral). 7594529, 37e4110, 8610e95, 8c8620d → nessuna run propria letta (pushati insieme). 48bcc27, 3791640 → nessuna run conclusa letta (bot annullato per cambio di head, poi neutral su 3791640). Secondo merge di main e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
