@@ -1031,6 +1031,18 @@ check("T21b pin vuoto se memoria vuota o None",
       pin_vuoto == "" and k_none._memoria_pin() == "",
       f"vuoto={pin_vuoto!r}")
 
+# T21b2 — V-1 ve #273: contatti illeggibili → nel pin nessun lead (quindi nessun dato
+# non fidato), il diario resta; il segno resta False come con la lettura riuscita
+k = kernel_tmp(); _popola(k)
+pin_ok = k._memoria_pin(); fidato_ok = k._pin_non_fidato
+k.memory.lista_contatti = lambda *a, **kw: []   # come MemoryStore su lettura fallita
+pin_ko = k._memoria_pin()
+check("T21b2 V-1 ve #273: contatti illeggibili → nessun lead nel pin, diario presente",
+      fidato_ok is False and k._pin_non_fidato is False
+      and "Mario" in pin_ok and "## Lead attivi" not in pin_ko
+      and "DM inviato a Mario" in pin_ko,
+      f"ok={fidato_ok} ko={k._pin_non_fidato} pin_ko={pin_ko[:200]!r}")
+
 # T21c — ricorda(contatto=...) restituisce scheda + storia del lead
 k = kernel_tmp(); cid = _popola(k)
 r_c = k._ricorda(contatto="mario")

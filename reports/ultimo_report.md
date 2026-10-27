@@ -1,14 +1,12 @@
-# ULTIMO REPORT — 2026-10-27 — Cervello forte acceso sul Mac (chat Motore)
+# ULTIMO REPORT — 2026-10-27 — V-1 della verifica esterna #273 (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #274 (solo documenti), secondo CLAUDE.md §10.
-2. Decisione aperta (chat Notte, PR #271/#273): mettere in coda per prima la **V-1 della verifica esterna #273** (MEDIA, preesistente: `_memoria_pin` a lettura dei contatti fallita non segna il turno come contaminato, fail-open), con V-1 bot #273 e R-520-1 — dettaglio in `reports/stato_progetto.md`.
+1. Merge della PR #276 (https://github.com/Gasss23/Gas/pull/276), secondo CLAUDE.md §10.
+2. Prossime voci in coda dalla chat Notte: V-1 bot #273 (BASSA) e R-520-1 (BASSA, `gas fida-contatto` con lettura fallita).
 
 ## Esito
-- **PR #269**: mergiata dall'agente su richiesta esplicita dell'operatore («e mergia 269»), CI verde, bot neutral (macchina del bot), verifica esterna APPROVATO CON RISERVE.
-- **Accensione sul Mac** (fatta dall'operatore, guidata): FATTA — `GAS_CLAUDE_CLI=1` nel `.env`, doctor «Cervello forte comando claude presente / conto di oggi $0.00 su $4.60», `cervello: forte` su `punto_lead` in `~/.gas_notte.yaml`, `/forte dimmi ciao` → «Ciao!».
-- **Bot #274** APPROVATO CON RISERVE: V-1 BASSA (roadmap R2 non aggiornata) e V-2 COSMETICA (punto 1 della RIPARTENZA) CHIUSE; 2° giro: V-1 BASSA (roadmap: /forte provato solo da terminale) e V-2 BASSA (§6 dell'handoff con le run CI) CHIUSE; 3° giro: V-1 conflitto con main (#271) risolto col merge (review #522 APPROVATO), V-2/V-3 COSMETICHE chiuse; 4° giro: V-1 BASSA (decisione su V-1 ve #273 rimessa in vista) chiusa.
-- **Configurazione del Mac** scritta in `reports/stato_progetto.md` (sezione G-3), come chiede CLAUDE.md.
+- **PR #274**: mergiata dall'agente su richiesta dell'operatore («mergiata»: risultava ancora aperta per un conflitto col main #275, risolto, review #525 APPROVATO).
+- **V-1 ve #273**: FATTA (decisione dell'operatore «sì V-1 #273»), ma senza il fix proposto: provato, rompe T20d (memoria guasta → ogni scrittura alla firma) e non chiude un percorso reale (con la lettura fallita nessun lead entra nel pin). Commento di `_memoria_pin` corretto e test T21b2. Review #526 APPROVATO (una COSMETICA: T21b2 sostituisce `lista_contatti`, non `leggi_contatti`). Kernel 1044 PASS 0 FAIL.
 
 ## Anomalie
-- Nessuna. Nota: «forte dimmi ciao» senza barra va ai modelli normali (voluto).
+- Nessuna.

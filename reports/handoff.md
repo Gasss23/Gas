@@ -1,38 +1,33 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-27 — Cervello forte acceso sul Mac (chat Motore)
+**Sessione:** 2026-10-27 — V-1 della verifica esterna #273 (chat Motore)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #274 (https://github.com/Gasss23/Gas/pull/274), solo documenti. Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge secondo CLAUDE.md §10.
-2. Decisione aperta (chat Notte, PR #271/#273): mettere in coda per prima la **V-1 della verifica esterna #273** (MEDIA, preesistente: `_memoria_pin` a lettura dei contatti fallita non segna il turno come contaminato, fail-open), con V-1 bot #273 e R-520-1 — dettaglio in `reports/stato_progetto.md`.
+1. Merge della PR #276 (https://github.com/Gasss23/Gas/pull/276). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge secondo CLAUDE.md §10.
+2. Prossime voci in coda: V-1 bot #273 (BASSA) e R-520-1 (BASSA).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Merge della PR #269**: `FATTA` — su richiesta esplicita dell'operatore.
-- **Fetta 2 — Accensione del forte sul Mac (operatore, guidata)**: `FATTA` — `.env`, doctor, catalogo, prova `/forte`.
-- **Fetta 3 — Configurazione del Mac nello stato del progetto**: `FATTA`.
-- **Fetta 4 — Note del bot #274 (V-1 roadmap R2, V-2 RIPARTENZA)**: `FATTA`.
-- **Fetta 5 — Note del bot #274, 2° giro (V-1 canali di /forte provati, V-2 §6 con le run CI)**: `FATTA`.
-- **Fetta 6 — Bot #274, 3° giro: V-1 conflitto con main (#271) risolto col merge, V-2/V-3 cosmetiche**: `FATTA` — merge revisionato (review #522 APPROVATO: file del motore identici a main).
-- **Fetta 7 — Bot #274, 4° giro: V-1 BASSA (decisione aperta su V-1 ve #273 rimessa in §0, §7 e ultimo_report)**: `FATTA`.
-- **Fetta 8 — Merge di main (#275) per il conflitto nei report**: `FATTA` — review #525 APPROVATO.
+- **Fetta 1 — Merge della PR #274**: `FATTA` — conflitto col main #275 risolto (review #525), merge su richiesta dell'operatore.
+- **Fetta 2 — V-1 ve #273**: `FATTA` — comportamento invariato (il fix proposto rompeva T20d senza chiudere un percorso reale), commento corretto e test T21b2; review #526 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   2 ++
- reports/diff_sessione.md           |   9 +++------
+ .claude/agents/memoria_revisore.md |  2 ++
+ gas.py                             |  7 +++++--
+ reports/diff_sessione.md           |  8 +++++---
  reports/handoff.md                 | n/d
- reports/roadmap.md                 |   2 +-
- reports/stato_progetto.md          |   8 ++++----
- reports/ultimo_report.md           |  60 ++++++++----------------------------------------------------
+ reports/stato_progetto.md          |  4 ++--
+ reports/ultimo_report.md           | 14 ++++++--------
+ tests/test_unit_kernel.py          | 12 ++++++++++++
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -40,40 +35,47 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-01ab18b Merge origin/main (PR #275) in feat/merge-automatico-z1xjx2 (PR #274)
-2e70f9a docs: bot #274 4° giro — decisione aperta su V-1 ve #273 rimessa in vista nei report
-07b8ff4 docs(fine-task): report dopo il merge di main nella #274
-85e61d7 Merge origin/main (PR #271) in feat/merge-automatico-z1xjx2 (PR #274) + note cosmetiche del bot #274
-3de0c93 docs: note del bot #274 (2° giro) — canali di /forte provati, run CI nell'handoff
-cafd478 docs: note del bot #274 — roadmap R2 e RIPARTENZA allineate al forte acceso
-fbca1ab docs(fine-task): numero della PR #274 nell'handoff
-2500db5 docs(stato): cervello forte acceso sul Mac (configurazione in G-3)
+bfc3e28 docs(fine-task): report della V-1 della verifica esterna #273
+8b6a965 fix(memoria): V-1 ve #273 — pin con contatti illeggibili: comportamento chiarito e fissato da un test
+661d2d0 chore(revisore): memoria review #526 — APPROVATO
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Nessun diff motore di questa sessione. Il merge di main (#271) porta `modules/notte/notte.py` e `tests/test_unit_notte.py` identici a main: review #522 APPROVATO (controllo d'identità sui byte, già revisionati nelle #515/#516 chat Notte).
+### Review #526 (integrale, commit 8b6a965)
+
+## VERDETTO: APPROVATO
+
+L'analisi regge. Ho cercato un percorso in cui un contatto non fidato arrivi al modello quando la lettura dei contatti fallisce, e non ne ho trovati. Tenere il segno a False quando la lettura fallisce è corretto: metterlo a True farebbe passare alla firma ogni scrittura con la memoria guasta (rompe T20d) senza chiudere nessun percorso reale.
+
+Elementi del diff esaminati:
+1. `gas.py:3645` — nuovo commento: se la lettura fallisce, nel pin non entra nessun lead e il segno resta False di proposito. Rischio esaminato: che il commento copra un fail-open reale. `gas.py:3653` chiama `lista_contatti`, che con la lettura fallita restituisce `[]`. Quindi la lista dei lead attivi è vuota, nel pin non c'è la sezione dei lead e nessun campo di contatto raggiunge il prompt di sistema. Le eccezioni restano in fail-closed: il ramo except mette il segno a True (`gas.py:3707`). Esito: ok.
+2. `tests/test_unit_kernel.py:1035` — T21b2: rimpiazza `lista_contatti` con una funzione che restituisce `[]`, poi controlla che il pin non abbia lead, abbia ancora il diario («DM inviato a Mario») e che il segno resti False. Rischio esaminato: che il test non morda. Se si applica il fix proposto (`leggi_contatti` con True su None), il rimpiazzo non agisce più, Mario torna nel pin e la condizione «## Lead attivi not in pin_ko» fallisce. Il test quindi rileva il cambio, anche se con un messaggio di errore poco esplicito. Esito: ok.
+
+Contesto, file non toccati:
+3. `modules/gate/gate.py:82` — `ricorda` è tra i tool di input non fidato (`UNTRUSTED_INPUT_TOOLS`): se il modello legge i contatti con `ricorda`, la finestra risulta contaminata a prescindere dal pin. Esito: ok.
+4. `gas.py:4256` — `salva_contatto` e `imposta_stato_contatto` restituiscono solo la chiave e lo stato forniti dal modello, mai campi letti da un contatto salvato. Le righe del diario scritte in turni contaminati entrano nel pin mascherate (dettagli e tipo omessi). `_pin_non_fidato_visto` resta vero fino a `clear`. Esito: nessun percorso alternativo.
+
+Finding:
+1. COSMETICA: T21b2 rimpiazza `lista_contatti` e non `leggi_contatti`. Va bene oggi, ma se il codice passasse a `leggi_contatti` il test fallirebbe con un messaggio che non spiega il motivo. Non blocca.
+
+Rischio escluso: non ho riprodotto un vero «database is locked» fra due processi né provato `gas notte` dal vero con il DB guasto. Il ramo d'errore è lo stesso (`leggi_contatti` → None → `[]`), già coperto da #520.
+
+Verifica: kernel rifatto da me, 1044 PASS 0 FAIL.
+
+Memoria: riga #526 più una lezione, committata da sola in 661d2d0 (/home/user/Gas/.claude/agents/memoria_revisore.md).
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/.
+- Kernel: 1043 → 1044 PASS (T21b2 nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1044 PASS, 0 FAIL ===`
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato: run lette con lo strumento GitHub `actions_list` (workflow ci.yml, branch feat/merge-automatico-z1xjx2).
-- 2500db5 → run CI 40423823987: completed, success.
-- fbca1ab → run CI 40423852723: completed, success.
-- cafd478 → run CI 40424186394: success (letto dal bot #274, 3° giro).
-- 3de0c93 → run CI completata, success.
-- 85e61d7 → nessuna run su questo SHA (pushato insieme a 07b8ff4).
-- 07b8ff4 → run CI 40424945665: success.
-- 2e70f9a → check tutti verdi (unit-suite, handoff-check, verifica-bot success).
-- 01ab18b (merge di main #275) → run non ancora disponibile alla scrittura dell'handoff.
-- Commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
+`gh` nel cloud non è autenticato. 661d2d0, 8b6a965 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Nate da questa sessione: nessuna aperta (note dei 4 giri del bot #274 chiuse).
-- Preesistenti, da `reports/stato_progetto.md`: **V-1 ve #273 (MEDIA)** `_memoria_pin` fail-open a lettura dei contatti fallita — da mettere in coda per prima; V-1 bot #273 (BASSA); R-520-1 (BASSA); R-516-1 (COSMETICA); bot #269 «/forte@NomeBot» su Telegram (BASSA); COSMETICHE ve #269.
+- COSMETICA #526: T21b2 sostituisce `lista_contatti`, non `leggi_contatti`.
+- Preesistenti: V-1 bot #273 (BASSA), R-520-1 (BASSA), R-516-1 (COSMETICA), bot #269 «/forte@NomeBot» (BASSA), COSMETICHE ve #269.
