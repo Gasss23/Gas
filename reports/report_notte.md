@@ -1,14 +1,15 @@
-# Report del turno di notte — 2026-10-26
+# Report del turno di notte — 2026-10-27
 
-Ramo `notte/2026-10-26`, PR #271 (https://github.com/Gasss23/Gas/pull/271). Nessun merge (regola del turno).
-Al massimo UNA voce del motore a notte: presa la voce 4. La voce 5 tocca anche lei il motore e resta alla prossima notte; in coda non ci sono voci solo-documenti.
+Ramo `notte/2026-10-27`, PR #273 (https://github.com/Gasss23/Gas/pull/273). Nessun merge (regola del turno).
+La voce 4 risulta fatta (PR #271 ancora aperta). Al massimo UNA voce del motore a notte: presa la voce 5. La voce 6 (cambio di schema del DB) resta alla prossima notte; in coda non ci sono voci solo-documenti.
 
-## Voce 4 — `righe_stato_mattino` mai «$nan» — FATTA
-- **Cosa**: in `modules/notte/notte.py` il resoconto del mattino passa spesa e tetto per un controllo nuovo (`_dollari`): un valore non finito (nan, inf) o non numerico non viene più stampato. Spesa illeggibile → «Spesa ultime 24 ore: non letta»; tetto illeggibile → «(tetto non letto)», mai «(nessun tetto)».
-- **Perché / cosa migliora**: il messaggio del mattino su Telegram non mostra più «$nan» e non fa credere che il tetto di spesa sia spento quando non si legge (V-1 verifica esterna #241).
-- **Controlli**: 18 casi nel test parametrico + un giro vero col tetto forzato a nan; i test nuovi falliscono sul codice di main (10 su 13 al primo giro). pytest 2199 → 2218 passed; kernel 1036 PASS 0 FAIL. Review #515 APPROVATO CON RISERVE (due BASSE, corrette), #516 APPROVATO CON RISERVE (resta una COSMETICA solo teorica).
-- **Rischi**: minimi. Il testo cambia solo nei casi rotti; nei casi normali le righe sono identiche a prima.
+## Voce 5 — Contatti illeggibili mai «0 lead» — FATTA
+- **Cosa**: nuova lettura dei contatti `leggi_contatti` (`modules/memory/store.py`) che dà «nessun risultato» (None) se il database non risponde, invece di una lista vuota. La usano il resoconto del mattino e `ricorda fermi`: se la lettura fallisce scrivono «Lead attivi: non letti» / «Elenco dei lead NON letto», mai «0 lead» o «nessun lead attivo».
+- **Perché / cosa migliora**: con il database bloccato per un attimo fra due letture il messaggio del mattino diceva «Lead attivi: 0», un falso rassicurante (R-454-1 / V-2 bot #241).
+- **Controlli**: test nuovi (tabella dei contatti illeggibile su un DB vero con le firme ancora leggibili; un giro notturno completo; un round-trip con `ricorda`) che falliscono sul codice di prima. kernel 1037 → 1039 PASS 0 FAIL; pytest 2241 → 2243 passed. Review #520 APPROVATO CON RISERVE.
+- **Rischi**: bassi. Gli altri usi di `lista_contatti` (pin, duplicati, ricerca) non cambiano. Resta R-520-1: `gas fida-contatto` senza argomenti ha ancora lo stesso difetto (fuori da questa voce). Non provato un vero blocco del DB fra due processi.
 
 ## Cosa deve decidere l'operatore
-1. Merge della PR #271 (il turno di notte non mergia).
-2. Il testo dell'attività programmata è ancora quello vecchio (la chat Motore ne ha chiesto il cambio il 24 ottobre): se lo vuoi cambiare, chiedilo in questa sessione.
+1. Merge della PR #273 (il turno di notte non mergia). Anche la PR #271 (voce 4) è ancora aperta: entrambe toccano «Fatte» di `coda_notte.md` e `stato_progetto.md`, quindi la seconda che entra avrà un conflitto da risolvere (tenere entrambe le righe).
+2. Se mettere in coda R-520-1 (`gas fida-contatto` con lettura fallita).
+3. Il testo dell'attività programmata è ancora quello vecchio: se lo vuoi cambiare, chiedilo in questa sessione.

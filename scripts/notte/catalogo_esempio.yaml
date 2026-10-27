@@ -3,6 +3,10 @@
 # Gas rifiuta un catalogo dentro la sua cartella (potrebbe riscriverselo da solo).
 # Ogni compito parte da zero (cronologia vuota), max 10 compiti per giro.
 # Le azioni rischiose NON partono da sole: aspettano la tua firma su Telegram.
+# `cervello: forte` (opzionale): il compito usa SOLO il cervello forte (Claude con
+# l'abbonamento, serve GAS_CLAUDE_CLI=1); se il forte è fermo il compito aspetta,
+# non passa ai modelli gratuiti. Usalo per i lavori importanti o con dati di clienti.
+# Chiavi valide: nome, prompt, attivo, cervello. Ogni altra chiave fa saltare il compito.
 compiti:
   - nome: punto_lead
     prompt: >-

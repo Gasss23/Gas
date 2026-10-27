@@ -1884,18 +1884,18 @@ def test_stato_mattino_fail_safe(monkeypatch):
     """§9: spesa che solleva, memoria rotta → voci «non lette», nessuna eccezione."""
     def _boom(*a, **k):
         raise RuntimeError("rotto")
-    k = SimpleNamespace(memory=SimpleNamespace(lista_contatti=_boom, conta_approvazioni=_boom),
+    k = SimpleNamespace(memory=SimpleNamespace(leggi_contatti=_boom, conta_approvazioni=_boom),
                         _daily_cost_usd=_boom)
     st = notte.stato_mattino(k)
     assert st["spesa"] is None and st["lead_attivi"] is None and st["firme_in_attesa"] is None
     assert notte.righe_stato_mattino(st) == [
         "Spesa ultime 24 ore: non letta", "Lead attivi: non letti", "Firme in attesa: non lette"]
     assert notte.stato_mattino(SimpleNamespace())["lead_attivi"] is None  # niente memoria
-    # R-453-1: DB rotto → lista_contatti dà [] ma conta_approvazioni None: «non letti», mai 0
-    rotta = SimpleNamespace(lista_contatti=lambda *a: [], conta_approvazioni=lambda: None)
+    # R-453-1: DB rotto → conta_approvazioni None: «non letti», mai 0
+    rotta = SimpleNamespace(leggi_contatti=lambda *a: [], conta_approvazioni=lambda: None)
     st2 = notte.stato_mattino(SimpleNamespace(memory=rotta))
     assert st2["lead_attivi"] is None and st2["lead_fermi"] is None
-    spenta = SimpleNamespace(available=False, lista_contatti=lambda *a: [],
+    spenta = SimpleNamespace(available=False, leggi_contatti=lambda *a: [],
                              conta_approvazioni=lambda: {"in_attesa": 0})
     assert notte.stato_mattino(SimpleNamespace(memory=spenta))["lead_attivi"] is None
     assert notte.righe_stato_mattino(None) == []
@@ -2215,3 +2215,146 @@ def test_resoconto_con_spesa_non_finita_nel_giro(monkeypatch, dirs):
                                                        "fatto"]})) == 0
     riepilogo = (root / ".gas_notte" / "ultimo_giro.md").read_text(encoding="utf-8")
     assert "(tetto non letto)" in riepilogo and "$nan" not in riepilogo
+
+
+def test_cervello_forte_dal_catalogo(dirs):
+    """Accensione R2: `cervello: forte` arriva a run_turn; valore sbagliato → saltato
+    (fail-closed: il lavoro non deve finire ai gratuiti); senza il campo, run_turn come prima."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  "compiti:\n  - nome: a\n    prompt: p\n    cervello: forte\n"
+                  "  - nome: b\n    prompt: p\n    cervello: debole\n"
+                  "  - nome: c\n    prompt: p\n"
+                  "  - nome: d\n    prompt: p\n    cervello:\n")
+    compiti, avvisi = carica_catalogo(cat, root)
+    assert [c.get("cervello") for c in compiti] == ["forte", None]
+    assert any("'d'" in a for a in avvisi)  # V-2 ve #269: vuoto → saltato
+    assert any("'b'" in a and "forte" in a for a in avvisi)
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append(kw)
+            yield {"type": "final", "content": "ok"}
+
+        def _diario_log(self, *a, **kw):
+            pass
+
+    esegui_notte(str(root), catalogo=cat, kernel_factory=lambda r: _K())
+    assert visti == [{"cervello": "forte"}, {}]
+
+
+@pytest.mark.parametrize("testo,atteso", [
+    ("ciao", (None, "ciao")),
+    ("forte questo risultato", (None, "forte questo risultato")),
+    ("/forte analizza i lead", ("forte", "analizza i lead")),
+    ("/FORTE analizza", ("forte", "analizza")),
+    ("/forte dati del cliente", ("forte", "dati del cliente")),  # NBSP (Option+Spazio)
+    ("/forte\tx", ("forte", "x")),
+    ("/forte", ("uso", "")),
+    ("/forte:x", ("uso", "")),
+    ("/fortezza x", ("uso", "")),
+])
+def test_prefisso_forte(testo, atteso):
+    """V-1 bot #269 (R-515-1/2): /forte fail-closed su ogni separatore; mai ai gratuiti."""
+    assert gas.prefisso_forte(testo) == atteso
+
+
+def test_cervello_forte_conservato_nella_ripresa(dirs):
+    """V-4 bot #269: ogni ramo di _ordina_riprese conserva cervello: forte, e il compito
+    ripreso arriva a run_turn col forte."""
+    c = {"nome": "a", "prompt": "p", "cervello": "forte"}
+    for info in ({"tentativi": 0}, {"tentativi": 1}, {"tentativi": 2},
+                 {"tentativi": 1, "sospetto": True}):
+        voci, _ = notte._ordina_riprese([dict(c)], {"a": dict(info)}, [])
+        assert [v.get("cervello") for v in voci] == ["forte"], info
+    root, _ = dirs
+    visti = []
+
+    class _K:
+        def run_turn(self, prompt, **kw):
+            visti.append(kw)
+            yield {"type": "final", "content": "ok"}
+
+    voci, _ = notte._ordina_riprese([dict(c)], {"a": {"tentativi": 1}}, [])
+    notte._esegui_compito(_K(), voci[0], root / ".gas_notte_t")
+    assert visti == [{"cervello": "forte"}]
+
+
+def test_handle_update_forte_da_telegram(monkeypatch):
+    """R-ve269-2: «/forte <richiesta>» da Telegram va al solo forte; «/forte» nudo o
+    con un separatore strano → istruzione d'uso, nessun turno ai gratuiti."""
+    inviati = []
+    monkeypatch.setattr(_tg, "_send_text", lambda b, c, t: inviati.append(t))
+    monkeypatch.setattr(_tg, "_send_typing", lambda b, c: None)
+    visti = []
+
+    class _K:
+        def run_turn(self, t, **kw):
+            visti.append((t, kw))
+            yield {"type": "final", "content": "ok"}
+
+    def upd(testo):
+        return {"update_id": 1, "message": {"chat": {"id": 7}, "text": testo}}
+
+    _tg._handle_update("http://finto", upd("/forte analizza i lead"), {7}, _K())
+    _tg._handle_update("http://finto", upd("ciao"), {7}, _K())
+    assert visti == [("analizza i lead", {"cervello": "forte"}), ("ciao", {})]
+    for t in ("/forte", "/forte:x"):
+        _tg._handle_update("http://finto", upd(t), {7}, _K())
+        assert len(visti) == 2 and "Uso: /forte" in inviati[-1]
+
+
+@pytest.mark.parametrize("chiave", ["cervelo", "Cervello", "CERVELLO", "cervello ", "cerveló", "cervello_forte"])
+def test_chiave_cervello_scritta_male_salta_il_compito(dirs, chiave):
+    """R-ve269-1 e V-1 ve #269 (4° giro): qualunque chiave sconosciuta fa saltare il
+    compito (non finisce ai gratuiti senza vincolo); per una chiave che somiglia a
+    «cervello» l'avviso lo suggerisce."""
+    root, fuori = dirs
+    cat = _scrivi(fuori / "c.yaml",
+                  f"compiti:\n  - nome: a\n    prompt: p\n    \"{chiave}\": forte\n"
+                  "  - nome: b\n    prompt: p\n    brain: forte\n"
+                  "  - nome: c\n    prompt: p\n")
+    compiti, avvisi = carica_catalogo(cat, root)
+    assert [c["nome"] for c in compiti] == ["c"]
+    assert any("'a'" in a and "forse 'cervello'" in a and "saltato" in a for a in avvisi)
+    assert any("'b'" in a and "brain" in a and "saltato" in a
+               and "forse" not in a for a in avvisi)
+
+
+def test_stato_mattino_contatti_illeggibili_fra_due_letture(dirs, monkeypatch):
+    """Voce 5 della coda notte (R-454-1 / V-2 bot #241): le firme si leggono, i
+    contatti no (tabella illeggibile, come un DB bloccato fra le due letture) →
+    «Lead attivi: non letti», mai «Lead attivi: 0»; le firme restano contate."""
+    import sqlite3
+    root, _ = dirs
+    mem = _memoria_con_lead(root)
+    with sqlite3.connect(str(mem.db_path)) as con:
+        con.execute("ALTER TABLE contatti RENAME TO contatti_via")
+    assert mem.leggi_contatti() is None and mem.lista_contatti() == []
+    st = notte.stato_mattino(SimpleNamespace(memory=mem, _daily_cost_usd=lambda: 0.1))
+    assert st["firme_in_attesa"] == 1
+    assert st["lead_attivi"] is None and st["lead_fermi"] is None
+    assert notte.righe_stato_mattino(st)[1] == "Lead attivi: non letti"
+    with sqlite3.connect(str(mem.db_path)) as con:
+        con.execute("ALTER TABLE contatti_via RENAME TO contatti")
+    assert len(mem.leggi_contatti()) == len(mem.lista_contatti()) > 0
+
+
+def test_resoconto_nel_giro_con_contatti_illeggibili(monkeypatch, dirs):
+    """Round-trip: un giro vero (una tool call) con la lettura dei contatti che
+    fallisce (il kernel del giro riapre il DB e ricreerebbe una tabella rinominata,
+    quindi qui si fa fallire la lettura) arriva al riepilogo e su Telegram con
+    «Lead attivi: non letti»; le firme restano contate."""
+    from modules.memory import MemoryStore
+    root, fuori = dirs
+    _memoria_con_lead(root)
+    monkeypatch.setattr(MemoryStore, "leggi_contatti", lambda self, *a: None)
+    cat = _scrivi(fuori / "c.yaml", "compiti:\n  - nome: a\n    prompt: p\n")
+    inviati = _telegram_finto(monkeypatch)
+    assert _giro(monkeypatch, root, cat, _Script({"p": [[("calcola", json.dumps({"expr": "1+1"}))],
+                                                       "fatto"]})) == 0
+    riepilogo = (root / ".gas_notte" / "ultimo_giro.md").read_text(encoding="utf-8")
+    assert "- Lead attivi: non letti" in riepilogo and "Lead attivi: 0" not in riepilogo
+    assert "- Firme in attesa: 1" in riepilogo
+    assert "Lead attivi: non letti" in inviati[0][1]["text"]

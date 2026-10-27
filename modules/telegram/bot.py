@@ -748,11 +748,20 @@ def _handle_update(base_url: str, upd: Dict[str, Any],
                     _send_text(base_url, chat_id, messaggio)
             return
 
+        # R-ve269-2: «/forte <richiesta>» anche da Telegram, mai ai gratuiti
+        from brains.router import prefisso_forte
+        cervello, text = prefisso_forte(text)
+        if cervello == "uso":
+            _send_text(base_url, chat_id, "Uso: /forte <richiesta>")
+            return
+
         _send_typing(base_url, chat_id)
 
         parts: List[str] = []
         try:
-            for event in kernel.run_turn(text):
+            turno = (kernel.run_turn(text, cervello="forte") if cervello == "forte"
+                     else kernel.run_turn(text))
+            for event in turno:
                 etype = event.get("type")
                 if etype == "final":
                     parts.append(event.get("content", ""))

@@ -139,6 +139,16 @@ def _dentro(path: Path, root: Path) -> bool:
         return False
 
 
+_CHIAVI_COMPITO = frozenset({"nome", "prompt", "attivo", "cervello"})
+
+
+def _somiglia_cervello(chiave: str) -> bool:
+    """R-ve269-1: una chiave sconosciuta che sembra «cervello» (maiuscole, refusi)."""
+    import difflib
+    k = str(chiave).strip().casefold()
+    return k.startswith("cerv") or difflib.SequenceMatcher(None, k, "cervello").ratio() >= 0.75
+
+
 def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[str]]:
     """Legge e valida il catalogo. Ritorna (compiti attivi validi, avvisi).
 
@@ -147,6 +157,7 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
           - nome: rassegna_lead        # [a-z0-9_-], max 40, unico
             prompt: "Fai il punto sui lead attivi ..."
             attivo: true               # opzionale, default true
+            cervello: forte            # opzionale: solo il cervello forte (R2), mai i gratuiti
 
     Mai eccezioni: ogni problema diventa un avviso e la voce viene saltata."""
     avvisi: List[str] = []
@@ -177,6 +188,7 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
             avvisi.append(f"voce {i}: non è un oggetto, saltata")
             continue
         nome, prompt, attivo = v.get("nome"), v.get("prompt"), v.get("attivo", True)
+        ignote = [str(k) for k in v if k not in _CHIAVI_COMPITO]
         if not isinstance(nome, str) or not _NOME_RE.fullmatch(nome):
             avvisi.append(f"voce {i}: nome mancante o non valido "
                           "(solo a-z 0-9 _ -, max 40), saltata")
@@ -196,7 +208,24 @@ def carica_catalogo(path: Path, root: Path) -> Tuple[List[Dict[str, str]], List[
         if len(prompt) > MAX_PROMPT_CHARS:
             avvisi.append(f"compito '{nome}': prompt oltre {MAX_PROMPT_CHARS} caratteri, saltato")
             continue
-        compiti.append({"nome": nome, "prompt": prompt.strip()})
+        if ignote:
+            # R-ve269-1 e V-1 ve #269 (4° giro, scelta dell'operatore «sì V-1»): QUALUNQUE
+            # chiave sconosciuta («cervelo», «brain: forte», «modello: forte»…) fa saltare
+            # il compito: un vincolo scritto male non deve farlo finire ai gratuiti.
+            forse = " (forse 'cervello'?)" if any(_somiglia_cervello(k) for k in ignote) else ""
+            avvisi.append(f"compito '{nome}': chiavi sconosciute {ignote}{forse}, saltato "
+                          "(valide: nome, prompt, attivo, cervello)")
+            continue
+        cervello = v.get("cervello")
+        # V-2 ve #269: un campo presente ma vuoto (null, ~) non è «nessun vincolo»
+        if "cervello" in v and cervello != "forte":
+            # Fail-closed: un valore sbagliato non deve far finire il lavoro ai gratuiti
+            avvisi.append(f"compito '{nome}': cervello può essere solo 'forte', saltato")
+            continue
+        voce = {"nome": nome, "prompt": prompt.strip()}
+        if cervello:
+            voce["cervello"] = cervello
+        compiti.append(voce)
     if len(compiti) > MAX_COMPITI:
         avvisi.append(f"{len(compiti)} compiti attivi: eseguiti solo i primi {MAX_COMPITI}")
         compiti = compiti[:MAX_COMPITI]
@@ -254,7 +283,8 @@ def _esegui_compito(kernel: Any, compito: Dict[str, str], notte_dir: Path,
         kernel.history = []
         kernel.db_path = notte_dir / f"storia_{nome}.json"
         prompt = compito["prompt"] + (NOTA_RIPRESA if compito.get("ripresa") else "")
-        gen = kernel.run_turn(prompt)
+        gen = (kernel.run_turn(prompt, cervello="forte") if compito.get("cervello") == "forte"
+               else kernel.run_turn(prompt))
         for ev in gen:
             tipo = ev.get("type") if isinstance(ev, dict) else None
             if tipo == "tool_res":
@@ -499,9 +529,9 @@ def stato_mattino(kernel: Any) -> Dict[str, Any]:
     mem = getattr(kernel, "memory", None)
     if mem is None or not getattr(mem, "available", True):
         return stato
-    # R-453-1: lista_contatti dà [] anche a DB rotto («0 lead» rassicurerebbe il falso).
-    # conta_approvazioni sullo stesso DB dà None in quel caso: se fallisce, lead e
-    # firme restano «non letti».
+    # R-453-1: se conta_approvazioni fallisce, lead e firme restano «non letti».
+    # R-454-1: i lead si leggono con leggi_contatti (None su errore), così anche un DB
+    # bloccato FRA le due letture non diventa «Lead attivi: 0».
     try:
         conta = mem.conta_approvazioni()
     except Exception as e:
@@ -512,7 +542,10 @@ def stato_mattino(kernel: Any) -> Dict[str, Any]:
     stato["firme_in_attesa"] = int(conta.get("in_attesa", 0))
     try:
         from modules.memory import STATI_CHIUSI
-        attivi = [c for c in mem.lista_contatti() if c.get("stato") not in STATI_CHIUSI]
+        contatti = mem.leggi_contatti()  # R-454-1: None = non letti, mai «0 lead»
+        if contatti is None:
+            return stato
+        attivi = [c for c in contatti if c.get("stato") not in STATI_CHIUSI]
         adesso = datetime.now(timezone.utc)
         giorni = [_giorni_fa(c.get("aggiornato_il"), adesso) for c in attivi]
         stato["lead_attivi"] = len(attivi)

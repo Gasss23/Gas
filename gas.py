@@ -31,6 +31,7 @@ from brains.model_ids import (
     MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
 from brains.claude_cli import ClaudeCliClient
+from brains.router import prefisso_forte  # R2: /forte (terminale, Telegram, voce)
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
 from modules.gate.gate import libero_dopo_lettura, sembra_delicato
@@ -4120,13 +4121,13 @@ class GasKernel:
         """Righe dei lead attivi (stato non chiuso) ordinati dal più vecchio
         aggiornamento, con i giorni passati. Data illeggibile = in testa (nel dubbio
         si segnala). Solo lettura; righe «- [» così il conteggio del diario le vede."""
-        # R-455-1: a memoria degradata lista_contatti dà [] → mai «nessun lead attivo»
-        # (conta_approvazioni sullo stesso DB dà None in quel caso, come nel giro).
-        if (not getattr(self.memory, "available", True)
-                or self.memory.conta_approvazioni() is None):
+        # R-455-1 / R-454-1: memoria degradata o lettura fallita (anche un DB bloccato
+        # in quel momento) → «NON letto», mai «nessun lead attivo».
+        contatti = (self.memory.leggi_contatti()
+                    if getattr(self.memory, "available", True) else None)
+        if contatti is None:
             return ["Elenco dei lead NON letto: memoria degradata (vedi gas doctor)."]
-        attivi = [c for c in self.memory.lista_contatti()
-                  if c.get("stato") not in STATI_CHIUSI]
+        attivi = [c for c in contatti if c.get("stato") not in STATI_CHIUSI]
         adesso = datetime.now(timezone.utc)
 
         def _giorni(c: Dict[str, Any]) -> Optional[int]:
@@ -6017,7 +6018,11 @@ def main():
             if prompt == "rifletti":
                 _stampa_riflessione(kernel.rifletti())
                 continue
-            for event in kernel.run_turn(prompt):
+            cervello, prompt = prefisso_forte(prompt)
+            if cervello == "uso":
+                print("\nUso: /forte <richiesta>\n")
+                continue
+            for event in kernel.run_turn(prompt, cervello=cervello):
                 if event["type"] == "final": print(f"\n{event['content']}\n")
                 elif event["type"] == "tool_res": print(f"  → {event['output'].strip()}")
                 elif event["type"] == "error": print(f"\n✗ {event['content']}\n")

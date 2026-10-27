@@ -270,7 +270,7 @@ def test_anche_gli_errori_portano_il_costo():
 
 def test_uscita_non_json_cli_assente_e_tempo_scaduto():
     def non_json(cmd, stdin, cwd, env, timeout):
-        return subprocess.CompletedProcess(cmd, 1, stdout="Not logged in", stderr="")
+        return subprocess.CompletedProcess(cmd, 1, stdout="errore inatteso", stderr="")
     with pytest.raises(RuntimeError, match="non JSON"):
         ClaudeCliClient(runner=non_json).chat.completions.create(model="m", messages=_msgs())
 
@@ -332,8 +332,57 @@ def test_costo_grande_conta_e_non_si_scarta():
         assert _costo_equivalente({"total_cost_usd": v}, 0, 0, "claude-sonnet-5-5") == 500 * 3 / 1e6
 
 
-def test_la_stima_non_supera_il_costo_massimo(monkeypatch):
-    """V-2 bot #264: il massimo vale anche per la stima dai token, non solo per caso."""
+def test_la_stima_non_supera_il_costo_massimo():
+    """V-2 bot #264: il massimo vale anche per la stima dai token, non solo per caso.
+    V-2 ve #265: token enormi passati direttamente non vanno in overflow."""
     import brains.claude_cli as cc
-    monkeypatch.setattr(cc, "_TOKEN_MASSIMI", 10 ** 15)
-    assert cc._costo_equivalente({}, 10 ** 15, 10 ** 15, "claude-opus-5-5") == cc._COSTO_MASSIMO
+    massimo_token = cc._TOKEN_MASSIMI * (15.00 + 75.00) / 1_000_000
+    for n in (10 ** 15, 10 ** 400):
+        v = cc._costo_equivalente({}, n, n, "claude-opus-5-5")
+        assert v == massimo_token <= cc._COSTO_MASSIMO
+
+
+def test_login_scaduto_ha_un_messaggio_chiaro():
+    """Prova del 25 ottobre sul Mac: con il login scaduto la CLI risponde subtype
+    «success» ma is_error; il messaggio deve dire di rifare il login, senza il testo."""
+    risposta = {"type": "result", "subtype": "success", "is_error": True,
+                "result": "Failed to authenticate: OAuth session expired and could not be refreshed"}
+    c = ClaudeCliClient(binario="claude", runner=_runner(risposta, {}))
+    with pytest.raises(RuntimeError) as e:
+        c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert "login" in str(e.value) and "/login" in str(e.value)
+    assert "OAuth" not in str(e.value) and not str(e.value).startswith("429")
+
+
+def test_limite_con_oauth_resta_quota():
+    """R-511-1: un limite raggiunto resta QUOTA anche se il testo cita il login."""
+    risposta = {"type": "result", "subtype": "success", "is_error": True,
+                "result": "usage limit reached (oauth token ok)"}
+    c = ClaudeCliClient(binario="claude", runner=_runner(risposta, {}))
+    with pytest.raises(RuntimeError) as e:
+        c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert str(e.value).startswith("429") and "login" not in str(e.value)
+
+
+@pytest.mark.parametrize("stdout,stderr", [
+    ("Invalid API key · Please run /login", ""),
+    ("", "Not logged in. Please run /login"),
+])
+def test_login_scaduto_in_testo_semplice(stdout, stderr):
+    """V-2 bot #269: anche un'uscita non JSON col login scaduto dà l'istruzione /login."""
+    def run(cmd, stdin, cwd, env, timeout):
+        return subprocess.CompletedProcess(cmd, 1, stdout=stdout, stderr=stderr)
+    c = ClaudeCliClient(binario="claude", runner=run)
+    with pytest.raises(RuntimeError) as e:
+        c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert "/login" in str(e.value) and not str(e.value).startswith("429")
+    assert e.value.costo_equivalente_usd > 0
+
+
+def test_limite_in_testo_semplice_resta_quota():
+    def run(cmd, stdin, cwd, env, timeout):
+        return subprocess.CompletedProcess(cmd, 1, stdout="usage limit reached, please run /login", stderr="")
+    c = ClaudeCliClient(binario="claude", runner=run)
+    with pytest.raises(RuntimeError) as e:
+        c.chat.completions.create(model="claude-sonnet-5-5", messages=_msgs())
+    assert str(e.value).startswith("429")
