@@ -1,81 +1,57 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-27 — V-1 della verifica esterna #273 (chat Motore)
+**Sessione:** 2026-10-27 — Coda notte: prima voce sui contatti illeggibili (richiesta dell'operatore)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #276 (https://github.com/Gasss23/Gas/pull/276). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` nel cloud non è autenticato). Merge secondo CLAUDE.md §10.
-2. Prossime voci in coda: V-1 bot #273 (BASSA) e R-520-1 (BASSA).
+1. Merge della PR #278 (https://github.com/Gasss23/Gas/pull/278), solo documenti. Numero e URL dalla risposta JSON di `gh api -X POST repos/Gasss23/Gas/pulls`.
+2. V-1 verifica esterna #273 (MEDIA): chiesta in coda dall'operatore ma già CHIUSA dalla review #526 (chat Motore) con il comportamento opposto fissato da T21b2; ribaltarla è una decisione esplicita dell'operatore.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Merge della PR #274**: `FATTA` — conflitto col main #275 risolto (review #525), merge su richiesta dell'operatore.
-- **Fetta 2 — V-1 ve #273**: `FATTA` — comportamento invariato (il fix proposto rompeva T20d senza chiudere un percorso reale), commento corretto e test T21b2; review #526 APPROVATO.
+- **Fetta 1 — Voce 0 in `reports/coda_notte.md`**: `FATTA` — V-1 bot #273 e R-520-1 con `leggi_contatti`; `_memoria_pin` escluso perché V-1 ve #273 è chiusa. Primo testo BOCCIATO dal bot #278, corretto in f8a7ca5.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- gas.py                             |  7 +++++--
- reports/diff_sessione.md           |  8 +++++---
- reports/handoff.md                 | n/d
- reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 14 ++++++--------
- tests/test_unit_kernel.py          | 12 ++++++++++++
+ reports/coda_notte.md    |  1 +
+ reports/diff_sessione.md |  7 ++-----
+ reports/handoff.md       | n/d (commit finale)
+ reports/ultimo_report.md | 12 ++++++------
 ```
 
-NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d».
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-bfc3e28 docs(fine-task): report della V-1 della verifica esterna #273
-8b6a965 fix(memoria): V-1 ve #273 — pin con contatti illeggibili: comportamento chiarito e fissato da un test
-661d2d0 chore(revisore): memoria review #526 — APPROVATO
+f8a7ca5 docs(coda-notte): prima voce sui soli punti aperti (V-1 bot #273, R-520-1); V-1 ve #273 già chiusa (#526)
+c0ca15a docs(coda-notte): pin di memoria con contatti illeggibili in cima alla coda (V-1 ve #273)
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #526 (integrale, commit 8b6a965)
-
-## VERDETTO: APPROVATO
-
-L'analisi regge. Ho cercato un percorso in cui un contatto non fidato arrivi al modello quando la lettura dei contatti fallisce, e non ne ho trovati. Tenere il segno a False quando la lettura fallisce è corretto: metterlo a True farebbe passare alla firma ogni scrittura con la memoria guasta (rompe T20d) senza chiudere nessun percorso reale.
-
-Elementi del diff esaminati:
-1. `gas.py:3645` — nuovo commento: se la lettura fallisce, nel pin non entra nessun lead e il segno resta False di proposito. Rischio esaminato: che il commento copra un fail-open reale. `gas.py:3653` chiama `lista_contatti`, che con la lettura fallita restituisce `[]`. Quindi la lista dei lead attivi è vuota, nel pin non c'è la sezione dei lead e nessun campo di contatto raggiunge il prompt di sistema. Le eccezioni restano in fail-closed: il ramo except mette il segno a True (`gas.py:3707`). Esito: ok.
-2. `tests/test_unit_kernel.py:1035` — T21b2: rimpiazza `lista_contatti` con una funzione che restituisce `[]`, poi controlla che il pin non abbia lead, abbia ancora il diario («DM inviato a Mario») e che il segno resti False. Rischio esaminato: che il test non morda. Se si applica il fix proposto (`leggi_contatti` con True su None), il rimpiazzo non agisce più, Mario torna nel pin e la condizione «## Lead attivi not in pin_ko» fallisce. Il test quindi rileva il cambio, anche se con un messaggio di errore poco esplicito. Esito: ok.
-
-Contesto, file non toccati:
-3. `modules/gate/gate.py:82` — `ricorda` è tra i tool di input non fidato (`UNTRUSTED_INPUT_TOOLS`): se il modello legge i contatti con `ricorda`, la finestra risulta contaminata a prescindere dal pin. Esito: ok.
-4. `gas.py:4256` — `salva_contatto` e `imposta_stato_contatto` restituiscono solo la chiave e lo stato forniti dal modello, mai campi letti da un contatto salvato. Le righe del diario scritte in turni contaminati entrano nel pin mascherate (dettagli e tipo omessi). `_pin_non_fidato_visto` resta vero fino a `clear`. Esito: nessun percorso alternativo.
-
-Finding:
-1. COSMETICA: T21b2 rimpiazza `lista_contatti` e non `leggi_contatti`. Va bene oggi, ma se il codice passasse a `leggi_contatti` il test fallirebbe con un messaggio che non spiega il motivo. Non blocca.
-
-Rischio escluso: non ho riprodotto un vero «database is locked» fra due processi né provato `gas notte` dal vero con il DB guasto. Il ramo d'errore è lo stesso (`leggi_contatti` → None → `[]`), già coperto da #520.
-
-Verifica: kernel rifatto da me, 1044 PASS 0 FAIL.
-
-Memoria: riga #526 più una lezione, committata da sola in 661d2d0 (/home/user/Gas/.claude/agents/memoria_revisore.md).
+nessun diff motore, revisore non richiesto.
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel: 1043 → 1044 PASS (T21b2 nuovo), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1044 PASS, 0 FAIL ===`
+Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato. 661d2d0, 8b6a965 e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+Mappatura commit→run:
+- `c0ca15a` → `unit-suite` success, `handoff-check` success, `verifica-bot` failure (bot BOCCIATO: voce che rimetteva in coda V-1 ve #273 già chiusa).
+- `f8a7ca5`: run in corso alla scrittura dell'handoff.
+- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- COSMETICA #526: T21b2 sostituisce `lista_contatti`, non `leggi_contatti`.
-- Preesistenti: V-1 bot #273 (BASSA), R-520-1 (BASSA), R-516-1 (COSMETICA), bot #269 «/forte@NomeBot» (BASSA), COSMETICHE ve #269.
+- V-1 bot #273 e R-520-1: in coda come voce 0.
