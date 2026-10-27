@@ -13,4 +13,5 @@
 - **RIPARTENZA** aggiornata in `reports/stato_progetto.md` per la prossima chat.
 
 ## Anomalie
-- Nessuna.
+- La #279 è finita in conflitto (solo log) per due PR entrate in main: risolto col merge di main.
+- Verdetti sulla #279: bot APPROVATO CON RISERVE (neutral), verifica esterna APPROVATO CON RISERVE; nessuna ALTA/MEDIA; merge chiesto dall'operatore («mergia 279»). Note da fare nella prossima fetta: `gas fida-contatto <chiave>` con rubrica illeggibile, docstring di `_ricorda`, riga «merge da browser» nel Lucchetto main di CLAUDE.md.
