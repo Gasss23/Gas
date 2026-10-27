@@ -26,6 +26,10 @@ falliscono con «troppe risoluzioni DNS in corso» finché il resolver non rinun
 html.parser fallisce, il ripiego senza parser perde il titolo.
 
 Zero dipendenze esterne: solo stdlib. I proxy d'ambiente non si usano (http.client).
+Eccezione in prova, spenta per default (fetta 19, R-ve246-5): con GAS_WEB_LEXBOR=1 e
+selectolax installato il testo si legge con lexbor in un processo figlio (modules/web/lexbor.py),
+che ha i suoi TEMPO_MAX s: da accesa il caso peggiore diventa circa 12 s di rete + 4 s del figlio
++ fino a 3 s della lettura di sempre, se il figlio non ce la fa (R-520-2).
 """
 from __future__ import annotations
 
@@ -47,6 +51,8 @@ from html import unescape as html_unescape
 from html.parser import HTMLParser
 from typing import Callable, Optional
 from urllib.parse import quote, urljoin, urlsplit
+
+from modules.web import lexbor as _lexbor
 
 logger = logging.getLogger("gas.web")
 
@@ -1376,6 +1382,39 @@ def _testo_senza_parser(grezzo: str, xhtml: bool = False) -> str:
         return testo
 
 
+def _testo_e_titolo(grezzo: str, xhtml: bool, url_finale: str) -> tuple[str, str]:
+    """Testo e titolo di una pagina HTML o XHTML con html.parser, o col ripiego senza parser."""
+    estrattore = _Estrattore(xhtml, con_noscript=_NOSCRIPT.search(grezzo) is not None)
+    try:
+        if not _PARSER_AGGIORNATO:
+            if _avviso_parser_vecchio.acquire(blocking=False):
+                # Python senza le patch del 2025: si legge col ripiego, senza titolo e con
+                # le textarea nascoste; lo si dice una volta nella scatola nera (R-466-2).
+                logger.warning("leggi_pagina: html.parser senza le patch del 2025, si usa il ripiego")
+            raise ValueError("html.parser senza le patch del 2025")
+        estrattore.feed(grezzo)
+        estrattore.close()
+        if estrattore._taglia:
+            # Un tag letto diversamente dal browser: il resto è nascosto (R-ve248-3, V-3 bot #250).
+            logger.warning("leggi_pagina: tag letto diversamente dal browser, resto della pagina nascosto su %r",
+                           url_finale[:200])
+        if estrattore._frameset:
+            logger.warning("leggi_pagina: <frameset>, resto della pagina nascosto su %r", url_finale[:200])
+        if estrattore._contesto.incerta:
+            # Il resto della pagina è stato nascosto: lo si dice nella scatola nera (R-470-2).
+            logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
+        corpo = _pulisci("".join(estrattore.pezzi))
+        titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
+        if estrattore._frameset:
+            # Anche un titolo scritto prima del frameset può non vedersi: il browser toglie
+            # il body intero, title compreso (V-1 bot e ve #270).
+            titolo = ""
+        return corpo, titolo
+    except ValueError:
+        # html.parser vecchio o che non ce la fa: ripiego senza parser (titolo perso).
+        return _pulisci(_testo_senza_parser(grezzo, xhtml)), ""
+
+
 def _componi(url_finale: str, pagina: dict) -> dict:
     codice = secrets.token_hex(6)
     grezzo = _decodifica(pagina["corpo"], pagina["charset"])
@@ -1388,34 +1427,14 @@ def _componi(url_finale: str, pagina: dict) -> dict:
             grezzo = _commenti_e_cdata_xml(grezzo)
         grezzo = _RIF_ZERI_HEX.sub(r"&#\1", _RIF_ZERI_DEC.sub("&#", grezzo))
         grezzo = _RIF_ENORME.sub("&#65533;", grezzo)
-        estrattore = _Estrattore(xhtml, con_noscript=_NOSCRIPT.search(grezzo) is not None)
-        try:
-            if not _PARSER_AGGIORNATO:
-                if _avviso_parser_vecchio.acquire(blocking=False):
-                    # Python senza le patch del 2025: si legge col ripiego, senza titolo e con
-                    # le textarea nascoste; lo si dice una volta nella scatola nera (R-466-2).
-                    logger.warning("leggi_pagina: html.parser senza le patch del 2025, si usa il ripiego")
-                raise ValueError("html.parser senza le patch del 2025")
-            estrattore.feed(grezzo)
-            estrattore.close()
-            if estrattore._taglia:
-                # Un tag letto diversamente dal browser: il resto è nascosto (R-ve248-3, V-3 bot #250).
-                logger.warning("leggi_pagina: tag letto diversamente dal browser, resto della pagina nascosto su %r",
-                               url_finale[:200])
-            if estrattore._frameset:
-                logger.warning("leggi_pagina: <frameset>, resto della pagina nascosto su %r", url_finale[:200])
-            if estrattore._contesto.incerta:
-                # Il resto della pagina è stato nascosto: lo si dice nella scatola nera (R-470-2).
-                logger.warning("leggi_pagina: svg/math incerti, resto della pagina nascosto su %r", url_finale[:200])
-            corpo = _pulisci("".join(estrattore.pezzi))
-            titolo = _pulisci(" ".join(estrattore.titolo)).replace("\n", " ")[:MAX_TITOLO]
-            if estrattore._frameset:
-                # Anche un titolo scritto prima del frameset può non vedersi: il browser toglie
-                # il body intero, title compreso (V-1 bot e ve #270).
-                titolo = ""
-        except ValueError:
-            # html.parser vecchio o che non ce la fa: ripiego senza parser (titolo perso).
-            corpo = _pulisci(_testo_senza_parser(grezzo, xhtml))
+        letto = (_lexbor.testo_visibile(grezzo, _TAG_NASCOSTI, frozenset(_Estrattore._BLOCCHI))
+                 if not xhtml and _lexbor.attivo() else None)
+        if letto is not None:
+            # In prova, spenta per default: l'albero di lexbor come il browser (R-ve246-5).
+            corpo = _pulisci(letto[0])
+            titolo = _pulisci(letto[1]).replace("\n", " ")[:MAX_TITOLO]
+        else:
+            corpo, titolo = _testo_e_titolo(grezzo, xhtml, url_finale)
     troncato = pagina["troncato"]
     if len(corpo) > MAX_CARATTERI:
         corpo = corpo[:MAX_CARATTERI]
