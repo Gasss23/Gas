@@ -10780,11 +10780,30 @@ try:
           "non disponibile" in _k98m._ricorda(None, None, 10, fermi=True))
     check("T98g R-455-2: con fermi il diario di default NON si aggiunge",
           "EVENTO98" not in _txt98 and "EVENTO98" in _o98d[0], _txt98[-200:])
-    _k98.memory.conta_approvazioni = lambda: None  # R-455-1: DB degradato
+    _k98.memory.available = False  # R-455-1: memoria degradata
     _s98h = _k98._ricorda(None, None, 10, fermi=True)
-    del _k98.memory.conta_approvazioni
+    del _k98.memory.available
     check("T98h R-455-1: memoria degradata → «NON letto», mai «nessun lead attivo»",
           "NON letto" in _s98h and "nessun lead attivo" not in _s98h, _s98h[:200])
+    # R-454-1: le firme si leggono ma i contatti no (tabella illeggibile, come un DB
+    # bloccato fra due letture): mai «nessun lead attivo», e il turno prosegue.
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        _con98.execute("ALTER TABLE contatti RENAME TO contatti_via98")
+    _s98k = _k98._ricorda(None, None, 10, fermi=True)
+    _ev98k = run_turn_scriptato(_k98, "chi è fermo ora?", [
+        [("ricorda", '{"fermi": true}')], "fatto"])
+    with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
+        _con98.execute("ALTER TABLE contatti_via98 RENAME TO contatti")
+    check("T98k R-454-1: contatti illeggibili con firme leggibili → «NON letto», turno completo",
+          _k98.memory.conta_approvazioni() is not None
+          and "NON letto" in _s98k and "nessun lead attivo" not in _s98k
+          and [e["type"] for e in _ev98k if e["type"] in ("tool_res", "final")]
+          == ["tool_res", "final"]
+          and "NON letto" in [e["output"] for e in _ev98k if e["type"] == "tool_res"][0],
+          _s98k[:200])
+    check("T98l leggi_contatti: lista coi contatti, lista_contatti invariata",
+          isinstance(_k98.memory.leggi_contatti(), list)
+          and len(_k98.memory.leggi_contatti()) == len(_k98.memory.lista_contatti()) > 0)
     with _sqlite3.connect(str(_k98.memory.db_path)) as _con98:
         _con98.execute("UPDATE contatti SET stato = 'nuovo' WHERE chiave = 'acapo98'")
     _s98i = _k98._ricorda(None, None, 10, fermi=True)
