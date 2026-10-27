@@ -1035,13 +1035,35 @@ check("T21b pin vuoto se memoria vuota o None",
 # non fidato), il diario resta; il segno resta False come con la lettura riuscita
 k = kernel_tmp(); _popola(k)
 pin_ok = k._memoria_pin(); fidato_ok = k._pin_non_fidato
-k.memory.lista_contatti = lambda *a, **kw: []   # come MemoryStore su lettura fallita
+k.memory.leggi_contatti = lambda *a, **kw: None  # lettura fallita: lista_contatti → []
 pin_ko = k._memoria_pin()
 check("T21b2 V-1 ve #273: contatti illeggibili → nessun lead nel pin, diario presente",
       fidato_ok is False and k._pin_non_fidato is False
       and "Mario" in pin_ok and "## Lead attivi" not in pin_ko
       and "DM inviato a Mario" in pin_ko,
       f"ok={fidato_ok} ko={k._pin_non_fidato} pin_ko={pin_ko[:200]!r}")
+
+# T21b3 — V-1 bot #273: ricorda(contatto=...) con la rubrica illeggibile non dice
+# «Nessun lead trovato» ma che la rubrica non è stata letta
+k = kernel_tmp(); _popola(k)
+k.memory.leggi_contatti = lambda *a, **kw: None
+out_b3 = k._ricorda(contatto="Mar")
+check("T21b3 V-1 bot #273: ricorda con rubrica illeggibile → «NON letta», mai «Nessun lead trovato»",
+      "NON letta" in out_b3 and "Nessun lead trovato" not in out_b3, out_b3[:200])
+
+# T21b4 — R-527-1/2: memoria senza leggi_contatti (vecchia/finta) → ripiego su
+# lista_contatti, il lead si trova ancora
+k = kernel_tmp(); _popola(k)
+class _MemVecchia:
+    def __init__(self, m): self._m = m
+    def __getattr__(self, n):
+        if n == "leggi_contatti":
+            raise AttributeError(n)
+        return getattr(self._m, n)
+k.memory = _MemVecchia(k.memory)
+m_b4, _n_b4 = k._trova_contatto("Mario")
+check("T21b4 R-527-2: memoria senza leggi_contatti → ripiego su lista_contatti",
+      m_b4 is not None and (m_b4.get("nome") or "").startswith("Mario"), str(m_b4)[:120])
 
 # T21c — ricorda(contatto=...) restituisce scheda + storia del lead
 k = kernel_tmp(); cid = _popola(k)
@@ -6076,6 +6098,15 @@ _k74d._memoria_pin()
 _rc74d0, _out74d0 = _fida74(_k74d.root, [])
 check("T74b5 fida-contatto senza chiave elenca i lead segnati",
       _rc74d0 == 0 and "dora@x.it" in _out74d0 and _k74d._pin_non_fidato is True, _out74d0)
+# R-520-1: a lettura dei contatti fallita mai «Nessun lead segnato»: FAIL ed exit 1
+_orig74r = gas.MemoryStore.leggi_contatti
+gas.MemoryStore.leggi_contatti = lambda self, *a, **kw: None
+try:
+    _rc74r, _out74r = _fida74(_k74d.root, [])
+finally:
+    gas.MemoryStore.leggi_contatti = _orig74r
+check("T74b5r R-520-1: fida-contatto con lettura fallita → FAIL, mai «Nessun lead segnato»",
+      _rc74r == 1 and "FAIL" in _out74r and "Nessun lead" not in _out74r, _out74r)
 _rc74d1, _out74d1 = _fida74(_k74d.root, ["dora@x.it"], risposta="n")
 check("T74b5 fida-contatto senza conferma → segno invariato",
       _rc74d1 == 0 and "annullata" in _out74d1
