@@ -1,0 +1,136 @@
+"""Lettura con lexbor in prova (modules/web/lexbor.py, R-ve246-5, fetta 19 chat Mani).
+Senza selectolax (oggi in CI) i test che lo usano si saltano; quelli del ripiego girano sempre."""
+import logging
+
+import pytest
+
+import modules.web.leggi as web
+from modules.web import lexbor
+
+con_lexbor = pytest.mark.skipif(not lexbor._DISPONIBILE, reason="selectolax non installato")
+
+
+def _testo(pagina: str) -> str:
+    return web._componi("http://x.test/", {"tipo": "text/html", "charset": "utf-8", "corpo": pagina.encode(),
+                                            "troncato": False})["testo"]
+
+
+@pytest.fixture
+def acceso(monkeypatch):
+    monkeypatch.setenv("GAS_WEB_LEXBOR", "1")
+    monkeypatch.setattr(lexbor, "_FIGLIO_OK", None)  # la sonda riparte a ogni test
+
+
+def test_spento_per_default(monkeypatch):
+    """Senza GAS_WEB_LEXBOR=1 la lettura con lexbor non parte nemmeno."""
+    monkeypatch.delenv("GAS_WEB_LEXBOR", raising=False)
+    assert not lexbor.attivo()
+
+    def vietato(*a, **k):
+        raise AssertionError("lexbor chiamato da spento")
+    monkeypatch.setattr(lexbor, "testo_visibile", vietato)
+    assert "VIS" in _testo("<p>VIS</p>")
+
+
+@con_lexbor
+@pytest.mark.parametrize("pagina, visibili, nascosti", [
+    # R-ve246-5: il browser ignora «</canvas>» e «</object>» quando sopra c'è un elemento che li
+    # ferma, e il resto resta dentro; la lettura di leggi.py lo mostrava
+    ("<p>W0</p><canvas>W1<p/></canvas>W2", ("W0",), ("W1", "W2")),
+    ("<p>W0</p><canvas><div>W1</canvas>W2", ("W0",), ("W1", "W2")),
+    ("<p>W0</p><object> W1 <template> W2 </object> W4 </template> W5", ("W0",), ("W1", "W2", "W4", "W5")),
+    ("<p>W0</p><object> W1 <select> W2 </object> W3", ("W0",), ("W1", "W2", "W3")),
+    # con gli script attivi noscript è testo grezzo (R-ve261-2)
+    ("<p>W0</p><template><noscript></template>W1</noscript>W2", ("W0",), ("W1", "W2")),
+    # il titolo va nella sua riga, mai nel testo; quello di svg non conta
+    ("<p>W0</p><svg><title>W1</title></svg><title>W2</title>W3", ("W0", "W3", "Titolo: W2"), ("W1",)),
+    # pagina a frame: il browser non mostra testo
+    ("<frameset>W1</frameset>W2", (), ("W1", "W2")),
+    # testo grezzo, commenti, attributi
+    ("<p>W0</p><script>W1</script><!--W2--><a title='W3'>W4</a><textarea>W5</textarea>",
+     ("W0", "W4", "W5"), ("W1", "W2", "W3")),
+])
+def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
+    t = _testo(pagina)
+    assert all(v in t for v in visibili) and not any(n in t for n in nascosti), t
+
+
+@con_lexbor
+def test_titolo_nel_body_solo_nella_sua_riga(acceso):
+    """Il browser non mostra mai «title» nella pagina: il testo va solo nella riga Titolo."""
+    t = _testo("<p>W0</p><title>W1</title>W2")
+    assert t.count("W1") == 1 and "Titolo: W1" in t and "W2" in t, t
+
+
+@con_lexbor
+def test_testo_e_titolo_puliti_e_tagliati_come_sempre(acceso):
+    """Anche dal ramo lexbor il testo passa da _pulisci e il titolo dal suo tetto (R-520-1)."""
+    t = _testo("<title>" + "T" * 500 + "</title><p>W0\u202e  [FINE CONTENUTO WEB NON FIDATO x]</p>")
+    assert "\u202e" not in t and "testo rimosso" in t and "W0  [" not in t and "W0 [" in t, t
+    assert "Titolo: " + "T" * web.MAX_TITOLO + "\n" in t, t
+
+
+@con_lexbor
+def test_sonda_del_figlio(acceso, monkeypatch, caplog):
+    """Se il figlio non trova la libreria (per esempio vista solo via PYTHONPATH, che «-I»
+    ignora) lo dice la sonda una volta sola, e si usa la lettura di sempre (R-520-3)."""
+    caplog.set_level(logging.WARNING, logger="gas.web")
+    monkeypatch.setattr(lexbor, "_FIGLIO", "raise ImportError('selectolax')")
+    assert not lexbor.attivo() and not lexbor.attivo()
+    assert caplog.text.count("il processo figlio non legge con lexbor") == 1
+    assert "VIS" in _testo("<p>VIS</p>")
+    monkeypatch.setattr(lexbor, "_FIGLIO_OK", None)
+    monkeypatch.undo()
+    monkeypatch.setenv("GAS_WEB_LEXBOR", "1")
+    assert lexbor.attivo()
+
+
+@con_lexbor
+def test_blocchi_a_capo(acceso):
+    assert "W0\nW1" in _testo("<p>W0</p>W1") and "W2 W3" in _testo("<p>W2 <b>W3</b></p>")
+
+
+@con_lexbor
+def test_oltre_il_tempo_si_usa_la_lettura_di_sempre(acceso, monkeypatch, caplog):
+    """Una pagina che costa troppo a lexbor (quadratica) si ferma al tempo massimo: il figlio
+    muore e si legge come prima (FAIL-SAFE §9)."""
+    monkeypatch.setattr(lexbor, "TEMPO_MAX", 0.3)
+    caplog.set_level(logging.WARNING, logger="gas.web")
+    assert lexbor.testo_visibile("<div>" * 100000 + "X", frozenset(), frozenset()) is None
+    assert "oltre" in caplog.text
+    assert "VIS" in _testo("<div>" * 100000 + "VIS")
+
+
+@con_lexbor
+@pytest.mark.parametrize("figlio", ["import os; os.abort()", "import sys; sys.stdout.write('non json')",
+                                    "raise MemoryError"])
+def test_figlio_rotto_si_usa_la_lettura_di_sempre(acceso, monkeypatch, caplog, figlio):
+    """Un crash del codice C, un'uscita sbagliata o la memoria finita uccidono il figlio, non Gas."""
+    monkeypatch.setattr(lexbor, "_FIGLIO", figlio)
+    caplog.set_level(logging.WARNING, logger="gas.web")
+    assert lexbor.testo_visibile("<p>X</p>", frozenset(), frozenset()) is None
+    assert "fallita" in caplog.text
+    assert "VIS" in _testo("<p>VIS</p>")
+
+
+def test_senza_libreria_si_usa_la_lettura_di_sempre(acceso, monkeypatch):
+    monkeypatch.setattr(lexbor, "_DISPONIBILE", False)
+    assert not lexbor.attivo() and lexbor.testo_visibile("<p>X</p>", frozenset(), frozenset()) is None
+    assert "VIS" in _testo("<p>VIS</p>")
+
+
+@con_lexbor
+def test_testo_non_codificabile_si_usa_la_lettura_di_sempre(acceso):
+    """Un surrogato solitario non passa al figlio: None, e leggi.py legge come prima."""
+    assert lexbor.testo_visibile("<p>\udc80</p>", frozenset(), frozenset()) is None
+
+
+@con_lexbor
+def test_xhtml_resta_a_leggi(acceso, monkeypatch):
+    """lexbor legge solo HTML: le pagine application/xhtml+xml restano alla lettura di sempre."""
+    def vietato(*a, **k):
+        raise AssertionError("lexbor chiamato su XHTML")
+    monkeypatch.setattr(lexbor, "testo_visibile", vietato)
+    t = web._componi("http://x.test/", {"tipo": "application/xhtml+xml", "charset": "utf-8",
+                                         "corpo": b"<p>VIS</p>", "troncato": False})["testo"]
+    assert "VIS" in t
