@@ -16,6 +16,7 @@
 - **Fetta 2 — Accensione del forte sul Mac (operatore, guidata)**: `FATTA` — `.env`, doctor, catalogo, prova `/forte`.
 - **Fetta 3 — Configurazione del Mac nello stato del progetto**: `FATTA`.
 - **Fetta 4 — Note del bot #274 (V-1 roadmap R2, V-2 RIPARTENZA)**: `FATTA`.
+- **Fetta 5 — Note del bot #274, 2° giro (V-1 canali di /forte provati, V-2 §6 con le run CI)**: `FATTA`.
 
 ---
 
@@ -34,6 +35,7 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+cafd478 docs: note del bot #274 — roadmap R2 e RIPARTENZA allineate al forte acceso
 fbca1ab docs(fine-task): numero della PR #274 nell'handoff
 2500db5 docs(stato): cervello forte acceso sul Mac (configurazione in G-3)
 ```
@@ -50,7 +52,11 @@ Nessuna modifica a gas.py/tests/.
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato. Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+`gh` nel cloud non è autenticato: run lette con lo strumento GitHub `actions_list` (workflow ci.yml, branch feat/merge-automatico-z1xjx2).
+- 2500db5 → run CI 40423823987: completed, success.
+- fbca1ab → run CI 40423852723: completed, success.
+- cafd478 → run CI 40424186394: in_progress alla scrittura dell'handoff.
+- Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
