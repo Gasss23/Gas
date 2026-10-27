@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #277 (https://github.com/Gasss23/Gas/pull/277). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5034496930","url":"https://github.com/Gasss23/Gas/pull/277"}`; `actions_list` riporta `"pull_requests":[277]` sulla run di 0418f37); `gh` nel cloud non è autenticato. Merge da solo solo con APPROVATO pulito del bot sull'head. Il merge non accende niente.
+1. Merge della PR #277 (https://github.com/Gasss23/Gas/pull/277). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5034496930","url":"https://github.com/Gasss23/Gas/pull/277"}`; `actions_list` riporta `"pull_requests":[277]` sulla run di 0418f37); `gh` nel cloud non è autenticato. Bot e verifica esterna su 0c2a5c8: APPROVATO CON RISERVE, quindi serve l'OK dell'operatore (niente merge autonomo). Il merge non accende niente.
 2. Accensione: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt`; poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
 3. Poi, una alla volta: R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
@@ -26,21 +26,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  11 +++++++++++
+ .claude/agents/memoria_revisore.md |  12 ++++++++++++
  modules/web/leggi.py               |   7 ++++---
  modules/web/lexbor.py              | 191 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------
- reports/diff_sessione.md           |   9 ++++++---
+ reports/diff_sessione.md           |   9 +++++++--
  reports/handoff.md                 | n/d (commit finale)
  reports/stato_progetto.md          |   5 +++--
- reports/ultimo_report.md           |  39 +++++++++++++++++++++++++++++++--------
+ reports/ultimo_report.md           |  42 ++++++++++++++++++++++++++++++++++++------
  tests/test_unit_web_lexbor.py      | 156 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat c75f462` preso con i report in stage, prima del commit finale. BASE = `git merge-base origin/main HEAD` = c75f462 (dopo il merge di main 33e0d42).
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat 932ecd6` preso con i report in stage, prima del commit finale. BASE = `git merge-base origin/main HEAD` = 932ecd6 (dopo il merge di main 7e2622f): gas.py, tests/test_unit_kernel.py e reports/coda_notte.md arrivano da main e non sono nel diff.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+7e2622f Merge origin/main (932ecd6, PR #276 e #278) in claude/peaceful-lovelace-0w2b7q (PR #277)
+0c2a5c8 docs(fine-task): Mani fetta 20 secondo giro — report, handoff, stato (PR #277, review #527-#529)
 0418f37 feat(web): fetta 20 secondo giro — select, details, hidden e sonde come il browser (PR #277)
 4f30374 chore(revisore): memoria review #529 — APPROVATO CON RISERVE
 d4ac3c9 chore(revisore): memoria review #528 — APPROVATO CON RISERVE
@@ -57,7 +59,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore ab5eb1d: review #525 sul primo diff e #526 dopo la chiusura di R-525-1/2/3. Commit motore 0418f37: review #527 sul secondo giro, #528 dopo R-527-1..4, #529 dopo R-528-1/2. Il merge 33e0d42 non porta file del perimetro (solo reports/roadmap.md da main): niente review. Verdetti integrali:
+Commit motore ab5eb1d: review #525 sul primo diff e #526 dopo la chiusura di R-525-1/2/3. Commit motore 0418f37: review #527 sul secondo giro, #528 dopo R-527-1..4, #529 dopo R-528-1/2. Il merge 33e0d42 non porta file del perimetro (solo reports/roadmap.md da main): niente review. Il merge 7e2622f porta da main gas.py e tests/test_unit_kernel.py: review #530. Verdetti integrali:
 
 ### Review #525 (chat Mani) — primo diff staged
 
@@ -252,6 +254,34 @@ Memoria aggiornata con la riga #529 (chat Mani) e una lezione (il «disabled» d
 
 Nota: in quel file la riga #528 compare due volte (riga 901 e penultima riga). Non l'ho toccata: va sistemata a mano.
 
+### Review #530 (chat Mani) — merge di origin/main 932ecd6 in 7e2622f
+
+## VERDETTO: APPROVATO
+
+Review #530 (chat Mani): merge di origin/main 932ecd6 (PR #276 e #278) nel branch claude/peaceful-lovelace-0w2b7q (PR #277, HEAD 0c2a5c8, base c75f462). Il merge è ancora in corso (MERGE_HEAD presente).
+
+Letture fatte: CLAUDE.md (sezioni 5, 8 e 9), reports/stato_progetto.md (testata), memoria_revisore.md (coda e lezioni sui merge #444 e #478). Applicata la lezione delle #444/#478: in una review di merge si citano con path:riga solo i file che restano nel diff dopo il merge, cioè l'area web. gas.py esce dal diff di sessione, quindi lo cito a parole.
+
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:198` — `testo_visibile` della fetta 20 lexbor. Rischio: che il merge abbia alterato il codice della PR. Esito: ok. I blob in stage di tutti i file `modules/web/*` e `tests/test_unit_web_*` sono identici a HEAD (0 differenze). `git diff --cached MERGE_HEAD` mostra come file di motore solo `modules/web/leggi.py`, `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`, cioè esattamente quello che la PR cambia dalla base.
+- `tests/test_unit_web_lexbor.py:136` — test diretto di `testo_visibile` con asserzione `is not None` (chiusura R-528-1). Rischio: che sia andato perso o modificato nel merge. Esito: ok, il blob è uguale a HEAD; suite web lexbor+leggi: 494 passati, 1 saltato.
+- `modules/web/lexbor.py:63` — l'insieme `nascosti` del figlio. Rischio: che le modifiche di main a gas.py (solo commenti in `_memoria_pin`) tocchino il web. Esito: ok, nessuna dipendenza. main dalla base cambia solo gas.py (+7/-4, commenti), tests/test_unit_kernel.py (+12, test T21b2), coda_notte, memoria e reports.
+- Contesto, gas.py (non più nel diff dopo il merge): il blob in indice e nel working tree è uguale a MERGE_HEAD (b822399). Lo stesso vale per tests/test_unit_kernel.py (8885d7b) e per reports/coda_notte.md. Il merge non altera il codice di main. Kernel: 1039 PASS, 1 FAIL (T31g, manca sqlite_vec nell'ambiente, noto); T21b2 PASS.
+
+**Unione dei file in conflitto**
+- `.claude/agents/memoria_revisore.md`: unione esatta delle righe di base, nostro lato e main (contate come multinsieme). 0 righe perse, 0 in più. Prima ci sono le nostre #525–#529 Mani, poi #526 Notte con la sua lezione.
+- `reports/stato_progetto.md` riga 4: verificata confrontando le stringhe. Risulta voce Mani (fetta 20), poi voce Motore (V-1 ve #273, review #526), poi la coda comune, che è identica sui due lati. Il resto del file viene da main (blocco «Notte — contatti illeggibili», unito senza conflitti).
+- 0 marcatori di conflitto nei file in stage.
+- handoff, ultimo_report e diff_sessione presi dal nostro lato: corretto, sono log di sessione.
+
+**Rischio escluso**: non ho riprovato la fetta 20 lexbor nel merito (mutanti, comportamento del figlio). È già coperta dalle review #525–#529 e il merge non tocca quei byte. Non ho verificato la suite con sqlite_vec installato (T31g), perché la libreria manca in questo ambiente.
+
+**Note BASSE**
+- La voce in stato_progetto.md presa da main dice «chat Motore», mentre la riga in memoria è «#526 (chat Notte)». È un'incongruenza del lato main, non del merge.
+- Il numero #526 è usato da due chat (Mani e Notte): accettato dalla regola 4 di lavoro_parallelo.md.
+
+**Memoria**: la riga #530 (chat Mani) è in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`, solo nel working tree. Non l'ho messa in stage né committata: lo stato è ora «MM», quindi va aggiunta allo stage (`git add`) prima del commit di merge. Gli altri file in stage non li ho toccati. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Solo la web suite (gas.py e gli altri test non toccati), codice finale 0418f37:
@@ -259,6 +289,7 @@ Solo la web suite (gas.py e gli altri test non toccati), codice finale 0418f37:
 - Parser vecchio forzato (`_PARSER_AGGIORNATO=False` via plugin): `484 passed, 11 skipped in 29.89s`.
 - Suite vecchia con `GAS_WEB_LEXBOR=1` (test lexbor esclusi): `11 failed, 430 passed, 1 skipped, 53 deselected in 43.33s` (gli stessi 11 della fetta 19).
 - Mutanti di questo giro (uscita di pytest sui test lexbor): senza guardia sui commenti `1 failed, 52 passed in 6.24s`; scelta automatica che salta anche le hidden `1 failed, 52 passed in 6.21s`; scelta automatica senza filtro disabled `1 failed, 52 passed in 5.94s`.
+- Dopo il merge 7e2622f: web suite `494 passed, 1 skipped in 31.62s`; `python3 tests/test_unit_kernel.py` → `=== RIEPILOGO: 1039 PASS, 1 FAIL ===` (`FAIL: T31g gate env GAS_VECTORS=1 costruisce il vector store`: sqlite_vec assente nell'ambiente, fallisce identico su main pulito, fuori scope).
 - Oracolo html5lib (script nello scratchpad), 60 mila pagine senza template/svg/math: fughe con lexbor 0 + 0 + 0, oggi 48 + 40 + 41; con i casi nuovi (body/html hidden, details, option, dialog) 2 fughe su 60 mila, entrambe `<title>` dentro `<select>` dove html5lib segue il select vecchio. Corpus: 131 pagine, 125 con le stesse parole (le 2 pagine COPYRIGHT di Rust perdono le licenze dentro 2.659 `<details>` chiusi).
 
 ## §6 STATO CI
@@ -266,10 +297,12 @@ Solo la web suite (gas.py e gli altri test non toccati), codice finale 0418f37:
 `gh run list` non disponibile (gh non autenticato nel cloud); run lette dall'integrazione GitHub (`actions_list`, workflow ci.yml, branch claude/peaceful-lovelace-0w2b7q, evento push). Istantanea al momento della scrittura: lo stato aggiornato è sulla PR.
 
 ```
-40517590660  CI  push  queued     —        0418f37  2026-10-27T14:03:56Z
-40514061503  CI  push  completed  success  33e0d42  2026-10-27T13:40:05Z
-40510534646  CI  push  completed  success  dbe5efc  2026-10-27T13:16:05Z
-40510137001  CI  push  completed  failure  ab5eb1d  2026-10-27T13:13:20Z
+40522410245  CI  push  in_progress  —        7e2622f  2026-10-27T14:34:31Z
+40518337629  CI  push  completed    success  0c2a5c8  2026-10-27T14:08:54Z
+40517590660  CI  push  completed    success  0418f37  2026-10-27T14:03:56Z
+40514061503  CI  push  completed    success  33e0d42  2026-10-27T13:40:05Z
+40510534646  CI  push  completed    success  dbe5efc  2026-10-27T13:16:05Z
+40510137001  CI  push  completed    failure  ab5eb1d  2026-10-27T13:13:20Z
 ```
 
 Mappatura commit→run:
@@ -278,11 +311,18 @@ Mappatura commit→run:
 - `dbe5efc` → run 40510534646, success.
 - `33e0d42` → run 40514061503, success.
 - `3a23c4f`, `d4ac3c9`, `4f30374`: nessuna run su questo SHA (pushati insieme a `0418f37`).
-- `0418f37` → run 40517590660, in coda alla scrittura dell'handoff.
+- `0418f37` → run 40517590660, success.
+- `0c2a5c8` → run 40518337629, success.
+- `7e2622f` → run 40522410245, in corso alla scrittura dell'handoff.
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
+Bot e verifica esterna su 0c2a5c8 (commento: https://github.com/Gasss23/Gas/pull/277#issuecomment-6444617794): APPROVATO CON RISERVE. Chiuse: conflitto con main (merge 7e2622f), descrizione della PR. Aperte:
+- R-ve277-3 COSMETICA: opzione dentro un sotto-albero `hidden` esce dai candidati della scelta (verso sicuro).
+- R-ve277-4 COSMETICA: fuori da Linux 3 sonde a 600 s prima di spegnere; docstring di `test_sonda_oltre_il_tempo_si_riprova` superata.
+- R-bot277-4 BASSA: tetto assoluto di 2 s in `test_molte_opzioni_annidate_restano_lineari`, a rischio di falsi rossi quando selectolax entra in CI.
+- R-ve277-5 BASSA PREESISTENTE: video/audio, meter/progress e figli «light» di un host shadow escono anche oggi.
 - R-529-1 COSMETICA: opzione dentro `<optgroup disabled>` non considerata disabilitata (tendina chiusa: si legge l'opzione sbagliata, mai testo nascosto).
 - R-528-3 COSMETICA: option dentro option, comportamento senza test (dichiarato).
 - R-526-1 COSMETICA: doppio controllo sotto lock in `attivo()` senza test.
