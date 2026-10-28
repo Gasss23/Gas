@@ -10986,6 +10986,7 @@ try:
     import subprocess as _sp99
     import time as _time99
     from brains.claude_cli import ClaudeCliClient as _CCC99
+    from brains.claude_cli import _MSG_LOGIN as _MSG_LOGIN99
 
     def _cli99(risposte, registro):
         """Fabbrica di ClaudeCliClient col runner finto: una risposta per chiamata."""
@@ -11205,31 +11206,55 @@ try:
             try:
                 _d99s = _doc99()
                 os.environ["GAS_CLAUDE_BIN"] = str(_fake99)
+                _d99s3 = _doc99()  # R-538-1: assoluto ma dalla shell, non dal .env → WARN
+                gas._DOTENV_CARICATE.add("GAS_CLAUDE_BIN")
                 _d99s2 = _doc99()
             finally:
+                gas._DOTENV_CARICATE.discard("GAS_CLAUDE_BIN")
                 os.environ["PATH"] = _spath99
                 if _sbin99 is None:
                     os.environ.pop("GAS_CLAUDE_BIN", None)
                 else:
                     os.environ["GAS_CLAUDE_BIN"] = _sbin99
-            check("T99s doctor: `claude` solo nel PATH del terminale → WARN con GAS_CLAUDE_BIN; percorso assoluto → OK",
+            check("T99s doctor: `claude` solo nel PATH del terminale → WARN con GAS_CLAUDE_BIN; "
+                  "assoluto dalla shell → WARN (R-538-1); assoluto dal .env → OK",
                   any("comando claude" in l and "WARN" in l and "solo nel PATH del terminale" in l
                       and f"GAS_CLAUDE_BIN={_fake99}" in l for l in _d99s)
+                  and any("comando claude" in l and "WARN" in l and "non viene dal .env" in l for l in _d99s3)
                   and any("comando claude" in l and "OK" in l and "presente" in l for l in _d99s2),
-                  str(_d99s + _d99s2)[:400])
+                  str(_d99s + _d99s3 + _d99s2)[:500])
             _r99t = Path(_k99.root)
-            check("T99t _claude_solo_nel_terminale: assoluto, cartelle del timer e venv di Gas no; ~/.local/bin sì",
-                  gas._claude_solo_nel_terminale("/opt/x/claude", "/opt/x/claude", _r99t) is False
-                  and gas._claude_solo_nel_terminale("", "/usr/bin/claude", _r99t) is False
-                  and gas._claude_solo_nel_terminale("", str(_r99t / ".venv" / "bin" / "claude"), _r99t) is False
-                  and gas._claude_solo_nel_terminale("", "/Users/u/.local/bin/claude", _r99t) is True
-                  and gas._claude_solo_nel_terminale("claude", "/opt/homebrew/bin/claude", _r99t) is True)
-            check("T99u _motivo_forte: solo i messaggi di claude_cli, prima riga, ≤160 caratteri",
+            _av99 = gas._avviso_claude_timer
+            for _v99 in (".venv", "venv"):
+                (_r99t / _v99 / "bin").mkdir(parents=True, exist_ok=True)
+            (_r99t / "venv" / "bin" / "activate").write_text("", encoding="utf-8")
+            _solo_venv99 = _av99("", str(_r99t / "venv" / "bin" / "claude"), _r99t, False) is None
+            (_r99t / ".venv" / "bin" / "activate").write_text("", encoding="utf-8")
+            _due_venv99 = _av99("", str(_r99t / "venv" / "bin" / "claude"), _r99t, False)  # V-1 bot #287
+            _link99 = _r99t / "link99"
+            _link99.symlink_to(_r99t / ".venv")
+            (_r99t / "linkroot99").symlink_to(_r99t)
+            check("T99t _avviso_claude_timer: assoluto dal .env, cartelle del timer, primo venv attivo e "
+                  "symlink no; shell, relativo, ~/.local/bin, secondo venv sì; /usr/local/bin solo su Linux",
+                  _av99("/opt/x/claude", "/opt/x/claude", _r99t, True) is None
+                  and "non viene dal .env" in (_av99("/opt/x/claude", "/opt/x/claude", _r99t, False) or "")
+                  and "non è un percorso assoluto" in (_av99("./claude", "/usr/bin/claude", _r99t, True) or "")
+                  and _av99("", "/usr/bin/claude", _r99t, False) is None
+                  and _av99("", str(_r99t / ".venv" / "bin" / "claude"), _r99t, False) is None
+                  and _av99("", str(_link99 / "bin" / "claude"), _r99t, False) is None
+                  # R-540-2: radice raggiunta da un collegamento simbolico (/tmp → /private/tmp)
+                  and _av99("", str(_r99t / ".venv" / "bin" / "claude"), _link99.parent / "linkroot99", False) is None
+                  and _solo_venv99 and _due_venv99 is not None
+                  and _av99("", "/Users/u/.local/bin/claude", _r99t, False) is not None
+                  and _av99("", "/usr/local/bin/claude", _r99t, False, linux=True) is None
+                  and _av99("", "/usr/local/bin/claude", _r99t, False, linux=False) is not None)
+            check("T99u _motivo_forte: solo i messaggi di claude_cli, senza prefisso, prima riga, ≤240 caratteri",
                   gas._motivo_forte(RuntimeError("claude-cli: comando `claude` non trovato"))
-                  == "claude-cli: comando `claude` non trovato"
-                  and gas._motivo_forte(RuntimeError("429 claude-cli: errore (x)")) == "429 claude-cli: errore (x)"
-                  and gas._motivo_forte(RuntimeError("claude-cli: a\nMario Rossi")) == "claude-cli: a"
-                  and len(gas._motivo_forte(RuntimeError("claude-cli: " + "x" * 500))) == 160
+                  == "comando `claude` non trovato"
+                  and gas._motivo_forte(RuntimeError("429 claude-cli: errore (x)")) == "429 errore (x)"
+                  and gas._motivo_forte(RuntimeError("claude-cli: a\nMario Rossi")) == "a"
+                  and len(gas._motivo_forte(RuntimeError("claude-cli: " + "x" * 500))) == 240
+                  and gas._motivo_forte(RuntimeError(_MSG_LOGIN99)) == _MSG_LOGIN99[len("claude-cli: "):]
                   and gas._motivo_forte(RuntimeError("Mario Rossi tel 333")) is None
                   and gas._motivo_forte(ValueError("claude-cli: x")) is None)
             def _cli_assente99(timeout=None):
@@ -11241,7 +11266,8 @@ try:
             _err99v = " ".join(e.get("content", "") for e in _ev99v if e["type"] == "error")
             check("T99v run_turn: forte senza `claude` → l'errore dice il motivo vero, non «RuntimeError»",
                   "non trovato" in _err99v and "GAS_CLAUDE_BIN" in _err99v
-                  and "(RuntimeError)" not in _err99v, _err99v[:300])
+                  and "(RuntimeError)" not in _err99v
+                  and "KO (claude-cli:" not in _err99v, _err99v[:300])
             _uso99.write_text(json.dumps({"giorno": "2999-01-01", "usd": 0}), encoding="utf-8")
             _d99c = _doc99()
             check("T99n doctor: forte spento → OK, acceso → conto di oggi, data futura → WARN fermo",
