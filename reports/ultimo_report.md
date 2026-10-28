@@ -27,4 +27,4 @@
    - `GAS_WEB_LEXBOR=1` nell'ambiente di Gas sul VPS (Linux).
 
 ## Anomalie
-- `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.
+- Nessuna.
