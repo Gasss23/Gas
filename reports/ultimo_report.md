@@ -19,6 +19,10 @@
   - V-2 ve / V-1 bot COSMETICA (commento di `intero()` senza il segno) → commento aggiornato, review #538: FATTA.
   - V-3 ve COSMETICA (numeri dei mutanti del test intermedio) → rifatti sul test finale, sotto: FATTA.
   - V-4 ve COSMETICA (§6 dell'handoff sulla CI di un commit vecchio) → handoff riscritto sulla head nuova: FATTA.
+- **Bot e verifica esterna su 116aac3**: entrambi APPROVATO CON RISERVE, niente ALTA/MEDIA (commento della verifica: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468447612).
+  - V-1 bot / V-1 ve COSMETICA (riga «Ultimo aggiornamento» di stato_progetto senza #538 e senza il secondo giro) → riga completata, su richiesta dell'operatore («sistema V-1»): FATTA.
+  - V-2 ve (§6 e §0 dell'handoff fermi alla scrittura): SALTATA — inevitabile per costruzione dell'handoff, nessun fix richiesto.
+  - V-3 ve (numerazione parallela delle review #536/#537 tra le chat): SALTATA — già dichiarata, righe marcate «(chat X)».
 - **Ripartenza**: `reports/ripartenza_mani.md` aggiornata (punto a fatto, PR #285): FATTA.
 
 ## Prove

@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Mani fetta 22: riserve «DA SISTEMARE» di #280, `intero()` del figlio lexbor legge «0» e «-0» come 0; secondo giro dopo bot e verifica esterna (chat Mani)
+**Sessione:** 2026-10-28 — Mani fetta 22: riserve «DA SISTEMARE» di #280, `intero()` del figlio lexbor legge «0» e «-0» come 0; secondo e terzo giro dopo bot e verifica esterna (chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #285 (https://github.com/Gasss23/Gas/pull/285). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5049895154","url":"https://github.com/Gasss23/Gas/pull/285"}`); `gh` nel cloud non è autenticato. Bot e verifica esterna su 162f5b1: APPROVATO CON RISERVE (riserve chiuse in questo giro); il bot rigira sulla head nuova. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
+1. Merge della PR #285 (https://github.com/Gasss23/Gas/pull/285). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5049895154","url":"https://github.com/Gasss23/Gas/pull/285"}`); `gh` nel cloud non è autenticato. Bot e verifica esterna su 162f5b1 e su 116aac3: APPROVATO CON RISERVE, niente ALTA/MEDIA; le riserve da correggere sono chiuse (l'ultima, V-1 su 116aac3, su richiesta dell'operatore «sistema V-1»). Sulla head di questo handoff il bot rigira da solo. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
 2. Accensione della lettura con lexbor: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (chiude anche R-ve280-1); poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
 3. Shadow DOM dichiarativo (figli «light» di un host con `<template shadowrootmode>`): decisione dell'operatore.
 4. Poi, una alla volta: cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4); R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
@@ -27,6 +27,10 @@
   - V-2 ve / V-1 bot COSMETICA (commento di `intero()` senza il segno): `FATTA` — 20c0708, review #538 APPROVATO.
   - V-3 ve COSMETICA (numeri dei mutanti del test intermedio): `FATTA` — rifatti sul test finale (ritorno vecchio 7 failed, `letto` tolto 8, negativo 1, solo «+» 2).
   - V-4 ve COSMETICA (§6 sulla CI di un commit vecchio): `FATTA` — §6 riscritto qui sotto.
+- **Terzo giro — bot e verifica esterna su 116aac3, APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468447612):
+  - V-1 bot / V-1 ve COSMETICA (riga «Ultimo aggiornamento» di stato_progetto senza #538 e senza il secondo giro): `FATTA` — riga completata, su richiesta dell'operatore («sistema V-1»); solo reports/, niente review.
+  - V-2 ve (§6 e §0 dell'handoff fermi alla scrittura): `SALTATA — inevitabile per costruzione, nessun fix richiesto dalla verifica`.
+  - V-3 ve (numerazione parallela delle review #536/#537 tra le chat): `SALTATA — già dichiarata, righe marcate «(chat X)»`.
 - **Punti b–e della ripartenza** (accensione, shadow DOM, cosmetiche, decisioni vecchie): `DEFERITA — uno alla volta, dopo questa fetta`.
 
 ---
@@ -40,15 +44,16 @@
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   6 +++---
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  35 ++++++++++++++++++++++++++++++-----
+ reports/ultimo_report.md           |  39 ++++++++++++++++++++++++++++++++++-----
  tests/test_unit_web_lexbor.py      |  16 ++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 0cf1d67 (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 0cf1d67. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+116aac3 docs(fine-task): PR #285 secondo giro — merge di main, V-1..V-4 ve e V-1 bot chiuse, review #538
 20c0708 docs(web): commento di intero() cita il segno + o - facoltativo (V-2 ve #285, V-1 bot #285)
 3704890 chore(revisore): memoria review #538 — APPROVATO
 1442468 Merge origin/main (0cf1d67, PR #283 e #284) in claude/peaceful-lovelace-0w2b7q (PR #285)
@@ -62,7 +67,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore bbbfbbe: review #536 sul primo diff staged, #537 dopo la chiusura di R-536-1 (diff committato in bbbfbbe). Merge 1442468: nessun file del perimetro dal lato di main (solo reports/ e memoria), niente review. Commit motore 20c0708 (solo commento): review #538. Verdetti integrali:
+Commit motore bbbfbbe: review #536 sul primo diff staged, #537 dopo la chiusura di R-536-1 (diff committato in bbbfbbe). Merge 1442468: nessun file del perimetro dal lato di main (solo reports/ e memoria), niente review. Commit motore 20c0708 (solo commento): review #538. Il terzo giro (commit di fine-task dopo 116aac3) tocca solo reports/: niente review. Verdetti integrali:
 
 ### Review #536 (chat Mani) — primo diff staged
 
@@ -151,6 +156,7 @@ Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_un
 ## §6 STATO CI
 
 CI NON VERIFICATA con `gh` (assente/non autenticato nel cloud). Check run lette dall'integrazione GitHub sulla PR #285:
+- Head 116aac3: run 40683892840 success (`unit-suite`, `handoff-check`); `verifica-bot` success (verdetto testuale APPROVATO CON RISERVE, V-1 cosmetica chiusa in questo giro).
 - Head 162f5b1: `unit-suite` success e `handoff-check` success (run 40682462721); `verifica-bot` success (run 40682482737, verdetto testuale APPROVATO CON RISERVE).
 - Head bbbfbbe: `unit-suite` success, `handoff-check` failure atteso (run 40682120695: l'handoff era ancora quello della #280).
 
@@ -158,10 +164,12 @@ Mappatura commit→run:
 - 63e4137, ec86b45: nessuna run su questo SHA (pushati insieme a bbbfbbe).
 - bbbfbbe: run 40682120695.
 - 162f5b1: run 40682462721 (CI) e 40682482737 (bot).
-- 1442468, 3704890, 20c0708 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- 1442468, 3704890, 20c0708: nessuna run su questo SHA (pushati insieme a 116aac3, testati solo nel suo albero).
+- 116aac3: run 40683892840.
+- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (lo dice per costruzione: V-2 ve #285 su 116aac3).
 
 ## §7 RISERVE APERTE
 
 - R-ve280-1 BASSA: i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore: `selectolax==1.0.2` in requirements-dev.
-- Dalle review e dalle verifiche di questa sessione: nessuna aperta (R-536-1, V-1/V-2/V-3/V-4 ve #285, V-1 bot #285 chiuse).
+- Dalle review e dalle verifiche di questa sessione: nessuna da correggere (R-536-1, V-1..V-4 ve e V-1 bot su 162f5b1, V-1 bot e ve su 116aac3 chiuse; V-2 e V-3 ve su 116aac3 senza fix, vedi §1).
 - Restano quelle delle fette precedenti (stato_progetto, blocchi «Mani — fetta 20/21»): shadow DOM dichiarativo (decisione dell'operatore); cosmetiche R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4.
