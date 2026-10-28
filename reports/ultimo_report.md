@@ -13,5 +13,7 @@
 
 - **Merge di main (PR #288)**: FATTA — conflitti solo nei report e nella memoria; review #548 APPROVATO; la review del ramo #543 è rinumerata #547 (V-2 della verifica esterna su #293).
 
+- **V-1 bot #293 (stesso valore in shell e .env → falso WARN)**: FATTA — il nome conta come arrivato dal `.env`; vale anche per `GAS_CLAUDE_BIN` (V-1 bot #291); review #549 APPROVATO.
+
 ## Anomalie
 - Due sessioni «chat Motore» lavorano sulla stessa RIPARTENZA: oggi ci sono stati due doppioni (#286 e #287, #290 e #291). L'ho segnalato all'operatore.
