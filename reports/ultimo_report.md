@@ -26,6 +26,7 @@
   - V-4 ve / V-2 bot (numeri): i test deselezionati con `GAS_WEB_LEXBOR=1` sono 61, non 60; su 3.11 la CI dà 445/58 contro 444/59 in locale (scarto di ambiente): corretti qui sotto.
 - **Verdetti finali su d78843f**: bot e verifica esterna APPROVATO CON RISERVE, solo BASSE e cosmetiche (commento della verifica: https://github.com/Gasss23/Gas/pull/280#issuecomment-6447473176). Su richiesta dell'operatore («segna v1,2,3 come da sistemare») sono in stato_progetto come DA SISTEMARE: R-ve280-1 (test del figlio non girano in CI), R-ve280-2 e R-ve280-3 (numeri dell'handoff), R-bot280-1 (`intero("0")`), R-bot280-2 (riga ripetuta nell'handoff).
 - **PR di nuovo in conflitto con main** (PR #281 della chat Notte): merge di 52fc615 (entrano gas.py, modules/memory/store.py, tests/test_unit_kernel.py), review #535 APPROVATO CON RISERVE (R-535-1 cosmetica, date della riga di stato_progetto → FATTA): FATTA. Nessun codice nuovo della chat Mani in questo giro: niente verifica esterna nuova, il bot rigira da solo sul nuovo head.
+- **Bot su fe8992f**: NON approvata per V-1 MEDIA (PR di nuovo in conflitto: main era avanzato con la PR #282, solo report) → merge di bc4befb, niente file del motore, niente review: FATTA. V-2 cosmetica (descrizione della PR coi numeri vecchi) → aggiornata: FATTA.
 - **Ripartenza**: prompt per la prossima sessione in `reports/ripartenza_mani.md`; strumento di misura in `reports/strumenti_mani/misura_web.py`: FATTA.
 - Restano cosmetiche: R-ve277-3 (con R-529-1), R-ve277-4 (`sys.platform` in `attivo()`), R-528-3, R-526-1, R-520-4.
 

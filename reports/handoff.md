@@ -27,7 +27,7 @@
   - V-2 ve (confine 2**31) → c23e6c6, review #534: `FATTA`.
   - V-1 bot (riga morta di misura_web.py, strumento dichiarato fuori dal perimetro di review), V-2 bot su c5b69f3 (docstring del file di test), V-4 ve / V-2 bot (numeri): `FATTA`.
   - V-3 ve (test nuovi saltati in CI): `DEFERITA — chat Motore`. V-5 ve: coincide con V-1 bot.
-- **Terzo giro (2026-10-28)**: verdetti su d78843f APPROVATO CON RISERVE (commento ve: https://github.com/Gasss23/Gas/pull/280#issuecomment-6447473176); riserve segnate DA SISTEMARE su richiesta dell'operatore (R-ve280-1/2/3, R-bot280-1/2): `FATTA`. PR di nuovo in conflitto → merge di main 52fc615 in 465ba13, review #535: `FATTA`; R-535-1 cosmetica: `FATTA`. Ripartenza ridotta a una riga da incollare: `FATTA`. Nessun codice nuovo della chat Mani: niente verifica esterna nuova.
+- **Terzo giro (2026-10-28)**: verdetti su d78843f APPROVATO CON RISERVE (commento ve: https://github.com/Gasss23/Gas/pull/280#issuecomment-6447473176); riserve segnate DA SISTEMARE su richiesta dell'operatore (R-ve280-1/2/3, R-bot280-1/2): `FATTA`. PR di nuovo in conflitto → merge di main 52fc615 in 465ba13, review #535: `FATTA`; R-535-1 cosmetica: `FATTA`. Ripartenza ridotta a una riga da incollare: `FATTA`. Nessun codice nuovo della chat Mani: niente verifica esterna nuova. Bot su fe8992f: V-1 MEDIA (PR di nuovo in conflitto: main era avanzato con la PR #282, solo report) → merge di bc4befb in 1cfc9ab, niente perimetro, niente review; V-2 cosmetica (descrizione della PR coi numeri vecchi) → descrizione aggiornata: `FATTA`.
 - **Riassunto e ripartenza dopo il `/clear`** (richiesta dell'operatore): `FATTA` — `reports/ripartenza_mani.md`, strumento di misura in `reports/strumenti_mani/misura_web.py`.
 
 ---
@@ -38,20 +38,22 @@
  .claude/agents/memoria_revisore.md   |   6 ++++++
  modules/web/leggi.py                 |   5 +++--
  modules/web/lexbor.py                |  21 +++++++++++++--------
- reports/diff_sessione.md             |  17 +++++++++--------
+ reports/diff_sessione.md             |  12 +++++++++---
  reports/handoff.md                   | n/d (commit finale)
  reports/ripartenza_mani.md           |  36 ++++++++++++++++++++++++++++++++++++
  reports/stato_progetto.md            |   4 +++-
  reports/strumenti_mani/misura_web.py | 137 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- reports/ultimo_report.md             |  45 ++++++++++++++++++++++++++++++++++++++-------
+ reports/ultimo_report.md             |  43 ++++++++++++++++++++++++++++++++++++++-----
  tests/test_unit_web_lexbor.py        |  39 ++++++++++++++++++++++++++++++++++-----
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat 52fc615` preso con i report in stage, prima del commit finale. BASE = `git merge-base origin/main HEAD` = 52fc615 (dopo il merge di main 465ba13): gas.py, modules/memory/store.py, tests/test_unit_kernel.py, CLAUDE.md e i report della notte arrivano da main e non sono nel diff.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file cambia anche nel commit finale), quindi «n/d», e la riga di totale è tolta. Gli altri conteggi vengono da `git diff --cached --stat bc4befb` preso con i report in stage, prima del commit finale. BASE = `git merge-base origin/main HEAD` = bc4befb (dopo i merge di main 465ba13 e 1cfc9ab): gas.py, modules/memory/store.py, tests/test_unit_kernel.py, CLAUDE.md e i report della notte arrivano da main e non sono nel diff.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1cfc9ab Merge origin/main (bc4befb, PR #282) in claude/peaceful-lovelace-0w2b7q (PR #280)
+fe8992f docs(fine-task): PR #280 dopo il merge di main 52fc615 — riserve da sistemare, ripartenza in una riga, review #535
 465ba13 Merge origin/main (52fc615, PR #281) in claude/peaceful-lovelace-0w2b7q (PR #280)
 d78843f docs(fine-task): PR #280 dopo il merge di main 24ed87d — verdetti su ae588e6, review #533-#534
 c23e6c6 test(web): confine 2**31 del size fissato da test, docstring allineata (PR #280)
@@ -243,7 +245,9 @@ Mappatura commit→run:
 - `ae588e6` → run 40536997549, success.
 - `7b6bc24`, `e0521bd`, `c23e6c6`: nessuna run su questo SHA (pushati insieme a `d78843f`).
 - `d78843f` → run 40539680295, success.
-- `465ba13`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
+- `465ba13`: nessuna run su questo SHA (pushato insieme a `fe8992f`).
+- `fe8992f` → run 40679080827 (unit-suite e handoff-check); verifica-bot failure per V-1 (conflitto con main).
+- `1cfc9ab`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
 - Commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
