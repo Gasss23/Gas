@@ -1,11 +1,11 @@
-# ULTIMO REPORT — 2026-10-27 — Mani fetta 21: riserve basse di #277 chiuse, lettura con lexbor sempre spenta (R6, chat Mani, PR #280)
+# ULTIMO REPORT — 2026-10-28 — Mani fetta 21: riserve basse di #277 chiuse, lettura con lexbor sempre spenta (R6, chat Mani, PR #280)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #280 (https://github.com/Gasss23/Gas/pull/280): la mergio da solo solo con APPROVATO pulito del bot sull'head; finora bot e verifica esterna danno APPROVATO CON RISERVE, quindi serve il tuo OK. Il merge non accende niente.
+1. Merge della PR #280 (https://github.com/Gasss23/Gas/pull/280): AUTORIZZATO dall'operatore il 2026-10-28 («mergia 280»), lo faccio io con CI verde e senza conflitti. Il merge non accende niente.
 2. **Accensione**: serve la chat Motore (vedi RICHIESTE ALLA CHAT MOTORE). Dopo, sul VPS (Linux): `GAS_WEB_LEXBOR=1`.
 3. Shadow DOM dichiarativo (figli «light» di un host con `<template shadowrootmode>`): nasconderli toglie anche il contenuto negli slot delle pagine vere; decisione tua.
 4. Poi, una alla volta: R-ve252-2 e R-ve255-1 (XHTML malformato), tempo di rete 12 s, R-ve235-7.
-5. Per ripartire dopo il `/clear`: prompt pronto in `reports/ripartenza_mani.md`.
+5. Per ripartire dopo il `/clear` incolla una riga sola: «Sei la chat Mani di Gas: leggi reports/ripartenza_mani.md e segui le istruzioni.»
 
 ## Esito
 - **PR #277 (fetta 20)**: MERGIATA su richiesta dell'operatore («mergia», fb1f54b). Bot e verifica esterna su 6a58806: APPROVATO CON RISERVE (solo BASSE e cosmetiche).
@@ -24,11 +24,13 @@
   - V-2 bot su c5b69f3 (docstring del file di test «in prova»): FATTA.
   - V-3 ve (test nuovi saltati in CI): DEFERITA — serve la chat Motore (requirements-dev).
   - V-4 ve / V-2 bot (numeri): i test deselezionati con `GAS_WEB_LEXBOR=1` sono 61, non 60; su 3.11 la CI dà 445/58 contro 444/59 in locale (scarto di ambiente): corretti qui sotto.
+- **Verdetti finali su d78843f**: bot e verifica esterna APPROVATO CON RISERVE, solo BASSE e cosmetiche (commento della verifica: https://github.com/Gasss23/Gas/pull/280#issuecomment-6447473176). Su richiesta dell'operatore («segna v1,2,3 come da sistemare») sono in stato_progetto come DA SISTEMARE: R-ve280-1 (test del figlio non girano in CI), R-ve280-2 e R-ve280-3 (numeri dell'handoff), R-bot280-1 (`intero("0")`), R-bot280-2 (riga ripetuta nell'handoff).
+- **PR di nuovo in conflitto con main** (PR #281 della chat Notte): merge di 52fc615 (entrano gas.py, modules/memory/store.py, tests/test_unit_kernel.py), review #535 APPROVATO CON RISERVE (R-535-1 cosmetica, date della riga di stato_progetto → FATTA): FATTA. Nessun codice nuovo della chat Mani in questo giro: niente verifica esterna nuova, il bot rigira da solo sul nuovo head.
 - **Ripartenza**: prompt per la prossima sessione in `reports/ripartenza_mani.md`; strumento di misura in `reports/strumenti_mani/misura_web.py`: FATTA.
 - Restano cosmetiche: R-ve277-3 (con R-529-1), R-ve277-4 (`sys.platform` in `attivo()`), R-528-3, R-526-1, R-520-4.
 
 ## Prove (codice c5b69f3 più i casi sul confine 2**31)
-- Test lexbor 63 passed su 3.13.16 con selectolax 1.0.2. Web suite 504 passed / 1 skipped (3.13); su 3.11 senza selectolax 444 passed / 59 skipped in locale, 445 / 58 nella CI (run su c5b69f3). Parser vecchio forzato: 491 passed / 11 skipped (prima dei casi nuovi). Dopo il merge di main: kernel 1042 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto).
+- Test lexbor 63 passed su 3.13.16 con selectolax 1.0.2. Web suite 504 passed / 1 skipped (3.13); su 3.11 senza selectolax 444 passed / 59 skipped in locale, 445 / 58 nella CI (run su c5b69f3). Parser vecchio forzato: 491 passed / 11 skipped (prima dei casi nuovi). Dopo il merge di main 52fc615: kernel 1052 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto); web 504 passed / 1 skipped.
 - Suite vecchia con `GAS_WEB_LEXBOR=1`: 11 failed, 430 passed, 61 deselected (gli stessi 11 di prima).
 - Mutanti, tutti presi: senza tetto alle cifre (2 failed), tetto meno uno (1), senza tetto 2**31 (2), confine `<=` (1), confine meno uno (1), senza `removeprefix` (1), zeri in testa contati (1), `hidden=false` visibile (1), senza ritorno anticipato in `attivo()` (1), video/audio/meter/progress visibili (1), risalita quadratica (1).
 
