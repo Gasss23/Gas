@@ -16,6 +16,7 @@
 - **Fetta 1 — Diagnosi della notte fallita**: `FATTA` — «comando `claude` non trovato» nel log del 27 e del 28.
 - **Fetta 2 — Correzione sul Mac e stato del progetto**: `FATTA` — `GAS_CLAUDE_BIN` nel `.env`, G-3 aggiornata.
 - **Fetta 2b — Nota COSMETICA del bot #283 (frase in G-3)**: `FATTA`.
+- **Fetta 2c — Merge di main (conflitto solo nei log)**: `FATTA` — nessun file del perimetro.
 - **Fetta 3 — Motivo vero nel report della notte e avviso nel doctor**: `DEFERITA — prossima fetta del motore`.
 
 ---
@@ -23,10 +24,10 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  10 ++--------
+ reports/diff_sessione.md  |  5 ++---
  reports/handoff.md        | n/d
- reports/stato_progetto.md |   4 ++--
- reports/ultimo_report.md  |  17 ++++++++++-------
+ reports/stato_progetto.md |  6 +++---
+ reports/ultimo_report.md  | 14 +++++++++-----
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -34,6 +35,8 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1e5e47e Merge origin/main in feat/merge-automatico-z1xjx2 (PR #283)
+a42cac6 docs: nota del bot #283 — frase del 28 ottobre al suo posto in G-3
 dbfcf7c docs(stato): prima notte del forte fallita per «claude non trovato», GAS_CLAUDE_BIN sul Mac
 ```
 
