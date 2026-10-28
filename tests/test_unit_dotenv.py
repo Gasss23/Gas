@@ -124,10 +124,19 @@ def test_suite_pytest_spegne_il_dotenv():
     assert os.environ.get("GAS_NO_DOTENV") == "1"
 
 
-def test_nomi_caricati_finiscono_in_dotenv_caricate(env, tmp_path, monkeypatch):
-    """R-540-1: il doctor sa che GAS_CLAUDE_BIN viene dal `.env` solo se il loader lo
-    registra; se vince la shell il nome non entra (il timer non lo vedrebbe)."""
-    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+def test_nomi_del_file_finiscono_in_dotenv_nel_file(env, tmp_path, monkeypatch):
+    """R-540-1: il doctor sa che GAS_CLAUDE_BIN sta nel `.env` solo se il loader lo
+    registra. V-1 bot #291: anche quando la shell lo sovrascrive (il timer, senza la
+    shell, lo legge dal file); un nome solo nella shell non entra."""
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
     env["GAS_T_SHELL"] = "dalla-shell"
+    env["GAS_T_SOLO_SHELL"] = "x"
     gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_FILE=1\nGAS_T_SHELL=dal-file\n"))
-    assert gas._DOTENV_CARICATE == {"GAS_T_FILE"}
+    assert gas._DOTENV_NEL_FILE == {"GAS_T_FILE": "1", "GAS_T_SHELL": "dal-file"}
+
+
+def test_riga_doppia_vince_la_prima_anche_nel_registro(env, tmp_path, monkeypatch):
+    """R-544-2: con una chiave ripetuta il registro tiene lo stesso valore del loader."""
+    monkeypatch.setattr(gas, "_DOTENV_NEL_FILE", {})
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_DUP=/a\nGAS_T_DUP=/b\n"))
+    assert env["GAS_T_DUP"] == "/a" and gas._DOTENV_NEL_FILE["GAS_T_DUP"] == "/a"
