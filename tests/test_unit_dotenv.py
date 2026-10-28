@@ -122,3 +122,12 @@ def test_main_carica_il_dotenv_prima_del_comando(monkeypatch):
 def test_suite_pytest_spegne_il_dotenv():
     """conftest.py: la suite non deve mai caricare il .env reale dell'operatore."""
     assert os.environ.get("GAS_NO_DOTENV") == "1"
+
+
+def test_nomi_caricati_finiscono_in_dotenv_caricate(env, tmp_path, monkeypatch):
+    """R-540-1: il doctor sa che GAS_CLAUDE_BIN viene dal `.env` solo se il loader lo
+    registra; se vince la shell il nome non entra (il timer non lo vedrebbe)."""
+    monkeypatch.setattr(gas, "_DOTENV_CARICATE", set())
+    env["GAS_T_SHELL"] = "dalla-shell"
+    gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_FILE=1\nGAS_T_SHELL=dal-file\n"))
+    assert gas._DOTENV_CARICATE == {"GAS_T_FILE"}
