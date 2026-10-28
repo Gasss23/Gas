@@ -1,118 +1,126 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-27 — Rubrica illeggibile dichiarata in `ricorda` e `gas fida-contatto` (chat Motore)
+**Sessione:** 2026-10-28 — Turno di notte: segno nel DB per l'esito delle firme (voce 6 di `reports/coda_notte.md`), fetta di sicurezza
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #279 (https://github.com/Gasss23/Gas/pull/279), numero e URL dalla risposta JSON di `create_pull_request` (`gh` nel cloud non è autenticato); lo fa l'agente da qui secondo CLAUDE.md §10.
-2. Esito della prima notte di `punto_lead` col forte (`cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac).
+1. Merge della PR #281 (https://github.com/Gasss23/Gas/pull/281). Numero e URL dalla risposta JSON di `gh api -X POST repos/Gasss23/Gas/pulls` (GraphQL non disponibile). Il turno di notte non mergia mai. Fetta di sicurezza (firma umana): secondo passaggio nella chat claude.ai col link della PR prima del merge.
+2. Testo dell'attività programmata «Turno di notte Gas»: invariato; se l'operatore lo vuole cambiare, deve chiederlo in questa sessione.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Merge della PR #276 da qui**: `FATTA`.
-- **Fetta 2 — V-1 bot #273 e R-520-1**: `FATTA` — review #527 → #528 APPROVATO.
-- **Fetta 3 — Cosmetiche di #274/#276**: `FATTA`.
-- **Fetta 4 — Regola «merge da qui» in CLAUDE.md e RIPARTENZA aggiornata**: `FATTA`.
-- **Fetta 5 — Merge di main nella #279 (conflitto solo nei log; da main entra solo `reports/coda_notte.md`)**: `FATTA` — nessun file del perimetro toccato, revisore non richiesto. Secondo merge di main (#277, chat Mani): file del motore identici a main, review #529 APPROVATO.
+- **Voce 0**: `SALTATA — già fatta dalla chat Motore (PR #279, review #528), spostata in «Fatte»`.
+- **Fetta 1 — Voce 6, segno nel DB per l'esito delle firme**: `FATTA` — `modules/memory/store.py`, `gas.py`, test T78q–T78u; review #531 BOCCIATO → #532 APPROVATO CON RISERVE.
+- **Voci 7a, 7, 8**: `SALTATA — al massimo una voce del motore a notte`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   7 +++++--
- CLAUDE.md                          |   1 +
- gas.py                             |  22 ++++++++++++++++++----
- reports/diff_sessione.md           |  13 ++++++-------
- reports/handoff.md                 | n/d
- reports/stato_progetto.md          |  18 +++++++++---------
- reports/ultimo_report.md           |  47 +++++++++++------------------------------------
- tests/test_unit_kernel.py          |  33 ++++++++++++++++++++++++++++++++-
+ .claude/agents/memoria_revisore.md |   3 +++
+ gas.py                             |  30 ++++++++++++++++++++++++---
+ modules/memory/store.py            |  60 +++++++++++++++++++++++++++++++
+ reports/coda_notte.md              |   4 ++--
+ reports/diff_sessione.md           |  14 ++++++++------
+ reports/handoff.md                 | n/d (commit finale)
+ reports/report_notte.md            |  28 +++++++++++++++++-----------
+ reports/stato_progetto.md          |   4 +++-
+ reports/ultimo_report.md           |  18 +++++++-----------
+ tests/test_unit_kernel.py          | 123 ++++++++++++++++++++++++++++++
 ```
 
-NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d». Gli altri conteggi vengono da `git diff --cached --stat` preso prima del commit finale, con le barre accorciate; il diff reale della PR fa fede.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-fbe92ee Merge origin/main (PR #277) in feat/merge-automatico-z1xjx2 (PR #279)
-3791640 docs(fine-task): handoff dopo il merge di main nella #279
-48bcc27 Merge origin/main in feat/merge-automatico-z1xjx2 (PR #279)
-edadc5c docs(fine-task): numero della PR #279 nei report
-8c8620d docs(fine-task): report, ripartenza e regola «merge da qui»
-8610e95 fix(memoria): rubrica illeggibile dichiarata — ricorda contatto=X e gas fida-contatto (V-1 bot #273, R-520-1)
-37e4110 chore(revisore): memoria review #528 — APPROVATO
-7594529 chore(revisore): memoria review #527 — APPROVATO CON RISERVE
+fbbfb86 fix(firma): segno nel DB per l'esito già in storia, esito nel DB prima della storia (coda notte voce 6)
+b9a9ae4 chore(revisore): memoria review #532 — APPROVATO CON RISERVE
+a0d6393 chore(revisore): memoria review #531 — BOCCIATO
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #527 (integrale, commit 8610e95)
+### Review #531 (chat Notte) — sul primo diff staged, BOCCIATO e poi corretto
+
+## VERDETTO: BOCCIATO
+
+Review #531 (chat Notte), diff staged in /home/user/Gas sul ramo notte/2026-10-28 (voce 6 della coda notte, firma umana C4b). Ho letto CLAUDE.md (sez. 5, 8, 9), stato_progetto (le parti sulla firma) e la memoria.
+
+**Elementi del diff esaminati**
+- `modules/memory/store.py:289`: tabella nuova `approval_esiti_in_storia`, con chiave esterna verso approvals e trigger che vietano UPDATE e DELETE. Rischi esaminati: DB vecchi senza la tabella, e il caso di approvazione inesistente. Esito **ok**. `_init_schema` esegue `_SCHEMA` a ogni apertura, quindi la tabella viene creata anche sui DB vecchi. `_connect` attiva le chiavi esterne (`PRAGMA foreign_keys = ON`) e INSERT OR IGNORE non ignora le violazioni di chiave esterna, quindi un ID inesistente dà False (T78t). Le approvazioni non vengono mai cancellate, quindi la chiave esterna non blocca nulla.
+- `modules/memory/store.py:1987` / `modules/memory/store.py:2004`: `segna_esito_in_storia` e `esito_in_storia`. Rischio esaminato: eccezioni o memoria degradata. Esito **ok**: tornano False o None, l'errore va nel log, e con None il kernel ripiega sulla cronologia.
+- `gas.py:3505`: l'esito viene scritto nel DB prima della storia (R-445-3). Rischi esaminati: effetto su `res` e sul diario, crash fra i due passi. Esito **ok**. `res` e il diario vengono impostati dopo, come prima. Se Gas cade fra DB e storia, l'esito vero resta nel DB e `recupera_esito_firma` lo scrive come «eseguita» (T78r; con il vecchio ordine T78r fallisce).
+- `gas.py:3388`: il segno si mette solo se `_save_history()` ritorna True. La logica è corretta, ma **riserva**: il mutante «segna sempre, a prescindere dal salvataggio» passa l'intera suite (1051 PASS, 0 FAIL).
+- `gas.py:3540`: **BLOCCO**, vedi R-531-1.
+- `tests/test_unit_kernel.py:8239` (T78q), `tests/test_unit_kernel.py:8301` (T78s) e `tests/test_unit_kernel.py:8323` (T78t) coprono: comportamento dopo `clear`, firme vecchie, migrazione, divieti di modifica, fail-safe. Esito **ok**.
+
+**Motivo bloccante**
+- **R-531-1 (ALTA, regressione rispetto a main).** A `gas.py:3540` `recupera_esito_firma` mette il segno quando trova l'esito nella cronologia **in memoria**. Questo vale anche se il salvataggio di quella storia era fallito. Contraddice la regola scritta nel commento a `gas.py:3386` («il segno solo con la storia su disco»). Sonda riprodotta (`/tmp/claude-0/-home-user-Gas/1e2c21b2-c183-5a9e-8222-ab7058554773/scratchpad/r531/sonda.py`): la scrittura della storia fallisce, poi un nuovo click su Approva porta a `recupera` → None e segno True. Poi Gas va in crash e riparte, e un nuovo click dà ancora None: l'esito non è su disco e **non viene mai più scritto**. Su main, dopo il riavvio, l'esito veniva riscritto. Conseguenze: il modello non saprà mai che l'azione è stata eseguita, e il bridge risponde «Nessuna modifica», quindi l'esito resta nascosto. È proprio il rischio che hai chiesto di guardare.
+  - Correzione: a `gas.py:3540` metti il segno solo se `self._save_history()` ritorna True, oppure non metterlo affatto in quel ramo (le firme vecchie restano coperte dalla scansione). Aggiungi un test che riproduca la sonda: salvataggio fallito → click → riavvio → click → esito scritto.
+
+**Riserve non bloccanti**
+- **R-531-2 (BASSA).** La condizione a `gas.py:3388` non ha un test: serve un caso con `_salva_storia_su_file` che fallisce e la verifica `esito_in_storia(...) is False`. Lo stesso test può chiudere anche R-531-1.
+- **R-531-3 (BASSA).** Più processi: se il REPL finisce nel ramo «copia conflitto» di `_unisci_storia_altrui` (`gas.py:1201`) e sovrascrive il file principale, l'esito scritto dal bot resta solo nella copia. Il DB però ha il segno, quindi dopo un riavvio del bot non c'è recupero; su main il recupero avveniva. È un caso stretto (conflitto, poi riavvio, poi nuovo click). Basta dichiararlo in stato_progetto.
+- Sulla tua domanda («al posto della scansione»): tenere la cronologia come ripiego è la scelta giusta (DB degradato, firme vecchie). Il difetto non è il ripiego, ma che il ripiego **scrive** il segno senza prova che l'esito sia su disco.
+
+**Rischio escluso:** non ho provato due processi reali (bot e REPL) in parallelo sullo stesso file: R-531-3 viene da lettura del codice, non da una prova. Non ho provato nemmeno un DB ripristinato da un backup più vecchio della storia (segno assente → si ricade sulla cronologia, lettura del codice).
+
+**Misure:** suite del kernel sul ramo 1051 PASS, 0 FAIL, rifatta. `gas.py` è stato ripristinato dopo il mutante (nessuna differenza fra file di lavoro e versione staged).
+
+Memoria: riga #531 e una lezione nuova («un segno persistente "X è su disco" si mette solo dopo una scrittura riuscita osservata nello stesso percorso») committate con lo script, commit a0d6393. L'indice staged del motore non è stato toccato.
+
+File rilevanti: /home/user/Gas/gas.py, /home/user/Gas/modules/memory/store.py, /home/user/Gas/tests/test_unit_kernel.py, /home/user/Gas/.claude/agents/memoria_revisore.md
+
+### Review #532 (chat Notte) — sul diff committato in fbbfb86
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Le due riserve sono chiuse davvero. Ho controllato il codice e ho provato 3 mutanti: i test li prendono tutti.
+Review #532 (chat Notte), secondo giro della voce 6 della coda notte: il segno nel DB che dice «l'esito della firma è già scritto nella storia». Ho esaminato il diff staged (3 file: gas.py, modules/memory/store.py, tests/test_unit_kernel.py). Prima della review ho letto CLAUDE.md (sez. 5), stato_progetto e la mia memoria.
 
 **Elementi del diff esaminati**
-- `gas.py:4011` — `_trova_contatto` legge la rubrica con `leggi_contatti`, tramite `getattr` con ripiego su `lista_contatti`. Se la lettura torna None, risponde `(None, «Rubrica dei lead NON letta…»)`. Rischi esaminati:
-  - il match esatto via `get_contatto_per_chiave` viene prima del controllo, ma su errore torna None e si arriva comunque al ramo None;
-  - `leggi_contatti` non solleva mai (`modules/memory/store.py:1225`);
-  - un mock senza il metodo usa il ripiego.
-  - Esito: ok.
-- `gas.py:4062` — `_ricorda` mostra `nota or «Nessun lead trovato…»`. Rischio esaminato: la nota di ambiguità entra in questo ramo solo quando `match` è None, quindi non c'è sovrapposizione. Esito: ok.
-- `gas.py:5701` — `fida_contatto_cmd` senza argomenti: con None stampa FAIL ed esce 1. `mem` è sempre un `MemoryStore` vero, quindi il metodo esiste. Rischio esaminato: una falsa rassicurazione su un segnale di sicurezza. Esito: ok.
-- `tests/test_unit_kernel.py:1038` — T21b2 forza `leggi_contatti` → None sull'istanza. Così `lista_contatti` passa per la catena reale e torna `[]`. Esito: ok.
-- `tests/test_unit_kernel.py:6088` — T74b5r sostituisce `gas.MemoryStore.leggi_contatti` e lo ripristina in un `finally`. Esito: ok.
+- `gas.py:3543` — nel ramo «esito già in storia» di `recupera_esito_firma` il segno si mette solo se manca nel DB e `_save_history()` ritorna True adesso. Rischio esaminato: l'esito c'è solo nella cronologia in memoria ma il salvataggio fallisce. Se il DB non si legge (None) si tenta il salvataggio e poi il segno, che fallisce senza conseguenze. Mutante senza la condizione sul salvataggio → T78u FAIL. Esito: ok, **R-531-1 CHIUSA**.
+- `gas.py:3388` — in `_storia_esito_firma` il segno si mette solo se `_save_history()` riesce. Mutante «segna sempre» (sopravvissuto al #531) → ora T78u FAIL (2 FAIL). Esito: ok, **R-531-2 CHIUSA**.
+- `tests/test_unit_kernel.py:8306` — T78u riproduce la mia sonda: salvataggio forzato a False → `applica_firma` esegue senza segno → click senza segno → riavvio → nuovo click riscrive l'esito «eseguita» senza eseguire e mette il segno. Altri mutanti, tutti presi: recupero che non mette mai il segno → T78s FAIL; vecchio ordine (storia prima del DB) → T78r FAIL. Esito: ok.
+- `modules/memory/store.py:1987` — `segna_esito_in_storia`: tabella in cui si può solo inserire, UPDATE e DELETE bloccati da trigger. Sugli errori ritorna False e logga, mai eccezioni. Già esaminata nel #531. Esito: ok.
+- `gas.py:1352` (contesto, file nel diff ma funzione non toccata) — `_save_history` ritorna False anche quando l'unione con la storia di un altro processo è rimandata. Quindi niente segno: è il verso sicuro.
 
-**Mutanti** (`gas.py` ripristinato ogni volta, `git diff` del working tree vuoto):
-1. Tolto il ramo None in `_trova_contatto` → la suite crasha con TypeError.
-2. `mem.leggi_contatti() or []` in fida-contatto → T74b5r FAIL.
-3. Tolto `nota or` → T21b3 FAIL.
+**Misure rifatte da me:** test del kernel 1053 PASS, 0 FAIL. Dopo i mutanti il working tree è tornato pulito.
 
-Suite kernel rieseguita da me: 1046 PASS, 0 FAIL.
+**Riserve**
+- **R-532-1 BASSA:** con il salvataggio rimandato o fallito, il segno non viene più messo quando la storia arriva davvero su disco a fine turno. Lo mette solo un click successivo. Il verso è sicuro: al massimo, dopo un `clear`, un click scrive di nuovo la notizia; mai una nuova esecuzione. Va tracciata o accettata.
+- **R-532-2 BASSA:** R-531-3 (copia «conflitto» fra più processi più il segno) non è ancora scritta in reports/stato_progetto.md, perché il file non è nel diff staged. Va scritta lì prima del commit insieme a R-532-1, come previsto dal gate.
 
-**Finding**
-1. R-527-1 COSMETICA — la docstring di `gas.py:3990` dice ancora «memoria None/degradata → (None, None)». Con memoria degradata adesso torna una nota.
-2. R-527-2 BASSA — il ripiego `getattr` (memoria senza `leggi_contatti` → `lista_contatti`) non ha un test dedicato.
+**Non verificato:** il comportamento con due processi Gas veri in concorrenza (bot e giro notturno sullo stesso DB e sulla stessa storia) e con Telegram reale. Non si riproduce nel container senza token; resta coperto solo dalla dichiarazione di R-531-3. Non ho rifatto `pytest -q tests/` per intero: ho rifatto solo la suite del kernel, l'unica toccata dal diff di test.
 
-**Rischio escluso:** non ho rieseguito la suite pytest completa (dichiarati 2264 passed): ho girato solo il kernel e i mutanti. Le modifiche a `reports/stato_progetto.md` (G-3, frase su PR #273) le ho controllate solo nel testo del diff, non nel merito.
-
-**Memoria del revisore:** ho scritto la riga #527 e l'ho committata con `scripts/commit_memoria_revisore.sh` (commit 7594529). Lo stesso commit ha incluso la correzione dell'etichetta «chat Motore» sulla riga #526, che era già in staging. Nell'index restano `gas.py`, `reports/stato_progetto.md` e `tests/test_unit_kernel.py`. Il diff è cambiato, quindi prima del commit va rieseguito `bash scripts/segna_review_ok.sh`.
-
-### Review #528 (integrale, ri-review del delta, commit 8610e95)
-
-## VERDETTO: APPROVATO
-
-Ri-review della #527, solo sul delta in staging. Le due riserve R-527-1 e R-527-2 sono chiuse.
-
-**Elementi del diff esaminati**
-- `gas.py:3990` — la docstring di `_trova_contatto` ora dice: «memoria None → (None, None); rubrica illeggibile → (None, nota «NON letta»)». Corrisponde al codice. Esito: ok, R-527-1 chiusa.
-- `tests/test_unit_kernel.py:1054` — T21b4 avvolge la memoria in `_MemVecchia`, che solleva AttributeError su `leggi_contatti`. Così `getattr` restituisce None e il codice usa `lista_contatti`. Rischio esaminato: che «Mario» trovasse il lead per chiave esatta senza passare dal ripiego. Non succede: la chiave in `tests/test_unit_kernel.py:998` è «mario@ex.com», quindi il lead si trova solo con la ricerca per sottostringa. Esito: ok, R-527-2 chiusa.
-
-**Mutante:** il ripiego in `gas.py:4012` cambiato in `else []` fa fallire T21b4 (FAIL, 1046 PASS). Dopo il ripristino la suite kernel dà 1047 PASS e 0 FAIL, verificato da me. `gas.py` è tornato com'era: `git diff` del working tree è vuoto.
-
-**Finding:** nessuno.
-
-**Rischio escluso:** non ho rieseguito la suite pytest completa, solo la suite kernel e il mutante.
-
-**Memoria del revisore:** riga #528 scritta e committata (37e4110). L'index contiene ancora solo il diff sotto review. Prima del commit va rieseguito `bash scripts/segna_review_ok.sh` sul diff attuale.
+Memoria aggiornata con la riga #532 e committata da sola con lo script (b9a9ae4). File: /home/user/Gas/.claude/agents/memoria_revisore.md
 
 ## §5 DELTA TEST DEL MOTORE
 
-- Kernel: 1044 → 1047 PASS (T21b3, T21b4, T74b5r), 0 FAIL. Blocco reale: `=== RIEPILOGO: 1047 PASS, 0 FAIL ===`
-- `python3 -m pytest -q tests` (prima di T21b4): `2264 passed, 21 skipped in 209.00s (0:03:28)`.
+- `python tests/test_unit_kernel.py`: main `=== RIEPILOGO: 1043 PASS, 0 FAIL ===` → ramo `=== RIEPILOGO: 1053 PASS, 0 FAIL ===` (T78q–T78u). Con lo store nuovo e il `gas.py` di main: `1046 PASS, 5 FAIL` (T78q×2, T78r×2, T78s).
+- `python -m pytest -q tests/`: `2265 passed, 51 skipped` sia su main sia sul ramo (skip preesistenti dell'ambiente). Nessun FAIL.
 
 ## §6 STATO CI
 
-`gh` nel cloud non è autenticato (check letti con lo strumento GitHub). edadc5c → tutti i check verdi (unit-suite, handoff-check; verifica-bot neutral). 7594529, 37e4110, 8610e95, 8c8620d → nessuna run propria letta (pushati insieme). 48bcc27, 3791640 → nessuna run conclusa letta (bot annullato per cambio di head, poi neutral su 3791640). Secondo merge di main e commit di fine-task: run non ancora disponibile alla scrittura dell'handoff.
+```
+completed	skipped	Turno di notte 2026-10-28: segno nel DB per l'esito delle firme (coda voce 6)	verifica-bot	notte/2026-10-28	pull_request_target	40606743507	8s	2026-10-28T00:07:44Z
+in_progress		fix(firma): segno nel DB per l'esito già in storia, esito nel DB prim…	CI	notte/2026-10-28	push	40606738717	33s	2026-10-28T00:07:42Z
+```
+
+Mappatura commit→run:
+- `a0d6393`, `b9a9ae4`: nessuna run su questo SHA (pushati insieme a `fbbfb86`).
+- `fbbfb86` → run CI 40606738717 (push), in corso alla scrittura dell'handoff.
+- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Nate da questa sessione: nessuna aperta (R-527-1/2 chiuse in #528).
-- Preesistenti: bot #269 «/forte@NomeBot» (BASSA); COSMETICHE ve #269; V-2 COSMETICA bot #273; R-516-1 (COSMETICA); V-2 BASSA ve #276 (test del pin con anche il diario illeggibile).
+- **R-531-3 (chat Notte)** BASSA: più processi, esito rimasto nella copia «conflitto» con il segno nel DB → nessun recupero dopo un riavvio (da codice, non provato).
+- **R-532-1 (chat Notte)** BASSA: con il salvataggio rimandato il segno si mette solo al click successivo (verso sicuro).
+- Non provati due processi Gas veri né Telegram reale.
