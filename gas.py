@@ -580,6 +580,9 @@ _DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # doctor le usa per dire se il giro notturno, che legge solo il `.env`, vedrà lo stesso
 # GAS_CLAUDE_BIN (R-538-1; V-1 bot #291; R-543-1: conta il valore, non solo il nome).
 _DOTENV_NEL_FILE: Dict[str, str] = {}
+# Solo queste chiavi finiscono nel registro col loro valore: niente segreti in un
+# globale che non serve (V-2 ve #292, V-4 bot #292).
+_DOTENV_VALORI_DA_TENERE = frozenset({"GAS_CLAUDE_BIN"})
 # R-260-1: `"valore" # commento` come in zsh; dentro le virgolette il # è testo.
 _DOTENV_VIRGOLETTE = re.compile(r"""(['"])(.*?)\1(?:\s+#.*)?""")
 
@@ -630,7 +633,8 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
             continue
         else:
             valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
-        _DOTENV_NEL_FILE.setdefault(chiave, valore)  # R-544-2: vince la prima riga, come qui sotto
+        if chiave in _DOTENV_VALORI_DA_TENERE:  # R-544-2: vince la prima riga, come qui sotto
+            _DOTENV_NEL_FILE.setdefault(chiave, valore)
         if chiave in os.environ:
             continue
         os.environ[chiave] = valore

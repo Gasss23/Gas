@@ -11203,6 +11203,7 @@ try:
             _spath99 = os.environ.get("PATH", "")
             os.environ["PATH"] = f"{_dir99}{os.pathsep}{_spath99}"
             os.environ.pop("GAS_CLAUDE_BIN", None)
+            _reg99 = gas._DOTENV_NEL_FILE.get("GAS_CLAUDE_BIN")  # V-3 ve #292: si rimette com'era
             try:
                 _d99s = _doc99()
                 os.environ["GAS_CLAUDE_BIN"] = str(_fake99)
@@ -11212,7 +11213,10 @@ try:
                 gas._DOTENV_NEL_FILE["GAS_CLAUDE_BIN"] = str(_fake99)
                 _d99s2 = _doc99()
             finally:
-                gas._DOTENV_NEL_FILE.pop("GAS_CLAUDE_BIN", None)
+                if _reg99 is None:
+                    gas._DOTENV_NEL_FILE.pop("GAS_CLAUDE_BIN", None)
+                else:
+                    gas._DOTENV_NEL_FILE["GAS_CLAUDE_BIN"] = _reg99
                 os.environ["PATH"] = _spath99
                 if _sbin99 is None:
                     os.environ.pop("GAS_CLAUDE_BIN", None)
