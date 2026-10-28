@@ -11209,10 +11209,19 @@ try:
                 _d99s2 = _doc99()  # GAS_NO_DOTENV=1 nei test: controllo del .env saltato
                 # R-538-1: GAS_CLAUDE_BIN solo nella shell (manca nel .env) → WARN
                 os.environ.pop("GAS_NO_DOTENV", None)
+                _dpath99 = gas.DOTENV_PATH
+                gas.DOTENV_PATH = _env99  # V-1 bot #290: il .env di Gas, non quello della cwd
                 _d99w = _doc99()
-                _env99.write_text(f"export GAS_CLAUDE_BIN={_fake99}\n", encoding="utf-8")
+                _env99.write_text(f"GAS_CLAUDE_CLI=1\nexport GAS_CLAUDE_BIN={_fake99}\n", encoding="utf-8")
                 _d99w2 = _doc99()
+                # V-2 bot #290: nel .env un percorso diverso da quello in uso → WARN
+                _env99.write_text("GAS_CLAUDE_CLI=1\nGAS_CLAUDE_BIN=/vecchio/claude\n", encoding="utf-8")
+                _d99w3 = _doc99()
+                # V-3 bot #290: GAS_CLAUDE_CLI acceso solo nella shell → WARN
+                _env99.write_text(f"GAS_CLAUDE_BIN={_fake99}\n", encoding="utf-8")
+                _d99w4 = _doc99()
             finally:
+                gas.DOTENV_PATH = _dpath99
                 os.environ["GAS_NO_DOTENV"] = "1"
                 if _env99.exists():
                     _env99.unlink()
@@ -11229,8 +11238,14 @@ try:
             check("T99w R-538-1: GAS_CLAUDE_BIN solo nella shell → WARN col rimedio; scritta nel .env → OK",
                   any("comando claude" in l and "WARN" in l and "solo nella shell" in l
                       and f"GAS_CLAUDE_BIN={_fake99}" in l for l in _d99w)
-                  and any("comando claude" in l and "OK" in l and "presente" in l for l in _d99w2),
-                  str(_d99w + _d99w2)[:400])
+                  and any("comando claude" in l and "OK" in l and "presente" in l for l in _d99w2)
+                  and not any("WARN" in l for l in _d99w2), str(_d99w + _d99w2)[:400])
+            check("T99w2 V-2/V-3 bot #290: .env con altro percorso → WARN; forte acceso solo nella shell → WARN",
+                  any("comando claude" in l and "WARN" in l and "diversa da quella in uso" in l
+                      and f"GAS_CLAUDE_BIN={_fake99}" in l for l in _d99w3)
+                  and any("claude-cli" in l and "WARN" in l and "acceso solo nella shell" in l for l in _d99w4)
+                  and not any("claude-cli" in l and "WARN" in l for l in _d99w3),
+                  str(_d99w3 + _d99w4)[:500])
             _r99t = Path(_k99.root)
             check("T99t _claude_solo_nel_terminale: assoluto, cartelle del timer e venv di Gas no; ~/.local/bin sì",
                   gas._claude_solo_nel_terminale("/opt/x/claude", "/opt/x/claude", _r99t) is False
@@ -11256,10 +11271,10 @@ try:
             _ck99 = Path(_k99.root) / "chiavi99.env"
             _ck99.write_text("# GAS_CLAUDE_BIN=x\nexport GAS_CLAUDE_BIN=/a\nALTRO = 1\nmalformata\n"
                              "VUOTA=\nAPERTA=\"/x\n", encoding="utf-8")
-            check("T99y _chiavi_dotenv: chiavi caricabili con valore (V-1 ve #290: vuote e virgolette aperte no)",
-                  gas._chiavi_dotenv(_ck99) == {"GAS_CLAUDE_BIN", "ALTRO"}
-                  and gas._chiavi_dotenv(Path(_k99.root) / "manca99.env") is None,
-                  str(gas._chiavi_dotenv(_ck99)))
+            check("T99y _valori_dotenv: variabili caricabili con valore (V-1 ve #290: vuote e virgolette aperte no)",
+                  gas._valori_dotenv(_ck99) == {"GAS_CLAUDE_BIN": "/a", "ALTRO": "1"}
+                  and gas._valori_dotenv(Path(_k99.root) / "manca99.env") is None,
+                  str(gas._valori_dotenv(_ck99)))
             # V-2 ve #290 / R-540-1: collegamento dalla parte delle cartelle note (.venv collegato altrove)
             _vero99 = Path(_k99.root) / "venv_vero99"
             (_vero99 / "bin").mkdir(parents=True, exist_ok=True)
