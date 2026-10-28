@@ -98,13 +98,18 @@ def opzioni_visibili(select):
 def intero(valore):
     # Come il browser legge gli interi non negativi: spazi, poi le cifre ASCII in testa; oltre
     # 2**31-1 il valore non vale (V-1 ve #277 ter: con migliaia di cifre int() cadeva).
-    cifre = ""
-    for c in (valore or "").lstrip(" \t\n\f\r").removeprefix("+"):
+    testo = (valore or "").lstrip(" \t\n\f\r")
+    meno = testo.startswith("-")
+    cifre, letto = "", False
+    for c in testo[1:] if testo.startswith(("+", "-")) else testo:
         if c not in "0123456789" or len(cifre) > 10:
             break
+        letto = True
         if cifre or c != "0":  # gli zeri in testa non contano
             cifre += c
-    return int(cifre) if cifre and int(cifre) < 1 << 31 else None
+    # «0», «000» e «-0» valgono 0, non «senza valore»; un negativo non vale (R-bot280-1, R-536-1)
+    numero = int(cifre or "0")
+    return numero if letto and numero < 1 << 31 and not (meno and numero) else None
 
 def opzioni(select):
     attributi = select.attrs
