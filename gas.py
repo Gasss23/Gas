@@ -5,6 +5,7 @@ import hashlib
 import math as _math_module
 import os
 import shutil
+import sys
 import threading
 try:
     import fcntl  # R-c4b3-4: lock della cronologia (assente su Windows)
@@ -21,7 +22,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import List, Dict, Any, Generator, Optional, Tuple
+from typing import List, Dict, Any, Generator, Optional, Set, Tuple
 from openai import OpenAI
 from modules.memory import MemoryStore, default_db_path, STATI_CHIUSI, STATI_CONTATTO, normalizza_chiave
 from modules.memory import now_iso_da
@@ -430,14 +431,19 @@ def _motivo_forte(e: BaseException) -> Optional[str]:
     if not isinstance(e, RuntimeError):
         return None
     testo = (str(e).strip().splitlines() or [""])[0]
-    if not re.match(r"^(429 )?claude-cli: ", testo):
+    m = re.match(r"^(429 )?claude-cli: ", testo)
+    if not m:
         return None
-    return testo[:160]
+    # V-2 bot #287: niente «claude-cli: KO (claude-cli: …)»; R-538-2: il messaggio del
+    # login (~180 caratteri) deve arrivare intero
+    return ((m.group(1) or "") + testo[m.end():])[:300]
 
 
 # Cartelle che vede un timer notturno (launchd sul Mac, systemd su Linux) senza il
 # PATH del terminale: lì `claude` installato in ~/.local/bin o Homebrew non si trova.
 _PATH_TIMER = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+# V-1 bot #287: il PATH predefinito di systemd ha anche /usr/local (launchd no)
+_PATH_TIMER_LINUX = ("/usr/local/bin", "/usr/local/sbin")
 
 
 def _claude_solo_nel_terminale(valore_env: str, binario: str, root: Path) -> bool:
@@ -446,9 +452,32 @@ def _claude_solo_nel_terminale(valore_env: str, binario: str, root: Path) -> boo
     nel venv di Gas (che il giro notturno attiva). Pura, per il doctor."""
     if os.path.isabs(valore_env or ""):
         return False
+    vedute = (list(_PATH_TIMER) + (list(_PATH_TIMER_LINUX) if sys.platform.startswith("linux") else [])
+              + [str(root / v / "bin") for v in (".venv", "venv")])
+    # V-1 bot #287: confronto anche a collegamenti risolti (es. /bin → /usr/bin)
     cartella = os.path.dirname(os.path.abspath(binario))
-    vedute = set(_PATH_TIMER) | {str(root / v / "bin") for v in (".venv", "venv")}
-    return cartella not in vedute
+    return not ({cartella, os.path.realpath(cartella)}
+                & ({os.path.abspath(v) for v in vedute} | {os.path.realpath(v) for v in vedute}))
+
+
+def _chiavi_dotenv(p: Path) -> Optional[Set[str]]:
+    """Nomi delle variabili scritte nel `.env` (stesse righe valide di _carica_dotenv),
+    senza caricarle né leggerne i valori. None se il file manca o è illeggibile."""
+    try:
+        testo = p.read_text(encoding="utf-8-sig")
+    except Exception:
+        return None
+    chiavi: Set[str] = set()
+    for riga in testo.splitlines():
+        riga = riga.strip()
+        if not riga or riga.startswith("#"):
+            continue
+        if riga.startswith("export "):
+            riga = riga[len("export "):].lstrip()
+        chiave, sep, _ = riga.partition("=")
+        if sep and _DOTENV_CHIAVE.fullmatch(chiave.strip()):
+            chiavi.add(chiave.strip())
+    return chiavi
 
 
 def _probe_free_model(base_url: str, model: str, api_key: Optional[str], _fetch=None) -> Tuple[str, str]:
@@ -4989,6 +5018,12 @@ def doctor(root_dir: Optional[str] = None) -> int:
             # Notti del 27 e 28 ottobre: il timer notturno non vede il PATH del terminale
             check("Cervello forte", "comando claude", "WARN",
                   f"trovato solo nel PATH del terminale: il giro notturno non lo vede "
+                  f"(metti GAS_CLAUDE_BIN={binario} nel .env)")
+        elif (_bin_env and not _env_flag("GAS_NO_DOTENV")
+              and "GAS_CLAUDE_BIN" not in (_chiavi_dotenv(root / ".env") or set())):
+            # R-538-1: impostata solo nella shell (es. ~/.zshrc), il timer notturno non la vede
+            check("Cervello forte", "comando claude", "WARN",
+                  f"GAS_CLAUDE_BIN impostata solo nella shell: il giro notturno non la vede "
                   f"(metti GAS_CLAUDE_BIN={binario} nel .env)")
         else:
             check("Cervello forte", "comando claude", "OK", "presente")

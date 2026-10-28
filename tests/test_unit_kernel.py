@@ -11202,11 +11202,20 @@ try:
             _spath99 = os.environ.get("PATH", "")
             os.environ["PATH"] = f"{_dir99}{os.pathsep}{_spath99}"
             os.environ.pop("GAS_CLAUDE_BIN", None)
+            _env99 = Path(_k99.root) / ".env"
             try:
                 _d99s = _doc99()
                 os.environ["GAS_CLAUDE_BIN"] = str(_fake99)
-                _d99s2 = _doc99()
+                _d99s2 = _doc99()  # GAS_NO_DOTENV=1 nei test: controllo del .env saltato
+                # R-538-1: GAS_CLAUDE_BIN solo nella shell (manca nel .env) → WARN
+                os.environ.pop("GAS_NO_DOTENV", None)
+                _d99w = _doc99()
+                _env99.write_text(f"export GAS_CLAUDE_BIN={_fake99}\n", encoding="utf-8")
+                _d99w2 = _doc99()
             finally:
+                os.environ["GAS_NO_DOTENV"] = "1"
+                if _env99.exists():
+                    _env99.unlink()
                 os.environ["PATH"] = _spath99
                 if _sbin99 is None:
                     os.environ.pop("GAS_CLAUDE_BIN", None)
@@ -11217,6 +11226,11 @@ try:
                       and f"GAS_CLAUDE_BIN={_fake99}" in l for l in _d99s)
                   and any("comando claude" in l and "OK" in l and "presente" in l for l in _d99s2),
                   str(_d99s + _d99s2)[:400])
+            check("T99w R-538-1: GAS_CLAUDE_BIN solo nella shell → WARN col rimedio; scritta nel .env → OK",
+                  any("comando claude" in l and "WARN" in l and "solo nella shell" in l
+                      and f"GAS_CLAUDE_BIN={_fake99}" in l for l in _d99w)
+                  and any("comando claude" in l and "OK" in l and "presente" in l for l in _d99w2),
+                  str(_d99w + _d99w2)[:400])
             _r99t = Path(_k99.root)
             check("T99t _claude_solo_nel_terminale: assoluto, cartelle del timer e venv di Gas no; ~/.local/bin sì",
                   gas._claude_solo_nel_terminale("/opt/x/claude", "/opt/x/claude", _r99t) is False
@@ -11224,12 +11238,36 @@ try:
                   and gas._claude_solo_nel_terminale("", str(_r99t / ".venv" / "bin" / "claude"), _r99t) is False
                   and gas._claude_solo_nel_terminale("", "/Users/u/.local/bin/claude", _r99t) is True
                   and gas._claude_solo_nel_terminale("claude", "/opt/homebrew/bin/claude", _r99t) is True)
-            check("T99u _motivo_forte: solo i messaggi di claude_cli, prima riga, ≤160 caratteri",
+            # V-1 bot #287: /usr/local/bin visto dal timer solo su Linux (systemd); collegamenti risolti
+            _plat99 = gas.sys.platform
+            _lnk99 = Path(_k99.root) / "lnk99"
+            try:
+                _lnk99.symlink_to("/usr/bin")
+                gas.sys.platform = "linux"
+                _lin99 = gas._claude_solo_nel_terminale("", "/usr/local/bin/claude", _r99t)
+                gas.sys.platform = "darwin"
+                _mac99 = gas._claude_solo_nel_terminale("", "/usr/local/bin/claude", _r99t)
+                _sym99 = gas._claude_solo_nel_terminale("", str(_lnk99 / "claude"), _r99t)
+            finally:
+                gas.sys.platform = _plat99
+                _lnk99.unlink()
+            check("T99x V-1 bot #287: /usr/local/bin ok su Linux e non su Mac; collegamento a /usr/bin ok",
+                  _lin99 is False and _mac99 is True and _sym99 is False, f"{_lin99} {_mac99} {_sym99}")
+            _ck99 = Path(_k99.root) / "chiavi99.env"
+            _ck99.write_text("# GAS_CLAUDE_BIN=x\nexport GAS_CLAUDE_BIN=/a\nALTRO = 1\nmalformata\n",
+                             encoding="utf-8")
+            check("T99y _chiavi_dotenv: chiavi valide, commenti ignorati, file assente → None",
+                  gas._chiavi_dotenv(_ck99) == {"GAS_CLAUDE_BIN", "ALTRO"}
+                  and gas._chiavi_dotenv(Path(_k99.root) / "manca99.env") is None,
+                  str(gas._chiavi_dotenv(_ck99)))
+            from brains.claude_cli import _MSG_LOGIN as _login99
+            check("T99u _motivo_forte: solo i messaggi di claude_cli, prima riga, senza prefisso ripetuto, ≤300",
                   gas._motivo_forte(RuntimeError("claude-cli: comando `claude` non trovato"))
-                  == "claude-cli: comando `claude` non trovato"
-                  and gas._motivo_forte(RuntimeError("429 claude-cli: errore (x)")) == "429 claude-cli: errore (x)"
-                  and gas._motivo_forte(RuntimeError("claude-cli: a\nMario Rossi")) == "claude-cli: a"
-                  and len(gas._motivo_forte(RuntimeError("claude-cli: " + "x" * 500))) == 160
+                  == "comando `claude` non trovato"
+                  and gas._motivo_forte(RuntimeError("429 claude-cli: errore (x)")) == "429 errore (x)"
+                  and gas._motivo_forte(RuntimeError("claude-cli: a\nMario Rossi")) == "a"
+                  and len(gas._motivo_forte(RuntimeError("claude-cli: " + "x" * 500))) == 300
+                  and gas._motivo_forte(RuntimeError(_login99)) == _login99[len("claude-cli: "):]
                   and gas._motivo_forte(RuntimeError("Mario Rossi tel 333")) is None
                   and gas._motivo_forte(ValueError("claude-cli: x")) is None)
             def _cli_assente99(timeout=None):
