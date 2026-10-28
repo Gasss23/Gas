@@ -157,6 +157,22 @@ def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
     # non i figli dell'host (V-1 bot #288)
     ("<div><template shadowrootmode=open><select><option><slot>F</slot></option></select></template>L</div>",
      "\nF\n"),
+    # nemmeno uno shadow dentro un'opzione: il suo template non è un discendente (R-544-1)
+    ("<select><option><x-a><template shadowrootmode=open>S<slot></slot></template>L</x-a></option></select>",
+     "\nL\n"),
+    # assegnazione manuale: nessun figlio va agli slot da sé, si vede la riserva (V-3 ve #288)
+    ("<div><template shadowrootmode=open shadowrootslotassignment=MANUAL>A<slot>F</slot></template>L</div>", "AF"),
+    ("<div><template shadowrootmode=open shadowrootslotassignment=named>A<slot>F</slot></template>L</div>", "AL"),
+    # tutti gli host della lista valgono, gli altri tag no (V-4 ve #288)
+    ("".join(f"<{t}><template shadowrootmode=open>S</template>L</{t}>" for t in (
+        "article", "aside", "blockquote", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "header", "main", "nav",
+        "p", "section", "span")), "S" * 16),
+    ("<ul><li><template shadowrootmode=open>S</template>L</li></ul><table><td><template shadowrootmode=open>T"
+     "</template>M</table>", "LM"),
+    # la riserva di uno slot si legge nello stesso shadow: uno slot dentro la riserva prende i suoi
+    # assegnati (V-4 ve #288)
+    ("<div><template shadowrootmode=open><slot name=a><slot name=b>FB</slot></slot></template><i slot=b>LB</i></div>",
+     "LB"),
 ])
 def test_shadow_dichiarativo_in_ordine(pagina, atteso):
     """Lo shadow dichiarativo nell'ordine del browser: slot, nomi, riserva, annidamento."""

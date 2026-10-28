@@ -189,8 +189,11 @@ def shadow(nodo):
             # I figli dell'host vanno allo slot col loro nome (attributo «slot»); il testo
             # solo allo slot senza nome. Il template dello shadow non è un figlio: con un
             # attributo «slot» toglierebbe la riserva a quello slot (V-3 ve #288).
+            # Con shadowrootslotassignment=manual nessun figlio va agli slot da sé: si vedono le
+            # riserve (V-3 ve #288 su 300e1aa).
             assegnati = {}
-            for luce in nodo.iter(include_text=True):
+            manuale = (figlio.attrs.get("shadowrootslotassignment") or "").lower() == "manual"
+            for luce in ([] if manuale else nodo.iter(include_text=True)):
                 if luce.is_text_node:
                     assegnati.setdefault("", []).append(luce)
                 elif luce.is_element_node and luce.mem_id != figlio.mem_id:
@@ -206,7 +209,8 @@ def visita(radice, dentro_opzione=False, giro=None):
     pezzi = []
     pila = []
     def scendi(nodo, giro):
-        trovato = shadow(nodo)
+        # Dentro un'opzione si legge il suo testo (i discendenti): niente shadow (R-544-1).
+        trovato = None if dentro_opzione else shadow(nodo)
         if trovato is None:
             pila.append((nodo.tag, nodo.iter(include_text=True), giro))
         else:
