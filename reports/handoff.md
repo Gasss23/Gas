@@ -44,6 +44,7 @@ NB: base = merge-base con origin/main = 0a9ce70 (dopo il merge di main). Regola 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+4021d67 docs(fine-task): PR #288 dopo il merge di main 0a9ce70 — handoff e report, review #541
 5ff6ad7 Merge origin/main (0a9ce70, PR #287) in claude/peaceful-lovelace-0w2b7q (PR #288)
 af8f8ec docs(fine-task): Mani fetta 23 — shadow DOM dichiarativo, handoff e report (PR #288)
 16cb6a6 feat(web): shadow DOM dichiarativo letto come il browser nel figlio lexbor (fetta 23 Mani)
@@ -108,6 +109,11 @@ Memoria: aggiunta la riga #540 (chat Mani), senza lezioni nuove. Committata con 
 
 ### Review #541 (chat Mani) — merge 5ff6ad7
 
+Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` soprattutto file entrati da main, che non sono nel diff di sessione (base 0a9ce70 dopo il merge): il Gate B lo ha rifiutato (1 citazione valida su 2). Come da regola il testo non è stato ritoccato: il revisore lo ha riemesso con lo stesso esito e la stessa sostanza, citando i file del diff. Fa fede il verdetto riemesso; l'originale resta qui per tracciabilità.
+
+Verdetto originale:
+
+```
 ## VERDETTO: APPROVATO
 
 Review #541 (chat Mani). Ho esaminato il merge di origin/main 0a9ce70 (PR #287) in claude/peaceful-lovelace-0w2b7q (PR #288, HEAD af8f8ec). Il merge è in corso e non ancora committato; merge-base 297fc22.
@@ -133,6 +139,33 @@ Review #541 (chat Mani). Ho esaminato il merge di origin/main 0a9ce70 (PR #287) 
 **Cosa devi fare:** fai `git add .claude/agents/memoria_revisore.md` prima del commit di merge, così la riga #541 entra col merge. Nota che aggiungere quel file cambia il diff staged: crea il marcatore (`bash scripts/segna_review_ok.sh`) solo dopo quell'add.
 
 Nessuna lezione nuova.
+```
+
+Verdetto riemesso:
+
+## VERDETTO: APPROVATO
+
+Review #541 (chat Mani), verdetto riemesso per il gate B. Esito e sostanza sono gli stessi di prima. Ho cambiato solo le citazioni: ora puntano ai file del diff di sessione contro 0a9ce70.
+
+L'oggetto è il merge di origin/main 0a9ce70 (PR #287) in claude/peaceful-lovelace-0w2b7q (PR #288). Le righe citate valgono su HEAD 4021d67, che è il commit di fine-task venuto dopo il merge 5ff6ad7.
+
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:179` — `template_fragments()` legge il contenuto del template shadow. Rischio: perdere la chiusura R-539-1 durante il merge. Verifica: `modules/web/lexbor.py:180` fa ancora `continue` se la lista è vuota, prima di `[0]`. `git diff af8f8ec HEAD -- modules tests/test_unit_web_lexbor.py` è vuoto (0 righe), quindi il lato Mani è intatto. Esito: ok.
+- `modules/web/lexbor.py:169` — `shadow()` sceglie il primo template open/closed tra i figli dell'host. `modules/web/lexbor.py:146` contiene `RISERVATI` e `modules/web/lexbor.py:149` contiene `primi_slot`. Rischio: una risoluzione dei conflitti che rovina il codice. Verifica: il file è identico ad af8f8ec, già revisionato in #539/#540, e l'AST è ok. Esito: ok.
+- `tests/test_unit_web_lexbor.py:106` — casi dello shadow DOM dichiarativo (open, closed, OPEN con slot nominato). Rischio: perdere i test della fetta 23 nel merge. Verifica: il file è identico ad af8f8ec, e `pytest tests/test_unit_claude_cli.py tests/test_unit_web_lexbor.py` dà 125 passed. Esito: ok.
+- Contesto (file non nel diff di sessione) — `gas.py:4912` chiama `_motivo_forte(e)` nel ramo `except`, seguito da `continue` verso il brain successivo: il fallback §9 è intatto. `git diff 0a9ce70 HEAD -- gas.py brains tests/test_unit_kernel.py tests/test_unit_claude_cli.py` è vuoto, cioè questi file sono identici a main (già revisionati in #538/#539 chat Motore). Esito: ok.
+- `.claude/agents/memoria_revisore.md` — rispetto a main ci sono solo righe aggiunte: #539 Mani con la sua lezione, #540 Mani, #541. Nessuna riga persa. Esito: ok.
+- `reports/stato_progetto.md` — la catena «Ultimo aggiornamento» è unita senza perdite. Ci sono sia la voce RIPARTENZA Motore sia la voce fetta 23 Mani. Non ci sono marcatori di conflitto. Esito: ok.
+
+**Rischio escluso:** non ho rieseguito la suite kernel completa. Tu dichiari 1056 PASS e 1 FAIL (T31g, per `sqlite_vec` assente: noto). Il codice del motore è identico a main già testato, come mostrano i diff vuoti qui sopra. Non ho verificato nemmeno la suite web completa oltre i 125 test indicati sopra.
+
+**Note fuori perimetro, non bloccanti**
+- `reports/handoff.md` ha preso una riga da main nel merge automatico. È innocua e si riscrive al fine-task.
+- Il doppio numero #538/#539 tra chat Mani e chat Motore è già tracciato come R-539-1 COSMETICA (chat Motore).
+
+**Memoria:** la riga #541 c'è già in `/home/user/Gas/.claude/agents/memoria_revisore.md` (una sola occorrenza). Come mi hai chiesto, non ho aggiunto nulla.
+
+Nessuna lezione nuova.
 
 ## §5 DELTA TEST DEL MOTORE
 
@@ -153,7 +186,7 @@ Mappatura commit→run:
 - d553ca2, 484982b: nessuna run su questo SHA (pushati insieme a 16cb6a6).
 - 16cb6a6: run 40738191089.
 - af8f8ec: run del push del fine-task (check sopra).
-- 5ff6ad7 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- 5ff6ad7, 4021d67 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
 
 ## §7 RISERVE APERTE
 
