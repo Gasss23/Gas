@@ -18,6 +18,7 @@
 ## Da fare (in ordine)
 
 ### A. Piccoli lavori accantonati
+9. **Esito di una firma con la cronologia persa o ripristinata** (V-1 verifica esterna #281, BASSA, messa in coda dall'operatore il 2026-10-28; comprende R-531-3): dopo la PR #281 il segno nel DB `approval_esiti_in_storia` basta da solo a non riscrivere l'esito (`_esito_firma_in_storia` in `gas.py`). Se `.gas_history.json` viene perso, ripristinato da un backup più vecchio o sostituito dalla copia «conflitto» di un altro processo, il modello non saprà mai che l'azione è stata eseguita e il bot risponde «Nessuna modifica». Fix da progettare: il segno vale solo se la cronologia su disco contiene davvero il blocco dell'esito (o un'impronta della cronologia salvata insieme al segno); altrimenti il recupero riscrive l'esito dal DB, senza mai rieseguire. Restano validi i casi già fissati: dopo `clear` NON si riscrive (T78q), crash fra DB e storia → recupero (T78r), salvataggio fallito → nessun segno (T78u). Se servono scelte (es. `clear` contro cronologia persa, che sul disco sembrano uguali), fermarsi e scriverle nel report per l'operatore. Fetta di sicurezza (firma): revisore e verifica esterna obbligatori.
 
 ### B. Riserve più grosse
 
