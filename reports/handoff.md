@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #288 (https://github.com/Gasss23/Gas/pull/288). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5055020609","url":"https://github.com/Gasss23/Gas/pull/288"}`); `gh` nel cloud non è autenticato. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
+1. Merge della PR #288 (https://github.com/Gasss23/Gas/pull/288). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5055020609","url":"https://github.com/Gasss23/Gas/pull/288"}`); `gh` nel cloud non è autenticato. Merge AUTORIZZATO dall'operatore il 2026-10-28 («mergia 288»), con bot e verifica esterna su 6627250 APPROVATO CON RISERVE (niente ALTA/MEDIA); lo fa l'agente con CI verde e senza conflitti dopo il merge di main 2f35bc6. Il merge non accende niente.
 2. Accensione della lettura con lexbor: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (chiude anche R-ve280-1); poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
 3. Poi, una alla volta: cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4, R-540-1); R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
@@ -32,6 +32,10 @@
   - V-1 ve MEDIA (conflitto con main dopo la #289): `FATTA` — merge di 094eb57 in 9a7900b, solo reports/ (nessun file del perimetro da main), niente review.
   - V-1 bot / V-2 ve BASSA (slot dentro un'opzione mostrava i figli assegnati; option.text = discendenti): `FATTA` — 89a72bd, review #544 APPROVATO CON RISERVE.
   - R-544-1 BASSA (shadow dentro un'opzione), V-3 ve BASSA (`shadowrootslotassignment=manual`), V-4 ve COSMETICA (test degli host e della riserva): `FATTA` — 070df50, review #545 APPROVATO.
+- **Quinto giro — bot e verifica esterna su 6627250 APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/288#issuecomment-6477543766):
+  - V-1 BASSA (adoption agency sposta il template dichiarativo, l'host perde lo shadow): `DEFERITA — limite dichiarato (descrizione della PR, stato_progetto); test e commento nella fetta 24`.
+  - V-2/V-3 COSMETICHE (numeri vecchi nei report e nella descrizione, mutanti equivalenti non detti): `FATTA` — report e descrizione aggiornati.
+  - Main avanzato (PR #291, PR «behind» con strict): `FATTA` — merge di 2f35bc6 in 3e64fc6, review #546 APPROVATO (R-546-1 BASSA, numerazione doppia delle review).
 - **Accensione lexbor (punto b della ripartenza)**: `DEFERITA — chat Motore, selectolax non ancora in requirements su main`.
 
 ---
@@ -39,21 +43,23 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   9 +++++++++
- modules/web/lexbor.py              |  98 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
- reports/diff_sessione.md           |  13 +++++++++----
+ .claude/agents/memoria_revisore.md |  10 ++++++++++
+ modules/web/lexbor.py              |  98 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ reports/diff_sessione.md           |  18 ++++++++---------
  reports/handoff.md                 | n/d
  reports/ripartenza_mani.md         |   6 +++---
  reports/stato_progetto.md          |   3 ++-
- reports/ultimo_report.md           |  44 +++++++++++++++++++++++++++++++++++++++-----
- tests/test_unit_web_lexbor.py      |  69 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reports/ultimo_report.md           |  53 +++++++++++++++++++++++++++++++++++++------------
+ tests/test_unit_web_lexbor.py      |  69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ```
 
-NB: base = merge-base con origin/main = 094eb57 (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
+NB: base = merge-base con origin/main = 2f35bc6 (dopo il merge di main). Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3e64fc6 Merge origin/main (2f35bc6, PR #291) in claude/peaceful-lovelace-0w2b7q (PR #288)
+6627250 docs(fine-task): PR #288 quarto giro — merge di main 094eb57, V-1 bot e V-2/V-3/V-4 ve chiuse, review #544/#545
 9a7900b Merge origin/main (094eb57, PR #289) in claude/peaceful-lovelace-0w2b7q (PR #288)
 070df50 fix(web): shadowrootslotassignment=manual e niente shadow dentro un'opzione; test degli host (V-3, V-4 ve #288, R-544-1)
 ca007b5 chore(revisore): memoria review #545 — APPROVATO
@@ -76,7 +82,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-Commit motore 16cb6a6: review #539 sul primo diff staged, #540 dopo la chiusura di R-539-1 e R-539-2 (diff committato in 16cb6a6). Merge 5ff6ad7 (da main entrano gas.py, brains/claude_cli.py e i loro test): review #541. Commit motore fe1c9b0: review #542 BOCCIATO sul primo diff (V-2 con la regola vecchia), #543 APPROVATO sul diff corretto. Commit motore 89a72bd: review #544. Commit motore 070df50: review #545. Merge 9a7900b: solo reports/, niente review. Verdetti integrali:
+Commit motore 16cb6a6: review #539 sul primo diff staged, #540 dopo la chiusura di R-539-1 e R-539-2 (diff committato in 16cb6a6). Merge 5ff6ad7 (da main entrano gas.py, brains/claude_cli.py e i loro test): review #541. Commit motore fe1c9b0: review #542 BOCCIATO sul primo diff (V-2 con la regola vecchia), #543 APPROVATO sul diff corretto. Commit motore 89a72bd: review #544. Commit motore 070df50: review #545. Merge 9a7900b: solo reports/, niente review. Merge 3e64fc6 (da main entrano gas.py e i test del kernel e di dotenv): review #546. Verdetti integrali:
 
 ### Review #539 (chat Mani) — primo diff staged
 
@@ -315,6 +321,34 @@ Rischi esclusi:
 
 Memoria: riga #545 aggiunta in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, nessuna lezione nuova. È già committata in ca007b5 con `scripts/commit_memoria_revisore.sh`, che ha toccato solo quel file: i due file staged sono ancora in staging.
 
+### Review #546 (chat Mani) — merge 3e64fc6
+
+## VERDETTO: APPROVATO
+
+Review #546 (chat Mani): merge in corso di origin/main 2f35bc6 (PR #291, chat Motore) in claude/peaceful-lovelace-0w2b7q (PR #288, HEAD 6627250). La merge-base vecchia è 094eb57. Il merge non perde nulla di nessuno dei due lati e non aggiunge niente di nuovo. Prima di questa review ho letto CLAUDE.md (sez. 5), le righe di reports/stato_progetto.md toccate dal merge e la coda della memoria.
+
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:195`: il ramo `shadowrootslotassignment=manual` (nessun figlio va agli slot da sé). Rischio: il merge lo tocca o lo perde. Esito: ok. `git diff --cached HEAD` non tocca `modules/`, quindi il file è identico a HEAD. `git diff --cached origin/main` mostra solo i 98 righe della #288.
+- `modules/web/lexbor.py:208`: `visita()` con `dentro_opzione` e nessuno shadow dentro un'opzione (R-544-1). Rischio: logica Mani sostituita da quella di main. Esito: ok. Main dalla merge-base non tocca `modules/`.
+- `tests/test_unit_web_lexbor.py:164`: `shadowrootslotassignment=MANUAL` deve mostrare la riserva («AF»), mentre `named` dà «AL». Rischio: test del lato Mani perso nel merge. Esito: ok. Il file è identico a HEAD. Rifatto: lexbor + dotenv 116 passed; web + claude_cli 575 passed, 1 skipped (selectolax 1.0.2 presente).
+- Contesto: `gas.py:450` (`_avviso_claude_timer`, PR #291), in arrivo da main. Rischio: merge parziale del lato Motore. Esito: ok. `git diff --cached origin/main -- gas.py brains tests/test_unit_kernel.py tests/test_unit_dotenv.py` è vuoto. Kernel rifatto: 1056 PASS, 1 FAIL (T31g, sqlite_vec assente, noto).
+- `reports/stato_progetto.md:4`: riga «Ultimo aggiornamento» unita. Rischio: voci perse. Esito: ok. Ho confrontato le voci una per una: indice = main + la voce Mani in testa; la voce Motore #291 è subito dopo, al posto giusto. Il resto del file: rispetto a HEAD cambiano solo le righe 4 e 589 (589 = main); rispetto a main cambiano solo la riga 4 e il paragrafo Mani della fetta 23 (riga 634).
+- `.claude/agents/memoria_revisore.md`: 941 righe = base 928 + 9 Mani + 4 Motore. Nessuna riga di HEAD o di main manca, nessuna riga è nuova, nessun marcatore di conflitto (controllato anche sull'intero diff staged).
+
+**Riserve**
+- R-546-1 BASSA: la numerazione #540–#542 è doppia tra chat Motore e chat Mani. L'etichetta della chat basta a distinguerle, ma la prossima review Motore rischia un #543 doppio. Suggerisco di ripartire da #547 in entrambe le chat.
+- Nota (non è una riserva): handoff.md, ultimo_report.md e diff_sessione.md di main sono stati scartati per scelta e restano nella storia di main. È una scelta accettabile solo se il fine-task li riscrive, come dichiarato.
+
+**Rischi esclusi**
+- Non ho verificato la CI su GitHub, né il check `handoff-check` sul nuovo merge-base: il merge non è ancora committato né pushato.
+- Non ho riverificato la correttezza del codice lexbor: è identico a HEAD, già revisionato in #539–#545. Ho controllato solo che il merge l'abbia conservato.
+
+**Memoria del revisore**
+- Ho aggiunto la riga `#546 (chat Mani) — 2026-10-28 — APPROVATO — …` in coda a /home/user/Gas/.claude/agents/memoria_revisore.md. Nessuna lezione nuova.
+- `scripts/commit_memoria_revisore.sh` è FALLITO, come previsto durante un merge: git ha risposto «fatal: cannot do a partial commit during a merge» (rc=128). Lo script è uscito con 0 e ha scritto il warning in gas_debug.log.
+- La riga #546 è solo nel working tree (stato `MM`), non nell'indice. Per farla entrare nel commit di merge devi fare `git add .claude/agents/memoria_revisore.md` prima di committare. Questo cambia l'hash del diff staged: lancia `bash scripts/segna_review_ok.sh` dopo l'add.
+- La riga 4 di stato_progetto cita già «review #539–#546 chat Mani», quindi è coerente con questa review.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`.
@@ -322,9 +356,10 @@ Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_un
 - File lexbor su Python 3.11 senza selectolax (come la CI): 20 passed / 76 skipped.
 - Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): 11 failed / 430 passed / 1 skipped prima e dopo, gli stessi 11 (fuori scope: casi dove la lettura di sempre e lexbor differiscono, noti dalla fetta 19).
 - Dopo il merge di main 0a9ce70: web + claude_cli 566 passed / 1 skipped; kernel (`tests/test_unit_kernel.py`) 1056 PASS, 1 FAIL — T31g (sqlite_vec assente in questo ambiente, fuori scope, noto).
+- Dopo il merge di main 2f35bc6: web + dotenv + claude_cli 586 passed / 1 skipped; kernel 1056 PASS, 1 FAIL (T31g, sqlite_vec assente, noto).
 - Codice finale (070df50): web suite 546 passed / 1 skipped; lexbor su 3.11 senza selectolax 20 passed / 85 skipped; mutanti dei giri #544/#545 presi (1 failed ciascuno).
 - Dopo V-2/V-3 (fe1c9b0): web suite 540 passed / 1 skipped (+3 casi); lexbor su 3.11 senza selectolax 20 passed / 79 skipped; suite vecchia con `GAS_WEB_LEXBOR=1` sempre 11 failed / 430 passed; mutante «template tra gli assegnati» ora preso (1 failed).
-- Mutanti: tutti presi tranne `CON_SHADOW = True` (cambia solo i tempi); elenco in `reports/ultimo_report.md`.
+- Mutanti: tutti presi tranne gli equivalenti (`CON_SHADOW = True`, `continue` → `return None` su `template_fragments()` vuoto) (cambia solo i tempi); elenco in `reports/ultimo_report.md`.
 
 ## §6 STATO CI
 
@@ -338,12 +373,15 @@ Mappatura commit→run:
 - d553ca2, 484982b: nessuna run (pushati con 16cb6a6). 16cb6a6: 40738191089. af8f8ec: 40738586125.
 - 5ff6ad7, 4021d67: nessuna run (pushati con a735e46). a735e46: 40739978887.
 - 212ab4f, e272522, fe1c9b0: nessuna run (pushati con 300e1aa). 300e1aa: 40742034209.
-- 454f3af, 89a72bd, ca007b5, 070df50, 9a7900b e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
+- 454f3af, 89a72bd, ca007b5, 070df50, 9a7900b: nessuna run (pushati con 6627250). 6627250: run 40745502410 (unit-suite, handoff-check success; verifica-bot success, APPROVATO CON RISERVE).
+- 3e64fc6 e il commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (pushati insieme; la run testerà solo l'albero del commit di testa).
 
 ## §7 RISERVE APERTE
 
 - R-543-1 COSMETICA (review #543): nel commento su HOST «niente maiuscole» vale solo per A-Z.
 - R-540-1 COSMETICA (review #540): uno slot dentro `<svg><foreignObject>` nello shadow non reclama il nome; svg è nascosto per scelta.
 - R-ve280-1 BASSA: i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore: `selectolax==1.0.2` in requirements-dev.
+- V-1 ve/bot #288 su 6627250 BASSA: adoption agency che sposta il template dichiarativo (l'host perde lo shadow); test e commento nella fetta 24.
+- R-546-1 BASSA: numerazione doppia delle review tra le chat; ripartire da #547.
 - V-2 ve #288 su af8f8ec: non accolta (standard di oggi riletto alla fonte, confermato dalla verifica esterna su 300e1aa anche sul sorgente di Chromium).
 - Restano quelle delle fette precedenti (stato_progetto, blocchi «Mani — fetta 20/21»): cosmetiche R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4 (in lavorazione nella fetta 24).
