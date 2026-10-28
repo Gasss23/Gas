@@ -79,6 +79,11 @@ Review #538 (chat Motore), diff staged sul branch feat/errore-forte-notte (4 fil
 
 ### Review #539 (chat Motore) — sul merge di origin/main (PR #285) in cfb8a3c
 
+Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` soprattutto file entrati da main, che non sono nel diff di sessione (base 297fc22 dopo il merge): il Gate B lo ha rifiutato (1 citazione valida su 2). Come da regola il testo non è stato ritoccato: il revisore lo ha riemesso con lo stesso esito e lo stesso finding, citando i file del diff. Fa fede il verdetto riemesso; l'originale resta qui per tracciabilità.
+
+Verdetto originale (sostituito dalla riemissione):
+
+```text
 ## VERDETTO: APPROVATO
 
 Review #539 (chat Motore). Ho controllato il merge in corso di origin/main 297fc22 (PR #285) dentro feat/errore-forte-notte (HEAD f4878a3). Il diff è in stage, MERGE_HEAD = 297fc22.
@@ -102,6 +107,34 @@ Finding:
 Rischio escluso: non ho rilanciato io i test (kernel 1057 PASS, pytest lexbor e claude_cli). Mi fido della tua esecuzione, perché il codice è identico byte per byte a due commit già testati e revisionati (#538 Motore, #536-#538 Mani). Non ho valutato l'interazione a runtime tra lexbor e le modifiche al forte: sono moduli separati e nessun file è in comune.
 
 Memoria: ho scritto in coda a /home/user/Gas/.claude/agents/memoria_revisore.md la riga `#539 (chat Motore) — 2026-10-28 — APPROVATO — …`, con R-539-1 e «nessuna lezione nuova». Come mi hai chiesto non ho lanciato commit_memoria_revisore.sh: il file è modificato ma non in stage, quindi fai `git add .claude/agents/memoria_revisore.md` prima del commit di merge.
+```
+
+Verdetto riemesso:
+
+## VERDETTO: APPROVATO
+
+Review #539 (chat Motore): merge di origin/main 297fc22 (PR #285) dentro feat/errore-forte-notte (PR #287). Base della sessione: 297fc22.
+
+Elementi del diff esaminati:
+- `gas.py:426` — `_motivo_forte` legge il motivo vero solo da RuntimeError con prefisso fisso «claude-cli: », prende la prima riga e la tronca. Rischio: che il merge abbia alterato il codice già revisionato in #538 o che il testo esponga dati non fidati. Esito: ok, il codice è identico a f4878a3 (dove `git diff --cached HEAD -- gas.py` era vuoto) e i testi sorgente sono fissi.
+- `gas.py:4912` — `_motivo_forte(e)` viene chiamata solo per `name == "claude-cli"` e il motivo va nella riga «Pipeline esausta», dopo l'eventuale HTTP. Rischio: motivo applicato ad altri provider, o eccezione dentro il fallback. Esito: ok, l'ambito è ristretto al forte e la cascata §9 resta intatta.
+- `gas.py:4983` — il doctor legge `GAS_CLAUDE_BIN`, usa `shutil.which`, e se `_claude_solo_nel_terminale` è vero dà WARN invece di OK. Rischio: un falso OK quando la variabile arriva dalla shell del terminale invece che dal .env. Esito: ok, il caso è coperto ed è registrato come lezione in #538.
+- `brains/claude_cli.py:317` — FileNotFoundError e PermissionError diventano RuntimeError con testo fisso «claude-cli: …» che indica GAS_CLAUDE_BIN nel .env. Rischio: un'eccezione propagata fino al crash. Esito: ok, il messaggio è catturato e loggato dal kernel e il fallback scatta.
+- `tests/test_unit_claude_cli.py:282` — test del runner che solleva PermissionError e attende RuntimeError «non eseguibile.*GAS_CLAUDE_BIN». Esito: ok.
+- `tests/test_unit_kernel.py:11195` — test del doctor con un `claude` finto solo nel PATH del terminale, che deve dare WARN. Esito: ok.
+
+Controlli sul merge (cfb8a3c):
+- I file arrivati da main sono identici a origin/main, verificato prima del commit con `git diff --cached origin/main` vuoto: modules/web/lexbor.py, tests/test_unit_web_lexbor.py e reports/ripartenza_mani.md.
+- I file di `git diff 297fc22..HEAD` sono esattamente i 9 della PR #287.
+- Nessun marcatore di conflitto; `--check` pulito.
+- `reports/stato_progetto.md:4` unisce le due catene «prima» senza perdite.
+- La memoria contiene #536, #537 e #538 della chat Mani più #538 della chat Motore.
+- Nessuno slicing della history e nessuna simulazione di tool.
+
+Finding:
+- R-539-1 COSMETICA: il numero #538 compare due volte nel contatore (chat Mani e chat Motore), distinte solo dal suffisso. Il gate non si rompe; la numerazione prosegue con #539.
+
+Rischio escluso: non ho rilanciato i test, mi baso sulla tua esecuzione (kernel 1057 PASS 0 FAIL, pytest di lexbor e claude_cli verdi). È accettabile perché il codice è identico byte per byte a commit già testati e revisionati. Non ho verificato il comportamento reale del timer notturno sul Mac: non si riproduce in dev e resta da controllare al giro del 29.
 
 ## §5 DELTA TEST DEL MOTORE
 
