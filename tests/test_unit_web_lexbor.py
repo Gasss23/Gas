@@ -168,6 +168,22 @@ def test_size_enorme_non_fa_cadere_il_figlio():
     assert lexbor.testo_visibile(pagina, frozenset(), frozenset()) == ("\nA\n", "")
 
 
+@pytest.mark.parametrize("valore, atteso", [
+    ("0", 0), ("000", 0), (" +0", 0), ("0x", 0), ("007", 7), ("2147483647", 2147483647),
+    ("2147483648", None), ("", None), (None, None), ("+", None), ("x0", None), ("-1", None),
+    ("-0", 0), (" -000", 0), ("-", None), ("+-1", None), ("--0", None),
+])
+def test_intero_come_il_browser(valore, atteso):
+    """intero() del figlio, presa dal suo sorgente: gira anche senza selectolax; «0» vale 0,
+    non None (R-bot280-1, R-536-1)."""
+    import ast
+    albero = ast.parse(lexbor._FIGLIO)
+    nodo = next(n for n in albero.body if isinstance(n, ast.FunctionDef) and n.name == "intero")
+    spazio: dict = {}
+    exec(compile(ast.Module([nodo], type_ignores=[]), "_FIGLIO", "exec"), spazio)
+    assert spazio["intero"](valore) == atteso
+
+
 @con_lexbor
 def test_sonda_riuscita_non_aspetta_il_lock(acceso):
     """Dopo una sonda riuscita la lettura con lexbor resta accesa anche mentre il lock è preso
