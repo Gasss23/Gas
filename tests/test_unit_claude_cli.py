@@ -279,6 +279,11 @@ def test_uscita_non_json_cli_assente_e_tempo_scaduto():
     with pytest.raises(RuntimeError, match="non trovato"):
         ClaudeCliClient(runner=assente).chat.completions.create(model="m", messages=_msgs())
 
+    def non_eseguibile(cmd, stdin, cwd, env, timeout):
+        raise PermissionError(13, "Permission denied", "/x/claude")
+    with pytest.raises(RuntimeError, match="non eseguibile.*GAS_CLAUDE_BIN"):
+        ClaudeCliClient(runner=non_eseguibile).chat.completions.create(model="m", messages=_msgs())
+
     def lento(cmd, stdin, cwd, env, timeout):
         raise subprocess.TimeoutExpired(cmd, timeout)
     with pytest.raises(RuntimeError, match="entro 7s"):
