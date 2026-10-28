@@ -49,9 +49,10 @@ _SONDA = threading.Lock()          # una sonda alla volta (R-521-1)
 # saltando i contenitori nascosti e il titolo, con un a capo per i blocchi come in leggi.py.
 # Si salta anche quello che il browser non mostra mai: l'attributo «hidden» (anche su html e
 # body: allora niente testo), i dialog chiusi, i details chiusi tranne il primo summary,
-# datalist e rp. Del select (lexbor segue il select nuovo, che accetta altri tag dentro) si
-# legge solo quello che il browser mostra: l'opzione scelta (l'ultima con «selected», se no
-# la prima), o tutte le opzioni con «multiple» o «size» > 1 (V-1 bot / V-4 ve #277).
+# datalist, rp, il contenuto di riserva di video e audio, l'interno di meter e progress. Del
+# select (lexbor segue il select nuovo, che accetta altri tag dentro) si legge solo quello
+# che il browser mostra: l'opzione scelta (l'ultima con «selected», se no la prima), o tutte
+# le opzioni con «multiple» o «size» > 1 (V-1 bot / V-4 ve #277).
 # Fuori da Linux il figlio si rifiuta (uscita 3).
 _FIGLIO = r"""
 import json, resource, sys
@@ -60,7 +61,9 @@ if sys.platform != "linux":
     sys.exit(3)
 resource.setrlimit(resource.RLIMIT_AS, (int(sys.argv[1]), int(sys.argv[1])))
 from selectolax.lexbor import LexborHTMLParser
-nascosti = frozenset(json.loads(sys.argv[2])) | {"title", "datalist", "rp"}
+# In più di quelli di leggi.py, quello che il browser non disegna mai: il contenuto di
+# riserva di video e audio, l'interno di meter e progress (R-ve277-5).
+nascosti = frozenset(json.loads(sys.argv[2])) | {"title", "datalist", "rp", "video", "audio", "meter", "progress"}
 blocchi = frozenset(json.loads(sys.argv[3]))
 albero = LexborHTMLParser(sys.stdin.buffer.read().decode("utf-8"), scripting=True)
 titolo = ""
@@ -93,13 +96,15 @@ def opzioni_visibili(select):
     return trovate
 
 def intero(valore):
-    # Come il browser legge gli interi non negativi: spazi, poi le cifre ASCII in testa.
+    # Come il browser legge gli interi non negativi: spazi, poi le cifre ASCII in testa; oltre
+    # 2**31-1 il valore non vale (V-1 ve #277 ter: con migliaia di cifre int() cadeva).
     cifre = ""
     for c in (valore or "").lstrip(" \t\n\f\r").removeprefix("+"):
-        if c not in "0123456789":
+        if c not in "0123456789" or len(cifre) > 10:
             break
-        cifre += c
-    return int(cifre) if cifre else None
+        if cifre or c != "0":  # gli zeri in testa non contano
+            cifre += c
+    return int(cifre) if cifre and int(cifre) < 1 << 31 else None
 
 def opzioni(select):
     attributi = select.attrs
