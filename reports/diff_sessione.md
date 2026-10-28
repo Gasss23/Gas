@@ -1,8 +1,11 @@
-# DIFF SESSIONE — 2026-10-28 (coda notte, note del bot su #281, PR #284)
+# Diff della sessione — 2026-10-28 (chat Motore, PR #287)
 
-- `reports/coda_notte.md`: voce 9 con V-1/V-2 bot #281 e link al commento della verifica esterna dell'agente su #281.
-- `reports/stato_progetto.md`: riferimento univoco alla verifica esterna dell'agente su #281; voce della sessione in «Ultimo aggiornamento» (V-1 bot #284).
-- `.claude/agents/memoria_revisore.md`: righe delle review #536 e #537 (merge di main con le PR #280 e #283).
+- `brains/claude_cli.py`: messaggio «`claude` non trovato» con il consiglio GAS_CLAUDE_BIN; nuovo caso PermissionError → «non eseguibile».
+- `gas.py`: `_motivo_forte` (motivo vero del forte nella riga «Pipeline esausta»); `_claude_solo_nel_terminale` e nuovo WARN del doctor.
+- `tests/test_unit_kernel.py`: T99s–T99v.
+- `tests/test_unit_claude_cli.py`: caso PermissionError.
+- `.claude/agents/memoria_revisore.md`: review #538.
+- `reports/stato_progetto.md`: «Ultimo aggiornamento», punto 3 della ripartenza Motore, riserve R-538-1/R-538-2.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
-Si riscrive a ogni sessione; la storia completa sta in git.
+Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

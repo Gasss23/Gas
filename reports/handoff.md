@@ -1,19 +1,19 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Coda notte: note del bot su #281 nella voce 9 (PR #284), dopo il merge di main con la #280
+**Sessione:** 2026-10-28 — Il report della notte dice perché il forte è fallito; doctor avvisa se `claude` è solo nel PATH del terminale (chat Motore)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #284 (https://github.com/Gasss23/Gas/pull/284): chiesto dall'operatore («mergia #284»), dopo la CI verde su questo head. Numero e URL dalla risposta JSON di `gh api -X POST repos/Gasss23/Gas/pulls`.
+1. Merge della PR #287 (https://github.com/Gasss23/Gas/pull/287): review #538 APPROVATO CON RISERVE, serve il «sì» dell'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Voce 9 con le note del bot su #281**: `FATTA` — V-1/V-2 bot #281 aggiunte; riferimento univoco alla verifica esterna dell'agente su #281.
-- **Fetta 2 — Conflitti con main (PR #280, poi PR #283)**: `FATTA` — log di sessione presi dal ramo, memoria e data di «Ultimo aggiornamento» unite; review #536 e #537 APPROVATO; `diff_sessione.md` completato (V-1 bot #284 secondo giro).
+- **Fetta 1 — motivo vero dell'errore del forte nel report della notte**: `FATTA` — `_motivo_forte` in `gas.py`, messaggi di `brains/claude_cli.py` con il consiglio GAS_CLAUDE_BIN e il caso «non eseguibile».
+- **Fetta 2 — doctor avvisa se `claude` è solo nel PATH del terminale**: `FATTA` — `_claude_solo_nel_terminale`, WARN con `GAS_CLAUDE_BIN=<percorso>`.
 
 ---
 
@@ -21,80 +21,84 @@
 
 ```
  .claude/agents/memoria_revisore.md |  2 ++
- reports/coda_notte.md              |  2 +-
- reports/diff_sessione.md           |  6 ++++--
+ brains/claude_cli.py               |  6 +++++-
+ gas.py                             | 46 +++++++++++++++++++++++++++++++++++++++++++---
+ reports/diff_sessione.md           | 13 ++++++++-----
  reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 14 +++++---------
+ reports/ultimo_report.md           | 15 ++++++++++-----
+ tests/test_unit_claude_cli.py      |  5 +++++
+ tests/test_unit_kernel.py          | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
  reports/handoff.md                 | n/d (commit finale)
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d». Conteggi presi prima del commit finale, barre accorciate.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d», e la riga di totale è tolta. Conteggi presi con i report già in stage.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-5ac373e Merge origin/main (PR #283) in docs/coda-voce9-note-bot (PR #284) — review #537 APPROVATO
-85e9e06 docs(fine-task): PR #284 dopo il merge di main (#280), review #536, data di «Ultimo aggiornamento»
-47119e9 Merge origin/main (PR #280) in docs/coda-voce9-note-bot (PR #284) — review #536 APPROVATO
-b88b597 docs(fine-task): voce 9 con le note del bot su #281 (PR #284)
-60553a6 docs(coda-notte): note del bot su #281 nella voce 9, riferimento univoco alla verifica esterna
+7392f49 fix(forte): il report della notte dice perché il forte è fallito; doctor avvisa se `claude` è solo nel PATH del terminale
+071b292 chore(revisore): memoria review #538 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #536 (chat Notte) — sul merge di origin/main (PR #280) in 47119e9
+### Review #538 (chat Motore) — sul diff di 7392f49
 
-## VERDETTO: APPROVATO
+## VERDETTO: APPROVATO CON RISERVE
 
-Review #536 (chat Notte). Merge di origin/main b95c3f3 (con la PR #280 della chat Mani) dentro docs/coda-voce9-note-bot (PR #284, HEAD b88b597). Prima della review ho letto CLAUDE.md, la riga 4 e i paragrafi pertinenti di reports/stato_progetto.md e la coda della memoria del revisore.
+Review #538 (chat Motore), diff staged sul branch feat/errore-forte-notte (4 file, +103/-4). Ho letto CLAUDE.md (sez. 5, 8 e 9), reports/stato_progetto.md (la parte che serve: la voce del 28 ottobre su `GAS_CLAUDE_BIN` e sul PATH di launchd) e la memoria del revisore.
 
-Cosa ho esaminato nel diff:
-- `modules/web/lexbor.py:107`: è il tetto `< 1 << 31` portato da main. Rischio esaminato: una modifica del codice introdotta dal merge. Ho confrontato lo SHA del file in tre punti: indice, origin/main e working tree. Sono identici (6a646a8…). Esito: ok.
-- `modules/web/leggi.py:30`: è la docstring «spenta per default» portata da main. Stesso rischio, stesso controllo: blob identico nei tre punti (a9c1e84…). Esito: ok.
-- `tests/test_unit_web_lexbor.py:1`: test portati da main. Blob identico nei tre punti (3bea332…). Lo stesso vale per `reports/strumenti_mani/misura_web.py`, `reports/ripartenza_mani.md` e `.claude/agents/memoria_revisore.md`. Esito: ok.
-- `reports/stato_progetto.md:4`: riga «Ultimo aggiornamento». Rischio esaminato: perdere la voce di una delle due parti. La riga è uguale a quella di main e contiene sia la voce Mani (fetta 21) sia la voce Notte (#531→#532). Il paragrafo «Mani — fetta 21» compare una volta sola, alla riga 634. Il paragrafo Notte alla riga 623 tiene le aggiunte del ramo (link al commento della verifica esterna #281, V-1 e V-2 del bot #281). Esito: ok.
-- `reports/coda_notte.md:21`: voce 9. Rischio esaminato: unione sbagliata. Rispetto a main l'unica differenza è la riga della voce 9 riscritta dal ramo (link al commento e note del bot). Esito: ok.
-- Su tutto il merge: `git diff --cached origin/main` tocca SOLO 5 file in reports/ (coda_notte, stato_progetto, ultimo_report, diff_sessione, handoff). Non ci sono marcatori di conflitto né in reports/*.md né nella memoria, e `git diff --check` non segnala nulla. Esito: ok.
+**Cosa ho esaminato**
+- `brains/claude_cli.py:316` — FileNotFoundError ora suggerisce GAS_CLAUDE_BIN, e c'è un nuovo ramo PermissionError che diventa RuntimeError «non eseguibile». Rischio cercato: messaggi con contenuto variabile, o eccezioni che scappano senza essere intercettate. Esito: **ok**. Il testo è fisso, la causa resta agganciata con `from e`, e il rung resta nella gestione delle eccezioni dei provider (§9).
+- `gas.py:426` — `_motivo_forte`. Rischio cercato: testo di Claude o della conversazione che finisce nella riga «Pipeline esausta» e nel report della notte. Ho controllato uno per uno tutti i punti di `brains/claude_cli.py` che sollevano RuntimeError (righe 317-372).
+  - Sono tutti testi fissi oppure contengono solo valori controllati: il timeout, il codice di uscita, un `tipo` ripulito con `[^a-z_]` e tagliato a 40 caratteri, il prefisso «429 » di `_prefisso_limite`.
+  - Il filtro accetta solo RuntimeError, solo la prima riga e solo il prefisso esatto (`re.match` con `^`).
+  - Esito: **ok**, nessuna fuga di dati. Il test T99u copre il nome nella seconda riga, il testo senza prefisso e il ValueError.
+- `gas.py:4912` — `_mf` viene calcolato solo per `name == "claude-cli"`, e HTTP status_code ha ancora la precedenza. Esito: **ok**, gli altri rung non cambiano.
+- `gas.py:443` — `_claude_solo_nel_terminale`, insieme al chiamante del doctor in `gas.py:4983`. Rischio cercato: un falso OK.
+  - Il venv conta come cartella vista dal timer, ed è giusto: `scripts/notte/com.gas.notte.plist:15` attiva `.venv`/`venv` prima di `python3 gas.py notte`, quindi la sua cartella bin è nel PATH.
+  - `/usr/local/bin` e `/opt/homebrew/bin` danno WARN, coerente col PATH predefinito di launchd.
+  - Un GAS_CLAUDE_BIN assoluto arriva qui solo se `shutil.which` lo ha già trovato ed è eseguibile (altrimenti c'è prima il WARN «non trovato»).
+  - Esito: **riserva** (R-538-1).
+- `tests/test_unit_kernel.py:11195` — T99s–T99v. Il PATH e GAS_CLAUDE_BIN vengono ripristinati in un finally, e `gas.ClaudeCliClient` viene rimesso com'era da `_orig99` (`tests/test_unit_kernel.py:11260`). Il WARN finto compare anche nell'output di T99n (nel container `claude` sta in `/opt/node22/bin`), ma nessun test esistente controlla «presente» su quella riga. Esito: **ok**.
 
-Rischi esclusi:
-- I test lexbor sono girati qui con 3 passed e 60 skipped, perché lexbor non è installato in questo ambiente. Non è un problema per questo merge: il codice è identico a origin/main, già revisionato nelle review #531–#535 della chat Mani e coperto dalla CI di main.
-- Non ho verificato il contenuto dei tre log di sessione presi dal ramo (handoff, ultimo_report, diff_sessione). Sono documenti di questa sessione, fuori dal codice.
+**Esecuzione diretta**: kernel 1057 PASS, 0 FAIL. `tests/test_unit_claude_cli.py` 29 passed. Intera cartella tests/ 2265 passed, 61 skipped, nessuna regressione. Nessuno slicing della history, nessuna simulazione dei tool, cap a 10 iterazioni e `_get_window` non toccati, il doctor resta senza chiamate LLM.
 
-Memoria: ho aggiunto la riga #536 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Non l'ho committata, come richiesto, perché il merge è in corso: resta modificata nel working tree. Nessuna lezione nuova.
+**Finding**
+- **R-538-1 (BASSA)**: falso OK del doctor. Se GAS_CLAUDE_BIN assoluto è esportato solo nella shell (es. `~/.zshrc`) e non nel `.env`, il doctor lanciato dal terminale dice «presente», ma il timer di launchd non vede quella variabile e ricade su `claude` cercato nel suo PATH ridotto. Oggi sul Mac la variabile sta nel `.env`, quindi il caso non è attivo. Correzione possibile: dire nel messaggio da dove arriva il valore, o controllare che sia nel `.env`. Da tracciare in stato_progetto.
+- **R-538-2 (COSMETICA)**: `_MSG_LOGIN` supera i 160 caratteri, quindi nel motivo il consiglio «/login …» arriva troncato. Il senso resta, ma conviene accorciarlo o alzare il tetto.
 
-### Review #537 (chat Notte) — sul secondo merge di origin/main (PR #283) in 5ac373e
+**Cosa NON ho verificato**: il comportamento reale sotto launchd sul Mac (PATH ridotto, `.env` caricato dal giro notturno), perché non si riproduce nel container Linux. La correttezza del motivo nel report del mattino l'ho verificata solo con T99v (run_turn con runner finto), non con un giro `gas notte` completo. Non ho fatto test mutanti formali: ho controllato solo che T99u catturerebbe la rimozione del filtro sul prefisso (il caso «Mario Rossi»).
 
-## VERDETTO: APPROVATO
-
-Review #537 (chat Notte): secondo merge di origin/main, che ora contiene la PR #283 della chat Motore (solo documenti), dentro docs/coda-voce9-note-bot (PR #284). MERGE_HEAD è presente e la base è b95c3f3.
-
-**Cosa ho controllato nel diff**
-1. `.claude/agents/memoria_revisore.md:920` — rispetto a origin/main aggiunge solo la riga #536 (chat Notte). Il rischio era perdere righe di uno dei due lati. Ho confrontato le righe del file in stage con HEAD e con MERGE_HEAD: 0 righe perse da ciascun lato. Esito: ok.
-2. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» unita. Il rischio era perdere voci o cambiarne l'ordine. La riga è divisa in voci separate da « — ». Nell'indice ci sono 74 voci: le 73 di main più quella del ramo (chat Notte, di giorno), che ora è la seconda e comincia con «prima:». In testa c'è la voce della chat Motore. Nessuna voce di HEAD o di main manca. Esito: ok.
-3. `reports/stato_progetto.md:623` — paragrafo Notte «segno nel DB per l'esito delle firme», preso dal ramo. Il rischio era perdere modifiche fatte da uno dei due lati fuori dalla riga 4. Ho fatto il confronto a tre vie con la base: l'unica riga di HEAD e l'unica riga di main che non si trovano nell'indice sono entrambe la riga 4. Le righe che mancano rispetto a HEAD erano nella base e main le ha tolte di proposito. Esito: ok.
-4. `reports/coda_notte.md:21`, insieme a handoff, ultimo_report e diff_sessione: sono identici ai file di HEAD (stesso contenuto in git). Esito: ok.
-5. `git diff --cached origin/main` fuori da reports/ e dalla memoria: 0 righe, quindi nessun file di codice è diverso da main. Marcatori di conflitto nella memoria e nello stato: 0. Esito: ok.
-
-**Cosa NON ho verificato:** i test non li ho lanciati, perché il diff contiene solo documenti e non tocca codice. Non ho riletto parola per parola il contenuto dei tre log di sessione: ho solo controllato che siano uguali a quelli di HEAD.
-
-**Memoria:** ho aggiunto la riga #537 (chat Notte) in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Come chiesto non l'ho committata e nemmeno messa in stage: ora è modificata solo nella cartella di lavoro, quindi va aggiunta con `git add` prima di chiudere il merge. Nessuna lezione nuova.
+**Memoria**: aggiunta la riga #538 più una lezione (un controllo del doctor «per il timer» eseguito dal terminale eredita le variabili della shell). È già committata da sola con `commit_memoria_revisore.sh` (commit 071b292), lo staging del diff non è stato toccato.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/ rispetto a main.
+Kernel: 1053 → 1057 PASS (T99s, T99t, T99u, T99v nuovi).
+
+```
+=== RIEPILOGO: 1057 PASS, 0 FAIL ===
+```
+
+pytest (`python3 -m pytest -q tests`): `2265 passed, 61 skipped in 196.34s (0:03:16)`. Nessun FAIL.
 
 ## §6 STATO CI
 
+`gh` nel container non è autenticato («Failed to log in to github.com using token (GH_TOKEN)»): run lette con lo strumento GitHub della sessione (`actions_list`, branch feat/errore-forte-notte):
+
+```
+CI            run 40736220989  push                 head 7392f49  status in_progress
+verifica-bot  run 40736298019  pull_request_target  head 7392f49  conclusion skipped (etichetta `verifica` non ancora messa)
+```
+
 Mappatura commit→run:
-- `60553a6`: nessuna run su questo SHA (pushato insieme a `b88b597`).
-- `b88b597` → `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 sulla data di «Ultimo aggiornamento», sistemata qui).
-- `47119e9`: nessuna run su questo SHA (pushato insieme a `85e9e06`).
-- `85e9e06` → `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 COSMETICA su `diff_sessione.md`, sistemata qui).
-- `5ac373e`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 7392f49 → CI run 40736220989 (in corso alla scrittura dell'handoff).
+- 071b292 → nessuna run su questo SHA (pushato insieme a 7392f49: la run testa solo l'albero di testa).
+- commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- Voce 9 in coda (cronologia persa, V-1/V-2 bot #281).
+- **R-538-1** (BASSA, review #538): doctor dà OK se GAS_CLAUDE_BIN assoluto sta solo nella shell e non nel `.env`.
+- **R-538-2** (COSMETICA, review #538): `_MSG_LOGIN` oltre 160 caratteri, troncato nel motivo.
