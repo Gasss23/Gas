@@ -1,13 +1,14 @@
-# ULTIMO REPORT — 2026-10-28 — Turno di notte: segno nel DB per l'esito delle firme (voce 6 di `coda_notte.md`)
+# ULTIMO REPORT — 2026-10-28 — Prima notte del cervello forte (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #281 (https://github.com/Gasss23/Gas/pull/281), dopo il secondo passaggio su claude.ai (fetta di sicurezza: firma umana).
-2. Testo dell'attività programmata: serve la richiesta dell'operatore in questa sessione, se lo vuole cambiare.
+1. Merge della PR di questa sessione (solo documenti), fatto dall'agente da qui secondo CLAUDE.md §10.
+2. Verificare il giro del 29 ottobre: `cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac.
 
 ## Esito
-- **Voce 0**: SALTATA — già fatta dalla chat Motore (PR #279, review #528).
-- **Voce 6 — segno nel DB per l'esito delle firme**: FATTA. Review #531 BOCCIATO (R-531-1 ALTA, corretta), #532 APPROVATO CON RISERVE (R-531-3, R-532-1 BASSE aperte). Kernel 1043 → 1053 PASS 0 FAIL; pytest 2265 passed, 51 skipped (come main).
-- **Voci 7a, 7, 8**: SALTATE — una sola voce del motore a notte.
+- **PR #279**: mergiata dall'agente da qui («mergia 279»), dopo il secondo merge di main (#277, review #529 APPROVATO).
+- **Prima notte di `punto_lead` col forte**: FALLITA il 27 e il 28 alle 3:00 — `gas_debug.log`: «claude-cli: comando `claude` non trovato» (il timer notturno ha un PATH ridotto). Nessun ripiego sui gratuiti.
+- **Correzione sul Mac** (operatore, guidata): `GAS_CLAUDE_BIN=/Users/gas/.local/bin/claude` nel `.env`. Scritta in `reports/stato_progetto.md` (G-3).
+- **DEFERITA**: fetta per mostrare il motivo vero dell'errore del forte nel report della notte e un avviso in `gas doctor`.
 
 ## Anomalie
-- Nessuna. Dettaglio: `reports/report_notte.md`.
+- Il report della notte dice solo «RuntimeError»: il motivo era solo in `gas_debug.log`.
