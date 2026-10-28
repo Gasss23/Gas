@@ -142,8 +142,7 @@ def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
     ("<body><template shadowrootmode=open>S<slot></slot></template>L<slot>F</slot></body>", "SLF"),
     # un template dentro svg non ha contenuto HTML: niente errore, nessuno shadow (R-539-1)
     ("<svg><x-a><template shadowrootmode=open>S</template>L</x-a></svg><p>P</p>", "SLP"),
-    # uno slot dentro svg non è uno slot; i nomi riservati non sono host; lo slot dentro
-    # un'opzione resta nello shadow (R-539-2)
+    # uno slot dentro svg non è uno slot; i nomi riservati non sono host (R-539-2)
     ("<div><template shadowrootmode=open><svg><slot></slot></svg><slot>Q</slot></template>L</div>", "L"),
     ("<font-face><template shadowrootmode=open>S</template>L</font-face>", "L"),
     # per lo standard di oggi anche «x-a!» e «x-a:b» sono host («valid element local name» di DOM,
@@ -154,8 +153,10 @@ def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
     # il template dello shadow non è un figlio dell'host: col nome di uno slot non gli toglie
     # la riserva (V-3 ve #288)
     ("<div><template shadowrootmode=open slot=n><slot name=n>R</slot></template>L</div>", "R"),
-    ("<div><template shadowrootmode=open><select><option><slot></slot></option></select></template>L</div>",
-     "\nL\n"),
+    # dentro un'opzione si legge il suo testo (option.text, i discendenti): lo slot mostra la riserva,
+    # non i figli dell'host (V-1 bot #288)
+    ("<div><template shadowrootmode=open><select><option><slot>F</slot></option></select></template>L</div>",
+     "\nF\n"),
 ])
 def test_shadow_dichiarativo_in_ordine(pagina, atteso):
     """Lo shadow dichiarativo nell'ordine del browser: slot, nomi, riserva, annidamento."""

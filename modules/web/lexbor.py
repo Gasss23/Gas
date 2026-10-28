@@ -116,7 +116,7 @@ def intero(valore):
     numero = int(cifre or "0")
     return numero if letto and numero < 1 << 31 and not (meno and numero) else None
 
-def opzioni(select, giro=None):
+def opzioni(select):
     attributi = select.attrs
     tutte = opzioni_visibili(select)
     if "multiple" in attributi or (intero(attributi.get("size")) or 1) > 1:
@@ -131,7 +131,9 @@ def opzioni(select, giro=None):
         tutte = scelte[-1:] or libere[:1]
     # Il testo dell'opzione passa dalla stessa visita del body: nel select nuovo un'opzione
     # può contenere altri tag, anche script o elementi nascosti (V-1 ve #277 bis).
-    return [o.attrs.get("label") or visita(o, True, giro) for o in tutte]
+    # Il testo dell'opzione è quello dei suoi discendenti (option.text): uno slot lì dentro
+    # mostra la sua riserva, mai i figli dell'host assegnati (V-1 bot #288 su 300e1aa).
+    return [o.attrs.get("label") or visita(o, True) for o in tutte]
 
 def primo_summary(details):
     for figlio in details.iter(include_text=False):
@@ -223,7 +225,7 @@ def visita(radice, dentro_opzione=False, giro=None):
         elif nodo.is_element_node and nodo.tag not in nascosti and not nascosto(nodo):
             if nodo.tag == "select":
                 if not dentro_opzione:
-                    pezzi.append("\n" + "\n".join(opzioni(nodo, giro)) + "\n")
+                    pezzi.append("\n" + "\n".join(opzioni(nodo)) + "\n")
                 continue
             if nodo.tag in blocchi:
                 pezzi.append("\n")
