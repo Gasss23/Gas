@@ -13,18 +13,18 @@
 ## §1 SCOPE & ESITO FETTE
 
 - **Fetta 1 — Voce 9 con le note del bot su #281**: `FATTA` — V-1/V-2 bot #281 aggiunte; riferimento univoco alla verifica esterna dell'agente su #281.
-- **Fetta 2 — Conflitto con main (PR #280)**: `FATTA` — log di sessione presi dal ramo, review #536 APPROVATO; data di «Ultimo aggiornamento» aggiornata (V-1 bot #284).
+- **Fetta 2 — Conflitti con main (PR #280, poi PR #283)**: `FATTA` — log di sessione presi dal ramo, memoria e data di «Ultimo aggiornamento» unite; review #536 e #537 APPROVATO; `diff_sessione.md` completato (V-1 bot #284 secondo giro).
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   1 +
- reports/coda_notte.md              |   2 +-
- reports/diff_sessione.md           |  12 +++---------
- reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  44 …
+ .claude/agents/memoria_revisore.md |  2 ++
+ reports/coda_notte.md              |  2 +-
+ reports/diff_sessione.md           |  6 ++++--
+ reports/stato_progetto.md          |  4 ++--
+ reports/ultimo_report.md           | 14 +++++---------
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -33,6 +33,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+5ac373e Merge origin/main (PR #283) in docs/coda-voce9-note-bot (PR #284) — review #537 APPROVATO
+85e9e06 docs(fine-task): PR #284 dopo il merge di main (#280), review #536, data di «Ultimo aggiornamento»
 47119e9 Merge origin/main (PR #280) in docs/coda-voce9-note-bot (PR #284) — review #536 APPROVATO
 b88b597 docs(fine-task): voce 9 con le note del bot su #281 (PR #284)
 60553a6 docs(coda-notte): note del bot su #281 nella voce 9, riferimento univoco alla verifica esterna
@@ -62,6 +64,23 @@ Rischi esclusi:
 
 Memoria: ho aggiunto la riga #536 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Non l'ho committata, come richiesto, perché il merge è in corso: resta modificata nel working tree. Nessuna lezione nuova.
 
+### Review #537 (chat Notte) — sul secondo merge di origin/main (PR #283) in 5ac373e
+
+## VERDETTO: APPROVATO
+
+Review #537 (chat Notte): secondo merge di origin/main, che ora contiene la PR #283 della chat Motore (solo documenti), dentro docs/coda-voce9-note-bot (PR #284). MERGE_HEAD è presente e la base è b95c3f3.
+
+**Cosa ho controllato nel diff**
+1. `.claude/agents/memoria_revisore.md:920` — rispetto a origin/main aggiunge solo la riga #536 (chat Notte). Il rischio era perdere righe di uno dei due lati. Ho confrontato le righe del file in stage con HEAD e con MERGE_HEAD: 0 righe perse da ciascun lato. Esito: ok.
+2. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» unita. Il rischio era perdere voci o cambiarne l'ordine. La riga è divisa in voci separate da « — ». Nell'indice ci sono 74 voci: le 73 di main più quella del ramo (chat Notte, di giorno), che ora è la seconda e comincia con «prima:». In testa c'è la voce della chat Motore. Nessuna voce di HEAD o di main manca. Esito: ok.
+3. `reports/stato_progetto.md:623` — paragrafo Notte «segno nel DB per l'esito delle firme», preso dal ramo. Il rischio era perdere modifiche fatte da uno dei due lati fuori dalla riga 4. Ho fatto il confronto a tre vie con la base: l'unica riga di HEAD e l'unica riga di main che non si trovano nell'indice sono entrambe la riga 4. Le righe che mancano rispetto a HEAD erano nella base e main le ha tolte di proposito. Esito: ok.
+4. `reports/coda_notte.md:21`, insieme a handoff, ultimo_report e diff_sessione: sono identici ai file di HEAD (stesso contenuto in git). Esito: ok.
+5. `git diff --cached origin/main` fuori da reports/ e dalla memoria: 0 righe, quindi nessun file di codice è diverso da main. Marcatori di conflitto nella memoria e nello stato: 0. Esito: ok.
+
+**Cosa NON ho verificato:** i test non li ho lanciati, perché il diff contiene solo documenti e non tocca codice. Non ho riletto parola per parola il contenuto dei tre log di sessione: ho solo controllato che siano uguali a quelli di HEAD.
+
+**Memoria:** ho aggiunto la riga #537 (chat Notte) in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Come chiesto non l'ho committata e nemmeno messa in stage: ora è modificata solo nella cartella di lavoro, quindi va aggiunta con `git add` prima di chiudere il merge. Nessuna lezione nuova.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Nessuna modifica a gas.py/tests/ rispetto a main.
@@ -71,7 +90,9 @@ Nessuna modifica a gas.py/tests/ rispetto a main.
 Mappatura commit→run:
 - `60553a6`: nessuna run su questo SHA (pushato insieme a `b88b597`).
 - `b88b597` → `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 sulla data di «Ultimo aggiornamento», sistemata qui).
-- `47119e9`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
+- `47119e9`: nessuna run su questo SHA (pushato insieme a `85e9e06`).
+- `85e9e06` → `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 COSMETICA su `diff_sessione.md`, sistemata qui).
+- `5ac373e`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
