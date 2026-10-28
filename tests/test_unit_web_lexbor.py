@@ -101,6 +101,20 @@ def test_spento_per_default(monkeypatch):
     ("<select size=2147483648><option>W1<option>W2</select>", ("W1",), ("W2",)),
     ("<select multiple><option>W1<optgroup><option>W2</optgroup></select><select size=3><option>W3"
      "<option>W4</select><select size=x><option>W5<option>W6</select>", ("W1", "W2", "W3", "W4", "W5"), ("W6",)),
+    # shadow DOM dichiarativo come il browser (scelta 3 dell'operatore, 2026-10-28): si vede lo
+    # shadow, negli slot i figli assegnati; i figli non assegnati no
+    ("<p>W0</p><div><template shadowrootmode=open>W1<slot></slot></template>W2</div>", ("W0", "W1", "W2"), ()),
+    ("<p>W0</p><div><template shadowrootmode=closed>W1</template>W2<b>W3</b></div>", ("W0", "W1"), ("W2", "W3")),
+    ("<p>W0</p><x-a><template shadowrootmode=OPEN><slot name=n>W1</slot></template><i slot=n>W2</i>W3</x-a>",
+     ("W0", "W2"), ("W1", "W3")),
+    ("<p>W0</p><div><template shadowrootmode=open><slot name=n>W1</slot></template>W2</div>", ("W0", "W1"), ("W2",)),
+    # host non valido o modo sbagliato: template normale, nascosto; si vedono i figli
+    ("<p>W0</p><a><template shadowrootmode=open>W1</template>W2</a><div><template shadowrootmode=x>W3"
+     "</template>W4</div><X1><template shadowrootmode=open>W5</template>W6</X1>", ("W0", "W2", "W4", "W6"),
+     ("W1", "W3", "W5")),
+    # vale solo il primo template; dentro lo shadow valgono le regole di sempre
+    ("<p>W0</p><div><template shadowrootmode=open>W1<p hidden>W2</p><script>W3</script></template>"
+     "<template shadowrootmode=open>W4</template></div>", ("W0", "W1"), ("W2", "W3", "W4")),
     # testo grezzo, commenti, attributi
     ("<p>W0</p><script>W1</script><!--W2--><a title='W3'>W4</a><textarea>W5</textarea>",
      ("W0", "W4", "W5"), ("W1", "W2", "W3")),
@@ -108,6 +122,36 @@ def test_spento_per_default(monkeypatch):
 def test_lettura_come_il_browser(acceso, pagina, visibili, nascosti):
     t = _testo(pagina)
     assert all(v in t for v in visibili) and not any(n in t for n in nascosti), t
+
+
+@con_lexbor
+@pytest.mark.parametrize("pagina, atteso", [
+    ("<div><template shadowrootmode=open>A<slot></slot>B</template>L</div>", "ALB"),
+    # al primo slot col nome; gli altri con lo stesso nome mostrano la riserva, anche se il
+    # primo è nascosto
+    ("<div><template shadowrootmode=open><slot>P</slot><slot>Q</slot></template>L</div>", "LQ"),
+    ("<div><template shadowrootmode=open><b hidden><slot></slot></b><slot>Q</slot></template>L</div>", "Q"),
+    # il testo va solo allo slot senza nome
+    ("<div><template shadowrootmode=open><slot name=n>R</slot>|<slot></slot></template>T<i slot=n>N</i></div>",
+     "N|T"),
+    # shadow annidati: lo slot dello shadow dentro va ai figli dell'host dentro, cioè allo slot
+    # dello shadow fuori, che va ai figli dell'host fuori
+    ("<x-a><template shadowrootmode=open>A[<x-b><template shadowrootmode=open>B[<slot></slot>]</template>"
+     "<slot></slot></x-b>]</template>L</x-a>", "A[B[L]]"),
+    # anche body può essere un host; uno slot fuori dagli shadow mostra il suo contenuto
+    ("<body><template shadowrootmode=open>S<slot></slot></template>L<slot>F</slot></body>", "SLF"),
+    # un template dentro svg non ha contenuto HTML: niente errore, nessuno shadow (R-539-1)
+    ("<svg><x-a><template shadowrootmode=open>S</template>L</x-a></svg><p>P</p>", "SLP"),
+    # uno slot dentro svg non è uno slot; i nomi riservati non sono host; lo slot dentro
+    # un'opzione resta nello shadow (R-539-2)
+    ("<div><template shadowrootmode=open><svg><slot></slot></svg><slot>Q</slot></template>L</div>", "L"),
+    ("<font-face><template shadowrootmode=open>S</template>L</font-face>", "L"),
+    ("<div><template shadowrootmode=open><select><option><slot></slot></option></select></template>L</div>",
+     "\nL\n"),
+])
+def test_shadow_dichiarativo_in_ordine(pagina, atteso):
+    """Lo shadow dichiarativo nell'ordine del browser: slot, nomi, riserva, annidamento."""
+    assert lexbor.testo_visibile(pagina, frozenset(), frozenset()) == (atteso, "")
 
 
 @con_lexbor

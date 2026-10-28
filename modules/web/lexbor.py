@@ -53,6 +53,10 @@ _SONDA = threading.Lock()          # una sonda alla volta (R-521-1)
 # select (lexbor segue il select nuovo, che accetta altri tag dentro) si legge solo quello
 # che il browser mostra: l'opzione scelta (l'ultima con «selected», se no la prima), o tutte
 # le opzioni con «multiple» o «size» > 1 (V-1 bot / V-4 ve #277).
+# Shadow DOM dichiarativo (decisione dell'operatore 2026-10-28, scelta 3): un host con
+# `<template shadowrootmode>` si legge come lo disegna il browser, cioè lo shadow, con al
+# posto di ogni slot i figli dell'host assegnati a quello slot; i figli non assegnati non si
+# vedono. La lettura di sempre di leggi.py resta com'è.
 # Fuori da Linux il figlio si rifiuta (uscita 3).
 _FIGLIO = r"""
 import json, resource, sys
@@ -112,7 +116,7 @@ def intero(valore):
     numero = int(cifre or "0")
     return numero if letto and numero < 1 << 31 and not (meno and numero) else None
 
-def opzioni(select):
+def opzioni(select, giro=None):
     attributi = select.attrs
     tutte = opzioni_visibili(select)
     if "multiple" in attributi or (intero(attributi.get("size")) or 1) > 1:
@@ -127,7 +131,7 @@ def opzioni(select):
         tutte = scelte[-1:] or libere[:1]
     # Il testo dell'opzione passa dalla stessa visita del body: nel select nuovo un'opzione
     # può contenere altri tag, anche script o elementi nascosti (V-1 ve #277 bis).
-    return [o.attrs.get("label") or visita(o, dentro_opzione=True) for o in tutte]
+    return [o.attrs.get("label") or visita(o, True, giro) for o in tutte]
 
 def primo_summary(details):
     for figlio in details.iter(include_text=False):
@@ -135,14 +139,75 @@ def primo_summary(details):
             yield figlio
             return
 
+# Gli elementi che possono avere uno shadow, oltre ai nomi con il trattino (custom element),
+# tranne quelli riservati di svg e math (R-539-2).
+HOST = frozenset({"article", "aside", "blockquote", "body", "div", "footer", "h1", "h2", "h3",
+                  "h4", "h5", "h6", "header", "main", "nav", "p", "section", "span"})
+RISERVATI = frozenset({"annotation-xml", "color-profile", "font-face", "font-face-src",
+                       "font-face-uri", "font-face-format", "font-face-name", "missing-glyph"})
+
+def primi_slot(frammento):
+    # Ogni nome va al primo slot che lo porta, nell'ordine dello shadow, anche se quello slot
+    # è nascosto; non contano gli slot dentro svg e math (non sono slot HTML, R-539-2). iter()
+    # non entra nel contenuto dei template: gli shadow annidati hanno i loro. Discesa lineare.
+    primi = {}
+    pila = [frammento.iter(include_text=False)]
+    while pila:
+        nodo = next(pila[-1], None)
+        if nodo is None:
+            pila.pop()
+        elif nodo.is_element_node and nodo.tag not in ("svg", "math"):
+            if nodo.tag == "slot":
+                primi.setdefault(nodo.attrs.get("name") or "", nodo.mem_id)
+            pila.append(nodo.iter(include_text=False))
+    return primi
+
+# Senza template shadowrootmode fuori dai template non ce ne sono nemmeno dentro: le pagine
+# normali non pagano la ricerca degli shadow tra i figli.
+CON_SHADOW = albero.css_first("template[shadowrootmode]") is not None
+
+def shadow(nodo):
+    # (frammento, slot) dello shadow dichiarativo dell'host, o None. Vale il primo template
+    # figlio con shadowrootmode open o closed, come nel parser del browser; gli altri restano
+    # template normali, cioè nascosti.
+    tag = nodo.tag
+    if not CON_SHADOW or tag in RISERVATI or tag not in HOST and not ("-" in tag and "a" <= tag[:1] <= "z"):
+        return None
+    for figlio in nodo.iter(include_text=False):
+        modo = figlio.attrs.get("shadowrootmode") if figlio.tag == "template" else None
+        if modo is not None and modo.lower() in ("open", "closed"):
+            frammenti = figlio.template_fragments()
+            if not frammenti:
+                continue  # template di svg o math: nessun contenuto HTML (R-539-1)
+            frammento = frammenti[0]
+            primi = primi_slot(frammento)
+            # I figli dell'host vanno allo slot col loro nome (attributo «slot»); il testo
+            # solo allo slot senza nome. Il template dello shadow non è un figlio.
+            assegnati = {}
+            for luce in nodo.iter(include_text=True):
+                if luce.is_text_node:
+                    assegnati.setdefault("", []).append(luce)
+                elif luce.is_element_node and luce.mem_id != figlio.mem_id:
+                    assegnati.setdefault(luce.attrs.get("slot") or "", []).append(luce)
+            return frammento, (primi, assegnati)
+    return None
+
 # Testo visibile sotto radice, senza ricorsione sulla profondità della pagina. Dentro
 # un'opzione un select non si legge: lexbor non annida mai i select, è solo una difesa
-# contro catene di ricorsione (R-527-4).
-def visita(radice, dentro_opzione=False):
+# contro catene di ricorsione (R-527-4). Ogni livello della pila porta gli slot dello
+# shadow in cui si trova (None fuori dagli shadow) e quelli del livello fuori dall'host.
+def visita(radice, dentro_opzione=False, giro=None):
     pezzi = []
-    pila = [(radice.tag, radice.iter(include_text=True))]
+    pila = []
+    def scendi(nodo, giro):
+        trovato = shadow(nodo)
+        if trovato is None:
+            pila.append((nodo.tag, nodo.iter(include_text=True), giro))
+        else:
+            pila.append((nodo.tag, trovato[0].iter(include_text=True), (trovato[1], giro)))
+    scendi(radice, giro)
     while pila:
-        tag, figli = pila[-1]
+        tag, figli, giro = pila[-1]
         nodo = next(figli, None)
         if nodo is None:
             pila.pop()
@@ -154,14 +219,23 @@ def visita(radice, dentro_opzione=False):
         elif nodo.is_element_node and nodo.tag not in nascosti and not nascosto(nodo):
             if nodo.tag == "select":
                 if not dentro_opzione:
-                    pezzi.append("\n" + "\n".join(opzioni(nodo)) + "\n")
+                    pezzi.append("\n" + "\n".join(opzioni(nodo, giro)) + "\n")
                 continue
             if nodo.tag in blocchi:
                 pezzi.append("\n")
             if nodo.tag == "details" and "open" not in nodo.attrs:
-                pila.append((nodo.tag, primo_summary(nodo)))
+                pila.append((nodo.tag, primo_summary(nodo), giro))
+            elif nodo.tag == "slot" and giro is not None:
+                # Slot dello shadow: i figli dell'host assegnati, che si leggono col livello
+                # fuori dall'host; senza assegnati, il suo contenuto di riserva.
+                (primi, assegnati), fuori = giro
+                nome = nodo.attrs.get("name") or ""
+                if primi.get(nome) == nodo.mem_id and assegnati.get(nome):
+                    pila.append((nodo.tag, iter(assegnati[nome]), fuori))
+                else:
+                    pila.append((nodo.tag, nodo.iter(include_text=True), giro))
             else:
-                pila.append((nodo.tag, nodo.iter(include_text=True)))
+                scendi(nodo, giro)
     return "".join(pezzi)
 
 corpo = albero.body
