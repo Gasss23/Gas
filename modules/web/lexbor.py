@@ -96,8 +96,9 @@ def opzioni_visibili(select):
     return trovate
 
 def intero(valore):
-    # Come il browser legge gli interi non negativi: spazi, poi le cifre ASCII in testa; oltre
-    # 2**31-1 il valore non vale (V-1 ve #277 ter: con migliaia di cifre int() cadeva).
+    # Come il browser legge gli interi non negativi: spazi, un segno + o - facoltativo, poi le
+    # cifre ASCII in testa; oltre 2**31-1 il valore non vale (V-1 ve #277 ter: con migliaia di
+    # cifre int() cadeva; V-2 ve #285).
     testo = (valore or "").lstrip(" \t\n\f\r")
     meno = testo.startswith("-")
     cifre, letto = "", False
