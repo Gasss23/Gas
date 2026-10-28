@@ -583,9 +583,9 @@ Rung-4 resta OpenRouter. Ri-valutabile solo su tier a pagamento (131k, no coda) 
 Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 ## Prossimi passi (in ordine di priorità)
 
-- 🔁 **RIPARTENZA chat Motore (27 ottobre, dopo le PR #269/#274/#276 e la fetta «rubrica illeggibile»)** — punto unico da cui ripartire:
+- 🔁 **RIPARTENZA chat Motore (28 ottobre, dopo le PR #279 e #283)** — punto unico da cui ripartire:
   1. ✅ Cervello forte ACCESO sul Mac (PR #269 + #274): login ok, `GAS_CLAUDE_CLI=1`, doctor OK, `punto_lead` con `cervello: forte`, `/forte` da terminale/Telegram/voce.
-  2. ⏳ PR #279 della fetta «rubrica illeggibile» (V-1 bot #273 + R-520-1, review #527→#528 APPROVATO): controllare bot/CI/verifica esterna e mergiarla DA QUI (CLAUDE.md §10).
+  2. ✅ PR #279 (rubrica illeggibile dichiarata in `ricorda` e `gas fida-contatto`) mergiata il 27 ottobre. Note rimaste (bot #279, BASSE/COSMETICHE): riga «merge da browser» nel Lucchetto main di CLAUDE.md; `gas fida-contatto <chiave>` con rubrica illeggibile dice «chiave non trovata»; docstring di `_ricorda`.
   3. ⏳ Prima notte col forte FALLITA (27 e 28: `claude` non trovato dal timer notturno) → `GAS_CLAUDE_BIN` nel `.env` del Mac il 28; da verificare al giro del 29 (`cat ~/Gas/.gas_notte/ultimo_giro.md`). Fetta da fare: il report della notte mostri il motivo vero dell'errore del forte (oggi solo «RuntimeError») e `gas doctor` avvisi se `claude` si trova solo nel PATH del terminale.
   4. ⏳ Aperte BASSE/COSMETICHE: bot #269 «/forte@NomeBot» su Telegram; COSMETICHE ve #269 (`/forte` + solo carattere invisibile; kernel 1043 CI vs locale); V-2 COSMETICA bot #273 (`stato_mattino` lega i lead alla lettura delle firme); R-516-1; V-2 ve #276 (test del pin con anche il diario illeggibile).
   5. ⏳ 👤 Ancora dell'operatore: testo nuovo dell'attività di notte (da chiedere nella sessione fissa), 3 lezioni da approvare (`python3 gas.py lezioni lista`), backup cifrato su iCloud (R4).
