@@ -10,5 +10,7 @@
 - **Correzione sul Mac** (operatore, guidata): `GAS_CLAUDE_BIN=/Users/gas/.local/bin/claude` nel `.env`. Scritta in `reports/stato_progetto.md` (G-3).
 - **DEFERITA**: fetta per mostrare il motivo vero dell'errore del forte nel report della notte e un avviso in `gas doctor`.
 
+- **Bot #283**: APPROVATO CON RISERVE, V-1 COSMETICA (frase del 28 ottobre nel punto sbagliato di G-3) CHIUSA.
+
 ## Anomalie
 - Il report della notte dice solo «RuntimeError»: il motivo era solo in `gas_debug.log`.

@@ -6,7 +6,7 @@
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR di questa sessione (solo documenti), dall'agente da qui secondo CLAUDE.md §10; numero nel corpo della PR (`gh` nel cloud non è autenticato).
+1. Merge della PR #283 (https://github.com/Gasss23/Gas/pull/283, numero dalla risposta di `create_pull_request`; `gh` nel cloud non è autenticato), dall'agente da qui secondo CLAUDE.md §10.
 2. Verificare il giro del 29 ottobre sul Mac.
 
 ---
@@ -15,6 +15,7 @@
 
 - **Fetta 1 — Diagnosi della notte fallita**: `FATTA` — «comando `claude` non trovato» nel log del 27 e del 28.
 - **Fetta 2 — Correzione sul Mac e stato del progetto**: `FATTA` — `GAS_CLAUDE_BIN` nel `.env`, G-3 aggiornata.
+- **Fetta 2b — Nota COSMETICA del bot #283 (frase in G-3)**: `FATTA`.
 - **Fetta 3 — Motivo vero nel report della notte e avviso nel doctor**: `DEFERITA — prossima fetta del motore`.
 
 ---
@@ -25,7 +26,7 @@
  reports/diff_sessione.md  |  10 ++--------
  reports/handoff.md        | n/d
  reports/stato_progetto.md |   4 ++--
- reports/ultimo_report.md  |  15 ++++++++-------
+ reports/ultimo_report.md  |  17 ++++++++++-------
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -33,7 +34,7 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-(nessun commit prima del commit di fine-task)
+dbfcf7c docs(stato): prima notte del forte fallita per «claude non trovato», GAS_CLAUDE_BIN sul Mac
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
