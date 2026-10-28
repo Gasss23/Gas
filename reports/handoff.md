@@ -37,6 +37,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+3a5d686 docs(fine-task): verdetto #548 originale in blocco di codice, riemissione per il Gate B (PR #293)
+f28c390 docs(fine-task): PR #293 — review #548 riemesso per il Gate B, #549 (V-1 bot #293)
 28e74a6 fix(doctor): stessa variabile con lo stesso valore in shell e .env conta come dal .env (V-1 bot #293)
 c651c26 chore(revisore): memoria review #549 — APPROVATO
 fbe5f62 docs(fine-task): PR #293 dopo il merge di main (#288), review #547 (già #543) e #548
@@ -195,7 +197,7 @@ Mappatura commit→run:
 - `6e19169`, `5a1c9e7`: nessuna run su questi SHA (pushati insieme a `b24bd9f`).
 - `b24bd9f`: pushato prima dell'apertura della PR #293; la run del push non l'ho letta.
 - `6b23e1b`: `handoff-check` success; `unit-suite` e `verifica-bot` in corso alla lettura della verifica esterna, poi superati dal merge (conflitto con main).
-- `6393dd8`, `fbe5f62`, `c651c26`, `28e74a6`: nessuna run su questi SHA (pushati insieme al commit di fine-task; `fbe5f62` aveva il Gate B rosso in locale, mai pushato da solo).
+- `6393dd8`, `fbe5f62`, `c651c26`, `28e74a6` e i due commit di fine-task che seguono: nessuna run su questi SHA (pushati insieme al commit di fine-task; `fbe5f62` aveva il Gate B rosso in locale, mai pushato da solo).
 - `6b23e1b`: `verifica-bot` success (APPROVATO CON RISERVE, V-1 BASSA chiusa in `28e74a6`).
 - commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
 
