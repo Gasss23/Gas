@@ -12,13 +12,18 @@
   - Shadow annidati, body come host, slot dentro un'opzione, template e slot dentro svg/math: FATTA.
   - Pagine senza shadow: nessuna ricerca tra i figli (`CON_SHADOW`): FATTA.
   - Lettura di sempre di leggi.py (ripiego): SALTATA — resta com'è, come dichiarato nella scelta.
-- **Review**: #542 BOCCIATO (V-2 sulla regola vecchia) → #543 APPROVATO (R-543-1 COSMETICA: «niente maiuscole» vale solo per A-Z, commento su HOST); #541 APPROVATO (merge di main); #539 APPROVATO CON RISERVE (R-539-1 BASSA, `template_fragments()[0]` su template svg; R-539-2 COSMETICA, slot dentro svg, nomi riservati, slot dentro un'opzione → FATTE), #540 APPROVATO (R-540-1 COSMETICA, slot dentro `foreignObject`: DEFERITA — svg è nascosto per scelta).
+- **Review**: #544 APPROVATO CON RISERVE (R-544-1 chiusa in #545), #545 APPROVATO; #542 BOCCIATO (V-2 sulla regola vecchia) → #543 APPROVATO (R-543-1 COSMETICA: «niente maiuscole» vale solo per A-Z, commento su HOST); #541 APPROVATO (merge di main); #539 APPROVATO CON RISERVE (R-539-1 BASSA, `template_fragments()[0]` su template svg; R-539-2 COSMETICA, slot dentro svg, nomi riservati, slot dentro un'opzione → FATTE), #540 APPROVATO (R-540-1 COSMETICA, slot dentro `foreignObject`: DEFERITA — svg è nascosto per scelta).
 - **Bot su af8f8ec**: NON approvata per V-1 MEDIA (PR in conflitto con main dopo la #287) → merge di origin/main 0a9ce70: entrano gas.py, brains/claude_cli.py e i loro test identici a main; tenuti i report della #288, stato_progetto unito a mano, memoria con le righe di tutti e due i lati; review #541 APPROVATO: FATTA.
 - **Bot e verifica esterna su af8f8ec/a735e46**: verifica esterna APPROVATO CON RISERVE (commento: https://github.com/Gasss23/Gas/pull/288#issuecomment-6476568410); bot su a735e46 APPROVATO CON RISERVE (V-1 cosmetica, §6 dell'handoff vecchio → riscritto qui: FATTA).
   - V-1 ve MEDIA (conflitto con main): FATTA col merge di 0a9ce70 (sopra).
   - V-2 ve BASSA (`x-a!`, `x-a:b` presi per host): SALTATA — riletta alla fonte (whatwg/html «valid custom element name», whatwg/dom «valid element local name»): per lo standard di oggi sono host validi; il primo fix (vecchia regola PotentialCustomElementName) è stato BOCCIATO dalla review #542 e tolto; test che fissa l'esito dello standard («ST») e commento con la fonte, review #543 APPROVATO.
   - V-3 ve BASSA (mutante del template dello shadow tra gli assegnati): FATTA — non era equivalente: con `slot=n` sul template toglieva la riserva allo slot; test nuovo («R»). Parte R-ve280-1 (selectolax in CI): DEFERITA — chat Motore.
   - V-4 ve COSMETICA (§6 vecchio, tempi d'ambiente): FATTA (§6 riscritto).
+- **Bot e verifica esterna su 300e1aa**: entrambi APPROVATO CON RISERVE (commento della verifica: https://github.com/Gasss23/Gas/pull/288#issuecomment-6477091451).
+  - V-1 ve MEDIA (di nuovo in conflitto con main dopo la #289) → merge di 094eb57, solo reports/: FATTA.
+  - V-1 bot / V-2 ve BASSA (slot dentro un'opzione mostrava i figli dell'host; per lo standard option.text sono i discendenti) → testo delle opzioni senza giro, review #544 APPROVATO CON RISERVE: FATTA.
+  - R-544-1 BASSA (shadow dentro un'opzione) e V-3 ve BASSA (`shadowrootslotassignment=manual` ignorato) → niente shadow nell'opzione, assegnazione manuale con le riserve, review #545 APPROVATO: FATTA.
+  - V-4 ve COSMETICA (mutanti sopravvissuti: lista degli host, riserva col livello sbagliato) → test su tutti gli host, su li/td e sulla riserva: FATTA.
 - **Accensione lexbor (punto b)**: DEFERITA — chat Motore; su main selectolax non è ancora in requirements.
 
 ## Prove
@@ -26,6 +31,7 @@
 - File lexbor su Python 3.11 senza selectolax: 20 passed / 76 skipped.
 - Suite vecchia con `GAS_WEB_LEXBOR=1` (`tests/test_unit_web_leggi.py`): 11 failed / 430 passed / 1 skipped, prima e dopo (stessi 11).
 - Mutanti (`-k 'shadow or browser'`), tutti presi: shadow spento 11 failed, ultimo slot vince 2, senza lower 1, livello sbagliato 1, ogni tag host 1, senza trattino 2, testo a tutti gli slot 3, non assegnati visibili 9, riserva sempre 7, senza `continue` 1, slot in svg contano 1, riservati host 1, opzione senza giro 1. Sopravvive `CON_SHADOW = True` (cambia solo i tempi); sopravviveva anche il template tra gli assegnati, ora preso (V-3 ve #288).
+- Codice finale (070df50): web suite 546 passed / 1 skipped; lexbor su 3.11 senza selectolax 20 passed / 85 skipped; mutanti dei giri #544/#545 presi (giro nell'opzione, manuale ignorato, manuale senza lower, shadow nell'opzione, HOST senza p, HOST con li, riserva col livello None: 1 failed ciascuno).
 - Dopo V-2/V-3 (fe1c9b0): web suite 540 passed / 1 skipped; lexbor su 3.11 senza selectolax 20 passed / 79 skipped; suite vecchia con `GAS_WEB_LEXBOR=1` sempre 11 failed / 430 passed; mutante «template tra gli assegnati» 1 failed.
 - Dopo il merge di main 0a9ce70: web + claude_cli 566 passed / 1 skipped; kernel 1056 PASS, 1 FAIL (T31g, sqlite_vec assente nell'ambiente, noto).
 - Tempi: 200k span in un div 0,51 s (0,43 su main), 20k div annidati 0,66 s (0,73), 8000 shadow annidati 0,13 s, 8000 slot 0,10 s.

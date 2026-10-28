@@ -1,9 +1,9 @@
 # DIFF SESSIONE — 2026-10-28 — Mani fetta 23 (PR #288)
 
-File toccati rispetto a main 0a9ce70 (dopo il merge di main per V-1 del bot #288; da main entrano gas.py, brains/claude_cli.py e i loro test, identici a main e quindi fuori da questo diff):
-- `modules/web/lexbor.py` — nel figlio: `HOST`, `RISERVATI`, `CON_SHADOW`, `primi_slot()`, `shadow()`; `visita()` porta sulla pila gli slot dello shadow corrente; `opzioni()` passa il giro alle opzioni. Shadow DOM dichiarativo come il browser (scelta 3 dell'operatore); commento su HOST con la fonte dello standard (V-2 ve #288).
+File toccati rispetto a main 094eb57 (dopo i merge di main per i conflitti della #288; da main entrano gas.py, brains/claude_cli.py e i loro test, identici a main e quindi fuori da questo diff):
+- `modules/web/lexbor.py` — nel figlio: `HOST`, `RISERVATI`, `CON_SHADOW`, `primi_slot()`, `shadow()`; `visita()` porta sulla pila gli slot dello shadow corrente; `opzioni()` passa il giro alle opzioni. Shadow DOM dichiarativo come il browser (scelta 3 dell'operatore); commento su HOST con la fonte dello standard (V-2 ve #288); testo delle opzioni senza shadow e senza assegnati, `shadowrootslotassignment=manual` (giri #544/#545).
 - `tests/test_unit_web_lexbor.py` — casi shadow nel test «come il browser» e test nuovo `test_shadow_dichiarativo_in_ordine` (con `x-a!`, `x.y-é` e template con `slot`, V-2/V-3 ve #288).
-- `.claude/agents/memoria_revisore.md` — righe delle review #539–#543 (chat Mani).
+- `.claude/agents/memoria_revisore.md` — righe delle review #539–#545 (chat Mani).
 - `reports/stato_progetto.md` — blocco «Mani — fetta 23» e riga «Ultimo aggiornamento».
 - `reports/ripartenza_mani.md` — PR #288, punto c) fatto.
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md` — report di fine task.
