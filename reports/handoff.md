@@ -1,100 +1,175 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Coda notte: note del bot su #281 nella voce 9 (PR #284), dopo il merge di main con la #280
+**Sessione:** 2026-10-28 — Mani fetta 22: riserve «DA SISTEMARE» di #280, `intero()` del figlio lexbor legge «0» e «-0» come 0; secondo e terzo giro dopo bot e verifica esterna (chat Mani)
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #284 (https://github.com/Gasss23/Gas/pull/284): chiesto dall'operatore («mergia #284»), dopo la CI verde su questo head. Numero e URL dalla risposta JSON di `gh api -X POST repos/Gasss23/Gas/pulls`.
+1. Merge della PR #285 (https://github.com/Gasss23/Gas/pull/285). Numero e URL dalla risposta JSON dell'integrazione GitHub (`create_pull_request`: `{"id":"5049895154","url":"https://github.com/Gasss23/Gas/pull/285"}`); `gh` nel cloud non è autenticato. Bot e verifica esterna su 162f5b1 e su 116aac3: APPROVATO CON RISERVE, niente ALTA/MEDIA; le riserve da correggere sono chiuse (l'ultima, V-1 su 116aac3, su richiesta dell'operatore «sistema V-1»). Sulla head di questo handoff il bot rigira da solo. Merge da solo SOLO con verdetto del bot APPROVATO pulito; con riserve serve l'OK dell'operatore. Il merge non accende niente.
+2. Accensione della lettura con lexbor: la chat Motore mette `selectolax==1.0.2` in `requirements-dev.txt` e `requirements.txt` (chiude anche R-ve280-1); poi `GAS_WEB_LEXBOR=1` sul VPS (Linux).
+3. Shadow DOM dichiarativo (figli «light» di un host con `<template shadowrootmode>`): decisione dell'operatore.
+4. Poi, una alla volta: cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4); R-ve252-2 e R-ve255-1, tempo di rete 12 s, R-ve235-7.
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — Voce 9 con le note del bot su #281**: `FATTA` — V-1/V-2 bot #281 aggiunte; riferimento univoco alla verifica esterna dell'agente su #281.
-- **Fetta 2 — Conflitti con main (PR #280, poi PR #283)**: `FATTA` — log di sessione presi dal ramo, memoria e data di «Ultimo aggiornamento» unite; review #536 e #537 APPROVATO; `diff_sessione.md` completato (V-1 bot #284 secondo giro).
+- **Controllo della PR #280 (fetta 21)**: `FATTA` — mergiata (b95c3f3); branch ripartito da main.
+- **Fetta 22 — riserve «DA SISTEMARE» di #280**:
+  - R-bot280-1 (`intero("0")` → None): `FATTA` — «0», «000», «-0» danno 0; senza cifre o con un negativo non zero None. Esito pratico invariato.
+  - Test diretto di `intero()` (preso dal sorgente del figlio con `ast`, gira senza selectolax): `FATTA`.
+  - R-536-1 COSMETICA (review #536: «-0» → None): `FATTA`, review #537 APPROVATO.
+  - R-ve280-2, R-ve280-3, R-bot280-2 (numeri e riga ripetuta dell'handoff di #280): `FATTA` — handoff riscritto, solo numeri misurati in sessione.
+  - R-ve280-1 (test del figlio non girano nei check required): `DEFERITA — serve la chat Motore (selectolax in requirements-dev)`.
+- **Secondo giro — bot e verifica esterna su 162f5b1, APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468276114):
+  - V-1 ve MEDIA (PR in conflitto con main dopo #283 e #284): `FATTA` — merge di 0cf1d67 in 1442468; tenuti handoff/ultimo_report/diff_sessione della #285, stato_progetto unito a mano, memoria con le righe di tutti e due i lati; nessun file del perimetro dal lato di main, niente review.
+  - V-2 ve / V-1 bot COSMETICA (commento di `intero()` senza il segno): `FATTA` — 20c0708, review #538 APPROVATO.
+  - V-3 ve COSMETICA (numeri dei mutanti del test intermedio): `FATTA` — rifatti sul test finale (ritorno vecchio 7 failed, `letto` tolto 8, negativo 1, solo «+» 2).
+  - V-4 ve COSMETICA (§6 sulla CI di un commit vecchio): `FATTA` — §6 riscritto qui sotto.
+- **Terzo giro — bot e verifica esterna su 116aac3, APPROVATO CON RISERVE** (commento ve: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468447612):
+  - V-1 bot / V-1 ve COSMETICA (riga «Ultimo aggiornamento» di stato_progetto senza #538 e senza il secondo giro): `FATTA` — riga completata, su richiesta dell'operatore («sistema V-1»); solo reports/, niente review.
+  - V-2 ve (§6 e §0 dell'handoff fermi alla scrittura): `SALTATA — inevitabile per costruzione, nessun fix richiesto dalla verifica`.
+  - V-3 ve (numerazione parallela delle review #536/#537 tra le chat): `SALTATA — già dichiarata, righe marcate «(chat X)»`.
+- **Punti b–e della ripartenza** (accensione, shadow DOM, cosmetiche, decisioni vecchie): `DEFERITA — uno alla volta, dopo questa fetta`.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  2 ++
- reports/coda_notte.md              |  2 +-
- reports/diff_sessione.md           |  6 ++++--
- reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 14 +++++---------
- reports/handoff.md                 | n/d (commit finale)
+ .claude/agents/memoria_revisore.md |   3 +++
+ modules/web/lexbor.py              |  16 +++++++++++-----
+ reports/diff_sessione.md           |  15 +++++++++------
+ reports/handoff.md                 | n/d
+ reports/ripartenza_mani.md         |   6 +++---
+ reports/stato_progetto.md          |   3 ++-
+ reports/ultimo_report.md           |  39 ++++++++++++++++++++++++++++++++++-----
+ tests/test_unit_web_lexbor.py      |  16 ++++++++++++++++
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d». Conteggi presi prima del commit finale, barre accorciate.
+NB: base = merge-base con origin/main = 0cf1d67. Regola «n/d»: il conteggio di `reports/handoff.md` non è misurabile mentre lo si scrive; tolta la riga di totale.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-5ac373e Merge origin/main (PR #283) in docs/coda-voce9-note-bot (PR #284) — review #537 APPROVATO
-85e9e06 docs(fine-task): PR #284 dopo il merge di main (#280), review #536, data di «Ultimo aggiornamento»
-47119e9 Merge origin/main (PR #280) in docs/coda-voce9-note-bot (PR #284) — review #536 APPROVATO
-b88b597 docs(fine-task): voce 9 con le note del bot su #281 (PR #284)
-60553a6 docs(coda-notte): note del bot su #281 nella voce 9, riferimento univoco alla verifica esterna
+116aac3 docs(fine-task): PR #285 secondo giro — merge di main, V-1..V-4 ve e V-1 bot chiuse, review #538
+20c0708 docs(web): commento di intero() cita il segno + o - facoltativo (V-2 ve #285, V-1 bot #285)
+3704890 chore(revisore): memoria review #538 — APPROVATO
+1442468 Merge origin/main (0cf1d67, PR #283 e #284) in claude/peaceful-lovelace-0w2b7q (PR #285)
+162f5b1 docs(fine-task): Mani fetta 22 — handoff, report, stato e ripartenza (PR #285)
+bbbfbbe fix(web): intero() del figlio lexbor legge «0» e «-0» come 0 (R-bot280-1, R-536-1, fetta 22 Mani)
+ec86b45 chore(revisore): memoria review #537 — APPROVATO
+63e4137 chore(revisore): memoria review #536 — APPROVATO CON RISERVE
 ```
 
-NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
+NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #536 (chat Notte) — sul merge di origin/main (PR #280) in 47119e9
+Commit motore bbbfbbe: review #536 sul primo diff staged, #537 dopo la chiusura di R-536-1 (diff committato in bbbfbbe). Merge 1442468: nessun file del perimetro dal lato di main (solo reports/ e memoria), niente review. Commit motore 20c0708 (solo commento): review #538. Il terzo giro (commit di fine-task dopo 116aac3) tocca solo reports/: niente review. Verdetti integrali:
+
+### Review #536 (chat Mani) — primo diff staged
+
+## VERDETTO: APPROVATO CON RISERVE
+
+Review #536 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: modules/web/lexbor.py (+4/-2) e tests/test_unit_web_lexbor.py (+15). Prima della review ho letto CLAUDE.md, la parte di reports/stato_progetto.md su lexbor e R-bot280 e la coda della memoria del revisore.
+
+**Elementi del diff che ho esaminato**
+- `modules/web/lexbor.py:101`: il nuovo flag `letto` diventa True alla prima cifra ASCII letta. Rischio esaminato: che una stringa senza cifre (`""`, `None`, `"+"`, `"x0"`, `"-1"`) finisca per valere 0. Esito: ok, tutte danno None e lo verifica il test parametrizzato.
+- `modules/web/lexbor.py:109`: il ritorno ora è `int(cifre or "0")` solo se `letto`, con il limite `< 1 << 31` invariato. Rischi esaminati: una regressione sul confine 2147483647/2147483648, e il costo con input lunghissimi (5000 zeri seguiti da "1" danno 1; il taglio `len(cifre) > 10` resta). Esito: ok. Il valore `int(...)` viene calcolato due volte, ma su al massimo 11 cifre: costo irrilevante.
+- `modules/web/lexbor.py:114`: è l'unico punto che chiama la funzione (`(intero(size) or 1) > 1`). Rischio esaminato: un cambio di comportamento sulla scelta tra lista e tendina. Esito: ok, il nuovo 0 si comporta come il vecchio None, quindi l'effetto pratico è identico. Il fix è di sola fedeltà al browser.
+- `tests/test_unit_web_lexbor.py:171`: il test prende `intero` dal sorgente `_FIGLIO` con `ast`, compila solo quella funzione e la esegue. Rischi esaminati: che il test dipenda da selectolax e che esegua il resto del codice del figlio. Esito: ok. Non porta il marcatore `con_lexbor`, esegue solo il nodo della funzione e non importa nulla dal figlio.
+
+**Prove rifatte da me**
+- Lexbor: 75 passed (Python 3.13); il solo test nuovo: 12 passed.
+- Mutante «tolgo `letto = True`»: 6 failed, poi file ripristinato e controllato (nessuna differenza rimasta, indice intatto).
+- Sonde a mano: `"\t0 "` → 0; `"\x0b5"` → None, corretto perché il tab verticale non è uno spazio per l'HTML; `"00000000002147483647"` → 2147483647; la cifra araba `"٣"` → None, corretto.
+
+**Riserva**
+- R-536-1 COSMETICA: `intero("-0")` restituisce None. Il browser lo legge come 0: lo standard HTML ammette "-0" perché vale 0, che non è negativo, e Chromium accetta il segno meno se il valore è 0. È lo stesso tipo di scarto di R-bot280-1, ma l'effetto pratico è nullo perché il chiamante tratta 0 come 1. Va tracciata in stato_progetto.md oppure chiusa con una riga (`"-0"` → 0 nel test).
+
+**Cosa non ho verificato**
+- Il comportamento in CI senza selectolax: qui selectolax c'è (75 passed). Che il test nuovo non dipenda da selectolax l'ho dedotto leggendo il codice (nessun marcatore `con_lexbor`, solo `ast` ed `exec`), non da un'esecuzione senza la libreria.
+- La suite web completa: ho girato solo il file lexbor. Il diff tocca una sola funzione del figlio, che ha un solo chiamante.
+
+**Memoria**: aggiunta la riga #536 a /home/user/Gas/.claude/agents/memoria_revisore.md e committata da sola con lo script (commit 63e4137). I due file staged non sono stati toccati. Nessuna lezione nuova.
+
+### Review #537 (chat Mani) — diff committato in bbbfbbe
 
 ## VERDETTO: APPROVATO
 
-Review #536 (chat Notte). Merge di origin/main b95c3f3 (con la PR #280 della chat Mani) dentro docs/coda-voce9-note-bot (PR #284, HEAD b88b597). Prima della review ho letto CLAUDE.md, la riga 4 e i paragrafi pertinenti di reports/stato_progetto.md e la coda della memoria del revisore.
+Review #537 (chat Mani). Diff staged su claude/peaceful-lovelace-0w2b7q: `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`. Chiude R-536-1: `intero()` ora accetta un segno + o - in testa, e «-0» vale 0 come nel browser.
 
-Cosa ho esaminato nel diff:
-- `modules/web/lexbor.py:107`: è il tetto `< 1 << 31` portato da main. Rischio esaminato: una modifica del codice introdotta dal merge. Ho confrontato lo SHA del file in tre punti: indice, origin/main e working tree. Sono identici (6a646a8…). Esito: ok.
-- `modules/web/leggi.py:30`: è la docstring «spenta per default» portata da main. Stesso rischio, stesso controllo: blob identico nei tre punti (a9c1e84…). Esito: ok.
-- `tests/test_unit_web_lexbor.py:1`: test portati da main. Blob identico nei tre punti (3bea332…). Lo stesso vale per `reports/strumenti_mani/misura_web.py`, `reports/ripartenza_mani.md` e `.claude/agents/memoria_revisore.md`. Esito: ok.
-- `reports/stato_progetto.md:4`: riga «Ultimo aggiornamento». Rischio esaminato: perdere la voce di una delle due parti. La riga è uguale a quella di main e contiene sia la voce Mani (fetta 21) sia la voce Notte (#531→#532). Il paragrafo «Mani — fetta 21» compare una volta sola, alla riga 634. Il paragrafo Notte alla riga 623 tiene le aggiunte del ramo (link al commento della verifica esterna #281, V-1 e V-2 del bot #281). Esito: ok.
-- `reports/coda_notte.md:21`: voce 9. Rischio esaminato: unione sbagliata. Rispetto a main l'unica differenza è la riga della voce 9 riscritta dal ramo (link al commento e note del bot). Esito: ok.
-- Su tutto il merge: `git diff --cached origin/main` tocca SOLO 5 file in reports/ (coda_notte, stato_progetto, ultimo_report, diff_sessione, handoff). Non ci sono marcatori di conflitto né in reports/*.md né nella memoria, e `git diff --check` non segnala nulla. Esito: ok.
+**Elementi del diff esaminati**
+- `modules/web/lexbor.py:104`: salta un solo segno + o - in testa e poi legge le cifre. Rischio esaminato: segni doppi o misti, segno seguito da spazio, segno da solo. Esito: ok. «--0», «+-1», «-+0», «- 1» e «-» danno tutti None, perché dopo il segno non c'è una cifra e `letto` resta False.
+- `modules/web/lexbor.py:112`: restituisce `numero` solo se c'è almeno una cifra, se resta sotto `1 << 31` e se non è un negativo diverso da zero. Rischi esaminati: un negativo che passa, il confine dei 2^31, input lunghissimi. Esito: ok. «-2147483648» e «-» seguito da 5000 nove danno None; «-» seguito da 5000 zeri e «\n-0x» danno 0. Le cifre restano al massimo 11, quindi `int()` è sempre economico. Il tetto `< 1 << 31` non è cambiato.
+- `tests/test_unit_web_lexbor.py:174`: 5 casi nuovi nel test parametrizzato già revisionato in #536, che legge `intero` dal sorgente `_FIGLIO` con `ast` (gira anche senza selectolax). Rischio esaminato: test che non distinguono la versione vecchia dalla nuova. Esito: ok, vedi i mutanti qui sotto.
+- Contesto: `modules/web/lexbor.py:119` è l'unico chiamante, `(intero(size) or 1) > 1`. Il caso «-0» → 0 lo porta comunque a 1, quindi nella pratica non cambia nulla: è solo fedeltà al browser.
 
-Rischi esclusi:
-- I test lexbor sono girati qui con 3 passed e 60 skipped, perché lexbor non è installato in questo ambiente. Non è un problema per questo merge: il codice è identico a origin/main, già revisionato nelle review #531–#535 della chat Mani e coperto dalla CI di main.
-- Non ho verificato il contenuto dei tre log di sessione presi dal ramo (handoff, ultimo_report, diff_sessione). Sono documenti di questa sessione, fuori dal codice.
+**Prove rifatte da me**
+- File lexbor: 80 passed (Python 3.13, con selectolax).
+- Mutante senza `not (meno and numero)`: 1 failed. Mutante con solo «+» tra i segni: 2 failed.
+- Dopo i mutanti ho ripristinato `modules/web/lexbor.py`: nessuna differenza rimasta e indice intatto.
 
-Memoria: ho aggiunto la riga #536 in coda a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Non l'ho committata, come richiesto, perché il merge è in corso: resta modificata nel working tree. Nessuna lezione nuova.
+**Cosa non ho verificato**
+- Non ho girato l'intera suite web (521/1) né Python 3.11 senza selectolax (20 passed / 60 skipped): riporto i tuoi numeri. Io ho girato solo il file lexbor su 3.13. Che il test nuovo non dipenda da selectolax lo deduco dal codice (non ha il marcatore `con_lexbor`, usa solo `ast` ed `exec`).
+- Nota a margine, non è una riserva: il commento a `modules/web/lexbor.py:99` descrive ancora «spazi, poi le cifre» e non cita il segno. Il commento a `modules/web/lexbor.py:111` lo copre.
 
-### Review #537 (chat Notte) — sul secondo merge di origin/main (PR #283) in 5ac373e
+**Memoria**: aggiunta la riga #537 a `/home/user/Gas/.claude/agents/memoria_revisore.md` e committata da sola (commit ec86b45); i file staged non sono stati toccati. R-536-1 è chiusa. Nessuna lezione nuova.
+
+### Review #538 (chat Mani) — diff committato in 20c0708
 
 ## VERDETTO: APPROVATO
 
-Review #537 (chat Notte): secondo merge di origin/main, che ora contiene la PR #283 della chat Motore (solo documenti), dentro docs/coda-voce9-note-bot (PR #284). MERGE_HEAD è presente e la base è b95c3f3.
+Review #538 (chat Mani). Riguarda il diff staged su claude/peaceful-lovelace-0w2b7q (PR #285): un solo file toccato, modules/web/lexbor.py, con 3 righe aggiunte e 2 tolte.
 
-**Cosa ho controllato nel diff**
-1. `.claude/agents/memoria_revisore.md:920` — rispetto a origin/main aggiunge solo la riga #536 (chat Notte). Il rischio era perdere righe di uno dei due lati. Ho confrontato le righe del file in stage con HEAD e con MERGE_HEAD: 0 righe perse da ciascun lato. Esito: ok.
-2. `reports/stato_progetto.md:4` — riga «Ultimo aggiornamento» unita. Il rischio era perdere voci o cambiarne l'ordine. La riga è divisa in voci separate da « — ». Nell'indice ci sono 74 voci: le 73 di main più quella del ramo (chat Notte, di giorno), che ora è la seconda e comincia con «prima:». In testa c'è la voce della chat Motore. Nessuna voce di HEAD o di main manca. Esito: ok.
-3. `reports/stato_progetto.md:623` — paragrafo Notte «segno nel DB per l'esito delle firme», preso dal ramo. Il rischio era perdere modifiche fatte da uno dei due lati fuori dalla riga 4. Ho fatto il confronto a tre vie con la base: l'unica riga di HEAD e l'unica riga di main che non si trovano nell'indice sono entrambe la riga 4. Le righe che mancano rispetto a HEAD erano nella base e main le ha tolte di proposito. Esito: ok.
-4. `reports/coda_notte.md:21`, insieme a handoff, ultimo_report e diff_sessione: sono identici ai file di HEAD (stesso contenuto in git). Esito: ok.
-5. `git diff --cached origin/main` fuori da reports/ e dalla memoria: 0 righe, quindi nessun file di codice è diverso da main. Marcatori di conflitto nella memoria e nello stato: 0. Esito: ok.
+Letture fatte prima della review: CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le voci lexbor e #285, con Grep), la coda di .claude/agents/memoria_revisore.md.
 
-**Cosa NON ho verificato:** i test non li ho lanciati, perché il diff contiene solo documenti e non tocca codice. Non ho riletto parola per parola il contenuto dei tre log di sessione: ho solo controllato che siano uguali a quelli di HEAD.
+Elementi del diff esaminati:
+- `modules/web/lexbor.py:99` — Il commento in testa a `intero()` ora dice «spazi, un segno + o - facoltativo, poi le cifre ASCII». Rischio esaminato: che il commento descriva un comportamento diverso dal codice. Esito: ok. Il word-diff con `-w` mostra cambi solo dentro le righe `#`, l'AST del file è valido e nessuna istruzione è cambiata.
+- `modules/web/lexbor.py:105` — Il ciclo salta un solo segno, `+` oppure `-` (`testo[1:] if testo.startswith(("+", "-"))`). Rischio esaminato: che il commento prometta più segni o solo il «+». Esito: ok, «un segno + o - facoltativo» coincide con il codice.
+- `modules/web/lexbor.py:113` — Il ritorno scarta il negativo diverso da zero e i valori oltre il tetto `< 1 << 31`. Rischio esaminato: che il commento nuovo contraddica «interi non negativi». Esito: ok. Il segno meno viene letto ma il negativo non vale, e «-0» dà 0, come dice già il commento a riga 111.
+- Contesto: `tests/test_unit_web_lexbor.py:171` estrae `intero()` da `_FIGLIO` con ast, e un cambio che tocca solo i commenti non lo altera. Ho rifatto la prova: lexbor 80 passed (`python3 -m pytest tests/test_unit_web_lexbor.py`).
+- Merge precedente 1442468 (origin/main 0cf1d67): rispetto al primo genitore 162f5b1 cambia solo `.claude/agents/memoria_revisore.md`, `reports/coda_notte.md`, `reports/stato_progetto.md` e `reports/ultimo_report.md`. Nessuno di questi è nel perimetro di review (in `.claude/perimetro_review.txt` c'è solo lo script `commit_memoria_revisore.sh`, non il file della memoria). Esito: ok.
 
-**Memoria:** ho aggiunto la riga #537 (chat Notte) in fondo a `/home/user/Gas/.claude/agents/memoria_revisore.md`. Come chiesto non l'ho committata e nemmeno messa in stage: ora è modificata solo nella cartella di lavoro, quindi va aggiunta con `git add` prima di chiudere il merge. Nessuna lezione nuova.
+Wall of Shame e guardrail: il diff non tocca la history, `_get_window`, i tetti né i provider. Non c'è alcuna simulazione di output dei tool.
+
+Rischio esplicitamente escluso: non ho rifatto la web suite completa (521 passed / 1 skipped con selectolax, prova dell'agente). Ho rifatto solo la suite lexbor (80 passed), perché il cambio riguarda solo un commento e non può alterare il comportamento a runtime. Non ho riletto il contenuto della memoria e di stato_progetto portati dal merge 1442468: sono fuori dal perimetro di review.
+
+Riserve: nessuna. V-2 COSMETICA della verifica esterna #285 e V-1 cosmetica del bot #285 sono chiuse.
+
+Memoria: ho aggiunto la riga `#538 (chat Mani) — 2026-10-28 — APPROVATO — …`, nessuna lezione nuova. È committata da sola con `scripts/commit_memoria_revisore.sh` (commit 3704890). Il diff staged di lexbor.py resta intatto nell'indice.
+
+File rilevanti:
+- /home/user/Gas/modules/web/lexbor.py
+- /home/user/Gas/.claude/agents/memoria_revisore.md
 
 ## §5 DELTA TEST DEL MOTORE
 
-Nessuna modifica a gas.py/tests/ rispetto a main.
+Nessuna modifica a gas.py; toccati solo `modules/web/lexbor.py` e `tests/test_unit_web_lexbor.py`.
+- Web suite (`tests/test_unit_web_*.py`, Python 3.13.16 con selectolax 1.0.2): prima 504 passed / 1 skipped (misurato su b95c3f3) → dopo 521 passed / 1 skipped (+17 casi di `test_intero_come_il_browser`), uguale prima e dopo il commento di 20c0708.
+- File lexbor su Python 3.11 senza selectolax (come la CI): 20 passed / 60 skipped.
+- Mutanti sul test finale: ritorno vecchio 7 failed, `letto` tolto 8, senza controllo del negativo 1, solo «+» come segno 2.
+- Nessun FAIL.
 
 ## §6 STATO CI
 
+CI NON VERIFICATA con `gh` (assente/non autenticato nel cloud). Check run lette dall'integrazione GitHub sulla PR #285:
+- Head 116aac3: run 40683892840 success (`unit-suite`, `handoff-check`); `verifica-bot` success (verdetto testuale APPROVATO CON RISERVE, V-1 cosmetica chiusa in questo giro).
+- Head 162f5b1: `unit-suite` success e `handoff-check` success (run 40682462721); `verifica-bot` success (run 40682482737, verdetto testuale APPROVATO CON RISERVE).
+- Head bbbfbbe: `unit-suite` success, `handoff-check` failure atteso (run 40682120695: l'handoff era ancora quello della #280).
+
 Mappatura commit→run:
-- `60553a6`: nessuna run su questo SHA (pushato insieme a `b88b597`).
-- `b88b597` → `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 sulla data di «Ultimo aggiornamento», sistemata qui).
-- `47119e9`: nessuna run su questo SHA (pushato insieme a `85e9e06`).
-- `85e9e06` → `unit-suite`, `handoff-check`, `verifica-bot` success (bot APPROVATO CON RISERVE, V-1 COSMETICA su `diff_sessione.md`, sistemata qui).
-- `5ac373e`: nessuna run su questo SHA (pushato insieme al commit di fine-task).
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- 63e4137, ec86b45: nessuna run su questo SHA (pushati insieme a bbbfbbe).
+- bbbfbbe: run 40682120695.
+- 162f5b1: run 40682462721 (CI) e 40682482737 (bot).
+- 1442468, 3704890, 20c0708: nessuna run su questo SHA (pushati insieme a 116aac3, testati solo nel suo albero).
+- 116aac3: run 40683892840.
+- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff (lo dice per costruzione: V-2 ve #285 su 116aac3).
 
 ## §7 RISERVE APERTE
 
-- Voce 9 in coda (cronologia persa, V-1/V-2 bot #281).
+- R-ve280-1 BASSA: i test del figlio lexbor con selectolax non girano nei check required (CI su 3.11 senza selectolax). Chat Motore: `selectolax==1.0.2` in requirements-dev.
+- Dalle review e dalle verifiche di questa sessione: nessuna da correggere (R-536-1, V-1..V-4 ve e V-1 bot su 162f5b1, V-1 bot e ve su 116aac3 chiuse; V-2 e V-3 ve su 116aac3 senza fix, vedi §1).
+- Restano quelle delle fette precedenti (stato_progetto, blocchi «Mani — fetta 20/21»): shadow DOM dichiarativo (decisione dell'operatore); cosmetiche R-ve277-3 con R-529-1, R-ve277-4, R-528-3, R-526-1, R-520-4.
