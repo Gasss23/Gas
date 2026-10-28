@@ -7,4 +7,7 @@
 - `reports/stato_progetto.md`: «Ultimo aggiornamento» e punto 3 della ripartenza Motore (note chiuse, R-540-3 e R-541-1 aperte).
 - `reports/ultimo_report.md`, `reports/handoff.md`, `reports/diff_sessione.md`: report di fine task.
 
+- Merge di origin/main (PR #289, solo documenti): conflitti nei report risolti, nessun file nuovo nel diff della sessione.
+- `.claude/agents/memoria_revisore.md`: anche review #542.
+
 Nota: questo file si riscrive a ogni sessione; la storia completa sta in git.

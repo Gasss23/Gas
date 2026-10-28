@@ -1,12 +1,12 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — Note basse della PR #287 sul cervello forte: doctor più preciso sul PATH del timer, motivo senza prefisso doppio (chat Motore)
+**Sessione:** 2026-10-28 — Note basse della PR #287 sul cervello forte: doctor più preciso sul PATH del timer, motivo senza prefisso doppio (chat Motore). Secondo giro: merge di main (PR #289) dopo la V-1 della verifica esterna #291.
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #291 (https://github.com/Gasss23/Gas/pull/291): con verdetto pulito del bot la mergia l'agente (CLAUDE.md §10); con riserve serve il «sì» dell'operatore. Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
+1. Merge della PR #291 (https://github.com/Gasss23/Gas/pull/291): bot e verifica esterna APPROVATO CON RISERVE (BASSE), serve il «sì» dell'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
 
 ---
 
@@ -16,19 +16,20 @@
 - **Fetta 2 — R-538-2 + V-2 bot #287 (motivo)**: `FATTA` — niente prefisso doppio, tetto 240.
 - **Fetta 3 — V-1 bot #287 (due giri) + V-3 ve #287**: `FATTA` — `_avviso_claude_timer`.
 - **Fetta 4 — R-540-1 e R-540-2 (test)**: `FATTA` — review #541 APPROVATO.
+- **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #291)**: `FATTA` — merge di origin/main 094eb57 (PR #289, solo documenti), review #542 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |  3 +++
- gas.py                             | 58 ++++++++++++++++++++++++++++++++++++++++------------------
- reports/diff_sessione.md           | 14 ++++++--------
- reports/stato_progetto.md          |  4 ++--
- reports/ultimo_report.md           | 20 ++++++++++----------
- tests/test_unit_dotenv.py          |  9 +++++++++
- tests/test_unit_kernel.py          | 54 ++++++++++++++++++++++++++++++++++++++++--------------
+ .claude/agents/memoria_revisore.md |   4 ++++
+ gas.py                             |  58 ++++++++++++++++++++++++++++++++++++++++------------------
+ reports/diff_sessione.md           |  13 ++++++++++---
+ reports/stato_progetto.md          |   4 ++--
+ reports/ultimo_report.md           |  18 +++++++++++++-----
+ tests/test_unit_dotenv.py          |   9 +++++++++
+ tests/test_unit_kernel.py          |  54 ++++++++++++++++++++++++++++++++++++++++--------------
  reports/handoff.md                 | n/d (commit finale)
 ```
 
@@ -37,6 +38,8 @@ NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scr
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+1bc4441 Merge origin/main (PR #289) in fix/note-forte-doctor (PR #291) — review #542 APPROVATO
+baa9bb2 docs(fine-task): PR #291 note basse del forte, review #540/#541
 ed2c430 fix(forte): note basse della #287 — doctor più preciso sul PATH del timer, motivo senza prefisso doppio
 4b6538e chore(revisore): memoria review #541 — APPROVATO
 de5cf2b chore(revisore): memoria review #540 — APPROVATO CON RISERVE
@@ -115,6 +118,32 @@ Review #541 (chat Motore): rifatta la review sul diff pronto per il commit (gas.
 
 **Memoria**: riga #541 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md, commit 4b6538e. Nella #540 c'era già il commit de5cf2b con la riga #540 e la lezione. Il diff in revisione resta intatto e pronto per il commit.
 
+### Review #542 (chat Motore) — sul merge di origin/main (PR #289) in 1bc4441
+
+## VERDETTO: APPROVATO
+
+Review #542 (chat Motore): è il merge in corso di origin/main 094eb57 (PR #289, che tocca solo documenti) dentro fix/note-forte-doctor (PR #291, HEAD baa9bb2).
+
+Ho letto prima: CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le righe toccate), la coda di .claude/agents/memoria_revisore.md (ultime review #539–#541).
+
+**Elementi del diff esaminati**
+- `gas.py:627` — `_DOTENV_CARICATE.update(caricate)`, la chiusura di R-540-1 già revisionata in #541. Rischio: che il merge abbia alterato il codice del ramo. `git diff --cached baa9bb2 -- gas.py` è vuoto, quindi il file è identico al ramo. Inoltre dal merge-base 0a9ce70 main ha toccato solo 4 file di reports/ (diff_sessione, handoff, stato_progetto, ultimo_report). Esito: ok.
+- `tests/test_unit_dotenv.py:130` — monkeypatch di `_DOTENV_CARICATE` nel test che lega `_carica_dotenv` al registro. Rischio: test persi o cambiati dal merge. Il diff verso baa9bb2 è vuoto, e lo è anche per `tests/test_unit_kernel.py`. Esito: ok.
+- `gas.py:5011` — il doctor usa `"GAS_CLAUDE_BIN" in _DOTENV_CARICATE`. Rischio: codice di main che entra senza review. `git diff --cached origin/main -- gas.py` mostra solo i 5 blocchi di modifica della PR #291 (righe 14, 426, 549, 603, 4985), cioè quanto già revisionato in #540/#541. Esito: ok.
+- `reports/stato_progetto.md:4` — testata unita: prima la voce della PR #291, poi la voce di main («`claude` del Mac provato col PATH del timer, PR #286 chiusa come doppione della #287»), poi la catena «prima» intatta. Rischio: frasi perse. Il confronto parola per parola verso il ramo non trova nessuna rimozione; verso main ci sono solo aggiunte. Esito: ok.
+- `reports/stato_progetto.md:589` — punto 3 della ripartenza Motore. Contiene la frase di main «Giro delle 12:22 … PR #286 chiusa senza merge: doppione della #287.» subito prima di «Fetta fatta (PR #287». L'unica differenza da main è l'aggiunta delle note chiuse nella PR #291 e di R-540-3. Esito: ok.
+- Altri controlli:
+  - nessun marcatore di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) in reports/*.md, gas.py e tests/*.py;
+  - handoff.md, ultimo_report.md e diff_sessione.md sono la versione del ramo, come dichiarato;
+  - la memoria del revisore è identica a baa9bb2 prima della mia riga.
+
+**Finding**
+- Nessun finding R-542-N. Il merge non introduce né codice né testo nuovo oltre a quello della PR #291 e della PR #289.
+
+**Rischio escluso**: non ho rieseguito io i test (kernel e pytest su dotenv e claude_cli). Mi fido dei risultati verdi che hai riportato: il codice è identico, byte per byte, a baa9bb2, già provato in #541. Non ho verificato neanche il contenuto di handoff.md e ultimo_report.md, perché li riscrivi tu con il /fine-task.
+
+**Memoria**: ho aggiunto la riga #542 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza lezioni nuove. Come mi hai chiesto non ho lanciato commit_memoria_revisore.sh: il file va messo in stage da te prima di chiudere il merge.
+
 ## §5 DELTA TEST DEL MOTORE
 
 Kernel: 1057 → 1057 PASS (nessun check nuovo: T99s, T99t, T99u e T99v hanno più casi dentro). Conteggi del container locale: la CI ne conta di più (es. 1063 su #287, V-2 bot #287).
@@ -125,16 +154,23 @@ Kernel: 1057 → 1057 PASS (nessun check nuovo: T99s, T99t, T99u e T99v hanno pi
 
 pytest (`python3 -m pytest -q tests`, prima dei test aggiunti per la #541): `2282 passed, 61 skipped in 192.48s (0:03:12)`. Dopo: `python3 -m pytest -q tests/test_unit_dotenv.py` → `11 passed in 6.00s`. Nessun FAIL.
 
+Dopo il merge di main (1bc4441): kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; `python3 -m pytest -q tests/test_unit_dotenv.py tests/test_unit_claude_cli.py` → `40 passed in 0.77s`.
+
 ## §6 STATO CI
 
-`gh` nel container non è autenticato: run lette con lo strumento GitHub della sessione (`actions_list`, branch fix/note-forte-doctor).
+`gh` nel container non è autenticato: stato letto con gli strumenti GitHub della sessione (notifiche della PR e `actions_list`, branch fix/note-forte-doctor).
 
 Mappatura commit→run:
 - de5cf2b, 4b6538e → nessuna run su questi SHA (pushati insieme a ed2c430).
-- ed2c430 → run non ancora disponibile alla scrittura dell'handoff (handoff-check rosso atteso: l'handoff arriva col commit dopo).
+- ed2c430 → CI della push di ed2c430 (handoff-check rosso atteso: l'handoff è arrivato col commit dopo).
+- baa9bb2 → CI completata senza fallimenti (notifica check_suite.completed delle 18:30), verifica-bot success (APPROVATO CON RISERVE).
+- 1bc4441 (merge di main) → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
 - commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
 - **R-540-3** (BASSA, review #540): su Linux il venv conta come visto dal timer, ma nessuna unità systemd lo attiva (falso OK possibile sulla VPS).
 - **R-541-1** (COSMETICA, review #541): `linkroot99` in T99t è un collegamento ciclico lasciato nella cartella temporanea.
+- **V-1 bot #291** (BASSA): GAS_CLAUDE_BIN sia nella shell sia nel `.env` → falso WARN con consiglio inutile.
+- **V-2 bot #291** (BASSA): `GAS_CLAUDE_BIN=claude` (nome senza «/») → sempre WARN.
+- **Verifica esterna #291** ([commento](https://github.com/Gasss23/Gas/pull/291#issuecomment-6477290329)): V-1 MEDIA conflitto con main CHIUSA da 1bc4441 (review #542); V-2 = V-1 bot #291; V-3 = R-540-3; V-4 COSMETICA §6 stantio (corretto qui).
