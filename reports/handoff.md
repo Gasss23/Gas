@@ -25,10 +25,11 @@
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- reports/diff_sessione.md  |  5 ++---
- reports/handoff.md        | n/d
- reports/stato_progetto.md | 10 +++++-----
- reports/ultimo_report.md  | 14 +++++++++-----
+ .claude/agents/memoria_revisore.md |   1 +
+ reports/diff_sessione.md           |  11 ++---------
+ reports/handoff.md                 | n/d
+ reports/stato_progetto.md          |  10 +++++-----
+ reports/ultimo_report.md           |  48 +++++++++---------------------------------------
 ```
 
 NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di totale tolta.
@@ -36,6 +37,8 @@ NB: regola «n/d» — conteggio di `reports/handoff.md` non misurabile, riga di
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
+bb87a41 Merge origin/main (PR #280) in feat/merge-automatico-z1xjx2 (PR #283)
+bf450f3 docs: bot #283 — RIPARTENZA aggiornata (la #279 è mergiata)
 c8512de docs(fine-task): handoff della #283 dopo il merge di main
 1e5e47e Merge origin/main in feat/merge-automatico-z1xjx2 (PR #283)
 a42cac6 docs: nota del bot #283 — frase del 28 ottobre al suo posto in G-3
@@ -46,7 +49,7 @@ NB: il commit di fine-task che contiene questo file non compare in questo log, p
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-nessun diff motore, revisore non richiesto.
+nessun diff motore di questa sessione. Merge di main #280 (chat Mani, con codice web): file identici a main, review #536 APPROVATO.
 
 ## §5 DELTA TEST DEL MOTORE
 

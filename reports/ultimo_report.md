@@ -1,7 +1,7 @@
 # ULTIMO REPORT — 2026-10-28 — Prima notte del cervello forte (chat Motore)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR di questa sessione (solo documenti), fatto dall'agente da qui secondo CLAUDE.md §10.
+1. Merge della PR #283 (solo documenti), da fare dall'agente da qui (CLAUDE.md §10; sì dell'operatore «mergia 283»).
 2. Verificare il giro del 29 ottobre: `cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac.
 
 ## Esito

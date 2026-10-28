@@ -583,7 +583,7 @@ Rung-4 resta OpenRouter. Ri-valutabile solo su tier a pagamento (131k, no coda) 
 Prossimo candidato eventuale: Mistral (sonda data-policy prima dei lead CRM).
 ## Prossimi passi (in ordine di priorità)
 
-- 🔁 **RIPARTENZA chat Motore (28 ottobre, dopo le PR #279 e #283)** — punto unico da cui ripartire:
+- 🔁 **RIPARTENZA chat Motore (28 ottobre, dopo la PR #279 e la #283 di questa sessione)** — punto unico da cui ripartire:
   1. ✅ Cervello forte ACCESO sul Mac (PR #269 + #274): login ok, `GAS_CLAUDE_CLI=1`, doctor OK, `punto_lead` con `cervello: forte`, `/forte` da terminale/Telegram/voce.
   2. ✅ PR #279 (rubrica illeggibile dichiarata in `ricorda` e `gas fida-contatto`) mergiata il 27 ottobre. Note rimaste (bot #279, BASSE/COSMETICHE): riga «merge da browser» nel Lucchetto main di CLAUDE.md; `gas fida-contatto <chiave>` con rubrica illeggibile dice «chiave non trovata»; docstring di `_ricorda`.
   3. ⏳ Prima notte col forte FALLITA (27 e 28: `claude` non trovato dal timer notturno) → `GAS_CLAUDE_BIN` nel `.env` del Mac il 28; da verificare al giro del 29 (`cat ~/Gas/.gas_notte/ultimo_giro.md`). Fetta da fare: il report della notte mostri il motivo vero dell'errore del forte (oggi solo «RuntimeError») e `gas doctor` avvisi se `claude` si trova solo nel PATH del terminale.
