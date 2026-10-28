@@ -1,17 +1,13 @@
-# ULTIMO REPORT — 2026-10-27 — Rubrica illeggibile dichiarata (V-1 bot #273, R-520-1) (chat Motore)
+# ULTIMO REPORT — 2026-10-28 — Turno di notte: segno nel DB per l'esito delle firme (voce 6 di `coda_notte.md`)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #279 (https://github.com/Gasss23/Gas/pull/279), fatto dall'agente da qui (CLAUDE.md §10, decisione del 27 ottobre).
-2. Esito della prima notte di `punto_lead` col forte: output di `cat ~/Gas/.gas_notte/ultimo_giro.md` sul Mac.
+1. Merge della PR #281 (https://github.com/Gasss23/Gas/pull/281), dopo il secondo passaggio su claude.ai (fetta di sicurezza: firma umana).
+2. Testo dell'attività programmata: serve la richiesta dell'operatore in questa sessione, se lo vuole cambiare.
 
 ## Esito
-- **PR #276**: mergiata dall'agente da qui (decisione dell'operatore: i merge si fanno dalla sessione, mai da browser salvo ragione specifica; scritta in CLAUDE.md §10).
-- **V-1 bot #273**: FATTA — `ricorda contatto=X` con la rubrica illeggibile dice «Rubrica dei lead NON letta» invece di «Nessun lead trovato» (T21b3, ripiego T21b4).
-- **R-520-1**: FATTA — `gas fida-contatto` senza argomenti con la rubrica illeggibile dà FAIL (exit 1), mai «Nessun lead segnato» (T74b5r).
-- **Cosmetiche** di #274/#276: FATTE (T21b2 sulla catena reale, etichetta #526, frase dello stato, ANTHROPIC_API_KEY in G-3).
-- Review #527 APPROVATO CON RISERVE (R-527-1/2 chiuse), #528 APPROVATO. Kernel 1047 PASS 0 FAIL; pytest tests 2264 passed, 21 skipped (prima di T21b4).
-- **RIPARTENZA** aggiornata in `reports/stato_progetto.md` per la prossima chat.
+- **Voce 0**: SALTATA — già fatta dalla chat Motore (PR #279, review #528).
+- **Voce 6 — segno nel DB per l'esito delle firme**: FATTA. Review #531 BOCCIATO (R-531-1 ALTA, corretta), #532 APPROVATO CON RISERVE (R-531-3, R-532-1 BASSE aperte). Kernel 1043 → 1053 PASS 0 FAIL; pytest 2265 passed, 51 skipped (come main).
+- **Voci 7a, 7, 8**: SALTATE — una sola voce del motore a notte.
 
 ## Anomalie
-- La #279 è finita in conflitto (solo log) per due PR entrate in main: risolto col merge di main.
-- Verdetti sulla #279: bot APPROVATO CON RISERVE (neutral), verifica esterna APPROVATO CON RISERVE; nessuna ALTA/MEDIA; merge chiesto dall'operatore («mergia 279»). Note da fare nella prossima fetta: `gas fida-contatto <chiave>` con rubrica illeggibile, docstring di `_ricorda`, riga «merge da browser» nel Lucchetto main di CLAUDE.md.
+- Nessuna. Dettaglio: `reports/report_notte.md`.

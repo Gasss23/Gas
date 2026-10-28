@@ -18,10 +18,8 @@
 ## Da fare (in ordine)
 
 ### A. Piccoli lavori accantonati
-0. **Contatti illeggibili scambiati per «nessun risultato»** (messa in cima dall'operatore il 2026-10-27): `ricorda contatto=X` (`_trova_contatto` in `gas.py`, V-1 bot #273: a lettura fallita «Nessun lead trovato») e `gas fida-contatto` senza argomenti (R-520-1: «Nessun lead segnato non fidato») usano ancora `lista_contatti`, che dà [] su errore. Fix: `leggi_contatti` e, su None, un messaggio «lettura dei contatti fallita» (WARN/FAIL per `fida-contatto`), con test di round-trip. NON toccare `_memoria_pin`: la V-1 della verifica esterna #273 è CHIUSA (review #526, chat Motore, 2026-10-27) tenendo il segno «non fidato» False a lettura fallita, fissato da T21b2/T20d. Motore: revisore obbligatorio.
 
 ### B. Riserve più grosse
-6. **Recupero dell'esito di una firma basato sulla storia** (V-1 bot #241, R-445-3): un segno nel DB «esito notificato in storia» al posto della scansione della storia. Cambio di schema: migrazione additiva, fail-safe.
 
 ### C. Roadmap (in ordine, `reports/roadmap.md`)
 7a. **Lavori già destinati al turno di notte** (roadmap R3): regola di merge nel codice e allineamento di `fine-task.md` («non mergiare»). Tocca la macchina di controllo: revisore e verifica esterna obbligatori; se cambia una regola, fermarsi e chiedere all'operatore nel report.
@@ -49,3 +47,5 @@ Sei il TURNO DI NOTTE dello sviluppo di Gas (roadmap R3, repo GitHub Gasss23/Gas
 - Voce 3 — Comando `/clear` su Telegram — fatta, PR #263 (notte del 2026-10-25)
 - Voce 4 — `righe_stato_mattino` mai «$nan» — fatta, PR #271 (notte del 2026-10-26)
 - Voce 5 — Contatti illeggibili mai «0 lead» (`leggi_contatti`) — fatta, PR #273 (notte del 2026-10-27)
+- Voce 0 — Contatti illeggibili in `ricorda contatto` e `gas fida-contatto` — fatta dalla chat Motore, PR #279 (2026-10-27, review #528); trovata già su main dal turno del 2026-10-28
+- Voce 6 — Segno nel DB per l'esito delle firme (R-445-3, V-1 bot #241) — fatta, PR #281 (notte del 2026-10-28)

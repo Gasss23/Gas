@@ -1,15 +1,21 @@
-# Report del turno di notte — 2026-10-27
+# Report del turno di notte — 2026-10-28
 
-Ramo `notte/2026-10-27`, PR #273 (https://github.com/Gasss23/Gas/pull/273). Nessun merge (regola del turno).
-La voce 4 risulta fatta (PR #271 ancora aperta). Al massimo UNA voce del motore a notte: presa la voce 5. La voce 6 (cambio di schema del DB) resta alla prossima notte; in coda non ci sono voci solo-documenti.
+Ramo `notte/2026-10-28`, PR #281 (https://github.com/Gasss23/Gas/pull/281). Nessun merge (regola del turno).
+La voce 0 (contatti illeggibili in `ricorda contatto` e `gas fida-contatto`) era già su main: l'ha fatta la chat Motore con la PR #279 (review #528). Al massimo una voce del motore a notte: presa la voce 6.
 
-## Voce 5 — Contatti illeggibili mai «0 lead» — FATTA
-- **Cosa**: nuova lettura dei contatti `leggi_contatti` (`modules/memory/store.py`) che dà «nessun risultato» (None) se il database non risponde, invece di una lista vuota. La usano il resoconto del mattino e `ricorda fermi`: se la lettura fallisce scrivono «Lead attivi: non letti» / «Elenco dei lead NON letto», mai «0 lead» o «nessun lead attivo».
-- **Perché / cosa migliora**: con il database bloccato per un attimo fra due letture il messaggio del mattino diceva «Lead attivi: 0», un falso rassicurante (R-454-1 / V-2 bot #241).
-- **Controlli**: test nuovi (tabella dei contatti illeggibile su un DB vero con le firme ancora leggibili; un giro notturno completo; un round-trip con `ricorda`) che falliscono sul codice di prima. kernel 1037 → 1039 PASS 0 FAIL; pytest 2241 → 2243 passed. Review #520 APPROVATO CON RISERVE.
-- **Rischi**: bassi. Gli altri usi di `lista_contatti` (pin, duplicati, ricerca) non cambiano. Resta R-520-1: `gas fida-contatto` senza argomenti ha ancora lo stesso difetto (fuori da questa voce). Non provato un vero blocco del DB fra due processi.
+## Voce 6 — Segno nel DB per l'esito delle firme — FATTA (fetta di sicurezza)
+- **Cosa**: per sapere se l'esito di una firma è già stato scritto nella cronologia, Gas guardava solo la cronologia stessa. Ora c'è anche un segno nel database (tabella nuova, solo inserimenti). L'esito si registra nel database PRIMA della cronologia, e il segno si mette solo quando la cronologia è davvero salvata su disco.
+- **Perché / cosa migliora**:
+  - un crash nel momento sbagliato non lascia più l'esito vuoto per sempre (R-445-3), e al riavvio il recupero lo scrive com'era;
+  - dopo `/clear` un nuovo click su Approva non riscrive un esito già notificato.
+- **Controlli**: 7 test nuovi (T78q–T78u: crash simulato, riavvio, `/clear`, migrazione di un DB vecchio, salvataggio fallito), che falliscono sul codice di prima (5 su 7). Kernel 1043 → 1053 PASS 0 FAIL; pytest 2265 passed.
+  - Review #531: BOCCIATO. Il recupero metteva il segno anche con l'esito solo in memoria: dopo un crash l'esito non sarebbe più stato scritto. Corretto.
+  - Review #532: APPROVATO CON RISERVE.
+- **Rischi**: tocca la firma umana, quindi conviene un secondo passaggio su claude.ai. Restano due note BASSE:
+  - con due processi Gas in conflitto sulla cronologia, un esito può restare solo nella copia di conflitto (R-531-3, da lettura del codice, non provato);
+  - con il salvataggio rimandato, il segno si mette solo al click successivo (R-532-1, verso sicuro).
+  - Non provato con Telegram vero.
 
 ## Cosa deve decidere l'operatore
-1. Merge della PR #273 (il turno di notte non mergia). Anche la PR #271 (voce 4) è ancora aperta: entrambe toccano «Fatte» di `coda_notte.md` e `stato_progetto.md`, quindi la seconda che entra avrà un conflitto da risolvere (tenere entrambe le righe).
-2. Se mettere in coda R-520-1 (`gas fida-contatto` con lettura fallita).
-3. Il testo dell'attività programmata è ancora quello vecchio: se lo vuoi cambiare, chiedilo in questa sessione.
+1. Merge della PR #281 (il turno di notte non mergia), dopo il secondo passaggio su claude.ai col link della PR.
+2. Il testo dell'attività programmata è ancora quello vecchio: se lo vuoi cambiare, chiedilo in questa sessione.
