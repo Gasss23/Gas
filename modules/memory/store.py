@@ -280,6 +280,31 @@ _SCHEMA: Tuple[str, ...] = (
         SELECT RAISE(ABORT, 'approval_esecuzioni: esito immutabile');
     END
     """,
+    # --- Esiti delle firme già scritti nella storia (V-1 bot #241, R-445-3; coda
+    # notte voce 6): il segno sta nel DB, non solo nella cronologia, che `clear`
+    # svuota. Tabella nuova e solo-inserimento (approvals ha lo stato immutabile e
+    # non si può marcare): migrazione additiva, CREATE IF NOT EXISTS anche sui DB
+    # esistenti. Una riga per approvazione, mai UPDATE né DELETE.
+    """
+    CREATE TABLE IF NOT EXISTS approval_esiti_in_storia (
+        approval_id TEXT PRIMARY KEY NOT NULL REFERENCES approvals(id),
+        ts          REAL NOT NULL
+    )
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approval_esiti_in_storia_no_update
+    BEFORE UPDATE ON approval_esiti_in_storia
+    BEGIN
+        SELECT RAISE(ABORT, 'approval_esiti_in_storia: solo inserimenti');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS approval_esiti_in_storia_no_delete
+    BEFORE DELETE ON approval_esiti_in_storia
+    BEGIN
+        SELECT RAISE(ABORT, 'approval_esiti_in_storia: DELETE vietato (audit)');
+    END
+    """,
 )
 
 
@@ -1957,6 +1982,41 @@ class MemoryStore:
             return dict(row) if row is not None else None
         except (sqlite3.Error, OSError) as e:
             log.warning("get_esecuzione fallita (%s): %s", self.db_path, e)
+            return None
+
+    def segna_esito_in_storia(self, approval_id: str) -> bool:
+        """Segna che l'esito della firma è entrato nella storia (una sola volta;
+        un secondo segno non cambia nulla). True se il segno c'è; errore, UUID non
+        valido o approvazione inesistente → False, loggato, mai eccezioni."""
+        if not self.available or not _uuid_valido(approval_id):
+            return False
+        try:
+            with self._connect() as con:
+                con.execute(
+                    "INSERT OR IGNORE INTO approval_esiti_in_storia (approval_id, ts) "
+                    "VALUES (?, ?)", (approval_id, time.time()))
+                con.commit()
+                return True
+        except (sqlite3.Error, OSError) as e:
+            log.warning("segna_esito_in_storia fallita (%s): %s", self.db_path, e)
+            return False
+
+    def esito_in_storia(self, approval_id: str) -> Optional[bool]:
+        """True se l'esito della firma è già stato scritto nella storia, False se
+        no, None se non si può leggere (errore o memoria degradata). UUID non
+        valido → False (nessuna firma vera ha quell'ID)."""
+        if not self.available:
+            return None
+        if not _uuid_valido(approval_id):
+            return False
+        try:
+            with self._connect() as con:
+                row = con.execute(
+                    "SELECT 1 FROM approval_esiti_in_storia WHERE approval_id = ?",
+                    (approval_id,)).fetchone()
+            return row is not None
+        except (sqlite3.Error, OSError) as e:
+            log.warning("esito_in_storia fallita (%s): %s", self.db_path, e)
             return None
 
     def get_pending_approvals(self) -> List[Dict[str, Any]]:

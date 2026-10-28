@@ -3333,9 +3333,22 @@ class GasKernel:
         return f"[NOTIFICA DEL KERNEL — esito firma umana, ID: {approval_id}]"
 
     def _esito_firma_in_storia(self, approval_id: str) -> bool:
+        """Coda notte voce 6 (V-1 bot #241, R-445-3): prima il segno nel DB, che
+        resta dopo `clear` e dopo un riavvio; poi la cronologia, che copre le firme
+        chiuse prima del segno e un segno non scritto (DB degradato, salvataggio
+        rimandato). Il segno da solo basta: una cronologia svuotata non fa
+        riscrivere un esito già notificato."""
+        leggi = getattr(self.memory, "esito_in_storia", None)
+        if callable(leggi) and leggi(approval_id):
+            return True
         tag = self._tag_esito_firma(approval_id)
         return any(m.get("role") == "user" and tag in (m.get("content") or "")
                    for m in self.history)
+
+    def _segna_esito_in_storia(self, approval_id: str) -> None:
+        segna = getattr(self.memory, "segna_esito_in_storia", None)
+        if callable(segna):
+            segna(approval_id)
 
     def _storia_esito_firma(self, approval_id: str, tool: str, args_json: str,
                             notizia: str, out: Optional[str], eseguita: bool,
@@ -3370,7 +3383,10 @@ class GasKernel:
                 f"{'eseguita' if eseguita else 'partita, esito INCERTO' if incerta else 'NON eseguita'}.")})
             # Tutto il blocco o niente: la storia non resta mai con un pezzo solo.
             self.history.extend(blocco)
-            self._save_history()
+            # Il segno nel DB solo con la storia su disco: con il salvataggio
+            # rimandato o fallito, dopo un crash il recupero deve poter riscrivere.
+            if self._save_history():
+                self._segna_esito_in_storia(approval_id)
         except Exception as e:
             logging.warning("[GATE-C4B] esito firma id=%s non registrato in storia: %s",
                             approval_id, e)
@@ -3483,9 +3499,12 @@ class GasKernel:
                 notizia = ("l'operatore l'ha APPROVATA via Telegram ma NON è stata eseguita "
                            f"({'modalità dry-run' if dry_run else 'diniego interno'}). "
                            "Il dettaglio è nel risultato del tool che segue.")
+            # R-445-3: prima l'esito nel DB, poi la storia. Un crash fra i due lascia
+            # l'esito registrato e la storia vuota, che recupera_esito_firma completa;
+            # nell'ordine opposto l'esito restava NULL per sempre.
+            self.memory.registra_esito_esecuzione(approval_id, esito)
             self._storia_esito_firma(approval_id, tool, args_json, notizia, out, res["eseguita"],
                                      incerta=incerta)
-            self.memory.registra_esito_esecuzione(approval_id, esito)
             self._diario_log_tool(tool, f"approvata id={approval_id} | {esito}",
                                   turno_id=str(uuid.uuid4()))
             res["esito"], res["output"] = esito, out
@@ -3516,6 +3535,13 @@ class GasKernel:
             return None
         try:
             if self._esito_firma_in_storia(approval_id):
+                # Esito trovato solo nella cronologia (firma chiusa prima del segno, o
+                # salvataggio rimandato o fallito): il segno solo se la storia arriva
+                # davvero su disco ADESSO (R-531-1: in memoria non basta, dopo un crash
+                # l'esito non verrebbe più scritto).
+                if (not getattr(self.memory, "esito_in_storia", lambda _a: False)(approval_id)
+                        and self._save_history()):
+                    self._segna_esito_in_storia(approval_id)
                 return None
             row = self.memory.get_approval(approval_id)
             esec = self.memory.get_esecuzione(approval_id)
