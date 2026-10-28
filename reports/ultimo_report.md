@@ -1,13 +1,18 @@
-# ULTIMO REPORT — 2026-10-28 — Motivo vero dell'errore del cervello forte e avviso doctor per il PATH della notte
+# Ultimo report — 2026-10-28 (chat Motore)
+
+**Task:** il report della notte dice perché il cervello forte è fallito; `gas doctor` avvisa se `claude` si trova solo nel PATH del terminale (PR #287). Secondo giro: merge di main (PR #285) dopo la V-1 della verifica esterna.
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #286 (https://github.com/Gasss23/Gas/pull/286) quando il bot e la CI hanno finito: la review #538 è APPROVATO CON RISERVE, quindi decide l'operatore (regola di merge di CLAUDE.md §10).
+1. Merge della PR #287 (https://github.com/Gasss23/Gas/pull/287): review #538 APPROVATO CON RISERVE, bot APPROVATO CON RISERVE, verifica esterna APPROVATO CON RISERVE: serve il «sì» dell'operatore (CLAUDE.md §10).
 
 ## Esito
-- **Motivo vero dell'errore del forte nel report della notte**: FATTA. `brains/claude_cli.py` ha la nuova `ErroreClaudeCli`, che usa solo testi fissi. Il «Pipeline esausta» di `run_turn` ne mostra il testo; gli altri errori mostrano ancora solo il tipo. Il messaggio «non trovato» suggerisce `GAS_CLAUDE_BIN`.
-- **Avviso doctor per il PATH della notte**: FATTA. Nuovo WARN «comando claude (notte)» quando `claude` si trova nel PATH del terminale ma non in quello di launchd (`PATH_TIMER_NOTTE`). L'avviso indica il percorso da mettere in `GAS_CLAUDE_BIN`.
-- **Test**: T99v–T99z. Suite kernel: 1062 PASS, 0 FAIL. pytest (senza la suite kernel): 2265 passati, 61 saltati.
-- **Giro della notte del Mac**: il giro delle 12:22 del 28 è andato OK (`punto_lead` OK, 1 tool, 11.2s). Il report di quel giro non dice quale cervello ha usato.
+- **Fetta 1 — motivo vero dell'errore del forte**: FATTA. `_motivo_forte` in `gas.py` porta nella riga «Pipeline esausta» (e nel report della notte) il messaggio fisso di `brains/claude_cli.py`, al posto di «RuntimeError». `claude` non trovato suggerisce GAS_CLAUDE_BIN; nuovo caso «non eseguibile».
+- **Fetta 2 — avviso del doctor**: FATTA. WARN se `claude` si trova solo nel PATH del terminale, con `GAS_CLAUDE_BIN=<percorso>` da mettere nel `.env`.
+- **Fetta 3 — conflitto con main (V-1 MEDIA verifica esterna)**: FATTA. Merge di origin/main 297fc22 (PR #285), conflitti solo nei report e nella memoria del revisore; review #539 APPROVATO.
+- Test: kernel 1053 → 1057 PASS, 0 FAIL (anche dopo il merge); pytest 2265 passed prima del merge, lexbor + claude_cli verdi dopo.
+- Riserve aperte (tutte BASSE/COSMETICHE): R-538-1, R-538-2, V-1/V-2 bot #287, V-4 ve #287, R-539-1 (in `stato_progetto.md`).
 
 ## Anomalie
-- `gh` non è autenticato in questo ambiente: PR aperta e CI letta con lo strumento GitHub della sessione.
+- `gh` nel container non è autenticato: PR, etichetta e CI con gli strumenti GitHub della sessione.
+- Numero di review #538 usato sia dalla chat Mani che dalla chat Motore (R-539-1).
+- Non provato sotto launchd sul Mac: la prova vera è il giro notturno del 29.

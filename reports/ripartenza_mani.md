@@ -22,10 +22,10 @@ Regole:
 - Guidami passo passo: una cosa alla volta, risposte corte.
 
 Prima di tutto:
-1. Controlla che la PR #280 (fetta 21) sia mergiata (merge autorizzato dall'operatore il 2026-10-28); se è ancora aperta, portami il suo stato.
-2. Leggi in reports/stato_progetto.md i blocchi «Mani — fetta 20» e «Mani — fetta 21» (Grep, non tutto il file) e reports/ultimo_report.md.
+1. Controlla lo stato della PR #285 (fetta 22): se è aperta portami il verdetto del bot e della verifica esterna; se è mergiata riparti il branch da main.
+2. Leggi in reports/stato_progetto.md i blocchi «Mani — fetta 21» e «Mani — fetta 22» (Grep, non tutto il file) e reports/ultimo_report.md.
 Poi portami UNA alla volta le cose aperte, nell'ordine:
-   a) le riserve «DA SISTEMARE» di #280 (blocco «Mani — fetta 21» di stato_progetto): falle in una fetta sola;
+   a) FATTA in fetta 22 (riserve «DA SISTEMARE» di #280; R-ve280-1 è della chat Motore, vedi b);
    b) accensione della lettura con lexbor: la fa la chat Motore (selectolax==1.0.2 in requirements-dev.txt e requirements.txt, GAS_WEB_LEXBOR=1 sul VPS); controlla se è già fatta e, se sì, verifica che in CI i test lexbor non siano più saltati;
    c) shadow DOM dichiarativo (figli «light» di un host con <template shadowrootmode>): decisione mia;
    d) cosmetiche aperte (R-ve277-3 con R-529-1, R-ve277-4 controllo di sys.platform in attivo(), R-528-3, R-526-1, R-520-4);

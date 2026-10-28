@@ -30,7 +30,7 @@ from brains.model_ids import (
     MODEL_GEMINI_LITE, MODEL_GEMINI_FLASH, MODEL_GROQ, MODEL_OPENROUTER, MODEL_OLLAMA,
     MODEL_CLAUDE_FORTE, GROQ_PRICE_IN_USD_PER_1M, GROQ_PRICE_OUT_USD_PER_1M,
 )
-from brains.claude_cli import ClaudeCliClient, ErroreClaudeCli
+from brains.claude_cli import ClaudeCliClient
 from brains.router import prefisso_forte  # R2: /forte (terminale, Telegram, voce)
 from modules.gate.gate import gate_classify, GateClass, UNTRUSTED_INPUT_TOOLS
 from modules.gate.gate import livello_scrittura, LIVELLO_LIBERO, LIVELLO_FIRMA, LIVELLO_MAI, lettura_consentita
@@ -325,7 +325,6 @@ OPENROUTER_FREE_MODEL = MODEL_OPENROUTER                        # tool-capable
 OLLAMA_MODEL = MODEL_OLLAMA                                      # tool-capable
 TOKEN_LOG_FILENAME = ".gas_tokens.jsonl"                          # contabilità token per-chiamata
 CLAUDE_CLI_USO_FILENAME = ".gas_claude_cli_uso.json"              # uso del cervello forte, oggi
-PATH_TIMER_NOTTE = "/usr/bin:/bin:/usr/sbin:/sbin"  # PATH di launchd (giro di notte sul Mac)
 
 # Prezzi per milione di token (USD), approssimati — aggiornare se cambiano.
 # Fonte: pagine prezzi ufficiali (rilevate al 2025-06).
@@ -423,6 +422,34 @@ def _classify_provider_error(status_code: Optional[int], err_text: str,
     if (status_code == 402 or "402" in txt) and not obbligatoria:
         return ("WARN", "402: crediti esauriti (rung free opzionale)")
     return ("KO", err_text[:60])
+
+def _motivo_forte(e: BaseException) -> Optional[str]:
+    """Motivo leggibile di un errore del cervello forte, per la riga «Pipeline esausta»
+    (e quindi il report della notte). Solo i messaggi di `brains/claude_cli.py`, che
+    sono testi fissi senza testo di Claude (V-3 bot #256); altrimenti None."""
+    if not isinstance(e, RuntimeError):
+        return None
+    testo = (str(e).strip().splitlines() or [""])[0]
+    if not re.match(r"^(429 )?claude-cli: ", testo):
+        return None
+    return testo[:160]
+
+
+# Cartelle che vede un timer notturno (launchd sul Mac, systemd su Linux) senza il
+# PATH del terminale: lì `claude` installato in ~/.local/bin o Homebrew non si trova.
+_PATH_TIMER = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+
+
+def _claude_solo_nel_terminale(valore_env: str, binario: str, root: Path) -> bool:
+    """True se `claude` si trova solo grazie al PATH del terminale: GAS_CLAUDE_BIN non
+    è un percorso assoluto e il comando trovato non sta nelle cartelle del timer né
+    nel venv di Gas (che il giro notturno attiva). Pura, per il doctor."""
+    if os.path.isabs(valore_env or ""):
+        return False
+    cartella = os.path.dirname(os.path.abspath(binario))
+    vedute = set(_PATH_TIMER) | {str(root / v / "bin") for v in (".venv", "venv")}
+    return cartella not in vedute
+
 
 def _probe_free_model(base_url: str, model: str, api_key: Optional[str], _fetch=None) -> Tuple[str, str]:
     """Fetch (mockabile via `_fetch`) + classificazione. `_fetch(url, api_key)`
@@ -4881,11 +4908,11 @@ class GasKernel:
                     self._log_tokens(name, model, 0, 0,
                                      event="fallthrough", reason=_ft_level)
                     _sc = getattr(e, "status_code", None)
-                    # Punto 3 RIPARTENZA: l'errore del forte ha un testo fisso scritto da
-                    # brains/claude_cli.py (mai testo di Claude) → si mostra per intero.
+                    # Il motivo vero del forte (es. `claude` non trovato), non solo «RuntimeError»
+                    _mf = _motivo_forte(e) if name == "claude-cli" else None
                     _motivi.append(f"{name}: {_ft_level}"
                                    + (f" (HTTP {_sc})" if isinstance(_sc, int) else
-                                      f" ({str(e)[:300]})" if isinstance(e, ErroreClaudeCli) else
+                                      f" ({_mf})" if _mf else
                                       f" ({type(e).__name__})"))
                     continue
             _dettaglio = "; ".join(_motivi) if _motivi else "nessun provider in cascata"
@@ -4953,16 +4980,18 @@ def doctor(root_dir: Optional[str] = None) -> int:
         check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)")
     else:
         # V-1 bot #262: un GAS_CLAUDE_BIN che non esiste o non è eseguibile non è «presente»
-        binario = shutil.which(os.environ.get("GAS_CLAUDE_BIN") or "claude")
-        check("Cervello forte", "comando claude", "OK" if binario else "WARN",
-              "presente" if binario else "non trovato o non eseguibile: il forte non può rispondere")
-        # Notti del 27-28 ott: il timer (launchd) parte col PATH ridotto e non vede un
-        # `claude` che il terminale trova (es. ~/.local/bin).
-        if binario and not shutil.which(os.environ.get("GAS_CLAUDE_BIN") or "claude",
-                                        path=PATH_TIMER_NOTTE):
-            check("Cervello forte", "comando claude (notte)", "WARN",
-                  f"trovato solo nel PATH del terminale: il giro di notte non lo vede; "
-                  f"metti GAS_CLAUDE_BIN={binario} nel .env")
+        _bin_env = os.environ.get("GAS_CLAUDE_BIN") or ""
+        binario = shutil.which(_bin_env or "claude")
+        if not binario:
+            check("Cervello forte", "comando claude", "WARN",
+                  "non trovato o non eseguibile: il forte non può rispondere")
+        elif _claude_solo_nel_terminale(_bin_env, binario, root):
+            # Notti del 27 e 28 ottobre: il timer notturno non vede il PATH del terminale
+            check("Cervello forte", "comando claude", "WARN",
+                  f"trovato solo nel PATH del terminale: il giro notturno non lo vede "
+                  f"(metti GAS_CLAUDE_BIN={binario} nel .env)")
+        else:
+            check("Cervello forte", "comando claude", "OK", "presente")
         usato = _leggi_uso_claude_cli(root)
         tetto = _env_float("GAS_CLAUDE_CLI_TETTO_USD", 4.60, min_val=0.0, max_val=1_000.0)
         if usato is None:
