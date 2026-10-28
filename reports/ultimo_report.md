@@ -1,7 +1,7 @@
 # ULTIMO REPORT — 2026-10-28 — chat Motore: interruttore del forte tra shell e .env (PR #293)
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #293 (https://github.com/Gasss23/Gas/pull/293): la review #543 è APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10).
+1. Merge della PR #293 (https://github.com/Gasss23/Gas/pull/293): la review #547 (già #543 nel ramo) è APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10).
 
 ## Esito
 - **PR #290**: chiusa senza merge, su «ok» dell'operatore. Era un doppione della #291 (stessa fetta fatta da un'altra sessione, già su main).
