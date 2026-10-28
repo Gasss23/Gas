@@ -1,16 +1,19 @@
-# ULTIMO REPORT — 2026-10-28 — chat Motore: riserve del punto 3 (cervello forte e doctor), PR #290
+# Ultimo report — 2026-10-28 (chat Motore)
+
+**Task:** note basse della PR #287 sul cervello forte (doctor e motivo dell'errore), PR #291.
 
 ## DECISIONI UMANE RICHIESTE
-1. Merge della PR #290 (https://github.com/Gasss23/Gas/pull/290): la review #542 è APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10).
+1. Merge della PR #291 (https://github.com/Gasss23/Gas/pull/291): bot e verifica esterna APPROVATO CON RISERVE (BASSE), serve il «sì» dell'operatore (CLAUDE.md §10), oppure «sistema» per le due note del bot prima del merge.
 
 ## Esito
-- **R-538-1 (GAS_CLAUDE_BIN solo nella shell)**: FATTA. Il doctor dà WARN se `GAS_CLAUDE_BIN` manca nel `.env` di Gas, se è vuota, o se ha un valore diverso da quello in uso. Questi ultimi due casi sono V-1 della verifica esterna e V-2 del bot.
-- **V-3 bot #290 (GAS_CLAUDE_CLI acceso solo nella shell)**: FATTA. Il doctor dà WARN «di notte il forte è spento».
-- **V-1 bot #290 (.env della cwd)**: FATTA. C'è un solo percorso, `DOTENV_PATH` (accanto a gas.py), usato sia dal caricamento sia dal doctor.
-- **R-538-2 (tetto del motivo)**: FATTA. Il tetto passa da 160 a 300. Correzione della motivazione (V-3 della verifica esterna): `_MSG_LOGIN` è lungo 152 caratteri, quindi il vecchio tetto non lo troncava; il cambio dà solo margine.
-- **V-2 bot #287 (prefisso ripetuto)**: FATTA.
-- **V-1 bot #287 (falsi WARN)**: FATTA per `/usr/local` su Linux e per i collegamenti, risolti da entrambe le parti (R-540-1, test T99z). `DEFERITA — ~/.zshenv`: l'errore va nel verso prudente.
-- **Test**: suite kernel da 1061 a 1066 PASS, 0 FAIL. Il valore di main (1061) è misurato in un worktree a `094eb57`. In CI i conteggi sono più alti di 2 (V-4 del bot, test che dipendono dall'ambiente).
+- **Fetta 1 — R-538-1**: FATTA. `_DOTENV_CARICATE` (riempito da `_carica_dotenv`): GAS_CLAUDE_BIN assoluto ma non dal `.env` → WARN del doctor.
+- **Fetta 2 — R-538-2 + V-2 bot #287**: FATTA. `_motivo_forte` senza il prefisso ripetuto, tetto 240 (il messaggio del login, 152 caratteri, entra intero).
+- **Fetta 3 — V-1 bot #287 (due giri) + V-3 ve #287**: FATTA. `_avviso_claude_timer` sostituisce `_claude_solo_nel_terminale`: realpath delle cartelle, /usr/local/bin solo su Linux, solo il primo venv attivato dal plist, GAS_CLAUDE_BIN relativo → WARN.
+- **R-540-1 e R-540-2** (review #540): FATTE nella stessa PR (test dotenv nuovo, radice raggiunta da un collegamento simbolico in T99t); review #541 APPROVATO.
+- Test: kernel 1057 PASS, 0 FAIL; pytest 2282 passed, 61 skipped (prima dei test aggiunti per la #541); test_unit_dotenv 11 passed.
+- **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #291)**: FATTA. Merge di origin/main 094eb57 (PR #289, solo documenti); review #542 APPROVATO; kernel 1057 PASS e pytest dotenv + claude_cli 40 passed dopo il merge.
+- Aperte: R-540-3 BASSA, R-541-1 COSMETICA, V-1/V-2 bot #291 BASSE (in `stato_progetto.md`).
 
 ## Anomalie
-- Su `6771320` il bot ha dato una MEDIA: l'handoff era fermo a `cceadcc`, perché ho pushato un commit del motore prima del fine-task. Questo fine-task la chiude.
+- Il primo `git push` del ramo si è bloccato in send-pack; fermato e ripetuto, riuscito al primo nuovo tentativo.
+- `gh` nel container non è autenticato: PR e CI con gli strumenti GitHub della sessione.

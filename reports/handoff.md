@@ -1,164 +1,176 @@
 # HANDOFF — Dossier di fine sessione
 
-**Sessione:** 2026-10-28 — chat Motore: riserve del punto 3 della RIPARTENZA (cervello forte e doctor), PR #290
+**Sessione:** 2026-10-28 — Note basse della PR #287 sul cervello forte: doctor più preciso sul PATH del timer, motivo senza prefisso doppio (chat Motore). Secondo giro: merge di main (PR #289) dopo la V-1 della verifica esterna #291.
 
 ---
 
 ## §0 DECISIONI UMANE RICHIESTE
 
-1. Merge della PR #290 (https://github.com/Gasss23/Gas/pull/290): review #542 APPROVATO CON RISERVE, quindi decide l'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON dello strumento GitHub `create_pull_request` (`gh` non autenticato in questo ambiente).
+1. Merge della PR #291 (https://github.com/Gasss23/Gas/pull/291): bot e verifica esterna APPROVATO CON RISERVE (BASSE), serve il «sì» dell'operatore (CLAUDE.md §10). Numero e URL dalla risposta JSON di `mcp__github__create_pull_request` (`gh` nel container non è autenticato).
 
 ---
 
 ## §1 SCOPE & ESITO FETTE
 
-- **Fetta 1 — R-538-1, GAS_CLAUDE_BIN solo nella shell**: `FATTA` — WARN se manca, è vuota o è diversa nel `.env` di Gas (V-1 ve #290, V-2 bot #290).
-- **Fetta 2 — R-538-2 e V-2 bot #287, motivo del forte**: `FATTA` — senza prefisso ripetuto, tetto 300. Correzione (V-3 ve #290): `_MSG_LOGIN` è di 152 caratteri, il vecchio tetto non lo troncava.
-- **Fetta 3 — V-1 bot #287, falsi WARN**: `FATTA` per `/usr/local` su Linux e i collegamenti risolti da entrambe le parti (R-540-1, T99z); `DEFERITA — ~/.zshenv`: l'errore va nel verso prudente.
-- **Fetta 4 — V-1 e V-3 bot #290, .env di Gas e GAS_CLAUDE_CLI solo nella shell**: `FATTA` — `DOTENV_PATH` unico; WARN «acceso solo nella shell».
+- **Fetta 1 — R-538-1 (GAS_CLAUDE_BIN dalla shell)**: `FATTA` — `_DOTENV_CARICATE` + WARN del doctor.
+- **Fetta 2 — R-538-2 + V-2 bot #287 (motivo)**: `FATTA` — niente prefisso doppio, tetto 240.
+- **Fetta 3 — V-1 bot #287 (due giri) + V-3 ve #287**: `FATTA` — `_avviso_claude_timer`.
+- **Fetta 4 — R-540-1 e R-540-2 (test)**: `FATTA` — review #541 APPROVATO.
+- **Fetta 5 — conflitto con main (V-1 MEDIA verifica esterna #291)**: `FATTA` — merge di origin/main 094eb57 (PR #289, solo documenti), review #542 APPROVATO.
 
 ---
 
 ## §2 GIT DIFF --STAT (sessione)
 
 ```
- .claude/agents/memoria_revisore.md |   6 ++++++
- gas.py                             | 104 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------
- reports/diff_sessione.md           |   7 +++++--
+ .claude/agents/memoria_revisore.md |   4 ++++
+ gas.py                             |  58 ++++++++++++++++++++++++++++++++++++++++------------------
+ reports/diff_sessione.md           |  13 ++++++++++---
  reports/stato_progetto.md          |   4 ++--
- reports/ultimo_report.md           |  15 ++++++++++-----
- tests/test_unit_kernel.py          |  73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ reports/ultimo_report.md           |  18 +++++++++++++-----
+ tests/test_unit_dotenv.py          |   9 +++++++++
+ tests/test_unit_kernel.py          |  54 ++++++++++++++++++++++++++++++++++++++++--------------
  reports/handoff.md                 | n/d (commit finale)
 ```
 
-NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d» e niente riga di totale. Conteggi presi con i report in stage.
+NB: per `reports/handoff.md` il conteggio non è misurabile al momento della scrittura (il file sta nel commit finale), quindi «n/d», e la riga di totale è tolta. Conteggi presi con i report già in stage.
 
 ## §3 GIT LOG --ONELINE (sessione)
 
 ```
-a8cde14 fix(doctor): .env di Gas (DOTENV_PATH), valore diverso nel .env e GAS_CLAUDE_CLI solo nella shell → WARN (V-1..V-3 bot #290)
-f530158 chore(revisore): memoria review #542 — APPROVATO CON RISERVE
-6771320 fix(doctor): .env con GAS_CLAUDE_BIN vuota o virgolette aperte non conta (V-1 ve #290), test .venv collegato (V-2 ve #290)
-ae576f9 chore(revisore): memoria review #541 — APPROVATO
-ae66740 docs(fine-task): PR #290 — riserve del punto 3, review #540
-cceadcc fix(forte): riserve del punto 3 — WARN se GAS_CLAUDE_BIN sta solo nella shell, motivo senza prefisso ripetuto e non troncato, /usr/local su Linux
-e6604cb chore(revisore): memoria review #540 — APPROVATO CON RISERVE
+1bc4441 Merge origin/main (PR #289) in fix/note-forte-doctor (PR #291) — review #542 APPROVATO
+baa9bb2 docs(fine-task): PR #291 note basse del forte, review #540/#541
+ed2c430 fix(forte): note basse della #287 — doctor più preciso sul PATH del timer, motivo senza prefisso doppio
+4b6538e chore(revisore): memoria review #541 — APPROVATO
+de5cf2b chore(revisore): memoria review #540 — APPROVATO CON RISERVE
 ```
 
 NB: il commit di fine-task che contiene questo file non compare in questo log, per costruzione. Il suo hash è nel `git log` del branch dopo il push.
 
 ## §4 VERDETTO DEL REVISORE (per commit motore)
 
-### Review #540 (chat Motore) — sul diff di cceadcc
+### Review #540 (chat Motore) — sul diff di ed2c430 (prima dei test aggiunti per R-540-1/R-540-2)
 
 ## VERDETTO: APPROVATO CON RISERVE
 
-Il diff in stage tocca gas.py e tests/test_unit_kernel.py. Ho ripetuto la suite del kernel: 1064 PASS, 0 FAIL. Ho provato tre mutanti e alla fine ho ripristinato gas.py: lo stage è invariato e non ci sono modifiche fuori stage.
+Review #540 (chat Motore) del diff già pronto per il commit sul branch fix/note-forte-doctor. File toccati: gas.py e tests/test_unit_kernel.py. Prima ho letto CLAUDE.md, la parte di stato_progetto che serviva e la mia memoria.
 
-Elementi esaminati:
-- gas.py:434 — `_motivo_forte` toglie il prefisso «claude-cli: » e conserva «429 », con un tetto di 300 caratteri — rischio esaminato: che cambi la classificazione QUOTA o che lasci uscire dati personali — ok. La classificazione resta su `str(e)` in `_classify_provider_error` (gas.py:4935); il motivo è solo testo mostrato. Resta valida solo la prima riga e il controllo «solo RuntimeError con prefisso fisso» è invariato. Prova diretta: «429 claude-cli: limite» diventa «429 limite». Il messaggio del login arriva intero (lo verifica T99u).
-- gas.py:463 — `_chiavi_dotenv` — rischio esaminato: che esponga valori — ok. Restituisce solo i nomi delle chiavi (prova con `SEGRETO=abc123`: esce solo la chiave), non fa log e non carica niente in os.environ. Se il file manca o non si legge restituisce None, senza crash (fail-safe §9).
-- gas.py:5022 — WARN «impostata solo nella shell» — rischio esaminato: che scatti a torto — ok. Il mutante che toglie il ramo fa fallire T99w. Il template scripts/notte/com.gas.notte.plist non ha EnvironmentVariables, quindi il caso «.env assente ma GAS_CLAUDE_BIN dal plist» non esiste nel repo. Con un plist personalizzato, oppure con un export in ~/.zshenv (il plist lancia `zsh -c`, che legge ~/.zshenv), il WARN sarebbe falso. È però un falso WARN e non un falso OK, quindi va nel verso prudente e l'exit code resta 0.
-- gas.py:455 — /usr/local/bin e /usr/local/sbin contano solo su Linux, con confronto anche a percorsi risolti — ok. Il mutante «sempre Linux» fa fallire T99x.
-- tests/test_unit_kernel.py:11216 — ripristino dell'ambiente dopo il test — ok. GAS_NO_DOTENV torna a "1", come lo imposta globalmente tests/test_unit_kernel.py:53. Il `.env` di prova viene cancellato, PATH e GAS_CLAUDE_BIN vengono ripristinati. `gas.sys.platform` torna al valore originale nel `finally` di T99x.
+**Cosa ho esaminato nel diff**
+- `gas.py:449` — `_avviso_claude_timer` restituisce un motivo, oppure None se il timer trova `claude`. Ho cercato falsi OK nuovi: non ce ne sono.
+  - GAS_CLAUDE_BIN relativo → WARN.
+  - GAS_CLAUDE_BIN assoluto ma non preso dal .env → WARN.
+  - Conta solo il primo venv che ha `bin/activate`, come fa scripts/notte/com.gas.notte.plist:15.
+  - /usr/local/bin conta solo su Linux, quindi niente falso OK sul Mac con Homebrew Intel.
+  - Se il percorso indicato non esiste, `shutil.which` dà None e il doctor dà già WARN prima di arrivare qui.
+  - Esito: ok.
+- `gas.py:627` — `_DOTENV_CARICATE.update(caricate)` contiene solo i nomi scritti davvero dal .env. Se la variabile c'è sia nella shell sia nel .env, vince la shell, il nome non entra nell'insieme e il doctor dà WARN: falso allarme, nel verso prudente.
+  - Effetti collaterali: la variabile globale si aggiorna solo all'avvio della CLI (`gas.py:6066`). In pytest c'è GAS_NO_DOTENV, quindi l'insieme resta vuoto. tests/test_unit_dotenv.py ci lascia dentro nomi GAS_T_*, che non danno fastidio.
+  - Il test fa add e discard dentro un `finally` (`tests/test_unit_kernel.py:11210`).
+  - Esito: ok, con la riserva R-540-1.
+- `gas.py:439` — `_motivo_forte` toglie il prefisso «claude-cli: », tiene «429 » e taglia a 240 caratteri.
+  - Fughe di dati: tutti i raise di brains/claude_cli.py sono testi fissi. L'unica parte variabile è il timeout (un numero). `_prefisso_limite` restituisce solo «429 » oppure "". Il messaggio del login entra intero.
+  - Esito: ok.
+- `gas.py:466` — il confronto con realpath: vedi la riserva R-540-2.
+- `tests/test_unit_kernel.py:11209` — T99s copre tre casi: solo PATH → WARN, assoluto dalla shell → WARN, assoluto dal .env → OK. Esito: ok.
+- `tests/test_unit_kernel.py:11233` — T99t: col secondo venv dà l'avviso, col link simbolico no, /usr/local/bin vale solo con linux=True. Esito: ok.
 
-Riserve:
-- R-540-1 BASSA — gas.py:460: il mutante che toglie `{os.path.realpath(v) for v in vedute}` sopravvive con la suite verde. T99x mette il collegamento solo dalla parte del binario (lnk99 → /usr/bin); manca un caso col collegamento dalla parte delle cartelle note, per esempio `.venv` collegato altrove.
-- R-540-2 BASSA — gas.py:478: `_chiavi_dotenv` conta anche righe che `_carica_dotenv` scarta (virgolette non chiuse). Conta anche `GAS_CLAUDE_BIN=` con valore vuoto. In questi casi rari il doctor dà un falso OK.
-- Nota, non bloccante e già presente prima: il doctor cerca il `.env` nella cartella da cui lo lanci (gas.py:4963), mentre `_carica_dotenv` lo legge accanto a gas.py. Se lanci il doctor da un'altra cartella, il WARN può essere falso, sempre nel verso prudente.
+**Prove eseguite**
+- Suite del kernel rifatta: 1057 PASS, 0 FAIL.
+- Mutanti (gas.py ripristinato, zero differenze):
+  - con «da_dotenv» ignorato → T99s e T99t FAIL;
+  - con «qualsiasi venv» invece del primo → T99t FAIL;
+  - senza realpath sul binario → T99t FAIL;
+  - senza realpath sulle cartelle → il mutante sopravvive.
 
-Antipattern di CLAUDE.md sez. 5: niente slicing della cronologia (gli slicing nel diff sono solo su stringhe), niente simulazione di tool. Il tetto delle 10 iterazioni e `_get_window` non sono toccati.
+**Finding**
+- **R-540-1 BASSA**: nessun test collega `_carica_dotenv` a `_DOTENV_CARICATE`. T99s aggiunge il nome a mano, quindi togliendo `gas.py:627` non fallisce nulla e potrebbe tornare il WARN sempre acceso o la regressione inversa senza che nessun test se ne accorga. Rimedio: in tests/test_unit_dotenv.py controllare che il nome caricato finisca in `gas._DOTENV_CARICATE`, e che non ci finisca quando la shell vince.
+- **R-540-2 BASSA**: il mutante con realpath tolto alle cartelle (`gas.py:466`) sopravvive. L'effetto sarebbe solo un falso WARN, per esempio con la radice del repo sotto un collegamento simbolico come /tmp → /private/tmp sul Mac.
+- **R-540-3 BASSA (c'era già prima)**: su Linux il venv è contato come «visto dal timer» per analogia col plist, ma nel repo non c'è un'unità systemd che lo attivi. Lanciare `venv/bin/python` non mette `venv/bin` nel PATH, quindi potrebbe esserci un falso OK sulla VPS.
 
-Rischio escluso: non ho verificato il comportamento reale su macOS (launchd con `zsh -c` e ~/.zshenv, /bin non collegato): non è riproducibile in questo ambiente Linux. Il caso Mac l'ho visto solo simulando `sys.platform="darwin"` in T99x.
+**Cosa non ho verificato**: il comportamento reale di launchd e systemd e del PATH di ~/.zshenv sul Mac e sulla VPS, perché qui non si possono riprodurre. Non ho rifatto pytest completo (2282 passed è un dato dichiarato dall'agente); ho rifatto solo la suite del kernel.
 
-Riga contatore #540 scritta e committata: e6604cb, solo /home/user/Gas/.claude/agents/memoria_revisore.md. Lezione nuova aggiunta: un confronto a collegamenti risolti va provato con un collegamento da ciascuna delle due parti.
+**Memoria**: riga #540 (chat Motore) e una lezione nuova (uno stato simulato a mano nel test va collegato da un altro test alla funzione vera) aggiunte in /home/user/Gas/.claude/agents/memoria_revisore.md, commit de5cf2b. Il diff in revisione resta intatto e pronto per il commit.
 
-### Review #541 (chat Motore) — sul diff di 6771320
+### Review #541 (chat Motore) — sul diff finale di ed2c430
 
 ## VERDETTO: APPROVATO
 
-Review #541, PR #290 secondo giro. Ho letto CLAUDE.md, reports/stato_progetto.md (le voci R-540) e .claude/agents/memoria_revisore.md. Il diff staged è `gas.py` e `tests/test_unit_kernel.py`.
+Review #541 (chat Motore): rifatta la review sul diff pronto per il commit (gas.py, tests/test_unit_dotenv.py, tests/test_unit_kernel.py). gas.py è identico, byte per byte, a quello approvato con riserve nella #540.
+
+**Cosa ho esaminato**
+- `tests/test_unit_dotenv.py:127` — il nuovo test collega `_carica_dotenv` a `_DOTENV_CARICATE`. Il nome letto dal file entra, quello già impostato nella shell no. Ho controllato due rischi:
+  - lo stato globale sporcato tra un test e l'altro: no, il test sostituisce l'insieme con `monkeypatch.setattr` e lo ripristina da solo;
+  - il caricamento del .env spento da GAS_NO_DOTENV: no, la fixture `env` toglie quella variabile.
+  - Esito: ok, R-540-1 chiusa.
+- `tests/test_unit_kernel.py:11236` — T99t ora prova anche una radice raggiunta da un collegamento simbolico (`linkroot99`). Esito: ok, R-540-2 chiusa.
+- `gas.py:627` e `gas.py:466` — le due righe di codice che i test nuovi proteggono. Esito: ok.
+
+**Prove rifatte da me** (gas.py ripristinato, zero differenze)
+- `gas.py:627` tolta (il loader non registra più i nomi caricati) → il test dotenv nuovo FALLISCE.
+- `gas.py:466` con `vedute = set(cartelle)`, cioè senza risolvere i collegamenti simbolici delle cartelle → T99t FALLISCE.
+- Suite senza modifiche: kernel 1057 PASS, 0 FAIL; test_unit_dotenv 11 passed.
+
+**Finding**
+- **R-541-1 COSMETICA**: `linkroot99` punta alla radice stessa, quindi crea un ciclo, e resta nella cartella temporanea del test. Oggi non fa danni (la suite passa e la pulizia non segue i collegamenti). Un futuro test che scorre quella cartella seguendo i collegamenti ci girerebbe dentro all'infinito: meglio cancellarlo subito dopo l'uso.
+- R-540-3 (venv su Linux senza unità systemd) l'agente dichiara di tracciarla in stato_progetto come aperta. Non è nel diff e non l'ho verificata.
+
+**Cosa non ho verificato**: il comportamento reale di launchd e systemd, perché qui non si può riprodurre. Non ho rifatto pytest completo, solo test_unit_dotenv e la suite del kernel.
+
+**Memoria**: riga #541 aggiunta in /home/user/Gas/.claude/agents/memoria_revisore.md, commit 4b6538e. Nella #540 c'era già il commit de5cf2b con la riga #540 e la lezione. Il diff in revisione resta intatto e pronto per il commit.
+
+### Review #542 (chat Motore) — sul merge di origin/main (PR #289) in 1bc4441
+
+## VERDETTO: APPROVATO
+
+Review #542 (chat Motore): è il merge in corso di origin/main 094eb57 (PR #289, che tocca solo documenti) dentro fix/note-forte-doctor (PR #291, HEAD baa9bb2).
+
+Ho letto prima: CLAUDE.md (sez. 5), reports/stato_progetto.md (solo le righe toccate), la coda di .claude/agents/memoria_revisore.md (ultime review #539–#541).
 
 **Elementi del diff esaminati**
-- `gas.py:576` — `_voci_dotenv(testo, avvisa)` è un generator con il corpo identico al vecchio ciclo di `_carica_dotenv`, confrontato riga per riga. Il rischio esaminato era un refactor che cambiasse il comportamento. L'ho provato direttamente su un `.env` di prova:
-  - il BOM viene tolto;
-  - ` #` apre un commento solo sui valori senza virgolette, `d#nocomm` resta intero;
-  - `export` viene tolto;
-  - `PATH` già presente non viene sovrascritto;
-  - `E1=` vuota viene ancora caricata, come prima;
-  - i warning sono `.env riga 2: formato non valido` e `.env riga 3 (B1): virgolette non chiuse`, con numero di riga e senza il valore (il segreto non compare nel log).
-  - Esito: ok.
-- `gas.py:625` — `_carica_dotenv` ora usa `for chiave, valore in _voci_dotenv(testo)`. Rischio esaminato: il BOM, la gestione di file assente o illeggibile e il ritorno dei nomi caricati. La lettura con `utf-8-sig`, le eccezioni e il ritorno dei nomi sono rimasti invariati. Esito: ok.
-- `gas.py:463` — `_chiavi_dotenv` legge con `avvisa=False` e tiene `{chiave … if valore}`. Rischi esaminati: valori che escono e warning doppi. Ritorna solo un set di nomi e non scrive nulla nel log (nel buffer di prova ci sono solo i 2 warning di `_carica_dotenv`). La regex non può sollevare eccezioni, e quelle in lettura del file restano intercettate. Esito: ok.
-- `tests/test_unit_kernel.py:11257` — T99y aggiornato con `VUOTA=` e `APERTA="/x`. Mutante che toglie il filtro `if valore`: T99y FAIL con `{'VUOTA', …}`. Il test uccide il mutante. Esito: ok.
-- `tests/test_unit_kernel.py:11264` — T99z nuovo: `.venv` collegato a `venv_vero99`. Mutante che toglie il realpath sulle cartelle note in `gas.py:458`: T99z FAIL (1064/1). R-540-1 è chiusa davvero. Esito: ok.
-- Contesto (file non toccato in questo giro): `gas.py:5023` resta l'unico chiamante di `_chiavi_dotenv`, e il controllo «è nel .env» lì è coerente con la nuova semantica. Esito: ok.
+- `gas.py:627` — `_DOTENV_CARICATE.update(caricate)`, la chiusura di R-540-1 già revisionata in #541. Rischio: che il merge abbia alterato il codice del ramo. `git diff --cached baa9bb2 -- gas.py` è vuoto, quindi il file è identico al ramo. Inoltre dal merge-base 0a9ce70 main ha toccato solo 4 file di reports/ (diff_sessione, handoff, stato_progetto, ultimo_report). Esito: ok.
+- `tests/test_unit_dotenv.py:130` — monkeypatch di `_DOTENV_CARICATE` nel test che lega `_carica_dotenv` al registro. Rischio: test persi o cambiati dal merge. Il diff verso baa9bb2 è vuoto, e lo è anche per `tests/test_unit_kernel.py`. Esito: ok.
+- `gas.py:5011` — il doctor usa `"GAS_CLAUDE_BIN" in _DOTENV_CARICATE`. Rischio: codice di main che entra senza review. `git diff --cached origin/main -- gas.py` mostra solo i 5 blocchi di modifica della PR #291 (righe 14, 426, 549, 603, 4985), cioè quanto già revisionato in #540/#541. Esito: ok.
+- `reports/stato_progetto.md:4` — testata unita: prima la voce della PR #291, poi la voce di main («`claude` del Mac provato col PATH del timer, PR #286 chiusa come doppione della #287»), poi la catena «prima» intatta. Rischio: frasi perse. Il confronto parola per parola verso il ramo non trova nessuna rimozione; verso main ci sono solo aggiunte. Esito: ok.
+- `reports/stato_progetto.md:589` — punto 3 della ripartenza Motore. Contiene la frase di main «Giro delle 12:22 … PR #286 chiusa senza merge: doppione della #287.» subito prima di «Fetta fatta (PR #287». L'unica differenza da main è l'aggiunta delle note chiuse nella PR #291 e di R-540-3. Esito: ok.
+- Altri controlli:
+  - nessun marcatore di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`) in reports/*.md, gas.py e tests/*.py;
+  - handoff.md, ultimo_report.md e diff_sessione.md sono la versione del ramo, come dichiarato;
+  - la memoria del revisore è identica a baa9bb2 prima della mia riga.
 
-**Test.** Suite kernel 1065 PASS, 0 FAIL, rieseguita da me. `pytest tests/test_unit_dotenv.py`: 10 passed. Dopo i mutanti `gas.py` è stato ripristinato e il diff unstaged è vuoto.
+**Finding**
+- Nessun finding R-542-N. Il merge non introduce né codice né testo nuovo oltre a quello della PR #291 e della PR #289.
 
-**Antipattern e guardrail.** Nessuno slicing della history, nessuna simulazione di tool. Il cap delle 10 iterazioni, `_get_window` e la regola fail-safe §9 non sono toccati.
+**Rischio escluso**: non ho rieseguito io i test (kernel e pytest su dotenv e claude_cli). Mi fido dei risultati verdi che hai riportato: il codice è identico, byte per byte, a baa9bb2, già provato in #541. Non ho verificato neanche il contenuto di handoff.md e ultimo_report.md, perché li riscrivi tu con il /fine-task.
 
-**Riserva COSMETICA, non bloccante**
-- R-541-1: `GAS_CLAUDE_BIN="  "` (solo spazi tra virgolette) conta come valorizzata e il doctor darebbe OK. Il caso è teorico.
-
-**Rischio escluso.** Non ho verificato il comportamento reale sul Mac: il `.env` vero dell'operatore e il timer launchd non sono riproducibili qui. Non ho rieseguito nemmeno i pytest di claude_cli e della notte: questo diff non li tocca.
-
-**Memoria.** Riga #541 e una lezione aggiunte a `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate da sole (ae576f9). Il diff staged di `gas.py` e `tests/test_unit_kernel.py` è rimasto in staging, intatto.
-
-### Review #542 (chat Motore) — sul diff di a8cde14
-
-## VERDETTO: APPROVATO CON RISERVE
-
-Revisione n. 542: PR #290, terzo giro, diff in staging su `gas.py` e `tests/test_unit_kernel.py`. Prima di cominciare ho letto CLAUDE.md (sezione 5), la parte di `reports/stato_progetto.md` su #290 (riga 589) e la mia memoria (#539–#541).
-
-**Elementi del diff esaminati**
-- `gas.py:580` — `DOTENV_PATH` diventa l'unico percorso del `.env`, accanto a gas.py. Lo usano sia `_carica_dotenv` (`gas.py:630`) sia il doctor (`gas.py:5018`). Rischio esaminato: che il caricamento e il doctor leggano file diversi. Esito: ok nel codice, ma con riserva sui test (R-542-1, sotto).
-- `gas.py:463` — `_valori_dotenv` restituisce un dict con i soli valori non vuoti e chiama `_voci_dotenv(..., avvisa=False)`, quindi non scrive nel log. Rischio esaminato: che un valore del `.env` finisca in output o nel log. Esito: ok. I messaggi di WARN alle righe 5022 e 5037 contengono solo `binario`, cioè il percorso in uso preso dall'ambiente o da `which`, mai un valore letto dal `.env`. Il ramo V-2 confronta i valori senza mai stamparli.
-- `gas.py:566` / `gas.py:572` — `_env_flag` ora delega a `_flag_vero`. Rischio esaminato: che il comportamento cambi. Esito: ok, l'espressione è identica (strip, lower, insieme 1/true/on/yes/si).
-- `gas.py:5018` — se `GAS_NO_DOTENV` è attivo, `_dotenv` vale None e i due controlli V-2 e V-3 si spengono, perché entrambi sono protetti da `_dotenv is not None`. Esito: ok. Il mutante che ignora `GAS_NO_DOTENV` fa fallire T99s.
-- `gas.py:5022` — il WARN V-3 sta solo nel ramo `else` di `_env_flag("GAS_CLAUDE_CLI")`, quindi con il forte spento non scatta. Con `.env` assente (dict vuoto) il WARN «acceso solo nella shell» è corretto. Esito: ok. Il mutante senza V-3 fa fallire T99w2.
-- `gas.py:5037` — V-2 confronta il `GAS_CLAUDE_BIN` del `.env` con quello in uso. È coerente col caricamento, che non sovrascrive variabili già presenti: se shell e `.env` divergono, di notte vale il `.env`. Esito: ok. Il mutante che torna al controllo sul solo nome fa fallire T99w2.
-- `tests/test_unit_kernel.py:11212` — il test salva `gas.DOTENV_PATH` e lo ripristina nel `finally` a `tests/test_unit_kernel.py:11224`, dove rimette anche `GAS_NO_DOTENV=1` e cancella il `.env` di prova. Rischio esaminato: stato globale che resta sporco tra un test e l'altro. Esito: ok.
-- Contesto: `tests/test_unit_kernel.py:11205` — il `.env` di prova sta in `_k99.root`, la stessa cartella passata a `gas.doctor(root)`. Esito: **riserva R-542-1**.
-
-**Riserva**
-- **R-542-1 BASSA**: il mutante che rimette `root / ".env"` al posto di `DOTENV_PATH` in `gas.py:5018` sopravvive (suite 1066 PASS, 0 FAIL). Nel test il percorso puntato da `DOTENV_PATH` e `root/.env` sono lo stesso file, quindi la correzione V-1 non è coperta. Rimedio: in T99w mettere il `.env` di prova fuori da `_k99.root`, ad esempio in una sottocartella, e puntarci `gas.DOTENV_PATH`.
-
-**Prove eseguite**: suite kernel 1066 PASS, 0 FAIL. Quattro mutanti: tre uccisi (senza V-3, V-2 solo sul nome, `GAS_NO_DOTENV` ignorato), uno sopravvissuto (R-542-1). Dopo i mutanti ho rimesso `gas.py` com'era: è ancora in staging senza modifiche extra.
-
-**Rischi esclusi**
-- Comportamento sul Mac reale (launchd con `.env` e `~/.zshrc` diversi) non verificato: non è riproducibile qui.
-- Non ho rilanciato la parte pytest (dotenv, claude_cli, notte: 233 passed secondo il chiamante). Il diff non tocca quei moduli.
-- Caso limite non coperto, raro e innocuo: `GAS_CLAUDE_BIN=""` esportata vuota nella shell con un valore nel `.env` salta il controllo V-2.
-
-**Memoria**: riga #542 e una lezione nuova («un fix "percorso A invece di B" va provato con A diverso da B nel test») aggiunte a `/home/user/Gas/.claude/agents/memoria_revisore.md`, committate con lo script (f530158).
+**Memoria**: ho aggiunto la riga #542 in coda a /home/user/Gas/.claude/agents/memoria_revisore.md, senza lezioni nuove. Come mi hai chiesto non ho lanciato commit_memoria_revisore.sh: il file va messo in stage da te prima di chiudere il merge.
 
 ## §5 DELTA TEST DEL MOTORE
 
-Suite kernel locale: 1061 → 1066 PASS (T99w, T99w2, T99x, T99y, T99z nuovi; T99s, T99u aggiornati), 0 FAIL. Il valore di main è misurato in un worktree a `094eb57`. In CI i conteggi sono 2 in più (V-4 bot #290: test che dipendono dall'ambiente).
+Kernel: 1057 → 1057 PASS (nessun check nuovo: T99s, T99t, T99u e T99v hanno più casi dentro). Conteggi del container locale: la CI ne conta di più (es. 1063 su #287, V-2 bot #287).
 
 ```
-=== RIEPILOGO: 1066 PASS, 0 FAIL ===
+=== RIEPILOGO: 1057 PASS, 0 FAIL ===
 ```
 
-pytest (tutti i file tranne la suite kernel), sulla testa `a8cde14`: `2282 passed, 61 skipped in 207.97s (0:03:27)`.
+pytest (`python3 -m pytest -q tests`, prima dei test aggiunti per la #541): `2282 passed, 61 skipped in 192.48s (0:03:12)`. Dopo: `python3 -m pytest -q tests/test_unit_dotenv.py` → `11 passed in 6.00s`. Nessun FAIL.
+
+Dopo il merge di main (1bc4441): kernel `=== RIEPILOGO: 1057 PASS, 0 FAIL ===`; `python3 -m pytest -q tests/test_unit_dotenv.py tests/test_unit_claude_cli.py` → `40 passed in 0.77s`.
 
 ## §6 STATO CI
 
-CI letta con lo strumento GitHub della sessione: `gh run list` non è disponibile (`gh` non autenticato).
+`gh` nel container non è autenticato: stato letto con gli strumenti GitHub della sessione (notifiche della PR e `actions_list`, branch fix/note-forte-doctor).
 
 Mappatura commit→run:
-- `e6604cb`: nessuna run su questo SHA (pushato insieme a `cceadcc`).
-- `cceadcc`: `handoff-check` failure (atteso: handoff non ancora riscritto); poi sistemato da `ae66740`.
-- `ae66740`: `unit-suite` success, `handoff-check` success, `verifica-bot` success (APPROVATO CON RISERVE, V-1..V-3 BASSE chiuse in `a8cde14`, V-4 COSMETICA).
-- `ae576f9`: nessuna run su questo SHA (pushato insieme a `6771320`).
-- `6771320`: `verifica-bot` failure (MEDIA: handoff fermo a `cceadcc`, chiusa da questo fine-task).
-- `f530158`, `a8cde14`: nessuna run su questi SHA (pushati insieme al commit di fine-task).
-- commit di fine-task che contiene questo file: run non ancora disponibile alla scrittura dell'handoff.
+- de5cf2b, 4b6538e → nessuna run su questi SHA (pushati insieme a ed2c430).
+- ed2c430 → CI della push di ed2c430 (handoff-check rosso atteso: l'handoff è arrivato col commit dopo).
+- baa9bb2 → CI completata senza fallimenti (notifica check_suite.completed delle 18:30), verifica-bot success (APPROVATO CON RISERVE).
+- 1bc4441 (merge di main) → run non ancora disponibile alla scrittura dell'handoff (pushato insieme al commit di fine-task).
+- commit di fine-task → run non ancora disponibile alla scrittura dell'handoff.
 
 ## §7 RISERVE APERTE
 
-- R-542-1 BASSA: nel test il `.env` di prova coincide con `root/.env`, quindi un ritorno a `root/.env` non sarebbe preso.
-- R-541-1 COSMETICA: `GAS_CLAUDE_BIN="  "` conta come valorizzata.
-- V-4 COSMETICA ve #290: «429 429» in un caso non reale.
-- Il PATH di `~/.zshenv` non è considerato (falso WARN, verso prudente).
+- **R-540-3** (BASSA, review #540): su Linux il venv conta come visto dal timer, ma nessuna unità systemd lo attiva (falso OK possibile sulla VPS).
+- **R-541-1** (COSMETICA, review #541): `linkroot99` in T99t è un collegamento ciclico lasciato nella cartella temporanea.
+- **V-1 bot #291** (BASSA): GAS_CLAUDE_BIN sia nella shell sia nel `.env` → falso WARN con consiglio inutile.
+- **V-2 bot #291** (BASSA): `GAS_CLAUDE_BIN=claude` (nome senza «/») → sempre WARN.
+- **Verifica esterna #291** ([commento](https://github.com/Gasss23/Gas/pull/291#issuecomment-6477290329)): V-1 MEDIA conflitto con main CHIUSA da 1bc4441 (review #542); V-2 = V-1 bot #291; V-3 = R-540-3; V-4 COSMETICA §6 stantio (corretto qui).

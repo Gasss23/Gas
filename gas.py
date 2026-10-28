@@ -5,7 +5,6 @@ import hashlib
 import math as _math_module
 import os
 import shutil
-import sys
 import threading
 try:
     import fcntl  # R-c4b3-4: lock della cronologia (assente su Windows)
@@ -15,6 +14,7 @@ import re
 import json
 import shlex
 import stat
+import sys
 import logging
 import subprocess
 import time as _time
@@ -427,49 +427,46 @@ def _classify_provider_error(status_code: Optional[int], err_text: str,
 def _motivo_forte(e: BaseException) -> Optional[str]:
     """Motivo leggibile di un errore del cervello forte, per la riga «Pipeline esausta»
     (e quindi il report della notte). Solo i messaggi di `brains/claude_cli.py`, che
-    sono testi fissi senza testo di Claude (V-3 bot #256); altrimenti None."""
+    sono testi fissi senza testo di Claude (V-3 bot #256); altrimenti None. Senza il
+    prefisso «claude-cli: », già nella riga (V-2 bot #287); tetto 240 caratteri, così
+    il messaggio del login entra intero (R-538-2)."""
     if not isinstance(e, RuntimeError):
         return None
     testo = (str(e).strip().splitlines() or [""])[0]
     m = re.match(r"^(429 )?claude-cli: ", testo)
     if not m:
         return None
-    # V-2 bot #287: niente «claude-cli: KO (claude-cli: …)»; R-538-2: il messaggio del
-    # login (~180 caratteri) deve arrivare intero
-    return ((m.group(1) or "") + testo[m.end():])[:300]
+    return ((m.group(1) or "") + testo[m.end():])[:240]
 
 
 # Cartelle che vede un timer notturno (launchd sul Mac, systemd su Linux) senza il
 # PATH del terminale: lì `claude` installato in ~/.local/bin o Homebrew non si trova.
+# Il PATH predefinito di systemd ha anche /usr/local/bin (V-1 bot #287).
 _PATH_TIMER = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
-# V-1 bot #287: il PATH predefinito di systemd ha anche /usr/local (launchd no)
-_PATH_TIMER_LINUX = ("/usr/local/bin", "/usr/local/sbin")
+_PATH_TIMER_LINUX = ("/usr/local/bin",)
 
 
-def _claude_solo_nel_terminale(valore_env: str, binario: str, root: Path) -> bool:
-    """True se `claude` si trova solo grazie al PATH del terminale: GAS_CLAUDE_BIN non
-    è un percorso assoluto e il comando trovato non sta nelle cartelle del timer né
-    nel venv di Gas (che il giro notturno attiva). Pura, per il doctor."""
-    if os.path.isabs(valore_env or ""):
-        return False
-    vedute = (list(_PATH_TIMER) + (list(_PATH_TIMER_LINUX) if sys.platform.startswith("linux") else [])
-              + [str(root / v / "bin") for v in (".venv", "venv")])
-    # V-1 bot #287: confronto anche a collegamenti risolti (es. /bin → /usr/bin)
-    cartella = os.path.dirname(os.path.abspath(binario))
-    return not ({cartella, os.path.realpath(cartella)}
-                & ({os.path.abspath(v) for v in vedute} | {os.path.realpath(v) for v in vedute}))
-
-
-def _valori_dotenv(p: Path) -> Optional[Dict[str, str]]:
-    """Le variabili che _carica_dotenv caricherebbe dal `.env` con un valore NON vuoto
-    (V-1 ve #290 / R-540-2: «GAS_CLAUDE_BIN=» o virgolette non chiuse non contano).
-    Per i confronti del doctor: i valori non vanno mai stampati né nel log (possono
-    essere chiavi). None se il file manca o è illeggibile."""
-    try:
-        testo = p.read_text(encoding="utf-8-sig")
-    except Exception:
+def _avviso_claude_timer(valore_env: str, binario: str, root: Path,
+                         da_dotenv: bool, linux: bool = False) -> Optional[str]:
+    """Perché il giro notturno potrebbe non trovare `claude` (None = lo trova). Pura,
+    per il doctor (notti del 27 e 28 ottobre). Casi: GAS_CLAUDE_BIN non assoluto (V-3
+    ve #287), assoluto ma non dal `.env` (R-538-1: il timer legge solo il `.env`), o
+    comando trovato fuori dalle cartelle del timer e dal venv che il plist attiva (solo
+    il primo fra .venv e venv con bin/activate, V-1 bot #287). Cartelle confrontate con
+    realpath (collegamenti simbolici). Un PATH messo in ~/.zshenv lo vede anche il timer
+    (`zsh -c`): lì l'avviso è un falso allarme, nel verso prudente."""
+    if valore_env:
+        if not os.path.isabs(valore_env):
+            return "GAS_CLAUDE_BIN non è un percorso assoluto"
+        return None if da_dotenv else "GAS_CLAUDE_BIN non viene dal .env (il giro notturno legge solo quello)"
+    cartelle = list(_PATH_TIMER) + (list(_PATH_TIMER_LINUX) if linux else [])
+    venv = next((root / v for v in (".venv", "venv") if (root / v / "bin" / "activate").is_file()), None)
+    if venv is not None:
+        cartelle.append(str(venv / "bin"))
+    vedute = {os.path.realpath(c) for c in cartelle}
+    if os.path.realpath(os.path.dirname(os.path.abspath(binario))) in vedute:
         return None
-    return {chiave: valore for chiave, valore in _voci_dotenv(testo, avvisa=False) if valore}
+    return "trovato solo nel PATH del terminale: il giro notturno non lo vede"
 
 
 def _probe_free_model(base_url: str, model: str, api_key: Optional[str], _fetch=None) -> Tuple[str, str]:
@@ -566,48 +563,15 @@ def _env_flag(name: str) -> bool:
     """Legge un flag booleano da env, FAIL-SAFE: vero solo per 1/true/on/yes/si
     (case-insensitive); assente o qualsiasi altro valore → False. Usato per i
     feature-gate OPT-IN (es. il retrieval semantico, spento di default)."""
-    return _flag_vero(os.environ.get(name, ""))
-
-
-def _flag_vero(valore: str) -> bool:
-    """Le regole di _env_flag su un valore già letto (es. dal `.env`)."""
-    return valore.strip().lower() in ("1", "true", "on", "yes", "si")
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "on", "yes", "si")
 
 
 _DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-# Il `.env` che Gas carica (accanto a gas.py, non nella cwd): punto unico per il
-# caricamento e per i controlli del doctor (V-1 bot #290)
-DOTENV_PATH = Path(__file__).resolve().parent / ".env"
+# Nomi delle variabili arrivate dal `.env` (non dalla shell): il doctor le usa per dire
+# se il giro notturno, che legge solo il `.env`, vedrà GAS_CLAUDE_BIN (R-538-1).
+_DOTENV_CARICATE: set = set()
 # R-260-1: `"valore" # commento` come in zsh; dentro le virgolette il # è testo.
 _DOTENV_VIRGOLETTE = re.compile(r"""(['"])(.*?)\1(?:\s+#.*)?""")
-
-
-def _voci_dotenv(testo: str, avvisa: bool = True) -> Generator[Tuple[str, str], None, None]:
-    """Le coppie (chiave, valore) valide di un `.env`, con le regole di _carica_dotenv.
-    Righe malformate o con virgolette non chiuse: saltate (warning se `avvisa`, mai il valore)."""
-    for n, riga in enumerate(testo.splitlines(), 1):
-        riga = riga.strip()
-        if not riga or riga.startswith("#"):
-            continue
-        if riga.startswith("export "):
-            riga = riga[len("export "):].lstrip()
-        chiave, sep, valore = riga.partition("=")
-        chiave = chiave.strip()
-        if not sep or not _DOTENV_CHIAVE.fullmatch(chiave):
-            if avvisa:
-                logging.warning(f".env riga {n}: formato non valido, ignorata")
-            continue
-        valore = valore.strip()
-        tra_virgolette = _DOTENV_VIRGOLETTE.fullmatch(valore)
-        if tra_virgolette:
-            valore = tra_virgolette.group(2)
-        elif valore[:1] in ("'", '"'):
-            if avvisa:
-                logging.warning(f".env riga {n} ({chiave}): virgolette non chiuse, ignorata")
-            continue
-        else:
-            valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
-        yield chiave, valore
 
 
 def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
@@ -627,7 +591,7 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
     Ritorna i NOMI delle variabili caricate."""
     if _env_flag("GAS_NO_DOTENV"):
         return []
-    p = path if path is not None else DOTENV_PATH
+    p = path if path is not None else Path(__file__).resolve().parent / ".env"
     try:
         testo = p.read_text(encoding="utf-8-sig")  # R-260-2: BOM di alcuni editor
     except FileNotFoundError:
@@ -636,11 +600,31 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
         logging.warning(f".env non leggibile ({type(e).__name__}): variabili non caricate")
         return []
     caricate: List[str] = []
-    for chiave, valore in _voci_dotenv(testo):
+    for n, riga in enumerate(testo.splitlines(), 1):
+        riga = riga.strip()
+        if not riga or riga.startswith("#"):
+            continue
+        if riga.startswith("export "):
+            riga = riga[len("export "):].lstrip()
+        chiave, sep, valore = riga.partition("=")
+        chiave = chiave.strip()
+        if not sep or not _DOTENV_CHIAVE.fullmatch(chiave):
+            logging.warning(f".env riga {n}: formato non valido, ignorata")
+            continue
+        valore = valore.strip()
+        tra_virgolette = _DOTENV_VIRGOLETTE.fullmatch(valore)
+        if tra_virgolette:
+            valore = tra_virgolette.group(2)
+        elif valore[:1] in ("'", '"'):
+            logging.warning(f".env riga {n} ({chiave}): virgolette non chiuse, ignorata")
+            continue
+        else:
+            valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
         if chiave in os.environ:
             continue
         os.environ[chiave] = valore
         caricate.append(chiave)
+    _DOTENV_CARICATE.update(caricate)
     return caricate
 
 
@@ -5014,34 +4998,20 @@ def doctor(root_dir: Optional[str] = None) -> int:
     # 2a. Cervello forte (R2 via B): MAI una chiamata vera (consumerebbe l'abbonamento),
     # solo interruttore, comando presente e conto di oggi contro il tetto (R-497-2: un
     # conto illeggibile o con data futura tiene il forte fermo, e qui si vede).
-    # Il giro notturno vede solo il `.env` (V-1/V-3 bot #290); None = .env non usato
-    _dotenv = None if _env_flag("GAS_NO_DOTENV") else (_valori_dotenv(DOTENV_PATH) or {})
     if not _env_flag("GAS_CLAUDE_CLI"):
         check("Cervello forte", "claude-cli", "OK", "spento (GAS_CLAUDE_CLI non attivo)")
     else:
-        if _dotenv is not None and not _flag_vero(_dotenv.get("GAS_CLAUDE_CLI", "")):
-            # V-3 bot #290: acceso solo nella shell (es. ~/.zshrc) → di notte è spento
-            check("Cervello forte", "claude-cli", "WARN",
-                  "acceso solo nella shell: di notte il forte è spento (metti GAS_CLAUDE_CLI=1 nel .env)")
         # V-1 bot #262: un GAS_CLAUDE_BIN che non esiste o non è eseguibile non è «presente»
         _bin_env = os.environ.get("GAS_CLAUDE_BIN") or ""
         binario = shutil.which(_bin_env or "claude")
         if not binario:
             check("Cervello forte", "comando claude", "WARN",
                   "non trovato o non eseguibile: il forte non può rispondere")
-        elif _claude_solo_nel_terminale(_bin_env, binario, root):
-            # Notti del 27 e 28 ottobre: il timer notturno non vede il PATH del terminale
+        elif (_avviso := _avviso_claude_timer(_bin_env, binario, root,
+                                              "GAS_CLAUDE_BIN" in _DOTENV_CARICATE,
+                                              sys.platform.startswith("linux"))):
             check("Cervello forte", "comando claude", "WARN",
-                  f"trovato solo nel PATH del terminale: il giro notturno non lo vede "
-                  f"(metti GAS_CLAUDE_BIN={binario} nel .env)")
-        elif _bin_env and _dotenv is not None and _dotenv.get("GAS_CLAUDE_BIN") != _bin_env:
-            # R-538-1: impostata solo nella shell (es. ~/.zshrc), il timer notturno non la
-            # vede; V-2 bot #290: nel .env c'è un valore diverso (di notte vale quello)
-            check("Cervello forte", "comando claude", "WARN",
-                  ("GAS_CLAUDE_BIN impostata solo nella shell: il giro notturno non la vede"
-                   if "GAS_CLAUDE_BIN" not in _dotenv else
-                   "GAS_CLAUDE_BIN del .env è diversa da quella in uso: il giro notturno usa quella del .env")
-                  + f" (metti GAS_CLAUDE_BIN={binario} nel .env)")
+                  f"{_avviso} (metti GAS_CLAUDE_BIN={os.path.abspath(binario)} nel .env)")
         else:
             check("Cervello forte", "comando claude", "OK", "presente")
         usato = _leggi_uso_claude_cli(root)
