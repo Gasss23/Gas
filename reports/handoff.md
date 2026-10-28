@@ -96,6 +96,11 @@ Riserve da tracciare in /home/user/Gas/reports/stato_progetto.md prima del commi
 
 ### Review #548 (chat Motore) — sul merge di origin/main (PR #288) in 6393dd8
 
+Il verdetto originale (sotto, nel blocco di codice, testo integrale e invariato) citava come `path:riga` soprattutto file entrati da main o documenti, che non sono file di codice del diff di sessione (base d4b39ca): il Gate B lo dava rosso. Il revisore l'ha riemesso con lo stesso esito; la riemissione è subito dopo.
+
+Verdetto originale (sostituito dalla riemissione):
+
+```text
 ## VERDETTO: APPROVATO
 
 Il merge è corretto: non si perde nessuna riga da nessuno dei due lati, non resta nessun marcatore di conflitto e il codice è identico ai due lati come deve essere.
@@ -117,6 +122,7 @@ Rischio escluso: il comportamento vero di lexbor non è stato verificato, perch�
 La memoria è cambiata dopo questa review: lo SHA-256 del diff staged non corrisponderà a quello revisionato. Va ricalcolato dopo l'add, con `scripts/segna_review_ok.sh`. L'unica differenza in più è la riga #548.
 
 Riga in memoria: #548 — APPROVATO — nessuna lezione nuova.
+```
 
 ### Review #548 — verdetto RIEMESSO dal revisore per il Gate B (stesso esito, citazioni nella forma del gate; l'originale è qui sopra, non ritoccato)
 
