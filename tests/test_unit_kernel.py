@@ -8228,6 +8228,129 @@ try:
     check("T78o kernel senza recupero → (None, motivo) e warning nel log",
           _r78o == (None, "m") and any(_id78o in r and "recuperarne" in r for r in _log78o),
           str(_log78o))
+    # T78q — coda notte voce 6 (V-1 bot #241): l'esito notificato ha un segno nel DB.
+    # Dopo `clear` un nuovo click su Approva NON riscrive l'esito in storia.
+    _k78q = kernel_tmp()
+    _id78q = _k78q.memory.enqueue_approval("run_command", {"command": "echo q"})
+    _ex78q = _spia75(_k78q)
+    with _TgFinto():
+        _k78q.memory.resolve_approval(_id78q, "approved", telegram_user_id=4242)
+        _r78q = _k78q.applica_firma(_id78q)
+    check("T78q applica_firma: esito nel DB, blocco in storia, segno nel DB",
+          _r78q["eseguita"] is True and _k78q.memory.esito_in_storia(_id78q) is True
+          and len(_blocco78(_k78q, _id78q)) == 4 and _ex78q == ["run_command"]
+          and _esec77(_k78q)[-1][1].startswith("[OK]"), str(_r78q)[:150])
+    _k78q.clear_history()
+    with _TgFinto() as _tg78q:
+        _clicca77(_k78q, _cb77(_id78q), _tg78q)
+    _txt78q = _tg78q.chiamate[-1][1].get("text", "") if _tg78q.chiamate else ""
+    check("T78q dopo clear: nuovo click → storia vuota, nessuna esecuzione, 'Nessuna modifica'",
+          _k78q.history == [] and _ex78q == ["run_command"]
+          and _k78q.recupera_esito_firma(_id78q) is None and _k78q.history == []
+          and _txt78q.startswith("Nessuna modifica"), _txt78q[:150])
+
+    # T78r — R-445-3: crash fra l'esito nel DB e la storia. Ora l'esito vero resta nel
+    # DB (prima restava NULL e il recupero lo chiudeva come INCERTO).
+    class _Crash78r(BaseException):
+        pass
+
+    def _crash78r(*_a, **_k):
+        raise _Crash78r()
+
+    _k78r = kernel_tmp()
+    _id78r = _k78r.memory.enqueue_approval("run_command", {"command": "echo r"})
+    _k78r._storia_esito_firma = _crash78r  # type: ignore[method-assign]
+    try:
+        with _TgFinto():
+            _k78r.memory.resolve_approval(_id78r, "approved", telegram_user_id=4242)
+            _k78r.applica_firma(_id78r)
+    except _Crash78r:
+        pass
+    check("T78r crash prima della storia: esito vero già nel DB, nessun segno",
+          _esec77(_k78r)[-1][0] == _id78r and (_esec77(_k78r)[-1][1] or "").startswith("[OK]")
+          and _k78r.memory.esito_in_storia(_id78r) is False, str(_esec77(_k78r)))
+    _k78r2 = GasKernel(root_dir=str(_k78r.root))  # riavvio
+    _ex78r = _spia75(_k78r2)
+    with _TgFinto() as _tg78r:
+        _clicca77(_k78r2, _cb77(_id78r), _tg78r)
+    _b78r = _blocco78(_k78r2, _id78r)
+    _txt78r = _tg78r.chiamate[-1][1].get("text", "") if _tg78r.chiamate else ""
+    check("T78r riavvio + click → blocco 'eseguita' senza output, ✅, segno nel DB, nessuna esecuzione",
+          _ex78r == [] and [m["role"] for m in _b78r] == ["user", "assistant"]
+          and "— eseguita." in _b78r[1]["content"] and "non è più disponibile" in _b78r[0]["content"]
+          and _txt78r.startswith("✅ Approvata ed eseguita")
+          and _k78r2.memory.esito_in_storia(_id78r) is True, _txt78r[:150])
+    _ev78r = _turno_spia78(_k78r2, "com'è andata?",
+                           [[("calcola", '{"expr": "6*7"}')], "eseguita"])
+    _p78r = _CompletionsSpia78.visti[0] if _CompletionsSpia78.visti else []
+    check("T78r round-trip §7: il modello vede l'esito recuperato al turno dopo",
+          any(_tag78(_id78r) in (m.get("content") or "") for m in _p78r)
+          and [e["type"] for e in _ev78r] == ["tool_res", "final"], str(_ev78r)[:200])
+
+    # T78s — esito già in storia ma senza segno (firma chiusa prima di questa fetta):
+    # il recupero non scrive niente e mette il segno.
+    _k78s = kernel_tmp()
+    _id78s = _k78s.memory.enqueue_approval("run_command", {"command": "echo s"})
+    _k78s.memory.resolve_approval(_id78s, "approved", telegram_user_id=4242)
+    _k78s.memory.reclama_esecuzione(_id78s)
+    _k78s.memory.registra_esito_esecuzione(_id78s, "[OK] exit=0 stdout=2 char stderr=0 char")
+    _k78s._segna_esito_in_storia = lambda _aid: None  # type: ignore[method-assign]
+    _k78s._storia_esito_firma(_id78s, "run_command", '{"command": "echo s"}', "ok", "s", True)
+    del _k78s._segna_esito_in_storia
+    _n78s = len(_k78s.history)
+    check("T78s esito in storia senza segno → recupero None, storia invariata, segno messo",
+          _k78s.memory.esito_in_storia(_id78s) is False
+          and _k78s.recupera_esito_firma(_id78s) is None and len(_k78s.history) == _n78s
+          and _k78s.memory.esito_in_storia(_id78s) is True, str(_n78s))
+
+    # T78u — R-531-1/R-531-2: storia NON salvata → nessun segno, né da applica_firma né
+    # dal recupero; dopo il riavvio un nuovo click riscrive l'esito (sonda del revisore).
+    _k78u = kernel_tmp()
+    _id78u = _k78u.memory.enqueue_approval("run_command", {"command": "echo u"})
+    _k78u._salva_storia_su_file = lambda: False  # type: ignore[method-assign]
+    with _TgFinto() as _tg78u:
+        _k78u.memory.resolve_approval(_id78u, "approved", telegram_user_id=4242)
+        _r78u = _k78u.applica_firma(_id78u)
+        _clicca77(_k78u, _cb77(_id78u), _tg78u)  # recupero con la storia ancora non salvabile
+    check("T78u storia non salvata → nessun segno da applica_firma né dal recupero",
+          _r78u["eseguita"] is True and len(_blocco78(_k78u, _id78u)) == 4
+          and _k78u.memory.esito_in_storia(_id78u) is False, str(_r78u)[:120])
+    _k78u2 = GasKernel(root_dir=str(_k78u.root))  # crash + riavvio: storia su disco senza l'esito
+    _ex78u = _spia75(_k78u2)
+    with _TgFinto() as _tg78u2:
+        _clicca77(_k78u2, _cb77(_id78u), _tg78u2)
+    check("T78u dopo il riavvio un nuovo click riscrive l'esito (mai nascosto), senza eseguire",
+          _ex78u == [] and len(_blocco78(_k78u2, _id78u)) == 2
+          and _k78u2.memory.esito_in_storia(_id78u) is True
+          and _tg78u2.chiamate[-1][1].get("text", "").startswith("✅ Approvata ed eseguita"),
+          str(_blocco78(_k78u2, _id78u))[:200])
+
+    # T78t — store: migrazione additiva su un DB senza la tabella, solo inserimenti, fail-safe
+    _m78t = _k78s.memory
+    with _sqlite3.connect(str(_m78t.db_path)) as _c78t:
+        _c78t.execute("DROP TABLE approval_esiti_in_storia")
+    _m78t2 = _m78t.__class__(_m78t.db_path)  # riapertura = migrazione
+    _vuota78t = _m78t2.esito_in_storia(_id78s)
+    _seg78t = [_m78t2.segna_esito_in_storia(_id78s), _m78t2.segna_esito_in_storia(_id78s)]
+    _err78t = []
+    for _sql78t in ("UPDATE approval_esiti_in_storia SET ts = 0",
+                    "DELETE FROM approval_esiti_in_storia"):
+        try:
+            with _sqlite3.connect(str(_m78t.db_path)) as _c78t:
+                _c78t.execute(_sql78t)
+        except _sqlite3.Error as _e78t:
+            _err78t.append(str(_e78t))
+    _m78t3 = _m78t.__class__(_m78t.db_path)
+    _m78t3.available = False
+    check("T78t tabella ricreata alla riapertura, segni intatti dopo, UPDATE/DELETE vietati",
+          _m78t2.available and _vuota78t is False and _seg78t == [True, True]
+          and _m78t2.esito_in_storia(_id78s) is True and len(_err78t) == 2
+          and all("solo inserimenti" in e or "DELETE vietato" in e for e in _err78t), str(_err78t))
+    check("T78t UUID non valido o inesistente → False; memoria degradata → None, mai eccezioni",
+          _m78t2.esito_in_storia("non-un-uuid") is False
+          and _m78t2.segna_esito_in_storia("non-un-uuid") is False
+          and _m78t2.segna_esito_in_storia("00000000-0000-4000-8000-000000000000") is False
+          and _m78t3.esito_in_storia(_id78s) is None and _m78t3.segna_esito_in_storia(_id78s) is False)
     # T78p — V-2 verifica esterna #241: il recupero conta su «un click alla volta».
     # Guardia statica: gli update si gestiscono solo con chiamate dirette (mai passati
     # a thread/executor) e l'unico ThreadPoolExecutor del bot resta nell'invio.
