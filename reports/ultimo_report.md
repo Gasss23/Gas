@@ -11,5 +11,7 @@
   - Il nuovo `_DOTENV_SCAVALCATE` contiene solo i nomi delle variabili, mai i valori.
 - **Test**: suite kernel da 1061 a 1063 PASS, 0 FAIL (main misurato in un worktree a `2f35bc6`). pytest `test_unit_dotenv`: 12 passati.
 
+- **Merge di main (PR #288)**: FATTA — conflitti solo nei report e nella memoria; review #548 APPROVATO; la review del ramo #543 è rinumerata #547 (V-2 della verifica esterna su #293).
+
 ## Anomalie
 - Due sessioni «chat Motore» lavorano sulla stessa RIPARTENZA: oggi ci sono stati due doppioni (#286 e #287, #290 e #291). L'ho segnalato all'operatore.
