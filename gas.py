@@ -567,8 +567,9 @@ def _env_flag(name: str) -> bool:
 
 
 _DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-# Nomi delle variabili arrivate dal `.env` (non dalla shell): il doctor le usa per dire
-# se il giro notturno, che legge solo il `.env`, vedrà GAS_CLAUDE_BIN (R-538-1).
+# Nomi delle variabili arrivate dal `.env` (non dalla shell), o già nella shell con lo
+# STESSO valore del `.env` (V-1 bot #293): il doctor le usa per dire se il giro
+# notturno, che legge solo il `.env`, vedrà GAS_CLAUDE_BIN e GAS_CLAUDE_CLI (R-538-1).
 _DOTENV_CARICATE: set = set()
 # Nomi delle variabili del `.env` NON caricate perché la shell ne ha già un valore
 # DIVERSO: di notte (solo `.env`) vale l'altro valore. Solo i nomi, mai i valori.
@@ -626,6 +627,9 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
         if chiave in os.environ:
             if os.environ[chiave] != valore:
                 _DOTENV_SCAVALCATE.add(chiave)
+            else:
+                # V-1 bot #293: stesso valore nella shell e nel .env → di notte è uguale
+                _DOTENV_CARICATE.add(chiave)
             continue
         os.environ[chiave] = valore
         caricate.append(chiave)

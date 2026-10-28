@@ -142,5 +142,6 @@ def test_valori_scavalcati_dalla_shell_finiscono_in_dotenv_scavalcate(env, tmp_p
     env["GAS_T_UGUALE"] = "1"
     gas._carica_dotenv(_scrivi(tmp_path, "GAS_T_DIVERSA=1\nGAS_T_UGUALE=1\nGAS_T_NUOVA=x\n"))
     assert gas._DOTENV_SCAVALCATE == {"GAS_T_DIVERSA"}
-    assert gas._DOTENV_CARICATE == {"GAS_T_NUOVA"}
+    # V-1 bot #293: stesso valore nella shell e nel .env → di notte vale uguale, conta
+    assert gas._DOTENV_CARICATE == {"GAS_T_NUOVA", "GAS_T_UGUALE"}
     assert env["GAS_T_DIVERSA"] == "0"
