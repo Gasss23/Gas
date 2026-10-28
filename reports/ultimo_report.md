@@ -13,13 +13,18 @@
   - Test `test_intero_come_il_browser`: prende `intero()` dal sorgente del figlio con `ast`, gira anche senza selectolax: FATTA.
   - R-ve280-2, R-ve280-3, R-bot280-2 (numeri datati, numero CI non verificabile, riga ripetuta nell'handoff di #280): FATTA — l'handoff si riscrive a ogni sessione; questo cita solo numeri misurati in sessione.
   - R-ve280-1 (test del figlio non girano nei check required): DEFERITA — serve la chat Motore (selectolax in requirements-dev).
-- **Review**: #536 APPROVATO CON RISERVE (R-536-1 COSMETICA, «-0» dava None → FATTA), #537 APPROVATO.
+- **Review**: #536 APPROVATO CON RISERVE (R-536-1 COSMETICA, «-0» dava None → FATTA), #537 APPROVATO, #538 APPROVATO.
+- **Bot e verifica esterna su 162f5b1**: entrambi APPROVATO CON RISERVE (commento della verifica: https://github.com/Gasss23/Gas/pull/285#issuecomment-6468276114).
+  - V-1 ve MEDIA (PR in conflitto con main dopo #283 e #284) → merge di 0cf1d67: tenuti i report della #285, stato_progetto unito a mano, memoria con le righe di tutti e due i lati; niente perimetro, niente review: FATTA.
+  - V-2 ve / V-1 bot COSMETICA (commento di `intero()` senza il segno) → commento aggiornato, review #538: FATTA.
+  - V-3 ve COSMETICA (numeri dei mutanti del test intermedio) → rifatti sul test finale, sotto: FATTA.
+  - V-4 ve COSMETICA (§6 dell'handoff sulla CI di un commit vecchio) → handoff riscritto sulla head nuova: FATTA.
 - **Ripartenza**: `reports/ripartenza_mani.md` aggiornata (punto a fatto, PR #285): FATTA.
 
 ## Prove
-- Web suite 521 passed / 1 skipped (Python 3.13.16 con selectolax 1.0.2).
+- Web suite 521 passed / 1 skipped (Python 3.13.16 con selectolax 1.0.2), prima e dopo il commento di #538.
 - File lexbor su Python 3.11 senza selectolax: 20 passed / 60 skipped (il test nuovo gira).
-- Mutanti, tutti presi: ritorno vecchio (4 failed), `letto = True` tolto (6), senza `not (meno and numero)` (1), solo «+» come segno (2).
+- Mutanti sul test finale (17 casi), tutti presi: ritorno vecchio (7 failed), `letto = True` tolto (8), senza `not (meno and numero)` (1), solo «+» come segno (2).
 
 ## RICHIESTE ALLA CHAT MOTORE
 1. Per accendere la lettura con lexbor e chiudere R-ve280-1:
@@ -27,4 +32,5 @@
    - `GAS_WEB_LEXBOR=1` nell'ambiente di Gas sul VPS (Linux).
 
 ## Anomalie
-- Nessuna.
+- `gh` non autenticato nel cloud: PR, etichetta e stato CI passano dall'integrazione GitHub.
+- Numeri delle review: in memoria ci sono #536/#537 anche della chat Notte e della chat Motore (numerazione parallela); quelle di questa fetta sono marcate «(chat Mani)».
