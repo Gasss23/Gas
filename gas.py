@@ -461,23 +461,14 @@ def _claude_solo_nel_terminale(valore_env: str, binario: str, root: Path) -> boo
 
 
 def _chiavi_dotenv(p: Path) -> Optional[Set[str]]:
-    """Nomi delle variabili scritte nel `.env` (stesse righe valide di _carica_dotenv),
-    senza caricarle né leggerne i valori. None se il file manca o è illeggibile."""
+    """Nomi delle variabili che _carica_dotenv caricherebbe dal `.env` con un valore NON
+    vuoto (V-1 ve #290 / R-540-2: «GAS_CLAUDE_BIN=» o virgolette non chiuse non
+    contano). Solo i nomi, mai i valori. None se il file manca o è illeggibile."""
     try:
         testo = p.read_text(encoding="utf-8-sig")
     except Exception:
         return None
-    chiavi: Set[str] = set()
-    for riga in testo.splitlines():
-        riga = riga.strip()
-        if not riga or riga.startswith("#"):
-            continue
-        if riga.startswith("export "):
-            riga = riga[len("export "):].lstrip()
-        chiave, sep, _ = riga.partition("=")
-        if sep and _DOTENV_CHIAVE.fullmatch(chiave.strip()):
-            chiavi.add(chiave.strip())
-    return chiavi
+    return {chiave for chiave, valore in _voci_dotenv(testo, avvisa=False) if valore}
 
 
 def _probe_free_model(base_url: str, model: str, api_key: Optional[str], _fetch=None) -> Tuple[str, str]:
@@ -582,6 +573,34 @@ _DOTENV_CHIAVE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _DOTENV_VIRGOLETTE = re.compile(r"""(['"])(.*?)\1(?:\s+#.*)?""")
 
 
+def _voci_dotenv(testo: str, avvisa: bool = True) -> Generator[Tuple[str, str], None, None]:
+    """Le coppie (chiave, valore) valide di un `.env`, con le regole di _carica_dotenv.
+    Righe malformate o con virgolette non chiuse: saltate (warning se `avvisa`, mai il valore)."""
+    for n, riga in enumerate(testo.splitlines(), 1):
+        riga = riga.strip()
+        if not riga or riga.startswith("#"):
+            continue
+        if riga.startswith("export "):
+            riga = riga[len("export "):].lstrip()
+        chiave, sep, valore = riga.partition("=")
+        chiave = chiave.strip()
+        if not sep or not _DOTENV_CHIAVE.fullmatch(chiave):
+            if avvisa:
+                logging.warning(f".env riga {n}: formato non valido, ignorata")
+            continue
+        valore = valore.strip()
+        tra_virgolette = _DOTENV_VIRGOLETTE.fullmatch(valore)
+        if tra_virgolette:
+            valore = tra_virgolette.group(2)
+        elif valore[:1] in ("'", '"'):
+            if avvisa:
+                logging.warning(f".env riga {n} ({chiave}): virgolette non chiuse, ignorata")
+            continue
+        else:
+            valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
+        yield chiave, valore
+
+
 def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
     """Carica il `.env` accanto a gas.py in os.environ all'avvio della CLI (prova reale
     sul Mac 2026-10-11: launchd non legge il profilo della shell, quindi tetto di spesa,
@@ -608,26 +627,7 @@ def _carica_dotenv(path: Optional[Path] = None) -> List[str]:
         logging.warning(f".env non leggibile ({type(e).__name__}): variabili non caricate")
         return []
     caricate: List[str] = []
-    for n, riga in enumerate(testo.splitlines(), 1):
-        riga = riga.strip()
-        if not riga or riga.startswith("#"):
-            continue
-        if riga.startswith("export "):
-            riga = riga[len("export "):].lstrip()
-        chiave, sep, valore = riga.partition("=")
-        chiave = chiave.strip()
-        if not sep or not _DOTENV_CHIAVE.fullmatch(chiave):
-            logging.warning(f".env riga {n}: formato non valido, ignorata")
-            continue
-        valore = valore.strip()
-        tra_virgolette = _DOTENV_VIRGOLETTE.fullmatch(valore)
-        if tra_virgolette:
-            valore = tra_virgolette.group(2)
-        elif valore[:1] in ("'", '"'):
-            logging.warning(f".env riga {n} ({chiave}): virgolette non chiuse, ignorata")
-            continue
-        else:
-            valore = re.split(r"\s+#", valore, maxsplit=1)[0].rstrip()
+    for chiave, valore in _voci_dotenv(testo):
         if chiave in os.environ:
             continue
         os.environ[chiave] = valore

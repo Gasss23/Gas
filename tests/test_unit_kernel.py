@@ -11254,12 +11254,20 @@ try:
             check("T99x V-1 bot #287: /usr/local/bin ok su Linux e non su Mac; collegamento a /usr/bin ok",
                   _lin99 is False and _mac99 is True and _sym99 is False, f"{_lin99} {_mac99} {_sym99}")
             _ck99 = Path(_k99.root) / "chiavi99.env"
-            _ck99.write_text("# GAS_CLAUDE_BIN=x\nexport GAS_CLAUDE_BIN=/a\nALTRO = 1\nmalformata\n",
-                             encoding="utf-8")
-            check("T99y _chiavi_dotenv: chiavi valide, commenti ignorati, file assente → None",
+            _ck99.write_text("# GAS_CLAUDE_BIN=x\nexport GAS_CLAUDE_BIN=/a\nALTRO = 1\nmalformata\n"
+                             "VUOTA=\nAPERTA=\"/x\n", encoding="utf-8")
+            check("T99y _chiavi_dotenv: chiavi caricabili con valore (V-1 ve #290: vuote e virgolette aperte no)",
                   gas._chiavi_dotenv(_ck99) == {"GAS_CLAUDE_BIN", "ALTRO"}
                   and gas._chiavi_dotenv(Path(_k99.root) / "manca99.env") is None,
                   str(gas._chiavi_dotenv(_ck99)))
+            # V-2 ve #290 / R-540-1: collegamento dalla parte delle cartelle note (.venv collegato altrove)
+            _vero99 = Path(_k99.root) / "venv_vero99"
+            (_vero99 / "bin").mkdir(parents=True, exist_ok=True)
+            _rv99 = Path(_k99.root) / "radice99"
+            _rv99.mkdir(exist_ok=True)
+            (_rv99 / ".venv").symlink_to(_vero99)
+            check("T99z R-540-1: .venv collegato altrove → `claude` nel venv vero è visto dal timer",
+                  gas._claude_solo_nel_terminale("", str(_vero99 / "bin" / "claude"), _rv99) is False)
             from brains.claude_cli import _MSG_LOGIN as _login99
             check("T99u _motivo_forte: solo i messaggi di claude_cli, prima riga, senza prefisso ripetuto, ≤300",
                   gas._motivo_forte(RuntimeError("claude-cli: comando `claude` non trovato"))
